@@ -332,6 +332,29 @@ pub(super) fn cook_gpu(
             });
             // A cook that errored leaves `gpu_live` false → let the CPU pump draw.
             if motion.gpu_live {
+                // ⭐⭐⭐ **AS TOMADAS, que esta rota deixava cair** (report do dono, 2026-09-08).
+                //
+                // ⛔⛔ Elas são cozidas dentro da MARCHA da bomba, e esta rota **retorna antes
+                // da marcha**: o device produziu o quadro, a bomba não corre, e `tap_streams`
+                // fica vazio. Quem depende de uma tomada deixa de existir **em silêncio** — o
+                // gizmo dos deformadores de quadrilátero sumiu do canvas, e os sinais de um
+                // documento inteiramente no device não gritam.
+                //
+                // ⚠️ **A rota HÍBRIDA já estava coberta**, e o doc do `set_taps` conta essa cura:
+                // as tomadas passaram a ser estado da bomba para cavalgarem *«a marcha que
+                // houver»*. O que ninguém viu é que aqui **não há marcha nenhuma**.
+                //
+                // ⚠️ **Cozinha, não marcha** — ver [`MotionCookPump::cook_taps_only`]: marchar
+                // aqui simularia o tique duas vezes, uma no device e outra na CPU.
+                //
+                // ⚠️ **No MESMO instante em que o device acabou**, e não num recalculado: a
+                // lista de tiques já foi resolvida acima (com sub-passos e com o rebobinar de um
+                // laço), e derivar o playhead outra vez daria um segundo número para a mesma
+                // pergunta — que é como a tomada passaria a descrever outro quadro.
+                let ultimo = ticks.last().map_or(0.0, |(playhead, _)| *playhead);
+                motion
+                    .pump
+                    .cook_taps_only(&motion.doc.graph, &motion.registry, ultimo, &scopes);
                 say_route(motion, "device: o plano inteiro (fully-GPU)");
                 GpuOutcome::Handled
             } else {

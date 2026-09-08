@@ -7,6 +7,8 @@
 //! e escondido que a lista é preenchida por tique, não por chamada.
 
 use crate::{MotionCookPump, NodeId, Stream};
+use ph2d_nodegraph::cook::{OpResolver, TimeScopes};
+use ph2d_nodegraph::graph::Graph;
 
 impl MotionCookPump {
     /// Carimba no livro-razão o que as tomadas disseram no tique que o chamador PEDIU.
@@ -50,6 +52,58 @@ impl MotionCookPump {
     /// quadro publica.
     pub fn clear_tap_fires(&mut self) {
         self.tap_fires.clear();
+    }
+
+    /// ⭐⭐⭐ **COZINHA SÓ AS TOMADAS, sem marchar o tique** — a porta que faltava à rota
+    /// **totalmente na GPU**.
+    ///
+    /// ⛔⛔ **O buraco, medido em 2026-09-08 por um report do dono** (*«sumiu com o gizmo do
+    /// Bezier Warp»* → *«ainda invisível»*): as tomadas são cozidas dentro do
+    /// [`MotionCookPump::cook_target_into`], que corre na MARCHA. E na rota `FullyGpu` a ponte
+    /// **retorna antes da marcha** — o device produziu o quadro, a bomba não corre, e
+    /// `tap_streams` fica vazio. Quem depende de uma tomada deixa de existir **em silêncio**.
+    ///
+    /// ⚠️ **A rota HÍBRIDA já estava coberta**, e o doc do [`Self::set_taps`] conta essa cura: as
+    /// tomadas passaram a ser estado da bomba precisamente para cavalgarem a marcha que houver.
+    /// *O que ninguém viu é que a rota `FullyGpu` não marcha marcha nenhuma* — e ali não há
+    /// «a marcha que houver».
+    ///
+    /// ⇒ **vítimas: DUAS.** O gizmo de canvas dos deformadores de quadrilátero (que lê a caixa
+    /// envolvente da tomada de montante) e os **sinais** de um documento inteiramente no device.
+    ///
+    /// ⚠️ **Não marcha o tique, e é isso que a torna segura de chamar depois do device:** ela
+    /// COZINHA (uma pergunta pura sobre o grafo neste playhead, que bate no memo), nunca avança
+    /// estado. Marchar aqui simularia o tique duas vezes — uma no device, outra na CPU — e um nó
+    /// sequencial andaria a dobrar.
+    ///
+    /// ⚠️ **O preço é real e nomeado:** para a tomada do gizmo, isto cozinha na CPU a cadeia a
+    /// montante do nó seleccionado. Ele só se paga **enquanto há tomada armada** — e a lista está
+    /// vazia sem nó de warp seleccionado e sem `pulse.signal` no grafo, que é o caso comum.
+    pub fn cook_taps_only(
+        &mut self,
+        graph: &Graph,
+        ops: &dyn OpResolver,
+        playhead: f64,
+        scopes: &TimeScopes,
+    ) {
+        if self.taps.is_empty() {
+            return; // o mundo anterior, byte a byte
+        }
+        self.tap_streams.clear();
+        for i in 0..self.taps.len() {
+            let node = self.taps[i];
+            if self.tap_streams.iter().any(|(n, _)| *n == node) {
+                continue;
+            }
+            // A MESMA política do laço da marcha: uma tomada que falha simplesmente não aparece.
+            if let Ok(outputs) = self
+                .cook
+                .cook_scoped_fanned(graph, ops, node, playhead, scopes, &self.fans)
+                && let Some(v) = outputs.first()
+            {
+                self.tap_streams.push((node, v.as_stream().clone()));
+            }
+        }
     }
 
     /// Os streams das TOMADAS da última marcha de sinks, rotulados por nó.

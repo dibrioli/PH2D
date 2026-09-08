@@ -9,6 +9,20 @@
 //! gizmo não existe e **não sabe porquê** — e é isso que faz cada tentativa de cura ser um
 //! palpite. Esta sonda corre a mesma porta do produto e imprime a primeira condição que falha.
 //!
+//! ⛔⛔⛔ **E ELA MENTIU NA PRIMEIRA CORRIDA — leia isto antes de acreditar nela.** Ela deu
+//! `resolve = Some` na cena exacta do report enquanto o app dava `None`, porque **ela escolhe a
+//! ROTA**: chama `advance_or_scrub_scoped`, a marcha da CPU. O app corre a rota do device, e na
+//! rota **totalmente na GPU** a ponte retorna **antes** de qualquer marcha — as tomadas nunca
+//! são cozidas, e é a tomada que dá a caixa envolvente ao gizmo.
+//!
+//! ⚠️ ***Uma sonda que escolhe a rota mede a rota que ela escolheu.*** Foi preciso o
+//! `PH2D_WARP_DIAG=1` no app do dono para a resposta aparecer — e a linha que a deu foi o ramo
+//! do `None`, que só existe porque eu já tinha errado duas vezes.
+//!
+//! ⇒ a cura vive no substrato: [`ph2d_eval_motion::MotionCookPump::cook_taps_only`], chamada na
+//! rota `FullyGpu` da ponte. Esta sonda fica para a PRÓXIMA pergunta sobre as seis condições —
+//! com o aviso de que ela responde pela rota da CPU.
+//!
 //! ```text
 //! cargo test -p ph2d-host-desktop --bins --release -- --ignored --nocapture why_the_warp_gizmo_is_not_there
 //! ```

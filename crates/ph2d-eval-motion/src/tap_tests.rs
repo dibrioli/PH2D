@@ -240,3 +240,53 @@ fn sem_armar_o_livro_fica_vazio() {
     assert!(pump.tap_fires().is_empty());
     assert!(pump.tap_streams().is_empty());
 }
+
+/// ⭐⭐⭐ **UMA TOMADA COZINHA SEM MARCHAR** — a porta que a rota totalmente-na-GPU precisava.
+///
+/// ⛔⛔ **O buraco que ela fecha custou DUAS curas erradas** (report do dono, 2026-09-08:
+/// *«sumiu com o gizmo do Bezier Warp»* e depois *«ainda invisível»*). As tomadas eram cozidas
+/// **dentro da marcha**, e a ponte da GPU **retorna antes da marcha** quando o device trata o
+/// quadro inteiro: `tap_streams` ficava vazio e quem dependia dele — o gizmo de canvas dos
+/// deformadores, e os **sinais** — deixava de existir em silêncio.
+///
+/// ⚠️ **E nenhuma sonda o via, incluindo a minha:** a que escrevi para diagnosticar forçava a
+/// marcha da CPU (`advance_or_scrub_scoped`), então media um programa que o app não corre. *Uma
+/// sonda que escolhe a rota mede a rota que ela escolheu.*
+///
+/// As duas metades, num gate só:
+/// 1. cozinhar as tomadas **enche** `tap_streams` sem que uma marcha tenha corrido;
+/// 2. e **não anda com o relógio** — o tique fica onde estava, senão um nó sequencial simularia
+///    duas vezes (uma no device, outra aqui).
+#[test]
+fn cooking_the_taps_fills_them_without_marching_the_clock() {
+    let (graph, mid, _sink) = chain();
+    let ops = Ops;
+    let mut pump = MotionCookPump::new();
+    pump.set_taps(&[mid]);
+    let antes = pump.last_cooked_tick();
+
+    pump.cook_taps_only(&graph, &ops, 0.0, &TimeScopes::new());
+
+    assert_eq!(
+        pump.tap_streams().len(),
+        1,
+        "a tomada tem de cozinhar sem marcha nenhuma — e' isso que a rota fully-GPU precisa"
+    );
+    assert_eq!(pump.tap_streams()[0].0, mid, "e e' a tomada que foi armada");
+    assert_eq!(
+        pump.last_cooked_tick(),
+        antes,
+        "cozinhar NAO e' marchar: o relogio fica onde estava, senao o device e a CPU simulariam \
+         o mesmo tique duas vezes"
+    );
+
+    // ⚠️ **O controlo:** sem tomadas armadas ela e' o mundo anterior byte a byte — nao cozinha
+    // nada, nao limpa nada, e nao custa nada no caso comum (nenhum no' de warp seleccionado e
+    // nenhum `pulse.signal` no grafo).
+    let mut vazia = MotionCookPump::new();
+    vazia.cook_taps_only(&graph, &ops, 0.0, &TimeScopes::new());
+    assert!(
+        vazia.tap_streams().is_empty(),
+        "sem tomadas armadas nao ha' nada a cozinhar"
+    );
+}

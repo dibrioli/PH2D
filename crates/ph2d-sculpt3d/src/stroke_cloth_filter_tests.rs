@@ -68,7 +68,10 @@ fn um_filtro_toca_a_peca_inteira_e_um_carimbo_toca_um_disco() {
     st.cloth_filter_begin(&mesh, &b, ClothFilterKind::Gravity, [0.0; 3]);
     let movidos = st.cloth_filter_step(&mut mesh, ClothFilterKind::Gravity, &passo(1.0));
     println!("filtro: {movidos} de {n} vertices movidos");
-    assert!(movidos > 0, "o filtro nao moveu nada -- a fixtura nao produz o fenomeno");
+    assert!(
+        movidos > 0,
+        "o filtro nao moveu nada -- a fixtura nao produz o fenomeno"
+    );
     assert_eq!(
         movidos, n,
         "o filtro tinha de alcancar a peca INTEIRA (espec §7), e alcancou {movidos} de {n}"
@@ -91,7 +94,10 @@ fn o_filtro_de_tecido_acumula_em_vez_de_repor_a_pose() {
     let d1 = desvio(&base, &um);
     let d3 = desvio(&base, &tres);
     println!("um passo move {d1:.6}; tres passos movem {d3:.6}");
-    assert!(d1 > 0.0, "um passo tinha de mover -- a fixtura nao produz o fenomeno");
+    assert!(
+        d1 > 0.0,
+        "um passo tinha de mover -- a fixtura nao produz o fenomeno"
+    );
     assert!(
         d3 > d1 * 1.5,
         "tres passos moveram {d3:.6} contra {d1:.6} de um -- o filtro esta' a REPOR a pose \
@@ -111,13 +117,12 @@ fn so_o_aperto_le_o_ponto_congelado() {
         let a = corre(kind, 1.0, 2, [0.0, 0.0, 0.0]);
         let b = corre(kind, 1.0, 2, [0.7, 0.4, 0.0]);
         let d = desvio(&a, &b);
-        println!("{:<8} com o ponto noutro sitio: desvio {d:.6}", kind.label());
+        println!(
+            "{:<8} com o ponto noutro sitio: desvio {d:.6}",
+            kind.label()
+        );
         if kind.le_o_ponto() {
-            assert!(
-                d > 0.0,
-                "{:?} diz LER o ponto e nao mudou com ele",
-                kind
-            );
+            assert!(d > 0.0, "{:?} diz LER o ponto e nao mudou com ele", kind);
         } else {
             assert_eq!(
                 d, 0.0,
@@ -157,7 +162,11 @@ fn sem_pen_down_o_passo_nao_toca_a_peca() {
     assert!(!st.cloth_filter_running());
     let movidos = st.cloth_filter_step(&mut mesh, ClothFilterKind::Gravity, &passo(1.0));
     assert_eq!(movidos, 0, "o passo correu sem pen-down");
-    assert_eq!(desvio(&antes, mesh.positions()), 0.0, "a peca mexeu-se sem pen-down");
+    assert_eq!(
+        desvio(&antes, mesh.positions()),
+        0.0,
+        "a peca mexeu-se sem pen-down"
+    );
 }
 
 /// ⭐⭐ **O UNDO COBRE A PEÇA INTEIRA, e ele é o do TRAÇO.**

@@ -92,7 +92,10 @@ fn a_shading_scene_owns_its_whole_cast() {
 /// ela é inalcançável, e o modo de falha é exactamente o que esta wave consertou.
 #[test]
 fn the_primary_mesh_door_is_actually_asked_before_the_fallback() {
-    let src = fs::read_to_string("src/sculpt3d_scenes.rs").expect("o modulo de cenas existe");
+    // ⚠️ **A `smoke_mesh` mudou de ficheiro em 2026-09-07** (corte de LOC do
+    // roteador de cenas) — ver o irmão no `sculpt3d_scenes_tests.rs`.
+    let src =
+        fs::read_to_string("src/sculpt3d_scenes_mesh.rs").expect("o escolhedor de malha existe");
     let at = src
         .find("pub(crate) fn smoke_mesh(")
         .expect("controle: a porta da peca primaria existe");

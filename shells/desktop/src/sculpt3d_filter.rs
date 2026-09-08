@@ -122,7 +122,8 @@ impl Sculpt3dScene {
         if let Some(hit) = self.pick_active(x, y) {
             return hit.point;
         }
-        self.obj().map_or([0.0; 3], |o| o.stack.mesh().bounds().center())
+        self.obj()
+            .map_or([0.0; 3], |o| o.stack.mesh().bounds().center())
     }
 
     /// **O que um passo do filtro de tecido lê da CÂMERA e da peça.**
@@ -147,10 +148,7 @@ impl Sculpt3dScene {
             ClothFilterOrientation::View => {
                 // As linhas da matriz de vista são os eixos do ECRÃ em mundo.
                 let (right, up, back) = (dir(0), dir(1), dir(2));
-                (
-                    [right, up, back],
-                    [-up[0], -up[1], -up[2]],
-                )
+                ([right, up, back], [-up[0], -up[1], -up[2]])
             }
             // *Local* — e o *World* coincide com ele nesta casa, medido.
             _ => (

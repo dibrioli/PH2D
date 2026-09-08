@@ -331,15 +331,15 @@ pub mod stroke_cloth_num;
 
 #[path = "stroke_cloth.rs"]
 mod stroke_cloth;
-/// A lei da REFERÊNCIA (Verlet + restrições de distância), clean-room, atrás
-/// de `PH2D_CLOTH_LAW=ref`. Ver [`stroke_cloth_ref`].
-#[path = "stroke_cloth_ref.rs"]
-mod stroke_cloth_ref;
 /// ⭐ **O FILTRO de tecido** (espec §7) — o mesmo solver na peça inteira, sem
 /// pincel. Irmão do [`stroke_cloth_ref`], e o corte é o GESTO: lá um traço com
 /// carimbo, aqui um arrasto que não toca a malha.
 #[path = "stroke_cloth_filter.rs"]
 mod stroke_cloth_filter;
+/// A lei da REFERÊNCIA (Verlet + restrições de distância), clean-room, atrás
+/// de `PH2D_CLOTH_LAW=ref`. Ver [`stroke_cloth_ref`].
+#[path = "stroke_cloth_ref.rs"]
+mod stroke_cloth_ref;
 pub use stroke_cloth_filter::ClothFilterStep;
 pub use stroke_cloth_ref::cloth_repica;
 

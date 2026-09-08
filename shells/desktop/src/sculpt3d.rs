@@ -14,7 +14,7 @@
 use ph2d_light::LightRig;
 use ph2d_mesh::{Hit, Mesh, Multires, Pose, Ray};
 use ph2d_mesh_render::{Camera3d, MeshRenderer};
-use ph2d_sculpt3d::{Brush, Dab, FilterKind, Grip, SculptStroke, Symmetry, Verb};
+use ph2d_sculpt3d::{Brush, Dab, Grip, SculptStroke, Symmetry, Verb};
 
 /// **A DOAÇÃO** — o carimbo, a rasterização e o interruptor de três posições.
 /// Filho (`#[path]`) para alcançar os campos privados da cena; o corte é *o que

@@ -62,8 +62,13 @@ fn the_axis_scene_opens_on_the_same_dense_mesh_as_the_alpha_scene() {
     // tem roteador nenhum, e onde a busca acharia o vácuo. O caminho é relativo
     // ao PACOTE (a cwd de um teste é o diretório do `Cargo.toml`), a mesma régua
     // do `no_two_sculpt3d_scenes_claim_the_same_level`.
-    let src = std::fs::read_to_string("src/sculpt3d_scenes.rs")
-        .expect("o roteador de cenas é legível a partir do pacote");
+    // ⚠️⚠️ **O ficheiro MUDOU em 2026-09-07**: a `smoke_mesh` saiu do roteador
+    // para o irmão `sculpt3d_scenes_mesh.rs` quando a cena `=37` cruzou o teto de
+    // LOC. *Um gate que lê um ficheiro pelo caminho reprova quando a função muda
+    // de casa* — e foi assim que este e o do elenco de sombreamento acusaram o
+    // corte no mesmo minuto, que é exactamente o que se quer deles.
+    let src = std::fs::read_to_string("src/sculpt3d_scenes_mesh.rs")
+        .expect("o escolhedor de malha é legível a partir do pacote");
     // ⚠️ **A busca é pela CONDIÇÃO, e o `starts_with("if ")` é o que a torna
     // honesta** — a primeira versão deste gate procurou só as duas chamadas
     // na mesma linha e casou com `pub(crate) fn directional_alpha_scene()`,

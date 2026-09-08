@@ -43,7 +43,12 @@ fn grelha(n: usize, h: f64) -> (Vec<V3>, Vec<Vec<u32>>) {
     let mut faces = Vec::new();
     for j in 0..n - 1 {
         for i in 0..n - 1 {
-            faces.push(vec![idx(i, j), idx(i + 1, j), idx(i + 1, j + 1), idx(i, j + 1)]);
+            faces.push(vec![
+                idx(i, j),
+                idx(i + 1, j),
+                idx(i + 1, j + 1),
+                idx(i, j + 1),
+            ]);
         }
     }
     (p, faces)
@@ -70,7 +75,12 @@ fn esfera(nu: usize, nv: usize) -> (Vec<V3>, Vec<Vec<u32>>) {
     let mut faces = Vec::new();
     for j in 0..nv {
         for i in 0..nu {
-            faces.push(vec![idx(i, j), idx(i + 1, j), idx(i + 1, j + 1), idx(i, j + 1)]);
+            faces.push(vec![
+                idx(i, j),
+                idx(i + 1, j),
+                idx(i + 1, j + 1),
+                idx(i, j + 1),
+            ]);
         }
     }
     (p, faces)
@@ -96,11 +106,7 @@ fn aneis(n: usize, faces: &[Vec<u32>]) -> Vec<Vec<u32>> {
 fn normais(pos: &[V3], faces: &[Vec<u32>]) -> Vec<V3> {
     let mut n = vec![[0.0; 3]; pos.len()];
     for f in faces {
-        let (a, b, c) = (
-            pos[f[0] as usize],
-            pos[f[1] as usize],
-            pos[f[2] as usize],
-        );
+        let (a, b, c) = (pos[f[0] as usize], pos[f[1] as usize], pos[f[2] as usize]);
         let u = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
         let v = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
         let fnv = [
@@ -258,7 +264,13 @@ fn corre_com(
 }
 
 /// A corrida sem rotação — o caso de sempre.
-fn corre(pincel: Pincel, pos0: &[V3], faces: &[Vec<u32>], passos: usize, refresca: bool) -> Corrida {
+fn corre(
+    pincel: Pincel,
+    pos0: &[V3],
+    faces: &[Vec<u32>],
+    passos: usize,
+    refresca: bool,
+) -> Corrida {
     corre_com(pincel, pos0, faces, passos, refresca, false)
 }
 
@@ -415,7 +427,10 @@ fn o_inflar_le_a_fotografia_de_normais_que_o_chamador_lhe_der() {
         .map(|(a, b)| norma([a[0] - b[0], a[1] - b[1], a[2] - b[2]]))
         .fold(0.0, f64::max);
     println!("controlo (1 passo simulado): desvio maximo {ctrl:.3e}");
-    assert_eq!(ctrl, 0.0, "com um passo as duas fotografias tem de coincidir");
+    assert_eq!(
+        ctrl, 0.0,
+        "com um passo as duas fotografias tem de coincidir"
+    );
 
     // A LEI: com seis passos simulados a superfície já mudou, e as duas
     // fotografias divergem.
@@ -476,7 +491,10 @@ fn os_oito_modos_rodam_com_a_peca_logo_nenhum_e_uma_gravidade() {
         let a = corre_com(p, &pos, &faces, 3, false, false);
         let b = corre_com(p, &pos, &faces, 3, false, true);
         let pico = a.desloc.iter().map(|d| norma(*d)).fold(0.0, f64::max);
-        assert!(pico > 1e-9, "{modo:?} nao moveu nada -- a fixtura nao produz o fenomeno");
+        assert!(
+            pico > 1e-9,
+            "{modo:?} nao moveu nada -- a fixtura nao produz o fenomeno"
+        );
         // O deslocamento da corrida rodada tem de ser o da corrida normal, rodado.
         let desvio = a
             .desloc
@@ -517,13 +535,20 @@ fn o_arrasto_do_filtro_e_uma_recta_com_sinal() {
         c.desloc.iter().map(|d| norma(*d)).fold(0.0, f64::max)
     };
     // O ZERO é exacto: sem arrasto não há filtro nenhum.
-    assert_eq!(pico(0.0), 0.0, "com s = 0 a peca tem de ficar parada, ao bit");
+    assert_eq!(
+        pico(0.0),
+        0.0,
+        "com s = 0 a peca tem de ficar parada, ao bit"
+    );
     let base = pico(1.0);
     assert!(base > 1e-9, "a fixtura nao produz o fenomeno");
     for s in [0.25, 0.5, 1.0] {
         let m = pico(s);
         let erro = (m - base * s).abs() / base;
-        println!("s {s:.2} -> pico {m:.6} contra a recta {:.6} (erro {erro:.2e})", base * s);
+        println!(
+            "s {s:.2} -> pico {m:.6} contra a recta {:.6} (erro {erro:.2e})",
+            base * s
+        );
         assert!(erro < 1e-9, "o arrasto do filtro nao e' linear em {s}");
     }
     // ⭐ E o SINAL vive no próprio `s` — não num `flip` ao lado.
@@ -609,7 +634,10 @@ fn a_gravidade_do_filtro_nao_roda_com_a_peca_e_o_inflate_roda() {
 #[test]
 fn a_escala_do_filtro_ancora_no_repouso_e_honra_os_eixos() {
     let (base, faces) = esfera(24, 12);
-    let pos: Vec<V3> = base.iter().map(|p| [p[0] + 2.0, p[1] + 0.5, p[2]]).collect();
+    let pos: Vec<V3> = base
+        .iter()
+        .map(|p| [p[0] + 2.0, p[1] + 0.5, p[2]])
+        .collect();
 
     // (a) os três eixos: a ÂNCORA é `p⁰ · (1 + f)`, radial a partir da origem.
     let c = corre(filtro(Modo::Escala, 1.0), &pos, &faces, 2, false);
@@ -625,7 +653,10 @@ fn a_escala_do_filtro_ancora_no_repouso_e_honra_os_eixos() {
         pior_cos = pior_cos.min((d[0] * p0[0] + d[1] * p0[1] + d[2] * p0[2]) / (md * mp));
     }
     println!("tres eixos: pior cosseno da ANCORA contra o raio da origem {pior_cos:.9}");
-    assert!(pico > 1e-9, "a ancora nao saiu do repouso -- a fixtura nao produz o fenomeno");
+    assert!(
+        pico > 1e-9,
+        "a ancora nao saiu do repouso -- a fixtura nao produz o fenomeno"
+    );
     assert!(
         pior_cos > 1.0 - 1e-12,
         "a ancora da Escala nao e' radial a partir da origem (pior cosseno {pior_cos:.9})"
@@ -656,6 +687,9 @@ fn a_escala_do_filtro_ancora_no_repouso_e_honra_os_eixos() {
         fuga = fuga.max(d[1].abs().max(d[2].abs()));
     }
     println!("so' o eixo X: pico da ancora em x {px:.6}, fuga em y/z {fuga:.3e}");
-    assert!(px > 1e-9, "com o eixo X ligado a ancora tinha de sair do repouso em x");
+    assert!(
+        px > 1e-9,
+        "com o eixo X ligado a ancora tinha de sair do repouso em x"
+    );
     assert_eq!(fuga, 0.0, "a ancora da Escala escapou dos eixos ligados");
 }

@@ -43,15 +43,15 @@ mod footprint;
 pub use footprint::{Blade, Footprint, Strip, rounded_box};
 
 mod brush;
-mod cloth_force_falloff;
-mod cloth_mode;
 /// **OS CINCO TIPOS DO FILTRO DE TECIDO** (espec §7) — ver [`cloth_filter_kind`].
 mod cloth_filter_kind;
-/// **A LEI QUE UM ARRASTO DE FILTRO APLICA** — a uniao das duas familias.
-mod filter_law;
+mod cloth_force_falloff;
+mod cloth_mode;
 mod coat;
 /// **A CURVA DO PINCEL** — o falloff, irmão do [`brush`]. Ver [`falloff`].
 mod falloff;
+/// **A LEI QUE UM ARRASTO DE FILTRO APLICA** — a uniao das duas familias.
+mod filter_law;
 mod grip;
 /// **O CAMPO ELÁSTICO** — os Kelvinlets regularizados (de Goes & James 2017),
 /// que são o `l-mode` da família que agarra. Ver [`kelvinlet`].
@@ -83,20 +83,20 @@ pub use brush::{
     MULTIPLANE_ANGLE_SMOOTH, MULTIPLANE_TIP_STRETCH, PINCH_GAIN, Pass, REACH_FRACTION,
     RingOperator, STRIP_PLANE_FRACTION, Symmetry, TAUBIN_LAMBDA, TAUBIN_MU, TAUBIN_PASS_BAND, Verb,
 };
+pub use cloth_filter_kind::{ClothFilterKind, ClothFilterOrientation};
 pub use cloth_force_falloff::ClothForceFalloff;
 pub use cloth_mode::{ClothArea, ClothMode};
-pub use cloth_filter_kind::{ClothFilterKind, ClothFilterOrientation};
-pub use filter_law::FilterLaw;
 pub use coat::{COAT_HEAD, coat_step};
 pub use falloff::Falloff;
+pub use filter_law::FilterLaw;
 pub use grip::{Amount, Grip, GripLaw};
 pub use kelvinlet::KELVINLET_REACH;
 pub use preview::{NO_PREVIEW, preview_into, preview_verts};
 pub use ref_mode::{Field, FrontFace, KernelLaw, LateralPull, PlaneReach, RefMode};
 pub use ref_profiles::VerbProfile;
 pub use spacing::{MIN_SPACING_FRACTION, Walk, min_spacing, walk};
-pub use stroke::cloth_repica;
 pub use stroke::ClothFilterStep;
+pub use stroke::cloth_repica;
 pub use stroke::{
     Dab, FILTER_DRAG_PER_PX, HC_SHAPE_DEFAULT, HC_VERTEX_DEFAULT, HC_VERTEX_MIN, SculptStroke,
     sharpen_total_for_measurement,

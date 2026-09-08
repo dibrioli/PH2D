@@ -489,6 +489,7 @@ pub(crate) fn for_scene(mesh: &ph2d_mesh::Mesh) {
     crate::sculpt3d::scenes::surface::announce();
     crate::sculpt3d::scenes::layer::announce();
     crate::sculpt3d::scenes::filter::announce();
+    crate::sculpt3d::scenes::cloth_filter::announce();
     crate::sculpt3d::scenes::quad::announce();
     crate::sculpt3d::scenes::ear::announce();
     if crate::sculpt3d::donation_scene() {

@@ -33,7 +33,7 @@ use crate::ClothFilterKind;
 use ph2d_cloth::V3;
 use ph2d_cloth::verlet::Solver;
 use ph2d_cloth::verlet_gesto::{
-    Accionamento, Area, Curva, Modo, Passo, Pincel, PincelTecido, Referencial,
+    Accionamento, Area, Curva, Passo, Pincel, PincelTecido, Referencial,
 };
 use ph2d_mesh::{Face, Mesh};
 
@@ -93,7 +93,8 @@ impl SculptStroke {
         let pos: Vec<V3> = mesh.positions().iter().map(|p| v3(*p)).collect();
         let caras: Vec<&[u32]> = mesh.faces().iter().map(Face::verts).collect();
         let ordem = ph2d_cloth::particao::ordem_de_visita(&pos, &caras);
-        let mut tecido = PincelTecido::pen_down(pincel_do_filtro(brush, kind), &pos, v3(ponto), ordem);
+        let mut tecido =
+            PincelTecido::pen_down(pincel_do_filtro(brush, kind), &pos, v3(ponto), ordem);
         // A máscara é mais um peso por-vértice, como no traço — e ela entra uma
         // vez, porque um filtro não tem carimbo que ande.
         if let Some(livre) = mesh.masks() {
@@ -162,11 +163,7 @@ impl SculptStroke {
         };
         ses.pincel.eixo_da_gravidade = v3(passo.gravity_axis);
         ses.pincel.referencial = Referencial {
-            eixos: [
-                v3(passo.frame[0]),
-                v3(passo.frame[1]),
-                v3(passo.frame[2]),
-            ],
+            eixos: [v3(passo.frame[0]), v3(passo.frame[1]), v3(passo.frame[2])],
             activo: passo.axes,
         };
 
@@ -300,5 +297,6 @@ fn pincel_do_filtro(brush: &Brush, kind: ClothFilterKind) -> Pincel {
 /// ⚠️ Nomeado para o gate: um tipo que não seja de âncora não pode escrever `σ`.
 #[cfg(test)]
 pub(crate) fn e_de_ancora(kind: ClothFilterKind) -> bool {
+    use ph2d_cloth::verlet_gesto::Modo;
     matches!(kind.modo(), Modo::Escala | Modo::Agarrar | Modo::Gancho)
 }

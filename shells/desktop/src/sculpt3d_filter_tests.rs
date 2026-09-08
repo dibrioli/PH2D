@@ -15,7 +15,7 @@
 //! ```
 
 use ph2d_mesh::shapes::uv_sphere;
-use ph2d_sculpt3d::{FilterKind, TransformKind, Verb};
+use ph2d_sculpt3d::{ClothFilterKind, FilterKind, FilterLaw, TransformKind, Verb};
 
 use super::super::Sculpt3dScene;
 
@@ -160,10 +160,10 @@ fn the_verb_seeds_the_law_and_never_rewrites_it() {
 
     // Armar com um verbo que TEM lei semeia com a dele.
     let mut s = scene(&gpu.device, Verb::Smooth);
-    s.filter_kind = FilterKind::Sphere;
+    s.filter_law = FilterLaw::Mesh(FilterKind::Sphere);
     assert!(s.arm_filter() && s.filter_arm(), "armado com o Smooth");
     assert_eq!(
-        s.filter_kind,
+        s.filter_law.mesh().expect("a lei escolhida e' de malha"),
         Verb::Smooth.filter_kind().expect("o Smooth filtra"),
         "armar com um verbo que filtra tinha de semear a lei DELE"
     );
@@ -183,33 +183,44 @@ fn the_verb_seeds_the_law_and_never_rewrites_it() {
         "o gesto recusou sobre um verbo sem lei propria, e a lei nao vem dele"
     );
     assert_eq!(
-        s.filter_kind,
+        s.filter_law.mesh().expect("a lei escolhida e' de malha"),
         Verb::Smooth.filter_kind().expect("o Smooth filtra"),
         "trocar de verbo com o filtro aceso REESCREVEU a escolha do artista"
     );
 
     // E armar com um verbo SEM lei deixa a ultima escolha de pe.
     let mut s = scene(&gpu.device, Verb::Draw);
-    s.filter_kind = FilterKind::Random;
+    s.filter_law = FilterLaw::Mesh(FilterKind::Random);
     assert!(s.arm_filter());
     assert_eq!(
-        s.filter_kind,
+        s.filter_law.mesh().expect("a lei escolhida e' de malha"),
         FilterKind::Random,
         "um verbo sem lei propria apagou a escolha ao armar"
     );
 }
 
-/// ⭐ **AS TRÊS LEIS SEM VERBO SÃO ALCANÇÁVEIS** — a razão de a wave existir.
+/// ⭐ **AS LEIS SEM VERBO SÃO ALCANÇÁVEIS** — a razão de a wave existir.
 ///
 /// ⚠️ Não há pincel de `Scale`, de `Sphere` nem de `Random`, então enquanto a
 /// lei vinha do verbo elas eram **inexprimíveis por gesto nenhum**. O oráculo é
 /// o produto: cada uma tem de MOVER a malha por um caminho que o artista de
 /// facto percorre (armar → escolher → arrastar).
+///
+/// ⭐⭐ **E os CINCO TIPOS DE TECIDO entram na mesma lista** (espec §7), pelo
+/// mesmo argumento levado ao fim: nenhum deles tem verbo — não existe pincel de
+/// gravidade —, então o selector é a única coisa que os alcança. *Um gate que só
+/// varresse a família de malha deixaria cinco leis sem régua no caminho do
+/// produto.*
 #[test]
 #[ignore = "requires a GPU adapter (no GPU on CI); run with --ignored on a dev machine"]
 fn the_verbless_laws_are_reachable_from_a_gesture() {
     let gpu = gpu_or_skip!();
-    for kind in [FilterKind::Scale, FilterKind::Sphere, FilterKind::Random] {
+    let leis: Vec<FilterLaw> = [FilterKind::Scale, FilterKind::Sphere, FilterKind::Random]
+        .into_iter()
+        .map(FilterLaw::Mesh)
+        .chain(ClothFilterKind::ALL.into_iter().map(FilterLaw::Cloth))
+        .collect();
+    for kind in leis {
         // O verbo em maos e o Draw: ele NAO filtra, e e esse o ponto.
         //
         // ⚠️ **A malha e um ELIPSOIDE, e nao a esfera das outras fixtures:** o
@@ -225,7 +236,7 @@ fn the_verbless_laws_are_reachable_from_a_gesture() {
         let before: Vec<[f32; 3]> = s.mesh().positions().to_vec();
 
         assert!(s.arm_filter(), "{kind:?}: o arm recusou");
-        s.filter_kind = kind;
+        s.filter_law = kind;
         assert!(s.begin_filter(400.0), "{kind:?}: o gesto recusou");
         s.filter_at(700.0);
 
@@ -325,7 +336,7 @@ fn the_filter_undoes_the_geometry_whatever_verb_is_in_hand() {
     let masks_before = s.mesh().masks().map(<[f32]>::to_vec);
 
     assert!(s.arm_filter(), "a fixture nao conseguiu armar o filtro");
-    s.filter_kind = FilterKind::Inflate;
+    s.filter_law = FilterLaw::Mesh(FilterKind::Inflate);
     assert!(
         s.begin_filter(400.0),
         "o begin recusou: a lei do filtro voltou a vir do verbo em maos"
@@ -378,7 +389,7 @@ fn undoing_a_filter_tells_the_screen() {
     let mut s = scene(&gpu.device, Verb::Mask);
 
     assert!(s.arm_filter(), "a fixture nao conseguiu armar o filtro");
-    s.filter_kind = FilterKind::Inflate;
+    s.filter_law = FilterLaw::Mesh(FilterKind::Inflate);
     assert!(s.begin_filter(400.0), "o begin recusou");
     s.filter_at(400.0 + DRAG_PX);
     s.close_stroke();

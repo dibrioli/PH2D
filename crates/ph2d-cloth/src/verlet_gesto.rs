@@ -13,9 +13,7 @@ use crate::verlet::{Verlet, dist, norm, unit};
 /// O VOCABULÁRIO DOS CONTROLOS — ver o doc do módulo.
 #[path = "verlet_gesto_pincel.rs"]
 mod pincel_mod;
-pub use pincel_mod::{
-    Accionamento, Area, Curva, FalloffForca, Modo, Pincel, Referencial, banda,
-};
+pub use pincel_mod::{Accionamento, Area, Curva, FalloffForca, Modo, Pincel, Referencial, banda};
 
 /// A NORMAL E O CENTRO DA ÁREA — ver o doc do módulo.
 #[path = "verlet_gesto_area.rs"]
@@ -466,10 +464,7 @@ impl PincelTecido {
         // da Escala) vivem dentro do tipo. ⛔ Escrever `b_expand = s / 100` aqui
         // seria emprestar ao filtro uma escada que é do traço.
         let (b_forca, b_expand) = match self.pincel.accionamento {
-            Accionamento::Traco => (
-                10.0 * alpha * flip * pressao,
-                0.1 * alpha * flip * pressao,
-            ),
+            Accionamento::Traco => (10.0 * alpha * flip * pressao, 0.1 * alpha * flip * pressao),
             Accionamento::Filtro { s } => (s, s),
         };
         // ⚠️ Uma varredura, duas grandezas (espec §4.2-bis e §4.4): o mesmo disco
@@ -581,7 +576,8 @@ impl PincelTecido {
                     let vi = v as usize;
                     let p = posicoes[vi];
                     let d = self.distancia(p, cursor, c_area, delta_u);
-                    let f = self.factor_accionado(p, cursor, r, d) * b * (1.0 - self.mascara_de(vi));
+                    let f =
+                        self.factor_accionado(p, cursor, r, d) * b * (1.0 - self.mascara_de(vi));
                     self.sim.tau[vi] += 0.01 * f;
                 }
             }
@@ -636,7 +632,8 @@ impl PincelTecido {
                     let vi = v as usize;
                     let p = posicoes[vi];
                     let d = self.distancia(p, cursor, c_area, delta_u);
-                    let f = self.factor_accionado(p, cursor, r, d) * b * (1.0 - self.mascara_de(vi));
+                    let f =
+                        self.factor_accionado(p, cursor, r, d) * b * (1.0 - self.mascara_de(vi));
                     if f == 0.0 {
                         continue;
                     }

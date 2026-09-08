@@ -126,20 +126,57 @@ impl PivotMode {
 /// ⚠️ **É um `macro_rules!` e não um `const`** porque `concat!` só aceita literais, que é
 /// exactamente o obstáculo que levou a cópia à mão do `motion.drive` a existir.
 #[macro_export]
+macro_rules! pivot_round_wgsl {
+    () => {
+        "i32(select(ceil(params.pivot_mode - 0.5), floor(params.pivot_mode + 0.5), \
+             params.pivot_mode >= 0.0))"
+    };
+}
+
+/// A coordenada **X** do pivô resolvido, como uma EXPRESSÃO WGSL — ver [`pivot_wgsl`] para o
+/// argumento. Existe à parte porque uma [`crate::reduce_meta::ReduceSpec`] recebe uma
+/// expressão e **não** um bloco de instruções, e há reduções que precisam do pivô (o `r_max`
+/// do `motion.twist` mede um raio a partir dele).
+#[macro_export]
+macro_rules! pivot_x_wgsl {
+    ($n:literal) => {
+        concat!(
+            "select(select(0.0, params.pivot_x, ",
+            $crate::pivot_round_wgsl!(),
+            " == 1), reduce_cx() / (",
+            $n,
+            "), ",
+            $crate::pivot_round_wgsl!(),
+            " == 2)"
+        )
+    };
+}
+
+/// A coordenada **Y** do pivô resolvido. Ver [`pivot_x_wgsl`].
+#[macro_export]
+macro_rules! pivot_y_wgsl {
+    ($n:literal) => {
+        concat!(
+            "select(select(0.0, params.pivot_y, ",
+            $crate::pivot_round_wgsl!(),
+            " == 1), reduce_cy() / (",
+            $n,
+            "), ",
+            $crate::pivot_round_wgsl!(),
+            " == 2)"
+        )
+    };
+}
+
+#[macro_export]
 macro_rules! pivot_wgsl {
     ($n:literal) => {
         concat!(
-            "\
-        let pv_m = i32(select(ceil(params.pivot_mode - 0.5), \
-                              floor(params.pivot_mode + 0.5), \
-                              params.pivot_mode >= 0.0));\n\
-        var pv_pivot = vec2<f32>(0.0, 0.0);\n\
-        if (pv_m == 1) { pv_pivot = vec2<f32>(params.pivot_x, params.pivot_y); }\n\
-        if (pv_m == 2) {\n\
-        \x20   pv_pivot = vec2<f32>(reduce_cx(), reduce_cy()) / (",
-            $n,
-            ");\n\
-        }\n"
+            "        let pv_pivot = vec2<f32>(",
+            $crate::pivot_x_wgsl!($n),
+            ", ",
+            $crate::pivot_y_wgsl!($n),
+            ");\n"
         )
     };
 }

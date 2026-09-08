@@ -277,6 +277,70 @@ defaults, com os índices exactos de cada `Enum` — ⚠️ uma variante escolhi
 escapa, e isso está nomeado em vez de prometido), e a `DRIVE_LIB_HSV` **concatena** a biblioteca do
 irmão em vez de copiar metade dela (o `concat!` só aceita literais ⇒ ela virou um `macro_rules!`).
 
+### ✅ W1c–W1f — A PORTA, e os quatro nós que a adoptaram (2026-09-07)
+
+Módulo irmão novo em `ph2d-nodegraph` (**append-only**, sem tocar contrato nenhum — ADR-0107 /
+briefing B'): [`pivot`](../../crates/ph2d-nodegraph/src/pivot.rs) — o `PARAM`, os `LABELS` (cuja
+**ordem é contrato**, porque o valor vai no ficheiro), o `PivotMode` com `of`/`resolve`, o
+prólogo em WGSL (`pivot_wgsl!`) e o par de reduções `CENTROID_CX`/`CENTROID_CY`.
+
+E o módulo escreve o que **não** faz: não decide o DEFAULT de nenhum nó (esse é a lei da
+identidade byte-a-byte, e é diferente em cada um), e nomeia quem fica de fora por **natureza**
+(`rotate`/`scale` escrevem `rot`/`size`, não `P`) e por **cerca medida** (o offset do `spherize`
+é relativo ao centroide).
+
+| nó | default | reduções | o que custou |
+|---|---|---|---|
+| `motion.transform` | `World Origin` | 2 | a recusa saiu; o kernel passou a olhar o MODO |
+| `motion.kaleidoscope` | **`Point`** | 2 | o **divisor** não é `params.count` (ver abaixo) |
+| `motion.bend` | **`Point`** | 4 | a extensão deixou de depender do pivô |
+| `motion.twist` | **`Point`** | 3 | o substrato aprendeu a **encadear** reduções |
+
+⚠️ **Os defaults DIVERGEM de propósito.** O `motion.transform` sempre escalou em torno da
+origem; os outros três sempre honraram o ponto digitado. Com o pivô em `(0,0)` os dois valores
+dão o mesmo número — mas não a mesma UI: com `World Origin` o `ParamGate` esconderia dois
+sliders que o artista já usa. *O default é a lei da identidade de cada nó, não uma propriedade
+do enum.*
+
+#### As três coisas que só a construção revelou
+
+1. ⛔ **O divisor da média NÃO é sempre `params.count`.** A média é `Σp / n` com `n` a contagem
+   do stream sobre o qual a **redução** correu. Num kernel por elemento isso é `params.count`;
+   no `motion.kaleidoscope`, que é um `StreamOp::SourceRows` e emite `segments · n`, aquilo é a
+   contagem da **saída** e o centroide saía `segments` vezes menor — medido, **`6,7e-1` de
+   divergência, `3300×` a barra**, na primeira corrida do gate. O prólogo passa a receber o
+   divisor como argumento.
+2. ⭐⭐ **A extensão do `motion.bend` passou a ser DERIVADA:** `max|x − p|` é
+   `max(xmax − p, p − xmin)`, e em `f32` a igualdade é **exacta** (a subtracção é correctamente
+   arredondada e o arredondamento é monótono). Sem isso o `Centroid` seria uma redução a
+   depender de outra. ⭐ E isto deixa o `direction` — hoje recusado no dispositivo *«porque a
+   redução `x_extent` não roda com o quadro»* — a um passo, porque a redução deixou de ler o
+   pivô. **Nomeado, não feito:** o eixo rodado precisa da senoide parabólica dentro do `value`
+   de uma redução, e uma `ReduceSpec` não tem biblioteca.
+3. ⭐⭐⭐ **O `motion.twist` obrigou o SUBSTRATO a crescer, e a adição é append-only.** O `r_max`
+   dele mede um **raio**, que não é separável como a extensão em X. ⇒ *uma redução pode agora
+   ler as reduções declaradas ANTES dela* (`reduce_<nome>()` no módulo de mapa dela). Uma spec
+   que não chame nada gera o mesmo módulo de sempre, byte a byte.
+   ⚠️ **E a primeira redacção rebentou no `create_bind_group`:** uma binding declarada e **não
+   lida** desaparece do layout reflectido, e o bind group ficava com uma entrada a mais
+   (`(4) does not match … (3)`) — a mesma lei que a `src` do módulo já obedecia. A declaração e
+   a entrada passam a ser decididas pelo **mesmo predicado** (`reads_earlier`).
+
+#### E as premissas MINHAS que caíram
+
+- **«identidade de ponteiro prova que o nó usa a porta»** — falso: mesmo num `static`, o `&[…]`
+  é uma constante **promovida** e o leitor noutra crate re-materializa-a (`0x…21b0` contra
+  `0x…9178`). O gate reprovava sobre código correcto. *Uma régua de identidade que a linguagem
+  não garante mede o compilador, não o código* — o que fica compara os CAMPOS.
+- **«a ε do centroide é mais larga»** — verdade, e por muito mais do que eu escrevi: ver W1a.
+
+#### Quatro tectos de LOC, todos curados por CORTE (nunca por isenção)
+
+`kaleidoscope` 823 → **587** · `spherize` 740 → **630** · `bend` 705 → **598** · e o `twist` que
+não chegou a estourar recebeu a mesma costura. Os quatro ficam com a mesma forma que o
+`motion.drive` e o `motion.noise` já tinham: **`lib.rs` = o que o nó É · `kernel.rs` = o que o
+dispositivo corre · `ui.rs` = como ele se apresenta · `*_tests.rs` = uma pergunta por ficheiro.**
+
 ### ⏳ ABERTO — dois vermelhos de GPU que já estavam no `main`
 
 1. **`value_slope_kernel_matches_the_cpu_on_the_device`** — mede `1,05023384e-4` contra a barra de

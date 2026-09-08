@@ -85,6 +85,13 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "profile",
             default: 0.0,
         },
+        // **EM TORNO DE QUÊ** — o vocabulário de [`ph2d_nodegraph::pivot`], partilhado pela
+        // família (ciclo 3, W1 — doc 106 §2.3). ⚠️ Default `Point`: este nó sempre honrou o
+        // ponto digitado, e é isso que o deixa byte-idêntico.
+        ParamSpec {
+            name: ph2d_nodegraph::pivot::PARAM,
+            default: 1.0,
+        },
         ParamSpec {
             name: "pivot_x",
             default: 0.0,
@@ -96,6 +103,7 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     ],
     lowerings: &[LoweringKind::Cpu],
 };
+
 
 /// The whole-stream reduction this deformer needs: the **rim radius** about the
 /// pivot (GPU/M5, the deformer channel — `ph2d_nodegraph::reduce_meta`).
@@ -111,18 +119,45 @@ pub const MANIFEST: NodeManifest = NodeManifest {
 /// bit-exact), but the value folded here is `√(dx² + dy²)`: a device may contract
 /// `dx*dx + dy*dy` into an FMA where the host does not, so the two can differ in
 /// the last ulps before the fold ever sees them.
-static REDUCES: &[ReduceSpec] = &[ReduceSpec {
-    name: "r_max",
-    column: "P",
-    dim: Dim::Vec2,
-    port: 0,
-    op: ReduceOp::Max,
-    value: "sqrt((v.x - params.pivot_x) * (v.x - params.pivot_x) \
-            + (v.y - params.pivot_y) * (v.y - params.pivot_y))",
-    params: &["pivot_x", "pivot_y"],
-    // The same identity the `P` binding declares (see `motion.bend`'s note).
-    identity: [0.0; 4],
-}];
+static REDUCES: &[ReduceSpec] = &[
+    // ⚠️ **A ORDEM É CONTRATO:** o `r_max` chama `reduce_cx()`/`reduce_cy()`, e uma redução só
+    // pode ler as que foram declaradas ANTES dela.
+    ph2d_nodegraph::pivot::CENTROID_CX,
+    ph2d_nodegraph::pivot::CENTROID_CY,
+    ReduceSpec {
+        name: "r_max",
+        column: "P",
+        dim: Dim::Vec2,
+        port: 0,
+        op: ReduceOp::Max,
+        // ⭐⭐ **Uma redução que LÊ outras duas** (ciclo 3, W1 — doc 106). O raio mede-se a
+        // partir do pivô, e no modo `Centroid` o pivô É o par de somas acima: sem a capacidade
+        // de encadear, a única saída seria recusar o dispositivo — que é exactamente o que
+        // esta wave existe para desfazer. O irmão `motion.bend` não precisou disto porque a
+        // extensão dele é SEPARÁVEL (`max|x−p| = max(xmax−p, p−xmin)`, ao bit); um raio
+        // euclidiano não é.
+        value: concat_r_max(),
+        params: &[ph2d_nodegraph::pivot::PARAM, "pivot_x", "pivot_y"],
+        // The same identity the `P` binding declares (see `motion.bend`'s note).
+        identity: [0.0; 4],
+    },
+];
+
+/// `√((x − px)² + (y − py)²)` com o pivô resolvido inline — uma EXPRESSÃO, porque é isso que
+/// uma [`ReduceSpec`] recebe (não há bloco nem biblioteca no módulo de mapa de uma redução).
+const fn concat_r_max() -> &'static str {
+    concat!(
+        "sqrt((v.x - (",
+        ph2d_nodegraph::pivot_x_wgsl!("f32(params.count)"),
+        ")) * (v.x - (",
+        ph2d_nodegraph::pivot_x_wgsl!("f32(params.count)"),
+        ")) + (v.y - (",
+        ph2d_nodegraph::pivot_y_wgsl!("f32(params.count)"),
+        ")) * (v.y - (",
+        ph2d_nodegraph::pivot_y_wgsl!("f32(params.count)"),
+        ")))"
+    )
+}
 
 /// The device form of [`twist`] (GPU/M5). One invocation per element, reading
 /// the rim radius from the reduction above.
@@ -132,10 +167,12 @@ static REDUCES: &[ReduceSpec] = &[ReduceSpec {
 /// transcendental-free, so the device's real `sin` would be a *different curve*,
 /// not a tighter ε.
 const GPU_KERNEL: GpuKernel = GpuKernel {
-    wgsl: "\
+    wgsl: concat!(
+        ph2d_nodegraph::pivot_wgsl!("f32(params.count)"),
+        "\
         let tw_p = read_in_P(i);\n\
-        let tw_dx = tw_p.x - params.pivot_x;\n\
-        let tw_dy = tw_p.y - params.pivot_y;\n\
+        let tw_dx = tw_p.x - pv_pivot.x;\n\
+        let tw_dy = tw_p.y - pv_pivot.y;\n\
         let tw_r = sqrt(tw_dx * tw_dx + tw_dy * tw_dy);\n\
         // The MIN_RADIUS floor belongs to the CONSUMER, not the reduction.\n\
         var tw_rmax = max(reduce_r_max(), 1e-6);\n\
@@ -147,11 +184,12 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         let tw_ph = tw_deg / 360.0;\n\
         let tw_c = twist_sin_cycles(tw_ph + 0.25);\n\
         let tw_s = twist_sin_cycles(tw_ph);\n\
-        let tw_rx = params.pivot_x + (tw_c * tw_dx - tw_s * tw_dy);\n\
-        let tw_ry = params.pivot_y + (tw_s * tw_dx + tw_c * tw_dy);\n\
+        let tw_rx = pv_pivot.x + (tw_c * tw_dx - tw_s * tw_dy);\n\
+        let tw_ry = pv_pivot.y + (tw_s * tw_dx + tw_c * tw_dy);\n\
         write_P(i, vec2<f32>(\n\
         \x20   tw_p.x + (tw_rx - tw_p.x) * tw_f,\n\
-        \x20   tw_p.y + (tw_ry - tw_p.y) * tw_f));\n",
+        \x20   tw_p.y + (tw_ry - tw_p.y) * tw_f));\n"
+    ),
     wgsl_lib: "\
         fn tw_round(x: f32) -> f32 {\n\
             // Rust f32::round = half away from zero (WGSL round is half-even).\n\
@@ -200,7 +238,14 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             port: 1,
         },
     ],
-    params: &["angle", "radius", "profile", "pivot_x", "pivot_y"],
+    params: &[
+        "angle",
+        "radius",
+        "profile",
+        ph2d_nodegraph::pivot::PARAM,
+        "pivot_x",
+        "pivot_y",
+    ],
     count_law: None,
     variant_by_param: None,
     applicable: None,
@@ -328,7 +373,9 @@ impl NodeOp for MotionTwist {
         let angle = ctx.param("angle");
         let radius = ctx.param(RADIUS);
         let profile = ctx.param(PROFILE).round() as i32;
-        let pivot = [ctx.param("pivot_x"), ctx.param("pivot_y")];
+        let mode_pivot =
+            ph2d_nodegraph::pivot::PivotMode::of(ctx.param(ph2d_nodegraph::pivot::PARAM));
+        let typed = [ctx.param("pivot_x"), ctx.param("pivot_y")];
         let amount: Vec<f32> = match ctx.input(1).get(VALUE_COL) {
             Some(Column::Scalar(v)) => v.clone(),
             _ => Vec::new(),
@@ -342,6 +389,8 @@ impl NodeOp for MotionTwist {
         // Pure per-instance map → parallel above the threshold
         // (bit-identical, no reduction). GPU/M5 Fase 0.
         let falloff: Vec<f32> = par_build(n, |i| falloff_at(input, i));
+        // ⚠️ Resolvido UMA vez, fora do laço: o pivô é uma propriedade do layout.
+        let pivot = mode_pivot.resolve(typed, &base);
         let moved = twist(&base, pivot, angle, radius, profile, &amount, &falloff);
         let mut out = Stream::new(n);
         for (name, col) in input.columns() {
@@ -368,6 +417,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_gates(MANIFEST.id, PARAM_GATES);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     // GPU/M5: the kernel and the whole-stream reduction it reads. Side metadata
     // on the registry (ADR-0126) — the frozen node contract is untouched.
@@ -377,6 +427,22 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
 }
 
 use ph2d_node_registry::{ParamUiHint, ParamWidget};
+
+/// **As duas coordenadas só aparecem no modo que as LÊ** — a mesma família de gate que os
+/// irmãos declaram. ⚠️ Esconder não é apagar: o valor sobrevive à troca de modo, e é por isso
+/// que o kernel **e a redução** olham o MODO.
+static PARAM_GATES: &[ph2d_node_registry::ParamGate] = &[
+    ph2d_node_registry::ParamGate {
+        param: "pivot_x",
+        when: ph2d_nodegraph::pivot::PARAM,
+        values: &[1],
+    },
+    ph2d_node_registry::ParamGate {
+        param: "pivot_y",
+        when: ph2d_nodegraph::pivot::PARAM,
+        values: &[1],
+    },
+];
 
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
@@ -405,6 +471,16 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         step: 1.0,
         widget: ParamWidget::Enum {
             labels: &["Linear", "Quad", "Smooth", "Smoother"],
+        },
+    },
+    ParamUiHint {
+        param: ph2d_nodegraph::pivot::PARAM,
+        label: "Pivot",
+        min: 0.0,
+        max: 2.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: ph2d_nodegraph::pivot::LABELS,
         },
     },
     ParamUiHint {
@@ -546,3 +622,7 @@ mod tests {
 #[cfg(test)]
 #[path = "extent_tests.rs"]
 mod extent_tests;
+
+#[cfg(test)]
+#[path = "pivot_tests.rs"]
+mod pivot_tests;

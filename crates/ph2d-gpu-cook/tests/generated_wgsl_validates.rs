@@ -238,11 +238,18 @@ fn every_registered_kernel_validates_across_the_whole_presence_space() {
     // BOTH forms, because they are different source: `present = true` reads
     // `src[i]`, `present = false` folds the spec's identity literal, and a
     // mis-declared `dim`/`identity` pair only fails to compile in the second.
+    //
+    // ⚠️ **E com as ANTERIORES ligadas, na posição em que o nó as declara** — uma redução pode
+    // ler as que vêm antes dela (`reduce_<nome>()`), e essa é a forma em que o sequenciador de
+    // facto constrói o módulo. Passar `&[]` aqui validaria um módulo que ele nunca gera e
+    // deixaria passar um nome de antecessora mal escrito.
     let mut reduces = 0usize;
     for manifest in reg.manifests() {
-        for spec in reg.reduces(manifest.id) {
+        let specs = reg.reduces(manifest.id);
+        for (si, spec) in specs.iter().enumerate() {
+            let earlier: Vec<&_> = specs[..si].iter().collect();
             for present in [true, false] {
-                let src = ph2d_gpu_cook::reduce_stage::map_module(spec, present);
+                let src = ph2d_gpu_cook::reduce_stage::map_module(spec, present, &earlier);
                 validate(
                     &format!("{} reduce {} present={present}", manifest.name, spec.name),
                     &src,

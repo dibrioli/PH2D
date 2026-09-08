@@ -35,7 +35,7 @@ use ph2d_nodegraph::node::NodeManifest;
 /// `codegen::presence_signature`, and the reason a node's `k`-th spec is not
 /// simply keyed by `(type, k)` (editing a spec's expression would then silently
 /// reuse the pipeline compiled from the old one).
-fn map_cache_key(spec: &ReduceSpec, present: bool) -> (u64, u64) {
+fn map_cache_key(spec: &ReduceSpec, present: bool, earlier: &[&ReduceSpec]) -> (u64, u64) {
     let fnv = |h: u64, bytes: &[u8]| {
         bytes
             .iter()
@@ -48,9 +48,30 @@ fn map_cache_key(spec: &ReduceSpec, present: bool) -> (u64, u64) {
     for p in spec.params {
         h = fnv(h, p.as_bytes());
     }
+    // ⚠️ **Os nomes das reduções ANTERIORES entram na chave**, porque elas viram
+    // acessores no módulo (`reduce_<nome>()`) e mais uma binding. Sem isto, dois
+    // nós que partilhassem uma spec mas declarassem antecessoras diferentes
+    // reusariam o pipeline um do outro — e o segundo leria o buffer errado, sem
+    // erro nenhum: os dois módulos têm o mesmo NÚMERO de bindings.
+    for e in earlier {
+        h = fnv(h, e.name.as_bytes());
+        h = fnv(h, &[u8::from(reads_earlier(spec, e))]);
+    }
     // A salt disjoint from every node type id, so a map module can never collide
     // with a kernel's `(ty_key, sig)` entry in the shared cache.
     (h, REDUCE_MAP_SALT)
+}
+
+/// **Esta spec chama a anterior?** — a MESMA pergunta que decide a declaração no módulo e a
+/// entrada no bind group, lida de um sítio só.
+///
+/// ⚠️ **Uma binding declarada e não LIDA desaparece do layout reflectido**, e o bind group
+/// fica com uma entrada a mais: `Number of bindings in bind group descriptor (4) does not
+/// match the number of bindings defined in the bind group layout (3)`. É exactamente a razão
+/// pela qual a `src` só é declarada na forma `present`, e foi o erro que a primeira redacção
+/// das reduções dependentes deu na primeira corrida.
+fn reads_earlier(spec: &ReduceSpec, earlier: &ReduceSpec) -> bool {
+    spec.value.contains(&format!("reduce_{}(", earlier.name))
 }
 
 /// Marks a cache entry as a reduce **map** module rather than a node kernel.
@@ -93,7 +114,7 @@ pub struct ReduceResults {
 /// jeito. A declaracao fica condicional por honestidade (as duas metades leem o
 /// MESMO flag, no mesmo arquivo, entao nao podem divergir), e nao porque o device
 /// a exija.
-pub fn map_module(spec: &ReduceSpec, present: bool) -> String {
+pub fn map_module(spec: &ReduceSpec, present: bool, earlier: &[&ReduceSpec]) -> String {
     let ty = codegen::wgsl_type(spec.dim);
     let mut src = String::with_capacity(512);
     src.push_str("struct MapParams {\n    count: u32,\n");
@@ -112,7 +133,30 @@ pub fn map_module(spec: &ReduceSpec, present: bool) -> String {
         src.push_str(ty);
         src.push_str(">;\n");
     }
-    src.push_str("@group(0) @binding(2) var<storage, read_write> dst: array<f32>;\n\n");
+    src.push_str("@group(0) @binding(2) var<storage, read_write> dst: array<f32>;\n");
+    // ⭐⭐ **Uma redução pode ler as que foram declaradas ANTES dela** (ciclo 3, W1 — doc 106).
+    // O `motion.twist` mede `max|p − c|`, um raio, e com o pivô no modo `Centroid` esse `c` É
+    // outra redução: sem isto a única saída seria recusar o dispositivo, que é exactamente o
+    // que a wave existe para desfazer. ⚠️ **É append-only:** uma spec que não chame nada
+    // gera o mesmo módulo de sempre, byte a byte — nada muda para as reduções que já existem.
+    // ⚠️ A ordem é a da DECLARAÇÃO e a barreira é a do WebGPU: os passes deste encoder correm
+    // em sequência com hazard-tracking, então o `fold` da anterior já escreveu quando este
+    // `map` lê.
+    for (k, e) in earlier
+        .iter()
+        .filter(|e| reads_earlier(spec, e))
+        .enumerate()
+    {
+        src.push_str(&format!(
+            "@group(0) @binding({}) var<storage, read> prev_{}: array<f32>;\n\
+             fn reduce_{}() -> f32 {{ return prev_{}[0]; }}\n",
+            3 + k,
+            e.name,
+            e.name,
+            e.name
+        ));
+    }
+    src.push('\n');
     src.push_str(&format!(
         "fn reduce_value(v: {ty}) -> f32 {{ return {}; }}\n\n",
         spec.value
@@ -158,7 +202,10 @@ impl GpuCook {
         manifest: &NodeManifest,
     ) -> ReduceResults {
         let mut out = ReduceResults::default();
-        for spec in specs {
+        for (si, spec) in specs.iter().enumerate() {
+            // As declaradas ANTES desta — as únicas que ela pode ler, e a razão de a ordem
+            // da lista do nó ser contrato.
+            let earlier: Vec<&ReduceSpec> = specs[..si].iter().collect();
             let result = gpu.device.create_buffer(&wgpu::BufferDescriptor {
                 label: Some("ph2d-reduce result"),
                 size: 4,
@@ -198,9 +245,9 @@ impl GpuCook {
             let scratch_buf = self.pool.acquire(gpu, u64::from(n) * 4);
 
             // --- map pass -------------------------------------------------
-            let key = map_cache_key(spec, present);
+            let key = map_cache_key(spec, present, &earlier);
             self.kernel_pipelines.entry(key).or_insert_with(|| {
-                let src = map_module(spec, present);
+                let src = map_module(spec, present, &earlier);
                 CachedPipeline {
                     pipeline: create_pipeline(gpu, &src, "ph2d-reduce map"),
                 }
@@ -239,6 +286,22 @@ impl GpuCook {
                 binding: 2,
                 resource: scratch_buf.as_entire_binding(),
             });
+            // Os resultados das anteriores, na MESMA ordem em que o módulo os declara —
+            // `out.buffers` está indexado por spec, e `si` é o índice desta.
+            for (k, buf) in out
+                .buffers
+                .iter()
+                .take(si)
+                .zip(earlier.iter())
+                .filter(|(_, e)| reads_earlier(spec, e))
+                .map(|(b, _)| b)
+                .enumerate()
+            {
+                entries.push(wgpu::BindGroupEntry {
+                    binding: 3 + u32::try_from(k).expect("poucas reducoes"),
+                    resource: buf.as_entire_binding(),
+                });
+            }
             let bind_group = gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("ph2d-reduce map"),
                 layout: &pipeline.get_bind_group_layout(0),

@@ -40,7 +40,96 @@
 //! a `R` **sem nunca lá chegar** — a corrente aproxima-se da recta e não trava. ⛔ A forma óbvia
 //! (`1 − e^{-x}`) tem as mesmas propriedades e paga um transcendental.
 
-/// Quantas passagens do FABRIK, e quanto se amortece a extensão máxima.
+/// ⭐⭐⭐ **DE QUE LADO A CORRENTE DOBRA** — e por que ele é um dado AUTORADO e não uma dedução.
+///
+/// Sem isto o lado sai da pose que a corrente tem no instante em que se resolve, e há uma pose em
+/// que ela **não tem lado nenhum**: a recta. ⛔ Medido (2026-09-07,
+/// `the_elbow_flips_when_the_chain_passes_through_straight`): um cotovelo do lado `-99,498744`
+/// estica até ficar colinear (`0,000000`) e, ao voltar **ao mesmo alvo**, vem do lado
+/// `+99,498744` — a mesma magnitude, o sinal trocado. *O joelho inverteu sozinho, e o artista não
+/// fez nada.* É determinístico, não é ruído: quem decide é o desempate da corrente recta.
+///
+/// # As referências, e por que a nossa resposta é um INTERRUPTOR e não um alvo
+///
+/// | ferramenta | dimensão | o que ela oferece |
+/// |---|---|---|
+/// | **Godot** (`SkeletonModification2DTwoBoneIK`, MIT) | 2D | **`flip_bend_direction: bool`** |
+/// | **Spine** (`IkConstraint`) | 2D | `bendDirection` `+1`/`−1`, animável |
+/// | **Blender** (`Inverse Kinematics`) | 3D | *Pole Target* (um objecto) + *Pole Angle* |
+/// | **Maya** (`ikRPsolver`) | 3D | `poleVector` + twist |
+///
+/// ⭐⭐ **O *pole target* responde à pergunta do 3D, que aqui não existe.** Em três dimensões o
+/// triângulo raiz–cotovelo–ponta pode **rodar em torno** do eixo raiz→ponta, e é esse grau de
+/// liberdade contínuo que um objecto no espaço fixa. No plano ele não existe: sobra **um bit**, de
+/// que lado da recta o cotovelo cai. Um alvo arrastável que codifica um bit dá ao artista a ilusão
+/// de um controlo contínuo e depois **salta** quando ele cruza a recta — e é por isso que as duas
+/// referências 2D, independentes uma da outra, escolheram a mesma forma.
+///
+/// ⚠️ O Godot volta a oferecer um ponto (`magnet_position`) na modificação **FABRIK**, e isso não
+/// contradiz o de cima: ali não há forma fechada, então o ímã é uma heurística de arranque — não a
+/// resposta exacta que a lei dos cossenos dá com um sinal.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum BendSide {
+    /// **Preserva** a dobra que a pose já tem — e, quando ela não tem nenhuma, o desempate da
+    /// corrente recta. É o que um **gesto** quer (o artista arrasta a ponta e o cotovelo fica onde
+    /// ele o deixou) e é o comportamento de sempre, **ao bit**.
+    #[default]
+    Keep,
+    /// O cotovelo fica do lado **anti-horário** da recta `raiz → alvo` ([`side_of`] positivo).
+    Ccw,
+    /// ... do lado **horário** ([`side_of`] negativo).
+    ///
+    /// ⚠️ É este o lado para que as duas leis desempatam hoje quando a corrente está recta —
+    /// **medido**, não deduzido (`n=2` `−7,416198` · `n=3` `−4,472136` · `n=5` `−4,486331`).
+    Cw,
+}
+
+impl BendSide {
+    /// Os três, na ordem em que um selector os oferece. ⚠️ Quem pinta um segmento por variante
+    /// alinha-se por ÍNDICE com esta lista — é o que impede a fileira do painel e o vocabulário de
+    /// divergirem em silêncio (o padrão do `BoneAction::ALL`).
+    pub const ALL: [Self; 3] = [Self::Keep, Self::Ccw, Self::Cw];
+
+    /// O sinal que este lado impõe a [`side_of`], ou `None` quando ele não impõe nenhum.
+    #[must_use]
+    pub const fn forced(self) -> Option<f64> {
+        match self {
+            Self::Keep => None,
+            Self::Ccw => Some(1.0),
+            Self::Cw => Some(-1.0),
+        }
+    }
+
+    /// O oposto — `Keep` não tem, e devolve-se a si mesmo.
+    #[must_use]
+    pub const fn flipped(self) -> Self {
+        match self {
+            Self::Keep => Self::Keep,
+            Self::Ccw => Self::Cw,
+            Self::Cw => Self::Ccw,
+        }
+    }
+}
+
+/// ⭐⭐⭐ **A GRANDEZA CANÓNICA DO LADO** — o desvio de `p` em relação à recta `raiz → alvo`,
+/// positivo no sentido anti-horário.
+///
+/// ⚠️⚠️ **Ela existe porque as duas leis desta crate mediam o lado com grandezas de SINAL
+/// OPOSTO**, e nada escrito o dizia: o ramo de dois ossos lê `v1 × v2` (que a álgebra mostra valer
+/// `−l1·d·sin a`) e o arqueamento de 3+ lê o desvio perpendicular (`+sin a`). Duas réguas do mesmo
+/// facto, uma o negativo da outra, é como um sinal trocado sobrevive a uma revisão — e este módulo
+/// já pagou exactamente isso uma vez, com a inversão que vivia no `two_bone` desde que ele existe.
+///
+/// ⇒ **uma porta.** Quem quiser saber de que lado a corrente está pergunta aqui, e quem quiser
+/// impor um lado escreve o sinal desta.
+#[must_use]
+pub fn side_of(root: [f64; 2], goal: [f64; 2], p: [f64; 2]) -> f64 {
+    let u = unit([goal[0] - root[0], goal[1] - root[1]], [1.0, 0.0]);
+    let v = [p[0] - root[0], p[1] - root[1]];
+    u[0] * v[1] - u[1] * v[0]
+}
+
+/// Quantas passagens do FABRIK, quanto se amortece a extensão máxima, e de que lado se dobra.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Reach {
     /// Passagens do FABRIK. Só conta numa corrente de 3+ ossos — a de 2 é fechada.
@@ -48,6 +137,10 @@ pub struct Reach {
     /// A **SOFTNESS** do Spine, em unidades de MUNDO: a que distância do alcance máximo os ossos
     /// começam a abrandar. `0` ⇒ o corte a seco de sempre.
     pub softness: f64,
+    /// De que lado a corrente dobra. [`BendSide::Keep`] ⇒ o comportamento de sempre, **ao bit** —
+    /// e é o valor por omissão de propósito, porque o **gesto** de arrastar a ponta quer preservar
+    /// a dobra que o artista vê. Quem trava o lado é a **restrição**, que persiste.
+    pub bend: BendSide,
 }
 
 impl Default for Reach {
@@ -55,6 +148,7 @@ impl Default for Reach {
         Self {
             iterations: DEFAULT_ITERATIONS,
             softness: 0.0,
+            bend: BendSide::Keep,
         }
     }
 }
@@ -151,6 +245,7 @@ fn two_bone(
     goal: [f64; 2],
     bend: f64,
     soft: f64,
+    side: BendSide,
 ) -> [[f64; 2]; 2] {
     let to_goal = [goal[0] - root[0], goal[1] - root[1]];
     let u = unit(to_goal, [1.0, 0.0]);
@@ -167,10 +262,19 @@ fn two_bone(
     //
     // ⇒ o desempate é DETERMINÍSTICO, e é o mesmo lado para que o [`break_collinearity`] arqueia a
     // corrente de 3+ ossos: *não se escolhe um desempate melhor, não se tem empate.*
-    let bend = if bend.abs() <= STRAIGHT * l1 * l2 {
-        1.0
-    } else {
-        bend
+    //
+    // ⭐ E é aqui que um lado AUTORADO entra: ele substitui a leitura da pose em vez de a corrigir,
+    // porque o defeito que ele cura é precisamente a pose deixar de ter lado.
+    let sinal = match side.forced() {
+        Some(s) => s,
+        None => {
+            let bend = if bend.abs() <= STRAIGHT * l1 * l2 {
+                1.0
+            } else {
+                bend
+            };
+            if bend > 0.0 { -1.0 } else { 1.0 }
+        }
     };
     // Longe demais ⇒ amortecido; perto demais (a corrente dobrada sobre si) ⇒ o piso é o que os
     // dois ossos conseguem encolher.
@@ -211,7 +315,9 @@ fn two_bone(
     // contrário — invisível enquanto a cinemática inversa era só um arrasto (ali cada passagem tem
     // um alvo novo e a troca lê-se como tremor), e **impossível de ignorar** com uma restrição que
     // re-resolve todo quadro.
-    let sin_a = (1.0 - cos_a * cos_a).sqrt() * if bend > 0.0 { -1.0 } else { 1.0 };
+    // ⚠️ `sinal` é o sinal de [`side_of`] que se quer (a álgebra acima mostra `u × osso1 = sin a`),
+    // logo ele entra em `sin_a` **directamente** — sem o `−1` que a leitura por `v1 × v2` exigia.
+    let sin_a = (1.0 - cos_a * cos_a).sqrt() * sinal;
     let osso1 = [u[0] * cos_a - u[1] * sin_a, u[0] * sin_a + u[1] * cos_a];
     [
         [root[0] + l1 * osso1[0], root[1] + l1 * osso1[1]],
@@ -219,29 +325,92 @@ fn two_bone(
     ]
 }
 
-/// Arqueia uma corrente RECTA para o FABRIK ter um lado para onde cair.
-fn break_collinearity(p: &mut [[f64; 2]], reach: f64, goal: [f64; 2]) {
+/// **De que lado a corrente está**, com o sinal de [`side_of`]: o desvio DOMINANTE das juntas
+/// interiores. `0` ⇒ colinear, e uma corrente colinear não tem lado.
+///
+/// ⚠️ O **dominante** e não a soma: uma corrente em S tem desvios de sinais opostos que se anulam,
+/// e uma soma nula leria «recta» sobre uma pose que é tudo menos recta.
+#[must_use]
+pub fn dominant_side(p: &[[f64; 2]], goal: [f64; 2]) -> f64 {
+    let mut pior = 0.0f64;
+    for q in &p[1..] {
+        let d = side_of(p[0], goal, *q);
+        if d.abs() > pior.abs() {
+            pior = d;
+        }
+    }
+    pior
+}
+
+/// ⭐⭐⭐ **DE QUE LADO ESTA CORRENTE ESTÁ** — incluindo a resposta *«de nenhum»*.
+///
+/// É a porta que quem **captura** um lado usa (o verbo que cria uma âncora grava a dobra que o
+/// artista já posou). ⚠️ Ela devolve [`BendSide::Keep`] para uma corrente **recta**, e isso é a
+/// resposta certa e não uma desistência: ali o desvio é ruído de `f32` amplificado, e escolher um
+/// lado a partir dele seria inventar uma decisão do artista.
+///
+/// `reach` é o alcance da corrente (a soma dos comprimentos) — a barra da rectidão é uma **fracção**
+/// dele, a mesma que o [`BOW`] usa, para a lei ser adimensional.
+///
+/// ⛔ Ela existe para o chamador não replicar a conta: uma segunda barra para *«isto é recto?»*
+/// diverge da primeira no dia em que alguém afinar uma das duas.
+#[must_use]
+pub fn bend_side_of(joints: &[[f64; 2]], goal: [f64; 2], reach: f64) -> BendSide {
+    let desvio = dominant_side(joints, goal);
+    if !desvio.is_finite() || desvio.abs() <= BOW * reach {
+        return BendSide::Keep;
+    }
+    if desvio > 0.0 { BendSide::Ccw } else { BendSide::Cw }
+}
+
+/// Arqueia uma corrente RECTA para o FABRIK ter um lado para onde cair — para o lado PEDIDO, se
+/// houver um.
+fn break_collinearity(p: &mut [[f64; 2]], reach: f64, goal: [f64; 2], side: BendSide) {
     let n = p.len();
     let to_goal = [goal[0] - p[0][0], goal[1] - p[0][1]];
     let d = to_goal[0].hypot(to_goal[1]);
     if reach - d < BOW * reach {
         return; // o alvo está na extensão máxima (ou além): a recta É a resposta
     }
-    let u = unit(to_goal, [1.0, 0.0]);
-    let torto = (1..n)
-        .map(|i| {
-            let v = [p[i][0] - p[0][0], p[i][1] - p[0][1]];
-            (v[0] * u[1] - v[1] * u[0]).abs()
-        })
-        .fold(0.0, f64::max);
-    if torto > BOW * reach {
+    if dominant_side(p, goal).abs() > BOW * reach {
         return; // já está fora da recta — a iteração tem para onde cair
     }
+    let u = unit(to_goal, [1.0, 0.0]);
+    // `u × perp = +1`, então `+perp` é o lado anti-horário de [`side_of`].
     let perp = [-u[1], u[0]];
-    let arco = BOW * reach;
+    let arco = BOW * reach * side.forced().unwrap_or(1.0);
     for q in p.iter_mut().take(n - 1).skip(1) {
         q[0] += perp[0] * arco;
         q[1] += perp[1] * arco;
+    }
+}
+
+/// ⭐⭐⭐ **ESPELHA a corrente para o lado pedido** — a metade que o arqueamento não faz.
+///
+/// ⚠️ **Sem isto o lado autorado não morde numa corrente de 3+ ossos**, e a razão é que o
+/// [`break_collinearity`] só age sobre uma pose **recta**: com a corrente já dobrada para o lado
+/// errado ele devolve cedo, e o FABRIK parte da pose que encontra — ele **preserva** o lado, que é
+/// exactamente o que aqui se quer mudar.
+///
+/// ⭐ A operação é uma **reflexão sobre a recta `raiz → alvo`**, e por ser uma isometria ela não
+/// toca em nenhum comprimento — o invariante das duas leis desta crate sobrevive por construção,
+/// não por uma guarda escrita à mão. A raiz fica onde está porque a recta passa por ela.
+fn mirror_to_side(p: &mut [[f64; 2]], goal: [f64; 2], side: BendSide) {
+    let Some(quero) = side.forced() else {
+        return;
+    };
+    let actual = dominant_side(p, goal);
+    if actual == 0.0 || actual.signum() == quero.signum() {
+        return;
+    }
+    let root = p[0];
+    let u = unit([goal[0] - root[0], goal[1] - root[1]], [1.0, 0.0]);
+    for q in &mut p[1..] {
+        let v = [q[0] - root[0], q[1] - root[1]];
+        let ao_longo = v[0] * u[0] + v[1] * u[1];
+        // `q' = raiz + 2·(v·u)·u − v` — a reflexão de `v` sobre a direcção `u`.
+        q[0] = root[0] + 2.0 * ao_longo * u[0] - v[0];
+        q[1] = root[1] + 2.0 * ao_longo * u[1] - v[1];
     }
 }
 
@@ -266,7 +435,15 @@ pub fn reach(joints: &mut [[f64; 2]], lengths: &[f64], goal: [f64; 2], opts: Rea
         let (a, b, c) = (joints[0], joints[1], joints[2]);
         let (v1, v2) = ([b[0] - a[0], b[1] - a[1]], [c[0] - b[0], c[1] - b[1]]);
         let bend = v1[0] * v2[1] - v1[1] * v2[0];
-        let [cotovelo, mao] = two_bone(a, lengths[0], lengths[1], goal, bend, opts.softness);
+        let [cotovelo, mao] = two_bone(
+            a,
+            lengths[0],
+            lengths[1],
+            goal,
+            bend,
+            opts.softness,
+            opts.bend,
+        );
         joints[1] = cotovelo;
         joints[2] = mao;
         return;
@@ -309,7 +486,11 @@ pub fn reach(joints: &mut [[f64; 2]], lengths: &[f64], goal: [f64; 2], opts: Rea
         return;
     }
 
-    break_collinearity(joints, total, alvo);
+    break_collinearity(joints, total, alvo, opts.bend);
+    // ⚠️ **Depois** do arqueamento, não antes: sobre uma corrente recta o espelho não tem o que
+    // espelhar (o desvio dominante é zero e ele devolve cedo), então quem lhe dá um lado para
+    // corrigir é o arqueamento — e quando a pose já vem torta é o espelho que manda.
+    mirror_to_side(joints, alvo, opts.bend);
     let ancora = joints[0];
     let n = joints.len();
     for _ in 0..opts.iterations.clamp(1, MAX_ITERATIONS) {

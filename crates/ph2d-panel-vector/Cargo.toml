@@ -23,6 +23,10 @@ ph2d-editor-core = { path = "../ph2d-editor-core" }
 # slider↔chip mapping from there. Direction panel → tool does not cycle (tool
 # depends on editor-core, panel on both).
 ph2d-tool-vector = { path = "../ph2d-tool-vector" }
+# ⭐ **O vocabulário do LADO DA DOBRA** (`BendSide`), para a fileira de segmentos se alinhar por
+# ÍNDICE com `BendSide::ALL` em vez de repetir a lista. É o mesmo motivo de a linha acima existir
+# (o `BoneAction::ALL`), e a crate é uma FOLHA (álgebra + serde).
+ph2d-skeleton = { path = "../ph2d-skeleton" }
 # O vocabulário da SIMETRIA de desenho (W6.3): o painel pinta os chips a partir de
 # `SymmetryKind::ALL` e dos `label()` do próprio enum — uma tabela paralela aqui nasceria
 # incompleta no dia do quinto tipo. Folha pura (só serde).

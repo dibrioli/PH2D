@@ -100,7 +100,13 @@ fn clica(id: ph2d_a11y::NodeId, what: &str) -> Vec<EditorAction> {
 /// declara, o gate reprova a dizer *«não foi PINTADO»*, que é a pergunta certa a fazer ao autor.
 #[test]
 fn every_verb_of_the_skeleton_reaches_the_bus() {
-    for id in ids::VECTOR_BONE_VERBS {
+    // ⚠️ **As DUAS tabelas**, encadeadas em vez de copiadas: a dos verbos e a da fileira do lado da
+    // dobra. Uma fileira nova que ganhe tabela própria e não venha a este `chain` fica sem régua de
+    // costura — e é exactamente o buraco por onde o *Add IK* passou.
+    for id in ids::VECTOR_BONE_VERBS
+        .into_iter()
+        .chain(ids::VECTOR_BONE_BEND_IDS)
+    {
         estado_de(id);
         let acoes = clica(id, "um verbo do esqueleto");
         assert!(
@@ -155,12 +161,37 @@ fn every_number_of_the_skeleton_reaches_the_bus() {
 /// PINTADO»*, e essa é exactamente a pergunta que o autor tem de responder.
 fn estado_de(id: ph2d_a11y::NodeId) {
     publica_tudo();
+    // ⚠️ Os três segmentos do LADO vivem com os números da âncora — eles só têm sujeito quando ela
+    // existe. A lista é derivada da tabela dos segmentos, não escrita à mão: é a mesma lição que
+    // pôs a população deste ficheiro em `VECTOR_BONE_VERBS`.
+    let precisa_de_ancora = id == ids::VECTOR_BONE_IK_REMOVE
+        || id == ids::VECTOR_BONE_IK_MIX
+        || id == ids::VECTOR_BONE_IK_SOFTNESS
+        || id == ids::VECTOR_BONE_IK_CHAIN
+        || ids::VECTOR_BONE_BEND_IDS.contains(&id);
     state::set_current_bone_ik(
-        (id == ids::VECTOR_BONE_IK_REMOVE
-            || id == ids::VECTOR_BONE_IK_MIX
-            || id == ids::VECTOR_BONE_IK_SOFTNESS
-            || id == ids::VECTOR_BONE_IK_CHAIN)
-            .then_some((1.0, 0.0, 2.0)),
+        precisa_de_ancora.then_some((1.0, 0.0, 2.0, ph2d_skeleton::BendSide::Keep)),
+    );
+}
+
+/// ⭐⭐⭐ **TODO SEGMENTO DO LADO DA DOBRA É TAMBÉM UM VERBO DA SHELL** — o censo que liga as duas
+/// tabelas.
+///
+/// ⚠️ Elas respondem a perguntas diferentes sobre os mesmos ids ([`ids::VECTOR_BONE_BEND_IDS`] diz
+/// *qual segmento é qual variante*; [`ids::VECTOR_BONE_VERBS`] diz *o que atravessa para a shell*),
+/// e é exactamente por serem duas que uma pode envelhecer sem a outra. Um segmento que caia fora da
+/// segunda **pinta, acende sob o rato e o clique morre dentro do painel** — o modo de falha que
+/// esta seção já pagou quatro vezes.
+///
+/// ⭐ E ele afirma a outra metade também: que a fileira tem um id por variante da LEI. Uma variante
+/// nova em `BendSide::ALL` sem id ao lado deixaria um estado do documento **inalcançável pela UI**.
+#[test]
+fn the_bend_row_has_exactly_one_segment_per_variant_of_the_law() {
+    assert_eq!(
+        ids::VECTOR_BONE_BEND_IDS.len(),
+        ph2d_skeleton::BendSide::ALL.len(),
+        "a fileira do lado da dobra e o vocabulário da lei têm tamanhos diferentes — uma variante \
+         ficou sem segmento (**inalcançável pela UI**) ou um segmento ficou sem variante (morto)"
     );
 }
 

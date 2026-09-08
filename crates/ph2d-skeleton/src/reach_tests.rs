@@ -204,7 +204,7 @@ fn measure_how_many_passes_fabrik_actually_needs() {
                     alvo,
                     Reach {
                         iterations: it,
-                        softness: 0.0,
+                        ..Reach::default()
                     },
                 );
                 if (j[n][0] - alvo[0]).hypot(j[n][1] - alvo[1]) < 1e-4 * alcance {
@@ -375,4 +375,194 @@ fn a_straight_chain_never_draws_lots_for_the_bend_side() {
         "duas correntes rectas que diferem num ULP cairam para lados OPOSTOS - o desempate esta' a \
          ler o sinal do ruido"
     );
+}
+
+/// Uma corrente de dois ossos posta do lado OPOSTO ao desempate da recta, com o alvo que a mantém
+/// lá.
+///
+/// ⚠️⚠️ **A partida tem de ser o lado oposto, e a 1.ª redacção desta fixtura não era** — com o
+/// cotovelo já do lado que o desempate escolhe, esticar e voltar devolve **o mesmo sinal**
+/// (medido: `antes=+99,498744  depois=+99,498744`) e o gate ficava verde sobre o defeito. É a
+/// quarta fixtura desta linha a não produzir o fenómeno que o nome dela promete.
+///
+/// ⚠️ **A régua destes gates é o [`dominant_side`], nunca o `v1 × v2`** — e a 1.ª redacção deles
+/// usava o segundo, o que os fez acusar a implementação CERTA de inverter. Os dois medem o mesmo
+/// facto com **sinais opostos**, que é precisamente por que [`side_of`] existe: escrevi a porta
+/// para não cair nisto e caí no mesmo turno.
+fn cotovelo_do_lado_anti_horario() -> (Vec<[f64; 2]>, Vec<f64>, [f64; 2]) {
+    (
+        vec![[0.0, 0.0], [6.0, 8.0], [16.0, 8.0]],
+        vec![10.0, 10.0],
+        [12.0, 6.0],
+    )
+}
+
+/// ⛔⛔ **O DEFEITO QUE O LADO AUTORADO CURA** — e ele é determinístico, não é ruído.
+///
+/// O artista dobra o cotovelo para um lado, estica o braço até ele ficar direito, e traz a mão de
+/// volta **ao mesmo sítio**: o cotovelo aparece do **outro** lado. Medido antes da cura:
+/// `-99,498744` → `0,000000` (a recta, que não tem lado) → `+99,498744`.
+///
+/// ⇒ este gate afirma as duas metades: que [`BendSide::Keep`] ainda inverte (é o comportamento de
+/// um GESTO, e mudá-lo seria mudar o arrasto que já existe) e que um lado **travado** não inverte.
+#[test]
+fn the_elbow_flips_when_the_chain_passes_through_straight() {
+    let (mut j, l, alvo) = cotovelo_do_lado_anti_horario();
+    reach(&mut j, &l, alvo, Reach::default());
+    let antes = dominant_side(&j, alvo);
+    reach(&mut j, &l, [40.0, 0.0], Reach::default());
+    reach(&mut j, &l, alvo, Reach::default());
+    let depois = dominant_side(&j, alvo);
+    assert!(
+        antes > 0.0 && depois < 0.0,
+        "a fixtura tem de PRODUZIR a inversão com `Keep`, senão o gate de baixo é vácuo \
+         (antes={antes}, depois={depois})"
+    );
+}
+
+/// ⭐⭐⭐ **UM LADO TRAVADO SOBREVIVE À RECTA** — a cura, sobre a mesma fixtura.
+#[test]
+fn a_locked_bend_survives_the_chain_passing_through_straight() {
+    let (mut j, l, alvo) = cotovelo_do_lado_anti_horario();
+    let opts = Reach {
+        bend: BendSide::Ccw,
+        ..Reach::default()
+    };
+    reach(&mut j, &l, alvo, opts);
+    let antes = dominant_side(&j, alvo);
+    reach(&mut j, &l, [40.0, 0.0], opts);
+    reach(&mut j, &l, alvo, opts);
+    let depois = dominant_side(&j, alvo);
+    assert!(
+        antes > 0.0 && depois > 0.0,
+        "o lado travado inverteu ao passar pela recta: {antes} -> {depois}"
+    );
+}
+
+/// ⭐⭐ **O LADO TRAVADO É O QUE SE PEDIU, nas duas leis e em qualquer comprimento de corrente.**
+///
+/// ⚠️ A régua é o [`side_of`], **não** o `v1 × v2`: aquele existe numa corrente de cinco ossos e
+/// este não, e os dois têm sinais opostos — a razão de a porta canónica existir.
+#[test]
+fn the_locked_side_is_the_one_that_was_asked_for_in_both_laws() {
+    for n in [2usize, 3, 5, 8] {
+        for (side, quero) in [(BendSide::Ccw, 1.0_f64), (BendSide::Cw, -1.0)] {
+            // Parte do lado ERRADO de propósito: é o caso em que o arqueamento devolve cedo e só o
+            // espelho morde.
+            let (mut j, l) = corrente(n, 10.0);
+            #[expect(clippy::cast_precision_loss, reason = "n é um punhado de ossos")]
+            let alcance = n as f64 * 10.0;
+            let alvo = [alcance * 0.4, alcance * 0.25];
+            reach(&mut j, &l, alvo, Reach {
+                bend: side.flipped(),
+                ..Reach::default()
+            });
+            reach(&mut j, &l, alvo, Reach {
+                bend: side,
+                ..Reach::default()
+            });
+            let deu = dominant_side(&j, alvo);
+            assert!(
+                deu.signum() == quero.signum(),
+                "com {n} ossos e {side:?} a corrente ficou do lado {deu}"
+            );
+        }
+    }
+}
+
+/// ⛔ **O ESPELHO NÃO ESTICA NENHUM OSSO** — ele é uma isometria, e o invariante das duas leis não
+/// pode depender de eu me lembrar disso.
+#[test]
+fn locking_the_side_never_stretches_a_bone() {
+    for n in [2usize, 3, 5, 8] {
+        for side in [BendSide::Keep, BendSide::Ccw, BendSide::Cw] {
+            let (mut j, l) = corrente(n, 10.0);
+            for alvo in [[15.0, 22.0], [-30.0, 4.0], [1e4, 1e4], [0.5, 0.0]] {
+                reach(&mut j, &l, alvo, Reach {
+                    bend: side,
+                    ..Reach::default()
+                });
+                for (i, (saiu, pedido)) in comprimentos(&j).iter().zip(&l).enumerate() {
+                    assert!(
+                        (saiu - pedido).abs() < 1e-9 * pedido,
+                        "com {n} ossos, {side:?} e alvo {alvo:?} o osso {i} mede {saiu} e devia \
+                         medir {pedido}"
+                    );
+                }
+            }
+        }
+    }
+}
+
+/// ⭐ **`Keep` É O COMPORTAMENTO DE SEMPRE, AO BIT** — o caminho de omissão desta wave não move um
+/// único bit de nada que já existia.
+#[test]
+fn keep_is_the_default_and_it_is_bit_identical_to_having_no_side_at_all() {
+    assert_eq!(Reach::default().bend, BendSide::Keep);
+    for n in [1usize, 2, 3, 5, 9] {
+        for alvo in [[15.0, 22.0], [-30.0, 4.0], [1e4, 1e4], [7.0, 0.0]] {
+            let (mut a, l) = corrente(n, 10.0);
+            let mut b = a.clone();
+            reach(&mut a, &l, alvo, Reach::default());
+            reach(&mut b, &l, alvo, Reach {
+                bend: BendSide::Keep,
+                ..Reach::default()
+            });
+            assert_eq!(a, b, "com {n} ossos e alvo {alvo:?} o `Keep` divergiu do default");
+        }
+    }
+}
+
+/// ⭐⭐⭐ **UM LADO TRAVADO É ESTÁVEL, NÃO UM PISCA-PISCA.**
+///
+/// ⚠️ Mede um risco que só esta wave tem: o espelho reflecte a corrente **inteira**, e uma
+/// restrição re-resolve **todo quadro a partir da própria saída**. Um espelho que disparasse de
+/// novo sobre a pose que ele acabou de produzir poria a corrente a alternar entre dois lados a
+/// 60 Hz — e nenhum gate que resolva uma vez o vê.
+///
+/// ⚠️⚠️ **A régua é o LADO e a CONVERGÊNCIA, não a igualdade ao bit** — e a 1.ª redacção exigia
+/// `1e-9` do alcance, o que a fez acusar o FABRIK de vibrar com `2,47e-4` de movimento. Aquilo não
+/// era vibração: o FABRIK **sai cedo** quando o erro cai abaixo da tolerância, então a passagem
+/// seguinte continua a refinar. *Convergir e alternar são coisas diferentes, e só a segunda é o
+/// defeito.*
+#[test]
+fn a_locked_side_is_stable_not_a_flip_flop() {
+    for n in [2usize, 3, 5, 8] {
+        for side in [BendSide::Ccw, BendSide::Cw] {
+            let (mut j, l) = corrente(n, 10.0);
+            #[expect(clippy::cast_precision_loss, reason = "n é um punhado de ossos")]
+            let alcance = n as f64 * 10.0;
+            let alvo = [alcance * 0.4, alcance * 0.25];
+            let opts = Reach {
+                bend: side,
+                ..Reach::default()
+            };
+            reach(&mut j, &l, alvo, opts);
+            let esperado = dominant_side(&j, alvo).signum();
+            let (mut ant, mut primeiro, mut ultimo) = (j.clone(), 0.0_f64, 0.0_f64);
+            for k in 0..8 {
+                reach(&mut j, &l, alvo, opts);
+                let mov = ant
+                    .iter()
+                    .zip(&j)
+                    .map(|(a, b)| (a[0] - b[0]).hypot(a[1] - b[1]))
+                    .fold(0.0, f64::max);
+                if k == 0 {
+                    primeiro = mov;
+                }
+                ultimo = mov;
+                assert!(
+                    dominant_side(&j, alvo).signum() == esperado,
+                    "com {n} ossos a corrente ALTERNOU de lado na passagem {k} — o espelho está a \
+                     disparar sobre a pose que ele próprio produziu"
+                );
+                ant = j.clone();
+            }
+            assert!(
+                ultimo <= primeiro,
+                "com {n} ossos e {side:?} o movimento CRESCEU entre passagens ({primeiro} -> \
+                 {ultimo}): a pose está a divergir em vez de assentar"
+            );
+        }
+    }
 }

@@ -223,7 +223,7 @@ fn seed_number_fields(store: &mut ph2d_editor_core::interaction::WidgetStore) {
         }
     }
     // ⭐ E os três da ÂNCORA, pela mesma porta e com o mesmo guarda de foco.
-    if let Some((mix, softness, chain)) = state::current_bone_ik() {
+    if let Some((mix, softness, chain, _)) = state::current_bone_ik() {
         for (id, v) in [
             (ids::VECTOR_BONE_IK_MIX, mix),
             (ids::VECTOR_BONE_IK_SOFTNESS, softness),

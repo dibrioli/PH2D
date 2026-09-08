@@ -35,6 +35,13 @@ pub(super) fn populate_bone(store: &mut WidgetStore) {
     for id in ids::VECTOR_BONE_VERBS {
         button(store, id);
     }
+    // ⭐⭐⭐ **A fileira do LADO DA DOBRA, pela tabela dela** — e o laço é obrigatório mesmo que os
+    // ids coubessem noutra lista: o gate `table_driven_chips_are_registered_too` lê o FONTE e exige
+    // que o `populate` itere a mesma tabela que o `paint`. É a regra que impede a próxima fileira
+    // de nascer morta sob o dedo.
+    for id in ids::VECTOR_BONE_BEND_IDS {
+        button(store, id);
+    }
     // ⚠️ **Pela porta do MUNDO** (`world_number_field`, sem `set_number_range`): o comprimento de um
     // osso vive nas unidades do documento, e emprestar-lhe a faixa de outro recurso é exactamente
     // o defeito que o `CLAUDE.md` §0.0 nomeia — a v21 já o pagou com a largura de traço a limitar

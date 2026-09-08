@@ -3404,6 +3404,8 @@ impl crate::App {
             }
             let mut pending_ik_add = false;
             let mut pending_ik_remove = false;
+            // ⭐ O lado da dobra que o artista escolheu neste quadro, se escolheu.
+            let mut pending_ik_bend: Option<ph2d_skeleton::BendSide> = None;
             let mut pending_ik_knob: Option<(IkKnob, f64)> = None;
             // ⚠️ **O osso seleccionado lê-se AQUI, antes de o mundo ser emprestado mutável** — os
             // verbos lá em baixo já seguram `sim`, e uma leitura de `self` no meio deles não
@@ -3697,6 +3699,16 @@ impl crate::App {
                                 pending_ik_add = true;
                             } else if *id == ph2d_editor::ids::VECTOR_BONE_IK_REMOVE {
                                 pending_ik_remove = true;
+                            } else if let Some(i) = ph2d_editor::ids::VECTOR_BONE_BEND_IDS
+                                .iter()
+                                .position(|x| x == id)
+                            {
+                                // ⭐⭐⭐ **O LADO DA DOBRA** — a posição na tabela É a variante, e
+                                // é ela que impede a fileira e o vocabulário de divergirem. ⚠️ Um
+                                // `match` de três braços escritos à mão aqui seria a quinta lista
+                                // escrita à mão desta seção.
+                                pending_ik_bend =
+                                    ph2d_skeleton::BendSide::ALL.get(i).copied();
                             } else if *id == ph2d_editor::ids::VECTOR_BONE_EXPAND {
                                 // Solta e fica com a pose de AGORA (o Expand do envelope).
                                 pending_bone_release = Some(crate::skeleton_live::Keep::Deformed);
@@ -6286,6 +6298,11 @@ impl crate::App {
                 }
                 if pending_ik_remove {
                     crate::skeleton_goal::remove(sim, osso, &mut self.preview_drive);
+                }
+                if let Some(lado) = pending_ik_bend
+                    && let Some(mut g) = sim.world_mut().get_mut::<ph2d_skeleton_ecs::IkGoal>(osso)
+                {
+                    g.bend = lado;
                 }
                 if let Some((qual, v)) = pending_ik_knob
                     && let Some(mut g) = sim.world_mut().get_mut::<ph2d_skeleton_ecs::IkGoal>(osso)
@@ -9006,7 +9023,7 @@ impl crate::App {
                 ph2d_panel_vector::set_current_bone_ik(osso_em_foco.and_then(|b| {
                     sim.world()
                         .get::<ph2d_skeleton_ecs::IkGoal>(ph2d_ecs::Entity::from_bits(b))
-                        .map(|g| (g.mix, g.softness, f64::from(g.chain)))
+                        .map(|g| (g.mix, g.softness, f64::from(g.chain), g.bend))
                 }));
                 // Text on Path (plano 22): as duas perguntas que só a shell sabe responder —
                 // *"esta seleção permite prender?"* (um texto + um caminho) e *"o texto em foco

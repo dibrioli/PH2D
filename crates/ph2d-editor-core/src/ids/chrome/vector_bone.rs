@@ -77,6 +77,38 @@ pub const VECTOR_BONE_IK_SOFTNESS: NodeId = hash_node_id("vector.bone.ik.softnes
 /// **Chain** — quantos ossos a âncora governa, contados da ponta para cima. `0` = até à raiz.
 pub const VECTOR_BONE_IK_CHAIN: NodeId = hash_node_id("vector.bone.ik.chain");
 
+/// ⭐⭐⭐ **O cabeçalho de PARA QUE LADO O JOELHO DOBRA** — o `flip_bend_direction` do Godot, o
+/// `bendDirection` do Spine.
+pub const VECTOR_BONE_IK_BEND: NodeId = hash_node_id("vector.bone.ik.bend");
+
+/// **Auto** — o lado sai da pose que a corrente tem. ⚠️ É o comportamento de sempre, e é ele que
+/// **inverte** o joelho quando o membro passa pela posição esticada: medido, uma corrente a
+/// `−99,498744` volta do mesmo alvo a `+99,498744`.
+pub const VECTOR_BONE_IK_BEND_AUTO: NodeId = hash_node_id("vector.bone.ik.bend.auto");
+
+/// **CCW** — o joelho fica travado do lado anti-horário da recta raiz→alvo.
+pub const VECTOR_BONE_IK_BEND_CCW: NodeId = hash_node_id("vector.bone.ik.bend.ccw");
+
+/// **CW** — ... do lado horário.
+pub const VECTOR_BONE_IK_BEND_CW: NodeId = hash_node_id("vector.bone.ik.bend.cw");
+
+/// Os três segmentos, **índice-alinhados** com [`ph2d_skeleton::BendSide::ALL`] — o mesmo idioma do
+/// [`VECTOR_BONE_ACTION_IDS`], e pela mesma razão: alinhar por índice é o que impede a fileira do
+/// painel e o vocabulário da lei de divergirem em silêncio.
+///
+/// ⭐⭐ **Ela é uma tabela de pleno direito, com os MESMOS TRÊS consumidores das outras duas** — o
+/// registo (`populate_bone`), o encaminhamento (`event_clicks::is_shell_click`) e a pintura. ⚠️ A
+/// 1.ª redacção economizou-a, pendurando os três ids na [`VECTOR_BONE_VERBS`] para herdar o
+/// encaminhamento — e o gate `table_driven_chips_are_registered_too` reprovou, **com razão**: ele
+/// exige que o `populate` tenha um laço sobre a tabela que o `paint` itera, e sem esse laço a
+/// próxima fileira que alguém acrescente nasce **morta sob o dedo**. *Herdar a rota de outra tabela
+/// funciona e apaga a regra que protege quem vier a seguir.*
+pub const VECTOR_BONE_BEND_IDS: [NodeId; 3] = [
+    VECTOR_BONE_IK_BEND_AUTO,
+    VECTOR_BONE_IK_BEND_CCW,
+    VECTOR_BONE_IK_BEND_CW,
+];
+
 /// ⭐⭐⭐ **OS VERBOS DA SEÇÃO SKELETON — uma tabela, dois consumidores.**
 ///
 /// Todo botão desta seção mexe no **MUNDO** (um componente de uma entidade), logo o clique dele é

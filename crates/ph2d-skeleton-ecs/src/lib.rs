@@ -130,6 +130,18 @@ pub struct IkGoal {
     /// lei é adimensional e o mesmo rig desenhado dez vezes maior abranda no mesmo sítio. `0` = o
     /// corte a seco de sempre, **ao bit**.
     pub softness: f64,
+    /// ⭐⭐⭐ **DE QUE LADO O JOELHO DOBRA** — o `flip_bend_direction` do Godot, o `bendDirection`
+    /// do Spine. Ver [`ph2d_skeleton::BendSide`] para o mecanismo e para por que a resposta 2D é um
+    /// interruptor e não o *pole target* do Blender.
+    ///
+    /// ⚠️ **O valor de nascimento é CAPTURADO, não escolhido:** o `add` mede de que lado a corrente
+    /// já está e grava-o. É a mesma lei que o *Remove IK* pagou — *o que volta é o AUTORADO* —, e é
+    /// o que faz a âncora nascer **byte-idêntica** à pose que o artista posou à mão, e ficar lá.
+    ///
+    /// ⚠️ [`ph2d_skeleton::BendSide::Keep`] continua a ser um estado legítimo (é o que um ficheiro
+    /// gravado antes desta wave recebe, e é o comportamento que ele tinha): ali o lado sai da pose,
+    /// e a corrente **inverte** ao passar pela recta.
+    pub bend: ph2d_skeleton::BendSide,
 }
 
 impl Default for IkGoal {
@@ -139,6 +151,9 @@ impl Default for IkGoal {
             chain: DEFAULT_CHAIN,
             mix: 1.0,
             softness: 0.0,
+            // ⚠️ `Keep` aqui e **capturado** no `add`: o default de um componente é o que um
+            // ficheiro sem o campo recebe, e para esse a resposta honesta é *«o que ele fazia»*.
+            bend: ph2d_skeleton::BendSide::Keep,
         }
     }
 }

@@ -15,3 +15,12 @@ authors.workspace = true
 # Flip não pode precisar da cena vectorial para compor `repouso⁻¹ ∘ osso ∘ forma⁻¹`. O que cada
 # mídia sabe — *o que é um ponto aqui* — mora do lado dela (`ph2d-vec-skin` é o 1.º cliente).
 ph2d-affine = { path = "../ph2d-affine" }
+# ⚠️ **A cerca acima continua INTEIRA no que ela protege — nenhuma MÍDIA entra aqui.** O `serde` não
+# é uma: ele não sabe o que é uma cena, um pixel ou uma malha, e a lei continua a servir raster, 3D
+# e Flip sem os conhecer.
+#
+# ⭐ Ele entra porque o vocabulário do LADO da dobra ([`reach::BendSide`]) é da lei — quem o consome
+# é o `two_bone` — e o documento tem de o gravar. A alternativa era declará-lo **outra vez** na
+# `ph2d-skeleton-ecs` com uma conversão no meio, que é exactamente a *segunda porta* que o cabeçalho
+# do `skeleton_goal` proíbe por escrito: duas definições do mesmo conceito divergem em silêncio.
+serde = { version = "1", features = ["derive"], default-features = false }

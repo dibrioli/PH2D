@@ -273,11 +273,67 @@ losango seria um alvo morto.
 |---|---|---|
 | F3 | **Smart Bones** (Moho) — girar um osso toca uma animação inteira | nunca começado |
 | F4 | **Limites de ângulo por junta** — o cotovelo que não dobra para trás | nunca começado |
-| F5 | **Pole target** — quem decide para que lado o joelho aponta, autorado em vez de derivado da pose | a lei do lado existe (`STRAIGHT`, desempate determinístico); falta o alvo autorado |
+| F5 | ~~**Pole target**~~ → **O LADO DA DOBRA** | ✅ **FECHADO** (2026-09-07) — ver abaixo |
 | F6 | **A segunda mídia** (raster/Flip) | ⛔ **bloqueado**: precisa de uma malha sobre a imagem, que não existe — meça o preço antes de prometer |
 | F7 | **O painel próprio do módulo** | ⏸️ adiado até F3–F5 lhe darem conteúdo (medido: hoje são 3 botões e 5 campos, que cabem na seção do vetor) |
 
 ---
+
+---
+
+### F5 (fila antiga) — ✅ **O LADO DA DOBRA É AUTORADO** (2026-09-07)
+
+⭐⭐⭐ **O defeito estava MEDIDO antes de uma linha de cura ser escrita**, e é determinístico — não
+é ruído: o artista dobra o cotovelo para um lado (`side_of = −99,498744`), estica o membro até ele
+ficar direito (`0,000000` — *uma recta não tem lado*) e traz a mão de volta **ao mesmo alvo**; o
+cotovelo aparece do outro lado (`+99,498744`). Mesma magnitude, sinal trocado. Quem decide ali é o
+**desempate da corrente recta**, e ele é sempre o mesmo lado.
+
+⛔⛔ **E o *pole target* do Blender era a resposta ERRADA para este app.** A triagem de licença (§0.9)
+parou na primeira porta aberta — o **Godot é MIT** — e a API dele, corrida (`godot --headless
+--doctool`), diz o que as ferramentas 2D fazem:
+
+| ferramenta | dimensão | o que ela oferece |
+|---|---|---|
+| **Godot** `SkeletonModification2DTwoBoneIK` | 2D | **`flip_bend_direction: bool`** |
+| **Spine** `IkConstraint` | 2D | `bendDirection` `+1`/`−1`, animável |
+| **Blender** *Inverse Kinematics* | 3D | *Pole Target* (um objecto) + *Pole Angle* |
+| **Maya** `ikRPsolver` | 3D | `poleVector` + twist |
+
+⭐⭐ **O *pole* responde à pergunta do 3D, que aqui não existe.** Em três dimensões o triângulo
+raiz–cotovelo–ponta **roda em torno** do eixo raiz→ponta, e é esse grau de liberdade contínuo que um
+objecto no espaço fixa. No plano sobra **um bit**. Um alvo arrastável que codifica um bit dá a
+ilusão de controlo contínuo e depois **salta** quando o artista cruza a recta — e é por isso que as
+duas referências 2D, independentes uma da outra, escolheram a mesma forma.
+
+**O que ficou:** `IkGoal::bend` (`Auto` · `CCW` · `CW`), pintado como uma fileira de três segmentos
+depois do `Chain`. ⭐ **O valor de nascimento é CAPTURADO** — o `add` mede de que lado a corrente já
+está e grava-o —, e é isso que faz a âncora continuar a nascer sem mover um pixel **e** curar o
+defeito no mesmo gesto. ⚠️ Uma corrente que nasce **recta** recebe `Auto`, porque ali o desvio é
+ruído de `f32` amplificado e escolher um lado seria fabricar uma decisão do artista.
+
+⚠️ **`Auto` é o comportamento de sempre, ao bit** (gate
+`keep_is_the_default_and_it_is_bit_identical_to_having_no_side_at_all`), e continua a ser o que o
+**gesto** de arrastar a ponta usa: *um gesto preserva o que se vê, uma restrição defende o que se
+autorou.*
+
+⭐ **E a wave devolveu uma porta que faltava:** as duas leis desta crate mediam o lado com grandezas
+de **sinal oposto** (`v1 × v2` no ramo de dois ossos, o desvio perpendicular no de 3+), e nada
+escrito o dizia. Hoje há uma régua só, `ph2d_skeleton::side_of` — ⚠️ e a 1.ª redacção dos gates
+novos usou a errada e **acusou a implementação certa de inverter**: escrevi a porta para não cair
+nisto e caí no mesmo turno.
+
+⛔ **Fronteira NOMEADA:** numa corrente de 3+ ossos o lado é imposto **espelhando** a pose sobre a
+recta raiz→alvo antes de iterar (uma isometria, logo nenhum osso estica). Isso põe o desvio
+**dominante** do lado pedido; uma corrente em S continua a ter desvios dos dois sinais, e não há
+uma resposta única para «o lado» dela. O Godot responde a isso com um ímã **por junta**
+(`magnet_position`), que é outra feature.
+
+⚠️ **DUAS premissas minhas caíram por medição nesta wave:** a 1.ª fixtura não produzia a inversão
+(partia do lado que o desempate já escolhe, e lia `+99,498744` nas duas pontas), e a hipótese de que
+*«as duas leis desempatam para lados opostos»* — que eu ia registar como defeito — está **refutada**:
+`n=2` `−7,416198` · `n=3` `−4,472136` · `n=5` `−4,486331`, o mesmo lado nas três.
+
 
 ## ⛔ Recusas MEDIDAS deste módulo — não as reconstrua
 

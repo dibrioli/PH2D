@@ -102,7 +102,7 @@ impl BodyCtx<'_> {
     /// tempo daria um botão que só sabe recusar — e o gesto recusa-o também, então o painel estaria
     /// a prometer o que o app não faz.
     fn ik_rows(&mut self, y: f32) -> f32 {
-        let Some(_) = state::current_bone_ik() else {
+        let Some((_, _, _, lado)) = state::current_bone_ik() else {
             return self.action_button(ids::VECTOR_BONE_IK_ADD, tr("panel.vector.bone.ik.add"), y);
         };
         let mut y = self.action_button(
@@ -130,7 +130,25 @@ impl BodyCtx<'_> {
         for (id, label, step) in campos {
             y = self.labeled_number_field(label, id, step, y);
         }
-        y
+        // ⭐⭐⭐ **PARA QUE LADO O JOELHO DOBRA** — e ele vem DEPOIS de `Chain` porque é o `Chain`
+        // que decide quantos ossos têm lado: ler *«de que lado»* antes de saber *«de que corrente»*
+        // é ler a resposta antes da pergunta.
+        //
+        // ⚠️ A fileira é construída a partir de [`ph2d_skeleton::BendSide::ALL`] e da tabela de ids
+        // **ao mesmo tempo**, por índice: uma variante nova na lei sem um id ao lado é erro de
+        // compilação (os dois arrays têm de ter o mesmo comprimento), em vez de um segmento que
+        // desaparece em silêncio.
+        let rotulos = [
+            tr("panel.vector.bone.ik.bend.auto"),
+            tr("panel.vector.bone.ik.bend.ccw"),
+            tr("panel.vector.bone.ik.bend.cw"),
+        ];
+        let mut lados: [(ph2d_a11y::NodeId, &str, bool); ph2d_skeleton::BendSide::ALL.len()] =
+            [(ids::VECTOR_BONE_BEND_IDS[0], "", false); ph2d_skeleton::BendSide::ALL.len()];
+        for (i, slot) in lados.iter_mut().enumerate() {
+            *slot = (ids::VECTOR_BONE_BEND_IDS[i], rotulos[i], i == lado);
+        }
+        self.segmented(tr("panel.vector.bone.ik.bend"), &lados, y)
     }
 }
 

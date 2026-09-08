@@ -64,25 +64,37 @@ thread_local! {
     static CURRENT_IK_MIX: Cell<f64> = const { Cell::new(1.0) };
     static CURRENT_IK_SOFTNESS: Cell<f64> = const { Cell::new(0.0) };
     static CURRENT_IK_CHAIN: Cell<f64> = const { Cell::new(2.0) };
+    /// ⭐ De que lado o joelho dobra — o ÍNDICE em `BendSide::ALL`, que é o que a fileira de
+    /// segmentos precisa para saber qual acender. ⚠️ Guardar o índice e não o enum é o mesmo
+    /// idioma do `VECTOR_BONE_ACTION_IDS`: quem alinha as duas listas é a POSIÇÃO.
+    static CURRENT_IK_BEND: Cell<usize> = const { Cell::new(0) };
 }
 
 /// A âncora do osso em foco e os três números dela (`mix`, `softness`, `chain`). `None` ⇒ ele não
 /// tem uma, e o painel oferece a porta de entrada.
-pub fn set_current_bone_ik(v: Option<(f64, f64, f64)>) {
+pub fn set_current_bone_ik(v: Option<(f64, f64, f64, ph2d_skeleton::BendSide)>) {
     CURRENT_HAS_IK.with(|c| c.set(v.is_some()));
-    if let Some((mix, softness, chain)) = v {
+    if let Some((mix, softness, chain, bend)) = v {
         CURRENT_IK_MIX.with(|c| c.set(mix));
         CURRENT_IK_SOFTNESS.with(|c| c.set(softness));
         CURRENT_IK_CHAIN.with(|c| c.set(chain));
+        // ⚠️ A posição na lista da LEI, nunca um número escrito aqui: uma variante nova acende o
+        // segmento certo sem ninguém se lembrar deste ficheiro.
+        let i = ph2d_skeleton::BendSide::ALL
+            .iter()
+            .position(|s| *s == bend)
+            .unwrap_or(0);
+        CURRENT_IK_BEND.with(|c| c.set(i));
     }
 }
 
-pub(crate) fn current_bone_ik() -> Option<(f64, f64, f64)> {
+pub(crate) fn current_bone_ik() -> Option<(f64, f64, f64, usize)> {
     CURRENT_HAS_IK.with(Cell::get).then(|| {
         (
             CURRENT_IK_MIX.with(Cell::get),
             CURRENT_IK_SOFTNESS.with(Cell::get),
             CURRENT_IK_CHAIN.with(Cell::get),
+            CURRENT_IK_BEND.with(Cell::get),
         )
     })
 }

@@ -7449,6 +7449,7 @@ dependencies = [
  "ph2d-editor-core",
  "ph2d-host",
  "ph2d-i18n",
+ "ph2d-skeleton",
  "ph2d-symmetry",
  "ph2d-text",
  "ph2d-tokens",
@@ -7682,6 +7683,7 @@ name = "ph2d-skeleton"
 version = "0.0.0"
 dependencies = [
  "ph2d-affine",
+ "serde",
 ]
 
 [[package]]
@@ -7690,6 +7692,7 @@ version = "0.0.0"
 dependencies = [
  "bevy_ecs",
  "ph2d-ecs",
+ "ph2d-skeleton",
  "serde",
 ]
 

@@ -399,6 +399,9 @@ mod agenda;
 #[path = "skeleton_handle_tests.rs"]
 mod handle;
 
+#[path = "skeleton_bend_tests.rs"]
+mod bend;
+
 /// ⭐⭐⭐ **APAGAR A ÂNCORA DEVOLVE A POSE QUE O ARTISTA AUTOROU** (report do dono, 2026-09-07:
 /// *«Remove IK … não funciona plenamente»*).
 ///

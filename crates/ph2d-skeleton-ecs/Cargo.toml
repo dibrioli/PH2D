@@ -15,5 +15,10 @@ authors.workspace = true
 # arranque ao lado do `register_ecs_components`. É isso que tira o esqueleto de dentro da fundação
 # sem que ele perca undo, save, olho, cadeado, reparentar nem timeline.
 ph2d-ecs = { path = "../ph2d-ecs" }
+# ⭐ **A LEI, para o vocabulário dela** — o [`IkGoal`] grava de que lado a corrente dobra, e quem
+# define o que «lado» significa é o `two_bone`. ⚠️ A aresta é para uma FOLHA (a lei só depende da
+# álgebra) e não fecha ciclo; a alternativa era declarar o mesmo enum aqui e converter no meio, que
+# é a *segunda porta* que o cabeçalho do `skeleton_goal` proíbe por escrito.
+ph2d-skeleton = { path = "../ph2d-skeleton" }
 bevy_ecs = "0.19"
 serde = { version = "1", features = ["derive"] }

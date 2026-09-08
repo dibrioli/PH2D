@@ -400,4 +400,27 @@
 ///
 /// ⚠️ **A tripla NÃO vê este degrau** — é a **sétima** vez nesta escada: os componentes viajam em
 /// `ComponentBlob`s, e a tripla mede a forma da `VecScene` e do `FlipDoc`.
-pub(crate) const PROJECT_SCHEMA: u32 = 123;
+///
+/// # 123 -> 124 — o LADO DA DOBRA é autorado (`line/Vector`)
+///
+/// O `ph2d_skeleton_ecs::IkGoal` ganhou um **quinto campo**, `bend: ph2d_skeleton::BendSide`, e o
+/// postcard é **posicional**: um v123 lido por este layout consumiria os bytes seguintes como se
+/// fossem a variante do enum, e o que sai disso não e' um erro — e' um `IkGoal` com valores
+/// plausiveis e errados. ⇒ o degrau é o que transforma *«lixo silencioso»* em *«este ficheiro e' de
+/// outra versao»*.
+///
+/// ⭐ **O que ele cura, medido** (`the_elbow_flips_when_the_chain_passes_through_straight`): uma
+/// corrente dobrada para um lado (`-99,498744`), esticada até ficar recta (`0,000000`) e trazida de
+/// volta **ao mesmo alvo** vinha do lado oposto (`+99,498744`). O joelho invertia sozinho, porque o
+/// lado saia da POSE e uma recta nao tem lado nenhum.
+///
+/// ⚠️ **`BendSide::Keep` é o valor por omissao e ele É o comportamento antigo, ao bit** — logo um
+/// v123 hipotético nao precisaria de conversao de dados, so' de ser lido no sitio certo. ⛔ O degrau
+/// fica na mesma: o que ele protege e' o ALINHAMENTO dos bytes, nao o significado deles.
+///
+/// ⛔ **Sem degrau de migração**, pela mesma decisão do Enio de 26/08 — e aqui com a razão a mais
+/// que o 122 ja' registou: os dois `.ph2dproj` da máquina do dono sao de 26/08, **onze dias antes de
+/// os ossos existirem**.
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — a **oitava** vez, e pelo mesmo mecanismo do 122 e do 123.
+pub(crate) const PROJECT_SCHEMA: u32 = 124;

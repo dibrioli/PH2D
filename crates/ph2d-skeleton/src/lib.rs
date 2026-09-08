@@ -234,7 +234,8 @@ mod reach;
 #[path = "reach_tests.rs"]
 mod reach_tests;
 pub use reach::{
-    DEFAULT_ITERATIONS, MAX_ITERATIONS, Reach, blend_angle, reach, softened_distance, wrap_pi,
+    BendSide, DEFAULT_ITERATIONS, MAX_ITERATIONS, Reach, bend_side_of, blend_angle,
+    dominant_side, reach, side_of, softened_distance, wrap_pi,
 };
 
 #[cfg(test)]

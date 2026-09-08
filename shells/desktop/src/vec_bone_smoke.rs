@@ -29,8 +29,26 @@ use ph2d_vec_scene::ShapeKind;
 
 use crate::build_smoke::shape;
 
+/// ⭐⭐⭐ **A GEOMETRIA DO BRAÇO — uma tabela, dois consumidores.**
+///
+/// A cena monta-a e o gate `the_smoke_scene_gives_the_anchor_a_side_to_defend` mede-a. ⚠️ Escrita
+/// duas vezes, ela divergiria em silêncio e o gate passaria a aprovar uma cena que já não existe —
+/// que é exactamente o modo de falha do `CLAUDE.md` §5.0 (*uma cena que ensina o contrário do que
+/// acontece é pior que uma cena ausente*).
+pub(crate) const ARM_A: [f64; 2] = [-8.2, 2.5];
+/// A ponta do braço da cena. Ver [`ARM_A`].
+pub(crate) const ARM_B: [f64; 2] = [-1.8, 2.5];
+/// Quantos ossos o braço da cena tem. Ver [`ARM_A`].
+pub(crate) const ARM_BONES: usize = 3;
+/// ⭐ **A DOBRA DO COTOVELO**, em radianos — o que dá à âncora um lado para capturar.
+///
+/// ⚠️ **`0` aqui apaga a wave do lado da dobra em silêncio:** o `add` capturaria `Auto` sobre uma
+/// corrente recta, e o dono veria o joelho inverter exactamente como antes. O gate acima existe
+/// para esse zero ser vermelho em vez de invisível.
+pub(crate) const ARM_ELBOW_BEND: f32 = 0.45; // LITERAL-PX-OK: ângulo do documento (rad)
+
 /// Uma cadeia de `n` ossos de `a` a `b` (mundo), o 1.º sem pai. Devolve a RAIZ.
-fn cadeia(sim: &mut ph2d_ecs::SimWorld, a: [f64; 2], b: [f64; 2], n: usize) -> Option<Entity> {
+pub(crate) fn cadeia(sim: &mut ph2d_ecs::SimWorld, a: [f64; 2], b: [f64; 2], n: usize) -> Option<Entity> {
     #[expect(
         clippy::cast_precision_loss,
         reason = "n é a contagem de ossos da cena, sempre um punhado"
@@ -115,7 +133,7 @@ impl crate::App {
             &[],
             [180, 140, 220],
         ));
-        let a = cadeia(&mut gfx.sim, [-8.2, 2.5], [-1.8, 2.5], 3);
+        let a = cadeia(&mut gfx.sim, ARM_A, ARM_B, ARM_BONES);
         let t = cadeia(&mut gfx.sim, [-8.2, -0.1], [0.2, -0.1], 6);
         let f = cadeia(&mut gfx.sim, [3.0, -3.5], [8.0, -3.5], 2);
         self.vec_bone_smoke_pend = Some([(braco, a), (tentaculo, t), (folha, f)]);
@@ -174,19 +192,50 @@ impl crate::App {
         // estava: o losango é a única coisa nova na tela, e o artista descobre o que ele faz
         // arrastando-o. ⛔ Uma cena que abrisse já dobrada não distinguiria *«a âncora funciona»* de
         // *«a cena montou torta»*.
+    //
+        // ⭐⭐⭐ **E O COTOVELO NASCE DOBRADO, porque uma corrente RECTA NÃO TEM LADO.**
+        //
+        // ⚠️⚠️ **Sem isto a cena ensinaria o CONTRÁRIO do que o app faz** (`CLAUDE.md` §5.0): o
+        // `add` **captura** de que lado a corrente já está, e sobre um braço recto ele captura
+        // `Auto` — que é precisamente o modo em que o joelho **inverte** ao passar pela posição
+        // esticada. O dono arrastaria o losango, veria a inversão, e a cura estaria lá, desligada,
+        // porque a cena não lhe deu um lado para defender.
+        //
+        // ⛔ E a dobra vai no ÚLTIMO osso, não em toda a cadeia: a corrente que a âncora governa é
+        // a de `DEFAULT_CHAIN` (dois ossos), e dobrar acima dela não lhe daria lado nenhum.
+        //
+        // ⚠️ A cerca do bloco de baixo continua inteira: o que não pode abrir deslocado é a
+        // ÂNCORA (ela nasce coincidente com a ponta, e o braço não se mexe quando ela aparece).
+        // Um cotovelo dobrado é a pose que o artista autorou — é o que um braço tem.
+        if let Some((_, Some(raiz))) = pecas.first().copied() {
+            let ponta = ponta_da_cadeia(&gfx.sim, raiz);
+            if let Some(mut t) = gfx.sim.world_mut().get_mut::<ph2d_ecs::Transform>(ponta) {
+                t.rotation = ARM_ELBOW_BEND;
+            }
+        }
         let ancorado = pecas
             .first()
             .and_then(|(_, raiz)| *raiz)
             .map(|raiz| ponta_da_cadeia(&gfx.sim, raiz))
             .and_then(|ponta| crate::skeleton_goal::add(&mut gfx.sim, ponta))
             .is_some();
+        // ⚠️ O lado CAPTURADO sai no log: sem esta linha, um `Auto` capturado por engano (a cena a
+        // montar-se recta) lê-se exactamente como a cura a funcionar — até o dono arrastar.
+        let lado = pecas
+            .first()
+            .and_then(|(_, raiz)| *raiz)
+            .map(|raiz| ponta_da_cadeia(&gfx.sim, raiz))
+            .and_then(|ponta| gfx.sim.world().get::<ph2d_skeleton_ecs::IkGoal>(ponta))
+            .map_or(ph2d_skeleton::BendSide::Keep, |g| g.bend);
         eprintln!(
-            "[vec-bone-smoke] {presas} forma(s) presa(s): o BRACO (3 ossos, RETO, com ANCORA DE \
-             IK: {ancorado}) e o TENTACULO (6, ja' CURVADO pela cena -- e' o motor a trabalhar sem \
-             gesto nenhum). A FOLHA roxa tem esqueleto e NAO esta' presa -- seleccione-a e \
-             carregue em `Bind to Skeleton`. Para POSAR, fique na ferramenta Bone: arraste o CORPO \
-             de um osso para o girar, a BOLINHA da junta para o deslocar, e o LOSANGO na ponta do \
-             braco para a corrente inteira o seguir -- esse fica."
+            "[vec-bone-smoke] {presas} forma(s) presa(s): o BRACO (3 ossos, COTOVELO DOBRADO, com \
+             ANCORA DE IK: {ancorado}, lado capturado: {lado:?}) e o TENTACULO (6, ja' CURVADO \
+             pela cena -- e' o motor a trabalhar sem gesto nenhum). A FOLHA roxa tem esqueleto e \
+             NAO esta' presa -- seleccione-a e carregue em `Bind to Skeleton`. Para POSAR, fique \
+             na ferramenta Bone: arraste o CORPO de um osso para o girar, a BOLINHA da junta para \
+             o deslocar, e o LOSANGO na ponta do braco para a corrente inteira o seguir -- esse \
+             fica. ⚠️ Se `lado capturado` disser `Keep`, a cena montou-se RECTA e o smoke do lado \
+             da dobra nao tem sujeito."
         );
     }
 }

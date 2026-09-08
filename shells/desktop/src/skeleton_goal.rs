@@ -308,8 +308,14 @@ pub(crate) fn add(sim: &mut SimWorld, bone: Entity) -> Option<Entity> {
     // mesmo que o `skeleton_live::bind` faz, e pela mesma razão.
     ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
     let id = ph2d_ecs::stable_id_of(sim.world(), alvo)?;
+    // ⭐⭐⭐ **O LADO É CAPTURADO, não escolhido** — a âncora nasce a defender a dobra que o artista
+    // já posou à mão. ⚠️ Sem isto ela nasceria em `Keep`, e a primeira vez que ele esticasse o
+    // membro o joelho inverteria sozinho: é o defeito medido em
+    // `the_elbow_flips_when_the_chain_passes_through_straight`.
+    let bend = captured_side(sim, &governed(sim, bone, ph2d_skeleton_ecs::DEFAULT_CHAIN));
     sim.world_mut().entity_mut(bone).insert(IkGoal {
         target: id,
+        bend,
         ..IkGoal::default()
     });
     Some(alvo)
@@ -402,6 +408,49 @@ pub(crate) fn solve(sim: &mut SimWorld, preview: &mut PreviewDrive) -> usize {
     feitas
 }
 
+/// **AS JUNTAS DE UMA CORRENTE, em MUNDO** — `corrente.len() + 1` posições e os comprimentos entre
+/// elas. `None` quando um osso da corrente não tem segmento (a forma nasceu neste quadro).
+///
+/// ⭐ **Uma porta, dois consumidores:** quem RESOLVE ([`solve_one`]) e quem CAPTURA o lado da dobra
+/// ([`add`]). ⚠️ Escrita duas vezes, ela divergia no dia em que um dos dois passasse a saltar um
+/// osso — e o sintoma seria a âncora nascer com o lado do vizinho.
+fn joints_of(sim: &SimWorld, corrente: &[Entity]) -> Option<(Vec<[f64; 2]>, Vec<f64>)> {
+    let segs = crate::skeleton_live::bone_segments(sim);
+    let mut juntas: Vec<[f64; 2]> = Vec::with_capacity(corrente.len() + 1);
+    let mut comps: Vec<f64> = Vec::with_capacity(corrente.len());
+    for (i, &e) in corrente.iter().enumerate() {
+        let (_, a, b) = segs.iter().copied().find(|(x, _, _)| *x == e.to_bits())?;
+        juntas.push(a);
+        comps.push((b[0] - a[0]).hypot(b[1] - a[1]));
+        if i + 1 == corrente.len() {
+            juntas.push(b);
+        }
+    }
+    Some((juntas, comps))
+}
+
+/// ⭐⭐⭐ **DE QUE LADO A CORRENTE JÁ ESTÁ**, no instante em que a âncora nasce.
+///
+/// A recta de referência é `raiz → ponta`, e ela é exactamente a certa aqui: o alvo nasce **na
+/// ponta** (é o que faz criar a âncora ser um no-op visual), logo `raiz → alvo` e `raiz → ponta`
+/// são a mesma recta.
+///
+/// ⚠️ Uma corrente que nasce **recta** não tem lado, e aí devolve-se [`BendSide::Keep`] — que é o
+/// desempate determinístico de sempre. ⛔ Escolher um lado ali seria inventar uma decisão do artista
+/// a partir de ruído de `f32`.
+fn captured_side(sim: &SimWorld, corrente: &[Entity]) -> ph2d_skeleton::BendSide {
+    let Some((juntas, comps)) = joints_of(sim, corrente) else {
+        return ph2d_skeleton::BendSide::Keep;
+    };
+    let alcance: f64 = comps.iter().sum();
+    let Some(&ponta) = juntas.last() else {
+        return ph2d_skeleton::BendSide::Keep;
+    };
+    // ⚠️ **Quem decide o que «recta» significa é a LEI**, não esta função: a barra é uma fracção do
+    // alcance e vive lá dentro, ao lado do arqueamento que a usa.
+    ph2d_skeleton::bend_side_of(&juntas, ponta, alcance)
+}
+
 /// Uma corrente, um alvo. Separada por responsabilidade e pelo teto de LOC por função (HR-18).
 fn solve_one(
     sim: &mut SimWorld,
@@ -410,19 +459,9 @@ fn solve_one(
     goal: [f64; 2],
     g: IkGoal,
 ) -> bool {
-    let segs = crate::skeleton_live::bone_segments(sim);
-    let mut juntas: Vec<[f64; 2]> = Vec::with_capacity(corrente.len() + 1);
-    let mut comps: Vec<f64> = Vec::with_capacity(corrente.len());
-    for (i, &e) in corrente.iter().enumerate() {
-        let Some((_, a, b)) = segs.iter().copied().find(|(x, _, _)| *x == e.to_bits()) else {
-            return false;
-        };
-        juntas.push(a);
-        comps.push((b[0] - a[0]).hypot(b[1] - a[1]));
-        if i + 1 == corrente.len() {
-            juntas.push(b);
-        }
-    }
+    let Some((mut juntas, comps)) = joints_of(sim, corrente) else {
+        return false;
+    };
     let alcance: f64 = comps.iter().sum();
     if alcance <= f64::EPSILON {
         return false;
@@ -436,6 +475,10 @@ fn solve_one(
         goal,
         ph2d_skeleton::Reach {
             softness: g.softness.max(0.0) * alcance,
+            // ⭐ O lado AUTORADO da restrição. ⚠️ O gesto de arrastar a ponta continua a passar
+            // `Keep` (o default), e é a diferença que importa: um gesto preserva o que se vê, uma
+            // restrição defende o que se autorou.
+            bend: g.bend,
             ..ph2d_skeleton::Reach::default()
         },
     );

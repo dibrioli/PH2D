@@ -42,7 +42,7 @@ use ph2d_vec_scene::{VecScene, rectangle};
 /// ordem, do `render_loop/mod.rs`: a ponte doc↔árvore, o assentamento do pivô, e a projeção
 /// de z. (O `connector_live::upkeep` e o `flip_transform::settle_origins` correm no meio, mas
 /// não tocam nada disto: sem conector e sem objeto Flip na cena, são no-op.)
-struct Frame {
+pub(super) struct Frame {
     walk: HierarchyWalkState,
     scratch: Vec<(Entity, u8, Option<Entity>)>,
     snap: HierarchySnapshot,
@@ -53,7 +53,7 @@ struct Frame {
 }
 
 impl Frame {
-    fn new(sim: &mut SimWorld) -> Self {
+    pub(super) fn new(sim: &mut SimWorld) -> Self {
         // O MESMO registry do produto (`init.rs`). Um componente que não passa por ele é
         // silenciosamente DESCARTADO pelo snapshot — undo e save o perdem, sem erro nenhum.
         let mut reg = ComponentRegistry::new();
@@ -69,7 +69,7 @@ impl Frame {
     }
 
     /// Roda um frame de sistemas sobre o documento.
-    fn run(&mut self, sim: &mut SimWorld, scene: &mut VecScene, map: &mut VecEntityMap) {
+    pub(super) fn run(&mut self, sim: &mut SimWorld, scene: &mut VecScene, map: &mut VecEntityMap) {
         self.run_with_drag(sim, scene, map, None);
     }
 
@@ -109,8 +109,75 @@ impl Frame {
         scene.reorder_to(&order);
     }
 
+    /// ⭐⭐⭐ **O quadro com uma mutação TARDIA** — aplicada **depois** da projecção, que é onde o
+    /// `render_loop::hierarchy::dispatch` de facto corre (~2 300 linhas abaixo dela).
+    ///
+    /// ⚠️ **Ela não modela um verbo, modela a CLASSE.** Apagar, duplicar e *Remove from Sheet* são
+    /// gestos diferentes com plumbing diferente (o `HeroScreen`, a voz, a câmara), e nenhum deles é
+    /// montável num teste de unidade. O que os três têm em comum — e é a única coisa que decide o
+    /// ponto fixo — é **mutar a árvore ou a cena DEPOIS de a árvore ter sido lida**. *Um gate por
+    /// verbo mediria a plumbing; este mede a lei.*
+    pub(super) fn run_with_late(
+        &mut self,
+        sim: &mut SimWorld,
+        scene: &mut VecScene,
+        map: &mut VecEntityMap,
+        late: impl FnOnce(&mut SimWorld, &mut VecScene),
+    ) {
+        self.run(sim, scene, map);
+        late(sim, scene);
+        self.settle(sim, scene, map);
+    }
+
+    /// ⭐⭐⭐ **A RECONCILIAÇÃO ANTES DA CAPTURA** — o espelho de
+    /// [`crate::vec_tree_settle::App::settle_tree_before_capture`], que no produto corre entre o
+    /// `serve_prefab_exit` e o `post_frame_undo`.
+    ///
+    /// ⚠️ **É a REDE, não um sítio melhor para os escritores.** A projecção de cima continua onde
+    /// está porque ~40 consumidores da cena a leem antes do desenho; esta segunda passagem existe
+    /// só para que a FOTOGRAFIA seja ponto fixo. *Uma serve o que se vê no quadro, a outra o que se
+    /// guarda dele.*
+    ///
+    /// **Mutação que deve sangrar:** apagar a chamada no [`Frame::run_with_late`] — os dois gates
+    /// dos verbos tardios voltam a vermelho, com a mensagem do passo fantasma.
+    pub(super) fn settle(
+        &mut self,
+        sim: &mut SimWorld,
+        scene: &mut VecScene,
+        map: &mut VecEntityMap,
+    ) {
+        sync(sim, scene, map);
+        // ⭐⭐ **O assentamento do pivô entra aqui, e foi o gate do *duplicar* que o disse**: sem
+        // ele os dois controlos passavam e o ponto fixo continuava vermelho, porque a entidade
+        // cunhada agora nasce com `Transform::default()` e o quadro seguinte assentava-a sozinho.
+        crate::vec_transform::settle_origins(sim, scene, map, &[]);
+        ph2d_ecs::assign_missing_root_order(sim.world_mut());
+        ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+        ph2d_ecs::assign_missing_sibling_order(sim.world_mut());
+        build_hierarchy_snapshot(
+            sim.world(),
+            &mut self.walk,
+            &mut self.scratch,
+            &mut self.snap,
+        );
+        let order = z_order(sim.world(), &self.snap);
+        scene.reorder_to(&order);
+    }
+
+    /// A ordem de z que a árvore dita AGORA — a metade de leitura da passagem, isolada para a
+    /// medição por peça (`the_second_pass_costs_this_much_of_a_frame`) poder dizer onde está o teto.
+    pub(super) fn snapshot_now(&mut self, sim: &mut SimWorld) -> Vec<VecPathId> {
+        build_hierarchy_snapshot(
+            sim.world(),
+            &mut self.walk,
+            &mut self.scratch,
+            &mut self.snap,
+        );
+        z_order(sim.world(), &self.snap)
+    }
+
     /// O que o `post_frame_undo` fotografa no fim do frame.
-    fn capture(&mut self, sim: &mut SimWorld, scene: &VecScene) -> ProjectState {
+    pub(super) fn capture(&mut self, sim: &mut SimWorld, scene: &VecScene) -> ProjectState {
         ProjectState::capture(
             // Nada sob condução: estes gates são do ponto FIXO dos sistemas de vetor.
             &crate::preview_drive::PreviewDrive::default(),
@@ -128,12 +195,12 @@ impl Frame {
 }
 
 /// A ordem de z da cena (fundo → topo), que é o que o `reorder_to` escreve.
-fn z(scene: &VecScene) -> Vec<VecPathId> {
+pub(super) fn z(scene: &VecScene) -> Vec<VecPathId> {
     scene.paths().iter().map(|p| p.id).collect()
 }
 
 /// Três formas soltas, criadas AGORA — como o Shape Builder as cria (ainda sem entidade).
-fn three_fresh_shapes(scene: &mut VecScene) -> [VecPathId; 3] {
+pub(super) fn three_fresh_shapes(scene: &mut VecScene) -> [VecPathId; 3] {
     [
         scene.push_path(rectangle([0.0, 0.0], [1.0, 1.0])),
         scene.push_path(rectangle([2.0, 0.0], [3.0, 1.0])),

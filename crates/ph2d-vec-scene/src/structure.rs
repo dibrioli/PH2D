@@ -287,11 +287,33 @@ impl VecScene {
     /// Um id ausente de `order` vai para o FUNDO, preservando a ordem relativa —
     /// é o path recém-criado, cuja entidade a árvore ainda não conhece neste frame.
     /// A projeção nunca perde um path. Devolve `true` se a ordem mudou.
+    /// ⚠️⚠️ **A chave é PRÉ-COMPUTADA, e isso é o teto deste passe — não higiene.**
+    ///
+    /// Escrita como `order.iter().position(…)` **dentro** do `sort_by_key`, a chave custa `O(n)`
+    /// por comparação e o passe inteiro fica `O(n² log n)`. Medido em 2026-09-08
+    /// (`the_second_pass_costs_this_much_of_a_frame`, por peça): a **`5 000` formas ele era
+    /// `4,990 ms` de um total de `5,704`** — `87 %` da reconciliação e **`30 %` de um quadro de
+    /// 16,7 ms —, contra `0,218 ms` a `1 000`: 5× as formas por 23× o relógio, que é lógica e não
+    /// carga. ⚠️ **E ele já se pagava assim uma vez por quadro**, muito antes da rede do fim do
+    /// quadro o ter revelado.
+    ///
+    /// ⚠️ **O `or_insert` preserva o `position`, que devolve a PRIMEIRA ocorrência** — um `collect`
+    /// directo ficaria com a última e mudaria a ordem em caso de id repetido.
     pub fn reorder_to(&mut self, order: &[VecPathId]) -> bool {
+        let mut rank: std::collections::BTreeMap<VecPathId, usize> =
+            std::collections::BTreeMap::new();
+        for (i, &id) in order.iter().enumerate() {
+            rank.entry(id).or_insert(i + 1);
+        }
         let before: Vec<VecPathId> = self.paths.iter().map(|p| p.id).collect();
         // `sort_by_key` é estável → os ausentes (chave 0) mantêm a ordem entre si.
         self.paths
-            .sort_by_key(|p| order.iter().position(|&o| o == p.id).map_or(0, |r| r + 1));
-        before != self.paths.iter().map(|p| p.id).collect::<Vec<_>>()
+            .sort_by_key(|p| rank.get(&p.id).copied().unwrap_or(0));
+        // O `sort` não muda o comprimento, então comparar em par não perde nada — e poupa a
+        // segunda alocação de `n` ids por quadro.
+        before
+            .iter()
+            .zip(self.paths.iter())
+            .any(|(a, p)| *a != p.id)
     }
 }

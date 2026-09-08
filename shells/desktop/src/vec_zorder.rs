@@ -250,6 +250,12 @@ pub(crate) fn reorder(
 #[path = "vec_zorder_fixpoint_tests.rs"]
 mod zorder_fixpoint_tests;
 
+/// ⭐⭐⭐ **Os verbos TARDIOS da Hierarquia** (apagar · duplicar · *Remove from Sheet*) — irmão pelo
+/// mesmo teto, e por ASSUNTO: ali mede-se a projecção, aqui a rede que a segue.
+#[cfg(test)]
+#[path = "vec_zorder_late_writers_tests.rs"]
+mod late_writers_tests;
+
 /// Os gates do Z-index e dos botões Arrange — irmão pelo mesmo teto.
 #[cfg(test)]
 #[path = "vec_zorder_arrange_tests.rs"]

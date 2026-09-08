@@ -839,6 +839,9 @@ mod vec_text_object;
 mod vec_text_reopen;
 mod vec_text_ride;
 mod vec_transform;
+/// ⭐⭐⭐ **A RECONCILIAÇÃO ANTES DA CAPTURA** — a rede que apanha todo escritor TARDIO da árvore
+/// (apagar · duplicar · *Remove from Sheet*), medida em 2026-09-08.
+mod vec_tree_settle;
 mod vec_trim;
 /// **OS VERBOS DA PELE** (plano UI/UX W6.2) — vestir, trocar de tipo, despir.
 mod vec_ui_state_edit;
@@ -1422,6 +1425,13 @@ impl App {
         // documento como outra qualquer, e o passo por diff regista-o (o `Ctrl+Z` traz as edições
         // de volta). Ver [`crate::prefab_stage`].
         self.serve_prefab_exit();
+        // ⭐⭐⭐ **A REDE DOS ESCRITORES TARDIOS DA ÁRVORE** (2026-09-08) — aqui, e a posição é a
+        // MESMA lei que o `sync_instances` duas linhas acima já declara: *depois do quadro, e antes
+        // da captura.* O `hierarchy::dispatch` (apagar · duplicar · *Remove from Sheet*) corre
+        // ~2 300 linhas DEPOIS da projecção de z; sem esta passagem a fotografia guarda um mundo e
+        // um documento que discordam, e o quadro seguinte reconcilia-os **sozinho** — que é o passo
+        // fantasma do report de 2026-09-07, por outro verbo. Ver [`crate::vec_tree_settle`].
+        self.settle_tree_before_capture();
         self.post_frame_undo();
         // **O menu Ficheiro**, no mesmo sítio e pela mesma razão: `self` está livre do borrow do
         // render loop, e um diálogo nativo é modal — abri-lo a meio do frame prenderia o `gfx`.

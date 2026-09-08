@@ -23,7 +23,7 @@
 | F1 | `StableId` + `SiblingOrder` + snapshot v2 + **a 1ª migração** + corte da Sprite | ✅ 2026-08-25 |
 | F2 | O undo vira incremental (protocolo das 6 condições) | ✅ 2026-08-25 |
 | F3 | O Inspector passa a mostrar o que o objeto TEM · o `+` e a paleta · objeto vazio na raiz — **walking skeleton** | ✅ 2026-08-25 |
-| F4 | Núcleo de instância: Duplicar/Criar componente/Instanciar/sync/Destacar + física | ✅ **FECHADA 2026-09-07** — F4.1–F4.5 ✅ · F4.6a/b ✅ · F4.7 ✅ (os 3 smoke-gates) · **F4.6c ✅**: o motor de instância **do vetor** saiu (`VecInstance`/`VecComponentMain` e satélites, **−5 170 LOC líquidas** em 44 ficheiros), o `PROJECT_SCHEMA` subiu **123 → 124** e os **três** contadores desceram de `79`/`80`/`80` para `77`/`78`/`78`. O bloqueio era **prático** — a `line/Vector` viva — e dissolveu-se no dia em que ela integrou (§F4.6c-fecho) |
+| F4 | Núcleo de instância: Duplicar/Criar componente/Instanciar/sync/Destacar + física | ✅ **FECHADA 2026-09-07** — F4.1–F4.5 ✅ · F4.6a/b ✅ · F4.7 ✅ (os 3 smoke-gates) · **F4.6c ✅**: o motor de instância **do vetor** saiu (`VecInstance`/`VecComponentMain` e satélites, **−5 170 LOC líquidas** em 44 ficheiros), o `PROJECT_SCHEMA` subiu **123 → 124** e os **três** contadores desceram de `79`/`80`/`80` para `77`/`78`/`78`. O bloqueio era **prático** — a `line/Vector` viva — e dissolveu-se no dia em que ela integrou (§F4.6c-fecho) · **F4.6d ✅** (2026-09-08): os outros verbos tardios foram MEDIDOS — apagar e duplicar **produzem** o fantasma —, e a cura é uma **rede** antes da captura, que pelo caminho achou dois tetos QUADRÁTICOS que já se pagavam por quadro (§F4.6d) |
 | F5 | Aninhamento + variantes + Overrides sem alvo + **a FORMA de uma cópia** | ✅ **FECHADA 2026-09-06** — **F5.1** aninhamento ✅ · **F5.3/F5.6** os órfãos são NOMEADOS e largam-se um a um ✅ (critério 3) · **variantes ✅ 2026-08-27** (fileira plana, modelo Unity) · **critério 4 — a escada do *Aplicar* ✅ 2026-09-04** (§F5.5) · **troca por mestre NÃO aparentado ✅ 2026-09-05** (3 modos + relatório, §F5.8) · **F5.9** a lista de órfãos fica accionável ✅ · **F5.10 — a peça RECUSADA ✅ 2026-09-06** (*Removed GameObject*, `PROJECT_SCHEMA` 115→116) · **F5.11 — a peça ACRESCENTADA ✅ 2026-09-06** (*Added GameObject*, **derivada**, schema intocado) · **F5.12 — mover uma peça na receita move-a em TODAS as cópias ✅ 2026-09-06** (a 3.ª metade da forma) · **F5.13/F5.14** as cenas de smoke corrigidas ✅ (3 passos impossíveis + 1 que pedia o gesto que a guarda não apanha) · ⛔ **EIXOS de propriedade REVOGADOS e ADIADOS** (Enio, 01/09 — o §F5-bis descreve trabalho que **saiu do fonte**; ver [`06`](06_plano_variacoes_sem_chaves.md)) |
 | F6 | O índice de assets (`ph2d-asset-index`) — sem UI | ✅ 2026-08-30 (996 LOC + a taxonomia) |
 | F7 | O painel Asset Browser + o arrasto único | ✅ 2026-08-30 — etapas **A–D** do [plano 07](07_plano_do_navegador_de_assets.md); `DragPayload` com as duas famílias |
@@ -1162,7 +1162,7 @@ mesmo dia (`a_chip_changes_exactly_one_axis` passava pela ORDEM da família).
 **Medido e ILIBADO:** a altura do cartão cabe (50→118 px com 4 eixos) · os chips **não** colapsam a
 zero (seria preciso um painel de 91 px contra um mínimo de 220) · a porta `instance_axis_option`
 custa **3 ns** · o gate `table_driven_chips_are_registered_too` **vê** a grelha de 32 ids · e o
-smoke não tem passo que perturbe o que o seguinte mede.
+smoke não tem passo que estrague o que o seguinte mede.
 
 ⏳ **Aberto e nomeado:** o rótulo do eixo come **25 %** da fileira (8 chips ficam com 11,6–19,2 px
 no painel mínimo) · o cartão de instância inteiro **não tem um único `seam_*`** — a prova
@@ -2658,3 +2658,104 @@ muda o documento**, e aí o custo volta ao de hoje. A cura de fundo é `Arc` **p
 que o mundo usa desde a F2) — e o preço dela é o `drawings`/`strokes` que hoje saem por `&mut`.
 ⚠️ **No Flip esse resíduo dói mais que no vetor**, porque desenhar É o gesto do módulo: o caso
 comum de uma sessão de Flip é precisamente o caso em que a partilha não ajuda.
+
+---
+
+### ✅ §F4.6d — **OS OUTROS VERBOS TARDIOS produzem o fantasma, e a cura é uma REDE** (2026-09-08)
+
+O handoff da F4.6c fechou o report *«reordenei objectos na hierarquia e não funcionou o undo»*
+movendo o dreno do reparent para antes da projecção de z, e deixou a pergunta escrita:
+
+> *«Os outros verbos tardios da Hierarquia — apagar · duplicar · Remove from Sheet — escrevem a
+> árvore no MESMO sítio tardio e têm a mesma latência estrutural. **NÃO foi medido** se produzem o
+> fantasma.»*
+
+**Foi medido. Produzem.** Os dois gates novos
+([`vec_zorder_late_writers_tests`](../../shells/desktop/src/vec_zorder_late_writers_tests.rs))
+nasceram **vermelhos**, e o mecanismo é o [`vec_entities::sync`], que é **bidireccional**:
+
+| verbo | o dreno escreve | o `sync` do quadro SEGUINTE faz sozinho | o passo fantasma |
+|---|---|---|---|
+| apagar (`hierarchy_delete`) | `despawn` da **entidade** | tira o caminho do **documento** | `partes: ["vec"]` |
+| duplicar (`hierarchy_duplicate`) | um caminho novo no **documento** | cunha a **entidade** | `partes: ["world"]` |
+
+Os dois vivem no `render_loop::hierarchy::dispatch`, que corre **~2 300 linhas depois** do
+`vec_scene.reorder_to`. ⚠️ **Apagar tira do MUNDO e duplicar põe no DOCUMENTO** — as duas metades da
+mesma latência, e um gate só teria deixado metade da classe por medir.
+
+#### ⛔ Duas curas medidas e recusadas, e porquê a que ficou é uma REDE
+
+- **Mover os escritores** (a cura do reparent) custou uma linha ali porque o `drain_reparent` é
+  auto-contido; apagar e duplicar vivem no meio de dezenas de verbos com dependências no que o
+  quadro computou entretanto. E ⛔ **não fecha a CLASSE**: o próximo verbo tardio renasce doente.
+- **Mover a LEITURA para o fim** foi medido e recusado: entre o `reorder_to` e o `dispatch` correm
+  **~40 consumidores da cena** (`envelope_live`, `skeleton_live`, `pattern_live`, `align_live`, o
+  hit-test e o desenho). *A ordem das `paths` **é** a ordem de pintura* — projectar só no fim daria
+  a todos eles um quadro de atraso. Gate a defender esta posição:
+  `the_drawing_pass_still_projects_the_z_order_before_the_consumers`.
+
+⇒ a leitura fica onde está **para o desenho**, e [`vec_tree_settle`](../../shells/desktop/src/vec_tree_settle.rs)
+reconcilia outra vez **para a fotografia**, entre o `serve_prefab_exit` e o `post_frame_undo`.
+*São duas perguntas, não duas respostas à mesma: uma serve o que se VÊ no quadro, a outra o que se
+GUARDA dele.* ⚠️ **É o sítio e a razão que o `sync_instances` já declarava** duas linhas acima, para
+outro sistema — a lei já estava escrita ali.
+
+#### ⚠️ O TERCEIRO escritor derivado, que só o gate disse
+
+A 1.ª redacção da rede era `sync` + os três `assign_missing_*` + a projecção. Com ela, os **dois
+controlos** do gate do *duplicar* passavam (a entidade existe, com `StableId`) e o **ponto fixo
+continuava vermelho**: falta o **assentamento do pivô** — uma entidade cunhada agora nasce com
+`Transform::default()`, e o quadro seguinte assentava-a **sozinho**. ⚠️ A lista dos que estão em
+gesto sai da MESMA porta do passe do desenho (`vec_transform::gesture_paths`); um `&[]` ali
+assentaria a forma sob o cursor.
+
+#### ⚠️ Os CONTROLOS mudaram com a cura, e a mudança é o achado
+
+Eles afirmavam *«o caminho ainda está no documento neste quadro»* e *«a entidade ainda não
+existe»* — descreviam o **defeito**, não a lei. Com a rede, os dois passaram a ser falsos.
+*Um controlo escrito contra o mundo doente reprova quando ele sara.* Os de hoje afirmam que a
+reconciliação FEZ o trabalho, que é o que impede o ponto fixo de ser vácuo.
+
+#### ⭐⭐⭐ E a medição do PREÇO achou dois tetos QUADRÁTICOS que já se pagavam por quadro
+
+A rede corre em **todo** quadro, então o §0.0 exigiu o número antes de a pôr no caminho. A tabela
+por peça (`the_second_pass_costs_this_much_of_a_frame`, `--release`, com o `load` ao lado) nomeou-os:
+
+| formas | passagem ANTES | depois do `sync` | **depois do `reorder_to`** |
+|---|---|---|---|
+| 100 | `0,015 ms` | `0,013` | **`0,012 ms` — 0,1 %** |
+| 1 000 | `0,451 ms` | `0,324` | **`0,156 ms` — 0,9 %** |
+| 5 000 | `10,459 ms` (**63 %** de um quadro) | `5,463` | **`1,002 ms` — 6,0 %** |
+
+- **`vec_entities::sync`** filtrava com `scene.paths().iter().any(…)` **dentro** do laço sobre o
+  mapa ⇒ `O(formas²)`. Cura: um `BTreeSet` dos ids vivos (⚠️ **`BTreeSet`, nunca `HashSet`** — a
+  espinha do determinismo).
+- **`VecScene::reorder_to`** derivava a chave com `order.iter().position(…)` **dentro** do
+  `sort_by_key` ⇒ a chave custava `O(n)` por comparação. Era **`4,990 ms` de `5,704`** a 5 000
+  formas — **87 %** da reconciliação. Cura: rank pré-computado (⚠️ `or_insert`, para preservar a
+  PRIMEIRA ocorrência que o `position` devolvia).
+
+⭐⭐ **Os dois já se pagavam uma vez por quadro, muito antes desta wave** — a segunda passagem não
+criou o custo, **revelou-o**. ⇒ com a rede E as duas curas, o quadro a 5 000 formas ficou **mais
+barato do que era sem a rede**. *Uma cura que paga a si própria.*
+
+⚠️ **A carga estava em `8,8`–`13,9`** nas três corridas (acima da régua de `~5` do §5.0), e é por
+isso que o que se lê aqui é a **assinatura** — 5× as formas por 23× o relógio é lógica, não carga —
+e não o valor absoluto.
+
+#### Provas de mutação (3 de 3 mortas, cada uma na linha certa)
+
+| mutação | resultado |
+|---|---|
+| apagar a chamada à rede no arnês | **2 de 2** vermelhos |
+| apagar o assentamento do pivô da rede | **1 de 2** vermelho (o do *duplicar*, que é o desenho) |
+| trocar a ordem `settle`/`post_frame_undo` no produto | o gate de texto vermelho |
+
+#### ⏳ O que fica ABERTO, nomeado
+
+- ⛔ **A rede não é derivável**: nada mede que ela contenha *todos* os escritores derivados do passe
+  do desenho. Essa metade é medida pelos gates de ponto fixo com mutação tardia — e foi um deles que
+  descobriu o pivô em falta, **com os dois controlos já verdes**. Um passe derivado novo que alguém
+  acrescente ao `render_loop` e esqueça aqui só é apanhado se o arnês o tiver.
+- ⏳ O **`build_hierarchy_snapshot`** é agora a peça mais cara da rede (`0,291 ms` de `1,002` a
+  5 000 formas) e **não foi atacado**.

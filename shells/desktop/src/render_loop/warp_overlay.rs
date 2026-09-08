@@ -95,6 +95,37 @@ const CASE_PX: f64 = 1.25;
 /// ⚠️ **O `active` é a tool Motion**, e ele é gateado pelo chamador como no
 /// `field_gizmo`: fora dela o canvas é dos sprites, e alças de nó ali seriam alvos que
 /// roubam o clique de outra ferramenta.
+/// ⛔⛔ **A SONDA DO QUADRO — `PH2D_WARP_DIAG=1`.**
+///
+/// Report do Enio, 2026-09-08, **duas vezes** (*«sumiu com o gizmo»* e, depois da minha primeira
+/// cura, *«ainda invisível»*). As duas curas saíram de hipóteses LIDAS do código, e as duas
+/// estavam erradas — enquanto isso, tudo o que se consegue medir de fora diz que o gizmo devia
+/// estar lá: a sonda `why_the_warp_gizmo_is_not_there` mostra o `resolve` a devolver `Some` na
+/// cena EXACTA do report (com o warp antes e depois do espelho), e o gate
+/// `the_gizmo_paints_geometry_and_paints_none_when_inactive` mostra o pintor a emitir tinta.
+///
+/// ⇒ o que falta medir é o **QUADRO**, e para isso não há arnês: o `run_render_frame` pede uma
+/// janela real. Esta linha é o instrumento mínimo que fecha o buraco — ela diz, do sítio onde a
+/// tinta sai, se ela saiu e quanta. *Uma pergunta sobre o quadro responde-se no quadro.*
+pub(super) fn diag(marca: &str) -> bool {
+    static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    if !*ON.get_or_init(|| std::env::var("PH2D_WARP_DIAG").is_ok_and(|v| v != "0")) {
+        return false;
+    }
+    // Uma linha por segundo, não por quadro: a 60 fps o terminal deixaria de ser legível.
+    static ULTIMA: std::sync::Mutex<Option<std::time::Instant>> = std::sync::Mutex::new(None);
+    let Ok(mut u) = ULTIMA.lock() else {
+        return false;
+    };
+    let agora = std::time::Instant::now();
+    if u.is_none_or(|t| agora.duration_since(t).as_secs_f32() >= 1.0) {
+        *u = Some(agora);
+        eprintln!("[warp-diag] {marca}");
+        return true;
+    }
+    false
+}
+
 pub(super) fn draw_warp_gizmo(
     active: bool,
     v: &warp_gizmo::WarpGizmoView,
@@ -105,6 +136,7 @@ pub(super) fn draw_warp_gizmo(
     vector_scene: &mut VectorScene,
 ) {
     if !active {
+        diag("a tool nao e' a Motion — nada desenhado");
         return;
     }
     // ⚠️ **A janela da CENA, resolvida AQUI e não pelo chamador.** Passar a janela cheia
@@ -171,6 +203,17 @@ pub(super) fn draw_warp_gizmo(
             .stroke(&Stroke::new(ARM_PX), Affine::IDENTITY, &dim, None, &arms);
     }
 
+    if diag("desenhando") {
+        let (cx, cy) = (v.bbox.lo, v.bbox.hi);
+        let a = pt(ring[0]);
+        eprintln!(
+            "[warp-diag]   caixa de mundo {cx:?}..{cy:?} · 1.o ponto do contorno em TELA \
+             ({:.1}, {:.1}) · {} alcas · alca de canto {CORNER_PX:.1} px",
+            a.x,
+            a.y,
+            live.len()
+        );
+    }
     // ── as ALÇAS ──
     for h in live {
         let c = pt(h.world);

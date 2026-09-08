@@ -372,6 +372,11 @@ pub(crate) use doc::{
     Downstream, WarpGizmoView, param_port, publish, resolve, scene_window, taps_for, view,
     view_handles, view_outline,
 };
+// ⚠️ **As peças de DENTRO do `resolve`, para a sonda de diagnóstico.** Ele tem seis saídas
+// antecipadas e devolve um `Option` só: quem o lê sabe que o gizmo não existe e **não sabe
+// porquê**, e foi isso que fez duas curas seguidas serem palpites (report do Enio, 08/09).
+#[cfg(test)]
+pub(crate) use doc::{box_from_tap, selected_warp, upstream_of, warp_amount};
 
 #[cfg(test)]
 #[path = "warp_gizmo_tests.rs"]

@@ -394,6 +394,11 @@ mod upscale_bridge;
 pub(crate) mod warp_gizmo;
 /// O DESENHO desse gizmo — o contorno, os braços e as alças.
 mod warp_overlay;
+
+/// A sonda que diz POR QUE o gizmo do warp nao existe — ver o cabecalho dela.
+#[cfg(all(test, feature = "panel-motion-graph"))]
+#[path = "warp_gizmo_probe.rs"]
+mod warp_gizmo_probe;
 // ADR-0108 cutover: the single Vector-tool bridge (style sync + recolour).
 // Rendering of `AppGfx.vec_scene` stays inline below (ph2d_vec_render).
 // pub(crate): `set_mode` é chamado do `vec_text` (o `T` troca o modo pela allowlist
@@ -9025,6 +9030,12 @@ impl crate::App {
                         surface.size(),
                         vector_scene,
                     );
+                } else {
+                    // ⚠️ **O outro lado da sonda, e ele é o que distingue os dois casos.** Sem
+                    // esta linha, um `PH2D_WARP_DIAG=1` que não imprime nada lê-se como *«a sonda
+                    // não está a correr»* — que é exactamente a ambiguidade que fez duas curas
+                    // seguidas serem palpites.
+                    warp_overlay::diag("nao ha' retrato publicado (`view()` = None)");
                 }
                 anchor_overlay::draw_anchor_marks(
                     !hero

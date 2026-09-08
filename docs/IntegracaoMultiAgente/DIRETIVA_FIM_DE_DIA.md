@@ -400,7 +400,12 @@ for p in "${BUILDERS[@]}"; do
   pgrep -x "$p" >/dev/null && { echo "✗ '$p' rodando — ABORTADO, nada apagado."; exit 1; }
 done
 
-df -h / | awk 'NR==2{printf "disco antes: %s de %s (%s)\n",$3,$2,$5}'
+# ⚠️⚠️ MEDE O DISCO DO PROJETO, NUNCA `/` — medido 2026-09-07: com `df -h /` esta linha
+# leu `204G → 204G` sobre **470 GB** de facto apagados, e o §5 chama a este numero «a
+# prova». O PH2D vive num disco DEDICADO (`/home/enio/Documentos/Projetos`, 1,9 T) e a raiz
+# e' outro sistema de ficheiros (950 G). *Um `df` sem caminho mede onde se ESTA', nunca o
+# que se apagou* — e a prova de que a cura entrou e' esta linha passar a mexer-se.
+df -h "$primary" | awk 'NR==2{printf "disco antes: %s de %s (%s)\n",$3,$2,$5}'
 
 # §0 — a saúde do disco ANTES de apagar (não-alocado · metadata · swap · checksum). Não
 # aborta: limpar continua certo; mas «não-alocado»/«metadata» vermelhos dizem que o df
@@ -437,7 +442,7 @@ git worktree list --porcelain | awk '/^worktree /{print $2}' | while read -r wt;
   echo "✓ $(basename "$wt"): liberado $sz, target recriado nocow"
 done
 
-df -h / | awk 'NR==2{printf "disco depois: %s de %s (%s)\n",$3,$2,$5}'
+df -h "$primary" | awk 'NR==2{printf "disco depois: %s de %s (%s)\n",$3,$2,$5}'
 
 # ══ A SAÚDE DO DISCO NO FIM DO DIA — obrigatória, e a saída vai INTEIRA no relatório ═══
 # É a medição diária que o Enio pediu (2026-08-22): «não-alocado» e «metadata» dizem se
@@ -471,7 +476,12 @@ O `~/.cache/sccache` **não aparece** no script — de propósito. Ele fica.
 
 ## §5 — O relatório (o que o agente devolve)
 
-1. **Disco antes → depois** (o número é a prova).
+1. **Disco antes → depois** (o número é a prova). ⚠️⚠️ **E ele só é prova se medir o disco
+   CERTO:** o PH2D vive num disco **dedicado** e a raiz é outro sistema de ficheiros. Em
+   2026-09-07 o `df -h /` do §4 leu **`204G → 204G`** sobre **470 GB** apagados — *a linha que
+   este item chama «a prova» era a única do relatório que não podia prová-lo*. O §4 mede
+   `"$primary"` desde então; se alguma vez os dois números forem iguais com worktrees liberadas,
+   é a régua que voltou, não a limpeza que falhou.
 2. **Quais worktrees foram puladas e por quê** (build ativo / trabalho não-commitado / symlink).
 3. **O que foi preservado**: `~/.cache/sccache` (o cache quente), o `target/` do primário (tmpfs),
    toda fonte e todo git.

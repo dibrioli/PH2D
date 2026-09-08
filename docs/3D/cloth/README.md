@@ -11,7 +11,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**6 arquivos** · **2** citados pelo `CLAUDE.md` (marcados **◆**).
+**7 arquivos** · **2** citados pelo `CLAUDE.md` (marcados **◆**).
 
 | # | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
@@ -21,6 +21,7 @@
 | 04 |   | [04_espec_do_comportamento.md](04_espec_do_comportamento.md) | — | Cloth (W10) — a espec do comportamento |
 | 05 | ◆ | [05_a_vitoria_medida.md](05_a_vitoria_medida.md) | — | 05 — A VITÓRIA, medida (o pincel de tecido, 2026-09-06) |
 | 06 | ◆ | [06_o_plano_do_que_falta.md](06_o_plano_do_que_falta.md) | plano | 06 — O PLANO do que falta no pincel de tecido |
+| 07 |   | [07_o_filtro_de_tecido.md](07_o_filtro_de_tecido.md) | — | 07 — O FILTRO DE TECIDO (a segunda metade da W10) |
 
 ---
 

@@ -2337,3 +2337,144 @@ fn the_two_drawn_shapes_answer_the_vertex_door_with_none() {
         );
     }
 }
+
+// ─────────────────────────── W137 ───────────────────────────
+
+/// O pior `campo / (D − R)` a uma distância `D` da origem, sobre `dirs²·2` direções.
+///
+/// `R` é o raio de contenção, logo `D − R` é uma **cota inferior garantida** da distância verdadeira
+/// à peça: quem está a `D` da origem está a pelo menos `D − R` de tudo o que cabe na bola de raio
+/// `R`. ⭐ *Um campo que devolve menos que isto sabe menos do que a caixa de contenção já sabe.*
+fn worst_far_ratio(f: &Field, r: f64, d: f64, dirs: usize) -> (f64, [f64; 3]) {
+    let (mut pior, mut onde) = (f64::INFINITY, [0.0; 3]);
+    // ⛔⛔⛔ **O `θ` VAI DE PONTA A PONTA, e isso é load-bearing: a grelha TEM de pisar o EQUADOR.**
+    //
+    // A 1.ª redacção usava `(i + ½)/dirs`, que **straddleia** `θ = π/2` e nunca lá cai. O defeito
+    // que este censo existe para apanhar vive num PLANO (a onda é um anel: fora dele o termo
+    // `|z| − h` do próprio campo já dá distância a sério), então a razão lida ficava presa em
+    // `0,096` — o `|cos θ|` mínimo da grelha — em vez do `0,023` que o campo de facto devolve em
+    // `z = 0`. *Uma grelha que evita o plano do defeito mede a grelha, não o campo.*
+    //
+    // ⚠️ É a MESMA cegueira que o `the_bounding_radius_contains_the_piece` já pagou uma vez, com a
+    // quina a `75,7°/17,3°` a passar de raspão entre `7,5°` e `22,5°`.
+    for i in 0..=dirs {
+        for j in 0..(dirs * 2) {
+            let theta = std::f64::consts::PI * f64::from(u32::try_from(i).unwrap()) / dirs as f64;
+            let phi =
+                std::f64::consts::TAU * f64::from(u32::try_from(j).unwrap()) / (dirs * 2) as f64;
+            let p = [
+                d * theta.sin() * phi.cos(),
+                d * theta.sin() * phi.sin(),
+                d * theta.cos(),
+            ];
+            let razao = f.at(p[0], p[1], p[2]) / (d - r);
+            if razao < pior {
+                pior = razao;
+                onde = p;
+            }
+        }
+    }
+    (pior, onde)
+}
+
+/// ⭐⭐⭐ **O PISO DO CAMPO DISTANTE** — a barra saiu da tabela do [`probe_how_far_the_field_sees`].
+///
+/// ⚠️ **MEDIDO** (07/09, a `D = 64R`, sobre as 56 formas de fórmula do censo). Os sete piores:
+///
+/// | forma | `4R` | `16R` | **`64R`** |
+/// |---|---:|---:|---:|
+/// | `gear` | 0,267 | 0,214 | **0,204** |
+/// | `speech_oval` | 0,441 | 0,396 | **0,388** |
+/// | `drop` | 0,403 | 0,401 | **0,400** |
+/// | `ellipsoid` | 0,400 | 0,400 | **0,400** |
+/// | `speech_rect` | 0,463 | 0,416 | **0,409** |
+/// | `torus_knot` | 0,452 | 0,452 | **0,452** |
+/// | `thread` | 0,491 | 0,467 | **0,463** |
+///
+/// ⛔ **Os sete são DIVISORES, não saturações, e a coluna que os separa é a ESTABILIDADE:** a razão
+/// deles mal se move ao afastar (`0,267 → 0,204` no pior), logo o campo CRESCE — só que mais devagar
+/// que a distância. Uma saturação **colapsa com `D`**: sobre o defeito real este gate lê **`0,0004`**
+/// (campo `0,0144` a `38,4` da origem), que é `300×` abaixo do piso, enquanto a pior forma honesta
+/// fica `1,7×` acima dele.
+///
+/// ⭐⭐ **É por isso que a medição é a `64R` e não a `4R`: afastar SEPARA as duas famílias** — e é
+/// por isso que a grelha de direcções pisa o EQUADOR (ver [`worst_far_ratio`]).
+///
+/// ⏳ **E os sete são trabalho NOMEADO:** a cura geral é `max` contra `‖p‖ − R` em cada folha —
+/// grátis em correcção (a peça cabe na bola, logo é minorante, e o `max` de 1-Lipschitz é
+/// 1-Lipschitz) — e o bloqueador é que o [`ph2d_field::bounding_radius`] das duas primitivas de
+/// PERFIL não é gateado por ninguém: se ele subestimasse, o campo passaria a **exagerar** a
+/// distância e a marcha atravessaria a peça.
+const FAR_FLOOR: f64 = 0.12;
+/// ⭐⭐⭐ **ATÉ ONDE O CAMPO VÊ** — a tabela que decide a barra do gate irmão.
+#[test]
+#[ignore = "sonda: a tabela do campo distante, forma a forma"]
+fn probe_how_far_the_field_sees() {
+    println!("  forma                | D=4R  | D=16R | D=64R | pior ponto (D=16R)");
+    for k in PrimitiveKind::ALL {
+        let Some(p) = representative(k) else {
+            continue;
+        };
+        let r = f64::from(ph2d_field::bounding_radius(&p));
+        let f = field_of(p);
+        let a = worst_far_ratio(&f, r, 4.0 * r, 16).0;
+        let (b, onde) = worst_far_ratio(&f, r, 16.0 * r, 16);
+        let c = worst_far_ratio(&f, r, 64.0 * r, 16).0;
+        println!(
+            "  {:20} | {a:5.3} | {b:5.3} | {c:5.3} | ({:.2},{:.2},{:.2})",
+            k.key(),
+            onde[0],
+            onde[1],
+            onde[2]
+        );
+    }
+}
+
+/// ⭐⭐⭐ **NENHUMA FORMA ESQUECE O QUE A ESFERA DE CONTENÇÃO JÁ SABE** (W137).
+///
+/// # ⛔⛔ Os 28 gates deste censo estavam VERDES sobre o defeito que o dono viu
+///
+/// Report de 07/09, com fotos: *«a Circle Wave afeta/deforma tudo que está na sua direção em x
+/// mesmo se estiver distante — o joint dela atravessa todo o eixo x»* e *«tem performance ruim»*.
+/// O campo dela **saturava** num valor minúsculo: a `2,0` de distância lia `0,0198` onde a verdade
+/// era `1,5155` — **`76×` menos**.
+///
+/// ⚠️⚠️ **E nenhuma régua desta linha olhava para lá.** O censo mede o gradiente, a secção, o
+/// volume, a silhueta e o filete — **tudo junto da peça**. É a terceira vez em três waves que o
+/// campo mente exactamente onde nenhuma régua olha (a cunha infinita da rosca, o termo angular da
+/// onda junto ao eixo, e agora o campo distante).
+///
+/// # ⭐ A lei, e por que ela é sempre alcançável
+///
+/// A peça cabe na bola de raio `R` = [`ph2d_field::bounding_radius`], logo quem está a `D` da
+/// origem está a **pelo menos `D − R`** de tudo o que é peça. Isso é uma cota inferior que
+/// **qualquer** construção pode ter de graça, com um `max` contra `‖p‖ − R`. ⇒ *um campo que
+/// devolve muito menos que `D − R` sabe menos do que a caixa de contenção já sabe.*
+///
+/// ⚠️ **As duas metades do report são o MESMO número.** A junta mistura por DIFERENÇA de campo, logo
+/// um campo que satura agarra um vizinho a qualquer distância; e a marcha ANDA o campo, logo ela
+/// atravessa o vazio ao passo do valor saturado. Medido em passos (`probe_wave_march_steps`), de
+/// `4,0` de distância: **`378 → 24`** a 12 lóbulos, com a esfera e o tubo de controlo imóveis.
+#[test]
+fn no_primitive_forgets_what_the_bounding_sphere_knows() {
+    for k in PrimitiveKind::ALL {
+        let Some(p) = representative(k) else {
+            continue;
+        };
+        let r = f64::from(ph2d_field::bounding_radius(&p));
+        let f = field_of(p);
+        let (razao, onde) = worst_far_ratio(&f, r, 64.0 * r, 16);
+        assert!(
+            razao >= FAR_FLOOR,
+            "«{}»: a {:.2} da origem o campo devolve {:.4} da distancia que a esfera de contencao \
+             ja garante ({razao:.3} do piso {FAR_FLOOR}) — em ({:.2},{:.2},{:.2}) a junta agarra um \
+             vizinho distante e a marcha anda aos passinhos",
+            k.key(),
+            64.0 * r,
+            razao * (64.0 * r - r),
+            onde[0],
+            onde[1],
+            onde[2]
+        );
+    }
+}

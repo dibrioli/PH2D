@@ -78,7 +78,27 @@ fn the_price_of_the_curves() {
     }
     println!("\n── a ONDA, lóbulo a lóbulo (o divisor é que paga) ──");
     let mut linhas = Vec::new();
+    // ⛔⛔⛔ **O INSTRUMENTO QUE PRODUZIU O TECTO JÁ NÃO O ALCANÇA** — achado da W137.
+    //
+    // Esta varredura ia a `48` e foi ela que escolheu o [`ph2d_field::MAX_WAVE_LOBES`] = `12`. Uma
+    // wave depois, o `FieldDoc::new` passou a **recusar** o que está acima da cerca, e a sonda
+    // deixou de compilar uma peça a `16` — ela ESTOIRAVA aqui, com um erro que diz
+    // `NonPositive { what: "lobes" }` sobre o valor `16`, que não é não-positivo nenhum.
+    //
+    // ⇒ *uma cerca cuja própria régua não a consegue ultrapassar nunca mais é re-medida*, e o §0.0
+    // manda re-medir sempre que alguém mexe no número que a tornava inalcançável. A varredura para
+    // na cerca e diz como se passa dela: **subir o `MAX_WAVE_LOBES` localmente e re-correr** é o
+    // único caminho honesto, porque o preço tem de ser medido pela porta do PRODUTO (o `trace` come
+    // um `FieldDoc`, e é o documento que decide o que existe).
+    let teto = ph2d_field::MAX_WAVE_LOBES;
     for lobes in [1_u32, 2, 4, 8, 12, 16, 24, 32, 48] {
+        if lobes > teto {
+            println!(
+                "  (a cerca do documento pára em {teto} lóbulos — para medir além dela, suba o \
+                 MAX_WAVE_LOBES e re-corra)"
+            );
+            break;
+        }
         let (radius, amplitude) = (0.50_f32, 0.11_f32);
         let ms = cronometra(
             &format!("onda ({lobes} lóbulos)"),

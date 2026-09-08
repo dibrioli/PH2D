@@ -336,3 +336,84 @@ fn the_two_curves_of_the_census_are_pieces_the_document_accepts() {
     });
     let _ = campo(onda(0.40, 0.11, 7, 0.0));
 }
+
+// ─────────────────────────── W137 ───────────────────────────
+
+/// Quantos passos a marcha de esferas dá desde `de` até tocar a peça, de raspão.
+///
+/// ⚠️ **O raio aponta de RASPÃO e não ao centro:** apontada à origem, uma esfera resolve-se em UM
+/// passo (o campo exacto entrega a distância certa e o primeiro salto aterra na superfície), e um
+/// controlo que lê `1` não distingue uma régua boa de uma partida.
+fn passos_da_marcha(f: &Field, doc: &FieldDoc, de: [f64; 3]) -> u32 {
+    let passo = f64::from(ph2d_field_eval::safe_march_step(doc));
+    let alvo = [0.0, 0.30, 0.0];
+    let n = (de[0] * de[0] + de[1] * de[1] + de[2] * de[2]).sqrt();
+    let v = [alvo[0] - de[0], alvo[1] - de[1], alvo[2] - de[2]];
+    let m = (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt();
+    let dir = [v[0] / m, v[1] / m, v[2] / m];
+    let (mut p, mut andou, mut passos) = (de, 0.0_f64, 0_u32);
+    while passos < 20_000 && andou < 4.0 * n {
+        let d = f.at(p[0], p[1], p[2]);
+        if d < 1.0e-4 {
+            break;
+        }
+        let avanco = d * passo;
+        for k in 0..3 {
+            p[k] += dir[k] * avanco;
+        }
+        andou += avanco;
+        passos += 1;
+    }
+    passos
+}
+
+/// ⭐⭐⭐ **UM RAIO QUE COMEÇA MAIS LONGE NÃO PAGA PELA DISTÂNCIA** (W137) — a régua do PREÇO, e ela
+/// não é um relógio.
+///
+/// # ⛔ O segundo relato do dono era o MESMO defeito que o primeiro
+///
+/// *«tem performance ruim»*, na mesma mensagem em que ele reportou que *«o joint dela atravessa
+/// todo o eixo x»*. As duas metades são o mesmo número — **o campo longe da peça**: a junta mistura
+/// por DIFERENÇA de campo, e a marcha **anda** o campo. Um campo que satura num valor pequeno agarra
+/// vizinhos a qualquer distância **e** atravessa o vazio ao passo do valor saturado.
+///
+/// ⭐⭐ **A contagem de passos é determinística**, logo esta régua vale sob qualquer carga da
+/// máquina — o que nenhum gate de `ms` deste repo pode dizer de si (§5.0).
+///
+/// ⚠️ **MEDIDO** (A/B pela porta, com a parede de fora dentro e fora):
+///
+/// | passos até à peça | de `1,0` | de `2,0` | de `4,0` |
+/// |---|---:|---:|---:|
+/// | esfera (controlo) | 9 | 10 | 10 |
+/// | tubo (controlo) | 6 | 6 | 7 |
+/// | onda 6 lóbulos — **antes** | 57 | 120 | **209** |
+/// | onda 6 lóbulos — depois | 21 | 43 | **31** |
+/// | onda 12 lóbulos — **antes** | 81 | 178 | **378** |
+/// | onda 12 lóbulos — depois | 30 | 25 | **24** |
+///
+/// ⭐ **A assinatura não é a altura da coluna, é a INCLINAÇÃO:** antes, dobrar a distância dobrava
+/// os passos (uma marcha de passo constante); depois é plana. Os controlos não se mexeram — é isso
+/// que separa uma régua honesta de uma que mediu a máquina.
+#[test]
+fn a_ray_that_starts_farther_does_not_pay_for_the_distance() {
+    for (nome, p) in [
+        ("esfera (controlo)", Primitive::Sphere { radius: 0.35 }),
+        ("onda 6 lóbulos", onda(0.35, 0.08, 6, 0.0)),
+        ("onda 12 lóbulos", onda(0.35, 0.08, 12, 0.0)),
+    ] {
+        let doc = FieldDoc::new(
+            vec![Node::new(Xform::IDENTITY, NodeKind::Leaf(p))],
+            NodeId(0),
+        )
+        .expect("a peça tem de ser aceite");
+        let f = Field::new(&doc);
+        let perto = passos_da_marcha(&f, &doc, [1.0, 0.0, 0.0]);
+        let longe = passos_da_marcha(&f, &doc, [4.0, 0.0, 0.0]);
+        assert!(
+            f64::from(longe) <= 2.0 * f64::from(perto),
+            "«{nome}»: de 4,0 a marcha dá {longe} passos contra {perto} de 1,0 ({:.2}× o dobro \
+             tolerado) — o campo satura longe da peça, e o vazio anda-se ao passo do valor saturado",
+            f64::from(longe) / (2.0 * f64::from(perto))
+        );
+    }
+}

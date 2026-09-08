@@ -220,8 +220,24 @@ pub fn sd_circle_wave(
     // ⚠️⚠️ **É a SEGUNDA vez em duas waves que eu limito um divisor sobre «onde há matéria»** — a
     // rosca (W135) teve a cunha infinita a ganhar o `min` dentro da peça pela mesma razão. *O
     // domínio de um divisor é a CAIXA, não a peça.*
-    let fora = (Tree::constant(dentro) - rho).max(Tree::z().abs() - Tree::constant(half_height));
-    peca.max(fora)
+    // ⚠️⚠️ **E A PAREDE DE FORA É A METADE QUE FALTAVA — o report do dono, 07/09** (*«afeta/deforma
+    // tudo que está na sua direção em x mesmo se estiver distante»* + *«tem performance ruim»*).
+    //
+    // ⭐⭐⭐ **Os dois relatos são UM número: o campo LONGE da peça.** O tecto acima capa o campo em
+    // `tecto` na CAIXA INTEIRA, e não apenas junto do eixo onde ele é preciso: a `2,0` de distância
+    // o campo lia **`0,0198`** contra `1,5155` de verdade (**`76×` menos**). ⇒ a junta mistura por
+    // DIFERENÇA de campo e agarrava um vizinho a qualquer distância; e a marcha ANDA o campo, logo
+    // atravessava o vazio a `0,0198` por passo.
+    //
+    // ⭐ A peça vive toda em `dentro ≤ ρ ≤ bordo` e `|z| ≤ h`. Cada uma das três paredes é a
+    // distância EXACTA ao complemento do seu próprio conjunto, logo cada uma é um minorante da
+    // distância à peça, e o `max` de minorantes 1-Lipschitz é um minorante 1-Lipschitz. *A que
+    // faltava era a de FORA — e sem ela nenhum tecto pode ser posto sem cegar o campo distante.*
+    let bordo = radius + amplitude + thickness;
+    let caixa = (Tree::constant(dentro) - rho.clone())
+        .max(rho - Tree::constant(bordo))
+        .max(Tree::z().abs() - Tree::constant(half_height));
+    peca.max(caixa)
 }
 
 /// ⭐⭐⭐ **A BEZIER COM ESPESSURA, puxada em Z** — a peça que o catálogo entrega.

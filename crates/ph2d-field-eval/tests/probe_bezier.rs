@@ -270,3 +270,179 @@ fn probe_wave_gradient() {
         1.0 / pior_global
     );
 }
+
+// ─────────────────────────── W137 ───────────────────────────
+
+/// A distância EXACTA do ponto ao sólido da onda, por varredura densa do corpo.
+///
+/// ⚠️ Ele não partilha uma linha com o produto: sai da DEFINIÇÃO do conjunto
+/// `{ |ρ − R(φ)| ≤ t, |z| ≤ h }`, varrendo `φ`, as duas paredes em `ρ` e as duas tampas.
+fn dist_a_onda(
+    p: [f64; 3],
+    radius: f64,
+    amplitude: f64,
+    lobes: u32,
+    thickness: f64,
+    half_height: f64,
+) -> f64 {
+    let n = 4_000_usize;
+    let mut melhor = f64::INFINITY;
+    for i in 0..n {
+        let phi = std::f64::consts::TAU * i as f64 / n as f64;
+        let r = radius + amplitude * (f64::from(lobes) * phi).sin();
+        for k in 0..=40 {
+            let rr = r - thickness + 2.0 * thickness * f64::from(k) / 40.0;
+            for m in 0..=8 {
+                let z = -half_height + 2.0 * half_height * f64::from(m) / 8.0;
+                let d = (p[0] - rr * phi.cos())
+                    .hypot(p[1] - rr * phi.sin())
+                    .hypot(p[2] - z);
+                melhor = melhor.min(d);
+            }
+        }
+    }
+    melhor
+}
+
+/// ⭐⭐⭐ **O CAMPO LONGE DA PEÇA** — os dois relatos do dono numa régua só.
+///
+/// *"afeta/deforma tudo que está na sua direção em x mesmo se estiver distante"* e *"tem performance
+/// ruim"* são o MESMO número: quanto o campo devolve num ponto afastado. A junta mistura por
+/// diferença de campo, e a marcha ANDA o campo — um campo que satura num valor pequeno agarra
+/// vizinhos longínquos **e** obriga a marcha a dar centenas de passos no vazio.
+#[test]
+#[ignore = "sonda"]
+fn probe_wave_far_field() {
+    let (radius, amplitude, lobes, half_height) = (0.35_f64, 0.08_f64, 6_u32, 0.10_f64);
+    let thickness = 0.30 * 0.90 * (radius - amplitude);
+    let p = ph2d_field::Primitive::CircleWave {
+        radius: radius as f32,
+        amplitude: amplitude as f32,
+        lobes,
+        thickness: thickness as f32,
+        half_height: half_height as f32,
+        round: 0.0,
+        chamfer: 0.0,
+    };
+    let doc = ph2d_field::FieldDoc::new(
+        vec![ph2d_field::Node::new(
+            ph2d_field::Xform::IDENTITY,
+            ph2d_field::NodeKind::Leaf(p),
+        )],
+        ph2d_field::NodeId(0),
+    )
+    .expect("a peca tem de ser aceite");
+    let f = Field::new(&doc);
+    println!("  ponto                    |   campo   |  verdade  |  campo/verdade");
+    for (nome, q) in [
+        ("no aro (controlo)", [radius + thickness + 0.02, 0.0, 0.0]),
+        ("+x  0,5", [0.5, 0.0, 0.0]),
+        ("+x  1,0", [1.0, 0.0, 0.0]),
+        ("+x  2,0", [2.0, 0.0, 0.0]),
+        ("+y  2,0", [0.0, 2.0, 0.0]),
+        ("diagonal 2,0", [1.414, 1.414, 0.0]),
+        ("+z  2,0", [0.0, 0.0, 2.0]),
+        ("no eixo (controlo)", [0.0, 0.0, 0.0]),
+    ] {
+        let lido = f.at(q[0], q[1], q[2]);
+        let verdade = dist_a_onda(q, radius, amplitude, lobes, thickness, half_height);
+        println!(
+            "  {nome:24} | {lido:9.5} | {verdade:9.5} | {:9.4}",
+            lido / verdade
+        );
+    }
+}
+
+/// Quantos passos a marcha de esferas dá desde `de` até tocar a peça, na direcção da origem.
+///
+/// ⭐ **É a régua do PREÇO que não é um relógio** — a contagem é determinística, logo vale sob
+/// qualquer carga da máquina (§5.0). Um campo que satura longe não muda a FORMA: ele multiplica
+/// esta contagem, e é isso que o dono vê como *«performance ruim»*.
+fn passos_da_marcha(f: &Field, doc: &ph2d_field::FieldDoc, de: [f64; 3]) -> u32 {
+    let passo = f64::from(ph2d_field_eval::safe_march_step(doc));
+    // ⚠️ **O raio aponta de RASPÃO, e não ao centro.** Apontado à origem, uma esfera resolve-se num
+    // passo — o campo exacto entrega a distância certa e o primeiro salto aterra na superfície. Um
+    // controlo que lê `1` não distingue uma régua boa de uma partida; de raspão ele lê a dezena que
+    // a marcha de esferas de facto custa.
+    let alvo = [0.0, 0.30, 0.0];
+    let v = [alvo[0] - de[0], alvo[1] - de[1], alvo[2] - de[2]];
+    let n = (de[0] * de[0] + de[1] * de[1] + de[2] * de[2]).sqrt();
+    let m = (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt();
+    let dir = [v[0] / m, v[1] / m, v[2] / m];
+    let (mut p, mut andou, mut passos) = (de, 0.0_f64, 0_u32);
+    while passos < 20_000 && andou < 4.0 * n {
+        let d = f.at(p[0], p[1], p[2]);
+        if d < 1.0e-4 {
+            break;
+        }
+        let avanco = d * passo;
+        for k in 0..3 {
+            p[k] += dir[k] * avanco;
+        }
+        andou += avanco;
+        passos += 1;
+    }
+    passos
+}
+
+/// ⭐⭐⭐ **O PREÇO DA ONDA MEDIDO EM PASSOS** — o segundo relato do dono (*«tem performance ruim»*).
+#[test]
+#[ignore = "sonda"]
+fn probe_wave_march_steps() {
+    println!("  peca            | de 1,0 | de 2,0 | de 4,0");
+    for (nome, p) in [
+        (
+            "esfera (controlo)",
+            ph2d_field::Primitive::Sphere { radius: 0.35 },
+        ),
+        (
+            "tubo (controlo)",
+            ph2d_field::Primitive::Tube {
+                outer: 0.43,
+                inner: 0.27,
+                angle: std::f32::consts::PI,
+                half_height: 0.10,
+                round: 0.0,
+                chamfer: 0.0,
+            },
+        ),
+        (
+            "onda 6 lobulos",
+            ph2d_field::Primitive::CircleWave {
+                radius: 0.35,
+                amplitude: 0.08,
+                lobes: 6,
+                thickness: 0.30 * 0.90 * (0.35 - 0.08),
+                half_height: 0.10,
+                round: 0.0,
+                chamfer: 0.0,
+            },
+        ),
+        (
+            "onda 12 lobulos",
+            ph2d_field::Primitive::CircleWave {
+                radius: 0.35,
+                amplitude: 0.08,
+                lobes: 12,
+                thickness: 0.30 * 0.90 * (0.35 - 0.08),
+                half_height: 0.10,
+                round: 0.0,
+                chamfer: 0.0,
+            },
+        ),
+    ] {
+        let doc = ph2d_field::FieldDoc::new(
+            vec![ph2d_field::Node::new(
+                ph2d_field::Xform::IDENTITY,
+                ph2d_field::NodeKind::Leaf(p),
+            )],
+            ph2d_field::NodeId(0),
+        )
+        .expect("a peca tem de ser aceite");
+        let f = Field::new(&doc);
+        let a = passos_da_marcha(&f, &doc, [1.0, 0.0, 0.0]);
+        let b = passos_da_marcha(&f, &doc, [2.0, 0.0, 0.0]);
+        let c = passos_da_marcha(&f, &doc, [4.0, 0.0, 0.0]);
+        println!("  {nome:15} | {a:6} | {b:6} | {c:6}");
+    }
+}

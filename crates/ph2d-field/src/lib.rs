@@ -227,7 +227,22 @@ use serde::{Deserialize, Serialize};
 /// `VEC_SCENE_SCHEMA`, `FLIP_SCHEMA` e o `DOC_VERSION` da timeline, e **este número não está na
 /// lista dele** — logo duas linhas que o subam em paralelo fundem-se sem que a sonda diga nada.
 /// *Um número que soma entre linhas e não está na sonda de colisão é um número que ninguém conta.*
-pub const FIELD_DOC_VERSION: u32 = 18;
+///
+/// # v19 — as DUAS CURVAS da W136, e o degrau que a wave voltou a dever
+///
+/// O [`Primitive`] ganhou [`Primitive::Bezier`] e [`Primitive::CircleWave`]. Outra vez variantes
+/// **acrescentadas no fim** — nenhum índice existente se move, um documento v18 continua a ler-se
+/// certo — e outra vez **o degrau sobe na mesma**. ⚠️⚠️ **A W136 fechou sem o subir**, uma wave
+/// depois de o v18 ter sido escrito precisamente para registar que cinco waves o tinham esquecido:
+/// *uma lei escrita na escada não é lida por quem acrescenta a variante seguinte — só uma PORTA
+/// seria*, e este número continua fora do `collision-surface.sh`.
+///
+/// ⚠️ **O que este degrau NÃO cobre:** a W137 mudou o CAMPO da [`Primitive::CircleWave`] longe da
+/// peça (a parede de contenção exterior), e isso muda o que uma **junta suave** desenha num
+/// documento já gravado — a peça fica igual, o que era colado à distância deixa de o ser. ⛔ Não é
+/// degrau de formato: os bytes lêem-se na mesma. *A escada versiona o que o ficheiro DIZ, nunca o
+/// que o avaliador FAZ com o que ele diz.*
+pub const FIELD_DOC_VERSION: u32 = 19;
 
 /// Índice de um nó na arena.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]

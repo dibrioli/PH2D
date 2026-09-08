@@ -13710,3 +13710,166 @@ filete oval.*
 
 **Smoke:** *MODEL* > **A** > *Bezier Curve*, *Parabola* e *Circle Wave*, e `PH2D_FIELD_SMOKE=30`
 para as quatro lado a lado.
+
+---
+
+## §138 — W137: o campo que SATURAVA longe da peça, e as duas metades do mesmo report (07/09)
+
+> **Report do Enio, com quatro fotos e setas:** *«Circle Wave foi bem desenhada mas afeta/deforma
+> tudo que está na sua direção em x mesmo se estiver distante. O joint dela atravessa todo o eixo
+> x»* — e, na mensagem seguinte, *«e tem performance ruim»*.
+
+### §138.0 — ⭐⭐⭐ Os dois relatos são UM número
+
+A junta suave mistura duas peças por **diferença de campo**; a marcha de esferas **anda** o campo.
+Um campo que devolve um valor pequeno longe da peça faz as duas coisas ao mesmo tempo: agarra um
+vizinho a qualquer distância, e atravessa o vazio ao passo desse valor.
+
+Medido no representante (raio `0,35`, amplitude `0,08`, 6 lóbulos):
+
+| ponto | campo | verdade | campo/verdade |
+|---|---:|---:|---:|
+| no aro (controlo) | 0,00402 | 0,01351 | 0,298 |
+| `+x 1,0` | **0,01982** | 0,52178 | 0,038 |
+| `+x 2,0` | **0,01982** | 1,51547 | **0,013** |
+| `+y 2,0` | **0,01982** | 1,51547 | 0,013 |
+| diagonal `2,0` | **0,01982** | 1,56681 | 0,013 |
+| `+z 2,0` | 1,90000 | 1,91020 | 0,995 |
+| no eixo (controlo) | 0,19710 | 0,19710 | 1,000 |
+
+⭐ **O campo não decaía: ele PARAVA.** `0,01982` a `1,0`, a `2,0` e a `2,0` na diagonal — o mesmo
+número. A `2,0` de distância a onda anunciava-se **`76×` mais perto** do que estava, e por isso a
+junta a colava a tudo o que estivesse no plano dela. ⚠️ **E só no plano** — a coluna `+z` lê `0,995`,
+porque ali o termo `|z| − h` do próprio campo ainda dá distância a sério. É isso que o dono viu como
+*«na sua direção em x»*: o defeito é **radial**, e as peças da cena dele estavam todas no plano.
+
+### §138.1 — ⛔⛔ A causa: um TECTO posto na caixa inteira para curar um problema do EIXO
+
+A W136 capava o campo em `tecto = (1 − WAVE_FLOOR)·dentro` para matar o termo angular junto ao eixo
+(onde um passo minúsculo em `x` roda `φ` muito e a derivada explode). O tecto **cura isso**, e o
+`max` com o furo devolvia a distância certa **dentro** do buraco. ⛔ O que faltava era a outra
+parede: **fora** do anel não havia nada a repor a distância, e o campo ficava no tecto para sempre,
+dividido pelo `lip`: `0,0986 / 4,97 = 0,0198`.
+
+⭐ **A cura é uma terceira parede, e é exacta:** a peça vive toda em `dentro ≤ ρ ≤ bordo` e
+`|z| ≤ h`, com `bordo = radius + amplitude + thickness`. Cada uma das três é a distância exacta ao
+complemento do seu próprio conjunto, logo cada uma é minorante da distância à peça, e o `max` de
+minorantes 1-Lipschitz é um minorante 1-Lipschitz. Depois da cura, `+x 2,0` lê **`1,4971`** contra
+`1,5155` de verdade — `0,988`.
+
+⚠️ **É a TERCEIRA wave seguida em que eu limito um campo sobre «onde há matéria» em vez de sobre a
+CAIXA** (a cunha infinita da rosca na W135, o termo angular da onda na W136, e agora o exterior).
+*O domínio de um campo é a caixa, e um tecto sem a parede que o repõe é um campo cego.*
+
+### §138.2 — ⭐⭐ O preço, medido em PASSOS (que não é um relógio)
+
+A contagem de passos da marcha é determinística ⇒ vale sob qualquer carga da máquina, ao contrário
+de todo gate de `ms` deste repo (§5.0). A/B pela porta, com a parede de fora dentro e fora:
+
+| passos até à peça | de `1,0` | de `2,0` | de `4,0` |
+|---|---:|---:|---:|
+| esfera (controlo) | 9 | 10 | 10 |
+| tubo (controlo) | 6 | 6 | 7 |
+| onda 6 lóbulos — **antes** | 57 | 120 | **209** |
+| onda 6 lóbulos — depois | 21 | 43 | **31** |
+| onda 12 lóbulos — **antes** | 81 | 178 | **378** |
+| onda 12 lóbulos — depois | 30 | 25 | **24** |
+
+⭐ **A assinatura não é a altura da coluna, é a INCLINAÇÃO.** Antes, dobrar a distância dobrava os
+passos — o vazio andava-se a passo constante, que é o que uma marcha de esferas nunca deve fazer.
+Depois é plano: um raio que começa `4×` mais longe custa o mesmo. **`378 → 24`** a 12 lóbulos, e os
+dois controlos não se mexeram.
+
+### §138.3 — ⛔⛔⛔ Os 28 gates do censo estavam VERDES sobre isto
+
+O censo mede o gradiente, a secção, o volume, a silhueta e o filete — **tudo junto da peça**. Não
+havia uma única régua a olhar para longe dela. É a terceira vez em três waves que o campo mente
+exactamente onde nenhuma régua olha.
+
+⭐ **A régua nova é a esfera de contenção:** a peça cabe na bola de raio `R`, logo quem está a `D`
+da origem está a **pelo menos `D − R`** de tudo o que é peça — e isso é uma cota que qualquer
+construção pode ter de graça. ⇒ *um campo que devolve muito menos que `D − R` sabe menos do que a
+caixa de contenção já sabe.* Gate `no_primitive_forgets_what_the_bounding_sphere_knows`, derivado do
+`PrimitiveKind::ALL`.
+
+### §138.4 — ⛔⛔ E a primeira redacção da régua nova mediu a GRELHA, não o campo
+
+A varredura de direcções usava `(i + ½)/dirs` em `θ`, que **straddleia `θ = π/2` e nunca lá cai**.
+O defeito da onda vive num PLANO (fora dele o `|z| − h` já dá distância a sério), então a razão lida
+ficava presa no `|cos θ|` mínimo da grelha:
+
+| régua | lê sobre o defeito | margem sobre o piso |
+|---|---:|---:|
+| grelha que evita o equador | `0,096` | `1,6×` |
+| grelha que **pisa** o equador | **`0,0004`** | **`300×`** |
+
+⚠️ *Uma grelha que evita o plano do defeito mede a grelha, não o campo* — e é a **mesma** cegueira
+que o `the_bounding_radius_contains_the_piece` já tinha pago uma vez, com a quina a `75,7°/17,3°`
+a passar de raspão entre `7,5°` e `22,5°`. ⛔ Eu escrevi `0,023` no doc-comment do gate como
+previsão e a medição deu `0,096`: *o número que se escreve é o que a medição deu.*
+
+### §138.5 — ⏳ O censo inteiro, e os SETE que a cura geral apanharia
+
+A tabela a `D = 64R`, sobre as 56 formas de fórmula (é a `64R` porque **afastar separa as duas
+famílias**: uma saturação colapsa com `D`, um divisor não se move):
+
+| forma | `4R` | `16R` | **`64R`** |
+|---|---:|---:|---:|
+| `gear` | 0,267 | 0,214 | **0,204** |
+| `speech_oval` | 0,441 | 0,396 | **0,388** |
+| `drop` | 0,403 | 0,401 | **0,400** |
+| `ellipsoid` | 0,400 | 0,400 | **0,400** |
+| `speech_rect` | 0,463 | 0,416 | **0,409** |
+| `torus_knot` | 0,452 | 0,452 | **0,452** |
+| `thread` | 0,491 | 0,467 | **0,463** |
+
+⛔ **Nenhum dos sete é uma saturação** — a razão deles mal se move ao afastar, logo o campo cresce,
+só que mais devagar que a distância. O `gear` paga hoje **`4,9×`** os passos que precisaria no
+vazio, e o `ellipsoid` `2,5×`.
+
+⏳ **A cura geral está nomeada e NÃO foi construída:** `max` contra `‖p‖ − R` em cada folha, grátis
+em correcção (a peça cabe na bola ⇒ minorante; o `max` de 1-Lipschitz é 1-Lipschitz). ⛔ **O
+bloqueador é medido:** o `bounding_radius` das duas primitivas de PERFIL (`Extrude`/`Revolve`) não é
+gateado por ninguém — o `the_bounding_radius_contains_the_piece` devolve `None` para as duas —, e se
+ele subestimasse o campo passaria a **exagerar** a distância e a marcha atravessaria a peça. *Uma
+cura que é grátis para 54 formas e perigosa para 2 precisa do gate das 2 primeiro.*
+
+### §138.6 — ⛔ A sonda que produziu o tecto de lóbulos já não o alcançava
+
+A `the_price_of_the_curves` varria até `48` lóbulos e foi ela que escolheu o `MAX_WAVE_LOBES = 12`.
+Uma wave depois, o `FieldDoc::new` passou a recusar o que está acima da cerca — e a sonda
+**ESTOIRAVA**, com um erro que diz `NonPositive { what: "lobes" }` sobre o valor `16`, que não é
+não-positivo nenhum. ⇒ *uma cerca cuja própria régua não a consegue ultrapassar nunca mais é
+re-medida*, e o §0.0 manda re-medir sempre que alguém mexe no número que a tornava inalcançável.
+Hoje ela pára na cerca e **diz como se passa dela**.
+
+### §138.8 — ⚠️ O tecto de lóbulos foi RE-CONFERIDO e NÃO se move
+
+O §0.0 manda re-conferir o número sempre que alguém mexe no que o tornava inalcançável. Re-medido
+(`load 4,80`, com os controlos a baterem certo com a tabela de 07/09 — esfera `2,6` contra `2,5`,
+tubo `2,0` contra `2,0`, logo as duas colunas são comparáveis):
+
+| lóbulos | 1 | 2 | 4 | 8 | **12** |
+|---|---:|---:|---:|---:|---:|
+| ms **antes** (07/09) | 3,4 | 4,2 | 5,2 | 6,9 | **8,5** |
+| ms **depois** | 6,1 | 4,5 | 5,9 | 7,3 | **8,0** |
+
+⇒ **`MAX_WAVE_LOBES = 12` fica.** ⭐ **E a razão de não se mover é o mecanismo:** um quadro com UMA
+peça enquadrada gasta-se em raios que já estão perto dela, e a saturação só cobra no VAZIO. É por
+isso que a cura vale `15,8×` em passos a `4,0` de distância e ~`6 %` num quadro de uma peça só —
+*o dono viu-a na CENA, com várias peças e a onda ao longe, que é exactamente onde a diferença mora.*
+⚠️ A coluna de `1` lóbulo (`3,4 → 6,1`) é ruído: mesmo a `load 4,8` esta bancada tem ±20 %, e é por
+isso que a régua do preço desta wave é a **contagem de passos**, não o relógio.
+
+### §138.7 — Os gates
+
+| gate | o que mede |
+|---|---|
+| `no_primitive_forgets_what_the_bounding_sphere_knows` | o campo a `64R` contra `D − R`, nas 56 formas — piso `0,12`, **medido** |
+| `a_ray_that_starts_farther_does_not_pay_for_the_distance` | os passos de `4,0` contra os de `1,0` — a INCLINAÇÃO, com a esfera de controlo |
+
+Os dois provados por mutação (tirar a parede de fora): o primeiro lê `0,0004` contra o piso `0,12`,
+o segundo lê `209` passos contra `57`.
+
+**Smoke:** *MODEL* > **A** > *Circle Wave*, com uma segunda forma longe dela e uma junta suave entre
+as duas — a onda deixa de a puxar.

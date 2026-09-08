@@ -4,13 +4,22 @@
 //! dos vizinhos — a LEI mora no kernel ([`ph2d_sculpt3d::MaskTransform`]), e o
 //! que mora aqui é *o que a mão na tela quer dizer*.
 //!
-//! # Por que não há gizmo
+//! # ⭐⭐⭐ O GIZMO EXISTE desde 2026-09-08 — e o modal FICA
 //!
-//! A referência dirige isto por um gizmo 3D de treze alças. O gizmo deste repo é
-//! o de **SPRITE** (ADR-0110/0111), 2D, e um gizmo 3D é wave própria e grande. O
-//! substituto não é um compromisso: é a **outra** metade do desenho do Blender —
-//! o *modal transform*, em que a ferramenta é armada e o arrasto a executa. Aqui
-//! ele encaixa num `Drag` a mais, ao lado dos três que a cena já tem.
+//! ⛔ **Esta secção chamava-se *«Por que não há gizmo»***, e a razão escrita nela
+//! era exacta para o dia: *«o gizmo deste repo é o de SPRITE (ADR-0110/0111),
+//! 2D, e um gizmo 3D é wave própria e grande»*. ⚠️ **A premissa dissolveu-se
+//! porque um VIZINHO pagou a wave**: o módulo de modelagem 3D tem um gizmo de
+//! treze alças desde a W26, e ele é lei pura — ⇒ §0.0, *quem move o número que
+//! tornava algo inalcançável tem de reconferir a nota*. As alças da escultura
+//! vivem em [`super::gizmo`], sobre aquela lei.
+//!
+//! ⚠️ **E o modal não saiu: ele é o caminho de OMISSÃO.** Sem alça sob o dedo o
+//! arrasto corre livre, exactamente como sempre correu — é a **outra** metade do
+//! desenho do Blender, em que a ferramenta é armada e o arrasto a executa. *Um
+//! gizmo que tomasse conta do botão inteiro tiraria uma ferramenta que funciona
+//! para dar outra.* Ele encaixa num `Drag` a mais, ao lado dos três que a cena já
+//! tem.
 //!
 //! ⚠️ **A porta de armar é o PAINEL, e a escolha foi por eliminação, não por
 //! gosto:** o `sculpt3d_keys` declara, com a lista ao lado, que *"o que sobra
@@ -114,6 +123,15 @@ impl Sculpt3dScene {
         let Some(gesture) = self.transform_gesture(kind, x, y) else {
             return;
         };
+        // ⭐⭐⭐ **A ALÇA AGARRADA PRENDE O GESTO** (2026-09-08) — e sem alça ele
+        // sai daqui intacto, que é o transform modal de sempre. Ver
+        // [`Sculpt3dScene::constrain`].
+        //
+        // ⚠️ **A restrição entra DEPOIS da medição e não dentro dela**: o que a
+        // seta promete é *«só nesta direcção»*, e isso é uma projecção do gesto
+        // já medido. Medir de outra forma por causa da alça daria uma segunda
+        // régua para a mesma pergunta.
+        let gesture = self.constrain(gesture);
         // A sessão SAI da cena para o escopo do `apply`: ela e a malha são dois
         // campos do mesmo `self`, e sem isto o empréstimo não fecha. É o mesmo
         // desenho do `take_masks` do `mask_ops`, um módulo ao lado.
@@ -198,6 +216,11 @@ impl Sculpt3dScene {
     /// `close_stroke` grava. Um variant próprio seria uma segunda resposta a
     /// *"como se desfaz um punhado de vértices deslocados"*.
     pub(super) fn close_transform(&mut self) {
+        // ⚠️ **A alça é largada SEMPRE**, e antes de qualquer recusa: uma sessão
+        // vazia (a peça toda protegida) também acaba o gesto, e um `gizmo_grip`
+        // sobrevivente prenderia o arrasto SEGUINTE a um eixo que ninguém
+        // agarrou — o modo de falha mais confuso que um gizmo tem.
+        self.gizmo_release();
         let Some(session) = self.transform.take() else {
             return;
         };

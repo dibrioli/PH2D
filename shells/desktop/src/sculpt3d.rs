@@ -47,6 +47,13 @@ mod filter;
 #[path = "sculpt3d_keys.rs"]
 mod keys;
 
+/// ⭐⭐⭐ **O GIZMO DE TRANSFORMAÇÃO** — as alças que se agarram (ordem do Enio,
+/// 2026-09-08). Filho (`#[path]`) pelo motivo dos vizinhos; a LEI das alças é a
+/// do módulo de modelagem ([`crate::field3d_gizmo`]) e o que mora aqui é **esta
+/// câmera e a restrição que cada alça impõe ao gesto**.
+#[path = "sculpt3d_gizmo.rs"]
+mod gizmo;
+
 /// ⭐⭐⭐ **OS QUATRO VIEWPORTS** — frente, lado, cima e a vista do artista, ao
 /// mesmo tempo (ordem do Enio, 2026-09-08). Filho (`#[path]`) pelo motivo dos
 /// vizinhos; a lei da DIVISÃO é a do módulo de modelagem
@@ -354,6 +361,13 @@ pub(crate) struct Sculpt3dScene {
     vp_active: usize,
     /// A costura agarrada — `(vertical, horizontal)`.
     seam_drag: Option<(bool, bool)>,
+    /// A alça do gizmo de transformação sob o cursor — só realce.
+    gizmo_hot: Option<crate::field3d_gizmo::Handle>,
+    /// ⭐⭐ **A alça AGARRADA** — o que prende o gesto a um eixo ou a um plano.
+    ///
+    /// ⚠️ `None` **não** é «nada a fazer»: é o transform LIVRE, que é o gesto
+    /// modal que este módulo sempre teve. Ver [`Sculpt3dScene::constrain`].
+    gizmo_grip: Option<crate::field3d_gizmo::Handle>,
     /// ⭐⭐⭐ **A ÁREA DO CANVAS 3D**, publicada pelo quadro.
     ///
     /// ⛔ **Ela substituiu o campo `viewport`, que era escrito com o tamanho da

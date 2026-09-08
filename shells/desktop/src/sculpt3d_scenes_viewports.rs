@@ -1,5 +1,6 @@
-//! **A CENA DOS QUATRO VIEWPORTS** (`=38`) — ver a peça de quatro lados ao mesmo
-//! tempo, e o gizmo que diz de que lado se está a olhar.
+//! **A CENA DAS TRÊS FEATURES DO MODELADOR** (`=38`) — o gizmo de canto, as
+//! quatro janelas e as alças de transformar, que o módulo de modelagem 3D já
+//! tinha e a escultura não (ordem do Enio, 2026-09-08).
 //!
 //! ⚠️ **Irmã das outras cenas e não parte delas**, pelo teto de LOC da shell e
 //! pela mesma linha de corte: cada arquivo é a história de uma wave.
@@ -32,38 +33,62 @@ fn vistas() -> String {
         .join(" · ")
 }
 
+/// Os nomes dos três verbos do transform, do MOTOR.
+fn verbos() -> String {
+    ph2d_sculpt3d::TransformKind::ALL
+        .iter()
+        .map(|k| k.label())
+        .collect::<Vec<_>>()
+        .join(" · ")
+}
+
 /// O roteiro da `=38`.
 pub(crate) fn announce() {
     if !viewports_scene() {
         return;
     }
-    let vistas = vistas();
+    let (vistas, verbos) = (vistas(), verbos());
     eprintln!(
-        "[sculpt3d] =38 QUATRO VIEWPORTS -- ver a peca de quatro lados ao mesmo tempo.\n\
-         [sculpt3d]    Ate' agora havia UMA janela 3D. Agora a area pode partir-se em quatro,\n\
-         [sculpt3d]    cada uma com a sua camera: de cima, do lado, de frente, e a sua.\n\
-         [sculpt3d]    Voce esculpe naquela em que clicar -- as outras tre^s so' mostram.\n\
+        "[sculpt3d] =38 AS TRES COISAS QUE O MODELADOR 3D JA' TINHA -- agora na escultura.\n\
+         [sculpt3d]    (a) o gizmo de canto que diz de que lado voce olha, (b) quatro janelas\n\
+         [sculpt3d]    ao mesmo tempo, e (c) as alcas de mover/girar/escalar sobre a peca.\n\
          [sculpt3d]\n\
-         [sculpt3d]    (1) No canto de cima a` direita ha' agora um GIZMO com seis bolinhas\n\
-         [sculpt3d]        coloridas. Passe o rato por cima: a que esta' sob o cursor acende.\n\
-         [sculpt3d]    (2) CLIQUE numa bolinha. A peca gira e passa a ser vista daquele lado.\n\
-         [sculpt3d]        Agora ARRASTE a partir do gizmo (segure e mexa): ele gira a peca\n\
-         [sculpt3d]        como se voce a estivesse a rodar com a mao.\n\
-         [sculpt3d]    (3) Aperte Ctrl + a tecla da CRASE (`, a` esquerda do 1). A area parte-se\n\
-         [sculpt3d]        em QUATRO. Tre^s delas tem um rotulo no canto ({vistas}).\n\
-         [sculpt3d]    (4) Clique dentro de uma das quatro: ela ganha uma MOLDURA -- e' a activa.\n\
-         [sculpt3d]        Pinte nela. So' ela recebe o pincel; as outras mostram a mesma peca\n\
-         [sculpt3d]        a mudar, de outro angulo.\n\
-         [sculpt3d]    (5) Leve o rato ate' a LINHA que separa as quatro. A seta muda. Arraste:\n\
-         [sculpt3d]        as janelas mudam de tamanho.\n\
-         [sculpt3d]    (6) Ctrl+crase outra vez fecha, e fica a janela em que voce estava.\n\
+         [sculpt3d]    -- (a) O GIZMO DE CANTO --\n\
+         [sculpt3d]    (1) No canto de cima a` direita ha' seis bolinhas coloridas. Passe o rato\n\
+         [sculpt3d]        por cima: a que esta' sob o cursor acende.\n\
+         [sculpt3d]    (2) CLIQUE numa. A peca gira e passa a ser vista daquele lado.\n\
+         [sculpt3d]    (3) Agora SEGURE em cima do gizmo e mexa: ele gira a peca como se voce\n\
+         [sculpt3d]        a rodasse com a mao.\n\
          [sculpt3d]\n\
-         [sculpt3d]    Teclado: Numpad1 frente, Numpad3 direita, Numpad7 topo -- e com Ctrl\n\
-         [sculpt3d]    cada uma da' o lado oposto.\n\
+         [sculpt3d]    -- (b) AS QUATRO JANELAS --\n\
+         [sculpt3d]    (4) Aperte Ctrl + a tecla da CRASE (`, a` esquerda do 1). A area parte-se\n\
+         [sculpt3d]        em QUATRO. Tres delas tem um rotulo no canto ({vistas}).\n\
+         [sculpt3d]    (5) Clique dentro de uma: ela ganha uma MOLDURA -- e' a activa. Pinte nela.\n\
+         [sculpt3d]        So' ela recebe o pincel; as outras mostram a mesma peca de outro angulo.\n\
+         [sculpt3d]    (6) Leve o rato ate' a LINHA que separa as janelas. A seta muda. Arraste:\n\
+         [sculpt3d]        elas mudam de tamanho. Ctrl+crase outra vez fecha, e fica a que voce\n\
+         [sculpt3d]        estava a usar.\n\
          [sculpt3d]\n\
-         [sculpt3d]    DEU ERRADO se: o pincel cair LONGE do cursor dentro de um quadrante;\n\
-         [sculpt3d]    se pintar numa janela nao mudar a peca nas outras; se a moldura ficar\n\
-         [sculpt3d]    numa janela e o pincel noutra; ou se a peca aparecer por baixo dos\n\
-         [sculpt3d]    paineis / das reguas em vez de dentro da area do canvas."
+         [sculpt3d]    -- (c) AS ALCAS DE TRANSFORMAR --\n\
+         [sculpt3d]    (7) Pinte uma MASCARA numa parte da peca (a tecla C pinta, I inverte):\n\
+         [sculpt3d]        o que fica protegido nao se mexe, e as alcas movem o RESTO.\n\
+         [sculpt3d]    (8) Abra o painel com a crase e ligue um dos tres: {verbos}.\n\
+         [sculpt3d]        Aparecem alcas sobre a peca -- setas coloridas (mover), aneis (girar)\n\
+         [sculpt3d]        ou um punho (tamanho).\n\
+         [sculpt3d]    (9) ARRASTE UMA SETA: a peca anda SO' naquela direccao. Arraste um dos\n\
+         [sculpt3d]        quadradinhos entre duas setas: ela anda so' naquele plano. Arraste um\n\
+         [sculpt3d]        anel: ela gira so' em torno daquele eixo.\n\
+         [sculpt3d]   (10) Arraste LONGE das alcas: continua a valer o de sempre (mover no plano\n\
+         [sculpt3d]        da tela). O gizmo acrescenta, nao substitui.\n\
+         [sculpt3d]\n\
+         [sculpt3d]    Teclado: Numpad1 frente, Numpad3 direita, Numpad7 topo -- com Ctrl, o\n\
+         [sculpt3d]    lado oposto de cada uma.\n\
+         [sculpt3d]\n\
+         [sculpt3d]    DEU ERRADO se: o pincel cair LONGE do cursor dentro de um quadrante; se\n\
+         [sculpt3d]    pintar numa janela nao mudar a peca nas outras; se a moldura ficar numa\n\
+         [sculpt3d]    janela e o pincel noutra; se uma alca agarrar ao lado de onde ela esta'\n\
+         [sculpt3d]    desenhada; se um anel do lado de tras girar ao contrario do seu dedo;\n\
+         [sculpt3d]    ou se a peca aparecer por baixo dos paineis / das reguas em vez de\n\
+         [sculpt3d]    dentro da area do canvas."
     );
 }

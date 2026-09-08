@@ -48,6 +48,8 @@ impl Sculpt3dScene {
             vp_cams: vec![camera],
             vp_active: 0,
             seam_drag: None,
+            gizmo_hot: None,
+            gizmo_grip: None,
             canvas: None,
             nav_safe: None,
             nav_hot: None,

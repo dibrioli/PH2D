@@ -167,7 +167,13 @@ pub(crate) struct Anchor {
 
 impl Anchor {
     /// Uma âncora nos eixos do mundo — o que a maioria dos gates quer.
-    #[cfg(test)]
+    ///
+    /// ⚠️ **Deixou de ser `#[cfg(test)]` em 2026-09-08**: a escultura tem-na como
+    /// caminho de PRODUTO. Ali a peça não tem escolha de referencial (a
+    /// `ph2d_mesh::Pose` dela não tem rotação, e há gate a dizê-lo no
+    /// `ClothFilterOrientation::offered`), logo *global* e *local* são os mesmos
+    /// três vectores — e um construtor a mais para dizer isso seria uma segunda
+    /// resposta à mesma pergunta.
     pub(crate) fn global(entity: u64, origin: [f32; 3]) -> Self {
         Self {
             entity,
@@ -284,6 +290,48 @@ pub(crate) use vertex_handles::project_vertices;
 mod pick_law;
 pub(crate) use pick_law::pick;
 
+/// ⭐⭐⭐ **O QUE ESTA LEI PRECISA DE SABER SOBRE UMA CÂMERA** — três perguntas, e
+/// mais nenhuma.
+///
+/// ⚠️ **Ele nasceu porque a lei ganhou um SEGUNDO consumidor** (2026-09-08, ordem
+/// do Enio: *«traga esses features para esse módulo»*): a escultura tem a
+/// [`ph2d_mesh_render::Camera3d`] e este módulo nasceu contra a [`Orbit`]. Tudo
+/// o que a projecção das alças faz com uma câmera são estas três coisas — onde
+/// um ponto do mundo cai, quantos pixels vale ali uma unidade de mundo, e para
+/// onde o observador está.
+///
+/// ⛔ *Copiar as ~130 linhas de projecção para o outro módulo daria duas ideias
+/// de onde uma alça está, e o sintoma da que envelhecesse seria um gizmo que
+/// agarra ao lado do que ele diz mover — a espécie de defeito que ninguém chama
+/// de defeito de projecção.*
+pub(crate) trait GizmoCamera {
+    /// Onde este ponto do mundo cai, em pixels — `None` se ele não tem pixel.
+    fn project_px(&self, p: [f32; 3]) -> Option<[f32; 2]>;
+    /// Quantos pixels vale uma unidade de mundo **naquele ponto**.
+    ///
+    /// ⚠️ *Naquele ponto*, e não no quadro: com a lente convergente uma unidade
+    /// mede menos pixels quanto mais longe está, e um braço dimensionado pela
+    /// constante do quadro encolheria com a peça a afastar-se.
+    fn px_per_world(&self, at: [f32; 3]) -> f32;
+    /// A direcção para o OBSERVADOR, unitária.
+    fn fwd(&self) -> [f32; 3];
+}
+
+/// A [`Orbit`] deste módulo, no vocabulário do [`GizmoCamera`].
+struct OrbitCam<'a>(&'a Orbit, Screen);
+
+impl GizmoCamera for OrbitCam<'_> {
+    fn project_px(&self, p: [f32; 3]) -> Option<[f32; 2]> {
+        self.0.project(p, self.1).map(|(px, _)| px)
+    }
+    fn px_per_world(&self, at: [f32; 3]) -> f32 {
+        self.0.px_per_world_at(at, self.1)
+    }
+    fn fwd(&self) -> [f32; 3] {
+        self.0.basis().2
+    }
+}
+
 /// Os três eixos do mundo.
 const WORLD_AXES: [[f32; 3]; 3] = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]];
 
@@ -293,21 +341,24 @@ const WORLD_AXES: [[f32; 3]; 3] = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 
 /// dentro da folga onde as setas não começam. Sem esta ordem, apontar o centro escolheria um eixo à
 /// sorte.
 pub(crate) fn project(anchor: Anchor, cam: &Orbit, screen: Screen, mode: Mode) -> Vec<Projected> {
+    project_with(anchor, &OrbitCam(cam, screen), mode)
+}
+
+/// ⭐⭐⭐ **O MESMO, PARA QUALQUER CÂMERA** — ver [`GizmoCamera`].
+pub(crate) fn project_with(anchor: Anchor, cam: &dyn GizmoCamera, mode: Mode) -> Vec<Projected> {
     // ⭐ **A escala é a DAQUELE ponto**, e não a do quadro: com a lente convergente uma unidade de
     // mundo mede menos pixels quanto mais longe está. Um braço dimensionado pela constante do quadro
     // encolheria com a peça a afastar-se, e as alças deixariam de medir o que dizem medir.
-    let px_per_world = cam
-        .px_per_world_at(anchor.origin, screen)
-        .max(f32::MIN_POSITIVE);
+    let px_per_world = cam.px_per_world(anchor.origin).max(f32::MIN_POSITIVE);
     let arm = ARM_PX / px_per_world;
     // ⚠️ **Sem projeção não há gizmo**: a âncora está ao lado do olho ou atrás dele, e desenhar
     // alças num pixel inventado seria oferecer um gesto que agarra noutro sítio.
-    let Some((o2, _)) = cam.project(anchor.origin, screen) else {
+    let Some(o2) = cam.project_px(anchor.origin) else {
         return Vec::new();
     };
     match mode {
-        Mode::Move => move_handles(anchor, cam, screen, arm, o2),
-        Mode::Rotate => rotate_handles(anchor, cam, screen, arm),
+        Mode::Move => move_handles(anchor, cam, arm, o2),
+        Mode::Rotate => rotate_handles(anchor, cam, arm),
         Mode::Scale => vec![Projected {
             handle: Handle::Grip,
             shape: Shape::Grip {
@@ -320,13 +371,7 @@ pub(crate) fn project(anchor: Anchor, cam: &Orbit, screen: Screen, mode: Mode) -
     }
 }
 
-fn move_handles(
-    anchor: Anchor,
-    cam: &Orbit,
-    screen: Screen,
-    arm: f32,
-    o2: [f32; 2],
-) -> Vec<Projected> {
+fn move_handles(anchor: Anchor, cam: &dyn GizmoCamera, arm: f32, o2: [f32; 2]) -> Vec<Projected> {
     let mut out = vec![Projected {
         handle: Handle::View,
         shape: Shape::Disc {
@@ -345,7 +390,7 @@ fn move_handles(
             for (k, c) in p.iter_mut().enumerate() {
                 *c += anchor.axes[u][k] * a * arm + anchor.axes[v][k] * b * arm;
             }
-            cam.project(p, screen).map(|(px, _)| px)
+            cam.project_px(p)
         };
         let (lo, hi) = (PLANE_AT, PLANE_AT + PLANE_SIDE);
         // ⚠️ **Um canto sem projeção mata a alça inteira**, e não só ele: um quadrilátero com três
@@ -376,9 +421,7 @@ fn move_handles(
     for (n, axis) in anchor.axes.iter().enumerate() {
         // Uma ponta sem projeção é uma seta que aponta para fora do mundo visível: ela não é
         // desenhada e não é oferecida, pelo mesmo `live` que já trata a seta vista de topo.
-        let tip = cam
-            .project(offset(anchor.origin, *axis, arm), screen)
-            .map(|(px, _)| px);
+        let tip = cam.project_px(offset(anchor.origin, *axis, arm));
         let len = tip.map_or(0.0, |t| dist(o2, t));
         out.push(Projected {
             handle: Handle::Axis(n),
@@ -392,13 +435,13 @@ fn move_handles(
     out
 }
 
-fn rotate_handles(anchor: Anchor, cam: &Orbit, screen: Screen, arm: f32) -> Vec<Projected> {
-    let (_, _, fwd) = cam.basis();
+fn rotate_handles(anchor: Anchor, cam: &dyn GizmoCamera, arm: f32) -> Vec<Projected> {
+    let fwd = cam.fwd();
     let mut out = Vec::with_capacity(4);
     for (n, axis) in anchor.axes.iter().enumerate() {
         out.push(Projected {
             handle: Handle::Ring(n),
-            shape: Shape::Arc(front_arc(anchor.origin, *axis, arm, cam, screen)),
+            shape: Shape::Arc(front_arc(anchor.origin, *axis, arm, cam)),
             live: dot(*axis, fwd).abs() >= RING_MIN_DOT,
         });
     }
@@ -406,13 +449,7 @@ fn rotate_handles(anchor: Anchor, cam: &Orbit, screen: Screen, arm: f32) -> Vec<
     // a rede de segurança do enquadramento difícil, como o disco no modo de mover.
     out.push(Projected {
         handle: Handle::ViewRing,
-        shape: Shape::Arc(front_arc(
-            anchor.origin,
-            fwd,
-            arm * VIEW_RING_R,
-            cam,
-            screen,
-        )),
+        shape: Shape::Arc(front_arc(anchor.origin, fwd, arm * VIEW_RING_R, cam)),
         live: true,
     });
     out
@@ -429,11 +466,10 @@ fn front_arc(
     origin: [f32; 3],
     axis: [f32; 3],
     radius: f32,
-    cam: &Orbit,
-    screen: Screen,
+    cam: &dyn GizmoCamera,
 ) -> Vec<[f32; 2]> {
     let (u, v) = basis_of(axis);
-    let (_, _, fwd) = cam.basis();
+    let fwd = cam.fwd();
     let world = |i: usize| -> [f32; 3] {
         let t = i as f32 / RING_SEGMENTS as f32 * std::f32::consts::TAU;
         let (s, c) = t.sin_cos();
@@ -452,7 +488,7 @@ fn front_arc(
     // atravessar o plano do olho, e um ponto de lá não tem pixel nenhum: tratá-lo como frente
     // deixaria um salto no meio da fita. A pergunta *"este ponto é desenhável?"* tem uma resposta,
     // e é ela que entra na máscara — em vez de dois testes que podem discordar.
-    let at = |i: usize| cam.project(world(i), screen).map(|(px, _)| px);
+    let at = |i: usize| cam.project_px(world(i));
     let front: Vec<bool> = (0..RING_SEGMENTS)
         .map(|i| {
             let t = i as f32 / RING_SEGMENTS as f32 * std::f32::consts::TAU;

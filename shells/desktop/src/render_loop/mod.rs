@@ -11956,11 +11956,12 @@ impl crate::App {
                 // respostas.*
                 #[cfg(feature = "sculpt3d")]
                 if let Some(scene) = sculpt3d.as_mut() {
-                    // ⚠️ **A ÁREA primeiro, o gizmo depois** — o widget mora no
+                    // ⚠️ **A ÁREA primeiro, os gizmos depois** — eles moram no
                     // quadrante ACTIVO, e quem sabe onde ele está é a divisão,
                     // que acaba de ser publicada.
                     scene.note_canvas(area);
                     scene.note_nav(safe, self.last_pointer);
+                    scene.note_gizmo_hot(self.last_pointer);
                 }
             }
             // ⭐⭐ **A VIAGEM ENTRE VISTAS** (W51) — Enio: *"falta um Lerp() rápido para mudança
@@ -12043,6 +12044,30 @@ impl crate::App {
                     scene.vp_active(),
                     hero.theme,
                 );
+                // ⭐⭐⭐ **O GIZMO DE TRANSFORMAÇÃO** (2026-09-08) — as alças por cima da peça e no
+                // referencial da JANELA (a `SculptCam` já lhes soma a quina do quadrante activo).
+                //
+                // ⚠️ **Sem teste de profundidade, e é o que todo modelador faz**: uma alça
+                // escondida atrás da superfície que ela move seria inalcançável exactamente quando
+                // o artista precisa dela.
+                //
+                // ⚠️ **Vazio sem transform armado** — a lista sai vazia da porta, e o pintor é
+                // no-op sobre ela. *Um `if` aqui seria a segunda resposta a «há gizmo agora?».*
+                {
+                    let handles = scene.gizmo_handles();
+                    if !handles.is_empty() {
+                        crate::field3d_gizmo_paint::paint(
+                            vector_scene,
+                            &handles,
+                            scene.gizmo_hot(),
+                            hero.theme,
+                            // ⚠️ **Origem ZERO**: ao contrário do módulo vizinho, estas alças já
+                            // chegam em coordenadas de janela. Somar a quina aqui seria somá-la
+                            // duas vezes, e o gizmo sairia ao dobro da distância da peça.
+                            [0.0, 0.0],
+                        );
+                    }
+                }
                 // ⭐⭐ **O GIZMO DA VIEWPORT**, por cima da moldura — que é onde um gizmo de janela
                 // vive. Ver `sculpt3d_navball`.
                 if let Some((area, safe)) = scene.nav_rects() {

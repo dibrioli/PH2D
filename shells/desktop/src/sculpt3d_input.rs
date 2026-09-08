@@ -206,6 +206,13 @@ impl App {
                     return true;
                 }
                 if scene.transform_arm().is_some() {
+                    // ⭐⭐⭐ **A ALÇA É AGARRADA ANTES DE A SESSÃO COMEÇAR**
+                    // (2026-09-08), e a ordem é a lei: a projecção das alças sai
+                    // do pivô da malha ATUAL, e agarrar depois de o
+                    // `begin_transform` congelar a foto perguntaria a uma peça e
+                    // responderia sobre outra. ⚠️ `false` NÃO é recusa — sem alça
+                    // o transform corre livre, que é o gesto modal de sempre.
+                    scene.gizmo_grab(pos.0, pos.1);
                     // ⚠️ **MIRAR VEM ANTES DE COMEÇAR**, a mesma ordem (e o
                     // mesmo motivo) do traço logo abaixo: o `begin_transform`
                     // congela a foto da malha ATIVA, e mirar depois faria a

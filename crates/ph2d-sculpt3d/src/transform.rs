@@ -133,6 +133,48 @@ pub struct MaskTransform {
     region: ph2d_mesh::RegionScratch,
 }
 
+/// ⭐⭐⭐ **O CENTRO DO QUE PODE MOVER-SE**, em coordenadas locais — sem congelar
+/// sessão nenhuma. `None` quando a malha inteira está protegida.
+///
+/// ⚠️ **Ela nasceu com o GIZMO 3D** (2026-09-08): as alças têm de ser desenhadas
+/// **antes** de o artista tocar na peça, e a [`MaskTransform::begin`] aloca três
+/// vectores do tamanho da parte livre — a `98 306` vértices isso é trabalho por
+/// quadro para responder a uma pergunta que cabe num acumulador.
+///
+/// ⚠️⚠️ **É o CENTROIDE PONDERADO, e a ponderação é o ponto:** um centroide
+/// simples giraria a parte livre em torno do meio da peça INTEIRA, incluindo o
+/// que está pregado. É onde o ZBrush põe o gizmo.
+///
+/// ⛔ **A [`MaskTransform::begin`] CHAMA esta função** em vez de repetir a
+/// fórmula. Custa-lhe uma travessia a mais, uma vez por gesto — e compra que o
+/// gizmo e o barro nunca possam discordar sobre onde é o centro. *Duas cópias de
+/// um pivô dão um gizmo desenhado num sítio e uma rotação em torno de outro, e o
+/// artista lê isso como «o gizmo está torto».*
+#[must_use]
+pub fn free_pivot(mesh: &Mesh) -> Option<[f32; 3]> {
+    let masks = mesh.masks();
+    let (mut acc, mut wsum) = ([0.0f64; 3], 0.0f64);
+    for i in 0..mesh.vert_count() {
+        let w = masks.map_or(1.0, |m| free_weight(m[i]));
+        if w <= 0.0 {
+            continue;
+        }
+        let p = mesh.positions()[i];
+        let wd = f64::from(w);
+        for k in 0..3 {
+            acc[k] += f64::from(p[k]) * wd;
+        }
+        wsum += wd;
+    }
+    (wsum > 0.0).then(|| {
+        [
+            (acc[0] / wsum) as f32,
+            (acc[1] / wsum) as f32,
+            (acc[2] / wsum) as f32,
+        ]
+    })
+}
+
 impl MaskTransform {
     /// Congela a foto. `None` quando **nada** pode se mover (a malha inteira
     /// está protegida) — e a recusa é do chamador reportar.
@@ -166,11 +208,21 @@ impl MaskTransform {
         if moving.is_empty() || wsum <= 0.0 {
             return None;
         }
-        let pivot = [
-            (acc[0] / wsum) as f32,
-            (acc[1] / wsum) as f32,
-            (acc[2] / wsum) as f32,
-        ];
+        // ⚠️ **A fórmula do pivô vive na [`free_pivot`], e ela é chamada aqui em
+        // vez de repetida** (2026-09-08). Custa uma segunda travessia da malha
+        // **uma vez por gesto** — e compra que o gizmo, que precisa do pivô a
+        // cada quadro e sem sessão nenhuma, não seja a segunda resposta a *«onde
+        // é o centro do que se move?»*. Os dois números têm de ser o MESMO bit:
+        // o gizmo é desenhado num e o barro gira em torno do outro.
+        debug_assert_eq!(
+            free_pivot(mesh),
+            Some([
+                (acc[0] / wsum) as f32,
+                (acc[1] / wsum) as f32,
+                (acc[2] / wsum) as f32,
+            ])
+        );
+        let pivot = free_pivot(mesh)?;
         Some(Self {
             moving,
             pre,
@@ -181,6 +233,9 @@ impl MaskTransform {
     }
 
     /// O centro do que se move, em coordenadas LOCAIS.
+    ///
+    /// ⚠️ É o mesmo número que a [`free_pivot`] devolve para a mesma malha — ver
+    /// o corpo da [`Self::begin`], que a chama.
     #[must_use]
     pub fn pivot(&self) -> [f32; 3] {
         self.pivot

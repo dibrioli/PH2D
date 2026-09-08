@@ -101,4 +101,4 @@ pub use stroke::{
     Dab, FILTER_DRAG_PER_PX, HC_SHAPE_DEFAULT, HC_VERTEX_DEFAULT, HC_VERTEX_MIN, SculptStroke,
     sharpen_total_for_measurement,
 };
-pub use transform::{Gesture, MIN_SCALE_FACTOR, MaskTransform, TransformKind};
+pub use transform::{Gesture, MIN_SCALE_FACTOR, MaskTransform, TransformKind, free_pivot};

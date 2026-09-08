@@ -51,7 +51,10 @@ fn centroide(s: &crate::sculpt3d::Sculpt3dScene) -> [f32; 3] {
 /// centroide.
 fn arrasta(s: &mut crate::sculpt3d::Sculpt3dScene, from: (f32, f32), to: (f32, f32)) -> [f32; 3] {
     let antes = centroide(s);
-    assert!(s.gizmo_grab(from.0, from.1) || true);
+    // ⚠️ O pen-down do produto pergunta SEMPRE ao gizmo antes de começar a
+    // sessão — ver o censo no fim deste ficheiro. Um `false` aqui é o caso
+    // livre, não uma recusa.
+    s.gizmo_grab(from.0, from.1);
     assert!(s.begin_transform(from.0, from.1), "o begin recusou");
     s.transform_at(to.0, to.1);
     let depois = centroide(s);
@@ -294,5 +297,35 @@ fn sem_alca_agarrada_o_transform_corre_livre() {
         fora_de_um_eixo >= 2,
         "sem alca o movimento devia ser o do PLANO DA TELA (duas componentes ou mais) e deu \
          {d:?} -- o gizmo prendeu um gesto que ninguem agarrou"
+    );
+}
+
+/// ⭐⭐ **TODO PEN-DOWN DE TRANSFORM PERGUNTA AO GIZMO PRIMEIRO.**
+///
+/// ⛔ **Sem isto a alça agarrada pode ficar VELHA.** O `gizmo_grip` é largado no
+/// `close_transform`, que **não corre** quando o `begin_transform` recusa (a
+/// peça toda protegida): o que impede uma alça de um gesto morto de prender o
+/// gesto seguinte é o pen-down do produto reescrever o grip **sempre**, e não
+/// só quando ele acerta numa alça.
+///
+/// ⚠️ **Censo de FONTE, e a razão é a de sempre**: o `App::sculpt3d_pointer_down`
+/// precisa de uma surface de janela real, então esta costura não é alcançável
+/// de um teste. O que se pode afirmar é a ORDEM — e ela é a lei: agarrar depois
+/// de a sessão congelar a foto perguntaria a uma peça e responderia sobre outra.
+#[test]
+fn todo_pen_down_de_transform_pergunta_ao_gizmo_primeiro() {
+    let fonte = include_str!("sculpt3d_input_down.rs");
+    let grab = fonte
+        .find("gizmo_grab(")
+        .expect("o pen-down tem de perguntar ao gizmo -- sem isso ele esta' MORTO sob o ponteiro");
+    let begin = fonte
+        .find("begin_transform(")
+        .expect("controlo positivo: o pen-down do transform mudou de ficheiro e este censo \
+                 varreria o vazio");
+    assert!(
+        grab < begin,
+        "o `gizmo_grab` (byte {grab}) vem DEPOIS do `begin_transform` (byte {begin}) -- a \
+         projeccao das alcas sai do pivo da malha ATUAL, e agarrar depois de a sessao congelar a \
+         foto pergunta a uma peca e responde sobre outra"
     );
 }

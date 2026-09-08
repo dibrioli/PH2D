@@ -594,6 +594,66 @@ impl PincelTecido {
                         _ => [0.0; 3],
                     };
                     let inv_m = 1.0 / self.pincel.solver.massa.max(1e-9);
+                    // ⭐⭐⭐ **A LEI DO ALVO, CONVERGIDA** — instrumento do §5.2-ter,
+                    // ⛔ DESLIGADO por omissão (o caminho de omissão é byte-idêntico).
+                    //
+                    // Os dois apertos são os ÚNICOS modos cuja direcção é função da
+                    // posição ACTUAL do vértice (`u = unit(cursor − p)`); os outros três
+                    // que escrevem aceleração usam uma direcção constante no passo. Com
+                    // o impulso máximo a valer **`2,1×` a aresta** (espec §5.2-ter), um
+                    // vértice atravessa o cursor num passo só — e do outro lado a força
+                    // dele **inverte 180°**. É isso, e não a magnitude, que põe o
+                    // resultado à mercê da ORDEM de resolução.
+                    //
+                    // ⚠️ **Sub-dividir o passo re-avaliando `u` converge para uma coisa
+                    // que se escreve em fechado:** o vértice caminha em linha recta até
+                    // ao alvo e **pára lá** — porque a espec já define que separação nula
+                    // dá força nula. ⇒ o limite é `avanço ← min(avanço, o que falta)`.
+                    // *A trava do §5.2-ter (b) não é uma mudança de produto: é a lei do
+                    // próprio alvo integrada fino.* O nó é artefacto de passo grosso.
+                    //
+                    // ⛔ Só os apertos: nos outros três a direcção não depende de `p`,
+                    // logo não há nada a convergir e o `min` seria uma lei nova.
+                    let f = if self.pincel.converge_aperto
+                        && matches!(self.pincel.modo, Modo::ApertarPonto | Modo::ApertarLinha)
+                    {
+                        // O avanço que ESTE termo produz na integração (§5.4:
+                        // `x += a · φ_int · DT`), e o que falta até ao alvo do modo.
+                        let avanco = f * inv_m * self.sim.phi_integracao[vi] * crate::verlet::DT;
+                        let nu = norm(u);
+                        let falta = match self.pincel.modo {
+                            // O alvo é o CURSOR; `u` é unitário.
+                            Modo::ApertarPonto
+                                if matches!(self.pincel.falloff_forca, FalloffForca::Radial) =>
+                            {
+                                dist(p, cursor)
+                            }
+                            // O alvo é o PLANO do cursor: falta a distância a ele.
+                            Modo::ApertarPonto => {
+                                let q = [p[0] - cursor[0], p[1] - cursor[1], p[2] - cursor[2]];
+                                (q[0] * delta_u[0] + q[1] * delta_u[1] + q[2] * delta_u[2]).abs()
+                            }
+                            // ⚠️ `u` do aperto de LINHA **não é unitário** (a projecção
+                            // deixa-o `≤ 1`): o que falta mede-se ao longo de `û`.
+                            _ => {
+                                if nu <= 1e-12 {
+                                    0.0
+                                } else {
+                                    let uh = [u[0] / nu, u[1] / nu, u[2] / nu];
+                                    let q = [cursor[0] - p[0], cursor[1] - p[1], cursor[2] - p[2]];
+                                    (q[0] * uh[0] + q[1] * uh[1] + q[2] * uh[2]).max(0.0)
+                                }
+                            }
+                        };
+                        let percorrido = avanco * nu;
+                        if percorrido > falta && percorrido > 0.0 {
+                            f * (falta / percorrido)
+                        } else {
+                            f
+                        }
+                    } else {
+                        f
+                    };
                     for (c, uc) in u.iter().enumerate() {
                         self.sim.a[vi][c] += f * uc * inv_m;
                     }

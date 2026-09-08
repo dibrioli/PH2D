@@ -156,6 +156,9 @@ impl Traco {
             // As fixtures do oráculo correm SEM simetria ⇒ uma passagem, e a
             // área *Local* constrói a lista `passagens + 1 = 2` vezes.
             passagens: 1,
+            // ⭐ **A LEI DO ALVO CONVERGIDA** (§5.2-ter) — instrumento, desligado
+            // por omissão. `PH2D_APERTO_CONVERGE=1` liga-o em todo o corpus.
+            converge_aperto: std::env::var("PH2D_APERTO_CONVERGE").is_ok(),
             escala_phi: std::env::var("PH2D_ESC_PHI")
                 .ok()
                 .and_then(|s| s.parse().ok())
@@ -465,10 +468,33 @@ fn correr_com_pincel(nome: &str, ordem: Option<&str>) -> (Vec<V3>, PincelTecido)
 /// linhas de distância. *Uma afirmação de unicidade envelhece no dia em que
 /// alguém escreve o segundo, e ela não tem gate.* Hoje há **um**, e os quatro
 /// chamadores passam por aqui.
+/// A malha depois do traço, **com a trava do §5.2-ter (b)** — sem tocar em env.
+fn correr_convergido(nome: &str) -> Vec<V3> {
+    correr_com_blocos_com(nome, None, None, true).0
+}
+
 fn correr_com_blocos(
     nome: &str,
     ordem: Option<&str>,
     caminho: Option<&[V3]>,
+) -> (Vec<V3>, PincelTecido, Vec<Vec<V3>>, Vec<V3>) {
+    correr_com_blocos_com(nome, ordem, caminho, false)
+}
+
+/// A MESMA corrida, com a **trava do §5.2-ter (b)** ligada por ARGUMENTO.
+///
+/// ⚠️⚠️ **Por argumento e nunca por `set_var`, e a razão é medida:** a 1.ª
+/// redacção dos dois gates da trava punha e tirava `PH2D_APERTO_CONVERGE` dentro
+/// do teste — e o `nextest` corre os testes do mesmo binário **em paralelo, no
+/// mesmo processo**, logo aquilo envenenou um vizinho (`onde_o_maximo_nao_
+/// decide_decide_o_p95` reprovou, e ele não tem uma linha a ver com o aperto).
+/// *Uma env var mexida dentro de um teste é estado partilhado entre testes que
+/// não se citam.* A env fica só para as SONDAS, que correm o processo inteiro.
+fn correr_com_blocos_com(
+    nome: &str,
+    ordem: Option<&str>,
+    caminho: Option<&[V3]>,
+    converge: bool,
 ) -> (Vec<V3>, PincelTecido, Vec<Vec<V3>>, Vec<V3>) {
     let t = traco(nome);
     let sup = t.s("superficie").to_string();
@@ -481,7 +507,10 @@ fn correr_com_blocos(
     let fs = faces(&sup, &rest);
     let an = aneis(rest.len(), &fs);
     let anel = |v: u32| an[v as usize].clone();
-    let pincel = t.pincel();
+    let pincel = Pincel {
+        converge_aperto: converge || t.pincel().converge_aperto,
+        ..t.pincel()
+    };
     // ⚠️ O caminho DADO ganha ao do cabeçalho — os dumps por passo trazem o
     // deles, e correr dois caminhos diferentes pelo mesmo nome foi o defeito.
     let caminho: Vec<V3> = caminho.map_or_else(|| t.caminho.clone(), <[V3]>::to_vec);
@@ -4087,4 +4116,141 @@ fn onde_o_maximo_nao_decide_decide_o_p95() {
         "o p95 julga {julgados} tracos e o maximo julga {fora} -- o censo precisa \
          das duas metades"
     );
+}
+
+/// ⛔⛔⛔ **GATE — a saída (b) do §5.2-ter NÃO entrega o que promete: o nó FICA.**
+///
+/// # A frase que está a ser refutada
+///
+/// A espec põe a decisão do dono em duas frases, e a segunda diz, literalmente,
+/// que ao limitar *«o aperto nunca ultrapassa o ponto para onde puxa, **o nó não
+/// aparece em força nenhuma**, e a nossa saída deixa de casar com a do alvo
+/// exactamente nos traços fortes»*. A primeira metade e a terceira são
+/// verdadeiras. **A do meio é falsa, e é a única que justifica pagar as outras
+/// duas.**
+///
+/// # Como foi medida (2026-09-07)
+///
+/// [`Pincel::converge_aperto`] implementa **exactamente** a linha que a espec
+/// prescreve — *«limitar o impulso do aperto à distância que falta até ao alvo,
+/// que é a única linha que a inversão pede»* —, e é ela que corre aqui. Sobre o
+/// traço mais forte do corpus, os quadriláteros invertidos vão de `303` para
+/// `269`: **`−11 %`, e o alvo tem `280`.** Sobre os nove apertos o total vai de
+/// `544` para `436` (`−20 %`). *A trava zera o nó só onde ele já era de `2` ou
+/// `6` faces; onde ele é um nó, ele fica.*
+///
+/// # ⭐⭐ Por que ela falha — e é uma distinção que a espec funde
+///
+/// *«Um vértice passar o cursor»* e *«um quadrilátero inverter»* **não são a
+/// mesma coisa.** A trava impede a primeira por construção; a segunda nasce de
+/// dois vizinhos avançarem quantidades DIFERENTES, e a trava — que morde mais no
+/// vértice mais perto do alvo — **aumenta** essa diferença tanto quanto a reduz.
+/// A espec lê as duas como uma porque no primeiro passo elas aparecem juntas
+/// (`9` vértices passam · `10` quadriláteros invertem), e correlação no primeiro
+/// passo não é identidade nos doze.
+///
+/// ⇒ **A decisão do §4 estava a ser posta entre (a) e um miragem.** O preço de
+/// (b) é real (⇒ [`a_trava_do_aperto_custa_quatro_tracos_exactos`]) e o que ela
+/// compra não é o que está escrito.
+///
+/// ⚠️⚠️ **O QUE ESTES DOIS GATES *NÃO* PINAM, dito na cara.** Trocar o limitador
+/// do `min` (o limite convergido) por um **corte duro** — zerar a força do
+/// vértice que ultrapassaria, em vez de a encurtar — **SOBREVIVE aos dois**
+/// (medido, mutação M2 de 07/09). É a leitura certa: eles pinam a *refutação da
+/// promessa*, que vale para qualquer limitador, e não a FORMA do limitador. Só a
+/// forma do `min` é o limite da lei do alvo (a direcção re-avaliada faz o vértice
+/// parar no alvo, §5.2-ter); um corte duro é uma lei nova. ⇒ *quem trocar a forma
+/// tem de re-medir o `79 → 75` e escrever o número novo* — nenhum gate o cobra.
+#[test]
+fn a_trava_do_aperto_nao_desfaz_o_no_e_a_espec_promete_que_sim() {
+    let nome = "plano_apertar_ponto_plano_local";
+    let t = traco(nome);
+    let rest = repouso(t.s("superficie"));
+    let fs = faces(t.s("superficie"), &rest);
+
+    let (sem, _) = correr_com_pincel(nome, None);
+    let com = correr_convergido(nome);
+    let (iv_sem, iv_com) = (invertidos(&rest, &sem, &fs), invertidos(&rest, &com, &fs));
+    let alvo = invertidos(&rest, &deformado(nome), &fs);
+
+    assert!(
+        iv_sem > 0 && alvo > 0,
+        "o gate mediria vácuo: este traço tem de INVERTER dos dois lados (nós {iv_sem}, alvo {alvo})"
+    );
+    // A metade que a espec acerta: a trava REDUZ o nó.
+    assert!(
+        iv_com < iv_sem,
+        "a trava não reduziu nada ({iv_sem} -> {iv_com}) -- ela deixou de morder, \
+         ou o traço deixou de ser o regime forte"
+    );
+    // ⛔ A metade que a espec ERRA, e é o gate: ela não o DESFAZ.
+    assert!(
+        iv_com > 0,
+        "o nó desapareceu ({iv_sem} -> {iv_com}): a promessa «o nó não aparece em força \
+         nenhuma» passou a ser verdadeira, e esta refutação (e o §4 que ela reabre) tem \
+         de ser reescrita com o número novo"
+    );
+    // ⚠️ E o que sobra é da ORDEM do nó, não da franja: mais de metade fica.
+    assert!(
+        iv_com * 2 > iv_sem,
+        "a trava passou a desfazer mais de metade do nó ({iv_sem} -> {iv_com}) -- \
+         a leitura de 07/09 (-11 %) deixou de valer"
+    );
+}
+
+/// ⛔ **GATE — o preço da trava do §5.2-ter (b), em traços EXACTOS perdidos.**
+///
+/// A terceira frase da espec — *«a nossa saída deixa de casar com a do alvo
+/// exactamente nos traços fortes»* — **subestima**: quem paga não são só os
+/// fortes. Medido em 07/09, ligar a trava move `9` dos `86` traços e leva o
+/// corpus de `79` para `75` dentro da barra, porque **quatro traços que hoje
+/// saem a `0,000` passam a `0,465`–`0,811`** — três deles de aperto de LINHA,
+/// que é o modo em que o alvo mal inverte (`2` e `6` faces).
+///
+/// ⇒ *a trava cobra onde não há nó a desfazer.* É este número, e não uma
+/// preferência, que põe o preço da saída (b) na mesa do dono.
+#[test]
+fn a_trava_do_aperto_custa_quatro_tracos_exactos() {
+    // Os traços que hoje saem à resolução do ficheiro e que a trava move.
+    const EXACTOS: [&str; 4] = [
+        "plano_apertar_linha_radial_local_1passo",
+        "plano_apertar_linha_radial_local_origem",
+        "plano_apertar_ponto_radial_local_1passo",
+        "plano_apertar_linha_radial_local",
+    ];
+    for nome in EXACTOS {
+        let t = traco(nome);
+        let rest = repouso(t.s("superficie"));
+        let alvo = deformado(nome);
+        let sem = correr_com_pincel(nome, None).0;
+        let com = correr_convergido(nome);
+        // ⚠️ **A régua é a da PARIDADE — relativa ao maior deslocamento do alvo —,
+        // e não a resolução do ficheiro.** A 1.ª redacção usou a segunda e o gate
+        // acusou-se a si próprio: o `plano_apertar_linha_radial_local` erra
+        // `0,000436`, que é *dentro da barra* e não *exacto ao ficheiro*.
+        // *A régua estava errada, não o corpus.*
+        let rel = |p: &[V3]| -> f64 {
+            let max_alvo = alvo
+                .iter()
+                .zip(&rest)
+                .map(|(a, r)| dist(*a, *r))
+                .fold(0.0_f64, f64::max);
+            let e = p
+                .iter()
+                .zip(&alvo)
+                .map(|(a, b)| dist(*a, *b))
+                .fold(0.0_f64, f64::max);
+            e / max_alvo.max(1e-12)
+        };
+        let (e_sem, e_com) = (rel(&sem), rel(&com));
+        assert!(
+            e_sem <= BARRA_PARIDADE,
+            "{nome} já estava FORA da barra sem a trava ({e_sem:.3}) -- este gate perdeu o sujeito"
+        );
+        assert!(
+            e_com > BARRA_PARIDADE,
+            "{nome}: a trava deixou de o tirar da barra ({e_sem:.3} -> {e_com:.3}). Se ela \
+             melhorou, a §4 reabre com número novo -- não relaxe este gate"
+        );
+    }
 }

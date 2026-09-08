@@ -68,6 +68,8 @@ nas **duas** ordens e devolve o resíduo **em unidades do que uma ordem errada c
 | `plano_apertar_ponto_plano_local` | `0,5457` | `0,7137` | `0,76` | aperto |
 | `plano_expandir_radial_local` | `0,1918` | `0,6322` | **`0,30`** | **Expand — o MENOS estrutural do corpus** |
 
+> ⛔⛔ **ESTA TABELA ENVELHECEU, e três linhas dela estão desmentidas pela medição de 07/09 — conte com a sonda, nunca daqui:** o `plano_expandir_radial_local` lê **`0,001`** (era `0,1918`; `190×`), e o Push e o Inflate — que a tabela põe no topo da fila — **fecharam**. ⇒ *a fila que este §2 ordena já não existe.* O que sobra dos `86` são **`7`**, e eles partem-se em DUAS coisas e nenhuma é «lei em falta»: **`5` são o regime de inversão** (os apertos — §4, e todos com o 1 passo e a força fraca a saírem **exactos**) e **`2` estão DENTRO da lotaria do próprio alvo** (o gancho e o expandir da esfera, `q ≈ 1` passo a passo na `sonda_de_onde_a_esfera_diverge`). *Não há, neste corpus, lei em falta que a barra saiba decidir.*
+
 ⇒ **Push e Inflate são os resíduos determinísticos** e vão à frente. O gancho de poucos passos, o
 aperto e o Expand vivem onde a ordem manda, e apertá-los seria ajustar a NOSSA ordenação.
 
@@ -239,6 +241,7 @@ que é decisão do dono.
 
 | o que foi tentado | o número que o matou |
 |---|---|
+| ⛔⛔ **a LEI DO ALVO CONVERGIDA** — limitar o avanço dos dois apertos ao que falta até ao alvo (`Pincel::converge_aperto`, a linha que a espec §5.2-ter prescreve para a saída (b)) | ⭐ **mexe em `9` dos `86` e deixa `77` byte-idênticos**, e mesmo assim é uma perda: `79 → 75` dentro da barra, porque **quatro traços exactos** (`0,000`) caem para `0,465`–`0,811`. E o que compra não é o que a espec promete: os invertidos vão só de `544` para `436` nos nove apertos (`−20 %`), com o nó a FICAR (`303 → 269`, alvo `280`). ⇒ §4 — *a saída (b) foi refutada na metade que a justificava* |
 | o anel-1 pela **triangulação** | acerta o Arrastar *Local* e derruba o *Global* de `0,6457` para `0,2699` |
 | **`PH2D_VARREDURAS=10`** como lei do *Local* | bit-idêntico à construção dupla nos modos de força e **diverge** nos de âncora |
 | o filtro de raio na criação de restrições da área *Dynamic* | `0,181 → 0,182`, e as outras nove inalteradas |
@@ -268,7 +271,38 @@ que é decisão do dono.
 | o desacordo de **contagem** do gancho da esfera (`2158` contra `2234`) como conjunto simulado diferente | ⭐⭐ **é FRANJA, medido:** os `100` que só o alvo move estão a `3,13`–`3,72 R` do pen-down (o limite da banda é `3,5 R`) com deslocamentos de `10⁻⁵` a `1,7·10⁻⁴`, e os `24` que só nós movemos estão a `4,02`–`4,60 R`, **para lá** do limite — onde só o cursor que anda alcança. As duas populações **não se sobrepõem** e o maior vale `0,3 %` da amplitude do traço. ⇒ *um desacordo de contagem tem duas leituras que se leem igual; esta é a do limiar do censo, não a do conjunto* |
 | ⛔⛔ **as TRÊS medições do peso da normal por vértice** (06/09 e 07/09: `uniforme` contra `área`, `0,245 → 0,245`, `0,237 → 0,237`, `0,378 → 0,379`) | ⭐⭐ **SUPERADAS em 07/09 — elas respondiam a outra pergunta.** Perguntavam *«o peso move a paridade destes traços?»* (não move: nas fixtures de plano as normais são as mesmas nos dois pesos, e na esfera as faces são quase uniformes) e não *«qual é o peso do alvo?»*. A régua que decide é a fixture de **dois traços**, onde a direcção do impulso do 2.º se lê **directamente do oráculo**: `uniforme 1,7·10⁻⁵` contra `área 6,6·10⁻⁴`, e o resíduo da área **não encolhe com o sinal** (`3,7·10⁻⁴` nos vértices que mais se movem) — *um resíduo que estaciona não é ruído, é lei errada.* ⇒ **uniforme**, e a §4.6 linha 4 fecha |
 
-## §4 — ⛔⛔ A DECISÃO que é do DONO (e não há terceira saída)
+## §4 — ⛔⛔ A DECISÃO que é do DONO — e a saída (b) NÃO entrega o que promete
+
+> ⛔⛔⛔ **REFUTADO EM 2026-09-07, com número: a promessa da saída (b) é falsa.**
+> A frase que o dono ia ler para decidir diz que ao limitar *«o aperto nunca ultrapassa o ponto
+> para onde puxa, **o nó não aparece em força nenhuma**»*. Implementei **exactamente a linha que a
+> espec prescreve** (`Pincel::converge_aperto` — *«limitar o impulso do aperto à distância que falta
+> até ao alvo, que é a única linha que a inversão pede»*) e medi o corpus inteiro:
+>
+> | | sem a trava | com a trava | o alvo |
+> |---|---|---|---|
+> | quadriláteros invertidos no traço mais forte | `303` | **`269`** | `280` |
+> | idem, somados nos nove apertos | `544` | **`436`** (`−20 %`) | `525` |
+> | traços dentro da barra (`0,13`) | **`79`/86** | **`75`**/86 | — |
+> | traços que a trava move | — | `9` (os outros `77` ficam **byte-idênticos**) | — |
+>
+> ⭐⭐ **Por que ela falha, e é uma distinção que a espec FUNDE:** *«um vértice passar o cursor»* e
+> *«um quadrilátero inverter»* não são a mesma coisa. A trava impede a primeira por construção; a
+> segunda nasce de dois vizinhos avançarem quantidades **diferentes** — e a trava, que morde mais no
+> vértice mais perto do alvo, **aumenta** essa diferença tanto quanto a reduz. A espec lê as duas
+> como uma porque no primeiro passo elas aparecem juntas (`9` vértices passam · `10` quadriláteros
+> invertem); *correlação no primeiro passo não é identidade nos doze.*
+>
+> ⚠️ **E o preço é maior do que a espec diz.** A terceira frase — *«deixa de casar com o alvo
+> exactamente nos traços FORTES»* — subestima: **quatro traços que hoje saem a `0,000` caem para
+> `0,465`–`0,811`**, e três deles são aperto de LINHA, o modo em que o alvo mal inverte (`2` e `6`
+> faces). *A trava cobra onde não há nó a desfazer.*
+>
+> ⇒ **A decisão estava a ser posta entre (a) e um miragem.** Gates:
+> `a_trava_do_aperto_nao_desfaz_o_no_e_a_espec_promete_que_sim` +
+> `a_trava_do_aperto_custa_quatro_tracos_exactos`.
+> ⚠️ Os dois pinam a **refutação**, não a FORMA do limitador: trocar o `min` por um corte duro
+> sobrevive aos dois (mutação M2), e quem o trocar tem de re-medir o `79 → 75`.
 
 Ao apertar com força alta, a inversão nasce no **primeiro** passo, antes de a relaxação correr, logo
 nenhuma afinação do solver a evita. As duas saídas, nas frases que a espec §5.2-ter fixa:

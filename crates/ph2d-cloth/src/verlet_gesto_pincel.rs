@@ -114,6 +114,25 @@ pub struct Pincel {
     /// = sem simetria). Só a área *Local* a lê, e é ela que decide quantas
     /// vezes a lista de restrições é construída — ver [`Self::construcoes`].
     pub passagens: u32,
+    /// ⭐⭐⭐ **A LEI DO ALVO, CONVERGIDA — o instrumento do §5.2-ter.** ⛔ `false`
+    /// por omissão, e o caminho de omissão é **byte-idêntico**.
+    ///
+    /// Ligado, o avanço que os DOIS APERTOS produzem num passo é limitado ao que
+    /// falta até ao alvo daquele modo (o cursor · o plano do cursor · a projecção).
+    ///
+    /// ⚠️ **Não é um tecto escolhido: é o LIMITE da própria lei do alvo.** A
+    /// direcção dos apertos é `unit(cursor − p)` — a única, entre os cinco modos
+    /// que escrevem aceleração, que é função da posição **actual** do vértice.
+    /// Sub-dividir o passo re-avaliando essa direcção faz o vértice caminhar em
+    /// recta até ao alvo e **parar lá**, porque a espec já manda separação nula
+    /// dar força nula; e esse limite escreve-se em fechado como o `min`. ⇒ *o nó
+    /// que o alvo faz com força alta é artefacto de um passo de `2,1×` a aresta,
+    /// não uma lei* — e a saída **(b)** do §5.2-ter deixa de ser «mudar o
+    /// produto» para ser «integrar a lei dele como ela pede».
+    ///
+    /// ⛔ Só os apertos: nos outros três a direcção é constante no passo, logo
+    /// não há nada a convergir e o `min` seria uma lei NOVA.
+    pub converge_aperto: bool,
 }
 
 impl Pincel {
@@ -158,6 +177,7 @@ impl Default for Pincel {
             escala_phi: 1.0,
             escala_retencao: 1.0,
             passagens: 1,
+            converge_aperto: false,
         }
     }
 }

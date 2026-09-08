@@ -155,14 +155,14 @@ impl SimComponent for BoneLimit {}
 /// mexe em todos os índices, e um índice guardado passaria a apontar para a animação do vizinho —
 /// em silêncio, que é o pior modo de falha.
 ///
-/// # ⚠️⚠️ O gesto CRIA a acção, e o painel deixa TROCÁ-LA (2026-09-08)
+/// # ⚠️⚠️ O gesto NÃO CRIA NADA — o painel é que escolhe (2026-09-08)
 ///
-/// *Add Smart Bone* faz um clip **novo com o nome do osso** e abre a timeline nele; o selector
-/// **Action** da secção Skeleton troca-o por qualquer outro do documento. ⛔ **Adoptar o clip
-/// ABERTO foi o desenho até esse dia, e era o defeito inteiro de um report do dono** (*«não há
-/// meios de selecionar nem o objeto alvo nem a animação»*): um documento novo tem **uma** acção
-/// chamada `"Main"`, o painel da timeline nasce fechado, e nada na secção dizia a que acção o osso
-/// ficara preso ⇒ todo controlo casava com a animação principal da cena, calado.
+/// *Add Smart Bone* anexa o componente **vazio**; quem lhe dá sujeito são as duas linhas da secção
+/// Skeleton — o ***Pick Object*** (o alvo) e o selector ***Action*** (a animação, filtrada por ele).
+/// ⛔ **Dois desenhos anteriores caíram, cada um por um report do dono no mesmo dia:** *adoptar o
+/// clip ABERTO* casava todo controlo com a animação principal da cena (um documento novo tem **uma**
+/// acção, `"Main"`), e *criar uma acção com o nome do osso* fabricava duas coisas por um clique
+/// (*«porque criar Bone Action no inspector e na timeline? Melhor não criar nada»*).
 ///
 /// # ⚠️ E um controlo NÃO percorre a acção que está ABERTA
 ///
@@ -174,6 +174,20 @@ impl SimComponent for BoneLimit {}
 pub struct SmartBone {
     /// O nome do clip que este osso percorre. Vazio ⇒ inerte (o osso é um osso normal).
     pub clip: String,
+    /// ⭐⭐⭐ **O NOME do objecto de que este controlo trata.** Vazio ⇒ nenhum escolhido.
+    ///
+    /// ⚠️⚠️ **Ele NÃO muda o que a acção faz** — ela corre inteira, como sempre. O que ele muda é a
+    /// LISTA que o painel oferece: só as acções que animam este objecto. Report do dono
+    /// (2026-09-08): *«é necessário um botão de picker para selecionar o objeto … só deve aparecer
+    /// as animações relacionadas ao objeto selecionado»*.
+    ///
+    /// ⚠️ **NOME e não bits**, pela lei da referência durável: o undo respawna tudo com bits novos,
+    /// e bits dentro dos bytes de um componente envenenam o próprio undo.
+    ///
+    /// ⚠️ **Um alvo que já não resolve não esconde nada** — a lista volta a mostrar todas as
+    /// acções. Um filtro sobre um objecto apagado deixaria o artista com um selector vazio e sem
+    /// gesto que o cure, que é pior que filtro nenhum.
+    pub target: String,
     /// O ângulo local (radianos) em que a acção está no **princípio**.
     pub from: f64,
     /// ... e no **fim**.
@@ -188,6 +202,7 @@ impl Default for SmartBone {
     fn default() -> Self {
         Self {
             clip: String::new(),
+            target: String::new(),
             // ⚠️ Um quarto de volta, o mesmo valor de nascimento do [`BoneLimit`] e pela mesma
             // razão: é a maior faixa cujos dois extremos um arrasto alcança sem o osso dar
             // meia-volta. ⛔ `0..0` seria faixa nula e o controlo nasceria morto.
@@ -412,9 +427,14 @@ pub fn register_skeleton_components(reg: &mut ComponentRegistry) {
     // `register_default`: a faixa de nascimento é a volta inteira, que **não apara nada** — logo a
     // paleta do Inspector pode pendurá-lo sem mover a pose, e o artista aperta-o depois.
     reg.register_default::<BoneLimit>("ph2d::skeleton::BoneLimit");
-    // `register`: um osso inteligente sem clip não percorre nada — ele chega pelo GESTO, que é
-    // escolher a acção. Pendurá-lo por paleta daria um controlo inerte, como a âncora sem alvo.
-    reg.register::<SmartBone>("ph2d::skeleton::SmartBone");
+    // ⭐ `register_default` desde 2026-09-08, e a razão MUDOU com o desenho: enquanto o gesto lhe
+    // dava a acção, pendurá-lo por paleta daria um controlo inerte e sem caminho de conclusão —
+    // hoje o gesto **não cria nada** (ordem do dono) e as duas linhas da secção Skeleton
+    // (*Pick Object* · *Action*) completam-no. Nascer vazio é um no-op exacto: o `drive` salta um
+    // clip vazio. ⚠️ O `Attach::Authored` do descritor e este `register_default` são **as duas
+    // metades da mesma decisão**, e o gate `every_offered_component_can_be_constructed` reprova
+    // quem mexer numa só.
+    reg.register_default::<SmartBone>("ph2d::skeleton::SmartBone");
 }
 
 #[cfg(test)]

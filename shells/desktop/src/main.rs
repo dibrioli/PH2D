@@ -1020,6 +1020,7 @@ impl App {
             // saved duration (`apply_project` replaces this whole `TimelineState`).
             timeline: ph2d_timeline::TimelineState::with_default_duration(),
             timeline_intents: Vec::new(),
+            smart_pick: None,
             timeline_reveal_after_apply: false,
             timeline_view: ph2d_timeline::TimelineViewSnapshot::default(),
             timeline_signals: Default::default(),

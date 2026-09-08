@@ -1371,6 +1371,18 @@ pub(crate) struct App {
     /// arm; o clique seguinte no canvas prende, um clique no vazio desiste. Sair do modo Select (ou
     /// da tool) o limpa. Runtime-only: o pick não é documento — o vínculo que ele cria é.
     pub(crate) vec_path_pick: Option<crate::vec_pick::PathPick>,
+    /// ⭐⭐⭐ **O OSSO cujo *Pick Object* está armado** — os bits dele, à espera de que a selecção
+    /// mude para outra coisa.
+    ///
+    /// ⚠️ **Ele resolve pela SELECÇÃO e não por um hit-test próprio**, e é isso que lhe dá as duas
+    /// superfícies que o dono pediu de graça (*«seja no canvas ou seja na hierarquia»*, 2026-09-08):
+    /// as duas escrevem a MESMA selecção. Um segundo caminho de acerto divergiria do primeiro no dia
+    /// em que um deles mudasse — o defeito que o `import_router` já pagou com uma lista à mão ao lado
+    /// de um predicado.
+    ///
+    /// ⚠️ **O osso é CAPTURADO no arm**, pela razão do [`crate::vec_pick::PathPick`]: o clique
+    /// seguinte MUDA a selecção, então ler o sujeito nesse instante leria o alvo.
+    pub(crate) smart_pick: Option<u64>,
     /// **O que já foi propagado entre o painel autorado e o mundo** (plano UI/UX W8b.4).
     ///
     /// ⚠️ O memo do reconcile de duas direções: sem ele o ponteiro e o mundo sobrescreviam-se em

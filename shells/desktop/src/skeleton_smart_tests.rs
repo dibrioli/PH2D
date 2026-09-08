@@ -66,6 +66,7 @@ fn liga(sim: &mut SimWorld, e: Entity, clip: &str) {
         .entity_mut(e)
         .insert(ph2d_skeleton_ecs::SmartBone {
             clip: clip.into(),
+            target: String::new(),
             from: 0.0,
             to: ATE,
         });
@@ -187,56 +188,6 @@ fn a_scene_without_smart_bones_pays_nothing() {
     assert!((x(&sim, movido) - 0.0).abs() < 1e-9);
 }
 
-/// ⭐⭐⭐ **UM OSSO INTELIGENTE NASCE COM ACÇÃO PRÓPRIA — ⛔ ele nunca adopta a que está aberta.**
-///
-/// ⚠️⚠️ **É o report do dono de 2026-09-08** (*«não há meios de selecionar nem o objeto alvo nem a
-/// animação»*), e o mecanismo é este: um `TimelineDoc` novo nasce com **uma** acção chamada
-/// `"Main"` ⇒ *adoptar a aberta* amarrava **todo** osso inteligente à animação principal da cena, em
-/// silêncio, e nada na tela dizia a qual. É a lei do Moho (*Create Smart Bone Action* nasce com o
-/// nome do osso) e o botão **New** do *Action Constraint* do Blender.
-#[test]
-fn a_smart_bone_is_born_with_its_own_action_never_the_open_one() {
-    let doc = TimelineDoc::default();
-    assert_eq!(
-        doc.clips().len(),
-        1,
-        "a premissa deste gate é que um documento novo tem UMA acção — se isto mudar, o mecanismo \
-         do report mudou com ele"
-    );
-    let nome = crate::skeleton_smart::fresh_action_name(&doc, "Bone 7");
-    assert_ne!(
-        nome,
-        doc.clips()[0].name,
-        "o osso inteligente adoptou a acção ABERTA — ele voltaria a casar com a animação principal \
-         da cena, calado"
-    );
-    assert!(
-        nome.contains("Bone 7"),
-        "a acção não leva o nome do osso ({nome:?}) — o artista não a acha na lista"
-    );
-}
-
-/// ⭐ **Dois pedidos para o mesmo osso dão nomes DIFERENTES.**
-///
-/// ⚠️ O nome é a referência durável desta casa (`SmartBone::clip` guarda o nome, e o passe procura
-/// o clip por ele): duas acções homónimas seriam **o mesmo sujeito** para o `drive`, e o segundo
-/// osso percorreria a acção do primeiro.
-#[test]
-fn two_actions_for_the_same_bone_never_share_a_name() {
-    let mut doc = TimelineDoc::default();
-    let a = crate::skeleton_smart::fresh_action_name(&doc, "Bone 7");
-    doc.add_clip(a.clone());
-    let b = crate::skeleton_smart::fresh_action_name(&doc, "Bone 7");
-    assert_ne!(
-        a, b,
-        "o segundo pedido devolveu o nome que já estava tomado"
-    );
-    assert!(
-        doc.clips().iter().all(|c| c.name != b),
-        "o nome escolhido ({b:?}) já existe no documento"
-    );
-}
-
 /// ⭐⭐⭐ **O SELECTOR ALCANÇA TODA ACÇÃO QUE O DOCUMENTO PODE TER.**
 ///
 /// ⚠️ O chrome **não cunha um id em tempo de execução**: a lista de opções é um pool fixo. Um pool
@@ -355,4 +306,108 @@ fn the_smoke_scene_ships_an_action_with_something_in_it() {
         "a acção da cena não anima objecto nenhum — girar o osso não moveria nada, e o dono leria \
          isso como o motor partido"
     );
+}
+
+/// ⭐⭐⭐ **A LISTA DE ACÇÕES ESTREITA-SE PARA O OBJECTO ESCOLHIDO.**
+///
+/// ⚠️⚠️ **Report do dono (2026-09-08):** *«só deve aparecer as animações relacionadas ao objeto
+/// selecionado»*. ⚠️ **E a medição corrige metade da premissa dele:** a lista não cresce com os
+/// OBJECTOS — ela lista clips, e o documento recusa mais que `MAX_CLIPS` (`16`). O que o filtro
+/// compra não é tamanho, é **relevância**.
+#[test]
+fn the_action_list_narrows_to_the_chosen_object() {
+    let (mut sim, mut doc, _, _movido) = cena();
+    // Uma segunda acção que NÃO toca no objecto — é ela que o filtro tem de tirar.
+    let outra = doc.add_clip("Somebody Else".into());
+    doc.set_active(outra);
+    let estranho = sim
+        .world_mut()
+        .spawn((Transform::IDENTITY, Name::new("Stranger"), RootOrder(9)))
+        .id();
+    doc.insert_key(
+        estranho.to_bits(),
+        PropKind::TranslationX,
+        RationalTime::from_seconds(0.0),
+        AnimValue::Float(1.0),
+        Interp::Linear,
+    );
+    doc.set_active(0);
+
+    let sem_alvo = ph2d_skeleton_ecs::SmartBone::default();
+    let todas = crate::skeleton_smart::actions_for(sim.world(), &doc, &sem_alvo);
+    assert_eq!(
+        todas.len(),
+        doc.clips().len(),
+        "sem alvo, a lista tem de ser a do documento inteiro — filtrar por nada esconderia tudo"
+    );
+
+    let com_alvo = ph2d_skeleton_ecs::SmartBone {
+        target: "Driven".to_string(),
+        ..ph2d_skeleton_ecs::SmartBone::default()
+    };
+    let so_dele = crate::skeleton_smart::actions_for(sim.world(), &doc, &com_alvo);
+    assert!(
+        so_dele.iter().any(|n| n == "Correction"),
+        "a acção que anima o alvo saiu da lista: {so_dele:?}"
+    );
+    assert!(
+        !so_dele.iter().any(|n| n == "Somebody Else"),
+        "uma acção que NÃO toca o alvo ficou na lista: {so_dele:?}"
+    );
+}
+
+/// ⭐⭐⭐ **UM FILTRO QUE ESVAZIARIA A LISTA NÃO SE APLICA** — e é lei, não conforto.
+///
+/// ⚠️ Os três casos que a disparam são reais: o alvo **apagado**, o alvo **renomeado**, e um objecto
+/// que **nunca foi animado**. Nos três, filtrar daria um selector com ZERO opções — *um controlo que
+/// só sabe recusar é pior que um controlo ausente*, e ali o artista não teria gesto nenhum que o
+/// curasse: o alvo escolhe-se no canvas, não na lista.
+#[test]
+fn a_filter_that_would_empty_the_list_does_not_apply() {
+    let (mut sim, doc, _, _) = cena();
+    let n = doc.clips().len();
+    for alvo in ["Ninguem", "Stranger"] {
+        // O 2.º existe no mundo e não é animado — o 1.º nem existe.
+        if alvo == "Stranger" {
+            sim.world_mut()
+                .spawn((Transform::IDENTITY, Name::new("Stranger"), RootOrder(9)));
+        }
+        let sb = ph2d_skeleton_ecs::SmartBone {
+            target: alvo.to_string(),
+            ..ph2d_skeleton_ecs::SmartBone::default()
+        };
+        assert_eq!(
+            crate::skeleton_smart::actions_for(sim.world(), &doc, &sb).len(),
+            n,
+            "com o alvo {alvo:?} o filtro esvaziou a lista em vez de se desligar"
+        );
+    }
+}
+
+/// ⛔ **O GESTO NÃO CRIA NADA** — ordem do dono (2026-09-08: *«porque criar Bone Action no inspector
+/// e na timeline? Melhor não criar nada»*).
+///
+/// ⚠️ O *Add Smart Bone* insere exactamente um `SmartBone::default()`, e é este gate que diz o que
+/// esse default tem de ser: **vazio nos dois nomes**. Um default com clip ou alvo pré-preenchidos
+/// voltaria a casar o controlo com alguma coisa que ninguém escolheu — que é o defeito que os dois
+/// desenhos anteriores tinham, cada um à sua maneira.
+#[test]
+fn the_gesture_attaches_an_empty_control_and_creates_nothing() {
+    let d = ph2d_skeleton_ecs::SmartBone::default();
+    assert!(
+        d.clip.is_empty(),
+        "o controlo nasceu casado com {:?}",
+        d.clip
+    );
+    assert!(
+        d.target.is_empty(),
+        "o controlo nasceu com alvo {:?}",
+        d.target
+    );
+    // E vazio ele é INERTE — a outra metade, que o gate irmão mede sobre o mundo inteiro.
+    let (mut sim, doc, controlo, movido) = cena();
+    sim.world_mut().entity_mut(controlo).insert(d);
+    let mut pv = PreviewDrive::default();
+    assert_eq!(drive(&mut sim, &doc, &mut pv), 0);
+    assert!((x(&sim, movido) - 0.0).abs() < 1e-9);
 }

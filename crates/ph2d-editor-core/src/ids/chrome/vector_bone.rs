@@ -125,18 +125,27 @@ pub const VECTOR_BONE_LIMIT_MIN: NodeId = hash_node_id("vector.bone.limit.min");
 /// **Limit Max** — o extremo anti-horário, em graus. Ver [`VECTOR_BONE_LIMIT_MIN`].
 pub const VECTOR_BONE_LIMIT_MAX: NodeId = hash_node_id("vector.bone.limit.max");
 
-/// ⭐⭐⭐ **Add Smart Bone** — este osso ganha uma acção PRÓPRIA, com o nome dele.
+/// ⭐⭐⭐ **Add Smart Bone** — anexa o controlo, VAZIO. ⛔ Ele não cria coisa nenhuma.
 ///
-/// ⚠️⚠️ **Ele CRIA a acção; ⛔ não adopta a que está aberta** — e a diferença foi um report do dono
-/// (*«não há meios de selecionar nem o objeto alvo nem a animação»*, 2026-09-08). Um documento novo
-/// nasce com **uma** acção chamada `"Main"`, então *adoptar a aberta* casava **todo** osso
-/// inteligente com a animação principal da cena, em silêncio e sem nada na tela a dizê-lo — que é
-/// exactamente o contrário do que uma acção é. É também a lei do Moho (*Create Smart Bone Action*
-/// nasce com o nome do osso) e a do Blender (*Action Constraint* tem o botão **New**).
+/// ⚠️⚠️ **Dois desenhos caíram aqui no mesmo dia, cada um por um report do dono** (2026-09-08):
+/// *adoptar o clip ABERTO* (*«não há meios de selecionar nem o objeto alvo nem a animação»*) casava
+/// **todo** controlo com a animação principal da cena, porque um documento novo tem **uma** acção,
+/// chamada `"Main"`; e *criar uma acção com o nome do osso* fabricava duas coisas por um clique
+/// (*«porque criar Bone Action no inspector e na timeline? Melhor não criar nada»*).
 ///
-/// ⇒ quem escolhe outra acção é o [`VECTOR_BONE_SMART_CLIP`], que é onde *«qual animação?»* passou
-/// a ter resposta na tela.
+/// ⇒ quem dá sujeito ao controlo são as duas linhas do painel: o [`VECTOR_BONE_SMART_PICK`] (o
+/// objecto de que ele trata) e o [`VECTOR_BONE_SMART_CLIP`] (a animação, filtrada por aquele).
 pub const VECTOR_BONE_SMART_ADD: NodeId = hash_node_id("vector.bone.smart.add");
+
+/// ⭐⭐⭐ **Pick Object** — arma o gesto de duas mãos que diz de que objecto este controlo trata.
+///
+/// ⚠️ **O clique seguinte vale no CANVAS e na HIERARQUIA**, e é de graça: as duas superfícies
+/// escrevem a MESMA selecção, então quem resolve o pick é *«a selecção mudou para outra coisa»* —
+/// não um segundo caminho de acerto que divergiria do primeiro no dia em que um deles mudasse.
+///
+/// ⚠️ **Ele é o READOUT e o gesto**: o rótulo diz o nome do objecto escolhido. Um rótulo fixo
+/// obrigaria a abrir outra coisa para saber o que lá está.
+pub const VECTOR_BONE_SMART_PICK: NodeId = hash_node_id("vector.bone.smart.pick");
 
 /// **Remove Smart Bone** — o osso volta a ser um osso.
 pub const VECTOR_BONE_SMART_REMOVE: NodeId = hash_node_id("vector.bone.smart.remove");
@@ -206,7 +215,7 @@ pub const VECTOR_BONE_SMART_CLIP_IDS: [NodeId; MAX_SMART_CLIPS] = [
 ///
 /// ⇒ *Uma lista escrita à mão ao lado de outra é duas respostas à mesma pergunta, e a que o artista
 /// vê é a que envelhece.* Com uma tabela só, acrescentar um verbo liga-o nos dois sítios.
-pub const VECTOR_BONE_VERBS: [NodeId; 9] = [
+pub const VECTOR_BONE_VERBS: [NodeId; 10] = [
     VECTOR_BONE_BIND,
     VECTOR_BONE_EXPAND,
     VECTOR_BONE_RELEASE,
@@ -216,6 +225,7 @@ pub const VECTOR_BONE_VERBS: [NodeId; 9] = [
     VECTOR_BONE_LIMIT_REMOVE,
     VECTOR_BONE_SMART_ADD,
     VECTOR_BONE_SMART_REMOVE,
+    VECTOR_BONE_SMART_PICK,
 ];
 
 /// ⭐⭐⭐ **OS CAMPOS NUMÉRICOS DA SEÇÃO SKELETON — a mesma tabela, os mesmos dois consumidores.**

@@ -55,7 +55,7 @@ fn limpa() {
     state::set_current_skinned(false);
     state::set_current_bone(None);
     state::set_current_bone_ik(None);
-    state::set_current_bone_smart(None, "");
+    state::set_current_bone_smart(None);
     state::set_current_bone_actions(Vec::new());
 }
 
@@ -188,12 +188,19 @@ fn estado_de(id: ph2d_a11y::NodeId) {
     // e os dois ângulos só com ela.
     let precisa_de_accao = id == ids::VECTOR_BONE_SMART_REMOVE
         || id == ids::VECTOR_BONE_SMART_CLIP
+        || id == ids::VECTOR_BONE_SMART_PICK
         || id == ids::VECTOR_BONE_SMART_FROM
         || id == ids::VECTOR_BONE_SMART_TO
         || ids::VECTOR_BONE_SMART_CLIP_IDS.contains(&id);
-    state::set_current_bone_smart(precisa_de_accao.then_some((0.0, 90.0)), "Bone 7 Action");
+    state::set_current_bone_smart(precisa_de_accao.then(|| state::SmartBoneView {
+        from: 0.0,
+        to: 90.0,
+        clip: "Walk".to_string(),
+        target: "Leaf".to_string(),
+        picking: false,
+    }));
     state::set_current_bone_actions(if precisa_de_accao {
-        vec!["Main".to_string(), "Bone 7 Action".to_string()]
+        vec!["Main".to_string(), "Walk".to_string()]
     } else {
         Vec::new()
     });
@@ -264,7 +271,7 @@ fn the_action_picker_lists_the_document_and_the_choice_reaches_the_bus() {
 #[test]
 fn a_bone_without_an_action_is_offered_no_picker() {
     publica_tudo();
-    state::set_current_bone_smart(None, "");
+    state::set_current_bone_smart(None);
     state::set_current_bone_actions(Vec::new());
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let mut st = VectorPanelState;

@@ -444,14 +444,13 @@ pub(crate) use slot_index::{
 /// ⭐ O estado do **ESQUELETO** (estudo 42 item 5) — módulo irmão pelo mesmo teto de 600 LOC.
 #[path = "state_bone.rs"]
 mod bone;
+pub use bone::{
+    SmartBoneView, set_current_bone, set_current_bone_actions, set_current_bone_ik,
+    set_current_bone_limit, set_current_bone_smart, set_current_has_skeleton, set_current_skinned,
+};
 pub(crate) use bone::{
     bone_actions, current_bone, current_bone_ik, current_bone_limit, current_bone_smart,
-    current_bone_smart_clip, has_skeleton, set_pending_bone_action_dd, skinned,
-    take_pending_bone_action_dd,
-};
-pub use bone::{
-    set_current_bone, set_current_bone_actions, set_current_bone_ik, set_current_bone_limit,
-    set_current_bone_smart, set_current_has_skeleton, set_current_skinned,
+    has_skeleton, set_pending_bone_action_dd, skinned, take_pending_bone_action_dd,
 };
 
 /// O estado do **Text on Path** (plano 22) — módulo irmão pelo mesmo teto de 600 LOC.

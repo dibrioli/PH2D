@@ -24,37 +24,63 @@
 //! ⛔ Ao contrário, a IK resolveria sobre uma pose que a acção ainda vai mudar, e o alvo deixaria de
 //! ser alcançado no mesmo quadro.
 
-use ph2d_ecs::{Entity, SimWorld, StableId, Transform};
+use ph2d_ecs::{Entity, Name, SimWorld, StableId, Transform, World};
 use ph2d_skeleton_ecs::SmartBone;
 use ph2d_timeline::TimelineDoc;
 
 use crate::preview_drive::PreviewDrive;
 
-/// ⭐⭐⭐ **O NOME DA ACÇÃO DE UM OSSO** — *«Bone 7 Action»*, e *«Bone 7 Action 2»* se aquele já
-/// existir.
+/// ⭐⭐⭐ **AS ACÇÕES QUE ESTE CONTROLO PODE OFERECER** — todas, ou só as que animam o ALVO dele.
 ///
-/// ⚠️⚠️ **Ela existe porque *Add Smart Bone* CRIA a acção, e não adopta a aberta** (report do dono,
-/// 2026-09-08: *«não há meios de selecionar nem o objeto alvo nem a animação»*). Um documento novo
-/// nasce com **uma** acção chamada `"Main"` ⇒ adoptar a aberta casava todo osso inteligente com a
-/// animação principal da cena, em silêncio. É a lei do Moho (*Create Smart Bone Action* nasce com o
-/// nome do osso) — e o nome é a referência durável desta casa, logo ele tem de ser **único**: dois
-/// clips homónimos seriam o mesmo sujeito para o `drive`, que os procura por nome.
+/// ⚠️⚠️ **Report do dono (2026-09-08):** *«se ouverem milhares de objetos animado a lista action
+/// fica impossível. Só deve aparecer as animações relacionadas ao objeto selecionado»*. ⚠️ **A
+/// medição corrige metade da premissa e confirma a outra:** a lista não cresce com os OBJECTOS — ela
+/// lista **clips**, e o documento recusa mais que [`ph2d_timeline::MAX_CLIPS`] (`16`). O que ela
+/// ganha aqui não é tamanho, é **relevância**: *quais destas animações tocam este objecto* é a única
+/// pergunta que separa as `16`.
 ///
-/// ⚠️ O sufixo começa em `2` porque o primeiro **não** o leva: *«Bone 7 Action»* e *«Bone 7 Action
-/// 1»* lado a lado leem-se como uma lista que perdeu o zero.
+/// ⚠️⚠️ **UM filtro que esvaziaria a lista NÃO se aplica**, e é lei, não conforto. Um alvo vazio, um
+/// alvo cujo objecto foi apagado, ou um objecto que nunca foi animado dariam um selector com zero
+/// opções — *um controlo que só sabe recusar é pior que um controlo ausente*, e ali o artista não
+/// teria gesto nenhum que o curasse (o alvo escolhe-se no canvas, não na lista).
+///
+/// ⚠️ O alvo resolve-se pelo **NOME** (a referência durável desta casa), o que custa uma varredura
+/// do mundo — paga só quando um controlo está em foco, que é um gesto interactivo.
 #[must_use]
-pub(crate) fn fresh_action_name(doc: &TimelineDoc, bone: &str) -> String {
-    let base = format!("{bone} Action");
-    let tomado = |n: &str| doc.clips().iter().any(|c| c.name == n);
-    if !tomado(&base) {
-        return base;
+pub(crate) fn actions_for(world: &World, doc: &TimelineDoc, sb: &SmartBone) -> Vec<String> {
+    let todas = || {
+        doc.clips()
+            .iter()
+            .map(|c| c.name.clone())
+            .collect::<Vec<_>>()
+    };
+    if sb.target.is_empty() {
+        return todas();
     }
-    // ⚠️ O tecto é o `MAX_CLIPS + 2` e não um número solto: acima dele o documento já recusa o
-    // clip, então procurar mais longe seria escolher um nome que ninguém vai poder usar.
-    (2..=ph2d_timeline::MAX_CLIPS + 2)
-        .map(|i| format!("{base} {i}"))
-        .find(|n| !tomado(n))
-        .unwrap_or(base)
+    let Some(bits) = world
+        .iter_entities()
+        .find(|er| er.get::<Name>().is_some_and(|n| n.as_str() == sb.target))
+        .map(|er| er.id().to_bits())
+    else {
+        return todas(); // o objecto foi apagado ou renomeado — filtrar por ele esconderia tudo
+    };
+    let alvos: Vec<ph2d_anim::AnimTarget> = doc
+        .bindings()
+        .iter()
+        .filter(|b| b.entity == bits)
+        .map(|b| b.target)
+        .collect();
+    let filtradas: Vec<String> = doc
+        .clips()
+        .iter()
+        .filter(|c| alvos.iter().any(|t| c.clip.track(*t).is_some()))
+        .map(|c| c.name.clone())
+        .collect();
+    if filtradas.is_empty() {
+        todas()
+    } else {
+        filtradas
+    }
 }
 
 /// **Os ossos inteligentes da cena**, em ordem determinística.

@@ -371,12 +371,19 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
             });
             sync_loop(&state.doc, playhead, state.keys_mode);
         }
-        // ⚠️ **Os dois braços chamam a MESMA porta**, e é de propósito: a duração de 4 s e o
-        // `set_active` são o que «um clip nasce» significa nesta casa, e escrevê-los duas vezes
-        // faria um clip nomeado nascer com outra duração que um anónimo — invisível até alguém
-        // medir o `clip_end_seconds` de um deles.
-        I::AddClip => a_clip_is_born(state, playhead, None),
-        I::AddNamedClip { name } => a_clip_is_born(state, playhead, Some(name)),
+        I::AddClip => {
+            edit(state, |doc, sel| {
+                let name = doc.fresh_clip_name();
+                let i = doc.add_clip(name);
+                // A new clip opens as a 4 s composition, not a derived-0 one (Enio,
+                // 2026-07-23) — the same product default the first clip gets. The
+                // AUTHORING layer stamps it; the data `add_clip` stays derived.
+                doc.set_clip_length_override(i, Some(crate::DEFAULT_DURATION_SECONDS));
+                doc.set_active(i);
+                sel.clear();
+            });
+            sync_loop(&state.doc, playhead, state.keys_mode);
+        }
         I::RenameClip { index, name } => edit(state, |doc, _| {
             doc.rename_clip(index, name);
         }),
@@ -490,24 +497,6 @@ pub(crate) fn edit_at(
     f: impl FnOnce(&mut TimelineDoc, crate::StackHost, &mut Selection),
 ) {
     edit(state, |doc, sel| f(doc, host, sel));
-}
-
-/// ⭐ **A porta única de «um clip NASCE»** — `AddClip` (nome derivado) e `AddNamedClip` (nome dado)
-/// diferem numa coisa só, e tudo o resto é o que nascer significa.
-///
-/// ⚠️ A duração de 4 s é do produto (Enio, 2026-07-23) e a camada de AUTORIA é que a carimba: o
-/// `add_clip` do dado fica derivado. Escrita em dois braços, ela divergiria no primeiro que alguém
-/// afinasse — e o sintoma seria um osso inteligente a percorrer uma faixa de tempo diferente
-/// conforme quem criou a acção.
-fn a_clip_is_born(state: &mut TimelineState, playhead: &mut Playhead, name: Option<String>) {
-    edit(state, |doc, sel| {
-        let name = name.unwrap_or_else(|| doc.fresh_clip_name());
-        let i = doc.add_clip(name);
-        doc.set_clip_length_override(i, Some(crate::DEFAULT_DURATION_SECONDS));
-        doc.set_active(i);
-        sel.clear();
-    });
-    sync_loop(&state.doc, playhead, state.keys_mode);
 }
 
 /// Run a doc edit as one undo step: snapshot, mutate `(doc, selection)`, commit

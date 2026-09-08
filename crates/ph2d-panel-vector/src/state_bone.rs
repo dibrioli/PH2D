@@ -72,14 +72,12 @@ thread_local! {
     /// ⭐ O limite de ângulo da junta em foco, em GRAUS. `None` ⇒ ela gira livremente, e o painel
     /// oferece a porta de entrada em vez dos dois números.
     static CURRENT_LIMIT: Cell<Option<(f64, f64)>> = const { Cell::new(None) };
-    /// ⭐ A faixa do OSSO INTELIGENTE em foco, em GRAUS. `None` ⇒ ele não percorre acção nenhuma.
-    static CURRENT_SMART: Cell<Option<(f64, f64)>> = const { Cell::new(None) };
-    /// ⭐⭐⭐ **QUAL acção o osso em foco percorre** — o nome, que é a referência durável desta casa.
+    /// ⭐⭐⭐ **O OSSO INTELIGENTE em foco, inteiro.** `None` ⇒ ele não é um controlo.
     ///
-    /// ⚠️ **Sem isto o painel mostrava dois números sem sujeito**, e o dono leu a feature como
-    /// avariada (report de 2026-09-08). *Um controlo cujo sujeito é invisível lê-se exactamente
-    /// como um controlo morto.*
-    static CURRENT_SMART_CLIP: RefCell<String> = const { RefCell::new(String::new()) };
+    /// ⚠️ **Um slot só para os cinco factos**, e não cinco publicações: publicá-los por portas
+    /// separadas deixaria um quadro em que a faixa é de um osso e o nome é do anterior — e o
+    /// defeito seria invisível, porque cada leitura é individualmente correcta.
+    static CURRENT_SMART: RefCell<Option<SmartBoneView>> = const { RefCell::new(None) };
     /// ⭐ **As acções que o DOCUMENTO tem** — a lista que o selector mostra, publicada pela shell.
     ///
     /// ⚠️ Ela é do documento e não do osso: dois ossos inteligentes escolhem de entre as mesmas
@@ -138,30 +136,34 @@ pub(crate) fn current_bone_limit() -> Option<(f64, f64)> {
     CURRENT_LIMIT.with(Cell::get)
 }
 
-/// A faixa do osso inteligente em foco, em GRAUS (`from`, `to`), e o NOME da acção que ele
-/// percorre. `None` ⇒ ele não tem acção.
+/// ⭐⭐⭐ **O OSSO INTELIGENTE em foco** (shell → painel) — a faixa, a acção e o alvo, de uma vez.
 ///
 /// ⚠️ **Graus e não radianos**, pela mesma razão do limite: o documento guarda o ângulo no espaço
 /// do `Transform` e o artista pensa em graus. A conversão vive na SHELL.
-///
-/// ⚠️⚠️ **Os três números e o nome entram pela MESMA porta, de propósito.** Publicá-los por duas
-/// funções deixaria um quadro em que a faixa é de um osso e o nome é do anterior — e o defeito
-/// seria invisível, porque as duas leituras são individualmente correctas.
-pub fn set_current_bone_smart(v: Option<(f64, f64)>, clip: &str) {
-    CURRENT_SMART.with(|c| c.set(v));
-    CURRENT_SMART_CLIP.with(|c| {
-        let mut s = c.borrow_mut();
-        s.clear();
-        s.push_str(clip);
-    });
+#[derive(Clone, Debug, PartialEq)]
+pub struct SmartBoneView {
+    /// O ângulo (GRAUS) em que a acção está no princípio.
+    pub from: f64,
+    /// ... e no fim.
+    pub to: f64,
+    /// O NOME da acção ligada. Vazio ⇒ nenhuma.
+    pub clip: String,
+    /// O NOME do objecto de que este controlo trata. Vazio ⇒ nenhum escolhido.
+    pub target: String,
+    /// O *Pick Object* está ARMADO — o clique seguinte escolhe o alvo.
+    ///
+    /// ⚠️ Ele muda o RÓTULO do botão, e é essa a diferença entre um gesto modal que se percebe e um
+    /// clique que parece não ter feito nada.
+    pub picking: bool,
 }
 
-pub(crate) fn current_bone_smart() -> Option<(f64, f64)> {
-    CURRENT_SMART.with(Cell::get)
+/// Publica o osso inteligente em foco. `None` ⇒ ele não é um controlo.
+pub fn set_current_bone_smart(v: Option<SmartBoneView>) {
+    CURRENT_SMART.with(|c| *c.borrow_mut() = v);
 }
 
-pub(crate) fn current_bone_smart_clip() -> String {
-    CURRENT_SMART_CLIP.with(|c| c.borrow().clone())
+pub(crate) fn current_bone_smart() -> Option<SmartBoneView> {
+    CURRENT_SMART.with(|c| c.borrow().clone())
 }
 
 pub(crate) fn current_bone_ik() -> Option<(f64, f64, f64, usize)> {

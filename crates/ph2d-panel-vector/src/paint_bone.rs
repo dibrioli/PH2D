@@ -149,14 +149,18 @@ impl BodyCtx<'_> {
     /// ⇒ o chip é o **readout e o gesto**: ele diz o nome da acção ligada e abre a lista das que o
     /// documento tem.
     fn smart_rows(&mut self, y: f32) -> f32 {
-        let Some(_) = state::current_bone_smart() else {
+        let Some(sb) = state::current_bone_smart() else {
             return self.action_button(
                 ids::VECTOR_BONE_SMART_ADD,
                 tr("panel.vector.bone.smart.add"),
                 y,
             );
         };
-        let mut y = self.smart_action_row(y);
+        // ⚠️ **O OBJECTO vem ANTES da acção**, e a ordem diz o porquê: ele **decide o que a linha
+        // seguinte mostra** (só as acções que animam este objecto). Ler isso depois de já ter
+        // escolhido na lista é tarde — é a mesma lei do par *Criar × Transformar* no topo da secção.
+        let mut y = self.smart_object_row(&sb, y);
+        y = self.smart_action_row(&sb, y);
         y = self.action_button(
             ids::VECTOR_BONE_SMART_REMOVE,
             tr("panel.vector.bone.smart.remove"),
@@ -181,7 +185,35 @@ impl BodyCtx<'_> {
     /// ⚠️ **Vazio mostra o traço**, e não uma cadeia vazia: uma célula em branco lê-se como um
     /// controlo por carregar, e o traço diz *«nenhuma»* em voz alta — a mesma lei da tecla de uma
     /// forma do Morph.
-    fn smart_action_row(&mut self, y: f32) -> f32 {
+    /// ⭐⭐⭐ **DE QUE OBJECTO ESTE CONTROLO TRATA** — o botão que arma o *Pick Object*.
+    ///
+    /// ⚠️⚠️ **Report do dono (2026-09-08):** *«é necessário um botão de picker para selecionar o
+    /// objeto seja no canvas ou seja na hierarquia … só deve aparecer as animações relacionadas ao
+    /// objeto selecionado»*. As duas superfícies saem de graça porque o pick resolve pela
+    /// **SELECÇÃO** — canvas e hierarquia escrevem a mesma —, e não por um segundo caminho de
+    /// acerto que divergiria do primeiro.
+    ///
+    /// ⚠️ **É o READOUT e o gesto**: o rótulo é o nome do objecto, ou o convite quando não há. E
+    /// **armado ele diz o que espera** — um botão que fica igual depois do clique lê-se como um
+    /// botão que não fez nada.
+    fn smart_object_row(&mut self, sb: &state::SmartBoneView, y: f32) -> f32 {
+        let rotulo = if sb.picking {
+            tr("panel.vector.bone.smart.picking")
+        } else if sb.target.is_empty() {
+            tr("panel.vector.bone.smart.pick")
+        } else {
+            sb.target.as_str()
+        };
+        self.labeled_action_button(
+            tr("panel.vector.bone.smart.object"),
+            ids::VECTOR_BONE_SMART_PICK,
+            rotulo,
+            sb.picking,
+            y,
+        )
+    }
+
+    fn smart_action_row(&mut self, sb: &state::SmartBoneView, y: f32) -> f32 {
         let gap = Spacing::Xs.px();
         let id = ids::VECTOR_BONE_SMART_CLIP;
         paint_text(
@@ -194,11 +226,10 @@ impl BodyCtx<'_> {
             LABEL_COL_W,
             resolve(ColorToken::Text1, self.theme),
         );
-        let ligada = state::current_bone_smart_clip();
-        let rotulo = if ligada.is_empty() {
+        let rotulo = if sb.clip.is_empty() {
             tr("panel.vector.bone.smart.none")
         } else {
-            ligada.as_str()
+            sb.clip.as_str()
         };
         let chip = Rect::new(
             self.inner_x + LABEL_COL_W + gap,
@@ -318,7 +349,9 @@ pub(crate) fn paint_action_popover(ctx: &mut PaintCtx, chip: Rect, theme: Theme)
     if n == 0 {
         return;
     }
-    let ligada = state::current_bone_smart_clip();
+    let ligada = state::current_bone_smart()
+        .map(|s| s.clip)
+        .unwrap_or_default();
     let sel = nomes.iter().take(n).position(|c| *c == ligada).unwrap_or(0);
     let options: Vec<DropdownOption<usize>> = nomes
         .iter()

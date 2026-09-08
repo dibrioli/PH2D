@@ -415,19 +415,6 @@ pub enum TimelineIntent {
     /// Append a new, empty clip and make it active. Refused past
     /// [`crate::MAX_CLIPS`].
     AddClip,
-    /// **Append a new, empty clip WITH A GIVEN NAME** and make it active. Refused
-    /// past [`crate::MAX_CLIPS`], exactly like [`Self::AddClip`].
-    ///
-    /// Distinct from `AddClip` + [`Self::RenameClip`] because the caller cannot
-    /// know the new index before the intent is applied: a Smart Bone writes the
-    /// action's NAME into its own component in the same frame it asks for the
-    /// clip, and the name is the durable reference in this house. Composing the
-    /// two intents would make the caller guess `clips().len()`, which is wrong the
-    /// moment any other clip intent is queued ahead of it.
-    AddNamedClip {
-        /// The author-visible name the clip is born with.
-        name: String,
-    },
     /// Rename clip `index`.
     RenameClip {
         /// Index into [`crate::TimelineDoc::clips`].

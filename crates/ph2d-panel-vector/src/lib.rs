@@ -175,11 +175,11 @@ pub use paint_connector::{ConnectorSnapshot, set_current_connector};
 pub use paint_sections::brush::BrushRow;
 pub use state::{
     FILTER_DETAIL_MAX, FalloffRole, FillKind, FilterKindView, FilterRowView, FontPreview,
-    FxParamView, FxRowView, PathFillRule, PatternArt, RAMP_PREVIEW_N, StrokePaintKind,
-    TextAxisSlot, TexturePatternRow, VectorPanelState, expand_join, expand_side, last_content_h,
-    last_visible_h, selected_stop, set_current_bone, set_current_bone_actions, set_current_bone_ik,
-    set_current_bone_limit, set_current_bone_smart, set_current_brush, set_current_contour,
-    set_current_contour_can_add, set_current_convertible, set_current_effects,
+    FxParamView, FxRowView, PathFillRule, PatternArt, RAMP_PREVIEW_N, SmartBoneView,
+    StrokePaintKind, TextAxisSlot, TexturePatternRow, VectorPanelState, expand_join, expand_side,
+    last_content_h, last_visible_h, selected_stop, set_current_bone, set_current_bone_actions,
+    set_current_bone_ik, set_current_bone_limit, set_current_bone_smart, set_current_brush,
+    set_current_contour, set_current_contour_can_add, set_current_convertible, set_current_effects,
     set_current_envelope_mode, set_current_envelope_presets, set_current_fill,
     set_current_fill_rule, set_current_filter_can_add, set_current_filters,
     set_current_grad_influence, set_current_grad_jitter, set_current_guides,

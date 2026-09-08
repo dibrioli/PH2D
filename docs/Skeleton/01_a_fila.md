@@ -625,6 +625,53 @@ dar-lhe um id gerado: seria esconder o controlo em vez de o ligar.
 **corte por responsabilidade** em `reach_limit_tests.rs` (a parede de uma junta) e
 `reach_action_tests.rs` (o instante que um ângulo pede), ⛔ nunca por isenção.
 
+
+### F3-c — ✅ *«melhor não criar nada»* + *«um botão de picker … só as animações do objeto»* (2026-09-08)
+
+O dono correu o smoke da F3-b (*«Funciona!»*) e devolveu **duas ordens**, que juntas apagam metade
+do desenho da manhã:
+
+1. *«porque criar Bone Action no inspector e na timeline? **Melhor não criar nada**»* ⇒ o gesto
+   **anexa o controlo VAZIO** e mais nada. A `TimelineIntent::AddNamedClip`, a abertura automática
+   da timeline e o `fresh_action_name` foram **removidos** — não desligados: nenhum deles tem
+   consumidor, e um ponto de extensão sem chamador é dívida com cara de feature.
+2. *«é necessário um botão de picker para selecionar o objeto seja no canvas ou seja na hierarquia
+   … só deve aparecer as animações relacionadas ao objeto selecionado»* ⇒ **`SmartBone::target`**
+   (o NOME do objecto) + a linha ***Pick Object*** + o **filtro** da lista.
+
+⭐⭐ **As DUAS superfícies que ele pediu saem de GRAÇA, e é o desenho:** o pick resolve por *«a
+selecção passou a ser outra coisa»*, e o canvas e a Hierarquia escrevem a **mesma** selecção. ⛔ Um
+segundo caminho de acerto (um hit-test próprio) seria a segunda resposta à mesma pergunta, e
+divergiria do primeiro no dia em que um deles mudasse. ⚠️ O **osso é capturado no arm** (a lei do
+`PathPick`: o clique seguinte MUDA a selecção, logo lê-la então leria o alvo), e a selecção **volta
+ao osso** depois de acertar — ao contrário dos irmãos `PathPick`, porque aqui o contexto do artista
+é o painel do osso, e sem isso a secção desaparecia debaixo dele no instante do acerto. `Escape`
+desiste; ⛔ clique no vazio **não** desarma.
+
+⚠️⚠️ **METADE DA PREMISSA DELE ESTÁ MEDIDA E É OUTRA:** a lista **não cresce com os objectos** — ela
+lista **clips**, e o documento recusa mais que `MAX_CLIPS` = **16** (`add_clip`, e o pool de ids do
+selector é gateado contra esse número). ⇒ o que o filtro compra não é **tamanho**, é **relevância**:
+*quais destas 16 tocam este objecto* é a única pergunta que as separa. *A ordem estava certa e a
+razão escrita ao lado dela não* — e vale registá-lo, porque a próxima leitura desta linha vai herdar
+a razão, não a ordem.
+
+⛔⛔ **E há uma LEI no filtro: um filtro que esvaziaria a lista NÃO se aplica.** Os três casos são
+reais — o alvo apagado, o alvo renomeado, e um objecto que nunca foi animado —, e nos três filtrar
+daria um selector com **zero** opções. *Um controlo que só sabe recusar é pior que um ausente*, e
+ali o artista não teria gesto nenhum que o curasse: o alvo escolhe-se no canvas, não na lista.
+
+⚠️ **`PROJECT_SCHEMA` 126 → 127** — um CAMPO novo no componente. ⚠️ **O degrau é obrigatório e a
+razão é o postcard, não o campo:** ele é **posicional**, logo um ficheiro de três campos seria lido
+com quatro **em silêncio** (os bytes do `from` entrariam no `target`); com o degrau, o load recusa em
+voz alta.
+
+⚠️ **O descritor passou de `intrinsic` a `authored`**, e a razão MUDOU com o desenho: ele era
+intrínseco porque o gesto lhe dava a acção e a paleta não tinha caminho para o artista o completar —
+hoje as duas linhas do painel completam-no, e nascer vazio é um no-op exacto.
+
+⚠️ E o **`Add Smart Bone` deixou de ter um caminho de recusa**: ele já não lê a timeline, logo já não
+pode dizer *«não há acção aberta»* nem *«já há 16»*.
+
 ⚠️ **`PROJECT_SCHEMA` 125 → 126** (componente registado novo; o registo do esqueleto vai de **5 para
 6** e o catálogo idem — conte o delta). ⚠️ E o gate `every_registered_component_has_a_descriptor`
 apanhou-me a registar sem descrever: *o Inspector e o registo são duas listas, e o gate é o que as

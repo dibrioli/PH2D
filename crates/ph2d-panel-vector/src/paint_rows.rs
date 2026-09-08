@@ -235,6 +235,49 @@ impl BodyCtx<'_> {
         y + self.row_h + ph2d_tokens::control_gap_px()
     }
 
+    /// ⭐ **Um BOTÃO rotulado** (`<rótulo> [ botão ]`) — a mesma geometria do
+    /// [`Self::labeled_number_field`], com um botão no lugar da caixa.
+    ///
+    /// ⚠️ Ele existe porque um botão que é também o **readout** de uma escolha precisa da coluna de
+    /// rótulo dos vizinhos: sem ela, o nome do objecto escolhido lê-se como mais um verbo de largura
+    /// cheia, e a linha deixa de dizer de que campo é. `on` acende-o (o gesto está ARMADO).
+    pub(crate) fn labeled_action_button(
+        &mut self,
+        label: &str,
+        id: ph2d_a11y::NodeId,
+        text: &str,
+        on: bool,
+        y: f32,
+    ) -> f32 {
+        let gap = ph2d_tokens::Spacing::Xs.px();
+        paint_text(
+            self.text_system,
+            self.scene,
+            label,
+            self.inner_x,
+            y + (self.row_h - ph2d_tokens::TypeToken::Sm.px()) * 0.5,
+            ph2d_tokens::TypeToken::Sm.px(),
+            crate::paint_sections::LABEL_COL_W,
+            resolve(ColorToken::Text2, self.theme),
+        );
+        let rect = Rect::new(
+            self.inner_x + crate::paint_sections::LABEL_COL_W + gap,
+            y,
+            (self.inner_w - crate::paint_sections::LABEL_COL_W - gap).max(1.0),
+            self.row_h,
+        );
+        let btn = Button::new(id, text)
+            .kind(if on {
+                ButtonKind::Accent
+            } else {
+                ButtonKind::Default
+            })
+            .visual(self.store.button_visual(id));
+        paint_button(&btn, rect, self.scene, self.text_system, self.theme);
+        self.hit_index.register(id, rect);
+        y + self.row_h + ph2d_tokens::control_gap_px()
+    }
+
     /// **Uma linha de DOIS campos numéricos rotulados** (X | Y, W | H, Gap principal | transversal).
     ///
     /// ⚠️ Ela nasceu privada no `paint_transform` e mudou-se para cá quando o AUTO LAYOUT virou o

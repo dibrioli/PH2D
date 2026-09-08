@@ -85,6 +85,19 @@ impl App {
             return true;
         }
 
+        // ⭐ E o pick do ALVO de um osso inteligente, pela mesma lei e no mesmo sítio: com ele
+        // armado o Esc é inequivocamente sobre ele. ⚠️ Ele é o ÚNICO gesto de desistência que este
+        // pick tem — clicar no vazio **não** o desarma, de propósito (a lista de objectos anima-se
+        // por engano com facilidade, e um pick que se perde num clique fora deixa o artista a repetir
+        // o botão sem saber porquê).
+        if state == ElementState::Pressed
+            && !repeat
+            && matches!(physical_key, PhysicalKey::Code(KeyCode::Escape))
+            && self.smart_pick.take().is_some()
+        {
+            return true;
+        }
+
         // Shape Builder: Escape DESMARCA o que foi pintado, sem tocar na arte. Vem antes do
         // Escape do Pen porque um modo exclui o outro, e este consome só quando há
         // algo pintado para desmarcar (senão o Escape cai no blur de widget, como sempre).

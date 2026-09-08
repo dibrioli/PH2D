@@ -456,4 +456,26 @@
 /// ⛔ **Sem degrau de migração**, pela mesma decisão do Enio de 26/08.
 ///
 /// ⚠️ **A tripla NÃO vê este degrau** — a **décima** vez.
-pub(crate) const PROJECT_SCHEMA: u32 = 126;
+///
+/// # 126 -> 127 — o osso inteligente ganha um ALVO (`line/Vector`)
+///
+/// Um CAMPO novo no `SmartBone`: `target`, o NOME do objecto de que a acção trata. Report do dono
+/// (2026-09-08): *«é necessário um botão de picker para selecionar o objeto … só deve aparecer as
+/// animações relacionadas ao objeto selecionado»*.
+///
+/// ⚠️⚠️ **O degrau é obrigatório e a razão é o postcard, não o campo:** ele é **posicional**, logo
+/// um ficheiro gravado com três campos seria lido com quatro **em silêncio** — os bytes do `from`
+/// entrariam no `target`. Com o degrau, o load **recusa em voz alta**. É a mesma lei do degrau
+/// `112`.
+///
+/// ⚠️ **O alvo é o NOME e não os bits** (`stable_name_id` é a referência durável desta casa): o undo
+/// respawna tudo com bits novos, e bits DENTRO dos bytes de um componente envenenam o próprio undo.
+///
+/// ⭐ **Ele não mexe no que a acção FAZ** — ela continua a correr inteira. O alvo diz *de que este
+/// controlo trata*, e é isso que filtra a lista de acções do painel: com milhares de objectos
+/// animados, *«quais animações tocam este objecto»* é a única pergunta que estreita a lista.
+///
+/// ⛔ **Sem degrau de migração**, pela mesma decisão do Enio de 26/08.
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — a **décima primeira** vez.
+pub(crate) const PROJECT_SCHEMA: u32 = 127;

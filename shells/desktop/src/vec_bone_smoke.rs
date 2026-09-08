@@ -347,8 +347,9 @@ impl crate::App {
             seed_demo_action(&mut self.timeline.doc, bits);
             eprintln!(
                 "[vec-bone-smoke] a cena traz a accao \"{DEMO_ACTION}\" (a FOLHA roxa sobe {DEMO_RISE} \
-                 em {DEMO_SECONDS}s). Escolha um osso, carregue em `Add Smart Bone` e ponha \
-                 \"{DEMO_ACTION}\" no selector `Action` -- girar esse osso passa a percorrer a \
+                 em {DEMO_SECONDS}s). Escolha um osso e carregue em `Add Smart Bone`: ele nasce \
+                 VAZIO. Depois `Pick Object` + clique na folha roxa (no canvas ou na Hierarquia) e \
+                 escolha \"{DEMO_ACTION}\" em `Action` -- girar esse osso passa a percorrer a \
                  animacao inteira."
             );
         }

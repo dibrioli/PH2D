@@ -222,12 +222,24 @@ fn the_pivot_folds_into_the_offset_instead_of_becoming_a_second_affine() {
 /// artista ainda vê.
 #[test]
 fn a_centroid_of_nothing_falls_back_to_the_origin() {
-    assert_eq!(centroid(&Stream::new(0)), None, "vazio nao tem centro");
+    let origin = [0.0f32, 0.0];
+    assert_eq!(
+        Pivot::Centroid.resolve([9.0, 9.0], positions(&Stream::new(0))),
+        origin,
+        "vazio nao tem centro"
+    );
     let no_p = Stream::new(2).with("size", Column::Scalar(vec![1.0, 2.0]));
-    assert_eq!(centroid(&no_p), None, "sem coluna P nao ha o que mediar");
+    assert_eq!(
+        Pivot::Centroid.resolve([9.0, 9.0], positions(&no_p)),
+        origin,
+        "sem coluna P nao ha o que mediar"
+    );
     // E a media de posicoes reais e a media.
     let three = Stream::new(3).with("P", Column::Vec2(vec![[4.0, 1.0], [5.0, 2.0], [6.0, 3.0]]));
-    assert_eq!(centroid(&three), Some([5.0, 2.0]));
+    assert_eq!(
+        Pivot::Centroid.resolve([9.0, 9.0], positions(&three)),
+        [5.0, 2.0]
+    );
 }
 
 /// ⭐⭐ **O CENTROIDE CHEGA AO DISPOSITIVO** (ciclo 3, W1 — [doc 106]).
@@ -261,38 +273,36 @@ fn the_kernel_takes_every_pivot_mode_including_the_centroid() {
     );
 }
 
-/// ⭐⭐ **ESTE NÓ NÃO TEM UMA SEGUNDA MÉDIA** (ciclo 3, W1 — doc 106 §4).
+/// ⭐⭐ **ESTE NÓ NÃO TEM UMA SEGUNDA RESPOSTA A «EM TORNO DE QUÊ»** (ciclo 3, W1).
 ///
-/// A precisão do centroide é a lei, e ela vive numa porta só
-/// ([`ph2d_nodegraph::reduce_meta::centroid_of`], com a tabela medida e o gate
-/// dela). O que ESTE gate mede é a outra metade: que o nó **chama a porta** em
-/// vez de escrever o próprio fold — que foi exactamente como ele e o
-/// `motion.spherize` chegaram a divergir do dispositivo por ordens de grandeza
-/// diferentes, cada um com o seu gate de paridade verde.
+/// As duas metades da pergunta vêm da porta e nada aqui as reescreve: o hospedeiro chama
+/// [`ph2d_nodegraph::pivot::PivotMode::resolve`] e o dispositivo declara as
+/// [`ph2d_nodegraph::pivot::CENTROID_REDUCES`].
 ///
-/// ⚠️ A fixtura está **longe da origem e com mantissa cheia**: é o único regime
-/// em que uma soma sequencial em `f32` e a porta dão respostas diferentes (`n`
-/// cópias de `4.0` somam-se exactamente, e a `40` em vez de `400` a diferença
-/// cai `160×`).
+/// ⚠️⚠️ **A 1.ª redacção comparava PONTEIROS e reprovou sobre código correcto** — os dois
+/// endereços diferem (`0x…21b0` contra `0x…9178`) mesmo com o `static` a ser lido de outra
+/// crate, porque o `&[…]` que o inicializa é uma constante **promovida** e o leitor
+/// re-materializa-a. *Uma régua de identidade que a linguagem não garante mede o compilador,
+/// não o código.* O que fica é a comparação dos CAMPOS, que é a propriedade que interessa: o
+/// nó declara **a mesma tabela** — nome, coluna, operador e identidade —, e um sétimo
+/// vocabulário para a mesma pergunta reprova aqui.
 #[test]
-fn the_node_asks_the_port_for_the_mean_instead_of_folding_its_own() {
-    const N: usize = 65_536;
-    let pts: Vec<[f32; 2]> = (0..N)
-        .map(|i| {
-            #[expect(clippy::cast_precision_loss, reason = "uma fixtura")]
-            let t = i as f32;
-            [400.0 + t * 0.000_173, -250.0 + t * 0.000_291]
-        })
-        .collect();
-    let port = ph2d_nodegraph::reduce_meta::centroid_of(&pts).expect("ha' posicoes");
-    let mut st = Stream::new(N);
-    st.set("P", Column::Vec2(pts));
-    let c = centroid(&st).expect("ha' posicoes");
-    assert_eq!(
-        [c[0].to_bits(), c[1].to_bits()],
-        [port[0].to_bits(), port[1].to_bits()],
-        "o no' devolveu {c:?} e a porta {port:?} — ha' um segundo fold aqui dentro"
-    );
-    // E uma coluna que nao e' `P` nao tem centro nenhum.
-    assert_eq!(centroid(&Stream::new(0)), None);
+fn the_pivot_vocabulary_is_the_ports_and_not_a_copy() {
+    let porta = ph2d_nodegraph::pivot::CENTROID_REDUCES;
+    assert_eq!(REDUCES.len(), porta.len(), "a tabela tem de ser a da porta");
+    for (a, b) in REDUCES.iter().zip(porta) {
+        assert_eq!((a.name, a.column, a.op, a.value), (b.name, b.column, b.op, b.value));
+        assert_eq!((a.dim, a.port, a.identity), (b.dim, b.port, b.identity));
+    }
+    // E os rotulos que o cartao pinta sao os da porta, na ordem da porta.
+    let hint = PARAM_HINTS
+        .iter()
+        .find(|h| h.param == ph2d_nodegraph::pivot::PARAM)
+        .expect("o no' declara o param do pivo");
+    match hint.widget {
+        ph2d_node_registry::ParamWidget::Enum { labels } => {
+            assert_eq!(labels, ph2d_nodegraph::pivot::LABELS);
+        }
+        outro => panic!("o pivot_mode tem de ser um Enum, e' {outro:?}"),
+    }
 }

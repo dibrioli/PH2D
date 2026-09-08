@@ -45,6 +45,8 @@ pub mod graph;
 pub mod layout;
 pub mod node;
 pub mod param_source;
+/// **Em torno de quê** — o vocabulário do pivô, partilhado pela família dos deformadores.
+pub mod pivot;
 pub mod port;
 pub mod reduce_meta;
 pub mod stream_op_meta;

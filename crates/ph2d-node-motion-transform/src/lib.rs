@@ -64,7 +64,7 @@ use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream, par_build};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
-use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel, ReduceOp, ReduceSpec};
+use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel, ReduceSpec};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -181,29 +181,13 @@ fn falloff_at(stream: &Stream, i: usize) -> f32 {
 }
 
 /// **What the scale happens about** (doc 89 folha 05 — the P0).
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub enum Pivot {
-    /// The world origin — what this node always did, and the default.
-    WorldOrigin,
-    /// The `pivot_x`/`pivot_y` the artist typed.
-    Point,
-    /// The mean of the input's own `P` — Blender's *Transform Geometry* acting
-    /// on the geometry's origin, C4D's Object transform space.
-    Centroid,
-}
-
-impl Pivot {
-    /// From the `pivot_mode` param. Out of range falls back to `WorldOrigin` —
-    /// the behaviour that was always there beats a mode nobody asked for.
-    #[must_use]
-    pub fn of(v: f32) -> Self {
-        match v.round() as i32 {
-            1 => Self::Point,
-            2 => Self::Centroid,
-            _ => Self::WorldOrigin,
-        }
-    }
-}
+///
+/// ⚠️ **O vocabulário não é deste crate**: ele vive em [`ph2d_nodegraph::pivot`], que é a
+/// porta única da pergunta *«em torno de quê?»* para a família inteira (ciclo 3, W1 — doc
+/// 106 §2.3, onde a auditoria mediu **seis** respostas diferentes à mesma pergunta). O alias
+/// fica porque o nome curto lê melhor aqui dentro; a escada, os rótulos e o arredondamento
+/// são os de lá, e um censo ata os dois.
+pub use ph2d_nodegraph::pivot::PivotMode as Pivot;
 
 /// The mean of a `P` column — *"the centre of this layout"*, and `None` for a
 /// stream with no positions to average (an empty mean is not zero, it is absent,
@@ -223,16 +207,12 @@ impl Pivot {
 /// ⭐ `f64` chega para o pôr fora de questão (52 bits de mantissa contra 24), e
 /// a divisão volta a `f32` no fim, que é onde o consumidor vive.
 ///
-/// ⚠️ **A média vive numa PORTA, e ela não é deste crate:**
-/// [`ph2d_nodegraph::reduce_meta::centroid_of`] é a metade de hospedeiro do par
-/// `Sum(v.x)`/`Sum(v.y)` que [`REDUCES`] declara. Escrever o fold aqui **e** no
-/// `motion.spherize` foi o que os deixou a divergir do dispositivo por ordens de
-/// grandeza diferentes, cada um com o seu gate de paridade verde — a tabela
-/// medida está no doc daquela função.
-fn centroid(s: &Stream) -> Option<[f32; 2]> {
+/// A coluna `P` do stream, ou uma fatia vazia — «sem posições» e «posições nenhuma» dão a
+/// mesma resposta a toda a gente que pergunta pelo centro.
+fn positions(s: &Stream) -> &[[f32; 2]] {
     match s.get("P") {
-        Some(Column::Vec2(p)) => ph2d_nodegraph::reduce_meta::centroid_of(p),
-        _ => None,
+        Some(Column::Vec2(p)) => p,
+        _ => &[],
     }
 }
 
@@ -270,43 +250,37 @@ fn xform_masked(p: [f32; 2], sx: f32, sy: f32, ox: f32, oy: f32, f: f32) -> [f32
 /// absence means the same thing on both paths (the falloff read materializes
 /// its `1.0` identity when absent = full effect).
 const GPU_KERNEL: GpuKernel = GpuKernel {
-    wgsl: "\
+    wgsl: concat!(
+        // ⚠️ O MODO decide o pivo, e o prologo vem da PORTA
+        // (`ph2d_nodegraph::pivot`) -- nao de uma copia aqui. O que estava neste
+        // sitio perguntava «o ponto digitado e' diferente de zero?» e nao olhava o
+        // modo: um `pivot_x` deixado para tras (a row esta' escondida pelo
+        // `ParamGate`, o valor nao) vazava para o device e desenhava outra coisa.
+        ph2d_nodegraph::pivot_wgsl!(),
+        "\
         let xf_f = read_falloff(i);\n\
         let xf_p = read_P(i);\n\
         // O link de corrente, lido como no CPU (`authored_factors`): `>= 0.5`, e ligado os\n\
         // dois eixos sao o MESMO numero.\n\
         let xf_sx = params.scale;\n\
         let xf_sy = select(params.scale_y, params.scale, params.uniform >= 0.5);\n\
-        // ⚠️ O MODO decide o pivo -- a mesma escada do `Pivot::of` da CPU, e nao\n\
-        // «o ponto digitado e' diferente de zero?», que era o que estava aqui: um\n\
-        // `pivot_x` deixado para tras (a row esta' escondida pelo `ParamGate`, o\n\
-        // valor nao) vazava para o device e desenhava outra coisa.\n\
-        var xf_c = vec2<f32>(0.0, 0.0);\n\
-        let xf_mode = i32(xf_round(params.pivot_mode));\n\
-        if (xf_mode == 1) { xf_c = vec2<f32>(params.pivot_x, params.pivot_y); }\n\
-        if (xf_mode == 2) {\n\
-        \x20   xf_c = vec2<f32>(reduce_cx(), reduce_cy()) / f32(params.count);\n\
-        }\n\
         // The pivot folded into the offset, the same expression and the same\n\
         // order as the CPU's `folded_offset` -- including its zero shortcut, so\n\
         // the neutral is structural on both paths and not an IEEE argument.\n\
         var xf_ox = params.offset_x;\n\
         var xf_oy = params.offset_y;\n\
-        if (xf_c.x != 0.0 || xf_c.y != 0.0) {\n\
-            xf_ox = params.offset_x + xf_c.x * (1.0 - xf_sx);\n\
-            xf_oy = params.offset_y + xf_c.y * (1.0 - xf_sy);\n\
+        if (pv_pivot.x != 0.0 || pv_pivot.y != 0.0) {\n\
+            xf_ox = params.offset_x + pv_pivot.x * (1.0 - xf_sx);\n\
+            xf_oy = params.offset_y + pv_pivot.y * (1.0 - xf_sy);\n\
         }\n\
         let xf_full = vec2<f32>(\n\
             xf_p.x * xf_sx + xf_ox,\n\
             xf_p.y * xf_sy + xf_oy);\n\
         write_P(i, vec2<f32>(\n\
             xf_p.x + (xf_full.x - xf_p.x) * xf_f,\n\
-            xf_p.y + (xf_full.y - xf_p.y) * xf_f));\n",
-    wgsl_lib: "\
-        fn xf_round(x: f32) -> f32 {\n\
-            // Rust f32::round = half away from zero (WGSL round is half-even).\n\
-            return select(ceil(x - 0.5), floor(x + 0.5), x >= 0.0);\n\
-        }\n",
+            xf_p.y + (xf_full.y - xf_p.y) * xf_f));\n"
+    ),
+    wgsl_lib: "",
     bindings: &[
         ColumnBinding {
             column: "P",
@@ -364,28 +338,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
 /// nota que o `motion.spherize` escreveu quando pagou estas duas.
 ///
 /// [doc 106 §4.W1]: ../../../docs/Motion%20Nodes/106_ciclo_3_transformes_e_deformadores.md
-static REDUCES: &[ReduceSpec] = &[
-    ReduceSpec {
-        name: "cx",
-        column: "P",
-        dim: Dim::Vec2,
-        port: 0,
-        op: ReduceOp::Sum,
-        value: "v.x",
-        params: &[],
-        identity: [0.0; 4],
-    },
-    ReduceSpec {
-        name: "cy",
-        column: "P",
-        dim: Dim::Vec2,
-        port: 0,
-        op: ReduceOp::Sum,
-        value: "v.y",
-        params: &[],
-        identity: [0.0; 4],
-    },
-];
+static REDUCES: &[ReduceSpec] = ph2d_nodegraph::pivot::CENTROID_REDUCES;
 
 struct MotionTransform;
 
@@ -406,11 +359,10 @@ impl NodeOp for MotionTransform {
             // layout, not of an element. A centroid a stream cannot supply
             // (no `P`, or empty) falls back to the origin — the transform an
             // artist can still see, rather than a NaN that removes the art.
-            let pivot = match mode {
-                Pivot::WorldOrigin => [0.0, 0.0],
-                Pivot::Point => typed,
-                Pivot::Centroid => centroid(input).unwrap_or([0.0, 0.0]),
-            };
+            // ⚠️ A escada é a da PORTA (`ph2d_nodegraph::pivot`), não uma cópia dela:
+            // escrever `match mode { … }` aqui e no `motion.kaleidoscope` seria a
+            // sexta resposta à pergunta que esta wave existe para unificar.
+            let pivot = mode.resolve(typed, positions(input));
             let (ox, oy) = folded_offset(sx, sy, ox, oy, pivot);
             // The port type guarantees `P` is `Vec2`; a `P` of any other dim is
             // an upstream node-author bug. Assert it loudly in debug/test rather

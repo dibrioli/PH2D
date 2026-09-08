@@ -18,12 +18,17 @@
 //!
 //! # ⛔ O que esta bancada NÃO decide
 //!
-//! Ela não tem lado APROVADO: o oráculo nunca correu o filtro (as `86` fixtures
-//! de `docs/3D/cleanroom/fixtures/cloth/` são **todas** do pincel, e o §10 da
-//! espec não traz um único vector do filtro). Então aqui não se calibra barra
-//! nenhuma contra o alvo — mede-se só o que a NOSSA composição já produz, que é
-//! a pergunta de arquitectura. *Uma barra calibrada sem o lado aprovado mede os
-//! nossos próprios defeitos.*
+//! Ela **não calibra barra nenhuma contra o alvo** — mede só o que a NOSSA
+//! composição produz, que é a pergunta de arquitectura. *Uma barra calibrada sem
+//! o lado aprovado mede os nossos próprios defeitos.*
+//!
+//! ⚠️⚠️ **E a razão que estava escrita aqui ENVELHECEU no mesmo dia:** ela dizia
+//! que *«o oráculo nunca correu o filtro»* e que as fixtures eram todas do
+//! pincel. ⭐ **Deixou de ser verdade em 2026-09-07** — o corpus do filtro existe
+//! (`fixtures/cloth/filtro/`, `17` corridas) e a bancada que o mede é o
+//! `tests/oraculo_do_filtro.rs`. *A metade que continua válida é a que diz que a
+//! barra não se calibra sem lado aprovado; a que dizia que ele não existia
+//! caducou.*
 
 use ph2d_cloth::V3;
 use ph2d_cloth::verlet_gesto::{Accionamento, Area, Curva, Modo, Passo, Pincel, PincelTecido};

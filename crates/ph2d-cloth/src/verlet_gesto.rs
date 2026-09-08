@@ -618,7 +618,15 @@ impl PincelTecido {
                         p0[1] + desloc[1] * f,
                         p0[2] + desloc[2] * f,
                     ];
-                    self.sim.sigma[vi] = 0.01;
+                    // ⭐⭐⭐ **`σ = 1`, e o `0,01` da espec é a RIGIDEZ da restrição,
+                    // não isto.** A frase da §7 — *«força de âncora `0,01`»* —
+                    // nomeia **um** número, e esta casa tem **dois**: o `ancorar(v, s)`
+                    // da construção (a rigidez) e o `σ` do passo (a activação). ⛔ Ler
+                    // a frase como os dois aplica-o **duas vezes**, e o erro contra o
+                    // oráculo foi de `0,988876` — a peça mal se mexia. Com o `0,01` só
+                    // na rigidez: **`0,007443`**. *O vizinho de cima já dizia a
+                    // convenção — o Grab põe `0,1` na rigidez e `1` no σ.*
+                    self.sim.sigma[vi] = 1.0;
                 }
             }
             Modo::Arrastar

@@ -5,10 +5,14 @@
 //! inteira, o ponto congelado, e a diferença de gesto que separa este filtro do
 //! [`super::stroke_filter`].
 //!
-//! ⚠️ **Nenhum destes gates tem lado APROVADO**: o oráculo nunca correu o filtro
-//! (as `86` fixtures são todas do traço). Eles afirmam propriedades da espec §7
-//! e da nossa costura, e dizem isso de si mesmos. *Uma barra calibrada sem o lado
-//! aprovado mediria os nossos próprios defeitos.*
+//! ⚠️ **Nenhum destes gates tem lado APROVADO, e isso é uma escolha e não uma
+//! falta:** o corpus do filtro EXISTE desde 2026-09-07
+//! (`fixtures/cloth/filtro/`, `17` corridas) e quem o mede é o
+//! `ph2d-cloth/tests/oraculo_do_filtro.rs` — **a lei**. O que se afirma aqui é a
+//! nossa COSTURA (a peça inteira, o ponto congelado, o gesto que acumula), que o
+//! oráculo não observa porque ela não é lei nenhuma dele. *Uma barra calibrada
+//! sem o lado aprovado mediria os nossos próprios defeitos — e é por isso que
+//! nenhum destes gates põe uma.*
 
 use super::cloth_tests::plano;
 use super::{Brush, ClothFilterStep, SculptStroke, Verb};

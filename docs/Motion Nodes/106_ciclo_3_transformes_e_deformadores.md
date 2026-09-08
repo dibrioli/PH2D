@@ -729,3 +729,75 @@ para cima da row `Pivot X`; o gesto real é largar o fio no **CORPO** do cartão
 na lista que abre (`GraphIntent::DriveParam` — *«o socket aparece porque o fio existe, não o
 contrário»*). *A lei de que um passo que nomeia uma row tem de provar que a row está na lista vale
 igual para um passo que nomeia um GESTO.*
+
+---
+
+### ⛔ O REPORT DO DONO — o gizmo do warp (08/09)
+
+> *«o gizmo de Bezier Warp tem ponto e handles/alças muito pequenos e está sendo desenhado por
+> trás das shapes»*
+
+**Duas coisas, e a segunda não era o que parecia.**
+
+#### 1. O tamanho — e a casa já tinha a lei, com este gizmo sozinho fora dela
+
+| gizmo | pinta | agarra |
+|---|---:|---:|
+| `connector` | `7` | `7` |
+| `envelope` (a gaiola de deformação) | `6` | `6` |
+| `vec_text_ride` | `15` | `15` |
+| **`warp` (este)** | **`4,5` / `3,5`** | **`11`** |
+
+O alvo era **`2,4×` a `3,1×`** maior do que a tinta. *O artista via um ponto e apontava para
+outra coisa.* ⚠️ **Uma constante, dois consumidores** é a forma que todos os outros têm; aqui
+eram dois números, e o que o artista vê é sempre o que envelhece.
+
+⚠️ **E o gate novo apanhou-me a confundir o RAIO com o ALCANCE:** a primeira redacção pôs o
+losango a `GRAB_PX` cru, e a apótema dele (`r/√2`) ficou a `0,71×` da barra. Hoje as duas marcas
+cobrem o mesmo raio **inscrito** e distinguem-se só pela forma e pela tinta — que é o que o
+cabeçalho do módulo já prescrevia antes do report.
+Gate `a_painted_handle_covers_the_radius_it_is_grabbed_at`, com os valores que shipavam como
+controlo de falsificação (`0,41×` e `0,22×`).
+
+#### 2. O «por trás» — o gizmo ESTAVA por cima
+
+A legenda da cena aparece sobre os mesmos objectos, e ela é chrome como o gizmo: o chrome já
+compõe acima dos sprites. O que acontece é que um traço de `1,5 px` e uma alça de `4,5` em ciano
+claro **somem** sobre um pano de discos brancos.
+
+⚠️ ***Um manipulador que desaparece sobre o conteúdo que ele manipula é indistinguível de um que
+está por baixo, e o report que volta é o mesmo.***
+
+A cura também já existia na casa, e o comentário dela **nomeia** o defeito — o
+`draw_connector_handles`: *«o anel branco destaca a alça de qualquer fundo … sem o anel a bolinha
+some sobre um traço claro»*. Aqui o anel é **escuro**, porque este gizmo tem de ser lido sobre
+conteúdo claro tanto quanto sobre o fundo escuro do canvas.
+
+#### 3. E havia uma ordem REAL errada, só que noutra cena
+
+O desenho vivia ~2 000 linhas **antes** de dois produtores da mesma cena do Vello — o documento
+vectorial e as formas vivas do Motion —, e ali a ordem de codificação **é** a ordem de z. Numa
+cena com `source.shape` ou com um documento vectorial aberto, o manipulador passava mesmo por
+baixo do que ele manipula. Mudou para o fim do bloco do Motion.
+
+---
+
+### ⛔ O SEGUNDO REPORT — o Mirror (08/09), e a culpa é de um passo meu
+
+> *«Em Mirror Flip Orientation parece não funcionar. Reindex não parece mudar nada! como usar
+> reindex?»*
+
+**Os dois funcionam.** Nenhum tem sobre o que agir na cena `=111`:
+
+| controlo | age sobre | por que ali não se vê |
+|---|---|---|
+| `Flip Orientation` | a **direcção** (`rot`) e a velocidade do gémeo | a cadeia não produz coluna `rot`, e os elementos são discos redondos |
+| `Reindex` | as colunas de identidade `Index`/`Count` | é uma **renumeração**: ela nunca muda a imagem sozinha, só o que um consumidor a jusante lê |
+
+⛔⛔ **A culpa é do passo que eu escrevi.** O tutorial mandava clicar em `Flip Orientation` e a
+seguir dizia *«nesta cena não muda nada que se veja»*. ***Um passo que instrui um gesto e anuncia
+que ele não faz nada não é um passo*** — e o report que ele produziu foi exactamente o previsível.
+
+⭐ **E a cena que os mostra já existia:** a `=69` (a família Transform da conferência) tem o **par
+verde** (`/// ///` contra `/// \\\`) e o **par rosa** (o degradé que recomeça em cada fatia contra
+o que atravessa as seis). O tutorial passa a levar lá, com o comando.

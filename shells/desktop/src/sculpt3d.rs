@@ -450,7 +450,13 @@ pub(crate) struct Sculpt3dScene {
     /// gesto nenhum (não existe pincel de Scale, de Sphere nem de Random). O
     /// verbo em mãos passa a apenas SEMEAR esta escolha ao armar — quem manda
     /// é o artista, e um verbo sem lei própria deixa a última escolha de pé.
-    filter_kind: FilterKind,
+    filter_law: ph2d_sculpt3d::FilterLaw,
+    /// **O REFERENCIAL do filtro de tecido** (espec §7) — ele decide os eixos da
+    /// Escala e a direcção do «baixo» da Gravidade.
+    ///
+    /// ⚠️ Estado de FERRAMENTA, como o [`Self::filter_law`]: ele é do artista e
+    /// sobrevive a trocar de verbo.
+    cloth_filter_orientation: ph2d_sculpt3d::ClothFilterOrientation,
     symmetry: Symmetry,
     /// **O rig de luz do artista** — as mesmas quatro lâmpadas que acendem a tinta
     /// do Painter (`ph2d-light`).

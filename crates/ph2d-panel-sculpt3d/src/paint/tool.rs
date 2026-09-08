@@ -11,7 +11,9 @@
 use ph2d_editor_core::ids;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_i18n::tr;
-use ph2d_sculpt3d::{FilterKind, RefMode, Verb, kelvinlet::Scales};
+use ph2d_sculpt3d::{
+    ClothFilterKind, ClothFilterOrientation, FilterKind, RefMode, Verb, kelvinlet::Scales,
+};
 use ph2d_tokens::Spacing;
 
 use super::widgets::{self, command, header, labelled_seg, seg};
@@ -114,17 +116,85 @@ fn paint_filter_row(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32,
         .enumerate()
         .map(|(i, k)| (ids::SCULPT3D_FILTER_KIND[i], k.label()))
         .unzip();
-    let selected = FilterKind::ALL
-        .iter()
-        .position(|&k| k == snap.ui.filter_kind)
-        .unwrap_or(0);
-    labelled_seg(
+    // ⚠️ **`None` quando a lei escolhida é de TECIDO** — e é assim que as duas
+    // fileiras dizem a verdade ao mesmo tempo: só uma tem chip aceso. ⛔ Cair no
+    // `0` faria a fileira de malha mostrar `Smooth` aceso com o filtro a correr
+    // gravidade, que é um controlo a mentir sobre o que o arrasto vai fazer.
+    // ⭐ **`usize::MAX` = nenhum chip aceso**, e a propriedade é do widget, com o
+    // doc dele a declará-la: *«out-of-range clamps to no selection»*. ⛔ Uma
+    // função nova ao lado seria a segunda resposta a uma pergunta já respondida.
+    let selected = snap
+        .ui
+        .filter_law
+        .mesh()
+        .and_then(|k| FilterKind::ALL.iter().position(|&x| x == k))
+        .unwrap_or(usize::MAX);
+    let y = labelled_seg(
         ctx,
         tr("panel.sculpt3d.filter_kind"),
         ids::SCULPT3D_SEC_TOOL,
         &kind_ids,
         &labels,
         selected,
+        x,
+        w,
+        y,
+    );
+    // ⭐⭐⭐ **A SEGUNDA FAMÍLIA** (espec §7) — o mesmo gesto, o mesmo undo, e uma
+    // lei que ACUMULA em vez de refazer um passo.
+    //
+    // ⚠️ **Fileira própria, e não catorze chips numa só:** *Inflate* e *Scale*
+    // existem nos dois lados e são leis diferentes — *um chip cujo rótulo não
+    // distingue a lei precisa da fileira para o fazer.*
+    let (cloth_ids, cloth_labels): (Vec<_>, Vec<&str>) = ClothFilterKind::ALL
+        .iter()
+        .enumerate()
+        .map(|(i, k)| (ids::SCULPT3D_CLOTH_FILTER_KIND[i], k.label()))
+        .unzip();
+    let cloth_sel = snap
+        .ui
+        .filter_law
+        .cloth()
+        .and_then(|k| ClothFilterKind::ALL.iter().position(|&x| x == k))
+        .unwrap_or(usize::MAX);
+    let y = labelled_seg(
+        ctx,
+        tr("panel.sculpt3d.cloth_filter_kind"),
+        ids::SCULPT3D_SEC_TOOL,
+        &cloth_ids,
+        &cloth_labels,
+        cloth_sel,
+        x,
+        w,
+        y,
+    );
+    // ⚠️ **O REFERENCIAL só existe com uma lei de TECIDO escolhida** — é a mesma
+    // lei do selector acima do toggle: com uma lei de malha em mãos, escolher a
+    // orientação não muda um vértice, e dois chips que não produzem nada são a
+    // definição do botão que o artista descobre vazio clicando.
+    if !snap.ui.filter_law.is_cloth() {
+        return y;
+    }
+    // ⚠️ **DOIS chips e não os três da espec** — o `World` está fora por MEDIÇÃO
+    // (a pose de uma escultura não tem rotação, logo ele daria os eixos do
+    // `Local`). A fileira é a lista OFERECIDA, e o índice é a posição nela.
+    let oferecidos = ClothFilterOrientation::offered();
+    let (orient_ids, orient_labels): (Vec<_>, Vec<&str>) = oferecidos
+        .iter()
+        .enumerate()
+        .map(|(i, o)| (ids::SCULPT3D_CLOTH_FILTER_ORIENT[i], o.label()))
+        .unzip();
+    let orient_sel = oferecidos
+        .iter()
+        .position(|&o| o == snap.ui.cloth_filter_orientation)
+        .unwrap_or(usize::MAX);
+    labelled_seg(
+        ctx,
+        tr("panel.sculpt3d.cloth_filter_orient"),
+        ids::SCULPT3D_SEC_TOOL,
+        &orient_ids,
+        &orient_labels,
+        orient_sel,
         x,
         w,
         y,

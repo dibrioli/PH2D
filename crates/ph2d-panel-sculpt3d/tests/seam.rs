@@ -21,7 +21,10 @@ use ph2d_panel_sculpt3d::{
     RetopoMode, Sculpt3dIntent, Sculpt3dPanel, Sculpt3dPanelState, Sculpt3dSnapshot, Sculpt3dUi,
     UiLevel, drain_intents, ids, rows, set_current_sculpt3d,
 };
-use ph2d_sculpt3d::{Alpha, Falloff, FilterKind, RefMode, TransformKind, Verb, kelvinlet::Scales};
+use ph2d_sculpt3d::{
+    Alpha, ClothFilterKind, Falloff, FilterKind, FilterLaw, RefMode, TransformKind, Verb,
+    kelvinlet::Scales,
+};
 use ph2d_ui_testkit::MockPanelHost;
 
 /// A escala que a fixture finge que o modelo comporta.
@@ -2272,15 +2275,34 @@ fn every_filter_law_is_pickable_and_writes_its_own() {
         "a lista de chips e a lista de leis têm tamanhos diferentes — alguma lei é \
          inalcançável, ou algum chip nomeia uma lei que não existe"
     );
-    for (i, kind) in FilterKind::ALL.into_iter().enumerate() {
+    assert_eq!(
+        ids::SCULPT3D_CLOTH_FILTER_KIND.len(),
+        ClothFilterKind::ALL.len(),
+        "a fileira de TECIDO e a lista de tipos têm tamanhos diferentes — algum tipo é \
+         inalcançável, ou algum chip nomeia um que não existe"
+    );
+    // ⭐ **As DUAS famílias no mesmo laço** (espec §7): a lei do filtro é uma
+    // união, e um gate que só varresse uma delas deixaria cinco chips sem régua.
+    let todas: Vec<(ph2d_a11y::NodeId, FilterLaw)> = FilterKind::ALL
+        .into_iter()
+        .enumerate()
+        .map(|(i, k)| (ids::SCULPT3D_FILTER_KIND[i], FilterLaw::Mesh(k)))
+        .chain(
+            ClothFilterKind::ALL
+                .into_iter()
+                .enumerate()
+                .map(|(i, k)| (ids::SCULPT3D_CLOTH_FILTER_KIND[i], FilterLaw::Cloth(k))),
+        )
+        .collect();
+    for (n, &(chip, kind)) in todas.iter().enumerate() {
         let mut ui = Sculpt3dUi::default();
-        // Um verbo SEM lei própria de propósito: as três leis sem verbo só são
+        // Um verbo SEM lei própria de propósito: as leis sem verbo só são
         // alcançáveis se o selector não depender de quem está em mãos.
         ui.brush.verb = Verb::Draw;
         // ⚠️ **A fixture começa numa lei DIFERENTE da que o chip escreve**,
         // senão a iteração `i = 0` é verde por vácuo: o `default()` já vale
         // `ALL[0]`, e um chip que não escrevesse nada passaria a asserção.
-        ui.filter_kind = FilterKind::ALL[(i + 1) % FilterKind::ALL.len()];
+        ui.filter_law = todas[(n + 1) % todas.len()].1;
         // ⚠️ **O retrato chega ARMADO**, e o gate acima é que prova que o
         // interruptor leva até aqui: o `filter_armed` é campo do SNAPSHOT (o
         // que a cena responde), não do `Sculpt3dUi` que o painel devolve, então
@@ -2291,16 +2313,30 @@ fn every_filter_law_is_pickable_and_writes_its_own() {
         let (mut host, mut state) = arrange_with(snap);
 
         let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
-        let rect = painted
-            .iter()
-            .find(|(id, _)| *id == ids::SCULPT3D_FILTER_KIND[i])
-            .map(|(_, r)| *r)
-            .unwrap_or_else(|| panic!("{kind:?}: o chip não foi pintado com o filtro armado"));
+        let onde = |ps: &[(ph2d_a11y::NodeId, Rect)], id| {
+            ps.iter()
+                .find(|(i, _)| *i == id)
+                .map(|(_, r)| *r)
+                .unwrap_or_else(|| panic!("{kind:?}: o chip não foi pintado com o filtro armado"))
+        };
+        // ⭐⭐ **ROLAR FAZ PARTE DA PERGUNTA.** O corpo do painel é RECORTADO
+        // (`push_clip`), então um chip pintado abaixo da dobra existe e não é
+        // clicável — e a fileira do tecido caiu exactamente aí quando nasceu.
+        // *Um gate que só clicasse no que já estava à vista responderia «morto»
+        // sobre um controlo vivo a uma volta da roda do rato.*
+        //
+        // ⚠️ **O alvo é DERIVADO, e não um número escolhido:** é a linha do
+        // PRIMEIRO chip da fileira de malha, que as iterações de cima já provaram
+        // ser clicável nesta fixture.
+        let alvo = onde(&painted, ids::SCULPT3D_FILTER_KIND[0]).y;
+        let scroll = (onde(&painted, chip).y - alvo).max(0.0);
+        host.set_panel_scroll(ids::SCULPT3D_PANEL, scroll);
+        let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
+        let rect = onde(&painted, chip);
         let evs = host.click_at(rect.x + rect.w * 0.5, rect.y + rect.h * 0.5);
         assert!(
-            evs.iter().any(
-                |e| matches!(e, WidgetEvent::Click(id) if *id == ids::SCULPT3D_FILTER_KIND[i])
-            ),
+            evs.iter()
+                .any(|e| matches!(e, WidgetEvent::Click(id) if *id == chip)),
             "{kind:?}: o chip está pintado e morto sob o mouse"
         );
         for e in evs {
@@ -2310,7 +2346,7 @@ fn every_filter_law_is_pickable_and_writes_its_own() {
             panic!("{kind:?}: o chip enfileirou o intent errado");
         };
         assert_eq!(
-            got.filter_kind, kind,
+            got.filter_law, kind,
             "{kind:?}: o chip escreveu OUTRA lei -- o artista escolhe uma e recebe outra"
         );
     }

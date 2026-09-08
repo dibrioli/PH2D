@@ -71,6 +71,19 @@ pub fn populate(store: &mut WidgetStore) {
         // o registro depender de um estado que muda com um clique, e um chip
         // que nasce vivo armado e morto desarmado é o bug caro desta família.
         &ids::SCULPT3D_FILTER_KIND[..],
+        // ⛔⛔ **AS DUAS FILEIRAS DO FILTRO DE TECIDO, e elas caíram no MESMO
+        // buraco na hora em que nasceram** (07/09): pintadas, hit-indexadas e
+        // **mortas sob o ponteiro**. Quem as apanhou foi o
+        // `every_filter_law_is_pickable_and_writes_its_own`, que clica de
+        // verdade — *um widget não está pronto quando pinta; está pronto quando
+        // um teste CLICA nele.*
+        //
+        // ⚠️ **Os cinco tipos e as duas orientações entram SEMPRE**, mesmo que o
+        // painel só pinte a fileira do referencial com uma lei de tecido
+        // escolhida: registar só os pintados faria o registo depender de um
+        // estado que muda com um clique.
+        &ids::SCULPT3D_CLOTH_FILTER_KIND[..],
+        &ids::SCULPT3D_CLOTH_FILTER_ORIENT[..],
         // ⚠️ Mesma lei do vizinho de cima: os três entram, e o painel pinta
         // a fileira só onde o verbo declara campo E o nível é Pro.
         &ids::SCULPT3D_ELASTIC_SCALES[..],

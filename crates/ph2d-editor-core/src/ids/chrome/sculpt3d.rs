@@ -174,6 +174,35 @@ pub const SCULPT3D_FILTER_KIND: [NodeId; 9] = [
     hash_node_id("sculpt3d.filter.kind.sharpen"),
 ];
 
+/// **OS CINCO TIPOS DO FILTRO DE TECIDO** (espec §7) — a segunda fileira do
+/// selector do filtro.
+///
+/// ⚠️ **A mesma convenção da vizinha: o índice é a POSIÇÃO no
+/// `ClothFilterKind::ALL`**, nunca o discriminante.
+///
+/// ⚠️ **Eles são uma fileira PRÓPRIA e não catorze chips numa só**, e a razão é
+/// que duas leis se chamam igual dos dois lados — *Inflate* e *Scale* existem nas
+/// duas famílias e fazem coisas diferentes. *Um chip cujo rótulo não distingue a
+/// lei precisa da fileira para o fazer.*
+pub const SCULPT3D_CLOTH_FILTER_KIND: [NodeId; 5] = [
+    hash_node_id("sculpt3d.filter.cloth.gravity"),
+    hash_node_id("sculpt3d.filter.cloth.inflate"),
+    hash_node_id("sculpt3d.filter.cloth.expand"),
+    hash_node_id("sculpt3d.filter.cloth.pinch"),
+    hash_node_id("sculpt3d.filter.cloth.scale"),
+];
+
+/// **O REFERENCIAL do filtro de tecido** (espec §7, *Orientation*).
+///
+/// ⚠️ **DOIS, e não os três da espec.** O `World` fica de fora por MEDIÇÃO — a
+/// `ph2d_mesh::Pose` de uma escultura não tem rotação, logo ele daria os mesmos
+/// eixos que o `Local` e seria um chip que o artista descobre vazio clicando.
+/// A lista viva é `ClothFilterOrientation::offered()`, e há gate a medi-la.
+pub const SCULPT3D_CLOTH_FILTER_ORIENT: [NodeId; 2] = [
+    hash_node_id("sculpt3d.filter.cloth.orient.local"),
+    hash_node_id("sculpt3d.filter.cloth.orient.view"),
+];
+
 /// **COM QUE PROFUNDIDADE OLHAR** — os chips `Basic` · `Pro` (§2 do plano).
 ///
 /// ⚠️ **O nome não é `DETAIL` de propósito:** [`SCULPT3D_DETAIL`] já existe e é

@@ -4,7 +4,10 @@
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal, seam_reset_button};
-use ph2d_sculpt3d::{Alpha, Falloff, FilterKind, RefMode, TransformKind, Verb};
+use ph2d_sculpt3d::{
+    Alpha, ClothFilterKind, ClothFilterOrientation, Falloff, FilterKind, FilterLaw, RefMode,
+    TransformKind, Verb,
+};
 
 /// Os seis interruptores, em tabela — ver o doc do módulo.
 #[path = "event_toggles.rs"]
@@ -327,7 +330,17 @@ fn group_chip_ui(
         // uma não muda o que o pincel faz sob o cursor. Re-armar o verbo aqui
         // trocaria a ferramenta do artista por um clique que ele deu noutra
         // pergunta.
-        ui.filter_kind = FilterKind::ALL[i];
+        ui.filter_law = FilterLaw::Mesh(FilterKind::ALL[i]);
+    } else if let Some(i) = index_of(&ids::SCULPT3D_CLOTH_FILTER_KIND, id) {
+        // ⚠️ **A MESMA pergunta, a outra familia** (espec §7): as duas fileiras
+        // escrevem o MESMO campo, e e' isso que impede o app de ter duas leis
+        // escolhidas ao mesmo tempo com so' uma a correr.
+        ui.filter_law = FilterLaw::Cloth(ClothFilterKind::ALL[i]);
+    } else if let Some(i) = index_of(&ids::SCULPT3D_CLOTH_FILTER_ORIENT, id) {
+        // ⚠️ **O indice e' a posicao em `offered()`, nao em `ALL`** — a fileira
+        // pinta os oferecidos, e indexar o `ALL` aqui poria o `View` a escrever
+        // `World`, com o chip aceso e a mentir.
+        ui.cloth_filter_orientation = ClothFilterOrientation::offered()[i];
     } else if let Some(i) = index_of(&ids::SCULPT3D_ELASTIC_SCALES, id) {
         // ⚠️ **Sem re-armar nada, e a razão é a do vizinho de baixo:** a largura
         // do campo é uma escolha DO ARTISTA sobre o modo que ele já escolheu,

@@ -28,6 +28,7 @@
 //! pergunta `verb.paints_mask()`, e nenhum verbo que filtra pinta máscara.
 
 use super::{FILTER_DRAG_PER_PX, Sculpt3dScene};
+use ph2d_sculpt3d::ClothFilterOrientation;
 
 impl Sculpt3dScene {
     /// **O filtro está armado?**
@@ -64,8 +65,13 @@ impl Sculpt3dScene {
             // aceso **não** re-escreve a lei, senão a escolha do selector seria
             // apagada por um gesto que não fala sobre ela. Um verbo sem lei
             // própria (Grab, Twist, …) deixa a última escolha de pé.
+            // ⚠️ **Só um verbo de MALHA semeia**, e a assimetria é a verdade: os
+            // cinco tipos de tecido não têm verbo que os semeie (não existe
+            // pincel de gravidade), e o [`Verb::Cloth`] é um TRAÇO, não um
+            // filtro. ⛔ Fazê-lo semear `Cloth(Gravity)` trocaria a escolha do
+            // artista por um palpite sobre um gesto que ele não fez.
             if let Some(kind) = self.brush.verb.filter_kind() {
-                self.filter_kind = kind;
+                self.filter_law = ph2d_sculpt3d::FilterLaw::Mesh(kind);
             }
         }
         self.filter_arm
@@ -80,9 +86,91 @@ impl Sculpt3dScene {
             return false;
         }
         let mesh = self.mesh().clone();
-        self.stroke.filter_begin(&mesh);
+        if let Some(kind) = self.filter_law.cloth() {
+            // ⭐ **O pen-down do tecido faz as DUAS coisas do `filter_begin`** (a
+            // foto congelada para o undo) **mais a carga da simulação** — ver
+            // [`ph2d_sculpt3d::SculptStroke::cloth_filter_begin`].
+            //
+            // ⚠️ **O ponto do aperto é o do ACERTO** (espec §7: *o filtro aperta
+            // para onde o cursor estava quando ele começou*), e o `aim` do
+            // chamador já correu — é isso que faz o [`Self::hit_point`] descrever
+            // este clique. Sem acerto (o artista carregou fora da peça) fica o
+            // centro da caixa, que é a única resposta honesta.
+            let brush = self.brush.clone();
+            let ponto = self.filter_pinch_anchor();
+            self.stroke.cloth_filter_begin(&mesh, &brush, kind, ponto);
+        } else {
+            self.stroke.filter_begin(&mesh);
+        }
         self.filter_from_x = x;
         true
+    }
+
+    /// **Larga a sessão do filtro de tecido** — chamado no pen-up.
+    pub(crate) fn end_cloth_filter(&mut self) {
+        self.stroke.cloth_filter_end();
+    }
+
+    /// **O ALVO CONGELADO do aperto** — onde o raio do pen-down bateu na peça.
+    ///
+    /// ⚠️ **Sem acerto fica o centro da caixa da peça**, e é a única resposta
+    /// honesta: o artista carregou fora do barro, e apertar *para o canto do
+    /// ecrã* seria inventar um ponto que ele não apontou. ⛔ Recusar o gesto
+    /// seria pior — os outros quatro tipos não têm ponto nenhum e funcionariam.
+    pub(super) fn filter_pinch_anchor(&self) -> [f32; 3] {
+        let (x, y) = self.last;
+        if let Some(hit) = self.pick_active(x, y) {
+            return hit.point;
+        }
+        self.obj().map_or([0.0; 3], |o| o.stack.mesh().bounds().center())
+    }
+
+    /// **O que um passo do filtro de tecido lê da CÂMERA e da peça.**
+    ///
+    /// ⚠️ **A simulação corre no espaço LOCAL da peça activa** (é `mesh.positions()`
+    /// que entra na lei), então todo eixo tem de chegar lá — e a
+    /// [`ph2d_mesh::Pose`] desta casa não tem rotação, o que faz a conversão de
+    /// direcção ser a identidade. É por isso que o *World* não é oferecido
+    /// ([`ClothFilterOrientation::offered`]).
+    ///
+    /// ⚠️⚠️ **O caso especial da vista é da ESPEC §7 e vive aqui**, que é o único
+    /// sítio com uma matriz de câmera: na orientação *View* o «baixo» da
+    /// gravidade é o eixo **vertical do ecrã**, e não a profundidade — *para que a
+    /// queda seja o baixo que o artista vê*.
+    pub(super) fn cloth_filter_step_of(&self, amount: f32) -> ph2d_sculpt3d::ClothFilterStep {
+        let v = self.camera.view();
+        let dir = |r: usize| {
+            let c = v.row(r);
+            [c.x, c.y, c.z]
+        };
+        let (frame, gravity) = match self.cloth_filter_orientation {
+            ClothFilterOrientation::View => {
+                // As linhas da matriz de vista são os eixos do ECRÃ em mundo.
+                let (right, up, back) = (dir(0), dir(1), dir(2));
+                (
+                    [right, up, back],
+                    [-up[0], -up[1], -up[2]],
+                )
+            }
+            // *Local* — e o *World* coincide com ele nesta casa, medido.
+            _ => (
+                [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
+                [0.0, 0.0, -1.0],
+            ),
+        };
+        let eye = dir(2);
+        ph2d_sculpt3d::ClothFilterStep {
+            s: amount,
+            gravity_axis: gravity,
+            frame,
+            // ⏳ **Os três eixos ficam sempre ligados**, e a ausência é NOMEADA:
+            // o *Force Axis* da espec §7 só é lido pela Escala, e o painel ainda
+            // não o oferece. ⛔ Ele não é um knob morto — é um controlo que
+            // **não existe** —, e a distinção importa: a cura é criá-lo, não
+            // ligar um braço.
+            axes: [true; 3],
+            eye,
+        }
     }
 
     /// O dedo andou: re-roda a lei sobre a pose CONGELADA com a força de agora.
@@ -108,10 +196,21 @@ impl Sculpt3dScene {
         // tornaria as três leis sem verbo (`Scale`, `Sphere`, `Random`)
         // inalcançáveis outra vez, com o chip aceso a mentir sobre qual delas
         // corre.
-        let kind = self.filter_kind;
+        let law = self.filter_law;
         let brush = self.brush.clone();
+        // ⚠️ **O referencial é resolvido AQUI porque é aqui que a câmera existe**
+        // — nem a `ph2d-sculpt3d` nem a `ph2d-cloth` sabem o que é uma vista, e
+        // a espec §7 põe o caso especial (na orientação *View* o «baixo» da
+        // gravidade é o eixo do ECRÃ, não a profundidade) exactamente do lado de
+        // quem tem a matriz.
+        let passo = self.cloth_filter_step_of(amount);
         let mesh = self.objects[self.active].stack.mesh_mut();
-        let moved = self.stroke.filter(mesh, &brush, kind, amount);
+        let moved = match law {
+            ph2d_sculpt3d::FilterLaw::Mesh(kind) => self.stroke.filter(mesh, &brush, kind, amount),
+            ph2d_sculpt3d::FilterLaw::Cloth(kind) => {
+                self.stroke.cloth_filter_step(mesh, kind, &passo)
+            }
+        };
         if moved == 0 {
             return;
         }

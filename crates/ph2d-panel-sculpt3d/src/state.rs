@@ -23,7 +23,7 @@
 //! de decidir se o remesh já rodou.
 
 use ph2d_mesh::Extract;
-use ph2d_sculpt3d::{Brush, FilterKind, Symmetry, Verb};
+use ph2d_sculpt3d::{Brush, ClothFilterOrientation, FilterKind, FilterLaw, Symmetry, Verb};
 
 /// ⚠️ **A memória por-verbo mudou-se para o irmão [`crate::slots`], e o caminho
 /// NÃO mudou.** O shell endereça `state::VerbSlot` e `state::switch_verb_parts`,
@@ -68,7 +68,10 @@ pub struct Sculpt3dUi {
     /// Clay*, e uma lei de filtro não pertence a ferramenta nenhuma — três das
     /// sete não têm verbo. O modelo é o do operador *Mesh Filter* da
     /// referência: um Type, escolhido uma vez.
-    pub filter_kind: FilterKind,
+    pub filter_law: FilterLaw,
+    /// **O REFERENCIAL do filtro de tecido** (espec §7) — a direcção do «baixo»
+    /// da Gravidade e os eixos da Escala. Global como a lei, e pela mesma razão.
+    pub cloth_filter_orientation: ClothFilterOrientation,
     /// O verbo, a curva, a força e os dois knobs condicionais.
     ///
     /// ⚠️ O `Brush::radius` é de MUNDO e **derivado por dab** (contra a câmera e
@@ -189,7 +192,8 @@ impl Default for Sculpt3dUi {
             // dela. Escrever o nome aqui seria a segunda resposta a *"qual lei
             // abre selecionada?"*, que diverge no dia em que a lista for
             // reordenada.
-            filter_kind: FilterKind::ALL[0],
+            filter_law: FilterLaw::Mesh(FilterKind::ALL[0]),
+            cloth_filter_orientation: ClothFilterOrientation::default(),
             brush: Brush::default(),
             // ⚠️ **DERIVADO, e não `[RefMode::default(); _]`:** o `S` não
             // declara o [`Verb::ClayStrips`] — o SculptGL não tem essa

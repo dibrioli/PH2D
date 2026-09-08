@@ -134,6 +134,24 @@ impl ClothFilterOrientation {
     /// Os três, na ordem do painel do alvo.
     pub const ALL: [Self; 3] = [Self::Local, Self::World, Self::View];
 
+    /// **OS QUE ESTE APP OFERECE** — e o [`Self::World`] fica de fora, MEDIDO.
+    ///
+    /// ⛔⛔ **A `ph2d_mesh::Pose` de uma escultura tem translação e escala e mais
+    /// nada — não há rotação nenhuma nela.** Então `vector_to_local` de um eixo
+    /// de mundo devolve o próprio eixo, e *World* e *Local* dariam os **mesmos
+    /// três vectores**, sempre. Dois chips que produzem a mesma saída são um
+    /// controlo que o artista descobre vazio clicando — a espécie que esta casa
+    /// varre a cada wave.
+    ///
+    /// ⚠️ **A ausência é uma DECISÃO com número, não um esquecimento**, e ela
+    /// expira sozinha: no dia em que uma peça puder ser rodada, os dois deixam de
+    /// coincidir e o *World* entra. ⇒ há gate a medir a coincidência, e ele
+    /// **reprova** quando ela deixar de valer.
+    #[must_use]
+    pub fn offered() -> [Self; 2] {
+        [Self::Local, Self::View]
+    }
+
     /// O rótulo do chip.
     #[must_use]
     pub fn label(self) -> &'static str {

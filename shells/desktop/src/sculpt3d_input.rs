@@ -289,6 +289,10 @@ impl App {
         // `filter_begin` preenche os mesmos dois arrays que o `close_stroke`
         // grava. Ver o cabeçalho do `sculpt3d_filter`.
         if was == Some(Drag::Filter) {
+            // ⚠️ **A sessão de TECIDO morre antes do fecho** — ela é do gesto, e
+            // deixá-la viva faria o arrasto seguinte continuar a simulação deste
+            // sobre uma pose que já foi gravada como um passo de undo.
+            scene.end_cloth_filter();
             scene.close_stroke();
         }
         was.is_some()

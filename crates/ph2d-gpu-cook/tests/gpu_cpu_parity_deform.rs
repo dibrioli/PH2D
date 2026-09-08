@@ -802,3 +802,58 @@ fn measure_the_spherize_centroid_epsilon() {
     }
     eprintln!();
 }
+
+/// ⭐⭐ **O PIVÔ-CENTROIDE DO CALEIDOSCÓPIO CHEGA AO DISPOSITIVO** (ciclo 3, W1 — doc 106).
+///
+/// ⚠️ **O layout é DESLOCADO a montante**, porque a grelha do arnês é centrada na origem e ali
+/// o centroide é `(0, 0)`: o teste ficaria verde com o braço do centroide inteiro ausente do
+/// kernel. É o mesmo buraco que a 1.ª redacção do gate irmão do `motion.transform` teve.
+///
+/// ⚠️ E o ponto digitado fica **deliberadamente longe** do centroide: o modo tem de vencer, e
+/// um kernel que continuasse a ler `params.pivot_x` desenharia a estrela noutro sítio.
+#[test]
+#[ignore = "requires a GPU adapter"]
+fn the_kaleidoscope_centroid_pivot_rides_the_layout_on_the_device() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let mut g = Graph::new();
+    let grid = g.add_node("motion.grid");
+    g.set_param(grid, "rows", KAL_SIDE as f32);
+    g.set_param(grid, "cols", KAL_SIDE as f32);
+    g.set_param(grid, "gap_x", 0.35);
+    g.set_param(grid, "gap_y", 0.25);
+    let mv = g.add_node("motion.move");
+    g.set_param(mv, "dx", 5.5);
+    g.set_param(mv, "dy", -3.25);
+    let kal = g.add_node("motion.kaleidoscope");
+    g.set_param(kal, "segments", 5.0);
+    g.set_param(kal, "reflect", 1.0);
+    g.set_param(kal, "pivot_mode", 2.0);
+    g.set_param(kal, "pivot_x", -9.0);
+    g.set_param(kal, "pivot_y", 7.0);
+    let spin = g.add_node("value.lfo");
+    g.set_param(spin, "amplitude", 0.0);
+    g.set_param(spin, "offset", 23.0);
+    let out = g.add_node("motion.output");
+    for (from, to, port) in [
+        (grid, mv, 0u16),
+        (mv, kal, 0),
+        (spin, kal, 1),
+        (kal, out, 0),
+    ] {
+        g.connect(Edge {
+            from: (from, 0),
+            to: (to, port),
+            delayed: false,
+        })
+        .unwrap();
+    }
+    g.validate(&reg).expect("well-typed");
+    let cpu = cook_cpu(&reg, &g, out);
+    let dev = cook_gpu(&gpu, &reg, &g, out);
+    assert_eq!(cpu.len(), KAL_SIDE * KAL_SIDE * 5, "n·segments");
+    compare("kaleidoscope pivot = Centroid, layout deslocado", &cpu, &dev);
+}

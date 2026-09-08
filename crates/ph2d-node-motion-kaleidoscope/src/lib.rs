@@ -60,7 +60,7 @@ use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::gpu::{
-    ColumnAccess, ColumnBinding, GpuKernel, ROWS_COL, SourceWindow, StreamOp,
+    StreamOp,
 };
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
@@ -109,7 +109,18 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "reflect",
             default: 1.0,
         },
-        // Centre of symmetry (world units).
+        // **EM TORNO DE QUÊ** — o vocabulário é o de [`ph2d_nodegraph::pivot`], partilhado
+        // pela família (ciclo 3, W1 — doc 106 §2.3). ⚠️ O default é `Point` e **não** o `0`
+        // do `motion.transform`: este nó SEMPRE honrou o ponto digitado, então `Point` é o
+        // que o deixa byte-idêntico — *o default é a lei da identidade de cada nó, não uma
+        // propriedade do enum*. Com o pivô em `(0,0)` os dois valores dão o mesmo número, e
+        // é a row visível que os separa: com `World Origin` o gate esconderia os dois
+        // sliders que o artista já usa.
+        ParamSpec {
+            name: ph2d_nodegraph::pivot::PARAM,
+            default: 1.0,
+        },
+        // Centre of symmetry (world units) — lido só no modo `Point`.
         ParamSpec {
             name: "pivot_x",
             default: 0.0,
@@ -127,109 +138,6 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     lowerings: &[LoweringKind::Cpu],
 };
 
-/// The GPU kernel (GPU/M5, ADR-0136 `StreamOp::SourceRows`): a COUNT-CHANGING
-/// deformer, output length `segments · n`, slice-major (output `i` is slice
-/// `i / n`, source row `i % n`).
-///
-/// ⚠️ **This is the first `SourceRows` kernel that READS its template.**
-/// `sim.spawn` only writes `id`/`cp_rows` and lets the gather copy the template;
-/// kaleidoscope reads the source `P` at row `i % window_src_n`
-/// ([`ColumnAccess::SourceRead`], the length-decouple that makes a template-port
-/// read present) and writes a ROTATED output `P` — so `P` is TWO bindings
-/// (SourceRead in, Write out; they are different buffers). The sequencer then
-/// gathers every OTHER template column at `cp_rows`, duplicating `size`/`tint`/
-/// `id` onto each slice exactly like the CPU's `dup_n`.
-///
-/// ⚠️ **The trig is the CPU's parabolic sine, ported** (see `motion.bend`): HR-5
-/// keeps the canonical path transcendental-free, so the device's real `sin` would
-/// be a different curve, not a tighter ε. The rotation matches [`kaleidoscope`]
-/// operation for operation, including the odd-slice mirror (`reflect`).
-const GPU_KERNEL: GpuKernel = GpuKernel {
-    wgsl: "\
-        let k_srcn = max(params.window_src_n, 1u);\n\
-        let k_seg = clamp(round(params.segments), 1.0, 256.0);\n\
-        let k_s = i / k_srcn;\n\
-        let k_row = i % k_srcn;\n\
-        write_cp_rows(i, f32(k_row));\n\
-        let k_src = read_in_P(k_row);\n\
-        let k_lx = k_src.x - params.pivot_x;\n\
-        var k_ly = k_src.y - params.pivot_y;\n\
-        if (round(params.reflect) != 0.0 && (k_s % 2u) == 1u) { k_ly = -k_ly; }\n\
-        let k_ph = f32(k_s) / k_seg + read_spin_v(0u) / 360.0;\n\
-        let k_c = kal_sin_cycles(k_ph + 0.25);\n\
-        let k_sn = kal_sin_cycles(k_ph);\n\
-        write_P(i, vec2<f32>(\n\
-        \x20   k_lx * k_c - k_ly * k_sn + params.pivot_x,\n\
-        \x20   k_lx * k_sn + k_ly * k_c + params.pivot_y));\n",
-    wgsl_lib: "\
-        // The corrected parabolic sine at `phase` CYCLES — the port of `trig.rs`.\n\
-        fn kal_sin_cycles(phase: f32) -> f32 {\n\
-            let f = phase - floor(phase);\n\
-            var p: f32;\n\
-            if (f < 0.5) {\n\
-                let u = f * 2.0;\n\
-                p = 4.0 * u * (1.0 - u);\n\
-            } else {\n\
-                let u = (f - 0.5) * 2.0;\n\
-                p = -4.0 * u * (1.0 - u);\n\
-            }\n\
-            return 0.225 * (p * abs(p) - p) + p;\n\
-        }\n",
-    bindings: &[
-        // The source position, read at the mapped row `i % src_n` — length
-        // decoupled from the dispatch (the template is `n`, the output `n·seg`).
-        ColumnBinding {
-            column: "P",
-            dim: Dim::Vec2,
-            access: ColumnAccess::SourceRead,
-            identity: [0.0; 4],
-            port: 0,
-        },
-        // The rotated OUTPUT position — a separate buffer from the read above.
-        ColumnBinding {
-            column: "P",
-            dim: Dim::Vec2,
-            access: ColumnAccess::Write,
-            identity: [0.0; 4],
-            port: 0,
-        },
-        // The template row each output element is born from — the SourceRows
-        // machinery gathers every other column at these rows and drops this one.
-        ColumnBinding {
-            column: ROWS_COL,
-            dim: Dim::Scalar,
-            access: ColumnAccess::Write,
-            identity: [0.0; 4],
-            port: 0,
-        },
-        // The global spin (degrees), broadcast at index 0 — the CPU's `first()`.
-        ColumnBinding {
-            column: VALUE_COL,
-            dim: Dim::Scalar,
-            access: ColumnAccess::ReadBroadcast,
-            identity: [0.0; 4],
-            port: 1,
-        },
-    ],
-    params: &["segments", "reflect", "pivot_x", "pivot_y"],
-    // Output = `n · segments`, the CPU's `positions.len()`. `segments` is clamped
-    // to the SAME `[1, MAX_SEGMENTS]` the `eval` uses, so both sides mint the same
-    // count and the kernel's `k_seg` divisor matches its slice count.
-    count_law: Some(|c| {
-        let n = c.inputs.first().copied().unwrap_or(0) as usize;
-        let segments = ((c.param)("segments").round() as i64).clamp(1, MAX_SEGMENTS) as usize;
-        SourceWindow::of_count(n * segments)
-    }),
-    variant_by_param: None,
-    // ⚠️ **O device RECUA quando a renumeração está ligada** — o mesmo `applicable`
-    // que o `motion.combine` já declara, pelo mesmo motivo estrutural: este é um
-    // kernel `SourceRows`, e as colunas que não são `P` chegam à saída por um
-    // GATHER de `cp_rows` (uma cópia do template), não por uma escrita do corpo.
-    // Renumerar é escrever `Index`/`Count` **novos**, que é outra operação — e uma
-    // renumeração em `segments · n` elementos é um passe de escrita linear, não o
-    // caminho quente que este nó existe para acelerar.
-    applicable: Some(|p| p(REINDEX) < 0.5),
-};
 
 /// Replicate `p` into `segments` slices about `pivot`, rotated by `spin_cycles`, with
 /// every odd slice mirrored when `reflect`. Returns the `segments · n` positions
@@ -315,7 +223,8 @@ impl NodeOp for MotionKaleidoscope {
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
         let segments = (ctx.param("segments").round() as i64).clamp(1, MAX_SEGMENTS) as usize;
         let reflect = ctx.param("reflect").round() as i64 != 0;
-        let pivot = [ctx.param("pivot_x"), ctx.param("pivot_y")];
+        let mode = ph2d_nodegraph::pivot::PivotMode::of(ctx.param(ph2d_nodegraph::pivot::PARAM));
+        let typed = [ctx.param("pivot_x"), ctx.param("pivot_y")];
         let spin = match ctx.input(1).get(VALUE_COL) {
             Some(Column::Scalar(v)) => v.first().copied().unwrap_or(0.0),
             _ => 0.0,
@@ -326,6 +235,10 @@ impl NodeOp for MotionKaleidoscope {
             Some(Column::Vec2(v)) => v.clone(),
             _ => vec![[0.0, 0.0]; n],
         };
+        // ⚠️ O centroide é o do que ENTROU (`n` linhas), não o da saída de `segments · n`:
+        // o segundo seria a média de uma figura que este nó ainda não desenhou, e o kernel
+        // reduz sobre a porta 0 pela mesma razão.
+        let pivot = mode.resolve(typed, &p);
         let positions = kaleidoscope(&p, segments, reflect, pivot, spin / 360.0);
         // Every column is duplicated onto each slice; only `P` is transformed.
         let mut out = Stream::new(positions.len());
@@ -363,6 +276,10 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     // registry; the frozen node contract is untouched.
     reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     reg.register_stream_op(MANIFEST.id, StreamOp::SourceRows { port: 0 });
+    // Ciclo 3 W1: o par `Sum(v.x)`/`Sum(v.y)` da porta do pivô — é o que faz o modo
+    // `Centroid` correr no dispositivo em vez de derrubar a cadeia para a CPU.
+    reg.register_reduces(MANIFEST.id, ph2d_nodegraph::pivot::CENTROID_REDUCES);
+    reg.register_param_gates(MANIFEST.id, PARAM_GATES);
     Ok(())
 }
 
@@ -399,6 +316,16 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         },
     },
     ParamUiHint {
+        param: ph2d_nodegraph::pivot::PARAM,
+        label: "Pivot",
+        min: 0.0,
+        max: 2.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: ph2d_nodegraph::pivot::LABELS,
+        },
+    },
+    ParamUiHint {
         param: "pivot_x",
         label: "Pivot X",
         min: -20.0,
@@ -421,6 +348,24 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 1.0,
         step: 1.0,
         widget: ParamWidget::Toggle,
+    },
+];
+
+/// **As duas coordenadas só aparecem no modo que as LÊ** — a mesma família de gate que o
+/// `motion.transform` já declara sobre os dele. ⚠️ Esconder não é apagar: o valor sobrevive à
+/// troca de modo, e é por isso que o kernel tem de olhar o MODO e não «o ponto é diferente de
+/// zero?» (o defeito que a W1a mediu a divergir `1,369` unidades de mundo entre a CPU e o
+/// dispositivo).
+static PARAM_GATES: &[ph2d_node_registry::ParamGate] = &[
+    ph2d_node_registry::ParamGate {
+        param: "pivot_x",
+        when: ph2d_nodegraph::pivot::PARAM,
+        values: &[1],
+    },
+    ph2d_node_registry::ParamGate {
+        param: "pivot_y",
+        when: ph2d_nodegraph::pivot::PARAM,
+        values: &[1],
     },
 ];
 
@@ -629,6 +574,13 @@ mod hard_max_gates {
         );
     }
 }
+
+mod kernel;
+use kernel::GPU_KERNEL;
+
+#[cfg(test)]
+#[path = "pivot_tests.rs"]
+mod pivot_tests;
 
 #[cfg(test)]
 #[path = "reindex_tests.rs"]

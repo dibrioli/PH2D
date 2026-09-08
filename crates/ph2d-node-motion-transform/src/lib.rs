@@ -256,7 +256,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         // sitio perguntava «o ponto digitado e' diferente de zero?» e nao olhava o
         // modo: um `pivot_x` deixado para tras (a row esta' escondida pelo
         // `ParamGate`, o valor nao) vazava para o device e desenhava outra coisa.
-        ph2d_nodegraph::pivot_wgsl!(),
+        ph2d_nodegraph::pivot_wgsl!("f32(params.count)"),
         "\
         let xf_f = read_falloff(i);\n\
         let xf_p = read_P(i);\n\

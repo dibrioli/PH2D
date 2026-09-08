@@ -101,8 +101,17 @@ impl PivotMode {
 /// de um kernel cola tal e qual, com `concat!`.
 ///
 /// Escreve **`pv_pivot`** (um `vec2<f32>`) e espera do módulo `params.pivot_mode`,
-/// `params.pivot_x`, `params.pivot_y`, `params.count` e — porque o modo `Centroid` o pede —
-/// as duas reduções `cx`/`cy` que o nó tem de declarar.
+/// `params.pivot_x`, `params.pivot_y` e — porque o modo `Centroid` o pede — as duas reduções
+/// `cx`/`cy` que o nó tem de declarar.
+///
+/// ⚠️⚠️ **O argumento é o DIVISOR, e ele NÃO é sempre `params.count`.** A média é
+/// `Σp / n`, e o `n` é a contagem do stream **sobre o qual a redução correu** — a porta 0.
+/// Num kernel por elemento isso é `params.count`; num kernel que MUDA a contagem
+/// (`StreamOp::SourceRows`, como o `motion.kaleidoscope`, que emite `segments · n`) o
+/// `params.count` é a da SAÍDA e o centroide sairia `segments` vezes menor. Medido: o gate de
+/// paridade do caleidoscópio acusou `6,7e-1` de divergência, `3300×` a barra, na primeira
+/// corrida — *o mesmo número que uma redução partida daria, e por isso a fixtura tem de ter o
+/// layout DESLOCADO, senão os dois lados dividem zero por qualquer coisa e concordam*.
 ///
 /// ⚠️ **É a segunda expressão da lei e é inevitável** (o dispositivo não chama Rust); o que a
 /// mantém honesta é o gate de paridade de cada nó. ⛔ Mas é **uma** string, aqui, em vez de uma
@@ -118,16 +127,20 @@ impl PivotMode {
 /// exactamente o obstáculo que levou a cópia à mão do `motion.drive` a existir.
 #[macro_export]
 macro_rules! pivot_wgsl {
-    () => {
-        "\
+    ($n:literal) => {
+        concat!(
+            "\
         let pv_m = i32(select(ceil(params.pivot_mode - 0.5), \
                               floor(params.pivot_mode + 0.5), \
                               params.pivot_mode >= 0.0));\n\
         var pv_pivot = vec2<f32>(0.0, 0.0);\n\
         if (pv_m == 1) { pv_pivot = vec2<f32>(params.pivot_x, params.pivot_y); }\n\
         if (pv_m == 2) {\n\
-        \x20   pv_pivot = vec2<f32>(reduce_cx(), reduce_cy()) / f32(params.count);\n\
+        \x20   pv_pivot = vec2<f32>(reduce_cx(), reduce_cy()) / (",
+            $n,
+            ");\n\
         }\n"
+        )
     };
 }
 

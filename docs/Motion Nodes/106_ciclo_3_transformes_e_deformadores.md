@@ -863,3 +863,72 @@ morreu; esquecer passou a ser erro de compilação.
 ⭐⭐ **E o nome da forma seleccionada sai do MESMO passe que publica as formas** — não de uma
 segunda varredura. O filtro que decide o que o grafo consegue ver (tem nome · não é reservado · tem
 arco) é o mesmo que decide esta, então o botão nunca pode ligar o nó a algo que o grafo não vê.
+
+---
+
+### ⛔⛔⛔ A CAÇA DE TRÊS RONDAS — o gizmo que sumiu, e a lacuna de substrato por baixo (08/09)
+
+Report do dono, **três** vezes: *«sumiu com o gizmo do Bezier Warp»* → *«ainda invisível no
+canvas»* → a linha que resolveu tudo, colada do terminal dele:
+
+```
+[warp-diag] nao ha' retrato publicado (`view()` = None)
+```
+
+#### A causa, e ela não estava no gizmo
+
+As **TOMADAS** — o espreitar ao stream de um nó a meio do grafo — são cozidas dentro do
+`cook_target_into`, que corre **na MARCHA** da bomba. E a ponte da GPU, na rota `FullyGpu`,
+**retorna antes de qualquer marcha**: o device produziu o quadro, a bomba não corre, e
+`tap_streams` fica vazio.
+
+⇒ o gizmo lê a caixa envolvente de uma tomada ⇒ `box_from_tap` → `None` ⇒ `resolve` → `None` ⇒
+**não há gizmo**, sem um erro e sem um aviso.
+
+⚠️ **A rota HÍBRIDA já estava coberta**, e o doc do `set_taps` conta essa cura: as tomadas
+passaram a ser estado da **bomba** precisamente para cavalgarem *«a marcha que houver»*. O que
+ninguém viu é que na `FullyGpu` **não há marcha nenhuma**. *Uma lei implementada num braço do
+`match` e não no outro é meia lei* — e este repo já pagou essa exacta frase noutro sítio.
+
+⚠️⚠️ **E foi a W5a que acordou o defeito.** Ele existe desde que a rota `FullyGpu` existe; faltava
+um consumidor de tomada num grafo que o device reivindicasse **inteiro**. Dar um kernel ao
+`motion.bezier_warp` foi exactamente isso: antes, ele derrubava a cadeia para a CPU e a tomada
+aparecia **por acidente**.
+
+⚠️ **Segunda vítima, que ninguém tinha reportado:** os **sinais** de um documento inteiramente no
+device estavam mudos pela mesma razão.
+
+**A cura:** `MotionCookPump::cook_taps_only` — **cozinha, não marcha**, no mesmo playhead em que o
+device acabou. ⛔ Marchar ali simularia o tique duas vezes (uma no device, outra na CPU) e um nó
+sequencial andaria a dobrar. O preço está nomeado: a tomada do gizmo cozinha na CPU a cadeia a
+montante do nó **seleccionado**, e só se paga enquanto há tomada armada.
+
+#### ⛔ As duas curas anteriores foram PALPITES, e a segunda provou a primeira errada
+
+| ronda | o que eu fiz | como se soube que estava errado |
+|---|---|---|
+| 1 | movi o desenho ~2 000 linhas no quadro (ordem de z **inferida de números de linha**) | o gizmo **sumiu** |
+| 2 | revertí a mudança de sítio | *«ainda invisível»* — logo a mudança nunca fora a causa |
+| 3 | **instrumentei o quadro** | a linha do dono nomeou a condição em dez segundos |
+
+⭐ **A de tamanho e casing, essa, era medida — e fica.** Era o que o report original pedia.
+
+#### ⛔⛔ E a lição mais cara: A MINHA SONDA MENTIU
+
+A sonda `why_the_warp_gizmo_is_not_there` deu `resolve = Some` na cena **exacta** do report,
+enquanto o app dava `None`. Ela chama `advance_or_scrub_scoped` — a marcha da **CPU** — e o app
+corre a do **device**.
+
+> ***Uma sonda que escolhe a rota mede a rota que ela escolheu.***
+
+É a segunda instância da família *«uma sonda que arma o sistema de outra maneira que o utilizador
+mede outro programa»* ([memória](../../project-memory/feedback_a_probe_that_arms_a_module_by_env_var_measures_another_program_than_the_pill.md)).
+
+⚠️ **E a resposta só veio porque a sonda do app imprime os DOIS lados.** O ramo do `None` só existe
+porque eu já tinha errado duas vezes e precisei de distinguir *«não há retrato»* de *«a sonda não
+corre»* — sem ele, um terminal silencioso não concluiria nada.
+
+⏳ **ABERTO e nomeado:** não há portão que veja um overlay de canvas sumir do **quadro**. Os gates
+desta jornada medem as duas metades — o retrato (`why_the_warp_gizmo_is_not_there`) e a tinta
+(`the_gizmo_paints_geometry_and_paints_none_when_inactive`) — e a costura entre elas, que é onde o
+defeito viveu, só se mede com uma janela real.

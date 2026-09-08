@@ -204,6 +204,13 @@ pub struct SculptStroke {
     /// ⚠️ Ela nasce no pen-down do filtro e morre no `begin` como as outras — é
     /// isso que a impede de sobreviver a um traço.
     cloth_filter: Option<ph2d_cloth::verlet_gesto::PincelTecido>,
+    /// ⭐ **O filtro de tecido deste gesto colide?** — fotografado no pen-down.
+    ///
+    /// ⚠️ **Uma bandeira e não uma leitura das propriedades a cada passo**: a
+    /// simulação nasce e morre com o gesto, e ligar a opção a meio dele mudaria
+    /// a lei debaixo da mão. É a mesma razão pela qual a lista de colisores
+    /// também é uma fotografia.
+    cloth_filter_collisions: bool,
     /// **A porta de ABLAÇÃO do orçamento do tecido** — só em teste, e ela existe
     /// para um gate poder afirmar que a lei do gesto **não depende** do número
     /// de sub-passos. Sem ela a propriedade não é observável de fora, e foi

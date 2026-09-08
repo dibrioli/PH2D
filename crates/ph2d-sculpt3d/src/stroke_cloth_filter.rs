@@ -28,7 +28,8 @@
 //! e ele existe porque o [`super::SculptStroke::cloth_filter_begin`] congela a
 //! malha inteira pela MESMA porta do filtro de malha.
 
-use super::{Brush, SculptStroke};
+use super::SculptStroke;
+use crate::ClothFilterProps;
 use crate::ClothFilterKind;
 use ph2d_cloth::V3;
 use ph2d_cloth::verlet::Solver;
@@ -82,10 +83,18 @@ impl SculptStroke {
     /// estava sob o cursor ao carregar. Os outros quatro tipos não o lêem, e o
     /// chamador que não tenha acerto pode dar o centro da peça: há gate a
     /// afirmar que os quatro não mudam com ele.
+    /// ⭐⭐⭐ **ELE JÁ NÃO RECEBE UM `&Brush`** (2026-09-08, pergunta do dono).
+    ///
+    /// As propriedades do filtro são **dele** ([`ClothFilterProps`]), e a
+    /// assinatura é a forma mais forte dessa lei: *não é possível ler por engano
+    /// um campo que não chega*. Antes ele lia `brush.cloth_mass` /
+    /// `cloth_damping` / `cloth_plasticity` — números do PINCEL, com omissão e
+    /// faixa diferentes das do filtro —, e nada o impediria de ler o próximo
+    /// campo de tecido que alguém acrescente ao pincel.
     pub fn cloth_filter_begin(
         &mut self,
         mesh: &Mesh,
-        brush: &Brush,
+        props: ClothFilterProps,
         kind: ClothFilterKind,
         ponto: [f32; 3],
     ) {
@@ -93,8 +102,12 @@ impl SculptStroke {
         let pos: Vec<V3> = mesh.positions().iter().map(|p| v3(*p)).collect();
         let caras: Vec<&[u32]> = mesh.faces().iter().map(Face::verts).collect();
         let ordem = ph2d_cloth::particao::ordem_de_visita(&pos, &caras);
+        // ⚠️ **A bandeira é FOTOGRAFADA no pen-down**, como a lista de colisores
+        // e pela mesma razão: a simulação nasce e morre com o gesto, e ligar a
+        // opção a meio dele mudaria a lei debaixo da mão.
+        self.cloth_filter_collisions = props.collisions;
         let mut tecido =
-            PincelTecido::pen_down(pincel_do_filtro(brush, kind), &pos, v3(ponto), ordem);
+            PincelTecido::pen_down(pincel_do_filtro(props, kind), &pos, v3(ponto), ordem);
         // A máscara é mais um peso por-vértice, como no traço — e ela entra uma
         // vez, porque um filtro não tem carimbo que ande.
         if let Some(livre) = mesh.masks() {
@@ -204,7 +217,23 @@ impl SculptStroke {
         // filtro de malha, o sharpen). Sem isto ela cresceria a cada movimento do
         // rato e o refresco relia o gesto inteiro por quadro.
         self.moved.clear();
-        let simulou = ses.passo(&pos, &anel, &p);
+        // ⭐⭐ **AS COLISÕES DO FILTRO** (espec §7) — a MESMA porta do traço
+        // ([`super::stroke_cloth_ref::caixas_de`]), e por isso o pano bate nos
+        // obstáculos com a mesma lei nos dois gestos.
+        //
+        // ⚠️ **Os colisores saem do `self` durante o passo**, como no traço: as
+        // funções que a lei recebe emprestam-nos e a escrita na malha logo a
+        // seguir precisa do `&mut self`.
+        let colisores = std::mem::take(&mut self.cloth_colliders);
+        let simulou = if self.cloth_filter_collisions && !colisores.is_empty() {
+            let fs = super::stroke_cloth_ref::caixas_de(&colisores);
+            let refs: Vec<ph2d_cloth::verlet::Colisor> =
+                fs.iter().map(std::convert::AsRef::as_ref).collect();
+            ses.passo_com_colisores(&pos, &anel, &p, &refs)
+        } else {
+            ses.passo(&pos, &anel, &p)
+        };
+        self.cloth_colliders = colisores;
         let mut movidos = 0;
         if simulou {
             // Todo vértice activo é capturado antes de ser escrito — o `pre` é o
@@ -301,7 +330,10 @@ fn anel_da_malha(mesh: &Mesh, v: u32) -> Vec<u32> {
 /// o app, e duplicar cinco controlos para os separar produziria dois sítios onde
 /// mexer na mesma ideia. ⚠️ O que muda de facto é o **piso do amortecimento** —
 /// o traço clampa em `0,01` e a §7 admite `0` —, e aqui vale o do filtro.
-fn pincel_do_filtro(brush: &Brush, kind: ClothFilterKind) -> Pincel {
+fn pincel_do_filtro(props: ClothFilterProps, kind: ClothFilterKind) -> Pincel {
+    // ⚠️ **Preso na PORTA das propriedades**, e não aqui: um `clamp` escrito nos
+    // dois sítios esconde de qual dos dois o número saiu.
+    let p = props.clamped();
     Pincel {
         modo: kind.modo(),
         area: Area::Global,
@@ -313,10 +345,10 @@ fn pincel_do_filtro(brush: &Brush, kind: ClothFilterKind) -> Pincel {
         pino: false,
         accionamento: Accionamento::Filtro { s: 0.0 },
         solver: Solver {
-            massa: f64::from(brush.cloth_mass.clamp(0.01, 2.0)),
-            amortecimento: f64::from(brush.cloth_damping.clamp(0.0, 1.0)),
-            plasticidade: f64::from(brush.cloth_plasticity.clamp(0.0, 1.0)),
-            ..Solver::default()
+            massa: f64::from(p.mass),
+            amortecimento: f64::from(p.damping),
+            plasticidade: f64::from(p.plasticity),
+            varreduras: p.sweeps,
         },
         ..Pincel::default()
     }

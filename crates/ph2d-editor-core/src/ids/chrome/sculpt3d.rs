@@ -293,6 +293,48 @@ pub const SCULPT3D_CLOTH_PERSISTENT: NodeId = hash_node_id("sculpt3d.cloth_persi
 /// gravar a base sem a opção ligada não muda nada. *Um controlo sozinho aqui
 /// seria um botão que o artista carrega e não vê acontecer nada.*
 pub const SCULPT3D_CLOTH_SET_BASE: NodeId = hash_node_id("sculpt3d.cloth_set_base");
+/// ⭐⭐ ***Collisions*** do FILTRO de tecido — o pano bate nas outras peças.
+///
+/// ⚠️ **Nasce desligada, e o preço é a razão**: `2,6×` a `6,1×` o custo de um
+/// dab, e no filtro a peça inteira é o pior caso.
+pub const SCULPT3D_CFILTER_COLLISIONS: NodeId = hash_node_id("sculpt3d.cfilter_collisions");
+/// ⭐⭐ ***Force Axis*** do filtro de tecido — os três interruptores `X`/`Y`/`Z`
+/// que **só a Escala** lê (espec §7).
+///
+/// ⚠️ **Um array e não três constantes soltas**: o índice `i` nomeia o eixo `i`,
+/// e é essa unificação que impede um interruptor rotulado `Y` de escrever o `Z`
+/// — o defeito que os sete chips do `FilterKind` já pagaram uma vez.
+pub const SCULPT3D_CFILTER_AXIS: [NodeId; 3] = [
+    hash_node_id("sculpt3d.cfilter_axis_x"),
+    hash_node_id("sculpt3d.cfilter_axis_y"),
+    hash_node_id("sculpt3d.cfilter_axis_z"),
+];
+/// ⭐⭐⭐ ***Cloth Quality*** do PINCEL — quantas varreduras de relaxação por passo.
+///
+/// ⚠️ **O alvo FIXA isto em `5` e não o oferece.** Ver
+/// [`ph2d_sculpt3d::ClothFilterProps::sweeps`] para a tabela medida do que ele
+/// compra e do teto.
+pub const SCULPT3D_CLOTH_SWEEPS: NodeId = hash_node_id("sculpt3d.cloth_sweeps");
+/// Chip ligado a [`SCULPT3D_CLOTH_SWEEPS`].
+pub const SCULPT3D_CLOTH_SWEEPS_NUM: NodeId = hash_node_id("sculpt3d.cloth_sweeps_num");
+/// ⭐⭐ ***Mass* do FILTRO de tecido** — dele, e não do pincel.
+pub const SCULPT3D_CFILTER_MASS: NodeId = hash_node_id("sculpt3d.cfilter_mass");
+/// Chip ligado a [`SCULPT3D_CFILTER_MASS`].
+pub const SCULPT3D_CFILTER_MASS_NUM: NodeId = hash_node_id("sculpt3d.cfilter_mass_num");
+/// ⭐⭐ ***Damping* do FILTRO** — ⚠️ omissão `0` e faixa a começar em `0`, ao
+/// contrário da do pincel (`0,01`), que o filtro nunca alcançava.
+pub const SCULPT3D_CFILTER_DAMPING: NodeId = hash_node_id("sculpt3d.cfilter_damping");
+/// Chip ligado a [`SCULPT3D_CFILTER_DAMPING`].
+pub const SCULPT3D_CFILTER_DAMPING_NUM: NodeId = hash_node_id("sculpt3d.cfilter_damping_num");
+/// ⭐⭐ ***Plasticity* do FILTRO** — ⚠️ o alvo fixa-a em `0`; aqui é controlo.
+pub const SCULPT3D_CFILTER_PLASTICITY: NodeId = hash_node_id("sculpt3d.cfilter_plasticity");
+/// Chip ligado a [`SCULPT3D_CFILTER_PLASTICITY`].
+pub const SCULPT3D_CFILTER_PLASTICITY_NUM: NodeId =
+    hash_node_id("sculpt3d.cfilter_plasticity_num");
+/// ⭐⭐⭐ ***Quality* do FILTRO** — as varreduras que o alvo fixa em `5`.
+pub const SCULPT3D_CFILTER_SWEEPS: NodeId = hash_node_id("sculpt3d.cfilter_sweeps");
+/// Chip ligado a [`SCULPT3D_CFILTER_SWEEPS`].
+pub const SCULPT3D_CFILTER_SWEEPS_NUM: NodeId = hash_node_id("sculpt3d.cfilter_sweeps_num");
 /// ***Simulation Limit* `L`** — quantos raios a área simulada alcança.
 pub const SCULPT3D_CLOTH_LIMIT: NodeId = hash_node_id("sculpt3d.cloth_limit");
 /// Chip ligado a [`SCULPT3D_CLOTH_LIMIT`].

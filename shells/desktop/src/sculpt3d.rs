@@ -463,19 +463,16 @@ pub(crate) struct Sculpt3dScene {
     /// verbo em mãos passa a apenas SEMEAR esta escolha ao armar — quem manda
     /// é o artista, e um verbo sem lei própria deixa a última escolha de pé.
     filter_law: ph2d_sculpt3d::FilterLaw,
-    /// **O REFERENCIAL do filtro de tecido** (espec §7) — ele decide os eixos da
-    /// Escala e a direcção do «baixo» da Gravidade.
+    /// ⭐⭐⭐ **O QUE O ARTISTA AFINOU NO FILTRO DE TECIDO** — o referencial, os
+    /// quatro números e os três eixos do *Force Axis*.
     ///
-    /// ⚠️ Estado de FERRAMENTA, como o [`Self::filter_law`]: ele é do artista e
-    /// sobrevive a trocar de verbo.
-    cloth_filter_orientation: ph2d_sculpt3d::ClothFilterOrientation,
-    /// **O `x` do último evento de ponteiro do filtro de TECIDO, por drenar.**
-    ///
-    /// ⚠️ **Um evento regista, o QUADRO corre** — ver
-    /// [`Sculpt3dScene::flush_cloth_filter`]. Irmão do `pending_grab`, e pela
-    /// mesma razão: sem isto, quantos passos a simulação avança seria função da
-    /// taxa de amostragem do rato.
-    cloth_filter_pending: Option<f32>,
+    /// ⚠️ **Um tipo e não cinco campos soltos**: eles são uma coisa (*como o
+    /// filtro de tecido está afinado*), são GLOBAIS — um filtro não pertence a
+    /// ferramenta nenhuma, e três dos cinco tipos não têm verbo — e são lidos
+    /// pelo mesmo sítio. Soltos entre os sessenta campos que descrevem *o que a
+    /// peça É* eram indistinguíveis do resto, e foram eles que levaram este
+    /// ficheiro ao tecto de LOC. Ver [`filter::Tecido`].
+    tecido: filter::Tecido,
     symmetry: Symmetry,
     /// **O rig de luz do artista** — as mesmas quatro lâmpadas que acendem a tinta
     /// do Painter (`ph2d-light`).

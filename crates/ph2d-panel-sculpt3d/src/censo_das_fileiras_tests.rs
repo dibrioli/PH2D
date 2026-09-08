@@ -103,3 +103,86 @@ fn the_cloth_mode_decides_which_arm_the_gesture_takes() {
     );
     assert!(ClothMode::Drag.repica(), "os modos de FORCA re-apanham");
 }
+
+/// ⭐⭐⭐ **OS NÚMEROS DO FILTRO APARECEM COM O FILTRO, NÃO COM O PINCEL.**
+///
+/// ⛔⛔ **É o defeito que a pergunta do dono expôs** (2026-09-08): os números do
+/// tecido só eram pintados com `verb == Verb::Cloth`, e desde a W9b o **filtro
+/// corre com qualquer verbo na mão** (a lei deixou de ser derivada do verbo).
+/// ⇒ com o Draw na mão eles mexiam na simulação **sem nada na tela os mostrar**
+/// — *vivo e inalcançável*, que é o espelho do knob morto e a espécie que
+/// nenhuma sonda deste repo vê.
+///
+/// ⚠️ **As duas metades são o gate:** só a primeira deixaria passar uma fileira
+/// pintada sempre (ruído sobre quem esculpe); só a segunda deixaria passar a
+/// pergunta antiga.
+#[test]
+fn os_numeros_do_filtro_aparecem_com_o_filtro_e_nao_com_o_pincel() {
+    use crate::rows::rows;
+    use crate::state::Sculpt3dUi;
+    use ph2d_sculpt3d::{ClothFilterKind, FilterKind, FilterLaw, Verb};
+
+    let cfilter: Vec<&str> = rows()
+        .map(|r| r.label)
+        .filter(|l| l.starts_with("panel.sculpt3d.cfilter_"))
+        .collect();
+    assert_eq!(
+        cfilter.len(),
+        4,
+        "o filtro de tecido tem QUATRO numeros proprios (massa, amortecimento, plasticidade, \
+         qualidade) e o painel oferece {}: {cfilter:?}",
+        cfilter.len()
+    );
+
+    // (1) — com a lei de TECIDO escolhida e um verbo QUALQUER na mão, eles aparecem.
+    let mut u = Sculpt3dUi::default();
+    u.brush.verb = Verb::Draw;
+    u.filter_law = FilterLaw::Cloth(ClothFilterKind::Gravity);
+    for r in rows().filter(|r| r.label.starts_with("panel.sculpt3d.cfilter_")) {
+        assert!(
+            (r.show)(&u),
+            "`{}` nao e' oferecida com a lei de tecido escolhida e o Draw na mao -- e' \
+             exactamente o estado em que o filtro corre",
+            r.label
+        );
+    }
+
+    // (2) — com uma lei de MALHA escolhida eles somem, mesmo com o pincel de
+    // tecido na mão: eles são do FILTRO, e ali o filtro não é de tecido.
+    u.brush.verb = Verb::Cloth;
+    u.filter_law = FilterLaw::Mesh(FilterKind::Smooth);
+    for r in rows().filter(|r| r.label.starts_with("panel.sculpt3d.cfilter_")) {
+        assert!(
+            !(r.show)(&u),
+            "`{}` e' oferecida com uma lei de MALHA escolhida -- ela nao mexe um vertice ali",
+            r.label
+        );
+    }
+}
+
+/// ⭐⭐ **A *Quality* DO PINCEL É DO PINCEL** — e o alvo não a tem.
+///
+/// ⚠️ Ela é o gémeo da do filtro e a pergunta de visibilidade é a **outra**: um
+/// knob do pincel aparece com o pincel na mão. *As duas existem, com omissões
+/// iguais e donos diferentes, e trocar as perguntas devolveria o defeito ao
+/// contrário.*
+#[test]
+fn a_qualidade_do_pincel_aparece_com_o_pincel() {
+    use crate::rows::rows;
+    use crate::state::Sculpt3dUi;
+    use ph2d_sculpt3d::{ClothFilterKind, FilterLaw, Verb};
+
+    let r = rows()
+        .find(|r| r.label == "panel.sculpt3d.cloth_sweeps")
+        .expect("a *Quality* do pincel tem de existir");
+    let mut u = Sculpt3dUi::default();
+    u.brush.verb = Verb::Cloth;
+    assert!((r.show)(&u), "com o pincel de tecido na mao ela tem de aparecer");
+    u.brush.verb = Verb::Draw;
+    u.filter_law = FilterLaw::Cloth(ClothFilterKind::Gravity);
+    assert!(
+        !(r.show)(&u),
+        "a *Quality* do PINCEL apareceu com o Draw na mao -- ela e' do pincel, e quem o filtro \
+         le^ e' a `cfilter_sweeps`"
+    );
+}

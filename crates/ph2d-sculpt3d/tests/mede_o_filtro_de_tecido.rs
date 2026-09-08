@@ -25,7 +25,7 @@
 //! quadro por segundo reduz a MALHA (o botão de retopologia existe), não o
 //! solver.
 
-use ph2d_sculpt3d::{Brush, ClothFilterKind, ClothFilterStep, SculptStroke, Verb};
+use ph2d_sculpt3d::{ClothFilterKind, ClothFilterProps, ClothFilterStep, SculptStroke};
 use std::time::Instant;
 
 fn passo() -> ClothFilterStep {
@@ -38,23 +38,14 @@ fn passo() -> ClothFilterStep {
     }
 }
 
-fn pincel() -> Brush {
-    Brush {
-        verb: Verb::Cloth,
-        radius: 0.35,
-        strength: 1.0,
-        ..Brush::default()
-    }
-}
 
 /// `(vértices, ms do pen-down, ms de um passo)`.
 fn medir(nu: usize, nv: usize) -> (usize, f64, f64) {
     let mut mesh = ph2d_mesh::shapes::uv_sphere(nu, nv, 1.0);
     let n = mesh.vert_count();
-    let b = pincel();
     let mut st = SculptStroke::default();
     let t0 = Instant::now();
-    st.cloth_filter_begin(&mesh, &b, ClothFilterKind::Gravity, [0.0; 3]);
+    st.cloth_filter_begin(&mesh, ClothFilterProps::default(), ClothFilterKind::Gravity, [0.0; 3]);
     let abertura = t0.elapsed().as_secs_f64() * 1e3;
     let t1 = Instant::now();
     st.cloth_filter_step(&mut mesh, ClothFilterKind::Gravity, &passo());
@@ -106,10 +97,9 @@ fn o_pen_down_do_filtro_e_linear_nos_vertices() {
     {
         let mut mesh = ph2d_mesh::shapes::sculpt_sphere(1.0);
         let n = mesh.vert_count();
-        let b = pincel();
-        let mut st = SculptStroke::default();
+            let mut st = SculptStroke::default();
         let t0 = Instant::now();
-        st.cloth_filter_begin(&mesh, &b, ClothFilterKind::Gravity, [0.0; 3]);
+        st.cloth_filter_begin(&mesh, ClothFilterProps::default(), ClothFilterKind::Gravity, [0.0; 3]);
         let a = t0.elapsed().as_secs_f64() * 1e3;
         let t1 = Instant::now();
         st.cloth_filter_step(&mut mesh, ClothFilterKind::Gravity, &passo());

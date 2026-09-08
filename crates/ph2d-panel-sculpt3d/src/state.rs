@@ -72,6 +72,30 @@ pub struct Sculpt3dUi {
     /// **O REFERENCIAL do filtro de tecido** (espec §7) — a direcção do «baixo»
     /// da Gravidade e os eixos da Escala. Global como a lei, e pela mesma razão.
     pub cloth_filter_orientation: ClothFilterOrientation,
+    /// ⭐⭐⭐ **AS PROPRIEDADES DO FILTRO DE TECIDO** — dele, e não do pincel.
+    ///
+    /// ⛔⛔ **Elas eram lidas do PINCEL** (`brush.cloth_mass` e as duas irmãs), e
+    /// isso estava errado em três sítios: o amortecimento do filtro nasce em `0`
+    /// e o do pincel em `0,01` **com a faixa a começar aí** (⇒ o filtro nunca
+    /// alcançava o próprio valor de omissão); a plasticidade do alvo é fixa em
+    /// `0` no filtro; e as três só apareciam no painel com o **pincel** de
+    /// tecido na mão, enquanto o filtro corre com qualquer verbo. Ver
+    /// [`ph2d_sculpt3d::ClothFilterProps`].
+    ///
+    /// ⚠️ **GLOBAIS como a orientação acima, e pela mesma razão**: um filtro não
+    /// pertence a ferramenta nenhuma — três dos cinco tipos não têm verbo.
+    pub cloth_filter: ph2d_sculpt3d::ClothFilterProps,
+    /// ⭐⭐ ***Force Axis*** — quais eixos a Escala do filtro usa (espec §7).
+    ///
+    /// ⛔ **Era um controlo que NÃO EXISTIA** — e a distinção importa, porque a
+    /// cura de um knob morto é ligar o braço e a de um controlo ausente é
+    /// criá-lo. O motor já o honra desde 07/09 (gate `escala_eixox` a
+    /// `0,009151`); o que faltava eram os três interruptores.
+    ///
+    /// ⚠️ **Só a Escala os lê**, e quem o diz é o MOTOR
+    /// ([`ph2d_sculpt3d::ClothFilterKind::le_os_eixos`]) — nunca uma lista de
+    /// nomes aqui.
+    pub cloth_filter_axes: [bool; 3],
     /// O verbo, a curva, a força e os dois knobs condicionais.
     ///
     /// ⚠️ O `Brush::radius` é de MUNDO e **derivado por dab** (contra a câmera e
@@ -194,6 +218,8 @@ impl Default for Sculpt3dUi {
             // reordenada.
             filter_law: FilterLaw::Mesh(FilterKind::ALL[0]),
             cloth_filter_orientation: ClothFilterOrientation::default(),
+            cloth_filter: ph2d_sculpt3d::ClothFilterProps::default(),
+            cloth_filter_axes: [true; 3],
             brush: Brush::default(),
             // ⚠️ **DERIVADO, e não `[RefMode::default(); _]`:** o `S` não
             // declara o [`Verb::ClayStrips`] — o SculptGL não tem essa

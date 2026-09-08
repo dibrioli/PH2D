@@ -20,7 +20,7 @@
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids;
-use ph2d_sculpt3d::Verb;
+use ph2d_sculpt3d::{ClothFilterKind, Verb};
 
 use crate::state::Sculpt3dUi;
 
@@ -34,7 +34,7 @@ pub(super) type Toggle = (NodeId, fn(&Sculpt3dUi) -> bool, fn(&mut Sculpt3dUi));
 /// `Brush::offers_front_faces`, `ClothArea::offers_pin`), nunca a uma lista de
 /// nomes aqui — o pintor faz a mesma pergunta para decidir se desenha a caixa, e
 /// duas cópias divergiriam num interruptor que aparece e não muda um vértice.
-pub(super) const TOGGLES: [Toggle; 8] = [
+pub(super) const TOGGLES: [Toggle; 12] = [
     (
         ids::SCULPT3D_ACCUMULATE,
         |u| u.brush.verb.accumulates(),
@@ -64,6 +64,34 @@ pub(super) const TOGGLES: [Toggle; 8] = [
         ids::SCULPT3D_CLOTH_COLLISIONS,
         |u| u.brush.verb == Verb::Cloth,
         |u| u.brush.cloth_collisions = !u.brush.cloth_collisions,
+    ),
+    // ⭐⭐ **AS COLISÕES DO FILTRO** — a espec §7 diz que ele as tem («idem §5.6,
+    // opção nasce desligada») e nós passávamos-lhe uma lista vazia.
+    (
+        ids::SCULPT3D_CFILTER_COLLISIONS,
+        |u| u.filter_law.is_cloth(),
+        |u| u.cloth_filter.collisions = !u.cloth_filter.collisions,
+    ),
+    // ⭐⭐ **OS TRÊS EIXOS DO *Force Axis*** — e quem diz se eles existem agora é o
+    // MOTOR (`ClothFilterKind::le_os_eixos`), nunca uma lista de nomes aqui.
+    //
+    // ⚠️ **Só a Escala os lê.** Pintá-los para os outros quatro tipos seria
+    // exactamente o knob morto que esta casa varre a cada wave — o artista
+    // clica, nada muda, e ele conclui que o app tem um defeito que não tem.
+    (
+        ids::SCULPT3D_CFILTER_AXIS[0],
+        |u| u.filter_law.cloth().is_some_and(ClothFilterKind::le_os_eixos),
+        |u| u.cloth_filter_axes[0] = !u.cloth_filter_axes[0],
+    ),
+    (
+        ids::SCULPT3D_CFILTER_AXIS[1],
+        |u| u.filter_law.cloth().is_some_and(ClothFilterKind::le_os_eixos),
+        |u| u.cloth_filter_axes[1] = !u.cloth_filter_axes[1],
+    ),
+    (
+        ids::SCULPT3D_CFILTER_AXIS[2],
+        |u| u.filter_law.cloth().is_some_and(ClothFilterKind::le_os_eixos),
+        |u| u.cloth_filter_axes[2] = !u.cloth_filter_axes[2],
     ),
     (
         ids::SCULPT3D_ALPHA_PREVIEW,

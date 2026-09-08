@@ -90,8 +90,7 @@ impl Sculpt3dScene {
             // nasce com o mesmo primeiro elemento, e um default escrito duas
             // vezes é o que diverge no dia em que a ordem da lista mudar.
             filter_law: ph2d_sculpt3d::FilterLaw::default(),
-            cloth_filter_orientation: ph2d_sculpt3d::ClothFilterOrientation::default(),
-            cloth_filter_pending: None,
+            tecido: super::filter::Tecido::default(),
             // ⚠️ **DESLIGADA por default, e é decisão do smoke.** O ZBrush
             // nasce com espelho ligado — e MOSTRA isso. Aqui o artista clicava
             // de um lado e via uma segunda protuberância do outro, sem nada na

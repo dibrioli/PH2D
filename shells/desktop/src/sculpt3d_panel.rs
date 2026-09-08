@@ -57,7 +57,9 @@ impl Sculpt3dScene {
                 radius_px: self.radius_px(),
                 symmetry: self.symmetry,
                 filter_law: self.filter_law,
-                cloth_filter_orientation: self.cloth_filter_orientation,
+                cloth_filter_orientation: self.tecido.orientation,
+                cloth_filter: self.tecido.props,
+                cloth_filter_axes: self.tecido.axes,
                 matcap: self.matcap,
                 alpha_preview: self.alpha_preview,
                 wireframe: self.wireframe,
@@ -202,7 +204,9 @@ impl Sculpt3dScene {
         self.radius_px = ui.radius_px;
         self.symmetry = ui.symmetry;
         self.filter_law = ui.filter_law;
-        self.cloth_filter_orientation = ui.cloth_filter_orientation;
+        self.tecido.orientation = ui.cloth_filter_orientation;
+        self.tecido.props = ui.cloth_filter;
+        self.tecido.axes = ui.cloth_filter_axes;
         self.matcap = ui.matcap;
         self.alpha_preview = ui.alpha_preview;
         self.wireframe = ui.wireframe;

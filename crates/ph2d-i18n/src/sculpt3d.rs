@@ -49,6 +49,18 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.sculpt3d.cloth_mass" => "Cloth Mass",
         "panel.sculpt3d.cloth_damping" => "Cloth Damping",
         "panel.sculpt3d.cloth_plasticity" => "Soft Body Plasticity",
+        // ⭐ A *Quality* do pincel — as varreduras que o alvo FIXA em 5.
+        "panel.sculpt3d.cloth_sweeps" => "Cloth Quality",
+        // ⭐⭐ Os quatro do FILTRO. ⚠️ O prefixo "Filter" é o que os separa dos do
+        // PINCEL na mesma coluna: os dois conjuntos existem, com omissões e
+        // faixas diferentes, e um rótulo repetido faria o artista concluir que
+        // são o mesmo número.
+        "panel.sculpt3d.cfilter_mass" => "Filter Mass",
+        "panel.sculpt3d.cfilter_damping" => "Filter Damping",
+        "panel.sculpt3d.cfilter_plasticity" => "Filter Plasticity",
+        "panel.sculpt3d.cfilter_sweeps" => "Filter Quality",
+        "panel.sculpt3d.cfilter_axis" => "Force Axis",
+        "panel.sculpt3d.cfilter_collisions" => "Filter Collisions",
         // ⚠️ **A row lê `Reference`, e os chips leem `S` · `B` · `L`** (§1.4 do
         // plano): o artista não sabe o que é o SculptGL, e o nome de um produto
         // de terceiro num botão é ruído que envelhece. Trocar para os nomes por

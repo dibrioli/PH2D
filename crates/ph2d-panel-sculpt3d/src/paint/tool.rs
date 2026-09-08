@@ -16,7 +16,7 @@ use ph2d_sculpt3d::{
 };
 use ph2d_tokens::Spacing;
 
-use super::widgets::{self, command, header, labelled_seg, seg};
+use super::widgets::{command, header, labelled_seg, seg, self, toggle};
 use crate::state::{Sculpt3dSnapshot, UiLevel};
 
 /// **A FERRAMENTA** — os verbos do [`Verb::ALL`] numa faixa que REFLUI.
@@ -241,6 +241,57 @@ fn paint_reference_row(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f
         w,
         y,
     );
+    // ⭐⭐ **AS COLISÕES DO FILTRO** — o pano bate nas outras peças da cena.
+    //
+    // ⚠️ **Nasce desligada**, e o preço é a razão: `2,6×` a `6,1×` o custo de um
+    // dab, e aqui a peça INTEIRA é o pior caso — não há banda a limitar quem
+    // colide.
+    let y = toggle(
+        ctx,
+        ids::SCULPT3D_CFILTER_COLLISIONS,
+        tr("panel.sculpt3d.cfilter_collisions"),
+        snap.ui.cloth_filter.collisions,
+        x,
+        w,
+        y,
+    );
+    // ⭐⭐ **O *Force Axis*** (espec §7) — e ele aparece **só na Escala**, que é o
+    // único tipo que o lê.
+    //
+    // ⚠️ **Quem responde é o MOTOR** (`ClothFilterKind::le_os_eixos`), nunca uma
+    // lista de nomes aqui: pintá-lo nos outros quatro tipos seria o knob morto
+    // que esta casa varre a cada wave — o artista clica, nada muda, e conclui
+    // que o app tem um defeito que não tem.
+    //
+    // ⛔ **Ele era um controlo que NÃO EXISTIA**, e a distinção com um knob
+    // morto é a cura: a de um morto é ligar o braço, a de um ausente é criá-lo.
+    // O motor já o honrava desde 07/09 (gate `escala_eixox`).
+    let y = if snap
+        .ui
+        .filter_law
+        .cloth()
+        .is_some_and(ph2d_sculpt3d::ClothFilterKind::le_os_eixos)
+    {
+        let mut yy = y;
+        for (i, eixo) in ["X", "Y", "Z"].iter().enumerate() {
+            yy = toggle(
+                ctx,
+                ids::SCULPT3D_CFILTER_AXIS[i],
+                // ⚠️ O rótulo é composto porque a chave nomeia a FAMÍLIA e o eixo
+                // é o índice — três chaves de i18n para `X`/`Y`/`Z` seriam três
+                // traduções da mesma letra.
+                &format!("{} {eixo}", tr("panel.sculpt3d.cfilter_axis")),
+                snap.ui.cloth_filter_axes[i],
+                x,
+                w,
+                yy,
+            );
+        }
+        yy
+    } else {
+        y
+    };
+
     let y = command(
         ctx,
         ids::SCULPT3D_REF_MODE_ALL,

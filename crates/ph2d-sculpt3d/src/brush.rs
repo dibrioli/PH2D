@@ -391,6 +391,20 @@ pub struct Brush {
     /// segue o vértice e nunca o puxa; `1` = o vértice volta à memória.
     /// Faixa `0..1`, omissão `0`.
     pub cloth_plasticity: f32,
+    /// ⭐⭐⭐ ***Cloth Quality*** — quantas varreduras de relaxação por passo.
+    ///
+    /// ⚠️⚠️ **O ALVO FIXA ISTO EM `5`** ([`ph2d_cloth::verlet::VARREDURAS`]) e
+    /// não o oferece; é o maior controlo que este pano ganha sobre o dele. O que
+    /// ele compra está medido no doc do gémeo do filtro
+    /// ([`crate::ClothFilterProps::sweeps`]) — **de `5` para `32` o pior esticão
+    /// de um aperto cai `4,9×`** —, e o teto de `32` sai da mesma tabela: a `64`
+    /// o pior caso **piora**.
+    ///
+    /// ⚠️ **Omissão `5` ⇒ byte-idêntico ao que shipava**, que é o que mantém os
+    /// 86 traços da bancada do pincel onde estão.
+    ///
+    /// ⚠️ **O recurso é TEMPO e cresce com a MALHA** — ver o doc do gémeo.
+    pub cloth_sweeps: u32,
     /// ***Persistent*** (espec §6.4) — a construção lê a **base congelada** no
     /// lugar das posições de repouso do traço.
     ///
@@ -540,6 +554,7 @@ impl Default for Brush {
             cloth_mass: 1.0,
             cloth_damping: 0.01,
             cloth_plasticity: 0.0,
+            cloth_sweeps: ph2d_cloth::verlet::VARREDURAS,
             cloth_persistent: false,
             cloth_collisions: false,
         }

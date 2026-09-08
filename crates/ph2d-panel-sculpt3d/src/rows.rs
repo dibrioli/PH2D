@@ -42,6 +42,12 @@ pub use topology::TOPOLOGY;
 #[path = "rows_cloth.rs"]
 mod cloth;
 
+/// ⭐ Os quatro números do FILTRO de tecido, e a *Quality* do pincel — ver o doc
+/// do módulo. ⚠️ **Irmão do [`cloth`] por SUJEITO**: os números do filtro não são
+/// os do pincel, e a pergunta de visibilidade deles é outra.
+#[path = "rows_cloth_filter.rs"]
+mod cloth_filter;
+
 /// Os dois números do EXTRACT — ver o doc do módulo.
 #[path = "rows_extract.rs"]
 mod extract;
@@ -563,6 +569,25 @@ static BRUSH: &[Row] = &[
     cloth::CLOTH_MASS,
     cloth::CLOTH_DAMPING,
     cloth::CLOTH_PLASTICITY,
+    // ⭐⭐⭐ **A *Quality* do pincel** — as varreduras que o ALVO FIXA em `5`.
+    // Ver `Brush::cloth_sweeps` para a tabela do que ela compra.
+    cloth_filter::CLOTH_SWEEPS,
+    // ── Os QUATRO números do FILTRO de tecido ───────────────────────────────
+    //
+    // ⚠️⚠️ **Eles NÃO são os do pincel, e tratá-los como se fossem foi o
+    // defeito** (pergunta do dono, 2026-09-08): o filtro lia
+    // `brush.cloth_mass`/`_damping`/`_plasticity`, cuja omissão e faixa são
+    // outras — o amortecimento dele nasce em `0` e o do pincel em `0,01`, com a
+    // faixa a começar aí, então o filtro **nunca alcançava o próprio valor de
+    // omissão**.
+    //
+    // ⚠️ **E a pergunta de visibilidade é ao FILTRO, não ao verbo**: desde a W9b
+    // ele corre com qualquer pincel na mão, então com o Draw na mão os três
+    // mexiam na simulação sem nada na tela os mostrar.
+    cloth_filter::CFILTER_MASS,
+    cloth_filter::CFILTER_DAMPING,
+    cloth_filter::CFILTER_PLASTICITY,
+    cloth_filter::CFILTER_SWEEPS,
     // ── Os dois números do EXTRACT ──────────────────────────────────────────
     //
     // ⚠️ **Eles são os ARGUMENTOS de um botão, e ficam colados nele** — não são

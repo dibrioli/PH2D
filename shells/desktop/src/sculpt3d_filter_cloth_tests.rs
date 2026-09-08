@@ -171,7 +171,7 @@ fn the_cloth_filter_advances_per_frame_and_not_per_pointer_event() {
 #[test]
 fn a_gravidade_do_filtro_cai_para_baixo_na_tela() {
     use ph2d_mesh_render::Camera3d;
-    use ph2d_sculpt3d::{Brush, ClothFilterOrientation, ClothFilterStep, SculptStroke};
+    use ph2d_sculpt3d::{ClothFilterOrientation, ClothFilterStep, SculptStroke};
 
     /// O centróide da malha — a régua de *para onde a peça inteira foi*.
     fn centroide(m: &ph2d_mesh::Mesh) -> [f32; 3] {
@@ -192,13 +192,7 @@ fn a_gravidade_do_filtro_cai_para_baixo_na_tela() {
         let mut mesh = uv_sphere(16, 24, 1.0);
         let antes = centroide(&mesh);
         let mut st = SculptStroke::default();
-        let b = Brush {
-            verb: Verb::Cloth,
-            radius: 0.35,
-            strength: 1.0,
-            ..Brush::default()
-        };
-        st.cloth_filter_begin(&mesh, &b, ClothFilterKind::Gravity, [0.0; 3]);
+        st.cloth_filter_begin(&mesh, ph2d_sculpt3d::ClothFilterProps::default(), ClothFilterKind::Gravity, [0.0; 3]);
         st.cloth_filter_step(
             &mut mesh,
             ClothFilterKind::Gravity,

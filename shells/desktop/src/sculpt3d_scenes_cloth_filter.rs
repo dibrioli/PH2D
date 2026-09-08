@@ -56,6 +56,12 @@ pub(crate) fn announce() {
          [sculpt3d]        {tipos}. Escolha Gravity.\n\
          [sculpt3d]    (3) Aparece uma terceira fileira, Orientation ({orient}).\n\
          [sculpt3d]        Deixe como esta' por agora.\n\
+         [sculpt3d]    (3b) LIGUE o modo Pro no painel. Aparecem os numeros do FILTRO --\n\
+         [sculpt3d]        Filter Mass, Filter Damping, Filter Plasticity, Filter Quality --\n\
+         [sculpt3d]        mais Filter Collisions. Eles sao do FILTRO, nao do pincel: aparecem\n\
+         [sculpt3d]        com QUALQUER ferramenta na mao, que e' quando o filtro roda.\n\
+         [sculpt3d]        Escolhendo Scale aparecem tambem tres travas Force Axis (X/Y/Z);\n\
+         [sculpt3d]        nos outros quatro tipos elas somem, porque so' a Scale as le^.\n\
          [sculpt3d]    (4) Clique na esfera e ARRASTE PARA A DIREITA, devagar, sem soltar.\n\
          [sculpt3d]        A peca INTEIRA tem de ceder e continuar a ceder enquanto a mao anda.\n\
          [sculpt3d]        Arraste de volta para a esquerda: ela e' empurrada para o outro lado.\n\
@@ -65,6 +71,13 @@ pub(crate) fn announce() {
          [sculpt3d]        ou se so' um circulo pequeno se mover em vez da peca toda, PARE\n\
          [sculpt3d]        e reporte.\n\
          [sculpt3d]    (6) Ctrl+Z. A peca tem de voltar inteira, num passo so'.\n\
+         [sculpt3d]    (6b) A QUALIDADE -- o controlo que o Blender nao da'. Escolha Pinch e\n\
+         [sculpt3d]        aperte com forca (arrasto longo). Com Filter Quality em 5 (o valor\n\
+         [sculpt3d]        de fabrica, que e' o do Blender) o pano estica muito onde voce\n\
+         [sculpt3d]        aperta. Ctrl+Z, ponha a Quality em 32 e repita o MESMO arrasto:\n\
+         [sculpt3d]        o pano tem de esticar visivelmente MENOS. Medido: 4,9x menos.\n\
+         [sculpt3d]        Custa tempo -- numa peca densa 32 fica lento, e a saida e' reduzir\n\
+         [sculpt3d]        a malha (o botao de retopologia), nao baixar a qualidade.\n\
          [sculpt3d]    (7) A ORIENTACAO. Escolha View na terceira fileira, gire a camera com o\n\
          [sculpt3d]        botao DIREITO ate' olhar a peca de outro angulo, e arraste de novo:\n\
          [sculpt3d]        agora o 'baixo' e' o baixo do ECRA, seja qual for o angulo. Com\n\

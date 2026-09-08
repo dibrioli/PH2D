@@ -30,6 +30,53 @@
 use super::{FILTER_DRAG_PER_PX, Sculpt3dScene};
 use ph2d_sculpt3d::ClothFilterOrientation;
 
+/// ⭐⭐⭐ **O QUE O ARTISTA AFINOU NO FILTRO DE TECIDO.**
+///
+/// ⚠️ **GLOBAL, e não por-verbo**: o `slots` do painel guarda o pincel de cada
+/// ferramenta porque *afinar a força do Smooth não é afinar a do Clay* — e um
+/// filtro não pertence a ferramenta nenhuma. Três dos cinco tipos não têm verbo.
+///
+/// ⛔⛔ **E as PROPRIEDADES são DELE, não do pincel** (pergunta do dono,
+/// 2026-09-08). Ver [`ph2d_sculpt3d::ClothFilterProps`] para o que estava errado
+/// e porquê.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct Tecido {
+    /// **O REFERENCIAL do filtro de tecido** (espec §7) — ele decide os eixos da
+    /// Escala e a direcção do «baixo» da Gravidade.
+    ///
+    /// ⚠️ Estado de FERRAMENTA, como o [`Self::filter_law`]: ele é do artista e
+    /// sobrevive a trocar de verbo.
+    pub(super) orientation: ph2d_sculpt3d::ClothFilterOrientation,
+    /// ⭐⭐ **OS QUATRO NÚMEROS DO FILTRO** — dele, e não do pincel.
+    pub(super) props: ph2d_sculpt3d::ClothFilterProps,
+    /// ⭐⭐ ***Force Axis*** — quais eixos a Escala usa (espec §7).
+    ///
+    /// ⛔ **Era um controlo que NÃO EXISTIA**, e a distinção com um knob morto é
+    /// a cura: a de um morto é ligar o braço, a de um ausente é criá-lo. O motor
+    /// já o honrava (gate `escala_eixox` a `0,009151`).
+    pub(super) axes: [bool; 3],
+    /// **O `x` do último evento de ponteiro do filtro de TECIDO, por drenar.**
+    ///
+    /// ⚠️ **Um evento regista, o QUADRO corre** — ver
+    /// [`Sculpt3dScene::flush_cloth_filter`]. Irmão do `pending_grab`, e pela
+    /// mesma razão: sem isto, quantos passos a simulação avança seria função da
+    /// taxa de amostragem do rato.
+    pub(super) pending: Option<f32>,
+}
+
+impl Default for Tecido {
+    fn default() -> Self {
+        Self {
+            orientation: ph2d_sculpt3d::ClothFilterOrientation::default(),
+            props: ph2d_sculpt3d::ClothFilterProps::default(),
+            // ⚠️ Os três LIGADOS: é a omissão do alvo, e é a única que faz a
+            // Escala escalar em todas as direcções como sempre escalou.
+            axes: [true; 3],
+            pending: None,
+        }
+    }
+}
+
 impl Sculpt3dScene {
     /// **O filtro está armado?**
     ///
@@ -96,9 +143,26 @@ impl Sculpt3dScene {
             // chamador já correu — é isso que faz o [`Self::hit_point`] descrever
             // este clique. Sem acerto (o artista carregou fora da peça) fica o
             // centro da caixa, que é a única resposta honesta.
-            let brush = self.brush.clone();
             let ponto = self.filter_pinch_anchor(x, y);
-            self.stroke.cloth_filter_begin(&mesh, &brush, kind, ponto);
+            // ⭐⭐ **A FOTOGRAFIA DOS COLISORES** (espec §7) — a mesma lei do
+            // traço: a lista é tirada no pen-down, e uma peça que se mova
+            // durante o gesto **não se move para o pano**.
+            //
+            // ⚠️ **A pose de cada peça entra na cópia**: a lei recebe posições em
+            // espaço de MUNDO, e o `Multires::mesh` está em espaço local.
+            self.stroke.cloth_colliders.clear();
+            if self.tecido.props.collisions {
+                let activo = self.active;
+                for (i, o) in self.objects.iter().enumerate() {
+                    if i != activo {
+                        self.stroke
+                            .cloth_colliders
+                            .push((o.stack.mesh().clone(), o.pose));
+                    }
+                }
+            }
+            self.stroke
+                .cloth_filter_begin(&mesh, self.tecido.props, kind, ponto);
         } else {
             self.stroke.filter_begin(&mesh);
         }
@@ -119,7 +183,7 @@ impl Sculpt3dScene {
     /// fica pendente — *sem isso o gesto perde a ponta*, e o pano pararia onde o
     /// último QUADRO o deixou.
     pub(crate) fn flush_cloth_filter(&mut self) {
-        let Some(x) = self.cloth_filter_pending.take() else {
+        let Some(x) = self.tecido.pending.take() else {
             return;
         };
         let Some(kind) = self.filter_law.cloth() else {
@@ -144,7 +208,7 @@ impl Sculpt3dScene {
         self.stroke.cloth_filter_end();
         // ⚠️ O pendente morre com o gesto: deixá-lo vivo faria o primeiro quadro
         // depois do pen-up correr um passo sobre uma pose já gravada como undo.
-        self.cloth_filter_pending = None;
+        self.tecido.pending = None;
     }
 
     /// **O ALVO CONGELADO do aperto** — onde o raio do pen-down bateu na peça.
@@ -218,18 +282,17 @@ impl Sculpt3dScene {
             let c = v.row(r);
             [c.x, c.y, c.z]
         });
-        let (frame, gravity) = referencial_e_gravidade(self.cloth_filter_orientation, ecra);
+        let (frame, gravity) = referencial_e_gravidade(self.tecido.orientation, ecra);
         let eye = ecra[2];
         ph2d_sculpt3d::ClothFilterStep {
             s: amount,
             gravity_axis: gravity,
             frame,
-            // ⏳ **Os três eixos ficam sempre ligados**, e a ausência é NOMEADA:
-            // o *Force Axis* da espec §7 só é lido pela Escala, e o painel ainda
-            // não o oferece. ⛔ Ele não é um knob morto — é um controlo que
-            // **não existe** —, e a distinção importa: a cura é criá-lo, não
-            // ligar um braço.
-            axes: [true; 3],
+            // ⭐⭐ **O *Force Axis*** (espec §7), que só a Escala lê — e desde
+            // 2026-09-08 ele EXISTE. A nota que vivia aqui dizia *«é um controlo
+            // que não existe, e a cura é criá-lo, não ligar um braço»*: foi
+            // criado.
+            axes: self.tecido.axes,
             eye,
         }
     }
@@ -265,7 +328,7 @@ impl Sculpt3dScene {
         // a pose congelada e reaplicam, logo são **idempotentes** no mesmo `x` —
         // um evento a mais é trabalho repetido, nunca uma resposta diferente.
         if self.filter_law.is_cloth() {
-            self.cloth_filter_pending = Some(x);
+            self.tecido.pending = Some(x);
             return;
         }
         let amount = (x - self.filter_from_x) * FILTER_DRAG_PER_PX;
@@ -281,6 +344,9 @@ impl Sculpt3dScene {
         // inalcançáveis outra vez, com o chip aceso a mentir sobre qual delas
         // corre.
         let law = self.filter_law;
+        // ⚠️ **Só a lei de MALHA o lê** — desde 2026-09-08 o filtro de TECIDO
+        // recebe as propriedades DELE e não vê o pincel (ver
+        // `ph2d_sculpt3d::ClothFilterProps`).
         let brush = self.brush.clone();
         // ⚠️ **O referencial é resolvido AQUI porque é aqui que a câmera existe**
         // — nem a `ph2d-sculpt3d` nem a `ph2d-cloth` sabem o que é uma vista, e

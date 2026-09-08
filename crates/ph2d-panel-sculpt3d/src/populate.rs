@@ -159,6 +159,15 @@ pub fn populate(store: &mut WidgetStore) {
         ids::SCULPT3D_CLOTH_PIN,
         ids::SCULPT3D_CLOTH_PERSISTENT,
         ids::SCULPT3D_CLOTH_COLLISIONS,
+        // ⭐⭐ **OS CONTROLOS DO FILTRO DE TECIDO** (2026-09-08). ⚠️ **Um `const`
+        // pintado e não registado é um controlo MORTO sob o dedo** — o gate
+        // `every_painted_control_is_clickable_where_it_is_drawn` apanhou os
+        // quatro na primeira corrida, e a mensagem dele nomeia o mecanismo: *um
+        // id ausente do store não é focável*.
+        ids::SCULPT3D_CFILTER_COLLISIONS,
+        ids::SCULPT3D_CFILTER_AXIS[0],
+        ids::SCULPT3D_CFILTER_AXIS[1],
+        ids::SCULPT3D_CFILTER_AXIS[2],
         ids::SCULPT3D_CLOSE,
     ] {
         button(store, id);

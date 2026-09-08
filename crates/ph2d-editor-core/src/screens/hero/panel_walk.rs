@@ -125,7 +125,9 @@ pub(super) fn walk(
             continue;
         }
         let occ = super::slot_tabs::occupants(hero, slot);
-        let selected = occ.last().map(|o| o.node);
+        // ⚠️ **A ordem z diz QUEM está à frente; ela já não diz a ORDEM da fila** (report do
+        //    dono, 2026-09-07: tocar numa aba trocava-a de lugar). Ver `slot_tabs::chosen`.
+        let selected = super::slot_tabs::chosen(hero, slot);
         super::slot_tabs::paint_slot_tabs(
             bar,
             &occ,

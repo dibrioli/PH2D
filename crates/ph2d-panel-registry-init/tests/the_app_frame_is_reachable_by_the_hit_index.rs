@@ -122,7 +122,8 @@ fn every_menu_title_and_every_tab_answers_at_its_own_centre() {
     let bar = l.slot_tabs[Slot::RightTop as usize];
     // ⚠️ A porta, e não um `zip` — desde 2026-09-07 a fila pode transbordar, e o `zip` ingénuo
     //    emparelharia o ocupante errado com o rect errado.
-    let laid = slot_tabs::tab_layout(&occ, bar, &mut TextSystem::without_system_fonts());
+    let front = slot_tabs::chosen(&h, Slot::RightTop);
+    let laid = slot_tabs::tab_layout(&occ, front, bar, &mut TextSystem::without_system_fonts());
     for (o, r) in &laid {
         targets.push((format!("a aba {:?}", o.title), *r));
     }

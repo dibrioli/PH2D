@@ -33,7 +33,7 @@ fn three() -> [Occupant; 3] {
 fn the_tabs_touch_and_never_overlap() {
     let mut text = TextSystem::without_system_fonts();
     let occ = three();
-    let laid = tab_layout(&occ, bar(), &mut text);
+    let laid = tab_layout(&occ, None, bar(), &mut text);
     assert!(!laid.is_empty());
     for w in laid.windows(2) {
         // ⭐ **Encostam**, sem vão: a lei do grupo — o que separa duas peças é a QUINA.
@@ -92,21 +92,43 @@ fn a_tab_is_as_wide_as_its_own_name() {
     );
 }
 
-/// ⭐⭐ **O escolhido tem SEMPRE aba, mesmo quando não cabem todos** — e ele é o último da ordem z.
+/// ⭐⭐⭐ **Quando não cabem todas, o que desliza é a JANELA — as abas não se mexem.**
+///
+/// > *«quando se clica na aba ela troca de lugar com a outra aba. não permita isso»* — Enio,
+/// > 2026-09-07, no smoke da wave 34.
+///
+/// A fila está na ordem do REGISTO e o escolhido é o topo do z — duas perguntas, duas respostas.
+/// Este teste mede a consequência no transbordo: seja qual for o escolhido, ele aparece, **e os
+/// vizinhos dele aparecem na mesma ordem relativa**.
 #[test]
-fn the_selected_tab_survives_the_overflow() {
+fn the_window_slides_to_the_chosen_and_never_reorders_the_row() {
     let mut text = TextSystem::without_system_fonts();
     let many: Vec<Occupant> = (0..12)
         .map(|i| occupant("p", 100 + i, "Background Removal"))
         .collect();
-    let laid = tab_layout(&many, bar(), &mut text);
-    assert!(laid.len() < many.len(), "doze abas couberam em 220 px");
-    assert!(!laid.is_empty(), "o transbordo comeu a fila inteira");
-    assert_eq!(
-        laid.last().map(|(o, _)| o.node),
-        many.last().map(|o| o.node),
-        "a aba do painel que está a desenhar não foi pintada"
-    );
+
+    let all = tab_layout(&many, Some(many[0].node), bar(), &mut text);
+    assert!(all.len() < many.len(), "doze abas couberam em 220 px");
+    assert!(!all.is_empty(), "o transbordo comeu a fila inteira");
+
+    for pick in [0usize, 5, 11] {
+        let laid = tab_layout(&many, Some(many[pick].node), bar(), &mut text);
+        let shown: Vec<u64> = laid.iter().map(|(o, _)| o.node.0).collect();
+        assert!(
+            shown.contains(&many[pick].node.0),
+            "o escolhido ({pick}) não foi pintado: {shown:?}"
+        );
+        // ⭐ **Contígua e na ordem** — uma janela que reordenasse seria a troca de lugar do report.
+        let first = many.iter().position(|o| o.node.0 == shown[0]).unwrap();
+        let esperado: Vec<u64> = many[first..first + shown.len()]
+            .iter()
+            .map(|o| o.node.0)
+            .collect();
+        assert_eq!(
+            shown, esperado,
+            "a janela mexeu na ordem da fila ao escolher {pick}"
+        );
+    }
 }
 
 /// ⛔ **Um nome mais largo que a coluna inteira é APARADO, nunca deitado fora.**
@@ -118,7 +140,7 @@ fn a_name_wider_than_the_whole_row_is_trimmed_not_dropped() {
         7,
         "Um nome absurdamente comprido que nunca caberia numa coluna estreita",
     )];
-    let laid = tab_layout(&occ, bar(), &mut text);
+    let laid = tab_layout(&occ, None, bar(), &mut text);
     assert_eq!(laid.len(), 1, "a única aba desapareceu");
     assert!(
         laid[0].1.w <= bar().w + 0.001,
@@ -130,9 +152,9 @@ fn a_name_wider_than_the_whole_row_is_trimmed_not_dropped() {
 #[test]
 fn an_empty_row_has_no_tabs() {
     let mut text = TextSystem::without_system_fonts();
-    assert!(tab_layout(&[], bar(), &mut text).is_empty());
+    assert!(tab_layout(&[], None, bar(), &mut text).is_empty());
     assert!(
-        tab_layout(&three(), Rect::new(0.0, 0.0, 0.0, 0.0), &mut text).is_empty(),
+        tab_layout(&three(), None, Rect::new(0.0, 0.0, 0.0, 0.0), &mut text).is_empty(),
         "uma faixa de área zero pintou abas"
     );
 }

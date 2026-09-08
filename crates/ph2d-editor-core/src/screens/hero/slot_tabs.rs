@@ -147,7 +147,7 @@ pub fn reconcile_z(hero: &mut HeroScreen) {
 /// Os ocupantes de um encaixe, **do fundo para o topo** — o último é o escolhido.
 #[must_use]
 pub fn occupants(hero: &HeroScreen, slot: Slot) -> Vec<Occupant> {
-    let mut found: Vec<(usize, Occupant)> = Vec::new();
+    let mut found: Vec<Occupant> = Vec::new();
     crate::panel::with_registry_opt(|reg| {
         for p in reg.panels() {
             let m = &p.manifest;
@@ -156,27 +156,49 @@ pub fn occupants(hero: &HeroScreen, slot: Slot) -> Vec<Occupant> {
             if m.can_float || slot_of(hero, m) != slot || !hero.is_panel_visible(m.id) {
                 continue;
             }
-            let z = hero
-                .store
-                .panel_z_order()
-                .iter()
-                .position(|id| *id == m.panel_node_id)
-                // ⚠️ `0` = o fundo. Depois de `reconcile_z` todo painel visível está na
-                // ordem, então isto não acontece; se acontecer, o painel perde a selecção em vez
-                // de a roubar — *o lado seguro de um desempate é o que não muda o que se vê.*
-                .unwrap_or(0);
-            found.push((
-                z,
-                Occupant {
-                    id: m.id,
-                    node: m.panel_node_id,
-                    title: m.title,
-                },
-            ));
+            found.push(Occupant {
+                id: m.id,
+                node: m.panel_node_id,
+                title: m.title,
+            });
         }
     });
-    found.sort_by_key(|(z, _)| *z);
-    found.into_iter().map(|(_, o)| o).collect()
+    found
+}
+
+/// A posição deste painel na ordem z, ou `0` (o fundo) se ele não estiver nela.
+///
+/// ⚠️ Depois de [`reconcile_z`] todo painel visível está na ordem, então o `0` não acontece; se
+/// acontecer, o painel **perde** a selecção em vez de a roubar — *o lado seguro de um desempate é
+/// o que não muda o que se vê.*
+fn z_of(hero: &HeroScreen, node: NodeId) -> usize {
+    hero.store
+        .panel_z_order()
+        .iter()
+        .position(|id| *id == node)
+        .unwrap_or(0)
+}
+
+/// ⭐⭐⭐ **Qual dos ocupantes está À FRENTE** — e a ordem z responde a ESTA pergunta, só a esta.
+///
+/// # ⛔⛔ O report que separou as duas perguntas
+///
+/// > *«quando se clica na aba ela troca de lugar com a outra aba. não permita isso»* — Enio,
+/// > 2026-09-07, no smoke da wave 34.
+///
+/// A fila era **ordenada pela ordem z**, e a ordem z é *«quem foi tocado por último»*. ⇒ tocar numa
+/// aba mandava-a para o fim da fila: o mesmo facto respondia a **duas** perguntas — *quem está à
+/// frente* e *em que ordem elas se sentam* — e responder à primeira mexia na segunda.
+///
+/// ⇒ **a ORDEM é a do registo** (estável, e a mesma em toda sessão), e a **escolha** é o topo do z.
+/// *Uma aba só muda de lugar quando o artista a ARRASTA* — que é o gesto que o
+/// [`resolve_tab_drop`] já serve, e o único que deve mover uma.
+#[must_use]
+pub fn chosen(hero: &HeroScreen, slot: Slot) -> Option<NodeId> {
+    occupants(hero, slot)
+        .into_iter()
+        .max_by_key(|o| z_of(hero, o.node))
+        .map(|o| o.node)
 }
 
 /// Quantos ocupantes tem cada encaixe, na ordem de [`Slot::ALL`] — o que
@@ -216,8 +238,13 @@ pub fn hidden_by_tabs(hero: &HeroScreen) -> Vec<NodeId> {
         if occ.len() < 2 {
             continue;
         }
-        for o in &occ[..occ.len() - 1] {
-            hidden.push(o.node);
+        // ⚠️ **Todos MENOS o escolhido**, e não «todos menos o último»: desde 2026-09-07 a fila está
+        //    na ordem do REGISTO, logo o último dela já não é quem está à frente. Ver [`chosen`].
+        let front = chosen(hero, slot);
+        for o in &occ {
+            if Some(o.node) != front {
+                hidden.push(o.node);
+            }
         }
     }
     hidden
@@ -346,6 +373,7 @@ fn tab_widths(occ: &[Occupant], text_system: &mut TextSystem) -> Vec<f32> {
 #[must_use]
 pub fn tab_layout(
     occ: &[Occupant],
+    front: Option<NodeId>,
     bar: Rect,
     text_system: &mut TextSystem,
 ) -> Vec<(Occupant, Rect)> {
@@ -355,30 +383,45 @@ pub fn tab_layout(
     let widths = tab_widths(occ, text_system);
     let inner = (bar.w - Spacing::Xs.px() * 2.0).max(0.0);
 
-    // ⭐ A janela cresce PARA TRÁS a partir do topo da ordem z: o escolhido entra sempre, e depois
-    //   dele entram os mais recentes enquanto couberem.
-    let mut start = occ.len() - 1;
-    let mut used = widths[start].min(inner);
-    while start > 0 {
-        let w = widths[start - 1];
-        if used + w > inner {
-            break;
+    // Quantas cabem a partir de `start`. ⚠️ A primeira entra SEMPRE, aparada — um nome mais largo
+    // que a coluna inteira ainda tem de ter aba, senão o painel que desenha fica sem nenhuma.
+    let fits_from = |start: usize| -> usize {
+        let mut used = widths[start].min(inner);
+        let mut n = 1;
+        while start + n < occ.len() {
+            let w = widths[start + n];
+            if used + w > inner {
+                break;
+            }
+            used += w;
+            n += 1;
         }
-        used += w;
-        start -= 1;
-    }
+        n
+    };
 
-    let mut chosen: Vec<f32> = widths[start..].to_vec();
-    // ⚠️ O escolhido é APARADO, nunca deitado fora: um nome mais largo que a coluna inteira ainda
-    //    tem de ter aba, senão o painel que desenha volta a não ter nenhuma. A elisão do rótulo
-    //    trata do resto.
-    if let Some(last) = chosen.last_mut() {
-        *last = last.min(inner);
+    // ⭐⭐ **A janela começa no PRINCÍPIO e só desliza quando o escolhido não cabe nela.**
+    //
+    // ⛔ Ela crescia para trás a partir do fim, o que só funcionava enquanto a fila estivesse
+    //    ordenada por z — e era essa ordenação que fazia uma aba trocar de lugar ao ser tocada
+    //    (report do dono, 2026-09-07). Com a ordem estável, a fila comporta-se como uma fila:
+    //    as abas ficam onde estão, e o que se move é a JANELA.
+    let want = front
+        .and_then(|c| occ.iter().position(|o| o.node == c))
+        .unwrap_or(0);
+    let mut start = 0usize;
+    while start < want && start + fits_from(start) <= want {
+        start += 1;
     }
-    occ[start..]
+    let n = fits_from(start);
+
+    let mut shown: Vec<f32> = widths[start..start + n].to_vec();
+    if let Some(first) = shown.first_mut() {
+        *first = first.min(inner);
+    }
+    occ[start..start + n]
         .iter()
         .copied()
-        .zip(tab_rects(bar, &chosen))
+        .zip(tab_rects(bar, &shown))
         .collect()
 }
 
@@ -419,7 +462,7 @@ pub fn paint_slot_tabs(
     hit_index: &mut HitIndex,
     store: &WidgetStore,
 ) {
-    let painted = tab_layout(occ, bar, text_system);
+    let painted = tab_layout(occ, selected, bar, text_system);
     if painted.is_empty() {
         return;
     }

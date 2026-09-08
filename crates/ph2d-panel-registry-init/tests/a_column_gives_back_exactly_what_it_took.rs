@@ -385,7 +385,8 @@ fn the_selected_tab_is_painted_even_when_they_do_not_all_fit() {
     let bar = l.slot_tabs[Slot::RightTop as usize];
     assert!(bar.h > 0.0, "sem faixa de abas nao ha' o que medir");
 
-    let painted = slot_tabs::tab_layout(&occ, bar, &mut TextSystem::without_system_fonts());
+    let front = slot_tabs::chosen(&h, Slot::RightTop);
+    let painted = slot_tabs::tab_layout(&occ, front, bar, &mut TextSystem::without_system_fonts());
     assert!(
         painted.len() < occ.len(),
         "controlo partido: {} ocupantes cabem todos em {} px, entao nao ha' transbordo e este teste \

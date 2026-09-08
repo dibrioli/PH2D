@@ -120,7 +120,13 @@ fn the_mixer_and_the_editor_share_one_column_as_two_tabs() {
         "dois ocupantes e nenhuma faixa de abas ({bar:?})"
     );
     assert_eq!(
-        slot_tabs::tab_layout(&occ, bar, &mut TextSystem::without_system_fonts()).len(),
+        slot_tabs::tab_layout(
+            &occ,
+            slot_tabs::chosen(&h, Slot::RightTop),
+            bar,
+            &mut TextSystem::without_system_fonts()
+        )
+        .len(),
         occ.len(),
         "a fila não mostra uma aba por ocupante"
     );
@@ -175,6 +181,60 @@ fn clicking_a_tab_changes_which_panel_draws() {
     assert_eq!(
         after, other,
         "a aba foi clicada e o painel que desenha não mudou (antes {before}, depois {after})"
+    );
+}
+
+/// ⭐⭐⭐ **CLICAR NUMA ABA NÃO A MOVE NA FILA** — o report de 2026-09-07.
+///
+/// > *«quando se clica na aba ela troca de lugar com a outra aba. não permita isso»*
+///
+/// ⛔⛔ **A causa era um facto a responder a DUAS perguntas.** A fila era ordenada pela **ordem z**,
+/// e a ordem z é *«quem foi tocado por último»* — logo responder a *«qual está à frente»* mexia em
+/// *«em que ordem elas se sentam»*. Hoje a **ordem é a do registo** (estável) e a **escolha** é o
+/// topo do z. *Uma aba só muda de lugar quando o artista a ARRASTA.*
+///
+/// ⚠️ **A segunda asserção é o controlo**: sem ela, um `chosen` que nunca mudasse passaria — a fila
+/// ficaria imóvel e o clique inerte, que é o defeito oposto e igualmente mau.
+#[test]
+fn clicking_a_tab_never_moves_it_in_the_row() {
+    let mut h = settled(&["audio_mixer", "audio_editor", "inspector"]);
+    let order = |h: &HeroScreen| -> Vec<&'static str> {
+        slot_tabs::occupants(h, Slot::RightTop)
+            .iter()
+            .map(|o| o.id)
+            .collect()
+    };
+
+    let before = order(&h);
+    assert!(
+        before.len() >= 3,
+        "a fixtura tem de ter três ocupantes para uma troca ser observável: {before:?}"
+    );
+
+    // Escolhe um que NÃO esteja à frente — trocar pelo próprio não move nada e não mede nada.
+    let front = slot_tabs::chosen(&h, Slot::RightTop);
+    let target = before
+        .iter()
+        .copied()
+        .find(|id| Some(node_of(id)) != front)
+        .expect("algum ocupante não está à frente");
+
+    let consumed = h.apply_event(ph2d_editor_core::interaction::WidgetEvent::Click(
+        slot_tabs::tab_node_id(node_of(target)),
+    ));
+    assert!(consumed, "o clique na aba não foi consumido");
+    paint(&mut h, 3);
+
+    assert_eq!(
+        order(&h),
+        before,
+        "clicar em «{target}» reordenou a fila — era o report do dono"
+    );
+    assert_eq!(
+        slot_tabs::chosen(&h, Slot::RightTop),
+        Some(node_of(target)),
+        "controlo partido: a fila ficou imóvel porque o clique não trocou a escolha — o defeito \
+         oposto, e igualmente mau"
     );
 }
 

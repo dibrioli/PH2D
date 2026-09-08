@@ -29,7 +29,9 @@
 
 use super::HeroScreen;
 use crate::interaction::{HitIndex, InteractiveState, WidgetEvent, WidgetStore};
-use crate::paint::{fill_rounded_rect, paint_text_centered, rect_to_vello, resolve};
+use crate::paint::{
+    fill_rounded_rect, fill_rounded_rect_radii, paint_text_centered, rect_to_vello, resolve,
+};
 use crate::screens::slot::{Slot, SlotSet};
 use crate::widget::ButtonState;
 use crate::zones::Rect;
@@ -42,13 +44,18 @@ use ph2d_vector::VectorScene;
 /// menu. ⚠️ Não é um número escolhido: uma aba é um rótulo clicável, que é o que uma linha é.
 pub const TAB_BAR_H: f32 = ROW_H_PX;
 
-/// Largura mínima de uma aba antes de o rótulo deixar de caber.
+/// ⭐⭐⭐ **O recuo de uma aba, de cada lado** — `base_margin · 4` do modelo, que aqui é `Spacing::Md`.
 ///
-/// ⚠️ **É o piso de LEGIBILIDADE, não de layout** — com sete ocupantes numa coluna de 304 px cada
-/// aba ficaria com 43 px, que não mostra uma palavra. Acima deste piso as abas dividem a faixa por
-/// igual; abaixo dele elas **transbordam** e as que não cabem ficam alcançáveis pelo menu *Window*,
-/// que é onde um painel sempre se abriu.
-const MIN_TAB_W: f32 = 64.0; // LITERAL-PX-OK: piso de legibilidade de um rótulo de aba (chrome)
+/// Portado de `theme_modern.cpp` (Godot 4.6, MIT): `style_tab_selected` declara
+/// `content_margin_individual(base_margin*4, base_margin*2.1, base_margin*4, base_margin*2.1)`.
+/// Com `base_margin = 4` isso dá **16 px** de recuo horizontal total — exactamente o que o
+/// [`crate::paint::label_budget`] desta casa já descontava, e o mesmo número que as abas de LAYOUT
+/// usam ([`super::layout_tabs`]).
+///
+/// ⛔ **`fn` e não `const`**: `Spacing::px` não é `const fn` (a densidade é autorada).
+fn tab_pad_x() -> f32 {
+    Spacing::Md.px()
+}
 
 /// Espessura do contorno do encaixe sob o dedo.
 const DROP_OUTLINE_PX: f32 = 2.0; // LITERAL-PX-OK: contorno da zona de largada (chrome)
@@ -223,23 +230,102 @@ pub fn hidden_by_tabs(hero: &HeroScreen) -> Vec<NodeId> {
 /// (pintor, hit do trilho, hit do flyout) e nada no repo as ligava — um pintor horizontal com um
 /// hit vertical compilava e passava a suíte inteira.
 #[must_use]
-pub fn tab_rects(bar: Rect, n: usize) -> Vec<Rect> {
-    if n == 0 || bar.w <= 0.0 || bar.h <= 0.0 {
+pub fn tab_rects(bar: Rect, widths: &[f32]) -> Vec<Rect> {
+    if widths.is_empty() || bar.w <= 0.0 || bar.h <= 0.0 {
         return Vec::new();
     }
-    let pad = Spacing::Xs.px();
-    let inner = (bar.w - pad * 2.0).max(0.0);
-    let each = (inner / n as f32).max(0.0);
-    if each < MIN_TAB_W {
-        // Transbordo: cabem `fit` abas, e as restantes ficam pelo menu *Window*.
-        let fit = ((inner / MIN_TAB_W).floor() as usize).max(1).min(n);
-        let each = inner / fit as f32;
-        return (0..fit)
-            .map(|i| Rect::new(bar.x + pad + each * i as f32, bar.y, each, bar.h))
-            .collect();
+    let mut x = bar.x + Spacing::Xs.px();
+    widths
+        .iter()
+        .map(|w| {
+            let r = Rect::new(x, bar.y, *w, bar.h);
+            x += *w;
+            r
+        })
+        .collect()
+}
+
+/// ⭐⭐⭐ **A FAIXA RECUA e a aba escolhida SOBE ATÉ AO PAINEL** — os dois tons, numa porta só.
+///
+/// Portado de `theme_modern.cpp` (Godot 4.6, MIT): a faixa e a aba inactiva levam
+/// `surface_lowest_color`; a escolhida é um **duplicado do `base_style`**, isto é, o corpo do
+/// container. ⇒ nesta casa: o **chão** (que a wave 31 derivou, um degrau abaixo do painel) e o
+/// **painel**.
+///
+/// ⛔⛔ **A faixa era `Bg1`, que é o tom do CARTÃO — 12/255 mais CLARO que o painel.** Uma faixa
+/// mais clara do que a superfície em que assenta não recua: ela salta à frente, e a aba escolhida
+/// não tem de onde subir. O gate [`the_tab_row_recedes_and_the_chosen_tab_rises`] mede a ordem, e
+/// não os valores.
+#[must_use]
+pub fn tab_row_bg() -> ColorToken {
+    ColorToken::WindowGround
+}
+
+/// O tom de uma aba, ou `None` para «a faixa aparece por baixo».
+///
+/// ⚠️ A inactiva devolve `None` **e isso É o modelo**: lá ela leva o `surface_lowest_color`, que é
+/// exactamente a cor da faixa — pintá-la seria pintar o que já lá está. Ela lê-se pelo RÓTULO e
+/// pela ausência de quina.
+///
+/// # ⭐⭐ Por que estas abas NÃO usam o acento e as de LAYOUT usam
+///
+/// A auditoria de 2026-09-07 nomeou a divergência e escreveu que *«uma das duas está errada e nada
+/// no repo escolhe qual»*. **Escolhe agora, e as duas estão certas** — elas não são a mesma coisa:
+///
+/// | | [`super::layout_tabs`] | esta |
+/// |---|---|---|
+/// | o que a aba escolhe | a **tarefa** (Draw · Vector · Flip…) | qual painel está à frente |
+/// | onde ela vive | na barra de menus, sobre **nada** | no topo de uma **coluna**, colada ao painel |
+/// | como marca a escolhida | `AccentSoft`/`Accent` | veste o corpo do painel e **solda-se** a ele |
+///
+/// ⇒ *uma aba que assenta num container solda-se a ele; uma que escolhe um MODO não tem container a
+/// que se soldar, e por isso precisa de tinta.* É a mesma lei que separa o chip activo do trilho
+/// (fora do eixo do relógio) de uma linha escolhida numa lista (que sangra, sem quina).
+#[must_use]
+pub fn tab_bg(is_on: bool, state: ButtonState) -> Option<ColorToken> {
+    if is_on {
+        Some(ColorToken::PanelBg)
+    } else if matches!(
+        state,
+        ButtonState::Hovered | ButtonState::Focused | ButtonState::Pressed
+    ) {
+        Some(ColorToken::Bg2)
+    } else {
+        None
     }
-    (0..n)
-        .map(|i| Rect::new(bar.x + pad + each * i as f32, bar.y, each, bar.h))
+}
+
+/// ⭐⭐⭐ **A QUINA SÓ EM CIMA** — `set_corner_radius_individual(r, r, 0, 0)` do modelo.
+///
+/// É isto que faz de uma aba uma **aba** em vez de um botão a flutuar numa faixa: os cantos de
+/// baixo quadrados **soldam-na** ao corpo do painel que começa logo abaixo. ⚠️ A porta por-canto já
+/// existia — a wave 10 construiu-a para a lei do grupo do Blender ([`fill_rounded_rect_radii`]), e
+/// a ordem é a do kurbo: `(cima-esq, cima-dir, baixo-dir, baixo-esq)`.
+#[must_use]
+pub fn tab_radii(theme: Theme) -> (f32, f32, f32, f32) {
+    let r = crate::paint::frame_radius(theme, Radius::Sm.px());
+    (r, r, 0.0, 0.0)
+}
+
+/// ⭐⭐⭐ **A LARGURA de uma aba é a do NOME dela** — a lei do modelo, e a cura de um defeito medido.
+///
+/// ⛔⛔ **Repartir a fila em partes iguais faz dois painéis diferentes lerem-se IGUAIS.** Medido em
+/// 2026-09-07 sobre a coluna no mínimo (220 px) com três abas: cada uma ficava com `70,67 px`, o
+/// orçamento de texto com `54,67`, e *«Audio Editor»* e *«Audio Mixer»* elidiam **as duas** para
+/// `Audio …`. A elisão estava a fazer o que promete — o defeito é ela receber um orçamento que
+/// deita fora exactamente o que DISTINGUE, e nenhuma largura igual o evita.
+///
+/// ⇒ cada aba mede `prefix_width(título) + 2 · recuo`, como no `TabBar` do Godot e como as abas de
+/// LAYOUT desta casa já faziam ([`super::layout_tabs::tab_rects`]) — *o desenho pedido já era lei
+/// na outra metade do app.*
+///
+/// ⚠️ **As abas ENCOSTAM, sem vão** — a lei do grupo (wave 10): *o que separa duas peças é a QUINA,
+/// não o espaço*. É a quina de cima e a cor que as separam, e é isso que as faz ler como uma fila.
+fn tab_widths(occ: &[Occupant], text_system: &mut TextSystem) -> Vec<f32> {
+    let font = TypeToken::Sm.px();
+    let pad = tab_pad_x() * 2.0;
+    occ.iter()
+        .map(|o| text_system.prefix_width(o.title, font) + pad)
         .collect()
 }
 
@@ -258,13 +344,42 @@ pub fn tab_rects(bar: Rect, n: usize) -> Vec<Rect> {
 /// (o pintor e quatro testes), e *uma lei escrita em dois sítios ainda não é uma lei*. Quem
 /// precisar de saber que aba está onde chama isto.
 #[must_use]
-pub fn tab_layout(occ: &[Occupant], bar: Rect) -> Vec<(Occupant, Rect)> {
-    let rects = tab_rects(bar, occ.len());
-    if rects.is_empty() {
+pub fn tab_layout(
+    occ: &[Occupant],
+    bar: Rect,
+    text_system: &mut TextSystem,
+) -> Vec<(Occupant, Rect)> {
+    if occ.is_empty() || bar.w <= 0.0 || bar.h <= 0.0 {
         return Vec::new();
     }
-    let start = occ.len().saturating_sub(rects.len());
-    occ[start..].iter().copied().zip(rects).collect()
+    let widths = tab_widths(occ, text_system);
+    let inner = (bar.w - Spacing::Xs.px() * 2.0).max(0.0);
+
+    // ⭐ A janela cresce PARA TRÁS a partir do topo da ordem z: o escolhido entra sempre, e depois
+    //   dele entram os mais recentes enquanto couberem.
+    let mut start = occ.len() - 1;
+    let mut used = widths[start].min(inner);
+    while start > 0 {
+        let w = widths[start - 1];
+        if used + w > inner {
+            break;
+        }
+        used += w;
+        start -= 1;
+    }
+
+    let mut chosen: Vec<f32> = widths[start..].to_vec();
+    // ⚠️ O escolhido é APARADO, nunca deitado fora: um nome mais largo que a coluna inteira ainda
+    //    tem de ter aba, senão o painel que desenha volta a não ter nenhuma. A elisão do rótulo
+    //    trata do resto.
+    if let Some(last) = chosen.last_mut() {
+        *last = last.min(inner);
+    }
+    occ[start..]
+        .iter()
+        .copied()
+        .zip(tab_rects(bar, &chosen))
+        .collect()
 }
 
 /// Regista os controlos de aba dos painéis registados. Chamado pelo `pre_populate` do hero.
@@ -304,33 +419,19 @@ pub fn paint_slot_tabs(
     hit_index: &mut HitIndex,
     store: &WidgetStore,
 ) {
-    let painted = tab_layout(occ, bar);
+    let painted = tab_layout(occ, bar, text_system);
     if painted.is_empty() {
         return;
     }
-    scene.fill_rect(rect_to_vello(bar), resolve(ColorToken::Bg1, theme));
+    scene.fill_rect(rect_to_vello(bar), resolve(tab_row_bg(), theme));
+    let radii = tab_radii(theme);
     for (o, r) in painted {
         let is_on = selected == Some(o.node);
         let state = store
             .button_state(tab_node_id(o.node))
             .unwrap_or(ButtonState::Normal);
-        let bg = if is_on {
-            Some(ColorToken::BgElev)
-        } else if matches!(
-            state,
-            ButtonState::Hovered | ButtonState::Focused | ButtonState::Pressed
-        ) {
-            Some(ColorToken::Bg2)
-        } else {
-            None
-        };
-        if let Some(bg) = bg {
-            fill_rounded_rect(
-                scene,
-                r,
-                crate::paint::frame_radius(theme, Radius::Sm.px()),
-                resolve(bg, theme),
-            );
+        if let Some(bg) = tab_bg(is_on, state) {
+            fill_rounded_rect_radii(scene, r, radii, resolve(bg, theme));
         }
         let fg = if is_on {
             ColorToken::Text1

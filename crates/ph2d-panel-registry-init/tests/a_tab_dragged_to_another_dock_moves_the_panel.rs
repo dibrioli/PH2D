@@ -55,6 +55,25 @@ fn settled(open: &[&str]) -> HeroScreen {
     h
 }
 
+/// Os rects das abas **na ordem de `occ`**.
+///
+/// ⚠️ Desde 2026-09-07 uma aba tem a largura do PRÓPRIO NOME e a fila pode transbordar, logo o
+/// índice na lista pintada já não é o índice do ocupante. Quem some **estoura**: nestas fixturas
+/// (dois ocupantes numa coluna de 304 px) não há transbordo, e um silêncio aqui esconderia o dia
+/// em que passasse a haver.
+fn tab_rects_by_occupant(occ: &[slot_tabs::Occupant], bar: Rect) -> Vec<Rect> {
+    let mut text = TextSystem::without_system_fonts();
+    let laid = slot_tabs::tab_layout(occ, bar, &mut text);
+    occ.iter()
+        .map(|o| {
+            laid.iter()
+                .find(|(l, _)| l.node == o.node)
+                .map(|(_, r)| *r)
+                .unwrap_or_else(|| panic!("«{}» não tem aba nesta fila", o.id))
+        })
+        .collect()
+}
+
 fn paint(h: &mut HeroScreen, frames: usize) {
     let mut scene = ph2d_vector::VectorScene::new();
     let mut text = TextSystem::without_system_fonts();
@@ -118,7 +137,7 @@ fn a_tab_dragged_to_the_other_column_moves_the_panel() {
     let occ = slot_tabs::occupants(&h, Slot::RightTop);
     let bar = l.slot_tabs[Slot::RightTop as usize];
     assert!(bar.h > 0.0, "sem fila de abas não há gesto a medir");
-    let tabs = slot_tabs::tab_rects(bar, occ.len());
+    let tabs = tab_rects_by_occupant(&occ, bar);
     let i = occ
         .iter()
         .position(|o| o.id == "audio_mixer")
@@ -160,7 +179,7 @@ fn a_tap_on_a_tab_still_switches_it_and_never_moves_the_panel() {
 
     let occ = slot_tabs::occupants(&h, Slot::RightTop);
     let bar = l.slot_tabs[Slot::RightTop as usize];
-    let tabs = slot_tabs::tab_rects(bar, occ.len());
+    let tabs = tab_rects_by_occupant(&occ, bar);
     // O que está atrás — largar-lhe um toque tem de o trazer à frente.
     let behind = occ[0].id;
     let i = occ.iter().position(|o| o.id == behind).unwrap();
@@ -236,7 +255,7 @@ fn dropping_outside_every_legal_target_changes_nothing() {
 
     let occ = slot_tabs::occupants(&h, Slot::RightTop);
     let bar = l.slot_tabs[Slot::RightTop as usize];
-    let tabs = slot_tabs::tab_rects(bar, occ.len());
+    let tabs = tab_rects_by_occupant(&occ, bar);
     let i = occ.iter().position(|o| o.id == "audio_mixer").unwrap();
 
     // O meio da área de desenho: nenhum encaixe legal o contém.
@@ -264,7 +283,7 @@ fn a_five_pixel_nudge_on_a_tab_still_switches_it() {
 
     let occ = slot_tabs::occupants(&h, Slot::RightTop);
     let bar = l.slot_tabs[Slot::RightTop as usize];
-    let tabs = slot_tabs::tab_rects(bar, occ.len());
+    let tabs = tab_rects_by_occupant(&occ, bar);
     let i = occ.iter().position(|o| o.id == "audio_mixer").unwrap();
     let t = tabs[i];
     assert!(
@@ -309,7 +328,7 @@ fn a_still_press_on_a_tab_never_lights_the_drop_zones() {
     let l = h.last_layout.expect("layout");
     let occ = slot_tabs::occupants(&h, Slot::RightTop);
     let bar = l.slot_tabs[Slot::RightTop as usize];
-    let tabs = slot_tabs::tab_rects(bar, occ.len());
+    let tabs = tab_rects_by_occupant(&occ, bar);
     let t = tabs[0];
     let c = (t.x + t.w * 0.5, t.y + t.h * 0.5);
 

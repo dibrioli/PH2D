@@ -120,8 +120,11 @@ fn every_menu_title_and_every_tab_answers_at_its_own_centre() {
     }
     let occ = slot_tabs::occupants(&h, Slot::RightTop);
     let bar = l.slot_tabs[Slot::RightTop as usize];
-    for (o, r) in occ.iter().zip(slot_tabs::tab_rects(bar, occ.len())) {
-        targets.push((format!("a aba {:?}", o.title), r));
+    // ⚠️ A porta, e não um `zip` — desde 2026-09-07 a fila pode transbordar, e o `zip` ingénuo
+    //    emparelharia o ocupante errado com o rect errado.
+    let laid = slot_tabs::tab_layout(&occ, bar, &mut TextSystem::without_system_fonts());
+    for (o, r) in &laid {
+        targets.push((format!("a aba {:?}", o.title), *r));
     }
 
     assert!(

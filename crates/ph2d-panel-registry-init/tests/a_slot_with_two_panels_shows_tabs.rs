@@ -120,7 +120,7 @@ fn the_mixer_and_the_editor_share_one_column_as_two_tabs() {
         "dois ocupantes e nenhuma faixa de abas ({bar:?})"
     );
     assert_eq!(
-        slot_tabs::tab_rects(bar, occ.len()).len(),
+        slot_tabs::tab_layout(&occ, bar, &mut TextSystem::without_system_fonts()).len(),
         occ.len(),
         "a fila não mostra uma aba por ocupante"
     );

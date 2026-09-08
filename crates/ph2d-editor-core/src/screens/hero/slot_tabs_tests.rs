@@ -6,53 +6,135 @@
 
 use super::*;
 
+/// A coluna da direita **no mínimo** (`PANEL_MIN_W_PX`), que é a largura em que o gesto de fechar a
+/// deixa — e a largura exacta do report de 2026-09-07.
 fn bar() -> Rect {
-    Rect::new(1062.0, 28.0, 304.0, TAB_BAR_H)
+    Rect::new(1146.0, 28.0, 220.0, TAB_BAR_H)
 }
 
-#[test]
-fn the_tabs_fill_the_row_and_never_overlap() {
-    for n in 1..=4 {
-        let rects = tab_rects(bar(), n);
-        assert_eq!(rects.len(), n, "n={n}");
-        for w in rects.windows(2) {
-            assert!(
-                w[0].x + w[0].w <= w[1].x + 0.001,
-                "n={n}: duas abas partilham pixel ({:?} / {:?})",
-                w[0],
-                w[1]
-            );
-        }
-        let last = rects.last().unwrap();
-        assert!(
-            last.x + last.w <= bar().x + bar().w + 0.001,
-            "n={n}: a última aba sai da faixa ({last:?})"
-        );
+fn occupant(id: &'static str, node: u64, title: &'static str) -> Occupant {
+    Occupant {
+        id,
+        node: NodeId(node),
+        title,
     }
 }
 
-/// ⭐ O piso é de LEGIBILIDADE: acima dele as abas encolhem; abaixo, **transbordam**.
+/// Os três ocupantes da foto do dono, na ordem do registo.
+fn three() -> [Occupant; 3] {
+    [
+        occupant("audio_editor", 11, "Audio Editor"),
+        occupant("audio_mixer", 12, "Audio Mixer"),
+        occupant("inspector", 13, "Inspector"),
+    ]
+}
+
 #[test]
-fn a_row_that_cannot_show_a_label_overflows_instead_of_shrinking() {
-    let many = tab_rects(bar(), 40);
+fn the_tabs_touch_and_never_overlap() {
+    let mut text = TextSystem::without_system_fonts();
+    let occ = three();
+    let laid = tab_layout(&occ, bar(), &mut text);
+    assert!(!laid.is_empty());
+    for w in laid.windows(2) {
+        // ⭐ **Encostam**, sem vão: a lei do grupo — o que separa duas peças é a QUINA.
+        assert!(
+            (w[0].1.x + w[0].1.w - w[1].1.x).abs() < 0.001,
+            "as abas deixaram de encostar: {:?} / {:?}",
+            w[0].1,
+            w[1].1
+        );
+    }
+    let last = laid.last().unwrap().1;
     assert!(
-        many.len() < 40,
-        "40 abas em 304 px couberam todas — cada uma teria {} px",
-        bar().w / 40.0
+        last.x + last.w <= bar().x + bar().w + 0.001,
+        "a última aba sai da faixa ({last:?})"
     );
-    assert!(!many.is_empty(), "o transbordo comeu a fila inteira");
-    for r in &many {
+}
+
+/// ⭐⭐⭐ **DOIS PAINÉIS DISTINTOS NUNCA MOSTRAM O MESMO RÓTULO** — o defeito do report.
+///
+/// Com a fila repartida em partes iguais, *«Audio Editor»* e *«Audio Mixer»* elidiam **as duas**
+/// para `Audio …` nesta exacta largura de coluna. A cura é a aba medir o próprio nome, e a
+/// consequência mede-se aqui: **o rótulo cabe inteiro**, logo não há elisão que o possa colapsar.
+///
+/// ⚠️ **A asserção do meio é o controlo de vacuidade**: ela prova que esta fixtura É a que falhava
+/// — com largura igual, o orçamento fica ABAIXO do nome, que é a condição do defeito.
+#[test]
+fn a_tab_is_as_wide_as_its_own_name() {
+    let mut text = TextSystem::without_system_fonts();
+    let occ = three();
+    let font = TypeToken::Sm.px();
+    let inset = tab_pad_x() * 2.0;
+
+    let equal_share = bar().w / occ.len() as f32;
+    let widest = occ
+        .iter()
+        .map(|o| text.prefix_width(o.title, font))
+        .fold(0.0_f32, f32::max);
+    assert!(
+        equal_share - inset < widest,
+        "controlo partido: a partes iguais cada aba teria {equal_share} px e o maior nome mede \
+         {widest} px — se ele coubesse, esta fixtura não reproduz o defeito"
+    );
+
+    let widths = tab_widths(&occ, &mut text);
+    for (o, w) in occ.iter().zip(&widths) {
+        let full = text.prefix_width(o.title, font);
         assert!(
-            r.w >= MIN_TAB_W - 0.001,
-            "uma aba do transbordo ficou abaixo do piso: {r:?}"
+            *w - inset >= full - 0.001,
+            "«{}» não cabe na própria aba ({w} px, com {inset} de recuo, para {full} px de nome)",
+            o.title
         );
     }
+    assert!(
+        (widths[0] - widths[1]).abs() > 0.001,
+        "dois nomes diferentes deram a MESMA largura de aba"
+    );
+}
+
+/// ⭐⭐ **O escolhido tem SEMPRE aba, mesmo quando não cabem todos** — e ele é o último da ordem z.
+#[test]
+fn the_selected_tab_survives_the_overflow() {
+    let mut text = TextSystem::without_system_fonts();
+    let many: Vec<Occupant> = (0..12)
+        .map(|i| occupant("p", 100 + i, "Background Removal"))
+        .collect();
+    let laid = tab_layout(&many, bar(), &mut text);
+    assert!(laid.len() < many.len(), "doze abas couberam em 220 px");
+    assert!(!laid.is_empty(), "o transbordo comeu a fila inteira");
+    assert_eq!(
+        laid.last().map(|(o, _)| o.node),
+        many.last().map(|o| o.node),
+        "a aba do painel que está a desenhar não foi pintada"
+    );
+}
+
+/// ⛔ **Um nome mais largo que a coluna inteira é APARADO, nunca deitado fora.**
+#[test]
+fn a_name_wider_than_the_whole_row_is_trimmed_not_dropped() {
+    let mut text = TextSystem::without_system_fonts();
+    let occ = [occupant(
+        "long",
+        7,
+        "Um nome absurdamente comprido que nunca caberia numa coluna estreita",
+    )];
+    let laid = tab_layout(&occ, bar(), &mut text);
+    assert_eq!(laid.len(), 1, "a única aba desapareceu");
+    assert!(
+        laid[0].1.w <= bar().w + 0.001,
+        "a aba aparada continua mais larga que a faixa ({:?})",
+        laid[0].1
+    );
 }
 
 #[test]
 fn an_empty_row_has_no_tabs() {
-    assert!(tab_rects(bar(), 0).is_empty());
-    assert!(tab_rects(Rect::new(0.0, 0.0, 0.0, 0.0), 3).is_empty());
+    let mut text = TextSystem::without_system_fonts();
+    assert!(tab_layout(&[], bar(), &mut text).is_empty());
+    assert!(
+        tab_layout(&three(), Rect::new(0.0, 0.0, 0.0, 0.0), &mut text).is_empty(),
+        "uma faixa de área zero pintou abas"
+    );
 }
 
 /// ⛔ **O controlo de que o salto de id é uma BIJECÇÃO** — ele não pode criar colisões que o

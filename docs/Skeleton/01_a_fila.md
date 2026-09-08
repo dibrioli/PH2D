@@ -272,7 +272,7 @@ losango seria um alvo morto.
 | # | O quê | Estado |
 |---|---|---|
 | F3 | **Smart Bones** (Moho) — girar um osso toca uma animação inteira | nunca começado |
-| F4 | **Limites de ângulo por junta** — o cotovelo que não dobra para trás | nunca começado |
+| F4 | **Limites de ângulo por junta** | ✅ **FECHADO** (2026-09-07) — ver abaixo |
 | F5 | ~~**Pole target**~~ → **O LADO DA DOBRA** | ✅ **FECHADO** (2026-09-07) — ver abaixo |
 | F6 | **A segunda mídia** (raster/Flip) | ⛔ **bloqueado**: precisa de uma malha sobre a imagem, que não existe — meça o preço antes de prometer |
 | F7 | **O painel próprio do módulo** | ⏸️ adiado até F3–F5 lhe darem conteúdo (medido: hoje são 3 botões e 5 campos, que cabem na seção do vetor) |
@@ -333,6 +333,56 @@ uma resposta única para «o lado» dela. O Godot responde a isso com um ímã *
 (partia do lado que o desempate já escolhe, e lia `+99,498744` nas duas pontas), e a hipótese de que
 *«as duas leis desempatam para lados opostos»* — que eu ia registar como defeito — está **refutada**:
 `n=2` `−7,416198` · `n=3` `−4,472136` · `n=5` `−4,486331`, o mesmo lado nas três.
+
+
+---
+
+### F4 (fila antiga) — ✅ **O LIMITE DE ÂNGULO POR JUNTA** (2026-09-07)
+
+Sem ele o cotovelo dobra para trás e o joelho hiperextende: a corrente alcança o alvo por um
+caminho que um corpo não faz, e o rig lê-se como um barbante.
+
+⭐⭐ **Ele mora no OSSO, e o Godot (MIT, corrido por `--doctool`) põe-no na RESTRIÇÃO.** O
+`SkeletonModification2DCCDIK` guarda `constraint_angle_min`/`_max` **por junta da modificação**,
+logo o limite existe enquanto existir aquela IK. Aqui é um componente do **osso** — o modelo do
+Blender e do Moho —, e a razão é que *«este cotovelo não dobra para trás»* é uma afirmação sobre a
+**anatomia**: ela vale quando o artista gira o osso à mão, vale sem IK nenhuma, e não pode evaporar
+quando ele carrega em *Remove IK*.
+
+⭐ **Uma porta, duas mãos:** [`bone_gesture::limited`] é chamada pelo gesto que gira o osso **e**
+pelo solver. Um limite que obedecesse só a um deles seria pior que limite nenhum — o artista não
+conseguiria formar um modelo do que a ferramenta faz.
+
+**O que ficou:** `BoneLimit { min, max }` em radianos locais (o mesmo espaço do
+`Transform::rotation`, que numa hierarquia já é *«quanto este osso está virado em relação ao pai»*);
+*Add / Remove Angle Limit* e dois campos em **graus** — a conversão vive na shell, que é a porta
+onde as duas unidades se encontram. A faixa nasce **em volta da pose actual** (o quarto de volta),
+que é no-op exacto e ainda assim diz ao artista para onde ele pode ir.
+
+⛔⛔ **E o gate apanhou um defeito CARO na 1.ª redacção da lei:** ela reconstruía sempre
+`centro + wrap_pi(rot − centro)`, o que **normaliza** o ângulo — medido, `−6,3` saía como
+`−0,016815`. Os dois são o **mesmo ângulo** (diferem por uma volta) e **não os mesmos bytes**, e o
+undo desta casa regista **por diferença de bytes**: uma junta parada dentro do próprio limite
+escreveria um valor novo a cada quadro, e cada clique empilharia um passo cujo conteúdo é *«o limite
+normalizou um ângulo»*. ⇒ dentro do limite devolve-se `rot` **ao bit**. É a mesma família do defeito
+que o `two_bone` já pagou (*«uma corrente parada não escreve»*), com outra origem: ali era ruído de
+`f32`, aqui uma volta inteira.
+
+⚠️ **O risco desta wave era a OSCILAÇÃO**, e ele está medido: o solver resolve, o limite apara, e o
+quadro seguinte parte da pose **aparada**. `a_limited_chain_settles_instead_of_oscillating` mede o
+movimento por quadro a **decrescer** — ⛔ e não a ser zero, que foi a correcção que a régua do lado
+da dobra também precisou: *convergir e oscilar são coisas diferentes.*
+
+⚠️ **A ponta deixa de alcançar o alvo quando o limite morde, e isso é o CERTO** (é o que o Blender
+faz com *IK limits*) — há gate a fixá-lo, para ninguém o ler como a IK partida.
+
+⛔ **A faixa INVERTIDA (`max < min`) trava a junta no centro em vez de entrar em pânico:** um
+`f64::clamp` com os limites trocados **aborta o processo**, e um `.ph2dproj` editado à mão chega lá.
+A diferença entre *«a junta ficou presa»* e *«o app fechou»* é a diferença entre um defeito e uma
+perda de trabalho.
+
+⚠️ **`PROJECT_SCHEMA` 124 → 125** (componente registado novo; o registo do esqueleto vai de **4 para
+5** e o catálogo do Inspector idem — conte o delta, nunca o literal).
 
 
 ## ⛔ Recusas MEDIDAS deste módulo — não as reconstrua

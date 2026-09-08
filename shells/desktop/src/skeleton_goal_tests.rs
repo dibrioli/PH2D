@@ -402,6 +402,9 @@ mod handle;
 #[path = "skeleton_bend_tests.rs"]
 mod bend;
 
+#[path = "skeleton_limit_tests.rs"]
+mod limit;
+
 /// ⭐⭐⭐ **APAGAR A ÂNCORA DEVOLVE A POSE QUE O ARTISTA AUTOROU** (report do dono, 2026-09-07:
 /// *«Remove IK … não funciona plenamente»*).
 ///

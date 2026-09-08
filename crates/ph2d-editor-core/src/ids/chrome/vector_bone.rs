@@ -109,6 +109,22 @@ pub const VECTOR_BONE_BEND_IDS: [NodeId; 3] = [
     VECTOR_BONE_IK_BEND_CW,
 ];
 
+/// ⭐⭐⭐ **Add Angle Limit** — dá a esta junta um arco de que ela não sai.
+///
+/// ⚠️ Só é pintado numa junta que ainda não tem limite — o par dele é o *Remove*, e os dois
+/// excluem-se como o *Add IK* / *Remove IK*.
+pub const VECTOR_BONE_LIMIT_ADD: NodeId = hash_node_id("vector.bone.limit.add");
+
+/// **Remove Angle Limit** — a junta volta a girar livremente.
+pub const VECTOR_BONE_LIMIT_REMOVE: NodeId = hash_node_id("vector.bone.limit.remove");
+
+/// **Limit Min** — o extremo horário do arco, em GRAUS. ⚠️ O documento guarda radianos; a conversão
+/// vive na shell, que é a porta onde as duas unidades se encontram.
+pub const VECTOR_BONE_LIMIT_MIN: NodeId = hash_node_id("vector.bone.limit.min");
+
+/// **Limit Max** — o extremo anti-horário, em graus. Ver [`VECTOR_BONE_LIMIT_MIN`].
+pub const VECTOR_BONE_LIMIT_MAX: NodeId = hash_node_id("vector.bone.limit.max");
+
 /// ⭐⭐⭐ **OS VERBOS DA SEÇÃO SKELETON — uma tabela, dois consumidores.**
 ///
 /// Todo botão desta seção mexe no **MUNDO** (um componente de uma entidade), logo o clique dele é
@@ -124,12 +140,14 @@ pub const VECTOR_BONE_BEND_IDS: [NodeId; 3] = [
 ///
 /// ⇒ *Uma lista escrita à mão ao lado de outra é duas respostas à mesma pergunta, e a que o artista
 /// vê é a que envelhece.* Com uma tabela só, acrescentar um verbo liga-o nos dois sítios.
-pub const VECTOR_BONE_VERBS: [NodeId; 5] = [
+pub const VECTOR_BONE_VERBS: [NodeId; 7] = [
     VECTOR_BONE_BIND,
     VECTOR_BONE_EXPAND,
     VECTOR_BONE_RELEASE,
     VECTOR_BONE_IK_ADD,
     VECTOR_BONE_IK_REMOVE,
+    VECTOR_BONE_LIMIT_ADD,
+    VECTOR_BONE_LIMIT_REMOVE,
 ];
 
 /// ⭐⭐⭐ **OS CAMPOS NUMÉRICOS DA SEÇÃO SKELETON — a mesma tabela, os mesmos dois consumidores.**
@@ -141,10 +159,12 @@ pub const VECTOR_BONE_VERBS: [NodeId; 5] = [
 ///
 /// ⚠️ Ela existe pela mesma razão da [`VECTOR_BONE_VERBS`], e o custo já foi pago: o Z-index
 /// pagou-o uma vez, e o *Add IK* pagou-o outra na família ao lado.
-pub const VECTOR_BONE_FIELDS: [NodeId; 5] = [
+pub const VECTOR_BONE_FIELDS: [NodeId; 7] = [
     VECTOR_BONE_LENGTH,
     VECTOR_BONE_STRENGTH,
     VECTOR_BONE_IK_MIX,
     VECTOR_BONE_IK_SOFTNESS,
     VECTOR_BONE_IK_CHAIN,
+    VECTOR_BONE_LIMIT_MIN,
+    VECTOR_BONE_LIMIT_MAX,
 ];

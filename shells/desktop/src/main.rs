@@ -90,6 +90,8 @@ mod body_pose;
 /// ⭐ **O gesto do modo OSSO** (estudo 42 item 5): arrastar no vazio faz um osso, e o pai é o osso
 /// seleccionado — arrasto-arrasto-arrasto é uma cadeia.
 mod bone_gesture;
+/// ⭐ **O LIMITE DE UMA JUNTA** — irmão do `bone_gesture` pelo teto de LOC, cortado por assunto.
+mod bone_limit;
 /// ⭐⭐⭐ **A sonda do UNDO da âncora** (`PH2D_BONE_UNDO_PROBE=1`) — o gesto REAL sobre o *Add IK*, e
 /// o que ele deixa na fila de desfazer.
 mod bone_undo_probe;

@@ -223,6 +223,17 @@ fn seed_number_fields(store: &mut ph2d_editor_core::interaction::WidgetStore) {
         }
     }
     // ⭐ E os três da ÂNCORA, pela mesma porta e com o mesmo guarda de foco.
+    // ⭐ E os DOIS do limite de ângulo, em graus, pela mesma porta e com o mesmo guarda de foco.
+    if let Some((lo, hi)) = state::current_bone_limit() {
+        for (id, v) in [
+            (ids::VECTOR_BONE_LIMIT_MIN, lo),
+            (ids::VECTOR_BONE_LIMIT_MAX, hi),
+        ] {
+            if store.focus_id() != Some(id) {
+                store.set_number_value(id, v);
+            }
+        }
+    }
     if let Some((mix, softness, chain, _)) = state::current_bone_ik() {
         for (id, v) in [
             (ids::VECTOR_BONE_IK_MIX, mix),

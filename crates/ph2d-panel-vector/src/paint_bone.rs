@@ -90,7 +90,37 @@ impl BodyCtx<'_> {
             for (id, label, step) in campos {
                 y = self.labeled_number_field(label, id, step, y);
             }
+            y = self.limit_rows(y);
             y = self.ik_rows(y);
+        }
+        y
+    }
+
+    /// ⭐⭐⭐ **O LIMITE DE ÂNGULO** da junta em foco — a porta de entrada, ou os dois extremos.
+    ///
+    /// ⚠️ **Vem ANTES da âncora**, e a ordem diz o que ele é: o limite é uma propriedade da JUNTA
+    /// (vale com IK e sem ela), a âncora é uma restrição que se põe e se tira. Pô-lo dentro do
+    /// bloco da IK ensinaria que ele é parte dela — que é exactamente o desenho do Godot, e o que
+    /// esta casa decidiu não fazer.
+    fn limit_rows(&mut self, y: f32) -> f32 {
+        let Some(_) = state::current_bone_limit() else {
+            return self.action_button(
+                ids::VECTOR_BONE_LIMIT_ADD,
+                tr("panel.vector.bone.limit.add"),
+                y,
+            );
+        };
+        let mut y = self.action_button(
+            ids::VECTOR_BONE_LIMIT_REMOVE,
+            tr("panel.vector.bone.limit.remove"),
+            y,
+        );
+        let campos: [(ph2d_a11y::NodeId, &str); 2] = [
+            (ids::VECTOR_BONE_LIMIT_MIN, tr("panel.vector.bone.limit.min")),
+            (ids::VECTOR_BONE_LIMIT_MAX, tr("panel.vector.bone.limit.max")),
+        ];
+        for (id, label) in campos {
+            y = self.labeled_number_field(label, id, ANGLE_STEP, y);
         }
         y
     }
@@ -162,6 +192,12 @@ const STRENGTH_STEP: f64 = 0.1; // LITERAL-PX-OK: passo no domínio do documento
 /// Passo dos dois números adimensionais da âncora (`Mix` e `Softness`), que vivem em `0..1`: o
 /// décimo da unidade, como o da força do osso.
 const MIX_STEP: f64 = 0.1; // LITERAL-PX-OK: passo no domínio do documento, não medida de design
+
+/// Passo dos dois extremos do limite, em **graus**: cinco de cada vez.
+///
+/// ⚠️ O campo fala GRAUS e o documento guarda radianos — a conversão vive na shell. Um passo de
+/// `0,0873` (um grau em radianos) neste campo seria o número certo na unidade errada.
+const ANGLE_STEP: f64 = 5.0; // LITERAL-PX-OK: passo no domínio do documento, não medida de design
 
 /// Passo da CORRENTE — ela conta ossos, então o passo é **um osso**.
 const CHAIN_STEP: f64 = 1.0; // LITERAL-PX-OK: passo no domínio do documento, não medida de design

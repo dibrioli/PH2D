@@ -172,6 +172,13 @@ fn estado_de(id: ph2d_a11y::NodeId) {
     state::set_current_bone_ik(
         precisa_de_ancora.then_some((1.0, 0.0, 2.0, ph2d_skeleton::BendSide::Keep)),
     );
+    // ⚠️ O limite tem a MESMA forma de exclusão que a âncora: *Add* só existe sem ele, *Remove* e
+    // os dois extremos só com ele. Um controlo fora deste `if` reprova a dizer «não foi PINTADO»,
+    // que é a pergunta certa a fazer a quem o acrescentou.
+    let precisa_de_limite = id == ids::VECTOR_BONE_LIMIT_REMOVE
+        || id == ids::VECTOR_BONE_LIMIT_MIN
+        || id == ids::VECTOR_BONE_LIMIT_MAX;
+    state::set_current_bone_limit(precisa_de_limite.then_some((-45.0, 45.0)));
 }
 
 /// ⭐⭐⭐ **TODO SEGMENTO DO LADO DA DOBRA É TAMBÉM UM VERBO DA SHELL** — o censo que liga as duas

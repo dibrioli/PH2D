@@ -1,4 +1,4 @@
-//! **A família do ESQUELETO** — os 4 componentes de `ph2d-skeleton-ecs`.
+//! **A família do ESQUELETO** — os 5 componentes de `ph2d-skeleton-ecs`.
 //!
 //! ⚠️ **Família própria, e não uma prateleira do vetor.** Ela nasceu em 2026-09-06, quando os
 //! ossos saíram de dentro do módulo vectorial: nas quatro referências do mercado um esqueleto só
@@ -25,6 +25,16 @@ pub const DESCS: &[D] = &[
     // ⭐ O OSSO — `authored`: ele TEM `Default` (comprimento 1, força 1 é um osso legítimo), logo
     // a paleta do `+` consegue construí-lo no ponto neutro.
     D::authored("ph2d::skeleton::Bone", "Bone", C::Skeleton, O::ANY, &[]),
+    // ⭐ O LIMITE — `authored` porque a faixa de nascimento é a volta inteira, que não apara nada:
+    // pendurá-lo pela paleta é um no-op exacto, e o artista aperta-o depois. ⚠️ É a diferença
+    // com a âncora, que sem alvo seria inerte e sem caminho para o artista a completar.
+    D::authored(
+        "ph2d::skeleton::BoneLimit",
+        "Angle Limit",
+        C::Skeleton,
+        O::ANY,
+        &[],
+    ),
     // ⭐ A ÂNCORA — `intrinsic` pela mesma razão da pele: ela chega com o gesto (*Add IK*), que cria
     // o ALVO no mesmo passo. Pendurá-la por paleta daria uma restrição sem alvo — inerte, e sem
     // caminho pelo qual o artista a completasse.

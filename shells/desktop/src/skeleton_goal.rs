@@ -493,7 +493,15 @@ fn solve_one(
         let Some(antes) = sim.world().get::<Transform>(e).copied() else {
             continue;
         };
-        let nova = ph2d_skeleton::blend_angle(f64::from(antes.rotation), alvo_rot, mix);
+        // ⚠️ **O limite apara DEPOIS da mistura**, e a ordem importa: com uma faixa maior que meia
+        // volta o caminho curto entre dois ângulos que estão ambos dentro dela pode passar por
+        // FORA. Aparar o alvo antes de misturar deixaria a pose final a violar o limite em
+        // silêncio, que é a única coisa que este componente existe para impedir.
+        let nova = crate::bone_limit::limited(
+            sim,
+            e,
+            ph2d_skeleton::blend_angle(f64::from(antes.rotation), alvo_rot, mix),
+        );
         #[expect(
             clippy::cast_possible_truncation,
             reason = "a rotação do `Transform` da casa é f32; a lei do módulo é f64"

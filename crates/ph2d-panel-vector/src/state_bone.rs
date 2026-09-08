@@ -68,6 +68,9 @@ thread_local! {
     /// segmentos precisa para saber qual acender. ⚠️ Guardar o índice e não o enum é o mesmo
     /// idioma do `VECTOR_BONE_ACTION_IDS`: quem alinha as duas listas é a POSIÇÃO.
     static CURRENT_IK_BEND: Cell<usize> = const { Cell::new(0) };
+    /// ⭐ O limite de ângulo da junta em foco, em GRAUS. `None` ⇒ ela gira livremente, e o painel
+    /// oferece a porta de entrada em vez dos dois números.
+    static CURRENT_LIMIT: Cell<Option<(f64, f64)>> = const { Cell::new(None) };
 }
 
 /// A âncora do osso em foco e os três números dela (`mix`, `softness`, `chain`). `None` ⇒ ele não
@@ -86,6 +89,19 @@ pub fn set_current_bone_ik(v: Option<(f64, f64, f64, ph2d_skeleton::BendSide)>) 
             .unwrap_or(0);
         CURRENT_IK_BEND.with(|c| c.set(i));
     }
+}
+
+/// O limite da junta em foco, em GRAUS (`min`, `max`). `None` ⇒ ela não tem um.
+///
+/// ⚠️ **Graus e não radianos**, e a conversão fica na SHELL: o documento guarda o arco em radianos
+/// (o mesmo espaço do `Transform::rotation`) e o artista pensa em graus. Duas unidades num campo
+/// só é como um número passa a significar outra coisa sem ninguém dar por isso.
+pub fn set_current_bone_limit(v: Option<(f64, f64)>) {
+    CURRENT_LIMIT.with(|c| c.set(v));
+}
+
+pub(crate) fn current_bone_limit() -> Option<(f64, f64)> {
+    CURRENT_LIMIT.with(Cell::get)
 }
 
 pub(crate) fn current_bone_ik() -> Option<(f64, f64, f64, usize)> {

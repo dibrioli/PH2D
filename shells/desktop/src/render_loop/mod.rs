@@ -3407,6 +3407,11 @@ impl crate::App {
             // ⭐ O lado da dobra que o artista escolheu neste quadro, se escolheu.
             let mut pending_ik_bend: Option<ph2d_skeleton::BendSide> = None;
             let mut pending_ik_knob: Option<(IkKnob, f64)> = None;
+            let mut pending_limit_add = false;
+            let mut pending_limit_remove = false;
+            // ⚠️ `(é o MAX?, valor em GRAUS)` — a conversão para radianos é feita onde ele é
+            // escrito, que é a porta onde as duas unidades se encontram.
+            let mut pending_limit_knob: Option<(bool, f64)> = None;
             // ⚠️ **O osso seleccionado lê-se AQUI, antes de o mundo ser emprestado mutável** — os
             // verbos lá em baixo já seguram `sim`, e uma leitura de `self` no meio deles não
             // compila. O valor é do QUADRO, e é o mesmo que o gesto e o overlay usam.
@@ -3699,6 +3704,11 @@ impl crate::App {
                                 pending_ik_add = true;
                             } else if *id == ph2d_editor::ids::VECTOR_BONE_IK_REMOVE {
                                 pending_ik_remove = true;
+                            } else if *id == ph2d_editor::ids::VECTOR_BONE_LIMIT_ADD {
+                                // ⭐⭐⭐ O LIMITE DE ÂNGULO: até onde esta junta dobra.
+                                pending_limit_add = true;
+                            } else if *id == ph2d_editor::ids::VECTOR_BONE_LIMIT_REMOVE {
+                                pending_limit_remove = true;
                             } else if let Some(i) = ph2d_editor::ids::VECTOR_BONE_BEND_IDS
                                 .iter()
                                 .position(|x| x == id)
@@ -4144,6 +4154,11 @@ impl crate::App {
                                 pending_ik_knob = Some((IkKnob::Softness, *v));
                             } else if *id == ph2d_editor::ids::VECTOR_BONE_IK_CHAIN {
                                 pending_ik_knob = Some((IkKnob::Chain, *v));
+                            } else if *id == ph2d_editor::ids::VECTOR_BONE_LIMIT_MIN
+                                || *id == ph2d_editor::ids::VECTOR_BONE_LIMIT_MAX
+                            {
+                                pending_limit_knob =
+                                    Some((*id == ph2d_editor::ids::VECTOR_BONE_LIMIT_MAX, *v));
                             } else if *id == ph2d_editor::ids::VECTOR_VERT_X {
                                 pending_vec_vert = Some((false, *v));
                             } else if *id == ph2d_editor::ids::VECTOR_VERT_Y {
@@ -6303,6 +6318,29 @@ impl crate::App {
                     && let Some(mut g) = sim.world_mut().get_mut::<ph2d_skeleton_ecs::IkGoal>(osso)
                 {
                     g.bend = lado;
+                }
+                // ⭐⭐⭐ **O LIMITE DE ÂNGULO** — os dois verbos e os dois extremos.
+                if pending_limit_add && !crate::bone_limit::add_limit(sim, osso) {
+                    eprintln!(
+                        "[ph2d-vec] osso: esta junta ja' tem limite -- so' pode haver um por osso"
+                    );
+                }
+                if pending_limit_remove {
+                    crate::bone_limit::remove_limit(sim, osso);
+                }
+                if let Some((e_max, graus)) = pending_limit_knob
+                    && let Some(mut l) =
+                        sim.world_mut().get_mut::<ph2d_skeleton_ecs::BoneLimit>(osso)
+                {
+                    // ⚠️ **A conversão GRAUS→RADIANOS vive aqui**, na porta entre o campo (que fala
+                    // a unidade do artista) e o componente (que fala a do `Transform::rotation`).
+                    // ⛔ Sem ela um `90` digitado seria noventa RADIANOS — catorze voltas.
+                    let rad = graus.to_radians();
+                    if e_max {
+                        l.max = rad;
+                    } else {
+                        l.min = rad;
+                    }
                 }
                 if let Some((qual, v)) = pending_ik_knob
                     && let Some(mut g) = sim.world_mut().get_mut::<ph2d_skeleton_ecs::IkGoal>(osso)
@@ -9020,6 +9058,12 @@ impl crate::App {
                 // no painel, e se os três números dela têm sujeito. ⚠️ Pela MESMA porta que publica
                 // os números do osso (`selected_bone`): duas perguntas *"qual osso está aceso?"*
                 // divergiriam no primeiro clique.
+                // ⭐ O limite da junta em foco, em GRAUS — a mesma porta e o mesmo guarda de foco.
+                ph2d_panel_vector::set_current_bone_limit(osso_em_foco.and_then(|b| {
+                    sim.world()
+                        .get::<ph2d_skeleton_ecs::BoneLimit>(ph2d_ecs::Entity::from_bits(b))
+                        .map(|l| (l.min.to_degrees(), l.max.to_degrees()))
+                }));
                 ph2d_panel_vector::set_current_bone_ik(osso_em_foco.and_then(|b| {
                     sim.world()
                         .get::<ph2d_skeleton_ecs::IkGoal>(ph2d_ecs::Entity::from_bits(b))

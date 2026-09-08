@@ -74,6 +74,55 @@ impl Default for Bone {
 
 impl SimComponent for Bone {}
 
+/// ⭐⭐⭐ **ATÉ ONDE ESTA JUNTA DOBRA** — o *IK Limits* do Blender, o *Angle constraints* do Moho.
+///
+/// Sem ele o cotovelo dobra para trás e o joelho hiperextende: a corrente alcança o alvo por um
+/// caminho que um corpo não faz, e o rig lê-se como um barbante em vez de um membro.
+///
+/// # ⚠️ Ele mora no OSSO, e o Godot põe-no na RESTRIÇÃO — a diferença é deliberada
+///
+/// O `SkeletonModification2DCCDIK` guarda `constraint_angle_min`/`_max` **por junta da
+/// modificação**, logo o limite existe enquanto existir aquela IK. Aqui ele é um componente do
+/// **osso**, que é o modelo do Blender e do Moho, e a razão é que a afirmação *«este cotovelo não
+/// dobra para trás»* é sobre a ANATOMIA e não sobre um solver: ela vale quando o artista gira o
+/// osso à mão, vale sem IK nenhuma, e não pode evaporar quando ele carrega em *Remove IK*.
+///
+/// ⭐ E porque o osso é uma **entidade**, o limite ganha undo, save, olho, cadeado e timeline sem
+/// uma linha de código própria — a mesma razão de tudo o resto deste módulo.
+///
+/// # A grandeza
+///
+/// Os dois ângulos são a rotação **LOCAL** do osso, em radianos — o mesmo espaço do
+/// [`ph2d_ecs::Transform::rotation`] dele, que numa hierarquia já é *«quanto este osso está virado
+/// em relação ao pai»*. ⛔ Um limite em espaço de MUNDO mudaria de significado quando o artista
+/// girasse o ombro, que é exactamente o contrário do que uma junta é.
+///
+/// ⚠️ **A faixa de nascimento é a VOLTA INTEIRA**, e isso é o no-op exacto: pendurar o componente
+/// não move a pose um bit. Quem aperta é o artista.
+#[derive(Component, Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub struct BoneLimit {
+    /// O extremo mais **horário** da faixa, em radianos locais.
+    pub min: f64,
+    /// O extremo mais **anti-horário**, em radianos locais.
+    ///
+    /// ⚠️ `max < min` não é estado inválido a evitar com uma guarda: a lei
+    /// ([`ph2d_skeleton::clamp_to_limit`]) trava a junta no **centro** do que estiver escrito. Um
+    /// `f64::clamp` com os limites trocados **aborta o processo**, e um ficheiro editado à mão
+    /// chega lá.
+    pub max: f64,
+}
+
+impl Default for BoneLimit {
+    fn default() -> Self {
+        Self {
+            min: -ph2d_skeleton::FULL_TURN / 2.0,
+            max: ph2d_skeleton::FULL_TURN / 2.0,
+        }
+    }
+}
+
+impl SimComponent for BoneLimit {}
+
 /// ⭐⭐⭐ **A ÂNCORA** — a restrição de cinemática inversa que **FICA**.
 ///
 /// Ela mora no osso da PONTA da corrente, que é o modelo do Blender (*Inverse Kinematics* é uma
@@ -284,6 +333,9 @@ pub fn register_skeleton_components(reg: &mut ComponentRegistry) {
     // Ctrl+Z e o anel de objecto vazio voltaria por cima do losango — um defeito que só aparece
     // depois de desfazer, que é o pior modo de falha que há.
     reg.register_default::<IkTarget>("ph2d::skeleton::IkTarget");
+    // `register_default`: a faixa de nascimento é a volta inteira, que **não apara nada** — logo a
+    // paleta do Inspector pode pendurá-lo sem mover a pose, e o artista aperta-o depois.
+    reg.register_default::<BoneLimit>("ph2d::skeleton::BoneLimit");
 }
 
 #[cfg(test)]
@@ -297,7 +349,7 @@ mod tests {
     fn registers_every_skeleton_component() {
         let mut reg = ComponentRegistry::new();
         register_skeleton_components(&mut reg);
-        assert_eq!(reg.len(), 4);
+        assert_eq!(reg.len(), 5);
         assert!(reg.get_by_name("ph2d::skeleton::Bone").is_some());
         assert!(reg.get_by_name("ph2d::skeleton::Skin").is_some());
         assert!(reg.get_by_name("ph2d::skeleton::IkGoal").is_some());

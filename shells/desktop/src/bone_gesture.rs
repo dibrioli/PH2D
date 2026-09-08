@@ -402,6 +402,8 @@ pub(crate) fn pose(
     let Some(r) = aim_rotation(sim, bone, world) else {
         return false;
     };
+    // ⭐ O limite da junta apara o que o DEDO pede, e não só o que o solver pede.
+    let r = crate::bone_limit::limited(sim, bone, r);
     let Some(mut t) = sim.world_mut().get_mut::<Transform>(bone) else {
         return false;
     };

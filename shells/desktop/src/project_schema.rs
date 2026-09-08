@@ -423,4 +423,23 @@
 /// os ossos existirem**.
 ///
 /// ⚠️ **A tripla NÃO vê este degrau** — a **oitava** vez, e pelo mesmo mecanismo do 122 e do 123.
-pub(crate) const PROJECT_SCHEMA: u32 = 124;
+///
+/// # 124 -> 125 — o LIMITE DE ÂNGULO da junta (`line/Vector`)
+///
+/// Um componente REGISTADO novo: `ph2d_skeleton_ecs::BoneLimit` (ate' onde uma junta dobra). O
+/// mecanismo e' o mesmo do degrau `123` e dos `89`..`92`: o `snapshot_to_world` resolve cada
+/// `ComponentBlob` por `type_id` e faz `ok_or(RegistryError::UnknownTypeId)?`, entao um blob que o
+/// binario nao conhece **recusa o load inteiro** — sem o degrau isso apareceria como um erro de
+/// tipo desconhecido no meio da travessia, e com ele como *«este ficheiro e' de outra versao»*.
+///
+/// ⚠️ **Ele mora no OSSO e nao na restricao**, ao contrario do Godot: a afirmacao *«este cotovelo
+/// nao dobra para tras»* e' sobre a ANATOMIA, logo vale sem IK nenhuma e nao pode evaporar quando
+/// o artista carrega em *Remove IK*.
+///
+/// ⭐ **A faixa de nascimento e' a VOLTA INTEIRA**, que nao apara nada: pendurar o componente e' um
+/// no-op ao bit, e por isso a paleta do Inspector pode oferece-lo (`authored`).
+///
+/// ⛔ **Sem degrau de migração**, pela mesma decisão do Enio de 26/08.
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — a **nona** vez.
+pub(crate) const PROJECT_SCHEMA: u32 = 125;

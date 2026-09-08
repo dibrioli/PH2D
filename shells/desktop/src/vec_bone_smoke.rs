@@ -47,6 +47,29 @@ pub(crate) const ARM_BONES: usize = 3;
 /// para esse zero ser vermelho em vez de invisível.
 pub(crate) const ARM_ELBOW_BEND: f32 = 0.45; // LITERAL-PX-OK: ângulo do documento (rad)
 
+/// Qual osso do tentáculo nasce com limite de ângulo — o 2.º, que fica bem no meio da parte visível
+/// da cadeia. ⚠️ O vizinho fica SEM limite de propósito: é o contraste que ensina.
+pub(crate) const TENTACLE_LIMITED_BONE: usize = 2;
+
+/// Meia-faixa do limite da cena, em radianos (~17°). ⚠️ Estreita de propósito: uma faixa larga
+/// obrigaria o dono a girar meia volta antes de sentir a parede, e o smoke ficaria mudo.
+pub(crate) const TENTACLE_LIMIT_HALF: f64 = 0.3; // LITERAL-PX-OK: ângulo do documento (rad)
+
+/// ⭐⭐⭐ **As duas cercas das constantes de cima, em TEMPO DE COMPILAÇÃO** — e elas vivem aqui, ao
+/// lado do que guardam, e não num teste noutro ficheiro.
+///
+/// ⚠️ Uma meia-faixa fora de `(0, π)` ou **trava** o osso (zero) ou **não o limita** (meia volta ou
+/// mais), e nos dois casos o smoke fica mudo sem dizer porquê. E o osso limitado tem de ter um
+/// vizinho ACIMA dele, senão não há o contraste que ensina.
+///
+/// ⭐ Como são constantes, isto é `const {}`: quem as editar para um valor mudo **não compila**, em
+/// vez de descobrir num teste que ele podia não ter corrido.
+const _: () = {
+    assert!(TENTACLE_LIMIT_HALF > 0.0);
+    assert!(TENTACLE_LIMIT_HALF < std::f64::consts::PI);
+    assert!(TENTACLE_LIMITED_BONE >= 1);
+};
+
 /// Uma cadeia de `n` ossos de `a` a `b` (mundo), o 1.º sem pai. Devolve a RAIZ.
 pub(crate) fn cadeia(sim: &mut ph2d_ecs::SimWorld, a: [f64; 2], b: [f64; 2], n: usize) -> Option<Entity> {
     #[expect(
@@ -172,6 +195,7 @@ impl crate::App {
         if let Some((_, Some(raiz))) = pecas.get(1).copied() {
             let mut e = raiz;
             let mut n = 0;
+            let mut limitado = None;
             // Deixa a raiz quieta e curva do 2.º em diante: a base ancorada faz a curva LER-SE.
             while let Some(filhos) = gfx.sim.world().get::<ph2d_ecs::Children>(e) {
                 let Some(f) = filhos.iter().next() else {
@@ -184,6 +208,38 @@ impl crate::App {
                 {
                     t.rotation = 0.30; // LITERAL-PX-OK: ângulo do documento (rad), não medida de UI
                 }
+                // ⭐⭐⭐ **UM OSSO DO TENTÁCULO NASCE COM LIMITE DE ÂNGULO**, e o vizinho não.
+                //
+                // ⚠️ É o CONTRASTE que ensina: girar este pára numa parede, girar o de baixo gira
+                // livre. Uma cena em que tudo tem limite não distingue *«o limite funciona»* de
+                // *«o osso não roda»*.
+                //
+                // ⛔ E ele vai no TENTÁCULO, não no braço: o braço tem a âncora de IK, e uma
+                // corrente que não alcança o alvo por causa de um limite lê-se, para quem está a
+                // aprender, como a IK partida. As duas coisas provam-se separadas.
+                if n == TENTACLE_LIMITED_BONE {
+                    let centro = f64::from(
+                        gfx.sim
+                            .world()
+                            .get::<ph2d_ecs::Transform>(e)
+                            .map_or(0.0, |t| t.rotation),
+                    );
+                    gfx.sim
+                        .world_mut()
+                        .entity_mut(e)
+                        .insert(ph2d_skeleton_ecs::BoneLimit {
+                            min: centro - TENTACLE_LIMIT_HALF,
+                            max: centro + TENTACLE_LIMIT_HALF,
+                        });
+                    limitado = Some(n);
+                }
+            }
+            if let Some(n) = limitado {
+                eprintln!(
+                    "[vec-bone-smoke] o {n}.o osso do TENTACULO nasce com LIMITE DE ANGULO de +-{:.0} \
+                     graus -- gire-o e ele PARA; gire o vizinho e ele gira livre.",
+                    TENTACLE_LIMIT_HALF.to_degrees()
+                );
             }
         }
         // ⭐⭐⭐ **O BRAÇO NASCE COM ÂNCORA DE IK** — a restrição que persiste.

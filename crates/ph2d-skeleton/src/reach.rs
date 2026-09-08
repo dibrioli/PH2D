@@ -570,3 +570,54 @@ pub fn wrap_pi(a: f64) -> f64 {
     }
     r
 }
+
+/// ⭐⭐⭐ **O LIMITE DE UMA JUNTA** — até onde ela dobra, e a partir de onde deixa de dobrar.
+///
+/// É o *IK Limits* do Blender, o *Angle constraints* do Moho e o
+/// `ccdik_joint_constraint_angle_min`/`_max` do Godot: sem ele o cotovelo dobra para trás e o
+/// joelho hiperextende, e um rig que faz isso não se lê como um corpo.
+///
+/// # ⚠️ Ela é CIRCULAR, e um `clamp` cru estaria errado
+///
+/// Ângulos vivem num círculo, então `rot.clamp(min, max)` falha exactamente onde o intervalo
+/// atravessa `±π`: com `min = 170°` e `max = −170°` (uma faixa de 20° em torno da meia-volta) o
+/// `clamp` devolve sempre um dos extremos. ⇒ a conta é feita **relativa ao CENTRO**, com o
+/// [`wrap_pi`] que a mistura já usa — assim o intervalo é uma faixa de arco e não um par de números
+/// numa recta.
+///
+/// # ⛔ Um intervalo INVERTIDO trava no centro, e não é estado inválido
+///
+/// Com `max < min` a meia-largura seria negativa. Em vez de a deixar propagar (um `clamp` com
+/// limites trocados **entra em pânico** em Rust), a lei apara-a em zero: a junta fica presa no
+/// centro do intervalo que o artista escreveu. É uma resposta bem definida para uma entrada que o
+/// painel não devia produzir, e é o que impede um ficheiro editado à mão de derrubar o app.
+#[must_use]
+pub fn clamp_to_limit(rot: f64, min: f64, max: f64) -> f64 {
+    if !rot.is_finite() || !min.is_finite() || !max.is_finite() {
+        return rot;
+    }
+    let centro = (min + max) * 0.5;
+    let meia = ((max - min) * 0.5).max(0.0);
+    let d = wrap_pi(rot - centro);
+    // ⭐⭐⭐ **DENTRO DO LIMITE, DEVOLVE-SE `rot` AO BIT** — e a 1.ª redacção não o fazia.
+    //
+    // ⛔ Ela reconstruía sempre `centro + d`, o que **normaliza** o ângulo para a volta do centro:
+    // medido, `−6,3` saía como `−0,016815`. Os dois são o MESMO ângulo (diferem por `2π`) e não os
+    // mesmos BYTES — e o undo desta casa regista **por diferença de bytes**. ⇒ uma junta parada
+    // dentro do próprio limite escreveria um valor novo a cada quadro, e cada clique do artista
+    // empilharia um passo cujo conteúdo é *«o limite normalizou um ângulo»*.
+    //
+    // ⚠️ É a mesma família do defeito que o `two_bone` já pagou (*«uma corrente parada não
+    // escreve»*), com outra origem: ali era ruído de `f32`, aqui é uma volta inteira.
+    if d.abs() <= meia {
+        return rot;
+    }
+    centro + d.clamp(-meia, meia)
+}
+
+/// A maior faixa que um limite pode ter: a volta inteira, que é o **no-op**.
+///
+/// ⚠️ Ela existe para o valor de nascimento ser derivado e não escrito à mão em dois sítios: um
+/// limite tão largo quanto o círculo não apara nada, e é a prova de que ligar o controlo não move
+/// a pose.
+pub const FULL_TURN: f64 = std::f64::consts::TAU;

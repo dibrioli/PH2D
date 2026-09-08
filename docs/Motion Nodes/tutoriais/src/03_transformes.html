@@ -1,0 +1,320 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>PH2D · Dobrar o mundo</title>
+<style>
+  @page { size: A4; margin: 16mm 15mm; }
+  :root {
+    --bg: #0f0e12; --card: #17161c; --line: #2a2830;
+    --t1: #ece9f2; --t2: #a9a3b8; --t3: #6f6a7d;
+    --acc: #c9a6ff; --ok: #7ee0b0; --warn: #ffcf7a;
+    --src: #5f9e79; --tra: #6f86c9; --out: #c96a6a;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--t1);
+         font:14px/1.55 "Inter","Segoe UI",system-ui,sans-serif; }
+  h1 { font-size:30px; line-height:1.15; margin:0 0 4px; letter-spacing:-.02em; }
+  h1 small { display:block; font-size:14px; font-weight:400; color:var(--t2); margin-top:6px; }
+  h2 { font-size:19px; margin:26px 0 10px; padding-top:12px; border-top:1px solid var(--line); }
+  h3 { font-size:15px; margin:18px 0 6px; color:var(--acc); }
+  h4 { font-size:13px; margin:14px 0 4px; color:var(--t1); }
+  p { margin:8px 0; }
+  code, kbd { font-family:"JetBrains Mono",ui-monospace,monospace; font-size:12px; }
+  kbd { background:#22202a; border:1px solid var(--line); border-bottom-width:2px;
+        border-radius:5px; padding:1px 6px; color:var(--t1); }
+  .cmd { background:#080810; border:1px solid var(--line); border-left:3px solid var(--acc);
+         border-radius:8px; padding:11px 13px; color:var(--ok); font-family:ui-monospace,monospace;
+         font-size:11.5px; overflow-wrap:anywhere; margin:10px 0; }
+  .steps { counter-reset:s; list-style:none; padding:0; margin:0; }
+  .steps > li { counter-increment:s; position:relative; padding:0 0 0 40px; margin:0 0 16px;
+                break-inside:avoid; }
+  .steps > li::before { content:counter(s); position:absolute; left:0; top:-1px;
+      width:26px; height:26px; border-radius:50%; background:var(--acc); color:#1a1420;
+      font-weight:700; font-size:13px; display:flex; align-items:center; justify-content:center; }
+  .steps b { color:var(--t1); }
+  .out { color:var(--t2); }
+  .out::before { content:"→ "; color:var(--acc); }
+  .bad { color:var(--warn); }
+  .bad::before { content:"⚠ "; }
+  .figs { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:12px 0; }
+  .figs.two { grid-template-columns:repeat(2,1fr); }
+  .fig { background:var(--card); border:1px solid var(--line); border-radius:10px;
+         padding:8px; text-align:center; break-inside:avoid; }
+  .fig img { width:100%; display:block; border-radius:6px; }
+  .fig figcaption { font-size:11px; color:var(--t2); margin-top:6px; }
+  .fig b { color:var(--t1); display:block; font-size:12.5px; }
+  .wide { background:var(--card); border:1px solid var(--line); border-radius:10px;
+          padding:10px; margin:12px 0; break-inside:avoid; }
+  .wide img { width:100%; display:block; border-radius:6px; }
+  .key { font-size:11.5px; color:var(--t2); margin-top:8px; display:flex; flex-wrap:wrap; gap:14px; }
+  .key i { font-style:normal; display:inline-flex; align-items:center; gap:6px; }
+  .key s { width:16px; height:3px; border-radius:2px; display:inline-block; text-decoration:none; }
+  table { border-collapse:collapse; width:100%; margin:6px 0 14px; font-size:11.5px; }
+  th, td { text-align:left; padding:4px 8px; border-bottom:1px solid var(--line); }
+  th { color:var(--t3); font-weight:600; font-size:10.5px; text-transform:uppercase;
+       letter-spacing:.05em; }
+  td.n { text-align:right; font-variant-numeric:tabular-nums; }
+  .note { background:var(--card); border:1px solid var(--line); border-left:3px solid var(--acc);
+          border-radius:8px; padding:10px 13px; margin:12px 0; font-size:13px; break-inside:avoid; }
+  .note b { color:var(--acc); }
+  .card-demo { background:var(--card); border:1px solid var(--line); border-radius:9px;
+       width:230px; overflow:hidden; font-size:11px; }
+  .card-demo .h { padding:5px 9px; font-weight:600; color:#0e0d10; font-size:11.5px; }
+  .card-demo .rows { padding:6px; display:grid; gap:3px; }
+  .card-demo .r { background:#0b0a0e; border-radius:4px; padding:3px 7px; display:flex;
+       justify-content:space-between; position:relative; overflow:hidden; }
+  .card-demo .r i { position:absolute; inset:0 auto 0 0; background:#3b3350; }
+  .card-demo .r span { position:relative; }
+  .card-demo .r .n { color:var(--t1); }
+  .card-demo .r .l { color:var(--t2); }
+  .card-demo .sec { color:var(--t3); padding:3px 7px; font-size:10.5px; }
+  .two-col { display:grid; grid-template-columns:230px 1fr; gap:16px; align-items:start; }
+  .params { font-size:11px; }
+  .params h4 { margin-top:12px; }
+  .soft { color:var(--t3); }
+  footer { margin-top:26px; padding-top:10px; border-top:1px solid var(--line);
+           color:var(--t3); font-size:11px; }
+</style>
+
+<h1>Dobrar o mundo
+  <small>PH2D · Motion Nodes · tutorial 3 — os treze nós que pegam no que já está na tela
+  e <b>mexem nele</b></small></h1>
+
+<p>No tutorial 1 você pôs objetos na tela. No 2 você fez eles andarem. Este é sobre a terceira
+pergunta: <b>e se eu quiser dobrar, torcer, espelhar ou inclinar o que já está lá?</b></p>
+
+<p>São treze nós, e todos fazem a mesma coisa em espírito: recebem uma folha de objetos e
+devolvem a mesma folha <em>noutro sítio</em>. O que muda entre eles é <b>a forma de mexer</b>.</p>
+
+<div class="figs">
+  <figure class="fig"><img src="../fig/def_twist.svg" alt="folha torcida"><b>Twist</b>
+    <figcaption>torce em volta de um eixo</figcaption></figure>
+  <figure class="fig"><img src="../fig/def_bend.svg" alt="folha dobrada"><b>Bend</b>
+    <figcaption>dobra num arco</figcaption></figure>
+  <figure class="fig"><img src="../fig/def_bezier_warp.svg" alt="folha com o topo arqueado"><b>Bezier Warp</b>
+    <figcaption>arqueia as bordas</figcaption></figure>
+</div>
+
+<div class="note"><b>Estas imagens não são desenhos.</b> Cada uma é a saída de verdade do nó,
+cozinhada pelo mesmo motor que roda no app. A grelha <span class="soft">cinzenta</span> é o que
+entrou; a colorida é o que saiu. Se um nó parar de fazer efeito, a figura <b>se recusa a ser
+gerada</b>.</div>
+
+<h2>1 · Abrir</h2>
+<p>Cole isto inteiro num terminal. Na primeira vez ele compila (alguns minutos); depois abre em
+segundos.</p>
+<div class="cmd">cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value &amp;&amp; env PH2D_GPU_COOK_DEMO=111 cargo run -p ph2d-host-desktop --release</div>
+<p class="out">Abre uma tela escura com um <b>pano de pontinhos à direita do centro</b>, sendo
+atirado à volta de um ponto onde não há nada. A etiqueta <b>«a origem do mundo»</b> marca esse
+ponto.</p>
+<p class="bad">Se a tela ficar vazia, ou se o pano já estiver a torcer-se calmamente sobre si
+mesmo, você está numa cena errada: confira que copiou <code>PH2D_GPU_COOK_DEMO=111</code>.</p>
+
+<h2>2 · A pergunta que todo deformador faz: <em>em torno de quê?</em></h2>
+
+<p>Torcer é sempre torcer <b>em volta de alguma coisa</b>. Dobrar é dobrar em volta de um vinco.
+Aumentar é aumentar a partir de um ponto. Essa coisa tem um nome no app: <b>Pivot</b>.</p>
+
+<p>A cena que abriu está com o pivô no <b>lugar errado de propósito</b> — no centro do mundo, que
+fica <em>fora</em> do pano. É por isso que o pano é atirado em vez de torcido.</p>
+
+<ol class="steps">
+  <li><b>Aproxime o zoom</b> com a roda do mouse sobre o grafo, até ler as letras dentro dos
+      cartões.
+      <div class="out">Dentro de cada cartão aparecem os <b>controles</b>: nome à esquerda,
+      número à direita, e uma barra mostrando o quanto ele está alto.</div></li>
+  <li>No cartão <b>Twist</b>, ache a linha <code>Pivot</code>. Ela mostra a palavra
+      <code>Point</code>, não um número. <b>Clique nela.</b>
+      <div class="out">Ela troca para <code>Centroid</code>, e o pano passa a <b>torcer-se sobre
+      si próprio</b> — sem você ter digitado coordenada nenhuma.</div>
+      <div class="bad">Se clicar não fizer nada, você pegou no cabeçalho colorido do cartão — ele
+      é para arrastar o cartão. Desça uma linha.</div></li>
+  <li><b>Clique outra vez</b> na mesma linha, até voltar a <code>World Origin</code>.
+      <div class="out">O defeito volta: o pano é atirado à volta de um ponto vazio. Clique mais
+      uma vez para chegar a <code>Point</code>, e outra para <code>Centroid</code>.</div></li>
+</ol>
+
+<div class="note"><b>As três respostas, e quando cada uma serve.</b>
+<b>World Origin</b> é o centro do mundo — serve quando você quer que várias coisas girem <em>em
+conjunto</em>, à volta do mesmo lugar. <b>Point</b> é um par de números que você digita nas linhas
+<code>Pivot X</code> e <code>Pivot Y</code> — serve quando o eixo é um lugar fixo da cena.
+<b>Centroid</b> é <em>o meio do que está a passar por ali, agora</em> — serve quando você quer que
+a coisa se torça sobre si mesma, e ela continua certa mesmo que você mova o pano depois.</div>
+
+<p>Esse mesmo controle, com essas mesmas três palavras, está no <b>Twist</b>, no <b>Bend</b>, no
+<b>Kaleidoscope</b> e no <b>Transform</b>. Aprendeu num, sabe nos quatro.</p>
+
+<h2>3 · Inclinar: o <em>itálico</em> de uma folha</h2>
+
+<p>O cartão <b>Transform</b> é o canivete do grupo: ele faz num nó só o que o
+<code>Move</code>, o <code>Scale</code> e o <code>Rotate</code> fazem separados — e mais uma
+coisa que nenhum deles faz.</p>
+
+<ol class="steps">
+  <li>No cartão <b>Transform</b>, <b>arraste a linha <code>Skew X</code></b> para a direita.
+      <div class="out">O pano <b>inclina-se</b>, como uma letra em itálico: a parte de cima
+      desliza para um lado e a de baixo para o outro.</div></li>
+  <li><b>Arraste <code>Skew Y</code></b>.
+      <div class="out">A mesma coisa, no outro eixo — agora é o lado direito que sobe.</div></li>
+  <li><b>Arraste <code>Scale</code></b>.
+      <div class="out">O pano cresce e encolhe <b>a partir do meio dele</b>, e não a partir do
+      canto da tela — porque a linha <code>Pivot</code> deste cartão está em
+      <code>Centroid</code>.</div></li>
+</ol>
+
+<div class="note"><b>O número do <code>Skew</code> é a inclinação, não um ângulo.</b>
+<code>1</code> é <b>45 graus</b>: cada unidade que você sobe, a folha desliza uma unidade de
+lado. <code>0</code> é o ponto neutro — a folha fica exatamente como estava.</div>
+
+<h2>4 · Espelhar, e o que acontece com a conta</h2>
+
+<p>O <b>Mirror</b> é o único do grupo que <b>devolve mais objetos do que recebeu</b>: ele fica
+com a folha original <em>e</em> com o reflexo dela.</p>
+
+<div class="figs two">
+  <figure class="fig"><img src="../fig/def_mirror.svg" alt="folha e o reflexo dela"><b>Mirror</b>
+    <figcaption>o dobro dos objetos</figcaption></figure>
+  <figure class="fig"><img src="../fig/def_kaleidoscope.svg" alt="seis cópias em roda"><b>Kaleidoscope</b>
+    <figcaption>seis vezes mais</figcaption></figure>
+</div>
+
+<ol class="steps">
+  <li>No cartão <b>Mirror</b>, <b>arraste <code>Axis Offset</code></b>.
+      <div class="out">Os dois panos <b>afastam-se</b> um do outro: o eixo do espelho desliza, e
+      o reflexo vai atrás dele.</div></li>
+  <li><b>Clique na linha <code>Axis</code></b>.
+      <div class="out">Ela troca a direção do espelho, e o par passa a ficar lado a lado em vez
+      de um sobre o outro.</div></li>
+  <li><b>Clique em <code>Flip Orientation</code></b> (é um liga/desliga).
+      <div class="out">Se os objetos tiverem uma direção própria, o reflexo passa a ficar
+      virado ao contrário, como num espelho de verdade.</div>
+      <div class="bad">Nesta cena os pontinhos são redondos, então este controle não muda nada
+      que se veja. Ele é para quando os objetos são setas, letras ou figuras.</div></li>
+</ol>
+
+<h2>5 · Deixe a cena contável</h2>
+
+<p>Doze mil e oitocentos pontinhos são bonitos e não deixam ver <em>o que</em> acontece com cada
+um. Diminua antes de estudar.</p>
+
+<ol class="steps">
+  <li><b>Clique</b> (sem arrastar) na linha <code>Rows</code> do cartão <b>Grid</b>, digite
+      <code>9</code> e aperte <kbd>Enter</kbd>. Faça o mesmo em <code>Columns</code>.
+      <div class="out">Sobram <b>81</b> pontos de cada lado do espelho, e agora dá para seguir um
+      deles com o olho enquanto você arrasta os controles.</div></li>
+  <li><b>Arraste <code>Gap X</code></b> e <code>Gap Y</code> até o pano ocupar de novo o mesmo
+      espaço.</li>
+  <li>Volte ao passo 2 e refaça a troca do <code>Pivot</code>, agora com poucos pontos.
+      <div class="out">Com 81 pontos dá para ver que em <code>Centroid</code> o ponto do meio do
+      pano <b>fica parado</b> — é ele o eixo.</div></li>
+</ol>
+
+<h2>6 · Os treze nós, e o que cada um faz</h2>
+
+<p>Todos recebem uma folha e devolvem a folha mexida. A grelha cinzenta de cada figura é o que
+entrou.</p>
+
+<div class="figs">
+  <figure class="fig"><img src="../fig/def_move.svg" alt="folha deslocada"><b>Move</b>
+    <figcaption>desloca tudo</figcaption></figure>
+  <figure class="fig"><img src="../fig/def_rotate.svg" alt="marcas viradas"><b>Rotate</b>
+    <figcaption>vira cada objeto</figcaption></figure>
+  <figure class="fig"><img src="../fig/def_scale.svg" alt="marcas maiores"><b>Scale</b>
+    <figcaption>aumenta cada objeto</figcaption></figure>
+  <figure class="fig"><img src="../fig/def_transform.svg" alt="folha inclinada"><b>Transform</b>
+    <figcaption>desloca, aumenta e inclina</figcaption></figure>
+  <figure class="fig"><img src="../fig/def_look_at.svg" alt="marcas apontando ao centro"><b>Look At</b>
+    <figcaption>faz tudo apontar para um lugar</figcaption></figure>
+  <figure class="fig"><img src="../fig/def_spherize.svg" alt="folha com uma lente no meio"><b>Spherize</b>
+    <figcaption>uma lente sobre a folha</figcaption></figure>
+  <figure class="fig"><img src="../fig/def_four_point_warp.svg" alt="folha em keystone"><b>4-Point Warp</b>
+    <figcaption>puxa os quatro cantos</figcaption></figure>
+  <figure class="fig"><img src="../fig/def_spline_wrap.svg" alt="folha embrulhada numa curva"><b>Spline Wrap</b>
+    <figcaption>embrulha numa curva</figcaption></figure>
+  <figure class="fig"><img src="../fig/def_bezier_warp.svg" alt="folha com o topo arqueado"><b>Bezier Warp</b>
+    <figcaption>e as bordas <em>curvas</em></figcaption></figure>
+</div>
+
+<div class="note"><b>Três deles não movem objeto nenhum — eles mexem no objeto.</b> O
+<b>Rotate</b> e o <b>Look At</b> viram cada objeto no lugar; o <b>Scale</b> aumenta cada um. É
+por isso que nas figuras deles a grelha não muda e os <b>traços</b> mudam: cada tracinho é um
+objeto, e ele diz para onde o objeto aponta e quão grande ele é.</div>
+
+<h3>4-Point Warp e Bezier Warp são dois nós, e não um com um botão</h3>
+<p>Os dois pegam a folha pelas bordas. A diferença é que o <b>4-Point Warp</b> só tem os quatro
+<b>cantos</b>: as bordas dele ficam sempre <b>retas</b>. O <b>Bezier Warp</b> tem os cantos
+<em>e</em> duas alças por borda, então as bordas <b>arqueiam</b> — que é o que a figura dele
+mostra no topo. Se você quer uma bandeira, é o segundo.</p>
+
+<h2>7 · O que cada botão faz</h2>
+
+<p>A faixa é o que o <b>arrasto</b> alcança. Quando um controle aceita mais do que isso pela
+caixa de digitar, o teto está escrito ao lado.</p>
+
+<!--#include ../fig/params_deformadores.html -->
+
+<h2>8 · Onde isto roda</h2>
+
+<p>Este app tem dois caminhos para cozinhar uma cena: a <b>placa de vídeo</b>, que faz milhões de
+objetos sem piscar, e o <b>processador</b>, que é o caminho de referência e é muito mais lento.
+Quem escolhe é o app, e a regra é simples: <b>a fila inteira vai para a placa, ou nenhum vai</b>.
+Um único nó que não saiba rodar lá derruba a cadeia toda.</p>
+
+<p>Por isso a resposta que interessa não é «quantos milissegundos custa este nó», é
+<b>quantos deles ficam na placa</b>:</p>
+
+<table>
+  <tr><th>nó</th><th>roda na placa?</th></tr>
+  <tr><td>Move · Rotate · Scale · Transform · Mirror · Bend · Twist · Spherize · 4-Point Warp ·
+      Bezier Warp · Kaleidoscope</td><td><b>sim</b>, sempre</td></tr>
+  <tr><td>Look At</td><td><b>sim</b> — enquanto o alvo vier por um fio. Digitar um
+      <code>Target X</code> tira-o de lá</td></tr>
+  <tr><td>Spline Wrap</td><td><b>não</b>, nunca</td></tr>
+</table>
+
+<div class="note"><b>Doze dos treze.</b> O <b>Spline Wrap</b> é o único que fica de fora, e por uma
+razão concreta: ele sabe embrulhar a folha numa <em>forma que você desenhou</em>, e a placa ainda
+não tem como receber um desenho. Enquanto isso não existir, pô-lo a rodar lá daria a curva
+<em>errada</em> em silêncio — e uma imagem errada sem aviso é pior que uma cena lenta.</div>
+
+<h2>9 · Vá além</h2>
+<ol class="steps">
+  <li><b>Ponha dois deformadores em fila.</b> Arraste um <code>Bend</code> da paleta (tecla
+      <kbd>A</kbd>) e ligue-o entre o <code>Mirror</code> e o <code>Twist</code>. Torça e dobre ao
+      mesmo tempo.</li>
+  <li><b>Troque o Twist por um Kaleidoscope.</b> Ele multiplica a folha em volta do pivô — e usa
+      as mesmas três palavras no <code>Pivot</code> que você já aprendeu.</li>
+  <li><b>Anime o pivô com um fio.</b> Ponha um <code>LFO</code> na paleta, puxe um fio da saída
+      dele e <b>largue-o em cima do corpo do cartão Twist</b> — não num pino redondo, no meio do
+      cartão. Abre uma lista com os pinos <em>e os controles</em> dele: escolha
+      <code>Pivot X</code>.
+      <div class="out">A linha <code>Pivot X</code> deixa de arrastar (o número passa a vir de
+      fora) e o eixo da torção passeia pelo pano.</div>
+      <div class="bad">Com um controle puxado por fio, este nó sai da placa e volta para o
+      processador — numa cena grande isso se sente.</div></li>
+</ol>
+
+<h2>10 · Se algo não bater</h2>
+<table>
+  <tr><th>o que você vê</th><th>o que é</th></tr>
+  <tr><td>A tela abre vazia</td><td>a cena errada — confira o <code>=111</code> do comando</td></tr>
+  <tr><td>O pano já nasce torcido sobre si mesmo</td><td>o <code>Pivot</code> do Twist não está
+      em <code>Point</code>; a cena abre com o defeito de propósito</td></tr>
+  <tr><td><code>Pivot X</code> e <code>Pivot Y</code> somem do cartão</td><td>o
+      <code>Pivot</code> saiu de <code>Point</code> — eles só existem nesse modo, porque nos
+      outros dois ninguém os lê</td></tr>
+  <tr><td>Um controle que não arrasta</td><td>ele está sendo puxado por um fio — o número vem de
+      fora</td></tr>
+  <tr><td>Uma linha com uma setinha</td><td>é uma <b>seção</b> dobrada: clique para abrir (o
+      <code>Bezier Warp</code> tem cinco: uma para os cantos e uma por borda)</td></tr>
+  <tr><td>O <code>Flip Orientation</code> do Mirror não muda nada</td><td>os pontinhos desta cena
+      são redondos; ele só se vê em objetos que têm um lado</td></tr>
+  <tr><td>A cena engasga com muitos objetos</td><td>o <b>Spline Wrap</b> é o único dos treze que
+      nunca roda na placa; com ele na cadeia, tudo volta para o processador. O <b>Look At</b>
+      roda — mas <em>só</em> enquanto o alvo dele vier por fio: digitar um
+      <code>Target X</code> tira o nó da placa também</td></tr>
+</table>
+
+<footer>PH2D · Motion Nodes · ciclo 3 «Transformes &amp; Deformadores» · gerado de
+<code>docs/Motion Nodes/tutoriais/src/03_transformes.html</code> ·
+figuras e tabela derivadas do app por <code>dump_deformadores_figures</code> ·
+a cena é <code>PH2D_GPU_COOK_DEMO=111</code>.</footer>

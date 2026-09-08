@@ -32,6 +32,17 @@ mod animadores_spring_fig;
 #[path = "motion_bridge_animadores_figures.rs"]
 mod animadores_figures;
 
+/// O vocabulário de desenho PARTILHADO pelos tutoriais — a moldura, a paleta e o emissor de
+/// nuvens de pontos. Uma porta só (doc 103 §3).
+#[cfg(all(test, feature = "panel-motion-graph"))]
+#[path = "motion_bridge_tutorial_draw.rs"]
+mod tutorial_draw;
+
+/// As figuras do tutorial do ciclo 3 — a folha de partida, o resultado e o TRAÇO entre os dois.
+#[cfg(all(test, feature = "panel-motion-graph"))]
+#[path = "motion_bridge_deformadores_figures.rs"]
+mod deformadores_figures;
+
 /// A medição do grupo do ciclo 2 (doc 105 §4) — sonda `#[ignore]`, não um gate.
 #[cfg(all(test, feature = "panel-motion-graph"))]
 #[path = "motion_bridge_animadores_probe.rs"]

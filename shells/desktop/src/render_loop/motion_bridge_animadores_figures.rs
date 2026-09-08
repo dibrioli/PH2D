@@ -13,6 +13,7 @@
 //!
 //! `cargo test -p ph2d-host-desktop --bins --release -- --ignored --nocapture dump_animadores_figures`
 
+use super::tutorial_draw::{moldura, svg};
 use crate::motion_state::MotionState;
 use ph2d_nodegraph::attr::Column;
 use ph2d_nodegraph::cook::Cook;
@@ -404,81 +405,6 @@ fn colhe(fig: &Fig) -> Colheita {
         fantasma = pontos(&mut cg, &mg, og, t);
     }
     (desenho, fantasma, ultimo)
-}
-
-/// A moldura que contém tudo, com margem — partilhada pelo grupo: `(cx, cy, largura, altura)`.
-///
-/// ⚠️⚠️ **Ela era QUADRADA, e isso desperdiçava 70 % de cada figura.** Dez das treze são uma
-/// **fila** — largas e baixas —, e num quadrado elas ficam numa faixa fina ao meio: impressas a
-/// cinco por linha, as cinco formas de onda da capa saíam com `30 px` de altura. *A moldura de
-/// uma figura é a forma do que ela mostra, não a do sítio onde ela vai.*
-fn moldura(conjuntos: &[&[[f32; 2]]]) -> (f32, f32, f32, f32) {
-    let (mut x0, mut x1, mut y0, mut y1) = (f32::MAX, f32::MIN, f32::MAX, f32::MIN);
-    for c in conjuntos {
-        for p in *c {
-            x0 = x0.min(p[0]);
-            x1 = x1.max(p[0]);
-            y0 = y0.min(p[1]);
-            y1 = y1.max(p[1]);
-        }
-    }
-    let folga = ((x1 - x0).max(y1 - y0) * 0.06).max(6.0);
-    (
-        (x0 + x1) * 0.5,
-        (y0 + y1) * 0.5,
-        x1 - x0 + folga * 2.0,
-        y1 - y0 + folga * 2.0,
-    )
-}
-
-fn svg(
-    fortes: &[[f32; 2]],
-    fantasma: &[[f32; 2]],
-    (cx, cy, w, h): (f32, f32, f32, f32),
-    campo: bool,
-) -> String {
-    // O raio segue a média geométrica do quadro — numa fila muito larga a altura é que decide
-    // se dois pontos se tocam.
-    let r = (w * h).sqrt() / if fortes.len() > 800 { 260.0 } else { 74.0 };
-    const LARGURA_PX: f32 = 340.0;
-    let mut s = format!(
-        "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"{:.2} {:.2} {w:.2} {h:.2}\" \
-         width=\"{LARGURA_PX:.0}\" height=\"{:.0}\" role=\"img\">\n\
-         <rect x=\"{:.2}\" y=\"{:.2}\" width=\"{w:.2}\" height=\"{h:.2}\" rx=\"{:.2}\" fill=\"#141317\"/>\n",
-        cx - w / 2.0,
-        -cy - h / 2.0,
-        LARGURA_PX * h / w,
-        cx - w / 2.0,
-        -cy - h / 2.0,
-        w.min(h) / 26.0,
-    ); // O y do mundo cresce para CIMA e o do SVG para baixo: a figura mostra o que o artista vê.
-    for p in fantasma {
-        s.push_str(&format!(
-            "<circle cx=\"{:.2}\" cy=\"{:.2}\" r=\"{r:.2}\" fill=\"#4b4560\"/>\n",
-            p[0], -p[1]
-        ));
-    }
-    if campo {
-        for (a, b) in fantasma.iter().zip(fortes) {
-            s.push_str(&format!(
-                "<line x1=\"{:.2}\" y1=\"{:.2}\" x2=\"{:.2}\" y2=\"{:.2}\" \
-                 stroke=\"#6a5b8c\" stroke-width=\"{:.2}\" stroke-linecap=\"round\"/>\n",
-                a[0],
-                -a[1],
-                b[0],
-                -b[1],
-                r * 0.7
-            ));
-        }
-    }
-    for p in fortes {
-        s.push_str(&format!(
-            "<circle cx=\"{:.2}\" cy=\"{:.2}\" r=\"{r:.2}\" fill=\"#c9a6ff\"/>\n",
-            p[0], -p[1]
-        ));
-    }
-    s.push_str("</svg>\n");
-    s
 }
 
 #[test]

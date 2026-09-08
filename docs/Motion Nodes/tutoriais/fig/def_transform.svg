@@ -1,0 +1,965 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-125.66 -125.66 251.33 251.33" width="340" height="340" role="img">
+<rect x="-125.66" y="-125.66" width="251.33" height="251.33" rx="9.67" fill="#141317"/>
+<line x1="-72.00" y1="72.00" x2="-60.00" y2="72.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-72.00" y1="72.00" x2="-72.00" y2="60.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-60.00" y1="72.00" x2="-48.00" y2="72.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-60.00" y1="72.00" x2="-60.00" y2="60.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-48.00" y1="72.00" x2="-36.00" y2="72.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-48.00" y1="72.00" x2="-48.00" y2="60.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-36.00" y1="72.00" x2="-24.00" y2="72.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-36.00" y1="72.00" x2="-36.00" y2="60.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-24.00" y1="72.00" x2="-12.00" y2="72.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-24.00" y1="72.00" x2="-24.00" y2="60.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-12.00" y1="72.00" x2="0.00" y2="72.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-12.00" y1="72.00" x2="-12.00" y2="60.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="0.00" y1="72.00" x2="12.00" y2="72.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="0.00" y1="72.00" x2="0.00" y2="60.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="12.00" y1="72.00" x2="24.00" y2="72.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="12.00" y1="72.00" x2="12.00" y2="60.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="24.00" y1="72.00" x2="36.00" y2="72.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="24.00" y1="72.00" x2="24.00" y2="60.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="36.00" y1="72.00" x2="48.00" y2="72.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="36.00" y1="72.00" x2="36.00" y2="60.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="48.00" y1="72.00" x2="60.00" y2="72.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="48.00" y1="72.00" x2="48.00" y2="60.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="60.00" y1="72.00" x2="72.00" y2="72.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="60.00" y1="72.00" x2="60.00" y2="60.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="72.00" y1="72.00" x2="72.00" y2="60.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-72.00" y1="60.00" x2="-60.00" y2="60.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-72.00" y1="60.00" x2="-72.00" y2="48.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-60.00" y1="60.00" x2="-48.00" y2="60.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-60.00" y1="60.00" x2="-60.00" y2="48.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-48.00" y1="60.00" x2="-36.00" y2="60.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-48.00" y1="60.00" x2="-48.00" y2="48.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-36.00" y1="60.00" x2="-24.00" y2="60.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-36.00" y1="60.00" x2="-36.00" y2="48.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-24.00" y1="60.00" x2="-12.00" y2="60.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-24.00" y1="60.00" x2="-24.00" y2="48.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-12.00" y1="60.00" x2="0.00" y2="60.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-12.00" y1="60.00" x2="-12.00" y2="48.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="0.00" y1="60.00" x2="12.00" y2="60.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="0.00" y1="60.00" x2="0.00" y2="48.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="12.00" y1="60.00" x2="24.00" y2="60.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="12.00" y1="60.00" x2="12.00" y2="48.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="24.00" y1="60.00" x2="36.00" y2="60.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="24.00" y1="60.00" x2="24.00" y2="48.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="36.00" y1="60.00" x2="48.00" y2="60.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="36.00" y1="60.00" x2="36.00" y2="48.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="48.00" y1="60.00" x2="60.00" y2="60.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="48.00" y1="60.00" x2="48.00" y2="48.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="60.00" y1="60.00" x2="72.00" y2="60.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="60.00" y1="60.00" x2="60.00" y2="48.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="72.00" y1="60.00" x2="72.00" y2="48.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-72.00" y1="48.00" x2="-60.00" y2="48.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-72.00" y1="48.00" x2="-72.00" y2="36.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-60.00" y1="48.00" x2="-48.00" y2="48.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-60.00" y1="48.00" x2="-60.00" y2="36.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-48.00" y1="48.00" x2="-36.00" y2="48.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-48.00" y1="48.00" x2="-48.00" y2="36.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-36.00" y1="48.00" x2="-24.00" y2="48.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-36.00" y1="48.00" x2="-36.00" y2="36.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-24.00" y1="48.00" x2="-12.00" y2="48.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-24.00" y1="48.00" x2="-24.00" y2="36.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-12.00" y1="48.00" x2="0.00" y2="48.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-12.00" y1="48.00" x2="-12.00" y2="36.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="0.00" y1="48.00" x2="12.00" y2="48.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="0.00" y1="48.00" x2="0.00" y2="36.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="12.00" y1="48.00" x2="24.00" y2="48.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="12.00" y1="48.00" x2="12.00" y2="36.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="24.00" y1="48.00" x2="36.00" y2="48.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="24.00" y1="48.00" x2="24.00" y2="36.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="36.00" y1="48.00" x2="48.00" y2="48.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="36.00" y1="48.00" x2="36.00" y2="36.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="48.00" y1="48.00" x2="60.00" y2="48.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="48.00" y1="48.00" x2="48.00" y2="36.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="60.00" y1="48.00" x2="72.00" y2="48.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="60.00" y1="48.00" x2="60.00" y2="36.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="72.00" y1="48.00" x2="72.00" y2="36.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-72.00" y1="36.00" x2="-60.00" y2="36.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-72.00" y1="36.00" x2="-72.00" y2="24.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-60.00" y1="36.00" x2="-48.00" y2="36.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-60.00" y1="36.00" x2="-60.00" y2="24.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-48.00" y1="36.00" x2="-36.00" y2="36.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-48.00" y1="36.00" x2="-48.00" y2="24.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-36.00" y1="36.00" x2="-24.00" y2="36.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-36.00" y1="36.00" x2="-36.00" y2="24.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-24.00" y1="36.00" x2="-12.00" y2="36.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-24.00" y1="36.00" x2="-24.00" y2="24.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-12.00" y1="36.00" x2="0.00" y2="36.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-12.00" y1="36.00" x2="-12.00" y2="24.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="0.00" y1="36.00" x2="12.00" y2="36.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="0.00" y1="36.00" x2="0.00" y2="24.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="12.00" y1="36.00" x2="24.00" y2="36.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="12.00" y1="36.00" x2="12.00" y2="24.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="24.00" y1="36.00" x2="36.00" y2="36.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="24.00" y1="36.00" x2="24.00" y2="24.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="36.00" y1="36.00" x2="48.00" y2="36.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="36.00" y1="36.00" x2="36.00" y2="24.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="48.00" y1="36.00" x2="60.00" y2="36.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="48.00" y1="36.00" x2="48.00" y2="24.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="60.00" y1="36.00" x2="72.00" y2="36.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="60.00" y1="36.00" x2="60.00" y2="24.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="72.00" y1="36.00" x2="72.00" y2="24.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-72.00" y1="24.00" x2="-60.00" y2="24.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-72.00" y1="24.00" x2="-72.00" y2="12.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-60.00" y1="24.00" x2="-48.00" y2="24.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-60.00" y1="24.00" x2="-60.00" y2="12.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-48.00" y1="24.00" x2="-36.00" y2="24.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-48.00" y1="24.00" x2="-48.00" y2="12.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-36.00" y1="24.00" x2="-24.00" y2="24.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-36.00" y1="24.00" x2="-36.00" y2="12.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-24.00" y1="24.00" x2="-12.00" y2="24.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-24.00" y1="24.00" x2="-24.00" y2="12.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-12.00" y1="24.00" x2="0.00" y2="24.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-12.00" y1="24.00" x2="-12.00" y2="12.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="0.00" y1="24.00" x2="12.00" y2="24.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="0.00" y1="24.00" x2="0.00" y2="12.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="12.00" y1="24.00" x2="24.00" y2="24.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="12.00" y1="24.00" x2="12.00" y2="12.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="24.00" y1="24.00" x2="36.00" y2="24.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="24.00" y1="24.00" x2="24.00" y2="12.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="36.00" y1="24.00" x2="48.00" y2="24.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="36.00" y1="24.00" x2="36.00" y2="12.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="48.00" y1="24.00" x2="60.00" y2="24.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="48.00" y1="24.00" x2="48.00" y2="12.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="60.00" y1="24.00" x2="72.00" y2="24.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="60.00" y1="24.00" x2="60.00" y2="12.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="72.00" y1="24.00" x2="72.00" y2="12.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-72.00" y1="12.00" x2="-60.00" y2="12.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-72.00" y1="12.00" x2="-72.00" y2="-0.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-60.00" y1="12.00" x2="-48.00" y2="12.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-60.00" y1="12.00" x2="-60.00" y2="-0.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-48.00" y1="12.00" x2="-36.00" y2="12.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-48.00" y1="12.00" x2="-48.00" y2="-0.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-36.00" y1="12.00" x2="-24.00" y2="12.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-36.00" y1="12.00" x2="-36.00" y2="-0.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-24.00" y1="12.00" x2="-12.00" y2="12.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-24.00" y1="12.00" x2="-24.00" y2="-0.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-12.00" y1="12.00" x2="0.00" y2="12.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-12.00" y1="12.00" x2="-12.00" y2="-0.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="0.00" y1="12.00" x2="12.00" y2="12.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="0.00" y1="12.00" x2="0.00" y2="-0.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="12.00" y1="12.00" x2="24.00" y2="12.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="12.00" y1="12.00" x2="12.00" y2="-0.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="24.00" y1="12.00" x2="36.00" y2="12.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="24.00" y1="12.00" x2="24.00" y2="-0.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="36.00" y1="12.00" x2="48.00" y2="12.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="36.00" y1="12.00" x2="36.00" y2="-0.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="48.00" y1="12.00" x2="60.00" y2="12.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="48.00" y1="12.00" x2="48.00" y2="-0.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="60.00" y1="12.00" x2="72.00" y2="12.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="60.00" y1="12.00" x2="60.00" y2="-0.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="72.00" y1="12.00" x2="72.00" y2="-0.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-72.00" y1="-0.00" x2="-60.00" y2="-0.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-72.00" y1="-0.00" x2="-72.00" y2="-12.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-60.00" y1="-0.00" x2="-48.00" y2="-0.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-60.00" y1="-0.00" x2="-60.00" y2="-12.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-48.00" y1="-0.00" x2="-36.00" y2="-0.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-48.00" y1="-0.00" x2="-48.00" y2="-12.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-36.00" y1="-0.00" x2="-24.00" y2="-0.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-36.00" y1="-0.00" x2="-36.00" y2="-12.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-24.00" y1="-0.00" x2="-12.00" y2="-0.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-24.00" y1="-0.00" x2="-24.00" y2="-12.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-12.00" y1="-0.00" x2="0.00" y2="-0.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-12.00" y1="-0.00" x2="-12.00" y2="-12.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="0.00" y1="-0.00" x2="12.00" y2="-0.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="0.00" y1="-0.00" x2="0.00" y2="-12.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="12.00" y1="-0.00" x2="24.00" y2="-0.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="12.00" y1="-0.00" x2="12.00" y2="-12.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="24.00" y1="-0.00" x2="36.00" y2="-0.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="24.00" y1="-0.00" x2="24.00" y2="-12.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="36.00" y1="-0.00" x2="48.00" y2="-0.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="36.00" y1="-0.00" x2="36.00" y2="-12.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="48.00" y1="-0.00" x2="60.00" y2="-0.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="48.00" y1="-0.00" x2="48.00" y2="-12.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="60.00" y1="-0.00" x2="72.00" y2="-0.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="60.00" y1="-0.00" x2="60.00" y2="-12.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="72.00" y1="-0.00" x2="72.00" y2="-12.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-72.00" y1="-12.00" x2="-60.00" y2="-12.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-72.00" y1="-12.00" x2="-72.00" y2="-24.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-60.00" y1="-12.00" x2="-48.00" y2="-12.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-60.00" y1="-12.00" x2="-60.00" y2="-24.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-48.00" y1="-12.00" x2="-36.00" y2="-12.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-48.00" y1="-12.00" x2="-48.00" y2="-24.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-36.00" y1="-12.00" x2="-24.00" y2="-12.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-36.00" y1="-12.00" x2="-36.00" y2="-24.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-24.00" y1="-12.00" x2="-12.00" y2="-12.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-24.00" y1="-12.00" x2="-24.00" y2="-24.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-12.00" y1="-12.00" x2="0.00" y2="-12.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-12.00" y1="-12.00" x2="-12.00" y2="-24.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="0.00" y1="-12.00" x2="12.00" y2="-12.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="0.00" y1="-12.00" x2="0.00" y2="-24.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="12.00" y1="-12.00" x2="24.00" y2="-12.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="12.00" y1="-12.00" x2="12.00" y2="-24.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="24.00" y1="-12.00" x2="36.00" y2="-12.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="24.00" y1="-12.00" x2="24.00" y2="-24.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="36.00" y1="-12.00" x2="48.00" y2="-12.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="36.00" y1="-12.00" x2="36.00" y2="-24.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="48.00" y1="-12.00" x2="60.00" y2="-12.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="48.00" y1="-12.00" x2="48.00" y2="-24.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="60.00" y1="-12.00" x2="72.00" y2="-12.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="60.00" y1="-12.00" x2="60.00" y2="-24.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="72.00" y1="-12.00" x2="72.00" y2="-24.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-72.00" y1="-24.00" x2="-60.00" y2="-24.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-72.00" y1="-24.00" x2="-72.00" y2="-36.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-60.00" y1="-24.00" x2="-48.00" y2="-24.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-60.00" y1="-24.00" x2="-60.00" y2="-36.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-48.00" y1="-24.00" x2="-36.00" y2="-24.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-48.00" y1="-24.00" x2="-48.00" y2="-36.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-36.00" y1="-24.00" x2="-24.00" y2="-24.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-36.00" y1="-24.00" x2="-36.00" y2="-36.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-24.00" y1="-24.00" x2="-12.00" y2="-24.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-24.00" y1="-24.00" x2="-24.00" y2="-36.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-12.00" y1="-24.00" x2="0.00" y2="-24.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-12.00" y1="-24.00" x2="-12.00" y2="-36.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="0.00" y1="-24.00" x2="12.00" y2="-24.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="0.00" y1="-24.00" x2="0.00" y2="-36.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="12.00" y1="-24.00" x2="24.00" y2="-24.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="12.00" y1="-24.00" x2="12.00" y2="-36.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="24.00" y1="-24.00" x2="36.00" y2="-24.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="24.00" y1="-24.00" x2="24.00" y2="-36.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="36.00" y1="-24.00" x2="48.00" y2="-24.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="36.00" y1="-24.00" x2="36.00" y2="-36.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="48.00" y1="-24.00" x2="60.00" y2="-24.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="48.00" y1="-24.00" x2="48.00" y2="-36.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="60.00" y1="-24.00" x2="72.00" y2="-24.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="60.00" y1="-24.00" x2="60.00" y2="-36.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="72.00" y1="-24.00" x2="72.00" y2="-36.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-72.00" y1="-36.00" x2="-60.00" y2="-36.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-72.00" y1="-36.00" x2="-72.00" y2="-48.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-60.00" y1="-36.00" x2="-48.00" y2="-36.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-60.00" y1="-36.00" x2="-60.00" y2="-48.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-48.00" y1="-36.00" x2="-36.00" y2="-36.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-48.00" y1="-36.00" x2="-48.00" y2="-48.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-36.00" y1="-36.00" x2="-24.00" y2="-36.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-36.00" y1="-36.00" x2="-36.00" y2="-48.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-24.00" y1="-36.00" x2="-12.00" y2="-36.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-24.00" y1="-36.00" x2="-24.00" y2="-48.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-12.00" y1="-36.00" x2="0.00" y2="-36.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-12.00" y1="-36.00" x2="-12.00" y2="-48.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="0.00" y1="-36.00" x2="12.00" y2="-36.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="0.00" y1="-36.00" x2="0.00" y2="-48.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="12.00" y1="-36.00" x2="24.00" y2="-36.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="12.00" y1="-36.00" x2="12.00" y2="-48.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="24.00" y1="-36.00" x2="36.00" y2="-36.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="24.00" y1="-36.00" x2="24.00" y2="-48.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="36.00" y1="-36.00" x2="48.00" y2="-36.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="36.00" y1="-36.00" x2="36.00" y2="-48.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="48.00" y1="-36.00" x2="60.00" y2="-36.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="48.00" y1="-36.00" x2="48.00" y2="-48.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="60.00" y1="-36.00" x2="72.00" y2="-36.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="60.00" y1="-36.00" x2="60.00" y2="-48.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="72.00" y1="-36.00" x2="72.00" y2="-48.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-72.00" y1="-48.00" x2="-60.00" y2="-48.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-72.00" y1="-48.00" x2="-72.00" y2="-60.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-60.00" y1="-48.00" x2="-48.00" y2="-48.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-60.00" y1="-48.00" x2="-60.00" y2="-60.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-48.00" y1="-48.00" x2="-36.00" y2="-48.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-48.00" y1="-48.00" x2="-48.00" y2="-60.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-36.00" y1="-48.00" x2="-24.00" y2="-48.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-36.00" y1="-48.00" x2="-36.00" y2="-60.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-24.00" y1="-48.00" x2="-12.00" y2="-48.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-24.00" y1="-48.00" x2="-24.00" y2="-60.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-12.00" y1="-48.00" x2="0.00" y2="-48.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-12.00" y1="-48.00" x2="-12.00" y2="-60.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="0.00" y1="-48.00" x2="12.00" y2="-48.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="0.00" y1="-48.00" x2="0.00" y2="-60.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="12.00" y1="-48.00" x2="24.00" y2="-48.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="12.00" y1="-48.00" x2="12.00" y2="-60.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="24.00" y1="-48.00" x2="36.00" y2="-48.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="24.00" y1="-48.00" x2="24.00" y2="-60.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="36.00" y1="-48.00" x2="48.00" y2="-48.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="36.00" y1="-48.00" x2="36.00" y2="-60.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="48.00" y1="-48.00" x2="60.00" y2="-48.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="48.00" y1="-48.00" x2="48.00" y2="-60.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="60.00" y1="-48.00" x2="72.00" y2="-48.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="60.00" y1="-48.00" x2="60.00" y2="-60.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="72.00" y1="-48.00" x2="72.00" y2="-60.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-72.00" y1="-60.00" x2="-60.00" y2="-60.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-72.00" y1="-60.00" x2="-72.00" y2="-72.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-60.00" y1="-60.00" x2="-48.00" y2="-60.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-60.00" y1="-60.00" x2="-60.00" y2="-72.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-48.00" y1="-60.00" x2="-36.00" y2="-60.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-48.00" y1="-60.00" x2="-48.00" y2="-72.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-36.00" y1="-60.00" x2="-24.00" y2="-60.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-36.00" y1="-60.00" x2="-36.00" y2="-72.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-24.00" y1="-60.00" x2="-12.00" y2="-60.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-24.00" y1="-60.00" x2="-24.00" y2="-72.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-12.00" y1="-60.00" x2="0.00" y2="-60.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-12.00" y1="-60.00" x2="-12.00" y2="-72.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="0.00" y1="-60.00" x2="12.00" y2="-60.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="0.00" y1="-60.00" x2="0.00" y2="-72.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="12.00" y1="-60.00" x2="24.00" y2="-60.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="12.00" y1="-60.00" x2="12.00" y2="-72.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="24.00" y1="-60.00" x2="36.00" y2="-60.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="24.00" y1="-60.00" x2="24.00" y2="-72.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="36.00" y1="-60.00" x2="48.00" y2="-60.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="36.00" y1="-60.00" x2="36.00" y2="-72.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="48.00" y1="-60.00" x2="60.00" y2="-60.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="48.00" y1="-60.00" x2="48.00" y2="-72.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="60.00" y1="-60.00" x2="72.00" y2="-60.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="60.00" y1="-60.00" x2="60.00" y2="-72.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="72.00" y1="-60.00" x2="72.00" y2="-72.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-72.00" y1="-72.00" x2="-60.00" y2="-72.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-60.00" y1="-72.00" x2="-48.00" y2="-72.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-48.00" y1="-72.00" x2="-36.00" y2="-72.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-36.00" y1="-72.00" x2="-24.00" y2="-72.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-24.00" y1="-72.00" x2="-12.00" y2="-72.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="-12.00" y1="-72.00" x2="0.00" y2="-72.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="0.00" y1="-72.00" x2="12.00" y2="-72.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="12.00" y1="-72.00" x2="24.00" y2="-72.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="24.00" y1="-72.00" x2="36.00" y2="-72.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="36.00" y1="-72.00" x2="48.00" y2="-72.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="48.00" y1="-72.00" x2="60.00" y2="-72.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<line x1="60.00" y1="-72.00" x2="72.00" y2="-72.00" stroke="#4b4560" stroke-width="0.92" stroke-linecap="round"/>
+<circle cx="-72.00" cy="72.00" r="1.34" fill="#4b4560"/>
+<circle cx="-60.00" cy="72.00" r="1.34" fill="#4b4560"/>
+<circle cx="-48.00" cy="72.00" r="1.34" fill="#4b4560"/>
+<circle cx="-36.00" cy="72.00" r="1.34" fill="#4b4560"/>
+<circle cx="-24.00" cy="72.00" r="1.34" fill="#4b4560"/>
+<circle cx="-12.00" cy="72.00" r="1.34" fill="#4b4560"/>
+<circle cx="0.00" cy="72.00" r="1.34" fill="#4b4560"/>
+<circle cx="12.00" cy="72.00" r="1.34" fill="#4b4560"/>
+<circle cx="24.00" cy="72.00" r="1.34" fill="#4b4560"/>
+<circle cx="36.00" cy="72.00" r="1.34" fill="#4b4560"/>
+<circle cx="48.00" cy="72.00" r="1.34" fill="#4b4560"/>
+<circle cx="60.00" cy="72.00" r="1.34" fill="#4b4560"/>
+<circle cx="72.00" cy="72.00" r="1.34" fill="#4b4560"/>
+<circle cx="-72.00" cy="60.00" r="1.34" fill="#4b4560"/>
+<circle cx="-60.00" cy="60.00" r="1.34" fill="#4b4560"/>
+<circle cx="-48.00" cy="60.00" r="1.34" fill="#4b4560"/>
+<circle cx="-36.00" cy="60.00" r="1.34" fill="#4b4560"/>
+<circle cx="-24.00" cy="60.00" r="1.34" fill="#4b4560"/>
+<circle cx="-12.00" cy="60.00" r="1.34" fill="#4b4560"/>
+<circle cx="0.00" cy="60.00" r="1.34" fill="#4b4560"/>
+<circle cx="12.00" cy="60.00" r="1.34" fill="#4b4560"/>
+<circle cx="24.00" cy="60.00" r="1.34" fill="#4b4560"/>
+<circle cx="36.00" cy="60.00" r="1.34" fill="#4b4560"/>
+<circle cx="48.00" cy="60.00" r="1.34" fill="#4b4560"/>
+<circle cx="60.00" cy="60.00" r="1.34" fill="#4b4560"/>
+<circle cx="72.00" cy="60.00" r="1.34" fill="#4b4560"/>
+<circle cx="-72.00" cy="48.00" r="1.34" fill="#4b4560"/>
+<circle cx="-60.00" cy="48.00" r="1.34" fill="#4b4560"/>
+<circle cx="-48.00" cy="48.00" r="1.34" fill="#4b4560"/>
+<circle cx="-36.00" cy="48.00" r="1.34" fill="#4b4560"/>
+<circle cx="-24.00" cy="48.00" r="1.34" fill="#4b4560"/>
+<circle cx="-12.00" cy="48.00" r="1.34" fill="#4b4560"/>
+<circle cx="0.00" cy="48.00" r="1.34" fill="#4b4560"/>
+<circle cx="12.00" cy="48.00" r="1.34" fill="#4b4560"/>
+<circle cx="24.00" cy="48.00" r="1.34" fill="#4b4560"/>
+<circle cx="36.00" cy="48.00" r="1.34" fill="#4b4560"/>
+<circle cx="48.00" cy="48.00" r="1.34" fill="#4b4560"/>
+<circle cx="60.00" cy="48.00" r="1.34" fill="#4b4560"/>
+<circle cx="72.00" cy="48.00" r="1.34" fill="#4b4560"/>
+<circle cx="-72.00" cy="36.00" r="1.34" fill="#4b4560"/>
+<circle cx="-60.00" cy="36.00" r="1.34" fill="#4b4560"/>
+<circle cx="-48.00" cy="36.00" r="1.34" fill="#4b4560"/>
+<circle cx="-36.00" cy="36.00" r="1.34" fill="#4b4560"/>
+<circle cx="-24.00" cy="36.00" r="1.34" fill="#4b4560"/>
+<circle cx="-12.00" cy="36.00" r="1.34" fill="#4b4560"/>
+<circle cx="0.00" cy="36.00" r="1.34" fill="#4b4560"/>
+<circle cx="12.00" cy="36.00" r="1.34" fill="#4b4560"/>
+<circle cx="24.00" cy="36.00" r="1.34" fill="#4b4560"/>
+<circle cx="36.00" cy="36.00" r="1.34" fill="#4b4560"/>
+<circle cx="48.00" cy="36.00" r="1.34" fill="#4b4560"/>
+<circle cx="60.00" cy="36.00" r="1.34" fill="#4b4560"/>
+<circle cx="72.00" cy="36.00" r="1.34" fill="#4b4560"/>
+<circle cx="-72.00" cy="24.00" r="1.34" fill="#4b4560"/>
+<circle cx="-60.00" cy="24.00" r="1.34" fill="#4b4560"/>
+<circle cx="-48.00" cy="24.00" r="1.34" fill="#4b4560"/>
+<circle cx="-36.00" cy="24.00" r="1.34" fill="#4b4560"/>
+<circle cx="-24.00" cy="24.00" r="1.34" fill="#4b4560"/>
+<circle cx="-12.00" cy="24.00" r="1.34" fill="#4b4560"/>
+<circle cx="0.00" cy="24.00" r="1.34" fill="#4b4560"/>
+<circle cx="12.00" cy="24.00" r="1.34" fill="#4b4560"/>
+<circle cx="24.00" cy="24.00" r="1.34" fill="#4b4560"/>
+<circle cx="36.00" cy="24.00" r="1.34" fill="#4b4560"/>
+<circle cx="48.00" cy="24.00" r="1.34" fill="#4b4560"/>
+<circle cx="60.00" cy="24.00" r="1.34" fill="#4b4560"/>
+<circle cx="72.00" cy="24.00" r="1.34" fill="#4b4560"/>
+<circle cx="-72.00" cy="12.00" r="1.34" fill="#4b4560"/>
+<circle cx="-60.00" cy="12.00" r="1.34" fill="#4b4560"/>
+<circle cx="-48.00" cy="12.00" r="1.34" fill="#4b4560"/>
+<circle cx="-36.00" cy="12.00" r="1.34" fill="#4b4560"/>
+<circle cx="-24.00" cy="12.00" r="1.34" fill="#4b4560"/>
+<circle cx="-12.00" cy="12.00" r="1.34" fill="#4b4560"/>
+<circle cx="0.00" cy="12.00" r="1.34" fill="#4b4560"/>
+<circle cx="12.00" cy="12.00" r="1.34" fill="#4b4560"/>
+<circle cx="24.00" cy="12.00" r="1.34" fill="#4b4560"/>
+<circle cx="36.00" cy="12.00" r="1.34" fill="#4b4560"/>
+<circle cx="48.00" cy="12.00" r="1.34" fill="#4b4560"/>
+<circle cx="60.00" cy="12.00" r="1.34" fill="#4b4560"/>
+<circle cx="72.00" cy="12.00" r="1.34" fill="#4b4560"/>
+<circle cx="-72.00" cy="-0.00" r="1.34" fill="#4b4560"/>
+<circle cx="-60.00" cy="-0.00" r="1.34" fill="#4b4560"/>
+<circle cx="-48.00" cy="-0.00" r="1.34" fill="#4b4560"/>
+<circle cx="-36.00" cy="-0.00" r="1.34" fill="#4b4560"/>
+<circle cx="-24.00" cy="-0.00" r="1.34" fill="#4b4560"/>
+<circle cx="-12.00" cy="-0.00" r="1.34" fill="#4b4560"/>
+<circle cx="0.00" cy="-0.00" r="1.34" fill="#4b4560"/>
+<circle cx="12.00" cy="-0.00" r="1.34" fill="#4b4560"/>
+<circle cx="24.00" cy="-0.00" r="1.34" fill="#4b4560"/>
+<circle cx="36.00" cy="-0.00" r="1.34" fill="#4b4560"/>
+<circle cx="48.00" cy="-0.00" r="1.34" fill="#4b4560"/>
+<circle cx="60.00" cy="-0.00" r="1.34" fill="#4b4560"/>
+<circle cx="72.00" cy="-0.00" r="1.34" fill="#4b4560"/>
+<circle cx="-72.00" cy="-12.00" r="1.34" fill="#4b4560"/>
+<circle cx="-60.00" cy="-12.00" r="1.34" fill="#4b4560"/>
+<circle cx="-48.00" cy="-12.00" r="1.34" fill="#4b4560"/>
+<circle cx="-36.00" cy="-12.00" r="1.34" fill="#4b4560"/>
+<circle cx="-24.00" cy="-12.00" r="1.34" fill="#4b4560"/>
+<circle cx="-12.00" cy="-12.00" r="1.34" fill="#4b4560"/>
+<circle cx="0.00" cy="-12.00" r="1.34" fill="#4b4560"/>
+<circle cx="12.00" cy="-12.00" r="1.34" fill="#4b4560"/>
+<circle cx="24.00" cy="-12.00" r="1.34" fill="#4b4560"/>
+<circle cx="36.00" cy="-12.00" r="1.34" fill="#4b4560"/>
+<circle cx="48.00" cy="-12.00" r="1.34" fill="#4b4560"/>
+<circle cx="60.00" cy="-12.00" r="1.34" fill="#4b4560"/>
+<circle cx="72.00" cy="-12.00" r="1.34" fill="#4b4560"/>
+<circle cx="-72.00" cy="-24.00" r="1.34" fill="#4b4560"/>
+<circle cx="-60.00" cy="-24.00" r="1.34" fill="#4b4560"/>
+<circle cx="-48.00" cy="-24.00" r="1.34" fill="#4b4560"/>
+<circle cx="-36.00" cy="-24.00" r="1.34" fill="#4b4560"/>
+<circle cx="-24.00" cy="-24.00" r="1.34" fill="#4b4560"/>
+<circle cx="-12.00" cy="-24.00" r="1.34" fill="#4b4560"/>
+<circle cx="0.00" cy="-24.00" r="1.34" fill="#4b4560"/>
+<circle cx="12.00" cy="-24.00" r="1.34" fill="#4b4560"/>
+<circle cx="24.00" cy="-24.00" r="1.34" fill="#4b4560"/>
+<circle cx="36.00" cy="-24.00" r="1.34" fill="#4b4560"/>
+<circle cx="48.00" cy="-24.00" r="1.34" fill="#4b4560"/>
+<circle cx="60.00" cy="-24.00" r="1.34" fill="#4b4560"/>
+<circle cx="72.00" cy="-24.00" r="1.34" fill="#4b4560"/>
+<circle cx="-72.00" cy="-36.00" r="1.34" fill="#4b4560"/>
+<circle cx="-60.00" cy="-36.00" r="1.34" fill="#4b4560"/>
+<circle cx="-48.00" cy="-36.00" r="1.34" fill="#4b4560"/>
+<circle cx="-36.00" cy="-36.00" r="1.34" fill="#4b4560"/>
+<circle cx="-24.00" cy="-36.00" r="1.34" fill="#4b4560"/>
+<circle cx="-12.00" cy="-36.00" r="1.34" fill="#4b4560"/>
+<circle cx="0.00" cy="-36.00" r="1.34" fill="#4b4560"/>
+<circle cx="12.00" cy="-36.00" r="1.34" fill="#4b4560"/>
+<circle cx="24.00" cy="-36.00" r="1.34" fill="#4b4560"/>
+<circle cx="36.00" cy="-36.00" r="1.34" fill="#4b4560"/>
+<circle cx="48.00" cy="-36.00" r="1.34" fill="#4b4560"/>
+<circle cx="60.00" cy="-36.00" r="1.34" fill="#4b4560"/>
+<circle cx="72.00" cy="-36.00" r="1.34" fill="#4b4560"/>
+<circle cx="-72.00" cy="-48.00" r="1.34" fill="#4b4560"/>
+<circle cx="-60.00" cy="-48.00" r="1.34" fill="#4b4560"/>
+<circle cx="-48.00" cy="-48.00" r="1.34" fill="#4b4560"/>
+<circle cx="-36.00" cy="-48.00" r="1.34" fill="#4b4560"/>
+<circle cx="-24.00" cy="-48.00" r="1.34" fill="#4b4560"/>
+<circle cx="-12.00" cy="-48.00" r="1.34" fill="#4b4560"/>
+<circle cx="0.00" cy="-48.00" r="1.34" fill="#4b4560"/>
+<circle cx="12.00" cy="-48.00" r="1.34" fill="#4b4560"/>
+<circle cx="24.00" cy="-48.00" r="1.34" fill="#4b4560"/>
+<circle cx="36.00" cy="-48.00" r="1.34" fill="#4b4560"/>
+<circle cx="48.00" cy="-48.00" r="1.34" fill="#4b4560"/>
+<circle cx="60.00" cy="-48.00" r="1.34" fill="#4b4560"/>
+<circle cx="72.00" cy="-48.00" r="1.34" fill="#4b4560"/>
+<circle cx="-72.00" cy="-60.00" r="1.34" fill="#4b4560"/>
+<circle cx="-60.00" cy="-60.00" r="1.34" fill="#4b4560"/>
+<circle cx="-48.00" cy="-60.00" r="1.34" fill="#4b4560"/>
+<circle cx="-36.00" cy="-60.00" r="1.34" fill="#4b4560"/>
+<circle cx="-24.00" cy="-60.00" r="1.34" fill="#4b4560"/>
+<circle cx="-12.00" cy="-60.00" r="1.34" fill="#4b4560"/>
+<circle cx="0.00" cy="-60.00" r="1.34" fill="#4b4560"/>
+<circle cx="12.00" cy="-60.00" r="1.34" fill="#4b4560"/>
+<circle cx="24.00" cy="-60.00" r="1.34" fill="#4b4560"/>
+<circle cx="36.00" cy="-60.00" r="1.34" fill="#4b4560"/>
+<circle cx="48.00" cy="-60.00" r="1.34" fill="#4b4560"/>
+<circle cx="60.00" cy="-60.00" r="1.34" fill="#4b4560"/>
+<circle cx="72.00" cy="-60.00" r="1.34" fill="#4b4560"/>
+<circle cx="-72.00" cy="-72.00" r="1.34" fill="#4b4560"/>
+<circle cx="-60.00" cy="-72.00" r="1.34" fill="#4b4560"/>
+<circle cx="-48.00" cy="-72.00" r="1.34" fill="#4b4560"/>
+<circle cx="-36.00" cy="-72.00" r="1.34" fill="#4b4560"/>
+<circle cx="-24.00" cy="-72.00" r="1.34" fill="#4b4560"/>
+<circle cx="-12.00" cy="-72.00" r="1.34" fill="#4b4560"/>
+<circle cx="0.00" cy="-72.00" r="1.34" fill="#4b4560"/>
+<circle cx="12.00" cy="-72.00" r="1.34" fill="#4b4560"/>
+<circle cx="24.00" cy="-72.00" r="1.34" fill="#4b4560"/>
+<circle cx="36.00" cy="-72.00" r="1.34" fill="#4b4560"/>
+<circle cx="48.00" cy="-72.00" r="1.34" fill="#4b4560"/>
+<circle cx="60.00" cy="-72.00" r="1.34" fill="#4b4560"/>
+<circle cx="72.00" cy="-72.00" r="1.34" fill="#4b4560"/>
+<line x1="-108.00" y1="72.00" x2="-96.00" y2="72.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-108.00" y1="72.00" x2="-102.00" y2="60.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-96.00" y1="72.00" x2="-84.00" y2="72.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-96.00" y1="72.00" x2="-90.00" y2="60.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-84.00" y1="72.00" x2="-72.00" y2="72.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-84.00" y1="72.00" x2="-78.00" y2="60.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-72.00" y1="72.00" x2="-60.00" y2="72.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-72.00" y1="72.00" x2="-66.00" y2="60.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-60.00" y1="72.00" x2="-48.00" y2="72.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-60.00" y1="72.00" x2="-54.00" y2="60.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-48.00" y1="72.00" x2="-36.00" y2="72.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-48.00" y1="72.00" x2="-42.00" y2="60.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-36.00" y1="72.00" x2="-24.00" y2="72.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-36.00" y1="72.00" x2="-30.00" y2="60.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-24.00" y1="72.00" x2="-12.00" y2="72.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-24.00" y1="72.00" x2="-18.00" y2="60.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-12.00" y1="72.00" x2="0.00" y2="72.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-12.00" y1="72.00" x2="-6.00" y2="60.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="0.00" y1="72.00" x2="12.00" y2="72.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="0.00" y1="72.00" x2="6.00" y2="60.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="12.00" y1="72.00" x2="24.00" y2="72.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="12.00" y1="72.00" x2="18.00" y2="60.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="24.00" y1="72.00" x2="36.00" y2="72.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="24.00" y1="72.00" x2="30.00" y2="60.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="36.00" y1="72.00" x2="42.00" y2="60.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-102.00" y1="60.00" x2="-90.00" y2="60.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-102.00" y1="60.00" x2="-96.00" y2="48.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-90.00" y1="60.00" x2="-78.00" y2="60.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-90.00" y1="60.00" x2="-84.00" y2="48.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-78.00" y1="60.00" x2="-66.00" y2="60.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-78.00" y1="60.00" x2="-72.00" y2="48.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-66.00" y1="60.00" x2="-54.00" y2="60.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-66.00" y1="60.00" x2="-60.00" y2="48.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-54.00" y1="60.00" x2="-42.00" y2="60.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-54.00" y1="60.00" x2="-48.00" y2="48.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-42.00" y1="60.00" x2="-30.00" y2="60.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-42.00" y1="60.00" x2="-36.00" y2="48.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-30.00" y1="60.00" x2="-18.00" y2="60.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-30.00" y1="60.00" x2="-24.00" y2="48.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-18.00" y1="60.00" x2="-6.00" y2="60.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-18.00" y1="60.00" x2="-12.00" y2="48.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-6.00" y1="60.00" x2="6.00" y2="60.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-6.00" y1="60.00" x2="0.00" y2="48.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="6.00" y1="60.00" x2="18.00" y2="60.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="6.00" y1="60.00" x2="12.00" y2="48.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="18.00" y1="60.00" x2="30.00" y2="60.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="18.00" y1="60.00" x2="24.00" y2="48.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="30.00" y1="60.00" x2="42.00" y2="60.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="30.00" y1="60.00" x2="36.00" y2="48.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="42.00" y1="60.00" x2="48.00" y2="48.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-96.00" y1="48.00" x2="-84.00" y2="48.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-96.00" y1="48.00" x2="-90.00" y2="36.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-84.00" y1="48.00" x2="-72.00" y2="48.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-84.00" y1="48.00" x2="-78.00" y2="36.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-72.00" y1="48.00" x2="-60.00" y2="48.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-72.00" y1="48.00" x2="-66.00" y2="36.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-60.00" y1="48.00" x2="-48.00" y2="48.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-60.00" y1="48.00" x2="-54.00" y2="36.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-48.00" y1="48.00" x2="-36.00" y2="48.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-48.00" y1="48.00" x2="-42.00" y2="36.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-36.00" y1="48.00" x2="-24.00" y2="48.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-36.00" y1="48.00" x2="-30.00" y2="36.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-24.00" y1="48.00" x2="-12.00" y2="48.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-24.00" y1="48.00" x2="-18.00" y2="36.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-12.00" y1="48.00" x2="0.00" y2="48.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-12.00" y1="48.00" x2="-6.00" y2="36.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="0.00" y1="48.00" x2="12.00" y2="48.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="0.00" y1="48.00" x2="6.00" y2="36.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="12.00" y1="48.00" x2="24.00" y2="48.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="12.00" y1="48.00" x2="18.00" y2="36.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="24.00" y1="48.00" x2="36.00" y2="48.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="24.00" y1="48.00" x2="30.00" y2="36.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="36.00" y1="48.00" x2="48.00" y2="48.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="36.00" y1="48.00" x2="42.00" y2="36.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="48.00" y1="48.00" x2="54.00" y2="36.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-90.00" y1="36.00" x2="-78.00" y2="36.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-90.00" y1="36.00" x2="-84.00" y2="24.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-78.00" y1="36.00" x2="-66.00" y2="36.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-78.00" y1="36.00" x2="-72.00" y2="24.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-66.00" y1="36.00" x2="-54.00" y2="36.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-66.00" y1="36.00" x2="-60.00" y2="24.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-54.00" y1="36.00" x2="-42.00" y2="36.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-54.00" y1="36.00" x2="-48.00" y2="24.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-42.00" y1="36.00" x2="-30.00" y2="36.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-42.00" y1="36.00" x2="-36.00" y2="24.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-30.00" y1="36.00" x2="-18.00" y2="36.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-30.00" y1="36.00" x2="-24.00" y2="24.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-18.00" y1="36.00" x2="-6.00" y2="36.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-18.00" y1="36.00" x2="-12.00" y2="24.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-6.00" y1="36.00" x2="6.00" y2="36.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-6.00" y1="36.00" x2="0.00" y2="24.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="6.00" y1="36.00" x2="18.00" y2="36.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="6.00" y1="36.00" x2="12.00" y2="24.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="18.00" y1="36.00" x2="30.00" y2="36.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="18.00" y1="36.00" x2="24.00" y2="24.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="30.00" y1="36.00" x2="42.00" y2="36.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="30.00" y1="36.00" x2="36.00" y2="24.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="42.00" y1="36.00" x2="54.00" y2="36.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="42.00" y1="36.00" x2="48.00" y2="24.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="54.00" y1="36.00" x2="60.00" y2="24.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-84.00" y1="24.00" x2="-72.00" y2="24.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-84.00" y1="24.00" x2="-78.00" y2="12.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-72.00" y1="24.00" x2="-60.00" y2="24.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-72.00" y1="24.00" x2="-66.00" y2="12.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-60.00" y1="24.00" x2="-48.00" y2="24.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-60.00" y1="24.00" x2="-54.00" y2="12.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-48.00" y1="24.00" x2="-36.00" y2="24.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-48.00" y1="24.00" x2="-42.00" y2="12.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-36.00" y1="24.00" x2="-24.00" y2="24.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-36.00" y1="24.00" x2="-30.00" y2="12.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-24.00" y1="24.00" x2="-12.00" y2="24.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-24.00" y1="24.00" x2="-18.00" y2="12.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-12.00" y1="24.00" x2="0.00" y2="24.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-12.00" y1="24.00" x2="-6.00" y2="12.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="0.00" y1="24.00" x2="12.00" y2="24.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="0.00" y1="24.00" x2="6.00" y2="12.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="12.00" y1="24.00" x2="24.00" y2="24.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="12.00" y1="24.00" x2="18.00" y2="12.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="24.00" y1="24.00" x2="36.00" y2="24.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="24.00" y1="24.00" x2="30.00" y2="12.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="36.00" y1="24.00" x2="48.00" y2="24.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="36.00" y1="24.00" x2="42.00" y2="12.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="48.00" y1="24.00" x2="60.00" y2="24.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="48.00" y1="24.00" x2="54.00" y2="12.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="60.00" y1="24.00" x2="66.00" y2="12.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-78.00" y1="12.00" x2="-66.00" y2="12.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-78.00" y1="12.00" x2="-72.00" y2="-0.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-66.00" y1="12.00" x2="-54.00" y2="12.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-66.00" y1="12.00" x2="-60.00" y2="-0.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-54.00" y1="12.00" x2="-42.00" y2="12.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-54.00" y1="12.00" x2="-48.00" y2="-0.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-42.00" y1="12.00" x2="-30.00" y2="12.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-42.00" y1="12.00" x2="-36.00" y2="-0.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-30.00" y1="12.00" x2="-18.00" y2="12.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-30.00" y1="12.00" x2="-24.00" y2="-0.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-18.00" y1="12.00" x2="-6.00" y2="12.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-18.00" y1="12.00" x2="-12.00" y2="-0.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-6.00" y1="12.00" x2="6.00" y2="12.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-6.00" y1="12.00" x2="0.00" y2="-0.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="6.00" y1="12.00" x2="18.00" y2="12.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="6.00" y1="12.00" x2="12.00" y2="-0.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="18.00" y1="12.00" x2="30.00" y2="12.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="18.00" y1="12.00" x2="24.00" y2="-0.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="30.00" y1="12.00" x2="42.00" y2="12.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="30.00" y1="12.00" x2="36.00" y2="-0.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="42.00" y1="12.00" x2="54.00" y2="12.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="42.00" y1="12.00" x2="48.00" y2="-0.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="54.00" y1="12.00" x2="66.00" y2="12.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="54.00" y1="12.00" x2="60.00" y2="-0.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="66.00" y1="12.00" x2="72.00" y2="-0.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-72.00" y1="-0.00" x2="-60.00" y2="-0.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-72.00" y1="-0.00" x2="-66.00" y2="-12.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-60.00" y1="-0.00" x2="-48.00" y2="-0.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-60.00" y1="-0.00" x2="-54.00" y2="-12.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-48.00" y1="-0.00" x2="-36.00" y2="-0.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-48.00" y1="-0.00" x2="-42.00" y2="-12.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-36.00" y1="-0.00" x2="-24.00" y2="-0.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-36.00" y1="-0.00" x2="-30.00" y2="-12.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-24.00" y1="-0.00" x2="-12.00" y2="-0.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-24.00" y1="-0.00" x2="-18.00" y2="-12.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-12.00" y1="-0.00" x2="0.00" y2="-0.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-12.00" y1="-0.00" x2="-6.00" y2="-12.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="0.00" y1="-0.00" x2="12.00" y2="-0.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="0.00" y1="-0.00" x2="6.00" y2="-12.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="12.00" y1="-0.00" x2="24.00" y2="-0.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="12.00" y1="-0.00" x2="18.00" y2="-12.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="24.00" y1="-0.00" x2="36.00" y2="-0.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="24.00" y1="-0.00" x2="30.00" y2="-12.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="36.00" y1="-0.00" x2="48.00" y2="-0.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="36.00" y1="-0.00" x2="42.00" y2="-12.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="48.00" y1="-0.00" x2="60.00" y2="-0.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="48.00" y1="-0.00" x2="54.00" y2="-12.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="60.00" y1="-0.00" x2="72.00" y2="-0.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="60.00" y1="-0.00" x2="66.00" y2="-12.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="72.00" y1="-0.00" x2="78.00" y2="-12.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-66.00" y1="-12.00" x2="-54.00" y2="-12.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-66.00" y1="-12.00" x2="-60.00" y2="-24.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-54.00" y1="-12.00" x2="-42.00" y2="-12.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-54.00" y1="-12.00" x2="-48.00" y2="-24.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-42.00" y1="-12.00" x2="-30.00" y2="-12.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-42.00" y1="-12.00" x2="-36.00" y2="-24.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-30.00" y1="-12.00" x2="-18.00" y2="-12.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-30.00" y1="-12.00" x2="-24.00" y2="-24.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-18.00" y1="-12.00" x2="-6.00" y2="-12.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-18.00" y1="-12.00" x2="-12.00" y2="-24.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-6.00" y1="-12.00" x2="6.00" y2="-12.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-6.00" y1="-12.00" x2="0.00" y2="-24.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="6.00" y1="-12.00" x2="18.00" y2="-12.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="6.00" y1="-12.00" x2="12.00" y2="-24.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="18.00" y1="-12.00" x2="30.00" y2="-12.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="18.00" y1="-12.00" x2="24.00" y2="-24.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="30.00" y1="-12.00" x2="42.00" y2="-12.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="30.00" y1="-12.00" x2="36.00" y2="-24.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="42.00" y1="-12.00" x2="54.00" y2="-12.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="42.00" y1="-12.00" x2="48.00" y2="-24.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="54.00" y1="-12.00" x2="66.00" y2="-12.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="54.00" y1="-12.00" x2="60.00" y2="-24.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="66.00" y1="-12.00" x2="78.00" y2="-12.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="66.00" y1="-12.00" x2="72.00" y2="-24.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="78.00" y1="-12.00" x2="84.00" y2="-24.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-60.00" y1="-24.00" x2="-48.00" y2="-24.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-60.00" y1="-24.00" x2="-54.00" y2="-36.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-48.00" y1="-24.00" x2="-36.00" y2="-24.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-48.00" y1="-24.00" x2="-42.00" y2="-36.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-36.00" y1="-24.00" x2="-24.00" y2="-24.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-36.00" y1="-24.00" x2="-30.00" y2="-36.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-24.00" y1="-24.00" x2="-12.00" y2="-24.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-24.00" y1="-24.00" x2="-18.00" y2="-36.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-12.00" y1="-24.00" x2="0.00" y2="-24.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-12.00" y1="-24.00" x2="-6.00" y2="-36.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="0.00" y1="-24.00" x2="12.00" y2="-24.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="0.00" y1="-24.00" x2="6.00" y2="-36.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="12.00" y1="-24.00" x2="24.00" y2="-24.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="12.00" y1="-24.00" x2="18.00" y2="-36.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="24.00" y1="-24.00" x2="36.00" y2="-24.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="24.00" y1="-24.00" x2="30.00" y2="-36.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="36.00" y1="-24.00" x2="48.00" y2="-24.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="36.00" y1="-24.00" x2="42.00" y2="-36.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="48.00" y1="-24.00" x2="60.00" y2="-24.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="48.00" y1="-24.00" x2="54.00" y2="-36.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="60.00" y1="-24.00" x2="72.00" y2="-24.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="60.00" y1="-24.00" x2="66.00" y2="-36.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="72.00" y1="-24.00" x2="84.00" y2="-24.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="72.00" y1="-24.00" x2="78.00" y2="-36.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="84.00" y1="-24.00" x2="90.00" y2="-36.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-54.00" y1="-36.00" x2="-42.00" y2="-36.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-54.00" y1="-36.00" x2="-48.00" y2="-48.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-42.00" y1="-36.00" x2="-30.00" y2="-36.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-42.00" y1="-36.00" x2="-36.00" y2="-48.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-30.00" y1="-36.00" x2="-18.00" y2="-36.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-30.00" y1="-36.00" x2="-24.00" y2="-48.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-18.00" y1="-36.00" x2="-6.00" y2="-36.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-18.00" y1="-36.00" x2="-12.00" y2="-48.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-6.00" y1="-36.00" x2="6.00" y2="-36.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-6.00" y1="-36.00" x2="0.00" y2="-48.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="6.00" y1="-36.00" x2="18.00" y2="-36.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="6.00" y1="-36.00" x2="12.00" y2="-48.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="18.00" y1="-36.00" x2="30.00" y2="-36.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="18.00" y1="-36.00" x2="24.00" y2="-48.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="30.00" y1="-36.00" x2="42.00" y2="-36.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="30.00" y1="-36.00" x2="36.00" y2="-48.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="42.00" y1="-36.00" x2="54.00" y2="-36.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="42.00" y1="-36.00" x2="48.00" y2="-48.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="54.00" y1="-36.00" x2="66.00" y2="-36.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="54.00" y1="-36.00" x2="60.00" y2="-48.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="66.00" y1="-36.00" x2="78.00" y2="-36.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="66.00" y1="-36.00" x2="72.00" y2="-48.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="78.00" y1="-36.00" x2="90.00" y2="-36.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="78.00" y1="-36.00" x2="84.00" y2="-48.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="90.00" y1="-36.00" x2="96.00" y2="-48.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-48.00" y1="-48.00" x2="-36.00" y2="-48.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-48.00" y1="-48.00" x2="-42.00" y2="-60.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-36.00" y1="-48.00" x2="-24.00" y2="-48.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-36.00" y1="-48.00" x2="-30.00" y2="-60.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-24.00" y1="-48.00" x2="-12.00" y2="-48.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-24.00" y1="-48.00" x2="-18.00" y2="-60.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-12.00" y1="-48.00" x2="0.00" y2="-48.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-12.00" y1="-48.00" x2="-6.00" y2="-60.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="0.00" y1="-48.00" x2="12.00" y2="-48.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="0.00" y1="-48.00" x2="6.00" y2="-60.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="12.00" y1="-48.00" x2="24.00" y2="-48.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="12.00" y1="-48.00" x2="18.00" y2="-60.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="24.00" y1="-48.00" x2="36.00" y2="-48.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="24.00" y1="-48.00" x2="30.00" y2="-60.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="36.00" y1="-48.00" x2="48.00" y2="-48.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="36.00" y1="-48.00" x2="42.00" y2="-60.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="48.00" y1="-48.00" x2="60.00" y2="-48.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="48.00" y1="-48.00" x2="54.00" y2="-60.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="60.00" y1="-48.00" x2="72.00" y2="-48.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="60.00" y1="-48.00" x2="66.00" y2="-60.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="72.00" y1="-48.00" x2="84.00" y2="-48.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="72.00" y1="-48.00" x2="78.00" y2="-60.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="84.00" y1="-48.00" x2="96.00" y2="-48.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="84.00" y1="-48.00" x2="90.00" y2="-60.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="96.00" y1="-48.00" x2="102.00" y2="-60.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-42.00" y1="-60.00" x2="-30.00" y2="-60.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-42.00" y1="-60.00" x2="-36.00" y2="-72.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-30.00" y1="-60.00" x2="-18.00" y2="-60.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-30.00" y1="-60.00" x2="-24.00" y2="-72.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-18.00" y1="-60.00" x2="-6.00" y2="-60.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-18.00" y1="-60.00" x2="-12.00" y2="-72.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-6.00" y1="-60.00" x2="6.00" y2="-60.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-6.00" y1="-60.00" x2="0.00" y2="-72.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="6.00" y1="-60.00" x2="18.00" y2="-60.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="6.00" y1="-60.00" x2="12.00" y2="-72.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="18.00" y1="-60.00" x2="30.00" y2="-60.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="18.00" y1="-60.00" x2="24.00" y2="-72.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="30.00" y1="-60.00" x2="42.00" y2="-60.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="30.00" y1="-60.00" x2="36.00" y2="-72.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="42.00" y1="-60.00" x2="54.00" y2="-60.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="42.00" y1="-60.00" x2="48.00" y2="-72.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="54.00" y1="-60.00" x2="66.00" y2="-60.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="54.00" y1="-60.00" x2="60.00" y2="-72.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="66.00" y1="-60.00" x2="78.00" y2="-60.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="66.00" y1="-60.00" x2="72.00" y2="-72.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="78.00" y1="-60.00" x2="90.00" y2="-60.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="78.00" y1="-60.00" x2="84.00" y2="-72.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="90.00" y1="-60.00" x2="102.00" y2="-60.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="90.00" y1="-60.00" x2="96.00" y2="-72.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="102.00" y1="-60.00" x2="108.00" y2="-72.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-36.00" y1="-72.00" x2="-24.00" y2="-72.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-24.00" y1="-72.00" x2="-12.00" y2="-72.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="-12.00" y1="-72.00" x2="0.00" y2="-72.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="0.00" y1="-72.00" x2="12.00" y2="-72.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="12.00" y1="-72.00" x2="24.00" y2="-72.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="24.00" y1="-72.00" x2="36.00" y2="-72.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="36.00" y1="-72.00" x2="48.00" y2="-72.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="48.00" y1="-72.00" x2="60.00" y2="-72.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="60.00" y1="-72.00" x2="72.00" y2="-72.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="72.00" y1="-72.00" x2="84.00" y2="-72.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="84.00" y1="-72.00" x2="96.00" y2="-72.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<line x1="96.00" y1="-72.00" x2="108.00" y2="-72.00" stroke="#6a5b8c" stroke-width="1.34" stroke-linecap="round"/>
+<circle cx="-108.00" cy="72.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-96.00" cy="72.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-84.00" cy="72.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-72.00" cy="72.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-60.00" cy="72.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-48.00" cy="72.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-36.00" cy="72.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-24.00" cy="72.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-12.00" cy="72.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="0.00" cy="72.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="12.00" cy="72.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="24.00" cy="72.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="36.00" cy="72.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-102.00" cy="60.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-90.00" cy="60.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-78.00" cy="60.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-66.00" cy="60.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-54.00" cy="60.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-42.00" cy="60.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-30.00" cy="60.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-18.00" cy="60.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-6.00" cy="60.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="6.00" cy="60.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="18.00" cy="60.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="30.00" cy="60.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="42.00" cy="60.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-96.00" cy="48.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-84.00" cy="48.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-72.00" cy="48.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-60.00" cy="48.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-48.00" cy="48.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-36.00" cy="48.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-24.00" cy="48.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-12.00" cy="48.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="0.00" cy="48.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="12.00" cy="48.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="24.00" cy="48.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="36.00" cy="48.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="48.00" cy="48.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-90.00" cy="36.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-78.00" cy="36.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-66.00" cy="36.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-54.00" cy="36.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-42.00" cy="36.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-30.00" cy="36.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-18.00" cy="36.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-6.00" cy="36.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="6.00" cy="36.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="18.00" cy="36.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="30.00" cy="36.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="42.00" cy="36.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="54.00" cy="36.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-84.00" cy="24.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-72.00" cy="24.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-60.00" cy="24.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-48.00" cy="24.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-36.00" cy="24.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-24.00" cy="24.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-12.00" cy="24.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="0.00" cy="24.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="12.00" cy="24.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="24.00" cy="24.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="36.00" cy="24.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="48.00" cy="24.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="60.00" cy="24.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-78.00" cy="12.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-66.00" cy="12.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-54.00" cy="12.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-42.00" cy="12.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-30.00" cy="12.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-18.00" cy="12.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-6.00" cy="12.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="6.00" cy="12.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="18.00" cy="12.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="30.00" cy="12.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="42.00" cy="12.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="54.00" cy="12.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="66.00" cy="12.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-72.00" cy="-0.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-60.00" cy="-0.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-48.00" cy="-0.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-36.00" cy="-0.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-24.00" cy="-0.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-12.00" cy="-0.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="0.00" cy="-0.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="12.00" cy="-0.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="24.00" cy="-0.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="36.00" cy="-0.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="48.00" cy="-0.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="60.00" cy="-0.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="72.00" cy="-0.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-66.00" cy="-12.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-54.00" cy="-12.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-42.00" cy="-12.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-30.00" cy="-12.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-18.00" cy="-12.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-6.00" cy="-12.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="6.00" cy="-12.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="18.00" cy="-12.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="30.00" cy="-12.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="42.00" cy="-12.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="54.00" cy="-12.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="66.00" cy="-12.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="78.00" cy="-12.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-60.00" cy="-24.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-48.00" cy="-24.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-36.00" cy="-24.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-24.00" cy="-24.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-12.00" cy="-24.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="0.00" cy="-24.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="12.00" cy="-24.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="24.00" cy="-24.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="36.00" cy="-24.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="48.00" cy="-24.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="60.00" cy="-24.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="72.00" cy="-24.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="84.00" cy="-24.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-54.00" cy="-36.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-42.00" cy="-36.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-30.00" cy="-36.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-18.00" cy="-36.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-6.00" cy="-36.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="6.00" cy="-36.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="18.00" cy="-36.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="30.00" cy="-36.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="42.00" cy="-36.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="54.00" cy="-36.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="66.00" cy="-36.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="78.00" cy="-36.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="90.00" cy="-36.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-48.00" cy="-48.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-36.00" cy="-48.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-24.00" cy="-48.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-12.00" cy="-48.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="0.00" cy="-48.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="12.00" cy="-48.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="24.00" cy="-48.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="36.00" cy="-48.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="48.00" cy="-48.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="60.00" cy="-48.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="72.00" cy="-48.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="84.00" cy="-48.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="96.00" cy="-48.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-42.00" cy="-60.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-30.00" cy="-60.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-18.00" cy="-60.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-6.00" cy="-60.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="6.00" cy="-60.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="18.00" cy="-60.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="30.00" cy="-60.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="42.00" cy="-60.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="54.00" cy="-60.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="66.00" cy="-60.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="78.00" cy="-60.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="90.00" cy="-60.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="102.00" cy="-60.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-36.00" cy="-72.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-24.00" cy="-72.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="-12.00" cy="-72.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="0.00" cy="-72.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="12.00" cy="-72.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="24.00" cy="-72.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="36.00" cy="-72.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="48.00" cy="-72.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="60.00" cy="-72.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="72.00" cy="-72.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="84.00" cy="-72.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="96.00" cy="-72.00" r="1.54" fill="#c9a6ff"/>
+<circle cx="108.00" cy="-72.00" r="1.54" fill="#c9a6ff"/>
+</svg>

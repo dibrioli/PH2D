@@ -161,12 +161,46 @@ impl App {
                     // `begin_transform` congelar a foto perguntaria a uma peça e
                     // responderia sobre outra. ⚠️ `false` NÃO é recusa — sem alça
                     // o transform corre livre, que é o gesto modal de sempre.
-                    scene.gizmo_grab(pos.0, pos.1);
+                    let na_alca = scene.gizmo_grab(pos.0, pos.1);
                     // ⚠️ **MIRAR VEM ANTES DE COMEÇAR**, a mesma ordem (e o
                     // mesmo motivo) do traço logo abaixo: o `begin_transform`
                     // congela a foto da malha ATIVA, e mirar depois faria a
                     // sessão descrever a peça anterior.
-                    scene.aim(pos.0, pos.1);
+                    let no_barro = scene.aim(pos.0, pos.1);
+                    // ⛔⛔⛔ **REPORT DO ENIO, 2026-09-08:** *«com as ferramentas
+                    // de transformação ativadas anulo a rot do canvas. isso não
+                    // pode acontecer.»*
+                    //
+                    // ⚠️ **Ele está certo, e o defeito é PRÉ-EXISTENTE — a wave do
+                    // gizmo só o tornou visível.** Este braço tomava o botão
+                    // esquerdo SEM PERGUNTAR se o raio acertou alguma coisa,
+                    // então com o transform armado o gesto mais comum do mundo —
+                    // *arrastar no vazio para girar a peça* — deixava de existir.
+                    //
+                    // ⚠️⚠️ **O `aim` já declarava esta lei no próprio doc**:
+                    // *«`false` se o raio não achou nada (e aí o botão vira
+                    // órbita, **como em todo gesto**)»*. Era «todo gesto» menos
+                    // este. *Uma porta que documenta a regra e um chamador que
+                    // não a honra é a forma mais barata de um defeito ficar anos
+                    // à vista de toda a gente.*
+                    //
+                    // ⚠️ **A alça vem PRIMEIRO na condição, e é o que torna o
+                    // gizmo alcançável fora da peça:** a ponta de uma seta
+                    // espeta-se no vazio, e ali não há barro nenhum a acertar.
+                    //
+                    // ⛔ **A cerca que a nota deste braço levantava dissolveu-se:**
+                    // ela dizia que um botão que *«às vezes transforma e às vezes
+                    // gira a câmera — conforme o que estava sob o cursor»* seria
+                    // o mesmo gesto com dois sentidos. Isso valia enquanto não
+                    // houvesse **nada na tela** a dizer o que está sob o cursor;
+                    // com as alças desenhadas, o que era ambiguidade passou a ser
+                    // uma coisa que se vê. ⇒ §0.0: *quem move o número que
+                    // tornava a nota verdadeira tem de reconferir a nota.*
+                    if !na_alca && !no_barro {
+                        scene.drag = Some(Drag::Orbit);
+                        scene.last = pos;
+                        return true;
+                    }
                     if scene.begin_transform(pos.0, pos.1) {
                         scene.drag = Some(Drag::Transform);
                     } else {

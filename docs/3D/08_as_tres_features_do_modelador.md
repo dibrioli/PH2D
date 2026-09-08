@@ -100,7 +100,7 @@ livre e exige o valor exacto.
 
 ## §3 — Os quatro viewports (`a3c54ecd2`)
 
-`Ctrl` + crase abre e fecha. Topo · direita · frente · a vista do artista, com
+`Ctrl+Alt+Q` abre e fecha — a MESMA tecla do módulo vizinho (§7-bis). Topo · direita · frente · a vista do artista, com
 o artista no canto de **baixo à direita** (a disposição do Blender: é onde a mão
 dele já está). Cada quadrante tem a sua câmera; o gesto corre na **activa**.
 
@@ -287,3 +287,76 @@ foi `bash scripts/cleanroom-sweep.sh … 2>&1 | tail -2`, e **o `tail` destruiu 
 código de saída** — a linha seguinte da cadeia correu como se estivesse verde. É
 exactamente o que o `CLAUDE.md` §2 avisa. *Um `tail` é uma JANELA, nunca um
 veredito.*
+
+---
+
+## §7-bis — ⛔⛔⛔ O SEGUNDO REPORT DO MESMO DIA, e os dois defeitos eram meus
+
+> *«o atalho das 4 viewports não funciona. E já existia um atalho para isso, se
+> não me engano Ctrl+Alt+Q.»*
+> *«com as ferramentas de transformação ativadas anulo a rot do canvas. isso não
+> pode acontecer.»*
+
+### (a) A tecla estava MORTA — e o meu próprio gate não a viu
+
+O `sculpt3d_key` tem um **catch-all**:
+
+```rust
+if ctrl {
+    if code != K::KeyZ { return false; }   // ← daqui para baixo, Ctrl+ é dele
+    …
+}
+```
+
+Ele existe por um bom motivo (sem ele um `Ctrl+1` dispararia o verbo do dígito
+`1`), e o preço é que **todo braço que exija `ctrl` e venha depois dele está
+morto**. O meu `Ctrl` + crase vinha depois. ⚠️ **E levou junto o
+`Ctrl+Numpad1/3/7`** — metade das vistas nomeadas —, sem um warning.
+
+⛔⛔ **O gate que escrevi nesse mesmo dia contra esta família não o apanhou.** Ele
+pergunta *«duas teclas iguais?»*, e a lei verdadeira é *«esta tecla é
+ALCANÇÁVEL?»* — duas claims é **uma** das formas de uma ficar inalcançável; um
+`return` a montante é outra, e a primeira régua é cega à segunda. *Uma régua que
+mede um caso de uma família lê-se como se medisse a família.*
+
+⇒ gate novo, `nenhum_braco_de_tecla_vive_debaixo_de_um_catch_all_do_mesmo_modificador`.
+Mutação (repor a tecla debaixo do catch-all): **morta**, com a linha exacta.
+
+### E a CURA da tecla não foi reposicioná-la
+
+**O Enio tem razão na segunda metade também: o atalho já existia.** O
+`field3d_quad_key` faz exactamente isto para o canvas vizinho, com a tecla do
+Blender (*Toggle Quad View*). Ter duas gramáticas para *«dividir a janela 3D»*
+nos dois módulos do mesmo app é a memória de dedo partida ao meio.
+
+⇒ `App::sculpt3d_quad_key`, espelho do vizinho à letra — incluindo a lei dos
+**três modificadores exigidos por nome** (um `Ctrl+Alt+Shift+Q` é de outra
+pessoa) e a guarda de ponteiro. ⚠️ Ela mora **fora** do `sculpt3d_key`, no
+despacho, e é isso que a mantém viva.
+
+### (b) Armar o transform apagava a órbita — e é PRÉ-EXISTENTE
+
+O braço do transform tomava o botão esquerdo **sem perguntar se o raio acertou
+alguma coisa**. Com a ferramenta armada, o gesto mais comum do mundo —
+*arrastar no vazio para girar a peça* — deixava de existir.
+
+⚠️⚠️ **O `Sculpt3dScene::aim` já declarava a lei no próprio doc:** *«`false` se o
+raio não achou nada (e aí o botão vira órbita, **como em todo gesto**)»*. Era
+«todo gesto» **menos este**. *Uma porta que documenta a regra e um chamador que
+não a honra é a forma mais barata de um defeito ficar à vista de toda a gente.*
+
+⛔ **E a cerca que o justificava dissolveu-se com a wave do gizmo.** A nota
+daquele braço dizia que um botão que *«às vezes transforma e às vezes gira a
+câmera — conforme o que estava sob o cursor»* seria o mesmo gesto com dois
+sentidos. Isso valia enquanto não houvesse **nada na tela** a dizer o que está
+sob o cursor; com as alças desenhadas, o que era ambiguidade passou a ser uma
+coisa que se vê. ⇒ §0.0 outra vez.
+
+⚠️ **A ALÇA é perguntada primeiro**, e não é ordem arbitrária: a ponta de uma
+seta espeta-se no **vazio**, e perguntar pelo barro antes tornaria essa alça
+inalcançável.
+
+⏳ **O FILTRO fica como está, e é decisão declarada**: com ele armado, arrastar
+no vazio continua a filtrar. Um filtro age na peça **inteira** e a posição do
+dedo só importa para a âncora do aperto — exigir-lhe barro por baixo tiraria um
+gesto que funciona. O gatilho para rever é o dono reportar o mesmo sobre ele.

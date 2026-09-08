@@ -9,6 +9,7 @@
 //! o que estas teclas tocam é a cena, e um método obrigaria a re-emprestá-la —
 //! quem já a tem na mão passa-a.
 
+use crate::app_state::App;
 use crate::sculpt3d::Sculpt3dScene;
 
 /// As teclas da CÂMERA. `true` se consumiu.
@@ -17,44 +18,6 @@ pub(crate) fn camera_key(
     code: winit::keyboard::KeyCode,
     ctrl: bool,
 ) -> bool {
-    use winit::keyboard::KeyCode as K;
-    // ⭐⭐⭐ **ABRE E FECHA OS QUATRO VIEWPORTS** (2026-09-08).
-    //
-    // ⚠️ **`Ctrl` + CRASE, e o `Ctrl` não é enfeite:** a crase **sozinha já
-    // tem dono neste mesmo ficheiro** — ela abre e fecha o painel (linha ~63,
-    // e o roteiro da cena `=37` manda o artista usá-la). A primeira redacção
-    // desta wave escreveu `K::Backquote` sem modificador e ficou **morta por
-    // ordem de leitura**: o braço do painel devolve `true` antes. *Um atalho
-    // que compila e nunca corre é o defeito mais barato de escrever e o mais
-    // caro de encontrar.*
-    //
-    // ⚠️ **A crase é a família certa**, e a escolha foi por eliminação: os
-    // dez dígitos são verbos, `G`/`H`/`T`/`S`/`A` verbos, `C`/`I`/`B`/`N`
-    // máscara, `K`/`J`/`V`/`O`/`P`/`U` topologia, `X`/`Y`/`Z` o espelho,
-    // `Q`/`E`/`R`/`F` a luz, `D` a doação e o `Numpad` as vistas.
-    //
-    // ⛔ **O `Ctrl+Alt+Q` do Blender é inexprimível aqui**: esta porta recebe
-    // `ctrl` e `shift` e **não** recebe o `alt`, e alargá-la mexeria na
-    // assinatura que os outros trinta braços leem.
-    //
-    // ⏳ **A superfície de PAINEL fica aberta e nomeada**: o molde é o
-    // `SCULPT3D_WIREFRAME` (um interruptor de VISTA, que não pergunta nada ao
-    // motor), e ela custa seis sítios — o campo no `Sculpt3dUi`, a entrada na
-    // `TOGGLES`, a row no `populate`, a chave de i18n, o `apply_ui` e o
-    // `panel_snapshot`. O gatilho é o primeiro report do dono a dizer que não
-    // achou a divisão.
-    if code == K::Backquote && ctrl {
-        let aberta = scene.toggle_split();
-        eprintln!(
-            "[sculpt3d] viewports: {}",
-            if aberta {
-                "QUATRO (topo, direita, frente, artista)"
-            } else {
-                "UMA"
-            }
-        );
-        return true;
-    }
     // ⭐⭐ **AS SEIS VISTAS NOMEADAS** (2026-09-08) — `Numpad1` frente · `Numpad3` direita ·
     // `Numpad7` topo, e **`Ctrl`** dá a oposta.
     //
@@ -70,4 +33,62 @@ pub(crate) fn camera_key(
         return true;
     }
     false
+}
+
+impl App {
+    /// ⭐⭐⭐ **`Ctrl+Alt+Q` ABRE E FECHA A DIVISÃO** — a MESMA tecla do módulo de
+    /// modelagem, que é a do Blender para o *Toggle Quad View*.
+    ///
+    /// ⛔⛔ **REPORT DO ENIO, 2026-09-08:** *«o atalho das 4 viewports não
+    /// funciona. E já existia um atalho para isso, se não me engano
+    /// Ctrl+Alt+Q.»* — **as duas metades certas, e a segunda explica a
+    /// primeira.**
+    ///
+    /// A tecla que shipou era `Ctrl` + crase, e ela estava **morta**: o
+    /// `sculpt3d_key` tem um **catch-all** (`if ctrl { if code != KeyZ { return
+    /// false } }`) que devolve `false` para todo `Ctrl+` que não seja o desfazer,
+    /// e o meu braço vinha **depois** dele. ⚠️ *O meu próprio gate contra teclas
+    /// mortas não o viu: ele compara arms `if code == K::…` entre si, e o que
+    /// sombreia aqui é um bloco de modificador que engole o espaço inteiro.*
+    ///
+    /// ⇒ e a cura da tecla **não é reposicionar a minha**: é usar a que já
+    /// existe. O `field3d_quad_key` faz exactamente isto para o canvas vizinho,
+    /// e ter duas gramáticas para *«dividir a janela 3D»* nos dois módulos do
+    /// mesmo app é a memória de dedo partida ao meio.
+    ///
+    /// ⚠️ **Os três modificadores exigidos POR NOME**, e não «pelo menos estes»:
+    /// um `Ctrl+Alt+Shift+Q` é de outra pessoa, e engoli-lo é sequestro. Lei
+    /// copiada do vizinho, à letra.
+    ///
+    /// ⚠️ **Ela mora FORA do `sculpt3d_key`**, e é o que a mantém viva: dali ela
+    /// seria outra vez sombreada pelo catch-all. O despacho chama-a antes.
+    pub(crate) fn sculpt3d_quad_key(&mut self, code: winit::keyboard::KeyCode) -> bool {
+        if code != winit::keyboard::KeyCode::KeyQ
+            || !self.modifiers.control_key()
+            || !self.modifiers.alt_key()
+            || self.modifiers.shift_key()
+            || self.modifiers.super_key()
+        {
+            return false;
+        }
+        let pos = self.last_pointer;
+        let Some(scene) = self.gfx.as_mut().and_then(|g| g.sculpt3d.as_mut()) else {
+            return false;
+        };
+        // ⚠️ **Mesma guarda de ponteiro das irmãs do vizinho**: sem barro na tela,
+        // ou com o cursor fora do canvas 3D, a tecla é de outra pessoa.
+        if !scene.clay_on_screen() || scene.vp_at(pos.0, pos.1).is_none() {
+            return false;
+        }
+        let aberta = scene.toggle_split();
+        eprintln!(
+            "[sculpt3d] viewports: {}",
+            if aberta {
+                "QUATRO (topo, direita, frente, artista)"
+            } else {
+                "UMA"
+            }
+        );
+        true
+    }
 }

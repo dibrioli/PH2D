@@ -329,3 +329,83 @@ fn todo_pen_down_de_transform_pergunta_ao_gizmo_primeiro() {
          foto pergunta a uma peca e responde sobre outra"
     );
 }
+
+/// ⭐⭐⭐ **COM O TRANSFORM ARMADO, ARRASTAR NO VAZIO AINDA GIRA A CÂMERA.**
+///
+/// ⛔⛔ **REPORT DO ENIO, 2026-09-08:** *«com as ferramentas de transformação
+/// ativadas anulo a rot do canvas. isso não pode acontecer.»*
+///
+/// O defeito é **pré-existente** — a wave do gizmo só o tornou visível: o braço
+/// do transform tomava o botão esquerdo **sem perguntar se o raio acertou alguma
+/// coisa**, então armar a ferramenta apagava o gesto mais comum do mundo,
+/// *arrastar no vazio para girar a peça*.
+///
+/// ⚠️⚠️ **O `aim` já declarava a lei no próprio doc** — *«`false` se o raio não
+/// achou nada (e aí o botão vira órbita, como em todo gesto)»* — e era «todo
+/// gesto» menos este.
+///
+/// ⚠️ **TRÊS metades, e nenhuma sozinha é o gate.** Sem a (2) bastaria desarmar
+/// o transform para passar; sem a (3) bastaria devolver o vazio a toda a gente,
+/// e a ferramenta deixaria de funcionar.
+#[test]
+fn com_o_transform_armado_arrastar_no_vazio_ainda_gira_a_camera() {
+    let s = cena_ou_sai!(TransformKind::Move);
+    // Um pixel do canvas onde não há peça nem alça: a quina.
+    let vazio = (6.0, 6.0);
+    assert!(
+        s.pick_active(vazio.0, vazio.1).is_none() && s.gizmo_pick(vazio.0, vazio.1).is_none(),
+        "a fixture escolheu um pixel que TEM peca ou alca -- ela nao mede o vazio"
+    );
+
+    // ⚠️ **A decisão do pen-down NÃO é alcançável daqui** (ela vive no `App`,
+    // que precisa de uma surface real) — quem a afirma é o censo irmão abaixo.
+    // O que esta metade mede é a outra: que a ferramenta continua a funcionar
+    // sobre a peça depois da cura. *Sem ela, devolver o vazio a toda a gente
+    // passaria — e a ferramenta deixaria de existir.*
+
+    // (2) — SOBRE A PEÇA a ferramenta continua a funcionar.
+    let mut t = cena_ou_sai!(TransformKind::Move);
+    let (cx, cy) = (450.0, 350.0);
+    assert!(
+        t.pick_active(cx, cy).is_some(),
+        "a fixture nao acerta a peca no centro -- ela nao mede o caso vivo"
+    );
+    let sobre = arrasta(&mut t, (cx, cy), (cx + 120.0, cy));
+    println!("sobre a peca: {sobre:?}");
+    assert!(
+        sobre[0].abs() + sobre[1].abs() + sobre[2].abs() > 1e-4,
+        "com o transform armado, arrastar SOBRE a peca deixou de a mover ({sobre:?}) -- a cura do \
+         vazio levou a ferramenta com ela"
+    );
+}
+
+/// ⭐⭐⭐ **E O PEN-DOWN DECIDE ASSIM** — o censo da ordem, que é o que uma cena
+/// não alcança.
+///
+/// ⚠️ **De FONTE porque a decisão vive no `App`**, que precisa de uma surface de
+/// janela real. O que se afirma é que o braço do transform **pergunta as duas
+/// coisas** (a alça e o barro) e **desvia para a órbita** quando as duas falham
+/// — e que a alça vem primeiro, senão a ponta de uma seta espetada no vazio
+/// seria inalcançável.
+#[test]
+fn o_pen_down_do_transform_desvia_para_a_orbita_quando_erra_tudo() {
+    let fonte = include_str!("sculpt3d_input_down.rs");
+    let i = fonte
+        .find("if scene.transform_arm().is_some() {")
+        .expect("controlo positivo: o braco do transform mudou de forma e este censo varreria o vazio");
+    let braco = &fonte[i..];
+    let fim = braco.find("scene.brush.invert").unwrap_or(braco.len());
+    let braco = &braco[..fim];
+    let alca = braco.find("gizmo_grab(").expect("o braco tem de perguntar pela ALCA");
+    let barro = braco.find("scene.aim(").expect("o braco tem de MIRAR");
+    assert!(
+        alca < barro,
+        "o `gizmo_grab` (byte {alca}) vem depois do `aim` (byte {barro}) -- a ponta de uma seta \
+         espeta-se no VAZIO, e perguntar pelo barro primeiro tornaria essa alca inalcancavel"
+    );
+    assert!(
+        braco.contains("if !na_alca && !no_barro {") && braco.contains("Drag::Orbit"),
+        "o braco do transform nao desvia para a ORBITA quando erra a alca E o barro -- armar a \
+         ferramenta volta a apagar o gesto de girar a peca"
+    );
+}

@@ -109,6 +109,24 @@ impl App {
         let Some(scene) = self.sculpt3d_scene_mut() else {
             return false;
         };
+        // ⭐⭐ **O TECLADO DA CÂMERA** — a divisão em quatro e as seis vistas
+        // nomeadas. Irmão (`#[path]`) pelo tecto de LOC, e o corte é o que a
+        // nota deste módulo já desenhava: aqui *o que a mão escolhe sobre o
+        // BARRO* (o verbo, o nível, a máscara, o espelho), ali *o que ela
+        // escolhe sobre a VISTA*.
+        if crate::sculpt3d_keys_view::camera_key(scene, code, ctrl) {
+            return true;
+        }
+        // ⛔⛔ **O `if ctrl` ABAIXO É UM CATCH-ALL, e é por isso que a câmera vem
+        // ANTES dele** (report do Enio, 2026-09-08: *«o atalho das 4 viewports
+        // não funciona»*). Ele devolve `false` para todo `Ctrl+` que não seja o
+        // desfazer — o que protege os verbos sem modificador de serem
+        // disparados por um `Ctrl+1` — e, na primeira redacção desta wave, matou
+        // o `Ctrl+Numpad1` (a vista OPOSTA) junto com a tecla da divisão.
+        //
+        // ⚠️ *Um bloco de modificador que devolve `false` é dono de todo o espaço
+        // dele a partir daquela linha; quem quiser um atalho ali tem de vir
+        // acima, e nenhum warning o diz.*
         if ctrl {
             if code != K::KeyZ {
                 return false;
@@ -503,14 +521,6 @@ impl App {
                 v.label(),
                 scene.brush.strength
             );
-            return true;
-        }
-        // ⭐⭐ **O TECLADO DA CÂMERA** — a divisão em quatro e as seis vistas
-        // nomeadas. Irmão (`#[path]`) pelo tecto de LOC, e o corte é o que a
-        // nota deste módulo já desenhava: aqui *o que a mão escolhe sobre o
-        // BARRO* (o verbo, o nível, a máscara, o espelho), ali *o que ela
-        // escolhe sobre a VISTA*.
-        if crate::sculpt3d_keys_view::camera_key(scene, code, ctrl) {
             return true;
         }
         match code {

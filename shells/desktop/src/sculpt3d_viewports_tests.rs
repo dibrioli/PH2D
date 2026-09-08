@@ -449,3 +449,76 @@ fn o_fit_enquadra_para_a_vista_e_nao_para_a_janela() {
          de TRANSBORDAR, e sem essa diferenca este gate nao afirma nada"
     );
 }
+
+/// ⭐⭐⭐ **UM BLOCO DE MODIFICADOR QUE DEVOLVE `false` É DONO DE TUDO ABAIXO
+/// DELE.**
+///
+/// ⛔⛔⛔ **REPORT DO ENIO, 2026-09-08: *«o atalho das 4 viewports não
+/// funciona»* — e o gate irmão desta suíte, escrito no mesmo dia CONTRA esta
+/// família de defeito, não o viu.**
+///
+/// O `sculpt3d_key` tem um catch-all:
+///
+/// ```text
+/// if ctrl {
+///     if code != K::KeyZ { return false; }   // ← daqui para baixo, Ctrl+ é dele
+///     …
+/// }
+/// ```
+///
+/// Ele existe por um bom motivo — sem ele um `Ctrl+1` dispararia o verbo do
+/// dígito `1` —, e o preço é que **todo braço que exija `ctrl` e venha depois
+/// dele está morto**. Foi o que matou a tecla da divisão *e* o `Ctrl+Numpad1`
+/// (a vista oposta), sem um warning e sem o outro gate se mexer.
+///
+/// ⚠️⚠️ **O gate irmão pergunta *«duas teclas iguais?»*, e a lei verdadeira é
+/// *«esta tecla é ALCANÇÁVEL?»*.** Duas claims da mesma tecla é só **uma** das
+/// formas de uma ficar inalcançável; um `return` a montante é outra, e a
+/// primeira régua é cega à segunda. *Uma régua que mede um caso de uma família
+/// lê-se como se medisse a família.*
+#[test]
+fn nenhum_braco_de_tecla_vive_debaixo_de_um_catch_all_do_mesmo_modificador() {
+    let fonte = include_str!("sculpt3d_keys.rs");
+    // Onde cada modificador passa a ser propriedade de um catch-all: um bloco
+    // `if <mod> {` cujo corpo contém um `return false;` sem condição de tecla.
+    let mut dono: Vec<(&str, usize)> = Vec::new();
+    for m in ["ctrl", "shift"] {
+        let abre = format!("if {m} {{");
+        let mut de = 0usize;
+        while let Some(i) = fonte[de..].find(&abre) {
+            let at = de + i;
+            // O corpo até ao fecho na mesma indentação — chega olhar as ~12
+            // linhas seguintes, que é onde um catch-all mora.
+            let corpo: String = fonte[at..].lines().take(12).collect::<Vec<_>>().join("\n");
+            if corpo.contains("return false;") {
+                dono.push((m, at));
+            }
+            de = at + abre.len();
+        }
+    }
+    assert!(
+        !dono.is_empty(),
+        "o censo nao achou catch-all nenhum -- ou o ficheiro mudou de forma, ou ele ficou cego \
+         (e um censo cego le^-se como aprovado)"
+    );
+    let mut mortos = Vec::new();
+    for (linha_n, linha) in fonte.lines().enumerate() {
+        let l = linha.trim();
+        if l.starts_with("//") || !l.starts_with("if code == K::") {
+            continue;
+        }
+        let at = fonte.find(linha).unwrap_or(0);
+        for (m, dono_at) in &dono {
+            if l.contains(&format!("&& {m}")) && at > *dono_at {
+                mortos.push(format!("linha {}: `{l}`", linha_n + 1));
+            }
+        }
+    }
+    println!("catch-alls: {dono:?}");
+    assert!(
+        mortos.is_empty(),
+        "{mortos:?} -- estes bracos exigem um modificador cujo catch-all ja' devolveu `false` \
+         acima deles: eles COMPILAM e NUNCA correm. Ou o braco sobe, ou o atalho sai do \
+         `sculpt3d_key` (foi o que a tecla da divisao fez, para o despacho)"
+    );
+}

@@ -56,6 +56,7 @@ fn registry() -> NodeRegistry {
     ph2d_node_motion_twist::register(&mut reg).unwrap();
     ph2d_node_motion_spherize::register(&mut reg).unwrap();
     ph2d_node_motion_four_point_warp::register(&mut reg).unwrap();
+    ph2d_node_motion_bezier_warp::register(&mut reg).unwrap();
     ph2d_node_motion_kaleidoscope::register(&mut reg).unwrap();
     ph2d_node_motion_move::register(&mut reg).unwrap();
     ph2d_node_motion_mirror::register(&mut reg).unwrap();
@@ -856,7 +857,11 @@ fn the_kaleidoscope_centroid_pivot_rides_the_layout_on_the_device() {
     let cpu = cook_cpu(&reg, &g, out);
     let dev = cook_gpu(&gpu, &reg, &g, out);
     assert_eq!(cpu.len(), KAL_SIDE * KAL_SIDE * 5, "n·segments");
-    compare("kaleidoscope pivot = Centroid, layout deslocado", &cpu, &dev);
+    compare(
+        "kaleidoscope pivot = Centroid, layout deslocado",
+        &cpu,
+        &dev,
+    );
 }
 
 /// ⭐⭐ **O PIVÔ-CENTROIDE DO `motion.bend` CHEGA AO DISPOSITIVO** (ciclo 3, W1 — doc 106).
@@ -1032,11 +1037,9 @@ fn the_mirror_reaches_the_device() {
 #[test]
 fn the_mirror_recuses_the_two_knobs_the_gather_cannot_serve() {
     let reg = registry();
-    let k = ph2d_nodegraph::gpu::KernelResolver::gpu_kernel(
-        &reg,
-        ph2d_node_motion_mirror::MANIFEST.id,
-    )
-    .expect("o espelho tem kernel");
+    let k =
+        ph2d_nodegraph::gpu::KernelResolver::gpu_kernel(&reg, ph2d_node_motion_mirror::MANIFEST.id)
+            .expect("o espelho tem kernel");
     let applicable = k.applicable.expect("ele declara o predicado");
     let p = |reindex: f32, flip: f32| {
         move |name: &str| match name {
@@ -1045,7 +1048,164 @@ fn the_mirror_recuses_the_two_knobs_the_gather_cannot_serve() {
             _ => 0.0,
         }
     };
-    assert!(applicable(&p(0.0, 0.0)), "o caminho de omissao vai ao device");
+    assert!(
+        applicable(&p(0.0, 0.0)),
+        "o caminho de omissao vai ao device"
+    );
     assert!(!applicable(&p(1.0, 0.0)), "o reindex recua");
     assert!(!applicable(&p(0.0, 1.0)), "o flip_rot recua");
+}
+
+// ---------------------------------------------------------------------------
+// `motion.bezier_warp` — ciclo 3, W5a (doc 106 §3)
+// ---------------------------------------------------------------------------
+
+/// Uma grelha, deformada pela fronteira curva, e a saída. `warp` é um `value.lfo`
+/// constante (o caso autorado reproduzível), como no irmão.
+///
+/// `off` é `[tl, tr, br, bl]` seguido das oito tangentes na ordem
+/// `top_a, top_b, right_a, right_b, bottom_a, bottom_b, left_a, left_b` — 24 números,
+/// a superfície inteira do nó.
+fn bezier_chain(reg: &NodeRegistry, warp: f32, off: [f32; 24]) -> (Graph, NodeId) {
+    let mut g = Graph::new();
+    let grid = g.add_node("motion.grid");
+    g.set_param(grid, "rows", SIDE);
+    g.set_param(grid, "cols", SIDE);
+    g.set_param(grid, "gap_x", 0.35);
+    g.set_param(grid, "gap_y", 0.25);
+    let bw = g.add_node("motion.bezier_warp");
+    for (k, name) in BEZIER_PARAMS.iter().enumerate() {
+        g.set_param(bw, *name, off[k]);
+    }
+    let amt = g.add_node("value.lfo");
+    g.set_param(amt, "amplitude", 0.0);
+    g.set_param(amt, "offset", warp);
+    let out = g.add_node("motion.output");
+    for (from, to, port) in [(grid, bw, 0u16), (amt, bw, 1), (bw, out, 0)] {
+        g.connect(Edge {
+            from: (from, 0),
+            to: (to, port),
+            delayed: false,
+        })
+        .unwrap();
+    }
+    g.validate(reg).expect("well-typed");
+    (g, out)
+}
+
+/// Os 24 nomes, na ordem em que [`bezier_chain`] os consome.
+///
+/// ⚠️ **Derivada do MANIFESTO, nunca escrita à mão** — os params deste nó são
+/// exactamente os 24 offsets, e uma lista literal aqui envelheceria em silêncio no dia
+/// em que um deles fosse renomeado (o `set_param` de um nome desconhecido não é um
+/// erro: é um param que ninguém lê).
+static BEZIER_PARAMS: std::sync::LazyLock<Vec<&'static str>> = std::sync::LazyLock::new(|| {
+    ph2d_node_motion_bezier_warp::MANIFEST
+        .params
+        .iter()
+        .map(|p| p.name)
+        .collect()
+});
+
+/// Uma fronteira com as quatro bordas realmente curvas — o caso que o patch de Coons
+/// existe para servir, e o único em que ele difere de toda homografia.
+const BEZIER_BILLOW: [f32; 24] = [
+    // cantos: TL, TR, BR, BL
+    -0.4, 0.3, 0.5, 0.2, 0.3, -0.4, -0.2, -0.5, // tangentes TOP (a, b)
+    0.1, 1.2, -0.1, 1.4, // RIGHT
+    1.1, 0.2, 1.3, -0.2, // BOTTOM
+    -0.1, -1.2, 0.1, -1.4, // LEFT
+    -1.1, -0.2, -1.3, 0.2,
+];
+
+/// **A cadeia com a fronteira curva é reivindicada INTEIRA pelo planeador** —
+/// device-free, logo corre em toda lane.
+///
+/// ⚠️ **Esta é a metade que nenhum gate numérico apanha.** Sem o kernel registado o nó
+/// continua a cozinhar **certo** na CPU — a imagem fica correcta e a paridade abaixo
+/// compara a CPU consigo mesma —, e a única coisa que muda é o `is_fully_gpu()`. Foi
+/// exactamente essa a razão de o `motion.bezier_warp` ter shipado `CPU-only` durante um
+/// ciclo inteiro sem nenhum vermelho: *um nó que cai para a CPU no meio de uma cadeia
+/// custa o DISPOSITIVO todo (`50,9×`, doc 98) e não custa um pixel.*
+#[test]
+fn the_bezier_warp_reaches_the_device() {
+    let reg = registry();
+    let (g, out) = bezier_chain(&reg, 1.0, BEZIER_BILLOW);
+    let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, out);
+    assert!(
+        plan.is_fully_gpu(),
+        "a cadeia `grid → bezier_warp → output` tem de ser reivindicada inteira — \
+         a fronteira curva é quatro reduções de caixa envolvente mais um patch \
+         POLINOMIAL, a mesma forma que o `motion.four_point_warp` já corre"
+    );
+}
+
+/// **O `motion.bezier_warp` no dispositivo concorda com o patch de Coons da CPU.**
+///
+/// ⚠️ **A caixa envolvente é `Min`/`Max`, exacta sobre floats**, então a redução não
+/// carrega ε nenhum: tudo o que este gate mede é a aritmética do patch — quatro cúbicas
+/// de Bernstein e a mistura bilinear —, que um dispositivo pode contrair em `fma` onde
+/// o hospedeiro não contrai. A barra é a [`EPS_POS`] da família.
+///
+/// ⚠️ **O caso NEUTRO está aqui de propósito e não é redundante:** ele é o nó
+/// recém-largado (os 24 offsets a zero), e é o ÚNICO caso em que os dois lados correm
+/// ramos diferentes do corpo — o atalho da identidade. Sem ele, uma divergência de
+/// `-0.0` no default do nó ficaria por medir para sempre.
+#[test]
+#[ignore = "requires a GPU adapter"]
+fn the_bezier_warp_deformer_matches_the_cpu_within_epsilon() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    // Um lado só arqueado: as tangentes de TOP saem dos terços, o resto fica recto.
+    let mut one_edge = [0.0f32; 24];
+    one_edge[9] = 1.5; // top_a_dy
+    one_edge[11] = 1.5; // top_b_dy
+    let cases: [(&str, f32, [f32; 24]); 4] = [
+        ("neutro (o nó recém-largado)", 1.0, [0.0; 24]),
+        ("uma borda arqueada", 1.0, one_edge),
+        ("as quatro bordas", 1.0, BEZIER_BILLOW),
+        ("meio warp", 0.5, BEZIER_BILLOW),
+    ];
+    for (label, warp, off) in cases {
+        let (g, out) = bezier_chain(&reg, warp, off);
+        let cpu = cook_cpu(&reg, &g, out);
+        let dev = cook_gpu(&gpu, &reg, &g, out);
+        compare(&format!("bezier_warp {label}"), &cpu, &dev);
+    }
+}
+
+/// **E o deformador DEFORMA** — o controlo que impede o gate acima de ser satisfeito
+/// por dois caminhos que ambos não fazem nada.
+///
+/// ⚠️ A armadilha aqui é concreta e já mordeu esta família: se as quatro reduções
+/// ficassem presas na identidade do operador (`0.0`), a caixa seria um ponto, `w` e `h`
+/// cairiam abaixo de `EPS` e **os dois lados** devolveriam o layout intacto — em
+/// perfeito acordo, sobre um nó que nunca correu. Isto mede a excursão contra o mesmo
+/// grafo no neutro.
+#[test]
+fn the_curved_boundary_actually_moves_the_layout() {
+    let reg = registry();
+    let (flat, out_flat) = bezier_chain(&reg, 1.0, [0.0; 24]);
+    let (bent, out_bent) = bezier_chain(&reg, 1.0, BEZIER_BILLOW);
+    let a = cook_cpu(&reg, &flat, out_flat);
+    let b = cook_cpu(&reg, &bent, out_bent);
+    assert_eq!(a.len(), b.len(), "a contagem não muda");
+    let worst = a
+        .iter()
+        .zip(&b)
+        .map(|(p, q)| {
+            (p.world_pos[0] - q.world_pos[0])
+                .abs()
+                .max((p.world_pos[1] - q.world_pos[1]).abs())
+        })
+        .fold(0.0f32, f32::max);
+    assert!(
+        worst > 0.2,
+        "a fronteira curva tem de mover o layout — pior excursão {worst}, e um valor \
+         perto de zero significa que o patch não correu (caixa degenerada, redução \
+         morta) e que a paridade acima compara duas identidades"
+    );
 }

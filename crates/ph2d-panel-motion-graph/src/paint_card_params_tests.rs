@@ -295,3 +295,117 @@ fn clicking_a_card_swatch_opens_the_shared_colour_picker() {
         "o selector tem de abrir NA COR da amostra"
     );
 }
+
+// ---------------------------------------------------------------------------------------------
+// ⛔⛔ O RÓTULO CABE NA COLUNA EM QUE ELE É PINTADO — ou é cortado sem ninguém saber
+// ---------------------------------------------------------------------------------------------
+
+/// Um cartão com UMA row, o rótulo e o valor dados — a fixtura da pergunta *«isto cabe?»*.
+fn one_row(label: &'static str, value: f32) -> GraphNodeView {
+    let mut n = node(0);
+    n.params = vec![CardParam::from_hint(
+        ParamUiHint {
+            param: "p",
+            label,
+            // A faixa dos dois warps: ±10 unidades de mundo, que é onde o valor fica mais
+            // largo (`-10.00`) e portanto onde o rótulo tem menos coluna.
+            min: -10.0,
+            max: 10.0,
+            step: 0.01,
+            widget: ParamWidget::Slider,
+        },
+        value,
+    )];
+    n
+}
+
+/// Quantos glifos uma row com este rótulo pinta, a `zoom 1`.
+fn glyphs_of(label: &'static str, value: f32) -> u32 {
+    set_current_motion_graph(Some(GraphViewSnapshot {
+        level: None,
+        breadcrumb: Vec::new(),
+        nodes: vec![one_row(label, value)],
+        edges: Vec::new(),
+        backdrops: Vec::new(),
+        probe: None,
+        now: 0.0,
+    }));
+    let viewport = Rect::new(0.0, 0.0, W, H);
+    let mut layout = HeroLayout::for_viewport(viewport);
+    layout.motion_graph = viewport;
+    let mut host = ph2d_ui_testkit::MockPanelHost::with_panel::<MotionGraphPanel>();
+    let mut state = MotionGraphPanelState {
+        view: ViewState {
+            zoom: 1.0,
+            ..ViewState::default()
+        },
+        fitted: true,
+        ..MotionGraphPanelState::default()
+    };
+    let (glyphs, _) =
+        host.paint_and_count_geometry_with_layout::<MotionGraphPanel>(&mut state, layout, viewport);
+    set_current_motion_graph(None);
+    glyphs
+}
+
+/// ⭐⭐ **NENHUM RÓTULO DOS DOIS *WARPS* É CORTADO NO CARTÃO** — e o oráculo é a CENA, não a
+/// aritmética da coluna.
+///
+/// ⚠️ **Por que este gate existe:** o painel lateral SAIU (ciclo 3), então o cartão é a única
+/// superfície onde estes nomes aparecem — e ele tem `190 px` contra os `~35 caracteres` que a
+/// row do painel tinha. Um rótulo que não cabe **não dá erro**: o elidor corta-o e o artista lê
+/// `Bottom-Rig…`, que é indistinguível de `Bottom-Lef…` na coluna a seguir. *Foi assim que os
+/// números dos cartões shiparam como `0....` em 2026-09-05* — medir num sítio e pintar noutro.
+///
+/// ⚠️ **A régua é a contagem de GLIFOS, e ela mede-se por DIFERENÇA.** ⛔ A primeira redacção
+/// comparava a contagem ABSOLUTA com `rótulo + valor` e leu `23` contra `20`: um cartão pinta
+/// também o **título** e os **rótulos dos pinos**, e um oráculo que os ignora acusa como
+/// «cortado» um rótulo que está inteiro — *a régua errava para o lado que fabrica dívida*. A
+/// pergunta certa é **quantos glifos o RÓTULO acrescenta**, e a resposta é a mesma cena pintada
+/// duas vezes, com e sem ele: tudo o resto cancela-se. Se o rótulo passar pelo elidor, os
+/// caracteres cortados desaparecem e entra **um** `…` no lugar de vários, logo a diferença CAI.
+///
+/// ⚠️ **O controle é o rótulo IMPOSSÍVEL**: sem ele, um pintor que deixasse de escrever o
+/// rótulo devolveria menos glifos em todos os casos e a asserção `>=` ficaria... vermelha, sim
+/// — mas um pintor que deixasse de ELIDIR passaria despercebido. O caso longo prova que a
+/// elisão está viva e que este gate a vê.
+#[test]
+fn no_warp_label_is_cut_on_the_card() {
+    // `-10.00` é o valor mais largo da faixa dos dois nós — o pior caso para o rótulo.
+    const VALOR: f32 = -10.0;
+
+    // Os rótulos mais LONGOS dos dois warps (o vocabulário que o ciclo 3 unificou) e dois
+    // curtos das tangentes — o par que mostra que o gate não passa só por ser generoso.
+    // O cartão sem rótulo nenhum — o título, os pinos e o valor, que é o que se cancela.
+    let base = glyphs_of("", VALOR);
+    for label in [
+        "Bottom-Right X",
+        "Bottom-Left Y",
+        "Top-Right Y",
+        "Top-Left X",
+        "In X",
+        "Out Y",
+    ] {
+        let esperado = u32::try_from(label.chars().count()).unwrap();
+        let vistos = glyphs_of(label, VALOR).saturating_sub(base);
+        assert_eq!(
+            vistos, esperado,
+            "o rótulo `{label}` é CORTADO no cartão: ele acrescenta {vistos} glifos onde os \
+             seus {esperado} caracteres cabiam. Um rótulo elidido lê-se como o vizinho dele, \
+             e no cartão não há painel lateral onde ver o nome inteiro"
+        );
+    }
+
+    // ⚠️ **Controle: um rótulo que NÃO pode caber tem de ser cortado.** Sem isto o gate acima
+    // passaria sobre um pintor que tivesse deixado de elidir — e aí a lei estaria a ser
+    // afirmada por um elidor morto, não honrada por rótulos curtos.
+    let impossivel = "Bottom-Right Tangent Out Horizontal";
+    let cru = u32::try_from(impossivel.chars().count()).unwrap();
+    let cortado = glyphs_of(impossivel, VALOR).saturating_sub(base);
+    assert!(
+        cortado < cru,
+        "o elidor não cortou um rótulo de {} caracteres numa coluna de 190 px — \
+         então o gate acima não está a medir elisão nenhuma",
+        impossivel.chars().count()
+    );
+}

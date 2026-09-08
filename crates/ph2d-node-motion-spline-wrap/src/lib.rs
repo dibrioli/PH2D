@@ -585,6 +585,38 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         MANIFEST.id,
         &[ph2d_node_registry::Coupling::Consumes("falloff")],
     );
+    // ⛔⛔ **E o «CPU-only» acima é uma ETIQUETA, não uma razão — aqui está a razão, com o
+    // preço** (ciclo 3, W5b — a lei nº 1 do protocolo dos ciclos não aceita a etiqueta
+    // sozinha). São DUAS lacunas de substrato, e **nenhuma delas é deste nó**:
+    //
+    // **1. A forma DESENHADA chega pelo canal de externos, e o dispositivo não tem canal.**
+    //    O `eval` lê `ctx.external(&curve_of(nome))` — a polilinha que a shell publica da
+    //    Hierarquia. O sequenciador de GPU não conhece a palavra: `ph2d-gpu-cook` tem **zero**
+    //    ocorrências de `external`, e um `ColumnBinding` só endereça uma coluna de uma PORTA.
+    //    ⚠️ Registar um kernel hoje **não deixaria o nó lento: deixá-lo-ia ERRADO** — o
+    //    dispositivo cairia na cúbica dos oito params e devolveria uma curva plausível, sem
+    //    estouro e sem aviso, enquanto a CPU segue a forma que o artista desenhou.
+    //    ⛔ E a recusa **não é exprimível** pelo mecanismo que o irmão usa: o `applicable` lê
+    //    params `f32`, e *qual forma?* vive no canal de TEXTO (é a mesma assimetria que obrigou
+    //    o `ParamGateText` a existir ao lado do `ParamGate`). O censo
+    //    `an_external_reader_that_reaches_the_device_declares_a_refusal` guarda a fronteira.
+    //
+    // **2. Ele escreve TRÊS colunas, e duas por PRESENÇA.** Com o `follow_rotation` desligado
+    //    o `rot` é **COPIADO** (não reescrito com o mesmo valor), e o `size` idem fora do
+    //    afunilamento — é isso que faz o default byte-idêntico por ESTRUTURA. Uma
+    //    `ColumnBinding` de escrita é incondicional, então um kernel poria `rot` num stream
+    //    que nunca o teve. ⚠️ **É a MESMA lacuna que o `flip_rot` do `motion.mirror` já tem
+    //    nomeada** (W2): falta uma escrita condicionada à PRESENÇA da coluna do template.
+    //
+    // **O preço, MEDIDO** (`motion_deformadores_probe::measure_the_deformer_group`, grelha
+    // 320×320 = 102 400 objectos): o cozimento deste nó não é o custo — o custo é a cadeia
+    // INTEIRA deixar o dispositivo. A auditoria de performance do módulo (doc 98) mediu
+    // **`50,9×`** entre os dois caminhos a 4,19 M objectos, e um nó CPU-only a meio de uma
+    // cadeia paga esse factor por TODOS os nós dela, não só por si.
+    //
+    // ⇒ este nó volta à fila no dia em que o substrato ganhar **um dos dois**: o canal de
+    // externos no dispositivo, ou a escrita condicional à presença. Nenhum dos dois é wave
+    // deste nó.
     Ok(())
 }
 

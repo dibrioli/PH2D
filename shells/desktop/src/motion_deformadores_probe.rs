@@ -146,7 +146,7 @@ fn wire(m: &mut MotionState, from: NodeId, fp: u16, to: NodeId, tp: u16) {
 }
 
 /// Monta `motion.grid(lado × lado) [→ <nó>] → motion.output` e devolve o sink.
-fn build_com(m: &mut MotionState, lado: f32, no: Option<&str>) -> NodeId {
+fn build_com(m: &mut MotionState, lado: f32, no: Option<&str>, aceso: bool) -> NodeId {
     let grid = m.doc.graph.add_node("motion.grid");
     m.doc.graph.set_param(grid, "rows", lado);
     m.doc.graph.set_param(grid, "cols", lado);
@@ -154,6 +154,9 @@ fn build_com(m: &mut MotionState, lado: f32, no: Option<&str>) -> NodeId {
     match no {
         Some(nome) => {
             let d = m.doc.graph.add_node(nome.to_string());
+            if aceso {
+                acordar(m, d, nome);
+            }
             wire(m, grid, 0, d, 0);
             wire(m, d, 0, out, 0);
         }
@@ -162,15 +165,83 @@ fn build_com(m: &mut MotionState, lado: f32, no: Option<&str>) -> NodeId {
     out
 }
 
+/// ⛔⛔ **TIRA O NÓ DO PONTO NEUTRO ANTES DE O CRONOMETRAR.**
+///
+/// ⚠️ **A primeira redacção desta sonda media cada nó nos DEFAULTS dele**, e o
+/// `motion.bezier_warp` denunciou-a assim que chegou ao dispositivo: ele leu **`0,34×` o custo
+/// da grelha sozinha** — *mais rápido que não estar lá* —, porque com os 24 offsets a zero o
+/// `eval` toma o atalho da identidade e devolve o stream clonado. A tabela dizia que o patch de
+/// Coons é barato e o que ela cronometrava era um `clone`.
+///
+/// ⚠️ **Não é um caso especial dele:** metade deste grupo nasce na identidade (o `motion.move`
+/// em `(0,0)`, o `rotate` a `0°`, os dois warps com os cantos parados). *Um corpus no ponto
+/// neutro de um knob não testa esse knob*, e uma tabela de PREÇO medida no neutro mede o preço
+/// de não fazer nada.
+///
+/// ⚠️ **Os knobs movidos são DERIVADOS dos hints, nunca uma tabela à mão** — uma lista escrita
+/// aqui envelheceria em silêncio a cada param novo, e um param renomeado deixaria de ser
+/// movido sem nada acusar.
+///
+/// ⛔ **E só os SLIDERS se movem** — mexer num `Enum` ou num `Toggle` mudaria o MODO do nó, que
+/// é outra medição.
+///
+/// ⚠️⚠️ **Isto NÃO é suficiente para deixar a coluna do dispositivo em paz, e eu escrevi aqui
+/// que era.** A cláusula `applicable` do `motion.look_at` lê `target_x`/`target_y`, que são
+/// **sliders**: a primeira corrida com o despertar acendeu-os e o nó apareceu 🔴 — a minha
+/// perturbação com cara de regressão. ⇒ a coluna do dispositivo passou a ser lida num grafo
+/// SEPARADO, nos defaults (ver [`cook_com`]), e o desacordo entre os dois virou uma leitura
+/// própria (🟡). *Não há subconjunto de knobs seguro: a única forma de não perturbar uma
+/// medição é não a fazer no mesmo grafo.*
+fn acordar(m: &mut MotionState, no: NodeId, nome: &str) {
+    let tid = ph2d_nodegraph::node::NodeTypeId::of(nome);
+    for h in m.registry.param_ui(tid).unwrap_or(&[]) {
+        if !matches!(h.widget, ph2d_node_registry::ParamWidget::Slider) {
+            continue;
+        }
+        // Um quarto do caminho até ao topo da faixa — longe do default sem ser o extremo,
+        // que é onde uma cerca degenerada moraria.
+        let alvo = h.min + (h.max - h.min) * 0.25;
+        let v = if (alvo - h.min).abs() < f32::EPSILON {
+            h.min + (h.max - h.min) * 0.5
+        } else {
+            alvo
+        };
+        m.doc.graph.set_param(no, h.param, v);
+    }
+}
+
 /// A mediana de 3 cozimentos **FRIOS** — um `MotionState` novo por corrida, senão o memo do cook
 /// responde à segunda e a sonda mede a tabela de hash. Devolve `(ms, n, no_device)`.
-fn cook_com(lado: f32, no: Option<&str>) -> (f64, usize, bool) {
+/// O que uma linha da tabela diz.
+struct Medida {
+    /// A mediana de 3 cozimentos FRIOS, em ms — com o nó **acordado** (ver [`acordar`]).
+    ms: f64,
+    /// Quantos objectos saíram.
+    n: usize,
+    /// ⛔⛔ **O planeador reivindica a cadeia com o nó nos DEFAULTS dele?** É esta a pergunta
+    /// do produto: é o que o artista recebe ao largar o nó.
+    gpu_neutro: bool,
+    /// E com o nó acordado. ⚠️ **Quando as duas diferem, a residência do nó DEPENDE de um
+    /// knob** — não é ruído da sonda, é uma propriedade do nó que vale a pena ler.
+    gpu_aceso: bool,
+}
+
+/// ⛔⛔ **DUAS PERGUNTAS, DOIS GRAFOS — e a primeira redacção respondia-as com um só.**
+///
+/// O relógio quer o nó a **trabalhar** ([`acordar`]); a coluna do dispositivo quer o nó como o
+/// artista o **recebe**. Misturá-las custou uma leitura errada na primeira corrida: acordar o
+/// `motion.look_at` pôs `target_x`/`target_y` fora de zero, que é exactamente o que a cláusula
+/// `applicable` dele lê, e a coluna virou 🔴 — *a MINHA perturbação, lida como uma regressão do
+/// produto*. ⚠️ E o comentário que eu tinha escrito ao lado do `acordar` dizia que só `Enum` e
+/// `Toggle` alimentam um `applicable`: **falso**, e a tabela desmentiu-o na corrida seguinte.
+fn cook_com(lado: f32, no: Option<&str>) -> Medida {
     let mut ms: Vec<f64> = Vec::new();
-    let (mut n, mut gpu) = (0usize, false);
+    let (mut n, mut gpu_aceso) = (0usize, false);
     for _ in 0..3 {
         let mut m = MotionState::new();
-        let sink = build_com(&mut m, lado, no);
-        gpu = ph2d_gpu_cook::plan(&m.doc.graph, &m.registry, &m.registry, sink).is_fully_gpu();
+        let sink = build_com(&mut m, lado, no, true);
+        gpu_aceso =
+            ph2d_gpu_cook::plan(&m.doc.graph, &m.registry, &m.registry, sink).is_fully_gpu();
         let t = std::time::Instant::now();
         let out = m
             .pump
@@ -181,7 +252,17 @@ fn cook_com(lado: f32, no: Option<&str>) -> (f64, usize, bool) {
         n = out[0].as_stream().count();
     }
     ms.sort_by(f64::total_cmp);
-    (ms[1], n, gpu)
+    let gpu_neutro = {
+        let mut m = MotionState::new();
+        let sink = build_com(&mut m, lado, no, false);
+        ph2d_gpu_cook::plan(&m.doc.graph, &m.registry, &m.registry, sink).is_fully_gpu()
+    };
+    Medida {
+        ms: ms[1],
+        n,
+        gpu_neutro,
+        gpu_aceso,
+    }
 }
 
 /// ⭐⭐⭐ **O PREÇO DO GRUPO, e o 🔴 é o achado — nunca a razão** (doc 103 §5.1).
@@ -207,23 +288,40 @@ fn measure_the_deformer_group() {
             .unwrap_or_default()
             .trim()
     );
-    let (nu, n_nu, gpu_nu) = cook_com(lado, None);
+    let so_grade = cook_com(lado, None);
+    let nu = so_grade.ms;
     eprintln!(
-        "\n  grade {lado}×{lado} = {n_nu} objectos · so' a grade: {nu:.2} ms {}",
-        if gpu_nu { "🟢" } else { "🔴" }
+        "\n  grade {lado}×{lado} = {} objectos · so' a grade: {nu:.2} ms {}",
+        so_grade.n,
+        if so_grade.gpu_neutro { "🟢" } else { "🔴" }
     );
-    eprintln!("\n  nó                     | objectos  | cozimento  | vs. so' a grade | cadeia no device?");
-    eprintln!("  -----------------------|-----------|------------|-----------------|------------------");
+    eprintln!(
+        "\n  ⚠️ o nó é medido ACORDADO (cada slider a 1/4 da faixa) — nos defaults, metade
+     deste grupo é a identidade e o relógio media um `clone`.\n"
+    );
+    eprintln!("  nó                     | objectos  | cozimento  | vs. so' a grade | no device?");
+    eprintln!(
+        "  -----------------------|-----------|------------|-----------------|------------------"
+    );
     for nome in GRUPO {
-        let (ms, n, gpu) = cook_com(lado, Some(nome));
+        let d = cook_com(lado, Some(nome));
+        let device = match (d.gpu_neutro, d.gpu_aceso) {
+            (true, true) => "🟢 sim".to_string(),
+            (false, false) => "🔴 NAO".to_string(),
+            // A residência depende de um knob — a coluna diz qual dos dois lados é qual.
+            (true, false) => "🟡 so' nos defaults".to_string(),
+            (false, true) => "🟡 so' fora dos defaults".to_string(),
+        };
         eprintln!(
-            "  {nome:<23} | {n:>9} | {ms:>7.2} ms | {:>14.2}× | {}",
-            ms / nu.max(1e-9),
-            if gpu { "🟢 sim" } else { "🔴 NAO" },
+            "  {nome:<23} | {:>9} | {:>7.2} ms | {:>14.2}× | {device}",
+            d.n,
+            d.ms,
+            d.ms / nu.max(1e-9),
         );
     }
     eprintln!(
         "\n  🟢 = o planeador reivindica a cadeia inteira · 🔴 = ela cai na CPU
+  🟡 = a residência DEPENDE de um knob (o `applicable` do kernel lê-o)
   (um quadro de 60 fps tem 16,67 ms)\n"
     );
 }
@@ -252,18 +350,35 @@ fn what_the_card_shows() {
             ph2d_editor::ProjectSettings::default(),
             &mut snap,
         );
-        let rows: Vec<String> = snap
-            .nodes
-            .iter()
-            .find(|v| v.id == id.0)
+        let view = snap.nodes.iter().find(|v| v.id == id.0);
+        let rows: Vec<String> = view
+            .map(|v| v.params.iter().map(|c| c.hint.label.to_string()).collect())
+            .unwrap_or_default();
+        // ⚠️ **As SECÇÕES fazem parte do que o cartão MOSTRA, e esta sonda não as lia.** O
+        // plano do ciclo 3 acusou o `motion.bezier_warp` de pintar `In X · In Y · Out X ·
+        // Out Y` **quatro vezes** sem dizer de que aresta — uma acusação construída sobre
+        // esta lista de rótulos, que é metade da resposta. O cartão dobra as rows em
+        // [`CardSection`], e um rótulo repetido debaixo de um cabeçalho que o nomeia **não é
+        // ambíguo**. *Uma sonda que lê metade da superfície fabrica dívida.*
+        let secs: Vec<String> = view
             .map(|v| {
-                v.params
+                v.sections
                     .iter()
-                    .map(|c| c.hint.label.to_string())
+                    .map(|s| {
+                        format!(
+                            "{}@{}{}",
+                            s.title,
+                            s.at,
+                            if s.open { "" } else { " (fechada)" }
+                        )
+                    })
                     .collect()
             })
             .unwrap_or_default();
         eprintln!("  {nome:<23} | {}", rows.join(" · "));
+        if !secs.is_empty() {
+            eprintln!("  {:<23} > secções: {}", "", secs.join(" · "));
+        }
     }
     eprintln!();
 }
@@ -334,14 +449,22 @@ fn scene_bounds(level: u32) -> Option<([f32; 2], [f32; 2], usize)> {
 #[test]
 #[ignore = "sonda de auditoria — corra à mão"]
 fn where_each_demo_scene_lives() {
-    eprintln!("\n  cena | objectos | x                  | y                  | legenda | cabe em 100?");
-    eprintln!("  -----|----------|--------------------|--------------------|---------|-------------");
+    eprintln!(
+        "\n  cena | objectos | x                  | y                  | legenda | cabe em 100?"
+    );
+    eprintln!(
+        "  -----|----------|--------------------|--------------------|---------|-------------"
+    );
     for level in 1..=crate::motion_state::demo_router::MAX_DEMO_LEVEL {
         let Some((lo, hi, n)) = scene_bounds(level) else {
             continue;
         };
         let legenda = !crate::motion_demo_legend::captions().is_empty();
-        let alcance = hi[0].abs().max(lo[0].abs()).max(hi[1].abs()).max(lo[1].abs());
+        let alcance = hi[0]
+            .abs()
+            .max(lo[0].abs())
+            .max(hi[1].abs())
+            .max(lo[1].abs());
         let cabe = alcance <= 50.0;
         if legenda || !cabe {
             eprintln!(

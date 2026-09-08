@@ -72,6 +72,7 @@ ph2d-node-motion-bend = { path = "../ph2d-node-motion-bend" }
 ph2d-node-motion-twist = { path = "../ph2d-node-motion-twist" }
 ph2d-node-motion-spherize = { path = "../ph2d-node-motion-spherize" }
 ph2d-node-motion-four-point-warp = { path = "../ph2d-node-motion-four-point-warp" }
+ph2d-node-motion-bezier-warp = { path = "../ph2d-node-motion-bezier-warp" }  # ciclo 3 W5a: a fronteira curva chegou ao device
 # The count-changing deformer (StreamOp SourceRows) that READS its template.
 ph2d-node-motion-kaleidoscope = { path = "../ph2d-node-motion-kaleidoscope" }
 # An OBJECT source — a CPU-only boundary that carries `texture_id`. The

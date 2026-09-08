@@ -36,6 +36,8 @@ fn every_registered_kernel_fits_the_uniform_slot_and_declares_finite_identities(
     ph2d_node_registry_init::register_all_nodes(&mut reg).expect("registry builds");
 
     let mut swept = 0usize;
+    let mut widest_uniform = 0u64;
+    let mut widest_name = "<nenhum>";
     for manifest in reg.manifests() {
         let Some(kernel) = reg.gpu_kernel(manifest.id) else {
             continue;
@@ -94,6 +96,10 @@ fn every_registered_kernel_fits_the_uniform_slot_and_declares_finite_identities(
             manifest.name
         );
         let bytes = fields * 4;
+        if bytes > widest_uniform {
+            widest_uniform = bytes;
+            widest_name = manifest.name;
+        }
         assert!(
             bytes <= ph2d_gpu_cook::UNIFORM_BYTES,
             "{}: worst-case uniform layout is {bytes} B ({fields} fields) — over \
@@ -103,6 +109,20 @@ fn every_registered_kernel_fits_the_uniform_slot_and_declares_finite_identities(
             ph2d_gpu_cook::UNIFORM_BYTES
         );
     }
+
+    // A READOUT of the other budget, not a cap — o irmão de baixo já imprimia o
+    // dele e este não, e a folga de um slot que ninguém vê é exactamente a que
+    // se descobre a estourar. ⚠️ Ela mediu-se em `108 B` de `128` quando o
+    // `motion.bezier_warp` (24 offsets) chegou ao dispositivo no ciclo 3, e ele é
+    // o mais largo do registry: sobram `20 B`, logo um nó com **seis** params a
+    // mais que ele já não cabe, e a cura nesse dia é subir
+    // o `UNIFORM_BYTES` (é um slot, não uma alocação por elemento), nunca cortar
+    // um controlo que a referência tem.
+    println!(
+        "widest uniform: {widest_name} declares {widest_uniform} B of {} \
+         ({swept} kernels swept)",
+        ph2d_gpu_cook::UNIFORM_BYTES
+    );
 
     // Positive control ([[feedback_a_negative_search_needs_a_positive_control]]):
     // an iteration that silently matched nothing would pass both budgets

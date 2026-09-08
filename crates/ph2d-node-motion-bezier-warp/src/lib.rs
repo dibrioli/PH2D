@@ -39,6 +39,7 @@ use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 /// mesmo estado é pior que um motor lento*, e um overlay que desenhasse a sua própria
 /// Bézier divergiria do que o nó computa no dia em que um dos dois mudasse.
 pub mod coons;
+mod kernel;
 mod params_ui;
 use coons::Boundary;
 use params_ui::{PARAM_GROUPS, PARAM_HINTS};
@@ -47,7 +48,7 @@ const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::F
 /// O tipo da porta `warp` — espelho local do `VALUE` da família (crate-folha: o
 /// vocabulário partilhado é a PORTA, nunca um símbolo importado).
 const VALUE: PortType = PortType::new(Domain::Instances, Dim::Scalar, Clock::Frame);
-const VALUE_COL: &str = "v";
+pub(crate) const VALUE_COL: &str = "v";
 
 /// Abaixo disto a caixa envolvente é degenerada (uma linha ou um ponto): não há
 /// quadrado unitário para mapear, e o nó devolve o layout verbatim.
@@ -377,6 +378,14 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         MANIFEST.id,
         &[ph2d_node_registry::Coupling::Consumes("falloff")],
     );
+    // ⚠️ **E ELE CHEGA AO DISPOSITIVO** (ciclo 3, W5a — [`kernel`]): quatro reduções
+    // dão a caixa envolvente e o patch de Coons é polinomial. O comentário acima
+    // continua certo pelo que diz — o `falloff` TEM de ser declarado — e deixou de o
+    // ser pela razão que dava: hoje há uma `ColumnBinding` de onde derivá-lo, e a
+    // declaração fica porque a CPU é o caminho de referência e o diagnoser corre nos
+    // dois.
+    reg.register_gpu_kernel(MANIFEST.id, kernel::GPU_KERNEL);
+    reg.register_reduces(MANIFEST.id, kernel::REDUCES);
     Ok(())
 }
 

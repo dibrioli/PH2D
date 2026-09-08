@@ -448,15 +448,27 @@ mod bounds;
 use ph2d_node_registry::{ParamUiHint, ParamWidget};
 
 /// Corner-offset sliders (world units), in TL,TR,BR,BL order.
+///
+/// ⚠️ **Os nomes por extenso são o vocabulário do grupo, e a troca é do ciclo 3 (W4b).** Este
+/// nó dizia `TL X` e o irmão `motion.bezier_warp` — que deforma **a mesma caixa envolvente com
+/// os mesmos oito offsets** — dizia `Top-Left X`: a mesma pergunta com duas respostas, que é o
+/// achado §2.3 daquele ciclo repetido um nível abaixo. Um artista que aprendeu o canto num nó
+/// não o reconhece no outro.
+///
+/// ⚠️ **A escolha da forma LONGA foi MEDIDA, não preferida:** com o painel lateral fora, o
+/// cartão é a única superfície onde estes nomes aparecem, e ele tem `190 px`. O gate
+/// `no_warp_label_is_cut_on_the_card` pinta a row e **conta os glifos**: `Bottom-Right X` cabe
+/// inteiro ao lado do valor mais largo da faixa (`-10,00`). Se não coubesse, a unificação teria
+/// ido para o lado curto — *um rótulo elidido lê-se como o vizinho dele*.
 static PARAM_HINTS: &[ParamUiHint] = &[
-    hint("tl_dx", "TL X"),
-    hint("tl_dy", "TL Y"),
-    hint("tr_dx", "TR X"),
-    hint("tr_dy", "TR Y"),
-    hint("br_dx", "BR X"),
-    hint("br_dy", "BR Y"),
-    hint("bl_dx", "BL X"),
-    hint("bl_dy", "BL Y"),
+    hint("tl_dx", "Top-Left X"),
+    hint("tl_dy", "Top-Left Y"),
+    hint("tr_dx", "Top-Right X"),
+    hint("tr_dy", "Top-Right Y"),
+    hint("br_dx", "Bottom-Right X"),
+    hint("br_dy", "Bottom-Right Y"),
+    hint("bl_dx", "Bottom-Left X"),
+    hint("bl_dy", "Bottom-Left Y"),
 ];
 
 /// **What each of this node's numbers IS** (doc 88, Wave A) — never how it is

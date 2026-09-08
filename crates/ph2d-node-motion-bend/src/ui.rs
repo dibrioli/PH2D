@@ -55,6 +55,16 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
         widget: ParamWidget::Slider,
     },
     ParamUiHint {
+        param: ph2d_nodegraph::pivot::PARAM,
+        label: "Pivot",
+        min: 0.0,
+        max: 2.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: ph2d_nodegraph::pivot::LABELS,
+        },
+    },
+    ParamUiHint {
         param: "pivot_x",
         label: "Pivot X",
         min: -10.0,
@@ -81,6 +91,25 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
 /// here. A weight, a fraction, a rate and a count are left bare on purpose: a unit
 /// that is wrong is worse than a unit that is missing, because the artist can read
 /// a bare number but a mislabelled one teaches them something false.
+/// **As duas coordenadas só aparecem no modo que as LÊ** — a mesma família de gate que o
+/// `motion.transform` e o `motion.kaleidoscope` declaram sobre as deles.
+///
+/// ⚠️ Esconder **não** é apagar: o valor sobrevive à troca de modo, e é por isso que o kernel
+/// olha o MODO e não «o ponto é diferente de zero?» — o defeito que a W1a mediu a divergir
+/// `1,369` unidades de mundo entre a CPU e o dispositivo, no nó irmão.
+pub(super) static PARAM_GATES: &[ph2d_node_registry::ParamGate] = &[
+    ph2d_node_registry::ParamGate {
+        param: "pivot_x",
+        when: ph2d_nodegraph::pivot::PARAM,
+        values: &[1],
+    },
+    ph2d_node_registry::ParamGate {
+        param: "pivot_y",
+        when: ph2d_nodegraph::pivot::PARAM,
+        values: &[1],
+    },
+];
+
 pub(super) static PARAM_UNITS: &[ParamUnitDecl] = &[
     ParamUnitDecl {
         param: "pivot_x",

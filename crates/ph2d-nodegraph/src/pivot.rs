@@ -156,32 +156,41 @@ macro_rules! pivot_wgsl {
 /// se a coluna existe.
 ///
 /// ⚠️⚠️ **NÃO conte com identidade de PONTEIRO para provar que um nó usa esta tabela.** Medido:
-/// mesmo sendo um `static`, o `&[…]` que o inicializa é uma constante **promovida** e um leitor
-/// noutra crate re-materializa-a — os dois endereços diferem, e um gate escrito com
-/// `std::ptr::eq` reprova sobre código correcto. *Uma régua de identidade que a linguagem não
-/// garante mede o compilador, não o código.* O gate que serve compara os CAMPOS.
-pub static CENTROID_REDUCES: &[crate::reduce_meta::ReduceSpec] = &[
-    crate::reduce_meta::ReduceSpec {
-        name: "cx",
-        column: "P",
-        dim: crate::port::Dim::Vec2,
-        port: 0,
-        op: crate::reduce_meta::ReduceOp::Sum,
-        value: "v.x",
-        params: &[],
-        identity: [0.0; 4],
-    },
-    crate::reduce_meta::ReduceSpec {
-        name: "cy",
-        column: "P",
-        dim: crate::port::Dim::Vec2,
-        port: 0,
-        op: crate::reduce_meta::ReduceOp::Sum,
-        value: "v.y",
-        params: &[],
-        identity: [0.0; 4],
-    },
-];
+/// os dois endereços diferem mesmo quando o nó a usa (o `&[…]` é uma constante promovida e o
+/// leitor noutra crate re-materializa-a), e um gate escrito com `std::ptr::eq` reprova sobre
+/// código correcto. *Uma régua de identidade que a linguagem não garante mede o compilador, não
+/// o código.* O gate que serve compara os CAMPOS.
+pub const CENTROID_REDUCES: &[crate::reduce_meta::ReduceSpec] = &[CENTROID_CX, CENTROID_CY];
+
+/// A soma de `P.x` — metade de [`CENTROID_REDUCES`], exposta à parte para um nó que precise de
+/// MAIS reduções do que estas duas poder construir a tabela dele sem copiar os campos
+/// (o `motion.bend` mede também a extensão em X).
+///
+/// ⚠️ **São `const` e não `static`** porque um `static` não é legível em contexto de
+/// constante (E0013), e é exactamente numa tabela `static` de outro crate que eles têm de
+/// entrar.
+pub const CENTROID_CX: crate::reduce_meta::ReduceSpec = crate::reduce_meta::ReduceSpec {
+    name: "cx",
+    column: "P",
+    dim: crate::port::Dim::Vec2,
+    port: 0,
+    op: crate::reduce_meta::ReduceOp::Sum,
+    value: "v.x",
+    params: &[],
+    identity: [0.0; 4],
+};
+
+/// A soma de `P.y` — a outra metade. Ver [`CENTROID_CX`].
+pub const CENTROID_CY: crate::reduce_meta::ReduceSpec = crate::reduce_meta::ReduceSpec {
+    name: "cy",
+    column: "P",
+    dim: crate::port::Dim::Vec2,
+    port: 0,
+    op: crate::reduce_meta::ReduceOp::Sum,
+    value: "v.y",
+    params: &[],
+    identity: [0.0; 4],
+};
 
 #[cfg(test)]
 mod tests {

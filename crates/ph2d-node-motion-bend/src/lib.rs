@@ -24,7 +24,7 @@ use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream, par_build};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
-use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel, ReduceOp, ReduceSpec};
+use ph2d_nodegraph::gpu::{ReduceOp, ReduceSpec};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 use std::f32::consts::{PI, TAU};
@@ -92,6 +92,13 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "limit_hi",
             default: 1.0,
         },
+        // **EM TORNO DE QUÊ** — o vocabulário de [`ph2d_nodegraph::pivot`], partilhado pela
+        // família (ciclo 3, W1 — doc 106 §2.3). ⚠️ Default `Point`: este nó sempre honrou o
+        // ponto digitado, e é isso que o deixa byte-idêntico.
+        ParamSpec {
+            name: ph2d_nodegraph::pivot::PARAM,
+            default: 1.0,
+        },
         ParamSpec {
             name: "pivot_x",
             default: 0.0,
@@ -113,19 +120,30 @@ pub const MANIFEST: NodeManifest = NodeManifest {
 /// against the CPU**: `Max` is associative and exact in any evaluation order, and
 /// there is no multiply-add here for a device to contract into an FMA. (Its
 /// sibling `motion.twist` folds a radius, which has a product, and is an ε.)
-static REDUCES: &[ReduceSpec] = &[ReduceSpec {
-    name: "x_extent",
-    column: "P",
-    dim: Dim::Vec2,
-    port: 0,
-    op: ReduceOp::Max,
-    value: "abs(v.x - params.pivot_x)",
-    params: &["pivot_x"],
-    // The same identity the `P` binding declares — an absent `P` is materialised
-    // as the origin by BOTH paths, so both measure the extent of a layout of
-    // origins (which is `|pivot_x|`, not "no extent").
-    identity: [0.0; 4],
-}];
+static REDUCES: &[ReduceSpec] = &[
+    ph2d_nodegraph::pivot::CENTROID_CX,
+    ph2d_nodegraph::pivot::CENTROID_CY,
+    ReduceSpec {
+        name: "xmin",
+        column: "P",
+        dim: Dim::Vec2,
+        port: 0,
+        op: ReduceOp::Min,
+        value: "v.x",
+        params: &[],
+        identity: [0.0; 4],
+    },
+    ReduceSpec {
+        name: "xmax",
+        column: "P",
+        dim: Dim::Vec2,
+        port: 0,
+        op: ReduceOp::Max,
+        value: "v.x",
+        params: &[],
+        identity: [0.0; 4],
+    },
+];
 
 /// **A DIREÇÃO DA DOBRA** (doc 89 folha 04 — C4D Bend: *"**Angle** defines the direction of
 /// deformation. **0° is the deformer's local X axis**"*; Blender *Simple Deform ▸ Bend* tem
@@ -237,101 +255,6 @@ fn slice_of(x_extent: f32, lo: f32, hi: f32) -> (f32, f32, f32, f32) {
     ((a), b, (a + b) * 0.5, (b - a) * 0.5)
 }
 
-/// The device form of [`bend`] (GPU/M5). One invocation per element, reading the
-/// layout's X extent from the reduction above.
-///
-/// ⚠️ **The trig is the CPU's polynomial, ported operation for operation** — not
-/// WGSL's `sin`/`cos`. The CPU is transcendental-free by HR-5 (the corrected
-/// parabolic sine, ~0.09% off true trig), so calling the device's real `sin`
-/// here would not be a tighter ε, it would be a *different curve*: the arc would
-/// visibly differ from the canonical one wherever the approximation does.
-const GPU_KERNEL: GpuKernel = GpuKernel {
-    wgsl: "\
-        let bd_p = read_in_P(i);\n\
-        let bd_dx = bd_p.x - params.pivot_x;\n\
-        let bd_dy = bd_p.y - params.pivot_y;\n\
-        let bd_theta = params.angle * read_amount_v(i) * 3.1415927 / 180.0;\n\
-        let bd_ext = reduce_x_extent();\n\
-        // A FATIA, ordenada — o `min`/`max` é a mesma lei da CPU (`slice_of`).\n\
-        let bd_a = min(params.limit_lo, params.limit_hi) * bd_ext;\n\
-        let bd_b = max(params.limit_lo, params.limit_hi) * bd_ext;\n\
-        let bd_mid = (bd_a + bd_b) * 0.5;\n\
-        let bd_half = (bd_b - bd_a) * 0.5;\n\
-        let bd_mode = i32(bd_round(params.mode));\n\
-        var bd_bent = vec2<f32>(bd_dx, bd_dy);\n\
-        if (bd_half >= 1e-4 && abs(bd_theta) >= 1e-4) {\n\
-        \x20   var bd_held = bd_dx;\n\
-        \x20   if (bd_mode != 0) { bd_held = clamp(bd_dx, bd_a, bd_b); }\n\
-        \x20   let bd_run = bd_dx - bd_held;\n\
-        \x20   if (bd_mode != 2 || bd_run == 0.0) {\n\
-        \x20       let bd_k = bd_theta / bd_half;\n\
-        \x20       let bd_r = 1.0 / bd_k;\n\
-        \x20       let bd_ph = (bd_k * (bd_held - bd_mid)) / 6.2831855;\n\
-        \x20       let bd_c = bend_sin_cycles(bd_ph + 0.25);\n\
-        \x20       let bd_s = bend_sin_cycles(bd_ph);\n\
-        \x20       bd_bent = vec2<f32>((bd_r - bd_dy) * bd_s, bd_r * (1.0 - bd_c) + bd_dy * bd_c);\n\
-        \x20       if (bd_run != 0.0) {\n\
-        \x20           bd_bent = vec2<f32>(bd_bent.x + bd_run * bd_c, bd_bent.y + bd_run * bd_s);\n\
-        \x20       }\n\
-        \x20   }\n\
-        }\n\
-        let bd_f = clamp(read_in_falloff(i), 0.0, 1.0);\n\
-        write_P(i, vec2<f32>(\n\
-        \x20   bd_p.x + (params.pivot_x + bd_bent.x - bd_p.x) * bd_f,\n\
-        \x20   bd_p.y + (params.pivot_y + bd_bent.y - bd_p.y) * bd_f));\n",
-    wgsl_lib: "\
-        fn bd_round(x: f32) -> f32 {\n\
-            // Rust f32::round = half away from zero (WGSL round is half-even).\n\
-            return select(ceil(x - 0.5), floor(x + 0.5), x >= 0.0);\n\
-        }\n\
-        // The corrected parabolic sine at `phase` CYCLES — the port of `trig.rs`.\n\
-        fn bend_sin_cycles(phase: f32) -> f32 {\n\
-            let f = phase - floor(phase);\n\
-            var p: f32;\n\
-            if (f < 0.5) {\n\
-                let u = f * 2.0;\n\
-                p = 4.0 * u * (1.0 - u);\n\
-            } else {\n\
-                let u = (f - 0.5) * 2.0;\n\
-                p = -4.0 * u * (1.0 - u);\n\
-            }\n\
-            return 0.225 * (p * abs(p) - p) + p;\n\
-        }\n",
-    bindings: &[
-        ColumnBinding {
-            column: "P",
-            dim: Dim::Vec2,
-            // ReadWrite, not ReadWriteExisting: the CPU materialises an absent
-            // `P` from the origin and always emits one (`out.set("P", …)`).
-            access: ColumnAccess::ReadWrite,
-            identity: [0.0; 4],
-            port: 0,
-        },
-        ColumnBinding {
-            column: "falloff",
-            dim: Dim::Scalar,
-            access: ColumnAccess::Read,
-            identity: [1.0, 0.0, 0.0, 0.0],
-            port: 0,
-        },
-        ColumnBinding {
-            column: VALUE_COL,
-            dim: Dim::Scalar,
-            // The `amount_at` rule, declared: absent reads 1.0 (full static
-            // bend), length-1 broadcasts, length-N is per element.
-            access: ColumnAccess::ReadBroadcast,
-            identity: [1.0, 0.0, 0.0, 0.0],
-            port: 1,
-        },
-    ],
-    params: &[
-        "angle", "mode", "limit_lo", "limit_hi", "pivot_x", "pivot_y",
-    ],
-    count_law: None,
-    variant_by_param: None,
-    // ⚠️ Ver [`DIRECTION`]: a redução `x_extent` não roda com o quadro.
-    applicable: Some(|p| p("direction") == 0.0),
-};
 
 fn falloff_at(stream: &Stream, i: usize) -> f32 {
     match stream.get("falloff") {
@@ -450,7 +373,9 @@ impl NodeOp for MotionBend {
         let direction = ctx.param(DIRECTION);
         let mode = ctx.param(MODE).round() as i32;
         let (limit_lo, limit_hi) = (ctx.param(LIMITS.0), ctx.param(LIMITS.1));
-        let pivot = [ctx.param("pivot_x"), ctx.param("pivot_y")];
+        let mode_pivot =
+            ph2d_nodegraph::pivot::PivotMode::of(ctx.param(ph2d_nodegraph::pivot::PARAM));
+        let typed = [ctx.param("pivot_x"), ctx.param("pivot_y")];
         let amount: Vec<f32> = match ctx.input(1).get(VALUE_COL) {
             Some(Column::Scalar(v)) => v.clone(),
             _ => Vec::new(),
@@ -464,6 +389,8 @@ impl NodeOp for MotionBend {
         // Pure per-instance map → parallel above the threshold
         // (bit-identical, no reduction). GPU/M5 Fase 0.
         let falloff: Vec<f32> = par_build(n, |i| falloff_at(input, i));
+        // ⚠️ Resolvido UMA vez, fora do laço: o pivô é uma propriedade do layout.
+        let pivot = mode_pivot.resolve(typed, &base);
         let moved = bend(
             &base, pivot, angle, direction, mode, limit_lo, limit_hi, &amount, &falloff,
         );
@@ -492,6 +419,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_gates(MANIFEST.id, ui::PARAM_GATES);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     // GPU/M5: the kernel and the whole-stream reduction it reads. Side metadata
     // on the registry (ADR-0126) — the frozen node contract is untouched.
@@ -657,6 +585,13 @@ mod tests {
 #[cfg(test)]
 #[path = "direction_tests.rs"]
 mod direction_tests;
+
+mod kernel;
+use kernel::GPU_KERNEL;
+
+#[cfg(test)]
+#[path = "pivot_tests.rs"]
+mod pivot_tests;
 
 #[cfg(test)]
 #[path = "limits_tests.rs"]

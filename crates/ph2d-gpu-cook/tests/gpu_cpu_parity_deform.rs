@@ -857,3 +857,54 @@ fn the_kaleidoscope_centroid_pivot_rides_the_layout_on_the_device() {
     assert_eq!(cpu.len(), KAL_SIDE * KAL_SIDE * 5, "n·segments");
     compare("kaleidoscope pivot = Centroid, layout deslocado", &cpu, &dev);
 }
+
+/// ⭐⭐ **O PIVÔ-CENTROIDE DO `motion.bend` CHEGA AO DISPOSITIVO** (ciclo 3, W1 — doc 106).
+///
+/// ⚠️ **A extensão em X passou a ser DERIVADA de duas reduções independentes do pivô**
+/// (`max(xmax − p, p − xmin)` em vez de `Max(|x − p|)`), porque um `Max` que lê `params.pivot_x`
+/// e um pivô que É uma redução seriam **uma redução a depender de outra**, e o sequenciador
+/// corre-as todas no mesmo passo. A igualdade é ao bit — o gate irmão acima, que corre com o
+/// ponto digitado, é o controlo dela.
+///
+/// ⚠️ E o layout é deslocado a montante: com a grelha centrada na origem o centroide é `(0,0)` e
+/// o teste ficaria verde sobre um kernel sem o braço do centroide.
+#[test]
+#[ignore = "requires a GPU adapter"]
+fn the_bend_centroid_pivot_rides_the_layout_on_the_device() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let mut g = Graph::new();
+    let grid = g.add_node("motion.grid");
+    g.set_param(grid, "rows", SIDE);
+    g.set_param(grid, "cols", SIDE);
+    g.set_param(grid, "gap_x", 0.35);
+    g.set_param(grid, "gap_y", 0.25);
+    let mv = g.add_node("motion.move");
+    g.set_param(mv, "dx", 6.5);
+    g.set_param(mv, "dy", -4.25);
+    let bd = g.add_node("motion.bend");
+    g.set_param(bd, "angle", 140.0);
+    g.set_param(bd, "pivot_mode", 2.0);
+    // Um ponto digitado bem longe do centroide: o MODO tem de vencer.
+    g.set_param(bd, "pivot_x", -12.0);
+    g.set_param(bd, "pivot_y", 8.0);
+    let amt = g.add_node("value.lfo");
+    g.set_param(amt, "amplitude", 0.0);
+    g.set_param(amt, "offset", 1.0);
+    let out = g.add_node("motion.output");
+    for (from, to, port) in [(grid, mv, 0u16), (mv, bd, 0), (amt, bd, 1), (bd, out, 0)] {
+        g.connect(Edge {
+            from: (from, 0),
+            to: (to, port),
+            delayed: false,
+        })
+        .unwrap();
+    }
+    g.validate(&reg).expect("well-typed");
+    let cpu = cook_cpu(&reg, &g, out);
+    let dev = cook_gpu(&gpu, &reg, &g, out);
+    compare("bend pivot = Centroid, layout deslocado", &cpu, &dev);
+}

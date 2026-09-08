@@ -660,3 +660,72 @@ correr de facto.
 ⚠️ **E o 🟡 do `motion.look_at` não é um defeito novo:** ele é a troca que o comentário do próprio
 kernel já declarava — *«um grafo que conduz o alvo por fio mantém a residência; digitar um ponto é
 o que a custa»*. O que mudou foi a tabela passar a **dizê-lo**.
+
+---
+
+### ✅ W6 — O TUTORIAL, e a figura que teve de aprender a ver `rot` e `size` (2026-09-08)
+
+📘 **[`tutoriais/03_transformes.pdf`](tutoriais/03_transformes.pdf)** — 9 páginas, com as 13
+figuras e a tabela de controlos **derivadas do app** pela mesma função de onde o painel e o cartão
+tiram os números. Fonte diffável em [`tutoriais/src/03_transformes.html`](tutoriais/src/03_transformes.html);
+gerador `dump_deformadores_figures`.
+
+#### ⛔⛔ A régua apanhou TRÊS figuras a `0,00` — e elas não estavam erradas: eu estava
+
+A primeira redacção do gerador desenhava **nuvens de pontos**, como os dois ciclos anteriores. O
+`motion.rotate`, o `motion.scale` e o `motion.look_at` leram **deslocamento zero**: eles não mexem
+em `P` — escrevem `rot` e `size` —, e *uma nuvem de pontos é estruturalmente cega a isso*.
+
+⚠️ **A figura não conseguia distinguir «o nó não fez nada» de «o nó fez uma coisa a que eu sou
+cego»**, e num tutorial as duas leituras são o mesmo desastre: o artista veria a grelha intacta
+debaixo do título «Rotate».
+
+⇒ o elemento passa a ser uma **MARCA** — um traço curto com a direcção de `rot` e o comprimento de
+`size` — e a régua mede a **PONTA** dela, que é o único ponto derivado que se move quando qualquer
+uma das três colunas muda.
+
+#### E o DESENHO passou a ser derivado, três vezes, cada uma por um defeito VISTO
+
+| tentativa | o que saiu | a leitura |
+|---|---|---|
+| traço entrada → saída | um **NOVELO** no `motion.twist` | a `150°` os vizinhos vão para lados diferentes e as linhas cruzam-se todas |
+| tirar o traço | **pior** — marcas horizontais dispersas | *a torção vive na relação entre VIZINHOS*, e nenhuma marca sozinha a contém |
+| **a MALHA** | a grelha deformada, legível de relance | é a figura que toda referência usa para um warp |
+
+⚠️ **E não é a distância que decide se um traço ajuda** — o `motion.move` desloca `4` vãos e
+desenha-se perfeitamente, porque os traços dele são **paralelos**. O que torna um traço ilegível é
+ele **cruzar o do vizinho**.
+
+⚠️ **A marca só é desenhada onde ela FALA.** Nos dez nós que não escrevem `rot` nem `size` ela é
+sempre o mesmo traço horizontal, e numa malha torcida dez marcas iguais são **ruído sobre a única
+coisa que a figura tem para dizer**. A pergunta é feita à colheita, nunca autorada por figura:
+
+```
+def_rotate     │ malha + marcas      def_twist    │ malha
+def_scale      │ malha + marcas      def_mirror   │ marcas soltas
+def_look_at    │ malha + marcas      def_kaleidoscope │ marcas soltas
+```
+
+⛔ **Não há malha onde a contagem muda** — o `motion.mirror` devolve `2n` e o
+`motion.kaleidoscope` `n × segmentos`; ali o `i + 1` já não é o vizinho da direita de nada.
+
+⚠️ **A moldura é QUADRADA neste ciclo e não no anterior.** Lá as figuras são filas — largas e
+baixas — e um quadrado desperdiçaria 70 % de cada uma; aqui são folhas, e o que se ganha é o
+**ALINHAMENTO**: treze molduras de proporções diferentes deixam as legendas em degraus.
+
+#### O corte de LOC, e ele é por RESPONSABILIDADE
+
+A paleta e a moldura saíram para `motion_bridge_tutorial_draw.rs`, com dois consumidores.
+⚠️ **O que se partilha entre ciclos é a PALETA e o ENQUADRAMENTO, não o desenho** — duas paletas
+seriam dois tutoriais com duas caras, e *isso* é que seria a mesma pergunta respondida duas vezes.
+
+#### O tutorial só nomeia rows e gestos MEDIDOS
+
+Cada linha de painel que um passo manda clicar foi lida em `what_the_card_shows` (o `Pivot` do
+Twist, o `Skew X` do Transform, o `Axis Offset` do Mirror, o `Rows` do Grid).
+
+⛔⛔ **E um passo descrevia um gesto que NÃO EXISTE.** O «anime o pivô» mandava arrastar um fio
+para cima da row `Pivot X`; o gesto real é largar o fio no **CORPO** do cartão e escolher o param
+na lista que abre (`GraphIntent::DriveParam` — *«o socket aparece porque o fio existe, não o
+contrário»*). *A lei de que um passo que nomeia uma row tem de provar que a row está na lista vale
+igual para um passo que nomeia um GESTO.*

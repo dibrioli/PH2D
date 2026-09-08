@@ -201,3 +201,95 @@ fn neither_the_coil_nor_the_lattice_overpromises() {
         );
     }
 }
+
+// ─────────────────────────── W140 ───────────────────────────
+
+/// A meia-largura do tubo numa direcção, por **varredura** até à primeira troca de sinal.
+///
+/// ⛔ **Uma bissecção não serve aqui, e a razão é medida:** ela pressupõe o extremo superior FORA da
+/// peça, e num passo curto o ponto de partida dela cai na **volta seguinte** da mola — o intervalo
+/// deixa de conter a fronteira e ela converge para o extremo, devolvendo `0,40` onde a verdade era
+/// `0,06`. *Uma bissecção com o extremo por verificar devolve o extremo.*
+fn meia_largura(f: &Field, de: [f64; 3], dir: [f64; 3]) -> f64 {
+    let em = |t: f64| f.at(de[0] + dir[0] * t, de[1] + dir[1] * t, de[2] + dir[2] * t);
+    assert!(
+        em(0.0) < 0.0,
+        "o centro da medição tem de estar DENTRO da peça"
+    );
+    const PASSOS: usize = 20_000;
+    let mut anterior = 0.0_f64;
+    for i in 1..=PASSOS {
+        let t = 0.5 * (i as f64) / (PASSOS as f64);
+        if em(t) >= 0.0 {
+            let (mut lo, mut hi) = (anterior, t);
+            for _ in 0..50 {
+                let m = f64::midpoint(lo, hi);
+                if em(m) < 0.0 {
+                    lo = m;
+                } else {
+                    hi = m;
+                }
+            }
+            return lo;
+        }
+        anterior = t;
+    }
+    f64::NAN
+}
+
+/// ⭐⭐⭐ **O TUBO DA MOLA TEM A ESPESSURA QUE O PAINEL DIZ** (W140) — e não tinha.
+///
+/// # ⛔⛔ O defeito estava NOMEADO no §5 desde a W134 e a cura escrita DUAS vezes
+///
+/// A fórmula era `hypot(dr, dz) · c − thickness`: o divisor multiplicava a **corda inteira**, logo
+/// o zero do campo caía em `corda = thickness/c` e o tubo saía **`1/c` mais gordo**.
+///
+/// ⭐ **A conta que o corrige cabe numa linha:** um deslocamento **radial** já é perpendicular à
+/// hélice (a tangente `(0, R, b)/√(R²+b²)` não tem componente em `ρ`), então ele não se encolhe;
+/// só o **vertical** tem uma parte ao longo da curva. A distância perpendicular é
+/// `√(dr² + (dz·sinβ)²)`, e o `sinβ` **é o mesmo `c`** — uma posição adentro.
+///
+/// ⚠️ **MEDIDO**, com a espessura pedida em `0,060`:
+///
+/// | passo | `c` | radial ANTES | radial DEPOIS | vertical (não muda) |
+/// |---|---:|---:|---:|---:|
+/// | 0,20 | 0,9940 | 0,06036 | **0,06000** | 0,06036 |
+/// | 1,00 | 0,8767 | 0,06844 | **0,06000** | 0,06844 |
+/// | 1,60 | 0,7514 | 0,07985 | **0,06000** | 0,07985 |
+///
+/// ⚠️ **A meia-largura VERTICAL não muda, e está CERTA nos dois:** uma subida em `z` é em parte um
+/// passeio ao longo da curva, logo o tubo estende-se `thickness/c` em `dz` por construção. ⇒ *a
+/// régua que apanha o defeito é a RAZÃO radial/vertical, que tem de ler `c` e lia `1,0000`.*
+#[test]
+fn the_spring_tube_is_as_thick_as_the_panel_says() {
+    let (radius, turns, thickness) = (0.35_f32, 3.0_f32, 0.06_f32);
+    for pitch in [0.20_f32, 0.50, 1.00, 1.60] {
+        let f = campo(Primitive::Helix {
+            radius,
+            pitch,
+            turns,
+            thickness,
+            round: 0.0,
+            chamfer: 0.0,
+        });
+        let b = f64::from(pitch) / std::f64::consts::TAU;
+        let dentro_r = f64::from(radius - thickness);
+        let c = dentro_r / dentro_r.hypot(b);
+        let altura = f64::from(pitch) * f64::from(turns);
+        let z = (f64::from(turns) / 2.0).floor() * f64::from(pitch) - altura * 0.5;
+        let centro = [f64::from(radius), 0.0, z];
+        let rad = meia_largura(&f, centro, [1.0, 0.0, 0.0]);
+        let ver = meia_largura(&f, centro, [0.0, 0.0, 1.0]);
+        assert!(
+            (rad - f64::from(thickness)).abs() < 1.0e-3,
+            "passo {pitch}: o tubo mede {rad:.5} de raio contra os {thickness} que o painel diz"
+        );
+        // ⭐ E a RAZÃO, que é a régua que separa o campo curado do que engordava.
+        assert!(
+            (rad / ver - c).abs() < 5.0e-3,
+            "passo {pitch}: radial/vertical = {:.4} e tem de ser o `c` = {c:.4} — a ler `1` o tubo \
+             está `1/c` mais gordo do que o pedido",
+            rad / ver
+        );
+    }
+}

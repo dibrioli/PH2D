@@ -120,7 +120,35 @@ pub fn sd_helix(
     let c = dentro / dentro.hypot(b);
     let dr = rho - Tree::constant(radius);
     let dz = z0 - z_k;
-    let tubo = safe_sqrt(dr.square() + dz.square()) * Tree::constant(c) - Tree::constant(thickness);
+    // ⭐⭐⭐ **O `c` MULTIPLICA SÓ O `dz`, e não a corda inteira** (W140).
+    //
+    // ⛔⛔ **Era `hypot(dr, dz) · c − thickness`, e isso engorda o tubo `1/c` NO RAIO.** A conta é
+    // de uma linha: um deslocamento **radial** já é perpendicular à hélice (a tangente
+    // `(0, R, b)/√(R²+b²)` não tem componente em `ρ`), então ele **não** se encolhe; só o
+    // **vertical** é que tem uma parte ao longo da curva. A distância perpendicular verdadeira é
+    // `√(dr² + (dz·sinβ)²)` com `sinβ = R/√(R²+b²)` — que é **exactamente este mesmo `c`**, uma
+    // posição adentro.
+    //
+    // ⚠️ **MEDIDO** (`probe_the_spring_tube`, raio `0,35`, espessura pedida `0,060`):
+    //
+    // | passo | `c` | meia-largura RADIAL antes | depois | vertical (as duas) |
+    // |---|---:|---:|---:|---:|
+    // | 0,20 | 0,9940 | 0,06036 | **0,06000** | 0,06036 |
+    // | 0,50 | 0,9644 | 0,06222 | **0,06000** | 0,06222 |
+    // | 1,00 | 0,8767 | 0,06844 | **0,06000** | 0,06844 |
+    // | 1,60 | 0,7514 | 0,07985 | **0,06000** | 0,07985 |
+    //
+    // ⭐ **A régua que o apanha é a RAZÃO radial/vertical**, que tem de ler `c` e lia `1,0000` — um
+    // tubo `33 %` mais gordo do que o painel diz, a passo largo. ⛔ E a meia-largura VERTICAL não
+    // muda com a cura, e **está certa**: uma subida em `z` é em parte um passeio ao longo da curva,
+    // logo o tubo estende-se `thickness/c` em `dz` por construção.
+    //
+    // ⭐⭐ **E o campo passa a ser EXACTAMENTE 1-Lipschitz, sem divisor nenhum por cima:**
+    // `∇(dz·c)` tem norma `c·√(ρ²+b²)/ρ`, que vale `1` em `ρ = dentro` — era isso que o divisor
+    // externo existia para segurar, e agora a conta faz-se sozinha. *A lei da W134 pela terceira
+    // vez: o factor multiplica o termo certo, e nunca o campo antes de uma subtracção.*
+    let tubo =
+        safe_sqrt(dr.square() + (dz * Tree::constant(c)).square()) - Tree::constant(thickness);
     let laje = Tree::z().abs() - Tree::constant(altura * 0.5);
     intersection_joint(&tubo, &laje, e)
 }

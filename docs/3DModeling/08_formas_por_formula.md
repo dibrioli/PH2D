@@ -473,10 +473,16 @@ a ordena é o dono do produto.
 
 | de onde | ainda faltam | quais |
 |---|---:|---|
-| §7.2 — catálogo **3D** | **1** | Plane · ~~Death Star~~ · ~~Vesica Segment~~ (W139) |
+| §7.2 — catálogo **3D** | **0** | ~~Plane~~ (W140, recusa medida) · ~~Death Star~~ · ~~Vesica Segment~~ (W139) |
 | §7.3 — catálogo **2D** | **0** | ~~Bezier~~ · ~~Parabola~~ · ~~Circle Wave~~ |
 | §7.4 — **famílias** fora de catálogo | **0** | ~~Rosca~~ |
-| **total** | **1** | |
+| **total** | **0** | |
+
+⚠️ **Actualizado em 08/09 (W140 — [§140](06_resultados_cena_e_gizmo.md)): a fila FECHOU.** O *Plane*
+sai por **recusa medida**, não por construção: um plano tem dois usos e eles não são o mesmo — ser
+**faca** já se faz hoje **a custo zero** (a subtracção deixa o bordo na peça: `0,500` com um cortador
+de `0,6` a `1000`), e ser **chão infinito** é **inexportável por definição** (não há grade finita que
+o contenha; medido, um chão de meia-aresta `100` já deixa a peça com menos de UMA célula).
 
 ⚠️ **Actualizado em 08/09 (W139 — [§139](06_resultados_cena_e_gizmo.md)):** a *Death Star* e o
 *Vesica Segment* shiparam como **primitivas** — *Cratered Sphere* e *Lens* —, com números próprios,

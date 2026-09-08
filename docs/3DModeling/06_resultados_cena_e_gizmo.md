@@ -13975,3 +13975,108 @@ coerção** (encostar a uma parede, a um piso, achar as arestas perguntando à t
 
 **Smoke:** `PH2D_FIELD_SMOKE=31` (três craterias e três lentes, cada trio a percorrer o controlo que
 a define) · *MODEL* > **A** > *Cratered Sphere* / *Lens*.
+
+---
+
+## §140 — O PLANE sai por MEDIÇÃO, e o tubo da mola passa a ter a espessura que o painel diz (08/09)
+
+### §140.0 — ⛔⛔ O Plane: a fila fecha SEM ele, e o número é o verbo
+
+O [plano 09](09_plano_das_dez_que_faltam.md) diz que o Plane *«não é uma forma a construir: é a bola
+de recorte admitir uma peça INFINITA»*, e manda a wave **começar por medir o que se parte**. Medido
+(`probe_the_infinite_piece`):
+
+**(a) Um «plano» feito de CAIXA, unido à peça** — o que ele custa à exportação:
+
+| meia-aresta do chão | raio do bordo | aresta da célula (256³) | células na esfera |
+|---:|---:|---:|---:|
+| 0,6 | 0,949 | 0,0078 | **128** |
+| 5,0 | 7,071 | 0,0580 | 17 |
+| 25,0 | 35,4 | 0,290 | 3,4 |
+| 100,0 | 141,4 | 1,160 | **0,86** |
+| 1000,0 | 1414 | 11,6 | **0,09** |
+
+⇒ um chão de meia-aresta `100` deixa a esfera com **menos de UMA célula** na exportação.
+
+**(b) E o VERBO muda tudo** — a pergunta que decide:
+
+| meia-aresta | raio (UNIÃO) | raio (SUBTRACÇÃO) | raio (INTERSECÇÃO) |
+|---:|---:|---:|---:|
+| 0,6 | 0,949 | **0,500** | **0,500** |
+| 5,0 | 7,071 | **0,500** | **0,500** |
+| 100,0 | 141,4 | **0,500** | **0,500** |
+| 1000,0 | 1414 | **0,500** | **0,500** |
+
+⭐⭐⭐ **Um plano tem dois usos e eles não são o mesmo — ser CHÃO ou ser FACA — e a composição já
+resolve o segundo a custo ZERO.** A subtracção e a intersecção deixam o bordo na esfera por maior
+que seja quem corta: `0,500` de `0,6` a `1000`, sem se mexer uma vez. ⇒ *cortar uma peça por um
+plano já se faz hoje, com uma caixa grande, e não custa uma célula de resolução a ninguém.*
+
+⛔ **E o outro uso é inexportável por definição:** um chão que faz parte da peça e não tem fim não
+cabe em grade nenhuma — não há caixa finita que o contenha. ⇒ **o Plane sai da fila como recusa
+medida**, e o que sobra do plano 09 é **zero**.
+
+⚠️ **E uma leitura minha foi refutada pelo próprio código:** com `half = f32::MAX` o documento aceita
+a peça e o bordo dá `inf`, e eu li o `0,0082` que o `cell_size` devolve como um defeito silencioso.
+⛔ **Não é** — o `Grid::new` tem a guarda escrita, com a razão ao lado: *«um raio degenerado (peça
+vazia, número não-finito) volta à caixa do motor: é a resposta conservadora quando não há medição em
+que confiar»*. *Antes de chamar defeito a um número estranho, leia a guarda que o produziu.*
+
+### §140.1 — ⭐⭐⭐ O tubo da mola era `1/c` mais gordo do que o painel dizia
+
+O defeito estava **nomeado** no §5 desde a W134 e a cura escrita **duas** vezes, sem nunca ser
+aplicada. A fórmula era `hypot(dr, dz) · c − thickness`: o divisor multiplicava a **corda inteira**,
+logo o zero do campo caía em `corda = thickness/c`.
+
+⭐ **A conta que a corrige cabe numa linha.** Um deslocamento **radial** já é perpendicular à hélice
+— a tangente `(0, R, b)/√(R²+b²)` não tem componente em `ρ` —, então ele não se encolhe; só o
+**vertical** tem uma parte ao longo da curva. A distância perpendicular é `√(dr² + (dz·sinβ)²)` com
+`sinβ = R/√(R²+b²)`, que é **exactamente o mesmo `c`**, uma posição adentro:
+
+```
+hypot(dr, dz) * c  - thickness     ⇒     hypot(dr, dz * c) - thickness
+```
+
+⚠️ **MEDIDO** (raio `0,35`, espessura pedida `0,060`):
+
+| passo | `c` | radial ANTES | radial DEPOIS | vertical (não muda) |
+|---:|---:|---:|---:|---:|
+| 0,20 | 0,9940 | 0,06036 | **0,06000** | 0,06036 |
+| 0,50 | 0,9644 | 0,06222 | **0,06000** | 0,06222 |
+| 1,00 | 0,8767 | 0,06844 | **0,06000** | 0,06844 |
+| 1,60 | 0,7514 | 0,07985 | **0,06000** | 0,07985 |
+
+⇒ a passo largo o tubo saía **`33 %` mais gordo** do que o número no painel.
+
+⭐⭐ **E o campo passa a ser exactamente 1-Lipschitz sem divisor nenhum por cima:** `∇(dz·c)` tem
+norma `c·√(ρ²+b²)/ρ`, que vale `1` em `ρ = dentro` — era isso que o divisor externo existia para
+segurar, e agora a conta faz-se sozinha. *A lei da W134 pela terceira vez: o factor multiplica o
+termo certo, e nunca o campo antes de uma subtracção.*
+
+⛔ **E a ESPIRAL fica como está, e não é esquecimento:** ali o deslocamento é **só radial**, logo
+`|dr|·c` **é** a distância perpendicular e `perp − thickness` está certo. *A mesma linha de código é
+um defeito numa forma e a resposta certa na irmã dela — o que separa é quantas componentes o
+deslocamento tem.*
+
+### §140.2 — ⛔ E a régua que mediu isto estava partida na primeira redacção
+
+A meia-largura do tubo saía de uma **bissecção**, que pressupõe o extremo superior FORA da peça. Num
+passo curto o ponto de partida dela cai na **volta seguinte** da mola: o intervalo deixa de conter a
+fronteira, e ela converge para o extremo — lia **`0,40`** onde a verdade era `0,06`.
+
+⚠️ *Uma bissecção com o extremo por verificar devolve o extremo*, e a leitura sai **plausível** (é um
+número, na ordem de grandeza da peça). A cura é varrer até à primeira troca de sinal e só então
+afinar.
+
+### §140.3 — O gate
+
+`the_spring_tube_is_as_thick_as_the_panel_says` mede as **duas** coisas: a meia-largura radial contra
+o número do painel, e a **razão radial/vertical**, que tem de ler `c` e lia `1,0000`. ⚠️ A vertical
+não muda com a cura e **está certa nos dois** — uma subida em `z` é em parte um passeio ao longo da
+curva —, então *a razão é a régua, e não a altura de uma das colunas*.
+
+Provado por mutação: com o `c` de volta à corda inteira ele lê
+*«radial/vertical = 1,0000 e tem de ser o `c` = 0,9940»*.
+
+**Smoke:** *MODEL* > **A** > *Spring* com o **Pitch** alto — o arame passa a ter a grossura que o
+número diz.

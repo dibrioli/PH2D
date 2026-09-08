@@ -23,7 +23,7 @@ número um.
 | de onde | faltam | quais |
 |---|---:|---|
 | catálogo **2D** | **0** | ~~Polygon(N)~~ · ~~Triangle~~ · ~~Bezier~~ · ~~Parabola~~ · ~~Circle Wave~~ |
-| catálogo **3D** | **1** | Plane · ~~Death Star~~ · ~~Vesica Segment~~ (W139) |
+| catálogo **3D** | **0** | ~~Plane~~ (W140) · ~~Death Star~~ · ~~Vesica Segment~~ (W139) |
 | **famílias** fora de catálogo | **0** | ~~Nó de toro~~ · ~~Rosca / knurling~~ |
 | **total** | **3** | |
 
@@ -137,12 +137,20 @@ UMA peça, não três linhas na Hierarquia.
 que manda é *«o artista pensa nisto como uma peça ou como duas?»* — que é a lei que o doc da
 [`sd_hollow_dome`] já escrevia desde a W103.
 
-### ⏳ Fora de lote — **o Plane**
+### ⛔ Fora de lote — **o Plane: RECUSA MEDIDA** (W140)
 
-⛔ **Não é uma forma a construir: é a bola de recorte admitir uma peça INFINITA.** Hoje toda peça
-tem `bounding_radius`, e o traçado, o gizmo, a exportação e o recorte por região dependem dele.
-⚠️ *É maquinaria, e a wave dela começa por medir o que se parte quando o raio é `∞`* — não por
-escrever `sd_plane`.
+A wave começou por medir, como este plano mandava — e a medição fechou a pergunta em vez de a abrir.
+
+⭐⭐⭐ **Um plano tem DOIS usos e eles não são o mesmo:**
+
+| uso | o que a medição diz |
+|---|---|
+| **faca** (cortar a peça) | ✅ **já se faz hoje, a custo ZERO** — a subtracção deixa o bordo na peça: `0,500` com um cortador de meia-aresta `0,6` **ou** `1000`, sem se mexer uma vez |
+| **chão** (parte da peça) | ⛔ **inexportável por definição** — não há grade finita que contenha um plano infinito; e mesmo finito, um chão de meia-aresta `100` já deixa a peça com **menos de uma célula** na exportação |
+
+⇒ o que faltava não era uma forma: era descobrir que a metade útil **já estava feita**, e que a
+outra metade não tem resposta que caiba numa grade. Tabelas em [doc 06 §140](06_resultados_cena_e_gizmo.md);
+sonda `probe_the_infinite_piece`.
 
 ---
 

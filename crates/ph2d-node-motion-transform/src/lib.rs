@@ -64,7 +64,6 @@ use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream, par_build};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
-use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel, ReduceSpec};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -122,6 +121,15 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "pivot_y",
             default: 0.0,
         },
+        // **O CISALHAMENTO** — ver [`Shear`]. `0`/`0` ⇒ o afim diagonal de sempre, ao bit.
+        ParamSpec {
+            name: SKEW_X,
+            default: 0.0,
+        },
+        ParamSpec {
+            name: SKEW_Y,
+            default: 0.0,
+        },
     ],
     // `lowerings` stays `Cpu`: the `LoweringKind::Wgsl` path is the scalar
     // `eval_column` route (`ph2d-expr`), and `P` is a `Vec2` column, so that
@@ -159,6 +167,65 @@ fn authored_factors(scale: f32, uniform: f32, scale_y: f32) -> (f32, f32) {
     } else {
         (scale, scale_y)
     }
+}
+
+pub(crate) const SKEW_X: &str = "skew_x";
+pub(crate) const SKEW_Y: &str = "skew_y";
+
+/// ⭐⭐ **O CISALHAMENTO — o terço do afim que faltava** (ciclo 3, W3 — doc 106 §2.4).
+///
+/// Um grupo chamado *TRANSFORMES* sem cisalhamento é um buraco que um profissional nota na
+/// primeira hora: o *Transform* do After Effects tem **Skew + Skew Axis**, o Illustrator tem a
+/// ferramenta **Shear**, e o Blender tem `Shear` no menu de transformação. A folha 04 da
+/// conferência já o nomeara — *«o `Skew` continua faltando (e é afim: caberia no
+/// `motion.transform`, não aqui)»* — e ficou por fechar.
+///
+/// `x' = sx·x + kx·y` · `y' = sy·y + ky·x`.
+///
+/// ## ⛔ Por que é uma INCLINAÇÃO e não um ÂNGULO
+///
+/// A referência autora em graus (o Illustrator pede um ângulo; o *Skew* do AE comporta-se como
+/// um). A conversão é `k = tan(φ)`, e é aí que ela morre aqui:
+///
+/// 1. **HR-5 — o caminho canónico é transcendental-free.** A casa não chama `sin`/`cos`: ela
+///    porta a senoide parabólica, operação por operação, porque o `sin` do WGSL não tem garantia
+///    cross-vendor. Um `tan` construído dessa aproximação **não é uma ε mais larga, é outra
+///    curva** — a mesma frase que o `motion.bend` e o `motion.twist` já escreveram.
+/// 2. **`tan` explode.** A `±90°` a inclinação é infinita, então um slider em graus gasta metade
+///    do curso num regime que devolve `NaN`, e o teto teria de ser um número escolhido — o que o
+///    §0.0 proíbe sem medição de recurso.
+///
+/// ⇒ o knob é a inclinação, que é **exacta**, ilimitada e bem comportada, com a régua escrita:
+/// `1` é 45°, `0,5` é ~26,6°, `2` é ~63,4°. *A referência escolheu a unidade que a interface
+/// dela sabia desenhar; nós escolhemos a que o dado é.*
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct Shear {
+    /// Quanto do `y` entra no `x`.
+    pub kx: f32,
+    /// Quanto do `x` entra no `y`.
+    pub ky: f32,
+}
+
+/// O cisalhamento NEUTRO — o que todo documento já autorado carrega.
+pub const NO_SHEAR: Shear = Shear { kx: 0.0, ky: 0.0 };
+
+impl Shear {
+    /// ⚠️ **O neutro é uma pergunta de ESTRUTURA, não de aritmética.** Com `kx = 0` a conta
+    /// geral daria `p.x·sx + p.y·0 + ox`, e `a + 0.0` **não** é `a` quando `a` é `−0.0`. É a
+    /// mesma razão pela qual [`folded_offset`] devolve o offset verbatim no pivô zero.
+    #[must_use]
+    pub fn is_neutral(self) -> bool {
+        self.kx == 0.0 && self.ky == 0.0
+    }
+}
+
+/// O afim COM cisalhamento. Ver [`apply_xform`] para o caminho neutro, que é o que todo
+/// documento já autorado percorre.
+fn apply_sheared(p: [f32; 2], sx: f32, sy: f32, sh: Shear, ox: f32, oy: f32) -> [f32; 2] {
+    [
+        p[0] * sx + p[1] * sh.kx + ox,
+        p[1] * sy + p[0] * sh.ky + oy,
+    ]
 }
 
 /// The per-element affine map `p' = p * scale + (ox, oy)`. Pure and isolated so
@@ -226,98 +293,34 @@ fn positions(s: &Stream) -> &[[f32; 2]] {
 /// `o + 0·(1−s)`: the two differ only in the sign of a zero, which nothing can
 /// see — and that is the point. Byte-identity for every document written before
 /// the pivot existed is then a fact of STRUCTURE, not an argument about IEEE.
-fn folded_offset(sx: f32, sy: f32, ox: f32, oy: f32, c: [f32; 2]) -> (f32, f32) {
+fn folded_offset(sx: f32, sy: f32, sh: Shear, ox: f32, oy: f32, c: [f32; 2]) -> (f32, f32) {
     if c[0] == 0.0 && c[1] == 0.0 {
         return (ox, oy);
     }
-    (ox + c[0] * (1.0 - sx), oy + c[1] * (1.0 - sy))
+    if sh.is_neutral() {
+        return (ox + c[0] * (1.0 - sx), oy + c[1] * (1.0 - sy));
+    }
+    // ⚠️ **Com cisalhamento a dobra deixa de ser por EIXO:** `c − c·M` mistura os dois, e é
+    // por isso que o caminho neutro fica escrito à parte em vez de sair desta expressão com
+    // `k = 0` — `c[0] − (c[0]·sx + 0)` e `c[0]·(1 − sx)` são a mesma álgebra e outro `f32`.
+    (
+        ox + c[0] - (c[0] * sx + c[1] * sh.kx),
+        oy + c[1] - (c[1] * sy + c[0] * sh.ky),
+    )
 }
 
 /// Apply the affine map to `p`, then blend from the original toward the
 /// transformed position by `f` (the falloff): `f = 0` keeps `p`, `f = 1` takes
 /// the full transform. Mirrors `motion.orbit`'s focus blend.
-fn xform_masked(p: [f32; 2], sx: f32, sy: f32, ox: f32, oy: f32, f: f32) -> [f32; 2] {
-    let full = apply_xform(p, sx, sy, ox, oy);
+fn xform_masked(p: [f32; 2], sx: f32, sy: f32, sh: Shear, ox: f32, oy: f32, f: f32) -> [f32; 2] {
+    let full = if sh.is_neutral() {
+        apply_xform(p, sx, sy, ox, oy)
+    } else {
+        apply_sheared(p, sx, sy, sh, ox, oy)
+    };
     [p[0] + (full[0] - p[0]) * f, p[1] + (full[1] - p[1]) * f]
 }
 
-/// GPU compute kernel (GPU/M5 Fase 2, ADR-0126): the exact per-element map of
-/// the CPU `eval` — `full = p·scale + (ox, oy)` then `p' = p + (full − p)·falloff`
-/// — in the SAME multiply/add order, so parity holds within GPU-FMA ε (the ε
-/// gate). No `applicable`: a plain affine covers the whole param space (no enum,
-/// no partial coverage). `ReadWriteExisting` on `P` mirrors the CPU's
-/// pattern-match — a stream WITHOUT a `P` column passes through untouched, so
-/// absence means the same thing on both paths (the falloff read materializes
-/// its `1.0` identity when absent = full effect).
-const GPU_KERNEL: GpuKernel = GpuKernel {
-    wgsl: concat!(
-        // ⚠️ O MODO decide o pivo, e o prologo vem da PORTA
-        // (`ph2d_nodegraph::pivot`) -- nao de uma copia aqui. O que estava neste
-        // sitio perguntava «o ponto digitado e' diferente de zero?» e nao olhava o
-        // modo: um `pivot_x` deixado para tras (a row esta' escondida pelo
-        // `ParamGate`, o valor nao) vazava para o device e desenhava outra coisa.
-        ph2d_nodegraph::pivot_wgsl!("f32(params.count)"),
-        "\
-        let xf_f = read_falloff(i);\n\
-        let xf_p = read_P(i);\n\
-        // O link de corrente, lido como no CPU (`authored_factors`): `>= 0.5`, e ligado os\n\
-        // dois eixos sao o MESMO numero.\n\
-        let xf_sx = params.scale;\n\
-        let xf_sy = select(params.scale_y, params.scale, params.uniform >= 0.5);\n\
-        // The pivot folded into the offset, the same expression and the same\n\
-        // order as the CPU's `folded_offset` -- including its zero shortcut, so\n\
-        // the neutral is structural on both paths and not an IEEE argument.\n\
-        var xf_ox = params.offset_x;\n\
-        var xf_oy = params.offset_y;\n\
-        if (pv_pivot.x != 0.0 || pv_pivot.y != 0.0) {\n\
-            xf_ox = params.offset_x + pv_pivot.x * (1.0 - xf_sx);\n\
-            xf_oy = params.offset_y + pv_pivot.y * (1.0 - xf_sy);\n\
-        }\n\
-        let xf_full = vec2<f32>(\n\
-            xf_p.x * xf_sx + xf_ox,\n\
-            xf_p.y * xf_sy + xf_oy);\n\
-        write_P(i, vec2<f32>(\n\
-            xf_p.x + (xf_full.x - xf_p.x) * xf_f,\n\
-            xf_p.y + (xf_full.y - xf_p.y) * xf_f));\n"
-    ),
-    wgsl_lib: "",
-    bindings: &[
-        ColumnBinding {
-            column: "P",
-            dim: Dim::Vec2,
-            access: ColumnAccess::ReadWriteExisting,
-            identity: [0.0; 4],
-            port: 0,
-        },
-        ColumnBinding {
-            column: "falloff",
-            dim: Dim::Scalar,
-            access: ColumnAccess::Read,
-            identity: [1.0; 4],
-            port: 0,
-        },
-    ],
-    params: &[
-        "scale",
-        "uniform",
-        "scale_y",
-        "offset_x",
-        "offset_y",
-        "pivot_mode",
-        "pivot_x",
-        "pivot_y",
-    ],
-    count_law: None,
-    variant_by_param: None,
-    // ⭐⭐ **Sem recusa: os TRÊS modos correm no dispositivo** (ciclo 3, W1).
-    // A recusa que estava aqui dizia que o centroide *«é uma REDUÇÃO sobre o
-    // stream e não um mapa por elemento»* e nomeava a própria cura — *«o canal
-    // `reduce -> broadcast -> map` que os deformadores usam é o que a
-    // levantaria»*. Esse canal já tinha shipado (GPU/M5) e o `motion.spherize`
-    // já media o centroide com ele; a recusa sobreviveu ao dia em que deixou de
-    // ser verdade. Ver [`REDUCES`].
-    applicable: None,
-};
 
 /// As reduções que este nó precisa: o **centroide** do layout, como duas somas
 /// sobre `P.x` e `P.y` — as MESMAS do [`motion.spherize`], e o kernel divide cada
@@ -338,7 +341,6 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
 /// nota que o `motion.spherize` escreveu quando pagou estas duas.
 ///
 /// [doc 106 §4.W1]: ../../../docs/Motion%20Nodes/106_ciclo_3_transformes_e_deformadores.md
-static REDUCES: &[ReduceSpec] = ph2d_nodegraph::pivot::CENTROID_REDUCES;
 
 struct MotionTransform;
 
@@ -351,6 +353,10 @@ impl NodeOp for MotionTransform {
         // Os dois fatores — ver [`UNIFORM`]. Ligado (o default), `sx` e `sy` são o MESMO `f32`.
         let (sx, sy) = authored_factors(ctx.param("scale"), ctx.param(UNIFORM), ctx.param(SCALE_Y));
         let (ox, oy) = (ctx.param("offset_x"), ctx.param("offset_y"));
+        let sh = Shear {
+            kx: ctx.param(SKEW_X),
+            ky: ctx.param(SKEW_Y),
+        };
         let mode = Pivot::of(ctx.param("pivot_mode"));
         let typed = [ctx.param("pivot_x"), ctx.param("pivot_y")];
         let out = {
@@ -363,7 +369,7 @@ impl NodeOp for MotionTransform {
             // escrever `match mode { … }` aqui e no `motion.kaleidoscope` seria a
             // sexta resposta à pergunta que esta wave existe para unificar.
             let pivot = mode.resolve(typed, positions(input));
-            let (ox, oy) = folded_offset(sx, sy, ox, oy, pivot);
+            let (ox, oy) = folded_offset(sx, sy, sh, ox, oy, pivot);
             // The port type guarantees `P` is `Vec2`; a `P` of any other dim is
             // an upstream node-author bug. Assert it loudly in debug/test rather
             // than silently passing it through untransformed (which would emit
@@ -379,7 +385,7 @@ impl NodeOp for MotionTransform {
                         // Pure per-instance map → parallel above the threshold
                         // (bit-identical, no reduction). GPU/M5 Fase 0.
                         let t: Vec<[f32; 2]> = par_build(v.len(), |i| {
-                            xform_masked(v[i], sx, sy, ox, oy, falloff_at(input, i))
+                            xform_masked(v[i], sx, sy, sh, ox, oy, falloff_at(input, i))
                         });
                         out.set("P", Column::Vec2(t));
                     }
@@ -534,16 +540,16 @@ mod tests {
     fn xform_masked_blends_by_falloff() {
         // f=1 → full transform; f=0 → unmoved; f=0.5 → halfway between.
         assert_eq!(
-            xform_masked([1.0, 1.0], 2.0, 2.0, 10.0, 0.0, 1.0),
+            xform_masked([1.0, 1.0], 2.0, 2.0, NO_SHEAR, 10.0, 0.0, 1.0),
             [12.0, 2.0]
         );
         assert_eq!(
-            xform_masked([1.0, 1.0], 2.0, 2.0, 10.0, 0.0, 0.0),
+            xform_masked([1.0, 1.0], 2.0, 2.0, NO_SHEAR, 10.0, 0.0, 0.0),
             [1.0, 1.0]
         );
         // full = (12, 2); midpoint with (1,1) = (6.5, 1.5).
         assert_eq!(
-            xform_masked([1.0, 1.0], 2.0, 2.0, 10.0, 0.0, 0.5),
+            xform_masked([1.0, 1.0], 2.0, 2.0, NO_SHEAR, 10.0, 0.0, 0.5),
             [6.5, 1.5]
         );
     }
@@ -613,9 +619,16 @@ mod tests {
     }
 }
 
+mod kernel;
+use kernel::{GPU_KERNEL, REDUCES};
+
 #[cfg(test)]
 #[path = "pivot_tests.rs"]
 mod pivot_tests;
+
+#[cfg(test)]
+#[path = "skew_tests.rs"]
+mod skew_tests;
 
 #[cfg(test)]
 #[path = "uniform_tests.rs"]

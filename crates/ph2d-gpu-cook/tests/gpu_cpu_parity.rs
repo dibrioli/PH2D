@@ -6523,3 +6523,40 @@ fn measure_the_centroid_pivot_epsilon() {
     }
     eprintln!();
 }
+
+/// ⭐⭐ **O CISALHAMENTO CHEGA AO DISPOSITIVO** (ciclo 3, W3 — doc 106 §2.4) — o terço do afim
+/// que faltava ao grupo, e que a folha 04 da conferência nomeara sem fechar.
+///
+/// ⚠️ **Com pivô, porque é aí que o kernel e a CPU têm o que discordar:** com cisalhamento a
+/// dobra do pivô deixa de ser por EIXO (`c − c·M` mistura os dois), então um kernel que
+/// mantivesse a expressão diagonal ficaria verde no pivô zero e errado em todo o resto.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn the_skew_matches_the_cpu_including_the_pivot_fold() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    for (kx, ky, mode) in [
+        (0.8f32, 0.0f32, 1.0f32),
+        (0.0, -0.35, 1.0),
+        (0.8, -0.35, 1.0),
+        (0.45, 0.6, 0.0),
+    ] {
+        let mut g = Graph::new();
+        let (node, out) = deformer_chain(&mut g, 160.0, "motion.transform");
+        g.set_param(node, "scale", 0.63);
+        g.set_param(node, "uniform", 0.0);
+        g.set_param(node, "scale_y", 1.4);
+        g.set_param(node, "offset_x", 2.9);
+        g.set_param(node, "offset_y", -1.4);
+        g.set_param(node, "skew_x", kx);
+        g.set_param(node, "skew_y", ky);
+        g.set_param(node, "pivot_mode", mode);
+        g.set_param(node, "pivot_x", 3.7);
+        g.set_param(node, "pivot_y", -2.1);
+        eprintln!("skew kx {kx} ky {ky} pivot_mode {mode}");
+        assert_gpu_parity(&gpu, &reg, &g, out, 2);
+    }
+}

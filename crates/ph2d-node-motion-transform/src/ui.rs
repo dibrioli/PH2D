@@ -37,6 +37,26 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
         step: 0.05,
         widget: ParamWidget::Slider,
     },
+    // ⭐ **O CISALHAMENTO** — ver [`super::Shear`]. A faixa é `±2`, que é `±63,4°`: a régua da
+    // inclinação é `1 = 45°`, e um cisalhamento acima de dois é uma figura que já não se lê.
+    // ⚠️ A caixa de texto alcança mais (não há `ParamHardMax` aqui) — o slider é o curso útil,
+    // não o teto do dado, e a inclinação é ilimitada por construção, ao contrário de um ângulo.
+    ParamUiHint {
+        param: super::SKEW_X,
+        label: "Skew X",
+        min: -2.0,
+        max: 2.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: super::SKEW_Y,
+        label: "Skew Y",
+        min: -2.0,
+        max: 2.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
     ParamUiHint {
         param: "scale",
         label: "Scale",

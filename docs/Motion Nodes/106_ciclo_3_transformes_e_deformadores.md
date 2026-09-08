@@ -341,6 +341,47 @@ não chegou a estourar recebeu a mesma costura. Os quatro ficam com a mesma form
 `motion.drive` e o `motion.noise` já tinham: **`lib.rs` = o que o nó É · `kernel.rs` = o que o
 dispositivo corre · `ui.rs` = como ele se apresenta · `*_tests.rs` = uma pergunta por ficheiro.**
 
+### ✅ W2 — O ESPELHO CHEGA AO DISPOSITIVO: **10 de 13 passam a 11** (2026-09-07)
+
+Não era lacuna de param, era lacuna de **cobertura**, e a folha 05 §0 escreveu-a em
+**2026-08-09** sem nunca ter sido fechada. Kernel `StreamOp::SourceRows` na forma do irmão
+`motion.kaleidoscope`, com a linha de espelho a sair das duas reduções da porta do pivô
+(divididas por `window_src_n`, **não** por `params.count` — a armadilha que a W1d mediu).
+
+⚠️ **Um tropeço novo, com nome: `read_P` e não `read_in_P`.** O prefixo da porta só aparece num
+nó com **mais de uma** entrada. O portão de validação do naga apanhou-o **sem GPU nenhuma**, e
+só na máscara em que a coluna está **ausente** — com ela presente o símbolo existia na mesma.
+
+⛔ **Dois knobs recuam, com o mecanismo escrito e um gate a fixá-lo:** o `reindex` (escreve
+`Index`/`Count` novos — o mesmo `applicable` do caleidoscópio) e o `flip_rot` (reflectir `rot` e
+`vel` do gémeo pede uma binding de escrita **condicional à presença da coluna no template**; um
+`rot` ausente seria **cunhado** pelo device, que é divergência de SHAPE e não um ε).
+
+### ✅ W3 — O CISALHAMENTO: o terço do afim que faltava (2026-09-07)
+
+Um grupo chamado *TRANSFORMES* sem shear é um buraco que um profissional nota na primeira hora
+(AE *Transform* ▸ **Skew + Skew Axis** · Illustrator ▸ **Shear** · Blender ▸ `Shear`). A folha 04
+nomeara-o — *«é afim: caberia no `motion.transform`»* — e ficou por fechar.
+
+⛔ **É uma INCLINAÇÃO e não um ÂNGULO, por duas razões medidas:** (1) HR-5 — a casa é
+transcendental-free e um `tan` construído da senoide parabólica *não é uma ε mais larga, é outra
+curva*; (2) `tan` **explode** a `±90°`, então um slider em graus gastaria metade do curso num
+regime que devolve `NaN` e o teto teria de ser um número escolhido. ⇒ o knob é a inclinação —
+exacta, ilimitada — com a régua escrita: `1` é 45°, `0,5` é ~26,6°, `2` é ~63,4°.
+
+⚠️ **O ramo NEUTRO fica escrito à parte, nos dois caminhos**, e não sai da expressão geral com o
+knob a zero: `a + 0.0` **não** é `a` quando `a` é `−0.0`. *A identidade é da ESTRUTURA* — a mesma
+disciplina que o `folded_offset` já tinha para o pivô, e o gate compara BITS.
+
+⚠️ **E com cisalhamento a dobra do pivô deixa de ser por EIXO** (`c − c·M` mistura os dois), o
+que faz do pivô o único regime em que o kernel e a CPU têm o que discordar — é lá que a paridade
+corre. A régua do gate é o **PONTO FIXO**: o elemento que está no pivô não se move, qualquer que
+seja o cisalhamento.
+
+⚠️ E uma assersão MINHA reprovou sobre código correcto: pedi `x == 0` a um cisalhamento em Y
+sobre um ponto em `x = 3` — *um cisalhamento não move o eixo que ele lê*. A fixtura passou a ter
+`y ≠ x`, porque em `(3, 0)` o resultado `[3, 3]` satisfaz as duas afirmações por acidente.
+
 ### ⏳ ABERTO — dois vermelhos de GPU que já estavam no `main`
 
 1. **`value_slope_kernel_matches_the_cpu_on_the_device`** — mede `1,05023384e-4` contra a barra de

@@ -34,6 +34,7 @@ ph2d-node-motion-output = { path = "../ph2d-node-motion-output" }
 # GPU/M5 Fase 2 — the ported nodes, cooked on both paths by the parity gate.
 ph2d-node-motion-transform = { path = "../ph2d-node-motion-transform" }
 ph2d-node-motion-rotate = { path = "../ph2d-node-motion-rotate" }
+ph2d-node-motion-mirror = { path = "../ph2d-node-motion-mirror" }  # ciclo 3 W2: o espelho chegou ao device
 ph2d-node-motion-scale = { path = "../ph2d-node-motion-scale" }
 ph2d-node-motion-proximity = { path = "../ph2d-node-motion-proximity" }
 ph2d-node-motion-falloff = { path = "../ph2d-node-motion-falloff" }

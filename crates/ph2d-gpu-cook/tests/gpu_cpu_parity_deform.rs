@@ -58,6 +58,7 @@ fn registry() -> NodeRegistry {
     ph2d_node_motion_four_point_warp::register(&mut reg).unwrap();
     ph2d_node_motion_kaleidoscope::register(&mut reg).unwrap();
     ph2d_node_motion_move::register(&mut reg).unwrap();
+    ph2d_node_motion_mirror::register(&mut reg).unwrap();
     reg
 }
 
@@ -958,4 +959,93 @@ fn the_twist_centroid_pivot_rides_the_layout_on_the_device() {
     let cpu = cook_cpu(&reg, &g, out);
     let dev = cook_gpu(&gpu, &reg, &g, out);
     compare("twist pivot = Centroid, layout deslocado", &cpu, &dev);
+}
+
+/// ⭐⭐⭐ **O ESPELHO CHEGA AO DISPOSITIVO** (ciclo 3, W2 — doc 106 §2.2) — o último nó da
+/// família TRANSFORM sem rota de GPU, e a lacuna era de **cobertura**, não de param: o irmão
+/// `motion.kaleidoscope` percorre a mesma forma (`count → k·n`) desde que existe.
+///
+/// ⚠️ **As quatro células que a lei da contagem tem de acertar antes de qualquer posição:**
+/// `Both` dá `2n` e `Reflection Only` dá `n`, em cada eixo. Um `count_law` errado é um número
+/// diferente de coisas no ecrã, e o `compare` mede o comprimento primeiro.
+///
+/// ⚠️ E o layout é deslocado a montante: a linha de espelho É o centroide, então com a grelha
+/// na origem o `offset` seria a única coisa a mexer e a redução ficaria por medir.
+#[test]
+#[ignore = "requires a GPU adapter"]
+fn the_mirror_reaches_the_device() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    for (axis, keep, offset) in [
+        (0.0f32, 0.0f32, 0.0f32),
+        (1.0, 0.0, 0.0),
+        (0.0, 0.0, 2.75),
+        (0.0, 1.0, 0.0),
+        (1.0, 1.0, -1.5),
+    ] {
+        let mut g = Graph::new();
+        let grid = g.add_node("motion.grid");
+        g.set_param(grid, "rows", SIDE);
+        g.set_param(grid, "cols", SIDE);
+        g.set_param(grid, "gap_x", 0.35);
+        g.set_param(grid, "gap_y", 0.25);
+        let mv = g.add_node("motion.move");
+        g.set_param(mv, "dx", 5.0);
+        g.set_param(mv, "dy", -3.5);
+        let mr = g.add_node("motion.mirror");
+        g.set_param(mr, "axis", axis);
+        g.set_param(mr, "keep", keep);
+        g.set_param(mr, "offset", offset);
+        let out = g.add_node("motion.output");
+        for (from, to) in [(grid, mv), (mv, mr), (mr, out)] {
+            g.connect(Edge {
+                from: (from, 0),
+                to: (to, 0),
+                delayed: false,
+            })
+            .unwrap();
+        }
+        g.validate(&reg).expect("well-typed");
+        let n = (SIDE * SIDE) as usize;
+        let cpu = cook_cpu(&reg, &g, out);
+        assert_eq!(
+            cpu.len(),
+            if keep >= 0.5 { n } else { 2 * n },
+            "a lei da contagem: keep {keep}"
+        );
+        let dev = cook_gpu(&gpu, &reg, &g, out);
+        compare(
+            &format!("mirror axis {axis} keep {keep} offset {offset}"),
+            &cpu,
+            &dev,
+        );
+    }
+}
+
+/// **E os dois knobs que RECUAM continuam a recuar** — a recusa é o contrato, com o mecanismo
+/// escrito no `applicable`: as colunas que não são `P` chegam por um GATHER do template, e
+/// tanto o `reindex` (que escreve `Index`/`Count` novos) como o `flip_rot` (que reflecte `rot`
+/// e `vel` do gémeo) são outra operação.
+#[test]
+fn the_mirror_recuses_the_two_knobs_the_gather_cannot_serve() {
+    let reg = registry();
+    let k = ph2d_nodegraph::gpu::KernelResolver::gpu_kernel(
+        &reg,
+        ph2d_node_motion_mirror::MANIFEST.id,
+    )
+    .expect("o espelho tem kernel");
+    let applicable = k.applicable.expect("ele declara o predicado");
+    let p = |reindex: f32, flip: f32| {
+        move |name: &str| match name {
+            "reindex" => reindex,
+            "flip_rot" => flip,
+            _ => 0.0,
+        }
+    };
+    assert!(applicable(&p(0.0, 0.0)), "o caminho de omissao vai ao device");
+    assert!(!applicable(&p(1.0, 0.0)), "o reindex recua");
+    assert!(!applicable(&p(0.0, 1.0)), "o flip_rot recua");
 }

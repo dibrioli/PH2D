@@ -178,10 +178,11 @@ fn mirror_positions(p: &[[f32; 2]], vertical: bool, offset: f32) -> Vec<[f32; 2]
     if n == 0 {
         return Vec::new();
     }
-    let mut c = p
-        .iter()
-        .fold([0.0f32; 2], |a, q| [a[0] + q[0], a[1] + q[1]]);
-    c = [c[0] / n as f32, c[1] / n as f32];
+    // ⚠️ A média vem da PORTA, com acumulador `f64` (ciclo 3, W1 — doc 106 §4): a soma
+    // sequencial em `f32` que estava aqui é a mesma que fazia o `motion.spherize` divergir do
+    // dispositivo em **54 365 % da barra** de paridade num layout grande e afastado da origem.
+    // Aqui ela nunca tinha sido comparada com nada, porque este nó não tinha device.
+    let c = ph2d_nodegraph::reduce_meta::centroid_of(p).unwrap_or([0.0, 0.0]);
     let mut out = p.to_vec();
     out.extend(p.iter().map(|q| {
         if vertical {
@@ -342,8 +343,16 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
+    // Ciclo 3 W2 (ADR-0136): o kernel `SourceRows` e a lei de contagem — a forma que o irmão
+    // `motion.kaleidoscope` já percorria, e que a folha 05 §0 nomeou como lacuna de COBERTURA.
+    reg.register_gpu_kernel(MANIFEST.id, kernel::GPU_KERNEL);
+    reg.register_stream_op(MANIFEST.id, ph2d_nodegraph::gpu::StreamOp::SourceRows { port: 0 });
+    // A linha de espelho é o centroide da ENTRADA — as duas somas da porta do pivô.
+    reg.register_reduces(MANIFEST.id, ph2d_nodegraph::pivot::CENTROID_REDUCES);
     Ok(())
 }
+
+mod kernel;
 
 use ph2d_node_registry::{ParamUiHint, ParamUnit, ParamUnitDecl, ParamWidget};
 

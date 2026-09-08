@@ -362,3 +362,90 @@ fn nenhuma_tecla_e_reivindicada_duas_vezes_com_a_mesma_guarda() {
          devolve `true`. Uma tecla que compila e nunca corre nao da' warning nenhum."
     );
 }
+
+/// ⭐⭐⭐ **O *FIT* ENQUADRA PARA A VISTA, NÃO PARA A JANELA.**
+///
+/// ⛔⛔ **A wave dos viewports criou uma SEGUNDA resposta a «qual é o aspecto?»**
+/// e este gate fecha-a: o desenho passou a usar o do rectângulo da vista e os
+/// três chamadores do enquadramento continuavam a passar o da **janela**.
+///
+/// # ⛔ A PRIMEIRA fixtura não produzia o fenómeno
+///
+/// Ela media *«que fracção da LARGURA a peça ocupa»* numa vista quadrada contra
+/// uma deitada — e leu `0,4862` contra `0,1621`, acusando código correcto. A
+/// razão é geometria: o [`ph2d_mesh_render::Camera3d::frame`] toma o **máximo**
+/// das duas restrições, e numa vista **deitada** quem manda é sempre a
+/// **altura** (o `fov` é vertical). ⇒ a fracção da largura *tem* de diferir, e o
+/// aspecto **nunca chega a morder**: com uma esfera (caixa simétrica) numa vista
+/// larga, passar o aspecto certo ou o errado dá a **mesma distância**, e o
+/// controlo lia `0,4862` contra `0,4862`.
+///
+/// ⇒ **duas correcções**: a régua passa a ser `max(fracção da largura, fracção
+/// da altura)` — que é o que *enquadrado* quer dizer, «toca um dos bordos» —, e a
+/// fixtura passa a incluir uma vista **ALTA**, que é onde a restrição horizontal
+/// manda e onde o aspecto errado se vê. *Uma fixtura em que o knob não morde não
+/// testa o knob.*
+#[test]
+fn o_fit_enquadra_para_a_vista_e_nao_para_a_janela() {
+    /// Quanto da vista a peça ocupa — o maior dos dois eixos. Enquadrado ⇒ ~1.
+    fn ocupacao(s: &crate::sculpt3d::Sculpt3dScene) -> f32 {
+        let (w, h) = s.viewport();
+        let (mut x0, mut x1, mut y0, mut y1) =
+            (f32::INFINITY, f32::NEG_INFINITY, f32::INFINITY, f32::NEG_INFINITY);
+        for p in s.mesh().positions() {
+            if let Some((x, y)) = s.camera.project(*p, (w, h)) {
+                x0 = x0.min(x);
+                x1 = x1.max(x);
+                y0 = y0.min(y);
+                y1 = y1.max(y);
+            }
+        }
+        ((x1 - x0) / w as f32).max((y1 - y0) / h as f32)
+    }
+    // ⚠️ O `fallback` é o aspecto da JANELA, e é ele que a porta tem de ignorar
+    // quando conhece a vista.
+    const JANELA: f32 = 3.0;
+    let mut ocupacoes = Vec::new();
+    for (w, h) in [(600.0, 600.0), (1200.0, 400.0), (400.0, 1200.0)] {
+        let mut s = cena_ou_sai!();
+        s.note_canvas(Rect::new(0.0, 0.0, w, h));
+        s.frame_all(JANELA);
+        ocupacoes.push(((w, h), ocupacao(&s)));
+    }
+    // ⚠️ **O CONTROLO**: a vista ALTA enquadrada com o aspecto da JANELA. É aqui
+    // que a restrição horizontal manda, e é o único enquadramento das três em
+    // que passar o aspecto errado muda a distância.
+    let mut errada = cena_ou_sai!();
+    errada.note_canvas(Rect::new(0.0, 0.0, 400.0, 1200.0));
+    errada.camera.frame(errada.world_bounds(), JANELA);
+    let f_errada = ocupacao(&errada);
+
+    println!("ocupacao por vista: {ocupacoes:?} | vista ALTA com o aspecto da JANELA: {f_errada:.4}");
+    // ⚠️⚠️ **A régua é «CABE», e não uma fracção fixa** — e a fracção fixa foi a
+    // terceira redacção errada deste gate. O [`Camera3d::frame`] enquadra a
+    // **CAIXA** da peça, não a peça: uma esfera dentro do cubo dela ocupa `0,49`
+    // e não `0,87`, e com o cubo visto de um ângulo (`yaw 0,6`, `pitch 0,35`) as
+    // extensões horizontal e vertical dele diferem — logo a ocupação **muda com
+    // o aspecto** mesmo com o enquadramento perfeitamente correcto (`0,488` nas
+    // vistas quadrada e deitada, `0,591` na alta). *Um invariante tem de ser uma
+    // propriedade da lei, não um número que a fixtura calhou de dar.*
+    //
+    // ⇒ o que a lei promete é **caber**, com a peça a ocupar a vista de verdade.
+    for ((w, h), f) in &ocupacoes {
+        assert!(
+            *f <= 1.0,
+            "a vista {w}x{h} deixou a peca TRANSBORDAR ({f:.4} da vista) -- enquadrar quer dizer \
+             caber, e o aspecto usado nao e' o dela"
+        );
+        assert!(
+            *f > 0.3,
+            "a vista {w}x{h} pos a peca a {f:.4} da vista -- ela cabe e nao esta' enquadrada, \
+             que e' o outro modo de falhar de um `fit`"
+        );
+    }
+    assert!(
+        f_errada > 1.0,
+        "o CONTROLO deu {f_errada:.4}: com o aspecto da JANELA (3,0) numa vista ALTA a peca tinha \
+         de TRANSBORDAR, e sem essa diferenca este gate nao afirma nada"
+    );
+}

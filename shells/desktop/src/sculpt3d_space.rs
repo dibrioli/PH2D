@@ -80,7 +80,29 @@ impl Sculpt3dScene {
     /// que uma cena com mais de um objeto existe para permitir.
     pub(crate) fn frame_all(&mut self, aspect: f32) {
         let b = self.world_bounds();
-        self.camera.frame(b, aspect);
+        self.camera.frame(b, self.view_aspect(aspect));
+    }
+
+    /// ⭐⭐ **A RAZÃO DE ASPECTO DA VISTA** — a do quadrante activo, ou `fallback`
+    /// antes do primeiro desenho.
+    ///
+    /// ⛔⛔ **Ela existe porque a wave dos viewports criou uma SEGUNDA resposta a
+    /// «qual é o aspecto?»** (2026-09-08): o desenho passou a usar o do
+    /// rectângulo da vista e os chamadores do enquadramento continuavam a passar
+    /// o da **JANELA**. Numa janela `1920×1080` com o canvas em `1520×950` isso
+    /// é `1,78` contra `1,60` — o *fit* punha a peça `11 %` mais perto do que a
+    /// vista comporta, e com a divisão aberta a diferença passa a ser de
+    /// **dobro** (um quadrante é quase quadrado).
+    ///
+    /// ⚠️ **O argumento fica como FALLBACK e não sai**: no nascimento da cena o
+    /// canvas ainda não foi publicado — o quadro publica-o depois —, e ali o
+    /// aspecto da janela é a melhor resposta que existe.
+    pub(crate) fn view_aspect(&self, fallback: f32) -> f32 {
+        let (w, h) = self.viewport();
+        if w <= 1 || h <= 1 {
+            return fallback;
+        }
+        w as f32 / h as f32
     }
 
     /// **O objeto que a mão está trabalhando.**

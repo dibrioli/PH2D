@@ -120,6 +120,12 @@ fn next_root_order(sim: &mut SimWorld) -> u32 {
     max.map_or(0, |m| m.saturating_add(1))
 }
 
+/// ⭐⭐⭐ **O ponto fixo desta mídia** — módulo irmão, pelo teto de 600 LOC da shell e por
+/// ASSUNTO: aqui vive o invariante da ponte, ali a lei que a fotografia do undo exige dela.
+#[cfg(test)]
+#[path = "flip_entities_fixpoint_tests.rs"]
+mod fixpoint_tests;
+
 #[cfg(test)]
 mod tests {
     use super::*;

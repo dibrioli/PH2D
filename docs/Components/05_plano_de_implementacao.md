@@ -23,7 +23,7 @@
 | F1 | `StableId` + `SiblingOrder` + snapshot v2 + **a 1ª migração** + corte da Sprite | ✅ 2026-08-25 |
 | F2 | O undo vira incremental (protocolo das 6 condições) | ✅ 2026-08-25 |
 | F3 | O Inspector passa a mostrar o que o objeto TEM · o `+` e a paleta · objeto vazio na raiz — **walking skeleton** | ✅ 2026-08-25 |
-| F4 | Núcleo de instância: Duplicar/Criar componente/Instanciar/sync/Destacar + física | ✅ **FECHADA 2026-09-07** — F4.1–F4.5 ✅ · F4.6a/b ✅ · F4.7 ✅ (os 3 smoke-gates) · **F4.6c ✅**: o motor de instância **do vetor** saiu (`VecInstance`/`VecComponentMain` e satélites, **−5 170 LOC líquidas** em 44 ficheiros), o `PROJECT_SCHEMA` subiu **123 → 124** e os **três** contadores desceram de `79`/`80`/`80` para `77`/`78`/`78`. O bloqueio era **prático** — a `line/Vector` viva — e dissolveu-se no dia em que ela integrou (§F4.6c-fecho) · **F4.6d ✅** (2026-09-08): os outros verbos tardios foram MEDIDOS — apagar e duplicar **produzem** o fantasma —, e a cura é uma **rede** antes da captura, que pelo caminho achou dois tetos QUADRÁTICOS que já se pagavam por quadro (§F4.6d) · **F4.6e ✅** (2026-09-08): a catraca das tabelas era **dívida que não existia** — as 9 entradas eram falsos positivos, e a cura foi a RÉGUA aprender quatro derivações, não riscar as linhas (§F4.6e) · **F4.6f ✅** (2026-09-08): a rede mudou-se para DENTRO do `post_frame_undo` — *ela corre exactamente quando a fotografia corre* —, e a peça «mais cara» foi medida a 20 000 formas e **não tem teto**: a faixa é linear (§F4.6f) · **F4.6g ✅** (2026-09-08): a rede passou a ter **CENSO** dos escritores do passe do desenho, e ele achou um buraco ao nascer — o pivô dos objectos **Flip** (§F4.6g) |
+| F4 | Núcleo de instância: Duplicar/Criar componente/Instanciar/sync/Destacar + física | ✅ **FECHADA 2026-09-07** — F4.1–F4.5 ✅ · F4.6a/b ✅ · F4.7 ✅ (os 3 smoke-gates) · **F4.6c ✅**: o motor de instância **do vetor** saiu (`VecInstance`/`VecComponentMain` e satélites, **−5 170 LOC líquidas** em 44 ficheiros), o `PROJECT_SCHEMA` subiu **123 → 124** e os **três** contadores desceram de `79`/`80`/`80` para `77`/`78`/`78`. O bloqueio era **prático** — a `line/Vector` viva — e dissolveu-se no dia em que ela integrou (§F4.6c-fecho) · **F4.6d ✅** (2026-09-08): os outros verbos tardios foram MEDIDOS — apagar e duplicar **produzem** o fantasma —, e a cura é uma **rede** antes da captura, que pelo caminho achou dois tetos QUADRÁTICOS que já se pagavam por quadro (§F4.6d) · **F4.6e ✅** (2026-09-08): a catraca das tabelas era **dívida que não existia** — as 9 entradas eram falsos positivos, e a cura foi a RÉGUA aprender quatro derivações, não riscar as linhas (§F4.6e) · **F4.6f ✅** (2026-09-08): a rede mudou-se para DENTRO do `post_frame_undo` — *ela corre exactamente quando a fotografia corre* —, e a peça «mais cara» foi medida a 20 000 formas e **não tem teto**: a faixa é linear (§F4.6f) · **F4.6g ✅** (2026-09-08): a rede passou a ter **CENSO** dos escritores do passe do desenho, e ele achou um buraco ao nascer — o pivô dos objectos **Flip** (§F4.6g) · **F4.6h ✅** (2026-09-08): a mídia Flip ganhou os gates de COMPORTAMENTO, e a prova de mutação apanhou uma **fixtura** (objectos sem arte não têm pivô para assentar) — mais a auditoria do vão, que não achou mais buracos (§F4.6h) |
 | F5 | Aninhamento + variantes + Overrides sem alvo + **a FORMA de uma cópia** | ✅ **FECHADA 2026-09-06** — **F5.1** aninhamento ✅ · **F5.3/F5.6** os órfãos são NOMEADOS e largam-se um a um ✅ (critério 3) · **variantes ✅ 2026-08-27** (fileira plana, modelo Unity) · **critério 4 — a escada do *Aplicar* ✅ 2026-09-04** (§F5.5) · **troca por mestre NÃO aparentado ✅ 2026-09-05** (3 modos + relatório, §F5.8) · **F5.9** a lista de órfãos fica accionável ✅ · **F5.10 — a peça RECUSADA ✅ 2026-09-06** (*Removed GameObject*, `PROJECT_SCHEMA` 115→116) · **F5.11 — a peça ACRESCENTADA ✅ 2026-09-06** (*Added GameObject*, **derivada**, schema intocado) · **F5.12 — mover uma peça na receita move-a em TODAS as cópias ✅ 2026-09-06** (a 3.ª metade da forma) · **F5.13/F5.14** as cenas de smoke corrigidas ✅ (3 passos impossíveis + 1 que pedia o gesto que a guarda não apanha) · ⛔ **EIXOS de propriedade REVOGADOS e ADIADOS** (Enio, 01/09 — o §F5-bis descreve trabalho que **saiu do fonte**; ver [`06`](06_plano_variacoes_sem_chaves.md)) |
 | F6 | O índice de assets (`ph2d-asset-index`) — sem UI | ✅ 2026-08-30 (996 LOC + a taxonomia) |
 | F7 | O painel Asset Browser + o arrasto único | ✅ 2026-08-30 — etapas **A–D** do [plano 07](07_plano_do_navegador_de_assets.md); `DragPayload` com as duas famílias |
@@ -2961,3 +2961,52 @@ O censo das pontes lia o `render_loop` **com** comentários, e uma mutação que
 corre. ⇒ a filtragem virou uma **PORTA com dois consumidores** (`code_only`), e o controlo da
 mutação exige agora que a ponte comentada **SOBREVIVA**. *Escrever a filtragem duas vezes seriam
 duas respostas à pergunta «o que é código aqui?», e a que envelhece é a que ninguém corrige.*
+
+---
+
+### ✅ §F4.6h — **O PONTO FIXO DA MÍDIA FLIP, e a FIXTURA que decidiu** (2026-09-08)
+
+O §F4.6g curou a mídia Flip a partir de um censo **textual**. Mas *um censo afirma que a chamada
+está lá, nunca que ela FECHA o que promete* — e um gate de texto verde sobre uma semântica errada
+lê-se exactamente como um produto correcto. ⇒ a mídia ganhou os dois gates de comportamento que os
+irmãos vectoriais já tinham
+([`flip_entities_fixpoint_tests`](../../shells/desktop/src/flip_entities_fixpoint_tests.rs)):
+apagar tarde (tira do MUNDO) e criar tarde (põe no DOCUMENTO) — *as duas metades da mesma latência*.
+
+#### ⭐⭐⭐ E a prova de mutação apanhou uma FIXTURA, não uma linha
+
+A 1.ª redacção criava objectos **vazios** (`push_object` e mais nada). Com ela, apagar o
+assentamento do pivô da rede **SOBREVIVEU** — e não era um gate a menos nem uma linha redundante: é
+a **terceira leitura** de uma mutação sobrevivente, *a fixtura não produz o fenómeno*. O
+`flip_transform::settle_origins` só age sobre um objecto que tenha `geometry_bbox()` **e** cujo
+centro não seja `(0, 0)`; sem arte, ele não tem o que assentar e a linha é invisível.
+
+Com a fixtura certa — um traço de `(4, 4)` a `(6, 6)`, centro bem longe da origem — as três leituras
+ficam separadas por medição:
+
+| mutação | resultado |
+|---|---|
+| tirar a REDE inteira do arnês | **2 de 2** vermelhos |
+| tirar o assentamento do pivô (fixtura **COM** arte) | **1 de 2** vermelho |
+| ⭐ **CONTROLO: a mesma mutação com a fixtura SEM arte** | **sobrevive** |
+
+⚠️ **O controlo é a metade que fecha a conclusão.** Sem ele, «tirar o pivô mata um gate» e «a minha
+fixtura é fraca» leem-se iguais — e eu teria acrescentado à rede uma linha sem prova de que ela
+importa, que é exactamente o que o §F4.6e condena.
+
+#### ⛔ E o VÃO entre os `sync` e a janela do censo está AUDITADO — não há mais buracos
+
+O censo por janela cobre `settle_origins → reorder_to` (88 linhas); os `sync` correm ~470 linhas
+acima. Auditado o vão inteiro — **460 linhas, 60 chamadas** —, ele é quase todo **leitores** que
+publicam no painel (`set_current_*`, `*_live::current`, `is_convertible`, `sole_path`). Os oito
+candidatos a escritor foram seguidos um a um:
+
+| candidato | veredito MEDIDO |
+|---|---|
+| `blend_live::upkeep` · `connector_live::upkeep` · `morph_live::upkeep` · `morph_set::upkeep` · `vec_cut_line::upkeep` | ⛔ **DRENOS** — todos drenam um `pending: &mut Option<…>`, e o gesto que o armou já é o passo |
+| `vec_shape_live::make_committed_shape_live` | ⛔ dreno (`tool.pending_live()`) |
+| `vec_text::upsert_text_shape` | ⛔ guardado por sessão de edição viva, e **idempotente** |
+| `vec_transform::build` | ⛔ **leitor puro** (`sim: &SimWorld`, devolve a tabela) |
+
+⇒ *uma auditoria que confirma a ausência de buraco vale tanto como uma cura* — e esta fecha a
+pergunta que o §F4.6d abriu, sem fabricar uma linha de dívida que não existe.

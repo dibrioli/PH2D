@@ -117,13 +117,42 @@ impl Sculpt3dScene {
     /// honesta: o artista carregou fora do barro, e apertar *para o canto do
     /// ecrã* seria inventar um ponto que ele não apontou. ⛔ Recusar o gesto
     /// seria pior — os outros quatro tipos não têm ponto nenhum e funcionariam.
+    ///
+    /// ⭐⭐⭐ **E ele ENCOSTA NO VÉRTICE, não fica no ponto da face** (espec §7: o
+    /// alvo do aperto é o **vértice activo** no instante da abertura). ⚠️ **A
+    /// diferença foi MEDIDA e não é decoração:** na bancada do oráculo
+    /// (`ph2d-cloth/tests/oraculo_do_filtro.rs`) apertar para o ponto solto do
+    /// cursor em vez do vértice dá erro `0,696942`; para o vértice, `0,010755` —
+    /// **65× melhor**. *A diferença entre apertar para um ponto da malha e para
+    /// um ponto que não pertence a ela.*
     pub(super) fn filter_pinch_anchor(&self) -> [f32; 3] {
         let (x, y) = self.last;
-        if let Some(hit) = self.pick_active(x, y) {
+        let Some(o) = self.obj() else {
+            return [0.0; 3];
+        };
+        let mesh = o.stack.mesh();
+        let Some(hit) = self.pick_active(x, y) else {
+            return mesh.bounds().center();
+        };
+        // O vértice mais próximo DA FACE ACERTADA — três candidatos, e não uma
+        // varredura da malha: o raio já disse onde bateu.
+        let Some(face) = mesh.faces().get(hit.face as usize) else {
             return hit.point;
-        }
-        self.obj()
-            .map_or([0.0; 3], |o| o.stack.mesh().bounds().center())
+        };
+        let d2 = |v: u32| {
+            let p = mesh.positions()[v as usize];
+            let d = [
+                p[0] - hit.point[0],
+                p[1] - hit.point[1],
+                p[2] - hit.point[2],
+            ];
+            d[0] * d[0] + d[1] * d[1] + d[2] * d[2]
+        };
+        face.verts()
+            .iter()
+            .copied()
+            .min_by(|a, b| d2(*a).total_cmp(&d2(*b)))
+            .map_or(hit.point, |v| mesh.positions()[v as usize])
     }
 
     /// **O que um passo do filtro de tecido lê da CÂMERA e da peça.**

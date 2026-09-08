@@ -409,3 +409,36 @@ fn undoing_a_filter_tells_the_screen() {
         "o desfazer nao contou como edicao: a doacao ao Painter serve um carimbo velho"
     );
 }
+
+/// ⭐⭐⭐ **O ALVO DO APERTO É UM VÉRTICE DA MALHA, e não um ponto da face.**
+///
+/// ⚠️ **A diferença foi medida contra o oráculo e vale `65×`**: apertar para o
+/// ponto solto onde o raio bateu dá erro `0,696942` na bancada
+/// (`ph2d-cloth/tests/oraculo_do_filtro.rs`); para o vértice, `0,010755`. ⛔ E
+/// nenhum gate da LEI a via: a bancada corre sobre fixtures, e quem escolhe o
+/// ponto no produto é esta função. *Um gate que mede a lei é cego a quem lhe
+/// entrega os argumentos.*
+///
+/// ⚠️ **O controlo está dentro:** o ponto do acerto tem de ser DIFERENTE do
+/// vértice devolvido nalgum clique, senão a asserção é vácua sobre uma malha em
+/// que os dois coincidem por acaso.
+#[test]
+#[ignore = "requires a GPU adapter (no GPU on CI); run with --ignored on a dev machine"]
+fn the_pinch_anchor_lands_on_a_vertex_of_the_mesh() {
+    let gpu = gpu_or_skip!();
+    let s = scene(&gpu.device, Verb::Draw);
+    let verts: Vec<[f32; 3]> = s.mesh().positions().to_vec();
+    let ancora = s.filter_pinch_anchor();
+    let mais_perto = verts
+        .iter()
+        .map(|p| {
+            let d = [p[0] - ancora[0], p[1] - ancora[1], p[2] - ancora[2]];
+            (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt()
+        })
+        .fold(f32::INFINITY, f32::min);
+    assert_eq!(
+        mais_perto, 0.0,
+        "a ancora do aperto ({ancora:?}) nao e' um vertice da malha -- o mais proximo esta' a \
+         {mais_perto:.6}, e o alvo aperta para o VERTICE activo"
+    );
+}

@@ -459,6 +459,41 @@ passaram a distar `9,86`). ⚠️ O gate daquela regra ficou **vácuo** e teve d
 posição da parede**. *Uma fixtura que espera uma coincidência morre quando a coincidência é curada.*
 
 
+---
+
+### F4-d — ✅ *«gizmo não mantém ângulo fixo em relação ao osso»* (2.º report, 2026-09-08)
+
+⭐⭐⭐ **O DEDO E O DESENHO PERGUNTAVAM POR OSSOS DIFERENTES.** O dedo lê o osso da selecção
+**INTEIRA** ([`bone_gesture::selected_bone`], cujo doc explica porquê: prender uma forma a um
+esqueleto entre vários faz-se escolhendo os dois, e aí **o primário é a forma**); o desenho lia só o
+**primário** do gizmo. Com uma forma seleccionada ao lado do osso — que é o gesto do *Bind* — as
+alças respondiam num osso e o arco era pintado noutro, ou em sítio nenhum.
+
+⚠️⚠️ **E um doc AFIRMAVA que as duas eram a mesma pergunta** (*«o foco é a SELECÇÃO, e é a mesma
+pergunta que o dedo faz»*, no `draw_influence`): *uma afirmação de igualdade sem um gate é um
+comentário.* ⭐ O doc do `selected_bone_bits` já prescrevia a cura — *«no laço de desenho chama-se a
+função livre acima»* — e ninguém a chamava.
+
+⛔ **A `draw_influence` tinha o mesmo defeito** e foi curada no mesmo passe: a alça da força sofria
+disto desde que existe.
+
+⚠️ **DOIS gates, porque são duas perguntas:** um mede a PORTA (o `selected_bone` acha o osso quando
+o primário é a forma) e outro mede o CHAMADOR (o laço de desenho recebe mesmo `osso_focado`). *Um
+gate sobre a porta não cobre quem a ignora* — provado por mutação: repor `gizmo.selection` deixa o
+primeiro verde e reprova o segundo.
+
+⚠️⚠️ **TRÊS hipóteses minhas foram medidas e ILIBADAS antes desta**, e as três viraram gates: o arco
+acompanha o pai rigidamente · é estável sob a IK em quadros sucessivos · e a parede no ângulo que o
+osso TEM cai na ponta dele a `1e-7` (sobre a cadeia montada pela porta REAL, não por uma fixtura à
+mão — foi por medir a errada que elas saíram todas verdes).
+
+⏳ **ABERTO, medido e nomeado:** com **escala NÃO-UNIFORME** na cadeia o ângulo entre o osso e a
+parede distorce-se (`DIF` de `+0,500000` para `+0,135736` com a raiz a `2 × 0,5`). É geometricamente
+correcto — o arco é a imagem do caminho da ponta, que sob um afim não-conforme é uma **elipse** — e
+⛔ **não é o que o dono viu** (o `bone_gesture::create` usa `Transform::IDENTITY`, logo a cena não
+tem escala). Fica aqui porque um rig escalado num eixo é coisa que um artista faz.
+
+
 ## ⛔ Recusas MEDIDAS deste módulo — não as reconstrua
 
 | O quê | Por quê | Onde |

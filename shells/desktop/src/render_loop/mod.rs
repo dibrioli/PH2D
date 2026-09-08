@@ -11091,10 +11091,25 @@ impl crate::App {
                     // ⚠️ A selecção CRUA basta e filtra-se sozinha: `influence_region` devolve
                     // `None` para o que não é osso, então não há aqui uma segunda pergunta
                     // *"isto é um osso?"* a divergir da que o `hover` faz.
+                    // ⭐⭐⭐ **O OSSO EM FOCO SAI DA MESMA PORTA QUE O DEDO USA**
+                    // ([`crate::bone_gesture::selected_bone`]), e não do primário do gizmo.
+                    //
+                    // ⛔⛔ **Eram DUAS respostas para «qual osso está em foco», e o doc de uma delas
+                    // afirmava serem a mesma.** O dedo lê a selecção INTEIRA (o `selected_bone`
+                    // explica porquê: prender uma forma a um esqueleto entre vários faz-se
+                    // escolhendo os dois, e aí **o primário é a forma**); o desenho lia só o
+                    // primário. ⇒ com uma forma seleccionada ao lado do osso, o dedo oferecia as
+                    // alças de um osso e o canvas pintava-as noutro sítio — ou em sítio nenhum.
+                    // Report do dono (2026-09-08): *«gizmo não mantém ângulo fixo em relação ao
+                    // osso»*.
+                    //
+                    // ⚠️ O doc do `selected_bone_bits` já prescrevia isto: *«no laço de desenho o
+                    // `gfx` está emprestado mutável de ponta a ponta, e ali chama-se a função livre
+                    // acima — a lei é a mesma, e é por isso que ela vive numa função só»*.
+                    let osso_focado =
+                        crate::bone_gesture::selected_bone(sim, hero.gizmo.iter_selected());
                     ph2d_skeleton_render::draw_influence(
-                        hero.gizmo
-                            .selection
-                            .and_then(|b| crate::skeleton_live::influence_region(sim, b)),
+                        osso_focado.and_then(|b| crate::skeleton_live::influence_region(sim, b)),
                         matches!(
                             self.bone_hover,
                             Some(h) if h.part == ph2d_skeleton_render::BonePart::Influence
@@ -11113,8 +11128,7 @@ impl crate::App {
                     // ⚠️ **A mesma pergunta que o dedo faz** — `bone_gesture::hover` só oferece as
                     // paredes do osso em FOCO, e é esta linha que decide de quem elas são.
                     ph2d_skeleton_render::draw_limit(
-                        hero.gizmo
-                            .selection
+                        osso_focado
                             .and_then(|b| {
                                 // ⚠️ **O MESMO zoom que o dedo usa** (`bone_gesture::hover` recebe
                                 // este `vec_px_to_world`): a folga das alças é uma grandeza de TELA

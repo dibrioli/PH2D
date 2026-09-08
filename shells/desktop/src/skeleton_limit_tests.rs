@@ -460,3 +460,134 @@ fn the_wall_handles_are_still_grabbable_after_moving_them_out() {
         );
     }
 }
+
+/// ⭐⭐⭐ **O DEDO E O DESENHO PERGUNTAM PELO MESMO OSSO** — e eram duas perguntas diferentes.
+///
+/// ⛔⛔ **O report do dono** (2026-09-08): *«gizmo não mantém ângulo fixo em relação ao osso»*. O
+/// mecanismo: o dedo lê o osso da selecção **INTEIRA**
+/// ([`crate::bone_gesture::selected_bone`], cujo doc explica porquê — prender uma forma a um
+/// esqueleto entre vários faz-se escolhendo os dois, e aí **o primário é a forma**), e o desenho
+/// lia só o **primário** do gizmo. Com uma forma seleccionada ao lado do osso, o canvas pintava o
+/// arco noutro sítio — ou em sítio nenhum — enquanto o dedo operava no osso certo.
+///
+/// ⚠️ **Um doc afirmava que as duas eram a mesma pergunta** (*«o foco é a SELECÇÃO, e é a mesma
+/// pergunta que o dedo faz»*, no `draw_influence`), e não eram. *Uma afirmação de igualdade sem um
+/// gate é um comentário.*
+///
+/// ⇒ este gate mede a PORTA, sobre a selecção que produz a divergência: a forma primeiro, o osso
+/// depois.
+#[test]
+fn the_finger_and_the_drawing_ask_for_the_same_bone() {
+    let (mut sim, [ombro, _]) = braco();
+    limita(&mut sim, ombro, -0.4, 0.4);
+    // Uma FORMA (um objecto sem `Bone`) que o artista escolheu primeiro — é o gesto do *Bind*.
+    let forma = sim
+        .world_mut()
+        .spawn((Transform::IDENTITY, ph2d_ecs::Name::new("Shape"), ph2d_ecs::RootOrder(0)))
+        .id();
+    let selecao = [forma.to_bits(), ombro.to_bits()];
+
+    // A porta que o DEDO usa.
+    let do_dedo = crate::bone_gesture::selected_bone(&sim, selecao);
+    assert_eq!(
+        do_dedo,
+        Some(ombro.to_bits()),
+        "o dedo tem de achar o osso mesmo quando o primário é a forma"
+    );
+
+    // ⚠️ E o PRIMÁRIO, que era o que o desenho lia, é a forma — a divergência que este gate fixa.
+    let primario = selecao[0];
+    assert_ne!(
+        primario,
+        ombro.to_bits(),
+        "a fixtura tem de PRODUZIR a divergência (o primário não pode ser o osso), senão é vácua"
+    );
+    assert!(
+        crate::bone_limit::arc(&sim, Entity::from_bits(primario), PX_PERTO).is_none(),
+        "o primário não tem arco — era isto que o canvas desenhava"
+    );
+    // ⭐ Pela porta certa, há arco.
+    assert!(
+        crate::bone_limit::arc(
+            &sim,
+            Entity::from_bits(do_dedo.expect("o dedo achou")),
+            PX_PERTO,
+        )
+        .is_some(),
+        "pela porta do dedo, o arco existe"
+    );
+}
+
+
+/// ⭐⭐⭐ **E O CANVAS TEM DE CHAMAR ESSA PORTA** — o gate acima mede a porta, este mede o CHAMADOR.
+///
+/// ⚠️ Sem ele a cura de 2026-09-08 seria reversível em silêncio: alguém volta a escrever
+/// `hero.gizmo.selection` no laço de desenho, o gate de cima continua verde (a porta não mudou) e o
+/// arco volta a ser pintado noutro osso. *Um gate sobre a porta não cobre quem a ignora.*
+#[test]
+fn the_bone_overlays_are_drawn_for_the_bone_the_finger_uses() {
+    let src = include_str!("render_loop/mod.rs");
+    for verbo in ["draw_influence(", "draw_limit("] {
+        let i = src
+            .find(verbo)
+            .unwrap_or_else(|| panic!("{verbo} sumiu do laço de desenho"));
+        let janela = &src[i..(i + 200).min(src.len())];
+        assert!(
+            janela.contains("osso_focado"),
+            "{verbo} não recebe o osso da porta do dedo — os 200 chars seguintes são:\n{janela}"
+        );
+    }
+    assert!(
+        src.contains("crate::bone_gesture::selected_bone(sim, hero.gizmo.iter_selected())"),
+        "o `osso_focado` deixou de sair do `selected_bone` — a divergência pode ter voltado"
+    );
+}
+
+/// ⭐⭐ **A PAREDE NO ÂNGULO QUE O OSSO TEM CAI NA PONTA DELE** — a identidade que liga o arco ao
+/// osso, e a régua que ilibou a geometria quando o report de 2026-09-08 chegou.
+///
+/// ⚠️ Ela corre sobre a cadeia montada pela porta REAL (`vec_bone_smoke::cadeia`), e não por uma
+/// fixtura à mão: as duas montam `Transform`s diferentes, e foi por medir a errada que três
+/// hipóteses minhas saíram ilibadas antes de a divergência aparecer noutro sítio.
+#[test]
+fn the_wall_at_the_bones_own_angle_lands_on_its_tip() {
+    use crate::vec_bone_smoke::{ARM_A, ARM_B};
+    let mut sim = SimWorld::default();
+    let raiz = crate::vec_bone_smoke::cadeia(&mut sim, ARM_A, ARM_B, 6).expect("cadeia");
+    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+    let mut ossos = vec![raiz];
+    while let Some(f) = sim
+        .world()
+        .get::<ph2d_ecs::Children>(*ossos.last().expect("há raiz"))
+        .and_then(|c| c.iter().find(|c| sim.world().get::<Bone>(**c).is_some()).copied())
+    {
+        ossos.push(f);
+    }
+    let alvo = ossos[2];
+    for r in [0.0_f32, 0.4, -0.7, 1.9] {
+        if let Some(mut t) = sim.world_mut().get_mut::<Transform>(alvo) {
+            t.rotation = r;
+        }
+        limita(&mut sim, alvo, f64::from(r) - 0.5, f64::from(r));
+        let seg = crate::skeleton_live::bone_segments(&sim);
+        let (_, a, b) = seg
+            .iter()
+            .copied()
+            .find(|(x, _, _)| *x == alvo.to_bits())
+            .expect("o osso tem segmento");
+        let arc = crate::bone_limit::arc(&sim, alvo, PX_PERTO).expect("o arco existe");
+        // ⚠️ A barra é o ruído do `f32` da pose da casa, não um número escolhido: a rotação viaja
+        // em `f32` e a geometria é `f64`.
+        let barra = 20.0 * f64::from(f32::EPSILON) * (b[0].abs() + b[1].abs()).max(1.0);
+        let d_apex = (arc.apex[0] - a[0]).hypot(arc.apex[1] - a[1]);
+        let d_edge = (arc.edge_max[0] - b[0]).hypot(arc.edge_max[1] - b[1]);
+        assert!(
+            d_apex < barra,
+            "com rot={r} o vértice do arco caiu a {d_apex} da origem do osso (barra {barra})"
+        );
+        assert!(
+            d_edge < barra,
+            "com rot={r} a parede caiu a {d_edge} da ponta do osso (barra {barra})"
+        );
+    }
+}

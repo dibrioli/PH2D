@@ -209,5 +209,78 @@ razão nomeada com o preço medido** — a lei nº 1 não admite a etiqueta `CPU
 
 ## §4 — Registo das waves
 
-*(cada wave escreve a sua secção aqui ao fechar, com a tabela medida e as premissas que a
-implementação derrubou)*
+### ✅ W1a — O CENTROIDE CHEGA AO DISPOSITIVO (2026-09-07)
+
+**A recusa mais bem escrita do módulo estava errada por um dia que já tinha passado.** O
+`motion.transform` declarava `applicable: Some(|p| Pivot::of(p("pivot_mode")) != Pivot::Centroid)`
+com o comentário a dizer que o centroide *«é uma REDUÇÃO sobre o stream e não um mapa por
+elemento»* e a **nomear a própria cura**: *«o canal `reduce → broadcast → map` que os deformadores
+usam é o que a levantaria, e isso é uma wave, não uma linha»*. Esse canal já tinha shipado
+(GPU/M5) e o `motion.spherize` já media o centroide com ele. ⇒ duas `ReduceSpec` (`cx`/`cy`) e a
+recusa sai; o custo que ela declarava — *«um layout pivotando no próprio centro perde a residência
+de GPU neste nó»* — desaparece.
+
+#### ⛔⛔ E o red-first apanhou um segundo defeito, este a DESENHAR ERRADO
+
+O kernel **ignorava o `pivot_mode`**: perguntava `if (params.pivot_x != 0.0 || …)` em vez de olhar
+o modo. Um ponto digitado e deixado para trás — a row está escondida pelo `ParamGate`, o **valor
+não é apagado** — vazava para o dispositivo: CPU `−14,629749` contra device `−13,260749`, **1,369
+unidades de mundo**, sem erro nenhum em lado nenhum. ⚠️ *O gate que existia corria `pivot_mode = 1`
+COM o ponto, onde os dois campos concordam — um gate que só corre o modo em que os dois concordam
+não mede o campo, mede a coincidência.*
+
+#### ⭐⭐⭐ E a medição do ε deu o achado da wave, com o sinal AO CONTRÁRIO
+
+`measure_the_centroid_pivot_epsilon` / `measure_the_spherize_centroid_epsilon`:
+
+| nó | fixtura | antes | depois |
+|---|---|---:|---:|
+| `motion.spherize` | 409 600 elementos, layout a `4` da origem | **54 365 % da barra** (`2e-4`) | **7,6 %** |
+| `motion.spherize` | 16 384 — *o tamanho do próprio gate* | **535 %** | 1,9 % |
+| `motion.transform` | 409 600, layout a `4,3` | **917 % da barra** (`2e-3`) | 0,4 % |
+
+**O desvio não era do kernel, era da CPU.** A soma dela é **sequencial** e a do dispositivo é em
+**árvore**, e a segunda é a mais certa (`log n · ulp` contra um passeio aleatório de `√n · ulp`
+sobre parciais que chegam à magnitude do layout inteiro). ⛔ **O `motion.spherize` shipa assim há
+meses com o gate de paridade verde** — porque ele mede UM tamanho (16 384) e uma lente de raio `6`,
+pequena de mais para o centroide morder. *Uma folga medida num tamanho é uma afirmação sobre esse
+tamanho.*
+
+⇒ a média passa a ter **uma porta**, [`ph2d_nodegraph::reduce_meta::centroid_of`], ao lado da
+`ReduceSpec` que é a metade de dispositivo dela, com acumulador `f64`. O gate dela corre **na CPU e
+portanto no CI** — os de paridade precisam de adapter, são `#[ignore]` e **nunca correram**.
+
+⚠️ **Duas armadilhas de fixtura, as duas apanhadas por mutação:** `65 536 × 4 = 2^18` soma-se
+**exactamente** em `f32` (uma fixtura de valores iguais deixa o gate verde sobre o fold que ele
+existe para reprovar), e a `40` em vez de `400` a mutação morre por `2,1×` em vez de `159×` — *o
+erro é proporcional à magnitude das parciais, logo a distância à origem é metade da fixtura*.
+
+### ✅ W1b — ⛔⛔ O `motion.drive` NÃO COMPILAVA NO DISPOSITIVO em três canais, e o gate que devia vê-lo era cego às VARIANTES (2026-09-07)
+
+Achado a correr as suítes de paridade de GPU do módulo: `the_colour_loop_closes_the_same_way_on_the_device`
+morria com `unknown identifier: drive_resolve`. A variante `DRIVE_HSV` (canais **Hue**,
+**Saturation**, **Value**) tem uma `wgsl_lib` **própria**, que é uma cópia à mão de metade da do
+irmão: ela traz `drive_round` e `drive_combine` e **não traz `drive_base` nem `drive_resolve`**, que
+o corpo chama. ⇒ conduzir matiz/saturação/valor no dispositivo nunca funcionou.
+
+⭐⭐ **A causa de segunda ordem é o instrumento:** o
+`every_registered_kernel_validates_across_the_whole_presence_space` — o gate que valida WGSL **sem
+adapter, em toda lane de CI** — varria `reg.gpu_kernel(id)`, o kernel **BASE**. Um nó com
+`variant_by_param` nunca dispacha o base: o sequenciador chama `GpuKernel::resolve(param)`. **Dez
+nós declaram variantes** (`drive` · `move` · `noise` · `oscillator` · `wiggle` · `spring` ·
+`stagger` · `orbit` · `falloff` · `distribute_radial`) e nenhuma delas alguma vez encontrou um
+compilador nessa lane. *Um gate que varre os kernels REGISTADOS é cego às variantes, e a variante é
+onde a lei se copia.*
+
+**Cura em duas metades:** o gate passa a varrer as variantes (um param de cada vez a partir dos
+defaults, com os índices exactos de cada `Enum` — ⚠️ uma variante escolhida por uma **combinação**
+escapa, e isso está nomeado em vez de prometido), e a `DRIVE_LIB_HSV` **concatena** a biblioteca do
+irmão em vez de copiar metade dela (o `concat!` só aceita literais ⇒ ela virou um `macro_rules!`).
+
+### ⏳ ABERTO — dois vermelhos de GPU que já estavam no `main`
+
+1. **`value_slope_kernel_matches_the_cpu_on_the_device`** — mede `1,05023384e-4` contra a barra de
+   `1e-4`, **5 % acima**. Já vem com o diagnóstico escrito no próprio teste (atribuído por ablação
+   em 2026-08-11, e a nota pede o número **noutra máquina** antes de recalibrar). Reproduzido
+   idêntico numa worktree limpa em `main` — **não é desta linha**.
+2. *(fechado nesta wave)* `the_colour_loop_closes_the_same_way_on_the_device` — era a W1b.

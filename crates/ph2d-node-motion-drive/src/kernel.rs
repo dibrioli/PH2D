@@ -27,7 +27,13 @@ pub(crate) const DRIVE_PARAMS: &[&str] = &["channel", "scale", "mode", "space"];
 /// `mode` picks a BRANCH ([[feedback_cpu_gpu_rounding_conventions_diverge]]).
 /// The falloff clamp MIRRORS the CPU's; no node writes a falloff outside `[0,1]`
 /// today, so it is defensive on both sides rather than load-bearing.
-pub(crate) const DRIVE_LIB: &str = "\
+///
+/// ⚠️ **É um `macro_rules!` e não só um `const` porque o [`DRIVE_LIB_HSV`] precisa de o
+/// CONCATENAR**, e o `concat!` só aceita literais. A alternativa era o que estava lá: uma
+/// cópia à mão de metade destas funções, que ficou incompleta e não compilava.
+macro_rules! drive_lib_src {
+    () => {
+        "\
     fn drive_round(x: f32) -> f32 {\n\
         // Rust f32::round = half away from zero (WGSL round is half-even).\n\
         return select(ceil(x - 0.5), floor(x + 0.5), x >= 0.0);\n\
@@ -84,7 +90,10 @@ pub(crate) const DRIVE_LIB: &str = "\
         let sn = drive_sin_cycles(ph);\n\
         if (comp == 1) { return vec2<f32>(-sn, c); }\n\
         return vec2<f32>(c, sn);\n\
-    }\n";
+    }\n"
+    };
+}
+pub(crate) const DRIVE_LIB: &str = drive_lib_src!();
 
 /// `falloff` and the value port, bound identically by every variant.
 macro_rules! drive_common {
@@ -290,6 +299,16 @@ const DRIVE_TINT: GpuKernel = GpuKernel {
 /// (A `motion.luminance` carrega a metade da IDA pelo mesmo motivo; extrair as duas para um
 /// `wgsl_lib` compartilhado é wave própria — o substrato hoje só tem lib POR KERNEL, e a
 /// convenção da biblioteca é a mesma que já copia o `falloff_at` nove vezes.)
+///
+/// ⛔⛔ **E ele CONCATENA o [`DRIVE_LIB`] em vez de copiar metade dele — porque a cópia
+/// estava incompleta e este kernel NÃO COMPILAVA** (ciclo 3, W1 — doc 106). A redacção
+/// anterior repetia `drive_round` e `drive_combine` à mão e **não trazia `drive_base` nem
+/// `drive_resolve`**, que o corpo chama: conduzir matiz, saturação ou valor no dispositivo
+/// morria com `unknown identifier: drive_resolve`. *Uma biblioteca copiada pela metade é a
+/// forma mais barata de uma lei divergir de si própria* — e o único sítio que o dizia era um
+/// gate de paridade `#[ignore]` que precisa de adapter. Hoje o
+/// `every_registered_kernel_validates_across_the_whole_presence_space` varre as VARIANTES e
+/// apanha-o sem placa nenhuma.
 const DRIVE_LIB_HSV: &str = concat!(
     "\
     fn drive_rgb_to_hsv(c: vec4<f32>) -> vec3<f32> {\n\
@@ -323,15 +342,10 @@ const DRIVE_LIB_HSV: &str = concat!(
         if (k == 4) { return vec3<f32>(t, p, v); }\n\
         return vec3<f32>(v, p, q);\n\
     }\n",
-    "\
-    fn drive_round(x: f32) -> f32 {\n\
-        return select(ceil(x - 0.5), floor(x + 0.5), x >= 0.0);\n\
-    }\n\
-    fn drive_combine(cur: f32, v: f32, mode: i32) -> f32 {\n\
-        if (mode == 1) { return v; }\n\
-        if (mode == 2) { return cur * v; }\n\
-        return cur + v;\n\
-    }\n"
+    // A biblioteca do irmão, INTEIRA — ela é só funções puras (nenhuma lê uma
+    // binding), então concatená-la aqui não pede coluna nenhuma que esta variante
+    // não ligue, e o que sobra fica por usar, que o WGSL permite.
+    drive_lib_src!()
 );
 
 /// **A COR sobre a cor que já está lá** ([`CH_HUE`]) — matiz, saturação e valor do `tint`.

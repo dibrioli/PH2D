@@ -84,6 +84,110 @@ fn every_registered_kernel_validates_across_the_whole_presence_space() {
             validated += 1;
         }
     }
+
+    // ⛔⛔ **E as VARIANTES, que é onde a lei se copia** (ciclo 3, W1 — doc 106).
+    //
+    // Este laço lia `reg.gpu_kernel(id)` — o kernel BASE — e um kernel com
+    // `variant_by_param` nunca é dispachado: o sequenciador chama
+    // `GpuKernel::resolve(param)` e dispacha o que vier de lá. Dez nós declaram
+    // variantes, e **nenhuma delas alguma vez encontrou um compilador nesta
+    // lane**. Medido: a `DRIVE_HSV` do `motion.drive` chama `drive_resolve` e a
+    // `wgsl_lib` dela — uma CÓPIA da do irmão, com dois terços das funções —
+    // **não a define**; conduzir matiz, saturação ou valor no dispositivo falha
+    // a compilar o módulo, e o único sítio que o dizia era um gate de paridade
+    // `#[ignore]` que precisa de adapter.
+    //
+    // ⚠️ **A varredura é de UM param de cada vez a partir dos defaults**, e não do
+    // produto cartesiano: `variant_by_param` é, pelo nome e pela prática, uma
+    // função de um param só (o `channel` do `drive`, o `space` do `move`), e o
+    // produto de 24 params seria uma explosão para cobrir uma forma que ninguém
+    // escreve. Uma variante escolhida por uma COMBINAÇÃO escapa a isto — está
+    // nomeado aqui em vez de prometido.
+    let mut variants = 0usize;
+    for manifest in reg.manifests() {
+        let Some(base) = reg.gpu_kernel(manifest.id) else {
+            continue;
+        };
+        if base.variant_by_param.is_none() {
+            continue;
+        }
+        let hints = reg.param_ui(manifest.id).unwrap_or(&[]);
+        let port_names: Vec<&str> = manifest.inputs.iter().map(|p| p.name).collect();
+        let mut seen: Vec<*const ph2d_nodegraph::gpu::GpuKernel> = vec![std::ptr::from_ref(base)];
+        for spec in manifest.params {
+            // Os valores que este param pode tomar: os índices de um `Enum` são
+            // exactos; um slider dá os extremos e o meio, que é o que separa um
+            // ramo por limiar.
+            let hint = hints.iter().find(|h| h.param == spec.name);
+            let values: Vec<f32> = match hint.map(|h| h.widget) {
+                Some(ph2d_node_registry::ParamWidget::Enum { labels }) => (0..labels.len())
+                    .map(|i| {
+                        #[expect(clippy::cast_precision_loss, reason = "um indice de enum")]
+                        let v = i as f32;
+                        v
+                    })
+                    .collect(),
+                _ => hint.map_or_else(
+                    || vec![spec.default],
+                    |h| vec![h.min, (h.min + h.max) * 0.5, h.max],
+                ),
+            };
+            for v in values {
+                let resolve = |name: &str| {
+                    if name == spec.name {
+                        v
+                    } else {
+                        manifest
+                            .params
+                            .iter()
+                            .find(|p| p.name == name)
+                            .map_or(0.0, |p| p.default)
+                    }
+                };
+                let k = base.resolve(&resolve);
+                let ptr = std::ptr::from_ref(k);
+                if seen.contains(&ptr) || k.is_passthrough() {
+                    continue;
+                }
+                seen.push(ptr);
+                let n = k.bindings.len().min(16);
+                for mask in 0u32..(1 << n) {
+                    let src = ph2d_gpu_cook::codegen::kernel_module(
+                        k,
+                        k.bindings,
+                        &port_names,
+                        reg.grid(manifest.id),
+                        reg.reduces(manifest.id),
+                        reg.luts(manifest.id),
+                        |b| {
+                            let idx = k
+                                .bindings
+                                .iter()
+                                .position(|x| std::ptr::eq(x, b))
+                                .expect("binding belongs to variant");
+                            mask & (1 << idx) != 0
+                        },
+                    );
+                    validate(
+                        &format!(
+                            "{} variant [{} = {v}] mask {mask:b}",
+                            manifest.name, spec.name
+                        ),
+                        &src,
+                    );
+                    validated += 1;
+                }
+                variants += 1;
+            }
+        }
+    }
+    // Controlo positivo: dez nós declaram `variant_by_param`, e o mais rico
+    // (`motion.drive`) sozinho tem seis variantes distintas do base. Um piso, não
+    // um pino — uma varredura que casasse zero passaria vaziamente.
+    assert!(
+        variants >= 15,
+        "so' {variants} variantes distintas foram varridas — o laco foi as cegas"
+    );
     // A compact node's REAL WGSL is its predicate (ADR-0136) — a kernel like
     // any other, dispatched by `encode_kernel_stage`, and therefore due exactly
     // this sweep: the cull predicate shipped with unqualified accessor names

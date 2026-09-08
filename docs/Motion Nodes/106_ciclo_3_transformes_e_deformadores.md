@@ -382,6 +382,35 @@ seja o cisalhamento.
 sobre um ponto em `x = 3` — *um cisalhamento não move o eixo que ele lê*. A fixtura passou a ter
 `y ≠ x`, porque em `(3, 0)` o resultado `[3, 3]` satisfaz as duas afirmações por acidente.
 
+### ✅ W4a — O CENSO DA FAMÍLIA, e as duas coisas que ele apanhou no CARTÃO (2026-09-07)
+
+Um censo sobre o **catálogo inteiro** (`the_pivot_question_has_one_vocabulary`, em
+`ph2d-node-registry-init`): todo nó que declara o param do pivô pinta-o como `Enum`, **com os
+rótulos da porta e na ordem da porta**, chama-lhe **a mesma palavra**, gateia as duas
+coordenadas ao modo que as lê, e declara as duas somas sem as quais o `Centroid` existiria no
+cartão e o kernel leria um símbolo que não há. ⚠️ Ele varre o catálogo, não uma lista — o quinto
+nó entra sozinho. Prova de mutação: mudar o rótulo do `bend` para *«Pivot Mode»* reprova.
+
+E a sonda que imprime **as rows que o cartão de facto pinta**
+(`what_the_card_shows`) — o instrumento que prova que um passo de smoke que manda clicar numa
+linha não está a mandar clicar numa linha que não existe — apanhou duas:
+
+1. ⛔ **O `motion.transform` chamava ao pivô «Scale About»** enquanto os três irmãos diziam
+   «Pivot». Renomeado — e o nome antigo já estava **errado** desde a W3, porque o pivô passou a
+   ser também o ponto fixo do cisalhamento.
+2. A ordem das rows dele passou a ser a do *Transform* do After Effects:
+   **Pivot · Scale · Uniform · Skew X · Skew Y · Offset X · Offset Y**.
+
+⏳ **E ela deixou à vista um terceiro, que é da W4:** o `motion.bezier_warp` pinta
+`In X · In Y · Out X · Out Y` **quatro vezes**, sem dizer de que aresta é cada grupo — 24 rows
+em que o artista não consegue escolher.
+
+### 🔬 A CENA DE SMOKE — `PH2D_GPU_COOK_DEMO=111`
+
+`grid(300×300) → move → mirror → twist → transform → output`, com o pano a **450 unidades** da
+origem. ⚠️ **O deslocamento é a cena inteira:** com o pano centrado os três modos dão a mesma
+imagem, e a cena ensinaria que a escolha não importa.
+
 ### ⏳ ABERTO — dois vermelhos de GPU que já estavam no `main`
 
 1. **`value_slope_kernel_matches_the_cpu_on_the_device`** — mede `1,05023384e-4` contra a barra de

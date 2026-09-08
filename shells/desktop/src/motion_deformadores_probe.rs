@@ -227,3 +227,43 @@ fn measure_the_deformer_group() {
   (um quadro de 60 fps tem 16,67 ms)\n"
     );
 }
+
+/// ⭐⭐ **AS ROWS QUE O CARTÃO DE FACTO PINTA, com o RÓTULO que aparece na tela.**
+///
+/// ⚠️ **Um passo de smoke que manda clicar numa linha AFIRMA que ela está na lista** — e a casa
+/// já pagou por escrever um passo impossível ([memória]). Esta sonda é o instrumento que
+/// verifica a afirmação antes de a mensagem sair: ela imprime o que o `stamp_card_params`
+/// produz, que é literalmente o que o pintor desenha.
+///
+/// [memória]: ../../../project-memory/feedback_a_smoke_step_that_names_a_panel_row_must_prove_the_row_is_in_the_list.md
+///
+/// ```text
+/// cargo test -p ph2d-host-desktop --bins -- --ignored --nocapture what_the_card_shows
+/// ```
+#[test]
+#[ignore = "sonda de auditoria — corra à mão"]
+fn what_the_card_shows() {
+    for nome in GRUPO {
+        let mut m = MotionState::new();
+        let id = m.doc.graph.add_node(nome.to_string());
+        let mut snap = ph2d_panel_motion_graph::snapshot_from(&m.doc.graph, &m.registry);
+        crate::render_loop::motion_bridge::params::card::stamp_card_params(
+            &m,
+            ph2d_editor::ProjectSettings::default(),
+            &mut snap,
+        );
+        let rows: Vec<String> = snap
+            .nodes
+            .iter()
+            .find(|v| v.id == id.0)
+            .map(|v| {
+                v.params
+                    .iter()
+                    .map(|c| c.hint.label.to_string())
+                    .collect()
+            })
+            .unwrap_or_default();
+        eprintln!("  {nome:<23} | {}", rows.join(" · "));
+    }
+    eprintln!();
+}

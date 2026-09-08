@@ -429,6 +429,36 @@ vê. Hoje é um `match` **exaustivo**: uma alça sem verbo é **erro de compila�
 do `goal.rs`).
 
 
+---
+
+### F4-c — ✅ *«os gizmos de limite mudam de posição sozinho após mover a cadeia»* (report, 2026-09-07)
+
+⭐⭐⭐ **O mecanismo, MEDIDO em três chamadas:** como o raio do arco é o comprimento do osso, quando
+ele **encosta na parede** a ponta e a borda do setor ocupam o mesmo ponto — `distância ponta→parede
+= 0,000000` — e o dedo devolvia `LimitMax` onde o artista queria a ponta. Ele movia a cadeia até ao
+limite, agarrava para continuar, e **arrastava a parede**. O gizmo mexia-se sem ele o ter pedido.
+
+⛔⛔ **Priorizar a ponta sobre a parede NÃO cura — troca a vítima** (a parede ficaria inalcançável
+exactamente quando o osso está nela). É a mesma lição que a colisão força↔parede já tinha dado
+horas antes, e a segunda vez que ela apareceu nesta wave.
+
+⇒ **A cura é geométrica:** a alça sai para **fora** do raio que o osso alcança, a uma folga
+derivada — um dedo da casa (`BONE_HIT_PX`) mais o raio do próprio triângulo
+(`LIMIT_HANDLE_R_PX`), para a alça **inteira** ficar fora e não só o centro dela. ⚠️ É por isto que
+o `arc` passou a precisar do ZOOM: a folga é uma grandeza de **tela** sobre geometria de **mundo**.
+O setor continua a ir até ao comprimento do osso — ele é o caminho da ponta, e isso não mudou.
+
+⚠️ **TRÊS hipóteses minhas caíram por medição antes de eu achar esta**, e as três estavam ilibadas:
+o `arc()` acompanha o pai rigidamente (`−0,4 → +0,3` com `+0,7` aplicado) e não se move quando o
+próprio osso gira · ele é estável sob a IK em quadros sucessivos (`−0,9 → −0,9`) · e o round-trip
+`radianos → graus → radianos` do painel é **exacto** e não deriva (600 quadros: `0`).
+
+⭐ **E a cura curou também a colisão força↔parede**, que deixou de acontecer por acaso (as duas
+passaram a distar `9,86`). ⚠️ O gate daquela regra ficou **vácuo** e teve de ser reescrito para
+**construir** o encontro em vez de torcer por ele — a força é ajustada por um valor **derivado da
+posição da parede**. *Uma fixtura que espera uma coincidência morre quando a coincidência é curada.*
+
+
 ## ⛔ Recusas MEDIDAS deste módulo — não as reconstrua
 
 | O quê | Por quê | Onde |

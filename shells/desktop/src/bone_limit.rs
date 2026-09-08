@@ -91,7 +91,11 @@ const FAN_PER_TURN: usize = 48;
 /// ângulos (`local + rotação do pai`) só está certo com um pai conforme; transformar pontos está
 /// certo com qualquer afim — é a mesma lei que o [`crate::bone_gesture::aim_rotation`] segue, e sob
 /// um pai escalado só num eixo o arco é uma ELIPSE, que é o que o artista tem de ver.
-pub(crate) fn arc(sim: &SimWorld, bone: Entity) -> Option<ph2d_skeleton_render::LimitArc> {
+pub(crate) fn arc(
+    sim: &SimWorld,
+    bone: Entity,
+    px_to_world: f64,
+) -> Option<ph2d_skeleton_render::LimitArc> {
     let l = *sim.world().get::<ph2d_skeleton_ecs::BoneLimit>(bone)?;
     let comp = sim.world().get::<ph2d_skeleton_ecs::Bone>(bone)?.length;
     if !(comp.is_finite() && comp > 0.0) {
@@ -123,10 +127,30 @@ pub(crate) fn arc(sim: &SimWorld, bone: Entity) -> Option<ph2d_skeleton_render::
             ponto(lo + faixa * t)
         })
         .collect();
+    // ⭐⭐⭐ **AS ALÇAS SAEM PARA FORA DO ALCANCE DO OSSO.**
+    //
+    // ⛔ A folga é **derivada, nunca escolhida**: um dedo da casa (`BONE_HIT_PX`, o que separa os
+    // dois alvos) mais o raio da própria alça (`LIMIT_HANDLE_R_PX`, para o triângulo INTEIRO ficar
+    // fora, e não só o centro dele). É o mesmo mecanismo do piso do anel da âncora, que também sai
+    // do dedo em vez de um literal.
+    //
+    // ⚠️ E é por isto que este passe precisa do ZOOM: a folga é uma grandeza de TELA (o dedo mede
+    // píxeis) sobre uma geometria de MUNDO. Num osso curto uma folga fixa em mundo cairia dentro do
+    // osso, e num longo ficaria a meio metro dele.
+    let folga = (crate::bone_gesture::BONE_HIT_PX + ph2d_skeleton_render::LIMIT_HANDLE_R_PX)
+        * px_to_world.max(0.0);
+    let fora = |a: f64| {
+        pai_mundo.apply([
+            o[0] + (comp + folga) * a.cos(),
+            o[1] + (comp + folga) * a.sin(),
+        ])
+    };
     Some(ph2d_skeleton_render::LimitArc {
         apex: pai_mundo.apply(o),
         edge_min: ponto(lo),
         edge_max: ponto(hi),
+        handle_min: fora(lo),
+        handle_max: fora(hi),
         fan,
     })
 }

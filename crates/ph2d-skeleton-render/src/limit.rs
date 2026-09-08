@@ -25,10 +25,24 @@ use ph2d_vector::{
 pub struct LimitArc {
     /// O vértice do setor: a origem do osso, em mundo.
     pub apex: [f64; 2],
-    /// A alça do extremo horário (`min`), em mundo.
+    /// A borda horária (`min`) do setor, no raio do osso — onde a PONTA dele pára.
     pub edge_min: [f64; 2],
-    /// A alça do extremo anti-horário (`max`), em mundo.
+    /// A borda anti-horária (`max`). Ver [`LimitArc::edge_min`].
     pub edge_max: [f64; 2],
+    /// ⭐⭐⭐ **A ALÇA da parede horária — FORA do alcance do osso.**
+    ///
+    /// ⛔⛔ **Ela não pode estar em `edge_min`, e isso é um defeito MEDIDO** (report do dono,
+    /// 2026-09-07: *«os gizmos de limite mudam de posição sozinho após mover a cadeia»*): quando o
+    /// osso encosta na parede, a ponta dele e a borda do setor ocupam **o mesmo ponto** — medido,
+    /// `distância ponta→parede = 0,000000` — e o dedo apanhava `LimitMax` onde o artista queria a
+    /// ponta. Ele movia a cadeia até ao limite, agarrava para continuar, e **arrastava a parede**.
+    ///
+    /// ⚠️ **Priorizar não cura: só troca a vítima** — é a mesma lição que a colisão entre a alça da
+    /// força e a parede já tinha dado nesta wave. A cura é geométrica: a alça sai para fora do raio
+    /// que o osso alcança, e aí ela não coincide com **nenhum** ponto dele, seja qual for a pose.
+    pub handle_min: [f64; 2],
+    /// A alça da parede anti-horária. Ver [`LimitArc::handle_min`].
+    pub handle_max: [f64; 2],
     /// O arco entre as duas, amostrado em mundo — `min` primeiro, `max` no fim.
     pub fan: Vec<[f64; 2]>,
 }
@@ -77,9 +91,10 @@ pub fn draw_limit(
         None,
         &setor,
     );
-    // As duas PAREDES, traçadas — é nelas que a ponta bate.
+    // As duas PAREDES, traçadas do vértice até à ALÇA — o traço atravessa o setor e sai por fora
+    // dele, que é o que liga visualmente a alça à parede que ela comanda.
     let mut paredes = BezPath::new();
-    for e in [arc.edge_min, arc.edge_max] {
+    for e in [arc.handle_min, arc.handle_max] {
         paredes.move_to(Point::new(arc.apex[0], arc.apex[1]));
         paredes.line_to(Point::new(e[0], e[1]));
     }
@@ -98,8 +113,8 @@ pub fn draw_limit(
     // AS ALÇAS — triângulos, e a forma é que as distingue: a junta é um círculo e a força é um
     // quadrado. Três alças do mesmo osso, três formas.
     for (p, qual) in [
-        (arc.edge_min, BonePart::LimitMin),
-        (arc.edge_max, BonePart::LimitMax),
+        (arc.handle_min, BonePart::LimitMin),
+        (arc.handle_max, BonePart::LimitMax),
     ] {
         let q = transform * Point::new(p[0], p[1]);
         let r = LIMIT_HANDLE_R_PX;

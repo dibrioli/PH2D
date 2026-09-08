@@ -225,10 +225,10 @@ const PX_LONGE: f64 = 0.5;
 fn both_walls_of_the_limit_can_be_grabbed_on_the_canvas() {
     let (mut sim, [ombro, _]) = braco();
     limita(&mut sim, ombro, -0.4, 0.6);
-    let arc = crate::bone_limit::arc(&sim, ombro).expect("o arco existe");
+    let arc = crate::bone_limit::arc(&sim, ombro, PX_PERTO).expect("o arco existe");
     for (p, esperado) in [
-        (arc.edge_min, ph2d_skeleton_render::BonePart::LimitMin),
-        (arc.edge_max, ph2d_skeleton_render::BonePart::LimitMax),
+        (arc.handle_min, ph2d_skeleton_render::BonePart::LimitMin),
+        (arc.handle_max, ph2d_skeleton_render::BonePart::LimitMax),
     ] {
         let h = agarra(&sim, p, Some(ombro)).expect("o dedo apanha alguma coisa");
         assert_eq!(
@@ -249,9 +249,9 @@ fn both_walls_of_the_limit_can_be_grabbed_on_the_canvas() {
 fn no_wall_is_grabbable_where_none_is_drawn() {
     let (mut sim, [ombro, _]) = braco();
     limita(&mut sim, ombro, -0.4, 0.6);
-    let arc = crate::bone_limit::arc(&sim, ombro).expect("o arco existe");
+    let arc = crate::bone_limit::arc(&sim, ombro, PX_PERTO).expect("o arco existe");
     // (a) sem FOCO nenhum, a parede não é do dedo.
-    let h = agarra(&sim, arc.edge_min, None);
+    let h = agarra(&sim, arc.handle_min, None);
     assert!(
         h.is_none_or(|h| h.part != ph2d_skeleton_render::BonePart::LimitMin),
         "a parede foi apanhada sem o osso estar em foco"
@@ -259,7 +259,7 @@ fn no_wall_is_grabbable_where_none_is_drawn() {
     // (b) sem LIMITE não há arco nenhum.
     let (sim2, [outro, _]) = braco();
     assert!(
-        crate::bone_limit::arc(&sim2, outro).is_none(),
+        crate::bone_limit::arc(&sim2, outro, PX_PERTO).is_none(),
         "um osso sem limite devolveu um arco"
     );
 }
@@ -324,7 +324,7 @@ fn a_wall_never_crosses_the_other_one() {
 fn the_arc_radius_is_the_bone_length_so_the_walls_sit_where_the_tip_would() {
     let (mut sim, [ombro, _]) = braco();
     limita(&mut sim, ombro, -0.4, 0.6);
-    let arc = crate::bone_limit::arc(&sim, ombro).expect("o arco existe");
+    let arc = crate::bone_limit::arc(&sim, ombro, PX_PERTO).expect("o arco existe");
     let comp = sim.world().get::<Bone>(ombro).expect("é osso").length;
     for e in [arc.edge_min, arc.edge_max] {
         let r = (e[0] - arc.apex[0]).hypot(e[1] - arc.apex[1]);
@@ -347,20 +347,33 @@ fn the_arc_radius_is_the_bone_length_so_the_walls_sit_where_the_tip_would() {
 #[test]
 fn when_two_handles_overlap_the_nearer_one_wins() {
     let (mut sim, [ombro, _]) = braco();
-    // Uma parede perto de 90°, que é onde a alça da força vive com `strength = 1`.
+    // Uma parede a 90°, que é a direcção em que a alça da força também vive.
     limita(&mut sim, ombro, -0.2, std::f64::consts::FRAC_PI_2);
-    let arc = crate::bone_limit::arc(&sim, ombro).expect("o arco existe");
+    // ⚠️ **O MESMO zoom que o `agarra_a` usa** — a posição da alça DEPENDE dele (a folga é de
+    // tela), e calcular o arco num zoom para o apanhar noutro mede dois programas diferentes. Foi
+    // exactamente esse o erro da 1.ª redacção deste gate.
+    let arc = crate::bone_limit::arc(&sim, ombro, PX_LONGE).expect("o arco existe");
+    // ⭐ **A FORÇA é AJUSTADA para produzir o encontro, e o valor é DERIVADO da parede** — não
+    // escolhido. ⚠️ Depois de as alças saírem para fora do alcance do osso, a sobreposição deixou
+    // de acontecer por acaso (elas passaram a distar `9,86`), e uma fixtura que a espere fica
+    // **vácua**. O que este gate mede é a REGRA («ganha a mais perto»), então ele constrói o caso
+    // em vez de torcer por ele: a alça da força é perpendicular ao eixo, a meio do osso, à
+    // distância `strength × comprimento` — pôr essa distância na altura da parede encosta as duas.
+    let comp = sim.world().get::<Bone>(ombro).expect("é osso").length;
+    if let Some(mut o) = sim.world_mut().get_mut::<Bone>(ombro) {
+        o.strength = (arc.handle_max[1] - arc.apex[1]).abs() / comp;
+    }
     let (r, a, b) = crate::skeleton_live::influence_region(&sim, ombro.to_bits())
         .expect("o osso tem região de influência");
     let forca = ph2d_skeleton_render::influence_handle(a, b, r).expect("a alça da força existe");
-    let d = (forca[0] - arc.edge_max[0]).hypot(forca[1] - arc.edge_max[1]);
+    let d = (forca[0] - arc.handle_max[0]).hypot(forca[1] - arc.handle_max[1]);
     assert!(
         d <= crate::bone_gesture::BONE_HIT_PX * PX_LONGE,
         "a fixtura tem de PRODUZIR a sobreposição, senão este gate é vácuo: as duas alças distam {d}"
     );
     // Sobre a PAREDE, apanha-se a parede.
     assert_eq!(
-        agarra_a(&sim, arc.edge_max, Some(ombro), PX_LONGE).map(|h| h.part),
+        agarra_a(&sim, arc.handle_max, Some(ombro), PX_LONGE).map(|h| h.part),
         Some(ph2d_skeleton_render::BonePart::LimitMax),
     );
     // Sobre a FORÇA, apanha-se a força — a cura não pode ter roubado o gesto que já existia.
@@ -368,4 +381,82 @@ fn when_two_handles_overlap_the_nearer_one_wins() {
         agarra_a(&sim, forca, Some(ombro), PX_LONGE).map(|h| h.part),
         Some(ph2d_skeleton_render::BonePart::Influence),
     );
+}
+
+/// ⭐⭐⭐ **AGARRAR A PONTA DE UM OSSO ENCOSTADO NA PAREDE APANHA O OSSO, NUNCA A PAREDE.**
+///
+/// ⛔⛔ **O report do dono** (2026-09-07): *«os gizmos de limite mudam de posição sozinho após mover
+/// a cadeia de ossos»*. O mecanismo, medido: como o raio do arco é o comprimento do osso, quando ele
+/// **encosta na parede** a ponta e a borda do setor ocupam o mesmo ponto — `distância ponta→parede =
+/// 0,000000`. O artista movia a cadeia até ao limite, agarrava para continuar, e **arrastava a
+/// parede**. O gizmo mexia-se sem ele o ter pedido.
+///
+/// ⚠️ **Priorizar a ponta sobre a parede NÃO cura — troca a vítima** (a parede ficaria inalcançável
+/// exactamente quando o osso está nela). A cura é geométrica: a alça sai para **fora** do raio que o
+/// osso alcança, a uma folga derivada do dedo da casa.
+#[test]
+fn a_wall_handle_never_sits_where_the_bone_can_reach() {
+    let (mut sim, [ombro, _]) = braco();
+    limita(&mut sim, ombro, -0.5, 0.5);
+    // O artista gira o osso ATÉ BATER na parede — é aí que os dois alvos se encontravam.
+    assert!(crate::bone_pose::pose(
+        &mut sim,
+        ombro,
+        [0.0, 10.0],
+        ph2d_skeleton_render::BonePart::Body,
+    ));
+    let seg = crate::skeleton_live::bone_segments(&sim);
+    let (_, a, b) = seg
+        .iter()
+        .copied()
+        .find(|(x, _, _)| *x == ombro.to_bits())
+        .expect("o osso tem segmento");
+    let arc = crate::bone_limit::arc(&sim, ombro, PX_PERTO).expect("o arco existe");
+    let dedo = crate::bone_gesture::BONE_HIT_PX * PX_PERTO;
+
+    // A fixtura tem de PRODUZIR o encontro: o osso está mesmo encostado na parede.
+    let na_parede = (b[0] - arc.edge_max[0]).hypot(b[1] - arc.edge_max[1]);
+    assert!(
+        na_parede < 1e-6,
+        "a fixtura não encostou o osso na parede ({na_parede}) — o gate seria vácuo"
+    );
+
+    // ⭐ Nenhuma alça cai a menos de um dedo de QUALQUER ponto do osso.
+    for (h, nome) in [(arc.handle_min, "min"), (arc.handle_max, "max")] {
+        let d = ph2d_skeleton::dist2_to_segment(h, a, b).sqrt();
+        assert!(
+            d > dedo,
+            "a alça {nome} está a {d} do osso e o dedo mede {dedo} — ela rouba o gesto de girar"
+        );
+    }
+
+    // ⭐⭐ E o teste que o dono faria: tocar na ponta apanha o OSSO.
+    let pego = agarra(&sim, b, Some(ombro)).map(|h| h.part);
+    assert!(
+        !matches!(
+            pego,
+            Some(ph2d_skeleton_render::BonePart::LimitMin | ph2d_skeleton_render::BonePart::LimitMax)
+        ),
+        "ao tocar na ponta do osso encostado na parede apanhou-se {pego:?} — o artista arrastaria a \
+         parede a pensar que gira o osso"
+    );
+}
+
+/// ⭐ **E as alças continuam AGARRÁVEIS** — a cura não pode ter empurrado o alvo para fora do
+/// alcance do dedo.
+#[test]
+fn the_wall_handles_are_still_grabbable_after_moving_them_out() {
+    let (mut sim, [ombro, _]) = braco();
+    limita(&mut sim, ombro, -0.5, 0.5);
+    let arc = crate::bone_limit::arc(&sim, ombro, PX_PERTO).expect("o arco existe");
+    for (h, esperado) in [
+        (arc.handle_min, ph2d_skeleton_render::BonePart::LimitMin),
+        (arc.handle_max, ph2d_skeleton_render::BonePart::LimitMax),
+    ] {
+        assert_eq!(
+            agarra(&sim, h, Some(ombro)).map(|x| x.part),
+            Some(esperado),
+            "a alça saiu do alcance do dedo"
+        );
+    }
 }

@@ -257,9 +257,9 @@ pub(crate) fn hover(
         {
             alcas.push((h, BonePart::Influence));
         }
-        if let Some(arc) = crate::bone_limit::arc(sim, Entity::from_bits(f)) {
-            alcas.push((arc.edge_min, BonePart::LimitMin));
-            alcas.push((arc.edge_max, BonePart::LimitMax));
+        if let Some(arc) = crate::bone_limit::arc(sim, Entity::from_bits(f), px_to_world) {
+            alcas.push((arc.handle_min, BonePart::LimitMin));
+            alcas.push((arc.handle_max, BonePart::LimitMax));
         }
         let perto = alcas
             .into_iter()

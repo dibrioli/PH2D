@@ -11116,7 +11116,15 @@ impl crate::App {
                         hero.gizmo
                             .selection
                             .and_then(|b| {
-                                crate::bone_limit::arc(sim, ph2d_ecs::Entity::from_bits(b))
+                                // ⚠️ **O MESMO zoom que o dedo usa** (`bone_gesture::hover` recebe
+                                // este `vec_px_to_world`): a folga das alças é uma grandeza de TELA
+                                // sobre geometria de MUNDO, e dois zooms diferentes poriam a alça
+                                // pintada num sítio e a agarrável noutro.
+                                crate::bone_limit::arc(
+                                    sim,
+                                    ph2d_ecs::Entity::from_bits(b),
+                                    vec_px_to_world,
+                                )
                             })
                             .as_ref(),
                         self.bone_hover.map(|h| h.part),

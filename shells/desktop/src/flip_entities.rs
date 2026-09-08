@@ -38,9 +38,18 @@ pub(crate) fn sync(sim: &mut SimWorld, doc: &mut FlipDoc, map: &mut FlipEntityMa
     }
 
     // 2. Objetos que sumiram do documento levam a entidade junto.
+    // ⚠️⚠️ **O MESMO teto que a ponte vectorial tinha** (§F4.6d): escrito com um
+    // `doc.objects().iter().any(…)` dentro do filtro sobre o mapa, este passo é **O(objectos²)**.
+    // Ali a medição leu `10,459 ms` a 5 000 formas — **63 %** de um quadro —, e o custo pagava-se
+    // **uma vez por quadro desde antes daquela wave**. Curar os dois é a mesma linha.
+    //
+    // ⚠️ **`BTreeSet`, nunca `HashSet`** — a espinha do determinismo desta casa; e aqui não custa
+    // nada, porque o passe já percorre o `map`, que é um `BTreeMap`.
+    let vivos: std::collections::BTreeSet<FlipObjectId> =
+        doc.objects().iter().map(|o| o.id).collect();
     let dead: Vec<(FlipObjectId, u64)> = map
         .iter()
-        .filter(|(id, _)| !doc.objects().iter().any(|o| o.id == **id))
+        .filter(|(id, _)| !vivos.contains(id))
         .map(|(&id, &bits)| (id, bits))
         .collect();
     for (id, bits) in dead {

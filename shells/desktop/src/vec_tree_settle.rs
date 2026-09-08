@@ -65,6 +65,10 @@ impl App {
             return;
         };
         crate::vec_entities::sync(&mut gfx.sim, &mut gfx.vec_scene, &mut self.vec_entities);
+        // ⭐⭐ **A ponte do FLIP, ao lado da vectorial** (censo `every_document_to_tree_bridge_is_in_the_net`,
+        // 2026-09-08). Ela é o irmão exacto — bidireccional, mesma latência — e estava fora da rede:
+        // apagar um objecto Flip pela Hierarquia deixava o documento com ele até ao quadro seguinte.
+        crate::flip_entities::sync(&mut gfx.sim, &mut gfx.flip, &mut self.flip_entities);
         // ⭐⭐ **O ASSENTAMENTO DO PIVÔ é o TERCEIRO escritor derivado, e só o gate o disse.**
         // Uma entidade cunhada agora nasce com `Transform::default()`; quem lhe põe a origem no
         // centro da arte é este passe. Sem ele aqui, os dois controlos do gate do *duplicar*

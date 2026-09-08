@@ -43,11 +43,19 @@ const NET_SRC: &str = include_str!("../src/vec_tree_settle.rs");
 /// **comentário** que explica por que ele foi acrescentado. *Um censo textual que não separa prosa
 /// de código mente nos DOIS sentidos* — é lei desta casa, e esta régua pagou-a na estreia.
 fn net_code() -> String {
-    NET_SRC
-        .lines()
+    code_only(NET_SRC)
+}
+
+/// O CÓDIGO de `src`, sem as linhas de comentário — **a porta, com dois consumidores**.
+///
+/// ⚠️ Os dois censos deste ficheiro precisam dela, e a razão é a mesma dos dois lados: um caminho
+/// citado numa frase não é uma chamada. *Escrever esta filtragem duas vezes seria duas respostas à
+/// pergunta «o que é código aqui?», e a que envelhece é a que ninguém corrige.*
+fn code_only(src: &str) -> String {
+    src.lines()
         .filter(|l| {
             let s = l.trim_start();
-            !(s.starts_with("//") || s.starts_with("*") || s.starts_with("///"))
+            !(s.starts_with("//") || s.starts_with('*'))
         })
         .collect::<Vec<_>>()
         .join("\n")
@@ -74,11 +82,7 @@ fn writers_in_the_drawing_pass() -> Vec<String> {
         .find("vec_scene.reorder_to(")
         .expect("a projecção sumiu do render_loop — a janela acaba nela")
         + a;
-    let corpo: String = RENDER_LOOP[a..b]
-        .lines()
-        .filter(|l| !l.trim_start().starts_with("//"))
-        .collect::<Vec<_>>()
-        .join("\n");
+    let corpo: String = code_only(&RENDER_LOOP[a..b]);
 
     let mut out: Vec<String> = Vec::new();
     for (i, _) in corpo.match_indices("::") {
@@ -129,6 +133,49 @@ fn the_net_knows_every_derived_writer_of_the_drawing_pass() {
          definição do passo fantasma (report do dono, 2026-09-07).\n\
          cura: acrescente-o ao `vec_tree_settle.rs`. Se ele só age depois de um GESTO, ele é um \
          dreno e o sítio é a lista `DRAINS` deste ficheiro — com a razão escrita."
+    );
+}
+
+/// ⭐⭐⭐ **E TODA PONTE documento ⟺ árvore tem de estar na rede — o censo por PADRÃO.**
+///
+/// # Porque este segundo censo existe, e o que ele achou
+///
+/// O censo por JANELA acima não alcança os `sync`: eles correm ~470 linhas mais acima, junto de
+/// consumidores imediatos (o balde arma os preenchimentos novos logo a seguir ao vectorial). ⛔
+/// Alargar a janela até lá arrastaria centenas de chamadas que nada têm de reconciliação, e a lista
+/// de isenções passaria a ser o gate.
+///
+/// ⇒ a régua é o **PADRÃO**, e ela é exacta: *toda ponte `<mídia>_entities::sync` que o passe do
+/// desenho corre tem de correr também na rede.* Um `sync` é bidireccional por construção — apagar a
+/// entidade pela Hierarquia leva o objecto do documento **no quadro seguinte** —, e é essa
+/// convergência tardia que nasce como passo fantasma.
+///
+/// ⭐ **Achou o `crate::flip_entities::sync`**, o irmão exacto do vectorial: mesma forma, mesma
+/// latência, e fora da rede. ⚠️ E a régua apanha a **mídia seguinte** de graça: quem escrever um
+/// `mesh_entities::sync` vê o gate vermelho antes de o defeito existir.
+#[test]
+fn every_document_to_tree_bridge_is_in_the_net() {
+    let net = net_code();
+    // ⚠️ **Sem a prosa dos DOIS lados**: um `// crate::mesh_entities::sync(…)` comentado no passe
+    // do desenho não é uma chamada, e acusá-lo mandaria alguém pôr na rede código que não corre.
+    let desenho = code_only(RENDER_LOOP);
+    let mut faltam: Vec<String> = Vec::new();
+    for (i, _) in desenho.match_indices("_entities::sync(") {
+        let inicio = desenho[..i]
+            .rfind(|c: char| !(c.is_ascii_alphanumeric() || c == '_' || c == ':'))
+            .map_or(0, |p| p + 1);
+        let caminho = &desenho[inicio..i + "_entities::sync".len()];
+        if !net.contains(caminho) && !faltam.iter().any(|f| f == caminho) {
+            faltam.push(caminho.to_string());
+        }
+    }
+    assert!(
+        faltam.is_empty(),
+        "estas pontes documento ⟺ árvore correm no passe do DESENHO e a rede não as tem: \
+         {faltam:?}\n\n\
+         Um `sync` é bidireccional: apagar a entidade pela Hierarquia leva o objecto do documento \
+         no quadro SEGUINTE. Fora da rede, a fotografia guarda um mundo e um documento que \
+         discordam — o passo fantasma do report de 2026-09-07, noutra mídia."
     );
 }
 

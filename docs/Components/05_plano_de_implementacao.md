@@ -2933,3 +2933,31 @@ escrito**, que é o defeito de que este §F4.6 inteiro nasceu.
 ⚠️ **A lista `DRAINS` só ENCOLHE** — cada nome nela é a afirmação *«isto só age quando houve um
 gesto»*, que ninguém volta a conferir; a metade de obsolescência acusa a linha que deixou de
 descrever alguma coisa.
+
+#### ⭐⭐⭐ E o censo por JANELA tinha um ponto cego que o segundo censo fechou
+
+Os `sync` correm **~470 linhas acima** da janela, junto de consumidores imediatos (o balde arma os
+preenchimentos novos logo a seguir ao vectorial). ⛔ Alargar a janela até lá arrastaria centenas de
+chamadas que nada têm de reconciliação, e **a lista de isenções passaria a ser o gate**.
+
+⇒ a segunda régua é o **PADRÃO**, e ela é exacta: *toda ponte `<mídia>_entities::sync` que o passe do
+desenho corre tem de correr também na rede.* Um `sync` é bidireccional por construção — apagar a
+entidade pela Hierarquia leva o objecto do documento **no quadro seguinte** —, e é essa convergência
+tardia que nasce como passo fantasma.
+
+⭐ **Achou o `crate::flip_entities::sync`**, o irmão exacto do vectorial: mesma forma, mesma
+latência, e fora da rede. ⚠️ E ela apanha a **mídia seguinte de graça**: quem escrever um
+`mesh_entities::sync` vê o gate vermelho antes de o defeito existir.
+
+⭐⭐ **E a ponte do Flip trazia o MESMO teto quadrático** que a vectorial (`doc.objects().iter().any(…)`
+dentro do filtro sobre o mapa ⇒ `O(objectos²)`). Ali a medição leu `10,459 ms` a 5 000 formas —
+**63 %** de um quadro — e pagava-se uma vez por quadro **desde antes daquela wave**. Curar os dois é
+a mesma linha, e é o mesmo `BTreeSet` (⚠️ nunca `HashSet` — a espinha do determinismo).
+
+#### ⚠️ E a terceira armadilha da prosa, apanhada pelo CONTROLO da mutação
+
+O censo das pontes lia o `render_loop` **com** comentários, e uma mutação que injectava
+`// crate::mesh_entities::sync(…)` **comentado** acusava — mandando alguém pôr na rede código que não
+corre. ⇒ a filtragem virou uma **PORTA com dois consumidores** (`code_only`), e o controlo da
+mutação exige agora que a ponte comentada **SOBREVIVA**. *Escrever a filtragem duas vezes seriam
+duas respostas à pergunta «o que é código aqui?», e a que envelhece é a que ninguém corrige.*

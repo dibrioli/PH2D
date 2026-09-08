@@ -192,11 +192,41 @@ com a folha original <em>e</em> com o reflexo dela.</p>
   <li><b>Clique na palavra da linha <code>Axis</code></b> e escolha a outra opção.
       <div class="out">A direção do espelho troca, e o par passa a ficar lado a lado em vez de um
       sobre o outro.</div></li>
-  <li><b>Clique em <code>Flip Orientation</code></b> (é um liga/desliga).
-      <div class="out">Se os objetos tiverem uma direção própria, o reflexo passa a ficar
-      virado ao contrário, como num espelho de verdade.</div>
-      <div class="bad">Nesta cena os pontinhos são redondos, então este controle não muda nada
-      que se veja. Ele é para quando os objetos são setas, letras ou figuras.</div></li>
+</ol>
+
+<h3>Os dois controles do Mirror que não mudam NADA nesta cena — e não estão avariados</h3>
+
+<p>O cartão do Mirror tem mais dois liga/desliga, e clicar neles aqui não faz absolutamente
+nada. Isso é <b>correto</b>, e vale a pena entender porquê: cada um age sobre uma coisa que esta
+cena não tem.</p>
+
+<table>
+  <tr><th>controle</th><th>sobre o que ele age</th><th>por que aqui não se vê</th></tr>
+  <tr><td><code>Flip Orientation</code></td><td>a <b>direção</b> de cada objeto (e a velocidade
+      dele)</td><td>os pontinhos desta cena são <b>redondos</b> e não apontam para lado nenhum:
+      não há direção para espelhar</td></tr>
+  <tr><td><code>Reindex</code></td><td>o <b>número</b> de cada objeto na fila (é o 3.º de
+      quantos?)</td><td>é uma <b>renumeração</b>, não um movimento — ela nunca muda a imagem
+      sozinha. Vê-se quando alguém <em>lê</em> esse número</td></tr>
+</table>
+
+<div class="note"><b>Para que serve o <code>Reindex</code>, em uma frase.</b> O espelho devolve o
+dobro dos objetos, mas cada gêmeo continua a carregar o número do original — a fila diz
+<code>0,1,2… 0,1,2…</code> e diz que tem metade do tamanho que tem. Com o <code>Reindex</code>
+ligado ela passa a ser <b>uma lista só</b>, numerada de ponta a ponta. Você vê a diferença no dia
+em que puser um <b>degradê</b> depois do espelho: desligado, o degradê recomeça em cada metade;
+ligado, ele atravessa as duas.</div>
+
+<ol class="steps">
+  <li><b>Veja os dois funcionando</b>, lado a lado, na cena que existe para isso — ela mostra o
+      mesmo grafo com e sem cada controle:
+      <div class="cmd">cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value &amp;&amp; env PH2D_GPU_COOK_DEMO=69 cargo run -p ph2d-host-desktop --release</div>
+      <div class="out">No <b>par verde</b>, duas fileiras de barras inclinadas: sem
+      <code>Flip Orientation</code> as duas inclinam para o mesmo lado (<code>/// ///</code>), com
+      ele a segunda inclina ao contrário (<code>/// \\\</code>) e as duas fecham como um V
+      deitado.</div>
+      <div class="out">No <b>par rosa</b>, o degradê: sem <code>Reindex</code> ele recomeça em
+      cada fatia e as seis saem iguais; com ele as seis são uma lista só.</div></li>
 </ol>
 
 <h2>5 · Deixe a cena contável</h2>
@@ -315,7 +345,11 @@ não tem como receber um desenho. Enquanto isso não existir, pô-lo a rodar lá
   <tr><td>Uma linha com uma setinha</td><td>é uma <b>seção</b> dobrada: clique para abrir (o
       <code>Bezier Warp</code> tem cinco: uma para os cantos e uma por borda)</td></tr>
   <tr><td>O <code>Flip Orientation</code> do Mirror não muda nada</td><td>os pontinhos desta cena
-      são redondos; ele só se vê em objetos que têm um lado</td></tr>
+      são redondos; ele só se vê em objetos que têm um lado — cena <code>=69</code>, par
+      verde</td></tr>
+  <tr><td>O <code>Reindex</code> do Mirror não muda nada</td><td>ele renumera a fila, e uma
+      renumeração <b>nunca</b> muda a imagem sozinha: só se vê com um degradê depois dele —
+      cena <code>=69</code>, par rosa</td></tr>
   <tr><td>A cena engasga com muitos objetos</td><td>o <b>Spline Wrap</b> é o único dos treze que
       nunca roda na placa; com ele na cadeia, tudo volta para o processador. O <b>Look At</b>
       roda — mas <em>só</em> enquanto o alvo dele vier por fio: digitar um

@@ -470,3 +470,47 @@ fn the_handles_follow_the_downstream_transform_and_the_drag_still_closes() {
         after[1].world
     );
 }
+
+/// ⭐⭐ **O QUE SE VÊ É O QUE SE APONTA** — a alça pintada cobre o raio em que ela é agarrada.
+///
+/// ⛔⛔ **Report do Enio, 2026-09-08:** *«o gizmo de Bezier Warp tem ponto e handles/alças muito
+/// pequenos»*. Medido: o canto pintava meio-lado `4,5` e a tangente raio `3,5`, contra um
+/// [`GRAB_PX`] de **`11`** — o alvo era `2,4×` a `3,1×` maior do que a tinta. *O artista via um
+/// ponto e apontava para outra coisa.*
+///
+/// ⚠️ **A casa já tinha a lei, e este gizmo era o único fora dela:** o `connector` pinta `7` e
+/// agarra `7`, o `envelope` `6` e `6`, o `vec_text_ride` `15` e `15`. **Uma constante, dois
+/// consumidores** — e aqui eram dois números, dos quais o que o artista vê é o que envelhece.
+///
+/// ⚠️ **A barra é `0,75 × GRAB_PX` sobre o raio INSCRITO da marca** (o quadrado pelo meio-lado, o
+/// losango pela apótema `r/√2`), e não sobre o circunscrito: o inscrito é o pior caso do que a
+/// marca cobre, e é ele que decide se o dedo cai dentro do que o olho vê.
+///
+/// FALSIFICADO pelos números que shipavam: `4,5` dá `0,41×` e `3,5` dá `0,22×`.
+#[test]
+fn a_painted_handle_covers_the_radius_it_is_grabbed_at() {
+    let grab = f64::from(GRAB_PX);
+    let bar = grab * 0.75;
+    // O quadrado do canto: o raio inscrito é o meio-lado.
+    let corner_inscribed = crate::render_loop::warp_overlay::CORNER_PX;
+    // O losango: quatro vértices a `r`, logo a apótema é `r / √2`.
+    let tangent_inscribed = crate::render_loop::warp_overlay::TANGENT_PX / std::f64::consts::SQRT_2;
+    assert!(
+        corner_inscribed >= bar,
+        "o quadrado de um canto cobre {corner_inscribed:.2} px e é agarrado a {grab:.1} \
+         ({:.2}× o agarre) — a barra é {bar:.2}. Os valores que shipavam davam 0,41×",
+        corner_inscribed / grab
+    );
+    assert!(
+        tangent_inscribed >= bar,
+        "o losango de uma tangente cobre {tangent_inscribed:.2} px e é agarrado a {grab:.1} \
+         ({:.2}× o agarre) — a barra é {bar:.2}. Os valores que shipavam davam 0,22×",
+        tangent_inscribed / grab
+    );
+    // ⚠️ **E o CONTROLE: a barra tem de reprovar o que shipava.** Sem isto uma barra baixa demais
+    // passaria sobre os mesmos números que produziram o report, e o gate seria decoração.
+    assert!(
+        4.5 < bar && 3.5 / std::f64::consts::SQRT_2 < bar,
+        "a barra ({bar:.2}) tem de reprovar os valores que geraram o report (4,5 e 3,5)"
+    );
+}

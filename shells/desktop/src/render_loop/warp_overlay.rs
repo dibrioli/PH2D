@@ -30,16 +30,64 @@ use ph2d_vector::{Affine, BezPath, Brush, Color, Point, Stroke, VectorScene};
 const OUTLINE_PX: f64 = 1.5;
 /// A espessura de um braço — mais fina que o contorno: ele é ANDAIME, não a figura.
 const ARM_PX: f64 = 1.0;
-/// O meio-lado do quadrado de um canto, em pixels.
-const CORNER_PX: f64 = 4.5;
-/// O raio do círculo de uma tangente, em pixels.
-const TANGENT_PX: f64 = 3.5;
+
+/// ⭐⭐ **O MEIO-LADO DO QUADRADO DE UM CANTO — e ele é DERIVADO do raio de agarre.**
+///
+/// ⛔⛔ **Ele era `4,5` contra um agarre de `11`, e isso é um defeito com report** (Enio,
+/// 2026-09-08: *«tem ponto e handles/alças muito pequenos»*). O alvo era **2,4×** maior do que a
+/// tinta: *o artista via um ponto e apontava para outra coisa*.
+///
+/// ⚠️ **A casa já tinha a lei, e este gizmo era o único fora dela:** o `connector` pinta `7` e
+/// agarra `7`; o `envelope` pinta `6` e agarra `6`; o `vec_text_ride` pinta `15` e agarra `15`.
+/// **Uma constante, dois consumidores.** Aqui eram dois números, e o que o artista vê é sempre o
+/// que envelhece.
+///
+/// ⚠️ O factor `0,85` **também é da casa**, com a razão escrita no
+/// `ph2d_vec_render::draw_connector_waypoints`: *«um quadrado de mesma área "pesa" mais que o
+/// círculo»*.
+pub(super) const CORNER_PX: f64 = super::warp_gizmo::GRAB_PX as f64 * 0.85;
+
+/// O raio (do centro ao vértice) do losango de uma tangente.
+///
+/// ⚠️ **A tangente NÃO é menor por ser secundária**, e o cabeçalho deste módulo já o dizia antes
+/// de o report chegar: *«a hierarquia tem de estar na TINTA e não só no tamanho»*. Ela agarra-se
+/// pelo mesmo `GRAB_PX` que um canto, então pintá-la menor era a mesma divergência, mais funda.
+///
+/// ⚠️ **O `√2` é geometria, não gosto:** um losango de raio `r` tem a apótema em `r/√2`, e é a
+/// APÓTEMA — o pior caso do que a marca cobre — que decide se o dedo cai dentro do que o olho vê.
+/// Multiplicá-lo põe a apótema do losango exactamente no meio-lado do quadrado, então as duas
+/// marcas cobrem o MESMO raio e distinguem-se só pela forma e pela tinta. *A primeira redacção
+/// usava `GRAB_PX` cru e o gate reprovou-a a `0,71×` da barra — a régua apanhou-me a confundir o
+/// raio com o alcance.*
+pub(super) const TANGENT_PX: f64 =
+    super::warp_gizmo::GRAB_PX as f64 * 0.85 * std::f64::consts::SQRT_2;
 
 /// A cor do contorno e das alças de canto.
 const HANDLE_RGBA: [f32; 4] = [0.35, 0.78, 1.0, 1.0];
-/// A cor dos braços e das tangentes — a mesma matiz, mais apagada: elas são o segundo
-/// nível de leitura, e a hierarquia tem de estar na TINTA e não só no tamanho.
-const TANGENT_RGBA: [f32; 4] = [0.35, 0.78, 1.0, 0.55];
+/// A cor dos braços e das tangentes — a mesma matiz, um pouco apagada: elas são o segundo
+/// nível de leitura, e a hierarquia mora aqui e na FORMA, nunca no tamanho.
+///
+/// ⚠️ **Era `0,55` e some sobre conteúdo claro** — a metade da queixa de *«está sendo desenhado
+/// por trás das shapes»*. Com o casing abaixo, `0,9` é legível sobre os dois fundos e continua
+/// atrás do canto na hierarquia.
+const TANGENT_RGBA: [f32; 4] = [0.35, 0.78, 1.0, 0.9];
+
+/// ⭐⭐ **O CASING — o contorno escuro por baixo de tudo o que o gizmo desenha.**
+///
+/// ⛔⛔ **É a outra metade do report de 2026-09-08** (*«está sendo desenhado por trás das
+/// shapes»*). O gizmo **está** por cima — a legenda da cena, que é chrome como ele, aparece sobre
+/// os mesmos objectos —, mas um traço de `1,5 px` e uma alça de `4,5` em ciano claro **somem**
+/// sobre um pano de discos brancos. *Um manipulador que desaparece sobre o conteúdo que ele
+/// manipula é indistinguível de um que está por baixo, e o report que volta é o mesmo.*
+///
+/// ⚠️ **A casa já tinha a cura, e o comentário dela nomeia este defeito:** o
+/// `draw_connector_handles` põe um anel branco em cada bolinha *«— sem o anel a bolinha some
+/// sobre um traço claro»*. Aqui o anel é ESCURO e não branco, porque o conteúdo sobre o qual este
+/// gizmo tem de ser lido é claro (uma folha de objectos) tanto quanto escuro (o fundo do canvas):
+/// ciano sobre escuro lê-se pela luminosidade, e é a borda escura que o salva sobre o branco.
+const CASE_RGBA: [f32; 4] = [0.04, 0.04, 0.06, 0.85];
+/// Quanto o casing sobressai de cada lado do traço que ele protege, em pixels.
+const CASE_PX: f64 = 1.25;
 
 /// **Desenha o gizmo do nó de warp seleccionado.** No-op quando não há nenhum, quando a
 /// tomada ainda não trouxe a caixa, ou quando o layout é degenerado.
@@ -79,6 +127,15 @@ pub(super) fn draw_warp_gizmo(
         }
     }
     let brush = Brush::Solid(Color::new(HANDLE_RGBA));
+    let case = Brush::Solid(Color::new(CASE_RGBA));
+    // O casing PRIMEIRO, mais grosso — ver [`CASE_RGBA`].
+    vector_scene.inner_mut().stroke(
+        &Stroke::new(OUTLINE_PX + CASE_PX * 2.0),
+        Affine::IDENTITY,
+        &case,
+        None,
+        &path,
+    );
     vector_scene.inner_mut().stroke(
         &Stroke::new(OUTLINE_PX),
         Affine::IDENTITY,
@@ -102,6 +159,13 @@ pub(super) fn draw_warp_gizmo(
         }
     }
     if any_arm {
+        vector_scene.inner_mut().stroke(
+            &Stroke::new(ARM_PX + CASE_PX * 2.0),
+            Affine::IDENTITY,
+            &case,
+            None,
+            &arms,
+        );
         vector_scene
             .inner_mut()
             .stroke(&Stroke::new(ARM_PX), Affine::IDENTITY, &dim, None, &arms);
@@ -125,6 +189,15 @@ pub(super) fn draw_warp_gizmo(
                     None,
                     &sq,
                 );
+                // O casing por CIMA do preenchimento: uma borda, não uma sombra — assim ele
+                // separa a alça do fundo sem lhe comer área.
+                vector_scene.inner_mut().stroke(
+                    &Stroke::new(CASE_PX * 2.0),
+                    Affine::IDENTITY,
+                    &case,
+                    None,
+                    &sq,
+                );
             }
             WarpHandleKind::Tangent(..) => {
                 let mut ci = BezPath::new();
@@ -140,6 +213,13 @@ pub(super) fn draw_warp_gizmo(
                     ph2d_vector::Fill::NonZero,
                     Affine::IDENTITY,
                     &dim,
+                    None,
+                    &ci,
+                );
+                vector_scene.inner_mut().stroke(
+                    &Stroke::new(CASE_PX * 2.0),
+                    Affine::IDENTITY,
+                    &case,
                     None,
                     &ci,
                 );

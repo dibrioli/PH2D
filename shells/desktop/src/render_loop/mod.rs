@@ -8989,21 +8989,6 @@ impl crate::App {
                 // **§12 Sockets / Named Anchors** (spec Sprite 07 §7.6) — os marcadores só
                 // aparecem com a seção EXPANDIDA, senão todo sprite com âncoras ficaria coberto
                 // de cruzes. Sem eles a §12 é um formulário que não mexe em nada na tela.
-                // **O gizmo dos deformadores de quadrilátero** — o contorno, os braços e
-                // as alças. Lê o retrato publicado no prólogo (a tool e a selecção já
-                // foram decididas lá), então aqui não há regra nenhuma, só tinta.
-                if let Some(v) = warp_gizmo::view() {
-                    let port = warp_gizmo::param_port(motion, v.node);
-                    warp_overlay::draw_warp_gizmo(
-                        true,
-                        &v,
-                        &port,
-                        camera,
-                        hero.view.center_split,
-                        surface.size(),
-                        vector_scene,
-                    );
-                }
                 anchor_overlay::draw_anchor_marks(
                     !hero
                         .store
@@ -11155,6 +11140,32 @@ impl crate::App {
                 // ficava retida pela vida do processo. Os RECORTES ficam — eles são a resposta
                 // memoizada e são pequenos.
                 self.motion_leaf_images.end_frame();
+            }
+            // ⭐⭐ **O gizmo dos deformadores de quadrilátero — e ele desenha-se AQUI, no fim.**
+            // O contorno, os braços e as alças; lê o retrato publicado no prólogo (a tool e a
+            // selecção já foram decididas lá), então aqui não há regra nenhuma, só tinta.
+            //
+            // ⛔⛔ **Ele vivia ~2 000 linhas acima, e isso punha-o POR BAIXO de dois produtores
+            // da MESMA cena:** o documento vectorial (`ph2d_vec_render::dispatch`) e as formas
+            // vivas do Motion (`motion_shape_gen::encode`) codificam depois dele, e numa cena do
+            // Vello a ordem de codificação **é** a ordem de z. Um manipulador que passa por baixo
+            // do que ele manipula é a definição de inalcançável — e o modo de falha é mudo: a
+            // tinta sai, e some.
+            //
+            // ⚠️ **O sítio é o FIM do bloco do Motion de propósito.** As alças são a última
+            // palavra sobre o canvas, e quem acrescentar um produtor à cena depois desta linha
+            // volta a enterrá-las.
+            if let Some(v) = warp_gizmo::view() {
+                let port = warp_gizmo::param_port(motion, v.node);
+                warp_overlay::draw_warp_gizmo(
+                    true,
+                    &v,
+                    &port,
+                    camera,
+                    hero.view.center_split,
+                    surface.size(),
+                    vector_scene,
+                );
             }
             // O **overlay** do Blend Object (ADR-0128): os passos virtuais + as fontes de cima
             // reempilhadas, na ordem de z (a última fonte por cima do último passo). Desenha depois

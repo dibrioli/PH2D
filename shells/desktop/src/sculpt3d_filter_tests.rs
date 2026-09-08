@@ -525,3 +525,104 @@ fn the_cloth_filter_advances_per_frame_and_not_per_pointer_event() {
          o resultado tem de ser fato do CAMINHO, nao da amostragem"
     );
 }
+
+/// ⭐⭐⭐ **A GRAVIDADE CAI PARA BAIXO NA TELA** — o report do Enio, 2026-09-08:
+/// *«parece que a gravidade está em z mas neste app deve ser em y»*.
+///
+/// # ⚠️ A régua NÃO pergunta qual é a constante
+///
+/// Um gate que comparasse `gravity_axis` com `−Camera3d::UP` seria a mesma
+/// linha escrita duas vezes: ele passaria por construção, e passaria na mesma
+/// se as duas estivessem erradas. *Um controlo que depende da cura que mede não
+/// é um controlo* — esta casa já pagou isso na wave anterior deste mesmo
+/// filtro, com o refresco das normais.
+///
+/// ⇒ a régua é **onde o pano vai parar no ECRÃ**: corre a lei de verdade sobre
+/// uma malha, projecta o centróide antes e depois pela câmera do produto, e
+/// exige que o `y` da tela **cresça** (a convenção de janela: `y` cresce para
+/// baixo). *Gravidade é uma afirmação sobre o que o artista vê, e é isso que se
+/// mede.*
+///
+/// # ⭐ E o CONTROLO é o valor que shipava
+///
+/// Com `[0, 0, −1]` — a convenção do alvo da espec, que é `Z` para cima — a
+/// mesma medição dá o sinal **oposto** no enquadramento de omissão: o pano
+/// subia. Sem esta metade o gate não distinguiria a cura de uma malha que
+/// simplesmente não se mexe.
+#[test]
+fn a_gravidade_do_filtro_cai_para_baixo_na_tela() {
+    use ph2d_mesh_render::Camera3d;
+    use ph2d_sculpt3d::{Brush, ClothFilterOrientation, ClothFilterStep, SculptStroke};
+
+    /// O centróide da malha — a régua de *para onde a peça inteira foi*.
+    fn centroide(m: &ph2d_mesh::Mesh) -> [f32; 3] {
+        let p = m.positions();
+        let n = p.len().max(1) as f32;
+        let mut c = [0.0f32; 3];
+        for q in p {
+            for k in 0..3 {
+                c[k] += q[k];
+            }
+        }
+        c.map(|v| v / n)
+    }
+
+    /// Quantos pixels o pano desceu na tela sob este «baixo». Positivo = desceu.
+    fn queda_na_tela(gravity: [f32; 3]) -> f32 {
+        const SIZE: (u32, u32) = (1280, 720);
+        let mut mesh = uv_sphere(16, 24, 1.0);
+        let antes = centroide(&mesh);
+        let mut st = SculptStroke::default();
+        let b = Brush {
+            verb: Verb::Cloth,
+            radius: 0.35,
+            strength: 1.0,
+            ..Brush::default()
+        };
+        st.cloth_filter_begin(&mesh, &b, ClothFilterKind::Gravity, [0.0; 3]);
+        st.cloth_filter_step(
+            &mut mesh,
+            ClothFilterKind::Gravity,
+            &ClothFilterStep {
+                s: 1.0,
+                gravity_axis: gravity,
+                frame: [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
+                axes: [true; 3],
+                eye: [0.0, 0.0, 1.0],
+            },
+        );
+        let depois = centroide(&mesh);
+        // ⚠️ A câmera de OMISSÃO, que é o enquadramento em que a peça nasce —
+        // é nele que o report foi escrito.
+        let cam = Camera3d::default();
+        let a = cam.project(antes, SIZE).expect("o centroide esta' na frente");
+        let d = cam
+            .project(depois, SIZE)
+            .expect("o centroide esta' na frente");
+        d.1 - a.1
+    }
+
+    // O «baixo» que o PRODUTO monta, lido pela porta e não escrito à mão.
+    let (_, produto) = super::referencial_e_gravidade(
+        ClothFilterOrientation::Local,
+        [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
+    );
+    let desceu = queda_na_tela(produto);
+    // ⚠️ **O CONTROLO**: o eixo que shipava até 2026-09-08.
+    let antes_da_cura = queda_na_tela([0.0, 0.0, -1.0]);
+    println!(
+        "queda na tela: produto {produto:?} -> {desceu:+.4} px | pre-cura [0,0,-1] -> \
+         {antes_da_cura:+.4} px"
+    );
+    assert!(
+        desceu > 0.0,
+        "o filtro de GRAVIDADE nao leva o pano para BAIXO na tela (Delta y = {desceu:+.4} px) -- \
+         o «baixo» tem de sair do CIMA da camera (`Camera3d::UP`), e esta casa e' Y para cima"
+    );
+    assert!(
+        antes_da_cura < 0.0,
+        "o controlo nao reproduz o report: com o eixo do ALVO ([0,0,-1], que e' Z para cima) o \
+         pano tinha de SUBIR na tela, e mediu {antes_da_cura:+.4} px -- sem isto este gate nao \
+         distingue a cura de uma malha parada"
+    );
+}

@@ -50,6 +50,20 @@ impl Default for Camera3d {
 }
 
 impl Camera3d {
+    /// ⭐⭐⭐ **O CIMA DO MUNDO** — o eixo em torno do qual esta câmera roda.
+    ///
+    /// ⚠️ **É uma PORTA e não uma preferência**, e a razão é que ela tinha
+    /// **quatro** cópias neste ficheiro (`view`, `frame`, `ray_through`,
+    /// `screen_basis`) e **nenhum nome** — logo, nada no repo a que outra
+    /// metade do app pudesse perguntar *«para que lado é cima aqui?»*.
+    ///
+    /// ⛔⛔ **E a pergunta foi feita e respondida errado** (report do Enio,
+    /// 2026-09-08: *«a gravidade está em z mas neste app deve ser em y»*): o
+    /// filtro de tecido nasceu com o «baixo» em `−Z`, que é a convenção do
+    /// ALVO da espec, não a desta casa. *Uma convenção sem nome é copiada da
+    /// última coisa que se leu.*
+    pub const UP: Vec3 = Vec3::Y;
+
     /// A câmera que enquadra `bounds` inteiro, com folga.
     #[must_use]
     pub fn framing(bounds: ph2d_mesh::Aabb, fov_y: f32, aspect: f32) -> Self {
@@ -90,7 +104,7 @@ impl Camera3d {
         let (sy, cy) = self.yaw.sin_cos();
         let (sp, cp) = self.pitch.sin_cos();
         let v = Vec3::new(cp * sy, sp, cp * cy); // alvo → olho
-        let right = Vec3::Y.cross(v).normalize_or(Vec3::X);
+        let right = Self::UP.cross(v).normalize_or(Vec3::X);
         let up = v.cross(right);
 
         let half = (Vec3::from(bounds.max) - Vec3::from(bounds.min)) * 0.5;
@@ -120,7 +134,7 @@ impl Camera3d {
     /// A matriz de vista (mundo → olho).
     #[must_use]
     pub fn view(&self) -> Mat4 {
-        Mat4::look_at_rh(self.eye(), self.target, Vec3::Y)
+        Mat4::look_at_rh(self.eye(), self.target, Self::UP)
     }
 
     /// A matriz mundo → clip.
@@ -183,7 +197,7 @@ impl Camera3d {
         let (sy, cy) = self.yaw.sin_cos();
         let (sp, cp) = self.pitch.sin_cos();
         let v = Vec3::new(cp * sy, sp, cp * cy); // alvo → olho
-        let right = Vec3::Y.cross(v).normalize_or(Vec3::X);
+        let right = Self::UP.cross(v).normalize_or(Vec3::X);
         let up = v.cross(right);
 
         let dir = right * (ndc_x * tan_h) + up * (ndc_y * tan_v) - v;
@@ -307,7 +321,7 @@ impl Camera3d {
     #[must_use]
     pub fn screen_basis(&self) -> (Vec3, Vec3) {
         let axis = (self.eye() - self.target).normalize_or(Vec3::Z);
-        let right = Vec3::Y.cross(axis).normalize_or(Vec3::X);
+        let right = Self::UP.cross(axis).normalize_or(Vec3::X);
         (right, axis.cross(right))
     }
 

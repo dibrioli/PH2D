@@ -212,23 +212,14 @@ impl Sculpt3dScene {
     /// queda seja o baixo que o artista vê*.
     pub(super) fn cloth_filter_step_of(&self, amount: f32) -> ph2d_sculpt3d::ClothFilterStep {
         let v = self.camera.view();
-        let dir = |r: usize| {
+        // As LINHAS de uma matriz de vista ortonormal são os eixos do ECRÃ em
+        // coordenadas de mundo — a mesma leitura que a `Camera3d::pan` faz.
+        let ecra = [0, 1, 2].map(|r| {
             let c = v.row(r);
             [c.x, c.y, c.z]
-        };
-        let (frame, gravity) = match self.cloth_filter_orientation {
-            ClothFilterOrientation::View => {
-                // As linhas da matriz de vista são os eixos do ECRÃ em mundo.
-                let (right, up, back) = (dir(0), dir(1), dir(2));
-                ([right, up, back], [-up[0], -up[1], -up[2]])
-            }
-            // *Local* — e o *World* coincide com ele nesta casa, medido.
-            _ => (
-                [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
-                [0.0, 0.0, -1.0],
-            ),
-        };
-        let eye = dir(2);
+        });
+        let (frame, gravity) = referencial_e_gravidade(self.cloth_filter_orientation, ecra);
+        let eye = ecra[2];
         ph2d_sculpt3d::ClothFilterStep {
             s: amount,
             gravity_axis: gravity,
@@ -313,6 +304,54 @@ impl Sculpt3dScene {
             &mut self.edits,
             &touched,
         );
+    }
+}
+
+/// ⭐⭐⭐ **O REFERENCIAL E O «BAIXO» DE UM PASSO DO FILTRO** — lei pura, sem
+/// cena e sem device, para que um gate a possa dirigir.
+///
+/// ⛔⛔⛔ **REPORT DO ENIO, 2026-09-08:** *«parece que a gravidade está em z mas
+/// neste app deve ser em y»*. Ele tem razão, e o defeito é de PROVENIÊNCIA: o
+/// `[0, 0, −1]` que estava escrito aqui é a convenção do **alvo** da espec §7
+/// (que é `Z` para cima), e esta casa é **`Y` para cima** — a
+/// [`ph2d_mesh_render::Camera3d`] roda o `yaw` em torno do `+Y` e o
+/// `field3d_navball` já o diz por escrito para o módulo vizinho.
+///
+/// ⚠️ **A cura NÃO é trocar um literal por outro** — é o «baixo» passar a ser
+/// **derivado** do cima da câmera ([`ph2d_mesh_render::Camera3d::UP`]). Um
+/// segundo literal, mesmo certo hoje, é a segunda resposta à pergunta *«para
+/// que lado é baixo?»*, e seria ela a envelhecer.
+///
+/// ⚠️⚠️ **O braço da VISTA já estava certo, e é por isso que o report diz
+/// «parece»:** ali o baixo é o `−cima do ECRÃ`, que num enquadramento típico
+/// aponta mesmo para baixo na tela. *Metade de uma lei correcta esconde a
+/// outra metade errada — o defeito só aparece na orientação que ninguém
+/// escolhe primeiro.*
+///
+/// `ecra` são os três eixos do ECRÃ em coordenadas de mundo — direita, cima e
+/// para-o-olho —, que é o que as linhas da matriz de vista dão. ⚠️ **Ela recebe
+/// os eixos e não a câmera**: assim a lei não depende de `glam` nem de um
+/// `Device`, e um gate dirige-a com três vectores escritos à mão.
+fn referencial_e_gravidade(
+    orientation: ClothFilterOrientation,
+    ecra: [[f32; 3]; 3],
+) -> ([[f32; 3]; 3], [f32; 3]) {
+    match orientation {
+        ClothFilterOrientation::View => {
+            let up = ecra[1];
+            (ecra, [-up[0], -up[1], -up[2]])
+        }
+        // *Local* — e o *World* coincide com ele nesta casa, medido
+        // ([`ClothFilterOrientation::offered`]).
+        _ => {
+            let up = ph2d_mesh_render::Camera3d::UP;
+            let right = [1.0, 0.0, 0.0];
+            let back = [0.0, 0.0, 1.0];
+            (
+                [right, [up.x, up.y, up.z], back],
+                [-up.x, -up.y, -up.z],
+            )
+        }
     }
 }
 

@@ -264,6 +264,60 @@ fn the_action_picker_lists_the_document_and_the_choice_reaches_the_bus() {
     limpa();
 }
 
+/// ⭐⭐⭐ **A OPÇÃO QUE SE CARREGA É A QUE SE VÊ** — a `n`-ésima linha da lista devolve o `n`-ésimo id.
+///
+/// ⛔⛔ **Report do dono (2026-09-08):** *«ao selecionar na lista de actions … não consegue
+/// selecionar o clip desejado»*. ⚠️ **Este gate mede a metade do PAINEL** — que a linha `i` da lista
+/// é o id `i` do pool, ordenada de cima para baixo. A outra metade (a shell resolver essa posição
+/// contra a lista **filtrada**, e não contra o documento inteiro) vive em `skeleton_smart`, e as
+/// duas falham exactamente igual de fora: *escolhe-se uma linha e liga-se outra acção*.
+///
+/// ⚠️ **A 2.ª opção, e não a 1.ª:** um erro de deslocamento de um (ou uma lista invertida) passa
+/// despercebido sobre o índice `0`, que é o mesmo em quase toda ordenação errada.
+#[test]
+fn the_option_you_press_is_the_one_you_see() {
+    estado_de(ids::VECTOR_BONE_SMART_CLIP);
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut st = VectorPanelState;
+    let chip = host
+        .painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::VECTOR_BONE_SMART_CLIP)
+        .expect("o chip da acção");
+    host.dispatch_pointer_event(pointer(PointerKind::Down, chip.x + 2.0, chip.y + 2.0, SEC));
+    let evs = host.dispatch_pointer_event(pointer(
+        PointerKind::Up,
+        chip.x + 2.0,
+        chip.y + 2.0,
+        SEC + SEC / 100,
+    ));
+    for ev in evs {
+        host.apply_panel_event::<VectorPanel>(&mut st, ev);
+    }
+    // As duas opções publicadas (`Main`, `Walk`) têm de sair NESTA ordem, de cima para baixo.
+    let r0 = host
+        .painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::VECTOR_BONE_SMART_CLIP_IDS[0])
+        .expect("a 1.ª opção");
+    let r1 = host
+        .painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::VECTOR_BONE_SMART_CLIP_IDS[1])
+        .expect("a 2.ª opção");
+    assert!(
+        r1.y > r0.y,
+        "a 2.ª opção não está abaixo da 1.ª ({} contra {}) — a lista pintada e o pool de ids estão          em ordens diferentes, e escolher uma linha ligaria outra acção",
+        r1.y,
+        r0.y
+    );
+    // E o gesto REAL sobre a 2.ª devolve o id da 2.ª.
+    let (cx, cy) = (r1.x + r1.w * 0.5, r1.y + r1.h * 0.5);
+    host.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, 2 * SEC));
+    let evs = host.dispatch_pointer_event(pointer(PointerKind::Up, cx, cy, 2 * SEC + SEC / 100));
+    assert!(
+        evs.iter().any(
+            |e| matches!(e, WidgetEvent::Click(c) if *c == ids::VECTOR_BONE_SMART_CLIP_IDS[1])
+        ),
+        "carregar na 2.ª linha não devolveu o id da 2.ª opção: {evs:?}"
+    );
+    limpa();
+}
+
 /// ⭐ **SEM ACÇÃO não há selector** — a outra metade da lei do controlo morto.
 ///
 /// ⚠️ Um chip que liste as animações do documento sobre um osso que não percorre nenhuma é um

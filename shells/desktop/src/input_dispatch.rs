@@ -2537,6 +2537,59 @@ impl App {
         }
     }
 
+    /// ⭐⭐⭐ **O clique que escolhe o ALVO de um osso inteligente.** Consome o press — é isso que
+    /// impede a ferramenta Bone de criar um osso por baixo do gesto (report do dono, 2026-09-08).
+    ///
+    /// ⚠️ **Ele procura DUAS coisas, e a ordem é a do desenho:** primeiro uma FORMA vectorial (é o
+    /// que o artista aponta num editor de vector, e o que a cena de smoke tem), depois uma SPRITE.
+    /// Um alvo pode ser qualquer objecto que a timeline anime, e as duas famílias respondem a
+    /// *«o que está debaixo do cursor»* de maneiras diferentes.
+    ///
+    /// ⛔ **Clique no vazio NÃO desiste** — ao contrário dos eyedroppers de física, e a razão é o
+    /// alvo: falhar a forma por três píxeis é comum, e um pick que se perde nisso faz o artista
+    /// repetir o botão sem saber porquê. Quem desiste é o `Escape`.
+    fn smart_pick_click(&mut self, sx: f32, sy: f32) {
+        let Some(bits_osso) = self.smart_pick else {
+            return;
+        };
+        self.any_input_this_frame = true;
+        let hit_r = 10.0 * self.vec_px_to_world(); // LITERAL-PX-OK: o MESMO raio do irmão `vec_path_pick_click`
+        let Some(world) = self.vec_world_at((sx, sy)) else {
+            return;
+        };
+        let Some(gfx) = self.gfx.as_mut() else {
+            return;
+        };
+        let por_forma = self
+            .vec_pen
+            .path_at(&gfx.vec_scene, world, hit_r)
+            .and_then(|pid| self.vec_entities.get(&pid).copied());
+        let alvo = por_forma.or_else(|| {
+            // ⚠️ O mundo do documento é `f64` e o do render `f32` — a conversão vive aqui, na porta
+            // entre os dois, e não numa das pontas.
+            #[expect(
+                clippy::cast_possible_truncation,
+                reason = "o picking de sprite fala f32; o documento vectorial fala f64"
+            )]
+            let p = [world[0] as f32, world[1] as f32];
+            ph2d_render::pick_sprites_at_world(gfx.present.world_mut(), p)
+                .into_iter()
+                .find(|&bits| bits != bits_osso)
+        });
+        let Some(alvo) = alvo else {
+            return; // clique no vazio — segue armado
+        };
+        if alvo != bits_osso
+            && crate::skeleton_smart::set_target(
+                &mut gfx.sim,
+                ph2d_ecs::Entity::from_bits(bits_osso),
+                ph2d_ecs::Entity::from_bits(alvo),
+            )
+        {
+            self.smart_pick = None;
+        }
+    }
+
     /// **O clique do eyedropper de MONTAGEM** (§13, W3): com um pick armado,
     /// resolve o CORPO sob o cursor e monta o eixo daquela roldana nele. Clique
     /// no vazio (ou num não-corpo) desiste. Consome o press, então nunca cai no
@@ -3992,6 +4045,27 @@ impl App {
             && let Some(w) = self.vec_world_at((evt.x, evt.y))
         {
             self.vec_path_pick_click(w);
+            return;
+        }
+        // ⭐⭐⭐ **O PICK DO ALVO de um osso inteligente** — a mesma classe modal, e **independente
+        // de ferramenta** de propósito.
+        //
+        // ⛔⛔ **Report do dono (2026-09-08): *«Pick object deve inibir a criação de bones. Ao tentar
+        // fazer o pick no canvas criou um osso indesejado»*.** Ele arma o pick a partir da secção
+        // Skeleton, logo está na ferramenta **Bone** — onde um `Down` no canvas **cria um osso**. A
+        // 1.ª versão deste pick não consumia o press: ela esperava que a SELECÇÃO mudasse, e no modo
+        // *Criar* o clique não selecciona coisa nenhuma, **desenha**.
+        //
+        // ⇒ *um pick modal que não consome o press herda o gesto da ferramenta em que foi armado*, e
+        // a ferramenta em que este é armado é a única que CRIA no clique. Precede as alças e o
+        // picking/gizmo, como os irmãos.
+        if self.smart_pick.is_some()
+            && mapped_button == ph2d_host::PointerButton::Primary
+            && kind == PointerKind::Down
+            && !menu_open_before
+            && self.over_canvas_or_gizmo(evt.x, evt.y)
+        {
+            self.smart_pick_click(evt.x, evt.y);
             return;
         }
         // **O eyedropper de corpo do joint** (§12) — mesma classe de pick modal do

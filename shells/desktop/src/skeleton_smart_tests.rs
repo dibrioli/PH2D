@@ -411,3 +411,65 @@ fn the_gesture_attaches_an_empty_control_and_creates_nothing() {
     assert_eq!(drive(&mut sim, &doc, &mut pv), 0);
     assert!((x(&sim, movido) - 0.0).abs() < 1e-9);
 }
+
+/// ⭐⭐⭐ **A POSIÇÃO ESCOLHIDA RESOLVE-SE CONTRA A LISTA QUE O PAINEL PINTOU.**
+///
+/// ⛔⛔ **Report do dono (2026-09-08):** *«ao selecionar na lista de actions … não consegue
+/// selecionar o clip desejado»* — e o defeito era meu, da mesma jornada. O clique devolve uma
+/// **POSIÇÃO** no pool de ids, e a shell resolvia-a contra `doc.clips()`, a lista **INTEIRA**. As
+/// duas coincidiam enquanto o painel mostrava todas, e deixaram de coincidir no instante em que o
+/// alvo passou a **FILTRAR**: com o filtro activo, carregar na 1.ª linha escrevia o 1.º clip do
+/// DOCUMENTO.
+///
+/// ⚠️ **É o pior modo de falha que há:** a leitura errada compila, devolve um nome **válido**, e o
+/// osso passa a percorrer uma animação que o artista nunca escolheu.
+///
+/// ⇒ *uma posição só significa alguma coisa ao lado da lista que a produziu.*
+#[test]
+fn the_chosen_position_resolves_against_the_list_the_panel_painted() {
+    let (mut sim, mut doc, _, _) = cena();
+    // Um 2.º clip que NÃO toca o alvo, e que fica ANTES dele na lista do documento.
+    let outra = doc.add_clip("Somebody Else".into());
+    doc.set_active(outra);
+    let estranho = sim
+        .world_mut()
+        .spawn((Transform::IDENTITY, Name::new("Stranger"), RootOrder(9)))
+        .id();
+    doc.insert_key(
+        estranho.to_bits(),
+        PropKind::TranslationX,
+        RationalTime::from_seconds(0.0),
+        AnimValue::Float(1.0),
+        Interp::Linear,
+    );
+    doc.set_active(0);
+
+    let sb = ph2d_skeleton_ecs::SmartBone {
+        target: "Driven".to_string(),
+        ..ph2d_skeleton_ecs::SmartBone::default()
+    };
+    let lista = crate::skeleton_smart::actions_for(sim.world(), &doc, &sb);
+    assert_eq!(
+        lista,
+        vec!["Correction".to_string()],
+        "a premissa deste gate é uma lista FILTRADA de um item — se isto mudar, ele deixou de medir \
+         o defeito"
+    );
+    assert_ne!(
+        doc.clips()[0].name,
+        lista[0],
+        "a fixtura tem de pôr o documento e a lista pintada em DESACORDO na posição 0, senão o \
+         defeito não se manifesta"
+    );
+    assert_eq!(
+        crate::skeleton_smart::action_at(sim.world(), &doc, &sb, 0).as_deref(),
+        Some("Correction"),
+        "a posição 0 devolveu o 1.º clip do DOCUMENTO em vez da 1.ª linha que o artista viu"
+    );
+    assert_eq!(
+        crate::skeleton_smart::action_at(sim.world(), &doc, &sb, 1),
+        None,
+        "uma posição fora da lista pintada devolveu um nome — o pool de ids é fixo e maior que a \
+         lista, então esta é a posição que um clique perdido produz"
+    );
+}

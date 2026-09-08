@@ -672,6 +672,55 @@ hoje as duas linhas do painel completam-no, e nascer vazio é um no-op exacto.
 ⚠️ E o **`Add Smart Bone` deixou de ter um caminho de recusa**: ele já não lê a timeline, logo já não
 pode dizer *«não há acção aberta»* nem *«já há 16»*.
 
+
+### F3-d — ✅ os DOIS defeitos que o smoke da F3-c devolveu (2026-09-08)
+
+**(a) *«Pick object deve inibir a criação de bones. Ao tentar fazer o pick no canvas criou um osso
+indesejado»***
+
+⛔⛔ **A causa é uma lei que este app já tinha escrita e que o meu pick não seguia: *um pick armado é
+MODAL — ele CONSOME o press*.** O *Pick Object* arma-se a partir da secção Skeleton, logo o artista
+está na ferramenta **Bone** — a única do app em que um `Down` no canvas **CRIA** alguma coisa. A 1.ª
+versão não consumia o press: ela esperava que a **SELECÇÃO** mudasse, e no modo *Criar* o clique não
+selecciona, **desenha**.
+
+⇒ *um pick modal que não consome o press herda o gesto da ferramenta em que foi armado* — e esta é a
+única que cria. A guarda entra ao lado do irmão **independente de ferramenta** (o conta-gotas de
+corpo de junta), e ⛔ **não** ao lado do `vec_path_pick`, que só é modal no modo *Select*: uma guarda
+que exigisse um modo teria de nomear exactamente o modo em que o defeito acontece, e um modo novo
+nasceria fora dela.
+
+⚠️ **E o defeito tinha um segundo andar, silencioso:** o osso criado por engano **mudava a
+selecção**, e a resolução por selecção lia isso como *«o artista escolheu este objecto»* ⇒ o alvo
+ficava a apontar para um osso acabado de nascer. A guarda modal cura os dois de uma vez.
+
+⭐ Gates: `the_smart_bone_target_pick_precedes_the_bone_gesture` (a âncora é a **CHAMADA**, nunca a
+declaração — a lição, escrita, do gate irmão do `the_node_ops_are_wired`) e
+`the_target_pick_guard_asks_no_tool_and_no_mode`. Mutação: apagar a guarda ⇒ os dois VERMELHOS.
+
+**(b) *«ao selecionar na lista de actions … não consegue selecionar o clip desejado»***
+
+⛔⛔ **Defeito meu, da mesma jornada, e do pior tipo que há.** O clique numa opção devolve uma
+**POSIÇÃO** no pool de ids, e a shell resolvia-a contra `doc.clips()` — a lista **INTEIRA**. Isso
+estava certo enquanto o painel mostrava todas, e deixou de estar **no instante em que o alvo passou a
+FILTRAR** (a F3-c, três horas antes). Com o filtro activo, carregar na 1.ª linha escrevia o 1.º clip
+do DOCUMENTO.
+
+⚠️ **A leitura errada compila, devolve um nome VÁLIDO, e o osso passa a percorrer uma animação que o
+artista nunca escolheu.** ⇒ *uma posição só significa alguma coisa ao lado da lista que a produziu*,
+e por isso quem indexa é a MESMA porta que constrói (`skeleton_smart::action_at` → `actions_for`).
+
+⚠️ **O PAINEL foi ilibado por medição antes de eu tocar na shell:** o gate novo
+`the_option_you_press_is_the_one_you_see` faz o gesto REAL sobre a **2.ª** linha (⛔ não a 1.ª: um
+erro de deslocamento de um passa despercebido no índice `0`) e prova que ela devolve o 2.º id, na
+ordem de cima para baixo. ⭐ E a mutação do lado da shell **reproduz o report à letra**: pôr
+`doc.clips().get(i)` de volta deixa `the_chosen_position_resolves_against_the_list_the_panel_painted`
+vermelho com *«a posição 0 devolveu o 1.º clip do DOCUMENTO em vez da 1.ª linha que o artista viu»*.
+
+⭐ **A lição que fica é de ARQUITECTURA, não deste selector:** *acrescentar um filtro a uma lista
+transforma todo índice que alguém guardou noutra coisa* — e nenhum tipo, nenhum compilador e nenhum
+gate de registo vê isso, porque as duas listas têm o mesmo tipo e o mesmo tamanho no caso comum.
+
 ⚠️ **`PROJECT_SCHEMA` 125 → 126** (componente registado novo; o registo do esqueleto vai de **5 para
 6** e o catálogo idem — conte o delta). ⚠️ E o gate `every_registered_component_has_a_descriptor`
 apanhou-me a registar sem descrever: *o Inspector e o registo são duas listas, e o gate é o que as

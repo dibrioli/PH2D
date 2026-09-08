@@ -6378,11 +6378,22 @@ impl crate::App {
                 if pending_smart_pick {
                     self.smart_pick = Some(osso.to_bits());
                 }
-                // ⭐⭐⭐ **TROCAR A ACÇÃO** pelo selector — o índice vem da MESMA lista que o painel
-                // pinta, e o que se guarda é o NOME (a referência durável). ⛔ Guardar o índice
-                // faria apagar um clip renomear silenciosamente a acção de todo osso abaixo dele.
+                // ⭐⭐⭐ **TROCAR A ACÇÃO** pelo selector, e o que se guarda é o NOME (a referência
+                // durável). ⛔ Guardar o índice faria apagar um clip renomear silenciosamente a
+                // acção de todo osso abaixo dele.
+                //
+                // ⛔⛔ **A POSIÇÃO resolve-se contra a lista que o PAINEL PINTOU, nunca contra
+                // `doc.clips()`** — report do dono (*«não consegue selecionar o clip desejado»*).
+                // As duas coincidiam enquanto a lista era a do documento inteiro, e deixaram de
+                // coincidir no instante em que o alvo passou a filtrar; a leitura errada continua a
+                // compilar e a devolver um nome válido, que é o pior modo de falha.
                 if let Some(i) = pending_smart_clip
-                    && let Some(nome) = self.timeline.doc.clips().get(i).map(|c| c.name.clone())
+                    && let Some(sb) = sim
+                        .world()
+                        .get::<ph2d_skeleton_ecs::SmartBone>(osso)
+                        .cloned()
+                    && let Some(nome) =
+                        crate::skeleton_smart::action_at(sim.world(), &self.timeline.doc, &sb, i)
                     && let Some(mut sb) = sim
                         .world_mut()
                         .get_mut::<ph2d_skeleton_ecs::SmartBone>(osso)
@@ -9144,20 +9155,12 @@ impl crate::App {
                     .and_then(|bits_osso| hero.gizmo.iter_selected().find(|b| *b != bits_osso));
                 if let Some(bits_osso) = self.smart_pick
                     && let Some(alvo) = alvo_do_pick
+                    && crate::skeleton_smart::set_target(
+                        sim,
+                        ph2d_ecs::Entity::from_bits(bits_osso),
+                        ph2d_ecs::Entity::from_bits(alvo),
+                    )
                 {
-                    let nome = sim
-                        .world()
-                        .get::<ph2d_ecs::Name>(ph2d_ecs::Entity::from_bits(alvo))
-                        .map(|n| n.as_str().to_string());
-                    if let Some(nome) = nome
-                        && let Some(mut sb) =
-                            sim.world_mut().get_mut::<ph2d_skeleton_ecs::SmartBone>(
-                                ph2d_ecs::Entity::from_bits(bits_osso),
-                            )
-                    {
-                        eprintln!("[ph2d-vec] osso inteligente: alvo = \"{nome}\"");
-                        sb.target = nome;
-                    }
                     self.smart_pick = None;
                     hero.gizmo.replace_selection(Some(bits_osso));
                 }

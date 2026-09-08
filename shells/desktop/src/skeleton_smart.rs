@@ -30,6 +30,32 @@ use ph2d_timeline::TimelineDoc;
 
 use crate::preview_drive::PreviewDrive;
 
+/// ⭐⭐⭐ **O PICK DO ALVO RESOLVEU** — escreve no controlo de `osso` o NOME de `alvo`.
+///
+/// ⚠️⚠️ **UMA porta para DUAS maneiras de achar o objecto**, e é o que impede as duas de divergirem:
+/// o clique no **canvas** resolve por hit-test (modal, ele consome o press) e o clique na
+/// **Hierarquia** resolve porque a selecção mudou. *Como se acha* é genuinamente diferente; *o que
+/// se faz com o que se achou* tem de ser uma coisa só.
+///
+/// Devolve `false` quando o alvo não tem `Name` ou o osso já não é um controlo — nos dois casos o
+/// chamador mantém o pick armado, porque desarmar sobre uma recusa lê-se como *«funcionou»*.
+#[must_use]
+pub(crate) fn set_target(sim: &mut SimWorld, osso: Entity, alvo: Entity) -> bool {
+    let Some(nome) = sim
+        .world()
+        .get::<Name>(alvo)
+        .map(|n| n.as_str().to_string())
+    else {
+        return false;
+    };
+    let Some(mut sb) = sim.world_mut().get_mut::<SmartBone>(osso) else {
+        return false;
+    };
+    eprintln!("[ph2d-vec] osso inteligente: alvo = \"{nome}\"");
+    sb.target = nome;
+    true
+}
+
 /// ⭐⭐⭐ **AS ACÇÕES QUE ESTE CONTROLO PODE OFERECER** — todas, ou só as que animam o ALVO dele.
 ///
 /// ⚠️⚠️ **Report do dono (2026-09-08):** *«se ouverem milhares de objetos animado a lista action
@@ -81,6 +107,28 @@ pub(crate) fn actions_for(world: &World, doc: &TimelineDoc, sb: &SmartBone) -> V
     } else {
         filtradas
     }
+}
+
+/// ⭐⭐⭐ **A ACÇÃO NA POSIÇÃO `i` DA LISTA QUE O PAINEL PINTOU.**
+///
+/// ⛔⛔ **Ela existe por um report do dono** (2026-09-08: *«ao selecionar na lista de actions … não
+/// consegue selecionar o clip desejado»*), e o defeito foi meu, na mesma jornada: o clique devolve
+/// uma **POSIÇÃO** no pool de ids, e a shell resolvia-a contra `doc.clips()` — a lista **INTEIRA**.
+/// Isso estava certo enquanto o painel mostrava todas; deixou de estar no instante em que o alvo
+/// passou a **FILTRAR**. Com um filtro activo, escolher a 1.ª linha escrevia o 1.º clip do
+/// documento, que é outra coisa.
+///
+/// ⇒ *uma posição só significa alguma coisa ao lado da lista que a produziu*, e por isso quem
+/// indexa é a MESMA porta que constrói ([`actions_for`]) — não uma segunda leitura que concorde por
+/// acidente enquanto ninguém filtrar.
+#[must_use]
+pub(crate) fn action_at(
+    world: &World,
+    doc: &TimelineDoc,
+    sb: &SmartBone,
+    i: usize,
+) -> Option<String> {
+    actions_for(world, doc, sb).into_iter().nth(i)
 }
 
 /// **Os ossos inteligentes da cena**, em ordem determinística.

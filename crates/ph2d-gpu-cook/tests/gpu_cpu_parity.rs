@@ -602,6 +602,77 @@ fn transform_kernel_folds_the_pivot_the_same_way_the_cpu_does() {
     assert_gpu_parity(&gpu, &reg, &g, out, 2);
 }
 
+/// ⛔⛔ **O MODO DECIDE O PIVÔ, E O KERNEL IGNORAVA-O** (ciclo 3, W1 — doc 106).
+///
+/// O irmão acima põe `pivot_mode = 1` **e** um ponto: os dois caminhos concordam.
+/// Este põe `pivot_mode = 0` (World Origin) deixando o ponto DIGITADO lá — que é
+/// o estado normal de quem experimentou o modo `Point` e voltou atrás, porque o
+/// `ParamGate` esconde a row e **não apaga o valor**. A CPU resolve a origem
+/// (`Pivot::of` lê o modo); o kernel dobrava `params.pivot_x` na mesma, porque
+/// perguntava *«o ponto é diferente de zero?»* em vez de *«qual é o modo?»*.
+///
+/// ⚠️ *Um gate que só corre o modo em que os dois campos concordam não mede o
+/// campo — mede a coincidência.*
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn the_pivot_mode_decides_and_a_stale_typed_point_does_not_leak() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let mut g = Graph::new();
+    let (node, out) = deformer_chain(&mut g, 160.0, "motion.transform");
+    g.set_param(node, "scale", 0.63);
+    g.set_param(node, "offset_x", 2.9);
+    g.set_param(node, "offset_y", -1.4);
+    // O modo diz ORIGEM; o ponto digitado ficou para trás, escondido pelo gate.
+    g.set_param(node, "pivot_mode", 0.0);
+    g.set_param(node, "pivot_x", 3.7);
+    g.set_param(node, "pivot_y", -2.1);
+    assert_gpu_parity(&gpu, &reg, &g, out, 2);
+}
+
+/// ⭐⭐ **O CENTROIDE CHEGA AO DISPOSITIVO** (ciclo 3, W1 — doc 106): a recusa
+/// (`applicable`) saiu, e as duas somas do `reduce → broadcast → map` fazem o que
+/// o `motion.spherize` já fazia.
+///
+/// ⚠️⚠️ **A grelha do arnês é CENTRADA NA ORIGEM, então a 1.ª redacção deste gate
+/// era VÁCUA:** com o centroide em `(0, 0)` o atalho do neutro devolve o offset
+/// intacto e o teste ficava verde com o braço do centroide inteiro ausente do
+/// kernel — exactamente a armadilha que o gate irmão acima descreve, do outro
+/// lado. Um `motion.move` a montante desloca o layout e o centroide passa a ser
+/// um número que os dois caminhos têm de calcular.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn the_transform_centroid_pivot_reaches_the_device() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let mut g = Graph::new();
+    let grid = grid_node(&mut g, 160.0);
+    // O layout sai da origem — sem isto o centroide É a origem e não há fold.
+    let shift = g.add_node("motion.move");
+    g.set_param(shift, "dx", 4.3);
+    g.set_param(shift, "dy", -2.6);
+    let node = g.add_node("motion.transform");
+    let out = g.add_node("motion.output");
+    connect(&mut g, grid, shift);
+    connect(&mut g, shift, node);
+    connect(&mut g, node, out);
+    g.set_param(node, "scale", 0.63);
+    g.set_param(node, "offset_x", 2.9);
+    g.set_param(node, "offset_y", -1.4);
+    g.set_param(node, "pivot_mode", 2.0);
+    // Um ponto digitado que o modo NÃO escolhe — a mesma armadilha do gate acima,
+    // do outro lado: o centroide tem de vencer.
+    g.set_param(node, "pivot_x", 3.7);
+    g.set_param(node, "pivot_y", -2.1);
+    assert_gpu_parity(&gpu, &reg, &g, out, 3);
+}
+
 #[test]
 #[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
 fn rotate_kernel_matches_the_cpu_within_epsilon() {
@@ -6362,4 +6433,93 @@ fn the_appended_drive_modes_match_the_cpu_on_the_device() {
         connect(&mut g, drive, out);
         assert_gpu_parity(&gpu, &reg, &g, out, 3); // grid + instance_field + drive
     }
+}
+
+/// ⭐⭐⭐ **DE QUE RECURSO É O TETO DO PIVÔ-CENTROIDE** (ciclo 3, W1 — doc 106 §4).
+///
+/// O gate acima passa a `9,2e-4` contra a barra de `2e-3` da casa, e essa folga
+/// **não é uma constante**: o erro é o da soma em `f32` sobre `n` coordenadas
+/// afastadas da origem, e cresce com as DUAS coisas. §0.0 — *um limite legítimo
+/// diz de que recurso ele é, e traz a medição*. Esta sonda varre as duas e
+/// imprime a tabela; ⛔ ela não tem asserção de propósito, porque o que ela mede
+/// é onde a barra da casa deixa de servir, não um veredito.
+///
+/// ```text
+/// cargo test -p ph2d-gpu-cook --release --test gpu_cpu_parity -- --ignored --nocapture measure_the_centroid_pivot_epsilon
+/// ```
+#[test]
+#[ignore = "sonda de medição — corra à mão, com GPU"]
+fn measure_the_centroid_pivot_epsilon() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    eprintln!(
+        "\n  load {}",
+        std::fs::read_to_string("/proc/loadavg")
+            .unwrap_or_default()
+            .trim()
+    );
+    eprintln!("\n  elementos | deslocamento | max |Δpos|  | % da barra (2e-3)");
+    eprintln!("  ----------|--------------|-------------|------------------");
+    for rows in [80.0f32, 160.0, 320.0, 640.0] {
+        for shift in [4.3f32, 43.0, 430.0] {
+            let mut g = Graph::new();
+            let grid = grid_node(&mut g, rows);
+            let mv = g.add_node("motion.move");
+            g.set_param(mv, "dx", shift);
+            g.set_param(mv, "dy", -shift * 0.6);
+            let node = g.add_node("motion.transform");
+            let out = g.add_node("motion.output");
+            connect(&mut g, grid, mv);
+            connect(&mut g, mv, node);
+            connect(&mut g, node, out);
+            g.set_param(node, "scale", 0.63);
+            g.set_param(node, "pivot_mode", 2.0);
+
+            let mut cook = Cook::new();
+            let mut cpu = Vec::new();
+            ph2d_eval_motion::evaluate_motion_into(
+                &mut cook,
+                &g,
+                &reg,
+                out,
+                PLAYHEAD,
+                DEFAULT_UV,
+                DEFAULT_SIZE,
+                &mut cpu,
+            )
+            .expect("cpu cook");
+            let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, out);
+            assert!(plan.is_fully_gpu());
+            let mut gc = ph2d_gpu_cook::GpuCook::new();
+            gc.cook(
+                &gpu,
+                &g,
+                &reg,
+                &reg,
+                &plan,
+                &[],
+                CookClock::at(PLAYHEAD),
+                DEFAULT_UV,
+                DEFAULT_SIZE,
+                SinkStyle::PLAIN,
+            )
+            .expect("gpu cook");
+            let out_g = ph2d_gpu_cook::read_instances(&gpu, gc.instances().expect("cooked"));
+            let mut worst = 0.0f32;
+            for (c, d) in cpu.iter().zip(&out_g) {
+                for k in 0..2 {
+                    worst = worst.max((c.world_pos[k] - d.world_pos[k]).abs());
+                }
+            }
+            eprintln!(
+                "  {:>9} | {shift:>12.1} | {worst:>11.3e} | {:>15.1}%",
+                cpu.len(),
+                worst / 2e-3 * 100.0
+            );
+        }
+    }
+    eprintln!();
 }

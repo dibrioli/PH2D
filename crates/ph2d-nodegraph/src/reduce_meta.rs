@@ -46,10 +46,19 @@
 /// than an ε, and does so by mathematics rather than by luck.
 ///
 /// [`Self::Sum`] is a different animal: float addition is not associative, so
-/// the tree's answer differs from the sequential one in the last ulps and its
-/// gate carries a documented ε. (It is the same reason the Voronoi cook
-/// accumulates its centroid in **integers**.) A caller that needs a bit-exact
-/// whole-stream sum should quantise, not pretend.
+/// the tree's answer differs from the sequential one and its gate carries a
+/// documented ε. (It is the same reason the Voronoi cook accumulates its
+/// centroid in **integers**.) A caller that needs a bit-exact whole-stream sum
+/// should quantise, not pretend.
+///
+/// ⚠️⚠️ **«Nos últimos ulps» era o que esta nota dizia, e a medição desmentiu-a
+/// por quatro ordens de grandeza** (ciclo 3, W1 — doc 106 §4): num layout de
+/// 409 600 elementos afastado da origem, a soma sequencial em `f32` do
+/// `motion.spherize` divergia da árvore do dispositivo em **54 365 % da barra de
+/// paridade**. As parciais chegam à magnitude do layout INTEIRO antes de se voltar
+/// a dividir por `n`, e o erro sequencial cresce como `√n · ulp` contra o
+/// `log n · ulp` da árvore — *das duas, a do dispositivo é a mais certa*. ⇒ quem
+/// dobra esta coluna no hospedeiro usa [`centroid_of`], que acumula em `f64`.
 ///
 /// ⚠️ **NaN is out of contract.** Rust's `f32::max` returns the non-NaN operand;
 /// WGSL's `max` with a NaN operand is implementation-defined. The columns this
@@ -191,9 +200,95 @@ pub struct ReduceSpec {
     pub params: &'static [&'static str],
 }
 
+/// ⭐⭐⭐ **O CENTROIDE de uma coluna `P`, na CPU** — a metade de hospedeiro do par
+/// `Sum(v.x)` / `Sum(v.y)` que os nós declaram como [`ReduceSpec`], e a ÚNICA
+/// porta que a responde (ciclo 3, W1 — doc 106 §4).
+///
+/// `None` para uma lista vazia: uma média de nada não é zero, é ausente, e quem
+/// chama fica então sem nada em torno de que pivotar.
+///
+/// ## ⚠️⚠️ O acumulador é `f64`, e isso NÃO é zelo — é a barra de paridade
+///
+/// A nota do [`ReduceOp::Sum`] acima diz que a árvore e o fold sequencial *«diferem
+/// nos últimos ulps»*. **Medido, é muito mais que isso**, porque as parciais
+/// chegam à magnitude do layout INTEIRO antes de se voltar a dividir por `n`, e a
+/// soma sequencial erra como um passeio aleatório de `√n · ulp` enquanto a árvore
+/// erra `log n · ulp` — *das duas, a do dispositivo é a mais certa*.
+///
+/// | nó | fixtura | antes (fold `f32`) | depois (`f64`) |
+/// |---|---|---:|---:|
+/// | `motion.spherize` | 409 600 elementos, layout a `4` da origem | **54 365 % da barra** (`2e-4`) | **7,6 %** |
+/// | `motion.spherize` | 16 384 — *o tamanho do próprio gate* | **535 %** | 1,9 % |
+/// | `motion.transform` | 409 600, layout a `4,3` | **917 % da barra** (`2e-3`) | 0,4 % |
+///
+/// ⛔ **E os gates de paridade dos dois estavam VERDES** — cada um mede um tamanho
+/// (e o do spherize uma lente de raio `6`, pequena de mais para o centroide
+/// morder). *Uma folga medida num tamanho é uma afirmação sobre esse tamanho.*
+/// O gate que fixa esta função é [`tests::the_centroid_is_the_mean_and_not_a_random_walk`],
+/// corre na CPU e portanto **no CI** — ao contrário dos de paridade, que precisam
+/// de adapter e são `#[ignore]`.
+#[must_use]
+pub fn centroid_of(p: &[[f32; 2]]) -> Option<[f32; 2]> {
+    if p.is_empty() {
+        return None;
+    }
+    let sum = p.iter().fold([0.0f64, 0.0], |a, q| {
+        [a[0] + f64::from(q[0]), a[1] + f64::from(q[1])]
+    });
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "uma contagem de elementos — exacta ate' 2^53"
+    )]
+    let n = p.len() as f64;
+    #[expect(clippy::cast_possible_truncation, reason = "o consumidor e' f32")]
+    Some([(sum[0] / n) as f32, (sum[1] / n) as f32])
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// ⭐⭐ **O centroide é a MÉDIA, não um passeio aleatório** — o gate de
+    /// [`centroid_of`], e a prova de mutação dele está no doc daquela função.
+    ///
+    /// ⚠️ **A fixtura tem de estar LONGE da origem e ter MANTISSA CHEIA.** `n`
+    /// cópias de `4.0` somam-se **exactamente** em `f32` (`65 536 × 4 = 2^18`) e
+    /// deixariam este gate verde sobre o fold que ele existe para reprovar; e a
+    /// `40` em vez de `400` a mutação morre por `2,1×` só, contra os `159×` de
+    /// hoje — *o erro é proporcional à magnitude das parciais, então a distância
+    /// à origem é metade da fixtura*.
+    #[test]
+    fn the_centroid_is_the_mean_and_not_a_random_walk() {
+        const N: usize = 65_536;
+        let pts: Vec<[f32; 2]> = (0..N)
+            .map(|i| {
+                #[expect(clippy::cast_precision_loss, reason = "uma fixtura")]
+                let t = i as f32;
+                [400.0 + t * 0.000_173, -250.0 + t * 0.000_291]
+            })
+            .collect();
+        let exact = {
+            let s = pts.iter().fold([0.0f64, 0.0], |a, q| {
+                [a[0] + f64::from(q[0]), a[1] + f64::from(q[1])]
+            });
+            #[expect(clippy::cast_precision_loss, reason = "uma contagem")]
+            let n = N as f64;
+            [s[0] / n, s[1] / n]
+        };
+        let c = centroid_of(&pts).expect("ha' posicoes");
+        for k in 0..2 {
+            let d = (f64::from(c[k]) - exact[k]).abs();
+            assert!(
+                d <= 1e-4,
+                "eixo {k}: o centroide deu {} e a media exacta e' {} (|Δ| {d:e} > 1e-4) — \
+                 uma soma sequencial em f32 sobre parciais da magnitude do layout",
+                c[k],
+                exact[k]
+            );
+        }
+        // Uma média de nada é ausente, não zero.
+        assert_eq!(centroid_of(&[]), None);
+    }
 
     /// The identity is the OPERATOR's, on both sides of the fence. A `Max`
     /// seeded with `0.0` answers `0` for an all-negative column — plausible,

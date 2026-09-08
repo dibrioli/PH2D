@@ -230,25 +230,69 @@ fn a_centroid_of_nothing_falls_back_to_the_origin() {
     assert_eq!(centroid(&three), Some([5.0, 2.0]));
 }
 
-/// **O device recusa o Centroid, e a recusa é o contrato — não um esquecimento.**
+/// ⭐⭐ **O CENTROIDE CHEGA AO DISPOSITIVO** (ciclo 3, W1 — [doc 106]).
 ///
-/// Uma redução sobre o stream inteiro não é um mapa por elemento, e o kernel só
-/// sabe fazer o segundo. Recusar devolve a resposta certa pela CPU; o custo
-/// nomeado é que um layout pivotando no próprio centro perde a residência de GPU
-/// neste nó.
+/// ⚠️ **Esta era a recusa mais bem escrita do módulo, e estava ERRADA por um dia
+/// que já tinha passado.** O doc-comment dela dizia: *«uma redução sobre o stream
+/// inteiro não é um mapa por elemento… o canal `reduce → broadcast → map` que os
+/// deformadores usam é o que a levantaria, e isso é uma wave, não uma linha»* —
+/// e o canal **já tinha shipado** (GPU/M5), com o `motion.spherize` a medir o
+/// centroide por duas somas no dispositivo desde então. *Uma recusa que nomeia
+/// o próprio mecanismo da cura tem de ser reconferida quando esse mecanismo
+/// nasce* (§0.0: quem move o número que tornava algo inalcançável reconfere a
+/// nota).
+///
+/// O custo nomeado que ela declarava — *«um layout pivotando no próprio centro
+/// perde a residência de GPU neste nó»* — era o custo REAL, e ele desaparece.
+///
+/// [doc 106]: ../../../docs/Motion%20Nodes/106_ciclo_3_transformes_e_deformadores.md
 #[test]
-fn the_kernel_takes_the_numeric_pivots_and_recuses_the_centroid() {
-    let applicable = GPU_KERNEL.applicable.expect("o kernel declara o predicado");
-    let p = |mode: f32| {
-        move |name: &str| match name {
-            "pivot_mode" => mode,
-            _ => 0.0,
-        }
+fn the_kernel_takes_every_pivot_mode_including_the_centroid() {
+    let ok = |mode: f32| {
+        GPU_KERNEL.applicable.is_none_or(|f| {
+            f(&(|name: &str| if name == "pivot_mode" { mode } else { 0.0 }) as &dyn Fn(&str) -> f32)
+        })
     };
-    assert!(applicable(&p(0.0)), "a origem sao numeros");
-    assert!(applicable(&p(1.0)), "o ponto digitado tambem");
+    assert!(ok(0.0), "a origem sao numeros");
+    assert!(ok(1.0), "o ponto digitado tambem");
     assert!(
-        !applicable(&p(2.0)),
-        "o centroide e uma REDUCAO, e ele recusa"
+        ok(2.0),
+        "o centroide e' uma REDUCAO, e a reducao corre no dispositivo (W1 do ciclo 3)"
     );
+}
+
+/// ⭐⭐ **ESTE NÓ NÃO TEM UMA SEGUNDA MÉDIA** (ciclo 3, W1 — doc 106 §4).
+///
+/// A precisão do centroide é a lei, e ela vive numa porta só
+/// ([`ph2d_nodegraph::reduce_meta::centroid_of`], com a tabela medida e o gate
+/// dela). O que ESTE gate mede é a outra metade: que o nó **chama a porta** em
+/// vez de escrever o próprio fold — que foi exactamente como ele e o
+/// `motion.spherize` chegaram a divergir do dispositivo por ordens de grandeza
+/// diferentes, cada um com o seu gate de paridade verde.
+///
+/// ⚠️ A fixtura está **longe da origem e com mantissa cheia**: é o único regime
+/// em que uma soma sequencial em `f32` e a porta dão respostas diferentes (`n`
+/// cópias de `4.0` somam-se exactamente, e a `40` em vez de `400` a diferença
+/// cai `160×`).
+#[test]
+fn the_node_asks_the_port_for_the_mean_instead_of_folding_its_own() {
+    const N: usize = 65_536;
+    let pts: Vec<[f32; 2]> = (0..N)
+        .map(|i| {
+            #[expect(clippy::cast_precision_loss, reason = "uma fixtura")]
+            let t = i as f32;
+            [400.0 + t * 0.000_173, -250.0 + t * 0.000_291]
+        })
+        .collect();
+    let port = ph2d_nodegraph::reduce_meta::centroid_of(&pts).expect("ha' posicoes");
+    let mut st = Stream::new(N);
+    st.set("P", Column::Vec2(pts));
+    let c = centroid(&st).expect("ha' posicoes");
+    assert_eq!(
+        [c[0].to_bits(), c[1].to_bits()],
+        [port[0].to_bits(), port[1].to_bits()],
+        "o no' devolveu {c:?} e a porta {port:?} — ha' um segundo fold aqui dentro"
+    );
+    // E uma coluna que nao e' `P` nao tem centro nenhum.
+    assert_eq!(centroid(&Stream::new(0)), None);
 }

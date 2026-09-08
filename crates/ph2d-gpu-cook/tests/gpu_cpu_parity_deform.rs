@@ -729,3 +729,76 @@ fn the_deformers_agree_at_every_size_that_crosses_a_reduction_seam() {
         compare(&format!("twist {side}x{side}"), &cpu, &dev);
     }
 }
+
+/// ⭐⭐⭐ **A MESMA SOMA, O MESMO DESVIO — o `motion.spherize` estava a UM TAMANHO
+/// de reprovar** (ciclo 3, W1 — doc 106 §4).
+///
+/// O gate irmão corre a `SIDE = 128` (16 384 elementos) e mede `1,4e-6` contra a
+/// barra de `2e-4`: **0,7 %**, que se lê como folga confortável. Ele mede um
+/// TAMANHO, não a lei — e a lei é que o centroide da CPU é uma soma **sequencial
+/// em `f32`** sobre parciais que chegam à magnitude do layout inteiro, enquanto o
+/// dispositivo faz uma soma em **árvore**, que é a mais certa das duas. O erro
+/// cresce com `n` e com a distância à origem.
+///
+/// ⚠️ *Uma folga medida num tamanho é uma afirmação sobre esse tamanho.* Esta
+/// sonda varre os dois eixos e imprime a tabela; a cura (acumulador `f64` na
+/// CPU, a mesma do `motion.transform`) põe todas as células abaixo de 1 %.
+///
+/// ```text
+/// cargo test -p ph2d-gpu-cook --release --test gpu_cpu_parity_deform -- --ignored --nocapture measure_the_spherize_centroid_epsilon
+/// ```
+#[test]
+#[ignore = "sonda de medição — corra à mão, com GPU"]
+fn measure_the_spherize_centroid_epsilon() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    eprintln!("\n  elementos | deslocamento | max |Δpos|  | % da barra (2e-4)");
+    eprintln!("  ----------|--------------|-------------|------------------");
+    for side in [128.0f32, 256.0, 512.0, 640.0] {
+        for translate in [4.0f32, 40.0, 400.0] {
+            let mut g = Graph::new();
+            let grid = g.add_node("motion.grid");
+            g.set_param(grid, "rows", side);
+            g.set_param(grid, "cols", side);
+            g.set_param(grid, "gap_x", 0.35);
+            g.set_param(grid, "gap_y", 0.25);
+            let mv = g.add_node("motion.move");
+            g.set_param(mv, "dx", translate);
+            g.set_param(mv, "dy", -translate * 0.6);
+            let sph = g.add_node("motion.spherize");
+            // Uma lente GRANDE — com o raio pequeno só um punhado de elementos
+            // vê o centroide, e a sonda mediria a lente em vez da soma.
+            g.set_param(sph, "radius", 60.0);
+            let amt = g.add_node("value.lfo");
+            g.set_param(amt, "amplitude", 0.0);
+            g.set_param(amt, "offset", 0.8);
+            let out = g.add_node("motion.output");
+            for (from, to, port) in [(grid, mv, 0u16), (mv, sph, 0), (amt, sph, 1), (sph, out, 0)] {
+                g.connect(Edge {
+                    from: (from, 0),
+                    to: (to, port),
+                    delayed: false,
+                })
+                .unwrap();
+            }
+            g.validate(&reg).expect("well-typed");
+            let cpu = cook_cpu(&reg, &g, out);
+            let dev = cook_gpu(&gpu, &reg, &g, out);
+            let mut worst = 0.0f32;
+            for (c, d) in cpu.iter().zip(&dev) {
+                for k in 0..2 {
+                    worst = worst.max((c.world_pos[k] - d.world_pos[k]).abs());
+                }
+            }
+            eprintln!(
+                "  {:>9} | {translate:>12.1} | {worst:>11.3e} | {:>15.1}%",
+                cpu.len(),
+                worst / EPS_POS * 100.0
+            );
+        }
+    }
+    eprintln!();
+}

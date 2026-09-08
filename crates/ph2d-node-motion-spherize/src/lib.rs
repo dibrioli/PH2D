@@ -141,11 +141,19 @@ pub const MANIFEST: NodeManifest = NodeManifest {
 /// declared plural for exactly this node.
 ///
 /// ⚠️ **An ε, and a wider one than the `Max` deformers** — float addition is not
-/// associative, so a tree sum and a sequential sum differ in the last ulps, and
-/// the partial sums here reach the magnitude of the whole layout (`Σx` over 490k
-/// coordinates) before dividing back down by `n`. The `bend`/`twist` folds were
-/// bit-exact because `Max` is exact in any order; a `Sum` never is. The bound is
-/// measured on the device, not borrowed (see the parity gate).
+/// associative, so a tree sum and a sequential sum differ, and the partial sums
+/// here reach the magnitude of the whole layout (`Σx` over 490k coordinates)
+/// before dividing back down by `n`. The `bend`/`twist` folds were bit-exact
+/// because `Max` is exact in any order; a `Sum` never is. The bound is measured
+/// on the device, not borrowed (see the parity gate).
+///
+/// ⚠️⚠️ **E «nos últimos ulps», que era o que esta nota dizia, estava errado por
+/// quatro ordens de grandeza** (ciclo 3, W1 — doc 106 §4): medido a 409 600
+/// elementos com o layout a `4` da origem, a divergência era **54 365 % da barra
+/// de `2e-4`** — e **535 % já no tamanho do gate** (16 384), que passava só porque
+/// a lente dele tem raio `6`. O erro era da CPU, não do kernel: hoje a média vem
+/// de [`ph2d_nodegraph::reduce_meta::centroid_of`], que acumula em `f64`, e a
+/// pior célula da varredura lê **30,5 %**.
 static REDUCES: &[ReduceSpec] = &[
     ReduceSpec {
         name: "cx",
@@ -290,10 +298,16 @@ fn spherize(
     if n == 0 {
         return Vec::new();
     }
-    let mut c = p
-        .iter()
-        .fold([0.0f32; 2], |a, q| [a[0] + q[0], a[1] + q[1]]);
-    c = [c[0] / n as f32 + offset[0], c[1] / n as f32 + offset[1]];
+    // ⚠️⚠️ **A média vem de UMA porta, e o acumulador dela é `f64` por causa da
+    // barra de paridade** (ciclo 3, W1 — doc 106 §4). A soma da CPU era
+    // SEQUENCIAL e a do dispositivo é em ÁRVORE, e a segunda é a mais certa;
+    // medido antes da cura (`measure_the_spherize_centroid_epsilon`, lente de
+    // raio 60): **54 365 % da barra de `2e-4`** a 409 600 elementos deslocados de
+    // `4` — e **535 % já no tamanho do próprio gate** (16 384), que passava
+    // porque a lente dele tem raio `6`. *Uma folga medida num tamanho (e num
+    // raio) é uma afirmação sobre esse tamanho, não sobre a lei.*
+    let c0 = ph2d_nodegraph::reduce_meta::centroid_of(p).unwrap_or([0.0, 0.0]);
+    let c = [c0[0] + offset[0], c0[1] + offset[1]];
     let r_max = radius.max(EPS);
     (0..n)
         .map(|i| {
@@ -482,6 +496,49 @@ mod tests {
     fn ring() -> Vec<[f32; 2]> {
         // A centred cross: centre + 4 points at radius 1 along the axes.
         vec![[0.0, 0.0], [1.0, 0.0], [-1.0, 0.0], [0.0, 1.0], [0.0, -1.0]]
+    }
+
+    /// ⭐⭐ **A LENTE ANDA COM O LAYOUT** — espherizar e depois deslocar tem de dar
+    /// o mesmo que deslocar e depois espherizar (ciclo 3, W1 — doc 106 §4).
+    ///
+    /// É a propriedade que *«o offset é relativo ao centroide»* significa, e é a
+    /// única régua desta crate que **mede a PRECISÃO da média** sem reimplementar
+    /// a lei: `c` é o único termo que o deslocamento move, então um centroide
+    /// impreciso parte a equivariância exactamente pelo tamanho do erro dele.
+    ///
+    /// ⚠️ **A fixtura tem de ser GRANDE e LONGE.** Com 5 pontos à volta da origem
+    /// (o `ring()` que o resto do ficheiro usa) as duas somas dão o mesmo bit e o
+    /// gate fica verde sobre qualquer fold — foi assim que o desvio de
+    /// **54 365 % da barra** de paridade sobreviveu a uma suíte inteira.
+    #[test]
+    fn the_lens_rides_the_layout_so_moving_it_first_changes_nothing() {
+        const N: usize = 65_536;
+        let base: Vec<[f32; 2]> = (0..N)
+            .map(|i| {
+                #[expect(clippy::cast_precision_loss, reason = "uma fixtura")]
+                let t = i as f32;
+                [t * 0.000_173 - 5.0, t * 0.000_291 - 9.0]
+            })
+            .collect();
+        let shift = [400.0f32, -250.0];
+        let moved: Vec<[f32; 2]> = base
+            .iter()
+            .map(|q| [q[0] + shift[0], q[1] + shift[1]])
+            .collect();
+
+        let a = spherize(&base, 0.8, 60.0, 0.0, [0.0, 0.0], &[]);
+        let b = spherize(&moved, 0.8, 60.0, 0.0, [0.0, 0.0], &[]);
+        let mut worst = 0.0f32;
+        for (x, y) in a.iter().zip(&b) {
+            worst = worst.max((x[0] + shift[0] - y[0]).abs());
+            worst = worst.max((x[1] + shift[1] - y[1]).abs());
+        }
+        assert!(
+            worst <= 1e-3,
+            "a lente escorregou {worst:e} ao deslocar o layout — o centroide nao \
+             acompanhou (barra 1e-3; prova de mutacao com um fold sequencial em \
+             f32: 4,62e-3, 4,6x a barra)"
+        );
     }
 
     /// `amount = 0` is the identity — every element is unchanged.

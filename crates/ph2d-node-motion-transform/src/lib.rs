@@ -64,7 +64,7 @@ use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream, par_build};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
-use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
+use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel, ReduceOp, ReduceSpec};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -208,19 +208,32 @@ impl Pivot {
 /// The mean of a `P` column — *"the centre of this layout"*, and `None` for a
 /// stream with no positions to average (an empty mean is not zero, it is absent,
 /// and the caller then has nothing to pivot about).
+///
+/// ⚠️⚠️ **O acumulador é `f64`, e isso não é zelo — é a barra de paridade**
+/// (ciclo 3, W1 — doc 106 §4). Enquanto o centroide era CPU-only, a soma
+/// sequencial em `f32` era a única resposta e ninguém a podia contradizer.
+/// Com o modo no dispositivo há duas somas da mesma coluna, e **a do
+/// dispositivo é a mais CERTA**: uma soma em árvore erra `~log n · ulp` e uma
+/// sequencial erra como um passeio aleatório de `~√n · ulp` sobre parciais que
+/// chegam à magnitude do layout inteiro. Medido antes da cura
+/// (`measure_the_centroid_pivot_epsilon`): **917 % da barra de `2e-3`** a
+/// 409 600 elementos deslocados de `4,3` — *o desvio era da CPU, e o gate teria
+/// acusado o kernel*.
+///
+/// ⭐ `f64` chega para o pôr fora de questão (52 bits de mantissa contra 24), e
+/// a divisão volta a `f32` no fim, que é onde o consumidor vive.
+///
+/// ⚠️ **A média vive numa PORTA, e ela não é deste crate:**
+/// [`ph2d_nodegraph::reduce_meta::centroid_of`] é a metade de hospedeiro do par
+/// `Sum(v.x)`/`Sum(v.y)` que [`REDUCES`] declara. Escrever o fold aqui **e** no
+/// `motion.spherize` foi o que os deixou a divergir do dispositivo por ordens de
+/// grandeza diferentes, cada um com o seu gate de paridade verde — a tabela
+/// medida está no doc daquela função.
 fn centroid(s: &Stream) -> Option<[f32; 2]> {
-    let Some(Column::Vec2(p)) = s.get("P") else {
-        return None;
-    };
-    if p.is_empty() {
-        return None;
+    match s.get("P") {
+        Some(Column::Vec2(p)) => ph2d_nodegraph::reduce_meta::centroid_of(p),
+        _ => None,
     }
-    #[expect(clippy::cast_precision_loss, reason = "an element count")]
-    let n = p.len() as f32;
-    let sum = p
-        .iter()
-        .fold([0.0f32, 0.0], |a, q| [a[0] + q[0], a[1] + q[1]]);
-    Some([sum[0] / n, sum[1] / n])
 }
 
 /// **The offset the affine actually uses, with the pivot folded in.**
@@ -260,18 +273,28 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
     wgsl: "\
         let xf_f = read_falloff(i);\n\
         let xf_p = read_P(i);\n\
-        // The pivot folded into the offset, the same expression and the same\n\
-        // order as the CPU's `folded_offset` -- including its zero shortcut, so\n\
-        // the neutral is structural on both paths and not an IEEE argument.\n\
         // O link de corrente, lido como no CPU (`authored_factors`): `>= 0.5`, e ligado os\n\
         // dois eixos sao o MESMO numero.\n\
         let xf_sx = params.scale;\n\
         let xf_sy = select(params.scale_y, params.scale, params.uniform >= 0.5);\n\
+        // ⚠️ O MODO decide o pivo -- a mesma escada do `Pivot::of` da CPU, e nao\n\
+        // «o ponto digitado e' diferente de zero?», que era o que estava aqui: um\n\
+        // `pivot_x` deixado para tras (a row esta' escondida pelo `ParamGate`, o\n\
+        // valor nao) vazava para o device e desenhava outra coisa.\n\
+        var xf_c = vec2<f32>(0.0, 0.0);\n\
+        let xf_mode = i32(xf_round(params.pivot_mode));\n\
+        if (xf_mode == 1) { xf_c = vec2<f32>(params.pivot_x, params.pivot_y); }\n\
+        if (xf_mode == 2) {\n\
+        \x20   xf_c = vec2<f32>(reduce_cx(), reduce_cy()) / f32(params.count);\n\
+        }\n\
+        // The pivot folded into the offset, the same expression and the same\n\
+        // order as the CPU's `folded_offset` -- including its zero shortcut, so\n\
+        // the neutral is structural on both paths and not an IEEE argument.\n\
         var xf_ox = params.offset_x;\n\
         var xf_oy = params.offset_y;\n\
-        if (params.pivot_x != 0.0 || params.pivot_y != 0.0) {\n\
-            xf_ox = params.offset_x + params.pivot_x * (1.0 - xf_sx);\n\
-            xf_oy = params.offset_y + params.pivot_y * (1.0 - xf_sy);\n\
+        if (xf_c.x != 0.0 || xf_c.y != 0.0) {\n\
+            xf_ox = params.offset_x + xf_c.x * (1.0 - xf_sx);\n\
+            xf_oy = params.offset_y + xf_c.y * (1.0 - xf_sy);\n\
         }\n\
         let xf_full = vec2<f32>(\n\
             xf_p.x * xf_sx + xf_ox,\n\
@@ -279,7 +302,11 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         write_P(i, vec2<f32>(\n\
             xf_p.x + (xf_full.x - xf_p.x) * xf_f,\n\
             xf_p.y + (xf_full.y - xf_p.y) * xf_f));\n",
-    wgsl_lib: "",
+    wgsl_lib: "\
+        fn xf_round(x: f32) -> f32 {\n\
+            // Rust f32::round = half away from zero (WGSL round is half-even).\n\
+            return select(ceil(x - 0.5), floor(x + 0.5), x >= 0.0);\n\
+        }\n",
     bindings: &[
         ColumnBinding {
             column: "P",
@@ -297,19 +324,68 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         },
     ],
     params: &[
-        "scale", "uniform", "scale_y", "offset_x", "offset_y", "pivot_x", "pivot_y",
+        "scale",
+        "uniform",
+        "scale_y",
+        "offset_x",
+        "offset_y",
+        "pivot_mode",
+        "pivot_x",
+        "pivot_y",
     ],
     count_law: None,
     variant_by_param: None,
-    // ⚠️ The device handles the origin and the typed point -- both are just
-    // numbers -- and RECUSES the centroid, which is a REDUCTION over the whole
-    // stream and not a per-element map. Refusing is the honest answer (the
-    // ADR-0155 precedent, and `motion.look_at` does the same for its Object and
-    // Cursor modes): the named cost is that a layout pivoting on its own centre
-    // loses GPU residency for this node. The `reduce -> broadcast -> map` channel
-    // the deformers use is what would lift it, and that is a wave, not a line.
-    applicable: Some(|p| Pivot::of(p("pivot_mode")) != Pivot::Centroid),
+    // ⭐⭐ **Sem recusa: os TRÊS modos correm no dispositivo** (ciclo 3, W1).
+    // A recusa que estava aqui dizia que o centroide *«é uma REDUÇÃO sobre o
+    // stream e não um mapa por elemento»* e nomeava a própria cura — *«o canal
+    // `reduce -> broadcast -> map` que os deformadores usam é o que a
+    // levantaria»*. Esse canal já tinha shipado (GPU/M5) e o `motion.spherize`
+    // já media o centroide com ele; a recusa sobreviveu ao dia em que deixou de
+    // ser verdade. Ver [`REDUCES`].
+    applicable: None,
 };
+
+/// As reduções que este nó precisa: o **centroide** do layout, como duas somas
+/// sobre `P.x` e `P.y` — as MESMAS do [`motion.spherize`], e o kernel divide cada
+/// uma por `params.count` para recuperar a média (o `Σp / n` da [`centroid`]).
+///
+/// ⚠️ **Elas correm SEMPRE, mesmo nos modos que não as leem** — o `ReduceSpec`
+/// não tem gate de param, e a alternativa (uma variante de kernel por modo)
+/// pagaria um pipeline a mais por um passe cujo preço está medido em
+/// [doc 106 §4.W1]. ⭐ **E há uma segunda razão para elas ficarem
+/// incondicionais:** o `Sum` sobre um `P` ausente dobra a identidade `0` e devolve
+/// a origem, que é exactamente o que a CPU calcula (`centroid(..).unwrap_or`) —
+/// então os dois caminhos concordam sem o kernel ter de saber se a coluna existe.
+///
+/// ⚠️ **Uma ε mais larga que a dos irmãos, e a razão não é o kernel:** a adição
+/// em `f32` não é associativa, então a soma em ÁRVORE do dispositivo e a
+/// sequencial da CPU diferem nos últimos ulps — e as somas parciais chegam à
+/// magnitude do layout inteiro antes de voltarem a dividir por `n`. É a mesma
+/// nota que o `motion.spherize` escreveu quando pagou estas duas.
+///
+/// [doc 106 §4.W1]: ../../../docs/Motion%20Nodes/106_ciclo_3_transformes_e_deformadores.md
+static REDUCES: &[ReduceSpec] = &[
+    ReduceSpec {
+        name: "cx",
+        column: "P",
+        dim: Dim::Vec2,
+        port: 0,
+        op: ReduceOp::Sum,
+        value: "v.x",
+        params: &[],
+        identity: [0.0; 4],
+    },
+    ReduceSpec {
+        name: "cy",
+        column: "P",
+        dim: Dim::Vec2,
+        port: 0,
+        op: ReduceOp::Sum,
+        value: "v.y",
+        params: &[],
+        identity: [0.0; 4],
+    },
+];
 
 struct MotionTransform;
 
@@ -387,6 +463,8 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     // GPU/M5 Fase 2 (ADR-0126): the WGSL lowering, registered on the side.
     reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
+    // Ciclo 3 W1: o centroide como duas somas — o canal `reduce -> broadcast -> map`.
+    reg.register_reduces(MANIFEST.id, REDUCES);
     Ok(())
 }
 

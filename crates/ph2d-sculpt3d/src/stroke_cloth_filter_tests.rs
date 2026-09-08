@@ -225,3 +225,134 @@ fn so_a_escala_e_de_ancora_entre_os_cinco() {
         "a particao dos arms mudou -- releia a espec §7 antes de mexer no selector"
     );
 }
+
+/// ⭐⭐⭐ **AS NORMAIS SEGUEM A FORMA DEPOIS DE UM PASSO DO FILTRO.**
+///
+/// ⛔⛔ **Sem isto o render MENTE, e foi um report com foto que o apanhou**
+/// (dono, 07/09: *«o render fica muito estranho, como se tivesse feito o bake de
+/// uma textura»*). É a descrição exacta do sintoma: o passo escrevia as posições
+/// novas e a malha ficava com as normais VELHAS ⇒ a janela de upload levava
+/// geometria nova com sombreamento antigo, e *o relevo deixa de ser forma e passa
+/// a ser um desenho colado por cima dela*.
+///
+/// ⚠️ **A régua é uma malha CONSTRUÍDA DE NOVO das posições deformadas** — o
+/// oráculo é a geometria, não a nossa própria rotina de refresco. Compará-la com
+/// ela mesma seria um espelho.
+#[test]
+fn depois_de_um_passo_as_normais_concordam_com_a_geometria() {
+    // ⛔⛔ **A PEÇA É UMA ESFERA, e a escolha veio de DUAS mutações que
+    // sobreviveram.** Numa folha plana o filtro é degenerado para esta pergunta:
+    // a `Gravity` faz uma **translação rígida** (todos os vértices andam o mesmo
+    // vector) e o `Expand` faz o repouso crescer **no plano** — nos dois casos a
+    // superfície **não se dobra**, as normais velhas estão CERTAS, e apagar o
+    // `refresh_region` deixava este gate verde. *A fixtura não produzia o
+    // fenómeno* — a terceira leitura de uma mutação sobrevivente, e a mais cara.
+    //
+    // Numa ESFERA o `Inflate` empurra cada vértice ao longo da normal dele e as
+    // restrições **resistem** ⇒ a superfície encurva de verdade.
+    let mut mesh = ph2d_mesh::shapes::uv_sphere(24, 36, 1.0);
+    let repouso: Vec<[f32; 3]> = mesh.normals().to_vec();
+    let mut st = SculptStroke::default();
+    st.cloth_filter_begin(&mesh, &pincel(), ClothFilterKind::Inflate, [0.0; 3]);
+    for _ in 0..6 {
+        st.cloth_filter_step(&mut mesh, ClothFilterKind::Inflate, &passo(1.0));
+    }
+    // ⚠️ **A régua é uma malha CONSTRUÍDA DE NOVO das posições deformadas** — o
+    // oráculo é a GEOMETRIA, não a nossa própria rotina de refresco. Compará-la
+    // com ela mesma seria um espelho.
+    let fresca = ph2d_mesh::Mesh::from_parts(mesh.positions().to_vec(), mesh.faces().to_vec())
+        .expect("a malha deformada e' valida");
+    let angulo = |a: [f32; 3], b: [f32; 3]| {
+        (a[0] * b[0] + a[1] * b[1] + a[2] * b[2])
+            .clamp(-1.0, 1.0)
+            .acos()
+            .to_degrees()
+    };
+    // ⭐⭐ **O CONTROLO, e ele mede a GEOMETRIA — nunca as normais guardadas.**
+    // ⛔ A 1.ª redacção comparava `repouso` com `mesh.normals()`, e as duas ficam
+    // paradas quando o refresco falta ⇒ *o controlo dependia da cura que o gate
+    // existe para medir*, e com a mutação lia `0,04°` e reprovava pelo motivo
+    // errado.
+    let virou = fresca
+        .normals()
+        .iter()
+        .zip(&repouso)
+        .map(|(a, b)| angulo(*a, *b))
+        .fold(0.0, f32::max);
+    println!("controlo: a superficie virou ate' {virou:.2}° (medido na geometria)");
+    assert!(
+        virou > 5.0,
+        "a fixtura nao produz o fenomeno: a superficie so' virou {virou:.2}°, e com normais \
+         velhas CERTAS este gate ficaria verde sem a cura"
+    );
+    let pior = mesh
+        .normals()
+        .iter()
+        .zip(fresca.normals())
+        .map(|(a, b)| angulo(*a, *b))
+        .fold(0.0, f32::max);
+    println!("pior desvio entre a normal guardada e a da geometria: {pior:.4}°");
+    // ⚠️ **A barra sai de um VALE MEDIDO:** com a cura o desvio é `0,0396°` (a
+    // diferença de ordem de acumulação entre duas rotinas que somam as mesmas
+    // normais de face); sem ela é a viragem inteira, `7,25°`. **`183×`** de vão.
+    assert!(
+        pior < 0.5,
+        "as normais nao seguem a forma (pior {pior:.4}°) -- o passo do filtro esqueceu o \
+         `refresh_region`, e o render vai sombrear geometria nova com normais velhas"
+    );
+}
+
+/// ⭐⭐⭐ **O CENSO: TODO ESCRITOR DE POSIÇÕES REFRESCA AS NORMAIS.**
+///
+/// ⚠️ **É este o gate que teria apanhado o defeito, e não um teste do ficheiro
+/// novo:** a propriedade não é *«o filtro de tecido refresca»* — é *«a família
+/// inteira refresca»*, e o que se via ao ler o ficheiro novo era nada. **Só
+/// contando a família** é que o membro em falta aparece.
+///
+/// ⛔ **A excepção é UMA e é NOMEADA:** o [`super::apply`] é o aplicador
+/// PARTILHADO — ele escreve por conta dos outros, e quem refresca é quem o chama.
+/// Um segundo nome nesta lista significa que alguém escreveu posições sem dizer
+/// à malha, e o sintoma não é um teste vermelho: é o render a mentir.
+///
+/// ⚠️ **O que este censo NÃO vê**, escrito para não ser acreditado demais: ele lê
+/// TEXTO, então um escritor que passe a malha a uma função noutro ficheiro
+/// escapa-lhe. O irmão de cima é a metade que mede o comportamento.
+#[test]
+fn todo_escritor_de_posicoes_refresca_as_normais() {
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+    let mut escritores = Vec::new();
+    let mut faltosos = Vec::new();
+    for e in std::fs::read_dir(&dir).expect("o src da crate existe") {
+        let p = e.expect("entrada").path();
+        let nome = p
+            .file_name()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .into_owned();
+        if !nome.ends_with(".rs") || nome.ends_with("_tests.rs") {
+            continue;
+        }
+        let src = std::fs::read_to_string(&p).expect("legivel");
+        if !src.contains("positions_mut()") {
+            continue;
+        }
+        escritores.push(nome.clone());
+        if !src.contains("refresh_region") && nome != "stroke_apply.rs" {
+            faltosos.push(nome);
+        }
+    }
+    escritores.sort();
+    println!("escritores de posicoes: {escritores:?}");
+    assert!(
+        escritores.len() >= 5,
+        "o censo achou {} escritores -- ele deixou de encontrar a familia, e um censo que \
+         varre uma populacao vazia le'-se como aprovado",
+        escritores.len()
+    );
+    assert!(
+        faltosos.is_empty(),
+        "estes escrevem posicoes e NAO refrescam as normais: {faltosos:?} -- o render vai \
+         sombrear geometria nova com normais velhas. A unica excepcao legitima e' o \
+         aplicador PARTILHADO (`stroke_apply.rs`), porque quem o chama e' que refresca"
+    );
+}

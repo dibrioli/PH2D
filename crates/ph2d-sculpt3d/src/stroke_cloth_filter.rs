@@ -199,6 +199,11 @@ impl SculptStroke {
             normais: &normais,
             pressao: 1.0,
         };
+        // ⚠️ **A lista é do PASSO, não do gesto** — a mesma lei dos cinco
+        // vizinhos que escrevem posições (`dab_core`, os dois de tecido, o
+        // filtro de malha, o sharpen). Sem isto ela cresceria a cada movimento do
+        // rato e o refresco relia o gesto inteiro por quadro.
+        self.moved.clear();
         let simulou = ses.passo(&pos, &anel, &p);
         let mut movidos = 0;
         if simulou {
@@ -219,6 +224,23 @@ impl SculptStroke {
                     movidos += 1;
                 }
             }
+        }
+        // ⭐⭐⭐ **AS NORMAIS SEGUEM A FORMA, e sem esta linha o render MENTE.**
+        //
+        // ⛔⛔ **Ela faltava, e foi o report do dono que a apanhou** (07/09, com
+        // foto: *«o render fica muito estranho, como se tivesse feito o bake de
+        // uma textura»*). É exactamente isso: o passo escrevia as posições novas
+        // e a malha ficava com as normais VELHAS, então a janela de upload subia
+        // geometria nova com sombreamento antigo — *o relevo deixa de ser forma e
+        // passa a ser um desenho colado por cima dela*.
+        //
+        // ⚠️ **Este era o ÚNICO escritor de posições da crate sem o refresco.**
+        // Os outros cinco — o carimbo, os dois de tecido, o filtro de malha e o
+        // sharpen — todos terminam aqui, e o `transform` também. *Uma família de
+        // seis com um membro em falta não se vê a ler o ficheiro novo: vê-se a
+        // contar a família.*
+        if movidos > 0 {
+            mesh.refresh_region(&self.moved, &mut self.region);
         }
         self.cloth_filter = Some(ses);
         movidos

@@ -141,9 +141,55 @@ fn as_duas_fontes_de_ao_medem_o_mesmo_alcance() {
     );
 }
 
-/// O uniform tem o tamanho que o layout do WGSL espera: uma `mat4x4` (64 B) e
-/// dois `vec4` (16 B cada).
+/// ⭐⭐ **O uniform tem o tamanho que o layout do WGSL espera** — e o número é
+/// **LIDO DO SHADER**, nunca escrito aqui.
+///
+/// ⛔⛔ **Ele era o literal `96`, e o custo dessa forma apareceu em 2026-09-08:**
+/// os quatro viewports da escultura precisaram de um `origin` no uniform, e o
+/// gate reprovou a dizer *«mat4x4 + 2 vec4»* — uma frase sobre a versão
+/// anterior do shader. *Uma contagem literal num gate faz cada feature nova
+/// editar o teste de outra pessoa, e o que ela pede é que se actualize a
+/// frase — não que se confira nada.*
+///
+/// ⇒ o gate passa a **somar os campos declarados no WGSL** e a compará-los com
+/// o `size_of` do lado Rust. Acrescentar um campo num dos lados e esquecer o
+/// outro passa a reprovar **com a conta ao lado**, que é a pergunta que ele
+/// sempre quis fazer.
 #[test]
 fn o_uniform_tem_o_tamanho_que_o_wgsl_declara() {
-    assert_eq!(SsaoRaw::SIZE, 96, "mat4x4 + 2 vec4");
+    let wgsl = include_str!("shaders/ssao.wgsl");
+    let corpo = {
+        let i = wgsl.find("struct Ssao {").expect("a struct do uniform mudou de nome");
+        let resto = &wgsl[i..];
+        &resto[..resto.find("\n};").expect("a struct do uniform nao fecha")]
+    };
+    // ⚠️ Só as LINHAS DE CAMPO: um `///` que cite `vec4<f32>` na prosa não é um
+    // campo, e contar a prosa é o defeito que um censo textual paga sempre.
+    let mut bytes = 0usize;
+    let mut campos = Vec::new();
+    for linha in corpo.lines() {
+        let l = linha.trim();
+        if l.starts_with("//") || l.starts_with("///") || !l.ends_with(',') {
+            continue;
+        }
+        let Some((nome, tipo)) = l.trim_end_matches(',').split_once(':') else {
+            continue;
+        };
+        let n = match tipo.trim() {
+            "mat4x4<f32>" => 64,
+            "vec4<f32>" => 16,
+            outro => panic!("campo `{}` tem o tipo `{outro}`, que este censo nao sabe medir", nome.trim()),
+        };
+        campos.push((nome.trim().to_string(), n));
+        bytes += n;
+    }
+    assert!(!campos.is_empty(), "o censo nao achou campo nenhum -- ele ficou cego");
+    println!("campos do WGSL: {campos:?} => {bytes} B | Rust: {} B", SsaoRaw::SIZE);
+    assert_eq!(
+        SsaoRaw::SIZE,
+        bytes,
+        "o `SsaoRaw` tem {} B e o WGSL declara {bytes} B ({campos:?}) -- um campo entrou de um \
+         lado so', e o device le^ lixo a partir dai",
+        SsaoRaw::SIZE
+    );
 }

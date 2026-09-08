@@ -149,6 +149,16 @@ pub struct SsaoRaw {
     pub params: [f32; 4],
     /// `xy` = o alvo em pixels · `z` = a potência de contraste · `w` = reservado.
     pub screen: [f32; 4],
+    /// ⭐ `xy` = **a quina superior esquerda desta vista** dentro do alvo · `zw`
+    /// reservado.
+    ///
+    /// ⚠️ **Ela existe por causa dos quatro viewports** (2026-09-08): o
+    /// `@builtin(position)` do fragmento é sempre **absoluto** no framebuffer,
+    /// mesmo com `set_viewport` — então sem a origem o passe reconstruiria o
+    /// NDC de um pixel do quadrante de baixo à direita como se ele fosse o do
+    /// canto do ecrã, e a oclusão sairia medida noutro sítio da peça. *Um
+    /// `set_viewport` move o rasterizador e não move a aritmética do shader.*
+    pub origin: [f32; 4],
 }
 
 impl SsaoRaw {
@@ -159,6 +169,25 @@ impl SsaoRaw {
     /// negativo ou zero fatias produziriam uma divisão por zero dentro do laço.
     #[must_use]
     pub fn pack(p: SsaoParams, proj_inv: [[f32; 4]; 4], size: (u32, u32), fov_y: f32) -> Self {
+        Self::pack_in(p, proj_inv, crate::ScreenRect::full(size), fov_y)
+    }
+
+    /// ⭐ **O mesmo, para UMA VISTA dentro do alvo** — ver [`crate::ScreenRect`].
+    ///
+    /// ⚠️ **A escala de projecção sai da ALTURA DA VISTA**, não da do alvo: ela é
+    /// *quantos pixels vale um comprimento de vista*, e num quadrante que tem
+    /// metade da altura um raio de mundo cobre metade dos pixels. Usar a altura
+    /// do alvo faria a oclusão ficar **duas vezes maior** nos quatro quadrantes,
+    /// de forma igual — e por isso lida como *«o AO mudou»* em vez de como um
+    /// erro de escala.
+    #[must_use]
+    pub fn pack_in(
+        p: SsaoParams,
+        proj_inv: [[f32; 4]; 4],
+        area: crate::ScreenRect,
+        fov_y: f32,
+    ) -> Self {
+        let size = area.size();
         // **A escala que leva um comprimento de vista a PIXELS.** É a metade da
         // altura do alvo dividida pela tangente do meio-campo — a mesma conta que
         // a projeção faz, escrita uma vez aqui porque o shader precisa dela em
@@ -173,11 +202,12 @@ impl SsaoRaw {
                 p.steps.clamp(1, 16) as f32,
             ],
             screen: [
-                size.0.max(1) as f32,
-                size.1.max(1) as f32,
+                size.0 as f32,
+                size.1 as f32,
                 p.power.clamp(0.1, 8.0),
                 0.0,
             ],
+            origin: [area.x as f32, area.y as f32, 0.0, 0.0],
         }
     }
 }

@@ -49,9 +49,15 @@ struct Ssao {
     /// `x` = raio em unidades de MUNDO · `y` = a escala que leva um comprimento
     /// de vista a pixels (`0.5 * altura / tan(fov/2)`) · `z` = fatias · `w` = passos.
     params: vec4<f32>,
-    /// `xy` = o tamanho do alvo em pixels · `z` = a potência que ajusta o
-    /// contraste · `w` = a espessura assumida de um oclusor.
+    /// `xy` = o tamanho **desta vista** em pixels · `z` = a potência que ajusta
+    /// o contraste · `w` = a espessura assumida de um oclusor.
     screen: vec4<f32>,
+    /// `xy` = a quina superior esquerda desta vista dentro do alvo.
+    ///
+    /// ⚠️ O `@builtin(position)` é absoluto no framebuffer mesmo com
+    /// `set_viewport` — sem subtrair isto, um pixel do quadrante de baixo à
+    /// direita reconstruiria o NDC do canto do ecrã.
+    origin: vec4<f32>,
 };
 
 @group(0) @binding(0) var<uniform> cfg: Ssao;
@@ -79,7 +85,7 @@ fn vs_fullscreen(@builtin(vertex_index) i: u32) -> @builtin(position) vec4<f32> 
 /// simétrica ao lugar certo — o modo de falha que parece "quase certo".
 fn view_pos(px: vec2<i32>) -> vec3<f32> {
     let d = textureLoad(depth_tex, px, 0);
-    let uv = (vec2<f32>(px) + vec2<f32>(0.5)) / cfg.screen.xy;
+    let uv = (vec2<f32>(px) - cfg.origin.xy + vec2<f32>(0.5)) / cfg.screen.xy;
     let ndc = vec3<f32>(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0, d);
     let p = cfg.proj_inv * vec4<f32>(ndc, 1.0);
     return p.xyz / p.w;

@@ -40,6 +40,28 @@ struct CameraRaw {
 }
 
 /// `(largura, altura, 0, 0)` — ver [`CameraRaw::viewport`].
+/// ⭐ **PRENDE UM PASSE A UMA VISTA** — o viewport (que transforma) e o scissor
+/// (que recorta), sempre os dois. Ver [`Renderer::render_in`].
+///
+/// ⚠️ **Uma porta e não duas linhas em cada passe:** os três passes desta crate
+/// têm de concordar sobre onde a vista está, e o modo de falha de um deles
+/// discordar é oclusão medida num sítio e pintada noutro.
+///
+/// ⚠️ **Os DOIS, e não só o viewport:** o viewport mapeia o NDC ao rectângulo e
+/// **não corta** — geometria que caia fora dele continuaria a escrever nos
+/// vizinhos. Quem corta é o scissor.
+pub(crate) fn set_area(pass: &mut wgpu::RenderPass<'_>, area: crate::ScreenRect) {
+    pass.set_viewport(
+        area.x as f32,
+        area.y as f32,
+        area.w as f32,
+        area.h as f32,
+        0.0,
+        1.0,
+    );
+    pass.set_scissor_rect(area.x, area.y, area.w, area.h);
+}
+
 fn viewport_of(size: (u32, u32)) -> [f32; 4] {
     [size.0.max(1) as f32, size.1.max(1) as f32, 0.0, 0.0]
 }
@@ -427,7 +449,50 @@ impl MeshRenderer {
         shade: crate::Shade,
         size: (u32, u32),
     ) {
-        if !self.has_mesh() || size.0 == 0 || size.1 == 0 {
+        self.render_in(
+            device,
+            queue,
+            encoder,
+            color_view,
+            camera,
+            rig,
+            shade,
+            size,
+            crate::ScreenRect::full(size),
+        );
+    }
+
+    /// ⭐⭐⭐ **O MESMO, NUM SUB-RECTÂNGULO DO ALVO** — a metade que os quatro
+    /// viewports da escultura pedem (ordem do Enio, 2026-09-08).
+    ///
+    /// `size` continua a ser o **alvo** (é ele que dimensiona a profundidade, que
+    /// tem de casar com a cor); `area` é **onde** desenhar.
+    ///
+    /// ⚠️⚠️ **A profundidade é limpa no passe INTEIRO, e isso é correcto e
+    /// load-bearing:** um `LoadOp::Clear` não obedece ao scissor, então a vista
+    /// `k+1` apaga a profundidade da `k`. Ela pode: a cor da `k` já foi escrita
+    /// (`LoadOp::Load` preserva-a) e ninguém volta a testar profundidade contra
+    /// ela. *Partilhar um buffer de profundidade entre vistas seria errado; o que
+    /// se partilha é o buffer, não os valores.*
+    ///
+    /// ⚠️ **`set_scissor_rect` E `set_viewport`, os dois.** O viewport mapeia o
+    /// NDC ao rectângulo (é ele que faz a peça caber na vista) e o scissor
+    /// **recorta**: sem o segundo, geometria fora do frustum lateral ainda
+    /// escreveria nos vizinhos, porque o viewport não corta, só transforma.
+    #[allow(clippy::too_many_arguments)]
+    pub fn render_in(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        encoder: &mut wgpu::CommandEncoder,
+        color_view: &wgpu::TextureView,
+        camera: &Camera3d,
+        rig: Option<&ph2d_light::ResolvedRig>,
+        shade: crate::Shade,
+        size: (u32, u32),
+        area: crate::ScreenRect,
+    ) {
+        if !self.has_mesh() || size.0 == 0 || size.1 == 0 || area.w == 0 || area.h == 0 {
             return;
         }
         self.ensure_depth(device, size);
@@ -438,14 +503,18 @@ impl MeshRenderer {
         // tela, nunca com a do frame passado.
         let fresh = std::mem::take(&mut self.ssao_fresh);
 
-        let aspect = size.0 as f32 / size.1 as f32;
+        // ⚠️ **O aspecto e o uniform de viewport são os da VISTA**, nunca os do
+        // alvo: o segundo é o que converte pixels em NDC dentro do shader (o
+        // contorno do wireframe, o empurrão do `depth bias`), e num quadrante
+        // com metade da largura ele daria o dobro do deslocamento.
+        let aspect = area.aspect();
         queue.write_buffer(
             &self.uniform,
             0,
             bytemuck::bytes_of(&CameraRaw {
                 view_proj: camera.view_proj(aspect).to_cols_array_2d(),
                 view: camera.view().to_cols_array_2d(),
-                viewport: viewport_of(size),
+                viewport: viewport_of(area.size()),
             }),
         );
         queue.write_buffer(&self.rig_uniform, 0, bytemuck::bytes_of(&RigRaw::pack(rig)));
@@ -479,6 +548,7 @@ impl MeshRenderer {
             occlusion_query_set: None,
             multiview_mask: None,
         });
+        set_area(&mut pass, area);
         pass.set_pipeline(&self.pipeline);
         pass.set_bind_group(0, &self.bind, &[]);
         pass.set_bind_group(2, self.ao_bind_for(fresh), &[]);
@@ -526,7 +596,38 @@ impl MeshRenderer {
         shade: crate::Shade,
         size: (u32, u32),
     ) {
-        if !self.has_mesh() || size.0 == 0 || size.1 == 0 {
+        self.render_gbuffer_in(
+            device,
+            queue,
+            encoder,
+            normal_view,
+            occlusion_view,
+            camera,
+            shade,
+            size,
+            crate::ScreenRect::full(size),
+        );
+    }
+
+    /// ⭐ **O G-buffer, num sub-rectângulo do alvo** — o irmão do
+    /// [`Self::render_in`], e ele existe pelo mesmo motivo: o pré-passe do AO de
+    /// tela mede a MESMA vista que o passe de cor vai desenhar, e medir o alvo
+    /// inteiro com o aspecto de um quadrante daria uma oclusão que não descreve
+    /// nenhuma das duas.
+    #[allow(clippy::too_many_arguments)]
+    pub fn render_gbuffer_in(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        encoder: &mut wgpu::CommandEncoder,
+        normal_view: &wgpu::TextureView,
+        occlusion_view: &wgpu::TextureView,
+        camera: &Camera3d,
+        shade: crate::Shade,
+        size: (u32, u32),
+        area: crate::ScreenRect,
+    ) {
+        if !self.has_mesh() || size.0 == 0 || size.1 == 0 || area.w == 0 || area.h == 0 {
             return;
         }
         self.ensure_depth(device, size);
@@ -536,14 +637,14 @@ impl MeshRenderer {
         // feita para o viewport ficaria colada na próxima doação, descrevendo
         // outro enquadramento e outra resolução.
         let fresh = std::mem::take(&mut self.ssao_fresh);
-        let aspect = size.0 as f32 / size.1 as f32;
+        let aspect = area.aspect();
         queue.write_buffer(
             &self.uniform,
             0,
             bytemuck::bytes_of(&CameraRaw {
                 view_proj: camera.view_proj(aspect).to_cols_array_2d(),
                 view: camera.view().to_cols_array_2d(),
-                viewport: viewport_of(size),
+                viewport: viewport_of(area.size()),
             }),
         );
 
@@ -599,6 +700,7 @@ impl MeshRenderer {
             occlusion_query_set: None,
             multiview_mask: None,
         });
+        set_area(&mut pass, area);
         pass.set_pipeline(&self.gbuffer_pipeline);
         pass.set_bind_group(0, &self.bind, &[]);
         // ⚠️ **O G-buffer LÊ a oclusão de tela, e essa linha é a wave inteira.**

@@ -152,18 +152,54 @@ impl MeshRenderer {
         params: SsaoParams,
         size: (u32, u32),
     ) {
-        if !self.has_mesh() || size.0 == 0 || size.1 == 0 {
+        self.render_ssao_in(
+            device,
+            queue,
+            encoder,
+            camera,
+            params,
+            size,
+            crate::ScreenRect::full(size),
+        );
+    }
+
+    /// ⭐⭐ **A oclusão de tela de UMA VISTA dentro do alvo** — o irmão do
+    /// [`crate::Renderer::render_in`].
+    ///
+    /// ⚠️⚠️ **As texturas do passe continuam do tamanho do ALVO**, e cada vista
+    /// escreve só o seu rectângulo delas. É isso que faz o passe de cor poder
+    /// amostrar o AO no pixel **absoluto** em que ele está a desenhar — a leitura
+    /// que o `mesh.wgsl` já fazia, sem uma linha mudada. *Uma textura por vista
+    /// seria quatro alocações para responder à mesma pergunta em sítios
+    /// disjuntos.*
+    ///
+    /// ⚠️ **A frescura (`ssao_fresh`) é UMA para o renderizador inteiro**, e é o
+    /// [`crate::Renderer::render_in`] que a consome ⇒ **medir e desenhar têm de
+    /// se alternar por vista**. Medir as quatro e depois desenhar as quatro
+    /// deixaria três vistas a amostrar a oclusão da última.
+    #[allow(clippy::too_many_arguments)]
+    pub fn render_ssao_in(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        encoder: &mut wgpu::CommandEncoder,
+        camera: &crate::Camera3d,
+        params: SsaoParams,
+        size: (u32, u32),
+        area: crate::ScreenRect,
+    ) {
+        if !self.has_mesh() || size.0 == 0 || size.1 == 0 || area.w == 0 || area.h == 0 {
             return;
         }
         self.ensure_depth(device, size);
         self.ensure_ssao(device, size);
 
-        let aspect = size.0 as f32 / size.1 as f32;
+        let aspect = area.aspect();
         let proj_inv = camera.proj(aspect).inverse().to_cols_array_2d();
         queue.write_buffer(
             &self.ssao_uniform,
             0,
-            bytemuck::bytes_of(&SsaoRaw::pack(params, proj_inv, size, camera.fov_y)),
+            bytemuck::bytes_of(&SsaoRaw::pack_in(params, proj_inv, area, camera.fov_y)),
         );
 
         // Etapa 1 — a geometria, uma vez, para normal + profundidade.
@@ -185,7 +221,7 @@ impl MeshRenderer {
         // O shade NEUTRO: este pré-passe quer normal e profundidade, e o alvo de oclusão dele é
         // rascunho. Passar o do artista escreveria o uniform com o valor certo pelo motivo errado —
         // e o `render_ssao` não o conhece, porque ele mede VISIBILIDADE, que não tem knob.
-        self.render_gbuffer(
+        self.render_gbuffer_in(
             device,
             queue,
             encoder,
@@ -194,6 +230,7 @@ impl MeshRenderer {
             camera,
             crate::Shade::default(),
             size,
+            area,
         );
 
         // Etapa 2 — o horizonte, por pixel.
@@ -222,6 +259,10 @@ impl MeshRenderer {
             occlusion_query_set: None,
             multiview_mask: None,
         });
+        // ⚠️ **O triângulo de tela cheia é preso à VISTA**: sem isto ele cobriria
+        // o alvo inteiro e cada quadrante apagaria a medição dos anteriores —
+        // com o `LoadOp::Clear(BLACK)` a deixar o resto do ecrã em *tudo oclui*.
+        crate::pipeline::set_area(&mut pass, area);
         pass.set_pipeline(&self.ssao_pipeline);
         pass.set_bind_group(0, &t.input, &[]);
         pass.draw(0..3, 0..1);

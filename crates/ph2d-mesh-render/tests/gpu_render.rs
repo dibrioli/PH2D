@@ -272,12 +272,23 @@ fn lum(px: &[u8], x: u32, y: u32) -> f32 {
 }
 
 /// Fração de pixels que não são o fundo.
+///
+/// ⛔⛔ **A soma é em `u16`, e a versão em `u8` era um DEFEITO DE RÉGUA com dois
+/// sintomas** (achado 2026-09-08, ao correr esta suíte em debug): em **debug**
+/// ela entrava em pânico com *«attempt to add with overflow»* — daí o
+/// `--release` no cabeçalho deste ficheiro, que era um remédio do sintoma —, e
+/// em **release** ela ENVOLVIA em silêncio: um pixel `(86, 85, 85)` soma `256`,
+/// que módulo 256 é `0`, e a régua contava-o como **fundo**.
+///
+/// ⚠️ *Uma régua que dá a resposta errada só numa faixa estreita de valores é
+/// pior que uma que falha sempre: ela passa em todo gate cuja peça não calhe
+/// nessa faixa, e é o gate seguinte que herda o erro.*
 fn coverage(px: &[u8]) -> f32 {
     let lit = px
         .as_chunks::<4>()
         .0
         .iter()
-        .filter(|p| p[0] + p[1] + p[2] > 8)
+        .filter(|p| u16::from(p[0]) + u16::from(p[1]) + u16::from(p[2]) > 8)
         .count();
     lit as f32 / (W * H) as f32
 }

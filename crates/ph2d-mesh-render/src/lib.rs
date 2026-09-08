@@ -49,6 +49,70 @@ pub use shade::{
     DEFAULT_SSAO_STRENGTH, MATCAPS, Shade, ShadeRaw,
 };
 pub use ssao::{RADIUS_FRACTION as SSAO_RADIUS_FRACTION, SsaoParams, SsaoRaw};
+
+/// ⭐⭐⭐ **ONDE DENTRO DO ALVO A MALHA É DESENHADA**, em pixels inteiros.
+///
+/// ⚠️ **Ela nasceu com os QUATRO viewports da escultura** (ordem do Enio,
+/// 2026-09-08): até aqui todo passe desta crate escrevia o alvo **inteiro**, e
+/// quatro vistas ao mesmo tempo pedem quatro sub-rectângulos do mesmo
+/// `game_rt`.
+///
+/// ⚠️⚠️ **`x`/`y` contam do TOPO**, que é a convenção de janela desta casa e a
+/// do `wgpu` (`set_viewport`/`set_scissor_rect`), e **não** a do NDC. Escrever
+/// uma segunda convenção aqui poria a vista de baixo no topo e ninguém saberia
+/// dizer de que lado do produto estava o sinal.
+///
+/// ⚠️ **As arestas são INTEIRAS de propósito.** A lição está escrita no
+/// `field3d_layout` desta casa: *um valor que é pixels não pode sair
+/// fraccionário da porta que o define* — `h·t` quase nunca é inteiro, e a
+/// fracção fez a mesma função dar duas respostas (o passe recebia `422,4` e o
+/// `set_scissor_rect` ao lado `422`), o que parado é invisível e num pan é
+/// **movimento**.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ScreenRect {
+    pub x: u32,
+    pub y: u32,
+    pub w: u32,
+    pub h: u32,
+}
+
+impl ScreenRect {
+    /// O alvo inteiro — o que todo chamador anterior a 2026-09-08 queria dizer.
+    #[must_use]
+    pub fn full(size: (u32, u32)) -> Self {
+        Self {
+            x: 0,
+            y: 0,
+            w: size.0,
+            h: size.1,
+        }
+    }
+
+    /// `(largura, altura)`, nunca zero — a razão de aspecto e o uniform de
+    /// viewport dividem por eles.
+    #[must_use]
+    pub fn size(self) -> (u32, u32) {
+        (self.w.max(1), self.h.max(1))
+    }
+
+    /// A razão de aspecto **desta** vista.
+    ///
+    /// ⚠️ **É ela e não a do alvo**, e é a metade que uma implementação
+    /// apressada esquece: com quatro quadrantes o alvo continua largo e cada
+    /// vista fica quase quadrada — usar o aspecto do alvo esticaria a peça
+    /// horizontalmente nas quatro, de forma igual e por isso difícil de nomear.
+    #[must_use]
+    pub fn aspect(self) -> f32 {
+        let (w, h) = self.size();
+        w as f32 / h as f32
+    }
+
+    /// Ela cobre o alvo inteiro? — o caminho rápido, byte a byte o de sempre.
+    #[must_use]
+    pub fn is_full(self, size: (u32, u32)) -> bool {
+        self == Self::full(size)
+    }
+}
 pub use sss::{
     LUT_SIZE as SSS_LUT_SIZE, SCATTER_FRACTION as SSS_SCATTER_FRACTION, SssParams, SssRaw,
 };

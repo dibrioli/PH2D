@@ -27,7 +27,7 @@
 | F5 | Aninhamento + variantes + Overrides sem alvo + **a FORMA de uma cópia** | ✅ **FECHADA 2026-09-06** — **F5.1** aninhamento ✅ · **F5.3/F5.6** os órfãos são NOMEADOS e largam-se um a um ✅ (critério 3) · **variantes ✅ 2026-08-27** (fileira plana, modelo Unity) · **critério 4 — a escada do *Aplicar* ✅ 2026-09-04** (§F5.5) · **troca por mestre NÃO aparentado ✅ 2026-09-05** (3 modos + relatório, §F5.8) · **F5.9** a lista de órfãos fica accionável ✅ · **F5.10 — a peça RECUSADA ✅ 2026-09-06** (*Removed GameObject*, `PROJECT_SCHEMA` 115→116) · **F5.11 — a peça ACRESCENTADA ✅ 2026-09-06** (*Added GameObject*, **derivada**, schema intocado) · **F5.12 — mover uma peça na receita move-a em TODAS as cópias ✅ 2026-09-06** (a 3.ª metade da forma) · **F5.13/F5.14** as cenas de smoke corrigidas ✅ (3 passos impossíveis + 1 que pedia o gesto que a guarda não apanha) · ⛔ **EIXOS de propriedade REVOGADOS e ADIADOS** (Enio, 01/09 — o §F5-bis descreve trabalho que **saiu do fonte**; ver [`06`](06_plano_variacoes_sem_chaves.md)) |
 | F6 | O índice de assets (`ph2d-asset-index`) — sem UI | ✅ 2026-08-30 (996 LOC + a taxonomia) |
 | F7 | O painel Asset Browser + o arrasto único | ✅ 2026-08-30 — etapas **A–D** do [plano 07](07_plano_do_navegador_de_assets.md); `DragPayload` com as duas famílias |
-| F8 | Restore incremental + `VecScene`/`FlipDoc` versionados | ✅ **FECHADA 2026-09-07** — ⛔ **a premissa do RELÓGIO foi REFUTADA por medição** (§F8.0: o restauro custa `1,81 ms` uma vez por Ctrl+Z, e *uma fase inteira apontava para a metade que não dói*) · a partilha da `VecScene` ✅ 02/09 · **a do `FlipDoc` ✅ 07/09**, e a medição irmã achou o número PIOR da fase: **`228 MB` de pilha por UM SEGUNDO de animação** (§F8.2) · **F8.3 ✅** (2026-09-08): **a partilha por DESENHO** — o resíduo que a F8.2 nomeou. `99,0 %` do que cada passo copiava era desperdício; a pilha passou de `912 MB` a **`9,5 MB` CONSTANTE**, e o teto de `1 GB` foi de ~108 quadros para **~27 595 passos** (§F8.3) |
+| F8 | Restore incremental + `VecScene`/`FlipDoc` versionados | ✅ **FECHADA 2026-09-07** — ⛔ **a premissa do RELÓGIO foi REFUTADA por medição** (§F8.0: o restauro custa `1,81 ms` uma vez por Ctrl+Z, e *uma fase inteira apontava para a metade que não dói*) · a partilha da `VecScene` ✅ 02/09 · **a do `FlipDoc` ✅ 07/09**, e a medição irmã achou o número PIOR da fase: **`228 MB` de pilha por UM SEGUNDO de animação** (§F8.2) · **F8.3 ✅** (2026-09-08): **a partilha por DESENHO** — o resíduo que a F8.2 nomeou. `99,0 %` do que cada passo copiava era desperdício; a pilha passou de `912 MB` a **`9,5 MB` CONSTANTE**, e o teto de `1 GB` foi de ~108 quadros para **~27 595 passos** (§F8.3) · ⛔ **F8.4 RECUSADA por medição** (2026-09-08): a mesma cura no VECTOR daria `296,6 MB → 0,1`, mas o relógio já está bem (`0,6 %` de um quadro) e o preço toca a espinha de outras linhas — os dois lados medidos, e o que a reabre (§F8.4) |
 
 > ⚠️ **Este placar esteve DESACTUALIZADO** (conferido contra o código em 2026-08-30): a F6 e a F7
 > diziam ⬜ com a crate e o painel construídos e smokados. *O §5.0 manda auditar a lista antes de
@@ -3068,3 +3068,45 @@ massa de um mundo que já não existe. Hoje elas dizem as **duas** coisas — *o
 que a PILHA ocupa* — e a pergunta da sonda irmã mudou de sujeito, de *«quantos QUADROS»* para
 *«quantos PASSOS»*. ⚠️ §0.0 à letra: **quem move o número que tornava algo verdadeiro tem de
 reconferir a nota.**
+
+---
+
+### ⛔⛔ §F8.4 — **A mesma cura no VECTOR: MEDIDA dos dois lados e RECUSADA** (2026-09-08)
+
+Fechada a F8.3, a pergunta simétrica impõe-se: a `VecScene` também é partilhada como **documento
+inteiro** (F8.1), e numa sessão de desenho vetorial **cada passo muda a cena** — exactamente o
+resíduo que o Flip tinha. ⚠️ **A resposta não é a mesma de antemão, e o preço também não.**
+
+#### O ganho é REAL, e é de memória — não de relógio
+
+| formas | a cena INTEIRA | UMA forma | desperdício | pilha (×256) |
+|---|---|---|---|---|
+| 10 | `2 422` | `242` | `90,0 %` | `0,6` → `0,1 MB` |
+| 100 | `24 202` | `242` | `99,0 %` | `5,9` → `0,1 MB` |
+| 1 000 | `242 876` | `242` | `99,9 %` | `59,3` → `0,1 MB` |
+| 5 000 | `1 214 876` | `242` | **`100,0 %`** | **`296,6` → `0,1 MB`** |
+
+⚠️ **O relógio já está bem:** o clone custa `0,100 ms` a 5 000 formas — `0,6 %` de um quadro.
+*Esta cura não compra velocidade nenhuma; compra residência.*
+
+#### O preço foi MEDIDO, não estimado
+
+- trocar `paths: Vec<VecPath>` por `Vec<Arc<VecPath>>` dá **43 erros em 7 ficheiros** da própria
+  crate. ⚠️⚠️ **E esse número é um piso enganoso:** *um `cargo check` que pára na crate de baixo
+  nunca chega às de cima* — há **670** usos de `.paths()` fora dela;
+- `paths_mut() -> &mut [VecPath]` é **inexprimível** sobre `[Arc<VecPath>]`;
+- funções de **outras crates** pedem `&[VecPath]` (`ph2d-vec-boolean`, `ph2d-vec-blend`);
+- a variante cirúrgica — o `Arc` no campo que de facto pesa, `VecPath::verts` — tem **1 803** usos
+  (só `~93` mutáveis), e o campo é **`pub`**.
+
+#### ⇒ A recusa, e o que a reabre
+
+O `ph2d-vec-scene` é a **espinha do módulo Vector**, e o §F4.6c pagou esta lição por escrito: mexer
+numa espinha que outra linha tem viva **é catástrofe de merge** — foi isso que bloqueou aquela fase
+durante dez dias. O caso que dói aqui custa `296 MB`, contra os `2,3 GB` que o Flip custava antes da
+F8.3: *o mesmo mecanismo, uma ordem de grandeza mais barato.*
+
+⚠️ **Reabre quando** a `line/Vector` estiver parada (a janela em que o custo de merge cai a zero),
+**ou** quando alguém medir uma cena real acima de ~5 000 formas — que é onde esta tabela deixa de
+ser um exercício. O instrumento fica no repo e corre-se de uma linha:
+`cargo test -p ph2d-vec-scene --release --test measure_scene_clone -- --ignored --nocapture`.

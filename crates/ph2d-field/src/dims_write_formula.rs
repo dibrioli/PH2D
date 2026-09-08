@@ -172,6 +172,40 @@ pub(super) fn write_formula(
                     .clamp(crate::MIN_THREAD_HANDS, crate::MAX_THREAD_HANDS);
             }
         }
+        // ─────────────────────────── W136 ───────────────────────────
+        // ⭐ **Os SEIS primeiros são os três pontos**, na ordem `ax ay bx by cx cy` — a mesma do
+        // triângulo (W131), e é ela que as alças do canvas leem.
+        (Primitive::Bezier { a: v, .. }, i @ 0..=1)
+        | (Primitive::Bezier { b: v, .. }, i @ 2..=3)
+        | (Primitive::Bezier { c: v, .. }, i @ 4..=5) => v[i % 2] = value,
+        (Primitive::Bezier { thickness, .. }, 6) => *thickness = value,
+        (Primitive::Bezier { half_height, .. }, 7) => *half_height = half,
+        // ⚠️ **A ESPESSURA re-assenta sozinha** quando o raio ou a amplitude mudam — quem o faz é a
+        // coerção GERAL, que a porta corre depois de toda escrita e lê a mesma tabela de faixas.
+        (Primitive::CircleWave { radius, .. }, 0) => *radius = value,
+        (
+            Primitive::CircleWave {
+                amplitude, radius, ..
+            },
+            1,
+        ) => *amplitude = keep_below(value, *radius),
+        (Primitive::CircleWave { lobes: n, .. }, 2) => {
+            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+            {
+                *n = (value.round().max(0.0) as u32)
+                    .clamp(crate::MIN_WAVE_LOBES, crate::MAX_WAVE_LOBES);
+            }
+        }
+        (
+            Primitive::CircleWave {
+                thickness,
+                radius,
+                amplitude,
+                ..
+            },
+            3,
+        ) => *thickness = keep_below(value, crate::wave_thickness_ceiling(*radius, *amplitude)),
+        (Primitive::CircleWave { half_height, .. }, 4) => *half_height = half,
         (Primitive::Superquadric { exponent_side, .. }, 4) => {
             *exponent_side = value.clamp(
                 crate::MIN_SUPERQUADRIC_EXPONENT,

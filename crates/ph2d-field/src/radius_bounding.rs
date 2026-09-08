@@ -415,6 +415,27 @@ pub fn bounding_radius(p: &Primitive) -> f32 {
             half_height,
             ..
         } => radius.hypot(*half_height),
+        // ─────────────────────────── W136 ───────────────────────────
+        // ⭐ **A curva vive no CASCO CONVEXO dos três pontos** — é a propriedade que define uma
+        // Bezier —, logo o ponto mais longe da origem é um dos três, mais a espessura.
+        Primitive::Bezier {
+            a,
+            b,
+            c,
+            thickness,
+            half_height,
+            ..
+        } => {
+            let longe = hyp(a[0], a[1]).max(hyp(b[0], b[1])).max(hyp(c[0], c[1]));
+            hyp(longe + thickness, *half_height)
+        }
+        Primitive::CircleWave {
+            radius,
+            amplitude,
+            thickness,
+            half_height,
+            ..
+        } => hyp(radius + amplitude + thickness, *half_height),
         Primitive::Triangle {
             a,
             b,

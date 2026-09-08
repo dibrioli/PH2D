@@ -13598,3 +13598,115 @@ distâncias, e é por isso que ele não existe.
 
 **Smoke:** *MODEL* > **A** > *Thread* e *Knurled Grip*, e `PH2D_FIELD_SMOKE=29` para as quatro lado a
 lado.
+
+---
+
+## §137 — W136: as DUAS CURVAS COM ESPESSURA, e as QUATRO construções da onda (07/09)
+
+> **Fecha o Lote 11** ([plano 09](09_plano_das_dez_que_faltam.md)) menos o que ele não precisava de
+> ter. A fila de formas passa de **6** para **3**.
+
+### §137.0 — ⭐⭐ A pergunta do §5.0 devolveu uma forma inteira: **a PARÁBOLA É a BEZIER**
+
+Uma Bezier quadrática **é** um arco de parábola — sempre, por construção. Em `[−w, w]` a curva
+`y = k·x²` tem extremos `(±w, k w²)` e tangentes de declive `∓2kw`; elas encontram-se em
+`(0, −k w²)`, que é o ponto de controlo. ⭐ **Medido: `5,5e-17` de desvio** — exacto ao bit.
+
+⇒ **duas portas da paleta, uma primitiva** (a lei do tubo/anilha e do parafuso/serrilhado), e a fila
+cai `3` com **duas** formas construídas. ⛔ Uma `Primitive::Parabola` à parte seria uma segunda
+fórmula para a mesma superfície — e *a segunda é a que envelhece*.
+
+### §137.1 — A BEZIER: a cúbica tem dois ramos, e a árvore não tem `if` — mas tem `compare`
+
+A distância a uma parábola resolve-se numa cúbica deprimida, e o **sinal do discriminante** escolhe
+a fórmula: `h ≥ 0` dá uma raiz (Cardano, duas raízes cúbicas) e `h < 0` dá três (Viète, um `acos`).
+Elas não se sobrepõem — no ramo de cada uma, a outra dá `NaN`.
+
+⭐ **O selector é o [`Tree::compare`], e ele é CONTÍNUO aqui por um motivo geométrico:** em `h = 0` a
+cúbica tem **raiz dupla** e as duas fórmulas dão o **mesmo** ponto. *Um selector duro entre dois
+ramos que coincidem na fronteira não é uma costura.* ⚠️ As duas correm sempre, então cada uma tem de
+ser inofensiva no domínio da outra (`safe_sqrt`, `acos` preso a `[−1, 1]`).
+
+⭐⭐ **E o ramo degenerado é do HOST, não da árvore:** com `b` no meio de `a` e `c` a curva é uma
+**recta** e `1/|vb|²` explode. Os três pontos são constantes de construção ⇒ o `if` acontece em Rust
+e custa **zero nós**. ⛔ Recusar seria mau produto (um traço recto é autoria legítima) e um ramo na
+árvore seria pago em toda avaliação.
+
+**Medido contra a varredura densa da curva:** erro `0,000000` em cinco arranjos, a quase-recta
+incluída.
+
+### §137.2 — ⭐⭐⭐ O PREÇO: `6,8×` por AMOSTRA virou `1,0×` por QUADRO
+
+O plano mandava *«preço a medir antes de prometer»*, e as duas réguas discordam:
+
+| | por amostra | por quadro (640×360) |
+|---|---:|---:|
+| círculo / esfera | `77,5 ns` | `2,5 ms` |
+| **bezier** | `523,1 ns` (**`6,8×`**) | **`2,5 ms`** (`1,0×`) |
+| bezier, ramo da recta | — | `1,1 ms` (**mais barata que a esfera**) |
+
+⚠️ **É a lei da W128 pela terceira vez**: a árvore é especializada por ladrilho × fatia, e o que
+viaja com ela não é a contagem de operações. *Uma sonda por amostra teria matado esta forma.*
+
+### §137.3 — ⛔⛔⛔ A ONDA: QUATRO construções, TRÊS recusadas com número
+
+| # | construção | o que a mediu, e o que ela deu |
+|---|---|---|
+| 1 | divisor **constante**, aplicado à banda | ⛔ `‖∇f‖ = 2,4638` no representante e **`13,67`** no tecto de lóbulos: **não é minorante**, a marcha atravessa a peça |
+| 2 | \+ o **furo** como `max` | ⛔ o campo fecha (censo `28/28`) e o **aro sai ELÍPTICO** — recuo `0,0179` em `z` contra **`0,0711`** em `ρ`, que é o `lip`. *Um controlo que recua quatro vezes o que diz mente* |
+| 3 | divisor **LOCAL** (o filete ficaria redondo) | ⛔⛔ `‖∇f‖` até **`2 156`** ⇒ folga `0,0005`. Isso **confirma com número** a recusa que a espiral (W123) já tinha escrito, e **refuta** a minha ideia de que «faltava a segunda metade»: dividir por uma função que varia depressa põe o `∇L/L²` no gradiente |
+| 4 | ⭐ o aro no plano `(radial, z)` + piso e tecto | ✅ `‖∇f‖ = 1,0000` **exacto** nas 15 células, filete **redondo** (razão `1,00`) |
+
+⭐⭐⭐ **O que a nº 4 faz de diferente:** o arredondamento do aro acontece no plano em que as **duas
+coordenadas são honestas** — o `g` radial é a distância exacta ao longo do raio e o `z` é exacto —, e
+só **depois** o campo inteiro se divide. É a lei da W134 lida no nível certo: *a folga multiplica o
+campo, e o zero de um campo dividido por uma constante positiva não se mexe.*
+
+⭐⭐ **E o piso e o tecto são UMA lei, não duas.** `‖∇(ρ − R(φ))‖ = √(1 + (R'/ρ)²)` cresce quando `ρ`
+encolhe, e o campo é avaliado na **CAIXA**. Com o divisor tomado em `dentro` fica uma janela
+`ρ < dentro` onde ele é excedido — e o `max` com o furo **não a fecha**: junto de `ρ = dentro` a
+folga do furo vai a zero enquanto o campo da crista ainda é positivo, e a álgebra mostra que
+**nenhum tecto** o cura com esse piso. ⇒ o divisor toma-se em `½·dentro` e o campo é capado em
+`½·dentro`, que é exactamente o valor abaixo do qual **todo** `φ` já está capado.
+
+⚠️⚠️ **É a SEGUNDA vez em duas waves que eu limito um divisor sobre «onde há matéria»** — a rosca
+(W135) teve a cunha infinita a ganhar o `min` dentro da peça pela mesma razão. ⇒ **o domínio de um
+divisor é a CAIXA, não a peça.**
+
+### §137.4 — As cercas
+
+| cerca | valor | recurso |
+|---|---:|---|
+| `MAX_WAVE_LOBES` | **12** | a **MARCHA** — `1 → 3,4 ms` · `8 → 6,9` · **`12 → 8,5`** · `16 → 10,4` · `48 → 18,7` (uma peça sozinha passa o quadro). Critério: *duas peças cabem num quadro*, o mesmo da rosca; a curva cruza os `8,35` a `11,8` lóbulos |
+| `wave_thickness_ceiling` | `0,90·(radius − amplitude)` | o **vão até ao eixo** — com a espessura no vão todo o furo fecha e o `ρ_min` do divisor vai a zero |
+| a Bezier | **sem tecto de espessura** | `{d ≤ t}` é um sub-nível de uma **distância**: ele nunca se auto-intersecta, por mais grossa que a faixa seja |
+
+⛔⛔ **E a cerca de CURVATURA foi descartada ANTES de existir** — a 1.ª redacção ia ter três
+candidatas (o vão e os dois raios de curvatura, na crista e no vale), pela ideia de que uma faixa
+mais grossa que o raio de curvatura **dobra**. Ela não dobra: a peça é `{(ρ, φ) : |ρ − R(φ)| ≤ t}`,
+que para cada `φ` é um **intervalo em `ρ`** — um conjunto definido assim nunca se auto-intersecta, e
+o que dobraria era o *offset* da curva, que é outra coisa. ⇒ as duas candidatas decidiriam **zero**
+células, que é exactamente a candidata morta que o nó (W134) teve de descobrir por um censo **depois
+de a shipar**.
+
+### §137.5 — Os gates
+
+| gate | o que ele mede |
+|---|---|
+| `the_bezier_is_the_curve_it_promises` | o campo contra a **varredura densa**, em cinco arranjos |
+| `the_parabola_is_a_bezier_with_the_points_in_the_right_place` | ⚠️ se ele reprovar, a parábola **volta à fila** como forma própria |
+| `a_straight_bezier_is_a_segment` | o ramo do host, contra o oráculo do segmento |
+| `the_two_cubic_branches_meet_without_a_step` | o salto **encolhe** com o passo |
+| ⭐⭐⭐ `the_wave_rim_fillet_is_round_not_oval` | **o gate que esta wave existiu para escrever** — a razão dos dois recuos, e o recuo contra o pedido |
+| `the_wave_field_is_flat_deep_inside_the_hole` | o piso e o tecto, medidos onde o termo angular explodia |
+| `the_seam_of_the_angle_does_not_crack_the_wave` | a costura do `atan2`, com `lobes` inteiro |
+| `a_lobe_count_written_with_a_fraction_lands_on_a_lobe` | `6,6 → 7`, e o zero **RECUSADO** |
+| `raising_the_amplitude_reseats_the_thickness` | a coerção geral repõe a invariante |
+
+⭐⭐ **A régua que separou as quatro construções não foi o gradiente nem a secção** — foi perguntar
+**de que FORMA é o filete**. Nas construções 2 e 3 a superfície estava certa e o campo era honesto;
+o que mentia era o controlo. *Uma régua que só pergunta «a superfície está no sítio?» não vê um
+filete oval.*
+
+**Smoke:** *MODEL* > **A** > *Bezier Curve*, *Parabola* e *Circle Wave*, e `PH2D_FIELD_SMOKE=30`
+para as quatro lado a lado.

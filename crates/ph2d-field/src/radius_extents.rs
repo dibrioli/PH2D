@@ -371,6 +371,31 @@ pub fn bounding_half_extents(p: &Primitive) -> [f32; 3] {
             half_height,
             ..
         } => [*radius, *radius, *half_height],
+        // ─────────────────────────── W136 ───────────────────────────
+        // ⚠️ **A caixa é o maior |coordenada| dos TRÊS PONTOS por eixo** — a curva não é simétrica,
+        // e uma caixa que só olhasse um lado cortaria a peça no recorte por região (a lei que o
+        // triângulo da W131 já pagou).
+        Primitive::Bezier {
+            a,
+            b,
+            c,
+            thickness,
+            half_height,
+            ..
+        } => {
+            let eixo = |i: usize| a[i].abs().max(b[i].abs()).max(c[i].abs()) + thickness;
+            [eixo(0), eixo(1), *half_height]
+        }
+        Primitive::CircleWave {
+            radius,
+            amplitude,
+            thickness,
+            half_height,
+            ..
+        } => {
+            let fora = radius + amplitude + thickness;
+            [fora, fora, *half_height]
+        }
         // ⚠️ **A caixa é o maior |coordenada| de cada eixo** — o triângulo não é simétrico, e um
         // lado pode estender-se mais que o outro. *Uma caixa que só olha um lado corta a peça no
         // recorte por região.*

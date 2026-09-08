@@ -537,6 +537,8 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
         28 => formula::cena_28(),
         // ⭐⭐⭐ A ROSCA e o SERRILHADO da W135 — ver [`formula::cena_29`].
         29 => formula::cena_29(),
+        // ⭐⭐⭐ As CURVAS COM ESPESSURA da W136 — ver [`formula::cena_30`].
+        30 => formula::cena_30(),
         _ => {
             println!(
                 "[field-smoke] cena 1 — junção de 3 cilindros: filete interno 0,12 + aros externos 0,05"

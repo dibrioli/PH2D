@@ -234,6 +234,11 @@ pub fn sd_capsule(radius: f64, half_height: f64) -> Tree {
 ///
 /// ⭐⭐ **Com `top == bottom` é o prisma; com `top == 0` é uma PIRÂMIDE** — a mesma fórmula, e é
 /// isso que faz a pirâmide não ser uma segunda resposta à mesma pergunta.
+///
+/// ⚠️ **E a escolha do circunraio tem consequência VISÍVEL** (a nota vinha da variante, W136): com
+/// ele um prisma de `n` lados **inscreve-se** no cilindro do mesmo raio, logo subir os lados
+/// converge para ele **por dentro**. Com o apótema convergiria por fora, e trocar um cilindro por um
+/// prisma faria a peça **crescer**.
 pub fn sd_prism(
     sides: u32,
     bottom: f64,
@@ -440,6 +445,13 @@ pub(crate) fn half_plane(a: [f64; 2], b: [f64; 2]) -> Tree {
 /// ficam vivas. A pegada do filete na tampa é exatamente a **erosão 2D** da estrela por `round` — e
 /// é por isso que o limite dele é o ponto em que essa erosão deixa de ser uma estrela (a ponta e o
 /// vale encontram-se no mesmo raio): ver [`ph2d_field::radius::star_round_limit`].
+///
+/// # ⚠️ Por que a COMPOSIÇÃO não a exprime: a PARIDADE (a nota vinha da variante, W136)
+///
+/// Uma estrela de 6 pontas é a união de dois triângulos, e uma de 4 é a de dois losangos — mas uma
+/// de **5** não é a união de polígono nenhum, porque nenhum divisor de 5 dá um polígono regular
+/// rodado. *Uma equivalência que só vale para metade dos valores de um controlo não é uma
+/// equivalência: é uma armadilha à espera do número ímpar.*
 pub fn sd_star(
     points: u32,
     outer: f64,
@@ -575,6 +587,11 @@ pub fn sd_star(
 /// (`CLAUDE.md` §0). Quem chegar a `1:64` sabe agora que a alavanca é o `MAX_STEPS`.
 ///
 /// ⚠️ Ele **não substitui** a [`ph2d_field::Primitive::Sphere`], que é exata.
+///
+/// ⚠️ **E ele NÃO é o [`ph2d_field::Xform::scale`]** (a nota vinha da variante, W136): a recusa de
+/// escala por eixo é sobre a **POSE**, e ali continua certa — uma pose com escala por eixo
+/// estragaria `‖∇f‖ = 1` em toda a árvore abaixo dela. Uma **primitiva** com três raios não toca
+/// nisso: ela é uma folha, e a folha responde por si.
 pub fn sd_ellipsoid(radii: [f64; 3]) -> Tree {
     let m = radii[0].min(radii[1]).min(radii[2]);
     let over = |t: Tree, r: f64| t * Tree::constant(1.0 / r);

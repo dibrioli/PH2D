@@ -94,11 +94,14 @@ pub enum PrimitiveKind {
     TorusKnot,
     // ─────────────────────────── W135 ───────────────────────────
     Thread,
+    // ─────────────────────────── W136 ───────────────────────────
+    Bezier,
+    CircleWave,
 }
 
 impl PrimitiveKind {
     /// **A fonte da contagem** — quem quiser saber *«que formas o motor sabe fazer?»* pergunta aqui.
-    pub const ALL: [PrimitiveKind; 58] = [
+    pub const ALL: [PrimitiveKind; 60] = [
         PrimitiveKind::Box,
         PrimitiveKind::Sphere,
         PrimitiveKind::Cylinder,
@@ -157,6 +160,8 @@ impl PrimitiveKind {
         PrimitiveKind::Polygon,
         PrimitiveKind::TorusKnot,
         PrimitiveKind::Thread,
+        PrimitiveKind::Bezier,
+        PrimitiveKind::CircleWave,
     ];
 
     /// O sufixo da chave do botão que a cria — `panel.model3d.add.<key>`.
@@ -221,6 +226,8 @@ impl PrimitiveKind {
             PrimitiveKind::Polygon => "polygon",
             PrimitiveKind::TorusKnot => "torus_knot",
             PrimitiveKind::Thread => "thread",
+            PrimitiveKind::Bezier => "bezier",
+            PrimitiveKind::CircleWave => "circle_wave",
         }
     }
 }

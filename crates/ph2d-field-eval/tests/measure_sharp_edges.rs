@@ -587,6 +587,26 @@ fn representative(k: PrimitiveKind) -> Option<Primitive> {
         // (dois flancos), a raiz (flanco contra o cilindro) e o aro da laje. ⚠️ A profundidade sai
         // a `0,6` do tecto de propósito: no tecto a terra fecha e o filete da raiz não tem onde
         // caber, o que é a lei que o [`ph2d_field::thread_round_limit`] escreve.
+        // ⚠️ **As duas CURVAS entram** — elas são chapas, e o `round` delas é o do ARO, como o de
+        // toda a família das chapas.
+        PrimitiveKind::Bezier => Primitive::Bezier {
+            a: [-0.38, -0.18],
+            b: [0.0, 0.46],
+            c: [0.38, -0.18],
+            thickness: 0.10,
+            half_height: 0.16,
+            round: 0.0,
+            chamfer: 0.0,
+        },
+        PrimitiveKind::CircleWave => Primitive::CircleWave {
+            radius: 0.38,
+            amplitude: 0.10,
+            lobes: 6,
+            thickness: ph2d_field::wave_thickness_ceiling(0.38, 0.10) * 0.32,
+            half_height: 0.14,
+            round: 0.0,
+            chamfer: 0.0,
+        },
         PrimitiveKind::Thread => Primitive::Thread {
             radius: 0.45,
             half_height: 0.35,

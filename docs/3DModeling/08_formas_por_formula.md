@@ -421,9 +421,9 @@ tem, não uma montagem:
 | ~~**Triangle (3 vértices arbitrários)**~~ | — | ✅ **SHIPOU na W131** — o escaleno, com o tecto do filete a ser o **inraio**. ⛔ E a medição corrigiu a nota deste doc: desenhar custa `2,6×`–`3,1×` a fórmula, e não `1,27×` |
 | ~~**Egg**~~ | — | ⛔ **CONSTRUÍDO e RECUSADO na W125** — o knob de barriga degenera num círculo no valor natural (recusas medidas, abaixo) |
 | ~~**Stairs**~~ | — | ⛔ **CONSTRUÍDO 4× e RECUSADO na W125** — o filete dela é neutro em volume, e o gate que o exige está certo (recusas medidas, abaixo) |
-| **Bezier (quadrático)** | **A** | ⭐ Um traço curvo com espessura, sem desenhar |
-| **Parabola** | **A** | A curva, com espessura |
-| **Circle Wave** | **A** | ⭐ A onda em anel — irmã directa da onda que o `Document` estreou |
+| ~~**Bezier (quadrático)**~~ | — | ✅ **SHIPOU na W136** — a cúbica com os **dois ramos** calculados sempre e escolhidos pelo `Tree::compare`, que é contínuo porque em `h = 0` a raiz é **dupla**. ⭐ O ramo degenerado (os três pontos em linha) é um `if` do **HOST**, e custa zero nós. ⚠️ `6,8×` uma esfera por AMOSTRA e **`1,0×` por QUADRO** |
+| ~~**Parabola**~~ | — | ✅ **SHIPOU na W136, e ela É a Bezier** — os três pontos `(±w, kw²)` e `(0, −kw²)` dão `y = k·x²` a **`5,5e-17`**. Duas portas da paleta, uma primitiva |
+| ~~**Circle Wave**~~ | — | ✅ **SHIPOU na W136**, ao fim de **QUATRO** construções e três recusas medidas. ⭐ O aro arredonda-se no plano `(radial, z)` — onde as duas coordenadas são honestas — e só **depois** o campo se divide. ⛔ O divisor LOCAL foi medido a `‖∇f‖ = 2 156` e confirma a recusa da espiral (W123) |
 
 ✅ **E estas do catálogo 2D já se fazem**, para não as reconstruir: `sdCircle`/`sdBox`/`sdRoundedBox`
 (caixa e cilindro), `sdChamferBox` (o **chanfro** é um controlo desta casa), `sdOrientedBox` (a pose),
@@ -474,9 +474,11 @@ a ordena é o dono do produto.
 | de onde | ainda faltam | quais |
 |---|---:|---|
 | §7.2 — catálogo **3D** | **3** | Plane · Death Star · Vesica Segment |
-| §7.3 — catálogo **2D** | **3** | Bezier · Parabola · Circle Wave |
+| §7.3 — catálogo **2D** | **0** | ~~Bezier~~ · ~~Parabola~~ · ~~Circle Wave~~ |
 | §7.4 — **famílias** fora de catálogo | **0** | ~~Rosca~~ |
-| **total** | **6** | |
+| **total** | **3** | |
+
+⚠️ **Actualizado em 07/09 (2.ª vez)**: saiu da conta o **Lote 11 inteiro** (W136 — [§137](06_resultados_cena_e_gizmo.md)), e com **duas** formas construídas em vez de três: a **Parábola** é a Bezier com os três pontos no sítio certo, medido a `5,5e-17`. ⇒ a §7.3 fecha, e o que resta da fila são as **três** do catálogo 3D.
 
 ⚠️ **Actualizado em 07/09**: saíram da conta o **Nó de toro** (W134 — [doc 06 §135](06_resultados_cena_e_gizmo.md)) e a **Rosca** (W135 — [§136](06_resultados_cena_e_gizmo.md)), que **fecham o lote 10**. ⚠️ E a Rosca fecha a §7.4 INTEIRA: das seis famílias fora de catálogo, as que ficam são as duas que são **modificadores** e os fractais, e nenhuma das três é uma forma.
 

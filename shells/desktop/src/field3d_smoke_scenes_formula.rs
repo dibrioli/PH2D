@@ -348,3 +348,62 @@ pub(crate) fn cena_29() -> Result<FieldDoc, ph2d_field::FieldError> {
         NodeId(4),
     )
 }
+
+/// ⭐⭐⭐ **A CENA 30 — as CURVAS COM ESPESSURA** (W136).
+///
+/// ⚠️ **As duas primeiras são a MESMA primitiva** — a parábola é a Bezier com os três pontos no
+/// sítio que a torna `y = k·x²`, e a cena põe-nas lado a lado para o olho confirmar o que a sonda
+/// mediu a `5,5e-17`.
+///
+/// # Errors
+/// Só se uma das quatro violar uma cerca do documento — o que é o gate a fazer o trabalho dele.
+pub(crate) fn cena_30() -> Result<FieldDoc, ph2d_field::FieldError> {
+    println!(
+        "[field-smoke] cena 30 — AS CURVAS: (1) bezier, um arco · (2) a PARABOLA, que e' a MESMA \
+         primitiva com os pontos no sitio de y = k x^2 · (3) a bezier com os tres pontos EM LINHA, \
+         que degenera num segmento e o campo resolve exacto · (4) a onda em anel, 8 lobulos."
+    );
+    let curva = |a: [f32; 2], b: [f32; 2], c: [f32; 2], x: f32| {
+        leaf(
+            Primitive::Bezier {
+                a,
+                b,
+                c,
+                thickness: 0.035,
+                half_height: 0.06,
+                round: 0.012,
+                chamfer: 0.0,
+            },
+            Xform {
+                translation: [x, 0.0, 0.0],
+                ..Xform::IDENTITY
+            },
+        )
+    };
+    let (w, k) = (0.20_f32, 4.0_f32);
+    let (radius, amplitude) = (0.20_f32, 0.055_f32);
+    FieldDoc::new(
+        vec![
+            curva([-0.20, -0.10], [0.0, 0.26], [0.20, -0.10], -0.72),
+            curva([-w, k * w * w], [0.0, -k * w * w], [w, k * w * w], -0.24),
+            curva([-0.20, -0.08], [0.0, 0.0], [0.20, 0.08], 0.24),
+            leaf(
+                Primitive::CircleWave {
+                    radius,
+                    amplitude,
+                    lobes: 8,
+                    thickness: ph2d_field::wave_thickness_ceiling(radius, amplitude) * 0.16,
+                    half_height: 0.06,
+                    round: 0.012,
+                    chamfer: 0.0,
+                },
+                Xform {
+                    translation: [0.72, 0.0, 0.0],
+                    ..Xform::IDENTITY
+                },
+            ),
+            combine(Op::Union(Blend::Sharp), (0..4).map(NodeId).collect()),
+        ],
+        NodeId(4),
+    )
+}

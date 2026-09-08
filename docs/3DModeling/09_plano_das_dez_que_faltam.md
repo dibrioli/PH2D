@@ -22,10 +22,10 @@ número um.
 
 | de onde | faltam | quais |
 |---|---:|---|
-| catálogo **2D** | **3** | ~~Polygon(N)~~ · ~~Triangle~~ · Bezier · Parabola · Circle Wave |
+| catálogo **2D** | **0** | ~~Polygon(N)~~ · ~~Triangle~~ · ~~Bezier~~ · ~~Parabola~~ · ~~Circle Wave~~ |
 | catálogo **3D** | **3** | Plane · Death Star · Vesica Segment |
 | **famílias** fora de catálogo | **0** | ~~Nó de toro~~ · ~~Rosca / knurling~~ |
-| **total** | **6** | |
+| **total** | **3** | |
 
 ✅ **O LOTE 9 FECHOU em 06/09** — o *Triangle* na W131 ([doc 06 §132](06_resultados_cena_e_gizmo.md)) e
 o *Polygon(N)* na W132 ([§133](06_resultados_cena_e_gizmo.md)).
@@ -105,14 +105,19 @@ previsões deste plano estavam erradas**, o que vale reler antes da Rosca:
 **exactamente 1-Lipschitz**, e portanto estritamente melhor que o `c` de hoje. *Ela não entrou na
 W135 porque mexer numa forma que já shipou pede a sua própria régua de antes/depois.*
 
-### Lote 11 — **Bezier, Parabola e Circle Wave** ⭐ *(as curvas com espessura)*
+### Lote 11 — **Bezier, Parabola e Circle Wave** ✅ *(FECHADO em 07/09)*
 
-- **Bezier quadrático:** o Quílez tem a forma fechada (resolve uma cúbica). ⚠️ **A cúbica tem três
-  ramos** e o `Tree` não tem `if` — o caminho é o `min`/`max` sobre os três, e **cada ramo é uma
-  raiz cúbica**, que é `exp(ln/3)`. Preço a medir antes de prometer.
-- **Parabola:** idem, uma cúbica mais simples.
-- **Circle Wave:** a onda em anel — irmã directa da onda do `Document` (W123), e o minorante já tem
-  a lei escrita (`lip = √(1+(a·ω)²)`).
+✅ **SHIPOU na W136** ([doc 06 §137](06_resultados_cena_e_gizmo.md)) — e com **DUAS** formas
+construídas, não três. ⛔ **Três previsões deste plano estavam erradas outra vez:**
+
+| o plano dizia | o que a implementação mediu |
+|---|---|
+| *«a cúbica tem TRÊS ramos, e o caminho é o `min`/`max` sobre os três»* | ⛔ são **DOIS** (o sinal do discriminante escolhe entre Cardano e Viète), e eles **não se sobrepõem** — um `min` daria o `NaN` do outro. A saída é o `Tree::compare`, e ele é contínuo porque em `h = 0` a raiz é **dupla** |
+| *«Parabola: idem, uma cúbica mais simples»* | ⭐ **ela É a Bezier**, medido a `5,5e-17` — duas portas da paleta, uma primitiva. A fila cai `3` com `2` formas |
+| *«Circle Wave: o minorante já tem a lei escrita»* | ⛔⛔ tinha metade. Foram **QUATRO** construções e **três recusas medidas** — a lei escrita (divisor constante) lê `‖∇f‖ = 2,46`, e o divisor local, que curaria o filete, lê **`2 156`** |
+
+⭐ **E o preço:** o plano mandava medi-lo antes de prometer, e ele deu razão à lei da W128 — a Bezier
+custa `6,8×` uma esfera **por amostra** e `1,0×` **por quadro**.
 
 ### Lote 12 — **Death Star e Vesica Segment** ⭐
 

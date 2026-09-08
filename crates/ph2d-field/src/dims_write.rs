@@ -577,6 +577,15 @@ pub(super) fn write_dim(
         (p @ Primitive::Thread { .. }, i @ 0..=6) => {
             return super::dims_write_formula::write_formula(p, node, i, value);
         }
+        // ─────────────────────────── W136 ───────────────────────────
+        // ⚠️ **Com TECTO no índice, pela mesma razão da rosca**: as duas curvas TÊM aresta, e as
+        // duas últimas linhas delas são o chanfro e o filete, que entram pelos portões genéricos.
+        (p @ Primitive::Bezier { .. }, i @ 0..=7) => {
+            return super::dims_write_formula::write_formula(p, node, i, value);
+        }
+        (p @ Primitive::CircleWave { .. }, i @ 0..=4) => {
+            return super::dims_write_formula::write_formula(p, node, i, value);
+        }
         // ─────────────────────────── W131 ───────────────────────────
         // ⚠️ **A ordem é `ax ay bx by cx cy`**, e é ela que o painel pinta — ver a tabela.
         (Primitive::Triangle { a: v, .. }, i @ 0..=1)
@@ -646,7 +655,9 @@ pub(super) fn write_dim(
             | Primitive::TorusArc { .. }
             | Primitive::Triangle { .. }
             | Primitive::Polygon { .. }
-            | Primitive::Thread { .. }),
+            | Primitive::Thread { .. }
+            | Primitive::Bezier { .. }
+            | Primitive::CircleWave { .. }),
             i,
         ) if Some(i) == round_index(p) => {
             return set_round(p, node, value);

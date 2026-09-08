@@ -65,7 +65,9 @@ impl FieldDoc {
                 | Primitive::Helix { round, .. }
                 | Primitive::Gyroid { round, .. }
                 | Primitive::TorusArc { round, .. }
-                | Primitive::Thread { round, .. } => Some(*round),
+                | Primitive::Thread { round, .. }
+                | Primitive::Bezier { round, .. }
+                | Primitive::CircleWave { round, .. } => Some(*round),
                 // ⚠️ Lista FECHADA desde a W101 (era `_ => None`): uma primitiva nova COM filete
                 // caía no braço vazio e o painel dizia que ela não tinha nenhum.
                 Primitive::Sphere { .. }
@@ -221,7 +223,9 @@ impl NodeShape {
                 | Primitive::Helix { round, .. }
                 | Primitive::Gyroid { round, .. }
                 | Primitive::TorusArc { round, .. }
-                | Primitive::Thread { round, .. } => Some(*round),
+                | Primitive::Thread { round, .. }
+                | Primitive::Bezier { round, .. }
+                | Primitive::CircleWave { round, .. } => Some(*round),
                 // ⚠️ Lista FECHADA desde a W101 (era `_ => None`): uma primitiva nova COM filete
                 // caía no braço vazio e o painel dizia que ela não tinha nenhum.
                 Primitive::Sphere { .. }
@@ -341,7 +345,9 @@ pub fn set_shape_radius(shape: &mut NodeShape, node: u32, radius: f32) -> Result
                 | Primitive::Helix { round, .. }
                 | Primitive::Gyroid { round, .. }
                 | Primitive::TorusArc { round, .. }
-                | Primitive::Thread { round, .. } => *round = radius,
+                | Primitive::Thread { round, .. }
+                | Primitive::Bezier { round, .. }
+                | Primitive::CircleWave { round, .. } => *round = radius,
                 // Inalcançável: `round_limit` já devolveu `None` para estas acima.
                 Primitive::Sphere { .. }
                 | Primitive::RoundedCylinder { .. }
@@ -546,7 +552,11 @@ pub fn fillet_inflates(p: &Primitive) -> bool {
         | Primitive::TorusArc { .. }
         // ⚠️ **A ROSCA entra aqui** (W135): os flancos do V **não** são ortogonais ao cilindro do
         // núcleo, e é isso que esta lista pergunta.
-        | Primitive::Thread { .. } => r != 0.0 || c != 0.0,
+        | Primitive::Thread { .. }
+        // ⚠️ **As duas CURVAS entram aqui** (W136): a parede de uma faixa curva não é ortogonal às
+        // tampas em sítio nenhum — é o que esta lista pergunta.
+        | Primitive::Bezier { .. }
+        | Primitive::CircleWave { .. } => r != 0.0 || c != 0.0,
         // ⚠️ **Lista FECHADA**: uma primitiva nova é erro de compilação aqui, e quem a escrever tem
         // de dizer se as peças dela são ortogonais.
         Primitive::Sphere { .. }

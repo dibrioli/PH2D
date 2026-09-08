@@ -679,7 +679,9 @@ fn primitive_raw(p: &Primitive) -> Tree {
         | Primitive::Superquadric { .. }
         | Primitive::Superformula { .. }
         | Primitive::TorusKnot { .. }
-        | Primitive::Thread { .. } => crate::primitive_tree_formula::formula(p),
+        | Primitive::Thread { .. }
+        | Primitive::Bezier { .. }
+        | Primitive::CircleWave { .. } => crate::primitive_tree_formula::formula(p),
         // ⭐⭐ **As formas de VÉRTICES AUTORADOS (W131–W132) baixam no irmão** — ver
         // [`super::primitive_tree_vertices`].
         Primitive::Triangle { .. } | Primitive::Polygon { .. } => {

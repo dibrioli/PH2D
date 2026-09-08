@@ -75,6 +75,8 @@ impl Primitive {
             Primitive::Superformula { .. } => PrimitiveKind::Superformula,
             Primitive::TorusKnot { .. } => PrimitiveKind::TorusKnot,
             Primitive::Thread { .. } => PrimitiveKind::Thread,
+            Primitive::Bezier { .. } => PrimitiveKind::Bezier,
+            Primitive::CircleWave { .. } => PrimitiveKind::CircleWave,
             Primitive::Triangle { .. } => PrimitiveKind::Triangle,
             Primitive::Polygon { .. } => PrimitiveKind::Polygon,
         }

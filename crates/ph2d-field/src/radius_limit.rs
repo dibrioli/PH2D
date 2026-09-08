@@ -54,6 +54,18 @@ pub fn round_limit(p: &Primitive) -> Option<f32> {
             let r = crate::triangle_inradius(f(a), f(b), f(c)) as f32;
             Some(r.min(*half_height))
         }
+        // ⭐⭐ **AS DUAS CURVAS** (W136) — uma faixa de meia-largura `thickness` e meia-altura
+        // `half_height`: o filete come as duas, e a menor delas é onde a peça deixa de existir.
+        Primitive::Bezier {
+            thickness,
+            half_height,
+            ..
+        }
+        | Primitive::CircleWave {
+            thickness,
+            half_height,
+            ..
+        } => Some(thickness.min(*half_height)),
         // ⭐⭐ **A ROSCA** (W135) — o `min` da altura da crista e da terra entre voltas; a conta e as
         // duas arestas que ela protege vivem em [`crate::thread_round_limit`].
         Primitive::Thread {

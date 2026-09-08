@@ -37,6 +37,8 @@ pub mod ops_balloons;
 pub mod ops_bool;
 pub mod ops_box;
 /// ⭐ As EXACTAS do catálogo — ver [`ops_exact`].
+/// ⭐ A BEZIER quadrática — ver [`ops_curve`].
+pub mod ops_curve;
 pub mod ops_exact;
 /// ⭐ O FLUXOGRAMA — ver [`ops_flowchart`].
 pub mod ops_flowchart;

@@ -32,6 +32,8 @@ pub(super) fn set_chamfer(p: &mut Primitive, node: u32, value: f32) -> Result<()
     }
     match p {
         Primitive::Box { chamfer, .. }
+        | Primitive::Bezier { chamfer, .. }
+        | Primitive::CircleWave { chamfer, .. }
         | Primitive::Thread { chamfer, .. }
         | Primitive::Helix { chamfer, .. }
         | Primitive::Gyroid { chamfer, .. }
@@ -116,6 +118,8 @@ pub(super) fn set_round(p: &mut Primitive, node: u32, value: f32) -> Result<(), 
     // diagnosticar, porque não deixa rasto. Com a lista fechada, a próxima é erro de compilação.
     match p {
         Primitive::Box { round, .. }
+        | Primitive::Bezier { round, .. }
+        | Primitive::CircleWave { round, .. }
         | Primitive::Thread { round, .. }
         | Primitive::Helix { round, .. }
         | Primitive::Gyroid { round, .. }
@@ -193,6 +197,8 @@ pub fn clamp_round(p: &mut Primitive) -> bool {
     // seguinte.
     match p {
         Primitive::Box { round, chamfer, .. }
+        | Primitive::Bezier { round, chamfer, .. }
+        | Primitive::CircleWave { round, chamfer, .. }
         | Primitive::Thread { round, chamfer, .. }
         | Primitive::Helix { round, chamfer, .. }
         | Primitive::Gyroid { round, chamfer, .. }

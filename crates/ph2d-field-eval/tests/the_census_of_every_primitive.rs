@@ -523,6 +523,28 @@ fn representative(k: PrimitiveKind) -> Option<Primitive> {
         // ⚠️ **Uma rosca de VERDADE, e não o ponto neutro** — `starts = 1` com `hands = 1` é o
         // parafuso, que é onde esta forma é ela. ⚠️ E a profundidade sai do TECTO (a lição da
         // linha acima): ela depende do passo E do flanco.
+        // ⚠️ **Um ARCO de verdade, e não os três pontos em linha** — a recta é o ramo degenerado
+        // (que o campo resolve como segmento), e uma forma nova mede-se onde ela é ELA.
+        PrimitiveKind::Bezier => Primitive::Bezier {
+            a: [-0.40, -0.20],
+            b: [0.0, 0.50],
+            c: [0.40, -0.20],
+            thickness: 0.09,
+            half_height: 0.14,
+            round: 0.0,
+            chamfer: 0.0,
+        },
+        // ⚠️ **A espessura sai do TECTO, não de um literal** (a lição da W134): ele depende do raio
+        // E da amplitude, e um número escrito à mão deixa de ser válido no dia em que a cerca aperta.
+        PrimitiveKind::CircleWave => Primitive::CircleWave {
+            radius: 0.40,
+            amplitude: 0.11,
+            lobes: 7,
+            thickness: ph2d_field::wave_thickness_ceiling(0.40, 0.11) * 0.30,
+            half_height: 0.12,
+            round: 0.0,
+            chamfer: 0.0,
+        },
         PrimitiveKind::Thread => Primitive::Thread {
             radius: 0.5,
             half_height: 0.45,

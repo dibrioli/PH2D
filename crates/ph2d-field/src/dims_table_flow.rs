@@ -15,7 +15,7 @@ use super::{Dim, Span};
 use crate::{Primitive, round_limit};
 
 /// O chanfro de uma chapa — a mesma parede do filete, ver [`super::dims_table::dims`].
-fn chamfer_dim(p: &Primitive, value: f32) -> Dim {
+pub(super) fn chamfer_dim(p: &Primitive, value: f32) -> Dim {
     Dim {
         key: "field.dim.chamfer",
         value,
@@ -24,7 +24,7 @@ fn chamfer_dim(p: &Primitive, value: f32) -> Dim {
 }
 
 /// O filete de uma chapa.
-fn round_dim(p: &Primitive, value: f32) -> Dim {
+pub(super) fn round_dim(p: &Primitive, value: f32) -> Dim {
     Dim {
         key: "field.dim.round",
         value,

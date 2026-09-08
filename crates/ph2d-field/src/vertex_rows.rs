@@ -52,6 +52,15 @@ pub fn vertex_rows(p: &Primitive) -> Option<VertexRows> {
             first_row: 0,
             points: vec![*a, *b, *c],
         }),
+        // ─────────────────────────── W136 ───────────────────────────
+        // ⭐⭐ **A BEZIER responde IGUAL ao triângulo, e ganha as alças do canvas de graça** — os
+        // três pontos dela são os do controlo, e o do meio **não está na curva**. ⚠️ Isso é uma
+        // propriedade da forma, não um defeito da alça: arrastar o `b` puxa a curva sem lhe tocar,
+        // que é como toda caneta do mundo se comporta.
+        Primitive::Bezier { a, b, c, .. } => Some(VertexRows {
+            first_row: 0,
+            points: vec![*a, *b, *c],
+        }),
         // ─────────────────────────── W132 ───────────────────────────
         // ⚠️ **A contagem é a linha `0`**, e por isso o primeiro `x` está na `1` — ver
         // [`crate::dims_table_polygon::ROWS_BEFORE_VERTICES`], que é de onde este número sai.
@@ -118,6 +127,7 @@ pub fn vertex_rows(p: &Primitive) -> Option<VertexRows> {
         | Primitive::Superquadric { .. }
         | Primitive::Superformula { .. }
         | Primitive::TorusKnot { .. }
-        | Primitive::Thread { .. } => None,
+        | Primitive::Thread { .. }
+        | Primitive::CircleWave { .. } => None,
     }
 }

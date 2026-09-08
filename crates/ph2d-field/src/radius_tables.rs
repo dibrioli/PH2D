@@ -289,6 +289,19 @@ pub fn characteristic_size(p: &Primitive) -> f32 {
         // ⚠️ **A PROFUNDIDADE do filete** — é a menor medida que define a rosca, e é dela que um
         // filete de junção tem de saber.
         Primitive::Thread { depth, .. } => *depth,
+        // ─────────────────────────── W136 ───────────────────────────
+        // ⚠️ **A ESPESSURA, e não o alcance da curva** — é a menor medida que define as duas, e é
+        // dela que um filete de junção tem de saber.
+        Primitive::Bezier {
+            thickness,
+            half_height,
+            ..
+        }
+        | Primitive::CircleWave {
+            thickness,
+            half_height,
+            ..
+        } => thickness.min(*half_height),
         Primitive::Superquadric { half, .. } | Primitive::Superformula { half, .. } => {
             half[0].min(half[1]).min(half[2])
         }

@@ -89,6 +89,8 @@ pub fn shape_name(shape: &NodeShape) -> &'static str {
             Primitive::Triangle { .. } => "Triangle",
             Primitive::TorusKnot { .. } => "Torus Knot",
             Primitive::Thread { .. } => "Thread",
+            Primitive::Bezier { .. } => "Bezier",
+            Primitive::CircleWave { .. } => "Circle Wave",
         },
     }
 }

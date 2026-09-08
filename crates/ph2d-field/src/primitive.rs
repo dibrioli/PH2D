@@ -92,17 +92,8 @@ pub enum Primitive {
     Capsule { radius: f32, half_height: f32 },
     /// ⭐⭐ **Prisma regular de `sides` lados no eixo Z, possivelmente ESTREITADO** — `bottom` é o
     /// **circunraio** em `−half_height` e `top` o de `+half_height`, com o aro arredondado em
-    /// `round`.
-    ///
-    /// ⚠️ **Circunraio e não apótema**, e a escolha tem consequência visível: com o circunraio, um
-    /// prisma de `n` lados **inscreve-se** no cilindro do mesmo raio, então subir os lados converge
-    /// para ele por dentro. Com o apótema convergiria por fora, e trocar um cilindro por um prisma
-    /// faria a peça **crescer**.
-    ///
-    /// ⭐⭐⭐ **É o irmão POLIGONAL do [`Primitive::Cone`], e a simetria é a feature** (W102): com
-    /// `top == bottom` é o prisma de sempre, com `top == 0` é uma **pirâmide**, e no meio é um
-    /// **tronco de pirâmide**. Uma primitiva à parte para a pirâmide daria uma segunda fórmula para
-    /// a mesma superfície — e a segunda é a que envelhece.
+    /// `round`. ⚠️ **Porquê o CIRCUNRAIO, e por que a pirâmide não é uma primitiva à parte:** as
+    /// duas razões vivem ao lado do mecanismo, em `ph2d_field_eval::ops::sd_prism`.
     Prism {
         sides: u32,
         bottom: f32,
@@ -144,17 +135,8 @@ pub enum Primitive {
         chamfer: f32,
     },
     /// ⭐⭐⭐ **Estrela de `points` pontas puxada em Z** (W103) — `outer` é o raio das PONTAS e
-    /// `inner` o dos VALES.
-    ///
-    /// ⚠️ **É a única da fila que a composição não exprime, e o motivo é a PARIDADE.** Uma estrela
-    /// de 6 pontas é a união de dois triângulos, e uma de 4 é a de dois losangos — mas uma de **5**
-    /// não é a união de polígono nenhum, porque nenhum divisor de 5 dá um polígono regular
-    /// rodado. *Uma equivalência que só vale para metade dos valores de um controlo não é uma
-    /// equivalência: é uma armadilha à espera do número ímpar.*
-    ///
-    /// ⭐ **O interior é uma UNIÃO de peças convexas** (o polígono dos vales + uma língua por
-    /// ponta), e não uma interseção: uma estrela é **não-convexa** por definição, e a lei das
-    /// meias-fatias da W101 só constrói convexos. Ver `ops::sd_star`.
+    /// `inner` o dos VALES. ⚠️ **Por que a composição não a exprime (a PARIDADE) e por que o
+    /// interior é uma UNIÃO:** ao lado do mecanismo, em `ph2d_field_eval::ops::sd_star`.
     Star {
         points: u32,
         outer: f32,
@@ -177,18 +159,10 @@ pub enum Primitive {
         round: f32,
         chamfer: f32,
     },
-    /// ⭐⭐⭐ **Elipsóide de semi-eixos `radii`** (W103).
-    ///
-    /// ⚠️ **A nota que dizia «não há como achatar, a escala do módulo é uniforme de propósito»
-    /// respondia a OUTRA pergunta.** Ela é sobre o [`Xform::scale`], e ali continua certa: uma pose
-    /// com escala por eixo estragaria `‖∇f‖ = 1` em toda a árvore abaixo dela. Uma **primitiva** com
-    /// três raios não toca nisso — ela é uma folha, e a folha responde por si.
-    ///
-    /// ⚠️ **Não substitui a [`Primitive::Sphere`], e a diferença é a QUALIDADE DO CAMPO**, não o
-    /// número de controlos: a esfera é distância **exata**, e este é um subestimador (a distância
-    /// exacta a um elipsóide resolve uma quártica — é por isso que a referência publica
-    /// aproximações). Duas linhas do catálogo para a mesma forma justificam-se quando uma delas é
-    /// exacta; a do cone e do tronco justificavam-se por defaults.
+    /// ⭐⭐⭐ **Elipsóide de semi-eixos `radii`** (W103). ⚠️ **Por que ele não é o
+    /// [`Xform::scale`], e por que NÃO substitui a [`Primitive::Sphere`]** (a esfera é distância
+    /// exacta, este é um subestimador): ao lado do mecanismo, em
+    /// `ph2d_field_eval::ops::sd_ellipsoid`.
     Ellipsoid { radii: [f32; 3] },
 
     // ─────────────────────────────────────────────────────────────────────────────────────────
@@ -683,6 +657,29 @@ pub enum Primitive {
         flank: f32,
         starts: u32,
         hands: u32,
+        round: f32,
+        chamfer: f32,
+    },
+    // ─────────────────────────── W136 ───────────────────────────
+    /// ⭐⭐⭐ **BEZIER QUADRÁTICA** — o traço curvo `a b c` com meia-espessura `thickness`, puxado em
+    /// Z. ⭐ **A PARÁBOLA é ELA**, com os três pontos no sítio certo — ver [`crate::curve`].
+    Bezier {
+        a: [f32; 2],
+        b: [f32; 2],
+        c: [f32; 2],
+        thickness: f32,
+        half_height: f32,
+        round: f32,
+        chamfer: f32,
+    },
+    /// ⭐⭐ **ONDA EM ANEL** — o anel de raio `radius` que ondula `amplitude` em `lobes` lóbulos.
+    /// ⚠️ `lobes` é `u32` porque só um inteiro fecha a volta sem costura ([`crate::curve`]).
+    CircleWave {
+        radius: f32,
+        amplitude: f32,
+        lobes: u32,
+        thickness: f32,
+        half_height: f32,
         round: f32,
         chamfer: f32,
     },

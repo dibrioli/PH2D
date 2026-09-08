@@ -301,6 +301,11 @@ pub(super) fn dims_plate(p: &Primitive) -> Vec<Dim> {
         | Primitive::Gyroid { .. }
         | Primitive::TorusKnot { .. }
         | Primitive::Thread { .. }) => super::dims_table_flow::dims_lattice(p),
+        // ⭐ **E as duas CURVAS COM ESPESSURA baixam no irmão** (W136) — ver
+        // [`super::dims_table_curve`], que nasceu porque o `dims_table_flow` estava no tecto de LOC.
+        p @ (Primitive::Bezier { .. } | Primitive::CircleWave { .. }) => {
+            super::dims_table_curve::dims_stroke(p)
+        }
         // ⭐ **E a EXACTA do catálogo** (W125).
         p @ (Primitive::RoundedCylinder { .. }
         | Primitive::Superquadric { .. }

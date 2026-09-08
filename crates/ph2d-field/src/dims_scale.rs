@@ -484,6 +484,39 @@ pub fn scale_primitive(p: &mut Primitive, factor: f32) -> bool {
                 *v *= factor;
             }
         }
+        // ─────────────────────────── W136 ───────────────────────────
+        // ⚠️ **Os PONTOS escalam como comprimentos** — eles são posições no plano da chapa, e
+        // ampliar a peça tem de os afastar junto com tudo o mais.
+        Primitive::Bezier {
+            a,
+            b,
+            c,
+            thickness,
+            half_height,
+            round,
+            chamfer,
+        } => {
+            for v in a.iter_mut().chain(b.iter_mut()).chain(c.iter_mut()) {
+                *v *= factor;
+            }
+            for v in [thickness, half_height, round, chamfer] {
+                *v *= factor;
+            }
+        }
+        // ⚠️ **A CONTAGEM de lóbulos não escala** — a mesma lei do `turns` da mola.
+        Primitive::CircleWave {
+            radius,
+            amplitude,
+            lobes: _,
+            thickness,
+            half_height,
+            round,
+            chamfer,
+        } => {
+            for v in [radius, amplitude, thickness, half_height, round, chamfer] {
+                *v *= factor;
+            }
+        }
         p @ (Primitive::Arrow { .. }
         | Primitive::Chevron { .. }
         | Primitive::BentArrow { .. }

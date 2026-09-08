@@ -417,3 +417,67 @@ pub(crate) fn a_knurl(r: f32) -> Primitive {
         chamfer: 0.0,
     }
 }
+
+/// ⭐⭐⭐ **A BEZIER QUADRÁTICA** (W136) — um arco com espessura, com os três pontos de controlo
+/// arrastáveis no canvas (a alça que a W133 construiu para o polígono).
+///
+/// ⚠️ **O ponto do meio NÃO está na curva**, e isso é a forma, não um defeito da alça: ele é o
+/// encontro das duas tangentes, e puxá-lo curva o traço sem lhe tocar — que é como toda caneta do
+/// mundo se comporta.
+pub(crate) fn a_bezier(r: f32) -> Primitive {
+    let (thickness, half_height) = (r * 0.07, r * 0.12);
+    Primitive::Bezier {
+        a: [-r * 0.50, -r * 0.25],
+        b: [0.0, r * 0.60],
+        c: [r * 0.50, -r * 0.25],
+        thickness,
+        half_height,
+        round: thickness.min(half_height) * 0.5,
+        chamfer: 0.0,
+    }
+}
+
+/// ⭐⭐⭐ **A PARÁBOLA — e ela É a Bezier**, com os três pontos no sítio que a torna `y = k·x²`.
+///
+/// ⭐ **MEDIDO** (`probe_parabola_is_a_bezier`, 07/09): o desvio da curva à parábola é `5,5e-17` —
+/// exacto ao bit. Em `[−w, w]` os extremos são `(±w, k w²)` e as tangentes ali têm declive `∓2kw`;
+/// elas encontram-se em `(0, −k w²)`, que é o ponto de controlo. ⇒ **duas portas da paleta, uma
+/// primitiva** — a mesma lei do tubo/anilha e do parafuso/serrilhado.
+///
+/// ⛔ **Uma `Primitive::Parabola` à parte seria uma SEGUNDA fórmula para a mesma superfície**, e a
+/// segunda é a que envelhece (a lei que o cone e o tronco já escreviam nesta casa).
+pub(crate) fn a_parabola(r: f32) -> Primitive {
+    let (w, k) = (r * 0.50, 1.6 / r.max(f32::EPSILON));
+    let (thickness, half_height) = (r * 0.06, r * 0.12);
+    Primitive::Bezier {
+        a: [-w, k * w * w],
+        b: [0.0, -k * w * w],
+        c: [w, k * w * w],
+        thickness,
+        half_height,
+        round: thickness.min(half_height) * 0.5,
+        chamfer: 0.0,
+    }
+}
+
+/// ⭐⭐ **A ONDA EM ANEL** (W136) — o anel cuja distância ao eixo ondula em `lobes` lóbulos.
+///
+/// ⚠️ **A amplitude nasce longe de zero de propósito:** em `amplitude → 0` ela é um anel, e o anel
+/// já é o [`Primitive::Tube`] — *uma forma nova nasce no sítio em que ela é ELA*, que é a lei que a
+/// superfórmula da W128 pagou por nascer esfera.
+pub(crate) fn a_circle_wave(r: f32) -> Primitive {
+    let (radius, amplitude) = (r * 0.50, r * 0.13);
+    let (thickness, half_height) = (
+        ph2d_field::wave_thickness_ceiling(radius, amplitude) * 0.18,
+        r * 0.10,
+    );
+    Primitive::CircleWave {
+        radius,
+        amplitude,
+        lobes: 8,
+        thickness,
+        half_height,
+        round: thickness.min(half_height) * 0.5,
+        chamfer: 0.0,
+    }
+}

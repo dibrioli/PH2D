@@ -379,6 +379,54 @@ pub(super) fn validate_exact(p: &Primitive, idx: u32) -> Result<(), FieldError> 
             }
             Ok(())
         }
+        // ─────────────────────────── W136 ───────────────────────────
+        // ⚠️ **Os TRÊS PONTOS não têm cerca**, e a ausência é a decisão: eles são posições no plano
+        // e qualquer arranjo é uma curva legítima — inclusive os três colineares, que o campo
+        // resolve como segmento ([`ph2d_field_eval::ops_curve`]).
+        Primitive::Bezier {
+            thickness,
+            half_height,
+            ..
+        } => {
+            positive(thickness, "thickness")?;
+            positive(half_height, "half_height")?;
+            Ok(())
+        }
+        Primitive::CircleWave {
+            radius,
+            amplitude,
+            lobes,
+            thickness,
+            half_height,
+            ..
+        } => {
+            positive(radius, "radius")?;
+            positive(amplitude, "amplitude")?;
+            positive(thickness, "thickness")?;
+            positive(half_height, "half_height")?;
+            if !(crate::MIN_WAVE_LOBES..=crate::MAX_WAVE_LOBES).contains(&lobes) {
+                return Err(FieldError::NonPositive {
+                    node: idx,
+                    what: "lobes",
+                });
+            }
+            // ⚠️ **O vale da onda não chega ao eixo** — com `amplitude >= radius` o `ρ_min` do
+            // divisor vai a zero, e o campo perde o chão.
+            if amplitude >= radius {
+                return Err(FieldError::NonPositive {
+                    node: idx,
+                    what: "amplitude",
+                });
+            }
+            // ⚠️ **A espessura abaixo do tecto** — a mesma função que o painel usa para a faixa.
+            if thickness > crate::wave_thickness_ceiling(radius, amplitude) {
+                return Err(FieldError::NonPositive {
+                    node: idx,
+                    what: "thickness",
+                });
+            }
+            Ok(())
+        }
         // ─────────────────────────── W135 ───────────────────────────
         Primitive::Thread {
             radius,

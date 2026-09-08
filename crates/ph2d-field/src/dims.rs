@@ -274,6 +274,9 @@ pub use dims_write_edge::clamp_round;
 /// ⭐ A tabela por-forma — ver [`dims_table`].
 #[path = "dims_table.rs"]
 mod dims_table;
+/// ⭐ E a das duas CURVAS COM ESPESSURA (W136) — ver [`dims_table_curve`].
+#[path = "dims_table_curve.rs"]
+mod dims_table_curve;
 /// ⭐ E a do FLUXOGRAMA — ver [`dims_table_flow`].
 #[path = "dims_table_flow.rs"]
 mod dims_table_flow;

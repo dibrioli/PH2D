@@ -3717,8 +3717,7 @@ impl crate::App {
                                 // é ela que impede a fileira e o vocabulário de divergirem. ⚠️ Um
                                 // `match` de três braços escritos à mão aqui seria a quinta lista
                                 // escrita à mão desta seção.
-                                pending_ik_bend =
-                                    ph2d_skeleton::BendSide::ALL.get(i).copied();
+                                pending_ik_bend = ph2d_skeleton::BendSide::ALL.get(i).copied();
                             } else if *id == ph2d_editor::ids::VECTOR_BONE_EXPAND {
                                 // Solta e fica com a pose de AGORA (o Expand do envelope).
                                 pending_bone_release = Some(crate::skeleton_live::Keep::Deformed);
@@ -6329,8 +6328,9 @@ impl crate::App {
                     crate::bone_limit::remove_limit(sim, osso);
                 }
                 if let Some((e_max, graus)) = pending_limit_knob
-                    && let Some(mut l) =
-                        sim.world_mut().get_mut::<ph2d_skeleton_ecs::BoneLimit>(osso)
+                    && let Some(mut l) = sim
+                        .world_mut()
+                        .get_mut::<ph2d_skeleton_ecs::BoneLimit>(osso)
                 {
                     // ⚠️ **A conversão GRAUS→RADIANOS vive aqui**, na porta entre o campo (que fala
                     // a unidade do artista) e o componente (que fala a do `Transform::rotation`).
@@ -11099,6 +11099,27 @@ impl crate::App {
                             self.bone_hover,
                             Some(h) if h.part == ph2d_skeleton_render::BonePart::Influence
                         ),
+                        cam_affine,
+                        hero.theme,
+                        vector_scene,
+                    );
+                    // ⭐⭐⭐ **O ARCO DE LIMITE do osso em foco** — o setor por onde a ponta dele
+                    // pode passar, mais as duas paredes agarráveis.
+                    //
+                    // ⚠️ **Depois da influência e ANTES dos ossos**: os dois são fundo, e o arco
+                    // vive por cima da mancha (é por isso que o véu dele é mais fraco). O rig
+                    // desenha-se por cima dos dois.
+                    //
+                    // ⚠️ **A mesma pergunta que o dedo faz** — `bone_gesture::hover` só oferece as
+                    // paredes do osso em FOCO, e é esta linha que decide de quem elas são.
+                    ph2d_skeleton_render::draw_limit(
+                        hero.gizmo
+                            .selection
+                            .and_then(|b| {
+                                crate::bone_limit::arc(sim, ph2d_ecs::Entity::from_bits(b))
+                            })
+                            .as_ref(),
+                        self.bone_hover.map(|h| h.part),
                         cam_affine,
                         hero.theme,
                         vector_scene,

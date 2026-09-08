@@ -92,6 +92,8 @@ mod body_pose;
 mod bone_gesture;
 /// ⭐ **O LIMITE DE UMA JUNTA** — irmão do `bone_gesture` pelo teto de LOC, cortado por assunto.
 mod bone_limit;
+/// ⭐ **O que a MÃO faz a um osso** — irmão do `bone_gesture`, cortado por responsabilidade.
+mod bone_pose;
 /// ⭐⭐⭐ **A sonda do UNDO da âncora** (`PH2D_BONE_UNDO_PROBE=1`) — o gesto REAL sobre o *Add IK*, e
 /// o que ele deixa na fila de desfazer.
 mod bone_undo_probe;

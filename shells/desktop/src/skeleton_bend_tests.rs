@@ -131,11 +131,11 @@ fn the_smoke_scene_gives_the_anchor_a_side_to_defend() {
     ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
     // A cena dobra o ÚLTIMO osso — é ele que está dentro da corrente de `DEFAULT_CHAIN`.
     let mut ponta = raiz;
-    while let Some(f) = sim
-        .world()
-        .get::<ph2d_ecs::Children>(ponta)
-        .and_then(|c| c.iter().find(|c| sim.world().get::<Bone>(**c).is_some()).copied())
-    {
+    while let Some(f) = sim.world().get::<ph2d_ecs::Children>(ponta).and_then(|c| {
+        c.iter()
+            .find(|c| sim.world().get::<Bone>(**c).is_some())
+            .copied()
+    }) {
         ponta = f;
     }
     if let Some(mut t) = sim.world_mut().get_mut::<Transform>(ponta) {

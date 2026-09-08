@@ -71,7 +71,12 @@ const _: () = {
 };
 
 /// Uma cadeia de `n` ossos de `a` a `b` (mundo), o 1.º sem pai. Devolve a RAIZ.
-pub(crate) fn cadeia(sim: &mut ph2d_ecs::SimWorld, a: [f64; 2], b: [f64; 2], n: usize) -> Option<Entity> {
+pub(crate) fn cadeia(
+    sim: &mut ph2d_ecs::SimWorld,
+    a: [f64; 2],
+    b: [f64; 2],
+    n: usize,
+) -> Option<Entity> {
     #[expect(
         clippy::cast_precision_loss,
         reason = "n é a contagem de ossos da cena, sempre um punhado"
@@ -248,7 +253,7 @@ impl crate::App {
         // estava: o losango é a única coisa nova na tela, e o artista descobre o que ele faz
         // arrastando-o. ⛔ Uma cena que abrisse já dobrada não distinguiria *«a âncora funciona»* de
         // *«a cena montou torta»*.
-    //
+        //
         // ⭐⭐⭐ **E O COTOVELO NASCE DOBRADO, porque uma corrente RECTA NÃO TEM LADO.**
         //
         // ⚠️⚠️ **Sem isto a cena ensinaria o CONTRÁRIO do que o app faz** (`CLAUDE.md` §5.0): o

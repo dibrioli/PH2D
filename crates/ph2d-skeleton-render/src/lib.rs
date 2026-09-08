@@ -20,7 +20,11 @@
 //! vectorial. O que se vê é isto, e só enquanto a ferramenta está na mão.
 
 mod goal;
+
+/// ⭐ O ARCO DE LIMITE — irmão do `goal` pelo teto de LOC, cortado por assunto.
+mod limit;
 pub use goal::{Goal, draw_goals, goal_radius_px};
+pub use limit::{LIMIT_HANDLE_R_PX, LimitArc, draw_limit};
 
 use ph2d_tokens::{ColorToken, Theme};
 use ph2d_vector::{
@@ -109,6 +113,11 @@ pub enum BonePart {
     /// ⭐ A bolinha na PONTA de um osso que fecha a corrente (o *end effector*). Arrastá-la faz
     /// **cinemática inversa**: a corrente inteira dobra para a ponta chegar onde a mão foi.
     Tip,
+    /// ⭐⭐⭐ A alça do extremo **horário** do arco de limite. Arrastá-la aperta ou abre a parede
+    /// desse lado.
+    LimitMin,
+    /// ... o extremo **anti-horário**. Ver [`BonePart::LimitMin`].
+    LimitMax,
 }
 
 /// **O que está sob o ponteiro**, para o realce dizer qual VERBO o clique vai executar.

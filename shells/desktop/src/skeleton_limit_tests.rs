@@ -11,7 +11,9 @@ use ph2d_skeleton_ecs::BoneLimit;
 
 /// Põe um limite em `bone` e devolve a faixa em radianos.
 fn limita(sim: &mut SimWorld, bone: Entity, min: f64, max: f64) {
-    sim.world_mut().entity_mut(bone).insert(BoneLimit { min, max });
+    sim.world_mut()
+        .entity_mut(bone)
+        .insert(BoneLimit { min, max });
 }
 
 fn rot(sim: &SimWorld, e: Entity) -> f64 {
@@ -28,7 +30,7 @@ fn the_limit_clamps_what_the_finger_asks_for_not_only_the_solver() {
     let (mut sim, [ombro, _]) = braco();
     limita(&mut sim, ombro, -0.2, 0.2);
     // Aponta o ombro para muito acima do que o limite permite.
-    assert!(crate::bone_gesture::pose(
+    assert!(crate::bone_pose::pose(
         &mut sim,
         ombro,
         [0.0, 10.0],
@@ -48,14 +50,19 @@ fn a_bone_without_a_limit_moves_exactly_as_before() {
     let alvo = [3.0, 7.0];
     let (mut sim_a, [a, _]) = braco();
     let (mut sim_b, [b, _]) = braco();
-    limita(&mut sim_b, b, -ph2d_skeleton::FULL_TURN / 2.0, ph2d_skeleton::FULL_TURN / 2.0);
-    assert!(crate::bone_gesture::pose(
+    limita(
+        &mut sim_b,
+        b,
+        -ph2d_skeleton::FULL_TURN / 2.0,
+        ph2d_skeleton::FULL_TURN / 2.0,
+    );
+    assert!(crate::bone_pose::pose(
         &mut sim_a,
         a,
         alvo,
         ph2d_skeleton_render::BonePart::Body,
     ));
-    assert!(crate::bone_gesture::pose(
+    assert!(crate::bone_pose::pose(
         &mut sim_b,
         b,
         alvo,
@@ -147,20 +154,15 @@ fn the_smoke_scene_has_one_limited_bone_and_a_free_neighbour() {
     // A cena põe o limite no `TENTACLE_LIMITED_BONE`-ésimo osso e deixa os outros livres. Uma
     // corrente de dois ossos reproduz a estrutura: o limitado e o vizinho.
     let (mut sim, [livre, preso]) = braco();
-    limita(
-        &mut sim,
-        preso,
-        -TENTACLE_LIMIT_HALF,
-        TENTACLE_LIMIT_HALF,
-    );
+    limita(&mut sim, preso, -TENTACLE_LIMIT_HALF, TENTACLE_LIMIT_HALF);
     let longe = [0.0, 20.0];
-    assert!(crate::bone_gesture::pose(
+    assert!(crate::bone_pose::pose(
         &mut sim,
         preso,
         longe,
         ph2d_skeleton_render::BonePart::Body,
     ));
-    assert!(crate::bone_gesture::pose(
+    assert!(crate::bone_pose::pose(
         &mut sim,
         livre,
         longe,
@@ -175,5 +177,195 @@ fn the_smoke_scene_has_one_limited_bone_and_a_free_neighbour() {
         rot(&sim, livre).abs() > TENTACLE_LIMIT_HALF + 1e-6,
         "o vizinho devia girar LIVRE, e parou em {} — sem contraste o smoke não ensina nada",
         rot(&sim, livre)
+    );
+}
+
+/// Onde o dedo tem de tocar para pegar uma parede, e o que ele apanha lá.
+fn agarra(
+    sim: &SimWorld,
+    p: [f64; 2],
+    foco: Option<Entity>,
+) -> Option<ph2d_skeleton_render::BoneHover> {
+    // ⚠️ **`px_to_world` REALISTA, e não `1,0`**: com um pixel por unidade, um osso de 10 unidades
+    // mede 10 px e a tolerância do dedo (12 px) engole o esqueleto inteiro — todo alvo colidiria
+    // com todo alvo, e o gate mediria a tolerância em vez do desenho. `0,1` põe o mesmo osso a
+    // 100 px, que é a ordem em que ele de facto aparece na cena de smoke (medido: 107,52 px).
+    agarra_a(sim, p, foco, PX_PERTO)
+}
+
+/// O mesmo, com o zoom escolhido — ver [`PX_LONGE`].
+fn agarra_a(
+    sim: &SimWorld,
+    p: [f64; 2],
+    foco: Option<Entity>,
+    px_to_world: f64,
+) -> Option<ph2d_skeleton_render::BoneHover> {
+    crate::bone_gesture::hover(sim, p, px_to_world, foco.map(Entity::to_bits))
+}
+
+/// O zoom de trabalho: um osso de 10 unidades a ~100 px, que é a ordem em que ele de facto aparece
+/// na cena de smoke (medido 2026-09-06: `107,52` px).
+const PX_PERTO: f64 = 0.1;
+
+/// ⭐ **O zoom AFASTADO** — o mesmo osso a ~20 px, que é o rig inteiro visível de uma vez.
+///
+/// ⚠️ **É só aqui que as alças se sobrepõem, e o número diz porquê:** a tolerância do dedo são
+/// `12 px`, logo em MUNDO ela vale `12 × px_to_world`. A `0,1` isso são `1,2` unidades e as alças
+/// da fixtura distam `5,0` — não colidem. A `0,5` a tolerância passa a `6,0` e elas colidem. *O
+/// defeito da ordem era real e só aparecia quando o artista afastava a câmera*, que é exactamente
+/// quando ele está a olhar o rig inteiro.
+const PX_LONGE: f64 = 0.5;
+
+/// ⭐⭐⭐ **AS DUAS PAREDES SÃO AGARRÁVEIS** — o report do dono (2026-09-07): *«os limites devem ser
+/// visíveis e manipuláveis no canvas através de gizmos»*.
+///
+/// ⚠️ Um limite que só existe como dois números num painel é um limite **invisível**: o artista não
+/// vê onde a parede está nem a pode empurrar, e tem de traduzir graus de cabeça.
+#[test]
+fn both_walls_of_the_limit_can_be_grabbed_on_the_canvas() {
+    let (mut sim, [ombro, _]) = braco();
+    limita(&mut sim, ombro, -0.4, 0.6);
+    let arc = crate::bone_limit::arc(&sim, ombro).expect("o arco existe");
+    for (p, esperado) in [
+        (arc.edge_min, ph2d_skeleton_render::BonePart::LimitMin),
+        (arc.edge_max, ph2d_skeleton_render::BonePart::LimitMax),
+    ] {
+        let h = agarra(&sim, p, Some(ombro)).expect("o dedo apanha alguma coisa");
+        assert_eq!(
+            h.part, esperado,
+            "em {p:?} o dedo apanhou {:?} em vez da parede",
+            h.part
+        );
+        assert_eq!(h.bone, ombro.to_bits());
+    }
+}
+
+/// ⛔ **NADA AGARRÁVEL ONDE NADA É DESENHADO** — as duas metades.
+///
+/// O arco só é pintado para o osso em FOCO e só existe com limite. Uma alça que respondesse fora
+/// disso faria o artista pegar no vazio e o app fazer uma coisa que ele não pediu — é a mesma lei
+/// que a alça da força já segue.
+#[test]
+fn no_wall_is_grabbable_where_none_is_drawn() {
+    let (mut sim, [ombro, _]) = braco();
+    limita(&mut sim, ombro, -0.4, 0.6);
+    let arc = crate::bone_limit::arc(&sim, ombro).expect("o arco existe");
+    // (a) sem FOCO nenhum, a parede não é do dedo.
+    let h = agarra(&sim, arc.edge_min, None);
+    assert!(
+        h.is_none_or(|h| h.part != ph2d_skeleton_render::BonePart::LimitMin),
+        "a parede foi apanhada sem o osso estar em foco"
+    );
+    // (b) sem LIMITE não há arco nenhum.
+    let (sim2, [outro, _]) = braco();
+    assert!(
+        crate::bone_limit::arc(&sim2, outro).is_none(),
+        "um osso sem limite devolveu um arco"
+    );
+}
+
+/// ⭐⭐ **ARRASTAR UMA PAREDE ESCREVE-A**, e ela segue o dedo.
+#[test]
+fn dragging_a_wall_writes_the_limit() {
+    let (mut sim, [ombro, _]) = braco();
+    limita(&mut sim, ombro, -0.4, 0.6);
+    // Arrasta a parede `max` para cima, para um ângulo bem maior.
+    assert!(crate::bone_pose::pose(
+        &mut sim,
+        ombro,
+        [0.0, 10.0],
+        ph2d_skeleton_render::BonePart::LimitMax,
+    ));
+    let l = *sim
+        .world()
+        .get::<BoneLimit>(ombro)
+        .expect("o limite continua lá");
+    assert!(
+        (l.max - std::f64::consts::FRAC_PI_2).abs() < 1e-6,
+        "a parede devia ter ido para ~90 graus, foi para {}",
+        l.max
+    );
+    assert!(
+        (l.min - -0.4).abs() < 1e-12,
+        "a OUTRA parede mexeu-se: {}",
+        l.min
+    );
+}
+
+/// ⛔⛔ **UMA PAREDE NUNCA ATRAVESSA A OUTRA.**
+///
+/// ⚠️ Sem esta cerca um puxão a mais inverteria a faixa, e a lei responde a uma faixa invertida
+/// travando a junta **no centro**: o artista veria o osso saltar para o meio e deixar de rodar, sem
+/// nada que explicasse porquê. Ela pára **colada** à outra — apertar até não sobrar nada é uma coisa
+/// que ele pode querer; inverter não é.
+#[test]
+fn a_wall_never_crosses_the_other_one() {
+    let (mut sim, [ombro, _]) = braco();
+    limita(&mut sim, ombro, -0.2, 0.2);
+    // Puxa o `max` para MUITO abaixo do `min`.
+    assert!(crate::bone_pose::pose(
+        &mut sim,
+        ombro,
+        [0.0, -10.0],
+        ph2d_skeleton_render::BonePart::LimitMax,
+    ));
+    let l = *sim.world().get::<BoneLimit>(ombro).expect("existe");
+    assert!(
+        l.max >= l.min - 1e-12,
+        "a faixa INVERTEU: min={} max={}",
+        l.min,
+        l.max
+    );
+}
+
+/// ⭐ **O ARCO É O CAMINHO DA PONTA** — o raio é o comprimento do osso, e é isso que faz *«arrastar
+/// a parede»* e *«levar a ponta até aqui»* serem o mesmo gesto.
+#[test]
+fn the_arc_radius_is_the_bone_length_so_the_walls_sit_where_the_tip_would() {
+    let (mut sim, [ombro, _]) = braco();
+    limita(&mut sim, ombro, -0.4, 0.6);
+    let arc = crate::bone_limit::arc(&sim, ombro).expect("o arco existe");
+    let comp = sim.world().get::<Bone>(ombro).expect("é osso").length;
+    for e in [arc.edge_min, arc.edge_max] {
+        let r = (e[0] - arc.apex[0]).hypot(e[1] - arc.apex[1]);
+        assert!(
+            (r - comp).abs() < 1e-9,
+            "a parede está a {r} do vértice e o osso mede {comp}"
+        );
+    }
+}
+
+/// ⭐⭐⭐ **QUANDO DUAS ALÇAS SE SOBREPÕEM, GANHA A MAIS PERTO DO DEDO** — e não a primeira da lista.
+///
+/// ⛔⛔ **É um defeito que a 1.ª redacção tinha e este gate apanhou.** As três alças do osso em foco
+/// (a força e as duas paredes) eram testadas por ORDEM, e com `strength ≈ 1` e uma parede perto de
+/// 90° elas caem a menos de um dedo uma da outra: a parede ficava **inalcançável**, e o artista via
+/// o triângulo e agarrava o quadrado. ⚠️ Reordenar não cura — só troca quem fica inalcançável.
+///
+/// ⭐ A proximidade é a única regra que não escolhe uma vítima, e este gate mede-a **dos dois
+/// lados**: sobre cada alça, apanha-se aquela alça.
+#[test]
+fn when_two_handles_overlap_the_nearer_one_wins() {
+    let (mut sim, [ombro, _]) = braco();
+    // Uma parede perto de 90°, que é onde a alça da força vive com `strength = 1`.
+    limita(&mut sim, ombro, -0.2, std::f64::consts::FRAC_PI_2);
+    let arc = crate::bone_limit::arc(&sim, ombro).expect("o arco existe");
+    let (r, a, b) = crate::skeleton_live::influence_region(&sim, ombro.to_bits())
+        .expect("o osso tem região de influência");
+    let forca = ph2d_skeleton_render::influence_handle(a, b, r).expect("a alça da força existe");
+    let d = (forca[0] - arc.edge_max[0]).hypot(forca[1] - arc.edge_max[1]);
+    assert!(
+        d <= crate::bone_gesture::BONE_HIT_PX * PX_LONGE,
+        "a fixtura tem de PRODUZIR a sobreposição, senão este gate é vácuo: as duas alças distam {d}"
+    );
+    // Sobre a PAREDE, apanha-se a parede.
+    assert_eq!(
+        agarra_a(&sim, arc.edge_max, Some(ombro), PX_LONGE).map(|h| h.part),
+        Some(ph2d_skeleton_render::BonePart::LimitMax),
+    );
+    // Sobre a FORÇA, apanha-se a força — a cura não pode ter roubado o gesto que já existia.
+    assert_eq!(
+        agarra_a(&sim, forca, Some(ombro), PX_LONGE).map(|h| h.part),
+        Some(ph2d_skeleton_render::BonePart::Influence),
     );
 }

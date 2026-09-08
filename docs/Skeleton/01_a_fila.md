@@ -385,6 +385,50 @@ perda de trabalho.
 5** e o catálogo do Inspector idem — conte o delta, nunca o literal).
 
 
+---
+
+### F4-b — ✅ **OS LIMITES VÊEM-SE E PEGAM-SE NO CANVAS** (report do dono, 2026-09-07)
+
+> *«os limites devem ser visíveis e manipuláveis no canvas através de gizmos»*
+
+Um limite que só existe como dois números num painel é um limite **invisível**: o artista não vê
+onde a parede está, não a pode empurrar, e tem de traduzir graus de cabeça.
+
+⭐⭐⭐ **O raio do setor é o COMPRIMENTO DO OSSO, e isso elimina toda a arbitrariedade:** o arco é
+literalmente o caminho que a ponta percorre, e arrastar uma alça é *«leve a ponta até aqui e
+trave»*. ⛔ Um raio escolhido em píxeis seria um número sem dono, e num osso curto cobriria o
+esqueleto inteiro.
+
+**O que ficou:** um setor translúcido a partir da junta, as duas paredes traçadas, e duas alças
+**triangulares** nas pontas — a junta é um círculo, a força é um quadrado, o limite é um triângulo:
+*três alças do mesmo osso, três formas.* `BonePart` ganha `LimitMin`/`LimitMax`.
+
+⚠️ **O leque vem AMOSTRADO em mundo**, e não como *(centro, raio, dois ângulos)*: sob um afim
+não-conforme (o pai escalado só em X) um arco de circunferência é uma **elipse**, e reconstruí-lo de
+um raio só desenharia a coisa errada exactamente onde o artista mais precisa de confiar no que vê.
+
+⛔⛔ **E o gate apanhou uma COLISÃO DE ALÇAS que a 1.ª redacção tinha.** Ela testava as três alças do
+osso em foco por **ORDEM** (força, depois paredes); com `strength ≈ 1` e uma parede perto de 90° elas
+caem a menos de um dedo uma da outra e a parede ficava **inalcançável**. ⚠️ Reordenar não cura — só
+troca quem fica inalcançável. ⇒ **ganha a mais PERTO do ponteiro**, que é a única regra que não
+escolhe uma vítima.
+
+⭐ **E a colisão é REAL mas condicionada ao ZOOM, com o número ao lado:** a tolerância do dedo são
+`12 px`, logo em mundo ela vale `12 × px_to_world`. No zoom de trabalho (o osso a ~100 px, medido
+`107,52`) isso são `1,2` unidades e as alças da fixtura distam `5,0` — não colidem. Com a câmera
+afastada (o osso a ~20 px) a tolerância passa a `6,0` e elas colidem. *O defeito só aparecia quando
+o artista olhava o rig inteiro.*
+
+⭐⭐ **E a wave endireitou o DESPACHO do gesto:** o `pose` despachava por `if part == …` com o corpo
+do osso a apanhar tudo o que sobrasse, então uma alça nova caía **no braço do `Body`** e girava o
+osso em silêncio — a família do *dreno de um braço só* (`CLAUDE.md` §5), que nenhuma sonda deste repo
+vê. Hoje é um `match` **exaustivo**: uma alça sem verbo é **erro de compilação**.
+
+⚠️ Três cortes por responsabilidade nesta wave (nenhuma isenção): `bone_limit.rs` (a lei do limite),
+`bone_pose.rs` (*o que a mão faz* × *o que o dedo aponta*) e `ph2d-skeleton-render/limit.rs` (irmão
+do `goal.rs`).
+
+
 ## ⛔ Recusas MEDIDAS deste módulo — não as reconstrua
 
 | O quê | Por quê | Onde |

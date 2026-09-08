@@ -6,6 +6,10 @@
 //! a alça errada, a outra move a coisa errada.
 
 use super::*;
+// ⚠️ As duas ajudas de fixtura vivem no irmão que faz o hit-test — é ele que sabe CRIAR um osso e
+// dizer onde ele está. O corte de 2026-09-07 separou *o que o dedo aponta* de *o que a mão faz*, e
+// a fixtura ficou do lado de quem a produz.
+use crate::bone_gesture::{create, test_chain, test_segment};
 use ph2d_skeleton_render::BonePart;
 
 /// ⭐⭐⭐ **AGARRAR O CORPO GIRA; AGARRAR A JUNTA DESLOCA.** As duas metades, porque uma sozinha

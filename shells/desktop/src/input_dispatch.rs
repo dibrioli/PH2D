@@ -2618,7 +2618,7 @@ impl App {
         let Some(gfx) = self.gfx.as_mut() else {
             return false;
         };
-        crate::bone_gesture::pose(
+        crate::bone_pose::pose(
             &mut gfx.sim,
             ph2d_ecs::Entity::from_bits(bits),
             world,
@@ -4500,7 +4500,7 @@ impl App {
                             match decisao {
                                 Some(crate::bone_gesture::BonePress::Grab { bone, part }) => {
                                     // Agarrar o osso é o gesto de o POSAR (o gizmo de sprite não
-                                    // serve — ver `bone_gesture::pose`), e também o que o
+                                    // serve — ver `bone_pose::pose`), e também o que o
                                     // selecciona: o pai do próximo osso é o que está aceso.
                                     self.vec_bone_pose = Some((bone, part));
                                     if let Some(gfx) = self.gfx.as_mut()

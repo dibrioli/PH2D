@@ -514,3 +514,60 @@ fn a_painted_handle_covers_the_radius_it_is_grabbed_at() {
         "a barra ({bar:.2}) tem de reprovar os valores que geraram o report (4,5 e 3,5)"
     );
 }
+
+/// ⭐⭐⭐ **O GIZMO CHEGA A PIXEL** — a metade que faltava, e que uma mudança de sítio cobrou.
+///
+/// ⛔⛔ **Report do Enio, 2026-09-08:** *«nessa última rodada vc sumiu com o gizmo do Bezier
+/// Warp»*. Mover o desenho ~2 000 linhas para baixo no quadro fê-lo desaparecer, e **nada neste
+/// repo o teria dito**: os gates deste ficheiro medem a GEOMETRIA (onde a alça está, se o arrasto
+/// fecha) e a geometria continuou perfeita — *a faixa reservada não é a faixa pintada*, e aqui
+/// nem sequer a faixa era o problema: era a tinta não sair.
+///
+/// Este gate não prova o SÍTIO (isso exige o quadro inteiro, e é por isso que a mudança tem de
+/// ser instrumentada e não inferida). Ele prova a outra metade: **dado um retrato, o pintor emite
+/// tinta.** Com ele, quem voltar a mexer no sítio sabe que a variável é o sítio.
+///
+/// FALSIFICADO por um `return` cedo no `draw_warp_gizmo`, por uma moldura degenerada, ou por o
+/// `active` deixar de ser honrado.
+#[test]
+fn the_gizmo_paints_geometry_and_paints_none_when_inactive() {
+    use ph2d_vector::VectorScene;
+
+    let v = WarpGizmoView {
+        node: ph2d_nodegraph::graph::NodeId(1),
+        spec: WarpGizmoSpec { has_tangents: true },
+        bbox: unit_box(),
+        warp: 1.0,
+        down: Downstream::IDENTITY,
+    };
+    let port = |_: &str| 0.0;
+    let camera = ph2d_render::Camera2d::default();
+    let janela = ph2d_host::WindowSize {
+        width: 1200,
+        height: 800,
+    };
+    let split = ph2d_editor::screens::layout::CenterSplit::None;
+
+    let segmentos = |ativo: bool| -> u32 {
+        let mut cena = VectorScene::new();
+        crate::render_loop::warp_overlay::draw_warp_gizmo(
+            ativo, &v, &port, &camera, split, janela, &mut cena,
+        );
+        cena.inner().encoding().n_path_segments
+    };
+
+    // ⚠️ **O controlo vem PRIMEIRO**: sem ele, um pintor que emitisse tinta sempre — mesmo com a
+    // tool trocada — passaria a asserção de baixo e poria alças por cima de outra ferramenta.
+    assert_eq!(
+        segmentos(false),
+        0,
+        "fora da tool Motion o gizmo nao pinta NADA — as alcas dali seriam alvos a roubar o \
+         clique de outra ferramenta"
+    );
+    let pintou = segmentos(true);
+    assert!(
+        pintou > 0,
+        "com um retrato publicado o gizmo tem de emitir tinta — o contorno, os bracos e as doze \
+         alcas ({pintou} segmentos)"
+    );
+}

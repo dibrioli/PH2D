@@ -624,7 +624,7 @@ Auditoria §4.2 (R-pré): ✅ auditada contra §4.2 por R-pré em 2026-09-05 —
   com os gates 55-60) + as 17 fixtures de `fixtures/cloth/filtro/`. AGUARDA R-PRÉ**: até ao atestado
   dela, a janela-mãe pode ler o §7/§7.1/§10.17 como espec, mas o portão do §3.R da SKILL diz que a
   auditoria independente é condição de implementar. Escrita pelo subagente-E da mesma janela, com o
-  fonte reaberto **só** para o filtro e com **26 corridas novas do oráculo** (17 configurações, com
+  fonte reaberto **só** para o filtro e com **36 corridas novas do oráculo** (17 configurações, com
   duas realizações no plano e quatro na esfera). O que ela muda de veredito: o §7 tinha **três**
   afirmações erradas sobre a gravidade da cena, **uma** por medir sobre as bandeiras de eixo, e a
   frase (F) sobre as normais do *Inflate* passou a ser **(M)** por um par-espelho.

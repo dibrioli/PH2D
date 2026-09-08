@@ -23,7 +23,7 @@
 | F1 | `StableId` + `SiblingOrder` + snapshot v2 + **a 1ª migração** + corte da Sprite | ✅ 2026-08-25 |
 | F2 | O undo vira incremental (protocolo das 6 condições) | ✅ 2026-08-25 |
 | F3 | O Inspector passa a mostrar o que o objeto TEM · o `+` e a paleta · objeto vazio na raiz — **walking skeleton** | ✅ 2026-08-25 |
-| F4 | Núcleo de instância: Duplicar/Criar componente/Instanciar/sync/Destacar + física | ✅ **FECHADA 2026-09-07** — F4.1–F4.5 ✅ · F4.6a/b ✅ · F4.7 ✅ (os 3 smoke-gates) · **F4.6c ✅**: o motor de instância **do vetor** saiu (`VecInstance`/`VecComponentMain` e satélites, **−5 170 LOC líquidas** em 44 ficheiros), o `PROJECT_SCHEMA` subiu **123 → 124** e os **três** contadores desceram de `79`/`80`/`80` para `77`/`78`/`78`. O bloqueio era **prático** — a `line/Vector` viva — e dissolveu-se no dia em que ela integrou (§F4.6c-fecho) · **F4.6d ✅** (2026-09-08): os outros verbos tardios foram MEDIDOS — apagar e duplicar **produzem** o fantasma —, e a cura é uma **rede** antes da captura, que pelo caminho achou dois tetos QUADRÁTICOS que já se pagavam por quadro (§F4.6d) · **F4.6e ✅** (2026-09-08): a catraca das tabelas era **dívida que não existia** — as 9 entradas eram falsos positivos, e a cura foi a RÉGUA aprender quatro derivações, não riscar as linhas (§F4.6e) · **F4.6f ✅** (2026-09-08): a rede mudou-se para DENTRO do `post_frame_undo` — *ela corre exactamente quando a fotografia corre* —, e a peça «mais cara» foi medida a 20 000 formas e **não tem teto**: a faixa é linear (§F4.6f) |
+| F4 | Núcleo de instância: Duplicar/Criar componente/Instanciar/sync/Destacar + física | ✅ **FECHADA 2026-09-07** — F4.1–F4.5 ✅ · F4.6a/b ✅ · F4.7 ✅ (os 3 smoke-gates) · **F4.6c ✅**: o motor de instância **do vetor** saiu (`VecInstance`/`VecComponentMain` e satélites, **−5 170 LOC líquidas** em 44 ficheiros), o `PROJECT_SCHEMA` subiu **123 → 124** e os **três** contadores desceram de `79`/`80`/`80` para `77`/`78`/`78`. O bloqueio era **prático** — a `line/Vector` viva — e dissolveu-se no dia em que ela integrou (§F4.6c-fecho) · **F4.6d ✅** (2026-09-08): os outros verbos tardios foram MEDIDOS — apagar e duplicar **produzem** o fantasma —, e a cura é uma **rede** antes da captura, que pelo caminho achou dois tetos QUADRÁTICOS que já se pagavam por quadro (§F4.6d) · **F4.6e ✅** (2026-09-08): a catraca das tabelas era **dívida que não existia** — as 9 entradas eram falsos positivos, e a cura foi a RÉGUA aprender quatro derivações, não riscar as linhas (§F4.6e) · **F4.6f ✅** (2026-09-08): a rede mudou-se para DENTRO do `post_frame_undo` — *ela corre exactamente quando a fotografia corre* —, e a peça «mais cara» foi medida a 20 000 formas e **não tem teto**: a faixa é linear (§F4.6f) · **F4.6g ✅** (2026-09-08): a rede passou a ter **CENSO** dos escritores do passe do desenho, e ele achou um buraco ao nascer — o pivô dos objectos **Flip** (§F4.6g) |
 | F5 | Aninhamento + variantes + Overrides sem alvo + **a FORMA de uma cópia** | ✅ **FECHADA 2026-09-06** — **F5.1** aninhamento ✅ · **F5.3/F5.6** os órfãos são NOMEADOS e largam-se um a um ✅ (critério 3) · **variantes ✅ 2026-08-27** (fileira plana, modelo Unity) · **critério 4 — a escada do *Aplicar* ✅ 2026-09-04** (§F5.5) · **troca por mestre NÃO aparentado ✅ 2026-09-05** (3 modos + relatório, §F5.8) · **F5.9** a lista de órfãos fica accionável ✅ · **F5.10 — a peça RECUSADA ✅ 2026-09-06** (*Removed GameObject*, `PROJECT_SCHEMA` 115→116) · **F5.11 — a peça ACRESCENTADA ✅ 2026-09-06** (*Added GameObject*, **derivada**, schema intocado) · **F5.12 — mover uma peça na receita move-a em TODAS as cópias ✅ 2026-09-06** (a 3.ª metade da forma) · **F5.13/F5.14** as cenas de smoke corrigidas ✅ (3 passos impossíveis + 1 que pedia o gesto que a guarda não apanha) · ⛔ **EIXOS de propriedade REVOGADOS e ADIADOS** (Enio, 01/09 — o §F5-bis descreve trabalho que **saiu do fonte**; ver [`06`](06_plano_variacoes_sem_chaves.md)) |
 | F6 | O índice de assets (`ph2d-asset-index`) — sem UI | ✅ 2026-08-30 (996 LOC + a taxonomia) |
 | F7 | O painel Asset Browser + o arrasto único | ✅ 2026-08-30 — etapas **A–D** do [plano 07](07_plano_do_navegador_de_assets.md); `DragPayload` com as duas famílias |
@@ -2881,3 +2881,55 @@ fotografia corre.*
 | tirar a rede de antes do passo | vermelho |
 | tirar a rede de antes do baseline | vermelho |
 | pô-la de volta no `render_frame` (a correr em todo quadro) | vermelho |
+
+---
+
+### ✅ §F4.6g — **A REDE PASSOU A TER CENSO, e ele achou um buraco ao nascer** (2026-09-08)
+
+O §F4.6d deixou o limite escrito: *«a rede não é derivável — nada mede que ela contenha todos os
+escritores derivados do passe do desenho»*. Esse era o caminho mais provável de o report do dono
+voltar: **por uma porta nova**, com a suíte inteira verde.
+
+Ele é gateável, e a janela é o próprio passe do desenho — do `vec_transform::settle_origins` ao
+`vec_scene.reorder_to`, **88 linhas com nove chamadas**. Toda função ali ou é **reconciliação** (e
+tem de estar na rede) ou é um **DRENO de intenção**, e esses são nomeados um a um
+([`the_net_knows_every_derived_writer`](../../shells/desktop/tests/the_net_knows_every_derived_writer.rs)).
+
+⚠️ **A distinção não é de estilo, é de natureza:** um escritor derivado converge o estado **sozinho**
+(fora da rede, o quadro seguinte converge-o sem entrada e nasce o fantasma); um dreno só age quando
+houve um gesto — e **o gesto já é o passo**, logo correr um dreno na rede aplicaria a intenção duas
+vezes.
+
+⭐⭐⭐ **E o censo achou um buraco no minuto em que foi escrito:** o
+`crate::flip_transform::settle_origins` — **o pivô dos objectos FLIP** — corria no passe do desenho
+e **não estava na rede**. É o MESMO mecanismo que o gate do *duplicar* já apanhara para o pivô
+vectorial (uma entidade cunhada tarde nasce com `Transform::default()`, e o quadro seguinte
+assenta-a sozinho), **noutra mídia e por uma porta que nenhum gate olhava**.
+
+#### ⚠️ A régua caiu DUAS vezes em armadilhas que esta casa já tem registadas
+
+1. **Emparelhar por nome solto** — a 1.ª redacção comparava pelo último segmento e leu **VERDE**
+   sobre o buraco que existia para achar: `flip_transform::settle_origins` casava com o
+   `vec_transform::settle_origins` que a rede tem. *Dois módulos com a mesma função lêem-se iguais
+   por nome solto; a chave é o CAMINHO.*
+2. **Censo textual que lê a PROSA** — corrigida a chave, apagar a chamada da rede **ainda** deixava
+   o gate verde: o caminho continuava lá, no **comentário** que explica por que ele foi
+   acrescentado. ⇒ o censo passou a ler o ficheiro **sem comentários**. *Um censo que não separa
+   prosa de código mente nos dois sentidos* — e esta régua pagou-o na estreia, apanhada pela
+   própria prova de mutação.
+
+#### Provas de mutação (4 de 4 mortas, uma delas depois de sobreviver)
+
+| mutação | resultado |
+|---|---|
+| tirar o pivô do Flip da rede | **sobreviveu** → curado (a prosa) → vermelho |
+| ⭐ **um passe derivado NOVO no desenho que a rede não tem** | vermelho |
+| tirar a isenção de um dreno | vermelho |
+| pôr na lista `DRAINS` um nome que já não corre na janela | vermelho |
+
+⚠️ A segunda é a razão de o gate existir: ela prova que ele apanha **o passe que ainda não foi
+escrito**, que é o defeito de que este §F4.6 inteiro nasceu.
+
+⚠️ **A lista `DRAINS` só ENCOLHE** — cada nome nela é a afirmação *«isto só age quando houve um
+gesto»*, que ninguém volta a conferir; a metade de obsolescência acusa a linha que deixou de
+descrever alguma coisa.

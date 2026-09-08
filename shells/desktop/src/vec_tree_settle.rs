@@ -82,6 +82,23 @@ impl App {
             &self.vec_entities,
             &drawing,
         );
+        // ⭐⭐ **E o pivô dos objectos FLIP, pelo mesmo motivo e noutra mídia** (achado pelo censo
+        // `the_net_knows_every_derived_writer`, 2026-09-08). O `crate::flip_transform::settle_origins`
+        // corria no passe do desenho e **não** estava aqui — o mesmo buraco que o gate do *duplicar*
+        // tinha apanhado para o vector, por uma porta que nenhum gate olhava.
+        //
+        // ⚠️ **O objecto EM GESTO fica de fora, e a régua é a do passe do desenho**: com o desenho
+        // ou a borracha activos a mão escreve MUNDO a cada quadro, e somar geometria + `Transform`
+        // deslocaria a arte de baixo do cursor.
+        let flip_gesturing = (self.flip_draw.is_active() || self.flip_erasing)
+            .then(|| gfx.flip.objects().first().map(|o| o.id))
+            .flatten();
+        crate::flip_transform::settle_origins(
+            &mut gfx.sim,
+            &mut gfx.flip,
+            &self.flip_entities,
+            flip_gesturing,
+        );
         ph2d_ecs::assign_missing_root_order(gfx.sim.world_mut());
         ph2d_ecs::assign_missing_stable_ids(gfx.sim.world_mut());
         ph2d_ecs::assign_missing_sibling_order(gfx.sim.world_mut());

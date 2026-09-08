@@ -14080,3 +14080,98 @@ Provado por mutação: com o `c` de volta à corda inteira ele lê
 
 **Smoke:** *MODEL* > **A** > *Spring* com o **Pitch** alto — o arame passa a ter a grossura que o
 número diz.
+
+---
+
+## §141 — O CHANFRO DA ESTRELA entrava no MIOLO, e a raiz é o campo das paredes (08/09)
+
+> **Report do Enio, com três fotos:** *«o Chamfer múltiplo acaba criando um padrão complexo que
+> afeta até o miolo da estrela. Não fica apenas nas bordas externas e cria um padrão estranho. Ao
+> usar fillet sobre Chamfer é ainda pior! Estude um Chamfer nas arestas externas que trabalhe bem
+> com o fillet.»*
+
+### §141.0 — ⭐ A régua: a ALTURA DA FACE DE CIMA, ponto a ponto
+
+Numa chapa a tampa é **plana**. O chanfro do aro encolhe o contorno dela, e a tampa que sobra
+**continua plana**. ⇒ *qualquer variação de altura no miolo é uma faceta que não devia estar lá*, e
+ela mede-se sem olhar para a peça. Amostrando `r < inner·0,92` (estrela `5` pontas, `outer 0,45`,
+`inner 0,18`, `h 0,25`; o tecto de recuo é `0,0633`):
+
+| `round` | `chamfer` | espalhamento da tampa | % do miolo fora do plano |
+|---:|---:|---:|---:|
+| 0 | 0 | **0,00000** | **0,0** |
+| 0 | 0,02 | 0,00215 | 1,2 |
+| 0 | 0,04 | 0,01715 | 12,1 |
+| 0 | 0,06 | 0,02573 | **30,9** |
+| 0,03 | 0 | 0,00033 | 1,2 |
+| 0,03 | 0,03 | 0,00829 | **32,1** |
+
+⇒ com o chanfro no tecto, **31 % do miolo da tampa não é plano**, e a superfície afunda `0,0257` —
+`10 %` da meia-altura. Sem chanfro ela é plana **ao bit**.
+
+### §141.1 — ⛔⛔ TRÊS hipóteses construídas e REFUTADAS por medição
+
+| hipótese | como foi testada | resultado |
+|---|---|---|
+| é a mistura do **VALE** (a união das pipas) | dobra trocada por `min` cru | **`30,9 %` · `32,1 %`** — idêntico. Ilibada |
+| é o chanfro da **PONTA** | `chamfer = 0` só ali | **idêntico**, dígito a dígito |
+| é a mistura **n-ária** do aro | os dois aros por PARES | **idêntico** |
+
+⭐ **E a isolação que acertou:** com o chanfro desligado **só na LAJE**, o miolo volta a `0,0 %` em
+todas as combinações. ⇒ *o defeito é inteiramente o aro, e o aro é o único dos três que lê o campo
+das PAREDES.*
+
+### §141.2 — ⭐⭐⭐ A raiz: o campo das paredes da estrela é um MINORANTE FROUXO por dentro
+
+Mapeado o campo das paredes no miolo (`f(x, y, 0)` numa chapa sem acabamento **é** esse campo):
+ele chega a **`−0,0148`** em `(0,128, 0,105)` — um ponto que está **longe de toda a superfície**.
+O aro, que reage a *valores pequenos*, lê isso como **«estás na parede»** e põe lá uma faceta.
+
+⚠️ **A causa do valor pequeno é a construção:** cada pipa é limitada pelos **planos do sector**, que
+são divisórias **interiores**; sobre elas a pipa vale `−folga`, e o disco de enchimento — cuja
+fronteira passa em `r = inner` — também é raso ali. *O `min` de dois campos rasos é raso.*
+
+⭐⭐ **É uma lei que este módulo já pagou noutro sítio, dita ao contrário:** um campo conservador é
+**seguro para a marcha** e **errado para quem lê o VALOR dele**. A marcha só precisa que o campo não
+ultrapasse a distância; um raio de mistura precisa que ele **seja** a distância.
+
+⚠️ **E isto explica uma nota antiga do §13.0:** *«o tecto de `round` da estrela é `12,3 %` do bordo,
+contra `43–60 %` de todas as outras formas»*. **Mesma raiz** — não é a geometria da estrela que é
+apertada, é o campo dela que é frouxo, e o filete bate na costura antes de bater na peça.
+
+### §141.3 — A cura que shipa, e o que ela fecha
+
+A **folga** que afasta duas pipas vizinhas estava dimensionada só pelo `round` — escrita na W104-bis
+**antes de o chanfro existir**. O chanfro chegou na W99/W110 e ninguém voltou a derivar este número.
+
+```
+folga = round.min(inner·sin β)   ⇒   folga = (round + chamfer).min(inner·sin β)
+```
+
+| `chamfer` (com `round = 0`) | antes | **depois** |
+|---|---:|---:|
+| `0,02` | 1,2 % | **0,0 %** |
+| `0,04` | 12,1 % | **0,3 %** |
+| `0,06` (o tecto) | 30,9 % | **4,6 %** |
+
+⇒ **o chanfro sozinho deixou de entrar no miolo** até dois terços do tecto, que é a barra do gate
+`the_star_chamfer_leaves_the_middle_of_the_top_face_flat`.
+
+⛔ **E ela NÃO fecha o caso `filete + chanfro`** (`32,1 % → 22,3 %`), que é o que o dono chama de
+*«ainda pior»*. Medido também com a folga no **tecto geométrico** (`inner·sin β`, o máximo que a
+geometria permite): `0,7 %` com chanfro sozinho e **`19,9 %`** com os dois. ⇒ *a folga é uma alavanca
+sobre a profundidade da costura, e o caso combinado não é a costura.*
+
+### §141.4 — ⏳ O que fica ABERTO, com o mecanismo nomeado
+
+A cura de fundo é **o contorno da estrela ser uma distância EXACTA** em vez de uma união de pipas
+limitadas por planos interiores. Com um campo honesto, o aro — filete **e** chanfro — passa a ler a
+distância verdadeira, e as duas coisas fecham de uma vez: o miolo e o tecto de `12,3 %`.
+
+⚠️ **O preço está identificado e não foi pago:** a construção de hoje arredonda a ponta e o vale
+**com o ângulo certo de cada uma** (W104/W107), e um contorno exacto não dá as duas de uma vez — um
+deslocamento arredonda as quinas convexas e deixa as côncavas vivas, e o dual faz o contrário. ⇒ é
+wave com espec própria, e ⛔ não se começa por escrever a fórmula: começa-se por medir o que a
+construção actual entrega de bom, para não a perder.
+
+**Smoke:** *MODEL* > **A** > *Star*, e subir o **Chamfer** sozinho — o miolo fica plano.

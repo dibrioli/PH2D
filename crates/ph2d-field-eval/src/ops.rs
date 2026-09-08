@@ -523,7 +523,25 @@ pub fn sd_star(
         // por construção — e a varredura confirma: a `2·round` a forma parte, exactamente onde a
         // conta diz.
         let (a1, a2) = (phi - beta, phi + beta);
-        let folga = Tree::constant(round.min(inner * beta.sin()));
+        // ⭐⭐⭐ **A FOLGA COBRE OS DOIS RECUOS, e não só o filete** (W141).
+        //
+        // ⛔ Ela era `round.min(…)`, escrita na W104-bis **antes de o chanfro existir**. O chanfro
+        // chegou na W99/W110 e ninguém voltou a derivar este número — e é ele que decide **quão
+        // fundo** fica o campo na costura entre duas pipas. Com `folga = round` e o chanfro no
+        // tecto, a costura fica a `0` de profundidade e o aro lê-a como se fosse a parede.
+        //
+        // ⚠️ **MEDIDO** (fracção do MIOLO da tampa que sai do plano, `probe_the_star_chamfer`):
+        //
+        // | `round` · `chamfer` | folga = `round` | folga = `round + chamfer` |
+        // |---|---:|---:|
+        // | `0` · `0,02` | 1,2 % | **0,0 %** |
+        // | `0` · `0,04` | 12,1 % | **0,3 %** |
+        // | `0` · `0,06` | 30,9 % | **4,6 %** |
+        //
+        // ⚠️ **E ela NÃO fecha o caso `filete + chanfro`** (32,1 % → 22,3 %): esse tem outra causa,
+        // medida e nomeada no [doc 06 §141](../../../docs/3DModeling/06_resultados_cena_e_gizmo.md).
+        // *Uma alavanca que cura metade de um defeito cura metade — e diz qual.*
+        let folga = Tree::constant((round + chamfer).min(inner * beta.sin()));
         let h1 = Tree::x() * Tree::constant(a1.sin())
             - Tree::y() * Tree::constant(a1.cos())
             - folga.clone();

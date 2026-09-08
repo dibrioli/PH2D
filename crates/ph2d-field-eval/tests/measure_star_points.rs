@@ -267,3 +267,107 @@ fn measure_ellipsoid_against_the_published_formula() {
         );
     }
 }
+
+// ─────────────────────────── W141 ───────────────────────────
+
+/// A altura da face de cima sobre `(x, y)` — `None` onde não há peça.
+fn topo_da_estrela(f: &ph2d_field_eval::Field, x: f64, y: f64, h: f64) -> Option<f64> {
+    if f.at(x, y, h * 2.0) < 0.0 || f.at(x, y, 0.0) >= 0.0 {
+        return None;
+    }
+    let (mut lo, mut hi) = (0.0_f64, h * 2.0);
+    for _ in 0..50 {
+        let m = f64::midpoint(lo, hi);
+        if f.at(x, y, m) < 0.0 {
+            lo = m;
+        } else {
+            hi = m;
+        }
+    }
+    Some(lo)
+}
+
+/// ⭐⭐⭐ **O CHANFRO DA ESTRELA FICA NAS BORDAS, e não entra no MIOLO** (W141).
+///
+/// # ⛔⛔ O report do Enio (08/09, três fotos)
+///
+/// > *«o Chamfer múltiplo acaba criando um padrão complexo que afeta até o miolo da estrela. Não
+/// > fica apenas nas bordas externas.»*
+///
+/// ⭐ **A régua é a ALTURA DA FACE DE CIMA, ponto a ponto.** Numa chapa a tampa é plana; o chanfro
+/// do aro encolhe o contorno dela e a tampa que sobra **continua plana**. ⇒ *qualquer variação de
+/// altura no miolo é uma faceta que não devia estar lá.*
+///
+/// # ⭐ A causa, e o que esta cura fecha
+///
+/// A costura entre duas pipas vizinhas é afastada por uma **folga**, e ela estava dimensionada só
+/// pelo `round` — escrita na W104-bis, **antes de o chanfro existir**. Com a folga a cobrir os dois
+/// recuos:
+///
+/// | `chamfer` (round = 0) | antes | **depois** |
+/// |---|---:|---:|
+/// | `0,02` | 1,2 % | **0,0 %** |
+/// | `0,04` | 12,1 % | **0,3 %** |
+/// | `0,06` (o tecto) | 30,9 % | 4,6 % |
+///
+/// ⚠️ **A barra deste gate é `2/3` do tecto**, que é onde a cura leva o miolo a ficar plano com
+/// folga. ⛔ **O que FICA aberto e está medido:** com **filete E chanfro juntos** o miolo ainda sai
+/// (`22,3 %` a `0,03`+`0,03`) — a causa é outra e vive a montante, no campo das paredes da estrela,
+/// que é um **minorante frouxo** por dentro (ele lê `−0,0148` em pontos que estão longe de toda a
+/// superfície). Ver o [doc 06 §141](../../../docs/3DModeling/06_resultados_cena_e_gizmo.md).
+#[test]
+fn the_star_chamfer_leaves_the_middle_of_the_top_face_flat() {
+    let (outer, inner, h) = (0.45_f32, 0.18_f32, 0.25_f32);
+    let limite = ph2d_field::round_limit(&Primitive::Star {
+        points: 5,
+        outer,
+        inner,
+        half_height: h,
+        round: 0.0,
+        chamfer: 0.0,
+    })
+    .expect("a estrela tem tecto");
+    for fracao in [0.3_f32, 0.5, 0.66] {
+        let chamfer = limite * fracao;
+        let doc = FieldDoc::new(
+            vec![Node::new(
+                Xform::IDENTITY,
+                NodeKind::Leaf(Primitive::Star {
+                    points: 5,
+                    outer,
+                    inner,
+                    half_height: h,
+                    round: 0.0,
+                    chamfer,
+                }),
+            )],
+            NodeId(0),
+        )
+        .expect("a estrela");
+        let f = ph2d_field_eval::Field::new(&doc);
+        let (mut n, mut fora) = (0_u32, 0_u32);
+        const M: usize = 70;
+        for i in 0..M {
+            for j in 0..M {
+                let c = |t: usize| f64::from(inner) * (2.0 * (t as f64) / (M - 1) as f64 - 1.0);
+                let (x, y) = (c(i), c(j));
+                if x.hypot(y) > f64::from(inner) * 0.92 {
+                    continue;
+                }
+                if let Some(z) = topo_da_estrela(&f, x, y, f64::from(h)) {
+                    n += 1;
+                    if (f64::from(h) - z).abs() > 1.0e-4 {
+                        fora += 1;
+                    }
+                }
+            }
+        }
+        assert!(n > 300, "a fixtura tem de amostrar o miolo (leu {n})");
+        let pct = 100.0 * f64::from(fora) / f64::from(n);
+        assert!(
+            pct <= 1.0,
+            "chanfro {chamfer:.4} ({fracao} do tecto): {pct:.1} % do MIOLO da tampa saiu do plano \
+             — o chanfro é das bordas EXTERNAS, e está a entrar na peça"
+        );
+    }
+}

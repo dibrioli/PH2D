@@ -42,6 +42,9 @@ mod demo_conferencia;
 /// ASSUNTO quando aquele arquivo cruzou o teto de LOC. Também sem `match`.
 #[path = "motion_state_demo_conferencia_animadores.rs"]
 mod demo_conferencia_animadores;
+/// A cena de smoke do ciclo 3 — «em torno de quê» (doc 106).
+#[path = "motion_state_pivot_demo.rs"]
+mod pivot_demo;
 #[path = "motion_state_demo_router.rs"]
 /// ⚠️ `pub(crate)` desde 2026-08-20, e por um consumidor real: a sonda que corre o
 /// DIAGNOSER sobre cada cena da conferência precisa de as MONTAR

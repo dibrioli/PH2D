@@ -595,3 +595,109 @@ reordenada a ordem de visita passaria a ser a crescente global, que é precisame
 ⚠️⚠️ **DOIS `2 145` diferentes no plano:** a célula `1` tem `2 145` vértices próprios **e** a banda
 de `3,5 R` contém `2 145` vértices — conjuntos distintos (intersecção `1 099`), e é o segundo que é
 a coluna `movidos` da tabela acima.
+
+---
+
+## ⭐⭐⭐ O corpus do FILTRO de tecido (subdiretório [`filtro/`](filtro/), 2026-09-07 — espec §7 e §10.17)
+
+⚠️⚠️ **Ele vive num SUBDIRETÓRIO de propósito, e a razão é um gate.** O censo do arnês de paridade do
+pincel exige que as duas listas dele descrevam **o corpus inteiro** do diretório — *«sem isto, uma
+fixture nova entra sem régua nenhuma»* —, e ele varre `docs/3D/cleanroom/fixtures/cloth/` **sem
+recursão**. Um traço de FILTRO não é corrível por aquele arnês (o filtro não tem pincel, nem raio,
+nem banda, nem caminho de cursor sobre a peça), então metê-lo na raiz deixaria o censo vermelho ou
+obrigaria a inscrevê-lo numa lista onde ele não pode ser medido. ⇒ **os traços do filtro ficam em
+`filtro/`, e o censo deles é do arnês do filtro**, que a linha do produto ainda tem de escrever.
+⚠️ **As malhas de repouso são as MESMAS** (`plano.repouso.txt.gz` e `esfera.repouso.txt.gz`, um nível
+acima) — o assemblador confere-as vértice a vértice contra as do corpus antes de escrever, e o
+verificador procura-as no diretório do ficheiro **e no diretório-pai**.
+
+### Como o traço é conduzido (⛔ NÃO é um traço de pincel)
+
+O filtro é um comando modal: ele **abre** onde o cursor está e depois lê **um passo por movimento do
+rato**, até o botão ser largado. O arnês (`harness_filtro2.py`, na zona do oráculo) conduz isso com
+eventos simulados, nesta ordem: mover o cursor até ao ponto de abertura → abrir o filtro → **premir**
+o botão no ponto que fixa a origem do arrasto → `passos` movimentos de `avanco_por_passo_px` píxeis
+para a direita → largar o botão. ⭐ **Cada movimento é UM passo simulado** — ⛔ ao contrário do corpus
+do pincel, **não** há um primeiro passo que não simula, e a coluna `passos` do cabeçalho é o número
+de passos que de facto correram (conferido: o número de blocos em que a malha muda é exactamente
+esse, e o evento de premir o botão move `0` vértices).
+
+⚠️ **A força de um passo é um número de PÍXEIS**, não uma posição na peça: `forca_base ×
+(x_do_cursor − x_da_origem_do_arrasto) × 0,001 × escala_da_UI`. Com `escala_da_ui 1.0` e
+`avanco_por_passo_px 90`, o passo `k` corre a `0,09·k`. O cabeçalho traz a lista inteira em
+`forca_por_passo`, e a linha `caminho` traz a projecção em espaço de objecto de cada píxel visitado —
+⚠️ **ela é informativa e não entra na lei**: depois de abrir, o filtro **não volta a ler onde o cursor
+está sobre a peça** (é por isso que `plano_filtro_apertar` termina com o cursor em `x ≈ +2,36`, fora
+de uma peça que acaba em `1,5`, e mesmo assim colapsa para o ponto de abertura).
+
+### O cabeçalho (as chaves que só o corpus do filtro tem)
+
+`filtro` (gravidade · inflar · expandir · apertar · escala) · `orientacao` (local · mundo · vista) ·
+`eixos` (as bandeiras de eixo activas, em minúsculas) · `mascara` (`nenhuma` ou a lei da máscara) ·
+`conjuntos_de_faces` · `colisoes` · `gravidade_da_cena` · `origem_do_arrasto_px` ·
+`avanco_por_passo_px` · `escala_da_ui` · `forca_por_passo` · `realizacoes`.
+⚠️ `area toda` · `banda 0` · `pino 0` são **factos do filtro**, não escolhas do traço; e ⛔ `raio`,
+`limite`, `curva` e `plasticidade` **não aparecem** porque o filtro não tem nenhum dos quatro.
+`dispersao_entre_realizacoes` é a maior diferença por vértice entre as `realizacoes` corridas da
+mesma configuração (⚠️ **duas** no plano, **quatro** na esfera — ⛔ não é o «quatro» do corpus do
+pincel; leia a chave `realizacoes` do próprio ficheiro).
+
+### As dezassete corridas
+
+| fixture | o que ela fixa | movidos | máx `|u|` |
+|---|---|---|---|
+| `plano_filtro_gravidade_local` | a lei da força em píxeis, a direcção `−Z` do referencial da peça, a integração e a retenção | 4225 | `0.108000` |
+| `plano_filtro_gravidade_vista` | no referencial da VISTA a queda é o «baixo» do ecrã, não a profundidade | 4225 | `0.108000` |
+| `plano_filtro_gravidade_massa2` | massa `2` ⇒ metade, ao bit | 4225 | `0.054000` |
+| `plano_filtro_gravidade_forca0` | força `0` ⇒ **zero** vértices movidos (o controlo do vácuo) | 0 | `0.000000` |
+| `plano_filtro_gravidade_eixox` | ⭐ as bandeiras de eixo **não tocam** nas forças: byte a byte igual ao `_local` | 4225 | `0.108000` |
+| `plano_filtro_gravidade_mascarado` | ⭐⭐⭐ o **controlo de normal congelada** do par-espelho (ver abaixo) | 509 | `0.108743` |
+| `plano_filtro_gravidade_conjuntos_de_faces` | o conjunto activo leva a força **e** a gravidade da cena; o excluído leva **só** a gravidade da cena | 4225 | `0.216134` |
+| `plano_filtro_inflar` | ⚠️ numa folha plana e sem máscara isto é uma **translação rígida** | 4225 | `0.108000` |
+| `plano_filtro_inflar_1passo` | o impulso de um passo só: `0,0009 = forca_do_passo_1 × passo_de_tempo` | 4225 | `0.000900` |
+| `plano_filtro_inflar_mascarado` | ⭐⭐⭐ a metade viva do par-espelho: a superfície vira até `46,7°` | 509 | `0.108836` |
+| `plano_filtro_expandir` | o repouso cresce `+0,01` por unidade de força e por passo: a peça alarga `+22,9 %` × `+20,3 %` | 4225 | `0.379347` |
+| `plano_filtro_expandir_negativo` | arrastar para o outro lado ENCOLHE (`−16,0 %` × `−15,4 %`) — e a resposta **não é simétrica** | 4225 | `0.390225` |
+| `plano_filtro_apertar` | o ponto de colapso é o da ABERTURA e **não segue o cursor** | 4225 | `0.104399` |
+| `plano_filtro_escala` | a âncora por vértice é a posição de repouso escalada em torno da origem da peça | 4225 | `0.320179` |
+| `plano_filtro_escala_eixox` | ⭐ com um eixo só, a peça cresce `+14,7 %` em X e `+0,2 %` em Y | 4225 | `0.227700` |
+| `plano_filtro_escala_gravidade_cena` | a gravidade da cena entra **também** num tipo que não aplica força nenhuma | 4225 | `0.335229` |
+| `esfera_filtro_inflar` | a mesma lei numa superfície curva — ⚠️ e é a **única** com dispersão (`0.001015` em 4 realizações) | 6050 | `0.095223` |
+
+### ⭐⭐⭐ O par-espelho (o instrumento que decide de que superfície são as normais)
+
+⚠️ **A pergunta não se decide numa folha plana**, e é por isso que a lista tem um par: numa folha sem
+máscara toda a normal é a mesma e a peça **transla rigidamente** (desvio máximo ao vector médio:
+`0,000000000`), logo a normal nunca vira (`0,00°` em todos os passos) e as duas leis possíveis dão a
+mesma saída ao bit. Com a máscara (a peça fica presa fora de um disco de raio `0,6`) forma-se uma
+calota e a normal vira até `46,7°`.
+
+⭐⭐ **O instrumento:** com a normal CONGELADA no repouso, a força do tipo *inflar* seria exactamente
+`+Z × força` em todo o vértice — que é **exactamente o simétrico** da força do tipo *gravidade* na
+mesma cena. A malha é plana, as restrições são distâncias e a máscara é simétrica em `z` ⇒ as duas
+corridas teriam de ser a **reflexão em `z` uma da outra**, e a reflexão é exacta em vírgula
+flutuante. ⇒ `max |u_inflar − espelho_z(u_gravidade)|` é **zero se a normal for a do repouso** e
+positivo se ela for relida.
+
+| | passo 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+|---|---|---|---|---|---|---|---|---|
+| **sem máscara** (controlo) | `0.000000000` | `0.000000000` | `0.000000000` | `0.000000000` | `0.000000000` | `0.000000000` | `0.000000000` | `0.000000000` |
+| **com máscara** | `0.000000000` | `0.000019326` | `0.000116515` | `0.000389719` | `0.000977440` | `0.002008600` | `0.003573328` | `0.005503573` |
+
+⭐⭐⭐ **A divergência nasce no passo 2** — o primeiro em que um passo anterior já podia ter virado a
+superfície — e chega a `5,06 %` do maior deslocamento do traço. ⇒ *a normal que o tipo «inflar» lê é
+a da superfície **de agora**, refrescada a cada passo* — ao contrário do traço do pincel, que lê as
+do início (espec §4.2-ter).
+
+### Os quatro ficheiros POR PASSO
+
+`plano_filtro_inflar` · `plano_filtro_gravidade_local` · `plano_filtro_inflar_mascarado` ·
+`plano_filtro_gravidade_mascarado` trazem também um `.porpasso.txt.gz` com as posições **depois de
+cada passo**. ⚠️ **Eles vêm de UMA corrida contínua** (chave `origem_dos_blocos
+corrida_unica_continua`) e não de corridas-prefixo, logo **não trazem** — nem precisam de — a prova
+de fatiamento do corpus do pincel.
+
+**Proveniência** — a mesma das outras: malhas **nossas**, geradas pelo mesmo harness; a máscara e os
+conjuntos de faces são escritos por nós como atributos da malha (uma lei geométrica sobre as
+posições de repouso: um disco de raio `0,6` e o sinal de `x`); o que a aplicação de referência
+calculou são as **posições**, e isso é dado. ⛔ Regenerar continua a ser acto de **E**.

@@ -89,6 +89,7 @@ Registado **antes** de qualquer leitura do fonte, em 2026-09-05.
 | E (Q8 · Q9 · Q10) | 2026-09-06 | idem | o laço das varreduras, a construção do conjunto *Local*, o instante do centro do gancho |
 | E (Q11 · Q12 · Q14 · Q15 · Q16 · Q17) | 2026-09-06/07 | idem | o aperto, a normal e o factor de escala do empurrar, a rede de restrições, a ordem de criação, o censo do esticão, o instante das normais |
 | **E (Q18)** | **2026-09-07** | **subagente-E da janela `1246816c-63cf-414b-842d-663a8baa86ca`** | **o par de factores por vértice (o das varreduras e o da integração) lado a lado; a lei incremental da normal por vértice, na árvore de aceleração do desenho; produziu a EMENDA Q18 (§4.2-quater · §4.6 linha 4 · §5.2 · §5.4 · §5.4-bis · §10.12–§10.14 · §11 · gates 43-47) e CINCO fixtures novas** |
+| **E (Q22 — o FILTRO)** | **2026-09-07** | **subagente-E da janela `1246816c-63cf-414b-842d-663a8baa86ca`** | **ABERTA ANTES DA PRIMEIRA LEITURA (§6).** Objecto: a emenda do §7 (o filtro de tecido) e o **oráculo do filtro** — o §10 não tinha UM ÚNICO traço de filtro, logo toda barra que a janela escrevesse mediria os defeitos dela própria (`CLAUDE.md` §0.9). **Releu:** o comando modal do filtro de tecido e a abertura dele (as propriedades expostas, os valores de omissão e as faixas); a construção da área e da lista de restrições no ramo sem traço de pincel; a expressão de cada um dos cinco tipos; as duas matrizes de orientação e o troço que anula componentes por eixo; a soma da gravidade da cena e o mesmo troço no ramo do pincel, lado a lado; o sítio onde as normais da malha são recalculadas dentro da preparação da peça para edição; e o destino (nenhum) da fotografia de normais tirada ao criar a simulação. **Produziu:** a EMENDA Q22 (§7 reescrito nas 12 linhas · **§7.1 NOVA** · **§10.17 NOVA** · **§14-bis NOVA**, gates 55-60), **17 fixtures** novas em `fixtures/cloth/filtro/` (+ 4 ficheiros por passo), a secção do filtro no README das fixtures, o arnês novo do oráculo do filtro e **26 corridas novas** |
 | **E (Q19 · Q20 · Q21)** | **2026-09-07** | **subagente-E da janela `1246816c-63cf-414b-842d-663a8baa86ca`** | **releu: a função que devolve a localização usada pela área simulada e as três áreas; onde a localização por passo é (ou não é) relida do evento do traço e onde ela é reescrita pela origem ancorada; a classificação de «ferramenta de agarrar» que decide o tamanho por pressão; a porta que inclina o delta para a normal e a capacidade que a declara (mais o Python do painel e a porta de propriedades que a expõe); a construção de restrições com as posições persistentes e as quatro leituras que elas substituem; os quatro construtores de restrição; a resolução de colisão e a ordem dela dentro do passo. Produziu a EMENDA Q19 (§2.1 · §4.3 · §5.6 · §6.4 · §8.1 · §8.4 · §10.13 errata · §10.15 · §10.16 · §11 · gate 46 reescrito + gates 48-54), OITO fixtures novas, a chave `dispersao_entre_realizacoes` em TREZE cabeçalhos, e 80 corridas novas do oráculo** |
 
 ### Cobertura da travessia (§3.E) — 2026-09-05, por shell (`cat`/`sed`/`grep`), fonte v5.2.0
@@ -1801,6 +1802,70 @@ quocientes divididos pelo sorteio antigo.**
    `0,329616` e os ficheiros (e a recomputação) dão `0,612821` / `0,329617`.
 
 **Veredicto: ATESTADO.** A janela-mãe pode ler a emenda Q19 (com as Q20 e Q21 dentro).
+
+### Q22 — O FILTRO DE TECIDO ganha oráculo, e o §7 tinha quatro afirmações a corrigir (emenda do I de 2026-09-07; resposta no mesmo dia, com 26 corridas NOVAS do oráculo)
+
+**O pedido.** O §7 da espec descrevia o filtro **por leitura** e o §10 não tinha **um único** vector
+dele: as `86` fixtures eram todas do pincel. Sem lado aprovado, qualquer barra que o lado limpo
+escrevesse sobre o filtro mediria os defeitos dele próprio.
+
+**O que foi reaberto no fonte** (por shell, só o que a pergunta exigia): o comando modal do filtro e
+a abertura dele · as propriedades expostas, valores de omissão e faixas · a construção da área e da
+lista de restrições no ramo **sem** traço de pincel · a expressão de cada um dos cinco tipos · as
+duas matrizes de orientação e o troço que anula componentes por eixo · a soma da gravidade da cena,
+comparada **lado a lado** com a do ramo do pincel · o sítio, dentro da preparação da peça para
+edição, onde as normais da malha são recalculadas · e o destino da fotografia de normais tirada ao
+criar a simulação (**não tem consumidor**).
+
+**O arnês novo, e por que ele não é o do pincel.** O filtro é um comando **modal**: ele abre onde o
+cursor está e lê **um passo por movimento do rato**. O arnês do pincel entrega uma lista de pontos a
+um operador de traço e nunca precisou de eventos; para o filtro não há operador equivalente.
+⚠️ **Duas tentativas falharam antes da que funcionou**, e vale registá-las: mover o ponteiro do
+sistema **não entrega evento nenhum** neste ambiente gráfico (foi confirmado com um observador de
+eventos: zero eventos nossos, e só os movimentos reais do utilizador a chegar) — o que também
+explica por que o arnês do pincel tem um auto-teste com repetições para o sobrevoo. A que funciona é
+a **simulação de eventos** que o próprio programa oferece por opção de linha de comando: ela entrega
+o movimento **e** o premir do botão (que fixa a origem do arrasto) **e** o largar (que fecha o
+comando), tudo determinista e sem tocar no ponteiro real. ⇒ várias configurações por processo.
+
+**As 26 corridas** (17 configurações; duas realizações no plano, quatro na esfera) e as fixtures
+estão em `docs/3D/cleanroom/fixtures/cloth/filtro/`, com a secção própria no README de lá.
+⛔ **Elas ficam num SUBDIRETÓRIO por causa de um gate:** o censo do arnês de paridade do pincel
+exige que as listas dele sejam o corpus **inteiro do diretório** e varre a raiz sem recursão — pôr um
+traço de filtro na raiz deixaria esse gate vermelho, e ele não é corrível por aquele arnês. O
+verificador do corpus foi estendido para varrer também um nível abaixo (herdando as malhas de
+repouso da raiz) e o gerador de índice ganhou as chaves novas; **103 ficheiros, exit 0**.
+
+**Os quatro veredictos da medição**, todos já escritos na espec:
+
+1. ⭐⭐⭐ **A normal do *Inflate* é relida a cada passo — e agora é (M), não (F).** O instrumento é um
+   **par-espelho**: com a normal congelada, a força do *Inflate* seria o simétrico exacto da do
+   tipo *Gravity* na mesma cena, e a cena é simétrica em `z` ⇒ a diferença entre um traço e a
+   reflexão do outro é **zero** se a lei for a do repouso. Sem máscara: `0,000000000` nos oito
+   passos (a peça translada rígida e a normal nunca vira). Com a peça presa fora de um disco:
+   `0` no passo 1 e `0,0055` no passo 8 (`5,06 %` do maior deslocamento), com a normal a virar até
+   `46,74°`. ⚠️ **A fixture que o pedido chamava «a que decide» — o plano sem máscara — decide
+   ZERO**; a régua nasceu do mecanismo, não da lista.
+2. ⛔ **A gravidade da cena tinha TRÊS afirmações erradas** e nenhuma era observável no corpus do
+   pincel (ali ela está a `0`): o sentido com um objecto de gravidade é o **`+Z`** dele e não o
+   `−Z` (o ramo do pincel nega, este não); o vector é usado **cru**, sem normalizar e sem ser levado
+   ao referencial da peça; e ele é multiplicado pela força do arrasto, logo **inverte com o
+   arrasto**. Mais uma quarta, medida: ela **não** passa pelo factor por vértice, então um vértice
+   fora do conjunto de faces activo **cai na mesma** (`2080` de `2080` medidos).
+3. ⭐ **As bandeiras de eixo eram «o código lido só as aplica ao Scale» e passam a facto medido**: o
+   mesmo traço de gravidade com um eixo só sai **byte a byte igual** ao das três.
+4. ⚠️ **A regra do pincel de que o 1.º passo não simula não existe no filtro** (um evento já
+   deforma), e o programa emite um movimento extra logo após o premir do botão, no mesmo píxel, com
+   força `0` — no-op exacto sobre a malha em repouso.
+
+**Reprodutibilidade.** No plano as dezasseis corridas são bit-reprodutíveis (`0,000000` entre duas
+realizações); a esfera sorteia `0,001015` sobre quatro — a mesma família já registada para o pincel,
+com a **superfície** como variável.
+
+**Estado:** ⏳ **aguarda R-pré.** A emenda está escrita, varrida e commitada na linha; o atestado
+independente (§3.R) é condição de a janela-mãe implementar.
+
+---
 
 ## Fechamento R
 

@@ -14,8 +14,10 @@ def read(path):
     return hdr, path_pts, verts
 def main(d):
     ok=True
+    # As malhas de repouso vivem na raiz do corpus; um subdiretório (o do FILTRO) herda-as.
     rest={s: read(os.path.join(d,f'{s}.repouso.txt.gz'))[2] for s in ('plano','esfera') if os.path.exists(os.path.join(d,f'{s}.repouso.txt.gz'))}
-    for f in sorted(glob.glob(os.path.join(d,'*.deformado.txt.gz'))):
+    for f in sorted(glob.glob(os.path.join(d,'*.deformado.txt.gz'))
+                    + glob.glob(os.path.join(d,'*','*.deformado.txt.gz'))):
         hdr, pts, dv = read(f); rv = rest[hdr['superficie']]
         assert len(dv)==len(rv), f
         n=[math.dist(a,b) for a,b in zip(rv,dv)]

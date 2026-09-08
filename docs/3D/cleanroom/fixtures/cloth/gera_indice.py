@@ -4,8 +4,12 @@ Uma entrada por ficheiro, com as mesmas chaves do cabeçalho. O índice é DERIV
 escreve à mão, e regenera-se sempre que um traço é acrescentado. Exit 0 = escrito.
 (Harness — não carrega algoritmo nenhum.)"""
 import gzip, json, glob, os, sys
-TEXTO = {'superficie', 'modo', 'falloff_da_forca', 'area', 'curva'}
-INTEIRO = {'pino', 'passos', 'passos_com_cursor_parado', 'tracos', 'persistente', 'movidos'}
+TEXTO = {'superficie', 'modo', 'falloff_da_forca', 'area', 'curva',
+         # o corpus do FILTRO (subdiretório `filtro/`) traz estas
+         'filtro', 'orientacao', 'eixos', 'mascara', 'forca_por_passo', 'origem_dos_blocos'}
+INTEIRO = {'pino', 'passos', 'passos_com_cursor_parado', 'tracos', 'persistente', 'movidos',
+           'conjuntos_de_faces', 'colisoes', 'origem_do_arrasto_px', 'avanco_por_passo_px',
+           'realizacoes'}
 def cabecalho(path):
     h = {}
     with gzip.open(path, 'rt') as f:

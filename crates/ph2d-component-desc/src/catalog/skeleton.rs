@@ -1,4 +1,4 @@
-//! **A família do ESQUELETO** — os 5 componentes de `ph2d-skeleton-ecs`.
+//! **A família do ESQUELETO** — os 6 componentes de `ph2d-skeleton-ecs`.
 //!
 //! ⚠️ **Família própria, e não uma prateleira do vetor.** Ela nasceu em 2026-09-06, quando os
 //! ossos saíram de dentro do módulo vectorial: nas quatro referências do mercado um esqueleto só
@@ -47,4 +47,13 @@ pub const DESCS: &[D] = &[
     // ⭐ A PELE — `intrinsic`: ela chega com o GESTO (*Bind*) e **não tem `Default`**, porque uma
     // pele sem a fonte autorada dentro não é uma pele, é uma forma prestes a sumir.
     D::intrinsic("ph2d::skeleton::Skin", "Skin", C::Skeleton, &[]),
+    // ⭐ O OSSO INTELIGENTE — `intrinsic` pela mesma razão da âncora e da pele: ele chega com o
+    // GESTO (*Add Smart Bone*), que lê qual acção está aberta na timeline. Pendurá-lo por paleta
+    // daria um controlo sem acção — inerte, e sem caminho pelo qual o artista o completasse.
+    D::intrinsic(
+        "ph2d::skeleton::SmartBone",
+        "Smart Bone",
+        C::Skeleton,
+        &[],
+    ),
 ];

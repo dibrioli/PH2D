@@ -621,3 +621,39 @@ pub fn clamp_to_limit(rot: f64, min: f64, max: f64) -> f64 {
 /// limite tão largo quanto o círculo não apara nada, e é a prova de que ligar o controlo não move
 /// a pose.
 pub const FULL_TURN: f64 = std::f64::consts::TAU;
+
+/// ⭐⭐⭐ **O ÂNGULO DE UM OSSO VIRA O TEMPO DE UMA ACÇÃO** — a lei do *Smart Bone*.
+///
+/// `rot` é a rotação local do osso de controlo; `from`/`to` são os dois ângulos que o artista
+/// declarou; `duration` é quanto a acção dura. Devolve **onde na acção** essa rotação cai.
+///
+/// # ⚠️ Ela APARA nos extremos, e não embrulha
+///
+/// Passar de `to` não continua a acção nem a faz recomeçar: ela **fica no fim**. É o
+/// `Action Constraint` do Blender e o *Smart Bone* do Moho, e a razão é que a acção é uma
+/// **correcção autorada** — depois do último ângulo que o artista posou não há informação nenhuma,
+/// e inventá-la (embrulhando) faria a manga saltar para a pose do princípio no ângulo mais extremo.
+///
+/// # ⚠️ Uma faixa INVERTIDA é legítima
+///
+/// `to < from` percorre a acção **ao contrário**, que é o que o artista quer quando o controlo dele
+/// gira para o outro lado. ⛔ Não é estado inválido a corrigir — corrigi-lo tornaria metade dos
+/// controlos inexprimíveis.
+///
+/// # ⛔ Faixa NULA devolve o princípio
+///
+/// Com `to == from` não há divisão possível. A resposta é `0` (o princípio da acção), que é a única
+/// que não mente: o controlo está inerte, e um `NaN` a viajar para dentro de um `sample` levaria a
+/// pose inteira com ele.
+#[must_use]
+pub fn action_time(rot: f64, from: f64, to: f64, duration: f64) -> f64 {
+    if !(rot.is_finite() && from.is_finite() && to.is_finite() && duration.is_finite()) {
+        return 0.0;
+    }
+    let faixa = to - from;
+    if faixa == 0.0 {
+        return 0.0;
+    }
+    let u = ((rot - from) / faixa).clamp(0.0, 1.0);
+    u * duration.max(0.0)
+}

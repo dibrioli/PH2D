@@ -123,6 +123,66 @@ impl Default for BoneLimit {
 
 impl SimComponent for BoneLimit {}
 
+/// ⭐⭐⭐ **O OSSO INTELIGENTE** — girar este osso PERCORRE uma animação inteira.
+///
+/// É o *Smart Bone* do Moho e o *Action Constraint* do Blender: o artista grava uma acção (um
+/// clip da timeline) e diz *«quando este osso vai de A a B, a acção vai do princípio ao fim»*. Um
+/// osso passa a ser um **controlo**, e não só uma peça que roda.
+///
+/// # ⭐⭐ Para que serve, e por que não se resolve com pesos
+///
+/// O caso canónico é a **correcção**: um cotovelo dobrado a 120° amassa a manga, e nenhum ajuste de
+/// força do osso arruma isso — a deformação certa naquele ângulo é uma pose AUTORADA, não uma
+/// interpolação. O segundo é o **controlo composto**: um osso solto que não deforma nada por si e
+/// abre uma boca, fecha uma mão, vira uma cabeça de perfil.
+///
+/// # As referências
+///
+/// | ferramenta | como |
+/// |---|---|
+/// | **Moho** | *Smart Bone* — o osso tem uma acção própria, e o ângulo dele é o tempo dela |
+/// | **Blender** | *Action Constraint* — `Target` + canal + `Range Min/Max` → `Action Frame Start/End` |
+/// | **Godot** (MIT) | `AnimationNodeBlendSpace1D` — um valor dirige pontos de mistura num eixo |
+///
+/// ⚠️ **A nossa forma é a do Blender e a do Moho** (um ângulo → o TEMPO de uma acção), e não a do
+/// Godot (um valor → a MISTURA de N animações). A diferença importa: misturar duas poses precisa
+/// que elas existam as duas e sejam compatíveis; percorrer um clip precisa de **um** clip, e é o
+/// que o artista já sabe fazer nesta casa — ele grava na timeline que já existe.
+///
+/// # ⚠️ O clip é nomeado pelo NOME, nunca pelo índice
+///
+/// É a lei desta casa (*referência durável entre objectos é o NOME*): reordenar ou apagar clips
+/// mexe em todos os índices, e um índice guardado passaria a apontar para a animação do vizinho —
+/// em silêncio, que é o pior modo de falha.
+#[derive(Component, Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct SmartBone {
+    /// O nome do clip que este osso percorre. Vazio ⇒ inerte (o osso é um osso normal).
+    pub clip: String,
+    /// O ângulo local (radianos) em que a acção está no **princípio**.
+    pub from: f64,
+    /// ... e no **fim**.
+    ///
+    /// ⚠️ `to == from` é faixa nula, e a lei devolve o princípio da acção — ⛔ nunca uma divisão por
+    /// zero. Uma faixa invertida (`to < from`) é legítima: ela percorre a acção **ao contrário**,
+    /// que é o que o artista quer quando o controlo dele gira para o outro lado.
+    pub to: f64,
+}
+
+impl Default for SmartBone {
+    fn default() -> Self {
+        Self {
+            clip: String::new(),
+            // ⚠️ Um quarto de volta, o mesmo valor de nascimento do [`BoneLimit`] e pela mesma
+            // razão: é a maior faixa cujos dois extremos um arrasto alcança sem o osso dar
+            // meia-volta. ⛔ `0..0` seria faixa nula e o controlo nasceria morto.
+            from: 0.0,
+            to: ph2d_skeleton::FULL_TURN / 4.0,
+        }
+    }
+}
+
+impl SimComponent for SmartBone {}
+
 /// ⭐⭐⭐ **A ÂNCORA** — a restrição de cinemática inversa que **FICA**.
 ///
 /// Ela mora no osso da PONTA da corrente, que é o modelo do Blender (*Inverse Kinematics* é uma
@@ -336,6 +396,9 @@ pub fn register_skeleton_components(reg: &mut ComponentRegistry) {
     // `register_default`: a faixa de nascimento é a volta inteira, que **não apara nada** — logo a
     // paleta do Inspector pode pendurá-lo sem mover a pose, e o artista aperta-o depois.
     reg.register_default::<BoneLimit>("ph2d::skeleton::BoneLimit");
+    // `register`: um osso inteligente sem clip não percorre nada — ele chega pelo GESTO, que é
+    // escolher a acção. Pendurá-lo por paleta daria um controlo inerte, como a âncora sem alvo.
+    reg.register::<SmartBone>("ph2d::skeleton::SmartBone");
 }
 
 #[cfg(test)]
@@ -349,7 +412,7 @@ mod tests {
     fn registers_every_skeleton_component() {
         let mut reg = ComponentRegistry::new();
         register_skeleton_components(&mut reg);
-        assert_eq!(reg.len(), 5);
+        assert_eq!(reg.len(), 6);
         assert!(reg.get_by_name("ph2d::skeleton::Bone").is_some());
         assert!(reg.get_by_name("ph2d::skeleton::Skin").is_some());
         assert!(reg.get_by_name("ph2d::skeleton::IkGoal").is_some());

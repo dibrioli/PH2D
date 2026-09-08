@@ -234,6 +234,17 @@ fn seed_number_fields(store: &mut ph2d_editor_core::interaction::WidgetStore) {
             }
         }
     }
+    // ⭐ E os DOIS do osso inteligente, em graus.
+    if let Some((de, ate)) = state::current_bone_smart() {
+        for (id, v) in [
+            (ids::VECTOR_BONE_SMART_FROM, de),
+            (ids::VECTOR_BONE_SMART_TO, ate),
+        ] {
+            if store.focus_id() != Some(id) {
+                store.set_number_value(id, v);
+            }
+        }
+    }
     if let Some((mix, softness, chain, _)) = state::current_bone_ik() {
         for (id, v) in [
             (ids::VECTOR_BONE_IK_MIX, mix),

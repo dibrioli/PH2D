@@ -3412,6 +3412,9 @@ impl crate::App {
             // ⚠️ `(é o MAX?, valor em GRAUS)` — a conversão para radianos é feita onde ele é
             // escrito, que é a porta onde as duas unidades se encontram.
             let mut pending_limit_knob: Option<(bool, f64)> = None;
+            let mut pending_smart_add = false;
+            let mut pending_smart_remove = false;
+            let mut pending_smart_knob: Option<(bool, f64)> = None;
             // ⚠️ **O osso seleccionado lê-se AQUI, antes de o mundo ser emprestado mutável** — os
             // verbos lá em baixo já seguram `sim`, e uma leitura de `self` no meio deles não
             // compila. O valor é do QUADRO, e é o mesmo que o gesto e o overlay usam.
@@ -3709,6 +3712,11 @@ impl crate::App {
                                 pending_limit_add = true;
                             } else if *id == ph2d_editor::ids::VECTOR_BONE_LIMIT_REMOVE {
                                 pending_limit_remove = true;
+                            } else if *id == ph2d_editor::ids::VECTOR_BONE_SMART_ADD {
+                                // ⭐⭐⭐ O OSSO INTELIGENTE: girar este osso percorre a acção ABERTA.
+                                pending_smart_add = true;
+                            } else if *id == ph2d_editor::ids::VECTOR_BONE_SMART_REMOVE {
+                                pending_smart_remove = true;
                             } else if let Some(i) = ph2d_editor::ids::VECTOR_BONE_BEND_IDS
                                 .iter()
                                 .position(|x| x == id)
@@ -4158,6 +4166,11 @@ impl crate::App {
                             {
                                 pending_limit_knob =
                                     Some((*id == ph2d_editor::ids::VECTOR_BONE_LIMIT_MAX, *v));
+                            } else if *id == ph2d_editor::ids::VECTOR_BONE_SMART_FROM
+                                || *id == ph2d_editor::ids::VECTOR_BONE_SMART_TO
+                            {
+                                pending_smart_knob =
+                                    Some((*id == ph2d_editor::ids::VECTOR_BONE_SMART_TO, *v));
                             } else if *id == ph2d_editor::ids::VECTOR_VERT_X {
                                 pending_vec_vert = Some((false, *v));
                             } else if *id == ph2d_editor::ids::VECTOR_VERT_Y {
@@ -6326,6 +6339,52 @@ impl crate::App {
                 }
                 if pending_limit_remove {
                     crate::bone_limit::remove_limit(sim, osso);
+                }
+                // ⭐⭐⭐ **O OSSO INTELIGENTE** — a acção que ele percorre é a que está ABERTA na
+                // timeline, e não um nome digitado: o mesmo gesto de duas mãos do *Bind*.
+                if pending_smart_add {
+                    let nome = self
+                        .timeline
+                        .doc
+                        .clips()
+                        .get(self.timeline.doc.active_index())
+                        .map(|c| c.name.clone())
+                        .unwrap_or_default();
+                    if nome.is_empty() {
+                        eprintln!(
+                            "[ph2d-vec] osso inteligente: nao ha accao aberta na timeline -- crie \
+                             ou escolha um clip antes"
+                        );
+                    } else {
+                        eprintln!(
+                            "[ph2d-vec] osso inteligente: accao \"{nome}\" ligada -- gire este osso \
+                             e ela corre"
+                        );
+                        sim.world_mut()
+                            .entity_mut(osso)
+                            .insert(ph2d_skeleton_ecs::SmartBone {
+                                clip: nome,
+                                ..ph2d_skeleton_ecs::SmartBone::default()
+                            });
+                    }
+                }
+                if pending_smart_remove {
+                    sim.world_mut()
+                        .entity_mut(osso)
+                        .remove::<ph2d_skeleton_ecs::SmartBone>();
+                }
+                if let Some((e_to, graus)) = pending_smart_knob
+                    && let Some(mut sb) = sim
+                        .world_mut()
+                        .get_mut::<ph2d_skeleton_ecs::SmartBone>(osso)
+                {
+                    // ⚠️ A MESMA conversão graus→radianos do limite, e pela mesma razão.
+                    let rad = graus.to_radians();
+                    if e_to {
+                        sb.to = rad;
+                    } else {
+                        sb.from = rad;
+                    }
                 }
                 if let Some((e_max, graus)) = pending_limit_knob
                     && let Some(mut l) = sim
@@ -9064,6 +9123,12 @@ impl crate::App {
                         .get::<ph2d_skeleton_ecs::BoneLimit>(ph2d_ecs::Entity::from_bits(b))
                         .map(|l| (l.min.to_degrees(), l.max.to_degrees()))
                 }));
+                // ⭐ A faixa do osso inteligente em foco, em GRAUS.
+                ph2d_panel_vector::set_current_bone_smart(osso_em_foco.and_then(|b| {
+                    sim.world()
+                        .get::<ph2d_skeleton_ecs::SmartBone>(ph2d_ecs::Entity::from_bits(b))
+                        .map(|s| (s.from.to_degrees(), s.to.to_degrees()))
+                }));
                 ph2d_panel_vector::set_current_bone_ik(osso_em_foco.and_then(|b| {
                     sim.world()
                         .get::<ph2d_skeleton_ecs::IkGoal>(ph2d_ecs::Entity::from_bits(b))
@@ -9640,6 +9705,12 @@ impl crate::App {
             // ⚠️ O `preview_drive` entra na assinatura porque o que este passe escreve é
             // **pré-visualização**: o documento é a pose da ÂNCORA, e a rotação dos ossos governados
             // é derivada dela.
+            // ⭐⭐⭐ **OS OSSOS INTELIGENTES correm ANTES da âncora**, e a ordem é load-bearing:
+            // um controlo escreve a pose de BASE (ele é a correcção autorada) e a IK é a restrição
+            // que persegue um alvo — ela tem de ver a pose já corrigida. ⛔ Ao contrário, a IK
+            // resolveria sobre uma pose que a acção ainda vai mudar, e o alvo deixaria de ser
+            // alcançado no mesmo quadro.
+            crate::skeleton_smart::drive(sim, &self.timeline.doc, &mut self.preview_drive);
             crate::skeleton_goal::solve(sim, &mut self.preview_drive);
             // ⚠️ Sem `xforms`: a pele resolve a pose de cada osso e da forma pela hierarquia (a
             // propagação de `Transform` que a casa já corre), que é a mesma razão de a cinemática

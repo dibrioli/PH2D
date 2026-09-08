@@ -91,6 +91,7 @@ impl BodyCtx<'_> {
                 y = self.labeled_number_field(label, id, step, y);
             }
             y = self.limit_rows(y);
+            y = self.smart_rows(y);
             y = self.ik_rows(y);
         }
         y
@@ -118,6 +119,36 @@ impl BodyCtx<'_> {
         let campos: [(ph2d_a11y::NodeId, &str); 2] = [
             (ids::VECTOR_BONE_LIMIT_MIN, tr("panel.vector.bone.limit.min")),
             (ids::VECTOR_BONE_LIMIT_MAX, tr("panel.vector.bone.limit.max")),
+        ];
+        for (id, label) in campos {
+            y = self.labeled_number_field(label, id, ANGLE_STEP, y);
+        }
+        y
+    }
+
+    /// ⭐⭐⭐ **O OSSO INTELIGENTE** — girar este osso percorre uma acção inteira.
+    ///
+    /// ⚠️ **Dívida NOMEADA:** o painel não diz **qual** acção está ligada — falta a este painel uma
+    /// linha de texto de leitura, e construí-la é wave própria. Quem responde é o log do gesto
+    /// (`[ph2d-vec] osso inteligente: accao "<nome>"`), e o gesto em si é o clip **aberto** na
+    /// timeline. *Uma dívida nomeada e um controlo mudo leem-se igual na tela; a diferença é esta
+    /// linha existir.*
+    fn smart_rows(&mut self, y: f32) -> f32 {
+        let Some(_) = state::current_bone_smart() else {
+            return self.action_button(
+                ids::VECTOR_BONE_SMART_ADD,
+                tr("panel.vector.bone.smart.add"),
+                y,
+            );
+        };
+        let mut y = self.action_button(
+            ids::VECTOR_BONE_SMART_REMOVE,
+            tr("panel.vector.bone.smart.remove"),
+            y,
+        );
+        let campos: [(ph2d_a11y::NodeId, &str); 2] = [
+            (ids::VECTOR_BONE_SMART_FROM, tr("panel.vector.bone.smart.from")),
+            (ids::VECTOR_BONE_SMART_TO, tr("panel.vector.bone.smart.to")),
         ];
         for (id, label) in campos {
             y = self.labeled_number_field(label, id, ANGLE_STEP, y);

@@ -179,6 +179,12 @@ fn estado_de(id: ph2d_a11y::NodeId) {
         || id == ids::VECTOR_BONE_LIMIT_MIN
         || id == ids::VECTOR_BONE_LIMIT_MAX;
     state::set_current_bone_limit(precisa_de_limite.then_some((-45.0, 45.0)));
+    // ⚠️ O osso inteligente tem a MESMA forma de exclusão: *Add* só sem acção, *Remove* e os dois
+    // ângulos só com ela.
+    let precisa_de_accao = id == ids::VECTOR_BONE_SMART_REMOVE
+        || id == ids::VECTOR_BONE_SMART_FROM
+        || id == ids::VECTOR_BONE_SMART_TO;
+    state::set_current_bone_smart(precisa_de_accao.then_some((0.0, 90.0)));
 }
 
 /// ⭐⭐⭐ **TODO SEGMENTO DO LADO DA DOBRA É TAMBÉM UM VERBO DA SHELL** — o censo que liga as duas

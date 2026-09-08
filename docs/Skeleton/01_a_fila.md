@@ -271,7 +271,7 @@ losango seria um alvo morto.
 
 | # | O quê | Estado |
 |---|---|---|
-| F3 | **Smart Bones** (Moho) — girar um osso toca uma animação inteira | nunca começado |
+| F3 | **Smart Bones** (Moho) | ✅ **FECHADO** (2026-09-08) — ver abaixo |
 | F4 | **Limites de ângulo por junta** | ✅ **FECHADO** (2026-09-07) — ver abaixo |
 | F5 | ~~**Pole target**~~ → **O LADO DA DOBRA** | ✅ **FECHADO** (2026-09-07) — ver abaixo |
 | F6 | **A segunda mídia** (raster/Flip) | ⛔ **bloqueado**: precisa de uma malha sobre a imagem, que não existe — meça o preço antes de prometer |
@@ -523,6 +523,59 @@ em si **fica**: ele é anterior a esta wave e serve o diagnóstico da pele e o d
 gates estão agora cortados em dois ficheiros: `skeleton_limit_tests` (a lei) e
 `skeleton_limit_gizmo_tests` (o que o dedo apanha). *As duas perguntas falham de maneiras
 diferentes.*
+
+
+---
+
+### F3 (fila antiga) — ✅ **OS OSSOS INTELIGENTES** (2026-09-08)
+
+Girar um osso **percorre uma acção inteira**. É o *Smart Bone* do Moho e o *Action Constraint* do
+Blender: o artista grava uma acção na timeline e diz *«quando este osso vai de A a B, ela vai do
+princípio ao fim»*. Um osso passa a ser um **controlo**.
+
+⭐ **Para que serve, e por que não se resolve com pesos:** a **correcção** (um cotovelo a 120° amassa
+a manga, e a deformação certa naquele ângulo é uma pose AUTORADA, não uma interpolação) e o
+**controlo composto** (um osso solto que abre uma boca, fecha uma mão, vira uma cabeça de perfil).
+
+⚠️ **A nossa forma é a do Blender e a do Moho** (um ângulo → o **TEMPO** de uma acção), e **não** a do
+Godot (`AnimationNodeBlendSpace1D`: um valor → a **MISTURA** de N animações). Misturar duas poses
+exige que elas existam e sejam compatíveis; percorrer um clip exige **um** clip — e é o que o artista
+já sabe fazer aqui, porque ele grava na timeline que já existe.
+
+⭐⭐ **A porta que faltava era pequena, e o desmonte do «precisa de Y» valeu a pena:** a timeline já
+sabia amostrar (`Clip::sample`) e escrever (`write_prop`); faltava **tocar UM clip num instante
+derivado, sem mexer no transporte** (`ph2d_timeline::apply_one_clip`, 40 linhas, `doc` por referência
+**partilhada** — trocar o clip activo e repor seria uma janela de um quadro em que o documento mente
+sobre si próprio, e o painel lê-o no mesmo quadro).
+
+⭐ **O gesto de ligar é de DUAS MÃOS** (o do *Bind*): a acção é a que está **aberta** na timeline. ⛔
+Digitar o nome seria a quarta superfície a poder discordar dela. E o clip é nomeado pelo **NOME**,
+nunca pelo índice — reordenar clips faria o osso percorrer a animação do vizinho, em silêncio.
+
+⚠️ **O que a acção escreve é PRÉ-VISUALIZAÇÃO**, e o ledger é o **da timeline**
+([`timeline_preview`]), não um novo: o que ela escreve é literalmente o que a timeline escreveria, e
+aquela porta já cobre os **quatro** factos (pose · alfa · `t` do morph · params de junta). ⛔ Um
+ledger próprio poria dois memos sobre o mesmo componente.
+
+⚠️ **A ORDEM no quadro:** o passe corre **antes** da âncora de IK — o controlo escreve a pose de
+BASE e a IK é a restrição que persegue um alvo, logo tem de ver a pose já corrigida.
+
+⛔⛔ **E um defeito que só a construção revelou:** um clip acabado de criar nasce com
+`duration = 0`, e o artista grava as chaves sem lhe tocar. Multiplicar por esse zero deixa a acção
+presa no instante `0` para todo ângulo — **medido**: `dur = 0.0`, `feitas = 1`, `x = 0`. *O controlo
+pinta, o gate de escrita conta `1`, e nada se move.* ⭐ A porta certa já existia e responde à pergunta
+inteira (`clip_end_seconds`: o override, senão a extensão das CHAVES, e o clip só-de-expressão). *A
+grandeza crua e a pergunta têm nomes parecidos e respostas diferentes.*
+
+⏳ **DÍVIDA NOMEADA:** o painel mostra os dois ângulos e **não diz qual acção está ligada** — falta a
+este painel uma **linha de texto de leitura**, e construí-la é wave própria. Quem responde é o log do
+gesto. *Uma dívida nomeada e um controlo mudo leem-se igual na tela; a diferença é esta linha
+existir.*
+
+⚠️ **`PROJECT_SCHEMA` 125 → 126** (componente registado novo; o registo do esqueleto vai de **5 para
+6** e o catálogo idem — conte o delta). ⚠️ E o gate `every_registered_component_has_a_descriptor`
+apanhou-me a registar sem descrever: *o Inspector e o registo são duas listas, e o gate é o que as
+ata.*
 
 
 ## ⛔ Recusas MEDIDAS deste módulo — não as reconstrua

@@ -125,6 +125,23 @@ pub const VECTOR_BONE_LIMIT_MIN: NodeId = hash_node_id("vector.bone.limit.min");
 /// **Limit Max** — o extremo anti-horário, em graus. Ver [`VECTOR_BONE_LIMIT_MIN`].
 pub const VECTOR_BONE_LIMIT_MAX: NodeId = hash_node_id("vector.bone.limit.max");
 
+/// ⭐⭐⭐ **Add Smart Bone** — este osso passa a PERCORRER a acção que está aberta na timeline.
+///
+/// ⚠️ **O clip vem do que está ABERTO, e não de um campo de texto** — é o gesto de duas mãos que
+/// esta casa usa no *Bind* e na arte de um pincel: o artista escolhe a acção onde ele já trabalha,
+/// escolhe o osso, e carrega. ⛔ Digitar o nome seria a quarta superfície a poder discordar da
+/// timeline.
+pub const VECTOR_BONE_SMART_ADD: NodeId = hash_node_id("vector.bone.smart.add");
+
+/// **Remove Smart Bone** — o osso volta a ser um osso.
+pub const VECTOR_BONE_SMART_REMOVE: NodeId = hash_node_id("vector.bone.smart.remove");
+
+/// **Action From** — o ângulo (GRAUS) em que a acção está no princípio.
+pub const VECTOR_BONE_SMART_FROM: NodeId = hash_node_id("vector.bone.smart.from");
+
+/// **Action To** — ... e no fim. ⚠️ `To < From` percorre a acção ao contrário, e é legítimo.
+pub const VECTOR_BONE_SMART_TO: NodeId = hash_node_id("vector.bone.smart.to");
+
 /// ⭐⭐⭐ **OS VERBOS DA SEÇÃO SKELETON — uma tabela, dois consumidores.**
 ///
 /// Todo botão desta seção mexe no **MUNDO** (um componente de uma entidade), logo o clique dele é
@@ -140,7 +157,7 @@ pub const VECTOR_BONE_LIMIT_MAX: NodeId = hash_node_id("vector.bone.limit.max");
 ///
 /// ⇒ *Uma lista escrita à mão ao lado de outra é duas respostas à mesma pergunta, e a que o artista
 /// vê é a que envelhece.* Com uma tabela só, acrescentar um verbo liga-o nos dois sítios.
-pub const VECTOR_BONE_VERBS: [NodeId; 7] = [
+pub const VECTOR_BONE_VERBS: [NodeId; 9] = [
     VECTOR_BONE_BIND,
     VECTOR_BONE_EXPAND,
     VECTOR_BONE_RELEASE,
@@ -148,6 +165,8 @@ pub const VECTOR_BONE_VERBS: [NodeId; 7] = [
     VECTOR_BONE_IK_REMOVE,
     VECTOR_BONE_LIMIT_ADD,
     VECTOR_BONE_LIMIT_REMOVE,
+    VECTOR_BONE_SMART_ADD,
+    VECTOR_BONE_SMART_REMOVE,
 ];
 
 /// ⭐⭐⭐ **OS CAMPOS NUMÉRICOS DA SEÇÃO SKELETON — a mesma tabela, os mesmos dois consumidores.**
@@ -159,7 +178,7 @@ pub const VECTOR_BONE_VERBS: [NodeId; 7] = [
 ///
 /// ⚠️ Ela existe pela mesma razão da [`VECTOR_BONE_VERBS`], e o custo já foi pago: o Z-index
 /// pagou-o uma vez, e o *Add IK* pagou-o outra na família ao lado.
-pub const VECTOR_BONE_FIELDS: [NodeId; 7] = [
+pub const VECTOR_BONE_FIELDS: [NodeId; 9] = [
     VECTOR_BONE_LENGTH,
     VECTOR_BONE_STRENGTH,
     VECTOR_BONE_IK_MIX,
@@ -167,4 +186,6 @@ pub const VECTOR_BONE_FIELDS: [NodeId; 7] = [
     VECTOR_BONE_IK_CHAIN,
     VECTOR_BONE_LIMIT_MIN,
     VECTOR_BONE_LIMIT_MAX,
+    VECTOR_BONE_SMART_FROM,
+    VECTOR_BONE_SMART_TO,
 ];

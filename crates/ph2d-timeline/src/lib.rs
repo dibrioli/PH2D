@@ -20,6 +20,11 @@
 //! as sibling modules following the same shape.
 
 pub mod apply;
+
+/// ⭐ **Aplicar UM clip fora do transporte** — irmão do `apply` pelo teto de LOC, cortado por
+/// responsabilidade. O 1.º cliente é o osso inteligente do esqueleto.
+mod apply_one;
+pub use apply_one::apply_one_clip;
 mod apply_path;
 mod apply_prop;
 mod apply_views;
@@ -62,7 +67,8 @@ mod strip_edge_edit;
 pub mod track_values;
 
 pub use apply::{
-    apply_from_doc, apply_from_doc_except, apply_scene, clip_playhead, key_home, key_time,
+    apply_from_doc, apply_from_doc_except, apply_scene, clip_playhead, key_home,
+    key_time,
     remapped_time,
 };
 pub use apply_views::{apply_active_clip, apply_container};

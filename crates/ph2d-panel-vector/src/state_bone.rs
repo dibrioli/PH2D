@@ -71,6 +71,8 @@ thread_local! {
     /// ⭐ O limite de ângulo da junta em foco, em GRAUS. `None` ⇒ ela gira livremente, e o painel
     /// oferece a porta de entrada em vez dos dois números.
     static CURRENT_LIMIT: Cell<Option<(f64, f64)>> = const { Cell::new(None) };
+    /// ⭐ A faixa do OSSO INTELIGENTE em foco, em GRAUS. `None` ⇒ ele não percorre acção nenhuma.
+    static CURRENT_SMART: Cell<Option<(f64, f64)>> = const { Cell::new(None) };
 }
 
 /// A âncora do osso em foco e os três números dela (`mix`, `softness`, `chain`). `None` ⇒ ele não
@@ -102,6 +104,18 @@ pub fn set_current_bone_limit(v: Option<(f64, f64)>) {
 
 pub(crate) fn current_bone_limit() -> Option<(f64, f64)> {
     CURRENT_LIMIT.with(Cell::get)
+}
+
+/// A faixa do osso inteligente em foco, em GRAUS (`from`, `to`). `None` ⇒ ele não tem acção.
+///
+/// ⚠️ **Graus e não radianos**, pela mesma razão do limite: o documento guarda o ângulo no espaço
+/// do `Transform` e o artista pensa em graus. A conversão vive na SHELL.
+pub fn set_current_bone_smart(v: Option<(f64, f64)>) {
+    CURRENT_SMART.with(|c| c.set(v));
+}
+
+pub(crate) fn current_bone_smart() -> Option<(f64, f64)> {
+    CURRENT_SMART.with(Cell::get)
 }
 
 pub(crate) fn current_bone_ik() -> Option<(f64, f64, f64, usize)> {

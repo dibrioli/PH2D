@@ -442,4 +442,18 @@
 /// ⛔ **Sem degrau de migração**, pela mesma decisão do Enio de 26/08.
 ///
 /// ⚠️ **A tripla NÃO vê este degrau** — a **nona** vez.
-pub(crate) const PROJECT_SCHEMA: u32 = 125;
+///
+/// # 125 -> 126 — o OSSO INTELIGENTE (`line/Vector`)
+///
+/// Um componente REGISTADO novo: `ph2d_skeleton_ecs::SmartBone` (girar um osso percorre uma acção
+/// inteira — o *Smart Bone* do Moho, o *Action Constraint* do Blender). Mesmo mecanismo dos degraus
+/// `123` e `125`: um `ComponentBlob` que o binário nao conhece **recusa o load inteiro**, e o degrau
+/// e' o que transforma isso em *«este ficheiro e' de outra versao»*.
+///
+/// ⚠️ **Ele nomeia o clip pelo NOME**, nunca pelo indice: reordenar ou apagar clips mexe em todos os
+/// indices, e um indice guardado passaria a apontar para a animacao do vizinho **em silencio**.
+///
+/// ⛔ **Sem degrau de migração**, pela mesma decisão do Enio de 26/08.
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — a **décima** vez.
+pub(crate) const PROJECT_SCHEMA: u32 = 126;

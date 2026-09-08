@@ -147,8 +147,6 @@ mod component_attach;
 mod component_palette;
 /// **Contour** (pesquisa `20_*` #9) — o cozimento vivo do `VecContour`: N anéis concêntricos
 /// com rampa de cor, irmão do `offset_live` de que é a generalização.
-mod component_pieces_smoke;
-mod component_resize_smoke;
 mod component_seed;
 mod component_smoke;
 /// O gesto que cria um conector (Down numa forma, Up noutra).
@@ -340,7 +338,6 @@ mod instance_apply_deep;
 /// ⭐ **As travessias que os verbos partilham** — irmão por assunto, ver o cabeçalho de lá.
 mod instance_diag;
 mod instance_docs;
-mod instance_live;
 /// ⭐⭐ A cena de MUDAR uma peça de lugar no componente — irmã por assunto do `instance_smoke`.
 mod instance_move_smoke;
 /// ⭐⭐ A cena da receita DENTRO da receita — irmã por assunto do `instance_smoke`.
@@ -755,8 +752,6 @@ mod value_wrap_smoke;
 /// baixo dele — ficando a documentar-se com a frase de outro e sem dizer que é um smoke.
 mod variant_axes_smoke;
 mod variant_flow_smoke;
-/// A cena de smoke dos **VARIANTS** (`PH2D_BUILD_SMOKE=58`) — irmã de `component_pieces_smoke`.
-mod variant_smoke;
 mod vec_anchor_edit;
 mod vec_appearance;
 mod vec_appearance_smoke;
@@ -785,7 +780,6 @@ mod vec_component_edit;
 /// ⭐⭐⭐ **A secção *Component* do painel vetorial, ligada ao mecanismo GERAL** (F4.6c) — nasce
 /// DESLIGADA (`PH2D_VEC_COMPONENT_GENERAL=1` arma). Ver o cabeçalho de lá.
 mod vec_component_general;
-mod vec_component_pieces;
 /// O painel edita o CONECTOR selecionado (Route / Jetty / Spread) — resolve o valor
 /// EFETIVO que o painel exibe e aplica a edição a TODOS os conectores selecionados.
 mod vec_connector_panel;
@@ -818,7 +812,6 @@ mod vec_glyph_build;
 /// A porta única de "onde está o caminho-guia, e como se percorre por arco?" (texto E pattern).
 mod vec_guide;
 /// A CÓPIA segue a âncora do mestre — o corolário da âncora viva, do lado do componente.
-mod vec_instance_follow;
 mod vec_layout_edit;
 mod vec_marquee;
 mod vec_morph_edit;
@@ -855,7 +848,6 @@ mod vec_ui_state_edit;
 /// ⚠️ **Este doc voltou para cá** (auditoria de 2026-08-30): o módulo da cena de smoke dos eixos
 /// entrou por baixo dele e **herdou-o**, deixando este ficheiro — o que a F4.6c vai apagar — sem a
 /// única linha que dizia o que ele é. *Um comentário separado do seu item muda de dono.*
-mod vec_variants;
 mod vec_weld;
 mod vec_widget_drive;
 mod vec_widget_edit;
@@ -1135,7 +1127,6 @@ impl App {
             // the first frame's measurement
             pivot_content_center: None,
             frame_resize_start: None,
-            instance_follow: None,
             rubber_band: None,
             pending_single_replace: None,
             group_drag_starts: Vec::new(),
@@ -1248,7 +1239,6 @@ impl App {
             profile_live: crate::profile_live::ProfileLive::default(),
             contour_live: crate::contour_live::ContourLive::default(),
             paint_dilate_live: crate::vec_paint_dilate::PaintDilateLive::default(),
-            instance_live: crate::instance_live::InstanceLive::default(),
             layout_live: crate::layout_live::LayoutLive::default(),
             vec_view_derived: ph2d_vec_scene::VecViewState::default(),
             align_live: crate::align_live::AlignLive::default(),

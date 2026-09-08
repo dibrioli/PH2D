@@ -478,4 +478,34 @@
 /// ⛔ **Sem degrau de migração**, pela mesma decisão do Enio de 26/08.
 ///
 /// ⚠️ **A tripla NÃO vê este degrau** — a **décima primeira** vez.
-pub(crate) const PROJECT_SCHEMA: u32 = 127;
+///
+/// # 127 -> 128 — DOIS componentes SAEM: o motor de instância do VETOR (F4.6c, `line/components`)
+///
+/// ⚠️⚠️ **Este degrau foi escrito como `123 -> 124` e RENUMERADO na integração de 2026-09-10.** A
+/// `line/Vector` e esta linha subiram o mesmo contador no mesmo dia — `+4` e `+1` — e o valor certo
+/// (`128`) **não estava em nenhum dos dois lados**. ⛔ *Duas linhas que escolhem o mesmo literal
+/// fundem MUDAS*: aqui o git conflitou por sorte (as duas tocaram a mesma linha do ficheiro), e a
+/// sonda `collision-surface.sh` teria dito `124 (base: 123)` — porque a coluna «base» dela é o
+/// **merge-base**, não o `main` de hoje. *Conte o DELTA contra a árvore em que vai aterrar.*
+///
+/// O `ph2d::ecs::VecComponentMain` e o `ph2d::ecs::VecInstance` deixaram de existir. Eles eram o
+/// mestre e a cópia do **segundo** motor de instância do app — o do sistema vetorial —, e o modelo
+/// geral (ADR-0164: `MasterRoot` / `InstanceOf` / `ObjectInstance`) responde por tudo o que eles
+/// faziam desde 2026-09-06, quando ele passou a ser o caminho de omissão.
+///
+/// ⚠️ **Um componente que SAI move o número pela MESMA razão que um que entra**, e o mecanismo é
+/// literalmente o mesmo `snapshot_to_world`: ele resolve cada `ComponentBlob` por `type_id` e faz
+/// `ok_or(RegistryError::UnknownTypeId)?`. Um `.ph2dproj` gravado com uma instância vetorial dentro
+/// **recusa o load inteiro** a partir daqui — sem o degrau isso apareceria como *«type id
+/// desconhecido»* no meio da travessia; com ele, como *«este ficheiro é de outra versão»*, que é a
+/// frase que diz ao dono o que aconteceu.
+///
+/// ⛔ **Sem degrau de migração**, pela mesma decisão do Enio de 26/08 — e aqui com a razão extra
+/// que a wave anterior já tinha medido: desde 2026-09-06 **não havia como criar** uma instância
+/// vetorial (o modo geral era a única porta), e os `.ph2dproj` da máquina do dono são de 26/08.
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — é a **décima segunda** vez nesta escada, e pela razão de
+/// sempre: os componentes viajam em `ComponentBlob`s, que para ela são opacos. É por isso que o
+/// número tem de subir à mão. (⚠️ dizia **oitava** quando o degrau era o `124`; os quatro da
+/// `line/Vector` entraram à frente dele e cada um deles é também invisível à tripla.)
+pub(crate) const PROJECT_SCHEMA: u32 = 128;

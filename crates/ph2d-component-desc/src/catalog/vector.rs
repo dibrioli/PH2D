@@ -47,19 +47,12 @@ pub const DESCS: &[D] = &[
     g("ph2d::ecs::VecBoolOp", "Boolean Op"),
     g("ph2d::ecs::VecBucketFill", "Bucket Fill"),
     g("ph2d::ecs::VecClipContent", "Clip Content"),
-    // A instância vetorial de hoje — subsumida pela F4 (ADR-0164 §4).
-    D::machinery(
-        "ph2d::ecs::VecComponentMain",
-        "Component Main",
-        C::Instancing,
-    ),
     g("ph2d::ecs::VecConnector", "Connector"),
     v("ph2d::ecs::VecContour", "Contour"),
     v("ph2d::ecs::VecCutPath", "Cut Path"),
     g("ph2d::ecs::VecEnvelope", "Envelope"),
     v("ph2d::ecs::VecFilter", "Filter"),
     g("ph2d::ecs::VecFrame", "Frame"),
-    D::machinery("ph2d::ecs::VecInstance", "Instance", C::Instancing),
     // ⚠️ `VecLabel.host` é um `VecPathId` cru (correção de 2026-08-21 ao doc 01 §1.3: NÃO é
     // um hash de nome) ⇒ `RefKind::VecPath` quando o campo for descrito, e entra no remap da
     // F4 como as juntas da física.

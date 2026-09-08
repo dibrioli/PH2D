@@ -177,7 +177,6 @@ mod vec_bindings;
 mod vec_bool_group;
 mod vec_bool_op;
 mod vec_clip_content;
-mod vec_component;
 mod vec_contour;
 mod vec_cut_path;
 mod vec_driven_style;
@@ -201,7 +200,7 @@ pub use vec_bindings::{BoundProp, TokenRef, VecBindings};
 pub use vec_bool_group::VecBoolGroup;
 pub use vec_bool_op::VecBoolOp;
 pub use vec_clip_content::VecClipContent;
-pub use vec_component::{InstanceOverride, OverrideSlot, VecComponentMain, VecInstance};
+
 pub use vec_contour::{MAX_CONTOUR_STEPS, VecContour};
 pub use vec_cut_path::VecCutPath;
 pub use vec_driven_style::VecDrivenStyle;

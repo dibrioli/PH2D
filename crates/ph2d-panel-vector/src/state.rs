@@ -84,14 +84,8 @@ pub use anchor_state::{AnchorState, set_anchor_state};
 /// **O COMPONENTE da seleção** (plano UI/UX W5) — que verbos de prefab fazem sentido agora.
 #[path = "state_components.rs"]
 mod component_state;
-pub use component_state::{
-    ComponentState, InstancePiece, VariantRow, set_component_state, set_instance_pieces,
-    set_variant_rows, set_z_index,
-};
-pub(crate) use component_state::{
-    component_state, instance_pieces, instance_pieces_beyond, variant_rows, variant_rows_beyond,
-    z_index,
-};
+pub use component_state::{ComponentState, set_component_state, set_z_index};
+pub(crate) use component_state::{component_state, z_index};
 
 /// **O AUTO LAYOUT da seleção** (plano UI/UX W2, ADR-0153) — o fluxo da moldura, o comportamento
 /// do filho, e o modo do recuo (este último panel-local).

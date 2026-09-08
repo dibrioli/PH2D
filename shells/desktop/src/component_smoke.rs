@@ -5,18 +5,18 @@
 //! ⚠️ **Ela dá o MATERIAL e NÃO cria componente nenhum** — a cicatriz que o `impasto_smoke` do
 //! Painter prega: um smoke que arma o estado por baixo do pano pula justamente a costura que
 //! existe para provar. O botão desenhado nasce sendo **arte comum**, e é o artista que carrega no
-//! *Create Component*.
+//! *Make Prefab*.
 //!
 //! # A pergunta desta cena é UMA, e é de olho
 //!
-//! *Mudo o mestre uma vez, e todas as cópias mudam — menos exactamente o que eu tinha mudado
-//! nelas.*
+//! *Abro a receita uma vez, mudo-a, e todas as cópias mudam — menos exactamente o que eu tinha
+//! mudado nelas.*
 //!
 //! O que ela monta, e por quê:
 //! - um **botão de duas peças** (caixa + etiqueta), porque um componente de uma peça só não
 //!   exercita a sub-árvore, e a sub-árvore é metade do desenho da wave;
 //! - **espaço vazio à direita**, onde as cópias vão nascer — sem ele o *Place* poria a primeira
-//!   por cima do mestre e o artista não veria as duas;
+//!   por cima da primeira e o artista não veria as duas;
 //! - e um **quadrado cinza solto**, que é o **CONTROLE**: ele nunca vira componente nem instância,
 //!   então tem de ficar exactamente onde nasceu em todos os passos. Uma diferença que apareça
 //!   nele também não é do componente.
@@ -24,7 +24,7 @@
 use ph2d_ecs::Entity;
 use ph2d_vec_scene::{Paint, Rgba8, VecPath, rectangle};
 
-/// A caixa do botão-mestre: `(x0, y0, x1, y1)` em unidades de mundo.
+/// A caixa do botão que vira prefab: `(x0, y0, x1, y1)` em unidades de mundo.
 const BOX: [f64; 4] = [-5.0, 1.0, -1.4, 2.2];
 /// A etiqueta dentro dele — a segunda peça, e a que o passo do override recolore.
 const LABEL: [f64; 4] = [-4.6, 1.35, -1.8, 1.85];
@@ -77,8 +77,9 @@ fn build(app: &mut crate::App) {
 
 /// Pendura a etiqueta na caixa — e mais nada.
 ///
-/// ⚠️ **Nenhum `VecComponentMain`, nenhum `VecInstance`.** O botão é arte comum até o artista o
-/// promover, e é essa promoção que esta cena existe para exercitar.
+/// ⚠️ **Nenhum `MasterRoot`, nenhum `InstanceOf`.** O botão é arte comum até o artista o promover,
+/// e é essa promoção que esta cena existe para exercitar — a cicatriz do `impasto_smoke`: um smoke
+/// que arma o estado por baixo do pano pula justamente a costura que existe para provar.
 fn adopt(app: &mut crate::App) {
     let Some(gfx) = app.gfx.as_mut() else {
         return;
@@ -115,36 +116,40 @@ fn announce(app: &mut crate::App) {
         gfx.vec_scene.paths().len()
     );
     eprintln!("[component] o roteiro (pegue a ferramenta VECTOR primeiro):");
-    eprintln!("  1. Clique na caixa AZUL do botao. Na secao **Component** ha' UM botao:");
-    eprintln!("     **Create Component**. Carregue nele. ⚠️ Nada se move — um mestre continua a");
-    eprintln!("     ser a arte onde ela esta'.");
-    eprintln!("  2. O botao mudou para **Place Instance**. Carregue nele TRES vezes. ⚠️ As tres");
-    eprintln!("     copias nascem COLADAS ao mestre -- um degrau de paste (12 px de TELA) cada,");
+    eprintln!("  1. Clique na caixa AZUL do botao. Na secao **Prefab** ha' UM botao:");
+    eprintln!(
+        "     **Make Prefab**. Carregue nele. ⚠️ Nada se move -- mas o que ficou na tela ja'"
+    );
+    eprintln!(
+        "     e' uma CO'PIA: a receita saiu do canvas e da lista, e e' isso que faz dela uma"
+    );
+    eprintln!("     biblioteca em vez de mais um objecto no caminho.");
+    eprintln!("  2. O botao mudou para **Instantiate**. Carregue nele TRES vezes. ⚠️ As tres");
+    eprintln!("     copias nascem COLADAS a` primeira -- um degrau de paste (12 px de TELA) cada,");
     eprintln!("     em cascata, como um Ctrl+V repetido. Elas NAO podem nascer longe (o artista");
     eprintln!("     nao saberia que existem) nem UMA EM CIMA DA OUTRA. De zoom: a folga entre");
     eprintln!("     elas tem de continuar do mesmo tamanho na TELA.");
     eprintln!("  3. Arraste cada copia para onde quiser (o gizmo move-as normalmente).");
-    eprintln!("  4. ⚠️ **A PROVA DA WAVE**: selecione a ETIQUETA branca DENTRO do mestre (clique");
-    eprintln!("     nela) e, na secao **Fill**, mude a cor. As TRES copias mudam junto, no mesmo");
-    eprintln!("     instante. Ninguem chamou um 'atualizar' — a copia e' derivada por frame.");
-    eprintln!("  5. ⚠️ **A OUTRA METADE DA PROVA**: estique o MESTRE pelo gizmo. As tres copias");
-    eprintln!("     esticam junto — a FORMA do mestre propaga. Agora ARRASTE o mestre para outro");
-    eprintln!("     canto: as copias **nao se mexem** — o LUGAR dele nao propaga. Se as copias");
-    eprintln!("     seguirem o arrasto, a separacao entre forma e lugar quebrou.");
-    eprintln!("  6. Selecione UMA copia. Aparecem **Detach Instance** (e, se ela tivesse");
-    eprintln!("     overrides, **Reset Overrides**). Carregue em **Detach**: ela deixa de seguir");
-    eprintln!("     o mestre e vira arte de duas pecas. ⚠️ Ela tem de ficar **EXACTAMENTE onde");
-    eprintln!("     estava** (um Detach que move a arte e' um Detach que voce tem de desfazer), e");
-    eprintln!("     na Hierarquia a CAIXA continua a ser o pai da ETIQUETA — nao o contrario.");
-    eprintln!("     Mude o mestre outra vez — as OUTRAS duas seguem, e a destacada nao.");
+    eprintln!("  4. ⚠️ **A PROVA DA WAVE**: carregue em **Edit Prefab**. A receita aparece no");
+    eprintln!("     centro da area visivel, nitida, com o resto do mundo BORRADO e escurecido, e");
+    eprintln!("     uma barra **Done / Cancel** por baixo da regua. Seleccione a ETIQUETA branca");
+    eprintln!("     dentro dela e, na seccao **Fill**, mude a cor. Carregue em **Done**.");
+    eprintln!("     ⚠️ As copias TODAS mudam. Ninguem chamou um 'atualizar'.");
     eprintln!(
-        "  7. Selecione o MESTRE e apague-o (Delete). ⚠️ As copias **nao desaparecem**: cada"
+        "  5. ⚠️ **A METADE QUE E' SO' SUA**: mude a cor da etiqueta de UMA copia (sem abrir"
     );
-    eprintln!("     uma mostra o retangulo-suporte dela e o painel diz **Main missing**. Ctrl+Z");
-    eprintln!("     traz o mestre de volta e elas voltam a desenhar.");
-    eprintln!("  8. ⚠️ **O CONTROLE**: o quadrado CINZA da esquerda nunca virou nada e tem de");
+    eprintln!("     a receita). Agora repita o passo 4 com outra cor: as outras seguem, e essa");
+    eprintln!("     **fica com a sua** -- e' uma EXCEPCAO. O botao **Revert to Prefab** desfaz.");
+    eprintln!(
+        "  6. Seleccione UMA copia e carregue em **Detach from Prefab**: ela deixa de seguir"
+    );
+    eprintln!("     a receita e vira arte de duas pecas. ⚠️ Ela tem de ficar **EXACTAMENTE onde");
+    eprintln!("     estava** (um Detach que move a arte e' um Detach que voce tem de desfazer), e");
+    eprintln!("     na Hierarquia a CAIXA continua a ser o pai da ETIQUETA -- nao o contrario.");
+    eprintln!("     Edite a receita outra vez -- as OUTRAS seguem, e a destacada nao.");
+    eprintln!("  7. ⚠️ **O CONTROLE**: o quadrado CINZA da esquerda nunca virou nada e tem de");
     eprintln!("     estar exactamente onde nasceu, em todos os passos. Se ele se mexeu, o que");
-    eprintln!("     voce viu nao foi o componente.");
+    eprintln!("     voce viu nao foi o prefab.");
 }
 
 #[cfg(test)]

@@ -495,7 +495,12 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // ⚠️ **A tripla NAO ve^ este degrau** (os dois numeros ao lado ficam onde estavam): os
         // bytes mudaram dentro de um `ComponentBlob`, que para ela e' opaco. E' a QUARTA vez
         // (99, 100, 114 e este) -- ver a escada.
-        (127, 13, 22),
+        // ⚠️ **`128` e nao `124` nem `127`** — integracao de 2026-09-10: a `line/Vector` subiu o
+        // PROJECT_SCHEMA `+4` e esta linha `+1`, no mesmo dia. O valor certo nao estava em nenhum
+        // dos dois lados, e e' esta a linha que as duas editaram, logo o git conflitou em vez de
+        // fundir mudo. Os dois numeros ao lado NAO se mexem: nenhum dos cinco degraus mudou a
+        // forma da `VecScene` nem do `FlipDoc`.
+        (128, 13, 22),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

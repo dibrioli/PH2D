@@ -34,34 +34,6 @@ pub(super) fn component_controls(store: &mut WidgetStore) {
             },
         );
     }
-    // **As LINHAS de peça** (W5b). O teto é registado SEMPRE, e não a contagem viva: o `populate`
-    // corre antes do corpo, então registar `pieces().len()` acoplaria o registo à ordem de duas
-    // fases — e uma peça a mais num frame nasceria morta sob o mouse até ao frame seguinte. Os
-    // slots a mais são widgets que nada pinta, que é o que o `paint` decide.
-    for row in 0..ids::MAX_INSTANCE_PIECES {
-        store.register(
-            ids::vector_instance_piece_show_id(row),
-            InteractiveState::Button {
-                state: ButtonState::Normal,
-            },
-        );
-        // ⚠️ A swatch é alvo de PICKER, não botão: registá-la como botão faria o clique acender o
-        // widget e **nunca abrir o picker** — a cor ficaria ineditável com todos os gates verdes.
-        store.register_picker_swatch(ids::vector_instance_piece_colour_id(row));
-    }
-    // **Os chips de VARIANT** (W5c). O teto é registado SEMPRE, pela mesma razão das peças: o
-    // `populate` corre antes do corpo, e registar a contagem viva faria um chip novo nascer morto
-    // sob o mouse até ao frame seguinte.
-    for axis in 0..ids::MAX_VARIANT_AXES {
-        for value in 0..ids::MAX_VARIANT_VALUES {
-            store.register(
-                ids::vector_variant_option_id(axis, value),
-                InteractiveState::Button {
-                    state: ButtonState::Normal,
-                },
-            );
-        }
-    }
     // **A PELE por-widget** (W6.2): os dois verbos e os chips de tipo. Mesmo teto-sempre-registado
     // pela mesma razão — e aqui o esquecimento seria mais caro, porque a seção INTEIRA fica muda.
     for &id in WIDGET_BUTTONS {

@@ -5,7 +5,7 @@
 //! algo»*. Uma secção que oferecesse *Detach* sobre uma forma comum, ou um *Place* que não põe
 //! cópia nenhuma, passaria num gate escrito sobre a chamada.
 
-use super::{armed, dispatch, state_of};
+use super::{dispatch, state_of};
 use crate::instance_docs::OwnedDocs;
 use crate::vec_component_edit::ComponentEdit;
 use ph2d_ecs::{Children, Entity, MasterRoot, Name, SimWorld, Transform};
@@ -77,35 +77,60 @@ pub(super) fn run_full(
     ((changed, select_out), arm_pick)
 }
 
-/// ⭐⭐⭐ **A PORTA É UMA SÓ, e desde 2026-09-06 ela está ABERTA por omissão.**
+/// ⭐⭐⭐ **NÃO HÁ SEGUNDO MOTOR — o censo que o prova** (F4.6c wave 3, 2026-09-07).
 ///
-/// Ela esteve fechada enquanto havia algo por fechar — os três controlos que o motor velho tinha a
-/// mais. Com os três medidos e o dono a aprovar três smokes seguidos, o motor novo passa a ser o
-/// caminho de omissão, que é o precedente do `PH2D_RETOPO_EXTRACT` levado até ao fim.
+/// O gate que aqui esteve media *«a porta está aberta por omissão»* sobre um `armed()` que
+/// escolhia entre dois motores. Com o `VecInstance` apagado não há escolha, e um gate sobre um
+/// interruptor que não existe seria uma asserção sobre nada.
 ///
-/// ⚠️ **Este gate corre no processo de teste**, onde a env var não está posta — ele mede exactamente
-/// o estado em que o dono recebe a build.
+/// ⇒ a pergunta muda de *«qual motor?»* para *«ainda há dois?»*, e a régua é o FONTE da shell:
+/// nenhum ficheiro do produto volta a nomear o componente do motor velho.
+///
+/// ⚠️ **Varre o `src/` inteiro e não uma lista** — uma lista escrita à mão fica verde no dia em
+/// que alguém ressuscita o tipo num ficheiro que ela não conhece. ⛔ E descasca comentários antes
+/// de varrer: esta wave deixou o nome escrito em vários docs, de propósito, para que o próximo
+/// leitor saiba o que foi apagado.
 #[test]
-fn the_new_mode_is_the_default_path() {
+fn no_file_of_the_shell_names_the_old_instance_motor() {
+    let raiz = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+    let mut acusados = Vec::new();
+    let mut pilha = vec![raiz.clone()];
+    while let Some(dir) = pilha.pop() {
+        for entrada in std::fs::read_dir(&dir).expect("ler o src") {
+            let caminho = entrada.expect("entrada").path();
+            if caminho.is_dir() {
+                pilha.push(caminho);
+                continue;
+            }
+            if caminho.extension().is_none_or(|e| e != "rs") {
+                continue;
+            }
+            let corpo = std::fs::read_to_string(&caminho).expect("ler o ficheiro");
+            let sem_comentario: String = corpo
+                .lines()
+                .map(|l| match l.find("//") {
+                    Some(i) => &l[..i],
+                    None => l,
+                })
+                .collect::<Vec<_>>()
+                .join("\n");
+            // ⚠️ **A agulha é MONTADA, e isso não é esperteza:** escrita inteira, ela apareceria
+            // no fonte deste próprio ficheiro e o censo acusar-se-ia a si mesmo — e a cura óbvia
+            // (saltar o ficheiro do gate) abriria o único ponto cego que ele não pode ter.
+            // *Excluir um ficheiro de um censo é escolher onde não olhar.*
+            if sem_comentario.contains(concat!("Vec", "Instance")) {
+                acusados.push(
+                    caminho
+                        .strip_prefix(&raiz)
+                        .unwrap_or(&caminho)
+                        .to_path_buf(),
+                );
+            }
+        }
+    }
     assert!(
-        armed(),
-        "o modo novo deixou de ser o caminho de omissao — o dono recebe o motor velho sem o pedir"
-    );
-}
-
-/// ⛔⛔ **E o bissector continua a ser UM zero** — nem `1`, nem qualquer outra coisa.
-///
-/// ⚠️ **A lei mede-se sem tocar no processo:** pôr e tirar uma variável de ambiente dentro de um
-/// teste escreve numa global enquanto os outros correm em paralelo. *Um ramo que só se mede assim
-/// fica sem gate — e o ramo do bissector é precisamente o que ninguém volta a correr.*
-#[test]
-fn only_a_zero_sends_the_panel_back_to_the_old_motor() {
-    use super::armed_from;
-    assert!(!armed_from(Some("0")), "o `0` deixou de desligar");
-    assert!(armed_from(None), "a ausencia da variavel deixou de ligar");
-    assert!(
-        armed_from(Some("1")),
-        "um `=1` na memoria do dono deixou de ligar"
+        acusados.is_empty(),
+        "o motor de instancia do vetor voltou ao codigo da shell: {acusados:?}"
     );
 }
 

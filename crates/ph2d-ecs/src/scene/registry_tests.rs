@@ -167,9 +167,15 @@ fn register_ecs_components_populates_registry() {
     //   `register_skeleton_components` -- o precedente e' a `ph2d-physics-ecs`. A fundacao nao
     //   cresce uma vez por midia, e o esqueleto serve vector, raster, 3D e Flip.
     //   ⛔ Um componente que SAI e' tao contavel quanto um que entra: a conta desce de `81` a `79`.
-    // ⛔ **Este numero SOMA entre linhas: conta-se, nunca se escolhe.** O `79` saiu do gate (ele
-    //   imprimiu `left: 79`), como manda a nota do `VecBucketFill` acima.
-    assert_eq!(reg.len(), 79);
+    // ⚠️ **O MOTOR DE INSTANCIA DO VETOR SAIU EM 2026-09-07** (-2: `VecComponentMain` e
+    //   `VecInstance`, F4.6c). Ele era o segundo motor de instancia do app; quem responde e' o
+    //   modelo geral (`MasterRoot`/`InstanceOf`, ADR-0164). ⛔ Um componente que SAI conta como um
+    //   que entra: a conta desce de `79` a `77` -- e este e' o degrau que obriga o
+    //   `PROJECT_SCHEMA` a subir, porque o `snapshot_to_world` recusa um blob cujo `type_id`
+    //   deixou de estar registado.
+    // ⛔ **Este numero SOMA entre linhas: conta-se, nunca se escolhe.** O `77` saiu do gate (ele
+    //   imprimiu `left: 77`), como manda a nota do `VecBucketFill` acima.
+    assert_eq!(reg.len(), 77);
     assert!(reg.get_by_name("ph2d::ecs::VecClipContent").is_some());
     assert!(reg.get_by_name("ph2d::ecs::VecBoolOp").is_some());
     assert!(reg.get_by_name("ph2d::ecs::SpritePixels").is_some());

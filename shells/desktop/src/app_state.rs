@@ -1553,7 +1553,6 @@ pub(crate) struct App {
     pub(crate) paint_dilate_live: crate::vec_paint_dilate::PaintDilateLive,
     /// **As INSTÂNCIAS de componente, vivas** (plano UI/UX W5) — o mestre desenhado na pose de
     /// cada cópia. O 9º produtor de `LiveGeometry`.
-    pub(crate) instance_live: crate::instance_live::InstanceLive,
     /// O **cozimento da SIMETRIA VIVA** — as cópias que o modo simétrico desenha
     /// (`ph2d_ecs::VecSymmetry`, plano 25 W6.3), irmão do `offset_live`. Runtime-only, e é isso
     /// que faz *"desmarcar antes do Apply"* não destruir nada: as cópias nunca estiveram no
@@ -1870,10 +1869,6 @@ pub(crate) struct App {
     /// sujeito do arrasto não é uma moldura. Mora no `App` e não no `GizmoDragState` porque este é
     /// `Copy`, e um instantâneo de geometria não é.
     pub(crate) frame_resize_start: Option<crate::vec_frame_resize::FrameResizeStart>,
-    /// As CÓPIAS fotografadas no arrasto de rotação/escala em curso — onde cada uma estava, e onde
-    /// o mestre dela estava, para que a âncora que o gizmo segura no mestre apareça segura na
-    /// cópia (`vec_instance_follow`). `None` entre gestos e quando nada obedece ao que se arrasta.
-    pub(crate) instance_follow: Option<crate::vec_instance_follow::InstanceFollow>,
     /// Fase 0f: canvas rubber-band box select. `Some` while the user
     /// is left-dragging on empty canvas (no sprite hit, no gizmo
     /// handle hit). Anchored at the Down point in screen coords —

@@ -28,15 +28,6 @@ pub use ph2d_editor_core::ids::{
     vector_fx_card_id, vector_fx_down_id, vector_fx_hide_id, vector_fx_param_id,
     vector_fx_param_num_id, vector_fx_remove_id, vector_fx_toggle_id, vector_fx_up_id,
 };
-/// **OS COMPONENTES** (plano UI/UX W5): a seção, os verbos, as linhas de PEÇA da W5b e os chips de
-/// VARIANT da W5c.
-pub use ph2d_editor_core::ids::{
-    MAX_INSTANCE_PIECES, MAX_VARIANT_AXES, MAX_VARIANT_VALUES, VECTOR_COMPONENT_CREATE,
-    VECTOR_COMPONENT_DETACH, VECTOR_COMPONENT_EDIT, VECTOR_COMPONENT_PLACE,
-    VECTOR_COMPONENT_PLACE_LINKED, VECTOR_COMPONENT_RESET, VECTOR_COMPONENT_SWAP,
-    VECTOR_COMPONENT_UPDATE_MAIN, VECTOR_SECTION_COMPONENT, vector_instance_piece_colour_id,
-    vector_instance_piece_show_id, vector_variant_option_id,
-};
 pub use ph2d_editor_core::ids::{
     MAX_MORPH_ACTIONS, MAX_MORPH_STATES, VECTOR_MORPH_DISSOLVE, VECTOR_MORPH_PREVIEW,
     VECTOR_MORPH_STATES_MAKE, VECTOR_SECTION_MORPH_STATES, morph_shape_disconnect_id,
@@ -138,6 +129,13 @@ pub use ph2d_editor_core::ids::{
     VECTOR_BRUSH_FLIP, VECTOR_BRUSH_OFFSET, VECTOR_BRUSH_OFFSET_NUM, VECTOR_BRUSH_PICK_SHAPE,
     VECTOR_BRUSH_ROTATION, VECTOR_BRUSH_ROTATION_NUM, VECTOR_BRUSH_SCALE, VECTOR_BRUSH_SCALE_NUM,
     VECTOR_BRUSH_SPACING, VECTOR_BRUSH_SPACING_NUM, VECTOR_SECTION_BRUSH, VECTOR_STROKE_KIND_BRUSH,
+};
+/// **OS COMPONENTES** (plano UI/UX W5): a seção, os verbos, as linhas de PEÇA da W5b e os chips de
+/// VARIANT da W5c.
+pub use ph2d_editor_core::ids::{
+    VECTOR_COMPONENT_CREATE, VECTOR_COMPONENT_DETACH, VECTOR_COMPONENT_EDIT,
+    VECTOR_COMPONENT_PLACE, VECTOR_COMPONENT_PLACE_LINKED, VECTOR_COMPONENT_RESET,
+    VECTOR_COMPONENT_SWAP, VECTOR_COMPONENT_UPDATE_MAIN, VECTOR_SECTION_COMPONENT,
 };
 /// Os campos da RELAÇÃO do conector (a seção só existe com um conector na seleção).
 pub use ph2d_editor_core::ids::{

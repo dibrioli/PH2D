@@ -73,7 +73,11 @@ mod tests {
         //   proprio (`ph2d-skeleton-ecs`, com a porta `register_skeleton_components`, precedente da
         //   `ph2d-physics-ecs`). ⛔ Um componente que SAI conta tanto como um que entra: ECS 79 ⇒
         //   aqui 80, e o numero foi CONTADO (o gate imprimiu `left: 80`).
-        assert_eq!(reg.len(), 80);
+        // ⚠️ **-2 em 2026-09-07: o MOTOR DE INSTANCIA DO VETOR saiu** (`VecComponentMain` e
+        //   `VecInstance`, F4.6c) -- ver a nota dos TRES contadores em `ph2d-ecs`. ⛔ Um componente
+        //   que SAI conta tanto como um que entra: ECS 77 ⇒ aqui 78, e o numero foi CONTADO (o
+        //   gate imprimiu `left: 78`).
+        assert_eq!(reg.len(), 78);
         assert!(reg.get_by_name("ph2d::script::LuauScript").is_some());
     }
 }

@@ -244,31 +244,20 @@ pub(crate) fn route(app: &mut crate::App, f: u32, level: u32) -> bool {
         crate::gizmo_anchor_smoke::frame(app, f);
         return true;
     }
-    // A cena do MESTRE REDIMENSIONADO (=55) — irmã `component_resize_smoke`. Ao contrário da `=53`,
-    // ela nasce com o componente JÁ armado e duas cópias vivas: o que este smoke prova não é o
-    // gesto de criar, é o que acontece às cópias quando a alça do mestre anda.
-    if level == 55 {
-        crate::component_resize_smoke::frame(app, f);
-        return true;
-    }
-    // A cena das DIFERENÇAS (=56) — irmã `component_pieces_smoke`. Como a `=53`, ela **não arma
-    // componente nenhum**: o que esta prova é a lista de PEÇAS (o override, o Update Main, o
-    // Swap), e criar/colocar já é gesto provado — repeti-lo é barato e não esconde costura.
-    if level == 56 {
-        crate::component_pieces_smoke::frame(app, f);
-        return true;
-    }
+    // ⛔⛔ **OS NÍVEIS 55, 56 e 58 ESTÃO VAGOS DE PROPÓSITO** (F4.6c, 2026-09-07). Eram as três
+    // cenas do motor `VecInstance` — o mestre redimensionado, a lista de PEÇAS e a fileira de
+    // VARIANTS — e as duas últimas ensinavam controlos do painel vetorial que **deixaram de ser
+    // pintados** quando o modelo geral passou a ser o caminho de omissão. *Uma cena que ensina o
+    // contrário do que acontece é pior que uma cena ausente*, e o que elas provavam vive hoje na
+    // família `PH2D_INSTANCE_SMOKE=1..7`, que é a do motor que shipa.
+    //
+    // ⚠️ **Um nível vago não é um buraco a preencher**: o gate `no_two_smoke_scenes_claim_the_same_level`
+    // mede COLISÃO, não densidade. Reaproveitá-los para outro assunto faria um roteiro antigo do
+    // dono abrir a cena errada.
     // A cena da ORDEM DE Z (=57) — irmã `zorder_smoke`. Duas perguntas de olho: o FILHO aparece
     // (a lei do Godot) e os botões de z-order fazem alguma coisa (eles escreviam na porta errada).
     if level == 57 {
         crate::zorder_smoke::frame(app, f);
-        return true;
-    }
-    // A cena dos VARIANTS (=58) — irmã `variant_smoke`. Como a `=53` e a `=56`, ela **não arma
-    // componente nenhum**: aqui é o gesto de marcar os quatro irmãos como mestres que FAZ deles um
-    // conjunto de versões, então armá-lo escondia a metade mais importante do desenho.
-    if level == 58 {
-        crate::variant_smoke::frame(app, f);
         return true;
     }
     // A cena dos TOKENS (=59) — irmã `tokens_smoke`. ⚠️ Ela não monta geometria de assunto

@@ -6180,26 +6180,6 @@ impl crate::App {
                         }
                     });
                 }
-                // **A cor de uma PEÇA de instância** (W5b) — o mesmo picker OKLCH partilhado, o
-                // mesmo desenho do halo acima: a swatch só ABRE, e o valor é lido do alvo. ⚠️ O
-                // `set_piece_colour` recusa a cor IGUAL, senão o picker aberto escreveria o mesmo
-                // override a cada frame e o `post_frame_undo` gravaria um passo por frame.
-                if let Some(target) = hero.store.picker_target()
-                    && let Some(row) = crate::vec_component_pieces::colour_target(target)
-                    && let Some((value, _, _, _)) = hero
-                        .store
-                        .blender_picker(ph2d_editor::ids::INSP_BLENDER_PICKER)
-                    && let Some(&bits) = sel.first().and_then(|id| self.vec_entities.get(id))
-                {
-                    crate::vec_component_pieces::set_piece_colour(
-                        sim,
-                        vec_scene,
-                        &self.vec_entities,
-                        ph2d_ecs::Entity::from_bits(bits),
-                        row,
-                        value.rgba,
-                    );
-                }
             }
             // Pattern on Path (plano 23): os sliders afinam o vínculo do MOTIVO — que é o caminho
             // LINKADO da seleção (`linked_motif`), não o primário: depois de prender, o primário
@@ -6857,15 +6837,6 @@ impl crate::App {
                     self.vec_profile_mirrored = (sel.len() == 1).then(|| sel[0]);
                 }
             }
-            // ── OS COMPONENTES (plano UI/UX W5) ──────────────────────────────────
-            // Aqui e não no bloco de publicação: o **Place** empurra um caminho, e quem lhe dá
-            // entidade é o `vec_entities::sync`, que corre mais abaixo NESTE frame. Aplicado
-            // depois dele, o vínculo teria de esperar o frame seguinte — e a cópia nasceria um
-            // quadro sem desenho nenhum.
-            let mut arm_instance_of: Option<(
-                ph2d_vec_scene::VecPathId,
-                ph2d_vec_scene::VecPathId,
-            )> = None;
             // **A POSIÇÃO dos controles autorados** (W8b.4): o store e o mundo de acordo, nas
             // duas direções. ⚠️ ANTES do resolvedor dos drives (mais abaixo, no passe de desenho)
             // — um valor que acabou de chegar de um load tem de mexer na arte NESTE frame, senão a
@@ -7131,207 +7102,64 @@ impl crate::App {
                     self.ui_states_anchor = None;
                 }
             }
-            let mut arm_detached_under: Option<crate::vec_component_edit::Detached> = None;
             if let Some(verb) = pending_component {
                 let sel: Vec<ph2d_vec_scene::VecPathId> = self.vec_pen.selected_paths().to_vec();
-                // ⭐⭐⭐ **O modo GERAL da F4.6c** — a segunda das duas portas (a outra publica o que
-                // a secção MOSTRA). ⛔ Sem a env var este `if` é falso e o `match` abaixo corre
-                // como sempre: *o caminho de omissão fica byte-idêntico.*
-                if crate::vec_component_general::armed() {
-                    // ⚠️ **O sujeito resolve-se ANTES dos documentos** — o mapa `path ⟺ entidade`
-                    // entra no `OwnedDocs` emprestado mutavelmente, e pedi-lo outra vez lá dentro
-                    // seria o segundo empréstimo.
-                    //
-                    // ⚠️ **Pela MESMA função que a secção usa para se MOSTRAR** — duas resoluções
-                    // dariam um botão oferecido sobre o grupo e um clique a agir sobre um filho.
-                    let subject = crate::vec_component_general::subject_of(
-                        &self.vec_entities,
-                        &sel,
-                        (hero.gizmo.selected_len() == 1)
-                            .then_some(hero.gizmo.selection)
-                            .flatten(),
-                    );
-                    let step = crate::input_dispatch::screen_offset_world(
-                        camera,
-                        window_size,
-                        crate::input_dispatch::PASTE_OFFSET_PX,
-                    );
-                    let mut select_out = None;
-                    let mut arm_pick = false;
-                    if let Some(subject) = subject {
-                        let mut docs = crate::instance_docs::OwnedDocs {
-                            vec_scene,
-                            vec_entities: &mut self.vec_entities,
-                        };
-                        if crate::vec_component_general::dispatch(
-                            verb,
-                            sim,
-                            component_registry,
-                            &mut self.instance_echo,
-                            subject,
-                            toasts,
-                            &mut docs,
-                            [step.0 as f32, step.1 as f32],
-                            &mut select_out,
-                            &mut arm_pick,
-                        ) {
-                            self.title_dirty = true;
-                        }
+                // ⭐⭐⭐ **O CLIQUE da secção *Prefab*, e há UM motor** (F4.6c fechada, 2026-09-07).
+                //
+                // ⚠️ **Aqui viveu um `if armed() { … } else { … }`** — o modelo geral de um lado e o
+                // motor `VecInstance` do outro, com uma variável de ambiente a escolher. O `else`
+                // morreu com a fatia: *dois motores para o mesmo estado é pior que um motor lento*,
+                // e a régua de que nada se perdeu está em `instance_piece_override_tests.rs`, que a
+                // wave anterior escreveu **como pré-condição desta**.
+                //
+                // ⚠️ **O sujeito resolve-se ANTES dos documentos** — o mapa `path ⟺ entidade`
+                // entra no `OwnedDocs` emprestado mutavelmente, e pedi-lo outra vez lá dentro
+                // seria o segundo empréstimo.
+                //
+                // ⚠️ **Pela MESMA função que a secção usa para se MOSTRAR** — duas resoluções
+                // dariam um botão oferecido sobre o grupo e um clique a agir sobre um filho.
+                let subject = crate::vec_component_general::subject_of(
+                    &self.vec_entities,
+                    &sel,
+                    (hero.gizmo.selected_len() == 1)
+                        .then_some(hero.gizmo.selection)
+                        .flatten(),
+                );
+                let step = crate::input_dispatch::screen_offset_world(
+                    camera,
+                    window_size,
+                    crate::input_dispatch::PASTE_OFFSET_PX,
+                );
+                let mut select_out = None;
+                let mut arm_pick = false;
+                if let Some(subject) = subject {
+                    let mut docs = crate::instance_docs::OwnedDocs {
+                        vec_scene,
+                        vec_entities: &mut self.vec_entities,
+                    };
+                    if crate::vec_component_general::dispatch(
+                        verb,
+                        sim,
+                        component_registry,
+                        &mut self.instance_echo,
+                        subject,
+                        toasts,
+                        &mut docs,
+                        [step.0 as f32, step.1 as f32],
+                        &mut select_out,
+                        &mut arm_pick,
+                    ) {
+                        self.title_dirty = true;
                     }
-                    if let Some(bits) = select_out {
-                        hero.gizmo.replace_selection(Some(bits));
-                    }
-                    // ⭐⭐ **A shell só ESCREVE o pick — quem decide é o módulo do modo.** O
-                    // `PathPick` vive no `App`, e por isso o dreno não lhe chega; mas a pergunta
-                    // *«este verbo abre o gesto de duas mãos?»* é lei do modo, e fica lá.
-                    if arm_pick && let Some(&at) = sel.first() {
-                        self.vec_path_pick = Some(crate::vec_pick::PathPick::InstanceMain(at));
-                    }
-                } else {
-                    match verb {
-                        crate::vec_component_edit::ComponentEdit::Create => {
-                            crate::vec_component_edit::create_main(sim, &self.vec_entities, &sel);
-                        }
-                        // ⛔ **INALCANÇÁVEL neste motor, e o braço existe para o COMPILADOR o
-                        // dizer.** O botão só é pintado quando o produtor publica
-                        // `can_edit_prefab`, e o vetorial publica `false` — ali o mestre é uma
-                        // forma **visível** no canvas, que se alcança clicando nela. *Um verbo
-                        // novo do modelo geral tem de aparecer aqui como ausência declarada, senão
-                        // o dia em que alguém o publicar por engano ele cai num `_ =>` mudo.*
-                        crate::vec_component_edit::ComponentEdit::Edit
-                        // ⛔ INALCANÇÁVEL neste motor, pela mesma razão do de cima: o produtor
-                        // vetorial não pinta o botão. A `ArtLink` é lei do modelo geral.
-                        | crate::vec_component_edit::ComponentEdit::PlaceLinked => {}
-                        crate::vec_component_edit::ComponentEdit::Place => {
-                            if let Some(&main) = sel.first()
-                                && let Some(new_id) = crate::vec_component_edit::place_instance(
-                                    sim,
-                                    vec_scene,
-                                    &self.vec_entities,
-                                    &sel,
-                                )
-                            {
-                                arm_instance_of = Some((new_id, main));
-                            }
-                        }
-                        crate::vec_component_edit::ComponentEdit::Detach => {
-                            // ⚠️ A geometria vem do PRODUTOR — a mesma lista que o `dispatch`
-                            // consumiu no frame anterior. Re-derivá-la aqui seria a segunda porta, e
-                            // ela faria a arte SALTAR no clique.
-                            let drawn = sel
-                                .first()
-                                .and_then(|id| self.instance_live.live().get(id))
-                                .cloned();
-                            // ⚠️ E as PEÇAS que a produziram, na mesma ordem: é por identidade que o
-                            // Detach sabe qual delas é a raiz do mestre. Deduzi-la da ordem de z
-                            // trocava pai e filho quando o filho estava à frente.
-                            let pieces = sel
-                                .first()
-                                .and_then(|id| self.instance_live.pieces_of(*id))
-                                .map(<[u64]>::to_vec);
-                            if let Some(plan) = crate::vec_component_edit::detach(
-                                sim,
-                                vec_scene,
-                                &self.vec_entities,
-                                &sel,
-                                drawn.as_deref(),
-                                pieces.as_deref(),
-                            ) && !plan.parents.is_empty()
-                            {
-                                arm_detached_under = Some(plan);
-                            }
-                        }
-                        crate::vec_component_edit::ComponentEdit::Reset => {
-                            crate::vec_component_edit::reset_overrides(
-                                sim,
-                                &self.vec_entities,
-                                &sel,
-                            );
-                        }
-                        // ── AS DIFERENÇAS (W5b) ──────────────────────────────────────
-                        // O interruptor de uma PEÇA. A linha `row` é só onde ela foi pintada; o que
-                        // fica guardado é o `VecPathId` da peça no MESTRE, resolvido pela porta única
-                        // que publicou a lista neste mesmo frame.
-                        crate::vec_component_edit::ComponentEdit::PieceVisible(row) => {
-                            if let Some(&bits) =
-                                sel.first().and_then(|id| self.vec_entities.get(id))
-                            {
-                                crate::vec_component_pieces::toggle_piece_visible(
-                                    sim,
-                                    vec_scene,
-                                    &self.vec_entities,
-                                    ph2d_ecs::Entity::from_bits(bits),
-                                    row,
-                                );
-                            }
-                        }
-                        crate::vec_component_edit::ComponentEdit::UpdateMain => {
-                            if let Some(&bits) =
-                                sel.first().and_then(|id| self.vec_entities.get(id))
-                            {
-                                let (taken, refused) = crate::vec_component_pieces::update_main(
-                                    sim,
-                                    vec_scene,
-                                    ph2d_ecs::Entity::from_bits(bits),
-                                );
-                                // ⚠️ O que NÃO subiu é dito. Um `Hidden` que ficasse em silêncio
-                                // faria o *Reset* continuar aceso depois de um "Update Main" que o
-                                // artista julga ter absorvido tudo.
-                                if refused > 0 {
-                                    eprintln!(
-                                        "[ph2d-vec] update main: {taken} cor(es) absorvida(s), \
-                                     {refused} diferenca(s) fica(m) na copia (o mestre nao guarda \
-                                     'peca escondida')"
-                                    );
-                                }
-                            }
-                        }
-                        // O conta-gotas: arma e sai. O clique seguinte no canvas é dele
-                        // (`vec_path_pick_click`), pela guarda modal que precede o picking/gizmo.
-                        crate::vec_component_edit::ComponentEdit::Swap => {
-                            if let Some(&at) = sel.first() {
-                                self.vec_path_pick =
-                                    Some(crate::vec_pick::PathPick::InstanceMain(at));
-                            }
-                        }
-                        // ── OS VARIANTS (W5c) ────────────────────────────────────────
-                        // ⚠️ **Pela porta do Swap**, e não por uma segunda escrita de `main`: o
-                        // descarte dos overrides que o mestre novo não conhece é a regra que a W5b
-                        // mediu, e uma segunda religação a ignoraria em silêncio — a cópia ficaria a
-                        // guardar diferenças que nada desenha.
-                        crate::vec_component_edit::ComponentEdit::Variant(axis, value) => {
-                            if let Some(&bits) =
-                                sel.first().and_then(|id| self.vec_entities.get(id))
-                                && let Some(inst) = sim
-                                    .world()
-                                    .get::<ph2d_ecs::VecInstance>(ph2d_ecs::Entity::from_bits(bits))
-                                    .cloned()
-                                && let Some(target) = crate::vec_variants::target_of(
-                                    sim,
-                                    &self.vec_entities,
-                                    inst.main,
-                                    axis,
-                                    value,
-                                )
-                            {
-                                let dropped = crate::vec_component_pieces::swap_main(
-                                    sim,
-                                    vec_scene,
-                                    &self.vec_entities,
-                                    ph2d_ecs::Entity::from_bits(bits),
-                                    target,
-                                );
-                                if let Some((true, n)) = dropped
-                                    && n > 0
-                                {
-                                    eprintln!(
-                                        "[ph2d-vec] variant: {n} diferenca(s) descartada(s) — as \
-                                     pecas delas nao existem na versao escolhida"
-                                    );
-                                }
-                            }
-                        }
-                    }
+                }
+                if let Some(bits) = select_out {
+                    hero.gizmo.replace_selection(Some(bits));
+                }
+                // ⭐⭐ **A shell só ESCREVE o pick — quem decide é o módulo do modo.** O
+                // `PathPick` vive no `App`, e por isso o dreno não lhe chega; mas a pergunta
+                // *«este verbo abre o gesto de duas mãos?»* é lei do modo, e fica lá.
+                if arm_pick && let Some(&at) = sel.first() {
+                    self.vec_path_pick = Some(crate::vec_pick::PathPick::InstanceMain(at));
                 }
             }
             if let Some(cmd) = pending_vec_expand {
@@ -9147,35 +8975,6 @@ impl crate::App {
             if !self.vec_bucket_new.is_empty() {
                 crate::vec_bucket::arm_new_fills(sim, &self.vec_entities, &mut self.vec_bucket_new);
             }
-            // OS COMPONENTES (plano UI/UX W5): o caminho que o **Place** empurrou já tem
-            // entidade — é agora que o vínculo pousa. Mesmo sítio, e pela mesma razão, em que o
-            // `make_committed_shape_live` faz uma forma recém-desenhada nascer viva.
-            if let Some((new_id, main)) = arm_instance_of {
-                // ⚠️ O degrau vem da CÂMARA, pela mesma porta do paste e do Ctrl+D — é isso que o
-                // faz ler igual em qualquer zoom. A v1 tinha um número próprio em unidades de
-                // mundo e punha a cópia a ~700 px do mestre (ver `cascade_offset`).
-                let (sx, sy) = crate::input_dispatch::screen_offset_world(
-                    camera,
-                    surface.size(),
-                    crate::input_dispatch::PASTE_OFFSET_PX,
-                );
-                let already = crate::vec_component_edit::instance_count(
-                    sim,
-                    vec_scene,
-                    &self.vec_entities,
-                    main,
-                );
-                crate::vec_component_edit::arm_instance(
-                    sim,
-                    &self.vec_entities,
-                    new_id,
-                    main,
-                    crate::vec_component_edit::cascade_offset([sx as f32, sy as f32], already),
-                );
-            }
-            if let Some(plan) = arm_detached_under {
-                crate::vec_component_edit::arm_detached(sim, &self.vec_entities, &plan);
-            }
             // ADR-0114: idem para os objetos Flip (objeto novo ⇒ entidade; entidade
             // apagada ⇒ objeto). No W0 é no-op (nenhuma tool cria objetos ainda); a
             // tool do W2 passa a populá-lo.
@@ -10214,11 +10013,6 @@ impl crate::App {
             // z da fonte — que continua sendo a curva autorada que o modo Node edita.
             self.profile_live
                 .recook(vec_scene, sim, &self.vec_entities, &vec_xf);
-            // **AS INSTÂNCIAS** (plano UI/UX W5): o mestre desenhado na pose de cada cópia. Aqui,
-            // e depois do `sync`, pela razão de todos os irmãos — uma instância recém-colocada só
-            // tem entidade (e portanto componente) a partir dele.
-            self.instance_live
-                .recook(vec_scene, sim, &self.vec_entities, &vec_xf);
             // O `dispatch` recebe UMA `LiveGeometry`. Uma forma é offset OU pattern OU contour
             // (nunca dois — cada um é um componente próprio e o painel oferece um de cada vez),
             // então fundir é seguro; começa do offset (em cena típica dos outros, vazio ⇒ clone
@@ -10244,12 +10038,6 @@ impl crate::App {
             );
             vec_live.extend(
                 self.profile_live
-                    .live()
-                    .iter()
-                    .map(|(id, v)| (*id, v.clone())),
-            );
-            vec_live.extend(
-                self.instance_live
                     .live()
                     .iter()
                     .map(|(id, v)| (*id, v.clone())),
@@ -10375,26 +10163,22 @@ impl crate::App {
                 // é dele que vem a resposta *"esta instância está órfã?"*, e perguntá-la aqui
                 // outra vez seria a segunda porta.
                 //
-                // ⭐⭐⭐ **E o modo GERAL da F4.6c entra AQUI, atrás de uma porta** — ver o
-                // cabeçalho do [`crate::vec_component_general`]. Sem a env var este ramo é o de
-                // sempre, byte a byte; com ela, a secção passa a descrever o modelo geral.
-                // ⛔⛔⛔ **AS DUAS LISTAS SAEM VAZIAS POR DECLARAÇÃO, e não por acidente**
-                // (auditoria de 2026-09-06). Este comentário dizia que elas *«saem vazias
-                // sozinhas»* porque lêem o `VecInstance` — e isso **quebra num estado
-                // alcançável**: o `VecInstance` é componente REGISTADO e não está no `DROPPED`
-                // ([`crate::instance_docs`]), logo a cópia profunda do *Make* leva-o. Uma
-                // instância vetorial promovida a prefab geral dá uma cópia com `InstanceOf` **e**
-                // `VecInstance` ⇒ as listas enchiam-se e o painel pintava **peças e variants que
-                // o dreno geral recusa em silêncio** (`general_verb` devolve `None` para as duas).
+                // ⭐⭐⭐ **UM motor, e por isso UMA leitura** (F4.6c fechada, 2026-09-07). Aqui
+                // viveu o outro lado do interruptor — sem a env var a secção descrevia o
+                // `VecInstance` — e com ele morreram as DUAS listas que só aquele motor enchia:
+                // as PEÇAS e os VARIANTS da instância vetorial.
                 //
-                // ⇒ o modo novo publica-as vazias, e o painel não pinta o que não recebe. *Um
-                // controlo que come o clique sem voz é o defeito que esta linha caçou três vezes.*
+                // ⚠️ **Elas já saíam vazias no caminho de omissão desde 2026-09-06, por
+                // DECLARAÇÃO** — o `VecInstance` era componente registado e viajava na cópia
+                // profunda do *Make*, então uma leitura ingénua enchia-as e o painel pintava
+                // controlos que o dreno geral recusava **em silêncio**. Apagar o produtor apaga a
+                // pergunta: *o que não existe não precisa de ser publicado vazio.*
                 //
-                // ⚠️ **UMA leitura do interruptor para tudo o que a secção MOSTRA** — o estado e
-                // as duas listas são a MESMA decisão. Duas leituras aqui podiam divergir, e o
-                // sintoma seria uma secção a descrever um motor e a listar as peças do outro.
-                let general_prefabs = crate::vec_component_general::armed();
-                ph2d_panel_vector::state::set_component_state(if general_prefabs {
+                // ⚠️ **As duas capacidades NÃO se perderam, e a régua é anterior a este corte:**
+                // esconder uma peça de UMA cópia e pintá-la são hoje o `Visibility`/`Sprite` da
+                // própria peça ([`crate::instance_piece_override_tests`], escrito como
+                // pré-condição desta fatia), e os variants vivem no cartão do Inspector (F5).
+                ph2d_panel_vector::state::set_component_state(
                     crate::vec_component_general::state_of(
                         sim,
                         &self.vec_entities,
@@ -10404,78 +10188,13 @@ impl crate::App {
                         (hero.gizmo.selected_len() == 1)
                             .then_some(hero.gizmo.selection)
                             .flatten(),
-                        // ⚠️ **A MESMA pergunta que o ramo velho faz** — o rótulo do botão troca
-                        // enquanto o gesto de duas mãos está aberto, e é ele que diz ao artista
-                        // que o app está à espera do segundo clique.
+                        // ⚠️ O rótulo do botão troca enquanto o gesto de duas mãos está aberto, e
+                        // é ele que diz ao artista que o app está à espera do segundo clique.
                         matches!(
                             self.vec_path_pick,
                             Some(crate::vec_pick::PathPick::InstanceMain(_))
                         ),
-                    )
-                } else {
-                    crate::vec_component_edit::selected_component(
-                        sim,
-                        &self.vec_entities,
-                        &sel,
-                        self.instance_live.orphans(),
-                        matches!(
-                            self.vec_path_pick,
-                            Some(crate::vec_pick::PathPick::InstanceMain(_))
-                        ),
-                    )
-                });
-                // **AS PEÇAS da instância selecionada** (W5b) — a porta do override. A lista sai
-                // da MESMA travessia que resolve um clique nela (`addressed_pieces`), e é a
-                // sub-árvore INTEIRA do mestre: só as visíveis fariam o interruptor perder a
-                // própria linha ao esconder uma peça.
-                let pieces = sel
-                    .first()
-                    // ⛔ No modo geral esta lista é VAZIA por declaração — ver acima.
-                    .filter(|_| !general_prefabs)
-                    .and_then(|id| self.vec_entities.get(id))
-                    .map(|&bits| ph2d_ecs::Entity::from_bits(bits))
-                    .and_then(|e| Some((e, sim.world().get::<ph2d_ecs::VecInstance>(e)?.clone())))
-                    .and_then(|(_, inst)| {
-                        let main_e =
-                            ph2d_ecs::Entity::from_bits(*self.vec_entities.get(&inst.main)?);
-                        Some(crate::vec_component_pieces::piece_rows(
-                            sim,
-                            vec_scene,
-                            &self.vec_entities,
-                            main_e,
-                            &inst,
-                        ))
-                    });
-                let (rows, beyond) = pieces.unwrap_or_default();
-                ph2d_panel_vector::state::set_instance_pieces(rows, beyond);
-                // **OS VARIANTS da instância selecionada** (W5c) — que versão do componente ela
-                // é. As fileiras saem da MESMA travessia que resolve um clique num chip
-                // (`rows_and_targets`): duas travessias dariam ordens que poderiam divergir, e o
-                // sintoma seria o chip `Large` a escolher `Medium`, sem erro nenhum.
-                let variants = sel
-                    .first()
-                    // ⛔ Idem — a fileira de variants ainda não fala o modelo geral.
-                    .filter(|_| !general_prefabs)
-                    .and_then(|id| self.vec_entities.get(id))
-                    .and_then(|&bits| {
-                        let e = ph2d_ecs::Entity::from_bits(bits);
-                        let main = sim.world().get::<ph2d_ecs::VecInstance>(e)?.main;
-                        let (rows, _) =
-                            crate::vec_variants::rows_and_targets(sim, &self.vec_entities, main);
-                        Some(rows)
-                    })
-                    .unwrap_or_default();
-                ph2d_panel_vector::state::set_variant_rows(
-                    variants
-                        .axes
-                        .into_iter()
-                        .map(|a| ph2d_panel_vector::state::VariantRow {
-                            name: a.name,
-                            values: a.values,
-                            selected: a.selected,
-                        })
-                        .collect(),
-                    variants.beyond,
+                    ),
                 );
                 // **A PELE por-widget** (plano UI/UX W6.2) — que controle do catálogo esta forma
                 // veste. Publicada pela MESMA porta que o clique honra, e para qualquer forma

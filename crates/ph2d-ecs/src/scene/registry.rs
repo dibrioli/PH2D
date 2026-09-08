@@ -514,13 +514,15 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // sombra/brilho, com a curva certa por baixo. O FX é DESENHO derivado; o snapshot guarda a
     // RELAÇÃO, e é este componente.
     reg.register_default::<crate::VecFilter>("ph2d::ecs::VecFilter");
-    // OS COMPONENTES (plano UI/UX W5): o mestre e a instância. Mesma razão de todos os irmãos, e
-    // aqui com dois modos de falha distintos — sem o registro do MARCADOR, um Ctrl+Z devolveria a
-    // arte com as instâncias a apontar para um caminho que já não se declara mestre (todas órfãs
-    // de uma vez); sem o registro da INSTÂNCIA, o que se perde é o vínculo E os overrides
-    // autorados, e o que sobra é um caminho vazio no lugar onde havia uma cópia.
-    reg.register_default::<crate::VecComponentMain>("ph2d::ecs::VecComponentMain");
-    reg.register_default::<crate::VecInstance>("ph2d::ecs::VecInstance");
+    // ⛔⛔ **DOIS REGISTOS SAÍRAM DAQUI** (F4.6c, 2026-09-07): o `VecComponentMain` e o
+    // `VecInstance`, que eram o mestre e a cópia do motor de instância **do vetor**. O modelo
+    // geral (ADR-0164) responde por eles com `MasterRoot`/`InstanceOf`, e *dois motores para o
+    // mesmo estado é pior que um motor lento*.
+    //
+    // ⚠️ **É por isto que o `PROJECT_SCHEMA` sobe.** O `snapshot_to_world` resolve cada blob pelo
+    // `type_id` e devolve `SaveError::Registry(UnknownTypeId)` quando ele não está registado — um
+    // ficheiro gravado com aquele componente **recusa em voz alta**, que é o comportamento certo.
+    // Sem o degrau, o postcard é posicional e a recusa viria disfarçada de outra coisa.
     // O NOME DURÁVEL dos pixels próprios de um sprite (plano 17 §3). Mesma razão de todos os
     // irmãos, e o modo de falha aqui já estava a acontecer em produção: `SpriteSource::Individual`
     // guarda um id de alocação da GPU, que recomeça em `1` a cada processo — sem esta identidade no

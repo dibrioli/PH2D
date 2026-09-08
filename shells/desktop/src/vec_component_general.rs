@@ -28,20 +28,17 @@
 //! tabela abaixo. *A lei «tudo o que é novo shipa desligado» vale enquanto houver algo por fechar;
 //! ela não é um estado permanente.*
 //!
-//! ⚠️ **`PH2D_VEC_COMPONENT_GENERAL=0` volta ao motor vetorial**, e é assim que se bissecta. O
-//! `armed()` continua a ser a única porta, lida nos **três** sítios que decidem — o que o painel
-//! MOSTRA, o que o clique do botão FAZ, e o **segundo clique do conta-gotas** (que vive no
-//! `input_dispatch`; ver [`swap_by_pick`]).
+//! ⛔⛔ **E O INTERRUPTOR MORREU COM O OUTRO MOTOR** (F4.6c wave 3, 2026-09-07). Aqui viveu um
+//! `armed()` — `PH2D_VEC_COMPONENT_GENERAL=0` voltava ao motor `VecInstance` — lido nos **três**
+//! sítios que decidiam. O bloqueio daquela wave era **prático e não técnico** (apagar ~2 961 LOC
+//! em 27 ficheiros com a `line/Vector` viva era catástrofe de merge), e dissolveu-se no dia em
+//! que aquela linha integrou. *Não há segundo motor, logo não há o que escolher.*
 //!
-//! ⛔ **O que isto NÃO faz:** apagar o `VecInstance` (~2 961 LOC em 24 ficheiros) — a F4.6c wave 3,
-//! que continua bloqueada **na prática** enquanto a `line/Vector` estiver viva (conferido em
-//! `git worktree list`, 2026-09-06). O que esta wave compra é que **ninguém cria estado novo
-//! daquele motor**, que é a pré-condição para o apagar sem perder trabalho de ninguém.
-//!
-//! ⚠️ **Uma instância vetorial GRAVADA antes desta data lê-se como forma comum** neste modo (o
-//! painel oferece-lhe *Make Prefab*). Não há projectos gravados — decisão do Enio, registada no
-//! §5 — e a partir daqui não há como criar uma; a nota fica porque a ausência é o que torna a
-//! troca barata, e não uma propriedade do código.
+//! ⚠️ **Uma instância vetorial GRAVADA antes de 2026-09-06 lê-se como forma comum** (o painel
+//! oferece-lhe *Make Prefab*), e a partir de então não havia como criar uma. Não há projectos
+//! gravados — decisão do Enio, registada no §5 —, e o `PROJECT_SCHEMA` sobe com este corte para
+//! que um ficheiro que carregasse aquele componente **recuse em voz alta** em vez de ser lido
+//! errado em silêncio.
 //!
 //! # ⭐⭐⭐ Os TRÊS controlos que o motor velho tinha a mais, e onde cada um foi parar
 //!
@@ -62,34 +59,6 @@ use ph2d_ecs::{Entity, MasterRoot, SimWorld};
 use ph2d_vec_scene::VecPathId;
 
 use crate::vec_entities::VecEntityMap;
-
-/// **O modo geral está armado?** Porta única — ver o cabeçalho. **Sim, por omissão**; só
-/// `PH2D_VEC_COMPONENT_GENERAL=0` o desliga.
-///
-/// ⚠️ **Lida em TRÊS sítios** (o que o painel mostra · o que o clique do botão faz · o segundo
-/// clique do conta-gotas) e por isso é uma função, não um `if` copiado: dois deles a discordarem dá
-/// uma secção que oferece um verbo que o dreno recusa, ou um gesto que arma num motor e resolve no
-/// outro.
-///
-/// ⚠️ **A AUSÊNCIA da variável é o `true`** — o `is_ok_and` de antes dizia `false` sem ela, que é
-/// exactamente o contrário do que esta wave decidiu. *O bissector é o `0`, e nada mais: um
-/// `PH2D_VEC_COMPONENT_GENERAL=1` continua a ligar, para não partir um dedo que o dono já tem na
-/// memória.*
-#[must_use]
-pub(crate) fn armed() -> bool {
-    armed_from(std::env::var("PH2D_VEC_COMPONENT_GENERAL").ok().as_deref())
-}
-
-/// A LEI da porta, sem o ambiente — é ela que os gates medem.
-///
-/// ⚠️ **Separada de propósito:** pôr e tirar uma variável de ambiente dentro de um teste é escrever
-/// numa global do processo enquanto outros testes correm em paralelo, e em edição 2024 isso é
-/// `unsafe` por essa exacta razão. *Uma lei que só se mede mexendo no processo inteiro fica sem
-/// gate, e o ramo do bissector é o que ninguém volta a correr.*
-#[must_use]
-pub(crate) fn armed_from(value: Option<&str>) -> bool {
-    value != Some("0")
-}
 
 /// ⭐⭐⭐ **O OBJECTO sobre o qual a secção fala** — e ele não é forçosamente um traço.
 ///
@@ -222,7 +191,7 @@ fn general_verb(
         E::UpdateMain => Some(Verb::Apply),
         // O *Reset* não é um `Verb` — ele é o *Revert to Master*, que tem porta própria porque
         // devolve a pose de maneira diferente (ver [`crate::instance_revert`]).
-        E::Reset | E::Swap | E::PieceVisible(_) | E::Variant(_, _) => None,
+        E::Reset | E::Swap => None,
     }
 }
 

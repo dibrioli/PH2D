@@ -23,7 +23,7 @@
 | F1 | `StableId` + `SiblingOrder` + snapshot v2 + **a 1ª migração** + corte da Sprite | ✅ 2026-08-25 |
 | F2 | O undo vira incremental (protocolo das 6 condições) | ✅ 2026-08-25 |
 | F3 | O Inspector passa a mostrar o que o objeto TEM · o `+` e a paleta · objeto vazio na raiz — **walking skeleton** | ✅ 2026-08-25 |
-| F4 | Núcleo de instância: Duplicar/Criar componente/Instanciar/sync/Destacar + física | 🟨 F4.1–F4.5 ✅ · F4.6a/b ✅ · **F4.7 ✅ (os 3 smoke-gates)** · **F4.6c ⬜ — BLOQUEADA na PRÁTICA, e o bloqueio não é técnico**: apagar os ~2 961 LOC do `VecInstance` em 24 ficheiros enquanto a `line/Vector` está VIVA (conferido `git worktree list`, 2026-09-06) é uma catástrofe de merge. ⇒ recomendação: correr **logo depois** de aquela linha integrar, ou pelo próprio integrador. ⚠️ A fatia que a bloqueava (os eixos de propriedade) **deixou de existir** — o Enio revogou-os em 01/09 |
+| F4 | Núcleo de instância: Duplicar/Criar componente/Instanciar/sync/Destacar + física | ✅ **FECHADA 2026-09-07** — F4.1–F4.5 ✅ · F4.6a/b ✅ · F4.7 ✅ (os 3 smoke-gates) · **F4.6c ✅**: o motor de instância **do vetor** saiu (`VecInstance`/`VecComponentMain` e satélites, **−5 170 LOC líquidas** em 44 ficheiros), o `PROJECT_SCHEMA` subiu **123 → 124** e os **três** contadores desceram de `79`/`80`/`80` para `77`/`78`/`78`. O bloqueio era **prático** — a `line/Vector` viva — e dissolveu-se no dia em que ela integrou (§F4.6c-fecho) |
 | F5 | Aninhamento + variantes + Overrides sem alvo + **a FORMA de uma cópia** | ✅ **FECHADA 2026-09-06** — **F5.1** aninhamento ✅ · **F5.3/F5.6** os órfãos são NOMEADOS e largam-se um a um ✅ (critério 3) · **variantes ✅ 2026-08-27** (fileira plana, modelo Unity) · **critério 4 — a escada do *Aplicar* ✅ 2026-09-04** (§F5.5) · **troca por mestre NÃO aparentado ✅ 2026-09-05** (3 modos + relatório, §F5.8) · **F5.9** a lista de órfãos fica accionável ✅ · **F5.10 — a peça RECUSADA ✅ 2026-09-06** (*Removed GameObject*, `PROJECT_SCHEMA` 115→116) · **F5.11 — a peça ACRESCENTADA ✅ 2026-09-06** (*Added GameObject*, **derivada**, schema intocado) · **F5.12 — mover uma peça na receita move-a em TODAS as cópias ✅ 2026-09-06** (a 3.ª metade da forma) · **F5.13/F5.14** as cenas de smoke corrigidas ✅ (3 passos impossíveis + 1 que pedia o gesto que a guarda não apanha) · ⛔ **EIXOS de propriedade REVOGADOS e ADIADOS** (Enio, 01/09 — o §F5-bis descreve trabalho que **saiu do fonte**; ver [`06`](06_plano_variacoes_sem_chaves.md)) |
 | F6 | O índice de assets (`ph2d-asset-index`) — sem UI | ✅ 2026-08-30 (996 LOC + a taxonomia) |
 | F7 | O painel Asset Browser + o arrasto único | ✅ 2026-08-30 — etapas **A–D** do [plano 07](07_plano_do_navegador_de_assets.md); `DragPayload` com as duas famílias |
@@ -2523,3 +2523,85 @@ qualquer sítio do ficheiro**. Com a lei mudada para a porta (acima, no mesmo fi
 apagava a chamada **dentro do gesto** sobreviveu: o nome continuava a aparecer. ⇒ a janela do censo
 passa a ser o **corpo do gesto**. *Um censo que casa um nome onde ele passou a viver deixa de medir
 quem o invoca.*
+
+---
+
+### ✅ §F4.6c-fecho — **O SEGUNDO MOTOR DE INSTÂNCIA SAIU** (2026-09-07)
+
+**−5 170 LOC líquidas** (`5 711` apagadas, `541` escritas) em **44 ficheiros**. `PROJECT_SCHEMA`
+**123 → 124**; registo do `ph2d-ecs` `79 → 77` e os dois espelhos `80 → 78`.
+
+#### ⭐ O bloqueio era PRÁTICO, e dissolveu-se sozinho
+
+O placar dizia *«BLOQUEADA na PRÁTICA, e o bloqueio não é técnico»* — apagar aquilo com a
+`line/Vector` viva era catástrofe de merge — e recomendava correr **logo depois de aquela linha
+integrar**. Ela integrou em 2026-09-07 (`git merge-base --is-ancestor line/Vector main`), e a
+janela abriu. ⚠️ *§0.0: quem move o número que tornava algo inalcançável tem de reconferir a nota* —
+aqui quem o moveu foi outra linha, e a nota estava escrita à espera.
+
+#### ⛔⛔ O CENSO veio primeiro, e achou DOIS buracos que a pressa teria comido
+
+Esta fatia já se tinha queimado **duas vezes** por orçar o porte contando verbos a menos. O censo
+de agora contou os dois lados **antes** de apagar uma linha:
+
+| rota do motor vetorial | quem responde hoje | estado |
+|---|---|---|
+| `Create` · `Edit` · `Place` · `PlaceLinked` · `Detach` · `UpdateMain` | `instance_verbs::drain` | ✅ |
+| `Reset` | `instance_revert::revert_all_overrides` | ✅ |
+| `Swap` | o conta-gotas (`swap_by_pick`) | ✅ |
+| `PieceVisible` (esconder uma peça de UMA cópia) | o `Visibility` da própria peça | ✅ régua em `instance_piece_override_tests` |
+| a swatch de cor **por peça** | o `Sprite` da própria peça | ✅ mesma régua |
+| a fileira de **variants** | o cartão *Properties* do Inspector (F5) | ✅ |
+| os **eixos** de propriedade | ⛔ **REVOGADOS pelo Enio** (01/09) | n/a |
+
+⭐ **A cerca já existia:** o `instance_piece_override_tests.rs` foi escrito pela wave anterior
+**como pré-condição desta**, e o cabeçalho dele di-lo — *«quem apagar o sistema vetorial pode
+apontar para eles»*.
+
+⭐⭐ **Mas o censo achou o que a tabela não cobria: uma RÉGUA órfã.** O `cascade` do motor geral
+declara no próprio doc *«a lei é a que o verbo VETORIAL já tinha»* — e a **única prova dela vivia
+do outro lado**, em `vec_component_edit_tests`, a exercitar o motor que ia ser apagado. ⇒ *um censo
+de fatia tem de contar as RÉGUAS e não só as features*; as duas foram portadas para
+`instance_verbs_tests` (`no_two_copies_of_a_recipe_ever_land_on_each_other` e
+`the_step_of_one_recipe_does_not_count_the_copies_of_another`) **antes** do corte.
+
+⭐⭐ **E o segundo buraco era um ROTEIRO.** A cena `PH2D_BUILD_SMOKE=53` mandava carregar em
+**Create Component** e **Place Instance** — rótulos que o painel deixou de escrever quando o modelo
+geral virou omissão —, e três dos oito passos eram **impossíveis** (a receita está escondida do
+canvas e da lista desde 30/08: mudar o mestre exige *Edit Prefab*). O roteiro foi reescrito, e
+nasceu a régua que faltava: `a_smoke_step_names_the_button_the_app_paints`, que exige que o
+roteiro contenha o **valor de i18n** de cada verbo que ele manda exercer. ⚠️ *A direcção inversa
+não serve como lei* — obrigar todo negrito a ser um rótulo proibiria o texto de enfatizar uma
+frase.
+
+#### O que foi apagado
+
+- **`ph2d-ecs`**: `vec_component.rs` (os quatro tipos), os **dois** registos, o re-export, e a
+  isenção da caixa no `vec_resize_box` (uma cópia geral **tem** caixa própria).
+- **`shells/desktop`**: `instance_live.rs` (o **9.º produtor de `LiveGeometry`**),
+  `vec_component_pieces.rs`, `vec_variants.rs`, `vec_instance_follow.rs`, o `else` do dreno
+  (~147 linhas), a publicação das duas listas, o interruptor `armed()` e as cenas `=55`, `=56`, `=58`.
+- **`ph2d-panel-vector`**: a lista de peças, a fileira de chips, os tipos, o estado e os ids.
+
+⭐ **O `vec_instance_follow` não se portou porque a cura DISSOLVEU** — ele existia porque o modelo
+derivado perdia a translação do mestre (`D(p) = (p − Tm)·I + Ti`); no modelo geral a cópia é uma
+sub-árvore REAL e não há delta. *O substrato apaga a cura*, e a medição de 27/08 já o dizia.
+
+#### ⚠️ O gate que substitui o interruptor
+
+O `every_door_of_the_new_component_mode_reads_the_same_switch` media *«as três portas leem o mesmo
+interruptor»*, e o interruptor morreu. A pergunta muda de *«qual motor?»* para **«ainda há dois?»**:
+`no_file_of_the_shell_names_the_old_instance_motor` varre o `src/` inteiro (não uma lista) e
+descasca comentários. ⚠️ **A agulha é montada com `concat!`** — escrita inteira, ela apareceria no
+fonte do próprio gate e ele acusar-se-ia; e a cura óbvia (saltar aquele ficheiro) abriria o único
+ponto cego que ele não pode ter. *Excluir um ficheiro de um censo é escolher onde não olhar.*
+
+⭐ **A prova de mutação foi observada ao vivo:** a 1.ª redacção continha o literal e o gate ficou
+**vermelho a acusar o próprio ficheiro**.
+
+#### Os níveis de smoke vagos
+
+`=55`, `=56` e `=58` ficam **vazios de propósito**, com a razão escrita no roteador. O que elas
+provavam vive na família `PH2D_INSTANCE_SMOKE=1..7`, que é a do motor que shipa. ⚠️ **Um nível vago
+não é um buraco a preencher** — o `no_two_smoke_scenes_claim_the_same_level` mede COLISÃO, não
+densidade, e reaproveitá-los faria um roteiro antigo do dono abrir a cena errada.

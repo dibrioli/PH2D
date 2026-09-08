@@ -55,7 +55,23 @@ pub(crate) struct ProjectState {
     /// igual. O `PartialEq` compara o CONTEÚDO (o `Arc` delega), logo o diff do undo não muda de
     /// significado.
     pub(crate) vec: std::sync::Arc<VecScene>,
-    pub(crate) flip: FlipDoc,
+    /// ⭐⭐⭐ **O documento Flip, PARTILHADO entre passos** (F8, 2026-09-07) — a irmã da
+    /// [`Self::vec`], e a MEDIÇÃO que a decidiu veio primeiro
+    /// (`ph2d-flip/tests/measure_doc_clone.rs`).
+    ///
+    /// ⛔⛔ **Ele é PIOR que a cena vetorial, e por muito.** A cena custava `303 MB` de pilha a
+    /// **5 000 formas** — um documento invulgar. O Flip custa **`228 MB` a 24 quadros**, que é
+    /// *um segundo de animação*, e **`912 MB` a 96**. A pilha cheia chega a `1 GB` com **~108
+    /// quadros desenhados** — quatro segundos e meio.
+    ///
+    /// ⚠️ **A residência é a pergunta, não o relógio:** clonar custa `0,044 ms` a 24 quadros
+    /// (`0,3 %` de um quadro), tal como na cena. *Uma fase que só olhasse o relógio teria
+    /// ilibado os dois e deixado o `GB` de pé* — foi o que o estudo da F8.0 quase fez.
+    ///
+    /// ⚠️ **E não move um byte do formato**: a serde com a feature `rc` escreve um `Arc<T>` como o
+    /// próprio `T`, então o `PROJECT_SCHEMA` fica onde está. O `PartialEq` compara o CONTEÚDO (o
+    /// `Arc` delega), logo o diff do undo não muda de significado.
+    pub(crate) flip: std::sync::Arc<FlipDoc>,
     /// As guias do documento. Plain data — nenhuma ponte a reconstruir, ao contrário do
     /// vetor e do Flip, e é por isso que o `restore` não as devolve na tupla: quem aplica
     /// simplesmente copia.
@@ -135,7 +151,13 @@ impl ProjectState {
                 Some(p) if *p.vec == *vec => std::sync::Arc::clone(&p.vec),
                 _ => std::sync::Arc::new(vec.clone()),
             },
-            flip: flip.clone(),
+            // ⚠️ **A comparação já era paga** — o `post_frame_undo` compara o estado inteiro com
+            // o baseline logo a seguir. ⇒ trocou-se *clonar e depois comparar* por *comparar e
+            // clonar só se diferir*: estritamente mais barato, e não só em memória.
+            flip: match prev {
+                Some(p) if *p.flip == *flip => std::sync::Arc::clone(&p.flip),
+                _ => std::sync::Arc::new(flip.clone()),
+            },
             guides: guides.clone(),
             ui_states: ui_states.clone(),
             // ⚠️ **Um `clone` de bytes já codificados, e é isso que o torna barato** — quem
@@ -178,7 +200,7 @@ impl ProjectState {
         //    restaurados.
         let vec_map = crate::vec_entities::rebuild_map(sim);
         let flip_map = crate::flip_entities::rebuild_map(sim);
-        ((*self.vec).clone(), vec_map, self.flip.clone(), flip_map)
+        ((*self.vec).clone(), vec_map, (*self.flip).clone(), flip_map)
     }
 }
 

@@ -100,7 +100,9 @@ pub(crate) fn migrate_v95_to_v96(old: ProjectFileV95) -> MigratedV95 {
                 // ⚠️ A cena passou a ser partilhada entre passos ([`ProjectState::vec`]); um
                 // ficheiro velho traz-na por valor e entra aqui embrulhada. Os bytes são os mesmos.
                 vec: std::sync::Arc::new(old.state.vec),
-                flip: old.state.flip,
+                // ⚠️ Idem para o documento Flip ([`ProjectState::flip`], 2026-09-07): um
+                // ficheiro velho traz-no por valor e entra aqui embrulhado. Os bytes são os mesmos.
+                flip: std::sync::Arc::new(old.state.flip),
                 guides: old.state.guides,
                 ui_states: old.state.ui_states,
                 // ⚠️ **VAZIA, e o vazio é a resposta certa:** um ficheiro v95 foi gravado por um

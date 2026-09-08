@@ -142,3 +142,111 @@ fn wrapping_the_scene_in_an_arc_does_not_move_a_byte_of_the_format() {
         "o `Arc` mudou os bytes — isto seria um degrau de PROJECT_SCHEMA por acidente"
     );
 }
+
+// ── ⭐⭐ O DOCUMENTO FLIP É PARTILHADO ENTRE PASSOS (F8, 2026-09-07) ────────────────────────────
+//
+// ⛔⛔ **Medido antes de mudar** (`ph2d-flip/tests/measure_doc_clone.rs`), e o número é PIOR que o
+// da cena: um passo clonava o documento inteiro — `934 KB` a **24 quadros**, que é *um segundo de
+// animação* — e a pilha guarda `UNDO_CAP` passos ⇒ **228 MB**. A `96` quadros são **912 MB**, e a
+// pilha cheia chega a `1 GB` com **~108 quadros desenhados**.
+//
+// ⚠️ **A cena vetorial precisava de 5 000 formas para chegar aos `303 MB`; o Flip chega lá com
+// quatro segundos de desenho.** *A mesma forma de defeito, num documento em que o artista atinge o
+// limite fazendo o trabalho normal dele.*
+//
+// ⚠️ **O relógio ilibava os dois** (`0,044 ms` a 24 quadros, `0,3 %` de um quadro) — é a residência
+// que condena. *Uma fase que só olhasse o relógio teria deixado o GB de pé.*
+
+/// A porta do produto com o passo anterior, variando o **documento Flip** — a irmã da
+/// [`capture_with_prev`], que varia a cena.
+fn capture_flip_with_prev(
+    sim: &mut SimWorld,
+    flip: &ph2d_flip::FlipDoc,
+    reg: &ComponentRegistry,
+    prev: Option<&ProjectState>,
+) -> ProjectState {
+    ProjectState::capture(
+        &crate::preview_drive::PreviewDrive::default(),
+        sim,
+        &VecScene::new(),
+        flip,
+        &ph2d_guides::GuideSet::default(),
+        &ph2d_ui_state::StateSets::default(),
+        &crate::project_library::LibraryDoc::default(),
+        reg,
+        &mut ph2d_ecs::scene::incremental::CaptureCache::new(),
+        prev,
+    )
+}
+
+/// ⭐⭐ **Dois passos seguidos sem edição no Flip partilham o MESMO ponteiro.**
+///
+/// **Mutação que deve sangrar:** trocar o braço `Some(p) if …` por `_` no `capture` (isto é, voltar
+/// a clonar sempre).
+#[test]
+fn two_steps_without_a_flip_edit_share_one_document() {
+    let mut sim = SimWorld::new();
+    let reg = registry();
+    let mut flip = ph2d_flip::FlipDoc::new();
+    flip.push_object("Personagem");
+    sim.world_mut()
+        .spawn((ph2d_ecs::Transform::IDENTITY, ph2d_ecs::Name::new("a")));
+
+    let a = capture_flip_with_prev(&mut sim, &flip, &reg, None);
+    // Uma edição do MUNDO, nenhuma do documento Flip — o caso comum.
+    sim.world_mut()
+        .spawn((ph2d_ecs::Transform::IDENTITY, ph2d_ecs::Name::new("b")));
+    let b = capture_flip_with_prev(&mut sim, &flip, &reg, Some(&a));
+
+    assert!(
+        std::sync::Arc::ptr_eq(&a.flip, &b.flip),
+        "o documento Flip nao foi partilhado — cada passo volta a pagar a animacao inteira"
+    );
+    assert_ne!(
+        a.world, b.world,
+        "a fixtura tem de mudar o MUNDO, senao mede nada"
+    );
+}
+
+/// ⛔ **E uma edição no Flip dá um ponteiro NOVO** — o controlo do gate de cima.
+///
+/// ⚠️ Sem ele, um `capture` que devolvesse **sempre** o `Arc` do anterior passaria o primeiro e
+/// destruiria o undo do Flip em silêncio: cada passo passaria a descrever a animação de agora.
+#[test]
+fn a_flip_edit_gives_a_new_document() {
+    let mut sim = SimWorld::new();
+    let reg = registry();
+    let mut flip = ph2d_flip::FlipDoc::new();
+    flip.push_object("Personagem");
+    let a = capture_flip_with_prev(&mut sim, &flip, &reg, None);
+
+    flip.push_object("Fundo");
+    let b = capture_flip_with_prev(&mut sim, &flip, &reg, Some(&a));
+
+    assert!(
+        !std::sync::Arc::ptr_eq(&a.flip, &b.flip),
+        "a animacao mudou e o passo anterior ficou a apontar para a de agora"
+    );
+    assert_eq!(
+        a.flip.objects().len(),
+        1,
+        "o passo anterior tem de guardar a animacao ANTIGA"
+    );
+    assert_eq!(b.flip.objects().len(), 2);
+}
+
+/// ⭐⭐⭐ **E o FORMATO não se mexe** — a irmã exacta do gate da cena, e pela mesma razão.
+///
+/// ⛔⛔ Sem ela, embrulhar este campo num `Arc` seria uma mudança de formato **silenciosa**: o
+/// postcard é POSICIONAL, então todo `.ph2dproj` gravado passaria a ser lido errado sem um erro.
+#[test]
+fn wrapping_the_flip_doc_in_an_arc_does_not_move_a_byte_of_the_format() {
+    let mut flip = ph2d_flip::FlipDoc::new();
+    flip.push_object("Personagem");
+    let bare = postcard::to_allocvec(&flip).expect("documento solto");
+    let shared = postcard::to_allocvec(&std::sync::Arc::new(flip)).expect("documento partilhado");
+    assert_eq!(
+        bare, shared,
+        "o `Arc` mudou os bytes — isto seria um degrau de PROJECT_SCHEMA por acidente"
+    );
+}

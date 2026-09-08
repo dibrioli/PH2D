@@ -27,7 +27,7 @@
 | F5 | Aninhamento + variantes + Overrides sem alvo + **a FORMA de uma cópia** | ✅ **FECHADA 2026-09-06** — **F5.1** aninhamento ✅ · **F5.3/F5.6** os órfãos são NOMEADOS e largam-se um a um ✅ (critério 3) · **variantes ✅ 2026-08-27** (fileira plana, modelo Unity) · **critério 4 — a escada do *Aplicar* ✅ 2026-09-04** (§F5.5) · **troca por mestre NÃO aparentado ✅ 2026-09-05** (3 modos + relatório, §F5.8) · **F5.9** a lista de órfãos fica accionável ✅ · **F5.10 — a peça RECUSADA ✅ 2026-09-06** (*Removed GameObject*, `PROJECT_SCHEMA` 115→116) · **F5.11 — a peça ACRESCENTADA ✅ 2026-09-06** (*Added GameObject*, **derivada**, schema intocado) · **F5.12 — mover uma peça na receita move-a em TODAS as cópias ✅ 2026-09-06** (a 3.ª metade da forma) · **F5.13/F5.14** as cenas de smoke corrigidas ✅ (3 passos impossíveis + 1 que pedia o gesto que a guarda não apanha) · ⛔ **EIXOS de propriedade REVOGADOS e ADIADOS** (Enio, 01/09 — o §F5-bis descreve trabalho que **saiu do fonte**; ver [`06`](06_plano_variacoes_sem_chaves.md)) |
 | F6 | O índice de assets (`ph2d-asset-index`) — sem UI | ✅ 2026-08-30 (996 LOC + a taxonomia) |
 | F7 | O painel Asset Browser + o arrasto único | ✅ 2026-08-30 — etapas **A–D** do [plano 07](07_plano_do_navegador_de_assets.md); `DragPayload` com as duas famílias |
-| F8 | Restore incremental + `VecScene`/`FlipDoc` versionados | 🟨 **a premissa do RELÓGIO foi REFUTADA por medição** (§F8) · a partilha da `VecScene` entre passos ✅ 2026-09-02 · `FlipDoc` ⬜ |
+| F8 | Restore incremental + `VecScene`/`FlipDoc` versionados | ✅ **FECHADA 2026-09-07** — ⛔ **a premissa do RELÓGIO foi REFUTADA por medição** (§F8.0: o restauro custa `1,81 ms` uma vez por Ctrl+Z, e *uma fase inteira apontava para a metade que não dói*) · a partilha da `VecScene` ✅ 02/09 · **a do `FlipDoc` ✅ 07/09**, e a medição irmã achou o número PIOR da fase: **`228 MB` de pilha por UM SEGUNDO de animação** (§F8.2) |
 
 > ⚠️ **Este placar esteve DESACTUALIZADO** (conferido contra o código em 2026-08-30): a F6 e a F7
 > diziam ⬜ com a crate e o painel construídos e smokados. *O §5.0 manda auditar a lista antes de
@@ -2605,3 +2605,56 @@ ponto cego que ele não pode ter. *Excluir um ficheiro de um censo é escolher o
 provavam vive na família `PH2D_INSTANCE_SMOKE=1..7`, que é a do motor que shipa. ⚠️ **Um nível vago
 não é um buraco a preencher** — o `no_two_smoke_scenes_claim_the_same_level` mede COLISÃO, não
 densidade, e reaproveitá-los faria um roteiro antigo do dono abrir a cena errada.
+
+---
+
+### ✅ §F8.2 — **O `FlipDoc` é PARTILHADO entre passos, e a medição irmã achou o pior número da fase** (2026-09-07)
+
+O §F8.1 fechou a cena vetorial e deixou escrito: *«o `FlipDoc` tem exactamente a mesma forma e
+**não foi tocado** — falta-lhe a medição irmã»*. Ela foi feita **antes** de qualquer `Arc`, que é a
+ordem que esta fase existe para honrar.
+
+#### ⛔⛔ A medição, e ela condena — muito mais do que a da cena
+
+[`ph2d-flip/tests/measure_doc_clone.rs`], fixtura de **20 traços × 60 pontos por quadro** (uma
+figura simples ⇒ um **piso**, não um caso escolhido):
+
+| quadros | clone | % de um quadro | bytes/estado | ×256 na pilha |
+|---:|---:|---:|---:|---:|
+| 1 | `0,001 ms` | 0,0 % | 39 KB | **9,5 MB** |
+| 12 | `0,015 ms` | 0,1 % | 467 KB | **114 MB** |
+| **24** | `0,032 ms` | 0,2 % | 934 KB | **228 MB** |
+| 96 | `0,467 ms` | 2,8 % | 3,7 MB | **912 MB** |
+
+⭐⭐⭐ **A cena vetorial precisava de 5 000 formas para chegar aos `303 MB`; o Flip chega aos `228 MB`
+com UM SEGUNDO de animação a 24 fps.** E a régua derivada di-lo de outra maneira: **a pilha cheia
+chega a `1 GB` com ~108 quadros desenhados** — quatro segundos e meio. *A mesma forma de defeito,
+mas num documento em que o artista atinge o limite fazendo o trabalho normal dele.*
+
+⚠️ **O RELÓGIO ilibava os dois** (`0,2 %` de um quadro a 24 quadros). *Uma fase que só olhasse o
+relógio teria ilibado a cena E o Flip, e deixado o GB de pé* — foi exactamente o que o §F8.0 quase
+fez, e é por isso que a residência é a segunda coluna obrigatória.
+
+#### A cura é a mesma, e o precedente é o mesmo
+
+`ProjectState.flip` passa a `Arc<FlipDoc>`, reaproveitado do passo anterior quando o documento não
+mudou — que é a esmagadora maioria dos passos (mover um objecto, renomear, anexar um componente).
+
+- ⚠️ **Não move um byte do formato** (serde com `rc`), com gate próprio:
+  `wrapping_the_flip_doc_in_an_arc_does_not_move_a_byte_of_the_format`. Sem ele, embrulhar o campo
+  seria uma mudança de formato **silenciosa** — o postcard é posicional.
+- ⚠️ **A comparação já era paga**: o `post_frame_undo` compara o estado inteiro com o baseline logo
+  a seguir ⇒ trocou-se *clonar e depois comparar* por *comparar e clonar só se diferir*.
+- ⚠️ **A régua é `Arc::ptr_eq`**, com o **controlo** ao lado (`a_flip_edit_gives_a_new_document`):
+  sem ele, um `capture` que devolvesse **sempre** o `Arc` anterior passaria o primeiro gate e
+  destruiria o undo do Flip em silêncio.
+- ⭐ **Prova de mutação:** trocar o braço `Some(p) if …` por `_` (voltar a clonar sempre) deixa
+  `two_steps_without_a_flip_edit_share_one_document` VERMELHO. Restaurado por backup + `touch`.
+
+#### ⏳ O que fica ABERTO, nomeado
+
+O resíduo é o mesmo dos dois irmãos e **não mudou de forma**: numa sessão de desenho **cada passo
+muda o documento**, e aí o custo volta ao de hoje. A cura de fundo é `Arc` **por desenho** (o grão
+que o mundo usa desde a F2) — e o preço dela é o `drawings`/`strokes` que hoje saem por `&mut`.
+⚠️ **No Flip esse resíduo dói mais que no vetor**, porque desenhar É o gesto do módulo: o caso
+comum de uma sessão de Flip é precisamente o caso em que a partilha não ajuda.

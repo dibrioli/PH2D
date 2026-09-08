@@ -31,7 +31,7 @@ pub(super) fn empty_state() -> ProjectState {
     ProjectState {
         world: WorldSnapshot::new(),
         vec: std::sync::Arc::new(VecScene::new()),
-        flip: ph2d_flip::FlipDoc::new(),
+        flip: std::sync::Arc::new(ph2d_flip::FlipDoc::new()),
         guides: ph2d_guides::GuideSet::default(),
         ui_states: ph2d_ui_state::StateSets::default(),
         library: crate::project_library::LibraryDoc::default(),
@@ -331,7 +331,7 @@ fn the_ui_states_travel_in_the_file() {
     let state = ProjectState {
         world: WorldSnapshot::new(),
         vec: std::sync::Arc::new(VecScene::new()),
-        flip: ph2d_flip::FlipDoc::new(),
+        flip: std::sync::Arc::new(ph2d_flip::FlipDoc::new()),
         guides: ph2d_guides::GuideSet::default(),
         ui_states: states.clone(),
         library: crate::project_library::LibraryDoc::default(),
@@ -377,7 +377,7 @@ fn project_file_round_trips_through_postcard() {
     let state = ProjectState {
         world: WorldSnapshot::new(),
         vec: std::sync::Arc::new(vec),
-        flip,
+        flip: std::sync::Arc::new(flip),
         guides: ph2d_guides::GuideSet::default(),
         ui_states: ph2d_ui_state::StateSets::default(),
         library: crate::project_library::LibraryDoc::default(),

@@ -123,7 +123,7 @@ fn push_undo_then_undo_redo_alternate() {
     let s1 = ProjectState {
         world: s0.world.clone(),
         vec: std::sync::Arc::new(vec1),
-        flip: FlipDoc::new(),
+        flip: std::sync::Arc::new(FlipDoc::new()),
         guides: ph2d_guides::GuideSet::default(),
         ui_states: ph2d_ui_state::StateSets::default(),
         library: crate::project_library::LibraryDoc::default(),

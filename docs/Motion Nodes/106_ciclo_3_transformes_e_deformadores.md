@@ -193,11 +193,18 @@ kernel discordarem, que é a cerca que o `pivot_mode` do próprio nó já escrev
 
 ### W4 — O CARTÃO E O CENSO DO GRUPO
 
+> ⛔ **A acusação escrita abaixo sobre o `motion.bezier_warp` foi REFUTADA por medição** — o
+> cartão já dobra as 24 rows em cinco secções que nomeiam a aresta, e a acusação saiu de uma
+> sonda que lia só os rótulos. O que a medição achou no lugar dela está em §4 W4b.
+
 O censo do ciclo 1 (`no_param_the_panel_offers_falls_off_the_card`) e o do ciclo 2
 (`every_param_the_card_hides_has_a_declared_reason`) correm sobre o grupo, e o cartão dos treze
 é lido com o olho do doc 101 (secções, LOD, o que o `motion.bezier_warp` faz com 24 rows).
 
 ### W5 — OS DOIS QUE FALTAM AO DISPOSITIVO, ou a razão de cada um
+
+> ✅ **FECHADA** — o `motion.bezier_warp` foi ao dispositivo (§4 W5a) e o `motion.spline_wrap`
+> ficou com a razão nomeada e o preço (§4 W5b).
 
 `motion.bezier_warp` (24 params, patch de Coons, bbox no `eval`) e `motion.spline_wrap` (cúbica
 autorada + reparametrização por comprimento de arco). ⚠️ **A saída aceitável é kernel OU uma
@@ -452,3 +459,204 @@ imagem, e a cena ensinaria que a escolha não importa.
    em 2026-08-11, e a nota pede o número **noutra máquina** antes de recalibrar). Reproduzido
    idêntico numa worktree limpa em `main` — **não é desta linha**.
 2. *(fechado nesta wave)* `the_colour_loop_closes_the_same_way_on_the_device` — era a W1b.
+
+---
+
+### ✅ W5a — A FRONTEIRA CURVA CHEGA AO DISPOSITIVO: **11 de 13 passam a 12** (2026-09-08)
+
+O `motion.bezier_warp` não precisava de nada novo. Ele é a **mesma forma** do irmão
+`motion.four_point_warp` — quatro reduções de caixa envolvente (`Min`/`Max`, que são exactas
+sobre floats) e um mapa por elemento que as lê — com outra álgebra no meio, e essa álgebra é
+**polinomial**: um patch de Coons são quatro cúbicas de Bernstein e uma mistura bilinear, sem uma
+transcendental e sem sequer um `sqrt` (HR-5).
+
+⚠️ **O que faltava era o TETO DO UNIFORME, e ele foi MEDIDO.** Os 24 offsets ocupam `24 × 4 = 96 B`;
+com o cabeçalho (`count`, `playhead`) e o bit de broadcast o total é **`108 B` dos `128`** de
+`ph2d_gpu_cook::UNIFORM_BYTES`. Sobram `20 B` ⇒ **cinco params cabem, um sexto não**, e a cura
+nesse dia é subir o slot (o doc dele já diz porquê: *«isto é um slot, não uma alocação por
+elemento — a folga é grátis»*), nunca cortar um controlo que a referência tem.
+
+⭐ **E o portão passou a IMPRIMIR esse número.** O `motion_gpu_kernel_budgets` do shell media os
+dois orçamentos e só imprimia o das **storages**; agora imprime também o do uniforme, e o
+`motion.bezier_warp` é hoje o mais largo do registry. *A folga de um slot que ninguém vê é
+exactamente a que se descobre a estourar.*
+
+#### As duas identidades, escritas como ESTRUTURA
+
+O `eval` tem dois caminhos que devolvem o stream **verbatim**: os 24 offsets a zero (o nó
+recém-largado) e a caixa degenerada. Os dois são um `write_P(i, bw_p)` **próprio** no corpo, e não
+o caso `s == p` da mistura geral.
+
+⚠️ **`p + (p − p) · f` NÃO é `p`.** Com `p` a `-0.0` a soma devolve `+0.0`, e o caso neutro é
+precisamente o *default* do nó — o defeito nasceria no dia em que alguém largasse o nó e não fizesse
+nada com ele. É a mesma lei que o cisalhamento da W3 pagou: *uma identidade que se quer ao bit
+escreve-se num ramo separado, senão ela é um facto de aritmética e a aritmética muda.*
+
+**Medido no adapter** (`the_bezier_warp_deformer_matches_the_cpu_within_epsilon`, 16 384
+instâncias):
+
+| caso | pior `|Δpos|` |
+|---|---:|
+| neutro (o nó recém-largado) | **`0e0`** — byte-idêntico |
+| uma borda arqueada | `1,14e-5` |
+| as quatro bordas | `1,53e-5` |
+| meio warp | `1,34e-5` |
+
+#### ⚠️ As tangentes dos terços são CALCULADAS, nunca escritas como literal
+
+`1.0 − (1.0/3.0)` em `f32` dá **`0,66666663`** — o caso é um empate exacto e arredonda para par —
+enquanto o literal `0.6666667` é **`0,66666669`**. **Bits diferentes.** Escrever a tabela do
+quadrado unitário à mão daria um patch neutro que já não é a identidade, e o defeito apareceria
+como um layout a tremer um ulp ao largar o nó. *A porta é a EXPRESSÃO, não a tabela que ela
+produz.*
+
+Três gates: `the_bezier_warp_reaches_the_device` (device-free — a metade que nenhum gate numérico
+apanha, porque sem kernel o nó continua a cozinhar **certo** na CPU e só o `is_fully_gpu()` muda),
+a paridade acima, e `the_curved_boundary_actually_moves_the_layout` (o controlo contra duas
+identidades a concordarem sobre um nó que nunca correu).
+
+---
+
+### ⛔ W5b — O `motion.spline_wrap` FICA NA CPU, e agora com a razão e o preço
+
+A lei nº 1 do protocolo não aceita a etiqueta `CPU-only` sozinha. São **duas lacunas de
+SUBSTRATO**, e nenhuma delas é deste nó:
+
+**1. A forma DESENHADA chega pelo canal de externos, e o dispositivo não tem canal.**
+O `eval` lê `ctx.external(&curve_of(nome))` — a polilinha que a shell publica da Hierarquia. O
+sequenciador não conhece a palavra: **`ph2d-gpu-cook` tem ZERO ocorrências de `external`**, e um
+`ColumnBinding` só endereça uma coluna de uma PORTA de entrada.
+⚠️ Registar um kernel hoje **não deixaria o nó lento: deixá-lo-ia ERRADO** — o dispositivo cairia
+na cúbica dos oito params e devolveria uma curva **plausível**, sem estouro e sem aviso, enquanto a
+CPU segue a forma que o artista desenhou.
+⛔ E a recusa **não é exprimível** pelo mecanismo que o irmão usa: o `applicable` lê params `f32`,
+e *qual forma?* vive no canal de **TEXTO** (a mesma assimetria que obrigou o `ParamGateText` a
+existir ao lado do `ParamGate`).
+
+**2. Ele escreve TRÊS colunas, e duas por PRESENÇA.** Com o `follow_rotation` desligado o `rot` é
+**COPIADO**, não reescrito com o mesmo valor; o `size` idem fora do afunilamento — é isso que faz o
+default byte-idêntico por ESTRUTURA. Uma `ColumnBinding` de escrita é incondicional. ⚠️ **É a MESMA
+lacuna que o `flip_rot` do `motion.mirror` já tem nomeada na W2.**
+
+**O preço** não é o cozimento deste nó: é a cadeia INTEIRA deixar o dispositivo. A auditoria de
+performance do módulo ([doc 98](98_auditoria_de_performance_2026-09-01.md)) mediu **`50,9×`** entre
+os dois caminhos a 4,19 M objectos, e um nó CPU-only a meio de uma cadeia paga esse factor por
+**todos** os nós dela.
+
+⇒ este nó volta à fila no dia em que o substrato ganhar **um dos dois**: o canal de externos no
+dispositivo, ou a escrita condicionada à presença da coluna.
+
+#### O censo que guarda a fronteira
+
+`an_external_reader_that_reaches_the_device_declares_a_refusal` (censo do catálogo): **um nó cujo
+produto lê o canal de externos ou não tem kernel, ou declara `applicable`.** Medido: **11** nós lêem
+externos e **1** deles tem kernel — o `motion.look_at`, que **já estava certo antes do censo
+existir** (os modos `Object` e `Cursor` recusam o dispositivo, com o custo nomeado no comentário).
+*Este ficheiro não inventa a lei — impede que o próximo nó a redescubra por report.*
+
+⚠️ **`applicable: Some(..)` é um PROXY, e o censo diz isso de si mesmo:** ele prova que a recusa foi
+**pensada**, nunca que ela é a certa. O que ele mede é a AUSÊNCIA de pensamento, que é o modo de
+falha que passa em silêncio. Prova de mutação: apagar a recusa do `motion.look_at` acusa-o pelo
+nome.
+
+---
+
+### ✅ W4b — O CARTÃO, e a acusação que a MEDIÇÃO refutou (2026-09-08)
+
+⛔⛔ **O §3 deste plano acusava o cartão do `motion.bezier_warp` de pintar `In X · In Y · Out X ·
+Out Y` QUATRO vezes sem dizer de que aresta — e é FALSO.** O cartão dobra as 24 rows em cinco
+`CardSection`, medidas:
+
+```
+motion.bezier_warp > secções: Corners@0 · Top Edge@8 · Right Edge@12 · Bottom Edge@16 · Left Edge@20
+```
+
+Um rótulo repetido debaixo de um cabeçalho que o nomeia **não é ambíguo**. ⚠️ **A acusação saiu da
+sonda `what_the_card_shows`, que lia só os RÓTULOS** — metade da superfície que o cartão pinta.
+*Uma sonda que lê metade da superfície fabrica dívida.* A sonda passa a ler as duas metades.
+
+#### O que a sonda corrigida ACHOU, e esse é real
+
+Os dois warps deformam a **mesma** caixa envolvente com os **mesmos oito nomes de param**
+(`tl_dx` … `bl_dy`) e chamavam-lhes coisas diferentes:
+
+| nó | como ele chama o canto de cima à esquerda |
+|---|---|
+| `motion.four_point_warp` | `TL X` · `TL Y` |
+| `motion.bezier_warp` | `Top-Left X` · `Top-Left Y` |
+
+É o achado **§2.3** deste ciclo — *seis vocabulários para «onde é o centro»* — repetido um nível
+abaixo. Unificado na forma **LONGA**, e ⚠️ **a escolha foi MEDIDA, não preferida**: com o painel
+lateral fora, o cartão é a única superfície onde estes nomes aparecem, e ele tem `190 px`.
+
+⭐ Gate novo `no_warp_label_is_cut_on_the_card`: ele **pinta a row e conta os GLIFOS** —
+`Bottom-Right X` cabe inteiro ao lado do valor mais largo da faixa (`-10,00`). Se não coubesse, a
+unificação teria ido para o lado curto: *um rótulo elidido lê-se como o vizinho dele*, e
+`Bottom-Rig…` é indistinguível de `Bottom-Lef…`. Censo
+`every_node_that_offsets_a_corner_calls_it_the_same_thing`, com a população derivada do
+**MANIFESTO** e não de uma lista de dois nós.
+
+⚠️ **E a primeira redacção daquele gate media a contagem ABSOLUTA de glifos, e leu `23` contra
+`20`:** um cartão pinta também o **título** e os **rótulos dos pinos**, e um oráculo que os ignora
+acusa como «cortado» um rótulo que está inteiro — *a régua errava para o lado que fabrica dívida*.
+Hoje mede-se por **diferença** contra o mesmo cartão sem rótulo, e tudo o resto cancela-se.
+
+---
+
+### 📊 A TABELA DEPOIS DA W5 — e a sonda que respondia DUAS perguntas com UM grafo
+
+⛔⛔ **A tabela de preços media cada nó nos DEFAULTS dele, e o `motion.bezier_warp` denunciou-a
+assim que chegou ao dispositivo:** ele leu **`0,34 ×` o custo da grelha sozinha** — *mais rápido do
+que não estar lá*. Com os 24 offsets a zero o `eval` toma o atalho da identidade e devolve o stream
+clonado: **a tabela dizia que o patch de Coons é barato e o que ela cronometrava era um `clone`.**
+
+⚠️ **Não é um caso especial dele.** Metade deste grupo nasce na identidade — o `motion.move` em
+`(0,0)`, o `rotate` a `0°`, os dois warps com os cantos parados. *Um corpus no ponto neutro de um
+knob não testa esse knob*, e uma tabela de PREÇO medida no neutro mede o preço de não fazer nada.
+
+⇒ o nó passa a ser **ACORDADO** antes de ser cronometrado (cada slider a ¼ da faixa), e os knobs
+movidos são **DERIVADOS dos hints** — uma lista escrita à mão envelheceria a cada param novo.
+
+#### ⚠️ E acordar quebrou a OUTRA coluna — o defeito foi meu, e a tabela desmentiu-me na corrida seguinte
+
+Acordar põe `target_x`/`target_y` fora de zero, que é **exactamente** o que a cláusula `applicable`
+do `motion.look_at` lê — e ele apareceu **🔴** na primeira corrida: *a MINHA perturbação, lida como
+uma regressão do produto*. E o comentário que eu tinha escrito ao lado do despertar dizia que só um
+`Enum` ou um `Toggle` alimenta um `applicable`. **Falso.**
+
+⇒ as duas perguntas passam a ter **grafos SEPARADOS**: o relógio com o nó aceso, a coluna do
+dispositivo nos **defaults** (que é o que o artista recebe ao largar o nó). E o desacordo entre elas
+virou uma leitura própria — **🟡 = a residência DEPENDE de um knob**. *Não há subconjunto de knobs
+seguro: a única forma de não perturbar uma medição é não a fazer no mesmo grafo.*
+
+#### A tabela (`motion_deformadores_probe::measure_the_deformer_group`, grelha 320×320)
+
+⚠️⚠️ **A coluna do RELÓGIO não é citável nesta corrida: `load 21,52`**, quatro vezes acima da barra
+do §5.0 (outra linha corria a suíte do shell na mesma máquina). Ela fica aqui porque a **ORDEM** de
+grandeza e a razão entre nós já dizem o que a wave precisa; o número fino é da **W6**, e sai numa
+máquina calma. A coluna `no device?` é `plan(..).is_fully_gpu()` — **determinística**, e não uma
+leitura de relógio.
+
+| nó | objectos | vs. só a grade | no device? |
+|---|---:|---:|:---|
+| `motion.move` | 102 400 | 1,33× | 🟢 |
+| `motion.rotate` | 102 400 | 1,70× | 🟢 |
+| `motion.scale` | 102 400 | 1,96× | 🟢 |
+| `motion.transform` | 102 400 | 1,61× | 🟢 |
+| `motion.mirror` | **204 800** | 2,41× | 🟢 |
+| `motion.look_at` | 102 400 | 2,09× | 🟡 **só nos defaults** |
+| `motion.bend` | 102 400 | 2,34× | 🟢 |
+| `motion.twist` | 102 400 | 2,06× | 🟢 |
+| `motion.spherize` | 102 400 | 1,97× | 🟢 |
+| `motion.four_point_warp` | 102 400 | 1,97× | 🟢 |
+| **`motion.bezier_warp`** | 102 400 | **3,84×** | 🟢 **(W5a)** |
+| `motion.kaleidoscope` | **1 740 800** | 18,99× | 🟢 |
+| `motion.spline_wrap` | 102 400 | 2,86× | 🔴 **NÃO** (W5b) |
+
+⭐ **O grupo fecha em `12 de 13`** — os onze 🟢 mais o 🟡, que **chega** ao dispositivo com o nó como
+ele nasce. O `motion.bezier_warp` foi de `0,34×` (o `clone`) para **`3,84×`**, que é o patch a
+correr de facto.
+
+⚠️ **E o 🟡 do `motion.look_at` não é um defeito novo:** ele é a troca que o comentário do próprio
+kernel já declarava — *«um grafo que conduz o alvo por fio mantém a residência; digitar um ponto é
+o que a custa»*. O que mudou foi a tabela passar a **dizê-lo**.

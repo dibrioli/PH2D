@@ -100,7 +100,7 @@ fn what_needs_a_selection_says_so_and_only_then() {
         let livre = label_of(&com, id).is_some_and(|l| l == rotulo);
         assert!(livre, "{} devia estar limpa com tudo disponível", shape.key);
         match shape.make {
-            Make::Formula(_) | Make::Sculpt => assert!(
+            Make::Formula(_) | Make::Composed(_) | Make::Sculpt => assert!(
                 !bloqueada,
                 "{} não depende de nada e trouxe uma razão",
                 shape.key

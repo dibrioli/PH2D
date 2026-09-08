@@ -55,7 +55,7 @@ fn why_not(shape: &Shape, live_sculpt: bool, profile: bool) -> Option<&'static s
         Make::SculptScene => "there is no sculpture in the scene yet",
         // ⚠️ Inalcançável por construção (as duas são sempre possíveis), e escrito assim de
         // propósito: um `_ =>` engoliria em silêncio uma forma nova que passasse a ter condição.
-        Make::Formula(_) | Make::Sculpt => "not available right now",
+        Make::Formula(_) | Make::Composed(_) | Make::Sculpt => "not available right now",
     })
 }
 

@@ -407,3 +407,56 @@ pub(crate) fn cena_30() -> Result<FieldDoc, ph2d_field::FieldError> {
         NodeId(4),
     )
 }
+
+/// ⭐⭐⭐ **A cena `=31`: AS DUAS COMPOSTAS, e a TERCEIRA peça é o argumento** (W138).
+///
+/// ⚠️ **A terceira não está aqui para encher:** ela é uma esfera com **três** crateras, e é o que
+/// uma primitiva `DeathStar { ra, rb, d }` **não conseguiria fazer**. A cena não mostra só as duas
+/// formas novas — ela mostra por que elas são uma RECEITA e não uma variante.
+///
+/// ⚠️ **A subtracção é `children[0]` menos TODOS os seguintes**, então as três crateras entram no
+/// mesmo nó. ⛔ Três nós encadeados dariam a mesma peça com o triplo da árvore.
+pub(crate) fn cena_31() -> Result<FieldDoc, ph2d_field::FieldError> {
+    println!(
+        "[field-smoke] cena 31 — AS COMPOSTAS: (1) a esfera com CRATERA, que e' bola menos bola · \
+         (2) a LENTE, que e' bola com bola, com os centros a um raio de distancia · (3) a mesma \
+         receita da (1) com TRES crateras, que e' o que uma primitiva de tres numeros nao faria."
+    );
+    let r = 0.22_f32;
+    let bola = |raio: f32, p: [f32; 3]| {
+        leaf(
+            Primitive::Sphere { radius: raio },
+            Xform {
+                translation: p,
+                ..Xform::IDENTITY
+            },
+        )
+    };
+    let d = r * 1.10;
+    FieldDoc::new(
+        vec![
+            // (1) a esfera com cratera
+            bola(r, [-0.72, 0.0, 0.0]),
+            bola(r * 0.75, [-0.72 + d, 0.0, 0.0]),
+            combine(Op::Difference(Blend::Sharp), vec![NodeId(0), NodeId(1)]),
+            // (2) a lente
+            bola(r, [-r * 0.5, 0.0, 0.0]),
+            bola(r, [r * 0.5, 0.0, 0.0]),
+            combine(Op::Intersection(Blend::Sharp), vec![NodeId(3), NodeId(4)]),
+            // (3) três crateras na mesma bola
+            bola(r, [0.72, 0.0, 0.0]),
+            bola(r * 0.55, [0.72 + d, 0.0, 0.0]),
+            bola(r * 0.55, [0.72, d, 0.0]),
+            bola(r * 0.55, [0.72, 0.0, d]),
+            combine(
+                Op::Difference(Blend::Sharp),
+                vec![NodeId(6), NodeId(7), NodeId(8), NodeId(9)],
+            ),
+            combine(
+                Op::Union(Blend::Sharp),
+                vec![NodeId(2), NodeId(5), NodeId(10)],
+            ),
+        ],
+        NodeId(11),
+    )
+}

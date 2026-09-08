@@ -13873,3 +13873,89 @@ o segundo lê `209` passos contra `57`.
 
 **Smoke:** *MODEL* > **A** > *Circle Wave*, com uma segunda forma longe dela e uma junta suave entre
 as duas — a onda deixa de a puxar.
+
+---
+
+## §139 — W138: as DUAS ÚLTIMAS FORMAS do catálogo, e a fila fecha com ZERO primitivas novas (08/09)
+
+O [plano 09](09_plano_das_dez_que_faltam.md) pedia o **lote 12** — *Death Star* e *Vesica Segment* —
+como duas primitivas, com a justificação de que *«a nossa subtracção não dá a distância exacta na
+cratera»*. O `CLAUDE.md` §5.0 manda **medir se a composição já exprime o item antes de o construir**,
+e foi essa medição que decidiu a wave.
+
+### §139.0 — ⭐⭐⭐ A medição que dispensou as duas primitivas
+
+Sonda `probe_composed_shapes` (`load 1,50`), contra um oráculo denso que varre as duas calotes de
+cada peça — ele não partilha uma linha com o produto, sai da **definição** do conjunto:
+
+| peça | `‖∇f‖` | pior campo/verdade | passos de 1,0 | de 4,0 |
+|---|---:|---:|---:|---:|
+| esfera (controlo) | 1,000 | 1,0000 | 6 | 6 |
+| esfera com cratera (A − B) | **1,000** | **0,5495** | 5 | 9 |
+| lente (A ∩ B) | **1,000** | **0,9674** | 10 | 8 |
+
+⭐ **O campo composto é EXACTAMENTE 1-Lipschitz nas duas** — a marcha nunca atravessa a superfície,
+que é a única coisa que este módulo exige de um campo (doc 06 §124: *ele nunca precisou da distância
+exacta, precisa de um MINORANTE*).
+
+⛔ **E a premissa do plano estava METADE errada:** ela vale para a cratera (`0,5495` — o campo
+subestima até `1,8×` junto do aro) e é **falsa** para a lente (`0,9674`, exacta a menos da amostragem
+do oráculo). *Uma frase que descreve duas formas de uma vez tem de ser medida nas duas.*
+
+⇒ o que a fórmula fechada compraria está medido: **`9` passos de marcha contra `6`**, numa região
+pequena. Contra isso, uma primitiva custaria uma variante no `Primitive`, um degrau de
+`FIELD_DOC_VERSION`, uma linha na tabela de dimensões, rótulos, e um construtor.
+
+### §139.1 — ⭐⭐ E a composição entrega o que uma primitiva NÃO entregaria
+
+A cratera continua a **ser uma esfera na Hierarquia**: move-se, redimensiona-se, duplica-se — e
+podem pôr-se três. Uma `DeathStar { ra, rb, d }` congelaria a peça em três números e daria **uma**
+cratera para sempre. *No idioma deste módulo (ADR-0161) a peça é uma árvore editável, e uma receita
+é mais essa árvore do que uma variante nova seria.* É por isso que a cena `=31` mostra **três**
+peças: a terceira é uma bola com **três** crateras, e ela é o argumento.
+
+### §139.2 — A maquinaria: `Make::Composed`, e nenhuma porta nova no motor
+
+O catálogo ganhou uma terceira espécie de entrada, ao lado de `Formula` e das de perfil/escultura:
+uma **receita** (`Recipe { op, parts }`). ⭐ **Nenhuma porta nova no `ph2d-field-ecs`** — as peças
+nascem pelo `add_leaf` que toda forma usa e o verbo entra pelo `wrap_in_op`, que é a autoria da
+booleana desde a W31. *A composição já era alcançável por gesto; o que faltava era um clique que a
+fizesse.*
+
+⚠️ **O que fica seleccionado é o GRUPO, não a última peça** — devolver a última folha poria a alça
+sobre a esfera que SUBTRAI, e o primeiro arrasto abriria o buraco no sítio errado.
+
+### §139.3 — ⛔⛔ E a entrada nova expôs uma RÉGUA DE STRING no gate mais antigo do catálogo
+
+O `every_primitive_the_engine_can_make_is_in_the_catalogue` perguntava
+`s.key.ends_with(k.key())` — e o doc-comment do `Make::builds` **já explicava, com todas as letras**,
+por que essa pergunta é a errada: ela *aprova uma chave que calhe de acabar bem sem construir nada
+daquilo*. A W138 tornou-o concreto: **`add.cratered_sphere` acaba em `sphere`** e satisfazia sozinha
+a exigência da `PrimitiveKind::Sphere`, ⇒ **um catálogo que perdesse o botão da esfera passava neste
+gate por causa da cratera**. Hoje ele pergunta ao `Make::builds()`.
+
+⚠️ *Uma régua de string aprova pelo motivo errado muito antes de reprovar pelo certo* — e o gate
+irmão, que já usava o `builds()`, existia há waves ao lado deste.
+
+### §139.4 — E o censo de alcance foi ENSINADO, não afrouxado
+
+O controle do `every_primitive_the_engine_can_make_has_a_button` exige que toda linha do catálogo
+**nomeie** uma primitiva ou seja uma escultura. Uma entrada composta não faz nem uma coisa nem
+outra, e ⛔ ensinar-lhe `Make::Composed(_) => passa` apagaria o controle para essa família. O que
+ele defende — *o painel não promete o que o motor não tem* — traduz-se ali para **a receita existir
+e ter ≥ 2 peças**, que é a mesma pergunta um nível acima.
+
+### §139.5 — Os gates
+
+| gate | o que mede |
+|---|---|
+| `the_cratered_sphere_actually_has_a_crater` | o eixo `x`: sólido no lado oposto, **ar** no polo `+x`, e o fundo da cratera a `0,35·r` |
+| `the_lens_is_taller_than_it_is_wide` | `0,866·r` em `y` contra `0,5·r` em `x` — é isso que a separa de uma esfera cortada |
+| `both_composed_shapes_honour_the_march` | `‖∇f‖ ≤ 1,02` nas duas — a afirmação que dispensou a fórmula fechada |
+| `only_the_formula_shapes_build_from_a_radius` | uma receita recusa o `shape_at` **e** entrega o `recipe_at` |
+
+Os dois primeiros provados por mutação: com a cratera afastada para `9,99·r` a bola sai lisa
+(*«a cratera devia ter comido o polo +x: −0.05»*), e com os centros da lente sobrepostos ela vira
+uma esfera (*«a `0,56·r` em x já é ar: −0.22»*).
+
+**Smoke:** `PH2D_FIELD_SMOKE=31`, e no catálogo *MODEL* > **A** > *Cratered Sphere* / *Lens*.

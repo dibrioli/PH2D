@@ -115,6 +115,35 @@ impl Family {
 pub(crate) enum Make {
     /// Uma primitiva de fórmula, no tamanho do enquadramento.
     Formula(fn(f32) -> Primitive),
+    /// ⭐⭐⭐ **UMA RECEITA** (W138) — duas ou mais formas e o verbo com que se juntam.
+    ///
+    /// # ⛔ Por que estas duas NÃO são primitivas
+    ///
+    /// O `CLAUDE.md` §5.0 manda medir se a composição já exprime o item **antes** de o construir,
+    /// e a medição (`probe_composed_shapes`) diz que sim, com o campo a ser **exactamente
+    /// 1-Lipschitz** nas duas:
+    ///
+    /// | peça | `‖∇f‖` | pior campo/verdade | passos de 1,0 | de 4,0 |
+    /// |---|---:|---:|---:|---:|
+    /// | esfera (controlo) | 1,000 | 1,0000 | 6 | 6 |
+    /// | esfera com cratera (A − B) | 1,000 | 0,5495 | 5 | 9 |
+    /// | lente (A ∩ B) | 1,000 | 0,9674 | 10 | 8 |
+    ///
+    /// ⚠️ **A premissa do plano estava meia errada:** ele dizia que *«a nossa subtracção não dá a
+    /// distância exacta na cratera»* — verdade para a cratera (`0,55`) e **falsa** para a lente
+    /// (`0,97`, que é exacta a menos da amostragem do oráculo). E o módulo nunca precisou da
+    /// distância exacta: precisa de um MINORANTE (doc 06 §124). O que a fórmula fechada compraria
+    /// está medido e são **`9` passos contra `6`** numa região pequena.
+    ///
+    /// ⭐⭐ **E a composição entrega o que uma primitiva não pode:** a cratera continua a ser uma
+    /// esfera na Hierarquia — move-se, redimensiona-se, duplica-se. Uma `DeathStar { ra, rb, d }`
+    /// congelaria a peça em três números e daria **uma** cratera para sempre. *No idioma deste
+    /// módulo (ADR-0161) a peça é uma árvore editável, e uma receita é mais essa árvore do que uma
+    /// variante nova seria.*
+    ///
+    /// ⇒ zero variantes novas no [`Primitive`], zero degraus de `FIELD_DOC_VERSION`, zero linhas na
+    /// tabela de dimensões.
+    Composed(fn(f32) -> Recipe),
     /// O contorno escolhido no editor vetorial, puxado em Z.
     Extrude,
     /// O contorno escolhido, girado em torno de Y.
@@ -153,9 +182,27 @@ impl Make {
             Make::Formula(f) => Some(f(1.0).kind()),
             Make::Extrude => Some(ph2d_field::PrimitiveKind::Extrude),
             Make::Revolve => Some(ph2d_field::PrimitiveKind::Revolve),
-            Make::Sculpt | Make::SculptScene => None,
+            // ⚠️ **Uma receita não «constrói uma primitiva», e o `None` aqui é a resposta certa e
+            // não uma lacuna:** o censo que consome isto pergunta *«toda primitiva do motor tem uma
+            // porta?»*, e as peças de uma receita são primitivas que já têm porta própria. Dizer
+            // `Some(Sphere)` faria uma receita **cobrir** a esfera e um catálogo sem o botão dela
+            // passaria no censo.
+            Make::Composed(_) | Make::Sculpt | Make::SculptScene => None,
         }
     }
+}
+
+/// ⭐⭐ **A RECEITA de uma forma composta** — as peças, em ordem, e o verbo que as junta.
+///
+/// ⚠️ **A ORDEM é o significado** na subtracção (`children[0]` menos as seguintes), e é por isso
+/// que ela é um `Vec` e não um conjunto: ordenar por qualquer outra coisa — os bits da entidade, a
+/// ordem da consulta — faria o gesto tirar a peça errada.
+///
+/// ⚠️ **O deslocamento é RELATIVO ao alvo da câmera**, na mesma unidade em que a primitiva foi
+/// construída: quem chama passa `r` uma vez e a receita inteira sai no tamanho do enquadramento.
+pub(crate) struct Recipe {
+    pub op: ph2d_field::Op,
+    pub parts: Vec<(Primitive, [f32; 3])>,
 }
 
 /// Uma linha do catálogo.
@@ -179,6 +226,11 @@ pub(crate) use make::*;
 mod make_signs;
 pub(crate) use make_signs::*;
 
+/// ⭐⭐ E as RECEITAS das formas compostas — ver [`make_composed`].
+#[path = "field3d_shapes_make_composed.rs"]
+mod make_composed;
+pub(crate) use make_composed::*;
+
 /// ⭐ **A LISTA do catálogo** — ver [`table`].
 ///
 /// ⚠️ **Ela saiu deste ficheiro na W136, e o corte é por responsabilidade:** aqui vive o
@@ -196,7 +248,21 @@ pub(crate) use table::SHAPES;
 pub(crate) fn shape_at(slot: usize, r: f32) -> Option<Primitive> {
     match SHAPES.get(slot)?.make {
         Make::Formula(f) => Some(f(r)),
-        Make::Extrude | Make::Revolve | Make::Sculpt | Make::SculptScene => None,
+        // ⚠️ **Uma receita não é UMA primitiva**, e devolver a primeira peça dela seria pior do que
+        // devolver nada: o chamador criaria meia forma sem erro nenhum. Quem a trata é o braço
+        // próprio do `AddShape`, pelo [`recipe_at`].
+        Make::Composed(_) | Make::Extrude | Make::Revolve | Make::Sculpt | Make::SculptScene => {
+            None
+        }
+    }
+}
+
+/// ⭐ **A receita que esta posição do catálogo cria**, no tamanho do enquadramento — irmã do
+/// [`shape_at`], e `None` para tudo o que não é composto.
+pub(crate) fn recipe_at(slot: usize, r: f32) -> Option<Recipe> {
+    match SHAPES.get(slot)?.make {
+        Make::Composed(f) => Some(f(r)),
+        Make::Formula(_) | Make::Extrude | Make::Revolve | Make::Sculpt | Make::SculptScene => None,
     }
 }
 
@@ -208,7 +274,9 @@ pub(crate) fn shape_at(slot: usize, r: f32) -> Option<Primitive> {
 /// sempre possíveis: uma caixa não depende de nada.
 pub(crate) fn available(shape: &Shape, live_sculpt: bool, profile: bool) -> bool {
     match shape.make {
-        Make::Formula(_) | Make::Sculpt => true,
+        // ⚠️ Uma receita de primitivas de fórmula não depende de nada, pela mesma razão que uma
+        // caixa não depende: as peças dela saem de um raio.
+        Make::Formula(_) | Make::Composed(_) | Make::Sculpt => true,
         Make::Extrude | Make::Revolve => profile,
         Make::SculptScene => live_sculpt,
     }

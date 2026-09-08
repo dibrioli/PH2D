@@ -473,10 +473,17 @@ a ordena é o dono do produto.
 
 | de onde | ainda faltam | quais |
 |---|---:|---|
-| §7.2 — catálogo **3D** | **3** | Plane · Death Star · Vesica Segment |
+| §7.2 — catálogo **3D** | **1** | Plane · ~~Death Star~~ · ~~Vesica Segment~~ |
 | §7.3 — catálogo **2D** | **0** | ~~Bezier~~ · ~~Parabola~~ · ~~Circle Wave~~ |
 | §7.4 — **famílias** fora de catálogo | **0** | ~~Rosca~~ |
-| **total** | **3** | |
+| **total** | **1** | |
+
+⚠️ **Actualizado em 08/09 (W138 — [§139](06_resultados_cena_e_gizmo.md)): o lote 12 fechou com ZERO
+primitivas novas.** A *Death Star* e o *Vesica Segment* saíram da conta **por medição**, não por
+construção: a composição já as exprime com o campo **exactamente 1-Lipschitz** (`‖∇f‖ = 1,000` nas
+duas), e o que a fórmula fechada compraria são `9` passos de marcha contra `6`. Elas entraram no
+catálogo como **receitas** (`Make::Composed`), com os nomes *Cratered Sphere* e *Lens*. ⇒ **o que
+resta da fila é o Plane, que não é uma forma: é a bola de recorte a admitir uma peça infinita.**
 
 ⚠️ **Actualizado em 07/09 (2.ª vez)**: saiu da conta o **Lote 11 inteiro** (W136 — [§137](06_resultados_cena_e_gizmo.md)), e com **duas** formas construídas em vez de três: a **Parábola** é a Bezier com os três pontos no sítio certo, medido a `5,5e-17`. ⇒ a §7.3 fecha, e o que resta da fila são as **três** do catálogo 3D.
 

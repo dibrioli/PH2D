@@ -322,6 +322,33 @@ pub(super) fn add_shape(
                 .ok()
                 .map(|e| e.to_bits())
         }
+        // ⭐⭐⭐ **AS FORMAS COMPOSTAS** (W138) — uma entrada do catálogo que devolve uma ÁRVORE.
+        //
+        // ⚠️ **Nenhuma porta nova no `ph2d-field-ecs`:** as peças nascem pelo `add_leaf` que toda
+        // forma usa, e o verbo entra pelo `wrap_in_op`, que é a autoria da booleana desde a W31.
+        // *A composição já era alcançável por gesto — o que faltava era um clique que a fizesse.*
+        //
+        // ⚠️ **O que fica SELECCIONADO é o GRUPO, não a última peça.** O gizmo tem de pegar na
+        // coisa que o artista acabou de criar, e ele criou uma esfera com uma cratera — não a
+        // cratera. ⛔ Devolver a última folha poria a alça sobre a peça que SUBTRAI, e o primeiro
+        // arrasto abriria um buraco no sítio errado.
+        Make::Composed(_) => {
+            let receita = crate::field3d_shapes::recipe_at(slot, new_shape_size(cam.half_extent))?;
+            let parent = where_to_add(world, root, selection.first().map(|e| e.to_bits()));
+            let mut pecas = Vec::with_capacity(receita.parts.len());
+            for (prim, offset) in receita.parts {
+                let onde = [
+                    cam.target[0] + offset[0],
+                    cam.target[1] + offset[1],
+                    cam.target[2] + offset[2],
+                ];
+                // ⚠️ Uma peça que não nasce **aborta a receita** em vez de deixar meia forma: o
+                // `add_leaf` só recusa quando o pai não é do campo, e nesse caso nenhuma das outras
+                // teria onde ficar.
+                pecas.push(ph2d_field_ecs::add_leaf(world, parent, prim, onde).ok()?);
+            }
+            ph2d_field_ecs::wrap_in_op(world, &pecas, receita.op).map(|g| g.to_bits())
+        }
         // ⭐⭐ **AS FORMAS DE PERFIL** (W53) — o desenho do editor vetorial vira peça.
         Make::Extrude => {
             crate::field3d_smoke::ask_profile_shape(crate::field3d_smoke::ProfileShape::Extrude);

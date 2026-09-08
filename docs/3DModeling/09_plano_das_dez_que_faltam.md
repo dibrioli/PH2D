@@ -23,7 +23,7 @@ número um.
 | de onde | faltam | quais |
 |---|---:|---|
 | catálogo **2D** | **0** | ~~Polygon(N)~~ · ~~Triangle~~ · ~~Bezier~~ · ~~Parabola~~ · ~~Circle Wave~~ |
-| catálogo **3D** | **3** | Plane · Death Star · Vesica Segment |
+| catálogo **3D** | **1** | Plane · ~~Death Star~~ · ~~Vesica Segment~~ (W138) |
 | **famílias** fora de catálogo | **0** | ~~Nó de toro~~ · ~~Rosca / knurling~~ |
 | **total** | **3** | |
 
@@ -121,8 +121,18 @@ custa `6,8×` uma esfera **por amostra** e `1,0×` **por quadro**.
 
 ### Lote 12 — **Death Star e Vesica Segment** ⭐
 
-As duas são **composição com a distância certa no encontro**: a nossa subtracção dá a forma e **não**
-dá a distância exacta na cratera. São formas pequenas e o mecanismo é o mesmo dos `plate_joint`.
+✅ **SHIPOU na W138** ([doc 06 §139](06_resultados_cena_e_gizmo.md)) — e com **ZERO primitivas
+novas**. ⛔ **A premissa deste lote foi medida e está METADE errada:**
+
+| o plano dizia | o que a medição deu |
+|---|---|
+| *«a nossa subtracção não dá a distância exacta na cratera»* | verdade para a **cratera** (`0,5495` do que a distância é) e **falsa** para a **lente** (`0,9674`, exacta a menos da amostragem do oráculo) |
+| *«são formas pequenas»* (⇒ construam-se) | o §5.0 manda perguntar se a composição já as exprime: ela exprime, com `‖∇f‖ = **1,000**` nas duas — a marcha nunca atravessa |
+| *«o mecanismo é o mesmo dos `plate_joint`»* | o mecanismo que faltava não era um operador: era **uma entrada de catálogo que devolve uma ÁRVORE** (`Make::Composed`), sobre portas que já existiam (`add_leaf` + `wrap_in_op`) |
+
+⭐⭐ **E a composição entrega o que uma primitiva não entregaria:** a cratera continua a ser uma
+esfera na Hierarquia — move-se, redimensiona-se, e podem pôr-se **três**. É isso que a cena `=31`
+mostra na terceira peça.
 
 ### ⏳ Fora de lote — **o Plane**
 

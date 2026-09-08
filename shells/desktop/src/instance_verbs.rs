@@ -578,3 +578,9 @@ mod place_tests;
 #[cfg(test)]
 #[path = "instance_apply_tests.rs"]
 mod apply_tests;
+
+/// ⭐ **A CASCATA** — onde a cópia POUSA. Irmão por responsabilidade, e o corte que o tecto de LOC
+/// impôs; o mecanismo (e o censo que os fez nascer) está no cabeçalho de lá.
+#[cfg(test)]
+#[path = "instance_verbs_cascade_tests.rs"]
+mod cascade_tests;

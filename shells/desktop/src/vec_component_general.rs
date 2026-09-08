@@ -355,3 +355,9 @@ mod tests;
 #[cfg(test)]
 #[path = "vec_component_general_pick_tests.rs"]
 mod pick_tests;
+
+/// ⭐ **O CENSO do motor único** — irmão por responsabilidade: ele mede o que a ÁRVORE contém, e
+/// não o que a secção faz.
+#[cfg(test)]
+#[path = "vec_component_general_census_tests.rs"]
+mod census_tests;

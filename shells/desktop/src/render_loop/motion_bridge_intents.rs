@@ -160,6 +160,36 @@ pub(super) fn apply_graph_intents(
             // não tem um segundo caminho para abrir um diálogo, e é isso que garante que
             // escolher pelo cartão recarrega a tabela, repara os fios órfãos e conta um passo
             // de undo exactamente como escolher pelo painel.
+            // ⭐⭐⭐ **O BOTÃO «USE SELECTED PATH»** (ordem do dono, 2026-09-08: *«um botão para
+            // selecionar um path no canvas ou na hierarchy»*). O cartão emitiu o nó e o param;
+            // quem tem o mundo é esta metade, e a resposta já está resolvida no
+            // [`MotionState::selected_shape`] — o mesmo passe que publica as formas decide qual
+            // é, então o botão nunca pode ligar o nó a algo que o grafo não vê.
+            //
+            // ⚠️ **Sem nada seleccionável ele FALA em vez de não fazer nada.** Um botão que
+            // engole o clique é indistinguível de um avariado, e o report que volta é
+            // *«não funciona»* — a mesma lei que os dois knobs do `motion.mirror` cobraram no
+            // mesmo dia. O aviso diz as três condições que uma forma tem de cumprir, porque
+            // *«nada seleccionado»* e *«a forma não tem nome»* são defeitos diferentes com a
+            // mesma cara.
+            GraphIntent::PickSelection { node, param } => {
+                let subgraph::Target::Node(n) = subgraph::target(node) else {
+                    continue;
+                };
+                // ⚠️ **Pela MESMA porta que a row do painel usa** (`Graph::set_text_param` +
+                // `mark_dirty`) — o undo, o memo do cook e os limites são os mesmos nas duas
+                // superfícies, e um segundo caminho de escrita seria onde as duas divergiriam.
+                if let Some(nome) = motion.selected_shape.clone() {
+                    motion.doc.graph.set_text_param(n, param, nome.clone());
+                    motion.pump.mark_dirty();
+                    toasts.push(ph2d_editor::Toast::info(format!("Path set to '{nome}'")));
+                } else {
+                    toasts.push(ph2d_editor::Toast::info(
+                        "Select a drawing on the canvas or in the Hierarchy first — it needs a name and at least two points"
+                            .to_string(),
+                    ));
+                }
+            }
             #[cfg(feature = "panel-motion-params")]
             GraphIntent::PickFile { node, param } => {
                 if let subgraph::Target::Node(n) = subgraph::target(node) {

@@ -209,6 +209,20 @@ pub(crate) struct MotionState {
     pub(crate) pump: MotionCookPump,
     /// Registered node ops (the `OpResolver` the cook resolves against).
     pub(crate) registry: NodeRegistry,
+    /// ⭐⭐ **O NOME DA FORMA QUE ESTÁ SELECCIONADA**, quando ela é uma das que o grafo consegue
+    /// ver — a resposta que o botão *«Use Selected Path»* do cartão lê (ordem do dono,
+    /// 2026-09-08).
+    ///
+    /// ⚠️ **É do QUADRO, não do documento:** ela não persiste, não entra no undo e não é estado
+    /// de cena — é a leitura de *«o que está seleccionado agora»*, e guardá-la seria a segunda
+    /// cópia de uma coisa que já vive no `hero.gizmo`.
+    ///
+    /// ⚠️ **Vem do MESMO passe que publica as formas** (`motion_bridge::publish_shapes`), e por
+    /// isso ela só pode ser um nome que o grafo consegue ver: o filtro que decide o que se
+    /// publica (tem nome · não é reservado · tem arco) é o mesmo que decide esta. Uma segunda
+    /// varredura sobre a selecção podia devolver uma forma sem nome, e o botão ligaria o nó a
+    /// nada.
+    pub(crate) selected_shape: Option<String>,
     /// Terminal nodes whose output streams are lowered to instances — every
     /// `motion.output` node in the document, in node-id order. Several sinks
     /// compose into one draw, so a document *can* hold independent scenes without
@@ -397,6 +411,7 @@ impl MotionState {
             history: MotionHistory::new(),
             pump: MotionCookPump::new(),
             registry,
+            selected_shape: None,
             sinks,
             signal_taps: Vec::new(),
             signals_out: Vec::new(),

@@ -165,6 +165,10 @@ pub(super) fn apply_param_row(
                         value: p.to_stored(proxima),
                     });
                 }
+                ClickDoes::PickSelection => push_intent(GraphIntent::PickSelection {
+                    node,
+                    param: p.hint.param,
+                }),
                 ClickDoes::PickFile => push_intent(GraphIntent::PickFile {
                     node,
                     param: p.hint.param,
@@ -285,6 +289,12 @@ pub enum ClickDoes {
     /// curados MAIS as colunas que a corrente de cima cozinhou) é viva e vive na shell, e um
     /// canal escreve DOIS params (a coluna e o `mode`).
     CycleChannel,
+    /// ⭐⭐ **LIGA O QUE ESTÁ SELECCIONADO** — o canvas ou a Hierarquia, resolvido pela SHELL.
+    ///
+    /// O cartão não sabe o que está seleccionado nem como se chama: ele emite a intenção com o
+    /// nó e o param, e quem tem o mundo responde. É o mesmo corte do [`Self::PickFile`], que
+    /// também não abre o diálogo aqui.
+    PickSelection,
     /// **Abre a caixa para ESCREVER um texto** — um nome de coluna, um sinal, uma fórmula.
     TypeText,
     /// **Abre o EDITOR RICO** — a janela flutuante de uma curva (e, a seguir, de um gradiente
@@ -322,6 +332,23 @@ pub fn click_does(p: &crate::CardParam) -> ClickDoes {
         ph2d_node_registry::ParamWidget::Curve
         | ph2d_node_registry::ParamWidget::Gradient
         | ph2d_node_registry::ParamWidget::Palette => ClickDoes::OpensEditor,
-        _ => ClickDoes::Nothing,
+        // ⭐ Uma row que é um VERBO: o clique pede à shell que ligue o que está seleccionado.
+        ph2d_node_registry::ParamWidget::PickSelection => ClickDoes::PickSelection,
+        // ⛔⛔ **AQUI HAVIA UM `_ => ClickDoes::Nothing`, e ele fabricava controlos MORTOS.**
+        // Um widget novo compilava, era pintado, aceitava o clique — e o clique não fazia nada.
+        // É exactamente a espécie do §5.0 do `CLAUDE.md`: *«não é um clique sem handler; é um
+        // handler cujo braço não cobre a variante»*, que sobrevive a todo gate de registo.
+        // Medido nesta wave: com o catch-all, o `PickSelection` atravessou o `cargo check
+        // --workspace --all-targets` inteiro **sem um aviso**. Agora esquecer é erro de
+        // compilação.
+        //
+        // ⚠️ Os quatro NÍVEIS só chegam aqui se o pintor disser que a row não desenha um nível
+        // (o `shows_a_level` acima já os apanhou), e um `Enum` sem rótulos não tem opção para
+        // onde ciclar — os dois são inertes por não haver o que fazer, e não por esquecimento.
+        ph2d_node_registry::ParamWidget::Enum { .. }
+        | ph2d_node_registry::ParamWidget::Slider
+        | ph2d_node_registry::ParamWidget::IntSlider
+        | ph2d_node_registry::ParamWidget::Angle
+        | ph2d_node_registry::ParamWidget::Seed => ClickDoes::Nothing,
     }
 }

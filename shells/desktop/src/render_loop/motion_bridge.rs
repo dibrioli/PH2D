@@ -497,6 +497,11 @@ mod remove;
 // reach the callers need — and `output_nodes` is called here, the intent handlers by the
 // `intents` child.
 use remove::output_nodes;
+
+// ⭐ O gate do botão «Use Selected Path», pelo funil real — ficheiro próprio (teto de LOC).
+#[cfg(all(test, feature = "panel-motion-graph"))]
+#[path = "motion_bridge_pick_selection_tests.rs"]
+mod pick_selection_tests;
 #[cfg(feature = "panel-motion-graph")]
 use remove::{apply_delete_selection, apply_disconnect};
 
@@ -513,8 +518,12 @@ pub(super) fn publish_shapes(
     scene: &ph2d_vec_scene::VecScene,
     map: &crate::vec_entities::VecEntityMap,
     xforms: &ph2d_vec_scene::VecXforms,
+    selected: Option<u64>,
 ) {
-    shapes::publish(&mut motion.pump.cook, sim, scene, map, xforms);
+    // ⭐⭐ **A forma SELECCIONADA sai do mesmo passe**, e fica guardada para o botão
+    // *«Use Selected Path»* a ler quando o clique chegar (ver [`MotionState::selected_shape`]).
+    motion.selected_shape =
+        shapes::publish(&mut motion.pump.cook, sim, scene, map, xforms, selected);
 }
 
 /// Publish the world-space **cursor** into the same external table

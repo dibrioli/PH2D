@@ -290,6 +290,13 @@ fn explain(d: &Diagnostic) -> String {
         (Deficit::MissingInput(port), _) => {
             format!("This node needs a stream wired into its '{port}' input")
         }
+        // ⭐⭐ **O sujeito do nó é escolhido por NOME e ninguém o escolheu.** A frase nomeia o
+        // gesto (*escolher*) e não o param, porque o que o artista tem de FAZER é escolher um
+        // caminho — e diz o que o nó está a fazer entretanto, que é a metade que faltava: sem
+        // ela ele vê uma cadeia completa a não mudar nada e conclui que o nó está avariado.
+        (Deficit::MissingChoice(_), _) => {
+            "This node has no path chosen yet, so it passes the layout straight through — pick one with 'Use Selected Path' or the Shape row".into()
+        }
         // ⚠️ **Um irmão já ocupa o passe de tela.** A mensagem nomeia o TIPO porque é o que
         // o artista tem de procurar no grafo, e diz qual dos dois manda (o primeiro) — sem
         // isso ele apaga o errado e o efeito muda de aparência.

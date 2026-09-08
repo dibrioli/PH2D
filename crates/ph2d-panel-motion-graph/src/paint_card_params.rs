@@ -117,6 +117,11 @@ fn shown(p: &CardParam) -> Shown {
         // ⛔ **O selo NÃO é o caso de erro** — ele é a resposta certa para o texto de MÁQUINA
         // (uma curva, um gradiente e uma paleta são serializações) e para o que ainda não foi
         // escolhido. Quem decide qual é qual é a shell, que tem o documento; aqui só se desenha.
+        // ⭐ **UMA ROW QUE É UM VERBO** não tem valor a mostrar: o rótulo dela É a acção, e a
+        // coluna da direita traz só a marca de *«há um controlo aqui»*. É literalmente o que o
+        // [`Shown::Editor`] diz de si — *«o cartão diz que o controlo existe … não inventa
+        // valor»* —, e mostrar ali o nome escolhido duplicaria a row `Shape`, que já o mostra.
+        ParamWidget::PickSelection => Shown::Editor,
         ParamWidget::Channels { .. }
         | ParamWidget::Source
         | ParamWidget::Text

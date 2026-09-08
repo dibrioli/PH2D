@@ -570,3 +570,7 @@ mod toggle;
 
 #[path = "motion_bridge_heal_advisory_tests.rs"]
 mod advisory;
+
+// O gate da TERCEIRA espécie (`MissingChoice`), em ficheiro próprio pelo mesmo teto.
+#[path = "motion_bridge_heal_choice_tests.rs"]
+mod choice;

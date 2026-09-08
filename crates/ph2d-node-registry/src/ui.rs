@@ -126,6 +126,23 @@ pub enum ParamWidget {
     /// untouched — the text param stays the source of truth. Reusable by every node that
     /// reads an external by name (`motion.path`, and later any `*.external` reader).
     Source,
+    /// ⭐⭐ **UM BOTÃO QUE LIGA O QUE ESTÁ SELECCIONADO** — a row não mostra um valor, mostra um
+    /// VERBO, e o clique escreve no mesmo text param que a [`Self::Source`] escreve.
+    ///
+    /// Ordem do dono, 2026-09-08: *«melhor nascer inerte com um botão para selecionar um path no
+    /// canvas ou na hierarchy»*.
+    ///
+    /// ⚠️ **Ela NÃO substitui a [`Self::Source`], e as duas não são duas portas para a mesma
+    /// pergunta.** Uma porta é onde o valor ENTRA — e é uma só (`Graph::set_text_param`); estas
+    /// são dois GESTOS, como arrastar um slider e digitar o número são dois gestos para um param.
+    /// Cada uma serve um momento diferente: a lista serve quem sabe o nome, o botão serve quem
+    /// está a OLHAR para a forma e não sabe como ela se chama.
+    ///
+    /// ⛔ **A resolução é da SHELL, e tem de ser:** *«o que está seleccionado»* é uma pergunta
+    /// sobre o mundo (a selecção do canvas, a linha da Hierarquia, o nome da entidade), e nem o
+    /// registry nem o painel do grafo têm o mundo. O nó declara o verbo; quem o cumpre é quem
+    /// sabe. `min/max/step` são inertes.
+    PickSelection,
     /// A free-text field editing a **text param** (a `motion.expression` formula) —
     /// NOT a `ParamSpec` (which is f32-only). The hint's `param` names the text-param
     /// key (`Graph::set_text_param`), read/written through the additive text channel
@@ -367,6 +384,47 @@ impl ParamGroup {
     pub const fn folded(mut self) -> Self {
         self.folded = true;
         self
+    }
+}
+
+/// ⭐⭐ **UM PARAM DE TEXTO SEM O QUAL O NÓ NÃO TEM SUJEITO** — o irmão de texto de um input
+/// requerido (`NodeRegistry::register_required_inputs`).
+///
+/// ⚠️ **A assimetria com o irmão é a mesma que obrigou o [`ParamGateText`] a existir ao lado do
+/// [`ParamGate`]:** um `ParamSpec` é `f32`, e *«qual forma?»* não é um número — a resposta vive no
+/// canal de texto, ao lado do manifesto congelado. Um `required_inputs` responde por uma PORTA
+/// vazia; um nó cujo sujeito é escolhido por NOME fica igualmente inerte, e nenhuma pergunta sobre
+/// arestas o vê.
+///
+/// Medido no `motion.spline_wrap` (Enio, 2026-09-08: *«melhor nascer inerte com um botão para
+/// selecionar um path … até que o path esteja selecionado, um sinal de alerta fica visível no
+/// nó»*): sem forma escolhida ele não tem curva sobre que embrulhar, devolve o layout intacto, e
+/// **nada no ecrã dizia porquê**.
+///
+/// ⚠️ **O `only_when` não é conveniência: sem ele o aviso MENTE.** Medido na wave que o criou
+/// (2026-09-08): o `motion.spline_wrap` fica inerte sem caminho escolhido **e** sem curva
+/// autorada — mas as quatro cenas da conferência escrevem os oito números à mão, e uma regra que
+/// só olhasse o texto acusaria de inerte um nó que está a embrulhar. *Um ⚠ sobre um nó que
+/// funciona ensina o artista a ignorar o ⚠.*
+///
+/// ⇒ o predicado responde à MESMA pergunta que o `eval` faz — *há curva?* —, lida sobre os params
+/// `f32`. É a forma do `GpuKernel::applicable`, e pelo mesmo motivo: a lei é do NÓ, e a
+/// side-metadata só a transporta.
+#[derive(Copy, Clone)]
+pub struct RequiredTextParam {
+    /// A chave do text param (`Graph::set_text_param`).
+    pub param: &'static str,
+    /// `None` ⇒ sempre exigido. `Some(p)` ⇒ exigido só quando `p` devolve `true`, lido sobre os
+    /// params `f32` deste nó (override, senão o default do manifesto).
+    pub only_when: Option<fn(&dyn Fn(&str) -> f32) -> bool>,
+}
+
+impl core::fmt::Debug for RequiredTextParam {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("RequiredTextParam")
+            .field("param", &self.param)
+            .field("only_when", &self.only_when.is_some())
+            .finish()
     }
 }
 

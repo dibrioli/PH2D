@@ -180,18 +180,46 @@ fn registers_and_wraps_through_the_cook() {
         delayed: false,
     })
     .unwrap();
+    // ⭐⭐ **O NÓ RECÉM-LARGADO É INERTE** (ordem do dono, 2026-09-08) — e este ramo do gate é a
+    // metade que o prova antes de qualquer curva existir.
+    //
+    // ⚠️ **Este teste afirmava o CONTRÁRIO até hoje**, e a mudança de default fê-lo reprovar: ele
+    // media que a cúbica de omissão levantava a fila do eixo. Era exactamente essa cúbica que a
+    // ordem manda deixar de existir ao nascer, então o vermelho é o sinal de que a mudança
+    // chegou — e a fila plana aqui é o produto novo, não uma regressão.
     let mut cook = Cook::new();
     let out = cook.cook(&g, &Ops, sw, 0.0).unwrap();
     let s = out[0].as_stream();
     assert!(s.get("size").is_some(), "columns pass through");
     match s.get("P").unwrap() {
-        Column::Vec2(v) => {
-            // The wrapped row is no longer flat on y = 0 (the S-curve lifted it).
-            assert!(
-                v.iter().any(|q| q[1].abs() > 0.3),
-                "wrapped off the axis: {v:?}"
-            );
-        }
+        Column::Vec2(v) => assert!(
+            v.iter().all(|q| q[1].abs() < 1e-6),
+            "sem curva escolhida o no' devolve a folha INTACTA: {v:?}"
+        ),
+        _ => panic!("P"),
+    }
+
+    // E com uma curva autorada ele volta a embrulhar — o controlo que impede o ramo acima de
+    // passar sobre um nó que deixou de funcionar de todo.
+    for (k, val) in [
+        ("p0x", -3.0f32),
+        ("p0y", -1.5),
+        ("p1x", -1.0),
+        ("p1y", 2.0),
+        ("p2x", 1.0),
+        ("p2y", -2.0),
+        ("p3x", 3.0),
+        ("p3y", 1.5),
+    ] {
+        g.set_param(sw, k, val);
+    }
+    let mut cook2 = Cook::new();
+    let out = cook2.cook(&g, &Ops, sw, 0.0).unwrap();
+    match out[0].as_stream().get("P").unwrap() {
+        Column::Vec2(v) => assert!(
+            v.iter().any(|q| q[1].abs() > 0.3),
+            "wrapped off the axis: {v:?}"
+        ),
         _ => panic!("P"),
     }
 }

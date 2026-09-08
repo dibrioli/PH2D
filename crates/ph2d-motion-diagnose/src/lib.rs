@@ -102,91 +102,10 @@ const TRANSIENT_COLUMNS: &[&str] = &["accel", "falloff", "inv_mass"];
 /// producer-inert transient or a read-required stream, never both; a gate pins it): the
 /// two analyses do not touch the same column. `vel` (for `force.drag`/`force.buoyancy`,
 /// which only exists after an integrator runs) is a later low-priority member.
+mod deficit;
+pub use deficit::{Deficit, Diagnostic, Fix};
+
 const REQUIRED_UPSTREAM: &[&str] = &["P"];
-
-/// One diagnosed defect: a node whose placement makes its output inert.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Diagnostic {
-    /// The offending producer.
-    pub node: NodeId,
-    /// What is wrong.
-    pub deficit: Deficit,
-    /// How to fix it (and how aggressively the editor may act — see [`Fix`]).
-    pub fix: Fix,
-}
-
-/// The kind of defect found.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Deficit {
-    /// This node writes the named transient column, and no node reachable
-    /// downstream (via forward, non-`delayed` edges) consumes it — so it does
-    /// nothing.
-    InertProducer(&'static str),
-    /// This node READS the named [required-upstream](REQUIRED_UPSTREAM) column (a
-    /// deformer/force needs `P` to work on) but has NOTHING wired into it — so it has no
-    /// stream to act on and is silently a no-op. Always a [`Fix::Offer`]: WHICH source
-    /// (grid / emitter / object) is a creative choice.
-    MissingSource(&'static str),
-    /// This node declares the named input port REQUIRED (`NodeRegistry::required_inputs`,
-    /// e.g. `motion.duplicator`'s `shape`/`points`) but that port has no edge — with
-    /// nothing to copy, or nowhere to put it, the node is a silent no-op. Always a
-    /// [`Fix::Offer`]: WHAT to wire into it is the artist's choice. Carries the PORT NAME.
-    MissingInput(&'static str),
-    /// **Outro nó do MESMO tipo já ocupa o único lugar que ele tem** — este é inerte.
-    ///
-    /// Os outros três déficits são sobre a POSIÇÃO de um nó no grafo; este é sobre a
-    /// EXISTÊNCIA de um irmão. Ele existe para os nós que não são passos de um fluxo mas
-    /// **configuram um passe de tela inteira**, lido uma vez a partir do grafo — para esses
-    /// o segundo nó não compõe, ele é ignorado. Carrega o NOME DO TIPO.
-    ///
-    /// ⚠️ **Sempre [`Fix::Offer`]**: apagar qual dos dois é decisão do artista, e um
-    /// auto-heal que apagasse um nó seria a única cura desta casa que destrói trabalho.
-    Shadowed(&'static str),
-    /// **Um BURACO no meio das portas de um roteador** — `in1` vazia com `in2` ligada.
-    ///
-    /// Um `value.switch` escolhe por índice: `clamp(round(select), 0, N−1)`. Uma porta
-    /// vazia é um índice que existe e **lê `0.0`** — e `0` é um valor legítimo, então o
-    /// artista não distingue *"esta ramificação está vazia"* de *"esta ramificação vale
-    /// zero"*. Medido: com só `in0`/`in1` ligadas, `select = 2` e `select = 3` devolvem
-    /// `0.000` sem sinal nenhum.
-    ///
-    /// ⚠️ **Só o buraco do MEIO é diagnosticado, e a distinção é o que impede o ruído:**
-    /// deixar `in2`/`in3` vazias é como se escreve um mux de duas vias — legítimo, comum,
-    /// e o `select` nem lá chega (o clamp para em `N−1`... e é justamente por o clamp
-    /// parar em `N−1` e não no ÚLTIMO LIGADO que a cauda vazia também lê zero; isso é
-    /// comportamento **documentado e deliberado** no doc-comment do kernel daquele nó, e
-    /// mudá-lo seria outra função). Uma porta vazia **antes** de uma ligada não tem
-    /// leitura inocente: o índice dela está no meio do alcance que o artista está a
-    /// varrer.
-    ///
-    /// ⚠️ **Sempre [`Fix::Offer`]**: o que ligar ali é escolha do artista, e ligar por
-    /// palpite é a única cura desta casa que INVENTA conteúdo. Carrega o NOME DA PORTA.
-    DeadBranch(&'static str),
-}
-
-impl Deficit {
-    /// **Um exemplar de CADA variante — a fonte de qualquer censo sobre esta lista.**
-    ///
-    /// ⚠️ **Ela existe porque um `enum` não se itera, e o consumidor que mais importa termina
-    /// num `_ =>`:** o `explain` do shell escolhe a frase que o artista lê, e um variante novo
-    /// cai no catch-all *em silêncio* — compila, corre, e diz ao artista uma coisa que não é o
-    /// defeito dele. Uma lista escrita à mão do lado do gate teria o mesmo buraco um nível
-    /// acima (é preciso lembrar de a estender); aqui ela mora **ao lado da definição**, onde
-    /// quem acrescenta o variante já está.
-    ///
-    /// Os payloads são exemplos reais do repo, não placeholders: uma frase pode depender do
-    /// conteúdo (`InertProducer("accel")` tem braço próprio), então um censo sobre nomes
-    /// inventados provaria menos do que parece.
-    pub const ALL: &'static [Deficit] = &[
-        Deficit::InertProducer("accel"),
-        Deficit::InertProducer("inv_mass"),
-        Deficit::InertProducer("falloff"),
-        Deficit::MissingSource("P"),
-        Deficit::MissingInput("shape"),
-        Deficit::Shadowed("fx.glow"),
-        Deficit::DeadBranch("in1"),
-    ];
-}
 
 /// Os tipos cujo nó configura um **passe de tela inteira**, lido UMA vez do grafo — para
 /// eles o segundo nó não compõe, é ignorado.
@@ -201,23 +120,6 @@ impl Deficit {
 /// A lista existe em vez de o nome estar cravado porque o próximo passe de tela deste tipo
 /// tem de ser **uma linha**, e não uma regra nova a redescobrir.
 const SINGLETON_SCREEN_PASSES: &[&str] = &["fx.glow"];
-
-/// The suggested cure, carrying how confidently the editor may apply it.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Fix {
-    /// Insert this canonical consumer node type to make the producer live
-    /// (`accel` → `motion.integrate`, or `sim.step` in a particle chain). The
-    /// **AUTO-HEAL** candidate — unambiguous plumbing the artist forgot.
-    Insert(&'static str),
-    /// A consumer of this column exists in the graph, but not on the producer's
-    /// forward path — the cure is to REORDER (put the producer upstream of it),
-    /// never to insert a second one (one integrator applies). An **OFFER**.
-    Reorder,
-    /// The missing consumer is a creative choice with no canonical inserter
-    /// (`inv_mass` needs *a* solver; `falloff` needs *a* force/deformer) — surface
-    /// it, never guess. An **OFFER/AVISO**.
-    Offer,
-}
 
 /// Walk the graph and report every node whose output is semantically inert
 /// (ADR-0155). Pure: reads only the graph structure and the registry's derived
@@ -265,6 +167,17 @@ pub fn diagnose(graph: &Graph, reg: &NodeRegistry) -> Vec<Diagnostic> {
             out.push(Diagnostic {
                 node: inst.id,
                 deficit: Deficit::MissingInput(port),
+                fix: Fix::Offer,
+            });
+            continue;
+        }
+        // Um param de TEXTO exigido e vazio: o nó não tem sujeito. Reportado ao lado do
+        // `MissingInput` e pela mesma lei — é causa-raiz, e um nó sem sujeito não tem saída
+        // que possa ser inerte por outro motivo.
+        if let Some(param) = missing_choice(graph, reg, inst.id, ty) {
+            out.push(Diagnostic {
+                node: inst.id,
+                deficit: Deficit::MissingChoice(param),
                 fix: Fix::Offer,
             });
             continue;
@@ -441,6 +354,33 @@ fn has_input(graph: &Graph, node: NodeId) -> bool {
 /// column read with no stream at all), this is a per-PORT structural requirement the node
 /// declares, because required-vs-optional is semantic (an integrator's `forces` is
 /// optional) and not derivable.
+/// O primeiro param de TEXTO exigido que está vazio (ou ausente) neste nó.
+///
+/// ⚠️ **Vazio e ausente são a MESMA resposta aqui, de propósito.** Um `path` que o artista
+/// limpou escreve `""` e um nó recém-largado não tem entrada nenhuma — nos dois casos não há
+/// sujeito, e distingui-los produziria dois avisos para um defeito.
+fn missing_choice(
+    graph: &Graph,
+    reg: &NodeRegistry,
+    node: NodeId,
+    ty: NodeTypeId,
+) -> Option<&'static str> {
+    let required = reg.required_text_params(ty)?;
+    let overrides = graph.node_text_param_overrides(node);
+    let param = param_reader(graph, reg, node, ty);
+    required
+        .iter()
+        .find(|r| {
+            // ⚠️ **O predicado PRIMEIRO**, e a ordem é o que impede o aviso de mentir: um nó cuja
+            // lei diz *«tenho sujeito por outra via»* não é interrogado sobre o texto de todo.
+            r.only_when.is_none_or(|p| p(&param))
+                && overrides
+                    .and_then(|m| m.get(r.param))
+                    .is_none_or(|v| v.trim().is_empty())
+        })
+        .map(|r| r.param)
+}
+
 fn missing_input(
     graph: &Graph,
     reg: &NodeRegistry,

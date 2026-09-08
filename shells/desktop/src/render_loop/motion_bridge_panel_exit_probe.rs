@@ -89,6 +89,7 @@ fn censo() -> Censo {
                 ClickDoes::Toggle => "vira",
                 ClickDoes::Cycle(_) => "avança",
                 ClickDoes::PickFile => "abre ficheiro",
+                ClickDoes::PickSelection => "liga o seleccionado",
                 ClickDoes::CycleSource => "avança a fonte",
                 ClickDoes::CycleChannel => "avança o canal",
                 ClickDoes::OpensPicker => "abre o selector",

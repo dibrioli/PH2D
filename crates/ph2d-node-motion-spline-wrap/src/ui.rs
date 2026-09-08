@@ -8,6 +8,7 @@
 
 use ph2d_node_registry::{
     ParamGateText, ParamGroup, ParamUiHint, ParamUnit, ParamUnitDecl, ParamWidget,
+    RequiredTextParam,
 };
 
 use super::PATH_PARAM;
@@ -59,16 +60,51 @@ pub(super) static PARAM_GATES_TEXT: &[ParamGateText] = &[
 /// As SEÇÕES deste nó (doc 88 B3). As oito coordenadas são UMA coisa — o polígono de controle
 /// de uma cúbica —, e listá-las ao lado dos dois controles reais faz um nó de dois botões
 /// parecer um nó de dez.
+/// ⭐⭐⭐ **A SECÇÃO `Curve` NASCE FECHADA** (ordem do dono, 2026-09-08).
+///
+/// *«Em vez de nascer com uma curva default com pontos no painel, melhor nascer inerte com um
+/// botão para selecionar um path»* — e é a segunda metade do pedido de 12/08 (*«pontos e alças em
+/// sliders num painel. Absurdo!»*), de que a row `Shape` foi a primeira.
+///
+/// ⚠️ **Dobrar e não APAGAR, e a diferença é medida.** Apagar os oito custaria as **quatro** cenas
+/// da conferência que os escrevem à mão (`demos`, `demos_deform`, `demos_slice`, `demos_campo`) e
+/// tiraria uma capacidade que ninguém pediu para tirar; dobrar tira-os do estado de NASCIMENTO,
+/// que é exactamente o que a ordem diz. Eles ficam **a um clique**, com o cabeçalho a dizer
+/// quantas rows esconde — o oposto de inalcançável, e é por isso que o censo
+/// `every_param_the_card_hides_has_a_declared_reason` aceita esta explicação e recusaria um
+/// esconder mudo.
+///
+/// ⚠️ **E o `folded` é o NASCIMENTO, nunca a memória:** o store lembra o que o artista escolheu, e
+/// o painel semeia isto uma vez. Quem abrir a secção não a vê fechar-se no quadro seguinte.
 pub(super) static PARAM_GROUPS: &[ParamGroup] = &[
-    ParamGroup::new("p0x", "Curve"),
-    ParamGroup::new("p0y", "Curve"),
-    ParamGroup::new("p1x", "Curve"),
-    ParamGroup::new("p1y", "Curve"),
-    ParamGroup::new("p2x", "Curve"),
-    ParamGroup::new("p2y", "Curve"),
-    ParamGroup::new("p3x", "Curve"),
-    ParamGroup::new("p3y", "Curve"),
+    ParamGroup::new("p0x", "Curve").folded(),
+    ParamGroup::new("p0y", "Curve").folded(),
+    ParamGroup::new("p1x", "Curve").folded(),
+    ParamGroup::new("p1y", "Curve").folded(),
+    ParamGroup::new("p2x", "Curve").folded(),
+    ParamGroup::new("p2y", "Curve").folded(),
+    ParamGroup::new("p3x", "Curve").folded(),
+    ParamGroup::new("p3y", "Curve").folded(),
 ];
+
+/// **O caminho só é EXIGIDO quando não há curva autorada** — ver
+/// [`RequiredTextParam`].
+///
+/// ⚠️ **A primeira redacção não tinha o predicado, e o portão de fecho apanhou-a:** as quatro
+/// cenas da conferência escrevem os oito números à mão, e o ⚠ acusava-as de estarem inertes
+/// enquanto elas embrulhavam. *Um aviso sobre um nó que funciona ensina o artista a ignorar o
+/// aviso.*
+///
+/// ⚠️ **A pergunta é a MESMA que o `eval` faz** — *há curva?* — e não um proxy: os oito no zero
+/// dão uma cúbica de comprimento zero, que é exactamente a condição do ramo inerte.
+pub(super) static REQUIRED_TEXT: &[RequiredTextParam] = &[RequiredTextParam {
+    param: PATH_PARAM,
+    only_when: Some(|p| {
+        ["p0x", "p0y", "p1x", "p1y", "p2x", "p2y", "p3x", "p3y"]
+            .iter()
+            .all(|k| p(k) == 0.0)
+    }),
+}];
 
 pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     // ⚠️ **A PRIMEIRA row, e é uma decisão de produto.** O Enio, no smoke de
@@ -90,6 +126,25 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
         max: 0.0,
         step: 0.0,
         widget: ParamWidget::Source,
+    },
+    // ⭐⭐⭐ **O BOTÃO** (ordem do dono, 2026-09-08: *«um botão para selecionar um path no canvas
+    // ou na hierarchy»*) — e ele escreve NO MESMO param que a row acima.
+    //
+    // ⚠️ **Duas rows, um param, e isso não são duas portas.** Uma porta é onde o valor entra, e é
+    // uma só (`Graph::set_text_param`); estas são dois GESTOS para o mesmo param, como arrastar
+    // um slider e digitar o número. Cada uma serve um momento: a lista serve quem sabe o nome, o
+    // botão serve quem está a OLHAR para a forma e não sabe como ela se chama — que é
+    // exactamente o caso de quem acabou de a desenhar.
+    //
+    // ⚠️ **Ela vem LOGO A SEGUIR à `Shape`, de propósito:** as duas respondem à mesma pergunta, e
+    // separá-las faria o artista procurar a segunda depois de a primeira o ter desiludido.
+    ParamUiHint {
+        param: PATH_PARAM,
+        label: "Use Selected Path",
+        min: 0.0,
+        max: 0.0,
+        step: 0.0,
+        widget: ParamWidget::PickSelection,
     },
     ParamUiHint {
         param: "follow_rotation",

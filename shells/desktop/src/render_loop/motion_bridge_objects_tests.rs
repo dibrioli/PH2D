@@ -512,7 +512,7 @@ fn the_drawn_curve_survives_the_object_publisher() {
     let (scene, map, xforms) = one_named_path(&mut sim, "Path 0");
 
     // 1) O publicador de CURVAS, como o frame o chama.
-    super::super::shapes::publish(&mut cook, &sim, &scene, &map, &xforms);
+    super::super::shapes::publish(&mut cook, &sim, &scene, &map, &xforms, None);
     let curve_key = ph2d_nodegraph::external::curve_of("Path 0");
     let n_before = points_under(&cook, &curve_key);
     assert!(

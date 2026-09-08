@@ -116,10 +116,37 @@ fn the_row_lands_on_the_shape_the_artist_drew() {
     );
 }
 
-/// **Sem forma escolhida, o nó é o que sempre foi** — a cúbica dos oito params,
-/// **AO BIT**. É esta metade que deixa todo documento já autorado intocado.
+/// ⭐⭐⭐ **SEM FORMA E SEM CURVA, O NÓ É INERTE — e devolve a folha AO BIT** (ordem do dono,
+/// 2026-09-08: *«melhor nascer inerte com um botão para selecionar um path»*).
+///
+/// ⚠️ **Este gate afirmava o CONTRÁRIO até hoje** (*«o nó é o que sempre foi — a cúbica dos oito
+/// params»*), e é o que o torna a melhor prova de que a mudança chegou ao produto: era ele que
+/// pinava o default antigo.
+///
+/// ⛔⛔ **E a asserção que interessa é o AO BIT, não «está parado».** Com a cúbica degenerada, um
+/// nó sem o ramo inerte não devolveria a folha quieta — `frame_at` daria a origem e a tangente
+/// `(0,0)` para todo elemento e a folha COLAPSARIA num ponto. *Um default inerte que destrói o
+/// layout é pior que o default que ele substitui.*
+///
+/// A outra metade — com curva autorada ele volta a embrulhar — está no
+/// [`super::tests::registers_and_wraps_through_the_cook`], e sem ela este ramo passaria sobre um
+/// nó que deixou de funcionar de todo.
 #[test]
-fn with_no_shape_named_the_node_is_the_cubic_it_always_was() {
+fn with_nothing_chosen_the_node_hands_the_layout_back_untouched() {
+    let entrada: Vec<P2> = (0..4u8).map(|i| [f32::from(i), 0.0]).collect();
+    assert_eq!(
+        wrapped(None, None),
+        entrada,
+        "sem forma e sem curva o no' devolve a folha VERBATIM"
+    );
+}
+
+/// **Sem forma escolhida mas COM curva autorada, o nó é a cúbica — ao bit.**
+///
+/// É a metade que deixa todo documento já autorado intocado: quem escreveu os oito números
+/// continua a receber exactamente a mesma imagem.
+#[test]
+fn with_no_shape_named_the_node_is_the_authored_cubic() {
     let cp: [P2; 4] = [[-3.0, -1.5], [-1.0, 2.0], [1.0, -2.0], [3.0, 1.5]];
     let p: Vec<P2> = (0..4u8).map(|i| [f32::from(i), 0.0]).collect();
     let expected = wrap(
@@ -136,10 +163,35 @@ fn with_no_shape_named_the_node_is_the_cubic_it_always_was() {
         &[],
     );
     assert_eq!(
-        wrapped(None, None),
+        wrapped_with_cubic(cp),
         expected,
-        "o caminho sem forma tem de ser a cubica dos defaults, bit a bit"
+        "o caminho sem forma tem de ser a cubica AUTORADA, bit a bit"
     );
+}
+
+/// [`wrapped`] com os oito params escritos — a cúbica deixou de ser o default em 2026-09-08.
+fn wrapped_with_cubic(cp: [P2; 4]) -> Vec<P2> {
+    let mut g = Graph::new();
+    let row = g.add_node("motion.spline_wrap.drawn.row");
+    let sw = g.add_node("motion.spline_wrap");
+    for (i, q) in cp.iter().enumerate() {
+        g.set_param(sw, format!("p{i}x"), q[0]);
+        g.set_param(sw, format!("p{i}y"), q[1]);
+    }
+    g.connect(ph2d_nodegraph::graph::Edge {
+        from: (row, 0),
+        to: (sw, 0),
+        delayed: false,
+    })
+    .expect("in");
+    let mut cook = Cook::new();
+    match cook.cook(&g, &RowOps, sw, 0.0).expect("coze")[0]
+        .as_stream()
+        .get("P")
+    {
+        Some(Column::Vec2(v)) => v.clone(),
+        _ => Vec::new(),
+    }
 }
 
 /// **Uma forma que não está lá cai na cúbica, e NÃO apaga o layout.**

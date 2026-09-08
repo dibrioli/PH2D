@@ -116,13 +116,22 @@ pub(super) fn polyline(
 ///
 /// Called once a frame, before the pump. Republishing is free: the external's revision is a hash of
 /// its content, so a shape nobody touched invalidates nothing (`ph2d_nodegraph::external`).
+/// ⭐⭐ **E devolve o NOME DA FORMA SELECCIONADA**, quando ela é uma das que publicou.
+///
+/// ⚠️ **Sai deste laço e não de um segundo**, e é isso que a torna uma resposta só: a pergunta
+/// *«que caminho está seleccionado?»* tem de dar exactamente um dos nomes que o grafo consegue
+/// ver, e é aqui — e só aqui — que se decide quais são (o nome existe, não é reservado, e a
+/// polilinha tem arco). Uma segunda varredura sobre a selecção podia devolver uma forma sem nome
+/// ou de um ponto só, e o botão que a escrevesse ligaria o nó a nada.
 pub(super) fn publish(
     cook: &mut ph2d_nodegraph::cook::Cook,
     sim: &SimWorld,
     scene: &VecScene,
     map: &crate::vec_entities::VecEntityMap,
     xforms: &VecXforms,
-) {
+    selected: Option<u64>,
+) -> Option<String> {
+    let mut escolhida: Option<String> = None;
     // Clear first: a shape the artist deleted (or un-named) must stop being visible to the graph,
     // and a stale entry would keep a `motion.path` walking a curve that is not on the canvas.
     cook.clear_externals();
@@ -141,6 +150,9 @@ pub(super) fn publish(
         let pts = polyline(scene, xforms, id);
         if pts.len() < 2 {
             continue; // not a curve: a single point has no arc to walk
+        }
+        if selected == Some(bits) {
+            escolhida = Some(name.clone());
         }
         // Where it IS, on the same channel a sprite uses — so a node asking for the
         // position of "X" never has to know whether X is a drawing or an object.
@@ -179,6 +191,7 @@ pub(super) fn publish(
         // lia daqui muda de comportamento.
         cook.set_external(name, Stream::new(n).with("P", Column::Vec2(pts)));
     }
+    escolhida
 }
 
 /// **The `$` namespace belongs to the EDITOR, never to an artist's object.**

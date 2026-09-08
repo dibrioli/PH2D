@@ -19,12 +19,21 @@ use ph2d_nodegraph::gpu::{
 use ph2d_nodegraph::node::{NodeManifest, NodeOp, NodeTypeId};
 use std::collections::BTreeMap;
 
+/// ⭐ **O QUE UM NÓ DECLARA QUE NÃO DISPENSA** — as portas e os params de texto sem os quais ele
+/// fica inerte. Módulo irmão por TETO DE LOC (HR-18, 700 para `crates/`), e o corte é por
+/// RESPONSABILIDADE: o `lib.rs` guarda o REGISTO (a struct e o que se escreve nela) e este
+/// responde a uma pergunta só — *de que é que este nó precisa para ter sujeito?*
+///
+/// Os campos ficam no `lib.rs` porque são o estado do registry; o que se mudou foram os quatro
+/// acessores que os servem.
+mod requirements;
 mod ui;
+
 pub use ui::table_external_key;
 pub use ui::{
     Coupling, FileKind, NodeSilhouette, NodeUiCategory, NodeUiManifest, ParamChannelRange,
     ParamGate, ParamGateAbove, ParamGateText, ParamGroup, ParamHardMax, ParamUiHint, ParamWidget,
-    ReadChannel, card_title,
+    ReadChannel, RequiredTextParam, card_title,
 };
 
 /// The param UNIT vocabulary (doc 88, Wave A) — a sibling module rather than more
@@ -144,6 +153,9 @@ pub struct NodeRegistry {
     /// semantic, so it is declared. Opt-in and default-empty: a node with no entry has no
     /// required input, which every un-annotated node already means.
     required_inputs: BTreeMap<NodeTypeId, &'static [&'static str]>,
+    /// O irmão de TEXTO do [`Self::required_inputs`] — ver [`RequiredTextParam`], onde a lei e a
+    /// medição que a produziu estão escritas. Opt-in e vazio por omissão, como ele.
+    required_text_params: BTreeMap<NodeTypeId, &'static [RequiredTextParam]>,
     /// ADR-0154/0155 — node types whose output carries a live VECTOR shape
     /// (`geometry_id`, `source.shape`). A live vector is drawn by the vector
     /// pass, not the instance renderer, and the GPU-resident cook has no
@@ -389,19 +401,6 @@ impl NodeRegistry {
     /// (produces / consumes / requires / generates nothing).
     pub fn couplings(&self, id: NodeTypeId) -> Option<&'static [Coupling]> {
         self.couplings.get(&id).copied()
-    }
-
-    /// Register a node type's REQUIRED input ports by name (ADR-0155). Additive; last
-    /// write wins. A node whose job needs a stream on a specific input (`duplicator` →
-    /// `["shape", "points"]`) declares it, and the setup diagnoser flags a required port
-    /// with no edge — the port-level twin of a `Coupling::Requires` (which is column-level).
-    pub fn register_required_inputs(&mut self, id: NodeTypeId, ports: &'static [&'static str]) {
-        self.required_inputs.insert(id, ports);
-    }
-
-    /// The required input port names for `id`, if any. Absent ⇒ no input is required.
-    pub fn required_inputs(&self, id: NodeTypeId) -> Option<&'static [&'static str]> {
-        self.required_inputs.get(&id).copied()
     }
 
     /// Register a node type as a **live vector source** (ADR-0154): its output

@@ -8460,7 +8460,14 @@ impl crate::App {
             // becomes an external the graph can walk (`motion.path`). Here, because this is the
             // one place the document, the world, the entity map and the transforms are all in
             // hand at once.
-            motion_bridge::publish_shapes(motion, sim, vec_scene, &self.vec_entities, &vec_xf_ops);
+            motion_bridge::publish_shapes(
+                motion,
+                sim,
+                vec_scene,
+                &self.vec_entities,
+                &vec_xf_ops,
+                hero.gizmo.selection,
+            );
             // ADR-0154: `source.shape` geometry is NOT published here — it is published
             // by the bridge POST-drain, pre-cook (a param edit is drained inside the
             // bridge, so publishing here would set the pre-edit key while the cook reads

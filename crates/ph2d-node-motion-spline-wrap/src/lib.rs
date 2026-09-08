@@ -124,38 +124,49 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "size_profile",
             default: 0.0,
         },
-        // The four control points (world units). Default: a gentle S-curve.
+        // ⭐⭐ **Os quatro pontos de controle (unidades de mundo) — e o default é DEGENERADO.**
+        //
+        // Eles nasciam num S suave, e é isso que a ordem de 2026-09-08 desfaz: um nó que nasce a
+        // deformar obriga o artista a desfazer uma escolha que não fez. Com os quatro na origem a
+        // curva tem comprimento zero, o `eval` toma o ramo inerte acima, e o cartão põe o ⚠ que
+        // diz o que falta.
+        //
+        // ⚠️ **Eles FICAM no manifesto, e a razão é medida:** as quatro cenas da conferência que
+        // usam este nó escrevem os oito valores **explicitamente** (`demos`, `demos_deform`,
+        // `demos_slice`, `demos_campo`) — nenhuma delas dependia do default, então mudá-lo não
+        // lhes custa nada e apagá-los custaria as quatro. Eles deixam de ser **superfície do
+        // artista** (ver [`ui::PARAM_GATES_TEXT`]), não de existir.
         ParamSpec {
             name: "p0x",
-            default: -3.0,
+            default: 0.0,
         },
         ParamSpec {
             name: "p0y",
-            default: -1.5,
+            default: 0.0,
         },
         ParamSpec {
             name: "p1x",
-            default: -1.0,
+            default: 0.0,
         },
         ParamSpec {
             name: "p1y",
-            default: 2.0,
+            default: 0.0,
         },
         ParamSpec {
             name: "p2x",
-            default: 1.0,
+            default: 0.0,
         },
         ParamSpec {
             name: "p2y",
-            default: -2.0,
+            default: 0.0,
         },
         ParamSpec {
             name: "p3x",
-            default: 3.0,
+            default: 0.0,
         },
         ParamSpec {
             name: "p3y",
-            default: 1.5,
+            default: 0.0,
         },
     ],
     lowerings: &[LoweringKind::Cpu],
@@ -166,7 +177,7 @@ pub const MANIFEST: NodeManifest = NodeManifest {
 /// no `Graph` ao lado do manifesto, nunca dentro dele). O MESMO nome de param que
 /// o `motion.path` usa: os dois perguntam *"qual forma?"*, e um artista que
 /// aprendeu a resposta num não a re-aprende no outro.
-const PATH_PARAM: &str = "path";
+pub const PATH_PARAM: &str = "path";
 
 fn scalar_col(s: &Stream, name: &str) -> Vec<f32> {
     match s.get(name) {
@@ -491,6 +502,29 @@ impl NodeOp for MotionSplineWrap {
         };
         let falloff = scalar_col(input, "falloff");
         let curve = Curve::drawn(&drawn).unwrap_or_else(|| Curve::cubic(&cp));
+        // ⭐⭐⭐ **SEM CURVA, O NÓ É INERTE — e devolve a folha VERBATIM.**
+        //
+        // Ordem do dono, 2026-09-08: *«em vez de nascer com uma curva default com pontos no
+        // painel, melhor nascer inerte com um botão para selecionar um path … até que o path
+        // esteja selecionado, um sinal de alerta fica visível no nó»*. É a segunda metade de um
+        // pedido dele de 12/08 (*«pontos e alças em sliders num painel. Absurdo!»*), de que a
+        // primeira — a row `Shape` — já tinha shipado.
+        //
+        // ⚠️ **A pergunta é feita à CURVA, não aos params**, e é isso que a torna uma só: um nome
+        // de forma que não resolve e uma cúbica degenerada são o mesmo facto — *não há arco sobre
+        // que embrulhar*. Perguntar «o `path` está vazio?» deixaria de fora a forma apagada, e
+        // perguntar «os oito são zero?» deixaria de fora tudo o que não é a cúbica.
+        //
+        // ⛔⛔ **E o ramo é OBRIGATÓRIO, não uma optimização.** Sem ele, uma cúbica de comprimento
+        // zero manda `frame_at` devolver a origem e a tangente `(0,0)` para todo elemento: a
+        // folha inteira COLAPSA num ponto. *Um default inerte que destrói o layout é pior que o
+        // default que ele substitui* — e o `emit` verbatim é o mesmo `input.clone()` estrutural
+        // que os deformadores desta família usam para a identidade.
+        if curve.length() <= EPS {
+            let out = ctx.input(0).clone();
+            ctx.emit(out);
+            return;
+        }
         let (out_p, turn, arc) = wrap_with_frame(
             &p,
             &curve,
@@ -578,6 +612,10 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     // decide pelo valor de outro param **f32**, e um nome de forma vive no canal
     // de TEXTO — daí o irmão `ParamGateText`.
     reg.register_param_gates_text(MANIFEST.id, PARAM_GATES_TEXT);
+    // ⭐⭐ **SEM FORMA ESCOLHIDA, ESTE NÓ NÃO TEM SUJEITO** — e o cartão passa a dizê-lo.
+    // O canal é o irmão de texto do `register_required_inputs`, e quem pinta o ⚠ é o
+    // `ph2d_motion_diagnose` (`Deficit::MissingChoice`), pela rota que já existia.
+    reg.register_required_text_params(MANIFEST.id, ui::REQUIRED_TEXT);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     // CPU-only: this node reads `falloff` only at eval runtime (no GPU kernel), so the
     // diagnoser cannot derive the role from a `ColumnBinding` — declare it (ADR-0155).

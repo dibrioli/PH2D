@@ -105,7 +105,24 @@ impl Setup {
     }
 }
 
-/// Coze o embrulho sobre um **S pronunciado** (os defaults do nó) e devolve o stream.
+/// O S que estas fixturas embrulham — o mesmo que era o default do nó até 2026-09-08.
+///
+/// ⚠️ **Ele é ESCRITO aqui, e desde essa data tem de ser.** O nó passou a nascer sem curva (ordem
+/// do dono: *«melhor nascer inerte»*), então uma fixtura que a herdasse do default mediria o ramo
+/// inerte — que é o oposto do que estes gates medem. *Uma fixtura que depende de um default mede
+/// o default, não o produto.*
+const S_CURVE: [(&str, f32); 8] = [
+    ("p0x", -3.0),
+    ("p0y", -1.5),
+    ("p1x", -1.0),
+    ("p1y", 2.0),
+    ("p2x", 1.0),
+    ("p2y", -2.0),
+    ("p3x", 3.0),
+    ("p3y", 1.5),
+];
+
+/// Coze o embrulho sobre um **S pronunciado** ([`S_CURVE`]) e devolve o stream.
 fn wrapped(set: Setup) -> Stream {
     let mut g = Graph::new();
     let src = g.add_node("motion.spline_wrap.axis.src");
@@ -113,6 +130,9 @@ fn wrapped(set: Setup) -> Stream {
     g.set_param(src, "own_size", set.own_size);
     g.set_param(src, "mask", set.mask);
     let sw = g.add_node("motion.spline_wrap");
+    for (k, v) in S_CURVE {
+        g.set_param(sw, k, v);
+    }
     g.set_param(sw, taper::DIRECTION, set.direction);
     g.set_param(sw, taper::SIZE_TAPER.0, set.size_start);
     g.set_param(sw, taper::SIZE_TAPER.1, set.size_end);

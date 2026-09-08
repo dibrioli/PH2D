@@ -68,6 +68,12 @@ pub enum GraphIntent {
     /// extensões aqui faria o cartão ser a segunda resposta à mesma pergunta — exactamente o que
     /// a row do painel já recusou pelo mesmo motivo.
     PickFile { node: u32, param: &'static str },
+    /// ⭐⭐ **LIGA A ESTE PARAM O QUE ESTÁ SELECCIONADO** — no canvas ou na Hierarquia.
+    ///
+    /// O painel do grafo não sabe o que está seleccionado, nem como se chama, nem se é sequer um
+    /// caminho: ele tem o snapshot, não o mundo. Emite o nó e o param; a shell resolve e escreve
+    /// pela porta de sempre (`Graph::set_text_param`). É o mesmo corte do [`Self::PickFile`].
+    PickSelection { node: u32, param: &'static str },
     /// ⭐⭐ **O ARTISTA CARREGOU NUMA SETA DE UM SELECTOR DO CARTÃO** — a opção anterior
     /// (`delta = -1`) ou a seguinte (`+1`), para uma fonte publicada (doc 65) ou um canal.
     ///

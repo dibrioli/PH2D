@@ -85,20 +85,70 @@ fn published(h: &HeroScreen) -> Vec<(&'static str, Rect)> {
     v
 }
 
-/// ⭐ **O estado de omissão do app NÃO tem abas** — e é isto que torna a wave inerte enquanto o
-/// artista não abrir dois painéis do mesmo lado.
+/// ⭐ **UM ENCAIXE VAZIO NÃO RESERVA FAIXA NENHUMA** — a faixa é do que está lá dentro.
+///
+/// ⚠️⚠️ **Este teste chamava-se *«o estado de omissão do app NÃO tem abas»* e media outra coisa:**
+/// o `settled(&[])` **fecha tudo**, então ele nunca viu o app de omissão, que abre com a
+/// Hierarquia e o Inspector. *Um nome que promete uma população e uma fixtura que produz outra são
+/// dois gates, e só um deles corre.* O que ele de facto mede — e continua a medir — é o encaixe
+/// **vazio**; o app de omissão tem gate próprio, abaixo.
 #[test]
-fn the_default_app_shows_no_tab_row_at_all() {
+fn an_empty_slot_reserves_no_tab_row() {
     let h = settled(&[]);
     let l = h.last_layout.expect("o quadro publicou o layout");
     for slot in Slot::ALL {
         assert_eq!(
             l.slot_tabs[slot as usize].h,
             0.0,
-            "{slot:?} reservou faixa de abas com {} ocupante(s) no arranque",
+            "{slot:?} reservou faixa de abas com {} ocupante(s)",
             slot_tabs::occupants(&h, slot).len()
         );
     }
+}
+
+/// ⭐⭐⭐ **UMA ABA SOZINHA APARECE — ordem do dono, 2026-09-09.**
+///
+/// > *«Se temos só o Inspector aberto o sistema de abas some e o inspector fica diferente. Melhor
+/// > padronizar: mesmo se houver apenas 1 painel, a aba aparece sozinha, mas aparece. Isso deve
+/// > valer para Hierarchy também»* — Enio.
+///
+/// ⛔ **Isto INVERTE a lei anterior** (*«uma aba sozinha é um título a mais, não uma escolha»*),
+/// e a inversão está escrita no `reserve_slot_tabs` com o preço medido ao lado. A razão é de
+/// produto: a coluna mudava de FORMA conforme um número que o artista não vê.
+///
+/// ⚠️ **A fixtura é o app de OMISSÃO** — ninguém toca no `panel_visibility`, vale o
+/// `DEFAULT_VISIBLE`. É a única forma de medir o ecrã que o artista abre.
+#[test]
+fn the_default_app_shows_one_tab_per_open_panel() {
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    let mut h = HeroScreen::new(ph2d_editor_core::NodeId(1));
+    paint(&mut h, 4);
+    let l = h.last_layout.expect("o quadro publicou o layout");
+    let mut with_row = 0usize;
+    for slot in Slot::ALL {
+        let n = slot_tabs::occupants(&h, slot).len();
+        let bar = l.slot_tabs[slot as usize];
+        if slot == Slot::Center {
+            continue;
+        }
+        if n == 0 {
+            assert_eq!(bar.h, 0.0, "{slot:?} está vazio e reservou faixa ({bar:?})");
+            continue;
+        }
+        with_row += 1;
+        assert!(
+            bar.h > 0.0,
+            "{slot:?} tem {n} ocupante(s) e NENHUMA faixa de abas — é o report do dono: a coluna \
+             muda de forma conforme quantos painéis estão dentro dela"
+        );
+    }
+    // ⛔ **O controlo da POPULAÇÃO:** o app de omissão abre com a Hierarquia à esquerda e o
+    //    Inspector à direita — um ocupante em cada coluna, que é exactamente o caso do report.
+    assert_eq!(
+        with_row, 2,
+        "o app de omissão deixou de abrir com dois encaixes ocupados; esta fixtura mede outra \
+         coisa que não o ecrã do report"
+    );
 }
 
 /// ⭐⭐⭐ **O caso do Enio: MIX e WAVE ao mesmo tempo.** Eles partilham a coluna da direita e

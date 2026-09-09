@@ -57,7 +57,9 @@ pub(super) fn walk(
     // painted out-of-band below) are silently skipped.
     // ⭐⭐⭐ **Os ocupantes que não estão à frente do seu encaixe não pintam** — é isto que faz de
     // `n > 1` num encaixe **abas** em vez de painéis empilhados. ⚠️ Vazio enquanto cada encaixe
-    // tiver no máximo um ocupante, que é o estado de omissão do app.
+    // tiver no máximo um ocupante — que é o estado de omissão do app, e que **continua a ter
+    // fila** desde a ordem do dono de 2026-09-09 (a fila existe com um; o que ela esconde é que
+    // não há ninguém para esconder).
     let hidden = super::slot_tabs::hidden_by_tabs(hero);
     // ⭐⭐ **O rect do encaixe de CADA painel, resolvido uma vez** — é o que o `PaintCtx::slot`
     // entrega. ⚠️ Já sem a faixa de abas: o `reserve_slot_tabs` empurrou as colunas antes de o
@@ -118,7 +120,7 @@ pub(super) fn walk(
     });
     // ⭐⭐⭐ **AS ABAS, depois dos painéis** — o `HitIndex` caminha de trás para a frente, então
     // registá-las aqui põe-nas acima da barreira de hit que o painel da frente instalou. A faixa
-    // é zero-altura em todo encaixe com menos de dois ocupantes.
+    // é zero-altura só no encaixe VAZIO (ordem do dono, 2026-09-09).
     for slot in crate::screens::slot::Slot::ALL {
         let bar = layout.slot_tabs[slot as usize];
         if bar.h <= 0.0 {

@@ -113,8 +113,9 @@ fn tab_row_drop(
             continue;
         }
         let bar = layout.slot_tabs[slot as usize];
-        // ⚠️ `h <= 0` é um encaixe com menos de dois ocupantes: ele não TEM fila, e largar sobre
-        //    uma fila que não está no ecrã seria uma largada sobre nada.
+        // ⚠️ `h <= 0` é um encaixe VAZIO: ele não TEM fila, e largar sobre uma fila que não está
+        //    no ecrã seria uma largada sobre nada. ⭐ Com um ocupante a fila existe, e é isso que
+        //    torna a coluna de um painel só um alvo de largada como qualquer outra.
         if bar.h <= 0.0 || !bar.contains(x, y) {
             continue;
         }

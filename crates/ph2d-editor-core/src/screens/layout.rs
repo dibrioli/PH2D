@@ -190,8 +190,9 @@ pub struct HeroLayout {
     /// drives that from the timeline toggle). Height [`TIMELINE_DOCK_H`].
     pub timeline: Rect,
     /// ⭐⭐ **A faixa de ABAS de cada encaixe**, na ordem de [`crate::screens::slot::Slot::ALL`] —
-    /// **zero-altura** onde o encaixe tem menos de dois ocupantes, que é o estado de omissão do
-    /// app. Escrita por [`Self::reserve_slot_tabs`]; ver `screens::hero::slot_tabs`.
+    /// **zero-altura** só onde o encaixe está VAZIO. ⚠️ Um ocupante já tem fila desde a ordem do
+    /// dono de 2026-09-09 (*«mesmo se houver apenas 1 painel, a aba aparece»*); ver o preço
+    /// medido em [`Self::reserve_slot_tabs`]. Ver também `screens::hero::slot_tabs`.
     pub slot_tabs: [Rect; 6],
 }
 

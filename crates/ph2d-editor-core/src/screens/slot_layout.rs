@@ -90,8 +90,28 @@ impl HeroLayout {
 /// ⭐⭐ **A FAIXA DE ABAS sai do encaixe, e o que estava debaixo dela DESCE** (spec §2, regra 1).
 ///
 /// Recebe quantos painéis ocupam cada encaixe e a altura de uma aba, e escreve
-/// [`HeroLayout::slot_tabs`] — o rect da faixa de cada encaixe, **zero** onde `n < 2`
-/// (*uma aba sozinha é um título a mais, não uma escolha*).
+/// [`HeroLayout::slot_tabs`] — o rect da faixa de cada encaixe, **zero** só onde o encaixe
+/// está VAZIO.
+///
+/// # ⭐⭐⭐ Uma aba sozinha APARECE — ordem do dono, 2026-09-09
+///
+/// > *«Se temos só o Inspector aberto o sistema de abas some e o inspector fica diferente.
+/// > Melhor padronizar: mesmo se houver apenas 1 painel, a aba aparece sozinha, mas aparece.
+/// > Isso deve valer para Hierarchy também»* — Enio.
+///
+/// ⛔ **Isto INVERTE o que estava escrito aqui** (*«uma aba sozinha é um título a mais, não
+/// uma escolha»*), e a razão é de produto: a coluna mudava de FORMA conforme o número de
+/// painéis dentro dela. *Uma superfície que se veste de duas maneiras conforme um número que
+/// o artista não vê não é uma economia — é uma pergunta.*
+///
+/// ⭐ **E ela compra um gesto que não existia:** sem fila, um painel sozinho na coluna não
+/// tinha nada por onde ser arrastado para o outro lado — a aba é a pega. *A economia custava
+/// uma capacidade, e ninguém tinha somado as duas coisas.*
+///
+/// ⚠️ **O PREÇO, medido** (`CLAUDE.md` §0.8 — o alvo é tablet): a faixa vive DENTRO da
+/// coluna, então ela não tira nada da área de desenho; o que ela custa é `22 px` de corpo de
+/// painel por coluna aberta, isto é **2,1 %** da altura no iPad Pro 12,9" (1024), **2,6 %**
+/// no 11" (834) e **3,0 %** no mini (744).
 ///
 /// # ⛔ Por que ele não recebe a lista de campos a encolher
 ///
@@ -116,8 +136,9 @@ impl HeroLayout {
         let rects = self.slot_rects(occupied);
         let mut bars = [Rect::new(0.0, 0.0, 0.0, 0.0); 6];
         for (i, slot) in Slot::ALL.into_iter().enumerate() {
-            // ⛔ O centro nunca tem abas — ele é do editor (spec §2, regra 4).
-            if counts[i] < 2 || slot == Slot::Center {
+            // ⛔ O centro nunca tem abas — ele é do editor (spec §2, regra 4). ⚠️ O piso é
+            //    `1` e não `2` desde a ordem do dono de 2026-09-09 — ver o doc acima.
+            if counts[i] < 1 || slot == Slot::Center {
                 continue;
             }
             let band = rects.get(slot);

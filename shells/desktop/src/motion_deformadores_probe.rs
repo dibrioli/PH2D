@@ -182,8 +182,16 @@ fn build_com(m: &mut MotionState, lado: f32, no: Option<&str>, aceso: bool) -> N
 /// aqui envelheceria em silêncio a cada param novo, e um param renomeado deixaria de ser
 /// movido sem nada acusar.
 ///
-/// ⛔ **E só os SLIDERS se movem** — mexer num `Enum` ou num `Toggle` mudaria o MODO do nó, que
-/// é outra medição.
+/// ⛔ **Só os controlos CONTÍNUOS se movem** — mexer num `Enum`, num `Toggle` ou num `Seed`
+/// mudaria o MODO do nó, que é outra medição.
+///
+/// ⛔⛔ **E a 1.ª redacção lia «contínuo» como `Slider`, o que deixou DOIS nós por acordar.** O
+/// `motion.rotate` **não tem um único `Slider`**: o controlo dele é um `ParamWidget::Angle`, e a
+/// linha dele na tabela cronometrava uma rotação de **0°** — *a identidade que este despertar
+/// existe para evitar*. O `motion.bend` tem a mesma forma no `direction`, que é justamente o
+/// param que a cláusula `applicable` dele lê, então a coluna do dispositivo dizia 🟢 sobre um nó
+/// com aquele knob adormecido. ⚠️ **Um `Angle` é um NÚMERO com uma unidade em graus, não um
+/// modo** — a razão escrita para excluir widgets nunca o cobriu.
 ///
 /// ⚠️⚠️ **Isto NÃO é suficiente para deixar a coluna do dispositivo em paz, e eu escrevi aqui
 /// que era.** A cláusula `applicable` do `motion.look_at` lê `target_x`/`target_y`, que são
@@ -194,13 +202,43 @@ fn build_com(m: &mut MotionState, lado: f32, no: Option<&str>, aceso: bool) -> N
 /// medição é não a fazer no mesmo grafo.*
 fn acordar(m: &mut MotionState, no: NodeId, nome: &str) {
     let tid = ph2d_nodegraph::node::NodeTypeId::of(nome);
+    let mut i = 0u32;
     for h in m.registry.param_ui(tid).unwrap_or(&[]) {
-        if !matches!(h.widget, ph2d_node_registry::ParamWidget::Slider) {
+        if !matches!(
+            h.widget,
+            ph2d_node_registry::ParamWidget::Slider
+                | ph2d_node_registry::ParamWidget::IntSlider
+                | ph2d_node_registry::ParamWidget::Angle
+        ) {
             continue;
         }
-        // Um quarto do caminho até ao topo da faixa — longe do default sem ser o extremo,
+        // ⛔⛔ **A fracção VARIA com a ordem, e a fracção única deixava dois nós na
+        // identidade.** Com `0,25` para todos, os oito `P0X..P3Y` do `motion.spline_wrap`
+        // recebiam **o mesmo número** ⇒ os quatro pontos de controlo caíam **em cima uns dos
+        // outros**, a cúbica media comprimento zero e o nó tomava o atalho inerte: a linha da
+        // tabela cronometrava um `clone`, que é exactamente o defeito que este despertar
+        // existe para curar, um nível abaixo. O mesmo valia para os quatro cantos do
+        // `motion.four_point_warp`.
+        //
+        // ⚠️ **A razão áurea, e não um sorteio:** ela é determinística (a mesma tabela em toda
+        // corrida), nunca repete um valor em `n` pequeno, e não precisa de saber quais hints
+        // formam uma tupla — *uma lista escrita à mão de «estes dois são um ponto»
+        // envelheceria a cada param novo*.
+        //
+        // ⚠️ **Preço declarado:** acrescentar ou reordenar um hint muda os números desta
+        // tabela. Ela mede *o nó a trabalhar*, não uma pose autorada — a comparação que vale é
+        // entre as linhas da MESMA corrida.
+        // A faixa é `0,25..0,75`: em `i = 0` ela dá o `0,25` de sempre (⚠️ e isso é
+        // load-bearing para o `motion.scale`, cuja faixa é `0..5` — uma fracção de `0,2`
+        // pediria `Scale = 1`, que é **a identidade**), e sobe daí sem tocar nos extremos,
         // que é onde uma cerca degenerada moraria.
-        let alvo = h.min + (h.max - h.min) * 0.25;
+        #[expect(
+            clippy::cast_precision_loss,
+            reason = "um índice de hint; a fracção é o que interessa"
+        )]
+        let frac = 0.25 + 0.5 * (0.618_034_f32 * i as f32).fract();
+        i += 1;
+        let alvo = h.min + (h.max - h.min) * frac;
         let v = if (alvo - h.min).abs() < f32::EPSILON {
             h.min + (h.max - h.min) * 0.5
         } else {
@@ -263,6 +301,53 @@ fn cook_com(lado: f32, no: Option<&str>) -> Medida {
         gpu_neutro,
         gpu_aceso,
     }
+}
+
+/// ⭐⭐⭐ **O DESPERTAR TEM DE ACORDAR** — para cada um dos treze, a saída do nó ACESO difere da
+/// saída dele nos defaults.
+///
+/// ⛔⛔ **É o censo que faltava, e ele nasceu de DOIS defeitos que a tabela escondia** (08/09):
+/// - o `motion.rotate` **não tem um único `Slider`** (o controlo dele é um `ParamWidget::Angle`),
+///   então o despertar não lhe tocava e a linha dele cronometrava uma rotação de **0°**;
+/// - a fracção era a MESMA para todos os hints, então os oito `P0X..P3Y` do
+///   `motion.spline_wrap` caíam no mesmo número, os quatro pontos de controlo colapsavam num
+///   ponto, a cúbica media comprimento zero e o nó tomava o **atalho inerte** — um `clone`
+///   cronometrado como se fosse o embrulho.
+///
+/// ⚠️ **Nenhuma das duas era visível na tabela:** um `clone` e um deformador barato leem-se
+/// iguais numa coluna de razão, e é por isso que a régua tem de ser a **saída**, nunca o relógio.
+/// *Um corpus no ponto neutro de um knob não testa esse knob* — a mesma frase que o despertar
+/// foi escrito para honrar, e que ele próprio violava em dois nós.
+///
+/// ⚠️⚠️ **E a 1.ª redacção DESTE gate comparava só a coluna `P`** — que é a terceira vez que
+/// esta linha paga a mesma cegueira: o `motion.rotate` e o `motion.scale` escrevem `rot` e
+/// `size`, **nunca `P`**, então os dois liam-se «não mudou» com o nó a girar. A comparação é do
+/// **stream inteiro**, que é a única que não tem de saber o que cada nó escreve.
+///
+/// ⚠️ **A grelha é pequena de propósito** (8×8): a pergunta é *«mudou?»*, não *«quanto custa?»*.
+#[test]
+fn waking_a_node_takes_it_off_the_identity() {
+    let mut mudos: Vec<&str> = Vec::new();
+    for nome in GRUPO {
+        let saida = |aceso: bool| {
+            let mut m = MotionState::new();
+            let sink = build_com(&mut m, 8.0, Some(nome), aceso);
+            let out = m
+                .pump
+                .cook
+                .cook(&m.doc.graph, &m.registry, sink, 0.0)
+                .expect("coze");
+            out[0].as_stream().clone()
+        };
+        if saida(false) == saida(true) {
+            mudos.push(nome);
+        }
+    }
+    assert!(
+        mudos.is_empty(),
+        "o despertar nao mexeu nestes: {mudos:?} -- ou o widget deles nao esta' na lista de \
+         controlos continuos, ou a fraccao poe o no' de volta na identidade"
+    );
 }
 
 /// ⭐⭐⭐ **O PREÇO DO GRUPO, e o 🔴 é o achado — nunca a razão** (doc 103 §5.1).

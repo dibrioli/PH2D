@@ -392,13 +392,20 @@ fn the_selected_tab_is_painted_even_when_they_do_not_all_fit() {
     assert!(bar.h > 0.0, "sem faixa de abas nao ha' o que medir");
 
     let front = slot_tabs::chosen(&h, Slot::RightTop);
-    let painted = slot_tabs::tab_layout(&occ, front, bar, &mut TextSystem::without_system_fonts());
+    // ⚠️⚠️ **A faixa é ESPREMIDA de propósito, e a razão é uma medição.** Desde que uma aba tem
+    //    PISO de largura (nunca mais estreita do que alta), cinco ocupantes cabem todos na coluna
+    //    de fábrica — `5 × 22 = 110` contra `296` px úteis. *A coluna real deixou de produzir o
+    //    fenómeno que este gate mede*, e alimentá-la aqui deixaria a asserção a passar sobre um
+    //    caso que já não existe. O sujeito é a função, e a geometria é dela.
+    let tight = ph2d_editor_core::zones::Rect::new(bar.x, bar.y, 100.0, bar.h);
+    let painted =
+        slot_tabs::tab_layout(&occ, front, tight, &mut TextSystem::without_system_fonts());
     assert!(
         painted.len() < occ.len(),
         "controlo partido: {} ocupantes cabem todos em {} px, entao nao ha' transbordo e este teste \
          nao mede nada",
         occ.len(),
-        bar.w
+        tight.w
     );
 
     let selected = occ.last().map(|o| o.node).expect("ha' ocupantes");

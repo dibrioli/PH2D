@@ -43,7 +43,7 @@ use crate::widget::ButtonState;
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
 /// A altura da fila de abas — **uma linha**, o mesmo token da barra de menus e de uma linha de
@@ -265,6 +265,66 @@ pub fn hidden_by_tabs(hero: &HeroScreen) -> Vec<NodeId> {
     hidden
 }
 
+/// ⭐⭐⭐ **O PISO de uma aba: ela nunca é mais estreita do que é ALTA.**
+///
+/// ⛔ **Não é um número escolhido** — é a altura da própria fila ([`TAB_BAR_H`], que é o
+/// `ROW_H_PX`). Um quadrado é a menor coisa que ainda se lê como um alvo, e é exactamente a forma
+/// que o **ícone** (a metade ainda por construir do desenho das abas) vem ocupar.
+fn tab_floor_w() -> f32 {
+    TAB_BAR_H
+}
+
+/// ⭐⭐⭐ **Encolhe as larguras naturais até caberem, nunca abaixo do piso** — `None` quando nem no
+/// piso elas cabem, e aí quem responde é a janela deslizante do [`tab_layout`].
+///
+/// # ⛔ O buraco que isto fecha
+///
+/// Uma aba que não é PINTADA não tem rect, logo não está no índice de acerto, logo **não se
+/// clica**: o painel dela só voltava por um caminho que ninguém adivinha (fechá-lo e reabri-lo no
+/// menu *Window*). E bastava a coluna ser estreita — três nomes desta casa medem ~231 px, e a
+/// largura mínima de uma coluna deixa **212** úteis.
+///
+/// ⇒ enquanto `n × piso ≤ inner`, **toda aba é pintada**. Na coluna da direita de fábrica (296 px
+/// úteis) isso dá **13** abas, que é exactamente a população máxima daquele encaixe — *o transbordo
+/// deixa de ser alcançável pelo caminho normal do artista*, e a afordância `⋯` passa a servir só a
+/// coluna espremida.
+///
+/// ⚠️ **A elisão do nome vem de graça** e não é conta desta função: o `paint_text_centered` corta
+/// o texto ao orçamento do rect desde 2026-09-06. *Encolher o rect sem elidir escreveria o nome
+/// por cima da aba vizinha.*
+///
+/// ⚠️ **O laço é iterativo, e não uma regra de três:** quem bate no piso deixa de encolher, e o
+/// que ele não cedeu tem de ser redistribuído pelos outros. Cada passo ou faz caber ou prende mais
+/// uma no piso, logo `n` passos bastam.
+fn fitted_widths(natural: &[f32], inner: f32) -> Option<Vec<f32>> {
+    let floor = tab_floor_w();
+    if natural.is_empty() || floor * natural.len() as f32 > inner {
+        return None;
+    }
+    let mut w = natural.to_vec();
+    for _ in 0..=natural.len() {
+        let total: f32 = w.iter().sum();
+        if total <= inner {
+            return Some(w);
+        }
+        let free: f32 = w.iter().filter(|x| **x > floor).sum();
+        let fixed: f32 = w.iter().filter(|x| **x <= floor).sum();
+        let room = inner - fixed;
+        if free <= 0.0 || room <= 0.0 {
+            break;
+        }
+        let k = room / free;
+        for x in w.iter_mut() {
+            if *x > floor {
+                *x = (*x * k).max(floor);
+            }
+        }
+    }
+    // A rede: o piso para todas cabe por construção (foi verificado à entrada). Ela existe para o
+    // caso de a aritmética em `f32` não convergir no orçamento de passos — nunca para decidir.
+    Some(vec![floor; natural.len()])
+}
+
 /// ⭐ **A ÚNICA porta da geometria de uma fila de abas** — o pintor, o registo de hit e o despacho
 /// leem daqui.
 ///
@@ -398,6 +458,12 @@ pub fn tab_layout(
     let widths = tab_widths(occ, text_system);
     let inner = (bar.w - Spacing::Xs.px() * 2.0).max(0.0);
 
+    // ⭐⭐⭐ **PRIMEIRO tenta-se dar aba a TODOS** — ver [`fitted_widths`]. Só quando nem no piso
+    // elas cabem é que a janela deslizante abaixo entra, e aí há mesmo abas escondidas.
+    if let Some(w) = fitted_widths(&widths, inner) {
+        return occ.iter().copied().zip(tab_rects(bar, &w)).collect();
+    }
+
     // Quantas cabem a partir de `start`. ⚠️ A primeira entra SEMPRE, aparada — um nome mais largo
     // que a coluna inteira ainda tem de ter aba, senão o painel que desenha fica sem nenhuma.
     let fits_from = |start: usize| -> usize {
@@ -437,6 +503,42 @@ pub fn tab_layout(
         .iter()
         .copied()
         .zip(tab_rects(bar, &shown))
+        .collect()
+}
+
+/// ⭐⭐⭐ **AS DIVISÓRIAS ENTRE ABAS** — o que faz uma aba encolhida continuar a LER-SE como aba.
+///
+/// > *«as abas … não reduzem de tamanho»* — Enio, 2026-09-08, a pedir o encolhimento; e a razão de
+/// > o encolhimento ter sido revertido no dia anterior foi esta: espremidas, elas **desapareciam**.
+///
+/// ⛔⛔ Uma aba **inactiva não pinta fundo nenhum** ([`tab_bg`], portado do `theme_modern.cpp`), e
+/// no Godot isso funciona porque as abas dele **não encolhem** — o nome inteiro é a silhueta. Aqui
+/// elas encolhem, o nome elide, e sem uma marca de separação a fila vira uma tira de texto cortado
+/// sobre uma cor só. *Uma aba sem nome legível e sem corpo não é uma aba: é um espaço.*
+///
+/// ⚠️ **Uma linha, e não um fundo.** Não há degrau disponível entre o chão da fila
+/// ([`tab_row_bg`]) e o corpo do painel que a aba ESCOLHIDA veste: qualquer fundo visível para a
+/// inactiva ficaria **mais claro** que a escolhida e inverteria a hierarquia. Uma divisória divide
+/// sem competir.
+///
+/// ⚠️ **Nenhuma divisória toca a aba escolhida** — ela já tem contorno próprio (o corpo soldado ao
+/// painel), e uma linha ao lado dele leria como uma segunda borda.
+#[must_use]
+pub fn tab_dividers(painted: &[(Occupant, Rect)], selected: Option<NodeId>) -> Vec<Rect> {
+    let inset = Spacing::Xs.px();
+    let w = StrokeToken::Hairline.px();
+    painted
+        .windows(2)
+        .filter(|pair| Some(pair[0].0.node) != selected && Some(pair[1].0.node) != selected)
+        .map(|pair| {
+            let r = pair[0].1;
+            Rect::new(
+                r.x + r.w - w * 0.5,
+                r.y + inset,
+                w,
+                (r.h - inset * 2.0).max(0.0),
+            )
+        })
         .collect()
 }
 
@@ -481,6 +583,7 @@ pub fn paint_slot_tabs(
     if painted.is_empty() {
         return;
     }
+    let painted_for_dividers = painted.clone();
     scene.fill_rect(rect_to_vello(bar), resolve(tab_row_bg(), theme));
     let radii = tab_radii(theme);
     for (o, r) in painted {
@@ -505,6 +608,10 @@ pub fn paint_slot_tabs(
             resolve(fg, theme),
         );
         hit_index.register(tab_node_id(o.node), r);
+    }
+    // ⚠️ **Depois das abas**, para a divisória não ficar por baixo do corpo da escolhida.
+    for d in tab_dividers(&painted_for_dividers, selected) {
+        scene.fill_rect(rect_to_vello(d), resolve(ColorToken::Border, theme));
     }
 }
 

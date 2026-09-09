@@ -495,3 +495,174 @@ fn the_drop_mark_sits_where_the_tab_will_land() {
         "há marca com o dedo FORA da fila de abas"
     );
 }
+
+/// ⭐⭐⭐ **NENHUMA ABA DESAPARECE ENQUANTO ELAS COUBEREM NO PISO** — e o que não é pintado não se
+/// clica.
+///
+/// ⛔ Uma aba sem rect não está no índice de acerto: o painel dela só voltava fechando-o e
+/// reabrindo-o no menu *Window*, que é um caminho que ninguém adivinha. Três nomes desta casa medem
+/// ~231 px e a coluna mais estreita deixa **212** úteis — logo o buraco era alcançável arrastando
+/// a divisória.
+///
+/// ⚠️ **O gate mede a coluna REAL**, não uma inventada: é a largura que o app dá de fábrica que
+/// tem de servir a população que o app deixa abrir naquele encaixe.
+#[test]
+fn every_tab_is_painted_while_they_fit_at_the_floor() {
+    let h = settled(&[
+        "audio_mixer",
+        "audio_editor",
+        "inspector",
+        "physics",
+        "tokens",
+    ]);
+    let occ = slot_tabs::occupants(&h, Slot::RightTop);
+    let bar = h.last_layout.expect("layout").slot_tabs[Slot::RightTop as usize];
+    assert!(bar.h > 0.0, "sem faixa de abas não há o que medir");
+    assert!(
+        occ.len() >= 5,
+        "controlo partido: {} ocupantes é pouco para a fila transbordar sem o piso",
+        occ.len()
+    );
+
+    let front = slot_tabs::chosen(&h, Slot::RightTop);
+    let painted = slot_tabs::tab_layout(&occ, front, bar, &mut TextSystem::without_system_fonts());
+    assert_eq!(
+        painted.len(),
+        occ.len(),
+        "{} de {} abas ficaram por pintar na coluna de fábrica ({} px) — e uma aba não pintada é \
+         um painel inalcançável",
+        occ.len() - painted.len(),
+        occ.len(),
+        bar.w
+    );
+
+    // ⚠️⚠️ **E a metade que MEDE O PISO precisa da faixa em que ele MORDE.** Medido por mutação
+    //    em 2026-09-08: pôr o piso a zero deixa esta fixtura intacta — cinco nomes encolhem para
+    //    ~58 px, muito acima dos 22, e a asserção abaixo passaria sobre um piso que não existe.
+    //    *Uma asserção que a mutação não mata é uma asserção cuja fixtura não produz o fenómeno.*
+    //    ⇒ a faixa espremida abaixo é o caso em que as cinco só cabem SE cada uma parar no piso.
+    let squeezed = ph2d_editor_core::zones::Rect::new(bar.x, bar.y, 120.0, bar.h);
+    let at_floor = slot_tabs::tab_layout(
+        &occ,
+        front,
+        squeezed,
+        &mut TextSystem::without_system_fonts(),
+    );
+    assert_eq!(
+        at_floor.len(),
+        occ.len(),
+        "numa faixa de {} px as {} abas ainda cabem no piso ({} px cada) e mesmo assim {} ficaram \
+         por pintar",
+        squeezed.w,
+        occ.len(),
+        bar.h,
+        occ.len() - at_floor.len()
+    );
+    let below: Vec<_> = at_floor
+        .iter()
+        .filter(|(_, r)| r.w < bar.h - 0.5)
+        .map(|(o, r)| format!("{} a {:.1} px, abaixo do piso de {:.0}", o.id, r.w, bar.h))
+        .collect();
+    assert!(
+        below.is_empty(),
+        "o piso não segurou — abas mais estreitas do que altas:\n  {}",
+        below.join("\n  ")
+    );
+
+    // ⚠️ **E o piso é o que torna a coluna de fábrica suficiente:** sem ele a soma dos nomes passa
+    //    a coluna. Cada aba tem de ser pelo menos tão larga quanto alta — a forma que o ícone
+    //    virá ocupar.
+    let thin: Vec<_> = painted
+        .iter()
+        .filter(|(_, r)| r.w < bar.h - 0.5)
+        .map(|(o, r)| {
+            format!(
+                "{} com {:.0} px de largura para {:.0} de altura",
+                o.id, r.w, bar.h
+            )
+        })
+        .collect();
+    assert!(
+        thin.is_empty(),
+        "abas mais estreitas do que altas — deixam de ser alvo:\n  {}",
+        thin.join("\n  ")
+    );
+
+    // E a soma não passa a faixa: encolher tem de CABER, não empurrar para fora.
+    let right = painted
+        .iter()
+        .map(|(_, r)| r.x + r.w)
+        .fold(f32::MIN, f32::max);
+    assert!(
+        right <= bar.x + bar.w + 0.5,
+        "a fila terminou em x={right:.1} e a faixa acaba em {:.1}",
+        bar.x + bar.w
+    );
+}
+
+/// ⭐⭐ **UMA ABA ENCOLHIDA CONTINUA A LER-SE COMO ABA** — há uma divisória entre vizinhas.
+///
+/// ⛔ Uma aba inactiva não pinta fundo; encolhida, o nome elide e ela desaparece. Foi o report de
+/// 2026-09-08 (*«as abas somem»*) e a razão de o encolhimento ter sido revertido nesse dia.
+///
+/// ⚠️ **Nenhuma divisória toca a escolhida** — ela já tem corpo próprio, e uma linha ao lado dele
+/// leria como uma segunda borda.
+#[test]
+fn a_squeezed_tab_still_reads_as_a_tab() {
+    let h = settled(&[
+        "audio_mixer",
+        "audio_editor",
+        "inspector",
+        "physics",
+        "tokens",
+    ]);
+    let occ = slot_tabs::occupants(&h, Slot::RightTop);
+    let bar = h.last_layout.expect("layout").slot_tabs[Slot::RightTop as usize];
+    let front = slot_tabs::chosen(&h, Slot::RightTop);
+    let squeezed = ph2d_editor_core::zones::Rect::new(bar.x, bar.y, 120.0, bar.h);
+    let painted = slot_tabs::tab_layout(
+        &occ,
+        front,
+        squeezed,
+        &mut TextSystem::without_system_fonts(),
+    );
+    assert_eq!(
+        painted.len(),
+        occ.len(),
+        "controlo partido: nem todas as abas foram pintadas, então não é o caso espremido"
+    );
+
+    let dividers = slot_tabs::tab_dividers(&painted, front);
+    // Com N abas há N−1 fronteiras; as duas que tocam a escolhida não levam linha.
+    let touching = painted
+        .windows(2)
+        .filter(|p| Some(p[0].0.node) == front || Some(p[1].0.node) == front)
+        .count();
+    assert_eq!(
+        dividers.len(),
+        painted.len() - 1 - touching,
+        "esperava uma divisória por fronteira que não toca a escolhida ({} fronteiras, {} a tocar)",
+        painted.len() - 1,
+        touching
+    );
+    assert!(
+        !dividers.is_empty(),
+        "controlo partido: nenhuma divisória para medir"
+    );
+
+    // Cada uma cai NA fronteira entre as duas abas, e não no meio de uma delas.
+    for d in &dividers {
+        let on_edge = painted
+            .iter()
+            .any(|(_, r)| ((r.x + r.w) - (d.x + d.w * 0.5)).abs() < 1.0);
+        assert!(
+            on_edge,
+            "a divisória em x={:.1} não está na borda de aba nenhuma",
+            d.x
+        );
+        assert!(
+            d.h > 0.0 && d.h < bar.h,
+            "a divisória tem de ser recuada: {d:?}"
+        );
+    }
+}

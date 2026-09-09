@@ -127,7 +127,7 @@ pub(crate) fn paint_mount_row(
     }
     paint_dropdown_chip(&dd, rect, scene, text_system, theme);
     if open {
-        crate::state::set_pending_mount_dd(Some(rect));
+        crate::state_popovers::set_pending_mount_dd(Some(rect));
     }
     ph2d_editor_core::widget::paint_decorator_dot(scene, theme, dot);
     let mut cur_y = y + h;

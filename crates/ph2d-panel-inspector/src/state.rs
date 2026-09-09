@@ -200,23 +200,6 @@ thread_local! {
         std::cell::Cell<Option<InspectorVisibilitySectionInfo>> =
         const { std::cell::Cell::new(None) };
 
-    /// W3 §7: when the Sorting Layer dropdown is open, the section stashes
-    /// `(selected_index, chip_rect)` here so `paint_inspector` paints its
-    /// popover LAST (above every other widget). Panel-local — distinct
-    /// from the showcase's shared `PENDING_DROPDOWN_CHIP`.
-    pub(crate) static PENDING_ORDERING_DD:
-        std::cell::Cell<Option<(usize, ph2d_editor_core::zones::Rect)>> =
-        const { std::cell::Cell::new(None) };
-
-    /// §12: quando o seletor «Rides Parent Anchor» está aberto, a seção guarda aqui o rect do
-    /// chip para o `paint_inspector` pintar o popover POR ÚLTIMO (acima de todo o resto).
-    ///
-    /// ⚠️ **Só o rect, e nenhum valor.** As opções e a escolha rederivam-se do snapshot
-    /// (`current_inspector_anchor`) no passe diferido — guardar aqui uma cópia delas seria uma
-    /// segunda fonte para a mesma verdade, e as duas divergiriam no quadro em que a seleção muda.
-    pub(crate) static PENDING_MOUNT_DD: std::cell::Cell<Option<ph2d_editor_core::zones::Rect>> =
-        const { std::cell::Cell::new(None) };
-
     /// Per-paint display unit + pixels_per_meter for Transform section
     /// labels + value formatting.
     pub(crate) static CURRENT_DISPLAY_UNIT: std::cell::Cell<ph2d_editor_core::project::DisplayUnit> =
@@ -431,22 +414,6 @@ pub fn set_current_inspector_visibility_section(info: Option<InspectorVisibility
 
 pub(crate) fn current_inspector_visibility_section() -> Option<InspectorVisibilitySectionInfo> {
     CURRENT_INSPECTOR_VISIBILITY_SECTION.with(|c| c.get())
-}
-
-pub(crate) fn set_pending_ordering_dd(chip: Option<(usize, ph2d_editor_core::zones::Rect)>) {
-    PENDING_ORDERING_DD.with(|c| c.set(chip));
-}
-
-pub(crate) fn take_pending_ordering_dd() -> Option<(usize, ph2d_editor_core::zones::Rect)> {
-    PENDING_ORDERING_DD.with(|c| c.take())
-}
-
-pub(crate) fn set_pending_mount_dd(chip: Option<ph2d_editor_core::zones::Rect>) {
-    PENDING_MOUNT_DD.with(|c| c.set(chip));
-}
-
-pub(crate) fn take_pending_mount_dd() -> Option<ph2d_editor_core::zones::Rect> {
-    PENDING_MOUNT_DD.with(|c| c.take())
 }
 
 pub fn set_current_display_unit(

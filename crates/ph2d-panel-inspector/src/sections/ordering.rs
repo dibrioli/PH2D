@@ -169,7 +169,7 @@ fn layer_row(
         .visual(visual);
     paint_dropdown_chip(&dd, rect, scene, text_system, theme);
     if open {
-        crate::state::set_pending_ordering_dd(Some((sel, rect)));
+        crate::state_popovers::set_pending_ordering_dd(Some((sel, rect)));
     }
     ph2d_editor_core::widget::paint_decorator_dot(scene, theme, dot);
     y + h + ph2d_tokens::control_gap_px()

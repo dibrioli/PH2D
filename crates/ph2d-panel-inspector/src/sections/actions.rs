@@ -25,6 +25,7 @@
 use super::*;
 use ph2d_editor_core::screens::hero::{InspectorActionInfo, InspectorActionRow};
 use ph2d_editor_core::widget::SectionFold;
+use ph2d_editor_core::widget::{Dropdown, DropdownOption, paint_dropdown_chip};
 
 const BTN_H: f32 = 30.0; // LITERAL-PX-OK: altura de botão do Inspector, igual à das irmãs
 /// A linha de uma lista é a linha do app — pela porta, nunca por um literal que coincide.
@@ -166,7 +167,32 @@ fn buttons(
     y + BTN_H + ph2d_tokens::control_gap_px()
 }
 
-/// A fileira dos verbos — um botão por entrada, o escolhido aceso.
+/// **As opções do seletor do verbo** — uma por entrada de `SignalVerb::ALL`, na ordem dele.
+///
+/// ⚠️ **O valor da opção é a TAG, e a tag é a posição** — a mesma lei que o array de ids declara e
+/// que o despacho lê com `position()`. ⚠️ `zip` com os rótulos do snapshot: uma lista de rótulos
+/// mais curta perde as excedentes em vez de as pintar sem nome.
+pub(crate) fn verb_options(labels: &[String]) -> Vec<DropdownOption<u8>> {
+    ids::INSP_ACTION_VERB
+        .iter()
+        .enumerate()
+        .zip(labels.iter())
+        .map(|((i, &id), label)| {
+            DropdownOption::new(id, u8::try_from(i).unwrap_or(0), label.clone())
+        })
+        .collect()
+}
+
+/// **O seletor do verbo** — um chip com a lista.
+///
+/// ⚠️ **Era uma fileira de cinco botões até 2026-09-09** (*«as actions deveriam ficar num dropdown
+/// e não em muitos botões»*, report do dono). E a fileira não era só ruidosa: ela **escala mal**.
+/// O `segment_rects` reparte a largura do painel por `N`, e esta secção existe para CRESCER — o
+/// doc do `SignalVerb` já nomeia os verbos que faltam (som, animação, spawn) —, logo o sexto verbo
+/// entregaria rótulos cortados numa coluna estreita. *Um chip mostra UM nome, inteiro.*
+///
+/// ⚠️ **A escolha vem do SNAPSHOT e o `open` vem do store** — ler a escolha do store faria o chip
+/// mostrar o verbo da acção anterior depois de trocar de linha na lista (a lei que a §12 paga).
 #[allow(clippy::too_many_arguments)]
 fn verb_row(
     scene: &mut VectorScene,
@@ -180,47 +206,25 @@ fn verb_row(
     labels: &[String],
     sel: u8,
 ) -> f32 {
-    let font = TypeToken::Sm.px();
-    paint_text(
-        text_system,
-        scene,
-        "Action",
-        x,
-        y,
-        font,
-        w,
-        resolve(ColorToken::Text2, theme),
+    let (control_w, dot) = ph2d_editor_core::widget::form_row_columns(x, w, y, ROW_H_PX);
+    let rect = Rect::new(x, y, control_w, ROW_H_PX);
+    hit_index.register(ids::INSP_ACTION_VERB_PICK, rect);
+    let open = matches!(
+        store.get(ids::INSP_ACTION_VERB_PICK),
+        Some(InteractiveState::Dropdown { open: true, .. })
     );
-    let row_y = y + font + Spacing::Xs.px();
-    // ⚠️ **Pela porta do grupo**, como os dois botões acima — uma fileira de peças que encostam.
-    let seg = ph2d_editor_core::widget::segment_rects(
-        Rect::new(x, row_y, w, ROW_H_PX),
-        ids::INSP_ACTION_VERB.len(),
-    );
-    for (i, &id) in ids::INSP_ACTION_VERB.iter().enumerate() {
-        let Some(&(rect, group)) = seg.get(i) else {
-            continue;
-        };
-        hit_index.register(id, rect);
-        // ⚠️ **A escolha vem do SNAPSHOT**, nunca do store: ler dali faria o realce sobreviver à
-        // troca de objecto.
-        let kind = if u8::try_from(i).unwrap_or(u8::MAX) == sel {
-            ButtonKind::Accent
-        } else {
-            ButtonKind::Default
-        };
-        paint_button(
-            &Button::new(id, labels.get(i).map_or("?", String::as_str))
-                .kind(kind)
-                .visual(store.button_visual(id))
-                .in_group(group),
-            rect,
-            scene,
-            text_system,
-            theme,
-        );
+    let mut dd = Dropdown::new(ids::INSP_ACTION_VERB_PICK, "", verb_options(labels))
+        .open(open)
+        .visual(store.dropdown_visual(ids::INSP_ACTION_VERB_PICK));
+    dd.select(sel);
+    paint_dropdown_chip(&dd, rect, scene, text_system, theme);
+    // ⚠️ **O popover NÃO se pinta aqui** — ele sairia debaixo da secção seguinte. O rect vai ao
+    // slot e o passe diferido do painel desenha-o por cima de tudo.
+    if open {
+        crate::state_popovers::set_pending_action_dd(Some((sel, rect)));
     }
-    row_y + ph2d_tokens::row_pitch_px()
+    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, dot);
+    y + ph2d_tokens::row_pitch_px()
 }
 
 /// O editor da acção aberta. Devolve o `y` seguinte.

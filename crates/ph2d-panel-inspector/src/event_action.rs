@@ -54,6 +54,7 @@ pub(crate) fn apply_action_event(
         {
             let tag = u8::try_from(i).unwrap_or(0);
             push(host, info.entity_bits, ActionFieldEdit::Verb(sel_u8, tag));
+            close_verb_popover(host);
             demote(host, id);
             return true;
         }
@@ -83,6 +84,19 @@ pub(crate) fn apply_action_event(
 fn push(host: &mut dyn PanelHostInternal, entity_bits: u64, edit: ActionFieldEdit) {
     host.bus_mut()
         .push(EditorAction::InspectorActionEdit { entity_bits, edit });
+}
+
+/// Fecha o popover do seletor do verbo depois de uma escolha.
+///
+/// ⚠️ **E NÃO escreve o `selected_index`.** Quem é dono do verbo é o snapshot: o quadro seguinte
+/// relê-o da cena. Escrever aqui abriria a segunda porta para o mesmo estado — e ela mentiria
+/// exactamente no caso em que a shell recusasse a edição. É a lei que a §12 já paga.
+fn close_verb_popover(host: &mut dyn PanelHostInternal) {
+    if let Some(InteractiveState::Dropdown { open, .. }) =
+        host.store_mut().get_mut(ids::INSP_ACTION_VERB_PICK)
+    {
+        *open = false;
+    }
 }
 
 /// Repõe o visual de um botão momentâneo — senão ele fica `Pressed` depois do clique.

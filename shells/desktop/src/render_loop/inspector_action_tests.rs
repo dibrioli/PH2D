@@ -44,7 +44,7 @@ fn an_object_without_the_component_has_no_section() {
 /// ⭐⭐ **Os RÓTULOS do painel saem de `SignalVerb::ALL`, que é a fonte.**
 ///
 /// ⚠️ Copiá-los para o painel envelheceria no primeiro verbo novo — e o artista leria o nome
-/// errado sobre o botão certo. Este gate é o que liga as duas pontas.
+/// errado sobre a entrada certa do seletor. Este gate é o que liga as duas pontas.
 ///
 /// **Mutação que deve sangrar:** truncar a lista de `verb_labels` no `build_action_info`.
 #[test]
@@ -60,8 +60,8 @@ fn the_verb_labels_come_from_the_engines_own_list() {
     assert_eq!(
         i.verb_labels.len(),
         ph2d_editor::ids::INSP_ACTION_VERB.len(),
-        "o painel desenha um numero de botoes diferente do de verbos — um deles seria mudo, ou \
-         um verbo seria inalcancavel"
+        "o seletor oferece um numero de entradas diferente do de verbos — uma delas seria muda, \
+         ou um verbo seria inalcancavel"
     );
 }
 

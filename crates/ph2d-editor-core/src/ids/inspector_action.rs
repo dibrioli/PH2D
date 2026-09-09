@@ -49,9 +49,19 @@ pub const INSP_ACTION_TARGET: NodeId = hash_node_id("insp_action_target");
 /// O parâmetro do verbo — hoje, o nome do timer. **Vazio = todos.**
 pub const INSP_ACTION_ARG: NodeId = hash_node_id("insp_action_arg");
 
-/// **O verbo**, um botão por entrada de `SignalVerb::ALL`.
+/// **O verbo — o CHIP do seletor.** As entradas dele são [`INSP_ACTION_VERB`].
 ///
-/// ⚠️ **A posição é a tag** — ver o doc do módulo.
+/// ⚠️ **Ele é o único id desta família registado como `Dropdown`**: o `open` do popover é o
+/// estado dele, e a ESCOLHA nunca vive aqui — ela é do snapshot, relida a cada quadro. *O seed é
+/// dono do valor, o dispatch é dono do estado* (a lei que a §12 já paga).
+pub const INSP_ACTION_VERB_PICK: NodeId = hash_node_id("insp_action_verb_pick");
+
+/// **O verbo**, uma OPÇÃO do seletor por entrada de `SignalVerb::ALL`.
+///
+/// ⚠️ **A posição é a tag** — ver o doc do módulo. ⚠️ Estes ids eram uma fileira de cinco botões
+/// até 2026-09-09 (*«as actions deveriam ficar num dropdown e não em muitos botões»*, report do
+/// dono): passaram a ser as linhas do popover **sem mudar de significado**, que é o que manteve o
+/// despacho — `position(|&o| o == id)` — intacto.
 pub const INSP_ACTION_VERB: [NodeId; 5] = [
     hash_node_id("insp_action_verb_start"),
     hash_node_id("insp_action_verb_stop"),

@@ -8,14 +8,25 @@
 
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
-use ph2d_editor_core::widget::TextInputState;
+use ph2d_editor_core::widget::{DropdownState, TextInputState};
 
 use super::populate::register_button_ids;
 
 pub(crate) fn populate_action(store: &mut WidgetStore) {
     register_button_ids(store, &ids::INSP_ACTION_ROW);
     register_button_ids(store, &[ids::INSP_ACTION_ADD, ids::INSP_ACTION_REMOVE]);
+    // ⚠️ **As entradas do seletor do verbo continuam BOTÕES** — elas são as linhas do popover, e
+    // o despachante decide pelo `is_focusable`: sem registo, o clique numa opção é engolido em
+    // silêncio. Só o CHIP é um `Dropdown`, e o que ele guarda é o `open`, nunca a escolha.
     register_button_ids(store, &ids::INSP_ACTION_VERB);
+    store.register(
+        ids::INSP_ACTION_VERB_PICK,
+        InteractiveState::Dropdown {
+            state: DropdownState::Normal,
+            open: false,
+            selected_index: None,
+        },
+    );
     for id in [
         ids::INSP_ACTION_ON,
         ids::INSP_ACTION_TARGET,

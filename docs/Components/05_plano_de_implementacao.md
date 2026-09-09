@@ -3290,3 +3290,74 @@ os dois `placeholder` na baseline do HR-15 · e a delegação de a11y do orquest
   (a F4 declarou-a assim), não uma dívida deste componente.
 - **`TIMER_NAME_MAX_BYTES` não é imposto na porta do painel** — o `Rename` aceita o que o campo
   aceitar. O motor não parte (é uma `String`), mas o teto está escrito e não é honrado.
+
+---
+
+## §14 — **O VERBO passa a ser um SELETOR** (report do dono, 2026-09-09)
+
+> *«as actions deveriam ficar num dropdown e não em muitos botões»*
+
+### §14.1 — O que mudou
+
+A fileira de cinco botões da secção SIGNAL ACTIONS saiu; entra um **chip de dropdown** com o
+popover no passe diferido do Inspector — o mesmo mecanismo da §7 Sorting Layer e da §12 «Rides
+Parent Anchor». Os cinco ids (`INSP_ACTION_VERB`) **mantêm o significado** (a posição É a tag) e
+passam de botões da fileira a **linhas do popover**, o que deixou o despacho
+(`position(|&o| o == id)`) intacto; o que nasce é UM id, o chip (`INSP_ACTION_VERB_PICK`).
+
+⚠️ **A razão não é só estética, e é mensurável:** o `segment_rects` reparte a largura do painel por
+`N`, e o doc do `SignalVerb` já nomeia os verbos que faltam (som, animação, spawn). Com seis
+entradas a fileira entrega rótulos cortados numa coluna estreita; um chip mostra **um** nome
+inteiro. *A fileira era uma superfície cujo custo crescia com o catálogo que a secção existe para
+fazer crescer.*
+
+### §14.2 — ⛔⛔ E o achado que valia mais que o pedido: **NENHUM dos seletores do Inspector fechava ao clique de fora**
+
+A lei existe desde 2026-06-24 (*«se o usuário clicar fora do dropdown ele deve se fechar»*, Enio) e
+vive no `dispatch::pointer_down`. Ela lê `store.dropdown_popover()` — e o Inspector **nunca o
+publicava**: os outros nove painéis do app chamam `set_dropdown_popover` no sítio onde pintam, e
+aqui o passe diferido (`paint_deferred_popovers`) não tem `&mut WidgetStore`.
+
+⇒ o passe **deposita** (`state_popovers::set_painted_popover`) e o fim do `paint` — o primeiro sítio
+com o store mutável depois da pintura — **publica**. Vale para os quatro seletores de uma vez.
+
+⚠️ **A ausência era invisível a todo gate desta casa** pela mesma razão que a sobreposição de
+secções de 09/09: *nenhum instrumento perguntava onde uma coisa é desenhada, nem o que a pintura
+publica no store.* O `architecture_panel_wiring_parity` mede focalizabilidade; os `seam_*` medem se
+o clique chega à ferramenta.
+
+### §14.3 — Os gates
+
+[`action_verb_is_a_dropdown.rs`](../../crates/ph2d-panel-inspector/tests/action_verb_is_a_dropdown.rs),
+três, com o **gesto real** (`ph2d-host` entra como dev-dep da crate do painel: um
+`WidgetEvent::Click` sintético pula a checagem de focabilidade e passa sobre um chip morto sob o
+dedo — a família dos dez chips do impasto):
+
+| gate | mutação que o faz sangrar (as três foram corridas) |
+|---|---|
+| `the_verb_chip_is_painted_and_is_a_dropdown` | apagar o `store.register(INSP_ACTION_VERB_PICK, …)` |
+| `opening_it_makes_every_verb_reachable_and_publishes_the_popover` | apagar o `set_pending_action_dd` · apagar o `set_dropdown_popover` do fim do `paint` |
+| `picking_a_verb_reaches_the_bus_and_closes_the_list` | apagar o `close_verb_popover` |
+
+⚠️ **O caminho novo tem TRÊS juntas que ninguém vê da chamada** — `set_pending_action_dd` →
+`take_pending_action_dd` → `option_rect` — e qualquer uma partida dá o mesmo sintoma (*«abre e não
+dá para escolher nada»*) e **compila**. É isso que justifica um gate por junta em vez de um só.
+
+### §14.4 — O teto de LOC, outra vez por decomposição
+
+Os quatro slots levaram o `state.rs` do painel a **615** contra o teto de 600. Cortado para o irmão
+[`state_popovers.rs`](../../crates/ph2d-panel-inspector/src/state_popovers.rs) — os quatro slots de
+popover diferido mais o slot do rect publicado —, e o corte é **por responsabilidade**: eles andam
+juntos por uma lei (*um popover aberto sai da ordem em que a sua seção foi pintada*), não por
+vizinhança. `state.rs` fica em 542.
+
+### §14.5 — ⏳ ABERTO
+
+- **O seletor do verbo não tem teclado.** Abrir e escolher é ponteiro; as setas e o `Enter` não o
+  conduzem. ⚠️ É a mesma ausência dos outros três seletores do Inspector — família, não dívida
+  desta wave.
+- **O chip não mostra ÍCONE por verbo.** O `DropdownOption::with_icon` existe e serve exactamente
+  para isto (*«uma lista cujas linhas não são todas a mesma ESPÉCIE de coisa»*), e cinco verbos que
+  fazem coisas de naturezas diferentes (arrancar um relógio · mostrar · esconder) são a população
+  dele. ⛔ Não construído: falta escolher os glifos, e um ícone repetido em todas as linhas gasta
+  uma goteira para não dizer nada.

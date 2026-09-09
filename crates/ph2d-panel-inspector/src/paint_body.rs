@@ -109,7 +109,7 @@ pub(crate) fn close_body(
 ) {
     // ⭐ Os cartões vão para BAIXO do corpo, antes de tudo o que se pinta por cima.
     ph2d_editor_core::widget::section_cards::end_section_cards(scene);
-    // **OS TRÊS POPOVERS DIFERIDOS**, pintados por último para ficarem acima de tudo.
+    // **OS QUATRO POPOVERS DIFERIDOS**, pintados por último para ficarem acima de tudo.
     // ⚠️ Saíram do orquestrador em 2026-08-23: os três andam juntos porque partilham UMA lei — o
     // popover pinta-se fora da ordem das seções.
     crate::paint_frame_shared::paint_deferred_popovers(scene, text_system, theme, hit_index);

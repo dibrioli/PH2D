@@ -7252,6 +7252,7 @@ dependencies = [
  "ph2d-a11y",
  "ph2d-component-desc",
  "ph2d-editor-core",
+ "ph2d-host",
  "ph2d-text",
  "ph2d-tokens",
  "ph2d-ui-testkit",

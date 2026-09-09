@@ -15,6 +15,7 @@ use ph2d_editor_core::widget::section_cards::close_section;
 use ph2d_editor_core::widget::showcase::take_pending_dropdown_chip;
 use ph2d_editor_core::widget::{self, Dropdown, DropdownOption};
 
+use crate::state_popovers;
 use crate::{sections, state};
 use ph2d_text::TextSystem;
 use ph2d_vector::VectorScene;
@@ -482,8 +483,9 @@ pub(crate) fn paint_sprite_sections(
     y
 }
 
-/// **OS TRÊS POPOVERS DIFERIDOS** — a §9 Sampling, a §7 Sorting Layer e a §12 «Rides Parent
-/// Anchor». Pintam-se DEPOIS de todas as seções, para ficarem acima de tudo.
+/// **OS QUATRO POPOVERS DIFERIDOS** — a §9 Sampling, a §7 Sorting Layer, a §12 «Rides Parent
+/// Anchor» e o VERBO da secção SIGNAL ACTIONS. Pintam-se DEPOIS de todas as seções, para ficarem
+/// acima de tudo.
 ///
 /// ⚠️ **Irmãos por uma LEI, não por vizinhança:** um popover aberto tem de sair da ordem em que a
 /// sua seção foi pintada, senão a seção seguinte desenha-lhe por cima. Cada um guarda o seu rect
@@ -517,10 +519,11 @@ pub(crate) fn paint_deferred_popovers(
         for (i, opt) in dd.options.iter().enumerate() {
             hit_index.register(opt.id, dd.option_rect(chip, i));
         }
+        state_popovers::set_painted_popover(dd.id, dd.popover_rect(chip));
     }
     // W3 §7 Sorting Layer dropdown popover — same deferred-paint pass,
     // panel-local pending slot so it never collides with the sample dd.
-    if let Some((sel_idx, chip)) = state::take_pending_ordering_dd() {
+    if let Some((sel_idx, chip)) = state_popovers::take_pending_ordering_dd() {
         let label = sections::ordering::LAYER_LABELS
             .get(sel_idx)
             .copied()
@@ -536,13 +539,14 @@ pub(crate) fn paint_deferred_popovers(
         for (i, opt) in dd.options.iter().enumerate() {
             hit_index.register(opt.id, dd.option_rect(chip, i));
         }
+        state_popovers::set_painted_popover(dd.id, dd.popover_rect(chip));
     }
 
     // §12 «Rides Parent Anchor» — mesmo passe diferido, slot próprio.
     //
     // ⚠️ **As opções rederivam-se do snapshot aqui**, e não vêm no slot: guardá-las seria uma
     // segunda cópia da mesma verdade, e as duas divergiriam no quadro em que a seleção muda.
-    if let Some(chip) = state::take_pending_mount_dd()
+    if let Some(chip) = state_popovers::take_pending_mount_dd()
         && let Some(info) = state::current_inspector_anchor()
     {
         let mut dd = Dropdown::new(
@@ -559,5 +563,28 @@ pub(crate) fn paint_deferred_popovers(
         for (i, opt) in dd.options.iter().enumerate() {
             hit_index.register(opt.id, dd.option_rect(chip, i));
         }
+        state_popovers::set_painted_popover(dd.id, dd.popover_rect(chip));
+    }
+
+    // SIGNAL ACTIONS — o seletor do VERBO, mesmo passe diferido, slot próprio.
+    //
+    // ⚠️ **A TAG vem no slot e os RÓTULOS rederivam-se do snapshot**, e a assimetria é deliberada:
+    // os rótulos são do snapshot, que é a fonte deles; a tag é a da linha ABERTA no editor, que
+    // vive no `InspectorState` — e este passe não o alcança. *Guardar o que não se pode rederivar.*
+    if let Some((sel, chip)) = state_popovers::take_pending_action_dd()
+        && let Some(info) = state::current_inspector_action()
+    {
+        let mut dd = Dropdown::new(
+            ids::INSP_ACTION_VERB_PICK,
+            "",
+            sections::actions::verb_options(&info.verb_labels),
+        )
+        .open(true);
+        dd.select(sel);
+        widget::paint_dropdown_popover(&dd, chip, scene, text_system, theme);
+        for (i, opt) in dd.options.iter().enumerate() {
+            hit_index.register(opt.id, dd.option_rect(chip, i));
+        }
+        state_popovers::set_painted_popover(dd.id, dd.popover_rect(chip));
     }
 }

@@ -58,6 +58,7 @@ mod populate_player;
 mod populate_timer;
 mod sections;
 pub mod state;
+mod state_popovers;
 mod sync;
 mod sync_physics;
 mod sync_sections;

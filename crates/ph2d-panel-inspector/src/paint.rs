@@ -11,6 +11,7 @@ use crate::paint_frame::{PanelFinish, publish_and_finish};
 use crate::state::{
     self, current_inspector_visibility_section, last_inspector_content_h, last_inspector_visible_h,
 };
+use crate::state_popovers;
 use crate::sync::sync_inspector_from_snapshots;
 use crate::{InspectorPanel, sections};
 use ph2d_editor_core::ids;
@@ -76,6 +77,16 @@ pub(crate) fn paint(inspector_state: &mut state::InspectorState, ctx: &mut Paint
     let content_h = last_inspector_content_h();
     let visible_h = last_inspector_visible_h();
     let store = ctx.host.store_mut();
+    // ⭐ **O popover diferido publica o RECT dele aqui, e é o que o faz FECHAR ao clique fora.**
+    //
+    // ⚠️ A lei já existia no `dispatch::pointer_down` (*«se o usuário clicar fora do dropdown ele
+    // deve se fechar»*, Enio 2026-06-24) e lê `store.dropdown_popover()` — que **nenhum dos
+    // seletores deste painel publicava**, porque o passe diferido não tem `&mut WidgetStore`. Os
+    // outros nove painéis do app publicam-no onde pintam; aqui o passe deposita e este sítio, que
+    // é o primeiro com o store mutável depois da pintura, publica.
+    if let Some((id, panel)) = state_popovers::take_painted_popover() {
+        store.set_dropdown_popover(id, panel);
+    }
     store.set_panel_content_h(ids::INSP_PANEL, content_h);
     store.set_panel_visible_h(ids::INSP_PANEL, visible_h);
     let max_scroll = (content_h - visible_h).max(0.0);

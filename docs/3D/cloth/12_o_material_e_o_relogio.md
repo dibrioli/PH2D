@@ -56,11 +56,27 @@ defeito (`fundo 1,001 · 0,890 · 0,871`) pelo mesmo mecanismo — a âncora del
 o tecto mede-a contra o material velho. *O exemplo que o dono aponta pode ser a excepção da família;
 o censo corre antes do veredito.*
 
-⭐ **É o mesmo corte que o alvo faz**, com a diferença de ele o pôr num interruptor: a
-[espec](../cleanroom/SPEC_cloth_brush.md) §6.3 diz que ali a deformação **acumula** entre traços, e
-a §6.4 diz que a *base persistente* — uma opção — a faz **saturar** (medido lá: `0,169 → 0,306 →
-0,415` sem ela, `0,169 → 0,171 → 0,176` com ela). Nós tomámos a saturação como lei; esta porta diz
-**de que tipos** ela é.
+### ⭐⭐⭐ E o ORÁCULO foi corrido para decidir isto — o alvo tem o MESMO defeito
+
+*«porque vc não faz uma série de testes abrindo o blender … e tenta descobrir a melhor
+implementação do Filter Mesh Cloth?»* — dez corridas novas, [espec §10.18](../cleanroom/SPEC_cloth_brush.md).
+
+| pergunta | resposta medida |
+|---|---|
+| o **filtro** lê a base persistente? | ⭐ **sim** — e o interruptor é a opção do **pincel activo**; o painel do filtro **não a mostra**. O controlo decisivo é a opção ligada **sem** base gravada: byte a byte igual a desligada em `34` blocos ⇒ *quem muda a lei é a base, não o interruptor* |
+| **sem** base, três invocações compõem? | **sim, e nunca recuam** — *Gravity* `0,1087 → 0,2165 → 0,3233`; *Inflate* na esfera cresce em volume nos **24** passos, nas quatro realizações; *Expand* `+98,9 %`/`+194,9 %`; *Scale* `+116,1 %`/`+250,8 %` (o único superlinear) |
+| **com** a base gravada? | ⛔⛔ **o alvo TEM o afundamento do report**: a 3.ª invocação acaba **abaixo** da 2.ª (`0,1806` contra `0,2125`), com mínimo a `−19,8 %` (gravidade) e `−20,3 %` (inflar) dentro dela |
+| há tecto de esticão? | **não** — `36` passos levam o volume a **`4,735×`** e a maior aresta a **`21,55×`** |
+| o painel do filtro tem volume, dobra ou limite? | **não** — são `8` controlos e nenhum deles; e o *Repeat* que a família de filtros regista é **morto** aqui (`5` contra `1`: byte a byte igual) |
+
+⇒ ⭐⭐ **o lado limpo tinha tomado como LEI o que no alvo é um interruptor escondido — e o
+interruptor produz exactamente o defeito que o dono reportou.** A nossa resposta é melhor que as
+duas do alvo: em vez de escolher entre *compor sempre* e *recuar sempre*, cada tipo faz o que a
+intenção dele pede, sem knob nenhum.
+
+⚠️ **Armadilha de régua que a corrida longa devolveu:** o máximo de deslocamento tem **pico no passo
+33** e desce `1,01 %` até ao 36 **enquanto o volume sobe**. *A grandeza que responde a «a peça
+cresceu?» é integral (volume, área); o máximo de um deslocamento responde a outra pergunta.*
 
 ### Os gates, e a metade que NÃO vive no mesmo ficheiro
 
@@ -153,6 +169,9 @@ tem de derivar a conta certa.*
 
 ## §5 — Aberto
 
+- ⏳ **As dez corridas novas ainda não são todas gates** — o corpus do filtro passou de `17` para
+  `27` e o arnês (`oraculo_do_filtro.rs`) ganhou as invocações repetidas e a base persistente; o que
+  cada traço novo mede e com que barra é trabalho da wave seguinte.
 - **O `Expand` continua a ser o mais violento dos cinco** mesmo com o `τ` parametrizado pelo
   arrasto: um arrasto de ecrã inteiro leva o volume a `2,4×`. Ele é o único tipo que mexe no
   repouso, logo o **tecto de esticão não o mede** — o tecto compara contra um comprimento que a

@@ -38,12 +38,29 @@
 //! ⚠️ **HR-5:** só `min`/`max`/`clamp`/`sqrt` e polinómios. O `sqrt` do IEEE-754 é
 //! correctamente arredondado, então a máscara é a mesma em toda plataforma.
 //!
-//! ⚠️ **CPU-only, e o motivo tem NOME.** O canal que leva uma porta-template ao device
-//! ([`ph2d_nodegraph::gpu::ColumnAccess::SourceRead`], ADR-0136) só existe emparelhado
-//! com um `StreamOp::SourceRows` — um nó que MUDA a contagem lendo o template. Este
-//! preserva a contagem, e para essa forma não há canal hoje. Escrever um seria
-//! foundational, não um nó; a alternativa (declarar `SourceRows` sobre a porta 0 só
-//! para ganhar o leitor) seria mentir ao plano sobre o que o nó faz.
+//! ⚠️ **CPU-only, e o motivo tem NOME — RECONFERIDO NO GERADOR em 2026-09-09 (ciclo 4, W3),
+//! e a redacção anterior estava ERRADA.**
+//!
+//! ⛔ Ela dizia que o [`ColumnAccess::SourceRead`](ph2d_nodegraph::gpu::ColumnAccess::SourceRead)
+//! *«só existe emparelhado com um `StreamOp::SourceRows`»*. **Falso:** o doc-comment dele diz
+//! que ele *«só diz ao sequenciador que a porta é desacoplada em comprimento»*, e o único
+//! consumidor no gerador (`gpu_cook::gather`) é um teste de **presença**. Nada o ata a um nó que
+//! mude a contagem.
+//!
+//! ⭐ **O bloqueio verdadeiro é o COMPRIMENTO, e é mais estreito e mais duro:** para varrer os
+//! vértices da forma, o kernel precisa de saber **quantos são** — e o único comprimento de
+//! template que o uniforme carrega é o `window_src_n`, que
+//! [`codegen::declares_src_n`](ph2d_gpu_cook::codegen::declares_src_n) só declara para um nó
+//! **com `count_law`** e que é a contagem da **porta 0**. A forma deste nó chega na porta **1**.
+//! ⚠️ E não há atalho pelo lado do shader: o `arrayLength` **mente** (a pool arredonda os
+//! buffers para cima), que é precisamente a razão pela qual o hospedeiro tem de passar o número.
+//!
+//! ⇒ a cura nomeada é **um `src_n` por porta `SourceRead`** no uniforme — append-only como o
+//! `wgsl_shared` do ciclo 3, e o preço é em **bytes de uniforme** (`UNIFORM_BYTES = 128`), que é
+//! o recurso a medir antes de a escrever. ⛔ Não foi feita nesta janela por ESCOPO: é
+//! foundational no caminho por onde **todos** os grupos passam, e o doc 103 §5.1 nomeia
+//! exactamente esse risco. ⛔ A alternativa de declarar `SourceRows` sobre a porta 0 só para
+//! ganhar o leitor continua a ser mentir ao plano sobre o que o nó faz.
 
 use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream, par_build};

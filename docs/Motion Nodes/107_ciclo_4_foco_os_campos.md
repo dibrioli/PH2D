@@ -176,6 +176,33 @@ partilhado é o título da secção **ou `(solto)`**.
 ⛔ Duas mutações, cada uma a nomear o param e os dois lados: `soft` solto dá *«vive em `Falloff` no
 field.radial_sweep e em `(solto)` no field.box»*; `rotation` trocado de secção dá o simétrico.
 
-### W3 — `field.shape`: a recusa reconferida no gerador
+### ⛔ W3 — `field.shape`: a recusa SOBREVIVE, e a razão escrita estava ERRADA (2026-09-09)
+
+A nota do nó dizia que o [`ColumnAccess::SourceRead`](../../crates/ph2d-nodegraph/src/column.rs)
+*«só existe emparelhado com um `StreamOp::SourceRows`»*.
+
+⇒ **Falso, e o gerador diz-o:** o doc-comment do próprio `SourceRead` afirma que ele *«só diz ao
+sequenciador que a porta é desacoplada em comprimento»*, e o **único** consumidor em
+`ph2d-gpu-cook` (`gather.rs`) é um teste de **presença**. Nada o ata a um nó que mude a contagem.
+
+⭐ **O bloqueio verdadeiro é o COMPRIMENTO, e é mais estreito e mais duro.** Para varrer os
+vértices da forma o kernel precisa de saber **quantos são**, e o único comprimento de template que
+o uniforme carrega é o `window_src_n` — que `codegen::declares_src_n` declara **só** para um nó
+**com `count_law`**, e que é a contagem da **porta 0**. A forma deste nó chega na porta **1**.
+⚠️ **E não há atalho pelo lado do shader:** o `arrayLength` **mente** (a pool arredonda os buffers
+para cima), que é precisamente a razão pela qual o hospedeiro tem de passar o número.
+
+⇒ **A cura tem nome e forma:** um `src_n` **por porta `SourceRead`** no uniforme — append-only,
+como o `wgsl_shared` que o ciclo 3 acrescentou —, e o recurso a medir antes de a escrever é
+**bytes de uniforme** (`UNIFORM_BYTES = 128`; o nó mais largo do repo hoje usa `108`).
+
+⛔ **Não foi feita nesta janela, e a razão é ESCOPO:** é foundational no caminho por onde **todos**
+os grupos passam, e o [doc 103 §5.1](103_dinamica_dos_ciclos.md) nomeia exactamente esse risco
+para o item `10` — *mexer no planeador a meio da fila mudaria o custo de cada ciclo já fechado, e
+nenhum deles teria a régua para notar*.
+
+> ⭐ **O que a wave entregou foi a NOTA CERTA.** Uma recusa cuja razão escrita está errada é pior
+> que uma recusa sem razão: a próxima pessoa ataca o `SourceRows`, que não é o problema, e nunca
+> chega ao uniforme, que é.
 
 ### W4 — A MEDIÇÃO (passo 5) e o TUTORIAL (passo 6)

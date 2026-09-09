@@ -148,7 +148,66 @@ pub(crate) fn paint_timer_section(
     )
 }
 
-/// **As TRÊS seções que precisam do ESTADO do painel** — a §11 Animation, a §12 Sockets/Anchors e
+/// **A secção SIGNAL ACTIONS** — moldura e tudo. Irmã da `paint_timer_section`.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn paint_action_section(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: ph2d_tokens::Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    section_tops_y: &mut Vec<f32>,
+    inner_x: f32,
+    inner_w: f32,
+    body_top_y: f32,
+    mut y: f32,
+    header_h: f32,
+    action: Option<&ph2d_editor_core::screens::hero::InspectorActionInfo>,
+    selected: &mut usize,
+) -> f32 {
+    let Some(ac) = action else {
+        return y;
+    };
+    *selected = (*selected).min(ac.rows.len().saturating_sub(1));
+    y = close_section(scene, theme, inner_x, inner_w, y);
+    let y_before = y;
+    begin_section(
+        section_tops_y,
+        hit_index,
+        inner_x,
+        inner_w,
+        body_top_y,
+        y_before,
+        ids::INSP_LIVE_ACTION_SECTION,
+        header_h,
+    );
+    let new_y = crate::sections::actions::paint_action_section(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        inner_x,
+        inner_w,
+        y,
+        ac,
+        *selected,
+    );
+    finish_section(
+        scene,
+        text_system,
+        hit_index,
+        store,
+        inner_x,
+        inner_w,
+        ids::INSP_LIVE_ACTION_SECTION,
+        y_before,
+        new_y,
+        &[],
+    )
+}
+
+/// **As QUATRO seções que precisam do ESTADO do painel** — a §11 Animation, a §12 Sockets/Anchors e
 /// a TIMERS, na ordem em que se pintam.
 ///
 /// ⚠️ **Elas andam juntas por uma PROPRIEDADE, não por vizinhança:** são as únicas do Inspector
@@ -173,6 +232,8 @@ pub(crate) fn paint_stateful_sections(
     anchor_selected: &mut usize,
     timer: Option<&ph2d_editor_core::screens::hero::InspectorTimerInfo>,
     timer_selected: &mut usize,
+    action: Option<&ph2d_editor_core::screens::hero::InspectorActionInfo>,
+    action_selected: &mut usize,
     notes: &[Vec<(usize, NoteData)>],
 ) -> f32 {
     y = paint_anim_section(
@@ -220,5 +281,20 @@ pub(crate) fn paint_stateful_sections(
         header_h,
         timer,
         timer_selected,
+    );
+    paint_action_section(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        section_tops_y,
+        inner_x,
+        inner_w,
+        body_top_y,
+        y,
+        header_h,
+        action,
+        action_selected,
     )
 }

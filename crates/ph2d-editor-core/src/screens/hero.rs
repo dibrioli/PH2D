@@ -61,6 +61,9 @@ pub mod tool_bar;
 pub mod topbar;
 
 mod inspector_model;
+/// ⭐ O modelo da secção TIMERS (TOP-20 #2, W3) — irmão por CAP de LOC.
+/// ⭐ O modelo da secção SIGNAL ACTIONS (TOP-20 #5, W3) — irmão por CAP de LOC.
+mod inspector_model_action;
 mod inspector_model_anchor;
 mod inspector_model_anim;
 /// ⭐ **A seção COMPONENT** (ADR-0164 / F5) — o que esta cópia tem de diferente da receita.
@@ -75,7 +78,6 @@ mod inspector_model_physics;
 mod inspector_model_player;
 mod inspector_model_properties;
 mod inspector_model_slice;
-/// ⭐ O modelo da secção TIMERS (TOP-20 #2, W3) — irmão por CAP de LOC.
 mod inspector_model_timer;
 pub mod layout_switch;
 pub mod layout_tabs;
@@ -112,6 +114,7 @@ pub mod variant_axes;
 pub use paint::PANEL_Z_ORDER_FALLBACK;
 
 pub use inspector_model::*;
+pub use inspector_model_action::*;
 pub use inspector_model_anchor::*;
 pub use inspector_model_anim::*;
 pub use inspector_model_instance::*;

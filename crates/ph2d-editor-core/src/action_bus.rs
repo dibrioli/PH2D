@@ -308,6 +308,15 @@ pub enum EditorAction {
         edit: crate::screens::hero::TimerFieldEdit,
     },
 
+    /// **A secção SIGNAL ACTIONS** (TOP-20 #5, W3) — uma edição da tabela nome → acção.
+    ///
+    /// ⚠️ Como as irmãs, ela **não se espalha sobre a BulkSelect**: o índice que carrega só
+    /// significa alguma coisa na lista da entidade primária.
+    InspectorActionEdit {
+        entity_bits: u64,
+        edit: crate::screens::hero::ActionFieldEdit,
+    },
+
     /// Inspector → shell channel for a §10 Material & Blend field (Blend
     /// Mode). Optional-component edit like [`Self::InspectorSamplingEdit`]
     /// (§3.10); tag `0` (Mix) detaches the `BlendMode` component.

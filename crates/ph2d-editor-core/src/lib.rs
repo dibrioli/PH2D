@@ -155,8 +155,9 @@ pub use project::{
     MIN_PIXELS_PER_METER, ProjectSettings, image_quality_for,
 };
 pub use screens::{
-    AnchorFieldEdit, AnimFieldEdit, BlendFieldEdit, BottomHudStats, EMISSIVE_MAX_UI, HeroScreen,
-    HeroSelection, InspectorAnchorInfo, InspectorAnchorRow, InspectorAnimInfo, InspectorAnimRow,
+    ActionFieldEdit, AnchorFieldEdit, AnimFieldEdit, BlendFieldEdit, BottomHudStats,
+    EMISSIVE_MAX_UI, HeroScreen, HeroSelection, InspectorActionInfo, InspectorActionRow,
+    InspectorAnchorInfo, InspectorAnchorRow, InspectorAnimInfo, InspectorAnimRow,
     InspectorBlendInfo, InspectorBlendMixed, InspectorJointInfo, InspectorNameInfo,
     InspectorOrderingInfo, InspectorOrderingMixed, InspectorPhysicsInfo, InspectorPlayerInfo,
     InspectorSamplingInfo, InspectorSamplingMixed, InspectorSliceInfo, InspectorSliceMixed,

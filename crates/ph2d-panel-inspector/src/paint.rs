@@ -7,7 +7,7 @@
 //! runs the snapshot sync, paints the live Inspector body, and
 //! publishes scroll bounds back to the store.
 
-use crate::paint_frame::{PanelFinish, begin_section, finish_section, publish_and_finish};
+use crate::paint_frame::{PanelFinish, publish_and_finish};
 use crate::state::{
     self, current_inspector_visibility_section, last_inspector_content_h, last_inspector_visible_h,
 };
@@ -17,7 +17,6 @@ use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::screens::HeroSelection;
-use ph2d_editor_core::widget::section_cards::close_section;
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ROW_H_PX, Spacing, Theme};
@@ -67,6 +66,7 @@ pub(crate) fn paint(inspector_state: &mut state::InspectorState, ctx: &mut Paint
             &mut inspector_state.anchor_selected,
             &mut inspector_state.anim_selected,
             &mut inspector_state.timer_selected,
+            &mut inspector_state.action_selected,
         );
     }
     state::set_current_display_unit(display_unit, ppm); // keep symmetric with legacy
@@ -98,6 +98,7 @@ pub(crate) fn paint(inspector_state: &mut state::InspectorState, ctx: &mut Paint
 ///   apontar para o vazio.
 /// - `anim_selected` — §11: qual animação está aberta no editor. Mesmo contrato.
 /// - `timer_selected` — TIMERS: qual timer está aberto no editor. Mesmo contrato.
+/// - `action_selected` — SIGNAL ACTIONS: qual acção está aberta. Mesmo contrato.
 /// - `editing_value` — qual eixo do cartão de propriedades está a ser **reescrito**; ver
 fn paint_inspector(
     slot: Rect,
@@ -110,6 +111,7 @@ fn paint_inspector(
     anchor_selected: &mut usize,
     anim_selected: &mut usize,
     timer_selected: &mut usize,
+    action_selected: &mut usize,
 ) {
     // ⭐ **A moldura do corpo — superfície, alças, cabeçalho, clip e a caixa interior.**
     // Ver [`crate::paint_frame::open_body`]: nada disto é orquestração de seção, e é a mesma razão
@@ -135,6 +137,7 @@ fn paint_inspector(
         anchor_info,
         anim_info,
         timer_info,
+        action_info,
         blend_info,
         physics_info,
         joint_info,
@@ -159,85 +162,35 @@ fn paint_inspector(
         body_top_y + Spacing::Xs.px(),
     );
     let (notes_per_section, trailing_notes) = crate::paint_frame::split_notes(store);
-    // Section macro: paints the section, then the outline (if any),
-    // then notes anchored to THIS section (at the END, before the
-    // separator the caller adds next). UI canon post-2026-05-24:
-    // notes belong VISUALLY to the section the user right-clicked,
-    // grouped inside it. Pre-canon notes painted ABOVE the header.
-    macro_rules! live_section {
-        ($section_id:expr, $section_idx:expr, $header_h:expr, $body:block) => {{
-            let y_before = y;
-            begin_section(
-                &mut section_tops_y,
-                hit_index,
-                inner_x,
-                inner_w,
-                body_top_y,
-                y_before,
-                $section_id,
-                $header_h,
-            );
-            let new_y: f32 = $body;
-            finish_section(
-                scene,
-                text_system,
-                hit_index,
-                store,
-                inner_x,
-                inner_w,
-                $section_id,
-                y_before,
-                new_y,
-                &notes_per_section[$section_idx],
-            )
-        }};
-    }
-
-    if name_present {
-        y = live_section!(ids::INSP_LIVE_NAME_SECTION, 0, ROW_H_PX, {
-            sections::paint_entity_name_row(
-                scene,
-                text_system,
-                theme,
-                hit_index,
-                store,
-                inner_x,
-                inner_w,
-                y,
-            )
-        });
-        y = close_section(scene, theme, inner_x, inner_w, y);
-    }
-    if visibility_info.is_some() {
-        y = live_section!(ids::INSP_LIVE_VISIBILITY_SECTION, 1, ROW_H_PX, {
-            visibility_body(
-                scene,
-                text_system,
-                theme,
-                hit_index,
-                store,
-                inner_x,
-                inner_w,
-                y,
-            )
-        });
-        y = close_section(scene, theme, inner_x, inner_w, y);
-    }
-    if transform_info.is_some() {
-        y = live_section!(ids::INSP_LIVE_TRANSFORM_SECTION, 2, SECTION_HEAD_H, {
-            sections::paint_transform_section(
-                scene,
-                text_system,
-                theme,
-                hit_index,
-                store,
-                inner_x,
-                inner_w,
-                y,
-            )
-        });
-        y = close_section(scene, theme, inner_x, inner_w, y);
-    }
+    // ⛔ **O macro `live_section!` MORREU em 2026-09-09, e a morte dele é o ganho.**
+    //
+    // Ele existia para as três seções que TODO objecto tem — as únicas que ainda se pintavam aqui
+    // dentro — e era ele que as prendia a este corpo: um macro captura os locais em volta, então
+    // extraí-las obrigava a transformar essa captura em argumentos. Foi o que a
+    // [`crate::paint_frame_shared::paint_core_sections`] fez, e o macro ficou sem um único
+    // consumidor. *Uma abstracção que sobrevive ao último chamador é uma cerca sobre um campo
+    // vazio.*
+    // ⭐⭐ **As TRÊS que TODO objecto tem** — §1 Name, §8 Visibility, §2 Transform. Ver o cabeçalho
+    // de [`crate::paint_frame_shared::paint_core_sections`]: elas saíram daqui quando a secção
+    // SIGNAL ACTIONS empurrou este orquestrador contra a catraca dele.
+    y = crate::paint_frame_shared::paint_core_sections(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        &mut section_tops_y,
+        inner_x,
+        inner_w,
+        body_top_y,
+        y,
+        ROW_H_PX,
+        SECTION_HEAD_H,
+        name_present,
+        visibility_info.is_some(),
+        transform_info.is_some(),
+        &notes_per_section,
+    );
     // **As três seções da SPRITE** — §3 Render Source, §6 Color & Tint e §4 Sprite Sheet —
     // moram em `paint_frame_shared` pelo mesmo cap que levou lá as compartilhadas. Elas andam
     // juntas porque partilham a mesma porta: **só existem se houver sprite**.
@@ -322,6 +275,8 @@ fn paint_inspector(
         anchor_selected,
         timer_info.as_ref(),
         timer_selected,
+        action_info.as_ref(),
+        action_selected,
         &notes_per_section,
     );
     if any_section {
@@ -371,7 +326,7 @@ fn paint_inspector(
 /// só fazem sentido *debaixo* da caixa que diz se o objecto se vê, e é essa adjacência que a §8
 /// promete. Separá-las poria a pergunta e a qualificação dela em sítios diferentes do painel.
 #[allow(clippy::too_many_arguments)]
-fn visibility_body(
+pub(crate) fn visibility_body(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,

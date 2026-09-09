@@ -49,6 +49,7 @@ pub(super) fn dispatch(
     anchor_edits: &[(u64, ph2d_editor::AnchorFieldEdit)],
     anim_edits: &[(u64, ph2d_editor::AnimFieldEdit)],
     timer_edits: &[(u64, ph2d_editor::TimerFieldEdit)],
+    action_edits: &[(u64, ph2d_editor::ActionFieldEdit)],
     physics_edits: &[(u64, PhysicsFieldEdit)],
     visibility_section_edits: &[(u64, VisibilityFieldEdit)],
     hero: &mut HeroScreen,
@@ -280,6 +281,23 @@ pub(super) fn dispatch(
         }
         if let Err(e) = apply_editor_commands(sim.world_mut(), editor_queue, component_registry) {
             toasts.push(Toast::error(format!("Timer commit failed: {e}")));
+            title_dirty = true;
+        }
+    }
+    // ⭐ **A secção SIGNAL ACTIONS** (TOP-20 #5, W3). Recusa com aviso, como as irmãs.
+    for (entity_bits, edit) in action_edits {
+        if let Some(t) = super::inspector_action::apply_action_edit(
+            sim,
+            *entity_bits,
+            edit,
+            editor_queue,
+            component_registry,
+        ) {
+            toasts.push(t);
+            continue;
+        }
+        if let Err(e) = apply_editor_commands(sim.world_mut(), editor_queue, component_registry) {
+            toasts.push(Toast::error(format!("Signal action commit failed: {e}")));
             title_dirty = true;
         }
     }

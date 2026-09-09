@@ -342,7 +342,7 @@ pub(crate) fn finish_section(
 /// section has to be remembered here — a fact that is easier to keep true
 /// when it has a name and a signature that changes when you forget.
 #[allow(clippy::too_many_arguments, clippy::fn_params_excessive_bools)]
-pub(crate) fn any_live_section(flags: [bool; 12]) -> bool {
+pub(crate) fn any_live_section(flags: [bool; 13]) -> bool {
     flags.iter().any(|&b| b)
 }
 
@@ -504,6 +504,9 @@ pub(crate) struct LiveSnapshots {
     /// (`ObjectKinds::ANY`), incluindo um objecto VAZIO — que sem esta linha mostraria o painel a
     /// dizer que não há nada por baixo de uma secção que está lá.
     pub timer_info: Option<ph2d_editor_core::screens::hero::InspectorTimerInfo>,
+    /// ⭐⭐⭐ **A secção SIGNAL ACTIONS** — `Some` só quando o objecto tem `SignalActions`.
+    /// ⚠️ **ENTRA no `any_section`**, pela razão do `timer_info`: ela vale para qualquer objecto.
+    pub action_info: Option<ph2d_editor_core::screens::hero::InspectorActionInfo>,
     pub blend_info: Option<ph2d_editor_core::screens::hero::InspectorBlendInfo>,
     pub physics_info: Option<ph2d_editor_core::screens::hero::InspectorPhysicsInfo>,
     pub joint_info: Option<ph2d_editor_core::screens::hero::InspectorJointInfo>,
@@ -539,6 +542,7 @@ impl LiveSnapshots {
         let properties_info = crate::state::current_inspector_properties();
         let name_present = crate::state::current_inspector_name_is_some();
         let timer_info = crate::state::current_inspector_timer();
+        let action_info = crate::state::current_inspector_action();
         let any_section = any_live_section([
             transform_info.is_some(),
             sprite_info.is_some(),
@@ -552,6 +556,7 @@ impl LiveSnapshots {
             player_info.is_some(),
             name_present,
             timer_info.is_some(),
+            action_info.is_some(),
         ]);
         Self {
             transform_info,
@@ -563,6 +568,7 @@ impl LiveSnapshots {
             anchor_info: crate::state::current_inspector_anchor(),
             anim_info: crate::state::current_inspector_anim(),
             timer_info,
+            action_info,
             blend_info,
             physics_info,
             joint_info,

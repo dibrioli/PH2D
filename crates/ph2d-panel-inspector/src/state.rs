@@ -12,11 +12,11 @@
 //! larger churn than the move warrants.
 
 use ph2d_editor_core::screens::hero::{
-    InspectorAnchorInfo, InspectorAnimInfo, InspectorBlendInfo, InspectorJointInfo,
-    InspectorNameInfo, InspectorOrderingInfo, InspectorPhysicsInfo, InspectorPlayerInfo,
-    InspectorSamplingInfo, InspectorSliceInfo, InspectorSpriteInfo, InspectorTimerInfo,
-    InspectorTransformInfo, InspectorVisibilityInfo, InspectorVisibilitySectionInfo,
-    InspectorWheelInfo,
+    InspectorActionInfo, InspectorAnchorInfo, InspectorAnimInfo, InspectorBlendInfo,
+    InspectorJointInfo, InspectorNameInfo, InspectorOrderingInfo, InspectorPhysicsInfo,
+    InspectorPlayerInfo, InspectorSamplingInfo, InspectorSliceInfo, InspectorSpriteInfo,
+    InspectorTimerInfo, InspectorTransformInfo, InspectorVisibilityInfo,
+    InspectorVisibilitySectionInfo, InspectorWheelInfo,
 };
 
 /// Inspector panel retained state. Held inside `ErasedPanel<InspectorPanel>`
@@ -75,6 +75,10 @@ pub struct InspectorState {
     /// numa ARESTA (entidade ou linha), nunca por quadro — senão o valor que o artista acabou de
     /// escrever volta atrás antes de o commit da shell chegar.
     pub last_timer_row: Option<usize>,
+    /// SIGNAL ACTIONS — qual acção da lista está aberta. **Estado do painel**, como a das irmãs.
+    pub action_selected: usize,
+    /// Irmão do [`Self::last_timer_row`], e pela MESMA razão medida.
+    pub last_action_row: Option<usize>,
 }
 
 thread_local! {
@@ -148,6 +152,10 @@ thread_local! {
     /// TIMERS — o snapshot da entidade selecionada. `RefCell` pela mesma razão da §11.
     pub(crate) static CURRENT_INSPECTOR_TIMER:
         std::cell::RefCell<Option<InspectorTimerInfo>> = const { std::cell::RefCell::new(None) };
+
+    /// SIGNAL ACTIONS — o snapshot da entidade selecionada.
+    pub(crate) static CURRENT_INSPECTOR_ACTION:
+        std::cell::RefCell<Option<InspectorActionInfo>> = const { std::cell::RefCell::new(None) };
 
     /// **§12 — a linha ABERTA da lista, no sentido PAINEL → SHELL.**
     ///
@@ -331,6 +339,14 @@ pub fn set_current_inspector_timer(info: Option<InspectorTimerInfo>) {
 
 pub(crate) fn current_inspector_timer() -> Option<InspectorTimerInfo> {
     CURRENT_INSPECTOR_TIMER.with(|c| c.borrow().clone())
+}
+
+pub fn set_current_inspector_action(info: Option<InspectorActionInfo>) {
+    CURRENT_INSPECTOR_ACTION.with(|c| *c.borrow_mut() = info);
+}
+
+pub(crate) fn current_inspector_action() -> Option<InspectorActionInfo> {
+    CURRENT_INSPECTOR_ACTION.with(|c| c.borrow().clone())
 }
 
 pub(crate) fn current_inspector_sampling() -> Option<InspectorSamplingInfo> {

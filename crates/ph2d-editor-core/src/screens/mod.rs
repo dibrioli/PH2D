@@ -23,8 +23,9 @@ pub mod slot_layout;
 pub mod task_layout;
 
 pub use hero::{
-    AnchorFieldEdit, AnimFieldEdit, BlendFieldEdit, BottomHudStats, EMISSIVE_MAX_UI, HeroScreen,
-    HeroSelection, InspectorAnchorInfo, InspectorAnchorRow, InspectorAnimInfo, InspectorAnimRow,
+    ActionFieldEdit, AnchorFieldEdit, AnimFieldEdit, BlendFieldEdit, BottomHudStats,
+    EMISSIVE_MAX_UI, HeroScreen, HeroSelection, InspectorActionInfo, InspectorActionRow,
+    InspectorAnchorInfo, InspectorAnchorRow, InspectorAnimInfo, InspectorAnimRow,
     InspectorBlendInfo, InspectorBlendMixed, InspectorJointInfo, InspectorNameInfo,
     InspectorOrderingInfo, InspectorOrderingMixed, InspectorPhysicsInfo, InspectorPlayerInfo,
     InspectorSamplingInfo, InspectorSamplingMixed, InspectorSliceInfo, InspectorSliceMixed,

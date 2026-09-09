@@ -281,6 +281,9 @@ pub(crate) mod anchor_gizmo;
 mod anchor_overlay;
 /// O anel de um objeto VAZIO selecionado — ver o módulo.
 mod empty_object_overlay;
+/// ⭐ A secção TIMERS (TOP-20 #2, W3) — o snapshot e o commit dela.
+/// ⭐ A secção SIGNAL ACTIONS (TOP-20 #5, W3) — o snapshot e o commit dela.
+mod inspector_action;
 /// **§12 Sockets / Named Anchors** (ADR-0072) — snapshot e commit.
 mod inspector_anchor;
 mod inspector_anim;
@@ -290,7 +293,6 @@ mod inspector_commits_sprite;
 pub(crate) mod inspector_instance;
 mod inspector_properties;
 mod inspector_slice;
-/// ⭐ A secção TIMERS (TOP-20 #2, W3) — o snapshot e o commit dela.
 mod inspector_timer;
 /// Qual receita está a ser EDITADA — o passe que carimba a marca derivada.
 // ⚠️ `pub(crate)` porque o gate do anel de objeto vazio (`group_gizmo_view_tests`) acende a
@@ -3682,6 +3684,7 @@ impl crate::App {
             let mut anchor_edits: Vec<(u64, ph2d_editor::AnchorFieldEdit)> = Vec::new();
             let mut anim_edits: Vec<(u64, ph2d_editor::AnimFieldEdit)> = Vec::new();
             let mut timer_edits: Vec<(u64, ph2d_editor::TimerFieldEdit)> = Vec::new();
+            let mut action_edits: Vec<(u64, ph2d_editor::ActionFieldEdit)> = Vec::new();
             // ⭐ O `+` do Inspector (F3): quem pediu a paleta neste quadro.
             let mut add_component_for: Option<u64> = None;
             // ⭐ A troca de variante pedida neste quadro: `(raiz da instância, StableId do mestre)`.
@@ -5078,6 +5081,12 @@ impl crate::App {
                     // errado de todas as outras.
                     EditorAction::InspectorTimerEdit { entity_bits, edit } => {
                         timer_edits.push((entity_bits, edit));
+                    }
+                    // ⭐ **A secção SIGNAL ACTIONS.** ⚠️ **NÃO espalha sobre a BulkSelect**,
+                    // pela MESMA razão das irmãs: o índice só significa alguma coisa na lista
+                    // da entidade primária.
+                    EditorAction::InspectorActionEdit { entity_bits, edit } => {
+                        action_edits.push((entity_bits, edit));
                     }
                     // ⭐ **O `+` do Inspector** (ADR-0166 / F3) — o painel PEDE e a shell abre,
                     // porque só ela sabe o tipo do objeto, o que ele já tem, e o que o registo
@@ -12291,6 +12300,7 @@ impl crate::App {
                 &anchor_edits,
                 &anim_edits,
                 &timer_edits,
+                &action_edits,
                 &physics_edits,
                 &visibility_section_edits,
                 hero,

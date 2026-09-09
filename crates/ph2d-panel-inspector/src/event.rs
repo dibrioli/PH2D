@@ -54,6 +54,10 @@ pub(crate) fn apply_event(
     if crate::event_timer::apply_timer_event(state, host, ev) {
         return EventOutcome::Consumed;
     }
+    // **SIGNAL ACTIONS** — a quarta com estado de painel, e pela mesma razão das outras três.
+    if crate::event_action::apply_action_event(state, host, ev) {
+        return EventOutcome::Consumed;
+    }
     // ⭐⭐⭐ **O VALOR de uma propriedade** — a terceira família que precisa do estado do painel:
     // carregar no chip aceso abre um campo, e *qual* eixo está aberto é estado de painel, não uma
     // edição da cena. Ver `crate::event_value`.

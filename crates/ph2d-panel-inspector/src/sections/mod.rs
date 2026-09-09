@@ -33,6 +33,8 @@ pub(crate) use ph2d_text::TextSystem;
 pub(crate) use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, Theme, TypeToken};
 pub(crate) use ph2d_vector::{Color as VelloColor, VectorScene};
 
+/// ⭐⭐⭐ **A secção SIGNAL ACTIONS** (TOP-20 #5, W3) — a tabela nome → acção.
+pub(crate) mod actions;
 /// **§12 Sockets / Named Anchors** (ADR-0072) — a seção nascida em 2026-08-21.
 pub(crate) mod anchor_mount_row;
 pub(crate) mod anchors;

@@ -21,6 +21,112 @@ use ph2d_vector::VectorScene;
 
 use super::paint_frame::{begin_section, finish_section};
 
+/// ⭐⭐ **As TRÊS seções que TODO objecto tem** — §1 Name, §8 Visibility e §2 Transform.
+///
+/// ⚠️ **Elas andam juntas por uma PORTA, como as quatro compartilhadas abaixo:** são as únicas que
+/// aparecem para *qualquer* entidade seleccionada, e os três slots de nota (`0..2`) ficam
+/// adjacentes de propósito.
+///
+/// ⚠️ **Saíram do orquestrador em 2026-09-09**, quando a secção SIGNAL ACTIONS o levou a `253`
+/// contra uma catraca de `250`. ⛔ **A catraca só desce**, e levar só a secção nova devolveria o
+/// número ao sítio — *ficar no mesmo sítio não é encolher*.
+///
+/// ⚠️ **Elas usam `begin_section`/`finish_section` directamente**, e não o `live_section!` do
+/// orquestrador: aquele macro captura meia dúzia de locais do corpo dele, e é exactamente por
+/// isso que este trio nunca tinha saído. Aqui a captura vira argumentos, como nas irmãs.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn paint_core_sections(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: ph2d_tokens::Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    section_tops_y: &mut Vec<f32>,
+    inner_x: f32,
+    inner_w: f32,
+    body_top_y: f32,
+    mut y: f32,
+    row_h: f32,
+    header_h: f32,
+    name_present: bool,
+    visibility: bool,
+    transform: bool,
+    notes: &[Vec<(usize, NoteData)>],
+) -> f32 {
+    let slot = |i: usize| notes.get(i).map_or(&[][..], |v| &v[..]);
+    for (presente, id, banda, idx) in [
+        (name_present, ids::INSP_LIVE_NAME_SECTION, row_h, 0usize),
+        (visibility, ids::INSP_LIVE_VISIBILITY_SECTION, row_h, 1),
+        (transform, ids::INSP_LIVE_TRANSFORM_SECTION, header_h, 2),
+    ] {
+        if !presente {
+            continue;
+        }
+        let y_before = y;
+        begin_section(
+            section_tops_y,
+            hit_index,
+            inner_x,
+            inner_w,
+            body_top_y,
+            y_before,
+            id,
+            banda,
+        );
+        // ⚠️ **O corpo sai de um `match` sobre o ID**, e não de três blocos copiados: as três
+        // molduras são idênticas, e o que muda é UMA chamada. Escrevê-las três vezes seria a
+        // forma de a quarta nascer com a moldura ligeiramente diferente.
+        let new_y = if id == ids::INSP_LIVE_NAME_SECTION {
+            crate::sections::paint_entity_name_row(
+                scene,
+                text_system,
+                theme,
+                hit_index,
+                store,
+                inner_x,
+                inner_w,
+                y,
+            )
+        } else if id == ids::INSP_LIVE_VISIBILITY_SECTION {
+            crate::paint::visibility_body(
+                scene,
+                text_system,
+                theme,
+                hit_index,
+                store,
+                inner_x,
+                inner_w,
+                y,
+            )
+        } else {
+            crate::sections::paint_transform_section(
+                scene,
+                text_system,
+                theme,
+                hit_index,
+                store,
+                inner_x,
+                inner_w,
+                y,
+            )
+        };
+        y = finish_section(
+            scene,
+            text_system,
+            hit_index,
+            store,
+            inner_x,
+            inner_w,
+            id,
+            y_before,
+            new_y,
+            slot(idx),
+        );
+        y = close_section(scene, theme, inner_x, inner_w, y);
+    }
+    y
+}
+
 /// **§5 9-Slice + §7 Ordering + §9 Sampling + §10 Material & Blend**, moldura e tudo.
 ///
 /// Levantadas do `paint_inspector` pelo mesmo motivo da família da física: aquele orquestrador

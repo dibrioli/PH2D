@@ -1197,3 +1197,25 @@ uma base bem aquecida contra um nó frio, com o caleidoscópio a saltar para **`
 
 ⚠️ **A corrida 2 foi sistematicamente mais lenta em TODAS as linhas** (`+15 %`), o que é a máquina
 e não um nó — é por isso que a tabela publica a **mediana de três corridas** e não uma delas.
+
+---
+
+### ⚠️ O TUTORIAL JÁ AFIRMAVA O QUE A W7 SÓ HOJE TORNOU VERDADE (2026-09-08)
+
+A tabela *«Onde isto roda»* do [tutorial](tutoriais/src/03_transformes.html) lista o **Bend** entre
+os que correm na placa **«sim, sempre»** — e isso era **falso no dia em que foi escrito**: bastava
+o artista tocar no `Direction` para a cadeia inteira cair para o processador, em silêncio. A W7
+tornou a frase honesta, e a tabela na máquina calma confirma-o (`motion.bend` 🟢 nas duas colunas,
+com o knob aceso).
+
+⛔ **A leitura não é «tivemos sorte», é um buraco nomeado:** *nada liga aquela tabela ao
+planeador*. Ela foi escrita à mão a partir da coluna `no device?` de uma corrida da sonda, e uma
+recusa nova — ou uma que caia, como esta — **não a acorda**. É a família da *cena de smoke que
+ensina o contrário do que acontece* (§5.0), a mais cara de todas, porque é o primeiro sítio onde o
+dono olha.
+
+⭐ **A cura tem forma e não foi construída:** aquela tabela é **derivável** —
+`plan(..).is_fully_gpu()` sobre cada nó do grupo, nos defaults e aceso, que é exactamente o que a
+sonda já imprime. O tutorial já gera a tabela de params por ficheiro
+(`fig/params_deformadores.html`); esta é a **segunda** que devia nascer do código em vez de ser
+copiada dele.

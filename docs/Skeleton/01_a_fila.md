@@ -899,6 +899,54 @@ objecto — é decisão de produto, não de correcção, e a revelação é a me
 precedentada.
 
 
+### F3-h — ✅ As alças do osso **pegam onde são pintadas** (achado da auditoria, 2026-09-08)
+
+⛔⛔ **O defeito:** o arco de limite — e a alça da força, e a ponta da corrente — é **pintado e
+ACENDE sob o rato nos 14 modos da ferramenta de vector**, e o `Down` só era lido dentro do
+`DrawMode::Bone`. O artista via o triângulo acender, arrastava, e não acontecia nada.
+
+⚠️ **E a assimetria era DELIBERADA dos dois lados, em sítios diferentes:** o
+`refresh_bone_hover` **não** se gateia pelo modo (com a razão escrita: *«os ossos desenham-se em
+TODO modo da ferramenta de vetor, então o realce deles tem de existir onde eles existem»*) e o arm
+vivia dentro do bloco do modo Osso. *Duas decisões certas, cada uma no seu ficheiro, somam um
+controlo morto.*
+
+⭐ **A cura é uma LINHA, e ela é o VERBO, não a alça**
+([`bone_gesture::grabbable_outside_bone_mode`](../../shells/desktop/src/bone_gesture.rs)):
+
+| alça | pega fora do modo Osso? | porquê |
+|---|---|---|
+| **Influence** (a força) | ✅ | nenhuma outra ferramenta exprime este verbo |
+| **LimitMin / LimitMax** (as paredes) | ✅ | idem |
+| **Tip** (a ponta da corrente, IK) | ✅ | idem |
+| **Body** (girar) | ⛔ | o gizmo de sprite já GIRA |
+| **Joint** (deslocar) | ⛔ | o gizmo de sprite já DESLOCA |
+
+⛔ Roubar `Body`/`Joint` aqui trocaria a lei do arrasto da seta **em silêncio**. E é um `match`
+exaustivo, não uma lista: uma parte nova é **erro de compilação** exactamente no sítio onde alguém
+tem de responder *«este verbo existe noutra ferramenta?»*.
+
+⛔ **Dentro do modo Osso o arm novo NÃO corre** — lá a `bone_gesture::press` já decide, e ela
+distingue *Criar* de *Transformar*: em *Criar*, pousar sobre uma alça só ACENDE o osso, que é o
+desenho e não um esquecimento.
+
+⚠️⚠️ **E a cura quase entrou com um defeito PIOR que o que curava:** o `Up` que liberta a alça vivia
+**dentro** do bloco `vector_tool_active() && modo != Select`. Com o arm a correr em todo modo, no
+**Select** o slot era agarrado e **nunca largado** — *o osso seguiria o rato para sempre, sem botão
+nenhum apertado*. ⇒ o `Up` mudou-se para a família dos irmãos independentes de modo (o da alça de
+ligação, o da ficha do padrão, o da âncora do motion path). **Lei:** *um slot de arrasto é largado
+onde quer que possa ser agarrado.*
+
+**Gates** (4, todos mortos por mutação):
+
+| gate | mutação que ele mata |
+|---|---|
+| `only_the_verbs_no_other_tool_can_express_are_grabbed_outside_bone_mode` | a linha aceita `Body`/`Joint` ⇒ a seta perde o arrasto |
+| `the_bone_handles_are_grabbed_before_the_tool_takes_the_canvas` | o arm volta para dentro do bloco ⇒ o Select volta a acender e não pegar |
+| `the_bone_handle_arm_consumes_the_press` | tirar o `return;` ⇒ o Select abre um marquee por cima do arrasto |
+| `the_bone_handle_is_released_in_every_mode_it_can_be_grabbed_in` | o `Up` volta para dentro do bloco ⇒ **o osso segue o rato para sempre** |
+
+
 ## ⛔ Recusas MEDIDAS deste módulo — não as reconstrua
 
 > ⚠️ **As seis de 2026-09-07/08 entraram aqui na auditoria de 08/09** — elas viviam só em prosa e em

@@ -446,3 +446,44 @@ fn the_preview_arms_exactly_where_the_release_would_make_a_bone() {
         "com o mundo mais denso por pixel, 1 unidade ja' passa os 12 px"
     );
 }
+
+/// ⭐⭐⭐ **QUE ALÇAS PEGAM FORA DO MODO OSSO — a linha é o VERBO, não a alça.**
+///
+/// ⛔⛔ **Achado da auditoria de 2026-09-08:** as alças do osso são pintadas e **acendem sob o rato
+/// nos 14 modos de vector**, e o `Down` só era lido dentro do `DrawMode::Bone` ⇒ o artista via o
+/// arco de limite acender e arrastá-lo não fazia nada.
+///
+/// ⚠️ **O critério não é «é uma alça», é «este verbo existe noutra ferramenta?»** — girar e
+/// deslocar um osso o gizmo de sprite já faz, e roubar-lhos aqui trocaria a lei do arrasto da seta
+/// em silêncio; a força, as duas paredes do limite e a cinemática inversa **não têm outra porta**.
+#[test]
+fn only_the_verbs_no_other_tool_can_express_are_grabbed_outside_bone_mode() {
+    use crate::bone_gesture::grabbable_outside_bone_mode as pega;
+    use ph2d_skeleton_render::BonePart;
+    for (parte, porque) in [
+        (BonePart::Influence, "a forca nao tem outra porta"),
+        (
+            BonePart::LimitMin,
+            "a parede horaria do limite nao tem outra porta",
+        ),
+        (
+            BonePart::LimitMax,
+            "a parede anti-horaria do limite nao tem outra porta",
+        ),
+        (BonePart::Tip, "a cinematica inversa nao tem outra porta"),
+    ] {
+        assert!(
+            pega(parte),
+            "{parte:?} acende sob o dedo em todo modo e nao pegaria: {porque}"
+        );
+    }
+    for (parte, quem) in [
+        (BonePart::Body, "o gizmo de sprite ja' GIRA"),
+        (BonePart::Joint, "o gizmo de sprite ja' DESLOCA"),
+    ] {
+        assert!(
+            !pega(parte),
+            "{parte:?} passaria a roubar o arrasto da seta: {quem}"
+        );
+    }
+}

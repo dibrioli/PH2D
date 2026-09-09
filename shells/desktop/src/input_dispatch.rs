@@ -4068,6 +4068,35 @@ impl App {
             self.smart_pick_click(evt.x, evt.y);
             return;
         }
+        // ⭐⭐⭐ **AS ALÇAS DO OSSO PEGAM EM TODO MODO DE VECTOR, e não só no modo Osso.**
+        //
+        // ⛔⛔ **Achado da auditoria de 2026-09-08:** o arco de limite — e a alça da força, e a
+        // ponta da corrente — é **pintado e ACENDE sob o rato nos 14 modos** (o
+        // `refresh_bone_hover` não se gateia pelo modo, de propósito, porque o `vec_overlay::bones`
+        // também não) e o `Down` só era lido dentro do `DrawMode::Bone`. *Um controlo que acende
+        // debaixo do dedo e não responde é a espécie de morto que este repo já pagou três vezes.*
+        //
+        // ⚠️ **QUAIS alças é a porta [`crate::bone_gesture::grabbable_outside_bone_mode`]**, e a
+        // linha é o VERBO: entram as quatro que nenhuma outra ferramenta sabe exprimir; girar e
+        // deslocar ficam com o gizmo de sprite, que já os faz.
+        //
+        // ⛔ **Dentro do modo Osso este arm NÃO corre** — lá a `bone_gesture::press` decide, e ela
+        // distingue *Criar* de *Transformar*: em *Criar*, pousar sobre uma alça só ACENDE o osso,
+        // que é o desenho e não um esquecimento.
+        //
+        // ⛔ **Consome o press**, como os picks modais acima e pela mesma razão: sem o `return;` o
+        // gesto cai na cadeia de baixo e o modo Select começa um marquee por cima do arrasto.
+        if mapped_button == ph2d_host::PointerButton::Primary
+            && kind == PointerKind::Down
+            && !menu_open_before
+            && self.vector_tool_active()
+            && self.vec_draw_config.mode != ph2d_tool_vector::DrawMode::Bone
+            && self.over_canvas_or_gizmo(evt.x, evt.y)
+            && let Some(h) = self.bone_handle_at((evt.x, evt.y))
+        {
+            self.vec_bone_pose = Some((h.bone, h.part));
+            return;
+        }
         // **O eyedropper de corpo do joint** (§12) — mesma classe de pick modal do
         // acima, mas independente de ferramenta: armado, o próximo Down no canvas
         // escolhe o corpo sob o cursor e religa aquela ponta. Precede o
@@ -4218,6 +4247,23 @@ impl App {
             && kind == PointerKind::Up
         {
             self.vec_textpath_handle_drag = false;
+            return;
+        }
+        // ⭐⭐⭐ **O Up que fecha o arrasto de uma ALÇA DE OSSO.**
+        //
+        // ⚠️ Ela CONSOME o gesto: sem isto, soltar depois de girar um osso cai na cadeia de baixo e
+        // a forma sob o cursor é seleccionada.
+        //
+        // ⛔⛔ **Ele vivia DENTRO do bloco `vector_tool_active() && modo != Select`** e a alça passou
+        // a poder ser agarrada em todo modo (auditoria de 2026-09-08) ⇒ no modo **Select** o slot
+        // era armado e **nunca** libertado: o osso seguia o rato para sempre, sem botão nenhum
+        // apertado. *Um slot de arrasto tem de ser largado onde quer que possa ser agarrado* — e é
+        // por isso que ele passou para esta família, que é a dos irmãos independentes de modo.
+        if self.vec_bone_pose.is_some()
+            && mapped_button == ph2d_host::PointerButton::Primary
+            && kind == PointerKind::Up
+        {
+            self.vec_bone_pose = None;
             return;
         }
         // O Up que fecha o arrasto de uma ficha do PATTERN (W4) — mesma vida da do texto.
@@ -4877,11 +4923,6 @@ impl App {
                     // ⚠️ **Consome SÓ com o gesto VIVO** (a origem marcada), pela lei que o
                     // `shape_up_consumes` documenta: soltar sobre um botão do painel neste modo não
                     // pode engolir o clique.
-                    // A pose acaba no Up. ⚠️ Ela CONSOME o gesto: sem isto, soltar depois de girar
-                    // um osso cairia na cadeia de baixo e a forma sob o cursor seria seleccionada.
-                    if self.vec_bone_pose.take().is_some() {
-                        return;
-                    }
                     if let Some(origem) = self.vec_bone_drag.take() {
                         let px = self.vec_px_to_world();
                         if let Some(ponta) = self.vec_world_at(self.last_pointer) {

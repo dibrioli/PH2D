@@ -100,3 +100,74 @@ fn the_target_pick_guard_asks_no_tool_and_no_mode() {
         );
     }
 }
+
+/// ⭐⭐⭐ **AS ALÇAS DO OSSO SÃO AGARRÁVEIS ONDE SÃO PINTADAS** — o arm corre antes do bloco que só
+/// existe fora do modo Select.
+///
+/// ⛔⛔ **Achado da auditoria de 2026-09-08:** o arco de limite, a alça da força e a ponta da
+/// corrente são pintados e **acendem sob o rato nos 14 modos de vector**, e o `Down` só era lido
+/// dentro do `DrawMode::Bone`. *Um controlo que acende debaixo do dedo e não responde é um controlo
+/// morto.*
+#[test]
+fn the_bone_handles_are_grabbed_before_the_tool_takes_the_canvas() {
+    let src = code_only(DISPATCH);
+    let arm = src
+        .find("self.bone_handle_at((evt.x, evt.y))")
+        .expect("o arm das alças de osso é despachado — sem ele elas acendem e não pegam");
+    let bloco = src
+        .find("&& self.vec_draw_config.mode != ph2d_tool_vector::DrawMode::Select")
+        .expect("o bloco que a ferramenta usa para tomar o canvas vive neste ficheiro");
+    assert!(
+        arm < bloco,
+        "o arm das alças corre DENTRO do bloco que exclui o modo Select — no Select elas voltam a \
+         acender e a não pegar"
+    );
+}
+
+/// ⭐⭐⭐ **E O ARM CONSOME O PRESS** — sem isto o gesto cai na cadeia de baixo e o Select começa um
+/// marquee por cima do arrasto da alça.
+///
+/// ⚠️ A âncora é a **linha de código seguinte** à escrita do slot, pela lição da irmã: uma janela
+/// até ao próximo `return;` estica-se até ao bloco seguinte quando o certo é apagado.
+#[test]
+fn the_bone_handle_arm_consumes_the_press() {
+    let src = code_only(DISPATCH);
+    let linhas: Vec<&str> = src.lines().collect();
+    let i = linhas
+        .iter()
+        .position(|l| l.contains("self.vec_bone_pose = Some((h.bone, h.part));"))
+        .expect("o arm das alças escreve o slot de arrasto");
+    let seguinte = linhas[i + 1..]
+        .iter()
+        .find(|l| !l.trim().is_empty())
+        .copied()
+        .unwrap_or_default();
+    assert_eq!(
+        seguinte.trim(),
+        "return;",
+        "a linha a seguir ao arm das alças não é `return;` — o press continua a descer e o modo \
+         Select abre um marquee por cima do arrasto"
+    );
+}
+
+/// ⭐⭐⭐ **UM SLOT DE ARRASTO É LARGADO ONDE QUER QUE POSSA SER AGARRADO.**
+///
+/// ⛔⛔ **A mutação que este gate mata é a que a própria cura de 2026-09-08 quase deixou entrar:** o
+/// `Up` que liberta a alça vivia **dentro** do bloco `vector_tool_active() && modo != Select`, e o
+/// arm passou a correr em todo modo ⇒ no **Select** o slot era armado e nunca libertado — *o osso
+/// seguia o rato para sempre, sem botão nenhum apertado*.
+#[test]
+fn the_bone_handle_is_released_in_every_mode_it_can_be_grabbed_in() {
+    let src = code_only(DISPATCH);
+    let solta = src
+        .find("self.vec_bone_pose = None;")
+        .expect("o Up que liberta a alça vive neste ficheiro");
+    let bloco = src
+        .find("&& self.vec_draw_config.mode != ph2d_tool_vector::DrawMode::Select")
+        .expect("o bloco que a ferramenta usa para tomar o canvas vive neste ficheiro");
+    assert!(
+        solta < bloco,
+        "o Up que liberta a alça de osso corre DENTRO do bloco que exclui o modo Select — ali ela \
+         e' agarrada e nunca largada, e o osso segue o rato para sempre"
+    );
+}

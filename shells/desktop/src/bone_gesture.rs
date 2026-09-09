@@ -460,6 +460,21 @@ impl crate::App {
     ///
     /// ⚠️ **Sem ponteiro no canvas ⇒ LIMPA**, como o realce do Trim e o do Balde: um realce que
     /// sobrevive ao cursor sair da tela é uma alça que finge estar apontada.
+    /// ⭐⭐⭐ **A alça de osso sob este ponto, se o VERBO dela não existir noutra ferramenta.**
+    ///
+    /// ⚠️ **A MESMA porta do realce** ([`hover`]) — o que o artista vê aceso é, por construção, o
+    /// que ele vai pegar. Uma segunda varredura seria a segunda resposta à mesma pergunta.
+    pub(crate) fn bone_handle_at(
+        &self,
+        pointer: (f32, f32),
+    ) -> Option<ph2d_skeleton_render::BoneHover> {
+        let world = self.vec_world_at(pointer)?;
+        let px = self.vec_px_to_world();
+        let foco = self.selected_bone_bits();
+        let h = hover(&self.gfx.as_ref()?.sim, world, px, foco)?;
+        grabbable_outside_bone_mode(h.part).then_some(h)
+    }
+
     pub(crate) fn refresh_bone_hover(&mut self, pointer: (f32, f32)) {
         // ⚠️⚠️ **OS DOIS SLOTS SAEM DA MESMA LEITURA, e a saída antecipada tem de limpar OS DOIS.**
         // A 1.ª redacção desta função limpava só o realce e deixava a pré-visualização congelada:
@@ -482,6 +497,32 @@ impl crate::App {
         self.bone_preview = self
             .vec_bone_drag
             .map(|o| (o, world, drag_makes_a_bone(o, world, px_to_world)));
+    }
+}
+
+/// ⭐⭐⭐ **QUE ALÇAS DE OSSO PEGAM FORA DO MODO OSSO** — a linha é o **VERBO**, não a alça.
+///
+/// ⛔⛔ **Achado da auditoria de 2026-09-08:** o arco de limite, a alça da força e a ponta da
+/// corrente são **pintados e ACENDEM sob o rato nos 14 modos de vector** — o
+/// [`crate::app_state::App::refresh_bone_hover`] não se gateia pelo modo, de propósito, porque o
+/// `vec_overlay::bones` também não —, e o `Down` só era lido dentro do `DrawMode::Bone`. *Um
+/// controlo que acende debaixo do dedo e não responde é a espécie de morto que este repo já pagou
+/// três vezes.*
+///
+/// ⭐ **Entram as quatro que NENHUMA outra ferramenta sabe exprimir:** a força, as duas paredes do
+/// limite e a ponta da corrente (a cinemática inversa).
+///
+/// ⛔ **Ficam de fora [`BonePart::Body`] (girar) e [`BonePart::Joint`] (deslocar):** o gizmo de
+/// sprite já faz as duas, e roubar-lhas aqui trocaria a lei do arrasto da seta **em silêncio** —
+/// o artista escolhe um osso com a seta e o arrasto passa a fazer outra coisa.
+///
+/// ⚠️ **É um `match` exaustivo e não uma lista:** uma parte NOVA é erro de compilação aqui, que é
+/// o único sítio onde alguém tem de responder *«este verbo existe noutra ferramenta?»*.
+pub(crate) fn grabbable_outside_bone_mode(part: ph2d_skeleton_render::BonePart) -> bool {
+    use ph2d_skeleton_render::BonePart;
+    match part {
+        BonePart::Influence | BonePart::LimitMin | BonePart::LimitMax | BonePart::Tip => true,
+        BonePart::Body | BonePart::Joint => false,
     }
 }
 

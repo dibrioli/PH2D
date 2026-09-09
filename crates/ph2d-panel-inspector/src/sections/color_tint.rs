@@ -128,7 +128,11 @@ pub(crate) fn paint_color_tint_section(
     y: f32,
 ) -> f32 {
     let field_h = ROW_H_PX;
-    let row_gap = Spacing::Xs.px();
+    // ⚠️ **O vão entre dois controlos é uma PORTA, não um `Spacing` escolhido aqui**
+    //    (`ph2d_tokens::control_gap_px`, 3 px). Enio, 2026-09-07: *«entre grupos de botões
+    //    temos um espaçamento, entre sliders outro. Para ambos vamos colocar o padrão de 3 px»*.
+    //    Este ficheiro é anterior à porta e escrevia o `Spacing::Xs` (4) à mão.
+    let row_gap = ph2d_tokens::control_gap_px();
     let header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: section header band height
     let color_id = ids::INSP_LIVE_COLOR_COLOR;
     let rgba = store

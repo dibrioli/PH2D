@@ -30,7 +30,11 @@ fn table_sections(
     y_in: f32,
 ) -> f32 {
     let mut y = y_in;
-    let row_gap = Spacing::Xs.px();
+    // ⚠️ **O vão entre dois controlos é uma PORTA, não um `Spacing` escolhido aqui**
+    //    (`ph2d_tokens::control_gap_px`, 3 px). Enio, 2026-09-07: *«entre grupos de botões
+    //    temos um espaçamento, entre sliders outro. Para ambos vamos colocar o padrão de 3 px»*.
+    //    Este ficheiro é anterior à porta e escrevia o `Spacing::Xs` (4) à mão.
+    let row_gap = ph2d_tokens::control_gap_px();
     for section in rows::SECTIONS {
         let (fold, next_y) = header(ctx, section.id, tr(section.title), x, w, y);
         y = next_y;
@@ -81,7 +85,7 @@ pub(super) fn paint_sections(
     w: f32,
     y_in: f32,
 ) -> f32 {
-    let row_gap = Spacing::Xs.px();
+    let row_gap = ph2d_tokens::control_gap_px(); // a mesma porta da funcao irma
     let mut y = table_sections(ctx, snapshot, x, w, y_in);
 
     // The Interaction tool (W-Hand). BEFORE the layer matrix and after the world

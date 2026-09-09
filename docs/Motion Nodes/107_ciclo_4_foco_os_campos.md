@@ -267,3 +267,36 @@ A 1.ª redacção escrevia cada SVG dentro do laço de medição. A corrida de m
 figuras com o **mesmo md5**, falhou em voz alta — **e as figuras ficaram no disco**. Nada no
 repositório o dizia; só um `md5sum` à mão as apanhou. ⇒ **medir, afirmar, e só então escrever.**
 *Uma sonda que falha não pode deixar o artefacto que ela reprovou.*
+
+---
+
+### ✅ O TUTORIAL (passo 6) — e o gate que apanhou QUATRO nomes que não existem no ecrã
+
+[`04_campos.pdf`](tutoriais/04_campos.pdf) · fonte [`src/04_campos.html`](tutoriais/src/04_campos.html)
+— 6 páginas, com as figuras e a tabela de controlos **geradas do próprio app**.
+
+⭐ **`every_row_the_tutorial_names_is_on_the_card`** lê a cena `=112` de verdade e verifica que
+cada nome que o tutorial manda o dono procurar existe: o **título do cartão** e a **linha** dentro
+dele. E ele apanhou-me **antes** do dono:
+
+| o que eu escrevi | o que o ecrã pinta |
+|---|---|
+| «o cartão `Field Remap`» | **`Remap`** |
+| «`Field Box`» | **`Box`** |
+| «`Field Combine`» | **`Combine Fields`** |
+| «`Field Shape`» | **`Shape Field`** |
+| «o `Falloff`, o **segundo** da fila» | é o **terceiro** (`Grid · Scale · Falloff · Remap · Scale · Output`) |
+| «troque o `Scale` do fim» | há **DOIS** cartões `Scale` — a frase era ambígua |
+
+⚠️ **O `display_name` de um cartão não é o `type_name`**, e contar cartões de cabeça é exactamente
+o que esta régua existe para impedir ([memória](../../project-memory/feedback_a_smoke_step_that_names_a_panel_row_must_prove_the_row_is_in_the_list.md)).
+
+⚠️ **E o gate tem uma segunda metade para não ser um espelho meu:** cada nome que ele espera tem
+de estar **de facto no ficheiro do tutorial** (`include_str!`). Sem ela a lista seria minha, e
+alguém podia editar o texto sem que nada acusasse — com as duas, o par *«o que o app pinta»* ⟷
+*«o que o dono lê»* não pode divergir em silêncio.
+
+⭐ **E há uma terceira asserção que é sobre o ENSINO, não sobre a existência:** a linha
+`Rotation` **não pode** estar no cartão quando a cena abre, porque o passo 4 promete que ela
+*aparece* ao trocar a forma. *Um passo que promete uma aparição sobre algo que já estava lá ensina
+o contrário do que acontece.*

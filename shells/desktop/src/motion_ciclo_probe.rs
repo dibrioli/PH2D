@@ -139,6 +139,27 @@ pub(crate) fn params_de(grupo: &[&str]) {
 /// ciclo 3 acusou o `motion.bezier_warp` de pintar `In X · In Y · …` quatro vezes sem dizer de
 /// que aresta — uma acusação construída sobre a lista de rótulos, que é metade da resposta.
 /// *Uma sonda que lê metade da superfície fabrica dívida.*
+/// O NOME que o cartão de cada nó pinta — o que o tutorial tem de escrever.
+///
+/// ⚠️ **Ele não é o `type_name`**: o `field.remap` pinta-se **`Remap`**, e um passo de smoke que
+/// diga *«o cartão `Field Remap`»* manda o dono procurar uma coisa que não existe.
+pub(crate) fn nomes(grupo: &[&str]) {
+    let m = MotionState::new();
+    for nome in grupo {
+        let mut d = MotionState::new();
+        let id = d.doc.graph.add_node((*nome).to_string());
+        let snap = ph2d_panel_motion_graph::snapshot_from(&d.doc.graph, &d.registry);
+        let t = snap
+            .nodes
+            .iter()
+            .find(|v| v.id == id.0)
+            .map_or("(sem cartao)", |v| v.display_name.as_str());
+        eprintln!("  {nome:<26} → cartão «{t}»");
+    }
+    let _ = m;
+    eprintln!();
+}
+
 pub(crate) fn cartao(grupo: &[&str]) {
     for nome in grupo {
         let mut m = MotionState::new();

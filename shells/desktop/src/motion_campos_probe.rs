@@ -58,6 +58,13 @@ fn what_the_field_card_shows() {
 /// ```text
 /// cargo test -p ph2d-host-desktop --bins -- --ignored --nocapture the_field_vocabulary
 /// ```
+/// Os NOMES que os cartões pintam — o que o tutorial tem de escrever.
+#[test]
+#[ignore = "sonda de auditoria — corra à mão"]
+fn the_field_card_names() {
+    crate::motion_ciclo_probe::nomes(&GRUPO);
+}
+
 #[test]
 #[ignore = "sonda de auditoria — corra à mão"]
 fn the_field_vocabulary() {
@@ -207,5 +214,107 @@ fn the_focus_scene_builds_and_stays_on_the_device() {
     assert!(
         ph2d_gpu_cook::plan(&m.doc.graph, &m.registry, &m.registry, sink).is_fully_gpu(),
         "a cena do ciclo 4 tem de correr no dispositivo -- os sete campos menos um la' estao"
+    );
+}
+
+/// A FONTE do tutorial deste ciclo — lida para que os nomes do gate e os do texto não possam
+/// divergir em silêncio.
+const TUTORIAL: &str = include_str!("../../../docs/Motion Nodes/tutoriais/src/04_campos.html");
+
+/// ⭐⭐⭐ **CADA PASSO DO TUTORIAL É POSSÍVEL NO APP** (ciclo 4, passo 7 — doc 103 §1).
+///
+/// ⛔⛔ **Um passo que manda clicar numa linha AFIRMA que ela está na lista**, e a casa já pagou
+/// por escrever um passo impossível ([memória](../../project-memory/feedback_a_smoke_step_that_names_a_panel_row_must_prove_the_row_is_in_the_list.md)).
+/// Este gate lê a **fonte do tutorial** e verifica, contra a cena `=112` de verdade, que cada
+/// nome que ele manda o dono procurar existe: o **título do cartão** e a **linha** dentro dele.
+///
+/// ⚠️ **E ele apanhou-me a mim antes do dono:** a 1.ª redacção dizia *«o cartão `Falloff`, o
+/// SEGUNDO da fila»* — ele é o **terceiro** (`grid · scale · falloff · remap · scale · output`),
+/// e o `Field Remap` que eu chamava de terceiro é o quarto. *Contar cartões de cabeça é
+/// exactamente o que esta régua existe para impedir.*
+#[test]
+fn every_row_the_tutorial_names_is_on_the_card() {
+    let _trava = crate::motion_demo_legend::trava();
+    let mut m = crate::motion_state::MotionState::new();
+    let _ = crate::motion_state::demo_router::build_level(Some("112"), &mut m.doc, &m.registry);
+    let mut snap = ph2d_panel_motion_graph::snapshot_from(&m.doc.graph, &m.registry);
+    crate::render_loop::motion_bridge::params::card::stamp_card_params(
+        &m,
+        ph2d_editor::ProjectSettings::default(),
+        &mut snap,
+    );
+
+    // O que o tutorial manda procurar: (título do cartão, linhas dentro dele).
+    let pedidos: &[(&str, &[&str])] = &[
+        ("Falloff", &["Shape", "Radius", "Center X", "Center Y"]),
+        ("Remap", &["Curvature", "Multiplier"]),
+    ];
+    for (titulo, linhas) in pedidos {
+        let v = snap
+            .nodes
+            .iter()
+            .find(|v| v.display_name == *titulo)
+            .unwrap_or_else(|| {
+                let havia: Vec<&str> = snap.nodes.iter().map(|v| v.display_name.as_str()).collect();
+                panic!(
+                    "o tutorial manda procurar o cartao `{titulo}` e a cena nao tem nenhum com \
+                     esse nome -- ha': {havia:?}"
+                )
+            });
+        let rows: Vec<&str> = v.params.iter().map(|c| c.hint.label).collect();
+        for l in *linhas {
+            assert!(
+                rows.contains(l),
+                "o tutorial manda clicar em `{l}` no cartao `{titulo}`, e o cartao mostra {rows:?}"
+            );
+        }
+    }
+
+    // ⚠️ **E os nomes que o tutorial usa FORA da cena** — os dois nós de duas portas, que a §5
+    // dele nomeia. Um cartão pinta-se pelo `display_name`, que **não** é o `type_name`: o
+    // `field.remap` é `Remap`, o `field.combine` é `Combine Fields`. A 1.ª redacção deste
+    // tutorial escreveu «Field Remap», «Field Box», «Field Combine» e «Field Shape» — **quatro**
+    // nomes que não existem no ecrã.
+    for (tipo, esperado) in [
+        ("field.box", "Box"),
+        ("field.radial_sweep", "Radial Sweep"),
+        ("field.index_range", "Index Range"),
+        ("field.combine", "Combine Fields"),
+        ("field.shape", "Shape Field"),
+    ] {
+        let mut d = crate::motion_state::MotionState::new();
+        let id = d.doc.graph.add_node(tipo.to_string());
+        let snap = ph2d_panel_motion_graph::snapshot_from(&d.doc.graph, &d.registry);
+        let nome = snap
+            .nodes
+            .iter()
+            .find(|v| v.id == id.0)
+            .map_or("(sem cartao)", |v| v.display_name.as_str());
+        assert_eq!(
+            nome, esperado,
+            "o tutorial chama-lhe `{esperado}` e o cartao pinta-se `{nome}`"
+        );
+        // ⚠️ **E o nome esperado tem de estar de facto NO TUTORIAL** — senão esta lista é um
+        // espelho meu, e alguém pode editar o texto sem que nada acuse. Com as duas metades, o
+        // par «o que o app pinta» ⟷ «o que o dono lê» não pode divergir em silêncio.
+        assert!(
+            TUTORIAL.contains(esperado),
+            "o gate diz que o cartao se chama `{esperado}` e o tutorial nao o menciona -- um dos \
+             dois envelheceu"
+        );
+    }
+
+    // ⚠️ E a linha `Rotation` NÃO pode estar lá no estado em que a cena abre — o tutorial ensina
+    // que ela **aparece** ao trocar a forma, e um passo que promete uma aparição sobre algo que
+    // já estava lá ensina o contrário do que acontece.
+    let falloff = snap
+        .nodes
+        .iter()
+        .find(|v| v.display_name == "Falloff")
+        .expect("o cartao");
+    let rows: Vec<&str> = falloff.params.iter().map(|c| c.hint.label).collect();
+    assert!(
+        !rows.contains(&"Rotation"),
+        "a cena abre com `Rotation` ja' no cartao -- o passo 4 promete que ela APARECE"
     );
 }

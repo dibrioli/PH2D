@@ -1,0 +1,311 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>PH2D · Nem todos ao mesmo tempo</title>
+<style>
+  @page { size: A4; margin: 16mm 15mm; }
+  :root {
+    --bg: #0f0e12; --card: #17161c; --line: #2a2830;
+    --t1: #ece9f2; --t2: #a9a3b8; --t3: #6f6a7d;
+    --acc: #c9a6ff; --ok: #7ee0b0; --warn: #ffcf7a;
+    --src: #5f9e79; --tra: #6f86c9; --out: #c96a6a;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--t1);
+         font:14px/1.55 "Inter","Segoe UI",system-ui,sans-serif; }
+  h1 { font-size:30px; line-height:1.15; margin:0 0 4px; letter-spacing:-.02em; }
+  h1 small { display:block; font-size:14px; font-weight:400; color:var(--t2); margin-top:6px; }
+  h2 { font-size:19px; margin:26px 0 10px; padding-top:12px; border-top:1px solid var(--line); }
+  h3 { font-size:15px; margin:18px 0 6px; color:var(--acc); }
+  h4 { font-size:13px; margin:14px 0 4px; color:var(--t1); }
+  p { margin:8px 0; }
+  code, kbd { font-family:"JetBrains Mono",ui-monospace,monospace; font-size:12px; }
+  kbd { background:#22202a; border:1px solid var(--line); border-bottom-width:2px;
+        border-radius:5px; padding:1px 6px; color:var(--t1); }
+  .cmd { background:#080810; border:1px solid var(--line); border-left:3px solid var(--acc);
+         border-radius:8px; padding:11px 13px; color:var(--ok); font-family:ui-monospace,monospace;
+         font-size:11.5px; overflow-wrap:anywhere; margin:10px 0; }
+  .steps { counter-reset:s; list-style:none; padding:0; margin:0; }
+  .steps > li { counter-increment:s; position:relative; padding:0 0 0 40px; margin:0 0 16px;
+                break-inside:avoid; }
+  .steps > li::before { content:counter(s); position:absolute; left:0; top:-1px;
+      width:26px; height:26px; border-radius:50%; background:var(--acc); color:#1a1420;
+      font-weight:700; font-size:13px; display:flex; align-items:center; justify-content:center; }
+  .steps b { color:var(--t1); }
+  .out { color:var(--t2); }
+  .out::before { content:"→ "; color:var(--acc); }
+  .bad { color:var(--warn); }
+  .bad::before { content:"⚠ "; }
+  .figs { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:12px 0; }
+  .figs.two { grid-template-columns:repeat(2,1fr); }
+  .fig { background:var(--card); border:1px solid var(--line); border-radius:10px;
+         padding:8px; text-align:center; break-inside:avoid; }
+  .fig img { width:100%; display:block; border-radius:6px; }
+  .fig figcaption { font-size:11px; color:var(--t2); margin-top:6px; }
+  .fig b { color:var(--t1); display:block; font-size:12.5px; }
+  .wide { background:var(--card); border:1px solid var(--line); border-radius:10px;
+          padding:10px; margin:12px 0; break-inside:avoid; }
+  .wide img { width:100%; display:block; border-radius:6px; }
+  .key { font-size:11.5px; color:var(--t2); margin-top:8px; display:flex; flex-wrap:wrap; gap:14px; }
+  .key i { font-style:normal; display:inline-flex; align-items:center; gap:6px; }
+  .key s { width:16px; height:3px; border-radius:2px; display:inline-block; text-decoration:none; }
+  table { border-collapse:collapse; width:100%; margin:6px 0 14px; font-size:11.5px; }
+  th, td { text-align:left; padding:4px 8px; border-bottom:1px solid var(--line); }
+  th { color:var(--t3); font-weight:600; font-size:10.5px; text-transform:uppercase;
+       letter-spacing:.05em; }
+  td.n { text-align:right; font-variant-numeric:tabular-nums; }
+  .note { background:var(--card); border:1px solid var(--line); border-left:3px solid var(--acc);
+          border-radius:8px; padding:10px 13px; margin:12px 0; font-size:13px; break-inside:avoid; }
+  .note b { color:var(--acc); }
+  .card-demo { background:var(--card); border:1px solid var(--line); border-radius:9px;
+       width:230px; overflow:hidden; font-size:11px; }
+  .card-demo .h { padding:5px 9px; font-weight:600; color:#0e0d10; font-size:11.5px; }
+  .card-demo .rows { padding:6px; display:grid; gap:3px; }
+  .card-demo .r { background:#0b0a0e; border-radius:4px; padding:3px 7px; display:flex;
+       justify-content:space-between; position:relative; overflow:hidden; }
+  .card-demo .r i { position:absolute; inset:0 auto 0 0; background:#3b3350; }
+  .card-demo .r span { position:relative; }
+  .card-demo .r .n { color:var(--t1); }
+  .card-demo .r .l { color:var(--t2); }
+  .card-demo .sec { color:var(--t3); padding:3px 7px; font-size:10.5px; }
+  .two-col { display:grid; grid-template-columns:230px 1fr; gap:16px; align-items:start; }
+  .params { font-size:11px; }
+  .params h4 { margin-top:12px; }
+  .soft { color:var(--t3); }
+  footer { margin-top:26px; padding-top:10px; border-top:1px solid var(--line);
+           color:var(--t3); font-size:11px; }
+</style>
+
+<h1>Nem todos ao mesmo tempo
+  <small>PH2D · Motion Nodes · tutorial 4 — os sete nós que decidem <b>quem</b> é afetado,
+  e <b>quanto</b></small></h1>
+
+<p>Nos três primeiros tutoriais tudo o que você fez aconteceu com <b>todos</b> os objetos ao mesmo
+tempo: todos andaram, todos giraram, todos dobraram. Este é sobre a pergunta que separa um
+brinquedo de uma ferramenta: <b>e se eu quiser que só alguns respondam?</b></p>
+
+<p>A resposta chama-se <b>campo</b>. Um campo não move nada — ele <b>pesa</b> cada objeto com um
+número entre 0 e 1, e o nó seguinte usa esse peso. Um objeto com peso 1 recebe o efeito inteiro;
+um com 0 fica exatamente como estava; e no meio há tudo o mais.</p>
+
+<div class="figs">
+  <figure class="fig"><img src="../fig/campo_circle.svg" alt="mancha redonda"><b>Falloff · Circle</b>
+    <figcaption>uma mancha redonda</figcaption></figure>
+  <figure class="fig"><img src="../fig/campo_rect.svg" alt="mancha quadrada inclinada"><b>Falloff · Rect</b>
+    <figcaption>a mesma, quadrada e inclinada</figcaption></figure>
+  <figure class="fig"><img src="../fig/campo_sweep.svg" alt="anel com uma fatia"><b>Radial Sweep</b>
+    <figcaption>uma fatia de anel</figcaption></figure>
+</div>
+
+<div class="note"><b>Estas imagens não são desenhos.</b> Cada quadrado é um objeto de verdade, do
+tamanho que o campo lhe deu, cozinhado pelo mesmo motor que roda no app. Se um campo parar de
+fazer efeito — ou se duas figuras ficarem iguais — elas <b>recusam-se a ser geradas</b>.</div>
+
+<h2>1 · Abrir</h2>
+<p>Cole isto inteiro num terminal. Na primeira vez ele compila (alguns minutos); depois abre em
+segundos.</p>
+<div class="cmd">cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value &amp;&amp; env PH2D_GPU_COOK_DEMO=112 cargo run -p ph2d-host-desktop --release</div>
+<p class="out">Abre uma tela escura com um <b>pano de quadradinhos iguais</b>, e uma <b>mancha
+deles maior</b> um pouco à direita do centro. A etiqueta <b>«arraste ESTA alca»</b> aponta para
+ela.</p>
+<p class="bad">Se o pano inteiro estiver grande por igual, o campo não está a ser lido — confira
+que copiou <code>PH2D_GPU_COOK_DEMO=112</code>.</p>
+
+<h2>2 · O campo tem uma alça, e ela é nova</h2>
+
+<p>Até este ciclo, o <b>Falloff</b> — o campo mais simples da casa — só se movia digitando números
+em dois controlos. Agora ele tem <b>caixa no canvas</b>, como qualquer objeto.</p>
+
+<ol class="steps">
+  <li><b>Clique no cartão <code>Falloff</code></b> — o terceiro da fila, entre <code>Scale</code> e <code>Remap</code>.
+      <div class="out">Uma caixa aparece à volta da mancha, na tela.</div>
+      <div class="bad">Se nenhuma caixa aparecer, o cartão não está selecionado — clique no
+      <em>título</em> dele.</div></li>
+  <li><b>Arraste a caixa.</b>
+      <div class="out">A mancha varre o pano. Os quadradinhos crescem quando ela passa por cima e
+      voltam ao tamanho normal quando ela sai.</div></li>
+  <li><b>Arraste um canto da caixa.</b>
+      <div class="out">A mancha cresce e encolhe — é o <code>Radius</code> do cartão a mudar
+      junto.</div></li>
+</ol>
+
+<div class="note"><b>Por que a mancha nasce de lado.</b> Se ela nascesse no meio do pano, arrastar
+a alça só a faria <em>sair</em> — e você aprenderia que um campo é um interruptor. De lado, ela
+tem para onde varrer, que é a coisa que o grupo inteiro existe para fazer.</div>
+
+<h2>3 · A forma da mancha</h2>
+
+<ol class="steps" start="4">
+  <li>No cartão <code>Falloff</code>, na linha <code>Shape</code>, troque <b>Circle</b> por
+      <b>Rect</b>.
+      <div class="out">A mancha fica quadrada. E uma linha <b><code>Rotation</code></b>
+      <em>aparece</em> no cartão, que não estava lá antes.</div></li>
+  <li>Arraste o <code>Rotation</code>.
+      <div class="out">A mancha quadrada inclina-se.</div>
+      <div class="bad">Se a linha <code>Rotation</code> não tiver aparecido, você ainda está em
+      <b>Circle</b> — e ali ela está escondida de propósito: girar um círculo não muda nada.</div></li>
+  <li>Volte a <b>Circle</b> e repare: a linha <code>Rotation</code> <b>desaparece</b>.</li>
+</ol>
+
+<h2>4 · A borda: dura, macia, ou o que você quiser</h2>
+
+<p>Um campo não tem só forma — tem <b>borda</b>. É a diferença entre um recorte de tesoura e um
+pincel de aerógrafo.</p>
+
+<ol class="steps" start="7">
+  <li>No cartão <code>Remap</code>, arraste <code>Curvature</code>.
+      <div class="out">A borda da mancha endurece ou amacia. A mancha <b>não</b> muda de sítio nem
+      de tamanho — só a passagem entre o cheio e o vazio.</div></li>
+  <li>Agora arraste <code>Multiplier</code>.
+      <div class="out">A mancha inteira pesa mais ou menos: os quadradinhos do meio crescem mais,
+      ou menos, sem a forma mudar.</div></li>
+</ol>
+
+<div class="note"><b>Por que são dois nós e não um.</b> O <code>Falloff</code> responde
+<em>«onde»</em> e o <code>Remap</code> responde <em>«quanto»</em>. Separados, você pode
+trocar a forma sem perder a curva, e reutilizar a mesma curva noutra forma.</div>
+
+<h2>5 · Os outros cinco</h2>
+
+<div class="figs">
+  <figure class="fig"><img src="../fig/campo_box.svg" alt="caixa inclinada com borda macia"><b>Box</b>
+    <figcaption>uma caixa, com largura e altura próprias</figcaption></figure>
+  <figure class="fig"><img src="../fig/campo_rank.svg" alt="faixa de objetos por ordem"><b>Index Range</b>
+    <figcaption>«do 3.º ao 10.º» — por ordem, não por posição</figcaption></figure>
+  <figure class="fig"><img src="../fig/campo_sweep.svg" alt="fatia de anel"><b>Radial Sweep</b>
+    <figcaption>a fatia, o anel, o relógio</figcaption></figure>
+</div>
+
+<p>Faltam dois, e os dois precisam de <b>duas entradas</b>:</p>
+
+<ul>
+  <li><b>Combine Fields</b> junta <b>dois</b> campos — some, multiplique, tire o máximo. É como
+      você faz uma mancha que é «dentro do círculo <em>e</em> na metade de cima».</li>
+  <li><b>Shape Field</b> usa <b>um desenho seu</b> como campo: o que estiver dentro do contorno é
+      afetado, o resto não.</li>
+</ul>
+
+<div class="note"><b>Se um deles não fizer nada, ele agora avisa.</b> Um <b>⚠</b> aparece no nó
+enquanto a segunda entrada estiver desligada — antes deste ciclo eles ficavam calados e pareciam
+avariados.</div>
+
+<h2>6 · O que cada controlo faz</h2>
+
+<p>A tabela abaixo é <b>gerada do próprio app</b>: ela lista o que cada cartão mostra quando você
+larga o nó, com a faixa e a unidade de cada controlo.</p>
+
+<!-- GERADO pelo gerador do tutorial. Nao editar a mao. -->
+<h4 id="p-falloff">Falloff</h4>
+<table class="params">
+<tr><th>controlo</th><th>faixa</th><th>unidade</th></tr>
+<tr><td>Shape</td><td>Circle · Rect · Linear</td><td></td></tr>
+<tr><td>Curve</td><td>Linear · Quad · Smooth · Smoother</td><td></td></tr>
+<tr><td>Center X</td><td>-1000 a 1000</td><td>px</td></tr>
+<tr><td>Center Y</td><td>-1000 a 1000</td><td>px</td></tr>
+<tr><td>Radius</td><td>0 a 2000</td><td>px</td></tr>
+<tr><td>Invert</td><td>liga / desliga</td><td></td></tr>
+<tr><td>Mask Channel</td><td>Falloff · Falloff Y</td><td></td></tr>
+</table>
+<p class="soft">Só noutro modo: <b>Rotation</b> aparece quando <b>Shape</b> é Rect ou Linear.</p>
+<h4 id="p-box">Box</h4>
+<table class="params">
+<tr><th>controlo</th><th>faixa</th><th>unidade</th></tr>
+<tr><td>Width</td><td>0 a 4000 <span class="soft">(digitável até 209715187.5)</span></td><td>px</td></tr>
+<tr><td>Height</td><td>0 a 4000 <span class="soft">(digitável até 209715187.5)</span></td><td>px</td></tr>
+<tr><td>Center X</td><td>-1000 a 1000</td><td>px</td></tr>
+<tr><td>Center Y</td><td>-1000 a 1000</td><td>px</td></tr>
+<tr><td>Rotation</td><td>-180 a 180</td><td>graus</td></tr>
+<tr><td>Softness</td><td>0 a 1000 <span class="soft">(digitável até 2000)</span></td><td>px</td></tr>
+<tr><td>Curve</td><td>Linear · Quad · Smooth · Smoother</td><td></td></tr>
+<tr><td>Strength</td><td>-1 a 2</td><td></td></tr>
+<tr><td>Invert</td><td>liga / desliga</td><td></td></tr>
+</table>
+<h4 id="p-radial-sweep">Radial Sweep</h4>
+<table class="params">
+<tr><th>controlo</th><th>faixa</th><th>unidade</th></tr>
+<tr><td>Radius</td><td>0 a 4000 <span class="soft">(digitável até 209715187.5)</span></td><td>px</td></tr>
+<tr><td>Start Angle</td><td>-360 a 360</td><td>graus</td></tr>
+<tr><td>End Angle</td><td>-360 a 360</td><td>graus</td></tr>
+<tr><td>Repetitions</td><td>1 a 32</td><td></td></tr>
+<tr><td>Angular Bias</td><td>0 a 2</td><td></td></tr>
+<tr><td>Inner Radius</td><td>0 a 40 <span class="soft">(digitável até 2097151.875)</span></td><td></td></tr>
+<tr><td>Center X</td><td>-1000 a 1000</td><td>px</td></tr>
+<tr><td>Center Y</td><td>-1000 a 1000</td><td>px</td></tr>
+<tr><td>Rotation</td><td>-180 a 180</td><td>graus</td></tr>
+<tr><td>Softness</td><td>0 a 1</td><td></td></tr>
+<tr><td>Curve</td><td>Linear · Quad · Smooth · Smoother</td><td></td></tr>
+<tr><td>Invert</td><td>liga / desliga</td><td></td></tr>
+</table>
+<h4 id="p-index-range">Index Range</h4>
+<table class="params">
+<tr><th>controlo</th><th>faixa</th><th>unidade</th></tr>
+<tr><td>Start</td><td>0 a 1</td><td></td></tr>
+<tr><td>End</td><td>0 a 1</td><td></td></tr>
+<tr><td>Softness</td><td>0 a 1</td><td></td></tr>
+<tr><td>Curve</td><td>Linear · Quad · Smooth · Smoother</td><td></td></tr>
+<tr><td>Invert</td><td>liga / desliga</td><td></td></tr>
+<tr><td>Order By</td><td>Index · Attribute</td><td></td></tr>
+</table>
+<h4 id="p-remap">Remap</h4>
+<table class="params">
+<tr><th>controlo</th><th>faixa</th><th>unidade</th></tr>
+<tr><td>Inner Offset</td><td>0 a 1</td><td></td></tr>
+<tr><td>Contour</td><td>None · Quadratic · Step · Quantize · Curve</td><td></td></tr>
+<tr><td>Curvature</td><td>-1 a 1</td><td></td></tr>
+<tr><td>Min</td><td>0 a 1</td><td></td></tr>
+<tr><td>Max</td><td>0 a 1</td><td></td></tr>
+<tr><td>Multiplier</td><td>0 a 4</td><td></td></tr>
+<tr><td>Clamp</td><td>Off · Both · Min Only · Max Only</td><td></td></tr>
+<tr><td>Invert</td><td>liga / desliga</td><td></td></tr>
+<tr><td>Strength</td><td>0 a 1</td><td></td></tr>
+<tr><td>Probability</td><td>0 a 1</td><td></td></tr>
+<tr><td>Seed</td><td>0 a 9999</td><td></td></tr>
+</table>
+<p class="soft">Só noutro modo: <b>Curve</b> aparece quando <b>Contour</b> é Curve · <b>Steps</b> aparece quando <b>Contour</b> é Step ou Quantize · <b>Curve Offset</b> aparece quando <b>Contour</b> é Curve.</p>
+<h4 id="p-combine">Combine Fields</h4>
+<table class="params">
+<tr><th>controlo</th><th>faixa</th><th>unidade</th></tr>
+<tr><td>Mode</td><td>Normal · Add · Subtract · Multiply · Screen · Min · Max · Overlay · Average</td><td></td></tr>
+<tr><td>Strength</td><td>0 a 1</td><td></td></tr>
+<tr><td>Clamp</td><td>liga / desliga</td><td></td></tr>
+</table>
+<h4 id="p-shape">Shape Field</h4>
+<table class="params">
+<tr><th>controlo</th><th>faixa</th><th>unidade</th></tr>
+<tr><td>Path Mode</td><td>Filled Path · Path Edges</td><td></td></tr>
+<tr><td>Distance</td><td>0 a 2000</td><td>px</td></tr>
+<tr><td>Curve</td><td>Linear · Quad · Smooth · Smoother</td><td></td></tr>
+<tr><td>Invert</td><td>liga / desliga</td><td></td></tr>
+</table>
+
+
+<h2>7 · Vá além</h2>
+<ol class="steps">
+  <li><b>Dois campos numa cadeia.</b> Ponha um segundo <code>Falloff</code> a seguir ao primeiro:
+      os pesos multiplicam-se, e você fica com a intersecção das duas manchas.</li>
+  <li><b>Um campo a mandar noutra coisa.</b> Há <b>dois</b> cartões <code>Scale</code> na fila; troque o que vem <em>depois</em> do <code>Remap</code> por um
+      <code>Rotate</code>: agora a mancha faz os objetos <em>girarem</em> em vez de crescerem — o
+      campo é o mesmo, o efeito é outro.</li>
+  <li><b>Ordem em vez de posição.</b> Substitua o <code>Falloff</code> por um
+      <code>Index Range</code>: a mancha deixa de ser um lugar e passa a ser <em>«do 3.º ao
+      10.º»</em>, que é o que faz uma onda percorrer uma fila.</li>
+</ol>
+
+<h2>8 · Se algo não bater</h2>
+<table>
+  <tr><th>o que você vê</th><th>o que é</th></tr>
+  <tr><td>O pano inteiro cresce por igual</td><td>o campo não está a ser lido — confira que o
+      <code>Falloff</code> está <em>entre</em> a grelha e o <code>Scale</code> na fila de
+      cartões</td></tr>
+  <tr><td>Nenhuma caixa aparece ao clicar no <code>Falloff</code></td><td>o cartão não está
+      selecionado; clique no título dele</td></tr>
+  <tr><td>A linha <code>Rotation</code> não existe</td><td>a forma é <b>Circle</b> — ali ela está
+      escondida de propósito</td></tr>
+  <tr><td>O <code>Combine Fields</code> ou o <code>Shape Field</code> não fazem nada e têm um
+      <b>⚠</b></td><td>falta a segunda entrada: ligue um campo na porta <code>b</code>, ou um
+      desenho na porta <code>shape</code></td></tr>
+  <tr><td>A cena engasga com muitos objetos</td><td>o <b>Shape Field</b> é o único dos sete que
+      não roda na placa de vídeo; com ele na fila, tudo volta para o processador</td></tr>
+</table>
+
+<footer>PH2D · Motion Nodes · ciclo 4 (os campos) · as figuras e a tabela de controlos são geradas
+do próprio app.</footer>

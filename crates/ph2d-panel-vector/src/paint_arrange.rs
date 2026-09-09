@@ -11,12 +11,11 @@
 use crate::paint_sections::BodyCtx;
 use crate::state::{FillKind, PathFillRule};
 use crate::{ids, state};
-use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::widget::panel_chrome::paint_segmented_group_adaptive;
 use ph2d_editor_core::widget::{Button, ButtonKind, paint_button};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
-use ph2d_tokens::{ColorToken, Spacing, TypeToken};
+use ph2d_tokens::Spacing;
 
 /// Full turn in degrees (Angle slider track `0..1` maps to `0..FULL_TURN_DEG`).
 const FULL_TURN_DEG: f64 = 360.0; // LITERAL-PX-OK: degrees in a full turn (math constant)
@@ -108,32 +107,9 @@ impl BodyCtx<'_> {
         &mut self,
         label: &str,
         opts: &[(ph2d_a11y::NodeId, &str, bool)],
-        mut y: f32,
+        y: f32,
     ) -> f32 {
-        let font = TypeToken::Sm.px();
-        paint_text(
-            self.text_system,
-            self.scene,
-            label,
-            self.inner_x,
-            y,
-            font,
-            self.inner_w,
-            resolve(ColorToken::Text2, self.theme),
-        );
-        y += font + Spacing::Xs.px();
-        let segs: Vec<(&str, bool, ph2d_a11y::NodeId)> =
-            opts.iter().map(|(id, lbl, on)| (*lbl, *on, *id)).collect();
-        let used = paint_segmented_group_adaptive(
-            Rect::new(self.inner_x, y, self.inner_w, self.row_h),
-            &segs,
-            self.scene,
-            self.text_system,
-            self.theme,
-            self.store,
-            self.hit_index,
-        );
-        y + used + self.row_gap
+        self.with_rows(|r| r.segmented(label, opts, y))
     }
 
     /// Snap em FORMAS — ajuste da ferramenta (não da seleção), sempre visível.

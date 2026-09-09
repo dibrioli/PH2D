@@ -1,0 +1,230 @@
+//! ⭐⭐⭐ **O VOCABULÁRIO DE LINHAS de um painel de propriedades — uma lei, N hospedeiros.**
+//!
+//! Um cabeçalho de secção, um botão de acção, um botão rotulado, um campo numérico rotulado e uma
+//! fileira de segmentos. Cada um é uma *composição* dos primitivos do design system
+//! ([`crate::widget`]) com o **ritmo** desta casa: a coluna de rótulo, o vão entre controlos, a
+//! altura de linha.
+//!
+//! # ⛔⛔ Por que ele saiu do painel de vetor
+//!
+//! Ele nasceu lá dentro, como `BodyCtx`, e ficou correcto enquanto **um** painel o usava. Em
+//! 2026-09-09 o esqueleto ganhou painel próprio (ordem do dono) e passaram a ser **dois** — e a
+//! escolha era duplicar ~200 linhas de composição ou nomear a lei uma vez.
+//!
+//! ⚠️ **O que se duplicaria não é «código»: é o RITMO.** Duas cópias divergem na primeira vez que
+//! alguém mexe num vão, e o sintoma é um painel que *parece* de outro app — a lição que o
+//! `ph2d-tokens` já escreveu (*«a cara de um app é a tabela de tokens»*).
+//!
+//! # ⚠️ Ele vive em `panel/` e NÃO em `widget/`
+//!
+//! Um `widget` é um primitivo com desenho próprio e entra no showcase (há gate). Isto é
+//! **composição** — nada aqui desenha uma forma que os primitivos já não desenhem —, e o sítio dela
+//! é ao lado do [`super::PaintCtx`], que é a outra metade da infra-estrutura de painel.
+//!
+//! # ⚠️ Os 147 chamadores do painel de vetor NÃO mudaram
+//!
+//! O `BodyCtx` de lá manteve os métodos e passou a **delegar**. *Uma extracção que obriga 147
+//! sítios a mudar de nome no mesmo commit é uma extracção que colide com toda linha viva.*
+
+use crate::interaction::{HitIndex, WidgetStore};
+use crate::paint::{paint_text, resolve};
+use crate::widget::panel_chrome::{SECTION_LABEL_TO_CONTROL_PX, paint_segmented_group_adaptive};
+use crate::widget::section_cards::close_section;
+use crate::widget::showcase::read_number_input;
+use crate::widget::{
+    Button, ButtonKind, NumberInput, SectionFold, SectionHeader, paint_button,
+    paint_number_input_with_buffer, paint_section_header,
+};
+use crate::zones::Rect;
+use ph2d_a11y::NodeId;
+use ph2d_text::TextSystem;
+use ph2d_tokens::{ColorToken, Spacing, Theme, TypeToken};
+use ph2d_vector::VectorScene;
+
+/// **A coluna de RÓTULO** de uma linha rotulada, em px.
+///
+/// ⚠️ É uma métrica de grelha do painel, não um token de cor nem de vão — ela existe para que o
+/// rótulo e a caixa de dez linhas seguidas alinhem na mesma vertical.
+pub const LABEL_COL_W: f32 = 64.0; // LITERAL-PX-OK: panel grid metric (per-panel label gutter width)
+
+/// **O contexto de uma linha** — os alvos mutáveis do quadro mais as métricas partilhadas.
+///
+/// ⚠️ **A `store` é `&` e não `&mut`, de propósito:** o passe de pintura de um painel **não escreve
+/// estado de widget**. Quem precisa de escrever fá-lo no passe diferido, que é o único sítio com a
+/// loja mutável na mão.
+pub struct RowCtx<'a> {
+    pub scene: &'a mut VectorScene,
+    pub text_system: &'a mut TextSystem,
+    pub store: &'a WidgetStore,
+    pub hit_index: &'a mut HitIndex,
+    pub theme: Theme,
+    pub inner_x: f32,
+    pub inner_w: f32,
+    pub row_h: f32,
+    pub row_gap: f32,
+    pub font: f32,
+    /// **A dobra da secção que está a ser pintada AGORA**, guardada entre o
+    /// [`RowCtx::section_header`] que a abre e o [`RowCtx::close_fold`] que a fecha.
+    pub open_fold: Option<SectionFold>,
+}
+
+impl RowCtx<'_> {
+    /// **O cabeçalho de uma secção.** Devolve `(y do corpo, está FECHADA E PARADA)`.
+    ///
+    /// ⚠️ O `bool` não é o `is_collapsed`: é *fechada **e parada***. Ao clicar para fechar, o flag
+    /// semântico vira neste quadro e o `t` ainda desce — um corpo gateado no flag sumiria de repente
+    /// por baixo de um chevron a rodar.
+    pub fn section_header(&mut self, id: NodeId, label: &str, y: f32) -> (f32, bool) {
+        let header_h = TypeToken::Md.px() + Spacing::Md.px();
+        let collapsed = self.store.is_collapsed(id);
+        let header = SectionHeader::new(id, label)
+            .collapsible(!collapsed)
+            .open_t(self.store.section_open_live(id));
+        let rect = Rect::new(self.inner_x, y, self.inner_w, header_h);
+        paint_section_header(&header, rect, self.scene, self.text_system, self.theme);
+        self.hit_index.register(id, rect);
+        let body_top = y + header_h + SECTION_LABEL_TO_CONTROL_PX;
+        self.open_fold = SectionFold::begin(
+            self.store,
+            id,
+            self.inner_x,
+            self.inner_w,
+            body_top,
+            self.scene,
+            self.hit_index,
+        );
+        (body_top, self.open_fold.is_none())
+    }
+
+    /// **Fecha a dobra que a secção abriu.** ⛔ Esquecê-la deixa a secção seguinte a herdar a dobra
+    /// desta, que já foi fechada.
+    pub fn close_fold(&mut self, after: f32) -> f32 {
+        match self.open_fold.take() {
+            Some(fold) => fold.finish(self.store, self.scene, self.hit_index, after),
+            None => after,
+        }
+    }
+
+    /// A linha canónica que fecha uma secção.
+    pub fn separator(&mut self, y: f32) -> f32 {
+        close_section(self.scene, self.theme, self.inner_x, self.inner_w, y)
+    }
+
+    /// **Um botão de acção de largura inteira.**
+    pub fn action_button(&mut self, id: NodeId, label: &str, y: f32) -> f32 {
+        self.action_button_kind(id, label, ButtonKind::Default, y)
+    }
+
+    /// O mesmo, com um `kind` escolhido — um **Accent** é como uma acção de *commit* se destaca.
+    pub fn action_button_kind(&mut self, id: NodeId, label: &str, kind: ButtonKind, y: f32) -> f32 {
+        let rect = Rect::new(self.inner_x, y, self.inner_w, self.row_h);
+        let st = self.store.button_visual(id);
+        let btn = Button::new(id, label).kind(kind).visual(st);
+        paint_button(&btn, rect, self.scene, self.text_system, self.theme);
+        self.hit_index.register(id, rect);
+        y + self.row_h + ph2d_tokens::control_gap_px()
+    }
+
+    /// **Um botão ROTULADO** (`<rótulo> [ botão ]`) — a geometria do [`Self::labeled_number_field`]
+    /// com um botão no lugar da caixa.
+    ///
+    /// ⚠️ Ele existe porque um botão que é também o **readout** de uma escolha precisa da coluna de
+    /// rótulo dos vizinhos: sem ela, o nome do que foi escolhido lê-se como mais um verbo.
+    /// ⚠️ O `on` **acende** o botão (`Accent`): ele é o readout de uma escolha, e um readout que
+    /// não distingue *escolhido* de *por escolher* obriga a abrir outra coisa para saber.
+    pub fn labeled_action_button(
+        &mut self,
+        label: &str,
+        id: NodeId,
+        texto: &str,
+        on: bool,
+        y: f32,
+    ) -> f32 {
+        let gap = Spacing::Xs.px();
+        self.label_cell(label, y);
+        let x = self.inner_x + LABEL_COL_W + gap;
+        let w = (self.inner_w - LABEL_COL_W - gap).max(1.0);
+        let rect = Rect::new(x, y, w, self.row_h);
+        let st = self.store.button_visual(id);
+        let btn = Button::new(id, texto)
+            .kind(if on {
+                ButtonKind::Accent
+            } else {
+                ButtonKind::Default
+            })
+            .visual(st);
+        paint_button(&btn, rect, self.scene, self.text_system, self.theme);
+        self.hit_index.register(id, rect);
+        // ⚠️ **O vão é o de CONTROLO, não o de linha** — ele é um botão, e a fileira de botões
+        // desta casa respira com o `control_gap_px`. Trocá-lo aqui desalinharia esta linha das
+        // vizinhas por uns poucos px, que é a espécie de deriva que ninguém reporta e todos veem.
+        y + self.row_h + ph2d_tokens::control_gap_px()
+    }
+
+    /// **Um campo numérico ROTULADO** (`<rótulo> [ 12,0 ]`).
+    pub fn labeled_number_field(&mut self, label: &str, id: NodeId, step: f64, y: f32) -> f32 {
+        let gap = Spacing::Xs.px();
+        self.label_cell(label, y);
+        let x = self.inner_x + LABEL_COL_W + gap;
+        let w = (self.inner_w - LABEL_COL_W - gap).max(1.0);
+        let rect = Rect::new(x, y, w, self.row_h);
+        self.hit_index.register(id, rect);
+        let (st, value, buffer, caret, anchor) = read_number_input(self.store, id);
+        let input = NumberInput::new(id, "", value)
+            .step(step)
+            .visual((st, self.store.hover_live(id)));
+        paint_number_input_with_buffer(
+            &input,
+            Some(buffer),
+            caret,
+            anchor,
+            rect,
+            self.scene,
+            self.text_system,
+            self.theme,
+        );
+        y + self.row_h + self.row_gap
+    }
+
+    /// **Uma fileira de segmentos com rótulo por cima** — uma escolha entre MODOS nomeados.
+    pub fn segmented(&mut self, label: &str, opts: &[(NodeId, &str, bool)], mut y: f32) -> f32 {
+        let font = TypeToken::Sm.px();
+        paint_text(
+            self.text_system,
+            self.scene,
+            label,
+            self.inner_x,
+            y,
+            font,
+            self.inner_w,
+            resolve(ColorToken::Text2, self.theme),
+        );
+        y += font + Spacing::Xs.px();
+        let segs: Vec<(&str, bool, NodeId)> =
+            opts.iter().map(|(id, lbl, on)| (*lbl, *on, *id)).collect();
+        let used = paint_segmented_group_adaptive(
+            Rect::new(self.inner_x, y, self.inner_w, self.row_h),
+            &segs,
+            self.scene,
+            self.text_system,
+            self.theme,
+            self.store,
+            self.hit_index,
+        );
+        y + used + self.row_gap
+    }
+
+    /// A célula de rótulo das duas linhas rotuladas — uma porta, para as duas nunca desalinharem.
+    fn label_cell(&mut self, label: &str, y: f32) {
+        paint_text(
+            self.text_system,
+            self.scene,
+            label,
+            self.inner_x,
+            y + (self.row_h - TypeToken::Sm.px()) * 0.5,
+            TypeToken::Sm.px(),
+            LABEL_COL_W,
+            resolve(ColorToken::Text2, self.theme),
+        );
+    }
+}

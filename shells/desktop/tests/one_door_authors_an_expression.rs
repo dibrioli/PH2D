@@ -141,17 +141,29 @@ fn the_per_clip_expression_is_authored_through_exactly_one_door() {
         sources(&root().join(c), &mut files);
     }
 
-    let (scenes, product) = split_by_scene(&files, |s| s.contains("set_clip_expr("));
+    // ⚠️⚠️ **A DEFINIÇÃO e a CHAMADA contam-se separadas, e a 1.ª redacção não as separava:** ela
+    // exigia `["doc.rs", "intent_apply.rs"]` e reprovou em 2026-09-09 quando o `doc.rs` foi
+    // **cortado** por bater no teto de LOC e a função mudou de ficheiro. *A propriedade nunca foi
+    // «a definição vive no doc.rs» — é «há UMA porta e UM chamador».* Um gate que ancora numa
+    // propriedade acidental reprova sobre produto correcto, e o custo é alguém a mover a função de
+    // volta para o ficheiro errado só para o calar.
+    let (scenes, product) = split_by_scene(&files, |s| s.contains(".set_clip_expr("));
+    let (_, definicao) = split_by_scene(&files, |s| s.contains("fn set_clip_expr("));
 
     assert!(
         !scenes.is_empty(),
         "CONTROLE: as cenas de smoke montam documentos com fórmula, e o scanner tem de vê-las"
     );
-    // `doc.rs` DEFINE a função; `intent_apply.rs` é o único que a CHAMA no produto.
+    assert_eq!(
+        definicao.len(),
+        1,
+        "a porta deixou de ser UMA — há {} definições de `set_clip_expr`: {definicao:?}",
+        definicao.len()
+    );
     assert_eq!(
         product,
-        vec!["doc.rs".to_string(), "intent_apply.rs".to_string()],
-        "a definição + UM chamador, e o chamador é o INTENT (a autoria passa pelo undo, não \
-         por baixo dele). Uma segunda porta é exactamente o defeito D4: {product:?}"
+        vec!["intent_apply.rs".to_string()],
+        "UM chamador, e ele é o INTENT (a autoria passa pelo undo, não por baixo dele). Uma \
+         segunda porta é exactamente o defeito D4: {product:?}"
     );
 }

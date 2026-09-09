@@ -230,6 +230,13 @@ por cima da pose do artista»*. Construí a cura (declarar a condução **todo q
 `preview_drive` já tem: perturbar um osso governado muda a solução, então a restrição **volta a
 escrever** no quadro seguinte, e nessa escrita o `before` é a pose do artista.
 
+⚠️⚠️ **E em 2026-09-09 aquela cura VOLTOU À ÁRVORE, por outra pergunta** (`still_driving`, F3-l): o
+report *«Remove Smart Bone não devolve o objeto»* mediu que um condutor **persistente** era largado
+pela `settle` um quadro depois de o output ficar constante. ⛔ **Isto NÃO reabre este item:** a
+refutação acima continua de pé e tem gate (`posing_a_governed_bone_by_hand_is_not_swallowed_by_the_ledger`,
+verde depois da cura). *Uma recusa medida responde UMA pergunta — e a de 07/09 era «a pose da outra
+mão é engolida?», não «o autorado ainda lá está quando o motor é DESLIGADO?».*
+
 ⚠️ **E TRÊS fixturas não produziram o fenómeno antes de a quarta o fazer**, cada uma por uma metade
 diferente: a régua era `solve() == 0` (que conta escritas de **1 ULP**, não movimento) · a cadeia do
 `braco()` **nunca assenta** · e sem um arrasto ANTES não há entrada no memo para ficar velha.

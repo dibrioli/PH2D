@@ -10,7 +10,6 @@
 
 use super::paint_sections::{BodyCtx, LABEL_COL_W};
 use ph2d_editor_core::paint::{paint_text, paint_text_block, resolve};
-use ph2d_editor_core::widget::section_cards::close_section;
 use ph2d_editor_core::widget::showcase::read_number_input;
 use ph2d_editor_core::widget::{
     Button, ButtonKind, Checkbox, CheckboxValue, ColorSwatch, NumberInput, SwatchSize,
@@ -72,7 +71,7 @@ impl BodyCtx<'_> {
 
     /// A linha canônica ENTRE seções (nunca dentro de uma).
     pub(crate) fn separator(&mut self, y: f32) -> f32 {
-        close_section(self.scene, self.theme, self.inner_x, self.inner_w, y)
+        self.with_rows(|r| r.separator(y))
     }
 
     /// **Uma linha de CHECKBOX** — caixa à esquerda, rótulo à direita.
@@ -227,12 +226,7 @@ impl BodyCtx<'_> {
         kind: ButtonKind,
         y: f32,
     ) -> f32 {
-        let rect = Rect::new(self.inner_x, y, self.inner_w, self.row_h);
-        let st = self.store.button_visual(id);
-        let btn = Button::new(id, label).kind(kind).visual(st);
-        paint_button(&btn, rect, self.scene, self.text_system, self.theme);
-        self.hit_index.register(id, rect);
-        y + self.row_h + ph2d_tokens::control_gap_px()
+        self.with_rows(|r| r.action_button_kind(id, label, kind, y))
     }
 
     /// ⭐ **Um BOTÃO rotulado** (`<rótulo> [ botão ]`) — a mesma geometria do
@@ -249,33 +243,7 @@ impl BodyCtx<'_> {
         on: bool,
         y: f32,
     ) -> f32 {
-        let gap = ph2d_tokens::Spacing::Xs.px();
-        paint_text(
-            self.text_system,
-            self.scene,
-            label,
-            self.inner_x,
-            y + (self.row_h - ph2d_tokens::TypeToken::Sm.px()) * 0.5,
-            ph2d_tokens::TypeToken::Sm.px(),
-            crate::paint_sections::LABEL_COL_W,
-            resolve(ColorToken::Text2, self.theme),
-        );
-        let rect = Rect::new(
-            self.inner_x + crate::paint_sections::LABEL_COL_W + gap,
-            y,
-            (self.inner_w - crate::paint_sections::LABEL_COL_W - gap).max(1.0),
-            self.row_h,
-        );
-        let btn = Button::new(id, text)
-            .kind(if on {
-                ButtonKind::Accent
-            } else {
-                ButtonKind::Default
-            })
-            .visual(self.store.button_visual(id));
-        paint_button(&btn, rect, self.scene, self.text_system, self.theme);
-        self.hit_index.register(id, rect);
-        y + self.row_h + ph2d_tokens::control_gap_px()
+        self.with_rows(|r| r.labeled_action_button(label, id, text, on, y))
     }
 
     /// **Uma linha de DOIS campos numéricos rotulados** (X | Y, W | H, Gap principal | transversal).

@@ -25,6 +25,8 @@ pub mod manifest;
 pub mod paint_ctx;
 pub mod panel_trait;
 pub mod registry;
+/// ⭐⭐⭐ **O vocabulário de LINHAS de um painel de propriedades** — uma lei, N hospedeiros.
+pub mod rows;
 pub mod seam_macro;
 
 pub use erased::ErasedPanel;
@@ -37,4 +39,5 @@ pub use registry::{
     PANEL_REGISTRY, PanelRegistry, install_panel_registry, with_registry, with_registry_opt,
     with_registry_ref,
 };
+pub use rows::{LABEL_COL_W, RowCtx};
 pub use seam_macro::seam_reset_button;

@@ -12,10 +12,9 @@ use crate::section_scope as scope;
 use crate::state;
 use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
 use ph2d_editor_core::paint::{paint_text, resolve};
-use ph2d_editor_core::widget::panel_chrome::{SECTION_LABEL_TO_CONTROL_PX, paint_segmented_button};
+use ph2d_editor_core::widget::panel_chrome::paint_segmented_button;
 use ph2d_editor_core::widget::{
-    ButtonKind, ColorSwatch, SectionFold, SectionHeader, SwatchSize, paint_color_swatch,
-    paint_section_header,
+    ButtonKind, ColorSwatch, SectionFold, SwatchSize, paint_color_swatch,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
@@ -32,7 +31,11 @@ use ph2d_vec_scene::StrokeAlign;
 use ph2d_vector::VectorScene;
 
 /// Label column width for the Width slider row + the Stroke / Fill labels.
-pub(crate) const LABEL_COL_W: f32 = 64.0; // LITERAL-PX-OK: panel grid metric (per-panel label gutter width)
+///
+/// ⚠️ **Re-exportado da porta** ([`ph2d_editor_core::panel::LABEL_COL_W`]) desde 2026-09-09: com o
+/// esqueleto em painel próprio são DOIS painéis a alinhar a mesma coluna, e dois números iguais
+/// escritos em sítios diferentes divergem na primeira vez que alguém mexe num deles.
+pub(crate) use ph2d_editor_core::panel::LABEL_COL_W;
 
 /// Per-frame paint context for the Vector Style panel body — the mutable render
 /// targets + the shared layout metrics. Constructed once per frame in
@@ -57,6 +60,41 @@ pub(crate) struct BodyCtx<'a> {
     /// coisa que pode acontecer é esquecer o `finish`. O `step` já é a porta por onde toda secção
     /// passa — é lá que ela fecha.
     pub open_fold: Option<SectionFold>,
+}
+
+impl BodyCtx<'_> {
+    /// ⭐⭐⭐ **A PORTA para o vocabulário de linhas partilhado**
+    /// ([`ph2d_editor_core::panel::RowCtx`]).
+    ///
+    /// ⛔⛔ **Ela existe para que os 147 chamadores deste painel NÃO mudem.** O vocabulário saiu
+    /// daqui em 2026-09-09, quando o esqueleto ganhou painel próprio e passaram a ser dois
+    /// hospedeiros — e *uma extracção que obriga 147 sítios a mudar de nome no mesmo commit é uma
+    /// extracção que colide com toda linha viva*. Os métodos ficaram; os corpos passaram a delegar.
+    ///
+    /// ⚠️ **A dobra ATRAVESSA** (entra e volta): ela é aberta pelo `section_header` e fechada pelo
+    /// `close_fold`, que são duas chamadas distintas — deixá-la para trás faria toda secção deste
+    /// painel nascer sem dobra.
+    pub(crate) fn with_rows<R>(
+        &mut self,
+        f: impl FnOnce(&mut ph2d_editor_core::panel::RowCtx) -> R,
+    ) -> R {
+        let mut rc = ph2d_editor_core::panel::RowCtx {
+            scene: &mut *self.scene,
+            text_system: &mut *self.text_system,
+            store: self.store,
+            hit_index: &mut *self.hit_index,
+            theme: self.theme,
+            inner_x: self.inner_x,
+            inner_w: self.inner_w,
+            row_h: self.row_h,
+            row_gap: self.row_gap,
+            font: self.font,
+            open_fold: self.open_fold.take(),
+        };
+        let out = f(&mut rc);
+        self.open_fold = rc.open_fold.take();
+        out
+    }
 }
 
 /// A seção **States** (plano UI/UX W7) — módulo irmão (teto de 600 LOC).
@@ -215,29 +253,7 @@ impl BodyCtx<'_> {
         label: &str,
         y: f32,
     ) -> (f32, bool) {
-        let header_h = TypeToken::Md.px() + Spacing::Md.px();
-        let collapsed = self.store.is_collapsed(id);
-        let header = SectionHeader::new(id, label)
-            .collapsible(!collapsed)
-            .open_t(self.store.section_open_live(id));
-        let rect = Rect::new(self.inner_x, y, self.inner_w, header_h);
-        paint_section_header(&header, rect, self.scene, self.text_system, self.theme);
-        self.hit_index.register(id, rect);
-        let body_top = y + header_h + SECTION_LABEL_TO_CONTROL_PX;
-        // ⚠️ **A DOBRA (F4b)** — o `bool` devolvido deixou de ser o `is_collapsed` e passou a ser
-        //    *fechada **E PARADA***. A distinção é o que a wave entrega: ao clicar para fechar, o
-        //    flag semântico vira neste quadro e o `t` ainda desce, então um corpo gateado nele
-        //    sumiria de repente por baixo de um chevron a rodar. Quem fecha o escopo é o `step`.
-        self.open_fold = SectionFold::begin(
-            self.store,
-            id,
-            self.inner_x,
-            self.inner_w,
-            body_top,
-            self.scene,
-            self.hit_index,
-        );
-        (body_top, self.open_fold.is_none())
+        self.with_rows(|r| r.section_header(id, label, y))
     }
 
     /// **A ordem do corpo.** "O que estou fazendo" (modo · forma · parâmetros da forma)
@@ -382,10 +398,7 @@ impl BodyCtx<'_> {
     /// fecho, com DOIS consumidores (o [`BodyCtx::step`] e a última secção, que não passa por ele).
     /// Sem dobra em voo é a identidade.
     fn close_fold(&mut self, after: f32) -> f32 {
-        match self.open_fold.take() {
-            Some(fold) => fold.finish(self.store, self.scene, self.hit_index, after),
-            None => after,
-        }
+        self.with_rows(|r| r.close_fold(after))
     }
 
     /// ⭐⭐⭐ **Um passo do corpo QUE PERGUNTA DE QUEM É A SEÇÃO** — o irmão do [`Self::step`] com a

@@ -30,8 +30,6 @@ use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::widget::panel_chrome::{
     paint_segmented_button, paint_segmented_button_in_group,
 };
-use ph2d_editor_core::widget::showcase::read_number_input;
-use ph2d_editor_core::widget::{NumberInput, paint_number_input_with_buffer};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, Spacing, TypeToken};
@@ -370,35 +368,6 @@ impl BodyCtx<'_> {
         step: f64,
         y: f32,
     ) -> f32 {
-        let gap = Spacing::Xs.px();
-        paint_text(
-            self.text_system,
-            self.scene,
-            label,
-            self.inner_x,
-            y + (self.row_h - TypeToken::Sm.px()) * 0.5,
-            TypeToken::Sm.px(),
-            LABEL_COL_W,
-            resolve(ColorToken::Text2, self.theme),
-        );
-        let field_x = self.inner_x + LABEL_COL_W + gap;
-        let field_w = (self.inner_w - LABEL_COL_W - gap).max(1.0);
-        let rect = Rect::new(field_x, y, field_w, self.row_h);
-        self.hit_index.register(id, rect);
-        let (st, value, buffer, caret, anchor) = read_number_input(self.store, id);
-        let input = NumberInput::new(id, "", value)
-            .step(step)
-            .visual((st, self.store.hover_live(id)));
-        paint_number_input_with_buffer(
-            &input,
-            Some(buffer),
-            caret,
-            anchor,
-            rect,
-            self.scene,
-            self.text_system,
-            self.theme,
-        );
-        y + self.row_h + self.row_gap
+        self.with_rows(|r| r.labeled_number_field(label, id, step, y))
     }
 }

@@ -240,3 +240,34 @@ pub const VECTOR_BONE_FIELDS: [NodeId; 9] = [
     VECTOR_BONE_SMART_FROM,
     VECTOR_BONE_SMART_TO,
 ];
+
+/// ⭐⭐⭐ **OS TRÊS CONTROLOS DESTA SEÇÃO CUJO SUJEITO É A SELECÇÃO DE FORMAS**, e não um osso.
+///
+/// ⚠️ Eles são a **excepção declarada** de [`needs_focused_bone`]: o *Bind* prende as formas
+/// escolhidas ao esqueleto, e o par *Keep Pose* / *Release* solta-as. Nenhum dos três pergunta qual
+/// osso está aceso.
+pub const VECTOR_BONE_ON_SELECTION: [NodeId; 3] =
+    [VECTOR_BONE_BIND, VECTOR_BONE_EXPAND, VECTOR_BONE_RELEASE];
+
+/// ⭐⭐⭐ **O SUJEITO DESTE CONTROLO É O OSSO EM FOCO?** — a pergunta que decide se o dreno tem com
+/// que trabalhar, e se o silêncio dele precisa de ser explicado.
+///
+/// ⛔⛔ **Ela é DERIVADA das tabelas, e a derivação é a cura.** O braço da shell que diz *«nenhum
+/// osso em foco»* era uma disjunção escrita à mão: nasceu com **dois** verbos (os da âncora),
+/// ficaram **oito** quando a auditoria de 2026-09-08 a apanhou, e os campos e as duas fileiras de
+/// chips nunca lá entraram. *Uma cura escrita para os verbos que existiam não segue os que vêm* — e
+/// o sintoma de um verbo que morre calado é indistinguível de uma rota cortada, que é o report que
+/// esta seção já pagou quatro vezes.
+///
+/// ⇒ acrescentar um id a qualquer das quatro tabelas põe-no **automaticamente** do lado certo; quem
+/// age sobre as FORMAS declara-o em [`VECTOR_BONE_ON_SELECTION`], e é a única lista à mão que resta.
+#[must_use]
+pub fn needs_focused_bone(id: NodeId) -> bool {
+    if VECTOR_BONE_ON_SELECTION.contains(&id) {
+        return false;
+    }
+    VECTOR_BONE_VERBS.contains(&id)
+        || VECTOR_BONE_FIELDS.contains(&id)
+        || VECTOR_BONE_BEND_IDS.contains(&id)
+        || VECTOR_BONE_SMART_CLIP_IDS.contains(&id)
+}

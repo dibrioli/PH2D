@@ -473,3 +473,86 @@ fn removing_one_control_does_not_release_what_another_engine_drives() {
     );
     let _ = movido;
 }
+
+/// ⭐⭐⭐ **UM CONTROLO GOVERNADO POR UMA ÂNCORA É ACHADO EM QUALQUER ORDEM.**
+///
+/// ⛔⛔ **Achado da auditoria de 2026-09-08:** o aviso vivia dentro do *Add Smart Bone*, logo só
+/// disparava na ordem **IK → Smart**. Nas outras duas — a âncora **depois** do controlo, e o
+/// `Chain` **alargado** até ele — o app ficava calado sobre o mesmo facto: o solver reescreve a
+/// rotação **depois** do passe do controlo, e girar o osso não move a acção.
+///
+/// ⚠️ **A régua é o FACTO, não o verbo** — é por isso que as três ordens têm o mesmo veredito sem o
+/// gate as enumerar do lado do produto.
+#[test]
+fn a_control_governed_by_an_anchor_is_found_in_any_order() {
+    use ph2d_skeleton_ecs::{Bone, IkGoal};
+    // Uma corrente de dois ossos: a raiz e a ponta (que leva a âncora).
+    let mut sim = SimWorld::default();
+    let raiz = sim
+        .world_mut()
+        .spawn((
+            Transform::IDENTITY,
+            Name::new("Raiz"),
+            RootOrder(0),
+            Bone {
+                length: 10.0,
+                strength: 1.0,
+            },
+        ))
+        .id();
+    let ponta = sim
+        .world_mut()
+        .spawn((
+            Transform::IDENTITY,
+            Name::new("Ponta"),
+            RootOrder(1),
+            Bone {
+                length: 10.0,
+                strength: 1.0,
+            },
+            ph2d_ecs::ChildOf(raiz),
+        ))
+        .id();
+    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+    assert!(
+        governed_controls(&sim).is_empty(),
+        "a fixtura ja' nasce com um controlo mudo"
+    );
+
+    // ORDEM A — o controlo primeiro, a âncora depois. É a que o aviso antigo NÃO via.
+    sim.world_mut()
+        .entity_mut(raiz)
+        .insert(ph2d_skeleton_ecs::SmartBone::default());
+    assert!(
+        governed_controls(&sim).is_empty(),
+        "sem ancora nenhuma, o controlo e' livre"
+    );
+    sim.world_mut().entity_mut(ponta).insert(IkGoal {
+        chain: 2,
+        ..IkGoal::default()
+    });
+    assert_eq!(
+        governed_controls(&sim),
+        vec![raiz],
+        "a ancora passou a governar o controlo e ninguem deu por isso -- e' a ordem Smart -> IK, \
+         que o aviso pendurado no verbo nunca via"
+    );
+
+    // ORDEM B — o `Chain` encolhe e o controlo volta a ser livre; alargar torna-o mudo outra vez.
+    if let Some(mut g) = sim.world_mut().get_mut::<IkGoal>(ponta) {
+        g.chain = 1;
+    }
+    assert!(
+        governed_controls(&sim).is_empty(),
+        "com a corrente a parar na ponta, a raiz volta a ser autorada"
+    );
+    if let Some(mut g) = sim.world_mut().get_mut::<IkGoal>(ponta) {
+        g.chain = 2;
+    }
+    assert_eq!(
+        governed_controls(&sim),
+        vec![raiz],
+        "alargar o Chain ate' ao controlo torna-o mudo, e essa e' a TERCEIRA ordem -- nenhum verbo \
+         de criacao correu aqui"
+    );
+}

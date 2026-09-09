@@ -460,6 +460,12 @@ pub(crate) fn reveal_section(
     }
     let maximo = (conteudo - altura).max(0.0);
     let store = ctx.host.store_mut();
-    let alvo = (store.panel_scroll(ids::VECTOR_PANEL) + (y - topo)).clamp(0.0, maximo);
+    // ⚠️ Pela porta da casa: um `clamp` cru estoura se `min > max`, e aqui o `maximo` é derivado de
+    // duas alturas publicadas — a aritmética que as produz não é desta função.
+    let alvo = ph2d_editor_core::math::safe_clamp(
+        store.panel_scroll(ids::VECTOR_PANEL) + (y - topo),
+        0.0,
+        maximo,
+    );
     store.set_panel_scroll(ids::VECTOR_PANEL, alvo);
 }

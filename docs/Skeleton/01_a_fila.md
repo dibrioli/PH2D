@@ -992,6 +992,56 @@ sozinho**, com `loadavg 42,6–43,5` impresso ao lado de cada corrida (outra lin
 máquina).
 
 
+### F3-j — ✅ O app **não fica calado** quando um controlo não tem sujeito (auditoria, 2026-09-08)
+
+Dois achados da mesma família — *um controlo que morre em silêncio dá o mesmo sintoma que uma rota
+cortada* —, e os dois curados pela mesma ideia: **pendurar a pergunta no FACTO, nunca no verbo.**
+
+**(a) «nenhum osso em foco» cobria `8` de `30` controlos.** O braço que diz isso nasceu com **dois**
+verbos (os da âncora), foi a **oito** na wave dos ossos inteligentes, e os **nove campos** e as
+**duas fileiras de chips** nunca lá entraram. ⇒ hoje a condição é **DERIVADA das tabelas de ids**
+([`ids::needs_focused_bone`](../../crates/ph2d-editor-core/src/ids/chrome/vector_bone.rs)):
+acrescentar um controlo põe-no do lado certo sem ninguém se lembrar do braço, e quem age sobre as
+**formas** declara-se na única lista à mão que resta (`VECTOR_BONE_ON_SELECTION`, com `3` entradas).
+
+⚠️ **E ela é alimentada pelos DOIS caminhos de evento** — um clique e um campo numérico chegam por
+portas diferentes, e a prova de mutação mostrou que alimentar só uma compila limpo e deixa metade da
+seção calada outra vez.
+
+**(b) o aviso do osso governado só disparava numa das TRÊS ordens.** Ele vivia dentro do *Add Smart
+Bone*, logo respondia por **IK → Smart** e ficava calado nas outras duas: pôr a âncora **depois** do
+controlo, e **alargar o `Chain`** até ele. ⇒ a pergunta passou a ser o facto
+([`skeleton_smart::governed_controls`](../../shells/desktop/src/skeleton_smart.rs)), perguntado
+**depois** dos verbos do quadro, e o aviso sai quando o conjunto **cresce**.
+
+⭐ *Um aviso pendurado num VERBO responde por uma ordem; pendurado no FACTO, responde por todas —
+incluindo as que ninguém enumerou* (a terceira ordem não tem verbo de criação nenhum).
+
+⚠️ **Avisa e FAZ na mesma**, ⛔ nunca recusa: tirar a âncora depois é um gesto que existe.
+
+**Gates** (6 — 5 mortos por mutação, 1 com o ponto cego nomeado):
+
+| gate | mutação que ele mata |
+|---|---|
+| `the_derived_question_covers_the_whole_section` | a derivação perde uma tabela ⇒ aqueles controlos morrem calados |
+| `the_selection_exceptions_are_all_real_controls` | a excepção nomeia um controlo que já não existe |
+| `a_control_from_another_section_is_not_claimed` | a pergunta reclama o painel inteiro |
+| `the_arm_that_speaks_reads_the_derived_question` | o braço volta a uma disjunção à mão |
+| `both_event_paths_feed_it` | o caminho dos CAMPOS deixa de alimentar ⇒ metade da seção cala |
+| `a_control_governed_by_an_anchor_is_found_in_any_order` | a porta do facto deixa de perguntar |
+
+⚠️⚠️ **UMA MUTAÇÃO SOBREVIVEU, e o ponto cego está escrito no gate:** tirar o *Bind* da lista de
+excepções passa. Ele fica a contar como *«precisa de osso em foco»*, o que é falso, e **nada em
+`ph2d-editor-core` o pode saber** — um id é um hash, e *de quem é o sujeito* só se lê no DRENO, que
+vive na shell. ⇒ o gate mede **cobertura**, que era a falha real (`8` de `30`), e diz isso de si
+mesmo. *Um gate que se diz partição e mede cobertura mente sobre a metade que ele não vê.*
+
+⛔⛔ **E o portão apanhou um vermelho que TRÊS corridas desta linha não viam:** o `clamp` cru da cura
+F3-g reprovou o `clamp_calls_in_ui_are_safe_or_justified` — que vive na `ph2d-editor-core` e varre a
+`ph2d-panel-vector`. *Correr a suíte da crate EDITADA é cego aos gates de arquitectura que moram
+noutra.* Curado pela porta da casa (`math::safe_clamp`), nunca por `// CLAMP-OK`.
+
+
 ## ⛔ Recusas MEDIDAS deste módulo — não as reconstrua
 
 > ⚠️ **As seis de 2026-09-07/08 entraram aqui na auditoria de 08/09** — elas viviam só em prosa e em

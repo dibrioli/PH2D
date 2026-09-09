@@ -158,6 +158,31 @@ pub(crate) fn choose_action(
     Some((nome, aberta))
 }
 
+/// ⭐⭐⭐ **OS CONTROLOS QUE NASCERAM MUDOS** — os ossos inteligentes cujo ângulo é **DERIVADO**.
+///
+/// ⛔⛔ **Report do dono (2026-09-08): *«tudo configurado e a animação não rodou ao rotacionar o
+/// bone»*.** Um osso governado por uma âncora tem a rotação **reescrita pelo solver DEPOIS** do
+/// passe do controlo ⇒ girar não muda o ângulo e a acção congela. Medido: osso livre
+/// `rot +21,8° → +95,1°`; osso governado **preso** em `+30,4°`, quadro após quadro.
+///
+/// ⚠️⚠️ **É a PERGUNTA que é uma só, e é isso que cura o achado da auditoria:** o aviso vivia dentro
+/// do *Add Smart Bone*, logo só disparava na ordem **IK → Smart**. Nas outras duas — pôr a âncora
+/// **depois** do controlo, e **alargar o `Chain`** até ele — o app ficava calado sobre exactamente
+/// o mesmo facto. *Um aviso pendurado num VERBO responde por uma ordem; pendurado no FACTO, responde
+/// por todas — incluindo as que ninguém enumerou.*
+///
+/// ⚠️ Ela varre as âncoras da cena, que são um punhado, para cada controlo — a mesma escala do
+/// [`crate::skeleton_goal::is_governed`], e paga-se só quando um verbo do esqueleto corre.
+#[must_use]
+pub(crate) fn governed_controls(sim: &SimWorld) -> Vec<Entity> {
+    sim.world()
+        .iter_entities()
+        .filter(|er| er.get::<SmartBone>().is_some())
+        .map(|er| er.id())
+        .filter(|e| crate::skeleton_goal::is_governed(sim, *e))
+        .collect()
+}
+
 /// ⭐⭐⭐ **APAGA o controlo deste osso E DEVOLVE A POSE QUE O ARTISTA AUTOROU.** `true` se havia um.
 ///
 /// ⛔⛔ **Achado da auditoria de 2026-09-08 (o irmão já o fazia e este não):** o *Remove Smart Bone*

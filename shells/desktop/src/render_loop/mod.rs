@@ -3421,6 +3421,14 @@ impl crate::App {
             let mut pending_smart_clip: Option<usize> = None;
             // O *Pick Object* foi carregado — arma o gesto de duas mãos do alvo.
             let mut pending_smart_pick = false;
+            // ⭐⭐⭐ **UM CONTROLO DESTA SEÇÃO FOI TOCADO E O SUJEITO DELE É UM OSSO EM FOCO.**
+            //
+            // ⛔⛔ A pergunta é **DERIVADA** das tabelas de ids (`ids::needs_focused_bone`), e a
+            // derivação é a cura: o braço que diz *«nenhum osso em foco»* era uma disjunção escrita
+            // à mão — nasceu com dois verbos, tinha oito quando a auditoria de 2026-09-08 a apanhou,
+            // e os CAMPOS e as duas fileiras de chips nunca lá entraram. *Uma cura escrita para os
+            // verbos que existiam não segue os que vêm.*
+            let mut pending_bone_needs_focus = false;
             // ⚠️ **O osso seleccionado lê-se AQUI, antes de o mundo ser emprestado mutável** — os
             // verbos lá em baixo já seguram `sim`, e uma leitura de `self` no meio deles não
             // compila. O valor é do QUADRO, e é o mesmo que o gesto e o overlay usam.
@@ -3683,6 +3691,9 @@ impl crate::App {
                         // Copy) to apply after the drain; still forward to the tool
                         // (which ignores those ids) so mode/width/etc. flow.
                         if let ph2d_editor::tool::PanelEvent::Click(id) = &ev {
+                            // ⭐ **A pergunta corre ANTES da cadeia** e é derivada das tabelas: um
+                            // controlo novo da seção Skeleton entra aqui sem ninguém se lembrar.
+                            pending_bone_needs_focus |= ph2d_editor::ids::needs_focused_bone(*id);
                             if let Some(j) = crate::vec_paint_stack::join_code_for_id(*id) {
                                 // ⭐ A QUINA do offset de CAD (v22) — um clique, não um valor.
                                 pending_paint_join = Some(j);
@@ -4137,6 +4148,10 @@ impl crate::App {
                         // Transform fields (X/Y/W/H) are numeric SetValue document
                         // commands (not tool Style) — capture; the tool ignores them.
                         if let ph2d_editor::tool::PanelEvent::SetValue(id, v) = &ev {
+                            // ⭐ **Os CAMPOS entram pela mesma porta derivada que os cliques** — sem
+                            // isto, digitar num campo desta seção sem osso em foco continuava a ser
+                            // um silêncio sem explicação, que é metade da população da secção.
+                            pending_bone_needs_focus |= ph2d_editor::ids::needs_focused_bone(*id);
                             if let Some(field) =
                                 crate::input_dispatch::vec_transform_field_for_id(*id)
                             {
@@ -6328,6 +6343,17 @@ impl crate::App {
             }
             // ⭐⭐⭐ **A ÂNCORA DE IK** — os dois verbos e os três números, aplicados aqui como os do
             // esqueleto: o dreno acima só CAPTURA.
+            // ⭐⭐⭐ **QUANTOS CONTROLOS NASCERAM MUDOS ANTES DESTES VERBOS** — a metade de trás da
+            // pergunta que o app faz depois deles.
+            //
+            // ⛔⛔ **Achado da auditoria de 2026-09-08:** o aviso *«este osso é conduzido por uma
+            // âncora»* vivia DENTRO do *Add Smart Bone*, logo só disparava na ordem **IK → Smart**.
+            // Nas outras duas — pôr a âncora **depois** do controlo, e **alargar o `Chain`** até ele
+            // — o app ficava calado sobre exactamente o mesmo facto.
+            //
+            // ⇒ *um aviso pendurado num VERBO responde por uma ordem; pendurado no FACTO, responde
+            // por todas — incluindo as que ninguém enumerou.*
+            let mudos_antes = crate::skeleton_smart::governed_controls(sim).len();
             if let Some(bits) = osso_selecionado {
                 let osso = ph2d_ecs::Entity::from_bits(bits);
                 if pending_ik_add {
@@ -6372,22 +6398,6 @@ impl crate::App {
                     sim.world_mut()
                         .entity_mut(osso)
                         .insert(ph2d_skeleton_ecs::SmartBone::default());
-                    // ⛔⛔ **E o app DIZ quando o osso escolhido não pode ser um controlo** — report
-                    // do dono (2026-09-08: *«tudo configurado e a animação não rodou ao rotacionar o
-                    // bone»*). A causa medida: um osso governado por uma âncora tem a rotação
-                    // **reescrita pelo solver depois** deste passe ⇒ girar não muda o ângulo, e a
-                    // acção congela. *O ângulo dele não é uma coisa que o artista escreve.*
-                    //
-                    // ⚠️ **Avisa e ANEXA na mesma**, ⛔ não recusa: tirar a âncora depois é um gesto
-                    // que existe (*Remove IK*), e um verbo que recusa deixaria o artista sem
-                    // caminho. O que não pode é o app ficar **calado** sobre um controlo que ele
-                    // sabe que vai nascer mudo.
-                    if crate::skeleton_goal::is_governed(sim, osso) {
-                        toasts.push(ph2d_editor::Toast::warning(
-                            "This bone is driven by an IK anchor, so its angle is derived - turning \
-                             it will not run the action. Use a free bone, or Remove IK.",
-                        ));
-                    }
                 }
                 // ⭐⭐⭐ **ARMAR O PICK DO ALVO** — o OSSO é capturado aqui, e não lido no clique
                 // seguinte: aquele clique MUDA a selecção, então lê-lo então leria o alvo no lugar
@@ -6476,15 +6486,19 @@ impl crate::App {
                         IkKnob::Chain => g.chain = v.max(0.0) as u32,
                     }
                 }
-            } else if pending_ik_add
-                || pending_ik_remove
-                || pending_limit_add
-                || pending_limit_remove
-                || pending_smart_add
-                || pending_smart_remove
-                || pending_smart_pick
-                || pending_smart_clip.is_some()
-            {
+                // ⭐⭐⭐ **E O APP DIZ, seja qual for a ordem em que o artista chegou aqui.**
+                //
+                // ⚠️ **Avisa e FAZ na mesma**, ⛔ não recusa: tirar a âncora depois é um gesto que
+                // existe (*Remove IK*), e um verbo que recusa deixaria o artista sem caminho. O que
+                // não pode é o app ficar **calado** sobre um controlo que ele sabe que vai nascer
+                // mudo.
+                if crate::skeleton_smart::governed_controls(sim).len() > mudos_antes {
+                    toasts.push(ph2d_editor::Toast::warning(
+                        "This bone is driven by an IK anchor, so its angle is derived - turning it \
+                         will not run the action. Use a free bone, or Remove IK.",
+                    ));
+                }
+            } else if pending_bone_needs_focus {
                 // ⚠️ **Um verbo que morre em SILÊNCIO dá o mesmo sintoma que uma rota cortada** —
                 // e foi exactamente esse o report de 2026-09-07 (*«Add IK não funciona»*), cuja
                 // causa era outra. O painel só pinta estes botões com um osso em foco, então este
@@ -6495,6 +6509,11 @@ impl crate::App {
                 // e o osso inteligente foram acrescentados depois e não vieram a esta condição, logo
                 // seis verbos voltaram a morrer calados exactamente na janela que este braço existe
                 // para nomear. *Uma cura escrita para os verbos que existiam não segue os que vêm.*
+                //
+                // ⇒ hoje a condição é **DERIVADA das tabelas de ids** (`ids::needs_focused_bone`) e
+                // cobre a seção INTEIRA — os dez verbos, os nove campos e as duas fileiras de chips.
+                // Acrescentar um controlo põe-no do lado certo sem ninguém se lembrar deste braço;
+                // quem age sobre as FORMAS declara-o em `VECTOR_BONE_ON_SELECTION`.
                 eprintln!(
                     "[ph2d-vec] osso: nenhum OSSO em foco -- seleccione um osso (na Hierarquia ou \
                      clicando nele com a ferramenta Bone) antes dos verbos da seccao Skeleton"

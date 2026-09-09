@@ -295,6 +295,9 @@ pub(crate) fn drive(sim: &mut SimWorld, doc: &TimelineDoc, preview: &mut Preview
     // pré-visualização, não o autorado).
     let antes = crate::timeline_preview::state_of_bindings(sim.world(), doc);
     let mut feitas = 0;
+    // ⚠️ **A união das entidades que os controlos deste quadro conduzem** — a mesma porta que o
+    // [`remove`] usa, para as duas metades (manter vivo · devolver) nunca discordarem sobre quem.
+    let mut conduzidas: Vec<Entity> = Vec::new();
     for (_, e, sb) in ossos {
         let Some(t) = sim
             .world()
@@ -344,6 +347,7 @@ pub(crate) fn drive(sim: &mut SimWorld, doc: &TimelineDoc, preview: &mut Preview
         // ⭐ A porta certa já existia e responde à pergunta inteira: ela lê o override de duração,
         // senão a extensão das CHAVES, e trata o clip só-de-expressão. *A grandeza crua e a
         // pergunta têm nomes parecidos e respostas diferentes.*
+        conduzidas.extend(driven_by(sim.world(), doc, &sb));
         let dur = doc.clip_end_seconds(i);
         let quando = ph2d_skeleton::action_time(t, sb.from, sb.to, dur);
         let escritas = ph2d_timeline::apply_one_clip(sim.world_mut(), doc, i, quando);
@@ -384,6 +388,23 @@ pub(crate) fn drive(sim: &mut SimWorld, doc: &TimelineDoc, preview: &mut Preview
     }
     // ⭐ E a declaração é UMA, no fim: o ledger compara o antes de todos com o depois de todos.
     crate::timeline_preview::declare_timeline_writes(sim.world(), &antes, preview);
+    // ⭐⭐⭐ **E OS CONTROLOS DIZEM QUE AINDA ESTÃO A CONDUZIR, mesmo com o valor parado.**
+    //
+    // ⛔⛔ **Report do dono (2026-09-09):** *«Remove Smart Bone não devolve o objeto animado à
+    // posição inicial»*. Medido: com o osso parado, o ledger largava o objecto **no quadro 1** —
+    // o `declare_timeline_writes` só declara quem MUDOU, e um controlo em repouso escreve o mesmo
+    // valor todo quadro ⇒ a `settle` lia a constância como *«o motor largou»* e promovia a
+    // pré-visualização a documento.
+    //
+    // ⚠️ **A lei do «só quem mudou» está CERTA para a timeline** (uma reprodução que pára tem de
+    // deixar o valor virar documento — é isso que faz *«desfazer a corrida»* ser um passo). O que
+    // muda aqui é a ESPÉCIE do motor: um controlo é **persistente**, e para ele *«não mudou»* e
+    // *«acabou»* são factos diferentes com a mesma forma.
+    for e in conduzidas {
+        for d in crate::timeline_preview::DRIVERS {
+            preview.still_driving(e, d);
+        }
+    }
     if log && feitas > 0 {
         eprintln!("[bone] ossos inteligentes: {feitas} propriedade(s) escritas");
     }

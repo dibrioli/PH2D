@@ -1090,6 +1090,68 @@ desvanecer com a suíte inteira verde.
 ⇒ **os SEIS itens da auditoria de 2026-09-08 estão fechados.**
 
 
+### F3-l — ✅ *«Remove Smart Bone não devolve o objeto animado à posição inicial»* (report, 2026-09-09)
+
+⛔⛔ **O report do dono é a ponta de um defeito MAIOR, e ele vale para a âncora de IK também.**
+
+**A medição, antes de qualquer dedução** (o mesmo controlo, o osso PARADO, um quadro de cada vez com
+a `settle` que a shell corre em todos):
+
+| quadro | `x` do objecto | o ledger conduz? |
+|---|---|---|
+| 0 | 10,000 | **sim** |
+| 1 | 10,000 | **não** |
+| 2..4 | 10,000 | **não** |
+| *depois do `Remove`* | **10,000** | — (autorado: `0,000`) |
+
+⇒ **o ledger largava o objecto no quadro 1**, e o verbo já não tinha o autorado para devolver.
+
+⭐⭐⭐ **A causa é uma lei CERTA aplicada a um motor de outra espécie.** Quem declara só o que
+**MUDOU** está certo para a **timeline**: uma reprodução que pára tem de deixar o valor virar
+documento, e é isso que faz *«desfazer a corrida»* ser **um** passo. Mas um **CONDUTOR PERSISTENTE**
+— uma âncora de IK, um osso inteligente — nunca «pára»: ele escreve todo quadro, e o output dele é
+**constante na maior parte do tempo**. A `settle` lê essa constância como *«o motor largou»*.
+
+⇒ *para um condutor persistente, **«não mudou»** e **«acabou»** são factos diferentes com a mesma
+forma* — e a porta que os separa é [`PreviewDrive::still_driving`](../../shells/desktop/src/preview_drive.rs).
+
+⚠️⚠️ **E o defeito é MAIOR que o verbo:** com a pose promovida a documento, ela entra no **undo** e
+no **save** — que é exactamente o que o `preview_drive` existe para impedir. O *Remove* era só onde
+ele se via.
+
+⛔⛔ **A ÂNCORA DE IK tinha o mesmo buraco** (`solve_one` saltava a declaração quando a rotação não
+mudava, e uma corrente assente é o estado normal dela) — curado na mesma wave, com gate próprio.
+
+⚠️⚠️⚠️ **E esta cura foi CONSTRUÍDA E REVERTIDA em 2026-09-07, com razão.** O doc do
+`posing_a_governed_bone_by_hand_is_not_swallowed_by_the_ledger` regista-o: *«construí a cura
+(declarar a condução todo quadro) e ela ficou verde… e o desenho ORIGINAL também ⇒ a cura era
+redundante e foi revertida»*. **Ela era mesmo redundante — para AQUELA pergunta** (*a pose que a
+outra mão faz é engolida?*), que a regra da outra mão já resolvia. *Uma recusa medida responde UMA
+pergunta*, e a de agora é outra: *o autorado ainda está lá quando o motor é DESLIGADO?*
+
+⛔⛔ **E as cinco fixturas destes gates mediam outro programa: nenhuma chamava a `settle`.** O gate
+`removing_the_control_gives_the_authored_pose_back` corria `drive` **uma vez** e declarava a cura de
+ontem verde. *Uma fixtura que não corre o quadro do artista mede outro programa* — a **5.ª** vez
+nesta linha, e a primeira em que o dono a apanhou antes do gate.
+
+**Gates** (4, todos mortos por mutação):
+
+| gate | mutação que ele mata |
+|---|---|
+| `removing_the_control_gives_the_authored_pose_back` (agora com 5 quadros + `settle`) | o controlo deixa de dizer que ainda conduz |
+| `what_the_action_writes_is_preview_not_document` (idem) | a mesma — e ali o sintoma é o **undo**, não o verbo |
+| `a_settled_chain_is_still_driven_and_remove_still_has_the_authored_pose` | a âncora deixa de dizer que ainda conduz |
+| `still_driving_keeps_what_exists_and_invents_nothing` | a porta **INVENTA** uma entrada ⇒ o `release` passa a carimbar a pré-visualização como documento |
+
+⚠️ **O `skeleton_goal_tests.rs` estourou o teto de 600 LOC e foi CORTADO por responsabilidade**
+(nunca isentado): o que a âncora faz ao **DOCUMENTO** mudou-se para `skeleton_goal_ledger_tests.rs`;
+o que fica mede a **LEI** que ela resolve por quadro.
+
+⚠️ **Flake de carga confirmada no fecho:** `the_fit_rebuilds_the_neighbourhood_not_the_whole_stroke`
+(família `orcamento`, já catalogada no §5.0) — **5 de 5 verde sozinha** a `loadavg 17,0–17,5`, com
+zero linhas do diff naquele ficheiro.
+
+
 ## ⛔ Recusas MEDIDAS deste módulo — não as reconstrua
 
 > ⚠️ **As seis de 2026-09-07/08 entraram aqui na auditoria de 08/09** — elas viviam só em prosa e em

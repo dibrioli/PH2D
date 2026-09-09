@@ -331,6 +331,40 @@ impl PreviewDrive {
         }
     }
 
+    /// ⭐⭐⭐ **AINDA ESTOU A CONDUZIR, e o valor não mudou.** `true` se havia condução a manter.
+    ///
+    /// # ⛔⛔ O defeito que ela fecha (report do dono, 2026-09-09)
+    ///
+    /// *«Remove Smart Bone não devolve o objeto animado à posição inicial»* — e a medição foi
+    /// inequívoca: com o osso parado, o ledger largava o objecto **no quadro seguinte**.
+    ///
+    /// | quadro | `x` | o ledger conduz? |
+    /// |---|---|---|
+    /// | 0 | 10,000 | **sim** |
+    /// | 1..4 | 10,000 | **não** |
+    ///
+    /// ⚠️ **A causa é uma lei certa aplicada a um motor de outra espécie.** Quem declara só o que
+    /// MUDOU está certo para a **timeline**: uma reprodução que pára tem de deixar o valor virar
+    /// documento, e é isso que faz *«desfazer a corrida»* ser **um** passo. Mas um **condutor
+    /// PERSISTENTE** — uma âncora de IK, um osso inteligente — nunca «pára»: ele escreve todo
+    /// quadro, e o output dele é **constante na maior parte do tempo**. A [`Self::settle`] lê essa
+    /// constância como *«o motor largou»* e promove a pré-visualização a documento.
+    ///
+    /// ⇒ *para um condutor persistente, «não mudou» e «acabou» são factos diferentes com a mesma
+    /// forma* — e é esta porta que os separa.
+    ///
+    /// ⛔ **Ela NUNCA cria uma entrada.** Sem entrada não há condução a manter: o motor está a
+    /// escrever exactamente o que o documento já diz, e não há nada para devolver.
+    pub(crate) fn still_driving(&mut self, entity: Entity, driver: Driver) -> bool {
+        match self.memo.get_mut(&(entity.to_bits(), driver)) {
+            Some(e) => {
+                e.seen = true;
+                true
+            }
+            None => false,
+        }
+    }
+
     /// ⭐⭐⭐ **DEVOLVE O AUTORADO E LARGA** — para um motor que é DESLIGADO, não que apenas parou.
     ///
     /// # ⚠️ Por que a [`Self::settle`] não serve aqui

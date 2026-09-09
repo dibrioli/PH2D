@@ -9,7 +9,7 @@
 //! sozinho se nada tiver acontecido — por isso todos eles asseguram primeiro que o mundo VIVO de
 //! facto andou. *Um gate sem a metade que prova que havia fenómeno mede o instrumento.*
 
-use super::{Driven, PreviewDrive};
+use super::{Driven, Driver, PreviewDrive};
 use crate::undo::ProjectState;
 use ph2d_ecs::scene::{ComponentRegistry, register_ecs_components};
 use ph2d_ecs::{AnimationTag, Entity, Name, SimWorld, SpriteAnimations, SpriteAnimator, Transform};
@@ -426,4 +426,56 @@ fn a_memo_that_outlives_its_entity_does_not_break_the_capture() {
     let _ = capture(&drive, &mut sim, &reg); // nao pode entrar em panico
     drive.settle();
     assert!(drive.is_empty(), "a `settle` tinha de esquecer o fantasma");
+}
+
+/// ⭐⭐⭐ **«AINDA CONDUZO» MANTÉM VIVO O QUE EXISTE, e NUNCA inventa uma condução.**
+///
+/// ⛔⛔ **A porta nasce do report do dono de 2026-09-09** (*«Remove Smart Bone não devolve o objeto
+/// animado à posição inicial»*): um condutor **PERSISTENTE** — uma âncora de IK, um osso inteligente
+/// — escreve todo quadro e o output dele é constante na maior parte do tempo, e a [`PreviewDrive::settle`]
+/// lia essa constância como *«o motor largou»*.
+///
+/// ⚠️⚠️ **A metade que este gate defende é a de BAIXO, e ela é a perigosa:** se a porta INVENTASSE
+/// uma entrada, o `authored` dela seria o valor que o motor está a escrever — e o
+/// `release_to_authored` passaria a repor a **pré-visualização** como se fosse o documento. *Um
+/// memo fabricado não repõe nada: ele carimba.*
+#[test]
+fn still_driving_keeps_what_exists_and_invents_nothing() {
+    let mut pv = PreviewDrive::default();
+    let e = ph2d_ecs::Entity::from_raw_u32(7).expect("id valido");
+
+    // NADA a manter: a porta diz que não, e o ledger continua vazio.
+    assert!(
+        !pv.still_driving(e, Driver::SolverPose),
+        "a porta afirmou uma conducao que nunca existiu"
+    );
+    assert!(
+        pv.is_empty(),
+        "a porta INVENTOU uma entrada -- o `authored` dela seria o valor que o motor escreve, e o \
+         release passaria a carimbar a pre-visualizacao como documento"
+    );
+
+    // Com uma condução declarada, ela sobrevive a um quadro em que nada mudou.
+    let repouso = Transform::IDENTITY;
+    let mut movida = repouso;
+    movida.translation.x = 5.0;
+    pv.driven(e, Driven::SolverPose(repouso), Driven::SolverPose(movida));
+    for _ in 0..5 {
+        assert!(
+            pv.still_driving(e, Driver::SolverPose),
+            "a conducao morreu num quadro em que o motor nao mudou nada"
+        );
+        pv.settle();
+    }
+    assert!(
+        pv.drives(e.to_bits()),
+        "o ledger largou um motor que nao parou"
+    );
+
+    // E sem o «ainda conduzo», a MESMA sequência larga — é o defeito, reproduzido aqui.
+    pv.settle();
+    assert!(
+        !pv.drives(e.to_bits()),
+        "a fixtura nao produz o fenomeno: sem o «ainda conduzo» a conducao tinha de morrer"
+    );
 }

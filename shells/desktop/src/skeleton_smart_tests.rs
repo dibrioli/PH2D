@@ -141,7 +141,12 @@ fn what_the_action_writes_is_preview_not_document() {
         }
     }
     let mut pv = PreviewDrive::default();
-    drive(&mut sim, &doc, &mut pv);
+    // ⚠️ **Cinco quadros com a `settle` de cada um**, e não um só: um controlo em repouso escreve o
+    // MESMO valor todo quadro, e é a partir do 2.º que a promoção a documento acontecia.
+    for _ in 0..5 {
+        drive(&mut sim, &doc, &mut pv);
+        pv.settle();
+    }
     assert!((x(&sim, movido) - 10.0).abs() < 1e-3, "a acção correu");
     // ⭐ O ledger tem de saber repor o AUTORADO (a pose de repouso), que é o que a fotografia usa.
     assert!(
@@ -413,11 +418,24 @@ fn removing_the_control_gives_the_authored_pose_back() {
         }
     }
     let mut pv = PreviewDrive::default();
-    drive(&mut sim, &doc, &mut pv);
+    // ⚠️⚠️ **QUADROS DE VERDADE, com a `settle` de cada um** — e é aqui que o report de 2026-09-09
+    // vive. A 1.ª redacção deste gate corria `drive` UMA vez e nunca chamava a `settle`, que é o
+    // passe que a shell corre em todo quadro: medido, o ledger largava o objecto no **quadro 1**
+    // (`conduz=true` no 0, `false` no 1..4) e o `remove` já não tinha o autorado para devolver.
+    // *Uma fixtura que não corre o quadro do artista mede outro programa.*
+    for _ in 0..5 {
+        drive(&mut sim, &doc, &mut pv);
+        pv.settle();
+    }
     assert!(
         (x(&sim, movido) - 10.0).abs() < 1e-3,
         "a fixtura nao produz o fenomeno: a accao nao correu ({})",
         x(&sim, movido)
+    );
+    assert!(
+        pv.drives(movido.to_bits()),
+        "o ledger largou o objecto ANTES do remove -- um controlo parado escreve o mesmo valor \
+         todo quadro, e a `settle` leu a constancia como «o motor largou»"
     );
 
     assert!(

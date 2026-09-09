@@ -534,6 +534,12 @@ fn solve_one(
         )]
         let nova = nova as f32;
         if nova == antes.rotation {
+            // ⭐⭐⭐ **A ÂNCORA AINDA CONDUZ, mesmo com a corrente parada** — a mesma lei do osso
+            // inteligente (report do dono, 2026-09-09). Uma restrição é um condutor
+            // **PERSISTENTE**: ela escreve todo quadro, e o output dela é constante na maior parte
+            // do tempo. Sem esta linha a `settle` lê a constância como *«o motor largou»* e promove
+            // a pose da restrição a documento — e o *Remove IK* já não tem o autorado para devolver.
+            preview.still_driving(e, crate::preview_drive::Driver::SolverPose);
             continue;
         }
         let Some(mut t) = sim.world_mut().get_mut::<Transform>(e) else {
@@ -552,3 +558,10 @@ fn solve_one(
 #[cfg(test)]
 #[path = "skeleton_goal_tests.rs"]
 mod tests;
+
+/// ⭐ **O que a âncora escreve é PRÉ-VISUALIZAÇÃO** — irmão pelo teto de 600 LOC, e o corte é por
+/// RESPONSABILIDADE: o `tests` mede a LEI que ela resolve por quadro; este mede o que acontece ao
+/// DOCUMENTO (quem larga, quem escreve por cima, e o que sobra quando o motor é desligado).
+#[cfg(test)]
+#[path = "skeleton_goal_ledger_tests.rs"]
+mod ledger_tests;

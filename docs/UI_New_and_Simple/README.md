@@ -42,6 +42,8 @@ E três defeitos concretos, com foto:
 | **Quantas cores precisamos mesmo** | [`medicoes/03_o_censo_de_cor.md`](medicoes/03_o_censo_de_cor.md) |
 | ⭐ **O que as timelines alcançam — e por que o 3D fica de fora** | [`medicoes/04_o_alcance_das_timelines.md`](medicoes/04_o_alcance_das_timelines.md) |
 | **px/metros e graus/radianos — metade já ship-a** | [`medicoes/05_as_duas_reguas.md`](medicoes/05_as_duas_reguas.md) |
+| ⭐ **O orçamento de ecrã em TABLET — os três alvos, e o chrome que não escala** | [`medicoes/06_o_orcamento_de_ecra_em_tablet.md`](medicoes/06_o_orcamento_de_ecra_em_tablet.md) |
+| ⛔ **O buraco do HR-15: o texto PINTADO** — 108 literais que o gate nunca viu | [`medicoes/07_o_buraco_do_hr15_o_texto_PINTADO.md`](medicoes/07_o_buraco_do_hr15_o_texto_PINTADO.md) |
 | **O que a subida Vello 0.8→0.10 / wgpu 28→29 / parley 0.6→0.11 abriu** | [`pesquisa/01_o_que_a_subida_abriu.md`](pesquisa/01_o_que_a_subida_abriu.md) |
 | **Que referências existem, com a licença de cada uma** | [`pesquisa/02_referencias_e_licenca.md`](pesquisa/02_referencias_e_licenca.md) |
 | **O diagnóstico das 3 fotos + os princípios que o explicam** | [`pesquisa/03_diagnostico_e_principios.md`](pesquisa/03_diagnostico_e_principios.md) |

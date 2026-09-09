@@ -6419,9 +6419,13 @@ impl crate::App {
                     )));
                 }
                 if pending_smart_remove {
-                    sim.world_mut()
-                        .entity_mut(osso)
-                        .remove::<ph2d_skeleton_ecs::SmartBone>();
+                    // ⭐⭐⭐ **E a POSE VOLTA** — a porta faz as duas metades, como a do *Remove IK*.
+                    crate::skeleton_smart::remove(
+                        sim,
+                        &self.timeline.doc,
+                        osso,
+                        &mut self.preview_drive,
+                    );
                 }
                 if let Some((e_to, graus)) = pending_smart_knob
                     && let Some(mut sb) = sim

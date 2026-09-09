@@ -947,6 +947,51 @@ onde quer que possa ser agarrado.*
 | `the_bone_handle_is_released_in_every_mode_it_can_be_grabbed_in` | o `Up` volta para dentro do bloco ⇒ **o osso segue o rato para sempre** |
 
 
+### F3-i — ✅ *Remove Smart Bone* **devolve a pose autorada** (achado da auditoria, 2026-09-08)
+
+⛔⛔ **O defeito:** o verbo só tirava o componente, e o objecto ficava **assado no instante da acção**
+em que o controlo o tinha deixado. É letra por letra o report de 2026-09-07 sobre o *Remove IK* —
+*«não funciona plenamente»* — noutro verbo, e contradiz a lei que este módulo escreveu: *o que um
+motor escreve vê-se, não se guarda*.
+
+⚠️ **A `settle` NÃO serve** (a mesma nota do `skeleton_goal::remove`): ela é para um motor que
+**largou**, e aí o vivo *é* o documento; aqui o motor foi **DESLIGADO**, e o vivo é dele.
+
+⭐ **A cura é a porta [`skeleton_smart::remove`]**, irmã da do *Remove IK* — e o preço é a diferença
+entre as duas: a âncora larga uma **corrente** que ela sabe nomear; um controlo larga o que a
+**ACÇÃO** dele anima, que é `N` objectos × os quatro factos que uma curva escreve.
+
+⛔ **Largar «tudo o que o ledger tem» apagaria a reprodução da própria timeline**, que partilha
+aqueles motores — por isso a lista sai do **clip deste controlo**, e de mais nada.
+
+⚠️⚠️ **E isso obrigou a NOMEAR uma lista que até aqui só existia como código:**
+`timeline_preview::DRIVERS`, os quatro factos que uma curva conduz. O `declare_timeline_writes`
+**não a pode iterar** (cada facto tem o seu tipo de payload), então quem os ata é um gate que corre
+os dois e compara — e é **ali** que o quinto facto em falta (o `VecDrivenStyle`, item aberto da
+auditoria) vai aparecer, em vez de num report em que tirar um controlo deixa a cor assada.
+
+**Gates** (3, todos mortos por mutação):
+
+| gate | mutação que ele mata |
+|---|---|
+| `removing_the_control_gives_the_authored_pose_back` | o verbo volta a só tirar o componente ⇒ a pose fica assada |
+| `removing_one_control_does_not_release_what_another_engine_drives` | ele larga tudo ⇒ a reprodução da timeline morre num clique |
+| `the_timeline_drivers_list_is_what_the_declaration_writes` | a lista perde um facto ⇒ esse fica assado, calado |
+
+⚠️ **O `skeleton_smart_tests.rs` estourou o teto de 600 LOC e foi CORTADO por responsabilidade**
+(nunca isentado): a **LISTA que o painel pinta** — quais acções o controlo oferece, e o que uma
+POSIÇÃO nela significa — mudou-se para `skeleton_smart_list_tests.rs`; o que fica mede *o controlo
+PERCORRE a acção*. A fixtura é a **mesma** de propósito: duas cenas para o mesmo módulo divergiriam.
+
+⚠️ **FLAKE DE CARGA, membro NOVO da família do §5.0** — apanhada no fecho desta wave e a promover no
+handoff: `the_cache_makes_a_preview_frame_cost_the_tail_not_the_stroke`
+([`flip_fit_cache_tests.rs`](../../shells/desktop/src/flip_fit_cache_tests.rs)). ⚠️ O ficheiro é
+**novo** para a lista — os três membros já catalogados vivem no `flip_fit_budget_tests.rs`. As três
+assinaturas: gate de RAZÃO de custo · **zero** linhas do diff naquela crate · **5 de 5 verde
+sozinho**, com `loadavg 42,6–43,5` impresso ao lado de cada corrida (outra linha a compilar nesta
+máquina).
+
+
 ## ⛔ Recusas MEDIDAS deste módulo — não as reconstrua
 
 > ⚠️ **As seis de 2026-09-07/08 entraram aqui na auditoria de 08/09** — elas viviam só em prosa e em

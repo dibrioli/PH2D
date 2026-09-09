@@ -342,3 +342,53 @@ fn fading_a_vector_path_is_not_an_edit_and_needs_no_ledger() {
         .expect("a ponte tem de estar escrita");
     assert!(a < 0.9, "a curva nao mexeu na opacidade: {a}");
 }
+
+/// ⭐⭐⭐ **A LISTA `DRIVERS` É O QUE A DECLARAÇÃO DE FACTO ESCREVE** — o censo dos dois lados.
+///
+/// ⚠️ **Ela nasceu porque um SEGUNDO leitor apareceu:** quem *larga* um motor da timeline (o
+/// `skeleton_smart::remove`) percorre a lista, e o `declare_timeline_writes` escreve um a um com
+/// payloads de tipos diferentes — logo ele **não a pode iterar**. Sem este gate elas são duas
+/// respostas à mesma pergunta, e a que envelhece é a lista.
+///
+/// ⛔ **A auditoria de 2026-09-08 já nomeou o quinto que falta** (`VecDrivenStyle`, que é
+/// desregistado): quando ele entrar na declaração, é **aqui** que a divergência aparece — e não num
+/// report em que tirar um controlo deixa a cor assada no documento.
+#[test]
+fn the_timeline_drivers_list_is_what_the_declaration_writes() {
+    use crate::timeline_preview::{DRIVERS, declare_timeline_writes, state_of_bindings};
+    let (mut sim, e, doc) = rig();
+    // Dá à entidade os quatro sujeitos, para que os quatro factos possam MUDAR neste quadro.
+    sim.world_mut().entity_mut(e).insert((
+        ph2d_render::Sprite::atlas(0, [1.0, 1.0], [1.0; 4]),
+        ph2d_ecs::VecMorph::new(0, 1),
+        ph2d_physics_ecs::PhysicsJoint::default(),
+    ));
+    let antes = state_of_bindings(sim.world(), &doc);
+    {
+        let mut em = sim.world_mut().entity_mut(e);
+        if let Some(mut t) = em.get_mut::<Transform>() {
+            t.translation.x += 1.0;
+        }
+        if let Some(mut s) = em.get_mut::<ph2d_render::Sprite>() {
+            s.tint[3] = 0.5;
+        }
+        if let Some(mut m) = em.get_mut::<ph2d_ecs::VecMorph>() {
+            m.t = 0.25; // ⚠️ o nascimento é `0.5` — um `0.5` aqui NÃO muda nada, e o facto não se declara
+        }
+        if let Some(mut j) = em.get_mut::<ph2d_physics_ecs::PhysicsJoint>() {
+            j.damping += 1.0;
+        }
+    }
+    let mut pv = PreviewDrive::default();
+    declare_timeline_writes(sim.world(), &antes, &mut pv);
+
+    let mut escritos = pv.drivers_of(e.to_bits());
+    escritos.sort_unstable();
+    let mut listados = DRIVERS.to_vec();
+    listados.sort_unstable();
+    assert_eq!(
+        escritos, listados,
+        "a lista `DRIVERS` e o que o `declare_timeline_writes` escreve DIVERGIRAM — quem larga um \
+         motor da timeline (o Remove Smart Bone) deixaria o facto que falta ASSADO no documento"
+    );
+}

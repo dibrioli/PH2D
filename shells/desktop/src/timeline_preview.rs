@@ -39,7 +39,7 @@
 //! ⚠️ O `PhysicsJoint` vai **inteiro**, e ali isso é correcto: nenhum outro motor o conduz por
 //! campo, e a curva pode keyar qualquer um dos parâmetros dele.
 
-use crate::preview_drive::{Driven, PreviewDrive};
+use crate::preview_drive::{Driven, Driver, PreviewDrive};
 use ph2d_ecs::{Entity, Transform, World};
 use ph2d_timeline::TimelineDoc;
 
@@ -85,6 +85,23 @@ pub(crate) fn state_of_bindings(world: &World, doc: &TimelineDoc) -> Vec<BoundBe
         })
         .collect()
 }
+
+/// ⭐⭐⭐ **OS FACTOS QUE UMA CURVA DA TIMELINE CONDUZ** — a lista, nomeada uma vez.
+///
+/// ⚠️ **Ela existe porque um SEGUNDO leitor apareceu:** quem *larga* um motor da timeline (o
+/// [`crate::skeleton_smart::remove`]) tem de percorrer exactamente os mesmos factos que o
+/// [`declare_timeline_writes`] escreve. Uma lista escrita à mão do outro lado seria a segunda
+/// resposta à mesma pergunta — e a que envelhece é sempre a de quem não produz.
+///
+/// ⛔ **O `declare_timeline_writes` não a pode ITERAR** (cada facto tem o seu tipo de payload), por
+/// isso quem os ata é um gate que corre os dois e compara: `the_timeline_drivers_list_is_what_the_
+/// declaration_writes`.
+pub(crate) const DRIVERS: [Driver; 4] = [
+    Driver::SolverPose,
+    Driver::SpriteAlpha,
+    Driver::MorphT,
+    Driver::JointParams,
+];
 
 /// **O que a timeline mexeu é pré-visualização, não autoria** (`crate::preview_drive`).
 ///

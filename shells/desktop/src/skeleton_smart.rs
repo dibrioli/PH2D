@@ -158,6 +158,78 @@ pub(crate) fn choose_action(
     Some((nome, aberta))
 }
 
+/// ⭐⭐⭐ **APAGA o controlo deste osso E DEVOLVE A POSE QUE O ARTISTA AUTOROU.** `true` se havia um.
+///
+/// ⛔⛔ **Achado da auditoria de 2026-09-08 (o irmão já o fazia e este não):** o *Remove Smart Bone*
+/// só tirava o componente, e o objecto ficava **assado no instante da acção** em que o controlo o
+/// tinha deixado. É letra por letra o report de 2026-09-07 sobre o *Remove IK* — *«não funciona
+/// plenamente»* — noutro verbo, e contradiz a lei que este módulo escreveu: *o que um motor escreve
+/// vê-se, não se guarda*.
+///
+/// ⚠️ **A [`crate::preview_drive::PreviewDrive::settle`] NÃO serve** (a mesma nota do
+/// [`crate::skeleton_goal::remove`]): ela é para um motor que **largou**, e aí o vivo *é* o
+/// documento; aqui o motor foi **desligado**, e o vivo é dele.
+///
+/// # ⚠️ Por que o preço é uma LISTA e não uma corrente
+///
+/// A âncora larga a **corrente** que ela governava — uma cadeia de ossos, que ela sabe nomear. Um
+/// controlo conduz o que a **ACÇÃO** dele anima, que é `N` objectos × os quatro factos que uma
+/// curva escreve ([`crate::timeline_preview::DRIVERS`]). ⛔ Largar «tudo o que o ledger tem» apagaria
+/// a reprodução da própria timeline, que partilha aqueles motores — por isso a lista sai do **clip
+/// deste controlo**, e de mais nada.
+///
+/// ⚠️ **As entidades lêem-se ANTES de o componente sair**, pela razão do irmão: depois dele o nome
+/// da acção já não está em lado nenhum.
+pub(crate) fn remove(
+    sim: &mut SimWorld,
+    doc: &TimelineDoc,
+    osso: Entity,
+    preview: &mut PreviewDrive,
+) -> bool {
+    let Some(sb) = sim.world().get::<SmartBone>(osso).cloned() else {
+        return false;
+    };
+    let conduzidas = driven_by(sim.world(), doc, &sb);
+    sim.world_mut().entity_mut(osso).remove::<SmartBone>();
+    for e in conduzidas {
+        for d in crate::timeline_preview::DRIVERS {
+            preview.release_to_authored(sim, e, d);
+        }
+    }
+    true
+}
+
+/// **As entidades que a acção deste controlo anima.**
+///
+/// ⚠️ **`try_from_bits`, NUNCA `from_bits`** — os bits vêm de uma binding gravada, e o `from_bits`
+/// **aborta o processo** com bits de outra sessão. É a lei que a `ph2d-timeline` escreve duas vezes.
+///
+/// ⚠️ Uma binding pendurada (o objecto foi apagado) some do censo, como no `state_of_bindings`: não
+/// há pose para lhe devolver.
+#[must_use]
+fn driven_by(world: &World, doc: &TimelineDoc, sb: &SmartBone) -> Vec<Entity> {
+    let Some(c) = doc.clips().iter().find(|c| c.name == sb.clip) else {
+        return Vec::new();
+    };
+    let mut bits: Vec<u64> = doc
+        .bindings()
+        .iter()
+        .filter(|b| c.clip.track(b.target).is_some())
+        .map(|b| b.entity)
+        .collect();
+    bits.sort_unstable();
+    bits.dedup();
+    bits.into_iter()
+        .filter_map(|b| {
+            let e = Entity::try_from_bits(b)?;
+            // ⚠️ **E ela tem de estar VIVA** — repor uma pose numa entidade apagada não é um
+            // no-op, é escrever num id que já não existe.
+            world.get_entity(e).ok()?;
+            Some(e)
+        })
+        .collect()
+}
+
 /// **Os ossos inteligentes da cena**, em ordem determinística.
 ///
 /// ⚠️ **A ordem é o [`StableId`], nunca o `to_bits`** — dois controlos que percorram acções que
@@ -296,3 +368,10 @@ pub(crate) fn drive(sim: &mut SimWorld, doc: &TimelineDoc, preview: &mut Preview
 #[cfg(test)]
 #[path = "skeleton_smart_tests.rs"]
 mod tests;
+
+/// ⭐ **A LISTA de acções que o painel pinta** — irmão pelo teto de 600 LOC, e o corte é por
+/// RESPONSABILIDADE: o `tests` mede *o controlo PERCORRE a acção*; este mede **quais** acções ele
+/// oferece e o que uma POSIÇÃO nessa lista significa.
+#[cfg(test)]
+#[path = "skeleton_smart_list_tests.rs"]
+mod list_tests;

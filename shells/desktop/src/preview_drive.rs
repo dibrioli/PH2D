@@ -398,6 +398,25 @@ impl PreviewDrive {
         self.memo.keys().any(|(bits, _)| *bits == entity)
     }
 
+    /// ⭐ **QUE MOTORES conduzem esta entidade agora** — a lista, para quem precisa de a **largar**
+    /// e não só de saber que ela existe.
+    ///
+    /// ⚠️ Ela é o oráculo do censo que ata [`crate::timeline_preview::DRIVERS`] ao que o
+    /// `declare_timeline_writes` de facto escreve: *uma lista escrita à mão ao lado de um produtor
+    /// é a segunda resposta à mesma pergunta, e a que envelhece é a escrita à mão*.
+    ///
+    /// ⚠️ `cfg(test)` pela razão do [`Self::is_empty`]: no produto quem percorre os motores é a
+    /// própria lista nomeada, e um método que só os gates usam é exactamente o que o clippy nomeia.
+    #[cfg(test)]
+    #[must_use]
+    pub(crate) fn drivers_of(&self, entity: u64) -> Vec<Driver> {
+        self.memo
+            .keys()
+            .filter(|(bits, _)| *bits == entity)
+            .map(|(_, d)| *d)
+            .collect()
+    }
+
     /// Nada sob condução? Então a captura não paga nada — nem uma varredura.
     ///
     /// ⚠️ `cfg(test)`: no produto quem responde a esta pergunta é a própria

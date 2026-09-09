@@ -297,6 +297,8 @@ mod inspector_timer;
 // receita pela porta de VERDADE — chamar `mark` é o que o quadro faz, e um `insert(MasterEditing)`
 // à mão no teste mediria a marca em vez do fim.
 pub(crate) mod master_editing;
+/// ⭐⭐⭐ A ponte do `SignalActions` (TOP-20 #5) — onde um sinal vira jogo.
+mod signal_actions;
 /// ⚠️ A MESMA porta do passe, alcançável dos gates de outro módulo (a cadeia de visibilidade do
 /// vetor lê a marca, e o gate dela tem de a poder carimbar). *Um segundo carimbo escrito à mão no
 /// teste seria a segunda resposta.*
@@ -1005,6 +1007,7 @@ impl crate::App {
         self.timeline_onion_smoke();
         self.signal_smoke();
         self.timer_smoke();
+        self.signal_action_smoke();
         self.ui_motion_smoke();
         self.timescale_smoke();
         self.stagger_smoke();
@@ -2762,6 +2765,35 @@ impl crate::App {
         // desde que nasceu.
         for sig in self.signals.read(&mut self.signal_toast_reader) {
             toasts.push(Toast::info(format!("Signal: {}", sig.name)));
+        }
+        // ⭐⭐⭐ **O CONSUMIDOR QUE FAZ ALGUMA COISA** (TOP-20 #5) — a tabela nome → acção.
+        //
+        // ⚠️ **Aqui, e não noutro sítio do quadro:** depois do dreno (senão os sinais deste quadro
+        // só chegariam ao próximo) e antes do `post_frame_undo` (senão a escrita não seria
+        // fotografada nem declarada ao ledger). É a mesma janela do toast, por construção.
+        //
+        // ⚠️ **A resolução é pura e a aplicação não** — ver o cabeçalho de
+        // [`signal_actions`]: escrever uma `Visibility` é escrever um componente REGISTADO, e sem
+        // o `preview_drive` cada porta que abre viraria um passo de `Ctrl+Z`.
+        {
+            let disparados: Vec<String> = self
+                .signals
+                .read(&mut self.signal_action_reader)
+                .map(|s| s.name.to_string())
+                .collect();
+            if !disparados.is_empty() {
+                let nomes: Vec<&str> = disparados.iter().map(String::as_str).collect();
+                let efeitos = ph2d_ecs::resolve_signal_actions(sim.world_mut(), &nomes);
+                if !efeitos.is_empty() {
+                    let r = signal_actions::apply(sim, &efeitos, &mut self.preview_drive);
+                    if self.signal_log_reader.is_some() {
+                        eprintln!(
+                            "[signal] {} accao(oes) aplicada(s), {} inerte(s)",
+                            r.applied, r.inert
+                        );
+                    }
+                }
+            }
         }
         if let Some(reader) = self.signal_log_reader.as_mut() {
             for sig in self.signals.read(reader) {

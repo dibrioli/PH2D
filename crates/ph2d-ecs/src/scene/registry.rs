@@ -575,6 +575,10 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // isso que faz o replay reproduzir o mesmo instante de disparo -- e e por isso que ele passa
     // pelo ledger do `preview_drive` em vez de virar um passo de undo por quadro.
     reg.register_default::<crate::Timers>("ph2d::ecs::Timers");
+    // ⭐⭐⭐ **A tabela nome → acção** (TOP-20 #5) — irmã do `Timers` na família LÓGICA, e o
+    // consumidor que faltava aos sinais. ⚠️ Ela é CONFIG inteira: o que ela guarda é o que o
+    // artista escreveu, e o efeito de uma acção vive no componente que ela toca.
+    reg.register_default::<crate::SignalActions>("ph2d::ecs::SignalActions");
     // O RECORTE, que deixou de ser um campo da moldura para valer em qualquer forma FECHADA
     // (2026-08-21). Sem o registro, o modo de falha é o mesmo da moldura e igualmente enganoso:
     // um Ctrl+Z devolveria a forma inteira, com todos os filhos no lugar, e o recorte

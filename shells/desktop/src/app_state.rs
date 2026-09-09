@@ -610,6 +610,12 @@ pub(crate) struct App {
     /// `missed`, e entrar na preview entregaria de uma vez os dois quadros que a janela do
     /// outbox ainda guarda — a cena saltaria de pose por causa de um sinal que aconteceu antes
     /// de o artista ligar o modo.
+    /// ⭐⭐⭐ **O cursor do consumidor que FAZ ALGUMA COISA** (TOP-20 #5) — a tabela nome → acção.
+    ///
+    /// ⚠️ **Cursor próprio, como todos**: o toast, o log de diagnóstico e a máquina de UI leem a
+    /// mesma saída sem se consumirem — é a lei do `ph2d-runtime` (o produtor não chama ninguém, e
+    /// cada consumidor tem o seu). Partilhar um cursor faria um deles comer o sinal do outro.
+    pub(crate) signal_action_reader: ph2d_runtime::SignalReader,
     pub(crate) ui_signal_reader: ph2d_runtime::SignalReader,
     /// Set by the `K` key: on the next frame, insert a keyframe at the playhead
     /// on every track bound to the selected sprite (capturing its current pose).
@@ -787,6 +793,8 @@ pub(crate) struct App {
     pub(crate) signal_smoke_done: bool,
     /// ⭐⭐⭐ O smoke do `Timer` (TOP-20 #2) já rodou. `PH2D_TIMER_SMOKE=1`.
     pub(crate) timer_smoke_done: bool,
+    /// ⭐ A cena do `SignalActions` (TOP-20 #5) já montou?
+    pub(crate) signal_action_smoke_done: bool,
     /// O smoke da UI viva já montou (`PH2D_UI_MOTION_SMOKE`).
     pub(crate) ui_motion_smoke_done: bool,
     /// O smoke do time-scale de seleção (joias §4) já rodou. `PH2D_TIMESCALE_SMOKE=1`.

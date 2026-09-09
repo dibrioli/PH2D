@@ -96,6 +96,13 @@ pub(crate) enum Driver {
     MorphPair,
     /// Os parâmetros de um `PhysicsJoint` que as curvas de joint escrevem.
     JointParams,
+    /// ⭐⭐⭐ **A VISIBILIDADE que uma acção de sinal escreve** (TOP-20 #5).
+    ///
+    /// ⚠️ **Sem isto, cada porta que abre é um passo de `Ctrl+Z`.** A `Visibility` é um componente
+    /// REGISTADO — o que o artista autora — e um sinal a escondê-la é o motor, não a mão. É a
+    /// mesma fronteira que o `Timer` não precisou de declarar (o relógio dele não é registado) e
+    /// que esta metade da família precisa.
+    SignalVisibility,
 }
 
 /// **O FACTO que um motor escreve** — o recorte exacto do componente que é dele, e nada mais.
@@ -139,6 +146,11 @@ pub(crate) enum Driven {
     /// dinâmico é conduzida pelos dois. Reusar o driver do solver faria o palco e a corrida
     /// escreverem na mesma entrada, e o `authored` de um apagaria o do outro.
     StagePose(Transform),
+    /// ⭐ **Escondido ou visível** — o `bool` da [`ph2d_ecs::Visibility`], e nada mais.
+    ///
+    /// ⚠️ **Um `bool` e não o componente**, pela lei do recorte: a `Visibility` tem UM campo hoje,
+    /// e guardar o struct faria um campo novo dela entrar na pré-visualização sem ninguém decidir.
+    Visible(bool),
 }
 
 impl Driven {
@@ -152,6 +164,7 @@ impl Driven {
             Self::MorphPair(_) => Driver::MorphPair,
             Self::JointParams(_) => Driver::JointParams,
             Self::StagePose(_) => Driver::PrefabStage,
+            Self::Visible(_) => Driver::SignalVisibility,
         }
     }
 
@@ -188,6 +201,9 @@ impl Driven {
                 *sim.world().get::<ph2d_physics_ecs::PhysicsJoint>(entity)?,
             )),
             Driver::PrefabStage => Some(Self::StagePose(*sim.world().get::<Transform>(entity)?)),
+            Driver::SignalVisibility => Some(Self::Visible(
+                sim.world().get::<ph2d_ecs::Visibility>(entity)?.hidden,
+            )),
         }
     }
 
@@ -270,6 +286,13 @@ impl Driven {
                     && *t != pose
                 {
                     *t = pose;
+                }
+            }
+            Self::Visible(hidden) => {
+                if let Some(mut v) = sim.world_mut().get_mut::<ph2d_ecs::Visibility>(entity)
+                    && v.hidden != hidden
+                {
+                    v.hidden = hidden;
                 }
             }
         }

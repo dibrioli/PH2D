@@ -59,8 +59,30 @@ const TIMER_FIELDS: &[FieldDesc] = &[
     f(5, "Signal", K::Text),
 ];
 
+/// **Os campos de UMA linha da tabela `SignalActions`** — *quando o sinal `on` chegar, faz `verb`
+/// em `target`*.
+///
+/// ⚠️ **O `target` é `Text` e não `Ref`**, e a distinção é a lei do CLAUDE.md §5: *referência
+/// durável entre objectos é o NOME, nunca os bits*. Um `FieldKind::Ref` prometeria um picker que
+/// guarda uma identidade — e o undo respawna tudo com bits novos.
+const ACTION_FIELDS: &[FieldDesc] = &[
+    f(1, "On Signal", K::Text),
+    f(2, "Target", K::Text),
+    f(3, "Action", K::Enum),
+    f(4, "Timer", K::Text),
+];
+
 /// Os descritores da família.
 pub const DESCS: &[ComponentDesc] = &[
+    // ⭐⭐⭐ **O consumidor que faltava aos sinais** — e `O::ANY` pela mesma razão do relógio: quem
+    // reage a um sinal é tantas vezes um objecto VAZIO («o cérebro da cena») quanto uma sprite.
+    D::authored(
+        "ph2d::ecs::SignalActions",
+        "Signal Actions",
+        C::Logic,
+        O::ANY,
+        ACTION_FIELDS,
+    ),
     // ⚠️ **`O::ANY`, e é a decisão**: um relógio serve a um sprite, a uma forma, a um objecto
     // VAZIO e a um grupo. Restringi-lo a `DRAWABLE` faria o objecto vazio — a entidade que o
     // artista usa como *«o cérebro da cena»* — não poder ter um.

@@ -257,6 +257,31 @@ pub fn reconcile(timers: &Timers, rt: &mut TimerRuntime) -> bool {
     true
 }
 
+/// **ARRANCAR um timer** — ele passa a correr **do princípio**.
+///
+/// ⚠️ **Do princípio, e não de onde parou**, que é o que o `Timer.start()` do Godot faz e o que o
+/// artista espera de um verbo chamado *start*. ⛔ Não há *resume*: retomar de onde se parou é outra
+/// pergunta, e a lei do [`advance`] já a responde sozinha (uma pausa guarda o progresso, então
+/// bastaria pôr `running` de volta). Um verbo para isso entra quando alguém o pedir, com o nome
+/// que o distinga deste.
+///
+/// ⇒ é exactamente o que o [`reconcile`] faz a um slot que nasce, e de propósito: *arrancar é
+/// arrancar*, venha do `autostart` ou de um sinal.
+pub fn start(state: &mut TimerState) {
+    state.running = true;
+    state.elapsed_us = 0;
+}
+
+/// **PARAR um timer, guardando o progresso** — o *Pause* do Godot, não o *Stop*.
+///
+/// ⚠️ É a lei que o [`advance`] já declara do outro lado (*«`running == false` não acumula, e isso
+/// é diferente de acumular sem disparar»*), e escrevê-la aqui é o que impede que um verbo de painel
+/// zere o relógio por engano — o que tornaria *parar e voltar a arrancar* indistinguível de
+/// *parar*.
+pub fn stop(state: &mut TimerState) {
+    state.running = false;
+}
+
 #[cfg(test)]
 #[path = "timer_tests.rs"]
 mod tests;

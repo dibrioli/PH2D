@@ -179,7 +179,7 @@ fn register_ecs_components_populates_registry() {
     // ⚠️ **2026-09-08: `77` -> `78`, delta +1** -- o `Timers` (TOP-20 #2). Quem integrar conta o
     //   DELTA, nunca o literal: duas linhas que registem um componente cada e escrevam o mesmo
     //   numero fundem MUDAS, e o git nao sabe o que a conta significa.
-    assert_eq!(reg.len(), 78);
+    assert_eq!(reg.len(), 79);
     assert!(reg.get_by_name("ph2d::ecs::VecClipContent").is_some());
     assert!(reg.get_by_name("ph2d::ecs::VecBoolOp").is_some());
     assert!(reg.get_by_name("ph2d::ecs::SpritePixels").is_some());

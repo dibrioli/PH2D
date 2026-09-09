@@ -621,6 +621,9 @@ mod sheet_frame;
 mod sheet_import;
 /// `PH2D_SHEET_SMOKE` — a cena que exerce a folha como OBJETO (plano `docs/Sprite_projeto/17` §7).
 mod sheet_smoke;
+/// ⭐⭐⭐ A cena do `Timer` (`PH2D_TIMER_SMOKE=1`) — o primeiro produtor de sinal que não
+/// precisa de dois corpos a tocarem-se.
+mod signal_action_smoke;
 mod signal_smoke;
 /// ⭐ A cena da TABELA SINAL → PAPEL (`PH2D_BUILD_SMOKE=68`) — ⚠️ NÃO é o `signal_smoke`, que é
 /// a cena do R0 (`PH2D_SIGNAL_SMOKE`): ali o assunto é a SAÍDA, aqui é o CONSUMIDOR.
@@ -681,8 +684,6 @@ mod timeline_persist;
 /// **A timeline é o TERCEIRO membro da família pré-visualização↔documento** — enquanto o playhead
 /// toca, as curvas escrevem poses que não são edições do artista (`crate::preview_drive`).
 mod timeline_preview;
-/// ⭐⭐⭐ A cena do `Timer` (`PH2D_TIMER_SMOKE=1`) — o primeiro produtor de sinal que não
-/// precisa de dois corpos a tocarem-se.
 mod timer_smoke;
 mod timescale_smoke;
 /// **AS MOLDURAS** (plano UI/UX W0): que intervalo da pilha de z cada `VecFrame` recorta. A
@@ -1040,6 +1041,7 @@ impl App {
             // um cursor a envelhecer sozinho, acumulando `missed` que ninguem le.
             signal_log_reader: std::env::var_os("PH2D_SIGNAL_LOG")
                 .map(|_| ph2d_runtime::SignalReader::new()),
+            signal_action_reader: ph2d_runtime::SignalReader::new(),
             ui_signal_reader: ph2d_runtime::SignalReader::new(),
             timeline_insert_key: false,
             autokey: Default::default(),
@@ -1090,6 +1092,7 @@ impl App {
             harmony_smoke_done: false,
             signal_smoke_done: false,
             timer_smoke_done: false,
+            signal_action_smoke_done: false,
             ui_motion_smoke_done: false,
             timescale_smoke_done: false,
             stagger_smoke_done: false,

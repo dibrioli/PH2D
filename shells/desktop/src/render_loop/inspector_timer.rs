@@ -115,9 +115,7 @@ pub(super) fn apply_timer_edit(
             timers.0.remove(i);
         }
         TimerFieldEdit::Rename(i, name) => {
-            let Some(t) = timers.0.get_mut(usize::from(*i)) else {
-                return None;
-            };
+            let t = timers.0.get_mut(usize::from(*i))?;
             let trimmed = name.trim();
             // ⚠️ **Um nome vazio é RECUSADO com voz.** A lista escolhe-se por nome; uma linha em
             // branco é uma linha que não se consegue apontar.
@@ -129,9 +127,7 @@ pub(super) fn apply_timer_edit(
             t.name = trimmed.to_string();
         }
         TimerFieldEdit::DurationSecs(i, secs) => {
-            let Some(t) = timers.0.get_mut(usize::from(*i)) else {
-                return None;
-            };
+            let t = timers.0.get_mut(usize::from(*i))?;
             // ⚠️ **A saturação é do MOTOR** (`TIMER_MAX_US`), e mora aqui porque é aqui que a
             // unidade muda. Um valor acima do teto entra saturado em vez de dar a volta ao `u64`.
             #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
@@ -139,21 +135,15 @@ pub(super) fn apply_timer_edit(
             t.duration_us = us.min(TIMER_MAX_US);
         }
         TimerFieldEdit::Repeat(i, on) => {
-            let Some(t) = timers.0.get_mut(usize::from(*i)) else {
-                return None;
-            };
+            let t = timers.0.get_mut(usize::from(*i))?;
             t.repeat = *on;
         }
         TimerFieldEdit::Autostart(i, on) => {
-            let Some(t) = timers.0.get_mut(usize::from(*i)) else {
-                return None;
-            };
+            let t = timers.0.get_mut(usize::from(*i))?;
             t.autostart = *on;
         }
         TimerFieldEdit::Signal(i, name) => {
-            let Some(t) = timers.0.get_mut(usize::from(*i)) else {
-                return None;
-            };
+            let t = timers.0.get_mut(usize::from(*i))?;
             // ⚠️ **Vazio é legítimo e não se recusa** — é a lei da §11: um produtor sem nome cumpre
             // o período e cala-se. Quem avisa que ele está mudo é o painel, que o mostra.
             t.signal = name.trim().to_string();

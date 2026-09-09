@@ -64,6 +64,8 @@ pub mod root_order;
 pub mod sampling;
 pub mod scene;
 pub mod sibling_order;
+/// ⭐⭐⭐ **A tabela nome → acção** (TOP-20 #5) — o consumidor que faltava aos sinais.
+pub mod signal_actions;
 pub mod sim;
 pub mod slice_nine;
 pub mod sort_key;
@@ -127,6 +129,10 @@ pub use sibling_order::{
     SiblingOrder, assign_missing_sibling_order, ordered_children, root_key, set_sibling_order,
     sibling_key,
 };
+pub use signal_actions::{
+    SIGNAL_ACTIONS_MAX, SignalAction, SignalActions, SignalEffect, SignalVerb,
+    resolve as resolve_signal_actions,
+};
 pub use sim::{SimComponent, SimWorld};
 pub use slice_nine::{SliceDrawMode, SliceNine, SliceRegion, SliceTileMode, TileRegionMode};
 pub use sort_key::{SortInput, SortKey, compute_sort_ranks, effective_z_index};
@@ -151,7 +157,8 @@ pub use stable_id::{
 };
 pub use timer::{
     TIMER_MAX_US, TIMER_NAME_MAX_BYTES, TIMERS_MAX, Timer, TimerOutcome, TimerRuntime, TimerState,
-    Timers, advance as timer_advance, reconcile as timer_reconcile,
+    Timers, advance as timer_advance, reconcile as timer_reconcile, start as timer_start,
+    stop as timer_stop,
 };
 pub use transform::{
     GlobalTransform, GroupedChildren, Locked, SimRef, Transform, TransformPropagationState,

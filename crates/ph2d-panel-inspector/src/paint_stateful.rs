@@ -251,7 +251,7 @@ pub(crate) fn paint_stateful_sections(
         anim,
         anim_selected,
     );
-    paint_anchor_section(
+    y = paint_anchor_section(
         scene,
         text_system,
         theme,
@@ -267,7 +267,7 @@ pub(crate) fn paint_stateful_sections(
         anchor_selected,
         notes,
     );
-    paint_timer_section(
+    y = paint_timer_section(
         scene,
         text_system,
         theme,

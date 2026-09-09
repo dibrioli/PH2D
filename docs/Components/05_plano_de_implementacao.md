@@ -15,6 +15,11 @@
 
 ---
 
+> ⭐⭐⭐ **A FILA e o que ficou ABERTO estão no [§11](#11--o-que-ficou-aberto-e-a-fila--auditada-contra-o-código-2026-09-08),
+> auditados contra o CÓDIGO em 2026-09-08.** O próximo passo do módulo é o **bloco 2–5 do TOP-20**
+> (`Timer` · `SensorZone` · `AudioSource2D` · `SignalActions`), e o pré-requisito deles — o item 1,
+> *«o divisor do custo do catálogo inteiro»* — **está feito por esta linha**.
+
 ## §0 — Placar (a linha atualiza; UMA linha por fase)
 
 | Fase | O quê (uma frase) | Estado |
@@ -3110,3 +3115,69 @@ F8.3: *o mesmo mecanismo, uma ordem de grandeza mais barato.*
 **ou** quando alguém medir uma cena real acima de ~5 000 formas — que é onde esta tabela deixa de
 ser um exercício. O instrumento fica no repo e corre-se de uma linha:
 `cargo test -p ph2d-vec-scene --release --test measure_scene_clone -- --ignored --nocapture`.
+
+---
+
+## §11 — **O QUE FICOU ABERTO, e A FILA — auditada contra o CÓDIGO** (2026-09-08)
+
+> ⚠️ **Esta secção existe porque o §5.0 manda:** *o plano acumula trabalho já pago — audite a lista
+> antes de pegar um item dela, e confira o CÓDIGO antes de acreditar numa ausência.* Cada linha
+> abaixo foi medida na árvore desta data, não lida de uma nota.
+
+### §11.1 — O que ficou ABERTO nesta jornada (com o mecanismo, para não se redescobrir)
+
+| # | Aberto | Mecanismo, e o que o desbloqueia |
+|---|---|---|
+| 1 | ⏳ **A rede não é derivável ao 100 %** | O censo `the_net_knows_every_derived_writer` cobre a **janela** (`settle_origins → reorder_to`) e o **padrão** (`<mídia>_entities::sync`). ⛔ Um escritor derivado que apareça FORA das duas formas continua invisível. O vão entre elas está auditado (460 linhas, 60 chamadas, todas drenos ou leitores) — mas a auditoria é de **hoje**, não um gate |
+| 2 | ⏳ **`INSP_JOINT_AXIS_GROUP` fica na catraca sem ser dívida** | É o `group_id` de um segmented, nunca chega ao `hit_index`. A régua que o tiraria — *«esta tabela chega ao hit index?»* — foi desenhada, medida e **RECUSADA**: branquearia `PAINTER_BRUSH_RANDOMIZE_SLIDERS`/`_CHIPS`, cujo hit-registo acontece dentro de um helper (§F4.6e) |
+| 3 | ⏳ **Quatro controlos por registar em painéis de OUTRAS linhas** | A catraca desceu de `9` para `1` porque as outras oito não eram dívida. ⚠️ **A que fica não é a lista antiga**: o `BGR_SWATCHES`, o `PAINTER_BRUSH_SYMMETRY_AXES` e os dois do randomize saíram **por estarem vivos**, medidos um a um |
+| 4 | ⛔ **A partilha por PATH no vector — RECUSADA por medição** | §F8.4: ganho `296,6 MB → 0,1`, mas o relógio já está bem (`0,6 %` de um quadro) e o preço toca a espinha de outras linhas. **Reabre** com a `line/Vector` parada, ou com uma cena real acima de ~5 000 formas |
+| 5 | ⏳ **O `build_hierarchy_snapshot` é a peça mais cara da rede** | `1,973 ms` a 20 000 formas. ⛔ **Não é um teto**: a faixa inteira é linear (§F4.6f) — atacá-lo é trabalho sobre um número sem folga |
+| 6 | ⏳ **O *Remove from Sheet* nunca foi medido sozinho** | Ele é da mesma CLASSE dos outros verbos tardios e a rede cobre-o por construção; o gate mede a **lei**, não a plumbing de cada verbo (§F4.6d) |
+| 7 | ⏳ **A `line/Vector` e o `PROJECT_SCHEMA`** | Esta linha não moveu o schema nesta jornada. ⚠️ Quem integrar **conta o delta**, nunca o literal (§5.0) |
+
+### §11.2 — ⭐⭐⭐ A FILA DOS PRÓXIMOS COMPONENTES, medida contra a árvore
+
+A fila é o **TOP-20** do [levantamento](00_levantamento_componentes.md) §7, e a ordem dele é
+declarada: **1** destrava o custo de todos → **2–5** fazem sinais virarem jogo (com som) → **6**
+destrava controllers → **7–8** o olhar e o corpo → **9–12** conteúdo dinâmico.
+
+| # | Item | Estado MEDIDO em 2026-09-08 |
+|---|---|---|
+| 1 | Inspector derivado + *Add Component* + required | ✅ **FEITO por esta linha** (F0 + F3) |
+| **2** | **`Timer`** | ⏳ **NÃO EXISTE** — nenhuma `struct Timer` na árvore |
+| **3** | **`SensorZone`** | ⏳ **METADE**: o colisor tem `is_sensor: bool`, e o doc dele diz à letra *«waits for a consumer of its own»*. Falta o componente autorável (forma + evento) e a costura ao sinal |
+| **4** | **`AudioSource2D` + `AudioListener2D`** | ⏳ **NÃO EXISTEM** — o rack de 42 efeitos não tem consumidor de CENA |
+| **5** | **`SignalActions`** (a tabela nome → ação) | ⏳ **ABERTO e planeado** — é o **R3** do [`docs/Runtime/00_plano_runtime.md`](../Runtime/00_plano_runtime.md); o `ph2d-runtime` já tem `Signal`/`SignalOutbox`/`SignalOnHit`, e o que falta é a tabela, que é **conteúdo autorado e precisa de UI** |
+| 6 | `ActionMap` + `ActionState` | ✅ **FEITO** pelo Input Map (`ph2d-input::ActionState`). ⏳ Faltam os **âmbitos com prioridade** — bloqueados no `shells/game`/R1, adiado pelo Enio |
+| **7** | **`GameCamera` + `CameraFollow` + `CameraLimits`** | ⏳ **NÃO EXISTEM** — *«a maior lacuna do PH2D e de metade da indústria»* |
+| 8 | `SpriteFrames` + `AnimatedSprite` | ✅ **FEITO** pela §11 Animation (`SpriteAnimator` · `AnimationTag` · `SpriteAnimations`). ⛔ O `SpriteFrames` da spec é **recusa medida** — o pool é a grelha que a sprite já tem |
+| **9** | **`Tags`** | ⏳ **NÃO EXISTE** |
+| 10 | `PrefabAsset` (fluxo) + `PrefabRef` | ✅ **FEITO** — F4/F5 + o *Edit Prefab* de 07/09; o `PrefabRef` vive em `ph2d-asset/src/prefab.rs` |
+| 11–20 | `Spawner` · `Lifetime` · `TopDownPlayer` · `ProjectileMotion` · `StateMachine` · `ScriptProperties` · `Tilemap*` · `ParticleEmitter` · `SequencePlayer` · HUD | ⏳ **NENHUM existe** na árvore |
+
+#### ⇒ O PRÓXIMO é o BLOCO 2–5, e ele é um bloco por desenho, não por conveniência
+
+O levantamento declara a coerência: **2–5 fazem sinais virarem jogo, com som.** Os quatro fecham um
+circuito que hoje está aberto em três pontos:
+
+```
+  Timer (2) ──┐
+              ├──► Signal ──► SignalActions (5) ──► som (4) · enable · spawn
+  SensorZone (3) ──┘            ▲
+                                └── o `ph2d-runtime` JÁ publica e JÁ tem consumidores
+```
+
+- **O `Timer` é a melhor razão custo/benefício da lista** e o **primeiro produtor de sinal barato**:
+  hoje o único produtor autorável é a colisão.
+- **O `SensorZone` é meio caminho andado** — o rapier já reporta e o `is_sensor` já existe, com o
+  doc a dizer que espera consumidor. ⚠️ *Um marcador que existe sem consumidor lê-se, numa varredura,
+  exactamente como uma feature pronta.*
+- **O `AudioSource2D` dá ao rack de 42 efeitos o consumidor de cena que ele nunca teve** — e é a
+  primeira reação **audível** do produto.
+- **O `SignalActions` é o item que o próprio levantamento chama de «o mais importante»**: com som,
+  timer e enable/spawn num dropdown, **sinais viram gameplay sem uma linha de script**.
+
+⚠️ **E o item 1 — o pré-requisito declarado das quatro sínteses — está FEITO por esta linha.** Era
+ele *«o divisor do custo do catálogo INTEIRO»*: cada um dos quatro acima nasce com Inspector
+derivado do tipo, paleta de *Add Component* e componentes requeridos, **sem uma secção artesanal**.

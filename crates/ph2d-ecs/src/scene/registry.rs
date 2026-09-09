@@ -579,6 +579,15 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // consumidor que faltava aos sinais. ⚠️ Ela é CONFIG inteira: o que ela guarda é o que o
     // artista escreveu, e o efeito de uma acção vive no componente que ela toca.
     reg.register_default::<crate::SignalActions>("ph2d::ecs::SignalActions");
+    // ⭐⭐⭐ **O SOM DE UM OBJECTO** (TOP-20 #4, 2026-09-09) — a fonte e as orelhas. Sem o
+    // registo, o artista escolhe um ficheiro, afina o alcance, grava, reabre, e o objecto volta
+    // MUDO: nada some da tela e nada dá erro. ⚠️ O que ANDA — a voz viva, o que já tocou — fica
+    // fora do componente pela lei do `Timers`: um `VoiceId` registado faria cada quadro com
+    // entrada virar um passo de undo.
+    reg.register_default::<crate::AudioSource2D>("ph2d::ecs::AudioSource2D");
+    // ⚠️ **Um MARCADOR ainda tem de se registar**: a presença É o valor, e sem ele um Ctrl+Z ou um
+    // reabrir devolveriam a cena SEM orelhas — que é a única maneira de tudo ficar mudo de uma vez.
+    reg.register_default::<crate::AudioListener2D>("ph2d::ecs::AudioListener2D");
     // O RECORTE, que deixou de ser um campo da moldura para valer em qualquer forma FECHADA
     // (2026-08-21). Sem o registro, o modo de falha é o mesmo da moldura e igualmente enganoso:
     // um Ctrl+Z devolveria a forma inteira, com todos os filhos no lugar, e o recorte

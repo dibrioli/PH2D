@@ -279,6 +279,9 @@ mod wet_grid_look_probe;
 /// formulário que não mexe em nada na tela.
 pub(crate) mod anchor_gizmo;
 mod anchor_overlay;
+/// ⭐⭐⭐ A ponte do `SignalActions` (TOP-20 #5) — onde um sinal vira jogo.
+/// ⭐⭐⭐ A ponte do SOM DE CENA (TOP-20 #4) — onde um objecto deixa de ser mudo.
+mod audio_2d;
 /// O anel de um objeto VAZIO selecionado — ver o módulo.
 mod empty_object_overlay;
 /// ⭐ A secção TIMERS (TOP-20 #2, W3) — o snapshot e o commit dela.
@@ -299,7 +302,7 @@ mod inspector_timer;
 // receita pela porta de VERDADE — chamar `mark` é o que o quadro faz, e um `insert(MasterEditing)`
 // à mão no teste mediria a marca em vez do fim.
 pub(crate) mod master_editing;
-/// ⭐⭐⭐ A ponte do `SignalActions` (TOP-20 #5) — onde um sinal vira jogo.
+pub(crate) use audio_2d::AudioSceneReport;
 mod signal_actions;
 /// ⚠️ A MESMA porta do passe, alcançável dos gates de outro módulo (a cadeia de visibilidade do
 /// vetor lê a marca, e o gate dela tem de a poder carimbar). *Um segundo carimbo escrito à mão no
@@ -1010,6 +1013,8 @@ impl crate::App {
         self.signal_smoke();
         self.timer_smoke();
         self.signal_action_smoke();
+        #[cfg(feature = "panel-audio-editor")]
+        self.audio_2d_smoke();
         self.ui_motion_smoke();
         self.timescale_smoke();
         self.stagger_smoke();
@@ -2157,6 +2162,28 @@ impl crate::App {
         // componente registado, então o undo não o fotografa e não há passo espúrio a declarar.
         let timer_signals = timer_tick::tick_timers(sim, report.ticks, self.fixed_step.fixed_dt());
 
+        // ⭐⭐⭐ **O SOM DE CENA** (TOP-20 #4) — nasce, segue e retira as vozes dos objectos.
+        //
+        // ⚠️ **Aqui e não no passo fixo**, ao contrário dos dois relógios acima: uma voz é um
+        // recurso do dispositivo e o `ph2d-audio` declara-se **presentation (HR-5 exempt)**. O que
+        // este passe faz por quadro é reescrever ganho e pan, que é seguir o que o olho já vê —
+        // amarrá-lo ao passo fixo faria o som saltar entre tiques quando o quadro é mais rápido.
+        //
+        // ⚠️ **Ele não escreve na cena**, logo não passa pelo `preview_drive`: som é saída.
+        let audio_report = audio_2d::update(sim, self.audio.as_mut());
+        // ⚠️ **Ele fala UMA vez por mudança, e não por quadro** — um relatório impresso a
+        // 60 Hz não é diagnóstico, é ruído que esconde o que interessa.
+        if self.signal_log_reader.is_some() && audio_report != self.last_audio_report {
+            self.last_audio_report = audio_report;
+            eprintln!(
+                "[audio-2d] {} fonte(s) · {} ouvinte(s) · {} voz(es) viva(s) · {} arrancada(s)",
+                audio_report.sources,
+                audio_report.listeners,
+                audio_report.live,
+                audio_report.started
+            );
+        }
+
         // Sim tick + extract — extracted to sibling `sim_extract.rs`
         // (Wave 3.2 stage A). Runs the bouncing-motion sim tick and
         // the ADR-0021 / ADR-0025 propagate-transforms + sprite
@@ -2787,7 +2814,12 @@ impl crate::App {
                 let nomes: Vec<&str> = disparados.iter().map(String::as_str).collect();
                 let efeitos = ph2d_ecs::resolve_signal_actions(sim.world_mut(), &nomes);
                 if !efeitos.is_empty() {
-                    let r = signal_actions::apply(sim, &efeitos, &mut self.preview_drive);
+                    let r = signal_actions::apply(
+                        sim,
+                        &efeitos,
+                        &mut self.preview_drive,
+                        self.audio.as_mut(),
+                    );
                     if self.signal_log_reader.is_some() {
                         eprintln!(
                             "[signal] {} accao(oes) aplicada(s), {} inerte(s)",

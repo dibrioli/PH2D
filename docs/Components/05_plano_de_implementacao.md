@@ -3416,3 +3416,119 @@ não produz o fenómeno (a lista acaba a `747` numa região que vai a `900`).
   fazem coisas de naturezas diferentes (arrancar um relógio · mostrar · esconder) são a população
   dele. ⛔ Não construído: falta escolher os glifos, e um ícone repetido em todas as linhas gasta
   uma goteira para não dizer nada.
+
+---
+
+## §15 — **O `AudioSource2D` + `AudioListener2D`** (TOP-20 #4) — W1 e W2
+
+O item que o levantamento chama de *«a primeira reação AUDÍVEL»*, e o que fecha o bloco 2–5: com
+som, timer e enable num dropdown, **sinais viram gameplay sem uma linha de script**.
+
+### §15.1 — A ausência, MEDIDA antes de construir
+
+`AudioSource2D`/`AudioListener2D`: **zero** ocorrências na árvore, e a única linha que os nomeava era
+a recusa escrita no `SignalVerb`. Do outro lado: um mixer de **64 vozes**, um rack de **42 efeitos
+com 23 presets**, espectral, denoise por ML, exportação Ogg/Opus, streaming — e **nenhum consumidor
+de cena**. *O rack era 100 % editor-side.*
+
+### §15.2 — As três metades, e porque a fronteira é exactamente esta
+
+| metade | onde vive | porquê ali |
+|---|---|---|
+| a **lei** — quem são as orelhas, quanto se ouve, de que lado | [`ph2d-ecs/src/audio_2d.rs`](../../crates/ph2d-ecs/src/audio_2d.rs) | pura; não conhece o dispositivo |
+| o **livro das vozes** — o que soa agora | [`shells/desktop/src/audio/scene.rs`](../../shells/desktop/src/audio/scene.rs) | uma voz é recurso do DISPOSITIVO, e ele vive ao lado do `cpal` |
+| a **costura** — lê o mundo, chama a lei, manda tocar | [`render_loop/audio_2d.rs`](../../shells/desktop/src/render_loop/audio_2d.rs) | a mesma repartição do `timer_tick` |
+
+⚠️ **O componente registado é CONFIG**: não há `VoiceId` nele. É a lei que o `Timer` pagou — *um
+componente registado que anda a 60 Hz faz cada quadro com entrada virar um passo de undo*.
+⚠️ **A chave do livro é o `StableId`, nunca a `Entity`**: o undo respawna tudo com bits novos, e um
+livro chaveado por entidade perderia o dono das vozes a cada `Ctrl+Z` — elas continuariam a soar,
+sem ninguém que as pudesse calar.
+
+### §15.3 — ⭐⭐⭐ Uma lei ERRADA que o próprio gate apanhou: **o pan é a DIRECÇÃO**
+
+A primeira redacção normalizava o pan pelo `max_distance` (`dx / max_distance`). O gate do
+*«pan pulando»* tem uma metade que mede a **fixtura** — *sem o raio, isto de facto salta?* — e ela
+respondeu **não**: o pior salto a atravessar o ouvinte era `0,001`. ⇒ *uma lei em que o defeito não
+é reproduzível é uma lei em que a cura não faz nada.*
+
+O diagnóstico: com `dx / max_distance`, uma fonte um metro à direita pandeia `0,1` com alcance de
+dez metros e `0,001` com alcance de mil — **a direcção de um som passava a depender de um knob que
+fala de volume**. É *um parâmetro com dois papéis*, o mesmo defeito do `deadzone` do Godot que o
+Input Map desta casa já corrigiu com dois números.
+
+⇒ o pan é `dx / d`, **o seno do azimute**. E com ele o `non_spatialized_radius` (o do Unreal) passa
+a ganhar o pão: a passar a `5 cm` do ouvinte, o pior salto entre dois passos de `1 cm` vai de
+**`0,20` sem raio para `0,01` com meio metro de raio**. ⚠️ E ele é uma **mistura**, não um `if`:
+*«dentro do raio, pan zero»* trocaria um salto por outro, na borda do raio.
+
+### §15.4 — Os números, e de que recurso cada um é
+
+- **`AUDIO_MAX_POLYPHONY = 16`** — do POOL do mixer (64 vozes): um quarto dele chega para uma
+  metralhadora e deixa três quartos para a cena. ⚠️ O default por-fonte é **`1`**: o caso comum
+  **substitui** a voz anterior, e acumular por omissão faz de um sinal repetido uma parede de som.
+- **`AUDIO_MAX_DISTANCE_M = 1 000`** — teto de PAINEL, não do motor; os objectos das cenas de smoke
+  vivem em `±2 m` e o `Transform` já é metros. O **default é `10 m`**, e um default que fosse o teto
+  tornaria o campo inerte por omissão.
+- **`db_to_linear(-80) == 0` exacto** — *no mínimo do slider* tem de querer dizer silêncio: um
+  número muito pequeno somado por 64 vozes ouve-se.
+
+### §15.5 — As recusas, cada uma com o mecanismo
+
+- ⛔ **`autoplay` nasce DESLIGADO.** *Um default que disparasse faria anexar um componente MUDAR a
+  cena* — a mesma lei do `+` da tabela de acções.
+- ⛔ **Sem ouvinte, o som toca SEM POSIÇÃO** (centro, volume cheio). A alternativa — a origem do
+  mundo como ouvinte implícito — calaria uma cena construída longe dela, **em silêncio e sem
+  explicação**.
+- ⛔ **O barramento `Ui` do mixer não é alcançável pela cena.** Ele é a voz do chrome, que uma
+  preferência (`ui_sound=0`) desliga: um som de jogo encaminhado para lá seria calado por uma
+  preferência que fala de outra coisa.
+- ⛔ **O verbo `PlaySound` NÃO lê o `arg`.** O ficheiro é do componente; um caminho na linha da
+  tabela daria duas respostas a *«que som é este objecto?»*.
+- ⛔ **Uma fonte por objecto, e não uma lista.** Dois sons no mesmo objecto são dois objectos — a
+  composição já o exprime, e uma lista multiplicaria o painel por N.
+
+### §15.6 — Os gates, e as DUAS mutações que sobreviveram
+
+**16** na lei pura + **7** na ponte (que correm o caminho do produto, sem placa de som — o
+`AudioEngine::new` devolve o par controlo/renderer sem tocar no `cpal`).
+
+⚠️⚠️ **Duas mutações sobreviveram à primeira redacção, e as duas eram a FIXTURA:**
+
+| mutação | porque ela sobreviveu | a cura |
+|---|---|---|
+| `autoplay` lê *«não está a tocar»* em vez do NASCIMENTO | os nove quadros corriam de seguida e a amostra de `0,1 s` ainda soava — *um som de uma vez só só renasce depois de morrer* | a fixtura passa a **deixar a voz acabar** |
+| `forget_absent` esquece **sem** calar | o oráculo era o LIVRO, e ele não distingue *«parada»* de *«esquecida»* | ⭐ o oráculo passa a ser o **MIXER** (o renderer volta com o motor, e o gate renderiza para drenar os comandos) |
+
+⚠️ **E o mixer não serve para tudo:** ele avança pelos quadros que alguém lhe renderiza, o livro
+retira pelo relógio de parede. Num gate sem dispositivo ninguém renderiza, então o mixer nunca veria
+uma voz acabar — no gate do nascimento o oráculo certo continua a ser o livro. *No app os dois andam
+juntos porque a placa de som renderiza em tempo real.*
+
+### §15.7 — ⛔ Dois gates de ARQUITECTURA que esta wave apanhou, e um deles acusava o INOCENTE
+
+- **`the_module_that_holds_the_channels_is_unconditional`** reprovou sobre um `main.rs` correcto: ele
+  lia os **80 bytes antes** de `mod baked_form;` à procura de um `cfg`, e o `rustfmt` **ordena as
+  declarações de módulo** — o `mod audio_2d_smoke` (legitimamente sob `cfg`, porque a fixtura dele
+  precisa do encoder) aterrou na linha de cima. ⇒ o gate passa a subir linha a linha sobre os
+  atributos **contíguos** ao item. *Um gate que parseia o fonte tem de saber a que ITEM cada
+  atributo pertence; uma janela de bytes não sabe.*
+- **`shell_files_respect_hr18_loc_cap`**: o `audio.rs` foi a `616/600`. Curado por corte — as duas
+  cenas de smoke do dispositivo (`PH2D_AUDIO_SMOKE`, `PH2D_AUDIO_FILE`) saíram para
+  `audio/smoke.rs`, e o corte é por **responsabilidade**: elas não são o sistema de áudio, são
+  clientes dele.
+
+### §15.8 — ⏳ ABERTO
+
+- **A W3 — o PAINEL.** ⚠️⚠️ **Sem ela o componente é anexável e não editável**, que é exactamente o
+  report que o `Timers` já custou (*«timer sumiu do modal de componente»*): *um componente anexável
+  sem painel é indistinguível de um que não foi anexado.*
+- **O `sound` é um CAMINHO**, e é o primeiro componente registado desta casa a guardar um. As duas
+  consequências, declaradas: mover o ficheiro parte o som, e **o projecto não embute o áudio**. A
+  cura de ambas é a mesma — pôr áudio no índice de assets, com o `AssetId` por conteúdo que a F4 já
+  usa para os pixels — e é wave própria.
+- **Não há `FieldKind::File`** no catálogo de descritores; o campo é `Text` com um botão de procurar
+  ao lado. Uma variante nova num enum que todos os painéis leem é wave própria (a irmã dela custou
+  **104 sítios em 19 ficheiros**).
+- **O relógio do livro é o de PAREDE.** É honesto (o `ph2d-audio` declara-se *presentation, HR-5
+  exempt*), e a consequência é que um `scrub` da timeline não rebobina um som.

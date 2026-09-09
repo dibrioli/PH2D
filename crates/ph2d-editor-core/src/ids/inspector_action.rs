@@ -62,10 +62,12 @@ pub const INSP_ACTION_VERB_PICK: NodeId = hash_node_id("insp_action_verb_pick");
 /// até 2026-09-09 (*«as actions deveriam ficar num dropdown e não em muitos botões»*, report do
 /// dono): passaram a ser as linhas do popover **sem mudar de significado**, que é o que manteve o
 /// despacho — `position(|&o| o == id)` — intacto.
-pub const INSP_ACTION_VERB: [NodeId; 5] = [
+pub const INSP_ACTION_VERB: [NodeId; 7] = [
     hash_node_id("insp_action_verb_start"),
     hash_node_id("insp_action_verb_stop"),
     hash_node_id("insp_action_verb_show"),
     hash_node_id("insp_action_verb_hide"),
     hash_node_id("insp_action_verb_toggle"),
+    hash_node_id("insp_action_verb_play_sound"),
+    hash_node_id("insp_action_verb_stop_sound"),
 ];

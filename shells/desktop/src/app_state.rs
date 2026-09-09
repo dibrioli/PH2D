@@ -602,6 +602,10 @@ pub(crate) struct App {
     /// com instrumento mudo), e **dois cursores lendo a MESMA saída é a propriedade que o
     /// desenho promete** — com um consumidor só ela nunca seria exercida no produto.
     pub(crate) signal_log_reader: Option<ph2d_runtime::SignalReader>,
+    /// ⭐ O último relatório do som de cena — o que impede a linha de diagnóstico de sair
+    /// **por quadro**. ⚠️ Um relatório impresso a 60 Hz não é diagnóstico, é ruído que
+    /// esconde o que interessa; ele fala uma vez por MUDANÇA.
+    pub(crate) last_audio_report: crate::render_loop::AudioSceneReport,
     /// ⭐ **O cursor do consumidor que MOVE A CENA** — a tabela sinal → papel
     /// (`ph2d_ui_state::SignalBinding`), o item 4 do estudo dos contêineres.
     ///
@@ -795,6 +799,8 @@ pub(crate) struct App {
     pub(crate) timer_smoke_done: bool,
     /// ⭐ A cena do `SignalActions` (TOP-20 #5) já montou?
     pub(crate) signal_action_smoke_done: bool,
+    /// ⭐ A cena do SOM DE CENA (TOP-20 #4) já montou?
+    pub(crate) audio_2d_smoke_done: bool,
     /// O smoke da UI viva já montou (`PH2D_UI_MOTION_SMOKE`).
     pub(crate) ui_motion_smoke_done: bool,
     /// O smoke do time-scale de seleção (joias §4) já rodou. `PH2D_TIMESCALE_SMOKE=1`.

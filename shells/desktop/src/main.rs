@@ -77,6 +77,12 @@ mod asset_menu_smoke;
 mod atlas_loader;
 mod attribute_demo_smoke;
 mod audio;
+/// ⭐⭐⭐ A cena do `Timer` (`PH2D_TIMER_SMOKE=1`) — o primeiro produtor de sinal que não
+/// precisa de dois corpos a tocarem-se.
+/// ⭐⭐⭐ O smoke do SOM DE CENA (TOP-20 #4). ⚠️ Gateado no `panel-audio-editor` **pelo
+/// ENCODER** — a cena escreve o `.wav` que vai tocar; o PRODUTO nao e gateado.
+#[cfg(feature = "panel-audio-editor")]
+mod audio_2d_smoke;
 /// **O OBJETO ASSADO** (`docs/3D/02.2`, rota A) — os canais que uma malha doou a um sprite e a luz
 /// que os le'. ⚠️ Deliberadamente FORA da feature `sculpt3d`: um objeto assado sobrevive ao modulo.
 mod baked_form;
@@ -621,8 +627,6 @@ mod sheet_frame;
 mod sheet_import;
 /// `PH2D_SHEET_SMOKE` — a cena que exerce a folha como OBJETO (plano `docs/Sprite_projeto/17` §7).
 mod sheet_smoke;
-/// ⭐⭐⭐ A cena do `Timer` (`PH2D_TIMER_SMOKE=1`) — o primeiro produtor de sinal que não
-/// precisa de dois corpos a tocarem-se.
 mod signal_action_smoke;
 mod signal_smoke;
 /// ⭐ A cena da TABELA SINAL → PAPEL (`PH2D_BUILD_SMOKE=68`) — ⚠️ NÃO é o `signal_smoke`, que é
@@ -1042,6 +1046,7 @@ impl App {
             signal_log_reader: std::env::var_os("PH2D_SIGNAL_LOG")
                 .map(|_| ph2d_runtime::SignalReader::new()),
             signal_action_reader: ph2d_runtime::SignalReader::new(),
+            last_audio_report: Default::default(),
             ui_signal_reader: ph2d_runtime::SignalReader::new(),
             timeline_insert_key: false,
             autokey: Default::default(),
@@ -1093,6 +1098,7 @@ impl App {
             signal_smoke_done: false,
             timer_smoke_done: false,
             signal_action_smoke_done: false,
+            audio_2d_smoke_done: false,
             ui_motion_smoke_done: false,
             timescale_smoke_done: false,
             stagger_smoke_done: false,

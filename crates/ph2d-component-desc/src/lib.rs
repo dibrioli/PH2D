@@ -480,11 +480,20 @@ pub enum ComponentCategory {
     /// é *acontecer sem script*. Um artista que procure o relógio na secção de scripts conclui que
     /// precisa de programar para o ter.
     Logic,
+    /// ⭐⭐⭐ **O SOM de um objecto da cena** (TOP-20 #4, 2026-09-09) — a fonte e as orelhas.
+    ///
+    /// ⛔ **A alternativa era pendurá-los em `Logic`, e seria mentir**: aquela família é *«o que
+    /// faz um jogo acontecer sem uma linha de script»*, e um som não é uma regra — é uma saída.
+    ///
+    /// ⚠️ **Ela nasce com DOIS tipos**, e os dois são reais: até 2026-09-09 este app tinha um
+    /// subsistema de áudio inteiro (42 efeitos, 23 presets, espectral, denoise, exportação) e
+    /// **nenhum consumidor de cena**.
+    Audio,
 }
 
 impl ComponentCategory {
     /// Todas, na ordem em que a paleta as mostra. ⛔ Fonte única da iteração.
-    pub const ALL: [ComponentCategory; 14] = [
+    pub const ALL: [ComponentCategory; 15] = [
         ComponentCategory::Identity,
         ComponentCategory::Transform,
         ComponentCategory::Ordering,
@@ -497,6 +506,7 @@ impl ComponentCategory {
         ComponentCategory::Physics,
         ComponentCategory::Model3D,
         ComponentCategory::Logic,
+        ComponentCategory::Audio,
         ComponentCategory::Scripting,
         ComponentCategory::Instancing,
     ];
@@ -518,6 +528,7 @@ impl ComponentCategory {
             ComponentCategory::Model3D => "3D",
             ComponentCategory::Scripting => "Scripting",
             ComponentCategory::Logic => "Logic",
+            ComponentCategory::Audio => "Audio",
             ComponentCategory::Instancing => "Instancing",
         }
     }

@@ -50,10 +50,18 @@ pub(crate) struct ActionReport {
 /// ⚠️ **O `drive` é obrigatório na assinatura**, e não um `Option`: uma função-irmã «sem ledger»
 /// seria a segunda porta pela qual o defeito volta — exactamente a lei que a `ProjectState::capture`
 /// já escreve para si mesma.
+///
+/// ⚠️ **O `audio` é um `Option` e o `drive` não**, e a assimetria é honesta: um editor sem
+/// dispositivo de som corre em silêncio de propósito (o `AudioSystem::new` devolve `None` e a casa
+/// degrada como faz com o `gilrs`), enquanto uma escrita no documento sem ledger é sempre um
+/// defeito. *Um `Option` que nomeia uma ausência real não é o mesmo que um que nomeia uma
+/// conveniência.*
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn apply(
     sim: &mut SimWorld,
     effects: &[SignalEffect],
     drive: &mut PreviewDrive,
+    mut audio: Option<&mut crate::audio::AudioSystem>,
 ) -> ActionReport {
     let mut report = ActionReport::default();
     for fx in effects {
@@ -63,6 +71,15 @@ pub(crate) fn apply(
             SignalVerb::Show => set_visible(sim, drive, fx, Some(false)),
             SignalVerb::Hide => set_visible(sim, drive, fx, Some(true)),
             SignalVerb::ToggleVisibility => set_visible(sim, drive, fx, None),
+            // ⭐⭐⭐ **O SOM** (TOP-20 #4) — o verbo que a recusa deste enum nomeava como
+            // inalcançável até 2026-09-09. ⚠️ `as_deref_mut` porque o laço passa por aqui N vezes
+            // e um `Option<&mut _>` não é `Copy`.
+            SignalVerb::PlaySound => {
+                super::audio_2d::play_target(sim, audio.as_deref_mut(), fx.target)
+            }
+            SignalVerb::StopSound => {
+                super::audio_2d::stop_target(sim, audio.as_deref_mut(), fx.target)
+            }
         };
         if ok {
             report.applied += 1;

@@ -35,16 +35,27 @@ pub(crate) mod fx_presets;
 use editor::AudioEditorRuntime;
 /// A ESCOLHA DO DISPOSITIVO e a escrita nele — irmão por assunto e pelo teto de 600 LOC.
 mod device;
-mod signals;
+/// ⭐⭐⭐ **O SOM DA CENA** (TOP-20 #4) — o livro das vozes que os objectos tem a soar.
+pub(crate) mod scene;
+/// Os geradores de tom — ⚠️ `pub(crate)` porque o smoke do SOM DE CENA escreve o `.wav` que
+/// vai tocar a partir deles: *um smoke que precisa de um ficheiro que o dono tenha de
+/// arranjar e um smoke que nao corre.*
+pub(crate) mod signals;
+/// AS DUAS CENAS DE SMOKE DO DISPOSITIVO — irmao por assunto e pelo teto de 600 LOC.
+mod smoke;
 /// A VOZ DO SOM DE UI (D1) — irmão por assunto e pelo teto de 600 LOC.
 mod ui_voice;
 use device::{build_stream, pick_writable_config, supported_by_us};
-use signals::{blip_loop, pluck_loop, sine_tone, swell_loop};
+use signals::{blip_loop, pluck_loop, swell_loop};
 
 /// The desktop audio system: the control handle + the live output stream.
 /// Dropping it closes the stream and stops audio.
 pub(crate) struct AudioSystem {
     engine: AudioEngine,
+    /// ⭐⭐⭐ **O livro das vozes da CENA** (TOP-20 #4) — ver [`scene::SceneAudio`]. Ele mora aqui
+    /// pela mesma razão dos outros caches deste struct: é estado do DISPOSITIVO, e o dispositivo é
+    /// deste módulo.
+    scene: scene::SceneAudio,
     /// Cached delivery price of the loaded clip (W6). Sizing an asset means encoding
     /// it, so the result is cached on (buffer, codec, quality) — see `editor::delivery`.
     delivery: editor::delivery::DeliveryCache,
@@ -242,6 +253,7 @@ impl AudioSystem {
         println!("audio: {name} @ {rate} Hz, {dev_channels} ch, {sample_format:?}");
         Some(AudioSystem {
             engine,
+            scene: scene::SceneAudio::default(),
             delivery: Default::default(),
             platforms: Default::default(),
             fx_scratch: Default::default(),
@@ -275,6 +287,16 @@ impl AudioSystem {
     }
 
     /// Current master output peak levels `[L, R]` for the mixer meter.
+    /// ⭐ **A PORTA do som de cena** — o livro e o motor, de uma vez.
+    ///
+    /// ⚠️ **Os dois juntos, e não dois getters:** toda operação do livro precisa do motor (tocar,
+    /// calar, reescrever o pan), e devolvê-los separados obrigaria quem chama a pedir dois
+    /// empréstimos mutáveis do mesmo `self` — que não compila. *Uma porta que a linguagem obriga a
+    /// existir não é conveniência.*
+    pub(crate) fn scene_parts(&mut self) -> (&mut scene::SceneAudio, &mut AudioEngine) {
+        (&mut self.scene, &mut self.engine)
+    }
+
     pub(crate) fn levels(&self) -> [f32; 2] {
         self.engine.levels()
     }
@@ -524,55 +546,6 @@ impl AudioSystem {
     pub(crate) fn poll(&self) {
         self.engine.collect_returns();
     }
-
-    /// Queue a short 440 Hz test tone — the `PH2D_AUDIO_SMOKE` beep that proves
-    /// the control → audio → device path end to end.
-    pub(crate) fn play_test_tone(&mut self) {
-        let tone = sine_tone(self.format, 440.0, 0.6, 0.4);
-        let params = PlayParams {
-            bus: BusId::Sfx,
-            ..PlayParams::default()
-        };
-        match self.engine.play(tone, params) {
-            Ok(_) => println!("audio: playing 440 Hz test tone on the SFX bus (PH2D_AUDIO_SMOKE)"),
-            Err(e) => eprintln!("audio: test tone dropped ({e})"),
-        }
-    }
-
-    /// Decode and loop-play an audio file (the `PH2D_AUDIO_FILE` smoke). The
-    /// clip's own sample rate is resampled to the device rate by the voice.
-    pub(crate) fn play_file(&mut self, path: &std::path::Path) {
-        let bytes = match std::fs::read(path) {
-            Ok(b) => b,
-            Err(e) => {
-                eprintln!("audio: cannot read {}: {e}", path.display());
-                return;
-            }
-        };
-        let data = match ph2d_audio_decode::decode(&bytes) {
-            Ok(d) => d,
-            Err(e) => {
-                eprintln!("audio: decode failed for {}: {e}", path.display());
-                return;
-            }
-        };
-        let fmt = data.format();
-        let secs = fmt.frames_to_secs(data.frame_count() as u64);
-        let params = PlayParams {
-            looping: true,
-            bus: BusId::Music,
-            ..PlayParams::default()
-        };
-        match self.engine.play(data, params) {
-            Ok(_) => println!(
-                "audio: looping {} on the Music bus ({secs:.1}s, {} Hz, {:?})",
-                path.display(),
-                fmt.sample_rate,
-                fmt.channels
-            ),
-            Err(e) => eprintln!("audio: play failed ({e})"),
-        }
-    }
 }
 
 #[cfg(test)]
@@ -582,7 +555,7 @@ mod tests {
 
     #[test]
     fn sine_tone_is_faded_bounded_and_audible() {
-        let d = sine_tone(AudioFormat::stereo(48_000), 440.0, 0.1, 0.4);
+        let d = signals::sine_tone(AudioFormat::stereo(48_000), 440.0, 0.1, 0.4);
         assert_eq!(d.frame_count(), 4_800, "0.1 s @ 48 kHz");
         assert_eq!(d.format().channels, ChannelLayout::Mono);
         let s = d.samples();

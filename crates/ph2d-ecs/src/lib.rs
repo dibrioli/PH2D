@@ -40,9 +40,12 @@
 //! preserving the ability to swap or version-bump bevy_ecs without
 //! cascading import churn.
 
+pub mod anchor_mount;
 /// **O consumidor de uma âncora** (ADR-0072 §2.6) — montar numa âncora do pai, e a API de
 /// runtime. Módulo irmão de [`named_anchor`], append-only.
-pub mod anchor_mount;
+/// ⭐⭐⭐ **O som de um objecto** (TOP-20 #4) — o consumidor de CENA que o rack de áudio
+/// nunca teve.
+pub mod audio_2d;
 pub mod baked_form;
 pub mod blend;
 /// A sprite como FONTE DE LUZ (plano `docs/Sprite_projeto/18` W8) — módulo irmão, append-only.
@@ -91,6 +94,10 @@ pub mod transform_versioned;
 
 pub use crate::transform_inverse::{
     parent_world_transform, parent_world_transform_into, world_transform, world_transform_into,
+};
+pub use audio_2d::{
+    AUDIO_MAX_DISTANCE_M, AUDIO_MAX_POLYPHONY, AudioBus, AudioListener2D, AudioSource2D, Spatial,
+    db_to_linear, listener_count, listener_of, spatialize,
 };
 pub mod vec_path_ref;
 pub mod vec_shape;

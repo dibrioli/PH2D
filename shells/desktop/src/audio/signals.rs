@@ -6,7 +6,7 @@
 use ph2d_audio::{AudioFormat, SampleData};
 
 /// A mono sine tone with a short raised-linear fade in/out (so it never clicks).
-pub(super) fn sine_tone(format: AudioFormat, freq_hz: f32, secs: f32, gain: f32) -> SampleData {
+pub(crate) fn sine_tone(format: AudioFormat, freq_hz: f32, secs: f32, gain: f32) -> SampleData {
     let rate = format.sample_rate as f32;
     let n = (secs * rate) as usize;
     let fade = ((0.01 * rate) as usize).clamp(1, (n / 2).max(1));

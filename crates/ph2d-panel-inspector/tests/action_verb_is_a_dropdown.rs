@@ -77,15 +77,36 @@ fn actions() -> InspectorActionInfo {
             "Show".into(),
             "Hide".into(),
             "Toggle Visibility".into(),
+            "Play Sound".into(),
+            "Stop Sound".into(),
         ],
         selected_count: 1,
     }
 }
 
+/// ⚠️ **A fixtura tem de acompanhar o modelo, e ela DIZ-O em vez de derivar sozinha.**
+///
+/// Os rótulos são escritos à mão de propósito (ver o doc de [`actions`]), então um verbo novo
+/// deixa-a curta — e o sintoma, sem esta guarda, é um *«a entrada 5 não foi pintada»* que parece um
+/// defeito do painel. ⚠️ **Aconteceu**: os verbos de som (TOP-20 #4) levaram a lista de 5 a 7 e os
+/// dois gates reprovaram sobre um painel correcto. *Uma fixtura escrita à mão precisa de uma cerca
+/// que diga que ela é que envelheceu.*
+fn assert_fixture_covers_the_model(i: &InspectorActionInfo) {
+    assert_eq!(
+        i.verb_labels.len(),
+        ids::INSP_ACTION_VERB.len(),
+        "a FIXTURA e' que esta' velha: o modelo tem {} verbos e ela escreve {} rotulos",
+        ids::INSP_ACTION_VERB.len(),
+        i.verb_labels.len()
+    );
+}
+
 /// Um host com o Inspector populado e a secção SIGNAL ACTIONS no snapshot.
 fn host() -> (MockPanelHost, InspectorState) {
     let h = MockPanelHost::with_panel::<InspectorPanel>();
-    set_current_inspector_action(Some(actions()));
+    let info = actions();
+    assert_fixture_covers_the_model(&info);
+    set_current_inspector_action(Some(info));
     (h, InspectorState::default())
 }
 
@@ -271,7 +292,9 @@ fn the_list_flips_above_when_below_would_leave_the_screen() {
     let regiao = HeroLayout::for_viewport(JANELA_TABLET).popover_region();
     let mut h = MockPanelHost::with_panel::<InspectorPanel>();
     let mut st = InspectorState::default();
-    set_current_inspector_action(Some(actions_n(16)));
+    let info = actions_n(16);
+    assert_fixture_covers_the_model(&info);
+    set_current_inspector_action(Some(info));
     let _ = h.paint::<InspectorPanel>(&mut st, JANELA_TABLET);
     h.set_dropdown_open(ids::INSP_ACTION_VERB_PICK, true);
     let rects = h.paint::<InspectorPanel>(&mut st, JANELA_TABLET);

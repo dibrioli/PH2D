@@ -59,9 +59,10 @@ pub const SIGNAL_ACTIONS_MAX: usize = 16;
 ///
 /// # ⏳ Os que ficam de FORA, com o motivo
 ///
-/// - **Tocar um som.** ⛔ Não existe `AudioSource2D` na árvore (medido 2026-09-09): o rack de 42
-///   efeitos não tem consumidor de cena nenhum. É o item **#4** da fila, e este enum é
-///   append-only — ele entra sem tocar em mais nada.
+/// - ✅ **Tocar um som DEIXOU de estar aqui** — a recusa dizia *«não existe `AudioSource2D` na
+///   árvore»* e ela dissolveu no dia seguinte, porque **esta linha construiu-o** (TOP-20 #4). É o
+///   §0.0 outra vez: *quem move o número que tornava algo inalcançável tem de reconferir a nota.*
+///   ⇒ os verbos `PlaySound`/`StopSound` estão na lista abaixo.
 /// - **Tocar uma animação nomeada.** ⏳ O sink existe (`SpriteAnimator::current`/`playing`), e o
 ///   que o barra é uma **colisão de granularidade**: o ledger já conduz aquele componente pelo
 ///   `Driver::SpriteAnim`, cujo recorte são os três campos do RELÓGIO mais a célula. Um segundo
@@ -87,16 +88,28 @@ pub enum SignalVerb {
     Hide,
     /// Inverte o que o alvo está a fazer agora.
     ToggleVisibility,
+    /// **Toca o som do alvo** (o `AudioSource2D` dele). ⛔ Um alvo sem fonte de som não faz nada —
+    /// não é erro, é a mesma lei de um alvo que não existe.
+    ///
+    /// ⚠️ **Ele NÃO lê o `arg`, e é deliberado:** o ficheiro é do componente, não da linha da
+    /// tabela. Pôr um caminho aqui daria **duas** respostas a *«que som é este objecto?»*, e a que
+    /// o artista vê no Inspector seria a que envelhece.
+    PlaySound,
+    /// **Cala o som do alvo** — pára as vozes que ele tem a soar agora.
+    StopSound,
 }
 
 impl SignalVerb {
     /// Todos, em ordem — **a fonte da iteração**. ⛔ Nunca escreva a lista uma segunda vez.
-    pub const ALL: [SignalVerb; 5] = [
+    /// ⚠️ **APPEND-ONLY**: a posição é a tag e ela viaja no ficheiro. Um verbo novo entra no FIM.
+    pub const ALL: [SignalVerb; 7] = [
         SignalVerb::StartTimer,
         SignalVerb::StopTimer,
         SignalVerb::Show,
         SignalVerb::Hide,
         SignalVerb::ToggleVisibility,
+        SignalVerb::PlaySound,
+        SignalVerb::StopSound,
     ];
 
     /// O rótulo que o artista lê. Inglês (HR-15).
@@ -108,6 +121,8 @@ impl SignalVerb {
             SignalVerb::Show => "Show",
             SignalVerb::Hide => "Hide",
             SignalVerb::ToggleVisibility => "Toggle Visibility",
+            SignalVerb::PlaySound => "Play Sound",
+            SignalVerb::StopSound => "Stop Sound",
         }
     }
 

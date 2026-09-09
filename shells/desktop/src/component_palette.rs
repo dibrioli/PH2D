@@ -41,7 +41,7 @@ pub(crate) const fn item_id(canonical_name: &'static str) -> NodeId {
     ph2d_tool_registry::hash_node_id(canonical_name)
 }
 
-/// A tinta de cada categoria. ⚠️ Ver a nota do módulo: **14** categorias, 7 tokens.
+/// A tinta de cada categoria. ⚠️ Ver a nota do módulo: **15** categorias, 7 tokens.
 fn cat_token(c: C) -> ColorToken {
     match c {
         // O que todo objeto É.
@@ -59,6 +59,10 @@ fn cat_token(c: C) -> ColorToken {
         C::Skeleton => ColorToken::NodeCatTransform,
         // O que simula.
         C::Physics => ColorToken::NodeCatOutput,
+        // ⭐ O que SOA. Ele fica com a cor de quem **sai** — ao lado da física —, e não com a de
+        // quem faz acontecer: um som é uma saída do jogo, e é essa a distinção que a família
+        // Áudio existe para não perder.
+        C::Audio => ColorToken::NodeCatOutput,
         // ⭐ O que FAZ ACONTECER — a lógica autorada (`Timer`, e a fila do TOP-20 atrás dele) ao
         // lado do script, porque é a mesma pergunta com e sem código. ⚠️ Este braço dizia «o
         // resto», e a categoria nova obrigou a nomeá-lo: *um braço chamado «o resto» aceita

@@ -64,13 +64,29 @@ fn the_module_that_holds_the_channels_is_unconditional() {
     let at = src
         .find("mod baked_form;")
         .expect("o shell precisa declarar `mod baked_form`");
+    // ⭐⭐ **Os atributos DESTA declaração, e não uma janela de bytes.**
+    //
+    // ⚠️ **A primeira redacção lia os 80 bytes anteriores, e ela acusou o VIZINHO** (2026-09-09): o
+    // `rustfmt` ordena as declarações de módulo por ordem alfabética, o smoke do som de cena entrou
+    // como `mod audio_2d_smoke` — legitimamente sob `cfg`, porque a fixtura dele precisa do encoder
+    // — e aterrou na linha imediatamente acima desta. O gate reprovou sobre um `main.rs` correcto,
+    // com uma mensagem a falar de um módulo que ninguém tinha tocado. *Um gate que parseia o fonte
+    // tem de saber a que ITEM cada atributo pertence; uma janela de bytes não sabe.*
+    //
+    // ⇒ ele sobe linha a linha e só olha para as que são atributos **contíguos** a esta
+    // declaração. A primeira linha que não seja um `#[…]` pertence a outro item, e pára ali.
     let before = &src[..at];
-    let line_start = before.rfind('\n').map_or(0, |i| i + 1);
-    // A declaração é precedida por doc-comments (que o `source` já removeu) ou por nada; um `cfg`
-    // colado nela viveria na mesma linha ou na anterior.
-    let tail = src[line_start.saturating_sub(80)..at].to_string();
+    let mut atributos = String::new();
+    for linha in before.lines().rev() {
+        let t = linha.trim();
+        if !t.starts_with("#[") {
+            break;
+        }
+        atributos.push_str(t);
+        atributos.push('\n');
+    }
     assert!(
-        !tail.contains("cfg(feature"),
+        !atributos.contains("cfg(feature"),
         "`mod baked_form` esta' sob um `cfg` -- os canais assados sairiam do build junto com a \
          escultura, e e' exatamente isso que a rota A promete que NAO acontece"
     );

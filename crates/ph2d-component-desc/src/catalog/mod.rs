@@ -22,6 +22,8 @@
 
 use crate::ComponentDesc;
 
+/// ⭐⭐⭐ **O SOM de um objecto** (TOP-20 #4) — a fonte e as orelhas.
+pub mod audio;
 pub mod bridges;
 pub mod core;
 pub mod field;
@@ -38,6 +40,7 @@ pub mod vector;
 /// ⛔ **Fonte única da iteração.** Acrescentar uma família é acrescentar uma linha aqui e um
 /// módulo ao lado — nunca uma segunda lista noutro sítio.
 const FAMILIES: &[&[ComponentDesc]] = &[
+    audio::DESCS,
     bridges::DESCS,
     core::DESCS,
     field::DESCS,

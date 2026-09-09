@@ -19,9 +19,11 @@ use super::bone_gesture::{aim_rotation, reach_chain};
 /// nenhuma — a caixa sai `0×0` e as alças colapsam num ponto. ⇒ o osso posa-se **agarrando o osso**,
 /// que é o gesto do Spine, do Moho e de todo pacote de rig.
 ///
-/// - **Pelo CORPO** ⇒ gira (a origem fica, a ponta segue o ponteiro).
-/// - **Pela JUNTA** (a bolinha da raiz) ⇒ desloca.
-/// - **Pela ALÇA DA FORÇA** (o quadradinho na borda da mancha) ⇒ muda o alcance.
+/// ⚠️ **A lista das alças NÃO se escreve aqui** — ela é o [`ph2d_skeleton_render::BonePart`], que a
+/// documenta variante a variante, e o `match` abaixo é EXAUSTIVO sobre ele (uma alça nova sem verbo
+/// não compila). ⛔ Uma cópia em prosa envelhece à primeira wave, e envelheceu: esta nota
+/// enumerava **três** (corpo · junta · alça da força) quando o `match` já tinha **seis** — a ponta
+/// da IK e as duas paredes do limite entraram sem ela ser reconferida (auditoria de 2026-09-08).
 ///
 /// *Duas coisas diferentes precisam de dois gestos*: sem o segundo, um esqueleto inteiro não se
 /// move do sítio onde nasceu, e a única saída seria o painel de Transform.

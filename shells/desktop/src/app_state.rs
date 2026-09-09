@@ -1374,11 +1374,15 @@ pub(crate) struct App {
     /// ⭐⭐⭐ **O OSSO cujo *Pick Object* está armado** — os bits dele, à espera de que a selecção
     /// mude para outra coisa.
     ///
-    /// ⚠️ **Ele resolve pela SELECÇÃO e não por um hit-test próprio**, e é isso que lhe dá as duas
-    /// superfícies que o dono pediu de graça (*«seja no canvas ou seja na hierarquia»*, 2026-09-08):
-    /// as duas escrevem a MESMA selecção. Um segundo caminho de acerto divergiria do primeiro no dia
-    /// em que um deles mudasse — o defeito que o `import_router` já pagou com uma lista à mão ao lado
-    /// de um predicado.
+    /// ⚠️ **DUAS maneiras de achar o objecto, UMA porta para o que se faz com ele**
+    /// (`skeleton_smart::set_target`): no **canvas** o pick é MODAL e resolve por hit-test — ele tem
+    /// de consumir o press, senão a ferramenta Bone cria um osso por baixo do gesto (report do dono,
+    /// 2026-09-08) —, e na **Hierarquia** resolve porque a selecção mudou.
+    ///
+    /// ⛔ A 1.ª redacção desta nota dizia *«resolve pela SELECÇÃO e não por um hit-test próprio»*, e
+    /// o commit seguinte construiu o hit-test sem voltar aqui. *Como se ACHA é genuinamente
+    /// diferente entre as duas superfícies; o que se FAZ com o achado é que tem de ser uma coisa
+    /// só.*
     ///
     /// ⚠️ **O osso é CAPTURADO no arm**, pela razão do [`crate::vec_pick::PathPick`]: o clique
     /// seguinte MUDA a selecção, então ler o sujeito nesse instante leria o alvo.

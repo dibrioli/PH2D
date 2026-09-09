@@ -3719,7 +3719,7 @@ impl crate::App {
                             } else if *id == ph2d_editor::ids::VECTOR_BONE_LIMIT_REMOVE {
                                 pending_limit_remove = true;
                             } else if *id == ph2d_editor::ids::VECTOR_BONE_SMART_ADD {
-                                // ⭐⭐⭐ O OSSO INTELIGENTE: girar este osso percorre a acção ABERTA.
+                                // ⭐⭐⭐ O OSSO INTELIGENTE: anexa o controlo VAZIO — quem lhe dá acção é o painel.
                                 pending_smart_add = true;
                             } else if *id == ph2d_editor::ids::VECTOR_BONE_SMART_REMOVE {
                                 pending_smart_remove = true;
@@ -6395,27 +6395,28 @@ impl crate::App {
                 if pending_smart_pick {
                     self.smart_pick = Some(osso.to_bits());
                 }
-                // ⭐⭐⭐ **TROCAR A ACÇÃO** pelo selector, e o que se guarda é o NOME (a referência
-                // durável). ⛔ Guardar o índice faria apagar um clip renomear silenciosamente a
-                // acção de todo osso abaixo dele.
+                // ⭐⭐⭐ **TROCAR A ACÇÃO** pelo selector — tudo por UMA porta
+                // ([`crate::skeleton_smart::choose_action`]), que é onde a lei vive e onde ela é
+                // gateada: a POSIÇÃO resolve-se contra a lista que o PAINEL PINTOU (filtrada pelo
+                // alvo), nunca contra `doc.clips()`, e o que se guarda é o NOME.
                 //
-                // ⛔⛔ **A POSIÇÃO resolve-se contra a lista que o PAINEL PINTOU, nunca contra
-                // `doc.clips()`** — report do dono (*«não consegue selecionar o clip desejado»*).
-                // As duas coincidiam enquanto a lista era a do documento inteiro, e deixaram de
-                // coincidir no instante em que o alvo passou a filtrar; a leitura errada continua a
-                // compilar e a devolver um nome válido, que é o pior modo de falha.
+                // ⛔⛔ Este bloco tinha a lei escrita **aqui** e o gate do outro lado da porta: a
+                // mutação que repunha `doc.clips().get(i)` deixava a suíte verde e trazia de volta o
+                // report do dono (*«não consegue selecionar o clip desejado»*).
                 if let Some(i) = pending_smart_clip
-                    && let Some(sb) = sim
-                        .world()
-                        .get::<ph2d_skeleton_ecs::SmartBone>(osso)
-                        .cloned()
-                    && let Some(nome) =
-                        crate::skeleton_smart::action_at(sim.world(), &self.timeline.doc, &sb, i)
-                    && let Some(mut sb) = sim
-                        .world_mut()
-                        .get_mut::<ph2d_skeleton_ecs::SmartBone>(osso)
+                    && let Some((nome, aberta)) =
+                        crate::skeleton_smart::choose_action(sim, &self.timeline.doc, osso, i)
+                    && aberta
                 {
-                    sb.clip = nome;
+                    // ⛔⛔ **A acção ABERTA é oferecida e o motor recusa-a** — um documento novo tem
+                    // **uma** acção (`"Main"`) e ela **está aberta**, logo a única opção da lista era
+                    // a única que não corre, e nada na tela o dizia. ⚠️ A lei fica (um controlo não
+                    // percorre o que o artista está a gravar — os dois escreveriam o mesmo objecto
+                    // no mesmo quadro); o que não pode é ser **calada**.
+                    toasts.push(ph2d_editor::Toast::warning(format!(
+                        "\"{nome}\" is open in the timeline, so you are EDITING it - the bone will \
+                         not run it. Switch the timeline to another animation to see it play."
+                    )));
                 }
                 if pending_smart_remove {
                     sim.world_mut()
@@ -6443,12 +6444,13 @@ impl crate::App {
                     // ⚠️ **A conversão GRAUS→RADIANOS vive aqui**, na porta entre o campo (que fala
                     // a unidade do artista) e o componente (que fala a do `Transform::rotation`).
                     // ⛔ Sem ela um `90` digitado seria noventa RADIANOS — catorze voltas.
-                    let rad = graus.to_radians();
-                    if e_max {
-                        l.max = rad;
-                    } else {
-                        l.min = rad;
-                    }
+                    //
+                    // ⛔⛔ **E pela MESMA porta do arrasto** (`set_edge`, auditoria de 2026-09-08):
+                    // escrever cru deixava o campo produzir `min > max`, que a lei lê como faixa de
+                    // meia-largura **zero** — a junta congela no ponto médio, e o desenho normaliza
+                    // os dois extremos, logo o canvas continua a pintar um sector normal enquanto o
+                    // osso não roda um grau.
+                    crate::bone_limit::set_edge(&mut l, e_max, graus.to_radians());
                 }
                 if let Some((qual, v)) = pending_ik_knob
                     && let Some(mut g) = sim.world_mut().get_mut::<ph2d_skeleton_ecs::IkGoal>(osso)
@@ -6470,15 +6472,28 @@ impl crate::App {
                         IkKnob::Chain => g.chain = v.max(0.0) as u32,
                     }
                 }
-            } else if pending_ik_add || pending_ik_remove {
+            } else if pending_ik_add
+                || pending_ik_remove
+                || pending_limit_add
+                || pending_limit_remove
+                || pending_smart_add
+                || pending_smart_remove
+                || pending_smart_pick
+                || pending_smart_clip.is_some()
+            {
                 // ⚠️ **Um verbo que morre em SILÊNCIO dá o mesmo sintoma que uma rota cortada** —
                 // e foi exactamente esse o report de 2026-09-07 (*«Add IK não funciona»*), cuja
                 // causa era outra. O painel só pinta estes botões com um osso em foco, então este
                 // braço é a janela de UM quadro entre a publicação do painel e a leitura do dreno;
                 // dizê-lo em voz alta é o que separa *«o app recusou»* de *«o botão está morto»*.
+                //
+                // ⛔⛔ **E a cura cobria DOIS dos oito verbos** (auditoria de 2026-09-08): o limite
+                // e o osso inteligente foram acrescentados depois e não vieram a esta condição, logo
+                // seis verbos voltaram a morrer calados exactamente na janela que este braço existe
+                // para nomear. *Uma cura escrita para os verbos que existiam não segue os que vêm.*
                 eprintln!(
                     "[ph2d-vec] osso: nenhum OSSO em foco -- seleccione um osso (na Hierarquia ou \
-                     clicando nele com a ferramenta Bone) antes de Add/Remove IK"
+                     clicando nele com a ferramenta Bone) antes dos verbos da seccao Skeleton"
                 );
             }
             if pending_create_envelope {
@@ -9140,7 +9155,9 @@ impl crate::App {
                 // *"o que está aceso é um osso, e com que números?"* (decide os dois campos).
                 //
                 // ⚠️ A 2ª passa pela MESMA porta que o gesto e o overlay usam
-                // (`bone_gesture::selected_bone`): três consumidores, uma resposta.
+                // (`bone_gesture::selected_bone`): QUATRO consumidores, uma resposta — o dedo,
+                // o dreno dos verbos, este painel e o desenho do overlay (o quarto entrou na wave
+                // do gizmo de limite, e esta conta ficou em três até 2026-09-08).
                 let presa = self.vec_pen.selected_paths().iter().any(|id| {
                     self.vec_entities.get(id).is_some_and(|&b| {
                         sim.world()
@@ -9167,9 +9184,31 @@ impl crate::App {
                 //
                 // ⛔ Clique no vazio **não** desarma (a lista de objectos anima-se por engano com
                 // facilidade); quem desiste é o `Escape`.
-                let alvo_do_pick = self
-                    .smart_pick
-                    .and_then(|bits_osso| hero.gizmo.iter_selected().find(|b| *b != bits_osso));
+                // ⛔⛔ **UM PICK NÃO SOBREVIVE AO SUJEITO DELE** (auditoria de 2026-09-08). Ele
+                // consome o `Down` primário em **toda** ferramenta, então um pick esquecido é o
+                // canvas morto ao botão esquerdo, **sem nada na tela que o diga** — o botão
+                // *Picking…* deixa de ser pintado no instante em que o osso deixa de estar em foco.
+                //
+                // ⚠️ **Pergunta-se o FACTO, não os eventos:** abrir outro projecto, o `Ctrl+Z` e
+                // apagar o osso deixam todos os mesmos bits mortos, e uma lista de sítios a limpar
+                // esqueceria o quarto. O irmão `vec_path_pick` tem cinco limpezas escritas à mão, e
+                // o comentário de uma delas já escrevia a lei: *«não faz sentido: limpa, para não
+                // ficar armado e invisível»*.
+                if let Some(bits) = self.smart_pick
+                    && ph2d_ecs::Entity::try_from_bits(bits).is_none_or(|e| {
+                        sim.world().get::<ph2d_skeleton_ecs::SmartBone>(e).is_none()
+                    })
+                {
+                    self.smart_pick = None;
+                }
+                // ⚠️ **EXACTAMENTE UM seleccionado**, e não *«o primeiro que não é o osso»*: o
+                // estado normal do *Bind* é **forma + osso** escolhidos (é a razão de existir do
+                // `bone_gesture::selected_bone`), e ali a leitura antiga resolvia o pick **no mesmo
+                // quadro em que ele era armado**, sem o artista clicar em nada.
+                let alvo_do_pick = self.smart_pick.and_then(|bits_osso| {
+                    let sel: Vec<u64> = hero.gizmo.iter_selected().collect();
+                    (sel.len() == 1 && sel[0] != bits_osso).then(|| sel[0])
+                });
                 if let Some(bits_osso) = self.smart_pick
                     && let Some(alvo) = alvo_do_pick
                     && crate::skeleton_smart::set_target(
@@ -12880,6 +12919,7 @@ impl crate::App {
                 toasts,
                 hero,
                 sim.world(),
+                &self.preview_drive,
             );
             // Merge Sprites (Enio 2026-05-27, Hierarchy right-click).
             // Drains BEFORE `image_edit::dispatch` so a same-frame

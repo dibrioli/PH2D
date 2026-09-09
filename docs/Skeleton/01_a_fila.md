@@ -275,7 +275,7 @@ losango seria um alvo morto.
 | F4 | **Limites de ângulo por junta** | ✅ **FECHADO** (2026-09-07) — ver abaixo |
 | F5 | ~~**Pole target**~~ → **O LADO DA DOBRA** | ✅ **FECHADO** (2026-09-07) — ver abaixo |
 | F6 | **A segunda mídia** (raster/Flip) | ⛔ **bloqueado**: precisa de uma malha sobre a imagem, que não existe — meça o preço antes de prometer |
-| F7 | **O painel próprio do módulo** | ⏸️ adiado até F3–F5 lhe darem conteúdo (medido: hoje são 3 botões e 5 campos, que cabem na seção do vetor) |
+| F7 | **O painel próprio do módulo** | ⏸️ **a condição CAIU e a medição era falsa por ~3×** — ela dizia *«adiado até F3–F5 lhe darem conteúdo (hoje são 3 botões e 5 campos)»*, e as três estão ✅ nesta mesma tabela enquanto a secção tem **10 verbos** e **9 campos** (`VECTOR_BONE_VERBS`/`_FIELDS`, comprimento verificado pelo compilador), mais uma fileira segmentada e dois selectores. ⇒ decisão do dono, não mais um adiamento medido |
 
 ---
 
@@ -587,6 +587,12 @@ feature como avariada — e tinha razão nas três metades, cada uma invisível 
 ⇒ *um controlo cujo sujeito é invisível lê-se exactamente como um controlo morto*, e a única
 resposta que a casa dava era um `eprintln!` que o artista nunca vê.
 
+⚠️⚠️ **LEIA A F3-c ANTES DE ACREDITAR NAS TRÊS PORTAS ABAIXO** — duas delas foram **removidas** no
+mesmo dia, por ordem do dono, e a terceira mudou de comportamento: o selector passou a **filtrar**
+pelo alvo em vez de listar o documento inteiro. Os nomes `fresh_action_name`,
+`TimelineIntent::AddNamedClip` e a porta `a_clip_is_born` **já não existem no código** — sobrevivem
+só neste parágrafo, como história.
+
 ⭐⭐⭐ **A cura são três portas, e as referências dão as duas metades:**
 
 1. **O gesto CRIA a acção** com o nome do osso (`fresh_action_name` — *«Bone 7 Action»*, *«… 2»* se
@@ -768,7 +774,77 @@ apanhou-me a registar sem descrever: *o Inspector e o registo são duas listas, 
 ata.*
 
 
+### F3-f — ⭐⭐⭐ A AUDITORIA DE CINCO LENTES (2026-09-08), e o que ela mudou
+
+O dono mandou auditar antes de seguir. Cinco lentes independentes sobre os 12 commits: **correcção ·
+costura de UI · as réguas · estado/quadro/persistência · cercas e isenções.**
+
+⭐ **O veredito de conjunto foi bom nas duas metades que costumam falhar:** a linha **não silenciou
+um único diagnóstico** (zero `#[allow]`, zero `#[ignore]` novo, zero folga de LOC — cinco cortes por
+responsabilidade onde um ficheiro estourou), e a costura dos **29** controlos novos estava completa
+nas quatro perguntas (pintado · registado · o clique atravessa · alguém DECIDE com o valor).
+
+⛔⛔ **E mesmo assim havia SEIS defeitos de produto que o smoke não alcança:**
+
+| defeito | mecanismo | cura |
+|---|---|---|
+| a lista de acções oferece a **ABERTA**, e o motor recusa-a | um documento novo tem **uma** acção e ela **está aberta** ⇒ a única opção era a única que não corre, **calada** | a lei fica; o app **diz** (toast), pelo mesmo instrumento do aviso da âncora |
+| o *Pick Object* armado **sobrevive** a load / `Ctrl+Z` / apagar o osso | ele consome o `Down` primário em TODA ferramenta ⇒ canvas morto ao botão esquerdo, e o botão *Picking…* já não é pintado ⇒ **invisível** | pergunta-se o **FACTO** por quadro (o osso ainda é um controlo?), ⛔ não uma lista de sítios a limpar |
+| apagar o objecto animado **destrói a acção de todos os controlos** | a purga da timeline reseta o documento inteiro na última binding; a recuperação fica em **duas** pilhas de undo | o reset passa a perguntar **quem depende**: um clip que um controlo NOMEIA não é estado rançoso |
+| o **AutoKey** cunha chaves a partir da saída do controlo | a invariante do `autokey_pass` exige que ninguém escreva pose entre o apply e ele, e os passes do esqueleto escrevem exactamente aí | o autokey salta quem o **ledger de pré-visualização** está a conduzir (`PreviewDrive::drives`) — e isto cura também a âncora, que era **pré-existente** |
+| `Limit Min > Max` **congela a junta**, e o desenho continua bonito | o guarda cruzado existia no **arrasto** e não nos **campos**; e o `arc()` normaliza os dois extremos | as duas superfícies passam pela mesma porta (`bone_limit::set_edge`) |
+| um `from_bits` cru na `ph2d-timeline` | a crate escreve **duas vezes** *«`try_from_bits`, NUNCA `from_bits`»*, e este era o único dos 15 sítios a violá-la — `from_bits` **aborta o processo** com bits de outra sessão | uma linha |
+
+⚠️⚠️ **E QUATRO dos reports do dono não tinham prova que os apanhasse de volta** — em cada um
+existia um gate com o nome certo, a medir a metade que **não** era o defeito:
+
+| o report | o que o gate media | o que passou a medir |
+|---|---|---|
+| *«o gizmo não mantém ângulo fixo»* | o **NOME** da variável, e uma `contains` satisfeita por **3** sítios do ficheiro | a **ATRIBUIÇÃO mais próxima antes** de cada `draw_*` vem da porta do dedo |
+| *«o pick criou um osso»* | a **ORDEM** do despacho | a **CONSUMPÇÃO**: a linha a seguir à chamada tem de ser `return;` |
+| *«não consegue selecionar o clip desejado»* | a **porta** (`action_at`) | o dreno chama UMA porta (`choose_action`), e é ela que é gateada |
+| *Add Angle Limit* | **nada** — o verbo shipou com zero gates, com o doc a afirmar *«é um no-op exacto»* sobre nada | o no-op **e** o centro **e** a largura da faixa, em três poses |
+
+⚠️ **A cerca das constantes da cena ganhou a metade que faltava**: ela afirmava o piso
+(`TENTACLE_LIMITED_BONE >= 1`) e não o tecto, então pôr o número acima da contagem da cadeia fazia a
+cena nascer **sem limite nenhum** — muda, e sem nada a acusar.
+
+⛔⛔ **E treze textos descreviam desenhos que já não existem** — nove porque *a wave seguinte mudou o
+facto e não voltou à frase*. Os dois caros diziam **«e NÃO X»** sobre coisas que o código passou a
+fazer: cinco sítios afirmavam que o pick *«resolve pela selecção e nunca por um hit-test próprio»*
+(o commit seguinte construiu o hit-test — que é a cura do report), e o doc do `two_bone` dizia que
+**derivar o lado da pose é a CURA** do salto do cotovelo, quando é o defeito medido.
+
+⭐ *A lição instrumental: quando um facto é medido e escrito num sítio, um gate tem de o ler dos
+DOIS. Hoje nenhuma sonda deste repo pergunta se duas prosas sobre o mesmo facto concordam.*
+
+⚠️ E uma que a própria auditoria cobrou no mesmo dia: o método novo do ledger nasceu **entre um
+`#[cfg(test)]` e o item dele** e herdou-o — *um item novo colado a um atributo rouba-o ao dono*, que
+é exactamente a família (quatro ocorrências) que a lente da correcção acabara de nomear.
+
+⏳ **FICA ABERTO desta auditoria** (com mecanismo, sem cura): *Remove Smart Bone* não devolve a pose
+autorada (o *Remove IK* devolve, e o preço é a lista de N entidades × 4 drivers em vez de uma
+corrente) · dois clips podem partilhar o NOME e o controlo percorre o primeiro, calado · o ledger
+cobre 4 das 5 escritas do `write_prop` (falta o `VecDrivenStyle`, que é desregistado) · o gizmo do
+limite é pintado e ACENDE em todo modo de vector e só é agarrável no modo Osso · o aviso do osso
+governado só dispara na ordem *IK → Smart* · e quatro verbos da secção morrem em silêncio na janela
+*«nenhum osso em foco»* (o braço que fala cobre só os dois da âncora).
+
+
 ## ⛔ Recusas MEDIDAS deste módulo — não as reconstrua
+
+> ⚠️ **As seis de 2026-09-07/08 entraram aqui na auditoria de 08/09** — elas viviam só em prosa e em
+> doc-comments, e o §5.0 é explícito: *arquivar sem indexar as recusas seria apagá-las.*
+
+| recusa | o mecanismo MEDIDO |
+|---|---|
+| **O *pole target*** para escolher o lado do joelho | Em 3D o triângulo raiz–cotovelo–ponta roda em torno do eixo raiz→ponta — um **grau de liberdade contínuo**, que um objecto no espaço fixa. No plano sobra **UM BIT**. Godot (`flip_bend_direction: bool`) e Spine (`bendDirection ±1`) escolheram o interruptor, cada um por si. ⇒ o alvo de pólo resolveria com um objecto o que um booleano resolve. |
+| **Priorizar a ordem no hit-test** para resolver a colisão alça↔ponta | *Não cura: só troca a vítima.* Medido: com o osso na parede a distância ponta→alça é `0,000000`, logo quem quer que ganhe a ordem, o outro fica inalcançável. A cura foi **afastar** a alça (folga derivada do dedo da casa). |
+| **Adoptar o clip ABERTO** no *Add Smart Bone* | `TimelineDoc::new()` tem **um** clip, `"Main"` ⇒ todo controlo casava com a animação principal da cena, em silêncio. |
+| **Criar uma acção com o nome do osso** no *Add Smart Bone* | Veredito do dono (*«porque criar Bone Action no inspector e na timeline? Melhor não criar nada»*): duas coisas fabricadas por um clique, nenhuma pedida. |
+| **Herdar o encaminhamento** pendurando os ids da fileira do lado da dobra na `VECTOR_BONE_VERBS` | Reprovado pelo `table_driven_chips_are_registered_too`: ele exige que o `populate` itere a MESMA tabela que o `paint`, e sem esse laço a fileira seguinte nasce **morta sob o dedo**. |
+| **Registar o chip do selector como `Button`** | Mutação medida: o clique **acende e nunca abre lista nenhuma** (`the_action_picker_lists_the_document…` fica vermelho em *«com a lista ABERTA a acção tem de ser pintada»*). É a cicatriz da swatch dos tokens e dos dois números do Input Map. |
+
 
 | O quê | Por quê | Onde |
 |---|---|---|

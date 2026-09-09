@@ -129,12 +129,25 @@ fn a_limited_chain_settles_instead_of_oscillating() {
         movs.push((agora.0 - ant.0).abs().max((agora.1 - ant.1).abs()));
         ant = agora;
     }
-    let cedo = movs[1];
+    // ⛔⛔ **A régua ERA VÁCUA, e a medição di-lo** (auditoria de 2026-09-08). Ela lia `cedo =
+    // movs[1]` e exigia `movs[11] <= cedo`; a série real desta fixtura é
+    // `[0,800000011920929, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]` — a corrente bate na parede no quadro
+    // **0** e fica **exactamente** parada. ⇒ a asserção era `0 <= 0`, verde por construção, sobre
+    // uma fixtura que não pode produzir o fenómeno que o nome do gate promete.
+    //
+    // ⇒ duas metades, as duas medidas: a fixtura **moveu-se** (senão não há convergência a medir), e
+    // o movimento tardio é **desprezável contra o primeiro**. ⛔ Não «não cresceu»: uma oscilação a
+    // amplitude constante também não cresce.
+    let cedo = movs[0];
+    assert!(
+        cedo > 1e-9,
+        "a fixtura não produziu movimento nenhum (série {movs:?}) — não há convergência a medir"
+    );
     let tarde = movs[11];
     assert!(
-        tarde <= cedo + 1e-9,
-        "a corrente limitada está a OSCILAR: o movimento por quadro foi {cedo} e ficou {tarde} \
-         (série {movs:?})"
+        tarde <= cedo / 100.0,
+        "a corrente limitada não ASSENTOU: o 1.º quadro moveu {cedo} e o 12.º ainda move {tarde} \
+         (série {movs:?}) — uma oscilação a amplitude constante passa por «não cresceu»"
     );
     assert!(
         rot(&sim, ombro).abs() <= 0.3 + 1e-6 && rot(&sim, cotovelo).abs() <= 0.8 + 1e-6,
@@ -182,3 +195,93 @@ fn the_smoke_scene_has_one_limited_bone_and_a_free_neighbour() {
 
 #[path = "skeleton_limit_gizmo_tests.rs"]
 mod gizmo;
+
+/// ⭐⭐⭐ **O GESTO *Add Angle Limit* NÃO MOVE UM GRAU** — a afirmação que o doc dele faz e que
+/// ninguém media.
+///
+/// ⛔⛔ **`add_limit` shipou com ZERO gates** (auditoria de 2026-09-08), com o doc a afirmar *«É um
+/// no-op exacto na mesma, e não por sorte»* sobre nada. O irmão da família tem o gate desde que
+/// existe (`adding_an_anchor_moves_nothing`) — e **é o mesmo report**: um verbo que move a pose ao
+/// ser carregado lê-se como *«o botão estragou o meu rig»*.
+///
+/// ⚠️ Duas mutações que a suíte inteira deixava passar antes deste gate: `meia = 0.0` (o botão
+/// **congela** a junta para sempre) e `min: -meia, max: meia` (o botão dá um **solavanco** no osso).
+#[test]
+fn adding_a_limit_moves_nothing_and_is_centred_on_the_pose() {
+    let (mut sim, [_, cotovelo]) = braco();
+    for pose in [0.0_f32, 0.9, -2.5] {
+        if let Some(mut t) = sim.world_mut().get_mut::<Transform>(cotovelo) {
+            t.rotation = pose;
+        }
+        sim.world_mut().entity_mut(cotovelo).remove::<BoneLimit>();
+        assert!(
+            crate::bone_limit::add_limit(&mut sim, cotovelo),
+            "o verbo recusou numa junta sem limite"
+        );
+        assert!(
+            (rot(&sim, cotovelo) - f64::from(pose)).abs() < 1e-9,
+            "carregar em Add Angle Limit MOVEU o osso de {pose} para {}",
+            rot(&sim, cotovelo)
+        );
+        let l = *sim
+            .world()
+            .get::<BoneLimit>(cotovelo)
+            .expect("o limite nasceu");
+        assert!(
+            l.min < f64::from(pose) && f64::from(pose) < l.max,
+            "a pose ({pose}) não ficou DENTRO da faixa que nasceu ({}..{}) — o osso trava no \
+             instante em que o artista carrega no botão",
+            l.min,
+            l.max
+        );
+        // ⚠️ E a faixa tem largura: `meia = 0` seria uma junta congelada, e a asserção de cima
+        // sozinha não a apanha (ela usa `<` estrito, mas uma faixa de largura 1e-12 passaria).
+        assert!(
+            l.max - l.min > 1.0,
+            "a faixa nasceu com {} rad de largura — a junta está praticamente congelada",
+            l.max - l.min
+        );
+    }
+    // E o verbo recusa a segunda vez: só pode haver um limite por junta.
+    assert!(
+        !crate::bone_limit::add_limit(&mut sim, cotovelo),
+        "o verbo aceitou um SEGUNDO limite na mesma junta"
+    );
+}
+
+/// ⭐⭐⭐ **UMA PAREDE NUNCA PASSA A OUTRA** — nem pelo arrasto, nem pelos CAMPOS.
+///
+/// ⛔⛔ **O guarda existia no gesto e não nos campos** (auditoria de 2026-09-08): digitar
+/// `Limit Min = 90` com `Limit Max = 45` escrevia cru, e a lei lê `min > max` como faixa de
+/// meia-largura **zero** ⇒ a junta congela no ponto médio. ⚠️ E o desenho **normaliza** os dois
+/// extremos (`arc()` ordena-os), então o canvas continua a pintar um sector perfeitamente normal
+/// enquanto o osso não roda um grau — *nada na tela explicava o que aconteceu*.
+///
+/// ⇒ a cura não foi escrever o guarda no segundo sítio, foi as duas superfícies passarem pela mesma
+/// porta ([`crate::bone_limit::set_edge`]).
+#[test]
+fn a_wall_never_crosses_its_neighbour_from_either_surface() {
+    for (is_max, pedido) in [(false, 3.0_f64), (true, -3.0)] {
+        let mut l = BoneLimit {
+            min: -0.5,
+            max: 0.5,
+        };
+        crate::bone_limit::set_edge(&mut l, is_max, pedido);
+        assert!(
+            l.min <= l.max,
+            "empurrar a parede {} para {pedido} inverteu a faixa ({}..{}) — a junta congela e o \
+             desenho continua bonito",
+            if is_max { "MAX" } else { "MIN" },
+            l.min,
+            l.max
+        );
+        // A parede para NA vizinha, não a atravessa nem a arrasta.
+        let (esperado_min, esperado_max) = if is_max { (-0.5, -0.5) } else { (0.5, 0.5) };
+        assert!(
+            (l.min - esperado_min).abs() < 1e-12 && (l.max - esperado_max).abs() < 1e-12,
+            "a parede empurrada não parou na vizinha: {}..{}",
+            l.min,
+            l.max
+        );
+    }
+}

@@ -581,6 +581,45 @@ fn a_locked_side_is_stable_not_a_flip_flop() {
                 );
                 ant = j.clone();
             }
+            // ⚠️ **A premissa MEDIDA** (auditoria de 2026-09-08): a irmã desta asserção, no
+            // `skeleton_limit_tests`, estava **vácua** — a fixtura dela travava no 1.º quadro e a
+            // comparação era `0 <= 0`. Sem esta linha, uma corrente que assentasse de imediato faria
+            // este gate verde sobre o nada.
+            // ⛔⛔ **A premissa faltava, e a MEDIÇÃO mostra que ela parte o corpus em dois**
+            // (auditoria de 2026-09-08). Série do 1.º ao 8.º passe:
+            //
+            // | ossos | 1.º | 8.º |
+            // |---|---|---|
+            // | **2** | `0` | `0` |
+            // | 3 | `1,608e-3` | `7,20e-6` |
+            // | 5 | `3,013e-4` | `4,28e-14` |
+            // | 8 | `4,845e-4` | `0` |
+            //
+            // ⭐ **O `n = 2` é um PONTO FIXO por construção, não uma fixtura fraca:** a lei de dois
+            // ossos é **forma fechada** (`two_bone` deriva `sin a` de uma identidade algébrica), logo
+            // a resolução que corre ANTES do laço já aterra na solução e as oito passagens não movem
+            // um bit. ⇒ ali a metade da convergência não tem sujeito, e o que este gate mede é a
+            // outra — que o LADO nunca alterna.
+            //
+            // ⚠️⚠️ **E é exactamente essa célula que salva a família de ser um ESPELHO:** de `n >= 3`
+            // para cima a régua (`dominant_side`) é quase a pré-condição da decisão do produto; no
+            // `n = 2` o produto não consulta o `side_of` de todo, e é por isso que uma mutação de
+            // sinal morre **aqui e só aqui**. ⛔ Tirar o `2` da lista não deixa o gate mais fraco —
+            // deixa-o cego.
+            if n > 2 {
+                assert!(
+                    primeiro > 1e-12,
+                    "com {n} ossos e {side:?} a fixtura não produziu movimento nenhum — a metade da \
+                     convergência mede o nada"
+                );
+            } else {
+                assert!(
+                    primeiro == 0.0 && ultimo == 0.0,
+                    "o caso de DOIS ossos deixou de ser um ponto fixo ({primeiro} -> {ultimo}) — a \
+                     lei de forma fechada passou a refinar, e a célula que ilibava a família de ser \
+                     um espelho mudou de natureza"
+                );
+            }
             assert!(
                 ultimo <= primeiro,
                 "com {n} ossos e {side:?} o movimento CRESCEU entre passagens ({primeiro} -> \

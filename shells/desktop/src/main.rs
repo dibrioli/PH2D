@@ -94,9 +94,13 @@ mod bone_gesture;
 mod bone_limit;
 /// ⭐ **O que a MÃO faz a um osso** — irmão do `bone_gesture`, cortado por responsabilidade.
 mod bone_pose;
+/// ⭐ A sonda do OSSO INTELIGENTE (`PH2D_BONE_SMART_PROBE=1`) — irmã da de cima.
+///
+/// ⚠️ Ela entrou ACIMA do `bone_undo_probe` na 1.ª versão e roubou-lhe o doc: *um item novo colado
+/// a um comentário fica documentado por ele* (auditoria de 2026-09-08).
+mod bone_smart_probe;
 /// ⭐⭐⭐ **A sonda do UNDO da âncora** (`PH2D_BONE_UNDO_PROBE=1`) — o gesto REAL sobre o *Add IK*, e
 /// o que ele deixa na fila de desfazer.
-mod bone_smart_probe;
 mod bone_undo_probe;
 /// Os GESTOS da booleana viva: armar (criar/re-mirar) e consolidar. O documento mora aqui; o
 /// motor, no `bool_live`.

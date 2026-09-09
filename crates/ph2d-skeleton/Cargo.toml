@@ -10,7 +10,13 @@ authors.workspace = true
 [lib]
 
 [dependencies]
-# ⛔ **UMA dependência, e é a álgebra.** É esta linha que faz do esqueleto um MÓDULO: enquanto a
+# ⛔ **NENHUMA MÍDIA entra aqui — e é isso que a cerca guarda.**
+#
+# ⚠️ Ela dizia «UMA dependência, e é a álgebra» até 2026-09-07, e a wave que trouxe o `serde` (para o
+# vocabulário do lado da dobra atravessar o ficheiro) escreveu o parágrafo que a reconcilia e não
+# emendou o título — que passou a descrever um manifesto que não existe. Hoje são DUAS, e o que a
+# cerca proíbe continua a ser o mesmo: uma crate de desenho, de cena, ou de qualquer coisa que saiba
+# o que é um ponto. É esta linha que faz do esqueleto um MÓDULO: enquanto a
 # lei vivia na `ph2d-vec-skin` ela puxava a `ph2d-vec-scene`, e um esqueleto que serve raster, 3D e
 # Flip não pode precisar da cena vectorial para compor `repouso⁻¹ ∘ osso ∘ forma⁻¹`. O que cada
 # mídia sabe — *o que é um ponto aqui* — mora do lado dela (`ph2d-vec-skin` é o 1.º cliente).

@@ -125,7 +125,7 @@ pub enum BonePart {
 pub struct BoneHover {
     /// Os bits da entidade do osso apontado.
     pub bone: u64,
-    /// Qual das três alças dele.
+    /// Qual das alças (ver [`BonePart`], que é a fonte da lista) dele.
     pub part: BonePart,
 }
 

@@ -203,9 +203,16 @@ impl Default for SmartBone {
         Self {
             clip: String::new(),
             target: String::new(),
-            // ⚠️ Um quarto de volta, o mesmo valor de nascimento do [`BoneLimit`] e pela mesma
-            // razão: é a maior faixa cujos dois extremos um arrasto alcança sem o osso dar
-            // meia-volta. ⛔ `0..0` seria faixa nula e o controlo nasceria morto.
+            // ⚠️ Um quarto de volta — **um número de produto, escolhido, e não um tecto de
+            // recurso**: é a amplitude que um dial de controlo pede sem obrigar o artista a dar meia
+            // volta com o rato. ⛔ `0..0` seria faixa nula e o controlo nasceria morto, e a lei
+            // devolveria sempre o princípio da acção.
+            //
+            // ⛔⛔ **A nota anterior dizia «o mesmo valor de nascimento do `BoneLimit`, e pela mesma
+            // razão», e as duas metades eram falsas** (auditoria de 2026-09-08): o `Default` do
+            // `BoneLimit` é a **volta inteira** (o quarto de volta é o valor do GESTO *Add Angle
+            // Limit*, noutra crate), e a razão citada era a de um ARRASTO — e estes dois números
+            // não têm arrasto nenhum, são dois campos digitados em graus.
             from: 0.0,
             to: ph2d_skeleton::FULL_TURN / 4.0,
         }

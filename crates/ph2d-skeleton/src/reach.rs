@@ -235,9 +235,15 @@ pub fn softened_distance(d: f64, reach: f64, softness: f64) -> f64 {
 
 /// **A corrente de DOIS ossos, fechada e exacta.**
 ///
-/// `bend` é o sinal do produto vectorial que a pose ACTUAL tem — ⭐ e é assim, e não por um bit de
-/// «lado», que se evita o defeito clássico: um cotovelo que **salta** para o outro lado no instante
-/// em que a mão cruza a recta. *O solver preserva a dobra que o artista já vê.*
+/// ⚠️⚠️ **`side` é o lado AUTORADO, e ele MANDA quando existe.** Sem ele (`BendSide::Keep`, o
+/// default) o sinal sai do produto vectorial da pose ACTUAL — o que preserva a dobra que o artista
+/// já vê, e é o comportamento de sempre, byte a byte.
+///
+/// ⛔⛔ **A 1.ª redacção deste doc dizia que derivar da pose era a CURA do salto do cotovelo, e é
+/// exactamente o defeito** (2026-09-07, medido): há uma pose em que a corrente **não tem lado
+/// nenhum** — a recta —, e ali a leitura da pose vira sorteio. Um cotovelo do lado `−99,498744`
+/// volta ao mesmo alvo a `+99,498744`. *A cura é o bit autorado, que é o que o Godot
+/// (`flip_bend_direction`) e o Spine (`bendDirection ±1`) escolheram, cada um por si.*
 fn two_bone(
     root: [f64; 2],
     l1: f64,

@@ -131,6 +131,33 @@ pub(crate) fn action_at(
     actions_for(world, doc, sb).into_iter().nth(i)
 }
 
+/// ⭐⭐⭐ **ESCOLHER A ACÇÃO NA POSIÇÃO `i` DA LISTA PINTADA** — a porta que o dreno do painel chama.
+///
+/// Devolve `Some(nome)` quando escreveu, e diz se essa acção está **ABERTA** na timeline (o
+/// chamador avisa; ver o report de 2026-09-08).
+///
+/// ⛔⛔ **Ela existe porque o gate estava do lado errado da porta** (auditoria de 2026-09-08): a lei
+/// *«uma posição só significa alguma coisa ao lado da lista que a produziu»* estava gateada sobre o
+/// [`action_at`], e o defeito do report vivia no **chamador** — trocar a chamada por
+/// `doc.clips().get(i)` deixava a suíte inteira verde e o defeito voltava ao bit. *Um gate sobre a
+/// porta não cobre quem a ignora* — que é, letra por letra, a lição que esta linha escreveu no gate
+/// do gizmo e não aplicou aqui.
+pub(crate) fn choose_action(
+    sim: &mut SimWorld,
+    doc: &TimelineDoc,
+    osso: Entity,
+    i: usize,
+) -> Option<(String, bool)> {
+    let sb = sim.world().get::<SmartBone>(osso)?.clone();
+    let nome = action_at(sim.world(), doc, &sb, i)?;
+    let aberta = doc
+        .clips()
+        .get(doc.active_index())
+        .is_some_and(|c| c.name == nome);
+    sim.world_mut().get_mut::<SmartBone>(osso)?.clip = nome.clone();
+    Some((nome, aberta))
+}
+
 /// **Os ossos inteligentes da cena**, em ordem determinística.
 ///
 /// ⚠️ **A ordem é o [`StableId`], nunca o `to_bits`** — dois controlos que percorram acções que

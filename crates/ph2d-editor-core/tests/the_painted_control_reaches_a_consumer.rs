@@ -173,30 +173,6 @@ const NO_CONSUMER_PENDING: &[(&str, &str)] = &[
          da largura po^e o valor em 0,75 e o estado em `Dragging`, partindo do `populate` do \
          proprio painel. \u{26d4} Se essa prova desaparecer, esta linha sai daqui.",
     ),
-    // ⚠️ **TERCEIRA ocorrência da família «consumidor GENÉRICO», e a mais instrutiva das três** —
-    // porque as irmãs dela **escapam a esta régua por acidente de FORMA**, não por estarem ligadas.
-    //
-    // Todo chip de dropdown desta casa (a mistura de um degrau de filtro, a tecla de uma forma do
-    // Morph) tem exactamente o mesmo término: o despacho genérico alterna o `open` de qualquer
-    // `InteractiveState::Dropdown` **sem nomear id nenhum**, e as opções — essas sim — chegam ao
-    // barramento por id. Aquelas não aparecem aqui só porque os ids delas são **gerados por
-    // função** (`filter_blend_id(row)`), e esta régua lê `ids::LITERAL`.
-    //
-    // ⛔ **Por isso a cura NÃO é dar-lhe um id gerado**: seria esconder o controlo da régua em vez
-    // de o ligar, e a próxima literal da mesma família voltaria a acusar sozinha.
-    (
-        "VECTOR_BONE_SMART_CLIP",
-        "VIVO, MEDIDO: o chip que escolhe QUAL accao um osso inteligente percorre. O consumidor e' \
-         o despacho GENERICO de ponteiro, que alterna o `open` de todo `InteractiveState::Dropdown` \
-         sem nomear id; quem chega ao barramento sao as OPCOES \
-         (`VECTOR_BONE_SMART_CLIP_IDS`, com braco no `render_loop`). \
-         Prova: `ph2d-panel-vector/tests/seam_bone.rs::\
-         the_action_picker_lists_the_document_and_the_choice_reaches_the_bus` — gesto REAL sobre o \
-         chip abre a lista e a opcao vira `ToolPanelEvent(Click)`. Mutacao medida em 2026-09-08: \
-         registar o chip como `Button` no `populate_bone` deixa a lista por abrir e o gate fica \
-         VERMELHO em *\"com a lista ABERTA a accao tem de ser pintada\"*. \
-         \u{26d4} Se essa prova desaparecer, esta linha sai daqui.",
-    ),
 ];
 
 /// **Controlo NEGATIVO** — ids verificados VIVOS à mão em 2026-08-30, cada um
@@ -255,6 +231,14 @@ const MIN_TABLES: usize = 60;
 const PANEL_REGISTRY_TABLE: &str = "PANEL_Z_ORDER_FALLBACK";
 
 const SELF_KINDS: &[&str] = &[
+    // ⭐⭐⭐ **`Dropdown`** — o chip que abre uma lista. O consumidor dele é o despacho GENÉRICO, que
+    // alterna o `open` de todo `InteractiveState::Dropdown` **sem nomear id**; quem chega ao
+    // barramento são as OPÇÕES. ⚠️ Ele faltava a esta lista, e a consequência foi um chip
+    // (`VECTOR_BONE_SMART_CLIP`) a entrar na **catraca de dívida** — que se declara *«só ENCOLHE»* —
+    // com o texto a abrir por *«VIVO, MEDIDO»*. *Uma categoria em falta transforma um controlo são
+    // em dívida* (auditoria de 2026-09-08). ⛔ As irmãs dele escapavam por ACIDENTE DE FORMA (ids
+    // gerados por função, que esta régua não lê), não por estarem ligadas.
+    "Dropdown",
     "BlenderHit",
     "BlenderPicker",
     "TimelineSurface",

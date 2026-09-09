@@ -182,6 +182,10 @@ impl BodyCtx<'_> {
     /// ⭐⭐⭐ **QUAL ACÇÃO** — o chip que a nomeia e abre a lista. Espelho exacto da linha de mistura
     /// de um degrau de filtro (`paint_filters::filter_blend_row`).
     ///
+    /// ⚠️ Ele vem DEPOIS da linha do objecto de propósito (ver [`Self::smart_object_row`]), e a 1.ª
+    /// redacção deste doc ficou por cima dela — *um item novo colado a um comentário fica
+    /// documentado por ele* (auditoria de 2026-09-08).
+    ///
     /// ⚠️ **Vazio mostra o traço**, e não uma cadeia vazia: uma célula em branco lê-se como um
     /// controlo por carregar, e o traço diz *«nenhuma»* em voz alta — a mesma lei da tecla de uma
     /// forma do Morph.

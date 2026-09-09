@@ -204,17 +204,15 @@ fn the_action_picker_reaches_every_clip_the_document_can_hold() {
         "o pool de ids do selector e o tecto de clips do documento discordam — ou há acção sem \
          opção (inalcançável) ou opção sem acção (morta)"
     );
-    assert_eq!(
-        ph2d_editor::ids::VECTOR_BONE_SMART_CLIP_IDS.len(),
-        ph2d_editor::ids::MAX_SMART_CLIPS,
-        "a tabela de ids não tem o tamanho que ela própria declara"
-    );
+    // ⛔ A 2.ª asserção desta função era `IDS.len() == MAX_SMART_CLIPS` — **o compilador já o
+    // garante** (`[NodeId; MAX_SMART_CLIPS]`), logo ela não podia falhar e a mensagem descrevia um
+    // estado inexprimível. *Uma asserção que não pode falhar não é uma régua, é ruído com cara de
+    // rigor* (auditoria de 2026-09-08).
 }
 
 /// ⭐⭐⭐ **UM CONTROLO NÃO PERCORRE A ACÇÃO QUE ESTÁ ABERTA NA TIMELINE.**
 ///
-/// ⚠️⚠️ **Não é uma nicety — é o que torna a feature usável.** Desde 2026-09-08 *Add Smart Bone*
-/// **cria** a acção e **abre** a timeline nela, para o artista a gravar; se o controlo a percorresse
+/// ⚠️⚠️ **Não é uma nicety — é o que torna a feature usável.** O artista grava a acção na timeline; se o controlo a percorresse
 /// ao mesmo tempo, os dois escreveriam o mesmo objecto no mesmo quadro e o controlo corre DEPOIS do
 /// passe da timeline ⇒ arrastar o playhead não moveria nada e a pose acabada de pôr seria reposta
 /// antes de ser vista. ⚠️ E o autokey corre **ainda mais tarde**: com o objecto seleccionado ele

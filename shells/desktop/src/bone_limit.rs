@@ -25,9 +25,17 @@ use ph2d_vec_scene::Xform;
 /// ⭐ **É um no-op exacto na mesma**, e não por sorte: a pose está no CENTRO da faixa, logo dentro
 /// dela — e a lei devolve `rot` ao bit quando ele está dentro.
 ///
-/// ⚠️ O quarto de volta é o valor de nascimento e não um tecto de recurso: é a maior faixa cujos
-/// dois extremos um arrasto alcança sem o osso dar meia-volta, e cobre com folga a amplitude das
-/// juntas que um rig tem (um cotovelo faz ~150°, um joelho ~140°, um dedo ~90°).
+/// ⚠️ O quarto de volta é o valor de **nascimento** e não um tecto de recurso — e ele **não** é um
+/// número medido: é o ponto de partida de onde o artista aperta ou alarga, e a `drag_edge` alcança
+/// até meia volta.
+///
+/// ⛔⛔ **A nota anterior justificava-o com uma tabela que o desmente** (auditoria de 2026-09-08):
+/// ela dizia *«cobre com folga a amplitude das juntas que um rig tem (cotovelo ~150°, joelho ~140°,
+/// dedo ~90°)»* — e 90° é **menor** que os dois primeiros. *Uma justificação que contradiz a própria
+/// tabela é pior que nenhuma: ela convence.*
+///
+/// ⚠️ E ele **não é o mesmo** do `Default` do [`ph2d_skeleton_ecs::BoneLimit`], que é a **volta
+/// inteira** — a nota do `SmartBone` chegou a afirmar a igualdade, e as duas metades eram falsas.
 pub(crate) fn add_limit(sim: &mut SimWorld, bone: Entity) -> bool {
     if sim.world().get::<ph2d_skeleton_ecs::Bone>(bone).is_none()
         || sim
@@ -81,6 +89,11 @@ pub(crate) fn limited(sim: &SimWorld, bone: Entity, rot: f64) -> f64 {
 /// limite está: com um número fixo por arco, uma faixa de 5° teria a mesma contagem que uma de 300°
 /// e gastaria trinta pontos onde dois bastam.
 const FAN_PER_TURN: usize = 48;
+// ⚠️ **De que recurso é o `48`** (auditoria de 2026-09-08, que o apanhou a não o dizer): é da
+// **resolução do ECRÃ**, não do relógio. A 48 por volta cada segmento cobre `7,5°`, e a corda de um
+// arco de `7,5°` afasta-se do arco em `r · (1 − cos 3,75°) ≈ r/1170` — abaixo de meio pixel para
+// qualquer osso com menos de 585 px no ecrã, que é maior que o canvas inteiro no zoom em que um rig
+// se posa. ⛔ Não é um tecto de custo: o leque de uma faixa de 90° tem **12** triângulos.
 
 /// ⭐⭐⭐ **O ARCO DE LIMITE de uma junta, em MUNDO** — o que se desenha e o que o dedo apanha.
 ///
@@ -187,10 +200,26 @@ pub(crate) fn drag_edge(sim: &mut SimWorld, bone: Entity, world: [f64; 2], is_ma
     else {
         return false;
     };
-    if is_max {
-        m.max = pedido.max(m.min);
-    } else {
-        m.min = pedido.min(m.max);
-    }
+    set_edge(&mut m, is_max, pedido);
     true
+}
+
+/// ⭐⭐⭐ **A PORTA ÚNICA DE MOVER UMA PAREDE** — e ela impede que uma paredes passe a outra.
+///
+/// ⛔⛔ **Ela existe porque o gesto tinha o guarda e os CAMPOS não** (auditoria de 2026-09-08): o
+/// arrasto travava a parede no vizinho, e digitar `Limit Min = 90` com `Limit Max = 45` escrevia
+/// cru. Com `min > max` a lei devolve `meia = 0` e a junta **congela** no ponto médio — e o desenho
+/// **normaliza** (`arc()` ordena os dois), então o canvas pinta um sector perfeitamente normal
+/// enquanto o osso não roda um grau. *A cura de um guarda escrito num sítio não é escrevê-lo no
+/// outro: é as duas superfícies passarem pela mesma porta.*
+///
+/// ⚠️ A parede empurrada **para além** da vizinha para NELA, ⛔ nunca a atravessa: uma faixa
+/// invertida é estado que a lei aceita sem entrar em pânico (há gate) e que o artista não consegue
+/// explicar — o osso salta para o meio e deixa de rodar, sem nada que o diga.
+pub(crate) fn set_edge(l: &mut ph2d_skeleton_ecs::BoneLimit, is_max: bool, pedido: f64) {
+    if is_max {
+        l.max = pedido.max(l.min);
+    } else {
+        l.min = pedido.min(l.max);
+    }
 }

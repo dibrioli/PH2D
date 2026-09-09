@@ -47,7 +47,15 @@ pub fn apply_one_clip(world: &mut World, doc: &TimelineDoc, clip: usize, t: f64)
         let Some(v) = named.clip.sample(*target, t) else {
             continue;
         };
-        let e = ph2d_ecs::Entity::from_bits(b.entity);
+        // ⛔⛔ **`try_from_bits`, NUNCA `from_bits`** — a lei desta crate, escrita em prosa no
+        // `apply.rs` e no `persist.rs`, e este ficheiro era o único dos 15 sítios a violá-la
+        // (auditoria de 2026-09-08). O guarda de cima cobre o **sentinela documentado** (`0`, a
+        // binding destacada) e mais nada: qualquer outro padrão de bits inválido — os de uma sessão
+        // anterior, que é precisamente o que um `.ph2dproj` carregado traz — faz o `from_bits`
+        // **abortar o processo**, enquanto o `try_` devolve `None`.
+        let Some(e) = ph2d_ecs::Entity::try_from_bits(b.entity) else {
+            continue;
+        };
         if world.get_entity(e).is_err() {
             continue;
         }

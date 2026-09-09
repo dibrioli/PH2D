@@ -42,10 +42,6 @@ pub const VECTOR_BONE_LENGTH: NodeId = hash_node_id("vector.bone.length");
 /// desenhado dez vezes maior deforma-se igual.
 pub const VECTOR_BONE_STRENGTH: NodeId = hash_node_id("vector.bone.strength");
 
-/// ⭐⭐⭐ **O grupo alternável CRIAR × TRANSFORMAR** (Enio, 2026-09-07: *«do modo como está fica
-/// confuso para o usuário»*) — o cabeçalho do par.
-pub const VECTOR_BONE_ACTION: NodeId = hash_node_id("vector.bone.action");
-
 /// **Criar** — arrastar faz um osso; carregar num osso apenas o selecciona (é assim que se escolhe
 /// onde ramificar).
 pub const VECTOR_BONE_ACT_CREATE: NodeId = hash_node_id("vector.bone.action.create");
@@ -76,10 +72,6 @@ pub const VECTOR_BONE_IK_SOFTNESS: NodeId = hash_node_id("vector.bone.ik.softnes
 
 /// **Chain** — quantos ossos a âncora governa, contados da ponta para cima. `0` = até à raiz.
 pub const VECTOR_BONE_IK_CHAIN: NodeId = hash_node_id("vector.bone.ik.chain");
-
-/// ⭐⭐⭐ **O cabeçalho de PARA QUE LADO O JOELHO DOBRA** — o `flip_bend_direction` do Godot, o
-/// `bendDirection` do Spine.
-pub const VECTOR_BONE_IK_BEND: NodeId = hash_node_id("vector.bone.ik.bend");
 
 /// **Auto** — o lado sai da pose que a corrente tem. ⚠️ É o comportamento de sempre, e é ele que
 /// **inverte** o joelho quando o membro passa pela posição esticada: medido, uma corrente a

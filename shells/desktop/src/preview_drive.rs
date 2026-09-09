@@ -373,6 +373,31 @@ impl PreviewDrive {
         }
     }
 
+    /// ⭐⭐⭐ **UM MOTOR ESTÁ A CONDUZIR ESTA ENTIDADE NESTE QUADRO?**
+    ///
+    /// ⛔⛔ **Ela existe por um laço fechado que a auditoria de 2026-09-08 mediu.** O cabeçalho do
+    /// `autokey_pass` declara a invariante que o protege — *«the apply pass has already written the
+    /// document's value to the world … world == curve and keys nothing — no feedback loop»* — e ela
+    /// exige que **ninguém escreva pose entre o apply e o autokey**. Os passes do esqueleto (o osso
+    /// inteligente, a âncora de IK) escrevem exactamente aí. Com o objecto conduzido **seleccionado**
+    /// e o AutoKey armado, o autokey lê a saída do motor, ela difere da curva do clip activo, e ele
+    /// cunha uma chave **a partir do que o motor está a mostrar**.
+    ///
+    /// ⇒ *o que um motor conduz é pré-visualização, e pré-visualização não é autoria.* Este ledger
+    /// já sabe exactamente quem está sob condução — faltava alguém perguntar-lhe.
+    ///
+    /// ⚠️ Ela responde por ENTIDADE e não por `(entidade, driver)`: a pergunta do autokey é *«esta
+    /// pose é do artista?»*, e basta um motor a conduzir para a resposta ser não.
+    ///
+    /// ⚠️⚠️ **Ela nasceu no sítio errado, e o defeito foi o que a auditoria acabara de nomear:** a
+    /// 1.ª inserção caiu ENTRE o `#[cfg(test)]` da vizinha e a vizinha, e o método herdou-o — só
+    /// existia em `cfg(test)`, e o produto não compilava. *Um item novo colado a um atributo rouba-o
+    /// ao dono.*
+    #[must_use]
+    pub(crate) fn drives(&self, entity: u64) -> bool {
+        self.memo.keys().any(|(bits, _)| *bits == entity)
+    }
+
     /// Nada sob condução? Então a captura não paga nada — nem uma varredura.
     ///
     /// ⚠️ `cfg(test)`: no produto quem responde a esta pergunta é a própria

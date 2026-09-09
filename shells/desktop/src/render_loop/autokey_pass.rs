@@ -96,6 +96,7 @@ pub(crate) fn run(
     toasts: &mut ph2d_editor::ToastQueue,
     hero: &HeroScreen,
     world: &World,
+    preview: &crate::preview_drive::PreviewDrive,
 ) {
     let panel_open = hero.is_panel_visible("timeline");
     let armed = panel_open && timeline.flags.auto_key;
@@ -104,9 +105,21 @@ pub(crate) fn run(
     let performing = panel_open && timeline.flags.performing;
     let drag_now = hero.gizmo.drag.is_some();
     // Sample every selected sprite's live pose, in selection order.
+    //
+    // ⛔⛔ **Menos quem um MOTOR está a conduzir** (auditoria de 2026-09-08). A invariante que o
+    // cabeçalho deste ficheiro declara — *«the apply pass has already written the document's value
+    // to the world … no feedback loop»* — exige que ninguém escreva pose **entre** o apply e este
+    // passe. Os passes do esqueleto (o osso inteligente, a âncora de IK) escrevem exactamente aí:
+    // com o objecto conduzido seleccionado e o AutoKey armado, a pose que se lê aqui é a que o
+    // MOTOR pôs, ela difere da curva do clip activo, e nasce uma chave feita da saída do motor.
+    //
+    // ⚠️ *Pré-visualização não é autoria*, e o ledger já sabia exactamente quem está sob condução —
+    // faltava alguém perguntar-lhe. ⛔ Não é o `dragging_entity`: aquele salta quem a MÃO segura,
+    // este salta quem um motor escreve, e as duas populações não se intersectam.
     let samples: Vec<(u64, PoseSample)> = hero
         .gizmo
         .iter_selected()
+        .filter(|e| !preview.drives(*e))
         .map(|e| (e, sample_pose(world, e)))
         .collect();
     apply_samples(

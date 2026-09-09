@@ -359,7 +359,17 @@ fn the_finger_and_the_drawing_ask_for_the_same_bone() {
 /// arco volta a ser pintado noutro osso. *Um gate sobre a porta não cobre quem a ignora.*
 #[test]
 fn the_bone_overlays_are_drawn_for_the_bone_the_finger_uses() {
-    let src = include_str!("render_loop/mod.rs");
+    // ⛔⛔ **A 1.ª redacção media o NOME da variável, e a auditoria de 2026-09-08 matou-a com uma
+    // mutação de uma linha:** trocar a atribuição por `hero.gizmo.iter_selected().next()` deixava
+    // as três asserções verdes (o nome não muda) e trazia o report inteiro de volta. A 3.ª pior
+    // ainda — ela procurava a chamada ao `selected_bone` **em todo o ficheiro**, e ela aparece
+    // **três** vezes (o dreno dos verbos · o painel · o desenho): a asserção era satisfeita por
+    // qualquer uma das outras duas.
+    //
+    // ⇒ a régua passa a ser a ATRIBUIÇÃO **mais próxima ANTES** de cada `draw_*`, e ela tem de vir
+    // da porta do dedo. *Um censo textual sobre um nome mede o nome; sobre a atribuição, mede a
+    // origem.*
+    let src = code_only(include_str!("render_loop/mod.rs"));
     for verbo in ["draw_influence(", "draw_limit("] {
         let i = src
             .find(verbo)
@@ -369,11 +379,35 @@ fn the_bone_overlays_are_drawn_for_the_bone_the_finger_uses() {
             janela.contains("osso_focado"),
             "{verbo} não recebe o osso da porta do dedo — os 200 chars seguintes são:\n{janela}"
         );
+        let antes = &src[..i];
+        let at = antes
+            .rfind("let osso_focado")
+            .unwrap_or_else(|| panic!("{verbo} usa `osso_focado` e nada o atribui antes"));
+        let atribuicao = &antes[at..];
+        assert!(
+            atribuicao.contains("bone_gesture::selected_bone("),
+            "o `osso_focado` que chega a {verbo} NÃO vem da porta do dedo — a atribuição é:\n{}",
+            atribuicao.lines().take(3).collect::<Vec<_>>().join("\n")
+        );
     }
-    assert!(
-        src.contains("crate::bone_gesture::selected_bone(sim, hero.gizmo.iter_selected())"),
-        "o `osso_focado` deixou de sair do `selected_bone` — a divergência pode ter voltado"
-    );
+}
+
+/// **O fonte sem comentários** — um censo textual que não os tira mente nos DOIS sentidos: uma nota
+/// que cite a agulha conta como código, e código dentro de um bloco comentado conta como vivo.
+///
+/// ⚠️ A lição estava escrita no `the_bone_pickers_are_modal.rs`, do MESMO diff, e não tinha sido
+/// aplicada aqui (auditoria de 2026-09-08).
+fn code_only(src: &str) -> String {
+    src.lines()
+        .map(|l| {
+            if l.trim_start().starts_with("//") {
+                ""
+            } else {
+                l
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 /// ⭐⭐ **A PAREDE NO ÂNGULO QUE O OSSO TEM CAI NA PONTA DELE** — a identidade que liga o arco ao

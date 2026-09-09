@@ -160,7 +160,15 @@ pub(crate) fn upkeep(timeline: &mut TimelineState, world: &mut World) -> bool {
             |w| by_wire.get(&w.0).copied().flatten(),
         );
     }
-    purge_the_dead(timeline, &by_wire)
+    // ⭐ Quem AINDA depende de um clip pelo nome — hoje, os ossos inteligentes. A varredura corre
+    // sobre o mundo que já está na mão, e só quando não sobra binding nenhuma (ver o `purge`).
+    let nomeados: std::collections::BTreeSet<String> = world
+        .iter_entities()
+        .filter_map(|er| er.get::<ph2d_skeleton_ecs::SmartBone>())
+        .filter(|sb| !sb.clip.is_empty())
+        .map(|sb| sb.clip.clone())
+        .collect();
+    purge_the_dead(timeline, &by_wire, &nomeados)
 }
 
 /// The purge half of [`upkeep`] — see its docs for the policy. Returns whether
@@ -168,6 +176,7 @@ pub(crate) fn upkeep(timeline: &mut TimelineState, world: &mut World) -> bool {
 fn purge_the_dead(
     timeline: &mut TimelineState,
     by_wire: &std::collections::BTreeMap<u64, Option<u64>>,
+    nomeados: &std::collections::BTreeSet<String>,
 ) -> bool {
     // Still missing after the heal ⇒ dead, EXCEPT the ambiguous tie (a live
     // duplicate exists — `Some(None)` in the map), which stays dormant. A NULL
@@ -194,6 +203,22 @@ fn purge_the_dead(
     timeline.selection.clear();
     if !timeline.doc.bindings().is_empty() {
         return false; // other objects still animated: their work is untouchable
+    }
+    // ⛔⛔ **E o reset NÃO acontece enquanto um motor NOMEAR um clip** (auditoria de 2026-09-08).
+    //
+    // Um osso inteligente guarda o **nome** da acção que percorre. Apagar o último objecto animado
+    // levava o documento inteiro — clips e tudo —, e cada controlo ficava a apontar para uma acção
+    // que já não existe: **calado**, porque um clip que não se encontra é a resposta certa para um
+    // clip renomeado. ⚠️ E a recuperação estava partida em DUAS pilhas de undo (o `Ctrl+Z` global
+    // traz o objecto, o da timeline traz o documento), então o artista via *«o Ctrl+Z não
+    // funciona»*.
+    //
+    // ⚠️ **Não é uma reversão da lei do reset, é uma condição a mais**, e a razão medida dele
+    // continua inteira: ele existe para o objecto SEGUINTE não abrir a timeline com composição
+    // rançosa de um objecto morto. Um controlo vivo a nomear um clip **não é** estado rançoso — é
+    // uma dependência, e ela é a única coisa que o reset não sabia perguntar.
+    if !nomeados.is_empty() {
+        return false;
     }
     // Last animated object gone ⇒ the timeline resets to a fresh **4 s composition** — the
     // boot default (clip 0 + scene authored), NOT a derived-0 doc (Enio, 2026-07-28: *"deletei

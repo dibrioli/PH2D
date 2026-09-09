@@ -68,7 +68,17 @@ const _: () = {
     assert!(TENTACLE_LIMIT_HALF > 0.0);
     assert!(TENTACLE_LIMIT_HALF < std::f64::consts::PI);
     assert!(TENTACLE_LIMITED_BONE >= 1);
+    // ⛔⛔ **A metade que FALTAVA** (auditoria de 2026-09-08): o doc da cerca prometia *«o osso
+    // limitado tem de ter um vizinho ACIMA dele»* e só afirmava o piso. Pôr `TENTACLE_LIMITED_BONE`
+    // acima da contagem da cadeia faz o `if n == …` **nunca disparar** — a cena nasce sem limite
+    // nenhum, o smoke fica mudo, e nada acusa. *Uma cerca com metade das paredes é uma cerca que se
+    // atravessa por um lado.*
+    assert!(TENTACLE_LIMITED_BONE < TENTACLE_BONES - 1);
 };
+
+/// Quantos ossos o tentáculo da cena tem — a fonte da contagem, lida pela cena **e** pela cerca de
+/// cima. ⚠️ Escrita duas vezes, ela divergiria no dia em que a cadeia crescesse.
+pub(crate) const TENTACLE_BONES: usize = 6;
 
 /// ⭐⭐⭐ **A ACÇÃO QUE A CENA JÁ TRAZ** — o nome que aparece no selector *Action* do painel.
 ///
@@ -208,7 +218,7 @@ impl crate::App {
             [180, 140, 220],
         ));
         let a = cadeia(&mut gfx.sim, ARM_A, ARM_B, ARM_BONES);
-        let t = cadeia(&mut gfx.sim, [-8.2, -0.1], [0.2, -0.1], 6);
+        let t = cadeia(&mut gfx.sim, [-8.2, -0.1], [0.2, -0.1], TENTACLE_BONES);
         let f = cadeia(&mut gfx.sim, [3.0, -3.5], [8.0, -3.5], 2);
         self.vec_bone_smoke_pend = Some([(braco, a), (tentaculo, t), (folha, f)]);
         self.vec_bone_smoke_step = 1;

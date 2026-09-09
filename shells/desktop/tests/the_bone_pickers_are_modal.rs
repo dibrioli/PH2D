@@ -47,6 +47,36 @@ fn the_smart_bone_target_pick_precedes_the_bone_gesture() {
     );
 }
 
+/// ⭐⭐⭐ **E ELE CONSOME O PRESS** — que é literalmente a cura do report.
+///
+/// ⛔⛔ **Os dois gates deste ficheiro mediam a ORDEM e a INDEPENDÊNCIA, e nenhum media a
+/// CONSUMPÇÃO** (auditoria de 2026-09-08): apagar o `return;` — a única linha que faz o pick ser
+/// modal — deixava os dois VERDES, e o report *«Ao tentar fazer o pick no canvas criou um osso
+/// indesejado»* voltava inteiro. *Um pick que não devolve cedo herda o gesto da ferramenta.*
+///
+/// ⚠️ A âncora é a **linha de código seguinte** à chamada, e não uma janela até ao próximo `return;`
+/// — a 1.ª redacção da irmã usava essa janela, e há **dezoito** `return;` na mesma função: apagar o
+/// certo só esticava a janela até ao bloco seguinte.
+#[test]
+fn the_target_pick_consumes_the_press() {
+    let src = code_only(DISPATCH);
+    let at = src
+        .find("self.smart_pick_click(")
+        .expect("o pick do alvo é despachado");
+    let depois = &src[at..];
+    let proxima = depois
+        .lines()
+        .skip(1)
+        .map(str::trim)
+        .find(|l| !l.is_empty())
+        .expect("há código depois da chamada");
+    assert_eq!(
+        proxima, "return;",
+        "a linha a seguir ao `smart_pick_click` é {proxima:?} e não `return;` — o pick deixou de \
+         consumir o press, e um clique de canvas com ele armado volta a CRIAR um osso"
+    );
+}
+
 /// ⭐ **E ele é INDEPENDENTE DE FERRAMENTA** — a guarda não pergunta em que modo o artista está.
 ///
 /// ⚠️ É o que o separa do `vec_path_pick`, que só é modal no modo *Select* (ali a fonte é uma forma

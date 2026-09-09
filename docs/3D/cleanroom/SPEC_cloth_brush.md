@@ -384,6 +384,27 @@ Auditoria §4.2 (R-pré): ✅ auditada contra §4.2 por R-pré em 2026-09-05 —
            END{if(e&&!a)print "SEM ATESTADO: "substr(e,1,50)}' docs/3D/cleanroom/SPEC_cloth_brush.md
   Silêncio = tudo atestado. ⛔ Não substitua isto por um número: um número envelhece a cada emenda, e
   a linha que o guarda passa a ser mais uma coisa que alguém tem de lembrar de mexer.
+  ⛔⛔ **E o censo acima tem uma CEGUEIRA por construção, medida em 2026-09-09 sobre a Q23: ele
+  pergunta «veio um atestado depois desta linha?» e é MUDO quando a resposta é sim E o marcador de
+  pendência ficou lá dentro.** Uma emenda genuinamente pendente e uma já atestada com marcador
+  obsoleto lêem-se **iguais** para quem abre a espec — e foi assim que a Q22 pagou dois dias.
+  ⇒ a segunda metade do censo é um detector de **CONTRADIÇÃO**, no mesmo percurso e pela mesma lei
+  (⛔ continua a não ser uma contagem — a saída é o NOME do bloco, e silêncio é o verde):
+      awk '/EMENDA Q[0-9]+ de/{ if(e) rep(); e=$0; a=0; p=0 }
+           { t=$0; gsub(/`[^`]*`/,"",t)
+             if (tolower(t) ~ /auditadas? contra .*4\.2 por r-pr/) a=1
+             if (t ~ /AGUARDA[ ]R-PR/) p=1 }   # ⚠️ a classe [ ] impede o padrão de se casar a si próprio
+           END{ if(e) rep() }
+           function rep(){ if(!a) print "SEM ATESTADO: " substr(e,1,60);
+                           else if(p) print "CONTRADICAO (atestada E com pendencia): " substr(e,1,60) }' \
+        docs/3D/cleanroom/SPEC_cloth_brush.md
+  ⚠️ **A `gsub` das crases é LOAD-BEARING, e é uma LEI de redacção, não uma esperteza do script:**
+  esta espec fala *sobre* o marcador em dois sítios (a lição da Q22 e a do fecho), e sem apagar os
+  vãos entre crases o detector acusaria os blocos que **documentam** a doença. ⇒ **um marcador de
+  pendência escreve-se NU; toda menção em prosa escreve-se entre crases.** Quem escrever a prosa sem
+  crases reintroduz a ambiguidade que o detector existe para matar.
+  ⚠️ **Os dois braços foram provados por MUTAÇÃO em 2026-09-09** (o segundo acusa a Q23 na versão
+  anterior à cura e cala-se depois dela; apagar o atestado da Q23 devolve `SEM ATESTADO`).
   ✅ **EMENDA Q18 de 2026-09-07** (**§4.2-quater NOVA** · **§4.6 linha 4 FECHADA** · §5.2 · §5.4 ·
   **§5.4-bis NOVA** · §10 contagem · **§10.12 · §10.13 · §10.14 NOVAS** · §11 · §14 gates 43-47, + as
   **cinco** fixtures novas: os dois traços LONGOS de plano
@@ -675,7 +696,7 @@ Auditoria §4.2 (R-pré): ✅ auditada contra §4.2 por R-pré em 2026-09-05 —
   ✅ **EMENDA Q23 de 2026-09-09 — O FILTRO ATRAVESSA GESTOS (§7 com TRÊS linhas novas — «base
   persistente», «entre INVOCAÇÕES» e o censo do «painel» + `Repeat` · **§7.2 NOVA** · **§10.18 NOVA**
   · **§14-bis.2 NOVA** com os gates 61-65) + as **10** fixtures novas de `fixtures/cloth/filtro/`
-  (com `.porinvocacao.txt.gz`) e **22 corridas novas do oráculo**. AGUARDA R-PRÉ.** Objecto: um
+  (com `.porinvocacao.txt.gz`) e **22 corridas novas do oráculo**.** Objecto: um
   report de produto do lado limpo — a peça **afunda a cada uso novo do filtro** — e o que o alvo faz
   na 2.ª e na 3.ª invocação, que o corpus não media. O que ela muda de veredito: ⭐⭐⭐ **o filtro LÊ a
   base persistente** (a opção vive no **pincel activo** e o painel do filtro não a mostra), o alvo

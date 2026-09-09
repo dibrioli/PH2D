@@ -189,6 +189,7 @@ dívida, e ela é de **expressão, não de lei**: os dois sítios nomeados na pr
 | R-pré (emendas Q15 **e** Q16) | subagente R-pré despachado pela janela-mãe `1246816c-63cf-414b-842d-663a8baa86ca` — contexto novo, independente do subagente que escreveu as emendas (transcript = zona contaminada — leu o fonte por shell) | 2026-09-06 — ✅ **atestadas no cabeçalho da espec**; veredictos em «Auditoria R-pré — 2026-09-06 (emendas Q15 e Q16)». ⚠️ **A Q15 tinha shipado SEM atestação** e foi auditada aqui |
 | R-pré (emenda Q19 · Q20 · Q21) | subagente R-pré despachado pela janela-mãe `1246816c-63cf-414b-842d-663a8baa86ca` — contexto novo, independente do subagente que escreveu a emenda (transcript = zona contaminada — leu o fonte por shell) | 2026-09-07 — ✅ **ATESTADO no cabeçalho da espec**; veredictos em «R-pré da emenda Q19 … 2026-09-07». **ZERO achados de expressão · UMA higiene §4.2 · NOVE curas funcionais**, a maior delas a banda antiga a dividir os quocientes que a própria emenda tornou obsoletos. **Os três itens que o E deixou nomeados, conferidos:** (a) o censo do cabeçalho corre **silencioso** com o título renomeado, e o instrumento do I passa a ler `11`; (b) o `analise.json` tem mesmo `47` objectos com as chaves **do arnês** para `86` fixtures — ⛔ fica como está (é dado nosso, o sweep passa e o README já manda não acreditar nele), e o **índice derivado** é que é a fonte: `gera_indice.py` regenera-o byte-a-byte, 86 para 86; (c) o auto-teste do arnês vive **fora da árvore** e não é auditável daqui — o que o R-pré verificou é que a **regra registada** (`< 50` movidos ou mais de metade da malha) recusa exactamente os dois modos de falha que ela apanhou, porque a esfera tem `6 050` vértices e as corridas más deram `6 050` e `0` |
 | **R de INCIDENTE (INC-2)** | subagente-R despachado pela janela-mãe `1246816c-63cf-414b-842d-663a8baa86ca` — **contexto novo**, ⛔ não é o subagente-E de nenhuma emenda nem o R-pré que achou o item, e **viu os dois lados** (transcript = zona contaminada) | 2026-09-09 — ⛔ **classificou o INC-2 como SUBSTANCIAL** ⇒ a **I-1 queima**; **quarentena LIMPA** nas 6 regiões (comparação de expressão sobre `850` linhas · sweep verde · busca dirigida a zero); **sweep de memória §6.4 verde, nada revertido**; prescrição §7.3.d escrita. Bloco em *Incidentes* → **INC-2** |
+| **R de INCIDENTE (INC-3) + CENSO §4.2 da árvore** | subagente-R despachado pela janela-mãe `72723fbf-b300-4f42-9178-535bb37b3941` (elo **I-2**) — **contexto novo**, ⛔ não é o subagente-E de nenhuma emenda nem o R do INC-2, e **viu os dois lados** (fonte por shell; `Read` deny-listed para a sessão) | 2026-09-09 — ⛔ **INC-3 classificado RELANCE** (a I-2 **não** queima), com a leitura registada de que **o canal não muda o §6.2 e AGRAVA o §4.2**; **censo §4.2 da árvore rastreada: 64 ficheiros ⇒ 57 (a) · 7 (b) · 0 (c)**, com **três cegueiras medidas do detector** (a população real é ≥107); os **três** hits da vassoura são **REAIS** e são **uma nota copiada três vezes**; tarefa nº 1 do BLOCO-RETOMADA **confirmada** (2 de finalidade · 3 de facto) e a **TERCEIRA cópia da oração ACHADA fora do repo e apagada**; resíduo de atestado da Q23 **removido** e a **segunda metade do censo** (detector de CONTRADIÇÃO) escrita na espec, provada por mutação nos dois braços |
 | R-pós | ⏳ | — |
 
 ### Auditoria R-pré — 2026-09-06 (emendas Q15 e Q16)
@@ -887,6 +888,84 @@ funcionais para a janela nova:
 
 **Data:** 2026-09-09 · **R:** subagente-R desta linha — contexto independente, não é o subagente-E de
 nenhuma emenda, e viu os dois lados. **Incidente FECHADO.**
+
+---
+
+### INC-3 (I-2, 2026-09-09) — a expressão chegou por um ficheiro NOSSO, e a régua não muda de forma por isso
+
+**Objecto (⛔ descrito, nunca reproduzido — §6.1).** Doc de módulo de
+`shells/desktop/src/sculpt3d_filter.rs`, linhas 9-16 na versão de `3cf248b30` —
+`sha256 fc906cd68f8302abde3019e40844bd13587e1e25ee2d06b4d6fd31543b447709`. Carrega **um nome interno
+de ficheiro do alvo com número de linha** e **duas atribuições transcritas** do fonte dele (a que
+forma o deslocamento horizontal e a que forma a força a partir dele) — ~2 linhas de expressão e ~4
+identificadores internos. **Origem: a árvore rastreada do PH2D**, escrita em 2026-09-07 por uma
+janela anterior desta linha; não veio do fonte do alvo nem de um report de subagente.
+
+**Veredicto (§6.2): ⛔ RELANCE. A janela I-2 NÃO queima.** Três razões, e a terceira é a que decide:
+
+1. **A régua não é alcançada.** «Corpo de função · bloco de ~10+ linhas · comentário inteiro» é a
+   fronteira do substancial; duas atribuições isoladas do corpo em que viviam são exactamente o
+   «assinatura/nome isolado» do lado do relance. O que é ⛔ ali são os **nomes internos** que as duas
+   atribuições carregam — e nome interno é §4.2, não §6.2.
+2. **Precedente MEDIDO da casa, e é o mesmo objecto.** O `ACHADO_proveniencia_por_nome_interno.md`
+   (2026-08-24) classificou **25** linhas desta mesma espécie — endereço interno *mais* transcrição —
+   e registou como **recusa medida**: *«Não tratar as 25 como incidente do §6 — a régua do §6.2
+   classifica assinatura/nome isolado como relance; nenhuma é corpo de função.»* O INC-3 é a 26.ª.
+3. ⭐ **E o contraste com o INC-2 é o que dá a régua o seu sentido.** O INC-2 queimou porque o bloco
+   foi **lido por inteiro e deliberadamente, como espec normativa, para conduzir implementação** —
+   e porque espelhava **um comentário** do fonte. Aqui não há comentário do alvo, não há oração de
+   finalidade, e a leitura foi o passo 4 do BLOCO-RETOMADA a abrir a própria região que o R-1 mandou
+   reescrever: *ler para APAGAR não é ler para IMPLEMENTAR.*
+
+**⚠️ A pergunta que a skill não resolve — o CANAL muda a classificação? Leitura registada: NÃO muda o
+§6.2, e AGRAVA o §4.2.** As duas metades são perguntas diferentes e o canal responde a cada uma ao
+contrário:
+
+- **§6 (a janela queima?) — o canal é irrelevante para a MEDIDA, e decisivo para a CONSEQUÊNCIA.**
+  Expressão é expressão venha de onde vier; a quantidade não muda. Mas queimar uma janela por ela ter
+  lido a **própria árvore que mantém** é auto-derrotante e *não termina*: a janela seguinte lê as
+  mesmas linhas ao primeiro `cat`, e queima também. ⇒ **uma exposição por ficheiro rastreado nunca
+  pode ser curada pela troca de janela — só pela cura da ÁRVORE.** Tratá-la como incidente de janela
+  produziria uma corrente infinita de janelas queimadas sobre um defeito que nenhuma delas causou.
+- **§4.2 (a árvore está contaminada?) — o canal AGRAVA.** Expressão do alvo num ficheiro rastreado é
+  **distribuída**: viaja no produto, vive em `git log -p` para sempre, e entra na tabela de strings
+  do binário quando está dentro de um `assert!`. É precisamente o que o §0 e o §4.2 proíbem. ⇒ o
+  INC-3 é **pequeno como incidente e grande como defeito de árvore**.
+- ⚠️ **E há uma diferença de NATUREZA:** uma exposição por canal externo é um **evento** (aconteceu
+  uma vez, num contexto); uma por ficheiro rastreado é um **estado** (está lá, e re-expõe toda janela
+  futura, indefinidamente). O §6 sabe tratar eventos. Estados são do §4.2 e do sweep.
+
+⇒ **Regra que fica:** *exposição cuja origem é a nossa própria árvore rastreada regista-se como
+relance no §6 e abre um item de §4.2 com a cura na ÁRVORE — nunca na janela.* A única excepção que
+faria queimar seria a régua do substancial ser alcançada **pelo próprio conteúdo** (um bloco de
+~10+ linhas, um comentário inteiro do alvo copiado para dentro de um ficheiro nosso), e aí queimaria
+na mesma — porque aí a janela leu, de facto, expressão substancial.
+
+**Quarentena (§6.3): NÃO SE APLICA.** Relance não abre quarentena; e a região exposta é o próprio
+alvo da cura.
+
+**Cura executada pela janela-mãe, CONFERIDA por este R (§4.2 + fonte).** As linhas 9-16 foram
+substituídas por um bloco que diz **só o comportamento** — sinal do arrasto, a régua por pixel
+nomeada pela constante NOSSA, a equivalência de mil pixels — mais a **divergência declarada** em
+vocabulário do domínio, com os dois ficheiros de gate nomeados ao lado. Conferido:
+- **§4.2:** ⛔ zero nome interno do alvo, zero atribuição transcrita, zero wording de comentário. O
+  censo `\.(cc|cpp|c|h|hh|hpp):[0-9]+` naquele ficheiro está em **ZERO**.
+- **Fonte (os factos têm de continuar CERTOS):** conferidos os três contra o fonte por este R —
+  **o sinal está certo** (a lei da referência forma o comprimento pela diferença na ordem inversa e
+  depois nega-a, ou seja *direita é positivo*), **a régua está certa** (o milésimo por pixel), e a
+  **divergência está bem declarada** (a referência multiplica ainda por uma força inicial da
+  ferramenta; nós não). ⚠️ **Uma nuance que o bloco novo omite e não erra:** a referência multiplica
+  também por um factor de escala de UI, que a nossa régua não tem — a afirmação *«mil pixels valem
+  1,0»* é a nossa lei, não a leitura da referência a escala arbitrária. Já está dito noutro sítio da
+  casa; ⛔ não é erro, mas quem apertar a paridade da força tem de o reconferir.
+- ⛔⛔ **E a cura está INCOMPLETA por uma casa de distância:** o bloco novo nomeia
+  `shells/desktop/src/sculpt3d_filter_tests.rs` como «quem mede» — e esse ficheiro carrega, na
+  linha **77**, **a mesma citação e a mesma transcrição** que acabaram de sair do doc de módulo, e na
+  linha **104** o nome interno do alvo **dentro da mensagem de um `assert!`**. *Mover a dívida para o
+  ficheiro vizinho e apontar-lhe o dedo é a forma mais barata de a manter.*
+
+**Data:** 2026-09-09 · **R:** subagente-R desta linha (contexto novo; viu os dois lados por shell).
+**INC-3 FECHADO como RELANCE**, com um item de §4.2 aberto no censo abaixo.
 
 ---
 
@@ -2170,6 +2249,250 @@ aplicadas no acto (secção «Q22», acima). ⚠️ **A lição fica nomeada:** 
 sweep nem a fidelidade — foi o **despacho**; uma emenda que shipa com `⏳ Aguarda R-pré` escrito nela
 própria só é apanhada se alguém correr o censo por bloco do cabeçalho da espec (§ do instrumento
 `awk`), e desta vez foi um R-pré posterior a dar por ela, não o censo.
+
+---
+
+## Censo §4.2 da ÁRVORE DO PRODUTO — 2026-09-09 (subagente-R do INC-3)
+
+⭐⭐ **É o `ACHADO_proveniencia_por_nome_interno.md` (2026-08-24) VIVO no código rastreado, medido de
+novo.** Detector: `grep -rlnE '\.(cc|cpp|c|h|hh|hpp):[0-9]+' --include='*.rs' crates shells`.
+
+### O veredito, por espécie
+
+- **(a) nome interno de ficheiro de alvo RESTRITO (GPL-2.0-or-later) — 57 ficheiros ⇒ ⛔ §4.2, tem
+  de sair.** Todos da mesma família de alvo (escultura/pintura/animação 2D do mesmo programa).
+- **(b) alvo PERMISSIVO — 7 ficheiros ⇒ atribuição legítima, FICA.** Cinco citam o tema de um editor
+  **MIT**, uma cita a biblioteca de quantização **MIT** do quad remesh. ⭐ Uma delas (`a_list_is_not_a_form.rs`)
+  **nomeia a licença ao lado da citação**, que é a forma certa e devia ser a convenção das outras seis.
+- **(c) falso positivo — ZERO.** ⚠️ Isto é ele próprio um achado: o detector **não erra para cima**
+  nesta árvore, então a contagem não pode ser descontada como ruído.
+
+### ⛔ A CONTAGEM DE 64 É UM PISO, NÃO A POPULAÇÃO — três cegueiras medidas do detector
+
+1. **Ele exige `:<linha>`.** Há **156 linhas** que citam um ficheiro interno **sem** número
+   (`` `nome.cc` ``) e que ele não vê — e **dois dos três achados da vassoura** (ponto 3) são
+   exactamente dessa forma. Alargando para *«ficheiro interno entre crases OU com linha»*, a
+   população passa de **64 para 107 ficheiros** (+43).
+2. **Ele só conhece extensões de C/C++.** Há **8 citações com linha em ficheiros `.py`** do mesmo
+   alvo, em 8 ficheiros — **4 deles fora dos 64**.
+3. **Ele é cego ao SÍTIO.** Três das citações vivem **dentro da mensagem de um `assert!`**
+   (`ref_mode_tests.rs:251` · `sculpt3d_filter_tests.rs:104` · `the_sculpt_gesture_is_wired.rs:372`):
+   elas entram na **tabela de strings do binário** e são impressas no log do CI quando o gate falha.
+   ⚠️ **O `cleanroom-sweep.sh` varre `strings` de binário de propósito** — é a única sub-espécie deste
+   censo que o instrumento da parede apanharia *no artefacto compilado*, e a única que sai do repo
+   sem passar por `git`. ⇒ **cure estas três primeiro**, independentemente da ordem do resto.
+
+### A tabela
+
+| # | ficheiro (NOSSO) | linhas | espécie | expressão? |
+|---|---|---|---|---|
+| 1 | `crates/ph2d-editor-core/src/ids/chrome/sculpt3d.rs` | 301,302 | **(a)** ⛔ alvo restrito (GPL) | só endereço |
+| 2 | `crates/ph2d-editor-core/src/paint.rs` | 247 | (b) permissivo — FICA | só endereço |
+| 3 | `crates/ph2d-editor-core/src/widget/list_rows/selection.rs` | 11 | (b) permissivo — FICA | só endereço |
+| 4 | `crates/ph2d-editor-core/tests/a_list_is_not_a_form.rs` | 29 | (b) permissivo — FICA | só endereço |
+| 5 | `crates/ph2d-flip-render/src/pipeline.rs` | 428 | **(a)** ⛔ alvo restrito (GPL) | ⛔ **COM EXPRESSÃO** @ 428 |
+| 6 | `crates/ph2d-flip-reshape/src/brushes.rs` | 20,243 | **(a)** ⛔ alvo restrito (GPL) | só endereço |
+| 7 | `crates/ph2d-flip-reshape/src/lib.rs` | 154,192 | **(a)** ⛔ alvo restrito (GPL) | ⛔ **COM EXPRESSÃO** @ 154 |
+| 8 | `crates/ph2d-flip/src/autokey.rs` | 1 | **(a)** ⛔ alvo restrito (GPL) | só endereço |
+| 9 | `crates/ph2d-flip/src/layer.rs` | 198,257 | **(a)** ⛔ alvo restrito (GPL) | ⛔ **COM EXPRESSÃO** @ 198 |
+| 10 | `crates/ph2d-flip/src/onion.rs` | 4,7 | **(a)** ⛔ alvo restrito (GPL) | ⛔ **COM EXPRESSÃO** @ 7 |
+| 11 | `crates/ph2d-flip/src/stroke.rs` | 15 | **(a)** ⛔ alvo restrito (GPL) | só endereço |
+| 12 | `crates/ph2d-flip/src/tween_match.rs` | 3 | **(a)** ⛔ alvo restrito (GPL) | só endereço |
+| 13 | `crates/ph2d-painter-brush/src/spec.rs` | 27,53,63,86,176,179,184,188,197,199 | **(a)** ⛔ alvo restrito (GPL) | ⛔ **COM EXPRESSÃO** @ 184,188,199 |
+| 14 | `crates/ph2d-panel-painter-layers/src/brush_fallback.rs` | 154 | **(a)** ⛔ alvo restrito (GPL) | só endereço |
+| 15 | `crates/ph2d-panel-sculpt3d/src/paint/brush.rs` | 289 | **(a)** ⛔ alvo restrito (GPL) | só endereço |
+| 16 | `crates/ph2d-panel-sculpt3d/src/rows.rs` | 152,182,365 | **(a)** ⛔ alvo restrito (GPL) | ⛔ **COM EXPRESSÃO** @ 152 |
+| 17 | `crates/ph2d-quantize/src/refine.rs` | 35 | (b) permissivo — FICA | só endereço |
+| 18 | `crates/ph2d-sculpt3d/src/auto_smooth.rs` | 10,49,78 | **(a)** ⛔ alvo restrito (GPL) | ⛔ **COM EXPRESSÃO** @ 10,78 |
+| 19 | `crates/ph2d-sculpt3d/src/auto_smooth_tests.rs` | 4 | **(a)** ⛔ alvo restrito (GPL) | só endereço |
+| 20 | `crates/ph2d-sculpt3d/src/brush.rs` | 203,231,264,290,483,513,521 | **(a)** ⛔ alvo restrito (GPL) | ⛔ **COM EXPRESSÃO** @ 203,231,264,483,513,521 |
+| 21 | `crates/ph2d-sculpt3d/src/brush_magnitudes.rs` | 39,147,159,171,202,237,251,262,272 | **(a)** ⛔ alvo restrito (GPL) | ⛔ **COM EXPRESSÃO** @ 39,159,171,202,237,251,272 |
+| 22 | `crates/ph2d-sculpt3d/src/brush_scale.rs` | 26,63,86,147 | **(a)** ⛔ alvo restrito (GPL) | ⛔ **COM EXPRESSÃO** @ 63,86,147 |
+| 23 | `crates/ph2d-sculpt3d/src/brush_tests.rs` | 194,459 | **(a)** ⛔ alvo restrito (GPL) | só endereço |
+| 24 | `crates/ph2d-sculpt3d/src/brush_verb.rs` | 147,177,214 | **(a)** ⛔ alvo restrito (GPL) | ⛔ **COM EXPRESSÃO** @ 147,177,214 |
+| 25 | `crates/ph2d-sculpt3d/src/brush_verb_defaults.rs` | 183 | **(a)** ⛔ alvo restrito (GPL) | ⛔ **COM EXPRESSÃO** @ 183 |
+| 26 | `crates/ph2d-sculpt3d/src/brush_verb_filter.rs` | 35,111,266 | **(a)** ⛔ alvo restrito (GPL) | ⛔ **COM EXPRESSÃO** @ 111,266 |
+| 27 | `crates/ph2d-sculpt3d/src/brush_verb_predicados.rs` | 107 | **(a)** ⛔ alvo restrito (GPL) | só endereço |
+| 28 | `crates/ph2d-sculpt3d/src/falloff.rs` | 21 | **(a)** ⛔ alvo restrito (GPL) | só endereço |
+| 29 | `crates/ph2d-sculpt3d/src/falloff_tests.rs` | 17 | **(a)** ⛔ alvo restrito (GPL) | só endereço |
+| 30 | `crates/ph2d-sculpt3d/src/footprint.rs` | 68 | **(a)** ⛔ alvo restrito (GPL) | só endereço |
+| 31 | `crates/ph2d-sculpt3d/src/ref_mode.rs` | 93,129,130,138,157,170,207,529 | **(a)** ⛔ alvo restrito (GPL) | ⛔ **COM EXPRESSÃO** @ 138,170,207 |
+| 32 | `crates/ph2d-sculpt3d/src/ref_mode_tests.rs` | 251,309 | **(a)** ⛔ alvo restrito (GPL) | só endereço · ⚠️ endereço dentro de `assert!` @ 251 |
+| 33 | `crates/ph2d-sculpt3d/src/ref_profiles.rs` | 270,277,301,307,308,309,310,311,312 | **(a)** ⛔ alvo restrito (GPL) | ⛔ **COM EXPRESSÃO** @ 270,277,307,308,309,310,311,312 |
+| 34 | `crates/ph2d-sculpt3d/src/stroke.rs` | 362 | **(a)** ⛔ alvo restrito (GPL) | só endereço |
+| 35 | `crates/ph2d-sculpt3d/src/stroke_dab_core.rs` | 21,273,302 | **(a)** ⛔ alvo restrito (GPL) | ⛔ **COM EXPRESSÃO** @ 21,273,302 |
+| 36 | `crates/ph2d-sculpt3d/src/stroke_filter.rs` | 59,272 | **(a)** ⛔ alvo restrito (GPL) | ⛔ **COM EXPRESSÃO** @ 59 |
+| 37 | `crates/ph2d-sculpt3d/src/stroke_filter_laws_tests.rs` | 400 | **(a)** ⛔ alvo restrito (GPL) | só endereço |
+| 38 | `crates/ph2d-sculpt3d/src/stroke_filter_sharpen.rs` | 12,44,62,92,102 | **(a)** ⛔ alvo restrito (GPL) | ⛔ **COM EXPRESSÃO** @ 44,62,92 |
+| 39 | `crates/ph2d-sculpt3d/src/stroke_hc.rs` | 43,75 | **(a)** ⛔ alvo restrito (GPL) | ⛔ **COM EXPRESSÃO** @ 43,75 |
+| 40 | `crates/ph2d-sculpt3d/src/stroke_law_tests.rs` | 507,648 | **(a)** ⛔ alvo restrito (GPL) | só endereço |
+| 41 | `crates/ph2d-sculpt3d/src/stroke_plane.rs` | 169 | **(a)** ⛔ alvo restrito (GPL) | só endereço |
+| 42 | `crates/ph2d-sculpt3d/src/stroke_ring.rs` | 76 | **(a)** ⛔ alvo restrito (GPL) | só endereço |
+| 43 | `crates/ph2d-sculpt3d/src/stroke_symmetry.rs` | 98,157 | **(a)** ⛔ alvo restrito (GPL) | só endereço |
+| 44 | `crates/ph2d-sculpt3d/src/stroke_target.rs` | 440,469,502,554,559,570 | **(a)** ⛔ alvo restrito (GPL) | ⛔ **COM EXPRESSÃO** @ 469,502,554,570 |
+| 45 | `crates/ph2d-sculpt3d/src/stroke_target_ring.rs` | 68,104 | **(a)** ⛔ alvo restrito (GPL) | ⛔ **COM EXPRESSÃO** @ 68,104 |
+| 46 | `crates/ph2d-sculpt3d/src/verb_layer_front_face_tests.rs` | 16 | **(a)** ⛔ alvo restrito (GPL) | ⛔ **COM EXPRESSÃO** @ 16 |
+| 47 | `crates/ph2d-sculpt3d/src/verb_layer_tests.rs` | 537 | **(a)** ⛔ alvo restrito (GPL) | ⛔ **COM EXPRESSÃO** @ 537 |
+| 48 | `crates/ph2d-sculpt3d/src/verb_mode_tests.rs` | 262,337,370,418,468 | **(a)** ⛔ alvo restrito (GPL) | só endereço |
+| 49 | `crates/ph2d-sculpt3d/src/verb_strip_law_tests.rs` | 296 | **(a)** ⛔ alvo restrito (GPL) | só endereço |
+| 50 | `crates/ph2d-sculpt3d/src/verb_thumb_tests.rs` | 242 | **(a)** ⛔ alvo restrito (GPL) | só endereço |
+| 51 | `crates/ph2d-sculpt3d/tests/measure_layer_front_face.rs` | 13,31 | **(a)** ⛔ alvo restrito (GPL) | ⛔ **COM EXPRESSÃO** @ 13,31 |
+| 52 | `crates/ph2d-sculpt3d/tests/measure_layer_law.rs` | 284 | **(a)** ⛔ alvo restrito (GPL) | só endereço |
+| 53 | `crates/ph2d-sculpt3d/tests/measure_layer_zoom_and_flank.rs` | 22,23 | **(a)** ⛔ alvo restrito (GPL) | ⛔ **COM EXPRESSÃO** @ 22,23 |
+| 54 | `crates/ph2d-sculpt3d/tests/measure_raycast_feedback.rs` | 14,16,17 | **(a)** ⛔ alvo restrito (GPL) | ⛔ **COM EXPRESSÃO** @ 14 |
+| 55 | `crates/ph2d-tokens/src/slider_style.rs` | 108 | (b) permissivo — FICA | só endereço |
+| 56 | `crates/ph2d-tokens/src/spacing.rs` | 164,178,210,229,271 | (b) permissivo — FICA | só endereço |
+| 57 | `crates/ph2d-tokens/src/visuals.rs` | 128 | (b) permissivo — FICA | só endereço |
+| 58 | `shells/desktop/src/flip_smooth.rs` | 3,82 | **(a)** ⛔ alvo restrito (GPL) | só endereço |
+| 59 | `shells/desktop/src/sculpt3d.rs` | 455 | **(a)** ⛔ alvo restrito (GPL) | só endereço |
+| 60 | `shells/desktop/src/sculpt3d_filter_tests.rs` | 77,104 | **(a)** ⛔ alvo restrito (GPL) | ⛔ **COM EXPRESSÃO** @ 77 · ⚠️ endereço dentro de `assert!` @ 104 |
+| 61 | `shells/desktop/src/sculpt3d_input.rs` | 271,311 | **(a)** ⛔ alvo restrito (GPL) | só endereço |
+| 62 | `shells/desktop/src/sculpt3d_rulers.rs` | 96 | **(a)** ⛔ alvo restrito (GPL) | só endereço |
+| 63 | `shells/desktop/src/sculpt3d_space_tests.rs` | 129,130,140 | **(a)** ⛔ alvo restrito (GPL) | ⛔ **COM EXPRESSÃO** @ 129,130,140 |
+| 64 | `shells/desktop/tests/the_sculpt_gesture_is_wired.rs` | 353,372,958 | **(a)** ⛔ alvo restrito (GPL) | ⛔ **COM EXPRESSÃO** @ 958 · ⚠️ endereço dentro de `assert!` @ 372 |
+
+**Totais: 64 ficheiros · (a) 57 · (b) 7 · (c) falso positivo **0** · com transcrição: 29.**
+
+⚠️ **`crates/ph2d-sculpt3d/src/verb_layer_front_face_tests.rs:16` é o PIOR da árvore** e não é da
+mesma ordem dos outros: além de **cinco** nomes internos de ficheiro e de um sexto num `.py`, ele
+traz um **bloco de código do alvo entre cercas** — condição, chamada e os nomes dos argumentos dela.
+Pela régua do §6.2 continua abaixo do «substancial» (não chega a ~10 linhas), mas pelo §4.2 é o item
+**1** da lista: *«texto de código, trechos, diffs — nem uma linha»*. ⇒ **cura funcional:** apagar a
+cerca inteira e deixar o doc dizer **o facto** (que a lei da referência é condicionada por uma opção
+do pincel, que ela nasce desligada e que ninguém no programa a liga) com o gate que o mede ao lado;
+o mesmo bloco está re-emitido em `brush_verb_defaults.rs:183` e em `measure_layer_front_face.rs:31`,
+e **os três curam-se juntos ou o facto passa a ter três redacções**.
+
+### A cura, em duas classes (⇒ é a taxonomia do ACHADO de 2026-08-24, revalidada)
+
+- **Classe A — só endereço (28 ficheiros).** O **facto** é lícito e o §4.1.2/§4.1.3 manda guardá-lo;
+  o que é ⛔ é o **endereço interno como forma de o citar**. ⇒ trocar por uma referência de
+  **domínio** (*«observado na referência, no verbo de camada, no passo de frente-de-face»*) **mais o
+  gate/fixture que mede o facto**, que é o que devolve a rastreabilidade que o endereço dava.
+  ⚠️ **O custo de rastreabilidade é real e já foi nomeado como recusa medida em 2026-08-24** — não
+  faça a troca em massa às cegas; faça-a por módulo, à medida que cada um é tocado.
+- **Classe B — com transcrição (29 ficheiros).** É a violação de **expressão** e não tem contrapartida
+  nenhuma: a atribuição, a condição, a assinatura e o nome do argumento **não acrescentam facto
+  nenhum** ao número ou à ordem de operações que a linha já diz. ⇒ sai, e o facto fica.
+  ⛔ **Sub-classe que não é higiene nenhuma:** as linhas que citam **um comentário do alvo entre
+  aspas** (`ref_mode.rs:170` · `brush_verb.rs:147` · `stroke_filter_sharpen.rs:62`) — o §4.2 chama-lhes
+  *«a expressão mais protegida do arquivo»*, e é a claim que a SAS **ganhou** (§1.2). **Estas três não
+  têm cura por reescrita: apagam-se.**
+
+⚠️⚠️ **E o que este censo NÃO diz:** nenhum destes 64 ficheiros contém fonte do alvo. A propriedade
+que segura a parede — *nenhum arquivo de fonte do alvo está na árvore* — continua verdadeira
+(`git ls-files` dá zero). O que vazou, e continua a vazar, é a **FORMA da nota de proveniência**.
+
+---
+
+## Os três hits da VASSOURA de 2026-09-09 — todos REAIS
+
+`bash scripts/cleanroom-sweep.sh docs/3D/cleanroom/VASSOURA_blender-cloth.txt <path>` acusa três
+ficheiros, e os três casam **a mesma entrada**: o nome interno do ficheiro do alvo que implementa o
+sub-sistema desta linha. ⛔ **Nenhum é acidente de vassoura genérica demais** — a entrada é um
+identificador idiossincrático, com sublinhado, do alvo, e não uma palavra do domínio.
+
+| ficheiro (NOSSO) | linha | veredito | o que tem de sair, FUNCIONALMENTE |
+|---|---|---|---|
+| `crates/ph2d-sculpt3d/src/brush_verb_defaults.rs` | 183 | ⛔ **REAL** — Classe B | a nota lista **cinco** ficheiros internos do alvo e transcreve a condição que os abre, mais o nome de uma bandeira interna, mais um sexto ficheiro `.py`. ⇒ fica **o facto**: *a lei de frente-de-face é condicionada por uma opção do pincel, ela nasce desligada, e nenhum caminho do programa de referência a liga* — com o gate que o mede nomeado ao lado. ⛔ zero endereços, zero condição transcrita |
+| `crates/ph2d-sculpt3d/src/stroke_dab_core.rs` | 302-303 | ⛔ **REAL** — Classe B | **a mesma nota, re-emitida** no comentário de bloco do caminho quente. ⇒ **não** a reescreva duas vezes: uma das duas passa a **apontar para a outra** (a que vive junto do campo que guarda a opção), senão o facto ganha duas redacções que envelhecem em separado |
+| `crates/ph2d-sculpt3d/src/verb_layer_front_face_tests.rs` | 16-24 | ⛔ **REAL, e o mais grave da árvore** | **a terceira cópia da mesma nota**, e a única com um **bloco de código do alvo entre cercas**. ⇒ apagar a cerca; o doc do módulo de gates diz **por que a fixture é outra** (a grelha plana torna a lei inobservável — isso é medição NOSSA e fica inteira) e **qual facto** os gates cobram |
+
+⭐ **A leitura das três juntas:** não são três dívidas, é **uma nota copiada três vezes**. *Uma lei
+escrita em três sítios ainda não é uma lei — só uma PORTA é* (lei já paga por esta casa noutro
+módulo). ⇒ a cura certa é **uma** redacção, no dono do campo, e duas referências a ela.
+
+⚠️ **E o sweep verde não absolve a árvore:** esta vassoura tem **70** entradas e cobre **uma** família
+de sub-sistema. Os 57 ficheiros do censo acima são da **mesma casa de origem** e o sweep não os vê.
+*Um sweep verde vale exactamente o que a vassoura contém.*
+
+---
+
+## Tarefa nº 1 do BLOCO-RETOMADA — as duas regiões CONFIRMADAS, e a TERCEIRA cópia achada
+
+**Os DOIS de FINALIDADE** (a mesma oração traduzida, re-emitida; ⇒ re-exprimir):
+
+| # | ficheiro | linhas | o que fica, o que sai |
+|---|---|---|---|
+| 1 | `crates/ph2d-sculpt3d/src/cloth_filter_kind.rs` | **169-171** (doc do variante do referencial de vista) | **FICA** o facto: nessa orientação a direcção de queda é o eixo vertical do ecrã e **não** a profundidade, e este é o único caso especial do referencial, resolvido por quem tem a matriz. **SAI** a oração de finalidade sobre o que o artista vê |
+| 2 | `shells/desktop/src/sculpt3d_filter.rs` | **278-281** (doc do passo que lê a câmera) | idem — **FICA** o facto e o *porquê ARQUITECTURAL* (este é o único sítio com matriz de câmera, e por isso o caso especial vive aqui); **SAI** a oração de finalidade |
+
+⇒ **Instrução funcional para os dois:** cada um passa a dizer **só o comportamento** — *qual eixo*,
+e que é o do ecrã e não o da profundidade — **com a fixture/gate que o mede nomeado ao lado**, na
+forma que o §7 curado já usa. ⛔ Nenhum dos dois guarda uma oração de **finalidade** sobre o que o
+artista vê. ⚠️ **Não é o facto que é dívida** (facto de comportamento não é protegível, §1.2): é o
+**enquadramento retórico do porquê**, que é o que foi traduzido.
+
+**Os TRÊS de FACTO — CONFIRMADOS e FICAM** (repetem o facto, sem a oração de finalidade):
+
+| ficheiro | linhas | por que fica |
+|---|---|---|
+| `crates/ph2d-sculpt3d/src/stroke_cloth_filter.rs` | **94-95** | diz o eixo e cita a espec; nenhuma finalidade |
+| `crates/ph2d-cloth/src/verlet_gesto_pincel.rs` | **106-110** | diz que esta crate não sabe o que é uma vista e que o caso especial é resolvido antes de chegar; é **desenho NOSSO** |
+| `shells/desktop/src/sculpt3d_filter.rs` | **356-360** (era 353-355 antes da cura do INC-3, que deslocou o ficheiro) | diz **por que aqui** — argumento de arquitectura desta casa |
+
+⚠️ **Adjacente e também FICA:** `shells/desktop/src/sculpt3d_filter_cloth_tests.rs:162` (é sobre a
+**régua**, não sobre o eixo) e a formulação *«o baixo é o −cima do ECRÃ»* de
+`shells/desktop/src/sculpt3d_filter.rs:392` + `docs/3D/08_as_tres_features_do_modelador.md:58` —
+**idioma próprio desta casa**, usado no modelador 3D, obra sem relação com este alvo.
+
+### ⭐ A TERCEIRA ocorrência: ACHADA, e não estava na árvore
+
+Censo exacto da oração pelo tronco distintivo, sobre `crates/`, `shells/`, `docs/` e a árvore inteira:
+**duas** ocorrências rastreadas (as da tabela acima) e **uma terceira FORA do repo** —
+`…/scratchpad/K.bak` da sessão **`1246816c…`, a janela QUEIMADA (I-1)**: cópia **byte-idêntica**
+(`sha256 d7b5c8cd…`) de `crates/ph2d-sculpt3d/src/cloth_filter_kind.rs`.
+
+⛔⛔ **E a nota do INC-2 sobre ela estava ERRADA no ponto que decidia a acção.** Ela diz que a cópia
+*«some quando a prescrição correr»* — **não some**: um `.bak` é congelado no instante em que foi
+feito, e curar o ficheiro rastreado não lhe toca. Ela sobreviveria à cura, e é alcançável por
+qualquer janela que faça um `grep` em `/tmp` (a espécie do INC-1, a repetir-se pela terceira vez).
+⇒ **APAGADA por este R** (é cópia de ficheiro **nosso**, logo higiene e não incidente; o `sha256`
+fica registado aqui, que é a evidência). Re-censo depois: **zero** cópias fora da árvore.
+
+⭐ **Lição:** *o §6.4 não termina na memória nem numa relocação — uma cópia congelada de um ficheiro
+NOSSO que carrega a dívida a curar é um terceiro portador que nenhuma cura da árvore alcança.* E
+⚠️ **o sweep do scratchpad daquela janela sai VERDE** (70 entradas): a cópia não carrega identificador
+do alvo nenhum — carrega a **tradução**, que é precisamente o que uma vassoura de identificadores
+nunca apanha.
+
+---
+
+## O resíduo de atestado da Q23, e a segunda metade do censo do cabeçalho da espec
+
+**(a) O marcador obsoleto foi APAGADO.** No bloco da `EMENDA Q23 de 2026-09-09` da
+`SPEC_cloth_brush.md`, o parágrafo de objecto fechava com um marcador de pendência de R-pré escrito
+dentro de si, **com o atestado do R-pré da mesma data logo abaixo** (`e0275bba1`). A emenda **está**
+atestada; o marcador era resíduo. Removido por este R (a espec é artefacto de E/R; a janela-mãe não
+lhe toca), preservando a forma do título que o censo procura (`EMENDA Q<dígitos> de`).
+
+**(b) A segunda metade do censo — um detector de CONTRADIÇÃO — está escrita na espec, ao lado da
+primeira.** O censo que lá estava pergunta *«veio um atestado depois desta linha?»* e é **mudo** quando
+a resposta é *sim* **e** o marcador ficou lá: ⇒ *uma emenda genuinamente pendente e uma já atestada
+com marcador obsoleto lêem-se **iguais** para quem abre a espec* — foi assim que a Q22 pagou dois dias.
+O detector novo percorre **os mesmos blocos, no mesmo `awk`**, e acusa o bloco que tem **as duas
+coisas ao mesmo tempo**. ⛔ **A lei de que não pode virar contagem foi mantida:** a saída é o **nome do
+bloco**, e silêncio continua a ser o verde.
+
+Três coisas que só a construção impôs, e que ficam escritas ao lado do detector:
+
+1. ⚠️ **A `gsub` das crases é LOAD-BEARING, e é uma LEI DE REDACÇÃO, não uma esperteza do script.**
+   A espec fala **sobre** o marcador em dois sítios (a lição da Q22 e a do fecho); sem apagar os vãos
+   entre crases, o detector acusaria justamente os blocos que **documentam** a doença. ⇒ **marcador de
+   pendência escreve-se NU; menção em prosa escreve-se entre crases.**
+2. ⛔ **O padrão casava-se a si próprio** — a 1.ª redacção do detector acusou o bloco onde ele
+   **vive**, porque a linha que diz *como* procurar contém o que se procura. É a **terceira** vez que
+   este instrumento morde pela redacção (a contagem *case-sensitive*, a redacção que se contava, e
+   agora esta). Curado com uma classe de carácter que quebra o literal sem mudar o que ele casa.
+3. ⭐ **Os dois braços foram provados por MUTAÇÃO:** o braço novo acusa a Q23 na versão anterior à cura
+   e cala-se depois dela; apagar o atestado da Q23 devolve `SEM ATESTADO` pelo braço antigo.
+   ⚠️ **E o 1.º controlo desta prova falhou por culpa MINHA, não do detector** — mutei o número de
+   linha errado e li «sobreviveu». *Uma mutação que «sobrevive» num ficheiro que se está a editar é,
+   primeiro, uma suspeita sobre o endereço da mutação.*
+
+⚠️ **O que continua sem instrumento:** este censo é um comando escrito na espec, e **nada no
+`ship.sh` o corre**. Enquanto for assim, ele é uma nota que envelhece (`CLAUDE.md` §2) — a decisão de
+o pôr num portão é do dono, e o custo é uma linha.
 
 ---
 

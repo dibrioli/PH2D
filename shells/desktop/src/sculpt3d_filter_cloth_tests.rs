@@ -246,3 +246,82 @@ fn a_gravidade_do_filtro_cai_para_baixo_na_tela() {
          distingue a cura de uma malha parada"
     );
 }
+
+/// ⭐⭐⭐ **NA ORIENTAÇÃO *VIEW* O «BAIXO» É O VERTICAL DO ECRÃ — NÃO A PROFUNDIDADE.**
+///
+/// ⚠️⚠️ **Esta é a metade que o [`a_gravidade_do_filtro_cai_para_baixo_na_tela`]
+/// não pode ver.** Aquele dirige o braço *Local* com a base de ecrã
+/// **IDENTIDADE**, e ali as duas respostas coincidem **ao bit**: `−cima_do_ecrã`
+/// e `−Camera3d::UP` são o mesmo vector. *Um enquadramento em que os dois braços
+/// devolvem o mesmo número não testa nenhum dos dois* — é o verde por vácuo que
+/// o irmão [`super::super::ref_mode_tests`] já pagou nas pontas que coincidem.
+///
+/// ⇒ a fixture **INCLINA** o ecrã 90° em torno do `x`: o cima da tela passa a
+/// ser o `+z` do mundo e a profundidade passa a ser o `−y`. Nesse enquadramento
+/// a resposta certa é `[0, 0, −1]`, e a resposta «profundidade» é `[0, ±1, 0]` —
+/// que é **exactamente** o que o braço *Local* devolve, porque o cima do MUNDO
+/// caiu sobre o eixo do olho.
+///
+/// ⭐ É isso que dá o discriminador: aqui *usar o cima do mundo* e *usar a
+/// profundidade* são a **mesma** resposta errada, e só a vertical do ecrã se
+/// separa das duas.
+#[test]
+fn na_vista_o_baixo_e_o_vertical_do_ecra_e_nao_a_profundidade() {
+    use ph2d_mesh_render::Camera3d;
+    use ph2d_sculpt3d::ClothFilterOrientation;
+
+    /// Dois eixos são o mesmo? (evita comparar `f32` por `==`).
+    fn mesmo(a: [f32; 3], b: [f32; 3]) -> bool {
+        (0..3).all(|k| (a[k] - b[k]).abs() < 1e-6)
+    }
+
+    // O ecrã inclinado 90° em torno do x: direita · cima · para-o-olho.
+    const DIREITA: [f32; 3] = [1.0, 0.0, 0.0];
+    const CIMA: [f32; 3] = [0.0, 0.0, 1.0];
+    const PROFUNDIDADE: [f32; 3] = [0.0, -1.0, 0.0];
+    let ecra = [DIREITA, CIMA, PROFUNDIDADE];
+
+    let (frame_vista, vista) = super::referencial_e_gravidade(ClothFilterOrientation::View, ecra);
+    let (_, local) = super::referencial_e_gravidade(ClothFilterOrientation::Local, ecra);
+    println!("ecra inclinado: vista {vista:?} | local {local:?} | profundidade {PROFUNDIDADE:?}");
+
+    // (1) Na vista, o referencial É a base do ecrã.
+    assert!(
+        (0..3).all(|r| mesmo(frame_vista[r], ecra[r])),
+        "na orientacao View o referencial tem de ser a base do ECRA; veio {frame_vista:?}"
+    );
+
+    // (2) A lei: o baixo é o −cima do ECRÃ.
+    let esperado = [-CIMA[0], -CIMA[1], -CIMA[2]];
+    assert!(
+        mesmo(vista, esperado),
+        "na orientacao View o «baixo» tem de ser o VERTICAL do ecra ({esperado:?}); veio {vista:?}"
+    );
+
+    // (3) ⛔ E NÃO a profundidade — nos dois sinais.
+    assert!(
+        !mesmo(vista, PROFUNDIDADE)
+            && !mesmo(
+                vista,
+                [-PROFUNDIDADE[0], -PROFUNDIDADE[1], -PROFUNDIDADE[2]]
+            ),
+        "o «baixo» da vista virou a PROFUNDIDADE ({PROFUNDIDADE:?}); veio {vista:?}"
+    );
+
+    // (4) ⚠️ O CONTROLO DE NÃO-VACUIDADE: neste enquadramento os dois braços TÊM
+    // de discordar. Com o ecrã alinhado ao mundo eles coincidem, e então este
+    // gate passaria mesmo com o braço da vista apagado — que é o defeito que
+    // ele existe para apanhar.
+    assert!(
+        !mesmo(vista, local),
+        "a fixture NAO separa os dois bracos (vista {vista:?} == local {local:?}) -- sem isto o \
+         gate e' verde por vacuo"
+    );
+
+    // E aqui o braço *Local* cai sobre o eixo do OLHO, que é a resposta errada.
+    let up = Camera3d::UP;
+    assert!(
+        mesmo(local, [-up.x, -up.y, -up.z]),
+        "o braco Local mudou de lei; veio {local:?}"
+    );
+}

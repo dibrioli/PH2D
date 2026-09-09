@@ -298,11 +298,11 @@ impl SculptStroke {
                 // fato sobre o `pre`*, e agora é uma frase só.
                 //
                 // ⚠️ **E ele é CONDICIONAL, porque na referência sempre foi.**
-                // Toda tool do Blender abre esta linha com
-                // `if (brush.flag & BRUSH_FRONTFACE)` (`layer.cc:149` ·
-                // `clay_strips.cc` · `sculpt_cloth.cc` · `paint_color.cc`), e
-                // **nenhuma linha do Blender inteiro LIGA o bit** — é o checkbox
-                // *"Front Faces Only"*. Nós o aplicávamos incondicionalmente, e
+                // ⛔ O facto, a varredura que mostra que nada lá o LIGA, e a lei
+                // que ele governa vivem numa casa SÓ — a
+                // [`crate::Brush::front_faces_only`] —, e este comentário
+                // APONTA em vez de repetir. Nós o aplicávamos
+                // incondicionalmente, e
                 // o preço estava no report do Enio: com `hardness` alto a curva
                 // satura em 90 % do raio, `shape` colapsa em `facing`, e a demão
                 // veste o cosseno da CÂMERA (borda/centro `0,3793` contra

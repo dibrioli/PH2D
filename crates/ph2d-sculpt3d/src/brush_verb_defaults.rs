@@ -174,19 +174,18 @@ impl Verb {
                 .unwrap_or(1.0)
     }
 
-    /// **SÓ AS FACES DE FRENTE** — o `use_frontface` da referência, e o que o
-    /// pincel nasce vestindo.
+    /// **SÓ AS FACES DE FRENTE** — o que o pincel deste verbo nasce vestindo.
     ///
-    /// ⚠️ **O front-face do Blender é um CHECKBOX do artista, e nós o
-    /// aplicávamos incondicionalmente.** Toda tool dele abre a cadeia de fatores
-    /// com `if (brush.flag & BRUSH_FRONTFACE) calc_front_face(...)`
-    /// (`layer.cc:149` · `clay_strips.cc` · `sculpt_cloth.cc` · `paint_color.cc`
-    /// · `draw_face_sets.cc`), a UI o expõe como *"Front Faces Only"*
-    /// (`properties_paint_common.py:1354`), e **nenhuma linha do Blender inteiro
-    /// LIGA o bit** — varrido: o único hit fora de leitura é
-    /// `use_front_face_ = brush_->flag & BRUSH_FRONTFACE`, que também lê. O
-    /// [`crate::KernelLaw`] continua dizendo QUAL lei o modo aplica; este flag
-    /// diz se ela é aplicada.
+    /// ⚠️ **Na referência isto é uma opção do artista, e nós aplicávamo-la
+    /// incondicionalmente.** O facto, a varredura que mostra que **nada lá o
+    /// LIGA**, e a lei que ele governa vivem numa casa só:
+    /// [`crate::Brush::front_faces_only`]. O [`crate::KernelLaw`] continua
+    /// dizendo QUAL lei o modo aplica; este flag diz **se** ela é aplicada.
+    ///
+    /// Medido em `crates/ph2d-sculpt3d/src/verb_layer_front_face_tests.rs`, cujo
+    /// doc de módulo explica por que a fixture ali é uma ESFERA e não a grade
+    /// plana: na grade o facing vale `1,0` em todo vértice e os dois mundos são
+    /// byte-idênticos.
     ///
     /// ⚠️ **O preço de não ter o flag estava MEDIDO no report do Enio** (*"se
     /// aumentar hardness, Layer fica muito ruim"*), e o mecanismo é o

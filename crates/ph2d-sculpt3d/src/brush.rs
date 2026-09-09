@@ -241,13 +241,18 @@ pub struct Brush {
     /// nasce no neutro e o número passa a ser do ARTISTA — nunca uma tabela
     /// inventada com o nome de outro produto.
     pub hardness: f32,
-    /// **SÓ AS FACES DE FRENTE** — o `use_frontface` do Blender
-    /// (`DNA_brush_types.h::BRUSH_FRONTFACE`), o checkbox *"Front Faces Only"*.
+    /// **SÓ AS FACES DE FRENTE** — a opção de pincel *"Front Faces Only"* da
+    /// referência (rótulo público: é o que o artista vê na tela dela).
+    ///
+    /// ⭐ **ESTA É A CASA CANÓNICA DO FACTO.** Os outros sítios que dependem
+    /// dele apontam para aqui em vez de o repetir — *uma lei escrita em quatro
+    /// sítios ainda não é uma lei; só uma PORTA é.*
     ///
     /// Ligado, o fator de cada vértice é escalado por `max(n · olho, 0)` — o
     /// [`crate::FrontFace::Continuous`] que o modo declara. Desligado, a linha
-    /// **não corre**, que é o que toda tool da referência faz por omissão:
-    /// `if (brush.flag & BRUSH_FRONTFACE) calc_front_face(...)`.
+    /// **não corre**, que é o que a referência faz por omissão: lá o teste é
+    /// **condicionado ao bit** em todo verbo que deposita, e **nada no programa
+    /// o LIGA** (varrido: todos os sítios que o mencionam são LEITURAS).
     ///
     /// ⚠️ **A lei e o interruptor são coisas diferentes, e é por isso que são
     /// dois campos.** O [`crate::KernelLaw::front_face`] responde *qual* lei a

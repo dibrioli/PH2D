@@ -368,8 +368,8 @@ fn a_pointer_event_is_walked_at_the_brushes_spacing_and_stops_where_the_ray_miss
     );
     assert!(
         !deposited.contains("landed = Some([sx, sy])"),
-        "a âncora presa no último dab APLICADO é a rajada de recuperação que o \
-         `paint_stroke.cc:509` existe para não ter"
+        "a âncora presa no último dab APLICADO é a rajada de recuperação que a \
+         referência existe para não ter"
     );
     assert!(
         !arm.replace(&deposited, "").contains("stroke_anchor ="),

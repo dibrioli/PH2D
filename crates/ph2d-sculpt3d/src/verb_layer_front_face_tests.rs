@@ -13,19 +13,16 @@
 //!
 //! # A referência
 //!
-//! `layer.cc:149` — e `clay_strips.cc`, `sculpt_cloth.cc`, `paint_color.cc`,
-//! `draw_face_sets.cc`, todos iguais:
+//! **Facto medido:** a referência aplica esta lei **condicionada a um bit do
+//! pincel**, e o mesmo teste aparece igual em toda a família de verbos que
+//! deposita tinta ou deslocamento. O bit é a opção de pincel *"Front Faces
+//! Only"* — rótulo público, o que o artista vê (§4.1.13 da SKILL).
 //!
-//! ```text
-//! if (brush.flag & BRUSH_FRONTFACE) {
-//!   calc_front_face(cache.view_normal_symm, vert_normals, verts, factors);
-//! }
-//! ```
-//!
-//! O bit é o checkbox *"Front Faces Only"* (`use_frontface`,
-//! `properties_paint_common.py:1354`), e **nenhuma linha do Blender inteiro o
-//! LIGA** — varrido: o único hit fora de leitura é
-//! `use_front_face_ = brush_->flag & BRUSH_FRONTFACE`, que também lê.
+//! ⭐⭐ **E ele nasce DESLIGADO, e nada na referência o LIGA** — varrido: todos
+//! os sítios que o mencionam são LEITURAS. ⇒ o comportamento que um artista de
+//! facto obtém lá é o do bit desligado, e é por isso que a nossa aplicação
+//! INCONDICIONAL atravessou a wave inteira sem ninguém dar por ela: ela
+//! coincide com o alvo em todo uso normal e diverge só para quem liga o bit.
 
 use crate::{Brush, Dab, RefMode, SculptStroke, Symmetry, Verb};
 use ph2d_mesh::{Mesh, shapes};

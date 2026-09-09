@@ -248,7 +248,7 @@ fn the_blender_slider_is_the_square_root_of_the_weight() {
     b.mode = RefMode::B;
     assert!(
         (b.weight() - 0.25).abs() < 1e-6,
-        "B: `sculpt.cc:2339` eleva ao quadrado; veio {}",
+        "B: o peso é o do slider AO QUADRADO; veio {}",
         b.weight()
     );
     // ⚠️ E as pontas COINCIDEM (`0²=0`, `1²=1`) — é por isso que a fixture usa

@@ -277,8 +277,14 @@ impl Sculpt3dScene {
     ///
     /// ⚠️⚠️ **O caso especial da vista é da ESPEC §7 e vive aqui**, que é o único
     /// sítio com uma matriz de câmera: na orientação *View* o «baixo» da
-    /// gravidade é o eixo **vertical do ecrã**, e não a profundidade — *para que a
-    /// queda seja o baixo que o artista vê*.
+    /// gravidade é o eixo **vertical do ecrã**, e não a profundidade.
+    ///
+    /// Medido por `na_vista_o_baixo_e_o_vertical_do_ecra_e_nao_a_profundidade`
+    /// (`shells/desktop/src/sculpt3d_filter_cloth_tests.rs`), com o ecrã
+    /// **inclinado 90°** — ali *cima do
+    /// mundo* e *profundidade* são a MESMA resposta errada, e só a vertical do
+    /// ecrã se separa das duas. ⛔ Com o ecrã alinhado ao mundo os dois braços
+    /// coincidem ao bit e um gate seria verde por vácuo.
     pub(super) fn cloth_filter_step_of(&self, amount: f32) -> ph2d_sculpt3d::ClothFilterStep {
         let v = self.camera.view();
         // As LINHAS de uma matriz de vista ortonormal são os eixos do ECRÃ em

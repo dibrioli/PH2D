@@ -74,8 +74,8 @@ fn drag(s: &mut Sculpt3dScene, x0: f32, x1: f32) {
 
 /// ⭐ **O SINAL do arrasto é o da referência: DIREITA é positivo.**
 ///
-/// O `sculpt_filter_mesh.cc:2299` faz `len = prev − mouse` e depois
-/// `strength = start · −len · 0.001`, que é `(mouse − prev) · 0.001`. Um sinal
+/// **Comportamento medido:** a força é `(x_agora − x_do_pen_down) · 0,001`
+/// (`FILTER_DRAG_PER_PX`), logo a DIREITA é positiva. Um sinal
 /// trocado aqui **não daria erro nenhum** — o filtro funcionaria, murchando onde
 /// o artista pede para inflar, e nenhum gate de lei do kernel veria (lá o
 /// `amount` chega pronto).
@@ -101,7 +101,7 @@ fn dragging_right_inflates_and_dragging_left_deflates() {
     eprintln!("[filtro] raio medio: antes {before:.6} | direita {right:.6} | esquerda {left:.6}");
     assert!(
         right > before,
-        "arrastar para a DIREITA tinha de inflar (a lei do sculpt_filter_mesh.cc:2299): \
+        "arrastar para a DIREITA tinha de inflar (a lei da referência): \
          {before:.6} -> {right:.6}"
     );
     assert!(

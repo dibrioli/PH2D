@@ -167,8 +167,13 @@ pub enum ClothFilterOrientation {
     /// Os eixos do ECRÃ.
     ///
     /// ⚠️⚠️ **Aqui o «baixo» da gravidade é o eixo VERTICAL DO ECRÃ, não a
-    /// profundidade** (espec §7) — para que a queda seja o baixo que o artista
-    /// vê. É o único caso especial do referencial, e ele vive em quem resolve.
+    /// profundidade** (espec §7). É o único caso especial do referencial, e ele
+    /// vive em quem resolve.
+    ///
+    /// Medido por `na_vista_o_baixo_e_o_vertical_do_ecra_e_nao_a_profundidade`
+    /// (`shells/desktop/src/sculpt3d_filter_cloth_tests.rs`), sobre um ecrã
+    /// **INCLINADO** — com o ecrã alinhado ao mundo os dois braços do
+    /// referencial coincidem **ao bit**, e ali o gate seria verde por vácuo.
     View,
 }
 

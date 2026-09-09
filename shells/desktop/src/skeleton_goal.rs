@@ -309,7 +309,7 @@ pub(crate) fn add(sim: &mut SimWorld, bone: Entity) -> Option<Entity> {
     if sim.world().get::<Bone>(bone).is_none() || sim.world().get::<IkGoal>(bone).is_some() {
         return None;
     }
-    let ponta = crate::bone_gesture::tip_of(sim, bone.to_bits())?;
+    let ponta = crate::bone_pick::tip_of(sim, bone.to_bits())?;
     #[expect(
         clippy::cast_possible_truncation,
         reason = "o `Transform` da casa é f32; a geometria do documento é f64"

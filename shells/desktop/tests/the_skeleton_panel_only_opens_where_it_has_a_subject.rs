@@ -118,3 +118,64 @@ fn the_focus_edge_opens_raises_and_arms() {
         "a aresta traz OUTRO painel à frente"
     );
 }
+
+/// ⭐⭐⭐ **UM OSSO ACABADO DE NASCER NÃO ACORDA A ARESTA** (report do dono, 2026-09-09: *«cada vez
+/// que se cria um osso o modo Transform é selecionado»*).
+///
+/// ⛔⛔ **A aresta nunca teve defeito — faltava-lhe a outra metade da história.** O osso novo fica
+/// aceso (é assim que o artista vê qual é), e no quadro seguinte o `on_focus` lia essa mudança como
+/// *«o artista escolheu um osso»*: abria o painel, trazia a aba e **armava *Transform***, arrancando
+/// o artista do verbo em que ele estava. *«O foco mudou» tem duas causas que se leem iguais no fim
+/// do quadro — o artista apontou, e o gesto produziu — e só quem produziu as distingue.*
+///
+/// ⇒ quem cria o osso **alimenta a memória** (`skeleton_reveal::on_birth`), e a aresta seguinte não
+/// tem nada a relatar. ⚠️ A lei em si é gateada no módulo dela (`a_newborn_bone_asks_for_nothing`);
+/// o que este gate mede é que ela está **no caminho de quem cria**, que é a metade que um teste de
+/// unidade não alcança.
+#[test]
+fn the_bone_creation_site_absorbs_the_focus_edge() {
+    const DISPATCH: &str = include_str!("../src/input_dispatch.rs");
+    let src = code_only(DISPATCH);
+    let linhas: Vec<&str> = src.lines().collect();
+    let nascimento = linhas
+        .iter()
+        .position(|l| l.contains("bone_gesture::create("))
+        .expect("o sítio onde um osso nasce do gesto deixou de existir");
+    assert!(
+        codigo_apos(&linhas, nascimento, 20).contains("skeleton_reveal::on_birth("),
+        "o sítio que cria o osso (linha {nascimento}) não absorve a memória do revelar-ao-focar — \
+         sem isso o quadro seguinte lê o osso novo como uma ESCOLHA e arma *Transform*, que é \
+         literalmente o report do dono"
+    );
+}
+
+/// ⭐⭐⭐ **O PAI DE UM OSSO NOVO VEM DO PRESS, NUNCA DA SELECÇÃO** (ordem do dono, 2026-09-09:
+/// *«para criar um osso como filho de outro o clique deve acontecer na ponta do osso pai»*).
+///
+/// ⛔⛔ **A lei antiga sobrevivia no OUTRO extremo do gesto:** o press decidia a origem e o release
+/// ia buscar o pai a `hero.gizmo.selection`. Enquanto essa leitura existir, um esqueleto na cena
+/// torna impossível criar uma raiz nova — que é o report — mesmo com o press já a decidir certo.
+///
+/// ⚠️ Este gate mede a **AUSÊNCIA**: nada no `Up` do osso pergunta à selecção quem é o pai. A metade
+/// positiva (o press decide, e decide certo) é gateada no módulo do gesto.
+#[test]
+fn the_release_never_asks_the_selection_who_the_parent_is() {
+    const DISPATCH: &str = include_str!("../src/input_dispatch.rs");
+    let src = code_only(DISPATCH);
+    let linhas: Vec<&str> = src.lines().collect();
+    let up = linhas
+        .iter()
+        .position(|l| l.contains("self.vec_bone_drag.take()"))
+        .expect("o release do gesto de osso deixou de existir");
+    let corpo = codigo_apos(&linhas, up, 30);
+    assert!(
+        corpo.contains("nascimento.parent") || corpo.contains(".parent"),
+        "o release não lê o pai que o press decidiu — o parentesco perdeu-se entre os dois extremos \
+         do gesto"
+    );
+    assert!(
+        !corpo.contains("gizmo.selection)") && !corpo.contains("h.gizmo.selection"),
+        "o release volta a perguntar à SELECÇÃO quem é o pai — é a lei que o dono mandou tirar, e \
+         com ela nenhum press consegue fazer uma raiz nova enquanto houver um osso aceso"
+    );
+}

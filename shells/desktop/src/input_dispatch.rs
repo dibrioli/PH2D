@@ -4076,7 +4076,7 @@ impl App {
         // também não) e o `Down` só era lido dentro do `DrawMode::Bone`. *Um controlo que acende
         // debaixo do dedo e não responde é a espécie de morto que este repo já pagou três vezes.*
         //
-        // ⚠️ **QUAIS alças é a porta [`crate::bone_gesture::grabbable_outside_bone_mode`]**, e a
+        // ⚠️ **QUAIS alças é a porta [`crate::bone_pick::grabbable_outside_bone_mode`]**, e a
         // linha é o VERBO: entram as quatro que nenhuma outra ferramenta sabe exprimir; girar e
         // deslocar ficam com o gizmo de sprite, que já os faz.
         //
@@ -4630,16 +4630,6 @@ impl App {
                                         hero.gizmo.extra_selection.clear();
                                     }
                                 }
-                                // ⭐ Em *Criar*, tocar num osso só o ACENDE — é assim que se
-                                // escolhe de qual ponta o próximo cresce. ⛔ Sem armar pose.
-                                Some(crate::bone_gesture::BonePress::Select { bone }) => {
-                                    if let Some(gfx) = self.gfx.as_mut()
-                                        && let Some(hero) = gfx.hero_screen.as_mut()
-                                    {
-                                        hero.gizmo.selection = Some(bone);
-                                        hero.gizmo.extra_selection.clear();
-                                    }
-                                }
                                 // ⭐ Em *Transformar*, um press fora de osso aponta a forma e mais
                                 // nada — o *Bind* precisa do sujeito, e nenhum osso nasce aqui.
                                 Some(crate::bone_gesture::BonePress::Pick { path: Some(pid) }) => {
@@ -4650,8 +4640,8 @@ impl App {
                                 // `Bind` a cada clique no vazio, e o artista clica no vazio o tempo
                                 // todo.
                                 Some(crate::bone_gesture::BonePress::Pick { path: None }) => {}
-                                Some(crate::bone_gesture::BonePress::Start { origin, pick }) => {
-                                    self.vec_bone_drag = Some(origin);
+                                Some(crate::bone_gesture::BonePress::Start { birth, pick }) => {
+                                    self.vec_bone_drag = Some(birth);
                                     // ⚠️ **O clique que SELECCIONA e o arrasto que faz osso são o
                                     // MESMO press**, e é de propósito: um clique curto (< 12 px)
                                     // não faz osso nenhum, então apontar uma forma é só apontar —
@@ -4923,30 +4913,53 @@ impl App {
                     // ⚠️ **Consome SÓ com o gesto VIVO** (a origem marcada), pela lei que o
                     // `shape_up_consumes` documenta: soltar sobre um botão do painel neste modo não
                     // pode engolir o clique.
-                    if let Some(origem) = self.vec_bone_drag.take() {
+                    if let Some(nascimento) = self.vec_bone_drag.take() {
                         let px = self.vec_px_to_world();
+                        let mut nasceu = None;
                         if let Some(ponta) = self.vec_world_at(self.last_pointer) {
                             // ⚠️ A decisão vem da porta ÚNICA que a pré-visualização também
                             // consulta — senão o artista vê um osso a crescer e o `Up` não o faz.
-                            let vale = crate::bone_gesture::drag_makes_a_bone(origem, ponta, px);
+                            let vale = crate::bone_gesture::drag_makes_a_bone(
+                                nascimento.origin,
+                                ponta,
+                                px,
+                            );
                             if vale && let Some(gfx) = self.gfx.as_mut() {
-                                let pai = gfx
-                                    .hero_screen
-                                    .as_ref()
-                                    .and_then(|h| h.gizmo.selection)
-                                    .map(ph2d_ecs::Entity::from_bits)
+                                // ⭐⭐⭐ **O PAI é o que o PRESS apontou** (ordem do dono,
+                                // 2026-09-09) — ⛔ nunca a selecção, que era a lei que ele mandou
+                                // tirar. Ele ainda é filtrado porque um osso pode ter sido apagado
+                                // entre o press e o release, e um pai morto não tem espaço local.
+                                let pai = nascimento
+                                    .parent
+                                    .and_then(ph2d_ecs::Entity::try_from_bits)
                                     .filter(|e| {
                                         gfx.sim.world().get::<ph2d_skeleton_ecs::Bone>(*e).is_some()
                                     });
-                                let novo =
-                                    crate::bone_gesture::create(&mut gfx.sim, pai, origem, ponta);
-                                if let Some(bits) = novo
+                                nasceu = crate::bone_gesture::create(
+                                    &mut gfx.sim,
+                                    pai,
+                                    nascimento.origin,
+                                    ponta,
+                                );
+                                if let Some(bits) = nasceu
                                     && let Some(hero) = gfx.hero_screen.as_mut()
                                 {
                                     hero.gizmo.selection = Some(bits);
                                     hero.gizmo.extra_selection.clear();
                                 }
                             }
+                        }
+                        // ⭐⭐⭐ **UM OSSO ACABADO DE NASCER NÃO É UM OSSO ESCOLHIDO** (report do
+                        // dono, 2026-09-09: *«cada vez que se cria um osso o modo Transform é
+                        // selecionado»*).
+                        //
+                        // ⛔ O osso novo fica aceso — é assim que o artista vê qual é — e no quadro
+                        // seguinte a aresta do foco lia isso como *«o artista escolheu um osso»* e
+                        // armava *Transform*, arrancando-o do verbo em que ele estava. A memória
+                        // absorve-o AQUI, onde se sabe que ele nasceu de um arrasto e não de uma
+                        // escolha. *A aresta continua a valer; o que mudou é quem a alimenta.*
+                        if let Some(bits) = nasceu {
+                            crate::skeleton_reveal::on_birth(&mut self.osso_revelado, bits);
                         }
                         return;
                     }

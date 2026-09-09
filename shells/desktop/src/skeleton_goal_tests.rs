@@ -44,7 +44,7 @@ fn osso(sim: &mut SimWorld, nome: &str, pos: [f32; 2], len: f64, pai: Option<Ent
 
 /// Onde a ponta da corrente está, em mundo.
 fn ponta(sim: &SimWorld, e: Entity) -> [f64; 2] {
-    crate::bone_gesture::tip_of(sim, e.to_bits()).expect("o osso existe")
+    crate::bone_pick::tip_of(sim, e.to_bits()).expect("o osso existe")
 }
 
 /// Põe a âncora em `p` e resolve um quadro.

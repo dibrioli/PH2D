@@ -92,6 +92,7 @@ mod body_pose;
 mod bone_gesture;
 /// ⭐ **O LIMITE DE UMA JUNTA** — irmão do `bone_gesture` pelo teto de LOC, cortado por assunto.
 mod bone_limit;
+mod bone_pick;
 /// ⭐ **O que a MÃO faz a um osso** — irmão do `bone_gesture`, cortado por responsabilidade.
 mod bone_pose;
 /// ⭐ A sonda do OSSO INTELIGENTE (`PH2D_BONE_SMART_PROBE=1`) — irmã da de cima.

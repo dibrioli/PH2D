@@ -1792,7 +1792,7 @@ pub(crate) struct App {
     /// dentro da outra. Sem dizer qual está acesa, a única forma de descobrir o verbo é executá-lo.
     ///
     /// ⚠️ Resolvido UMA vez por quadro pelas **mesmas** funções que o clique usa
-    /// ([`crate::bone_gesture::hover`]) — a lei do [`Self::hovered_object`], e aqui mais apertada.
+    /// ([`crate::bone_pick::hover`]) — a lei do [`Self::hovered_object`], e aqui mais apertada.
     pub(crate) bone_hover: Option<ph2d_skeleton_render::BoneHover>,
     /// ⭐⭐ **O OSSO QUE ESTÁ A NASCER** neste quadro — `(origem, ponta, chega-a-ser-osso)`, e `None`
     /// fora de um arrasto de criação (Enio, 2026-09-07).
@@ -1801,12 +1801,16 @@ pub(crate) struct App {
     /// significa agora* — e porque o sítio do desenho já não tem `&self` livre: o `gfx` está
     /// emprestado mutável, e ler a câmara ali seria o segundo empréstimo.
     pub(crate) bone_preview: Option<([f64; 2], [f64; 2], bool)>,
-    /// ⭐⭐⭐ **O OSSO em desenho** (estudo 42 item 5) — a origem em MUNDO que o press marcou, e
-    /// `None` fora do gesto. O `release` faz o osso dali até onde a mão soltou.
+    /// ⭐⭐⭐ **O OSSO em desenho** (estudo 42 item 5) — o que o press decidiu (origem em MUNDO e
+    /// PAI), e `None` fora do gesto. O `release` faz o osso dali até onde a mão soltou.
+    ///
+    /// ⚠️ **O pai viaja aqui desde 2026-09-09, e é o que faz a ordem do dono ser uma lei só**: ele
+    /// é decidido no press, onde o dedo apontou a ponta, e lido no release. Re-derivá-lo no `Up` (a
+    /// selecção, que era a lei antiga) seria a segunda resposta à mesma pergunta.
     ///
     /// ⚠️ **Estado de GESTO, não de documento**: ele não entra no snapshot, não tem undo e morre
     /// no Up — como o `vec_envelope_drag` e o marquee.
-    pub(crate) vec_bone_drag: Option<[f64; 2]>,
+    pub(crate) vec_bone_drag: Option<crate::bone_gesture::BoneBirth>,
     /// ⭐ **O osso a ser POSADO** e por onde ele foi agarrado (`true` = pela junta ⇒ desloca;
     /// `false` = pelo corpo ⇒ gira). `None` fora do gesto.
     ///

@@ -36,9 +36,57 @@ pub(crate) fn on_focus(memoria: &mut Option<u64>, foco: Option<u64>) -> bool {
     foco.is_some()
 }
 
+/// ⭐⭐⭐ **UM OSSO ACABADO DE NASCER NÃO É UM OSSO ESCOLHIDO** — absorve-o sem revelar nada.
+///
+/// ⛔⛔ **Report do dono (2026-09-09): *«cada vez que se cria um osso o modo Transform é
+/// selecionado»*.** O osso novo fica aceso (é assim que o artista vê qual é), e no quadro seguinte
+/// o [`on_focus`] lia essa mudança como *«o artista escolheu um osso»* — logo abria o painel,
+/// trazia a aba e **armava *Transform***, arrancando-o do verbo em que ele estava a trabalhar.
+///
+/// ⚠️ **A aresta não tinha erro nenhum; o que faltava era a outra metade da história.** *«O foco
+/// mudou»* tem duas causas que se leem iguais no fim do quadro — *o artista apontou* e *o gesto
+/// produziu* —, e só quem produziu sabe distinguir. ⇒ quem cria o osso alimenta a memória, e a
+/// aresta seguinte não tem nada a relatar.
+///
+/// ⛔ **Não é uma isenção nem um sinalizador**: a memória continua a ser o único estado desta lei, e
+/// esta porta escreve exactamente o que o [`on_focus`] escreveria se o osso tivesse sido apontado.
+/// Um `bool` *«ignora a próxima aresta»* ao lado dela seria um segundo estado a divergir do
+/// primeiro no primeiro clique.
+pub(crate) fn on_birth(memoria: &mut Option<u64>, novo: u64) {
+    *memoria = Some(novo);
+}
+
 #[cfg(test)]
 mod tests {
-    use super::on_focus;
+    use super::{on_birth, on_focus};
+
+    /// ⭐⭐⭐ **CRIAR UM OSSO NÃO PEDE REVELAÇÃO NENHUMA** — o report de 2026-09-09, dito como lei.
+    ///
+    /// ⛔ Sem a absorção, o quadro seguinte à criação vê um foco NOVO e arma *Transform*: o artista
+    /// larga o rato a fazer um osso e a ferramenta troca-lhe de verbo debaixo da mão.
+    ///
+    /// (Mutação: o `on_birth` não escrever a memória ⇒ RED na 1ª asserção.)
+    #[test]
+    fn a_newborn_bone_asks_for_nothing() {
+        let mut m = None;
+        on_birth(&mut m, 7);
+        assert!(
+            !on_focus(&mut m, Some(7)),
+            "o osso RECEM-NASCIDO pediu a revelacao — o modo Transform seria armado a cada osso \
+             criado, que e' literalmente o report do dono"
+        );
+        // ⚠️ E a lei geral continua inteira: OUTRO osso, escolhido a seguir, revela.
+        assert!(
+            on_focus(&mut m, Some(9)),
+            "absorver o recem-nascido nao pode DESLIGAR a aresta — escolher outro osso ainda revela"
+        );
+        // ⚠️ E o mesmo osso, RE-escolhido depois de largado, também.
+        assert!(!on_focus(&mut m, None));
+        assert!(
+            on_focus(&mut m, Some(7)),
+            "re-escolher o osso criado tem de revelar — nascer nao o isenta para sempre"
+        );
+    }
 
     /// Um osso novo pede a revelação; o MESMO osso, quadro após quadro, não.
     #[test]

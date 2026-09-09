@@ -28,7 +28,13 @@ fn agarra_a(
     foco: Option<Entity>,
     px_to_world: f64,
 ) -> Option<ph2d_skeleton_render::BoneHover> {
-    crate::bone_gesture::hover(sim, p, px_to_world, foco.map(Entity::to_bits))
+    crate::bone_pick::hover(
+        sim,
+        p,
+        px_to_world,
+        foco.map(Entity::to_bits),
+        ph2d_tool_vector::BoneAction::Transform,
+    )
 }
 
 /// O zoom de trabalho: um osso de 10 unidades a ~100 px, que é a ordem em que ele de facto aparece
@@ -196,7 +202,7 @@ fn when_two_handles_overlap_the_nearer_one_wins() {
     let forca = ph2d_skeleton_render::influence_handle(a, b, r).expect("a alça da força existe");
     let d = (forca[0] - arc.handle_max[0]).hypot(forca[1] - arc.handle_max[1]);
     assert!(
-        d <= crate::bone_gesture::BONE_HIT_PX * PX_LONGE,
+        d <= crate::bone_pick::BONE_HIT_PX * PX_LONGE,
         "a fixtura tem de PRODUZIR a sobreposição, senão este gate é vácuo: as duas alças distam {d}"
     );
     // Sobre a PAREDE, apanha-se a parede.
@@ -240,7 +246,7 @@ fn a_wall_handle_never_sits_where_the_bone_can_reach() {
         .find(|(x, _, _)| *x == ombro.to_bits())
         .expect("o osso tem segmento");
     let arc = crate::bone_limit::arc(&sim, ombro, PX_PERTO).expect("o arco existe");
-    let dedo = crate::bone_gesture::BONE_HIT_PX * PX_PERTO;
+    let dedo = crate::bone_pick::BONE_HIT_PX * PX_PERTO;
 
     // A fixtura tem de PRODUZIR o encontro: o osso está mesmo encostado na parede.
     let na_parede = (b[0] - arc.edge_max[0]).hypot(b[1] - arc.edge_max[1]);

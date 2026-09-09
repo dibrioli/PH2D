@@ -33,22 +33,6 @@ fn a_bone_is_born_exactly_where_the_pointer_asked_whatever_the_parent_pose_is() 
     );
 }
 
-/// **Apontar um osso acha-o; apontar ao lado não.** O raio é o mesmo das alças do vetor.
-#[test]
-fn pointing_at_a_bone_finds_it_and_pointing_beside_it_does_not() {
-    let mut sim = SimWorld::default();
-    let osso = create(&mut sim, None, [0.0, 0.0], [10.0, 0.0]).expect("osso");
-    // 1 unidade de mundo por píxel ⇒ o raio é 12 unidades.
-    assert_eq!(hit(&sim, [5.0, 3.0], 1.0), Some(osso));
-    assert_eq!(
-        hit(&sim, [5.0, 40.0], 1.0),
-        None,
-        "40 unidades esta' fora do raio"
-    );
-    // E o raio SEGUE o zoom: com o mundo dez vezes mais denso por píxel, 40 cabe.
-    assert_eq!(hit(&sim, [5.0, 40.0], 10.0), Some(osso));
-}
-
 /// ⛔ **Um osso raiz nasce com `RootOrder` explícito.** Sem ele a árvore desempata por bits de
 /// alocação, e o undo passa a registar um passo espúrio por quadro (BUGS #15) — um defeito que não
 /// se vê no osso, vê-se no `Ctrl+Z` do app inteiro.
@@ -124,247 +108,159 @@ fn a_press_over_a_shape_in_the_bone_tool_picks_it_so_bind_has_a_subject() {
     assert_eq!(
         d,
         BonePress::Start {
-            origin: [5.0, 0.0],
+            birth: BoneBirth {
+                origin: [5.0, 0.0],
+                parent: None
+            },
             pick: Some(id)
         },
         "apontar a forma tem de a devolver - sem isto o `Bind` nunca tem sujeito"
     );
-    // E um press sobre um OSSO nao e' uma escolha de forma.
-    // ⚠️ O ponto é LONGE da raiz de propósito: o raio da junta é `joint_radius_px(24) = 6` a este
-    // zoom (o tecto de `comp/4` mandando), e num ponto perto da raiz TODO press seria junta — a
-    // fixtura mediria o verbo errado.
-    let osso = create(&mut sim, None, [3.0, 4.0], [27.0, 4.0]).expect("osso");
+    // ⭐ E um press sobre o CORPO de um osso arma um osso NOVO e continua a apontar a forma: desde
+    // 2026-09-09 o corpo não consome o press em *Criar* (só a PONTA decide parentesco).
+    //
+    // ⚠️ O osso ATRAVESSA a elipse de propósito, e o ponto está longe da PONTA dele (`x = 26`, a
+    // `20` unidades daqui, contra um raio de ponta de `joint_radius_px(24) = 6`): a fixtura tem de
+    // medir o corpo, e um ponto perto da ponta mediria o parentesco.
+    create(&mut sim, None, [2.0, 0.0], [26.0, 0.0]).expect("osso");
     assert_eq!(
         press(
             &sim,
             &scene,
             &pen,
-            [20.0, 4.0],
+            [6.0, 0.0],
             1.0,
             None,
             BoneAction::Create
         ),
-        BonePress::Select { bone: osso },
-        "em CRIAR, tocar num osso so' o ACENDE - e' assim que se escolhe onde ramificar"
+        BonePress::Start {
+            birth: BoneBirth {
+                origin: [6.0, 0.0],
+                parent: None
+            },
+            pick: Some(id)
+        },
+        "em CRIAR, o CORPO de um osso nao consome o press - comecar um osso em cima de outro e' um \
+         gesto legitimo, e a forma por baixo continua a ser o sujeito do `Bind`"
     );
 }
 
-/// ⭐⭐⭐ **COM UM OSSO ACESO, O PRÓXIMO NASCE NA PONTA DELE — arraste-se onde se arrastar.**
+/// ⭐⭐⭐ **O PARENTESCO É A PONTA, E SÓ A PONTA** (ordem do dono, 2026-09-09: *«para criar um osso
+/// como filho de outro o clique deve acontecer na ponta do osso pai»*).
 ///
-/// ⛔ **A 1.ª lei desta wave era um ENCAIXE POR PROXIMIDADE, e este gate mostrou-a INALCANÇÁVEL:**
-/// a ponta está sobre o segmento do osso, logo todo press dentro do raio de encaixe cai também
-/// dentro do raio de ACERTO — o ramo `Grab` ganhava sempre e o encaixe nunca corria. *Um encaixe
-/// que exige pontaria dentro do alvo que ele quer evitar não é um encaixe.*
+/// ⛔⛔ **A lei anterior lia a SELECÇÃO — e este gate media-a.** Ela dizia *«com um osso aceso, o
+/// próximo nasce na ponta dele, arraste-se onde se arrastar»*, e é exactamente isso que o dono
+/// mandou tirar: com um esqueleto na cena não havia press nenhum que fizesse uma **raiz** nova
+/// (*«não se pode criar ossos fora da cadeia»*).
+///
+/// ⇒ as duas células que importam, com o MESMO osso aceso nas duas: **na ponta** ⇒ filho, e a
+/// origem encaixa nela; **longe dela** ⇒ raiz, e a origem é o ponto cru.
+///
+/// (Mutação: o `press` ler o `selected` para escolher o pai ⇒ RED na 2ª.)
 #[test]
-fn with_a_bone_selected_the_next_one_grows_from_its_tip() {
+fn only_a_press_on_the_tip_makes_the_new_bone_a_child() {
     let mut sim = SimWorld::default();
     let scene = ph2d_vec_scene::VecScene::new();
     let pen = ph2d_vec_edit::PenTool::default();
-    let osso = create(&mut sim, None, [0.0, 0.0], [10.0, 0.0]).expect("osso");
-    // Longe do osso (senão o press agarra-o), e a origem sai na PONTA dele na mesma.
-    let d = press(
-        &sim,
-        &scene,
-        &pen,
-        [60.0, 40.0],
-        1.0,
-        Some(osso),
-        BoneAction::Create,
-    );
+    let osso = create(&mut sim, None, [0.0, 0.0], [40.0, 0.0]).expect("osso");
+    // NA PONTA (40,0) — a porta do parentesco.
     assert_eq!(
-        d,
-        BonePress::Start {
-            origin: [10.0, 0.0],
-            pick: None
-        },
-        "o filho tem de crescer da ponta do pai"
-    );
-    // Sem osso aceso: um osso SOLTO nasce onde a mao pousou.
-    let f = press(
-        &sim,
-        &scene,
-        &pen,
-        [60.0, 40.0],
-        1.0,
-        None,
-        BoneAction::Create,
-    );
-    assert_eq!(
-        f,
-        BonePress::Start {
-            origin: [60.0, 40.0],
-            pick: None
-        },
-        "sem pai, a origem e' o ponto apontado"
-    );
-}
-
-/// ⭐⭐⭐ **O REALCE ACENDE EXACTAMENTE O QUE O CLIQUE PEGA** — a lei que o `pick_hovered_object`
-/// já declara para as formas (*«um realce que acendesse outra coisa que a que o clique pega seria
-/// pior que não haver realce nenhum»*), e que aqui é mais apertada: as duas alças estão **uma
-/// dentro da outra** e executam VERBOS diferentes.
-///
-/// ⚠️ Ele varre o osso de ponta a ponta e compara, ponto a ponto, o que o hover diz com o que o
-/// `press` decide. Uma segunda varredura escrita ao lado do realce passaria neste gate só por
-/// coincidência — é por isso que o `hover` chama o `hit`/`grabbed_the_joint`, e não uma cópia.
-///
-/// (Mutação: o `hover` decidir a junta por outro raio ⇒ RED.)
-#[test]
-fn the_hover_lights_exactly_what_the_click_would_grab() {
-    let mut sim = SimWorld::default();
-    let osso = create(&mut sim, None, [0.0, 0.0], [100.0, 0.0]).expect("osso");
-    let scene = ph2d_vec_scene::VecScene::new();
-    let pen = ph2d_vec_edit::PenTool::default();
-    let mut viu_junta = false;
-    let mut viu_corpo = false;
-    for i in 0..=100 {
-        let p = [f64::from(i), 0.0];
-        let h = hover(&sim, p, 1.0, Some(osso)).expect("o ponteiro esta' sobre o osso");
-        assert_eq!(h.bone, osso);
-        let BonePress::Grab { bone, part } = press(
+        press(
             &sim,
             &scene,
             &pen,
-            p,
+            [40.0, 0.0],
+            1.0,
+            None,
+            BoneAction::Create
+        ),
+        BonePress::Start {
+            birth: BoneBirth {
+                origin: [40.0, 0.0],
+                parent: Some(osso)
+            },
+            pick: None
+        },
+        "um press na PONTA tem de armar um FILHO, e a origem tem de encaixar nela"
+    );
+    // ⭐⭐⭐ LONGE dela, **com o osso ACESO**: raiz nova. É a célula do report.
+    assert_eq!(
+        press(
+            &sim,
+            &scene,
+            &pen,
+            [60.0, 40.0],
             1.0,
             Some(osso),
-            BoneAction::Transform,
-        ) else {
-            panic!("o press devia agarrar o osso em {p:?}");
-        };
-        assert_eq!(
-            (h.bone, h.part),
-            (bone, part),
-            "em {p:?} o realce e o clique discordam - o artista ve' um verbo e recebe outro"
-        );
-        viu_junta |= h.part == BonePart::Joint;
-        viu_corpo |= h.part == BonePart::Body;
-    }
-    // ⚠️ O controlo: a varredura tem de produzir os DOIS estados, senão o gate compara um lado só.
-    assert!(
-        viu_junta && viu_corpo,
-        "a fixtura nao produziu as duas metades (junta={viu_junta}, corpo={viu_corpo})"
+            BoneAction::Create
+        ),
+        BonePress::Start {
+            birth: BoneBirth {
+                origin: [60.0, 40.0],
+                parent: None
+            },
+            pick: None
+        },
+        "com um osso ACESO, um press longe da ponta dele tem de fazer uma RAIZ - senao nao ha' \
+         gesto nenhum que crie um osso fora da cadeia, que e' o report do dono"
     );
 }
 
-/// ⭐⭐ **A JUNTA TEM A TOLERÂNCIA DA CASA, não metade dela** — o report de 2026-09-06 (*«a bolinha
-/// e sua área sensível ao mouse precisa ser maior pois está difícil selecioná-la»*).
+/// ⭐⭐⭐ **RAMIFICAR DO MEIO DE UMA CORRENTE É O MESMO GESTO QUE CONTINUÁ-LA.**
 ///
-/// O corpo do osso já pedia emprestado o `HANDLE_HIT_PX = 12` do `input_dispatch` *«para o dedo do
-/// artista ter sempre a mesma tolerância»*, e a junta ficava com `6` — **o alvo menor por dentro do
-/// maior**. Este gate mede o que o dedo alcança, e ⚠️ **mede-o no MESMO número que o desenho usa**:
-/// se os dois divergirem, o realce acende num sítio e o clique pega noutro.
+/// ⛔ Na lei anterior isto era **inexprimível pelo canvas**: o pai era a selecção, então fazer o 2.º
+/// braço de uma espinha exigia ir escolher o osso do meio na Hierarquia e voltar. Aqui a ponta dele
+/// está desenhada e o press nela basta.
 ///
-/// (Mutação: `BONE_JOINT_R_PX` de volta a `6.0` ⇒ RED.)
+/// ⚠️ **E a ponta do pai é a raiz do FILHO**, no mesmo ponto: a competição é por **proximidade**,
+/// e é ela que faz o press escolher o osso cuja PONTA está ali — não o que também passa por ali.
 #[test]
-fn the_joint_gets_the_houses_finger_tolerance_and_the_dot_is_that_same_number() {
+fn a_press_on_a_mid_chain_tip_branches_from_that_bone() {
     let mut sim = SimWorld::default();
-    let osso = create(&mut sim, None, [0.0, 0.0], [100.0, 0.0]).expect("osso");
-    // A tolerância da casa, declarada no `input_dispatch` e emprestada pelo `BONE_HIT_PX`.
-    assert!(
-        grabbed_the_joint(Some(&sim), osso, [11.0, 0.0], 1.0),
-        "a 11 px da raiz o dedo ainda tem de apanhar a junta - ela recebe a tolerancia da casa (12)"
-    );
-    assert!(
-        !grabbed_the_joint(Some(&sim), osso, [13.0, 0.0], 1.0),
-        "a 13 px a junta ja' acabou, senao ela come o corpo"
-    );
-    // ⚠️ E o alvo é o DESENHO: uma segunda constante aqui separaria o dedo do olho.
-    assert!(
-        (ph2d_skeleton_render::joint_radius_px(100.0) - 12.0).abs() < 1e-12,
-        "o raio DESENHADO deixou de ser o mesmo que o dedo procura"
-    );
-}
-
-/// ⛔ **Num osso CURTO a junta encolhe, e o recurso é o verbo de GIRAR.** Duas juntas de raio `r`
-/// comem `2r` do comprimento; sem tecto, um osso curto fica todo junta e não há onde agarrar para
-/// rodar — a cerca que o `grabbed_the_joint` já declarava por escrito.
-///
-/// (Mutação: tirar o `.min(comp * 0.25)` ⇒ RED.)
-#[test]
-fn a_short_bone_keeps_half_of_itself_grabbable_for_rotation() {
-    let mut sim = SimWorld::default();
-    let curto = create(&mut sim, None, [0.0, 0.0], [20.0, 0.0]).expect("curto");
-    // Raio 5 (20/4) ⇒ o meio do osso, a 10, é CORPO e não junta.
-    assert!(
-        !grabbed_the_joint(Some(&sim), curto, [10.0, 0.0], 1.0),
-        "num osso de 20 px a junta chegou ao meio - nao sobra corpo para girar"
-    );
-    assert!(
-        grabbed_the_joint(Some(&sim), curto, [4.0, 0.0], 1.0),
-        "a junta encolheu demais e deixou de ser agarravel"
-    );
-    // A lei, nos dois lados da dobra: longo ⇒ o tecto da casa; curto ⇒ um quarto do comprimento.
-    assert!((ph2d_skeleton_render::joint_radius_px(200.0) - 12.0).abs() < 1e-12);
-    assert!((ph2d_skeleton_render::joint_radius_px(20.0) - 5.0).abs() < 1e-12);
-}
-
-/// ⛔ **A ALÇA DA FORÇA SÓ É AGARRÁVEL ONDE ELA É PINTADA** — no osso em FOCO, e em mais nenhum.
-///
-/// ⚠️ *Uma alça agarrável onde nada está desenhado é pior que uma alça ausente*: o artista carrega
-/// no vazio e o app faz uma coisa que ele não pediu. O `draw_influence` pinta a região de UM osso
-/// (a selecção) e o `hover` recebe esse mesmo `foco` — este gate afirma que os dois concordam.
-/// ⚠️⚠️ **A 1.ª redacção deste gate SOBREVIVEU à mutação** (pôr a alça em todo osso apanhado, e não
-/// só no do foco), e a razão é a 3.ª leitura da memória: *a fixtura não produzia o fenómeno*. Ela
-/// punha a alça a `20` unidades do eixo — fora do raio de acerto do CORPO (`12`) —, então sem foco
-/// o `hit` também devolvia `None` e os dois lados concordavam por acidente.
-///
-/// ⇒ a força desce para `0,3` (raio `6`), e a alça passa a cair **dentro** do corpo. Aí as duas
-/// respostas divergem: com foco é `Influence`, sem foco é `Body`. É esse par que o gate mede.
-#[test]
-fn the_strength_handle_exists_only_on_the_focused_bone() {
-    let mut sim = SimWorld::default();
-    let osso = create(&mut sim, None, [0.0, 0.0], [20.0, 0.0]).expect("osso");
-    {
-        let mut b = sim
-            .world_mut()
-            .get_mut::<ph2d_skeleton_ecs::Bone>(Entity::from_bits(osso))
-            .expect("Bone");
-        b.strength = 0.3; // raio 6 ⇒ a alça cai DENTRO do raio de acerto do corpo (12)
-    }
-    // Meio do osso (10,0) mais 6 na perpendicular.
-    let alca = [10.0, 6.0];
-    assert_eq!(
-        hover(&sim, alca, 1.0, Some(osso)).map(|h| h.part),
-        Some(BonePart::Influence),
-        "com o osso em foco a alca tem de ganhar o ponto"
-    );
-    assert_eq!(
-        hover(&sim, alca, 1.0, None).map(|h| h.part),
-        Some(BonePart::Body),
-        "sem foco nao ha' mancha desenhada - o mesmo ponto tem de ser CORPO, e o clique girar"
-    );
-    // E o caso longe continua a valer: sem foco, nem sequer há osso ali.
-    {
-        let mut b = sim
-            .world_mut()
-            .get_mut::<ph2d_skeleton_ecs::Bone>(Entity::from_bits(osso))
-            .expect("Bone");
-        b.strength = 1.0;
-    }
-    assert_eq!(hover(&sim, [10.0, 20.0], 1.0, None), None);
-}
-
-/// ⛔ **A ALÇA DA PONTA SÓ EXISTE EM QUEM FECHA A CORRENTE.** Numa junta interior a ponta de um
-/// osso **é** a raiz do seguinte, e ali já há uma bolinha com outro verbo (deslocar) — duas alças
-/// no mesmo pixel a fazer coisas diferentes é o defeito que o realce por parte existe para evitar.
-#[test]
-fn only_the_bone_that_closes_a_chain_offers_the_end_effector() {
-    let mut sim = SimWorld::default();
+    let scene = ph2d_vec_scene::VecScene::new();
+    let pen = ph2d_vec_edit::PenTool::default();
+    // Uma corrente de 3: 0→10, 10→20, 20→30.
     let ossos = test_chain(&mut sim, 3);
-    // A ponta do 1.º osso (10,0) é a raiz do 2.º: ali NÃO há alça de ponta.
+    // A ponta do PRIMEIRO é (10,0) — que é também a raiz do segundo.
     assert_eq!(
-        hover(&sim, [10.0, 0.0], 1.0, None).map(|h| h.part),
-        Some(BonePart::Joint),
-        "numa junta interior o verbo e' DESLOCAR, nao IK"
+        press(
+            &sim,
+            &scene,
+            &pen,
+            [10.0, 0.0],
+            1.0,
+            Some(ossos[2]),
+            BoneAction::Create
+        ),
+        BonePress::Start {
+            birth: BoneBirth {
+                origin: [10.0, 0.0],
+                parent: Some(ossos[0])
+            },
+            pick: None
+        },
+        "a ponta do 1o osso tem de ramificar DELE - e nao do 2o, cuja raiz esta' no mesmo ponto"
     );
-    // A ponta do último (30,0) fecha a corrente.
+    // E a ponta do último continua a corrente.
     assert_eq!(
-        hover(&sim, [30.0, 0.0], 1.0, None).map(|h| h.part),
-        Some(BonePart::Tip),
-        "a ponta da corrente tem de oferecer o end effector"
+        press(
+            &sim,
+            &scene,
+            &pen,
+            [30.0, 0.0],
+            1.0,
+            None,
+            BoneAction::Create
+        ),
+        BonePress::Start {
+            birth: BoneBirth {
+                origin: [30.0, 0.0],
+                parent: Some(ossos[2])
+            },
+            pick: None
+        },
+        "a ponta da corrente tem de a continuar"
     );
-    assert_eq!(crate::skeleton_live::chain_ends(&sim), vec![ossos[2]]);
 }
 
 /// ⭐⭐⭐ **UM GESTO, UM VERBO** — o report de 2026-09-07 (*«do modo como está fica confuso para o
@@ -375,9 +271,12 @@ fn only_the_bone_that_closes_a_chain_offers_the_end_effector() {
 /// *em cima* de outro, e posar um osso *sem medo* de criar um por engano — e obriga o artista a
 /// saber o que está debaixo do cursor antes de carregar.
 ///
-/// Este gate mede as **quatro** células: dois pontos (sobre osso · no vazio) × dois verbos.
+/// Este gate mede as **seis** células: três pontos (corpo · ponta · vazio) × dois verbos.
 ///
-/// (Mutação: o `press` ignorar o `action` ⇒ RED em duas delas.)
+/// ⚠️ **A PONTA é a célula que 2026-09-09 acrescentou**, e é a que separa melhor os dois verbos:
+/// ali *Criar* ramifica e *Transformar* pega a cinemática inversa — **o mesmo pixel, dois verbos**.
+///
+/// (Mutação: o `press` ignorar o `action` ⇒ RED em três delas.)
 #[test]
 fn the_same_press_means_different_things_in_create_and_in_transform() {
     let mut sim = SimWorld::default();
@@ -388,8 +287,14 @@ fn the_same_press_means_different_things_in_create_and_in_transform() {
     let sobre = [20.0, 0.0];
     assert_eq!(
         press(&sim, &scene, &pen, sobre, 1.0, None, BoneAction::Create),
-        BonePress::Select { bone: osso },
-        "CRIAR sobre um osso: so' acende, e o arrasto seguinte faz um filho"
+        BonePress::Start {
+            birth: BoneBirth {
+                origin: sobre,
+                parent: None
+            },
+            pick: None
+        },
+        "CRIAR sobre o corpo de um osso: arma um osso NOVO ali, sem parentesco"
     );
     assert_eq!(
         press(&sim, &scene, &pen, sobre, 1.0, None, BoneAction::Transform),
@@ -399,12 +304,36 @@ fn the_same_press_means_different_things_in_create_and_in_transform() {
         },
         "TRANSFORMAR sobre um osso: agarra e posa"
     );
+    // ⭐ E na PONTA os dois verbos divergem: CRIAR ramifica, TRANSFORMAR pega o *end effector*.
+    let ponta = [40.0, 0.0];
+    assert_eq!(
+        press(&sim, &scene, &pen, ponta, 1.0, None, BoneAction::Create),
+        BonePress::Start {
+            birth: BoneBirth {
+                origin: ponta,
+                parent: Some(osso)
+            },
+            pick: None
+        },
+        "CRIAR na ponta: ramifica"
+    );
+    assert_eq!(
+        press(&sim, &scene, &pen, ponta, 1.0, None, BoneAction::Transform),
+        BonePress::Grab {
+            bone: osso,
+            part: BonePart::Tip
+        },
+        "TRANSFORMAR na ponta: cinematica inversa, nunca um osso novo"
+    );
     // NO VAZIO, longe de tudo.
     let vazio = [200.0, 200.0];
     assert_eq!(
         press(&sim, &scene, &pen, vazio, 1.0, None, BoneAction::Create),
         BonePress::Start {
-            origin: vazio,
+            birth: BoneBirth {
+                origin: vazio,
+                parent: None
+            },
             pick: None
         },
         "CRIAR no vazio: marca a origem de um osso novo"
@@ -445,45 +374,4 @@ fn the_preview_arms_exactly_where_the_release_would_make_a_bone() {
         drag_makes_a_bone(o, [11.0, 10.0], 0.05),
         "com o mundo mais denso por pixel, 1 unidade ja' passa os 12 px"
     );
-}
-
-/// ⭐⭐⭐ **QUE ALÇAS PEGAM FORA DO MODO OSSO — a linha é o VERBO, não a alça.**
-///
-/// ⛔⛔ **Achado da auditoria de 2026-09-08:** as alças do osso são pintadas e **acendem sob o rato
-/// nos 14 modos de vector**, e o `Down` só era lido dentro do `DrawMode::Bone` ⇒ o artista via o
-/// arco de limite acender e arrastá-lo não fazia nada.
-///
-/// ⚠️ **O critério não é «é uma alça», é «este verbo existe noutra ferramenta?»** — girar e
-/// deslocar um osso o gizmo de sprite já faz, e roubar-lhos aqui trocaria a lei do arrasto da seta
-/// em silêncio; a força, as duas paredes do limite e a cinemática inversa **não têm outra porta**.
-#[test]
-fn only_the_verbs_no_other_tool_can_express_are_grabbed_outside_bone_mode() {
-    use crate::bone_gesture::grabbable_outside_bone_mode as pega;
-    use ph2d_skeleton_render::BonePart;
-    for (parte, porque) in [
-        (BonePart::Influence, "a forca nao tem outra porta"),
-        (
-            BonePart::LimitMin,
-            "a parede horaria do limite nao tem outra porta",
-        ),
-        (
-            BonePart::LimitMax,
-            "a parede anti-horaria do limite nao tem outra porta",
-        ),
-        (BonePart::Tip, "a cinematica inversa nao tem outra porta"),
-    ] {
-        assert!(
-            pega(parte),
-            "{parte:?} acende sob o dedo em todo modo e nao pegaria: {porque}"
-        );
-    }
-    for (parte, quem) in [
-        (BonePart::Body, "o gizmo de sprite ja' GIRA"),
-        (BonePart::Joint, "o gizmo de sprite ja' DESLOCA"),
-    ] {
-        assert!(
-            !pega(parte),
-            "{parte:?} passaria a roubar o arrasto da seta: {quem}"
-        );
-    }
 }

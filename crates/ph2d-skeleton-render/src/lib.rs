@@ -458,7 +458,7 @@ pub fn draw_influence(
 ///
 /// ⚠️ **Ele é MENOR que a bolinha da junta** (`12`), e isso é hierarquia, não descuido: deslocar um
 /// osso é um gesto que se faz o tempo todo; mudar a força dele é um ajuste. ⛔ O ALVO do dedo,
-/// esse, continua a ser a tolerância da casa — ver `bone_gesture::hover`.
+/// esse, continua a ser a tolerância da casa — ver `bone_pick::hover`.
 pub const INFLUENCE_HANDLE_R_PX: f64 = 5.0;
 
 #[cfg(test)]

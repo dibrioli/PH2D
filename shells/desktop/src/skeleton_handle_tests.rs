@@ -127,10 +127,17 @@ fn the_anchor_is_grabbable_far_away_from_every_bone() {
     let mut pv = PreviewDrive::default();
     solve(&mut sim, &mut pv);
     assert!(
-        crate::bone_gesture::hit(&sim, longe, 1.0).is_none(),
+        crate::bone_pick::hit(&sim, longe, 1.0).is_none(),
         "a fixtura nao produz o fenomeno: ha' um osso debaixo do ponteiro"
     );
-    let h = crate::bone_gesture::hover(&sim, longe, 1.0, None).expect("a ancora tem de ser achada");
+    let h = crate::bone_pick::hover(
+        &sim,
+        longe,
+        1.0,
+        None,
+        ph2d_tool_vector::BoneAction::Transform,
+    )
+    .expect("a ancora tem de ser achada");
     assert_eq!(h.bone, cotovelo.to_bits());
     assert_eq!(h.part, ph2d_skeleton_render::BonePart::Tip);
 }
@@ -158,7 +165,14 @@ fn a_middle_anchor_takes_the_ring_and_the_bone_keeps_the_core() {
     let anel = ph2d_skeleton_render::goal_radius_px(comp);
     assert!(anel > miolo, "o losango tem de ser MAIOR que a bolinha");
     // No MIOLO: o osso seguinte, com o verbo de deslocar.
-    let dentro = crate::bone_gesture::hover(&sim, ancora, 1.0, None).expect("algo sob o dedo");
+    let dentro = crate::bone_pick::hover(
+        &sim,
+        ancora,
+        1.0,
+        None,
+        ph2d_tool_vector::BoneAction::Transform,
+    )
+    .expect("algo sob o dedo");
     assert_eq!(
         dentro.bone,
         cotovelo.to_bits(),
@@ -167,7 +181,14 @@ fn a_middle_anchor_takes_the_ring_and_the_bone_keeps_the_core() {
     assert_eq!(dentro.part, ph2d_skeleton_render::BonePart::Joint);
     // No ANEL: a âncora.
     let no_anel = [ancora[0] + (miolo + anel) * 0.5, ancora[1]];
-    let fora = crate::bone_gesture::hover(&sim, no_anel, 1.0, None).expect("algo sob o dedo");
+    let fora = crate::bone_pick::hover(
+        &sim,
+        no_anel,
+        1.0,
+        None,
+        ph2d_tool_vector::BoneAction::Transform,
+    )
+    .expect("algo sob o dedo");
     assert_eq!(fora.bone, ombro.to_bits(), "o anel tem de pegar a ANCORA");
     assert_eq!(fora.part, ph2d_skeleton_render::BonePart::Tip);
 }
@@ -208,7 +229,14 @@ fn an_anchor_far_from_every_bone_is_grabbable_at_its_centre() {
     add(&mut sim, cotovelo).expect("a ancora");
     let longe = [90.0, 70.0];
     drag_anchor(&mut sim, cotovelo, longe);
-    let h = crate::bone_gesture::hover(&sim, longe, 1.0, None).expect("o centro do losango");
+    let h = crate::bone_pick::hover(
+        &sim,
+        longe,
+        1.0,
+        None,
+        ph2d_tool_vector::BoneAction::Transform,
+    )
+    .expect("o centro do losango");
     assert_eq!(h.bone, cotovelo.to_bits());
     assert_eq!(h.part, ph2d_skeleton_render::BonePart::Tip);
 }

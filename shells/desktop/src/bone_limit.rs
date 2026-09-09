@@ -150,7 +150,7 @@ pub(crate) fn arc(
     // ⚠️ E é por isto que este passe precisa do ZOOM: a folga é uma grandeza de TELA (o dedo mede
     // píxeis) sobre uma geometria de MUNDO. Num osso curto uma folga fixa em mundo cairia dentro do
     // osso, e num longo ficaria a meio metro dele.
-    let folga = (crate::bone_gesture::BONE_HIT_PX + ph2d_skeleton_render::LIMIT_HANDLE_R_PX)
+    let folga = (crate::bone_pick::BONE_HIT_PX + ph2d_skeleton_render::LIMIT_HANDLE_R_PX)
         * px_to_world.max(0.0);
     let fora = |a: f64| {
         pai_mundo.apply([

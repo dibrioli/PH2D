@@ -1281,6 +1281,90 @@ ficheiro em que a nota é metade do texto, contar LINHAS é contar prosa.* ⇒ a
 **linhas de código**.
 
 
+### F3-o — ✅ **O PARENTESCO É A PONTA, e um osso RECÉM-NASCIDO não arma *Transform*** (report, 2026-09-09)
+
+> *«Cada vez que se cria um osso o modo Transform é selecionado. Corrija.»*
+> *«Atualmente ao criar ossos quando se clica no canvas um osso é criado como filho do osso
+> selecionado. Desse modo não se pode criar ossos fora da cadeia de ossos. Vamos mudar: Para criar
+> um osso como filho de outro o clique deve acontecer na ponta do osso pai e o usuário arrasta o
+> mouse definindo tamanho e direção do novo osso.»*
+
+**São DOIS defeitos numa família só: *«o foco mudou»* tem duas causas que se leem iguais.**
+
+#### (a) O recém-nascido acordava a aresta
+
+A aresta do F3-n faz **três** coisas ao ver um osso NOVO em foco (abrir · trazer a aba · armar
+*Transform*), e o osso que acaba de nascer **fica aceso** — é assim que o artista vê qual é. ⇒ o
+quadro seguinte lia isso como *«o artista escolheu um osso»* e trocava-lhe o verbo debaixo da mão.
+
+⚠️ **A aresta nunca teve defeito.** *«O foco mudou»* tem duas causas — *o artista apontou* e *o gesto
+produziu* — e **só quem produziu as distingue**. ⇒ quem cria o osso **alimenta a memória**
+([`skeleton_reveal::on_birth`](../../shells/desktop/src/skeleton_reveal.rs)), e a aresta seguinte não
+tem nada a relatar. ⛔ **Não é uma isenção nem um sinalizador**: a memória continua a ser o único
+estado da lei, e a porta escreve exactamente o que o `on_focus` escreveria.
+
+#### (b) O parentesco era a SELECÇÃO, e isso tornava uma RAIZ inexprimível
+
+A lei antiga: `origin = tip_of(osso aceso).unwrap_or(world)` — a ponta do osso aceso, **sempre**.
+Com um esqueleto na cena não havia press nenhum que fizesse uma raiz nova, que é o report à letra.
+
+⇒ a pergunta passa a ser **geométrica e local**, por uma porta única
+([`bone_gesture::tip_at`](../../shells/desktop/src/bone_gesture.rs)):
+
+| onde o press cai | o que nasce |
+|---|---|
+| na **ponta** de um osso (raio = a bolinha DESENHADA, `joint_radius_px`) | **filho** dele, com a origem encaixada nela |
+| em qualquer outro sítio — vazio, ou **em cima do corpo** de outro osso | **raiz**, na origem apontada |
+
+⭐ **Ramificar do meio de uma corrente passa a ser o mesmo gesto que continuá-la** — a espinha que dá
+dois braços era, na lei antiga, *escolher o osso do meio na Hierarquia e voltar ao canvas*.
+
+⛔ **A `BonePress::Select` MORREU.** Ela existia só para servir a lei antiga (o doc dela dizia-o: *«é
+assim que se escolhe onde ramificar»*), e mantê-la seria pior que redundante: em *Criar*, trocar a
+selecção acorda a aresta do F3-n e arranca o artista do verbo em que ele está — o defeito (a) por
+outra porta.
+
+⭐⭐ **E o `hover` passou a ser MODAL, porque o clique é:** em *Criar* existe **um** alvo, a ponta.
+⛔ Sem isso o realce acenderia o osso **errado** exactamente no ponto que decide o parentesco — numa
+corrente contínua a ponta do osso `k` é a raiz do `k+1`, e o realce de *Transformar* responde ali
+*«a JUNTA do `k+1`»*. E no canvas, em *Criar*, o anel passa a ser desenhado na ponta de **todo** osso
+(em *Transformar* ele é o *end effector*, logo só em quem fecha a corrente e não tem âncora):
+*a mesma alça a dizer o que o clique faz AGORA*.
+
+⚠️ **O pai viaja no `BoneBirth` do press até ao release.** Guardar só a origem e ir buscar o pai à
+selecção no `Up` — a 1.ª redacção — é a lei que o dono mandou tirar **sobrevivendo no outro extremo
+do gesto**; há gate de AUSÊNCIA sobre isso.
+
+**Gates** (6, todos mortos por mutação):
+
+| gate | mutação que ele mata |
+|---|---|
+| `a_newborn_bone_asks_for_nothing` | o `on_birth` não escreve ⇒ criar um osso arma *Transform* |
+| `the_bone_creation_site_absorbs_the_focus_edge` | a lei existe e **não está no caminho** de quem cria |
+| `only_a_press_on_the_tip_makes_the_new_bone_a_child` | o `press` volta a ler a selecção ⇒ nenhuma raiz nova |
+| `the_release_never_asks_the_selection_who_the_parent_is` | o pai re-derivado no `Up` ⇒ a lei antiga volta por trás |
+| `in_create_the_hover_lights_exactly_the_bone_the_click_would_branch_from` | o realce acende o filho e o press ramifica do pai |
+| `when_two_tips_are_under_the_finger_the_nearest_one_wins` | a ponta escolhida por ORDEM ⇒ a do osso curto fica inalcançável |
+
+#### O tecto de LOC mordeu, e a cura foi um CORTE por responsabilidade
+
+`bone_gesture.rs` chegou a `669` e o ficheiro de gates a `693`, contra o tecto de `600` da shell.
+⛔ Nenhuma isenção: o módulo partiu-se em **[`bone_gesture`]** (*o gesto que FAZ um osso* — `create`,
+`BonePress`/`BoneBirth`, `press`, `aim_rotation`, `reach_chain`, `drag_makes_a_bone`) e
+**[`bone_pick`]** (*o que o PONTEIRO significa* — `BONE_HIT_PX`, `hit`, `tip_of`, `tip_at`,
+`grabbed_the_joint`, `hover`, `grabbable_outside_bone_mode`, e as duas portas do `App`), com os
+gates a acompanhar a lei que medem (`bone_pick_tests.rs`). Ficheiros: `335` · `353` · `377` · `347`.
+
+⚠️ **As duas metades continuam a ser UMA lei** — o `press` pergunta ao `hover`, e o gate que os
+compara ponto a ponto atravessa o corte de propósito.
+
+⚠️⚠️ **A 1.ª redacção do último deixou a mutação SOBREVIVER, e a razão é a terceira leitura: a
+fixtura não produzia o fenómeno.** Medido: o `Entity::to_bits` **DESCE** a cada entidade nova
+(`4294967294`, depois `4294967293`) e o `bone_segments` ordena por bits **crescentes** ⇒ *o último
+osso criado vem primeiro na lista*. Com o osso curto criado por último, «o primeiro dentro do raio»
+e «o mais perto» davam a mesma resposta. ⇒ o gate corre agora **as duas ordens de criação**.
+
+
 ## ⛔ Recusas MEDIDAS deste módulo — não as reconstrua
 
 > ⚠️ **As seis de 2026-09-07/08 entraram aqui na auditoria de 08/09** — elas viviam só em prosa e em

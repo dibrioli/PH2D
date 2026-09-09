@@ -20,12 +20,12 @@
 //! agnostic [`PanelEvent`] forwarded over `EditorAction::ToolPanelEvent`.
 
 use crate::PainterLayersPanel;
-use crate::paint_rows::{paint_drag_ghost, paint_drop_indicator, paint_layer_subtree};
+use crate::paint_rows::paint_drag_ghost;
 use crate::state::{self, PainterLayersPanelState, set_last_content_h, set_last_visible_h};
 use ph2d_editor_core::IconId;
-use ph2d_editor_core::ids::{self as core_ids, PainterLayerWidget, painter_layer_widget_id};
+use ph2d_editor_core::ids::{self as core_ids};
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
-use ph2d_editor_core::paint::{paint_text, rect_to_vello, resolve};
+use ph2d_editor_core::paint::rect_to_vello;
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_TITLE_BASELINE, paint_panel_close_button,
@@ -36,7 +36,7 @@ use ph2d_editor_core::widget::{
     scrollbar_is_needed, scrollbar_track_rect,
 };
 use ph2d_editor_core::zones::Rect;
-use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, TypeToken};
+use ph2d_tokens::{ROW_H_PX, Spacing};
 
 // Chrome layout metrics (the per-row metrics live in `paint_rows.rs`).
 const HEADER_ICON_W: f32 = 28.0; // LITERAL-PX-OK: action icon-button square
@@ -144,87 +144,13 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
     // padding so the active-row accent outline is not clipped at the body top
     // and the first row sits clear of the Layers title.
     let body_paint_top = body_top + Spacing::Md.px() - scroll_y;
-    let mut y = body_paint_top;
+    let y = body_paint_top;
     let content_w = rect.w - PANEL_HEAD_PAD * 2.0;
 
-    // Row-id set published to the dispatch so it knows which NodeIds are
-    // draggable layer rows (Coord drag foundation `1c3411d`). Filled in the
-    // layer branch, pushed in the scroll-bounds block below.
-    let mut painter_row_ids: std::collections::BTreeSet<ph2d_a11y::NodeId> =
-        std::collections::BTreeSet::new();
-    // W3.T3.8 drag overlay: the live reparent gesture (id being dragged + the
-    // latest cursor). Copied out (state is `Copy`) so no store borrow lingers
-    // into the `store_mut()` calls below. `None` unless a drag passed the
-    // distance threshold (`active`).
-    let dragging = ctx.host.store().painter_layer_drag().filter(|d| d.active);
-    // The floating "lifted layer" pill (name + cursor) painted last, unclipped.
-    let mut ghost: Option<(String, f32, f32)> = None;
-    match state::current_layers() {
-        Some(stack) if !stack.is_empty() => {
-            painter_row_ids = stack
-                .all_ids()
-                .filter(|&l| !stack.is_mask(l)) // masks are selectable but not draggable
-                .map(|l| painter_layer_widget_id(l.0, PainterLayerWidget::Row))
-                .collect();
-            let active = stack.active();
-            // W3 multi-select: the rows to highlight (active = strong outline,
-            // the rest = soft wash). Published by the bridge each frame.
-            let selected = state::current_selection();
-            // Full-row drop bands collected during the walk (id, full-row rect,
-            // is_group) so the indicator below mirrors `find_painter_layer_drop`
-            // exactly (same rows, same 30/40/30) — WYSIWYG drop.
-            let mut drag_rows: Vec<(ph2d_a11y::NodeId, Rect, bool)> = Vec::new();
-            y = paint_layer_subtree(
-                ctx,
-                theme,
-                &stack,
-                stack.root(),
-                active,
-                &selected,
-                0,
-                rect.x + PANEL_HEAD_PAD,
-                content_w,
-                y,
-                dragging,
-                &mut drag_rows,
-            );
-            if let Some(d) = dragging {
-                // Live drop indicator, on top of the rows (still inside the body
-                // clip so it can't bleed over the header/footer).
-                paint_drop_indicator(
-                    ctx,
-                    theme,
-                    &drag_rows,
-                    d.cursor_y,
-                    d.dragged,
-                    rect.x + PANEL_HEAD_PAD,
-                    content_w,
-                );
-                // Decode the dragged NodeId → its layer name for the ghost pill.
-                ghost = stack
-                    .all_ids()
-                    .find(|lid| {
-                        painter_layer_widget_id(lid.0, PainterLayerWidget::Row) == d.dragged
-                    })
-                    .and_then(|lid| stack.get(lid))
-                    .map(|l| (l.name.clone(), d.cursor_x, d.cursor_y));
-            }
-        }
-        _ => {
-            let font = TypeToken::Base.px();
-            paint_text(
-                ctx.text_system,
-                ctx.scene,
-                "No layers",
-                rect.x + PANEL_HEAD_PAD,
-                y,
-                font,
-                content_w,
-                resolve(ColorToken::Text2, theme),
-            );
-            y += font + Spacing::Md.px();
-        }
-    }
+    // ⭐ A lista sai daqui — ver [`paint_layer_rows`], cortada pelo tecto de LOC.
+    let (y_after, painter_row_ids, ghost) =
+        crate::paint_layer_list::paint_layer_rows(ctx, theme, rect, body_rect, content_w, y);
+    let mut y = y_after;
 
     y += Spacing::Xs.px();
     // Footer: the "Apply" CTA (right) — commits the composite into the sprite

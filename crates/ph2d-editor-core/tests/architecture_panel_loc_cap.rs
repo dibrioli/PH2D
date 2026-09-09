@@ -118,12 +118,12 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
     // (The painter-layers `apply_event_impl` allowance is GONE: adding the per-layer Impasto rows
     // pushed it over its 281, so the `ValueChanged` arm was extracted whole into `route_value_changed`
     // — 181 LOC, under the 200 cap, no allowance needed. Which is exactly what the cap is for.)
-    (
-        "ph2d-panel-painter-layers/src/paint.rs",
-        "paint",
-        256,
-        "unmasked by the 2026-07-10 parser fix; layer-stack paint orchestrator, per-section split deferred (needs smoke) Ratcheted em 2026-08-30 quando a coluna passou a ser ANCORADA e as tres alcas de arrasto/resize sairam deste painel (elas re-registavam os ids do Inspector, que partilha o dock). Desceu de novo em 2026-08-30 quando os pontinhos de canto sairam: eles eram a affordance das alcas de resize, que esta coluna deixou de ter.",
-    ),
+    // ✅ **A tolerancia da `painter-layers::paint` MORREU em 2026-09-09**, e nao por alguem ter ido
+    //    la' encolhe-la: a wave dos modos do Painter acrescentou-lhe 8 linhas, ela passou a folga de
+    //    `256`, e o tecto obrigou ao corte que a nota prometia desde 2026-07-10 -- *«per-section
+    //    split deferred (needs smoke)»*. A LISTA de camadas saiu para `paint_layer_list.rs`, e a
+    //    funcao ficou em **190**, sob o cap de 200. ⇒ o censo de obsolescencia cobrou a entrada no
+    //    mesmo fecho. *Uma folga so' desce quando alguem lhe encosta.*
     (
         "ph2d-panel-equalize-sizes/src/paint.rs",
         "paint_body_sections",

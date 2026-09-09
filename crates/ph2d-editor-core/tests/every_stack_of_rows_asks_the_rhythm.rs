@@ -67,6 +67,11 @@ fn doors(repo: &Path) -> Vec<String> {
 /// (`sy`, `body_y`), e a medição a shell que produziu esta lista não tinha fronteira de
 /// palavra. *Duas acusações fabricadas, mortas pela metade que pergunta se a entrada ainda
 /// descreve alguma coisa.* Ficam **9**.
+///
+/// ⭐ **E desceu para 8 em 2026-09-09, sem ninguém a mirar a lista:** a wave dos modos do
+/// Painter pôs o vão entre a fileira segmentada e o corpo na porta `control_gap_px()`, e o
+/// censo de obsolescência cobrou a entrada no mesmo fecho. *Uma catraca com censo desce por
+/// efeito colateral de quem faz a coisa certa noutro sítio.*
 const MUTE_OK: &[&str] = &[
     // ⚠️ Estes quatro do `ph2d-editor-core` são chrome com geometria própria (o picker, a barra de
     //    rolagem, duas páginas da galeria) — eles empilham AMOSTRAS, não linhas de formulário. A
@@ -78,7 +83,6 @@ const MUTE_OK: &[&str] = &[
     "crates/ph2d-editor-core/src/widget/showcase/switches.rs",
     // Painéis anteriores à porta, cada um por medir e curar.
     "crates/ph2d-panel-color-equalization/src/paint.rs",
-    "crates/ph2d-panel-painter-layers/src/paint.rs",
     "crates/ph2d-panel-painter-layers/src/paint_taper.rs",
     "crates/ph2d-panel-timeline/src/geom.rs",
     "crates/ph2d-panel-timeline/src/tracks.rs",

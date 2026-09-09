@@ -48,6 +48,7 @@ mod paint_impasto;
 mod paint_impasto_rig; // Impasto: the Body (per-brush) + Lighting (per-canvas) cards
 mod paint_impasto_tool;
 mod paint_inpaint;
+mod paint_layer_list;
 mod paint_line; // o card Line (Style: Solid) — plano 38 §1
 mod paint_mask;
 mod paint_mask_row;

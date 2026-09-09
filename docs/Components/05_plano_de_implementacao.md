@@ -3184,7 +3184,7 @@ derivado do tipo, paleta de *Add Component* e componentes requeridos, **sem uma 
 
 ---
 
-## §12 — **O `Timer` (TOP-20 #2) — W1 e W2** (2026-09-08)
+## §12 — **O `Timer` (TOP-20 #2) — W1, W2 e W3** (2026-09-08)
 
 O primeiro item da fila depois do pré-requisito, e o **primeiro produtor de sinal que não precisa de
 dois corpos a tocarem-se**: até aqui o único produtor autorável da cena era o contacto da física, e
@@ -3238,9 +3238,55 @@ nenhum dos dois**: o portão leu *«vazio = nenhum vermelho»* sobre um crate qu
 família que o `CLAUDE.md` §2 mede em números — **4 414 corridas que nunca chegaram a rodar um
 teste** — e a cura é ler o **exit code**, não o grep.
 
-### §12.5 — ⏳ O que falta: a W3, o PAINEL
+### §12.5 — ✅ A W3, o PAINEL — FECHADA (2026-09-08)
 
-Hoje o `Timers` anexa-se pela paleta e **não tem linha de edição no Inspector** — a duração, o nome
-do sinal e o `autostart` só se autoram por código. O descritor declara `&[]` campos, e é isso que a
-W3 preenche. ⚠️ **Um componente anexável sem painel lê-se como um componente partido**, e é o
-próximo passo antes de o #3 (`SensorZone`).
+O `Timers` anexava-se pela paleta e **não tinha linha de edição no Inspector**. O report do dono
+leu-se *«timer sumiu do modal de componente»* — e ele **estava** no modal, sob **Logic**: o que
+não existia era o que acontece DEPOIS de o anexar. *Um componente anexável sem painel é
+indistinguível de um componente que não foi anexado.*
+
+A secção segue o molde da §11 — **a lista escolhe, um editor mostra os cinco campos** (nome ·
+duração · repeat · autostart · sinal) — porque cinco controlos por linha custariam `5 × 16 = 80`
+ids e uma coluna que não cabe na largura do Inspector.
+
+⚠️ **Mas a linha aberta NÃO vai ao barramento, e aqui o precedente é a §12 e não a §11**: qual
+timer se edita é um facto da UI. Na §11 a linha aberta **é** a animação que toca, que é estado da
+cena; um `Timers` não tem «o timer actual» — os N correm todos ao mesmo tempo —, e publicar a
+escolha faria um passo de undo por clique sobre um facto que a cena nem tem onde guardar.
+
+⛔ **Não há «+ Add Timers component» na secção**, e é o ADR-0166: *o Inspector mostra o que o
+objecto TEM, e um componente anexa-se pela paleta*. ⇒ a shell publica o snapshot **só** para quem
+já tem `Timers`, e um botão desses nunca chegaria a ser pintado.
+
+⚠️ **A conversão SEGUNDOS ↔ microssegundos vive nas duas pontas do MESMO módulo**
+(`render_loop::inspector_timer`), com gate de ida-e-volta. O artista pensa em segundos; o motor
+guarda `u64` de microssegundos porque o tique é de passo fixo e o replay tem de o reproduzir.
+
+⚠️⚠️ **O relógio vivo não entra no snapshot, em nenhum sentido** — nem `elapsed`, nem `running`,
+nem `progress`. É a razão inteira do desenho desta família, medida agora do lado do Inspector: um
+painel que os mostrasse repintaria a 60 Hz, e o pedido seguinte seria poder mexer neles — que é o
+caminho de volta ao passo de undo por quadro. Gate: `the_panel_never_touches_the_live_clock`.
+
+**O que a W3 custou em portões, e nenhum era do produto:** dois tectos de LOC (o
+`paint_frame_shared.rs` a 658/600 ⇒ as três seções com **estado de painel** saíram para
+`paint_stateful.rs`; o `paint_inspector` a 266 contra uma catraca de 263 ⇒ o corpo da §8
+Visibility saiu para uma função irmã) · a fileira `+ Add | x Remove` pela **porta do grupo**
+(`segment_rects`) em vez de dois rects à mão · as caudas de bloco pela porta `control_gap_px()` ·
+os dois `placeholder` na baseline do HR-15 · e a delegação de a11y do orquestrador novo.
+⚠️ **E o `cargo fmt` re-expandiu a chamada extraída depois de eu medir**: a catraca desceu de
+`263` para `250` e não para `243`. *Conte o degrau DEPOIS do fmt.*
+
+### §12.6 — ⏳ O que fica ABERTO no Timer
+
+- **Não há gesto que ARRANQUE um timer à mão.** O `autostart` é o único caminho, e um timer com
+  ele desligado é, hoje, inalcançável — o painel di-lo (*«This timer never starts»*), o que é a
+  metade honesta, mas a outra metade é o consumidor: quem o arrancaria seria o **`SignalActions`**
+  (o R3), que é o item que transforma um sinal numa acção. ⛔ Construir um botão *Start* aqui seria
+  pôr no Inspector um gesto de RUNTIME.
+- **O `progress` (0..1) não tem leitor** — a lei pura tem-no desde a W1 e nada o lê. Ele é para o
+  consumidor que desenhar uma barra de recarga, e essa é a mesma família do ponto acima.
+- **O override por-campo de uma LISTA** — o descritor descreve **um elemento** do `Timers`, como o
+  `NamedAnchorList` e o `SpriteAnimations` fazem. É uma pergunta em aberto para toda a família
+  (a F4 declarou-a assim), não uma dívida deste componente.
+- **`TIMER_NAME_MAX_BYTES` não é imposto na porta do painel** — o `Rename` aceita o que o campo
+  aceitar. O motor não parte (é uma `String`), mas o teto está escrito e não é honrado.

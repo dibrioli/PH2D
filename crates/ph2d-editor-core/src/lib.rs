@@ -160,11 +160,12 @@ pub use screens::{
     InspectorBlendInfo, InspectorBlendMixed, InspectorJointInfo, InspectorNameInfo,
     InspectorOrderingInfo, InspectorOrderingMixed, InspectorPhysicsInfo, InspectorPlayerInfo,
     InspectorSamplingInfo, InspectorSamplingMixed, InspectorSliceInfo, InspectorSliceMixed,
-    InspectorSpriteInfo, InspectorSpriteMixed, InspectorSpriteSource, InspectorTransformInfo,
-    InspectorVisibilityInfo, InspectorVisibilityMixed, InspectorVisibilitySectionInfo,
-    InspectorWheelInfo, JointFieldEdit, OrderingFieldEdit, PhysicsFieldEdit, PlayerFieldEdit,
-    RequestedSpriteStrategy, SamplingFieldEdit, SliceFieldEdit, SpriteFieldEdit, ViewFocusKind,
-    VisibilityFieldEdit, WheelFieldEdit, paint_hero_screen,
+    InspectorSpriteInfo, InspectorSpriteMixed, InspectorSpriteSource, InspectorTimerInfo,
+    InspectorTimerRow, InspectorTransformInfo, InspectorVisibilityInfo, InspectorVisibilityMixed,
+    InspectorVisibilitySectionInfo, InspectorWheelInfo, JointFieldEdit, OrderingFieldEdit,
+    PhysicsFieldEdit, PlayerFieldEdit, RequestedSpriteStrategy, SamplingFieldEdit, SliceFieldEdit,
+    SpriteFieldEdit, TimerFieldEdit, ViewFocusKind, VisibilityFieldEdit, WheelFieldEdit,
+    paint_hero_screen,
 };
 pub use toast::{Toast, ToastQueue, ToastSeverity};
 pub use tool::{PanelEvent, Tool, ToolRegistry};

@@ -93,6 +93,12 @@ const BASELINE: &[(&str, usize)] = &[
     // chamador**, então os três literais continuam onde este gate os vê. *Um helper que esconde
     // literais do scanner é uma isenção silenciosa da regra que ele scanneia.*
     ("ph2d-panel-inspector/src/sections/anim_rows.rs", 3),
+    // ⭐ Os DOIS `placeholder` da secção TIMERS (TOP-20 #2, W3) — o nome do timer e o nome do
+    // sinal. Mesma dívida e mesma cura dos três da §11 acima: caem juntos quando o `t!(…)` shipar.
+    // ⚠️ E ficam VISÍVEIS pela razão que a nota acima nomeia — o `TextInput` chega **pronto do
+    // chamador** (é para isso que o `anim_rows::text_row` recebe o widget e não a string), então os
+    // dois literais continuam onde este gate os vê.
+    ("ph2d-panel-inspector/src/sections/timers.rs", 2),
     ("ph2d-panel-inspector/src/sections/identity.rs", 1),
     // ⚠️ **W-SignalLeave: a entrada da §11 saiu daqui, e a DÍVIDA NÃO.** O
     // scanner conta literais dentro de `.placeholder("…")`, e a §11 passou a ter

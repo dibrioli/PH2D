@@ -298,6 +298,16 @@ pub enum EditorAction {
         edit: crate::screens::hero::AnimFieldEdit,
     },
 
+    /// **A secção TIMERS** (TOP-20 #2, W3) — uma edição da lista de timers autorados.
+    ///
+    /// ⚠️ `Clone` e não `Copy`, pela mesma razão das duas irmãs acima: o `Rename` e o `Signal`
+    /// carregam texto. ⚠️ E o índice que a edição carrega é o do vector do componente, que é o
+    /// que liga a config ao relógio vivo — ⛔ nunca o nome, que se repete e se edita.
+    InspectorTimerEdit {
+        entity_bits: u64,
+        edit: crate::screens::hero::TimerFieldEdit,
+    },
+
     /// Inspector → shell channel for a §10 Material & Blend field (Blend
     /// Mode). Optional-component edit like [`Self::InspectorSamplingEdit`]
     /// (§3.10); tag `0` (Mix) detaches the `BlendMode` component.

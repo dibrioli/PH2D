@@ -342,7 +342,7 @@ pub(crate) fn finish_section(
 /// section has to be remembered here — a fact that is easier to keep true
 /// when it has a name and a signature that changes when you forget.
 #[allow(clippy::too_many_arguments, clippy::fn_params_excessive_bools)]
-pub(crate) fn any_live_section(flags: [bool; 11]) -> bool {
+pub(crate) fn any_live_section(flags: [bool; 12]) -> bool {
     flags.iter().any(|&b| b)
 }
 
@@ -498,6 +498,12 @@ pub(crate) struct LiveSnapshots {
     pub slice_info: Option<ph2d_editor_core::screens::hero::InspectorSliceInfo>,
     pub anchor_info: Option<ph2d_editor_core::screens::hero::InspectorAnchorInfo>,
     pub anim_info: Option<ph2d_editor_core::screens::hero::InspectorAnimInfo>,
+    /// ⭐⭐⭐ **A secção TIMERS** (TOP-20 #2, W3) — `Some` só quando o objecto tem `Timers`.
+    /// ⚠️ **ENTRA no `any_section`**, ao contrário da §5/§11/§12: aquelas três só existem sobre
+    /// uma sprite, que o `sprite_info` já representa; um `Timers` vale para **qualquer** objecto
+    /// (`ObjectKinds::ANY`), incluindo um objecto VAZIO — que sem esta linha mostraria o painel a
+    /// dizer que não há nada por baixo de uma secção que está lá.
+    pub timer_info: Option<ph2d_editor_core::screens::hero::InspectorTimerInfo>,
     pub blend_info: Option<ph2d_editor_core::screens::hero::InspectorBlendInfo>,
     pub physics_info: Option<ph2d_editor_core::screens::hero::InspectorPhysicsInfo>,
     pub joint_info: Option<ph2d_editor_core::screens::hero::InspectorJointInfo>,
@@ -532,6 +538,7 @@ impl LiveSnapshots {
         let instance_info = crate::state::current_inspector_instance();
         let properties_info = crate::state::current_inspector_properties();
         let name_present = crate::state::current_inspector_name_is_some();
+        let timer_info = crate::state::current_inspector_timer();
         let any_section = any_live_section([
             transform_info.is_some(),
             sprite_info.is_some(),
@@ -544,6 +551,7 @@ impl LiveSnapshots {
             wheel_info.is_some(),
             player_info.is_some(),
             name_present,
+            timer_info.is_some(),
         ]);
         Self {
             transform_info,
@@ -554,6 +562,7 @@ impl LiveSnapshots {
             slice_info: crate::state::current_inspector_slice(),
             anchor_info: crate::state::current_inspector_anchor(),
             anim_info: crate::state::current_inspector_anim(),
+            timer_info,
             blend_info,
             physics_info,
             joint_info,

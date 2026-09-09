@@ -83,6 +83,8 @@ mod sampling;
 pub(crate) mod slice_grid;
 pub(crate) mod slice_nine;
 mod sprite_sheet;
+/// ⭐⭐⭐ **A secção TIMERS** (TOP-20 #2, W3) — o painel do primeiro relógio autorável.
+pub(crate) mod timers;
 mod transform;
 // ⚠️ O DESENHO de uma linha do Transform — separado da orquestração delas pelo tecto de LOC.
 mod transform_row;

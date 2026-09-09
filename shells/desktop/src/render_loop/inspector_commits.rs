@@ -48,6 +48,7 @@ pub(super) fn dispatch(
     slice_edits: &[(u64, ph2d_editor::SliceFieldEdit)],
     anchor_edits: &[(u64, ph2d_editor::AnchorFieldEdit)],
     anim_edits: &[(u64, ph2d_editor::AnimFieldEdit)],
+    timer_edits: &[(u64, ph2d_editor::TimerFieldEdit)],
     physics_edits: &[(u64, PhysicsFieldEdit)],
     visibility_section_edits: &[(u64, VisibilityFieldEdit)],
     hero: &mut HeroScreen,
@@ -260,6 +261,25 @@ pub(super) fn dispatch(
         }
         if let Err(e) = apply_editor_commands(sim.world_mut(), editor_queue, component_registry) {
             toasts.push(Toast::error(format!("Animation commit failed: {e}")));
+            title_dirty = true;
+        }
+    }
+    // ⭐ **A secção TIMERS** (TOP-20 #2, W3). ⚠️ Recusa com aviso, como as duas acima — um nome
+    // vazio ou o tecto atingido têm de dizer porquê, senão o artista escreve e vê a lista não
+    // mudar.
+    for (entity_bits, edit) in timer_edits {
+        if let Some(t) = super::inspector_timer::apply_timer_edit(
+            sim,
+            *entity_bits,
+            edit,
+            editor_queue,
+            component_registry,
+        ) {
+            toasts.push(t);
+            continue;
+        }
+        if let Err(e) = apply_editor_commands(sim.world_mut(), editor_queue, component_registry) {
+            toasts.push(Toast::error(format!("Timer commit failed: {e}")));
             title_dirty = true;
         }
     }

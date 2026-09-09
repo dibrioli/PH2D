@@ -66,6 +66,7 @@ pub(crate) fn paint(inspector_state: &mut state::InspectorState, ctx: &mut Paint
             store,
             &mut inspector_state.anchor_selected,
             &mut inspector_state.anim_selected,
+            &mut inspector_state.timer_selected,
         );
     }
     state::set_current_display_unit(display_unit, ppm); // keep symmetric with legacy
@@ -96,6 +97,7 @@ pub(crate) fn paint(inspector_state: &mut state::InspectorState, ctx: &mut Paint
 ///   `paint_anchor_section` contra o tamanho da lista: apagar a última âncora não o pode deixar a
 ///   apontar para o vazio.
 /// - `anim_selected` — §11: qual animação está aberta no editor. Mesmo contrato.
+/// - `timer_selected` — TIMERS: qual timer está aberto no editor. Mesmo contrato.
 /// - `editing_value` — qual eixo do cartão de propriedades está a ser **reescrito**; ver
 fn paint_inspector(
     slot: Rect,
@@ -107,6 +109,7 @@ fn paint_inspector(
     store: &WidgetStore,
     anchor_selected: &mut usize,
     anim_selected: &mut usize,
+    timer_selected: &mut usize,
 ) {
     // ⭐ **A moldura do corpo — superfície, alças, cabeçalho, clip e a caixa interior.**
     // Ver [`crate::paint_frame::open_body`]: nada disto é orquestração de seção, e é a mesma razão
@@ -131,6 +134,7 @@ fn paint_inspector(
         slice_info,
         anchor_info,
         anim_info,
+        timer_info,
         blend_info,
         physics_info,
         joint_info,
@@ -206,7 +210,7 @@ fn paint_inspector(
     }
     if visibility_info.is_some() {
         y = live_section!(ids::INSP_LIVE_VISIBILITY_SECTION, 1, ROW_H_PX, {
-            let mut yy = sections::paint_visibility_row(
+            visibility_body(
                 scene,
                 text_system,
                 theme,
@@ -215,23 +219,7 @@ fn paint_inspector(
                 inner_x,
                 inner_w,
                 y,
-            );
-            // W3 §8: the optional-component controls (layer mask / clip /
-            // mask / on-screen) sit directly below the Visible toggle.
-            if let Some(vis) = current_inspector_visibility_section() {
-                yy = sections::paint_visibility_section(
-                    scene,
-                    text_system,
-                    theme,
-                    hit_index,
-                    store,
-                    inner_x,
-                    inner_w,
-                    yy,
-                    &vis,
-                );
-            }
-            yy
+            )
         });
         y = close_section(scene, theme, inner_x, inner_w, y);
     }
@@ -316,7 +304,7 @@ fn paint_inspector(
     //
     // ⚠️ Saíram porque a §11 levou este orquestrador de 348 a 365 contra uma tolerância que **só
     // desce** — e levar só a nova devolveria o número a 348 exactos, que é ficar no mesmo sítio.
-    y = crate::paint_frame_shared::paint_stateful_sections(
+    y = crate::paint_stateful::paint_stateful_sections(
         scene,
         text_system,
         theme,
@@ -332,6 +320,8 @@ fn paint_inspector(
         anim_selected,
         anchor_info.as_ref(),
         anchor_selected,
+        timer_info.as_ref(),
+        timer_selected,
         &notes_per_section,
     );
     if any_section {
@@ -369,4 +359,52 @@ fn paint_inspector(
     // ⭐ **O fecho, simétrico do [`crate::paint_body::open_body`]** — os popovers diferidos, o
     // `pop_layer` do clip que ele abriu, os cantos, o re-registo dos hits e os CARTÕES.
     crate::paint_body::close_body(scene, text_system, theme, hit_index, rect);
+}
+
+/// **O corpo da §8 Visibility** — a caixa `Visible` mais os controlos do componente opcional.
+///
+/// ⚠️ **Função IRMÃ, e não um ficheiro novo:** o `paint.rs` está com folga larga no cap de
+/// FICHEIRO, e o que estourou foi o cap de FUNÇÃO do orquestrador — os dois medem grandezas
+/// diferentes, e extrair para aqui cura o que estourou sem tocar no outro.
+///
+/// ⚠️ **As duas metades andam juntas por uma LEI:** os controlos de camada/clip/máscara/on-screen
+/// só fazem sentido *debaixo* da caixa que diz se o objecto se vê, e é essa adjacência que a §8
+/// promete. Separá-las poria a pergunta e a qualificação dela em sítios diferentes do painel.
+#[allow(clippy::too_many_arguments)]
+fn visibility_body(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    inner_x: f32,
+    inner_w: f32,
+    y: f32,
+) -> f32 {
+    let mut yy = sections::paint_visibility_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        inner_x,
+        inner_w,
+        y,
+    );
+    // W3 §8: the optional-component controls (layer mask / clip / mask / on-screen) sit directly
+    // below the Visible toggle.
+    if let Some(vis) = current_inspector_visibility_section() {
+        yy = sections::paint_visibility_section(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            inner_x,
+            inner_w,
+            yy,
+            &vis,
+        );
+    }
+    yy
 }

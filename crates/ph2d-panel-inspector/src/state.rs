@@ -14,8 +14,9 @@
 use ph2d_editor_core::screens::hero::{
     InspectorAnchorInfo, InspectorAnimInfo, InspectorBlendInfo, InspectorJointInfo,
     InspectorNameInfo, InspectorOrderingInfo, InspectorPhysicsInfo, InspectorPlayerInfo,
-    InspectorSamplingInfo, InspectorSliceInfo, InspectorSpriteInfo, InspectorTransformInfo,
-    InspectorVisibilityInfo, InspectorVisibilitySectionInfo, InspectorWheelInfo,
+    InspectorSamplingInfo, InspectorSliceInfo, InspectorSpriteInfo, InspectorTimerInfo,
+    InspectorTransformInfo, InspectorVisibilityInfo, InspectorVisibilitySectionInfo,
+    InspectorWheelInfo,
 };
 
 /// Inspector panel retained state. Held inside `ErasedPanel<InspectorPanel>`
@@ -64,6 +65,16 @@ pub struct InspectorState {
     /// Irmão do [`Self::last_anchor_row`], e pela MESMA razão medida: os campos do editor
     /// semeiam-se numa ARESTA (entidade ou linha), nunca por quadro.
     pub last_anim_row: Option<usize>,
+    /// TIMERS — qual timer da lista está aberto no editor. **Estado do painel**, saturado contra
+    /// o tamanho da lista a cada pintura.
+    ///
+    /// ⚠️ **Aqui a §12 é o precedente, não a §11:** qual timer se edita é um facto da UI. Na §11 a
+    /// linha aberta É a animação que toca, que é estado da cena — um `Timers` não tem «o actual».
+    pub timer_selected: usize,
+    /// Irmão do [`Self::last_anim_row`], e pela MESMA razão medida: os campos do editor semeiam-se
+    /// numa ARESTA (entidade ou linha), nunca por quadro — senão o valor que o artista acabou de
+    /// escrever volta atrás antes de o commit da shell chegar.
+    pub last_timer_row: Option<usize>,
 }
 
 thread_local! {
@@ -133,6 +144,10 @@ thread_local! {
     /// `String`s, e uma `String` não é `Copy`.
     pub(crate) static CURRENT_INSPECTOR_ANIM:
         std::cell::RefCell<Option<InspectorAnimInfo>> = const { std::cell::RefCell::new(None) };
+
+    /// TIMERS — o snapshot da entidade selecionada. `RefCell` pela mesma razão da §11.
+    pub(crate) static CURRENT_INSPECTOR_TIMER:
+        std::cell::RefCell<Option<InspectorTimerInfo>> = const { std::cell::RefCell::new(None) };
 
     /// **§12 — a linha ABERTA da lista, no sentido PAINEL → SHELL.**
     ///
@@ -308,6 +323,14 @@ pub fn set_current_inspector_anim(info: Option<InspectorAnimInfo>) {
 
 pub(crate) fn current_inspector_anim() -> Option<InspectorAnimInfo> {
     CURRENT_INSPECTOR_ANIM.with(|c| c.borrow().clone())
+}
+
+pub fn set_current_inspector_timer(info: Option<InspectorTimerInfo>) {
+    CURRENT_INSPECTOR_TIMER.with(|c| *c.borrow_mut() = info);
+}
+
+pub(crate) fn current_inspector_timer() -> Option<InspectorTimerInfo> {
+    CURRENT_INSPECTOR_TIMER.with(|c| c.borrow().clone())
 }
 
 pub(crate) fn current_inspector_sampling() -> Option<InspectorSamplingInfo> {

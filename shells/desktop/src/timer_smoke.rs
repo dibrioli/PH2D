@@ -25,6 +25,18 @@
 //! consumidores, um canal.
 //!
 //! ⚠️ Se a linha `[timer-smoke]` não aparecer, **PARE**: a cena não montou.
+//!
+//! # ⭐ E a partir da W3 a cena também prova o PAINEL
+//!
+//! Escolher qualquer um dos três objectos abre a secção **Timers** no Inspector, com a lista, o
+//! `+ Add Timer` / `x Remove Timer` e os cinco campos do que está aberto. É a metade que faltava:
+//! até 2026-09-08 o componente anexava-se pela paleta e **nada aparecia**, que é indistinguível de
+//! ele não ter sido anexado.
+//!
+//! ⚠️ **A cena é o oráculo do painel**, e é por isso que os três objectos são diferentes uns dos
+//! outros: mudar a duração da *Batida* muda o ritmo dos toasts **enquanto se olha**, ligar o
+//! `Repeat` da *Recarga* fá-la falar para sempre, e escrever um nome no campo *Signal* do *Mudo*
+//! tira-o do silêncio. *Um painel que se prova sobre um objecto parado prova metade.*
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{Name, Timer, Timers, Transform};

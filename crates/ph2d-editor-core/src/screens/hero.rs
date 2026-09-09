@@ -75,6 +75,8 @@ mod inspector_model_physics;
 mod inspector_model_player;
 mod inspector_model_properties;
 mod inspector_model_slice;
+/// ⭐ O modelo da secção TIMERS (TOP-20 #2, W3) — irmão por CAP de LOC.
+mod inspector_model_timer;
 pub mod layout_switch;
 pub mod layout_tabs;
 /// O tique da UI viva (o `motion` + a corda) — irmão, e não corpo do `HeroScreen`: aquele diz o
@@ -119,6 +121,7 @@ pub use inspector_model_physics::*;
 pub use inspector_model_player::*;
 pub use inspector_model_properties::*;
 pub use inspector_model_slice::*;
+pub use inspector_model_timer::*;
 pub use paint::*;
 pub use variant_axes::VariantAxis;
 

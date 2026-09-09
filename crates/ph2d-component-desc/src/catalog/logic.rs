@@ -18,12 +18,57 @@
 //! e fora de ordem a busca binária devolve `None` para um tipo que existe. *Um descritor que não é
 //! encontrado lê-se exactamente como um descritor que não existe.*
 
-use crate::{ComponentCategory as C, ComponentDesc, ComponentDesc as D, ObjectKinds as O};
+use crate::{
+    ComponentCategory as C, ComponentDesc, ComponentDesc as D, FieldDesc, FieldKind as K,
+    ObjectKinds as O, Propagation,
+};
+
+const fn f(field_id: u16, name: &'static str, kind: K) -> FieldDesc {
+    FieldDesc {
+        field_id,
+        name,
+        kind,
+        policy: Propagation::Propagate,
+        is_ref: None,
+    }
+}
+
+/// **Os campos de UM timer** — o que a secção do Inspector edita.
+///
+/// ⚠️⚠️ **O `Timers` é uma LISTA, e este descritor descreve UM elemento dela.** É a mesma forma que
+/// o `NamedAnchorList` e o `SpriteAnimations` têm, e a razão de ela ser aceitável aqui é o que o
+/// descritor SERVE: rótulos e o `field_id` de um override por-campo. ⛔ O override por-campo de uma
+/// lista é uma pergunta em aberto para toda a família (a F4 declarou-a assim), não uma dívida deste
+/// componente.
+///
+/// ⛔ **Não há campo para o `TimerRuntime`**, e a ausência é a decisão inteira desta wave: o
+/// relógio vivo não é componente registado, o undo não o fotografa, e descrevê-lo aqui seria
+/// prometer ao Inspector um valor que ele não deve mostrar nem editar.
+const TIMER_FIELDS: &[FieldDesc] = &[
+    // ⚠️ **O nome do TIMER, que não é o nome do sinal** — confundi-los obrigaria a renomear o
+    // componente para mudar o contrato.
+    f(1, "Name", K::Text),
+    // ⚠️ **Em SEGUNDOS no painel, microssegundos no modelo.** A conversão vive nas duas pontas do
+    // `render_loop::inspector_timer`, e há gate de ida-e-volta.
+    f(2, "Duration", K::Scalar),
+    f(3, "Repeat", K::Toggle),
+    // ⚠️ **É este o campo autorado** — o «está a correr agora» é vivo e não chega ao Inspector.
+    f(4, "Autostart", K::Toggle),
+    // ⚠️ **Vazio = calado** — a lei da §11: um produtor sem nome não fala, em vez de falar com um
+    // nome vazio.
+    f(5, "Signal", K::Text),
+];
 
 /// Os descritores da família.
 pub const DESCS: &[ComponentDesc] = &[
     // ⚠️ **`O::ANY`, e é a decisão**: um relógio serve a um sprite, a uma forma, a um objecto
     // VAZIO e a um grupo. Restringi-lo a `DRAWABLE` faria o objecto vazio — a entidade que o
     // artista usa como *«o cérebro da cena»* — não poder ter um.
-    D::authored("ph2d::ecs::Timers", "Timers", C::Logic, O::ANY, &[]),
+    D::authored(
+        "ph2d::ecs::Timers",
+        "Timers",
+        C::Logic,
+        O::ANY,
+        TIMER_FIELDS,
+    ),
 ];

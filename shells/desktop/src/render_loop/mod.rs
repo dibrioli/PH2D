@@ -290,6 +290,8 @@ mod inspector_commits_sprite;
 pub(crate) mod inspector_instance;
 mod inspector_properties;
 mod inspector_slice;
+/// ⭐ A secção TIMERS (TOP-20 #2, W3) — o snapshot e o commit dela.
+mod inspector_timer;
 /// Qual receita está a ser EDITADA — o passe que carimba a marca derivada.
 // ⚠️ `pub(crate)` porque o gate do anel de objeto vazio (`group_gizmo_view_tests`) acende a
 // receita pela porta de VERDADE — chamar `mark` é o que o quadro faz, e um `insert(MasterEditing)`
@@ -3647,6 +3649,7 @@ impl crate::App {
             let mut slice_edits: Vec<(u64, ph2d_editor::SliceFieldEdit)> = Vec::new();
             let mut anchor_edits: Vec<(u64, ph2d_editor::AnchorFieldEdit)> = Vec::new();
             let mut anim_edits: Vec<(u64, ph2d_editor::AnimFieldEdit)> = Vec::new();
+            let mut timer_edits: Vec<(u64, ph2d_editor::TimerFieldEdit)> = Vec::new();
             // ⭐ O `+` do Inspector (F3): quem pediu a paleta neste quadro.
             let mut add_component_for: Option<u64> = None;
             // ⭐ A troca de variante pedida neste quadro: `(raiz da instância, StableId do mestre)`.
@@ -5036,6 +5039,13 @@ impl crate::App {
                     // carrega só significa alguma coisa na biblioteca da entidade primária.
                     EditorAction::InspectorAnimEdit { entity_bits, edit } => {
                         anim_edits.push((entity_bits, edit));
+                    }
+                    // ⭐ **A secção TIMERS.** ⚠️ **NÃO espalha sobre a BulkSelect**, pela MESMA
+                    // razão das duas acima: o índice que a edição carrega só significa alguma
+                    // coisa na lista da entidade primária, e espalhá-lo escreveria no timer
+                    // errado de todas as outras.
+                    EditorAction::InspectorTimerEdit { entity_bits, edit } => {
+                        timer_edits.push((entity_bits, edit));
                     }
                     // ⭐ **O `+` do Inspector** (ADR-0166 / F3) — o painel PEDE e a shell abre,
                     // porque só ela sabe o tipo do objeto, o que ele já tem, e o que o registo
@@ -12248,6 +12258,7 @@ impl crate::App {
                 &slice_edits,
                 &anchor_edits,
                 &anim_edits,
+                &timer_edits,
                 &physics_edits,
                 &visibility_section_edits,
                 hero,

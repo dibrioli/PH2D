@@ -52,6 +52,7 @@ pub fn populate(store: &mut WidgetStore) {
     populate_slice(store);
     super::populate_anchor::populate_anchors(store);
     super::populate_anim::populate_anim(store);
+    super::populate_timer::populate_timer(store);
     populate_visibility_section(store);
     populate_blend(store);
     super::populate_physics::populate_physics(store);

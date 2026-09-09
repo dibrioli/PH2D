@@ -372,8 +372,11 @@ fn editor(
 /// primeira versão recebia a string — e o gate do HR-15 reprovou: ele conta `.placeholder("…")` no
 /// código de widget, e passar a string por um argumento tira **três** strings de UI da vista dele.
 /// *Um helper que esconde literais do scanner é uma isenção silenciosa da regra que ele scanneia.*
+/// ⚠️ **`pub(super)` desde 2026-09-08**: a secção TIMERS pinta o nome e o sinal com esta mesma
+/// linha. Copiá-la seria a terceira resposta à pergunta *«como se desenha um campo de texto de uma
+/// row do Inspector?»* — e a cópia é onde a lei do `placeholder` acima se perde.
 #[allow(clippy::too_many_arguments)]
-fn text_row(
+pub(super) fn text_row(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,

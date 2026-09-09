@@ -236,7 +236,11 @@ fn the_bridge_never_re_arms_a_finished_one_shot() {
 #[test]
 fn a_timer_appended_to_a_live_object_starts_running() {
     let (mut sim, e) = mundo_com(vec![um(100_000, true, "a")]);
-    assert_eq!(tick_timers(&mut sim, 6, DT).len(), 1, "o primeiro nao correu");
+    assert_eq!(
+        tick_timers(&mut sim, 6, DT).len(),
+        1,
+        "o primeiro nao correu"
+    );
     if let Some(mut ts) = sim.world_mut().get_mut::<Timers>(e) {
         ts.0.push(um(100_000, true, "b"));
     }

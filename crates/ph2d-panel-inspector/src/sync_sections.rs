@@ -58,6 +58,80 @@ pub(crate) fn sync_new_sections(
         inspector_state.last_anim_row = Some(row);
         sync_anim_fields(host, &an, row, entity_changed || row_changed);
     }
+    if let Some(tm) = crate::state::current_inspector_timer() {
+        // ⚠️ **A mesma ARESTA das duas irmãs**, e pelo mesmo defeito medido.
+        let row = if tm.rows.is_empty() {
+            0
+        } else {
+            inspector_state.timer_selected.min(tm.rows.len() - 1)
+        };
+        let row_changed = inspector_state.last_timer_row != Some(row);
+        inspector_state.last_timer_row = Some(row);
+        sync_timer_fields(host, &tm, row, entity_changed || row_changed);
+    }
+}
+
+/// Semeia os campos da secção TIMERS a partir do snapshot.
+///
+/// ⚠️ **As duas CAIXAS espelham o mundo todo o quadro**, como as da §11 e pela mesma razão: a
+/// secção pinta e decide a partir do SNAPSHOT, e o store aqui só publica o estado para a árvore de
+/// a11y. Deixá-las numa aresta punha-as a mentir a quem as lê por acessibilidade.
+///
+/// ⚠️ **O NÚMERO e os dois TEXTOS, esses, são de ARESTA** — reescrevê-los por quadro apagaria o
+/// que o artista está a digitar antes de o commit da shell chegar.
+fn sync_timer_fields(
+    host: &mut dyn PanelHostInternal,
+    tm: &ph2d_editor_core::screens::hero::InspectorTimerInfo,
+    selected: usize,
+    seed: bool,
+) {
+    let focus = host.store().focus_id();
+    let drag = host.store().number_input_drag().map(|d| d.id);
+    let Some(row) = tm.rows.get(selected) else {
+        return;
+    };
+    for (id, on) in [
+        (ids::INSP_TIMER_REPEAT, row.repeat),
+        (ids::INSP_TIMER_AUTOSTART, row.autostart),
+    ] {
+        if let Some(InteractiveState::Checkbox { value, .. }) = host.store_mut().get_mut(id) {
+            *value = if on {
+                CheckboxValue::Checked
+            } else {
+                CheckboxValue::Unchecked
+            };
+        }
+    }
+    if !seed {
+        return;
+    }
+    if focus != Some(ids::INSP_TIMER_DURATION) && drag != Some(ids::INSP_TIMER_DURATION) {
+        host.store_mut()
+            .set_number_value(ids::INSP_TIMER_DURATION, f64::from(row.duration_s));
+    }
+    // ⚠️ **Os DOIS campos de texto pelo mesmo laço** — o nome e o do sinal. Um deles espelhado à
+    // mão ao lado do outro é como o segundo nasce sem `sync` e mostra o valor do timer ANTERIOR.
+    for (id, value) in [
+        (ids::INSP_TIMER_NAME, &row.name),
+        (ids::INSP_TIMER_SIGNAL, &row.signal),
+    ] {
+        // O campo em FOCO é do dedo: reescrevê-lo enquanto se digita apagaria a letra.
+        if focus == Some(id) {
+            continue;
+        }
+        if let Some(InteractiveState::TextInput {
+            text,
+            caret,
+            selection_anchor,
+            ..
+        }) = host.store_mut().get_mut(id)
+        {
+            text.clear();
+            text.push_str(value);
+            *caret = text.len();
+            *selection_anchor = None;
+        }
+    }
 }
 
 /// Semeia os campos da §11 a partir do snapshot.

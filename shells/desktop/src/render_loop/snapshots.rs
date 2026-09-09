@@ -1215,6 +1215,11 @@ pub(super) fn publish(
         .gizmo
         .selection
         .and_then(|b| super::inspector_anim::build_anim_info(sim.world(), b, selected_count));
+    // ⭐ A secção TIMERS — `None` para quem não tem o componente (ADR-0166).
+    let inspector_timer = hero
+        .gizmo
+        .selection
+        .and_then(|b| super::inspector_timer::build_timer_info(sim.world(), b, selected_count));
     let inspector_visibility_section = hero.gizmo.selection.and_then(|b| {
         super::inspector_visibility::build_visibility_section_info(
             sim.world(),
@@ -1238,6 +1243,7 @@ pub(super) fn publish(
         ph2d_panel_inspector::set_current_inspector_instance(inspector_instance);
         ph2d_panel_inspector::set_current_inspector_properties(inspector_properties);
         ph2d_panel_inspector::set_current_inspector_anim(inspector_anim);
+        ph2d_panel_inspector::set_current_inspector_timer(inspector_timer);
         ph2d_panel_inspector::set_current_inspector_physics(inspector_physics);
         ph2d_panel_inspector::set_current_inspector_joint(inspector_joint);
         ph2d_panel_inspector::set_current_inspector_wheel(inspector_wheel);

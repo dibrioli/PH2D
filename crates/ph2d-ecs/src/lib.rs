@@ -150,8 +150,8 @@ pub use stable_id::{
     stable_id_of,
 };
 pub use timer::{
-    TIMERS_MAX, Timer, TimerOutcome, TimerRuntime, TimerState, Timers, advance as timer_advance,
-    reconcile as timer_reconcile,
+    TIMER_MAX_US, TIMER_NAME_MAX_BYTES, TIMERS_MAX, Timer, TimerOutcome, TimerRuntime, TimerState,
+    Timers, advance as timer_advance, reconcile as timer_reconcile,
 };
 pub use transform::{
     GlobalTransform, GroupedChildren, Locked, SimRef, Transform, TransformPropagationState,

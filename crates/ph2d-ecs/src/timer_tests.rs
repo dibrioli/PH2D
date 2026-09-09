@@ -157,7 +157,10 @@ fn a_slot_that_is_born_is_armed_and_only_if_it_asked() {
         },
     ]);
     let mut rt = TimerRuntime::default();
-    assert!(reconcile(&ts, &mut rt), "reconciliar nao relatou o trabalho");
+    assert!(
+        reconcile(&ts, &mut rt),
+        "reconciliar nao relatou o trabalho"
+    );
     assert_eq!(rt.0.len(), 2, "o relogio nao ficou do tamanho da config");
     assert!(
         rt.0[0].running,

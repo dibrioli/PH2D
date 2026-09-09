@@ -49,6 +49,11 @@ pub(crate) fn apply_event(
     if crate::event_anim::apply_anim_event(state, host, ev) {
         return EventOutcome::Consumed;
     }
+    // **TIMERS** — a terceira que precisa do estado do painel. ⚠️ Aqui o clique numa linha
+    // **não** vai ao barramento (ver `event_timer`): um `Timers` não tem «o timer actual».
+    if crate::event_timer::apply_timer_event(state, host, ev) {
+        return EventOutcome::Consumed;
+    }
     // ⭐⭐⭐ **O VALOR de uma propriedade** — a terceira família que precisa do estado do painel:
     // carregar no chip aceso abre um campo, e *qual* eixo está aberto é estado de painel, não uma
     // edição da cena. Ver `crate::event_value`.

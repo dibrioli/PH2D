@@ -445,6 +445,13 @@ const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
         "ph2d-panel-motion-graph/src/paint_socket.rs",
         "pure-paint helper (o glifo do socket, o halo de alvo e o dominio da porta), cortado do paint.rs pelo teto de LOC na wave 4 do redesenho; os hit rects e a a11y dos sockets ficam no pai",
     ),
+    // ⚠️ **A delegação é TRANSITIVA e MEDIDA**, e o ficheiro nasceu em 2026-09-08 do corte que a
+    // secção TIMERS impôs ao `paint_frame_shared.rs` (658 de 600) — exactamente como o
+    // `paint_card.rs` acima nasceu do corte do `paint.rs` dele.
+    (
+        "ph2d-panel-inspector/src/paint_stateful.rs",
+        "orquestrador das tres seccoes com ESTADO DE PAINEL (§11 Animation, §12 Sockets, TIMERS); nao regista um unico id — 0 ocorrencias de NodeId / hit_index. / register( — e cada widget e' pintado pela seccao que ele chama, a moldura pelo paint_frame",
+    ),
     // ⛔⛔ **Este ficheiro passava por SUBCADEIA, e a remoção de uma fileira revelou-o.**
     // Ele nunca nomeou um primitivo canónico: o que casava era `paint_color_swatch_row` — o
     // helper LOCAL — contendo `paint_color_swatch` como substring. Quando a fileira «Color» do

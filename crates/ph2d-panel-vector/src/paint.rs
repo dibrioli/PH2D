@@ -210,52 +210,6 @@ fn seed_number_fields(store: &mut ph2d_editor_core::interaction::WidgetStore) {
             }
         }
     }
-    // ⭐ Os dois números do OSSO em foco (estudo 42 item 5), com o MESMO guarda de foco dos
-    // irmãos: re-semear o campo que está a ser digitado apaga o dígito debaixo do dedo.
-    if let Some((length, strength)) = state::current_bone() {
-        for (id, v) in [
-            (ids::VECTOR_BONE_LENGTH, length),
-            (ids::VECTOR_BONE_STRENGTH, strength),
-        ] {
-            if store.focus_id() != Some(id) {
-                store.set_number_value(id, v);
-            }
-        }
-    }
-    // ⭐ E os três da ÂNCORA, pela mesma porta e com o mesmo guarda de foco.
-    // ⭐ E os DOIS do limite de ângulo, em graus, pela mesma porta e com o mesmo guarda de foco.
-    if let Some((lo, hi)) = state::current_bone_limit() {
-        for (id, v) in [
-            (ids::VECTOR_BONE_LIMIT_MIN, lo),
-            (ids::VECTOR_BONE_LIMIT_MAX, hi),
-        ] {
-            if store.focus_id() != Some(id) {
-                store.set_number_value(id, v);
-            }
-        }
-    }
-    // ⭐ E os DOIS do osso inteligente, em graus.
-    if let Some(sb) = state::current_bone_smart() {
-        for (id, v) in [
-            (ids::VECTOR_BONE_SMART_FROM, sb.from),
-            (ids::VECTOR_BONE_SMART_TO, sb.to),
-        ] {
-            if store.focus_id() != Some(id) {
-                store.set_number_value(id, v);
-            }
-        }
-    }
-    if let Some((mix, softness, chain, _)) = state::current_bone_ik() {
-        for (id, v) in [
-            (ids::VECTOR_BONE_IK_MIX, mix),
-            (ids::VECTOR_BONE_IK_SOFTNESS, softness),
-            (ids::VECTOR_BONE_IK_CHAIN, chain),
-        ] {
-            if store.focus_id() != Some(id) {
-                store.set_number_value(id, v);
-            }
-        }
-    }
     // Seed the Transform fields from the published bbox. 1-frame post-commit lag, ok.
     if let Some([tx, ty, tw, th]) = state::current_transform() {
         let focus = store.focus_id();
@@ -487,10 +441,6 @@ pub(crate) fn paint(_state: &mut VectorPanelState, ctx: &mut PaintCtx) {
     seed_and_publish(ctx.host.store_mut(), content_h, body_h);
     set_last_content_h(content_h);
     set_last_visible_h(body_h);
-    // ⭐⭐⭐ **A secção SKELETON vem à vista quando um osso entra em foco** (report do dono,
-    // 2026-09-08). A lei mora ao lado da secção; aqui só chega a banda visível, que é o que este
-    // orquestrador sabe e o `BodyCtx` não.
-    crate::paint_sections::bone::reveal_section(ctx, body_top, body_h, content_h, row_h);
 
     // Re-register close chrome after the body (last-registered-wins so the X
     // stays clickable over the body region).
@@ -542,10 +492,5 @@ pub(crate) fn paint(_state: &mut VectorPanelState, ctx: &mut PaintCtx) {
     // vive dentro do scroll da seção States, e sem o passe diferido ela seria cortada na borda.
     if let Some((row, chip_rect)) = state::take_pending_morph_key_dd() {
         crate::paint_sections::morph_arrows::paint_when_popover(ctx, row, chip_rect, theme);
-    }
-    // ⭐⭐⭐ E a lista das ACÇÕES de um osso inteligente (2026-09-08), pela mesma razão: a seção
-    // Skeleton rola, e sem isto a lista morreria na borda dela.
-    if let Some(chip_rect) = state::take_pending_bone_action_dd() {
-        crate::paint_sections::bone::paint_action_popover(ctx, chip_rect, theme);
     }
 }

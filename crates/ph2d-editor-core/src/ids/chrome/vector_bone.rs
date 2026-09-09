@@ -17,6 +17,18 @@ use ph2d_a11y::NodeId;
 /// este algo que as **move**.
 pub const VECTOR_MODE_BONE: NodeId = hash_node_id("vector.mode.bone");
 
+/// ⭐⭐⭐ **O PAINEL do esqueleto** — o rect exterior dele.
+///
+/// ⛔⛔ **Ele era uma SECÇÃO do painel de vetor**, e saiu de lá por ordem do dono (2026-09-09)
+/// depois de uma medição: com só um osso escolhido o cabeçalho dela caía em `y = 1394 px` sobre
+/// uma faixa visível de `774`, com **785 px** de secções acima a falar de coisas que um osso não
+/// tem — traço, preenchimento, mistura, morph.
+///
+/// ⚠️ **Os ids dos controlos NÃO foram renomeados.** Um `NodeId` é o hash de uma STRING, e
+/// renomear a string quebra tudo o que a referencia por nome (este ficheiro abre a dizê-lo):
+/// `vector.bone.*` continua a ser o endereço, e o que mudou é **quem os pinta**.
+pub const SKELETON_PANEL: NodeId = hash_node_id("skeleton.panel");
+
 /// O cabeçalho da seção **SKELETON**. ⚠️ Tem de entrar em [`super::VECTOR_SECTIONS`], senão o
 /// chevron pinta, clica e **não dobra** (o `dispatch` consulta aquela lista antes de disparar o
 /// toggle) — dívida que o Text on Path e o Pattern on Path já pagaram.

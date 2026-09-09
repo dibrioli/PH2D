@@ -1,6 +1,8 @@
-//! O estado do **ESQUELETO** (estudo 42 item 5) publicado pela shell — irmão de `state.rs` pelo
-//! teto de 600 LOC daquele arquivo, e coeso pelo mesmo critério do `state_envelope`: a família
-//! inteira de uma feature, com os seus statics ao lado dos seus acessores.
+//! O estado do **ESQUELETO** publicado pela shell — a família inteira de uma feature, com os seus
+//! statics ao lado dos seus acessores.
+//!
+//! ⚠️ Ele viveu dentro do painel de vetor (`state_bone.rs`) enquanto o esqueleto era uma secção de
+//! lá; mudou-se com ele em 2026-09-09, sem uma linha de lei alterada.
 //!
 //! ⚠️ **O painel não vê o `ph2d-ecs`** (a UI vive de snapshots publicados, nunca do mundo), então o
 //! que atravessa são NÚMEROS e não componentes.
@@ -12,9 +14,6 @@ thread_local! {
     /// A seleção contém pelo menos uma forma PRESA a um esqueleto? Decide se as duas saídas
     /// (Keep Pose / Release) são oferecidas — *um botão que só sabe recusar é pior que um ausente*.
     static CURRENT_SKINNED: Cell<bool> = const { Cell::new(false) };
-    /// A CENA tem esqueleto? É o que torna a seção útil fora do modo Osso — e, sem ele, ela só
-    /// aparece na ferramenta que faz ossos. *Uma seção que fala de algo que não existe é ruído.*
-    static CURRENT_HAS_SKELETON: Cell<bool> = const { Cell::new(false) };
     /// O OSSO em foco existe? Sem ele, `Length`/`Strength` não têm sujeito.
     static CURRENT_HAS_BONE: Cell<bool> = const { Cell::new(false) };
     static CURRENT_BONE_LENGTH: Cell<f64> = const { Cell::new(0.0) };
@@ -30,14 +29,10 @@ pub(crate) fn skinned() -> bool {
     CURRENT_SKINNED.with(Cell::get)
 }
 
-/// A cena tem pelo menos um osso (publicado pela shell, todo quadro).
-pub fn set_current_has_skeleton(v: bool) {
-    CURRENT_HAS_SKELETON.with(|c| c.set(v));
-}
-
-pub(crate) fn has_skeleton() -> bool {
-    CURRENT_HAS_SKELETON.with(Cell::get)
-}
+// ⛔⛔ **`has_skeleton` NÃO existe aqui, e a ausência é a decisão** (2026-09-09). Enquanto isto era
+// uma SECÇÃO, o facto *«a cena tem esqueleto?»* atravessava para ela decidir se se pintava. Agora
+// quem decide é a shell, pela porta que todo painel já tem (`panel_visible`) — e um facto publicado
+// que ninguém lê é a espécie de estado morto que o §5.0 nomeia.
 
 /// O osso em foco e os dois números dele. `None` ⇒ a seleção não é um osso.
 pub fn set_current_bone(v: Option<(f64, f64)>) {
@@ -86,16 +81,6 @@ thread_local! {
     /// **O selector de acção que está ABERTO** — irmão do `PENDING_KEY_DD` do Morph, e pela mesma
     /// razão: a seção rola, e sem o passe diferido a lista seria cortada na borda dela.
     static PENDING_ACTION_DD: Cell<Option<Rect>> = const { Cell::new(None) };
-    /// ⭐⭐⭐ **UM OSSO ACABOU DE ENTRAR EM FOCO** — a shell pede que a secção seja REVELADA.
-    ///
-    /// ⛔⛔ **Report do dono (2026-09-08): *«selecionar o bone nem sempre abre a secção de skeleton»*,
-    /// e a medição diz porquê: o cabeçalho dela cai em `y = 1316 px` com só um osso escolhido, e em
-    /// `y = 1978` com uma forma de traço — sobre uma faixa visível de `900`.** Ela **nunca** cabe na
-    /// tela: vê-se apenas se o painel já estivesse rolado até lá, e é isso o *«nem sempre»*.
-    static REVEAL: Cell<bool> = const { Cell::new(false) };
-    /// O `y` (em coordenadas de CONTEÚDO) do cabeçalho, guardado para o passe diferido — que é o
-    /// único sítio com o `store` mutável na mão.
-    static PENDING_REVEAL_Y: Cell<Option<f32>> = const { Cell::new(None) };
 }
 
 /// **As acções do documento** (shell → painel, todo quadro em que a seção vive).
@@ -115,27 +100,32 @@ pub(crate) fn take_pending_bone_action_dd() -> Option<Rect> {
     PENDING_ACTION_DD.with(Cell::take)
 }
 
-/// **Um osso entrou em foco** (shell → painel): revela a secção SKELETON no próximo quadro.
-///
-/// ⚠️ É a mesma lei que a timeline já segue — *«seleccionar um objecto NOVO leva a timeline à aba
-/// Keys»* (Enio, 2026-07-22). Uma superfície que só existe fora da dobra é uma superfície que o
-/// artista descobre por acaso.
-pub fn set_reveal_bone_section(v: bool) {
-    if v {
-        REVEAL.with(|c| c.set(true));
-    }
+// ⛔⛔ **A ROLAGEM DE «REVELAR-AO-FOCAR» SAIU DAQUI, e é o painel próprio que a dissolveu**
+// (2026-09-09). Ela existia porque a secção caía em `y = 1394 px` sobre uma faixa visível de `774`,
+// com 785 px de secções de OUTRO assunto por cima. Neste painel o cabeçalho é a **primeira** linha
+// e o corpo inteiro mede ~620 px numa coluna de 836 — *não há dobra abaixo da qual esconder-se*.
+//
+// ⚠️ **A LEI da aresta sobreviveu, e mudou de efeito:** um osso NOVO em foco traz a **ABA** deste
+// painel para a frente (`bump_panel_z`, na shell), que é o que «revelar» quer dizer quando ele
+// divide um encaixe com o Inspector. *A pergunta era boa; o que ela comandava é que era do desenho
+// antigo.*
+
+thread_local! {
+    /// ⭐ **O VERBO do arrasto que está armado** — o ÍNDICE em `ph2d_tool_vector::BoneAction::ALL`.
+    /// `None` ⇒ a ferramenta Osso não está na mão, e a fileira *Criar × Transformar* não tem sujeito.
+    ///
+    /// ⚠️ **Um ÍNDICE e não o enum**, pelo mesmo motivo do lado da dobra: é o que mantém este painel
+    /// sem depender da crate da ferramenta de vector — e quem alinha as duas listas é a POSIÇÃO.
+    static BONE_TOOL: Cell<Option<usize>> = const { Cell::new(None) };
 }
 
-pub(crate) fn take_reveal_bone_section() -> bool {
-    REVEAL.with(Cell::take)
+/// **O verbo do arrasto** (shell → painel). `None` fora da ferramenta Osso.
+pub fn set_current_bone_tool(v: Option<usize>) {
+    BONE_TOOL.with(|c| c.set(v));
 }
 
-pub(crate) fn set_pending_bone_reveal(y: f32) {
-    PENDING_REVEAL_Y.with(|c| c.set(Some(y)));
-}
-
-pub(crate) fn take_pending_bone_reveal() -> Option<f32> {
-    PENDING_REVEAL_Y.with(Cell::take)
+pub(crate) fn bone_tool() -> Option<usize> {
+    BONE_TOOL.with(Cell::get)
 }
 
 /// A âncora do osso em foco e os três números dela (`mix`, `softness`, `chain`). `None` ⇒ ele não
@@ -209,3 +199,11 @@ pub(crate) fn current_bone_ik() -> Option<(f64, f64, f64, usize)> {
         )
     })
 }
+
+/// **O estado RETIDO do painel** — vazio, e a ausência é a decisão.
+///
+/// ⚠️ Tudo o que este painel mostra é **publicado pela shell por quadro** (os statics acima): o
+/// osso em foco, a âncora, o limite, o controlo e a lista de acções. Guardar aqui uma cópia daria
+/// uma segunda resposta a *«qual osso está aceso?»*, e as duas divergiriam no primeiro clique.
+#[derive(Default)]
+pub struct SkeletonPanelState;

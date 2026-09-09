@@ -282,7 +282,7 @@ losango seria um alvo morto.
 | F4 | **Limites de ângulo por junta** | ✅ **FECHADO** (2026-09-07) — ver abaixo |
 | F5 | ~~**Pole target**~~ → **O LADO DA DOBRA** | ✅ **FECHADO** (2026-09-07) — ver abaixo |
 | F6 | **A segunda mídia** (raster/Flip) | ⛔ **bloqueado**: precisa de uma malha sobre a imagem, que não existe — meça o preço antes de prometer |
-| F7 | **O painel próprio do módulo** | ⏸️ **a condição CAIU e a medição era falsa por ~3×** — ela dizia *«adiado até F3–F5 lhe darem conteúdo (hoje são 3 botões e 5 campos)»*, e as três estão ✅ nesta mesma tabela enquanto a secção tem **10 verbos** e **9 campos** (`VECTOR_BONE_VERBS`/`_FIELDS`, comprimento verificado pelo compilador), mais uma fileira segmentada e dois selectores. ⇒ decisão do dono, não mais um adiamento medido |
+| F7 | **O painel próprio do módulo** | ✅ **FECHADO** (2026-09-09, por escolha do dono) — ver F3-m abaixo. A nota antiga: ⏸️ **a condição CAIU e a medição era falsa por ~3×** — ela dizia *«adiado até F3–F5 lhe darem conteúdo (hoje são 3 botões e 5 campos)»*, e as três estão ✅ nesta mesma tabela enquanto a secção tem **10 verbos** e **9 campos** (`VECTOR_BONE_VERBS`/`_FIELDS`, comprimento verificado pelo compilador), mais uma fileira segmentada e dois selectores. ⇒ decisão do dono, não mais um adiamento medido |
 
 ---
 
@@ -1157,6 +1157,73 @@ o que fica mede a **LEI** que ela resolve por quadro.
 ⚠️ **Flake de carga confirmada no fecho:** `the_fit_rebuilds_the_neighbourhood_not_the_whole_stroke`
 (família `orcamento`, já catalogada no §5.0) — **5 de 5 verde sozinha** a `loadavg 17,0–17,5`, com
 zero linhas do diff naquele ficheiro.
+
+
+### F3-m — ✅ **O ESQUELETO TEM PAINEL PRÓPRIO** (escolha do dono, 2026-09-09)
+
+⭐⭐⭐ **A medição que pôs a escolha na mesa.** Com **só um osso** seleccionado, o painel de vector
+pinta, acima da secção Skeleton:
+
+| secção acima | espaço | um osso tem isso? |
+|---|---|---|
+| Traço | 422 px | não |
+| Encaixe | 246 px | é do desenho |
+| Mistura | 188 px | não |
+| Preenchimento | 88 px | não |
+| Morph | 87 px | não |
+
+⇒ **785 px de coisas que um osso não tem**, empurrando o cabeçalho para `y = 1394` sobre uma faixa
+visível de `774`. *Era esta a raiz do report de 08/09* — o revelar-ao-focar tratou o sintoma.
+
+⚠️ **As três saídas foram postas ao dono com o preço de cada uma** (esconder o que não serve ·
+painel próprio · deixar como está) — a primeira estava perto de uma recusa dele (*a cura «esconder»
+das faces do balde foi construída e revertida por ordem dele*). **Ele escolheu o painel próprio.**
+
+**O que a wave fez, e a ordem importa:**
+
+| passo | porquê ele veio primeiro |
+|---|---|
+| `ph2d_editor_core::panel::RowCtx` | o vocabulário de linhas passou a ter **dois** hospedeiros; duplicar ~200 linhas duplicaria o **RITMO**, e duas cópias divergem no primeiro vão que alguém mexe |
+| `ph2d-panel-skeleton` | crate nova: `state` · `section` · `paint` · `seam`, com os controlos movidos |
+| a shell | publica os factos para o painel novo, **decide a visibilidade**, e traz a aba à frente |
+
+⚠️ **Os ids NÃO foram renomeados.** Um `NodeId` é o hash de uma STRING: `vector.bone.*` continua a
+ser o endereço de cada controlo, e o que mudou é **quem os pinta**. Renomeá-los quebraria o registo,
+o encaminhamento e os gates — e o ganho seria estético.
+
+⚠️ **Os 147 chamadores do painel de vector não mudaram**: o `BodyCtx` manteve os métodos e passou a
+**delegar** por uma porta (`with_rows`). *Uma extracção que obriga 147 sítios a mudar de nome no
+mesmo commit é uma extracção que colide com toda linha viva.*
+
+⚠️⚠️ **DUAS leis mudaram de DONO, e as duas levaram o gate atrás:**
+
+| lei | dono antigo | dono novo |
+|---|---|---|
+| *a secção some numa cena sem ossos* | a própria secção | a **shell** (`panel_visible`), gate `the_shell_opens_it_from_the_scene_and_from_the_tool` |
+| *um osso novo REVELA* | rolagem da secção | a **aba** (`bump_panel_z`), gate `a_new_bone_in_focus_brings_the_tab_forward` |
+
+⛔⛔ **E o «revelar-ao-focar» DISSOLVEU-SE como rolagem** — não foi apagado por gosto: neste painel o
+cabeçalho é a **primeira** linha e o corpo mede ~620 px numa coluna de 836; *não há dobra abaixo da
+qual esconder-se*. A **lei da aresta sobreviveu inteira** (`skeleton_reveal::on_focus` e os dois
+gates dela) e passou a comandar a aba. *A pergunta era boa; o que ela comandava é que era do desenho
+antigo.*
+
+⚠️ **O pill do modo Osso ficou no painel de VECTOR** — ele é o selector de **ferramenta**, e o que
+se mudou foram os controlos do OSSO, não o modo que os cria.
+
+⛔⛔ **TRÊS vermelhos que só a árvore inteira tinha**, e nenhum deles no que a wave editava:
+
+| gate | o que ele apanhou |
+|---|---|
+| `every_registered_panel_is_reachable_by_the_z_order_walk` | o painel nasceu **registado, visível e nunca pintado** — a guarda que este repo construiu exactamente para isto |
+| `cargo_*_in_sync_with_folder` | eu editei **à mão** blocos que o `ph2d-panel-sync` **gera** |
+| `workspace_src_files_under_loc_cap` | o `doc.rs` da timeline passou 700 com a porta dos nomes de ontem |
+
+⚠️⚠️ **E a 1.ª redacção dos dois gates novos era VÁCUA: as três mutações SOBREVIVERAM.** Eles
+procuravam os nomes numa **janela de bytes** à volta da chamada — e as linhas que os DECLARAM caem
+dentro da janela, então tirar um do ARGUMENTO não movia nada. ⇒ a âncora passou a ser a **linha do
+argumento**. *Um gate que mede a vizinhança de um nome mede o nome, não a origem* — a mesma família
+que mordeu o gizmo do limite em 08/09.
 
 
 ## ⛔ Recusas MEDIDAS deste módulo — não as reconstrua

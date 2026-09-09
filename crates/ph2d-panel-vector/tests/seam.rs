@@ -2695,3 +2695,36 @@ fn the_apply_button_only_exists_when_something_is_live() {
     ph2d_panel_vector::state_symmetry::set_symmetry_live_count(0);
     ph2d_panel_vector::set_current_vector_style(None);
 }
+
+/// ⭐ **O PILL do modo Osso troca a ferramenta.** É a metade que o bug #29 mediu no lado dos
+/// modos: um pill fora da allowlist pinta, acende e o modo nunca muda.
+///
+/// ⚠️ Ele vive AQUI e não no painel do esqueleto (2026-09-09): o pill é o **selector de
+/// ferramenta**, que é do painel de vector — o que se mudou para o painel próprio foram os
+/// controlos do OSSO, não o modo que os cria.
+#[test]
+fn clicking_bone_pill_reaches_the_tool() {
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut panel_state = VectorPanelState;
+    let mut tool = VectorTool::default();
+    assert_ne!(tool.mode(), DrawMode::Bone, "precondition: nao e Bone");
+
+    let outcome = host.apply_panel_event::<VectorPanel>(
+        &mut panel_state,
+        WidgetEvent::Click(ids::VECTOR_MODE_BONE),
+    );
+    assert_eq!(
+        outcome,
+        EventOutcome::Consumed,
+        "o pill Bone nao foi consumido — falta o id na allowlist de `event.rs`"
+    );
+    assert!(
+        drain_into_tool(&mut host, &mut tool),
+        "o clique nunca virou ToolPanelEvent — o seam painel->shell esta morto"
+    );
+    assert_eq!(
+        tool.mode(),
+        DrawMode::Bone,
+        "o clique chegou ao bus mas nao virou modo — falta o arm em `handle_panel_event`"
+    );
+}

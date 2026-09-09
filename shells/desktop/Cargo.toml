@@ -285,6 +285,7 @@ ph2d-panel-padding = { path = "../../crates/ph2d-panel-padding", optional = true
 # (Inspector slot takeover) while the `vector` tool is active. Shell publishes
 # the snapshot via `ph2d_panel_vector::set_current_vector_style` (vector_bridge).
 ph2d-panel-vector = { path = "../../crates/ph2d-panel-vector", optional = true }
+ph2d-panel-skeleton = { path = "../../crates/ph2d-panel-skeleton", optional = true }
 # Flip Style panel (ADR-0114 W2) — typed panel with the `flip` tool's Mode /
 # Brush / Color / Layers controls. Right-docked (Inspector slot takeover) while
 # the `flip` tool is active. Shell publishes the style + layers snapshots via
@@ -599,6 +600,7 @@ default = [
     "panel-upscale",
     "panel-painter-layers",
     "panel-vector",
+    "panel-skeleton",
     "panel-flip",
     "panel-flip-frames",
     "panel-audio-mixer",
@@ -650,6 +652,10 @@ panel-motion-params  = ["ph2d-panel-registry-init/panel-motion-params", "dep:ph2
 # snapshot via `ph2d_panel_vector::set_current_vector_style` + reads the OKLCH
 # picker back into the tool), so the shell needs the direct dep too.
 panel-vector         = ["ph2d-panel-registry-init/panel-vector", "dep:ph2d-panel-vector"]
+# ⭐⭐⭐ O painel do ESQUELETO — a shell publica-lhe o osso em foco, a âncora, o limite e o controlo
+# por quadro (`ph2d_panel_skeleton::set_current_*`), e decide se ele é visto: ele só tem sujeito
+# numa cena que tem ossos.
+panel-skeleton       = ["ph2d-panel-registry-init/panel-skeleton", "dep:ph2d-panel-skeleton"]
 # Flip Style panel + its render_loop bridge (`flip_bridge` publishes the style +
 # layers snapshots via `ph2d_panel_flip::set_current_flip_*` + reads the OKLCH
 # picker back into the tool), so the shell needs the direct dep too.

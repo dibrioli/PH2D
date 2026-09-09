@@ -229,22 +229,10 @@ impl BodyCtx<'_> {
         self.with_rows(|r| r.action_button_kind(id, label, kind, y))
     }
 
-    /// ⭐ **Um BOTÃO rotulado** (`<rótulo> [ botão ]`) — a mesma geometria do
-    /// [`Self::labeled_number_field`], com um botão no lugar da caixa.
-    ///
-    /// ⚠️ Ele existe porque um botão que é também o **readout** de uma escolha precisa da coluna de
-    /// rótulo dos vizinhos: sem ela, o nome do objecto escolhido lê-se como mais um verbo de largura
-    /// cheia, e a linha deixa de dizer de que campo é. `on` acende-o (o gesto está ARMADO).
-    pub(crate) fn labeled_action_button(
-        &mut self,
-        label: &str,
-        id: ph2d_a11y::NodeId,
-        text: &str,
-        on: bool,
-        y: f32,
-    ) -> f32 {
-        self.with_rows(|r| r.labeled_action_button(label, id, text, on, y))
-    }
+    // ⛔ **O `labeled_action_button` saiu daqui** (2026-09-09): o único chamador era a secção do
+    // esqueleto, que passou a ter painel próprio. A composição continua a existir **uma vez**, na
+    // porta partilhada ([`ph2d_editor_core::panel::RowCtx`]) — o que sai é a delegação sem
+    // chamador, que é a espécie de código morto que o `dead_code` nomeia.
 
     /// **Uma linha de DOIS campos numéricos rotulados** (X | Y, W | H, Gap principal | transversal).
     ///

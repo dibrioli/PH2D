@@ -121,14 +121,6 @@ mod blend;
 #[path = "paint_envelope.rs"]
 mod envelope;
 
-/// ⭐ A seção **Skeleton** (estudo 42 item 5) — módulo irmão (teto de 600 LOC).
-///
-/// ⚠️ `pub(crate)` porque o **popover** do selector de acção é pintado no passe DIFERIDO do
-/// `paint.rs`, como o do Morph e o da mistura de filtro: a seção rola, e uma lista pintada dentro
-/// dela seria cortada na borda.
-#[path = "paint_bone.rs"]
-pub(crate) mod bone;
-
 /// A seção **Text on Path** (plano 22) — módulo irmão (teto de 600 LOC).
 #[path = "paint_textpath.rs"]
 mod textpath;
@@ -362,7 +354,6 @@ impl BodyCtx<'_> {
         // ⭐ O ESQUELETO, colado no Envelope: os dois DEFORMAM formas que já existem, e lidos um a
         // seguir ao outro ensinam a diferença — uma gaiola de quatro cantos contra uma cadeia de
         // ossos que a hierarquia move. Todos os controlos dela morrem numa guarda de seleção.
-        y = self.step_in(y, snap.mode, scope::ALWAYS, |b, y| b.bone_section(snap, y));
         // Pattern on Path é da MESMA família (geometria derivada de uma relação: motivo + guia).
         // Só sobe quando há vínculo ou a seleção o permite (plano 23), então não vira ruído.
         y = self.step_in(y, snap.mode, scope::ALWAYS, Self::patternpath_section);

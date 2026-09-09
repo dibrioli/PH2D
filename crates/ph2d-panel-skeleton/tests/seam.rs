@@ -13,13 +13,14 @@
 //! [bug #29]: ../../../docs/Vector%20Module/BUGS_vector.md
 
 use ph2d_editor_core::action_bus::EditorAction;
+use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::zones::Rect;
 use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
-use ph2d_panel_vector::state::VectorPanelState;
-use ph2d_panel_vector::{VectorPanel, ids, state};
+use ph2d_panel_skeleton::state::SkeletonPanelState;
+use ph2d_panel_skeleton::{SkeletonPanel, state};
 use ph2d_ui_testkit::MockPanelHost;
 
 const VIEWPORT: Rect = Rect {
@@ -45,13 +46,11 @@ fn pointer(kind: PointerKind, x: f32, y: f32, t: u128) -> PointerEvent {
 /// A cena tem esqueleto, a selecção está presa e há um osso em foco — o estado em que **todos** os
 /// controlos da seção são oferecidos.
 fn publica_tudo() {
-    state::set_current_has_skeleton(true);
     state::set_current_skinned(true);
     state::set_current_bone(Some((20.0, 1.0)));
 }
 
 fn limpa() {
-    state::set_current_has_skeleton(false);
     state::set_current_skinned(false);
     state::set_current_bone(None);
     state::set_current_bone_ik(None);
@@ -65,10 +64,10 @@ fn limpa() {
 /// painel mas **pula a checagem de focabilidade no store** — as duas metades falham de maneiras
 /// diferentes, e um gate que só faz uma fica verde sobre a outra.
 fn clica(id: ph2d_a11y::NodeId, what: &str) -> Vec<EditorAction> {
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
-    let mut st = VectorPanelState;
+    let mut host = MockPanelHost::with_panel::<SkeletonPanel>();
+    let mut st = SkeletonPanelState;
     let r = host
-        .painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
+        .painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, id)
         .unwrap_or_else(|| panic!("{what} nao foi PINTADO com area clicavel"));
     let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
     host.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, SEC));
@@ -80,7 +79,7 @@ fn clica(id: ph2d_a11y::NodeId, what: &str) -> Vec<EditorAction> {
          para o dispatcher (falta o `register` no populate)"
     );
     for ev in evs {
-        host.apply_panel_event::<VectorPanel>(&mut st, ev);
+        host.apply_panel_event::<SkeletonPanel>(&mut st, ev);
     }
     host.drained_actions()
 }
@@ -131,17 +130,17 @@ fn every_verb_of_the_skeleton_reaches_the_bus() {
 fn every_number_of_the_skeleton_reaches_the_bus() {
     for id in ids::VECTOR_BONE_FIELDS {
         estado_de(id);
-        let mut host = MockPanelHost::with_panel::<VectorPanel>();
-        let mut st = VectorPanelState;
+        let mut host = MockPanelHost::with_panel::<SkeletonPanel>();
+        let mut st = SkeletonPanelState;
         assert!(
-            host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
+            host.painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, id)
                 .is_some(),
             "{id:?} nao foi PINTADO — declare em `estado_de` sob que estado ele existe"
         );
         // ⚠️ O valor entra pelo STORE e o evento só diz *«este mudou»* — é o contrato do
         // `ValueChanged`, e escrever o número no evento mediria outro programa.
         host.store_mut().set_number_value(id, 0.5);
-        host.apply_panel_event::<VectorPanel>(&mut st, WidgetEvent::ValueChanged(id));
+        host.apply_panel_event::<SkeletonPanel>(&mut st, WidgetEvent::ValueChanged(id));
         let acoes = host.drained_actions();
         assert!(
             acoes.iter().any(|a| matches!(
@@ -221,10 +220,10 @@ fn estado_de(id: ph2d_a11y::NodeId) {
 #[test]
 fn the_action_picker_lists_the_document_and_the_choice_reaches_the_bus() {
     estado_de(ids::VECTOR_BONE_SMART_CLIP);
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
-    let mut st = VectorPanelState;
+    let mut host = MockPanelHost::with_panel::<SkeletonPanel>();
+    let mut st = SkeletonPanelState;
     let chip = host
-        .painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::VECTOR_BONE_SMART_CLIP)
+        .painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, ids::VECTOR_BONE_SMART_CLIP)
         .expect("o chip da acção não foi PINTADO — o osso inteligente volta a não ter sujeito");
     // Abrir a lista.
     host.dispatch_pointer_event(pointer(PointerKind::Down, chip.x + 2.0, chip.y + 2.0, SEC));
@@ -235,12 +234,12 @@ fn the_action_picker_lists_the_document_and_the_choice_reaches_the_bus() {
         SEC + SEC / 100,
     ));
     for ev in evs {
-        host.apply_panel_event::<VectorPanel>(&mut st, ev);
+        host.apply_panel_event::<SkeletonPanel>(&mut st, ev);
     }
     // A 2.ª opção é a acção do osso — escolher a 1.ª (`Main`) é o gesto que o report pedia.
     let opt = ids::VECTOR_BONE_SMART_CLIP_IDS[0];
     let r = host
-        .painted_rect::<VectorPanel>(&mut st, VIEWPORT, opt)
+        .painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, opt)
         .expect("com a lista ABERTA a acção tem de ser pintada — senão não é escolhível");
     let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
     host.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, 2 * SEC));
@@ -251,7 +250,7 @@ fn the_action_picker_lists_the_document_and_the_choice_reaches_the_bus() {
         "a opção da lista está desenhada e MORTA sob o ponteiro"
     );
     for ev in evs {
-        host.apply_panel_event::<VectorPanel>(&mut st, ev);
+        host.apply_panel_event::<SkeletonPanel>(&mut st, ev);
     }
     assert!(
         host.drained_actions().into_iter().any(|a| matches!(
@@ -277,10 +276,10 @@ fn the_action_picker_lists_the_document_and_the_choice_reaches_the_bus() {
 #[test]
 fn the_option_you_press_is_the_one_you_see() {
     estado_de(ids::VECTOR_BONE_SMART_CLIP);
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
-    let mut st = VectorPanelState;
+    let mut host = MockPanelHost::with_panel::<SkeletonPanel>();
+    let mut st = SkeletonPanelState;
     let chip = host
-        .painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::VECTOR_BONE_SMART_CLIP)
+        .painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, ids::VECTOR_BONE_SMART_CLIP)
         .expect("o chip da acção");
     host.dispatch_pointer_event(pointer(PointerKind::Down, chip.x + 2.0, chip.y + 2.0, SEC));
     let evs = host.dispatch_pointer_event(pointer(
@@ -290,14 +289,14 @@ fn the_option_you_press_is_the_one_you_see() {
         SEC + SEC / 100,
     ));
     for ev in evs {
-        host.apply_panel_event::<VectorPanel>(&mut st, ev);
+        host.apply_panel_event::<SkeletonPanel>(&mut st, ev);
     }
     // As duas opções publicadas (`Main`, `Walk`) têm de sair NESTA ordem, de cima para baixo.
     let r0 = host
-        .painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::VECTOR_BONE_SMART_CLIP_IDS[0])
+        .painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, ids::VECTOR_BONE_SMART_CLIP_IDS[0])
         .expect("a 1.ª opção");
     let r1 = host
-        .painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::VECTOR_BONE_SMART_CLIP_IDS[1])
+        .painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, ids::VECTOR_BONE_SMART_CLIP_IDS[1])
         .expect("a 2.ª opção");
     assert!(
         r1.y > r0.y,
@@ -327,10 +326,10 @@ fn a_bone_without_an_action_is_offered_no_picker() {
     publica_tudo();
     state::set_current_bone_smart(None);
     state::set_current_bone_actions(Vec::new());
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
-    let mut st = VectorPanelState;
+    let mut host = MockPanelHost::with_panel::<SkeletonPanel>();
+    let mut st = SkeletonPanelState;
     assert!(
-        host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::VECTOR_BONE_SMART_CLIP)
+        host.painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, ids::VECTOR_BONE_SMART_CLIP)
             .is_none(),
         "o selector de acção foi pintado num osso sem acção — ele só saberia escrever num \
          componente ausente"
@@ -359,20 +358,6 @@ fn the_bend_row_has_exactly_one_segment_per_variant_of_the_law() {
     );
 }
 
-/// ⭐ **O PILL do modo Osso troca a ferramenta.** É a metade que o bug #29 mediu no lado dos
-/// modos: um pill fora da allowlist pinta, acende e o modo nunca muda.
-#[test]
-fn the_bone_pill_reaches_the_tool() {
-    let acoes = clica(ids::VECTOR_MODE_BONE, "o pill Bone");
-    assert!(
-        acoes.iter().any(|a| matches!(
-            a,
-            EditorAction::ToolPanelEvent(PanelEvent::Click(c)) if *c == ids::VECTOR_MODE_BONE
-        )),
-        "o pill Bone nao chegou a' ferramenta"
-    );
-}
-
 /// ⛔ **AS DUAS SAÍDAS SÓ EXISTEM COM UMA FORMA PRESA** — e o `Bind` existe sempre que a seção
 /// existe. *Um botão que só sabe recusar é pior que um botão ausente.*
 ///
@@ -381,12 +366,11 @@ fn the_bone_pill_reaches_the_tool() {
 #[test]
 fn the_two_exits_appear_only_when_something_is_bound() {
     let sem = |id| {
-        let mut host = MockPanelHost::with_panel::<VectorPanel>();
-        let mut st = VectorPanelState;
-        host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
+        let mut host = MockPanelHost::with_panel::<SkeletonPanel>();
+        let mut st = SkeletonPanelState;
+        host.painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, id)
             .is_some()
     };
-    state::set_current_has_skeleton(true);
     state::set_current_skinned(false);
     state::set_current_bone(None);
     assert!(sem(ids::VECTOR_BONE_BIND), "o Bind tem de estar la' sempre");
@@ -402,38 +386,25 @@ fn the_two_exits_appear_only_when_something_is_bound() {
     limpa();
 }
 
-/// ⛔ **A SEÇÃO INTEIRA SOME num app sem esqueleto nenhum** (fora da ferramenta que faz ossos).
-///
-/// É a lei da tabela de escopo, aplicada ao caso que ela não cobre: aqui o sujeito não é a
-/// ferramenta na mão nem a selecção, é *a cena ter ou não ossos*.
-#[test]
-fn the_whole_section_is_absent_from_an_app_that_has_no_bones() {
-    limpa();
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
-    let mut st = VectorPanelState;
-    for (id, what) in [
-        (ids::VECTOR_SECTION_BONE, "o cabecalho"),
-        (ids::VECTOR_BONE_BIND, "o Bind"),
-    ] {
-        assert!(
-            host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
-                .is_none(),
-            "{what} foi pintado numa cena sem osso nenhum"
-        );
-    }
-}
+// ⛔⛔ **A AUSÊNCIA do painel numa cena sem ossos MUDOU DE DONO** (2026-09-09).
+//
+// Enquanto isto era uma secção do painel de vetor, ela decidia sozinha se se pintava. Com painel
+// próprio, quem decide é a **shell** (`panel_visible`) — a mesma porta de todos os painéis —, e o
+// gate que mede a lei vive lá: `the_skeleton_panel_only_opens_where_it_has_a_subject`.
+//
+// ⚠️ *Uma lei que muda de dono e deixa o gate para trás é uma lei sem prova* — por isso ela sai
+// daqui com o endereço do sítio novo, e não em silêncio.
 
 /// ⭐⭐ **OS DOIS NÚMEROS DO OSSO SÓ EXISTEM COM UM OSSO EM FOCO** — sem sujeito, um campo é a
 /// espécie de controlo morto que o `CLAUDE.md` §5.0 nomeia.
 #[test]
 fn the_two_bone_numbers_need_a_bone_in_focus() {
-    state::set_current_has_skeleton(true);
     state::set_current_skinned(false);
     state::set_current_bone(None);
     let pintado = |id| {
-        let mut host = MockPanelHost::with_panel::<VectorPanel>();
-        let mut st = VectorPanelState;
-        host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
+        let mut host = MockPanelHost::with_panel::<SkeletonPanel>();
+        let mut st = SkeletonPanelState;
+        host.painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, id)
             .is_some()
     };
     assert!(
@@ -448,13 +419,12 @@ fn the_two_bone_numbers_need_a_bone_in_focus() {
     limpa();
 }
 
-/// Põe a ferramenta no modo Osso com o verbo pedido — o estado em que o grupo alternável existe.
-fn modo_osso(action: ph2d_tool_vector::BoneAction) {
-    state::set_current_vector_style(Some(ph2d_tool_vector::VectorStyleSnapshot {
-        mode: ph2d_tool_vector::DrawMode::Bone,
-        bone_action: action,
-        ..Default::default()
-    }));
+/// Põe a ferramenta OSSO na mão com o verbo pedido — o estado em que o grupo alternável existe.
+///
+/// ⚠️ O que atravessa é o **ÍNDICE** em `BoneAction::ALL`, não o enum: é o que mantém este painel
+/// sem depender da crate da ferramenta de vector.
+fn modo_osso(verbo: usize) {
+    state::set_current_bone_tool(Some(verbo));
 }
 
 /// ⭐⭐⭐ **OS DOIS SEGMENTOS DE CRIAR × TRANSFORMAR CHEGAM À FERRAMENTA** (Enio, 2026-09-07).
@@ -466,7 +436,7 @@ fn modo_osso(action: ph2d_tool_vector::BoneAction) {
 #[test]
 fn both_segments_of_create_and_transform_reach_the_tool() {
     publica_tudo();
-    modo_osso(ph2d_tool_vector::BoneAction::Create);
+    modo_osso(0);
     for (id, nome) in [
         (ids::VECTOR_BONE_ACT_CREATE, "Create"),
         (ids::VECTOR_BONE_ACT_TRANSFORM, "Transform"),
@@ -481,7 +451,7 @@ fn both_segments_of_create_and_transform_reach_the_tool() {
         );
     }
     limpa();
-    state::set_current_vector_style(None);
+    state::set_current_bone_tool(None);
 }
 
 /// ⛔ **O grupo só existe no MODO Osso.** Fora dele o arrasto não faz osso nenhum, então perguntar
@@ -492,23 +462,20 @@ fn both_segments_of_create_and_transform_reach_the_tool() {
 #[test]
 fn the_create_transform_group_exists_only_in_the_bone_mode() {
     let pintado = |id| {
-        let mut host = MockPanelHost::with_panel::<VectorPanel>();
-        let mut st = VectorPanelState;
-        host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
+        let mut host = MockPanelHost::with_panel::<SkeletonPanel>();
+        let mut st = SkeletonPanelState;
+        host.painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, id)
             .is_some()
     };
     publica_tudo();
-    modo_osso(ph2d_tool_vector::BoneAction::Create);
+    modo_osso(0);
     assert!(
         pintado(ids::VECTOR_BONE_ACT_CREATE) && pintado(ids::VECTOR_BONE_ACT_TRANSFORM),
         "no modo Osso os dois segmentos tem de ser pintados"
     );
     // Com esqueleto na cena mas NOUTRO modo: a seção continua (os números do osso valem em toda
     // ferramenta), e o grupo do verbo NÃO.
-    state::set_current_vector_style(Some(ph2d_tool_vector::VectorStyleSnapshot {
-        mode: ph2d_tool_vector::DrawMode::Select,
-        ..Default::default()
-    }));
+    state::set_current_bone_tool(None);
     assert!(
         !pintado(ids::VECTOR_BONE_ACT_CREATE) && !pintado(ids::VECTOR_BONE_ACT_TRANSFORM),
         "fora do modo Osso o grupo do verbo nao tem sujeito e nao pode ser oferecido"
@@ -518,5 +485,5 @@ fn the_create_transform_group_exists_only_in_the_bone_mode() {
         "a seccao SKELETON continua fora do modo Osso - o controlo dela e' que nao"
     );
     limpa();
-    state::set_current_vector_style(None);
+    state::set_current_bone_tool(None);
 }

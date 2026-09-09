@@ -28,6 +28,12 @@ pub const PANEL_Z_ORDER_FALLBACK: &[ph2d_a11y::NodeId] = &[
     // over the inspector slot while the `vector` tool is active. Its
     // `paint()` no-ops when hidden, so this is inert otherwise.
     ids::VECTOR_PANEL,
+    // ⭐⭐⭐ O painel do ESQUELETO (`ph2d-panel-skeleton`, 2026-09-09): encaixa na coluna da
+    // direita, com a visibilidade conduzida pela shell (*a cena tem ossos, ou a ferramenta que os
+    // cria está na mão*). O `paint()` dele sai cedo quando escondido, então esta entrada é inerte
+    // no resto do tempo — e SEM ela o painel registado e visível nunca é alcançado pelo passeio, e
+    // nunca é pintado.
+    ids::SKELETON_PANEL,
     // Flip tool Style panel (ADR-0114 W2 docked `ph2d-panel-flip`): docks
     // over the inspector slot while the `flip` tool is active (bridge-driven
     // visibility). Its `paint()` no-ops when hidden, so this is inert

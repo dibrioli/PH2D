@@ -441,19 +441,9 @@ pub(crate) use slot_index::{
     shape_index, text_axis_index,
 };
 
-/// ⭐ O estado do **ESQUELETO** (estudo 42 item 5) — módulo irmão pelo mesmo teto de 600 LOC.
-#[path = "state_bone.rs"]
-mod bone;
-pub use bone::{
-    SmartBoneView, set_current_bone, set_current_bone_actions, set_current_bone_ik,
-    set_current_bone_limit, set_current_bone_smart, set_current_has_skeleton, set_current_skinned,
-    set_reveal_bone_section,
-};
-pub(crate) use bone::{
-    bone_actions, current_bone, current_bone_ik, current_bone_limit, current_bone_smart,
-    has_skeleton, set_pending_bone_action_dd, set_pending_bone_reveal, skinned,
-    take_pending_bone_action_dd, take_pending_bone_reveal, take_reveal_bone_section,
-};
+// ⛔ **O estado do ESQUELETO saiu daqui** (2026-09-09) — ele mudou-se com a secção para a
+// `ph2d-panel-skeleton`, que é quem o lê. *Um facto publicado que ninguém neste painel lê seria
+// estado morto.*
 
 /// O estado do **Text on Path** (plano 22) — módulo irmão pelo mesmo teto de 600 LOC.
 #[path = "state_textpath.rs"]

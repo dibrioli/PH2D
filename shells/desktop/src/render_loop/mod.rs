@@ -9188,13 +9188,31 @@ impl crate::App {
                             .is_some()
                     })
                 });
-                ph2d_panel_vector::set_current_skinned(presa);
+                ph2d_panel_skeleton::set_current_skinned(presa);
                 // E se a CENA tem esqueleto — é isso que faz a seção aparecer (ou não) fora do modo
                 // Osso. ⛔ Sem esta metade ela seria um cabeçalho permanente num app que nunca viu
                 // um osso, que é exactamente o report que a tabela de escopo curou em 31/08.
-                ph2d_panel_vector::set_current_has_skeleton(
-                    !crate::skeleton_live::bone_segments(sim).is_empty(),
+                // ⭐⭐⭐ **A CENA TEM ESQUELETO? É isso que ABRE o painel dele** (2026-09-09).
+                //
+                // ⚠️ Enquanto isto era uma secção do painel de vetor, o facto atravessava para ela
+                // decidir se se pintava. Com painel próprio, quem decide é a shell — a mesma porta
+                // de todos os painéis —, e a lei é a mesma: *um painel que fala de algo que não
+                // existe é ruído*, e com um esqueleto na cena ele vale em TODA ferramenta (o osso
+                // posa-se com a seta).
+                let tem_esqueleto = !crate::skeleton_live::bone_segments(sim).is_empty();
+                let ferramenta_osso = self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Bone;
+                <_ as ph2d_editor::panel::PanelHostInternal>::set_panel_visible(
+                    hero,
+                    <ph2d_panel_skeleton::SkeletonPanel as ph2d_editor::panel::Panel>::ID,
+                    tem_esqueleto || ferramenta_osso,
                 );
+                // ⭐ E o VERBO do arrasto, como ÍNDICE — é o que mantém aquele painel sem depender
+                // da crate da ferramenta de vector.
+                ph2d_panel_skeleton::set_current_bone_tool(ferramenta_osso.then(|| {
+                    usize::from(
+                        self.vec_draw_config.bone_action == ph2d_tool_vector::BoneAction::Transform,
+                    )
+                }));
                 // ⭐⭐⭐ **O PICK DO ALVO RESOLVE-SE AQUI**, antes de se perguntar qual osso está em
                 // foco — e a ordem é o desenho: quem resolve é *«a selecção passou a ser outra
                 // coisa»*, e o clique que a mudou pode ter vindo do CANVAS **ou** da HIERARQUIA. As
@@ -9256,8 +9274,18 @@ impl crate::App {
                 // ⚠️ **Quem decide se ROLA é o painel**, que é o único sítio onde a faixa visível e
                 // o `y` do cabeçalho existem: daqui sai o *pedido*, e um cabeçalho já à vista fica
                 // onde está.
+                // ⭐⭐⭐ **UM OSSO NOVO TRAZ A ABA DO PAINEL PARA A FRENTE.**
+                //
+                // ⛔⛔ **É o sucessor do «revelar-ao-focar»** (report do dono, 2026-09-08), e o
+                // painel próprio mudou-lhe o EFEITO sem mudar a lei: a rolagem existia porque a
+                // secção caía `1394 px` abaixo de 785 px de outro assunto; aqui o cabeçalho é a
+                // primeira linha e não há dobra onde se esconder. O que sobra é o encaixe
+                // partilhado — se o Inspector estiver por cima, revelar é **trazer a aba**.
+                //
+                // ⚠️ A ARESTA continua a ser a lei (`skeleton_reveal::on_focus`): pedi-lo em todo
+                // quadro prenderia a aba e o artista não conseguiria olhar para outra.
                 if crate::skeleton_reveal::on_focus(&mut self.osso_revelado, osso_em_foco) {
-                    ph2d_panel_vector::set_reveal_bone_section(true);
+                    hero.store.bump_panel_z(ph2d_editor::ids::SKELETON_PANEL);
                 }
                 // ⭐ **PORQUE a secção não tem sujeito** (report do dono, 2026-09-08: *«seleccionar o
                 // bone nem sempre abre a secção de skeleton»*). ⚠️ A pergunta tem três respostas que
@@ -9286,7 +9314,7 @@ impl crate::App {
                         );
                     }
                 }
-                ph2d_panel_vector::set_current_bone(osso_em_foco.and_then(|b| {
+                ph2d_panel_skeleton::set_current_bone(osso_em_foco.and_then(|b| {
                     sim.world()
                         .get::<ph2d_skeleton_ecs::Bone>(ph2d_ecs::Entity::from_bits(b))
                         .map(|v| (v.length, v.strength))
@@ -9296,7 +9324,7 @@ impl crate::App {
                 // os números do osso (`selected_bone`): duas perguntas *"qual osso está aceso?"*
                 // divergiriam no primeiro clique.
                 // ⭐ O limite da junta em foco, em GRAUS — a mesma porta e o mesmo guarda de foco.
-                ph2d_panel_vector::set_current_bone_limit(osso_em_foco.and_then(|b| {
+                ph2d_panel_skeleton::set_current_bone_limit(osso_em_foco.and_then(|b| {
                     sim.world()
                         .get::<ph2d_skeleton_ecs::BoneLimit>(ph2d_ecs::Entity::from_bits(b))
                         .map(|l| (l.min.to_degrees(), l.max.to_degrees()))
@@ -9309,8 +9337,8 @@ impl crate::App {
                         .get::<ph2d_skeleton_ecs::SmartBone>(ph2d_ecs::Entity::from_bits(b))
                         .cloned()
                 });
-                ph2d_panel_vector::set_current_bone_smart(smart.as_ref().map(|s| {
-                    ph2d_panel_vector::SmartBoneView {
+                ph2d_panel_skeleton::set_current_bone_smart(smart.as_ref().map(|s| {
+                    ph2d_panel_skeleton::SmartBoneView {
                         from: s.from.to_degrees(),
                         to: s.to.to_degrees(),
                         clip: s.clip.clone(),
@@ -9321,12 +9349,12 @@ impl crate::App {
                 // ⭐⭐⭐ **A lista de ACÇÕES, filtrada pelo ALVO** — é ela que responde *«qual
                 // animação?»* na tela. ⚠️ Publicada **só** quando há um osso inteligente em foco:
                 // sem sujeito ela seria um selector sem nada para escolher.
-                ph2d_panel_vector::set_current_bone_actions(
+                ph2d_panel_skeleton::set_current_bone_actions(
                     smart.as_ref().map_or_else(Vec::new, |s| {
                         crate::skeleton_smart::actions_for(sim.world(), &self.timeline.doc, s)
                     }),
                 );
-                ph2d_panel_vector::set_current_bone_ik(osso_em_foco.and_then(|b| {
+                ph2d_panel_skeleton::set_current_bone_ik(osso_em_foco.and_then(|b| {
                     sim.world()
                         .get::<ph2d_skeleton_ecs::IkGoal>(ph2d_ecs::Entity::from_bits(b))
                         .map(|g| (g.mix, g.softness, f64::from(g.chain), g.bend))

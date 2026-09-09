@@ -120,6 +120,11 @@ pub struct PincelTecido {
 #[path = "verlet_gesto_forca.rs"]
 mod forca;
 
+/// ⭐ **O QUANTUM DE ARRASTO, re-exportado** — ele tem **dois** consumidores (a
+/// lei do Expand e o adaptador do produto, que parte o arrasto do artista em
+/// passos) e por isso **um** dono. Ver [`forca::QUANTUM_DE_ARRASTO`].
+pub use forca::QUANTUM_DE_ARRASTO;
+
 impl PincelTecido {
     /// O pen-down: a simulação nasce nas posições ACTUAIS, que passam a ser o
     /// repouso do traço.

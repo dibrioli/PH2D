@@ -80,27 +80,90 @@ fn um_filtro_toca_a_peca_inteira_e_um_carimbo_toca_um_disco() {
 /// ⭐⭐⭐ **O FILTRO DE TECIDO ACUMULA; O DE MALHA NÃO.**
 ///
 /// É a diferença de GESTO entre os dois, e ela é load-bearing: o
-/// [`super::stroke_filter`] repõe a pose congelada a cada passo (dois passos com
-/// a mesma força dão o MESMO resultado — voltar com o dedo desfaz), e a espec §7
-/// manda o filtro de tecido correr **um passo de simulação por movimento do
-/// rato**. ⛔ Se alguém puser um `restore_frozen_pose` aqui, o pano deixa de cair
-/// e este gate reprova.
+/// [`super::stroke_filter`] repõe a pose congelada a cada passo (voltar com o
+/// dedo desfaz), e a espec §7 manda o filtro de tecido correr **um passo de
+/// simulação por avanço do arrasto**. ⛔ Se alguém puser um
+/// `restore_frozen_pose` aqui, o pano deixa de cair e este gate reprova.
+///
+/// ⚠️⚠️ **A 1.ª redacção desta fixtura media o DEFEITO, e a cura de 09/09
+/// apanhou-a:** ela chamava o passo **três vezes com o mesmo `s`** e exigia que
+/// isso movesse mais do que uma. Mas `s` é a distância acumulada ao ponto de
+/// pressão — três chamadas com o mesmo `s` são **o dedo parado**, e desde que o
+/// filtro mede o arrasto em vez de contar eventos elas não fazem (correctamente)
+/// nada. *Uma fixtura que repete o mesmo estado estava a afirmar que repetir um
+/// evento tem de mudar o resultado, que é precisamente a lei que caiu.*
+///
+/// ⇒ o observável passa a ser o que separa mesmo as duas leis: **arrastar até ao
+/// fim e VOLTAR ao princípio não devolve a peça ao repouso**. Com a pose reposta
+/// devolveria, ao bit.
 #[test]
 fn o_filtro_de_tecido_acumula_em_vez_de_repor_a_pose() {
-    let um = corre(ClothFilterKind::Gravity, 1.0, 1, [0.0; 3]);
-    let tres = corre(ClothFilterKind::Gravity, 1.0, 3, [0.0; 3]);
     let base = plano().positions().to_vec();
-    let d1 = desvio(&base, &um);
-    let d3 = desvio(&base, &tres);
-    println!("um passo move {d1:.6}; tres passos movem {d3:.6}");
+    let mut mesh = plano();
+    let mut st = SculptStroke::default();
+    st.cloth_filter_begin(
+        &mesh,
+        ClothFilterProps::default(),
+        ClothFilterKind::Gravity,
+        [0.0; 3],
+    );
+    // O dedo vai até ao fim…
+    st.cloth_filter_step(&mut mesh, ClothFilterKind::Gravity, &passo(1.0));
+    let ida = desvio(&base, mesh.positions());
+    // … e volta exactamente ao ponto de pressão.
+    st.cloth_filter_step(&mut mesh, ClothFilterKind::Gravity, &passo(0.0));
+    let volta = desvio(&base, mesh.positions());
+    println!("ida move {ida:.6}; depois de voltar ao ponto de pressao {volta:.6}");
     assert!(
-        d1 > 0.0,
-        "um passo tinha de mover -- a fixtura nao produz o fenomeno"
+        ida > 0.0,
+        "a ida nao moveu -- a fixtura nao produz o fenomeno"
     );
     assert!(
-        d3 > d1 * 1.5,
-        "tres passos moveram {d3:.6} contra {d1:.6} de um -- o filtro esta' a REPOR a pose \
-         em vez de simular, e um solver de tecido reposto e' um filtro de malha caro"
+        volta > 0.0,
+        "voltar ao ponto de pressao devolveu a peca ao repouso: o filtro esta' a REPOR a \
+         pose em vez de simular, e um solver de tecido reposto e' um filtro de malha caro"
+    );
+}
+
+/// ⭐⭐ **E O EFEITO SEGUE O ARRASTO, não o número de eventos** — a metade do
+/// produto da lei que vive em [`ph2d_cloth::verlet_gesto::QUANTUM_DE_ARRASTO`].
+///
+/// ⛔⛔ **Sem ela o filtro era proporcional a quão DEVAGAR o artista arrastava**:
+/// o shell junta os movimentos por QUADRO, logo o relógio da simulação era a taxa
+/// de quadros. Medido numa esfera antes da cura, o mesmo arrasto amostrado `8` e
+/// `240` vezes movia a peça `1,15` e **`98,20`** — `85×`, sem deformação nenhuma
+/// (volume `1,000`, esticão `1,00`): a peça **voava**.
+#[test]
+fn o_efeito_do_filtro_segue_o_arrasto_e_nao_o_numero_de_eventos() {
+    // O mesmo arrasto (`s` de `0` a `1`), entregue em `n` eventos.
+    let entregue_em = |n: usize| {
+        let mut mesh = plano();
+        let mut st = SculptStroke::default();
+        st.cloth_filter_begin(
+            &mesh,
+            ClothFilterProps::default(),
+            ClothFilterKind::Gravity,
+            [0.0; 3],
+        );
+        for k in 1..=n {
+            let s = k as f32 / n as f32;
+            st.cloth_filter_step(&mut mesh, ClothFilterKind::Gravity, &passo(s));
+        }
+        desvio(&plano().positions().to_vec(), mesh.positions())
+    };
+    let grosso = entregue_em(4);
+    let fino = entregue_em(200);
+    println!("o mesmo arrasto em 4 eventos move {grosso:.6}; em 200 move {fino:.6}");
+    assert!(grosso > 0.0, "a fixtura nao produz o fenomeno");
+    // ⭐ A barra é a DISCRETIZAÇÃO: com `4` eventos o último quantum pode cair
+    // fora do arrasto entregue, e um quantum de `11` vale `9 %`. ⛔ Não é um
+    // número escolhido — o defeito media `85×`.
+    let erro = (fino / grosso - 1.0).abs();
+    assert!(
+        erro < 0.12,
+        "o mesmo arrasto deu {:.1}% de diferenca conforme o numero de eventos \
+         ({grosso:.6} contra {fino:.6})",
+        100.0 * erro
     );
 }
 

@@ -57,7 +57,7 @@ use crate::verlet::{dist, norm, unit};
 ///
 /// ⚠️ **O traço não passa por aqui** (peso `1`): ali quem parametriza o caminho é
 /// o espaçamento dos dabs, que já é uma lei de arco.
-pub(super) const QUANTUM_DE_ARRASTO: f64 = 0.09;
+pub const QUANTUM_DE_ARRASTO: f64 = 0.09;
 
 impl PincelTecido {
     /// **O factor por vértice `f`** (espec §4.1), sem o `B`: máscara · banda ·

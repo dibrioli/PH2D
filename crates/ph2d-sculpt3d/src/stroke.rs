@@ -242,6 +242,29 @@ pub struct SculptStroke {
     /// manteria um material velho, e é `2⁻⁶⁴`. ⛔ Guardar as posições seria
     /// `1,2 MB` de clone por gesto para responder a uma pergunta de um bit.
     cloth_left: u64,
+    /// ⭐⭐⭐ **QUANTO ARRASTO JÁ FOI CONSUMIDO neste gesto de filtro** — a metade
+    /// do produto da lei *«o filtro mede o arrasto, não conta eventos»*.
+    ///
+    /// ⛔⛔ **Sem ela o efeito do filtro era proporcional a quão DEVAGAR o artista
+    /// arrastava.** O shell junta os movimentos do rato **por quadro**, logo o
+    /// relógio da simulação era a taxa de quadros: o mesmo arrasto de `1000 px`
+    /// feito em `0,2 s` dá `12` passos e em `4 s` dá `240`. Medido sobre uma
+    /// esfera, o MESMO arrasto (`s` de `0` a `1`), raio máximo da peça:
+    ///
+    /// | amostras | 8 | 15 | 30 | 60 | 120 | 240 |
+    /// |---|---:|---:|---:|---:|---:|---:|
+    /// | Gravity | `1,15` | `1,45` | `2,65` | `7,30` | `25,60` | **`98,20`** |
+    ///
+    /// ⚠️ **A peça nem se deforma** (volume `1,000` e esticão `1,00` nas seis
+    /// colunas): ela **voa**, como uma translação rígida, `85×` mais longe. *Era
+    /// esta a metade de «um elástico que estica indefinidamente» que nenhum tecto
+    /// podia curar — o tecto mede deformação, e isto não é deformação.*
+    ///
+    /// ⇒ um passo da lei passa a valer **um [`ph2d_cloth::verlet_gesto::QUANTUM_DE_ARRASTO`]**
+    /// e o adaptador corre tantos quantos o arrasto pedir. *É a mesma lei do
+    /// espaçamento dos dabs, que o traço já tem: parametrizar pelo caminho, não
+    /// pela amostragem.*
+    cloth_filter_drag: f64,
     /// **A porta de ABLAÇÃO do orçamento do tecido** — só em teste, e ela existe
     /// para um gate poder afirmar que a lei do gesto **não depende** do número
     /// de sub-passos. Sem ela a propriedade não é observável de fora, e foi

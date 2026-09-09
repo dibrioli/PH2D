@@ -37,6 +37,52 @@ use ph2d_cloth::verlet_gesto::{
 };
 use ph2d_mesh::{Face, Mesh};
 
+/// ⭐⭐⭐ **QUANTO ARRASTO VALE UM PASSO DE SIMULAÇÃO** — e ⛔ ele **não** é o
+/// [`QUANTUM_DE_ARRASTO`] da lei, apesar de os dois medirem arrasto.
+///
+/// | | de onde vem | o que fixa |
+/// |---|---|---|
+/// | [`ph2d_cloth::verlet_gesto::QUANTUM_DE_ARRASTO`] (`0,09`) | do **cabeçalho das fixtures do alvo** (`avanco_por_passo_px 90`) | o passo em que a lei do `τ` do *Expand* foi calibrada — é a unidade em que o incremento dela se mede |
+/// | **este** (`0,01`) | **calibração de PRODUTO** | quanto o dedo tem de andar para a simulação avançar um passo |
+///
+/// ⭐ **`0,01` são `10 px`** ([`crate::FILTER_DRAG_PER_PX`] vale `0,001`), e o
+/// número sai de **preservar o que o dono aprovou**: até 09/09 o shell corria um
+/// passo por QUADRO, logo o ritmo de facto era a velocidade do arrasto dele —
+/// `~10 px` por quadro num arrasto de trabalho. ⇒ para esse arrasto a resposta
+/// fica onde estava, e o que muda é que **arrastar devagar deixa de fazer mais
+/// que arrastar depressa**.
+///
+/// ⚠️⚠️ **Com o quantum da LEI (`0,09`) o filtro ficava `9×` mais fraco** — um
+/// arrasto de ecrã inteiro dava `11` passos contra os `~120` de antes —, e três
+/// gates reprovaram na **precondição** (*«a fixtura tem de produzir o
+/// defeito»*), que é o instrumento a dizer que a peça já não chega onde chegava.
+/// *Um número do lado aprovado responde à pergunta dele, não à nossa.*
+pub(super) const PASSO_DE_ARRASTO: f64 = 0.01;
+
+/// ⭐⭐ **QUANTOS PASSOS um movimento do dedo pode gastar de uma vez** — e o
+/// recurso é o **QUADRO**, com a conta dentro.
+///
+/// Cada passo é um passo de solver sobre a peça INTEIRA, e o custo dele é linear
+/// no número de vértices. Medido (esfera UV, `Gravity`, média de 20 passos):
+///
+/// | vértices | por passo | passos num quadro de `16,7 ms` |
+/// |---:|---:|---:|
+/// | `1 986` | `1,146 ms` | `14,6` |
+/// | `8 066` | `5,178 ms` | `3,2` |
+/// | `18 242` | `11,229 ms` | `1,5` |
+///
+/// ⇒ **`0,615 µs` por vértice**, e o tecto é o orçamento de **dois quadros**
+/// dividido por ele: `33,4 ms / 0,615 µs ≈ 54 000 / n`. ⛔ Um tecto CONSTANTE
+/// seria de um recurso que não existe — `16` passos numa peça de `18 242`
+/// vértices são `180 ms` num quadro, e numa de `2 000` são `18 ms`.
+///
+/// ⭐ **O arrasto que não coube não se perde**: ele fica por consumir no
+/// [`SculptStroke::cloth_filter_drag`] e o quadro seguinte continua de onde este
+/// parou; ao largar, o `flush` do shell corre o resto.
+fn passos_por_chamada(vertices: usize) -> usize {
+    (54_000 / vertices.max(1)).clamp(1, 32)
+}
+
 fn v3(p: [f32; 3]) -> V3 {
     [f64::from(p[0]), f64::from(p[1]), f64::from(p[2])]
 }
@@ -208,19 +254,82 @@ impl SculptStroke {
         };
         let simulou = tecido.passo(&pos, &anel, &carga);
         debug_assert!(!simulou, "a carga do filtro nao pode simular");
+        self.cloth_filter_drag = 0.0;
         self.cloth_filter = Some(tecido);
     }
 
-    /// **Um passo do filtro.** Devolve quantos vértices se moveram.
+    /// ⭐⭐⭐ **UM PASSO DO FILTRO — e ele mede o ARRASTO, não conta eventos.**
+    /// Devolve quantos vértices se moveram.
     ///
-    /// ⚠️ **A guarda é DERIVADA** (há sessão? a captura cobre a malha?) e não um
-    /// flag — a mesma escolha, e o mesmo motivo, do [`Self::filter`]: dois campos
-    /// a dizerem *«estou em modo filtro»* podem discordar.
+    /// # ⛔⛔ O defeito que esta porta cura
+    ///
+    /// O `s` que chega é a distância acumulada ao ponto de pressão, e o shell
+    /// junta os movimentos do rato **por quadro** ⇒ o relógio da simulação era a
+    /// **taxa de quadros**: o mesmo arrasto de `1000 px` feito depressa dava `12`
+    /// passos e feito devagar dava `240`, e cada passo integra outra vez. Medido
+    /// numa esfera, o MESMO arrasto, raio máximo: `1,15` a 8 amostras contra
+    /// **`98,20`** a 240 — com o volume em `1,000` e o esticão em `1,00` nas
+    /// seis, porque a peça não se deforma: ela **voa**.
+    ///
+    /// ⇒ **um passo da lei vale um [`QUANTUM_DE_ARRASTO`]**, e esta porta corre
+    /// tantos quantos o arrasto pedir — nenhum se o dedo não andou o suficiente.
+    /// *É a lei do espaçamento dos dabs, que o traço já tem: parametrizar pelo
+    /// caminho, nunca pela amostragem.*
+    ///
+    /// ⚠️ **O sentido conta**: arrastar de volta faz `s` descer e os passos
+    /// correm para trás, que é como o alvo inverte a força (espec §7).
+    ///
+    /// ⚠️ **O tecto de passos por chamada é um recurso NOMEADO — o quadro.**
+    /// [`passos_por_chamada`] traz a medição.
     pub fn cloth_filter_step(
         &mut self,
         mesh: &mut Mesh,
         kind: ClothFilterKind,
         passo: &ClothFilterStep,
+    ) -> usize {
+        let alvo = f64::from(passo.s);
+        let tecto = passos_por_chamada(mesh.vert_count());
+        let mut uniao: Vec<u32> = Vec::new();
+        let mut corridos = 0;
+        while corridos < tecto {
+            let falta = alvo - self.cloth_filter_drag;
+            if falta.abs() < PASSO_DE_ARRASTO {
+                break;
+            }
+            self.cloth_filter_drag += PASSO_DE_ARRASTO * falta.signum();
+            let s = self.cloth_filter_drag;
+            if self.um_quantum(mesh, kind, passo, s) > 0 {
+                uniao.extend_from_slice(&self.moved);
+            }
+            corridos += 1;
+        }
+        // ⚠️⚠️ **A contagem é a UNIÃO, e não a soma** — somar contaria o mesmo
+        // vértice uma vez por quantum e devolveria `11 × n` numa peça de `n`
+        // vértices. *O que o chamador pergunta é «quantos vértices se moveram»,
+        // não «quanto trabalho foi feito»*, e foi um gate que já existia
+        // (`um_filtro_toca_a_peca_inteira_e_um_carimbo_toca_um_disco`) que o
+        // disse.
+        //
+        // ⚠️ E a lista fica com a união pela mesma razão: o refresco de cada
+        // quantum já correu lá dentro, mas quem ler [`SculptStroke::moved`]
+        // depois da chamada tem de ver o que a CHAMADA moveu.
+        uniao.sort_unstable();
+        uniao.dedup();
+        self.moved.clone_from(&uniao);
+        uniao.len()
+    }
+
+    /// **Um quantum do filtro.** Devolve quantos vértices se moveram.
+    ///
+    /// ⚠️ **A guarda é DERIVADA** (há sessão? a captura cobre a malha?) e não um
+    /// flag — a mesma escolha, e o mesmo motivo, do [`Self::filter`]: dois campos
+    /// a dizerem *«estou em modo filtro»* podem discordar.
+    fn um_quantum(
+        &mut self,
+        mesh: &mut Mesh,
+        kind: ClothFilterKind,
+        passo: &ClothFilterStep,
+        s: f64,
     ) -> usize {
         if self.touched.len() != mesh.vert_count() {
             return 0;
@@ -232,9 +341,7 @@ impl SculptStroke {
             return 0;
         }
         // ⭐ O arrasto de AGORA — a única coisa que muda de passo para passo.
-        ses.pincel.accionamento = Accionamento::Filtro {
-            s: f64::from(passo.s),
-        };
+        ses.pincel.accionamento = Accionamento::Filtro { s };
         ses.pincel.eixo_da_gravidade = v3(passo.gravity_axis);
         ses.pincel.referencial = Referencial {
             eixos: [v3(passo.frame[0]), v3(passo.frame[1]), v3(passo.frame[2])],

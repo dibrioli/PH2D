@@ -39,7 +39,6 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, TypeToken};
 
 // Chrome layout metrics (the per-row metrics live in `paint_rows.rs`).
-const TOGGLE_BTN_W: f32 = 52.0; // LITERAL-PX-OK: header dock-toggle button width
 const HEADER_ICON_W: f32 = 28.0; // LITERAL-PX-OK: action icon-button square
 const TOOLBAR_H: f32 = 36.0; // LITERAL-PX-OK: action toolbar strip height (icon + pad)
 const MOD_BTN_W: f32 = 52.0; // LITERAL-PX-OK: modifier toggle button width (text)
@@ -87,8 +86,6 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
         theme,
     );
 
-    // Dock-toggle (label = the OTHER view) + close (X).
-    paint_dock_toggle(ctx, rect, theme, shows_layers);
     paint_panel_close_button(
         rect,
         core_ids::PAINTER_LAYERS_CLOSE,
@@ -97,7 +94,17 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
         theme,
     );
 
-    let header_bottom = rect.y + PANEL_TITLE_BASELINE + title_size + Spacing::Md.px();
+    let title_bottom = rect.y + PANEL_TITLE_BASELINE + title_size + Spacing::Md.px();
+    // ⭐⭐⭐ **O modo é um GRUPO SEGMENTADO, e não um botão no cabeçalho.**
+    //
+    // > *«abaixo os modos Brush e Layers, as sub abas estão mal formatadas. Talvez fique melhor
+    // > como um toggle Button Group»* — Enio, 2026-09-09, com foto.
+    //
+    // ⛔ O botão cabia em `52 px` e mostrava o nome do OUTRO modo, elidido a `"Lay…"`: ele pedia
+    //    ao artista que lesse um rótulo cortado **e** que soubesse que o rótulo era o destino, não
+    //    o estado. Um grupo segmentado diz as duas coisas de uma vez — os dois nomes inteiros, e
+    //    qual deles está aceso.
+    let header_bottom = paint_dock_modes(ctx, rect, theme, shows_layers, title_bottom);
 
     // ── Brush-properties view: scrollable brush body (extracted to keep `paint`
     // under the panel fn-LOC cap). Same scroll machinery as the Layers view below. ─
@@ -361,47 +368,66 @@ fn paint_brush_view(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme, rect: Rect, h
     crate::paint_brush::paint_brush_popovers(ctx, theme);
 }
 
-/// Header dock-toggle — swaps the docked body between the Layers/Effects view
-/// and the Brush-properties view. Labelled with the OTHER view (what a click
-/// switches TO). Placed left of the close button.
-fn paint_dock_toggle(
+/// ⭐⭐⭐ **OS DOIS MODOS DO DOCK, num grupo segmentado** — devolve o `y` em que o corpo começa.
+///
+/// > *«as sub abas estão mal formatadas. Talvez fique melhor como um toggle Button Group»* — Enio,
+/// > 2026-09-09.
+///
+/// ⚠️ **Pela porta canónica** ([`paint_segmented_group`]), que é a mesma dos segmentados do
+/// Inspector: ela encosta os irmãos, arredonda só as pontas de fora (a lei do Blender), pinta o
+/// escolhido pelo fundo e regista cada rect. ⛔ Desenhar dois botões aqui à mão seria a segunda
+/// aritmética de uma fileira que a casa já sabe fazer.
+///
+/// ⚠️ **Os dois ids já existiam** (`PAINTER_LAYERS_TOGGLE_DOCK` e `PAINTER_SIDEBAR_TOGGLE_DOCK`,
+/// declarados como espelhos um do outro) — o que mudou foi o VERBO: eram *alterna*, e um segmento
+/// **escolhe**.
+fn paint_dock_modes(
     ctx: &mut PaintCtx,
     rect: Rect,
     theme: ph2d_tokens::Theme,
     shows_layers: bool,
-) {
-    let close = panel_close_button_rect(rect);
-    let btn_rect = Rect::new(
-        close.x - Spacing::Sm.px() - TOGGLE_BTN_W,
-        close.y,
-        TOGGLE_BTN_W,
-        close.h,
+    top: f32,
+) -> f32 {
+    let pad = Spacing::Sm.px();
+    let row = Rect::new(
+        rect.x + pad,
+        top,
+        (rect.w - pad * 2.0).max(0.0),
+        ph2d_tokens::ROW_H_PX,
     );
-    let st = ctx
-        .host
-        .store()
-        .button_visual(core_ids::PAINTER_LAYERS_TOGGLE_DOCK);
-    let label = if shows_layers { "Brush" } else { "Layers" };
-    let btn = Button::new(core_ids::PAINTER_LAYERS_TOGGLE_DOCK, label).visual(st);
-    paint_button(&btn, btn_rect, ctx.scene, ctx.text_system, theme);
-    ctx.host
-        .hit_index_mut()
-        .register(core_ids::PAINTER_LAYERS_TOGGLE_DOCK, btn_rect);
+    let segments = [
+        (
+            "Brush",
+            !shows_layers,
+            core_ids::PAINTER_SIDEBAR_TOGGLE_DOCK,
+        ),
+        ("Layers", shows_layers, core_ids::PAINTER_LAYERS_TOGGLE_DOCK),
+    ];
+    let (store, hit) = ctx.host.store_and_hit_index_mut();
+    ph2d_editor_core::widget::panel_chrome::paint_segmented_group(
+        row,
+        &segments,
+        ctx.scene,
+        ctx.text_system,
+        theme,
+        store,
+        hit,
+    );
+    // ⚠️ O vão que separa a fileira do corpo é a porta do ritmo, não um `Spacing` escolhido aqui.
+    row.y + row.h + ph2d_tokens::control_gap_px()
 }
 
 /// Re-register the header chrome (drag/resize handles + dock-toggle + close) AFTER the scrollable body
 /// so a scrolled-up row's unclipped hit rect can't shadow them (`HitIndex` is last-wins; both views).
 fn register_header_chrome(ctx: &mut PaintCtx, rect: Rect) {
     let close = panel_close_button_rect(rect);
-    let toggle = Rect::new(
-        close.x - Spacing::Sm.px() - TOGGLE_BTN_W,
-        close.y,
-        TOGGLE_BTN_W,
-        close.h,
-    );
-    let hit = ctx.host.hit_index_mut();
-    hit.register(core_ids::PAINTER_LAYERS_TOGGLE_DOCK, toggle);
-    hit.register(core_ids::PAINTER_LAYERS_CLOSE, close);
+    // ⚠️ **Só o fecho.** O botão de modo saiu do cabeçalho em 2026-09-09 e virou um grupo
+    //    segmentado por baixo dele (ver `paint_dock_modes`) — e os rects dele são registados lá,
+    //    pela porta canónica. *Re-registar aqui um rect que já não é pintado é um alvo vivo sobre
+    //    o nada, que é a forma exacta do controlo morto sob o dedo.*
+    ctx.host
+        .hit_index_mut()
+        .register(core_ids::PAINTER_LAYERS_CLOSE, close);
 }
 
 /// Action toolbar (one row below the header): New layer · Group · Duplicate ·

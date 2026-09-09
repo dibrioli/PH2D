@@ -74,8 +74,13 @@ impl Tool for PainterTool {
             return;
         }
         match event {
+            // ⭐ Os DOIS segmentos do grupo *Brush | Layers* — cada um ESCOLHE o seu lado, e
+            //   tocar no que já está escolhido não faz nada (ver `set_dock_shows_layers`).
             PanelEvent::Click(id) if id == core_ids::PAINTER_LAYERS_TOGGLE_DOCK => {
-                self.toggle_dock(); // dock toggle — layers panel header button
+                self.set_dock_shows_layers(true);
+            }
+            PanelEvent::Click(id) if id == core_ids::PAINTER_SIDEBAR_TOGGLE_DOCK => {
+                self.set_dock_shows_layers(false);
             }
             // ── Layers panel: "+ Layer" (create + activate a raster on top) ─
             PanelEvent::Click(id) if id == core_ids::PAINTER_LAYERS_ADD => {

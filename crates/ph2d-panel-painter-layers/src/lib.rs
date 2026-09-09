@@ -103,7 +103,17 @@ impl Panel for PainterLayersPanel {
     const ID: &'static str = "painter_layers";
     const NODE_ID: NodeId = ph2d_editor_core::ids::PAINTER_LAYERS_PANEL;
     const DEFAULT_VISIBLE: bool = false;
-    const TITLE: &'static str = "Layers";
+    /// ⭐⭐ **O nome da ABA é o do MÓDULO, não o de um dos dois modos** (report do Enio,
+    /// 2026-09-09, com foto: *«a aba ficou com nome de Layers em vez de algo como painter»*).
+    ///
+    /// ⛔ Este painel hospeda **dois** corpos — *Brush* e *Layers* — e o título dizia o nome de um
+    /// deles. Com a fileira de abas isso passou a ser visível e contraditório: a aba dizia
+    /// «Layers» enquanto o cabeçalho por baixo dela dizia «Brush». *Uma aba nomeia o que ela
+    /// ABRE; se o que ela abre tem dois modos, o nome é o do que os contém.*
+    ///
+    /// ⚠️ O título do CABEÇALHO continua a seguir o modo (`paint_brush_top::header_title`) — são
+    /// duas perguntas: *«que painel é este?»* e *«que modo estou a ver?»*.
+    const TITLE: &'static str = "Painter";
     /// ⚠️ **Um painel de COLUNA não cabe na faixa de baixo.** Ela tem 240 px de altura e a
     /// largura da área: uma lista de propriedades ali fica com duas linhas visíveis. ⇒ as duas
     /// colunas, e o gesto que o levaria ao fundo não é oferecido (decisão D1).

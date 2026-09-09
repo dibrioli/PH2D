@@ -37,8 +37,11 @@ fn register_chrome_buttons(store: &mut WidgetStore) {
         ph2d_editor_core::ids::PAINTER_LAYERS_CLIP,
         ph2d_editor_core::ids::PAINTER_LAYERS_ALPHA_LOCK,
         ph2d_editor_core::ids::PAINTER_LAYERS_REFERENCE,
-        // Dock-mode toggle ("Brush") in the header (mode C).
+        // ⭐ Os DOIS segmentos do grupo de modo (*Brush | Layers*). ⚠️ **Sem `InteractiveState` um
+        //   segmento é pintado e nasce MORTO**: não é focável, o Down não arma o `active` e o Up
+        //   nunca emite `Click`. É o defeito que matou o pill `[SHEET]` e os quatro do vetor.
         ph2d_editor_core::ids::PAINTER_LAYERS_TOGGLE_DOCK,
+        ph2d_editor_core::ids::PAINTER_SIDEBAR_TOGGLE_DOCK,
         // "Apply" CTA — commits the composite to the sprite (shared id with the
         // sidebar panel).
         ph2d_editor_core::ids::PAINTER_APPLY,

@@ -18,6 +18,16 @@ impl PainterTool {
         self.dock_shows_layers = !self.dock_shows_layers;
     }
 
+    /// ⭐⭐ **ESCOLHE o modo do dock** — o que um grupo segmentado precisa, e o que um *toggle* não
+    /// sabe fazer.
+    ///
+    /// ⛔ Com um botão só, clicar era sempre INVERTER; um segmento que já está escolhido tem de
+    /// ser um no-op, senão a fileira pisca ao ser tocada duas vezes no mesmo sítio. *Um alternador
+    /// e um selector respondem a perguntas diferentes, e o desenho do controlo escolhe qual é.*
+    pub fn set_dock_shows_layers(&mut self, shows_layers: bool) {
+        self.dock_shows_layers = shows_layers;
+    }
+
     /// Decode a per-row layers-panel widget [`NodeId`] back to its
     /// `(layer, kind)` by recomputing [`painter_layer_widget_id`] for every
     /// current layer × kind and matching. `None` if `id` isn't a per-row

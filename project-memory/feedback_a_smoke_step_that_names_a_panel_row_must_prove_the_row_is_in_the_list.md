@@ -44,6 +44,22 @@ arrastá-la *para a cabeça*, onde ela já estava. Mesmo pai ⇒ a guarda deixa 
 mensagem prometida nunca vem. ⇒ *quando um passo promete uma mensagem, gate o gesto que ele pede
 contra a lei que a produz — com as duas metades: o gesto novo é apanhado, o antigo não.*
 
+⛔⛔ **E há uma TERCEIRA espécie, medida em 2026-09-08: o passo que nomeia um GESTO.** Um selector
+de cartão deixou de **ciclar** no clique e passou a ter **duas setas e uma lista** (report do Enio,
+07/09, com a foto do Blender). Os **três** tutoriais em PDF do módulo continuaram a ensinar o gesto
+antigo — o do ciclo 1 em três sítios, o do ciclo 2 em quatro passos (um deles a prometer o percurso
+inteiro: *«Sine → Tri → Square → Saw → Spike → Custom e volta ao começo»*), e o do ciclo 3, escrito
+**no dia seguinte**, herdou-o da minha memória em vez de o ler do código.
+
+⚠️ **A linha estava lá, o rótulo estava certo, e o passo continuava impossível** — é o que separa
+esta espécie das duas de cima: nenhuma pergunta sobre a *lista* a apanha. E o ciclo 2 estava com o
+smoke do dono **pendente**: ele bateria nisto no primeiro selector que tocasse.
+
+⇒ **a medição de um gesto é ler quem o trata** (aqui, `interact_param_row.rs`: `RowZone::Prev` /
+`Next` / `Centre`), nunca a memória de quem escreve o passo. E quando um gesto MUDA, os tutoriais
+são o último sítio lembrado e o primeiro que o dono lê — `grep` os textos de smoke pelo verbo que
+mudou, no mesmo commit que o muda.
+
 **Why:** o texto de um smoke é **superfície de produto** — é onde o dono aprende a ferramenta
 (CLAUDE.md §0.8) —, e é a única superfície do repo cuja correcção nada media.
 

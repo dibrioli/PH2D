@@ -45,3 +45,31 @@ lê-se exactamente como uma suíte pequena que passou.*
 Corolário direto da regra-mãe da DIRETIVA (*verde-de-compilação vale zero*): **verde-de-exit-code
 também vale zero**. Ver [[feedback_no_industrial_claims_without_verification]] e
 [[project_integrator_ship_catches_latents_budget_iterations]].
+
+---
+
+## ⛔⛔ E a forma que morde num PORTÃO EM BACKGROUND: o ficheiro VAZIO lê-se como verde
+
+Medido 2026-09-08 (`line/3DModeling`, fecho da W140), **duas vezes na mesma jornada**:
+
+1. Corri o portão como
+   `cargo test -p A -p B -p C --release --no-fail-fast 2>&1 | grep -E "FAILED|panicked|^error" | head -8; echo "=== portao ==="`.
+   O comando passou a background, e o ficheiro de saída ficou com **uma linha só**: `=== portao ===`.
+   ⇒ **Zero linhas de vermelho** — que eu li como *«nada falhou»*. E o `exited with code 0` que a
+   notificação mostra era o do **`echo` final**, não o do cargo.
+2. Na corrida seguinte pus um `bc` no fim do compound para somar. O `bc` **não existe** nesta shell
+   ⇒ a tarefa foi reportada como **`failed` com exit 127** — com o portão **verde por baixo**.
+
+⇒ *Nos dois sentidos o veredito da tarefa descreveu o ÚLTIMO comando do compound, e nunca o portão.*
+
+⭐⭐ **A cura é CONTAR OS VERDES, nunca procurar vermelhos.** Um `grep -c '^test result: ok'` com a
+soma dos `N passed` responde *«correram 312 suítes e 5 851 testes»*, e uma corrida que morreu a meio
+lê-se na hora (o número é pequeno). A busca por `FAILED` responde a mesma coisa — nada — para
+*«tudo passou»* e para *«nunca chegou a correr»*.
+
+⚠️ **E `tee` para um ficheiro**, senão o `grep` só escreve no fim e não há progresso para ver:
+`cargo test … 2>&1 | tee /tmp/portao.txt | grep -cE '^test result: ok'`.
+
+⭐ **Foi assim que o vermelho de facto apareceu:** a contagem positiva devolveu `312` suítes ok e
+**`1` FAILED** — o `an_abandoned_march_returns_nothing_and_returns_fast`, a flake de carga já
+catalogada. A leitura anterior, por ausência, tinha-o declarado verde.

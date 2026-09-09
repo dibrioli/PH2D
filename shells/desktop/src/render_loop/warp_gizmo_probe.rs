@@ -28,107 +28,30 @@
 //! ```
 
 use super::warp_gizmo;
+use super::warp_gizmo_fixtures as fx;
 use crate::motion_state::MotionState;
-use ph2d_nodegraph::graph::{Edge, NodeId};
+use ph2d_nodegraph::graph::NodeId;
 
-/// Monta `motion.grid → <nó> → motion.output`, com o nó seleccionado, e devolve o estado já
-/// bombeado — o mais próximo do que o quadro faz.
+/// `motion.grid → <nó> → motion.output`, marchada na CPU — a rota que ESTA sonda escolhe.
+/// ⚠️ A montagem vive em [`fx`] justamente para o portão do device poder usar a MESMA cena
+/// sem herdar esta marcha, que é o que faz a sonda mentir sobre a rota do produto.
 fn cena(tipo: &str) -> (MotionState, NodeId) {
-    let mut m = MotionState::new();
-    let grid = m.doc.graph.add_node("motion.grid".to_string());
-    let no = m.doc.graph.add_node(tipo.to_string());
-    let out = m.doc.graph.add_node("motion.output".to_string());
-    for (a, b) in [(grid, no), (no, out)] {
-        m.doc
-            .graph
-            .connect(Edge {
-                from: (a, 0),
-                to: (b, 0),
-                delayed: false,
-            })
-            .expect("as portas encaixam");
-    }
-    m.sinks = vec![out];
-    ph2d_panel_motion_graph::set_graph_selection(vec![no.0]);
-    // A MESMA ordem do `motion_bridge`: armar as tomadas, depois marchar.
-    let taps = warp_gizmo::taps_for(&m);
-    m.pump.set_taps(&taps);
-    m.pump.clear_tap_fires();
-    let sinks = m.sinks.clone();
-    let scopes = ph2d_nodegraph::cook::TimeScopes::new();
-    let _ = m.pump.advance_or_scrub_scoped(
-        &m.doc.graph,
-        &m.registry,
-        &sinks,
-        0,
-        |t| t as f64 / 60.0,
-        [0.0, 0.0, 1.0, 1.0],
-        [1.0, 1.0],
-        &scopes,
-    );
+    let (mut m, no) = fx::cadeia(tipo);
+    fx::marcha_na_cpu(&mut m);
     (m, no)
 }
 
-/// A CENA DO DONO: a `=111`, com um `motion.bezier_warp` enfiado nela — que é o que ele tinha no
-/// ecrã quando reportou. ⚠️ Uma cadeia sintética limpa **não reproduz**, e é por isso que esta
-/// existe: *a fixtura tem de ser a do report*.
+/// A cena do dono (a `=111` + `motion.bezier_warp`), marchada na CPU — ver [`cena`].
 fn cena_do_dono(depois_do_mirror: bool) -> (MotionState, NodeId) {
-    let mut m = MotionState::new();
-    let sinks = crate::motion_state::demo_router::build_level(Some("111"), &mut m.doc, &m.registry);
-    m.sinks = sinks;
-    // Achar o espelho e a torção da cena, e enfiar o warp de um lado ou do outro.
-    let acha = |t: &str| -> Option<NodeId> {
-        m.doc
-            .graph
-            .nodes()
-            .iter()
-            .find(|n| n.type_name == t)
-            .map(|n| n.id)
-    };
-    let mirror = acha("motion.mirror").expect("a cena 111 tem espelho");
-    let twist = acha("motion.twist").expect("a cena 111 tem torcao");
-    let (de, para) = if depois_do_mirror {
-        (mirror, twist)
-    } else {
-        (
-            crate::render_loop::warp_gizmo::upstream_of(&m.doc.graph, mirror).expect("a montante"),
-            mirror,
-        )
-    };
-    let bw = m.doc.graph.add_node("motion.bezier_warp".to_string());
-    m.doc.graph.disconnect(para, 0);
-    for (a, b) in [(de, bw), (bw, para)] {
-        m.doc
-            .graph
-            .connect(Edge {
-                from: (a, 0),
-                to: (b, 0),
-                delayed: false,
-            })
-            .expect("encaixa");
-    }
-    ph2d_panel_motion_graph::set_graph_selection(vec![bw.0]);
-    let taps = warp_gizmo::taps_for(&m);
-    m.pump.set_taps(&taps);
-    m.pump.clear_tap_fires();
-    let sinks = m.sinks.clone();
-    let scopes = ph2d_nodegraph::cook::TimeScopes::new();
-    let _ = m.pump.advance_or_scrub_scoped(
-        &m.doc.graph,
-        &m.registry,
-        &sinks,
-        0,
-        |t| t as f64 / 60.0,
-        [0.0, 0.0, 1.0, 1.0],
-        [1.0, 1.0],
-        &scopes,
-    );
+    let (mut m, bw) = fx::cena_do_dono(depois_do_mirror);
+    fx::marcha_na_cpu(&mut m);
     (m, bw)
 }
 
 #[test]
 #[ignore = "sonda de diagnóstico — corra à mão"]
 fn why_the_warp_gizmo_is_not_there_in_the_owners_scene() {
+    let _trava = fx::trava();
     for (rotulo, depois) in [("ANTES do mirror", false), ("DEPOIS do mirror", true)] {
         let (m, no) = cena_do_dono(depois);
         eprintln!("\n  === cena 111 + bezier_warp {rotulo} ===");
@@ -172,6 +95,7 @@ fn relatorio(m: &MotionState, no: NodeId) {
 #[test]
 #[ignore = "sonda de diagnóstico — corra à mão"]
 fn why_the_warp_gizmo_is_not_there() {
+    let _trava = fx::trava();
     for tipo in ["motion.four_point_warp", "motion.bezier_warp"] {
         let (m, no) = cena(tipo);
         eprintln!("\n  === {tipo} ===");

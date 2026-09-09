@@ -17,6 +17,7 @@ use ph2d_nodegraph::node::NodeTypeId;
 /// frame fell through to it (GPU off / no useful GPU work / a fully-GPU cook that
 /// errored). A hybrid frame is always `Handled` — the pump was already marched
 /// to the boundary, so re-running the sink loop would corrupt its clock.
+#[derive(Debug)]
 pub(super) enum GpuOutcome {
     Handled,
     FellThrough,
@@ -493,3 +494,10 @@ pub(super) fn edit_renumbers_emitter(type_name: &str, param: &str) -> bool {
 #[cfg(test)]
 #[path = "motion_bridge_gpu_tests.rs"]
 mod tests;
+
+/// ⭐ **O PORTÃO DA COSTURA** — a rota `FullyGpu` cozinha as TOMADAS que nunca marchou.
+/// Vive aqui, e não ao lado do gizmo, porque o sujeito é esta ponte: `GpuOutcome` é
+/// `pub(super)` do `motion_bridge`, logo um irmão do `render_loop` não o alcança.
+#[cfg(all(test, feature = "panel-motion-graph"))]
+#[path = "motion_bridge_gpu_taps_tests.rs"]
+mod taps_tests;

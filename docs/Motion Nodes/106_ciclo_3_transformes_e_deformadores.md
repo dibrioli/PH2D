@@ -932,3 +932,47 @@ corre»* — sem ele, um terminal silencioso não concluiria nada.
 desta jornada medem as duas metades — o retrato (`why_the_warp_gizmo_is_not_there`) e a tinta
 (`the_gizmo_paints_geometry_and_paints_none_when_inactive`) — e a costura entre elas, que é onde o
 defeito viveu, só se mede com uma janela real.
+
+> ✅ **Meia frase desta ficou desactualizada no mesmo dia — ver §4 «A COSTURA GANHA PORTÃO».** A
+> costura ROTA → TOMADA passa a ter gate com prova de mutação; o que fica sem instrumento é a
+> outra metade, *o overlay sumir do quadro DESENHADO*, que continua a precisar de janela real.
+
+---
+
+### ✅ A COSTURA GANHA PORTÃO — o que faltava à família (2026-09-08)
+
+O defeito de cima viveu **entre** dois gates verdes: a porta funcionava
+(`cooking_the_taps_fills_them_without_marching_the_clock`, em `ph2d-eval-motion`) e a tinta
+aparecia (`the_gizmo_paints_geometry_and_paints_none_when_inactive`, ao lado do overlay).
+*Nenhum dos dois perguntava se a rota que o app de facto corre chega a chamar a porta.*
+
+**`the_fully_gpu_route_cooks_the_taps_it_never_marched`**
+([`motion_bridge_gpu_taps_tests.rs`](../../shells/desktop/src/render_loop/motion_bridge_gpu_taps_tests.rs))
+monta a **cena do report** (a `=111` com o `motion.bezier_warp` enfiado dos dois lados do espelho),
+entrega o quadro a um adapter **de verdade** pela porta do produto (`cook_gpu`), e afirma quatro
+coisas em cadeia: a fixtura arma tomada · a ponte devolve `Handled` · a rota que ela **diz** ter
+tomado é a totalmente-na-GPU · a tomada armada está cozida e o `resolve` devolve `Some`.
+
+⚠️ **A rota lê-se do produto (`MotionState::route_said`), nunca replaneada no teste** — um segundo
+cálculo seria uma segunda opinião sobre que rota este documento toma, e o gate deixaria de medir a
+do app. É a mesma cerca que fez a sonda mentir, virada do avesso.
+
+⭐ **A fixtura teve de ser PARTIDA para o gate existir.** A montagem da cena e a **marcha na CPU**
+viviam na mesma função da sonda — e é a marcha que cozinha as tomadas de passagem, logo qualquer
+fixtura que marche **esconde exactamente este defeito**. Hoje
+[`warp_gizmo_fixtures`](../../shells/desktop/src/render_loop/warp_gizmo_fixtures.rs) monta e arma
+**sem marchar**, e quem chama escolhe a rota: a sonda marcha na CPU, o portão entrega ao device.
+⚠️ E a selecção do grafo é **global**, então as fixturas partilham uma trava — duas cenas em
+paralelo trocavam de nó seleccionado uma à outra.
+
+⛔ **Prova de mutação:** apagar a chamada a `cook_taps_only` na rota `FullyGpu` devolve
+`a tomada NodeId(2) foi armada e NAO foi cozida — []` — o report do dono à letra.
+
+⚠️ **`#[ignore]`, e a razão é o adapter** (§5.0: *skip gracioso não é verde*): sem GPU não há rota
+`FullyGpu` para medir, então o gate **estoura** em vez de saltar em silêncio — um verde sem device
+afirmaria sobre um programa que não é este. Corrido nesta máquina: **2 de 2 verde**.
+
+⚠️ **O CONTROLO é a outra metade do preço:** `the_fully_gpu_route_cooks_nothing_when_no_tap_is_armed`
+prova que sem tomada armada nada é cozido. Sem ele, uma implementação que cozinhasse tomadas
+incondicionalmente passaria o gate de cima e a frase escrita no doc da porta — *«só se paga enquanto
+há tomada armada»* — deixaria de ser verdade sem ninguém ver.

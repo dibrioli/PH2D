@@ -395,6 +395,11 @@ pub(crate) mod warp_gizmo;
 /// O DESENHO desse gizmo — o contorno, os braços e as alças.
 mod warp_overlay;
 
+/// As FIXTURAS do gizmo de warp — montadas e **não marchadas**; ver o cabeçalho delas.
+/// ⚠️ `pub(crate)` porque o portão da costura vive dentro do `motion_bridge::gpu`.
+#[cfg(all(test, feature = "panel-motion-graph"))]
+pub(crate) mod warp_gizmo_fixtures;
+
 /// A sonda que diz POR QUE o gizmo do warp nao existe — ver o cabecalho dela.
 #[cfg(all(test, feature = "panel-motion-graph"))]
 #[path = "warp_gizmo_probe.rs"]

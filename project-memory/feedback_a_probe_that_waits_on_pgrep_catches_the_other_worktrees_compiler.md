@@ -27,3 +27,22 @@ e a pergunta é **«este binário contém a minha mudança?»**.
 sem filtrar pela worktree. Ver também
 [[feedback-bash-cwd-resets-and-slips-to-the-primary]] — o `cd` de um comando não sobrevive ao
 seguinte, e um caminho relativo mede a árvore primária.
+
+---
+
+## ⛔ 2.ª INSTÂNCIA — `pgrep -f` apanha a PRÓPRIA espera (2026-09-08)
+
+Para esperar que outra linha acabasse a suíte antes de medir relógios (§5.0, `load ≤ 5`), armei
+`until ! pgrep -f 'cargo-nextest' …; do sleep 20; done`. Ela **nunca dispararia**: `-f` casa a
+linha de comando inteira, e duas coisas contêm o nome sem ser o processo procurado —
+
+1. **a própria espera** (o `sh -c` que corre o `pgrep` tem a string no argumento), e
+2. o **`earlyoom`**, cujo `--prefer ^(rustc|cargo|cargo-nextest|…)$` traz o nome num regex.
+
+⇒ **`pgrep -x <nome>`** (casa o nome do processo, não a linha) devolveu os **dois** nextest reais e
+mais nada.
+
+**How to apply:** uma espera por *«aquele programa ainda corre?»* casa pelo **nome do executável**
+(`pgrep -x`), nunca pela linha de comando — e antes de a armar, corra `pgrep -a<flag>` uma vez e
+**olhe o que ela apanhou**. Uma espera que nunca dispara lê-se exactamente como um trabalho que
+nunca acaba.

@@ -51,9 +51,14 @@ thread_local! {
     /// dos seletores do Inspector publicava**. Os outros nove painéis do app publicam-no no sítio
     /// onde pintam; aqui o passe diferido não tem `&mut WidgetStore`, então ele deposita e o fim
     /// do `paint` publica.
-    pub(crate) static PAINTED_POPOVER:
-        std::cell::Cell<Option<(ph2d_a11y::NodeId, ph2d_editor_core::zones::Rect)>> =
-        const { std::cell::Cell::new(None) };
+    /// ⚠️ **Ele carrega TAMBÉM as duas alturas da rolagem** (`conteúdo`, `visível`), e não só o
+    /// rect: um popover clampado à região do chrome pode ficar mais curto que a lista, e é esse
+    /// par que diz à roda e à barra até onde rolar. Publicar o rect sem elas deixaria a lista
+    /// **cortada e imóvel** — o defeito que o painel autorado nomeia: *o `popover_rect_clamped`
+    /// fazia o trabalho dele e ninguém fazia o resto*.
+    pub(crate) static PAINTED_POPOVER: std::cell::Cell<
+        Option<(ph2d_a11y::NodeId, ph2d_editor_core::zones::Rect, f32, f32)>,
+    > = const { std::cell::Cell::new(None) };
 }
 
 pub(crate) fn set_pending_ordering_dd(chip: Option<(usize, ph2d_editor_core::zones::Rect)>) {
@@ -81,10 +86,16 @@ pub(crate) fn take_pending_action_dd() -> Option<(u8, ph2d_editor_core::zones::R
 }
 
 /// Regista que um popover foi pintado neste quadro — ver [`PAINTED_POPOVER`].
-pub(crate) fn set_painted_popover(id: ph2d_a11y::NodeId, panel: ph2d_editor_core::zones::Rect) {
-    PAINTED_POPOVER.with(|c| c.set(Some((id, panel))));
+pub(crate) fn set_painted_popover(
+    id: ph2d_a11y::NodeId,
+    panel: ph2d_editor_core::zones::Rect,
+    content_h: f32,
+    visible_h: f32,
+) {
+    PAINTED_POPOVER.with(|c| c.set(Some((id, panel, content_h, visible_h))));
 }
 
-pub(crate) fn take_painted_popover() -> Option<(ph2d_a11y::NodeId, ph2d_editor_core::zones::Rect)> {
+pub(crate) fn take_painted_popover()
+-> Option<(ph2d_a11y::NodeId, ph2d_editor_core::zones::Rect, f32, f32)> {
     PAINTED_POPOVER.with(|c| c.take())
 }

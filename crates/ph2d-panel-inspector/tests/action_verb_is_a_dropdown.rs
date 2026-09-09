@@ -26,6 +26,7 @@
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::InteractiveState;
+use ph2d_editor_core::screens::HeroLayout;
 use ph2d_editor_core::screens::hero::{ActionFieldEdit, InspectorActionInfo, InspectorActionRow};
 use ph2d_editor_core::zones::Rect;
 use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
@@ -233,4 +234,78 @@ fn picking_a_verb_reaches_the_bus_and_closes_the_list() {
         ),
         "a entrada ficou `Pressed` depois do clique — ela reabriria acesa"
     );
+}
+
+/// ⚠️ **Uma janela do tamanho do ALVO** — o app é para tablet, e é ali que a lista de baixo do
+/// Inspector deixa de caber. A do gate acima (1600×900) **não produz o fenómeno**: com 16 acções o
+/// chip fica a `y = 609` e a lista pendurada abaixo acaba a `747`, ainda dentro de uma região que
+/// vai até `900`. *Uma cerca que nunca morde não é uma cerca.*
+const JANELA_TABLET: Rect = Rect {
+    x: 0.0,
+    y: 0.0,
+    w: 1280.0,
+    h: 720.0,
+};
+
+/// Uma secção com `n` acções — o que empurra o editor (e o chip) para o fundo do painel.
+fn actions_n(n: usize) -> InspectorActionInfo {
+    let mut i = actions();
+    i.rows = (0..n).map(|_| i.rows[0].clone()).collect();
+    i
+}
+
+/// ⭐⭐⭐ **A lista VIRA PARA CIMA quando abaixo do chip não cabe** — ela nunca sai da região.
+///
+/// Report do dono, 2026-09-09: *«o dropdown está abrindo fora da tela para baixo, não se adapta à
+/// posição do widget»*. Os quatro seletores do Inspector penduravam a lista **sempre abaixo**
+/// (`popover_rect`), enquanto o resto do app já usava o `popover_rect_clamped`.
+///
+/// ⚠️ **O gate tem DUAS metades, e a primeira é sobre a FIXTURA:** ele mede primeiro que, sem o
+/// clamp, esta cena de facto transbordaria — senão a segunda metade passaria por a lista caber, e
+/// não por o código a virar.
+///
+/// **Mutação que deve sangrar:** trocar o `popover_rect_clamped(chip, region)` da porta pelo
+/// `popover_rect(chip)`.
+#[test]
+fn the_list_flips_above_when_below_would_leave_the_screen() {
+    let regiao = HeroLayout::for_viewport(JANELA_TABLET).popover_region();
+    let mut h = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut st = InspectorState::default();
+    set_current_inspector_action(Some(actions_n(16)));
+    let _ = h.paint::<InspectorPanel>(&mut st, JANELA_TABLET);
+    h.set_dropdown_open(ids::INSP_ACTION_VERB_PICK, true);
+    let rects = h.paint::<InspectorPanel>(&mut st, JANELA_TABLET);
+
+    let (_, chip) = rects
+        .iter()
+        .find(|(n, _)| *n == ids::INSP_ACTION_VERB_PICK)
+        .copied()
+        .expect("o chip do verbo nao foi pintado");
+
+    // **Metade 1 — a fixtura produz o fenómeno.** Pendurada abaixo, a lista sairia da região.
+    let altura_da_lista = chip.h * ids::INSP_ACTION_VERB.len() as f32;
+    let fundo_se_abaixo = chip.y + chip.h + altura_da_lista;
+    assert!(
+        fundo_se_abaixo > regiao.y + regiao.h,
+        "a fixtura NAO produz o fenomeno: pendurada abaixo a lista acabaria em {fundo_se_abaixo:.1}          e a regiao vai ate' {:.1} — este gate estaria a passar por caber, nao por virar",
+        regiao.y + regiao.h
+    );
+
+    // **Metade 2 — nenhuma entrada sai da região.**
+    for (i, &id) in ids::INSP_ACTION_VERB.iter().enumerate() {
+        let (_, r) = rects
+            .iter()
+            .find(|(n, _)| *n == id)
+            .copied()
+            .unwrap_or_else(|| panic!("a entrada {i} nao foi pintada"));
+        assert!(
+            r.y >= regiao.y && r.y + r.h <= regiao.y + regiao.h,
+            "a entrada {i} cai FORA da regiao do chrome (y {:.1}..{:.1} contra {:.1}..{:.1}) — o              artista nao lhe chega",
+            r.y,
+            r.y + r.h,
+            regiao.y,
+            regiao.y + regiao.h
+        );
+    }
+    set_current_inspector_action(None);
 }

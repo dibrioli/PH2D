@@ -84,8 +84,17 @@ pub(crate) fn paint(inspector_state: &mut state::InspectorState, ctx: &mut Paint
     // seletores deste painel publicava**, porque o passe diferido não tem `&mut WidgetStore`. Os
     // outros nove painéis do app publicam-no onde pintam; aqui o passe deposita e este sítio, que
     // é o primeiro com o store mutável depois da pintura, publica.
-    if let Some((id, panel)) = state_popovers::take_painted_popover() {
+    if let Some((id, panel, content_h, visible_h)) = state_popovers::take_painted_popover() {
         store.set_dropdown_popover(id, panel);
+        // ⚠️ **As duas alturas viajam com o rect**: são elas que dizem à roda e à barra até onde
+        // rolar. Um popover clampado mais curto que a lista, publicado sem elas, fica cortado e
+        // IMÓVEL.
+        store.set_panel_content_h(id, content_h);
+        store.set_panel_visible_h(id, visible_h);
+        let max_scroll = (content_h - visible_h).max(0.0);
+        if store.panel_scroll(id) > max_scroll {
+            store.set_panel_scroll(id, max_scroll);
+        }
     }
     store.set_panel_content_h(ids::INSP_PANEL, content_h);
     store.set_panel_visible_h(ids::INSP_PANEL, visible_h);
@@ -111,6 +120,15 @@ pub(crate) fn paint(inspector_state: &mut state::InspectorState, ctx: &mut Paint
 /// - `timer_selected` — TIMERS: qual timer está aberto no editor. Mesmo contrato.
 /// - `action_selected` — SIGNAL ACTIONS: qual acção está aberta. Mesmo contrato.
 /// - `editing_value` — qual eixo do cartão de propriedades está a ser **reescrito**; ver
+///
+/// # A moldura e o fecho
+///
+/// A abertura ([`crate::paint_body::open_body`]) traz superfície, alças, cabeçalho, clip e a
+/// caixa interior; o fecho ([`crate::paint_body::close_body`]) traz os popovers diferidos, o
+/// `pop_layer` daquele clip, os cantos, o re-registo dos hits e os cartões. ⚠️ **Nada disso é
+/// orquestração de seção** — é a mesma razão pela qual o cabeçalho saiu para o `paint_head` em
+/// 2026-08-23, e a razão pela qual esta prosa vive AQUI: *comentário dentro do corpo conta para
+/// o teto de 200 LOC; doc-comment não.*
 fn paint_inspector(
     slot: Rect,
     selection: Option<&HeroSelection>,
@@ -124,9 +142,6 @@ fn paint_inspector(
     timer_selected: &mut usize,
     action_selected: &mut usize,
 ) {
-    // ⭐ **A moldura do corpo — superfície, alças, cabeçalho, clip e a caixa interior.**
-    // Ver [`crate::paint_frame::open_body`]: nada disto é orquestração de seção, e é a mesma razão
-    // pela qual o cabeçalho saiu para o `paint_head` em 2026-08-23.
     let crate::paint_body::BodyFrame {
         rect,
         content_top,
@@ -322,9 +337,7 @@ fn paint_inspector(
         },
         section_tops_y,
     );
-    // ⭐ **O fecho, simétrico do [`crate::paint_body::open_body`]** — os popovers diferidos, o
-    // `pop_layer` do clip que ele abriu, os cantos, o re-registo dos hits e os CARTÕES.
-    crate::paint_body::close_body(scene, text_system, theme, hit_index, rect);
+    crate::paint_body::close_body(scene, text_system, theme, hit_index, rect, store, layout);
 }
 
 /// **O corpo da §8 Visibility** — a caixa `Visible` mais os controlos do componente opcional.

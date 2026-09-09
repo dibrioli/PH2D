@@ -45,6 +45,7 @@ mod paint_frame_shared;
 mod paint_head;
 /// ⭐ **As TRÊS seções com ESTADO DE PAINEL** — irmã do `paint_frame_shared` pelo teto de 600.
 mod paint_stateful;
+mod popovers;
 mod populate;
 /// ⭐ O registo dos widgets da secção SIGNAL ACTIONS — irmão por CAP de ficheiro.
 mod populate_action;

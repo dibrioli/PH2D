@@ -3351,11 +3351,66 @@ popover diferido mais o slot do rect publicado —, e o corte é **por responsab
 juntos por uma lei (*um popover aberto sai da ordem em que a sua seção foi pintada*), não por
 vizinhança. `state.rs` fica em 542.
 
+### §14.5 — ⛔⛔ E o SEGUNDO report do mesmo dia: **a lista abria para fora do ecrã**
+
+> *«o dropdown está abrindo fora da tela para baixo, não se adapta à posição do widget»*
+
+Os **quatro** seletores do Inspector penduravam a lista **sempre ABAIXO do chip**
+(`Dropdown::popover_rect`), enquanto o resto do app já usava o `popover_rect_clamped`, que a vira
+para CIMA quando abaixo não cabe. A secção SIGNAL ACTIONS é a última do painel, então o chip dela é
+o que fica mais perto do fundo — mas a família é a mesma dos outros três.
+
+⚠️ **O clamp sozinho é meia-cura, e ela tem nome:** quando a lista não cabe de nenhum lado ele
+**encolhe o painel**, e sem rolagem as entradas de baixo ficam desenhadas fora dele — *«o
+`popover_rect_clamped` fazia o trabalho dele e ninguém fazia o resto»* (`ph2d-panel-authored`). A
+lista do *«Rides Parent Anchor»* chega a **65** entradas e não cabe em ecrã nenhum.
+
+⇒ **UMA PORTA** ([`popovers::paint_open_popover`](../../crates/ph2d-panel-inspector/src/popovers.rs)):
+clamp à **região do chrome** (`HeroLayout::popover_region` — dada a janela inteira, *«o lado com
+mais espaço»* é quase sempre para cima e a lista nasce colada à borda de topo, onde não há painel
+nenhum), rolagem por `paint_dropdown_popover_scrolled`, **só a parte visível** de cada linha
+hit-registada, e a barra de rolagem no `DROPDOWN_SCROLLBAR_ID` (o dispatch já a encaminha para
+quem estiver aberto, pelo `store.dropdown_popover()` que a §14.2 passou a publicar).
+*Uma lei escrita em quatro sítios ainda não é uma lei — só uma PORTA é.*
+
+**Gates** — [`a_long_popover_scrolls.rs`](../../crates/ph2d-panel-inspector/tests/a_long_popover_scrolls.rs)
+mais um terceiro em `action_verb_is_a_dropdown.rs`, com as mutações corridas:
+
+| gate | mutação que o faz sangrar |
+|---|---|
+| `the_list_flips_above_when_below_would_leave_the_screen` | `popover_rect_clamped` → `popover_rect` (a entrada 3 vai para `y 703..725` numa região que acaba em `720`) |
+| `a_long_list_is_clamped_to_the_region_and_publishes_its_scroll_extents` | apagar o `set_panel_content_h`/`set_panel_visible_h` |
+| `nothing_is_registered_outside_the_panel_and_the_scrollbar_is_there` | registar a linha inteira em vez da parte recortada ao painel |
+
+⚠️ **Os dois primeiros medem a FIXTURA antes de medirem o produto** — que ela transbordaria sem o
+clamp, e que a lista de facto não cabe. Sem essa metade eles passariam *por caber*, não por virar
+ou por rolar. ⚠️ E a janela do primeiro é **1280×720**, o tamanho do alvo: a 1600×900 a mesma cena
+não produz o fenómeno (a lista acaba a `747` numa região que vai a `900`).
+
+### §14.6 — Os DOIS tetos de LOC, os dois por decomposição
+
+- **`paint_frame_shared.rs` 679/600** → o passe diferido saiu inteiro para
+  [`popovers.rs`](../../crates/ph2d-panel-inspector/src/popovers.rs) (**488**). ⚠️ Ele **nunca
+  pertenceu ali**: o ficheiro-pai é *«as quatro seções compartilhadas»*, e estes quatro não são uma
+  secção — são a mesma lei aplicada quatro vezes, e pintam-se depois de **todas** elas.
+- **`paint_inspector` 211/200** → **198**, por duas coisas: o `close_body` voltou a **uma linha** ao
+  receber o `layout` em vez da região já derivada, e a prosa que sobrava no corpo mudou-se para o
+  doc-comment (*comentário dentro do corpo conta para o teto; doc-comment não* — a lei que a própria
+  entrada da tolerância já escrevia).
+- ⭐⭐ **E a tolerância de `paint_inspector` MORREU**, tal como ela própria previa (*«faltam TRÊS
+  linhas para esta entrada morrer»*). Foi o **censo de obsolescência** do gate que a cobrou, no
+  mesmo portão: o corte deixou a folga de `203` a descrever `198`. *Uma catraca sem censo não desce
+  — ela vira licença.*
+
 ### §14.5 — ⏳ ABERTO
 
 - **O seletor do verbo não tem teclado.** Abrir e escolher é ponteiro; as setas e o `Enter` não o
   conduzem. ⚠️ É a mesma ausência dos outros três seletores do Inspector — família, não dívida
   desta wave.
+- **A roda do rato sobre um popover longo não foi medida no Inspector.** O `dispatch_wheel` lê o
+  `store.dropdown_popover()`, que este painel passou a publicar, e a barra arrasta — mas o gate
+  cobre o *registo* da barra e as duas alturas, não o gesto da roda. ⚠️ É a mesma ausência dos
+  outros painéis que usam esta porta.
 - **O chip não mostra ÍCONE por verbo.** O `DropdownOption::with_icon` existe e serve exactamente
   para isto (*«uma lista cujas linhas não são todas a mesma ESPÉCIE de coisa»*), e cinco verbos que
   fazem coisas de naturezas diferentes (arrancar um relógio · mostrar · esconder) são a população

@@ -95,24 +95,36 @@ pub(crate) fn open_body(
     }
 }
 
-/// ⭐ **O FECHO do corpo** — o simétrico do [`open_body`], e é o nome que diz que o `push_clip`
+/// ⭐ **O FECHO do corpo** — os popovers diferidos, o `pop_layer` do clip que o [`open_body`]
+/// abriu, os cantos, o re-registo dos hits e os CARTÕES. É o simétrico dele, e o nome diz que o
+/// `push_clip`
 /// dele tem aqui a outra metade.
 ///
 /// ⚠️ Saiu do `paint_inspector` com o `open_body`, e pela mesma razão: a seção COMPONENT (F5)
 /// empurrou o orquestrador acima do tecto, e o que sai é o que nunca foi orquestração de seção.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn close_body(
     scene: &mut ph2d_vector::VectorScene,
     text_system: &mut ph2d_text::TextSystem,
     theme: ph2d_tokens::Theme,
     hit_index: &mut ph2d_editor_core::interaction::HitIndex,
     rect: ph2d_editor_core::zones::Rect,
+    store: &ph2d_editor_core::interaction::WidgetStore,
+    layout: &ph2d_editor_core::screens::HeroLayout,
 ) {
     // ⭐ Os cartões vão para BAIXO do corpo, antes de tudo o que se pinta por cima.
     ph2d_editor_core::widget::section_cards::end_section_cards(scene);
     // **OS QUATRO POPOVERS DIFERIDOS**, pintados por último para ficarem acima de tudo.
-    // ⚠️ Saíram do orquestrador em 2026-08-23: os três andam juntos porque partilham UMA lei — o
+    // ⚠️ Saíram do orquestrador em 2026-08-23: os quatro andam juntos porque partilham UMA lei — o
     // popover pinta-se fora da ordem das seções.
-    crate::paint_frame_shared::paint_deferred_popovers(scene, text_system, theme, hit_index);
+    crate::popovers::paint_deferred_popovers(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        layout.popover_region(),
+    );
     scene.pop_layer();
     close_frame_hits(hit_index, rect);
 }

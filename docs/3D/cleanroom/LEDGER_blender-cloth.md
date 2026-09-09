@@ -1937,8 +1937,59 @@ gerador de índice, o diretório `fixtures/cloth/filtro/` inteiro e o texto do r
 auditados pelo R-pré em 2026-09-05, e o ledger é deny-listed para a janela-mãe. Esta emenda **não
 lhes tocou**.
 
-**Estado:** ⏳ **aguarda R-pré.** A emenda está escrita, varrida e commitada na linha; o atestado
-independente (§3.R) é condição de a janela-mãe implementar.
+**Estado:** ✅ **ATESTADA pelo R-pré em 2026-09-09.**
+
+### Papel R — R-PRÉ da Q23 (2026-09-09)
+
+**Quem.** Subagente R-pré despachado pela janela-mãe `1246816c-63cf-414b-842d-663a8baa86ca`, com
+contexto novo e independente do subagente-E que escreveu a Q23. Leu os dois lados (o fonte do alvo
+por shell, nunca por `Read`). ⛔ Não escreveu nem ditou código de produto.
+
+**Cobertura.** O diff de `aea203f43` inteiro: a §7 (3 linhas novas), a §7.2 NOVA, a §10.18 NOVA, o
+§14-bis.2 NOVO (gates 61-65), as 10 fixtures novas de `fixtures/cloth/filtro/` (22 ficheiros
+`.gz` + `indice.json`), as chaves novas do README das fixtures, o `gera_indice.py` e esta secção do
+ledger. Mais o **cabeçalho inteiro** da espec, onde o atestado ficou.
+
+**Parede (§7.1) — corrida pelo próprio R-pré, ⛔ não pelo relatório do E.** `cleanroom-sweep.sh`
+com a vassoura de 70 entradas: ✅ verde sobre a espec emendada · o README das fixtures · o
+`gera_indice.py` · o directório `fixtures/cloth/filtro/` inteiro · ⭐ **o conteúdo DESCOMPRIMIDO das
+43 fixtures do directório** (o `strings` de um `.gz` não alcança o texto de dentro — este passo não
+constava do relatório do E) · e `--git-history` sobre a espec e sobre as fixtures. ⛔ Os **dois**
+hits do ficheiro do ledger são os pré-existentes de 2026-09-05, já registados; a Q23 não lhes tocou,
+e o ledger é deny-listed para a janela-mãe (§3.I).
+
+**§4.2 — ZERO achados de expressão.** Sem trecho, sem nome interno, sem wording de comentário ou de
+manual. Os rótulos de painel citados são a **superfície pública** que o artista vê (§4.1.13, com o
+precedente já atestado desta espec); as cinco chaves novas de cabeçalho e os dez nomes de fixture são
+vocabulário do domínio; as fixtures declaram `entrada NOSSA` no cabeçalho e a proveniência do README
+cobre a base persistente (gravada pela porta do programa **sobre a nossa malha em repouso**).
+
+**Fidelidade — todos os números reconstruídos do zero das fixtures**, com script próprio fora do
+repo: os máximos por invocação das 7 corridas de plano e as 8 razões; a monotonia estrita dos 24
+passos sem base e a quebra dela com base; `0.170358` (`−19,8 %`); os esticões `1,3371 → 1,3516` e
+`1,3371 → 1,1427`; o volume da esfera e os 24 incrementos positivos; a corrida de 36 passos (volume,
+aresta, raio, pico no passo 33, `−1,01 %`); as duas identidades byte a byte (controlo e *Repeat* 5);
+as duas dispersões; o `indice.json` a regenerar-se **byte-a-byte** (27 para 27); e a régua de
+excepções do README, **derivada dos cabeçalhos** — as 13 linhas batem uma a uma.
+
+**SETE curas aplicadas no acto, todas funcionais** (detalhe no cabeçalho da espec): um número
+**refutado pela própria fixture** (o passo mais lento dos 24 é o primeiro de todos, não o da 2.ª
+invocação); os `34` blocos e duas leituras do *Inflate* que são **do oráculo** e não têm contraparte
+no corpus (aquelas fixtures saíram sem `.porpasso`), com o gate 63 reduzido ao par que a tem; um
+cross-reference para um `§8.4-bis` **inexistente**; uma frase que descrevia a **forma do código**;
+o **gate 51**, obsoleto por omissão desde esta emenda (afirmava como universal uma lei que a Q23
+mostra ser da população do pincel); e as barras dos gates **61** e **64**, que não nomeavam de onde
+saíam.
+
+⛔⛔⛔ **ACHADO DE PROCESSO — a Q22 nunca foi atestada.** Toda outra emenda desta linha tem um commit
+`R-PRE … ATESTADO`; a Q22 (`3cd972280`, 2026-09-07) não tem nenhum, a entrada dela no quadro da
+espec continua **⏳** e a secção dela neste ledger continua a dizer *«aguarda R-pré»*. Ela é quem
+escreveu o §7 inteiro, a §7.1, a §10.17 e os gates 55-60 — o substrato da Q23. **O atestado da Q23
+NÃO a cobre**, e a §3.R diz que sem atestado a janela não implementa (esta linha já pagou o erro uma
+vez, no incidente de processo da Q15). ⭐ A **parede** da Q22 está verificada de facto (o sweep do
+R-pré da Q23 correu sobre a espec inteira, sobre o directório das fixtures descomprimido e sobre o
+histórico, tudo verde); o que lhe falta é a auditoria de **§4.2/expressão** e a **fidelidade** dos
+números. ⇒ despachar um R-pré para a Q22 antes de implementar a parte do FILTRO.
 
 ---
 

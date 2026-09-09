@@ -126,6 +126,11 @@ fn acordar(m: &mut MotionState, no: NodeId, nome: &str) {
     }
 }
 
+/// Quantos cozimentos frios por nó, e quantos para a linha de base — ver o comentário
+/// no [`measure_the_deformer_group`].
+const NO_REPS: usize = 3;
+const BASE_REPS: usize = NO_REPS;
+
 /// A mediana de 3 cozimentos **FRIOS** — um `MotionState` novo por corrida, senão o memo do cook
 /// responde à segunda e a sonda mede a tabela de hash. Devolve `(ms, n, no_device)`.
 /// O que uma linha da tabela diz.
@@ -150,10 +155,10 @@ struct Medida {
 /// `applicable` dele lê, e a coluna virou 🔴 — *a MINHA perturbação, lida como uma regressão do
 /// produto*. ⚠️ E o comentário que eu tinha escrito ao lado do `acordar` dizia que só `Enum` e
 /// `Toggle` alimentam um `applicable`: **falso**, e a tabela desmentiu-o na corrida seguinte.
-fn cook_com(lado: f32, no: Option<&str>) -> Medida {
+fn cook_com(lado: f32, no: Option<&str>, repeticoes: usize) -> Medida {
     let mut ms: Vec<f64> = Vec::new();
     let (mut n, mut gpu_aceso) = (0usize, false);
-    for _ in 0..3 {
+    for _ in 0..repeticoes {
         let mut m = MotionState::new();
         let sink = build_com(&mut m, lado, no, true);
         gpu_aceso =
@@ -251,7 +256,25 @@ fn measure_the_deformer_group() {
             .unwrap_or_default()
             .trim()
     );
-    let so_grade = cook_com(lado, None);
+    // ⛔⛔ **A LINHA DE BASE leva EXACTAMENTE as amostras dos outros, e dar-lhe mais foi
+    // construído, MEDIDO e revertido no mesmo dia** (2026-09-08).
+    //
+    // O raciocínio parecia sólido: ela é o DENOMINADOR das treze razões e é o menor número da
+    // tabela, logo a mais sensível — entre duas corridas na mesma máquina calma os absolutos
+    // repetiram dentro de `10 %` e a base moveu-se `21 %` (`0,53` → `0,64 ms`), o que sozinho
+    // fez a razão do `motion.kaleidoscope` ler `17,30×` e depois `14,58×`.
+    //
+    // ⚠️ **Com `9` amostras a base leu `0,26 ms`** — metade do que lê com `3`, e fora da
+    // dispersão das duas corridas anteriores. *O «cozimento frio» não é frio: o processo
+    // AQUECE ao longo das repetições* (alocador, caches, preditor), então a mediana de nove
+    // assenta abaixo da mediana de três. ⇒ com contagens diferentes dos dois lados, a razão
+    // passa a comparar uma base bem aquecida contra um nó frio, e o `kaleidoscope` saltou para
+    // `39,02×`.
+    //
+    // ⭐ **A lei que fica:** *o número de repetições faz parte da medição*, então os dois lados
+    // de uma razão têm de o partilhar. A dispersão do denominador é real e vive na tabela — a
+    // coluna que se cita é a **absoluta**, e a razão diz ordem de grandeza.
+    let so_grade = cook_com(lado, None, BASE_REPS);
     let nu = so_grade.ms;
     eprintln!(
         "\n  grade {lado}×{lado} = {} objectos · so' a grade: {nu:.2} ms {}",
@@ -267,7 +290,7 @@ fn measure_the_deformer_group() {
         "  -----------------------|-----------|------------|-----------------|------------------"
     );
     for nome in GRUPO {
-        let d = cook_com(lado, Some(nome));
+        let d = cook_com(lado, Some(nome), NO_REPS);
         let device = match (d.gpu_neutro, d.gpu_aceso) {
             (true, true) => "🟢 sim".to_string(),
             (false, false) => "🔴 NAO".to_string(),

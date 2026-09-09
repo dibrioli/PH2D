@@ -631,6 +631,10 @@ seguro: a única forma de não perturbar uma medição é não a fazer no mesmo 
 
 #### A tabela (`motion_deformadores_probe::measure_the_deformer_group`, grelha 320×320)
 
+> ⛔ **ESTA TABELA FOI SUPERADA — ver «A TABELA NA MÁQUINA CALMA» no fim do documento.**
+> Duas das linhas dela mediam o nó adormecido (o `rotate` a `0°` e o `spline_wrap` a
+> devolver um `clone`), e a coluna do relógio correu a `load 21,52`.
+
 ⚠️⚠️ **A coluna do RELÓGIO não é citável nesta corrida: `load 21,52`**, quatro vezes acima da barra
 do §5.0 (outra linha corria a suíte do shell na mesma máquina). Ela fica aqui porque a **ORDEM** de
 grandeza e a razão entre nós já dizem o que a wave precisa; o número fino é da **W6**, e sai numa
@@ -1134,3 +1138,62 @@ faz `proj(p) − proj(pivô)` — a mesma conta noutra ordem, a classe de ε do 
   (`the_knob_is_painted_and_the_device_no_longer_steps_back_for_it`): ele afirmava *«com direção o
   device sai»*, e afirma agora que **não há `applicable` nenhum** — *um que volte a nascer ali tem
   de trazer o próprio motivo escrito*.
+
+---
+
+### 📊 A TABELA NA MÁQUINA CALMA — o número fino que a W6 devia (2026-09-08)
+
+**`load 3,98`** (a barra do §5.0 é `≤ 5`), grelha `320×320`, `--release`, **três corridas** do
+mesmo binário. A coluna que se cita é a **absoluta**; a razão vai ao lado e traz o ruído do
+denominador consigo (ver a nota abaixo dela).
+
+| nó | objectos | cozimento (mediana de 3 corridas) | vs. só a grade | no device? |
+|---|---:|---:|---:|:---|
+| *(só a grade)* | 102 400 | `0,56 ms` | — | 🟢 |
+| `motion.rotate` | 102 400 | `0,80 ms` | 1,43× | 🟢 |
+| `motion.move` | 102 400 | `0,84 ms` | 1,50× | 🟢 |
+| `motion.transform` | 102 400 | `0,87 ms` | 1,55× | 🟢 |
+| `motion.spherize` | 102 400 | `0,88 ms` | 1,57× | 🟢 |
+| `motion.look_at` | 102 400 | `0,93 ms` | 1,66× | 🟡 **só nos defaults** |
+| `motion.four_point_warp` | 102 400 | `0,97 ms` | 1,73× | 🟢 |
+| `motion.scale` | 102 400 | `0,98 ms` | 1,75× | 🟢 |
+| `motion.mirror` | **204 800** | `1,00 ms` | 1,79× | 🟢 |
+| **`motion.bend`** | 102 400 | `1,12 ms` | 2,00× | 🟢 **nas DUAS colunas (W7)** |
+| `motion.twist` | 102 400 | `1,16 ms` | 2,07× | 🟢 |
+| `motion.bezier_warp` | 102 400 | `2,00 ms` | 3,57× | 🟢 |
+| **`motion.spline_wrap`** | 102 400 | `2,53 ms` | 4,52× | 🔴 **NÃO** (W5b) |
+| `motion.kaleidoscope` | **1 740 800** | `9,38 ms` | 16,75× | 🟢 |
+
+Um quadro de 60 fps tem `16,67 ms`. ⭐ **O grupo inteiro cabe num quadro com folga** — o mais caro
+é o caleidoscópio, e ele custa `56 %` de um quadro para produzir **1,74 milhões** de objectos.
+
+#### ⚠️ O que MUDOU contra a tabela antiga, e o que não mudou
+
+- **`motion.spline_wrap`: `2,86×` → `4,52×`.** A leitura antiga cronometrava um **`clone`** — os
+  quatro pontos de controlo colapsados num ponto, curva de comprimento zero, atalho inerte. Este é
+  o preço do embrulho a sério, e é ele que sustenta a recusa da W5b.
+- **`motion.bend`: 🟢 nas DUAS colunas.** Antes ele lia 🟢 porque o `direction` estava adormecido;
+  hoje o despertar acende-o **e o nó continua no dispositivo** — que é a W7.
+- ⭐ **`motion.rotate` mal se mexeu (`1,70×` → `1,43×`), e isso é uma resposta, não ruído:** ele
+  escreve `rot`, um escalar por elemento, sem redução e sem tocar em `P` — *para este nó a
+  identidade custa o mesmo que o trabalho*. Era o único dos dois adormecidos cuja linha antiga não
+  estava a medir a coisa errada.
+
+#### ⛔⛔ E a coluna da RAZÃO carrega o ruído do denominador — medido, e a «cura» foi revertida
+
+A base (`só a grade`) leu `0,56` · `0,81` · `0,52 ms` nas três corridas — **±36 %** — enquanto os
+absolutos dos nós repetiram dentro de `~15 %`. Ela é o menor número da tabela e é o denominador
+das treze linhas, então o ruído dela propaga-se a todas: o `motion.kaleidoscope` leu `16,63×`,
+`13,46×` e `17,92×` **sobre tempos absolutos de `9,25`, `10,97` e `9,38 ms`**.
+
+⛔ **Dar-lhe mais amostras foi construído, MEDIDO e REVERTIDO no mesmo dia.** Com `9` repetições a
+base leu **`0,26 ms`** — metade do que lê com `3`, e fora da dispersão das três corridas. ⭐ *O
+«cozimento frio» não é frio: o processo AQUECE ao longo das repetições* (alocador, caches,
+preditor), então a mediana de nove assenta abaixo da mediana de três — e a razão passou a comparar
+uma base bem aquecida contra um nó frio, com o caleidoscópio a saltar para **`39,02×`**.
+
+> ⭐ **A lei que fica: o número de repetições faz PARTE da medição, então os dois lados de uma
+> razão têm de o partilhar.** E a coluna que se cita é a absoluta.
+
+⚠️ **A corrida 2 foi sistematicamente mais lenta em TODAS as linhas** (`+15 %`), o que é a máquina
+e não um nó — é por isso que a tabela publica a **mediana de três corridas** e não uma delas.

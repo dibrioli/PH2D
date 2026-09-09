@@ -101,3 +101,13 @@ uma continua a ser um ficheiro próprio; o que mudou foi o endereço.
 - [[feedback_a_ruler_that_compares_two_coordinate_spaces_is_green_over_the_defect_and_red_over_the_cure]] — régua que compara LOCAL com MUNDO fica verde sobre o defeito e vermelha sobre a cura; converta uma vez e passe tudo por lá
 - [[feedback_the_cleanup_runbook_measures_the_wrong_filesystem]] — o `df -h /` do fim-de-dia mede o disco RAIZ e o PH2D vive noutro: leu `206G→206G` sobre **435 GB** apagados, e o `§5` chama-lhe «a prova». Um `df` sem caminho mede onde se ESTÁ, não o que se apagou
 - ⭐⭐ **A grandeza vive na CASCA, e a minha réplica da régua só tinha a grelha grossa** (06/09): copiei um censo sem a segunda varredura dele (fina, com banda `|f| ≤ 0,03` sobre a superfície) e li `1,0003` onde o original lia `1,0216`. *Uma régua que não sabe onde a grandeza mora responde «está tudo bem» com a mesma confiança.* Ao replicar um instrumento, copie-o INTEIRO — ou corra o original.
+- ⭐⭐ **O NÚMERO DE REPETIÇÕES faz parte da medição, então os dois lados de uma razão têm de o
+  partilhar.** Numa tabela de preços de nós (08/09) o denominador — *«só a grelha»* — era o menor
+  número e o mais ruidoso (`0,52`–`0,81 ms`, ±36 %, contra ±15 % nos numeradores), e o ruído dele
+  propagava-se às treze linhas. ⛔ Dar-lhe **mais** amostras foi construído, medido e **revertido**:
+  com `9` em vez de `3` a base leu `0,26 ms`, metade, **fora da dispersão** — *o «cozimento frio»
+  não é frio, o processo AQUECE ao longo das repetições* (alocador, caches, preditor), e a mediana
+  de nove assenta abaixo da de três. A razão passou a comparar uma base bem aquecida contra um nó
+  frio, e a pior linha saltou de `~16×` para `39×`. ⇒ **cite a coluna ABSOLUTA**, publique a
+  mediana de N corridas (uma delas foi `+15 %` em *todas* as linhas — isso é a máquina, não um nó),
+  e nunca gaste amostras só de um lado de um quociente.

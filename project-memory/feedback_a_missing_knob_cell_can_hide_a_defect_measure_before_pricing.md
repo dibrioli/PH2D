@@ -61,3 +61,35 @@ Irmãs: [[feedback_ask_what_number_the_opposite_answer_would_print]] ·
 [[feedback_a_parameter_that_changes_nothing_is_discarded_downstream]] ·
 [[feedback_stale_comment_and_dead_code_lie]] ·
 [[feedback_a_measured_refusal_answers_one_question_recheck_it_when_yours_is_another]]
+
+---
+
+## ⭐⭐ E O CONTRÁRIO: um DESPERTAR que não acorda (2026-09-08, `line/motion-value`)
+
+A cura de *«a tabela de preços mede cada nó nos defaults»* foi um **despertar** — pôr cada slider
+a ¼ da faixa antes de cronometrar. Auditado antes de correr, ele deixava **dois de treze**
+adormecidos, e as duas formas repetem-se noutros módulos:
+
+**1. A varredura conhecia UMA espécie de widget.** Ela movia `ParamWidget::Slider`, e o
+`motion.rotate` **não tem nenhum** — o controlo dele é um `Angle`. A linha dele cronometrava uma
+rotação de **0°**: a identidade que o despertar existia para evitar. ⚠️ A razão escrita para
+excluir widgets (*«mexer num `Enum` ou num `Toggle` mudaria o MODO do nó»*) **nunca cobriu** o
+`Angle`, que é um número com unidade. *Uma lista de espécies aceites tem de nomear por que cada
+espécie de FORA está de fora — senão a que ninguém pensou herda a exclusão sem motivo.*
+
+**2. Uma fracção ÚNICA colapsa uma TUPLA.** Com ¼ para todos, os oito `P0X..P3Y` de um nó de curva
+recebiam o mesmo número, os quatro pontos de controlo caíam em cima uns dos outros, o comprimento
+media zero e o nó tomava o **atalho inerte** — um `clone` cronometrado como se fosse o trabalho.
+A cura é a fracção **variar com o índice** (razão áurea: determinística, sem repetição em `n`
+pequeno) — ⛔ nunca uma lista à mão de *«estes dois hints são um ponto»*, que envelhece a cada
+param novo.
+
+⭐⭐ **A régua do despertar é a SAÍDA, nunca o relógio:** *um `clone` e um deformador barato leem-se
+iguais numa coluna de razão.* O censo que fecha isto compara, por nó, a saída acesa contra a saída
+nos defaults — e ⚠️ **compara o STREAM INTEIRO**: a 1.ª redacção olhava só `P`, e o `rotate` e o
+`scale` escrevem `rot` e `size`, logo liam-se «não mudou» com o nó a girar (3.ª vez que esta linha
+paga essa cegueira).
+
+**How to apply:** ao escrever uma sonda que *perturba* para medir, escreva no mesmo commit o censo
+*«a perturbação mudou a saída de TODOS os sujeitos?»*, e prove-o por mutação — cada mutação da
+regra de perturbação deve **nomear** o sujeito que ela deixa adormecido.

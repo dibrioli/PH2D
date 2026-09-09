@@ -1006,3 +1006,41 @@ que É o seleccionado.
 **distintas** e que nenhuma recusa toca o documento. ⚠️ **A régua é a distinção, não o texto** — um
 gate que fixasse a redacção obrigaria toda melhoria de linguagem (e a i18n) a editar um teste.
 ⛔ Prova de mutação: colapsar dois braços na mesma frase reprova nomeando o par.
+
+---
+
+### ⛔⛔ O DESPERTAR NÃO ACORDAVA DOIS DOS TREZE — e a tabela escondia-o (2026-09-08)
+
+Antes de correr a tabela na máquina calma, a régua foi auditada. **Dois defeitos, os dois na
+família que o próprio despertar tinha sido escrito para curar** (*um corpus no ponto neutro de um
+knob não testa esse knob*):
+
+**1. O `motion.rotate` não tem um único `Slider`.** O controlo dele é um `ParamWidget::Angle`, e o
+despertar só mexia em `Slider` ⇒ a linha dele cronometrava uma rotação de **0°**, que é
+exactamente a identidade de que a tabela se queixava. ⚠️ **Um `Angle` é um NÚMERO com unidade em
+graus, não um modo** — a razão escrita para excluir widgets (*«mexer num `Enum` ou num `Toggle`
+mudaria o MODO do nó»*) nunca o cobriu. O `motion.bend` tem a mesma forma no **`direction`**, que é
+justamente o param que a cláusula `applicable` dele lê: a coluna do dispositivo dizia **🟢** sobre
+um nó com aquele knob adormecido.
+
+**2. A fracção era a mesma para todos os hints.** Os oito `P0X..P3Y` do `motion.spline_wrap`
+recebiam **o mesmo número** ⇒ os quatro pontos de controlo colapsavam num ponto, a cúbica media
+comprimento zero, e o nó tomava o **atalho inerte**: a linha dele cronometrava um `clone` — *o
+mesmo defeito que o despertar curou no `bezier_warp`, um nível abaixo dele próprio*. Hoje a
+fracção varia pela **razão áurea** (determinística, nunca repete em `n` pequeno, e ⛔ não precisa
+de uma lista escrita à mão de *«estes dois hints são um ponto»*, que envelheceria a cada param
+novo). ⚠️ A faixa é `0,25..0,75` e o `0,25` em `i = 0` é **load-bearing**: a faixa do
+`motion.scale` é `0..5`, e uma fracção de `0,2` pediria `Scale = 1`, que é a identidade.
+
+⭐ **O censo que faltava:** `waking_a_node_takes_it_off_the_identity` — para cada um dos treze, a
+saída do nó **aceso** difere da saída dele nos defaults. ⛔ **Duas provas de mutação, cada uma a
+nomear o nó que previa:** voltar a lista de widgets a `Slider` acusa `motion.rotate`; congelar a
+fracção acusa `motion.spline_wrap`.
+
+⚠️⚠️ **E a 1.ª redacção do próprio gate comparava só a coluna `P`** — a **terceira** vez que esta
+linha paga a mesma cegueira (a régua da figura do tutorial pagou-a antes): o `rotate` e o `scale`
+escrevem `rot` e `size`, **nunca `P`**, e liam-se *«não mudou»* com o nó a girar. A comparação é do
+**stream inteiro**, a única que não tem de saber o que cada nó escreve.
+
+> ⭐ *Um `clone` e um deformador barato leem-se **iguais** numa coluna de razão* — é por isso que a
+> régua do despertar tem de ser a **SAÍDA**, nunca o relógio.

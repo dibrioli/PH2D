@@ -568,6 +568,13 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // isso que faz o replay reproduzir a mesma animacao -- a razao de ele ser SimComponent.
     reg.register_default::<crate::SpriteAnimations>("ph2d::ecs::SpriteAnimations");
     reg.register_default::<crate::SpriteAnimator>("ph2d::ecs::SpriteAnimator");
+    // ⭐⭐⭐ O TIMER (TOP-20 #2, 2026-09-08) -- os timers nomeados de uma entidade. Sem o registro,
+    // o artista autora uma duracao, um nome de sinal e o autostart, grava o projeto, reabre, e o
+    // objecto volta MUDO: nada some da tela, nada da erro, e o jogo simplesmente deixa de
+    // acontecer sozinho. ⚠️ O `elapsed_us` viaja junto pela MESMA razao do `SpriteAnimator` -- e
+    // isso que faz o replay reproduzir o mesmo instante de disparo -- e e por isso que ele passa
+    // pelo ledger do `preview_drive` em vez de virar um passo de undo por quadro.
+    reg.register_default::<crate::Timers>("ph2d::ecs::Timers");
     // O RECORTE, que deixou de ser um campo da moldura para valer em qualquer forma FECHADA
     // (2026-08-21). Sem o registro, o modo de falha é o mesmo da moldura e igualmente enganoso:
     // um Ctrl+Z devolveria a forma inteira, com todos os filhos no lugar, e o recorte

@@ -80,6 +80,9 @@ pub mod sprite_region;
 pub mod sprite_sheet_frame;
 pub mod sprite_sheet_ref;
 pub mod stable_id;
+/// ⭐⭐⭐ **O `Timer`** — o item #2 do TOP-20 e o primeiro produtor de sinal barato do produto
+/// (hoje o único produtor autorável é uma COLISÃO).
+pub mod timer;
 pub mod transform;
 pub mod transform_inverse;
 pub mod transform_versioned;
@@ -145,6 +148,10 @@ pub use sprite_sheet_ref::SpriteSheetRef;
 pub use stable_id::{
     StableId, StableIdCounter, assign_missing_stable_ids, entity_of_stable_id, stable_id_for_name,
     stable_id_of,
+};
+pub use timer::{
+    TIMERS_MAX, Timer, TimerOutcome, TimerRuntime, TimerState, Timers, advance as timer_advance,
+    arm_autostart,
 };
 pub use transform::{
     GlobalTransform, GroupedChildren, Locked, SimRef, Transform, TransformPropagationState,

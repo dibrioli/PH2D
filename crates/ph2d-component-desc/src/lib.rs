@@ -468,11 +468,23 @@ pub enum ComponentCategory {
     Scripting,
     /// Instância, mestre, override (nascem na F4).
     Instancing,
+    /// ⭐⭐⭐ **LÓGICA DE JOGO sem uma linha de script** (2026-09-08) — o `Timer` é o primeiro.
+    ///
+    /// ⚠️ **Ela nasce com UM tipo e isso não contradiz a lei acima** (*«contadas sobre os
+    /// registados, não inventadas»*): há um tipo real nela hoje, e a fila do
+    /// [levantamento](https://github.com/dibrioli/PH2D/blob/main/docs/Components/00_levantamento_componentes.md)
+    /// §7 traz mais **catorze** — `SensorZone`, `SignalActions`, `Spawner`, `Lifetime`, `Tags`,
+    /// `StateMachine`, `ProjectileMotion`…
+    ///
+    /// ⛔ **A alternativa era pô-los em `Scripting`, e seria mentir**: o valor inteiro desta família
+    /// é *acontecer sem script*. Um artista que procure o relógio na secção de scripts conclui que
+    /// precisa de programar para o ter.
+    Logic,
 }
 
 impl ComponentCategory {
     /// Todas, na ordem em que a paleta as mostra. ⛔ Fonte única da iteração.
-    pub const ALL: [ComponentCategory; 13] = [
+    pub const ALL: [ComponentCategory; 14] = [
         ComponentCategory::Identity,
         ComponentCategory::Transform,
         ComponentCategory::Ordering,
@@ -484,6 +496,7 @@ impl ComponentCategory {
         ComponentCategory::Vector,
         ComponentCategory::Physics,
         ComponentCategory::Model3D,
+        ComponentCategory::Logic,
         ComponentCategory::Scripting,
         ComponentCategory::Instancing,
     ];
@@ -504,6 +517,7 @@ impl ComponentCategory {
             ComponentCategory::Physics => "Physics",
             ComponentCategory::Model3D => "3D",
             ComponentCategory::Scripting => "Scripting",
+            ComponentCategory::Logic => "Logic",
             ComponentCategory::Instancing => "Instancing",
         }
     }

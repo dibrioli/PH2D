@@ -26,6 +26,8 @@ pub mod bridges;
 pub mod core;
 pub mod field;
 pub mod image;
+/// ⭐⭐⭐ **LÓGICA DE JOGO sem script** (TOP-20 #2–#5) — o `Timer` é o primeiro.
+pub mod logic;
 pub mod physics;
 pub mod script;
 pub mod skeleton;
@@ -40,6 +42,7 @@ const FAMILIES: &[&[ComponentDesc]] = &[
     core::DESCS,
     field::DESCS,
     image::DESCS,
+    logic::DESCS,
     physics::DESCS,
     script::DESCS,
     skeleton::DESCS,

@@ -173,9 +173,13 @@ fn register_ecs_components_populates_registry() {
     //   que entra: a conta desce de `79` a `77` -- e este e' o degrau que obriga o
     //   `PROJECT_SCHEMA` a subir, porque o `snapshot_to_world` recusa um blob cujo `type_id`
     //   deixou de estar registado.
-    // ⛔ **Este numero SOMA entre linhas: conta-se, nunca se escolhe.** O `77` saiu do gate (ele
-    //   imprimiu `left: 77`), como manda a nota do `VecBucketFill` acima.
-    assert_eq!(reg.len(), 77);
+    // ⛔ **Este numero SOMA entre linhas: conta-se, nunca se escolhe.** O `78` saiu do gate (ele
+    //   imprimiu `left: 78`), como manda a nota do `VecBucketFill` acima.
+    //
+    // ⚠️ **2026-09-08: `77` -> `78`, delta +1** -- o `Timers` (TOP-20 #2). Quem integrar conta o
+    //   DELTA, nunca o literal: duas linhas que registem um componente cada e escrevam o mesmo
+    //   numero fundem MUDAS, e o git nao sabe o que a conta significa.
+    assert_eq!(reg.len(), 78);
     assert!(reg.get_by_name("ph2d::ecs::VecClipContent").is_some());
     assert!(reg.get_by_name("ph2d::ecs::VecBoolOp").is_some());
     assert!(reg.get_by_name("ph2d::ecs::SpritePixels").is_some());

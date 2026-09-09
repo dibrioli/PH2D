@@ -97,6 +97,9 @@ pub mod slot_tabs;
 /// endereço único da feature: um corte por tecto não pode obrigar 30 chamadores a aprender uma
 /// segunda morada.
 pub mod slot_tabs_drag;
+/// ⭐ **O que se vê DENTRO de uma aba** — o glifo e o nome, irmão do [`slot_tabs`] pela mesma
+/// fronteira: aquele responde *quem está na fila e onde*, este *o que uma delas diz*.
+pub mod slot_tabs_face;
 pub mod variant_axes;
 // ⚠️ Re-exportado para o gate `every_registered_panel_is_reachable_by_the_z_order_walk`: uma
 // lista que um teste não consegue ler é uma lista que ninguém confere — e esta já custou

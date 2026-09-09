@@ -17,6 +17,7 @@ fn occupant(id: &'static str, node: u64, title: &'static str) -> Occupant {
         id,
         node: NodeId(node),
         title,
+        icon: crate::icons::IconId::Inspector,
     }
 }
 
@@ -63,8 +64,11 @@ fn the_tabs_touch_and_never_overlap() {
 fn a_tab_is_as_wide_as_its_own_name() {
     let mut text = TextSystem::without_system_fonts();
     let occ = three();
-    let font = TypeToken::Sm.px();
-    let inset = tab_pad_x() * 2.0;
+    let font = ph2d_tokens::TypeToken::Sm.px();
+    // ⚠️ **O recuo de uma aba deixou de ser só o recuo:** o glifo e o vão dele saem do mesmo
+    //    orçamento desde 2026-09-09. Medir aqui o recuo antigo daria a esta fixtura mais espaço do
+    //    que o produto tem, e o controlo de vacuidade abaixo deixaria de descrever o defeito.
+    let inset = tab_pad_x() * 2.0 + tab_icon_px() + ph2d_tokens::icon_label_gap_px();
 
     let equal_share = bar().w / occ.len() as f32;
     let widest = occ
@@ -177,4 +181,155 @@ fn the_tab_id_is_a_bijection_and_never_the_panels_own_id() {
             }
         }
     }
+}
+
+/// ⭐⭐⭐ **NO PISO A ABA É O GLIFO — e nunca um `…` sozinho.**
+///
+/// > *«as abas … não reduzem de tamanho e colocam os `...` no nome»* — Enio, 2026-09-08.
+///
+/// O encolhimento chegou na wave 38; o nome ficou a evaporar até às reticências, **iguais em
+/// todas**. Aqui mede-se o que sobra à largura mínima: o desenho do painel, dentro da aba e
+/// centrado, e **nenhum** rótulo.
+///
+/// ⚠️ **A 1.ª asserção é o controlo de vacuidade** — ela prova que esta largura É a do defeito: se
+/// o nome coubesse, a fixtura não produzia o fenómeno e as outras duas mediriam silêncio.
+#[test]
+fn a_squeezed_tab_is_its_glyph_and_never_a_lone_ellipsis() {
+    let mut text = TextSystem::without_system_fonts();
+    let title = "Inspector";
+    let font = ph2d_tokens::TypeToken::Sm.px();
+    let r = Rect::new(0.0, 0.0, tab_floor_w(), TAB_BAR_H);
+    let budget = r.w - tab_pad_x() * 2.0 - tab_icon_px() - ph2d_tokens::icon_label_gap_px();
+    assert!(
+        text.prefix_width(title, font) > budget,
+        "controlo partido: «{title}» cabe em {budget} px no piso — esta fixtura não reproduz o \
+         nome espremido"
+    );
+
+    let f = tab_face(r, title, &mut text);
+    assert!(
+        f.label.is_none(),
+        "a aba no piso ainda escreve {:?} — um rótulo aqui é o `…` do report, ou pior, texto a \
+         transbordar por cima da vizinha",
+        f.label
+    );
+    assert!(
+        (f.icon.w - tab_icon_px()).abs() < 0.001 && (f.icon.h - tab_icon_px()).abs() < 0.001,
+        "o glifo não tem o lado do ícone em linha desta casa: {:?}",
+        f.icon
+    );
+    assert!(
+        f.icon.x >= r.x - 0.001 && f.icon.x + f.icon.w <= r.x + r.w + 0.001,
+        "o glifo saiu da própria aba: {:?} em {r:?}",
+        f.icon
+    );
+    assert!(
+        ((f.icon.y + f.icon.h * 0.5) - (r.y + r.h * 0.5)).abs() < 0.001,
+        "o glifo não está centrado na fila: {:?}",
+        f.icon
+    );
+}
+
+/// ⭐⭐ **Com espaço, a aba mostra as DUAS coisas — e o vão entre elas é o da porta.**
+///
+/// ⚠️ O vão vem de [`ph2d_tokens::icon_label_gap_px`] (`4`, veredito do dono de 2026-09-07 *«para o
+/// app todo»*), e é medido aqui em GEOMETRIA: um censo textual vê a chamada, não a distância.
+#[test]
+fn a_roomy_tab_shows_the_glyph_and_the_whole_name() {
+    let mut text = TextSystem::without_system_fonts();
+    let title = "Inspector";
+    let w = tab_natural_w(title, &mut text);
+    let r = Rect::new(0.0, 0.0, w, TAB_BAR_H);
+
+    let f = tab_face(r, title, &mut text);
+    let (shown, x, _) = f.label.expect("na largura natural o nome tem de aparecer");
+    assert_eq!(shown, title, "o nome foi cortado na largura que o mede");
+    assert!(
+        (x - (f.icon.x + f.icon.w + ph2d_tokens::icon_label_gap_px())).abs() < 0.001,
+        "o nome não começa a um vão do glifo: glifo {:?}, nome em {x}",
+        f.icon
+    );
+    assert!(
+        f.icon.x >= r.x + tab_pad_x() - 0.001,
+        "o glifo entrou no recuo da aba: {:?} em {r:?}",
+        f.icon
+    );
+}
+
+/// ⭐⭐⭐ **EM TODA LARGURA ENTRE O PISO E A NATURAL, o que se pinta ou é o nome ou não é nada.**
+///
+/// ⛔⛔ **Este teste nasceu de uma mutação SOBREVIVENTE.** A fixtura do piso não chega às duas
+/// guardas que decidem se o rótulo sai: a `Inspector` num quadrado de 22 px deixa o orçamento
+/// **negativo**, e o `budget > 0` sozinho já devolve `None`. Apagar as duas guardas deixava os
+/// dois gates do piso VERDES. *Uma fixtura sem o fenómeno mede silêncio* — e o fenómeno vive nas
+/// larguras INTERMÉDIAS, onde o orçamento é positivo e pequeno.
+///
+/// Ali o [`crate::text_elide::fit`] tem **duas** saídas que não dizem nada, e as duas shipariam:
+/// o `…` sozinho (o report do dono) e o **texto cru**, que ele devolve de propósito quando nem as
+/// reticências cabem — *«é melhor transbordar visivelmente do que desaparecer»*, lei certa numa
+/// caixa isolada e errada numa fila, onde transbordar é escrever na aba do vizinho.
+#[test]
+fn between_the_floor_and_the_full_name_a_tab_never_shows_a_useless_label() {
+    let mut text = TextSystem::without_system_fonts();
+    let title = "Inspector";
+    let font = ph2d_tokens::TypeToken::Sm.px();
+    let overhead = tab_pad_x() * 2.0 + tab_icon_px() + ph2d_tokens::icon_label_gap_px();
+    let natural = tab_natural_w(title, &mut text);
+
+    let (mut with_label, mut without, mut useless_raw) = (0usize, 0usize, 0usize);
+    let mut w = tab_floor_w();
+    while w <= natural + 0.001 {
+        let r = Rect::new(0.0, 0.0, w, TAB_BAR_H);
+        let budget = w - overhead;
+        // O que o elidor sozinho devolveria — a saída CRUA, sem as guardas desta casa.
+        if budget > 0.0 {
+            let raw = crate::text_elide::fit(&mut text, title, font, budget);
+            if !raw.starts_with('I') || text.prefix_width(&raw, font) > budget {
+                useless_raw += 1;
+            }
+        }
+
+        let f = tab_face(r, title, &mut text);
+        assert!(
+            f.icon.x >= r.x - 0.001 && f.icon.x + f.icon.w <= r.x + r.w + 0.001,
+            "o glifo saiu da aba a {w} px: {:?}",
+            f.icon
+        );
+        match &f.label {
+            None => without += 1,
+            Some((s, x, _)) => {
+                with_label += 1;
+                assert!(
+                    s.starts_with('I'),
+                    "a {w} px a aba escreve {s:?}, que não é o princípio de «{title}»"
+                );
+                assert!(
+                    text.prefix_width(s, font) <= budget + 0.001,
+                    "a {w} px o rótulo {s:?} transborda o orçamento de {budget} px — ele vai \
+                     escrever por cima da aba vizinha"
+                );
+                assert!(
+                    *x >= f.icon.x + f.icon.w - 0.001,
+                    "a {w} px o nome começa em cima do glifo"
+                );
+            }
+        }
+        w += 0.5;
+    }
+
+    // ⚠️ **Os TRÊS controlos de vacuidade.** Sem eles a varredura pode não cruzar a fronteira, ou
+    //    nunca chegar às guardas — que foi exactamente como a mutação sobreviveu.
+    assert!(
+        without > 0,
+        "nenhuma largura desta varredura esconde o nome"
+    );
+    assert!(
+        with_label > 0,
+        "nenhuma largura desta varredura mostra o nome"
+    );
+    assert!(
+        useless_raw > 0,
+        "a varredura nunca produziu uma saída inútil do elidor — ela não exercita as guardas que \
+         este teste existe para medir"
+    );
 }

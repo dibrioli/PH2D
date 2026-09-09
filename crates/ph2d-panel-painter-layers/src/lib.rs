@@ -115,6 +115,7 @@ impl Panel for PainterLayersPanel {
     /// ⚠️ O título do CABEÇALHO continua a seguir o modo (`paint_brush_top::header_title`) — são
     /// duas perguntas: *«que painel é este?»* e *«que modo estou a ver?»*.
     const TITLE: &'static str = "Painter";
+    const ICON: ph2d_editor_core::icons::IconId = ph2d_editor_core::icons::IconId::Painter;
     /// ⚠️ **Um painel de COLUNA não cabe na faixa de baixo.** Ela tem 240 px de altura e a
     /// largura da área: uma lista de propriedades ali fica com duas linhas visíveis. ⇒ as duas
     /// colunas, e o gesto que o levaria ao fundo não é oferecido (decisão D1).

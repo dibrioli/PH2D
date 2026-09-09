@@ -36,6 +36,8 @@ const PAINTS_AN_ICON_AND_ITS_LABEL: &[&str] = &[
     "crates/ph2d-editor-core/src/widget/section_header/mod.rs",
     "crates/ph2d-editor-core/src/widget/tree_view.rs",
     "crates/ph2d-editor-core/src/screens/hero/context_menu_overlay.rs",
+    // ⭐ A CARA de uma aba (2026-09-09): o glifo do painel e, quando cabe, o nome dele.
+    "crates/ph2d-editor-core/src/screens/hero/slot_tabs_face.rs",
     "crates/ph2d-editor-core/src/screens/hero/topbar/cluster_painter.rs",
     "crates/ph2d-panel-hierarchy/src/row.rs",
     "crates/ph2d-panel-vector/src/paint_stack_rows.rs",

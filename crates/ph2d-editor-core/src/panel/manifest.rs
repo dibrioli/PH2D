@@ -29,6 +29,8 @@ pub struct PanelManifest {
     pub default_visible: bool,
     /// ⭐ O nome que o artista lê numa aba — ver [`Panel::TITLE`].
     pub title: &'static str,
+    /// ⭐ O glifo que a aba mostra quando o nome já não cabe — ver [`Panel::ICON`].
+    pub icon: crate::icons::IconId,
     /// ⭐ Onde este painel PODE estar (D1) — ver [`Panel::ALLOWED_SLOTS`].
     pub allowed_slots: crate::screens::slot::SlotSet,
     /// Onde ele nasce — ver [`Panel::DEFAULT_SLOT`].
@@ -50,6 +52,7 @@ impl PanelManifest {
             panel_node_id: P::NODE_ID,
             default_visible: P::DEFAULT_VISIBLE,
             title: P::TITLE,
+            icon: P::ICON,
             allowed_slots: P::ALLOWED_SLOTS,
             default_slot: P::DEFAULT_SLOT,
             can_float: P::CAN_FLOAT,

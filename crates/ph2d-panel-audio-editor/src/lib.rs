@@ -444,6 +444,7 @@ impl Panel for AudioEditorPanel {
     const NODE_ID: NodeId = AEDIT_PANEL;
     const DEFAULT_VISIBLE: bool = false;
     const TITLE: &'static str = "Audio Editor";
+    const ICON: ph2d_editor_core::icons::IconId = ph2d_editor_core::icons::IconId::Audio;
     /// ⚠️ **Um painel de COLUNA não cabe na faixa de baixo.** Ela tem 240 px de altura e a
     /// largura da área: uma lista de propriedades ali fica com duas linhas visíveis. ⇒ as duas
     /// colunas, e o gesto que o levaria ao fundo não é oferecido (decisão D1).

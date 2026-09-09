@@ -65,6 +65,7 @@ impl Panel for Model3dPanel {
     /// nascesse aberto ocuparia o encaixe da direita em toda sessão que não é de modelagem.
     const DEFAULT_VISIBLE: bool = false;
     const TITLE: &'static str = "Model 3D";
+    const ICON: ph2d_editor_core::icons::IconId = ph2d_editor_core::icons::IconId::Cube;
     /// ⚠️ **Um painel de COLUNA não cabe na faixa de baixo.** Ela tem 240 px de altura e a
     /// largura da área: uma lista de propriedades ali fica com duas linhas visíveis. ⇒ as duas
     /// colunas, e o gesto que o levaria ao fundo não é oferecido (decisão D1).

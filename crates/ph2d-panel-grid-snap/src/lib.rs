@@ -48,6 +48,7 @@ impl Panel for GridSnapPanel {
     const NODE_ID: NodeId = ph2d_editor_core::ids::GS_PANEL;
     const DEFAULT_VISIBLE: bool = false;
     const TITLE: &'static str = "Grid Settings";
+    const ICON: ph2d_editor_core::icons::IconId = ph2d_editor_core::icons::IconId::GridSettings;
     /// ⚠️ **Um painel de COLUNA não cabe na faixa de baixo.** Ela tem 240 px de altura e a
     /// largura da área: uma lista de propriedades ali fica com duas linhas visíveis. ⇒ as duas
     /// colunas, e o gesto que o levaria ao fundo não é oferecido (decisão D1).

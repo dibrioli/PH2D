@@ -152,6 +152,9 @@ pub enum IconId {
     Menu,
     Minimize,
     Minus,
+    // ⭐ **Os faders VERTICAIS de uma mesa de mistura** — `"minus" < "mixer" < "modify"`,
+    // e a posição do variante É o índice nas tabelas geradas.
+    Mixer,
     Modify,
     More,
     MoreHorizontal,
@@ -596,6 +599,7 @@ mod tests {
         IconId::Menu,
         IconId::Minimize,
         IconId::Minus,
+        IconId::Mixer,
         IconId::Modify,
         IconId::More,
         IconId::MoreHorizontal,

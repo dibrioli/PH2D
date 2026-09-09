@@ -37,31 +37,25 @@ pub use super::slot_tabs_drag::{
     drop_targets, paint_drag_overlay, resolve_tab_drop, tab_drop_caret,
 };
 use crate::interaction::{HitIndex, InteractiveState, WidgetEvent, WidgetStore};
-use crate::paint::{fill_rounded_rect_radii, paint_text_centered, rect_to_vello, resolve};
+use crate::paint::{fill_rounded_rect_radii, rect_to_vello, resolve};
 use crate::screens::slot::{Slot, SlotSet};
 use crate::widget::ButtonState;
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, Theme};
 use ph2d_vector::VectorScene;
 
 /// A altura da fila de abas — **uma linha**, o mesmo token da barra de menus e de uma linha de
 /// menu. ⚠️ Não é um número escolhido: uma aba é um rótulo clicável, que é o que uma linha é.
 pub const TAB_BAR_H: f32 = ROW_H_PX;
 
-/// ⭐⭐⭐ **O recuo de uma aba, de cada lado** — `base_margin · 4` do modelo, que aqui é `Spacing::Md`.
-///
-/// Portado de `theme_modern.cpp` (Godot 4.6, MIT): `style_tab_selected` declara
-/// `content_margin_individual(base_margin*4, base_margin*2.1, base_margin*4, base_margin*2.1)`.
-/// Com `base_margin = 4` isso dá **16 px** de recuo horizontal total — exactamente o que o
-/// [`crate::paint::label_budget`] desta casa já descontava, e o mesmo número que as abas de LAYOUT
-/// usam ([`super::layout_tabs`]).
-///
-/// ⛔ **`fn` e não `const`**: `Spacing::px` não é `const fn` (a densidade é autorada).
-fn tab_pad_x() -> f32 {
-    Spacing::Md.px()
-}
+// ⭐ **A CARA de uma aba vive no irmão [`super::slot_tabs_face`]** — o glifo, o nome e o recuo
+// deles. Re-exportado AQUI pela mesma razão que o gesto de arrastar: um corte por tecto de LOC
+// não pode obrigar os chamadores a aprender uma segunda morada.
+pub use super::slot_tabs_face::{
+    TabFace, face as tab_face, natural_w as tab_natural_w, tab_icon_px, tab_pad_x,
+};
 
 /// ⛔ **O salto que separa o id de uma ABA do id do PAINEL que ela escolhe.**
 ///
@@ -116,6 +110,8 @@ pub struct Occupant {
     pub node: NodeId,
     /// O `Panel::TITLE` — o que o artista lê na aba.
     pub title: &'static str,
+    /// O `Panel::ICON` — o que a aba diz depois de o nome já não caber.
+    pub icon: crate::icons::IconId,
 }
 
 /// ⭐ **A ordem z passa a ser «os painéis VISÍVEIS, o último a aparecer no topo».**
@@ -158,6 +154,7 @@ pub fn occupants(hero: &HeroScreen, slot: Slot) -> Vec<Occupant> {
                 id: m.id,
                 node: m.panel_node_id,
                 title: m.title,
+                icon: m.icon,
             });
         }
     });
@@ -268,8 +265,10 @@ pub fn hidden_by_tabs(hero: &HeroScreen) -> Vec<NodeId> {
 /// ⭐⭐⭐ **O PISO de uma aba: ela nunca é mais estreita do que é ALTA.**
 ///
 /// ⛔ **Não é um número escolhido** — é a altura da própria fila ([`TAB_BAR_H`], que é o
-/// `ROW_H_PX`). Um quadrado é a menor coisa que ainda se lê como um alvo, e é exactamente a forma
-/// que o **ícone** (a metade ainda por construir do desenho das abas) vem ocupar.
+/// `ROW_H_PX`). Um quadrado é a menor coisa que ainda se lê como um alvo, e desde 2026-09-09 ele
+/// tem conteúdo: `22 − 14` ([`ph2d_tokens::INLINE_ICON_PX`]) deixa **4 px de cada lado**, que é o
+/// respiro padrão desta casa. ⇒ *no piso a aba é exactamente o glifo dela* — ver
+/// [`super::slot_tabs_face`].
 fn tab_floor_w() -> f32 {
     TAB_BAR_H
 }
@@ -424,10 +423,8 @@ pub fn tab_radii(theme: Theme) -> (f32, f32, f32, f32) {
 /// ⚠️ **As abas ENCOSTAM, sem vão** — a lei do grupo (wave 10): *o que separa duas peças é a QUINA,
 /// não o espaço*. É a quina de cima e a cor que as separam, e é isso que as faz ler como uma fila.
 fn tab_widths(occ: &[Occupant], text_system: &mut TextSystem) -> Vec<f32> {
-    let font = TypeToken::Sm.px();
-    let pad = tab_pad_x() * 2.0;
     occ.iter()
-        .map(|o| text_system.prefix_width(o.title, font) + pad)
+        .map(|o| super::slot_tabs_face::natural_w(o.title, text_system))
         .collect()
 }
 
@@ -599,14 +596,7 @@ pub fn paint_slot_tabs(
         } else {
             ColorToken::Text2
         };
-        paint_text_centered(
-            text_system,
-            scene,
-            o.title,
-            r,
-            TypeToken::Sm.px(),
-            resolve(fg, theme),
-        );
+        super::slot_tabs_face::paint(scene, text_system, r, o.icon, o.title, fg, theme);
         hit_index.register(tab_node_id(o.node), r);
     }
     // ⚠️ **Depois das abas**, para a divisória não ficar por baixo do corpo da escolhida.

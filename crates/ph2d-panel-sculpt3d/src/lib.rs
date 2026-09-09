@@ -70,6 +70,7 @@ impl Panel for Sculpt3dPanel {
     /// dispensar em vez de a encontrar, e a cena 3D não existe na maioria deles.
     const DEFAULT_VISIBLE: bool = false;
     const TITLE: &'static str = "Sculpt 3D";
+    const ICON: ph2d_editor_core::icons::IconId = ph2d_editor_core::icons::IconId::Smear;
     /// ⚠️ **Um painel de COLUNA não cabe na faixa de baixo.** Ela tem 240 px de altura e a
     /// largura da área: uma lista de propriedades ali fica com duas linhas visíveis. ⇒ as duas
     /// colunas, e o gesto que o levaria ao fundo não é oferecido (decisão D1).

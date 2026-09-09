@@ -16,12 +16,12 @@
 
 use super::HeroScreen;
 use super::slot_tabs::{TAB_BAR_H, occupants, occupied, tab_node_id};
-use crate::paint::{fill_rounded_rect, paint_text_centered, rect_to_vello, resolve};
+use crate::paint::{fill_rounded_rect, rect_to_vello, resolve};
 use crate::screens::slot::Slot;
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, Radius, Spacing, Theme};
 use ph2d_vector::VectorScene;
 
 /// Espessura do contorno do encaixe sob o dedo.
@@ -215,14 +215,16 @@ pub fn paint_drag_overlay(
     let Some((panel, cursor)) = hero.store.tab_being_dragged() else {
         return;
     };
-    let title = crate::panel::with_registry_opt(|reg| {
+    // ⚠️ **O fantasma leva a CARA da aba, não só o nome** — ele é a aba a viajar, e uma etiqueta
+    //    sem glifo largada sobre uma fila de glifos leria como outra coisa.
+    let (title, icon) = crate::panel::with_registry_opt(|reg| {
         reg.panels()
             .iter()
             .find(|p| p.manifest.panel_node_id == panel)
-            .map(|p| p.manifest.title)
+            .map(|p| (p.manifest.title, p.manifest.icon))
     })
     .flatten()
-    .unwrap_or("");
+    .unwrap_or(("", crate::icons::IconId::Inspector));
 
     for (_, r) in drop_targets(hero, panel) {
         let under = r.contains(cursor.0, cursor.1);
@@ -265,12 +267,13 @@ pub fn paint_drag_overlay(
         crate::paint::frame_radius(theme, Radius::Sm.px()),
         resolve(ColorToken::Bg2, theme),
     );
-    paint_text_centered(
-        text_system,
+    super::slot_tabs_face::paint(
         scene,
-        title,
+        text_system,
         ghost,
-        TypeToken::Sm.px(),
-        resolve(ColorToken::Text1, theme),
+        icon,
+        title,
+        ColorToken::Text1,
+        theme,
     );
 }

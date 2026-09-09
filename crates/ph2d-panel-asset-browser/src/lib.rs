@@ -78,6 +78,7 @@ impl Panel for AssetBrowserPanel {
     // FLUTUA — o `WidgetLabPanel`. ⭐ *Este painel declara-se flutuante na PRIMEIRA linha do doc
     // dele*, e um painel flutuante que nascesse numa coluna contradiria o proprio cabecalho.
     const TITLE: &'static str = "Assets";
+    const ICON: ph2d_editor_core::icons::IconId = ph2d_editor_core::icons::IconId::Asset;
     const ALLOWED_SLOTS: ph2d_editor_core::screens::slot::SlotSet =
         ph2d_editor_core::screens::slot::SlotSet::SIDES;
     const DEFAULT_SLOT: ph2d_editor_core::screens::slot::Slot =

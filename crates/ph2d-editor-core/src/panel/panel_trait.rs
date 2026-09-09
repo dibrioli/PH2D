@@ -49,6 +49,29 @@ pub trait Panel: Sized + 'static {
     /// tabela [`crate::screens::hero::menu_bar::MODULE_TRUTHS`].
     const TITLE: &'static str;
 
+    /// ⭐⭐⭐ **O GLIFO que sobrevive quando o nome já não cabe** — a outra metade da aba.
+    ///
+    /// > *«as abas … colocam os `...` no nome»* — Enio, 2026-09-08.
+    ///
+    /// Uma aba encolhe até ao **piso**, que é um quadrado de [`ph2d_tokens::ROW_H_PX`] (22 px), e
+    /// aí o nome já não tem onde caber: o que ficava era um `…`, igual em todas elas. O ícone é o
+    /// que continua a dizer **de que painel se trata** — e o piso não foi escolhido para o
+    /// receber, foi *medido*: `22 − 14` ([`ph2d_tokens::INLINE_ICON_PX`]) dá **4 px de cada lado**,
+    /// que é o respiro padrão desta casa. *O quadrado já era a forma do ícone antes de haver
+    /// ícone.*
+    ///
+    /// ⛔⛔ **Sem default, pela mesma razão que o [`Self::TITLE`] não tem.** Um default — um glifo
+    /// genérico de «painel», ou `None` — não falha em lado nenhum: ele **compila**, e o defeito
+    /// aparece meses depois, numa coluna estreita, como duas abas indistinguíveis. *Um valor de
+    /// omissão para uma pergunta de identidade é uma resposta errada com cara de resposta.*
+    ///
+    /// ⚠️ **Dois painéis não podem partilhar um glifo**, e há gate a medi-lo
+    /// (`every_tab_carries_its_own_glyph`, na `ph2d-panel-registry-init`): o artista move
+    /// qualquer painel para qualquer encaixe, logo **quaisquer dois** podem acabar lado a lado na
+    /// mesma fileira. Duas abas com o mesmo desenho são piores que o `…` que isto veio curar —
+    /// aquele pelo menos não finge dizer alguma coisa.
+    const ICON: crate::icons::IconId;
+
     /// ⭐⭐ **ONDE ESTE PAINEL PODE ESTAR** (decisão **D1**).
     ///
     /// O default é [`SlotSet::ANY_DOCK`] — as duas colunas e a faixa de baixo, **nunca o centro**.

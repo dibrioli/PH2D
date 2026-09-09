@@ -49,6 +49,7 @@ impl Panel for WidgetLabPanel {
     const NODE_ID: NodeId = ids::LAB_PANEL;
     const DEFAULT_VISIBLE: bool = false;
     const TITLE: &'static str = "Widget Lab";
+    const ICON: ph2d_editor_core::icons::IconId = ph2d_editor_core::icons::IconId::Probe;
     const ALLOWED_SLOTS: ph2d_editor_core::screens::slot::SlotSet =
         ph2d_editor_core::screens::slot::SlotSet::SIDES;
     const DEFAULT_SLOT: ph2d_editor_core::screens::slot::Slot =

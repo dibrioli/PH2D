@@ -115,6 +115,7 @@ impl Panel for MotionGraphPanel {
     const NODE_ID: NodeId = ids::MOTION_GRAPH_PANEL;
     const DEFAULT_VISIBLE: bool = false;
     const TITLE: &'static str = "Motion Graph";
+    const ICON: ph2d_editor_core::icons::IconId = ph2d_editor_core::icons::IconId::MotionNodes;
     /// ⭐⭐ **O ÚNICO painel que declara o CENTRO, e não é uma excepção — é a decisão D5.**
     ///
     /// O grafo não FLUTUA sobre a área de desenho: ele parte-a em duas regiões **irmãs**

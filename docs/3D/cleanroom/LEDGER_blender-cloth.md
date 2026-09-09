@@ -142,6 +142,13 @@ defaults do código em `damping`, `strength`, `spacing`, área e plasticidade. �
 |---|---|---|---|---|
 | I-1 (janela-mãe) | `1246816c-63cf-414b-842d-663a8baa86ca` | 2026-09-05 | abriu a obra e despachou este E | ⏳ a janela declara pelo **inbox**: *"nenhum conteúdo do fonte do alvo entrou no CONTEXTO desta janela (incluindo reports de subagentes e compactação); exposição via pesos do modelo não é atestável por construção — mitigada §7.3"* · **INC-1 (2026-09-05, via briefing do R-pré):** *«a janela I não abriu nenhum dos ficheiros quarentenados; leu apenas a listagem de nomes»* — e o R mediu que nenhum deles continha código (ver *Incidentes*) |
 
+⛔⛔ **A I-1 está QUEIMADA como I para este módulo desde 2026-09-09 (INC-2, classificado SUBSTANCIAL
+pelo R).** Ela escreve o BLOCO-RETOMADA e **PARA**; a **I-2** assume a **MESMA** linha e retoma da
+espec — que está agora **atestada** nas duas emendas que faltavam (Q22 e Q23). ⚠️ **A queima é da
+EXPOSIÇÃO, não do produto:** a quarentena das seis regiões saiu **limpa** e ⛔ **nada do que a I-1
+escreveu se reescreve** (§6.3 e §6.4 são perguntas separadas, de propósito). A I-2 herda **uma**
+dívida, e ela é de **expressão, não de lei**: os dois sítios nomeados na prescrição do INC-2.
+
 ---
 
 ### Achados de PAREDE para o R (registados pelo E em 2026-09-05)
@@ -181,6 +188,7 @@ defaults do código em `damping`, `strength`, `spacing`, área e plasticidade. �
 | R-pré (emenda Q14) | subagente R-pré despachado pela janela-mãe `1246816c-63cf-414b-842d-663a8baa86ca` — contexto novo, independente do subagente que escreveu a emenda (transcript = zona contaminada — leu o fonte por shell) | 2026-09-06 — ✅ **atestado no cabeçalho da espec**; veredictos em «Auditoria R-pré — 2026-09-06 (emenda Q14)» |
 | R-pré (emendas Q15 **e** Q16) | subagente R-pré despachado pela janela-mãe `1246816c-63cf-414b-842d-663a8baa86ca` — contexto novo, independente do subagente que escreveu as emendas (transcript = zona contaminada — leu o fonte por shell) | 2026-09-06 — ✅ **atestadas no cabeçalho da espec**; veredictos em «Auditoria R-pré — 2026-09-06 (emendas Q15 e Q16)». ⚠️ **A Q15 tinha shipado SEM atestação** e foi auditada aqui |
 | R-pré (emenda Q19 · Q20 · Q21) | subagente R-pré despachado pela janela-mãe `1246816c-63cf-414b-842d-663a8baa86ca` — contexto novo, independente do subagente que escreveu a emenda (transcript = zona contaminada — leu o fonte por shell) | 2026-09-07 — ✅ **ATESTADO no cabeçalho da espec**; veredictos em «R-pré da emenda Q19 … 2026-09-07». **ZERO achados de expressão · UMA higiene §4.2 · NOVE curas funcionais**, a maior delas a banda antiga a dividir os quocientes que a própria emenda tornou obsoletos. **Os três itens que o E deixou nomeados, conferidos:** (a) o censo do cabeçalho corre **silencioso** com o título renomeado, e o instrumento do I passa a ler `11`; (b) o `analise.json` tem mesmo `47` objectos com as chaves **do arnês** para `86` fixtures — ⛔ fica como está (é dado nosso, o sweep passa e o README já manda não acreditar nele), e o **índice derivado** é que é a fonte: `gera_indice.py` regenera-o byte-a-byte, 86 para 86; (c) o auto-teste do arnês vive **fora da árvore** e não é auditável daqui — o que o R-pré verificou é que a **regra registada** (`< 50` movidos ou mais de metade da malha) recusa exactamente os dois modos de falha que ela apanhou, porque a esfera tem `6 050` vértices e as corridas más deram `6 050` e `0` |
+| **R de INCIDENTE (INC-2)** | subagente-R despachado pela janela-mãe `1246816c-63cf-414b-842d-663a8baa86ca` — **contexto novo**, ⛔ não é o subagente-E de nenhuma emenda nem o R-pré que achou o item, e **viu os dois lados** (transcript = zona contaminada) | 2026-09-09 — ⛔ **classificou o INC-2 como SUBSTANCIAL** ⇒ a **I-1 queima**; **quarentena LIMPA** nas 6 regiões (comparação de expressão sobre `850` linhas · sweep verde · busca dirigida a zero); **sweep de memória §6.4 verde, nada revertido**; prescrição §7.3.d escrita. Bloco em *Incidentes* → **INC-2** |
 | R-pós | ⏳ | — |
 
 ### Auditoria R-pré — 2026-09-06 (emendas Q15 e Q16)
@@ -778,6 +786,98 @@ medição**. Os restantes 148 (manual, API, notas de versão, blog, papers) est�
 não afirma nada que só o fonte daria: cada linha estrutural cita manual/API/notas/blog, e as duas «via
 resumo de busca» apontam para páginas que **nem tinham conteúdo**. ⇒ **nenhuma janela queimada; a
 janela-mãe continua I.** Declaração dela registada na Corrente I.
+
+---
+
+**INC-2 (2026-09-09, registado pela janela-mãe via inbox; classificado por este R) — a janela I leu o
+§7 da espec num estado NÃO ATESTADO, que continha um achado de expressão por curar.**
+
+- **Origem:** a própria espec (`SPEC_cloth_brush.md` §7 + §10.17), lida pela janela-mãe em 2026-09-09
+  no início da jornada para diagnosticar um report do dono. A emenda **Q22** (2026-09-07), que
+  introduziu aquele §7, shipou com `⏳ AGUARDA R-PRÉ` escrito nela própria e **atravessou dois dias sem
+  atestado**; quem deu por isso foi o R-pré da Q23. O R-pré atrasado da Q22 correu em 2026-09-09
+  (`1cea3d701`), achou **um achado de §4.2 na linha do tipo *Gravity*** — uma justificação re-dita
+  quase-verbatim de um comentário do fonte — e curou-a por re-expressão no acto. A janela-mãe tinha
+  lido aquela linha **no estado pré-cura**.
+- **Extensão (medida por este R, que viu os dois lados):** **uma** oração de justificação, ~28
+  palavras, dentro de **uma** célula de tabela — já em português, na nossa prosa, e **sem uma linha de
+  código, um identificador ou uma estrutura do alvo**. ⛔ Identificação **sem reprodução** (§6.1): a
+  linha exposta é `sha256 3adc5d37…f89eef60` e a mesma linha já curada é `sha256 ba174e10…4f0617de`,
+  ambas reconstituíveis de `1cea3d701`. O conteúdo **factual** dela (qual eixo a orientação *View* usa)
+  é facto de comportamento e **não é protegível** (§1.2); o resíduo protegível era só o enquadramento
+  retórico do *porquê*.
+- **Momento:** antes de qualquer código de produto da jornada.
+
+**Classificação (§6.2) — ⛔ SUBSTANCIAL.** Decidida por **este R**; a janela interessada não se
+classifica. Três coisas decidem, e o tamanho sozinho não é nenhuma delas:
+
+1. **Não foi «de relance».** A grada do relance exige *assinatura/nome isolado, **visto de relance***;
+   aqui o bloco foi lido **por inteiro e deliberadamente, como espec normativa**, para conduzir
+   implementação. *Ler uma frase como instrução não é passar o olho por um símbolo.*
+2. **A régua nomeia «comentário inteiro»**, e é exactamente o que o R-pré da Q22 descreve: o espelho
+   quase palavra a palavra de **um comentário** do fonte.
+3. ⭐⭐ **E a propagação não é hipótese — está MEDIDA neste módulo.** Um censo da árvore feito por este
+   R acha a **mesma oração de finalidade** re-emitida em **dois sítios do produto** —
+   `crates/ph2d-sculpt3d/src/cloth_filter_kind.rs:169-171` (`ae653d314`) e
+   `shells/desktop/src/sculpt3d_filter.rs:274-276` (`dd8bfd404`) —, os dois escritos em **2026-09-07**
+   por janelas desta linha que leram a mesma linha não atestada; e mais **três** sítios que repetem só
+   o **facto** de comportamento (`stroke_cloth_filter.rs:94-95` · `verlet_gesto_pincel.rs:109-110` ·
+   `sculpt3d_filter.rs:353-355`), que é o que mostra quão consumida a passagem foi.
+   ⇒ *uma espécie de exposição que já saltou da espec para o produto duas vezes não se arquiva como
+   «registra e segue»* — a quarentena de 09-09 saiu limpa porque o assunto dos seis commits era outro,
+   **não** porque a janela fosse imune.
+
+**Quarentena (§6.3) — RESOLVIDA: LIMPA nas seis regiões; tudo pode fundir.** Comparação de
+**EXPRESSÃO** (⛔ não de comportamento — um port fiel comporta-se igual por construção) do trecho
+exposto contra as `850` linhas de produto escritas depois dele
+(`git diff 1d276083b..HEAD -- crates/ shells/`, 17 ficheiros):
+
+| região | veredito | o que este R conferiu |
+|---|---|---|
+| `1e7495666` — `muda_o_material` + re-semear do material; peso do `τ` do Expand | ✅ funde | a partição dos cinco tipos é **mecânica** (*carrega* contra *muda o tamanho*) e sai de medição própria **com os números dentro** (volume normalizado dos três gestos) + do report do dono; ⛔ não segue a ordem nem o enquadramento da tabela do §7 |
+| `2fa571890` — quantizador do arrasto (`PASSO_DE_ARRASTO`, `passos_por_chamada`) | ✅ funde | assunto **disjunto** do trecho exposto; os números saem da varredura própria e de **cabeçalhos de fixture nossos** (`avanco_por_passo_px`), que são dado |
+| `4c50a1227` — clippy | ✅ funde | remoção de um `to_vec` |
+| `aa12f36a2` — bancada do oráculo | ✅ funde | lê ficheiros do corpus; as ocorrências de `Gravity` são **nome de tipo público** (§4.1.13) e nomes de fixture |
+| `f4fd3d215` — *Filter Strength* | ✅ funde | a fórmula é facto/número (§1.2) e os oito rótulos são a **superfície pública** que o artista vê |
+| docs (`docs/3D/cloth/12_…` · `README` · cena de smoke) | ✅ funde | as duas ocorrências de «ecrã» são *arrasto de ecrã inteiro* (distância do dedo), **não** o eixo |
+
+Instrumentos: `cleanroom-sweep.sh` (vassoura de 70) **verde** sobre os 17 ficheiros de produto e sobre
+os docs do produto; e uma busca **dirigida** pela oração exposta e pelos seus termos distintivos nas
+`867` linhas acrescentadas devolve **zero**. ⚠️ **O sweep sozinho não bastaria** — esta espécie foi
+achada por um R **a ler o fonte**, não pela vassoura; foi por isso que a conferência foi também textual
+e dirigida. *Uma vassoura de identificadores não apanha uma justificação traduzida.*
+
+**Rastro de memória (§6.4) — VERDE, nada a reverter.** `project-memory/` do primário **não tem commits
+de 2026-09-09**; das nove entradas por commitar, **uma** é da sessão exposta
+(`feedback_a_gate_that_fails_on_its_precondition_says_the_product_left_the_regime.md`,
+`originSessionId 1246816c…`) e é sobre a **precondição de um gate** e a origem do `PASSO_DE_ARRASTO`.
+Sweep verde sobre o diff e sobre as nove; busca dirigida pela oração exposta devolve **zero**.
+
+**Consequência (§6.4) — a janela **I-1** está QUEIMADA como I para este módulo.** Ela escreve o
+BLOCO-RETOMADA (§10), imprime-o e **PARA**; a janela nova assume a **MESMA** linha e retoma da espec,
+que está **agora atestada**. ⛔ **O trabalho já feito NÃO se reescreve** — a quarentena saiu limpa.
+
+**Prescrição de re-derivação (§7.3.d — «tente de novo» não é cura).** Duas restrições estruturais
+funcionais para a janela nova:
+
+1. ⛔ **Os DOIS sítios do ponto 3 são dívida de EXPRESSÃO a re-exprimir** — cada um passa a dizer **só
+   o comportamento** (qual eixo, e que é o do ecrã e não o da profundidade) **com a fixture que o
+   mede** ao lado, como o §7 curado já faz; ⛔ nenhum deles guarda uma oração de **finalidade** sobre o
+   que o artista vê. Os **três** que só repetem o facto ficam (facto não é protegível), e vale a pena
+   passar os olhos em `sculpt3d_filter_cloth_tests.rs:162`, que é adjacente por ser sobre a **régua**.
+   ⚠️ **Fica também**, e não é da mesma família, a formulação *«o baixo é o `−cima do ECRÃ`»* de
+   `sculpt3d_filter.rs:392` e de `docs/3D/08_as_tres_features_do_modelador.md:58`: ela é **idioma
+   próprio desta casa**, usada no **modelador 3D**, obra sem relação nenhuma com este alvo.
+2. ⚠️ **A lição de processo, e ela não é do instrumento:** uma emenda com `AGUARDA R-PRÉ` escrito
+   dentro de si **não se cobra sozinha** — atravessou dois dias, e quem a apanhou foi o R-pré
+   **seguinte**, não o censo do cabeçalho. ⇒ o portão do §3.R confere-se **na abertura** de cada
+   jornada, não no fim. *Uma pendência declarada dentro do artefacto é invisível a quem só lê o
+   artefacto para o usar.*
+
+**Data:** 2026-09-09 · **R:** subagente-R desta linha — contexto independente, não é o subagente-E de
+nenhuma emenda, e viu os dois lados. **Incidente FECHADO.**
+
+---
 
 ## Erratas / seguimento do I (2026-09-06)
 

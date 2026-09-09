@@ -1128,3 +1128,10 @@ commits locais (⛔ nao integrados, nao pushados):
   - o *Filter Strength* — saiu da FORMULA da §7 (`S = forca_base . dpx . 0,001 . escala_UI`) e do
     censo de controlos do E (Q23.6), que e' uma lista de rotulos publicos;
   - a bancada — le' os ficheiros do corpus.
+
+> ✅ **TRANSCRITO E FECHADO pelo subagente-R em 2026-09-09** — ver `LEDGER_blender-cloth.md`,
+> secção *Incidentes* → **INC-2**. **Veredicto: SUBSTANCIAL** (a I-1 queima como I para este módulo
+> e escreve o BLOCO-RETOMADA) · **quarentena LIMPA nas seis regiões — tudo funde, nada se reescreve**
+> (§6.3 e §6.4 são perguntas separadas, de propósito) · sweep de memória §6.4 verde, nada revertido.
+> ⚠️ A dívida que a I-2 herda é de **EXPRESSÃO, não de lei**, e está nomeada na prescrição §7.3.d do
+> bloco: **dois** doc-comments do produto, os dois de 2026-09-07.

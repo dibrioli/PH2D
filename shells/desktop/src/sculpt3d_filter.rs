@@ -8,12 +8,17 @@
 //!
 //! # O gesto é o da referência, e o número também
 //!
-//! O `sculpt_filter_mesh.cc:2299` mede
-//! `len = prev_press_mouse[0] - mouse[0]` e depois
-//! `strength = start_strength * -len * 0.001`, ou seja **o arrasto para a
-//! DIREITA é positivo** e a régua é `0,001` por pixel. Os dois vêm de lá; o que
-//! **não** vem é o `start_strength`, e a divergência está declarada no doc do
-//! driver: aqui a força é o arrasto e nada mais.
+//! **Comportamento medido:** o arrasto para a **DIREITA é positivo**, e a régua
+//! é [`FILTER_DRAG_PER_PX`] = `0,001` de força por pixel — mil pixels de arrasto
+//! valem força `1,0`.
+//!
+//! ⚠️ **Divergência declarada:** aqui a força é o arrasto e **nada mais**; a
+//! referência multiplica-a ainda por uma força inicial da ferramenta, e nós não
+//! (o doc do driver diz porquê).
+//!
+//! Quem mede: `shells/desktop/src/sculpt3d_filter_tests.rs` (o SINAL do arrasto
+//! e a régua) e `crates/ph2d-sculpt3d/src/stroke_filter_tests.rs` (`1000 px` de
+//! arrasto ⇒ força `1,0`).
 //!
 //! # Por que não há `close_filter`
 //!

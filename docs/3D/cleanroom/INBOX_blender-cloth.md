@@ -1135,3 +1135,37 @@ commits locais (⛔ nao integrados, nao pushados):
 > (§6.3 e §6.4 são perguntas separadas, de propósito) · sweep de memória §6.4 verde, nada revertido.
 > ⚠️ A dívida que a I-2 herda é de **EXPRESSÃO, não de lei**, e está nomeada na prescrição §7.3.d do
 > bloco: **dois** doc-comments do produto, os dois de 2026-09-07.
+
+## I-2 assume a linha — 2026-09-09
+I session: 72723fbf-b300-4f42-9178-535bb37b3941 · 2026-09-09 · elo I-2 da corrente
+Motivo da troca: INCIDENTE §6 (exposição SUBSTANCIAL classificada pelo R na I-1, ledger 55d7c5243 + adenda 3af98d4a4).
+DECLARAÇÃO (§6): nenhum conteúdo do fonte do alvo entrou no CONTEXTO desta janela (incluindo reports
+de subagentes e compactação); exposição via pesos do modelo não é atestável por construção — mitigada §7.3.
+Passo 0 do I: deny config CONFERIDO e COMPLETADO — faltavam `Read(docs/**/cleanroom/LEDGER_*)` e
+`Read(docs/**/cleanroom/VASSOURA_*)` do §3.I; acrescentei também `Read(docs/**/cleanroom/INBOX_*)`
+(o §6 manda append cego, e sem a negação a cerca era só lembrança).
+ACHADO do portão dos atestados (feito na ABERTURA, lição nº 5 do BLOCO-RETOMADA): o censo por bloco
+sai em silêncio, e mesmo assim a EMENDA Q23 carrega `AGUARDA R-PRÉ` dentro do próprio bloco (espec
+linha 678) com o atestado do R-pré de 2026-09-09 logo abaixo (commit e0275bba1). É a MESMA forma que
+a Q22 pagou com dois dias: o censo pergunta «veio um atestado depois desta linha?» e é CEGO a um
+marcador de pendência obsoleto que sobreviveu ao atestado. Um leitor que confie no marcador recusa
+implementar uma emenda atestada; e uma emenda genuinamente pendente lê-se IGUAL.
+
+### INC-3 (I-2, 2026-09-09) — exposição ao ler a 2.ª região da tarefa nº 1 do BLOCO-RETOMADA
+Origem: ficheiro do NOSSO produto, `shells/desktop/src/sculpt3d_filter.rs`, doc de módulo, linhas 9-16.
+Quando: passo 4 do BLOCO-LINHA, ao abrir a região que o R-1 nomeou para reescrita.
+O QUE É (descrito, ⛔ NUNCA reproduzido — §6.1): o doc de módulo cita um ficheiro INTERNO do alvo
+COM número de linha, e transcreve DUAS atribuições do fonte dele (a que forma o deslocamento
+horizontal e a que forma a força a partir dele). São ~2 linhas de expressão + 1 nome interno de
+ficheiro. sha256 das linhas 9-16: fc906cd68f8302abde3019e40844bd13587e1e25ee2d06b4d6fd31543b447709
+CLASSIFICAÇÃO PROPOSTA pela janela: **RELANCE** pela régua do §6.2 (nome isolado + 2 linhas; não é
+corpo de função, não é bloco de ~10+ linhas, não é comentário inteiro; e as duas atribuições são
+matemática, §4.1.2 — o que é ⛔ são os NOMES internos que elas carregam).
+⛔ A janela é a parte interessada e NÃO se auto-classifica (§6.2): despachado um subagente-R para
+decidir, e para censar a família inteira.
+CONTEXTO QUE MUDA O TAMANHO DO ACHADO: 64 ficheiros de `crates/` + `shells/` citam um `.cc/.c/.h`
+com número de linha (censo por `grep -rlnE '\.(cc|cpp|c|h|hh|hpp):[0-9]+'`). É a família do
+ACHADO_proveniencia_por_nome_interno.md, e ela está VIVA no produto rastreado, não só em notas.
+E o sweep da vassoura sobre `git ls-files crates/** shells/**` sai **exit 1**, com achado em três
+ficheiros: crates/ph2d-sculpt3d/src/brush_verb_defaults.rs · .../stroke_dab_core.rs ·
+.../verb_layer_front_face_tests.rs. ⛔ A janela NÃO olhou os hits (eles imprimiriam a expressão).

@@ -53,6 +53,14 @@ const DECLARED: &[(&str, &str, Kind, &str)] = &[
         "o divisor de 1 px entre segmentos da barra",
     ),
     (
+        "screens/hero/slot_tabs.rs",
+        "scene.fill_rect(rect_to_vello(d), resolve(ColorToken::Border, theme));",
+        Divider,
+        "a divisoria entre duas abas vizinhas (`slot_tabs::tab_dividers`) — e' o que faz uma aba \
+         ENCOLHIDA continuar a ler-se como aba, porque a inactiva nao pinta corpo nenhum. ⛔ Nao e' \
+         moldura: nenhuma delas toca a aba ESCOLHIDA, que e' a unica com contorno proprio",
+    ),
+    (
         "widget/slider.rs",
         "fill_rounded_rect(scene, track, r, resolve(ColorToken::Border, theme));",
         Track,

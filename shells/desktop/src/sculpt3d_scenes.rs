@@ -370,10 +370,6 @@ pub(crate) mod ear;
 #[path = "sculpt3d_scenes_cloth_filter.rs"]
 pub(crate) mod cloth_filter;
 
-/// **A CENA DOS QUATRO VIEWPORTS** (`=38`) — irmã da [`cloth_filter`] pela mesma
-/// linha de corte: cada arquivo é a história de uma wave.
-#[path = "sculpt3d_scenes_viewports.rs"]
-pub(crate) mod viewports;
 /// **A CENA DA DEMÃO** (`=33`) — irmã da [`surface`] pela mesma linha de corte.
 #[path = "sculpt3d_scenes_layer.rs"]
 pub(crate) mod layer;
@@ -401,6 +397,10 @@ pub(crate) mod surface;
 /// **A CENA DO POLEGAR** (`=30`) — irmã da [`strip`] pela mesma linha de corte.
 #[path = "sculpt3d_scenes_thumb.rs"]
 pub(crate) mod thumb;
+/// **A CENA DOS QUATRO VIEWPORTS** (`=38`) — irmã da [`cloth_filter`] pela mesma
+/// linha de corte: cada arquivo é a história de uma wave.
+#[path = "sculpt3d_scenes_viewports.rs"]
+pub(crate) mod viewports;
 pub(crate) use masked::{
     flatten_scene, flatten_scene_counts, mask_channel_numbers, mask_channel_scene,
     masked_dome_counts, soft_masked_counts, transform_scene,

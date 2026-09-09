@@ -159,7 +159,9 @@ fn as_duas_fontes_de_ao_medem_o_mesmo_alcance() {
 fn o_uniform_tem_o_tamanho_que_o_wgsl_declara() {
     let wgsl = include_str!("shaders/ssao.wgsl");
     let corpo = {
-        let i = wgsl.find("struct Ssao {").expect("a struct do uniform mudou de nome");
+        let i = wgsl
+            .find("struct Ssao {")
+            .expect("a struct do uniform mudou de nome");
         let resto = &wgsl[i..];
         &resto[..resto.find("\n};").expect("a struct do uniform nao fecha")]
     };
@@ -178,13 +180,22 @@ fn o_uniform_tem_o_tamanho_que_o_wgsl_declara() {
         let n = match tipo.trim() {
             "mat4x4<f32>" => 64,
             "vec4<f32>" => 16,
-            outro => panic!("campo `{}` tem o tipo `{outro}`, que este censo nao sabe medir", nome.trim()),
+            outro => panic!(
+                "campo `{}` tem o tipo `{outro}`, que este censo nao sabe medir",
+                nome.trim()
+            ),
         };
         campos.push((nome.trim().to_string(), n));
         bytes += n;
     }
-    assert!(!campos.is_empty(), "o censo nao achou campo nenhum -- ele ficou cego");
-    println!("campos do WGSL: {campos:?} => {bytes} B | Rust: {} B", SsaoRaw::SIZE);
+    assert!(
+        !campos.is_empty(),
+        "o censo nao achou campo nenhum -- ele ficou cego"
+    );
+    println!(
+        "campos do WGSL: {campos:?} => {bytes} B | Rust: {} B",
+        SsaoRaw::SIZE
+    );
     assert_eq!(
         SsaoRaw::SIZE,
         bytes,

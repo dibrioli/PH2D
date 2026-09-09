@@ -80,17 +80,29 @@ pub(super) const TOGGLES: [Toggle; 12] = [
     // clica, nada muda, e ele conclui que o app tem um defeito que não tem.
     (
         ids::SCULPT3D_CFILTER_AXIS[0],
-        |u| u.filter_law.cloth().is_some_and(ClothFilterKind::le_os_eixos),
+        |u| {
+            u.filter_law
+                .cloth()
+                .is_some_and(ClothFilterKind::le_os_eixos)
+        },
         |u| u.cloth_filter_axes[0] = !u.cloth_filter_axes[0],
     ),
     (
         ids::SCULPT3D_CFILTER_AXIS[1],
-        |u| u.filter_law.cloth().is_some_and(ClothFilterKind::le_os_eixos),
+        |u| {
+            u.filter_law
+                .cloth()
+                .is_some_and(ClothFilterKind::le_os_eixos)
+        },
         |u| u.cloth_filter_axes[1] = !u.cloth_filter_axes[1],
     ),
     (
         ids::SCULPT3D_CFILTER_AXIS[2],
-        |u| u.filter_law.cloth().is_some_and(ClothFilterKind::le_os_eixos),
+        |u| {
+            u.filter_law
+                .cloth()
+                .is_some_and(ClothFilterKind::le_os_eixos)
+        },
         |u| u.cloth_filter_axes[2] = !u.cloth_filter_axes[2],
     ),
     (

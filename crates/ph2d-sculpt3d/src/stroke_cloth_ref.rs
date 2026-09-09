@@ -191,6 +191,19 @@ fn pincel_de(brush: &Brush, passagens: u32) -> Pincel {
                 crate::ClothFilterProps::SWEEPS.0,
                 crate::ClothFilterProps::SWEEPS.1,
             ),
+            // ⚠️⚠️ **O TRAÇO FICA COM A LEI DO ALVO, e é uma escolha medida.** O
+            // limitador de esticão nasceu no FILTRO porque é lá que o defeito
+            // vive: ali a força é sustentada por centenas de quadros e o esticão
+            // acumula sem tecto. Um dab de pincel tem raio, banda e um número de
+            // passos que o cursor limita — ⛔ e são as `86` fixtures dele que
+            // provam a nossa paridade. *Ligar aqui sem o corpus que o meça seria
+            // trocar o activo por um palpite.*
+            estica_max: f64::INFINITY,
+            passagens_limite: ph2d_cloth::verlet::PASSAGENS_LIMITE,
+            // ⚠️ **O volume é do FILTRO**: o traço simula uma REGIÃO (área
+            // *Local*), e o volume de uma peça inteira restringido por um punhado
+            // de vértices livres num dab faria a peça respirar a cada pincelada.
+            volume: 0.0,
         },
         passagens,
         ..Pincel::default()
@@ -209,42 +222,42 @@ fn pincel_de(brush: &Brush, passagens: u32) -> Pincel {
 /// ⚠️ **O RAIO vai ao espaço LOCAL do colisor** e o acerto volta ao mundo:
 /// transformar a malha inteira custaria uma cópia por peça e por gesto.
 pub(crate) fn caixas_de(colisores: &[(ph2d_mesh::Mesh, ph2d_mesh::Pose)]) -> Vec<Caixa<'_>> {
-        colisores
-            .iter()
-            .map(|(c, pose)| {
-                let f = move |de: V3, ate: V3| -> Option<ph2d_cloth::verlet::Impacto> {
-                    let d = [ate[0] - de[0], ate[1] - de[1], ate[2] - de[2]];
-                    let comprimento = norm(d);
-                    if comprimento <= 0.0 {
-                        return None;
-                    }
-                    // ⚠️ **O RAIO vai ao espaço LOCAL do colisor**, e o
-                    // acerto volta ao mundo: transformar a malha inteira
-                    // custaria uma cópia por peça e por traço.
-                    let mundo = ph2d_mesh::Ray::new(
-                        [de[0] as f32, de[1] as f32, de[2] as f32],
-                        [d[0] as f32, d[1] as f32, d[2] as f32],
-                    );
-                    let h = c.raycast(&pose.ray_to_local(&mundo))?;
-                    let ponto = v3(pose.point_to_world(h.point));
-                    // ⚠️ **Só conta DENTRO do comprimento do raio** (espec
-                    // §5.6), e ⛔ a comparação é feita no MUNDO: o `t` do
-                    // `Hit` mede em unidades LOCAIS, e o doc dele avisa
-                    // que comparar `t` entre escalas dá a resposta errada.
-                    if dist(ponto, de) > comprimento {
-                        return None;
-                    }
-                    Some(ph2d_cloth::verlet::Impacto {
-                        ponto,
-                        // ⚠️ A normal do `Hit` **não é garantidamente
-                        // unitária** (o doc dela di-lo), e a lei do §5.6
-                        // afasta o vértice `0,005` ao longo dela.
-                        normal: unit(v3(pose.vector_to_world(h.normal))),
-                    })
-                };
-                Box::new(f) as Caixa<'_>
-            })
-            .collect()
+    colisores
+        .iter()
+        .map(|(c, pose)| {
+            let f = move |de: V3, ate: V3| -> Option<ph2d_cloth::verlet::Impacto> {
+                let d = [ate[0] - de[0], ate[1] - de[1], ate[2] - de[2]];
+                let comprimento = norm(d);
+                if comprimento <= 0.0 {
+                    return None;
+                }
+                // ⚠️ **O RAIO vai ao espaço LOCAL do colisor**, e o
+                // acerto volta ao mundo: transformar a malha inteira
+                // custaria uma cópia por peça e por traço.
+                let mundo = ph2d_mesh::Ray::new(
+                    [de[0] as f32, de[1] as f32, de[2] as f32],
+                    [d[0] as f32, d[1] as f32, d[2] as f32],
+                );
+                let h = c.raycast(&pose.ray_to_local(&mundo))?;
+                let ponto = v3(pose.point_to_world(h.point));
+                // ⚠️ **Só conta DENTRO do comprimento do raio** (espec
+                // §5.6), e ⛔ a comparação é feita no MUNDO: o `t` do
+                // `Hit` mede em unidades LOCAIS, e o doc dele avisa
+                // que comparar `t` entre escalas dá a resposta errada.
+                if dist(ponto, de) > comprimento {
+                    return None;
+                }
+                Some(ph2d_cloth::verlet::Impacto {
+                    ponto,
+                    // ⚠️ A normal do `Hit` **não é garantidamente
+                    // unitária** (o doc dela di-lo), e a lei do §5.6
+                    // afasta o vértice `0,005` ao longo dela.
+                    normal: unit(v3(pose.vector_to_world(h.normal))),
+                })
+            };
+            Box::new(f) as Caixa<'_>
+        })
+        .collect()
 }
 
 /// Um colisor já com dono — o `Vec` local tem de o segurar enquanto a lei corre.

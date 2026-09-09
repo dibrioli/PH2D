@@ -105,7 +105,14 @@ impl Sculpt3dScene {
         // existe quando a superfície está de perfil.
         let path = landed.as_ref().and_then(|&(i, ref hit, at, _, _)| {
             let n = self.surface_normal(i, hit)?;
-            ring_on_surface(&self.camera, self.viewport(), self.vp_origin(), at, n, self.radius_px())
+            ring_on_surface(
+                &self.camera,
+                self.viewport(),
+                self.vp_origin(),
+                at,
+                n,
+                self.radius_px(),
+            )
         });
         let (cx, cy) = landed
             .as_ref()

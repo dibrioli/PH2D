@@ -29,10 +29,9 @@
 //! malha inteira pela MESMA porta do filtro de malha.
 
 use super::SculptStroke;
-use crate::ClothFilterProps;
 use crate::ClothFilterKind;
+use crate::ClothFilterProps;
 use ph2d_cloth::V3;
-use ph2d_cloth::verlet::Solver;
 use ph2d_cloth::verlet_gesto::{
     Accionamento, Area, Curva, Passo, Pincel, PincelTecido, Referencial,
 };
@@ -115,6 +114,29 @@ impl SculptStroke {
                 .iter()
                 .map(|m| 1.0 - f64::from(crate::mask_ops::free_weight(*m)))
                 .collect();
+        }
+        // ⭐⭐⭐ **A CONSERVAÇÃO DE VOLUME, e a condição que ela tem** (report do
+        // dono, 08/09: *«deve haver a possibilidade de manter volume»*).
+        //
+        // ⚠️⚠️ **Ela só é ligada numa peça FECHADA**, e a pergunta é do produto,
+        // não da lei: o volume com sinal de uma casca aberta é um número que
+        // existe e não é o volume de nada. ⛔ Ligá-la numa casca com bordo faria a
+        // peça inchar ou colapsar conforme a orientação das faces — um controlo
+        // que faz uma coisa arbitrária é pior que um que não faz nada.
+        //
+        // ⚠️ **Os quads viram leque de triângulos**, que é a mesma decomposição
+        // que o teorema da divergência pede: o volume de uma casca é a soma dos
+        // tetraedros que as faces fazem com a origem, e um quad plano parte-se em
+        // dois tetraedros cuja soma é a dele.
+        if props.volume > 0.0 && mesh.is_closed() {
+            let mut tri = Vec::with_capacity(mesh.faces().len() * 2);
+            for f in mesh.faces() {
+                let v = f.verts();
+                for k in 1..v.len().saturating_sub(1) {
+                    tri.push([v[0], v[k], v[k + 1]]);
+                }
+            }
+            tecido.sim.conservar_volume(tri);
         }
         // ⭐⭐⭐ **AS RESTRIÇÕES NASCEM AO CARREGAR, e não no primeiro movimento do
         // rato** (espec §7: *«restrições construídas UMA vez, para TODOS os
@@ -344,12 +366,9 @@ fn pincel_do_filtro(props: ClothFilterProps, kind: ClothFilterKind) -> Pincel {
         dureza: 0.0,
         pino: false,
         accionamento: Accionamento::Filtro { s: 0.0 },
-        solver: Solver {
-            massa: f64::from(p.mass),
-            amortecimento: f64::from(p.damping),
-            plasticidade: f64::from(p.plasticity),
-            varreduras: p.sweeps,
-        },
+        // ⭐ **A tradução vive na PORTA das propriedades** — inclusive a do topo
+        // da faixa que vira `∞`.
+        solver: p.solver(),
         ..Pincel::default()
     }
 }

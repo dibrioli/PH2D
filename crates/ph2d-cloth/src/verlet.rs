@@ -23,6 +23,12 @@
 
 use crate::V3;
 
+/// ⭐ **Os limites que o ALVO NÃO TEM** — irmão (`#[path]`) cortado por assunto:
+/// o tecto de esticão, as âncoras de longo alcance e a conservação de volume.
+/// ⚠️ Todos nascem neutros, e neutros não correm uma instrução.
+#[path = "verlet_limites.rs"]
+mod limites;
+
 /// Rigidez por restrição, por varredura (espec §5.2). ⚠️ `0,5` até 2020-10, subiu
 /// para reduzir artefactos quando espécies de restrição diferentes disputam um
 /// vértice (espec §9 nº 13).
@@ -32,6 +38,13 @@ pub const VARREDURAS: u32 = 5;
 /// O passo de tempo FIXO (espec §5.5): é a escala do deslocamento por força —
 /// `0,1/massa` a força máxima.
 pub const DT: f64 = 0.01;
+
+/// **Passagens do limitador de esticão por passo** — ⚠️ o número é NOSSO (o alvo
+/// não tem o limitador) e sai de medição: [`Solver::estica_max`].
+///
+/// ⚠️ Ele não muda nada enquanto as duas faixas estiverem neutras, e é por isso
+/// que pode ter um valor de omissão diferente de zero sem mover uma fixture.
+pub const PASSAGENS_LIMITE: u32 = 4;
 
 /// **Quem é o ponto B de uma restrição** — A é sempre um vértice (espec §3.2).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -73,6 +86,50 @@ pub struct Solver {
     /// Varreduras de relaxação por passo (espec §5.5): o recurso é tempo por
     /// passo × rigidez aparente. A referência corre [`VARREDURAS`].
     pub varreduras: u32,
+    /// ⭐⭐⭐ **O TECTO DE ESTICÃO** (Provot 1995) — a maior razão
+    /// `|x_a − x_b| / ℓ` que uma restrição ESTRUTURAL pode ter no fim do passo.
+    ///
+    /// ⚠️⚠️ **`f64::INFINITY` é «sem tecto», e é a lei da referência AO BIT** — o
+    /// alvo não tem este número, e é por isso que ele nasce assim: as `86` fixtures
+    /// do pincel e as `17` do filtro correm com a omissão e não se mexem.
+    ///
+    /// ⛔⛔ **E o gémeo dele — um PISO de compressão — foi construído, MEDIDO e
+    /// RETIRADO.** A ideia era que ele resistisse à DOBRA de graça: a rede desta
+    /// lei liga cada vértice a todos os pares do anel-1 dele, uma dobra de 180°
+    /// encurta essa «diagonal de `2h`» para perto de zero, e uma restrição de
+    /// distância não distingue uma dobra de um plano. Medido em quatro gestos de
+    /// gravidade sobre uma esfera, com piso a `0,00`/`0,55`/`0,75`/`0,90`: o
+    /// esticão máximo, a dobra `p99`, a dobra máxima e a contagem de vincos
+    /// **não se movem** (`75,69°`/`75,82°`/`76,02°`/`76,38°`), e a `0,90` pioram.
+    ///
+    /// ⭐ **A razão é estrutural, não de afinação: um piso abaixo de `ℓ` é
+    /// estritamente MAIS FRACO do que a restrição que já lá está.** A estrutural
+    /// tem alvo `ℓ` exacto e já puxa `83 %` do desvio por passo; o piso só fala
+    /// quando ela falhou em trazer o par acima de `0,55·ℓ`. E há uma assimetria
+    /// física: a gravidade **estica** de forma sustentada, logo a mola assenta
+    /// num equilíbrio esticado que cresce com a carga — a compressão não tem
+    /// carga sustentada nenhuma e resolve-se ao dobrar para fora do plano. *O
+    /// tecto trata de um regime permanente; o piso trataria de transitórios que a
+    /// lei já apaga.*
+    ///
+    /// ⛔ **Ele não é um `s` a mais nas restrições que já existem.** Uma restrição
+    /// de distância com rigidez `0,6` é uma MOLA: sob carga sustentada o desvio de
+    /// equilíbrio dela cresce com a carga, sem limite. O tecto é uma
+    /// **desigualdade** resolvida depois delas, e é isso que o torna independente
+    /// da carga, do número de varreduras e do tamanho da malha.
+    pub estica_max: f64,
+    /// Quantas passagens do limitador por passo. `0` desliga-o tal como as duas
+    /// faixas neutras — e a omissão vale o mesmo que elas.
+    pub passagens_limite: u32,
+    /// ⭐⭐⭐ **A FORÇA da conservação de volume** (*Position Based Dynamics*,
+    /// Müller · Heidelberger · Hennix · Ratcliff, 2007, §4.5 — a restrição do
+    /// balão). `0` desliga, e é a lei da referência: **o alvo não tem volume
+    /// nenhum, porque a lei dele é de PANO** e um pano é uma superfície aberta.
+    ///
+    /// ⛔ **Só faz sentido numa peça FECHADA**, e quem responde por isso é o
+    /// chamador — a lista de faces só chega por [`Verlet::conservar_volume`], e
+    /// sem ela a restrição não existe.
+    pub volume: f64,
 }
 
 impl Default for Solver {
@@ -82,6 +139,11 @@ impl Default for Solver {
             amortecimento: 0.01,
             plasticidade: 0.0,
             varreduras: VARREDURAS,
+            // ⚠️ As três nascem NEUTRAS: a omissão desta casa é a lei do alvo, e
+            // o produto é que escolhe outra ([`ClothFilterProps`]).
+            estica_max: f64::INFINITY,
+            passagens_limite: PASSAGENS_LIMITE,
+            volume: 0.0,
         }
     }
 }
@@ -167,6 +229,29 @@ pub struct Verlet {
     pares: std::collections::BTreeSet<(u32, u32)>,
     /// Quantos passos já simularam (o 1.º passo nunca simula — espec §1).
     pub passos_simulados: u32,
+    /// ⭐⭐ **AS FACES DA PEÇA, em triângulos** — só para a restrição de volume, e
+    /// vazias enquanto ela estiver desligada. ⚠️ A `ph2d-cloth` continua a não
+    /// saber o que é uma malha: isto é uma lista de índices que o chamador dá.
+    pub caras: Vec<[u32; 3]>,
+    /// O volume com sinal do REPOUSO, medido quando as faces chegaram.
+    pub volume0: f64,
+    /// ⭐⭐⭐ **A DISTÂNCIA DE MATERIAL até à âncora mais próxima** (*Long Range
+    /// Attachments*, Kim · Chentanez · Müller, SCA 2012) — `∞` para quem não tem
+    /// âncora nenhuma. Derivada, e só quando o limitador está ligado.
+    pub lra_dist: Vec<f64>,
+    /// Qual âncora (o vértice raiz) responde por cada um.
+    pub lra_raiz: Vec<u32>,
+    /// Quantas restrições havia quando o mapa acima foi semeado — é a guarda que
+    /// o refaz quando a rede cresce (área *Local*) e o deixa em paz quando não
+    /// cresce (área *Global*, onde ele nasce inteiro no primeiro passo).
+    lra_em: usize,
+    /// Rascunho do limitador de esticão: a soma das correcções por vértice.
+    /// ⚠️ Vive na estrutura para não alocar por passo; é sempre zerado antes de
+    /// ser lido, e vazio enquanto o limitador estiver desligado.
+    dx: Vec<V3>,
+    /// Rascunho do limitador: quantas restrições pediram correcção a cada
+    /// vértice (o denominador da média).
+    dn: Vec<f64>,
 }
 
 impl Verlet {
@@ -192,6 +277,13 @@ impl Verlet {
             restricoes: Vec::new(),
             pares: std::collections::BTreeSet::new(),
             passos_simulados: 0,
+            caras: Vec::new(),
+            volume0: 0.0,
+            lra_dist: Vec::new(),
+            lra_raiz: Vec::new(),
+            lra_em: usize::MAX,
+            dx: Vec::new(),
+            dn: Vec::new(),
             repouso,
         }
     }
@@ -335,6 +427,11 @@ impl Verlet {
     pub fn passo_com_colisores(&mut self, solver: &Solver, colisores: &[Colisor]) {
         let rho = solver.plasticidade.clamp(0.0, 1.0);
         for _ in 0..solver.varreduras {
+            // ⚠️ **O volume entra ANTES da lista, uma vez por varredura.** Ele é
+            // uma restrição como as outras e paga o mesmo número de iterações;
+            // pô-lo depois deixaria a última correcção da lista por responder e a
+            // peça a respirar um passo atrás do que se vê.
+            self.restringir_volume(solver.volume);
             for k in 0..self.restricoes.len() {
                 let r = self.restricoes[k];
                 let ai = r.a as usize;
@@ -457,6 +554,26 @@ impl Verlet {
             self.x_col[i] = self.x[i];
             self.a[i] = [0.0; 3];
         }
+        // ── ⭐⭐⭐ O LIMITADOR DE ESTICÃO (Provot 1995) ───────────────────────
+        //
+        // ⚠️⚠️ **Ele é o ÚLTIMO acto do passo, e a posição foi MEDIDA.** A 1.ª
+        // redacção pô-lo entre as varreduras e a integração — o sítio que a
+        // leitura ingénua indica, para que a velocidade o visse — e ali ele **não
+        // limita nada**: a integração corre DEPOIS e acrescenta `a·Δt + v·k`
+        // sobre a posição já corrigida, sem restrição nenhuma. Medido num passo
+        // só, com tecto `1,10`: o esticão máximo do fim do passo ficava em
+        // `1,270`, exactamente o mesmo de sem tecto.
+        //
+        // ⭐ **E ele continua a ser visto pela velocidade**, sem custo: nesta lei
+        // `v` é a diferença entre duas posições **pós-relaxação** (§5.4), e a
+        // correcção deste limitador entra na malha, é relida no passo seguinte e
+        // atravessa a relaxação dele ⇒ *a energia que o tecto tira não volta.*
+        //
+        // ⚠️ **Ele corre depois da colisão** e pode, em teoria, arrastar um
+        // vértice de volta para dentro de um obstáculo — a correcção é ao longo
+        // da aresta e vale a fracção que estoura o tecto (percentos de uma
+        // aresta). ⛔ A ordem inversa devolveria o defeito acima, que é maior.
+        self.limitar_esticao(solver);
         self.passos_simulados += 1;
     }
 }
@@ -511,4 +628,23 @@ pub fn unit(v: V3) -> V3 {
     } else {
         [0.0; 3]
     }
+}
+
+/// **O VOLUME COM SINAL** de uma casca de triângulos (o teorema da divergência
+/// aplicado ao campo `x/3`).
+///
+/// ⚠️ Ele é o volume da peça **só se a casca for fechada** — numa superfície
+/// aberta o valor existe e não quer dizer nada, e é por isso que quem o liga
+/// responde por isso.
+#[must_use]
+pub fn volume_de(x: &[V3], caras: &[[u32; 3]]) -> f64 {
+    let mut v = 0.0;
+    for f in caras {
+        let (a, b, c) = (x[f[0] as usize], x[f[1] as usize], x[f[2] as usize]);
+        v += (a[0] * (b[1] * c[2] - b[2] * c[1])
+            + a[1] * (b[2] * c[0] - b[0] * c[2])
+            + a[2] * (b[0] * c[1] - b[1] * c[0]))
+            / 6.0;
+    }
+    v
 }

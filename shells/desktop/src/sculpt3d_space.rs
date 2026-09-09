@@ -221,9 +221,9 @@ impl Sculpt3dScene {
     pub(super) fn armed_brush(&self, local_at: [f32; 3]) -> Brush {
         let pose = self.pose();
         let world = pose.point_to_world(local_at);
-        let radius = self
-            .camera
-            .world_radius_for_screen_px(world, self.radius_px(), self.viewport());
+        let radius =
+            self.camera
+                .world_radius_for_screen_px(world, self.radius_px(), self.viewport());
         Brush {
             radius: (radius / pose.scale()).max(1e-6),
             alpha_stencil: Some(self.stencil_for(pose)),

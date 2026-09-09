@@ -59,6 +59,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.sculpt3d.cfilter_damping" => "Filter Damping",
         "panel.sculpt3d.cfilter_plasticity" => "Filter Plasticity",
         "panel.sculpt3d.cfilter_sweeps" => "Filter Quality",
+        "panel.sculpt3d.cfilter_stretch" => "Stretch Limit",
+        "panel.sculpt3d.cfilter_volume" => "Preserve Volume",
         "panel.sculpt3d.cfilter_axis" => "Force Axis",
         "panel.sculpt3d.cfilter_collisions" => "Filter Collisions",
         // ⚠️ **A row lê `Reference`, e os chips leem `S` · `B` · `L`** (§1.4 do

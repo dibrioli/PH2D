@@ -90,15 +90,15 @@ impl Sculpt3dScene {
     /// e é ele que decide que bola está à frente.
     fn nav_basis(&self) -> ([f32; 3], [f32; 3], [f32; 3]) {
         let (right, up) = self.camera.screen_basis();
-        (
-            right.into(),
-            up.into(),
-            self.camera.view_axis().into(),
-        )
+        (right.into(), up.into(), self.camera.view_axis().into())
     }
 
     /// As seis bolas, prontas a pintar — de trás para a frente.
-    pub(crate) fn navball(&self, area: EditorRect, safe: EditorRect) -> Vec<crate::field3d_navball::Ball> {
+    pub(crate) fn navball(
+        &self,
+        area: EditorRect,
+        safe: EditorRect,
+    ) -> Vec<crate::field3d_navball::Ball> {
         let (right, up, fwd) = self.nav_basis();
         crate::field3d_navball::balls_from_basis(right, up, fwd, area, safe)
     }

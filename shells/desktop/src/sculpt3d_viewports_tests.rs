@@ -81,7 +81,11 @@ fn o_clique_cai_onde_a_peca_foi_desenhada_nos_quatro_quadrantes() {
 #[test]
 fn um_ponto_fora_do_canvas_nao_e_de_viewport_nenhum() {
     let s = cena_ou_sai!();
-    assert_eq!(s.vp_at(W * 0.5, H * 0.5), Some(0), "o centro e' do viewport unico");
+    assert_eq!(
+        s.vp_at(W * 0.5, H * 0.5),
+        Some(0),
+        "o centro e' do viewport unico"
+    );
     for (x, y, onde) in [
         (-4.0, H * 0.5, "a` esquerda"),
         (W + 4.0, H * 0.5, "a` direita"),
@@ -118,7 +122,10 @@ fn abrir_a_divisao_nomeia_tres_e_deixa_a_do_artista_no_canto_da_mao() {
         ],
         "a disposicao nao e' a do Blender (topo, direita, frente, artista)"
     );
-    assert_eq!(nomes[3], None, "o quarto quadrante devia ser a vista LIVRE do artista");
+    assert_eq!(
+        nomes[3], None,
+        "o quarto quadrante devia ser a vista LIVRE do artista"
+    );
     assert_eq!(s.vp_active(), 3, "o activo devia ser o do artista");
     assert_eq!(
         (s.camera.yaw, s.camera.pitch),
@@ -195,7 +202,10 @@ fn a_costura_arrasta_e_o_eixo_certo_se_move() {
         s.seam_grab(W * 0.5, H * 0.5),
         "o cruzamento das costuras nao foi agarrado"
     );
-    assert!(s.seam_at(W * 0.7, H * 0.5), "o arrasto da costura nao foi aceite");
+    assert!(
+        s.seam_at(W * 0.7, H * 0.5),
+        "o arrasto da costura nao foi aceite"
+    );
     assert!(s.seam_release());
     let q0 = s.vp_rect(0).expect("q0");
     println!("q0: {largura0} x {altura0} -> {} x {}", q0.w, q0.h);
@@ -239,8 +249,12 @@ fn o_fit_enquadra_para_a_vista_e_nao_para_a_janela() {
     /// Quanto da vista a peça ocupa — o maior dos dois eixos. Enquadrado ⇒ ~1.
     fn ocupacao(s: &crate::sculpt3d::Sculpt3dScene) -> f32 {
         let (w, h) = s.viewport();
-        let (mut x0, mut x1, mut y0, mut y1) =
-            (f32::INFINITY, f32::NEG_INFINITY, f32::INFINITY, f32::NEG_INFINITY);
+        let (mut x0, mut x1, mut y0, mut y1) = (
+            f32::INFINITY,
+            f32::NEG_INFINITY,
+            f32::INFINITY,
+            f32::NEG_INFINITY,
+        );
         for p in s.mesh().positions() {
             if let Some((x, y)) = s.camera.project(*p, (w, h)) {
                 x0 = x0.min(x);
@@ -269,7 +283,9 @@ fn o_fit_enquadra_para_a_vista_e_nao_para_a_janela() {
     errada.camera.frame(errada.world_bounds(), JANELA);
     let f_errada = ocupacao(&errada);
 
-    println!("ocupacao por vista: {ocupacoes:?} | vista ALTA com o aspecto da JANELA: {f_errada:.4}");
+    println!(
+        "ocupacao por vista: {ocupacoes:?} | vista ALTA com o aspecto da JANELA: {f_errada:.4}"
+    );
     // ⚠️⚠️ **A régua é «CABE», e não uma fracção fixa** — e a fracção fixa foi a
     // terceira redacção errada deste gate. O [`Camera3d::frame`] enquadra a
     // **CAIXA** da peça, não a peça: uma esfera dentro do cubo dela ocupa `0,49`
@@ -315,7 +331,10 @@ fn o_nome_da_vista_abre_a_lista_e_a_lista_troca_a_camera() {
     assert!(s.toggle_split());
     // Um chip por quadrante, no canto de cada um.
     let chips: Vec<_> = (0..4)
-        .map(|i| s.vp_rect(i).map(|r| Rect::new(r.x + 4.0, r.y + 4.0, 60.0, 20.0)))
+        .map(|i| {
+            s.vp_rect(i)
+                .map(|r| Rect::new(r.x + 4.0, r.y + 4.0, 60.0, 20.0))
+        })
         .collect();
     s.note_view_labels(chips.clone());
 
@@ -331,10 +350,20 @@ fn o_nome_da_vista_abre_a_lista_e_a_lista_troca_a_camera() {
     s.note_view_menu_rect(menu);
     // A linha do `Top` é a quinta da lista (`Standard::ALL`).
     let alvo = Standard::Top;
-    let i = Standard::ALL.iter().position(|v| *v == alvo).expect("Top esta' na lista");
+    let i = Standard::ALL
+        .iter()
+        .position(|v| *v == alvo)
+        .expect("Top esta' na lista");
     let y = menu.y + 8.0 + 26.0 * i as f32 + 4.0;
-    assert!(s.view_menu_click(menu.x + 10.0, y), "o clique no menu nao foi consumido");
-    assert_eq!(s.view_menu_open(), None, "o menu tinha de fechar ao escolher");
+    assert!(
+        s.view_menu_click(menu.x + 10.0, y),
+        "o clique no menu nao foi consumido"
+    );
+    assert_eq!(
+        s.view_menu_open(),
+        None,
+        "o menu tinha de fechar ao escolher"
+    );
     assert_eq!(
         super::super::navball::named_view(&s.cam_of(1)),
         Some(alvo),
@@ -439,7 +468,10 @@ fn o_despacho_pergunta_menu_costura_chip_nesta_ordem() {
         "o chip e' perguntado antes da COSTURA -- ele vive DENTRO de um viewport e ela vive ENTRE \
          eles"
     );
-    assert!(chip < vp, "o chip tem de ser perguntado antes do encaminhamento por viewport");
+    assert!(
+        chip < vp,
+        "o chip tem de ser perguntado antes do encaminhamento por viewport"
+    );
 }
 
 /// ⭐⭐ **O QUADRO PUBLICA O QUE O PINTOR MEDIU** — o chip e o rectângulo do menu.
@@ -462,9 +494,7 @@ fn o_quadro_publica_o_chip_e_o_rectangulo_que_o_pintor_mediu() {
         // A publicação tem de vir depois da chamada, e perto dela.
         let depois = &fonte[at..];
         assert!(
-            depois
-                .find(porta)
-                .is_some_and(|d| d < 1500),
+            depois.find(porta).is_some_and(|d| d < 1500),
             "o quadro chama `{chamada}` e nao publica o resultado por `{porta}` -- o alvo do \
              clique fica vazio e o nome aparece na tela com o clique a atravessa'-lo"
         );

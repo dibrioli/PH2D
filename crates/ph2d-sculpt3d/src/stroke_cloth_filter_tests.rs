@@ -15,9 +15,9 @@
 //! nenhum destes gates põe uma.*
 
 use super::cloth_tests::plano;
-use crate::ClothFilterProps;
 use super::{ClothFilterStep, SculptStroke};
 use crate::ClothFilterKind;
+use crate::ClothFilterProps;
 
 fn passo(s: f32) -> ClothFilterStep {
     ClothFilterStep {
@@ -28,7 +28,6 @@ fn passo(s: f32) -> ClothFilterStep {
         eye: [0.0, 0.0, 1.0],
     }
 }
-
 
 /// Corre `n` passos do filtro e devolve a malha resultante.
 fn corre(kind: ClothFilterKind, s: f32, n: usize, ponto: [f32; 3]) -> Vec<[f32; 3]> {
@@ -60,7 +59,12 @@ fn um_filtro_toca_a_peca_inteira_e_um_carimbo_toca_um_disco() {
     let mut mesh = plano();
     let n = mesh.vert_count();
     let mut st = SculptStroke::default();
-    st.cloth_filter_begin(&mesh, ClothFilterProps::default(), ClothFilterKind::Gravity, [0.0; 3]);
+    st.cloth_filter_begin(
+        &mesh,
+        ClothFilterProps::default(),
+        ClothFilterKind::Gravity,
+        [0.0; 3],
+    );
     let movidos = st.cloth_filter_step(&mut mesh, ClothFilterKind::Gravity, &passo(1.0));
     println!("filtro: {movidos} de {n} vertices movidos");
     assert!(
@@ -176,7 +180,12 @@ fn o_pen_down_do_filtro_congela_a_peca_inteira_para_o_undo() {
     let mesh = plano();
     let n = mesh.vert_count();
     let mut st = SculptStroke::default();
-    st.cloth_filter_begin(&mesh, ClothFilterProps::default(), ClothFilterKind::Gravity, [0.0; 3]);
+    st.cloth_filter_begin(
+        &mesh,
+        ClothFilterProps::default(),
+        ClothFilterKind::Gravity,
+        [0.0; 3],
+    );
     assert_eq!(
         st.touched().len(),
         n,
@@ -244,7 +253,12 @@ fn depois_de_um_passo_as_normais_concordam_com_a_geometria() {
     let mut mesh = ph2d_mesh::shapes::uv_sphere(24, 36, 1.0);
     let repouso: Vec<[f32; 3]> = mesh.normals().to_vec();
     let mut st = SculptStroke::default();
-    st.cloth_filter_begin(&mesh, ClothFilterProps::default(), ClothFilterKind::Inflate, [0.0; 3]);
+    st.cloth_filter_begin(
+        &mesh,
+        ClothFilterProps::default(),
+        ClothFilterKind::Inflate,
+        [0.0; 3],
+    );
     for _ in 0..6 {
         st.cloth_filter_step(&mut mesh, ClothFilterKind::Inflate, &passo(1.0));
     }

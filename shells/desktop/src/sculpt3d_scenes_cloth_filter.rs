@@ -62,6 +62,9 @@ pub(crate) fn announce() {
          [sculpt3d]        com QUALQUER ferramenta na mao, que e' quando o filtro roda.\n\
          [sculpt3d]        Escolhendo Scale aparecem tambem tres travas Force Axis (X/Y/Z);\n\
          [sculpt3d]        nos outros quatro tipos elas somem, porque so' a Scale as le^.\n\
+         [sculpt3d]    (3c) E aparecem DOIS controlos novos, no topo do bloco e sem precisar\n\
+         [sculpt3d]        do modo Pro: Stretch Limit e Preserve Volume. Sao a resposta ao\n\
+         [sculpt3d]        report de que o pano estica sem fim -- o passo (10) mede-os.\n\
          [sculpt3d]    (4) Clique na esfera e ARRASTE PARA A DIREITA, devagar, sem soltar.\n\
          [sculpt3d]        A peca INTEIRA tem de ceder e continuar a ceder enquanto a mao anda.\n\
          [sculpt3d]        Arraste de volta para a esquerda: ela e' empurrada para o outro lado.\n\
@@ -94,6 +97,28 @@ pub(crate) fn announce() {
          [sculpt3d]        Damping, Plasticity) e repita a gravidade: mais massa cede menos,\n\
          [sculpt3d]        mais amortecimento pa'ra mais depressa. Se mexer neles nao mudar\n\
          [sculpt3d]        nada, reporte.\n\
+         [sculpt3d]    (10) O PANO DEIXA DE SER UM ELASTICO -- e' o report de 08/09.\n\
+         [sculpt3d]        Monte a cena da foto: pegue a Mask e pinte TRES manchas pequenas\n\
+         [sculpt3d]        perto do topo da esfera (elas ficam presas). Escolha Cloth >\n\
+         [sculpt3d]        Gravity e arraste ate' ao fim, varias vezes.\n\
+         [sculpt3d]        (a) Ponha Stretch Limit em 2,00 (o extremo elastico) e arraste: a\n\
+         [sculpt3d]            esfera esvazia-se em tres tubos compridos, como na foto.\n\
+         [sculpt3d]        (b) Ctrl+Z ate' voltar. Ponha Stretch Limit em 1,10 (o de fabrica)\n\
+         [sculpt3d]            e repita o MESMO arrasto: o pano tem de TRANCAR -- os tubos\n\
+         [sculpt3d]            ficam curtos e a superficie deixa de vir suja de manchas\n\
+         [sculpt3d]            escuras. Medido: 4x menos esticao.\n\
+         [sculpt3d]        (c) Ctrl+Z. Suba Preserve Volume de 0 para 1 e repita: agora a\n\
+         [sculpt3d]            esfera nao se esvazia -- ela deforma mantendo o tamanho.\n\
+         [sculpt3d]            Medido: sem ela sobram 44% do volume; com ela, 98%.\n\
+         [sculpt3d]        (d) Onde ele muda MAIS: escolha Pinch e aperte com forca. Com\n\
+         [sculpt3d]            Preserve Volume em 0 a peca IMPLODE (sobra 3% dela e a\n\
+         [sculpt3d]            superficie fica rasgada); com 1, ela aperta e continua peca.\n\
+         [sculpt3d]        (e) COMO SABER QUE DEU ERRADO: se 1,10 e 2,00 derem a mesma coisa,\n\
+         [sculpt3d]            ou se o Preserve Volume nao mudar nada na Gravidade, reporte.\n\
+         [sculpt3d]        ⚠️ ESPERADO, nao e' defeito: com Preserve Volume ligado a Scale e o\n\
+         [sculpt3d]            Inflate quase nao fazem nada -- os dois existem para mudar o\n\
+         [sculpt3d]            volume, e conservar o volume anula-os. Por isso ele nasce em 0.\n\
+         [sculpt3d]        ⚠️ Ele so' funciona em peca FECHADA (sem buracos).\n\
          [sculpt3d]    ⚠️ A fileira de cima (Filter) sao as leis de MALHA, que ja' existiam.\n\
          [sculpt3d]        So' UMA das duas fileiras tem chip aceso de cada vez -- se as duas\n\
          [sculpt3d]        acenderem juntas, reporte."

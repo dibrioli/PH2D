@@ -116,23 +116,41 @@ fn the_cloth_mode_decides_which_arm_the_gesture_takes() {
 /// ⚠️ **As duas metades são o gate:** só a primeira deixaria passar uma fileira
 /// pintada sempre (ruído sobre quem esculpe); só a segunda deixaria passar a
 /// pergunta antiga.
+///
+/// ⚠️ **E a lista é por NOME**: uma contagem literal obrigaria toda wave futura a
+/// editar este número, e diria *«são 5 e não 6»* sem dizer qual.
 #[test]
 fn os_numeros_do_filtro_aparecem_com_o_filtro_e_nao_com_o_pincel() {
     use crate::rows::rows;
     use crate::state::Sculpt3dUi;
     use ph2d_sculpt3d::{ClothFilterKind, FilterKind, FilterLaw, Verb};
 
+    // ⚠️⚠️ **A lista é NOMEADA, e a 1.ª redacção contava `4` à mão.** Uma contagem
+    // literal faz cada número novo editar o teste de outra pessoa e não diz QUAL
+    // falta; com os nomes, quem acrescentar um número do filtro tem de o
+    // declarar aqui — e a mensagem diz-lhe exactamente o que fazer.
+    const ESPERADOS: [&str; 6] = [
+        "panel.sculpt3d.cfilter_stretch",
+        "panel.sculpt3d.cfilter_volume",
+        "panel.sculpt3d.cfilter_mass",
+        "panel.sculpt3d.cfilter_damping",
+        "panel.sculpt3d.cfilter_plasticity",
+        "panel.sculpt3d.cfilter_sweeps",
+    ];
     let cfilter: Vec<&str> = rows()
         .map(|r| r.label)
         .filter(|l| l.starts_with("panel.sculpt3d.cfilter_"))
         .collect();
-    assert_eq!(
-        cfilter.len(),
-        4,
-        "o filtro de tecido tem QUATRO numeros proprios (massa, amortecimento, plasticidade, \
-         qualidade) e o painel oferece {}: {cfilter:?}",
-        cfilter.len()
-    );
+    for e in ESPERADOS {
+        assert!(cfilter.contains(&e), "`{e}` sumiu do painel: {cfilter:?}");
+    }
+    for c in &cfilter {
+        assert!(
+            ESPERADOS.contains(c),
+            "`{c}` e' um numero do filtro que este censo nao conhece -- acrescente-o a \
+             ESPERADOS depois de conferir que ele obedece as duas metades abaixo"
+        );
+    }
 
     // (1) — com a lei de TECIDO escolhida e um verbo QUALQUER na mão, eles aparecem.
     let mut u = Sculpt3dUi::default();
@@ -177,7 +195,10 @@ fn a_qualidade_do_pincel_aparece_com_o_pincel() {
         .expect("a *Quality* do pincel tem de existir");
     let mut u = Sculpt3dUi::default();
     u.brush.verb = Verb::Cloth;
-    assert!((r.show)(&u), "com o pincel de tecido na mao ela tem de aparecer");
+    assert!(
+        (r.show)(&u),
+        "com o pincel de tecido na mao ela tem de aparecer"
+    );
     u.brush.verb = Verb::Draw;
     u.filter_law = FilterLaw::Cloth(ClothFilterKind::Gravity);
     assert!(

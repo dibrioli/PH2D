@@ -413,10 +413,7 @@ fn referencial_e_gravidade(
             let up = ph2d_mesh_render::Camera3d::UP;
             let right = [1.0, 0.0, 0.0];
             let back = [0.0, 0.0, 1.0];
-            (
-                [right, [up.x, up.y, up.z], back],
-                [-up.x, -up.y, -up.z],
-            )
+            ([right, [up.x, up.y, up.z], back], [-up.x, -up.y, -up.z])
         }
     }
 }

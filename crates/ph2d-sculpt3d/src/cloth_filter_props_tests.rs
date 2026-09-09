@@ -64,10 +64,7 @@ fn as_quatro_propriedades_do_filtro_chegam_ao_solver() {
     for (nome, mudada, kind) in [
         (
             "massa",
-            ClothFilterProps {
-                mass: 2.0,
-                ..base
-            },
+            ClothFilterProps { mass: 2.0, ..base },
             ClothFilterKind::Gravity,
         ),
         (
@@ -88,10 +85,7 @@ fn as_quatro_propriedades_do_filtro_chegam_ao_solver() {
         ),
         (
             "varreduras",
-            ClothFilterProps {
-                sweeps: 32,
-                ..base
-            },
+            ClothFilterProps { sweeps: 32, ..base },
             ClothFilterKind::Pinch,
         ),
     ] {
@@ -133,7 +127,10 @@ fn a_omissao_do_filtro_e_a_do_alvo_e_nao_a_do_pincel() {
         filtro.damping, 0.0,
         "a omissao do amortecimento do FILTRO e' `0` (espec §7) -- o `0,01` e' a do PINCEL"
     );
-    assert_eq!(filtro.plasticity, 0.0, "o alvo cria a simulacao do filtro sem memoria de forma");
+    assert_eq!(
+        filtro.plasticity, 0.0,
+        "o alvo cria a simulacao do filtro sem memoria de forma"
+    );
     assert_eq!(
         filtro.sweeps,
         ph2d_cloth::verlet::VARREDURAS,
@@ -164,13 +161,17 @@ fn a_omissao_do_filtro_e_a_do_alvo_e_nao_a_do_pincel() {
 /// saiu** — a mesma lei que o `t_at`/`with_t` do layout já escreve. Aqui ele
 /// vive na [`ClothFilterProps::clamped`], e o `pincel_do_filtro` chama-a.
 #[test]
-fn a_porta_prende_os_quatro_numeros() {
+fn a_porta_prende_os_numeros_do_filtro() {
     let louco = ClothFilterProps {
         mass: 99.0,
         damping: -3.0,
         plasticity: 7.0,
         sweeps: 0,
         collisions: true,
+        // ⚠️ **O `∞` é o valor da LEI e o painel não o alcança** — é ele que as
+        // 103 fixtures do oráculo correm, e a porta tem de o trazer para a faixa.
+        stretch_max: f32::INFINITY,
+        volume: 9.0,
     }
     .clamped();
     assert_eq!(louco.mass, ClothFilterProps::MASS.1);
@@ -181,6 +182,8 @@ fn a_porta_prende_os_quatro_numeros() {
         ClothFilterProps::SWEEPS.0,
         "zero varreduras seria um passo sem relaxacao nenhuma -- o piso e' `1`"
     );
+    assert_eq!(louco.stretch_max, ClothFilterProps::STRETCH.1);
+    assert_eq!(louco.volume, ClothFilterProps::VOLUME.1);
     // E um valor legal atravessa intocado.
     let bom = ClothFilterProps {
         mass: 0.5,
@@ -188,8 +191,14 @@ fn a_porta_prende_os_quatro_numeros() {
         plasticity: 0.75,
         sweeps: 9,
         collisions: true,
+        stretch_max: 1.25,
+        volume: 0.5,
     };
-    assert_eq!(bom.clamped(), bom, "a porta mexeu num valor que ja' estava na faixa");
+    assert_eq!(
+        bom.clamped(),
+        bom,
+        "a porta mexeu num valor que ja' estava na faixa"
+    );
 }
 
 /// ⭐⭐⭐ **O FILTRO NÃO RECEBE UM PINCEL — e é a forma mais forte da lei.**
@@ -249,8 +258,7 @@ fn as_colisoes_do_filtro_param_o_pano_no_obstaculo() {
         // estar no caminho de facto.
         if com_colisor {
             let placa = shapes::uv_sphere(12, 18, 3.0);
-            st.cloth_colliders
-                .push((placa, Pose::at([0.0, -4.0, 0.0])));
+            st.cloth_colliders.push((placa, Pose::at([0.0, -4.0, 0.0])));
         }
         let props = ClothFilterProps {
             collisions: com_colisor,

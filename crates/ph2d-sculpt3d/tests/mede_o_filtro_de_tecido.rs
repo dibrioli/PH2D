@@ -38,14 +38,18 @@ fn passo() -> ClothFilterStep {
     }
 }
 
-
 /// `(vértices, ms do pen-down, ms de um passo)`.
 fn medir(nu: usize, nv: usize) -> (usize, f64, f64) {
     let mut mesh = ph2d_mesh::shapes::uv_sphere(nu, nv, 1.0);
     let n = mesh.vert_count();
     let mut st = SculptStroke::default();
     let t0 = Instant::now();
-    st.cloth_filter_begin(&mesh, ClothFilterProps::default(), ClothFilterKind::Gravity, [0.0; 3]);
+    st.cloth_filter_begin(
+        &mesh,
+        ClothFilterProps::default(),
+        ClothFilterKind::Gravity,
+        [0.0; 3],
+    );
     let abertura = t0.elapsed().as_secs_f64() * 1e3;
     let t1 = Instant::now();
     st.cloth_filter_step(&mut mesh, ClothFilterKind::Gravity, &passo());
@@ -97,9 +101,14 @@ fn o_pen_down_do_filtro_e_linear_nos_vertices() {
     {
         let mut mesh = ph2d_mesh::shapes::sculpt_sphere(1.0);
         let n = mesh.vert_count();
-            let mut st = SculptStroke::default();
+        let mut st = SculptStroke::default();
         let t0 = Instant::now();
-        st.cloth_filter_begin(&mesh, ClothFilterProps::default(), ClothFilterKind::Gravity, [0.0; 3]);
+        st.cloth_filter_begin(
+            &mesh,
+            ClothFilterProps::default(),
+            ClothFilterKind::Gravity,
+            [0.0; 3],
+        );
         let a = t0.elapsed().as_secs_f64() * 1e3;
         let t1 = Instant::now();
         st.cloth_filter_step(&mut mesh, ClothFilterKind::Gravity, &passo());

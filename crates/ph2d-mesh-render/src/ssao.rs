@@ -201,12 +201,7 @@ impl SsaoRaw {
                 p.slices.clamp(1, 16) as f32,
                 p.steps.clamp(1, 16) as f32,
             ],
-            screen: [
-                size.0 as f32,
-                size.1 as f32,
-                p.power.clamp(0.1, 8.0),
-                0.0,
-            ],
+            screen: [size.0 as f32, size.1 as f32, p.power.clamp(0.1, 8.0), 0.0],
             origin: [area.x as f32, area.y as f32, 0.0, 0.0],
         }
     }

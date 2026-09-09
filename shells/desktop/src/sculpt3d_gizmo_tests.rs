@@ -18,7 +18,10 @@ fn cena(kind: TransformKind) -> Option<crate::sculpt3d::Sculpt3dScene> {
     let gpu = ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None).ok()?;
     let mut s = crate::sculpt3d::Sculpt3dScene::new(&gpu.device, uv_sphere(20, 30, 1.0), 1.0);
     s.note_canvas(Rect::new(0.0, 0.0, W, H));
-    assert!(s.arm_transform(kind), "a fixture nao conseguiu armar o transform");
+    assert!(
+        s.arm_transform(kind),
+        "a fixture nao conseguiu armar o transform"
+    );
     Some(s)
 }
 
@@ -111,10 +114,7 @@ fn a_seta_de_um_eixo_move_so_naquele_eixo() {
         panic!("a seta de um eixo devia ser uma Arrow");
     };
     // Agarra a meio da haste e arrasta na DIAGONAL — as duas componentes.
-    let meio = (
-        f32::midpoint(from[0], to[0]),
-        f32::midpoint(from[1], to[1]),
-    );
+    let meio = (f32::midpoint(from[0], to[0]), f32::midpoint(from[1], to[1]));
     let destino = (meio.0 + 120.0, meio.1 + 90.0);
     let preso = arrasta(&mut s, meio, destino);
 
@@ -318,10 +318,10 @@ fn todo_pen_down_de_transform_pergunta_ao_gizmo_primeiro() {
     let grab = fonte
         .find("gizmo_grab(")
         .expect("o pen-down tem de perguntar ao gizmo -- sem isso ele esta' MORTO sob o ponteiro");
-    let begin = fonte
-        .find("begin_transform(")
-        .expect("controlo positivo: o pen-down do transform mudou de ficheiro e este censo \
-                 varreria o vazio");
+    let begin = fonte.find("begin_transform(").expect(
+        "controlo positivo: o pen-down do transform mudou de ficheiro e este censo \
+                 varreria o vazio",
+    );
     assert!(
         grab < begin,
         "o `gizmo_grab` (byte {grab}) vem DEPOIS do `begin_transform` (byte {begin}) -- a \
@@ -390,13 +390,15 @@ fn com_o_transform_armado_arrastar_no_vazio_ainda_gira_a_camera() {
 #[test]
 fn o_pen_down_do_transform_desvia_para_a_orbita_quando_erra_tudo() {
     let fonte = include_str!("sculpt3d_input_down.rs");
-    let i = fonte
-        .find("if scene.transform_arm().is_some() {")
-        .expect("controlo positivo: o braco do transform mudou de forma e este censo varreria o vazio");
+    let i = fonte.find("if scene.transform_arm().is_some() {").expect(
+        "controlo positivo: o braco do transform mudou de forma e este censo varreria o vazio",
+    );
     let braco = &fonte[i..];
     let fim = braco.find("scene.brush.invert").unwrap_or(braco.len());
     let braco = &braco[..fim];
-    let alca = braco.find("gizmo_grab(").expect("o braco tem de perguntar pela ALCA");
+    let alca = braco
+        .find("gizmo_grab(")
+        .expect("o braco tem de perguntar pela ALCA");
     let barro = braco.find("scene.aim(").expect("o braco tem de MIRAR");
     assert!(
         alca < barro,

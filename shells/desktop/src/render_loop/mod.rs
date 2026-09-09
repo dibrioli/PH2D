@@ -12099,8 +12099,7 @@ impl crate::App {
                 // ⚠️ **O rectângulo é PUBLICADO por quem o pinta**, como o chip: a largura dele é a
                 // da linha mais comprida, e só o pintor a mede. É o mesmo pintor do módulo vizinho.
                 if let Some(i) = scene.view_menu_open()
-                    && let (Some(chip), Some(canvas)) =
-                        (scene.chip_of(i), scene.canvas())
+                    && let (Some(chip), Some(canvas)) = (scene.chip_of(i), scene.canvas())
                 {
                     let r = crate::field3d_gizmo_paint::paint_view_menu(
                         vector_scene,

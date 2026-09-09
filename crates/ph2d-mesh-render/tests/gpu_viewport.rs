@@ -170,7 +170,15 @@ fn desenha(area: Option<ScreenRect>) -> Option<Vec<u8>> {
         Some(a) => {
             let cam = camera(&mesh, a.aspect());
             r.render_in(
-                &device, &queue, &mut enc, &view, &cam, None, shade, (W, H), a,
+                &device,
+                &queue,
+                &mut enc,
+                &view,
+                &cam,
+                None,
+                shade,
+                (W, H),
+                a,
             );
         }
     }
@@ -192,11 +200,7 @@ fn desenhar_no_alvo_inteiro_e_byte_identico_ao_de_sempre() {
         eprintln!("no GPU adapter on this machine — nothing to assert");
         return;
     };
-    let difs = sempre
-        .iter()
-        .zip(&inteiro)
-        .filter(|(a, b)| a != b)
-        .count();
+    let difs = sempre.iter().zip(&inteiro).filter(|(a, b)| a != b).count();
     println!("bytes diferentes: {difs} de {}", sempre.len());
     assert_eq!(
         difs, 0,
@@ -251,7 +255,10 @@ fn uma_vista_nao_escreve_na_vizinha() {
     );
     let px = readback(&device, &queue, enc, &tex);
     let (x0, _, x1, _, n) = bbox(&px);
-    println!("tinta na coluna [{x0}, {x1}] de [0, {}] -- {n} pixels", W - 1);
+    println!(
+        "tinta na coluna [{x0}, {x1}] de [0, {}] -- {n} pixels",
+        W - 1
+    );
     assert!(n > 0, "a vista da esquerda nao desenhou nada");
     assert!(
         x1 < W / 2,

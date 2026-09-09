@@ -192,7 +192,12 @@ fn a_gravidade_do_filtro_cai_para_baixo_na_tela() {
         let mut mesh = uv_sphere(16, 24, 1.0);
         let antes = centroide(&mesh);
         let mut st = SculptStroke::default();
-        st.cloth_filter_begin(&mesh, ph2d_sculpt3d::ClothFilterProps::default(), ClothFilterKind::Gravity, [0.0; 3]);
+        st.cloth_filter_begin(
+            &mesh,
+            ph2d_sculpt3d::ClothFilterProps::default(),
+            ClothFilterKind::Gravity,
+            [0.0; 3],
+        );
         st.cloth_filter_step(
             &mut mesh,
             ClothFilterKind::Gravity,
@@ -208,7 +213,9 @@ fn a_gravidade_do_filtro_cai_para_baixo_na_tela() {
         // ⚠️ A câmera de OMISSÃO, que é o enquadramento em que a peça nasce —
         // é nele que o report foi escrito.
         let cam = Camera3d::default();
-        let a = cam.project(antes, SIZE).expect("o centroide esta' na frente");
+        let a = cam
+            .project(antes, SIZE)
+            .expect("o centroide esta' na frente");
         let d = cam
             .project(depois, SIZE)
             .expect("o centroide esta' na frente");

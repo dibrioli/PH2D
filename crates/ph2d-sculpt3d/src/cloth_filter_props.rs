@@ -106,6 +106,28 @@ pub struct ClothFilterProps {
     /// fino visto de raspão o nosso passa. Não existe amostra do alvo com
     /// obstáculo, logo esta parte **não tem lado aprovado**.
     pub collisions: bool,
+    /// ⭐⭐⭐ ***Stretch Limit*** — quanto o pano pode esticar antes de TRANCAR,
+    /// em razão do comprimento de repouso (`1,10` = `10 %`).
+    ///
+    /// ⛔⛔ **É o report do dono de 08/09, e ele estava certo:** *«o Cloth não age
+    /// como pano real, mas como um elástico que estica indefinidamente»*. Uma
+    /// restrição de distância com rigidez `0,6` é uma **mola**, e o desvio de
+    /// equilíbrio de uma mola cresce com a carga sem limite — sob gravidade
+    /// sustentada com pontos presos, uma esfera de raio `1` chega a
+    /// **`18,6×`** o comprimento de repouso numa aresta.
+    ///
+    /// ⚠️ **O alvo não tem este número**, e por isso [`Solver::estica_max`] nasce
+    /// em `∞`: as `86` fixtures do pincel e as `17` do filtro correm sobre a
+    /// omissão da LEI e não se mexem. O que muda é a omissão do **PRODUTO**, e é
+    /// uma **divergência declarada**.
+    pub stretch_max: f32,
+    /// ⭐⭐⭐ ***Preserve Volume*** — quanto do volume de repouso a peça mantém
+    /// (`0` desliga, `1` = todo).
+    ///
+    /// ⛔ **Só tem sentido numa peça FECHADA**, e o filtro só a liga quando a
+    /// malha o é ([`ph2d_mesh::Mesh::is_closed`]): o volume com sinal de uma
+    /// superfície aberta não é o volume de nada.
+    pub volume: f32,
 }
 
 /// A faixa de cada número, na ordem em que o painel os mostra.
@@ -118,6 +140,21 @@ impl ClothFilterProps {
     pub const PLASTICITY: (f32, f32) = (0.0, 1.0);
     /// Faixa das varreduras — ver o doc de [`Self::sweeps`] para o teto medido.
     pub const SWEEPS: (u32, u32) = (1, 32);
+    /// Faixa do tecto de esticão — `1,00` (não estica nada) a `2,00` (o dobro).
+    ///
+    /// ⛔⛔ **Não há «desligado» no PRODUTO, e a 1.ª redacção tinha-o.** Ela punha
+    /// o topo em `10,0` e fazia esse valor virar `∞`, *«para o artista alcançar o
+    /// comportamento antigo sem um segundo controlo»* — duas coisas erradas: o
+    /// comportamento antigo é o **defeito que o dono reportou** (ninguém o quer),
+    /// e uma faixa de `1` a `10` põe todo o intervalo útil (`1,00`–`1,50`) nos
+    /// primeiros `5 %` do cursor. ⇒ *um sentinela escondido no topo de uma faixa
+    /// que ninguém consegue usar não é um controlo, é uma armadilha.*
+    ///
+    /// ⚠️ **O `∞` continua a existir na LEI** ([`ph2d_cloth::verlet::Solver`]), e
+    /// é ele que as `103` fixtures do oráculo correm.
+    pub const STRETCH: (f32, f32) = (1.0, 2.0);
+    /// Faixa da conservação de volume. `0` = desligada.
+    pub const VOLUME: (f32, f32) = (0.0, 1.0);
 
     /// ⚠️ **Preso na PORTA**, e não em quem lê: o device não tem opinião, e uma
     /// massa negativa ou zero varreduras seriam uma divisão por zero dentro do
@@ -127,17 +164,52 @@ impl ClothFilterProps {
         Self {
             mass: self.mass.clamp(Self::MASS.0, Self::MASS.1),
             damping: self.damping.clamp(Self::DAMPING.0, Self::DAMPING.1),
-            plasticity: self.plasticity.clamp(Self::PLASTICITY.0, Self::PLASTICITY.1),
+            plasticity: self
+                .plasticity
+                .clamp(Self::PLASTICITY.0, Self::PLASTICITY.1),
             sweeps: self.sweeps.clamp(Self::SWEEPS.0, Self::SWEEPS.1),
             collisions: self.collisions,
+            stretch_max: self.stretch_max.clamp(Self::STRETCH.0, Self::STRETCH.1),
+            volume: self.volume.clamp(Self::VOLUME.0, Self::VOLUME.1),
+        }
+    }
+
+    /// ⭐ **A porta que traduz os números do artista nos da LEI** — e o único
+    /// sítio onde o topo da faixa vira `∞`.
+    ///
+    /// ⚠️ **A tradução mora aqui e não em quem constrói o [`Pincel`]** pelo mesmo
+    /// motivo do `clamped`: escrita nos dois sítios, esconde de qual dos dois o
+    /// número saiu.
+    #[must_use]
+    pub fn solver(self) -> ph2d_cloth::verlet::Solver {
+        let p = self.clamped();
+        ph2d_cloth::verlet::Solver {
+            massa: f64::from(p.mass),
+            amortecimento: f64::from(p.damping),
+            plasticidade: f64::from(p.plasticity),
+            varreduras: p.sweeps,
+            estica_max: f64::from(p.stretch_max),
+            volume: f64::from(p.volume),
+            passagens_limite: ph2d_cloth::verlet::PASSAGENS_LIMITE,
         }
     }
 }
 
 impl Default for ClothFilterProps {
-    /// ⭐⭐ **A omissão é a do ALVO, byte a byte** — é isso que faz os quatro
-    /// controlos serem uma ADIÇÃO e não uma quebra de paridade: com eles
-    /// intocados, os 17 traços da bancada do filtro dão exactamente o que davam.
+    /// ⭐⭐ **Os CINCO números do alvo nascem na omissão dele, byte a byte** — é
+    /// isso que faz aqueles controlos serem uma ADIÇÃO e não uma quebra de
+    /// paridade.
+    ///
+    /// ⛔⛔ **E os DOIS de 2026-09-08 NÃO nascem, porque o alvo não os tem.** O
+    /// `stretch_max` nasce em `1,10`, que é uma **divergência declarada de
+    /// produto**: sem ele o pano é o elástico que o dono reportou (esticão máximo
+    /// `18,6×` numa esfera com três pontos presos).
+    ///
+    /// ⚠️⚠️ **A paridade não se perde, e a razão é onde ela vive:** as `86`
+    /// fixtures do pincel e as `17` do filtro montam o
+    /// [`ph2d_cloth::verlet::Solver`] **directamente**, e a omissão DELE continua
+    /// neutra (`estica_max = ∞`, `volume = 0`). *A lei fica a ser a do alvo; o
+    /// produto é que escolhe outra.*
     fn default() -> Self {
         Self {
             mass: 1.0,
@@ -145,6 +217,15 @@ impl Default for ClothFilterProps {
             plasticity: 0.0,
             sweeps: ph2d_cloth::verlet::VARREDURAS,
             collisions: false,
+            // ⚠️⚠️ **AQUI a omissão DEIXA de ser a do alvo, e é deliberado.** O
+            // alvo não tem estes três números; nós temos, e o report de 08/09
+            // mediu que sem eles o pano rasga. A paridade não se perde: ela vive
+            // na omissão de [`ph2d_cloth::verlet::Solver`], que continua neutra, e
+            // é ela que as 103 fixtures correm.
+            stretch_max: 1.10,
+            // ⚠️ O volume nasce DESLIGADO — o dono pediu *«a possibilidade de
+            // manter volume»*, que é uma opção, não uma lei.
+            volume: 0.0,
         }
     }
 }

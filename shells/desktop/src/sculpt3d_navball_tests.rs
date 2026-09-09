@@ -78,7 +78,10 @@ fn uma_vista_e_reconhecida_e_o_menor_arrasto_solta_a() {
             v.key()
         );
         // Um pixel de arrasto, na horizontal e na vertical.
-        for (dx, dy) in [(super::ORBIT_RAD_PER_PX, 0.0), (0.0, super::ORBIT_RAD_PER_PX)] {
+        for (dx, dy) in [
+            (super::ORBIT_RAD_PER_PX, 0.0),
+            (0.0, super::ORBIT_RAD_PER_PX),
+        ] {
             let mut solta = aimed(v);
             solta.orbit(dx, dy);
             // ⚠️ **O topo e a base saem pela horizontal e NÃO pela vertical**: o
@@ -140,9 +143,18 @@ fn a_base_do_gizmo_e_ortonormal_e_aponta_ao_observador() {
                 "a {nome} de ({yaw}, {pitch}) nao e' unitaria: |v| = {n:.6}"
             );
         }
-        assert!(dot(right, up).abs() < 1e-4, "direita e cima nao sao perpendiculares em ({yaw}, {pitch})");
-        assert!(dot(right, fwd).abs() < 1e-4, "direita e frente nao sao perpendiculares em ({yaw}, {pitch})");
-        assert!(dot(up, fwd).abs() < 1e-4, "cima e frente nao sao perpendiculares em ({yaw}, {pitch})");
+        assert!(
+            dot(right, up).abs() < 1e-4,
+            "direita e cima nao sao perpendiculares em ({yaw}, {pitch})"
+        );
+        assert!(
+            dot(right, fwd).abs() < 1e-4,
+            "direita e frente nao sao perpendiculares em ({yaw}, {pitch})"
+        );
+        assert!(
+            dot(up, fwd).abs() < 1e-4,
+            "cima e frente nao sao perpendiculares em ({yaw}, {pitch})"
+        );
         let d = dot(cross(right, up), fwd);
         assert!(
             d > 0.99,

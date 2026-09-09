@@ -11,7 +11,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**8 arquivos** · **2** citados pelo `CLAUDE.md` (marcados **◆**).
+**9 arquivos** · **2** citados pelo `CLAUDE.md` (marcados **◆**).
 
 | # | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
@@ -23,6 +23,7 @@
 | 06 | ◆ | [06_o_plano_do_que_falta.md](06_o_plano_do_que_falta.md) | plano | 06 — O PLANO do que falta no pincel de tecido |
 | 07 |   | [07_o_filtro_de_tecido.md](07_o_filtro_de_tecido.md) | — | 07 — O FILTRO DE TECIDO (a segunda metade da W10) |
 | 09 |   | [09_o_tecido_inteiro_nas_maos_do_artista.md](09_o_tecido_inteiro_nas_maos_do_artista.md) | — | 09 — O tecido inteiro nas mãos do artista |
+| 10 |   | [10_o_elastico_que_nao_para_e_o_volume.md](10_o_elastico_que_nao_para_e_o_volume.md) | — | O elástico que não para, e o volume — o report de 2026-09-08 |
 
 ---
 

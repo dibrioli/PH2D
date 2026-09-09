@@ -16,7 +16,7 @@ use ph2d_sculpt3d::{
 };
 use ph2d_tokens::Spacing;
 
-use super::widgets::{command, header, labelled_seg, seg, self, toggle};
+use super::widgets::{self, command, header, labelled_seg, seg, toggle};
 use crate::state::{Sculpt3dSnapshot, UiLevel};
 
 /// **A FERRAMENTA** — os verbos do [`Verb::ALL`] numa faixa que REFLUI.

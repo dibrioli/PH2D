@@ -373,7 +373,8 @@ impl Sculpt3dScene {
             eprintln!(
                 "[sculpt3d] clique ({x:.1}, {y:.1}) viewport {:?} -> acerto {:?} \
                  -> volta {err:?}",
-                self.viewport(), hit.point
+                self.viewport(),
+                hit.point
             );
         }
         let brush = self.armed_brush(hit.point);

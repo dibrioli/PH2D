@@ -254,8 +254,22 @@ fn the_brush_radius_is_screen_pixels_converted_against_the_camera() {
     // MESMO tamanho de pincel que o dab. Sem isto os dois sítios podem divergir
     // sem mover o número acima — e o cursor passaria a desenhar uma pegada que a
     // tinta não deposita, que é o defeito inteiro.
+    // ⛔⛔ **A FONTE É LIDA COM O ESPAÇO NORMALIZADO, e foi o `rustfmt` que o
+    // cobrou.** A agulha `ring_on_surface(&` só casa enquanto o primeiro
+    // argumento couber na MESMA linha da chamada; em 2026-09-08 a chamada passou
+    // a sete linhas e este gate ficou vermelho **sobre produto correcto** —
+    // ⚠️ *e ele estava verde só porque o ficheiro tinha sido commitado sem
+    // `cargo fmt`*. É a TERCEIRA vez que a mesma família morde neste ficheiro, e
+    // o doc dez linhas abaixo já a escrevia: *«uma régua textual que supõe a
+    // forma dos argumentos mede a formatação, não a lei»*.
+    //
+    // ⚠️ **Só a FATIA precisa disto.** As contagens acima procuram `nome(`, e um
+    // nome nunca se separa do parêntese que ele abre — elas são imunes por
+    // construção.
+    let plano = src.split_whitespace().collect::<Vec<_>>().join(" ");
+    let src = plano.as_str();
     let call = src
-        .find("ring_on_surface(&")
+        .find("ring_on_surface( &")
         .expect("a chamada do anel conformado");
     // ⚠️⚠️ **A chamada é lida até ao parêntese que FECHA, contando profundidade** —
     // e não até ao primeiro `)`. A 1.ª redacção cortava no primeiro, o que

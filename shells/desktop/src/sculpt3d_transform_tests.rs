@@ -77,7 +77,12 @@ fn aspect() -> f32 {
 fn scene(device: &wgpu::Device) -> Sculpt3dScene {
     let mut s = Sculpt3dScene::new(device, uv_sphere(48, 72, 1.0), aspect());
     // O `render` é quem publica o viewport no produto; isto aqui não desenha.
-    s.note_canvas(ph2d_editor::zones::Rect::new(0.0, 0.0, f32::from(VW as u16), f32::from(VH as u16)));
+    s.note_canvas(ph2d_editor::zones::Rect::new(
+        0.0,
+        0.0,
+        f32::from(VW as u16),
+        f32::from(VH as u16),
+    ));
     s.frame_all(aspect());
     // Fração da ALTURA da viewport (ver [`Camera3d::pan`]) — o suficiente para o
     // pivô sair umas duzentas colunas do centro, sem tirar a peça de quadro.

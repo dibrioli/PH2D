@@ -189,6 +189,15 @@ impl Traco {
                     .ok()
                     .and_then(|s| s.parse().ok())
                     .unwrap_or(ph2d_cloth::verlet::VARREDURAS),
+                // ⚠️⚠️ **AS TRÊS FICAM NEUTRAS, e a exaustividade deste
+                // inicializador é a guarda.** O tecto de esticão e a conservação
+                // de volume são NOSSOS — o alvo não os tem —, e é esta bancada
+                // que prova que a nossa lei continua a ser a dele: ligá-los aqui
+                // mediria outro programa. ⭐ Um campo novo no `Solver` é **erro de
+                // compilação neste ficheiro** até alguém dizer se ele é do alvo.
+                estica_max: f64::INFINITY,
+                passagens_limite: ph2d_cloth::verlet::PASSAGENS_LIMITE,
+                volume: 0.0,
             },
         }
     }

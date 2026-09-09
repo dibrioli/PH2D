@@ -18,11 +18,29 @@
 
 use std::path::Path;
 
+/// ⛔⛔ **UM CENSO DE FONTE TEM DE LER A FONTE COM O ESPAÇO NORMALIZADO** — e este
+/// não lia.
+///
+/// A agulha `ring_on_surface(&self.camera` é uma chamada com o **primeiro
+/// argumento na mesma linha**, e o `rustfmt` quebra a chamada em sete linhas
+/// assim que ela passa a largura. Medido em 2026-09-08: este gate estava VERDE
+/// só porque o ficheiro tinha sido commitado **sem `cargo fmt`** por uma wave
+/// anterior; à primeira formatação da árvore ele ficou vermelho **sobre produto
+/// correcto**.
+///
+/// ⚠️ *Um censo cuja agulha atravessa uma quebra de linha mede o FORMATADOR, não
+/// o código* — e o doc deste ficheiro já dizia *«ele afirma a PROPRIEDADE, nunca
+/// um endereço»*, o que uma agulha com argumento dentro não cumpre.
+fn achatado(src: &str) -> String {
+    src.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
 #[test]
 fn the_brush_cursor_asks_the_surface_for_its_orientation() {
     let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("src/sculpt3d_cursor.rs");
-    let src = std::fs::read_to_string(&path)
+    let bruto = std::fs::read_to_string(&path)
         .unwrap_or_else(|e| panic!("o dono do cursor mudou-se: {} ({e})", path.display()));
+    let src = achatado(&bruto);
 
     // CONTROLE POSITIVO.
     assert!(
@@ -36,7 +54,7 @@ fn the_brush_cursor_asks_the_surface_for_its_orientation() {
          sem isso o anel volta a ser a silhueta em toda parte"
     );
     assert!(
-        src.contains("ring_on_surface(&self.camera"),
+        src.contains("ring_on_surface( &self.camera"),
         "o anel tem de sair da porta que DEITA na superfície (`ring_on_surface`)"
     );
     // ⚠️ O círculo de tela FICA — ele é o recuo honesto para *"não sei a

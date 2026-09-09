@@ -284,9 +284,10 @@ impl Sculpt3dScene {
 
     /// O chip do rótulo sob este ponto, se houver.
     pub(crate) fn chip_at(&self, x: f32, y: f32) -> Option<usize> {
-        self.janela.vp_labels.iter().position(|c| {
-            c.is_some_and(|r| x >= r.x && y >= r.y && x < r.x + r.w && y < r.y + r.h)
-        })
+        self.janela
+            .vp_labels
+            .iter()
+            .position(|c| c.is_some_and(|r| x >= r.x && y >= r.y && x < r.x + r.w && y < r.y + r.h))
     }
 
     /// ⭐ **Abre o menu daquele quadrante.**
@@ -337,10 +338,7 @@ impl Sculpt3dScene {
     /// `(1, 1)` antes do primeiro desenho, que é o que o campo também fazia.
     pub(crate) fn viewport(&self) -> (u32, u32) {
         self.vp_rect(self.vp_active()).map_or((1, 1), |r| {
-            (
-                (r.w.round().max(1.0)) as u32,
-                (r.h.round().max(1.0)) as u32,
-            )
+            ((r.w.round().max(1.0)) as u32, (r.h.round().max(1.0)) as u32)
         })
     }
 
@@ -445,10 +443,8 @@ impl Sculpt3dScene {
         let Split::Quad { tx: cx, ty: cy } = self.janela.split else {
             return false;
         };
-        self.janela.split = Split::Quad { tx: cx, ty: cy }.with_t(
-            if vert { tx } else { cx },
-            if horiz { ty } else { cy },
-        );
+        self.janela.split = Split::Quad { tx: cx, ty: cy }
+            .with_t(if vert { tx } else { cx }, if horiz { ty } else { cy });
         true
     }
 

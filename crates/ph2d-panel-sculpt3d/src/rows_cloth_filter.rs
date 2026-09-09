@@ -118,3 +118,47 @@ pub(super) const CFILTER_SWEEPS: Row = Row {
     level: UiLevel::Pro,
     place: Place::Knobs,
 };
+
+/// ⭐⭐⭐ **O CONTROLO QUE O ALVO NÃO TEM, e o report de 08/09 pediu** — *«o Cloth
+/// não age como pano real, mas como um elástico que estica indefinidamente»*.
+///
+/// ⚠️ **A faixa acaba em `2,00` e não tem «desligado»:** o comportamento sem
+/// tecto É o defeito reportado, e pô-lo no topo de uma faixa larga deixaria o
+/// intervalo útil espremido nos primeiros por cento do cursor.
+pub(super) const CFILTER_STRETCH: Row = Row {
+    label: "panel.sculpt3d.cfilter_stretch",
+    slider: ids::SCULPT3D_CFILTER_STRETCH,
+    chip: ids::SCULPT3D_CFILTER_STRETCH_NUM,
+    min: ClothFilterProps::STRETCH.0,
+    max: ClothFilterProps::STRETCH.1,
+    step: 0.05, // LITERAL-PX-OK: passo de uma razão de comprimento
+    decimals: 2,
+    get: |u| u.cloth_filter.stretch_max,
+    set: |u, v| u.cloth_filter.stretch_max = v,
+    show: is_cloth_filter,
+    // ⚠️ **Básico, e é o único dos números do filtro que o é.** Os outros afinam
+    // um comportamento certo; este decide se o pano é um pano.
+    level: UiLevel::Basic,
+    place: Place::Knobs,
+};
+
+/// ⭐⭐⭐ ***Preserve Volume*** — *«deve haver a possibilidade de manter volume»*.
+///
+/// ⚠️⚠️ **Nasce em `0`, e não por ser cara:** ela **cancela a Escala e o Inflate
+/// por construção** (os dois existem para mudar o volume), e há gate a afirmá-lo.
+/// O que ela transforma é a Gravidade e o **Aperto** — sem ela o aperto implode a
+/// peça a `3 %` do volume e deixa `1 151` vincos; com ela, `95 %` e `119`.
+pub(super) const CFILTER_VOLUME: Row = Row {
+    label: "panel.sculpt3d.cfilter_volume",
+    slider: ids::SCULPT3D_CFILTER_VOLUME,
+    chip: ids::SCULPT3D_CFILTER_VOLUME_NUM,
+    min: ClothFilterProps::VOLUME.0,
+    max: ClothFilterProps::VOLUME.1,
+    step: 0.05, // LITERAL-PX-OK: passo de uma fracção
+    decimals: 2,
+    get: |u| u.cloth_filter.volume,
+    set: |u, v| u.cloth_filter.volume = v,
+    show: is_cloth_filter,
+    level: UiLevel::Basic,
+    place: Place::Knobs,
+};

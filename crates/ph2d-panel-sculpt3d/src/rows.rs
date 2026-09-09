@@ -55,7 +55,6 @@ mod extract;
 /// As perguntas que o PADRÃO faz — ver o doc do módulo.
 #[path = "rows_alpha.rs"]
 mod alpha;
-use alpha::{MAX_AXIS_ELEV_F32, degrees, directional_alpha, stamp_alpha};
 
 /// **QUAIS SEÇÕES existem e que CABEÇALHOS elas têm** — ver o doc do módulo.
 ///
@@ -430,129 +429,16 @@ static BRUSH: &[Row] = &[
         level: UiLevel::Basic,
         place: Place::Knobs,
     },
-    Row {
-        label: "panel.sculpt3d.alpha_scale",
-        slider: ids::SCULPT3D_ALPHA_SCALE,
-        chip: ids::SCULPT3D_ALPHA_SCALE_NUM,
-        // ⚠️ Os dois extremos são do MOTOR, não escolhidos aqui: eles saem da lei
-        // das dez arestas (`ph2d_sculpt3d::DEFAULT_ALPHA_SCALE`), e um literal
-        // nesta tabela seria a segunda cópia deles.
-        min: ph2d_sculpt3d::MIN_ALPHA_SCALE,
-        max: ph2d_sculpt3d::MAX_ALPHA_SCALE,
-        step: 0.01, // LITERAL-PX-OK: passo em unidades de objeto, não métrica de layout
-        decimals: 2,
-        get: |u| u.brush.alpha_scale,
-        set: |u, v| u.brush.alpha_scale = v,
-        // ⚠️ **A row some sem padrão armado**, e não é cosmético: o número é o
-        // tamanho de uma feature que não existe. É o mesmo mecanismo das duas
-        // pistas de lâmpada sob um matcap — uma row condicional é PULADA, nunca
-        // pintada apagada, porque um controle que desenha e não responde mente.
-        //
-        // ⚠️ **E ela some também sob um CARIMBO**, porque a pergunta muda de
-        // régua: um estêncil é medido na TELA, não no modelo, e quem responde
-        // por ele é a row seguinte. Reusar este número com duas unidades faria
-        // ele trocar de significado em silêncio ao trocar de padrão.
-        show: |u| u.brush.alpha.is_some() && !stamp_alpha(u),
-        level: UiLevel::Basic,
-        place: Place::AfterAlpha,
-    },
-    Row {
-        label: "panel.sculpt3d.stamp_scale",
-        slider: ids::SCULPT3D_STAMP_SCALE,
-        chip: ids::SCULPT3D_STAMP_SCALE_NUM,
-        // ⚠️ **A faixa é em FRAÇÃO DA ALTURA DA TELA**, e por isso ela não fala
-        // do modelo: `1,0` é um ladrilho ocupando a tela inteira e `0,02` são
-        // cinquenta atravessando-a. Um estêncil não sabe o tamanho da peça — é
-        // justamente essa independência que o artista pediu —, então herdar a
-        // pista de `Pattern Size` (unidades de OBJETO, semeada pela densidade da
-        // malha) seria herdar a régua errada.
-        min: 0.02,  // LITERAL-PX-OK: fração da altura da vista, não métrica de layout
-        max: 1.0,   // LITERAL-PX-OK: idem
-        step: 0.01, // LITERAL-PX-OK: idem
-        decimals: 2,
-        get: |u| u.brush.alpha_stencil_scale,
-        set: |u, v| u.brush.alpha_stencil_scale = v,
-        show: stamp_alpha,
-        level: UiLevel::Basic,
-        place: Place::AfterAlpha,
-    },
-    Row {
-        label: "panel.sculpt3d.alpha_off_x",
-        slider: ids::SCULPT3D_ALPHA_OFF_X,
-        chip: ids::SCULPT3D_ALPHA_OFF_X_NUM,
-        // ⚠️ **A faixa é SIMÉTRICA e mede um LADO do modelo.** Uma primitiva
-        // nasce cabendo na esfera unitária (span 2), então ±1 leva o carimbo de
-        // uma ponta à outra; e o zero tem de cair no MEIO da pista, porque
-        // *nenhum deslocamento* é o estado neutro e não um extremo.
-        min: -1.0,
-        max: 1.0,
-        step: 0.01, // LITERAL-PX-OK: passo em unidades de objeto, não métrica de layout
-        decimals: 2,
-        get: |u| u.brush.alpha_offset[0],
-        set: |u, v| u.brush.alpha_offset[0] = v,
-        show: stamp_alpha,
-        level: UiLevel::Basic,
-        place: Place::AfterAlpha,
-    },
-    Row {
-        label: "panel.sculpt3d.alpha_off_y",
-        slider: ids::SCULPT3D_ALPHA_OFF_Y,
-        chip: ids::SCULPT3D_ALPHA_OFF_Y_NUM,
-        min: -1.0,
-        max: 1.0,
-        step: 0.01, // LITERAL-PX-OK: passo em unidades de objeto, não métrica de layout
-        decimals: 2,
-        get: |u| u.brush.alpha_offset[1],
-        set: |u, v| u.brush.alpha_offset[1] = v,
-        show: stamp_alpha,
-        level: UiLevel::Basic,
-        place: Place::AfterAlpha,
-    },
-    Row {
-        label: "panel.sculpt3d.alpha_az",
-        slider: ids::SCULPT3D_ALPHA_AZ,
-        chip: ids::SCULPT3D_ALPHA_AZ_NUM,
-        min: 0.0,
-        // 359 e não 360 — os dois extremos seriam o MESMO azimute, e uma pista
-        // cujas duas pontas significam a mesma coisa tem um degrau invisível. É
-        // a mesma régua do `light_az`, e de propósito: um artista que aprendeu a
-        // apontar a luz não devia reaprender a apontar o padrão.
-        max: 359.0, // LITERAL-PX-OK: graus de azimute, nao metrica de design
-        step: 5.0,  // LITERAL-PX-OK: passo em graus
-        decimals: 0,
-        get: |u| f32::from(u.brush.alpha_az_deg),
-        set: |u, v| u.brush.alpha_az_deg = degrees(v),
-        show: directional_alpha,
-        level: UiLevel::Basic,
-        place: Place::AfterAlpha,
-    },
-    Row {
-        label: "panel.sculpt3d.alpha_elev",
-        slider: ids::SCULPT3D_ALPHA_ELEV,
-        chip: ids::SCULPT3D_ALPHA_ELEV_NUM,
-        // ⚠️ **Sem o piso que a LÂMPADA tem.** Lá o `MIN_ELEV_DEG` existe porque
-        // uma luz rasante degenera a resposta plana; um EIXO não degenera em
-        // lugar nenhum — o frame é ortonormal por identidade em qualquer
-        // elevação. Copiar o piso do vizinho seria um limite herdado por
-        // analogia, que é o que esta casa varre a cada wave.
-        min: 0.0,
-        // ⚠️ O zênite vem do MOTOR, não é escolhido aqui: acima dele o eixo
-        // desceria do outro lado e o azimute já cobre esse hemisfério — dois
-        // caminhos para a mesma direção.
-        max: MAX_AXIS_ELEV_F32,
-        step: 5.0, // LITERAL-PX-OK: passo em graus
-        decimals: 0,
-        get: |u| f32::from(u.brush.alpha_elev_deg),
-        set: |u, v| u.brush.alpha_elev_deg = degrees(v),
-        // ⚠️ **Ela some sob um CARIMBO, e é o modo inteiro numa linha:** o eixo
-        // de um estêncil é a VISTA, por definição. Um controle que o inclinasse
-        // tiraria o carimbo da frente — exatamente o que este modo existe para
-        // impedir —, então ele não é oferecido em vez de ser oferecido e
-        // ignorado.
-        show: |u| directional_alpha(u) && !stamp_alpha(u),
-        level: UiLevel::Basic,
-        place: Place::AfterAlpha,
-    },
+    // ⭐ **AS SEIS PISTAS DO PADRÃO vivem no módulo do padrão** — as perguntas
+    // que elas fazem (`directional_alpha`, `stamp_alpha`) e os números que elas
+    // lêem (`MAX_AXIS_ELEV_F32`, `degrees`) já moravam lá; as fileiras ficavam
+    // aqui, e era a única metade do assunto fora de casa.
+    alpha::ALPHA_SCALE,
+    alpha::STAMP_SCALE,
+    alpha::ALPHA_OFF_X,
+    alpha::ALPHA_OFF_Y,
+    alpha::ALPHA_AZ,
+    alpha::ALPHA_ELEV,
     // ── Os CINCO números do pincel de TECIDO ────────────────────────────────
     //
     // ⚠️⚠️ **Eles existiam na lei e não existiam no painel.** A tradução
@@ -584,6 +470,11 @@ static BRUSH: &[Row] = &[
     // ⚠️ **E a pergunta de visibilidade é ao FILTRO, não ao verbo**: desde a W9b
     // ele corre com qualquer pincel na mão, então com o Draw na mão os três
     // mexiam na simulação sem nada na tela os mostrar.
+    // ⭐⭐⭐ **Os dois de 08/09 vêm PRIMEIRO, e são os únicos `Basic` do bloco** —
+    // eles decidem se o pano é um pano; os outros quatro afinam um comportamento
+    // que já está certo.
+    cloth_filter::CFILTER_STRETCH,
+    cloth_filter::CFILTER_VOLUME,
     cloth_filter::CFILTER_MASS,
     cloth_filter::CFILTER_DAMPING,
     cloth_filter::CFILTER_PLASTICITY,

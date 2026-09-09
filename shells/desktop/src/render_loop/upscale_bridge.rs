@@ -60,14 +60,20 @@ pub(super) fn dispatch(
     // level. See bgremoval_preview.rs for the full rationale (the
     // level-triggered version stomped on the rail toggle every frame
     // while inactive).
-    {
-        use std::sync::atomic::{AtomicBool, Ordering};
-        static LAST_ACTIVE: AtomicBool = AtomicBool::new(false);
-        let was = LAST_ACTIVE.swap(active, Ordering::Relaxed);
-        if was != active {
-            hero.panel_visibility.insert("inspector", !active);
-        }
-    }
+    // ⭐⭐⭐ **A FERRAMENTA ACOMPANHA O INSPECTOR, NÃO O SUBSTITUI** (report do Enio, 2026-09-08:
+    //    *«algumas ferramentas ou painéis não criam abas»*).
+    //
+    // ⛔⛔ Aqui vivia um interruptor de FLANCO que escondia o Inspector enquanto a ferramenta
+    //    estivesse activa — o modelo de *takeover* que antecede as abas: treze painéis publicam o
+    //    MESMO rect do dock direito e não colidiam por CONVENÇÃO, porque só um estava visível de
+    //    cada vez. Com as abas essa convenção deixou de ser necessária, e mantê-la custava duas
+    //    coisas ao artista: a fileira não aparecia (a ferramenta não criava aba nenhuma) e o
+    //    Inspector **desaparecia** sem a coluna se recolher — que é a segunda metade do report.
+    //
+    // ⇒ os dois passam a ser OCUPANTES do mesmo encaixe, logo a fileira nasce sozinha. Quem fica à
+    //    frente também: o `slot_tabs::reconcile_z` promove o painel que ACABOU de ficar visível, e
+    //    ao desactivar a ferramenta o `retain_panel_z` poda-o e o Inspector volta à frente.
+    //    ⚠️ Nenhuma linha nova decide isso — a lei já existia e o *takeover* é que a contradizia.
 
     // ── Inactive path — clear LOCAL bridge state only ────────────────────
     // Wave 10 / Etapa 2 audit [C1 CRITICAL fix]: previous version called

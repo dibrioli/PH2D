@@ -666,3 +666,64 @@ fn a_squeezed_tab_still_reads_as_a_tab() {
         );
     }
 }
+
+/// ⭐⭐⭐ **UM PAINEL DE FERRAMENTA JUNTA-SE AO INSPECTOR COMO ABA — não o substitui.**
+///
+/// > *«algumas ferramentas ou painéis não criam abas»* — Enio, 2026-09-08.
+///
+/// ⛔ Treze painéis publicam o MESMO rect do dock direito e não colidiam por **convenção**: um
+/// interruptor de flanco em cada bridge escondia o Inspector enquanto a ferramenta estivesse
+/// activa. Com as abas a convenção deixou de ser precisa, e mantê-la custava duas coisas — a
+/// fileira não nascia, e o Inspector **desaparecia sem a coluna se recolher**.
+///
+/// ⚠️ **Nenhuma linha nova decide quem fica à frente:** o [`slot_tabs::reconcile_z`] promove quem
+/// ACABOU de ficar visível, e ao sair o `retain_panel_z` poda-o e o Inspector volta. *A lei já
+/// existia; o takeover é que a contradizia.*
+#[test]
+fn a_tool_panel_joins_the_inspector_as_a_tab_instead_of_replacing_it() {
+    // ⚠️ A Hierarquia entra na fixtura só para a ORDEM Z ter dois membros — ver a nota abaixo.
+    let mut h = settled(&["inspector", "hierarchy"]);
+    assert_eq!(
+        row(&h, Slot::RightTop),
+        vec!["inspector"],
+        "controlo: a fixtura começa com o Inspector sozinho na coluna da direita"
+    );
+
+    // ⚠️⚠️ **O Inspector é posto à frente PRIMEIRO, e sem isto a asserção seguinte é VÁCUA.**
+    //    Medido por mutação em 2026-09-08: com os dois a ler `z = 0` (um por ausência da ordem, o
+    //    outro por estar na posição 0), o `max_by_key` desempata pela ordem do REGISTO — e apagar
+    //    a promoção do `reconcile_z` deixava este teste VERDE. *Um empate não é uma medição.*
+    //    ⚠️ E não basta promover o Inspector: com UM só membro na ordem a posição dele também é
+    //    `0`, e o empate volta. São precisos DOIS — daí a Hierarquia na fixtura.
+    h.store.bump_panel_z(node_of("hierarchy"));
+    h.store.bump_panel_z(node_of("inspector"));
+    paint(&mut h, 1);
+
+    // A ferramenta entra — o painel dela fica visível, como o bridge faz.
+    h.panel_visibility.insert("upscale", true);
+    paint(&mut h, 3);
+    let with_tool = row(&h, Slot::RightTop);
+    assert!(
+        with_tool.contains(&"inspector") && with_tool.contains(&"upscale"),
+        "a ferramenta tinha de PARTILHAR a coluna com o Inspector, e a fila é {with_tool:?}"
+    );
+    assert_eq!(
+        slot_tabs::chosen(&h, Slot::RightTop),
+        Some(node_of("upscale")),
+        "quem acabou de ficar visível tem de ficar à frente — senão a ferramenta abre escondida"
+    );
+
+    // E ao sair, o Inspector volta à frente sozinho.
+    h.panel_visibility.insert("upscale", false);
+    paint(&mut h, 3);
+    assert_eq!(
+        row(&h, Slot::RightTop),
+        vec!["inspector"],
+        "a ferramenta saiu e deixou alguém para trás"
+    );
+    assert_eq!(
+        slot_tabs::chosen(&h, Slot::RightTop),
+        Some(node_of("inspector")),
+        "o Inspector não voltou à frente ao fechar a ferramenta"
+    );
+}

@@ -164,14 +164,20 @@ pub(super) fn dispatch(
 
     // ── 1. Panel visibility (mirror of the Padding dock takeover) ─────────
     hero.panel_visibility.insert("vector", vector_active);
-    {
-        use std::sync::atomic::{AtomicBool, Ordering};
-        static LAST_ACTIVE: AtomicBool = AtomicBool::new(false);
-        let was = LAST_ACTIVE.swap(vector_active, Ordering::Relaxed);
-        if was != vector_active {
-            hero.panel_visibility.insert("inspector", !vector_active);
-        }
-    }
+    // ⭐⭐⭐ **A FERRAMENTA ACOMPANHA O INSPECTOR, NÃO O SUBSTITUI** (report do Enio, 2026-09-08:
+    //    *«algumas ferramentas ou painéis não criam abas»*).
+    //
+    // ⛔⛔ Aqui vivia um interruptor de FLANCO que escondia o Inspector enquanto a ferramenta
+    //    estivesse activa — o modelo de *takeover* que antecede as abas: treze painéis publicam o
+    //    MESMO rect do dock direito e não colidiam por CONVENÇÃO, porque só um estava visível de
+    //    cada vez. Com as abas essa convenção deixou de ser necessária, e mantê-la custava duas
+    //    coisas ao artista: a fileira não aparecia (a ferramenta não criava aba nenhuma) e o
+    //    Inspector **desaparecia** sem a coluna se recolher — que é a segunda metade do report.
+    //
+    // ⇒ os dois passam a ser OCUPANTES do mesmo encaixe, logo a fileira nasce sozinha. Quem fica à
+    //    frente também: o `slot_tabs::reconcile_z` promove o painel que ACABOU de ficar visível, e
+    //    ao desactivar a ferramenta o `retain_panel_z` poda-o e o Inspector volta à frente.
+    //    ⚠️ Nenhuma linha nova decide isso — a lei já existia e o *takeover* é que a contradizia.
 
     // The tool persists in the registry whether or not it is active, so its
     // Style survives tool switches (mirror of the painter bridge).

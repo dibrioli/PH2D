@@ -41,7 +41,7 @@ pub(crate) const fn item_id(canonical_name: &'static str) -> NodeId {
     ph2d_tool_registry::hash_node_id(canonical_name)
 }
 
-/// A tinta de cada categoria. ⚠️ Ver a nota do módulo: 12 categorias, 7 tokens.
+/// A tinta de cada categoria. ⚠️ Ver a nota do módulo: **14** categorias, 7 tokens.
 fn cat_token(c: C) -> ColorToken {
     match c {
         // O que todo objeto É.
@@ -59,8 +59,13 @@ fn cat_token(c: C) -> ColorToken {
         C::Skeleton => ColorToken::NodeCatTransform,
         // O que simula.
         C::Physics => ColorToken::NodeCatOutput,
-        // O resto.
-        C::Scripting | C::Instancing => ColorToken::NodeCatUtility,
+        // ⭐ O que FAZ ACONTECER — a lógica autorada (`Timer`, e a fila do TOP-20 atrás dele) ao
+        // lado do script, porque é a mesma pergunta com e sem código. ⚠️ Este braço dizia «o
+        // resto», e a categoria nova obrigou a nomeá-lo: *um braço chamado «o resto» aceita
+        // qualquer coisa, e a próxima família entra nele sem ninguém pensar.*
+        C::Logic | C::Scripting => ColorToken::NodeCatUtility,
+        // O que uma cópia É.
+        C::Instancing => ColorToken::NodeCatUtility,
     }
 }
 

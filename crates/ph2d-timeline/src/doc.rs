@@ -368,10 +368,14 @@ impl TimelineDoc {
     /// so every clip animates the same objects and only the KEYS differ. A second
     /// clip therefore costs a name and nothing else — "walk" and "run" are two sets
     /// of curves over one rig, which is how After Effects and Unity both read it.
+    ///
+    /// ⚠️ **The name is COERCED unique** ([`Self::unique_clip_name`]) — a Smart Bone references a
+    /// clip by name, so two clips sharing one make that control run the wrong animation, silently.
     pub fn add_clip(&mut self, name: String) -> usize {
         if self.clips.len() >= MAX_CLIPS {
             return self.active_clip;
         }
+        let name = self.unique_clip_name(&name, None);
         self.clips.push(NamedClip {
             name,
             clip: Clip::new(RationalTime::from_seconds(0.0)),
@@ -388,7 +392,14 @@ impl TimelineDoc {
     }
 
     /// Rename clip `index` (out of range: no-op).
+    ///
+    /// ⚠️ **Coerced unique against the OTHERS** ([`Self::unique_clip_name`]) — renaming a clip to
+    /// the name it already has is a no-op, never `"Walk 2"`.
     pub fn rename_clip(&mut self, index: usize, name: String) {
+        if index >= self.clips.len() {
+            return;
+        }
+        let name = self.unique_clip_name(&name, Some(index));
         if let Some(c) = self.clips.get_mut(index) {
             c.name = name;
         }
@@ -471,21 +482,49 @@ impl TimelineDoc {
     }
 
     /// `"Walk copy"`, then `"Walk copy 2"`… — a name no clip is using yet.
-    ///
-    /// Two clips sharing a label make the dropdown unreadable and the rename
-    /// ambiguous, which is the same reason [`Self::fresh_clip_name`] exists.
     fn fresh_copy_name(&self, of: &str) -> String {
-        let first = format!("{of} copy");
-        if !self.clips.iter().any(|c| c.name == first) {
-            return first;
+        self.unique_clip_name(&format!("{of} copy"), None)
+    }
+
+    /// ⭐⭐⭐ **A NAME NO OTHER CLIP IS USING** — `"Walk"`, then `"Walk 2"`, `"Walk 3"`…
+    ///
+    /// `except` is the clip being renamed, which must not collide with itself.
+    ///
+    /// # ⛔⛔ Why this is coerced at the DOOR and not merely warned about
+    ///
+    /// This file already wrote the law twice — *"two clips sharing a label make the dropdown
+    /// unreadable and the rename ambiguous"* — and honoured it in the two doors that INVENT a
+    /// name ([`Self::fresh_clip_name`], [`Self::fresh_copy_name`]) while [`Self::add_clip`] and
+    /// [`Self::rename_clip`], which take one from the caller, accepted anything.
+    ///
+    /// ⚠️ A third reader then arrived and made the ambiguity **silent instead of merely ugly**: a
+    /// Smart Bone stores the clip's NAME (the house's durable reference), so two clips called
+    /// `"Wave"` make the control run **the first one**, with no way to tell from the outside —
+    /// the artist configures the second and reads the app as broken. *An ambiguity that only
+    /// looked bad in a dropdown becomes a wrong answer the moment something references by name.*
+    ///
+    /// ⛔ Warning instead would leave the artist holding a document he cannot repair by renaming
+    /// (both names are equally valid), which is the shape of a refusal with extra steps.
+    #[must_use]
+    fn unique_clip_name(&self, wanted: &str, except: Option<usize>) -> String {
+        let taken = |name: &str| {
+            self.clips
+                .iter()
+                .enumerate()
+                .any(|(i, c)| Some(i) != except && c.name == name)
+        };
+        if !taken(wanted) {
+            return wanted.to_string();
         }
+        // ⚠️ The ceiling is [`MAX_CLIPS`] + 1 because that is how many names can be taken at once
+        // — the resource is the document's own clip cap, not a number picked here.
         for n in 2..=MAX_CLIPS + 1 {
-            let candidate = format!("{of} copy {n}");
-            if !self.clips.iter().any(|c| c.name == candidate) {
+            let candidate = format!("{wanted} {n}");
+            if !taken(&candidate) {
                 return candidate;
             }
         }
-        first
+        wanted.to_string()
     }
 
     /// Delete clip `index`, returning `true` if it went.

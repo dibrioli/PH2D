@@ -1042,6 +1042,54 @@ F3-g reprovou o `clamp_calls_in_ui_are_safe_or_justified` — que vive na `ph2d-
 noutra.* Curado pela porta da casa (`math::safe_clamp`), nunca por `// CLAMP-OK`.
 
 
+### F3-k — ✅ Dois clips com o MESMO NOME, e o quinto motor do desfazer (auditoria, 2026-09-08)
+
+Os dois últimos itens abertos da auditoria. **Um era um defeito e curou-se na PORTA; o outro
+DISSOLVEU-SE com a medição.**
+
+**(a) dois clips podiam partilhar um NOME, e o controlo percorria o primeiro, calado.**
+⚠️ **A lei já estava escrita no ficheiro, duas vezes** — *«two clips sharing a label make the
+dropdown unreadable and the rename ambiguous»* — e era honrada nas duas portas que **INVENTAM** um
+nome (`fresh_clip_name`, `fresh_copy_name`); as duas que **RECEBEM** um do chamador (`add_clip`,
+`rename_clip`) aceitavam qualquer coisa.
+
+⭐⭐ **E então chegou um terceiro leitor que torna a ambiguidade SILENCIOSA em vez de apenas feia:**
+um osso inteligente guarda o **NOME** do clip (a referência durável desta casa), então dois chamados
+`"Wave"` fazem o controlo percorrer **o primeiro** — o artista configura o segundo e lê o app como
+avariado. *Uma ambiguidade que só ficava feia num dropdown vira uma resposta errada no instante em
+que alguém referencia por nome.*
+
+⇒ **uma porta só** (`TimelineDoc::unique_clip_name`), com as quatro a passarem por ela; renomear um
+clip para o nome que ele **já tem** é um no-op, nunca `"Wave 2"`. ⛔ Avisar em vez de coagir deixaria
+o artista com um documento que ele não consegue reparar renomeando (os dois nomes são igualmente
+válidos), que é a forma de uma recusa com passos extra.
+
+**(b) *«o ledger cobre 4 das 5 escritas do `write_prop`»* — ⛔ RECUSA MEDIDA, não trabalho.**
+A quinta é a opacidade de um caminho vectorial (`VecDrivenStyle`), e ela tem **duas** protecções que
+juntas são mais fortes que o ledger:
+
+| protecção | o que ela compra |
+|---|---|
+| **desregistada, e não por esquecimento** — não deriva `Serialize`, e o `register_default` exige-o ⇒ *uma linha de registo não compila* | nunca entra no snapshot, no save, nem num passo de undo — que é exactamente o que o ledger compra para os outros quatro, que **são** registados |
+| **volta ao autorado TODO QUADRO** (`settle_to_authored`) | resíduo de **um** quadro no máximo, contra o `release_to_authored`, que só corre quando um motor é DESLIGADO |
+
+⛔ Acrescentá-la ao ledger seria pôr no memo um facto que nunca esteve na fotografia.
+
+⚠️⚠️ **O que PODE regredir em silêncio é a ORDEM DO QUADRO, e ela não tinha gate nenhum:** repor o
+autorado **antes** de a projecção ser lida apaga a curva **deste** quadro, e a forma deixa de
+desvanecer com a suíte inteira verde.
+
+**Gates** (4, todos mortos por mutação):
+
+| gate | mutação que ele mata |
+|---|---|
+| `two_clips_never_share_a_name` | a porta deixa de coagir · o rename colide consigo mesmo |
+| `a_copy_keeps_its_own_idiom_through_the_same_door` | a cópia perde o idioma `"Walk copy"` |
+| `the_driven_style_settles_after_the_frame_has_read_it` | o `settle` sobe acima do `resolve` ⇒ o fade morre, calado |
+
+⇒ **os SEIS itens da auditoria de 2026-09-08 estão fechados.**
+
+
 ## ⛔ Recusas MEDIDAS deste módulo — não as reconstrua
 
 > ⚠️ **As seis de 2026-09-07/08 entraram aqui na auditoria de 08/09** — elas viviam só em prosa e em
@@ -1049,6 +1097,10 @@ noutra.* Curado pela porta da casa (`math::safe_clamp`), nunca por `// CLAMP-OK`
 
 | recusa | o mecanismo MEDIDO |
 |---|---|
+| **Pôr o `VecDrivenStyle` no ledger de pré-visualização** (o «quinto de cinco» da auditoria de 08/09) | Ele é **desregistado, e não por esquecimento** — não deriva `Serialize`, e o `register_default` exige-o, logo *uma linha de registo não compila*: ele nunca entra no snapshot, no save, nem num passo de undo, que é exactamente o que o ledger compra para os outros quatro. E ele **volta ao autorado TODO QUADRO** (`settle_to_authored`), contra o `release_to_authored`, que só corre quando um motor é desligado. ⇒ acrescentá-lo poria no memo um facto que nunca esteve na fotografia. |
+| **Avisar em vez de COAGIR** o nome de um clip a ser único | Os dois nomes são igualmente válidos, então o artista fica com um documento que ele não consegue reparar renomeando — a forma de uma recusa com passos extra. A lei já estava escrita no `doc.rs` e honrada nas duas portas que INVENTAM um nome; faltavam as duas que o RECEBEM. |
+| **Roubar `Body`/`Joint` do gizmo de sprite** ao alargar as alças de osso a todo modo de vector | Os dois verbos (girar · deslocar) **já existem** na seta, e agarrá-los aqui trocaria a lei do arrasto dela **em silêncio**: o artista escolhe um osso com a seta e o arrasto passa a fazer outra coisa. A linha é o VERBO — entram só os quatro que nenhuma outra ferramenta sabe exprimir. |
+| **Reordenar as secções do painel** para a SKELETON subir quando tem sujeito | Cura o mesmo report que o *revelar-ao-focar* (o cabeçalho a `1316 px` sobre uma faixa de `900`) e muda a ordem do painel para **toda** ferramenta e todo objecto — é decisão de produto, não de correcção, e a revelação é a metade pequena e já precedentada pela timeline. |
 | **O *pole target*** para escolher o lado do joelho | Em 3D o triângulo raiz–cotovelo–ponta roda em torno do eixo raiz→ponta — um **grau de liberdade contínuo**, que um objecto no espaço fixa. No plano sobra **UM BIT**. Godot (`flip_bend_direction: bool`) e Spine (`bendDirection ±1`) escolheram o interruptor, cada um por si. ⇒ o alvo de pólo resolveria com um objecto o que um booleano resolve. |
 | **Priorizar a ordem no hit-test** para resolver a colisão alça↔ponta | *Não cura: só troca a vítima.* Medido: com o osso na parede a distância ponta→alça é `0,000000`, logo quem quer que ganhe a ordem, o outro fica inalcançável. A cura foi **afastar** a alça (folga derivada do dedo da casa). |
 | **Adoptar o clip ABERTO** no *Add Smart Bone* | `TimelineDoc::new()` tem **um** clip, `"Main"` ⇒ todo controlo casava com a animação principal da cena, em silêncio. |

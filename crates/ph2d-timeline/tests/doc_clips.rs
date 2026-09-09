@@ -327,3 +327,56 @@ fn loop_and_ping_pong_cannot_both_be_on() {
     );
     assert_eq!(on(&st), (false, false), "both off = no loop");
 }
+
+/// ⭐⭐⭐ **DOIS CLIPS NUNCA PARTILHAM UM NOME — a porta coage, não avisa.**
+///
+/// ⛔⛔ **Achado da auditoria do esqueleto, 2026-09-08.** Este ficheiro já escrevia a lei duas vezes
+/// (*«two clips sharing a label make the dropdown unreadable and the rename ambiguous»*) e
+/// honrava-a nas duas portas que **inventam** um nome; as duas que **recebem** um do chamador
+/// aceitavam qualquer coisa.
+///
+/// ⚠️ **E então chegou um terceiro leitor que torna a ambiguidade SILENCIOSA em vez de apenas
+/// feia:** um osso inteligente guarda o NOME do clip, então dois chamados `"Wave"` fazem o controlo
+/// percorrer **o primeiro** — o artista configura o segundo e lê o app como avariado. *Uma
+/// ambiguidade que só ficava feia num dropdown vira uma resposta errada no instante em que alguém
+/// referencia por nome.*
+#[test]
+fn two_clips_never_share_a_name() {
+    let mut doc = ph2d_timeline::TimelineDoc::new();
+    doc.rename_clip(0, "Wave".into());
+    let b = doc.add_clip("Wave".into());
+    assert_eq!(
+        doc.clips()[b].name,
+        "Wave 2",
+        "o segundo clip ficou com o nome do primeiro -- um osso inteligente que o nomeie percorre \
+         o OUTRO, calado"
+    );
+    let c = doc.add_clip("Wave".into());
+    assert_eq!(doc.clips()[c].name, "Wave 3", "e o terceiro segue a escada");
+
+    // RENOMEAR também: pôr o nome do vizinho não o duplica.
+    doc.rename_clip(c, "Wave".into());
+    assert_eq!(
+        doc.clips()[c].name,
+        "Wave 3",
+        "renomear para um nome tomado duplicou-o"
+    );
+    // ⚠️ Mas renomear um clip para o nome que ele JÁ TEM é um no-op, nunca `"Wave 3 2"`.
+    doc.rename_clip(0, "Wave".into());
+    assert_eq!(
+        doc.clips()[0].name,
+        "Wave",
+        "renomear um clip para o proprio nome pos-lhe um sufixo -- a coercao colidiu consigo mesma"
+    );
+}
+
+/// ⭐ **E a cópia continua a ter o idioma dela** (`"Walk copy"`), agora pela mesma porta.
+#[test]
+fn a_copy_keeps_its_own_idiom_through_the_same_door() {
+    let mut doc = ph2d_timeline::TimelineDoc::new();
+    doc.rename_clip(0, "Walk".into());
+    let a = doc.duplicate_clip(0).expect("a copia");
+    assert_eq!(doc.clips()[a].name, "Walk copy");
+    let b = doc.duplicate_clip(0).expect("a 2a copia");
+    assert_eq!(doc.clips()[b].name, "Walk copy 2");
+}

@@ -1387,6 +1387,21 @@ pub(crate) struct App {
     /// ⚠️ **O osso é CAPTURADO no arm**, pela razão do [`crate::vec_pick::PathPick`]: o clique
     /// seguinte MUDA a selecção, então ler o sujeito nesse instante leria o alvo.
     pub(crate) smart_pick: Option<u64>,
+    /// ⭐⭐⭐ **O OSSO que o painel já revelou** — a memória que faz *revelar-ao-focar* disparar uma
+    /// vez por osso NOVO, e não a cada quadro.
+    ///
+    /// ⛔⛔ **Report do dono (2026-09-08): *«selecionar o bone nem sempre abre a secção de skeleton
+    /// no painel»*.** Medido: o cabeçalho da secção cai em `y = 1316 px` com só um osso escolhido
+    /// (e em `1978` com uma forma de traço na selecção) sobre uma faixa visível de `900` — *ela
+    /// nunca cabe na tela por si*, e o *«nem sempre»* é o painel já estar rolado até lá.
+    ///
+    /// ⚠️ **É uma ARESTA, não um estado:** rolar a cada quadro em que um osso está em foco tiraria
+    /// do artista o sítio onde ele estava a ler, e ele não conseguiria rolar para lado nenhum
+    /// enquanto o osso estivesse escolhido.
+    ///
+    /// ⚠️ **`None` quando nada é osso**, o que faz re-escolher o MESMO osso depois de o largar
+    /// revelar outra vez — que é o gesto do report.
+    pub(crate) osso_revelado: Option<u64>,
     /// **O que já foi propagado entre o painel autorado e o mundo** (plano UI/UX W8b.4).
     ///
     /// ⚠️ O memo do reconcile de duas direções: sem ele o ponteiro e o mundo sobrescreviam-se em

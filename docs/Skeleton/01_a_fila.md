@@ -831,6 +831,74 @@ governado só dispara na ordem *IK → Smart* · e quatro verbos da secção mor
 *«nenhum osso em foco»* (o braço que fala cobre só os dois da âncora).
 
 
+### F3-g — ✅ *«selecionar o bone nem sempre abre a seção de skeleton no painel»* (report, 2026-09-08)
+
+⛔⛔ **O *«nem sempre»* era o painel já estar rolado até lá — a secção NUNCA cabe na tela por si.**
+Medido no arnês do painel (`MockPanelHost`, viewport `1600 × 900`), o `y` do cabeçalho da secção
+SKELETON contra a faixa visível do painel (`774 px`, de `114` a `888`):
+
+| o que está seleccionado | `y` do cabeçalho | altura do conteúdo |
+|---|---|---|
+| só um osso, modo **Osso** | **1394 px** | 1542 |
+| só um osso, modo **Select** | 1394 px | 1542 |
+| osso + forma presa | 1394 px | 1542 |
+| \+ forma com traço | **~1978 px** | — |
+
+⇒ ela está **sempre pelo menos `506 px` abaixo da dobra**. Ver a secção só acontecia quando o painel
+tinha ficado rolado por outro motivo, e é isso — e só isso — o *«nem sempre»*.
+
+⚠️ **As TRÊS leituras possíveis do report leem-se iguais na tela** — *nada seleccionado* · *algo
+seleccionado que não é osso* · *é osso, e a secção está fora da dobra*. A linha de diagnóstico do
+`PH2D_BONE_LOG` foi escrita para separar as duas primeiras, e a **ausência** dela na corrida que o
+dono colou é que apontou para a terceira: a secção tinha sujeito o tempo todo.
+
+⭐ **A cura é REVELAR-AO-FOCAR, e é a lei que a timeline já segue** — *«seleccionar um objecto NOVO
+leva a timeline à aba Keys»* (Enio, 2026-07-22). *Uma superfície que só existe fora da dobra é uma
+superfície que o artista descobre por acaso.*
+
+O caminho tem três peças, e o corte entre elas é **quem sabe o quê**:
+
+| peça | pergunta que ela responde | porquê ali |
+|---|---|---|
+| [`skeleton_reveal::on_focus`](../../shells/desktop/src/skeleton_reveal.rs) | *entrou um osso NOVO em foco?* | é a **ARESTA**; a shell é quem vê a selecção |
+| `state_bone::set_reveal_bone_section` | o pedido atravessa shell → painel | a mesma porta única dos outros factos do osso |
+| [`paint_bone::reveal_section`](../../crates/ph2d-panel-vector/src/paint_bone.rs) | *o cabeçalho está fora da faixa? então rola* | é o **único** sítio com a banda visível e o `y` do cabeçalho ao mesmo tempo |
+
+⚠️ **A aresta, nunca o estado.** Pedir a revelação em todo quadro com um osso em foco prenderia o
+painel: o artista rolava e o quadro seguinte puxava-o de volta, para sempre. E largar o osso
+**esquece-o**, para que re-escolher o mesmo osso revele outra vez — que é literalmente o gesto do
+report.
+
+⚠️ **Um cabeçalho JÁ à vista fica onde está**, senão a cura seria um salto por clique.
+
+⚠️ **Escreve-se o ALVO (`set_panel_scroll`), nunca o vivo** — o substrato de rolagem suave interpola
+até lá, e a secção **desliza** para dentro em vez de saltar.
+
+⚠️ **O `y` que atravessa é de ECRÃ** (o corpo é pintado deslocado por `−scroll`), e o alvo é
+`rolagem + (y − topo)`. ⛔ Não se converte para espaço de conteúdo em sítio nenhum: *duas conversões
+da mesma grandeza é como um número passa a significar outra coisa sem ninguém dar por isso.*
+
+**Gates** (`the_skeleton_section_comes_into_view.rs` + os dois do `skeleton_reveal`), os quatro
+mortos por mutação:
+
+| gate | mutação que ele mata |
+|---|---|
+| `a_bone_in_focus_brings_the_skeleton_section_into_view` | o pedido deixa de guardar o `y` ⇒ o cabeçalho fica em `1394` |
+| `a_section_already_in_view_is_left_where_it_is` | tirar o guarda «já está à vista» ⇒ o cabeçalho salta `154 px` |
+| `only_a_new_bone_asks_for_the_section` | tirar a memória ⇒ o mesmo osso pede em todos os 600 quadros |
+| `letting_go_asks_for_nothing_and_arms_the_same_bone_again` | a memória não se limpa ⇒ o gesto do report não repete |
+
+⚠️⚠️ **A 1.ª redacção do 2.º gate era VÁCUA e passava**: ela punha o cabeçalho no **fundo** do
+documento, onde o `clamp` engole a correcção que o gate proíbe e ela vale exactamente zero. A
+fixtura tem de estar longe das **duas** bordas do que a rolagem alcança — *uma fixtura que não
+produz o fenómeno deixa o gate verde sobre a mutação que o devia matar.*
+
+⛔ **A alternativa foi pesada e não escolhida:** reordenar as secções para a SKELETON subir quando
+tem sujeito. Ela cura o mesmo report e muda a ordem do painel para **toda** ferramenta e todo
+objecto — é decisão de produto, não de correcção, e a revelação é a metade pequena e já
+precedentada.
+
+
 ## ⛔ Recusas MEDIDAS deste módulo — não as reconstrua
 
 > ⚠️ **As seis de 2026-09-07/08 entraram aqui na auditoria de 08/09** — elas viviam só em prosa e em

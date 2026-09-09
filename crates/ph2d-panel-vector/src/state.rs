@@ -447,10 +447,12 @@ mod bone;
 pub use bone::{
     SmartBoneView, set_current_bone, set_current_bone_actions, set_current_bone_ik,
     set_current_bone_limit, set_current_bone_smart, set_current_has_skeleton, set_current_skinned,
+    set_reveal_bone_section,
 };
 pub(crate) use bone::{
     bone_actions, current_bone, current_bone_ik, current_bone_limit, current_bone_smart,
-    has_skeleton, set_pending_bone_action_dd, skinned, take_pending_bone_action_dd,
+    has_skeleton, set_pending_bone_action_dd, set_pending_bone_reveal, skinned,
+    take_pending_bone_action_dd, take_pending_bone_reveal, take_reveal_bone_section,
 };
 
 /// O estado do **Text on Path** (plano 22) — módulo irmão pelo mesmo teto de 600 LOC.

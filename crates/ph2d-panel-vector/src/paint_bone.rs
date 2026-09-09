@@ -30,8 +30,20 @@ impl BodyCtx<'_> {
         // TODA ferramenta, e a razão é medida contra o próprio desenho: o osso posa-se com a seta
         // (o gizmo de sprite), então esconder os números dele fora do modo Osso tornaria
         // `Length`/`Strength` inalcançáveis exactamente quando se precisa deles.
+        // ⭐⭐⭐ **REVELAR-AO-FOCAR** (report do dono, 2026-09-08: *«selecionar o bone nem sempre
+        // abre a secção de skeleton»*). ⚠️ **O pedido consome-se AQUI, antes da porta**: se a secção
+        // não é pintada neste quadro não há nada a revelar, e um pedido que sobrevive rolaria o
+        // painel muito depois do gesto que o armou.
+        //
+        // ⚠️ O `y` que se guarda é de ECRÃ (o corpo já foi deslocado por `-scroll_y`), e quem sabe
+        // se ele cai **dentro** da faixa visível é o `paint.rs` — o único sítio com a banda e o
+        // `store` mutável na mão. Aqui só se diz *onde o cabeçalho ficou*.
+        let pedido_revelar = state::take_reveal_bone_section();
         if !state::has_skeleton() && snap.mode != ph2d_tool_vector::params::DrawMode::Bone {
             return y;
+        }
+        if pedido_revelar {
+            state::set_pending_bone_reveal(y);
         }
         let (mut y, collapsed) =
             self.section_header(ids::VECTOR_SECTION_BONE, tr("panel.vector.section.bone"), y);
@@ -410,4 +422,44 @@ pub(crate) fn paint_action_popover(ctx: &mut PaintCtx, chip: Rect, theme: Theme)
             .hit_index_mut()
             .register(DROPDOWN_SCROLLBAR_ID, scrollbar_track_rect(panel));
     }
+}
+
+/// ⭐⭐⭐ **A secção SKELETON vem À VISTA quando um osso entra em foco.**
+///
+/// ⛔⛔ **Report do dono (2026-09-08): *«selecionar o bone nem sempre abre a secção de skeleton no
+/// painel»*.** A medição diz que o *«nem sempre»* é o painel já estar rolado até lá: com só um osso
+/// escolhido o cabeçalho desta secção cai em **`y = 1316 px`**, e com uma forma de traço na selecção
+/// em **`1978`** — sobre uma faixa visível de **`900`**. *Ela NUNCA cabe na tela por si.*
+///
+/// ⚠️ **É a lei que a timeline já segue** — *«seleccionar um objecto NOVO leva a timeline à aba
+/// Keys»* (Enio, 2026-07-22): uma superfície que só existe fora da dobra é uma superfície que o
+/// artista descobre por acaso.
+///
+/// ⚠️ **O `y` que chega é de ECRÃ** (o corpo é pintado deslocado por `-scroll`), então o alvo é
+/// `rolagem + (y − topo)`: subir a rolagem por `d` faz o conteúdo subir por `d`. ⛔ Não se converte
+/// para espaço de conteúdo em lado nenhum — *duas conversões da mesma grandeza é como um número
+/// passa a significar outra coisa*.
+///
+/// ⚠️ **Só rola se o cabeçalho ESTIVER FORA da faixa** — quem já o tem à vista fica onde está, senão
+/// o painel saltava a cada clique num osso e o artista perdia o sítio onde estava a ler.
+///
+/// ⚠️ E escreve-se o **ALVO** (`set_panel_scroll`), nunca o vivo: o substrato de rolagem suave
+/// interpola até lá, e a secção **desliza** para dentro em vez de saltar.
+pub(crate) fn reveal_section(
+    ctx: &mut PaintCtx,
+    topo: f32,
+    altura: f32,
+    conteudo: f32,
+    linha_h: f32,
+) {
+    let Some(y) = crate::state::take_pending_bone_reveal() else {
+        return;
+    };
+    if y >= topo && y + linha_h <= topo + altura {
+        return;
+    }
+    let maximo = (conteudo - altura).max(0.0);
+    let store = ctx.host.store_mut();
+    let alvo = (store.panel_scroll(ids::VECTOR_PANEL) + (y - topo)).clamp(0.0, maximo);
+    store.set_panel_scroll(ids::VECTOR_PANEL, alvo);
 }

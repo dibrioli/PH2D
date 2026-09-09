@@ -9222,6 +9222,20 @@ impl crate::App {
                 }
                 let osso_em_foco =
                     crate::bone_gesture::selected_bone(sim, hero.gizmo.iter_selected());
+                // ⭐⭐⭐ **UM OSSO NOVO EM FOCO REVELA A SECÇÃO** (report do dono, 2026-09-08:
+                // *«selecionar o bone nem sempre abre a secção de skeleton no painel»*).
+                //
+                // ⚠️ **A ARESTA é o que se publica, nunca o estado:** com um osso escolhido o
+                // painel rolaria a cada quadro e o artista não conseguiria ler mais nada. É a mesma
+                // lei que a timeline já segue — *«seleccionar um objecto NOVO leva a timeline à aba
+                // Keys»* (Enio, 2026-07-22).
+                //
+                // ⚠️ **Quem decide se ROLA é o painel**, que é o único sítio onde a faixa visível e
+                // o `y` do cabeçalho existem: daqui sai o *pedido*, e um cabeçalho já à vista fica
+                // onde está.
+                if crate::skeleton_reveal::on_focus(&mut self.osso_revelado, osso_em_foco) {
+                    ph2d_panel_vector::set_reveal_bone_section(true);
+                }
                 // ⭐ **PORQUE a secção não tem sujeito** (report do dono, 2026-09-08: *«seleccionar o
                 // bone nem sempre abre a secção de skeleton»*). ⚠️ A pergunta tem três respostas que
                 // se leem iguais na tela — *nada seleccionado* · *seleccionado e não é osso* · *é

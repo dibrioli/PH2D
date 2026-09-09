@@ -86,6 +86,16 @@ thread_local! {
     /// **O selector de acção que está ABERTO** — irmão do `PENDING_KEY_DD` do Morph, e pela mesma
     /// razão: a seção rola, e sem o passe diferido a lista seria cortada na borda dela.
     static PENDING_ACTION_DD: Cell<Option<Rect>> = const { Cell::new(None) };
+    /// ⭐⭐⭐ **UM OSSO ACABOU DE ENTRAR EM FOCO** — a shell pede que a secção seja REVELADA.
+    ///
+    /// ⛔⛔ **Report do dono (2026-09-08): *«selecionar o bone nem sempre abre a secção de skeleton»*,
+    /// e a medição diz porquê: o cabeçalho dela cai em `y = 1316 px` com só um osso escolhido, e em
+    /// `y = 1978` com uma forma de traço — sobre uma faixa visível de `900`.** Ela **nunca** cabe na
+    /// tela: vê-se apenas se o painel já estivesse rolado até lá, e é isso o *«nem sempre»*.
+    static REVEAL: Cell<bool> = const { Cell::new(false) };
+    /// O `y` (em coordenadas de CONTEÚDO) do cabeçalho, guardado para o passe diferido — que é o
+    /// único sítio com o `store` mutável na mão.
+    static PENDING_REVEAL_Y: Cell<Option<f32>> = const { Cell::new(None) };
 }
 
 /// **As acções do documento** (shell → painel, todo quadro em que a seção vive).
@@ -103,6 +113,29 @@ pub(crate) fn set_pending_bone_action_dd(chip: Option<Rect>) {
 
 pub(crate) fn take_pending_bone_action_dd() -> Option<Rect> {
     PENDING_ACTION_DD.with(Cell::take)
+}
+
+/// **Um osso entrou em foco** (shell → painel): revela a secção SKELETON no próximo quadro.
+///
+/// ⚠️ É a mesma lei que a timeline já segue — *«seleccionar um objecto NOVO leva a timeline à aba
+/// Keys»* (Enio, 2026-07-22). Uma superfície que só existe fora da dobra é uma superfície que o
+/// artista descobre por acaso.
+pub fn set_reveal_bone_section(v: bool) {
+    if v {
+        REVEAL.with(|c| c.set(true));
+    }
+}
+
+pub(crate) fn take_reveal_bone_section() -> bool {
+    REVEAL.with(Cell::take)
+}
+
+pub(crate) fn set_pending_bone_reveal(y: f32) {
+    PENDING_REVEAL_Y.with(|c| c.set(Some(y)));
+}
+
+pub(crate) fn take_pending_bone_reveal() -> Option<f32> {
+    PENDING_REVEAL_Y.with(Cell::take)
 }
 
 /// A âncora do osso em foco e os três números dela (`mix`, `softness`, `chain`). `None` ⇒ ele não

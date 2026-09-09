@@ -487,6 +487,10 @@ pub(crate) fn paint(_state: &mut VectorPanelState, ctx: &mut PaintCtx) {
     seed_and_publish(ctx.host.store_mut(), content_h, body_h);
     set_last_content_h(content_h);
     set_last_visible_h(body_h);
+    // ⭐⭐⭐ **A secção SKELETON vem à vista quando um osso entra em foco** (report do dono,
+    // 2026-09-08). A lei mora ao lado da secção; aqui só chega a banda visível, que é o que este
+    // orquestrador sabe e o `BodyCtx` não.
+    crate::paint_sections::bone::reveal_section(ctx, body_top, body_h, content_h, row_h);
 
     // Re-register close chrome after the body (last-registered-wins so the X
     // stays clickable over the body region).

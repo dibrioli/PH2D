@@ -633,6 +633,8 @@ mod sizing_smoke;
 mod skeleton_goal;
 /// ⭐⭐⭐ **O ESQUELETO, vivo** (estudo 42 item 5): a forma presa aos ossos, re-cozida por quadro.
 mod skeleton_live;
+/// ⭐⭐⭐ **REVELAR-AO-FOCAR**: quando um osso NOVO entra em foco, a secção Skeleton vem à vista.
+mod skeleton_reveal;
 /// ⭐ **Os OSSOS INTELIGENTES** — girar um osso percorre uma animação inteira.
 mod skeleton_smart;
 /// As cenas de smoke do Sketch (=31) e do Hatch (=32) — irmão de `build_smoke`, teto de LOC.
@@ -1026,6 +1028,7 @@ impl App {
             timeline: ph2d_timeline::TimelineState::with_default_duration(),
             timeline_intents: Vec::new(),
             smart_pick: None,
+            osso_revelado: None,
             timeline_reveal_after_apply: false,
             timeline_view: ph2d_timeline::TimelineViewSnapshot::default(),
             timeline_signals: Default::default(),

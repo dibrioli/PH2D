@@ -130,15 +130,14 @@ pub(super) fn dispatch(
     // at tool activation + restoring at deactivation.
     hero.panel_visibility
         .insert("bgremoval", bgremoval_is_active);
-    {
-        use std::sync::atomic::{AtomicBool, Ordering};
-        static LAST_ACTIVE: AtomicBool = AtomicBool::new(false);
-        let was = LAST_ACTIVE.swap(bgremoval_is_active, Ordering::Relaxed);
-        if was != bgremoval_is_active {
-            hero.panel_visibility
-                .insert("inspector", !bgremoval_is_active);
-        }
-    }
+    // ⭐⭐⭐ **A FERRAMENTA ACOMPANHA O INSPECTOR, NÃO O SUBSTITUI** — ver o irmão no
+    //    `upscale_bridge.rs`, que traz o mecanismo inteiro (report do Enio, 2026-09-08).
+    //
+    // ⚠️⚠️ **Este bridge escapou à wave 40 e a razão é da RÉGUA, não do código:** o censo que
+    //    apagou os outros cinco procurava `panel_visibility.insert("inspector"` no texto CRU, e
+    //    aqui o `rustfmt` parte a chamada em duas linhas porque o receptor é longo. *Um censo
+    //    textual tem de conhecer TODAS as formas do que lê* — hoje ele tira o espaço todo antes de
+    //    comparar, e ao fazê-lo acusou TRÊS de uma vez.
 
     // Captured for the protection-mask overlay tint + brush ring (built
     // while the tool is borrowed below, drawn in the on-canvas overlay block).

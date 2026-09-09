@@ -17,15 +17,32 @@
 use std::fs;
 use std::path::Path;
 
-/// O ficheiro sem comentários de linha — ver o cabeçalho.
+/// O ficheiro sem comentários de linha **e sem espaço nenhum** — ver o cabeçalho.
+///
+/// ⛔⛔ **A 1.ª redacção deste gate era CEGA à forma que o `rustfmt` escreve**, e deixou passar a
+/// SEXTA superfície no mesmo dia em que nasceu: o `painter_bridge` tinha
+///
+/// ```text
+/// hero.panel_visibility
+///     .insert("inspector", !painter_is_active);
+/// ```
+///
+/// — a mesma chamada, partida em duas linhas porque o receptor é longo. Um `contains` sobre o
+/// texto cru procura uma sequência que a formatação decide, não uma que o código tem.
+///
+/// ⚠️ *É a QUARTA vez que esta linha paga a mesma lição — um censo textual tem de conhecer TODAS as
+/// formas do que lê* (w25 o `cargo fmt`, w27 a prosa, w33 o doc-comment, e agora a quebra de
+/// linha). ⇒ o espaço sai todo antes da comparação.
 fn code_only(src: &str) -> String {
     src.lines()
         .map(|l| match l.find("//") {
             Some(i) => &l[..i],
             None => l,
         })
-        .collect::<Vec<_>>()
-        .join("\n")
+        .collect::<String>()
+        .chars()
+        .filter(|c| !c.is_whitespace())
+        .collect()
 }
 
 #[test]

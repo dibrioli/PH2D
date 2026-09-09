@@ -49,15 +49,14 @@ pub(super) fn dispatch(
     // padding is active and restore it on deactivate. Edge-triggered
     // (Wave 10 Etapa 4 smoke fix — see bgremoval_preview.rs).
     hero.panel_visibility.insert("padding", padding_is_active);
-    {
-        use std::sync::atomic::{AtomicBool, Ordering};
-        static LAST_ACTIVE: AtomicBool = AtomicBool::new(false);
-        let was = LAST_ACTIVE.swap(padding_is_active, Ordering::Relaxed);
-        if was != padding_is_active {
-            hero.panel_visibility
-                .insert("inspector", !padding_is_active);
-        }
-    }
+    // ⭐⭐⭐ **A FERRAMENTA ACOMPANHA O INSPECTOR, NÃO O SUBSTITUI** — ver o irmão no
+    //    `upscale_bridge.rs`, que traz o mecanismo inteiro (report do Enio, 2026-09-08).
+    //
+    // ⚠️⚠️ **Este bridge escapou à wave 40 e a razão é da RÉGUA, não do código:** o censo que
+    //    apagou os outros cinco procurava `panel_visibility.insert("inspector"` no texto CRU, e
+    //    aqui o `rustfmt` parte a chamada em duas linhas porque o receptor é longo. *Um censo
+    //    textual tem de conhecer TODAS as formas do que lê* — hoje ele tira o espaço todo antes de
+    //    comparar, e ao fazê-lo acusou TRÊS de uma vez.
 
     let mut apply: Option<(ph2d_tool_padding::PaddingSpec, bool, Vec<u64>)> = None;
     // Captured while the tool is borrowed; used for the on-canvas preview

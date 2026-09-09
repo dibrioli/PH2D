@@ -150,11 +150,10 @@ pub(super) fn dispatch(
         static LAST_ACTIVE: AtomicBool = AtomicBool::new(false);
         let was = LAST_ACTIVE.swap(painter_is_active, Ordering::Relaxed);
         if was != painter_is_active {
-            hero.panel_visibility
-                .insert("inspector", !painter_is_active);
-            // Bring the layers panel into the paint z-order the moment the tool
-            // opens — `PAINTER_LAYERS_PANEL` is NOT in the editor-core `z_order`
-            // fallback list, so without this it stays out of the paint walk.
+            // ⚠️ **A promoção FICA, o esconder é que saiu.** Ela não é o *takeover*: o
+            //    `PAINTER_LAYERS_PANEL` não está na lista de recurso da ordem z do
+            //    `ph2d-editor-core`, logo sem ela o painel nem entra na travessia de pintura —
+            //    e com as abas ela é também o que o põe à FRENTE da fila ao abrir a ferramenta.
             if painter_is_active {
                 hero.store
                     .bump_panel_z(ph2d_editor::ids::PAINTER_LAYERS_PANEL);

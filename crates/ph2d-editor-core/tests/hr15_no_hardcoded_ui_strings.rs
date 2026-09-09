@@ -103,6 +103,13 @@ const BASELINE: &[(&str, usize)] = &[
     // objecto alvo e o do timer. Mesma dívida e mesma cura dos irmãos acima: caem juntos quando o
     // `t!(…)` shipar, e ficam VISÍVEIS porque o `TextInput` chega pronto do chamador.
     ("ph2d-panel-inspector/src/sections/actions.rs", 3),
+    // ⭐ O `placeholder` do caminho do som, na secção AUDIO (TOP-20 #4, W3). Mesma dívida e mesma
+    // cura dos irmãos acima — ele cai junto quando o `t!(…)` shipar, e fica VISÍVEL porque o
+    // `TextInput` chega pronto do chamador.
+    //
+    // ⚠️ **UM, e não os quatro AVISOS desta secção**: eles passam pelo `paint_text`, que este gate
+    // já conta noutro braço. *A dívida é a que ele mede, não a que a leitura supõe.*
+    ("ph2d-panel-inspector/src/sections/audio.rs", 1),
     ("ph2d-panel-inspector/src/sections/identity.rs", 1),
     // ⚠️ **W-SignalLeave: a entrada da §11 saiu daqui, e a DÍVIDA NÃO.** O
     // scanner conta literais dentro de `.placeholder("…")`, e a §11 passou a ter

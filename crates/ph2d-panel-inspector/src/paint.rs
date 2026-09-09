@@ -164,6 +164,7 @@ fn paint_inspector(
         anim_info,
         timer_info,
         action_info,
+        audio_info,
         blend_info,
         physics_info,
         joint_info,
@@ -283,7 +284,7 @@ fn paint_inspector(
     //
     // ⚠️ Saíram porque a §11 levou este orquestrador de 348 a 365 contra uma tolerância que **só
     // desce** — e levar só a nova devolveria o número a 348 exactos, que é ficar no mesmo sítio.
-    y = crate::paint_stateful::paint_stateful_sections(
+    y = crate::paint_optional::paint_optional_sections(
         scene,
         text_system,
         theme,
@@ -303,6 +304,7 @@ fn paint_inspector(
         timer_selected,
         action_info.as_ref(),
         action_selected,
+        audio_info.as_ref(),
         &notes_per_section,
     );
     if any_section {

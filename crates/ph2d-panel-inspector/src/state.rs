@@ -12,10 +12,10 @@
 //! larger churn than the move warrants.
 
 use ph2d_editor_core::screens::hero::{
-    InspectorActionInfo, InspectorAnchorInfo, InspectorAnimInfo, InspectorBlendInfo,
-    InspectorJointInfo, InspectorNameInfo, InspectorOrderingInfo, InspectorPhysicsInfo,
-    InspectorPlayerInfo, InspectorSamplingInfo, InspectorSliceInfo, InspectorSpriteInfo,
-    InspectorTimerInfo, InspectorTransformInfo, InspectorVisibilityInfo,
+    InspectorActionInfo, InspectorAnchorInfo, InspectorAnimInfo, InspectorAudioInfo,
+    InspectorBlendInfo, InspectorJointInfo, InspectorNameInfo, InspectorOrderingInfo,
+    InspectorPhysicsInfo, InspectorPlayerInfo, InspectorSamplingInfo, InspectorSliceInfo,
+    InspectorSpriteInfo, InspectorTimerInfo, InspectorTransformInfo, InspectorVisibilityInfo,
     InspectorVisibilitySectionInfo, InspectorWheelInfo,
 };
 
@@ -156,6 +156,10 @@ thread_local! {
     /// SIGNAL ACTIONS — o snapshot da entidade selecionada.
     pub(crate) static CURRENT_INSPECTOR_ACTION:
         std::cell::RefCell<Option<InspectorActionInfo>> = const { std::cell::RefCell::new(None) };
+
+    /// AUDIO — o snapshot da entidade selecionada (TOP-20 #4).
+    pub(crate) static CURRENT_INSPECTOR_AUDIO:
+        std::cell::RefCell<Option<InspectorAudioInfo>> = const { std::cell::RefCell::new(None) };
 
     /// **§12 — a linha ABERTA da lista, no sentido PAINEL → SHELL.**
     ///
@@ -330,6 +334,14 @@ pub fn set_current_inspector_action(info: Option<InspectorActionInfo>) {
 
 pub(crate) fn current_inspector_action() -> Option<InspectorActionInfo> {
     CURRENT_INSPECTOR_ACTION.with(|c| c.borrow().clone())
+}
+
+pub fn set_current_inspector_audio(info: Option<InspectorAudioInfo>) {
+    CURRENT_INSPECTOR_AUDIO.with(|c| *c.borrow_mut() = info);
+}
+
+pub(crate) fn current_inspector_audio() -> Option<InspectorAudioInfo> {
+    CURRENT_INSPECTOR_AUDIO.with(|c| c.borrow().clone())
 }
 
 pub(crate) fn current_inspector_sampling() -> Option<InspectorSamplingInfo> {

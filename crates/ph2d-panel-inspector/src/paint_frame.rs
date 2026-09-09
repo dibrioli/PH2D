@@ -342,7 +342,7 @@ pub(crate) fn finish_section(
 /// section has to be remembered here — a fact that is easier to keep true
 /// when it has a name and a signature that changes when you forget.
 #[allow(clippy::too_many_arguments, clippy::fn_params_excessive_bools)]
-pub(crate) fn any_live_section(flags: [bool; 13]) -> bool {
+pub(crate) fn any_live_section(flags: [bool; 14]) -> bool {
     flags.iter().any(|&b| b)
 }
 
@@ -507,6 +507,11 @@ pub(crate) struct LiveSnapshots {
     /// ⭐⭐⭐ **A secção SIGNAL ACTIONS** — `Some` só quando o objecto tem `SignalActions`.
     /// ⚠️ **ENTRA no `any_section`**, pela razão do `timer_info`: ela vale para qualquer objecto.
     pub action_info: Option<ph2d_editor_core::screens::hero::InspectorActionInfo>,
+    /// ⭐⭐⭐ **A secção AUDIO** (TOP-20 #4) — `Some` quando o objecto tem a FONTE, as ORELHAS, ou
+    /// as duas. ⚠️ **ENTRA no `any_section`**, pela razão do `timer_info`: ela vale para qualquer
+    /// objecto, e um objecto que só tenha o marcador de ouvinte não está representado por mais
+    /// nenhum snapshot.
+    pub audio_info: Option<ph2d_editor_core::screens::hero::InspectorAudioInfo>,
     pub blend_info: Option<ph2d_editor_core::screens::hero::InspectorBlendInfo>,
     pub physics_info: Option<ph2d_editor_core::screens::hero::InspectorPhysicsInfo>,
     pub joint_info: Option<ph2d_editor_core::screens::hero::InspectorJointInfo>,
@@ -543,6 +548,7 @@ impl LiveSnapshots {
         let name_present = crate::state::current_inspector_name_is_some();
         let timer_info = crate::state::current_inspector_timer();
         let action_info = crate::state::current_inspector_action();
+        let audio_info = crate::state::current_inspector_audio();
         let any_section = any_live_section([
             transform_info.is_some(),
             sprite_info.is_some(),
@@ -557,6 +563,7 @@ impl LiveSnapshots {
             name_present,
             timer_info.is_some(),
             action_info.is_some(),
+            audio_info.is_some(),
         ]);
         Self {
             transform_info,
@@ -569,6 +576,7 @@ impl LiveSnapshots {
             anim_info: crate::state::current_inspector_anim(),
             timer_info,
             action_info,
+            audio_info,
             blend_info,
             physics_info,
             joint_info,

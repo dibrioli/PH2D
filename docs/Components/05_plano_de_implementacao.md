@@ -3518,11 +3518,74 @@ juntos porque a placa de som renderiza em tempo real.*
   `audio/smoke.rs`, e o corte é por **responsabilidade**: elas não são o sistema de áudio, são
   clientes dele.
 
+### §15.8 — ✅ A W3 — o PAINEL
+
+⚠️ **Ela não era opcional, e a razão está escrita no `SignalActions`:** o `Timers` shipou anexável e
+sem linha de edição, e o report do dono foi *«timer sumiu do modal de componente»* — *um componente
+anexável sem painel é indistinguível de um que não foi anexado.*
+
+**Uma secção, DOIS corpos.** Um objecto pode ter a FONTE, as ORELHAS, ou as duas: dois componentes
+registados, uma pergunta só para o artista (*«o que é que este objecto tem a ver com som?»*).
+⛔ Duas secções fariam o caso comum pagar um cabeçalho vazio, e o caso das orelhas — um componente
+**sem campo nenhum** — teria uma secção inteira para dizer uma linha.
+
+⭐⭐ **E o `AudioListener2D` é o primeiro componente deste app SEM CAMPOS a ter superfície.** Anexá-lo
+não muda nada na tela a menos que a secção diga o que ele faz; ele tem gate próprio
+(`an_object_that_only_has_the_ears_still_has_a_section`).
+
+#### Os QUATRO avisos, e porque são quatro
+
+Um artista faz **uma** pergunta sobre som — *«porque é que não ouço nada?»* — e ela tem quatro
+respostas diferentes:
+
+| aviso | o que se passa | como se cura |
+|---|---|---|
+| `no file` | ainda não escolheu | **Browse…** |
+| `file is gone` | o caminho não abre | escolher outra vez |
+| `nothing plays this` | não arranca sozinha **e** nenhum sinal a manda tocar | ligar *Autoplay*, ou uma linha de *Signal Actions* |
+| `no listener` | a cena não tem orelhas | pôr um `Audio Listener 2D` num objecto |
+
+⭐⭐ **O terceiro só o SNAPSHOT pode dizer**: ele é uma varredura das tabelas de acção da cena à
+procura de um `Play Sound` que aponte para este objecto. Um painel que só olhasse para o componente
+diria *«autoplay desligado»* sobre uma cena perfeitamente correcta. ⚠️ E ele conta **só** o
+`PlaySound` — contar o `StopSound` faria o painel dizer que um objecto que alguém só sabe CALAR
+chega a soar.
+
+⚠️ **`Preview` existe para tornar a secção APRENDÍVEL.** Sem ele, o caminho mais curto entre
+*«anexei isto»* e *«ouvi alguma coisa»* passa por escrever uma tabela de acções e um relógio.
+
+#### ⚠️ O ficheiro mudou de nome porque a propriedade que o nomeava deixou de o descrever
+
+`paint_stateful.rs` → **`paint_optional.rs`**. A propriedade era *«as secções que dependem de qual
+LINHA está aberta»*, e ela descrevia quatro das cinco: a AUDIO não tem lista, logo não tem linha
+aberta — mas é tão **opcional** como as outras e pinta-se no mesmo sítio. *Quando a propriedade que
+dá nome a um ficheiro deixa de descrever o que ele contém, o que se corrige é o nome; senão o
+próximo a chegar acredita nele.*
+
+#### ⛔⛔ E o SEGUNDO gate que acusava o inocente por ler uma JANELA DE BYTES
+
+`the_position_commit_reseats_the_anchor_through_the_door` lia os **3 000 bytes** a seguir ao `let
+joint_pivot_commit =` à procura do `set_joint_anchor_world`. O dreno da secção AUDIO entrou entre a
+captura e o uso, e o alvo saiu da janela — o gate reprovou sobre um `render_loop` correcto,
+acusando uma junta que ninguém tinha tocado. ⇒ ele passa a **delimitar o bloco pelas chavetas dele**.
+
+⚠️⚠️ **É o segundo do mesmo dia** (o outro foi o `mod baked_form`), e a forma é a mesma: *um gate que
+parseia o fonte tem de delimitar o ITEM de que fala; uma janela de bytes mede a vizinhança.*
+
+#### ⚠️ E uma alcatra que NENHUM censo apanhou
+
+O ficheiro renomeado tinha uma entrada na lista de delegação de a11y (`PANEL_A11Y_DELEGATE_OK`) pelo
+nome ANTIGO. O gate só reprovou porque o ficheiro **novo** não estava lá — se o rename tivesse sido
+uma remoção, a entrada teria apodrecido em silêncio. ⏳ **Aquela lista não tem censo de
+obsolescência**, e o §5.0 do `CLAUDE.md` já escreve a lei: *uma catraca sem censo não desce — ela
+vira licença.* Fica nomeado; construí-lo é wave própria (ele vai acusar entradas de outras linhas).
+
 ### §15.8 — ⏳ ABERTO
 
-- **A W3 — o PAINEL.** ⚠️⚠️ **Sem ela o componente é anexável e não editável**, que é exactamente o
-  report que o `Timers` já custou (*«timer sumiu do modal de componente»*): *um componente anexável
-  sem painel é indistinguível de um que não foi anexado.*
+- **O `Preview` não tem indicador de que está a tocar.** O botão dispara e não diz nada; quem quer
+  saber o que está vivo lê a linha `[audio-2d]` do terminal. ⏳ A superfície natural é o próprio
+  botão trocar para `Stop` enquanto houver voz, e isso pede o número de vozes no snapshot.
+- **A lista de delegação de a11y não tem censo de obsolescência** — ver a §15.8.
 - **O `sound` é um CAMINHO**, e é o primeiro componente registado desta casa a guardar um. As duas
   consequências, declaradas: mover o ficheiro parte o som, e **o projecto não embute o áudio**. A
   cura de ambas é a mesma — pôr áudio no índice de assets, com o `AssetId` por conteúdo que a F4 já

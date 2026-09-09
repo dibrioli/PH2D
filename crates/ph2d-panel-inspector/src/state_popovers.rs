@@ -43,6 +43,13 @@ thread_local! {
         std::cell::Cell<Option<(u8, ph2d_editor_core::zones::Rect)>> =
         const { std::cell::Cell::new(None) };
 
+    /// AUDIO: quando o seletor do BARRAMENTO está aberto, a seção guarda aqui
+    /// `(tag escolhida, rect do chip)`. ⚠️ Mesma assimetria do irmão: a tag vem no slot, os
+    /// rótulos rederivam-se do snapshot.
+    pub(crate) static PENDING_AUDIO_DD:
+        std::cell::Cell<Option<(u8, ph2d_editor_core::zones::Rect)>> =
+        const { std::cell::Cell::new(None) };
+
     /// ⭐ **O popover que ESTE painel pintou neste quadro** — `(dono, rect do painel)`.
     ///
     /// ⚠️ Ele existe para uma coisa só: o `dispatch::pointer_down` fecha um dropdown aberto quando
@@ -83,6 +90,14 @@ pub(crate) fn set_pending_action_dd(chip: Option<(u8, ph2d_editor_core::zones::R
 
 pub(crate) fn take_pending_action_dd() -> Option<(u8, ph2d_editor_core::zones::Rect)> {
     PENDING_ACTION_DD.with(|c| c.take())
+}
+
+pub(crate) fn set_pending_audio_dd(chip: Option<(u8, ph2d_editor_core::zones::Rect)>) {
+    PENDING_AUDIO_DD.with(|c| c.set(chip));
+}
+
+pub(crate) fn take_pending_audio_dd() -> Option<(u8, ph2d_editor_core::zones::Rect)> {
+    PENDING_AUDIO_DD.with(|c| c.take())
 }
 
 /// Regista que um popover foi pintado neste quadro — ver [`PAINTED_POPOVER`].

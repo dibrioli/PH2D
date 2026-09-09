@@ -23,14 +23,15 @@ pub mod slot_layout;
 pub mod task_layout;
 
 pub use hero::{
-    ActionFieldEdit, AnchorFieldEdit, AnimFieldEdit, BlendFieldEdit, BottomHudStats,
-    EMISSIVE_MAX_UI, HeroScreen, HeroSelection, InspectorActionInfo, InspectorActionRow,
-    InspectorAnchorInfo, InspectorAnchorRow, InspectorAnimInfo, InspectorAnimRow,
-    InspectorBlendInfo, InspectorBlendMixed, InspectorJointInfo, InspectorNameInfo,
-    InspectorOrderingInfo, InspectorOrderingMixed, InspectorPhysicsInfo, InspectorPlayerInfo,
-    InspectorSamplingInfo, InspectorSamplingMixed, InspectorSliceInfo, InspectorSliceMixed,
-    InspectorSpriteInfo, InspectorSpriteMixed, InspectorSpriteSource, InspectorTimerInfo,
-    InspectorTimerRow, InspectorTransformInfo, InspectorVisibilityInfo, InspectorVisibilityMixed,
+    ActionFieldEdit, AnchorFieldEdit, AnimFieldEdit, AudioFieldEdit, BlendFieldEdit,
+    BottomHudStats, EMISSIVE_MAX_UI, HeroScreen, HeroSelection, InspectorActionInfo,
+    InspectorActionRow, InspectorAnchorInfo, InspectorAnchorRow, InspectorAnimInfo,
+    InspectorAnimRow, InspectorAudioInfo, InspectorAudioSource, InspectorBlendInfo,
+    InspectorBlendMixed, InspectorJointInfo, InspectorNameInfo, InspectorOrderingInfo,
+    InspectorOrderingMixed, InspectorPhysicsInfo, InspectorPlayerInfo, InspectorSamplingInfo,
+    InspectorSamplingMixed, InspectorSliceInfo, InspectorSliceMixed, InspectorSpriteInfo,
+    InspectorSpriteMixed, InspectorSpriteSource, InspectorTimerInfo, InspectorTimerRow,
+    InspectorTransformInfo, InspectorVisibilityInfo, InspectorVisibilityMixed,
     InspectorVisibilitySectionInfo, InspectorWheelInfo, JointFieldEdit, OrderingFieldEdit,
     PhysicsFieldEdit, PlayerFieldEdit, RequestedSpriteStrategy, SamplingFieldEdit, SliceFieldEdit,
     SpriteFieldEdit, TimerFieldEdit, ViewFocusKind, VisibilityFieldEdit, WheelFieldEdit,

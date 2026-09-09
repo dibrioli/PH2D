@@ -317,6 +317,16 @@ pub enum EditorAction {
         edit: crate::screens::hero::ActionFieldEdit,
     },
 
+    /// **A secção AUDIO** (TOP-20 #4) — o som de um objecto da cena.
+    ///
+    /// ⚠️ **Duas das variantes não escrevem no documento** (`Preview` e `StopPreview`): elas são
+    /// gestos de EDITOR, como o transporte da §11. Viajam por aqui na mesma porque é aqui que o
+    /// painel fala com a shell, e a shell é quem tem o dispositivo.
+    InspectorAudioEdit {
+        entity_bits: u64,
+        edit: crate::screens::hero::AudioFieldEdit,
+    },
+
     /// Inspector → shell channel for a §10 Material & Blend field (Blend
     /// Mode). Optional-component edit like [`Self::InspectorSamplingEdit`]
     /// (§3.10); tag `0` (Mix) detaches the `BlendMode` component.

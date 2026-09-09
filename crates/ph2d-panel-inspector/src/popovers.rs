@@ -86,8 +86,9 @@ fn paint_open_popover<T: Clone + PartialEq>(
     state_popovers::set_painted_popover(dd.id, panel, content_h, visible_h);
 }
 
-/// **OS QUATRO POPOVERS DIFERIDOS** — a §9 Sampling, a §7 Sorting Layer, a §12 «Rides Parent
-/// Anchor» e o VERBO da secção SIGNAL ACTIONS. Pintam-se DEPOIS de todas as seções, para ficarem
+/// **OS CINCO POPOVERS DIFERIDOS** — a §9 Sampling, a §7 Sorting Layer, a §12 «Rides Parent
+/// Anchor», o VERBO da secção SIGNAL ACTIONS e o BARRAMENTO da secção AUDIO. Pintam-se DEPOIS de
+/// todas as seções, para ficarem
 /// acima de tudo.
 ///
 /// ⚠️ **Irmãos por uma LEI, não por vizinhança:** um popover aberto tem de sair da ordem em que a
@@ -198,6 +199,29 @@ pub(crate) fn paint_deferred_popovers(
             ids::INSP_ACTION_VERB_PICK,
             "",
             sections::actions::verb_options(&info.verb_labels),
+        )
+        .open(true);
+        dd.select(sel);
+        paint_open_popover(
+            &dd,
+            chip,
+            region,
+            store,
+            scene,
+            text_system,
+            theme,
+            hit_index,
+        );
+    }
+
+    // AUDIO — o seletor do BARRAMENTO, mesmo passe diferido, slot próprio.
+    if let Some((sel, chip)) = state_popovers::take_pending_audio_dd()
+        && let Some(info) = state::current_inspector_audio()
+    {
+        let mut dd = Dropdown::new(
+            ids::INSP_AUDIO_BUS_PICK,
+            "",
+            sections::audio::bus_options(&info.bus_labels),
         )
         .open(true);
         dd.select(sel);

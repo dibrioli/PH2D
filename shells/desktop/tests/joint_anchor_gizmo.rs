@@ -171,10 +171,19 @@ fn the_generic_translate_does_not_reseed_a_joints_anchors() {
 #[test]
 fn the_position_commit_reseats_the_anchor_through_the_door() {
     let src = fs::read_to_string("src/render_loop/mod.rs").expect("render_loop/mod.rs");
-    let start = src
-        .find("let joint_pivot_commit =")
-        .expect("the Position commit no longer captures the joint pivot");
-    let block = &src[start..(start + 3000).min(src.len())];
+    assert!(
+        src.contains("let joint_pivot_commit ="),
+        "the Position commit no longer captures the joint pivot"
+    );
+    // ⭐⭐ **O bloco QUE CONSOME o pivô, delimitado pelas suas próprias chavetas** — e não uma
+    // janela de bytes a seguir à declaração dele.
+    //
+    // ⚠️⚠️ **A primeira redacção lia os 3 000 bytes seguintes ao `let joint_pivot_commit =`, e um
+    // VIZINHO derrubou-a** (2026-09-09): o dreno da secção AUDIO entrou entre a captura e o uso, e
+    // o `set_joint_anchor_world` saiu da janela. O gate reprovou sobre um `render_loop` correcto,
+    // acusando uma junta que ninguém tinha tocado. *Um gate que parseia o fonte tem de delimitar o
+    // ITEM de que fala; uma janela de bytes mede a vizinhança.*
+    let block = bloco_do_consumo(&src, "if let Some((bits, world)) = joint_pivot_commit {");
     assert!(
         block.contains("set_joint_anchor_world"),
         "the committed pivot never reaches the bridge's anchor door"
@@ -323,4 +332,30 @@ fn the_published_handles_come_from_the_bridge_door_for_every_joint() {
             }
         );
     }
+}
+
+/// **O corpo de um bloco `{ … }` que começa em `abre`**, delimitado por contagem de chavetas.
+///
+/// ⚠️ **Ela existe para não medir a vizinhança** — ver o gate que a usa. ⛔ Ela não é um parser de
+/// Rust: chavetas dentro de literais de texto contá-la-iam a mais. Ela serve porque o bloco em
+/// causa não tem nenhum, e o gate que a chama falha ALTO se o `abre` desaparecer.
+fn bloco_do_consumo<'a>(src: &'a str, abre: &str) -> &'a str {
+    let i = src
+        .find(abre)
+        .unwrap_or_else(|| panic!("o bloco que consome o pivo desapareceu: `{abre}`"));
+    let corpo = &src[i + abre.len()..];
+    let mut nivel = 1i32;
+    for (n, c) in corpo.char_indices() {
+        match c {
+            '{' => nivel += 1,
+            '}' => {
+                nivel -= 1;
+                if nivel == 0 {
+                    return &corpo[..n];
+                }
+            }
+            _ => {}
+        }
+    }
+    panic!("o bloco que consome o pivo nao fecha");
 }

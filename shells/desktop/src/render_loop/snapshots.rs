@@ -1225,6 +1225,16 @@ pub(super) fn publish(
         .gizmo
         .selection
         .and_then(|b| super::inspector_action::build_action_info(sim.world(), b, selected_count));
+    // ⭐ A secção AUDIO — `None` para quem não tem a fonte NEM as orelhas (ADR-0166).
+    //
+    // ⚠️ **Ela pede o mundo em MUTÁVEL**, e é a única da família: as três coisas que ela deriva —
+    // quantas orelhas a cena tem, qual delas manda, e se alguma tabela de acções manda isto tocar —
+    // são **queries**, e um `QueryState` do bevy precisa de `&mut World` para se preparar. *Não é
+    // escrita: é o preço de perguntar à cena em vez de adivinhar a partir do componente.*
+    let inspector_audio = hero
+        .gizmo
+        .selection
+        .and_then(|b| super::inspector_audio::build_audio_info(sim.world_mut(), b, selected_count));
     let inspector_visibility_section = hero.gizmo.selection.and_then(|b| {
         super::inspector_visibility::build_visibility_section_info(
             sim.world(),
@@ -1250,6 +1260,7 @@ pub(super) fn publish(
         ph2d_panel_inspector::set_current_inspector_anim(inspector_anim);
         ph2d_panel_inspector::set_current_inspector_timer(inspector_timer);
         ph2d_panel_inspector::set_current_inspector_action(inspector_action);
+        ph2d_panel_inspector::set_current_inspector_audio(inspector_audio);
         ph2d_panel_inspector::set_current_inspector_physics(inspector_physics);
         ph2d_panel_inspector::set_current_inspector_joint(inspector_joint);
         ph2d_panel_inspector::set_current_inspector_wheel(inspector_wheel);

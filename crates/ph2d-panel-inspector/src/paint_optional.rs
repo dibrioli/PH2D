@@ -1,13 +1,20 @@
-//! **As TRÊS seções com ESTADO DE PAINEL** — a §11 Animation, a §12 Sockets/Anchors e a TIMERS.
+//! **As CINCO seções OPCIONAIS** — a §11 Animation, a §12 Sockets/Anchors, a TIMERS, a SIGNAL
+//! ACTIONS e a AUDIO.
 //!
 //! ⚠️ **Irmão de [`super::paint_frame_shared`] por CAP de FICHEIRO** (600): a TIMERS levou-o a 658,
 //! e o corte por responsabilidade estava à mão porque a família já estava reunida lá dentro. *Um
 //! cap de ficheiro e um cap de função medem grandezas diferentes*, e extrair para o mesmo ficheiro
 //! curaria um e estouraria o outro — a lição que o par de PRECISAO pagou em 2026-08-20.
 //!
-//! ⚠️ **Elas andam juntas por uma PROPRIEDADE, não por vizinhança:** são as únicas do Inspector
-//! cuja pintura depende de qual LINHA está aberta — um facto que vive no `InspectorState` e que
-//! nenhuma outra seção conhece. As restantes leem só o snapshot.
+//! ⚠️ **Elas andam juntas por uma PROPRIEDADE, não por vizinhança:** são as que só existem quando
+//! o objecto **anexou** o componente (ADR-0166), e é isso que decide que elas se pintam DEPOIS das
+//! que todo objecto tem.
+//!
+//! ⚠️⚠️ **O ficheiro chamava-se `paint_stateful` e a propriedade era outra** — *«as que dependem de
+//! qual LINHA está aberta»*. Ela descrevia quatro das cinco: a AUDIO (TOP-20 #4) não tem lista e
+//! por isso não tem linha aberta, mas é tão opcional como as outras e pinta-se no mesmo sítio.
+//! *Quando a propriedade que dá nome a um ficheiro deixa de descrever o que ele contém, o que se
+//! corrige é o nome — senão o próximo a chegar acredita nele.*
 //!
 //! ⚠️ **O `paint_anchor_section` FICA no irmão**, e não é inconsistência: ele é chamado daqui, e
 //! trazê-lo devolveria o ficheiro-pai a 458 e este a 274 — dois ficheiros a meio do caminho em vez
@@ -207,14 +214,13 @@ pub(crate) fn paint_action_section(
     )
 }
 
-/// **As QUATRO seções que precisam do ESTADO do painel** — a §11 Animation, a §12 Sockets/Anchors e
-/// a TIMERS, na ordem em que se pintam.
+/// **As CINCO seções OPCIONAIS**, na ordem em que se pintam.
 ///
-/// ⚠️ **Elas andam juntas por uma PROPRIEDADE, não por vizinhança:** são as únicas do Inspector
-/// cuja pintura depende de qual LINHA está aberta — um facto que vive no `InspectorState` e que
-/// nenhuma outra seção conhece. As restantes leem só o snapshot.
+/// ⚠️ **Elas andam juntas por uma PROPRIEDADE, não por vizinhança:** só existem quando o objecto
+/// anexou o componente. Ver o doc do módulo — quatro das cinco também precisam do estado do painel;
+/// a AUDIO não.
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn paint_stateful_sections(
+pub(crate) fn paint_optional_sections(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: ph2d_tokens::Theme,
@@ -234,6 +240,7 @@ pub(crate) fn paint_stateful_sections(
     timer_selected: &mut usize,
     action: Option<&ph2d_editor_core::screens::hero::InspectorActionInfo>,
     action_selected: &mut usize,
+    audio: Option<&ph2d_editor_core::screens::hero::InspectorAudioInfo>,
     notes: &[Vec<(usize, NoteData)>],
 ) -> f32 {
     y = paint_anim_section(
@@ -282,7 +289,7 @@ pub(crate) fn paint_stateful_sections(
         timer,
         timer_selected,
     );
-    paint_action_section(
+    y = paint_action_section(
         scene,
         text_system,
         theme,
@@ -296,5 +303,76 @@ pub(crate) fn paint_stateful_sections(
         header_h,
         action,
         action_selected,
+    );
+    paint_audio_section(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        section_tops_y,
+        inner_x,
+        inner_w,
+        body_top_y,
+        y,
+        header_h,
+        audio,
+    )
+}
+
+/// **A secção AUDIO** — moldura e tudo. ⚠️ **A única das cinco sem estado de painel** (ver o doc do
+/// módulo): um objecto tem UMA fonte de som, então não há linha aberta a lembrar.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn paint_audio_section(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: ph2d_tokens::Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    section_tops_y: &mut Vec<f32>,
+    inner_x: f32,
+    inner_w: f32,
+    body_top_y: f32,
+    mut y: f32,
+    header_h: f32,
+    audio: Option<&ph2d_editor_core::screens::hero::InspectorAudioInfo>,
+) -> f32 {
+    let Some(au) = audio else {
+        return y;
+    };
+    y = close_section(scene, theme, inner_x, inner_w, y);
+    let y_before = y;
+    begin_section(
+        section_tops_y,
+        hit_index,
+        inner_x,
+        inner_w,
+        body_top_y,
+        y_before,
+        ids::INSP_LIVE_AUDIO_SECTION,
+        header_h,
+    );
+    let new_y = crate::sections::audio::paint_audio_section(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        inner_x,
+        inner_w,
+        y,
+        au,
+    );
+    finish_section(
+        scene,
+        text_system,
+        hit_index,
+        store,
+        inner_x,
+        inner_w,
+        ids::INSP_LIVE_AUDIO_SECTION,
+        y_before,
+        new_y,
+        &[],
     )
 }

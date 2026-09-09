@@ -290,6 +290,8 @@ mod inspector_action;
 /// **§12 Sockets / Named Anchors** (ADR-0072) — snapshot e commit.
 mod inspector_anchor;
 mod inspector_anim;
+/// ⭐⭐⭐ A secção AUDIO do Inspector (TOP-20 #4, W3) — o snapshot e o commit.
+mod inspector_audio;
 mod inspector_commits_sprite;
 /// ⭐ **A seção COMPONENT do Inspector** (ADR-0164 / F5) — o que esta cópia tem de diferente
 /// da receita, e o gesto que limpa as excepções sem alvo.
@@ -3716,6 +3718,8 @@ impl crate::App {
             let mut anchor_edits: Vec<(u64, ph2d_editor::AnchorFieldEdit)> = Vec::new();
             let mut anim_edits: Vec<(u64, ph2d_editor::AnimFieldEdit)> = Vec::new();
             let mut timer_edits: Vec<(u64, ph2d_editor::TimerFieldEdit)> = Vec::new();
+            let mut audio_edits: Vec<(u64, ph2d_editor::AudioFieldEdit)> = Vec::new();
+            let mut audio_commit = false;
             let mut action_edits: Vec<(u64, ph2d_editor::ActionFieldEdit)> = Vec::new();
             // ⭐ O `+` do Inspector (F3): quem pediu a paleta neste quadro.
             let mut add_component_for: Option<u64> = None;
@@ -5119,6 +5123,13 @@ impl crate::App {
                     // da entidade primária.
                     EditorAction::InspectorActionEdit { entity_bits, edit } => {
                         action_edits.push((entity_bits, edit));
+                    }
+                    // ⭐ **A secção AUDIO** (TOP-20 #4). ⚠️ **NÃO espalha sobre a BulkSelect**,
+                    // pela MESMA razão das irmãs — e aqui há uma segunda: duas das variantes
+                    // (`Preview`/`StopPreview`) TOCAM, e espalhá-las faria um clique em `Preview`
+                    // disparar N sons de uma vez.
+                    EditorAction::InspectorAudioEdit { entity_bits, edit } => {
+                        audio_edits.push((entity_bits, edit));
                     }
                     // ⭐ **O `+` do Inspector** (ADR-0166 / F3) — o painel PEDE e a shell abre,
                     // porque só ela sabe o tipo do objeto, o que ele já tem, e o que o registo
@@ -12347,6 +12358,73 @@ impl crate::App {
                 *name_type_id,
                 *sprite_type_id,
             ) {
+                self.title_dirty = true;
+            }
+            // ⭐⭐⭐ **A secção AUDIO** (TOP-20 #4, W3) — e ela corre AQUI, e não no
+            // `inspector_commits`, porque as edições dela são de DUAS naturezas: a maioria escreve
+            // um campo do documento, e três (`Preview`, `Stop`, `Browse`) tocam no DISPOSITIVO ou
+            // abrem um diálogo. ⚠️ O `inspector_commits` não tem — nem devia ter — a placa de som
+            // nem a janela. *Duas naturezas, dois sítios; a fronteira é o que cada edição TOCA.*
+            for (bits, edit) in &audio_edits {
+                match edit {
+                    ph2d_editor::AudioFieldEdit::Preview => {
+                        let e = ph2d_ecs::Entity::from_bits(*bits);
+                        audio_2d::play_target(sim, self.audio.as_mut(), e);
+                    }
+                    ph2d_editor::AudioFieldEdit::StopPreview => {
+                        let e = ph2d_ecs::Entity::from_bits(*bits);
+                        audio_2d::stop_target(sim, self.audio.as_mut(), e);
+                    }
+                    ph2d_editor::AudioFieldEdit::Browse => {
+                        // ⚠️ **A lista de extensões é a MESMA do resto do app** (`decode_any`), e
+                        // não uma escrita à mão: uma segunda lista ao lado de um predicado é o
+                        // defeito que o diálogo de importação já pagou — o `.ase` esteve invisível
+                        // lá durante meses.
+                        if let Some(p) = rfd::FileDialog::new()
+                            .add_filter("audio", crate::audio::decode_any::AUDIO_IMPORT_EXTS)
+                            .pick_file()
+                        {
+                            let edit = ph2d_editor::AudioFieldEdit::Sound(
+                                p.to_string_lossy().into_owned(),
+                            );
+                            if inspector_audio::apply_audio_edit(
+                                sim,
+                                *bits,
+                                &edit,
+                                editor_queue,
+                                component_registry,
+                            )
+                            .is_none()
+                            {
+                                audio_commit = true;
+                            }
+                        }
+                    }
+                    _ => {
+                        if let Some(t) = inspector_audio::apply_audio_edit(
+                            sim,
+                            *bits,
+                            edit,
+                            editor_queue,
+                            component_registry,
+                        ) {
+                            toasts.push(t);
+                        } else {
+                            audio_commit = true;
+                        }
+                    }
+                }
+            }
+            if audio_commit
+                && let Err(e) = ph2d_ecs::scene::apply_editor_commands(
+                    sim.world_mut(),
+                    editor_queue,
+                    component_registry,
+                )
+            {
+                toasts.push(ph2d_editor::Toast::error(format!(
+                    "Audio commit failed: {e}"
+                )));
                 self.title_dirty = true;
             }
             // A troca de ESTRATÉGIA de origem sai por uma porta própria (irmã, pelo teto de LOC):

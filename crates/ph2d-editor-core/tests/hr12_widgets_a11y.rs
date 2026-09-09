@@ -449,8 +449,8 @@ const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
     // secção TIMERS impôs ao `paint_frame_shared.rs` (658 de 600) — exactamente como o
     // `paint_card.rs` acima nasceu do corte do `paint.rs` dele.
     (
-        "ph2d-panel-inspector/src/paint_stateful.rs",
-        "orquestrador das tres seccoes com ESTADO DE PAINEL (§11 Animation, §12 Sockets, TIMERS); nao regista um unico id — 0 ocorrencias de NodeId / hit_index. / register( — e cada widget e' pintado pela seccao que ele chama, a moldura pelo paint_frame",
+        "ph2d-panel-inspector/src/paint_optional.rs",
+        "orquestrador das CINCO seccoes OPCIONAIS (§11 Animation, §12 Sockets, TIMERS, SIGNAL ACTIONS, AUDIO); nao regista um unico id — 0 ocorrencias de NodeId / hit_index. / register( — e cada widget e' pintado pela seccao que ele chama, a moldura pelo paint_frame. ⚠️ Chamava-se `paint_stateful.rs` ate' 2026-09-09: a AUDIO nao tem lista e por isso nao tem linha aberta, e a propriedade que dava nome ao ficheiro deixou de o descrever",
     ),
     // ⛔⛔ **Este ficheiro passava por SUBCADEIA, e a remoção de uma fileira revelou-o.**
     // Ele nunca nomeou um primitivo canónico: o que casava era `paint_color_swatch_row` — o

@@ -155,14 +155,14 @@ impl TaskLayout {
             Self::Vector => LayoutSpec {
                 title: "Vector",
                 wire: "vector",
-                open: &["hierarchy"],
+                open: &["hierarchy", "inspector"],
                 slots: &[],
                 canvas: CanvasOwner::Tool("vector"),
             },
             Self::Flip => LayoutSpec {
                 title: "Flip",
                 wire: "flip",
-                open: &["hierarchy"],
+                open: &["hierarchy", "inspector"],
                 slots: &[],
                 canvas: CanvasOwner::Tool("flip"),
             },

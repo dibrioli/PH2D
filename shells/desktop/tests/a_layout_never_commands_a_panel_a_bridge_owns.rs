@@ -194,11 +194,44 @@ fn no_layout_opens_a_panel_that_a_tool_bridge_owns() {
 fn a_layout_names_the_inspector_exactly_when_its_canvas_owner_does_not_take_it_over() {
     use ph2d_editor::screens::task_layout::CanvasOwner;
     let takeover = tools_that_take_over_the_inspector();
-    // Controlo: sem censo a lei aprovaria qualquer tabela.
+    // ⭐⭐⭐ **A LISTA ESTÁ VAZIA DESDE 2026-09-09, e isso é o PRODUTO, não a varredura partida.**
+    //
+    // > *«algumas ferramentas ou painéis não criam abas»* — Enio, 2026-09-08.
+    //
+    // As oito pontes que **substituíam** o inspector deixaram de o fazer: com a fileira de abas os
+    // dois são OCUPANTES do mesmo encaixe, e esconder um deles era o modelo anterior às abas. Há
+    // gate a proibi-lo pelo nome (`no_bridge_hides_the_inspector_to_take_its_slot`).
+    //
+    // ⇒ a lei abaixo **não muda**: ela continua a ser *«nomeia-o exactamente quando o dono do
+    // canvas NÃO o toma»*. O que mudou é que ninguém o toma, logo **todo** layout tem de o nomear
+    // — e foram precisos DOIS (o `vector` e o `flip`, que abriam só a hierarquia porque a
+    // ferramenta deles o tomava). *Tirar o takeover sem reconciliar a tabela reintroduzia o report
+    // de 31/08 em dois layouts: o inspector fechava e ninguém o reabria.*
+    //
+    // ⚠️ **O CONTROLO passa a ser o do INSTRUMENTO, não o da população:** com a população a zero,
+    // exigir `>= 4` seria exigir para sempre uma tomada de conta que o produto apagou. O que tem de
+    // continuar vivo é a varredura — ela lê a pasta das pontes, e uma pasta renomeada devolveria
+    // zero pelo motivo errado.
+    let bridges = fs::read_dir(BRIDGE_DIR)
+        .expect("a pasta das pontes existe")
+        .filter_map(Result::ok)
+        .filter(|e| {
+            e.path()
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .is_some_and(|n| n.ends_with("_bridge"))
+        })
+        .count();
     assert!(
-        takeover.len() >= 4,
-        "controlo: só {} ferramentas tomam o inspector ({takeover:?}) — a varredura partiu-se",
-        takeover.len()
+        bridges >= 8,
+        "controlo do instrumento: só {bridges} pontes varridas em {BRIDGE_DIR} — a varredura \
+         perdeu o alvo, e a lista vazia abaixo não significaria nada"
+    );
+    assert!(
+        takeover.is_empty(),
+        "uma ponte voltou a SUBSTITUIR o inspector ({takeover:?}) — o modelo anterior às abas. A \
+         lei abaixo continua a valer (o layout dessa ferramenta deixa de o nomear), mas o gate \
+         `no_bridge_hides_the_inspector_to_take_its_slot` diz por que isso não devia acontecer"
     );
     // ⚠️ **O `motion` SAIU desta lista em 2026-09-07, e não foi a varredura que se partiu:** os
     // params dos nós passaram a viver dentro dos cartões (doc 103) e o `motion_params` deixou de
@@ -206,12 +239,10 @@ fn a_layout_names_the_inspector_exactly_when_its_canvas_owner_does_not_take_it_o
     // uma superfície e não pôr nenhuma. *Um controlo que nomeia ferramentas tem de ser reconciliado
     // quando o PRODUTO muda; deixá-lo cá com o `motion` faria este gate exigir para sempre uma
     // tomada de conta que já não existe.*
-    for known in ["vector", "flip"] {
-        assert!(
-            takeover.iter().any(|t| t == known),
-            "controlo: a ponte do `{known}` faz a tomada de conta e o censo não a vê: {takeover:?}"
-        );
-    }
+    // ⛔ **O controlo por NOME (`vector`, `flip`) SAIU no mesmo dia**: ele exigia que aquelas duas
+    //    pontes fizessem a tomada de conta, e elas deixaram de a fazer. *Um controlo que nomeia
+    //    ferramentas tem de ser reconciliado quando o produto muda* — a nota logo acima já o dizia
+    //    do `motion`, em 2026-09-07, e a lição voltou dois dias depois com duas ferramentas.
 
     let mut named = 0usize;
     for l in ph2d_editor::screens::task_layout::TaskLayout::ALL {

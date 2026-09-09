@@ -211,7 +211,7 @@ pub fn params_of(world: &World, entity: Entity) -> Vec<(Param, Dim)> {
     match &node.shape {
         // Uma escultura tem pose e mais nada: o que ela é vive na malha.
         NodeShape::Sampled { .. } => {}
-        NodeShape::Combine(_) => {
+        NodeShape::Combine(op) => {
             out.push((
                 Param::Scale,
                 Dim {
@@ -244,6 +244,13 @@ pub fn params_of(world: &World, entity: Entity) -> Vec<(Param, Dim)> {
                     },
                 ));
             }
+            // ⭐⭐ **O SEGUNDO NÚMERO da mistura padrão deste grupo** (W145) — a meia-largura de um
+            // sulco, o desequilíbrio de um chanfro. ⚠️ **Derivado do [`ph2d_field::Blend::second`]**,
+            // que traz a chave e a faixa consigo: um carácter novo com dois números aparece aqui sem
+            // uma linha de mudança, e um sem eles não oferece controle nenhum.
+            if let Some(d) = op.blend().second() {
+                out.push((Param::Seam(0), d));
+            }
         }
         NodeShape::Leaf(p) => out.extend(
             ph2d_field::dims(p)
@@ -274,6 +281,11 @@ pub fn params_of(world: &World, entity: Entity) -> Vec<(Param, Dim)> {
                 span: Span::Positive,
             },
         ));
+        // ⭐⭐ **E o segundo número DELE** (W145), logo abaixo — ver [`Param::Seam`] para por que os
+        // dois slots não podem ser um.
+        if let Some(d) = op.blend().second() {
+            out.push((Param::Seam(1), d));
+        }
     }
     // ⭐⭐ **A RESOLUÇÃO do contorno vivo** (W55) — logo depois do que a forma mede, e antes do que
     // se fez a ela.
@@ -491,16 +503,53 @@ pub fn set_param(
             // a porta era única estava escrita neste comentário e era **falsa** — quem a apanhou foi
             // a prova de mutação, com o mutante de `with_amount` a sobreviver por não haver ninguém
             // a chamá-la. *Uma lei escrita em dois sítios ainda não é uma lei.*
-            let blend = op.blend().with_amount(value);
             crate::set_verb(
                 world,
                 entity,
-                Some(match op {
-                    ph2d_field::Op::Union(_) => ph2d_field::Op::Union(blend),
-                    ph2d_field::Op::Intersection(_) => ph2d_field::Op::Intersection(blend),
-                    ph2d_field::Op::Difference(_) => ph2d_field::Op::Difference(blend),
-                }),
+                Some(op.with_blend(op.blend().with_amount(value))),
             )
+        }
+        // ⭐⭐⭐ **O SEGUNDO NÚMERO DE UMA JUNTA** (W145) — a meia-largura de um sulco ou de um
+        // friso, o desequilíbrio de um chanfro.
+        //
+        // ⚠️ **Zero é RECUSADO aqui, ao contrário do [`Param::Joint`]**, e a assimetria é a
+        // geometria: um raio de junção a zero é a aresta viva, que é um estado legítimo e o de
+        // nascimento; uma meia-largura a zero é um canal sem largura — a junta perde o carácter sem
+        // que o chip mude, e o artista fica com um controle que apagou a própria feição. A faixa
+        // ([`ph2d_field::Span::Positive`]) já diz isso, e esta porta é quem o impõe.
+        Param::Seam(slot) => {
+            if value <= 0.0 {
+                return Err(FieldError::NonPositive {
+                    node: entity.to_bits() as u32,
+                    what: "seam",
+                });
+            }
+            match slot {
+                // A mistura que o próprio grupo oferece aos filhos calados.
+                0 => {
+                    let Some(mut node) = world.get_mut::<FieldNode>(entity) else {
+                        return Err(FieldError::BadRoot);
+                    };
+                    let NodeShape::Combine(op) = &mut node.shape else {
+                        return Err(FieldError::BadRoot);
+                    };
+                    *op = op.with_blend(op.blend().with_second(value));
+                    Ok(())
+                }
+                // A mistura com que ESTE nó se dobra nos irmãos — e escrever aqui **materializa o
+                // verbo**, exactamente como o [`Param::Joint`].
+                1 => {
+                    let Some(op) = crate::verb_role(world, entity).and_then(|r| r.op()) else {
+                        return Err(FieldError::BadRoot);
+                    };
+                    crate::set_verb(
+                        world,
+                        entity,
+                        Some(op.with_blend(op.blend().with_second(value))),
+                    )
+                }
+                _ => Err(FieldError::BadRoot),
+            }
         }
         // ⭐⭐ **O NÍVEL DE RESOLUÇÃO** (W55) — e escrever aqui não muda geometria nenhuma: muda a
         // **intenção**, e quem a converte é o recozimento do quadro seguinte.

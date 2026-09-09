@@ -56,3 +56,33 @@ fn the_row_loop_paints_the_section_header() {
          voltam a ficar no meio dos da forma, sem dizer de quem sao"
     );
 }
+
+/// ⭐⭐⭐ **A MESMA MINA, na OUTRA fileira que este painel pinta** (W145).
+///
+/// ⛔⛔ **O gate de cima existe desde 2026-08-30 e cobria só o `UnaryKind`.** A fileira do
+/// **carácter** usa exactamente o mesmo `MAX_MODES`, o mesmo `.take()` no pintor e o mesmo
+/// `apply_click` que devolve `None` para um id não registado — e não tinha censo nenhum. Ela passou
+/// de `3` para `7` entradas nesta wave, e a folga que a salvou foi a subida do teto que **outra**
+/// família pagou.
+///
+/// *Um teto partilhado por duas listas precisa de um censo por lista.*
+#[test]
+fn the_panel_has_a_slot_for_every_character() {
+    let n = ph2d_field::Character::ALL.len();
+    assert!(
+        n <= MAX_MODES as usize,
+        "há {n} caracteres de mistura e o painel regista {MAX_MODES} slots — os de mais nascem sem \
+         id no store, e o clique deles NÃO EXISTE"
+    );
+}
+
+/// ⛔ **O CONTROLO**, gémeo do da família de cima: igualdade não é folga, é a mina armada.
+#[test]
+fn the_slot_budget_still_has_room_for_the_next_character() {
+    let n = ph2d_field::Character::ALL.len();
+    assert!(
+        n < MAX_MODES as usize,
+        "o painel regista exactamente {MAX_MODES} slots para {n} caracteres — não há folga, e o \
+         próximo a nascer fica sem chip e sem clique"
+    );
+}

@@ -304,8 +304,83 @@ pub fn union_chamfer(a: &Tree, b: &Tree, r: f64) -> Tree {
     a.min(b.clone()).min(corte)
 }
 
+// ─────────────────── W145: as juntas que o pedido de 2026-09-09 trouxe ───────────────────
+
+/// ⭐⭐ **A união LISA de segunda ordem** — o polinómio de grau 3, `G2`.
+///
+/// `min(a,b) − h³k/6`, com `h = (k − |a − b|)⁺/k`. ⚠️ O `k` é o alcance **cru**: quem converte o
+/// raio entregue é a [`ph2d_field::Blend::SOFT_REACH`], no `blended`.
+///
+/// **Medido** contra o `Organic` e o `Fillet`, todos à mesma mordida: salto de curvatura `0,391`
+/// contra `1,290` e `2,880`, com `16` nós contra `20` e `18`.
+pub fn union_soft(a: &Tree, b: &Tree, k: f64) -> Tree {
+    let h = (Tree::constant(k) - (a.clone() - b.clone()).abs()).max(0.0) / Tree::constant(k);
+    a.min(b.clone()) - h.square() * h * Tree::constant(k / 6.0)
+}
+
+/// ⭐⭐⭐ **AS TRÊS DECORAÇÕES, COM A SUPERFÍCIE PASSADA DE FORA** — e é este argumento que as mantém
+/// **orientadas** nas três operações.
+///
+/// # ⛔⛔ Por que elas NÃO passam por De Morgan, e o resto desta crate passa
+///
+/// O dual de um sulco é um **friso**: `¬groove(¬a, ¬b)` dá, termo a termo, a fórmula da nervura com
+/// `d = max(a, b)` — *a conta está certa e o nome fica errado*. ⇒ um chip **Groove** numa subtração
+/// levantaria uma nervura à volta do furo, que é exactamente o modo de falha que esta casa mede
+/// desde 2026-08-30: **um controlo que faz o contrário do que o rótulo diz**.
+///
+/// ⭐⭐ **E isto NÃO é uma segunda resposta à mesma pergunta.** A lei de De Morgan deste ficheiro
+/// existe para que *«arredondar»* signifique o mesmo nas três operações; aqui ela **contraria** esse
+/// próprio propósito, porque a grandeza que o artista escolheu é uma **feição** e não um
+/// arredondamento. A fórmula continua a ser **UMA** — o que muda é a superfície que lhe é dada:
+/// `min(a,b)` na união, `max(a,b)` na intersecção. *Um parâmetro, não uma cópia.*
+///
+/// ⚠️ **`s` é o MESMO nos dois sentidos** (`|s|` é par em `a ↔ b`), então a costura não se move: o
+/// que se inverte é de que lado dela está a matéria.
+fn decoracao(d: &Tree, a: &Tree, b: &Tree, blend: Blended) -> Option<Tree> {
+    let s = || (a.clone() - b.clone()) * Tree::constant(FRAC_1_SQRT_2);
+    match blend {
+        // O tubo de raio `r` sobre o eixo da costura — sempre a ACRESCENTAR.
+        Blended::Bead(r) if r > 0.0 => Some(d.min(length2(a, b) - Tree::constant(r))),
+        // A caixa do canal (fundo a `depth` abaixo da superfície, paredes a `±width` da costura), e
+        // o `max` com `d` é o que a **escava** em vez de a desenhar no ar.
+        Blended::Groove { depth, width } if depth > 0.0 => {
+            Some(d.max((d.clone() + Tree::constant(depth)).min(Tree::constant(width) - s().abs())))
+        }
+        // A nervura: o mesmo com o `min` e o `max` trocados — sempre a LEVANTAR.
+        Blended::Ridge { height, width } if height > 0.0 => {
+            Some(d.min((d.clone() - Tree::constant(height)).max(s().abs() - Tree::constant(width))))
+        }
+        _ => None,
+    }
+}
+
+/// ⭐⭐ **O CHANFRO DE DOIS RECUOS** — `r` de um lado, `r·bias` do outro.
+///
+/// O plano é `a/ca + b/cb = 1`, e o divisor `‖(1/ca, 1/cb)‖` torna-o uma **distância** — sem ele o
+/// campo subiria mais depressa do que a geometria e a marcha furaria a peça.
+///
+/// ⭐ **Com `bias = 1` ele É a [`union_chamfer`], termo a termo:** `ca = cb = r` dá
+/// `(a/r + b/r − 1)·r/√2 = (a + b − r)/√2`. O `if` abaixo devolve a outra função de propósito, para
+/// o caminho simétrico ficar com a **mesma árvore** que sempre teve.
+pub fn union_bevel(a: &Tree, b: &Tree, r: f64, bias: f64) -> Tree {
+    if (bias - 1.0).abs() < 1.0e-9 {
+        return union_chamfer(a, b, r);
+    }
+    let (ca, cb) = (r, r * bias);
+    let norma = (ca.powi(-2) + cb.powi(-2)).sqrt();
+    let plano = (a.clone() * Tree::constant(1.0 / ca) + b.clone() * Tree::constant(1.0 / cb)
+        - Tree::constant(1.0))
+        * Tree::constant(1.0 / norma);
+    a.min(b.clone()).min(plano)
+}
+
 /// Intersecção, com o mesmo caráter de mistura da união — **por De Morgan**.
 pub fn intersection(a: &Tree, b: &Tree, blend: Blended) -> Tree {
+    // ⭐⭐⭐ **A superfície da INTERSECÇÃO é `max(a, b)`**, e as três decorações recebem-na em vez de
+    // virem pelo dual — que lhes trocaria o nome. Ver [`decoracao`].
+    if let Some(t) = decoracao(&a.max(b.clone()), a, b, blend) {
+        return t;
+    }
     neg(&union(&neg(a), &neg(b), blend))
 }
 
@@ -322,11 +397,34 @@ pub enum Blended {
     /// ⭐⭐⭐ **O CHANFRO** (W99) — o corte reto a 45º. Ver [`union_chamfer`].
     Chamfer(f64),
     Organic(f64),
+    /// ⭐ W145 — o polinómio de grau 3. O `f64` é o alcance **cru**, já calibrado pelo `blended`.
+    Soft(f64),
+    /// ⭐ W145 — o cordão sobre a costura. Ver [`decoracao`].
+    Bead(f64),
+    /// ⭐ W145 — o sulco. Ver [`decoracao`].
+    Groove {
+        depth: f64,
+        width: f64,
+    },
+    /// ⭐ W145 — o friso. Ver [`decoracao`].
+    Ridge {
+        height: f64,
+        width: f64,
+    },
+    /// ⭐ W145 — o chanfro de dois recuos. Ver [`union_bevel`].
+    Bevel {
+        recess: f64,
+        bias: f64,
+    },
 }
 
 /// A união, escolhendo a fórmula pelo caráter. **Os outros dois operadores passam por aqui** — é o
 /// que garante que "arredondar" signifique a mesma coisa nas três operações.
 pub fn union(a: &Tree, b: &Tree, blend: Blended) -> Tree {
+    // ⭐ A superfície da UNIÃO é `min(a, b)`. Ver [`decoracao`] para por que ela é passada de fora.
+    if let Some(t) = decoracao(&a.min(b.clone()), a, b, blend) {
+        return t;
+    }
     match blend {
         // ⚠️ Raio zero cai no caminho DURO de propósito: `union_round(_, _, 0.0)` seria
         // algebricamente equivalente, mas passaria por um `max`/`length` a mais em cada avaliação,
@@ -338,5 +436,16 @@ pub fn union(a: &Tree, b: &Tree, blend: Blended) -> Tree {
         Blended::Exact(r) => union_round(a, b, r),
         Blended::Chamfer(r) => union_chamfer(a, b, r),
         Blended::Organic(k) => union_smooth(a, b, k),
+        // ⚠️ **A mesma cerca do zero, e pela mesma razão** (W145): com o número a zero as fórmulas
+        // são algebricamente a união dura, e tomar o ramo duro poupa nós numa árvore que o traçado
+        // avalia milhões de vezes por quadro. ⛔ Um sulco de profundidade zero **não** é uma junta
+        // viva com um nome — é a união dura, e é isso que ele tem de avaliar.
+        Blended::Soft(k) if k <= 0.0 => union_sharp(a, b),
+        Blended::Bevel { recess, .. } if recess <= 0.0 => union_sharp(a, b),
+        Blended::Soft(k) => union_soft(a, b, k),
+        Blended::Bevel { recess, bias } => union_bevel(a, b, recess, bias),
+        // ⚠️ As três decorações já saíram pelo desvio no topo desta função; com o número a zero
+        // elas caem aqui, e a resposta é a união dura — a mesma cerca de todos os outros.
+        Blended::Bead(_) | Blended::Groove { .. } | Blended::Ridge { .. } => union_sharp(a, b),
     }
 }

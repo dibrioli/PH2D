@@ -184,3 +184,94 @@ pub(crate) fn cena_17() -> Result<FieldDoc, ph2d_field::FieldError> {
         NodeId(3),
     )
 }
+
+/// ⭐⭐⭐ **AS CINCO JUNTAS NOVAS, lado a lado sobre a MESMA peça** (W145, pedido do Enio de 09/09).
+///
+/// # Por que um SALIENTE SOBRE UMA CHAPA, e não duas caixas a cruzar
+///
+/// A costura de um saliente sobre uma chapa é um **anel fechado**, e é a figura em que estas juntas
+/// existem para trabalhar: um cordão de solda corre à volta da base, uma linha de painel contorna-a,
+/// um friso reforça-a. ⚠️ **Duas caixas a cruzar dariam uma costura RECTA**, e uma decoração recta
+/// lê-se como um bisel — *a metade que interessa é a costura VIRAR, e só uma costura fechada a
+/// mostra*.
+///
+/// ⭐ E as seis peças são a **mesma geometria**: o que muda de uma para a outra é uma palavra.
+pub(crate) fn cena_32() -> Result<FieldDoc, ph2d_field::FieldError> {
+    println!(
+        "[field-smoke] cena 32 — AS JUNTAS NOVAS, da esquerda para a direita: \
+         Fillet (referência) · Soft · Bead · Groove · Ridge · Chamfer desigual"
+    );
+    println!(
+        "[field-smoke]            a peça é a MESMA nas seis; o que muda é o carácter da junta \
+         entre o saliente e a chapa."
+    );
+    const PASSO: f32 = 0.62;
+    const R: f32 = 0.06;
+    // ⚠️⚠️ **A ESPESSURA DA CHAPA É LOAD-BEARING**: o sulco escava `R` a partir da superfície, e
+    // numa chapa fina ele **perfura** — o que se veria como um rasgo à volta da base e se leria como
+    // um defeito da peça, não como a feição. Com `0,14` de espessura e `R = 0,06` sobram `0,08`, e o
+    // gate `the_new_junctions_scene_does_not_perforate_the_plate` mede-o.
+    //
+    // ⚠️ **E o saliente ENTRA na chapa** (`z` de `−0,04` a `0,44`) em vez de pousar nela: duas faces
+    // exactamente coincidentes são o caso degenerado de toda booleana, e a costura de uma união
+    // assim é uma REGIÃO em vez de uma curva.
+    let chapa = |x: f32| {
+        leaf(
+            Primitive::Box {
+                half: [0.26, 0.26, 0.07],
+                round: 0.0,
+                chamfer: 0.0,
+            },
+            Xform {
+                translation: [x, 0.0, -0.07],
+                ..Xform::IDENTITY
+            },
+        )
+    };
+    let saliente = |x: f32| {
+        leaf(
+            Primitive::Box {
+                half: [0.12, 0.12, 0.24],
+                round: 0.0,
+                chamfer: 0.0,
+            },
+            Xform {
+                translation: [x, 0.0, 0.20],
+                ..Xform::IDENTITY
+            },
+        )
+    };
+    let juntas = [
+        Blend::Exact { radius: R },
+        Blend::Soft { radius: R },
+        Blend::Bead { radius: R },
+        Blend::Groove {
+            radius: R,
+            width: R * Blend::SEAM_WIDTH_RATIO,
+        },
+        Blend::Ridge {
+            radius: R,
+            width: R * Blend::SEAM_WIDTH_RATIO,
+        },
+        Blend::Bevel {
+            radius: R,
+            bias: 3.0,
+        },
+    ];
+    let mut nodes = Vec::new();
+    let mut grupos = Vec::new();
+    for (i, b) in juntas.into_iter().enumerate() {
+        #[allow(clippy::cast_precision_loss)]
+        let x = (i as f32 - 2.5) * PASSO;
+        let base = NodeId(nodes.len() as u32);
+        nodes.push(chapa(x));
+        nodes.push(saliente(x));
+        grupos.push(NodeId(nodes.len() as u32));
+        nodes.push(combine(Op::Union(b), vec![base, NodeId(base.0 + 1)]));
+    }
+    // ⚠️ **O topo é `Sharp`**, e é load-bearing: com uma mistura aqui as seis peças derretiam umas
+    // nas outras e nenhuma das seis leituras seria a da junta que ela nomeia.
+    let raiz = NodeId(nodes.len() as u32);
+    nodes.push(combine(Op::Union(Blend::Sharp), grupos));
+    FieldDoc::new(nodes, raiz)
+}

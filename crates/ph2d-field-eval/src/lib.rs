@@ -157,6 +157,25 @@ fn blended(b: Blend) -> ops::Blended {
         Blend::Organic { radius } => {
             ops::Blended::Organic(f64::from(radius * Blend::ORGANIC_REACH))
         }
+        // ⭐ **A mesma calibração, com o grau dentro** (W145) — ver [`Blend::SOFT_REACH`].
+        Blend::Soft { radius } => ops::Blended::Soft(f64::from(radius * Blend::SOFT_REACH)),
+        // ⚠️ **As três seguintes NÃO são calibradas, e a diferença é o que o número significa.** O
+        // `Organic` e o `Soft` precisam de conversão porque o alcance cru deles não é um raio; aqui
+        // o número **é** a grandeza (a espessura do cordão, a profundidade do sulco, a altura do
+        // friso), e multiplicá-lo por um factor faria o slider mentir.
+        Blend::Bead { radius } => ops::Blended::Bead(f64::from(radius)),
+        Blend::Groove { radius, width } => ops::Blended::Groove {
+            depth: f64::from(radius),
+            width: f64::from(width),
+        },
+        Blend::Ridge { radius, width } => ops::Blended::Ridge {
+            height: f64::from(radius),
+            width: f64::from(width),
+        },
+        Blend::Bevel { radius, bias } => ops::Blended::Bevel {
+            recess: f64::from(radius),
+            bias: f64::from(bias),
+        },
     }
 }
 

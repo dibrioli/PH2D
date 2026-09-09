@@ -239,7 +239,124 @@ uma delas é a mais barata da tabela.*
 
 ---
 
-## §8 — Aberto
+## §8 — W145: o que a pesquisa virou PRODUTO (ordem do Enio, 09/09: *«vamos lá»*)
+
+A fileira de caracteres passa de **3 para 7** chips, e ela é derivada do `Character::ALL` — logo
+aparece na UI sem uma linha de painel. `FIELD_DOC_VERSION` **21 -> 22**; ⭐ **o `PROJECT_SCHEMA` NÃO
+sobe**, e a razão está registada na escada dele: as variantes entram no **fim** do `Blend`, logo
+nenhum índice do `postcard` se move e todo `FieldVerb` já gravado lê-se ao bit.
+
+| chip | o que é | segundo número |
+|---|---|---|
+| **Soft** | a transição lisa `G2` — o `Organic` um grau acima | — |
+| **Bead** | o cordão sobre a costura | — |
+| **Groove** | o sulco (linha de painel) | *Seam Width* |
+| **Ridge** | o friso | *Seam Width* |
+| (**Chamfer**) | ganhou *Chamfer Bias* — o corte desigual | *Chamfer Bias* |
+
+### §8.1 — As três decisões que a MEDIÇÃO tomou, contra o que eu tinha prometido
+
+1. ⛔ **A «fileira do cheio» colapsou num chip só.** A lei desta casa manda todos os caracteres
+   entregarem a **mesma mordida**; calibrada assim, a norma-`p` a `p = 4` entrega **a mesma peça**
+   que o polinómio cúbico — recuo `0,3812` contra `0,3907`, `2,4 %`. *Dois chips para um look é
+   ruído numa fileira*, e o cúbico é o mais barato dos dois (`16` nós contra `22`).
+2. ⛔ **A gravação em V ficou de fora**: `‖∇f‖ = 1,6591` a 30°, **acima** do `√2` que o balde da
+   marcha paga. Ela precisa da mesma cura de recuo/normalização que a W111 deu ao chanfro.
+3. ⭐ **O chanfro desigual não ganhou chip.** A pergunta *«que forma tem esta junta?»* tem uma
+   resposta — «um corte reto» —, e o desequilíbrio é um **número** dela. `bias = 1,0` volta a ser um
+   `Chamfer` (byte a byte), e há gate a provar que as duas leis dão o mesmo campo com diferença
+   **`0,000e0`**.
+
+### §8.2 — O `SOFT_REACH` é ANALÍTICO, e os dois números são a mesma lei
+
+O polinómio de grau `n` desce `k/(2n − 2)` onde as duas superfícies estão à distância `d`; igualar
+isso à mordida do filete (`d/√2`) dá `k = 2(n − 1)(1 − 1/√2)·d`:
+
+| grau | dip | alcance cru |
+|---|---|---|
+| 2 (`Organic`) | `k/4` | `4 − 2√2` |
+| 3 (`Soft`) | `k/6` | **`6 − 3√2`** |
+
+⚠️ **Previsto e depois medido:** a sonda correu o cúbico a `k = 1,6 r` e leu mordida `0,0943`; a
+forma fechada dá `0,09428`. O gate `the_four_characters_measure_the_same_radius` prende a constante
+pelo caminho do produto.
+
+### §8.3 — O balde da marcha, medido pelo caminho do PRODUTO
+
+`the_seam_characters_stay_inside_the_march_bucket`, sobre um `FieldDoc` real, de 30° a 150°:
+
+| carácter | 30° | 60° | 90° | 120° | 150° |
+|---|---:|---:|---:|---:|---:|
+| `Soft` | 0,9937 | 1,0000 | 1,0000 | 1,0000 | 1,0000 |
+| `Bead` | **1,3660** | 1,2247 | 1,0000 | 1,2247 | **1,3660** |
+| `Groove` / `Ridge` | 1,0000 | 1,0000 | 1,0000 | 1,2247 | **1,3660** |
+| `Bevel` | 1,2638 | 1,1597 | 1,0000 | 1,0000 | 1,0000 |
+
+⇒ todas **dentro** do `√2` que o `Exact` já paga: nenhuma marcha nova, nenhum passo perdido. O
+`Soft` entra no balde do `Organic` por não inflar em ângulo nenhum.
+
+### §8.4 — ⛔⛔ O DUAL DE UM SULCO É UM FRISO, e por isso as decorações NÃO passam por De Morgan
+
+Esta crate combina por De Morgan de propósito: *«uma fórmula a mais seria a segunda resposta à mesma
+pergunta»*. ⚠️ **Para as três decorações, honrar essa regra produz o defeito que ela existe para
+evitar.** `¬groove(¬a, ¬b)` dá, termo a termo, a fórmula da nervura com `d = max(a,b)` — a conta está
+certa e o **nome** fica errado: um chip `Groove` numa **subtração** levantaria uma nervura à volta do
+furo. *Um controlo que faz o contrário do que o rótulo diz.*
+
+⭐⭐ **E a cura não é uma segunda fórmula: é um ARGUMENTO.** As três passam a receber a superfície
+(`min(a,b)` na união, `max(a,b)` na intersecção) em vez de a deduzir — uma função, um parâmetro.
+*A lei de De Morgan existe para que «arredondar» signifique o mesmo nas três operações; aqui ela
+contrariava esse propósito, porque a grandeza escolhida é uma **feição** e não um arredondamento.*
+
+Medido (`a_groove_carves_and_a_ridge_lifts_in_all_three_operations`, células que mudam de lado):
+
+| operação | sulco | friso | cordão |
+|---|---|---|---|
+| União | **−8 868 / +0** | −0 / **+26 940** | −0 / **+10 768** |
+| Intersecção | **−2 592 / +0** | −0 / **+20 800** | −0 / **+17 248** |
+| Subtração | **−3 240 / +0** | −0 / **+11 532** | −0 / **+16 412** |
+
+⇒ cada coluna é **de um lado só**: o sulco nunca põe, o friso e o cordão nunca tiram.
+
+### §8.5 — O que a construção apanhou e que a pesquisa não tinha visto
+
+- ⛔⛔ **O `Chamfer` NUNCA esteve no corpus da paridade numérica** (`the_numeric_law_is_the_same_law_as_the_tree`)
+  — ele existe desde a W99 e a lei em `f32` dele passou um bloco inteiro **sem juiz**. *Um corpus
+  escrito à mão envelhece com cada variante nova, e não há gate que o diga.* Hoje a lista tem as
+  nove misturas.
+- ⛔⛔ **A fileira do CARÁCTER partilhava o `MAX_MODES` com a dos modificadores e não tinha censo.**
+  O gate de 2026-08-30 cobria só o `UnaryKind`; a fileira de caracteres passou de `3` para `7` e a
+  folga que a salvou foi a subida de teto que **outra** família pagou. ⇒ `the_panel_has_a_slot_for_every_character`.
+- ⚠️ **A minha régua do recuo mediu os EIXOS numa bancada que põe as paredes a `±45°`** e leu
+  `1,0000` contra `0,0000`. *A bancada de todo o resto deste módulo é ortogonal, e eu escrevi a
+  régua como se esta também fosse.* Curada, e com **controlo**: a mesma régua sobre o chanfro
+  simétrico tem de ler `1,000`.
+- ⭐ **Um `match` que reconstrói um `Op` estava escrito em dois sítios e eu ia escrever o terceiro**
+  — virou a porta `Op::with_blend`.
+
+### §8.6 — Smoke
+
+```
+cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-3DModeling && env PH2D_FIELD_SMOKE=32 cargo run -p ph2d-host-desktop --release
+```
+
+Seis salientes sobre chapa, a mesma geometria nos seis: **Fillet · Soft · Bead · Groove · Ridge ·
+Chamfer desigual**. ⚠️ A costura de um saliente sobre uma chapa é um **anel fechado** — duas caixas
+a cruzar dariam uma costura recta, e uma decoração recta lê-se como um bisel; *a metade que
+interessa é a costura VIRAR*.
+
+---
+
+## §9 — Aberto
+
+- ⏳ **As juntas novas valem entre FORMAS, não entre CÓPIAS de uma repetição.** A costura de uma
+  `Array` ou de uma `Radial` passa pelo [`ph2d_field::Joint`] (`chamfer` + `fillet`), que é outro
+  tipo e outro caminho ([`ops_joint`](../../crates/ph2d-field-eval/src/ops_joint.rs)). Levá-las lá é
+  uma wave própria, e a pergunta que a abre é se um `Joint` deve virar um `Blend` ou ganhar um
+  carácter ao lado dos dois números.
+- ⏳ **A gravação em V** espera a cura de recuo/normalização da W111 (mede `1,6591`).
+- ⏳ **A escada e a colunata** estão medidas e não construídas (`18` e `32` nós, `‖∇f‖ = 1,0000`) —
+  ficaram fora da ordem de 09/09 por não estarem na recomendação que ela aprovou.
 
 - A calibração do `k` do cúbico (`G2`) contra a régua da mordida, como o `ORGANIC_REACH` foi feita.
 - O `‖∇f‖ = 1,4142` da plenitude a `p = 1`: é o **mesmo balde** que o `Exact` já paga, mas o

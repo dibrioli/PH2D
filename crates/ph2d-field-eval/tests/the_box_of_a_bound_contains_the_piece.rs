@@ -223,7 +223,34 @@ fn the_box_of_a_union_contains_every_child() {
     let q = std::f32::consts::FRAC_1_SQRT_2;
     let mut maus = Vec::new();
     let mut medidos = 0usize;
-    for junta in [0.0f32, 0.10] {
+    // ⭐⭐⭐ **TODAS as misturas, e não só o filete exacto** (W145): o bordo cresce por
+    // `Blend::amount()`, e uma junta cujo material passe desse número **recorta a peça** na marcha e
+    // na exportação — sem erro nenhum, com outra peça na tela.
+    //
+    // ⚠️ **O caso que obrigou a lista:** o `Bevel` recua `radius × bias` numa das faces, e `bias`
+    // não entra na conta do bordo. A geometria salva-o — o plano do corte dista
+    // `1/‖(1/ca, 1/cb)‖ ≤ radius` da quina, para QUALQUER desequilíbrio — mas *uma demonstração ao
+    // lado de um número não é a mesma coisa que uma medição sobre ele*.
+    for junta in [
+        Blend::Sharp,
+        Blend::Exact { radius: 0.10 },
+        Blend::Chamfer { radius: 0.10 },
+        Blend::Organic { radius: 0.10 },
+        Blend::Soft { radius: 0.10 },
+        Blend::Bead { radius: 0.10 },
+        Blend::Groove {
+            radius: 0.10,
+            width: 0.07,
+        },
+        Blend::Ridge {
+            radius: 0.10,
+            width: 0.07,
+        },
+        Blend::Bevel {
+            radius: 0.10,
+            bias: 3.0,
+        },
+    ] {
         for poses in [
             // ⭐ A cruz da foto: os três no MESMO centro e com o MESMO raio, que é o que faz o
             // atalho da esfera disparar.
@@ -261,7 +288,7 @@ fn the_box_of_a_union_contains_every_child() {
                 .map(|(i, x)| {
                     let mut no = ph2d_field::Node::new(*x, NodeKind::Leaf(cil.clone()));
                     if i > 0 {
-                        no.verb = Some(Op::Union(Blend::Exact { radius: junta }));
+                        no.verb = Some(Op::Union(junta));
                     }
                     no
                 })
@@ -286,7 +313,8 @@ fn the_box_of_a_union_contains_every_child() {
                 let cabe = f64::from(c[e].abs() + h[e]) * 1.002;
                 if alcance[e] > cabe {
                     maus.push(format!(
-                        "{n} cilindros junta {junta}: eixo {e} chega a {:.4} e a caixa diz {cabe:.4}",
+                        "{n} cilindros junta {junta:?}: eixo {e} chega a {:.4} e a caixa diz \
+                         {cabe:.4}",
                         alcance[e]
                     ));
                 }

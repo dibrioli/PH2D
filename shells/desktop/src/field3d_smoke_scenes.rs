@@ -541,6 +541,8 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
         30 => formula::cena_30(),
         // ⭐⭐⭐ As DUAS ÚLTIMAS FORMAS da W139 — ver [`formula::cena_31`].
         31 => formula::cena_31(),
+        // ⭐⭐⭐ AS CINCO JUNTAS NOVAS da W145 — ver [`edge::cena_32`].
+        32 => edge::cena_32(),
         _ => {
             println!(
                 "[field-smoke] cena 1 — junção de 3 cilindros: filete interno 0,12 + aros externos 0,05"

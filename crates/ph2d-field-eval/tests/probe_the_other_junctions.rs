@@ -29,6 +29,10 @@ use std::f64::consts::{FRAC_1_SQRT_2, SQRT_2};
 
 /// O piso da raiz — o mesmo da [`ph2d_field_eval::ops`], para a derivada não ser `NaN` na origem.
 const PISO: f64 = 1.0e-30;
+/// A assinatura de uma junta desta bancada — nomeada porque o `clippy` conta o tipo cru como
+/// complexo, e ele tem razão: `(&str, Box<dyn Fn…>)` num `Vec` lê-se pior do que uma palavra.
+type Junta = Box<dyn Fn(&Tree, &Tree) -> Tree>;
+
 /// O tamanho de junta de toda a bancada. ⚠️ Um número só, senão as colunas não se comparam.
 const R: f64 = 0.25;
 
@@ -564,4 +568,129 @@ fn probe_the_seam_is_found_not_given() {
     }
     let (nos, ns) = custo(&sulco(&esfera, &chapa, 0.10, 0.07));
     println!("\n  sulco sobre costura curva: {nos} nós, {ns:.2} ns/ponto");
+}
+
+/// ⭐⭐⭐ **E FORA DOS 90°?** — a bancada acima é ortogonal, e `s = (a−b)/√2` só é uma distância
+/// exacta quando os dois gradientes são perpendiculares.
+///
+/// ⚠️ **É a pergunta que decide se estas juntas entram no produto:** o passo da marcha é do
+/// DOCUMENTO, logo uma junta que infle o gradiente num diedro agudo atrasa a cena inteira.
+#[test]
+#[ignore = "sonda: as decoracoes aguentam um diedro que nao seja recto?"]
+fn probe_the_seam_decorations_off_ninety() {
+    println!("\n⭐ `‖∇f‖` DE CADA JUNTA CONTRA O ÂNGULO ENTRE AS FACES\n");
+    println!(
+        "  {:<22} | {:>7} | {:>7} | {:>7} | {:>7} | {:>7} | {:>7}",
+        "junta", "30°", "60°", "90°", "120°", "150°", "pior"
+    );
+    println!("  {}", "-".repeat(80));
+    // O diedro interno `2α` sai de duas faces cujas normais exteriores fazem `−cos 2α`.
+    let cunha = |graus: f64| -> (Tree, Tree) {
+        let meia = graus.to_radians() * 0.5;
+        // `a` é o semiespaço rodado `+meia` da vertical, `b` o rodado `−meia`.
+        let (c, s) = (meia.cos(), meia.sin());
+        (
+            Tree::x() * k(c) + Tree::y() * k(s),
+            Tree::x() * k(-c) + Tree::y() * k(s),
+        )
+    };
+    let juntas: Vec<(&str, Junta)> = vec![
+        (
+            "Fillet (referência)",
+            Box::new(|a: &Tree, b: &Tree| arco(a, b, R)),
+        ),
+        (
+            "Chamfer (referência)",
+            Box::new(|a: &Tree, b: &Tree| corte(a, b, R)),
+        ),
+        (
+            "cordão de solda",
+            Box::new(|a: &Tree, b: &Tree| cordao(a, b, R * 0.7)),
+        ),
+        (
+            "sulco",
+            Box::new(|a: &Tree, b: &Tree| sulco(a, b, R * 0.5, R * 0.35)),
+        ),
+        (
+            "friso",
+            Box::new(|a: &Tree, b: &Tree| friso(a, b, R * 0.5, R * 0.35)),
+        ),
+        (
+            "gravação em V",
+            Box::new(|a: &Tree, b: &Tree| gravado(a, b, R * 0.6)),
+        ),
+        (
+            "escada n = 3",
+            Box::new(|a: &Tree, b: &Tree| escada(a, b, R, 3.0)),
+        ),
+        (
+            "Organic G2",
+            Box::new(|a: &Tree, b: &Tree| derretido_g2(a, b, R * 1.6)),
+        ),
+    ];
+    for (nome, faz) in &juntas {
+        let mut col = Vec::new();
+        for g in [30.0, 60.0, 90.0, 120.0, 150.0] {
+            let (a, b) = cunha(g);
+            col.push(pior_gradiente(&Field::from_tree(&faz(&a, &b))));
+        }
+        let pior = col.iter().copied().fold(0.0f64, f64::max);
+        println!(
+            "  {nome:<22} | {:7.4} | {:7.4} | {:7.4} | {:7.4} | {:7.4} | {pior:7.4}",
+            col[0], col[1], col[2], col[3], col[4]
+        );
+    }
+    println!("\n  ⚠️ A barra é `1,4142`: é o balde que o `Exact` desta casa JÁ paga.\n");
+}
+
+/// ⭐⭐⭐ **A LEI DA CASA APLICADA ÀS CANDIDATAS: todas com a MESMA MORDIDA.**
+///
+/// ⚠️ **É a régua que decide o que vira chip.** O `Character` desta casa promete que trocar de
+/// carácter com o mesmo número **deixa o canto onde está** — logo cada candidata tem de ser
+/// calibrada pela mordida antes de se perguntar se ela é sequer distinguível das outras.
+///
+/// A mordida do filete exacto é `r(√2 − 1)`; daí sai o alcance cru de cada família:
+///
+/// | família | dip no centro | alcance cru |
+/// |---|---|---|
+/// | polinomial grau 2 (`Organic`) | `k/4` | `4(1 − 1/√2)·r` |
+/// | polinomial grau 3 (`Soft`) | `k/6` | `6(1 − 1/√2)·r` |
+/// | norma-`p` | — | `(1 − 1/√2)/(1 − 2^{−1/p})·r` |
+#[test]
+#[ignore = "sonda: com a mesma mordida, as candidatas ainda se distinguem?"]
+fn probe_the_characters_at_the_same_bite() {
+    let (a, b) = paredes();
+    let bite = R * (SQRT_2 - 1.0);
+    let alcance_p = |p: f64| R * (1.0 - FRAC_1_SQRT_2) / (1.0 - (-1.0 / p * 2.0f64.ln()).exp());
+    println!("\n⭐ TODAS COM A MESMA MORDIDA ({bite:.4}) — o que sobra de diferente é a FORMA\n");
+    cabecalho();
+    linha("Fillet", &arco(&a, &b, R));
+    linha(
+        "Organic (grau 2)",
+        &derretido(&a, &b, R * (4.0 - 2.0 * SQRT_2)),
+    );
+    linha(
+        "Soft (grau 3)",
+        &derretido_g2(&a, &b, R * (6.0 - 3.0 * SQRT_2)),
+    );
+    linha(
+        "plenitude p = 4",
+        &plenitude_barata(&a, &b, alcance_p(4.0), 4.0),
+    );
+    linha(
+        "plenitude p = 8",
+        &plenitude_barata(&a, &b, alcance_p(8.0), 8.0),
+    );
+    println!(
+        "\n  ⚠️ Se o RECUO de duas delas coincidir, elas dão a mesma peça e uma das duas é ruído\n     na fileira de chips.\n"
+    );
+    seccao(&Field::from_tree(&arco(&a, &b, R)), "Fillet");
+    seccao(
+        &Field::from_tree(&derretido_g2(&a, &b, R * (6.0 - 3.0 * SQRT_2))),
+        "Soft (grau 3)",
+    );
+    seccao(
+        &Field::from_tree(&plenitude_barata(&a, &b, alcance_p(4.0), 4.0)),
+        "plenitude p = 4",
+    );
 }

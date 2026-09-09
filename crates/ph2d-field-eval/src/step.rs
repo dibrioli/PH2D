@@ -270,9 +270,30 @@ pub fn field_shrink(doc: &FieldDoc, reg: &crate::hybrid::Registry) -> f32 {
 ///
 /// ⚠️ **Raio zero não infla**, e não é um caso de borda: é como o produto exprime *«junta viva»*
 /// (o slider do filete a zero), e é o estado em que toda peça nasce.
+/// ⭐⭐⭐ **E as juntas da W145 estão MEDIDAS contra o ângulo, não supostas** — o `s = (a−b)/√2` das
+/// decorações só é distância exacta com os gradientes perpendiculares, então a pergunta tinha de ser
+/// feita fora dos 90° (`probe_the_seam_decorations_off_ninety`):
+///
+/// | junta | 30° | 60° | 90° | 120° | 150° | pior |
+/// |---|---:|---:|---:|---:|---:|---:|
+/// | `Bead` | `1,3660` | `1,2247` | `1,0000` | `1,2247` | `1,3660` | **`1,3660`** |
+/// | `Groove` / `Ridge` | `1,3660` | `1,2247` | `1,0000` | `1,0000` | `1,0000` | **`1,3660`** |
+/// | `Soft` | `1,0000` | `1,0000` | `1,0000` | `1,0000` | `0,9962` | **`1,0000`** |
+///
+/// ⇒ as três decorações cabem **no balde que já existe** (o `√2` do `Exact`, `1,4142`), e o `Soft`
+/// entra no balde do `Organic` por não inflar em ângulo nenhum.
+///
+/// ⚠️ **O `Bevel` conta como chanfro** — ele é um plano, como o chanfro, e o termo dele tem
+/// gradiente acima de `1` onde as normais se alinham. *Ele não foi medido com a varredura de
+/// ângulos, e por isso fica no lado seguro: um balde a mais custa relógio, um a menos FURA.*
 fn inflates(blend: Blend) -> bool {
     match blend {
-        Blend::Exact { radius } | Blend::Chamfer { radius } => radius != 0.0,
-        Blend::Sharp | Blend::Organic { .. } => false,
+        Blend::Exact { radius }
+        | Blend::Chamfer { radius }
+        | Blend::Bead { radius }
+        | Blend::Groove { radius, .. }
+        | Blend::Ridge { radius, .. }
+        | Blend::Bevel { radius, .. } => radius != 0.0,
+        Blend::Sharp | Blend::Organic { .. } | Blend::Soft { .. } => false,
     }
 }

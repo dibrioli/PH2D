@@ -42,6 +42,68 @@ pub enum Blend {
     /// três mentiria uma fracção fixa, sempre. *Quatro caracteres numa fileira têm de medir a mesma
     /// coisa, senão trocar de carácter muda o tamanho da peça.*
     Organic { radius: f32 },
+    // ─────────────────── W145 (pedido do Enio, 2026-09-09) ───────────────────
+    //
+    // ⚠️⚠️ **AS CINCO SEGUINTES SÃO APENDIDAS, e isso é load-bearing.** O `postcard` numera as
+    // variantes pela ORDEM de declaração, e uma `Blend` viaja posicionalmente dentro do blob do
+    // componente `ph2d_field_ecs::FieldVerb`. Acrescentar no FIM não move índice nenhum ⇒ toda
+    // peça já gravada lê-se ao bit e o `PROJECT_SCHEMA` **não sobe**. ⛔ Pôr uma delas no meio, ou
+    // acrescentar um campo a uma das quatro de cima, mudaria os bytes de valores que já existem —
+    // e aí o degrau de schema é obrigatório (é o que os degraus 109 e 110 do `project_schema`
+    // registam).
+    /// ⭐⭐⭐ **A transição LISA de segunda ordem** (W145) — a mesma família do [`Blend::Organic`],
+    /// um grau acima.
+    ///
+    /// O `Organic` é um polinómio de grau 2 e é `G1`: a **curvatura** dá um degrau onde a mistura
+    /// começa, e é esse degrau que uma luz de estúdio desenha como uma banda na peça. Este é de
+    /// grau 3 e é `G2` — o brilho corre pela junta sem a marca.
+    ///
+    /// **Medido** (`probe_the_other_junctions`, canto de 90°, todos à MESMA mordida): salto de
+    /// curvatura `0,391` contra `1,290` do `Organic` e `2,880` do `Fillet` — `7,4×` mais liso que o
+    /// filete —, com `16` nós contra `20` e `18`. *É mais liso E mais barato que os dois.*
+    ///
+    /// ⚠️ **`radius` é o RAIO ENTREGUE**, como no `Organic`; a calibração é a [`Blend::SOFT_REACH`].
+    ///
+    /// ⛔⛔ **E é ele que fecha a «fileira do cheio» numa entrada só.** A família da norma-`p`
+    /// (`p = 4`, o «arco apertado») foi construída e medida: **à mesma mordida ela entrega a mesma
+    /// peça** que este (recuo `0,3812` contra `0,3907`, `2,4 %`). *Dois chips para um look é ruído
+    /// numa fileira*, e a medição escolheu o mais barato dos dois.
+    Soft { radius: f32 },
+    /// ⭐⭐⭐ **O CORDÃO sobre a costura** (W145) — um tubo de raio `radius` a correr por cima do
+    /// encontro, como um cordão de solda, de cola ou de vedante.
+    ///
+    /// ⚠️ **Ele ACRESCENTA matéria onde as outras misturas só suavizam**, e é o único carácter que
+    /// dá um vinco vivo de propósito: um cordão real encontra a chapa com uma quina, e é isso que o
+    /// faz ler como cordão.
+    ///
+    /// **Medido:** `13` nós e `1,17` ns/ponto — **a junta mais barata de todas**, mais barata que o
+    /// `Fillet` que já shipa.
+    Bead { radius: f32 },
+    /// ⭐⭐⭐ **O SULCO ao longo da costura** (W145) — um canal escavado sobre o encontro, que é a
+    /// «linha de painel» com que uma peça passa a ler como montada de partes.
+    ///
+    /// `radius` é a **profundidade** e `width` a **meia-largura**. Ver [`Blend::second`] para por
+    /// que o segundo número tem linha própria no painel.
+    Groove { radius: f32, width: f32 },
+    /// ⭐⭐⭐ **O FRISO ao longo da costura** (W145) — o oposto do [`Blend::Groove`]: uma nervura
+    /// levantada sobre o encontro.
+    ///
+    /// `radius` é a **altura** e `width` a meia-largura. ⚠️ A altura é o que o bordo da peça tem de
+    /// crescer, e é por isso que ela — e não a largura — é o [`Blend::amount`].
+    Ridge { radius: f32, width: f32 },
+    /// ⭐⭐ **O CHANFRO DE DOIS RECUOS** (W145) — o *two-distance chamfer* do CAD.
+    ///
+    /// `radius` é o recuo do lado do que já estava, e `bias` multiplica-o do lado da forma que
+    /// chega: `1,0` é o chanfro simétrico.
+    ///
+    /// ⛔⛔ **Ele não tem chip próprio, e a ausência é a decisão.** O [`Character::of`] manda-o para
+    /// o `Chamfer`, porque a pergunta *«que forma tem esta junta?»* tem **uma** resposta — «um corte
+    /// reto» — e o desequilíbrio é um número dela, não outra forma. Dois chips fariam o artista
+    /// escolher entre duas palavras para a mesma coisa.
+    ///
+    /// ⚠️ **`bias == 1,0` volta a ser [`Blend::Chamfer`]** ([`Blend::with_second`]): um valor tem
+    /// **uma** representação, senão dois documentos idênticos na tela diferem nos bytes.
+    Bevel { radius: f32, bias: f32 },
 }
 
 impl Blend {
@@ -63,6 +125,29 @@ impl Blend {
     /// *Três réguas, e a que decide é a que o artista vê.*
     pub const ORGANIC_REACH: f32 = 4.0 - 2.0 * std::f32::consts::SQRT_2;
 
+    /// ⭐⭐⭐ **O mesmo alcance cru, para o polinómio de GRAU 3** (W145) — `6 − 3√2`.
+    ///
+    /// ⭐⭐ **E os dois números são a MESMA lei, com o grau dentro.** Onde as duas superfícies estão
+    /// à distância `d`, o polinómio de grau `n` desce `k/(2n − 2)`: o de grau 2 desce `k/4` e o de
+    /// grau 3 desce `k/6`. Igualar isso à mordida do filete exacto (`d/√2`) dá
+    /// `k = 2(n − 1)(1 − 1/√2)·d` — que é `4 − 2√2` num e `6 − 3√2` no outro.
+    ///
+    /// ⚠️ **MEDIDO antes de escrito:** a sonda correu o cúbico a `k = 1,6 r` e leu mordida
+    /// `0,0943`; a forma fechada prevê `1,6 × 0,25 × √2/6 = 0,09428`. *A previsão e a leitura
+    /// batem nos cinco algarismos, e é isso que autoriza a constante analítica.*
+    pub const SOFT_REACH: f32 = 6.0 - 3.0 * std::f32::consts::SQRT_2;
+
+    /// ⭐ **A meia-largura com que um sulco ou um friso NASCEM**, em fracção do tamanho deles.
+    ///
+    /// ⚠️ **Um número de nascimento, nunca uma amarra:** o segundo número é editável e sobrevive a
+    /// mexer no primeiro ([`Blend::with_amount`]). Ele existe porque um carácter escolhido no chip
+    /// tem de mostrar **alguma coisa** na hora — um sulco de largura zero é uma junta viva com um
+    /// nome bonito.
+    ///
+    /// O valor é o da bancada (`probe_the_other_junctions`, `0,35 / 0,5 = 0,7`), que é onde as
+    /// secções foram lidas como sulco e como friso.
+    pub const SEAM_WIDTH_RATIO: f32 = 0.7;
+
     /// ⭐⭐⭐ **O MESMO CARÁCTER, OUTRO NÚMERO** — a lei que todo gesto de raio partilha.
     ///
     /// ⚠️ **Uma porta, e não a mesma escada escrita em cada sítio.** Ela vive em dois caminhos (o
@@ -78,20 +163,128 @@ impl Blend {
         match self {
             Blend::Organic { .. } => Blend::Organic { radius: amount },
             Blend::Chamfer { .. } => Blend::Chamfer { radius: amount },
+            // ⚠️ **O segundo número SOBREVIVE ao primeiro** — mexer na profundidade de um sulco não
+            // pode apagar a largura que o artista escolheu. É a mesma lei que faz o carácter
+            // sobreviver a um raio novo, um nível abaixo.
+            Blend::Soft { .. } => Blend::Soft { radius: amount },
+            Blend::Bead { .. } => Blend::Bead { radius: amount },
+            Blend::Groove { width, .. } => Blend::Groove {
+                radius: amount,
+                width,
+            },
+            Blend::Ridge { width, .. } => Blend::Ridge {
+                radius: amount,
+                width,
+            },
+            Blend::Bevel { bias, .. } => Blend::Bevel {
+                radius: amount,
+                bias,
+            },
             Blend::Sharp | Blend::Exact { .. } if amount <= 0.0 => Blend::Sharp,
             Blend::Sharp | Blend::Exact { .. } => Blend::Exact { radius: amount },
         }
     }
 
-    /// O raio desta mistura, ou `0.0` se for viva. ⭐ **Os quatro medem a MESMA coisa** — é o que
+    /// O raio desta mistura, ou `0.0` se for viva. ⭐ **Todos medem a MESMA coisa** — é o que
     /// torna a fileira de caracteres honesta.
+    ///
+    /// ⚠️ **E é também o que o BORDO da peça tem de crescer** (`ph2d_field_eval::bounds`), e é por
+    /// isso que nas duas juntas de dois números o `radius` é a grandeza que sai para FORA (a altura
+    /// de um friso, a profundidade de um sulco) e nunca a largura.
     #[must_use]
     pub fn amount(self) -> f32 {
         match self {
             Blend::Sharp => 0.0,
-            Blend::Exact { radius } | Blend::Chamfer { radius } | Blend::Organic { radius } => {
-                radius
+            Blend::Exact { radius }
+            | Blend::Chamfer { radius }
+            | Blend::Organic { radius }
+            | Blend::Soft { radius }
+            | Blend::Bead { radius }
+            | Blend::Groove { radius, .. }
+            | Blend::Ridge { radius, .. }
+            | Blend::Bevel { radius, .. } => radius,
+        }
+    }
+
+    /// ⭐⭐⭐ **O SEGUNDO NÚMERO desta mistura, se ela tiver um** — com o rótulo e a faixa ao lado
+    /// dele (W145).
+    ///
+    /// ⚠️ **A linha do painel DERIVA daqui**, e é por isso que a chave e a faixa vivem coladas à
+    /// variante que as possui: um carácter novo com segundo número aparece no painel sem uma linha
+    /// de mudança lá, e um sem ele não oferece controle nenhum. *É a mesma lei da fileira de chips,
+    /// que já é derivada do [`Character::ALL`].*
+    ///
+    /// ⚠️ **A faixa da largura é [`Span::Positive`] e não uma parede:** uma meia-largura maior do
+    /// que a profundidade dá um sulco raso e largo, que é uma peça legítima. O que a fecha é a
+    /// vista, como em toda largura deste módulo.
+    #[must_use]
+    pub fn second(self) -> Option<crate::Dim> {
+        match self {
+            Blend::Groove { width, .. } | Blend::Ridge { width, .. } => Some(crate::Dim {
+                key: "field.dim.seam_width",
+                value: width,
+                span: crate::Span::Positive,
+            }),
+            Blend::Bevel { bias, .. } => Some(crate::Dim {
+                key: "field.dim.bevel_bias",
+                value: bias,
+                // ⚠️⚠️ **SEM PAREDE, e a ausência é medida (§0):** o campo continua a ser uma
+                // distância com qualquer desequilíbrio — o plano é normalizado e entra por um `min`
+                // com a união, logo é sempre minorante. O que existe é ESCALA (um corte muito
+                // desigual come a peça), e essa é a mesma resposta que o `radius_bound` já dá a
+                // toda mistura: `Soft`, fechada pela vista. *Um tecto que só dissesse «por
+                // segurança» seria um palpite à espera de um smoke.*
+                span: crate::Span::Positive,
+            }),
+            // ⚠️⚠️ **O chanfro SIMÉTRICO oferece a linha, com `1,0` dentro** — sem isto o
+            // desequilíbrio seria **inalcançável**: o painel só desenha o que o `second` devolve, e
+            // um `Bevel` só nasce de alguém escrever nesta linha. *Um controlo que só aparece
+            // depois de já ter sido usado não existe.*
+            Blend::Chamfer { .. } => Some(crate::Dim {
+                key: "field.dim.bevel_bias",
+                value: 1.0,
+                span: crate::Span::Positive,
+            }),
+            Blend::Sharp
+            | Blend::Exact { .. }
+            | Blend::Organic { .. }
+            | Blend::Soft { .. }
+            | Blend::Bead { .. } => None,
+        }
+    }
+
+    /// A mesma mistura, com o **segundo** número trocado. Devolve-se a si própria quando não tem um.
+    ///
+    /// ⭐⭐ **O `bias` de volta a `1,0` VOLTA A SER um [`Blend::Chamfer`]**, e não um `Bevel` com um
+    /// nesse campo: *um valor tem uma representação*. Sem isto, dois documentos que a tela mostra
+    /// iguais teriam bytes diferentes, e o caminho rápido do chanfro simétrico (que é o de sempre,
+    /// ao bit) deixaria de ser tomado por quem lá voltou.
+    #[must_use]
+    pub fn with_second(self, second: f32) -> Self {
+        match self {
+            Blend::Groove { radius, .. } => Blend::Groove {
+                radius,
+                width: second,
+            },
+            Blend::Ridge { radius, .. } => Blend::Ridge {
+                radius,
+                width: second,
+            },
+            Blend::Chamfer { radius } | Blend::Bevel { radius, .. } => {
+                if (second - 1.0).abs() < f32::EPSILON {
+                    Blend::Chamfer { radius }
+                } else {
+                    Blend::Bevel {
+                        radius,
+                        bias: second,
+                    }
+                }
             }
+            Blend::Sharp
+            | Blend::Exact { .. }
+            | Blend::Organic { .. }
+            | Blend::Soft { .. }
+            | Blend::Bead { .. } => self,
         }
     }
 }
@@ -117,12 +310,36 @@ pub enum Character {
     Fillet,
     Chamfer,
     Organic,
+    /// ⭐ O [`Blend::Soft`] — a transição lisa de segunda ordem (W145).
+    Soft,
+    /// ⭐ O [`Blend::Bead`] — o cordão sobre a costura (W145).
+    Bead,
+    /// ⭐ O [`Blend::Groove`] — o sulco sobre a costura (W145).
+    Groove,
+    /// ⭐ O [`Blend::Ridge`] — o friso sobre a costura (W145).
+    Ridge,
 }
 
 impl Character {
     /// ⚠️ **A fonte da contagem** — quem pinta a fileira deriva dela, e um carácter novo aparece na
     /// UI sem uma linha de mudança.
-    pub const ALL: [Character; 3] = [Character::Fillet, Character::Chamfer, Character::Organic];
+    ///
+    /// ⚠️ **A ORDEM é a da leitura, e não a da implementação:** primeiro as quatro que **suavizam**
+    /// a quina, da mais dura para a mais macia; depois as três que põem uma **feição** sobre a
+    /// costura. Um artista que percorre a fileira da esquerda para a direita vê a transição a
+    /// derreter e depois a ganhar relevo.
+    ///
+    /// ⚠️ O tecto do painel é o `MAX_MODES` (`16`), e a fileira **envolve linha** — o gate
+    /// `the_panel_has_a_slot_for_every_character` mantém a folga do lado seguro.
+    pub const ALL: [Character; 7] = [
+        Character::Fillet,
+        Character::Chamfer,
+        Character::Organic,
+        Character::Soft,
+        Character::Bead,
+        Character::Groove,
+        Character::Ridge,
+    ];
 
     /// O carácter desta mistura. ⚠️ **Uma aresta viva lê `Fillet`**, e é honesto: é o carácter que um
     /// raio positivo acorda ([`Blend::with_amount`]).
@@ -130,8 +347,14 @@ impl Character {
     pub fn of(blend: Blend) -> Self {
         match blend {
             Blend::Sharp | Blend::Exact { .. } => Character::Fillet,
-            Blend::Chamfer { .. } => Character::Chamfer,
+            // ⭐⭐ **O `Bevel` lê-se CHANFRO**, e é a linha que impede um segundo chip para a mesma
+            // forma — ver o doc do [`Blend::Bevel`].
+            Blend::Chamfer { .. } | Blend::Bevel { .. } => Character::Chamfer,
             Blend::Organic { .. } => Character::Organic,
+            Blend::Soft { .. } => Character::Soft,
+            Blend::Bead { .. } => Character::Bead,
+            Blend::Groove { .. } => Character::Groove,
+            Blend::Ridge { .. } => Character::Ridge,
         }
     }
 
@@ -142,10 +365,37 @@ impl Character {
     #[must_use]
     pub fn apply(self, blend: Blend) -> Blend {
         let amount = blend.amount();
+        // ⭐⭐ **A meia-largura SOBREVIVE à troca de carácter quando o destino também a tem** — um
+        // sulco que vira friso mantém a largura que o artista escolheu. Quem não a tem semeia-a do
+        // tamanho ([`Blend::SEAM_WIDTH_RATIO`]), porque um segundo número a zero seria um carácter
+        // escolhido que não mostra nada.
+        let width = match blend {
+            Blend::Groove { width, .. } | Blend::Ridge { width, .. } => width,
+            _ => amount * Blend::SEAM_WIDTH_RATIO,
+        };
         match self {
             Character::Fillet => Blend::Sharp.with_amount(amount),
-            Character::Chamfer => Blend::Chamfer { radius: amount },
+            // ⚠️ **O desequilíbrio sobrevive a sair e voltar ao chanfro** — sair para outro carácter
+            // e voltar não pode apagar um número que o artista escreveu, e é a mesma lei do
+            // [`Blend::with_amount`].
+            Character::Chamfer => match blend {
+                Blend::Bevel { bias, .. } => Blend::Bevel {
+                    radius: amount,
+                    bias,
+                },
+                _ => Blend::Chamfer { radius: amount },
+            },
             Character::Organic => Blend::Organic { radius: amount },
+            Character::Soft => Blend::Soft { radius: amount },
+            Character::Bead => Blend::Bead { radius: amount },
+            Character::Groove => Blend::Groove {
+                radius: amount,
+                width,
+            },
+            Character::Ridge => Blend::Ridge {
+                radius: amount,
+                width,
+            },
         }
     }
 }

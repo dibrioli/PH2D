@@ -519,3 +519,123 @@ fn the_base_has_no_character_to_choose() {
         "escrever o carácter da base tinha de ser recusado"
     );
 }
+
+// ─────────────────── W145: o SEGUNDO número de uma junta ───────────────────
+
+/// ⭐⭐⭐ **A LINHA DO SEGUNDO NÚMERO SÓ EXISTE ONDE A JUNTA TEM UM** — a lei da W34, aplicada ao
+/// controlo que esta wave trouxe.
+///
+/// ⚠️ **Os dois lados, e é por isso que o gate afirma duas coisas:** um filete que oferecesse uma
+/// «meia-largura» seria um controle a escrever onde nada lê, e um sulco sem ela seria uma feição
+/// inalcançável — *os dois defeitos leem-se igual numa foto do painel*.
+#[test]
+fn only_the_junctions_with_a_second_number_offer_the_row() {
+    use ph2d_field::{Blend, Character, Param};
+    let tem_seam = |world: &bevy_ecs::world::World, e| {
+        crate::params_of(world, e)
+            .into_iter()
+            .any(|(p, _)| matches!(p, Param::Seam(_)))
+    };
+    for (c, esperado) in [
+        (Character::Fillet, false),
+        (Character::Organic, false),
+        (Character::Soft, false),
+        (Character::Bead, false),
+        // ⭐ O chanfro oferece-a com `1,0` dentro — sem isso o desequilíbrio nasceria inalcançável.
+        (Character::Chamfer, true),
+        (Character::Groove, true),
+        (Character::Ridge, true),
+    ] {
+        let (mut world, _, kids) = two_boxes();
+        crate::set_character(&mut world, kids[1], c).expect("troca");
+        assert_eq!(
+            tem_seam(&world, kids[1]),
+            esperado,
+            "o carácter {c:?} {} a linha do segundo número",
+            if esperado {
+                "devia oferecer"
+            } else {
+                "não devia oferecer"
+            }
+        );
+    }
+    // ⛔ **O CONTROLO da própria régua:** o valor tem de ser o que a junta guarda, e não um zero
+    // que passaria o teste de presença sem nada do outro lado.
+    let (mut world, _, kids) = two_boxes();
+    crate::set_character(&mut world, kids[1], Character::Groove).expect("troca");
+    let (_, d) = crate::params_of(&world, kids[1])
+        .into_iter()
+        .find(|(p, _)| matches!(p, Param::Seam(_)))
+        .expect("a linha existe");
+    let esperado = 0.08 * Blend::SEAM_WIDTH_RATIO;
+    assert!(
+        (d.value - esperado).abs() < 1e-6,
+        "o sulco nasceu com meia-largura {} e não com o {esperado} que o `SEAM_WIDTH_RATIO` manda",
+        d.value
+    );
+}
+
+/// ⭐⭐⭐ **ESCREVER O SEGUNDO NÚMERO CHEGA AO DOCUMENTO — e não apaga o primeiro.**
+///
+/// ⚠️ **A metade que quase ficou por gatear:** um `with_second` que reconstruísse a variante do zero
+/// perderia o tamanho, e o sintoma seria um sulco que muda de profundidade quando o artista arrasta
+/// a largura. Os dois números são lidos **depois** da escrita, no mesmo documento.
+#[test]
+fn writing_the_second_number_keeps_the_first() {
+    use ph2d_field::{Blend, Character, Param};
+    let (mut world, _, kids) = two_boxes();
+    crate::set_character(&mut world, kids[1], Character::Groove).expect("troca");
+    crate::set_param(&mut world, kids[1], Param::Joint, 0.2).expect("a profundidade");
+    crate::set_param(&mut world, kids[1], Param::Seam(1), 0.03).expect("a largura");
+    let op = crate::verb_of(&world, kids[1]).expect("o verbo materializou-se");
+    match op.blend() {
+        Blend::Groove { radius, width } => {
+            assert!(
+                (radius - 0.2).abs() < 1e-6,
+                "a profundidade virou {radius} ao escrever a largura"
+            );
+            assert!((width - 0.03).abs() < 1e-6, "a largura não chegou: {width}");
+        }
+        outro => panic!("o carácter mudou sozinho para {outro:?}"),
+    }
+    // ⛔ **Zero é RECUSADO**, ao contrário do raio de junção: um canal sem largura é a feição a
+    // desaparecer com o chip aceso.
+    assert!(
+        crate::set_param(&mut world, kids[1], Param::Seam(1), 0.0).is_err(),
+        "uma meia-largura de zero entrou — o carácter fica aceso sobre uma feição que não existe"
+    );
+}
+
+/// ⭐⭐ **O DESEQUILÍBRIO DO CHANFRO volta a ser um chanfro simples quando regressa a `1,0`.**
+///
+/// ⚠️ *Um valor tem uma representação.* Sem esta lei, dois documentos que a tela mostra iguais
+/// teriam bytes diferentes — e o caminho rápido do chanfro simétrico deixaria de ser tomado por
+/// quem lá voltou.
+#[test]
+fn a_bevel_that_returns_to_balance_is_a_chamfer_again() {
+    use ph2d_field::{Blend, Character, Param};
+    let (mut world, _, kids) = two_boxes();
+    crate::set_character(&mut world, kids[1], Character::Chamfer).expect("troca");
+    crate::set_param(&mut world, kids[1], Param::Seam(1), 2.5).expect("desequilibra");
+    assert!(
+        matches!(
+            crate::verb_of(&world, kids[1]).map(ph2d_field::Op::blend),
+            Some(Blend::Bevel { .. })
+        ),
+        "escrever o desequilíbrio não promoveu o chanfro"
+    );
+    // ⭐ E o chip continua a dizer **Chamfer** — a forma é a mesma, o número é que mudou.
+    assert_eq!(
+        crate::character_of(&world, kids[1]),
+        Some(Character::Chamfer),
+        "o chanfro desigual passou a ler-se como outro carácter"
+    );
+    crate::set_param(&mut world, kids[1], Param::Seam(1), 1.0).expect("reequilibra");
+    assert!(
+        matches!(
+            crate::verb_of(&world, kids[1]).map(ph2d_field::Op::blend),
+            Some(Blend::Chamfer { .. })
+        ),
+        "voltar a 1,0 deixou um `Bevel` com um dentro — dois bytes para a mesma peça"
+    );
+}

@@ -23,7 +23,7 @@ use ph2d_field::{NodeKind, Op};
 ///
 /// ⭐ E ele deixou de ser só uma declaração: o `the_router_has_exactly_this_many_scenes` **prova-o**
 /// pelas duas pontas — a cena `CENAS` tem de ser dela própria, e a `CENAS + 1` tem de cair no `_`.
-const CENAS: u32 = 31;
+const CENAS: u32 = 32;
 
 /// ⭐⭐⭐ **A CONTAGEM PROVA-SE, e não se declara** — as duas pontas.
 ///
@@ -162,4 +162,35 @@ fn the_notes_agree_with_the_router() {
             "o `{nome}` não diz `{alcance}` — o roteador tem {CENAS} cenas e a nota dele envelheceu"
         );
     }
+}
+
+/// ⭐⭐⭐ **A CENA 32 NÃO PERFURA A CHAPA** (W145) — o sulco tem de escavar e **parar**.
+///
+/// ⛔⛔ **Uma cena de smoke que ensina o contrário do que acontece é pior do que uma cena ausente**,
+/// e um rasgo à volta da base leria-se como um defeito do motor em vez da feição que ele é. A 1.ª
+/// redacção desta cena tinha `0,10` de chapa para `0,075` de sulco — *cabia por `0,025`, que é
+/// margem nenhuma para quem depois mexer no slider*.
+///
+/// ⚠️ **São DUAS asserções e nenhuma basta sozinha:** que a chapa continua inteira por baixo, e que
+/// o sulco de facto **entrou** — sem a segunda, uma cena em que a junta não fizesse nada passaria.
+#[test]
+fn the_new_junctions_scene_does_not_perforate_the_plate() {
+    let doc = crate::field3d_smoke::scene(32);
+    let f = ph2d_field_eval::Field::new(&doc);
+    // A 4.ª peça da fileira é o `Groove` — a mesma aritmética da cena (`(i − 2,5) × PASSO`).
+    let cx: f64 = (3.0 - 2.5) * 0.62;
+    // Junto da costura: o anel onde a parede do saliente encontra o topo da chapa.
+    let borda = cx + 0.12;
+    assert!(
+        f.at(borda, 0.0, -0.13) < 0.0,
+        "a cena 32 perfurou a chapa por baixo do sulco (leu {:.4} a z = −0,13) — o rasgo le-se como \
+         defeito do motor e nao como a feicao",
+        f.at(borda, 0.0, -0.13)
+    );
+    assert!(
+        f.at(borda, 0.0, -0.01) > 0.0,
+        "o sulco da cena 32 nao escavou nada junto da costura (leu {:.4} a z = −0,01) — a cena \
+         mostra seis pecas iguais e nomeia seis juntas diferentes",
+        f.at(borda, 0.0, -0.01)
+    );
 }

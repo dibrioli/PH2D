@@ -95,6 +95,22 @@ pub enum Param {
     /// ⚠️ A **base** não tem esta chave: ela semeia o acumulado e não se junta a nada
     /// ([`crate::fold_verb`]).
     Joint,
+    /// ⭐⭐⭐ **O SEGUNDO NÚMERO de uma junta** (W145) — a meia-largura de um sulco ou de um friso, o
+    /// desequilíbrio de um chanfro.
+    ///
+    /// `0` é a mistura que o próprio nó **é** (o raio de junção padrão de uma operação, o mesmo que
+    /// o [`Param::Dim`] `0` escreve); `1` é a do **verbo** dele (a mesma que o [`Param::Joint`]
+    /// escreve).
+    ///
+    /// ⚠️ **Dois slots e não um, porque um grupo tem DUAS misturas:** a que ele oferece aos filhos
+    /// calados e a com que ele próprio se dobra nos irmãos. Uma chave só escreveria numa das duas —
+    /// e qual delas dependeria da ordem do `match`, que é a forma mais silenciosa de um controle
+    /// escrever no sítio errado.
+    ///
+    /// ⚠️ **A linha só existe quando a mistura tem segundo número** ([`crate::Blend::second`]), e é
+    /// a mesma lei da W34 que o resto do painel honra: *o painel oferece exactamente o que o gesto
+    /// faz*.
+    Seam(u8),
 }
 
 /// ⭐ **O que uma grandeza admite** — a forma da faixa, e de que recurso vem cada ponta.

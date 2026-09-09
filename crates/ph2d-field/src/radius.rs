@@ -6,7 +6,7 @@
 //! cozida e a cena ECS) e os dois têm de aplicar a mesma regra.
 
 use super::radius_limit::round_limit;
-use crate::{FieldDoc, FieldError, NodeId, NodeKind, NodeShape, Op, Primitive};
+use crate::{FieldDoc, FieldError, NodeId, NodeKind, NodeShape, Primitive};
 
 impl FieldDoc {
     /// **O raio EDITÁVEL de um nó** — `None` quando não há nenhum.
@@ -282,12 +282,7 @@ pub fn set_shape_radius(shape: &mut NodeShape, node: u32, radius: f32) -> Result
             // seria decidir por quem só mexeu num slider. ⚠️ **A escada vive numa porta só**
             // ([`Blend::with_amount`]): enquanto foi copiada, os dois caminhos que a usam
             // discordavam sobre o que um zero faz a um chanfro.
-            let blend = op.blend().with_amount(radius);
-            *op = match *op {
-                Op::Union(_) => Op::Union(blend),
-                Op::Intersection(_) => Op::Intersection(blend),
-                Op::Difference(_) => Op::Difference(blend),
-            };
+            *op = op.with_blend(op.blend().with_amount(radius));
             Ok(())
         }
         NodeShape::Leaf(p) => {

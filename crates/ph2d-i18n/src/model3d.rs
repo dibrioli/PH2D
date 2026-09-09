@@ -197,6 +197,21 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // escultura, e duas coisas diferentes com o mesmo nome no mesmo app é o que faz o artista
         // procurar no sítio errado.
         "panel.model3d.character.organic" => "Organic",
+        // ⭐⭐⭐ **AS QUATRO DA W145** (pedido do Enio, 2026-09-09).
+        //
+        // ⚠️ **"Soft" e não "Smooth"**, pela MESMA razão que fez o `Organic` não ser "Smooth": a
+        // palavra já é um verbo de malha no módulo de escultura. E não "Blend", que num app 3D é o
+        // nome genérico de toda esta fileira.
+        "panel.model3d.character.soft" => "Soft",
+        // ⚠️ **"Bead" é a palavra de oficina** — cordão de solda, de cola, de vedante. "Weld"
+        // prometeria uma operação de topologia (soldar duas peças numa), que é outra coisa e que
+        // este app tem noutro módulo.
+        "panel.model3d.character.bead" => "Bead",
+        // ⚠️ **"Groove" e não "Panel Line"**: a feição é um canal, e é ela que o rótulo nomeia — o
+        // uso mais comum dela é uma linha de painel, mas nomear o uso deixaria o artista sem
+        // palavra para os outros.
+        "panel.model3d.character.groove" => "Groove",
+        "panel.model3d.character.ridge" => "Ridge",
         // ⭐ Os MODIFICADORES. ⚠️ São interruptores: aceso quer dizer que o objeto já tem um.
         // "Hollow" e não "Shell" — o rótulo diz o que se OBTÉM ("oco"), e "Shell" num app 3D é
         // ambíguo com a casca de superfície. "Grow/Shrink" diria os dois sentidos, mas o número faz
@@ -475,6 +490,14 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // ⚠️ E o **grupo** usa esta mesma chave, de propósito: o raio dele é o raio de junção
         // **padrão**, o que as formas caladas usam. *Uma grandeza, uma palavra.*
         "field.dim.joint" => "Joint",
+        // ⭐⭐ **O SEGUNDO NÚMERO de uma junta** (W145). ⚠️ **"Seam Width" e não "Width"**: a
+        // coluna já tem larguras da FORMA, e duas palavras iguais para grandezas de sujeitos
+        // diferentes é o defeito que o `field.dim.joint` acima existe para não repetir.
+        "field.dim.seam_width" => "Seam Width",
+        // ⚠️ **"Chamfer Bias" nomeia o CARÁCTER a que pertence**, porque a linha aparece debaixo do
+        // chip "Chamfer" e só ali: sem a primeira palavra, "Bias" num painel de modelação lê-se como
+        // um deslocamento do campo.
+        "field.dim.bevel_bias" => "Chamfer Bias",
         // ⭐⭐ **A RESOLUÇÃO do contorno vivo** (W55). ⚠️ "Resolution" e não "Quality": o número diz
         // com que finura o **desenho** é convertido na peça, e "Quality" prometeria uma opinião
         // sobre o resultado. Quem modela num CAD conhece a palavra com este sentido exacto.

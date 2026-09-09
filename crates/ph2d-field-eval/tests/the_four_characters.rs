@@ -155,6 +155,8 @@ fn the_four_characters_measure_the_same_radius() {
         ("Exact", Blend::Exact { radius: R }),
         ("Chamfer", Blend::Chamfer { radius: R }),
         ("Organic", Blend::Organic { radius: R }),
+        // ⭐ **W145** — a mesma família do orgânico, um grau acima, e por isso a mesma régua.
+        ("Soft", Blend::Soft { radius: R }),
     ] {
         let (recuo, mordida) = (face_setback(&corner(b)), diagonal_crossing(&corner(b)));
         println!(
@@ -197,6 +199,26 @@ fn the_four_characters_measure_the_same_radius() {
         "o recuo do organico leu {organico_recuo:.4}x — a divergencia declarada e' 1,16x, e ela e' \
          a consequencia de calibrar pela MORDIDA. Fora desta faixa, ou a constante mudou ou a \
          forma do operador mudou"
+    );
+
+    // ── ⭐⭐⭐ O `Soft` (W145) partilha a MORDIDA com o orgânico, pela MESMA lei ──
+    //
+    // ⚠️ **É este gate que prende a [`ph2d_field::Blend::SOFT_REACH`]**, e ele é o irmão exacto do
+    // de cima: os dois polinómios calibram-se pela silhueta, e a forma fechada de cada um sai de
+    // igualar o dip do centro (`k/4` no grau 2, `k/6` no grau 3) à mordida do filete.
+    let (soft_recuo, soft_mordida) = ler("Soft");
+    assert!(
+        (soft_mordida - 1.0).abs() < 0.02,
+        "a calibracao do Soft esta a {:.2} % — corrija `Blend::SOFT_REACH` (a forma fechada e' \
+         6 - 3 raiz(2))",
+        (soft_mordida - 1.0) * 100.0
+    );
+    // ⭐⭐ **E o CONTROLO que o separa do orgânico:** sendo um grau acima, ele sobe MAIS a parede
+    // para entregar a mesma mordida. Se os dois recuos coincidirem, um dos dois chips e' ruido.
+    assert!(
+        soft_recuo > organico_recuo * 1.15,
+        "o Soft recua {soft_recuo:.4}x e o Organic {organico_recuo:.4}x — sem separacao entre eles, \
+         a fileira tem dois chips para uma forma so'"
     );
 }
 

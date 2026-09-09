@@ -273,7 +273,18 @@ use serde::{Deserialize, Serialize};
 /// aqui o `chamfer` chanfrava também a ponta e o vale, e agora não. *A mudança é o pedido* — a
 /// família das arestas VERTICAIS e a das arestas do ARO passam a ter um controlo cada, e um
 /// documento velho abre com o contorno por chanfrar até alguém subir o controlo dele.
-pub const FIELD_DOC_VERSION: u32 = 21;
+/// v22: o [`Blend`] ganhou **cinco caracteres** (W145, pedido do Enio de 09/09) — `Soft`, `Bead`,
+/// `Groove`, `Ridge` e o `Bevel` do chanfro desigual.
+///
+/// ⭐⭐ **APENDIDAS, e é isso que mantém o `PROJECT_SCHEMA` parado.** O `postcard` numera as
+/// variantes pela ordem de declaração; as cinco entram **depois** do `Organic`, logo nenhum índice
+/// existente se move e todo `FieldVerb` já gravado lê-se ao bit. ⛔ *A regra que os degraus 109 e
+/// 110 do `project_schema` registam é sobre acrescentar um CAMPO a uma variante que já existe — isso
+/// muda os bytes de valores gravados e obriga ao degrau. Acrescentar variante no fim não.*
+///
+/// ⚠️ **E o número sobe na mesma**, porque é ele que diz *«este documento pode conter uma junta que
+/// uma build de ontem não sabe avaliar»* — que é exactamente a pergunta que esta escada responde.
+pub const FIELD_DOC_VERSION: u32 = 22;
 
 /// Índice de um nó na arena.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -299,6 +310,22 @@ impl Op {
     pub fn blend(self) -> Blend {
         match self {
             Op::Union(b) | Op::Intersection(b) | Op::Difference(b) => b,
+        }
+    }
+
+    /// ⭐⭐ **O mesmo verbo, com outra mistura** — a porta que impede a quarta cópia deste `match`.
+    ///
+    /// ⚠️ **Ela nasceu de uma contagem, não de gosto** (W145): esta reconstrução estava escrita em
+    /// [`crate::set_shape_radius`] e no `Param::Joint` do `ph2d-field-ecs`, e o segundo número das
+    /// juntas novas ia escrevê-la uma terceira e uma quarta vez. *Uma lei escrita em dois sítios
+    /// ainda não é uma lei — só uma PORTA é*, e este módulo já pagou essa frase no
+    /// [`Blend::with_amount`].
+    #[must_use]
+    pub fn with_blend(self, blend: Blend) -> Self {
+        match self {
+            Op::Union(_) => Op::Union(blend),
+            Op::Intersection(_) => Op::Intersection(blend),
+            Op::Difference(_) => Op::Difference(blend),
         }
     }
 }

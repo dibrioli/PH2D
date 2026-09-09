@@ -178,5 +178,9 @@ pub(crate) fn character_key(c: ph2d_field::Character) -> &'static str {
         ph2d_field::Character::Fillet => "panel.model3d.character.fillet",
         ph2d_field::Character::Chamfer => "panel.model3d.character.chamfer",
         ph2d_field::Character::Organic => "panel.model3d.character.organic",
+        ph2d_field::Character::Soft => "panel.model3d.character.soft",
+        ph2d_field::Character::Bead => "panel.model3d.character.bead",
+        ph2d_field::Character::Groove => "panel.model3d.character.groove",
+        ph2d_field::Character::Ridge => "panel.model3d.character.ridge",
     }
 }

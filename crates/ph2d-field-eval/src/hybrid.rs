@@ -530,10 +530,35 @@ fn reduce(plan: &Plan, base: usize, leaves: &[Vec<f32>], out: &mut [f32]) {
 #[must_use]
 pub fn apply(op: Op, a: f32, b: f32) -> f32 {
     match op {
-        Op::Union(blend) => union(a, b, blend),
-        // De Morgan, exatamente como a árvore faz.
-        Op::Intersection(blend) => -union(-a, -b, blend),
-        Op::Difference(blend) => -union(-a, b, blend),
+        Op::Union(blend) => decoracao(a.min(b), a, b, blend).unwrap_or_else(|| union(a, b, blend)),
+        // De Morgan, exatamente como a árvore faz — **excepto** para as três decorações, que
+        // recebem a superfície e ficam orientadas (ver `ops_bool::decoracao`).
+        Op::Intersection(blend) => {
+            decoracao(a.max(b), a, b, blend).unwrap_or_else(|| -union(-a, -b, blend))
+        }
+        Op::Difference(blend) => {
+            let nb = -b;
+            decoracao(a.max(nb), a, nb, blend).unwrap_or_else(|| -union(-a, b, blend))
+        }
+    }
+}
+
+/// ⭐⭐⭐ **A gémea numérica de [`crate::ops_bool::decoracao`]** — a superfície entra, e por isso um
+/// sulco escava nas TRÊS operações.
+///
+/// ⚠️ **Sem esta função, o `the_numeric_law_is_the_same_law_as_the_tree` reprova numa intersecção**
+/// — que é exactamente o serviço que ele presta.
+fn decoracao(d: f32, a: f32, b: f32, blend: Blend) -> Option<f32> {
+    let s = (a - b) * std::f32::consts::FRAC_1_SQRT_2;
+    match blend {
+        Blend::Bead { radius } if radius > 0.0 => Some(d.min(a.hypot(b) - radius)),
+        Blend::Groove { radius, width } if radius > 0.0 => {
+            Some(d.max((d + radius).min(width - s.abs())))
+        }
+        Blend::Ridge { radius, width } if radius > 0.0 => {
+            Some(d.min((d - radius).max(s.abs() - width)))
+        }
+        _ => None,
     }
 }
 
@@ -556,9 +581,38 @@ fn union(a: f32, b: f32, blend: Blend) -> f32 {
             let mixed = (a - b).mul_add(h, b);
             mixed - k * h * (1.0 - h)
         }
+        // ─────────── W145: as cinco novas, na MESMA ordem da árvore ───────────
+        //
+        // ⚠️ **Cada linha aqui é a gémea de uma de [`crate::ops_bool`]**, e o juiz é o
+        // `the_numeric_law_is_the_same_law_as_the_tree`: sem ele as duas divergem na primeira wave
+        // que mexa numa e esqueça a outra, e o sintoma é uma junta com outro tamanho — nunca um
+        // erro.
+        Blend::Soft { radius } if radius > 0.0 => {
+            let k = radius * Blend::SOFT_REACH;
+            let h = (k - (a - b).abs()).max(0.0) / k;
+            a.min(b) - h * h * h * k / 6.0
+        }
+        Blend::Bevel { radius, bias } if radius > 0.0 => {
+            // ⭐ O mesmo desvio da árvore: simétrico devolve a fórmula do chanfro, ao bit.
+            if (bias - 1.0).abs() < 1.0e-9 {
+                a.min(b)
+                    .min((a + b - radius) * std::f32::consts::FRAC_1_SQRT_2)
+            } else {
+                let (ca, cb) = (radius, radius * bias);
+                let norma = (ca.powi(-2) + cb.powi(-2)).sqrt();
+                a.min(b).min((a / ca + b / cb - 1.0) / norma)
+            }
+        }
         // ⚠️ Raio zero é união DURA, e não uma fórmula com um zero dentro — é o mesmo ramo que a
         // árvore toma, e a razão é a mesma: com `r = 0` as duas são algebricamente idênticas.
-        Blend::Exact { .. } | Blend::Chamfer { .. } | Blend::Organic { .. } => a.min(b),
+        Blend::Exact { .. }
+        | Blend::Chamfer { .. }
+        | Blend::Organic { .. }
+        | Blend::Soft { .. }
+        | Blend::Bead { .. }
+        | Blend::Groove { .. }
+        | Blend::Ridge { .. }
+        | Blend::Bevel { .. } => a.min(b),
     }
 }
 

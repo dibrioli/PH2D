@@ -1921,6 +1921,25 @@ fn the_numeric_law_is_the_same_law_as_the_tree() {
         Blend::Sharp,
         Blend::Exact { radius: 0.08 },
         Blend::Organic { radius: 0.08 },
+        // ⛔⛔ **O `Chamfer` NUNCA esteve nesta lista**, e ele existe desde a W99 — a lei numérica
+        // dele passou um bloco inteiro sem juiz. *Um corpus escrito à mão envelhece com cada
+        // variante nova, e não há gate que o diga.*
+        Blend::Chamfer { radius: 0.08 },
+        // ⭐ As cinco da W145.
+        Blend::Soft { radius: 0.08 },
+        Blend::Bead { radius: 0.08 },
+        Blend::Groove {
+            radius: 0.08,
+            width: 0.05,
+        },
+        Blend::Ridge {
+            radius: 0.08,
+            width: 0.05,
+        },
+        Blend::Bevel {
+            radius: 0.08,
+            bias: 2.0,
+        },
     ] {
         for op in [
             Op::Union(blend),

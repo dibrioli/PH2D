@@ -9222,6 +9222,33 @@ impl crate::App {
                 }
                 let osso_em_foco =
                     crate::bone_gesture::selected_bone(sim, hero.gizmo.iter_selected());
+                // ⭐ **PORQUE a secção não tem sujeito** (report do dono, 2026-09-08: *«seleccionar o
+                // bone nem sempre abre a secção de skeleton»*). ⚠️ A pergunta tem três respostas que
+                // se leem iguais na tela — *nada seleccionado* · *seleccionado e não é osso* · *é
+                // osso e a secção está fechada/fora da dobra* —, e esta linha separa-as: ela diz o
+                // que ESTÁ seleccionado e o que cada um É.
+                if std::env::var_os("PH2D_BONE_LOG").is_some() && osso_em_foco.is_none() {
+                    let quem: Vec<String> = hero
+                        .gizmo
+                        .iter_selected()
+                        .map(|b| {
+                            let e = ph2d_ecs::Entity::from_bits(b);
+                            let nome = sim.world().get::<ph2d_ecs::Name>(e).map_or_else(
+                                || "<sem nome>".to_string(),
+                                |n| n.as_str().to_string(),
+                            );
+                            let osso = sim.world().get::<ph2d_skeleton_ecs::Bone>(e).is_some();
+                            format!("{nome}(osso={osso})")
+                        })
+                        .collect();
+                    if !quem.is_empty() {
+                        eprintln!(
+                            "[bone] a seccao SKELETON esta' sem sujeito, e ha' {} seleccionado(s): \
+                             {quem:?} -- nenhum deles e' um osso",
+                            quem.len()
+                        );
+                    }
+                }
                 ph2d_panel_vector::set_current_bone(osso_em_foco.and_then(|b| {
                     sim.world()
                         .get::<ph2d_skeleton_ecs::Bone>(ph2d_ecs::Entity::from_bits(b))

@@ -134,3 +134,33 @@ fn the_two_spatial_boxes_group_a_shared_param_the_same_way() {
         "so' {partilhados} param(s) partilhado(s) -- a comparacao ficou vazia"
     );
 }
+
+/// ⭐⭐⭐ **O PREÇO DO GRUPO** (ciclo 4, passo 5 — doc 103 §1).
+///
+/// ⚠️ **Um campo é `Pure` e escreve a coluna `falloff`** — sozinho na cadeia ele não move um
+/// pixel. A tabela mede-o **na cadeia do produto**, `grid → <campo> → output`, que é onde o
+/// planeador decide se a coisa fica no dispositivo.
+///
+/// ```text
+/// cargo test -p ph2d-host-desktop --bins --release -- --ignored --nocapture measure_the_field_group
+/// ```
+#[test]
+#[ignore = "sonda de medição — corra à mão, em RELEASE e com a máquina calma"]
+fn measure_the_field_group() {
+    let lado: f32 = std::env::var("PH2D_LADO")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(320.0);
+    crate::motion_ciclo_probe::tabela(&GRUPO, lado);
+}
+
+/// ⭐ **O DESPERTAR TEM DE ACORDAR** também neste grupo — ver a porta partilhada.
+#[test]
+fn waking_a_field_takes_it_off_the_identity() {
+    let mudos = crate::motion_ciclo_probe::quem_o_despertar_nao_acorda(&GRUPO);
+    assert!(
+        mudos.is_empty(),
+        "o despertar nao mexeu nestes: {mudos:?} -- ou o widget deles nao esta' na lista de \
+         controlos continuos, ou a fraccao poe o no' de volta na identidade"
+    );
+}

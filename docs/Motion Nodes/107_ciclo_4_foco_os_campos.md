@@ -205,4 +205,26 @@ nenhum deles teria a régua para notar*.
 > que uma recusa sem razão: a próxima pessoa ataca o `SourceRows`, que não é o problema, e nunca
 > chega ao uniforme, que é.
 
-### W4 — A MEDIÇÃO (passo 5) e o TUTORIAL (passo 6)
+### ⏳ W4 — A MEDIÇÃO (passo 5) e o TUTORIAL (passo 6)
+
+#### ⛔⛔ E a régua achou um defeito de PRODUTO antes de medir seja o que for
+
+O censo do despertar (`waking_a_field_takes_it_off_the_identity`) acusou **dois** nós — e o
+diagnóstico é a **terceira** leitura de uma mutação sobrevivente ([memória](../../project-memory/feedback_a_fixture_where_the_two_are_siblings_cannot_produce_a_cycle.md)):
+*a fixtura não produz o fenómeno*. A cadeia de medição é `grid → <nó> → output`, uma porta só, e
+os dois precisam de uma **segunda**.
+
+⭐ **Mas ao perguntar «porquê» apareceu o defeito de verdade: nenhum dos dois DECLARAVA precisar
+dela.** Sem a porta ligada eles pintam-se normais e não fazem nada:
+
+| nó | sem a 2.ª porta | o que ele declarava |
+|---|---|---|
+| `field.shape` | **a identidade, sempre** — o doc do porto já dizia *«desligada ⇒ a identidade»* | nada ao artista |
+| `field.combine` | `bv = 1.0` em todo elemento ⇒ no modo em que ele **nasce** (`Multiply`) `blend(av,1) == av`, e o `strength` não move um número | nada ao artista |
+
+⇒ os dois passam a declarar `register_required_inputs` — **o mesmo canal que curou o
+`motion.spline_wrap` no ciclo 3**, e é dele que sai o ⚠️ no cartão. *Um nó que não pode fazer
+aquilo de que tem o nome tem de o dizer.*
+
+⚠️ **E o censo passa a saltá-los pela lista DECLARADA**, nunca por uma escrita à mão: um nó que
+passe a exigir uma porta amanhã sai da conta sozinho.

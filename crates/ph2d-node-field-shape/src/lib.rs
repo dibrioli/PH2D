@@ -295,6 +295,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_required_inputs(MANIFEST.id, REQUER);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     // CPU-only (ver os docs do módulo): não há `ColumnBinding` de onde o diagnoser
     // pudesse derivar o papel deste nó, então ele é DECLARADO (ADR-0155). `Produces`
@@ -311,6 +312,13 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
 }
 
 use ph2d_node_registry::{ParamUiHint, ParamUnit, ParamUnitDecl, ParamWidget};
+
+/// **SEM A GEOMETRIA ELE É A IDENTIDADE** (ciclo 4, W4).
+///
+/// ⛔ O doc do porto já dizia *«desligada ⇒ a identidade»* — e **não o dizia ao artista**: o nó
+/// pintava-se normal e não fazia nada. É a forma exacta que o `motion.spline_wrap` teve no ciclo
+/// 3, e a casa tem canal para ela desde então: o ⚠️ no cartão sai daqui.
+static REQUER: &[&str] = &["shape"];
 
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {

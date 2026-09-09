@@ -252,6 +252,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_required_inputs(MANIFEST.id, REQUER);
     reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     Ok(())
 }
@@ -259,6 +260,14 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
 use ph2d_node_registry::{ParamUiHint, ParamWidget};
 
 /// Param UI hints (M1.P1): a named blend-mode selector + a strength slider.
+/// **SEM O SEGUNDO CAMPO NÃO HÁ NADA PARA COMBINAR** (ciclo 4, W4).
+///
+/// ⛔ Com a porta `b` desligada o `bv` de todo elemento é a identidade `1.0`, e no modo em que o
+/// nó **nasce** (`Multiply`) isso faz `blend(av, 1) == av` ⇒ a saída é a entrada e o `strength`
+/// não move um número. *Combinar é o nome do nó*, e um nó que não pode fazer o que se chama tem
+/// de o dizer — o ⚠️ no cartão sai daqui.
+static REQUER: &[&str] = &["b"];
+
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "mode",

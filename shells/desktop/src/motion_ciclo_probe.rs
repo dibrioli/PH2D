@@ -425,7 +425,22 @@ pub(crate) fn cook_com(lado: f32, no: Option<&str>, repeticoes: usize) -> Medida
 /// A grelha é pequena de propósito (8×8): a pergunta é *«mudou?»*, não *«quanto custa?»*.
 pub(crate) fn quem_o_despertar_nao_acorda(grupo: &[&'static str]) -> Vec<&'static str> {
     let mut mudos: Vec<&'static str> = Vec::new();
+    let reg = MotionState::new().registry;
     for nome in grupo {
+        // ⛔⛔ **UM NÓ QUE DECLARA PRECISAR DE OUTRA PORTA NÃO TEM FENÓMENO NESTA CADEIA.**
+        //
+        // A fixtura é `grid → <nó> → output` — uma porta só. O `field.combine` sem o segundo
+        // campo e o `field.shape` sem a geometria são a **identidade** por construção, então
+        // acusá-los de «o despertar não os acordou» seria a terceira leitura de uma mutação
+        // sobrevivente: *a fixtura não produz o fenómeno*. ⚠️ E a lista é **declarada pelo nó**
+        // (`register_required_inputs`, o mesmo canal que acende o ⚠️ no cartão), nunca escrita
+        // aqui — um nó que passe a exigir uma porta amanhã sai desta conta sozinho.
+        if reg
+            .required_inputs(ph2d_nodegraph::node::NodeTypeId::of(nome))
+            .is_some_and(|r| !r.is_empty())
+        {
+            continue;
+        }
         let saida = |aceso: bool| {
             let mut m = MotionState::new();
             let sink = build_com(&mut m, 8.0, Some(nome), aceso);

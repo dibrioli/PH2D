@@ -363,7 +363,7 @@ pub fn sd_star(
     half_height: f64,
     round: f64,
     chamfer: f64,
-    tip_chamfer: f64,
+    corner_chamfer: f64,
 ) -> Tree {
     let n = points.max(3);
     let beta = std::f64::consts::PI / f64::from(n);
@@ -413,10 +413,17 @@ pub fn sd_star(
     // *Uma alavanca que cura metade de um defeito cura metade — e diz qual.*
     // ⭐⭐⭐ **A FOLGA É A MESMA NOS DOIS PERFIS** (W142) — ela é a divisória entre pipas vizinhas,
     // não uma aresta, e os dois contornos têm de a ter no MESMO sítio.
-    let folga = Tree::constant((round + chamfer).min(inner * beta.sin()));
+    // ⭐⭐⭐ **A FOLGA COBRE O MAIS FUNDO DOS DOIS RECUOS, e NÃO a soma deles** (W141/W144).
+    //
+    // ⛔ **Somá-los foi construído e medido:** a folga é limitada por geometria (os dois planos
+    // afastados cruzam-se a `δ/sin β` do centro, do lado oposto) e `round + chamfer +
+    // corner_chamfer` passa disso — o filete deixa de alcançar a aresta do vale e a sonda lê
+    // `2,79 %` da superfície sobre um vinco, contra `0,00 %` com o `max`. *A folga a mais parte
+    // a forma tanto como a folga a menos.*
+    let folga = Tree::constant((round + chamfer.max(corner_chamfer)).min(inner * beta.sin()));
     // ⭐⭐⭐ **O CONTORNO, com o raio das quinas como PARÂMETRO** (W142) — porque a estrela precisa
     // dele duas vezes, com números diferentes. Ver [`crate::ops_slab::slab_and_walls_from`].
-    let contorno = |r_quina: f64| -> Tree {
+    let contorno = |r_quina: f64, c_quina: f64| -> Tree {
         let mut pontas: Option<Tree> = None;
         for k in 0..n {
             let phi = std::f64::consts::TAU * f64::from(k) / f64::from(n);
@@ -427,13 +434,14 @@ pub fn sd_star(
             let ponta = crate::ops_joint::intersection_joint(
                 &half_plane(before, tip),
                 &half_plane(tip, after),
-                // ⭐⭐⭐ **A PONTA lê o número DELA** (W143, pedido do Enio de 09/09).
+                // ⭐⭐⭐ **AS QUINAS DO CONTORNO lêem o número DELAS** (W143/W144, pedidos do Enio
+                // de 09/09) — a ponta **e o vale**, que são as duas arestas VERTICAIS da estrela.
                 //
                 // ⛔ Com um slider só, a faceta da ponta desaparecia `3,7×` mais cedo que a do
                 // aro — o filete engole o chanfro acima de `sin α (1+sin α)/cos α`, que vale
                 // `0,462` numa ponta de `19,17°` e `1,707` num aro ortogonal. *Duas famílias de
                 // aresta com tectos tão diferentes não cabem num número.*
-                crate::ops_joint::Edge::at(r_quina, tip_chamfer, cos_ponta),
+                crate::ops_joint::Edge::at(r_quina, c_quina, cos_ponta),
             );
             // ⚠️ E o SECTOR **CORTA A SECO**, de propósito: ele não é uma aresta da peça, é a divisória
             // entre duas pipas vizinhas. Arredondá-lo abriria um sulco **dentro** do sólido.
@@ -467,7 +475,7 @@ pub fn sd_star(
                     crate::ops_joint::union_joint(
                         &w,
                         &pipa,
-                        crate::ops_joint::Edge::at(r_quina, chamfer, cos_vale),
+                        crate::ops_joint::Edge::at(r_quina, c_quina, cos_vale),
                     )
                 },
             ));
@@ -477,7 +485,7 @@ pub fn sd_star(
     // ⚠️ **O disco entra por `min` CRU** — ele é enchimento interior e não fronteira, e arredondar
     // contra ele misturaria um raio a mais no vale (a fronteira dele passa exactamente por lá). Ver
     // a nota da costura, acima: com `round = 0` ele continua a ser o que a mata.
-    let paredes = contorno(round).min(disco.clone());
+    let paredes = contorno(round, corner_chamfer).min(disco.clone());
     // ⭐⭐⭐ **O PERFIL DO PLANO DO CHANFRO** (W142, report do Enio de 08/09) — as quinas
     // arredondadas a `round + chamfer`, para que o eixo medial do contorno comece `round` abaixo do
     // ponto mais fundo da faceta. ⚠️ **O tecto é o da própria estrela**, e vem da porta que o
@@ -491,7 +499,7 @@ pub fn sd_star(
     // não há filete nenhum para alcançar: ali a saída fica **byte-idêntica** à de sempre, que é a
     // peça que o Enio aprovou na 1.ª foto de 08/09.
     let plano = if chamfer > 0.0 && round > 0.0 && r_plano > round {
-        contorno(r_plano).min(disco)
+        contorno(r_plano, corner_chamfer.max(chamfer)).min(disco)
     } else {
         // ⚠️ **Sem chanfro, ou com o tecto já alcançado, é o MESMO perfil** — e aí a saída é
         // byte-idêntica à de antes, sem um nó a mais na árvore.

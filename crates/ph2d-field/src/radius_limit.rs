@@ -496,7 +496,7 @@ pub fn star_round_limit(points: u32, outer: f32, inner: f32) -> f32 {
 /// ⛔ **Não leva `half_height`**, ao contrário do [`round_limit`]: a ponta é uma aresta **vertical**,
 /// e a espessura da chapa não a limita.
 #[must_use]
-pub fn star_tip_chamfer_limit(points: u32, outer: f32, inner: f32, chamfer: f32) -> f32 {
+pub fn star_corner_chamfer_limit(points: u32, outer: f32, inner: f32) -> f32 {
     let n = points.max(crate::MIN_STAR_POINTS);
     let beta = std::f32::consts::PI / n as f32;
     let u = (outer * outer + inner * inner - 2.0 * outer * inner * beta.cos()).sqrt();
@@ -506,9 +506,47 @@ pub fn star_tip_chamfer_limit(points: u32, outer: f32, inner: f32, chamfer: f32)
     // As meias-aberturas das duas quinas saem da MESMA aresta — a lei do [`star_round_limit`].
     let alfa = (inner * beta.sin() / u).clamp(0.0, 1.0).asin();
     let (cos_ponta, cos_vale) = (alfa.cos(), (alfa + beta).cos().abs());
-    let folga = (outer - inner - chamfer * cos_vale).max(0.0);
-    folga / cos_ponta.max(f32::MIN_POSITIVE)
+    (outer - inner) / (cos_ponta + cos_vale).max(f32::MIN_POSITIVE) * FOLD_SAFETY
 }
+
+/// ⭐⭐⭐ **O PREÇO MEDIDO DE A UNIÃO SER DOBRADA AOS PARES** (W144) — e ele **diz de que recurso é**.
+///
+/// # O mecanismo
+///
+/// A estrela é a união de `n` pipas, e a [`crate::Primitive::Star`] fá-la **dobrando aos pares**
+/// (`kite0 ∪ kite1 ∪ …`). O chanfro de uma união é `(a + b + c)·√½`, e no passo `k` o `a` é a
+/// **forma já acumulada** — um objecto de `k` braços, não o flanco vizinho. ⇒ *o plano do chanfro
+/// do vale não é local ao vale*, e com recuo grande ele acrescenta material longe dele: o contorno
+/// ondula e a estrela deixa de ter braços antes de a ponta encontrar o vale.
+///
+/// ⚠️ **Varrido em 112 estrelas** (`points` de `3` a `16`, `inner/outer` de `0,2` a `0,9`), a
+/// fracção do tecto analítico em que a forma ainda é uma estrela:
+///
+/// | | pior | onde |
+/// |---|---:|---|
+/// | `n` par | `1,000` | nunca degenera |
+/// | `n = 5` | `0,808` | `inner = 0,40 × outer` |
+/// | `n = 7` | `0,777` | `inner = 0,55 × outer` |
+/// | **`n = 11`** | **`0,7483`** | `inner = 0,60 × outer` |
+///
+/// ⇒ `0,72` fica `3,8 %` abaixo do pior medido.
+///
+/// # ⛔⛔ A CURA FOI CONSTRUÍDA, MEDIDA E RECUSADA
+///
+/// Trocar o dobrar aos pares por [`ph2d_field_eval::ops_joint::union_joint_n`] leva a fracção a
+/// **`1,000` em TODAS as 112** — o mecanismo fica provado. ⛔ Mas a mistura n-ária supõe todos os
+/// pares ortogonais, e o vale desta forma tem meia-abertura `55,17°`:
+///
+/// | o que o vale entrega | aos pares (hoje) | n-ário |
+/// |---|---:|---:|
+/// | recuo do chanfro | **`1,000×`** | `1,066×` |
+/// | avanço do filete | **`1,000×`** | **`2,096×`** |
+///
+/// *Ganhar `33 %` de curso num chanfro à custa de o filete do vale entregar o dobro do que o slider
+/// diz desfaz a W104 e a W107, que foram duas waves inteiras.* ⇒ a folga fica, e a cura de fundo é
+/// uma mistura n-ária que **saiba o ângulo de cada par** — que hoje não tem forma fechada
+/// (`SEM_ANGULO_FICA_N_ARIO`).
+const FOLD_SAFETY: f32 = 0.72;
 
 /// ⭐ **A meia-espessura ÚTIL de um bico** — a altura do triângulo `(base, altura)` medida sobre a
 /// hipotenusa, `base·altura/√(base² + altura²)`.

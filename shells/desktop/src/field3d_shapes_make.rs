@@ -163,7 +163,7 @@ pub(crate) fn a_star(r: f32) -> Primitive {
         half_height: r * 0.35,
         round: round_of(r),
         chamfer: 0.0,
-        tip_chamfer: 0.0,
+        corner_chamfer: 0.0,
     }
 }
 

@@ -150,7 +150,7 @@ fn measure_star_points_against_the_march() {
                 half_height: hh,
                 round,
                 chamfer: 0.0,
-                tip_chamfer: 0.0,
+                corner_chamfer: 0.0,
             };
             ph2d_field::clamp_round(&mut p);
             let doc = FieldDoc::new(

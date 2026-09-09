@@ -463,9 +463,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // propósito: os dois medem a mesma coisa — o recuo ao longo de cada face —, e um artista que
         // aprendeu a palavra num sítio não pode encontrar outra no seguinte.
         "field.dim.chamfer" => "Chamfer",
-        // ⭐ **A segunda aresta da estrela** (W143) — as PONTAS têm tecto próprio, `4,5x` mais
-        // longo que o do chanfro das faces.
-        "field.dim.tip_chamfer" => "Tip Chamfer",
+        // ⭐ **A segunda família de aresta da estrela** (W143/W144) — as quinas do CONTORNO (a
+        // ponta e o vale), com tecto próprio `2,03x` mais longo que o do chanfro das faces.
+        "field.dim.corner_chamfer" => "Corner Chamfer",
         "field.dim.round" => "Fillet",
         // ⭐⭐⭐ **O RAIO DA JUNÇÃO** (W98) — como esta forma se encontra com o resultado das
         // anteriores. ⚠️ **Palavra própria, e não "Fillet" outra vez:** desde o verbo por forma, uma

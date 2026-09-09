@@ -140,7 +140,7 @@ fn primitive_raw(p: &Primitive) -> Tree {
             half_height,
             round,
             chamfer,
-            tip_chamfer,
+            corner_chamfer,
         } => ops::sd_star(
             points,
             f64::from(outer),
@@ -148,7 +148,7 @@ fn primitive_raw(p: &Primitive) -> Tree {
             f64::from(half_height),
             f64::from(round),
             f64::from(chamfer),
-            f64::from(tip_chamfer),
+            f64::from(corner_chamfer),
         ),
         Primitive::BoxFrame {
             half,

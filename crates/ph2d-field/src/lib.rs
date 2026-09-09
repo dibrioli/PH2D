@@ -105,7 +105,7 @@ pub use radius::{
     round_of, set_shape_radius,
 };
 pub use radius_extents::bounding_half_extents;
-pub use radius_limit::{round_limit, star_round_limit, star_tip_chamfer_limit};
+pub use radius_limit::{round_limit, star_corner_chamfer_limit, star_round_limit};
 pub use vertex_rows::{VertexRows, vertex_rows};
 pub use xform::Xform;
 
@@ -259,15 +259,20 @@ use serde::{Deserialize, Serialize};
 /// é o que o artista pensa»*. ⇒ *o degrau que este número sobe é o preço de a peça ser UMA peça, e
 /// é um preço que se paga.*
 ///
-/// v21: a [`Primitive::Star`] ganhou o **`tip_chamfer`** (W143, pedido do Enio de 09/09) — o
-/// chanfro das PONTAS, separado do das faces. ⚠️ **O campo entra no FIM da variante** ⇒ nenhum
-/// índice existente se move, e a fileira do painel entra **entre** o `Chamfer` e o `Fillet`, que é
-/// onde ela se lê.
+/// v21: a [`Primitive::Star`] ganhou o **`corner_chamfer`** (W143/W144, dois pedidos do Enio de
+/// 09/09) — o chanfro das quinas do **CONTORNO**, separado do das faces. ⚠️ **O campo entra no FIM
+/// da variante** ⇒ nenhum índice existente se move, e a fileira do painel entra **entre** o
+/// `Chamfer` e o `Fillet`, que é onde ela se lê.
 ///
-/// ⛔⛔ **Este degrau muda a APARÊNCIA de um documento v20 com chanfro**, e é a única vez que isso
-/// acontece nesta escada: até aqui o `chamfer` chanfrava também as pontas, e agora não. *A mudança
-/// é o pedido* — as duas famílias de aresta passam a ter um controlo cada, e um documento velho
-/// abre com as pontas por chanfrar até alguém subir o controlo delas.
+/// ⚠️ **O degrau é UM e cobre as duas waves**, e isso é deliberado: a W143 pôs o campo a tratar só
+/// as pontas e a W144 juntou-lhe o vale (*«as arestas laterais internas deveriam ter ficado junto
+/// com o das pontas»*) — mas o v21 **nunca saiu deste ramo**, e escrever um v22 alegaria uma geração
+/// de formato que nunca existiu em lado nenhum. *Um degrau conta as gerações que o mundo viu.*
+///
+/// ⛔⛔ **Ele muda a APARÊNCIA de um documento v20 com chanfro**, e é a única vez nesta escada: até
+/// aqui o `chamfer` chanfrava também a ponta e o vale, e agora não. *A mudança é o pedido* — a
+/// família das arestas VERTICAIS e a das arestas do ARO passam a ter um controlo cada, e um
+/// documento velho abre com o contorno por chanfrar até alguém subir o controlo dele.
 pub const FIELD_DOC_VERSION: u32 = 21;
 
 /// Índice de um nó na arena.

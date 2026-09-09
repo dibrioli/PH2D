@@ -32,7 +32,7 @@ pub(crate) fn cena_11() -> Result<FieldDoc, ph2d_field::FieldError> {
                     half_height: 0.10,
                     round: 0.020,
                     chamfer: 0.0,
-                    tip_chamfer: 0.0,
+                    corner_chamfer: 0.0,
                 },
                 x(-0.62),
             ),

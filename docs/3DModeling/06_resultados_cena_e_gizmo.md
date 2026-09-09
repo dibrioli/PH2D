@@ -14415,6 +14415,11 @@ Com o chanfro das faces a meio e o filete a um quarto:
 (`0,01583`) ainda passa o `0,462 × 0,02667 = 0,01231`. *O controlo não desliga a regra — dá curso
 para a passar.*
 
+> ⚠️⚠️ **LEIA A §144 ANTES DE USAR OS NÚMEROS DESTA SECÇÃO.** No mesmo dia o dono reportou que o
+> **vale** pertence à mesma família da ponta, o controlo passou a chamar-se **`Corner Chamfer`** e o
+> tecto dele mudou de lei (`4,21×` → **`2,03×`**). O mecanismo da §143 continua exacto; os tectos e
+> o rótulo, não.
+
 ### §143.4 — ⚠️ O que muda para um documento que já existe
 
 `FIELD_DOC_VERSION` **20 → 21**, e ⛔ **este degrau muda a APARÊNCIA**, coisa que nenhum degrau desta
@@ -14422,5 +14427,99 @@ escada tinha feito: até aqui o `Chamfer` chanfrava também as pontas. *A mudan�
 família de aresta, um controlo —, e uma estrela gravada abre com as pontas por chanfrar até alguém
 subir o controlo delas.
 
-**Smoke:** *MODEL* > **A** > *Star*; subir **Chamfer** (as faces), depois **Tip Chamfer** (as
-pontas), e por fim o **Fillet**.
+**Smoke:** ver a §144 — o controlo mudou de nome e de alcance no mesmo dia.
+
+## §144 — O VALE é uma aresta do CONTORNO, e o tecto do controlo tem um preço medido (09/09)
+
+> **Report do Enio, 09/09, com foto e seta no vale:** *«O chamfer das arestas laterais internas
+> deveria ter ficado junto com o das pontas e não com os da face.»*
+
+Ele tem razão pelo mecanismo: a estrela tem **duas** famílias de aresta, e o critério não é
+convexo/côncavo — é **vertical contra horizontal**. A ponta e o vale são as duas quinas do
+**contorno**; o aro é onde as faces planas encontram as paredes.
+
+⇒ o `tip_chamfer` da W143 passa a chamar-se **`corner_chamfer`** (*Corner Chamfer*) e trata as
+**duas** quinas. ⛔ O rótulo mudou porque o alcance mudou: *«Tip Chamfer»* a governar o vale seria um
+controlo cujo nome descreve metade do que ele faz.
+
+### §144.1 — O tecto ficou mais SIMPLES, e depois mais HONESTO
+
+Com as duas quinas no mesmo número, a lei perde a dependência do outro slider:
+
+```text
+outer − t·cos α_ponta  >  inner + t·cos α_vale     ⇒     t < (outer − inner)/(cos α_ponta + cos α_vale)
+```
+
+⚠️ **E a conta não é um tecto.** Varrida em **112 estrelas** (`points` de `3` a `16`, `inner/outer`
+de `0,2` a `0,9`), a fracção do tecto analítico em que a peça **ainda é uma estrela**:
+
+| | pior | onde |
+|---|---:|---|
+| `n` par | `1,000` | nunca degenera |
+| `n = 5` | `0,808` | `inner = 0,40 × outer` |
+| `n = 7` | `0,777` | `inner = 0,55 × outer` |
+| **`n = 11`** | **`0,7483`** | `inner = 0,60 × outer` |
+
+⭐⭐⭐ **O mecanismo tem nome: a união é DOBRADA AOS PARES.** O chanfro de uma união é
+`(a + b + c)·√½`, e no passo `k` o `a` é a **forma já acumulada** — um objecto de `k` braços, não o
+flanco vizinho. ⇒ *o plano do chanfro do vale não é local ao vale*, e com recuo grande acrescenta
+material longe dele: o contorno ondula e a estrela perde os braços **antes** de a ponta encontrar o
+vale.
+
+### §144.2 — ⛔⛔ A cura foi CONSTRUÍDA, MEDIDA e RECUSADA
+
+Trocar o dobrar aos pares pela `union_joint_n` (a união n-ária, com os pares adjacentes dados à mão)
+leva a fracção a **`1,000` em TODAS as 112** — o mecanismo fica provado. Só que a mistura n-ária
+supõe todos os pares **ortogonais**, e o vale desta forma tem meia-abertura `55,17°`:
+
+| o que o vale entrega | aos pares (hoje) | n-ário |
+|---|---:|---:|
+| recuo do chanfro | **`1,000×`** | `1,066×` |
+| avanço do filete | **`1,000×`** | **`2,096×`** |
+
+⇒ *ganhar `33 %` de curso num chanfro à custa de o filete do vale entregar o dobro do que o slider
+diz desfaz a W104 e a W107, que foram duas waves inteiras.* A folga `0,72` fica (`3,8 %` abaixo do
+pior medido), e a cura de fundo é uma mistura n-ária que **saiba o ângulo de cada par** — que hoje
+não tem forma fechada.
+
+### §144.3 — O que o controlo passa a valer
+
+| | tecto |
+|---|---:|
+| *Chamfer* (as faces) | `0,06332` |
+| *Corner Chamfer* (o contorno) | **`0,12825`** — `2,03×` |
+
+⚠️ **Três réguas foram deitadas fora antes desta**, e as três mediam a régua e não a forma: a que
+comparava `raio(0)` com `raio(β)` supunha que o mínimo está no vale (com faceta na ponta o raio
+**cresce** ao sair da bissectriz, e com o vale chanfrado o mínimo muda de sítio); a que media o
+tecto com `chamfer = c` sobre uma peça com `chamfer = 0`; e a que media a largura da faceta do aro
+supondo o declive `45°`.
+
+**Smoke:** *MODEL* > **A** > *Star*; **Chamfer** trata só o aro das faces, **Corner Chamfer** trata
+as pontas **e** os vales.
+
+### §144.4 — Duas propriedades de waves anteriores caíram, e as duas por RAZÕES DIFERENTES
+
+⚠️ Mover o vale partiu dois gates verdes. **Nenhum dos dois se afrouxou.**
+
+**(a) O MIOLO da tampa (W141).** Com o vale já não chanfrado pelo `Chamfer`, a face de cima passou a
+ter `0,86 %`–`4,80 %` fora do plano. ⛔ A folga é **inerte** para isto (varrida de `×1` a `×3`, a
+leitura é byte a byte igual) e o perfil do plano do chanfro também. ⭐ **O que é: num canto CÔNCAVO
+um chanfro de recuo `c` remove um disco de raio `c` à volta do vértice** — geometria, não defeito.
+Tirando essa coroa, a leitura cai de **`4,24 %` para `0,36 %`**, dentro da barra de `1 %`. Antes da
+W144 a coroa saía do enquadramento sozinha porque o vale andava para fora ao ser chanfrado; com as
+famílias separadas ela cai **dentro** da janela do miolo. ⇒ o gate passa a excluí-la, por construção.
+
+**(b) O ALCANCE do filete (W142).** Duas causas somadas, e a medição separou-as:
+
+| | leitura |
+|---|---:|
+| como estava | `5,51 %` |
+| régua a pôr o **mesmo tamanho** de chanfro em cada fileira (e não a mesma fracção do tecto de cada uma) | `2,79 %` |
+| **e a folga a cobrir o MAIOR dos dois recuos em vez da SOMA** | **`0,00 %`** |
+
+⭐⭐ A primeira é da régua: o tecto do contorno é `2,03×` o das faces, então «metade de cada tecto»
+comparava um chanfro do dobro do tamanho contra o mesmo filete — *um chanfro maior precisa de um
+filete maior, e isso é a lei, não um defeito*. ⛔ A segunda é do produto e é a W104-bis outra vez: a
+folga tem tecto geométrico, e `round + chamfer + corner_chamfer` passa dele. *A folga a mais parte a
+forma tanto como a folga a menos.*

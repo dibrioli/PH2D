@@ -23,27 +23,30 @@ use crate::{FieldError, Primitive, round_limit};
 ///
 /// ⚠️ **O tecto não é o [`round_limit`]**: a ponta é uma aresta vertical, e o que a limita é ela
 /// encontrar o vale — `4,5×` mais curso na estrela do catálogo. Ver
-/// [`crate::star_tip_chamfer_limit`], onde a conta está medida contra a forma.
+/// [`crate::star_corner_chamfer_limit`], onde a conta está medida contra a forma.
 ///
 /// # Errors
 /// [`FieldError::NonPositive`] se a forma não tiver esta aresta; [`FieldError::RoundTooLarge`]
 /// acima do tecto.
-pub(super) fn set_tip_chamfer(p: &mut Primitive, node: u32, value: f32) -> Result<(), FieldError> {
+pub(super) fn set_corner_chamfer(
+    p: &mut Primitive,
+    node: u32,
+    value: f32,
+) -> Result<(), FieldError> {
     let Primitive::Star {
         points,
         outer,
         inner,
-        chamfer,
-        tip_chamfer,
+        corner_chamfer,
         ..
     } = p
     else {
         return Err(FieldError::NonPositive {
             node,
-            what: "tip_chamfer",
+            what: "corner_chamfer",
         });
     };
-    let limit = crate::star_tip_chamfer_limit(*points, *outer, *inner, *chamfer);
+    let limit = crate::star_corner_chamfer_limit(*points, *outer, *inner);
     if value >= limit {
         return Err(FieldError::RoundTooLarge {
             node,
@@ -51,7 +54,7 @@ pub(super) fn set_tip_chamfer(p: &mut Primitive, node: u32, value: f32) -> Resul
             limit,
         });
     }
-    *tip_chamfer = value;
+    *corner_chamfer = value;
     Ok(())
 }
 

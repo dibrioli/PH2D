@@ -12,9 +12,9 @@
 //! um arquivo não pode custar uma reescrita em cada sítio que o chamava.
 
 use super::dims_write_coerce::{
-    chamfer_index, keep_above, keep_below, round_index, tip_chamfer_index,
+    chamfer_index, corner_chamfer_index, keep_above, keep_below, round_index,
 };
-use super::dims_write_edge::{set_chamfer, set_round, set_tip_chamfer};
+use super::dims_write_edge::{set_chamfer, set_corner_chamfer, set_round};
 use super::{Span, dims};
 use crate::{FieldError, Primitive};
 
@@ -690,8 +690,8 @@ pub(super) fn write_dim(
         // ⭐ **E a terceira fileira de aresta, pelo mesmo portão** (W143). ⚠️ Ela vem **depois** das
         // duas, e a ordem é load-bearing: as três têm índices distintos, e sem este braço o slider
         // das pontas cairia no `_ => Err(bad("dim"))` — pinta, arrasta e não escreve.
-        (p, i) if Some(i) == tip_chamfer_index(p) => {
-            return set_tip_chamfer(p, node, value);
+        (p, i) if Some(i) == corner_chamfer_index(p) => {
+            return set_corner_chamfer(p, node, value);
         }
         _ => return Err(bad("dim")),
     }

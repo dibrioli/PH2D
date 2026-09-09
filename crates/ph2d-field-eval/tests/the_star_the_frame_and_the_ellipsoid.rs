@@ -58,7 +58,7 @@ fn a_star(round: f32) -> Primitive {
         half_height: HALF_H as f32,
         round,
         chamfer: 0.0,
-        tip_chamfer: 0.0,
+        corner_chamfer: 0.0,
     }
 }
 
@@ -408,7 +408,7 @@ fn a_star_with_its_valley_outside_its_tip_is_refused() {
         half_height: 0.2,
         round: 0.0,
         chamfer: 0.0,
-        tip_chamfer: 0.0,
+        corner_chamfer: 0.0,
     };
     assert!(
         FieldDoc::new(

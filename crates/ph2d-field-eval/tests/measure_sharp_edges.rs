@@ -349,7 +349,7 @@ fn where_the_curvature_breaks_are() {
         half_height: 0.25,
         round: 0.0,
         chamfer: 0.0,
-        tip_chamfer: 0.0,
+        corner_chamfer: 0.0,
     };
     let p = with_round(&base, 0.999).expect("tem filete");
     let (pontos, _, _) = traverse(&p, 4096, 6);
@@ -657,7 +657,7 @@ fn representative(k: PrimitiveKind) -> Option<Primitive> {
             half_height: 0.25,
             round: 0.0,
             chamfer: 0.0,
-            tip_chamfer: 0.0,
+            corner_chamfer: 0.0,
         },
         PrimitiveKind::BoxFrame => Primitive::BoxFrame {
             half: [0.45, 0.35, 0.4],
@@ -1137,7 +1137,7 @@ fn where_the_creases_are() {
                 half_height: 0.25,
                 round: 0.0,
                 chamfer: 0.0,
-                tip_chamfer: 0.0,
+                corner_chamfer: 0.0,
             },
         ),
     ] {
@@ -1336,7 +1336,7 @@ fn with_pair(p: &Primitive, chamfer: f32, fillet: f32) -> Option<Primitive> {
     }
     // ⭐⭐⭐ **E TODA OUTRA FILEIRA DE CHANFRO que a forma tenha** (W143).
     //
-    // ⛔ A estrela ganhou uma segunda — o `field.dim.tip_chamfer`, com **tecto próprio** —, e uma
+    // ⛔ A estrela ganhou uma segunda — o `field.dim.corner_chamfer`, com **tecto próprio** —, e uma
     // régua que só accione a primeira mede meia forma: os dois gates que perguntam *«o chanfro
     // alcança toda aresta?»* e *«ele não piora nada?»* passariam a falar de uma peça com as pontas
     // vivas. ⚠️ **A fracção é a MESMA, mas a parede é a DELA** — usar o `round_limit` aqui daria
@@ -1357,7 +1357,14 @@ fn with_pair(p: &Primitive, chamfer: f32, fillet: f32) -> Option<Primitive> {
         })
         .collect();
     for (i, parede) in extra {
-        ph2d_field::set_dim(&mut q, 0, i, parede * chamfer).ok()?;
+        // ⭐⭐⭐ **O MESMO TAMANHO de chanfro em toda a fileira, e não a mesma FRACÇÃO** (W144).
+        //
+        // ⛔ A 1.ª redacção punha cada fileira a `fracção × tecto DELA`, e o tecto do contorno da
+        // estrela é `2,03×` o das faces ⇒ ela comparava um chanfro do dobro do tamanho contra o
+        // mesmo filete, e lia como defeito o que é a lei: *um chanfro maior precisa de um filete
+        // maior para lhe apagar as arestas*. A pergunta do gate é se o filete alcança **o chanfro**,
+        // e para isso os dois têm de ser comparáveis.
+        ph2d_field::set_dim(&mut q, 0, i, (limite * chamfer).min(parede * 0.999)).ok()?;
     }
     Some(q)
 }
@@ -1639,7 +1646,7 @@ fn the_valley_of_a_star_meets_the_cap_without_a_crease() {
         half_height: meia_altura as f32,
         round: 0.0,
         chamfer: 0.0,
-        tip_chamfer: 0.0,
+        corner_chamfer: 0.0,
     };
     let p = with_round(&base, 0.999).expect("a estrela tem filete");
     let (pontos, _, _) = traverse(&p, 2048, 6);
@@ -2020,7 +2027,7 @@ fn the_star_rim_vertex_is_that_angle_and_the_fillet_erases_it() {
     //
     // ⛔ *Uma barra posta sobre `with_pair` mediria `0,5 × tecto das pontas`, que é outra peça.*
     let so_chanfro = escreve(
-        "field.dim.tip_chamfer",
+        "field.dim.corner_chamfer",
         c,
         &escreve("field.dim.chamfer", c, &base),
     );
@@ -2042,7 +2049,7 @@ fn the_star_rim_vertex_is_that_angle_and_the_fillet_erases_it() {
     println!("  [vertice] star com as pontas por chanfrar: {viva:.1}° (a aresta viva)");
     assert!(
         viva > previsto * 1.2,
-        "com o «Tip Chamfer» a ZERO a ponta tem de ficar VIVA, e ela mede {viva:.1}° — abaixo de \
+        "com o «Corner Chamfer» a ZERO a ponta tem de ficar VIVA, e ela mede {viva:.1}° — abaixo de \
          {:.1}° significa que o chanfro das FACES voltou a tratá-la, e o pedido do Enio de 09/09 \
          (um controlo por família de aresta) evaporou",
         previsto * 1.2

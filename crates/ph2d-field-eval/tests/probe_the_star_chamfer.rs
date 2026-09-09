@@ -22,7 +22,7 @@ fn estrela(round: f32, chamfer: f32) -> Field {
 }
 
 /// A mesma, com o chanfro das PONTAS (W143).
-fn estrela_com(round: f32, chamfer: f32, tip_chamfer: f32) -> Field {
+fn estrela_com(round: f32, chamfer: f32, corner_chamfer: f32) -> Field {
     Field::new(
         &FieldDoc::new(
             vec![Node::new(
@@ -34,7 +34,7 @@ fn estrela_com(round: f32, chamfer: f32, tip_chamfer: f32) -> Field {
                     half_height: H,
                     round,
                     chamfer,
-                    tip_chamfer,
+                    corner_chamfer,
                 }),
             )],
             NodeId(0),
@@ -209,7 +209,7 @@ fn probe_whether_the_wall_field_has_a_ridge_at_the_tip() {
         half_height: H,
         round: 0.0,
         chamfer: 0.0,
-        tip_chamfer: 0.0,
+        corner_chamfer: 0.0,
     })
     .expect("tem filete");
     println!("  limite do filete = {limite:.4}");
@@ -226,7 +226,7 @@ fn probe_whether_the_wall_field_has_a_ridge_at_the_tip() {
                         half_height: 5.0,
                         round: r,
                         chamfer: 0.0,
-                        tip_chamfer: 0.0,
+                        corner_chamfer: 0.0,
                     }),
                 )],
                 NodeId(0),
@@ -267,7 +267,7 @@ fn probe_the_tip_reach_on_the_cap() {
         half_height: H,
         round: 0.0,
         chamfer: 0.0,
-        tip_chamfer: 0.0,
+        corner_chamfer: 0.0,
     };
     let limite = ph2d_field::round_limit(&base).expect("tem filete");
     let c = limite * 0.5;
@@ -310,7 +310,7 @@ fn probe_what_the_second_profile_costs_the_march() {
         half_height: H,
         round: 0.0,
         chamfer: 0.0,
-        tip_chamfer: 0.0,
+        corner_chamfer: 0.0,
     };
     let limite = ph2d_field::round_limit(&base).expect("tem filete");
     let c = limite * 0.5;
@@ -331,7 +331,7 @@ fn probe_what_the_second_profile_costs_the_march() {
                     half_height: H,
                     round: r,
                     chamfer: ch,
-                    tip_chamfer: 0.0,
+                    corner_chamfer: 0.0,
                 }),
             )],
             NodeId(0),
@@ -385,7 +385,7 @@ fn probe_the_facet_width_of_each_edge_family() {
         half_height: H,
         round: 0.0,
         chamfer: 0.0,
-        tip_chamfer: 0.0,
+        corner_chamfer: 0.0,
     };
     let limite = ph2d_field::round_limit(&base).expect("tem filete");
     println!("  limite dos sliders = {limite:.5}");
@@ -494,7 +494,7 @@ fn probe_the_facet_width_of_each_edge_family() {
 /// faceta: uma faceta grande é o que se pede, e o que não se pode é a ponta desaparecer.
 #[test]
 #[ignore = "sonda: imprime o tecto"]
-fn probe_how_far_the_tip_chamfer_can_go() {
+fn probe_how_far_the_corner_chamfer_can_go() {
     let base = Primitive::Star {
         points: 5,
         outer: OUTER,
@@ -502,7 +502,7 @@ fn probe_how_far_the_tip_chamfer_can_go() {
         half_height: H,
         round: 0.0,
         chamfer: 0.0,
-        tip_chamfer: 0.0,
+        corner_chamfer: 0.0,
     };
     let limite = ph2d_field::round_limit(&base).expect("tem filete");
     let beta = std::f64::consts::PI / 5.0;
@@ -543,7 +543,7 @@ fn probe_how_far_the_tip_chamfer_can_go() {
 /// **SONDA (W143)** — o controlo NOVO: a faceta da ponta ao longo da faixa PRÓPRIA dela.
 #[test]
 #[ignore = "sonda: imprime a faixa do controlo novo"]
-fn probe_the_tip_chamfer_control() {
+fn probe_the_corner_chamfer_control() {
     let base = Primitive::Star {
         points: 5,
         outer: OUTER,
@@ -551,11 +551,11 @@ fn probe_the_tip_chamfer_control() {
         half_height: H,
         round: 0.0,
         chamfer: 0.0,
-        tip_chamfer: 0.0,
+        corner_chamfer: 0.0,
     };
     let lim_faces = ph2d_field::round_limit(&base).expect("tem filete");
     let c = lim_faces * 0.5;
-    let lim_pontas = ph2d_field::star_tip_chamfer_limit(5, OUTER, INNER, c);
+    let lim_pontas = ph2d_field::star_corner_chamfer_limit(5, OUTER, INNER);
     println!("  chanfro das FACES: tecto {lim_faces:.5}");
     println!(
         "  chanfro das PONTAS: tecto {lim_pontas:.5}  ({:.2}x mais curso)",
@@ -601,11 +601,11 @@ fn probe_the_worst_turn_with_both_chamfers() {
         half_height: H,
         round: 0.0,
         chamfer: 0.0,
-        tip_chamfer: 0.0,
+        corner_chamfer: 0.0,
     };
     let lim_f = ph2d_field::round_limit(&base).expect("filete");
     let c = lim_f * 0.5;
-    let lim_t = ph2d_field::star_tip_chamfer_limit(5, OUTER, INNER, c);
+    let lim_t = ph2d_field::star_corner_chamfer_limit(5, OUTER, INNER);
     println!("  tecto faces {lim_f:.5} | tecto pontas {lim_t:.5}");
     for (rot, r, ch, tip) in [
         ("so' chanfro faces", 0.0, c, 0.0),
@@ -666,11 +666,11 @@ fn probe_the_surface_worst_turn() {
         half_height: H,
         round: 0.0,
         chamfer: 0.0,
-        tip_chamfer: 0.0,
+        corner_chamfer: 0.0,
     };
     let lim_f = ph2d_field::round_limit(&base).expect("filete");
     let c = lim_f * 0.5;
-    let lim_t = ph2d_field::star_tip_chamfer_limit(5, OUTER, INNER, c);
+    let lim_t = ph2d_field::star_corner_chamfer_limit(5, OUTER, INNER);
     for (rot, r, ch, tip) in [
         ("faces=c, pontas=0", 0.0, c, 0.0),
         ("faces=c, pontas=c  (o de sempre)", 0.0, c, c),
@@ -689,7 +689,7 @@ fn probe_the_surface_worst_turn() {
                     half_height: H,
                     round: r,
                     chamfer: ch,
-                    tip_chamfer: tip,
+                    corner_chamfer: tip,
                 }),
             )],
             NodeId(0),
@@ -756,5 +756,383 @@ fn probe_the_surface_worst_turn() {
             }
         }
         println!("  {rot:<34} pior giro {pior:6.1}°");
+    }
+}
+
+/// **SONDA (W144)** — onde a estrela de facto parte quando as DUAS quinas recuam com o mesmo número.
+#[test]
+#[ignore = "sonda: varre a fronteira"]
+fn probe_where_the_corner_chamfer_actually_breaks() {
+    let base = Primitive::Star {
+        points: 5,
+        outer: OUTER,
+        inner: INNER,
+        half_height: H,
+        round: 0.0,
+        chamfer: 0.0,
+        corner_chamfer: 0.0,
+    };
+    let tecto = ph2d_field::star_corner_chamfer_limit(5, OUTER, INNER);
+    let beta = std::f64::consts::PI / 5.0;
+    println!("  tecto = {tecto:.5}");
+    println!("\n  fraccao |  valor  | raio ponta | raio vale | ponta > vale?");
+    for fr in [0.5_f32, 0.7, 0.8, 0.85, 0.9, 0.95, 0.98, 0.999] {
+        let t = tecto * fr;
+        let f = estrela_com(0.0, 0.0, t);
+        let raio = |a: f64| -> f64 {
+            let (mut lo, mut hi) = (0.0_f64, 1.0_f64);
+            for _ in 0..60 {
+                let m = f64::midpoint(lo, hi);
+                if f.at(m * a.cos(), m * a.sin(), 0.0) <= 0.0 {
+                    lo = m
+                } else {
+                    hi = m
+                }
+            }
+            lo
+        };
+        let (rp, rv) = (raio(0.0), raio(beta));
+        println!(
+            "   {fr:.3}  | {t:.5} |  {rp:.5}   |  {rv:.5}  | {}",
+            if rp > rv * 1.001 { "SIM" } else { "NAO" }
+        );
+    }
+    let _ = base;
+}
+
+/// **SONDA (W144)** — a fronteira MEDIDA em várias estrelas, contra a conta analítica.
+#[test]
+#[ignore = "sonda: a tabela que escolhe o tecto"]
+fn probe_the_measured_corner_ceiling_over_many_stars() {
+    println!("\n  n | outer | inner | tecto analitico | fronteira MEDIDA | razao");
+    let mut corpus: Vec<(u32, f32, f32)> = Vec::new();
+    for n in 3_u32..=16 {
+        for k in [0.2_f32, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9] {
+            corpus.push((n, 0.45, 0.45 * k));
+        }
+    }
+    let mut pior = (1.0_f32, 0_u32, 0.0_f32);
+    for (n, outer, inner) in corpus {
+        let tecto = ph2d_field::star_corner_chamfer_limit(n, outer, inner);
+        let beta = std::f64::consts::PI / f64::from(n);
+        let ainda_estrela = |t: f32| -> bool {
+            let doc = FieldDoc::new(
+                vec![Node::new(
+                    Xform::IDENTITY,
+                    NodeKind::Leaf(Primitive::Star {
+                        points: n,
+                        outer,
+                        inner,
+                        half_height: H,
+                        round: 0.0,
+                        chamfer: 0.0,
+                        corner_chamfer: t,
+                    }),
+                )],
+                NodeId(0),
+            );
+            let Ok(doc) = doc else { return false };
+            let f = Field::new(&doc);
+            let raio = |a: f64| -> f64 {
+                let (mut lo, mut hi) = (0.0_f64, 1.0_f64);
+                for _ in 0..50 {
+                    let m = f64::midpoint(lo, hi);
+                    if f.at(m * a.cos(), m * a.sin(), 0.0) <= 0.0 {
+                        lo = m
+                    } else {
+                        hi = m
+                    }
+                }
+                lo
+            };
+            // ⭐⭐⭐ **A RÉGUA CERTA: o BRAÇO tem de dominar o VALE.**
+            //
+            // ⛔ A 1.ª comparava `raio(0)` com `raio(β)` e supunha que o mínimo está no vale. Com
+            // uma FACETA na ponta o raio **cresce** ao sair da bissectriz (numa recta `x = const`,
+            // `√(x²+y²)` sobe com `|y|`), e com o vale chanfrado o mínimo muda de sítio. *Uma régua
+            // que supõe onde está o mínimo mede a suposição.*
+            let arco = |de: f64, ate: f64| -> f64 {
+                (0..=16)
+                    .map(|i| raio(de + (ate - de) * f64::from(i) / 16.0))
+                    .fold(0.0_f64, f64::max)
+            };
+            arco(0.0, beta * 0.5) > raio(beta) * 1.001
+        };
+        let (mut lo, mut hi) = (0.0_f32, tecto);
+        for _ in 0..30 {
+            let m = 0.5 * (lo + hi);
+            if ainda_estrela(m) { lo = m } else { hi = m }
+        }
+        let razao = lo / tecto;
+        if razao < pior.0 {
+            pior = (razao, n, inner);
+        }
+        if razao < 0.95 {
+            println!(
+                "  {n:>2} | {outer:.3} | {inner:.3} |    {tecto:.5}      |     {lo:.5}      | {razao:.3}"
+            );
+        }
+    }
+    println!(
+        "\n  ⇒ PIOR do corpus: {:.4} (n = {}, inner = {:.3})",
+        pior.0, pior.1, pior.2
+    );
+}
+
+/// **SONDA (W144)** — o contorno inteiro de uma estrela perto do tecto, para ver ONDE ele parte.
+#[test]
+#[ignore = "sonda"]
+fn probe_the_outline_near_the_ceiling() {
+    for (n, inner) in [(5_u32, 0.18_f32), (6, 0.20)] {
+        let tecto = ph2d_field::star_corner_chamfer_limit(n, OUTER, inner);
+        for fr in [0.5_f32, 0.85] {
+            let t = tecto * fr;
+            let doc = FieldDoc::new(
+                vec![Node::new(
+                    Xform::IDENTITY,
+                    NodeKind::Leaf(Primitive::Star {
+                        points: n,
+                        outer: OUTER,
+                        inner,
+                        half_height: H,
+                        round: 0.0,
+                        chamfer: 0.0,
+                        corner_chamfer: t,
+                    }),
+                )],
+                NodeId(0),
+            )
+            .expect("valida");
+            let f = Field::new(&doc);
+            let beta = std::f64::consts::PI / f64::from(n);
+            print!("  n={n} fr={fr:.2} t={t:.5}  raios de 0 a beta:");
+            for i in 0..=8 {
+                let a = beta * f64::from(i) / 8.0;
+                let (mut lo, mut hi) = (0.0_f64, 1.0_f64);
+                for _ in 0..50 {
+                    let m = f64::midpoint(lo, hi);
+                    if f.at(m * a.cos(), m * a.sin(), 0.0) <= 0.0 {
+                        lo = m
+                    } else {
+                        hi = m
+                    }
+                }
+                print!(" {lo:.4}");
+            }
+            println!();
+        }
+    }
+}
+
+/// **SONDA (W144)** — o que o VALE entrega: recuo do chanfro e avanço do filete, contra a conta.
+#[test]
+#[ignore = "sonda: o preco da rota n-aria"]
+fn probe_what_the_valley_delivers() {
+    let (outer, inner, n) = (0.45_f64, 0.18_f64, 5_u32);
+    let beta = std::f64::consts::PI / f64::from(n);
+    let lado = (outer * outer + inner * inner - 2.0 * outer * inner * beta.cos()).sqrt();
+    let alfa = (inner * beta.sin() / lado).asin();
+    let av = alfa + beta;
+    println!(
+        "  meia-abertura do vale = {:.2}°  sin = {:.5}",
+        av.to_degrees(),
+        av.sin()
+    );
+    let vale = |round: f32, cham: f32| -> f64 {
+        let f = estrela_com(round, 0.0, cham);
+        let (mut lo, mut hi) = (0.0_f64, 1.0_f64);
+        for _ in 0..60 {
+            let m = f64::midpoint(lo, hi);
+            if f.at(m * beta.cos(), m * beta.sin(), 0.0) <= 0.0 {
+                lo = m
+            } else {
+                hi = m
+            }
+        }
+        lo
+    };
+    let base = vale(0.0, 0.0);
+    println!("  vale sem tratamento: {base:.5} (autorado {inner:.5})");
+    for c in [0.02_f32, 0.04, 0.06] {
+        let medido = vale(0.0, c) - base;
+        let conta = f64::from(c) * av.cos();
+        println!(
+            "  chanfro {c:.3}: o vale avanca {medido:.5}, a conta honesta pede {conta:.5} ({:.3}x)",
+            medido / conta
+        );
+    }
+    for r in [0.02_f32, 0.04, 0.06] {
+        let medido = vale(r, 0.0) - base;
+        let conta = f64::from(r) * (1.0 / av.sin() - 1.0);
+        println!(
+            "  filete  {r:.3}: o vale avanca {medido:.5}, o arco exacto pede {conta:.5} ({:.3}x)",
+            medido / conta
+        );
+    }
+}
+
+/// **SONDA (W144)** — o chanfro do VALE era load-bearing para o miolo?
+#[test]
+#[ignore = "sonda: A/B do vale contra o miolo"]
+fn probe_whether_the_valley_chamfer_protects_the_middle() {
+    let base = Primitive::Star {
+        points: 5,
+        outer: OUTER,
+        inner: INNER,
+        half_height: H,
+        round: 0.0,
+        chamfer: 0.0,
+        corner_chamfer: 0.0,
+    };
+    let tecto = ph2d_field::round_limit(&base).expect("filete");
+    // A fracção do MIOLO da tampa fora do plano — a régua da W141.
+    let miolo = |ch: f32, cc: f32| -> f64 {
+        let f = estrela_com(0.0, ch, cc);
+        let (mut fora, mut total) = (0usize, 0usize);
+        let n = 90;
+        for i in 0..n {
+            for j in 0..n {
+                let x = -0.30 + 0.60 * f64::from(i) / f64::from(n - 1);
+                let y = -0.30 + 0.60 * f64::from(j) / f64::from(n - 1);
+                // só o MIOLO: dentro do disco dos vales
+                if x.hypot(y) > f64::from(INNER) * 0.85 {
+                    continue;
+                }
+                let Some(z) = topo(&f, x, y) else { continue };
+                total += 1;
+                if (z - f64::from(H)).abs() > 1.0e-4 {
+                    fora += 1;
+                }
+            }
+        }
+        if total == 0 {
+            f64::NAN
+        } else {
+            100.0 * fora as f64 / total as f64
+        }
+    };
+    println!("\n  chanfro | vale a ZERO | vale = chanfro");
+    for fr in [0.2_f32, 0.3, 0.4, 0.5, 0.667] {
+        let ch = tecto * fr;
+        println!(
+            "   {fr:.3}  |   {:>6.2} %   |   {:>6.2} %",
+            miolo(ch, 0.0),
+            miolo(ch, ch)
+        );
+    }
+}
+
+/// **SONDA (W144)** — a PROFUNDIDADE do campo ao longo da costura entre pipas, contra o alcance do
+/// chanfro do aro.
+#[test]
+#[ignore = "sonda: a profundidade da costura"]
+fn probe_how_deep_the_seam_is() {
+    let base = Primitive::Star {
+        points: 5,
+        outer: OUTER,
+        inner: INNER,
+        half_height: H,
+        round: 0.0,
+        chamfer: 0.0,
+        corner_chamfer: 0.0,
+    };
+    let tecto = ph2d_field::round_limit(&base).expect("filete");
+    let beta = std::f64::consts::PI / 5.0;
+    // ⚠️ Estrela ALTA: a `z = 0` a laje não participa e o que se lê é o campo das PAREDES.
+    let paredes = |cc: f32| -> Field {
+        Field::new(
+            &FieldDoc::new(
+                vec![Node::new(
+                    Xform::IDENTITY,
+                    NodeKind::Leaf(Primitive::Star {
+                        points: 5,
+                        outer: OUTER,
+                        inner: INNER,
+                        half_height: 5.0,
+                        round: 0.0,
+                        chamfer: 0.0,
+                        corner_chamfer: cc,
+                    }),
+                )],
+                NodeId(0),
+            )
+            .expect("alta"),
+        )
+    };
+    for cc in [0.0_f32, tecto * 0.667] {
+        let f = paredes(cc);
+        print!("  vale={cc:.5}  campo na COSTURA (r de 0,02 a inner):");
+        for i in 1..=9 {
+            let r = f64::from(INNER) * f64::from(i) / 9.0;
+            print!(" {:.4}", f.at(r * beta.cos(), r * beta.sin(), 0.0));
+        }
+        println!();
+    }
+    println!(
+        "\n  alcance do chanfro do aro a 0,667 do tecto: -{:.4}",
+        tecto * 0.667
+    );
+}
+
+/// **SONDA (W144)** — o que sobra do «miolo fora do plano» quando se tira o que o chanfro do VALE
+/// legitimamente remove.
+///
+/// ⭐ Num canto CÔNCAVO, um chanfro de recuo `c` remove um disco de raio `c` à volta do vértice.
+/// ⇒ os pontos a menos de `c` de um vale **têm** de sair do plano; contá-los é contar a geometria.
+#[test]
+#[ignore = "sonda"]
+fn probe_the_middle_minus_what_the_valley_legitimately_eats() {
+    let base = Primitive::Star {
+        points: 5,
+        outer: OUTER,
+        inner: INNER,
+        half_height: H,
+        round: 0.0,
+        chamfer: 0.0,
+        corner_chamfer: 0.0,
+    };
+    let tecto = ph2d_field::round_limit(&base).expect("filete");
+    let vales: Vec<[f64; 2]> = (0..5)
+        .map(|k| {
+            let a = std::f64::consts::PI / 5.0 + std::f64::consts::TAU * f64::from(k) / 5.0;
+            [f64::from(INNER) * a.cos(), f64::from(INNER) * a.sin()]
+        })
+        .collect();
+    println!("\n  chanfro | miolo cru | miolo SEM a coroa do vale");
+    for fr in [0.4_f32, 0.5, 0.667] {
+        let ch = tecto * fr;
+        let f = estrela_com(0.0, ch, 0.0);
+        let (mut cru, mut tot_cru, mut lim, mut tot_lim) = (0usize, 0usize, 0usize, 0usize);
+        let n = 120;
+        for i in 0..n {
+            for j in 0..n {
+                let x = -0.30 + 0.60 * f64::from(i) / f64::from(n - 1);
+                let y = -0.30 + 0.60 * f64::from(j) / f64::from(n - 1);
+                if x.hypot(y) > f64::from(INNER) * 0.85 {
+                    continue;
+                }
+                let Some(z) = topo(&f, x, y) else { continue };
+                let fora = (z - f64::from(H)).abs() > 1.0e-4;
+                tot_cru += 1;
+                if fora {
+                    cru += 1;
+                }
+                // ⚠️ Fora da coroa que o chanfro do vale come, por construção.
+                let perto = vales
+                    .iter()
+                    .any(|v| (x - v[0]).hypot(y - v[1]) < f64::from(ch));
+                if !perto {
+                    tot_lim += 1;
+                    if fora {
+                        lim += 1;
+                    }
+                }
+            }
+        }
+        println!(
+            "   {fr:.3}  |  {:>5.2} %  |        {:>5.2} %",
+            100.0 * cru as f64 / tot_cru.max(1) as f64,
+            100.0 * lim as f64 / tot_lim.max(1) as f64
+        );
     }
 }

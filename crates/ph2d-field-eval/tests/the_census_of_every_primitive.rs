@@ -122,7 +122,7 @@ fn representative(k: PrimitiveKind) -> Option<Primitive> {
             half_height: 0.25,
             round: 0.03,
             chamfer: 0.0,
-            tip_chamfer: 0.0,
+            corner_chamfer: 0.0,
         },
         PrimitiveKind::BoxFrame => Primitive::BoxFrame {
             half: [0.45, 0.35, 0.4],

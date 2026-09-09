@@ -264,7 +264,7 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
             half_height,
             round,
             chamfer,
-            tip_chamfer,
+            corner_chamfer,
         } => vec![
             Dim {
                 key: "field.dim.points",
@@ -294,13 +294,11 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
             chamfer_dim(*chamfer),
             // ⭐⭐⭐ **A FILEIRA DAS PONTAS, ao lado da das faces** (W143) — e ela tem faixa
             // PRÓPRIA, `4,5×` mais longa, porque o tecto dela é outro (a ponta a encontrar o
-            // vale, e não a erosão da tampa). Ver [`crate::star_tip_chamfer_limit`].
+            // vale, e não a erosão da tampa). Ver [`crate::star_corner_chamfer_limit`].
             Dim {
-                key: "field.dim.tip_chamfer",
-                value: *tip_chamfer,
-                span: Span::WallFromZero(crate::star_tip_chamfer_limit(
-                    *points, *outer, *inner, *chamfer,
-                )),
+                key: "field.dim.corner_chamfer",
+                value: *corner_chamfer,
+                span: Span::WallFromZero(crate::star_corner_chamfer_limit(*points, *outer, *inner)),
             },
             round_dim(*round),
         ],

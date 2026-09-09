@@ -108,6 +108,12 @@ pub const SCULPT3D_CFILTER_SWEEPS_NUM: NodeId = hash_node_id("sculpt3d.cfilter_s
 pub const SCULPT3D_CFILTER_STRETCH: NodeId = hash_node_id("sculpt3d.cfilter_stretch");
 /// Chip ligado a [`SCULPT3D_CFILTER_STRETCH`].
 pub const SCULPT3D_CFILTER_STRETCH_NUM: NodeId = hash_node_id("sculpt3d.cfilter_stretch_num");
+/// ⭐⭐⭐ ***Bend Stiffness* do FILTRO** — o TAMANHO das rugas.
+/// ⚠️ O alvo não tem modelo de dobra nenhum, e é por isso que sem este número
+/// nenhuma combinação dos outros podia mudar a onda.
+pub const SCULPT3D_CFILTER_BEND: NodeId = hash_node_id("sculpt3d.cfilter_bend");
+/// Chip ligado a [`SCULPT3D_CFILTER_BEND`].
+pub const SCULPT3D_CFILTER_BEND_NUM: NodeId = hash_node_id("sculpt3d.cfilter_bend_num");
 /// ⭐⭐⭐ ***Preserve Volume* do FILTRO** — a peça mantém o volume que tinha.
 /// ⚠️ Só liga em peça FECHADA, e cancela a Escala e o Inflate por construção.
 pub const SCULPT3D_CFILTER_VOLUME: NodeId = hash_node_id("sculpt3d.cfilter_volume");

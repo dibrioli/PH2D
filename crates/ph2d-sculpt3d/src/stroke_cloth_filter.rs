@@ -98,6 +98,14 @@ impl SculptStroke {
         ponto: [f32; 3],
     ) {
         self.filter_begin(mesh);
+        // ⭐⭐⭐ **O MATERIAL ATRAVESSA OS GESTOS** (report de 09/09) — ver
+        // [`SculptStroke::cloth_material`]. Ele é re-semeado quando a assinatura
+        // não bate, que é «alguém esculpiu desde o último gesto de tecido».
+        if self.cloth_material.len() != mesh.vert_count()
+            || self.cloth_left != assinatura(mesh.positions())
+        {
+            self.cloth_material = mesh.positions().to_vec();
+        }
         let pos: Vec<V3> = mesh.positions().iter().map(|p| v3(*p)).collect();
         let caras: Vec<&[u32]> = mesh.faces().iter().map(Face::verts).collect();
         let ordem = ph2d_cloth::particao::ordem_de_visita(&pos, &caras);
@@ -107,6 +115,18 @@ impl SculptStroke {
         self.cloth_filter_collisions = props.collisions;
         let mut tecido =
             PincelTecido::pen_down(pincel_do_filtro(props, kind), &pos, v3(ponto), ordem);
+        // ⚠️⚠️ **A base é o MATERIAL, e ela entra em QUATRO leituras da
+        // construção — nenhuma delas um alvo ou um peso** (ver o doc de
+        // [`ph2d_cloth::verlet::Verlet::base`]). Aqui só a primeira importa: o
+        // comprimento de repouso de cada restrição estrutural sai do material,
+        // não da pose de agora.
+        //
+        // ⭐ **No primeiro gesto ela é o repouso AO BIT**, logo é um no-op por
+        // construção — é isso que faz esta cura não mexer numa única fixtura.
+        tecido.sim.base = pos.clone();
+        for (b, m) in tecido.sim.base.iter_mut().zip(&self.cloth_material) {
+            *b = v3(*m);
+        }
         // A máscara é mais um peso por-vértice, como no traço — e ela entra uma
         // vez, porque um filtro não tem carimbo que ande.
         if let Some(livre) = mesh.masks() {
@@ -128,7 +148,15 @@ impl SculptStroke {
         // que o teorema da divergência pede: o volume de uma casca é a soma dos
         // tetraedros que as faces fazem com a origem, e um quad plano parte-se em
         // dois tetraedros cuja soma é a dele.
-        if props.volume > 0.0 && mesh.is_closed() {
+        // ⚠️⚠️ **O VOLUME exige peça fechada; a ÁREA não** — e é por isso que a
+        // guarda tem duas metades. O volume com sinal de uma casca aberta é um
+        // número que existe e não é o volume de nada; a área de uma casca aberta
+        // é a área dela.
+        let quer_volume = props.volume > 0.0 && mesh.is_closed();
+        // ⚠️ **A DOBRA também precisa das faces** — as dobradiças saem delas, e
+        // é a mesma lista que o volume já usava.
+        let quer_dobra = props.clamped().bend > 0.0;
+        if quer_volume || quer_dobra {
             let mut tri = Vec::with_capacity(mesh.faces().len() * 2);
             for f in mesh.faces() {
                 let v = f.verts();
@@ -136,7 +164,12 @@ impl SculptStroke {
                     tri.push([v[0], v[k], v[k + 1]]);
                 }
             }
-            tecido.sim.conservar_volume(tri);
+            tecido.sim.conhecer_as_caras(tri);
+            // ⛔ Numa peça ABERTA o volume desliga-se aqui e não na lei: a lei
+            // não sabe o que é uma fronteira, e quem tem a malha sabe.
+            if !quer_volume {
+                tecido.sim.volume0 = 0.0;
+            }
         }
         // ⭐⭐⭐ **AS RESTRIÇÕES NASCEM AO CARREGAR, e não no primeiro movimento do
         // rato** (espec §7: *«restrições construídas UMA vez, para TODOS os
@@ -293,6 +326,11 @@ impl SculptStroke {
         if movidos > 0 {
             mesh.refresh_region(&self.moved, &mut self.region);
         }
+        // ⚠️ **A assinatura é gravada a cada passo, e não no pen-up:** o gesto
+        // pode morrer sem o `cloth_filter_end` (a janela fecha, a ferramenta
+        // troca), e uma assinatura só do fim deixaria o material a ser
+        // re-semeado em silêncio. Custa uma varredura `O(V)` sobre bits.
+        self.cloth_left = assinatura(mesh.positions());
         self.cloth_filter = Some(ses);
         movidos
     }
@@ -378,4 +416,20 @@ fn pincel_do_filtro(props: ClothFilterProps, kind: ClothFilterKind) -> Pincel {
 pub(crate) fn e_de_ancora(kind: ClothFilterKind) -> bool {
     use ph2d_cloth::verlet_gesto::Modo;
     matches!(kind.modo(), Modo::Escala | Modo::Agarrar | Modo::Gancho)
+}
+
+/// **A ASSINATURA DE UMA POSE** — 64 bits sobre os bits dos `f32`.
+///
+/// ⚠️ **FxHash escrito à mão e não um `Hasher` da casa**, porque a pergunta é de
+/// um bit e a resposta tem de custar uma varredura: ela corre uma vez por passo
+/// de simulação sobre a malha inteira.
+fn assinatura(pos: &[[f32; 3]]) -> u64 {
+    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+    for p in pos {
+        for c in p {
+            h ^= u64::from(c.to_bits());
+            h = h.wrapping_mul(0x0100_0000_01b3);
+        }
+    }
+    h
 }

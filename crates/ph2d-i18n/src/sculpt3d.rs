@@ -48,6 +48,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.sculpt3d.cloth_falloff" => "Simulation Falloff",
         "panel.sculpt3d.cloth_mass" => "Cloth Mass",
         "panel.sculpt3d.cloth_damping" => "Cloth Damping",
+        // ⚠️ **O pincel mantem o nome do ALVO**, e a divergencia e' deliberada:
+        // ali cada rotulo tem uma fixture do oraculo com o mesmo nome, e um
+        // artista que siga um tutorial do alvo tem de o encontrar. O FILTRO nao
+        // tem esse laco — ver `cfilter_plasticity`.
         "panel.sculpt3d.cloth_plasticity" => "Soft Body Plasticity",
         // ⭐ A *Quality* do pincel — as varreduras que o alvo FIXA em 5.
         "panel.sculpt3d.cloth_sweeps" => "Cloth Quality",
@@ -57,10 +61,24 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // são o mesmo número.
         "panel.sculpt3d.cfilter_mass" => "Filter Mass",
         "panel.sculpt3d.cfilter_damping" => "Filter Damping",
-        "panel.sculpt3d.cfilter_plasticity" => "Filter Plasticity",
+        // ⭐⭐⭐ **«Shape Memory» e nao «Plasticity»** — report do dono de
+        // 2026-09-09: *«Plasticity parece ter efeito parecido com Damping,
+        // resistindo a` simulacao»*. Ele leu o controlo certo: com o valor ALTO o
+        // vertice e' puxado de volta a` forma inicial, logo ele RESISTE.
+        //
+        // ⛔⛔ **E a palavra dizia o CONTRARIO do que o controlo faz.** Em
+        // materiais, *plasticidade* e' deformacao PERMANENTE — o oposto do
+        // retorno elastico. Aqui `1` = volta inteira a` forma, `0` = a memoria
+        // segue o vertice e nada volta. *O nome vinha do alvo; o efeito e' o
+        // inverso do que a palavra promete, e quem le^ o painel e' o artista.*
+        //
+        // ⚠️ A LEI mantem o nome do alvo (`Solver::plasticidade`) — e' por ele
+        // que as 103 fixtures do oraculo falam.
+        "panel.sculpt3d.cfilter_plasticity" => "Shape Memory",
         "panel.sculpt3d.cfilter_sweeps" => "Filter Quality",
         "panel.sculpt3d.cfilter_stretch" => "Stretch Limit",
         "panel.sculpt3d.cfilter_volume" => "Preserve Volume",
+        "panel.sculpt3d.cfilter_bend" => "Bend Stiffness",
         "panel.sculpt3d.cfilter_axis" => "Force Axis",
         "panel.sculpt3d.cfilter_collisions" => "Filter Collisions",
         // ⚠️ **A row lê `Reference`, e os chips leem `S` · `B` · `L`** (§1.4 do

@@ -30,6 +30,32 @@
 //! [`docs/3D/cloth/10`](../../../docs/3D/cloth/10_o_elastico_que_nao_para_e_o_volume.md).
 
 use super::{Alvo, Solver, Verlet, norm, volume_de};
+use crate::V3;
+
+/// ⭐⭐ **A SOBRE-RELAXAÇÃO do limitador** (SOR) — e ela é de GRAÇA.
+///
+/// A média de Jacobi é uma combinação convexa, logo cada passagem só remove
+/// `1/k` da violação de um vértice tocado por `k` restrições — e nesta rede `k`
+/// chega a `21`. Multiplicar a média por `ω ∈ (1, 2)` é a sobre-relaxação
+/// clássica: o passo continua a ser de descida e a convergência acelera.
+///
+/// ⚠️ **O número é MEDIDO, e o recurso dele é a estabilidade, não o tempo** — o
+/// relógio não se move (as quatro passagens são as mesmas):
+///
+/// | `ω` | esticão máx (`4 514` vért.) | esticão máx (`24 386`) | ms/passo |
+/// |---:|---:|---:|---:|
+/// | `1,0` | `1,563` | `6,717` | `19,14` |
+/// | `1,5` | `1,441` | `5,043` | `19,10` |
+/// | **`1,9`** | **`1,427`** | **`3,467`** | `19,69` |
+///
+/// ⛔ **`2` é o tecto teórico** da família (acima dele a iteração deixa de
+/// contrair), e `1,9` é o que a medição escolheu de dentro dela.
+///
+/// ⚠️⚠️ **E a tabela nomeia o que NÃO se cura com isto:** a `24 386` vértices o
+/// pior esticão continua em `3,47` com o tecto em `1,10`, porque a convergência
+/// de um limitador LOCAL é `O(diâmetro da malha em arestas)` — quem segura o
+/// global é a âncora de longo alcance, e ela não fala do vizinho.
+const SOBRE_RELAXACAO: f64 = 1.9;
 
 impl Verlet {
     /// ⭐⭐⭐ **LIGA A CONSERVAÇÃO DE VOLUME** — o chamador entrega os triângulos da
@@ -40,9 +66,126 @@ impl Verlet {
     /// funciona na mesma (ela compara `V` com `k·V₀`, com o mesmo sinal dos dois
     /// lados). ⛔ O que ela NÃO tolera é `V₀ = 0`, que é uma superfície aberta —
     /// aí a razão não existe e a restrição desliga-se sozinha.
-    pub fn conservar_volume(&mut self, caras: Vec<[u32; 3]>) {
-        self.volume0 = volume_de(&self.repouso, &caras);
+    pub fn conhecer_as_caras(&mut self, caras: Vec<[u32; 3]>) {
+        // ⚠️⚠️ **O volume de repouso é o do MATERIAL, não o da pose de agora**
+        // (report do dono de 2026-09-09). Com a base persistente, o segundo gesto
+        // conserva o volume ORIGINAL da peça; sem isto ele conservaria o que o
+        // primeiro gesto deixou, e a perda de cada gesto compunha-se em silêncio.
+        // ⭐ Sem base, `base_de` **é** o repouso ao bit, logo o primeiro gesto não
+        // se mexe.
+        let base: Vec<V3> = (0..self.len()).map(|v| self.base_de(v)).collect();
+        self.volume0 = volume_de(&base, &caras);
+        // ⚠️ As dobradiças e os ângulos de repouso saem do MESMO material, e é o
+        // que faz o repouso ser um ponto fixo da lei de dobra.
+        let topo = crate::ClothTopology::build(&caras, self.len());
+        self.dobradicas = topo.dobradicas().to_vec();
+        self.dobra_repouso = self
+            .dobradicas
+            .iter()
+            .map(|h| crate::bending::dihedral(&base, *h))
+            .collect();
         self.caras = caras;
+    }
+
+    /// ⭐⭐⭐ **A RESISTÊNCIA À DOBRA** — a restrição de ângulo diedro da família
+    /// PBD (Müller · Heidelberger · Hennix · Ratcliff, 2007, §4.3), sobre o
+    /// ângulo de repouso do MATERIAL.
+    ///
+    /// `C = θ(x) − θ̄`, e a correcção é a projecção de mínimos quadrados
+    /// `Δxᵢ = −k·C·wᵢ∇ᵢθ / Σ wⱼ|∇ⱼθ|²`.
+    ///
+    /// ⭐⭐ **A matemática JÁ EXISTIA na crate e estava sem consumidor**: o
+    /// [`crate::bending`] foi escrito para o caminho VBD que a auditoria de 05/09
+    /// refutou, e o que sobreviveu dele — o ângulo com SINAL por `atan2`, as
+    /// quatro derivadas cuja soma é zero **por construção**, e a diferença
+    /// dobrada para `(−π, π]` — é exactamente o que uma restrição posicional
+    /// precisa. *A lei mudou de família e a geometria não.*
+    ///
+    /// ⚠️⚠️ **O ângulo de repouso é o do MATERIAL e não zero**, e é a mesma razão
+    /// que o `bending.rs` já escreve: o repouso de uma escultura é a superfície
+    /// esculpida, que é curva em todo sítio interessante — um modelo com repouso
+    /// plano daria força no repouso e a peça mexia-se sozinha ao encostar nela.
+    ///
+    /// ⛔⛔ **E ela é JACOBI COM MÉDIA, como o limitador de esticão — a 1.ª
+    /// redacção era Gauss-Seidel e DESTRUÍA a peça no topo da faixa.** Cada
+    /// vértice pertence a ~`12` dobradiças (~`6` como ponta da aresta, ~`6` como
+    /// ápice), e uma projecção inteira por dobradiça resolvida em sequência soma
+    /// doze correcções sobre o mesmo vértice. Medido com rigidez `1,0`: a área ia
+    /// a **`4,04×`** o repouso, o volume caía a `0,27` e a peça encolhia de
+    /// `2,64` para `1,41` de altura. *É a mesma divergência que o tecto de
+    /// esticão já tinha pago, um mês de leis mais tarde.*
+    ///
+    /// ⚠️ **O peso do *Discrete Shells* (`3‖ē‖²/(A₀+A₁)`) NÃO entra aqui.** Ele é
+    /// o que converte um ângulo em ENERGIA; uma restrição posicional projecta o
+    /// ângulo directamente, e multiplicar a projecção por um peso de área
+    /// tornaria a rigidez função da densidade da malha — que é precisamente o
+    /// defeito que o artista relata do outro lado.
+    pub(super) fn resistir_a_dobra(&mut self, k: f64) {
+        if k <= 0.0 || self.dobradicas.is_empty() {
+            return;
+        }
+        let k = k.clamp(0.0, 1.0);
+        let voltas: u32 = std::env::var("PH2D_DOBRA_N")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(1);
+        for _ in 0..voltas {
+            let n = self.x.len();
+            if self.dx.len() != n {
+                self.dx = vec![[0.0; 3]; n];
+                self.dn = vec![0.0; n];
+            }
+            self.dx.fill([0.0; 3]);
+            self.dn.fill(0.0);
+            for i in 0..self.dobradicas.len() {
+                let h = self.dobradicas[i];
+                let v = h.verts();
+                let c = crate::bending::dihedral(&self.x, h) - self.dobra_repouso[i];
+                // ⚠️ **A diferença é DOBRADA para `(−π, π]`** — sem isso uma
+                // dobradiça que cruza `±π` (o pano a fechar sobre si) lê um salto de
+                // `2π` e a correcção explode numa agulha.
+                let c = if c > core::f64::consts::PI {
+                    c - 2.0 * core::f64::consts::PI
+                } else if c < -core::f64::consts::PI {
+                    c + 2.0 * core::f64::consts::PI
+                } else {
+                    c
+                };
+                if c == 0.0 {
+                    continue;
+                }
+                let g = crate::bending::grads(&self.x, h);
+                let mut denom = 0.0;
+                let mut w = [0.0f64; 4];
+                for (slot, gi) in g.iter().enumerate() {
+                    let vi = v[slot] as usize;
+                    w[slot] = if self.activo[vi] { self.phi[vi] } else { 0.0 };
+                    denom += w[slot] * (gi[0] * gi[0] + gi[1] * gi[1] + gi[2] * gi[2]);
+                }
+                if denom <= 1e-18 {
+                    continue;
+                }
+                let lambda = k * c / denom;
+                for (slot, gi) in g.iter().enumerate() {
+                    if w[slot] <= 0.0 {
+                        continue;
+                    }
+                    let vi = v[slot] as usize;
+                    for (ch, gc) in gi.iter().enumerate() {
+                        self.dx[vi][ch] -= lambda * w[slot] * gc;
+                    }
+                    self.dn[vi] += 1.0;
+                }
+            }
+            for i in 0..n {
+                if self.dn[i] <= 0.0 {
+                    continue;
+                }
+                for ch in 0..3 {
+                    self.x[i][ch] += SOBRE_RELAXACAO * self.dx[i][ch] / self.dn[i];
+                }
+            }
+        }
     }
 
     /// **A RESTRIÇÃO DE VOLUME** (PBD §4.5) — uma restrição ESCALAR sobre a peça
@@ -344,7 +487,7 @@ impl Verlet {
                     continue;
                 }
                 for c in 0..3 {
-                    self.x[i][c] += self.dx[i][c] / self.dn[i];
+                    self.x[i][c] += SOBRE_RELAXACAO * self.dx[i][c] / self.dn[i];
                 }
             }
         }

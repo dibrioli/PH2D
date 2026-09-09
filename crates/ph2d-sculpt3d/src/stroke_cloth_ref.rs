@@ -199,6 +199,10 @@ fn pincel_de(brush: &Brush, passagens: u32) -> Pincel {
             // provam a nossa paridade. *Ligar aqui sem o corpus que o meça seria
             // trocar o activo por um palpite.*
             estica_max: f64::INFINITY,
+            // ⚠️ **Sem modelo de dobra no traço, pela mesma razão do tecto:** as
+            // `86` fixtures dele são a nossa prova de paridade, e o alvo não tem
+            // dobra nenhuma.
+            dobra: 0.0,
             passagens_limite: ph2d_cloth::verlet::PASSAGENS_LIMITE,
             // ⚠️ **O volume é do FILTRO**: o traço simula uma REGIÃO (área
             // *Local*), e o volume de uma peça inteira restringido por um punhado

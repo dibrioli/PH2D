@@ -65,6 +65,7 @@ pub(crate) fn announce() {
          [sculpt3d]    (3c) E aparecem DOIS controlos novos, no topo do bloco e sem precisar\n\
          [sculpt3d]        do modo Pro: Stretch Limit e Preserve Volume. Sao a resposta ao\n\
          [sculpt3d]        report de que o pano estica sem fim -- o passo (10) mede-os.\n\
+         [sculpt3d]    (3d) E o *Bend Stiffness*, que decide o TAMANHO das rugas -- passo (11).\n\
          [sculpt3d]    (4) Clique na esfera e ARRASTE PARA A DIREITA, devagar, sem soltar.\n\
          [sculpt3d]        A peca INTEIRA tem de ceder e continuar a ceder enquanto a mao anda.\n\
          [sculpt3d]        Arraste de volta para a esquerda: ela e' empurrada para o outro lado.\n\
@@ -119,6 +120,27 @@ pub(crate) fn announce() {
          [sculpt3d]            Inflate quase nao fazem nada -- os dois existem para mudar o\n\
          [sculpt3d]            volume, e conservar o volume anula-os. Por isso ele nasce em 0.\n\
          [sculpt3d]        ⚠️ Ele so' funciona em peca FECHADA (sem buracos).\n\
+         [sculpt3d]    (11) OS TRES REPORTS DE 09/09.\n\
+         [sculpt3d]        (a) O PANO NAO CRESCE MAIS A CADA SIMULACAO. Monte a cena da foto\n\
+         [sculpt3d]            (tres manchas de Mask no alto) e rode a Gravity TRES vezes\n\
+         [sculpt3d]            seguidas, sem tocar em mais nada. Antes a peca ficava mais\n\
+         [sculpt3d]            comprida a cada vez (altura 2,7 -> 3,1 -> 3,4); agora ela\n\
+         [sculpt3d]            ASSENTA (2,71 -> 2,72 -> 2,71).\n\
+         [sculpt3d]            ⚠️ Se voce ESCULPIR entre duas simulacoes, o pano adopta a forma\n\
+         [sculpt3d]            nova como material -- e' de proposito: senao ele lutaria contra\n\
+         [sculpt3d]            o que voce acabou de fazer.\n\
+         [sculpt3d]        (b) O TAMANHO DA RUGA. Suba o Bend Stiffness ate' 1 e repita a\n\
+         [sculpt3d]            gravidade: o pano resiste a mudar a curvatura (medido: um terco\n\
+         [sculpt3d]            menos dobra) e as rugas engrossam.\n\
+         [sculpt3d]            ⚠️ MEDIDO E NOMEADO: o tamanho da ruga segue a DENSIDADE DA\n\
+         [sculpt3d]            MALHA -- ela vale sempre umas 7 a 10 arestas, e nenhum botao\n\
+         [sculpt3d]            muda isso mais que um terco. Para couro de verdade, reduza a\n\
+         [sculpt3d]            malha primeiro (o botao Quad Retopology) e SO' DEPOIS suba a\n\
+         [sculpt3d]            rigidez. Desligar as duas coisas uma da outra e' obra maior.\n\
+         [sculpt3d]        (c) O QUE ERA *Filter Plasticity* AGORA CHAMA-SE *Shape Memory*, e\n\
+         [sculpt3d]            e' so' o nome: voce leu certo que ele RESISTE a` simulacao. Com\n\
+         [sculpt3d]            ele alto o vertice volta sempre a` forma inicial -- que e' o\n\
+         [sculpt3d]            contrario do que a palavra 'plasticidade' promete.\n\
          [sculpt3d]    ⚠️ A fileira de cima (Filter) sao as leis de MALHA, que ja' existiam.\n\
          [sculpt3d]        So' UMA das duas fileiras tem chip aceso de cada vez -- se as duas\n\
          [sculpt3d]        acenderem juntas, reporte."

@@ -162,3 +162,25 @@ pub(super) const CFILTER_VOLUME: Row = Row {
     level: UiLevel::Basic,
     place: Place::Knobs,
 };
+
+/// ⭐⭐⭐ ***Bend Stiffness*** — o TAMANHO da ruga, e o report de 09/09.
+///
+/// ⚠️⚠️ **O tecto dela é a MALHA, e está medido:** o comprimento de onda de uma
+/// prega é `~7` a `10` arestas *faça o artista o que fizer*, e este número
+/// compra `+33 %` sobre isso. Quem quer couro reduz a malha primeiro — o botão
+/// de retopologia existe. ⛔ Decoupar a onda da malha é um solver hierárquico,
+/// que é obra com nome.
+pub(super) const CFILTER_BEND: Row = Row {
+    label: "panel.sculpt3d.cfilter_bend",
+    slider: ids::SCULPT3D_CFILTER_BEND,
+    chip: ids::SCULPT3D_CFILTER_BEND_NUM,
+    min: ClothFilterProps::BEND.0,
+    max: ClothFilterProps::BEND.1,
+    step: 0.05, // LITERAL-PX-OK: passo de uma fracção
+    decimals: 2,
+    get: |u| u.cloth_filter.bend,
+    set: |u, v| u.cloth_filter.bend = v,
+    show: is_cloth_filter,
+    level: UiLevel::Basic,
+    place: Place::Knobs,
+};

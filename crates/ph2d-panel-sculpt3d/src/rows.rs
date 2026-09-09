@@ -475,6 +475,7 @@ static BRUSH: &[Row] = &[
     // que já está certo.
     cloth_filter::CFILTER_STRETCH,
     cloth_filter::CFILTER_VOLUME,
+    cloth_filter::CFILTER_BEND,
     cloth_filter::CFILTER_MASS,
     cloth_filter::CFILTER_DAMPING,
     cloth_filter::CFILTER_PLASTICITY,

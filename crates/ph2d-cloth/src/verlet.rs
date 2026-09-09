@@ -112,6 +112,15 @@ pub struct Solver {
     /// tecto trata de um regime permanente; o piso trataria de transitórios que a
     /// lei já apaga.*
     ///
+    /// ⛔⛔ **E o irmão GLOBAL dele — um tecto sobre a ÁREA da peça — foi
+    /// construído, MEDIDO e RETIRADO** (2026-09-09). Apertá-lo **piora** o local
+    /// (esticão máximo `2,04 → 4,79` da área livre à área congelada) enquanto a
+    /// área mal desce, porque uma restrição escalar tem **um** gradiente e
+    /// encolhe onde o pano está FROUXO — que é onde não há esticão. Tabela e
+    /// mecanismo: [`docs/3D/cloth/11`](../../../docs/3D/cloth/11_o_material_a_ruga_e_a_memoria.md) §4.
+    ///
+    /// ⇒ **quem quer menos crescimento baixa ESTE número.**
+    ///
     /// ⛔ **Ele não é um `s` a mais nas restrições que já existem.** Uma restrição
     /// de distância com rigidez `0,6` é uma MOLA: sob carga sustentada o desvio de
     /// equilíbrio dela cresce com a carga, sem limite. O tecto é uma
@@ -121,6 +130,19 @@ pub struct Solver {
     /// Quantas passagens do limitador por passo. `0` desliga-o tal como as duas
     /// faixas neutras — e a omissão vale o mesmo que elas.
     pub passagens_limite: u32,
+    /// ⭐⭐⭐ **A RIGIDEZ DE DOBRA** — quanto o pano resiste a MUDAR a curvatura que
+    /// ele tem. `0` desliga, e é a lei da referência: **o alvo não tem modelo de
+    /// dobra nenhum**.
+    ///
+    /// ⛔⛔ **É ela que decide o TAMANHO das rugas** (report do dono, 2026-09-09:
+    /// *«nunca consigo uma configuração onde o pano passa a ter ondulação maiores
+    /// como se fosse um pano duro ou um couro»*). Sem modelo de dobra, a única
+    /// coisa que resiste a uma prega é a rede de restrições de distância, cujo
+    /// alcance é **uma aresta** — logo o comprimento de onda da flambagem é o
+    /// tamanho do triângulo, e o pano enruga fino faça o artista o que fizer.
+    /// Um termo de dobra tem alcance próprio, e é o quociente entre ele e o de
+    /// esticão que fixa a onda.
+    pub dobra: f64,
     /// ⭐⭐⭐ **A FORÇA da conservação de volume** (*Position Based Dynamics*,
     /// Müller · Heidelberger · Hennix · Ratcliff, 2007, §4.5 — a restrição do
     /// balão). `0` desliga, e é a lei da referência: **o alvo não tem volume
@@ -143,6 +165,7 @@ impl Default for Solver {
             // o produto é que escolhe outra ([`ClothFilterProps`]).
             estica_max: f64::INFINITY,
             passagens_limite: PASSAGENS_LIMITE,
+            dobra: 0.0,
             volume: 0.0,
         }
     }
@@ -229,6 +252,12 @@ pub struct Verlet {
     pares: std::collections::BTreeSet<(u32, u32)>,
     /// Quantos passos já simularam (o 1.º passo nunca simula — espec §1).
     pub passos_simulados: u32,
+    /// As dobradiças da peça (aresta interior + os dois ápices), e o ângulo
+    /// diedro que cada uma tem no MATERIAL. ⚠️ Vazias enquanto a rigidez de dobra
+    /// estiver desligada.
+    pub dobradicas: Vec<crate::bending::Hinge>,
+    /// O ângulo de repouso de cada dobradiça, na ordem delas.
+    pub dobra_repouso: Vec<f64>,
     /// ⭐⭐ **AS FACES DA PEÇA, em triângulos** — só para a restrição de volume, e
     /// vazias enquanto ela estiver desligada. ⚠️ A `ph2d-cloth` continua a não
     /// saber o que é uma malha: isto é uma lista de índices que o chamador dá.
@@ -278,6 +307,8 @@ impl Verlet {
             pares: std::collections::BTreeSet::new(),
             passos_simulados: 0,
             caras: Vec::new(),
+            dobradicas: Vec::new(),
+            dobra_repouso: Vec::new(),
             volume0: 0.0,
             lra_dist: Vec::new(),
             lra_raiz: Vec::new(),
@@ -432,6 +463,10 @@ impl Verlet {
             // pô-lo depois deixaria a última correcção da lista por responder e a
             // peça a respirar um passo atrás do que se vê.
             self.restringir_volume(solver.volume);
+            // ⚠️ **A dobra corre na varredura, como o volume e a lista** — é uma
+            // restrição, não uma força, e o número de projecções dela é o mesmo
+            // que o das outras. Desligada, não corre uma instrução.
+            self.resistir_a_dobra(solver.dobra);
             for k in 0..self.restricoes.len() {
                 let r = self.restricoes[k];
                 let ai = r.a as usize;

@@ -172,6 +172,7 @@ fn a_porta_prende_os_numeros_do_filtro() {
         // 103 fixtures do oráculo correm, e a porta tem de o trazer para a faixa.
         stretch_max: f32::INFINITY,
         volume: 9.0,
+        bend: -1.0,
     }
     .clamped();
     assert_eq!(louco.mass, ClothFilterProps::MASS.1);
@@ -184,6 +185,7 @@ fn a_porta_prende_os_numeros_do_filtro() {
     );
     assert_eq!(louco.stretch_max, ClothFilterProps::STRETCH.1);
     assert_eq!(louco.volume, ClothFilterProps::VOLUME.1);
+    assert_eq!(louco.bend, ClothFilterProps::BEND.0);
     // E um valor legal atravessa intocado.
     let bom = ClothFilterProps {
         mass: 0.5,
@@ -193,6 +195,7 @@ fn a_porta_prende_os_numeros_do_filtro() {
         collisions: true,
         stretch_max: 1.25,
         volume: 0.5,
+        bend: 0.4,
     };
     assert_eq!(
         bom.clamped(),

@@ -129,9 +129,10 @@ fn os_numeros_do_filtro_aparecem_com_o_filtro_e_nao_com_o_pincel() {
     // literal faz cada número novo editar o teste de outra pessoa e não diz QUAL
     // falta; com os nomes, quem acrescentar um número do filtro tem de o
     // declarar aqui — e a mensagem diz-lhe exactamente o que fazer.
-    const ESPERADOS: [&str; 6] = [
+    const ESPERADOS: [&str; 7] = [
         "panel.sculpt3d.cfilter_stretch",
         "panel.sculpt3d.cfilter_volume",
+        "panel.sculpt3d.cfilter_bend",
         "panel.sculpt3d.cfilter_mass",
         "panel.sculpt3d.cfilter_damping",
         "panel.sculpt3d.cfilter_plasticity",

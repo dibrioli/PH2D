@@ -211,6 +211,37 @@ pub struct SculptStroke {
     /// a lei debaixo da mão. É a mesma razão pela qual a lista de colisores
     /// também é uma fotografia.
     cloth_filter_collisions: bool,
+    /// ⭐⭐⭐ **O MATERIAL DA PEÇA — o repouso que ATRAVESSA os gestos** (report do
+    /// dono, 2026-09-09: *«se eu fizer mais de uma simulação … o objeto continua
+    /// esticando»*).
+    ///
+    /// ⛔⛔ **Sem isto o pano CRESCE sem limite, e a razão é que o tecto de
+    /// esticão é relativo a um repouso que se REBASELINA:** cada
+    /// [`Self::cloth_filter_begin`] lia a malha de AGORA como repouso, logo o
+    /// segundo gesto media `1,10` sobre um comprimento que já era `1,10`.
+    /// Medido em três gestos de gravidade sobre uma esfera: a área ia a
+    /// `1,13 → 1,23 → 1,31` do repouso e a altura de `2,0` a `3,46`.
+    ///
+    /// ⚠️ **Ele vira a BASE PERSISTENTE da lei** ([`ph2d_cloth::verlet::Verlet`]),
+    /// e não o repouso — a diferença é exactamente o que se quer: a base entra em
+    /// **quatro** leituras da CONSTRUÇÃO (o comprimento de cada restrição entre
+    /// as outras) e **não** nos alvos nem nos pesos. *O comprimento do material é
+    /// do material; onde ele está é do gesto.*
+    cloth_material: Vec<[f32; 3]>,
+    /// A ASSINATURA da pose em que o último gesto de tecido deixou a peça.
+    ///
+    /// ⚠️⚠️ **É ela que invalida o material, e a pergunta é a certa:** se a malha
+    /// de agora tem a assinatura que o último gesto deixou, ninguém lhe tocou e o
+    /// material continua a valer; se não tem, alguém esculpiu — e um material que
+    /// sobrevivesse a isso faria o pano lutar contra a forma nova.
+    ///
+    /// ⛔ **Perguntar «que ferramenta correu?» seria a segunda resposta**, e ela
+    /// envelhece com cada ferramenta nova; perguntar à MALHA não envelhece.
+    ///
+    /// ⚠️ Uma assinatura de `64` bits sobre os bits dos `f32` — uma colisão
+    /// manteria um material velho, e é `2⁻⁶⁴`. ⛔ Guardar as posições seria
+    /// `1,2 MB` de clone por gesto para responder a uma pergunta de um bit.
+    cloth_left: u64,
     /// **A porta de ABLAÇÃO do orçamento do tecido** — só em teste, e ela existe
     /// para um gate poder afirmar que a lei do gesto **não depende** do número
     /// de sub-passos. Sem ela a propriedade não é observável de fora, e foi

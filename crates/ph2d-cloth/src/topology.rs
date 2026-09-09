@@ -153,6 +153,15 @@ impl ClothTopology {
         &self.bins
     }
 
+    /// ⭐ **AS DOBRADIÇAS, para quem as projecta** — a lei de dobra posicional
+    /// ([`crate::verlet::Verlet::resistir_a_dobra`]) precisa da lista, e ela já
+    /// existia aqui para o caminho VBD. ⚠️ Uma segunda extracção seria a segunda
+    /// resposta a *«quais são as arestas interiores desta malha?»*.
+    #[must_use]
+    pub fn dobradicas(&self) -> &[Hinge] {
+        &self.hinges
+    }
+
     /// As dobradiças achadas.
     #[must_use]
     pub fn hinge_count(&self) -> usize {

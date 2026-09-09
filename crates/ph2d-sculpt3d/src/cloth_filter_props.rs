@@ -121,6 +121,20 @@ pub struct ClothFilterProps {
     /// omissão da LEI e não se mexem. O que muda é a omissão do **PRODUTO**, e é
     /// uma **divergência declarada**.
     pub stretch_max: f32,
+    /// ⭐⭐⭐ ***Bend Stiffness*** — o tamanho das rugas.
+    ///
+    /// ⛔⛔ **É o report de 2026-09-09:** *«nunca consigo uma configuração onde o
+    /// pano passa a ter ondulação maiores como se fosse um pano duro ou um
+    /// couro. Sempre as ondulações são finas»*. E ele estava certo por
+    /// construção: **não havia modelo de dobra nenhum** — a única coisa que
+    /// resistia a uma prega era a rede de restrições de distância, cujo alcance é
+    /// UMA aresta, logo o comprimento de onda da flambagem era o tamanho do
+    /// triângulo. *Nenhuma combinação dos outros números podia mudar isso, porque
+    /// nenhum deles fala de curvatura.*
+    ///
+    /// ⚠️ `0` = o pano de sempre (a lei do alvo, que também não tem dobra) e é a
+    /// omissão; subir engrossa a onda.
+    pub bend: f32,
     /// ⭐⭐⭐ ***Preserve Volume*** — quanto do volume de repouso a peça mantém
     /// (`0` desliga, `1` = todo).
     ///
@@ -155,6 +169,8 @@ impl ClothFilterProps {
     pub const STRETCH: (f32, f32) = (1.0, 2.0);
     /// Faixa da conservação de volume. `0` = desligada.
     pub const VOLUME: (f32, f32) = (0.0, 1.0);
+    /// Faixa da rigidez de dobra. `0` = sem modelo de dobra.
+    pub const BEND: (f32, f32) = (0.0, 1.0);
 
     /// ⚠️ **Preso na PORTA**, e não em quem lê: o device não tem opinião, e uma
     /// massa negativa ou zero varreduras seriam uma divisão por zero dentro do
@@ -171,6 +187,7 @@ impl ClothFilterProps {
             collisions: self.collisions,
             stretch_max: self.stretch_max.clamp(Self::STRETCH.0, Self::STRETCH.1),
             volume: self.volume.clamp(Self::VOLUME.0, Self::VOLUME.1),
+            bend: self.bend.clamp(Self::BEND.0, Self::BEND.1),
         }
     }
 
@@ -190,6 +207,7 @@ impl ClothFilterProps {
             varreduras: p.sweeps,
             estica_max: f64::from(p.stretch_max),
             volume: f64::from(p.volume),
+            dobra: f64::from(p.bend),
             passagens_limite: ph2d_cloth::verlet::PASSAGENS_LIMITE,
         }
     }
@@ -223,6 +241,9 @@ impl Default for ClothFilterProps {
             // na omissão de [`ph2d_cloth::verlet::Solver`], que continua neutra, e
             // é ela que as 103 fixtures correm.
             stretch_max: 1.10,
+            // ⚠️ A dobra nasce em `0` — o alvo não a tem, e é ela que decide o
+            // TAMANHO da ruga, não se ela existe.
+            bend: 0.0,
             // ⚠️ O volume nasce DESLIGADO — o dono pediu *«a possibilidade de
             // manter volume»*, que é uma opção, não uma lei.
             volume: 0.0,

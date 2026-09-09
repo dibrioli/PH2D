@@ -69,6 +69,14 @@ mod verlet_gesto_tests;
 mod verlet_solver_tests;
 
 pub use bending::Hinge;
+/// ⭐ **O ÂNGULO DIEDRO de uma dobradiça** — exposto para uma sonda poder medir
+/// *quanto o pano dobrou contra o repouso*, que é a régua directa da lei de
+/// dobra. ⚠️ Sem isto a única régua disponível é a ONDULAÇÃO, que mistura a
+/// dobra com o ruído de alta frequência e não separa as duas.
+#[must_use]
+pub fn dihedral_de(x: &[V3], h: Hinge) -> f64 {
+    bending::dihedral(x, h)
+}
 pub use topology::ClothTopology;
 pub use vbd::{ClothDrive, ClothState, StepConfig, step};
 

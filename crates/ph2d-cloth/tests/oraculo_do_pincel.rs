@@ -196,6 +196,7 @@ impl Traco {
                 // mediria outro programa. ⭐ Um campo novo no `Solver` é **erro de
                 // compilação neste ficheiro** até alguém dizer se ele é do alvo.
                 estica_max: f64::INFINITY,
+                dobra: 0.0,
                 passagens_limite: ph2d_cloth::verlet::PASSAGENS_LIMITE,
                 volume: 0.0,
             },

@@ -304,3 +304,297 @@ fn a_porta_prende_o_tecto_na_faixa_e_o_volume_nasce_desligado() {
     );
     assert_eq!(d.volume, 0.0, "o volume nasce desligado");
 }
+
+// ── ⭐⭐⭐ O REPORT DE 2026-09-09 ────────────────────────────────────────────────
+
+/// A ÁREA da superfície — a régua de *«o pano cresceu?»*. ⚠️ O esticão máximo não
+/// serve: ele é um extremo e não diz se a peça inteira ganhou material.
+fn area(m: &Mesh) -> f64 {
+    let p = m.positions();
+    let mut s = 0.0;
+    for f in m.faces() {
+        let v = f.verts();
+        for k in 1..v.len() - 1 {
+            let (a, b, c) = (p[v[0] as usize], p[v[k] as usize], p[v[k + 1] as usize]);
+            let u = [
+                f64::from(b[0] - a[0]),
+                f64::from(b[1] - a[1]),
+                f64::from(b[2] - a[2]),
+            ];
+            let w = [
+                f64::from(c[0] - a[0]),
+                f64::from(c[1] - a[1]),
+                f64::from(c[2] - a[2]),
+            ];
+            let x = [
+                u[1] * w[2] - u[2] * w[1],
+                u[2] * w[0] - u[0] * w[2],
+                u[0] * w[1] - u[1] * w[0],
+            ];
+            s += 0.5 * (x[0] * x[0] + x[1] * x[1] + x[2] * x[2]).sqrt();
+        }
+    }
+    s
+}
+
+/// **UM GESTO sobre um `SculptStroke` que o chamador possui** — e é essa posse
+/// que a fixtura precisa de ter.
+///
+/// ⛔⛔ **A 1.ª redacção criava um `SculptStroke` por gesto e NÃO reproduzia o
+/// defeito:** a cena tem UM (`self.stroke`), e é nele que o material persiste.
+/// *Uma fixtura que constrói um objecto novo por gesto mede um programa em que
+/// nada pode atravessar gestos.*
+fn gesto_em(st: &mut SculptStroke, m: &mut Mesh, props: ClothFilterProps) {
+    st.cloth_filter_begin(m, props, ClothFilterKind::Gravity, [0.0, 0.9, 0.45]);
+    for k in 0..120 {
+        let p = ClothFilterStep {
+            s: (k as f32 + 1.0) / 120.0,
+            gravity_axis: [0.0, -1.0, 0.0],
+            frame: [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
+            axes: [true, true, true],
+            eye: [0.0, 0.0, 1.0],
+        };
+        st.cloth_filter_step(m, ClothFilterKind::Gravity, &p);
+    }
+    st.cloth_filter_end();
+}
+
+/// ⭐⭐⭐ **O MATERIAL ATRAVESSA OS GESTOS** — *«se eu fizer mais de uma simulação
+/// … o objeto continua esticando»*.
+#[test]
+fn o_pano_nao_cresce_a_cada_gesto() {
+    let rest = esfera();
+    let a0 = area(&rest);
+    let mut m = esfera();
+    mascarar(&mut m);
+    let mut st = SculptStroke::default();
+    let props = ClothFilterProps {
+        volume: 1.0,
+        ..ClothFilterProps::default()
+    };
+    let mut areas = Vec::new();
+    for _ in 0..3 {
+        gesto_em(&mut st, &mut m, props);
+        areas.push(area(&m) / a0);
+    }
+    println!(
+        "area por gesto: {:.4} · {:.4} · {:.4}",
+        areas[0], areas[1], areas[2]
+    );
+    // ⚠️ **A barra é o CRESCIMENTO entre gestos, não o valor absoluto** — o
+    // primeiro gesto estica de facto (é o que uma simulação faz), e o defeito era
+    // ele voltar a esticar o mesmo tanto a cada repetição. Sem a cura a série era
+    // `1,13 → 1,23 → 1,31`.
+    assert!(
+        areas[2] / areas[0] < 1.05,
+        "o pano cresceu {:.1}% entre o 1.o e o 3.o gesto",
+        100.0 * (areas[2] / areas[0] - 1.0)
+    );
+}
+
+/// ⭐⭐ **E ESCULPIR RE-SEMEIA O MATERIAL** — a outra metade, e sem ela a cura
+/// seria pior que o defeito: o pano lutaria contra a forma que o artista acabou
+/// de esculpir.
+///
+/// ⛔⛔ **A 1.ª redacção deste gate era VÁCUA e a mutação disse-o.** Ela mexia um
+/// vértice e comparava «com a edição no meio» contra «sem a edição» — que diferem
+/// **porque a malha difere**, tenha o material sido re-semeado ou não. *Um gate
+/// que compara duas árvores diferentes mede a diferença delas, não a lei.*
+///
+/// ⇒ a fixtura é agora uma edição cuja resposta é **oposta** nos dois mundos:
+/// **ampliar a peça `1,2×`**. Com re-semeadura o material é a peça grande e o
+/// segundo gesto drapeja-a normalmente; sem ela o material continua a ser a peça
+/// PEQUENA, cada aresta nasce a `1,2` de um tecto de `1,10`, e o limitador
+/// encolhe a peça de volta — a área cai em vez de subir.
+#[test]
+fn uma_edicao_alheia_re_semeia_o_material() {
+    let mut m = esfera();
+    mascarar(&mut m);
+    let mut st = SculptStroke::default();
+    let props = ClothFilterProps::default();
+    gesto_em(&mut st, &mut m, props);
+    // Alguém esculpiu: a peça inteira ficou `1,2×` maior.
+    for p in m.positions_mut() {
+        for c in p.iter_mut() {
+            *c *= 1.2;
+        }
+    }
+    let ampliada = area(&m);
+    gesto_em(&mut st, &mut m, props);
+    let depois = area(&m);
+    println!(
+        "area: ampliada {ampliada:.4} -> depois do 2.o gesto {depois:.4} ({:+.1}%)",
+        100.0 * (depois / ampliada - 1.0)
+    );
+    // Com o material re-semeado o 2.º gesto ESTICA, como qualquer gesto de
+    // gravidade; com o material velho ele ENCOLHE a peça para dentro do tecto.
+    assert!(
+        depois > ampliada,
+        "o material nao foi re-semeado: o pano encolheu a peca recem-esculpida \
+         ({ampliada:.4} -> {depois:.4})"
+    );
+}
+
+/// ⭐⭐⭐ **A LEI DE DOBRA RESISTE A MUDAR A CURVATURA** — *«nunca consigo … pano
+/// duro ou couro»*.
+#[test]
+fn a_rigidez_de_dobra_segura_a_curvatura() {
+    let rest = esfera();
+    let mut tri = Vec::new();
+    for f in rest.faces() {
+        let v = f.verts();
+        for k in 1..v.len() - 1 {
+            tri.push([v[0], v[k], v[k + 1]]);
+        }
+    }
+    let topo = ph2d_cloth::ClothTopology::build(&tri, rest.vert_count());
+    let em = |m: &Mesh| -> Vec<[f64; 3]> {
+        m.positions()
+            .iter()
+            .map(|p| [f64::from(p[0]), f64::from(p[1]), f64::from(p[2])])
+            .collect()
+    };
+    let xr = em(&rest);
+    let desvio = |m: &Mesh| {
+        let xn = em(m);
+        let mut d: Vec<f64> = topo
+            .dobradicas()
+            .iter()
+            .map(|h| {
+                (ph2d_cloth::dihedral_de(&xn, *h) - ph2d_cloth::dihedral_de(&xr, *h))
+                    .abs()
+                    .to_degrees()
+            })
+            .collect();
+        d.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        d[(d.len() - 1) * 99 / 100]
+    };
+    let corre = |bend: f32| {
+        let mut m = esfera();
+        mascarar(&mut m);
+        let mut st = SculptStroke::default();
+        gesto_em(
+            &mut st,
+            &mut m,
+            ClothFilterProps {
+                bend,
+                ..ClothFilterProps::default()
+            },
+        );
+        desvio(&m)
+    };
+    let (solto, duro) = (corre(0.0), corre(1.0));
+    println!("desvio de dobra p99: solto {solto:.2} graus | duro {duro:.2} graus");
+    assert!(solto > 20.0, "a fixtura tem de dobrar: {solto:.2}");
+    assert!(
+        duro < solto * 0.85,
+        "a rigidez nao segurou a curvatura: {solto:.2} -> {duro:.2}"
+    );
+}
+
+/// ⛔⛔⛔ **O TAMANHO DA PREGA É DA MALHA, e este gate existe para ninguém tentar
+/// afiná-lo com um botão.**
+///
+/// Medido numa cortina franzida, com a rigidez de dobra no máximo e no mínimo:
+///
+/// | vértices por lado | aresta | onda (dobra `0`) | onda (dobra `1`) |
+/// |---:|---:|---:|---:|
+/// | `20` | `0,100` | `0,667` | `0,667` |
+/// | `40` | `0,050` | `0,333` | `0,400` |
+/// | `80` | `0,025` | `0,250` | `0,333` |
+///
+/// ⇒ *a onda acompanha a ARESTA* (`~7`–`10` arestas), e a rigidez move-a `+33 %`.
+/// A cura publicada que a decoupa é um solver **hierárquico** (Müller, 2008),
+/// que é obra com nome — e a alavanca de hoje é a densidade da malha.
+#[test]
+fn a_onda_de_uma_prega_acompanha_a_aresta_da_malha() {
+    // Uma cortina franzida: o material sobra e tem de pregar.
+    let cortina = |n: usize| -> Mesh {
+        let s = 2.0 / n as f32;
+        let mut pos = Vec::new();
+        for j in 0..=n {
+            for i in 0..=n {
+                let z = 0.0005 * ((i * 7 + j * 13) % 5) as f32;
+                let x = i as f32 * s - 1.0;
+                pos.push([if j == 0 { x * 0.5 } else { x }, 1.0 - j as f32 * s, z]);
+            }
+        }
+        let id = |i: usize, j: usize| u32::try_from(j * (n + 1) + i).unwrap_or(u32::MAX);
+        let mut faces = Vec::new();
+        for j in 0..n {
+            for i in 0..n {
+                faces.push(ph2d_mesh::Face::tri(
+                    id(i, j),
+                    id(i + 1, j),
+                    id(i + 1, j + 1),
+                ));
+                faces.push(ph2d_mesh::Face::tri(
+                    id(i, j),
+                    id(i + 1, j + 1),
+                    id(i, j + 1),
+                ));
+            }
+        }
+        let mut m = Mesh::from_parts(pos, faces).unwrap_or_else(|e| panic!("{e:?}"));
+        let alto: Vec<bool> = m.positions().iter().map(|p| p[1] > 0.999).collect();
+        let mk = m.masks_mut();
+        for (i, a) in alto.iter().enumerate() {
+            if *a {
+                mk[i] = 1.0;
+            }
+        }
+        m
+    };
+    // Travessias da média ao longo da fileira do meio, com PROEMINÊNCIA — sem o
+    // limiar de amplitude ela conta o ruído de `f32` de uma folha esticada.
+    let onda = |m: &Mesh, n: usize| -> f64 {
+        let p = m.positions();
+        let z: Vec<f64> = (0..=n)
+            .map(|i| f64::from(p[(n / 2) * (n + 1) + i][2]))
+            .collect();
+        let media: f64 = z.iter().sum::<f64>() / z.len() as f64;
+        let amp = z.iter().fold(0.0f64, |a, v| a.max((v - media).abs()));
+        let (mut cruzes, mut lado, mut lobo) = (0usize, (z[0] - media).signum(), 0.0f64);
+        for v in &z {
+            let d = v - media;
+            if d.signum() != lado && lobo > 0.15 * amp {
+                cruzes += 1;
+                lado = d.signum();
+                lobo = 0.0;
+            } else {
+                lobo = lobo.max(d.abs());
+            }
+        }
+        if cruzes == 0 {
+            f64::INFINITY
+        } else {
+            2.0 / cruzes as f64
+        }
+    };
+    let corre = |n: usize| {
+        let mut m = cortina(n);
+        let mut st = SculptStroke::default();
+        let props = ClothFilterProps::default();
+        st.cloth_filter_begin(&m, props, ClothFilterKind::Gravity, [0.0, 1.0, 0.0]);
+        for k in 0..200 {
+            let p = ClothFilterStep {
+                s: (k as f32 + 1.0) / 200.0,
+                gravity_axis: [0.0, -1.0, 0.0],
+                frame: [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
+                axes: [true, true, true],
+                eye: [0.0, 0.0, 1.0],
+            };
+            st.cloth_filter_step(&mut m, ClothFilterKind::Gravity, &p);
+        }
+        st.cloth_filter_end();
+        onda(&m, n)
+    };
+    let (grossa, fina) = (corre(20), corre(80));
+    println!("onda: malha grossa {grossa:.4} | malha fina {fina:.4}");
+    // A aresta muda `4×`; a onda tem de acompanhar, e não ficar parada.
+    assert!(
+        grossa > fina * 1.5,
+        "a onda deixou de seguir a malha ({grossa:.4} contra {fina:.4}) -- se isto \
+         reprovar por MELHORIA, a nota do gate e' que envelheceu"
+    );
+}

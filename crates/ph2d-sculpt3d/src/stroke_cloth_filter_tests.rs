@@ -149,7 +149,7 @@ fn o_efeito_do_filtro_segue_o_arrasto_e_nao_o_numero_de_eventos() {
             let s = k as f32 / n as f32;
             st.cloth_filter_step(&mut mesh, ClothFilterKind::Gravity, &passo(s));
         }
-        desvio(&plano().positions().to_vec(), mesh.positions())
+        desvio(plano().positions(), mesh.positions())
     };
     let grosso = entregue_em(4);
     let fino = entregue_em(200);

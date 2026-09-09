@@ -316,3 +316,90 @@ fn every_row_the_tutorial_names_is_on_the_card() {
         "a cena abre com `Rotation` ja' no cartao -- o passo 4 promete que ela APARECE"
     );
 }
+
+/// ⚠️ **SONDA de resposta ao dono (09/09): «o Index Range tem como rodar o campo?»**
+///
+/// Ele **não** tem — e não pode ter, porque não é um campo ESPACIAL: escolhe por **posto**, não
+/// por posição (é por isso que o gizmo de canvas devolve `None` para ele). O que responde à
+/// pergunta por baixo — *«quero a faixa a correr numa direcção que eu escolho»* — é o
+/// `motion.sort` a montante, com o `Axis Angle`. **Medido** (grelha 12×12, faixa `0,25..0,75`):
+///
+/// ```text
+/// axis_angle   0° → 50 apanhados · x -2.50..2.50 · y -5.50..5.50   (tira VERTICAL)
+/// axis_angle  90° → 50 apanhados · x -5.50..5.50 · y -2.50..2.50   (tira HORIZONTAL)
+/// ```
+///
+/// ⚠️ **E a 1.ª corrida desta sonda leu «zero diferença»** — as duas caixas davam a grelha
+/// inteira — porque eu não pus o `key` do sort no modo espacial: no default (`Radial`) o
+/// `axis_angle` não é lido. *Um param no default mede o param desligado*, e a sonda quase
+/// respondeu ao dono que a composição não funciona.
+///
+/// ⛔ **O preço da composição, nomeado:** o `motion.sort` **reordena o stream** (toda coluna
+/// viaja com a permutação), então quem está à frente de quem muda. Para uma faixa espacial
+/// rodada **sem** mexer na ordem, o nó é o `field.box` — fino e rodado —, que desde a W1 tem alça
+/// no canvas.
+#[test]
+#[ignore = "sonda de resposta — corra à mão"]
+fn does_a_sort_axis_turn_the_index_range_band() {
+    use ph2d_nodegraph::graph::Edge;
+    let colher = |graus: f32| -> Vec<[f32; 2]> {
+        let mut m = crate::motion_state::MotionState::new();
+        let g = &mut m.doc.graph;
+        let grid = g.add_node("motion.grid");
+        g.set_param(grid, "rows", 12.0);
+        g.set_param(grid, "cols", 12.0);
+        let sort = g.add_node("motion.sort");
+        // ⚠️ **O `key` TEM de ser o modo espacial** (`1` = X): no default (`Radial`) o
+        // `axis_angle` não é lido, e a 1.ª corrida desta sonda leu «zero diferença» sobre um
+        // param desligado — a armadilha de sempre.
+        g.set_param(sort, "key", 1.0);
+        g.set_param(sort, "axis_angle", graus);
+        let faixa = g.add_node("field.index_range");
+        let cresce = g.add_node("motion.scale");
+        g.set_param(cresce, "amount", 3.0);
+        let out = g.add_node("motion.output");
+        for (a, b) in [(grid, sort), (sort, faixa), (faixa, cresce), (cresce, out)] {
+            g.connect(Edge {
+                from: (a, 0),
+                to: (b, 0),
+                delayed: false,
+            })
+            .expect("liga");
+        }
+        let saida = m
+            .pump
+            .cook
+            .cook(&m.doc.graph, &m.registry, out, 0.0)
+            .expect("coze");
+        let st = saida[0].as_stream();
+        let p = match st.get("P") {
+            Some(ph2d_nodegraph::attr::Column::Vec2(v)) => v.clone(),
+            _ => Vec::new(),
+        };
+        let s = match st.get("size") {
+            Some(ph2d_nodegraph::attr::Column::Vec2(v)) => v.clone(),
+            _ => Vec::new(),
+        };
+        // Só os que a faixa apanhou (size grande), pela POSIÇÃO — a ordem do stream muda.
+        let maior = s.iter().fold(0.0f32, |a, q| a.max(q[0]));
+        p.into_iter()
+            .zip(s)
+            .filter(|(_, t)| t[0] > maior * 0.9)
+            .map(|(q, _)| q)
+            .collect()
+    };
+    for graus in [0.0f32, 90.0] {
+        let apanhados = colher(graus);
+        let (mut x0, mut x1, mut y0, mut y1) = (f32::MAX, f32::MIN, f32::MAX, f32::MIN);
+        for q in &apanhados {
+            x0 = x0.min(q[0]);
+            x1 = x1.max(q[0]);
+            y0 = y0.min(q[1]);
+            y1 = y1.max(q[1]);
+        }
+        eprintln!(
+            "  axis_angle {graus:>5.0}° → {} apanhados · x {x0:.2}..{x1:.2} · y {y0:.2}..{y1:.2}",
+            apanhados.len()
+        );
+    }
+}

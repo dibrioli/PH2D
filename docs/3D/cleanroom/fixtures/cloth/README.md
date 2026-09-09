@@ -609,7 +609,11 @@ obrigaria a inscrevê-lo numa lista onde ele não pode ser medido. ⇒ **os tra�
 `filtro/`, e o censo deles é do arnês do filtro**, que a linha do produto ainda tem de escrever.
 ⚠️ **As malhas de repouso são as MESMAS** (`plano.repouso.txt.gz` e `esfera.repouso.txt.gz`, um nível
 acima) — o assemblador confere-as vértice a vértice contra as do corpus antes de escrever, e o
-verificador procura-as no diretório do ficheiro **e no diretório-pai**.
+**verificador corre-se a partir da RAIZ do corpus** — `python3 verifica_traco.py` sem argumento —,
+que é quem varre também um nível abaixo e traz as malhas de repouso da raiz.
+⛔ **Apontá-lo directamente a `filtro/` FALHA** (as malhas de repouso não vivem lá): a redacção
+anterior prometia uma procura «no diretório-pai» que o instrumento **não faz** — R-pré, 2026-09-09.
+Verde hoje sobre os dois corpora de uma vez: `113` ficheiros, exit `0`.
 
 ### Como o traço é conduzido (⛔ NÃO é um traço de pincel)
 

@@ -1805,7 +1805,7 @@ quocientes divididos pelo sorteio antigo.**
 
 **Veredicto: ATESTADO.** A janela-mãe pode ler a emenda Q19 (com as Q20 e Q21 dentro).
 
-### Q22 — O FILTRO DE TECIDO ganha oráculo, e o §7 tinha quatro afirmações a corrigir (emenda do I de 2026-09-07; resposta no mesmo dia, com 26 corridas NOVAS do oráculo)
+### Q22 — O FILTRO DE TECIDO ganha oráculo, e o §7 tinha quatro afirmações a corrigir (emenda do I de 2026-09-07; resposta no mesmo dia, com 36 corridas NOVAS do oráculo)
 
 **O pedido.** O §7 da espec descrevia o filtro **por leitura** e o §10 não tinha **um único** vector
 dele: as `86` fixtures eram todas do pincel. Sem lado aprovado, qualquer barra que o lado limpo
@@ -1864,8 +1864,71 @@ repouso da raiz) e o gerador de índice ganhou as chaves novas; **103 ficheiros,
 realizações); a esfera sorteia `0,001015` sobre quatro — a mesma família já registada para o pincel,
 com a **superfície** como variável.
 
-**Estado:** ⏳ **aguarda R-pré.** A emenda está escrita, varrida e commitada na linha; o atestado
-independente (§3.R) é condição de a janela-mãe implementar.
+**Estado:** ✅ **ATESTADA — R-pré de 2026-09-09** (revisão ATRASADA, dois dias depois da emenda,
+pedida pelo achado de processo que o R-pré da Q23 registou no fim deste ledger).
+
+**Papel R (R-PRÉ da Q22) — 2026-09-09, subagente R-pré despachado pela janela-mãe
+`1246816c-63cf-414b-842d-663a8baa86ca`; contexto novo, independente do subagente-E que a escreveu;
+leu os dois lados (o fonte por shell, `cat`/`grep`, sob o deny de `Read` da linha).**
+
+**Cobertura.** O diff de `3cd972280` inteiro (§7 nas 12 linhas · §7.1 NOVA · §10.17 NOVA · §14-bis
+NOVA com os gates 55-60 · a secção do filtro no README das fixtures · o gerador do índice · o
+verificador · as 17 fixtures + 4 ficheiros por passo) mais a errata `3095d397b` (a contagem de
+corridas, 26 → 36).
+
+**PAREDE.** Sweep **verde** (vassoura de 70 entradas) sobre: a espec emendada · o README das
+fixtures · `gera_indice.py` · `verifica_traco.py` · `filtro/indice.json` · ⭐ o conteúdo
+**DESCOMPRIMIDO** das 43 fixtures do directório do filtro (o `strings` de um `.gz` não vê o texto de
+dentro) · e o **histórico** da espec e das fixtures (`--git-history`), todos exit `0`.
+⛔ **UM achado de §4.2**, curado no acto: a linha do tipo *Gravity* no §7 justificava o eixo da
+*View* com uma frase que espelhava, quase palavra a palavra, um comentário do fonte (a mesma espécie
+que os R-prés da Q14 e da Q17 curaram três vezes) — passa a dizer **o comportamento** (qual eixo, e
+que é o do ECRÃ e não o da profundidade), com a fixture que o mede.
+⚠️ Conferido de propósito: os nomes das 17 fixtures, as chaves novas do cabeçalho e o vocabulário do
+§7.1 (*par-espelho*, *controlo*, *giro da normal*) são do domínio; `Local`/`World`/`View`/`Gravity`/
+`Inflate`/`Expand`/`Pinch`/`Scale`/*Force Axis*/*Strength* são a superfície pública que o artista vê
+(§4.1.13).
+
+**FIDELIDADE — os factos conferidos no fonte e TODOS os números reconstruídos do zero das fixtures**,
+com script próprio fora do repo. Confirmados no fonte, um a um: a lei da força escalar em píxeis (e
+o sinal do arrasto para a direita); a ordem do passo (preparar a peça para edição → guardar estado →
+forças → activar → simular) e, com ela, que as normais do *Inflate* do filtro são as **de agora**;
+a soma da gravidade da cena **antes e sem** o factor por vértice, com as TRÊS correcções da emenda
+(o `+Z` do objecto de gravidade contra o `−Z` do pincel · o vector cru, sem normalizar e sem mudar
+de referencial · a multiplicação pela força, logo segue o arrasto); as bandeiras de eixo a tocarem
+**só** a âncora do *Scale*; `τ += 0,01 · f` no *Expand*; a âncora do *Scale* relida da pose de
+abertura; o ponto de aperto fixado na abertura; a plasticidade a entrar na criação com `0` e as
+restrições construídas uma vez com raio infinito; e os valores de omissão e faixas (massa `1`,
+`0..2` · amortecimento `0`, `0..1` · força `1`, `−10..10` · colisões desligadas).
+⭐ Reproduzem-se **célula a célula**: os 17 cabeçalhos da tabela do §10.17 (movidos · máx `|u|` ·
+dispersão · realizações) · a translação rígida `(0,0,−0,108000)` com desvio `0,000000000` · a
+identidade byte a byte do traço de eixo único (`0,0`) · a metade exacta da massa `2` (`0,054000`) ·
+os `0` movidos da força `0` · o giro da normal nos oito passos (`0,61` · `2,46` · `6,12` · `12,05` ·
+`20,14` · `29,16` · `38,51` · **`46,74`**) · o `+0,016882` radial no flanco · os `96,8 %` de arestas
+esticadas a `+5,0 %` · os `100 %` de radial negativo do aperto (`4224/4224`) · os `2080` de `2080`
+excluídos a mover-se · `36 = 16 × 2 + 4` corridas · o `indice.json` dos dois corpora a regenerar-se
+**byte-a-byte** (`86` e `27`) e o verificador **verde sobre os 113**.
+
+**SETE curas aplicadas no acto, todas funcionais (nenhum facto perdido)** — detalhe no cabeçalho da
+espec: (1) o achado de §4.2 acima; (2) o `1,7·10⁻⁶` do XY do *Scale* com gravidade de cena é leitura
+do oráculo e **reprovaria a fixture que o define** (o corpus dá `2,0·10⁻⁶` por componente), com a
+régua «vértice a vértice contra o traço de escala» a ficar escrita; (3) os `−0,2156`/`−0,1095` dos
+conjuntos de faces vinham de **duas réguas diferentes, nenhuma escrita** — passam aos **patamares**
+`−0,216 = 2 × 0,108` e `−0,108`, com a média crua (`−0,2146`/`−0,1095`) nomeada como o que o anel de
+fronteira faz; (4) o **gate 60** exigia uma leitura do 1.º passo de uma fixture que saiu **sem**
+`.porpasso` — passa ao estado final, que o corpus publica; (5) os nove dígitos da tabela do §7.1 são
+do oráculo e o corpus só os devolve a menos da resolução do ficheiro ⇒ o gate 56 passa a medir a
+FORMA com tolerância `2·10⁻⁶`, mantendo o `0` exacto do controlo; (6) a régua das percentagens de
+alargamento (o **vão da caixa** por eixo) não estava escrita em lado nenhum e três leituras
+plausíveis discordam — fica escrita no §10.17 e citada no gate 58; (7) o §10 mandava contar as
+fixtures com um `ls` que **não recursa** e, desde esta emenda, há **dois** corpora — a instrução
+passa a nomear os dois.
+⚠️ **Mais duas fora da espec:** o README das fixtures prometia que o verificador procura as malhas de
+repouso «no diretório-pai», o que ele **não faz** (apontá-lo a `filtro/` estoura) — passa a dizer a
+invocação real; e a errata da contagem de corridas (`3095d397b`) tinha deixado o **título** desta
+secção em `26` com o corpo em `36`.
+
+**Veredicto: ATESTADO** — a emenda Q22 pode ser lida e implementada pela janela-mãe.
 
 ---
 
@@ -1990,6 +2053,12 @@ vez, no incidente de processo da Q15). ⭐ A **parede** da Q22 está verificada 
 R-pré da Q23 correu sobre a espec inteira, sobre o directório das fixtures descomprimido e sobre o
 histórico, tudo verde); o que lhe falta é a auditoria de **§4.2/expressão** e a **fidelidade** dos
 números. ⇒ despachar um R-pré para a Q22 antes de implementar a parte do FILTRO.
+✅ **FECHADO em 2026-09-09, no mesmo dia:** a janela-mãe despachou o R-pré atrasado, que auditou o
+diff de `3cd972280` + `3095d397b` e **ATESTOU** a Q22 — 1 achado de §4.2 e 7 curas funcionais, todas
+aplicadas no acto (secção «Q22», acima). ⚠️ **A lição fica nomeada:** o portão que falhou não foi o
+sweep nem a fidelidade — foi o **despacho**; uma emenda que shipa com `⏳ Aguarda R-pré` escrito nela
+própria só é apanhada se alguém correr o censo por bloco do cabeçalho da espec (§ do instrumento
+`awk`), e desta vez foi um R-pré posterior a dar por ela, não o censo.
 
 ---
 

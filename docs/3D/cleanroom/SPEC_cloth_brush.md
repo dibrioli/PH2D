@@ -620,14 +620,58 @@ Auditoria §4.2 (R-pré): ✅ auditada contra §4.2 por R-pré em 2026-09-05 —
   `0,612818` / `0,329616` e os ficheiros (e a recomputação) dão `0,612821` / `0,329617`.
   **Veredicto: ATESTADO** — a emenda Q19 (com as Q20 e Q21 dentro) pode ser lida pela janela-mãe.
   Detalhe: LEDGER §Papel R.
-  ⏳ **EMENDA Q22 de 2026-09-07 — O FILTRO (§7 reescrito · §7.1 NOVA · §10.17 NOVA · §14-bis NOVA
-  com os gates 55-60) + as 17 fixtures de `fixtures/cloth/filtro/`. AGUARDA R-PRÉ**: até ao atestado
-  dela, a janela-mãe pode ler o §7/§7.1/§10.17 como espec, mas o portão do §3.R da SKILL diz que a
-  auditoria independente é condição de implementar. Escrita pelo subagente-E da mesma janela, com o
+  ✅ **EMENDA Q22 de 2026-09-07 — O FILTRO (§7 reescrito · §7.1 NOVA · §10.17 NOVA · §14-bis NOVA
+  com os gates 55-60) + as 17 fixtures de `fixtures/cloth/filtro/`.** Escrita pelo subagente-E da mesma janela, com o
   fonte reaberto **só** para o filtro e com **36 corridas novas do oráculo** (17 configurações, com
   duas realizações no plano e quatro na esfera). O que ela muda de veredito: o §7 tinha **três**
   afirmações erradas sobre a gravidade da cena, **uma** por medir sobre as bandeiras de eixo, e a
   frase (F) sobre as normais do *Inflate* passou a ser **(M)** por um par-espelho.
+  ✅ **AUDITADA contra §4.2 por R-pré em 2026-09-09** — ⚠️⚠️ **revisão ATRASADA de dois dias:** esta
+  emenda shipou com `⏳ AGUARDA R-PRÉ` escrito nela própria e ninguém a despachou; quem deu por isso
+  foi o R-pré da Q23 (achado de processo no ledger), não o censo `awk` deste cabeçalho. Contexto
+  novo, independente do subagente-E que a escreveu; leu os dois lados (o fonte por shell).
+  ⛔ **UM achado de EXPRESSÃO, curado no acto:** a linha do tipo *Gravity* do §7 justificava o eixo da
+  *View* com uma frase que espelhava, quase palavra a palavra, um comentário do fonte — a mesma
+  espécie que os R-prés da Q14 e da Q17 curaram três vezes — e passa a dizer **o comportamento** (qual
+  eixo, e que é o do ECRÃ e não o da profundidade), com a fixture que o mede. Nada mais: sem trecho,
+  sem nome interno, sem wording de manual; os nomes das 17 fixtures, as chaves novas do cabeçalho e o
+  vocabulário do §7.1 (*par-espelho* · *controlo* · *giro da normal*) são do domínio, e
+  `Local`/`World`/`View`/`Gravity`/`Inflate`/`Expand`/`Pinch`/`Scale`/*Force Axis*/*Strength* são a
+  superfície pública que o artista vê (§4.1.13). Sweep **verde** sobre a espec · o README das
+  fixtures · o gerador do índice · o verificador · o `indice.json` do filtro · ⭐ o conteúdo
+  **DESCOMPRIMIDO** das 43 fixtures do directório · e o **histórico** da espec e das fixtures.
+  ⭐⭐ **FIDELIDADE: os factos conferidos no fonte e TODOS os números reconstruídos do zero das
+  fixtures** — a lei da força em píxeis e o sinal do arrasto; a ordem do passo (que é o que faz as
+  normais do *Inflate* serem as **de agora**); as TRÊS correcções da gravidade da cena (o `+Z` do
+  objecto contra o `−Z` do pincel · o vector cru · a multiplicação pela força); as bandeiras de eixo
+  só na âncora do *Scale*; `τ += 0,01 · f`; a âncora relida da pose de abertura; o ponto de aperto
+  fixado na abertura; a plasticidade `0` e as restrições construídas uma vez com raio infinito; e os
+  valores de omissão e faixas. Reproduzem-se célula a célula os **17** cabeçalhos do §10.17, a
+  translação rígida com desvio `0,000000000`, a identidade byte a byte do traço de eixo único, a
+  metade exacta da massa `2`, o giro da normal nos oito passos (até **`46,74°`**), o `+0,016882`
+  radial, os `96,8 %`/`+5,0 %` das arestas, os `100 %` de radial negativo do aperto (`4224/4224`), os
+  `2080` de `2080` excluídos a mover-se, as `36 = 16 × 2 + 4` corridas, o `indice.json` dos **dois**
+  corpora a regenerar-se **byte-a-byte** (`86` e `27`) e o verificador **verde sobre os 113**.
+  ⛔ **SETE curas aplicadas no acto, todas funcionais** — ⚠️ **cinco delas são a mesma família: um
+  número do ORÁCULO escrito como se o corpus o devolvesse, ou uma régua que nunca foi escrita.**
+  (1) o achado de expressão acima; (2) o `1,7·10⁻⁶` do XY do *Scale* com gravidade de cena
+  **reprovaria a fixture que o define** (o corpus dá `2,0·10⁻⁶` por componente, que é o chão da
+  resolução do ficheiro), e a régua «vértice a vértice contra o traço de escala» fica escrita;
+  (3) o `−0,2156` e o `−0,1095` dos conjuntos de faces vinham de **duas réguas diferentes, nenhuma
+  escrita** — ficam os **patamares** `−0,216 = 2 × 0,108` e `−0,108`, com a média crua
+  (`−0,2146`/`−0,1095`) nomeada como o que o anel de fronteira faz; (4) o **gate 60** pedia uma
+  leitura do **1.º passo** de uma fixture que saiu **sem `.porpasso`** — passa ao estado final, que o
+  corpus publica (os cinco vértices menos deslocados são o ponto de abertura e os vizinhos dele);
+  (5) os nove dígitos da tabela do §7.1 são leitura do oráculo e o corpus só os devolve a menos de
+  `2·10⁻⁶` ⇒ o gate 56 passa a medir a **FORMA**, mantendo o `0` exacto do controlo; (6) a régua das
+  percentagens de alargamento (o **vão da caixa** por eixo) não existia em lado nenhum e três
+  leituras plausíveis discordam — fica no §10.17 e no gate 58; (7) o §10 mandava contar as fixtures
+  com um `ls` que **não recursa**, e desde esta emenda há **DOIS** corpora.
+  ⚠️ Mais **duas fora da espec**: o README das fixtures prometia que o verificador procura as malhas
+  de repouso «no diretório-pai» — ele **não** o faz, e apontá-lo a `filtro/` estoura; e o título da
+  secção Q22 do ledger ficara em `26` corridas com o corpo em `36`.
+  **Veredicto: ATESTADO** — a emenda Q22 pode ser lida e implementada pela janela-mãe.
+  Detalhe: LEDGER §Papel R (R-PRÉ da Q22).
   ✅ **EMENDA Q23 de 2026-09-09 — O FILTRO ATRAVESSA GESTOS (§7 com TRÊS linhas novas — «base
   persistente», «entre INVOCAÇÕES» e o censo do «painel» + `Repeat` · **§7.2 NOVA** · **§10.18 NOVA**
   · **§14-bis.2 NOVA** com os gates 61-65) + as **10** fixtures novas de `fixtures/cloth/filtro/`
@@ -695,6 +739,11 @@ Auditoria §4.2 (R-pré): ✅ auditada contra §4.2 por R-pré em 2026-09-05 —
   directório inteiro das fixtures **descomprimido** e sobre o **histórico** — logo o que falta à Q22
   é a auditoria de **§4.2/expressão** e a **fidelidade** dos números dela, ⛔ não a parede.
   ⇒ *despache um R-pré para a Q22 antes de implementar a parte do FILTRO.*
+  ✅ **FECHADO no mesmo dia (2026-09-09): o R-pré atrasado da Q22 correu e ATESTOU-A** — a entrada
+  dela acima está `✅`, com 1 achado de expressão e 7 curas. ⚠️ **A lição que fica é do DESPACHO, não
+  do instrumento:** a emenda trazia `AGUARDA R-PRÉ` escrito nela própria e mesmo assim atravessou dois
+  dias — *uma pendência declarada dentro do artefacto não se cobra sozinha; quem a apanhou foi o R-pré
+  seguinte, e o censo `awk` deste cabeçalho só a teria apanhado se alguém o corresse.*
 Mapa de leitura da literatura (⭐ pública e lícita a TODOS os papéis):
   · Jakobsen, "Advanced Character Physics", GDC 2001 — integração de Verlet por posições + relaxação
     de restrições de distância por projecção. É EXACTAMENTE a família do solver do alvo.
@@ -2532,12 +2581,12 @@ Mesmo solver, sem pincel (F):
 | **um passo** | a cada movimento do rato: **preparar a peça para edição** (⭐ é este passo que recalcula as normais da malha — §7.1) → guardar estado (§1 fase 2) → forças → activar todas → passo de simulação. ⛔ **A regra do pincel de que o 1.º passo não simula NÃO existe aqui:** o primeiro movimento já deforma (M: `plano_filtro_inflar_1passo` move `4225` vértices com **um** evento). ⚠️ E o programa emite um movimento **extra** logo a seguir ao premir do botão, no mesmo píxel: ali `S = 0` e, sobre a malha em repouso, o passo é um no-op exacto (M: `0` vértices alterados) |
 | **força escalar `S`** | `S = força_base · (x_rato − x_pressão) · 0,001 · escala_UI` — ⭐ arrastar para a **direita** é positivo, e a magnitude é **pixels** (`0,001` por px a força base `1`); `força_base` é o parâmetro *Strength* (omissão `1`, faixa `−10..10`). ⭐⭐ **M, e fecha ao último dígito:** com `escala_UI = 1`, força `1` e avanços de `90` px, o acumulado previsto por `Σ_j (k−j+1)·S_j·Δt` dá `0,108000` a `k = 8` e o oráculo entrega `0.108000`; um passo sozinho dá `0.000900 = S₁·Δt` |
 | **factor por vértice** | `(1 − máscara) · auto-máscara · (0 se fora do conjunto de faces activo, com *Use Face Sets*) · S` — ⚠️⚠️ **e ele multiplica só a força do TIPO**: a gravidade da cena é somada à aceleração **antes** dele e **sem** ele (linha da gravidade da cena, abaixo) |
-| **Gravity** | força `= M · (0, 0, −f)` — ou `(0, −f, 0)` na orientação *View* (na vista, o eixo da gravidade é o −Y do ecrã, para que a queda seja o «baixo» que o artista vê e não a profundidade — F) — com `M` a matriz da orientação (*Local* = identidade · *World* = inversa da matriz do objecto · *View* = inversa da vista × inversa do objecto). ⚠️ **A composição da *View* está escrita nesta ordem**, e com uma matriz de objecto que não seja a identidade ela **não** é a mudança de base vista→objecto (que seria a ordem oposta); ⛔ o corpus não distingue as duas, porque nele a peça está na origem sem rotação nem escala. ⭐ **M:** no plano em vista de topo, *Local* dá `(0, 0, −0,108000)` e *View* dá `(0, −0,108000, 0)`, os dois como translação **rígida** (desvio máximo ao vector médio `0,000000000` e `0,000000093`) |
+| **Gravity** | força `= M · (0, 0, −f)` — ou `(0, −f, 0)` na orientação *View* (M: ali o eixo é o **`−Y` do ECRÃ**, ⛔ **não** o eixo de profundidade da vista — §10.17, fixture `plano_filtro_gravidade_vista`) — com `M` a matriz da orientação (*Local* = identidade · *World* = inversa da matriz do objecto · *View* = inversa da vista × inversa do objecto). ⚠️ **A composição da *View* está escrita nesta ordem**, e com uma matriz de objecto que não seja a identidade ela **não** é a mudança de base vista→objecto (que seria a ordem oposta); ⛔ o corpus não distingue as duas, porque nele a peça está na origem sem rotação nem escala. ⭐ **M:** no plano em vista de topo, *Local* dá `(0, 0, −0,108000)` e *View* dá `(0, −0,108000, 0)`, os dois como translação **rígida** (desvio máximo ao vector médio: `0,000000000` no *Local*, **exacto e reconstruível**; no *View* o oráculo lê `0,000000093` e ⚠️ **o corpus não pode devolver esse dígito** — quantizado a seis casas ele dá `0,00000083`, com `y ∈ {−0,108000, −0,107999}` ⇒ *a barra de um port é a resolução do ficheiro, nunca o dígito do oráculo* — R-pré, 2026-09-09) |
 | **Inflate** | força = normal **actual** do vértice × f — ⚠️⚠️ **e o «actual» aqui é literal, ao contrário do pincel:** cada passo do filtro repete a preparação da peça para edição, que **recalcula as normais**, enquanto o traço do pincel a corre uma vez só e por isso lê as do início (§4.2-ter). ⇒ *a mesma palavra nomeia duas leis*; um port que partilhe a lei do Inflate entre os dois tem de lhe passar QUAL fotografia usar. ⭐⭐⭐ **MEDIDO em 2026-09-07 pelo par-espelho do §7.1** (antes disto era só (F)) — e ⚠️ a fotografia de normais tirada **quando a simulação é criada** não é lida por lei nenhuma: ela existe e não tem consumidor, o que é o corroborante estrutural |
 | **Expand** | `τ_v += 0,01 · f` (§4.5). ⭐ **M:** oito passos alargam o plano `+22,9 %` × `+20,3 %`; com o arrasto para o outro lado (`f < 0`) ele ENCOLHE `−16,0 %` × `−15,4 %` — ⚠️ **a resposta não é simétrica no sinal** (o máximo é `0.379347` num sentido e `0.390225` no outro) |
 | **Pinch** | força = unitário do vértice **para o vértice activo no momento em que o filtro começou** (o ponto NÃO segue o rato) × f. ⭐⭐ **M, e é a fixture que o prova:** com o ponto de abertura no vértice de repouso `(−0,609375, 0, 0)` e o cursor a acabar em `x ≈ +2,36` — fora de uma peça que acaba em `1,5` — **100 %** dos vértices movidos vão na direcção do ponto de abertura, e o próprio ponto é o único vértice imóvel no 1.º passo (`4224` de `4225` movidos) |
 | **Scale** | ⭐ é o único filtro por ÂNCORA: âncora `= p⁰_v + p⁰_v · f` com as componentes dos eixos desligados anuladas (no referencial da orientação) ⇒ escala em torno da **origem do objecto**; força de âncora `0,01` (e o segundo factor por vértice das âncoras vale `1`, porque nada no filtro lhe toca). ⚠️ `p⁰` é a pose de **quando o filtro abriu**, relida a cada passo ⇒ o alvo **não** é cumulativo: a peça reescala do repouso com o `f` DAQUELE passo. ⭐ **M:** oito passos dão `+14,38 %` × `+14,40 %` |
-| **gravidade da cena** | somada em TODOS os tipos — **incluindo os dois que não aplicam força nenhuma** (Expand e Scale) — como `ĝ · g · S`, com `g` = *Gravity* da escultura. ⚠️⚠️ **TRÊS correcções (F, 2026-09-07):** (a) sem objecto de gravidade `ĝ = (0,0,−1)`, mas COM um objecto de gravidade `ĝ` é o **`+Z`** dele — ⛔ **não** o `−Z` que esta linha dizia; o pincel nega e o filtro não, logo as duas leis divergem no SINAL quando há objecto de gravidade; (b) esse vector é usado **cru**, sem normalizar e **sem** ser levado ao referencial da peça, ao contrário do que o pincel faz; (c) ele é multiplicado por `S`, logo **segue o arrasto** — arrastar para o outro lado inverte a gravidade da cena. ⚠️ E ela **não** passa pelo factor por vértice ⇒ um vértice fora do conjunto de faces activo **cai na mesma**. ⭐ **M:** com `Gravity = 1` o Scale também desce `−0,0994` em `z` com o XY intacto a `1,7·10⁻⁶`; e no traço de conjuntos de faces o lado activo desce `−0,2156` (força do tipo + gravidade) contra `−0,1095` do lado excluído (só gravidade), com `2080` de `2080` vértices excluídos a mover-se |
+| **gravidade da cena** | somada em TODOS os tipos — **incluindo os dois que não aplicam força nenhuma** (Expand e Scale) — como `ĝ · g · S`, com `g` = *Gravity* da escultura. ⚠️⚠️ **TRÊS correcções (F, 2026-09-07):** (a) sem objecto de gravidade `ĝ = (0,0,−1)`, mas COM um objecto de gravidade `ĝ` é o **`+Z`** dele — ⛔ **não** o `−Z` que esta linha dizia; o pincel nega e o filtro não, logo as duas leis divergem no SINAL quando há objecto de gravidade; (b) esse vector é usado **cru**, sem normalizar e **sem** ser levado ao referencial da peça, ao contrário do que o pincel faz; (c) ele é multiplicado por `S`, logo **segue o arrasto** — arrastar para o outro lado inverte a gravidade da cena. ⚠️ E ela **não** passa pelo factor por vértice ⇒ um vértice fora do conjunto de faces activo **cai na mesma**. ⭐ **M — com as RÉGUAS escritas, que faltavam (R-pré, 2026-09-09):** com `Gravity = 1` o Scale também desce em `z`; medindo **vértice a vértice contra `plano_filtro_escala`**, a descida é `−0,0994` de média (faixa `−0,099530 … −0,099234`) e o XY fica intacto a **`2,0·10⁻⁶` por componente** (`2,83·10⁻⁶` em distância) — ⛔ o `1,7·10⁻⁶` que esta linha trazia é leitura do oráculo e **reprovaria a fixture que o define**: o chão aqui é a resolução do ficheiro. E no traço de conjuntos de faces há **dois patamares exactos**: o lado activo (`2145` vértices, força do tipo + gravidade) em **`−0,216 = 2 × 0,108`** e o excluído (`2080`, só gravidade) em **`−0,108`**, com `2080` de `2080` excluídos a mover-se. ⚠️ **A média crua por lado NÃO dá os patamares** — o anel de fronteira puxa-a para `−0,2146` e `−0,1095`; o `−0,2156` da 1.ª redacção é a média do lado activo **sem o anel que toca o excluído**, e o `−0,1095` é a média de `\|u\|` sobre os `2080`: *duas réguas diferentes na mesma frase, nenhuma delas escrita* |
 | **Force Axis** | bandeiras X/Y/Z (omissão: as três) — elas anulam componentes **da âncora do Scale** e de mais nada. ⭐⭐ **M, e passa de leitura de código a facto:** o mesmo traço de gravidade com **só o X ligado** sai **byte a byte igual** ao das três ligadas (diferença máxima por vértice `0,0`); e o Scale com só o X dá `+14,74 %` em X contra `+0,18 %` em Y — ⚠️ esse `0,18 %` é a rede de restrições a arrastar o eixo desligado, **não** uma fuga da lei dos eixos |
 | **Orientation** | *Local* (omissão) · *World* · *View* — define `M` acima **e** a direcção da gravidade do tipo *Gravity* |
 | **massa / damping** | omissão `1,0` (faixa `0..2`) / **`0,0`** (faixa `0..1`) — ⚠️ o filtro nasce **sem** perda de velocidade nenhuma. ⭐ **M:** massa `2` dá exactamente metade (`0.054000` contra `0.108000`), e força `0` move **zero** vértices |
@@ -2578,6 +2627,14 @@ Com a peça presa fora de um disco de raio `0,6` forma-se uma calota e a normal 
 | **sem máscara** (controlo — a superfície nunca vira) | `0.000000000` | `0.000000000` | `0.000000000` | `0.000000000` | `0.000000000` | `0.000000000` | `0.000000000` | `0.000000000` |
 | **com máscara** | `0.000000000` | `0.000019326` | `0.000116515` | `0.000389719` | `0.000977440` | `0.002008600` | `0.003573328` | `0.005503573` |
 | giro máximo da normal desde o repouso (graus) | `0,61` | `2,46` | `6,12` | `12,05` | `20,14` | `29,16` | `38,51` | `46,74` |
+
+⚠️ **Os NOVE dígitos da 2.ª linha são leitura do ORÁCULO, e o corpus só os devolve a menos da
+resolução do ficheiro** (R-pré, 2026-09-09 — recalculada dos dois `.porpasso` publicados, ela dá
+`0` · `0,00002013` · `0,00011718` · `0,00039046` · `0,00097691` · `0,00200810` · `0,00357394` ·
+`0,00550301`, e a maior discrepância, `8·10⁻⁷` no passo 2, é exactamente o que seis casas decimais
+permitem). ⇒ **o que um port tem de reproduzir é a FORMA** — zero **exacto** no passo 1, crescimento
+estrito, e `5,06 %` do maior deslocamento no passo 8 —, nunca o dígito. ⭐ A 1.ª linha (o controlo)
+é `0,000000000` nas oito e **essa** é exacta: ali as duas leis coincidem ao bit.
 
 ⭐⭐⭐ **A divergência nasce no passo 2** — o primeiro em que um passo anterior já podia ter virado a
 superfície — e chega a **`5,06 %`** do maior deslocamento do traço. ⇒ **a normal que o *Inflate* do
@@ -2810,6 +2867,10 @@ memória** (`ls docs/3D/cleanroom/fixtures/cloth/*.deformado.txt.gz | wc -l`): e
 `51` depois de a §10.5 acrescentar dois, a §10.6 mais um, a §10.7 mais dois, a §10.8 mais **nove**,
 a §10.10 mais **oito**, a §10.11 mais **três** e a §10.12 mais **dois** — e esteve parada em `76`
 enquanto a §10.12 entrava.
+⚠️⚠️ **E desde 2026-09-07 são DOIS corpora, e aquele `ls` NÃO vê o segundo** (ele não recursa): os
+traços do **FILTRO** vivem em `fixtures/cloth/filtro/` (§10.17 · §10.18) e contam-se à parte, com
+`ls docs/3D/cleanroom/fixtures/cloth/filtro/*.deformado.txt.gz | wc -l`. ⛔ Uma contagem de fixtures
+que não diga de QUAL dos dois é parcial por construção — R-pré, 2026-09-09.
 ⚠️ **A tabela abaixo NÃO é o corpus** — ela tem as `47` linhas da 1.ª geração, e os traços das
 §10.2–§10.11 vivem nas secções delas. O corpus é o directório.
 ⚠️ **O `indice.json` é DERIVADO e regenera-se** — `python3 fixtures/cloth/gera_indice.py` (uma
@@ -3850,6 +3911,13 @@ vértices. ⚠️ **A origem do arrasto é o píxel do BOTÃO PREMIDO**, e no co
 píxel de abertura — o cabeçalho traz `origem_do_arrasto_px` e a lista `forca_por_passo` para que
 isto seja reconstruível sem adivinhar.
 
+⚠️ **A RÉGUA das percentagens de alargamento é o VÃO DA CAIXA por eixo** — `max − min` sobre o bloco
+de vértices, contra o mesmo vão no repouso (R-pré, 2026-09-09: ela **não estava escrita em lado
+nenhum**, e as leituras plausíveis — vão, factor médio por vértice, raiz da variação de área — não
+coincidem). Com ela reconstroem-se do corpus, célula a célula: `plano_filtro_expandir`
+`+22,86 %` × `+20,32 %` · `_expandir_negativo` `−15,98 %` × `−15,40 %` · `plano_filtro_escala`
+`+14,38 %` × `+14,40 %` · `_escala_eixox` `+14,74 %` × `+0,18 %`.
+
 ⛔⛔ **A ESFERA é a única que sorteia, e o número tem de ir a qualquer barra que a use.** Quatro
 realizações da mesma configuração diferem até `0.001015` por vértice — a mesma família do §10.13/
 §10.15 do pincel, com a **superfície** (e não a área) como variável. ⭐ **No plano as dezasseis
@@ -4108,11 +4176,11 @@ Snake Hook **re-ancorar** no estado actual com força quadrática no falloff.
 | # | gate | barra | de onde |
 |---|---|---|---|
 | 55 | ⭐⭐ **O CENSO DO CORPUS DO FILTRO** — a lista do arnês do filtro tem de ser **exactamente** o conteúdo de `fixtures/cloth/filtro/*.deformado.txt.gz`, como o do pincel é o da raiz. ⛔ Sem ele uma fixture nova entra sem régua e a suíte fica verde sobre ela; ⚠️ e o gate irmão é de **não-colisão**: o censo do pincel tem de continuar a ver `86` (a varredura dele não recursa, e é isso que mantém os dois corpora separados) | igualdade de conjuntos | §10.17 |
-| 56 | ⭐⭐⭐ **O PAR-ESPELHO: o *Inflate* relê as normais a cada passo.** Sobre `plano_filtro_inflar_mascarado` e `plano_filtro_gravidade_mascarado` (por passo), `max \|u_inflar − espelho_z(u_gravidade)\|` tem de ser **`0` no passo 1** e **crescer monotonamente** até `≈ 0,0055` no passo 8 (`5,06 %` do maior deslocamento). ⚠️ **Duas metades, e a 1.ª é o CONTROLO sem o qual a 2.ª não tem leitura:** o mesmo par **sem** máscara tem de dar `0,000000000` nos oito passos — ali a superfície nunca vira e as duas leis coincidem ao bit. ⛔ Um port com a normal congelada passa o controlo e reprova o par mascarado; um port que leia a normal viva passa os dois | `0` exacto de um lado; a curva medida do outro | §7.1 · §10.17 |
+| 56 | ⭐⭐⭐ **O PAR-ESPELHO: o *Inflate* relê as normais a cada passo.** Sobre `plano_filtro_inflar_mascarado` e `plano_filtro_gravidade_mascarado` (por passo), `max \|u_inflar − espelho_z(u_gravidade)\|` tem de ser **`0` no passo 1** e **crescer monotonamente** até `≈ 0,0055` no passo 8 (`5,06 %` do maior deslocamento). ⚠️ **Duas metades, e a 1.ª é o CONTROLO sem o qual a 2.ª não tem leitura:** o mesmo par **sem** máscara tem de dar `0,000000000` nos oito passos — ali a superfície nunca vira e as duas leis coincidem ao bit. ⛔ Um port com a normal congelada passa o controlo e reprova o par mascarado; um port que leia a normal viva passa os dois | `0` **exacto** no controlo e no passo 1; do outro lado a FORMA (crescimento estrito + `5,06 %` no passo 8) com tolerância **`2·10⁻⁶`**, que é o que seis casas decimais permitem — ⛔ **não** os nove dígitos da tabela, que são leitura do oráculo (§7.1, R-pré 2026-09-09) | §7.1 · §10.17 |
 | 57 | ⭐⭐ **A FORÇA DO FILTRO É PÍXEIS, E FECHA AO ÚLTIMO DÍGITO.** `plano_filtro_inflar_1passo` tem de dar `0.000900` (um passo = `S₁ · Δt`), `plano_filtro_gravidade_local` `0.108000` ao fim de oito, `plano_filtro_gravidade_massa2` **metade exacta** (`0.054000`) e `plano_filtro_gravidade_forca0` **zero vértices movidos**. ⚠️ **A 4.ª é anti-vácuo ao contrário** (é a única do corpus onde `movidos = 0` é o resultado certo), e por isso o gate tem de exigir `> 4000` movidos nas outras três | a resolução do ficheiro (`5·10⁻⁷`) | §7 · §10.17 |
-| 58 | ⭐⭐ **AS BANDEIRAS DE EIXO SÓ TOCAM NA ÂNCORA DO *Scale*.** `plano_filtro_gravidade_eixox` tem de sair **byte a byte igual** a `plano_filtro_gravidade_local` (diferença máxima por vértice `0,0`), e `plano_filtro_escala_eixox` tem de dar `+14,74 %` em X contra `+0,18 %` em Y. ⚠️ **A 2.ª metade é a que impede a leitura ingénua:** o `0,18 %` **existe** e é a rede a arrastar o eixo desligado — um port que force o eixo a `0` no RESULTADO (em vez de na âncora) reprova por ficar demasiado limpo | identidade exacta · as duas percentagens | §7 · §10.17 |
-| 59 | ⭐⭐ **A GRAVIDADE DA CENA NÃO É UMA FORÇA DO TIPO.** Três metades: (a) `plano_filtro_escala_gravidade_cena` tem de descer `−0,0994` em `z` com o XY intacto a `1,7·10⁻⁶` ⇒ ela entra num tipo que **não aplica força nenhuma**; (b) em `plano_filtro_gravidade_conjuntos_de_faces` o lado excluído tem de **mover-se** (`2080` de `2080`), a `−0,1095` contra `−0,2156` do activo ⇒ ela **não** passa pelo factor por vértice; (c) ⛔ o sentido com um **objecto de gravidade** é o `+Z` dele, e o pincel usa o `−Z` — não há fixture (não há objecto de gravidade no corpus), logo esta metade é **gate de espec** e a linha diz isso de si mesma | as três leituras; a (c) por construção | §7 |
-| 60 | ⭐ **O PONTO DE APERTO NÃO SEGUE O CURSOR.** Em `plano_filtro_apertar`, o vértice imóvel no 1.º passo tem de ser o de repouso `(−0,609375, 0, 0)` (`4224` de `4225` movidos) e **todos** os deslocamentos finais têm componente radial **negativa** em torno dele — com o cursor a acabar em `x ≈ +2,36`, fora da peça. ⛔ Um port que releia a posição do cursor a cada passo colapsa a malha para o lado errado e reprova nas duas metades | o índice exacto · `100 %` de radial negativo | §7 · §10.17 |
+| 58 | ⭐⭐ **AS BANDEIRAS DE EIXO SÓ TOCAM NA ÂNCORA DO *Scale*.** `plano_filtro_gravidade_eixox` tem de sair **byte a byte igual** a `plano_filtro_gravidade_local` (diferença máxima por vértice `0,0`), e `plano_filtro_escala_eixox` tem de dar `+14,74 %` em X contra `+0,18 %` em Y. ⚠️ **A 2.ª metade é a que impede a leitura ingénua:** o `0,18 %` **existe** e é a rede a arrastar o eixo desligado — um port que force o eixo a `0` no RESULTADO (em vez de na âncora) reprova por ficar demasiado limpo | identidade **exacta** (`0,0`) · as duas percentagens a **duas casas**, pela régua do **vão da caixa** por eixo (§10.17 — ela não estava escrita e três leituras plausíveis discordam) | §7 · §10.17 |
+| 59 | ⭐⭐ **A GRAVIDADE DA CENA NÃO É UMA FORÇA DO TIPO.** Três metades: (a) `plano_filtro_escala_gravidade_cena`, **vértice a vértice contra `plano_filtro_escala`**, tem de descer `−0,0994` de média em `z` (faixa `−0,099530 … −0,099234`) com o XY intacto a **`2,0·10⁻⁶` por componente** ⇒ ela entra num tipo que **não aplica força nenhuma** (⛔ o `1,7·10⁻⁶` da 1.ª redacção é leitura do oráculo e **reprovaria a fixture que o define** — R-pré, 2026-09-09); (b) em `plano_filtro_gravidade_conjuntos_de_faces` o lado excluído tem de **mover-se** (`2080` de `2080`), no **patamar** `−0,108`, contra `−0,216 = 2 × 0,108` do activo (`2145`) ⇒ ela **não** passa pelo factor por vértice. ⚠️ **São PATAMARES, não médias:** a média crua de cada lado dá `−0,2146` e `−0,1095`, porque o anel de fronteira entra nela — *a 1.ª redacção citava dois números tirados de duas réguas diferentes, nenhuma escrita*; (c) ⛔ o sentido com um **objecto de gravidade** é o `+Z` dele, e o pincel usa o `−Z` — não há fixture (não há objecto de gravidade no corpus), logo esta metade é **gate de espec** e a linha diz isso de si mesma | as três leituras; a (c) por construção | §7 |
+| 60 | ⭐ **O PONTO DE APERTO NÃO SEGUE O CURSOR.** ⚠️ **Corrigido pelo R-pré em 2026-09-09: `plano_filtro_apertar` tem só `.deformado`**, logo o «vértice imóvel no 1.º passo, `4224` de `4225` movidos» é leitura do ORÁCULO e **não é reconstruível deste lado** — o gate corre sobre o **estado final**, que o corpus publica: (a) os cinco vértices menos deslocados têm de ser o ponto de abertura de repouso `(−0,609375, 0, 0)` e os vizinhos imediatos dele (`0,0030`–`0,0144`, contra um máximo de `0,104399`); (b) **todos** os `4224` deslocamentos com direcção radial definida têm componente radial **negativa** em torno desse ponto (o próprio ponto move-se `0,004862` e não tem direcção radial), com o cursor a acabar em `x = 2,3616`, fora de uma peça que acaba em `1,5`. ⛔ Um port que releia a posição do cursor a cada passo colapsa a malha para o lado errado e reprova nas duas metades | a vizinhança exacta · `100 %` de radial negativo (`4224/4224`) | §7 · §10.17 |
 
 ### §14-bis.2 — Gates das INVOCAÇÕES REPETIDAS (2026-09-09, emenda Q23 — a barra é DERIVADA)
 

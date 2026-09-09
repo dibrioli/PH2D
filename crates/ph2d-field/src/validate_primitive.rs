@@ -229,6 +229,7 @@ pub(crate) fn validate_primitive(idx: u32, p: &Primitive) -> Result<(), FieldErr
             half_height,
             round,
             chamfer,
+            tip_chamfer,
         } => {
             // ⚠️ **COAGIDA na porta como a contagem de lados** — a UI nunca oferece fora da faixa,
             // então um valor de fora só chega por um documento estragado, e recusar ali rejeitaria
@@ -251,6 +252,24 @@ pub(crate) fn validate_primitive(idx: u32, p: &Primitive) -> Result<(), FieldErr
                 });
             }
             positive(half_height, "half_height")?;
+            // ⭐⭐ **O chanfro das PONTAS tem TECTO PRÓPRIO** (W143) — ver
+            // [`crate::star_tip_chamfer_limit`]. ⛔ Validá-lo contra o `round_limit` daria
+            // `4,5×` menos curso do que a geometria permite, que é o oposto do pedido que o
+            // criou.
+            if !tip_chamfer.is_finite() || tip_chamfer < 0.0 {
+                return Err(FieldError::NonPositive {
+                    node: idx,
+                    what: "tip_chamfer",
+                });
+            }
+            let tecto = crate::star_tip_chamfer_limit(points, outer, inner, chamfer);
+            if tip_chamfer >= tecto {
+                return Err(FieldError::RoundTooLarge {
+                    node: idx,
+                    round: tip_chamfer,
+                    limit: tecto,
+                });
+            }
             round_fits(round, chamfer, round_limit(p).unwrap_or(0.0))
         }
         Primitive::BoxFrame {

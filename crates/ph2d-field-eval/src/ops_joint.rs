@@ -291,6 +291,24 @@ fn novo_cosseno(cos_faces: f64) -> f64 {
 /// ⚠️ A `90°` isto vale `1,7071·c`, então o ponto de trabalho `r = 0,5·c` dos gates fica **dentro**
 /// da faceta em toda forma ortogonal; numa ponta de estrela (`α = 19,2°`) vale `0,4629·c`, e é por
 /// isso que ali o mesmo ponto de trabalho cai do outro lado.
+/// ⭐⭐⭐ **E É POR CAUSA DESTE NÚMERO QUE A ESTRELA TEM DOIS CONTROLOS** (W143) — a prosa restaurada
+/// aqui, porque o [`ph2d_field::Primitive::Star`] estourou o tecto de LOC ao guardá-la.
+///
+/// O limite é `sin α (1 + sin α)/cos α × chanfro`, e numa estrela isso **não é um número, são
+/// três**:
+///
+/// | família de aresta | meia-abertura | o filete engole acima de |
+/// |---|---:|---:|
+/// | **ponta** | `19,17°` | **`0,462 × chanfro`** |
+/// | aro das faces | `45°` | `1,707 × chanfro` |
+/// | vale | `55,17°` | `2,617 × chanfro` |
+///
+/// ⇒ espalhamento de **`5,67×`**, e com um slider só **a faceta da ponta desaparece `3,7×` mais
+/// cedo que a do aro**: o artista vê as faces chanfradas e as pontas não (medido, com o chanfro a
+/// meio tecto: faceta de `0,02025` sem filete e `0,00225` — o chão da amostragem — com ele a um
+/// quarto). ⚠️ **E há uma segunda assimetria, independente:** o mesmo número tira `2,10×` mais da
+/// face de cima na ponta do que no flanco, porque uma quina amplifica o recuo por `1/sin α` — que
+/// numa ponta de `19,17°` vale `3,05`.
 fn facet_fillet_limit(chamfer: f64, cos_faces: f64) -> f64 {
     let c = cos_faces.clamp(-COS_FACES_MAX_JOINT, COS_FACES_MAX_JOINT);
     let (sin_a, cos_a) = ((0.5 * (1.0 + c)).sqrt(), (0.5 * (1.0 - c)).sqrt());

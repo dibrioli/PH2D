@@ -20,7 +20,7 @@
 //! ```
 
 use fidget::shape::EzShape;
-use ph2d_field::{FieldDoc, Node, NodeId, NodeKind, Primitive, PrimitiveKind, Xform};
+use ph2d_field::{FieldDoc, Node, NodeId, NodeKind, Primitive, PrimitiveKind, Span, Xform};
 
 /// O ângulo de normal acima do qual dois pontos vizinhos estão sobre um **vinco**.
 ///
@@ -349,6 +349,7 @@ fn where_the_curvature_breaks_are() {
         half_height: 0.25,
         round: 0.0,
         chamfer: 0.0,
+        tip_chamfer: 0.0,
     };
     let p = with_round(&base, 0.999).expect("tem filete");
     let (pontos, _, _) = traverse(&p, 4096, 6);
@@ -656,6 +657,7 @@ fn representative(k: PrimitiveKind) -> Option<Primitive> {
             half_height: 0.25,
             round: 0.0,
             chamfer: 0.0,
+            tip_chamfer: 0.0,
         },
         PrimitiveKind::BoxFrame => Primitive::BoxFrame {
             half: [0.45, 0.35, 0.4],
@@ -1135,6 +1137,7 @@ fn where_the_creases_are() {
                 half_height: 0.25,
                 round: 0.0,
                 chamfer: 0.0,
+                tip_chamfer: 0.0,
             },
         ),
     ] {
@@ -1330,6 +1333,31 @@ fn with_pair(p: &Primitive, chamfer: f32, fillet: f32) -> Option<Primitive> {
     for (chave, f) in [("field.dim.chamfer", chamfer), ("field.dim.round", fillet)] {
         let i = ph2d_field::dims(&q).iter().position(|d| d.key == chave)?;
         ph2d_field::set_dim(&mut q, 0, i, limite * f).ok()?;
+    }
+    // ⭐⭐⭐ **E TODA OUTRA FILEIRA DE CHANFRO que a forma tenha** (W143).
+    //
+    // ⛔ A estrela ganhou uma segunda — o `field.dim.tip_chamfer`, com **tecto próprio** —, e uma
+    // régua que só accione a primeira mede meia forma: os dois gates que perguntam *«o chanfro
+    // alcança toda aresta?»* e *«ele não piora nada?»* passariam a falar de uma peça com as pontas
+    // vivas. ⚠️ **A fracção é a MESMA, mas a parede é a DELA** — usar o `round_limit` aqui daria
+    // `4,2×` menos do que a linha oferece, e a régua mediria o tecto errado.
+    let extra: Vec<(usize, f32)> = ph2d_field::dims(&q)
+        .iter()
+        .enumerate()
+        .filter(|(_, d)| d.key != "field.dim.chamfer" && d.key.ends_with("chamfer"))
+        .map(|(i, d)| {
+            (
+                i,
+                if let Span::WallFromZero(w) = d.span {
+                    w
+                } else {
+                    limite
+                },
+            )
+        })
+        .collect();
+    for (i, parede) in extra {
+        ph2d_field::set_dim(&mut q, 0, i, parede * chamfer).ok()?;
     }
     Some(q)
 }
@@ -1611,6 +1639,7 @@ fn the_valley_of_a_star_meets_the_cap_without_a_crease() {
         half_height: meia_altura as f32,
         round: 0.0,
         chamfer: 0.0,
+        tip_chamfer: 0.0,
     };
     let p = with_round(&base, 0.999).expect("a estrela tem filete");
     let (pontos, _, _) = traverse(&p, 2048, 6);
@@ -1975,15 +2004,48 @@ fn the_star_rim_vertex_is_that_angle_and_the_fillet_erases_it() {
             .map(|(_, a)| *a)
             .fold(0.0f64, f64::max)
     };
-    // ⭐ **(a) SÓ CHANFRO — o vértice EXISTE, e mede o que a conta diz.**
-    let so_chanfro = escreve("field.dim.chamfer", c, &base);
+    // ⭐ **(a) SÓ CHANFRO, com as DUAS arestas tratadas — o vértice EXISTE e mede o que a conta diz.**
+    //
+    // ⚠️⚠️ **A configuração é `tip = chamfer`, e ela é a lei escrita onde foi DERIVADA** (W143).
+    // Até à W143 havia um chanfro só, e ele tratava as duas famílias com o mesmo número — é essa a
+    // peça de que sai `arccos((κ+1)/2)`. Com o controlo das pontas separado, o pior giro passa a
+    // depender das DUAS posições, e a varredura di-lo:
+    //
+    // | pontas | pior giro |
+    // |---|---:|
+    // | `0` (ponta viva) | `125,3°` |
+    // | `= chamfer` | **`83,8°`** |
+    // | `0,25 × tecto` | `83,8°` |
+    // | `0,50 × tecto` | `76,6°` |
+    //
+    // ⛔ *Uma barra posta sobre `with_pair` mediria `0,5 × tecto das pontas`, que é outra peça.*
+    let so_chanfro = escreve(
+        "field.dim.tip_chamfer",
+        c,
+        &escreve("field.dim.chamfer", c, &base),
+    );
     let vertice = pior(&so_chanfro);
     println!("  [vertice] star: {vertice:.1}° medido, {previsto:.2}° pela conta das duas facetas");
     assert!(
         (vertice - previsto).abs() <= FOLGA_GRAUS,
-        "o pior giro da estrela com chanfro SOZINHO deu {vertice:.1}° e o vértice das duas facetas \
-         do aro pede {previsto:.2}° — se ENCOLHEU, o corte voltou a ser mais fundo do que o slider \
-         diz"
+        "o pior giro da estrela com os dois chanfros iguais deu {vertice:.1}° e o vértice das duas \
+         facetas do aro pede {previsto:.2}° — se ENCOLHEU, o corte voltou a ser mais fundo do que o \
+         slider diz"
+    );
+    // ⭐⭐⭐ **(a-bis) E COM O CONTROLO DAS PONTAS A ZERO A PONTA FICA VIVA** (W143) — a prova de que
+    // as duas famílias são mesmo independentes.
+    //
+    // ⛔ Sem esta metade, alguém que voltasse a ligar o `chamfer` às pontas passaria (a), (b) e (c)
+    // sem que nada acusasse: a feature que o dono pediu desapareceria em silêncio.
+    let so_faces = escreve("field.dim.chamfer", c, &base);
+    let viva = pior(&so_faces);
+    println!("  [vertice] star com as pontas por chanfrar: {viva:.1}° (a aresta viva)");
+    assert!(
+        viva > previsto * 1.2,
+        "com o «Tip Chamfer» a ZERO a ponta tem de ficar VIVA, e ela mede {viva:.1}° — abaixo de \
+         {:.1}° significa que o chanfro das FACES voltou a tratá-la, e o pedido do Enio de 09/09 \
+         (um controlo por família de aresta) evaporou",
+        previsto * 1.2
     );
     // ⭐⭐⭐ **(b) COM O FILETE — o vértice tem de DESAPARECER** (W142, report do Enio de 08/09).
     let par = escreve("field.dim.round", c * 0.5, &so_chanfro);

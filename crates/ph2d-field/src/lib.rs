@@ -105,7 +105,7 @@ pub use radius::{
     round_of, set_shape_radius,
 };
 pub use radius_extents::bounding_half_extents;
-pub use radius_limit::{round_limit, star_round_limit};
+pub use radius_limit::{round_limit, star_round_limit, star_tip_chamfer_limit};
 pub use vertex_rows::{VertexRows, vertex_rows};
 pub use xform::Xform;
 
@@ -258,7 +258,17 @@ use serde::{Deserialize, Serialize};
 /// [`ph2d_field_eval::ops_solids::sd_hollow_dome`]: *«compor é a resposta certa quando a composição
 /// é o que o artista pensa»*. ⇒ *o degrau que este número sobe é o preço de a peça ser UMA peça, e
 /// é um preço que se paga.*
-pub const FIELD_DOC_VERSION: u32 = 20;
+///
+/// v21: a [`Primitive::Star`] ganhou o **`tip_chamfer`** (W143, pedido do Enio de 09/09) — o
+/// chanfro das PONTAS, separado do das faces. ⚠️ **O campo entra no FIM da variante** ⇒ nenhum
+/// índice existente se move, e a fileira do painel entra **entre** o `Chamfer` e o `Fillet`, que é
+/// onde ela se lê.
+///
+/// ⛔⛔ **Este degrau muda a APARÊNCIA de um documento v20 com chanfro**, e é a única vez que isso
+/// acontece nesta escada: até aqui o `chamfer` chanfrava também as pontas, e agora não. *A mudança
+/// é o pedido* — as duas famílias de aresta passam a ter um controlo cada, e um documento velho
+/// abre com as pontas por chanfrar até alguém subir o controlo delas.
+pub const FIELD_DOC_VERSION: u32 = 21;
 
 /// Índice de um nó na arena.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]

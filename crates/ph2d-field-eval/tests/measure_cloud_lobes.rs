@@ -48,7 +48,7 @@ fn measure_cloud_lobes() {
     let cilindro = ops::sd_cylinder(0.8, 0.2, 0.0, 0.0);
     let (nc, tc) = (nodes(&cilindro), ns_por_ponto(&cilindro, N));
     println!("\ncilindro: {nc} nos, {tc:.2} ns/ponto  (a referencia)\n");
-    let estrela = ops::sd_star(ph2d_field::MAX_STAR_POINTS, 0.9, 0.5, 0.2, 0.0, 0.0);
+    let estrela = ops::sd_star(ph2d_field::MAX_STAR_POINTS, 0.9, 0.5, 0.2, 0.0, 0.0, 0.0);
     let (ne, te) = (nodes(&estrela), ns_por_ponto(&estrela, N));
     println!(
         "estrela no tecto ({} pontas): {ne} nos, {te:.0} ns/ponto = {:.2}x o cilindro\n",
@@ -150,6 +150,7 @@ fn measure_star_points_against_the_march() {
                 half_height: hh,
                 round,
                 chamfer: 0.0,
+                tip_chamfer: 0.0,
             };
             ph2d_field::clamp_round(&mut p);
             let doc = FieldDoc::new(

@@ -475,6 +475,41 @@ pub fn star_round_limit(points: u32, outer: f32, inner: f32) -> f32 {
     (outer - inner) * inner * outer * beta.sin() / (u * (outer + inner))
 }
 
+/// ⭐⭐⭐ **Até onde o CHANFRO DAS PONTAS de um [`crate::Primitive::Star`] pode ir** (W143) — e ele
+/// **não** é o [`round_limit`], que é `4,5×` mais apertado.
+///
+/// # A conta, e ela é exacta
+///
+/// Um chanfro de recuo `c` numa quina de meia-abertura `α` afasta o vértice do plano de corte em
+/// `c·cos α` ao longo da bissetriz — **medido `0,029903` por unidade contra `0,0299034` da conta**,
+/// a cinco casas. A estrela deixa de ser uma estrela quando a ponta assim recuada encontra o vale,
+/// que por sua vez **avança** `chamfer·cos α_vale` pelo chanfro dele (medido: `0,18 + 0,01808 =
+/// 0,19808`, exacto). ⇒
+///
+/// ```text
+/// outer − tip·cos α_ponta  >  inner + chamfer·cos α_vale
+/// ```
+///
+/// ⚠️ **Medido a bater a fronteira**: com `chamfer = 0,03166` a estrela do catálogo aguenta `8×` o
+/// chanfro e parte a `9×`, e a conta dá `9,03×`.
+///
+/// ⛔ **Não leva `half_height`**, ao contrário do [`round_limit`]: a ponta é uma aresta **vertical**,
+/// e a espessura da chapa não a limita.
+#[must_use]
+pub fn star_tip_chamfer_limit(points: u32, outer: f32, inner: f32, chamfer: f32) -> f32 {
+    let n = points.max(crate::MIN_STAR_POINTS);
+    let beta = std::f32::consts::PI / n as f32;
+    let u = (outer * outer + inner * inner - 2.0 * outer * inner * beta.cos()).sqrt();
+    if u <= f32::MIN_POSITIVE || outer <= inner {
+        return 0.0;
+    }
+    // As meias-aberturas das duas quinas saem da MESMA aresta — a lei do [`star_round_limit`].
+    let alfa = (inner * beta.sin() / u).clamp(0.0, 1.0).asin();
+    let (cos_ponta, cos_vale) = (alfa.cos(), (alfa + beta).cos().abs());
+    let folga = (outer - inner - chamfer * cos_vale).max(0.0);
+    folga / cos_ponta.max(f32::MIN_POSITIVE)
+}
+
 /// ⭐ **A meia-espessura ÚTIL de um bico** — a altura do triângulo `(base, altura)` medida sobre a
 /// hipotenusa, `base·altura/√(base² + altura²)`.
 ///

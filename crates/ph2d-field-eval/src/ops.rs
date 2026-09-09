@@ -363,6 +363,7 @@ pub fn sd_star(
     half_height: f64,
     round: f64,
     chamfer: f64,
+    tip_chamfer: f64,
 ) -> Tree {
     let n = points.max(3);
     let beta = std::f64::consts::PI / f64::from(n);
@@ -426,7 +427,13 @@ pub fn sd_star(
             let ponta = crate::ops_joint::intersection_joint(
                 &half_plane(before, tip),
                 &half_plane(tip, after),
-                crate::ops_joint::Edge::at(r_quina, chamfer, cos_ponta),
+                // ⭐⭐⭐ **A PONTA lê o número DELA** (W143, pedido do Enio de 09/09).
+                //
+                // ⛔ Com um slider só, a faceta da ponta desaparecia `3,7×` mais cedo que a do
+                // aro — o filete engole o chanfro acima de `sin α (1+sin α)/cos α`, que vale
+                // `0,462` numa ponta de `19,17°` e `1,707` num aro ortogonal. *Duas famílias de
+                // aresta com tectos tão diferentes não cabem num número.*
+                crate::ops_joint::Edge::at(r_quina, tip_chamfer, cos_ponta),
             );
             // ⚠️ E o SECTOR **CORTA A SECO**, de propósito: ele não é uma aresta da peça, é a divisória
             // entre duas pipas vizinhas. Arredondá-lo abriria um sulco **dentro** do sólido.

@@ -37,3 +37,13 @@ pub(super) fn round_index(p: &Primitive) -> Option<usize> {
 pub(super) fn chamfer_index(p: &Primitive) -> Option<usize> {
     dims(p).iter().position(|d| d.key == "field.dim.chamfer")
 }
+
+/// Onde fica o chanfro das **PONTAS** (W143) — hoje só a estrela o tem.
+///
+/// ⚠️ **A pergunta é feita à [`dims`] como as irmãs**, e não a uma lista de formas: a segunda forma
+/// que precise de uma aresta com tecto próprio recebe a fileira sem uma linha aqui.
+pub(super) fn tip_chamfer_index(p: &Primitive) -> Option<usize> {
+    dims(p)
+        .iter()
+        .position(|d| d.key == "field.dim.tip_chamfer")
+}

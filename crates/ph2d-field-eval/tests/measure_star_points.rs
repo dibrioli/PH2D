@@ -77,9 +77,12 @@ fn measure_star_points() {
                 half_height: 0.3,
                 round: 0.02,
                 chamfer: 0.0,
+                tip_chamfer: 0.0,
             })
         } else {
-            cost_of(ph2d_field_eval::ops::sd_star(n, 0.45, 0.18, 0.3, 0.02, 0.0))
+            cost_of(ph2d_field_eval::ops::sd_star(
+                n, 0.45, 0.18, 0.3, 0.02, 0.0, 0.0,
+            ))
         };
         let cerca = if n > ph2d_field::MAX_STAR_POINTS {
             " (fora da cerca)"
@@ -325,6 +328,7 @@ fn the_star_chamfer_leaves_the_middle_of_the_top_face_flat() {
         half_height: h,
         round: 0.0,
         chamfer: 0.0,
+        tip_chamfer: 0.0,
     })
     .expect("a estrela tem tecto");
     for fracao in [0.3_f32, 0.5, 0.66] {
@@ -339,6 +343,7 @@ fn the_star_chamfer_leaves_the_middle_of_the_top_face_flat() {
                     half_height: h,
                     round: 0.0,
                     chamfer,
+                    tip_chamfer: 0.0,
                 }),
             )],
             NodeId(0),
@@ -370,4 +375,182 @@ fn the_star_chamfer_leaves_the_middle_of_the_top_face_flat() {
              — o chanfro é das bordas EXTERNAS, e está a entrar na peça"
         );
     }
+}
+
+/// ⭐⭐⭐ **O CHANFRO DAS PONTAS TEM FAIXA PRÓPRIA, E ELA É EXACTA** (W143, pedido do Enio de 09/09).
+///
+/// # ⛔ Por que reutilizar o tecto do outro chanfro seria o oposto do pedido
+///
+/// O pedido nomeia *«esse controle **maior**»*. O `round_limit` da estrela vale `0,06332` e nasce da
+/// **erosão da tampa** (até onde o filete ainda arredonda uma estrela); a ponta é uma aresta
+/// **vertical**, e o que a limita é ela **encontrar o vale**:
+///
+/// ```text
+/// outer − tip·cos α_ponta  >  inner + chamfer·cos α_vale
+/// ```
+///
+/// ⚠️ As duas metades foram medidas contra a forma: a ponta recua `0,029903` por unidade de chanfro
+/// contra `0,0299034` da conta, e o vale sobe de `0,18` para `0,19808` contra `0,18 + 0,01808`.
+#[test]
+fn the_tip_chamfer_has_a_range_of_its_own_and_it_is_exact() {
+    let base = Primitive::Star {
+        points: 5,
+        outer: 0.45,
+        inner: 0.18,
+        half_height: 0.25,
+        round: 0.0,
+        chamfer: 0.0,
+        tip_chamfer: 0.0,
+    };
+    let faces = ph2d_field::round_limit(&base).expect("a estrela tem filete");
+    let c = faces * 0.5;
+    // ⛔⛔ **A PEÇA tem de ter o chanfro das faces posto ANTES de se medir o tecto das pontas** — o
+    // tecto DEPENDE dele (o vale avança `chamfer·cos α_vale`), e medir um sobre uma peça sem o
+    // outro é a régua a falar de outra peça. *Custou uma corrida vermelha a descobrir.*
+    let mut base = base;
+    let ic = ph2d_field::dims(&base)
+        .iter()
+        .position(|d| d.key == "field.dim.chamfer")
+        .expect("a fileira das faces existe");
+    ph2d_field::set_dim(&mut base, 0, ic, c).expect("o chanfro das faces cabe");
+    let pontas = ph2d_field::star_tip_chamfer_limit(5, 0.45, 0.18, c);
+    println!(
+        "  tecto das faces {faces:.5} | tecto das pontas {pontas:.5} ({:.2}x)",
+        pontas / faces
+    );
+    assert!(
+        pontas > faces * 3.0,
+        "o controlo das pontas tem de ser MAIOR que o das faces — ele deu {pontas:.5} contra \
+         {faces:.5}, e o pedido de 09/09 fala num «controle maior»"
+    );
+    // ⭐ **A conta, contra a geometria da forma** — e não contra ela própria.
+    let beta = std::f32::consts::PI / 5.0;
+    let u = (0.45_f32 * 0.45 + 0.18 * 0.18 - 2.0 * 0.45 * 0.18 * beta.cos()).sqrt();
+    let alfa = (0.18 * beta.sin() / u).asin();
+    let previsto = (0.45 - 0.18 - c * (alfa + beta).cos().abs()) / alfa.cos();
+    assert!(
+        (pontas - previsto).abs() < 1.0e-5,
+        "o tecto deu {pontas:.6} e a geometria da estrela pede {previsto:.6}"
+    );
+    // ⛔⛔ **E o documento RECUSA acima dele** — sem isto o tecto seria uma nota, não uma cerca.
+    let mut acima = base.clone();
+    let i = ph2d_field::dims(&acima)
+        .iter()
+        .position(|d| d.key == "field.dim.tip_chamfer")
+        .expect("a fileira das pontas existe");
+    assert!(
+        ph2d_field::set_dim(&mut acima, 0, i, pontas * 1.01).is_err(),
+        "o documento aceitou um chanfro de ponta acima do tecto — a estrela deixaria de ter pontas"
+    );
+    // ⭐ **E aceita mesmo debaixo dele, com a peça ainda a ser uma estrela.**
+    let mut dentro = base.clone();
+    ph2d_field::set_dim(&mut dentro, 0, i, pontas * 0.95).expect("aceita debaixo do tecto");
+    let doc = FieldDoc::new(
+        vec![Node::new(Xform::IDENTITY, NodeKind::Leaf(dentro))],
+        NodeId(0),
+    )
+    .expect("a peça é válida a 95 % do tecto");
+    let f = ph2d_field_eval::Field::new(&doc);
+    let raio = |ang: f64| -> f64 {
+        let (mut lo, mut hi) = (0.0_f64, 1.0_f64);
+        for _ in 0..60 {
+            let m = f64::midpoint(lo, hi);
+            if f.at(m * ang.cos(), m * ang.sin(), 0.0) <= 0.0 {
+                lo = m;
+            } else {
+                hi = m;
+            }
+        }
+        lo
+    };
+    let (ponta, vale) = (raio(0.0), raio(f64::from(beta)));
+    println!("  a 95 % do tecto: raio da ponta {ponta:.5}, raio do vale {vale:.5}");
+    assert!(
+        ponta > vale,
+        "a 95 % do tecto a ponta ({ponta:.5}) já não passa o vale ({vale:.5}) — o tecto está alto"
+    );
+}
+
+/// ⭐⭐⭐ **A FACETA DA PONTA SOBREVIVE AO FILETE ONDE A DAS FACES NÃO SOBREVIVERIA** (W143) — o facto
+/// de produto que o pedido comprou.
+///
+/// # A lei que o motiva
+///
+/// O filete come a faceta do chanfro acima de `sin α (1+sin α)/cos α × chanfro`, e isso vale
+/// **`0,462`** numa ponta de `19,17°` contra **`1,707`** num aro ortogonal — `3,7×` mais cedo. ⇒ com
+/// um número só, o artista via as faces chanfradas e as pontas não.
+#[test]
+fn the_tip_keeps_a_facet_the_face_chamfer_alone_would_lose() {
+    let base = Primitive::Star {
+        points: 5,
+        outer: 0.45,
+        inner: 0.18,
+        half_height: 0.25,
+        round: 0.0,
+        chamfer: 0.0,
+        tip_chamfer: 0.0,
+    };
+    let faces = ph2d_field::round_limit(&base).expect("filete");
+    let (c, r) = (faces * 0.5, faces * 0.25);
+    let pontas = ph2d_field::star_tip_chamfer_limit(5, 0.45, 0.18, c);
+    // A largura da faceta na ponta: na secção `z = 0` ela é o trecho em que `x` não se move.
+    let faceta_com = |ch: f32, tip: f32| -> f64 {
+        let doc = FieldDoc::new(
+            vec![Node::new(
+                Xform::IDENTITY,
+                NodeKind::Leaf(Primitive::Star {
+                    points: 5,
+                    outer: 0.45,
+                    inner: 0.18,
+                    half_height: 0.25,
+                    round: r,
+                    chamfer: ch,
+                    tip_chamfer: tip,
+                }),
+            )],
+            NodeId(0),
+        )
+        .expect("a peça");
+        let f = ph2d_field_eval::Field::new(&doc);
+        let bordo = |y: f64| -> f64 {
+            let (mut lo, mut hi) = (0.0_f64, 1.0_f64);
+            for _ in 0..60 {
+                let m = f64::midpoint(lo, hi);
+                if f.at(m, y, 0.0) <= 0.0 {
+                    lo = m;
+                } else {
+                    hi = m;
+                }
+            }
+            lo
+        };
+        let x0 = bordo(0.0);
+        let mut larg = 0.0_f64;
+        for i in 1..=800 {
+            let y = 0.45 * f64::from(i) / 800.0;
+            if (bordo(y) - x0).abs() > 1.0e-4 {
+                break;
+            }
+            larg = 2.0 * y;
+        }
+        larg
+    };
+    let faceta = |tip: f32| faceta_com(c, tip);
+    // ⭐⭐ **O CHÃO É MEDIDO, e não escolhido** — ele é o que esta régua lê numa estrela que **não
+    // tem chanfro nenhum**, e cuja ponta é portanto um arco puro. ⛔ Uma constante «dois passos da
+    // grelha» lia `0,00225` sobre uma leitura real de `0,00338`, e reprovava produto correcto.
+    let chao = faceta_com(0.0, 0.0);
+    let sem = faceta(0.0);
+    let com = faceta(pontas * 0.5);
+    println!("  faceta na ponta: {sem:.5} sem o controlo, {com:.5} com ele (chão {chao:.5})");
+    assert!(
+        sem <= chao * 1.05,
+        "com o «Tip Chamfer» a zero a ponta não pode ter faceta a mais do que a estrela SEM chanfro \
+         nenhum tem, e ela mede {sem:.5} contra o chão medido de {chao:.5}"
+    );
+    assert!(
+        com > chao * 10.0,
+        "com o «Tip Chamfer» a metade do tecto a ponta tem de ter uma faceta a sério, e ela mede \
+         {com:.5} — é o facto de produto que o pedido do Enio de 09/09 comprou"
+    );
 }

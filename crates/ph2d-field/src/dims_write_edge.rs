@@ -18,6 +18,43 @@ use crate::{FieldError, Primitive, round_limit};
 /// ⚠️ **EXAUSTIVO, pela razão que a [`set_round`] já pagou na W101**: uma primitiva nova com aresta
 /// que caísse num braço vazio teria o slider a mexer-se sem escrever nada — *a falha mais cara de
 /// diagnosticar, porque não deixa rasto*.
+/// ⭐⭐⭐ **O CHANFRO DAS PONTAS de uma estrela** (W143) — a porta irmã da [`set_chamfer`], com o
+/// tecto DELE.
+///
+/// ⚠️ **O tecto não é o [`round_limit`]**: a ponta é uma aresta vertical, e o que a limita é ela
+/// encontrar o vale — `4,5×` mais curso na estrela do catálogo. Ver
+/// [`crate::star_tip_chamfer_limit`], onde a conta está medida contra a forma.
+///
+/// # Errors
+/// [`FieldError::NonPositive`] se a forma não tiver esta aresta; [`FieldError::RoundTooLarge`]
+/// acima do tecto.
+pub(super) fn set_tip_chamfer(p: &mut Primitive, node: u32, value: f32) -> Result<(), FieldError> {
+    let Primitive::Star {
+        points,
+        outer,
+        inner,
+        chamfer,
+        tip_chamfer,
+        ..
+    } = p
+    else {
+        return Err(FieldError::NonPositive {
+            node,
+            what: "tip_chamfer",
+        });
+    };
+    let limit = crate::star_tip_chamfer_limit(*points, *outer, *inner, *chamfer);
+    if value >= limit {
+        return Err(FieldError::RoundTooLarge {
+            node,
+            round: value,
+            limit,
+        });
+    }
+    *tip_chamfer = value;
+    Ok(())
+}
+
 pub(super) fn set_chamfer(p: &mut Primitive, node: u32, value: f32) -> Result<(), FieldError> {
     let limit = round_limit(p).ok_or(FieldError::NonPositive {
         node,

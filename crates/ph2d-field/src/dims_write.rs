@@ -11,8 +11,10 @@
 //! ⚠️ O `pub use` no [`super`] mantém `ph2d_field::set_dim` e `ph2d_field::scale_primitive` — cortar
 //! um arquivo não pode custar uma reescrita em cada sítio que o chamava.
 
-use super::dims_write_coerce::{chamfer_index, keep_above, keep_below, round_index};
-use super::dims_write_edge::{set_chamfer, set_round};
+use super::dims_write_coerce::{
+    chamfer_index, keep_above, keep_below, round_index, tip_chamfer_index,
+};
+use super::dims_write_edge::{set_chamfer, set_round, set_tip_chamfer};
 use super::{Span, dims};
 use crate::{FieldError, Primitive};
 
@@ -684,6 +686,12 @@ pub(super) fn write_dim(
         // `_ => Err(bad("dim"))` — o slider pinta, arrasta, e o `let _ =` do shell engole o erro.
         (p, i) if Some(i) == chamfer_index(p) => {
             return set_chamfer(p, node, value);
+        }
+        // ⭐ **E a terceira fileira de aresta, pelo mesmo portão** (W143). ⚠️ Ela vem **depois** das
+        // duas, e a ordem é load-bearing: as três têm índices distintos, e sem este braço o slider
+        // das pontas cairia no `_ => Err(bad("dim"))` — pinta, arrasta e não escreve.
+        (p, i) if Some(i) == tip_chamfer_index(p) => {
+            return set_tip_chamfer(p, node, value);
         }
         _ => return Err(bad("dim")),
     }

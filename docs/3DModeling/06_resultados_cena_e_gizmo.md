@@ -14343,3 +14343,84 @@ sempre, nó a nó.
 
 **Smoke:** *MODEL* > **A** > *Star*, subir o **Chamfer** e depois o **Fillet** — as pontas passam a
 arredondar como o resto do aro.
+
+## §143 — DOIS controlos de chanfro na estrela: as faces e as PONTAS (09/09)
+
+> **Veredito e desenho do Enio, 09/09:** *«Não ficou bom. Talvez se houvesse 2 controles de chamfer,
+> 1 para as arestas das faces das estrelas e outro para as arestas das pontas das estrelas, esse
+> controle maior poderia promover resultados melhores.»*
+
+### §143.1 — Ele tem razão, e a razão tem número: as três famílias de aresta engolem o chanfro a ritmos diferentes
+
+O filete come a faceta do chanfro acima de `sin α (1 + sin α)/cos α × chanfro`
+([`facet_fillet_limit`](../../crates/ph2d-field-eval/src/ops_joint.rs)). Numa estrela isso não é um
+número — são **três**:
+
+| família de aresta | meia-abertura | o filete engole acima de |
+|---|---:|---:|
+| **ponta** | `19,17°` | **`0,462 × chanfro`** |
+| aro das faces | `45°` | `1,707 × chanfro` |
+| vale | `55,17°` | `2,617 × chanfro` |
+
+⇒ espalhamento de **`5,67×`**. Com um slider só, **a faceta da ponta desaparece `3,7×` mais cedo que
+a do aro** — o artista vê as faces chanfradas e as pontas não. Medido (`chanfro = 0,5 × tecto`):
+
+| filete | faceta na ponta |
+|---|---:|
+| `0,00` | `0,02025` |
+| `0,25` | `0,00225` ⛔ (o chão da amostragem) |
+| `0,50` | `0,00450` ⛔ |
+
+⭐ **E há uma segunda assimetria, independente da primeira:** o mesmo número tira **`2,10×`** mais da
+face de cima na ponta do que no flanco, porque uma quina amplifica o recuo por `1/sin α`. Medido
+`3,05×` com a ponta viva — que é exactamente `1/sin(19,17°) = 3,05`.
+
+### §143.2 — O tecto do controlo novo é OUTRO, e sai exacto
+
+⛔ Reutilizar o `round_limit` daria `4,2×` menos curso do que a geometria permite — o oposto do
+pedido, que fala num *«controle maior»*.
+
+A ponta recua **`tip · cos α`** ao longo da bissetriz, e a estrela acaba quando essa ponta encontra o
+vale, que por sua vez **avança** `chamfer · cos α_vale`:
+
+```text
+outer − tip·cos α_ponta  >  inner + chamfer·cos α_vale
+```
+
+⚠️ **As duas metades foram medidas contra a forma, e batem a cinco casas:**
+
+| grandeza | medido | pela conta |
+|---|---:|---:|
+| recuo da ponta por unidade de chanfro | `0,029903` | `0,0299034` |
+| raio do vale com o chanfro das faces | `0,19808` | `0,18 + 0,01808` |
+| multiplicador em que a estrela parte | entre `8×` e `9×` | `9,03×` |
+
+⛔ **E ele não leva `half_height`**, ao contrário do irmão: a ponta é uma aresta **vertical**, e a
+espessura da chapa não a limita. ⇒ `4,21×` mais curso na estrela do catálogo
+(`0,26670` contra `0,06332`).
+
+### §143.3 — O que o controlo faz, medido na faixa dele
+
+Com o chanfro das faces a meio e o filete a um quarto:
+
+| *Tip Chamfer* (fracção do tecto) | valor | faceta na ponta | raio da ponta |
+|---|---:|---:|---:|
+| `0,00` | `0,00000` | `0,00337` ⛔ | `0,41762` |
+| `0,10` | `0,02667` | `0,00337` ⛔ | `0,41762` |
+| `0,25` | `0,06668` | **`0,02475`** | `0,38702` |
+| `0,50` | `0,13335` | **`0,06750`** | `0,32404` |
+| `0,99` | `0,26403` | **`0,15412`** | `0,20060` |
+
+⚠️ **A `0,10` a faceta ainda é engolida**, e isso é a lei da §143.1 a funcionar: ali o filete
+(`0,01583`) ainda passa o `0,462 × 0,02667 = 0,01231`. *O controlo não desliga a regra — dá curso
+para a passar.*
+
+### §143.4 — ⚠️ O que muda para um documento que já existe
+
+`FIELD_DOC_VERSION` **20 → 21**, e ⛔ **este degrau muda a APARÊNCIA**, coisa que nenhum degrau desta
+escada tinha feito: até aqui o `Chamfer` chanfrava também as pontas. *A mudança é o pedido* — uma
+família de aresta, um controlo —, e uma estrela gravada abre com as pontas por chanfrar até alguém
+subir o controlo delas.
+
+**Smoke:** *MODEL* > **A** > *Star*; subir **Chamfer** (as faces), depois **Tip Chamfer** (as
+pontas), e por fim o **Fillet**.

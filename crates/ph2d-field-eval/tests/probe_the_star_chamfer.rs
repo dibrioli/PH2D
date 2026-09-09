@@ -18,6 +18,11 @@ const INNER: f32 = 0.18;
 const H: f32 = 0.25;
 
 fn estrela(round: f32, chamfer: f32) -> Field {
+    estrela_com(round, chamfer, 0.0)
+}
+
+/// A mesma, com o chanfro das PONTAS (W143).
+fn estrela_com(round: f32, chamfer: f32, tip_chamfer: f32) -> Field {
     Field::new(
         &FieldDoc::new(
             vec![Node::new(
@@ -29,6 +34,7 @@ fn estrela(round: f32, chamfer: f32) -> Field {
                     half_height: H,
                     round,
                     chamfer,
+                    tip_chamfer,
                 }),
             )],
             NodeId(0),
@@ -203,6 +209,7 @@ fn probe_whether_the_wall_field_has_a_ridge_at_the_tip() {
         half_height: H,
         round: 0.0,
         chamfer: 0.0,
+        tip_chamfer: 0.0,
     })
     .expect("tem filete");
     println!("  limite do filete = {limite:.4}");
@@ -219,6 +226,7 @@ fn probe_whether_the_wall_field_has_a_ridge_at_the_tip() {
                         half_height: 5.0,
                         round: r,
                         chamfer: 0.0,
+                        tip_chamfer: 0.0,
                     }),
                 )],
                 NodeId(0),
@@ -259,6 +267,7 @@ fn probe_the_tip_reach_on_the_cap() {
         half_height: H,
         round: 0.0,
         chamfer: 0.0,
+        tip_chamfer: 0.0,
     };
     let limite = ph2d_field::round_limit(&base).expect("tem filete");
     let c = limite * 0.5;
@@ -301,6 +310,7 @@ fn probe_what_the_second_profile_costs_the_march() {
         half_height: H,
         round: 0.0,
         chamfer: 0.0,
+        tip_chamfer: 0.0,
     };
     let limite = ph2d_field::round_limit(&base).expect("tem filete");
     let c = limite * 0.5;
@@ -321,6 +331,7 @@ fn probe_what_the_second_profile_costs_the_march() {
                     half_height: H,
                     round: r,
                     chamfer: ch,
+                    tip_chamfer: 0.0,
                 }),
             )],
             NodeId(0),
@@ -356,5 +367,394 @@ fn probe_what_the_second_profile_costs_the_march() {
         println!(
             "  {rot:<16} (r={r:.5} c={ch:.5}): {passos} passos, {nos} nos, passo seguro {passo:.4}"
         );
+    }
+}
+
+/// **SONDA (W143)** — a LARGURA DA FACETA do chanfro em cada família de aresta.
+///
+/// ⭐ Uma faceta de chanfro é **plana**: na secção `z = 0`, junto de uma ponta em `φ = 0`, a
+/// fronteira tem `x` constante ao longo dela. Um filete é um arco, e `x` varia. ⇒ a largura da
+/// faceta mede-se perguntando **até que altura `x` não se move**.
+#[test]
+#[ignore = "sonda: imprime a largura da faceta"]
+fn probe_the_facet_width_of_each_edge_family() {
+    let base = Primitive::Star {
+        points: 5,
+        outer: OUTER,
+        inner: INNER,
+        half_height: H,
+        round: 0.0,
+        chamfer: 0.0,
+        tip_chamfer: 0.0,
+    };
+    let limite = ph2d_field::round_limit(&base).expect("tem filete");
+    println!("  limite dos sliders = {limite:.5}");
+    println!("\n  chanfro | filete | faceta PONTA | recuo FLANCO | recuo PONTA | razao");
+    for cf in [0.25_f32, 0.5, 0.75] {
+        for rf in [0.0_f32, 0.25, 0.5, 0.75] {
+            let (c, r) = (limite * cf, limite * rf);
+            let f = estrela(r, c);
+            // ── a PONTA: secção z = 0, fronteira x(y) junto de φ = 0 ──
+            let bordo = |y: f64| -> f64 {
+                let (mut lo, mut hi) = (0.0_f64, 1.0_f64);
+                for _ in 0..60 {
+                    let m = f64::midpoint(lo, hi);
+                    if f.at(m, y, 0.0) <= 0.0 {
+                        lo = m;
+                    } else {
+                        hi = m;
+                    }
+                }
+                lo
+            };
+            let x0 = bordo(0.0);
+            let mut faceta = 0.0_f64;
+            for i in 1..=400 {
+                let y = f64::from(OUTER) * f64::from(i) / 400.0;
+                if (bordo(y) - x0).abs() > 1.0e-4 {
+                    break;
+                }
+                faceta = 2.0 * y;
+            }
+            // ── o ARO: corte vertical no meio de um flanco recto, na direcção da normal ──
+            let meio = {
+                let b = std::f64::consts::PI / 5.0;
+                let (tip, val) = (
+                    [f64::from(OUTER), 0.0],
+                    [f64::from(INNER) * b.cos(), f64::from(INNER) * b.sin()],
+                );
+                [(tip[0] + val[0]) * 0.5, (tip[1] + val[1]) * 0.5]
+            };
+            let nlen = (meio[0] * meio[0] + meio[1] * meio[1]).sqrt();
+            let dir = [meio[0] / nlen, meio[1] / nlen];
+            // A normal EXTERIOR do flanco (ponta -> vale, rodada) e o cosseno contra a radial.
+            let cos_radial_flanco = {
+                let b = std::f64::consts::PI / 5.0;
+                let (tip, val) = (
+                    [f64::from(OUTER), 0.0],
+                    [f64::from(INNER) * b.cos(), f64::from(INNER) * b.sin()],
+                );
+                let (dx, dy) = (val[0] - tip[0], val[1] - tip[1]);
+                let l = dx.hypot(dy);
+                let (nx, ny) = (dy / l, -dx / l);
+                (dir[0] * nx + dir[1] * ny).abs()
+            };
+            // ⭐⭐⭐ **O RECUO DA FACE DE CIMA — a grandeza que o artista VÊ**, e a única que se
+            // compara entre as duas famílias sem supor nada.
+            //
+            // ⛔ Três réguas de «largura da faceta» no aro foram construídas e deitadas fora antes
+            // desta: uma supunha o declive `45°` (o `s` é radial, não normal ao flanco: declive
+            // medido `2,05`), outra procurava o trecho recto **a partir do topo**, que é onde o
+            // filete mistura, e a terceira lia a PAREDE como faceta. *A faceta é difícil de medir;
+            // o recuo não é.*
+            let topo = f64::from(H) - 1.0e-4;
+            let recuo_no_flanco = {
+                let vivo = |z: f64| -> f64 {
+                    let (mut lo, mut hi) = (0.0_f64, 1.0_f64);
+                    for _ in 0..60 {
+                        let m = f64::midpoint(lo, hi);
+                        if f.at(dir[0] * m, dir[1] * m, z) <= 0.0 {
+                            lo = m;
+                        } else {
+                            hi = m;
+                        }
+                    }
+                    lo
+                };
+                // ⚠️ **Recuo PERPENDICULAR ao flanco**, e não ao longo do raio: o `s` mede na
+                // direcção radial, e o factor `cos θ` entre as duas é o que a 1.ª régua ignorou.
+                (vivo(0.0) - vivo(topo)) * cos_radial_flanco
+            };
+            let recuo_na_ponta = {
+                let ponta = |z: f64| -> f64 {
+                    let (mut lo, mut hi) = (0.0_f64, 1.0_f64);
+                    for _ in 0..60 {
+                        let m = f64::midpoint(lo, hi);
+                        if f.at(m, 0.0, z) <= 0.0 {
+                            lo = m;
+                        } else {
+                            hi = m;
+                        }
+                    }
+                    lo
+                };
+                ponta(0.0) - ponta(topo)
+            };
+            println!(
+                "   {cf:.2}   |  {rf:.2}  |   {faceta:.5}   |  {recuo_no_flanco:.5}  |                   {recuo_na_ponta:.5}  | {:.2}x",
+                recuo_na_ponta / recuo_no_flanco.max(1.0e-9)
+            );
+        }
+    }
+}
+
+/// **SONDA (W143)** — até onde o chanfro da PONTA pode ir antes de a estrela deixar de ser estrela.
+///
+/// ⚠️ **A régua é o raio na direcção da ponta contra o raio no vale**, e não a largura de uma
+/// faceta: uma faceta grande é o que se pede, e o que não se pode é a ponta desaparecer.
+#[test]
+#[ignore = "sonda: imprime o tecto"]
+fn probe_how_far_the_tip_chamfer_can_go() {
+    let base = Primitive::Star {
+        points: 5,
+        outer: OUTER,
+        inner: INNER,
+        half_height: H,
+        round: 0.0,
+        chamfer: 0.0,
+        tip_chamfer: 0.0,
+    };
+    let limite = ph2d_field::round_limit(&base).expect("tem filete");
+    let beta = std::f64::consts::PI / 5.0;
+    let lado = (f64::from(OUTER).powi(2) + f64::from(INNER).powi(2)
+        - 2.0 * f64::from(OUTER) * f64::from(INNER) * beta.cos())
+    .sqrt();
+    println!(
+        "  aresta do flanco = {lado:.5}   chanfro = 0,5 x limite = {:.5}",
+        limite * 0.5
+    );
+    println!("\n  mult | recuo na ponta | raio no VALE | ainda e' estrela?");
+    let c = limite * 0.5;
+    let f = estrela(0.0, c);
+    let raio = |ang: f64| -> f64 {
+        let (mut lo, mut hi) = (0.0_f64, 1.0_f64);
+        for _ in 0..60 {
+            let m = f64::midpoint(lo, hi);
+            if f.at(m * ang.cos(), m * ang.sin(), 0.0) <= 0.0 {
+                lo = m;
+            } else {
+                hi = m;
+            }
+        }
+        lo
+    };
+    let (r_ponta, r_vale) = (raio(0.0), raio(beta));
+    println!(
+        "   {:>4} | {r_ponta:.5} | {r_vale:.5} | {}",
+        std::env::var("PH2D_TIPCHAM").unwrap_or_else(|_| "1".into()),
+        if r_ponta > r_vale * 1.02 {
+            "SIM"
+        } else {
+            "NAO"
+        }
+    );
+}
+
+/// **SONDA (W143)** — o controlo NOVO: a faceta da ponta ao longo da faixa PRÓPRIA dela.
+#[test]
+#[ignore = "sonda: imprime a faixa do controlo novo"]
+fn probe_the_tip_chamfer_control() {
+    let base = Primitive::Star {
+        points: 5,
+        outer: OUTER,
+        inner: INNER,
+        half_height: H,
+        round: 0.0,
+        chamfer: 0.0,
+        tip_chamfer: 0.0,
+    };
+    let lim_faces = ph2d_field::round_limit(&base).expect("tem filete");
+    let c = lim_faces * 0.5;
+    let lim_pontas = ph2d_field::star_tip_chamfer_limit(5, OUTER, INNER, c);
+    println!("  chanfro das FACES: tecto {lim_faces:.5}");
+    println!(
+        "  chanfro das PONTAS: tecto {lim_pontas:.5}  ({:.2}x mais curso)",
+        lim_pontas / lim_faces
+    );
+    println!("\n  tip (fraccao do tecto dele) | valor | faceta na ponta | raio da ponta");
+    for fr in [0.0_f32, 0.1, 0.25, 0.5, 0.75, 0.9, 0.99] {
+        let t = lim_pontas * fr;
+        let f = estrela_com(c * 0.5, c, t);
+        let bordo = |y: f64| -> f64 {
+            let (mut lo, mut hi) = (0.0_f64, 1.0_f64);
+            for _ in 0..60 {
+                let m = f64::midpoint(lo, hi);
+                if f.at(m, y, 0.0) <= 0.0 {
+                    lo = m
+                } else {
+                    hi = m
+                }
+            }
+            lo
+        };
+        let x0 = bordo(0.0);
+        let mut faceta = 0.0_f64;
+        for i in 1..=800 {
+            let y = f64::from(OUTER) * f64::from(i) / 800.0;
+            if (bordo(y) - x0).abs() > 1.0e-4 {
+                break;
+            }
+            faceta = 2.0 * y;
+        }
+        println!("        {fr:.2}                | {t:.5} |     {faceta:.5}     |   {x0:.5}");
+    }
+}
+
+/// **SONDA (W143)** — o pior giro da normal com as DUAS arestas tratadas.
+#[test]
+#[ignore = "sonda: o pior giro por configuracao"]
+fn probe_the_worst_turn_with_both_chamfers() {
+    let base = Primitive::Star {
+        points: 5,
+        outer: OUTER,
+        inner: INNER,
+        half_height: H,
+        round: 0.0,
+        chamfer: 0.0,
+        tip_chamfer: 0.0,
+    };
+    let lim_f = ph2d_field::round_limit(&base).expect("filete");
+    let c = lim_f * 0.5;
+    let lim_t = ph2d_field::star_tip_chamfer_limit(5, OUTER, INNER, c);
+    println!("  tecto faces {lim_f:.5} | tecto pontas {lim_t:.5}");
+    for (rot, r, ch, tip) in [
+        ("so' chanfro faces", 0.0, c, 0.0),
+        ("faces + pontas 0,25", 0.0, c, lim_t * 0.25),
+        ("faces + pontas 0,50", 0.0, c, lim_t * 0.5),
+        ("par: faces+pontas+filete", c * 0.5, c, lim_t * 0.5),
+        ("par com pontas a 0,25", c * 0.5, c, lim_t * 0.25),
+    ] {
+        // A malha de amostragem: pontos na superfície e o giro da normal à volta de cada um.
+        let f = estrela_com(r, ch, tip);
+        let h = 1.0e-4_f64;
+        let n = |p: [f64; 3]| {
+            let g = [
+                f.at(p[0] + h, p[1], p[2]) - f.at(p[0] - h, p[1], p[2]),
+                f.at(p[0], p[1] + h, p[2]) - f.at(p[0], p[1] - h, p[2]),
+                f.at(p[0], p[1], p[2] + h) - f.at(p[0], p[1], p[2] - h),
+            ];
+            let l = (g[0] * g[0] + g[1] * g[1] + g[2] * g[2]).sqrt().max(1e-15);
+            [g[0] / l, g[1] / l, g[2] / l]
+        };
+        // Varre um anel de direcções à volta da ponta, na superfície, e mede o maior salto.
+        let mut pior = 0.0_f64;
+        for i in 0..400 {
+            let ang = -0.6 + 1.2 * f64::from(i) / 400.0;
+            let z = 0.0;
+            let raio = |a: f64| -> f64 {
+                let (mut lo, mut hi) = (0.0_f64, 1.0_f64);
+                for _ in 0..50 {
+                    let m = f64::midpoint(lo, hi);
+                    if f.at(m * a.cos(), m * a.sin(), z) <= 0.0 {
+                        lo = m
+                    } else {
+                        hi = m
+                    }
+                }
+                lo
+            };
+            let (a0, a1) = (ang, ang + 0.003);
+            let (r0, r1) = (raio(a0), raio(a1));
+            let p0 = [r0 * a0.cos(), r0 * a0.sin(), z];
+            let p1 = [r1 * a1.cos(), r1 * a1.sin(), z];
+            let (u, v) = (n(p0), n(p1));
+            let d = (u[0] * v[0] + u[1] * v[1] + u[2] * v[2]).clamp(-1.0, 1.0);
+            pior = pior.max(d.acos().to_degrees());
+        }
+        println!("  {rot:<26} tip={tip:.5}  pior giro na secção z=0: {pior:6.1}°");
+    }
+}
+
+/// **SONDA (W143)** — o pior giro da SUPERFÍCIE (o instrumento do gate) por configuração.
+#[test]
+#[ignore = "sonda"]
+fn probe_the_surface_worst_turn() {
+    let base = Primitive::Star {
+        points: 5,
+        outer: OUTER,
+        inner: INNER,
+        half_height: H,
+        round: 0.0,
+        chamfer: 0.0,
+        tip_chamfer: 0.0,
+    };
+    let lim_f = ph2d_field::round_limit(&base).expect("filete");
+    let c = lim_f * 0.5;
+    let lim_t = ph2d_field::star_tip_chamfer_limit(5, OUTER, INNER, c);
+    for (rot, r, ch, tip) in [
+        ("faces=c, pontas=0", 0.0, c, 0.0),
+        ("faces=c, pontas=c  (o de sempre)", 0.0, c, c),
+        ("faces=c, pontas=0,25 do tecto", 0.0, c, lim_t * 0.25),
+        ("faces=c, pontas=0,50 do tecto", 0.0, c, lim_t * 0.5),
+        ("+ filete c/2, pontas=c", c * 0.5, c, c),
+        ("+ filete c/2, pontas=0,5 tecto", c * 0.5, c, lim_t * 0.5),
+    ] {
+        let doc = FieldDoc::new(
+            vec![Node::new(
+                Xform::IDENTITY,
+                NodeKind::Leaf(Primitive::Star {
+                    points: 5,
+                    outer: OUTER,
+                    inner: INNER,
+                    half_height: H,
+                    round: r,
+                    chamfer: ch,
+                    tip_chamfer: tip,
+                }),
+            )],
+            NodeId(0),
+        )
+        .expect("a estrela");
+        let f = Field::new(&doc);
+        let h = 1.0e-4_f64;
+        let normal = |p: [f64; 3]| {
+            let g = [
+                f.at(p[0] + h, p[1], p[2]) - f.at(p[0] - h, p[1], p[2]),
+                f.at(p[0], p[1] + h, p[2]) - f.at(p[0], p[1] - h, p[2]),
+                f.at(p[0], p[1], p[2] + h) - f.at(p[0], p[1], p[2] - h),
+            ];
+            let l = (g[0] * g[0] + g[1] * g[1] + g[2] * g[2]).sqrt().max(1e-15);
+            [g[0] / l, g[1] / l, g[2] / l]
+        };
+        // Projecta uma nuvem de sementes na superfície e mede o giro num anel de 0,004.
+        let mut pior = 0.0_f64;
+        for i in 0..6000 {
+            let z = 1.0 - 2.0 * (f64::from(i) + 0.5) / 6000.0;
+            let sr = (1.0 - z * z).max(0.0).sqrt();
+            let a = 2.399_963_229_728_653 * f64::from(i);
+            let mut q = [sr * a.cos() * 0.7, sr * a.sin() * 0.7, z * 0.7];
+            for _ in 0..24 {
+                let d = f.at(q[0], q[1], q[2]);
+                let n = normal(q);
+                for k in 0..3 {
+                    q[k] -= d * n[k];
+                }
+            }
+            if f.at(q[0], q[1], q[2]).abs() > 1.0e-3 {
+                continue;
+            }
+            let n0 = normal(q);
+            let t = if n0[2].abs() < 0.9 {
+                [-n0[1], n0[0], 0.0]
+            } else {
+                [1.0, 0.0, 0.0]
+            };
+            let tl = (t[0] * t[0] + t[1] * t[1] + t[2] * t[2]).sqrt();
+            let t = [t[0] / tl, t[1] / tl, t[2] / tl];
+            let t2 = [
+                n0[1] * t[2] - n0[2] * t[1],
+                n0[2] * t[0] - n0[0] * t[2],
+                n0[0] * t[1] - n0[1] * t[0],
+            ];
+            for k in 0..6 {
+                let ang = std::f64::consts::TAU * f64::from(k) / 6.0;
+                let mut w = [
+                    q[0] + 0.004 * (t[0] * ang.cos() + t2[0] * ang.sin()),
+                    q[1] + 0.004 * (t[1] * ang.cos() + t2[1] * ang.sin()),
+                    q[2] + 0.004 * (t[2] * ang.cos() + t2[2] * ang.sin()),
+                ];
+                for _ in 0..24 {
+                    let d = f.at(w[0], w[1], w[2]);
+                    let n = normal(w);
+                    for j in 0..3 {
+                        w[j] -= d * n[j];
+                    }
+                }
+                let v = normal(w);
+                let d = (n0[0] * v[0] + n0[1] * v[1] + n0[2] * v[2]).clamp(-1.0, 1.0);
+                pior = pior.max(d.acos().to_degrees());
+            }
+        }
+        println!("  {rot:<34} pior giro {pior:6.1}°");
     }
 }

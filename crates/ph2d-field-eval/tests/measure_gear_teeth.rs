@@ -50,7 +50,7 @@ fn measure_gear_teeth() {
     // ⭐⭐⭐ **AS DUAS BARRAS QUE A CASA JÁ ACEITOU** — e é contra elas que este teto se mede, não
     // contra um número novo. O prisma shipa a `MAX_PRISM_SIDES` e a estrela a `MAX_STAR_POINTS`.
     let prisma = ops::sd_prism(ph2d_field::MAX_PRISM_SIDES, 0.8, 0.8, 0.2, 0.0, 0.0);
-    let estrela = ops::sd_star(ph2d_field::MAX_STAR_POINTS, 0.9, 0.5, 0.2, 0.0, 0.0);
+    let estrela = ops::sd_star(ph2d_field::MAX_STAR_POINTS, 0.9, 0.5, 0.2, 0.0, 0.0, 0.0);
     // ⚠️ **Medidas na MESMA corrida que a engrenagem** — comparar com um número colhido noutra
     // corrida somaria os dois ruídos (a lição do A/B desta casa).
     let (np, tp) = (nodes(&prisma), ns_por_ponto(&prisma, N));

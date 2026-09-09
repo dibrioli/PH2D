@@ -159,6 +159,7 @@ pub fn scale_primitive(p: &mut Primitive, factor: f32) -> bool {
             half_height,
             round,
             chamfer,
+            tip_chamfer,
         } => {
             // ⚠️ **A contagem de pontas NÃO escala** — a lei da contagem de lados: multiplicá-la
             // faria uma estrela de 5 virar uma de 10 ao aumentar a peça, que é mudar a forma.
@@ -169,6 +170,9 @@ pub fn scale_primitive(p: &mut Primitive, factor: f32) -> bool {
             // ⭐ **O chanfro escala junto com o filete** — os dois são comprimentos da peça, e um
             // deles fixo faria a aresta mudar de carácter ao redimensionar a forma.
             *chamfer *= factor;
+            // ⚠️ **E o das PONTAS também** (W143): é um comprimento como os outros três, e o
+            // tecto dele escala com `outer − inner`, logo a razão ao tecto fica invariante.
+            *tip_chamfer *= factor;
         }
         Primitive::BoxFrame {
             half,

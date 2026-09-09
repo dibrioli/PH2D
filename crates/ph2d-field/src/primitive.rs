@@ -1,3 +1,5 @@
+//! ⚠️⚠️ **NO TECTO DE LOC (700), E UM `enum` NÃO SE PARTE** — o único lever é a PROSA: doc de
+//! MECANISMO vai para o módulo do motor (Wedge, Arrow, Tube, e o `tip_chamfer` da W143).
 //! ⭐ **O QUE UMA FORMA É** — o [`Primitive`], a família dele ([`PrimitiveKind`]) e os tetos que
 //! cada contagem admite.
 //!
@@ -137,6 +139,11 @@ pub enum Primitive {
         half_height: f32,
         round: f32,
         chamfer: f32,
+        /// ⭐⭐⭐ **O CHANFRO DAS PONTAS, separado do das faces** (W143). ⛔ Um número não
+        /// chegava — o filete engole-o `3,7×` mais cedo numa ponta que num aro (tabela no doc do
+        /// `ph2d_field_eval::ops_joint::facet_fillet_limit`) —, e o tecto é OUTRO e exacto:
+        /// [`crate::star_tip_chamfer_limit`], `4,2×` mais curso.
+        tip_chamfer: f32,
     },
     /// ⭐⭐ **A GAIOLA de uma caixa** (W103) — as 12 arestas com secção quadrada de lado
     /// `thickness`, e o miolo vazio.

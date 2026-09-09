@@ -19,6 +19,11 @@
 pub(crate) fn tr(key: &str) -> Option<&'static str> {
     Some(match key {
         "panel.sculpt3d.title" => "Sculpt 3D",
+        // ⭐ **A face VAZIA** (2026-09-09): o painel aberto sem cena 3D. ⚠️ Ela diz o que
+        // FAZER — «nothing to show» repetiria ao artista o que ele já está a ver.
+        "panel.sculpt3d.empty" => {
+            "No 3D scene open \u{00b7} start one from Sculpt 3D in the top bar."
+        }
         "panel.sculpt3d.section.tool" => "Tool",
         "panel.sculpt3d.section.brush" => "Brush",
         "panel.sculpt3d.section.symmetry" => "Symmetry",

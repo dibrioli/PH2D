@@ -7,7 +7,7 @@ use ph2d_editor_core::paint::rect_to_vello;
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_TITLE_BASELINE, paint_panel_close_button,
-    paint_panel_surface, paint_panel_title,
+    paint_panel_empty, paint_panel_surface, paint_panel_title,
 };
 use ph2d_editor_core::widget::{
     SCULPT3D_SCROLLBAR_ID, paint_scrollbar, paint_slider_with_chip_layout_adaptive,
@@ -42,14 +42,37 @@ pub(crate) fn paint(_state: &mut Sculpt3dPanelState, ctx: &mut PaintCtx) {
     // painel está fechado); a segunda é a da CENA — sem escultura viva, seis
     // seções de controles não alcançariam nada, e um painel que pinta sobre o
     // vazio é a forma de chrome morto que esta casa varre a cada wave.
-    let snapshot = state::current();
-    if !ctx.host.panel_visible(Sculpt3dPanel::ID) || snapshot.is_none() {
-        // Limpeza simétrica do rect: assim o `panel_at` para de devolver
-        // SCULPT3D_PANEL no instante em que o painel fecha (ou a cena morre).
+    // ⭐ **UMA recusa, e não duas.** Só o artista cala este painel: fechado, ele limpa o rect e
+    // sai — e é isso que faz o `panel_at` parar de o devolver no instante em que ele fecha.
+    if !ctx.host.panel_visible(Sculpt3dPanel::ID) {
         ctx.host.store_mut().clear_panel_rect(ids::SCULPT3D_PANEL);
         return;
     }
-    let snapshot = snapshot.expect("o guard acima garante");
+    // ⛔⛔ **ABERTO e sem cena NÃO é motivo para silêncio — medido em 2026-09-09.** A segunda
+    // recusa que vivia aqui dizia, com razão para o modelo antigo, que *«um painel que pinta
+    // sobre o vazio é chrome morto»*. Com as ABAS o preço inverteu-se: quem está à frente esconde
+    // os outros ocupantes, quem não pinta não publica rect, e uma coluna sem rects publicados
+    // lê-se **livre** e fecha — levando consigo a fileira de abas e o vizinho VIVO. Medido com o
+    // Inspector ao lado: `218` glifos no quadro (só o cromo de base) contra `269`, e nenhuma aba
+    // para clicar de volta. ⇒ ele publica o rect e DIZ porquê está vazio.
+    let Some(snapshot) = state::current() else {
+        let rect: Rect = ctx.slot;
+        let theme = ctx.host.theme();
+        ctx.host
+            .store_mut()
+            .set_panel_rect(ids::SCULPT3D_PANEL, rect);
+        paint_panel_empty(
+            rect,
+            tr("panel.sculpt3d.title"),
+            ids::SCULPT3D_CLOSE,
+            tr("panel.sculpt3d.empty"),
+            ctx.scene,
+            ctx.text_system,
+            ctx.host.hit_index_mut(),
+            theme,
+        );
+        return;
+    };
 
     let rect: Rect = ctx.slot;
     let theme = ctx.host.theme();

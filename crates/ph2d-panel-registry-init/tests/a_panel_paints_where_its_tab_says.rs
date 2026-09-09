@@ -26,10 +26,16 @@
 //!
 //! # ⚠️ A fixtura tem de PRODUZIR o fenómeno, e para um painel ela não produz
 //!
-//! O `sculpt3d` não publica rect nenhum **nem no encaixe de fábrica** (o módulo 3D não está armado
-//! sem a env var, e o `AppGfx.sculpt3d` é `None`). Medi-lo aqui seria medir silêncio, e acusá-lo
-//! seria acusar um inocente. ⇒ ele é **saltado com a razão medida** — a condição é *«não publica no
-//! próprio default»*, derivada, e não uma lista de nomes.
+//! Quem não publica rect **nem no encaixe de fábrica** é saltado: medi-lo aqui seria medir
+//! silêncio, e acusá-lo seria acusar um inocente. A condição é *«não publica no próprio default»*,
+//! **derivada**, e não uma lista de nomes.
+//!
+//! ⚠️⚠️ **E o exemplo que este doc dava ENVELHECEU em 2026-09-09.** Ele nomeava o `sculpt3d` —
+//! que hoje publica sempre, porque calar-se de painel ABERTO fechava a coluna e levava o vizinho
+//! consigo (`shells/desktop/tests/no_open_panel_leaves_its_column_blank.rs`). O que sobra na
+//! condição é o `motion_graph`, que vive no CENTRO: ele parte a área de desenho em vez de ocupar
+//! uma coluna, e sem `split` não há região nenhuma para publicar. *Um exemplo dentro de um doc é
+//! uma medição com data — a condição é que é a lei.*
 //!
 //! ⛔ E é por isso que o gate **NOMEIA os dois** que tinham o defeito: sem esse controlo, um dia em
 //! que todo painel ficasse silencioso deixaria a varredura verde sobre o vazio.

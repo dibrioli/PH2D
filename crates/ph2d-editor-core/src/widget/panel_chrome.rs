@@ -151,6 +151,10 @@ pub use menu::clamp_menu_to_viewport;
 /// **Os BOTÕES do cabeçalho** — o X e o `+`, geometria e pintura. Irmão pelo teto de 500 LOC dos
 /// primitivos (o precedente é o `segmented` logo abaixo), e o corte é por responsabilidade: aqui
 /// fica *que forma tem um painel*, lá *o que vive na ponta direita do título dele*.
+/// ⭐ **A face VAZIA de um painel** — irmão por assunto: o que um painel diz quando não tem
+/// nada a dizer, e por que calar-se lhe custa a coluna inteira.
+mod empty;
+pub use empty::paint_panel_empty;
 mod header_buttons;
 pub use header_buttons::{
     HEADER_ADD_BUTTON_PX, paint_panel_close_button, panel_close_button_rect,

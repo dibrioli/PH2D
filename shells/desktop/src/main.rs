@@ -416,6 +416,10 @@ mod motion_animadores_probe;
 mod motion_autofix_smoke;
 mod motion_autofix_smoke_appropriate;
 mod motion_autofix_smoke_dead_branch;
+/// O PREÇO do mesmo grupo — irmão do acima pelo tecto de LOC, cortado por
+/// responsabilidade: retratos ali, relógio e dispositivo aqui.
+#[cfg(test)]
+mod motion_deformadores_preco;
 /// A auditoria do grupo do ciclo 3 (doc 106) — `#[cfg(test)]`, não entra no bin.
 #[cfg(test)]
 mod motion_deformadores_probe;

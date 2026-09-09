@@ -77,6 +77,10 @@ fn every_registered_kernel_fits_the_uniform_slot_and_declares_finite_identities(
             // The node's LUTs — a Curve contour's module carries a `lut_*` storage
             // binding + a `_sample` accessor, so the widest layout includes them.
             reg.luts(manifest.id),
+            // O canal PARTILHADO, pela mesma razão das duas acima: o módulo do nó
+            // carrega o WGSL que ele divide com as reduções dele, e medir sem isso
+            // mediria um módulo que o sequenciador nunca constrói.
+            reg.wgsl_shared(manifest.id),
             |_| true,
         );
         let struct_body = src
@@ -171,6 +175,10 @@ fn the_storage_budget_counts_every_buffer_the_module_declares() {
             reg.grid(manifest.id),
             reg.reduces(manifest.id),
             reg.luts(manifest.id),
+            // O canal PARTILHADO, pela mesma razão das duas acima: o módulo do nó
+            // carrega o WGSL que ele divide com as reduções dele, e medir sem isso
+            // mediria um módulo que o sequenciador nunca constrói.
+            reg.wgsl_shared(manifest.id),
             |_| true,
         );
         let declared = src.matches("var<storage").count() as u32;

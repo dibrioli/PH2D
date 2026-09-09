@@ -79,114 +79,10 @@ pub fn sd_torus(major: f64, minor: f64) -> Tree {
     length2(&q, &Tree::z()) - Tree::constant(minor)
 }
 
-/// ⭐⭐⭐ **A LEI DAS TRÊS FORMAS DA W101, numa frase:** *um sólido de parede reta é a interseção de
-/// uma laje com meias-fatias, e `max` de funções 1-Lipschitz é 1-Lipschitz.*
-///
-/// # ⚠️ Por que ela existe, e por que NÃO é a fórmula da referência
-///
-/// O `sdCappedCone` publicado é **exato em toda parte**, e paga por isso com **ramificações**
-/// (`(q.y<0)?r1:r2`, e o sinal `(cb.x<0 && ca.y<0)?-1:1`). Esta crate compila para uma fita da
-/// `fidget`, e as ramificações que ela tem — `compare`/`and`/`or` — produzem funções
-/// **descontínuas**: o gradiente por diferenciação automática deixa de existir na fronteira delas, e
-/// quem consome esse gradiente é a extração da malha (sem normal não há QEF) e a marcha. É a mesma
-/// razão pela qual o [`LENGTH_FLOOR`] existe, um nível acima.
-///
-/// ⭐ **O que se perde e o que se ganha, dito com precisão.** `max(a, b)` de duas distâncias exatas
-/// é:
-/// - **exato na superfície** — o zero de `max` é exatamente a fronteira da interseção;
-/// - **exato no interior** — a distância à parede mais próxima é o `max` das perpendiculares;
-/// - **um SUBESTIMADOR no exterior**, junto às quinas onde duas paredes não são ortogonais.
-///
-/// Subestimar é **seguro** para a marcha de esferas (nunca ultrapassa) e custa passos, não
-/// correção. E `‖∇f‖ ≤ 1` não é esperança: o máximo de funções 1-Lipschitz é 1-Lipschitz, por
-/// definição. ⇒ *o passo da marcha não muda por causa destas formas* — e o gate
-/// `every_primitive_honours_the_march` mede-o, forma a forma, derivado de `PrimitiveKind::ALL`.
-///
-/// ⚠️ **É a MESMA aritmética que o `box_raw` faz**, com uma diferença: ali as três paredes são
-/// ortogonais, então o termo exterior (`length` das partes positivas) é exato pelo Pitágoras. Aqui
-/// a parede inclina, o Pitágoras deixaria de valer, e por isso o exterior fica no `max`.
-///
-/// # ⛔⛔⛔ **E O `round` DESTA FAMÍLIA ERA INERTE — medido na W103, três primitivas depois**
-///
-/// A receita `offset(max(A, B), r)` com as fontes encolhidas **não arredonda nada**, e a álgebra
-/// di-lo numa linha: `{max(A,B) − r < 0}` é `{A < r} ∩ {B < r}` — a interseção das duas peças
-/// **dilatadas separadamente**, e não a dilatação da interseção. Cada peça é um semiespaço (uma laje,
-/// uma parede): dilatar um semiespaço dá outro semiespaço, **sem canto para arredondar**. O que o
-/// recuo tira, o deslocamento repõe — e o aro fica **exatamente tão vivo como estava**.
-///
-/// ⭐ **Por que funciona na caixa e no cilindro:** ali a fonte é o `box_raw`/`cylinder_raw`, que é a
-/// distância **exata** (o termo `length` das partes positivas), e a dilatação de uma distância exata
-/// É o corpo com os cantos redondos. *A receita nunca foi «encolher e deslocar»: era «encolher uma
-/// distância EXATA e deslocar».*
-///
-/// `walls` são as meias-fatias já **normalizadas** (gradiente unitário); `half_height` é a laje em Z.
-pub(crate) fn slab_and_walls(walls: &Tree, half_height: f64, e: crate::ops_joint::Edge) -> Tree {
-    let slab = Tree::z().abs() - Tree::constant(half_height);
-    // ⭐⭐⭐ **A PORTA DO CHANFRO DE TODA A FAMÍLIA DAS CHAPAS** (Enio, 2026-08-30: *«em todas as
-    // peças temos fillet para as bordas arredondadas mas não temos um slider para chamfer»*).
-    //
-    // ⭐ O aro de uma chapa é a junta de DUAS peças — a laje e a parede —, e é exactamente aí que o
-    // `round` já entrava. Trocar a mistura exacta pela junta composta dá chanfro-e-depois-filete às
-    // treze formas desta família **de uma vez**, sem uma linha em cada construtor.
-    //
-    // ⚠️ **Com `chamfer = 0` isto é o caminho de sempre, ao bit** — ver [`crate::ops_joint`].
-    if e.chamfer <= 0.0 {
-        return crate::ops_joint::intersection_joint(&slab, walls, e);
-    }
-    // ⭐ **As DUAS tampas com SINAL, e não o `|z| − h` dobrado** — a dobra tem um vinco em `z = 0`
-    // que o plano do chanfro carrega para a superfície quando o filete lá chega: era isso que
-    // punha uma costura no EQUADOR de um cilindro (`19,0°`, contra `1,5°` só com filete).
-    let tampa = [
-        Tree::z() - Tree::constant(half_height),
-        -Tree::z() - Tree::constant(half_height),
-    ];
-    crate::ops_joint::intersection_joint_n(
-        &[tampa[0].clone(), tampa[1].clone(), walls.clone()],
-        &[
-            (tampa[0].clone(), walls.clone()),
-            (tampa[1].clone(), walls.clone()),
-        ],
-        e,
-    )
-}
-
-/// ⭐⭐⭐ **UMA CHAPA INTEIRA NUMA MISTURA SÓ** — as peças do perfil 2D, as arestas que elas formam,
-/// e as duas tampas.
-///
-/// # ⛔ Ela é a [`slab_and_walls`] sem o encaixe
-///
-/// A [`slab_and_walls`] recebe o perfil **já composto**, e por isso a mistura do aro herda a costura
-/// interna dele e põe-na no aro — é o defeito que o 3.º report do Enio nomeou. Quando o perfil é uma
-/// **intersecção** de peças, o chamador tem-nas na mão e pode entregá-las: aí não há composta
-/// nenhuma a entrar, e o aro sai tão liso quanto o filete sozinho o faria.
-///
-/// ⚠️ **Só serve a perfis que são INTERSECÇÃO.** Um perfil feito por **união** (a cruz, a
-/// engrenagem, o coração) não é exprimível numa intersecção arredondada, e continua a entrar
-/// composto pela [`slab_and_walls`] — está nomeado na catraca do
-/// `the_chamfer_never_makes_an_edge_worse_than_the_fillet_alone`.
-///
-/// ⚠️ **As tampas entram com SINAL**, e cada peça do perfil forma uma aresta com cada uma delas: um
-/// perfil de `k` peças dá `k` arestas laterais implícitas mais `2k` de aro.
-pub(crate) fn plate_joint_n(
-    corpo2d: &[Tree],
-    arestas2d: &[(Tree, Tree)],
-    half_height: f64,
-    e: crate::ops_joint::Edge,
-) -> Tree {
-    let tampa = [
-        Tree::z() - Tree::constant(half_height),
-        -Tree::z() - Tree::constant(half_height),
-    ];
-    let mut corpo = corpo2d.to_vec();
-    corpo.extend(tampa.iter().cloned());
-    let mut arestas = arestas2d.to_vec();
-    for p in corpo2d {
-        for t in &tampa {
-            arestas.push((p.clone(), t.clone()));
-        }
-    }
-    crate::ops_joint::intersection_joint_n(&corpo, &arestas, e)
-}
+// ⭐⭐ **A CHAPA mudou-se para o [`crate::ops_slab`]** (W142) — ver o doc dela para a lei da
+// W101 e para o segundo perfil do plano do chanfro. ⛔ *Split, nunca allowlist:* este arquivo
+// estava a `630` das `700` linhas e a estrela precisava de espaco.
+pub(crate) use crate::ops_slab::{plate_joint_n, slab_and_walls};
 
 /// A meia-fatia da parede inclinada de um cone, **normalizada**: `(ρ − a − m·z)/√(1+m²)`.
 ///
@@ -496,80 +392,107 @@ pub fn sd_star(
     // (`1,0 %` · `25,4°` a meio filete, `0,0 %` · `13,6°` no máximo, com e sem). *Uma segunda cura
     // que não move o número é mais uma coisa para manter, não meia cura.*
     let disco = length2(&Tree::x(), &Tree::y()) - Tree::constant(inner);
-    let mut pontas: Option<Tree> = None;
-    for k in 0..n {
-        let phi = std::f64::consts::TAU * f64::from(k) / f64::from(n);
-        let tip = polar(outer, phi);
-        let (before, after) = (polar(inner, phi - beta), polar(inner, phi + beta));
-        // ⭐⭐⭐ **A PONTA é uma quina CONVEXA**, e arredonda-se com o arco exato de raio `round`
-        // (W104, a 1.ª foto do Enio).
-        let ponta = crate::ops_joint::intersection_joint(
-            &half_plane(before, tip),
-            &half_plane(tip, after),
-            crate::ops_joint::Edge::at(round, chamfer, cos_ponta),
-        );
-        // ⚠️ E o SECTOR **CORTA A SECO**, de propósito: ele não é uma aresta da peça, é a divisória
-        // entre duas pipas vizinhas. Arredondá-lo abriria um sulco **dentro** do sólido.
-        //
-        // ⭐⭐⭐ **E ELE TEM DE TER FOLGA** (W104-bis). Sem folga, o plano do sector passa **pelo
-        // vale**, que é um ponto da SUPERFÍCIE: ali o `max` do sector com a aresta troca de ramo em
-        // cima da peça, e as duas pipas que a união vai fundir chegam ao encontro **as duas com um
-        // vinco de campo**. Afastando os dois planos de `round`, as pipas passam a **sobrepor-se**
-        // no vale em vez de se tocarem, e o único constrangimento activo lá é a aresta a sério.
-        //
-        // ⚠️ **O tecto da folga é geométrico e a medição bate-o**: os dois planos afastados cruzam-se
-        // a `δ/sin β` do centro **do lado oposto** da ponta, e acima de `inner` essa intrusão sai da
-        // peça. Com `δ = round` isso está sempre garantido, porque `star_round_limit < inner·sin β`
-        // por construção — e a varredura confirma: a `2·round` a forma parte, exactamente onde a
-        // conta diz.
-        let (a1, a2) = (phi - beta, phi + beta);
-        // ⭐⭐⭐ **A FOLGA COBRE OS DOIS RECUOS, e não só o filete** (W141).
-        //
-        // ⛔ Ela era `round.min(…)`, escrita na W104-bis **antes de o chanfro existir**. O chanfro
-        // chegou na W99/W110 e ninguém voltou a derivar este número — e é ele que decide **quão
-        // fundo** fica o campo na costura entre duas pipas. Com `folga = round` e o chanfro no
-        // tecto, a costura fica a `0` de profundidade e o aro lê-a como se fosse a parede.
-        //
-        // ⚠️ **MEDIDO** (fracção do MIOLO da tampa que sai do plano, `probe_the_star_chamfer`):
-        //
-        // | `round` · `chamfer` | folga = `round` | folga = `round + chamfer` |
-        // |---|---:|---:|
-        // | `0` · `0,02` | 1,2 % | **0,0 %** |
-        // | `0` · `0,04` | 12,1 % | **0,3 %** |
-        // | `0` · `0,06` | 30,9 % | **4,6 %** |
-        //
-        // ⚠️ **E ela NÃO fecha o caso `filete + chanfro`** (32,1 % → 22,3 %): esse tem outra causa,
-        // medida e nomeada no [doc 06 §141](../../../docs/3DModeling/06_resultados_cena_e_gizmo.md).
-        // *Uma alavanca que cura metade de um defeito cura metade — e diz qual.*
-        let folga = Tree::constant((round + chamfer).min(inner * beta.sin()));
-        let h1 = Tree::x() * Tree::constant(a1.sin())
-            - Tree::y() * Tree::constant(a1.cos())
-            - folga.clone();
-        let h2 =
-            Tree::x() * Tree::constant(-a2.sin()) + Tree::y() * Tree::constant(a2.cos()) - folga;
-        let pipa = ponta.max(h1).max(h2);
-        // ⭐⭐⭐ **O VALE é uma quina CÔNCAVA**, e uma quina côncava arredonda-se ACRESCENTANDO
-        // material no entalhe — o dual de De Morgan do mesmo arco.
-        //
-        // ⚠️ Ao longo da divisória (do centro ao vale) as duas pipas cobrem os dois lados, então não
-        // há para onde acrescentar e nada é acrescentado — o efeito é **só** no vale.
-        pontas = Some(pontas.map_or_else(
-            || pipa.clone(),
-            |w: Tree| {
-                crate::ops_joint::union_joint(
-                    &w,
-                    &pipa,
-                    crate::ops_joint::Edge::at(round, chamfer, cos_vale),
-                )
-            },
-        ));
-    }
-    let pontas = pontas.unwrap_or_else(|| Tree::constant(0.0));
+    // ⭐⭐⭐ **A FOLGA COBRE OS DOIS RECUOS, e não só o filete** (W141).
+    //
+    // ⛔ Ela era `round.min(…)`, escrita na W104-bis **antes de o chanfro existir**. O chanfro
+    // chegou na W99/W110 e ninguém voltou a derivar este número — e é ele que decide **quão
+    // fundo** fica o campo na costura entre duas pipas. Com `folga = round` e o chanfro no
+    // tecto, a costura fica a `0` de profundidade e o aro lê-a como se fosse a parede.
+    //
+    // ⚠️ **MEDIDO** (fracção do MIOLO da tampa que sai do plano, `probe_the_star_chamfer`):
+    //
+    // | `round` · `chamfer` | folga = `round` | folga = `round + chamfer` |
+    // |---|---:|---:|
+    // | `0` · `0,02` | 1,2 % | **0,0 %** |
+    // | `0` · `0,04` | 12,1 % | **0,3 %** |
+    // | `0` · `0,06` | 30,9 % | **4,6 %** |
+    //
+    // ⚠️ **E ela NÃO fecha o caso `filete + chanfro`** (32,1 % → 22,3 %): esse tem outra causa,
+    // medida e nomeada no [doc 06 §141](../../../docs/3DModeling/06_resultados_cena_e_gizmo.md).
+    // *Uma alavanca que cura metade de um defeito cura metade — e diz qual.*
+    // ⭐⭐⭐ **A FOLGA É A MESMA NOS DOIS PERFIS** (W142) — ela é a divisória entre pipas vizinhas,
+    // não uma aresta, e os dois contornos têm de a ter no MESMO sítio.
+    let folga = Tree::constant((round + chamfer).min(inner * beta.sin()));
+    // ⭐⭐⭐ **O CONTORNO, com o raio das quinas como PARÂMETRO** (W142) — porque a estrela precisa
+    // dele duas vezes, com números diferentes. Ver [`crate::ops_slab::slab_and_walls_from`].
+    let contorno = |r_quina: f64| -> Tree {
+        let mut pontas: Option<Tree> = None;
+        for k in 0..n {
+            let phi = std::f64::consts::TAU * f64::from(k) / f64::from(n);
+            let tip = polar(outer, phi);
+            let (before, after) = (polar(inner, phi - beta), polar(inner, phi + beta));
+            // ⭐⭐⭐ **A PONTA é uma quina CONVEXA**, e arredonda-se com o arco exato de raio `round`
+            // (W104, a 1.ª foto do Enio).
+            let ponta = crate::ops_joint::intersection_joint(
+                &half_plane(before, tip),
+                &half_plane(tip, after),
+                crate::ops_joint::Edge::at(r_quina, chamfer, cos_ponta),
+            );
+            // ⚠️ E o SECTOR **CORTA A SECO**, de propósito: ele não é uma aresta da peça, é a divisória
+            // entre duas pipas vizinhas. Arredondá-lo abriria um sulco **dentro** do sólido.
+            //
+            // ⭐⭐⭐ **E ELE TEM DE TER FOLGA** (W104-bis). Sem folga, o plano do sector passa **pelo
+            // vale**, que é um ponto da SUPERFÍCIE: ali o `max` do sector com a aresta troca de ramo em
+            // cima da peça, e as duas pipas que a união vai fundir chegam ao encontro **as duas com um
+            // vinco de campo**. Afastando os dois planos de `round`, as pipas passam a **sobrepor-se**
+            // no vale em vez de se tocarem, e o único constrangimento activo lá é a aresta a sério.
+            //
+            // ⚠️ **O tecto da folga é geométrico e a medição bate-o**: os dois planos afastados cruzam-se
+            // a `δ/sin β` do centro **do lado oposto** da ponta, e acima de `inner` essa intrusão sai da
+            // peça. Com `δ = round` isso está sempre garantido, porque `star_round_limit < inner·sin β`
+            // por construção — e a varredura confirma: a `2·round` a forma parte, exactamente onde a
+            // conta diz.
+            let (a1, a2) = (phi - beta, phi + beta);
+            let h1 = Tree::x() * Tree::constant(a1.sin())
+                - Tree::y() * Tree::constant(a1.cos())
+                - folga.clone();
+            let h2 = Tree::x() * Tree::constant(-a2.sin()) + Tree::y() * Tree::constant(a2.cos())
+                - folga.clone();
+            let pipa = ponta.max(h1).max(h2);
+            // ⭐⭐⭐ **O VALE é uma quina CÔNCAVA**, e uma quina côncava arredonda-se ACRESCENTANDO
+            // material no entalhe — o dual de De Morgan do mesmo arco.
+            //
+            // ⚠️ Ao longo da divisória (do centro ao vale) as duas pipas cobrem os dois lados, então não
+            // há para onde acrescentar e nada é acrescentado — o efeito é **só** no vale.
+            pontas = Some(pontas.map_or_else(
+                || pipa.clone(),
+                |w: Tree| {
+                    crate::ops_joint::union_joint(
+                        &w,
+                        &pipa,
+                        crate::ops_joint::Edge::at(r_quina, chamfer, cos_vale),
+                    )
+                },
+            ));
+        }
+        pontas.unwrap_or_else(|| Tree::constant(0.0))
+    };
     // ⚠️ **O disco entra por `min` CRU** — ele é enchimento interior e não fronteira, e arredondar
     // contra ele misturaria um raio a mais no vale (a fronteira dele passa exactamente por lá). Ver
     // a nota da costura, acima: com `round = 0` ele continua a ser o que a mata.
-    slab_and_walls(
-        &pontas.min(disco),
+    let paredes = contorno(round).min(disco.clone());
+    // ⭐⭐⭐ **O PERFIL DO PLANO DO CHANFRO** (W142, report do Enio de 08/09) — as quinas
+    // arredondadas a `round + chamfer`, para que o eixo medial do contorno comece `round` abaixo do
+    // ponto mais fundo da faceta. ⚠️ **O tecto é o da própria estrela**, e vem da porta que o
+    // documento usa — escrever a fórmula outra vez aqui poria a lei em dois sítios.
+    let tecto = f64::from(
+        ph2d_field::star_round_limit(points, outer as f32, inner as f32)
+            * (1.0 - ph2d_field::ROUND_MARGIN),
+    );
+    let r_plano = (round + chamfer).min(tecto);
+    // ⚠️ **Só com o filete LIGADO** — a cura é sobre o filete alcançar a faceta, e com `round = 0`
+    // não há filete nenhum para alcançar: ali a saída fica **byte-idêntica** à de sempre, que é a
+    // peça que o Enio aprovou na 1.ª foto de 08/09.
+    let plano = if chamfer > 0.0 && round > 0.0 && r_plano > round {
+        contorno(r_plano).min(disco)
+    } else {
+        // ⚠️ **Sem chanfro, ou com o tecto já alcançado, é o MESMO perfil** — e aí a saída é
+        // byte-idêntica à de antes, sem um nó a mais na árvore.
+        paredes.clone()
+    };
+    crate::ops_slab::slab_and_walls_from(
+        &paredes,
+        &plano,
         half_height,
         crate::ops_joint::Edge::square(round, chamfer),
     )

@@ -1932,11 +1932,14 @@ fn cos_faces_da_ponta(points: u32, outer: f64, inner: f64) -> f64 {
 /// diz — que é a mentira de `1,61×` que a W111 apagou, e a única maneira de «melhorar» este número.
 /// *Uma barra só por cima premiaria exactamente o defeito que esta obra removeu.*
 #[test]
-fn the_star_pair_crease_is_exactly_the_angle_the_two_rim_facets_make() {
+fn the_star_rim_vertex_is_that_angle_and_the_fillet_erases_it() {
     /// A folga: a varredura de oito posições do chanfro leu `82,4°`–`84,9°` contra os `83,81°` da
     /// conta, e o resíduo é a malha da sonda — ela amostra normais em pontos vizinhos, não no
     /// vértice.
     const FOLGA_GRAUS: f64 = 4.0;
+    /// ⭐ **Quanto o filete tem de APAGAR do vértice** — medido `21,4°` contra os `83,81°` da conta,
+    /// e a barra é metade do vértice. ⛔ Uma barra colada nos `21,4°` mediria a sonda, não a lei.
+    const VERTICE_APAGADO: f64 = 0.5;
     let (points, outer, inner) = (5_u32, 0.45_f64, 0.18_f64);
     let base = representative(PrimitiveKind::Star).expect("a estrela");
     // ⛔ O controle da FIXTURA: se o representante deixar de ser esta estrela, os números acima
@@ -1955,12 +1958,73 @@ fn the_star_pair_crease_is_exactly_the_angle_the_two_rim_facets_make() {
         .acos()
         .to_degrees();
     let limite = ph2d_field::round_limit(&base).expect("tem filete");
-    let (_, par) = par_de_trabalho(&base, limite * 0.5).expect("aceita o par");
-    println!("  [vertice] star: {par:.1}° medido, {previsto:.2}° pela conta das duas facetas");
+    let c = limite * 0.5;
+    let escreve = |chave: &str, v: f32, p: &Primitive| -> Primitive {
+        let mut q = p.clone();
+        let i = ph2d_field::dims(&q)
+            .iter()
+            .position(|d| d.key == chave)
+            .expect("a linha existe");
+        ph2d_field::set_dim(&mut q, 0, i, v).expect("aceita");
+        q
+    };
+    let pior = |p: &Primitive| {
+        traverse(p, 2048, 6)
+            .0
+            .iter()
+            .map(|(_, a)| *a)
+            .fold(0.0f64, f64::max)
+    };
+    // ⭐ **(a) SÓ CHANFRO — o vértice EXISTE, e mede o que a conta diz.**
+    let so_chanfro = escreve("field.dim.chamfer", c, &base);
+    let vertice = pior(&so_chanfro);
+    println!("  [vertice] star: {vertice:.1}° medido, {previsto:.2}° pela conta das duas facetas");
     assert!(
-        (par - previsto).abs() <= FOLGA_GRAUS,
-        "o pior giro da estrela com chanfro deu {par:.1}° e o vértice das duas facetas do aro pede \
-         {previsto:.2}° — se ENCOLHEU, o corte voltou a ser mais fundo do que o slider diz"
+        (vertice - previsto).abs() <= FOLGA_GRAUS,
+        "o pior giro da estrela com chanfro SOZINHO deu {vertice:.1}° e o vértice das duas facetas \
+         do aro pede {previsto:.2}° — se ENCOLHEU, o corte voltou a ser mais fundo do que o slider \
+         diz"
+    );
+    // ⭐⭐⭐ **(b) COM O FILETE — o vértice tem de DESAPARECER** (W142, report do Enio de 08/09).
+    let par = escreve("field.dim.round", c * 0.5, &so_chanfro);
+    let com_filete = pior(&par);
+    println!("  [vertice] star com filete: {com_filete:.1}° (era {vertice:.1}° sem ele)");
+    assert!(
+        com_filete < previsto * VERTICE_APAGADO,
+        "com o filete ligado o pior giro da estrela ainda dá {com_filete:.1}°, acima de metade do \
+         vértice ({previsto:.2}°) — o filete voltou a não alcançar a faceta do chanfro, que é o \
+         report do Enio de 08/09"
+    );
+    // ⛔⛔ **(c) O CONTROLE, e sem ele (b) premiaria CORTAR A PONTA FORA.**
+    //
+    // ⚠️ A cura da W142 troca o perfil que constrói o **plano do chanfro**, e não o das paredes —
+    // logo a peça a meia altura tem de ficar **igual à do filete sozinho**, ao bit. *Uma cura que
+    // apagasse o vinco comendo material moveria este número.*
+    let so_filete = escreve("field.dim.round", c * 0.5, &base);
+    let alcance = |p: &Primitive, z: f64| -> f64 {
+        let doc = FieldDoc::new(
+            vec![Node::new(Xform::IDENTITY, NodeKind::Leaf(p.clone()))],
+            NodeId(0),
+        )
+        .expect("a peça");
+        let f = ph2d_field_eval::Field::new(&doc);
+        let (mut lo, mut hi) = (0.0_f64, 1.0_f64);
+        for _ in 0..60 {
+            let m = f64::midpoint(lo, hi);
+            if f.at(m, 0.0, z) <= 0.0 {
+                lo = m;
+            } else {
+                hi = m;
+            }
+        }
+        lo
+    };
+    let (a, b) = (alcance(&par, 0.0), alcance(&so_filete, 0.0));
+    println!("  [vertice] alcance da ponta a meia altura: par {a:.5}, só filete {b:.5}");
+    assert!(
+        (a - b).abs() < 1.0e-6,
+        "a ponta da estrela com o par alcança {a:.5} e com o filete sozinho {b:.5} — o chanfro do \
+         ARO não pode mexer na parede, e se mexeu a cura está a comer a peça"
     );
 }
 
@@ -2058,7 +2122,7 @@ fn the_chamfer_never_makes_an_edge_worse_than_the_fillet_alone() {
             let b = pior(&par);
             let razao = b / base_graus.max(1.0e-9);
             // ⛔ A forma cujo pior giro é um VÉRTICE de chanfro responde a uma **igualdade
-            // analítica** — ver [`the_star_pair_crease_is_exactly_the_angle_the_two_rim_facets_make`]
+            // analítica** — ver [`the_star_rim_vertex_is_that_angle_and_the_fillet_erases_it`]
             // e o censo que impede a entrada de virar licença.
             if vertice_de_chanfro(k.key()) {
                 continue;
@@ -2288,6 +2352,227 @@ fn probe_where_a_filletless_shape_creases() {
         println!(
             "    ⇒ {polos} de {} estão acima de 70° de elevação (os POLOS)",
             vincos.len()
+        );
+    }
+}
+
+/// ⭐⭐⭐ **SONDA (W142) — O CHANFRO CUSTA ALCANCE AO FILETE?** (report do Enio, 08/09: *«o fillet
+/// não pega todas as arestas após usar chamfer»*).
+///
+/// ⚠️ **A pergunta que o gate irmão NÃO faz.** O
+/// [`the_chamfer_never_makes_an_edge_worse_than_the_fillet_alone`] compara o **pior ângulo** e tem
+/// barra de RAZÃO; ele é cego à **fracção** — uma forma pode manter `15 %` da superfície sobre um
+/// vinco com o pior giro na mesma classe. É a fracção que o olho lê como *«esta aresta ficou por
+/// arredondar»*.
+///
+/// ⇒ esta sonda põe o **mesmo filete** dos dois lados e só liga o chanfro num deles.
+#[test]
+#[ignore = "sonda: imprime a tabela, o veredito e' de quem a ler"]
+fn probe_whether_the_chamfer_costs_the_fillet_its_reach() {
+    println!(
+        "\n  forma            | so' filete r=.5 | par c=.5 r=.5 |  delta  | pior so' | pior par"
+    );
+    let mut linhas: Vec<(f64, String)> = Vec::new();
+    for k in PrimitiveKind::ALL {
+        let Some(base) = representative(k) else {
+            continue;
+        };
+        let Some(so) = with_pair(&base, 0.0, 0.5) else {
+            continue;
+        };
+        let Some(par) = with_pair(&base, 0.5, 0.5) else {
+            continue;
+        };
+        let (fa, pa, _) = probe_with(&so, 2048, 4);
+        let (fb, pb, _) = probe_with(&par, 2048, 4);
+        linhas.push((
+            fb - fa,
+            format!(
+                "  {:<16} | {fa:>15.2} | {fb:>13.2} | {:>+7.2} | {pa:>8.1} | {pb:>8.1}",
+                k.key(),
+                fb - fa
+            ),
+        ));
+    }
+    linhas.sort_by(|a, b| b.0.total_cmp(&a.0));
+    for (_, l) in &linhas {
+        println!("{l}");
+    }
+}
+
+/// **SONDA (W142)** — ONDE ficam os vincos que sobram quando o chanfro está ligado, em coordenadas
+/// que nomeiam a família da aresta (raio · altura · ângulo polar).
+#[test]
+#[ignore = "sonda: imprime as coordenadas dos vincos que sobram"]
+fn probe_where_the_pair_leaves_a_crease() {
+    let alvo = std::env::var("PH2D_ALVO").unwrap_or_else(|_| "star".into());
+    for k in PrimitiveKind::ALL {
+        if k.key() != alvo {
+            continue;
+        }
+        let base = representative(k).expect("rep");
+        for (c, r) in [(0.0_f32, 0.5_f32), (0.5, 0.5), (0.5, 0.25)] {
+            let Some(p) = with_pair(&base, c, r) else {
+                continue;
+            };
+            let (pontos, total, pior) = traverse(&p, 4096, 6);
+            let vincos = only_creases(&pontos);
+            println!(
+                "\n  [{}] c={c} r={r}: {} de {total} sobre vinco ({:.2} %), pior {pior:.1}°",
+                k.key(),
+                vincos.len(),
+                100.0 * vincos.len() as f64 / total.max(1) as f64
+            );
+            println!("      raio    |    z    |  polar  | angulo");
+            for (w, a) in vincos.iter().take(22) {
+                let raio = (w[0] * w[0] + w[1] * w[1]).sqrt();
+                println!(
+                    "     {raio:>7.4} | {:>7.4} | {:>7.1} | {a:>5.1}°",
+                    w[2],
+                    w[1].atan2(w[0]).to_degrees()
+                );
+            }
+        }
+    }
+}
+
+/// **SONDA (W142)** — a grelha `(chanfro, filete)` de uma forma: onde o filete deixa de alcançar.
+#[test]
+#[ignore = "sonda: imprime a grelha"]
+fn probe_the_pair_grid() {
+    let alvo = std::env::var("PH2D_ALVO").unwrap_or_else(|_| "star".into());
+    for k in PrimitiveKind::ALL {
+        if k.key() != alvo {
+            continue;
+        }
+        let base = representative(k).expect("rep");
+        let fr = [0.0_f32, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875];
+        print!("\n  {alvo}: % da superficie sobre vinco\n  chanfro\\filete");
+        for r in fr {
+            print!(" | r={r:<5.3}");
+        }
+        println!();
+        for c in fr {
+            print!("     c={c:<5.3}   ");
+            for r in fr {
+                let v = with_pair(&base, c, r).map_or(f64::NAN, |p| probe_with(&p, 1024, 4).0);
+                print!(" | {v:>7.2}");
+            }
+            println!();
+        }
+    }
+}
+
+/// ⭐⭐⭐ **O FILETE AINDA ALCANÇA A ARESTA COM O CHANFRO LIGADO** — o gate do report do Enio de
+/// 08/09: *«o fillet não pega todas as arestas após usar chamfer»*.
+///
+/// # ⛔⛔ Por que o gate irmão estava VERDE sobre este defeito
+///
+/// O [`the_chamfer_never_makes_an_edge_worse_than_the_fillet_alone`] compara o **PIOR ÂNGULO**, com
+/// barra de RAZÃO. Ele é cego à **FRACÇÃO**: a estrela mantinha `11 %` da superfície sobre um vinco
+/// de `48°` sem que o pior giro mudasse de classe. ⭐ *Duas perguntas, duas réguas — **quão mau é o
+/// pior** e **quantos sítios estão maus** — e é a segunda que o olho lê como «esta aresta ficou por
+/// arredondar».*
+///
+/// # A régua: o MESMO filete dos dois lados, e só o chanfro muda
+///
+/// ⚠️ Comparar `(c, r)` contra a peça **viva** mediria a remoção. Aqui o filete é `0,5 × limite` nos
+/// dois, e a única diferença é o chanfro estar ligado.
+#[test]
+fn the_fillet_still_reaches_every_edge_with_the_chamfer_on() {
+    let mut piores = Vec::new();
+    let mut medidas = 0;
+    for k in PrimitiveKind::ALL {
+        let Some(base) = representative(k) else {
+            continue;
+        };
+        let (Some(so), Some(par)) = (with_pair(&base, 0.0, 0.5), with_pair(&base, 0.5, 0.5)) else {
+            continue;
+        };
+        medidas += 1;
+        let (a, _, _) = probe_with(&so, 2048, 4);
+        let (b, _, _) = probe_with(&par, 2048, 4);
+        let folga = par_aberto(k.key()).unwrap_or(BARRA_DO_PAR);
+        println!(
+            "  [par] {}: {a:.2} % só com filete, {b:.2} % com o par (folga {folga:.2})",
+            k.key()
+        );
+        if b > a + folga {
+            piores.push(format!("{} {a:.2} -> {b:.2} (folga {folga:.2})", k.key()));
+        }
+    }
+    assert!(
+        medidas >= 20,
+        "só {medidas} formas aceitaram o par — a lista derivada de `PrimitiveKind::ALL` partiu-se"
+    );
+    assert!(
+        piores.is_empty(),
+        "o chanfro tirou alcance ao filete nestas formas: {piores:?} — é o report do Enio de 08/09, \
+         e o mecanismo está no doc da `ops_slab::slab_and_walls_from`"
+    );
+}
+
+/// **Quanto de fracção o chanfro pode custar ao filete**, em pontos percentuais.
+///
+/// ⭐ **O número sai do VALE MEDIDO**, e não de conforto: depois da cura da W142 a população que
+/// fecha está toda em `≤ 0,19` (o pior é o `heart`) e a família que fica aberta começa em `2,06`
+/// (o `drop`). ⇒ `0,5` fica no vale, com `2,6×` de margem sobre quem passa e `4,1×` abaixo de quem
+/// reprova.
+const BARRA_DO_PAR: f64 = 0.5;
+
+/// ⏳ **A FAMÍLIA QUE FICA ABERTA, com o número de cada uma** — todas partilham o mecanismo da
+/// [`ph2d_field_eval::ops_slab::slab_and_walls_from`]: o plano do chanfro **soma** o campo do
+/// contorno e herda o **eixo medial** dele.
+///
+/// ⛔ **A cura da estrela não serve a todas, e a razão é geométrica:** ali o eixo medial começa numa
+/// **quina**, que se pode re-arredondar. O eixo medial de uma **faixa** (`circle_wave`) é a linha do
+/// meio dela, e o de um **sector** (`pie`) parte de um ápice que **corta a seco por medição**
+/// (arredondá-lo põe `‖∇f‖ = 1,50` contra o `1,41` que a marcha aguenta — ver
+/// [`ph2d_field_eval::ops_plates::sd_pie`]). ⇒ a cura geral é **decompor o perfil** e entregar as
+/// peças, que é o que a `plate_joint_n` já faz para perfis de **intersecção**.
+///
+/// # ⚠️ A catraca, e a metade que a impede de virar LICENÇA
+///
+/// Esta lista **só encolhe**, e o [`the_pair_exception_list_has_no_stale_entries`] pergunta a cada
+/// corrida se cada entrada **ainda** estoura a barra normal.
+const PAR_ABERTO: [(&str, f64); 5] = [
+    ("pie", 13.0),
+    ("cloud", 6.0),
+    ("spiral", 6.0),
+    ("circle_wave", 3.5),
+    ("drop", 2.5),
+];
+
+fn par_aberto(key: &str) -> Option<f64> {
+    PAR_ABERTO.iter().find(|(k, _)| *k == key).map(|(_, v)| *v)
+}
+
+/// ⛔⛔ **A METADE QUE IMPEDE A CATRACA DE SUBIR** — cada entrada do [`PAR_ABERTO`] tem de **ainda**
+/// estourar a [`BARRA_DO_PAR`], e tem de ficar **abaixo** da folga que declara.
+#[test]
+fn the_pair_exception_list_has_no_stale_entries() {
+    for (nome, folga) in PAR_ABERTO {
+        let k = PrimitiveKind::ALL
+            .iter()
+            .find(|k| k.key() == nome)
+            .unwrap_or_else(|| panic!("«{nome}» já não é uma forma — a entrada ficou órfã"));
+        let base = representative(*k).unwrap_or_else(|| panic!("«{nome}» não tem representante"));
+        let (Some(so), Some(par)) = (with_pair(&base, 0.0, 0.5), with_pair(&base, 0.5, 0.5)) else {
+            panic!("«{nome}» deixou de aceitar o par — a entrada ficou órfã")
+        };
+        let (a, _, _) = probe_with(&so, 2048, 4);
+        let (b, _, _) = probe_with(&par, 2048, 4);
+        let custo = b - a;
+        println!("  [par-censo] {nome}: o chanfro custa {custo:+.2} pp (folga {folga:.2})");
+        assert!(
+            custo > BARRA_DO_PAR,
+            "«{nome}» já cumpre a barra normal ({custo:+.2} pp) — APAGUE a entrada, senão ela vira \
+             licença para a próxima forma"
+        );
+        assert!(
+            custo < folga,
+            "«{nome}» piorou para {custo:+.2} pp, acima da folga declarada de {folga:.2} — a \
+             catraca SÓ ENCOLHE"
         );
     }
 }

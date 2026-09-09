@@ -66,7 +66,9 @@ pub mod xform;
 pub use axis::Axis;
 pub use blend::{Blend, Character, Joint};
 pub use curve::{MAX_WAVE_LOBES, MIN_WAVE_LOBES, WAVE_THICKNESS_MARGIN, wave_thickness_ceiling};
-pub use dims::{Dim, Param, Span, clamp_dims, clamp_round, dims, scale_primitive, set_dim};
+pub use dims::{
+    Dim, Param, ROUND_MARGIN, Span, clamp_dims, clamp_round, dims, scale_primitive, set_dim,
+};
 pub use knot::{
     MAX_KNOT_LOOPS_OVER_WINDS, MAX_KNOT_WINDS, MIN_KNOT_LOOPS, MIN_KNOT_WINDS, knot_cord_ceiling,
     max_knot_loops,

@@ -186,3 +186,175 @@ fn probe_where_the_wall_field_is_shallow() {
         onde[0], onde[1]
     );
 }
+
+/// **SONDA (W142)** — o campo das PAREDES tem uma crista na bissectriz da ponta?
+///
+/// ⭐ O plano do chanfro do aro é `(tampa + paredes + c)·√½`: ele **soma** o campo das paredes, logo
+/// herda toda crista que esse campo tenha. Uma estrela **alta** (a laje longe) dá o campo das
+/// paredes sozinho — e a pergunta é se a direcção do gradiente vira ao atravessar a bissectriz da
+/// ponta, a várias PROFUNDIDADES.
+#[test]
+#[ignore = "sonda: imprime a tabela"]
+fn probe_whether_the_wall_field_has_a_ridge_at_the_tip() {
+    let limite = ph2d_field::round_limit(&Primitive::Star {
+        points: 5,
+        outer: OUTER,
+        inner: INNER,
+        half_height: H,
+        round: 0.0,
+        chamfer: 0.0,
+    })
+    .expect("tem filete");
+    println!("  limite do filete = {limite:.4}");
+    for r in [0.0_f32, limite * 0.5, limite] {
+        // ⚠️ Estrela ALTA: a `z = 0` a laje não participa, e o que se lê é só a parede.
+        let f = Field::new(
+            &FieldDoc::new(
+                vec![Node::new(
+                    Xform::IDENTITY,
+                    NodeKind::Leaf(Primitive::Star {
+                        points: 5,
+                        outer: OUTER,
+                        inner: INNER,
+                        half_height: 5.0,
+                        round: r,
+                        chamfer: 0.0,
+                    }),
+                )],
+                NodeId(0),
+            )
+            .expect("a estrela alta"),
+        );
+        println!("\n  round = {r:.4}");
+        println!("   profundidade |  giro do gradiente atravessando a bissectriz");
+        // A ponta está em φ = 0, raio OUTER. Andamos para dentro pela bissectriz.
+        for prof in [0.02_f64, 0.05, 0.08, 0.12, 0.16, 0.20] {
+            let x = f64::from(OUTER) - prof;
+            let h = 1.0e-4;
+            let grad = |x: f64, y: f64| {
+                let gx = f.at(x + h, y, 0.0) - f.at(x - h, y, 0.0);
+                let gy = f.at(x, y + h, 0.0) - f.at(x, y - h, 0.0);
+                let l = gx.hypot(gy).max(1.0e-15);
+                (gx / l, gy / l)
+            };
+            let (ax, ay) = grad(x, -3.0 * h);
+            let (bx, by) = grad(x, 3.0 * h);
+            let giro = (ax * bx + ay * by).clamp(-1.0, 1.0).acos().to_degrees();
+            println!(
+                "        {prof:.3}    |  {giro:>6.1}°   (f = {:+.5})",
+                f.at(x, 0.0, 0.0)
+            );
+        }
+    }
+}
+
+/// **SONDA (W142)** — o ALCANCE da ponta na tampa: a cura não pode estar a cortar mais fundo.
+#[test]
+#[ignore = "sonda: imprime o alcance"]
+fn probe_the_tip_reach_on_the_cap() {
+    let base = Primitive::Star {
+        points: 5,
+        outer: OUTER,
+        inner: INNER,
+        half_height: H,
+        round: 0.0,
+        chamfer: 0.0,
+    };
+    let limite = ph2d_field::round_limit(&base).expect("tem filete");
+    let c = limite * 0.5;
+    for (rot, r, ch) in [
+        ("vivo", 0.0, 0.0),
+        ("so' chanfro", 0.0, c),
+        ("par", c * 0.5, c),
+        ("so' filete", c * 0.5, 0.0),
+    ] {
+        let f = estrela(r, ch);
+        // O alcance ao longo da bissectriz da ponta (φ = 0), na PAREDE e na TAMPA.
+        let alcance = |z: f64| {
+            let (mut lo, mut hi) = (0.0_f64, 1.0_f64);
+            for _ in 0..60 {
+                let m = f64::midpoint(lo, hi);
+                if f.at(m, 0.0, z) <= 0.0 {
+                    lo = m
+                } else {
+                    hi = m
+                }
+            }
+            lo
+        };
+        println!(
+            "  {rot:<12} (r={r:.5} c={ch:.5}): parede {:.5} | tampa {:.5}",
+            alcance(0.0),
+            alcance(f64::from(H) - 1.0e-4)
+        );
+    }
+}
+
+/// **SONDA (W142)** — o PREÇO da cura, em passos de marcha (régua imune ao relógio).
+#[test]
+#[ignore = "sonda: imprime os passos"]
+fn probe_what_the_second_profile_costs_the_march() {
+    let base = Primitive::Star {
+        points: 5,
+        outer: OUTER,
+        inner: INNER,
+        half_height: H,
+        round: 0.0,
+        chamfer: 0.0,
+    };
+    let limite = ph2d_field::round_limit(&base).expect("tem filete");
+    let c = limite * 0.5;
+    for (rot, r, ch) in [
+        ("vivo", 0.0, 0.0),
+        ("so' filete", c, 0.0),
+        ("so' chanfro", 0.0, c),
+        ("par (trabalho)", c * 0.5, c),
+        ("par (saturacao)", c, c),
+    ] {
+        let doc = FieldDoc::new(
+            vec![Node::new(
+                Xform::IDENTITY,
+                NodeKind::Leaf(Primitive::Star {
+                    points: 5,
+                    outer: OUTER,
+                    inner: INNER,
+                    half_height: H,
+                    round: r,
+                    chamfer: ch,
+                }),
+            )],
+            NodeId(0),
+        )
+        .expect("a estrela");
+        let f = Field::new(&doc);
+        let passo = f64::from(ph2d_field_eval::safe_march_step(&doc));
+        // Um raio RASANTE, de longe, apontado a um ponto da tampa perto de uma ponta.
+        let de = [2.0_f64, 0.0, 1.2];
+        let alvo = [0.30_f64, 0.0, 0.25];
+        let v = [alvo[0] - de[0], alvo[1] - de[1], alvo[2] - de[2]];
+        let m = (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt();
+        let dir = [v[0] / m, v[1] / m, v[2] / m];
+        let (mut p, mut andou, mut passos) = (de, 0.0_f64, 0_u32);
+        while passos < 20_000 && andou < 8.0 {
+            let d = f.at(p[0], p[1], p[2]);
+            if d < 1.0e-4 {
+                break;
+            }
+            let a = d * passo;
+            for k in 0..3 {
+                p[k] += dir[k] * a;
+            }
+            andou += a;
+            passos += 1;
+        }
+        // ⭐ **O tamanho da ÁRVORE**, que é o custo por amostra — a outra metade do preço, e também
+        // imune ao relógio.
+        let mut ctx = fidget::context::Context::new();
+        let raiz = ctx.import(&ph2d_field_eval::compile(&doc));
+        let nos = ctx.len();
+        let _ = raiz;
+        println!(
+            "  {rot:<16} (r={r:.5} c={ch:.5}): {passos} passos, {nos} nos, passo seguro {passo:.4}"
+        );
+    }
+}

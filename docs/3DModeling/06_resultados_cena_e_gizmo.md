@@ -10885,7 +10885,7 @@ quando o aro lá chegava.
 é `14,3°`. Logo não é «o filete do par é metade do outro» — é o chanfro a deixar as duas facetas.
 
 ⇒ o gate deixou de ter um **tecto em graus** (`RAZAO_BLOQUEADA = 48`) e passou a ter uma
-**igualdade analítica** (`the_star_pair_crease_is_exactly_the_angle_the_two_rim_facets_make`), que
+**igualdade analítica** (`the_star_rim_vertex_is_that_angle_and_the_fillet_erases_it`), que
 reprova nos **dois** sentidos: encolher aquele número significa voltar a cortar a mais.
 ⚠️ *Subir o tecto de `48` para `85` teria sido a catraca a virar licença* — o modo de falha que
 [esta casa mede desde 30/08](../architecture/decisions/) e que o censo irmão já apanhara três vezes.
@@ -10913,7 +10913,7 @@ usava**):
 - `the_chamfer_recess_is_the_number_the_slider_says`
 - `the_chamfer_plane_is_a_true_distance_at_every_angle`
 - `a_fillet_that_outgrows_the_facet_eats_the_chamfer_without_a_step`
-- `the_star_pair_crease_is_exactly_the_angle_the_two_rim_facets_make` (+ o censo irmão)
+- `the_star_rim_vertex_is_that_angle_and_the_fillet_erases_it` (+ o censo irmão)
 
 | mutação | mortes |
 |---|---|
@@ -14175,3 +14175,171 @@ wave com espec própria, e ⛔ não se começa por escrever a fórmula: começa-
 construção actual entrega de bom, para não a perder.
 
 **Smoke:** *MODEL* > **A** > *Star*, e subir o **Chamfer** sozinho — o miolo fica plano.
+
+## §142 — O FILETE não pegava as arestas depois do chanfro, e a raiz é o EIXO MEDIAL (08/09)
+
+> **Report do Enio, 08/09, duas fotos:** *«muito melhor! Mais o fillet não pega todas as arestas
+> após usar chamfer»*
+
+### §142.1 — A régua que faltava: o gate irmão media o ÂNGULO e era cego à FRACÇÃO
+
+O `the_chamfer_never_makes_an_edge_worse_than_the_fillet_alone` compara o **pior giro da normal** e
+tem barra de **razão** (`2,60×`). Ele estava **verde** sobre este defeito — e continua certo: uma
+forma pode manter `11 %` da superfície sobre um vinco de `48°` sem que o pior ângulo mude de classe.
+
+⭐ *Duas perguntas, duas réguas:* **quão mau é o pior** (o ângulo) e **quantos sítios estão maus** (a
+fracção). É a segunda que o olho lê como *«esta aresta ficou por arredondar»*, e ela nunca tinha sido
+corrida com o par ligado.
+
+Posta a correr com o **mesmo filete dos dois lados** (`0,5 × limite`) e só o chanfro a mudar
+(`probe_whether_the_chamfer_costs_the_fillet_its_reach`), ela nomeia a população inteira:
+
+| forma | só filete | com chanfro | delta |
+|---|---:|---:|---:|
+| `pie` | `2,57 %` | `15,01 %` | `+12,44` |
+| `cloud` | `1,41 %` | `6,72 %` | `+5,31` |
+| `spiral` | `3,12 %` | `8,31 %` | `+5,19` |
+| **`star`** | **`0,00 %`** | **`3,37 %`** | **`+3,37`** |
+| `circle_wave` | `0,00 %` | `2,95 %` | `+2,95` |
+| `drop` | `2,05 %` | `4,11 %` | `+2,06` |
+
+⇒ *não é uma forma, é uma família* — e as outras **43** ficam em `+0,00`.
+
+### §142.2 — Onde a crista fica, e a conta que a prevê ao 4.º decimal
+
+Todos os vincos que sobram na estrela estão em `polar = k·72°` (as **pontas**), `|z| ≈ 0,2385` (o
+**aro**) e a um raio que **depende do filete**:
+
+| filete | raio medido | `outer − round/sin α` |
+|---|---:|---:|
+| `0,50 × limite` | `0,3541` | `0,3537` |
+| `0,25 × limite` | `0,4019` | `0,4019` |
+
+⭐ `round/sin α` é a distância do vértice ao **centro do arco** do filete da ponta. *A crista começa
+exactamente onde o arco acaba.*
+
+### §142.3 — O mecanismo: o plano do chanfro SOMA o campo das paredes
+
+O plano do chanfro do aro é `(tampa + paredes + c)·√½` — ele **soma** o campo do contorno, logo herda
+**toda crista que esse campo tenha**. E o campo de um contorno 2D tem uma: o **EIXO MEDIAL**. Numa
+quina convexa arredondada de raio `r`, o eixo medial começa no centro do arco, isto é, à profundidade
+`r` abaixo da superfície.
+
+Medido directamente no campo das paredes (estrela alta, `probe_whether_the_wall_field_has_a_ridge_at_the_tip`),
+o giro do gradiente ao atravessar a bissectriz da ponta:
+
+| profundidade | `round = 0` | `round = 0,0317` |
+|---|---:|---:|
+| `0,020` | `141,7°` | `0,4°` |
+| `0,050` | `141,7°` | `0,7°` |
+| `0,080` | `141,7°` | `2,1°` |
+| `0,120` | `141,7°` | **`141,7°`** |
+| `0,200` | `141,7°` | `141,7°` |
+
+O degrau cai entre `0,08` e `0,12`, e o centro do arco está em `round/sin α = 0,0963`.
+
+⇒ **a faceta do chanfro atravessa o eixo medial sempre que `chamfer > round`**, e ali ela deixa de
+ser um plano: passa a ser um **telhado**, com uma cumeeira sobre a bissectriz da ponta.
+
+⭐⭐⭐ **E é por isso que o filete não lhe pega: a cumeeira vive DENTRO DE UMA PEÇA da mistura, e uma
+mistura arredonda ENTRE peças.** *Nenhum filete arredonda uma aresta que esteja dentro de uma peça
+só* — a lei nova desta wave.
+
+**A/B por mutação, as duas metades separadas:**
+
+| mutação | `c=.5 r=.5` | `c=.5 r=.25` |
+|---|---:|---:|
+| como estava | `3,74 %` · `48,8°` | `10,23 %` · `82,0°` |
+| chanfro fora da **PONTA** | `3,74 %` · `48,8°` | `10,23 %` · `82,0°` |
+| chanfro fora do **ARO** | **`0,00 %`** · `7,2°` | **`0,00 %`** · `14,2°` |
+
+⇒ *o defeito é 100 % do chanfro do aro*, e a primeira mutação sai **byte-idêntica** porque naquele
+ponto de trabalho o filete já come a faceta da ponta (`facet_fillet_limit`).
+
+### §142.4 — A cura: um SEGUNDO perfil, só para o plano do chanfro
+
+`ph2d_field_eval::ops_slab::slab_and_walls_from` recebe **dois** contornos: o das paredes é o
+autorado, e o que constrói os planos do chanfro tem as quinas arredondadas a **`round + chamfer`**.
+
+⭐ **O número não é escolhido, é a conta:** com `R = round + chamfer` o eixo medial começa `round`
+abaixo do ponto mais fundo da faceta, que nunca o toca; e a fronteira interior da faceta — o novo
+bordo da tampa — fica com raio `R − chamfer = round` **em planta**, que é exactamente o filete que o
+artista pediu. *É o filete do vértice escrito no perfil, e não uma suavização.*
+
+⚠️ **A parede continua a ser a autorada** — só as arestas da mistura n-ária vêem o perfil liso —, e
+por isso a silhueta da peça não se mexe.
+
+Fracção da superfície sobre um vinco, estrela, antes → **depois** (`probe_the_pair_grid`):
+
+| chanfro \ filete | `0,25` | `0,375` | `0,5` | `0,625` | `0,75` |
+|---|---:|---:|---:|---:|---:|
+| `0,25` | `3,36` → **`0,00`** | `1,63` → **`0,00`** | `0,59` → **`0,00`** | `0,79` → **`0,00`** | `0,30` → **`0,00`** |
+| `0,50` | `11,02` → **`0,00`** | `6,67` → **`0,00`** | `4,35` → **`0,00`** | `1,58` → **`0,00`** | `1,43` → `0,25` |
+| `0,75` | `14,97` → **`0,00`** | `14,03` → `0,15` | `9,19` → `0,40` | `5,93` → `0,49` | `5,04` → `2,62` |
+
+⚠️ **O chanfro SOZINHO fica byte-idêntico** (a coluna `r = 0` não se mexe: `25,10` · `32,66` ·
+`30,14` · `27,12` · `23,02`), porque a cura só arma com o filete ligado — *não há filete para
+alcançar quando não há filete*, e aquela é a peça que o dono aprovou na 1.ª foto.
+
+### §142.4-bis — O gate analítico da W111 foi RE-DERIVADO, não afrouxado
+
+A `the_star_rim_vertex_is_that_angle_and_the_fillet_erases_it` (era
+`..._pair_crease_is_exactly_...`) reprovou com a cura no sítio: lia **`21,4°`** onde pedia `83,81°`.
+
+⚠️ **A premissa dela dissolveu, e ela media a configuração errada.** O vértice das duas facetas do
+aro existe — e mede **`83,8°`, contra os `83,81°` da conta** — mas isso é com o **chanfro SOZINHO**.
+Com o filete ligado ele passa a estar **filetado**, que é precisamente o que a wave comprou.
+
+⇒ o gate ficou com **três** metades, e as três mordem:
+
+| metade | mede | lê |
+|---|---|---:|
+| (a) a lei do vértice | só chanfro, contra `arccos((κ+1)/2)` | `83,8°` vs `83,81°` |
+| (b) o filete apaga-o | com o par, abaixo de metade do vértice | `21,4°` |
+| (c) **e não foi cortando** | o alcance da ponta a meia altura, contra o filete sozinho | `0,41762` = `0,41762` |
+
+⛔ **A (c) é o que impede a (b) de premiar «comer a ponta»**, e as três estão provadas por mutação:
+sem a cura a (b) morre (`82,4°`); com uma cura que mexa no perfil das PAREDES a (c) morre
+(`0,38523` contra `0,41762`).
+
+⭐ **E o alcance é byte-idêntico antes e depois da cura em TODAS as configurações medidas** (parede
+`0,45000` · `0,42009` · `0,41762`; tampa `0,45000` · `0,35388` · `0,29334`) — *a cura apaga o vinco
+sem mover a superfície um só dígito.*
+
+### §142.4-ter — O PREÇO, medido nas duas réguas imunes ao relógio
+
+⚠️ **Nenhuma leitura de relógio vale hoje** (`load 41`, com outra worktree a correr a suíte dela),
+então o preço mede-se em **passos de marcha** e em **nós da árvore** — as duas grandezas que não
+dependem da máquina.
+
+| configuração | passos | nós |
+|---|---|---|
+| viva | `14` → `14` | `154` → `154` |
+| só filete | `18` → `18` | `371` → `371` |
+| só chanfro | `19` → `19` | `204` → `204` |
+| **par (trabalho)** | `57` → **`50`** | `499` → **`804`** |
+| **par (saturação)** | `52` → **`40`** | `498` → **`804`** |
+
+⭐ **A marcha ficou mais BARATA** (`−12 %` e `−23 %` de passos): uma crista no campo é um sítio onde
+ele **subestima** a distância, e apagá-la aperta o campo. ⚠️ **E a árvore cresceu `61 %`** — o
+segundo contorno é um segundo perfil a sério.
+
+⇒ *as duas metades andam em sentidos opostos, e o líquido não foi medido porque hoje não há relógio
+que valha.* O crescimento só existe com os **dois** sliders ligados; com um só, a árvore é a de
+sempre, nó a nó.
+
+### §142.5 — ⏳ O que fica ABERTO, com o mecanismo nomeado
+
+1. **O canto `chanfro + filete > tecto`.** O perfil do plano é preso no tecto da forma, e aí a margem
+   sobre o chanfro deixa de ser `round`. É o único sítio onde a fracção ainda sobe (`c=.875 r=.875`:
+   `8,40 %` → `7,76 %`). *A cerca é a mesma que já limita cada slider; ela não some por dois estarem
+   no máximo.*
+2. **As outras cinco formas da família.** A cura da estrela é *re-arredondar uma QUINA*, e nem todas
+   têm quina: o eixo medial de uma **faixa** (`circle_wave`, `bezier`) é a linha do meio dela, e o de
+   um **sector** (`pie`) parte de um ápice que corta a seco **por medição** (arredondá-lo põe
+   `‖∇f‖ = 1,50` contra o `1,41` que a marcha aguenta). ⇒ a cura geral é **decompor o perfil** e
+   entregar as peças, que é o que a `plate_joint_n` já faz para perfis de intersecção — e a estrela
+   não pode usá-la porque o perfil dela é uma **união**. É wave com espec própria.
+
+**Smoke:** *MODEL* > **A** > *Star*, subir o **Chamfer** e depois o **Fillet** — as pontas passam a
+arredondar como o resto do aro.

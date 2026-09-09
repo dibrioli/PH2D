@@ -181,7 +181,7 @@ impl Edge {
 /// o aro lá chegava.*
 ///
 /// ⇒ o gate deixou de ter um tecto em graus e passou a ter uma **igualdade analítica**
-/// (`the_star_pair_crease_is_exactly_the_angle_the_two_rim_facets_make`), que reprova nos dois
+/// (`the_star_rim_vertex_is_that_angle_and_the_fillet_erases_it`), que reprova nos dois
 /// sentidos — encolher aquele número significa voltar a cortar a mais.
 ///
 /// # ⛔ O que FICA de fora, e a medição que o mantém lá

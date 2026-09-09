@@ -53,6 +53,7 @@ pub(crate) mod ops_norm;
 /// ⭐ Os blocos 2D partilhados por toda chapa — ver [`ops_plate2d`].
 pub(crate) mod ops_plate2d;
 pub mod ops_plates;
+pub mod ops_slab;
 pub mod ops_solids;
 /// ⭐ A ESPIRAL por fórmula — ver [`ops_spiral`].
 pub mod ops_spiral;

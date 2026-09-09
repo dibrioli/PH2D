@@ -262,6 +262,10 @@ mod dims_write_coerce;
 /// ⭐ E os DOIS RECUOS de uma aresta, do lado da escrita — ver [`dims_write_edge`].
 #[path = "dims_write_edge.rs"]
 mod dims_write_edge;
+/// ⭐ **A folga relativa com que uma aresta se encosta ao tecto dela** — exportada porque a
+/// `ph2d-field-eval` precisa do MESMO número ao derivar o perfil do plano do chanfro (W142).
+/// ⛔ *Uma segunda constante ali poria a lei em dois sítios.*
+pub use dims_write_edge::ROUND_MARGIN;
 /// ⭐ As arms das formas por FÓRMULA — ver [`dims_write_formula`].
 #[path = "dims_write_formula.rs"]
 mod dims_write_formula;

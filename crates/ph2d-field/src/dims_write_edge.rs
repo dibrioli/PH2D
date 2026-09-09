@@ -280,4 +280,4 @@ pub fn clamp_round(p: &mut Primitive) -> bool {
 }
 
 /// A folga entre o filete máximo e a parede, em fração da parede. Ver [`clamp_round`].
-pub(super) const ROUND_MARGIN: f32 = 1.0e-3;
+pub const ROUND_MARGIN: f32 = 1.0e-3;

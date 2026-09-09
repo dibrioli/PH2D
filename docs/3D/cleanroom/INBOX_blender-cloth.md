@@ -1078,3 +1078,53 @@ alvo e' um interruptor, e os cinco tipos do filtro nao querem a mesma coisa.
 - **Q23.6** — censo do PAINEL do filtro: ha' algum controlo que limite esticao, conserve volume ou
   enrijeca dobra? (a §5.7 diz que o solver nao os tem; a pergunta e' sobre a superficie que o artista
   ve', para a nossa declaracao de divergencia nomear o que acrescentamos).
+
+---
+
+## INCIDENTE §6 — a janela I leu a §7 ANTES de ela estar atestada (2026-09-09, sessao 1246816c)
+
+**Registo, sem reproduzir nada** (§6.1: o registo DESCREVE, nunca REPRODUZ).
+
+- **Origem:** a espec `SPEC_cloth_brush.md`, secao **§7** (a tabela dos cinco tipos do filtro) e
+  **§10.17**, lidas por esta janela em 2026-09-09, no inicio da jornada, para diagnosticar o report
+  do dono sobre o *Inflate*.
+- **O que se soube depois:** o R-pre ATRASADO da emenda de **2026-09-07** (que introduziu a §7
+  alargada, a §7.1 e a §10.17) reportou, no mesmo dia, **um achado de expressao** — descrito por ele
+  como uma justificacao re-dita quase-verbatim de um comentario do alvo, **na linha de um dos cinco
+  tipos do §7** — e curou-a por re-expressao no commit `1cea3d701`. ⚠️ Essa emenda **nunca tinha sido
+  atestada**: foi o R-pre da emenda seguinte (Q23) que apanhou a lacuna, e esta janela leu a §7 no
+  estado NAO atestado.
+- **Extensao:** uma linha de tabela, dentro de um bloco que esta janela leu por inteiro. Esta janela
+  **nao sabe qual** das cinco linhas era, e ⛔ **nao vai perguntar** — identificar o trecho e' trabalho
+  do R, que pode ve'-lo.
+- **Quando:** antes de qualquer codigo de produto desta jornada.
+
+### O que fica em QUARENTENA (§6.3)
+
+Todo o codigo de produto que esta janela escreveu DEPOIS daquela leitura, nesta linha, em seis
+commits locais (⛔ nao integrados, nao pushados):
+
+| commit | o que toca |
+|---|---|
+| `1e7495666` | `ClothFilterKind::muda_o_material` + o re-semear do material no `cloth_filter_begin`; o peso de arrasto do `tau` do Expand |
+| `2fa571890` | o quantizador do arrasto no `cloth_filter_step` (`PASSO_DE_ARRASTO`, `passos_por_chamada`) |
+| `4c50a1227` | clippy |
+| `aa12f36a2` | a bancada do oraculo (invocacoes repetidas + base persistente) |
+| `f4fd3d215` | o *Filter Strength* (a forca de base no arm `Accionamento::Filtro`) |
+| + os dois de docs | `docs/3D/cloth/12_...` e a cena de smoke |
+
+### As duas perguntas ao R (⚠️ §6.2: **o R decide, nunca a janela interessada**)
+
+- **A.** A exposicao e' **relance** ou **substancial** pela regua do §6.2 (assinatura/nome isolado
+  visto de relance contra corpo de funcao / bloco de ~10+ linhas / comentario inteiro)? Se
+  substancial, esta janela esta' queimada como I para este modulo e escreve o BLOCO-RETOMADA.
+- **B.** A quarentena: compare as regioes da tabela acima contra o trecho exposto (que o R pode ver).
+  ⭐ **O que esta janela afirma sobre a proveniencia de cada uma**, para o R conferir e nao para
+  substituir o exame dele:
+  - `muda_o_material` — a particao dos cinco tipos saiu de MEDICAO propria (o censo da familia:
+    tres gestos de cada tipo, volume normalizado) e da §6.3/§6.4, **nao** da tabela da §7;
+  - o quantizador e o peso do `tau` — sairam de medicao propria (a varredura de amostragem) e dos
+    **cabecalhos das fixtures** (`avanco_por_passo_px`), que sao dado;
+  - o *Filter Strength* — saiu da FORMULA da §7 (`S = forca_base . dpx . 0,001 . escala_UI`) e do
+    censo de controlos do E (Q23.6), que e' uma lista de rotulos publicos;
+  - a bancada — le' os ficheiros do corpus.

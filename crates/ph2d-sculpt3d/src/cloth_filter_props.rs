@@ -135,6 +135,19 @@ pub struct ClothFilterProps {
     /// ⚠️ `0` = o pano de sempre (a lei do alvo, que também não tem dobra) e é a
     /// omissão; subir engrossa a onda.
     pub bend: f32,
+    /// ⭐⭐⭐ ***Strength*** — o multiplicador da resposta ao arrasto (espec §7:
+    /// `S = força_base · Δpx · 0,001 · escala_UI`).
+    ///
+    /// ⛔⛔ **Ele EXISTE no alvo e faltava-nos** — achado pelo censo do painel
+    /// dele em 2026-09-09 (emenda Q23.6: são `8` controlos, e este era o único
+    /// deles sem par aqui). Sem ele a única maneira de o artista pedir mais era
+    /// **arrastar mais**, e a resposta é quadrática no arrasto.
+    ///
+    /// ⚠️ **Ele multiplica a FORÇA, nunca o arrasto** — o arrasto é que decide
+    /// quantos passos de simulação correm
+    /// ([`crate::stroke_cloth_filter::PASSO_DE_ARRASTO`]); escalar os dois seria
+    /// quadrático no *Strength*, que não é a lei.
+    pub strength: f32,
     /// ⭐⭐⭐ ***Preserve Volume*** — quanto do volume de repouso a peça mantém
     /// (`0` desliga, `1` = todo).
     ///
@@ -171,6 +184,13 @@ impl ClothFilterProps {
     pub const VOLUME: (f32, f32) = (0.0, 1.0);
     /// Faixa da rigidez de dobra. `0` = sem modelo de dobra.
     pub const BEND: (f32, f32) = (0.0, 1.0);
+    /// Faixa da força — **a do alvo**, `−10..10` (espec §7).
+    ///
+    /// ⚠️ **O negativo não é um erro de sinal: é o gesto para trás.** No alvo o
+    /// arrasto para a esquerda dá `S < 0` e inverte a força; com a força de base
+    /// negativa o mesmo arrasto para a direita faz o mesmo. *Tirar o lado
+    /// negativo tiraria metade do controlo.*
+    pub const STRENGTH: (f32, f32) = (-10.0, 10.0);
 
     /// ⚠️ **Preso na PORTA**, e não em quem lê: o device não tem opinião, e uma
     /// massa negativa ou zero varreduras seriam uma divisão por zero dentro do
@@ -188,6 +208,7 @@ impl ClothFilterProps {
             stretch_max: self.stretch_max.clamp(Self::STRETCH.0, Self::STRETCH.1),
             volume: self.volume.clamp(Self::VOLUME.0, Self::VOLUME.1),
             bend: self.bend.clamp(Self::BEND.0, Self::BEND.1),
+            strength: self.strength.clamp(Self::STRENGTH.0, Self::STRENGTH.1),
         }
     }
 
@@ -244,6 +265,8 @@ impl Default for ClothFilterProps {
             // ⚠️ A dobra nasce em `0` — o alvo não a tem, e é ela que decide o
             // TAMANHO da ruga, não se ela existe.
             bend: 0.0,
+            // ⭐ A omissão do alvo, byte a byte.
+            strength: 1.0,
             // ⚠️ O volume nasce DESLIGADO — o dono pediu *«a possibilidade de
             // manter volume»*, que é uma opção, não uma lei.
             volume: 0.0,

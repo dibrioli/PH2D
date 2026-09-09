@@ -108,6 +108,12 @@ pub const SCULPT3D_CFILTER_SWEEPS_NUM: NodeId = hash_node_id("sculpt3d.cfilter_s
 pub const SCULPT3D_CFILTER_STRETCH: NodeId = hash_node_id("sculpt3d.cfilter_stretch");
 /// Chip ligado a [`SCULPT3D_CFILTER_STRETCH`].
 pub const SCULPT3D_CFILTER_STRETCH_NUM: NodeId = hash_node_id("sculpt3d.cfilter_stretch_num");
+/// ⭐⭐⭐ ***Strength* do FILTRO** — o multiplicador da resposta ao arrasto.
+/// ⚠️ **O alvo TEM-NO e nós é que não tínhamos** (censo do painel dele, 09/09):
+/// sem ele a única maneira de pedir mais era arrastar mais.
+pub const SCULPT3D_CFILTER_STRENGTH: NodeId = hash_node_id("sculpt3d.cfilter_strength");
+/// Chip ligado a [`SCULPT3D_CFILTER_STRENGTH`].
+pub const SCULPT3D_CFILTER_STRENGTH_NUM: NodeId = hash_node_id("sculpt3d.cfilter_strength_num");
 /// ⭐⭐⭐ ***Bend Stiffness* do FILTRO** — o TAMANHO das rugas.
 /// ⚠️ O alvo não tem modelo de dobra nenhum, e é por isso que sem este número
 /// nenhuma combinação dos outros podia mudar a onda.

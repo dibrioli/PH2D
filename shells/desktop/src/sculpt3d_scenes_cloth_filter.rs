@@ -167,6 +167,11 @@ pub(crate) fn announce() {
          [sculpt3d]        que o resultado final seja o mesmo.\n\
          [sculpt3d]        DEU ERRADO SE: o arrasto lento continuar a fazer MUITO mais que o\n\
          [sculpt3d]        rapido, ou se um arrasto pequeno (menos de um dedo) nao fizer nada.\n\
+         [sculpt3d]        ⭐ E ha' um controlo NOVO para isso: *Filter Strength*. Ele\n\
+         [sculpt3d]        multiplica a resposta -- em 2 o mesmo arrasto faz o dobro, em 0\n\
+         [sculpt3d]        nao faz nada, e em -1 faz ao contrario sem voce voltar com a mao.\n\
+         [sculpt3d]        (O Blender tem-no e nos e' que nao tinhamos; achei-o ao contar os\n\
+         [sculpt3d]        controlos do painel dele.)\n\
          [sculpt3d]    ⚠️ A fileira de cima (Filter) sao as leis de MALHA, que ja' existiam.\n\
          [sculpt3d]        So' UMA das duas fileiras tem chip aceso de cada vez -- se as duas\n\
          [sculpt3d]        acenderem juntas, reporte."

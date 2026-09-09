@@ -173,6 +173,7 @@ fn a_porta_prende_os_numeros_do_filtro() {
         stretch_max: f32::INFINITY,
         volume: 9.0,
         bend: -1.0,
+        strength: -99.0,
     }
     .clamped();
     assert_eq!(louco.mass, ClothFilterProps::MASS.1);
@@ -186,6 +187,9 @@ fn a_porta_prende_os_numeros_do_filtro() {
     assert_eq!(louco.stretch_max, ClothFilterProps::STRETCH.1);
     assert_eq!(louco.volume, ClothFilterProps::VOLUME.1);
     assert_eq!(louco.bend, ClothFilterProps::BEND.0);
+    // ⚠️ A faixa da força é a ÚNICA que desce abaixo de zero — o lado negativo é
+    // o gesto para trás, e o piso dela é `−10`, não `0`.
+    assert_eq!(louco.strength, ClothFilterProps::STRENGTH.0);
     // E um valor legal atravessa intocado.
     let bom = ClothFilterProps {
         mass: 0.5,
@@ -196,6 +200,7 @@ fn a_porta_prende_os_numeros_do_filtro() {
         stretch_max: 1.25,
         volume: 0.5,
         bend: 0.4,
+        strength: -2.5,
     };
     assert_eq!(
         bom.clamped(),

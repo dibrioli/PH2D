@@ -145,10 +145,20 @@ impl PincelTecido {
                 0.1 * alpha * flip * pressao,
                 1.0,
             ),
+            // ⭐ **A força de base do filtro é o `forca` do pincel** (espec §7:
+            // `S = força_base · Δpx · 0,001 · escala_UI`) — ⛔ **não** o `alpha`
+            // do traço, que é o quadrado. ⚠️ As `27` fixtures do filtro correm
+            // todas com `forca 1.0` no cabeçalho, logo isto é um no-op **ao bit**
+            // sobre o corpus inteiro; quem o move é o artista, pelo *Strength*.
             Accionamento::Filtro { s } => {
                 let avanco = (s - self.arrasto_anterior).abs() / QUANTUM_DE_ARRASTO;
                 self.arrasto_anterior = s;
-                (s, s, avanco)
+                // ⚠️ **O avanço lê o `s` CRU** — a força escala a resposta, não o
+                // caminho: multiplicar o arrasto pela força faria o *Strength*
+                // correr mais passos **e** empurrar mais em cada um, que é
+                // quadrático e não é a lei.
+                let f = s * self.pincel.forca;
+                (f, f, avanco)
             }
         };
         // ⚠️ Uma varredura, duas grandezas (espec §4.2-bis e §4.4): o mesmo disco

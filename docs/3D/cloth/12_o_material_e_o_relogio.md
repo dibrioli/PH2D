@@ -147,6 +147,23 @@ aprovou**: até 09/09 o ritmo de facto era `1` passo por quadro, e um arrasto de
 `16` passos numa peça de `18 242` vértices são `180 ms` num quadro. O arrasto que não coube **fica
 por consumir** e o quadro seguinte continua de onde este parou.
 
+### ⭐⭐ E o censo do painel do alvo achou um controlo que nos FALTAVA: o *Strength*
+
+O alvo tem `8` controlos no filtro — *Filter Type · Strength · Force Axis · Orientation · Cloth
+Mass · Cloth Damping · Use Face Sets · Use Collisions* — e este era o **único sem par aqui**: a
+nossa força de base estava presa em `1,0`. ⇒ a única maneira de o artista pedir mais era **arrastar
+mais**, e a resposta é **quadrática** no arrasto.
+
+⚠️ **Ele multiplica a FORÇA, nunca o arrasto** — o arrasto é que decide quantos passos correm;
+escalar os dois seria quadrático no *Strength*. Medido: força `1` move `0,598400`, força `2` move
+`1,196801` (**exactamente o dobro**), força `0` move `0,000000`, e força `−1` faz ao contrário.
+⚠️ **A faixa é a do alvo e desce a `−10`** — é a única faixa do painel do filtro com piso negativo,
+e o negativo é o gesto para trás sem a mão voltar.
+
+⛔ O gate `a_forca_do_filtro_chega_ao_efeito` mede as **quatro** metades (linear · zero · sinal ·
+alcança), porque um controlo pode estar vivo, alcançável e **projectado fora** pela matemática que o
+lê — e nenhuma sonda de *«quem lê este campo?»* vê isso, porque ele **é** lido.
+
 ---
 
 ## §4 — O `τ` do Expand contava EVENTOS

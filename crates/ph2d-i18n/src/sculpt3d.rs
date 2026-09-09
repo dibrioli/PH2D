@@ -78,6 +78,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.sculpt3d.cfilter_sweeps" => "Filter Quality",
         "panel.sculpt3d.cfilter_stretch" => "Stretch Limit",
         "panel.sculpt3d.cfilter_volume" => "Preserve Volume",
+        "panel.sculpt3d.cfilter_strength" => "Filter Strength",
         "panel.sculpt3d.cfilter_bend" => "Bend Stiffness",
         "panel.sculpt3d.cfilter_axis" => "Force Axis",
         "panel.sculpt3d.cfilter_collisions" => "Filter Collisions",

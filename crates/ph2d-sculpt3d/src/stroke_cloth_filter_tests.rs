@@ -167,6 +167,52 @@ fn o_efeito_do_filtro_segue_o_arrasto_e_nao_o_numero_de_eventos() {
     );
 }
 
+/// ⭐⭐⭐ **O *Strength* CHEGA AO EFEITO** — e este gate existe porque um controlo
+/// pode estar vivo, alcançável e **projectado fora** pela matemática que o lê
+/// (`CLAUDE.md` §5.0: *o consumidor que PROJECTA o valor fora* — nenhuma sonda de
+/// «quem lê este campo?» o vê, porque ele **é** lido).
+///
+/// ⚠️ Ele foi acrescentado em 09/09 por o censo do painel do alvo o nomear: são
+/// `8` controlos lá, e este era o único sem par aqui.
+#[test]
+fn a_forca_do_filtro_chega_ao_efeito() {
+    let com = |strength: f32| {
+        let mut mesh = plano();
+        let mut st = SculptStroke::default();
+        let props = ClothFilterProps {
+            strength,
+            ..ClothFilterProps::default()
+        };
+        st.cloth_filter_begin(&mesh, props, ClothFilterKind::Gravity, [0.0; 3]);
+        st.cloth_filter_step(&mut mesh, ClothFilterKind::Gravity, &passo(1.0));
+        mesh.positions().to_vec()
+    };
+    let base = plano().positions().to_vec();
+    let (fraca, forte, nula, negativa) = (com(1.0), com(2.0), com(0.0), com(-1.0));
+    let (df, dobro) = (desvio(&base, &fraca), desvio(&base, &forte));
+    println!(
+        "forca 1 move {df:.6}; forca 2 move {dobro:.6}; forca 0 move {:.6}",
+        desvio(&base, &nula)
+    );
+    assert!(df > 0.0, "a fixtura nao produz o fenomeno");
+    assert!(
+        dobro > df * 1.5,
+        "dobrar a forca nao dobrou a resposta ({df:.6} -> {dobro:.6}) -- o *Strength* \
+         chega ao solver e a matematica projecta-o fora"
+    );
+    assert_eq!(
+        desvio(&base, &nula),
+        0.0,
+        "com forca ZERO alguma coisa se moveu"
+    );
+    // ⭐ E o lado NEGATIVO é o gesto ao contrário: mesma magnitude, sentido
+    // oposto. ⛔ Sem esta metade, um `abs()` no caminho passaria despercebido.
+    assert!(
+        desvio(&fraca, &negativa) > df,
+        "a forca negativa deu o MESMO que a positiva -- o sinal esta' a ser comido"
+    );
+}
+
 /// ⭐⭐ **SÓ O APERTO LÊ O PONTO CONGELADO** — os outros quatro tipos dão o mesmo
 /// bloco de vértices, ao bit, com o cursor noutro sítio.
 ///

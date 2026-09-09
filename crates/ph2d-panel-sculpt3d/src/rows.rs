@@ -473,6 +473,9 @@ static BRUSH: &[Row] = &[
     // ⭐⭐⭐ **Os dois de 08/09 vêm PRIMEIRO, e são os únicos `Basic` do bloco** —
     // eles decidem se o pano é um pano; os outros quatro afinam um comportamento
     // que já está certo.
+    // ⭐ **A força vem primeiro de todas** — é o único deles que o alvo também
+    // tem, e é o dial que decide a MAGNITUDE de tudo o resto.
+    cloth_filter::CFILTER_STRENGTH,
     cloth_filter::CFILTER_STRETCH,
     cloth_filter::CFILTER_VOLUME,
     cloth_filter::CFILTER_BEND,

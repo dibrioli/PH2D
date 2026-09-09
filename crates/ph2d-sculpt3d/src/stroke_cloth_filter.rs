@@ -513,7 +513,9 @@ fn pincel_do_filtro(props: ClothFilterProps, kind: ClothFilterKind) -> Pincel {
         // Sem pincel não há curva; a constante deixa a intenção explícita para
         // quem ler, e o `factor_accionado` do filtro nem chega a consultá-la.
         curva: Curva::Constante,
-        forca: 1.0,
+        // ⭐ O *Strength* do artista (espec §7) — as `27` fixtures correm com
+        // `1.0`, que é a omissão, logo o corpus fica byte a byte.
+        forca: f64::from(props.clamped().strength),
         dureza: 0.0,
         pino: false,
         accionamento: Accionamento::Filtro { s: 0.0 },

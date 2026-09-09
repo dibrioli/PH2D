@@ -170,6 +170,31 @@ pub(super) const CFILTER_VOLUME: Row = Row {
 /// compra `+33 %` sobre isso. Quem quer couro reduz a malha primeiro — o botão
 /// de retopologia existe. ⛔ Decoupar a onda da malha é um solver hierárquico,
 /// que é obra com nome.
+/// ⭐⭐⭐ ***Strength*** — o multiplicador da resposta ao arrasto.
+///
+/// ⛔⛔ **Ele EXISTE no alvo e faltava-nos**: o censo do painel dele (09/09) deu
+/// `8` controlos — *Filter Type · Strength · Force Axis · Orientation · Cloth
+/// Mass · Cloth Damping · Use Face Sets · Use Collisions* — e este era o único
+/// sem par aqui. Sem ele a única maneira de o artista pedir mais era **arrastar
+/// mais**, e a resposta é **quadrática** no arrasto.
+///
+/// ⚠️ **A faixa é a do alvo e desce abaixo de zero** — o negativo é o gesto para
+/// trás sem o dedo voltar. É a única faixa do painel do filtro com piso negativo.
+pub(super) const CFILTER_STRENGTH: Row = Row {
+    label: "panel.sculpt3d.cfilter_strength",
+    slider: ids::SCULPT3D_CFILTER_STRENGTH,
+    chip: ids::SCULPT3D_CFILTER_STRENGTH_NUM,
+    min: ClothFilterProps::STRENGTH.0,
+    max: ClothFilterProps::STRENGTH.1,
+    step: 0.5, // LITERAL-PX-OK: passo de um multiplicador
+    decimals: 2,
+    get: |u| u.cloth_filter.strength,
+    set: |u, v| u.cloth_filter.strength = v,
+    show: is_cloth_filter,
+    level: UiLevel::Basic,
+    place: Place::Knobs,
+};
+
 pub(super) const CFILTER_BEND: Row = Row {
     label: "panel.sculpt3d.cfilter_bend",
     slider: ids::SCULPT3D_CFILTER_BEND,

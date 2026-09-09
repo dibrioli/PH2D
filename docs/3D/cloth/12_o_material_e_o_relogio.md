@@ -169,9 +169,27 @@ tem de derivar a conta certa.*
 
 ## §5 — Aberto
 
-- ⏳ **As dez corridas novas ainda não são todas gates** — o corpus do filtro passou de `17` para
-  `27` e o arnês (`oraculo_do_filtro.rs`) ganhou as invocações repetidas e a base persistente; o que
-  cada traço novo mede e com que barra é trabalho da wave seguinte.
+### ⭐⭐ E as dez corridas novas SÃO gates — nove dentro da barra à primeira
+
+O corpus do filtro passou de `17` para `27` e o arnês (`oraculo_do_filtro.rs`) ganhou as invocações
+repetidas e a base persistente (um campo: a nossa `Verlet::base`).
+
+| traço novo | erro | escala do oráculo | veredito |
+|---|---:|---:|---|
+| `plano_filtro_gravidade_repeticoes5` | `0,000000` | `0,108000` | ⭐ **ao bit** — o *Repeat* é morto nos dois lados |
+| `plano_filtro_gravidade_mascarado_3invocacoes` | `0,000003` | `0,323258` | ⭐⭐ à resolução do ficheiro |
+| `…_persistente` | `0,000005` | `0,180636` | ⭐⭐⭐ **a base persistente reproduz-se, recuo incluído** |
+| `…_persistente_sem_base` | `0,000003` | `0,323258` | ⭐⭐ o controlo |
+| `plano_filtro_escala_3invocacoes` | `0,007571` | `1,123135` | dentro da barra |
+| `plano_filtro_inflar_mascarado_3invocacoes_persistente` | `0,008544` | `0,178959` | dentro da barra |
+| `plano_filtro_inflar_mascarado_3invocacoes` | `0,019027` | `0,320599` | dentro da barra |
+| `esfera_filtro_inflar_3invocacoes` | `0,024871` | `0,280913` | acima do sorteio do alvo (`0,003184`) |
+| `esfera_filtro_inflar_36passos` | `0,094644` | `1,314746` | ⭐ **`1,28×` o ruído de realização do próprio alvo** (`0,073751`) |
+| `plano_filtro_expandir_3invocacoes` | `0,382781` | `1,118615` | ⛔ **aberto** — é o defeito do irmão de uma invocação, composto |
+
+⚠️ **A barra das duas de esfera tem um piso que não é nosso:** o alvo difere de si próprio entre
+realizações até `0,073751` na corrida longa (`5,6 %` do máximo dele). *Uma barra abaixo disso mede o
+sorteio do oráculo, não a nossa lei.*
 - **O `Expand` continua a ser o mais violento dos cinco** mesmo com o `τ` parametrizado pelo
   arrasto: um arrasto de ecrã inteiro leva o volume a `2,4×`. Ele é o único tipo que mexe no
   repouso, logo o **tecto de esticão não o mede** — o tecto compara contra um comprimento que a

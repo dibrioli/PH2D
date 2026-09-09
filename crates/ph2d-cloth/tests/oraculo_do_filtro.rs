@@ -28,6 +28,24 @@
 //! realizações), o que faz do plano o sítio de toda régua exacta; a **esfera** é
 //! a única que sorteia (`0,001015`), e esse número tem de entrar em qualquer
 //! barra que a use.
+//!
+//! # ⭐⭐⭐ As INVOCAÇÕES REPETIDAS (emenda Q23, 2026-09-09 — espec §10.18)
+//!
+//! O corpus passou de `17` para `27` corridas, e as dez novas medem o que
+//! atravessa **um gesto**: o filtro aberto e largado `3` vezes seguidas sobre a
+//! mesma peça. ⚠️ **A simulação nasce e morre com cada invocação** (espec §6.3),
+//! logo a seguinte constrói as restrições da malha **deformada** — e é por isso
+//! que a deformação compõe.
+//!
+//! ⭐⭐ **Três delas são um trio, e só juntas decidem:** a que compõe, a que lê a
+//! **base persistente** (e por isso **RECUA** na 3.ª invocação — `0,2125` para
+//! `0,1806`) e o **controlo** da opção ligada com a base por gravar, que sai
+//! byte a byte igual à de opção desligada. *Sem o controlo, a leitura ingénua
+//! atribuiria o efeito ao interruptor em vez de à base.*
+//!
+//! ⛔⛔ **E as duas de esfera têm um piso que não é nosso** — a dispersão do
+//! próprio alvo entre realizações: `0,003184` a 24 passos e **`0,073751`** a 36
+//! (`5,6 %` do máximo dele). *Uma barra abaixo disso mede o sorteio do oráculo.*
 
 use ph2d_cloth::V3;
 use ph2d_cloth::verlet::Solver;
@@ -157,6 +175,15 @@ impl Corrida {
     }
     fn f(&self, k: &str) -> f64 {
         self.s(k).parse().unwrap_or_else(|_| panic!("chave {k}"))
+    }
+    /// Uma chave INTEIRA com omissão — as chaves da emenda Q23 (`invocacoes`,
+    /// `opcao_persistente`) não existem nas `17` corridas do §10.17, e a omissão
+    /// delas é o que aquelas corridas afirmam de si próprias.
+    fn i(&self, k: &str, omissao: usize) -> usize {
+        match self.chaves.get(k) {
+            Some(v) => v.parse().unwrap_or_else(|_| panic!("chave {k}")),
+            None => omissao,
+        }
     }
     /// A lista `S₁..S_n` do cabeçalho — ⭐ **ela existe para o arrasto ser
     /// reconstruível sem adivinhar** o píxel em que o botão foi premido.
@@ -317,41 +344,60 @@ fn correr(nome: &str) -> (Vec<V3>, Vec<V3>, Vec<V3>) {
     // ⭐ O ponto do aperto é o da ABERTURA — o 1.º ponto do caminho — e ele **não
     // segue o cursor** (espec §7). Os outros quatro tipos não o lêem.
     let abertura = abertura_de(&c, &rest);
-    let mut t = PincelTecido::pen_down(pincel, &rest, abertura, ordem_de_visita(&sup));
-    t.mascara = mascara(c.s("mascara"), &rest);
     let mut pos = rest.clone();
     let anel = |v: u32| an[v as usize].clone();
-    // ⭐⭐⭐ **A CARGA**: a espec §7 constrói as restrições «ao carregar», e a lista
-    // de fases do passo dela começa na **fase 2**. O 1.º `passo` faz essa
-    // construção e devolve `false`; sem ele o 1.º movimento do rato não simulava.
-    let n0 = normais(&pos, &fs);
-    let carga = Passo {
-        cursor: abertura,
-        delta: [0.0; 3],
-        delta_3d: [0.0; 3],
-        parado: false,
-        vista: [0.0, 0.0, 1.0],
-        normais: &n0,
-        pressao: 1.0,
-    };
-    assert!(
-        !t.passo(&pos, &anel, &carga),
-        "{nome}: a carga nao pode simular"
-    );
-    for s in c.forcas() {
-        t.pincel.accionamento = Accionamento::Filtro { s };
-        let n = normais(&pos, &fs);
-        let p = Passo {
+    // ⭐⭐⭐ **AS INVOCAÇÕES REPETIDAS** (espec §10.18) — o filtro é aberto e largado
+    // `n` vezes seguidas sobre a MESMA peça.
+    //
+    // ⚠️⚠️ **A simulação nasce e morre com cada uma** (espec §6.3): a invocação
+    // seguinte constrói as restrições **da malha deformada**, e é por isso que a
+    // deformação compõe. ⛔ Reaproveitar a sessão mediria outro programa.
+    //
+    // ⭐ **A base persistente é a excepção, e é UM campo:** com a opção ligada e a
+    // base gravada no repouso, a construção lê aquelas posições em vez das de
+    // agora — as quatro leituras da §6.4, que na nossa lei são o
+    // [`ph2d_cloth::verlet::Verlet::base`].
+    let invocacoes = c.i("invocacoes", 1);
+    let com_base = c.i("opcao_persistente", 0) == 1 && c.s("base_gravada") == "repouso";
+    let ordem = ordem_de_visita(&sup);
+    for _ in 0..invocacoes {
+        let mut t = PincelTecido::pen_down(pincel, &pos, abertura, ordem.clone());
+        if com_base {
+            t.sim.base.clone_from(&rest);
+        }
+        t.mascara = mascara(c.s("mascara"), &rest);
+        // ⭐⭐⭐ **A CARGA**: a espec §7 constrói as restrições «ao carregar», e a lista
+        // de fases do passo dela começa na **fase 2**. O 1.º `passo` faz essa
+        // construção e devolve `false`; sem ele o 1.º movimento do rato não simulava.
+        let n0 = normais(&pos, &fs);
+        let carga = Passo {
             cursor: abertura,
             delta: [0.0; 3],
             delta_3d: [0.0; 3],
             parado: false,
             vista: [0.0, 0.0, 1.0],
-            normais: &n,
+            normais: &n0,
             pressao: 1.0,
         };
-        if t.passo(&pos, &anel, &p) {
-            pos.copy_from_slice(&t.sim.x);
+        assert!(
+            !t.passo(&pos, &anel, &carga),
+            "{nome}: a carga nao pode simular"
+        );
+        for s in c.forcas() {
+            t.pincel.accionamento = Accionamento::Filtro { s };
+            let n = normais(&pos, &fs);
+            let p = Passo {
+                cursor: abertura,
+                delta: [0.0; 3],
+                delta_3d: [0.0; 3],
+                parado: false,
+                vista: [0.0, 0.0, 1.0],
+                normais: &n,
+                pressao: 1.0,
+            };
+            if t.passo(&pos, &anel, &p) {
+                pos.copy_from_slice(&t.sim.x);
+            }
         }
     }
     (pos, c.depois, rest)
@@ -456,6 +502,43 @@ const CORPUS: &[(&str, f64)] = &[
     ("plano_filtro_expandir_negativo", 0.022),
     // ⚠️ acima do sorteio do próprio oráculo (`0,0107`), e é a única curva
     ("esfera_filtro_inflar", 0.035),
+    // ————— as INVOCAÇÕES REPETIDAS (espec §10.18, emenda Q23 de 09/09) —————
+    // ⭐ ao bit: o *Repeat* que a família de filtros regista é MORTO neste filtro
+    // (o oráculo dá `5` byte a byte igual a `1`), e a nossa lei não o tem —
+    // logo a corrida dele tem de bater com a de uma repetição.
+    ("plano_filtro_gravidade_repeticoes5", 1e-9),
+    // à resolução do ficheiro — ⭐⭐⭐ e as TRÊS juntas são a prova de que a nossa
+    // composição de gestos é a do alvo: a que compõe, a que lê a BASE
+    // PERSISTENTE (e por isso RECUA na 3.ª invocação) e o controlo da opção
+    // ligada sem base gravada.
+    ("plano_filtro_gravidade_mascarado_3invocacoes", 2e-5),
+    (
+        "plano_filtro_gravidade_mascarado_3invocacoes_persistente",
+        2e-5,
+    ),
+    (
+        "plano_filtro_gravidade_mascarado_3invocacoes_persistente_sem_base",
+        2e-5,
+    ),
+    // dentro da barra — ⚠️ a barra de cada uma é o erro MEDIDO com margem, e ela
+    // é RELATIVAMENTE mais apertada que a da irmã de uma invocação
+    // (`plano_filtro_inflar_mascarado` erra `0,0134` sobre uma escala de
+    // `0,1088`, e esta erra `0,0190` sobre `0,3206` — metade, em proporção).
+    ("plano_filtro_escala_3invocacoes", 0.009),
+    (
+        "plano_filtro_inflar_mascarado_3invocacoes_persistente",
+        0.010,
+    ),
+    ("plano_filtro_inflar_mascarado_3invocacoes", 0.021),
+    // ⚠️⚠️ **AS DUAS DE ESFERA TÊM UM PISO QUE NÃO É NOSSO: a DISPERSÃO do
+    // próprio oráculo.** Quatro realizações da mesma configuração diferem entre
+    // si até `0,003184` (24 passos) e **`0,073751`** (36 passos, `5,6 %` do
+    // próprio máximo). ⛔ Uma barra abaixo disso mediria o sorteio do alvo, não
+    // a nossa lei.
+    ("esfera_filtro_inflar_3invocacoes", 0.028),
+    // ⭐ `0,0946` medido contra um piso de `0,0738` — ou seja **`1,28×` o ruído
+    // de realização do próprio alvo**, na corrida em que ele estica `21,55×`.
+    ("esfera_filtro_inflar_36passos", 0.100),
 ];
 
 /// **O QUE O CORPUS TEM E A NOSSA LEI AINDA NÃO REPRODUZ**, com a razão e o
@@ -465,6 +548,13 @@ const CORPUS: &[(&str, f64)] = &[
 /// desta casa não tem gravidade de cena nem conjuntos de faces, então não há de
 /// onde o valor viria — *uma lei sem entrada não pode ser medida*.
 const ABERTOS: &[(&str, &str)] = &[
+    (
+        "plano_filtro_expandir_3invocacoes",
+        "erro 0,382781 -- e' o MESMO defeito do irmao de uma invocacao, composto tres vezes: \
+         a quantidade esta' certa (o nosso maximo contra o do oraculo) e o que difere e' o \
+         PADRAO da flambagem. ⚠️ Ele entra aqui e nao no corpus porque curar o de uma \
+         invocacao cura este -- sao um item, nao dois",
+    ),
     (
         "plano_filtro_expandir",
         "⭐⭐ erro 0,688534 e a QUANTIDADE esta' certa: o nosso maximo e' 0,379332 contra \

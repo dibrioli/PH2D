@@ -103,6 +103,7 @@
 - [Contagem LITERAL num gate faz cada feature nova editar o teste de outra pessoa — derive; piso contra vácuo pode ser literal](feedback_a_literal_corpus_count_in_a_gate_makes_every_new_feature_edit_someone_elses_test.md)
 - ⭐ [Predicado-PROXY que vira constante deixa asserção VÁCUA — o sinal é a mensagem falar de outra coisa que a condição](feedback_a_proxy_predicate_that_becomes_constant_leaves_a_vacuous_assertion.md)
 - [CI corre 26 de 313 membros — «suíte verde» ≠ «CI verde»](project_ci_runs_26_of_313_workspace_members.md)
+- [A suíte em DEBUG parece pendurada por UM teste: `field-eval` custa 55 min sozinho — corra-o à parte](reference_one_field_eval_test_costs_55_minutes_of_the_debug_suite.md)
 - [Registry não distingue feature ausente de erro de escrita — o oráculo é a ÁRVORE](feedback_a_registry_cannot_tell_a_missing_feature_from_a_typo_ask_the_tree.md)
 - [⛔ `-p <crate>` sozinho usa as features POBRES: corra junto com o shell (147k px² mudos)](feedback_testing_a_crate_alone_hides_every_defect_in_a_feature_the_shell_enables.md)
 - [Gate que varre UM DIRETÓRIO afirma sobre o diretório; piso contado sobre DECLARAÇÕES não vê consumidor morto](feedback_a_new_feature_can_empty_an_existing_gates_population.md)

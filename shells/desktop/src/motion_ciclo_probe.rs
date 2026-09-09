@@ -177,6 +177,66 @@ pub(crate) fn cartao(grupo: &[&str]) {
 }
 
 // ---------------------------------------------------------------------------------------------
+// 3-bis. O VOCABULÁRIO — dois nós que guardam a MESMA pergunta chamam-lhe o mesmo nome?
+// ---------------------------------------------------------------------------------------------
+
+/// ⭐⭐⭐ **O achado §2.3 do ciclo 3, virado régua** — *«seis vocabulários para onde é o centro»*.
+///
+/// Para cada nome de param que **dois ou mais** nós do grupo declaram, imprime os rótulos
+/// distintos que eles pintam. Um nome partilhado com rótulos diferentes é o defeito: com o
+/// painel lateral fora, o cartão é a **única** superfície onde estes nomes aparecem, e o artista
+/// que aprendeu um tem de reconhecer o outro.
+///
+/// ⚠️ **A população é DERIVADA do manifesto**, nunca de uma lista de nós escrita à mão — foi
+/// assim que o censo do canto do ciclo 3 (`every_node_that_offsets_a_corner_calls_it_the_same_thing`)
+/// se manteve honesto quando um terceiro nó apareceu.
+///
+/// ⚠️ **Divergir pode ser CERTO** (um rótulo mais específico desambigua), e é por isso que esta
+/// porta **imprime** em vez de reprovar: quem lê decide, e escreve a decisão ao lado.
+pub(crate) fn vocabulario(grupo: &[&str]) {
+    use std::collections::BTreeMap;
+    let m = MotionState::new();
+    // nome do param → (rótulo → quem o pinta)
+    let mut tabela: BTreeMap<&str, BTreeMap<String, Vec<String>>> = BTreeMap::new();
+    for nome in grupo {
+        let tid = ph2d_nodegraph::node::NodeTypeId::of(nome);
+        let man = {
+            use ph2d_nodegraph::cook::OpResolver;
+            let Some(op) = m.registry.resolve(tid) else {
+                continue;
+            };
+            op.manifest()
+        };
+        let hints = m.registry.param_ui(tid).unwrap_or(&[]);
+        for spec in man.params {
+            let rotulo = hints
+                .iter()
+                .find(|h| h.param == spec.name)
+                .map_or("(sem hint)", |h| h.label);
+            tabela
+                .entry(spec.name)
+                .or_default()
+                .entry(rotulo.to_string())
+                .or_default()
+                .push((*nome).to_string());
+        }
+    }
+    eprintln!("\n  param partilhado          | rótulo(s) | quem");
+    eprintln!("  --------------------------|-----------|------");
+    for (param, rotulos) in &tabela {
+        let quantos: usize = rotulos.values().map(Vec::len).sum();
+        if quantos < 2 {
+            continue; // um nó só não tem com quem divergir
+        }
+        let marca = if rotulos.len() > 1 { "⚠️ " } else { "   " };
+        for (rotulo, quem) in rotulos {
+            eprintln!("{marca} {param:<24} | {rotulo:<9} | {}", quem.join(", "));
+        }
+    }
+    eprintln!();
+}
+
+// ---------------------------------------------------------------------------------------------
 // 4. O PREÇO — o relógio, a contagem e a coluna do dispositivo.
 // ---------------------------------------------------------------------------------------------
 

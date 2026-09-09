@@ -118,10 +118,63 @@ nascer amanhã entra sozinha.
 *«só 2 nós com spec de gizmo — os três campos espaciais têm de a ter»*; um nome fantasma dá
 *«motion.falloff: a spec do gizmo dirige `centro_x`, que o nó não declara»*.
 
-### W2 — O CARTÃO do grupo, lido com o olho do doc 101
+### ✅ W2 — O CARTÃO do grupo (2026-09-09)
 
-O `field.box` pinta **9 rows sem secção** e o `field.radial_sweep` pinta **12 com duas**
-(`Placement@5` · `Falloff@9`). A wave lê os sete e decide onde a secção paga o seu espaço.
+#### O VOCABULÁRIO está limpo — medido, não presumido
+
+O achado §2.3 do ciclo 3 (*«seis vocabulários para onde é o centro»*) virou régua
+(`the_field_vocabulary`, na porta partilhada): para cada param que **dois ou mais** nós do grupo
+declaram, os rótulos distintos que eles pintam.
+
+| param partilhado | rótulo | quem |
+|---|---|---|
+| `center_x` · `center_y` | Center X · Center Y | falloff · box · radial_sweep |
+| `curve` | Curve | 5 nós |
+| `invert` | Invert | 6 nós |
+| `soft` | Softness | box · radial_sweep · index_range |
+| `strength` | Strength | box · remap · combine |
+| `radius` · `rotation` · `clamp` | Radius · Rotation · Clamp | — |
+| ⚠️ `mode` | **Mode** (combine) · **Path Mode** (shape) | — |
+
+⭐ **A única divergência é CORRECTA:** são perguntas diferentes (uma mistura dois campos, a outra
+escolhe se o desenho conta cheio ou só o contorno), e o rótulo mais específico desambigua.
+
+⚠️ **Mas o censo alargado ao repo inteiro achou uma incoerência REAL — e ela é de FORA deste
+grupo, por isso não entra:** os selectores de modo de mistura chamam-se
+**`Blend`** (`motion.output`, `motion.tint`) · **`Shadow Blend`** (`fx.drop_shadow`) ·
+**`Flash Operator`** (`motion.strobe`) · **`Echo Operator`** (`motion.trail`) · **`Mode`**
+(`motion.mixer`, `field.combine`). ⛔ Fica **nomeada com a medição** e não contrabandeada: só um
+dos seis é do ciclo 4, e alinhá-los é uma wave do ciclo 7 (aparência).
+
+#### ⭐ A SECÇÃO: o irmão desalinhado
+
+O `field.radial_sweep` agrupa em **`Placement`** e **`Falloff`**, e escreve a lei ao lado: *param
+sem grupo pinta antes de toda secção, e é ali que os essenciais devem estar — a razão de existir
+do nó, e pô-la numa secção seria escondê-la atrás de um clique*. O `field.box` é o **mesmo tipo de
+campo**, com o **mesmo vocabulário** — e pintava as nove rows em fila.
+
+⇒ ele passa a falar a mesma língua: `Width · Height` soltos, `Placement` (centro + rotação),
+`Falloff` (softness + curva + invert + strength).
+
+⚠️ **O preço é de ESPAÇO e está medido:** uma secção aberta custa **+1 fileira**
+(`band_len = params + sections`), então o cartão vai de `9` para `11` — abaixo das `12` que o
+irmão já shipa. ⛔ **Por isso os cartões pequenos ficam em fila:** numa carta de 3, 4 ou 6 rows
+dois cabeçalhos organizam menos do que ocupam.
+
+#### ⛔⛔ E o gate apanhou-me a MIM antes de apanhar o produto
+
+A 1.ª redacção da tabela deixava o `soft` **solto**, com a razão *«uma caixa que mascara com borda
+macia»* — e o irmão põe-no em `Falloff`. ⭐ *Quando o objectivo é alinhar dois irmãos, a autoridade
+é o irmão, não a minha leitura do que é essencial.*
+
+⚠️⚠️ **E a 1.ª redacção do GATE não o teria apanhado:** ela comparava só os params que os dois
+**agrupavam**, e a mutação que devolvia o `soft` para fora de toda secção **SOBREVIVEU** — um
+param solto saía da população. *Um censo que só olha o que foi declarado é cego a uma omissão*, e
+a omissão era exactamente a divergência que a wave veio curar. Hoje o «sítio» de um param
+partilhado é o título da secção **ou `(solto)`**.
+
+⛔ Duas mutações, cada uma a nomear o param e os dois lados: `soft` solto dá *«vive em `Falloff` no
+field.radial_sweep e em `(solto)` no field.box»*; `rotation` trocado de secção dá o simétrico.
 
 ### W3 — `field.shape`: a recusa reconferida no gerador
 

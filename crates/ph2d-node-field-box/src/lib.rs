@@ -37,7 +37,7 @@
 //! is a box larger than the scene with `soft = 0` and `invert = 0` ⇒ mask `1`
 //! everywhere ⇒ the `falloff` column is multiplied by the identity, byte-unchanged.
 
-use ph2d_node_registry::{NodeRegistry, ParamUnit, ParamUnitDecl, RegistryError};
+use ph2d_node_registry::{NodeRegistry, ParamGroup, ParamUnit, ParamUnitDecl, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream, par_build};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
@@ -290,6 +290,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_groups(MANIFEST.id, PARAM_GROUPS);
     reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
@@ -330,6 +331,41 @@ static PARAM_HARD_MAX: &[ParamHardMax] = &[
 
 /// Param UI hints (M1.P1): full Width/Height/Softness in world-units, signed
 /// centre, a named Curve selector, an Invert checkbox.
+/// **AS SEÇÕES DESTE NÓ** (ciclo 4, W2 — [doc 107](../../../docs/Motion%20Nodes/107_ciclo_4_foco_os_campos.md)).
+///
+/// ⛔ **Ele era o IRMÃO desalinhado:** o `field.radial_sweep` é o mesmo tipo de campo, com o
+/// mesmo vocabulário (`center_*`, `rotation`, `soft`, `curve`, `invert`), e agrupa-o em
+/// **Placement** e **Falloff** — este pintava as nove rows em fila. *Um artista que aprendeu um
+/// tem de reconhecer o outro*, e com o painel lateral fora o cartão é a única superfície onde
+/// estes nomes aparecem.
+///
+/// ⚠️ **A lei é a que os dois irmãos já escreveram, palavra por palavra:** *param sem grupo
+/// pinta antes de toda secção, e é ali que os essenciais devem estar — a razão de existir do nó,
+/// e pô-la numa secção seria escondê-la atrás de um clique*. A razão de existir deste nó é uma
+/// caixa ⇒ `width` e `height` ficam **soltos**.
+///
+/// ⚠️⚠️ **A primeira redacção desta tabela deixava o `soft` solto também**, com a razão *«uma
+/// caixa que mascara com borda macia»* — e o **irmão põe-no em `Falloff`**. O portão
+/// `the_two_spatial_boxes_group_a_shared_param_the_same_way` apanhou-o antes de a wave fechar:
+/// *quando o objectivo é alinhar dois irmãos, a autoridade é o irmão, não a minha leitura do
+/// que é essencial.*
+///
+/// ⚠️ **O preço é MEDIDO e é de espaço, não de relógio:** uma secção aberta custa **+1 fileira**
+/// (`band_len = params + sections`), então o cartão passa de `9` para `11` — ainda abaixo das
+/// `12` que o irmão já shipa. ⛔ **Por isso os cartões pequenos do grupo ficam em fila:** numa
+/// carta de 4 ou 6 rows dois cabeçalhos organizam menos do que ocupam.
+static PARAM_GROUPS: &[ParamGroup] = &[
+    // Onde a caixa está plantada, e para onde ela aponta.
+    ParamGroup::new("center_x", "Placement"),
+    ParamGroup::new("center_y", "Placement"),
+    ParamGroup::new("rotation", "Placement"),
+    // Como a borda desvanece, e com que força ela pesa.
+    ParamGroup::new("soft", "Falloff"),
+    ParamGroup::new("curve", "Falloff"),
+    ParamGroup::new("invert", "Falloff"),
+    ParamGroup::new("strength", "Falloff"),
+];
+
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "width",

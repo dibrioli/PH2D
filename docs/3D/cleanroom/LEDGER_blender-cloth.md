@@ -853,6 +853,17 @@ de 2026-09-09**; das nove entradas por commitar, **uma** é da sessão exposta
 `originSessionId 1246816c…`) e é sobre a **precondição de um gate** e a origem do `PASSO_DE_ARRASTO`.
 Sweep verde sobre o diff e sobre as nove; busca dirigida pela oração exposta devolve **zero**.
 
+⛔⛔ **Mas o §6.4 tinha um SEGUNDO rastro, e não era na memória — era no SCRATCHPAD** (a espécie do
+INC-1, a repetir-se). O R-pré da Q22 deixou lá o **diff da espec** daquela emenda, que carrega a linha
+**pré-cura** por construção — e o scratchpad é alcançável pela janela. *Deixá-lo ali anularia a queima:
+a «janela nova limpa» leria o trecho exposto no primeiro `ls`.* ⇒ relocado por **`mv` cego, sem ser
+lido**, para `~/Referencias/blender-cloth/quarentena-scratchpad-INC2/` (zona contaminada, fora do repo
+e fora do `/tmp`). ⚠️ **Fica um `K.bak`** no scratchpad que a busca também acusa e que **não é rastro do
+alvo**: é cópia **byte-idêntica** (`sha256 d7b5c8cd…`) de `crates/ph2d-sculpt3d/src/cloth_filter_kind.rs`,
+ficheiro **nosso e rastreado**, e o que a busca lá vê é a nossa própria dívida do ponto 3 — ela some
+quando a prescrição correr. ⭐ **A lição:** *reverter a memória não basta; o §6.4 tem de varrer todo
+sítio que a janela nova alcança, e o scratchpad é partilhado entre as janelas de uma sessão.*
+
 **Consequência (§6.4) — a janela **I-1** está QUEIMADA como I para este módulo.** Ela escreve o
 BLOCO-RETOMADA (§10), imprime-o e **PARA**; a janela nova assume a **MESMA** linha e retoma da espec,
 que está **agora atestada**. ⛔ **O trabalho já feito NÃO se reescreve** — a quarentena saiu limpa.

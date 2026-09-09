@@ -67,6 +67,7 @@ impl GpuCook {
         grid: Option<(&GridSpec, &GridBuffers)>,
         reduces: (&'static [ReduceSpec], &[wgpu::Buffer]),
         luts: (&'static [LutSpec], &[wgpu::Buffer]),
+        shared: &'static str,
     ) -> GpuStream {
         use codegen::BindingPlan;
 
@@ -103,6 +104,7 @@ impl GpuCook {
                     grid.map(|(s, _)| s),
                     reduces.0,
                     luts.0,
+                    shared,
                     present,
                 );
                 CachedPipeline {

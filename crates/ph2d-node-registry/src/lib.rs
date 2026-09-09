@@ -118,6 +118,7 @@ pub struct NodeRegistry {
     /// channel. Same side-channel shape; a node opts in with a slice of
     /// [`ReduceSpec`]s the sequencer folds before its kernel pass.
     reduces: BTreeMap<NodeTypeId, &'static [ReduceSpec]>,
+    wgsl_shared: BTreeMap<NodeTypeId, &'static str>,
     /// A1-gpu — per-type lookup tables the kernel samples (the LUT channel, a
     /// transfer curve / colour ramp whose shape lives in a text param). Same
     /// side-channel shape; a node opts in with a slice of [`LutSpec`]s the
@@ -631,6 +632,13 @@ impl NodeRegistry {
         self.reduces.insert(id, specs);
     }
 
+    /// Declare WGSL that this node's kernel **and** its reductions both see — the SHARED
+    /// channel. Additive, `'static`, like [`Self::register_reduces`]; o porquê inteiro (e a
+    /// recusa que ele desfez) vive em [`KernelResolver::wgsl_shared`].
+    pub fn register_wgsl_shared(&mut self, id: NodeTypeId, wgsl: &'static str) {
+        self.wgsl_shared.insert(id, wgsl);
+    }
+
     /// Declare the lookup tables this node's kernel samples — the LUT channel
     /// (A1-gpu). Additive, last-write-wins, pure `'static` data, like
     /// [`Self::register_reduces`]. The sequencer fills each table from the named
@@ -672,6 +680,10 @@ impl KernelResolver for NodeRegistry {
 
     fn luts(&self, ty: NodeTypeId) -> &'static [LutSpec] {
         self.luts.get(&ty).copied().unwrap_or(&[])
+    }
+
+    fn wgsl_shared(&self, ty: NodeTypeId) -> &'static str {
+        self.wgsl_shared.get(&ty).copied().unwrap_or("")
     }
 }
 

@@ -414,6 +414,28 @@ pub trait KernelResolver {
         &[]
     }
 
+    /// ⭐⭐ **WGSL que o KERNEL deste nó e as REDUÇÕES dele veem os dois** — o canal
+    /// partilhado (ciclo 3, doc 106).
+    ///
+    /// ⛔⛔ **Por que ele existe:** o módulo de uma redução é montado com os params, as
+    /// ligações, os acessores `reduce_<earlier>()`, o `reduce_value` e o `main` — e **nada
+    /// mais**. Uma [`ReduceSpec::value`] que precise de uma função auxiliar não tinha onde a
+    /// pôr, e a única saída era escrevê-la **inline dentro da string**. Foi essa a recusa que
+    /// manteve o `motion.bend ▸ direction` fora do dispositivo: o extent num quadro rodado
+    /// precisa do `cos`/`sin` HR-5, e tê-lo inline seria a **segunda cópia** de uma lei que o
+    /// kernel já carrega — *e duas cópias de uma lei é como as duas metades divergem*.
+    ///
+    /// ⚠️ **É colado nos DOIS módulos, e é isso que o torna UMA fonte:** o nó move a lei para
+    /// aqui e deixa em [`GpuKernel::wgsl_lib`] só o que é do kernel (o que chama
+    /// `read_in_*`/`write_*`, que não existe no módulo de uma redução). ⛔ Colar o `wgsl_lib`
+    /// inteiro na redução **não** serve, e é por isso que o canal é separado.
+    ///
+    /// Default **vazio**, como [`Self::reduces`] e [`Self::luts`]: quem não o declara gera
+    /// exactamente os módulos de sempre, byte a byte.
+    fn wgsl_shared(&self, _ty: NodeTypeId) -> &'static str {
+        ""
+    }
+
     /// The lookup tables this node's kernel samples, if any — the LUT channel
     /// (see [`LutSpec`], A1-gpu). Default **empty**, so a node opts in by
     /// registering specs exactly as it opts into a [`ReduceSpec`]; every existing

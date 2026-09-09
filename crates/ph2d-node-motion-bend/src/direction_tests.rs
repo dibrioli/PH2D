@@ -139,21 +139,28 @@ fn at_ninety_the_bend_runs_across_the_row_and_finds_no_extent() {
     }
 }
 
-/// **O KNOB ESTÁ NO PAINEL, e o device recua só quando ele morde.**
+/// **O KNOB ESTÁ NO PAINEL, e o device NÃO recua mais por causa dele.**
+///
+/// ⛔⛔ **Este gate defendia a recusa até 2026-09-08, e a inversão é o registo dela.** Ele
+/// afirmava *«com direção o device sai — a redução `x_extent` não roda com o quadro»*, o que era
+/// verdade enquanto o módulo de uma redução não tivesse onde pôr uma função auxiliar. O canal
+/// [`wgsl_shared`](ph2d_nodegraph::gpu::KernelResolver::wgsl_shared) deu-lhe uma, as duas
+/// reduções passaram a dobrar `bd_axis(v, direction)`, e o `applicable` **deixou de existir**.
+///
+/// ⚠️ **Ele afirma agora as DUAS metades**: o knob continua pintado como `Angle`, e o kernel não
+/// tem cláusula nenhuma — *um `applicable` que voltasse a nascer aqui teria de explicar-se*.
+/// A prova de que a cadeia é de facto reivindicada vive onde há device:
+/// `the_bend_direction_reaches_the_device` (`ph2d-gpu-cook`).
 #[test]
-fn the_knob_is_painted_and_the_device_steps_back_only_when_it_bites() {
+fn the_knob_is_painted_and_the_device_no_longer_steps_back_for_it() {
     let hint = PARAM_HINTS
         .iter()
         .find(|h| h.param == DIRECTION)
         .expect("a Direction tem de estar pintada");
     assert!(matches!(hint.widget, ParamWidget::Angle));
-    let app = GPU_KERNEL.applicable.expect("a recusa existe");
     assert!(
-        app(&|n| if n == DIRECTION { 0.0 } else { 1.0 }),
-        "em 0 nada recua"
-    );
-    assert!(
-        !app(&|n| if n == DIRECTION { 30.0 } else { 1.0 }),
-        "com direção o device sai — a redução `x_extent` não roda com o quadro"
+        GPU_KERNEL.applicable.is_none(),
+        "o `motion.bend` nao tem recusa nenhuma desde que a reducao ganhou o polinomio \
+         partilhado -- se uma voltar, ela precisa do proprio motivo escrito"
     );
 }

@@ -1073,3 +1073,64 @@ se partilha é o algoritmo, não um símbolo»*).
 
 ⛔ **Não foi feito nesta janela**, e a razão é escopo: é substrato (`ph2d-nodegraph`) mais paridade
 medida no dispositivo, que é uma wave com espec própria — não a cauda desta.
+
+---
+
+### ✅ W7 — A DIREÇÃO DA DOBRA CHEGA AO DISPOSITIVO, e o que a segurava era o SUBSTRATO (2026-09-08)
+
+> A secção acima reconferiu a recusa e nomeou o que a dissolveria. **Foi construído.**
+
+O `motion.bend` era o último nó do grupo com uma recusa **condicional a um knob**: com
+`direction ≠ 0` o `applicable` devolvia `false` e a cadeia inteira caía para a CPU — uma queda que
+o [doc 98](98_auditoria_de_performance_2026-09-01.md) mede em **`50,9×`**.
+
+#### O canal PARTILHADO (`wgsl_shared`)
+
+O módulo de uma redução era montado com os params, as ligações, os `reduce_<earlier>()`, o
+`reduce_value` e o `main` — **e nada mais**. Uma [`ReduceSpec::value`] que precise de uma função
+auxiliar não tinha onde a pôr.
+
+⇒ `KernelResolver::wgsl_shared(ty) -> &'static str`, **append-only** (o default é `""`, e quem não
+o declara gera exactamente os módulos de sempre byte a byte), colado pelo gerador **nos dois**
+módulos — o do kernel e o de cada redução. ⛔ Colar o `wgsl_lib` inteiro na redução **não** serve:
+ele chama `read_in_*`/`write_*`, que ali não existem — e é por isso que o canal é separado.
+
+⚠️⚠️ **E o WGSL partilhado entra na CHAVE DE CACHE da redução, senão há colisão REAL:** a
+`pivot::CENTROID_CX` é *literalmente a mesma* `ReduceSpec` em vários nós, e o primeiro a declarar
+um canal emprestaria o módulo dele a todos os outros — um pipeline com funções que a expressão do
+vizinho não pede, ou pior, sem as que ela pede.
+
+#### O nó
+
+As duas reduções passam a dobrar **`bd_axis(v, direction)`** — a projecção no eixo da dobra —, e o
+kernel compara-as contra `bd_axis(pivô)`. ⭐ **`max|proj(v) − proj(pivô)|` é atingido num extremo
+porque `proj` é LINEAR**, que é a mesma identidade que já justificava o `max(xmax − p, p − xmin)`.
+
+⚠️ **Em `direction == 0` tudo é o de sempre ao bit**, por **ramo literal** nos dois lados (o
+`bd_axis` do device e o `local` da CPU) — `bd_dir_cos(0)` é `1,0` e `bd_dir_sin(0)` é `0,0` ao bit,
+**conferido e não assumido**, mas `x·1 + y·0` não é `x` para `−0,0` nem para `±inf`.
+
+#### Medido
+
+| caso | pior `|Δpos|` |
+|---|---:|
+| `direction = 0` (o caminho de omissão) | `6,68e-6` |
+| `direction = 37°` | `1,24e-5` |
+| `direction = −90°` | `1,24e-5` |
+| `direction = 180°` | `4,77e-6` |
+
+16 384 instâncias por caso, dentro da `EPS_POS` da família (o `bend` sem direcção já media
+`1,14e-5`). ⚠️ **O ε fora do zero tem razão nomeada:** a CPU projecta `(p − pivô)` e o dispositivo
+faz `proj(p) − proj(pivô)` — a mesma conta noutra ordem, a classe de ε do raio do `motion.twist`.
+
+#### Gates
+
+- `the_bend_direction_reaches_the_device` — a cadeia é reivindicada inteira em `0`, `37`, `−90`,
+  `180` (sem device: é um facto do **planeador**).
+- `the_rotated_bend_matches_the_cpu_within_epsilon` — a paridade acima (device).
+- `the_bend_direction_actually_turns_the_axis` — ⚠️ **o controlo**: rodar `37°` tem de mover o
+  layout, senão o gate de paridade compararia duas vezes a mesma dobra.
+- ⛔ **E o gate que DEFENDIA a recusa foi invertido, não apagado**
+  (`the_knob_is_painted_and_the_device_no_longer_steps_back_for_it`): ele afirmava *«com direção o
+  device sai»*, e afirma agora que **não há `applicable` nenhum** — *um que volte a nascer ali tem
+  de trazer o próprio motivo escrito*.

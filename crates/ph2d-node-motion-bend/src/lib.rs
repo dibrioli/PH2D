@@ -129,8 +129,8 @@ static REDUCES: &[ReduceSpec] = &[
         dim: Dim::Vec2,
         port: 0,
         op: ReduceOp::Min,
-        value: "v.x",
-        params: &[],
+        value: "bd_axis(v, params.direction)",
+        params: &[DIRECTION],
         identity: [0.0; 4],
     },
     ReduceSpec {
@@ -139,8 +139,8 @@ static REDUCES: &[ReduceSpec] = &[
         dim: Dim::Vec2,
         port: 0,
         op: ReduceOp::Max,
-        value: "v.x",
-        params: &[],
+        value: "bd_axis(v, params.direction)",
+        params: &[DIRECTION],
         identity: [0.0; 4],
     },
 ];
@@ -163,13 +163,27 @@ static REDUCES: &[ReduceSpec] = &[
 /// literal fica escrito na mesma, pelo caso degenerado do `±inf` (onde `0 · inf` é NaN), o
 /// mesmo precedente do `axis_angle` do `motion.sort`.
 ///
-/// ⚠️ **O device é RECUSADO quando a direção morde, e a razão é a REDUÇÃO.** O `x_extent` é um
-/// `Max` sobre `abs(v.x − pivot_x)` que o sequenciador corre antes do passe por elemento; num
-/// quadro rodado ele teria de dobrar sobre `abs(dx·cos + dy·sin)`, e a expressão de um
-/// `ReduceSpec` só alcança `params` — o `cos`/`sin` teriam de ser o polinómio do `trig.rs`
-/// **inline dentro da string da redução**, escrito uma segunda vez. ⛔ Duas cópias de uma lei
-/// de HR-5 é exactamente como as duas metades divergem, e usar o `cos` do WGSL ali seria pior.
-/// Manter o extent NÃO-rodado não é opção: ele escala a curvatura, e a dobra sairia com a
+/// ⭐⭐⭐ **ELE VAI AO DISPOSITIVO — a recusa caiu em 2026-09-08, e o que a segurava era o
+/// SUBSTRATO, não este nó.** Ela dizia: o `x_extent` é uma redução que o sequenciador corre
+/// antes do passe por elemento; num quadro rodado ela tem de dobrar a projecção
+/// `v.x·cos + v.y·sin`, e a expressão de um `ReduceSpec` **só alcançava `params`** — o `cos`/`sin`
+/// teriam de ser o polinómio do `trig.rs` escrito uma **segunda vez** dentro da string, que é
+/// exactamente como as duas metades divergem.
+///
+/// ⇒ o canal [`wgsl_shared`](ph2d_nodegraph::gpu::KernelResolver::wgsl_shared) (append-only, o
+/// default é vazio e nenhum outro nó muda) dá ao módulo de uma redução o **mesmo** WGSL que o
+/// kernel usa: uma fonte, colada nos dois sítios pelo gerador. Ver [`kernel::WGSL_SHARED`].
+///
+/// ⚠️ **As duas reduções passam a dobrar `bd_axis(v, direction)`, e o kernel compara-as contra
+/// `bd_axis(pivô)`** — `max|proj(v) − proj(pivô)|` é atingido num dos extremos porque `proj` é
+/// **linear**, que é a mesma identidade que já justificava o `max(xmax − p, p − xmin)`.
+///
+/// ⚠️ **Em `direction == 0` tudo é o de sempre AO BIT** (ramo literal em `bd_axis`, e o `local`
+/// da CPU tem o irmão dele). Fora do zero há um **ε** contra a CPU, e a razão é nomeada: ela
+/// projecta `(p − pivô)` e o dispositivo faz `proj(p) − proj(pivô)`, que é a mesma conta noutra
+/// ordem — a mesma classe de ε do raio do `motion.twist`.
+///
+/// ⛔ Manter o extent NÃO-rodado nunca foi opção: ele escala a curvatura, e a dobra sairia com a
 /// força errada **em silêncio**.
 const DIRECTION: &str = "direction";
 
@@ -254,7 +268,6 @@ fn slice_of(x_extent: f32, lo: f32, hi: f32) -> (f32, f32, f32, f32) {
     let (a, b) = if a <= b { (a, b) } else { (b, a) };
     ((a), b, (a + b) * 0.5, (b - a) * 0.5)
 }
-
 
 fn falloff_at(stream: &Stream, i: usize) -> f32 {
     match stream.get("falloff") {
@@ -425,6 +438,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     // on the registry (ADR-0126) — the frozen node contract is untouched.
     reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     reg.register_reduces(MANIFEST.id, REDUCES);
+    reg.register_wgsl_shared(MANIFEST.id, kernel::WGSL_SHARED);
     Ok(())
 }
 

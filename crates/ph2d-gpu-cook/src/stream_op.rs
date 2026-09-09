@@ -292,6 +292,11 @@ impl GpuCook {
             (&[], &[]),
             // Nor a LUT — a predicate samples no authored curve (A1-gpu).
             (&[], &[]),
+            // ⚠️ Nem o canal PARTILHADO: ele existe para uma redução alcançar o que o
+            // kernel do nó declara, e um predicado de compactação não corre redução
+            // nenhuma (a linha acima). Um nó que precise dele no predicado tem de o
+            // pedir aqui, de propósito.
+            "",
         );
         let Some(flags) = pred_out.cols.get(KEEP_FLAG_COL).map(|c| c.buffer.clone()) else {
             // A predicate that does not write the flag is an authoring bug in the

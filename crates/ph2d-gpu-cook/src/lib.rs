@@ -541,6 +541,7 @@ impl GpuCook {
                 // per-element-cheap and today's clients run one sweep, so this
                 // costs nothing and cannot go stale.
                 let reduce_specs = kernels.reduces(stage.ty);
+                let shared = kernels.wgsl_shared(stage.ty);
                 let reduce_results = self.run_reduces(
                     gpu,
                     &mut encoder,
@@ -549,6 +550,7 @@ impl GpuCook {
                     graph,
                     stage.node,
                     manifest,
+                    shared,
                 );
                 out = self.encode_kernel_stage(
                     gpu,
@@ -566,6 +568,7 @@ impl GpuCook {
                     grid_spec.zip(grid_buffers.as_ref()),
                     (reduce_specs, &reduce_results.buffers),
                     (lut_specs, &lut_buffers),
+                    shared,
                 );
                 self.reduce_results_hold.push(reduce_results);
                 if let Some(gb) = grid_buffers {

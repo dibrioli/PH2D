@@ -71,6 +71,10 @@ fn every_registered_kernel_validates_across_the_whole_presence_space() {
                 // here would validate a module without that accessor and miss a
                 // misdeclared LUT (A1-gpu).
                 reg.luts(manifest.id),
+                // O canal PARTILHADO, pedido ao REGISTRY pela mesma razão das duas
+                // acima: o `wgsl_lib` de um nó pode chamar o que mora aqui, e um `""`
+                // validaria um módulo que o sequenciador nunca constrói.
+                reg.wgsl_shared(manifest.id),
                 |b| {
                     let idx = kernel
                         .bindings
@@ -159,6 +163,7 @@ fn every_registered_kernel_validates_across_the_whole_presence_space() {
                         reg.grid(manifest.id),
                         reg.reduces(manifest.id),
                         reg.luts(manifest.id),
+                        reg.wgsl_shared(manifest.id),
                         |b| {
                             let idx = k
                                 .bindings
@@ -210,6 +215,7 @@ fn every_registered_kernel_validates_across_the_whole_presence_space() {
                 None,
                 &[],
                 &[], // a predicate samples no LUT (A1-gpu)
+                "",  // nem o canal PARTILHADO — o `stream_op` passa o mesmo `""`
                 |b| {
                     let idx = predicate
                         .bindings
@@ -249,7 +255,12 @@ fn every_registered_kernel_validates_across_the_whole_presence_space() {
         for (si, spec) in specs.iter().enumerate() {
             let earlier: Vec<&_> = specs[..si].iter().collect();
             for present in [true, false] {
-                let src = ph2d_gpu_cook::reduce_stage::map_module(spec, present, &earlier);
+                let src = ph2d_gpu_cook::reduce_stage::map_module(
+                    spec,
+                    present,
+                    &earlier,
+                    reg.wgsl_shared(manifest.id),
+                );
                 validate(
                     &format!("{} reduce {} present={present}", manifest.name, spec.name),
                     &src,

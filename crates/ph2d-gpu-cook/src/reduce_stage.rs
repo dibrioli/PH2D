@@ -35,13 +35,24 @@ use ph2d_nodegraph::node::NodeManifest;
 /// `codegen::presence_signature`, and the reason a node's `k`-th spec is not
 /// simply keyed by `(type, k)` (editing a spec's expression would then silently
 /// reuse the pipeline compiled from the old one).
-fn map_cache_key(spec: &ReduceSpec, present: bool, earlier: &[&ReduceSpec]) -> (u64, u64) {
+fn map_cache_key(
+    spec: &ReduceSpec,
+    present: bool,
+    earlier: &[&ReduceSpec],
+    shared: &str,
+) -> (u64, u64) {
     let fnv = |h: u64, bytes: &[u8]| {
         bytes
             .iter()
             .fold(h, |h, b| (h ^ u64::from(*b)).wrapping_mul(0x100_0000_01b3))
     };
     let mut h = fnv(0xcbf2_9ce4_8422_2325, spec.value.as_bytes());
+    // ⛔⛔ **O WGSL PARTILHADO entra na chave, e sem ele há colisão REAL:** a
+    // `pivot::CENTROID_CX` é *literalmente a mesma* `ReduceSpec` em vários nós, e o
+    // primeiro deles a declarar um canal partilhado emprestaria o módulo dele a todos
+    // os outros — um pipeline com funções que a expressão do vizinho não pede, ou pior,
+    // sem as que ela pede.
+    h = fnv(h, shared.as_bytes());
     h = fnv(h, spec.name.as_bytes());
     h = fnv(h, spec.column.as_bytes());
     h = fnv(h, &[spec.dim as u8, spec.op as u8, u8::from(present)]);
@@ -114,7 +125,12 @@ pub struct ReduceResults {
 /// jeito. A declaracao fica condicional por honestidade (as duas metades leem o
 /// MESMO flag, no mesmo arquivo, entao nao podem divergir), e nao porque o device
 /// a exija.
-pub fn map_module(spec: &ReduceSpec, present: bool, earlier: &[&ReduceSpec]) -> String {
+pub fn map_module(
+    spec: &ReduceSpec,
+    present: bool,
+    earlier: &[&ReduceSpec],
+    shared: &str,
+) -> String {
     let ty = codegen::wgsl_type(spec.dim);
     let mut src = String::with_capacity(512);
     src.push_str("struct MapParams {\n    count: u32,\n");
@@ -157,6 +173,12 @@ pub fn map_module(spec: &ReduceSpec, present: bool, earlier: &[&ReduceSpec]) -> 
         ));
     }
     src.push('\n');
+    // ⭐ O canal PARTILHADO — a única coisa que uma `ReduceSpec::value` pode chamar além
+    // dos `reduce_<earlier>()`. Vazio para toda redução que não o declare.
+    if !shared.is_empty() {
+        src.push_str(shared);
+        src.push('\n');
+    }
     src.push_str(&format!(
         "fn reduce_value(v: {ty}) -> f32 {{ return {}; }}\n\n",
         spec.value
@@ -200,6 +222,7 @@ impl GpuCook {
         graph: &Graph,
         node: NodeId,
         manifest: &NodeManifest,
+        shared: &'static str,
     ) -> ReduceResults {
         let mut out = ReduceResults::default();
         for (si, spec) in specs.iter().enumerate() {
@@ -245,9 +268,9 @@ impl GpuCook {
             let scratch_buf = self.pool.acquire(gpu, u64::from(n) * 4);
 
             // --- map pass -------------------------------------------------
-            let key = map_cache_key(spec, present, &earlier);
+            let key = map_cache_key(spec, present, &earlier, shared);
             self.kernel_pipelines.entry(key).or_insert_with(|| {
-                let src = map_module(spec, present, &earlier);
+                let src = map_module(spec, present, &earlier, shared);
                 CachedPipeline {
                     pipeline: create_pipeline(gpu, &src, "ph2d-reduce map"),
                 }

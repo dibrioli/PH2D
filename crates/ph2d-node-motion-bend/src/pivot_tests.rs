@@ -66,9 +66,7 @@ fn the_default_mode_is_the_node_that_shipped_bit_for_bit() {
     for pivot in [[0.0f32, 0.0], [3.5, -1.25], [-2.0, 0.75]] {
         let resolvido = PivotMode::of(1.0).resolve(pivot, &base);
         assert_eq!(resolvido, pivot, "o modo Point devolve o ponto, ao bit");
-        let a = bend(
-            &base, resolvido, 140.0, 0.0, 0, -1.0, 1.0, &[1.0], &falloff,
-        );
+        let a = bend(&base, resolvido, 140.0, 0.0, 0, -1.0, 1.0, &[1.0], &falloff);
         let b = bend(&base, pivot, 140.0, 0.0, 0, -1.0, 1.0, &[1.0], &falloff);
         assert_eq!(a, b, "pivo {pivot:?}");
     }
@@ -117,6 +115,9 @@ fn the_pivot_vocabulary_is_the_ports() {
     }
     // As duas primeiras reducoes sao as da porta, campo a campo.
     for (a, b) in REDUCES.iter().zip(ph2d_nodegraph::pivot::CENTROID_REDUCES) {
-        assert_eq!((a.name, a.column, a.op, a.value), (b.name, b.column, b.op, b.value));
+        assert_eq!(
+            (a.name, a.column, a.op, a.value),
+            (b.name, b.column, b.op, b.value)
+        );
     }
 }

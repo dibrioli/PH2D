@@ -26,3 +26,18 @@ metadata:
   têm com painéis; a variante `_opt` existe exactamente para isso. *Quem paga é quem nunca pediu o
   serviço* (`line/UIUX`, 2026-08-30, entrega 21)
 - [[feedback_a_clamp_before_a_range_test_deletes_the_test]] — `clamp` antes de `contains` apaga o `if`; teste o valor CRU
+- ⛔⛔ **Uma chave de cache que hasheia a SPEC mas não o CÓDIGO GERADO À VOLTA dela colide quando a
+  spec é PARTILHADA.** Ao dar às reduções um canal de WGSL por-nó (`wgsl_shared`, 08/09), a chave
+  do pipeline de `map` continuava a ser `(value, name, column, dim, op, present, params,
+  antecessoras)` — e a `pivot::CENTROID_CX` é **literalmente a mesma `ReduceSpec`** em vários nós.
+  O primeiro a declarar um canal emprestaria o módulo dele a todos os outros: um pipeline com
+  funções que a expressão do vizinho não pede, ou **sem as que ela pede**. ⇒ *tudo o que entra no
+  texto do módulo entra na chave*, e uma constante partilhada entre crates é exactamente onde isso
+  morde. (O cache do KERNEL estava ileso: a chave dele já é o `NodeTypeId`.)
+- ⭐ **Uma recusa cuja razão é «o substrato não tem onde pôr isto» mede o substrato, não a feature
+  — e um ponto de extensão APPEND-ONLY costuma custar menos que a recusa.** O
+  `motion.bend ▸ direction` ficou fora do dispositivo por o módulo de uma redução não ter onde pôr
+  uma função auxiliar (o polinómio HR-5 teria de ser escrito uma 2.ª vez dentro da string). O
+  canal novo é **um método de trait com default vazio**: nenhum implementador muda, todo módulo
+  que não o declare sai byte a byte igual, e a recusa desaparece. ⚠️ Ao reconferir uma nota
+  dessas, vá **ao gerador** ver o que ele de facto cola — não deduza do doc-comment.

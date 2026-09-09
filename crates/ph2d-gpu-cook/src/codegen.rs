@@ -326,6 +326,10 @@ pub fn kernel_module(
     grid: Option<&GridSpec>,
     reduces: &[ReduceSpec],
     luts: &[LutSpec],
+    // O WGSL que este nó partilha com as reduções dele — ver
+    // `ph2d_nodegraph::gpu::GpuKernels::wgsl_shared`. Vazio para todo nó que não o
+    // declare, e aí o módulo é o de sempre byte a byte.
+    shared: &str,
     mut present: impl FnMut(&ColumnBinding) -> bool,
 ) -> String {
     // ADR-0130: is this an `id`-gather kernel, and is the gather active for this
@@ -571,6 +575,12 @@ pub fn kernel_module(
         src.push('\n');
     }
 
+    // O canal PARTILHADO vem antes do `wgsl_lib`: uma função do lib pode chamá-lo, e o
+    // inverso não pode acontecer (o módulo da redução não tem `wgsl_lib` nenhum).
+    src.push_str(shared);
+    if !shared.is_empty() {
+        src.push('\n');
+    }
     src.push_str(kernel.wgsl_lib);
     src.push('\n');
 

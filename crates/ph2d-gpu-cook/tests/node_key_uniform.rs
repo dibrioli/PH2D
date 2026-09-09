@@ -41,8 +41,9 @@ fn the_node_key_uniform_appears_exactly_when_the_kernel_asks() {
     assert!(codegen::declares_node_key(&asks));
     assert!(!codegen::declares_node_key(&quiet));
 
-    let src_asks = codegen::kernel_module(&asks, asks.bindings, &[], None, &[], &[], |_| false);
-    let src_quiet = codegen::kernel_module(&quiet, quiet.bindings, &[], None, &[], &[], |_| false);
+    let src_asks = codegen::kernel_module(&asks, asks.bindings, &[], None, &[], &[], "", |_| false);
+    let src_quiet =
+        codegen::kernel_module(&quiet, quiet.bindings, &[], None, &[], &[], "", |_| false);
     assert!(
         src_asks.contains("node_key: u32,"),
         "declarado onde e pedido"
@@ -63,7 +64,9 @@ fn a_library_helper_that_reads_it_counts_as_asking() {
         "fn k() -> f32 { return f32(params.node_key); }\n",
     );
     assert!(codegen::declares_node_key(&via_lib));
-    let src = codegen::kernel_module(&via_lib, via_lib.bindings, &[], None, &[], &[], |_| false);
+    let src = codegen::kernel_module(&via_lib, via_lib.bindings, &[], None, &[], &[], "", |_| {
+        false
+    });
     assert!(src.contains("node_key: u32,"));
 }
 
@@ -85,7 +88,7 @@ fn the_node_key_is_last_in_the_layout() {
         sweeps_param: None,
     };
     let k = kernel("write_v(i, f32(params.node_key) + params.seed);\n", "");
-    let src = codegen::kernel_module(&k, k.bindings, &[], Some(&GRID), &[], &[], |_| false);
+    let src = codegen::kernel_module(&k, k.bindings, &[], Some(&GRID), &[], &[], "", |_| false);
     let head = src
         .split_once("struct KernelParams {")
         .expect("o struct")

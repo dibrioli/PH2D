@@ -207,6 +207,100 @@ fn the_bend_deformer_matches_the_cpu_within_epsilon() {
     }
 }
 
+/// Como [`chain`], mas com a DIREÇÃO da dobra fora de zero — o quadro local rodado.
+fn bend_chain(reg: &NodeRegistry, angle: f32, pivot: [f32; 2], direction: f32) -> (Graph, NodeId) {
+    let (mut g, out) = chain(reg, "motion.bend", angle, pivot);
+    let def = g
+        .nodes()
+        .iter()
+        .find(|n| n.type_name == "motion.bend")
+        .expect("a cadeia tem a dobra")
+        .id;
+    g.set_param(def, "direction", direction);
+    (g, out)
+}
+
+/// ⭐⭐⭐ **A DIREÇÃO DA DOBRA CHEGA AO DISPOSITIVO** — a recusa que o
+/// [`wgsl_shared`](ph2d_nodegraph::gpu::KernelResolver::wgsl_shared) desfez (doc 106).
+///
+/// ⛔ Antes desta wave o `applicable` do kernel devolvia `false` para todo `direction ≠ 0`, e a
+/// cadeia inteira caía para a CPU — o custo medido dessa queda é **`50,9×`** (doc 98). O gate
+/// afirma o que mudou: *a mesma cadeia, com o knob fora do neutro, continua a ser reivindicada*.
+#[test]
+fn the_bend_direction_reaches_the_device() {
+    let reg = registry();
+    for direction in [0.0, 37.0, -90.0, 180.0] {
+        let (g, out) = bend_chain(&reg, 90.0, [3.5, -1.25], direction);
+        let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, out);
+        assert!(
+            plan.is_fully_gpu(),
+            "com `direction = {direction}` a cadeia `grid → bend → output` tem de continuar \
+             reivindicada -- a recusa caiu quando a reducao ganhou o polinomio HR-5 partilhado"
+        );
+    }
+}
+
+/// **A dobra num quadro RODADO concorda com a CPU.**
+///
+/// ⚠️ **O `direction = 0` está aqui de propósito:** ele é o único caso em que os dois lados
+/// tomam o **ramo literal** (`bd_axis` devolve `p.x`, o `local` da CPU devolve `dx`/`dy`), e é
+/// exactamente o caminho de omissão de todo grafo já autorado. Sem ele, uma divergência de
+/// `−0,0` no default ficaria por medir para sempre — o mesmo desenho do gate do `bezier_warp`.
+///
+/// ⚠️ **Fora do zero há ε e a razão é nomeada:** a CPU projecta `(p − pivô)` e o dispositivo faz
+/// `proj(p) − proj(pivô)`, a mesma conta noutra ordem — a classe de ε do raio do `motion.twist`.
+#[test]
+#[ignore = "requires a GPU adapter"]
+fn the_rotated_bend_matches_the_cpu_within_epsilon() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    for (angle, pivot, direction) in [
+        (90.0, [3.5, -1.25], 0.0),
+        (90.0, [3.5, -1.25], 37.0),
+        (140.0, [0.0, 0.0], -90.0),
+        (-70.0, [-2.0, 0.75], 180.0),
+    ] {
+        let (g, out) = bend_chain(&reg, angle, pivot, direction);
+        let cpu = cook_cpu(&reg, &g, out);
+        let dev = cook_gpu(&gpu, &reg, &g, out);
+        compare(
+            &format!("bend angle {angle} pivot {pivot:?} direction {direction}"),
+            &cpu,
+            &dev,
+        );
+    }
+}
+
+/// ⚠️ **O CONTROLO — a direção MOVE de facto o layout**, senão o gate acima compararia duas
+/// vezes a mesma dobra e passaria com o `direction` a ser lido por ninguém.
+///
+/// *Um param que não muda a saída é um param que nenhuma paridade testa.*
+#[test]
+fn the_bend_direction_actually_turns_the_axis() {
+    let reg = registry();
+    let (g0, o0) = bend_chain(&reg, 90.0, [3.5, -1.25], 0.0);
+    let (g1, o1) = bend_chain(&reg, 90.0, [3.5, -1.25], 37.0);
+    let a = cook_cpu(&reg, &g0, o0);
+    let b = cook_cpu(&reg, &g1, o1);
+    assert_eq!(a.len(), b.len(), "a contagem nao muda com a direccao");
+    let pior = a
+        .iter()
+        .zip(&b)
+        .map(|(x, y)| {
+            (x.world_pos[0] - y.world_pos[0])
+                .abs()
+                .max((x.world_pos[1] - y.world_pos[1]).abs())
+        })
+        .fold(0.0f32, f32::max);
+    assert!(
+        pior > 0.1,
+        "rodar a direccao 37 graus tem de mover o layout -- maior |Δ| foi {pior:e}"
+    );
+}
+
 /// The twist, on the device, agrees with the canonical spiral.
 #[test]
 #[ignore = "requires a GPU adapter"]

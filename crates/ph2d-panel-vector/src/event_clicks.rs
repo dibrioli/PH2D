@@ -107,7 +107,6 @@ fn is_mode_pill(id: ph2d_a11y::NodeId) -> bool {
             // ⭐ O 17º pill: o OSSO (estudo 42 item 5). Fora daqui ele PINTA, ACENDE sob o rato e o
             // `Click` morre no painel — o modo nunca troca. É a metade do bug #29 que só o gesto
             // REAL apanha.
-            || x == ids::VECTOR_MODE_BONE
             // ⭐⭐⭐ **CRIAR × TRANSFORMAR** (Enio, 2026-09-07) — pela MESMA rota dos pills, e pela
             // mesma razão: quem é dono da resposta é a TOOL (ela guarda o verbo do arrasto), não o
             // mundo. ⛔ Fora daqui os dois pintam, acendem sob o rato e o `Click` morre no painel —

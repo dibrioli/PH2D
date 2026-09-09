@@ -656,11 +656,12 @@ fn every_section_header_is_registered_as_collapsible() {
         // ferramenta, e as duas são coisas diferentes (a tinta descreve UMA marca, esta descreve a
         // forma inteira — a diferença vê-se onde o traço cobre o próprio preenchimento). ⚠️ O `41`
         // foi **CONTADO** (o gate imprimiu `left: 41`), como manda esta nota desde o `31`.
-        // +1 (estudo 42 item 5): BONE — o ESQUELETO. ⚠️ **Secção PRÓPRIA, colada no *Envelope***:
-        // os dois deformam formas que já existem, e lidos juntos ensinam a diferença (uma gaiola
-        // de quatro cantos contra uma cadeia de ossos que a hierarquia move). ⚠️ O `42` foi
-        // **CONTADO** (o gate imprimiu `left: 42`), como manda esta nota desde o `31`.
-        42,
+        // ⛔⛔ **−1 (2026-09-09): a secção BONE SAIU** — é a primeira vez que esta conta DESCE. O
+        // esqueleto ganhou painel próprio por ordem do dono, e com painel próprio o título dele
+        // **é** o cabeçalho: uma secção única lá dentro escreveria o nome duas vezes. ⚠️ O `41` foi
+        // **CONTADO** (o gate imprimiu `left: 41`), como manda esta nota desde o `31` — *uma conta
+        // que só sabe subir é uma conta que ninguém confere.*
+        41,
         "a lista de secoes mudou — confira que o paint pinta um header para cada uma"
     );
     for &id in ids::VECTOR_SECTIONS {
@@ -2696,35 +2697,45 @@ fn the_apply_button_only_exists_when_something_is_live() {
     ph2d_panel_vector::set_current_vector_style(None);
 }
 
-/// ⭐ **O PILL do modo Osso troca a ferramenta.** É a metade que o bug #29 mediu no lado dos
-/// modos: um pill fora da allowlist pinta, acende e o modo nunca muda.
+/// ⭐⭐⭐ **OS DOIS SEGMENTOS DO PAINEL DE BONES SÃO A PORTA DO MODO.**
 ///
-/// ⚠️ Ele vive AQUI e não no painel do esqueleto (2026-09-09): o pill é o **selector de
-/// ferramenta**, que é do painel de vector — o que se mudou para o painel próprio foram os
-/// controlos do OSSO, não o modo que os cria.
+/// ⛔⛔ **Ordem do dono, 2026-09-09:** *«vc deixou o botão Bones no Painel Vector — melhor tirar de
+/// lá»*. Com o pill fora da fileira de modos, a **única** entrada no `DrawMode::Bone` são estes
+/// dois segmentos — e eles vivem noutro painel, então o que este gate mede é a metade da
+/// FERRAMENTA: o evento chega e troca o modo **e** o verbo.
+///
+/// ⚠️ **As duas metades num só gate**, e é de propósito: armar o verbo sem entrar no modo deixaria
+/// o artista a ler *Create* enquanto o arrasto continuava a fazer o que a ferramenta anterior fazia
+/// — *meio gesto*, que é pior que nenhum.
 #[test]
-fn clicking_bone_pill_reaches_the_tool() {
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
-    let mut panel_state = VectorPanelState;
-    let mut tool = VectorTool::default();
-    assert_ne!(tool.mode(), DrawMode::Bone, "precondition: nao e Bone");
-
-    let outcome = host.apply_panel_event::<VectorPanel>(
-        &mut panel_state,
-        WidgetEvent::Click(ids::VECTOR_MODE_BONE),
-    );
-    assert_eq!(
-        outcome,
-        EventOutcome::Consumed,
-        "o pill Bone nao foi consumido — falta o id na allowlist de `event.rs`"
-    );
-    assert!(
-        drain_into_tool(&mut host, &mut tool),
-        "o clique nunca virou ToolPanelEvent — o seam painel->shell esta morto"
-    );
-    assert_eq!(
-        tool.mode(),
-        DrawMode::Bone,
-        "o clique chegou ao bus mas nao virou modo — falta o arm em `handle_panel_event`"
-    );
+fn the_two_bone_segments_are_the_door_to_the_mode() {
+    for (id, esperado) in [
+        (
+            ids::VECTOR_BONE_ACT_CREATE,
+            ph2d_tool_vector::BoneAction::Create,
+        ),
+        (
+            ids::VECTOR_BONE_ACT_TRANSFORM,
+            ph2d_tool_vector::BoneAction::Transform,
+        ),
+    ] {
+        // ⚠️ Parte de OUTRO modo, senão o gate ficava verde sobre um braço que não existe.
+        let mut tool = VectorTool::default();
+        tool.set_mode(DrawMode::Select);
+        <VectorTool as ph2d_editor_core::tool::Tool>::handle_panel_event(
+            &mut tool,
+            ph2d_editor_core::tool::PanelEvent::Click(id),
+        );
+        assert_eq!(
+            tool.mode(),
+            DrawMode::Bone,
+            "o segmento {id:?} não entrou no modo Osso — o pill saiu da fileira, e sem isto não há \
+             porta nenhuma"
+        );
+        assert_eq!(
+            tool.bone_action(),
+            esperado,
+            "o segmento {id:?} entrou no modo e não armou o verbo"
+        );
+    }
 }

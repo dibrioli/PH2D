@@ -200,11 +200,15 @@ impl ModuleTruth {
 
 /// A tabela. ⚠️ **Toda linha de alternância dos menus tem de estar aqui**, e há censo a exigi-lo
 /// (`every_toggle_row_of_the_bar_is_marked_by_its_own_state`).
-pub const MODULE_TRUTHS: [(NodeId, ModuleTruth); 18] = [
+pub const MODULE_TRUTHS: [(NodeId, ModuleTruth); 19] = [
     (ids::TOPBAR_VECTOR, ModuleTruth::Tool("vector")),
     (ids::TOPBAR_MOTION, ModuleTruth::Tool("motion")),
     (ids::TOPBAR_FLIP, ModuleTruth::Tool("flip")),
     (ids::TOPBAR_PHYSICS, ModuleTruth::Panel("physics")),
+    // ⭐⭐⭐ **OS OSSOS** (ordem do dono, 2026-09-09). ⚠️ O literal é o `Panel::ID` da
+    // `ph2d-panel-skeleton` — esta camada é chrome e não depende de painel nenhum, que é a mesma
+    // cerca das linhas à volta.
+    (ids::TOPBAR_SKELETON, ModuleTruth::Panel("skeleton")),
     (ids::TOPBAR_SCULPT3D, ModuleTruth::ShellOwned),
     (ids::TOPBAR_MODEL3D, ModuleTruth::Panel("model3d")),
     (ids::TOPBAR_IMAGE_TOOLS, ModuleTruth::ImageMode),

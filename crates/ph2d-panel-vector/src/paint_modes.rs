@@ -143,14 +143,11 @@ impl BodyCtx<'_> {
                 tr("panel.vector.mode.frame"),
                 DrawMode::Frame,
             ),
-            // ⭐⭐⭐ **Osso** (estudo 42 item 5) — o 17º pill, ao lado da Moldura porque os dois são
-            // os únicos que produzem algo que NÃO é uma forma: aquele o lugar onde as formas moram,
-            // este o que as move.
-            (
-                ids::VECTOR_MODE_BONE,
-                tr("panel.vector.mode.bone"),
-                DrawMode::Bone,
-            ),
+            // ⛔⛔ **O pill do OSSO SAIU desta fileira** (ordem do dono, 2026-09-09: *«vc deixou o
+            // botão Bones no Painel Vector — melhor tirar de lá»*). O `DrawMode::Bone` continua a
+            // existir (é o modo em que o arrasto faz e posa ossos); o que mudou é **por onde se
+            // entra nele**: os dois segmentos *Create* / *Transform* do painel de Bones. *Uma
+            // ferramenta cujo painel é outro não tem por que ocupar a fileira desta.*
             // NOTA: o **Pick Shapes** (`VECTOR_MODE_PICKBLEND`) NÃO fica aqui — ele é uma etapa do
             // Blend (escolher as formas na ordem), e mora na seção BLEND, ao lado do botão que as
             // liga (ADR-0128 C2b). É um modo de tool, mas seu botão vive lá, não nesta fileira.

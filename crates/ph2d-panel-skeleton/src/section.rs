@@ -35,6 +35,27 @@ use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, Spacing, Theme};
 
 /// Seção **SKELETON** — prender ao esqueleto, as duas saídas, e o osso em foco.
+/// ⭐⭐⭐ **ESTE SEGMENTO ESTÁ ACESO?** — a lei que o dono descreveu, numa porta.
+///
+/// ⛔⛔ **Ordem do dono, 2026-09-09:**
+///
+/// | estado | o que acende |
+/// |---|---|
+/// | *«se não há ossos no mundo»* (nada armado) | **nenhum**, até ele carregar em *Create* |
+/// | *«ao seleccionar o osso»* | **Transform** (a shell arma-o na aresta do foco) |
+///
+/// ⚠️ **Ela é uma função e não duas comparações no meio da pintura** porque é a única coisa aqui
+/// que um gate consegue observar: o estado *aceso* de um segmento **não vive no `WidgetStore`** —
+/// ele é passado ao pintor a cada quadro. *Uma lei que só existe dentro de uma chamada de pintura
+/// não tem como ser medida.*
+///
+/// ⚠️ **`None` é «nada armado», e não um terceiro estado do enum**: «armado» já é o modo Osso estar
+/// na mão, e um terceiro valor diria a mesma coisa duas vezes.
+#[must_use]
+pub(crate) fn aceso(armado: Option<usize>, segmento: usize) -> bool {
+    armado == Some(segmento)
+}
+
 pub(crate) fn body(r: &mut RowCtx, y: f32) -> f32 {
     // ⭐⭐⭐ **REVELAR-AO-FOCAR** (report do dono, 2026-09-08: *«selecionar o bone nem sempre
     // abre a secção de skeleton»*). ⚠️ **O pedido consome-se AQUI, antes da porta**: se o corpo
@@ -44,30 +65,38 @@ pub(crate) fn body(r: &mut RowCtx, y: f32) -> f32 {
     // ⚠️ **A porta que decidia se a SECÇÃO existia saiu daqui** (2026-09-09): quem decide se este
     // painel é pintado é a shell (`panel_visible`), pela mesma lei que a secção seguia — *um painel
     // que fala de algo que não existe é ruído*.
-    let (mut y, collapsed) =
-        r.section_header(ids::VECTOR_SECTION_BONE, tr("panel.vector.section.bone"), y);
-    if collapsed {
-        return y;
-    }
-    // ⭐⭐⭐ **CRIAR × TRANSFORMAR, no TOPO** (Enio, 2026-09-07: *«do modo como está fica confuso
-    // para o usuário»*). Ele vem antes dos verbos porque **decide o que os outros controlos
-    // significam**: com *Criar* o arrasto faz osso, com *Transformar* ele posa — e ler isso
-    // depois de já ter carregado é tarde.
+    // ⛔ **Sem cabeçalho de secção**, e a ausência é a decisão (2026-09-09): num painel PRÓPRIO o
+    // título dele **é** o cabeçalho, e uma secção única lá dentro escreveria o nome duas vezes — e
+    // daria uma dobra que colapsa um painel que já se fecha.
+    let mut y = y;
+    // ⭐⭐⭐ **CRIAR × TRANSFORMAR, no TOPO — e ele é a PORTA, não um refinamento.**
     //
-    // ⚠️ **Ele só aparece com a ferramenta OSSO na mão**, e é a mesma lei de sempre: os números
-    // de um osso valem em toda ferramenta (o osso posa-se com a seta), mas *o que o arrasto
-    // faz* só tem sujeito onde há arrasto de osso.
+    // ⛔⛔ **Ordem do dono, 2026-09-09:** o pill `Bone` saiu da fileira de modos do painel de vector
+    // (*«melhor tirar de lá»*), e com ele foi-se a única porta para o modo. Estes dois segmentos
+    // passaram a **trocar de modo E de verbo**.
     //
-    // ⚠️ **O que atravessa é um ÍNDICE, não o enum** (`state::bone_tool`) — é o mesmo idioma do
-    // lado da dobra, e é o que mantém este painel sem depender da crate da ferramenta.
-    if let Some(armado) = state::bone_tool() {
+    // ⚠️ **Ele é pintado SEMPRE, e é aí que mora a regra que o dono descreveu:**
+    //
+    // | estado | o que acende |
+    // |---|---|
+    // | nenhum osso no mundo, painel aberto pelo menu | **nada**, até ele carregar em *Create* |
+    // | um osso seleccionado | **Transform** (a shell arma-o na aresta do foco) |
+    //
+    // ⇒ o que acende sai de `state::bone_tool()`, que é `None` fora do modo Osso. *Um terceiro
+    // estado do enum diria a mesma coisa duas vezes* — «armado» já é o modo estar na mão.
+    //
+    // ⚠️ Ele vem antes dos verbos porque **decide o que os outros controlos significam**: com
+    // *Criar* o arrasto faz osso, com *Transformar* ele posa — e ler isso depois de já ter carregado
+    // é tarde.
+    let armado = state::bone_tool();
+    {
         let rotulos = [
             tr("panel.vector.bone.create"),
             tr("panel.vector.bone.transform"),
         ];
         let acoes: [(NodeId, &str, bool); 2] = [
-            (ids::VECTOR_BONE_ACT_CREATE, rotulos[0], armado == 0),
-            (ids::VECTOR_BONE_ACT_TRANSFORM, rotulos[1], armado == 1),
+            (ids::VECTOR_BONE_ACT_CREATE, rotulos[0], aceso(armado, 0)),
+            (ids::VECTOR_BONE_ACT_TRANSFORM, rotulos[1], aceso(armado, 1)),
         ];
         y = r.segmented(tr("panel.vector.bone.action"), &acoes, y);
     }
@@ -418,5 +447,29 @@ pub(crate) fn paint_action_popover(ctx: &mut PaintCtx, chip: Rect, theme: Theme)
         ctx.host
             .hit_index_mut()
             .register(DROPDOWN_SCROLLBAR_ID, scrollbar_track_rect(panel));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::aceso;
+
+    /// ⭐⭐⭐ **NADA ACESO ATÉ O ARTISTA CARREGAR** — a ordem do dono, palavra por palavra.
+    ///
+    /// ⛔ *«Se não há ossos no mundo nenhum botão fica selecionado até o usuário apertar Create»*
+    /// (2026-09-09). ⚠️ **A metade que importa é a PRIMEIRA:** um default aceso faria o painel
+    /// afirmar um verbo que a ferramenta não tem armado — e o arrasto no canvas faria outra coisa
+    /// que a fileira diz.
+    #[test]
+    fn nothing_is_lit_until_the_artist_arms_it() {
+        assert!(
+            !aceso(None, 0) && !aceso(None, 1),
+            "um segmento nasceu aceso sem nada armado"
+        );
+        assert!(aceso(Some(0), 0) && !aceso(Some(0), 1), "*Create* armado");
+        assert!(
+            !aceso(Some(1), 0) && aceso(Some(1), 1),
+            "*Transform* armado"
+        );
     }
 }

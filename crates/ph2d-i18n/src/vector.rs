@@ -291,7 +291,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.mode.bucket" => "Bucket",
         "panel.vector.mode.frame" => "Frame",
         "panel.vector.mode.bone" => "Bone",
-        "panel.vector.section.bone" => "Skeleton",
+        // ⚠️ **«Bones», e é o nome que o dono usa** (2026-09-09) — o mesmo da linha do menu
+        // *Window* e do título do painel. O gate `the_tab_and_the_menu_call_a_panel_the_same_thing`
+        // mede exactamente isto: um painel com dois nomes é um painel que o artista procura no
+        // sítio errado.
+        "panel.vector.section.bone" => "Bones",
         "panel.vector.bone.action" => "Bone Tool",
         "panel.vector.bone.create" => "Create",
         "panel.vector.bone.transform" => "Transform",

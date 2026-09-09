@@ -454,36 +454,45 @@ fn both_segments_of_create_and_transform_reach_the_tool() {
     state::set_current_bone_tool(None);
 }
 
-/// ⛔ **O grupo só existe no MODO Osso.** Fora dele o arrasto não faz osso nenhum, então perguntar
-/// *o que ele faz* é oferecer um controlo sem sujeito — a classe de knob morto que o `CLAUDE.md`
-/// §5.0 nomeia.
+/// ⭐⭐⭐ **O GRUPO É A PORTA, e por isso é pintado SEMPRE — mas nada acende sem estar armado.**
 ///
-/// ⚠️ **As duas metades**, senão o gate fica verde sobre um painel que o mostra sempre.
+/// ⛔⛔ **Ordem do dono, 2026-09-09**, e ela INVERTE a lei anterior deste gate (*«o grupo só existe
+/// no modo Osso»*). O pill `Bone` saiu da fileira de modos do painel de vector, e com ele foi-se a
+/// única porta para o modo ⇒ estes dois segmentos passaram a **ser** a entrada. *Um controlo que só
+/// aparece depois de já se estar no modo que ele liga não é uma porta.*
+///
+/// A regra, nas palavras dele:
+///
+/// | estado | o que acende |
+/// |---|---|
+/// | *«se não há ossos no mundo»* | **nenhum**, até ele carregar em *Create* |
+/// | *«ao seleccionar o osso»* | **Transform** |
+///
+/// ⚠️ **As duas metades**, senão o gate fica verde sobre um painel que acende sempre um deles.
 #[test]
-fn the_create_transform_group_exists_only_in_the_bone_mode() {
+fn the_create_transform_group_is_the_door_and_starts_with_nothing_lit() {
     let pintado = |id| {
         let mut host = MockPanelHost::with_panel::<SkeletonPanel>();
         let mut st = SkeletonPanelState;
         host.painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, id)
             .is_some()
     };
-    publica_tudo();
-    modo_osso(0);
+    limpa();
+    state::set_current_bone_tool(None);
+
+    // ⚠️ **Uma cena SEM ossos**: o painel abre-se pelo menu, e a porta tem de estar lá.
     assert!(
         pintado(ids::VECTOR_BONE_ACT_CREATE) && pintado(ids::VECTOR_BONE_ACT_TRANSFORM),
-        "no modo Osso os dois segmentos tem de ser pintados"
+        "a porta do modo Osso não é pintada numa cena sem ossos — o artista abre o painel pelo menu \
+         e não tem gesto nenhum que crie o primeiro"
     );
-    // Com esqueleto na cena mas NOUTRO modo: a seção continua (os números do osso valem em toda
-    // ferramenta), e o grupo do verbo NÃO.
-    state::set_current_bone_tool(None);
+    // ⚠️ **Qual deles ACENDE mede-se na porta** (`section::aceso`, com gate próprio): o estado
+    // *aceso* de um segmento não vive no `WidgetStore` — ele é passado ao pintor a cada quadro, e
+    // este arnês só vê o retângulo. *Um gate que afirmasse a cor aqui mediria o instrumento.*
+    state::set_current_bone_tool(Some(1));
     assert!(
-        !pintado(ids::VECTOR_BONE_ACT_CREATE) && !pintado(ids::VECTOR_BONE_ACT_TRANSFORM),
-        "fora do modo Osso o grupo do verbo nao tem sujeito e nao pode ser oferecido"
+        pintado(ids::VECTOR_BONE_ACT_CREATE) && pintado(ids::VECTOR_BONE_ACT_TRANSFORM),
+        "com um osso escolhido os dois segmentos continuam a ser oferecidos"
     );
-    assert!(
-        pintado(ids::VECTOR_BONE_BIND),
-        "a seccao SKELETON continua fora do modo Osso - o controlo dela e' que nao"
-    );
-    limpa();
     state::set_current_bone_tool(None);
 }

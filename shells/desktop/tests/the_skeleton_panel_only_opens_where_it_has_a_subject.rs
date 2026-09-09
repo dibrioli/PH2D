@@ -16,6 +16,22 @@
 
 const LOOP: &str = include_str!("../src/render_loop/mod.rs");
 
+/// **As `n` linhas de CÓDIGO a seguir a `i`** — as vazias e as comentadas não contam.
+///
+/// ⚠️⚠️ **Ela existe porque uma janela de LINHAS mede a densidade dos comentários, não o corpo.** A
+/// 1.ª redacção do gate da aresta procurava nas `12` linhas seguintes e reprovou sobre produto
+/// **correcto**: a terceira metade estava lá, atrás de um bloco de nota de quatro linhas. *Num
+/// ficheiro em que a nota é metade do texto, contar linhas é contar prosa.*
+fn codigo_apos(linhas: &[&str], i: usize, n: usize) -> String {
+    linhas[i + 1..]
+        .iter()
+        .filter(|l| !l.trim().is_empty())
+        .take(n)
+        .copied()
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
 /// **O fonte sem comentários** — sem isto, uma nota que cita a chamada conta como chamada.
 fn code_only(src: &str) -> String {
     src.lines()
@@ -27,58 +43,78 @@ fn code_only(src: &str) -> String {
         .join("\n")
 }
 
-/// ⭐⭐⭐ **A shell DECIDE a visibilidade, e decide-a com os DOIS factos.**
+/// ⭐⭐⭐ **AS DUAS PORTAS SÃO DE ARESTA, e nenhuma escreve em todo quadro.**
 ///
-/// ⚠️⚠️ **A 1.ª redacção deste gate era VÁCUA e as três mutações SOBREVIVERAM:** ela procurava
-/// `tem_esqueleto` e `ferramenta_osso` numa **janela de bytes** à volta da chamada — e as duas
-/// linhas que os DECLARAM caem dentro dessa janela, então tirar um deles do ARGUMENTO não movia
-/// nada. *Um gate que mede a vizinhança de um nome mede o nome, não a origem* — a mesma família que
-/// mordeu o gizmo do limite em 2026-09-08.
+/// ⛔⛔ **A lei mudou por ordem do dono (2026-09-09) e este gate mudou com ela.** A 1.ª redacção
+/// media *«a visibilidade olha para a cena E para a ferramenta»*, que era a lei de horas antes:
+/// a shell escrevia `tem_esqueleto || ferramenta_osso` em **TODO quadro**. Com a linha *Window →
+/// Bones* isso passou a ser um interruptor morto — o quadro seguinte repunha a decisão da shell por
+/// cima da do artista. *Duas fontes de verdade para o mesmo bool, e a que o artista toca é a que
+/// perde.*
 ///
-/// ⇒ a âncora é a **linha do argumento**, que é onde a decisão de facto vive.
+/// ⇒ o que este gate mede agora é a **AUSÊNCIA**: nada escreve a visibilidade deste painel fora de
+/// uma aresta.
 #[test]
-fn the_shell_opens_it_from_the_scene_and_from_the_tool() {
+fn nothing_writes_the_visibility_every_frame() {
     let src = code_only(LOOP);
     let linhas: Vec<&str> = src.lines().collect();
-    let i = linhas
+    let escritas: Vec<usize> = linhas
         .iter()
-        .position(|l| l.contains("SkeletonPanel as ph2d_editor::panel::Panel>::ID"))
-        .expect(
-            "a shell nunca publica a visibilidade do painel do esqueleto — ele fica DEFAULT_VISIBLE \
-             = false para sempre, e o artista não tem gesto nenhum que o abra",
-        );
-    // O `set_panel_visible` tem três argumentos, um por linha: `hero`, o ID, e a DECISÃO.
-    let decisao = linhas[i + 1];
-    assert!(
-        decisao.contains("tem_esqueleto"),
-        "a decisão não olha para a CENA (`{decisao}`) — um painel que aparece sem osso nenhum é ruído"
+        .enumerate()
+        .filter(|(_, l)| l.contains("SkeletonPanel as ph2d_editor::panel::Panel>::ID"))
+        .map(|(i, _)| i)
+        .collect();
+    assert_eq!(
+        escritas.len(),
+        1,
+        "a visibilidade do painel de Bones é escrita em {} sítios — com mais de um, o menu *Window*\
+         vira um interruptor que o quadro seguinte desfaz",
+        escritas.len()
     );
+    // ⚠️ E a única escrita é a da ARESTA: ela mora dentro do `if` do `on_focus`.
+    let aresta = linhas
+        .iter()
+        .position(|l| l.contains("skeleton_reveal::on_focus("))
+        .expect("a aresta do foco deixou de ser perguntada");
     assert!(
-        decisao.contains("ferramenta_osso"),
-        "a decisão não olha para a FERRAMENTA (`{decisao}`) — sem esta metade, a ferramenta que CRIA \
-         ossos abriria sem painel, que é exactamente onde o artista está prestes a ter um"
+        codigo_apos(&linhas, aresta, 8).contains("SkeletonPanel as ph2d_editor::panel::Panel>::ID"),
+        "a escrita da visibilidade (linha {}) não está dentro da aresta do foco (linha {aresta}) — \
+         fora dela ela corre em todo quadro",
+        escritas[0]
     );
 }
 
-/// ⭐⭐⭐ **Um osso NOVO em foco traz a ABA à frente** — o sucessor do «revelar-ao-focar».
+/// ⭐⭐⭐ **A ARESTA faz as TRÊS coisas que o dono descreveu.**
+///
+/// ⛔⛔ *«Se já existe um osso no mundo, ao selecionar o osso o painel de Bones é aberto e o botão
+/// Transform é selecionado»* (2026-09-09). São **três** metades — abrir · trazer à frente · armar —
+/// e as três saem da MESMA aresta: abrir sem armar deixaria a fileira apagada sobre um osso
+/// escolhido, e armar sem abrir armaria um verbo que ninguém vê.
 ///
 /// ⚠️ A ARESTA continua a ser a lei (`skeleton_reveal::on_focus`, gateada no seu módulo): pedi-la em
 /// todo quadro prenderia a aba e o artista não conseguiria olhar para outra.
-///
-/// ⚠️ A âncora é a **linha de código seguinte** à pergunta, e não uma janela — pela lição do gate
-/// acima e da irmã em `the_bone_pickers_are_modal.rs`.
 #[test]
-fn a_new_bone_in_focus_brings_the_tab_forward() {
+fn the_focus_edge_opens_raises_and_arms() {
     let src = code_only(LOOP);
     let linhas: Vec<&str> = src.lines().collect();
     let i = linhas
         .iter()
         .position(|l| l.contains("skeleton_reveal::on_focus("))
         .expect("a aresta do foco deixou de ser perguntada — o painel nunca vem à frente");
-    let corpo = linhas[i + 1];
+    let corpo = codigo_apos(&linhas, i, 8);
+    for (agulha, o_que) in [
+        ("set_panel_visible", "ABRIR o painel"),
+        ("bump_panel_z", "trazer a ABA à frente"),
+        ("bone_arm_pending", "armar o verbo *Transform*"),
+    ] {
+        assert!(
+            corpo.contains(agulha),
+            "a aresta do foco não faz «{o_que}» — as três metades saem da MESMA aresta, e uma \
+             sozinha entrega meio gesto"
+        );
+    }
     assert!(
-        corpo.contains("bump_panel_z") && corpo.contains("SKELETON_PANEL"),
-        "a aresta é perguntada e o corpo dela é `{corpo}` — se não traz a aba do esqueleto à frente, \
-         é o report de 2026-09-08 de volta, com a aba no lugar da rolagem"
+        corpo.contains("SKELETON_PANEL"),
+        "a aresta traz OUTRO painel à frente"
     );
 }

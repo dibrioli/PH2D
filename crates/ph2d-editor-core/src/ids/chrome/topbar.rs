@@ -81,6 +81,18 @@ pub const TOPBAR_GRID_SETTINGS: NodeId = hash_node_id("topbar_grid_settings");
 /// visibilidade que a tecla escreve — duas portas para o mesmo bool.
 pub const TOPBAR_PHYSICS: NodeId = hash_node_id("topbar_physics");
 
+/// ⭐⭐⭐ **O abridor do painel de OSSOS** (*Window → Bones*, ordem do dono 2026-09-09).
+///
+/// ⚠️ **Ele existe porque o painel deixou de se abrir sozinho.** Enquanto a visibilidade era
+/// derivada da cena (*«há ossos?»*), não havia porta nenhuma numa cena **sem** ossos — e é
+/// exactamente aí que o artista quer carregar em *Create* para fazer o primeiro. *Uma feature cuja
+/// única porta é já ter o que ela produz não tem porta.*
+///
+/// ⚠️ **É a MESMA visibilidade que a selecção de um osso escreve** (a chave `"skeleton"`), nunca um
+/// segundo bool: um abridor com estado próprio é como um botão passa a dizer *fechado* sobre um
+/// painel aberto por outro caminho — a lei que o `TOPBAR_PHYSICS` já escreve acima.
+pub const TOPBAR_SKELETON: NodeId = hash_node_id("topbar_skeleton");
+
 /// **O pill TOK** — o abridor visível do painel de Tokens (plano UI/UX W6).
 ///
 /// ⚠️ Irmão exacto do `TOPBAR_PHYSICS` acima, e pela MESMA razão: um painel de MUNDO não tem chip

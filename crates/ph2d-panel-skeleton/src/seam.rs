@@ -78,8 +78,6 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     for id in ids::VECTOR_BONE_FIELDS {
         world_number_field(store, id);
     }
-    // ⚠️ **O cabeçalho da secção** — ele dobra, logo tem de existir para o dispatch.
-    button(store, ids::VECTOR_SECTION_BONE);
 }
 
 /// **Este id é deste painel?** — a mesma lista que o `populate` regista e que o `paint` pinta.

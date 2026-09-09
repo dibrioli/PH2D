@@ -202,6 +202,11 @@ pub fn menu_rows(kind: ContextMenuKind) -> &'static [(NodeId, &'static str, Opti
             (ids::TOPBAR_MOTION, "Motion Nodes", None),
             (ids::TOPBAR_FLIP, "Flip", None),
             (ids::TOPBAR_PHYSICS, "Physics", None),
+            // ⭐⭐⭐ **OS OSSOS** (ordem do dono, 2026-09-09: *«o Menu Windows deve receber a opção
+            // de Bones»*). ⚠️ Vizinho da Física porque os dois são painéis de MUNDO — e é a única
+            // porta do painel numa cena **sem** ossos, que é onde o artista carrega em *Create*
+            // para fazer o primeiro.
+            (ids::TOPBAR_SKELETON, "Bones", None),
             (ids::TOPBAR_SCULPT3D, "Sculpt 3D", None),
             (ids::TOPBAR_MODEL3D, "Model 3D", None),
             (ids::TOPBAR_IMAGE_TOOLS, "Image Tools", None),

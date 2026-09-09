@@ -288,6 +288,22 @@ impl VectorTool {
         self.mode = mode;
     }
 
+    /// ⭐⭐⭐ **O VERBO do arrasto de osso** — *Criar* faz um osso, *Transformar* posa o que está sob
+    /// o cursor.
+    ///
+    /// ⚠️ **Ela é `pub` porque a SHELL a arma na aresta do foco** (ordem do dono, 2026-09-09:
+    /// *«ao seleccionar o osso … o botão Transform é seleccionado»*), pela MESMA porta que o clique
+    /// no segmento usa — um segundo caminho divergiria no dia em que um deles ganhasse um efeito.
+    pub fn set_bone_action(&mut self, action: crate::params::BoneAction) {
+        self.bone_action = action;
+    }
+
+    /// **O verbo do arrasto de osso que está armado.**
+    #[must_use]
+    pub fn bone_action(&self) -> crate::params::BoneAction {
+        self.bone_action
+    }
+
     /// **Blend:** cada passo acima do anterior?
     #[must_use]
     pub fn blend_stack_up(&self) -> bool {

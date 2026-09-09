@@ -40,6 +40,11 @@ pub fn populate(store: &mut WidgetStore) {
         // ADR-0114 W2.
         ids::TOPBAR_FLIP,
         ids::TOPBAR_PHYSICS,
+        // ⭐⭐⭐ **OS OSSOS** (ordem do dono, 2026-09-09) — registado AQUI e **sem pill na fixture**,
+        // como o Widget Lab: a porta de produto é a linha do menu *Window*. O que este registo
+        // compra é o CLIQUE — sem ele o id não fica `active` no Down, o `Click` nunca nasce, e a
+        // linha do menu abre um painel que nunca vê.
+        ids::TOPBAR_SKELETON,
         ids::TOPBAR_TOKENS,
         ids::TOPBAR_AUTHORED,
         // Sculpt 3D (ADR-0150) — mesma exigência de paridade dos pills acima: sem registro AQUI

@@ -62,7 +62,7 @@ impl Panel for SkeletonPanel {
     /// ⛔ **Nasce FECHADO**, e quem o abre é a shell: ele só tem sujeito numa cena que tem ossos —
     /// *um painel que fala de algo que não existe é ruído*, que é a mesma lei que a secção seguia.
     const DEFAULT_VISIBLE: bool = false;
-    const TITLE: &'static str = "Skeleton";
+    const TITLE: &'static str = "Bones";
     /// ⚠️ **Uma lista de propriedades não cabe na faixa de baixo** (240 px de altura): ali ela fica
     /// com duas linhas visíveis. ⇒ as duas colunas, e o gesto que o levaria ao fundo não é oferecido.
     const ALLOWED_SLOTS: ph2d_editor_core::screens::slot::SlotSet =

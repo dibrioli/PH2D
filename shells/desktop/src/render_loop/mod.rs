@@ -3421,6 +3421,10 @@ impl crate::App {
             let mut pending_smart_clip: Option<usize> = None;
             // O *Pick Object* foi carregado — arma o gesto de duas mãos do alvo.
             let mut pending_smart_pick = false;
+            // ⭐ **A ferramenta tem de ser armada em *Transform* no fim do quadro** — ver a aresta
+            // do foco lá em baixo. Um flag, e não a escrita directa, porque ali o `gfx` já está
+            // emprestado a `sim`/`hero`.
+
             // ⭐⭐⭐ **UM CONTROLO DESTA SEÇÃO FOI TOCADO E O SUJEITO DELE É UM OSSO EM FOCO.**
             //
             // ⛔⛔ A pergunta é **DERIVADA** das tabelas de ids (`ids::needs_focused_bone`), e a
@@ -8265,6 +8269,15 @@ impl crate::App {
                 // Arma "Set Center": a próxima pressão no canvas põe a ORIGEM ali.
                 self.vec_pivot_edit = true;
             }
+            // ⭐⭐⭐ **A FERRAMENTA ARMA-SE AQUI** — antes de ela republicar o espelho (`vec_cfg`
+            // abaixo), senão a escrita da aresta do foco seria revertida no mesmo quadro.
+            //
+            // ⛔⛔ Ordem do dono (2026-09-09): *«ao seleccionar o osso … o botão Transform é
+            // seleccionado»*. Quem o pede é a aresta lá em baixo, que não pode tocar em `gfx.tools`
+            // (ele está emprestado a `sim`/`hero`).
+            if let Some(acao) = self.bone_arm_pending.take() {
+                vector_bridge::arm_bone(tools, acao);
+            }
             let vec_cfg = vector_bridge::dispatch(
                 hero,
                 tools,
@@ -9192,20 +9205,17 @@ impl crate::App {
                 // E se a CENA tem esqueleto — é isso que faz a seção aparecer (ou não) fora do modo
                 // Osso. ⛔ Sem esta metade ela seria um cabeçalho permanente num app que nunca viu
                 // um osso, que é exactamente o report que a tabela de escopo curou em 31/08.
-                // ⭐⭐⭐ **A CENA TEM ESQUELETO? É isso que ABRE o painel dele** (2026-09-09).
+                // ⭐⭐⭐ **QUEM ABRE O PAINEL DE BONES** (ordem do dono, 2026-09-09).
                 //
-                // ⚠️ Enquanto isto era uma secção do painel de vetor, o facto atravessava para ela
-                // decidir se se pintava. Com painel próprio, quem decide é a shell — a mesma porta
-                // de todos os painéis —, e a lei é a mesma: *um painel que fala de algo que não
-                // existe é ruído*, e com um esqueleto na cena ele vale em TODA ferramenta (o osso
-                // posa-se com a seta).
-                let tem_esqueleto = !crate::skeleton_live::bone_segments(sim).is_empty();
+                // ⛔⛔ **A visibilidade deixou de ser DERIVADA da cena.** Enquanto ela era
+                // `tem_esqueleto || ferramenta_osso`, escrita em TODO quadro, o menu *Window →
+                // Bones* seria um interruptor morto — o quadro seguinte repunha a decisão da shell
+                // por cima da do artista. *Duas fontes de verdade para o mesmo bool, e a que o
+                // artista toca é a que perde.*
+                //
+                // ⇒ ficam **duas portas, as duas de ARESTA**: a linha do menu (o `skeleton_toggle`)
+                // e a selecção de um osso (mais abaixo). Nenhuma das duas escreve em todo quadro.
                 let ferramenta_osso = self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Bone;
-                <_ as ph2d_editor::panel::PanelHostInternal>::set_panel_visible(
-                    hero,
-                    <ph2d_panel_skeleton::SkeletonPanel as ph2d_editor::panel::Panel>::ID,
-                    tem_esqueleto || ferramenta_osso,
-                );
                 // ⭐ E o VERBO do arrasto, como ÍNDICE — é o que mantém aquele painel sem depender
                 // da crate da ferramenta de vector.
                 ph2d_panel_skeleton::set_current_bone_tool(ferramenta_osso.then(|| {
@@ -9285,7 +9295,23 @@ impl crate::App {
                 // ⚠️ A ARESTA continua a ser a lei (`skeleton_reveal::on_focus`): pedi-lo em todo
                 // quadro prenderia a aba e o artista não conseguiria olhar para outra.
                 if crate::skeleton_reveal::on_focus(&mut self.osso_revelado, osso_em_foco) {
+                    // ⭐⭐⭐ **ORDEM DO DONO (2026-09-09):** *«se já existe um osso no mundo, ao
+                    // seleccionar o osso o painel de Bones é aberto e o botão Transform é
+                    // seleccionado»*. As três metades saem da MESMA aresta, e é isso que as mantém
+                    // de acordo: abrir sem armar deixaria a fileira apagada sobre um osso escolhido.
+                    <_ as ph2d_editor::panel::PanelHostInternal>::set_panel_visible(
+                        hero,
+                        <ph2d_panel_skeleton::SkeletonPanel as ph2d_editor::panel::Panel>::ID,
+                        true,
+                    );
                     hero.store.bump_panel_z(ph2d_editor::ids::SKELETON_PANEL);
+                    // ⚠️ **A ferramenta arma-se no QUADRO SEGUINTE** (`bone_arm_pending`): aqui o
+                    // `gfx` já está emprestado a `sim`/`hero`, e um segundo empréstimo dele não
+                    // compila. O espelho da shell escreve-se **já**, para este quadro rotear certo
+                    // e a fileira acender no mesmo instante em que o osso é escolhido.
+                    self.bone_arm_pending = Some(ph2d_tool_vector::BoneAction::Transform);
+                    self.vec_draw_config.mode = ph2d_tool_vector::DrawMode::Bone;
+                    self.vec_draw_config.bone_action = ph2d_tool_vector::BoneAction::Transform;
                 }
                 // ⭐ **PORQUE a secção não tem sujeito** (report do dono, 2026-09-08: *«seleccionar o
                 // bone nem sempre abre a secção de skeleton»*). ⚠️ A pergunta tem três respostas que

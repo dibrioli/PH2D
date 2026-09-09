@@ -80,18 +80,22 @@ impl VectorTool {
             PanelEvent::Click(id) if id == ids::VECTOR_MODE_FRAME => {
                 self.mode = DrawMode::Frame;
             }
-            // ⭐ **Osso** (estudo 42 item 5) — o 17.º pill. O gesto produz uma ENTIDADE com
-            // `ph2d_skeleton_ecs::Bone`, não um caminho; a shell é quem a cria (aqui só se troca
-            // de modo). ⚠️ O modo VIVE na ferramenta vectorial até o módulo ganhar painel próprio.
-            PanelEvent::Click(id) if id == ids::VECTOR_MODE_BONE => {
-                self.mode = DrawMode::Bone;
-            }
-            // ⭐⭐⭐ **CRIAR × TRANSFORMAR** (Enio, 2026-09-07). ⚠️ Eles NÃO trocam de modo: um osso
-            // desenha-se e posa-se na mesma ferramenta, e o que muda é o VERBO do arrasto.
+            // ⭐⭐⭐ **CRIAR × TRANSFORMAR — e eles SÃO a porta do modo** (ordem do dono, 2026-09-09).
+            //
+            // ⛔⛔ O pill `VECTOR_MODE_BONE` saiu da fileira de modos do painel de vector (*«melhor
+            // tirar de lá»*), e com ele foi-se a única porta para o `DrawMode::Bone`. ⇒ os dois
+            // segmentos do painel de Bones passam a **trocar de modo E de verbo**, que é o que
+            // torna a fileira uma porta em vez de um refinamento.
+            //
+            // ⚠️ **É isto que dá o «nenhum seleccionado»**: fora do `DrawMode::Bone` nenhum dos dois
+            // está armado, e a fileira acende-se pelo MODO — numa cena sem ossos, o artista abre o
+            // painel pelo menu e **nada** está aceso até ele carregar em *Create*.
             PanelEvent::Click(id) if id == ids::VECTOR_BONE_ACT_CREATE => {
+                self.mode = DrawMode::Bone;
                 self.bone_action = crate::params::BoneAction::Create;
             }
             PanelEvent::Click(id) if id == ids::VECTOR_BONE_ACT_TRANSFORM => {
+                self.mode = DrawMode::Bone;
                 self.bone_action = crate::params::BoneAction::Transform;
             }
             PanelEvent::Click(id) if id == ids::VECTOR_MODE_PENCIL => {
@@ -281,7 +285,6 @@ mod tests {
             (ids::VECTOR_MODE_BUCKET, DrawMode::Bucket),
             (ids::VECTOR_MODE_CUT, DrawMode::Cut),
             (ids::VECTOR_MODE_FRAME, DrawMode::Frame),
-            (ids::VECTOR_MODE_BONE, DrawMode::Bone),
         ];
         for &(id, esperado) in pills {
             // ⚠️ Parte de OUTRO modo, senão o teste ficaria verde sobre um braço que não existe.
@@ -300,13 +303,37 @@ mod tests {
                  o modo nunca muda"
             );
         }
-        // ⛔ **O CENSO**: todo modo do vocabulário aparece na tabela acima. Um modo novo sem pill
-        // tem de se declarar aqui, e a lista de excepções é vazia de propósito — hoje todos têm.
+        // ⛔⛔ **OS MODOS SEM PILL, com o motivo de cada um.**
+        //
+        // ⚠️ **`Bone` entrou aqui em 2026-09-09, por ordem do dono** (*«vc deixou o botão Bones no
+        // Painel Vector — melhor tirar de lá»*): o esqueleto ganhou painel próprio, e a porta do
+        // modo passou a ser a fileira *Create × Transform* **daquele** painel — que troca o modo e
+        // o verbo de uma vez. ⇒ o modo continua vivo; o que saiu foi o pill.
+        //
+        // ⚠️ Ela **não** é uma isenção: um modo aqui declara que a porta dele vive noutro sítio, e
+        // o gate irmão que mede essa porta é o `the_two_bone_segments_are_the_door_to_the_mode`
+        // (`ph2d-panel-vector/tests/seam.rs`). *Uma excepção sem o endereço da porta é um modo
+        // inalcançável com uma nota bonita.*
+        const SEM_PILL: [DrawMode; 1] = [DrawMode::Bone];
+        // ⛔ **O CENSO**: todo modo do vocabulário aparece na tabela acima, ou na lista das
+        // excepções. Um modo novo sem pill tem de se declarar ali, com o motivo.
         for m in DrawMode::ALL {
             assert!(
-                pills.iter().any(|(_, x)| x == m),
+                pills.iter().any(|(_, x)| x == m) || SEM_PILL.contains(m),
                 "o modo {m:?} nao esta' na tabela: ou ele tem pill (acrescente a linha) ou nao tem \
-                 (declare-o aqui, com o motivo)"
+                 (declare-o em SEM_PILL, com o motivo e o endereco da porta que o alcanca)"
+            );
+        }
+        // ⚠️ **E a excepção não nomeia fantasmas** — a metade que impede a lista de virar licença.
+        for m in SEM_PILL {
+            assert!(
+                DrawMode::ALL.contains(&m),
+                "{m:?} esta' declarado sem pill e ja' nao e' um modo"
+            );
+            assert!(
+                !pills.iter().any(|(_, x)| *x == m),
+                "{m:?} esta' declarado sem pill E tem pill na tabela — a excepcao ja' nao descreve \
+                 nada"
             );
         }
     }

@@ -1029,6 +1029,7 @@ impl App {
             timeline_intents: Vec::new(),
             smart_pick: None,
             osso_revelado: None,
+            bone_arm_pending: None,
             timeline_reveal_after_apply: false,
             timeline_view: ph2d_timeline::TimelineViewSnapshot::default(),
             timeline_signals: Default::default(),

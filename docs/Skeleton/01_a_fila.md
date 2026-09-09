@@ -1226,6 +1226,61 @@ argumento**. *Um gate que mede a vizinhança de um nome mede o nome, não a orig
 que mordeu o gizmo do limite em 08/09.
 
 
+### F3-n — ✅ **O pill saiu, a fileira virou PORTA, e o menu Window ganhou *Bones*** (2026-09-09)
+
+Quatro pedidos do dono no mesmo report, e o terceiro é o que muda quem manda:
+
+| pedido dele | o que foi feito |
+|---|---|
+| *«vc deixou o botão Bones no Painel Vector — melhor tirar de lá»* | o pill saiu da fileira de modos |
+| *«mudar o modo de criar e transformar bones»* | os dois segmentos passaram a **trocar o modo E o verbo** |
+| *«ao selecionar o osso o painel é aberto e o botão Transform é selecionado»* | as **três** metades saem da mesma aresta |
+| *«se não há ossos … nenhum botão fica selecionado até apertar Create»* | nada acende sem estar armado |
+| *«o Menu Windows deve receber a opção de Bones»* | *Window → Bones* |
+
+⭐⭐⭐ **O pill e o menu são o mesmo pedido de dois lados.** Tirar o pill tira a **única** porta para o
+`DrawMode::Bone` ⇒ os segmentos *Create* / *Transform* tornaram-se a entrada. E a visibilidade
+derivada da cena (*«há ossos?»*) não tinha porta nenhuma numa cena **sem** ossos — que é exactamente
+onde o artista quer carregar em *Create*. ⇒ *uma feature cuja única porta é já ter o que ela produz
+não tem porta.*
+
+⛔⛔ **E foi por isso que a visibilidade DEIXOU de ser escrita em todo quadro.** Com
+`tem_esqueleto || ferramenta_osso` a correr sempre, a linha do menu seria um interruptor **morto** —
+o quadro seguinte repunha a decisão da shell por cima da do artista. *Duas fontes de verdade para o
+mesmo bool, e a que o artista toca é a que perde.* ⇒ ficam **duas portas, as duas de ARESTA**: a
+linha do menu e a selecção de um osso.
+
+⚠️ **O «nenhum aceso» não é um terceiro estado do enum:** «armado» já é o modo Osso estar na mão, e
+o `bone_tool()` que atravessa é `Option<usize>`. Um terceiro valor diria a mesma coisa duas vezes.
+
+⚠️ **A ferramenta arma-se no quadro SEGUINTE** (`bone_arm_pending`): na aresta do foco o `gfx` já
+está emprestado a `sim`/`hero`. O **espelho** da shell escreve-se já, para o mesmo quadro rotear
+certo — e o consumo corre **antes** de a ferramenta republicar o espelho, senão ela reverteria a
+escrita da aresta.
+
+⚠️ **O painel perdeu o cabeçalho de secção**: com painel próprio, o título dele **é** o cabeçalho, e
+o gate `the_tab_and_the_menu_call_a_panel_the_same_thing` obrigou a escolher **um** nome — *Bones*,
+o do dono. A conta das secções do painel de vector **DESCEU** pela primeira vez (`42 → 41`).
+
+**Gates** (8; 7 mortos por mutação, 1 é censo):
+
+| gate | mutação que ele mata |
+|---|---|
+| `nothing_is_lit_until_the_artist_arms_it` | um default aceso ⇒ o painel afirma um verbo que a ferramenta não tem |
+| `the_create_transform_group_is_the_door_and_starts_with_nothing_lit` | a fileira volta a só existir dentro do modo ⇒ não há porta |
+| `the_two_bone_segments_are_the_door_to_the_mode` | os segmentos armam o verbo e não entram no modo ⇒ **meio gesto** |
+| `every_mode_button_reaches_the_tool` (o censo `SEM_PILL`) | um modo sem pill e sem o endereço da porta que o alcança |
+| `nothing_writes_the_visibility_every_frame` | a visibilidade volta a ser escrita sempre ⇒ o menu morre |
+| `the_focus_edge_opens_raises_and_arms` | falta **uma** das três metades da aresta |
+| `every_painted_menu_row_is_registered_and_therefore_clickable` | a linha do menu nasce muda |
+| `every_topbar_verb_has_a_door_that_is_not_the_legacy_key` | a linha sai do menu |
+
+⚠️⚠️ **E a 1.ª redacção do gate da aresta reprovou sobre produto CORRECTO**: ele procurava nas `12`
+linhas seguintes, e a terceira metade estava lá — atrás de um bloco de nota de quatro linhas. *Num
+ficheiro em que a nota é metade do texto, contar LINHAS é contar prosa.* ⇒ a janela passou a contar
+**linhas de código**.
+
+
 ## ⛔ Recusas MEDIDAS deste módulo — não as reconstrua
 
 > ⚠️ **As seis de 2026-09-07/08 entraram aqui na auditoria de 08/09** — elas viviam só em prosa e em

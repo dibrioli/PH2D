@@ -53,6 +53,24 @@ pub(crate) fn set_mode(tools: &mut ToolRegistry, mode: ph2d_tool_vector::DrawMod
     }
 }
 
+/// ⭐⭐⭐ **ARMA O VERBO DO OSSO na ferramenta** — o modo E a acção, de uma vez.
+///
+/// ⛔⛔ **Ela existe porque os dois passaram a ser UMA porta** (ordem do dono, 2026-09-09): o pill
+/// `Bone` saiu da fileira de modos do painel de vector, e os segmentos *Create* / *Transform*
+/// tornaram-se a entrada no `DrawMode::Bone`. Armar só a acção deixaria o verbo escolhido e o
+/// arrasto na ferramenta anterior — *meio gesto*.
+///
+/// Downcast confinado a este bridge, como o [`set_mode`].
+pub(crate) fn arm_bone(tools: &mut ToolRegistry, action: ph2d_tool_vector::BoneAction) {
+    if let Some(tool) = tools.tool_by_id_mut(&ToolId::new("vector")).and_then(|t| {
+        t.as_any_mut()
+            .downcast_mut::<ph2d_tool_vector::VectorTool>()
+    }) {
+        tool.set_mode(ph2d_tool_vector::DrawMode::Bone);
+        tool.set_bone_action(action);
+    }
+}
+
 /// A tool ADOTA os parâmetros (unidade de UI) da forma `kind`. A shell chama isto quando
 /// o usuário seleciona uma forma VIVA: eles viram os correntes DAQUELA forma, então o
 /// painel (que pinta a partir da tool) para de mentir e a próxima desenhada os herda.

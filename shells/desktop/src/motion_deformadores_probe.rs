@@ -33,46 +33,7 @@ pub(crate) const GRUPO: [&str; 13] = [
 #[test]
 #[ignore = "sonda de auditoria — corra à mão"]
 fn audit_the_deformer_group() {
-    let base = MotionState::new();
-    eprintln!("\n  nó                     | params | no cartão | device | portas | efeito");
-    eprintln!("  -----------------------|--------|-----------|--------|--------|--------");
-    for nome in GRUPO {
-        let mut m = MotionState::new();
-        let id = m.doc.graph.add_node(nome.to_string());
-        let tid = m.doc.graph.node(id).expect("no'").type_id();
-        let man = {
-            use ph2d_nodegraph::cook::OpResolver;
-            base.registry.resolve(tid).map(|op| op.manifest())
-        };
-        let Some(man) = man else {
-            eprintln!("  {nome:<23} | (nao registado)");
-            continue;
-        };
-        let mut snap = ph2d_panel_motion_graph::snapshot_from(&m.doc.graph, &m.registry);
-        crate::render_loop::motion_bridge::params::card::stamp_card_params(
-            &m,
-            ph2d_editor::ProjectSettings::default(),
-            &mut snap,
-        );
-        let no_cartao = snap
-            .nodes
-            .iter()
-            .find(|v| v.id == id.0)
-            .map_or(0, |v| v.params.len());
-        let device = {
-            use ph2d_nodegraph::gpu::KernelResolver;
-            m.registry.gpu_kernel(tid).is_some()
-        };
-        eprintln!(
-            "  {nome:<23} | {:>6} | {no_cartao:>9} | {:^6} | {}->{:<4} | {:?}",
-            man.params.len(),
-            if device { "sim" } else { "NAO" },
-            man.inputs.len(),
-            man.outputs.len(),
-            man.effect,
-        );
-    }
-    eprintln!();
+    crate::motion_ciclo_probe::retrato(&GRUPO);
 }
 
 /// **OS PARAMS DE CADA NÓ DO GRUPO, um a um** — o que a auditoria compara contra as
@@ -84,63 +45,10 @@ fn audit_the_deformer_group() {
 #[test]
 #[ignore = "sonda de auditoria — corra à mão"]
 fn what_each_deformer_offers() {
-    let m = MotionState::new();
-    for nome in GRUPO {
-        let tid = ph2d_nodegraph::node::NodeTypeId::of(nome);
-        let man = {
-            use ph2d_nodegraph::cook::OpResolver;
-            let Some(op) = m.registry.resolve(tid) else {
-                continue;
-            };
-            op.manifest()
-        };
-        eprintln!("\n  === {nome} ===");
-        eprintln!(
-            "  portas: [{}] -> [{}]",
-            man.inputs
-                .iter()
-                .map(|p| p.name)
-                .collect::<Vec<_>>()
-                .join(", "),
-            man.outputs
-                .iter()
-                .map(|p| p.name)
-                .collect::<Vec<_>>()
-                .join(", ")
-        );
-        let hints = m.registry.param_ui(tid).unwrap_or(&[]);
-        for spec in man.params {
-            let h = hints.iter().find(|h| h.param == spec.name);
-            let w = h.map_or("(sem hint)".to_string(), |h| match h.widget {
-                ph2d_node_registry::ParamWidget::Enum { labels } => {
-                    format!("Enum[{}]", labels.join("|"))
-                }
-                outro => format!("{outro:?}"),
-            });
-            eprintln!(
-                "    {:<18} default {:>9.3}  {:<16}  {}",
-                spec.name,
-                spec.default,
-                h.map_or("—".to_string(), |h| format!("{}..{}", h.min, h.max)),
-                w
-            );
-        }
-    }
-    eprintln!();
+    crate::motion_ciclo_probe::params_de(&GRUPO);
 }
 
-// ---------------------------------------------------------------------------------------------
-// ⭐⭐⭐ O PREÇO DE CADA NÓ DO GRUPO — e, sobretudo, o preço de ele NÃO chegar ao dispositivo.
-// ---------------------------------------------------------------------------------------------
-
-/// ⭐⭐ **AS ROWS QUE O CARTÃO DE FACTO PINTA, com o RÓTULO que aparece na tela.**
-///
-/// ⚠️ **Um passo de smoke que manda clicar numa linha AFIRMA que ela está na lista** — e a casa
-/// já pagou por escrever um passo impossível ([memória]). Esta sonda é o instrumento que
-/// verifica a afirmação antes de a mensagem sair: ela imprime o que o `stamp_card_params`
-/// produz, que é literalmente o que o pintor desenha.
-///
-/// [memória]: ../../../project-memory/feedback_a_smoke_step_that_names_a_panel_row_must_prove_the_row_is_in_the_list.md
+/// ⭐⭐ **AS ROWS QUE O CARTÃO DE FACTO PINTA, com o RÓTULO que aparece na tela** — ver a porta.
 ///
 /// ```text
 /// cargo test -p ph2d-host-desktop --bins -- --ignored --nocapture what_the_card_shows
@@ -148,46 +56,7 @@ fn what_each_deformer_offers() {
 #[test]
 #[ignore = "sonda de auditoria — corra à mão"]
 fn what_the_card_shows() {
-    for nome in GRUPO {
-        let mut m = MotionState::new();
-        let id = m.doc.graph.add_node(nome.to_string());
-        let mut snap = ph2d_panel_motion_graph::snapshot_from(&m.doc.graph, &m.registry);
-        crate::render_loop::motion_bridge::params::card::stamp_card_params(
-            &m,
-            ph2d_editor::ProjectSettings::default(),
-            &mut snap,
-        );
-        let view = snap.nodes.iter().find(|v| v.id == id.0);
-        let rows: Vec<String> = view
-            .map(|v| v.params.iter().map(|c| c.hint.label.to_string()).collect())
-            .unwrap_or_default();
-        // ⚠️ **As SECÇÕES fazem parte do que o cartão MOSTRA, e esta sonda não as lia.** O
-        // plano do ciclo 3 acusou o `motion.bezier_warp` de pintar `In X · In Y · Out X ·
-        // Out Y` **quatro vezes** sem dizer de que aresta — uma acusação construída sobre
-        // esta lista de rótulos, que é metade da resposta. O cartão dobra as rows em
-        // [`CardSection`], e um rótulo repetido debaixo de um cabeçalho que o nomeia **não é
-        // ambíguo**. *Uma sonda que lê metade da superfície fabrica dívida.*
-        let secs: Vec<String> = view
-            .map(|v| {
-                v.sections
-                    .iter()
-                    .map(|s| {
-                        format!(
-                            "{}@{}{}",
-                            s.title,
-                            s.at,
-                            if s.open { "" } else { " (fechada)" }
-                        )
-                    })
-                    .collect()
-            })
-            .unwrap_or_default();
-        eprintln!("  {nome:<23} | {}", rows.join(" · "));
-        if !secs.is_empty() {
-            eprintln!("  {:<23} > secções: {}", "", secs.join(" · "));
-        }
-    }
-    eprintln!();
+    crate::motion_ciclo_probe::cartao(&GRUPO);
 }
 
 // ---------------------------------------------------------------------------------------------

@@ -101,7 +101,13 @@ impl SculptStroke {
         // ⭐⭐⭐ **O MATERIAL ATRAVESSA OS GESTOS** (report de 09/09) — ver
         // [`SculptStroke::cloth_material`]. Ele é re-semeado quando a assinatura
         // não bate, que é «alguém esculpiu desde o último gesto de tecido».
+        // ⭐⭐⭐ **E ELE SEGUE A MALHA quando o TIPO muda o tamanho da peça**
+        // (report de 09/09: *«com inflate … o objeto desinfla a cada início de
+        // simulação»*) — a lei e a tabela vivem em
+        // [`ClothFilterKind::muda_o_material`], que é a porta única desta
+        // pergunta.
         if self.cloth_material.len() != mesh.vert_count()
+            || kind.muda_o_material()
             || self.cloth_left != assinatura(mesh.positions())
         {
             self.cloth_material = mesh.positions().to_vec();

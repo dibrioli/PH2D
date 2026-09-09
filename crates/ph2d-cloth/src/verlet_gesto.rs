@@ -107,6 +107,12 @@ pub struct PincelTecido {
     pub normal_da_area: V3,
     /// Ainda não houve passo nenhum? (o 1.º constrói e não simula)
     pub primeiro: bool,
+    /// ⭐⭐⭐ **O ARRASTO DO PASSO ANTERIOR** — só o filtro o move, e ele existe
+    /// para o [`Modo::Expandir`] medir **quanto o artista arrastou** em vez de
+    /// contar **quantas vezes o rato falou**.
+    ///
+    /// Ver [`forca::QUANTUM_DE_ARRASTO`], que traz a medição e a proveniência.
+    pub arrasto_anterior: f64,
 }
 
 /// ⭐ **A lei da FORÇA por vértice** — irmão (`#[path]`) cortado por
@@ -143,6 +149,7 @@ impl PincelTecido {
             mascara: Vec::new(),
             normal_da_area: [0.0; 3],
             primeiro: true,
+            arrasto_anterior: 0.0,
         }
     }
 

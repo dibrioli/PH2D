@@ -98,6 +98,48 @@ impl ClothFilterKind {
         matches!(self, Self::Pinch)
     }
 
+    /// **ESTE TIPO MUDA O MATERIAL, ou apenas o CARREGA?** — a lei que o report
+    /// de 09/09 obrigou a escrever (*«quando uso inflate e faço mais de uma
+    /// simulação o objeto desinfla a cada início de simulação»*).
+    ///
+    /// ⭐⭐⭐ **A pergunta é sobre a INTENÇÃO do tipo, e ela parte os cinco em
+    /// dois:**
+    ///
+    /// | tipo | o que ele faz à peça | material |
+    /// |---|---|---|
+    /// | [`Self::Gravity`] · [`Self::Pinch`] | uma CARGA externa — o pano é o mesmo, o que muda é o que puxa por ele | **persiste** |
+    /// | [`Self::Inflate`] · [`Self::Expand`] · [`Self::Scale`] | mudam o TAMANHO da peça — a forma nova é o que o artista quer guardar | **segue a malha** |
+    ///
+    /// ⚠️⚠️ **Sem esta porta os dois pedidos do dono são contraditórios.** A wave
+    /// de 08/09 fez o material atravessar os gestos para curar *«se eu fizer mais
+    /// de uma simulação o objeto continua esticando»* — e isso, aplicado a um
+    /// tipo que INFLA, faz o gesto seguinte começar por desfazer o anterior: o
+    /// comprimento de repouso de cada aresta continua a ser o da peça pequena, e
+    /// a relaxação afunda a peça **abaixo do repouso** antes de a força a voltar
+    /// a levantar. Medido em três gestos de Inflate sobre uma esfera, volume
+    /// normalizado: fim `1,168 · 1,166 · 1,166` (não acumula) com **fundo
+    /// `1,000 · 0,887 · 0,886`** (afunda). ⇒ *é a mesma lei a dar a resposta
+    /// certa a uma pergunta e a errada à outra, porque as perguntas são duas.*
+    ///
+    /// ⚠️ **O censo da família achou um SEGUNDO membro que o report não nomeia:**
+    /// a [`Self::Scale`] tem o mesmo fundo (`1,001 · 0,890 · 0,871`) pelo mesmo
+    /// mecanismo — a âncora dela sai da pose de agora e o tecto mede-a contra o
+    /// material velho. *O exemplo que o dono aponta pode ser a excepção da
+    /// família; o censo corre antes do veredito.*
+    ///
+    /// ⭐ **É o mesmo corte que o alvo faz**, com a diferença de ele o pôr num
+    /// interruptor: a espec §6.3 diz que ali a deformação **acumula** entre
+    /// traços (a simulação nasce e morre com o gesto) e a §6.4 diz que a *base
+    /// persistente* — uma opção — a faz **saturar**. Nós tomámos a saturação como
+    /// lei; esta porta diz **de que tipos** ela é.
+    #[must_use]
+    pub fn muda_o_material(self) -> bool {
+        match self {
+            Self::Gravity | Self::Pinch => false,
+            Self::Inflate | Self::Expand | Self::Scale => true,
+        }
+    }
+
     /// **Este tipo lê os eixos ligados do referencial?**
     ///
     /// ⚠️ Só a [`Self::Scale`], e é a espec §7 que o diz com a medição dentro:

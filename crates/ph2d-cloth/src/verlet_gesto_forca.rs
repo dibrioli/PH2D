@@ -20,6 +20,45 @@ use super::{Accionamento, FalloffForca, Modo, Passo, PincelTecido, cruz, normal_
 use crate::V3;
 use crate::verlet::{dist, norm, unit};
 
+/// ⭐⭐⭐ **O QUANTUM DE ARRASTO do filtro — e ele NÃO é um número escolhido: está
+/// escrito no cabeçalho de cada fixture do alvo** (`avanco_por_passo_px 90`,
+/// `escala_da_ui 1.0`, e a lei da força é `S = 0,001 · px · escala`) ⇒ `0,09`.
+///
+/// # ⛔⛔ O defeito que ele cura: o *Expand* contava EVENTOS, não arrasto
+///
+/// O [`Modo::Expandir`] soma `τ += 0,01 · f` **por passo**, e no filtro um passo
+/// é **um movimento do rato**. Como `S` é a distância acumulada ao ponto de
+/// pressão, dois artistas que arrastem exactamente o mesmo tanto recebem `τ`
+/// proporcionais ao **polling do rato deles**. Medido sobre uma esfera, o MESMO
+/// arrasto (`s` de `0` a `1`), volume normalizado ao repouso:
+///
+/// | amostras | 8 | 15 | 30 | 60 | 120 | 240 |
+/// |---|---:|---:|---:|---:|---:|---:|
+/// | **Gravity** | `1,000` | `1,000` | `1,000` | `1,000` | `1,000` | `1,000` |
+/// | **Inflate** | `1,188` | `1,165` | `1,168` | `1,167` | `1,168` | `1,169` |
+/// | **Scale** | `1,285` | `1,215` | `1,224` | `1,219` | `1,217` | `1,216` |
+/// | **Expand** | `1,967` | `2,933` | `3,498` | `5,494` | `19,509` | **`55,841`** |
+///
+/// ⭐⭐ **Três dos quatro tipos já eram invariantes** — eles escrevem uma força
+/// ou uma âncora, e o equilíbrio contra a rede de restrições é fixado pela
+/// MAGNITUDE de `S`, que chega a `1` seja qual for o número de passos. O Expand é
+/// o único que **acumula**, e por isso o único que a amostragem multiplica: `28×`
+/// entre as duas pontas da tabela. *Não é «falta um tecto»: é a lei do Painter,
+/// que este repo pagou seis vezes — o traço é facto do CAMINHO, nunca de quão
+/// fino o motor amostrou o caminho.*
+///
+/// ⇒ o incremento passa a ser pesado por `|Δs| / QUANTUM_DE_ARRASTO`.
+///
+/// ⭐ **As duas fixtures do Expand ficam BYTE-IDÊNTICAS por construção**: nelas o
+/// avanço é uniforme (`0,09` por passo, e `−0,09` na negativa), logo o peso vale
+/// exactamente `1` em todos os oito passos. ⚠️ **O valor absoluto é
+/// load-bearing** — sem ele a fixture negativa inverteria o sinal de `τ` e o
+/// Expand para trás faria a peça CRESCER.
+///
+/// ⚠️ **O traço não passa por aqui** (peso `1`): ali quem parametriza o caminho é
+/// o espaçamento dos dabs, que já é uma lei de arco.
+pub(super) const QUANTUM_DE_ARRASTO: f64 = 0.09;
+
 impl PincelTecido {
     /// **O factor por vértice `f`** (espec §4.1), sem o `B`: máscara · banda ·
     /// corte no raio · curva com dureza.
@@ -97,9 +136,20 @@ impl PincelTecido {
         // filtro, e as constantes que sobram (`0,01` do Expand, `0,01` da âncora
         // da Escala) vivem dentro do tipo. ⛔ Escrever `b_expand = s / 100` aqui
         // seria emprestar ao filtro uma escada que é do traço.
-        let (b_forca, b_expand) = match self.pincel.accionamento {
-            Accionamento::Traco => (10.0 * alpha * flip * pressao, 0.1 * alpha * flip * pressao),
-            Accionamento::Filtro { s } => (s, s),
+        //
+        // ⚠️ **O terceiro valor é o PESO DO ARRASTO**, e só o Expand o lê — ver
+        // [`QUANTUM_DE_ARRASTO`] para o defeito que ele cura e a tabela medida.
+        let (b_forca, b_expand, peso_do_arrasto) = match self.pincel.accionamento {
+            Accionamento::Traco => (
+                10.0 * alpha * flip * pressao,
+                0.1 * alpha * flip * pressao,
+                1.0,
+            ),
+            Accionamento::Filtro { s } => {
+                let avanco = (s - self.arrasto_anterior).abs() / QUANTUM_DE_ARRASTO;
+                self.arrasto_anterior = s;
+                (s, s, avanco)
+            }
         };
         // ⚠️ Uma varredura, duas grandezas (espec §4.2-bis e §4.4): o mesmo disco
         // de meio raio, os mesmos dois baldes, o mesmo desempate.
@@ -212,7 +262,7 @@ impl PincelTecido {
                     let d = self.distancia(p, cursor, c_area, delta_u);
                     let f =
                         self.factor_accionado(p, cursor, r, d) * b * (1.0 - self.mascara_de(vi));
-                    self.sim.tau[vi] += 0.01 * f;
+                    self.sim.tau[vi] += 0.01 * f * peso_do_arrasto;
                 }
             }
             // ⭐ **SÓ O FILTRO** (espec §7): a âncora `p⁰ + p⁰ · f`, com as

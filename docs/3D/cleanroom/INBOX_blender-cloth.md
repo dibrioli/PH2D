@@ -1033,3 +1033,48 @@ Com os sete da wave de hoje ligados, o que a §8.1 lista e a `ph2d-cloth` **não
 ⚠️ **Nada disto bloqueia o que está fechado** — os sete controlos de hoje estão medidos contra o
 corpus e o produto reproduz cinco traços pela porta do artista. Estes três são o que falta para o
 pincel ter **tudo** o que o alvo oferece.
+
+---
+
+## Q23 — O FILTRO ATRAVESSA GESTOS: o report de 09/09 e a familia inteira (2026-09-09, sessao 1246816c)
+
+Report do dono, verbatim: *«quando uso inflate e faco mais de uma simulacao o objeto desinfla a
+cada inicio de simulacao»*.
+
+**Medido do lado limpo** (`crates/ph2d-sculpt3d/tests/`, tres gestos de Inflate seguidos sobre uma
+esfera UV 32x64, volume normalizado ao repouso):
+
+| gesto | k0 | k1 | k2 | k3 | k4 | k5 | ... | k119 |
+|---|---|---|---|---|---|---|---|---|
+| 1 | `1,000` | `1,001` | `1,002` | `1,004` | `1,006` | `1,008` | | `1,168` |
+| 2 | `1,103` | `1,030` | `0,964` | `0,916` | `0,890` | **`0,887`** | | `1,166` |
+| 3 | `1,101` | `1,028` | `0,963` | `0,915` | `0,890` | **`0,886`** | | `1,166` |
+
+⇒ **duas coisas, e a segunda e' a que ele ve':** (a) a inflacao **nao acumula** (os tres gestos
+acabam no mesmo sitio); (b) o inicio de cada gesto novo **AFUNDA a peca abaixo do repouso**
+(`0,887`) antes de voltar a subir.
+
+**A causa e' NOSSA e esta' identificada:** a wave de 08/09 fez o material atravessar os gestos
+(cura do report *«o pano continua esticando»*), e no lado limpo isso e' **incondicional**. A espec
+§6.3 diz que no alvo a deformacao **acumula** entre tracos, e a §6.4 diz que a base persistente e'
+uma **opcao do artista** cujo efeito medido e' **saturacao**. ⇒ o lado limpo tomou como lei o que no
+alvo e' um interruptor, e os cinco tipos do filtro nao querem a mesma coisa.
+
+### As perguntas ao E (corridas NOVAS do oraculo, sobre as malhas do corpus)
+
+- **Q23.1** — o **FILTRO** le^ a base persistente? (gravar a base no repouso com o pincel activo,
+  depois correr o filtro *Gravity* duas vezes; contra o mesmo par sem base gravada). A §7 diz que o
+  filtro nasce «sem pino e sem memoria de forma» e **nao diz nada sobre a base** — se ela nao for
+  lida, o alvo nao tem resposta nenhuma para o report do dono e a divergencia do lado limpo e'
+  deliberada e tem de ser declarada.
+- **Q23.2** — *Gravity* corrido **tres vezes seguidas** sobre o plano mascarado: a deformacao
+  acumula como no pincel (`+81 %`, `+145 %` do §10.16)? Posicoes depois de cada corrida.
+- **Q23.3** — *Inflate* corrido **tres vezes seguidas** sobre a esfera: a peca cresce
+  monotonamente? Ha' algum passo em que ela ENCOLHE a seguir a uma corrida anterior?
+- **Q23.4** — o mesmo par de tres corridas para **Expand** e **Scale** (o censo da familia: os dois
+  mexem no repouso por construcao, e a pergunta e' se o alvo os deixa compor).
+- **Q23.5** — **uma** corrida longa de *Inflate* na esfera (36 passos): a peca cresce sem tecto? Qual
+  o esticao maximo por aresta contra o repouso no fim?
+- **Q23.6** — censo do PAINEL do filtro: ha' algum controlo que limite esticao, conserve volume ou
+  enrijeca dobra? (a §5.7 diz que o solver nao os tem; a pergunta e' sobre a superficie que o artista
+  ve', para a nossa declaracao de divergencia nomear o que acrescentamos).

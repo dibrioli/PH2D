@@ -21,7 +21,19 @@ use ph2d_vector::VectorScene;
 
 pub const SV_RECT_H: f32 = 150.0;
 pub const HUE_STRIP_H: f32 = 16.0;
-pub const ROW_GAP: f32 = 8.0;
+/// ⭐⭐⭐ **O vão entre dois controlos deste picker — a PORTA, e não um número.**
+///
+/// Ele era `8.0` escrito à mão, o que fazia deste popup a **quinta** resposta a *«quanto distam
+/// dois controlos empilhados?»* — e o corpo dele é exactamente o que a porta descreve: uma pilha
+/// de controlos (o quadrado SV, a fita de matiz, a pré-visualização, o interruptor, os sliders, o
+/// hex). ⇒ [`ph2d_tokens::control_gap_px`], que é `3` por ordem do dono de 2026-09-07
+/// (*«para ambos vamos colocar o padrão de espaçamento de 3 px»*) e é o
+/// `GridContainer.v_separation` do modelo.
+///
+/// ⛔ **`fn` e não `const`** — a porta não é `const fn` (a densidade é autorada).
+pub fn row_gap() -> f32 {
+    ph2d_tokens::control_gap_px()
+}
 /// ⚠️ **A altura de uma linha vem do TOKEN, não de uma cópia.** As duas eram `28.0` escrito à
 /// mão — o valor que o `chrome.row-h` tinha — e ficaram para trás no dia em que o dono pediu
 /// linhas mais compactas (`28 → 24`, 2026-09-06): o picker teria linhas mais altas que o resto do
@@ -57,19 +69,19 @@ pub fn paint_blender_color_picker(
 
     let sv_rect = Rect::new(rect.x + pad, y, inner_w, SV_RECT_H);
     paint_color_wheel(cp, sv_rect, scene);
-    y += SV_RECT_H + ROW_GAP;
+    y += SV_RECT_H + row_gap();
 
     let hue_rect = Rect::new(rect.x + pad, y, inner_w, HUE_STRIP_H);
     paint_value_slider(cp, hue_rect, scene, theme);
-    y += HUE_STRIP_H + ROW_GAP;
+    y += HUE_STRIP_H + row_gap();
 
     let preview_rect = Rect::new(rect.x + pad, y, inner_w, PREVIEW_H);
     paint_color_preview(cp, preview_rect, scene, theme);
-    y += PREVIEW_H + ROW_GAP;
+    y += PREVIEW_H + row_gap();
 
     let chan_rect = Rect::new(rect.x + pad, y, inner_w, TOGGLE_H);
     paint_channel_toggle(cp, chan_rect, scene, text_system, theme);
-    y += TOGGLE_H + ROW_GAP;
+    y += TOGGLE_H + row_gap();
 
     let labels = match cp.channel_mode {
         ChannelMode::Rgb => ["Red", "Green", "Blue", "Alpha"],
@@ -92,17 +104,17 @@ pub fn paint_blender_color_picker(
         ChannelMode::Oklch => oklch_norm_channels(cp.value.oklch),
     };
     for (i, (label, val)) in labels.iter().zip(values.iter()).enumerate() {
-        let row_y = y + (SLIDER_ROW_H + 4.0) * i as f32;
+        let row_y = y + (SLIDER_ROW_H + row_gap()) * i as f32;
         let row_rect = Rect::new(rect.x + pad, row_y, inner_w, SLIDER_ROW_H);
         paint_slider_row(label, *val, row_rect, scene, text_system, theme);
     }
-    y += (SLIDER_ROW_H + 4.0) * 4.0 + ROW_GAP;
+    y += (SLIDER_ROW_H + row_gap()) * 4.0 + row_gap();
 
     let hex_rect = Rect::new(rect.x + pad, y, inner_w - 32.0, HEX_ROW_H);
     let eye_rect = Rect::new(hex_rect.x + hex_rect.w + 4.0, y, HEX_ROW_H, HEX_ROW_H);
     paint_hex_field(&cp.hex, hex_rect, scene, text_system, theme);
     paint_eyedropper(eye_rect, scene, theme);
-    y += HEX_ROW_H + ROW_GAP;
+    y += HEX_ROW_H + row_gap();
 
     let palette_h = (rect.y + rect.h - y - pad).max(0.0);
     let palette_rect = Rect::new(rect.x + pad, y, inner_w, palette_h);
@@ -213,7 +225,7 @@ pub fn paint_blender_color_picker_with_store(
     if ids.close.0 != 0 {
         hit_index.register(ids.close, close_rect);
     }
-    y += drag_h + ROW_GAP;
+    y += drag_h + row_gap();
 
     // Web-standard SV rectangle (replaces the HSV disc). Full
     // picker width, fixed height — saturation runs left→right,
@@ -223,7 +235,7 @@ pub fn paint_blender_color_picker_with_store(
     if ids.wheel.0 != 0 {
         hit_index.register(ids.wheel, sv_rect);
     }
-    y += SV_RECT_H + ROW_GAP;
+    y += SV_RECT_H + row_gap();
 
     // Horizontal hue strip (replaces the vertical V slider). Click
     // anywhere along it sets the hue while preserving S + V.
@@ -233,14 +245,14 @@ pub fn paint_blender_color_picker_with_store(
         hit_index.register(ids.value_slider, hue_rect);
     }
     // (`parent_id` barrier was registered at the top of this fn.)
-    y += HUE_STRIP_H + ROW_GAP;
+    y += HUE_STRIP_H + row_gap();
 
     // Resulting-color preview swatch — full-width strip showing the
     // current `value.rgba` so the user can verify the pick before
     // committing it elsewhere.
     let preview_rect = Rect::new(rect.x + pad, y, inner_w, PREVIEW_H);
     paint_color_preview(&local, preview_rect, scene, theme);
-    y += PREVIEW_H + ROW_GAP;
+    y += PREVIEW_H + row_gap();
 
     // Linear / Perceptual interpolation toggle removed by design —
     // OKLCH-perceptual mixing was a Blender-specific concept the
@@ -274,7 +286,7 @@ pub fn paint_blender_color_picker_with_store(
             }
         }
     }
-    y += TOGGLE_H + ROW_GAP;
+    y += TOGGLE_H + row_gap();
 
     let labels = match local.channel_mode {
         ChannelMode::Rgb => ["Red", "Green", "Blue", "Alpha"],
@@ -305,7 +317,7 @@ pub fn paint_blender_color_picker_with_store(
         ChannelMode::Oklch => oklch_norm_channels(local.value.oklch),
     };
     for (i, (label, val)) in labels.iter().zip(values.iter()).enumerate() {
-        let row_y = y + (SLIDER_ROW_H + 4.0) * i as f32;
+        let row_y = y + (SLIDER_ROW_H + row_gap()) * i as f32;
         let row_rect = Rect::new(rect.x + pad, row_y, inner_w, SLIDER_ROW_H);
         let ch_id = ids.channels.get(i).copied().unwrap_or(NodeId(0));
         let chip_id = ids.channels_num.get(i).copied().unwrap_or(NodeId(0));
@@ -325,7 +337,7 @@ pub fn paint_blender_color_picker_with_store(
             theme,
         );
     }
-    y += (SLIDER_ROW_H + 4.0) * 4.0 + ROW_GAP;
+    y += (SLIDER_ROW_H + row_gap()) * 4.0 + row_gap();
 
     let hex_rect = Rect::new(rect.x + pad, y, inner_w - 32.0, HEX_ROW_H);
     let eye_rect = Rect::new(hex_rect.x + hex_rect.w + 4.0, y, HEX_ROW_H, HEX_ROW_H);
@@ -365,7 +377,7 @@ pub fn paint_blender_color_picker_with_store(
     if ids.eyedropper.0 != 0 {
         hit_index.register(ids.eyedropper, eye_rect);
     }
-    y += HEX_ROW_H + ROW_GAP;
+    y += HEX_ROW_H + row_gap();
 
     // Color Harmonies — the scheme selector + derived partner swatches. Because this is the ONE
     // shared picker every module opens, adding it here is the "global tool" (Enio 2026-07-25): Painter,
@@ -380,7 +392,7 @@ pub fn paint_blender_color_picker_with_store(
         text_system,
         theme,
     );
-    y += harmony_used + ROW_GAP;
+    y += harmony_used + row_gap();
 
     // Rebuild the local picker's palette set from the store (the runtime source of truth): every named
     // palette's name + swatches, so the dropdown + swatch grid reflect every CRUD / import edit.

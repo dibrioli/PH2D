@@ -72,20 +72,28 @@ fn doors(repo: &Path) -> Vec<String> {
 /// Painter pôs o vão entre a fileira segmentada e o corpo na porta `control_gap_px()`, e o
 /// censo de obsolescência cobrou a entrada no mesmo fecho. *Uma catraca com censo desce por
 /// efeito colateral de quem faz a coisa certa noutro sítio.*
-const MUTE_OK: &[&str] = &[
-    // ⚠️ Estes quatro do `ph2d-editor-core` são chrome com geometria própria (o picker, a barra de
-    //    rolagem, duas páginas da galeria) — eles empilham AMOSTRAS, não linhas de formulário. A
-    //    régua não os separa hoje, e nomeá-los é mais honesto do que alargar o sujeito até eles
-    //    saírem por acidente.
-    "crates/ph2d-editor-core/src/widget/blender_color_picker/paint.rs",
-    "crates/ph2d-editor-core/src/widget/scrollbar.rs",
-    "crates/ph2d-editor-core/src/widget/showcase/actions.rs",
-    "crates/ph2d-editor-core/src/widget/showcase/switches.rs",
-    // Painéis anteriores à porta, cada um por medir e curar.
-    "crates/ph2d-panel-color-equalization/src/paint.rs",
-    "crates/ph2d-panel-painter-layers/src/paint_taper.rs",
-    "crates/ph2d-panel-timeline/src/geom.rs",
-    "crates/ph2d-panel-timeline/src/tracks.rs",
+const MUTE_OK: &[&str] = &[];
+
+/// ⛔⛔ **A OUTRA lista — e ela não é dívida: é outra PERGUNTA.**
+///
+/// `(caminho, por que o passo ali não é «uma linha de formulário»)`.
+///
+/// ⚠️ **Sem esta separação a catraca mentia nos dois sentidos:** ela chamava «por medir e curar» a
+/// duas superfícies cujo passo está CERTO, e quem viesse curá-las mudaria a geometria de um
+/// dope-sheet para satisfazer uma régua. *Uma lista de dívida que contém não-dívida é uma licença
+/// com cara de catraca* — a mesma doença que o §5.0 do `CLAUDE.md` descreve, um nível acima.
+const NOT_THIS_QUESTION: &[(&str, &str)] = &[
+    (
+        "crates/ph2d-panel-timeline/src/geom.rs",
+        "GRELHA DENSA, nao formulario: o passo de uma track E' a altura dela (`ROW_H_PX`), sem \
+         vao nenhum, porque a fileira tem de alinhar com a regua e com as chaves. Um vao entre \
+         linhas desalinhava o dope-sheet do editor de curvas",
+    ),
+    (
+        "crates/ph2d-panel-timeline/src/tracks.rs",
+        "A MESMA grelha, no ficheiro que a pinta: `y += ROW_H_PX` e' o passo da grade, e as \
+         posicoes das chaves derivam dele (`ROW_H_PX * i`)",
+    ),
 ];
 
 fn repo_root() -> PathBuf {
@@ -145,18 +153,47 @@ fn rs_files(root: &Path, out: &mut Vec<PathBuf>) {
 /// `contains("y +=")` apanha o fim de qualquer nome. *Uma régua sem fronteira de palavra mede um
 /// sufixo, não uma variável.*
 fn advances_y(src: &str) -> bool {
-    src.match_indices("y +=").any(|(i, _)| {
+    let code = code_only(src);
+    code.match_indices("y +=").any(|(i, _)| {
         i == 0
-            || !src[..i]
+            || !code[..i]
                 .chars()
                 .next_back()
                 .is_some_and(|c| c.is_alphanumeric() || c == '_')
-    }) || src.contains("cursor_y")
+    }) || code.contains("cursor_y")
+}
+
+/// O ficheiro **sem comentários de linha** — a prosa não empilha nada.
+///
+/// ⛔⛔ **A 1.ª redacção lia o fonte CRU, e fabricou uma acusação:** o `widget/scrollbar.rs` não
+/// avança `y` em lado nenhum; ele diz *«`cursor_y - cursor_y_at_down`»* num **doc-comment** sobre
+/// o arrasto. ⇒ *um censo textual que não separa prosa de código mente nos dois sentidos* — é a
+/// 5.ª vez que esta linha paga a mesma lição, e a primeira em que o acusado é um ficheiro que
+/// nunca teve o defeito.
+fn code_only(src: &str) -> String {
+    src.lines()
+        .map(|l| match l.find("//") {
+            Some(i) => &l[..i],
+            None => l,
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 /// Empilha linhas? — avança um cursor vertical **e** mede a altura de uma linha.
 fn stacks_rows(src: &str) -> bool {
     advances_y(src) && src.contains("ROW_H_PX")
+}
+
+/// O `mod.rs` do módulo a que este ficheiro pertence — vazio quando ele próprio é o `mod.rs`.
+fn sibling_mod(p: &Path) -> String {
+    if p.file_name().is_some_and(|n| n == "mod.rs") {
+        return String::new();
+    }
+    p.parent()
+        .map(|d| d.join("mod.rs"))
+        .and_then(|m| fs::read_to_string(m).ok())
+        .unwrap_or_default()
 }
 
 /// As superfícies que empilham linhas e nunca perguntam o ritmo, por caminho relativo ao repo.
@@ -170,7 +207,13 @@ fn mute(repo: &Path) -> Vec<String> {
             let Ok(s) = fs::read_to_string(&p) else {
                 continue;
             };
-            if !stacks_rows(&s) || doors.iter().any(|d| s.contains(d.as_str())) {
+            // ⚠️ **A porta pode viver no `mod.rs` IRMÃO, e ler um ficheiro de cada vez não a
+            //    vê.** O `widget/showcase/actions.rs` avança por `row_gap()`, que é
+            //    `ph2d_tokens::control_gap_px()` no `showcase/mod.rs` ao lado — duas acusações
+            //    fabricadas por uma régua que não segue uma chamada de um passo. ⇒ o alcance é o
+            //    ficheiro **mais o `mod.rs` do módulo dele**, que é o que ele alcança sem `use`.
+            let scope = format!("{s}{}", sibling_mod(&p));
+            if !stacks_rows(&s) || doors.iter().any(|d| scope.contains(d.as_str())) {
                 continue;
             }
             let rel = p.strip_prefix(repo).unwrap_or(&p);
@@ -196,9 +239,10 @@ fn every_stack_of_rows_asks_the_rhythm() {
     );
 
     let found = mute(&repo);
+    let exempt: Vec<&str> = NOT_THIS_QUESTION.iter().map(|(f, _)| *f).collect();
     let fresh: Vec<&String> = found
         .iter()
-        .filter(|f| !MUTE_OK.contains(&f.as_str()))
+        .filter(|f| !MUTE_OK.contains(&f.as_str()) && !exempt.contains(&f.as_str()))
         .collect();
     assert!(
         fresh.is_empty(),
@@ -220,9 +264,13 @@ fn every_stack_of_rows_asks_the_rhythm() {
 fn the_tolerated_list_has_no_stale_entries() {
     let repo = repo_root();
     let found = mute(&repo);
-    let stale: Vec<&str> = MUTE_OK
+    let declared: Vec<&str> = MUTE_OK
         .iter()
         .copied()
+        .chain(NOT_THIS_QUESTION.iter().map(|(f, _)| *f))
+        .collect();
+    let stale: Vec<&str> = declared
+        .into_iter()
         .filter(|e| !found.contains(&(*e).to_string()))
         .collect();
     assert!(

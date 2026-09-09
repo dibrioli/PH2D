@@ -68,7 +68,10 @@ pub(crate) fn paint(_state: &mut ColorEqualizationPanelState, ctx: &mut PaintCtx
         inner_x: rect.x + PANEL_HEAD_PAD,
         inner_w: (rect.w - PANEL_HEAD_PAD * 2.0).max(0.0),
         row_h: ROW_H_PX,
-        row_gap: Spacing::Sm.px(),
+        // ⭐ **O vão entre dois controlos vem da PORTA** (`3` px, ordem do dono de 2026-09-07).
+        //   Ele era `Spacing::Sm` (6) — este painel era um dos que respiravam 50 % mais que o
+        //   resto do app, e cada sítio estava certo sozinho.
+        row_gap: ph2d_tokens::control_gap_px(),
         // Canonical chip width — 72 px (was 32, user 2026-05-24).
         chip_w: ph2d_editor_core::widget::NUMBER_INPUT_MIN_W_PX,
         label_col_w: LABEL_COL_W,

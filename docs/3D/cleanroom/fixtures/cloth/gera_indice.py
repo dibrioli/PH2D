@@ -6,10 +6,14 @@ escreve à mão, e regenera-se sempre que um traço é acrescentado. Exit 0 = es
 import gzip, json, glob, os, sys
 TEXTO = {'superficie', 'modo', 'falloff_da_forca', 'area', 'curva',
          # o corpus do FILTRO (subdiretório `filtro/`) traz estas
-         'filtro', 'orientacao', 'eixos', 'mascara', 'forca_por_passo', 'origem_dos_blocos'}
+         'filtro', 'orientacao', 'eixos', 'mascara', 'forca_por_passo', 'origem_dos_blocos',
+         # emenda Q23 (2026-09-09): as invocacoes repetidas do filtro
+         'base_gravada', 'max_por_invocacao'}
 INTEIRO = {'pino', 'passos', 'passos_com_cursor_parado', 'tracos', 'persistente', 'movidos',
            'conjuntos_de_faces', 'colisoes', 'origem_do_arrasto_px', 'avanco_por_passo_px',
-           'realizacoes'}
+           'realizacoes',
+           # emenda Q23 (2026-09-09)
+           'invocacoes', 'opcao_persistente', 'repeticoes'}
 def cabecalho(path):
     h = {}
     with gzip.open(path, 'rt') as f:

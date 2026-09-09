@@ -642,6 +642,17 @@ de uma peça que acaba em `1,5`, e mesmo assim colapsa para o ponto de abertura)
 mesma configuração (⚠️ **duas** no plano, **quatro** na esfera — ⛔ não é o «quatro» do corpus do
 pincel; leia a chave `realizacoes` do próprio ficheiro).
 
+⭐ **As CINCO chaves da emenda Q23 (2026-09-09)**, todas com omissão declarada para que as `17`
+corridas de 2026-09-07 continuem a ler-se sem ambiguidade:
+
+| chave | ausente = | o que diz |
+|---|---|---|
+| `invocacoes <n>` | `1` | quantas vezes o filtro foi **aberto e largado**, seguidas, sem sair do modo de escultura |
+| `opcao_persistente 0\|1` | `0` | a opção de base persistente **do pincel activo** estava ligada (⚠️ o filtro não tem controlo próprio dela) |
+| `base_gravada nenhuma\|repouso` | `nenhuma` | onde a base foi gravada. ⛔ **`opcao_persistente 1` + `base_gravada nenhuma` é um NO-OP exacto** e existe de propósito, como controlo |
+| `repeticoes <n>` | `1` | a contagem de repetições registada pela família de filtros — ⛔ **morta** neste filtro (medida byte a byte) |
+| `max_por_invocacao <lista>` | — | o máximo de deslocamento ao fim de **cada** invocação, na ordem |
+
 ### As dezassete corridas
 
 | fixture | o que ela fixa | movidos | máx `|u|` |
@@ -701,3 +712,101 @@ de fatiamento do corpus do pincel.
 conjuntos de faces são escritos por nós como atributos da malha (uma lei geométrica sobre as
 posições de repouso: um disco de raio `0,6` e o sinal de `x`); o que a aplicação de referência
 calculou são as **posições**, e isso é dado. ⛔ Regenerar continua a ser acto de **E**.
+
+### ⭐⭐⭐ As DEZ corridas de INVOCAÇÕES REPETIDAS (2026-09-09, emenda Q23 — espec §7.2 e §10.18)
+
+⚠️ **O que elas medem e as `17` de cima não mediam:** aquelas abrem o filtro **uma vez**. Um report de
+produto é sobre a **segunda** e a **terceira** vez — a peça afunda ao abrir um uso novo? —, e sem
+corpus qualquer barra sobre composição de gestos mediria só o nosso lado.
+
+**Como o traço é conduzido:** o mesmo ciclo da secção acima (*mover até ao ponto de abertura → abrir
+→ premir → `passos` movimentos de `90` px → largar*), repetido `invocacoes` vezes **sem sair do modo
+de escultura**. A base persistente, quando existe, é gravada **no repouso** e **antes** da primeira
+invocação, com a opção do pincel activo ligada.
+
+| fixture | filtro | inv. | base | `max_por_invocacao` | dispersão |
+|---|---|---|---|---|---|
+| `plano_filtro_gravidade_mascarado_3invocacoes` | gravidade | 3 | — | `0.108743` · `0.216465` · `0.323257` | `0.000000` |
+| `plano_filtro_gravidade_mascarado_3invocacoes_persistente` | gravidade | 3 | repouso | `0.108743` · `0.212513` · **`0.180636`** | `0.000000` |
+| `plano_filtro_gravidade_mascarado_3invocacoes_persistente_sem_base` | gravidade | 3 | nenhuma | `0.108743` · `0.216465` · `0.323257` | `0.000000` |
+| `plano_filtro_inflar_mascarado_3invocacoes` | inflar | 3 | — | `0.108836` · `0.216409` · `0.320600` | `0.000000` |
+| `plano_filtro_inflar_mascarado_3invocacoes_persistente` | inflar | 3 | repouso | `0.108836` · `0.210906` · **`0.178959`** | `0.000000` |
+| `plano_filtro_expandir_3invocacoes` | expandir | 3 | — | `0.379347` · `0.754471` · `1.118614` | `0.000000` |
+| `plano_filtro_escala_3invocacoes` | escala | 3 | — | `0.320179` · `0.691796` · `1.123135` | `0.000000` |
+| `plano_filtro_gravidade_repeticoes5` | gravidade | 1 | — | `0.108000` | `0.000000` |
+| `esfera_filtro_inflar_3invocacoes` | inflar | 3 | — | `0.095230` · `0.188028` · `0.280913` | **`0.003184`** |
+| `esfera_filtro_inflar_36passos` | inflar | 1 | — | `1.314746` | **`0.073751`** |
+
+⭐⭐ **As três que carregam o argumento** (as outras sete são o censo da família):
+- **`…_persistente`** — a 3.ª invocação acaba **abaixo** da 2.ª. É o afundamento de que o report do
+  produto se queixa, e no alvo ele só existe com a base gravada.
+- **`…_persistente_sem_base`** — o **controlo**: opção ligada, base por gravar ⇒ saída **byte a byte**
+  igual à corrida sem opção nenhuma (`0.000000000000` nos `34` blocos). *Sem ela, a leitura ingénua
+  atribui o efeito ao interruptor em vez de ao atributo gravado.*
+- **`esfera_filtro_inflar_36passos`** — o esticão **sem tecto**: volume `4,735 ×` o de repouso e a
+  maior aresta a **`21,55 ×`** o comprimento de repouso dela, sem uma queixa do programa.
+
+⛔⛔ **A dispersão da corrida longa é o piso de qualquer barra sobre ela**: `0.073751` por vértice
+entre quatro realizações é **`5,6 %`** do próprio máximo de deslocamento — uma paridade ao bit ali é
+inatingível por construção. ⭐ As **oito** corridas de plano desta emenda são **`0.000000`** em duas realizações.
+
+### Os ficheiros POR INVOCAÇÃO e POR PASSO das dez
+
+- **`<nome>.porinvocacao.txt.gz`** — nas **oito** com `invocacoes > 1`: um bloco por invocação
+  (`invocacao <i>` + `vertices` linhas `d`), com as posições **depois de cada uma**. ⚠️ Sem este
+  ficheiro a fixture não responde à pergunta que a motivou: um `.deformado` só traz o fim.
+- **`<nome>.porpasso.txt.gz`** — nas **quatro** em que a trajectória É a prova
+  (`plano_filtro_gravidade_mascarado_3invocacoes` e o par `_persistente`, `esfera_filtro_inflar_3invocacoes`,
+  `esfera_filtro_inflar_36passos`): um bloco por passo simulado, com a linha
+  `passo <k> invocacao <i> passo_da_invocacao <j>` a dizer a que abertura o passo pertence.
+- ⚠️ Os dois vêm de **UMA corrida contínua** (`origem_dos_blocos corrida_unica_continua`) e ⛔ não
+  trazem — nem precisam de — a prova de fatiamento por prefixo do corpus do pincel.
+- ⚠️ **PREÇO em disco, dito porque ele é a maior parte da emenda:** os `.porpasso` de esfera custam
+  `1,5 MB` (24 passos) e **`2,4 MB`** (36 passos), e o diretório do filtro passou de `852 KB` a
+  `6,5 MB`. ⛔ **Eles não são conforto:** os gates 61 e 64 da espec exigem *«incremento positivo em
+  cada um dos 24 passos»* e *«pico no passo 33»*, e nenhuma das duas é decidível a partir do
+  `.deformado`, que só traz o fim. Uma emenda futura que só precise do FIM escreve apenas
+  `.deformado` + `.porinvocacao` (`~100`–`200 KB`).
+
+### ⚠️ A RÉGUA de excepções do corpus do FILTRO (a metade que o parágrafo «Como o traço é conduzido» não diz)
+
+Pelo mesmo motivo do corpus do pincel (*«uma lista de excepções sem a régua ao lado não é
+auditável»*), aqui está a régua deste corpus: compara-se o cabeçalho de cada `filtro/*.deformado.txt.gz`
+com as **onze** grandezas que a secção do filtro fixa sem ressalva — `orientacao local` · `eixos xyz` ·
+`massa 1.0` · `amortecimento 0.0` · `forca 1.0` · `mascara nenhuma` · `conjuntos_de_faces 0` ·
+`colisoes 0` · `gravidade_da_cena 0.0` · `avanco_por_passo_px 90` · `passos 8` — mais as **quatro**
+chaves novas de 2026-09-09 (`invocacoes`, ausente = `1` · `opcao_persistente`, ausente = `0` ·
+`base_gravada`, ausente = `nenhuma` · `repeticoes`, ausente = `1`).
+⛔ `area toda`, `banda 0` e `pino 0` ficam de fora **porque são factos do filtro**, nunca escolhas do
+traço, e `raio`/`limite`/`curva`/`plasticidade` não existem neste corpus.
+
+| grandeza | quantas de `27` | quais |
+|---|---|---|
+| **mascara** ≠ `nenhuma` | `7` | os dois do par-espelho (`plano_filtro_{gravidade,inflar}_mascarado`) + as **cinco** de invocações repetidas que os herdam |
+| **invocacoes** ≠ `1` | `8` | as **sete** de plano com `3invocacoes` no nome + `esfera_filtro_inflar_3invocacoes` |
+| **opcao_persistente** ligada | `3` | os dois `…_persistente` **+ o `…_persistente_sem_base`** |
+| **base_gravada** ≠ `nenhuma` | `2` | `plano_filtro_{gravidade,inflar}_mascarado_3invocacoes_persistente` |
+| **eixos** ≠ `xyz` | `2` | `plano_filtro_gravidade_eixox` · `plano_filtro_escala_eixox` |
+| **gravidade_da_cena** ≠ `0` | `2` | `plano_filtro_escala_gravidade_cena` · `plano_filtro_gravidade_conjuntos_de_faces` |
+| **passos** ≠ `8` | `2` | `plano_filtro_inflar_1passo` (`1`) · `esfera_filtro_inflar_36passos` (`36`) |
+| **orientacao** ≠ `local` | `1` | `plano_filtro_gravidade_vista` (`vista`) |
+| **massa** ≠ `1.0` | `1` | `plano_filtro_gravidade_massa2` (`2.0`) |
+| **forca** ≠ `1.0` | `1` | `plano_filtro_gravidade_forca0` (`0.0`) |
+| **avanco_por_passo_px** ≠ `90` | `1` | `plano_filtro_expandir_negativo` (**`−90`**) |
+| **conjuntos_de_faces** ligado | `1` | `plano_filtro_gravidade_conjuntos_de_faces` |
+| **repeticoes** ≠ `1` | `1` | `plano_filtro_gravidade_repeticoes5` (`5`) — ⛔ e o valor é **inerte** |
+
+⚠️⚠️ **Esta tabela foi escrita à mão e a régua apanhou-a errada em DUAS linhas na primeira corrida**,
+que é a razão de ela existir: o `plano_filtro_expandir_negativo` estava listado como excepção de
+**força** e é excepção de **avanço** (a força é `1.0`; o que troca de sinal é o `avanco_por_passo_px`,
+`−90` ⇒ o arrasto para o outro lado), e a contagem de `invocacoes` dizia «seis de plano» onde são
+**sete**. ⇒ **derive-a do `filtro/indice.json`** (que **se gera**: `cd` para **este** diretório e
+`python3 gera_indice.py filtro` — ⚠️ o argumento é **relativo à cwd**, e corrê-lo da raiz da worktree
+estoura com *«No such file or directory»*), ⛔ nunca a escreva de cabeça. *Uma grandeza nova no cabeçalho é uma linha nova nesta tabela, no mesmo
+commit* — foi assim que a régua do corpus do pincel cresceu duas vezes.
+
+**Proveniência** — a mesma das outras: malhas **nossas**, geradas pelo mesmo harness; a máscara é
+escrita por nós como atributo da malha (um disco de raio `0,6` sobre as posições de repouso), e a
+base persistente é gravada pela porta do próprio programa **sobre a nossa malha em repouso**. O que
+a aplicação de referência calculou são as **posições**, e isso é dado. ⛔ Regenerar continua a ser
+acto de **E**.

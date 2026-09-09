@@ -628,6 +628,17 @@ Auditoria §4.2 (R-pré): ✅ auditada contra §4.2 por R-pré em 2026-09-05 —
   duas realizações no plano e quatro na esfera). O que ela muda de veredito: o §7 tinha **três**
   afirmações erradas sobre a gravidade da cena, **uma** por medir sobre as bandeiras de eixo, e a
   frase (F) sobre as normais do *Inflate* passou a ser **(M)** por um par-espelho.
+  ⏳ **EMENDA Q23 de 2026-09-09 — O FILTRO ATRAVESSA GESTOS (§7 com TRÊS linhas novas — «base
+  persistente», «entre INVOCAÇÕES» e o censo do «painel» + `Repeat` · **§7.2 NOVA** · **§10.18 NOVA**
+  · **§14-bis.2 NOVA** com os gates 61-65) + as **10** fixtures novas de `fixtures/cloth/filtro/`
+  (com `.porinvocacao.txt.gz`) e **22 corridas novas do oráculo**. AGUARDA R-PRÉ.** Objecto: um
+  report de produto do lado limpo — a peça **afunda a cada uso novo do filtro** — e o que o alvo faz
+  na 2.ª e na 3.ª invocação, que o corpus não media. O que ela muda de veredito: ⭐⭐⭐ **o filtro LÊ a
+  base persistente** (a opção vive no **pincel activo** e o painel do filtro não a mostra), o alvo
+  **acumula e nunca recua** sem ela e **recua** com ela; a palavra «SATURAÇÃO» do §6.4 descrevia a
+  população do PINCEL e é corrigida; e a contagem de repetições da família de filtros é **morta**
+  neste filtro (byte a byte). Escrita pelo subagente-E da mesma janela, com o fonte reaberto **só**
+  para as seis perguntas.
 Mapa de leitura da literatura (⭐ pública e lícita a TODOS os papéis):
   · Jakobsen, "Advanced Character Physics", GDC 2001 — integração de Verlet por posições + relaxação
     de restrições de distância por projecção. É EXACTAMENTE a família do solver do alvo.
@@ -2412,6 +2423,14 @@ Agarrar repetido sobre a mesma folha dá, sem base, `0,169046 → 0,305822 → 0
 e 3 traços: **+81 %**, **+145 %**); com a base gravada no repouso, `0,169046 → 0,171050 → 0,176485`
 (**+1,2 %**, **+4,4 %**). *A deformação pára de acumular e assenta no que um traço faz* — que é
 exactamente o que os autores dizem que a opção compra.
+⚠️⚠️ **A palavra «SATURAÇÃO» descreve a população em que foi medida — o PINCEL — e o FILTRO faz outra
+coisa (emenda Q23, 2026-09-09):** ali a mesma opção produz **RECUO**, com a 3.ª invocação a acabar
+**abaixo** da 2.ª (`0.180636 < 0.212513`) e um mínimo `−19,8 %` abaixo do início dela. O mecanismo da
+diferença é a **área**: o pincel escreve força num disco e a base segura a folha inteira à volta
+dele; o filtro escreve força em **toda** a malha e a base é a única coisa que puxa de volta. ⇒ leia a
+**§7.2** antes de citar esta linha sobre o filtro. ⭐ **E o filtro LÊ esta base** — pela opção do
+pincel **activo**, sem controlo próprio —, mas das quatro leituras acima só a **(1)** vive lá: a (2)
+é vácua (raio infinito) e a (3) e a (4) não existem no filtro.
 
 ⛔⛔ **TRÊS maneiras de a opção ser um NO-OP EXACTO, as três medidas byte a byte:** (a) *Persistent*
 ligado e **nenhuma base gravada** (o atributo não existe ⇒ a construção cai nas posições de repouso
@@ -2452,6 +2471,8 @@ Mesmo solver, sem pincel (F):
 | aspecto | o que o filtro faz |
 |---|---|
 | **área** | todas as células não totalmente mascaradas/escondidas; restrições construídas UMA vez, para TODOS os vértices (raio infinito), ao carregar; **sem banda** — e a razão é estrutural, não uma omissão: o factor de banda só é multiplicado quando existe um traço de pincel em curso, e no filtro não existe (`w ≡ 1`) — **sem pino** e **sem memória de forma** (a plasticidade entra na criação da simulação com o valor `0`). ⭐ **M:** nos traços do §10.17 o `movidos` é a malha INTEIRA (`4225` no plano, `6050` na esfera) e não existe fronteira de área nenhuma |
+| **base persistente** | ⭐⭐⭐ **O FILTRO LÊ A BASE PERSISTENTE — e o interruptor é o do PINCEL ACTIVO, não um controlo do filtro** (F+M, 2026-09-09, emenda Q23). A construção de restrições é a **mesma função** do pincel, e a condição que ela testa é a opção *Persistent* do pincel que está na mão; o filtro não expõe nada disto no painel dele (§7 «painel», e o censo do §8.4-bis). ⚠️ **Das QUATRO leituras que a base substitui (§6.4), só UMA vive aqui:** o **comprimento de repouso** de cada restrição. O filtro de raio é **vácuo** (raio infinito ⇒ toda a distância passa), e a âncora do Agarrar e o pino **não existem** no filtro. ⇒ *a base muda quanto a rede considera esticado, e mais nada* | 
+| **entre INVOCAÇÕES** | ⭐⭐ **A simulação nasce e morre com CADA uso do filtro, e a malha deformada fica** — logo a invocação seguinte constrói as restrições a partir dela e a deformação **ACUMULA**, exactamente como entre traços do pincel (§6.3). ⭐⭐⭐ **M (§10.18): a acumulação é quase LINEAR e nunca recua** — três invocações de *Gravity* sobre o plano mascarado dão `+99,1 %` e `+197,3 %` do máximo da primeira, e os **24** passos são estritamente crescentes; na esfera, três de *Inflate* dão volume `1,256 → 1,553 → 1,893` com incremento **positivo em cada um dos 24 passos**, nas quatro realizações. ⛔ **Não existe, no alvo sem base persistente, passo nenhum em que a peça encolha ao abrir um uso novo.** ⚠️ **Com a base gravada, existe** — e é a §7.2 |
 | **um passo** | a cada movimento do rato: **preparar a peça para edição** (⭐ é este passo que recalcula as normais da malha — §7.1) → guardar estado (§1 fase 2) → forças → activar todas → passo de simulação. ⛔ **A regra do pincel de que o 1.º passo não simula NÃO existe aqui:** o primeiro movimento já deforma (M: `plano_filtro_inflar_1passo` move `4225` vértices com **um** evento). ⚠️ E o programa emite um movimento **extra** logo a seguir ao premir do botão, no mesmo píxel: ali `S = 0` e, sobre a malha em repouso, o passo é um no-op exacto (M: `0` vértices alterados) |
 | **força escalar `S`** | `S = força_base · (x_rato − x_pressão) · 0,001 · escala_UI` — ⭐ arrastar para a **direita** é positivo, e a magnitude é **pixels** (`0,001` por px a força base `1`); `força_base` é o parâmetro *Strength* (omissão `1`, faixa `−10..10`). ⭐⭐ **M, e fecha ao último dígito:** com `escala_UI = 1`, força `1` e avanços de `90` px, o acumulado previsto por `Σ_j (k−j+1)·S_j·Δt` dá `0,108000` a `k = 8` e o oráculo entrega `0.108000`; um passo sozinho dá `0.000900 = S₁·Δt` |
 | **factor por vértice** | `(1 − máscara) · auto-máscara · (0 se fora do conjunto de faces activo, com *Use Face Sets*) · S` — ⚠️⚠️ **e ele multiplica só a força do TIPO**: a gravidade da cena é somada à aceleração **antes** dele e **sem** ele (linha da gravidade da cena, abaixo) |
@@ -2465,7 +2486,9 @@ Mesmo solver, sem pincel (F):
 | **Orientation** | *Local* (omissão) · *World* · *View* — define `M` acima **e** a direcção da gravidade do tipo *Gravity* |
 | **massa / damping** | omissão `1,0` (faixa `0..2`) / **`0,0`** (faixa `0..1`) — ⚠️ o filtro nasce **sem** perda de velocidade nenhuma. ⭐ **M:** massa `2` dá exactamente metade (`0.054000` contra `0.108000`), e força `0` move **zero** vértices |
 | **colisões** | idem §5.6, opção nasce desligada |
-| undo | um passo por uso do filtro (início ao carregar, fim ao largar) |
+| **painel (o censo, F 2026-09-09)** | ⭐⭐ **OITO controlos, nesta ordem, e é a lista INTEIRA:** *Filter Type* · *Strength* · *Force Axis* · *Orientation* · *Cloth Mass* · *Cloth Damping* · *Use Face Sets* · *Use Collisions*. ⛔⛔ **NENHUM deles limita esticão, conserva volume ou enrijece dobra** — a ausência que a §5.7 afirma sobre o solver vale igualmente sobre a **superfície que o artista vê** ⇒ um port que acrescente qualquer um dos três está a acrescentar **produto**, e tem de o declarar como divergência. ⚠️ **E o painel não mostra a base persistente**, que é a única coisa capaz de travar a acumulação (linha «base persistente») |
+| **`Repeat`** | ⛔ **CONTROLO MORTO NO FILTRO DE TECIDO.** A família de filtros de escultura regista em comum uma contagem de repetições (*Repeat*) e um raio de normal (*Normal Radius*); ⭐ o painel do filtro de tecido **não desenha nenhum dos dois**, e o passo dele **nunca lê** a contagem. ⭐⭐ **MEDIDO byte a byte:** com *Repeat* `5` a saída é **idêntica** à de `1` nos `4225` vértices (diferença máxima `0.000000000000`) ⇒ `plano_filtro_gravidade_repeticoes5` ≡ `plano_filtro_gravidade_local`. *Um port que o implemente está a construir um knob que o alvo não tem* |
+| undo | um passo por uso do filtro (início ao carregar, fim ao largar) ⇒ **três invocações seguidas são três passos** (F; ⚠️ **não medido** — o arnês do §10.18 não conta passos de undo) |
 | cancelar | há uma issue aberta (#105335): o botão direito não cancela de imediato |
 
 ⚠️ O filtro **não** tem os modos Drag/Push/Grab/Snake Hook/Pinch Perpendicular (são gestos de
@@ -2515,6 +2538,92 @@ vértice e em todo o passo; (b) `96,8 %` das arestas inteiramente dentro da regi
 argumento, e é preciso dizê-lo:** as arestas que tocam a fronteira presa aplicam a correcção **só**
 ao lado livre, e isso também empurra para fora — *é o par-espelho que decide, não o sinal do
 radial.*
+
+### §7.2 — ⭐⭐⭐ O FILTRO ATRAVESSA GESTOS: acumula por omissão, e a base persistente é o INTERRUPTOR que o dono nunca vê (F+M, 2026-09-09, emenda Q23)
+
+> **A pergunta que abriu esta secção** foi um report de produto do lado limpo: *«quando uso inflar e
+> faço mais de uma simulação o objecto desinfla a cada início de simulação»*. A medição do lado limpo
+> reproduzia-o (três gestos de *Inflate*: o 2.º e o 3.º **afundam** a peça a `0,887` do repouso antes
+> de voltarem a subir). A pergunta ao oráculo era se o alvo faz o mesmo.
+
+⛔⛔⛔ **NÃO FAZ — por omissão.** Sem base persistente, o alvo **acumula e nunca recua**, nas cinco
+famílias medidas (§10.18), e a monotonia é **por passo**, não só por invocação:
+
+| corrida (3 invocações de 8 passos) | máx `\|u\|` por invocação | crescimento | os 24 passos são estritamente crescentes? |
+|---|---|---|---|
+| *Gravity*, plano mascarado | `0.108743` → `0.216465` → `0.323257` | `+99,1 %` · `+197,3 %` | **sim** |
+| *Inflate*, plano mascarado | `0.108836` → `0.216409` → `0.320600` | `+98,8 %` · `+194,6 %` | **sim** |
+| *Expand*, plano | `0.379347` → `0.754471` → `1.118614` | `+98,9 %` · `+194,9 %` | **sim** |
+| *Scale*, plano | `0.320179` → `0.691796` → `1.123135` | `+116,1 %` · `+250,8 %` | **sim** |
+| *Inflate*, esfera (volume/repouso) | `1,256244` → `1,552947` → `1,893185` | `+23,6 %` · `+50,7 %` | **sim, nas QUATRO realizações** |
+
+⭐⭐ **A esfera é a corrida que responde ao report, e responde com o incremento MÍNIMO:** o passo mais
+lento dos `24` é precisamente o **primeiro da 2.ª invocação** (`+0,003146` de volume) — o alvo
+*abranda* ao abrir um uso novo, e **não inverte**. ⇒ *o afundamento do lado limpo não tem
+correspondente no alvo por omissão; a divergência é nossa e é incondicional.*
+
+⚠️ **O *Scale* é o único SUPERLINEAR, e o mecanismo já está escrito na linha dele:** a âncora é
+`p⁰ + p⁰·f` com `p⁰` relido **quando o filtro abre**; a cada invocação nova o `p⁰` é a peça já
+maior, logo os incrementos crescem (`0,320` · `0,372` · `0,431`). *Expand* e os dois de força ficam
+em incrementos aproximadamente iguais.
+
+⭐⭐⭐ **E O ALVO TEM O AFUNDAMENTO — mas só com a base persistente ligada**, e essa opção **vive no
+pincel que está na mão**, não no filtro:
+
+| | invocação 1 | 2 | 3 | mínimo dentro da 3.ª |
+|---|---|---|---|---|
+| *Gravity* mascarado, **sem** base | `0.108743` | `0.216465` | `0.323257` | — (monótona) |
+| *Gravity* mascarado, **com** base gravada no repouso | `0.108743` | `0.212513` | **`0.180636`** | `0.170358` no 6.º passo (**`−19,8 %`** do início da invocação) |
+| *Inflate* mascarado, **com** base gravada no repouso | `0.108836` | `0.210906` | **`0.178959`** | `0.168110` no 6.º passo (**`−20,3 %`**) |
+
+⚠️⚠️ **A forma da curva é a do report do dono** — a peça recua ao abrir o gesto novo, chega a um
+mínimo a meio e volta a subir sem alcançar o que já tinha. ⇒ *o lado limpo tomou como lei o que no
+alvo é um interruptor; o defeito não é a lei, é ela ser incondicional.*
+⛔ **E a amplitude NÃO é comparável, apesar de os números se parecerem:** o lado limpo mede `−19,6 %`
+sobre **volume** normalizado ao repouso e estas duas linhas medem `−19,8 %` / `−20,3 %` sobre o
+**máximo de deslocamento** de um plano mascarado — grandezas diferentes, cenas diferentes. *A
+semelhança é da FORMA da curva, e escrever uma barra sobre a coincidência dos dois números seria
+calibrar uma régua contra outra grandeza.*
+
+⭐⭐ **A prova de que é a BASE e não a opção: TRÊS controlos, e o do meio é o que decide.**
+1. **Invocação 1 é idêntica nas três corridas** (`0.108743`): a base gravada no repouso **é** a forma
+   de partida da 1.ª invocação, logo nada pode mudar ali. **A divergência nasce na invocação 2** — a
+   primeira cuja forma de partida já não é a base. *É a mesma assinatura do par-espelho do §7.1: o
+   primeiro passo em que a lei alternativa passa a ter algo diferente para ler.*
+2. **Opção ligada e NENHUMA base gravada ⇒ saída BYTE A BYTE igual à da opção desligada** — os `34`
+   blocos das duas corridas coincidem (`0.000000000000`). ⇒ o interruptor sozinho é um **no-op
+   exacto**; quem muda a lei é o atributo gravado. (É a variante (a) do §6.4, agora medida também
+   no filtro.)
+3. **A régua que vê mais cedo é o ESTICÃO MÁXIMO por aresta, não o deslocamento:** no primeiro passo
+   da 2.ª invocação ele **cai** de `1,3371` para `1,1427` (*Gravity*) e de `1,2874` para `1,1980`
+   (*Inflate*) — a rede acabou de reler os comprimentos de repouso da base. O máximo de
+   deslocamento, nesse mesmo passo, ainda **sobe**. ⇒ *uma régua de deslocamento vê o efeito duas
+   dezenas de passos depois de uma régua de comprimento.*
+
+⚠️⚠️ **E isto EMENDA a generalidade de uma frase do §6.4.** Ali está escrito que o efeito da base é
+**«SATURAÇÃO, não atenuação»** — e está certo **para a população em que foi medido** (o Agarrar do
+pincel: `0,169046 → 0,171050 → 0,176485`, que sobe devagar). No filtro a mesma opção produz **RECUO**:
+a 3.ª invocação acaba **abaixo** da 2.ª (`0.180636 < 0.212513`). O mecanismo da diferença é a área:
+o pincel escreve força num disco e a base segura a folha inteira à volta dele; o filtro escreve
+força em **toda** a malha e a base é a única coisa que puxa de volta. ⇒ *a nota ao lado de uma
+medição descreve a população que ela tinha quando foi escrita* — a palavra certa é **saturação no
+pincel, recuo no filtro**.
+
+⭐ **E o esticão não tem tecto.** Uma corrida única de `36` passos de *Inflate* na esfera leva o
+volume a **`4,735 ×`** o de repouso (raio máximo `2,3145` a partir de `1`) com o volume a crescer em
+**todos** os 36 passos, e a maior aresta fica **`21,55 ×`** o comprimento de repouso dela. ⛔ Isto é
+o §5.7 e o censo do painel a fecharem-se um sobre o outro: **não há limitação de esticão no solver
+nem controlo dela na superfície**, e a `21,55 ×` a malha continua a ser entregue sem queixa.
+⚠️⚠️ **E uma armadilha de régua dentro da mesma corrida:** o **máximo de deslocamento** tem pico no
+passo `33` (`1.328207`) e **desce `1,01 %`** até ao passo `36` (`1.314746`) enquanto o volume sobe
+sem parar. *Uma régua de «máximo `|u|`» lida como «quanto a peça cresceu» acusa uma retracção que
+não existe* — a grandeza que responde é o volume (ou a área), nunca o extremo de um deslocamento.
+
+⛔ **O que esta secção NÃO decide** — e vale dizê-lo: se a nossa ferramenta **deve** ou não travar a
+acumulação por omissão é decisão de produto, não facto do alvo. O que está fixado é (a) o alvo
+acumula sem travar, (b) tem um interruptor para não acumular, (c) o interruptor mora no pincel e o
+painel do filtro **não o mostra**, e (d) mesmo ligado ele produz **recuo**, que é o sintoma de que o
+dono se queixou.
 
 ---
 
@@ -3699,6 +3808,77 @@ deste corpus:**
    ali a gravidade da cena está a `0`. *Um parâmetro que todo o corpus deixa no neutro não é testado
    por corpus nenhum.*
 
+### §10.18 — ⭐⭐⭐ AS DEZ CORRIDAS DE INVOCAÇÕES REPETIDAS — o corpus do filtro passa a medir o que ATRAVESSA um gesto (2026-09-09, emenda Q23)
+
+⚠️ **O buraco que esta secção fecha.** As `17` corridas do §10.17 abrem o filtro **uma vez** cada.
+Um report de produto do lado limpo (§7.2) é sobre o que acontece na **segunda** e na **terceira** vez
+— e sobre isso o corpus não tinha nada, logo qualquer lei que o lado limpo escrevesse sobre a
+composição de gestos mediria só a si própria.
+
+**Como as corridas foram conduzidas:** o mesmo arnês de eventos simulados do §10.17, com o ciclo
+*mover até ao ponto de abertura → abrir → premir → `passos` movimentos de `90` px → largar* repetido
+`invocacoes` vezes **sem sair do modo de escultura**, e as posições gravadas **depois de cada evento**
+(logo também depois de cada invocação). A base persistente, quando existe, é gravada **no repouso**,
+com a opção do pincel activo ligada, **antes** da primeira invocação. ⚠️ As chaves novas do
+cabeçalho (`invocacoes` · `opcao_persistente` · `base_gravada` · `repeticoes` · `max_por_invocacao`)
+estão no [README das fixtures](fixtures/cloth/README.md), com a coluna correspondente na régua de
+excepções.
+
+| fixture | filtro | inv. | base | máx `\|u\|` por invocação | dispersão | o que ela FIXA |
+|---|---|---|---|---|---|---|
+| `plano_filtro_gravidade_mascarado_3invocacoes` | gravidade | 3 | — | `0.108743` · `0.216465` · `0.323257` | `0.000000` | ⭐⭐ a acumulação **quase linear**, e os `24` passos estritamente crescentes |
+| `plano_filtro_gravidade_mascarado_3invocacoes_persistente` | gravidade | 3 | repouso | `0.108743` · `0.212513` · **`0.180636`** | `0.000000` | ⭐⭐⭐ **o filtro LÊ a base persistente**, e ela produz **recuo** |
+| `plano_filtro_gravidade_mascarado_3invocacoes_persistente_sem_base` | gravidade | 3 | nenhuma | `0.108743` · `0.216465` · `0.323257` | `0.000000` | ⭐⭐ **o controlo**: a opção ligada e sem base é **byte a byte** a corrida sem opção nenhuma |
+| `plano_filtro_inflar_mascarado_3invocacoes` | inflar | 3 | — | `0.108836` · `0.216409` · `0.320600` | `0.000000` | a mesma acumulação no tipo de que o dono se queixou |
+| `plano_filtro_inflar_mascarado_3invocacoes_persistente` | inflar | 3 | repouso | `0.108836` · `0.210906` · **`0.178959`** | `0.000000` | o recuo **não é próprio da gravidade** |
+| `plano_filtro_expandir_3invocacoes` | expandir | 3 | — | `0.379347` · `0.754471` · `1.118614` | `0.000000` | o tipo que mexe no **repouso** também compõe |
+| `plano_filtro_escala_3invocacoes` | escala | 3 | — | `0.320179` · `0.691796` · `1.123135` | `0.000000` | ⭐ o **único superlinear** (a âncora relê `p⁰` da peça já maior) |
+| `plano_filtro_gravidade_repeticoes5` | gravidade | 1 | — | `0.108000` | `0.000000` | ⭐ *Repeat* `5` é **byte a byte** igual a `1` ⇒ controlo **morto** neste filtro |
+| `esfera_filtro_inflar_3invocacoes` | inflar | 3 | — | `0.095230` · `0.188028` · `0.280913` | **`0.003184`** | ⭐⭐⭐ o volume cresce em **todos** os 24 passos, nas **quatro** realizações |
+| `esfera_filtro_inflar_36passos` | inflar | 1 | — | `1.314746` | **`0.073751`** | ⭐ o esticão **não tem tecto**: volume `4,735 ×`, maior aresta `21,55 ×` |
+
+**As leituras que a espec cita, com o instrumento ao lado** (⛔ são leituras NOSSAS sobre o dado,
+não saída do oráculo): o **volume** é a soma dos volumes assinados dos tetraedros das faces
+trianguladas sobre a malha de repouso do corpus, normalizado ao repouso; o **esticão máximo** é
+`max_e |x_a − x_b| / |x⁰_a − x⁰_b|` sobre as arestas da malha; a **dispersão** é o máximo do
+deslocamento por vértice entre a corrida de referência e cada uma das outras realizações do bloco
+final (a convenção das `17` do §10.17).
+
+| grandeza | corrida | valor |
+|---|---|---|
+| volume / repouso, esfera, fim de cada invocação | `esfera_filtro_inflar_3invocacoes` | `1,256244` · `1,552947` · `1,893185` |
+| menor incremento de volume dos 24 passos | idem | **`+0,003146`**, no **1.º passo da 2.ª invocação** |
+| mínimo do máx `\|u\|` dentro da 3.ª invocação, com base | `…_gravidade_…_persistente` | `0.170358` (6.º passo) = `−19,8 %` do início da invocação |
+| idem | `…_inflar_…_persistente` | `0.168110` (6.º passo) = `−20,3 %` |
+| esticão máximo por aresta, fim da 1.ª invocação → 1.º passo da 2.ª, **sem** base | `…_gravidade_…_3invocacoes` | `1,3371` → `1,3516` (**sobe**) |
+| idem, **com** base | `…_gravidade_…_persistente` | `1,3371` → **`1,1427`** (**cai**) |
+| volume / repouso ao fim de 36 passos | `esfera_filtro_inflar_36passos` | **`4,735086`** (raio máximo `2,3145`) |
+| esticão máximo por aresta ao fim de 36 passos | idem | **`21,5524`** |
+| pico do máx `\|u\|` dessa corrida | idem | passo `33` (`1.328207`), a acabar em `1.314746` (**`−1,01 %`**) |
+
+⛔⛔ **A DISPERSÃO da corrida longa é o número mais importante desta secção para quem escrever um
+gate.** As quatro realizações de `esfera_filtro_inflar_36passos` diferem até **`0.073751`** por
+vértice — **`5,6 %`** do próprio máximo de deslocamento. ⇒ *nenhuma barra sobre essa fixture pode
+viver abaixo disso*, e uma paridade «ao bit» ali é inatingível por construção. A irmã de `8` passos
+fica em `0.003184` (`1,1 %`), e ⭐ **as OITO corridas de plano desta emenda são todas `0.000000`** em duas
+realizações — o plano continua a ser o sítio de toda régua exacta do filtro (§10.17).
+
+⚠️⚠️ **Quatro coisas que a construção destas corridas ensinou:**
+1. **Uma folha sem máscara não decide NADA sobre a base persistente** — a gravidade sobre um plano
+   livre é uma **translação rígida**, e uma translação preserva **todas** as distâncias, que é
+   exactamente o que a base substitui ⇒ as duas leis dariam a mesma saída ao bit. *É a mesma
+   armadilha do par-espelho do §7.1, com outro sujeito*: a fixture que a pergunta parece pedir é
+   degenerada, e a que decide tem de ser escolhida pelo **mecanismo**.
+2. **A régua tem de ser um COMPRIMENTO, não um deslocamento** — a base muda comprimentos de repouso,
+   e o esticão máximo vê o efeito no **primeiro** passo da 2.ª invocação, enquanto o máximo de
+   deslocamento ainda sobe.
+3. **Sem a corrida de «opção ligada, base por gravar» não há como separar o interruptor do
+   atributo**, e a leitura ingénua atribuiria o efeito ao interruptor. Ela custou uma corrida e
+   devolveu uma identidade **byte a byte** em `34` blocos.
+4. **Um extremo global mente sobre crescimento** (o pico no passo 33). *A grandeza que responde a
+   «a peça cresceu?» é integral (volume, área); o máximo de um deslocamento responde a outra
+   pergunta.*
+
 ---
 
 ## §11 — Comportamento de borda, caso a caso (F salvo indicação)
@@ -3864,3 +4044,18 @@ Snake Hook **re-ancorar** no estado actual com força quadrática no falloff.
 | 58 | ⭐⭐ **AS BANDEIRAS DE EIXO SÓ TOCAM NA ÂNCORA DO *Scale*.** `plano_filtro_gravidade_eixox` tem de sair **byte a byte igual** a `plano_filtro_gravidade_local` (diferença máxima por vértice `0,0`), e `plano_filtro_escala_eixox` tem de dar `+14,74 %` em X contra `+0,18 %` em Y. ⚠️ **A 2.ª metade é a que impede a leitura ingénua:** o `0,18 %` **existe** e é a rede a arrastar o eixo desligado — um port que force o eixo a `0` no RESULTADO (em vez de na âncora) reprova por ficar demasiado limpo | identidade exacta · as duas percentagens | §7 · §10.17 |
 | 59 | ⭐⭐ **A GRAVIDADE DA CENA NÃO É UMA FORÇA DO TIPO.** Três metades: (a) `plano_filtro_escala_gravidade_cena` tem de descer `−0,0994` em `z` com o XY intacto a `1,7·10⁻⁶` ⇒ ela entra num tipo que **não aplica força nenhuma**; (b) em `plano_filtro_gravidade_conjuntos_de_faces` o lado excluído tem de **mover-se** (`2080` de `2080`), a `−0,1095` contra `−0,2156` do activo ⇒ ela **não** passa pelo factor por vértice; (c) ⛔ o sentido com um **objecto de gravidade** é o `+Z` dele, e o pincel usa o `−Z` — não há fixture (não há objecto de gravidade no corpus), logo esta metade é **gate de espec** e a linha diz isso de si mesma | as três leituras; a (c) por construção | §7 |
 | 60 | ⭐ **O PONTO DE APERTO NÃO SEGUE O CURSOR.** Em `plano_filtro_apertar`, o vértice imóvel no 1.º passo tem de ser o de repouso `(−0,609375, 0, 0)` (`4224` de `4225` movidos) e **todos** os deslocamentos finais têm componente radial **negativa** em torno dele — com o cursor a acabar em `x ≈ +2,36`, fora da peça. ⛔ Um port que releia a posição do cursor a cada passo colapsa a malha para o lado errado e reprova nas duas metades | o índice exacto · `100 %` de radial negativo | §7 · §10.17 |
+
+### §14-bis.2 — Gates das INVOCAÇÕES REPETIDAS (2026-09-09, emenda Q23 — a barra é DERIVADA)
+
+⚠️ **Todos eles correm sobre `fixtures/cloth/filtro/*.porinvocacao.txt.gz` e `*.porpasso.txt.gz`,
+e por isso o gate 55 (o censo do corpus do filtro) tem de aprender as duas extensões novas** —
+senão uma fixture de invocações entra sem régua, que é exactamente o defeito que o 55 existe para
+impedir.
+
+| # | gate | barra | de onde |
+|---|---|---|---|
+| 61 | ⭐⭐⭐ **O FILTRO ACUMULA E NUNCA RECUA, POR OMISSÃO.** Nas quatro corridas de plano com `invocacoes 3` e `base_gravada nenhuma`, o máximo de deslocamento tem de ser **estritamente crescente nos 24 passos** (não só nas três invocações), e as razões por invocação têm de bater: `+99,1 %` · `+197,3 %` (*Gravity*), `+98,8 %` · `+194,6 %` (*Inflate*), `+98,9 %` · `+194,9 %` (*Expand*), `+116,1 %` · `+250,8 %` (*Scale*). ⚠️ **A metade da esfera é a que responde ao report** e mede **volume**, não deslocamento: `1,256244 → 1,552947 → 1,893185`, com incremento **positivo em cada um dos 24 passos**. ⛔ Um port cujo material atravesse os gestos **incondicionalmente** reprova aqui na 1.ª comparação, e é isto que o gate serve para apanhar | monotonia estrita (exacta) · as razões a `±1 %` (o plano é bit-reprodutível) | §7.2 · §10.18 |
+| 62 | ⭐⭐⭐ **A BASE PERSISTENTE É O INTERRUPTOR, E SÃO TRÊS METADES — a do meio é a que impede a leitura ingénua.** (a) com `base_gravada repouso`, o máximo por invocação tem de dar `0.108743 · 0.212513 · 0.180636` (*Gravity*) e `0.108836 · 0.210906 · 0.178959` (*Inflate*) ⇒ a **3.ª invocação acaba ABAIXO da 2.ª**; (b) com `opcao_persistente 1` e `base_gravada nenhuma` a saída tem de ser **byte a byte** a da corrida sem opção nenhuma (diferença máxima `0.000000000000` nos `34` blocos) ⇒ o interruptor sozinho é no-op; (c) a **invocação 1** tem de ser idêntica nas três corridas — a base é a forma de partida dela. ⛔ Sem a (b) um port atribui o efeito ao interruptor; sem a (c) não se sabe que a divergência nasce na invocação 2 | identidade exacta em (b) e (c); a tabela em (a) | §7.2 · §10.18 |
+| 63 | ⭐⭐ **A RÉGUA DA BASE É UM COMPRIMENTO, NÃO UM DESLOCAMENTO.** No primeiro passo da 2.ª invocação, o esticão máximo por aresta tem de **cair** (`1,3371 → 1,1427` em *Gravity*, `1,2874 → 1,1980` em *Inflate*) na corrida com base, e **subir** (`1,3371 → 1,3516`) na corrida sem ela; no MESMO passo o máximo de deslocamento sobe nas duas. ⛔ Um port que só compare deslocamentos vê a diferença dezenas de passos mais tarde e pode dá-la por ruído | o sinal da variação, nos dois lados | §7.2 · §10.18 |
+| 64 | ⭐⭐ **O ESTICÃO NÃO TEM TECTO, E O MÁXIMO DE DESLOCAMENTO MENTE SOBRE ISSO.** Em `esfera_filtro_inflar_36passos` o volume tem de crescer em **todos** os 36 passos até `4,735 ×` o de repouso, a maior aresta tem de chegar a `21,55 ×` o comprimento de repouso dela, e o máximo de deslocamento tem de ter **pico no passo 33** e acabar `1,01 %` abaixo dele. ⛔⛔ **A barra desta fixture não pode viver abaixo de `0.073751`** — é a dispersão medida entre as quatro realizações (`5,6 %` do próprio máximo), e uma paridade mais apertada é inatingível por construção. ⚠️ A 3.ª metade é a que impede a régua errada: quem ler «máximo `\|u\|`» como crescimento acusa uma retracção que não existe | volume e esticão a `±2 %`; o pico exacto; o piso da dispersão | §7.2 · §10.18 |
+| 65 | ⭐ **O CENSO DO PAINEL DO FILTRO.** A superfície que o nosso filtro oferece tem de declarar, uma a uma, as divergências contra os **oito** controlos do alvo (*Filter Type* · *Strength* · *Force Axis* · *Orientation* · *Cloth Mass* · *Cloth Damping* · *Use Face Sets* · *Use Collisions*), e **nenhum limite de esticão, conservação de volume ou rigidez de dobra** pode entrar sem uma linha que diga que é **produto nosso**. ⚠️ Metade anti-cópia: `plano_filtro_gravidade_repeticoes5` prova que a contagem de repetições do alvo é **morta** neste filtro (byte a byte igual a `1`) ⇒ implementá-la seria construir um knob que o alvo não tem | censo declarado, com a identidade byte a byte na 2.ª metade | §7 · §10.18 |

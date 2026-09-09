@@ -92,6 +92,8 @@ Registado **antes** de qualquer leitura do fonte, em 2026-09-05.
 | **E (Q22 — o FILTRO)** | **2026-09-07** | **subagente-E da janela `1246816c-63cf-414b-842d-663a8baa86ca`** | **ABERTA ANTES DA PRIMEIRA LEITURA (§6).** Objecto: a emenda do §7 (o filtro de tecido) e o **oráculo do filtro** — o §10 não tinha UM ÚNICO traço de filtro, logo toda barra que a janela escrevesse mediria os defeitos dela própria (`CLAUDE.md` §0.9). **Releu:** o comando modal do filtro de tecido e a abertura dele (as propriedades expostas, os valores de omissão e as faixas); a construção da área e da lista de restrições no ramo sem traço de pincel; a expressão de cada um dos cinco tipos; as duas matrizes de orientação e o troço que anula componentes por eixo; a soma da gravidade da cena e o mesmo troço no ramo do pincel, lado a lado; o sítio onde as normais da malha são recalculadas dentro da preparação da peça para edição; e o destino (nenhum) da fotografia de normais tirada ao criar a simulação. **Produziu:** a EMENDA Q22 (§7 reescrito nas 12 linhas · **§7.1 NOVA** · **§10.17 NOVA** · **§14-bis NOVA**, gates 55-60), **17 fixtures** novas em `fixtures/cloth/filtro/` (+ 4 ficheiros por passo), a secção do filtro no README das fixtures, o arnês novo do oráculo do filtro e **36 corridas novas** |
 | **E (Q19 · Q20 · Q21)** | **2026-09-07** | **subagente-E da janela `1246816c-63cf-414b-842d-663a8baa86ca`** | **releu: a função que devolve a localização usada pela área simulada e as três áreas; onde a localização por passo é (ou não é) relida do evento do traço e onde ela é reescrita pela origem ancorada; a classificação de «ferramenta de agarrar» que decide o tamanho por pressão; a porta que inclina o delta para a normal e a capacidade que a declara (mais o Python do painel e a porta de propriedades que a expõe); a construção de restrições com as posições persistentes e as quatro leituras que elas substituem; os quatro construtores de restrição; a resolução de colisão e a ordem dela dentro do passo. Produziu a EMENDA Q19 (§2.1 · §4.3 · §5.6 · §6.4 · §8.1 · §8.4 · §10.13 errata · §10.15 · §10.16 · §11 · gate 46 reescrito + gates 48-54), OITO fixtures novas, a chave `dispersao_entre_realizacoes` em TREZE cabeçalhos, e 80 corridas novas do oráculo** |
 
+| **E (Q23 — o filtro ATRAVESSA gestos)** | **2026-09-09** | **subagente-E da janela `1246816c-63cf-414b-842d-663a8baa86ca`** | **ABERTA ANTES DA PRIMEIRA LEITURA (§6)** — ver a secção «Q23» no fim deste ledger para o pedido transcrito, o que foi reaberto e o veredicto |
+
 ### Cobertura da travessia (§3.E) — 2026-09-05, por shell (`cat`/`sed`/`grep`), fonte v5.2.0
 
 | área | ficheiros (caminho relativo a `source/blender/` ou `scripts/`) | linhas | lido |
@@ -1861,6 +1863,79 @@ repouso da raiz) e o gerador de índice ganhou as chaves novas; **103 ficheiros,
 **Reprodutibilidade.** No plano as dezasseis corridas são bit-reprodutíveis (`0,000000` entre duas
 realizações); a esfera sorteia `0,001015` sobre quatro — a mesma família já registada para o pincel,
 com a **superfície** como variável.
+
+**Estado:** ⏳ **aguarda R-pré.** A emenda está escrita, varrida e commitada na linha; o atestado
+independente (§3.R) é condição de a janela-mãe implementar.
+
+---
+
+### Q23 — O FILTRO ATRAVESSA GESTOS (emenda do I de 2026-09-09; ABERTURA registada ANTES da primeira leitura)
+
+**Abertura (§6).** Passagem E de 2026-09-09, subagente-E despachado pela janela-mãe
+`1246816c-63cf-414b-842d-663a8baa86ca`. Esta linha foi escrita **antes** de qualquer leitura do
+fonte do alvo nesta passagem. Patente (§8.1): ⭐ **nada mudou** — o checkpoint incondicional já foi
+feito em 2026-09-05 (quatro achados, dois vivos e nenhum lendo sobre o método, com as duas cercas
+nomeadas); o objecto desta emenda é **composição entre invocações do filtro**, que não alarga o
+método para nenhuma das quatro reivindicações auditadas ⇒ **a busca NÃO se repete** (§8.1 exige
+o checkpoint por alvo, e ele está no topo deste ficheiro).
+
+**O pedido, transcrito do `INBOX_blender-cloth.md` §«Q23» (2026-09-09, sessão 1246816c).**
+
+> Report do dono, verbatim: *«quando uso inflate e faco mais de uma simulacao o objeto desinfla a
+> cada inicio de simulacao»*.
+>
+> **Medido do lado limpo** (três gestos de Inflate seguidos sobre uma esfera UV 32×64, volume
+> normalizado ao repouso): gesto 1 sobe monotonamente de `1,000` a `1,168`; os gestos 2 e 3 **começam
+> em `1,103`/`1,101`, AFUNDAM até `0,887`/`0,886` no `k5`** e só depois voltam a `1,166`.
+> ⇒ duas coisas: (a) a inflação **não acumula** (os três gestos acabam no mesmo sítio); (b) o início
+> de cada gesto novo **afunda a peça abaixo do repouso** antes de voltar a subir — e é a (b) que ele vê.
+>
+> **A causa é NOSSA e está identificada:** a wave de 08/09 fez o material atravessar os gestos (cura
+> do report *«o pano continua esticando»*), e no lado limpo isso é **incondicional**. A espec §6.3 diz
+> que no alvo a deformação **acumula** entre traços, e a §6.4 diz que a base persistente é uma
+> **opção do artista** cujo efeito medido é **saturação**. ⇒ o lado limpo tomou como lei o que no alvo
+> é um interruptor, e os cinco tipos do filtro não querem a mesma coisa.
+>
+> **Q23.1** — o **FILTRO** lê a base persistente? (gravar a base no repouso com o pincel activo,
+> depois correr o filtro *Gravity* duas vezes; contra o mesmo par sem base gravada). A §7 diz que o
+> filtro nasce «sem pino e sem memória de forma» e **não diz nada sobre a base** — se ela não for
+> lida, o alvo não tem resposta nenhuma para o report do dono e a divergência do lado limpo é
+> deliberada e tem de ser declarada.
+> **Q23.2** — *Gravity* corrido **três vezes seguidas** sobre o plano mascarado: a deformação acumula
+> como no pincel (`+81 %`, `+145 %` do §10.16)? Posições depois de cada corrida.
+> **Q23.3** — *Inflate* corrido **três vezes seguidas** sobre a esfera: a peça cresce monotonamente?
+> Há algum passo em que ela ENCOLHE a seguir a uma corrida anterior?
+> **Q23.4** — o mesmo par de três corridas para **Expand** e **Scale** (o censo da família: os dois
+> mexem no repouso por construção, e a pergunta é se o alvo os deixa compor).
+> **Q23.5** — **uma** corrida longa de *Inflate* na esfera (36 passos): a peça cresce sem tecto? Qual
+> o esticão máximo por aresta contra o repouso no fim?
+> **Q23.6** — censo do PAINEL do filtro: há algum controlo que limite esticão, conserve volume ou
+> enrijeça dobra? (a §5.7 diz que o solver não os tem; a pergunta é sobre a superfície que o artista
+> vê, para a nossa declaração de divergência nomear o que acrescentámos).
+
+**O que foi reaberto no fonte** (por shell, só o que as seis perguntas exigiam): o ponto onde a
+simulação do filtro é criada e o que ela recebe (em particular se as posições persistentes chegam
+lá, e com que valor de plasticidade); as quatro leituras que as posições persistentes substituiriam
+na construção de restrições; o troço onde a lista de posições persistentes é criada, e por quem;
+o que acontece a essa lista quando um novo uso do filtro abre; a expressão dos tipos *Expand* e
+*Scale* na parte que toca o repouso; e a lista de propriedades expostas pelo comando modal do
+filtro (o censo do painel da Q23.6), com o Python que as desenha.
+
+**As corridas novas.** `docs/3D/cleanroom/fixtures/cloth/filtro/`, no mesmo formato e cabeçalho das
+17 anteriores, com a chave `invocacoes` nova (⇒ coluna nova na régua de excepções do README) e as
+posições **depois de cada invocação**. Reprodutibilidade medida nas duas superfícies (duas
+realizações no plano, quatro na esfera), como manda a família §10.13/§10.15/§10.17.
+
+**Os veredictos** estão na espec: **§7** (a linha nova da tabela + a §7.2) e **§10.18**.
+
+**Sweep (§7.1), corrido em 2026-09-09 pelo E:** ✅ **verde** sobre a espec, o README das fixtures, o
+gerador de índice, o diretório `fixtures/cloth/filtro/` inteiro e o texto do report final (varrido no
+`draft/` antes da entrega). ⚠️ **E verde sobre as 67 linhas NOVAS deste ledger, corridas à parte.**
+⛔ O ficheiro inteiro do ledger continua a acusar **dois** achados **pré-existentes** de 2026-09-05
+(as linhas da tabela de cobertura da travessia e o achado de parede nº 1) — eles são o que a
+**SKILL §6 exige** que o ledger contenha (*«áreas/arquivos do fonte percorridos»*), já foram
+auditados pelo R-pré em 2026-09-05, e o ledger é deny-listed para a janela-mãe. Esta emenda **não
+lhes tocou**.
 
 **Estado:** ⏳ **aguarda R-pré.** A emenda está escrita, varrida e commitada na linha; o atestado
 independente (§3.R) é condição de a janela-mãe implementar.

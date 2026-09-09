@@ -26,6 +26,7 @@
 //! `Transform` (ADR-0111). A polyline published in local space would put the instances where the
 //! shape *was authored*, not where it *is* — and it would look right until the artist moved it.
 
+use crate::motion_state::FormaEscolhida;
 use ph2d_ecs::{Entity, Name, SimWorld};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_vec_scene::{VecScene, VecXforms, xform_of};
@@ -116,7 +117,8 @@ pub(super) fn polyline(
 ///
 /// Called once a frame, before the pump. Republishing is free: the external's revision is a hash of
 /// its content, so a shape nobody touched invalidates nothing (`ph2d_nodegraph::external`).
-/// ⭐⭐ **E devolve o NOME DA FORMA SELECCIONADA**, quando ela é uma das que publicou.
+/// ⭐⭐ **E devolve o NOME DA FORMA SELECCIONADA** — ou, quando não há um,
+/// [`FormaEscolhida`] diz **qual** das quatro condições falhou.
 ///
 /// ⚠️ **Sai deste laço e não de um segundo**, e é isso que a torna uma resposta só: a pergunta
 /// *«que caminho está seleccionado?»* tem de dar exactamente um dos nomes que o grafo consegue
@@ -130,29 +132,47 @@ pub(super) fn publish(
     map: &crate::vec_entities::VecEntityMap,
     xforms: &VecXforms,
     selected: Option<u64>,
-) -> Option<String> {
-    let mut escolhida: Option<String> = None;
+) -> FormaEscolhida {
+    // ⚠️ **A recusa por omissão é `NaoEDesenho` quando há selecção**, e não `Nada`: quem está
+    // seleccionado e não aparece neste laço não é um desenho — o mapa só tem `VecPath`. As
+    // outras três recusas são escritas por cima, no elemento que É o seleccionado.
+    let mut escolhida = match selected {
+        None => FormaEscolhida::Nada,
+        Some(_) => FormaEscolhida::NaoEDesenho,
+    };
     // Clear first: a shape the artist deleted (or un-named) must stop being visible to the graph,
     // and a stale entry would keep a `motion.path` walking a curve that is not on the canvas.
     cook.clear_externals();
     let w = sim.world();
     for (&id, &bits) in map {
         let e = Entity::from_bits(bits);
+        let escolhido = selected == Some(bits);
         let Ok(entity) = w.get_entity(e) else {
             continue;
         };
         let Some(name) = entity.get::<Name>().map(|n| n.0.clone()) else {
-            continue; // unnamed: there is nothing for the artist to type into the node
+            // unnamed: there is nothing for the artist to type into the node
+            if escolhido {
+                escolhida = FormaEscolhida::SemNome;
+            }
+            continue;
         };
         if name.trim().is_empty() || is_reserved(&name) {
+            if escolhido {
+                escolhida = FormaEscolhida::SemNome;
+            }
             continue;
         }
         let pts = polyline(scene, xforms, id);
         if pts.len() < 2 {
-            continue; // not a curve: a single point has no arc to walk
+            // not a curve: a single point has no arc to walk
+            if escolhido {
+                escolhida = FormaEscolhida::SemArco;
+            }
+            continue;
         }
-        if selected == Some(bits) {
-            escolhida = Some(name.clone());
+        if escolhido {
+            escolhida = FormaEscolhida::Nome(name.clone());
         }
         // Where it IS, on the same channel a sprite uses — so a node asking for the
         // position of "X" never has to know whether X is a drawing or an object.

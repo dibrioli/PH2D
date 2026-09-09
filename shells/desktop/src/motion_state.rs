@@ -195,6 +195,30 @@ pub(crate) struct MotionSignalOut {
     pub(crate) rows: usize,
 }
 
+/// ⭐⭐ **A RESPOSTA DO *«Use Selected Path»*, e cada saída NOMEIA-SE.**
+///
+/// ⛔ A 1.ª redacção devolvia `Option<String>` e o botão dizia sempre a mesma frase —
+/// *«escolha um desenho: ele precisa de um nome e de pelo menos dois pontos»*. ⚠️ **Metade
+/// dela não pode acontecer:** todo desenho nasce com nome (`vec_entities::initial_name`, um
+/// `Path {id}`), então *«precisa de um nome»* descrevia uma população vazia — enquanto o
+/// motivo verdadeiro (nada seleccionado · não é um desenho · não tem arco) ficava por dizer.
+///
+/// É a mesma lei do `fell` da ponte de GPU: *toda saída passa por aqui e nomeia-se*.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub(crate) enum FormaEscolhida {
+    /// Nada seleccionado.
+    #[default]
+    Nada,
+    /// Há selecção, e ela não é um desenho (uma sprite, um osso, um grupo…).
+    NaoEDesenho,
+    /// É um desenho, e o nome dele está vazio ou pertence ao namespace do editor (`$…`).
+    SemNome,
+    /// É um desenho de menos de dois pontos — não há arco por onde um nó andar.
+    SemArco,
+    /// O nome que o nó pode escrever.
+    Nome(String),
+}
+
 /// Runtime state for the Motion Nodes editor. One instance on `AppGfx`.
 pub(crate) struct MotionState {
     /// The persistable document (the graph is the only part that cooks).
@@ -222,7 +246,7 @@ pub(crate) struct MotionState {
     /// publica (tem nome · não é reservado · tem arco) é o mesmo que decide esta. Uma segunda
     /// varredura sobre a selecção podia devolver uma forma sem nome, e o botão ligaria o nó a
     /// nada.
-    pub(crate) selected_shape: Option<String>,
+    pub(crate) selected_shape: FormaEscolhida,
     /// Terminal nodes whose output streams are lowered to instances — every
     /// `motion.output` node in the document, in node-id order. Several sinks
     /// compose into one draw, so a document *can* hold independent scenes without
@@ -411,7 +435,7 @@ impl MotionState {
             history: MotionHistory::new(),
             pump: MotionCookPump::new(),
             registry,
-            selected_shape: None,
+            selected_shape: FormaEscolhida::Nada,
             sinks,
             signal_taps: Vec::new(),
             signals_out: Vec::new(),

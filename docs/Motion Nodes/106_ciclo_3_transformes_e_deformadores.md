@@ -976,3 +976,33 @@ afirmaria sobre um programa que não é este. Corrido nesta máquina: **2 de 2 v
 prova que sem tomada armada nada é cozido. Sem ele, uma implementação que cozinhasse tomadas
 incondicionalmente passaria o gate de cima e a frase escrita no doc da porta — *«só se paga enquanto
 há tomada armada»* — deixaria de ser verdade sem ninguém ver.
+
+---
+
+### ✅ A DECISÃO EM ABERTO DO *«Use Selected Path»* — respondida por MEDIÇÃO, e o achado foi outro (2026-09-08)
+
+A pergunta que ficou do report do `motion.spline_wrap` era: **o botão deve NOMEAR sozinho um
+desenho sem nome, em vez de o recusar?**
+
+⇒ **Não, e o caso não existe.** `vec_entities::initial_name` dá a todo path novo o nome
+`Path {id}` no mesmo passe que lhe spawna a entidade — *um desenho deste app não pode nascer sem
+nome*. Construir a nomeação automática seria construir a cura de uma população vazia.
+
+#### ⛔ Mas a MEDIÇÃO devolveu o defeito verdadeiro: **a recusa nomeava a condição que não morde**
+
+A frase única era *«Select a drawing … it needs a name and at least two points»* — e metade dela
+descreve o que nenhum desenho falha, enquanto o motivo real (*nada seleccionado* · *o que está
+seleccionado não é um desenho* · *o desenho tem menos de dois pontos*) **ficava por dizer**. É a
+família da [nota ao lado de uma conta](../../project-memory/feedback_the_note_beside_a_count_describes_the_population_it_had_when_it_was_written.md):
+a frase descrevia a população que ela tinha no dia em que foi escrita.
+
+⇒ **`FormaEscolhida`**, quatro estados e quatro frases, na mesma lei do `fell` da ponte de GPU —
+*toda saída passa por aqui e nomeia-se*. ⚠️ **E sai do MESMO laço que publica as formas**, nunca de
+uma segunda varredura: quem está seleccionado e não aparece ali **não é um desenho**, porque o mapa
+só tem `VecPath` — a recusa por omissão cai desse facto, e as outras três são escritas no elemento
+que É o seleccionado.
+
+⭐ **Gate:** `each_refusal_of_the_button_names_its_own_reason` mede que as quatro frases são
+**distintas** e que nenhuma recusa toca o documento. ⚠️ **A régua é a distinção, não o texto** — um
+gate que fixasse a redacção obrigaria toda melhoria de linguagem (e a i18n) a editar um teste.
+⛔ Prova de mutação: colapsar dois braços na mesma frase reprova nomeando o par.

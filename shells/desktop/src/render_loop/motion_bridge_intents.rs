@@ -13,6 +13,7 @@ use super::{
     MotionState, apply_delete_selection, apply_disconnect, backdrops, connect, edit, reconcile,
     rewire, subgraph,
 };
+use crate::motion_state::FormaEscolhida;
 use ph2d_editor::ToastQueue;
 use ph2d_editor::screens::layout::CenterSplit;
 
@@ -179,15 +180,37 @@ pub(super) fn apply_graph_intents(
                 // ⚠️ **Pela MESMA porta que a row do painel usa** (`Graph::set_text_param` +
                 // `mark_dirty`) — o undo, o memo do cook e os limites são os mesmos nas duas
                 // superfícies, e um segundo caminho de escrita seria onde as duas divergiriam.
-                if let Some(nome) = motion.selected_shape.clone() {
-                    motion.doc.graph.set_text_param(n, param, nome.clone());
-                    motion.pump.mark_dirty();
-                    toasts.push(ph2d_editor::Toast::info(format!("Path set to '{nome}'")));
-                } else {
-                    toasts.push(ph2d_editor::Toast::info(
-                        "Select a drawing on the canvas or in the Hierarchy first — it needs a name and at least two points"
-                            .to_string(),
-                    ));
+                // ⚠️ **Cada recusa diz a SUA razão** — ver [`FormaEscolhida`]. A frase única
+                // de antes nomeava *«precisa de um nome»*, condição que **nenhum desenho deste
+                // app pode falhar** (todos nascem `Path {id}`), e calava a que de facto mordia.
+                match motion.selected_shape.clone() {
+                    FormaEscolhida::Nome(nome) => {
+                        motion.doc.graph.set_text_param(n, param, nome.clone());
+                        motion.pump.mark_dirty();
+                        toasts.push(ph2d_editor::Toast::info(format!("Path set to '{nome}'")));
+                    }
+                    FormaEscolhida::Nada => {
+                        toasts.push(ph2d_editor::Toast::info(
+                            "Select a drawing first — on the canvas or in the Hierarchy"
+                                .to_string(),
+                        ));
+                    }
+                    FormaEscolhida::NaoEDesenho => {
+                        toasts.push(ph2d_editor::Toast::info(
+                            "The selected object is not a drawing — pick a path".to_string(),
+                        ));
+                    }
+                    FormaEscolhida::SemNome => {
+                        toasts.push(ph2d_editor::Toast::info(
+                            "Give this drawing a name in the Hierarchy first".to_string(),
+                        ));
+                    }
+                    FormaEscolhida::SemArco => {
+                        toasts.push(ph2d_editor::Toast::info(
+                            "This drawing has fewer than two points — there is no curve to follow"
+                                .to_string(),
+                        ));
+                    }
                 }
             }
             #[cfg(feature = "panel-motion-params")]

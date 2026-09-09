@@ -12,7 +12,6 @@
 //! ```
 
 use crate::motion_state::MotionState;
-use ph2d_nodegraph::graph::{Edge, NodeId};
 
 /// Os treze do ciclo 3 (doc 103 §5).
 pub(crate) const GRUPO: [&str; 13] = [

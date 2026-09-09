@@ -201,6 +201,34 @@ const RADIAL_SWEEP_SPEC: FieldGizmoSpec = FieldGizmoSpec {
     size: FieldSize::Disk { radius: "radius" },
 };
 
+/// ⭐⭐⭐ **A spec do `motion.falloff`** (ciclo 4, W1 — [doc 107](../../../docs/Motion%20Nodes/107_ciclo_4_foco_os_campos.md)).
+///
+/// ⛔ **Ele é o TERCEIRO campo espacial e era o único sem alça — sendo o que o artista
+/// encontra primeiro:** é o único do grupo no namespace `motion.*`, é o que os deformadores
+/// leem, e é o da primeira página de qualquer tutorial. Arrastar `center_x`/`center_y` num
+/// slider é caçar a rotação, e era isso que ele obrigava.
+///
+/// ⭐ **Uma spec serve as TRÊS formas dele, e a geometria já encaixava:** a
+/// [`FieldSize::Disk`] devolve a meia-extensão `[r, r]`, que é **o disco** do `Circle`, **o
+/// quadrado** do `Rect` (a lei dele é Chebyshev, `max(|dx|,|dy|)/radius`) e **o vão** do
+/// `Linear` (a rampa corre em `±radius`). ⚠️ E a escala isotrópica do `Disk` é a certa nas
+/// três: o nó tem **um** `radius`, não dois.
+///
+/// ⚠️⚠️ **A alça de ROTAÇÃO fica, e o painel esconde a linha dela num círculo — a divergência
+/// é deliberada e medida.** Concordar com o painel (não escrever `rotation` quando a linha
+/// está gateada) faria a caixa **girar na tela e voltar atrás no quadro seguinte**, porque a
+/// view lê o param que o arrasto não escreveu: *um controlo que se mexe e desfaz é pior que um
+/// cujo efeito espera pelo modo*. O param é real e guardado — num `Circle` ele não move um
+/// texel (o campo é isotrópico) e passa a valer no instante em que a forma vira `Rect` ou
+/// `Linear`. ⛔ A terceira saída — suprimir a alça — pedia um campo novo na
+/// [`GizmoView`](ph2d_editor::GizmoView), que é partilhada por **todos** os gizmos do app.
+const FALLOFF_SPEC: FieldGizmoSpec = FieldGizmoSpec {
+    center_x: "center_x",
+    center_y: "center_y",
+    rotation: "rotation",
+    size: FieldSize::Disk { radius: "radius" },
+};
+
 /// A [`FieldGizmoSpec`] de um tipo de nó, ou `None` se o nó **não** é um field
 /// ESPACIAL (o `index_range` é por rank, sem geometria; o `combine` compõe dois fields,
 /// sem geometria própria). Porta única — a view, o down e o gate perguntam à mesma.
@@ -210,6 +238,8 @@ pub(crate) fn spec_for(type_id: NodeTypeId) -> Option<FieldGizmoSpec> {
         Some(BOX_SPEC)
     } else if type_id == NodeTypeId::of("field.radial_sweep") {
         Some(RADIAL_SWEEP_SPEC)
+    } else if type_id == NodeTypeId::of("motion.falloff") {
+        Some(FALLOFF_SPEC)
     } else {
         None
     }

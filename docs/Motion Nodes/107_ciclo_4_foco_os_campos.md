@@ -90,10 +90,33 @@ no doc-comment.
 
 ## §2 — O PLANO, wave a wave
 
-### W1 — ⭐⭐⭐ A ALÇA DO `motion.falloff` (o achado da §1.2)
+### ✅ W1 — A ALÇA DO `motion.falloff` (2026-09-09)
 
-`spec_for` ganha a terceira entrada, e a alça de **rotação** aparece exactamente quando a linha
-`Rotation` do cartão aparece — pela porta `shown_params`, nunca por uma cópia da regra.
+`spec_for` ganhou a terceira entrada, e a `selected_field` é a **porta única** por onde o desenho,
+o clique e o arrasto perguntam — um braço acende os três.
+
+⚠️⚠️ **A alça de ROTAÇÃO fica, e o painel continua a esconder a linha dela num círculo — a
+divergência é deliberada e foi MEDIDA.** O plano acima dizia o contrário (*«aparece exactamente
+quando a linha `Rotation` aparece, pela porta `shown_params`»*), e concordar com o painel faria a
+caixa **girar na tela e voltar atrás no quadro seguinte**: a view lê o param que o arrasto não
+escreveu. ⇒ *um controlo que se mexe e desfaz é pior que um cujo efeito espera pelo modo.* O param
+é real e guardado; num `Circle` não move um texel (o campo é isotrópico) e passa a valer no
+instante em que a forma vira `Rect` ou `Linear`. ⛔ A terceira saída — **suprimir** a alça — pedia
+um campo novo na `GizmoView`, que é partilhada por **todos** os gizmos do app.
+
+#### ⛔⛔ E o gate que dizia medir os nomes era um ESPELHO
+
+`spec_names_match_the_nodes` abre com *«os nomes TÊM de bater com os params reais dos nós»* e
+compara-os com **strings escritas à mão ao lado**: um typo escrito nos dois sítios passa, e um
+param renomeado no nó passa também.
+
+⇒ **`every_name_a_spec_uses_is_a_declared_param_of_that_node`** pergunta ao **registry**, sobre a
+população **derivada** (todo manifesto cujo tipo tem spec), com piso contra o vácuo. A spec que
+nascer amanhã entra sozinha.
+
+⛔ **Duas provas de mutação, e cada uma nomeia o que devia:** tirar o braço do falloff dá
+*«só 2 nós com spec de gizmo — os três campos espaciais têm de a ter»*; um nome fantasma dá
+*«motion.falloff: a spec do gizmo dirige `centro_x`, que o nó não declara»*.
 
 ### W2 — O CARTÃO do grupo, lido com o olho do doc 101
 

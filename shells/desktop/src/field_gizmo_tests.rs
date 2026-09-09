@@ -37,9 +37,58 @@ fn spec_for_covers_the_spatial_fields() {
         spec_for(NodeTypeId::of("field.radial_sweep")).map(|s| s.size),
         Some(FieldSize::Disk { radius: "radius" })
     );
+    // ⭐ O TERCEIRO campo espacial (ciclo 4, W1): o `motion.falloff`. Uma spec serve as
+    // três formas dele — `Disk` dá `[r, r]`, que é o disco do Circle, o quadrado de
+    // Chebyshev do Rect e o vão do Linear.
+    assert_eq!(
+        spec_for(NodeTypeId::of("motion.falloff")).map(|s| s.size),
+        Some(FieldSize::Disk { radius: "radius" })
+    );
     assert!(spec_for(NodeTypeId::of("field.index_range")).is_none());
     assert!(spec_for(NodeTypeId::of("field.combine")).is_none());
     assert!(spec_for(NodeTypeId::of("motion.integrate")).is_none());
+}
+
+/// ⭐⭐⭐ **TODO NOME QUE UMA SPEC USA É UM PARAM DECLARADO DO NÓ** — perguntado ao REGISTRY,
+/// sobre **toda** a população que tem spec.
+///
+/// ⛔⛔ **O gate irmão diz *«os nomes TÊM de bater com os params reais dos nós»* e compara-os
+/// com strings escritas à mão ao lado** — isso é um **espelho**, não um oráculo: um typo
+/// escrito nos dois sítios passa, e um param renomeado no nó passa também. Este pergunta ao
+/// dono da resposta.
+///
+/// ⚠️ **A população é DERIVADA** (todo manifesto cujo tipo tem spec), então a spec que nascer
+/// amanhã entra sozinha — que é precisamente o que uma lista escrita à mão não faz.
+#[test]
+fn every_name_a_spec_uses_is_a_declared_param_of_that_node() {
+    let mut reg = ph2d_node_registry::NodeRegistry::new();
+    ph2d_node_registry_init::register_all_nodes(&mut reg).expect("registry");
+    let mut com_spec = 0usize;
+    for man in reg.manifests() {
+        let Some(spec) = spec_for(man.id) else {
+            continue;
+        };
+        com_spec += 1;
+        let mut nomes = vec![spec.center_x, spec.center_y, spec.rotation];
+        match spec.size {
+            FieldSize::Rect { width, height } => nomes.extend([width, height]),
+            FieldSize::Disk { radius } => nomes.push(radius),
+        }
+        for n in nomes {
+            assert!(
+                man.params.iter().any(|p| p.name == n),
+                "{}: a spec do gizmo dirige `{n}`, que o no' nao declara -- ele escreveria \
+                 num param fantasma",
+                man.name
+            );
+        }
+    }
+    // ⚠️ Piso contra o VÁCUO: sem ele, um `spec_for` que devolvesse `None` a tudo deixaria
+    // este gate verde sobre zero nós.
+    assert!(
+        com_spec >= 3,
+        "so' {com_spec} no(s) com spec de gizmo -- os tre^s campos espaciais te^m de a ter"
+    );
 }
 
 #[test]

@@ -1044,3 +1044,32 @@ escrevem `rot` e `size`, **nunca `P`**, e liam-se *«não mudou»* com o nó a g
 
 > ⭐ *Um `clone` e um deformador barato leem-se **iguais** numa coluna de razão* — é por isso que a
 > régua do despertar tem de ser a **SAÍDA**, nunca o relógio.
+
+---
+
+### ⏳ A RECUSA DO `motion.bend ▸ direction` — RECONFERIDA, e continua de pé (2026-09-08)
+
+⚠️ **§0.0 manda reconferir uma nota de inalcançabilidade sempre que alguém mexe no número que a
+sustentava** — e esta linha mexeu no canal das reduções três vezes neste ciclo (a W1a, a
+`reduce_<earlier>()` da W1, o `bezier_warp` na W5a). Reconferida:
+
+A recusa (`applicable: Some(|p| p("direction") == 0.0)`) diz que o `x_extent` é um `Max` sobre
+`abs(v.x − pivot_x)` e que num quadro rodado ele teria de dobrar sobre `abs(dx·cos + dy·sin)` —
+com o `cos`/`sin` a serem o **polinómio HR-5** escrito uma segunda vez dentro da string da
+redução.
+
+⇒ **A premissa está CERTA hoje, e foi verificada no gerador, não deduzida:**
+[`reduce_stage.rs`](../../crates/ph2d-gpu-cook/src/reduce_stage.rs) monta o módulo da redução com
+os params, as ligações, os acessores `reduce_<earlier>()`, o `reduce_value` e o `main` — e **não
+cola o `wgsl_lib` do nó**. Não há hoje onde pôr uma função auxiliar.
+
+⭐ **O que a dissolveria, nomeado:** um campo `helpers: &'static str` no `ReduceSpec` (append-only,
+como a `reduce_<earlier>()` já foi), colado antes do `reduce_value` **naquele módulo**. ⛔ Colar o
+`wgsl_lib` inteiro **não** serve: ele chama `read_in_*`/`write_*`, que não existem ali. E a
+objecção das «duas cópias» cai se o WGSL do polinómio for **um `const` da crate do `bend`** usado
+pelos dois sítios — *uma string colada duas vezes pelo compilador não é uma lei escrita duas
+vezes* (⚠️ e a casa já copia o `trig.rs` **31 vezes** entre crates, por convenção escrita: *«o que
+se partilha é o algoritmo, não um símbolo»*).
+
+⛔ **Não foi feito nesta janela**, e a razão é escopo: é substrato (`ph2d-nodegraph`) mais paridade
+medida no dispositivo, que é uma wave com espec própria — não a cauda desta.

@@ -95,7 +95,9 @@ fn panel_crates_on_disk() -> Vec<String> {
 ///
 /// ⚠️ **Quatro quadros porque o `DockSides::from_published` lê o quadro ANTERIOR** — num quadro só
 /// nenhuma coluna está reservada e a medição apanharia o estado transitório.
-fn publishes_alone(p: &P) -> bool {
+///
+/// `width` é a largura da coluna; `None` deixa a de fábrica.
+fn publishes_alone_at(p: &P, width: Option<f32>) -> bool {
     let mut h = HeroScreen::new(ph2d_editor::NodeId(1));
     ph2d_editor::panel::with_registry_ref(|reg| {
         for q in reg.panels() {
@@ -103,12 +105,19 @@ fn publishes_alone(p: &P) -> bool {
                 .insert(q.manifest.id, q.manifest.id == p.id);
         }
     });
+    if let (Some(w), Some(side)) = (width, p.slot.dock_side()) {
+        h.store.set_dock_width(side, w);
+    }
     let mut scene = ph2d_vector::VectorScene::new();
     let mut text = TextSystem::without_system_fonts();
     for _ in 0..4 {
         paint_hero_screen(&mut h, VIEWPORT, &mut scene, &mut text);
     }
     h.store.panel_rect(p.node).is_some()
+}
+
+fn publishes_alone(p: &P) -> bool {
+    publishes_alone_at(p, None)
 }
 
 /// ⛔ **O controlo da POPULAÇÃO, e ele é derivado do disco.**
@@ -210,5 +219,47 @@ fn every_declared_glyph_draws_something() {
     assert!(
         mute.is_empty(),
         "estes glifos de aba não desenham nada: {mute:?}"
+    );
+}
+
+/// ⭐⭐⭐ **ESTREITAR A COLUNA NÃO CALA NINGUÉM** — a outra metade do report do dono.
+///
+/// > *«inspector buga de vez em quando: apaga ao ser estreitado sem que o painel seja
+/// > recolhido»* — Enio, 2026-09-08.
+///
+/// A causa provável daquele report era o **takeover** (oito bridges escondiam o Inspector para
+/// lhe tomar o encaixe), retirado na w41; esta lei fecha a *outra* rota pela qual o mesmo ecrã
+/// aparece — um painel que desista de pintar por a coluna estar apertada some **e leva a coluna**,
+/// porque uma coluna sem rects publicados lê-se livre.
+///
+/// ⚠️ **A varredura vai até ao DEGRAU DO FECHO** (`DOCK_W_COLLAPSE`), que é o piso do gesto: abaixo
+/// dele a coluna fecha de propósito, e ali o silêncio é a resposta certa. As larguras nomeiam os
+/// dois números da lei — o mínimo do painel e o degrau — e as vizinhas deles.
+#[test]
+fn narrowing_a_column_never_mutes_the_panel_in_it() {
+    let floor = ph2d_editor::interaction::WidgetStore::DOCK_W_COLLAPSE;
+    let min = ph2d_editor::interaction::WidgetStore::DOCK_W_MIN;
+    let widths = [340.0, 280.0, min + 1.0, min, min - 1.0, floor + 1.0, floor];
+    let mut mute: Vec<String> = Vec::new();
+    let mut measured = 0usize;
+    for p in panels() {
+        if p.floats || p.slot.dock_side().is_none() {
+            continue;
+        }
+        for w in widths {
+            measured += 1;
+            if !publishes_alone_at(&p, Some(w)) {
+                mute.push(format!("{} a {w} px", p.id));
+            }
+        }
+    }
+    assert!(
+        measured >= 80,
+        "só {measured} células medidas — a varredura perdeu a população ou as larguras"
+    );
+    assert!(
+        mute.is_empty(),
+        "estes painéis calam-se ao estreitar a coluna, e um painel calado FECHA a coluna:\n  {}",
+        mute.join("\n  ")
     );
 }

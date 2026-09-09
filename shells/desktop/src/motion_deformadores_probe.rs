@@ -72,18 +72,24 @@ const ALCANCE_DA_CAMARA: f32 = ph2d_render::Camera2d::ZOOM_MAX_HEIGHT_WORLD * 0.
 /// A cena publica legenda? Construir é barato; **cozinhar não é** (a cena `=1` tem 2 M
 /// elementos), e é por isso que a pergunta vem antes.
 fn scene_has_legend(level: u32) -> bool {
+    // ⛔⛔ **LIMPA ANTES DE MONTAR, e a trava é FINA.**
+    //
+    // A legenda é um global do processo e só é reescrita por uma cena que **publique**: sem o
+    // `publish(vec![])`, uma cena muda deixava a legenda da ANTERIOR e esta função respondia
+    // `true` sobre ela. ⚠️ E a trava fecha só a janela `limpar → montar → ler`: a 1.ª redacção
+    // tomava-a à volta da varredura inteira de 112 níveis, e a suíte do shell passou de **72 s
+    // para 1 796 s** — *uma trava que protege mais do que o estado partilhado paga o preço de
+    // toda a gente*.
     let mut m = MotionState::new();
-    let nivel = level.to_string();
-    let _ = crate::motion_state::demo_router::build_level(Some(&nivel), &mut m.doc, &m.registry);
-    !crate::motion_demo_legend::captions().is_empty()
+    let (_, legenda) =
+        crate::motion_demo_legend::monta(&level.to_string(), &mut m.doc, &m.registry);
+    !legenda.is_empty()
 }
 
 /// A caixa que os objectos de uma cena ocupam, em unidades de mundo.
 fn scene_bounds(level: u32) -> Option<([f32; 2], [f32; 2], usize)> {
     let mut m = MotionState::new();
-    let nivel = level.to_string();
-    let sinks =
-        crate::motion_state::demo_router::build_level(Some(&nivel), &mut m.doc, &m.registry);
+    let (sinks, _) = crate::motion_demo_legend::monta(&level.to_string(), &mut m.doc, &m.registry);
     let sink = *sinks.first()?;
     crate::render_loop::motion_shape_gen::publish(&mut m, 0.0);
     let out = m
@@ -125,7 +131,6 @@ fn scene_bounds(level: u32) -> Option<([f32; 2], [f32; 2], usize)> {
 #[test]
 #[ignore = "sonda de auditoria — corra à mão"]
 fn where_each_demo_scene_lives() {
-    let _trava = crate::motion_demo_legend::trava();
     eprintln!(
         "\n  cena | objectos | x                  | y                  | legenda | cabe em 100?"
     );
@@ -185,7 +190,6 @@ fn where_each_demo_scene_lives() {
 /// A tabela inteira sai de `where_each_demo_scene_lives`.
 #[test]
 fn a_scene_with_a_legend_fits_inside_what_the_camera_can_reach() {
-    let _trava = crate::motion_demo_legend::trava();
     let mut lidas = 0usize;
     let mut fora: Vec<String> = Vec::new();
     for level in 1..=crate::motion_state::demo_router::MAX_DEMO_LEVEL {
@@ -210,8 +214,19 @@ fn a_scene_with_a_legend_fits_inside_what_the_camera_can_reach() {
     }
     // Controlo positivo: um censo que casasse zero passaria vaziamente, e é exactamente o que
     // aconteceria se o `build_level` deixasse de publicar legendas.
+    //
+    // ⛔⛔ **O piso era `25`, e esse número estava CALIBRADO SOBRE A CONTAMINAÇÃO** (medido
+    // 2026-09-09). A legenda é um global do processo e só é reescrita por uma cena que
+    // **publique**: sem limpar antes de montar, uma cena **muda** herdava a legenda da anterior
+    // e era contada como tendo uma. Quando a [`crate::motion_demo_legend::monta`] passou a
+    // limpar, a contagem caiu de `25+` para **`21`** — e o gate acusou, correctamente, a sua
+    // própria calibração.
+    //
+    // ⚠️ **Baixar o piso não é afrouxar a barra aqui:** `21` é o número de cenas que de facto
+    // publicam uma legenda; os outros quatro eram ecos. *Um controlo positivo calibrado enquanto
+    // o leitor estava contaminado encoda a contaminação.*
     assert!(
-        lidas >= 25,
+        lidas >= 21,
         "so' {lidas} cena(s) com legenda foram vistas — a varredura foi as cegas"
     );
     assert!(

@@ -85,3 +85,20 @@ metadata:
   as duas têm um elemento no cheio e outro no vazio. A metade que falta é *«duas figuras não podem
   ser idênticas»*: se forem, um dos params que as separa não está a ser lido, e o tutorial ensina
   duas coisas com uma imagem só.
+- ⛔⛔ **Um CONTROLO POSITIVO calibrado enquanto o leitor estava contaminado ENCODA a
+  contaminação.** Um censo de cenas contava *«quantas publicam legenda»* lendo um **global do
+  processo** que só é reescrito por quem publica — logo uma cena **muda** herdava a legenda da
+  anterior e era contada. O piso do controlo foi escrito nesse mundo (`>= 25`). Ao limpar o
+  global antes de cada montagem, a contagem caiu para **21** e o gate acusou… **a sua própria
+  calibração**. ⚠️ Baixar o piso ali **não é afrouxar a barra**: `21` é o número verdadeiro, e os
+  outros quatro eram ecos. ⇒ ao curar um leitor contaminado, **re-derive todo número que foi
+  calibrado através dele**.
+- ⛔⛔ **E uma TRAVA só exclui quem a TOMA.** Pôr o cadeado no leitor do global deixava treze
+  outros sítios a escrever por cima dele. ⇒ **a trava mora na PORTA por onde se produz o estado**,
+  e quem o produz passa por lá. ⚠️ E ela segura-se só durante a produção: a versão que a tomava à
+  volta de uma varredura de 112 níveis levou a suíte de **72 s para 1 796 s** — *uma trava que
+  protege mais do que o estado partilhado paga o preço de toda a gente*.
+- ⚠️ **E o diagnóstico só apareceu quando LI A MENSAGEM.** Duas rondas foram gastas a assumir
+  «corrida» (porque o teste passava isolado) sobre uma reprova que era **determinística** e dizia
+  o número exacto no texto do `assert`. *Uma reprova que passa isolada pode ter mudado de causa
+  entre as duas corridas.*

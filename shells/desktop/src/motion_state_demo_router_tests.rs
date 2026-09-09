@@ -13,7 +13,10 @@ fn no_conference_scene_ships_a_setup_hole() {
     let (mut built, mut bad) = (0usize, Vec::new());
     for level in 1..=MAX_DEMO_LEVEL {
         let mut doc = MotionDoc::default();
-        if build_level(Some(&level.to_string()), &mut doc, &reg).is_empty() {
+        if crate::motion_demo_legend::monta(&level.to_string(), &mut doc, &reg)
+            .0
+            .is_empty()
+        {
             continue;
         }
         built += 1;
@@ -110,12 +113,13 @@ fn the_tool_is_taken_only_when_the_router_actually_built_a_scene() {
 /// entra sozinho.
 #[test]
 fn the_sweep_ceiling_is_the_highest_arm_the_router_actually_has() {
-    let _trava = crate::motion_demo_legend::trava();
     let monta = |n: u32| {
         let mut doc = ph2d_motion_doc::MotionDoc::new();
         let mut reg = ph2d_node_registry::NodeRegistry::new();
         ph2d_node_registry_init::register_all_nodes(&mut reg).expect("registry");
-        !build_level(Some(&n.to_string()), &mut doc, &reg).is_empty()
+        !crate::motion_demo_legend::monta(&n.to_string(), &mut doc, &reg)
+            .0
+            .is_empty()
     };
     assert!(
         monta(MAX_DEMO_LEVEL),
@@ -163,7 +167,10 @@ fn every_stamps_shape_port_is_fed_by_a_thing_to_draw() {
     let mut carimbos = 0usize;
     for level in 1..=MAX_DEMO_LEVEL {
         let mut doc = MotionDoc::default();
-        if build_level(Some(&level.to_string()), &mut doc, &reg).is_empty() {
+        if crate::motion_demo_legend::monta(&level.to_string(), &mut doc, &reg)
+            .0
+            .is_empty()
+        {
             continue;
         }
         let g = &doc.graph;

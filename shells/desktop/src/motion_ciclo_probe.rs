@@ -509,7 +509,26 @@ pub(crate) fn tabela(grupo: &[&str], lado: f32) {
     eprintln!(
         "  --------------------------|-----------|------------|-----------------|------------------"
     );
+    let reg = MotionState::new().registry;
     for nome in grupo {
+        // ⛔⛔ **UM NÓ QUE PRECISA DE OUTRA PORTA NÃO É MEDIDO, E DIZ-SE.**
+        //
+        // A cadeia é `grid → <nó> → output`, uma porta só. O `field.combine` sem o segundo campo
+        // e o `field.shape` sem a geometria são a **identidade** — cronometrá-los aqui daria o
+        // preço de um `clone`, que é **exactamente** o defeito que o despertar do ciclo 3 curou
+        // um nível abaixo (a tabela dizia que o patch de Coons era barato e media um `clone`).
+        // ⚠️ E alimentar a porta genericamente é pior: um campo real na porta do `field.shape`
+        // dá-lhe um polígono de milhares de vértices, e o `O(N·M)` dele passa a medir a fixtura.
+        // ⇒ **um traço é honesto; um número seria mentira.**
+        if reg
+            .required_inputs(ph2d_nodegraph::node::NodeTypeId::of(nome))
+            .is_some_and(|r| !r.is_empty())
+        {
+            eprintln!(
+                "  {nome:<26} |         — |          — |               — | ⚪ precisa de outra porta"
+            );
+            continue;
+        }
         let d = cook_com(lado, Some(nome), NO_REPS);
         let device = match (d.gpu_neutro, d.gpu_aceso) {
             (true, true) => "🟢 sim".to_string(),
@@ -526,6 +545,7 @@ pub(crate) fn tabela(grupo: &[&str], lado: f32) {
     }
     eprintln!(
         "\n  🟢 = o planeador reivindica a cadeia inteira · 🔴 = ela cai na CPU
+  ⚪ = NAO MEDIDO: o no' declara precisar de outra porta, e nesta cadeia ele e' a identidade
   🟡 = a residência DEPENDE de um knob (o `applicable` do kernel lê-o)
   (um quadro de 60 fps tem 16,67 ms)\n"
     );

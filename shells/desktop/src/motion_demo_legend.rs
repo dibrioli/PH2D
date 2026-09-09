@@ -63,9 +63,35 @@ static LEGEND: Mutex<Vec<Caption>> = Mutex::new(Vec::new());
 /// ⇒ **todo teste que monte uma cena toma esta trava.** Envenenada não interessa: o estado que
 /// ela protege é reescrito por inteiro na montagem seguinte.
 #[cfg(test)]
-pub(crate) fn trava() -> std::sync::MutexGuard<'static, ()> {
+fn trava() -> std::sync::MutexGuard<'static, ()> {
     static M: Mutex<()> = Mutex::new(());
     M.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
+}
+
+/// ⭐⭐⭐ **A PORTA ÚNICA por onde um TESTE monta uma cena** — devolve os sinks **e** a legenda
+/// que aquela montagem publicou.
+///
+/// ⛔⛔ **Uma trava só exclui quem a TOMA**, e foi isso que a 1.ª tentativa não viu: pôr o
+/// cadeado no leitor deixava os outros ~13 sítios que chamam o `build_level` a publicar por cima
+/// dele. ⇒ **a trava mora aqui, e quem monta uma cena num teste passa por aqui.**
+///
+/// ⚠️ **Ela é segurada só durante a MONTAGEM**, nunca durante o cozimento: a versão que a tomava
+/// à volta de uma varredura de 112 níveis levou a suíte do shell de **72 s para 1 796 s** —
+/// *uma trava que protege mais do que o estado partilhado paga o preço de toda a gente*.
+///
+/// ⚠️ **E ela LIMPA antes de montar:** o global só é reescrito por uma cena que **publique**, e
+/// sem a limpeza uma cena muda herdava a legenda da anterior — um falso positivo que já vivia no
+/// censo antes desta wave.
+#[cfg(test)]
+pub(crate) fn monta(
+    level: &str,
+    doc: &mut ph2d_motion_doc::MotionDoc,
+    reg: &ph2d_node_registry::NodeRegistry,
+) -> (Vec<ph2d_nodegraph::graph::NodeId>, Vec<Caption>) {
+    let _t = trava();
+    publish(Vec::new());
+    let sinks = crate::motion_state::demo_router::build_level(Some(level), doc, reg);
+    (sinks, captions())
 }
 
 /// A cena publica a legenda dela. Substitui, nunca acumula.

@@ -300,3 +300,94 @@ alguém podia editar o texto sem que nada acusasse — com as duas, o par *«o q
 `Rotation` **não pode** estar no cartão quando a cena abre, porque o passo 4 promete que ela
 *aparece* ao trocar a forma. *Um passo que promete uma aparição sobre algo que já estava lá ensina
 o contrário do que acontece.*
+
+---
+
+### 📊 A MEDIÇÃO (passo 5) — e o CHÃO da régua engoliu o sinal na primeira tentativa
+
+#### ⛔⛔ A 320×320 o grupo inteiro é INDISTINGUÍVEL do ruído
+
+Três corridas a **`load 3,40`** (a barra do §5.0 é `≤ 5`), grelha `320×320` = 102 400 objectos:
+
+| | corrida 1 | corrida 2 | corrida 3 |
+|---|---:|---:|---:|
+| *(só a grade)* | `0,64 ms` | `1,13 ms` | `0,86 ms` |
+| `motion.falloff` | `0,85` | `0,89` | `0,89` |
+| `field.box` | `0,70` | `0,80` | `0,65` |
+| `field.radial_sweep` | `0,68` | `1,00` | `0,97` |
+| `field.index_range` | `0,77` | `0,90` | `0,93` |
+| `field.remap` | `0,78` | `0,68` | `0,88` |
+
+⚠️ **As razões saem entre `0,60×` e `1,33×`** — vários nós leem-se *mais baratos que a grelha
+sozinha*, que é a assinatura que o ciclo 3 nomeou como sintoma de um `clone`. ⛔ **Aqui não é:** o
+censo `waking_a_field_takes_it_off_the_identity` prova que os cinco mudam a saída. O que se passa é
+que **o acréscimo deles é menor que a dispersão da própria linha de base** (`0,64`–`1,13`, ou seja
+`± 0,25 ms`).
+
+⇒ ⭐ *Quando o chão da medição engole o sinal, sobe-se o sinal* — não se cita o número.
+
+#### ⭐ A 1 000×1 000 (um MILHÃO de objectos) o sinal aparece limpo
+
+**`load 5,52`**, duas corridas que concordam a **~5 %** (a mesma defesa que a medição do ciclo 1
+usou: leituras independentes que batem entre si valem mais que uma leitura isolada abaixo da barra):
+
+| nó | cozimento (mediana de 2) | vs. só a grade | no device? |
+|---|---:|---:|:---|
+| *(só a grade)* | `4,20 ms` | — | 🟢 |
+| `field.remap` | `6,04 ms` | 1,44× | 🟢 |
+| `field.index_range` | `6,24 ms` | 1,49× | 🟢 |
+| `field.box` | `6,34 ms` | 1,51× | 🟢 |
+| `field.radial_sweep` | `6,73 ms` | 1,60× | 🟢 |
+| **`motion.falloff`** | **`8,70 ms`** | **2,07×** | 🟢 |
+| `field.combine` | ⚪ **não medido** | — | 🟢 |
+| `field.shape` | ⚪ **não medido** | — | 🔴 **NÃO** |
+
+⭐ **Um campo é acessível a um milhão de objectos:** a cadeia inteira custa `6`–`9 ms` de um quadro
+de `16,67`.
+
+⏳ **E fica uma pergunta ABERTA e honesta: por que é o `motion.falloff` o mais caro dos cinco,
+sendo o mais simples?** Ele é `38 %` mais caro que o `field.box`, que faz trigonometria igual.
+⛔ **Não foi medido**, e escrever aqui um palpite seria a nota errada ao lado do número certo.
+
+#### ⛔⛔ E DUAS LINHAS DA TABELA MEDIAM UM `clone` — o defeito do ciclo 3, um nível acima
+
+A primeira corrida deu número para os sete. Dois deles eram falsos: a cadeia da sonda é
+`grid → <nó> → output`, **uma porta só**, e o `field.combine` sem o segundo campo e o
+`field.shape` sem a geometria são a **identidade**. O relógio deles era o preço de não fazer nada
+— *exactamente* o que a tabela do ciclo 3 pagou quando o `motion.bezier_warp` leu `0,34×`.
+
+⛔ **E alimentar a porta genericamente seria pior:** um campo real na porta do `field.shape`
+dá-lhe um polígono de milhares de vértices, e o `O(N·M)` dele passaria a medir a **fixtura**.
+
+⇒ as duas linhas dizem **⚪ não medido**, pela lista que o **nó declara** (`required_inputs`).
+*Um traço é honesto; um número seria mentira.*
+
+---
+
+### ⛔⛔ TRÊS DEFEITOS NA MAQUINARIA DOS TESTES, e o terceiro fui eu (2026-09-09)
+
+A cena nova acordou uma família de defeitos no arnês que a rodeia. Nenhum era do produto, e os
+três valem mais escritos que curados em silêncio.
+
+**1. Uma TRAVA só exclui quem a TOMA.** O censo das legendas lê um **global do processo**, e o
+gate novo do tecto do roteador passou a montar nove cenas. Pôr o cadeado **no leitor** deixava os
+outros **treze** sítios que chamam o `build_level` a publicar por cima dele. ⇒ a trava mora agora
+na **porta** (`motion_demo_legend::monta`), e quem monta uma cena num teste passa por lá — **zero**
+chamadores fora dela.
+
+**2. Uma trava que protege a MAIS paga o preço de toda a gente.** A 1.ª versão segurava-a à volta
+de uma varredura de **112 níveis**, e a suíte do shell foi de **`72 s` para `1 796 s`** (25×).
+Hoje ela fecha só a janela `limpar → montar → ler`, e o cozimento fica de fora: **`64 s`**.
+
+**3. ⭐⭐ O piso do controlo positivo estava calibrado SOBRE A CONTAMINAÇÃO.** O global só é
+reescrito por uma cena que **publique**, então uma cena **muda** herdava a legenda da anterior e
+era contada como tendo uma. O piso (`>= 25`) foi escrito nesse mundo. Ao limpar antes de montar, a
+contagem caiu para **`21`** e o gate acusou — correctamente — **a sua própria calibração**.
+⚠️ **Baixar o piso aqui não é afrouxar a barra:** `21` é o número de cenas que de facto publicam,
+e os outros quatro eram **ecos**. ⇒ *ao curar um leitor contaminado, re-derive todo número que foi
+calibrado através dele.*
+
+> ⛔ **E o diagnóstico só apareceu quando eu LI A MENSAGEM.** Gastei duas rondas a assumir
+> «corrida» — porque o teste passava isolado — sobre uma reprova **determinística** que dizia o
+> número exacto no texto do `assert`. *Uma reprova que passa isolada pode ter mudado de causa
+> entre as duas corridas.*

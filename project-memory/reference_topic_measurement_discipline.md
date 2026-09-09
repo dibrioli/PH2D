@@ -111,3 +111,11 @@ uma continua a ser um ficheiro próprio; o que mudou foi o endereço.
   frio, e a pior linha saltou de `~16×` para `39×`. ⇒ **cite a coluna ABSOLUTA**, publique a
   mediana de N corridas (uma delas foi `+15 %` em *todas* as linhas — isso é a máquina, não um nó),
   e nunca gaste amostras só de um lado de um quociente.
+- ⭐⭐ **Quando o CHÃO da régua engole o sinal, sobe-se o sinal — não se cita o número.** A tabela
+  de preços de um grupo de campos (09/09) media, a `102 400` objectos, cinco nós cujo acréscimo
+  (`0,65`–`1,00 ms`) era **menor que a dispersão da própria linha de base** (`0,64`–`1,13`): as
+  razões saíam entre `0,60×` e `1,33×`, e vários nós liam-se *mais baratos que a grelha sozinha* —
+  a assinatura de um `clone`. ⛔ **Não era:** o censo do despertar provava que os cinco mudam a
+  saída. Subindo para **1 M** objectos o sinal separou-se do ruído e duas corridas concordaram a
+  `5 %`. ⇒ *uma razão perto de `1` pode ser «o nó é barato» ou «a régua não o vê» — e a forma de
+  separar é mudar a ESCALA, não repetir a corrida.*

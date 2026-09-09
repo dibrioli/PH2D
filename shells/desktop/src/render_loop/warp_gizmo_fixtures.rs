@@ -61,7 +61,7 @@ pub(super) fn cadeia(tipo: &str) -> (MotionState, NodeId) {
 /// existe: *a fixtura tem de ser a do report*. Montada, não marchada.
 pub(super) fn cena_do_dono(depois_do_mirror: bool) -> (MotionState, NodeId) {
     let mut m = MotionState::new();
-    let sinks = crate::motion_state::demo_router::build_level(Some("111"), &mut m.doc, &m.registry);
+    let sinks = crate::motion_demo_legend::monta("111", &mut m.doc, &m.registry).0;
     m.sinks = sinks;
     let acha = |t: &str| -> Option<NodeId> {
         m.doc

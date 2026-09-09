@@ -180,9 +180,8 @@ fn waking_a_field_takes_it_off_the_identity() {
 /// grafo que se vê não é um grafo que o dispositivo reivindica.
 #[test]
 fn the_focus_scene_builds_and_stays_on_the_device() {
-    let _trava = crate::motion_demo_legend::trava();
     let mut m = crate::motion_state::MotionState::new();
-    let sinks = crate::motion_state::demo_router::build_level(Some("112"), &mut m.doc, &m.registry);
+    let (sinks, _) = crate::motion_demo_legend::monta("112", &mut m.doc, &m.registry);
     let sink = *sinks.first().expect("a cena 112 tem um sink");
 
     // 1. Ela COZE, e produz as peças que promete.
@@ -234,9 +233,8 @@ const TUTORIAL: &str = include_str!("../../../docs/Motion Nodes/tutoriais/src/04
 /// exactamente o que esta régua existe para impedir.*
 #[test]
 fn every_row_the_tutorial_names_is_on_the_card() {
-    let _trava = crate::motion_demo_legend::trava();
     let mut m = crate::motion_state::MotionState::new();
-    let _ = crate::motion_state::demo_router::build_level(Some("112"), &mut m.doc, &m.registry);
+    let _ = crate::motion_demo_legend::monta("112", &mut m.doc, &m.registry);
     let mut snap = ph2d_panel_motion_graph::snapshot_from(&m.doc.graph, &m.registry);
     crate::render_loop::motion_bridge::params::card::stamp_card_params(
         &m,

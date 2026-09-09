@@ -63,7 +63,8 @@ fn measure_scene_layout() {
         // pela terceira vez nesta linha (a sonda de movimento e o harness do texto
         // pagaram as outras duas).
         let mut state = MotionState::new();
-        let sinks = build_level(Some(&level.to_string()), &mut state.doc, &state.registry);
+        let sinks =
+            crate::motion_demo_legend::monta(&level.to_string(), &mut state.doc, &state.registry).0;
         if sinks.is_empty() {
             continue;
         }
@@ -155,7 +156,7 @@ fn measure_scene_motion() {
         }
         let level = level.as_str();
         let mut doc = MotionDoc::default();
-        let sinks = build_level(Some(level), &mut doc, &reg);
+        let sinks = crate::motion_demo_legend::monta(level, &mut doc, &reg).0;
         if sinks.is_empty() {
             continue;
         }
@@ -218,7 +219,10 @@ fn measure_feedback_ports() {
     let mut por_tipo: std::collections::BTreeMap<&str, (usize, usize)> = Default::default();
     for level in 1..=MAX_DEMO_LEVEL {
         let mut doc = MotionDoc::default();
-        if build_level(Some(&level.to_string()), &mut doc, &reg).is_empty() {
+        if crate::motion_demo_legend::monta(&level.to_string(), &mut doc, &reg)
+            .0
+            .is_empty()
+        {
             continue;
         }
         cenas += 1;
@@ -297,7 +301,8 @@ fn motion_route_census() {
         std::collections::BTreeMap::new();
     for level in 1..=MAX_DEMO_LEVEL {
         let mut state = MotionState::new();
-        let sinks = build_level(Some(&level.to_string()), &mut state.doc, &state.registry);
+        let sinks =
+            crate::motion_demo_legend::monta(&level.to_string(), &mut state.doc, &state.registry).0;
         if sinks.is_empty() {
             continue;
         }
@@ -393,7 +398,8 @@ fn where_the_drops_note_shows_up() {
     let mut achados = 0;
     for level in 1..=ate.min(MAX_DEMO_LEVEL) {
         let mut state = MotionState::new();
-        let sinks = build_level(Some(&level.to_string()), &mut state.doc, &state.registry);
+        let sinks =
+            crate::motion_demo_legend::monta(&level.to_string(), &mut state.doc, &state.registry).0;
         if sinks.is_empty() {
             continue;
         }
@@ -446,7 +452,10 @@ fn what_feeds_every_duplicators_shape_port() {
     let mut carimbos = 0usize;
     for level in 1..=MAX_DEMO_LEVEL {
         let mut doc = MotionDoc::default();
-        if build_level(Some(&level.to_string()), &mut doc, &reg).is_empty() {
+        if crate::motion_demo_legend::monta(&level.to_string(), &mut doc, &reg)
+            .0
+            .is_empty()
+        {
             continue;
         }
         let g = &doc.graph;

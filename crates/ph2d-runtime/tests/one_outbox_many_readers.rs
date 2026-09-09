@@ -41,6 +41,9 @@ impl Host {
                 SignalOrigin::Animation { source, cycles } => {
                     format!("{} anim {} x{cycles}", sig.name, source.0)
                 }
+                SignalOrigin::Timer { source, fires } => {
+                    format!("{} timer {} x{fires}", sig.name, source.0)
+                }
             });
         }
     }

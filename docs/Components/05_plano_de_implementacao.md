@@ -3145,7 +3145,7 @@ destrava controllers → **7–8** o olhar e o corpo → **9–12** conteúdo di
 | # | Item | Estado MEDIDO em 2026-09-08 |
 |---|---|---|
 | 1 | Inspector derivado + *Add Component* + required | ✅ **FEITO por esta linha** (F0 + F3) |
-| **2** | **`Timer`** | ⏳ **NÃO EXISTE** — nenhuma `struct Timer` na árvore |
+| **2** | **`Timer`** | ✅ **W1+W2 FEITAS** (2026-09-08): a lei pura (9 gates), o registo (`77 → 78`, delta **+1**), a família **`Logic`** nova no catálogo, a ponte no passo fixo, o sinal (`SignalOrigin::Timer`) e a cena `PH2D_TIMER_SMOKE=1` (6 gates de ponte). ⏳ **Falta a W3 — o PAINEL**: hoje o componente anexa-se e edita-se por código, não por linha do Inspector |
 | **3** | **`SensorZone`** | ⏳ **METADE**: o colisor tem `is_sensor: bool`, e o doc dele diz à letra *«waits for a consumer of its own»*. Falta o componente autorável (forma + evento) e a costura ao sinal |
 | **4** | **`AudioSource2D` + `AudioListener2D`** | ⏳ **NÃO EXISTEM** — o rack de 42 efeitos não tem consumidor de CENA |
 | **5** | **`SignalActions`** (a tabela nome → ação) | ⏳ **ABERTO e planeado** — é o **R3** do [`docs/Runtime/00_plano_runtime.md`](../Runtime/00_plano_runtime.md); o `ph2d-runtime` já tem `Signal`/`SignalOutbox`/`SignalOnHit`, e o que falta é a tabela, que é **conteúdo autorado e precisa de UI** |
@@ -3181,3 +3181,66 @@ circuito que hoje está aberto em três pontos:
 ⚠️ **E o item 1 — o pré-requisito declarado das quatro sínteses — está FEITO por esta linha.** Era
 ele *«o divisor do custo do catálogo INTEIRO»*: cada um dos quatro acima nasce com Inspector
 derivado do tipo, paleta de *Add Component* e componentes requeridos, **sem uma secção artesanal**.
+
+---
+
+## §12 — **O `Timer` (TOP-20 #2) — W1 e W2** (2026-09-08)
+
+O primeiro item da fila depois do pré-requisito, e o **primeiro produtor de sinal que não precisa de
+dois corpos a tocarem-se**: até aqui o único produtor autorável da cena era o contacto da física, e
+portanto *nada podia acontecer por si*.
+
+### §12.1 — ⭐⭐⭐ A decisão de desenho, e a medição que a escolheu
+
+O componente registado é **CONFIG**; o relógio vive ao lado, num `TimerRuntime` **não registado**.
+É a lei da física, escrita por ela: *«components de CONFIG, nunca estado vivo de solver — o undo
+ordena por bytes»*. Um contador que anda a cada tique dentro de um componente registado faz **cada
+quadro com entrada virar um passo de undo**, e isso está medido nesta casa (a auditoria da §11
+nomeia-o como família pré-existente, com o `SpriteAnimator` a pagá-la).
+
+⛔ **A alternativa era o ledger do `preview_drive`, e foi RECUSADA por medição:** ele guarda **um**
+facto por `(entidade, driver)` e o `Driven` é `Copy`, então N timers por entidade exigiriam um
+`[u64; TIMERS_MAX]` — **`128 B` que todas as entradas do ledger passariam a pagar**, porque o maior
+variante manda no tamanho do enum. *A separação CONFIG/vivo custa uma struct e não custa um byte a
+ninguém.*
+
+⭐⭐ **E a separação revelou um erro meu:** o `running` é **vivo**, não autorado — o `advance`
+escreve-o (um *one-shot* que acaba **pára**), logo pô-lo no componente registado seria um passo de
+undo por cada timer que termina. O que o artista autora é o **`autostart`**.
+
+### §12.2 — ⭐⭐⭐ E o defeito está travado pelo TIPO, não por um gate
+
+A prova de mutação tentou registar o `TimerRuntime` e **não compilou**:
+
+```text
+error[E0277]: the trait bound `TimerRuntime: serde::Serialize` is not satisfied
+```
+
+⇒ a ausência de `Serialize` é **load-bearing**. *Derivá-lo por conveniência abriria a porta em
+silêncio* — e nenhum gate seria preciso para a segurar, porque o compilador já a segura.
+
+### §12.3 — A família `Logic`, e porque ela não é `Scripting`
+
+O catálogo tinha **13** categorias e nenhuma de lógica de jogo. Ela nasce com **um** tipo, e isso
+não contradiz a lei do catálogo (*«contadas sobre os registados, não inventadas»*): há um tipo real
+nela, e a fila traz mais **catorze**. ⛔ **Pô-lo em `Scripting` seria mentir** — o valor inteiro
+desta família é *acontecer sem script*, e um artista que procure o relógio na secção de scripts
+conclui que precisa de programar para o ter.
+
+⚠️ **O `match` exaustivo da paleta apanhou a categoria nova** (erro de compilação, como devia) — e o
+braço que ela obrigou a nomear dizia *«o resto»*. *Um braço chamado «o resto» aceita qualquer coisa,
+e a próxima família entra nele sem ninguém pensar.*
+
+### §12.4 — ⚠️ E o meu PORTÃO tinha um buraco
+
+Eu filtrava a saída do `cargo test` por `FAILED|failed;`, e um **erro de compilação não imprime
+nenhum dos dois**: o portão leu *«vazio = nenhum vermelho»* sobre um crate que não compilava. É a
+família que o `CLAUDE.md` §2 mede em números — **4 414 corridas que nunca chegaram a rodar um
+teste** — e a cura é ler o **exit code**, não o grep.
+
+### §12.5 — ⏳ O que falta: a W3, o PAINEL
+
+Hoje o `Timers` anexa-se pela paleta e **não tem linha de edição no Inspector** — a duração, o nome
+do sinal e o `autostart` só se autoram por código. O descritor declara `&[]` campos, e é isso que a
+W3 preenche. ⚠️ **Um componente anexável sem painel lê-se como um componente partido**, e é o
+próximo passo antes de o #3 (`SensorZone`).

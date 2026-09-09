@@ -122,6 +122,13 @@ pub struct TimerState {
 /// ⚠️ **O índice casa com o do [`Timers`]**, e é isso que os liga — não um nome. Um nome ligaria
 /// dois vectores por uma string que o artista pode editar a meio, e o relógio saltaria de timer.
 /// A ponte reconcilia o comprimento a cada tique (ver `render_loop::timer_tick`).
+///
+/// ⭐⭐⭐ **A AUSÊNCIA de `Serialize`/`Deserialize` é LOAD-BEARING, e foi uma prova de mutação que o
+/// mostrou:** tentar registá-lo não dá um gate vermelho, dá **erro de compilação**
+/// (`the trait bound TimerRuntime: serde::Serialize is not satisfied`). ⇒ o defeito que este
+/// desenho evita — o relógio a virar um passo de undo por quadro — está travado pelo **TIPO**, e
+/// nenhum gate é preciso para o segurar. *Derivar `Serialize` aqui por conveniência abriria a
+/// porta em silêncio.*
 #[derive(Component, Clone, Debug, Default, PartialEq, Eq)]
 pub struct TimerRuntime(pub Vec<TimerState>);
 

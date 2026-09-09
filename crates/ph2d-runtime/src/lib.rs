@@ -117,6 +117,24 @@ pub enum SignalOrigin {
         /// Quantos ciclos fecharam neste tique (sempre ≥ 1 — zero não publica).
         cycles: u32,
     },
+    /// ⭐⭐⭐ **Um `Timer` autorado chegou ao fim de um período** (TOP-20 #2, 2026-09-08).
+    ///
+    /// ⚠️ **É o primeiro produtor que não precisa de dois corpos a tocarem-se.** Até aqui o único
+    /// produtor autorável da cena era o contacto da física — logo nada podia acontecer *por si*.
+    ///
+    /// ⚠️ **`fires` existe pela MESMA razão que o `cycles` do `Animation` e o `rows` do `Motion`:
+    /// o colapso é lossy, e o número é o que ele descarta.** Um tique que apanha atraso (a janela
+    /// esteve parada) fecha vários períodos de um timer que repete, e publicar um sinal por
+    /// período daria uma rajada que ninguém pediu. Sai **um** evento, com quantos ele representa.
+    ///
+    /// ⚠️ **Não carrega o nome do timer, e é deliberado** — o nome do SINAL é autorado no
+    /// `Timer::signal`, então ele já é o contrato. É a mesma lei do `Contact` e do `Animation`.
+    Timer {
+        /// A entidade cujo timer falou.
+        source: EntityBits,
+        /// Quantos períodos fecharam neste tique (sempre ≥ 1 — zero não publica).
+        fires: u32,
+    },
 }
 
 /// Um sinal publicado neste quadro.
@@ -189,6 +207,21 @@ impl Signal {
             origin: SignalOrigin::Animation {
                 source: EntityBits(source),
                 cycles,
+            },
+        }
+    }
+
+    /// **Um período de um [`SignalOrigin::Timer`] fechou.**
+    ///
+    /// ⚠️ **`fires` é sempre ≥ 1**: zero não publica, e é o chamador que o garante — publicar um
+    /// evento que diz *«aconteceu zero vezes»* é ruído com cara de facto.
+    #[must_use]
+    pub fn from_timer(name: &str, source: u64, fires: u32) -> Self {
+        Self {
+            name: Arc::from(name),
+            origin: SignalOrigin::Timer {
+                source: EntityBits(source),
+                fires,
             },
         }
     }

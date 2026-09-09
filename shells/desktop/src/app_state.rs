@@ -785,6 +785,8 @@ pub(crate) struct App {
     pub(crate) harmony_smoke_done: bool,
     /// O smoke dos sinais da timeline (ADR-0143) já rodou. `PH2D_SIGNAL_SMOKE=1`.
     pub(crate) signal_smoke_done: bool,
+    /// ⭐⭐⭐ O smoke do `Timer` (TOP-20 #2) já rodou. `PH2D_TIMER_SMOKE=1`.
+    pub(crate) timer_smoke_done: bool,
     /// O smoke da UI viva já montou (`PH2D_UI_MOTION_SMOKE`).
     pub(crate) ui_motion_smoke_done: bool,
     /// O smoke do time-scale de seleção (joias §4) já rodou. `PH2D_TIMESCALE_SMOKE=1`.

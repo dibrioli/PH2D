@@ -493,6 +493,11 @@ impl crate::App {
         // `post_frame_undo` com o mundo já assente, e este passo é parte de o assentar.
         if let Some(gfx) = self.gfx.as_mut() {
             crate::render_loop::start_autoplay_animations(&mut gfx.sim);
+            // ⭐⭐⭐ **E os TIMERS** (TOP-20 #2), no mesmo sítio e pela mesma razão: «começar a
+            // correr» é uma ARESTA, e o tique só vê estados. ⚠️ Esta chamada também é quem
+            // CRIA o `TimerRuntime` — o `Timers` viaja no ficheiro e o relógio não, então uma
+            // entidade acabada de carregar tem a config e não tem relógio.
+            crate::render_loop::start_autostart_timers(&mut gfx.sim);
         }
         self.undo_baseline = None;
         eprintln!("[proj] carregado: {path} ({tracks} track(s) de animacao)");

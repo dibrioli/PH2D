@@ -360,7 +360,10 @@ mod present_fx;
 /// é ele o motor que declara a §11 como pré-visualização, e um gate que o encenasse à mão mediria
 /// a encenação.
 pub(crate) mod sprite_anim_tick;
+/// ⭐⭐⭐ **A ponte do `Timer`** (TOP-20 #2) — o tique no passo fixo e o sinal que sai dele.
+mod timer_tick;
 pub(crate) use sprite_anim_tick::start_autoplay_animations;
+pub(crate) use timer_tick::start_autostart_timers;
 /// **Os nove quads do 9-slice** — irmão do `sim_extract`, que está no tecto de LOC.
 pub(crate) mod sheet_grid_overlay;
 pub(crate) mod sim_extract;
@@ -999,6 +1002,7 @@ impl crate::App {
         self.harmony_smoke();
         self.timeline_onion_smoke();
         self.signal_smoke();
+        self.timer_smoke();
         self.ui_motion_smoke();
         self.timescale_smoke();
         self.stagger_smoke();
@@ -2138,6 +2142,13 @@ impl crate::App {
             // que impede que cada clique dado durante a reprodução vire um Ctrl+Z vazio.
             &mut self.preview_drive,
         );
+        // ⭐⭐⭐ **OS TIMERS** (TOP-20 #2) — no MESMO sítio e pela mesma razão que os da §11: o
+        // relógio corre no passo fixo (o replay reproduz o instante de disparo) e os sinais são
+        // publicados **depois** do dreno, junto dos da física.
+        //
+        // ⚠️ **Sem o `preview_drive`, e é a separação que o paga:** o `TimerRuntime` não é um
+        // componente registado, então o undo não o fotografa e não há passo espúrio a declarar.
+        let timer_signals = timer_tick::tick_timers(sim, report.ticks, self.fixed_step.fixed_dt());
 
         // Sim tick + extract — extracted to sibling `sim_extract.rs`
         // (Wave 3.2 stage A). Runs the bouncing-motion sim tick and
@@ -2697,6 +2708,13 @@ impl crate::App {
                 sig.cycles,
             ));
         }
+        for sig in timer_signals {
+            self.signals.publish(ph2d_runtime::Signal::from_timer(
+                &sig.name,
+                sig.entity.to_bits(),
+                sig.fires,
+            ));
+        }
         for sig in physics.signal_events(sim) {
             self.signals.publish(ph2d_runtime::Signal::from_contact(
                 &sig.name,
@@ -2767,6 +2785,12 @@ impl crate::App {
                     ph2d_runtime::SignalOrigin::Animation { source, cycles } => {
                         eprintln!(
                             "[signal] {} <- animacao da sprite {}, {cycles} ciclo(s)",
+                            sig.name, source.0
+                        );
+                    }
+                    ph2d_runtime::SignalOrigin::Timer { source, fires } => {
+                        eprintln!(
+                            "[signal] {} <- timer do objecto {}, {fires} periodo(s)",
                             sig.name, source.0
                         );
                     }

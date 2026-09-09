@@ -681,6 +681,9 @@ mod timeline_persist;
 /// **A timeline é o TERCEIRO membro da família pré-visualização↔documento** — enquanto o playhead
 /// toca, as curvas escrevem poses que não são edições do artista (`crate::preview_drive`).
 mod timeline_preview;
+/// ⭐⭐⭐ A cena do `Timer` (`PH2D_TIMER_SMOKE=1`) — o primeiro produtor de sinal que não
+/// precisa de dois corpos a tocarem-se.
+mod timer_smoke;
 mod timescale_smoke;
 /// **AS MOLDURAS** (plano UI/UX W0): que intervalo da pilha de z cada `VecFrame` recorta. A
 /// metade que a shell possui — o renderer sabe desenhar, a shell sabe a ÁRVORE.
@@ -1086,6 +1089,7 @@ impl App {
             timeline_onion_smoke_done: false,
             harmony_smoke_done: false,
             signal_smoke_done: false,
+            timer_smoke_done: false,
             ui_motion_smoke_done: false,
             timescale_smoke_done: false,
             stagger_smoke_done: false,

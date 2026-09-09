@@ -129,7 +129,10 @@ pub(crate) fn paint_visibility_section(
     info: &InspectorVisibilitySectionInfo,
 ) -> f32 {
     let h = ROW_H_PX;
-    let row_gap = Spacing::Xs.px();
+    // ⚠️ **O vão entre dois controlos é a porta `control_gap_px` (3 px)**, e não o
+    //    `Spacing::Xs` (4) escrito à mão — ordem do dono, 2026-09-07. Esta secção é
+    //    anterior à porta. Ver `every_stack_of_rows_asks_the_rhythm`.
+    let row_gap = ph2d_tokens::control_gap_px();
     let label_font = TypeToken::Sm.px();
     let label_color = resolve(ColorToken::Text2, theme);
     let label_h = label_font + Spacing::Xs.px();

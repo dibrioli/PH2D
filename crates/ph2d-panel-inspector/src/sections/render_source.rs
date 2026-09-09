@@ -21,7 +21,10 @@ pub(crate) fn paint_render_source_section(
     // Render Source feels visually identical (user feedback 2026-05-24).
     let line_font = TypeToken::Sm.px();
     let label_font = TypeToken::Sm.px();
-    let row_gap = Spacing::Xs.px();
+    // ⚠️ **O vão entre dois controlos é a porta `control_gap_px` (3 px)**, e não o
+    //    `Spacing::Xs` (4) escrito à mão — ordem do dono, 2026-09-07. Esta secção é
+    //    anterior à porta. Ver `every_stack_of_rows_asks_the_rhythm`.
+    let row_gap = ph2d_tokens::control_gap_px();
     let row_h = line_font + row_gap;
     let header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: section header band height
     let color_id = ids::INSP_LIVE_RENDER_COLOR;

@@ -141,6 +141,32 @@ pub(crate) fn announce() {
          [sculpt3d]            e' so' o nome: voce leu certo que ele RESISTE a` simulacao. Com\n\
          [sculpt3d]            ele alto o vertice volta sempre a` forma inicial -- que e' o\n\
          [sculpt3d]            contrario do que a palavra 'plasticidade' promete.\n\
+         [sculpt3d]    (12) O REPORT DE 09/09 -- O INFLATE DEIXA DE DESINFLAR.\n\
+         [sculpt3d]        (a) Escolha Cloth > Inflate e arraste ate' ao fim. Solte. Arraste\n\
+         [sculpt3d]            outra vez, e uma terceira. A peca tem de INCHAR MAIS a cada\n\
+         [sculpt3d]            vez (volume medido 1,17 -> 1,35 -> 1,56).\n\
+         [sculpt3d]            DEU ERRADO SE: no comeco de cada arrasto novo a peca AFUNDAR\n\
+         [sculpt3d]            antes de voltar a crescer. Era isso o report (ela chegava a\n\
+         [sculpt3d]            ficar 11% menor que a esfera original).\n\
+         [sculpt3d]        (b) O MESMO com Scale -- o defeito estava la' tambem, e voce nao\n\
+         [sculpt3d]            tinha reparado.\n\
+         [sculpt3d]        (c) E a Gravity tem de continuar a NAO crescer: rode-a tres vezes\n\
+         [sculpt3d]            seguidas e a peca assenta, como no passo (11a). As duas coisas\n\
+         [sculpt3d]            sao opostas de proposito -- Gravity e Pinch CARREGAM o pano,\n\
+         [sculpt3d]            Inflate/Expand/Scale mudam o TAMANHO dele.\n\
+         [sculpt3d]    (13) O ARRASTO MANDA, O RELOGIO NAO.\n\
+         [sculpt3d]        Escolha Cloth > Gravity. Arraste 10 cm DEVAGAR, contando ate' tres.\n\
+         [sculpt3d]        Ctrl+Z. Arraste os MESMOS 10 cm DEPRESSA. As duas tem de dar o\n\
+         [sculpt3d]        MESMO resultado.\n\
+         [sculpt3d]        Antes nao davam: o efeito seguia quanto TEMPO a mao demorava, nao\n\
+         [sculpt3d]        quanto ela andava -- medido, o mesmo arrasto podia mover a peca 85\n\
+         [sculpt3d]        vezes mais so' por ser feito devagar.\n\
+         [sculpt3d]        ⚠️ Numa malha DENSA o arrasto rapido pode acabar de se mexer um\n\
+         [sculpt3d]        instante depois de voce soltar: e' a simulacao a correr o pedaco\n\
+         [sculpt3d]        de arrasto que nao coube no quadro. E' esperado -- o que importa e'\n\
+         [sculpt3d]        que o resultado final seja o mesmo.\n\
+         [sculpt3d]        DEU ERRADO SE: o arrasto lento continuar a fazer MUITO mais que o\n\
+         [sculpt3d]        rapido, ou se um arrasto pequeno (menos de um dedo) nao fizer nada.\n\
          [sculpt3d]    ⚠️ A fileira de cima (Filter) sao as leis de MALHA, que ja' existiam.\n\
          [sculpt3d]        So' UMA das duas fileiras tem chip aceso de cada vez -- se as duas\n\
          [sculpt3d]        acenderem juntas, reporte."

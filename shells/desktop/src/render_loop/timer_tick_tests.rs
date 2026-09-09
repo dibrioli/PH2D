@@ -26,16 +26,15 @@ fn snapshot(sim: &mut SimWorld) -> ph2d_ecs::scene::WorldSnapshot {
     out
 }
 
+/// ⚠️⚠️ **A entidade nasce SEM relógio, e isso é a correcção de 2026-09-08.** A 1.ª redacção
+/// semeava um `TimerRuntime::default()` aqui, e com isso a fixtura fabricava metade do estado que
+/// o produto tinha de produzir — *uma fixtura que arma o que o produto não arma mede a minha
+/// intenção*. É assim que uma entidade sai do load, da paleta, de uma cópia e da cena de smoke.
 fn mundo_com(timers: Vec<Timer>) -> (SimWorld, ph2d_ecs::Entity) {
     let mut sim = SimWorld::default();
     let e = sim
         .world_mut()
-        .spawn((
-            Transform::default(),
-            Name::new("Alvo"),
-            Timers(timers),
-            TimerRuntime::default(),
-        ))
+        .spawn((Transform::default(), Name::new("Alvo"), Timers(timers)))
         .id();
     (sim, e)
 }
@@ -177,4 +176,76 @@ fn loading_a_project_gives_the_timers_a_clock() {
     );
     assert!(rt.0[0].running, "o autostart nao armou o timer");
     assert_eq!(tick_timers(&mut sim, 6, DT).len(), 1, "ele nao correu");
+}
+
+/// ⭐⭐⭐ **O GATE QUE FALTAVA — ninguém arma nada à mão, e o timer corre na mesma.**
+///
+/// Todos os outros gates deste ficheiro chamam [`start_autostart_timers`] antes de tiquear, e por
+/// isso ficaram **verdes** sobre um produto em que **nenhum caminho de quadro a chamava**: o único
+/// chamador era o load. Medido em 2026-09-08, `PH2D_TIMER_SMOKE=1` montava a cena e produzia
+/// **zero** sinais em 15 s, e um `Timers` anexado pela paleta nascia inerte para sempre.
+///
+/// ⇒ este gate faz o que o artista faz: põe a config na entidade e **não faz mais nada**.
+///
+/// **Mutação que deve sangrar:** apagar a chamada a `start_autostart_timers` no topo do
+/// [`tick_timers`].
+#[test]
+fn a_timer_that_nobody_armed_by_hand_still_runs() {
+    let (mut sim, e) = mundo_com(vec![um(100_000, true, "batida")]);
+    assert!(
+        sim.world().get::<TimerRuntime>(e).is_none(),
+        "a fixtura ja' trazia relogio — ela nao mede o que a paleta produz"
+    );
+    // ⛔ Nenhuma chamada a `start_autostart_timers`: quem tem de a fazer e' o produto.
+    let sinais = tick_timers(&mut sim, 6, DT);
+    assert_eq!(
+        sinais.len(),
+        1,
+        "um Timers posto na entidade e mais nada NAO correu — e' o estado em que a paleta, a \
+         copia e a cena de smoke deixam toda entidade"
+    );
+    assert_eq!(sinais[0].name, "batida");
+}
+
+/// ⛔⛔ **E a ponte NÃO re-arma um *one-shot* que terminou** — a metade que a cura podia partir.
+///
+/// A forma barata de curar o gate acima seria chamar a lei antiga («arma todo slot que não corre»)
+/// por quadro; ela é satisfeita por um one-shot terminado, que passaria a **disparar para sempre**.
+/// É o `Recarga` da cena de smoke, e é o que o dono vê primeiro.
+///
+/// **Mutação que deve sangrar:** trocar a condição de nascimento por `if !s.running` no
+/// `ph2d_ecs::timer_reconcile`.
+#[test]
+fn the_bridge_never_re_arms_a_finished_one_shot() {
+    let (mut sim, _) = mundo_com(vec![um(100_000, false, "arma_pronta")]);
+    let mut total = 0usize;
+    // Dez segundos de quadros a 1/60 s, com o periodo em 100 ms: cem oportunidades de repetir.
+    for _ in 0..600 {
+        total += tick_timers(&mut sim, 1, DT).len();
+    }
+    assert_eq!(
+        total, 1,
+        "o one-shot falou {total} vezes — 'uma vez' e' a unica coisa que ele promete"
+    );
+}
+
+/// ⭐ **Um timer ACRESCENTADO a um objecto vivo começa a correr**, sem tocar no vizinho.
+///
+/// É o `+` do painel de timers (W3) medido na ponte: o relógio já existe, e o que nasce é **um
+/// slot**. Sem esta metade o segundo timer de um objecto seria inerte enquanto o primeiro corre.
+#[test]
+fn a_timer_appended_to_a_live_object_starts_running() {
+    let (mut sim, e) = mundo_com(vec![um(100_000, true, "a")]);
+    assert_eq!(tick_timers(&mut sim, 6, DT).len(), 1, "o primeiro nao correu");
+    if let Some(mut ts) = sim.world_mut().get_mut::<Timers>(e) {
+        ts.0.push(um(100_000, true, "b"));
+    }
+    let nomes: Vec<String> = tick_timers(&mut sim, 6, DT)
+        .into_iter()
+        .map(|s| s.name)
+        .collect();
+    assert!(
+        nomes.iter().any(|n| n == "b"),
+        "o timer acrescentado nasceu inerte; sairam {nomes:?}"
+    );
 }

@@ -27,7 +27,7 @@
 //! ⚠️ Se a linha `[timer-smoke]` não aparecer, **PARE**: a cena não montou.
 
 use ph2d_core::Vec2;
-use ph2d_ecs::{Name, Timer, TimerRuntime, Timers, Transform};
+use ph2d_ecs::{Name, Timer, Timers, Transform};
 use ph2d_render::Sprite;
 
 /// Um objecto com um timer só, na posição `y`.
@@ -51,10 +51,14 @@ fn one(
             autostart: true,
             signal: signal.to_string(),
         }]),
-        // ⚠️ **O runtime é semeado AQUI porque a cena não passa pelo load** — no caminho normal
-        // quem o cria é o `start_autostart_timers`. Sem ele a query do tique não vê a entidade, e
-        // a cena montaria em silêncio sem nunca disparar.
-        TimerRuntime::default(),
+        // ⚠️⚠️ **NADA de relógio aqui, e a ausência é a correcção de 2026-09-08.** A 1.ª versão
+        // semeava um `TimerRuntime::default()` *«porque a cena não passa pelo load»* — e um
+        // runtime **vazio e por armar** é exactamente o estado em que os três timers ficavam
+        // mudos: a cena montava, imprimia a linha abaixo, e produzia **zero** sinais.
+        //
+        // ⇒ quem cria e arma é o `start_autostart_timers`, que passou a correr por quadro. Uma
+        // entidade nascida aqui é igual a uma nascida da paleta ou de uma cópia — que é
+        // precisamente o que esta cena tem de provar.
     ));
 }
 

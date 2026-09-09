@@ -138,12 +138,13 @@ fn a_minimal_period_with_a_huge_tick_does_not_hang() {
     );
 }
 
-/// **O `autostart` é IDEMPOTENTE e não pisa quem já corre.**
+/// **Um slot que NASCE é armado; um que já existia não é tocado.**
 ///
-/// ⚠️ Se reescrevesse por quadro, o diff do undo veria o componente mudar e cada quadro com
-/// entrada viraria um passo espúrio — a lei que o `assign_missing_*` já pagou.
+/// ⚠️ É a lei inteira do [`reconcile`] num caso só: o relógio nasce vazio (é assim que uma
+/// entidade chega do ficheiro, da paleta ou de uma cópia), e depois de reconciliar o `autostart`
+/// está aplicado — e **só** a quem o pediu.
 #[test]
-fn arming_autostart_is_idempotent_and_spares_a_running_timer() {
+fn a_slot_that_is_born_is_armed_and_only_if_it_asked() {
     let (base, _) = one_shot();
     let ts = Timers(vec![
         Timer {
@@ -152,31 +153,154 @@ fn arming_autostart_is_idempotent_and_spares_a_running_timer() {
         },
         Timer {
             autostart: false,
-            ..base.clone()
+            ..base
         },
+    ]);
+    let mut rt = TimerRuntime::default();
+    assert!(reconcile(&ts, &mut rt), "reconciliar nao relatou o trabalho");
+    assert_eq!(rt.0.len(), 2, "o relogio nao ficou do tamanho da config");
+    assert!(
+        rt.0[0].running,
+        "o slot nasceu por armar — um Timers anexado pela paleta ficaria INERTE para sempre"
+    );
+    assert!(!rt.0[1].running, "armou quem nao pediu autostart");
+    let antes = rt.clone();
+    assert!(
+        !reconcile(&ts, &mut rt),
+        "reconciliar relatou trabalho sem nada por nascer — quem chama marcaria o componente \
+         como alterado a cada quadro"
+    );
+    assert_eq!(rt, antes, "reconciliar nao e' idempotente");
+}
+
+/// ⛔⛔ **UM *ONE-SHOT* QUE TERMINOU NÃO RENASCE** — o gate que separa esta lei da anterior.
+///
+/// A redacção anterior armava *«todo slot que não está a correr»*, e um one-shot terminado põe
+/// `running = false` — que é exactamente essa condição. Chamada por quadro (que é o que o produto
+/// precisa, senão nada arma), ela fá-lo-ia **disparar para sempre**.
+///
+/// ⚠️ **Quem defende a propriedade AQUI é a saída antecipada**, não o `skip` — e isso foi medido:
+/// com o comprimento parado, `skip(nascidos)` e `if !s.running` concordam, porque a função nem
+/// chega ao laço. As duas guardas são redundantes **neste** caso e separam-se quando um slot é
+/// acrescentado, que é o gate
+/// [`a_timer_appended_to_a_live_object_is_armed_and_no_neighbour_is_disturbed`].
+///
+/// **Mutação que deve sangrar:** apagar o `if nascidos == timers.0.len() { return false; }` **e**
+/// o `.skip(nascidos)` — que juntos são a lei antiga («arma todo slot que não corre»).
+#[test]
+fn reconcile_never_re_arms_a_finished_one_shot() {
+    let (t, _) = one_shot();
+    let ts = Timers(vec![Timer {
+        autostart: true,
+        repeat: false,
+        ..t
+    }]);
+    let mut rt = TimerRuntime::default();
+    reconcile(&ts, &mut rt);
+    let out = advance(&ts.0[0], &mut rt.0[0], ts.0[0].duration_us);
+    assert_eq!(out.fires, 1);
+    assert!(out.finished, "a fixtura nao terminou o one-shot");
+    // Cem quadros de reconciliacao, como o produto faz.
+    for _ in 0..100 {
+        assert!(!reconcile(&ts, &mut rt), "reconciliar mexeu num slot velho");
+    }
+    assert!(
+        !rt.0[0].running,
+        "o one-shot terminado foi RE-ARMADO — ele dispararia uma vez por periodo, para sempre"
+    );
+    assert_eq!(
+        advance(&ts.0[0], &mut rt.0[0], ts.0[0].duration_us * 4).fires,
+        0,
+        "um one-shot terminado voltou a falar"
+    );
+}
+
+/// ⭐ **Um timer ACRESCENTADO a um objecto que já tinha timers começa a correr** — e **nenhum**
+/// vizinho é tocado, nem o que corre nem o que já terminou.
+///
+/// ⚠️ É a segunda granularidade da mesma lei: o `+` do painel faz nascer **um slot**, não um
+/// relógio. Sem esta metade, o segundo timer de um objecto seria inerte enquanto o primeiro corre.
+///
+/// ⚠️⚠️ **O vizinho TERMINADO é o que dá dentes a este gate, e a 1.ª redacção não o tinha.** Com só
+/// um vizinho a correr, a mutação `skip(nascidos)` → `if !s.running` **SOBREVIVIA**: um timer vivo
+/// satisfaz `s.running`, logo os dois braços concordam sobre ele. É o slot **parado por ter
+/// acabado** que os separa — e é ele que um objecto real tem, porque o `Recarga` da cena de smoke
+/// termina ao fim de 3 s e o artista acrescenta um segundo timer depois disso.
+///
+/// **Mutação que deve sangrar:** `.skip(nascidos)` → `if t.autostart && !s.running`.
+#[test]
+fn a_timer_appended_to_a_live_object_is_armed_and_no_neighbour_is_disturbed() {
+    let (base, _) = one_shot();
+    let vivo = Timer {
+        autostart: true,
+        repeat: true,
+        ..base.clone()
+    };
+    let acabado = Timer {
+        autostart: true,
+        repeat: false,
+        ..base.clone()
+    };
+    let ts = Timers(vec![vivo.clone(), acabado.clone()]);
+    let mut rt = TimerRuntime::default();
+    reconcile(&ts, &mut rt);
+    rt.0[0].elapsed_us = 700_000;
+    // O slot 1 chega ao fim: um one-shot terminado fica `running == false`, que é exactamente a
+    // condição que a lei ANTIGA lia como «por armar».
+    let out = advance(&ts.0[1], &mut rt.0[1], ts.0[1].duration_us);
+    assert!(out.finished, "a fixtura nao terminou o vizinho one-shot");
+
+    let ts2 = Timers(vec![
+        vivo,
+        acabado,
         Timer {
             autostart: true,
             ..base
         },
     ]);
-    let mut rt = TimerRuntime(vec![
-        TimerState::default(),
-        TimerState::default(),
-        TimerState {
-            elapsed_us: 700_000,
-            running: true,
+    assert!(reconcile(&ts2, &mut rt), "o slot novo nao foi reconciliado");
+    assert!(rt.0[2].running, "o timer acrescentado nasceu inerte");
+    assert_eq!(
+        rt.0[0].elapsed_us, 700_000,
+        "reconciliar REZEROU o vizinho que ja' corria"
+    );
+    assert!(
+        !rt.0[1].running,
+        "acrescentar um timer RESSUSCITOU o one-shot do vizinho — ele dispararia outra vez sem \
+         que o artista lhe tivesse tocado"
+    );
+}
+
+/// **Encolher deita fora o estado dos slots que já não existem.**
+///
+/// ⚠️ Senão remover um timer e repô-lo devolvia-o a correr **a meio** do período anterior — e o
+/// artista não tem por onde ver esse estado.
+#[test]
+fn shrinking_the_config_drops_the_state_of_the_timers_that_left() {
+    let (base, _) = one_shot();
+    let ts = Timers(vec![
+        Timer {
+            autostart: true,
+            ..base.clone()
+        },
+        Timer {
+            autostart: true,
+            ..base.clone()
         },
     ]);
-    arm_autostart(&ts, &mut rt);
-    assert!(rt.0[0].running, "o autostart nao armou");
-    assert!(!rt.0[1].running, "o autostart armou quem nao pediu");
+    let mut rt = TimerRuntime::default();
+    reconcile(&ts, &mut rt);
+    rt.0[1].elapsed_us = 900_000;
+
+    let so_um = Timers(vec![ts.0[0].clone()]);
+    assert!(reconcile(&so_um, &mut rt), "encolher nao foi relatado");
+    assert_eq!(rt.0.len(), 1);
+    // E repor o segundo dá-lhe um periodo INTEIRO, nao o resto do antigo.
+    reconcile(&ts, &mut rt);
     assert_eq!(
-        rt.0[2].elapsed_us, 700_000,
-        "o autostart REZEROU um timer que ja' corria — cada quadro viraria um passo de undo"
+        rt.0[1].elapsed_us, 0,
+        "o timer reposto herdou o relogio do que foi removido"
     );
-    let antes = rt.clone();
-    arm_autostart(&ts, &mut rt);
-    assert_eq!(rt, antes, "o autostart nao e' idempotente");
 }
 
 /// ⚠️ **O nome do TIMER e o nome do SINAL são coisas diferentes** — e o gate existe porque

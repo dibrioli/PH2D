@@ -44,6 +44,10 @@ pub(crate) struct TimerSignal {
 /// **som**.
 pub(crate) fn tick_timers(sim: &mut SimWorld, ticks: u32, fixed_dt: f64) -> Vec<TimerSignal> {
     let mut out = Vec::new();
+    // ⚠️ **ANTES do `ticks == 0`, e de propósito:** um quadro sem passo fixo ainda tem de
+    // reconciliar. Senão um `Timers` anexado pela paleta ficaria por armar até calhar um quadro
+    // com tique, e o sintoma seria *«às vezes o timer não começa»*.
+    start_autostart_timers(sim);
     if ticks == 0 {
         return out;
     }
@@ -54,12 +58,9 @@ pub(crate) fn tick_timers(sim: &mut SimWorld, ticks: u32, fixed_dt: f64) -> Vec<
     let world = sim.world_mut();
     let mut q = world.query::<(Entity, &Timers, &mut ph2d_ecs::TimerRuntime)>();
     for (entity, timers, mut rt) in q.iter_mut(world) {
-        // ⚠️ **Só toca o vector quando o comprimento MUDOU.** O `bevy` marca a alteração no
-        // `deref_mut`, e um `resize` incondicional marcaria o componente todo o quadro — ruído
-        // para quem lê `Changed<…>`, e o hábito que o `SpriteGrid` já teve de corrigir.
-        if rt.0.len() != timers.0.len() {
-            rt.0.resize(timers.0.len(), ph2d_ecs::TimerState::default());
-        }
+        // ⚠️ **O `zip` é a reconciliação já feita** — quem põe os dois vectores do mesmo tamanho é
+        // o `start_autostart_timers` acima, porque redimensionar aqui daria um slot **por armar**
+        // (o defeito que fazia o `autostart` não valer para nada fora do load).
         for (t, s) in timers.0.iter().zip(rt.0.iter_mut()) {
             let outcome = ph2d_ecs::timer_advance(t, s, dt);
             // ⚠️ **Vazio = calado**, e o teste é do NOME do sinal, não do disparo: um timer sem
@@ -77,16 +78,32 @@ pub(crate) fn tick_timers(sim: &mut SimWorld, ticks: u32, fixed_dt: f64) -> Vec<
     out
 }
 
-/// **O `autostart` a fazer o que promete**, no único momento em que ele tem significado no editor:
-/// o projeto acabou de abrir.
+/// ⭐⭐⭐ **O `autostart` a fazer o que promete** — para toda entidade da cena, todo quadro.
 ///
-/// ⚠️ **Ele não pode viver no tique**, e a razão é a que o `start_autoplay_animations` já escreve:
-/// *«começar a correr» é uma ARESTA, e o tique só vê estados* — detectá-la ali pediria um bit a
-/// mais que diz «já comecei», e um bit desses fica dessincronizado no primeiro `Ctrl+Z`.
+/// # ⛔ A primeira versão desta função corria SÓ no load, e por isso o componente era inerte
 ///
-/// ⚠️ **Ele também é quem CRIA o runtime**: o `Timers` viaja no ficheiro e o `TimerRuntime` não,
-/// então uma entidade acabada de carregar tem a config e não tem relógio. Sem esta metade, um
-/// projeto reaberto teria os timers todos mudos — e a query do tique nem os veria.
+/// O raciocínio era o do `start_autoplay_animations`: *«começar a correr» é uma ARESTA, e o tique
+/// só vê estados*. A conclusão que se tirou dele — *«então corre uma vez, ao abrir o projeto»* —
+/// deixava sem relógio **tudo o que não vem do ficheiro**: um `Timers` anexado pela paleta, uma
+/// cópia, uma entidade respawnada pelo `Ctrl+Z`, e a própria cena de smoke. Medido em 2026-09-08:
+/// `PH2D_TIMER_SMOKE=1` montava a cena e produzia **zero** sinais em 15 s.
+///
+/// ⚠️⚠️ **E os gates estavam VERDES sobre isso**, porque cada um chamava esta função à mão antes de
+/// tiquear — *uma fixtura que arma o que o produto não arma mede a minha intenção, não o produto*.
+/// O gate que faltava é o que **não** a chama: [`super::timer_tick_tests`].
+///
+/// ⇒ ela passa a correr por quadro, e a aresta muda de sítio: não é *«não está a correr»* (que um
+/// *one-shot* terminado satisfaz, e que a faria disparar para sempre), é **o nascimento do slot**.
+/// A lei vive na [`ph2d_ecs::timer_reconcile`], com os gates dela; aqui fica só a travessia do
+/// mundo.
+///
+/// ⚠️ **Só escreve quem tem trabalho** — o `reconcile` devolve `false` sem nada por nascer, e o
+/// `insert` fica de fora. Um `insert` incondicional marcaria o componente como alterado a cada
+/// quadro, que é o ruído que o `SpriteGrid` já teve de corrigir.
+///
+/// ⚠️ **Dois chamadores, uma porta:** o tique (o caminho normal) e o load — este último para que um
+/// projecto acabado de abrir tenha os relógios armados **antes** do primeiro quadro, e não a meio
+/// dele.
 pub(crate) fn start_autostart_timers(sim: &mut SimWorld) {
     let world = sim.world_mut();
     let alvos: Vec<Entity> = {
@@ -101,8 +118,9 @@ pub(crate) fn start_autostart_timers(sim: &mut SimWorld) {
             .get::<ph2d_ecs::TimerRuntime>(e)
             .cloned()
             .unwrap_or_default();
-        ph2d_ecs::arm_autostart(&timers, &mut rt);
-        world.entity_mut(e).insert(rt);
+        if ph2d_ecs::timer_reconcile(&timers, &mut rt) {
+            world.entity_mut(e).insert(rt);
+        }
     }
 }
 

@@ -151,7 +151,7 @@ pub use stable_id::{
 };
 pub use timer::{
     TIMERS_MAX, Timer, TimerOutcome, TimerRuntime, TimerState, Timers, advance as timer_advance,
-    arm_autostart,
+    reconcile as timer_reconcile,
 };
 pub use transform::{
     GlobalTransform, GroupedChildren, Locked, SimRef, Transform, TransformPropagationState,

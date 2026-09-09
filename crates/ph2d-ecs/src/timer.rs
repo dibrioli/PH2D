@@ -103,8 +103,8 @@ impl Default for Timer {
 
 /// **O ESTADO VIVO de um timer** — o que o motor escreve, e o undo não fotografa.
 ///
-/// ⚠️ **`Default` é «parado e no zero»**, e é o estado certo para uma entidade acabada de
-/// restaurar: o [`arm_autostart`] corre no load e arma quem o pediu.
+/// ⚠️ **`Default` é «parado e no zero»**, e é o estado certo para um slot acabado de nascer: quem
+/// o arma é o [`reconcile`], no mesmo passo em que o cria.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct TimerState {
     /// Microssegundos acumulados no período actual.
@@ -214,19 +214,47 @@ pub fn advance(timer: &Timer, state: &mut TimerState, dt_us: u64) -> TimerOutcom
     out
 }
 
-/// ⭐ **O que o carregamento da cena arma** — o `autostart` aplicado a cada timer.
+/// ⭐⭐⭐ **A LEI DO NASCIMENTO** — põe o relógio do tamanho da config e arma o que ACABOU de
+/// nascer. Devolve `true` quando mexeu em alguma coisa.
 ///
-/// ⚠️ **Ele é IDEMPOTENTE e só toca quem não está a correr**, pela razão que o
-/// `assign_missing_*` já pagou: se reescrevesse por quadro, o diff do undo veria o componente
-/// mudar e cada quadro com entrada viraria um passo espúrio.
-pub fn arm_autostart(timers: &Timers, rt: &mut TimerRuntime) {
+/// # ⚠️ «Começar a correr» é uma ARESTA, e a aresta é o NASCIMENTO do slot
+///
+/// Um tique só vê estados, e `autostart` é um facto sobre um instante. A primeira redacção desta
+/// função aplicava o `autostart` a **todo** slot que não estivesse a correr, e chamava-se
+/// `arm_autostart` — a ideia era que ela corresse **uma vez, no load**. Duas coisas partiram:
+///
+/// - **No produto ninguém a chamava por quadro**, logo um `Timers` anexado pela paleta nascia
+///   **inerte para sempre** — e o mesmo valia para toda entidade que não viesse do ficheiro (a
+///   cena de smoke, uma cópia, um respawn do undo). *Os gates armavam à mão o que o produto não
+///   armava, e por isso ficavam verdes sobre um componente morto.*
+/// - **E chamá-la por quadro para curar isso seria pior:** um *one-shot* que termina põe
+///   `running = false`, que é exactamente a condição que ela lia como *«por armar»* ⇒ ele
+///   **renasceria a cada quadro** e o `Recarga` do smoke dispararia para sempre.
+///
+/// ⇒ a condição deixa de ser *«não está a correr»* e passa a ser *«este `TimerState` não existia
+/// antes desta chamada»*. É a mesma lei nas duas granularidades, e por isso é **uma** função:
+/// o relógio inteiro que nasce (load, paleta, cópia) e o slot apendado num objecto que já tinha
+/// timers (o `+` do painel) são o mesmo facto.
+///
+/// ⚠️ **Ela é idempotente**, e é isso que a deixa correr por quadro: sem nada por nascer devolve
+/// `false` sem tocar no vector — quem a chama usa isso para **não** marcar o componente como
+/// alterado, que é o hábito que o `SpriteGrid` já teve de corrigir.
+///
+/// ⚠️ **Encolher também é nascimento ao contrário:** truncar deita fora o estado dos slots que já
+/// não existem, senão um timer removido e reposto voltaria a correr a meio.
+pub fn reconcile(timers: &Timers, rt: &mut TimerRuntime) -> bool {
+    let nascidos = rt.0.len();
+    if nascidos == timers.0.len() {
+        return false;
+    }
     rt.0.resize(timers.0.len(), TimerState::default());
-    for (t, s) in timers.0.iter().zip(rt.0.iter_mut()) {
-        if t.autostart && !s.running {
+    for (t, s) in timers.0.iter().zip(rt.0.iter_mut()).skip(nascidos) {
+        if t.autostart {
             s.running = true;
             s.elapsed_us = 0;
         }
     }
+    true
 }
 
 #[cfg(test)]

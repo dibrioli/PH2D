@@ -97,23 +97,40 @@ fn the_tool_is_taken_only_when_the_router_actually_built_a_scene() {
 /// ⚠️ E o gate que o §5 do `CLAUDE.md` diz cobrir esta família — `no_two_smoke_scenes_claim_the
 /// _same_level` — lê o `build_smoke_router.rs`, que é o roteador **VETORIAL**. Ele nunca leu este
 /// ficheiro, em nenhum dia. *Um ponteiro para um gate não é o gate.*
+///
+/// ⛔⛔ **E a 1.ª redacção LIA O FONTE, o que a partiu no dia em que um braço mudou de FORMA.**
+/// Ela contava os literais `Some("N")` do roteador; quando as cenas de ciclo saíram para um irmão
+/// (tecto de LOC) e o braço passou a ser um **guard** (`Some(n) if ciclos::e_de_ciclo(n)`), o
+/// maior literal caiu para `110` e o gate acusou o `MAX_DEMO_LEVEL` de estar errado — *sobre um
+/// roteador correcto*. É a família *«um gate que parseia o fonte tem de saber TODAS as formas»*,
+/// e o preço dela é acusar o certo e cegar o errado.
+///
+/// ⇒ hoje ele pergunta ao **COMPORTAMENTO**, que é a pergunta que o nome dele faz: **o tecto
+/// monta**, e **nada acima dele monta**. Nenhuma forma de braço o pode partir, e um arm novo
+/// entra sozinho.
 #[test]
 fn the_sweep_ceiling_is_the_highest_arm_the_router_actually_has() {
-    let src = include_str!("motion_state_demo_router.rs");
-    let highest = src
-        .match_indices("Some(\"")
-        .filter_map(|(i, _)| {
-            let rest = &src[i + 6..];
-            let end = rest.find('"')?;
-            rest[..end].parse::<u32>().ok()
-        })
-        .max()
-        .expect("o roteador tem bracos numerados");
-    assert_eq!(
-        MAX_DEMO_LEVEL, highest,
-        "o teto da varredura e o maior braco do `match` discordam — as cenas entre eles \
-         existem e nunca sao diagnosticadas"
+    let _trava = crate::motion_demo_legend::trava();
+    let monta = |n: u32| {
+        let mut doc = ph2d_motion_doc::MotionDoc::new();
+        let mut reg = ph2d_node_registry::NodeRegistry::new();
+        ph2d_node_registry_init::register_all_nodes(&mut reg).expect("registry");
+        !build_level(Some(&n.to_string()), &mut doc, &reg).is_empty()
+    };
+    assert!(
+        monta(MAX_DEMO_LEVEL),
+        "o tecto `{MAX_DEMO_LEVEL}` nao monta cena nenhuma -- ou ele esta' alto, ou a cena \
+         dele partiu"
     );
+    // ⚠️ **Oito acima**, e não um: um braço novo que alguém acrescente sem subir o tecto pode
+    // não ser o número seguinte.
+    for n in MAX_DEMO_LEVEL + 1..=MAX_DEMO_LEVEL + 8 {
+        assert!(
+            !monta(n),
+            "a cena `={n}` monta e esta' ACIMA do tecto `{MAX_DEMO_LEVEL}` -- as tre^s \
+             travessias param no tecto, entao ela existe e nunca e' diagnosticada"
+        );
+    }
 }
 
 /// ⭐⭐⭐ **O QUE ALIMENTA A PORTA `shape` DE UM CARIMBO É UMA FORMA, EM TODA CENA** — report do

@@ -47,6 +47,10 @@ mod demo_conferencia_animadores;
 /// DIAGNOSER sobre cada cena da conferência precisa de as MONTAR
 /// (`demo_router::build_level`), e antes disso nenhuma era alcançável de um teste.
 pub(crate) mod demo_router;
+/// A cena de smoke do ciclo 3 — «em torno de quê» (doc 106).
+/// **NEM TODOS AO MESMO TEMPO** — a cena de smoke do ciclo 4 (os campos); ver o cabeçalho dela.
+#[path = "motion_state_foco_demo.rs"]
+mod foco_demo;
 /// ⚠️ **`pub(crate)` e não privada como as irmãs**, e por um consumidor real: as cenas do
 /// COMPASSO (`=25`) e do GRITO (`=26`) são a fixture dos gates da fronteira de sinais, que
 /// moram no `render_loop` (é lá que a tomada é lida). Uma cena existe para ser DIRIGIDA.
@@ -68,7 +72,6 @@ mod gpu_demos;
 /// out at the HR-18 cap — a cohesive family like the deformers next door.
 #[path = "motion_state_gpu_field_demos.rs"]
 mod gpu_field_demos;
-/// A cena de smoke do ciclo 3 — «em torno de quê» (doc 106).
 #[path = "motion_state_pivot_demo.rs"]
 mod pivot_demo;
 

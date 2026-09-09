@@ -43,6 +43,12 @@ mod tutorial_draw;
 #[path = "motion_bridge_deformadores_figures.rs"]
 mod deformadores_figures;
 
+/// As figuras do tutorial do **ciclo 4** (os campos) — quadrados do tamanho que o campo lhes
+/// pesou; ver o cabeçalho delas.
+#[cfg(test)]
+#[path = "motion_bridge_campos_figures.rs"]
+mod campos_figures;
+
 /// A medição do grupo do ciclo 2 (doc 105 §4) — sonda `#[ignore]`, não um gate.
 #[cfg(all(test, feature = "panel-motion-graph"))]
 #[path = "motion_bridge_animadores_probe.rs"]

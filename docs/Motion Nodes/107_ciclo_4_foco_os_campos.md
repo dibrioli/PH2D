@@ -228,3 +228,42 @@ aquilo de que tem o nome tem de o dizer.*
 
 ⚠️ **E o censo passa a saltá-los pela lista DECLARADA**, nunca por uma escrita à mão: um nó que
 passe a exigir uma porta amanhã sai da conta sozinho.
+
+---
+
+### ✅ A CENA `=112` e as FIGURAS (2026-09-09)
+
+**A cena:** um pano de `80 × 80` peças iguais e **uma mancha delas maior**. Quem decide quais é um
+`motion.falloff`, e ele nasce **fora do centro** — centrado, mexer nele só o faria sair, e a cena
+ensinaria que um campo é um interruptor (a mesma armadilha que a `=111` documenta).
+
+⭐ **Gate `the_focus_scene_builds_and_stays_on_the_device`, e as três perguntas são
+INDEPENDENTES:** ela coze `6 400` peças · a mancha **vê-se** (`maior > 1,5 × menor` na coluna
+`size`) · e a cadeia inteira é reivindicada pelo dispositivo. ⛔ Prova de mutação: tirar o campo da
+cadeia dá *«a mancha tem de se ver: menor 0,04399996 maior 0,04399996»*.
+
+**As figuras** saem da **saída do produto** — cada uma coze `grid → <campo> → scale` e desenha um
+quadrado por elemento **do tamanho que o cook lhe deu**. ⚠️ **A régua é a DISPERSÃO, não um
+deslocamento:** *um campo não move um elemento, pesa-o*, e copiar a régua do ciclo 3 (`Δposição`)
+leria `0,00` sobre um campo perfeito — a mesma cegueira que o `rot`/`size` cobrou naquele ciclo.
+
+| figura | células | maior/menor | barra |
+|---|---:|---:|---:|
+| `campo_circle` · `campo_rect` | 676 | 2,18 | 1,50 |
+| `campo_box` · `campo_sweep` · `campo_rank` | 676 | 2,20 | 1,50 |
+
+#### ⛔⛔ E o gate precisou de uma SEGUNDA metade, porque a primeira é cega à FORMA
+
+A dispersão lê **o mesmo número** para o círculo e para o rectângulo — nos dois há um elemento no
+cheio e outro no vazio. Se o `shape` deixasse de ser lido, as duas figuras ficariam **idênticas** e
+o gate continuaria verde, com o tutorial a mostrar duas vezes a mesma imagem debaixo de duas
+legendas diferentes. ⇒ a metade nova: **duas figuras não podem ser byte-idênticas**. ⛔ Mutação:
+apagar o `shape` da figura do rectângulo dá *«`campo_rect` e `campo_circle` desenham EXACTAMENTE a
+mesma coisa»*.
+
+#### ⛔⛔ E a sonda ESCREVIA antes de afirmar
+
+A 1.ª redacção escrevia cada SVG dentro do laço de medição. A corrida de mutação escreveu duas
+figuras com o **mesmo md5**, falhou em voz alta — **e as figuras ficaram no disco**. Nada no
+repositório o dizia; só um `md5sum` à mão as apanhou. ⇒ **medir, afirmar, e só então escrever.**
+*Uma sonda que falha não pode deixar o artefacto que ela reprovou.*

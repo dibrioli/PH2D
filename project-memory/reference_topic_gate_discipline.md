@@ -73,3 +73,15 @@ metadata:
 - [[feedback_when_the_only_consumer_of_an_artefact_is_an_llm_reading_numbers_visual_defects_survive]] — artefacto cujo único leitor é a LLM carrega defeito VISUAL indefinidamente: escreva o gate da classe que o seu leitor não vê
 - [[feedback_a_family_that_returns_none_in_a_census_has_its_declaration_unmeasured]] — família que faz `return None` num censo fica com as DECLARAÇÕES dela sem régua; o 1.º membro construível expõe o buraco (`1,0216` num defeito pré-existente)
 - [[feedback_a_source_reader_that_ignores_char_literals_reads_the_file_inside_out]] — leitor de fonte que não conhece o literal de CARÁCTER lê `find('"')` como aspa a abrir e vira o ficheiro do avesso (438 publicados, 418 reais; o gate acusou o próprio comentário)
+- ⛔⛔ **Uma sonda que ESCREVE o artefacto e depois o afere deixa no disco aquilo que reprovou.**
+  O gerador de figuras de um tutorial (09/09) escrevia cada SVG dentro do laço de medição e só
+  depois corria as asserções: a corrida de **mutação** escreveu duas figuras com o **mesmo md5**,
+  falhou em voz alta — e as figuras ficaram lá. Nada no repositório dizia que o tutorial passara a
+  mostrar duas vezes a mesma imagem debaixo de duas legendas diferentes; só um `md5sum` à mão as
+  apanhou. ⇒ **medir, afirmar, e só então escrever.** *Uma sonda que falha não pode deixar o
+  artefacto que ela reprovou.*
+- ⭐ **E o gate dessa família tem DUAS metades, porque a régua natural é cega à segunda:** a
+  dispersão (*«o campo morde?»*) lê o **mesmo número** para duas figuras que diferem só na FORMA —
+  as duas têm um elemento no cheio e outro no vazio. A metade que falta é *«duas figuras não podem
+  ser idênticas»*: se forem, um dos params que as separa não está a ser lido, e o tutorial ensina
+  duas coisas com uma imagem só.

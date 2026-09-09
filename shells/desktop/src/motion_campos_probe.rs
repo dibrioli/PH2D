@@ -164,3 +164,48 @@ fn waking_a_field_takes_it_off_the_identity() {
          controlos continuos, ou a fraccao poe o no' de volta na identidade"
     );
 }
+
+/// ⭐⭐ **A CENA `=112` CONSTRÓI, É ALCANÇÁVEL E FICA NO DISPOSITIVO** (ciclo 4, passo 7).
+///
+/// ⚠️ **As três perguntas são independentes**, e a casa já pagou por confundi-las: um grafo que
+/// coze não é um grafo que se VÊ (a 1.ª redacção da cena `=111` punha o pano a `300` unidades,
+/// fora do alcance do zoom, e o report foi *«funciona nos nós mas não aparece no canvas»*), e um
+/// grafo que se vê não é um grafo que o dispositivo reivindica.
+#[test]
+fn the_focus_scene_builds_and_stays_on_the_device() {
+    let _trava = crate::motion_demo_legend::trava();
+    let mut m = crate::motion_state::MotionState::new();
+    let sinks = crate::motion_state::demo_router::build_level(Some("112"), &mut m.doc, &m.registry);
+    let sink = *sinks.first().expect("a cena 112 tem um sink");
+
+    // 1. Ela COZE, e produz as peças que promete.
+    let out = m
+        .pump
+        .cook
+        .cook(&m.doc.graph, &m.registry, sink, 0.0)
+        .expect("coze");
+    let st = out[0].as_stream();
+    assert_eq!(st.count(), 6400, "80 x 80 pecas");
+
+    // 2. O campo MORDE — nem todas as peças têm o mesmo tamanho. ⚠️ É a régua da premissa do
+    //    ciclo (*«nem todos ao mesmo tempo»*): sem ela a cena podia crescer o pano inteiro.
+    let Some(ph2d_nodegraph::attr::Column::Vec2(size)) = st.get("size") else {
+        panic!("a cena escreve `size` -- o `motion.scale` e' quem le^ o campo");
+    };
+    let (mut menor, mut maior) = (f32::MAX, f32::MIN);
+    for s in size {
+        menor = menor.min(s[0]);
+        maior = maior.max(s[0]);
+    }
+    assert!(
+        maior > menor * 1.5,
+        "a mancha tem de se ver: menor {menor} maior {maior} -- se forem iguais, o campo nao \
+         esta' a ser lido"
+    );
+
+    // 3. E a cadeia inteira é REIVINDICADA pelo dispositivo.
+    assert!(
+        ph2d_gpu_cook::plan(&m.doc.graph, &m.registry, &m.registry, sink).is_fully_gpu(),
+        "a cena do ciclo 4 tem de correr no dispositivo -- os sete campos menos um la' estao"
+    );
+}

@@ -50,6 +50,24 @@ impl Caption {
 
 static LEGEND: Mutex<Vec<Caption>> = Mutex::new(Vec::new());
 
+/// ⭐⭐ **A TRAVA DE QUEM VARRE CENAS** — o [`LEGEND`] é **global ao processo**, e uma cena só o
+/// publica ao ser montada.
+///
+/// ⛔⛔ **Dois testes que montem cenas em paralelo leem a legenda um do outro**, e o sintoma é
+/// uma reprova que **passa sozinha** — indistinguível de uma flake de carga, e arquivada como
+/// tal ([memória](../../project-memory/feedback_a_shared_tmp_fixture_race_is_misfiled_as_a_load_flake.md)).
+/// Medido em 2026-09-09: o gate do tecto do roteador passou a montar nove cenas para perguntar
+/// ao COMPORTAMENTO, e o censo das legendas — que monta ~30 — começou a reprovar na suíte
+/// inteira e a passar isolado.
+///
+/// ⇒ **todo teste que monte uma cena toma esta trava.** Envenenada não interessa: o estado que
+/// ela protege é reescrito por inteiro na montagem seguinte.
+#[cfg(test)]
+pub(crate) fn trava() -> std::sync::MutexGuard<'static, ()> {
+    static M: Mutex<()> = Mutex::new(());
+    M.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
+}
+
 /// A cena publica a legenda dela. Substitui, nunca acumula.
 pub(crate) fn publish(captions: Vec<Caption>) {
     if let Ok(mut slot) = LEGEND.lock() {

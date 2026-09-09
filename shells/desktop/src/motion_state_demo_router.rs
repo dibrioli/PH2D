@@ -25,7 +25,12 @@ use super::*;
 #[cfg(test)]
 /// ⚠️ `pub(crate)` desde o ciclo 3: a sonda que pergunta **onde cada cena vive** varre o
 /// intervalo inteiro, e um teto que ela não alcança não é um teto — é uma nota.
-pub(crate) const MAX_DEMO_LEVEL: u32 = 111;
+pub(crate) const MAX_DEMO_LEVEL: u32 = 112;
+
+/// **As cenas de smoke dos CICLOS** — irmãs pelo tecto de LOC, cortadas por responsabilidade;
+/// ver o cabeçalho delas.
+#[path = "motion_state_demo_router_ciclos.rs"]
+mod ciclos;
 
 /// Os sinks da cena que o ambiente pediu — vazio quando ele não pediu nada, que é a TELA
 /// VAZIA com que o editor abre.
@@ -457,15 +462,11 @@ pub(crate) fn build_level(
         Some("108") => conferencia::lsystem_family(doc, registry),
         Some("109") => conferencia::table_family(doc, registry),
         Some("110") => conferencia::dup_family(doc, registry),
-        // ⭐ **EM TORNO DE QUÊ** — a cena de smoke do ciclo 3 (doc 106). O pano nasce LONGE da
-        // origem de propósito: com ele centrado, os três modos de pivô dão a mesma imagem e a
-        // cena ensinaria que a escolha não importa.
-        Some("111") => {
-            let sinks = super::pivot_demo::build(doc, registry).unwrap_or_default();
-            crate::motion_demo_legend::publish(super::pivot_demo::captions());
-            announce::pivot();
-            sinks
-        }
+        // ⭐ **AS CENAS DE CICLO** — irmãs num ficheiro só; ver [`ciclos`]. Elas não são «mais
+        // uma família»: uma cena de família é UMA chamada, e uma de ciclo constrói, pousa a
+        // LEGENDA no canvas e ANUNCIA os passos, porque é um smoke que o dono segue (doc 103 §1,
+        // passo 7).
+        Some(n) if ciclos::e_de_ciclo(n) => ciclos::build(n, doc, registry),
         Some("107") => {
             let sinks = lazy_switch_demo::build_lazy_switch_demo_document(doc, registry)
                 .unwrap_or_default();

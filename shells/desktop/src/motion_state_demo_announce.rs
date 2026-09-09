@@ -168,6 +168,25 @@ pub(super) fn lazy_switch() {
     );
 }
 
+/// **NEM TODOS AO MESMO TEMPO** (`=112`) — a cena de smoke do ciclo 4 (doc 107).
+pub(super) fn foco() {
+    eprintln!(
+        "[cena 112] NEM TODOS AO MESMO TEMPO (ciclo 4). Um pano de pecas iguais, e uma
+  MANCHA delas maior -- quem decide quais e' o campo `Falloff`, e ele nasce de lado.
+
+  1. Clique no cartao `Falloff`. Uma CAIXA aparece a` volta da mancha, no canvas.
+     Arraste-a: a mancha varre o pano. (Antes deste ciclo ele nao tinha alca.)
+  2. Arraste um CANTO da caixa: a mancha cresce e encolhe.
+  3. No cartao `Falloff`, na linha `Shape`, troque `Circle` por `Rect`. A mancha fica
+     quadrada, e uma linha `Rotation` APARECE no cartao -- num circulo ela esta'
+     escondida porque girar nao muda nada.
+  4. No cartao `Field Remap`, arraste `Curvature`: a borda da mancha endurece ou
+     amacia, sem a mancha mudar de sitio nem de tamanho.
+
+  Tudo isto corre no dispositivo."
+    );
+}
+
 /// **EM TORNO DE QUÊ** (`=111`) — a cena de smoke do ciclo 3 (doc 106).
 ///
 /// ⚠️ Ela abre no DEFEITO encenado: o pano longe da origem, a torcer-se à volta de um ponto que

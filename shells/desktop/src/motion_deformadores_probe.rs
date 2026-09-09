@@ -125,6 +125,7 @@ fn scene_bounds(level: u32) -> Option<([f32; 2], [f32; 2], usize)> {
 #[test]
 #[ignore = "sonda de auditoria — corra à mão"]
 fn where_each_demo_scene_lives() {
+    let _trava = crate::motion_demo_legend::trava();
     eprintln!(
         "\n  cena | objectos | x                  | y                  | legenda | cabe em 100?"
     );
@@ -184,6 +185,7 @@ fn where_each_demo_scene_lives() {
 /// A tabela inteira sai de `where_each_demo_scene_lives`.
 #[test]
 fn a_scene_with_a_legend_fits_inside_what_the_camera_can_reach() {
+    let _trava = crate::motion_demo_legend::trava();
     let mut lidas = 0usize;
     let mut fora: Vec<String> = Vec::new();
     for level in 1..=crate::motion_state::demo_router::MAX_DEMO_LEVEL {

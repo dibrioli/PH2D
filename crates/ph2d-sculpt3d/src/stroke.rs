@@ -110,6 +110,8 @@ pub struct SculptStroke {
     footprint: Vec<u32>,
     moved: Vec<u32>,
     query: QueryScratch,
+    /// Os buffers do passeio pela superfície — ver [`crate::dab_alcance`].
+    alcance: crate::dab_alcance::Alcance,
     region: RegionScratch,
     /// A união, **sobre as cópias de espelho de UMA chamada a
     /// [`SculptStroke::dab`]**, dos vértices escritos e dos vértices cuja normal

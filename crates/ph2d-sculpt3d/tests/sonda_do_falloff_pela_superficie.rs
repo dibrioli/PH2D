@@ -481,3 +481,88 @@ fn com_que_tecto_o_corte_nao_toca_a_peca_convexa() {
          alta, senao o corte nao cura nada."
     );
 }
+
+// ---------------------------------------------------------------------------
+// (4) O GATE DA COSTURA — a porta está LIGADA no caminho do produto
+// ---------------------------------------------------------------------------
+
+/// ⭐⭐⭐ **UM DAB DE VERDADE não move o dedo vizinho.**
+///
+/// ⚠️⚠️ **Este gate é de COSTURA e não de lei** — a lei tem os gates dela dentro
+/// da crate ([`ph2d_sculpt3d::dab_alcance`], que é `pub(crate)`). O que ele
+/// mede é a outra pergunta, a que a casa já pagou várias vezes: *a máscara está
+/// LIGADA no caminho que o artista percorre?* Apagar a chamada do `dab_core`
+/// deixa **todos** os gates de lei verdes e este vermelho.
+///
+/// ⚠️ **O olho vem de `+z` e o carimbo pousa no ALTO do dedo da esquerda, junto
+/// ao vinco** — o gesto real. ⛔ Um olho ao longo de `x` nunca produz este
+/// carimbo: dali o raio bate no lado de fora do dedo da direita e o vinco fica
+/// ocluso.
+///
+/// ⚠️⚠️ **`#[ignore]` porque a máscara nasce DESLIGADA** (ver
+/// `stroke_dab_core::alcance_armado`, que traz o gate de arquitectura que a
+/// desarmou), e uma feature atrás de uma env não pode ter gate de costura
+/// permanente: o `OnceLock` fixa-a no primeiro toque do processo. ⇒
+///
+/// ```text
+/// PH2D_SCULPT_ALCANCE=1 cargo test -p ph2d-sculpt3d \
+///   --test sonda_do_falloff_pela_superficie -- --ignored um_dab_de_verdade
+/// ```
+///
+/// Medido em 2026-09-10: **`0`** vértices do dedo vizinho com a máscara armada,
+/// **`60`** (pior `0,0256`) sem ela.
+#[test]
+#[ignore = "a mascara nasce desligada -- arme com PH2D_SCULPT_ALCANCE=1"]
+fn um_dab_de_verdade_nao_move_o_dedo_vizinho() {
+    let folga = 0.05f32;
+    let repouso = dois_dedos(folga);
+    let mut m = dois_dedos(folga);
+    let (s, c) = 20.0f32.to_radians().sin_cos();
+    let centro = [-(2.0 + folga) * 0.5 + c, 0.0, s];
+    let raio = 0.35f32;
+
+    let b = Brush {
+        verb: Verb::Draw,
+        radius: raio,
+        strength: 1.0,
+        ..Brush::default()
+    };
+    let mut st = SculptStroke::default();
+    st.begin(&m);
+    st.dab(
+        &mut m,
+        &b,
+        &Dab::at(centro, raio, [0.0, 0.0, -1.0]),
+        Symmetry::default(),
+    );
+
+    let (mut mexeu_esq, mut mexeu_dir) = (0usize, 0usize);
+    let (mut pior_esq, mut pior_dir) = (0.0f32, 0.0f32);
+    for (i, (a, z)) in repouso.positions().iter().zip(m.positions()).enumerate() {
+        let d = dist(*a, *z);
+        if d <= 0.0 {
+            continue;
+        }
+        if repouso.positions()[i][0] > 0.0 {
+            mexeu_dir += 1;
+            pior_dir = pior_dir.max(d);
+        } else {
+            mexeu_esq += 1;
+            pior_esq = pior_esq.max(d);
+        }
+    }
+
+    // ⚠️ **Controlo de NÃO-VACUIDADE primeiro** — um dab que não movesse nada
+    // daria `0` nos dois lados e leria-se como aprovado.
+    assert!(
+        mexeu_esq > 8 && pior_esq > 1e-4,
+        "o dab nao esculpiu o dedo de CA' ({mexeu_esq} vertices, pior {pior_esq:.6}) \
+         -- o gate mede um no-op"
+    );
+    assert_eq!(
+        mexeu_dir, 0,
+        "o dab moveu {mexeu_dir} vertices do dedo VIZINHO (pior {pior_dir:.6}) -- a \
+         mascara de alcance nao esta' ligada no `dab_core`, ou a env \
+         `PH2D_SCULPT_ALCANCE` esta' a `0` nesta corrida"
+    );
+}

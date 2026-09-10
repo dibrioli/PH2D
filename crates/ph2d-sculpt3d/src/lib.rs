@@ -49,6 +49,8 @@ mod cloth_filter_props;
 mod cloth_force_falloff;
 mod cloth_mode;
 mod coat;
+#[path = "dab_alcance.rs"]
+mod dab_alcance;
 /// **A CURVA DO PINCEL** — o falloff, irmão do [`brush`]. Ver [`falloff`].
 mod falloff;
 /// **A LEI QUE UM ARRASTO DE FILTRO APLICA** — a uniao das duas familias.

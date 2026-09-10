@@ -42,6 +42,23 @@ impl SculptStroke {
         if self.footprint.is_empty() {
             return 0;
         }
+        // ⭐⭐⭐ **A MÁSCARA DE ALCANCE** — quem a superfície não liga sai da
+        // pegada, e o PESO de quem fica não muda um bit
+        // ([`crate::dab_alcance`]). Medido: em dois dedos com folga `0,05` isto
+        // é `47 %` do carimbo que deixa de saltar para o dedo errado; numa peça
+        // convexa corta **zero**, logo o caminho de omissão é byte-idêntico.
+        //
+        // ⚠️ **A env é lida AQUI e não dentro do passeio**, e a lição é medida:
+        // a `line/quadextract` pôs uma bandeira dentro do remalhador e ela
+        // alcançou todos os chamadores, motor legado incluído. *Uma bandeira
+        // global é uma corrida escrita à mão* — quem masca é quem chama.
+        if alcance_armado() {
+            self.alcance
+                .corta(mesh, dab.center, query_r, &mut self.footprint);
+            if self.footprint.is_empty() {
+                return 0;
+            }
+        }
         for i in 0..self.footprint.len() {
             let v = self.footprint[i];
             self.capture(mesh, v);
@@ -486,4 +503,38 @@ impl SculptStroke {
         }
         self.moved.len()
     }
+}
+
+/// **A máscara de alcance está armada?** — ela nasce **DESLIGADA**, e
+/// `PH2D_SCULPT_ALCANCE=1` arma-a.
+///
+/// ⛔⛔⛔ **ELA IA NASCER LIGADA, E UM GATE DE ARQUITECTURA DESMENTIU A
+/// JUSTIFICAÇÃO — que era minha.** O argumento era: *«numa peça convexa a
+/// máscara corta `0,00 %` do peso, logo o caminho de omissão é byte-idêntico»*.
+/// O controlo dizia a verdade e **a população dele era estreita**: o
+/// `the_ear_does_not_ship_an_edge_across_the_piece`
+/// ([`crate::…`](../../../shells/desktop/src/sculpt3d_photo_probes.rs)) reprovou
+/// com a aresta a atravessar **`56,0 %`** da peça contra a barra de `20 %`, e o
+/// bissector prova a causa: com `PH2D_SCULPT_ALCANCE=0` ele passa.
+///
+/// ⭐ **O mecanismo é a fixtura ser ESCULPIDA:** a orelha nasce de três passes de
+/// dabs (`Draw` · `Crease` · `Draw`), e o `Crease` de raio `0,055` morde uma
+/// borda **já levantada** — ou seja uma peça **não-convexa**, que é exactamente
+/// a população que o meu controlo não cobria. *Um controlo convexo não autoriza
+/// uma afirmação sobre o caminho de omissão de um app de ESCULTURA, onde a peça
+/// deixa de ser convexa no primeiro traço.*
+///
+/// ⇒ a lei da casa fica de pé: **o que é novo shipa desligado**, e desligada ela
+/// é byte-idêntica **por construção** — a porta não é chamada. ⏳ **Fica ABERTO,
+/// e é a decisão do dono:** se o vinco mais fundo que a máscara produz é a cura
+/// a funcionar (mais controlo) ou corte a mais. Um gate de qualidade de
+/// retopologia não pode responder a isso.
+///
+/// ⚠️ **E uma feature atrás de uma env não pode ter gate de costura NÃO
+/// ignorado** — o `OnceLock` fixa-a no primeiro toque do processo. É o argumento
+/// para o passo seguinte desta wave ser um **controlo no painel**, não uma env.
+fn alcance_armado() -> bool {
+    use std::sync::OnceLock;
+    static ARMADO: OnceLock<bool> = OnceLock::new();
+    *ARMADO.get_or_init(|| std::env::var("PH2D_SCULPT_ALCANCE").as_deref() == Ok("1"))
 }

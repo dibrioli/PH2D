@@ -63,7 +63,7 @@ recursiva) são **`127`**, não uma.
 | | portas que o censo conhecia | literais |
 |---|---:|---:|
 | §2 (2026-09-09) | `1` (`paint_text*`) | `108` |
-| ponto fixo (2026-09-10) | **`127`** | **`438`** |
+| ponto fixo (2026-09-10) | **`127`** | **`418`** |
 
 | crate | literais pintados | chaves `panel.<id>.*` |
 |---|---:|---:|
@@ -77,7 +77,7 @@ recursiva) são **`127`**, não uma.
 | `-equalize-sizes` · `-color-equalization` · `-vector` · `-bgremoval` | 7 · 6 · 5 · 4 | 0 · 0 · 276 · 0 |
 | `-physics` · `-timeline` · `-upscale` | 2 · 2 · 2 | 60 · 48 · 0 |
 | `-asset-browser` · `-hierarchy` · `-padding` · `-widget-lab` | 1 cada | 0 |
-| **total** | **438** em **19** crates | |
+| **total** | **418** em **19** crates | |
 
 ⭐⭐ **E as duas colunas juntas dizem o que nenhuma diz sozinha:** o `painter-layers` pinta `166`
 rótulos e declara **zero**; o `inspector`, `99` e **zero**. *Não é que aqueles painéis falem mal a
@@ -96,8 +96,15 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-UIUX && python3 scripts/ce
 ```
 
 ⛔ Ele **imprime e não escreve** — não há `--write`, e não há catraca global (a razão está na §3).
+
+⛔⛔ **E ELE ERROU A MESMA CLASSE DE ERRO NA PRIMEIRA HORA DE VIDA.** A primeira corrida leu `438`;
+o número é `418`. A causa: o leitor não conhecia o **literal de carácter** — `find('"')` é Rust
+legítimo, e ele lia aquela aspa como uma string a abrir, passando a ler o resto do ficheiro ao
+contrário (comentário como texto, texto como código). ⚠️ **O irmão em Rust apanhou-o sozinho:** a
+primeira corrida do gate acusou **um comentário do próprio ficheiro do gate**. ⇒ *ter duas
+implementações da mesma régua não é redundância — é a única forma de uma delas acusar a outra.*
 ⚠️ E **declara o que não vê**: literais que chegam por variável, `const`, tabela de `&str` ou
-`format!`. ⇒ *`438` é um PISO.*
+`format!`. ⇒ *`418` é um PISO.*
 
 ## §2-ter — ✅ A crate DESTA linha está curada: `52 → 32`, e o resto é declarado
 
@@ -142,7 +149,7 @@ outro caminho, é uma régua de que se pode duvidar menos.*
 
 ## §3 — Por que esta linha MEDIU e não CUROU
 
-⛔ **Não é preguiça, é o custo de merge.** Curar os `438` (§2-bis; a §2 dizia `108`) toca **19 crates**, e onze delas são de
+⛔ **Não é preguiça, é o custo de merge.** Curar os `418` (§2-bis; a §2 dizia `108`) toca **19 crates**, e onze delas são de
 outras linhas — cinco delas vivas em 2026-09-09. A memória do repo já regista o preço desta forma
 exacta (*«apagar ~2 961 LOC do `VecInstance` em 24 ficheiros com a `line/Vector` VIVA é catástrofe
 de merge»*), e uma migração mecânica larga é o caso pior: diff enorme, zero conflito semântico,

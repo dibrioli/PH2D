@@ -6,7 +6,13 @@
 `docs/UI_New_and_Simple/medicoes/07` publicou **108** literais pintados em 13 crates, contando as
 chamadas a `paint_text*`. Em 2026-09-10, a tentar curá-los, apareceu `paint_panel_title(rect,
 "Widget Gallery", …)` — uma porta que aquele censo não conhecia. Derivadas do fonte, as portas são
-**127**, e os literais **438**.
+**127**, e os literais **418**.
+
+⛔⛔ **E este ficheiro ERROU a mesma classe de erro na primeira hora de vida:** ele não conhecia o
+literal de CARÁCTER (`find('"')` é Rust legítimo), lia aquela aspa como uma string a abrir e passava
+a ler o resto do ficheiro ao contrário — comentário como texto, texto como código. Leu **438** onde
+o número é **418**. *Um censo textual tem de saber TODAS as formas do que lê, e «todas» inclui as do
+próprio leitor.*
 
 ⭐⭐ **A régua certa é um PONTO FIXO, não uma lista de nomes.** Um literal chega ao ecrã se for
 passado no argumento de texto de um pintor — **ou** a uma função que repassa esse parâmetro a um
@@ -45,6 +51,19 @@ def strip_comments(src):
             elif c=='"': instr=False
             i+=1; continue
         if c=='"': instr=True; out.append(c); i+=1; continue
+        # ⚠️⚠️ UM LITERAL DE CARÁCTER TEM ASPAS DENTRO -- `find('"')` é Rust legítimo, e um leitor
+        #    que não o conheça vê ali uma aspa a ABRIR uma string e lê o resto do ficheiro ao
+        #    contrário. ⚠️ O `'` também abre um TEMPO DE VIDA (`&'a str`), que não fecha: o
+        #    discriminador é haver um `'` a fechar dentro do alcance de um escape.
+        if c=="'":
+            close=None
+            if i+1<n and src[i+1]=="\\":
+                for j in range(i+2, min(i+8,n)):
+                    if src[j]=="'": close=j; break
+            elif i+2<n and src[i+2]=="'":
+                close=i+2
+            if close is not None:
+                out.append(" "*(close-i+1)); i=close+1; continue
         if src.startswith("//",i):
             j=src.find("\n",i); j=n if j<0 else j; out.append(" "*(j-i)); i=j; continue
         if src.startswith("/*",i):

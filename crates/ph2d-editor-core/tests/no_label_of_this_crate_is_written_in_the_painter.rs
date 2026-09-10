@@ -5,7 +5,7 @@
 //!
 //! # ⛔⛔ Por que este gate é POR CRATE, e não do repo
 //!
-//! O censo de 2026-09-10 (`scripts/censo-texto-pintado.py`) conta **438** literais pintados em
+//! O censo de 2026-09-10 (`scripts/censo-texto-pintado.py`) conta **418** literais pintados em
 //! **19** crates, e **11 delas são de outras linhas**. Uma catraca global com essa dívida dentro
 //! poria *a próxima linha que pinte um rótulo vermelha por causa de um gate desta* — o contrário
 //! do que o `CLAUDE.md` §0.2 pede de um toque foundational (*projecte-o para isolamento*).
@@ -25,7 +25,7 @@
 //! ```
 //!
 //! ⛔⛔ **A primeira medição desta grandeza saiu `4×` errada** por parar na semente: ela publicou
-//! `108` e o número é `438`. *Um censo textual tem de saber TODAS as formas do que lê* — e aqui a
+//! `108` e o número é `418`. *Um censo textual tem de saber TODAS as formas do que lê* — e aqui a
 //! forma não é um nome, é um caminho.
 //!
 //! # ⚠️ O que ele NÃO vê, declarado
@@ -91,6 +91,30 @@ fn strip_comments(src: &str) -> String {
             out.push(c);
             i += 1;
             continue;
+        }
+        // ⚠️⚠️ **UM LITERAL DE CARÁCTER TEM ASPAS DENTRO** — `find('"')` é código Rust legítimo, e
+        //    um leitor que não o conheça vê ali uma aspa a ABRIR uma string e passa a ler o resto
+        //    do ficheiro ao contrário: comentário vira texto, texto vira código.
+        //    ⛔ A 1.ª redacção deste ficheiro não o conhecia, e a primeira corrida do censo das
+        //    chaves acusou **um comentário deste próprio teste**. *Um censo textual tem de saber
+        //    TODAS as formas do que lê* — e esta é a 8.ª vez que esta linha a paga.
+        //    ⚠️ E o `'` também abre um TEMPO DE VIDA (`&'a str`), que não fecha: o discriminador é
+        //    haver um `'` a fechar dentro do alcance de um escape.
+        if c == '\'' {
+            let close = if i + 1 < n && b[i + 1] == '\\' {
+                (i + 2..(i + 8).min(n)).find(|&j| b[j] == '\'')
+            } else if i + 2 < n && b[i + 2] == '\'' {
+                Some(i + 2)
+            } else {
+                None
+            };
+            if let Some(j) = close {
+                for _ in i..=j {
+                    out.push(' ');
+                }
+                i = j + 1;
+                continue;
+            }
         }
         if c == '/' && i + 1 < n && b[i + 1] == '/' {
             while i < n && b[i] != '\n' {
@@ -446,4 +470,146 @@ fn every_named_exception_still_shelters_a_real_literal() {
              aberta para o próximo ficheiro que caia debaixo desse caminho"
         );
     }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// A OUTRA METADE: a chave existe dos DOIS lados
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+
+/// ⚠️ **Uma chave tem FORMA, e o censo tem de a conhecer.**
+///
+/// ⛔⛔ A 1.ª redacção aceitava qualquer coisa sem espaços, e a primeira corrida acusou **este
+/// próprio ficheiro**: a mensagem de erro abaixo diz `\"chrome.…\"`, e o censo leu-a como uma
+/// chave em uso. *Um censo textual que não conhece a forma do que procura acusa a própria prosa* —
+/// é a 7.ª vez que esta linha paga esta lição, e a primeira em que o acusado é o acusador.
+fn looks_like_a_key(k: &str) -> bool {
+    k.len() > "chrome.".len()
+        && k.chars()
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_' || c == '.')
+}
+
+/// Todas as chaves `chrome.*` **usadas** na árvore, com o ficheiro onde aparecem.
+fn keys_used(repo: &Path) -> BTreeMap<String, String> {
+    fn walk(dir: &Path, repo: &Path, out: &mut BTreeMap<String, String>) {
+        let Ok(rd) = fs::read_dir(dir) else { return };
+        let mut entries: Vec<PathBuf> = rd.flatten().map(|e| e.path()).collect();
+        entries.sort();
+        for p in entries {
+            let name = p.file_name().and_then(|n| n.to_str()).unwrap_or_default();
+            if p.is_dir() {
+                if matches!(name, "target" | ".git" | "docs") {
+                    continue;
+                }
+                walk(&p, repo, out);
+            } else if p.extension().is_some_and(|x| x == "rs") {
+                let Ok(s) = fs::read_to_string(&p) else {
+                    continue;
+                };
+                // ⚠️ A tabela declara; ela não usa. Sem esta guarda o censo lê a própria fonte
+                //    como consumidor e os dois lados concordam sempre — um espelho não acusa.
+                if p.ends_with("ph2d-i18n/src/chrome.rs") {
+                    continue;
+                }
+                let code = strip_comments(&s);
+                let mut i = 0usize;
+                while let Some(k) = code[i..].find("\"chrome.") {
+                    let start = i + k + 1;
+                    let Some(end) = code[start..].find('"') else {
+                        break;
+                    };
+                    let key = &code[start..start + end];
+                    if looks_like_a_key(key) {
+                        out.entry(key.to_string()).or_insert_with(|| {
+                            p.strip_prefix(repo)
+                                .unwrap_or(&p)
+                                .to_string_lossy()
+                                .replace('\\', "/")
+                        });
+                    }
+                    i = start + end;
+                }
+            }
+        }
+    }
+    let mut out = BTreeMap::new();
+    walk(repo, repo, &mut out);
+    out
+}
+
+/// Todas as chaves `chrome.*` **declaradas** na tabela.
+fn keys_declared(repo: &Path) -> BTreeSet<String> {
+    let p = repo.join("crates/ph2d-i18n/src/chrome.rs");
+    let s = fs::read_to_string(&p).unwrap_or_else(|e| panic!("a tabela {p:?} não se lê: {e}"));
+    let code = strip_comments(&s);
+    let mut out = BTreeSet::new();
+    let mut i = 0usize;
+    while let Some(k) = code[i..].find("\"chrome.") {
+        let start = i + k + 1;
+        let Some(end) = code[start..].find('"') else {
+            break;
+        };
+        // só conta o que é o LADO ESQUERDO de um braço: `"chrome.x" =>`
+        let key = &code[start..start + end];
+        let after = code[start + end + 1..].trim_start();
+        if after.starts_with("=>") {
+            out.insert(key.to_string());
+        }
+        i = start + end;
+    }
+    out
+}
+
+fn repo_root() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .and_then(Path::parent)
+        .expect("crates/<crate>/ tem dois pais")
+        .to_path_buf()
+}
+
+/// ⭐⭐⭐ **UMA CHAVE COM ERRO DE ESCRITA PINTA O IDENTIFICADOR CRU NA TELA** — e vaza a string.
+///
+/// ⛔⛔ O `ph2d_i18n::tr` de uma chave desconhecida faz `leak_key`: ele devolve **o próprio
+/// identificador** e faz `Box::leak`. Num painel repintado a cada quadro isso é um vazamento **por
+/// quadro**, e o que o artista vê é `chrome.dialog.new_image` em vez de *New Image*.
+///
+/// ⚠️ **Nada disto reprova em lado nenhum sem este gate** — a migração de 2026-09-10 mexeu em
+/// `20` sítios de uma vez; uma letra trocada em qualquer um deles deixava a suíte inteira verde.
+///
+/// ⭐ **E o censo é dos DOIS lados**, porque os dois erros existem e a cura de cada um é oposta:
+/// uma chave **usada e não declarada** pinta o identificador; uma **declarada e não usada** é uma
+/// órfã — e uma órfã é onde alguém escreve, um dia, uma frase sobre um controlo que já não existe.
+#[test]
+fn every_chrome_key_exists_on_both_sides() {
+    let repo = repo_root();
+    let used = keys_used(&repo);
+    let declared = keys_declared(&repo);
+
+    // ⛔ Controlo de vacuidade: um caminho errado dá dois conjuntos vazios, que concordam.
+    assert!(
+        declared.len() >= 10 && used.len() >= 10,
+        "o censo achou {} declaradas e {} usadas — está a ler o sítio errado, e dois conjuntos \
+         vazios concordam sempre",
+        declared.len(),
+        used.len()
+    );
+
+    let sem_traducao: Vec<String> = used
+        .iter()
+        .filter(|(k, _)| !declared.contains(*k))
+        .map(|(k, f)| format!("{k}  (usada em {f})"))
+        .collect();
+    assert!(
+        sem_traducao.is_empty(),
+        "estas chaves são usadas e NÃO existem em `crates/ph2d-i18n/src/chrome.rs` — o `tr` faz \
+         `leak_key` e pinta o identificador cru na tela, um vazamento por quadro:\n  {}",
+        sem_traducao.join("\n  ")
+    );
+
+    let orfas: Vec<&String> = declared.iter().filter(|k| !used.contains_key(*k)).collect();
+    assert!(
+        orfas.is_empty(),
+        "estas chaves estão na tabela e ninguém as usa — apague-as: uma string órfã é onde alguém \
+         escreve, um dia, uma frase sobre um controlo que já não existe:\n  {orfas:?}"
+    );
 }

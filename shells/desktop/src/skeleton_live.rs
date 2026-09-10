@@ -159,6 +159,23 @@ fn resolve(
     Skin::new(ossos)
 }
 
+/// ⭐⭐⭐ **A PELE DE UMA COISA, resolvida agora** — a porta que serve quem não é um `VecPath`.
+///
+/// ⚠️ **Ela existe porque a 2.ª mídia chegou** (uma imagem que obedece ao esqueleto): o
+/// [`resolve`] já respondia a pergunta inteira e estava fechado atrás do laço do [`recook`], que
+/// só sabe de formas vectoriais. *Uma lei alcançável só de dentro de um laço é uma lei com um
+/// cliente por construção.*
+///
+/// ⛔ **Ela constrói o índice de ossos a cada chamada**, e é de propósito: quem chama tem UMA
+/// coisa na mão (o laço do [`recook`] partilha o índice entre N formas, e continua a partilhá-lo).
+/// Com o índice a ser um `BTreeMap` sobre os ossos da cena, o preço é o número de ossos — não o do
+/// mundo.
+#[must_use]
+pub(crate) fn skin_of(sim: &SimWorld, e: Entity) -> Option<Skin> {
+    let skin = sim.world().get::<SkinBind>(e)?;
+    resolve(sim, skin, e, &bone_index(sim))
+}
+
 /// **Um quadro de pele.** Corre depois do `vec_entities::sync` (as entidades existem) e ao lado do
 /// `envelope_live::recook`.
 pub(crate) fn recook(sim: &SimWorld, scene: &mut VecScene) {

@@ -1,0 +1,23 @@
+[package]
+name = "ph2d-poly2d"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# ⛔ ZERO dependências OBRIGATÓRIAS, e é o ponto — o mesmo da `ph2d-affine`: quem precisa
+# desta geometria é o ESQUELETO, que serve vector, raster, Flip e 3D. Um leaf que puxasse a
+# cena vectorial (ou, pior, o `wgpu` que a `ph2d-flip-render` puxa) fecharia a porta a três
+# das quatro mídias antes de a primeira existir.
+[features]
+# ⚠️ **Só quem GUARDA uma malha liga isto.** Quem só a calcula e desenha (o caminho do
+# quadro) não paga dependência nenhuma — a `SkinBind` do esqueleto liga-a porque a malha
+# viaja nos bytes opacos dela.
+serde = ["dep:serde"]
+
+[dependencies]
+serde = { version = "1", features = ["derive"], optional = true }

@@ -50,6 +50,39 @@ impl Xform {
         [a * v[0] + c * v[1], b * v[0] + d * v[1]]
     }
 
+    /// ⭐⭐⭐ **O AFIM QUE LEVA UM TRIÂNGULO A OUTRO** — a lei que faz uma imagem entortar.
+    ///
+    /// Três pontos determinam um afim do plano, exactamente e sem folga: é o que permite desenhar
+    /// uma malha deformada como *N* pedaços da MESMA imagem, cada um com o seu afim, sem
+    /// pipeline de triângulos texturados nenhum. ⚠️ O resultado é **afim por partes** — exacto em
+    /// cada triângulo e contínuo nas arestas, porque dois triângulos vizinhos concordam nos dois
+    /// vértices que partilham e um afim é determinado pelos três.
+    ///
+    /// `None` quando o triângulo de REPOUSO é degenerado (os três pontos colineares): ali não há
+    /// afim nenhum que sirva, e inventar um punha a imagem num sítio que ninguém pediu. ⛔ O
+    /// triângulo de DESTINO pode ser degenerado à vontade — uma malha esmagada é uma pose legítima.
+    #[must_use]
+    pub fn from_triangle(rest: [[f64; 2]; 3], to: [[f64; 2]; 3]) -> Option<Self> {
+        // As duas arestas de cada triângulo, a partir do vértice 0.
+        let (ux, uy) = (rest[1][0] - rest[0][0], rest[1][1] - rest[0][1]);
+        let (vx, vy) = (rest[2][0] - rest[0][0], rest[2][1] - rest[0][1]);
+        let det = ux.mul_add(vy, -(uy * vx));
+        if !det.is_finite() || det == 0.0 {
+            return None;
+        }
+        let (px, py) = (to[1][0] - to[0][0], to[1][1] - to[0][1]);
+        let (qx, qy) = (to[2][0] - to[0][0], to[2][1] - to[0][1]);
+        // A parte linear é `P · R⁻¹`, com `R = [u v]` e `P = [p q]` em colunas.
+        let a = px.mul_add(vy, -(qx * uy)) / det;
+        let c = qx.mul_add(ux, -(px * vx)) / det;
+        let b = py.mul_add(vy, -(qy * uy)) / det;
+        let d = qy.mul_add(ux, -(py * vx)) / det;
+        // E a translação é o que falta para o vértice 0 aterrar onde foi pedido.
+        let e = to[0][0] - a.mul_add(rest[0][0], c * rest[0][1]);
+        let f = to[0][1] - b.mul_add(rest[0][0], d * rest[0][1]);
+        Some(Self([a, b, c, d, e, f]))
+    }
+
     /// `self ∘ other` — aplica `other` primeiro, depois `self`.
     #[must_use]
     pub fn then(&self, outer: &Self) -> Self {
@@ -146,6 +179,51 @@ impl Xform {
 
 #[cfg(test)]
 mod tests {
+    /// ⭐⭐⭐ **O AFIM DE UM TRIÂNGULO LEVA OS TRÊS VÉRTICES EXACTAMENTE ONDE FORAM PEDIDOS.**
+    ///
+    /// ⚠️ É esta exactidão que faz a malha deformada **não abrir costura**: dois triângulos
+    /// vizinhos partilham dois vértices, e cada um leva esses dois ao MESMO sítio — logo a aresta
+    /// comum é a mesma recta nos dois. *A continuidade não é uma tolerância; é uma consequência.*
+    ///
+    /// (Mutação: trocar `c` por `-c` na parte linear ⇒ RED nos vértices 1 e 2.)
+    #[test]
+    fn a_triangle_affine_lands_its_three_corners_exactly() {
+        // Um triângulo de repouso qualquer — ⛔ nem rectângulo nem isósceles, senão uma troca de
+        // componente na matriz passaria por simetria.
+        let rest = [[3.0, 1.0], [11.0, 2.0], [5.0, 9.0]];
+        let alvo = [[-2.0, 4.0], [6.5, 1.0], [1.0, 14.0]];
+        let m = Xform::from_triangle(rest, alvo).expect("o repouso nao e' degenerado");
+        for i in 0..3 {
+            let saiu = m.apply(rest[i]);
+            assert!(
+                (saiu[0] - alvo[i][0]).abs() < 1e-9 && (saiu[1] - alvo[i][1]).abs() < 1e-9,
+                "o vertice {i} saiu em {saiu:?} e foi pedido em {:?}",
+                alvo[i]
+            );
+        }
+        // ⭐ E a IDENTIDADE sai da identidade: um triângulo que não se move não move a imagem.
+        let ident = Xform::from_triangle(rest, rest).expect("idem");
+        assert!(
+            ident.is_identity(),
+            "parado tinha de dar identidade: {ident:?}"
+        );
+    }
+
+    /// ⛔ **UM REPOUSO COLINEAR NÃO TEM AFIM, e a resposta é `None`.**
+    ///
+    /// ⚠️ E o DESTINO degenerado é legal: uma malha esmagada contra uma recta é uma pose que o
+    /// artista pode pedir, e recusá-la faria o desenho piscar no meio de um gesto.
+    #[test]
+    fn a_degenerate_rest_has_no_affine_but_a_degenerate_target_is_a_pose() {
+        let colinear = [[0.0, 0.0], [2.0, 2.0], [5.0, 5.0]];
+        assert_eq!(Xform::from_triangle(colinear, colinear), None);
+        let bom = [[0.0, 0.0], [4.0, 0.0], [0.0, 3.0]];
+        let esmagado = [[1.0, 1.0], [5.0, 1.0], [3.0, 1.0]];
+        let m = Xform::from_triangle(bom, esmagado).expect("o repouso e' bom");
+        assert!((m.det()).abs() < 1e-12, "o destino achatado tem det zero");
+        assert!((m.apply(bom[2])[1] - 1.0).abs() < 1e-9);
+    }
+
     use super::*;
 
     fn approx(a: [f64; 2], b: [f64; 2]) -> bool {

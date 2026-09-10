@@ -355,7 +355,7 @@ pub(super) fn cook_gpu(
                 let ultimo = ticks.last().map_or(0.0, |(playhead, _)| *playhead);
                 motion
                     .pump
-                    .cook_taps_only(&motion.doc.graph, &motion.registry, ultimo, &scopes);
+                    .cook_taps_only(&motion.doc.graph, &motion.registry, ultimo, scopes);
                 say_route(motion, "device: o plano inteiro (fully-GPU)");
                 GpuOutcome::Handled
             } else {

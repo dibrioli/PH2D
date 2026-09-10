@@ -83,7 +83,7 @@ fn relatorio(m: &MotionState, no: NodeId) {
         up.and_then(|u| warp_gizmo::box_from_tap(m, u))
     );
     eprintln!(
-        "  ⇒ resolve ......................... {}",
+        "  => resolve ......................... {}",
         if warp_gizmo::resolve(m, true).is_some() {
             "Some — o gizmo EXISTE"
         } else {
@@ -120,7 +120,7 @@ fn why_the_warp_gizmo_is_not_there() {
             up.and_then(|u| warp_gizmo::box_from_tap(&m, u))
         );
         eprintln!(
-            "  ⇒ resolve ......................... {}",
+            "  => resolve ......................... {}",
             if warp_gizmo::resolve(&m, true).is_some() {
                 "Some — o gizmo EXISTE"
             } else {

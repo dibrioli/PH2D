@@ -384,7 +384,7 @@ pub(crate) fn field_view(
         p(spec.center_x),
         p(spec.center_y),
         half,
-        spec.rotation.map_or(0.0, |r| p(r)),
+        spec.rotation.map_or(0.0, p),
         camera,
         win_w,
         win_h,
@@ -472,7 +472,7 @@ impl crate::App {
             let start = seed_start(
                 p(spec.center_x),
                 p(spec.center_y),
-                spec.rotation.map_or(0.0, |r| p(r)),
+                spec.rotation.map_or(0.0, p),
             );
             // ⚠️ O `world_pos` do drag TEM de usar as dims da CENA (o sub-retângulo do
             // split), não a janela cheia — senão o cursor mapeia pra um mundo diferente do

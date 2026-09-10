@@ -37,7 +37,13 @@ fn the_default_mode_is_the_node_that_shipped_bit_for_bit() {
 #[test]
 fn the_centroid_mode_twists_about_the_centre_of_the_layout() {
     // Simétrico em torno de (10, 5) ⇒ centroide exacto.
-    let base = vec![[8.0f32, 5.0], [10.0, 5.0], [12.0, 5.0], [10.0, 3.0], [10.0, 7.0]];
+    let base = vec![
+        [8.0f32, 5.0],
+        [10.0, 5.0],
+        [12.0, 5.0],
+        [10.0, 3.0],
+        [10.0, 7.0],
+    ];
     let falloff = vec![1.0f32; base.len()];
     let c = PivotMode::of(2.0).resolve([-99.0, 77.0], &base);
     assert_eq!(c, [10.0, 5.0], "o modo VENCE o ponto digitado");

@@ -485,9 +485,11 @@ impl GpuCook {
             let needed = codegen::storage_buffers(
                 bindings,
                 |b| column_present(gather_port, count, &inputs, b),
-                grid_spec,
-                kernels.reduces(stage.ty),
-                kernels.luts(stage.ty),
+                codegen::ExtraBuffers {
+                    grid: grid_spec,
+                    reduces: kernels.reduces(stage.ty),
+                    luts: kernels.luts(stage.ty),
+                },
             );
             let limit = gpu.device.limits().max_storage_buffers_per_shader_stage;
             if needed > limit {

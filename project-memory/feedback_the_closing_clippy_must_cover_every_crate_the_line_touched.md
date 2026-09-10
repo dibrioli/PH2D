@@ -41,5 +41,24 @@ mesmos 5 são **erros**: 3 em ficheiros que esta linha CRIOU (`incremental.rs`, 
 *Um lint sem `-D warnings` não reprova nada, e um gate que não reprova não é um gate.*
 ⇒ no fecho, copie a linha do `ship.sh` em vez de compor uma.
 
+⛔⛔ **TERCEIRA ocorrência, na MESMA linha, 2026-09-09** — e desta vez a regra já estava escrita
+aqui. Os ciclos 3, 4 e metade do 5 da `line/motion-value` fecharam com `cargo test --bins` e
+`cargo clippy -p <a crate em que eu estava>`; ao correr enfim a linha do `ship.sh`
+(`--workspace --all-targets --features ph2d-spike/bevy_ecs -- -D warnings`) apareceram **sete**
+reds acumulados, **todos em código desta linha**: um `&&` cuja metade direita não tinha efeito
+(um controlo de gate que assim nunca teria falhado), duas closures redundantes, um `if`
+colapsável, um empréstimo desnecessário, um `map` da identidade, uma linha em branco entre um doc
+e o seu item — e a `kernel_module` a **oito** parâmetros sobre um teto de sete, empurrada até lá
+pelo `shared` do ciclo 3.
+
+⚠️ **Dois deles não eram cosmética.** O `&&` (`4,5 < bar && 3,5/√2 < bar`) colapsava **dois
+controlos de grandezas diferentes** num só: a segunda metade é logicamente implicada pela
+primeira, então o dia em que o losango deixasse de reprovar o gate não se movia — *o clippy estava
+a nomear um gate meio morto, não um estilo*. E o teto de argumentos cobrou o corte que a casa
+manda (`ExtraBuffers`, um tipo para os três fornecedores de buffer que já viajavam sempre juntos),
+que de caminho **reforçou** uma garantia que o doc daquela função já reivindicava por escrito.
+
+⇒ *o `-D warnings` do fecho não é higiene: ele encontra gates que não julgam nada.*
+
 *O gate de fechamento mede o que a linha TOCOU; se o alvo dele é escrito à mão, ele mede a minha
 memória.*

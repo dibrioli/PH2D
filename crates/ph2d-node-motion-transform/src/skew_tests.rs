@@ -56,13 +56,29 @@ fn a_unit_skew_leans_forty_five_degrees_and_moves_only_along_its_axis() {
         assert!((out[1] - y).abs() < 1e-6, "e nao mexe no y: {out:?}");
     }
     // Meia inclinacao e' meia altura — linear, que e' o que um cisalhamento E'.
-    let meio = xform_masked([0.0, 4.0], 1.0, 1.0, Shear { kx: 0.5, ky: 0.0 }, 0.0, 0.0, 1.0);
+    let meio = xform_masked(
+        [0.0, 4.0],
+        1.0,
+        1.0,
+        Shear { kx: 0.5, ky: 0.0 },
+        0.0,
+        0.0,
+        1.0,
+    );
     assert!((meio[0] - 2.0).abs() < 1e-6, "{meio:?}");
     // E o eixo Y e' o simetrico: `y' = y + ky·x`, com o `x` INTACTO.
     // ⚠️ A 1.a redaccao pedia `x == 0` sobre um ponto em `x = 3` e reprovou sobre codigo
     // correcto — um cisalhamento nao move o eixo que ele le'. E a fixtura tem `y != x` de
     // proposito: em `(3, 0)` o resultado `[3, 3]` satisfaz as duas afirmacoes por acidente.
-    let ky = xform_masked([3.0, 1.0], 1.0, 1.0, Shear { kx: 0.0, ky: 1.0 }, 0.0, 0.0, 1.0);
+    let ky = xform_masked(
+        [3.0, 1.0],
+        1.0,
+        1.0,
+        Shear { kx: 0.0, ky: 1.0 },
+        0.0,
+        0.0,
+        1.0,
+    );
     assert!(
         (ky[0] - 3.0).abs() < 1e-6 && (ky[1] - 4.0).abs() < 1e-6,
         "{ky:?}"

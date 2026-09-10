@@ -398,7 +398,7 @@ fn does_a_sort_axis_turn_the_index_range_band() {
             y1 = y1.max(q[1]);
         }
         eprintln!(
-            "  axis_angle {graus:>5.0}° → {} apanhados · x {x0:.2}..{x1:.2} · y {y0:.2}..{y1:.2}",
+            "  axis_angle {graus:>5.0}° -> {} apanhados · x {x0:.2}..{x1:.2} · y {y0:.2}..{y1:.2}",
             apanhados.len()
         );
     }

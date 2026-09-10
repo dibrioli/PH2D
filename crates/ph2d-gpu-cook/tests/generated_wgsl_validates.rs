@@ -60,17 +60,19 @@ fn every_registered_kernel_validates_across_the_whole_presence_space() {
                 kernel,
                 kernel.bindings,
                 &port_names,
-                reg.grid(manifest.id),
-                // The node's declared reductions, asked of the REGISTRY — not
-                // `&[]`. A deformer's body calls `reduce_<name>()`, so passing an
-                // empty list here would validate a module the sequencer never
-                // builds and miss a misspelled reduction entirely.
-                reg.reduces(manifest.id),
-                // The node's LUTs, asked of the REGISTRY for the same reason as the
-                // reductions: the body samples `<name>_sample(t)`, so an empty list
-                // here would validate a module without that accessor and miss a
-                // misdeclared LUT (A1-gpu).
-                reg.luts(manifest.id),
+                ph2d_gpu_cook::codegen::ExtraBuffers {
+                    grid: reg.grid(manifest.id),
+                    // The node's declared reductions, asked of the REGISTRY — not
+                    // `&[]`. A deformer's body calls `reduce_<name>()`, so passing an
+                    // empty list here would validate a module the sequencer never
+                    // builds and miss a misspelled reduction entirely.
+                    reduces: reg.reduces(manifest.id),
+                    // The node's LUTs, asked of the REGISTRY for the same reason as the
+                    // reductions: the body samples `<name>_sample(t)`, so an empty list
+                    // here would validate a module without that accessor and miss a
+                    // misdeclared LUT (A1-gpu).
+                    luts: reg.luts(manifest.id),
+                },
                 // O canal PARTILHADO, pedido ao REGISTRY pela mesma razão das duas
                 // acima: o `wgsl_lib` de um nó pode chamar o que mora aqui, e um `""`
                 // validaria um módulo que o sequenciador nunca constrói.
@@ -160,9 +162,11 @@ fn every_registered_kernel_validates_across_the_whole_presence_space() {
                         k,
                         k.bindings,
                         &port_names,
-                        reg.grid(manifest.id),
-                        reg.reduces(manifest.id),
-                        reg.luts(manifest.id),
+                        ph2d_gpu_cook::codegen::ExtraBuffers {
+                            grid: reg.grid(manifest.id),
+                            reduces: reg.reduces(manifest.id),
+                            luts: reg.luts(manifest.id),
+                        },
                         reg.wgsl_shared(manifest.id),
                         |b| {
                             let idx = k
@@ -212,10 +216,9 @@ fn every_registered_kernel_validates_across_the_whole_presence_space() {
                 predicate,
                 predicate.bindings,
                 &port_names,
-                None,
-                &[],
-                &[], // a predicate samples no LUT (A1-gpu)
-                "",  // nem o canal PARTILHADO — o `stream_op` passa o mesmo `""`
+                // Um predicado não liga grelha, redução nem LUT (A1-gpu).
+                ph2d_gpu_cook::codegen::ExtraBuffers::NONE,
+                "", // nem o canal PARTILHADO — o `stream_op` passa o mesmo `""`
                 |b| {
                     let idx = predicate
                         .bindings

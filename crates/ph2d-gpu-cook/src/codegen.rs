@@ -306,32 +306,62 @@ pub fn declares_node_key(kernel: &GpuKernel) -> bool {
 /// It takes exactly [`kernel_module`]'s arguments **so a caller cannot ask this question
 /// about a different module than the one it is about to build**: the shape of the call is
 /// the guarantee, not a comment asking the next author to remember.
+/// **OS TRÊS FORNECEDORES DE BUFFER QUE NÃO SÃO COLUNAS** — a grelha (ADR-0140), as
+/// reduções e as LUTs.
+///
+/// ⚠️ **Eles viajam sempre juntos, e passaram a viajar num tipo por uma razão que já estava
+/// escrita aqui:** a [`storage_buffers`] existe para responder *quantos buffers este módulo
+/// liga* e o doc dela promete que *«ela toma exactamente os argumentos da [`kernel_module`]
+/// para que um chamador não consiga fazer esta pergunta sobre um módulo diferente daquele
+/// que está prestes a construir»*. Três parâmetros posicionais repetidos em duas assinaturas
+/// dependiam de o autor os repetir na mesma ordem; **um valor só, passado aos dois, é a
+/// própria garantia**.
+///
+/// ⚠️ E foi o `shared` do ciclo 3 que levou a [`kernel_module`] a oito parâmetros — o teto da
+/// casa é sete, e ⛔ a cura de um teto é **um corte por responsabilidade, nunca uma isenção**.
+#[derive(Clone, Copy)]
+pub struct ExtraBuffers<'a> {
+    pub grid: Option<&'a GridSpec>,
+    pub reduces: &'a [ReduceSpec],
+    pub luts: &'a [LutSpec],
+}
+
+impl ExtraBuffers<'_> {
+    /// **Nenhum dos três** — um kernel que só lê colunas. É o caso da maioria dos nós.
+    pub const NONE: Self = Self {
+        grid: None,
+        reduces: &[],
+        luts: &[],
+    };
+}
+
 pub fn storage_buffers(
     bindings: &[ColumnBinding],
     present: impl FnMut(&ColumnBinding) -> bool,
-    grid: Option<&GridSpec>,
-    reduces: &[ReduceSpec],
-    luts: &[LutSpec],
+    extras: ExtraBuffers<'_>,
 ) -> u32 {
     storage_bindings(bindings, present)
-        + u32::from(grid.is_some()) * 2
-        + reduces.len() as u32
-        + luts.len() as u32
+        + u32::from(extras.grid.is_some()) * 2
+        + extras.reduces.len() as u32
+        + extras.luts.len() as u32
 }
 
 pub fn kernel_module(
     kernel: &GpuKernel,
     bindings: &[ColumnBinding],
     port_names: &[&str],
-    grid: Option<&GridSpec>,
-    reduces: &[ReduceSpec],
-    luts: &[LutSpec],
+    extras: ExtraBuffers<'_>,
     // O WGSL que este nó partilha com as reduções dele — ver
     // `ph2d_nodegraph::gpu::GpuKernels::wgsl_shared`. Vazio para todo nó que não o
     // declare, e aí o módulo é o de sempre byte a byte.
     shared: &str,
     mut present: impl FnMut(&ColumnBinding) -> bool,
 ) -> String {
+    let ExtraBuffers {
+        grid,
+        reduces,
+        luts,
+    } = extras;
     // ADR-0130: is this an `id`-gather kernel, and is the gather active for this
     // input set? A kernel declares a gather with a [`ColumnAccess::GatherKey`]
     // binding on its base port; the gather is ACTIVE when that port's stream

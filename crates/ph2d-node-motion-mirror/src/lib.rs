@@ -346,7 +346,10 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     // Ciclo 3 W2 (ADR-0136): o kernel `SourceRows` e a lei de contagem — a forma que o irmão
     // `motion.kaleidoscope` já percorria, e que a folha 05 §0 nomeou como lacuna de COBERTURA.
     reg.register_gpu_kernel(MANIFEST.id, kernel::GPU_KERNEL);
-    reg.register_stream_op(MANIFEST.id, ph2d_nodegraph::gpu::StreamOp::SourceRows { port: 0 });
+    reg.register_stream_op(
+        MANIFEST.id,
+        ph2d_nodegraph::gpu::StreamOp::SourceRows { port: 0 },
+    );
     // A linha de espelho é o centroide da ENTRADA — as duas somas da porta do pivô.
     reg.register_reduces(MANIFEST.id, ph2d_nodegraph::pivot::CENTROID_REDUCES);
     Ok(())

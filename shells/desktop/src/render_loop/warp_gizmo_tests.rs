@@ -509,9 +509,21 @@ fn a_painted_handle_covers_the_radius_it_is_grabbed_at() {
     );
     // ⚠️ **E o CONTROLE: a barra tem de reprovar o que shipava.** Sem isto uma barra baixa demais
     // passaria sobre os mesmos números que produziram o report, e o gate seria decoração.
+    //
+    // ⚠️⚠️ **São DUAS asserções e não um `&&`, e a diferença não é de estilo.** Cada marca
+    // mede-se à maneira dela — o quadrado pelo meio-lado, o losango pela apótema —, então são
+    // duas grandezas distintas com duas causas distintas de falhar. Num `&&` a segunda é
+    // **logicamente implicada** pela primeira (`3,5/√2 ≈ 2,47 < 4,5`), o clippy diz que ela não
+    // tem efeito, **e tem razão**: escrita assim, o dia em que o losango deixasse de reprovar
+    // não moveria o gate. *Uma conjunção esconde qual metade caiu; dois asserts nomeiam-na.*
     assert!(
-        4.5 < bar && 3.5 / std::f64::consts::SQRT_2 < bar,
-        "a barra ({bar:.2}) tem de reprovar os valores que geraram o report (4,5 e 3,5)"
+        4.5 < bar,
+        "a barra ({bar:.2}) tem de reprovar o meio-lado do quadrado que shipava (4,5)"
+    );
+    assert!(
+        3.5 / std::f64::consts::SQRT_2 < bar,
+        "a barra ({bar:.2}) tem de reprovar a apotema do losango que shipava (3,5/√2 = {:.2})",
+        3.5 / std::f64::consts::SQRT_2
     );
 }
 

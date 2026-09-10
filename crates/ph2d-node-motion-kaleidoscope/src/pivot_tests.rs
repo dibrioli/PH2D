@@ -29,10 +29,10 @@ impl NodeOp for Src {
         &SRC
     }
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
-        ctx.emit(
-            Stream::new(3)
-                .with("P", Column::Vec2(vec![[9.0, 4.0], [10.0, 5.0], [11.0, 6.0]])),
-        );
+        ctx.emit(Stream::new(3).with(
+            "P",
+            Column::Vec2(vec![[9.0, 4.0], [10.0, 5.0], [11.0, 6.0]]),
+        ));
     }
 }
 struct Ops;
@@ -86,8 +86,14 @@ fn the_default_mode_is_the_node_that_shipped_bit_for_bit() {
             [px, py],
             0.0,
         );
-        let a: Vec<[u32; 2]> = com_modo.iter().map(|p| [p[0].to_bits(), p[1].to_bits()]).collect();
-        let b: Vec<[u32; 2]> = sem_modo.iter().map(|p| [p[0].to_bits(), p[1].to_bits()]).collect();
+        let a: Vec<[u32; 2]> = com_modo
+            .iter()
+            .map(|p| [p[0].to_bits(), p[1].to_bits()])
+            .collect();
+        let b: Vec<[u32; 2]> = sem_modo
+            .iter()
+            .map(|p| [p[0].to_bits(), p[1].to_bits()])
+            .collect();
         assert_eq!(a, b, "pivo ({px}, {py})");
     }
 }

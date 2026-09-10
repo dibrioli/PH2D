@@ -68,15 +68,17 @@ fn every_registered_kernel_fits_the_uniform_slot_and_declares_finite_identities(
             kernel,
             kernel.bindings,
             &port_names,
-            reg.grid(manifest.id),
-            // The node's declared reductions — a deformer's module carries a
-            // `reduce_*` storage binding per spec, so measuring the "widest
-            // layout this kernel can ask for" without them would measure a
-            // module the sequencer never builds.
-            reg.reduces(manifest.id),
-            // The node's LUTs — a Curve contour's module carries a `lut_*` storage
-            // binding + a `_sample` accessor, so the widest layout includes them.
-            reg.luts(manifest.id),
+            ph2d_gpu_cook::codegen::ExtraBuffers {
+                grid: reg.grid(manifest.id),
+                // The node's declared reductions — a deformer's module carries a
+                // `reduce_*` storage binding per spec, so measuring the "widest
+                // layout this kernel can ask for" without them would measure a
+                // module the sequencer never builds.
+                reduces: reg.reduces(manifest.id),
+                // The node's LUTs — a Curve contour's module carries a `lut_*` storage
+                // binding + a `_sample` accessor, so the widest layout includes them.
+                luts: reg.luts(manifest.id),
+            },
             // O canal PARTILHADO, pela mesma razão das duas acima: o módulo do nó
             // carrega o WGSL que ele divide com as reduções dele, e medir sem isso
             // mediria um módulo que o sequenciador nunca constrói.
@@ -172,9 +174,11 @@ fn the_storage_budget_counts_every_buffer_the_module_declares() {
             kernel,
             kernel.bindings,
             &port_names,
-            reg.grid(manifest.id),
-            reg.reduces(manifest.id),
-            reg.luts(manifest.id),
+            ph2d_gpu_cook::codegen::ExtraBuffers {
+                grid: reg.grid(manifest.id),
+                reduces: reg.reduces(manifest.id),
+                luts: reg.luts(manifest.id),
+            },
             // O canal PARTILHADO, pela mesma razão das duas acima: o módulo do nó
             // carrega o WGSL que ele divide com as reduções dele, e medir sem isso
             // mediria um módulo que o sequenciador nunca constrói.
@@ -189,9 +193,11 @@ fn the_storage_budget_counts_every_buffer_the_module_declares() {
         let budgeted = ph2d_gpu_cook::codegen::storage_buffers(
             kernel.bindings,
             |_| true,
-            reg.grid(manifest.id),
-            reg.reduces(manifest.id),
-            reg.luts(manifest.id),
+            ph2d_gpu_cook::codegen::ExtraBuffers {
+                grid: reg.grid(manifest.id),
+                reduces: reg.reduces(manifest.id),
+                luts: reg.luts(manifest.id),
+            },
         );
         assert_eq!(
             budgeted, declared,

@@ -65,7 +65,7 @@ pub(super) fn captions() -> Vec<Caption> {
         Caption::new([DESLOCAMENTO, RAIO * 1.4], "arraste ESTA alca"),
         Caption::new(
             [-LARGURA * 0.5, -LARGURA * 0.62],
-            "Falloff ▸ Shape: Circle → Rect",
+            "Falloff ▸ Shape: Circle -> Rect",
         ),
     ]
 }

@@ -387,6 +387,17 @@ impl ParamGroup {
     }
 }
 
+/// **A PERGUNTA QUE UM PARAM FAZ AOS OUTROS PARAMS DO MESMO NÓ** — *este controlo tem sujeito?*
+///
+/// Ela recebe um leitor de params (`|nome| valor`) e não o nó, porque a resposta nunca depende de
+/// mais nada: um [`ParamGate`] compara com uma lista de índices, este compara o que quiser.
+///
+/// ⚠️ **É um alias e não a assinatura à solta** porque um ponteiro de função sobre um
+/// objecto-trait escrito por extenso é ilegível no sítio onde alguém tem de o LER — foi o clippy
+/// a nomeá-lo (*very complex type*), e a cura de um tipo complexo é dar-lhe um nome, nunca uma
+/// isenção.
+pub type ParamPredicate = fn(&dyn Fn(&str) -> f32) -> bool;
+
 /// ⭐⭐ **UM PARAM DE TEXTO SEM O QUAL O NÓ NÃO TEM SUJEITO** — o irmão de texto de um input
 /// requerido (`NodeRegistry::register_required_inputs`).
 ///
@@ -416,7 +427,7 @@ pub struct RequiredTextParam {
     pub param: &'static str,
     /// `None` ⇒ sempre exigido. `Some(p)` ⇒ exigido só quando `p` devolve `true`, lido sobre os
     /// params `f32` deste nó (override, senão o default do manifesto).
-    pub only_when: Option<fn(&dyn Fn(&str) -> f32) -> bool>,
+    pub only_when: Option<ParamPredicate>,
 }
 
 impl core::fmt::Debug for RequiredTextParam {

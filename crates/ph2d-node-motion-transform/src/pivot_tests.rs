@@ -191,7 +191,10 @@ fn the_pivot_folds_into_the_offset_instead_of_becoming_a_second_affine() {
         }
     }
     // E o atalho do neutro devolve o offset intacto.
-    assert_eq!(folded_offset(2.0, 2.0, NO_SHEAR, 1.5, -2.5, [0.0, 0.0]), (1.5, -2.5));
+    assert_eq!(
+        folded_offset(2.0, 2.0, NO_SHEAR, 1.5, -2.5, [0.0, 0.0]),
+        (1.5, -2.5)
+    );
 
     // ⚠️ E AQUI e onde o atalho deixa de ser cosmetico, no unico valor que o
     // separa da rota aritmetica: com `scale < 1` o termo `0 * (1 - s)` e `+0.0`,
@@ -262,7 +265,10 @@ fn a_centroid_of_nothing_falls_back_to_the_origin() {
 fn the_kernel_takes_every_pivot_mode_including_the_centroid() {
     let ok = |mode: f32| {
         GPU_KERNEL.applicable.is_none_or(|f| {
-            f(&(|name: &str| if name == "pivot_mode" { mode } else { 0.0 }) as &dyn Fn(&str) -> f32)
+            f(
+                &(|name: &str| if name == "pivot_mode" { mode } else { 0.0 })
+                    as &dyn Fn(&str) -> f32,
+            )
         })
     };
     assert!(ok(0.0), "a origem sao numeros");
@@ -291,7 +297,10 @@ fn the_pivot_vocabulary_is_the_ports_and_not_a_copy() {
     let porta = ph2d_nodegraph::pivot::CENTROID_REDUCES;
     assert_eq!(REDUCES.len(), porta.len(), "a tabela tem de ser a da porta");
     for (a, b) in REDUCES.iter().zip(porta) {
-        assert_eq!((a.name, a.column, a.op, a.value), (b.name, b.column, b.op, b.value));
+        assert_eq!(
+            (a.name, a.column, a.op, a.value),
+            (b.name, b.column, b.op, b.value)
+        );
         assert_eq!((a.dim, a.port, a.identity), (b.dim, b.port, b.identity));
     }
     // E os rotulos que o cartao pinta sao os da porta, na ordem da porta.

@@ -104,7 +104,6 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     lowerings: &[LoweringKind::Cpu],
 };
 
-
 /// The whole-stream reduction this deformer needs: the **rim radius** about the
 /// pivot (GPU/M5, the deformer channel — `ph2d_nodegraph::reduce_meta`).
 ///

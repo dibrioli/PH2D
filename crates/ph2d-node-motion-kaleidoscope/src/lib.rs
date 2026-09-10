@@ -59,9 +59,7 @@ use ph2d_node_registry::{NodeRegistry, ParamUnit, ParamUnitDecl, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
-use ph2d_nodegraph::gpu::{
-    StreamOp,
-};
+use ph2d_nodegraph::gpu::StreamOp;
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -137,7 +135,6 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     ],
     lowerings: &[LoweringKind::Cpu],
 };
-
 
 /// Replicate `p` into `segments` slices about `pivot`, rotated by `spin_cycles`, with
 /// every odd slice mirrored when `reflect`. Returns the `segments · n` positions

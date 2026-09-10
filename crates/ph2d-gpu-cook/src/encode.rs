@@ -101,9 +101,11 @@ impl GpuCook {
                     kernel,
                     bindings,
                     &port_names,
-                    grid.map(|(s, _)| s),
-                    reduces.0,
-                    luts.0,
+                    codegen::ExtraBuffers {
+                        grid: grid.map(|(s, _)| s),
+                        reduces: reduces.0,
+                        luts: luts.0,
+                    },
                     shared,
                     present,
                 );

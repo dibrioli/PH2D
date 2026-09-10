@@ -175,7 +175,7 @@ pub(crate) fn nomes(grupo: &[&str]) {
             .iter()
             .find(|v| v.id == id.0)
             .map_or("(sem cartao)", |v| v.display_name.as_str());
-        eprintln!("  {nome:<26} → cartão «{t}»");
+        eprintln!("  {nome:<26} -> cartão «{t}»");
     }
     let _ = m;
     eprintln!();

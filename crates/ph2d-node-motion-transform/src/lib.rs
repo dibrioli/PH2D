@@ -222,10 +222,7 @@ impl Shear {
 /// O afim COM cisalhamento. Ver [`apply_xform`] para o caminho neutro, que é o que todo
 /// documento já autorado percorre.
 fn apply_sheared(p: [f32; 2], sx: f32, sy: f32, sh: Shear, ox: f32, oy: f32) -> [f32; 2] {
-    [
-        p[0] * sx + p[1] * sh.kx + ox,
-        p[1] * sy + p[0] * sh.ky + oy,
-    ]
+    [p[0] * sx + p[1] * sh.kx + ox, p[1] * sy + p[0] * sh.ky + oy]
 }
 
 /// The per-element affine map `p' = p * scale + (ox, oy)`. Pure and isolated so
@@ -321,7 +318,6 @@ fn xform_masked(p: [f32; 2], sx: f32, sy: f32, sh: Shear, ox: f32, oy: f32, f: f
     [p[0] + (full[0] - p[0]) * f, p[1] + (full[1] - p[1]) * f]
 }
 
-
 /// As reduções que este nó precisa: o **centroide** do layout, como duas somas
 /// sobre `P.x` e `P.y` — as MESMAS do [`motion.spherize`], e o kernel divide cada
 /// uma por `params.count` para recuperar a média (o `Σp / n` da [`centroid`]).
@@ -341,7 +337,6 @@ fn xform_masked(p: [f32; 2], sx: f32, sy: f32, sh: Shear, ox: f32, oy: f32, f: f
 /// nota que o `motion.spherize` escreveu quando pagou estas duas.
 ///
 /// [doc 106 §4.W1]: ../../../docs/Motion%20Nodes/106_ciclo_3_transformes_e_deformadores.md
-
 struct MotionTransform;
 
 impl NodeOp for MotionTransform {

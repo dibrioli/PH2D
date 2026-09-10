@@ -122,7 +122,7 @@ fn colher(fig: &Fig) -> Vec<([f32; 2], f32)> {
         Some(Column::Vec2(v)) => v.iter().map(|q| q[0]).collect::<Vec<_>>(),
         _ => Vec::new(),
     };
-    p.into_iter().zip(s).map(|(pos, tam)| (pos, tam)).collect()
+    p.into_iter().zip(s).collect()
 }
 
 /// O SVG: **um quadrado por elemento, do tamanho que o cook lhe deu**.

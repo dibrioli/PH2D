@@ -72,7 +72,7 @@ pub(super) fn captions() -> Vec<Caption> {
         Caption::new([0.0, 0.0], "a origem do mundo"),
         Caption::new(
             [DESLOCAMENTO, LARGURA * 1.1],
-            "Twist ▸ Pivot: Point → Centroid",
+            "Twist ▸ Pivot: Point -> Centroid",
         ),
     ]
 }

@@ -1103,6 +1103,7 @@ impl App {
             vec_stack_smoke_done: false,
             vec_bone_smoke_step: 0,
             vec_bone_smoke_pend: None,
+            vec_bone_smoke_img: None,
             vec_fade_smoke_done: false,
             nest_smoke_done: false,
             player_readout_log: None,

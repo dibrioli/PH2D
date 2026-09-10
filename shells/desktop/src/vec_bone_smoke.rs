@@ -220,6 +220,37 @@ impl crate::App {
         let a = cadeia(&mut gfx.sim, ARM_A, ARM_B, ARM_BONES);
         let t = cadeia(&mut gfx.sim, [-8.2, -0.1], [0.2, -0.1], TENTACLE_BONES);
         let f = cadeia(&mut gfx.sim, [3.0, -3.5], [8.0, -3.5], 2);
+        // ⭐⭐⭐ **A 4.ª PEÇA: um desenho PINTADO** — a 2.ª mídia (ordem do dono, 2026-09-09).
+        //
+        // ⚠️ Ela nasce **solta**, como a folha: o gesto do *Bind* é o que a cena ensina. E o
+        // esqueleto dela fica por baixo do braço pintado, na mesma pose relativa do braço vectorial
+        // — assim as duas mídias vêem-se lado a lado a responder ao MESMO gesto.
+        let ppm = gfx.hero_screen.as_ref().map_or(64.0, |h| {
+            h.project.pixels_per_meter.max(crate::EPS_PIXELS_PER_METER)
+        });
+        let px = arm_pixels();
+        let img = match gfx.renderer.acquire_individual(IMG_W, IMG_H, &px) {
+            Ok(texture_id) => {
+                let pixels_id = gfx.asset_db.insert_image_rgba8(IMG_W, IMG_H, px);
+                let (_, bits) = crate::image_import::spawn_sprite(
+                    &mut gfx.sim,
+                    crate::image_import::PackedSource::Individual {
+                        texture_id,
+                        pixels_id,
+                    },
+                    ph2d_core::Vec2::new(5.5, 2.5),
+                    [f64::from(IMG_W) as f32 / ppm, f64::from(IMG_H) as f32 / ppm],
+                    "Painted arm",
+                );
+                let raiz = cadeia(&mut gfx.sim, [3.6, 2.5], [7.4, 2.5], 3);
+                Some((bits, raiz))
+            }
+            Err(e) => {
+                eprintln!("[vec-bone-smoke] a imagem nao subiu para a GPU: {e}");
+                None
+            }
+        };
+        self.vec_bone_smoke_img = img;
         self.vec_bone_smoke_pend = Some([(braco, a), (tentaculo, t), (folha, f)]);
         self.vec_bone_smoke_step = 1;
     }
@@ -236,6 +267,40 @@ impl crate::App {
             self.vec_entities.len(),
             gfx.vec_scene.paths().len()
         );
+        // ⭐⭐⭐ **A IMAGEM É PRESA PELA CENA, como o braço e o tentáculo** — e pela mesma razão
+        // escrita no cabeçalho: sem uma peça que já obedece, o primeiro gesto do artista seria
+        // montar tudo do zero para só então descobrir se funciona.
+        if let Some((bits, raiz)) = self.vec_bone_smoke_img
+            && let Some(e) = ph2d_ecs::Entity::try_from_bits(bits)
+        {
+            let arte = gfx
+                .sim
+                .world()
+                .get::<ph2d_ecs::SpritePixels>(e)
+                .map(|p| p.0)
+                .and_then(|id| gfx.asset_db.get(&id));
+            let feito = arte
+                .as_ref()
+                .and_then(|a| a.image_rgba8())
+                .is_some_and(|(w, h, cow)| {
+                    crate::skeleton_live::bind_image(
+                        &mut gfx.sim,
+                        e,
+                        &cow,
+                        [w, h],
+                        ph2d_poly2d::MeshOptions::default(),
+                        raiz,
+                    )
+                });
+            eprintln!(
+                "[vec-bone-smoke] o desenho PINTADO {}",
+                if feito {
+                    "esta' preso ao esqueleto"
+                } else {
+                    "NAO prendeu -- PARE, a 2a midia nao montou"
+                }
+            );
+        }
         let mut presas = 0;
         for (id, raiz) in pecas.iter().take(2) {
             presas += crate::skeleton_live::bind(
@@ -374,4 +439,56 @@ impl crate::App {
              da dobra nao tem sujeito."
         );
     }
+}
+
+/// Lado da imagem da 4.ª peça, em pixels.
+const IMG_W: u32 = 320;
+/// Altura da imagem da 4.ª peça. Ver [`IMG_W`].
+const IMG_H: u32 = 96;
+
+/// ⭐⭐⭐ **A ARTE DA 4.ª PEÇA — um braço PINTADO, com listras.**
+///
+/// ⚠️ **As listras são o que torna a dobra legível.** Uma barra de cor chapada deformada lê-se
+/// quase igual à mesma barra rodada; com listras transversais, dobrar o cotovelo **abre um leque**
+/// que o olho vê de imediato. *Uma cena que não distingue a deformação da rotação não prova a
+/// deformação.*
+///
+/// ⚠️ **A borda é SUAVE** (o alfa sobe ao longo de ~2 px), e é de propósito: é o caso que o limiar
+/// de `1` do traçador defende, e uma arte de borda dura não o testaria.
+fn arm_pixels() -> Vec<u8> {
+    let (w, h) = (IMG_W as f64, IMG_H as f64);
+    let raio = h / 2.0 - 3.0;
+    let (ax, bx) = (raio + 3.0, w - raio - 3.0);
+    let mut px = vec![0u8; (IMG_W * IMG_H * 4) as usize];
+    for y in 0..IMG_H {
+        for x in 0..IMG_W {
+            let p = [f64::from(x) + 0.5, f64::from(y) + 0.5];
+            // Distância à cápsula deitada — o eixo vai de `ax` a `bx` a meia altura.
+            let cx = p[0].clamp(ax, bx);
+            let d = (p[0] - cx).hypot(p[1] - h / 2.0);
+            let cobertura = (raio + 1.0 - d).clamp(0.0, 1.0);
+            if cobertura <= 0.0 {
+                continue;
+            }
+            // Listras transversais a cada 24 px, mais um degradê ao longo do braço.
+            let faixa = ((p[0] / 24.0).floor() as i32).rem_euclid(2) == 0;
+            let t = (p[0] / w).clamp(0.0, 1.0);
+            let base: [f64; 3] = if faixa {
+                [235.0, 180.0, 95.0]
+            } else {
+                [190.0, 120.0, 70.0]
+            };
+            let i = ((y * IMG_W + x) * 4) as usize;
+            for k in 0..3 {
+                let v = base[k] * 0.25f64.mul_add(-t, 1.0);
+                #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+                let b = v.clamp(0.0, 255.0) as u8;
+                px[i + k] = b;
+            }
+            #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+            let a = (cobertura * 255.0) as u8;
+            px[i + 3] = a;
+        }
+    }
+    px
 }

@@ -281,7 +281,7 @@ losango seria um alvo morto.
 | F3 | **Smart Bones** (Moho) | ✅ **FECHADO** (2026-09-08) — ver abaixo |
 | F4 | **Limites de ângulo por junta** | ✅ **FECHADO** (2026-09-07) — ver abaixo |
 | F5 | ~~**Pole target**~~ → **O LADO DA DOBRA** | ✅ **FECHADO** (2026-09-07) — ver abaixo |
-| F6 | **A segunda mídia** (raster/Flip) | ⛔ **bloqueado**: precisa de uma malha sobre a imagem, que não existe — meça o preço antes de prometer |
+| F6 | **A segunda mídia** (raster/Flip) | ✅ **FECHADA para o RASTER** (2026-09-09) — ver F6 abaixo. ⛔ A nota antiga dizia *«bloqueado: precisa de uma malha sobre a imagem, que não existe»*: estava certa sobre o facto e errada sobre o preço — **duas das quatro peças já existiam**, e o doc de uma delas dizia-o por escrito. O **Flip** continua por fazer |
 | F7 | **O painel próprio do módulo** | ✅ **FECHADO** (2026-09-09, por escolha do dono) — ver F3-m abaixo. A nota antiga: ⏸️ **a condição CAIU e a medição era falsa por ~3×** — ela dizia *«adiado até F3–F5 lhe darem conteúdo (hoje são 3 botões e 5 campos)»*, e as três estão ✅ nesta mesma tabela enquanto a secção tem **10 verbos** e **9 campos** (`VECTOR_BONE_VERBS`/`_FIELDS`, comprimento verificado pelo compilador), mais uma fileira segmentada e dois selectores. ⇒ decisão do dono, não mais um adiamento medido |
 
 ---
@@ -1420,6 +1420,86 @@ defeito mais caro desta família: *o osso acaba no cursor na tela e nasce na bol
 comprimento (`joint_radius_px = min(12, comp/4)`), e um osso de `10` oferece um alvo de `2,5` — o
 ponteiro estava a `3,6`. *O raio do alvo é do DESENHO, e uma fixtura que não o calcula mede outra
 coisa.*
+
+
+### F6 — ✅ **A SEGUNDA MÍDIA: uma IMAGEM obedece ao esqueleto** (ordem do dono, 2026-09-09)
+
+> *«Prender desenhos/imagens aos ossos»* · *«faça pesquisa para criar o modo mais intuitivo e
+> eficaz de criar e fazer o bind da malha»* · *«quero o estado da arte»* · *«vamos tentar como vc
+> recomenda»*
+
+⛔⛔ **A entrada anterior desta linha dizia «bloqueado: precisa de uma malha sobre a imagem, que
+não existe — meça o preço antes de prometer».** Ela estava certa sobre o facto e o preço era outro:
+duas das quatro peças **já existiam**, e o doc de uma delas dizia-o por escrito.
+
+Pesquisa completa, com as sete ferramentas e as recusas:
+[`02_pesquisa_a_malha_sobre_a_imagem.md`](02_pesquisa_a_malha_sobre_a_imagem.md).
+Página de leitura do dono: <https://claude.ai/code/artifact/0efd5bdd-c103-4f64-a965-7b863c9a8f5d>
+
+#### O que a pesquisa decidiu
+
+⭐⭐⭐ **O campo inteiro deixou de mandar o artista construir a malha.** Spine (*Create Hull*),
+Live2D (*Automatic Mesh Generation*), OpenToonz (*Plastic*) e o **Puppet** do After Effects — que
+não tem interface de malha nenhuma — derivam-na do recorte da própria tinta; e os pesos são
+automáticos por distância em cinco das sete, com o pincel como **correcção**.
+
+⛔⛔ **E a porta aberta que temos é o contra-exemplo, medido no binário dele:** o Godot (MIT) faz
+`Create Internal Vertex` um a um e `Paint Bone Weights` à mão, **sem nenhum automático**. Portá-lo
+seria portar o trabalho.
+
+#### O balanço, medido antes de uma linha de código
+
+| | |
+|---|---|
+| ✅ | **peso automático** — `weights_at`, derivado por distância, sem tabela guardada (`0,146 %` de um quadro) |
+| ✅ | **a pele já é agnóstica de mídia** — o doc do `SkinBind::source` dizia *«serve um `VecPath` hoje e uma malha raster amanhã sem uma variante nova nem um schema por mídia»* |
+| ⏳ | a malha sobre a imagem |
+| ⏳ | desenhar imagem entortada (`draw_image_rgba_transformed` é **um afim por imagem**) |
+
+#### O que foi construído
+
+| porta | pergunta |
+|---|---|
+| [`ph2d_poly2d`](../../crates/ph2d-poly2d/) (crate nova, zero deps obrigatórias) | onde a tinta acaba · o orçamento do artista · em que triângulos isso se divide |
+| `Xform::from_triangle` | o afim que faz a imagem entortar |
+| `skeleton_live::bind_image` + `tendons_for` | prender, pela **mesma** lei de tendões das formas |
+| `skeleton_skin_image::{pixel_to_local, posed_local, draw_skinned_images}` | a régua da imagem, a pose, e o desenho |
+| `sim_extract::skinned_image` | a sprite original **sai do passe**, por facto derivado |
+
+⭐⭐ **Zero capacidade nova de render.** O `push_clip(forma)` já existia, o
+`draw_image_rgba_transformed` já existia, e o compositor põe o Vello **por cima** do passe de
+sprites: cada triângulo é um recorte mais um afim. Dois triângulos vizinhos concordam nos dois
+vértices que partilham ⇒ **a continuidade é consequência, não tolerância**.
+
+⛔ **Não se escreve `Visibility`** para esconder a original: é o olho da Hierarquia, e escrevê-lo
+poria a shell a discutir com o artista — *duas fontes de verdade para o mesmo bool, e a que o
+artista toca é a que perde*, a lei que o menu *Window* desta mesma linha pagou horas antes.
+
+#### ⚠️ DOIS defeitos que só a fixtura CONTADA achou, ambos no mesmo algoritmo
+
+1. **O critério de paragem do rastreio comparava com a entrada ARTIFICIAL do arranque**, que o laço
+   nunca reproduz ⇒ ele **nunca disparava**. Medido: um quadrado de `10×10` deu **3201** pontos em
+   vez de 36 — 89 voltas até bater no tecto de segurança. *Um critério de paragem que compara com
+   um valor que o laço nunca produz é um laço infinito com cara de algoritmo.*
+2. **O `backtrack` do passo seguinte** tem de ser o vizinho que PRECEDE o achado na ordem de Moore,
+   e não *«o último vazio que se viu»*. Sintoma: três testes acima de 60 s.
+
+⚠️⚠️ **Os dois só apareceram porque a fixtura pedia o perímetro CONTADO (`36`).** Uma que só
+exigisse *«um anel não vazio»* teria ficado verde nos dois casos.
+
+**Gates:** 9 na malha · 2 no afim · 5 na 2.ª mídia · 3 na costura = **19**, com **11** mutações
+mortas.
+
+⚠️⚠️ **E a prova de mutação expôs o limite dos gates de TEXTO:** pôr `if false &&` à frente do
+*Bind* de imagens **SOBREVIVEU** — o texto continua lá. ⛔ A cura não é apertar a varredura (seria
+uma corrida contra o próximo idioma que a desliga): a metade que falta mede-se do outro lado, nos
+gates de unidade, e a nota está escrita no cabeçalho do ficheiro. *Um gate de texto responde «isto
+está escrito», nunca «isto corre».*
+
+⏳ **ABERTO, e nomeado:** a malha é só o **contorno** (o *ear-clipping* não põe vértices no miolo),
+logo um membro grosso dobra pela borda; um **buraco** no meio de uma forma não é traçado, e a malha
+cobre-o; e o número de triângulos por quadro **não foi medido sob cena cheia** — a rota por
+pipeline de triângulos texturados é a optimização, com razão medida, se a de hoje não couber.
 
 
 ## ⛔ Recusas MEDIDAS deste módulo — não as reconstrua

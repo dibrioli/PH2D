@@ -811,6 +811,12 @@ pub(crate) struct App {
     /// prender exige a ENTIDADE da forma, e quem a cria corre depois do prólogo.
     pub(crate) vec_bone_smoke_step: u8,
     /// As três peças da cena entre os dois tempos: `(forma, raiz do esqueleto dela)`.
+    /// ⭐ **A IMAGEM da cena de osso** — os bits da sprite e a raiz do esqueleto dela.
+    ///
+    /// ⚠️ **Slot próprio, e não uma 4.ª entrada no `_pend`:** aquele guarda `VecPathId`, e uma
+    /// imagem não é um caminho. Enfiá-la lá pediria um id inventado, e o passo que espera as
+    /// entidades (`vec_entities::contains_key`) procuraria por ele para sempre.
+    pub(crate) vec_bone_smoke_img: Option<(u64, Option<ph2d_ecs::Entity>)>,
     pub(crate) vec_bone_smoke_pend:
         Option<[(ph2d_vec_scene::VecPathId, Option<ph2d_ecs::Entity>); 3]>,
     pub(crate) vec_fade_smoke_done: bool,

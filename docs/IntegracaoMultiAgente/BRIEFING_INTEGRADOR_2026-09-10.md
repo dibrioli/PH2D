@@ -149,7 +149,7 @@ acentuado em doc-comments — foi o `typos` que apanhou dois vermelhos na integr
 | o quê | endereço | cura |
 |---|---|---|
 | textual em `crates/ph2d-i18n/src/sculpt3d.rs` | UIUX **+5** (a chave `panel.sculpt3d.empty`, no meio) · sculpt3d **+36** (apendadas) | **união dos dois lados** — uma tabela de tradução é append-only por construção |
-| comentários em 6 crates de outras linhas (`ph2d-painter-brush`, `ph2d-flip*`, `ph2d-tool-flip`, `ph2d-panel-painter-layers`) | a cura de citações da clean-room | ⚠️ **zero linhas fora de comentário**, medido. *Prefira o lado desta linha nos comentários e o lado do `main` no código* — se a cura de citação se perder, a catraca `architecture_no_restricted_source_citations` volta a acusar |
+| comentários em 6 crates de outras linhas (`ph2d-painter-brush`, `ph2d-flip*`, `ph2d-tool-flip`, `ph2d-panel-painter-layers`) | a cura de citações da clean-room | ⚠️ **zero linhas fora de comentário**, medido. *Prefira o lado desta linha nos comentários e o lado do `main` no código* — se a cura de citação se perder, a **catraca de citações de fonte restrita que esta linha traz** volta a acusar (o nome exacto do gate está no handoff dela, §2). ⛔ **O nome NÃO se escreve aqui de propósito, e repô-lo reprova a rodada:** ele só existe no `main` **depois** desta fusão, e o `instructional_docs_only_reference_existing_gates` acusa qualquer doc de `docs/IntegracaoMultiAgente/` que nomeie um `architecture_*` que ainda não é teste — foi ele, e este briefing, que reprovaram a **fusão 1** desta rodada |
 
 ### Fusão 5 — `line/motion-value`
 | o quê | endereço | cura |

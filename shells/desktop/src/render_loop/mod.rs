@@ -2177,12 +2177,21 @@ impl crate::App {
         // 60 Hz não é diagnóstico, é ruído que esconde o que interessa.
         if self.signal_log_reader.is_some() && audio_report != self.last_audio_report {
             self.last_audio_report = audio_report;
+            // ⭐⭐⭐ **O PICO DO MASTER vai na mesma linha**, e ele é o que separa duas avarias que
+            // dão o mesmo sintoma: *«não ouço nada»* com pico `0,000` é o som a não chegar ao
+            // mixer; com pico a mexer é o mixer a produzir e o **dispositivo** a não entregar.
+            // ⛔ Sem ele, as duas leem-se iguais — e foi essa a pergunta que o report de 2026-09-09
+            // deixou sem instrumento.
+            let pico = self.audio.as_ref().map_or([0.0, 0.0], |a| a.levels());
             eprintln!(
-                "[audio-2d] {} fonte(s) · {} ouvinte(s) · {} voz(es) viva(s) · {} arrancada(s)",
+                "[audio-2d] {} fonte(s) · {} ouvinte(s) · {} voz(es) viva(s) · {} arrancada(s) · \
+                 pico do master L{:.3} R{:.3}",
                 audio_report.sources,
                 audio_report.listeners,
                 audio_report.live,
-                audio_report.started
+                audio_report.started,
+                pico[0],
+                pico[1]
             );
         }
 

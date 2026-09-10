@@ -1248,6 +1248,82 @@ fn the_front_face_switch_flips_the_brush_field() {
     }
 }
 
+/// ⭐⭐⭐ **O `Connected Only` existe em todo verbo MENOS o Cloth.**
+///
+/// ⚠️ **A varredura genérica deste ficheiro é cega a ele** — ele não é uma `Row`
+/// (é um toggle, não um número) —, então sem este gate apagar a metade que o
+/// pinta deixa todos os outros verdes.
+#[test]
+fn the_connected_only_switch_exists_for_every_verb_but_the_cloth() {
+    let mut seen = (false, false);
+    for verb in Verb::ALL {
+        let mut ui = Sculpt3dUi::default();
+        ui.brush.verb = verb;
+        let offers = ui.brush.offers_surface_only();
+        let (mut host, mut state) = arrange(ui.clone());
+        let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
+        assert_eq!(
+            painted
+                .iter()
+                .any(|(pid, _)| *pid == ids::SCULPT3D_SURFACE_ONLY),
+            offers,
+            "com {verb:?} a caixa `Connected Only` devia {}",
+            if offers { "estar lá" } else { "sumir" }
+        );
+        if offers {
+            seen.0 = true;
+        } else {
+            seen.1 = true;
+        }
+    }
+    // ⚠️ **O CONTROLE das duas pontas:** um `offers` constante deixaria o laço
+    // acima verde afirmando nada. ⛔ E o `false` só existe porque o `Verb::Cloth`
+    // desvia antes do `dab_core` — se algum dia ele passar a lá entrar, este
+    // controle reprova e é a pergunta certa a fazer.
+    assert!(
+        seen.0 && seen.1,
+        "a varredura não achou os dois casos: {seen:?} -- o Cloth e' o unico verbo \
+         que NAO oferece a caixa, e sem ele o laco nao discrimina nada"
+    );
+}
+
+/// ⭐⭐⭐ **E O CLIQUE CHEGA AO CAMPO DO PINCEL** — a metade que nenhum gate de
+/// registo vê.
+///
+/// ⛔⛔ **Este gate nasceu de uma mutação SOBREVIVENTE** (2026-09-10): apagar a
+/// entrada do `Connected Only` da tabela `TOGGLES` — ou seja, a caixa pintada,
+/// registada, e o clique a não virar nada — deixava **toda** a suíte verde. É a
+/// família do *«dreno de um braço só»* que o `CLAUDE.md` §5.0 nomeia: *nenhum
+/// instrumento desta casa pergunta se o VALOR chega a um consumidor*, e o
+/// `every_painted_control_is_clickable_where_it_is_drawn` prova que o clique
+/// **chega ao painel**, nunca que a escrita dele chega ao pincel.
+#[test]
+fn the_connected_only_switch_flips_the_brush_field() {
+    for before in [false, true] {
+        let mut ui = Sculpt3dUi::default();
+        ui.brush.surface_only = before;
+        assert!(
+            ui.brush.offers_surface_only(),
+            "a fixture perdeu a premissa: o verbo de omissao tem de oferecer a caixa"
+        );
+        let (mut host, mut state) = arrange(ui.clone());
+        host.apply_panel_event::<Sculpt3dPanel>(
+            &mut state,
+            WidgetEvent::Click(ids::SCULPT3D_SURFACE_ONLY),
+        );
+        let Sculpt3dIntent::SetUi(got) = only_intent("surface_only") else {
+            panic!("o `Connected Only` enfileirou o tipo errado de intent");
+        };
+        let mut want = ui;
+        want.brush.surface_only = !before;
+        assert_eq!(
+            got, want,
+            "o `Connected Only` nao alternou, ou levou um vizinho -- e uma caixa que \
+             nao vira nada le-se exactamente como uma que funciona"
+        );
+    }
+}
+
 /// **O INTERRUPTOR DA LÂMINA existe, e SÓ com a lâmina em mãos.**
 ///
 /// ⚠️ **Perguntado por ID e não pela tabela** — ele não é uma `Row` (é um

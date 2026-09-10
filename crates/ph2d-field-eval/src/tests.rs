@@ -1928,10 +1928,7 @@ fn the_numeric_law_is_the_same_law_as_the_tree() {
         // ⭐ As cinco da W145.
         Blend::Soft { radius: 0.08 },
         Blend::Bead { radius: 0.08 },
-        Blend::Groove {
-            radius: 0.08,
-            width: 0.05,
-        },
+        Blend::Groove { radius: 0.08 },
         Blend::Ridge {
             radius: 0.08,
             width: 0.05,

@@ -86,13 +86,7 @@ fn novas() -> Vec<(&'static str, Blend)> {
     vec![
         ("Soft", Blend::Soft { radius: R }),
         ("Bead", Blend::Bead { radius: R }),
-        (
-            "Groove",
-            Blend::Groove {
-                radius: R,
-                width: R * Blend::SEAM_WIDTH_RATIO,
-            },
-        ),
+        ("Groove", Blend::Groove { radius: R }),
         (
             "Ridge",
             Blend::Ridge {
@@ -178,17 +172,25 @@ fn the_seam_characters_stay_inside_the_march_bucket() {
 #[test]
 fn the_groove_carves_and_the_ridge_protrudes() {
     let t = f64::from(R) * 0.3;
-    // Um ponto DENTRO do sólido, junto da costura: o sulco tem de o pôr fora.
-    let sulco = Field::new(&cunha(
-        90.0,
-        Blend::Groove {
-            radius: R,
-            width: R * Blend::SEAM_WIDTH_RATIO,
-        },
-    ));
+    let sulco = Field::new(&cunha(90.0, Blend::Groove { radius: R }));
+    // ⭐ **Um ponto dentro do sólido e FORA de uma das duas peças**, junto do vinco: é ali que um
+    // canal corta. A [`cunha`] põe as paredes a `±45°`, então este ponto está dentro de uma e fora
+    // da outra.
+    let (cx, cy) = (-t, t);
     assert!(
-        sulco.at(-t, -t, 0.0) > 0.0,
-        "o sulco nao escavou: um ponto a {t:.3} dentro da costura continua em materia (leu {:.4})",
+        sulco.at(cx, cy, 0.0) > 0.0,
+        "o sulco nao escavou: um ponto a {t:.3} do vinco continua em materia (leu {:.4})",
+        sulco.at(cx, cy, 0.0)
+    );
+    // ⛔⛔ **E O PONTO DENTRO DAS DUAS FICA INTACTO — é a GUARDA, e é ela o report de 09/09.**
+    //
+    // Escavar ali é escavar a SOLDA entre as duas peças, e foi isso que soltou o saliente da chapa
+    // na foto do dono. ⚠️ Este `assert` é o **oposto** do de cima e mede o mesmo operador: sem ele, a
+    // cura podia ser desfeita por quem lesse só a primeira metade.
+    assert!(
+        sulco.at(-t, -t, 0.0) < 0.0,
+        "o sulco escavou a SOLDA (leu {:.4} onde as duas pecas se sobrepoem) — e' assim que ele \
+         solta um saliente da chapa",
         sulco.at(-t, -t, 0.0)
     );
     // Um ponto FORA, no vão do canto: o friso e o cordão têm de o pôr dentro.
@@ -387,13 +389,7 @@ fn a_groove_carves_and_a_ridge_lifts_in_all_three_operations() {
         ("Intersecção", Op::Intersection as fn(Blend) -> Op),
         ("Subtração", Op::Difference as fn(Blend) -> Op),
     ] {
-        let (t_sulco, p_sulco) = conta(
-            op,
-            Blend::Groove {
-                radius: R,
-                width: largura,
-            },
-        );
+        let (t_sulco, p_sulco) = conta(op, Blend::Groove { radius: R });
         let (t_friso, p_friso) = conta(
             op,
             Blend::Ridge {

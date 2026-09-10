@@ -164,10 +164,7 @@ fn blended(b: Blend) -> ops::Blended {
         // o número **é** a grandeza (a espessura do cordão, a profundidade do sulco, a altura do
         // friso), e multiplicá-lo por um factor faria o slider mentir.
         Blend::Bead { radius } => ops::Blended::Bead(f64::from(radius)),
-        Blend::Groove { radius, width } => ops::Blended::Groove {
-            depth: f64::from(radius),
-            width: f64::from(width),
-        },
+        Blend::Groove { radius } => ops::Blended::Groove(f64::from(radius)),
         Blend::Ridge { radius, width } => ops::Blended::Ridge {
             height: f64::from(radius),
             width: f64::from(width),

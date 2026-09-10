@@ -127,6 +127,23 @@ pub enum Span {
     /// engrenagem de largura zero, uma moldura sem espessura. ⛔ **O zero NÃO passa**, e é essa a
     /// diferença para a [`Span::WallFromZero`].
     Wall(f32),
+    /// ⭐⭐⭐ **DO ZERO, com o tecto do DOCUMENTO e sem parede** (report do Enio, 2026-09-09:
+    /// *«os sliders das joints vão de 0 a 16 quando só precisa de 0 a 1»*).
+    ///
+    /// # ⛔ O que ela cura
+    ///
+    /// A [`Span::Positive`] entrega o tecto à **vista**, e o alcance da vista é o da **cena inteira**
+    /// (o raio da peça × 4, arredondado à potência de dois acima). Isso está certo para uma largura
+    /// — que pode legitimamente crescer até ao enquadramento — e está **errado** para um raio de
+    /// junta, que é um número **local**: numa fileira de seis peças o slider abria `0..16` para um
+    /// número cujo valor útil vive abaixo de `0,1`. *Todo o curso do dedo passava a caber num pixel.*
+    ///
+    /// ⚠️ **`Soft` e não `Hard`**: uma mistura continua a ser uma distância com qualquer raio, então
+    /// o campo numérico ao lado **não** tem tecto. O que este número fecha é o **curso do slider**.
+    ///
+    /// ⭐ Quem o calcula é quem conhece a peça (`ph2d_field_ecs::radius_bound`), e o valor é a
+    /// **menor peça sob o nó** — o raio a partir do qual a mistura a engole.
+    SoftFromZero(f32),
     /// ⭐⭐⭐ **Com parede E com o zero dentro** — a faixa dos DOIS RECUOS de uma aresta, o filete e o
     /// chanfro.
     ///

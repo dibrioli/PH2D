@@ -238,10 +238,7 @@ fn the_box_of_a_union_contains_every_child() {
         Blend::Organic { radius: 0.10 },
         Blend::Soft { radius: 0.10 },
         Blend::Bead { radius: 0.10 },
-        Blend::Groove {
-            radius: 0.10,
-            width: 0.07,
-        },
+        Blend::Groove { radius: 0.10 },
         Blend::Ridge {
             radius: 0.10,
             width: 0.07,

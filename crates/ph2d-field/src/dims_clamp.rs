@@ -104,7 +104,12 @@ fn coagido(value: f32, span: Span) -> Option<f32> {
         }
         // ⚠️ **A `Turn` não tem fronteira que se reponha** — um ângulo além da meia-volta não é
         // recusado, é renomeado (ver o doc dela). E as outras não têm parede nenhuma.
+        // ⚠️ **A `SoftFromZero` NÃO tem parede que se reponha**, e é isso que a separa da
+        // `WallFromZero`, que se escreve quase igual: o número dela é o **curso do slider**, e o
+        // campo continua correcto acima dele (ver [`Span::SoftFromZero`]). *Coagi-la aqui poria uma
+        // parede que ninguém mediu, exactamente o que o §0 proíbe.*
         Span::Positive
+        | Span::SoftFromZero(_)
         | Span::Free
         | Span::Along
         | Span::Choice(_)

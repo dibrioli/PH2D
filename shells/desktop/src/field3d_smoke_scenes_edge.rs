@@ -207,8 +207,19 @@ pub(crate) fn cena_32() -> Result<FieldDoc, ph2d_field::FieldError> {
     );
     const PASSO: f32 = 0.62;
     const R: f32 = 0.06;
-    // ⚠️⚠️ **A ESPESSURA DA CHAPA É LOAD-BEARING**: o sulco escava `R` a partir da superfície, e
-    // numa chapa fina ele **perfura** — o que se veria como um rasgo à volta da base e se leria como
+    // ⚠️⚠️⚠️ **A PENETRAÇÃO É LOAD-BEARING, e foi um report que o ensinou** (Enio, 09/09): o
+    // saliente entra `0,09` numa chapa de `0,18`, e é essa sobreposição que a guarda do sulco
+    // protege. Com uma penetração RASA (a 1.ª versão desta cena entrava `0,04`) o vinco fica a menos
+    // de um raio de canal de toda a face de baixo do saliente, e nem a guarda o salva.
+    //
+    // ⚠️⚠️⚠️ **E A ESPESSURA TEM UM NÚMERO DERIVADO, não escolhido:** o sulco localiza-se por
+    // `‖(a,b)‖`, e entre duas faces PARALELAS sem relação (a base do saliente e o fundo da chapa) o
+    // mínimo dessa distância é `h/√2`, onde `h` é o vão entre elas. ⇒ para o canal não morder ali é
+    // preciso **`h > R·√2`** — aqui `h = 0,12` contra `R·√2 = 0,085`. *Com `h = 0,08` ele mordia, e
+    // foi o gate da perfuração que o disse.*
+    //
+    // ⚠️ A espessura também importa pelo óbvio: o sulco escava `R` a partir da superfície, e numa
+    // chapa fina ele **perfura** — o que se veria como um rasgo à volta da base e se leria como
     // um defeito da peça, não como a feição. Com `0,14` de espessura e `R = 0,06` sobram `0,08`, e o
     // gate `the_new_junctions_scene_does_not_perforate_the_plate` mede-o.
     //
@@ -218,12 +229,12 @@ pub(crate) fn cena_32() -> Result<FieldDoc, ph2d_field::FieldError> {
     let chapa = |x: f32| {
         leaf(
             Primitive::Box {
-                half: [0.26, 0.26, 0.07],
+                half: [0.26, 0.26, 0.11],
                 round: 0.0,
                 chamfer: 0.0,
             },
             Xform {
-                translation: [x, 0.0, -0.07],
+                translation: [x, 0.0, -0.11],
                 ..Xform::IDENTITY
             },
         )
@@ -231,12 +242,12 @@ pub(crate) fn cena_32() -> Result<FieldDoc, ph2d_field::FieldError> {
     let saliente = |x: f32| {
         leaf(
             Primitive::Box {
-                half: [0.12, 0.12, 0.24],
+                half: [0.12, 0.12, 0.28],
                 round: 0.0,
                 chamfer: 0.0,
             },
             Xform {
-                translation: [x, 0.0, 0.20],
+                translation: [x, 0.0, 0.18],
                 ..Xform::IDENTITY
             },
         )
@@ -245,10 +256,7 @@ pub(crate) fn cena_32() -> Result<FieldDoc, ph2d_field::FieldError> {
         Blend::Exact { radius: R },
         Blend::Soft { radius: R },
         Blend::Bead { radius: R },
-        Blend::Groove {
-            radius: R,
-            width: R * Blend::SEAM_WIDTH_RATIO,
-        },
+        Blend::Groove { radius: R },
         Blend::Ridge {
             radius: R,
             width: R * Blend::SEAM_WIDTH_RATIO,

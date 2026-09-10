@@ -253,6 +253,10 @@ pub(crate) fn param_rows(
             let (lo, bound) = match d.span {
                 // Positiva: o documento recusa `≤ 0`, e o teto é o que cabe no quadro.
                 Span::Positive => (0.0, Bound::Soft(view_span)),
+                // ⭐⭐⭐ **O tecto vem do DOCUMENTO e não da vista** (report do Enio de 09/09) — ver
+                // [`ph2d_field::Span::SoftFromZero`]. ⚠️ O piso protege contra uma peça degenerada
+                // dar um slider de curso zero, que é um controlo morto com aparência de vivo.
+                Span::SoftFromZero(top) => (0.0, Bound::Soft(top.max(1.0e-4))),
                 // A única ponta que o documento **impõe**.
                 Span::Wall(w) => (0.0, Bound::Hard(w)),
                 // Simétrica em torno da origem: as duas pontas são da vista, e a de baixo é

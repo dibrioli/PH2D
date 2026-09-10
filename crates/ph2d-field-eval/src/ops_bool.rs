@@ -336,15 +336,60 @@ pub fn union_soft(a: &Tree, b: &Tree, k: f64) -> Tree {
 ///
 /// ⚠️ **`s` é o MESMO nos dois sentidos** (`|s|` é par em `a ↔ b`), então a costura não se move: o
 /// que se inverte é de que lado dela está a matéria.
+/// ⭐⭐⭐ **SÓ QUEM ESCAVA PRECISA DE GUARDA — e a razão é uma assimetria do `min`.**
+///
+/// # ⛔⛔ O report que a obrigou (Enio, 2026-09-09, três fotos)
+///
+/// Um saliente sobre uma chapa saía com a base **esvaziada** e o bloco **solto**. Medido na peça do
+/// produto (`audit_the_new_junctions`): a peça partia-se em **2** componentes ligadas e o sulco
+/// tocava **11,8 %** do volume da chapa.
+///
+/// # ⭐⭐⭐ O mecanismo, e por que a bancada da W145 não podia vê-lo
+///
+/// Aquela wave foi toda medida num canto de 90° feito de **dois semiespaços**, onde o conjunto
+/// `{a = b}` é um plano que toca a superfície numa **recta**. Numa peça a sério ele é uma **REGIÃO**:
+/// debaixo do saliente as duas faces são quase coincidentes e `a ≈ b` sobre uma sobreposição inteira.
+///
+/// ⚠️⚠️ **E os VALORES ali são indistinguíveis dos do vinco verdadeiro.** No vinco (`a = 0`, `b = 0`)
+/// e a meio da solda (`a = b = −t`) os dois campos leem exactamente o mesmo par de números; o que
+/// difere são os **GRADIENTES** — perpendiculares num, opostos no outro. ⇒ *nenhuma fórmula escrita
+/// só em `a` e `b` separa os dois casos*, e isto é uma demonstração, não um palpite.
+///
+/// # ⭐⭐ A cura não precisa de gradiente nenhum: ela pergunta se o `d` está a MENTIR
+///
+/// Numa união, `min(a, b)` **não é** a distância à fronteira dentro da sobreposição — ali ele devolve
+/// a distância a uma face **interior**, que não pertence à superfície da peça. O termo
+/// `max(a, b) > 0` diz exactamente *«este ponto não está dentro das duas»*, que é o mesmo que
+/// *«aqui o `d` diz a verdade»*.
+///
+/// ⇒ **um sulco só corta onde pelo menos uma das duas peças não está.** A solda entre elas fica
+/// intacta por construção, e a profundidade deixa de poder soltar o que junta.
+///
+/// # ⚠️ E por que o cordão e o friso NÃO levam guarda
+///
+/// Os dois **acrescentam**, e acrescentar matéria dentro de matéria é **invisível**: a mesma região
+/// fantasma que destrói um sulco não faz diferença nenhuma a eles. *A régua que apanha um é cega ao
+/// outro, e é por isso que a lista de decorações não podia ser tratada como uma família só.*
+///
+/// # ⛔ A fronteira que FICA declarada
+///
+/// Com as duas faces **exactamente coincidentes** (um saliente pousado sem penetrar) a sobreposição
+/// tem medida zero, a guarda não tem onde morder, e a união só está ligada por uma superfície. Ali
+/// qualquer decoração é mal-posta. ⇒ *a robustez cresce com a penetração, e é isso que o gate
+/// `every_new_character_leaves_the_piece_in_one_piece` mede.*
+#[allow(dead_code)]
+const SO_QUEM_ESCAVA_PRECISA_DA_GUARDA: () = ();
+
 fn decoracao(d: &Tree, a: &Tree, b: &Tree, blend: Blended) -> Option<Tree> {
     let s = || (a.clone() - b.clone()) * Tree::constant(FRAC_1_SQRT_2);
     match blend {
         // O tubo de raio `r` sobre o eixo da costura — sempre a ACRESCENTAR.
         Blended::Bead(r) if r > 0.0 => Some(d.min(length2(a, b) - Tree::constant(r))),
-        // A caixa do canal (fundo a `depth` abaixo da superfície, paredes a `±width` da costura), e
-        // o `max` com `d` é o que a **escava** em vez de a desenhar no ar.
-        Blended::Groove { depth, width } if depth > 0.0 => {
-            Some(d.max((d.clone() + Tree::constant(depth)).min(Tree::constant(width) - s().abs())))
+        // ⭐⭐⭐ **O SULCO É O DUAL EXACTO DO CORDÃO** — o mesmo tubo à volta do vinco, removido em
+        // vez de acrescentado. ⛔ E a **guarda** (`max(a, b)`) é o que o impede de partir a peça:
+        // ver [`SO_QUEM_ESCAVA_PRECISA_DA_GUARDA`], que é a lição inteira do report de 09/09.
+        Blended::Groove(r) if r > 0.0 => {
+            Some(d.max((Tree::constant(r) - length2(a, b)).min(a.max(b.clone()))))
         }
         // A nervura: o mesmo com o `min` e o `max` trocados — sempre a LEVANTAR.
         Blended::Ridge { height, width } if height > 0.0 => {
@@ -378,7 +423,11 @@ pub fn union_bevel(a: &Tree, b: &Tree, r: f64, bias: f64) -> Tree {
 pub fn intersection(a: &Tree, b: &Tree, blend: Blended) -> Tree {
     // ⭐⭐⭐ **A superfície da INTERSECÇÃO é `max(a, b)`**, e as três decorações recebem-na em vez de
     // virem pelo dual — que lhes trocaria o nome. Ver [`decoracao`].
-    if let Some(t) = decoracao(&a.max(b.clone()), a, b, blend) {
+    //
+    // ⚠️ **Os dois campos vão NEGADOS**, e não crus: a [`decoracao`] lê-os na orientação da UNIÃO
+    // (negativo dentro da peça que contribui), que é o que dá sentido à guarda do sulco. O `|s|` e o
+    // `‖(a,b)‖` são pares nessa troca, então as outras duas decorações não notam a diferença.
+    if let Some(t) = decoracao(&a.max(b.clone()), &neg(a), &neg(b), blend) {
         return t;
     }
     neg(&union(&neg(a), &neg(b), blend))
@@ -402,10 +451,7 @@ pub enum Blended {
     /// ⭐ W145 — o cordão sobre a costura. Ver [`decoracao`].
     Bead(f64),
     /// ⭐ W145 — o sulco. Ver [`decoracao`].
-    Groove {
-        depth: f64,
-        width: f64,
-    },
+    Groove(f64),
     /// ⭐ W145 — o friso. Ver [`decoracao`].
     Ridge {
         height: f64,
@@ -446,6 +492,6 @@ pub fn union(a: &Tree, b: &Tree, blend: Blended) -> Tree {
         Blended::Bevel { recess, bias } => union_bevel(a, b, recess, bias),
         // ⚠️ As três decorações já saíram pelo desvio no topo desta função; com o número a zero
         // elas caem aqui, e a resposta é a união dura — a mesma cerca de todos os outros.
-        Blended::Bead(_) | Blended::Groove { .. } | Blended::Ridge { .. } => union_sharp(a, b),
+        Blended::Bead(_) | Blended::Groove(_) | Blended::Ridge { .. } => union_sharp(a, b),
     }
 }

@@ -533,12 +533,16 @@ pub fn apply(op: Op, a: f32, b: f32) -> f32 {
         Op::Union(blend) => decoracao(a.min(b), a, b, blend).unwrap_or_else(|| union(a, b, blend)),
         // De Morgan, exatamente como a árvore faz — **excepto** para as três decorações, que
         // recebem a superfície e ficam orientadas (ver `ops_bool::decoracao`).
+        // ⚠️⚠️ **Os campos vão NEGADOS, como na árvore** (`ops_bool::intersection`): a `decoracao`
+        // lê-os na orientação da UNIÃO, e é isso que dá sentido à guarda do sulco. ⛔ Esquecer a
+        // negação aqui compila, desenha e só o
+        // `the_numeric_law_is_the_same_law_as_the_tree` o diz — *foi o que ele disse.*
         Op::Intersection(blend) => {
-            decoracao(a.max(b), a, b, blend).unwrap_or_else(|| -union(-a, -b, blend))
+            decoracao(a.max(b), -a, -b, blend).unwrap_or_else(|| -union(-a, -b, blend))
         }
         Op::Difference(blend) => {
             let nb = -b;
-            decoracao(a.max(nb), a, nb, blend).unwrap_or_else(|| -union(-a, b, blend))
+            decoracao(a.max(nb), -a, b, blend).unwrap_or_else(|| -union(-a, b, blend))
         }
     }
 }
@@ -552,8 +556,8 @@ fn decoracao(d: f32, a: f32, b: f32, blend: Blend) -> Option<f32> {
     let s = (a - b) * std::f32::consts::FRAC_1_SQRT_2;
     match blend {
         Blend::Bead { radius } if radius > 0.0 => Some(d.min(a.hypot(b) - radius)),
-        Blend::Groove { radius, width } if radius > 0.0 => {
-            Some(d.max((d + radius).min(width - s.abs())))
+        Blend::Groove { radius } if radius > 0.0 => {
+            Some(d.max((radius - a.hypot(b)).min(a.max(b))))
         }
         Blend::Ridge { radius, width } if radius > 0.0 => {
             Some(d.min((d - radius).max(s.abs() - width)))

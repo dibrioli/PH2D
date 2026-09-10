@@ -69,6 +69,57 @@ pub fn radius_bound(world: &World, entity: Entity) -> Option<Bound> {
     }
 }
 
+/// ⭐⭐⭐ **A FAIXA DE UMA LINHA DE JUNTA fecha-se pela PEÇA, e não pela vista** (report do Enio,
+/// 2026-09-09: *«os sliders das joints vão de 0 a 16 quando só precisa de 0 a 1»*).
+///
+/// ⚠️ **[`Span::Positive`] entrega o tecto ao enquadramento**, que é o da **cena inteira** — numa
+/// fileira de seis peças ele abre `0..16` para um número cujo valor útil vive abaixo de `0,1`, e
+/// todo o curso do dedo cabe num pixel. Isso está certo para uma largura (que pode crescer até ao
+/// quadro) e errado para um raio de junta, que é **local**.
+///
+/// ⭐ **O número já existia e não era usado:** a [`radius_bound`] devolve `Bound::Soft(escala)` para
+/// uma operação desde a W10, e o comentário da linha do painel dizia por extenso que trocá-lo *«é
+/// número do Enio, com a peça à frente»*. ⇒ *uma nota que espera um veredito precisa de ser
+/// perguntada; esta esperou até ele tropeçar nela.*
+///
+/// ⚠️ **Só a [`Span::Positive`] é trocada.** O desequilíbrio de um chanfro é uma **razão**, não um
+/// comprimento, e a escala da peça não o limita — ele traz a faixa dele de casa
+/// ([`ph2d_field::Blend::second`]).
+/// ⭐⭐ **O CURSO DO SEGUNDO NÚMERO de uma junta** — e ele nem sempre é um comprimento.
+///
+/// A meia-largura de um friso é uma medida da peça e fecha-se pela [`subtree_scale`]. O
+/// **desequilíbrio** de um chanfro é uma **razão**: ele multiplica o recuo do lado longo, e o que o
+/// limita é o ponto em que esse recuo alcança a peça — `escala / raio`. ⇒ *o mesmo raciocínio, na
+/// unidade certa de cada um.*
+///
+/// ⚠️ **Com o raio a zero não há razão nenhuma que signifique alguma coisa**, e o piso devolve a
+/// escala crua em vez de infinito: um slider de curso infinito é o defeito do report noutra escala.
+fn curso_do_segundo(blend: ph2d_field::Blend, escala: f32) -> f32 {
+    match blend {
+        // ⚠️ **O `Chamfer` entra aqui junto com o `Bevel`**, e esquecê-lo era o defeito: a linha do
+        // desequilíbrio nasce sobre um chanfro SIMÉTRICO (com `1,0` dentro), e a promoção a `Bevel`
+        // só acontece quando alguém lhe escreve. *A faixa tem de estar certa antes do primeiro
+        // arrasto, não depois dele.*
+        ph2d_field::Blend::Bevel { radius, .. } | ph2d_field::Blend::Chamfer { radius }
+            if radius > 1.0e-6 =>
+        {
+            escala / radius
+        }
+        _ => escala,
+    }
+}
+
+fn fecha_pela_peca(d: Dim, escala: f32) -> Dim {
+    if d.span == Span::Positive {
+        Dim {
+            span: Span::SoftFromZero(escala),
+            ..d
+        }
+    } else {
+        d
+    }
+}
+
 /// A menor peça sob um nó, **com a escala da cadeia acumulada**.
 ///
 /// ⚠️ A escala acumula de propósito: um cilindro de 0,1 dentro de um grupo escalado 3× mede 0,3 na
@@ -223,25 +274,29 @@ pub fn params_of(world: &World, entity: Entity) -> Vec<(Param, Dim)> {
             // A única dimensão de uma operação é o raio da mistura, e ela entra pela porta de
             // sempre — `Dim(0)`, que o `set_param` reencaminha.
             if let Some(v) = node.shape.radius() {
+                let escala = subtree_scale(world, entity);
                 out.push((
                     Param::Dim(0),
-                    Dim {
-                        // ⭐ **"Joint" e não "Fillet" desde a W98**, e é o rótulo a apanhar o modelo:
-                        // depois do verbo por forma, o raio de um grupo é o **raio de junção
-                        // padrão** — o que as formas caladas usam. É a mesma grandeza que a linha
-                        // [`Param::Joint`] de cada filho escreve, e duas palavras para uma grandeza
-                        // é o que faz o artista pensar que são duas.
-                        key: "field.dim.joint",
-                        value: v,
-                        // ⚠️ **Uma mistura não tem parede**: o campo continua a ser uma distância com
-                        // qualquer raio ([`radius_bound`] devolve sempre `Soft` aqui).
-                        //
-                        // ⏸️ O `radius_bound` sabe um alcance mais **apertado** do que o da vista — a
-                        // menor peça sob o nó, que é o raio a partir do qual a mistura a engole.
-                        // Trocá-lo pelo da vista muda o **tato** do arrasto desta linha e de mais
-                        // nenhuma, e isso é número do Enio, com a peça à frente.
-                        span: Span::Positive,
-                    },
+                    fecha_pela_peca(
+                        Dim {
+                            // ⭐ **"Joint" e não "Fillet" desde a W98**, e é o rótulo a apanhar o modelo:
+                            // depois do verbo por forma, o raio de um grupo é o **raio de junção
+                            // padrão** — o que as formas caladas usam. É a mesma grandeza que a linha
+                            // [`Param::Joint`] de cada filho escreve, e duas palavras para uma grandeza
+                            // é o que faz o artista pensar que são duas.
+                            key: "field.dim.joint",
+                            value: v,
+                            // ⚠️ **Uma mistura não tem parede**: o campo continua a ser uma distância com
+                            // qualquer raio ([`radius_bound`] devolve sempre `Soft` aqui).
+                            //
+                            // ⏸️ O `radius_bound` sabe um alcance mais **apertado** do que o da vista — a
+                            // menor peça sob o nó, que é o raio a partir do qual a mistura a engole.
+                            // Trocá-lo pelo da vista muda o **tato** do arrasto desta linha e de mais
+                            // nenhuma, e isso é número do Enio, com a peça à frente.
+                            span: Span::Positive,
+                        },
+                        escala,
+                    ),
                 ));
             }
             // ⭐⭐ **O SEGUNDO NÚMERO da mistura padrão deste grupo** (W145) — a meia-largura de um
@@ -249,7 +304,11 @@ pub fn params_of(world: &World, entity: Entity) -> Vec<(Param, Dim)> {
             // que traz a chave e a faixa consigo: um carácter novo com dois números aparece aqui sem
             // uma linha de mudança, e um sem eles não oferece controle nenhum.
             if let Some(d) = op.blend().second() {
-                out.push((Param::Seam(0), d));
+                let escala = subtree_scale(world, entity);
+                out.push((
+                    Param::Seam(0),
+                    fecha_pela_peca(d, curso_do_segundo(op.blend(), escala)),
+                ));
             }
         }
         NodeShape::Leaf(p) => out.extend(
@@ -271,20 +330,28 @@ pub fn params_of(world: &World, entity: Entity) -> Vec<(Param, Dim)> {
     // mais macia"* não pode exigir que o artista entenda o modelo do verbo primeiro. Escrever
     // materializa (ver [`Param::Joint`]), e o chip `Inherit` apaga-se à vista.
     if let Some(op) = crate::verb_role(world, entity).and_then(|r| r.op()) {
+        let escala = subtree_scale(world, entity);
         out.push((
             Param::Joint,
-            Dim {
-                key: "field.dim.joint",
-                value: op.blend().amount(),
-                // ⚠️ **Sem parede**, como a do grupo: o campo continua a ser uma distância com
-                // qualquer raio de mistura. Quem fecha o teto é a vista.
-                span: Span::Positive,
-            },
+            fecha_pela_peca(
+                Dim {
+                    key: "field.dim.joint",
+                    value: op.blend().amount(),
+                    // ⚠️ **Sem parede**: o campo continua a ser uma distância com qualquer raio
+                    // de mistura. Quem fecha o **curso do slider** é a PEÇA — ver
+                    // [`fecha_pela_peca`] e o report de 09/09.
+                    span: Span::Positive,
+                },
+                escala,
+            ),
         ));
         // ⭐⭐ **E o segundo número DELE** (W145), logo abaixo — ver [`Param::Seam`] para por que os
         // dois slots não podem ser um.
         if let Some(d) = op.blend().second() {
-            out.push((Param::Seam(1), d));
+            out.push((
+                Param::Seam(1),
+                fecha_pela_peca(d, curso_do_segundo(op.blend(), escala)),
+            ));
         }
     }
     // ⭐⭐ **A RESOLUÇÃO do contorno vivo** (W55) — logo depois do que a forma mede, e antes do que

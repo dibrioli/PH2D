@@ -182,10 +182,10 @@ fn the_new_junctions_scene_does_not_perforate_the_plate() {
     // Junto da costura: o anel onde a parede do saliente encontra o topo da chapa.
     let borda = cx + 0.12;
     assert!(
-        f.at(borda, 0.0, -0.13) < 0.0,
-        "a cena 32 perfurou a chapa por baixo do sulco (leu {:.4} a z = −0,13) — o rasgo le-se como \
+        f.at(borda, 0.0, -0.20) < 0.0,
+        "a cena 32 perfurou a chapa por baixo do sulco (leu {:.4} a z = −0,20) — o rasgo le-se como \
          defeito do motor e nao como a feicao",
-        f.at(borda, 0.0, -0.13)
+        f.at(borda, 0.0, -0.20)
     );
     assert!(
         f.at(borda, 0.0, -0.01) > 0.0,

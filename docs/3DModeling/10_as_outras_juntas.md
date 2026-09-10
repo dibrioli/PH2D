@@ -347,7 +347,78 @@ interessa é a costura VIRAR*.
 
 ---
 
-## §9 — Aberto
+## §9 — ⛔⛔⛔ A AUDITORIA das juntas novas (report do Enio, 09/09: *«groove não parece correto»*)
+
+Três fotos: um saliente sobre uma chapa saía com a **base esvaziada** e o bloco **solto**.
+
+### §9.1 — O que a bancada da W145 não podia ver
+
+Tudo o que autorizou aquela wave foi medido num **canto de 90° feito de dois SEMIESPAÇOS**. Ali o
+conjunto `{a = b}` — onde as duas peças estão à mesma distância — é um **plano** que toca a
+superfície numa **recta**, e uma decoração sobre ele lê-se como uma decoração sobre a costura.
+
+⚠️ **Numa peça a sério isso é falso.** Debaixo de um saliente as duas faces são quase coincidentes e
+`a ≈ b` sobre uma **REGIÃO inteira**. Uma decoração que ACRESCENTA não se nota (pôr matéria dentro de
+matéria é invisível); uma que **ESCAVA** come a região toda.
+
+⭐⭐⭐ **E os VALORES ali são indistinguíveis dos do vinco verdadeiro:** no vinco (`a = 0, b = 0`) e a
+meio da solda (`a = b = −t`) os dois campos leem o mesmo par de números — o que difere são os
+**gradientes**. ⇒ *nenhuma fórmula escrita só em `a` e `b` separa os dois casos.* É uma demonstração,
+não um palpite, e ela fecha uma família inteira de curas antes de alguém as construir.
+
+### §9.2 — A régua que faltava, e o que ela mediu
+
+⛔ **Nenhuma régua deste repositório via o defeito**: o campo continua válido, o `‖∇f‖` continua no
+balde, o volume muda de forma plausível e o chip fica igual. O que muda é a **contagem de componentes
+ligadas** — a mesma lição que a «almofada» do remalhador de quads já tinha cobrado.
+
+| junta | peças (antes) | peças (depois) | % da chapa tocada |
+|---|---:|---:|---:|
+| Fillet · Soft · **Bead** · Ridge · Bevel | 1 | 1 | 0,0 % |
+| **Groove** | ⛔ **2** | **1** | 11,8 % → 12,0 % |
+
+⭐ **O `Bead` foi o único que já estava certo, e a razão é o mecanismo:** ele localiza-se por
+`‖(a,b)‖` — a distância ao **vinco** — e não por `|a − b|`, que é o conjunto medial.
+
+### §9.3 — A cura: o sulco é o DUAL EXACTO do cordão, mais uma guarda
+
+```
+cordão  =  min(d,  ‖(a,b)‖ − r)          acrescenta um tubo à volta do vinco
+sulco   =  max(d,  min(r − ‖(a,b)‖,  max(a,b)))   remove o mesmo tubo
+```
+
+⭐⭐ **A guarda `max(a, b) > 0` pergunta se o `d` está a MENTIR.** Numa união, `min(a, b)` não é a
+distância à fronteira dentro da sobreposição — ali ele devolve a distância a uma face **interior**.
+O termo diz *«este ponto não está dentro das duas»*, que é o mesmo que *«aqui o `d` diz a verdade»*.
+⇒ **um sulco só corta onde pelo menos uma das duas peças não está**, e a solda fica intacta por
+construção.
+
+⛔ **O segundo número do sulco SAIU.** Um tubo à volta de uma curva tem **um** raio; a
+profundidade-e-largura da 1.ª versão descrevia uma caixa sobre o conjunto medial. *O número que saiu
+nunca descreveu nada que existisse.*
+
+### §9.4 — Duas fronteiras DECLARADAS, com o número
+
+1. **A penetração é load-bearing.** Com as duas faces exactamente coincidentes (um saliente pousado
+   sem penetrar) a sobreposição tem medida zero, a guarda não tem onde morder, e a união só está
+   ligada por uma superfície. *A robustez cresce com a penetração* — a cena de smoke passou de `0,04`
+   para `0,09` num prato de `0,18`, e foi essa mudança que levou o sulco de `3` peças para `1`.
+2. **Um raio de canal comparável à espessura local deixa uma CAVIDADE FECHADA** onde duas faces sem
+   relação (a base do saliente e o fundo da chapa) passam a menos de `r` uma da outra. Ela é interna
+   (invisível ao traçado, e a peça continua ligada — medido), e é o mesmo mecanismo do §9.1: `‖(a,b)‖`
+   é um minorante da distância ao vinco, e fica frouxo quando as duas superfícies são **paralelas**.
+   ⇒ *não faça o sulco maior do que a espessura da peça.*
+
+### §9.5 — E as outras quatro passaram
+
+`Soft`, `Bead`, `Ridge` e `Bevel` deixam a peça em **1** componente e não tocam o interior da chapa
+(`0,0 %`). ⭐ O `Ridge` e o `Bead` escrevem sobre o mesmo conjunto medial do sulco e **não** sofrem
+com ele, pela razão do §9.1: *acrescentar matéria dentro de matéria é invisível.* A régua que apanha
+um é cega ao outro — e é por isso que a lista de decorações não podia ser tratada como uma família só.
+
+---
+
+## §10 — Aberto
 
 - ⏳ **As juntas novas valem entre FORMAS, não entre CÓPIAS de uma repetição.** A costura de uma
   `Array` ou de uma `Radial` passa pelo [`ph2d_field::Joint`] (`chamfer` + `fillet`), que é outro

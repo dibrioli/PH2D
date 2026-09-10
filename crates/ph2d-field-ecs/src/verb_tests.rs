@@ -541,9 +541,11 @@ fn only_the_junctions_with_a_second_number_offer_the_row() {
         (Character::Organic, false),
         (Character::Soft, false),
         (Character::Bead, false),
+        // ⛔ **O sulco PERDEU o segundo número** no report de 09/09: ele localiza-se pelo vinco, e um
+        // tubo à volta de uma curva tem UM raio. *O número que saiu nunca descreveu nada.*
+        (Character::Groove, false),
         // ⭐ O chanfro oferece-a com `1,0` dentro — sem isso o desequilíbrio nasceria inalcançável.
         (Character::Chamfer, true),
-        (Character::Groove, true),
         (Character::Ridge, true),
     ] {
         let (mut world, _, kids) = two_boxes();
@@ -562,7 +564,7 @@ fn only_the_junctions_with_a_second_number_offer_the_row() {
     // ⛔ **O CONTROLO da própria régua:** o valor tem de ser o que a junta guarda, e não um zero
     // que passaria o teste de presença sem nada do outro lado.
     let (mut world, _, kids) = two_boxes();
-    crate::set_character(&mut world, kids[1], Character::Groove).expect("troca");
+    crate::set_character(&mut world, kids[1], Character::Ridge).expect("troca");
     let (_, d) = crate::params_of(&world, kids[1])
         .into_iter()
         .find(|(p, _)| matches!(p, Param::Seam(_)))
@@ -570,7 +572,7 @@ fn only_the_junctions_with_a_second_number_offer_the_row() {
     let esperado = 0.08 * Blend::SEAM_WIDTH_RATIO;
     assert!(
         (d.value - esperado).abs() < 1e-6,
-        "o sulco nasceu com meia-largura {} e não com o {esperado} que o `SEAM_WIDTH_RATIO` manda",
+        "o friso nasceu com meia-largura {} e não com o {esperado} que o `SEAM_WIDTH_RATIO` manda",
         d.value
     );
 }
@@ -584,15 +586,15 @@ fn only_the_junctions_with_a_second_number_offer_the_row() {
 fn writing_the_second_number_keeps_the_first() {
     use ph2d_field::{Blend, Character, Param};
     let (mut world, _, kids) = two_boxes();
-    crate::set_character(&mut world, kids[1], Character::Groove).expect("troca");
-    crate::set_param(&mut world, kids[1], Param::Joint, 0.2).expect("a profundidade");
+    crate::set_character(&mut world, kids[1], Character::Ridge).expect("troca");
+    crate::set_param(&mut world, kids[1], Param::Joint, 0.2).expect("a altura");
     crate::set_param(&mut world, kids[1], Param::Seam(1), 0.03).expect("a largura");
     let op = crate::verb_of(&world, kids[1]).expect("o verbo materializou-se");
     match op.blend() {
-        Blend::Groove { radius, width } => {
+        Blend::Ridge { radius, width } => {
             assert!(
                 (radius - 0.2).abs() < 1e-6,
-                "a profundidade virou {radius} ao escrever a largura"
+                "a altura virou {radius} ao escrever a largura"
             );
             assert!((width - 0.03).abs() < 1e-6, "a largura não chegou: {width}");
         }
@@ -638,4 +640,77 @@ fn a_bevel_that_returns_to_balance_is_a_chamfer_again() {
         ),
         "voltar a 1,0 deixou um `Bevel` com um dentro — dois bytes para a mesma peça"
     );
+}
+
+/// ⭐⭐⭐ **A FAIXA DE UMA JUNTA VEM DA PEÇA, E NÃO DO ENQUADRAMENTO** (report do Enio, 2026-09-09:
+/// *«os sliders das joints vão de 0 a 16 quando só precisa de 0 a 1»*).
+///
+/// ⚠️ **O defeito não era um número errado — era o número CERTO no sítio errado.** A
+/// [`ph2d_field::Span::Positive`] entrega o tecto à vista, e a vista mede a **cena inteira**: numa
+/// fileira de seis peças o slider de um raio de junta abria `0..16`. O valor útil dele vive abaixo de
+/// `0,1`, logo **todo o curso do dedo cabia num pixel**.
+///
+/// ⭐ E o número certo já existia desde a W10 — a [`crate::radius_bound`] devolve a menor peça sob o
+/// nó — com uma nota no painel a dizer que trocá-lo era *«número do Enio, com a peça à frente»*.
+/// *Uma nota que espera um veredito precisa de ser perguntada.*
+#[test]
+fn the_joint_slider_is_bounded_by_the_piece_and_not_by_the_view() {
+    use ph2d_field::{Param, Span};
+    let (world, root, kids) = two_boxes();
+    // A menor peça da fixtura é uma caixa de meia-extensão `0,4`.
+    const ESCALA: f32 = 0.4;
+    for (quem, e) in [("a forma", kids[1]), ("o grupo", root)] {
+        let linhas = crate::params_of(&world, e);
+        let juntas: Vec<_> = linhas
+            .iter()
+            .filter(|(p, d)| {
+                matches!(p, Param::Joint | Param::Seam(_)) || d.key == "field.dim.joint"
+            })
+            .collect();
+        assert!(
+            !juntas.is_empty(),
+            "{quem} não ofereceu linha de junta nenhuma — a fixtura mudou"
+        );
+        for (p, d) in juntas {
+            match d.span {
+                Span::SoftFromZero(top) => assert!(
+                    (top - ESCALA).abs() < 1e-6,
+                    "{quem}, {p:?}: o curso do slider e' {top} e a menor peca mede {ESCALA} — o \
+                     tecto voltou a vir de outro sitio"
+                ),
+                outro => panic!(
+                    "{quem}, {p:?}: a faixa e' {outro:?} — uma junta com `Span::Positive` recebe o \
+                     tecto da CENA, e o curso do dedo colapsa"
+                ),
+            }
+        }
+    }
+}
+
+/// ⛔ **O CONTROLO: o desequilíbrio do chanfro NÃO é fechado pela peça** — ele é uma **razão**, e a
+/// escala de um sólido não limita um adimensional.
+///
+/// ⚠️ Sem este gate, a porta que fecha as faixas passaria a fechar tudo o que lhe chegasse, e o
+/// desequilíbrio ficaria com um curso em unidades de comprimento — *o mesmo defeito do report, do
+/// outro lado*.
+#[test]
+fn the_chamfer_bias_keeps_its_own_range() {
+    use ph2d_field::{Character, Param, Span};
+    let (mut world, _, kids) = two_boxes();
+    crate::set_character(&mut world, kids[1], Character::Chamfer).expect("troca");
+    crate::set_param(&mut world, kids[1], Param::Joint, 0.08).expect("o raio");
+    let (_, d) = crate::params_of(&world, kids[1])
+        .into_iter()
+        .find(|(p, _)| matches!(p, Param::Seam(_)))
+        .expect("a linha do desequilíbrio");
+    // O curso é `escala / raio` — o ponto em que o corte do lado longo alcança a peça.
+    let esperado = 0.4 / 0.08;
+    match d.span {
+        Span::SoftFromZero(top) => assert!(
+            (top - esperado).abs() < 1e-5,
+            "o curso do desequilibrio e' {top} e devia ser {esperado} (escala / raio) — ele foi \
+             fechado em unidades de COMPRIMENTO, que e' o defeito do report do outro lado"
+        ),
+        outro => panic!("o desequilibrio ficou com a faixa {outro:?}"),
+    }
 }

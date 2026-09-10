@@ -82,9 +82,15 @@ pub enum Blend {
     /// ⭐⭐⭐ **O SULCO ao longo da costura** (W145) — um canal escavado sobre o encontro, que é a
     /// «linha de painel» com que uma peça passa a ler como montada de partes.
     ///
-    /// `radius` é a **profundidade** e `width` a **meia-largura**. Ver [`Blend::second`] para por
-    /// que o segundo número tem linha própria no painel.
-    Groove { radius: f32, width: f32 },
+    /// `radius` é o **raio do canal**, medido a partir do vinco.
+    ///
+    /// ⛔⛔ **UM número, e o segundo foi RETIRADO por medição** (report do Enio, 09/09). A 1.ª
+    /// versão tinha profundidade e meia-largura e localizava o canal em `|a − b| < largura` — o
+    /// **conjunto medial**, que numa peça a sério é uma REGIÃO e não uma curva: ela esvaziava a base
+    /// de um saliente e soltava-o da chapa. A cura localiza pelo **vinco** (`‖(a,b)‖`), e um tubo
+    /// à volta de uma curva tem **um** raio. *O segundo número não foi perdido — ele nunca descreveu
+    /// nada que existisse.* Ver `ops_bool::SO_QUEM_ESCAVA_PRECISA_DA_GUARDA`.
+    Groove { radius: f32 },
     /// ⭐⭐⭐ **O FRISO ao longo da costura** (W145) — o oposto do [`Blend::Groove`]: uma nervura
     /// levantada sobre o encontro.
     ///
@@ -168,10 +174,7 @@ impl Blend {
             // sobreviver a um raio novo, um nível abaixo.
             Blend::Soft { .. } => Blend::Soft { radius: amount },
             Blend::Bead { .. } => Blend::Bead { radius: amount },
-            Blend::Groove { width, .. } => Blend::Groove {
-                radius: amount,
-                width,
-            },
+            Blend::Groove { .. } => Blend::Groove { radius: amount },
             Blend::Ridge { width, .. } => Blend::Ridge {
                 radius: amount,
                 width,
@@ -200,7 +203,7 @@ impl Blend {
             | Blend::Organic { radius }
             | Blend::Soft { radius }
             | Blend::Bead { radius }
-            | Blend::Groove { radius, .. }
+            | Blend::Groove { radius }
             | Blend::Ridge { radius, .. }
             | Blend::Bevel { radius, .. } => radius,
         }
@@ -220,7 +223,7 @@ impl Blend {
     #[must_use]
     pub fn second(self) -> Option<crate::Dim> {
         match self {
-            Blend::Groove { width, .. } | Blend::Ridge { width, .. } => Some(crate::Dim {
+            Blend::Ridge { width, .. } => Some(crate::Dim {
                 key: "field.dim.seam_width",
                 value: width,
                 span: crate::Span::Positive,
@@ -249,7 +252,8 @@ impl Blend {
             | Blend::Exact { .. }
             | Blend::Organic { .. }
             | Blend::Soft { .. }
-            | Blend::Bead { .. } => None,
+            | Blend::Bead { .. }
+            | Blend::Groove { .. } => None,
         }
     }
 
@@ -262,10 +266,6 @@ impl Blend {
     #[must_use]
     pub fn with_second(self, second: f32) -> Self {
         match self {
-            Blend::Groove { radius, .. } => Blend::Groove {
-                radius,
-                width: second,
-            },
             Blend::Ridge { radius, .. } => Blend::Ridge {
                 radius,
                 width: second,
@@ -284,7 +284,8 @@ impl Blend {
             | Blend::Exact { .. }
             | Blend::Organic { .. }
             | Blend::Soft { .. }
-            | Blend::Bead { .. } => self,
+            | Blend::Bead { .. }
+            | Blend::Groove { .. } => self,
         }
     }
 }
@@ -370,7 +371,7 @@ impl Character {
         // tamanho ([`Blend::SEAM_WIDTH_RATIO`]), porque um segundo número a zero seria um carácter
         // escolhido que não mostra nada.
         let width = match blend {
-            Blend::Groove { width, .. } | Blend::Ridge { width, .. } => width,
+            Blend::Ridge { width, .. } => width,
             _ => amount * Blend::SEAM_WIDTH_RATIO,
         };
         match self {
@@ -388,10 +389,7 @@ impl Character {
             Character::Organic => Blend::Organic { radius: amount },
             Character::Soft => Blend::Soft { radius: amount },
             Character::Bead => Blend::Bead { radius: amount },
-            Character::Groove => Blend::Groove {
-                radius: amount,
-                width,
-            },
+            Character::Groove => Blend::Groove { radius: amount },
             Character::Ridge => Blend::Ridge {
                 radius: amount,
                 width,

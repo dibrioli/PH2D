@@ -209,8 +209,12 @@ Ficam:
 
 1. **⏳⏳ Pose 2D ou 3D — a maior das três.** O `PropKind` da Timeline tem 13 variantes e nenhuma
    tem Z, porque o `ph2d_ecs::Transform` é `Vec2` + um `f32`. As duas saídas e os seus preços
-   estão em [`medicoes/04 §6`](../medicoes/04_o_alcance_das_timelines.md); ⛔ **quantos sítios leem
-   `Transform` não foi medido**, e sem esse número a escolha é gosto.
+   estão em [`medicoes/04 §6`](../medicoes/04_o_alcance_das_timelines.md). ✅ **O número existe
+   desde 2026-09-10, e foi medido pelo COMPILADOR:** `722` sítios de produto (`1 799` com os
+   testes) em **131 ficheiros** e **CINCO** crates — `71 %` deles no `shells/desktop`. ⚠️ Uma
+   varredura textual acusava `19` crates, porque aqueles nomes de campo são partilhados por outros
+   tipos. ⛔ O número dá o preço da **mão de obra**, não o de estar errado: a física 2D fala `Vec2`
+   por contrato, e é aí que a (b) tem de responder.
 2. **⏳ A escultura tem de virar ENTIDADE** antes de qualquer timeline a alcançar — hoje é um campo
    do estado do app, inalcançável por tudo. Molde pronto: o `PaintedDoc`.
 3. **⏳ Como partir o `DrawMode`** nos dois eixos. São **2 modos + 12 ferramentas** achatados num

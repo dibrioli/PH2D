@@ -118,8 +118,47 @@ Para o item 2 há **duas saídas**, e elas divergem no que custam ao resto do ap
   mais carregado do repo, viaja em todo `WorldSnapshot`, e a física 2D (`rapier2d`) fala Vec2.
   ⚠️ Isto **não** é uma decisão desta linha; é um ADR, e provavelmente uma jornada própria.
 
-⏳ **Não medido:** quantos sítios leriam um `Transform` 3D. Sem esse número a (b) não tem preço, e
-⛔ **uma escolha entre (a) e (b) sem ele seria escolher em vez de contar** (`CLAUDE.md` §0.0).
+### ✅ O número existe (2026-09-10): **`722` sítios de produto, `1 799` com os testes**
+
+⚠️ **Medido pelo COMPILADOR, não por `grep`.** Os três campos de `ph2d_ecs::Transform` levaram um
+`#[deprecated]`, e a árvore inteira foi verificada numa passagem: um aviso não pára a compilação,
+logo **todos** os usos aparecem — ao contrário de renomear o campo, que pára na primeira crate que
+falha e **esconde tudo o que depende dela** (a 1.ª tentativa desta medição leu `57`, todos numa
+crate só).
+
+| campo | produto | testes | total |
+|---|---:|---:|---:|
+| `translation` | 381 | 826 | **1 207** |
+| `scale` | 195 | 88 | 283 |
+| `rotation` | 146 | 163 | 309 |
+| **total** | **722** | **1 077** | **1 799** |
+
+| onde | produto | testes |
+|---|---:|---:|
+| `shells/desktop` | **515** | 471 |
+| `crates/ph2d-ecs` | 87 | 98 |
+| `crates/ph2d-physics-ecs` | 82 | 377 |
+| `crates/ph2d-timeline` | 35 | 131 |
+| `tools/asset-cooker` | 3 | 0 |
+
+⭐⭐ **E a forma da resposta é mais informativa que o tamanho dela: são CINCO crates, não dezanove.**
+Uma varredura textual por `.translation` / `.rotation` / `.scale` acusa **19** crates e `1 762`
+ocorrências de produto — porque aqueles nomes de campo são partilhados por outros tipos
+(`FieldPose`, a pose do importador, os afins da `kurbo`). *O compilador sabe de que tipo é o campo;
+o `grep` só sabe como ele se escreve.*
+
+⭐⭐⭐ **A concentração é o achado que muda o preço:** `71 %` do produto está numa só árvore, o
+`shells/desktop`, e em **131 ficheiros** ao todo. A (b) deixa de ser *«o componente mais carregado
+do repo, em todo o lado»* e passa a ser *«uma crate foundational pequena (87), duas pontes (117) e
+uma shell (515)»*.
+
+⛔ **O que este número NÃO diz, e continua a valer para a decisão:** quantos daqueles sítios ficam
+*semanticamente* certos com um eixo a mais. A física 2D (`rapier2d`) fala `Vec2` por contrato, e os
+`377` sítios de teste da `ph2d-physics-ecs` são a medida de quanto ela depende disso. *Contar sítios
+dá o preço da MÃO DE OBRA; não dá o preço de estar errado.*
+
+⇒ a escolha entre (a) e (b) deixa de ser gosto e passa a ser uma troca com dois números ao lado —
+e continua a ser **do Enio**, e um ADR, e provavelmente uma jornada própria.
 
 ---
 

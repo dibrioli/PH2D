@@ -53,7 +53,7 @@ use ph2d_ecs::{
     AudioListener2D, AudioSource2D, Name, SignalAction, SignalActions, SignalVerb, Timer, Timers,
     Transform,
 };
-use ph2d_render::Sprite;
+use ph2d_render::{Sprite, WHITE_TILE_KEY};
 
 /// Grava um `.wav` gerado na pasta temporária e devolve o caminho.
 fn escrever(nome: &str, data: ph2d_audio::SampleData) -> Option<String> {
@@ -105,7 +105,7 @@ impl crate::App {
             // tudo o resto. É este que o dono arrasta.
             world.spawn((
                 Transform::from_translation(Vec2::new(0.0, 0.0)),
-                Sprite::atlas(0, [0.8, 0.8], [0.95, 0.95, 0.2, 1.0]),
+                Sprite::atlas(WHITE_TILE_KEY, [0.8, 0.8], [0.95, 0.95, 0.2, 1.0]),
                 Name::new("Ouvinte"),
                 AudioListener2D,
             ));
@@ -114,7 +114,7 @@ impl crate::App {
             // sozinho.
             world.spawn((
                 Transform::from_translation(Vec2::new(-3.0, 0.0)),
-                Sprite::atlas(0, [1.0, 1.0], [0.3, 0.5, 0.9, 1.0]),
+                Sprite::atlas(WHITE_TILE_KEY, [1.0, 1.0], [0.3, 0.5, 0.9, 1.0]),
                 Name::new("Sino"),
                 AudioSource2D {
                     sound: zumbido,
@@ -131,7 +131,7 @@ impl crate::App {
             // **O TOQUE à direita** — `autoplay` DESLIGADO. Só um sinal o faz soar.
             world.spawn((
                 Transform::from_translation(Vec2::new(3.0, 0.0)),
-                Sprite::atlas(0, [1.0, 1.0], [0.9, 0.4, 0.3, 1.0]),
+                Sprite::atlas(WHITE_TILE_KEY, [1.0, 1.0], [0.9, 0.4, 0.3, 1.0]),
                 Name::new("Sirene"),
                 AudioSource2D {
                     sound: blip,
@@ -143,7 +143,7 @@ impl crate::App {
             // O relógio que a manda tocar.
             world.spawn((
                 Transform::from_translation(Vec2::new(3.0, -1.6)),
-                Sprite::atlas(0, [1.2, 0.4], [0.35, 0.35, 0.4, 1.0]),
+                Sprite::atlas(WHITE_TILE_KEY, [1.2, 0.4], [0.35, 0.35, 0.4, 1.0]),
                 Name::new("Relogio"),
                 Timers(vec![Timer {
                     name: "bip".into(),

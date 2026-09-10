@@ -2199,6 +2199,14 @@ impl crate::App {
             );
         }
 
+        // ⭐ **O herói da cena de smoke da câmera anda AQUI**, imediatamente antes do passe dela —
+        // ver o doc do [`crate::camera_2d_smoke`] sobre porque ele é movido pelo TECLADO e não pelo
+        // rato (um arrasto ancorado na vista realimenta uma câmera que segue). No-op sem a cena.
+        if self.game_camera_smoke_done {
+            #[allow(clippy::cast_possible_truncation)]
+            crate::camera_2d_smoke::drive_smoke_hero(sim, player_input, wall_dt as f32);
+        }
+
         // ⭐⭐⭐ **A CÂMERA DE JOGO** (TOP-20 #7) — a cena passa a poder mandar no enquadramento.
         //
         // ⚠️ **Aqui, depois dos relógios e ANTES do extract**, e as duas metades são load-bearing:

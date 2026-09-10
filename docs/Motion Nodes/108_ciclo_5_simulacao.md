@@ -269,4 +269,70 @@ derivar em silêncio e acender o grupo inteiro sem explicação.
 
 ⭐ A terceira é a que importa: sem ela o piso seria um número a envelhecer sozinho.
 
-### W4 — A MEDIÇÃO (passo 5) e o TUTORIAL (passo 6)
+### ✅ W4 — A CENA, o TUTORIAL e as FIGURAS (passo 6) — 2026-09-09
+
+#### A cena `=113` — *Deixar a física decidir*
+
+Uma chuva de peças cai sobre um **bloco**, empilha-se em cima dele e escorrega pelos lados; o
+`sim.zone` está em `Loop`, então a queda **recomeça sozinha** — sem isso o monte assentava uma
+vez e todo passo do smoke daí em diante mexeria num knob sem nada para mexer.
+
+⚠️ **O colisor é um `Box` e NÃO o chão, e a razão é o tutorial:** a alça da W1a faz **três**
+coisas — mover, girar e redimensionar — e num `Plane` só duas são lidas (a alça de tamanho
+escreve num param que a forma ignora: *inerte, não mentiroso*). ⛔ **Um tutorial não aponta para
+um controlo inerte.**
+
+⚠️ **O índice de enum é PERGUNTADO ao registo, nunca digitado** (`indice_de`): as outras cenas de
+simulação escrevem o número à mão com o nome num comentário, e aqui o `sim.collide` tem **quatro**
+formas e o ciclo acabou de lhes dar uma alça que **muda com a escolhida** — um literal que
+envelhecesse poria a cena a montar a forma errada **sem erro nenhum**.
+
+#### ⛔⛔ O gate do tutorial apanhou-me antes do dono, como no ciclo 4
+
+Eu tinha escrito **`Collide`** e **`Zone`** no anúncio e no gate. Os cartões pintam-se
+**`Collider`** e **`Simulation Zone`** — o passo mandava o dono procurar cartões que não existem,
+que é exactamente a [memória](../../project-memory/feedback_a_smoke_step_that_names_a_panel_row_must_prove_the_row_is_in_the_list.md)
+que esta casa já pagou.
+
+⚠️ **E este gate corre sobre a CENA, não sobre os defaults** — neste ciclo a diferença morde: o
+colisor da cena é um `Box`, logo o cartão mostra `Box Width`/`Box Height` onde o default mostraria
+`Radius`. *O dono vê a cena.*
+
+#### ⚠️ E a §5 do tutorial estava errada contra o código
+
+A 1.ª redacção escrevia *«Integrate — quem aplica o que as forças somaram; uma cena tem um»* — e a
+cena **não tem nenhum**. São **duas maneiras** de correr uma simulação e escolhe-se uma: dentro de
+uma zona o que circula **é** o estado e quem dá o passo é o `sim.step`; o `motion.integrate` é para
+quando a sim é um **desvio de uma animação**. ⛔ O doc do próprio `sim.step` diz que pôr os dois dá
+à sim **duas memórias**, que discordam na primeira peça que desaparecer.
+
+#### ⭐⭐⭐ As figuras, e a régua que se corrigiu DUAS vezes
+
+| redacção | régua | porquê caiu |
+|---|---|---|
+| 1.ª | a queda **total** (`2,458` contra `1,824`) | uma diferença real e **12 % da moldura** — as duas imagens saíram quase iguais, com uma legenda a dizer *«acelera»* e outra *«satura»* por cima de dois desenhos que o olho lê como o mesmo |
+| 2.ª | os **vãos iguais** sob `Target Velocity` | reprovou **com razão**: com a `Air Resistance` da cena (`1`) a constante de tempo é **um segundo**, e o segundo que a queda dura não chega (`6,83×`) |
+| ✅ 3.ª | **a segunda diferença** | `1,00×` sob `Force` contra `0,55×` sob `Target Velocity` |
+
+⭐ *Uma figura que precisa da legenda para se distinguir da irmã não é uma figura, é uma
+afirmação.* ⛔ **E a cura da 2.ª não foi subir a resistência até a figura ficar bonita** — isso
+mediria um knob que a cena não tem. A grandeza que separa os dois modos em **qualquer** janela é
+como o vão **cresce**: com aceleração constante ele cresce sempre pela mesma quantidade; com
+saturação cada acréscimo é menor que o anterior.
+
+⚠️ **A moldura também se corrigiu:** a fila inteira são 12 peças sobre `~4,6` unidades de largura
+contra `~2,5` de queda — o quadro saía deitado e o vão vertical, que **é** a mensagem, ficava com
+meia dúzia de pixels. Três peças adjacentes do meio põem o quadro em pé.
+
+#### Os gates da cena
+
+| gate | o que mede |
+|---|---|
+| `the_block_catches_part_of_the_rain_and_the_rest_falls_past_it` | 60 peças: **20** pousam, **40** passam ao lado — as duas metades, porque um colisor que apanha tudo ensina que é um chão |
+| `the_target_velocity_mode_caps_the_fall_and_force_does_not` | pico `10,92` sob `Force` contra `4,45` sob `Target Velocity` (`Strength = 5`), a MESMA cena com um param de diferença |
+| `every_row_the_sim_tutorial_names_is_on_the_card` | cada título, linha e **secção** que o tutorial manda procurar |
+
+**O tutorial:** [`tutoriais/05_simulacao.pdf`](tutoriais/05_simulacao.pdf), 7 páginas, com a tabela
+«o que cada controlo faz» derivada da porta única (11 nós).
+
+### ⏳ W5 — A MEDIÇÃO (passo 5) e o smoke do dono (passo 7)

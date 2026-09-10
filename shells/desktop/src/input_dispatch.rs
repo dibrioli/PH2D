@@ -4916,15 +4916,24 @@ impl App {
                     if let Some(nascimento) = self.vec_bone_drag.take() {
                         let px = self.vec_px_to_world();
                         let mut nasceu = None;
-                        if let Some(ponta) = self.vec_world_at(self.last_pointer) {
-                            // ⚠️ A decisão vem da porta ÚNICA que a pré-visualização também
-                            // consulta — senão o artista vê um osso a crescer e o `Up` não o faz.
-                            let vale = crate::bone_gesture::drag_makes_a_bone(
-                                nascimento.origin,
-                                ponta,
-                                px,
-                            );
-                            if vale && let Some(gfx) = self.gfx.as_mut() {
+                        if let Some(solto) = self.vec_world_at(self.last_pointer) {
+                            // ⭐⭐⭐ **A MESMA leitura que a pré-visualização desenhou**
+                            // ([`crate::bone_gesture::drag_now`]): a emenda, a ponta encaixada e o
+                            // limiar. O artista viu o osso saltar para aquela bolinha, e é
+                            // exactamente ali que ele nasce.
+                            //
+                            // ⚠️ **A EMENDA** (ordem do dono, 2026-09-09): se o arrasto acaba na
+                            // BASE de uma corrente solta, a ponta do osso novo encaixa nela e essa
+                            // corrente passa a pendurar-se nele — duas correntes viram uma.
+                            let Some(agora) = self.gfx.as_ref().map(|g| {
+                                crate::bone_gesture::drag_now(&g.sim, nascimento, solto, px)
+                            }) else {
+                                return;
+                            };
+                            let (ponta, emenda) = (agora.tip, agora.splice);
+                            if agora.armed
+                                && let Some(gfx) = self.gfx.as_mut()
+                            {
                                 // ⭐⭐⭐ **O PAI é o que o PRESS apontou** (ordem do dono,
                                 // 2026-09-09) — ⛔ nunca a selecção, que era a lei que ele mandou
                                 // tirar. Ele ainda é filtrado porque um osso pode ter sido apagado
@@ -4941,6 +4950,15 @@ impl App {
                                     nascimento.origin,
                                     ponta,
                                 );
+                                // ⭐⭐⭐ **E a corrente solta passa a pendurar-se no osso novo.**
+                                //
+                                // ⚠️ **Depois do `create`, nunca antes:** o pai só existe agora, e
+                                // adoptar antes dele nascer não tem onde pendurar. ⚠️ E o `connect`
+                                // preserva a pose de MUNDO do adoptado — sem isso o esqueleto
+                                // inteiro saltaria pela pose do osso novo.
+                                if let (Some(novo), Some((alvo, _))) = (nasceu, emenda) {
+                                    crate::bone_gesture::connect(&mut gfx.sim, alvo, novo);
+                                }
                                 if let Some(bits) = nasceu
                                     && let Some(hero) = gfx.hero_screen.as_mut()
                                 {

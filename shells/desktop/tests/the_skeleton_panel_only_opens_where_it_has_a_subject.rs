@@ -179,3 +179,67 @@ fn the_release_never_asks_the_selection_who_the_parent_is() {
          com ela nenhum press consegue fazer uma raiz nova enquanto houver um osso aceso"
     );
 }
+
+/// ⭐⭐⭐ **O RELEASE EMENDA PELA MESMA PORTA QUE O DESENHO CONSULTOU** (ordem do dono, 2026-09-09).
+///
+/// ⛔⛔ **O artista viu o osso novo SALTAR para aquela bolinha.** Se o release perguntasse outra
+/// coisa — uma segunda varredura, um raio próprio, a selecção — ele receberia um osso que não é o
+/// que estava desenhado. *Uma pré-visualização que promete uma emenda que o gesto não faz é a
+/// espécie de cena que o `CLAUDE.md` §5.0 chama de pior que ausente.*
+///
+/// ⇒ este gate mede a **SEQUÊNCIA** dentro do release: perguntar a porta · encaixar a ponta ·
+/// criar · adoptar. A metade do *o que a porta responde* é gateada no módulo dela.
+#[test]
+fn the_release_splices_through_the_same_door_the_preview_asked() {
+    const DISPATCH: &str = include_str!("../src/input_dispatch.rs");
+    const PICK: &str = include_str!("../src/bone_pick.rs");
+    let src = code_only(DISPATCH);
+    let linhas: Vec<&str> = src.lines().collect();
+    let up = linhas
+        .iter()
+        .position(|l| l.contains("self.vec_bone_drag.take()"))
+        .expect("o release do gesto de osso deixou de existir");
+    let corpo = codigo_apos(&linhas, up, 40);
+    for (agulha, o_que) in [
+        (
+            "bone_gesture::drag_now(",
+            "PERGUNTAR a porta que o desenho leu",
+        ),
+        ("agora.tip", "nascer na ponta ENCAIXADA"),
+        ("bone_gesture::connect(", "ADOPTAR a corrente solta"),
+    ] {
+        assert!(
+            corpo.contains(agulha),
+            "o release não faz «{o_que}» — a emenda entrega meio gesto"
+        );
+    }
+    // ⚠️ E a ADOPÇÃO vem DEPOIS da criação: o osso do meio é o pai, e ele só existe ali.
+    let (i_cria, i_liga) = (
+        corpo
+            .find("bone_gesture::create(")
+            .expect("a criação saiu do release"),
+        corpo
+            .find("bone_gesture::connect(")
+            .expect("a adopção saiu do release"),
+    );
+    assert!(
+        i_cria < i_liga,
+        "a adopção corre ANTES da criação — não há osso novo onde pendurar a corrente"
+    );
+    // ⚠️⚠️ **E a pré-visualização lê a MESMA função.** Sem esta metade, o desenho e o release podem
+    // divergir sem que nenhum gate de unidade o veja: cada um responde certo à sua própria pergunta.
+    // ⛔ E ela lê os TRÊS campos de lá — resolver qualquer um por si reabre a divergência.
+    let pick = code_only(PICK);
+    assert!(
+        pick.contains("bone_gesture::drag_now("),
+        "a pré-visualização não consulta a porta da emenda — o artista veria o osso encaixar num \
+         sítio e recebê-lo-ia noutro"
+    );
+    for campo in ["a.tip", "a.armed", "a.splice"] {
+        assert!(
+            pick.contains(campo),
+            "a pré-visualização resolve «{campo}» por si em vez de o ler da porta — é a divergência \
+             desenho/release a voltar por dentro"
+        );
+    }
+}

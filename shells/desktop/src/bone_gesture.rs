@@ -338,3 +338,116 @@ pub(crate) fn reach_chain(sim: &mut SimWorld, tip: Entity, goal: [f64; 2]) -> bo
 pub(crate) fn drag_makes_a_bone(origin: [f64; 2], tip: [f64; 2], px_to_world: f64) -> bool {
     (tip[0] - origin[0]).hypot(tip[1] - origin[1]) >= BONE_HIT_PX * px_to_world
 }
+
+/// ⭐⭐⭐ **O QUE ESTE ARRASTO SIGNIFICA AGORA** — o que se DESENHA e o que o release vai FAZER.
+///
+/// ⚠️⚠️ **Os dois consumidores lêem esta estrutura, e é isso que os mantém de acordo**: a
+/// pré-visualização ([`crate::App::refresh_bone_hover`]) e o release ([`crate::input_dispatch`]).
+/// Enquanto cada um resolvesse as três coisas por si, os dois responderiam certo à própria pergunta
+/// e errado um ao outro — e o sintoma seria o pior desta família: *o osso encaixa na tela e nasce
+/// noutro sítio*.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct BoneDragNow {
+    /// A corrente solta que o release vai ADOPTAR, e a base dela em mundo. `None` = sem emenda.
+    pub(crate) splice: Option<(u64, [f64; 2])>,
+    /// A ponta do osso: a **base do alvo** quando há emenda, senão o ponto onde a mão está.
+    pub(crate) tip: [f64; 2],
+    /// Este arrasto chega a fazer um osso? — medido sobre a ponta **já encaixada**.
+    pub(crate) armed: bool,
+}
+
+/// [`BoneDragNow`] para este instante do arrasto — a porta única dos dois consumidores.
+#[must_use]
+pub(crate) fn drag_now(
+    sim: &SimWorld,
+    birth: BoneBirth,
+    pointer: [f64; 2],
+    px_to_world: f64,
+) -> BoneDragNow {
+    let splice = splice_target(sim, pointer, px_to_world, birth);
+    // ⭐ **O ENCAIXE vê-se antes de acontecer** — é a mesma lei do press na ponta do pai.
+    let tip = splice.map_or(pointer, |(_, base)| base);
+    BoneDragNow {
+        splice,
+        tip,
+        // ⚠️ **Sobre a ponta ENCAIXADA, nunca sobre o ponteiro**: o osso que vai nascer é o
+        // encaixado, e medir o outro armaria a pré-visualização num comprimento que ninguém faz.
+        armed: drag_makes_a_bone(birth.origin, tip, px_to_world),
+    }
+}
+
+/// ⭐⭐⭐ **ESTE ARRASTO ACABA A JUNTAR DUAS CORRENTES?** — a porta ÚNICA da emenda (ordem do dono,
+/// 2026-09-09: *«tornar possível criar uma cadeia de ossos a partir de dois ossos separados ligando
+/// a ponta de um com o fundo de outro ao criar um osso intermediário»*).
+///
+/// Devolve o osso que vai ser **ADOPTADO** e a base dele, em mundo — que é para onde a ponta do osso
+/// novo encaixa.
+///
+/// ⚠️⚠️ **A pré-visualização e o `Up` perguntam ESTA função, e é isso que os mantém de acordo.** O
+/// artista vê o osso novo saltar para a base do outro *porque é exactamente ali que ele vai nascer*;
+/// uma segunda leitura do lado do release prometeria uma emenda que o gesto não faz.
+///
+/// ⛔ **A recusa do CICLO vive aqui e não no [`connect`]**, e a diferença é observável: se ela
+/// vivesse lá, a pré-visualização prometeria a emenda e o release faria o osso **sem** ela — *um
+/// gesto que promete duas coisas e entrega uma*. Aqui o alvo simplesmente não existe, e o desenho
+/// diz isso.
+///
+/// ⚠️ O `alvo` seria filho do osso NOVO, cujo pai é o `birth.parent` — logo o ciclo é *«o alvo já
+/// está acima de mim»*, e testa-se subindo a árvore INTEIRA (não só a corrente de ossos): um osso
+/// pendurado num grupo que descende do alvo fecharia o laço na mesma.
+#[must_use]
+pub(crate) fn splice_target(
+    sim: &SimWorld,
+    world: [f64; 2],
+    px_to_world: f64,
+    birth: BoneBirth,
+) -> Option<(u64, [f64; 2])> {
+    let (alvo, base) = crate::bone_pick::free_root_at(sim, world, px_to_world)?;
+    (!adopting_would_cycle(sim, alvo, birth.parent)).then_some((alvo, base))
+}
+
+/// **Adoptar `alvo` sob um osso novo filho de `novo_pai` fecharia um laço?**
+///
+/// ⚠️ É `alvo == novo_pai` **ou** `alvo` acima dele: o osso novo herda a linhagem do pai, então pôr
+/// ali dentro alguém que já a contém torna a árvore cíclica — e uma travessia de `Transform` sobre
+/// uma árvore cíclica não devolve, ela **pendura o app**.
+#[must_use]
+fn adopting_would_cycle(sim: &SimWorld, alvo: u64, novo_pai: Option<u64>) -> bool {
+    let Some(alvo) = Entity::try_from_bits(alvo) else {
+        return true;
+    };
+    let mut actual = novo_pai.and_then(Entity::try_from_bits);
+    while let Some(e) = actual {
+        if e == alvo {
+            return true;
+        }
+        actual = sim.world().get::<ChildOf>(e).map(ChildOf::parent);
+    }
+    false
+}
+
+/// ⭐⭐⭐ **PENDURA `child` em `parent` SEM O MOVER** — o acto que junta as duas correntes.
+///
+/// ⚠️ **A pose de mundo do adoptado NÃO pode mudar.** Ele é uma corrente inteira que o artista já
+/// posicionou; um `ChildOf` cru somaria a pose do pai novo e o esqueleto todo saltaria. A porta que
+/// devolve a pose local certa já existe ([`crate::vec_transform::reparent_keeping_world`]) e é a
+/// mesma que a Hierarquia usa — ⛔ escrever a conta aqui seria a segunda resposta à mesma pergunta.
+///
+/// ⚠️ **O `RootOrder` SAI**, e não é cosmética: ele é o desempate entre RAÍZES, e o adoptado deixou
+/// de ser uma. Deixá-lo faria a árvore carregar uma ordem que descreve o que ele já não é — e há
+/// gate a dizer que *«um filho não leva `RootOrder`»* desde que o osso existe.
+///
+/// ⛔ **Ele não pergunta pelo ciclo** — quem o faz é o [`splice_target`], para que a
+/// pré-visualização e o release recusem o MESMO gesto. Ver a nota lá.
+pub(crate) fn connect(sim: &mut SimWorld, child: u64, parent: u64) -> bool {
+    let (Some(c), Some(p)) = (Entity::try_from_bits(child), Entity::try_from_bits(parent)) else {
+        return false;
+    };
+    if !crate::vec_transform::reparent_keeping_world(sim, c, p) {
+        return false;
+    }
+    if let Ok(mut e) = sim.world_mut().get_entity_mut(c) {
+        e.remove::<RootOrder>();
+    }
+    true
+}

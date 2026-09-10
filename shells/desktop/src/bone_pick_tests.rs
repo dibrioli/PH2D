@@ -7,7 +7,7 @@
 //! quem as produz — uma cópia por ficheiro divergiria no primeiro ajuste.
 
 use crate::bone_gesture::{BonePress, create, press, test_chain};
-use crate::bone_pick::{grabbed_the_joint, hit, hover, tip_at};
+use crate::bone_pick::{free_root_at, grabbed_the_joint, hit, hover, is_a_free_chain_root, tip_at};
 use ph2d_ecs::{Entity, SimWorld};
 use ph2d_skeleton_render::BonePart;
 use ph2d_tool_vector::BoneAction;
@@ -344,4 +344,40 @@ fn only_the_verbs_no_other_tool_can_express_are_grabbed_outside_bone_mode() {
             "{parte:?} passaria a roubar o arrasto da seta: {quem}"
         );
     }
+}
+
+/// ⭐⭐⭐ **SÓ UMA CORRENTE QUE COMEÇA SOLTA OFERECE A BASE PARA A EMENDA** (ordem do dono,
+/// 2026-09-09).
+///
+/// ⛔⛔ **A base de um osso do MEIO é, no mesmo pixel, a PONTA do pai dele** — e ali a lei da ponta
+/// já fala (*«daqui nasce um filho»*). Oferecer as duas coisas no mesmo ponto reabre exactamente a
+/// ambiguidade que a lei da ponta veio curar, um nível acima.
+///
+/// ⇒ este gate mede as duas leituras **no mesmo ponto**: a ponta responde, a base cala-se.
+///
+/// (Mutação: o `free_root_at` deixar de filtrar por `is_a_free_chain_root` ⇒ RED.)
+#[test]
+fn only_a_chain_that_starts_free_offers_its_base_for_a_splice() {
+    let mut sim = SimWorld::default();
+    let ossos = test_chain(&mut sim, 3);
+    // A base do PRIMEIRO é livre — ele abre a corrente.
+    assert_eq!(
+        free_root_at(&sim, [0.0, 0.0], 1.0).map(|(b, _)| b),
+        Some(ossos[0]),
+        "a base da corrente tem de se oferecer — e' ela que a emenda adopta"
+    );
+    // Em (10,0) vivem a PONTA do 1º e a BASE do 2º. Só a ponta responde.
+    assert_eq!(
+        tip_at(&sim, [10.0, 0.0], 1.0).map(|(b, _)| b),
+        Some(ossos[0]),
+        "a ponta do 1o osso continua a ser a porta do parentesco"
+    );
+    assert_eq!(
+        free_root_at(&sim, [10.0, 0.0], 1.0),
+        None,
+        "a base de um osso do MEIO nao pode oferecer-se: ela E' a ponta do pai, no mesmo pixel, e \
+         dois verbos num pixel e' o defeito que a lei da ponta veio curar"
+    );
+    assert!(is_a_free_chain_root(&sim, ossos[0]));
+    assert!(!is_a_free_chain_root(&sim, ossos[1]));
 }

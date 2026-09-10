@@ -10,7 +10,6 @@
 //! metades continuam a ser uma lei só — o `press` chama o [`hover`] daqui, e há gate a compará-los
 //! ponto a ponto nos dois verbos.
 
-use crate::bone_gesture::drag_makes_a_bone;
 use ph2d_ecs::{Entity, SimWorld};
 
 /// Raio de acerto de um osso, em píxeis de tela — o mesmo `HANDLE_HIT_PX` que as alças do vetor
@@ -64,6 +63,55 @@ pub(crate) fn tip_at(sim: &SimWorld, world: [f64; 2], px_to_world: f64) -> Optio
         }
     }
     melhor.map(|(_, bits, p)| (bits, p))
+}
+
+/// ⭐⭐⭐ **A BASE DE UMA CORRENTE SOLTA SOB O PONTEIRO** — o espelho do [`tip_at`], e a porta do
+/// gesto que **junta dois esqueletos separados** (ordem do dono, 2026-09-09).
+///
+/// ⚠️ **Só ossos SEM PAI-OSSO**, e a razão não é de conveniência, é de ambiguidade: a raiz de um
+/// osso do meio de uma corrente **É** a ponta do pai dele, no mesmo pixel — e ali a lei da ponta já
+/// fala (*«daqui nasce um filho»*). *Uma base que já tem dono não está livre para ser adoptada, e
+/// dois verbos no mesmo pixel é exactamente o defeito que a lei da ponta veio curar.*
+///
+/// ⚠️ **A régua de «tem pai» é a MESMA do [`crate::skeleton_live::chain_to`]** — o pai existe **e**
+/// é osso. Um esqueleto pendurado dentro de um grupo continua a ser uma corrente solta, que é o que
+/// o resto do módulo já assume.
+///
+/// ⚠️ Raio e desempate iguais aos do [`tip_at`]: a bolinha DESENHADA, e ganha a mais perto.
+pub(crate) fn free_root_at(
+    sim: &SimWorld,
+    world: [f64; 2],
+    px_to_world: f64,
+) -> Option<(u64, [f64; 2])> {
+    let mut melhor: Option<(f64, u64, [f64; 2])> = None;
+    for (bits, a, b) in crate::skeleton_live::bone_segments(sim) {
+        if !is_a_free_chain_root(sim, bits) {
+            continue;
+        }
+        let comp_px = (b[0] - a[0]).hypot(b[1] - a[1]) / px_to_world.max(f64::MIN_POSITIVE);
+        let r = ph2d_skeleton_render::joint_radius_px(comp_px) * px_to_world;
+        let d = (a[0] - world[0]).hypot(a[1] - world[1]);
+        if d <= r && melhor.is_none_or(|(m, _, _)| d < m) {
+            melhor = Some((d, bits, a));
+        }
+    }
+    melhor.map(|(_, bits, p)| (bits, p))
+}
+
+/// **Este osso abre uma corrente?** — não tem pai, ou o pai que tem não é osso.
+///
+/// ⚠️ **Porta única das duas perguntas que a precisam** ([`free_root_at`] e o gate que a mede), e a
+/// mesma regra que o [`crate::skeleton_live::chain_to`] usa para parar de subir. Escrita duas vezes,
+/// ela divergiria no dia em que alguém decidisse o que um osso dentro de um grupo é.
+#[must_use]
+pub(crate) fn is_a_free_chain_root(sim: &SimWorld, bits: u64) -> bool {
+    let Some(e) = Entity::try_from_bits(bits) else {
+        return false;
+    };
+    sim.world()
+        .get::<ph2d_ecs::ChildOf>(e)
+        .map(ph2d_ecs::ChildOf::parent)
+        .is_none_or(|p| sim.world().get::<ph2d_skeleton_ecs::Bone>(p).is_none())
 }
 
 /// **O press caiu na JUNTA deste osso?** — a bolinha da raiz, dentro do mesmo raio das alças.
@@ -333,18 +381,38 @@ impl crate::App {
         } else {
             ph2d_tool_vector::BoneAction::Transform
         };
-        self.bone_hover = self
-            .gfx
-            .as_ref()
-            .and_then(|gfx| hover(&gfx.sim, world, px_to_world, foco, acao));
-        // ⭐ E o osso que está a NASCER, pela mesma leitura do ponteiro.
-        self.bone_preview = self.vec_bone_drag.map(|n| {
-            (
-                n.origin,
+        // ⭐⭐⭐ **O QUE O ARRASTO SIGNIFICA AGORA** — a porta ÚNICA que o release também lê
+        // ([`crate::bone_gesture::drag_now`]). ⛔ É ela que faz o que o artista VÊ ser o que ele
+        // RECEBE: a emenda, a ponta encaixada e o limiar saem todos da mesma leitura.
+        let agora = self.vec_bone_drag.and_then(|n| {
+            let gfx = self.gfx.as_ref()?;
+            Some(crate::bone_gesture::drag_now(
+                &gfx.sim,
+                n,
                 world,
-                drag_makes_a_bone(n.origin, world, px_to_world),
-            )
+                px_to_world,
+            ))
         });
+        // ⭐⭐⭐ **COM UM ARRASTO VIVO, o realce responde ao RELEASE e não ao press.**
+        //
+        // ⚠️ São perguntas diferentes — *o que um press aqui faria?* contra *o que este soltar vai
+        // fazer?* — e durante um arrasto só a segunda tem sentido: o press já aconteceu. A bolinha
+        // que acende é a que o osso novo vai agarrar.
+        self.bone_hover = match agora.and_then(|a| a.splice) {
+            Some((alvo, _)) => Some(ph2d_skeleton_render::BoneHover {
+                bone: alvo,
+                part: ph2d_skeleton_render::BonePart::Joint,
+            }),
+            None => self
+                .gfx
+                .as_ref()
+                .and_then(|gfx| hover(&gfx.sim, world, px_to_world, foco, acao)),
+        };
+        // ⭐ E o osso que está a NASCER, da MESMA leitura.
+        self.bone_preview = self
+            .vec_bone_drag
+            .zip(agora)
+            .map(|(n, a)| (n.origin, a.tip, a.armed));
     }
 }
 

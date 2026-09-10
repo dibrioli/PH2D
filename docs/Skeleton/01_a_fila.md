@@ -1365,6 +1365,63 @@ osso criado vem primeiro na lista*. Com o osso curto criado por último, «o pri
 e «o mais perto» davam a mesma resposta. ⇒ o gate corre agora **as duas ordens de criação**.
 
 
+### F3-p — ✅ **DUAS CORRENTES SEPARADAS VIRAM UMA** (ordem do dono, 2026-09-09)
+
+> *«Torne possível criar uma cadeia de ossos a partir de dois ossos separados ligando a ponta de um
+> com o fundo de outro ao criar um osso intermediário.»*
+
+**O gesto:** press na **ponta** de `A` · arrasta · solta na **base** de `B`. Nasce o osso do meio,
+encaixado nos dois pontos, e a corrente de `B` passa a pendurar-se nele. `A → novo → B`.
+
+⭐⭐ **É o ESPELHO exacto da lei do F3-o, e é isso que o torna barato:** ali *a ponta decide de quem o
+osso novo é FILHO* (o press); aqui *a base decide quem vira filho DELE* (o release). Duas metades
+independentes do mesmo gesto, cada uma um sítio na tela.
+
+| porta | o que responde |
+|---|---|
+| [`bone_pick::tip_at`] | de quem o osso novo é filho (press) |
+| [`bone_pick::free_root_at`] | quem o osso novo adopta (release) |
+| [`bone_gesture::splice_target`] | a emenda **legítima** — a base solta, sem laço |
+| [`bone_gesture::drag_now`] | o que se DESENHA e o que o release vai FAZER |
+| [`bone_gesture::connect`] | pendura sem mover |
+
+⛔ **Só bases SEM PAI-OSSO se oferecem.** A base de um osso do meio **É**, no mesmo pixel, a ponta do
+pai dele — e ali a lei da ponta já fala. *Uma base que já tem dono não está livre para ser adoptada,
+e dois verbos num pixel é o defeito que o F3-o veio curar.*
+
+⚠️ **A pose de MUNDO do adoptado NÃO muda** — ele é uma corrente que o artista já posicionou, e um
+`ChildOf` cru somaria a pose do osso novo (o esqueleto inteiro saltaria). A porta que devolve a pose
+local certa já existia (`vec_transform::reparent_keeping_world`, a mesma da Hierarquia) e o
+`RootOrder` sai com o adoptado, que deixou de ser raiz.
+
+⛔ **A recusa do LAÇO vive no `splice_target`, não no `connect`**, e a diferença é observável: ali o
+alvo simplesmente **não existe**, logo a pré-visualização não encaixa; no `connect` o desenho
+prometeria a emenda e o release entregaria um osso sem ela. (Uma travessia de `Transform` sobre uma
+árvore cíclica **não devolve** — não é defeito cosmético.)
+
+**Gates** (10 nesta wave, todos mortos por mutação):
+
+| gate | mutação que ele mata |
+|---|---|
+| `only_a_chain_that_starts_free_offers_its_base_for_a_splice` | a base do meio da corrente oferece-se ⇒ dois verbos num pixel |
+| `two_separate_chains_become_one_and_the_adopted_one_does_not_move` | `ChildOf` cru ⇒ o esqueleto adoptado salta |
+| `the_adopted_root_stops_being_a_root` | o `RootOrder` fica num osso que já não é raiz |
+| `splicing_refuses_the_loop_that_would_hang_the_app` | o laço passa ⇒ a travessia de pose não devolve |
+| `what_is_drawn_is_the_bone_that_will_be_born` | a ponta não encaixa, ou o limiar mede o ponteiro |
+| `the_release_splices_through_the_same_door_the_preview_asked` | o desenho e o release resolvem por si |
+
+⚠️⚠️ **UMA MUTAÇÃO SOBREVIVEU e foi ela que ditou o desenho final.** A 1.ª redacção resolvia as três
+coisas — a emenda, a ponta encaixada e o limiar — **duas vezes**: uma na pré-visualização, outra no
+release. Apagar o encaixe do lado do DESENHO deixava a suíte inteira verde, e o produto ficava com o
+defeito mais caro desta família: *o osso acaba no cursor na tela e nasce na bolinha.* ⇒ nasceu o
+`BoneDragNow`: **uma leitura, dois consumidores**, com gate de costura a provar que os dois a leem.
+
+⚠️ **E a fixtura do gate novo não produzia o fenómeno à primeira**: a bolinha da base encolhe com o
+comprimento (`joint_radius_px = min(12, comp/4)`), e um osso de `10` oferece um alvo de `2,5` — o
+ponteiro estava a `3,6`. *O raio do alvo é do DESENHO, e uma fixtura que não o calcula mede outra
+coisa.*
+
+
 ## ⛔ Recusas MEDIDAS deste módulo — não as reconstrua
 
 > ⚠️ **As seis de 2026-09-07/08 entraram aqui na auditoria de 08/09** — elas viviam só em prosa e em

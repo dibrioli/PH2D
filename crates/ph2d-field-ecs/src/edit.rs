@@ -16,15 +16,15 @@
 
 #[path = "edit_params.rs"]
 mod params;
+#[path = "edit_params_write.rs"]
+mod params_write;
+pub use params_write::{dims_of, set_dim, set_param};
 #[path = "edit_pose.rs"]
 mod pose;
 #[path = "edit_tree.rs"]
 mod tree;
 
-pub use params::{
-    add_mod, dims_of, mods_of, params_of, radius_bound, radius_of, remove_mod, set_dim, set_param,
-    walk,
-};
+pub use params::{add_mod, mods_of, params_of, radius_bound, radius_of, remove_mod, walk};
 pub use pose::{
     rotate_world, rotate_world_about, scale_about, scale_by, top_level, translate_world,
 };

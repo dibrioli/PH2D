@@ -239,3 +239,6 @@ mod tests;
 
 #[cfg(test)]
 mod verb_tests;
+
+#[cfg(test)]
+mod verb_joint_tests;

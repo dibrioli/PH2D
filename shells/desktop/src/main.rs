@@ -636,6 +636,7 @@ mod skeleton_goal;
 mod skeleton_live;
 /// ⭐⭐⭐ **REVELAR-AO-FOCAR**: quando um osso NOVO entra em foco, a secção Skeleton vem à vista.
 mod skeleton_reveal;
+mod skeleton_skin_image;
 /// ⭐ **Os OSSOS INTELIGENTES** — girar um osso percorre uma animação inteira.
 mod skeleton_smart;
 /// As cenas de smoke do Sketch (=31) e do Hatch (=32) — irmão de `build_smoke`, teto de LOC.

@@ -264,25 +264,81 @@ pub(crate) fn bind(
         let Some(shape_inv) = world_of(sim, shape).inverse() else {
             continue;
         };
-        // `rest = S⁻¹ ∘ B` — aplica o mundo do osso primeiro, depois leva ao espaço da forma.
-        //
-        // ⚠️ Um osso sem `StableId` é **saltado**: `StableId::NONE` não nomeia ninguém, e guardá-lo
-        // daria um tendão que resolve para nada — pior que um osso a menos, porque parece ligado.
-        let tendoes: Vec<Tendon> = ossos
-            .iter()
-            .filter_map(|&e| {
-                Some(Tendon {
-                    bone: ph2d_ecs::stable_id_of(sim.world(), e)?,
-                    rest: world_of(sim, e).then(&shape_inv).0,
-                })
-            })
-            .collect();
+        let tendoes = tendons_for(sim, &ossos, shape_inv);
         sim.world_mut()
             .entity_mut(shape)
             .insert(SkinBind::new(bytes, tendoes));
         feitos += 1;
     }
     feitos
+}
+
+/// ⭐⭐⭐ **OS TENDÕES DE UMA COISA** — a lei do bind, escrita uma vez para as DUAS mídias.
+///
+/// `rest = S⁻¹ ∘ B` — aplica o mundo do osso primeiro, depois leva ao espaço da coisa.
+///
+/// ⚠️ **Um osso sem `StableId` é SALTADO**: `StableId::NONE` não nomeia ninguém, e guardá-lo daria
+/// um tendão que resolve para nada — pior que um osso a menos, porque *parece* ligado.
+///
+/// ⚠️ **Ela saiu do laço do [`bind`] quando a 2.ª mídia chegou** (uma imagem que obedece ao
+/// esqueleto). A tentação era copiá-la para o bind novo: a lei é curta e a cópia compilava. ⛔ Mas
+/// é exactamente a lei cuja divergência ninguém veria — uma forma e uma imagem presas no mesmo
+/// gesto passariam a responder a poses diferentes, e o sintoma seria *«o braço desenhado não
+/// acompanha o braço vectorial»*.
+#[must_use]
+fn tendons_for(sim: &SimWorld, ossos: &[Entity], shape_inv: Xform) -> Vec<Tendon> {
+    ossos
+        .iter()
+        .filter_map(|&e| {
+            Some(Tendon {
+                bone: ph2d_ecs::stable_id_of(sim.world(), e)?,
+                rest: world_of(sim, e).then(&shape_inv).0,
+            })
+        })
+        .collect()
+}
+
+/// ⭐⭐⭐ **PRENDE UMA IMAGEM ao esqueleto** — a 2.ª mídia (ordem do dono, 2026-09-09).
+///
+/// A malha é traçada da própria tinta ([`crate::skeleton_skin_image::mesh_from_rgba`]) e guardada
+/// nos **bytes opacos** da [`SkinBind`] — ⭐ sem uma variante nova e sem tocar no schema, que é o
+/// que o doc daquele campo prometia por escrito desde que ele existe.
+///
+/// ⚠️ **Os tendões saem da MESMA porta que os de uma forma** ([`tendons_for`]): as duas mídias
+/// respondem à mesma pose ou o personagem parte-se ao meio.
+///
+/// `false` quando não há esqueleto, quando a pose da imagem é singular, ou quando a tinta não dá
+/// uma malha — e nos três casos **nada é escrito**, porque uma pele sem malha lá dentro não é uma
+/// pele, é uma imagem prestes a sumir.
+pub(crate) fn bind_image(
+    sim: &mut SimWorld,
+    e: Entity,
+    rgba: &[u8],
+    size_px: [u32; 2],
+    opts: ph2d_poly2d::MeshOptions,
+    seed: Option<Entity>,
+) -> bool {
+    let ossos = skeleton_of(sim, seed);
+    if ossos.is_empty() || sim.world().get_entity(e).is_err() {
+        return false;
+    }
+    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+    let Some(malha) =
+        crate::skeleton_skin_image::mesh_from_rgba(rgba, size_px[0], size_px[1], opts)
+    else {
+        return false;
+    };
+    let Ok(bytes) = postcard::to_allocvec(&malha) else {
+        return false;
+    };
+    let Some(shape_inv) = world_of(sim, e).inverse() else {
+        return false;
+    };
+    let tendoes = tendons_for(sim, &ossos, shape_inv);
+    sim.world_mut()
+        .entity_mut(e)
+        .insert(SkinBind::new(bytes, tendoes));
+    true
 }
 
 /// **Solta as formas seleccionadas do esqueleto.** Devolve quantas soltou.

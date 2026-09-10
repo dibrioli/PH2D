@@ -189,6 +189,9 @@ ph2d-vec-envelope = { path = "../../crates/ph2d-vec-envelope" }
 # três pontos. É a mesma repartição do *Armature modifier* do Blender, que é um só e tem a
 # implementação do Grease Pencil à parte porque *o que é um ponto* ali é outra coisa.
 ph2d-skeleton = { path = "../../crates/ph2d-skeleton" }
+# A malha de uma imagem (2.ª mídia do esqueleto) — `serde` porque ela viaja
+# nos bytes opacos da `SkinBind`.
+ph2d-poly2d = { path = "../../crates/ph2d-poly2d", features = ["serde"] }
 ph2d-skeleton-render = { path = "../../crates/ph2d-skeleton-render" }
 ph2d-skeleton-ecs = { path = "../../crates/ph2d-skeleton-ecs" }
 ph2d-vec-skin = { path = "../../crates/ph2d-vec-skin" }

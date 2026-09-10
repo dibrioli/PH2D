@@ -29,10 +29,10 @@
 //! aresta — a costura abre fenda. ⏸️ Um pipeline de triângulos texturados é a optimização, **com
 //! razão medida**, se a rota de hoje não couber no quadro.
 
-use ph2d_affine::Xform;
 use ph2d_ecs::{Entity, SimWorld};
 use ph2d_poly2d::{Mesh2d, MeshOptions};
 use ph2d_render::Sprite;
+use ph2d_skeleton::Xform;
 
 /// ⭐⭐⭐ **PIXEL DA IMAGEM → PONTO LOCAL DA SPRITE** — a lei que ata as duas réguas.
 ///

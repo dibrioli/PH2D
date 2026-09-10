@@ -254,6 +254,23 @@ extend-ignore-identifiers-re = [
     # (`TRANSFORMES & DEFORMADORES`) e capitalizado (`«Transformes»`), e nenhum dos dois casa
     # `^transformes?$`. *Uma isenção com o alcance errado lê-se como isenção e não isenta.*
     "(?i)^transformes?$",
+    # ⚠️ **As TRÊS abaixo entraram na integração de 2026-09-10**, e as três são a mesma doença: uma
+    # palavra portuguesa a que o `typos` responde com a inglesa mais próxima. ⛔ Nenhuma das seis
+    # worktrees da rodada corria o `typos` sem ser à mão — só o `ship.sh` o corre, e é por isso que
+    # elas só aparecem aqui.
+    #
+    # `larg` — abreviatura de **largura**, parâmetro de `sulco(prof, larg)` e `friso(alt, larg)` no
+    # censo de junções do campo implícito, ao lado de `prof` e `alt`. O `typos` quer `large`, que
+    # trocaria a MEIA-LARGURA de um sulco por um adjectivo. *Renomeá-la para inglês partiria o par
+    # com o `prof` que está na mesma assinatura.*
+    "^larg$",
+    # `versiona` — português, 3.ª pessoa de *versionar*: *«a escada versiona o que o ficheiro DIZ»*
+    # (o doc do `FIELD_DOC_VERSION`). O `typos` lê-a como o PLURAL `versions`, que troca um verbo
+    # por um substantivo e faz a frase deixar de ter predicado.
+    "^versiona$",
+    # `alternador` — português, o substantivo de *alternar*: *«um alternador, não um selector»*, a
+    # lei da fileira de modos do Painter. O `typos` oferece `alternator`, que é a peça do carro.
+    "^alternador$",
 ]
 
 [default.extend-identifiers]

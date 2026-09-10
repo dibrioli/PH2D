@@ -26,8 +26,10 @@ ph2d-a11y        = { path = "../ph2d-a11y" }
 ph2d-tokens      = { path = "../ph2d-tokens" }
 ph2d-i18n        = { path = "../ph2d-i18n" }
 ph2d-skeleton    = { path = "../ph2d-skeleton" }
-ph2d-vector      = { path = "../ph2d-vector" }
-ph2d-text        = { path = "../ph2d-text" }
+# ⚠️ **O `ph2d-vector` e o `ph2d-text` SAÍRAM na integração de 2026-09-10** (`cargo machete`): este
+# painel nasceu com o `Cargo.toml` de um irmão e nunca chegou a nomear nenhum dos dois — quem pinta
+# fala com o `ph2d-editor-core` (`paint::rect_to_vello`, `panel::PaintCtx`). ⛔ Só o `ship.sh` corre
+# o `machete`, e nenhuma das seis worktrees da rodada o correu.
 
 [dev-dependencies]
 ph2d-host = { path = "../ph2d-host" }

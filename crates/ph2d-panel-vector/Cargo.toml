@@ -23,10 +23,13 @@ ph2d-editor-core = { path = "../ph2d-editor-core" }
 # slider↔chip mapping from there. Direction panel → tool does not cycle (tool
 # depends on editor-core, panel on both).
 ph2d-tool-vector = { path = "../ph2d-tool-vector" }
-# ⭐ **O vocabulário do LADO DA DOBRA** (`BendSide`), para a fileira de segmentos se alinhar por
-# ÍNDICE com `BendSide::ALL` em vez de repetir a lista. É o mesmo motivo de a linha acima existir
-# (o `BoneAction::ALL`), e a crate é uma FOLHA (álgebra + serde).
-ph2d-skeleton = { path = "../ph2d-skeleton" }
+# ⚠️ **O `ph2d-skeleton` SAIU na integração de 2026-09-10** (`cargo machete`). A razão escrita aqui
+# era verdadeira — *«o vocabulário do LADO DA DOBRA (`BendSide`), para a fileira de segmentos se
+# alinhar por ÍNDICE com `BendSide::ALL`»* — e **mudou de casa** quando a secção SKELETON saiu deste
+# painel para o `ph2d-panel-skeleton`, na mesma jornada. Medido: `0` usos de `ph2d_skeleton` neste
+# crate, e o [`state.rs`](src/state.rs) já o diz por escrito (*«…que é quem o lê»*).
+# ⛔ *Uma cerca de Chesterton com a razão escrita ao lado ainda expira — o que expira é a RAZÃO, e
+# só quem a re-mede vê isso.*
 # O vocabulário da SIMETRIA de desenho (W6.3): o painel pinta os chips a partir de
 # `SymmetryKind::ALL` e dos `label()` do próprio enum — uma tabela paralela aqui nasceria
 # incompleta no dia do quinto tipo. Folha pura (só serde).

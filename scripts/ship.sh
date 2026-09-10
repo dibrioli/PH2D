@@ -95,9 +95,23 @@ done
 # `incremental/` é o que faz o `cargo check -p` do inner loop voar no dia
 # seguinte; um `export` no topo o mataria junto. A §2 protege essa metade
 # explicitamente ("o `cargo check -p` do inner loop fica em paz, de propósito").
+# ⚠️⚠️ **O `nextest` CANCELA na primeira falha, e este script não oferecia a saída** — o irmão
+# `nextest-impacted.sh` aprendeu-a e este não, que é a mesma doença de *«uma regra fora do caminho
+# de quem a executa é uma regra que não existe»*. Medido na integração de 2026-09-10: uma flake de
+# carga já catalogada (`flip_smooth::…::orcamento`, §5.0) reprovou ao teste **6 148 de 22 612** e
+# **16 464 ficaram por correr** — a corrida à mão com `--no-fail-fast` logo a seguir deu
+# `22 612/22 612`. *Quem lê um ✗ aqui não fica a saber se o resto está verde.*
+#
+#   NO_FAIL_FAST=1 ./scripts/ship.sh   # corre tudo e lista TODAS as falhas
+#
+# ⛔ **Fica OPT-IN de propósito:** o veredito de push tem de ser o do CI, e o CI cancela.
+FAIL_MODE=()
+if [ -n "${NO_FAIL_FAST:-}" ]; then
+    FAIL_MODE=(--no-fail-fast)
+fi
 if command -v cargo-nextest >/dev/null 2>&1; then
     run "nextest run --workspace (ci-test)" \
-        env CARGO_INCREMENTAL=0 cargo nextest run --workspace --cargo-profile ci-test
+        env CARGO_INCREMENTAL=0 cargo nextest run --workspace --cargo-profile ci-test "${FAIL_MODE[@]}"
 else
     run "cargo test --workspace (ci-test)" \
         env CARGO_INCREMENTAL=0 cargo test --workspace --profile ci-test

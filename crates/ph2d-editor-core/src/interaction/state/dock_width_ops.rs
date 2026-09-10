@@ -26,12 +26,9 @@ impl WidgetStore {
             DockSide::Left => ChromeBands::DEFAULT.left_dock_w,
             DockSide::Right => ChromeBands::DEFAULT.right_dock_w,
         };
-        // ⚠️ **O piso de leitura é o do FECHO, não o do painel** — ver [`Self::set_dock_width`].
-        crate::math::safe_clamp(
-            stored.unwrap_or(base),
-            Self::DOCK_W_COLLAPSE,
-            Self::DOCK_W_MAX,
-        )
+        // ⚠️ **O piso é o do PAINEL** — ver [`Self::set_dock_width`]. Ele foi o do FECHO entre
+        //    2026-09-08 e 2026-09-09, enquanto o arrasto podia fechar a coluna.
+        crate::math::safe_clamp(stored.unwrap_or(base), Self::DOCK_W_MIN, Self::DOCK_W_MAX)
     }
 
     /// ⭐ **A ESCOLHA do artista, ou `None`** — o irmão de [`Self::dock_width`], que devolve
@@ -50,28 +47,25 @@ impl WidgetStore {
 
     /// Escreve a largura de uma coluna, já clampada.
     ///
-    /// ⭐⭐⭐ **O PISO É O DEGRAU DO FECHO ([`Self::DOCK_W_COLLAPSE`]), e não o mínimo do painel.**
+    /// ⭐⭐⭐ **O PISO É O MÍNIMO DO PAINEL ([`Self::DOCK_W_MIN`]) — a borda encolhe até ali e PARA.**
     ///
-    /// > *«ao apertar … o painel lateral não é recolhido mais»* — Enio, 2026-09-08.
+    /// > *«Vamos retirar a opção de colapsar arrastando. Deixa o colapsar apenas no menu da barra
+    /// > superior.»* — Enio, 2026-09-09.
     ///
-    /// ⛔⛔ Com o piso no **mínimo** havia **22 px de arrasto MUDO**: o degrau do fecho está uma
-    /// linha abaixo do mínimo, logo entre um e outro a borda **parava de seguir o rato** e nada no
-    /// ecrã mudava. Medido: o cursor viaja de `x = 1149` a `1165` com a coluna congelada em `220`,
-    /// e só em `1169` ela fecha. *O único sinal daquele gesto era a coisa que tinha deixado de se
-    /// mexer* — quem larga onde a borda parou conclui que o fecho deixou de existir, que é
-    /// exactamente o que o dono reportou.
+    /// ⛔⛔ **Isto REVERTE o piso de 2026-09-08, e a razão é que a premissa dele dissolveu.** Ele
+    /// tinha descido para o degrau do fecho ([`Self::DOCK_W_COLLAPSE`]) por um motivo bom: com o
+    /// piso no mínimo havia **22 px de arrasto MUDO** entre o mínimo e o degrau — a borda parava
+    /// de seguir o rato e nada mudava no ecrã, e *o único sinal daquele gesto era a coisa que
+    /// tinha deixado de se mexer*. Esses 22 px só existiam **porque o arrasto podia fechar**. Sem
+    /// o fecho, a faixa não é «a parte muda do gesto»: é **largura que o painel não sabe
+    /// desenhar** (abaixo do mínimo o cabeçalho e uma linha deixam de caber juntos). ⇒ o piso
+    /// volta a ser o do painel, e o `dock_seam_up` deixa de precisar de devolver ninguém a lado
+    /// nenhum. *`CLAUDE.md` §0.0: quem tira o consumidor de um número tem de reconferir o número.*
     ///
-    /// ⇒ a borda segue o dedo até ao degrau, e o fecho acontece **onde o movimento acaba**.
-    ///
-    /// ⚠️ **A cerca do degrau NÃO se mexeu, e não devia:** *«chegar ao mínimo é um objectivo
-    /// legítimo do artista, logo tocar-lhe não pode fechar nada»*. Continuam a ser precisos 22 px
-    /// **para além** do mínimo para fechar — o que muda é que agora eles se VÊEM.
-    ///
-    /// ⚠️ **Uma largura entre o degrau e o mínimo é um estado de GESTO, nunca de repouso:** quem
-    /// larga ali é devolvido ao mínimo por quem acaba o arrasto (`App::dock_seam_up`). Sem essa
-    /// metade, a persistência gravaria uma coluna mais estreita do que o painel sabe desenhar.
+    /// ⚠️ **Um só piso, e é o mesmo na leitura e na escrita** — dois pisos diferentes eram o que
+    /// deixava uma largura de GESTO chegar ao disco.
     pub fn set_dock_width(&mut self, side: crate::screens::layout::DockSide, w: f32) {
-        let w = crate::math::safe_clamp(w, Self::DOCK_W_COLLAPSE, Self::DOCK_W_MAX);
+        let w = crate::math::safe_clamp(w, Self::DOCK_W_MIN, Self::DOCK_W_MAX);
         match side {
             crate::screens::layout::DockSide::Left => self.dock_w_left = Some(w),
             crate::screens::layout::DockSide::Right => self.dock_w_right = Some(w),
@@ -84,7 +78,17 @@ impl WidgetStore {
     /// O mínimo de uma coluna **aberta**.
     pub const DOCK_W_MIN: f32 = ph2d_tokens::PANEL_MIN_W_PX;
 
-    /// ⭐⭐⭐ **A largura abaixo da qual o arrasto deixa de ser «encolher» e passa a ser «fechar».**
+    /// ⛔⛔ **DORMENTE desde 2026-09-09 — ela já não tem consumidor no produto.**
+    ///
+    /// > *«Vamos retirar a opção de colapsar arrastando.»* — Enio, 2026-09-09.
+    ///
+    /// ⚠️ **Fica escrita, e a medição com ela, porque o que morreu foi o GESTO e não o
+    /// número.** O dia em que o fecho de uma coluna voltar — a morada dele é o menu, e ali
+    /// ele é um verbo sem largura — quem o construir precisa de saber por que o degrau era
+    /// **uma linha** abaixo do mínimo, e não meia nem duas. ⛔ Se ao fim de uma jornada nada
+    /// a ler, ela é lixo e apaga-se: um `const` sem leitor é a espécie que esta casa varre.
+    ///
+    /// **A largura abaixo da qual o arrasto deixava de ser «encolher» e passava a ser «fechar».**
     ///
     /// Medido em `docs/UI_New_and_Simple/medicoes/06`: fechar as duas colunas devolve **89 a 92 %**
     /// do ecrã em qualquer dos três tablets — mais do que todas as faixas de chrome somadas valem.

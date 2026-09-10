@@ -288,17 +288,17 @@ fn reopening_restores_the_width_the_column_had_before_the_drag() {
     let at_start = h.store.dock_width_choice(DockSide::Right);
     assert_eq!(at_start, Some(420.0));
 
-    // O arrasto, a caminho do degrau: cada pixel escreve, e a porta clampa no PISO.
+    // O arrasto, a caminho do fim: cada pixel escreve, e a porta clampa no PISO.
     //
-    // ⚠️ **O piso é o degrau do fecho desde 2026-09-08, e não o mínimo do painel** — foi essa a cura
-    //    dos 22 px de arrasto mudo (*«o painel lateral não é recolhido mais»*, ver
-    //    `the_border_follows_the_finger_until_the_column_closes`). O que este gate mede não mudou:
-    //    o arrasto deixa o PISO gravado muito antes de o degrau disparar, logo ler o store no
-    //    instante do fecho devolveria o piso e não os 420 do artista.
+    // ⚠️ **O piso voltou a ser o MÍNIMO DO PAINEL em 2026-09-09**, quando o dono retirou o fecho
+    //    por arrasto (*«Deixa o colapsar apenas no menu da barra superior»*): a faixa de 22 px
+    //    abaixo do mínimo só existia para o fecho se ver acontecer. O que este gate mede não
+    //    mudou — o arrasto deixa o PISO gravado, logo ler o store no instante do fecho devolveria
+    //    o piso e não os 420 do artista.
     h.store.set_dock_width(DockSide::Right, 100.0);
     assert_eq!(
         h.store.dock_width_choice(DockSide::Right),
-        Some(ph2d_editor_core::interaction::WidgetStore::DOCK_W_COLLAPSE)
+        Some(ph2d_editor_core::interaction::WidgetStore::DOCK_W_MIN)
     );
 
     dock_columns::close(&mut h, DockSide::Right, at_start);
@@ -435,24 +435,33 @@ fn both_halves_of_a_column_are_swept() {
     let _ = h;
 }
 
-/// ⭐⭐⭐ **A BORDA SEGUE O DEDO ATÉ A COLUNA FECHAR — não há faixa muda.**
+/// ⭐⭐⭐ **A BORDA SEGUE O DEDO ATÉ AO MÍNIMO — E PÁRA LÁ.**
 ///
-/// > *«ao apertar … o painel lateral não é recolhido mais»* — Enio, 2026-09-08.
+/// > *«Vamos retirar a opção de colapsar arrastando. Deixa o colapsar apenas no menu da barra
+/// > superior.»* — Enio, 2026-09-09.
 ///
-/// ⛔⛔ O degrau do fecho está **uma linha abaixo** do mínimo do painel, e o piso da largura era o
-/// **mínimo** ⇒ entre um e outro a borda parava de seguir o rato e nada no ecrã mudava. Medido
-/// antes da cura: o cursor viajava `16 px` com a coluna congelada em `220`, e só ao fim é que ela
-/// fechava. *O único sinal daquele gesto era a coisa que tinha deixado de se mexer* — quem larga
-/// onde a borda parou conclui que o fecho deixou de existir.
+/// ⛔⛔ **Este gate está INVERTIDO, e a inversão é do dono.** Ele chamava-se
+/// `the_border_follows_the_finger_until_the_column_closes` e exigia o contrário: que o arrasto
+/// **fechasse** a coluna ao passar 22 px abaixo do mínimo. Aquilo curava um defeito real de
+/// 2026-09-08 (22 px de arrasto mudo) e shipou um dia; o dono retirou o gesto inteiro depois de
+/// o usar — *«quando colapsei arrastando e abri no menu da barra superior travou por um minuto»*.
 ///
-/// ⚠️ **A cerca do degrau não se mexeu, e não devia:** continuam a ser precisos 22 px para além do
-/// mínimo para fechar (*«chegar ao mínimo é um objectivo legítimo do artista»*). O que este gate
-/// afirma é que esses 22 px **se vêem**.
+/// ⇒ o que fica é uma lei mais simples, e as duas metades importam:
 ///
-/// ⚠️ **A simulação é a da shell, passo a passo:** o layout do quadro ANTERIOR decide a largura, ela
-/// é escrita, e o quadro seguinte é pintado — que é exactamente o que o `dock_seam_move` faz.
+/// 1. **A borda segue o dedo** em todo o percurso — nenhum passo congelado (o defeito de 08/09
+///    continua a ser um defeito);
+/// 2. **e pára no mínimo** — nem fecha, nem deixa a coluna mais estreita do que o painel sabe
+///    desenhar.
+///
+/// ⚠️ **A simulação é a da shell, passo a passo:** o layout do quadro ANTERIOR decide a largura,
+/// ela é escrita, e o quadro seguinte é pintado — que é exactamente o que o `dock_seam_move` faz.
+///
+/// ⛔⛔ **E o piso é guardado DUAS vezes — medido por mutação em 2026-09-09.** A porta de
+/// ESCRITA (`set_dock_width`) e a de LEITURA (`dock_width`) clampam as duas; baixar só uma
+/// deixa este gate VERDE, porque a outra ainda protege o que ele observa. *Uma cerca que nunca
+/// morde esconde a que morde* — quem quiser provar esta lei tem de mutar **as duas**.
 #[test]
-fn the_border_follows_the_finger_until_the_column_closes() {
+fn the_border_follows_the_finger_down_to_the_minimum_and_stops() {
     use ph2d_editor_core::interaction::WidgetStore;
 
     let mut h = settled(&["inspector", "audio_mixer", "audio_editor"]);
@@ -463,18 +472,26 @@ fn the_border_follows_the_finger_until_the_column_closes() {
 
     let mut x = seam.x + seam.w * 0.5;
     let mut frozen: Vec<String> = Vec::new();
-    let mut closed = false;
+    let mut reached_min = false;
     for _ in 0..60 {
         let l = h.last_layout.expect("layout");
         let want = l.dock_width_for(DockSide::Right, x);
-        if want < WidgetStore::DOCK_W_COLLAPSE {
-            closed = dock_columns::close(&mut h, DockSide::Right, Some(304.0));
-            break;
-        }
         h.store.set_dock_width(DockSide::Right, want);
         paint(&mut h, 2);
         let got = h.last_layout.expect("layout").inspector.w;
-        if (got - want).abs() > 0.5 {
+        if want <= WidgetStore::DOCK_W_MIN {
+            reached_min = true;
+            // ⛔ **Abaixo do mínimo a coluna não encolhe mais, e continua ABERTA.**
+            assert!(
+                (got - WidgetStore::DOCK_W_MIN).abs() < 0.5,
+                "com o dedo a pedir {want:.1} px a coluna ficou com {got:.1} — o piso é o mínimo \
+                 do painel"
+            );
+            assert!(
+                !slot_tabs::occupants(&h, Slot::RightTop).is_empty(),
+                "o arrasto fechou a coluna, e o gesto de fechar foi retirado em 2026-09-09"
+            );
+        } else if (got - want).abs() > 0.5 {
             frozen.push(format!(
                 "com o dedo em x={x:.0} a coluna devia ter {want:.1} px e tem {got:.1}"
             ));
@@ -482,11 +499,13 @@ fn the_border_follows_the_finger_until_the_column_closes() {
         x += 4.0;
     }
 
-    assert!(closed, "o gesto nunca chegou a fechar a coluna");
+    assert!(
+        reached_min,
+        "controlo partido: o percurso nunca chegou ao mínimo — esta fixtura não mede o piso"
+    );
     assert!(
         frozen.is_empty(),
-        "a borda parou de seguir o dedo em {} passos antes de fechar — é o report de 2026-09-08:\
-         \n  {}",
+        "a borda parou de seguir o dedo em {} passos — é o report de 2026-09-08:\n  {}",
         frozen.len(),
         frozen.join("\n  ")
     );

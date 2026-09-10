@@ -806,7 +806,7 @@ fn the_overflow_arrow_reaches_a_hidden_tab() {
     }
     h.store.set_dock_width(
         slot.dock_side().expect("a direita é uma coluna"),
-        WidgetStore::DOCK_W_COLLAPSE,
+        WidgetStore::DOCK_W_MIN,
     );
     paint(&mut h, 4);
 

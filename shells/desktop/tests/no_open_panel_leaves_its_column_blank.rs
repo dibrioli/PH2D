@@ -232,14 +232,24 @@ fn every_declared_glyph_draws_something() {
 /// aparece — um painel que desista de pintar por a coluna estar apertada some **e leva a coluna**,
 /// porque uma coluna sem rects publicados lê-se livre.
 ///
-/// ⚠️ **A varredura vai até ao DEGRAU DO FECHO** (`DOCK_W_COLLAPSE`), que é o piso do gesto: abaixo
-/// dele a coluna fecha de propósito, e ali o silêncio é a resposta certa. As larguras nomeiam os
-/// dois números da lei — o mínimo do painel e o degrau — e as vizinhas deles.
+/// ⚠️ **A varredura passa ABAIXO do mínimo de propósito:** a porta clampa, logo a coluna nunca
+/// fica mais estreita do que o painel sabe desenhar — e é isso que se mede. As larguras nomeiam o
+/// número da lei (o mínimo do painel) e as vizinhas dele, de cada lado.
 #[test]
 fn narrowing_a_column_never_mutes_the_panel_in_it() {
-    let floor = ph2d_editor::interaction::WidgetStore::DOCK_W_COLLAPSE;
+    // ⚠️ **O piso é o MÍNIMO desde 2026-09-09** — o degrau do fecho deixou de ser alcançável pelo
+    //    arrasto quando o dono retirou o fecho por arrasto. Pedir menos que o mínimo continua a
+    //    ser um caso a medir: a porta tem de o CLAMPAR, e não de calar o painel.
     let min = ph2d_editor::interaction::WidgetStore::DOCK_W_MIN;
-    let widths = [340.0, 280.0, min + 1.0, min, min - 1.0, floor + 1.0, floor];
+    let widths = [
+        340.0,
+        280.0,
+        min + 1.0,
+        min,
+        min - 1.0,
+        min - 22.0,
+        min - 40.0,
+    ];
     let mut mute: Vec<String> = Vec::new();
     let mut measured = 0usize;
     for p in panels() {

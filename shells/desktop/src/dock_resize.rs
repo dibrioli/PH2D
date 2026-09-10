@@ -30,37 +30,15 @@ use ph2d_editor::screens::layout::DockSide;
 
 /// O estado do arrasto de uma costura de coluna.
 ///
-/// ⚠️ **Não é só o lado.** Ver [`SeamDrag::may_close`] — um arrasto que NASCEU de uma reabertura
-/// começa com o dedo na borda de fora, onde a largura medida é ~0, e sem a trava ele fecharia a
-/// coluna no primeiro pixel de movimento.
-// ⚠️ **`PartialEq` sem `Eq`**: o `width_at_start` é um `f32`, e `f32` não é `Eq` — não há igualdade
-// reflexiva sobre `NaN`. Declarar `Eq` aqui é erro de compilação, e está certo que seja.
-#[derive(Copy, Clone, Debug, PartialEq)]
+/// ⚠️ **Ele guarda o LADO e mais nada desde 2026-09-09.** Tinha dois campos a mais — `may_close`
+/// e `width_at_start` — e os dois eram do FECHO: a trava que impedia um arrasto nascido da alça
+/// de fechar no primeiro pixel, e a largura de antes que a reabertura devolvia. O dono retirou o
+/// fecho por arrasto (*«Deixa o colapsar apenas no menu da barra superior»*), e **um campo que só
+/// servia a um gesto que já não existe é estado que a próxima pessoa tenta honrar.**
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub(crate) struct SeamDrag {
     /// Que coluna está a ser redimensionada.
     pub(crate) side: DockSide,
-    /// ⭐⭐⭐ **Este arrasto já pode fechar?**
-    ///
-    /// Um arrasto que agarra a costura de uma coluna **aberta** nasce com `true`: a mão está sobre
-    /// a borda dela, e puxar para dentro é o gesto de fechar.
-    ///
-    /// ⛔⛔ Um arrasto que nasce da **alça de reabertura** nasce com `false`, e a razão é
-    /// aritmética: a alça vive na borda **exterior** da janela, logo `dock_width_for` no ponto do
-    /// toque vale 0..6 px — muito abaixo do degrau de fecho. Sem a trava, o primeiro `CursorMoved`
-    /// depois de reabrir mandava fechar de imediato; e como os painéis recém-abertos ainda não
-    /// tinham pintado, não havia rect nenhum para encontrar, **nada era escondido, e o arrasto
-    /// morria com a coluna reaberta**. Era essa a sequência exacta da foto de 2026-09-07.
-    ///
-    /// Ele arma quando a largura medida chega uma vez ao mínimo legal — *a mão trouxe a borda de
-    /// volta para dentro do território onde fechar quer dizer alguma coisa.*
-    pub(crate) may_close: bool,
-    /// ⭐⭐ **A escolha de largura ANTES de este arrasto lhe tocar** — o que a reabertura devolve.
-    ///
-    /// ⛔ Capturada no `Down`, e não no instante do fecho: **cada pixel do arrasto escreve a
-    /// largura** (clampada ao mínimo pela porta do store), logo uma coluna de 400 px arrastada até
-    /// fechar já deixou `Some(220)` gravado muito antes de o degrau disparar. Lê-la no fecho
-    /// devolveria sempre o mínimo — que é metade do report *«a retração ainda está ruim»*.
-    pub(crate) width_at_start: Option<f32>,
 }
 
 impl crate::App {
@@ -107,30 +85,14 @@ impl crate::App {
         {
             // ⚠️ Capturada DEPOIS de reabrir: a largura de partida deste arrasto é a que a
             //    reabertura acabou de repor, e é essa que um fecho seguinte tem de guardar.
-            self.dock_seam_drag = Some(SeamDrag {
-                side,
-                may_close: false,
-                width_at_start: self.dock_width_choice(side),
-            });
+            self.dock_seam_drag = Some(SeamDrag { side });
             return true;
         }
         let Some(side) = self.hero_layout().and_then(|l| l.dock_seam_at((x, y))) else {
             return false;
         };
-        self.dock_seam_drag = Some(SeamDrag {
-            side,
-            may_close: true,
-            width_at_start: self.dock_width_choice(side),
-        });
+        self.dock_seam_drag = Some(SeamDrag { side });
         true
-    }
-
-    /// A escolha de largura de uma coluna, ou `None` se ninguém arrastou aquela borda.
-    fn dock_width_choice(&self, side: DockSide) -> Option<f32> {
-        self.gfx
-            .as_ref()
-            .and_then(|g| g.hero_screen.as_ref())
-            .and_then(|h| h.store.dock_width_choice(side))
     }
 
     /// Move: escreve a largura nova. `true` enquanto o arrasto vive.
@@ -146,43 +108,10 @@ impl crate::App {
             return false;
         };
         let w = layout.dock_width_for(drag.side, x);
-        // A trava arma assim que a borda volta ao território legal. Ver [`SeamDrag::may_close`].
-        if !drag.may_close
-            && w >= ph2d_editor::interaction::WidgetStore::DOCK_W_MIN
-            && let Some(d) = self.dock_seam_drag.as_mut()
-        {
-            d.may_close = true;
-        }
-        // ⭐⭐⭐ **Arrastar para dentro, para além do mínimo, FECHA a coluna** — o gesto do Blender,
-        //    e a maior alavanca de ecrã que a medição do tablet encontrou (fechar as duas devolve
-        //    89–92 %). Até aqui o arrasto travava no mínimo e fechar custava dois passeios ao menu.
-        //
-        // ⚠️ **Fecha pela MESMA porta que o menu usa** (`panel_visibility`): um segundo caminho
-        //    para esconder um painel daria dois estados de «fechado» que podiam discordar — e o
-        //    interruptor do menu passaria a mentir sobre o que o dedo fez.
-        if w < ph2d_editor::interaction::WidgetStore::DOCK_W_COLLAPSE
-            && self.dock_seam_drag.is_some_and(|d| d.may_close)
-        {
-            // ⚠️ **O arrasto só acaba se o fecho ACONTECEU.** Largá-lo mesmo quando não há nada a
-            //    esconder deixava o dedo em baixo sobre uma costura que continuava a existir — e o
-            //    artista tinha de largar e voltar a agarrar sem nada lhe dizer porquê.
-            if self.close_column(drag.side, drag.width_at_start) {
-                self.dock_seam_drag = None;
-            }
-            return true;
-        }
         if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
             hero.store.set_dock_width(drag.side, w);
         }
         true
-    }
-
-    /// Fecha a coluna. A lei é a [`dock_columns::close`] — aqui fica só a travessia até ao `hero`.
-    fn close_column(&mut self, side: DockSide, width_at_start: Option<f32>) -> bool {
-        let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) else {
-            return false;
-        };
-        dock_columns::close(hero, side, width_at_start)
     }
 
     /// Reabre a coluna. A lei é a [`dock_columns::open`].
@@ -195,27 +124,13 @@ impl crate::App {
 
     /// Release: fecha o arrasto. `true` se havia um.
     ///
-    /// ⭐⭐ **E devolve ao mínimo quem largou na faixa do degrau.** Desde 2026-09-08 a borda segue o
-    /// dedo até [`WidgetStore::DOCK_W_COLLAPSE`] — é isso que torna os últimos 22 px do gesto
-    /// visíveis (ver o doc de `set_dock_width`). Mas uma largura entre o degrau e o mínimo é um
-    /// estado de **gesto**: abaixo do mínimo o cabeçalho e uma linha do painel deixam de caber
-    /// juntos, e a persistência grava exactamente o que o store tem.
-    ///
-    /// ⇒ largar ali não fecha (o dedo não passou o degrau) **e não deixa a coluna estreita demais**:
-    /// ela assenta no mínimo. *O gesto tem três fins — mais larga, no mínimo, ou fechada — e nunca
-    /// um quarto.*
+    /// ⛔⛔ **Ele devolvia ao mínimo quem largasse na faixa do degrau, e essa metade MORREU com o
+    /// gesto de fechar** (Enio, 2026-09-09). A faixa existia porque a borda seguia o dedo abaixo
+    /// do mínimo para o fecho se ver acontecer; sem fecho, a porta do store já não deixa a largura
+    /// descer até lá. *Um remendo que corrige o estado que outro gesto produzia é lixo no dia em
+    /// que esse gesto sai — e é lixo que parece cuidado.*
     pub(crate) fn dock_seam_up(&mut self) -> bool {
-        let Some(drag) = self.dock_seam_drag.take() else {
-            return false;
-        };
-        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
-            let w = hero.store.dock_width(drag.side);
-            if w < ph2d_editor::interaction::WidgetStore::DOCK_W_MIN {
-                hero.store
-                    .set_dock_width(drag.side, ph2d_editor::interaction::WidgetStore::DOCK_W_MIN);
-            }
-        }
-        true
+        self.dock_seam_drag.take().is_some()
     }
 }
 

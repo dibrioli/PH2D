@@ -55,22 +55,36 @@ fn code_only(s: &str) -> String {
         .join("\n")
 }
 
-/// ⭐⭐⭐ **Arrastar para além do degrau FECHA, e fecha pela porta única.**
+/// ⛔⛔⛔ **O ARRASTO NÃO FECHA COLUNA NENHUMA** — ordem do dono, 2026-09-09.
+///
+/// > *«Vamos retirar a opção de colapsar arrastando. Deixa o colapsar apenas no menu da barra
+/// > superior. quando colapsei arrastando e abri no menu da barra superior travou por um
+/// > minuto.»* — Enio.
+///
+/// ⚠️ **Este gate está INVERTIDO.** Ele exigia o contrário — que a shell consultasse o degrau
+/// (`DOCK_W_COLLAPSE`) e chamasse o `dock_columns::close` — e aquilo shipou **um dia**. O gesto
+/// existia por uma medição boa (fechar as duas colunas devolve 89–92 % do ecrã num tablet); o
+/// dono usou-o e retirou-o. *Uma medição justifica um desenho; ela não o aprova.*
+///
+/// ⇒ a asserção é uma **AUSÊNCIA**, que é a forma com dentes aqui: no dia em que alguém voltar a
+/// ligar o fecho ao arrasto — por hábito, ou a reconstruir a partir do doc do degrau, que **fica
+/// escrito de propósito** — este gate reprova antes de o dono voltar a encontrá-lo.
 #[test]
-fn dragging_past_the_step_closes_the_column_through_the_one_door() {
+fn the_border_drag_never_closes_a_column() {
     let s = code_only(&src("src/dock_resize.rs"));
+    for proibido in ["DOCK_W_COLLAPSE", "dock_columns::close", "may_close"] {
+        assert!(
+            !s.contains(proibido),
+            "o arrasto da borda voltou a poder FECHAR a coluna (`{proibido}`) — o dono retirou \
+             esse gesto em 2026-09-09; fechar mora no menu da barra superior"
+        );
+    }
+    // ⛔ **O controlo do INSTRUMENTO:** um ficheiro renomeado, ou um `code_only` partido, deixaria
+    //    as três ausências verdes sobre uma string vazia.
     assert!(
-        s.contains("DOCK_W_COLLAPSE"),
-        "o arrasto da borda nao consulta o degrau de fecho: ele volta a travar no minimo, e fechar \
-         volta a custar dois passeios ao menu"
-    );
-    assert!(
-        s.contains("dock_columns::close"),
-        "a shell nao chama a porta do fecho de coluna"
-    );
-    assert!(
-        s.contains("dock_columns::open"),
-        "a shell nao chama a porta da reabertura de coluna"
+        s.contains("dock_seam_move") && s.contains("set_dock_width"),
+        "o `dock_resize.rs` deixou de conter o gesto de redimensionar — esta varredura perdeu o \
+         alvo e as ausências acima não medem nada"
     );
 }
 
@@ -100,35 +114,19 @@ fn the_shell_does_not_keep_a_second_copy_of_which_panels_a_column_takes() {
     );
 }
 
-/// ⭐⭐ **E a ALÇA reabre** — sem isto, o gesto de fechar é uma armadilha num tablet.
+/// ⭐⭐ **E a ALÇA reabre** — sem isto, uma coluna esvaziada pelo menu não teria caminho de volta
+/// num ecrã de toque, onde não há cursor para descobrir a costura.
+///
+/// ⚠️ Ela chamava-se `the_handle_reopens_the_column_it_closed` — *«it closed»* era o arrasto, que
+/// deixou de fechar em 2026-09-09. Quem esvazia a coluna hoje é o menu; a alça continua a ser
+/// quem a traz de volta.
 #[test]
-fn the_handle_reopens_the_column_it_closed() {
+fn the_handle_reopens_a_column_the_menu_emptied() {
     let s = code_only(&src("src/dock_resize.rs"));
     assert!(
         s.contains("dock_reopen_at"),
         "a shell nao pergunta pela alca: com a coluna fechada a borda fica MUDA, e num ecra~ de \
          toque nao ha' cursor que denuncie uma costura invisivel"
-    );
-}
-
-/// ⛔⛔ **Um arrasto que NASCE da alça não pode fechar no primeiro pixel.**
-///
-/// A alça vive na borda **exterior**, logo `dock_width_for` no ponto do toque vale 0..6 px — muito
-/// abaixo do degrau. Sem a trava, o primeiro movimento depois de reabrir mandava fechar; e como os
-/// painéis recém-abertos ainda não tinham pintado, não havia rect nenhum para encontrar, nada era
-/// escondido, **e o arrasto morria com a coluna reaberta**. Era essa a sequência da foto.
-#[test]
-fn a_drag_born_from_the_handle_cannot_close_on_its_first_pixel() {
-    let s = code_only(&src("src/dock_resize.rs"));
-    assert!(
-        s.contains("may_close"),
-        "o arrasto nascido da alca nao tem trava: ele fecha a coluna no primeiro CursorMoved, sobre \
-         paineis que ainda nao pintaram"
-    );
-    assert!(
-        s.contains("width_at_start"),
-        "a largura de partida nao e' capturada no Down — e lê-la no instante do fecho devolve \
-         sempre o minimo, porque cada pixel do arrasto ja' a reescreveu"
     );
 }
 

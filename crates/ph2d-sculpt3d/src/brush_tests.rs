@@ -516,3 +516,41 @@ fn the_second_pass_is_the_same_brush_with_the_verb_swapped_and_the_force_in_the_
         "e o filho não gera um neto"
     );
 }
+
+/// ⭐⭐⭐ **O `Connected Only` NASCE LIGADO — e isto é a decisão do DONO, não uma
+/// preferência de implementação.**
+///
+/// > *«As duas opções devem existir com a segunda como default»* — Enio,
+/// > 2026-09-10, depois de correr a cena `=39`. A «segunda» era o lado **curado**
+/// > da comparação: o pincel agir só no que a superfície liga.
+///
+/// ⛔⛔ **Este gate nasceu de uma mutação que SOBREVIVEU:** trocar o default de
+/// `true` para `false` deixava a suíte inteira verde (`exit 0`), porque todos os
+/// outros gates da máscara escrevem o campo **explicitamente** e nenhum pergunta
+/// pelo valor de fábrica. *Uma decisão de produto sem instrumento é uma nota que
+/// envelhece* — e esta envelheceria em silêncio, com o defeito de volta e nada a
+/// dizê-lo.
+///
+/// ⚠️ **A minha proposta tinha sido o contrário** (nascer desligado), porque um
+/// gate de arquitectura apanhara a justificação que eu dera para o inverso; o
+/// veredito é dele, o registo da minha objecção está no [`crate::dab_alcance`], e
+/// a cura do vermelho foi PREGAR a fixtura da orelha — não mexer no default.
+#[test]
+fn o_connected_only_nasce_ligado_por_decisao_do_dono() {
+    assert!(
+        Brush::default().surface_only,
+        "o `Connected Only` deixou de nascer LIGADO. Isto e' uma decisao do dono \
+         (2026-09-10: «as duas opcoes devem existir com a segunda como default»), e \
+         nao um numero de afinacao: sem ele, `47 %` do peso de um carimbo cai na \
+         peca errada quando ha' duas a `0,05` de distancia. Ver a cena `=39`."
+    );
+    // ⚠️ **E o irmão fica MEDIDO ao lado**, porque a assimetria dos dois defaults
+    // é deliberada e já foi lida ao contrário uma vez: o `Front Faces Only` nasce
+    // DESLIGADO porque é o default da referência, e o `Connected Only` nasce
+    // LIGADO porque é uma divergência que o dono pediu.
+    assert!(
+        !Brush::default().front_faces_only,
+        "o `Front Faces Only` deixou de nascer DESLIGADO -- esse e' o default da \
+         REFERENCIA, e os dois interruptores nao partilham a razao do valor deles"
+    );
+}

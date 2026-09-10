@@ -86,7 +86,11 @@ mod tests {
         // ⛔⛔ **E o motivo de ter demorado tres waves a aparecer e' de PROCESSO, nao de codigo:**
         //   cada fecho correu `-p` so' sobre as crates EDITADAS, e este gate vive numa que nenhuma
         //   das tres tocou. *Um portao que so' corre o que a linha editou e' cego a todo espelho.*
-        assert_eq!(reg.len(), 85);
+        // ⚠️ **2026-09-10: `85` -> `86`, delta +1** -- o `Sculpt3dPieceRef` que a `line/quadextract`
+        //   registou no ECS (ADR-0150, o mesh na Hierarquia). ⛔ Ela NAO tocou neste ficheiro, e o
+        //   fecho dela nao o podia ver: e' exactamente a cegueira que a nota acima descreve. O `86`
+        //   foi CONTADO -- o gate imprimiu `left: 86`.
+        assert_eq!(reg.len(), 86);
         assert!(reg.get_by_name("ph2d::script::LuauScript").is_some());
     }
 }

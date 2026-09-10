@@ -169,6 +169,30 @@ pub(super) fn lazy_switch() {
 }
 
 /// **NEM TODOS AO MESMO TEMPO** (`=112`) — a cena de smoke do ciclo 4 (doc 107).
+/// **PEÇAS QUE NÃO SE ATRAVESSAM** (`=114`) — o `motion.collide` dentro de uma simulação.
+///
+/// ⚠️ **Precisa de Play**, como a `=99` e a `=113`.
+pub(super) fn pilha() {
+    eprintln!(
+        "[cena 114] PECAS QUE NAO SE ATRAVESSAM. Duas tacas, as MESMAS pecas a cair
+  nas duas, e a cadeia difere em UM no'.
+
+  1. Carregue em PLAY. Sem isto nada cai.
+  2. Olhe as duas tacas. A` ESQUERDA as 25 pecas juntam-se todas no fundo e viram um
+     BORRAO -- elas atravessam-se, porque nada lhes diz que ocupam espaco. A` DIREITA
+     as mesmas 25 empilham-se e da' para as CONTAR.
+  3. Clique no cartao `Collide` (so' a metade da direita o tem). Arraste `Radius`:
+     as pecas reclamam mais ou menos espaco e a pilha incha ou assenta.
+     ⚠ O raio e' um MULTIPLICADOR do tamanho de cada peca, nao uma distancia --
+     por isso pecas de tamanhos diferentes empacotam certo sem ninguem afinar nada.
+  4. Arraste `Iterations` para baixo (ate' 1): a pilha volta a atravessar-se, porque
+     o no' relaxa menos vezes por quadro.
+
+  ⚠ Ele AFASTA, nao faz QUICAR: as pecas param de se sobrepor, mas nao ricocheteiam
+  uma na outra."
+    );
+}
+
 /// **DEIXAR A FÍSICA DECIDIR** (`=113`) — a cena de smoke do ciclo 5 (doc 108).
 ///
 /// ⚠️ **Ela precisa de Play**: é uma simulação, e uma foto parada não a mostra. É por isso

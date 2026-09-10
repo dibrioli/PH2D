@@ -77,7 +77,7 @@ const LIFE_LOOP: f32 = 2.0;
 /// literal que envelhecesse poria a cena a montar a forma errada **sem erro nenhum**, e o
 /// smoke ensinaria a alça errada. *Um índice de enum é uma posição numa lista que outra
 /// pessoa pode reordenar.*
-fn indice_de(reg: &NodeRegistry, no: &str, param: &str, valor: &str) -> Option<f32> {
+pub(super) fn indice_de(reg: &NodeRegistry, no: &str, param: &str, valor: &str) -> Option<f32> {
     use ph2d_node_registry::ParamWidget;
     let tid = ph2d_nodegraph::node::NodeTypeId::of(no);
     let hint = reg.param_ui(tid)?.iter().find(|h| h.param == param)?;

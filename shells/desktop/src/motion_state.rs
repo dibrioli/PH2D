@@ -72,6 +72,10 @@ mod gpu_demos;
 /// out at the HR-18 cap — a cohesive family like the deformers next door.
 #[path = "motion_state_gpu_field_demos.rs"]
 mod gpu_field_demos;
+/// **PEÇAS QUE NÃO SE ATRAVESSAM** — o `motion.collide` DENTRO de uma simulação a correr;
+/// ver o cabeçalho dela (e porque as duas cenas que o nó já tinha não mostram isto).
+#[path = "motion_state_pilha_demo.rs"]
+mod pilha_demo;
 #[path = "motion_state_pivot_demo.rs"]
 mod pivot_demo;
 /// **DEIXAR A FÍSICA DECIDIR** — a cena de smoke do ciclo 5 (a simulação); ver o cabeçalho dela.

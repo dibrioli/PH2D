@@ -25,7 +25,7 @@ use super::*;
 #[cfg(test)]
 /// ⚠️ `pub(crate)` desde o ciclo 3: a sonda que pergunta **onde cada cena vive** varre o
 /// intervalo inteiro, e um teto que ela não alcança não é um teto — é uma nota.
-pub(crate) const MAX_DEMO_LEVEL: u32 = 113;
+pub(crate) const MAX_DEMO_LEVEL: u32 = 114;
 
 /// **As cenas de smoke dos CICLOS** — irmãs pelo tecto de LOC, cortadas por responsabilidade;
 /// ver o cabeçalho delas.

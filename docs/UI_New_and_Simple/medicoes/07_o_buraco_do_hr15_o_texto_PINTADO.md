@@ -62,13 +62,55 @@ linha que pinte um rótulo ficar **vermelha na crate dela por causa de um gate d
 `CLAUDE.md` §0.2 pede que o foundational novo seja *projectado para isolamento*; um censo global
 com dívida alheia dentro é o contrário disso.
 
+## §3-bis — ⭐⭐⭐ O buraco não é só de CANON: ele CEGA o censo que cura a foto 3
+
+> Medido em 2026-09-10, ao tentar correr o censo da **D2** nos painéis que faltavam.
+
+A `spec/02 §8` dizia, na linha do degrau `G`: *«⛔ **Nenhum outro painel foi censado** — o `66 de
+74` é deste»*. Isso lia-se como uma tarefa por fazer. **Não é: é uma tarefa sem instrumento.**
+
+O censo da D2 classifica as **entradas declaradas** de um painel (o que ele oferece) por âmbito —
+*app inteiro* · *só este editor* · *propriedade do objecto*. A lista de entradas de um painel é o
+vocabulário dele, e ele só existe onde o painel fala pela tabela do `ph2d-i18n`:
+
+| painéis | vocabulário declarado |
+|---|---:|
+| `vector` | 276 chaves |
+| `model3d` | 131 |
+| `sculpt3d` | 113 |
+| `physics` | 60 |
+| `timeline` | 48 |
+| `wet_tuning` | 29 |
+| `tokens` | 10 |
+| **os outros 19** | **ZERO** |
+
+⛔⛔ **`19` de `26` painéis não têm uma única chave `panel.<id>.*`** — e entre eles estão
+exactamente os que o artista tem abertos o dia inteiro: `hierarchy`, `inspector`,
+`painter_layers`, `motion_graph`, `asset_browser`, `flip`.
+
+⇒ **os dois itens abertos deste módulo são um só.** Enquanto o rótulo de um controlo é um literal
+dentro do pintor, *não há lista para classificar*: censar aqueles painéis obriga a ler pintor a
+pintor, à mão, sem catraca e sem forma de saber que a leitura ficou completa. *Um censo cuja
+população se conta lendo prosa não é um censo — é uma opinião com tabela.*
+
+⚠️ **Isto reordena a §4 abaixo, e sobe o preço de adiar:** migrar os literais deixa de ser dívida
+de canon (*«o app não fala outra língua hoje»*) e passa a ser o **pré-requisito do `G`**, que é a
+metade por fazer da cura da foto 3 do dono (*«sem menus na barra superior, os painéis incharam»*).
+
+⛔ **O que NÃO muda:** o custo de merge continua a ser o que a §3 mediu — 13 crates, 11 de outras
+linhas. A ordem que isto compra é **por painel, começando pelos que o artista abre**, e não uma
+varredura mecânica de uma vez.
+
 ## §4 — O que fica recomendado, em ordem
 
 1. **Alargar o gate para VER o texto pintado** (a forma nova: `paint_text*` com literal), com a
    baseline por crate congelada nos números da §2 — de preferência **na janela de integração**, que
    é quando as 13 crates estão na mesma árvore e ninguém está a meio de uma wave.
 2. **Curar por CRATE, pela linha dona de cada uma** — a `ph2d-panel-inspector` sozinha é um terço
-   do total.
+   do total. ⭐ **E a ORDEM entre as crates sai da §3-bis, não do tamanho delas:** primeiro os
+   painéis que o artista tem abertos o dia inteiro (`hierarchy`, `inspector`, `painter_layers`),
+   porque é ali que o censo do degrau `G` fica cego — *curar o maior primeiro é ordenar por
+   esforço; curar o mais aberto primeiro é ordenar por resposta.*
 3. ⚠️ **Corrigir a prosa do gate** no mesmo commit: ela promete a lei inteira e entrega dois
    padrões, e é essa frase que faz a próxima pessoa acreditar que o HR-15 está fechado.
 
@@ -77,4 +119,5 @@ com dívida alheia dentro é o contrário disso.
 | o que | por que não |
 |---|---|
 | migrar os 108 nesta janela | 13 crates, 11 de outras linhas, 5 vivas — catástrofe de merge por diff mecânico |
+| censar o degrau `G` nos outros 25 painéis **antes** de os literais migrarem | ⛔ **impossível com instrumento**: `19` de `26` não declaram uma única entrada (§3-bis), logo o censo teria de ler pintor a pintor — sem catraca e sem saber quando acabou |
 | armar a catraca global agora | reprovaria outras linhas na crate delas por um gate desta; §0.2 pede isolamento |

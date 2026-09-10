@@ -166,10 +166,23 @@ pub(super) const CFILTER_VOLUME: Row = Row {
 /// ⭐⭐⭐ ***Bend Stiffness*** — o TAMANHO da ruga, e o report de 09/09.
 ///
 /// ⚠️⚠️ **O tecto dela é a MALHA, e está medido:** o comprimento de onda de uma
-/// prega é `~7` a `10` arestas *faça o artista o que fizer*, e este número
-/// compra `+33 %` sobre isso. Quem quer couro reduz a malha primeiro — o botão
-/// de retopologia existe. ⛔ Decoupar a onda da malha é um solver hierárquico,
-/// que é obra com nome.
+/// prega é `~7` a `10` arestas, e este número compra `+33 %` sobre isso. Quem
+/// quer couro reduz a malha primeiro — o botão de retopologia existe.
+///
+/// ⚠️ **O «faça o artista o que fizer» que estava escrito aqui foi REFUTADO em
+/// 2026-09-09** (pergunta do dono: *«o único modo de definir o tamanho da ruga é
+/// a densidade da malha?»*). A rigidez satura porque ela só empurra LOCALMENTE; o
+/// que estica a onda é o ALCANCE, que é o número de passagens da projecção. Numa
+/// malha fina, `8`–`32` passagens levam a onda de `10` para `20`–`27` arestas com
+/// a amplitude a SUBIR — mecanismo, tabela e as duas ressalvas (a malha grossa
+/// achata; a régua conta lobos e é grosseira) no gate
+/// `a_onda_de_uma_prega_acompanha_a_aresta_da_malha` e na
+/// `ph2d-sculpt3d/tests/sonda_da_onda_da_prega.rs`.
+///
+/// ⛔ **Isto ainda NÃO é um segundo botão** — as passagens vivem numa env var
+/// (`PH2D_DOBRA_N`), não têm preço medido, e na malha grossa destroem o caimento.
+/// O solver hierárquico (Müller, 2008) continua a ser a cura publicada, mas como
+/// a via BARATA de ter muitas passagens, e não como pré-requisito.
 /// ⭐⭐⭐ ***Strength*** — o multiplicador da resposta ao arrasto.
 ///
 /// ⛔⛔ **Ele EXISTE no alvo e faltava-nos**: o censo do painel dele (09/09) deu

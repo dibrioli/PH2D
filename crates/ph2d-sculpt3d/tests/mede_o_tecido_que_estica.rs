@@ -503,9 +503,35 @@ fn a_rigidez_de_dobra_segura_a_curvatura() {
 /// | `40` | `0,050` | `0,333` | `0,400` |
 /// | `80` | `0,025` | `0,250` | `0,333` |
 ///
-/// ⇒ *a onda acompanha a ARESTA* (`~7`–`10` arestas), e a rigidez move-a `+33 %`.
-/// A cura publicada que a decoupa é um solver **hierárquico** (Müller, 2008),
-/// que é obra com nome — e a alavanca de hoje é a densidade da malha.
+/// ⇒ *a onda acompanha a ARESTA* (`~7`–`10` arestas), e a RIGIDEZ move-a `+33 %`.
+///
+/// ⚠️⚠️ **E a frase que estava aqui — «`~7`–`10` arestas faça o artista o que
+/// fizer» — foi REFUTADA em 2026-09-09, na malha FINA.** Esta tabela varreu a
+/// rigidez (`k`) com o número de PASSAGENS preso em `1`, e as duas não são a
+/// mesma grandeza: `k` diz com que força a restrição de ângulo empurra **ali**,
+/// e a passagem diz até onde a resistência VIAJA (uma projecção de Jacobi
+/// propaga **uma dobradiça por passagem**). Medido pela
+/// [`sonda_da_onda_da_prega`](../../tests/sonda_da_onda_da_prega.rs), a `80`
+/// vértices por lado e com a dobra no máximo: `1` passagem dá `10,0` arestas com
+/// amplitude `0,106`; `8` dão **`26,7`** com `0,145`; `32` dão `20,0` com
+/// **`0,287`** — *a onda cresce `2`–`2,7×` e a amplitude SOBE*, logo não é a peça
+/// a achatar.
+///
+/// ⛔ **Isto NÃO faz dele um botão, e a mesma sonda diz porquê:** na malha
+/// GROSSA (`20` por lado) as passagens matam o caimento — a amplitude cai de
+/// `0,329` para `0,0016` (`200×`) e a régua passa a contar ruído, que é o modo de
+/// falha já registado no doc 11 §2.1. E a régua é grosseira por construção (conta
+/// lobos: com `3`–`8` numa fileira, cada passo é um salto grande).
+///
+/// ⇒ o que fica REFUTADO é a inevitabilidade, não a dificuldade. A cura
+/// publicada continua a ser o solver **hierárquico** (Müller, 2008) — mas ele é a
+/// via BARATA de ter muitas passagens, **não** um pré-requisito para a feature
+/// existir. ⚠️ Uma wave que pegue nisto começa por uma régua melhor (a fileira
+/// por FFT ou autocorrelação, não contagem de lobos) e pelo preço das passagens.
+///
+/// ⭐ **Este gate continua VÁLIDO e não foi afrouxado:** ele compara grossa
+/// contra fina nos valores de FÁBRICA (`bend = 0`, `1` passagem), e ali a onda
+/// segue mesmo a malha.
 #[test]
 fn a_onda_de_uma_prega_acompanha_a_aresta_da_malha() {
     // Uma cortina franzida: o material sobra e tem de pregar.

@@ -419,8 +419,12 @@ mod motion_autofix_smoke_dead_branch;
 /// A auditoria do grupo do ciclo 4 (os CAMPOS) — `#[cfg(test)]`, não entra no bin.
 #[cfg(test)]
 mod motion_campos_probe;
+/// A outra metade dele — **o PREÇO** (relógio, contagem, dispositivo). Irmão pelo tecto de
+/// LOC, cortado por responsabilidade: o que um nó DECLARA fica ali, o que ele CUSTA aqui.
+#[cfg(test)]
+mod motion_ciclo_preco;
 /// ⭐ **O INSTRUMENTO DE UM CICLO**, para qualquer grupo — retrato, params, cartão,
-/// despertar e preço. Nasceu ao abrir o ciclo 4, quando ia ser copiado do 3.
+/// nomes e vocabulário. Nasceu ao abrir o ciclo 4, quando ia ser copiado do 3.
 #[cfg(test)]
 mod motion_ciclo_probe;
 /// O PREÇO do mesmo grupo — irmão do acima pelo tecto de LOC, cortado por

@@ -110,6 +110,13 @@ const BASELINE: &[(&str, usize)] = &[
     // ⚠️ **UM, e não os quatro AVISOS desta secção**: eles passam pelo `paint_text`, que este gate
     // já conta noutro braço. *A dívida é a que ele mede, não a que a leitura supõe.*
     ("ph2d-panel-inspector/src/sections/audio.rs", 1),
+    // ⭐ O `placeholder` do NOME do alvo, na secção CAMERA (TOP-20 #7, W3). Mesma dívida e mesma
+    // cura da irmã acima — ele cai junto quando o `t!(…)` shipar.
+    //
+    // ⚠️ **UM, e não os quatro AVISOS desta secção** (nem os rótulos das linhas): eles passam pelo
+    // `paint_text` e pelo `field_row`, que este gate conta noutro braço. *A dívida é a que ele mede,
+    // não a que a leitura supõe.*
+    ("ph2d-panel-inspector/src/sections/camera.rs", 1),
     ("ph2d-panel-inspector/src/sections/identity.rs", 1),
     // ⚠️ **W-SignalLeave: a entrada da §11 saiu daqui, e a DÍVIDA NÃO.** O
     // scanner conta literais dentro de `.placeholder("…")`, e a §11 passou a ter

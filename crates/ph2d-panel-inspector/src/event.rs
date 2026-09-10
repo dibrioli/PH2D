@@ -59,6 +59,9 @@ pub(crate) fn apply_event(
         return EventOutcome::Consumed;
     }
 
+    if crate::event_camera::apply_camera_event(host, ev) {
+        return EventOutcome::Consumed;
+    }
     if crate::event_audio::apply_audio_event(host, ev) {
         return EventOutcome::Consumed;
     }

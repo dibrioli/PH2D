@@ -13,10 +13,10 @@
 
 use ph2d_editor_core::screens::hero::{
     InspectorActionInfo, InspectorAnchorInfo, InspectorAnimInfo, InspectorAudioInfo,
-    InspectorBlendInfo, InspectorJointInfo, InspectorNameInfo, InspectorOrderingInfo,
-    InspectorPhysicsInfo, InspectorPlayerInfo, InspectorSamplingInfo, InspectorSliceInfo,
-    InspectorSpriteInfo, InspectorTimerInfo, InspectorTransformInfo, InspectorVisibilityInfo,
-    InspectorVisibilitySectionInfo, InspectorWheelInfo,
+    InspectorBlendInfo, InspectorCameraInfo, InspectorJointInfo, InspectorNameInfo,
+    InspectorOrderingInfo, InspectorPhysicsInfo, InspectorPlayerInfo, InspectorSamplingInfo,
+    InspectorSliceInfo, InspectorSpriteInfo, InspectorTimerInfo, InspectorTransformInfo,
+    InspectorVisibilityInfo, InspectorVisibilitySectionInfo, InspectorWheelInfo,
 };
 
 /// Inspector panel retained state. Held inside `ErasedPanel<InspectorPanel>`
@@ -160,6 +160,10 @@ thread_local! {
     /// AUDIO — o snapshot da entidade selecionada (TOP-20 #4).
     pub(crate) static CURRENT_INSPECTOR_AUDIO:
         std::cell::RefCell<Option<InspectorAudioInfo>> = const { std::cell::RefCell::new(None) };
+
+    /// CAMERA — o snapshot da entidade selecionada (TOP-20 #7).
+    pub(crate) static CURRENT_INSPECTOR_CAMERA:
+        std::cell::RefCell<Option<InspectorCameraInfo>> = const { std::cell::RefCell::new(None) };
 
     /// **§12 — a linha ABERTA da lista, no sentido PAINEL → SHELL.**
     ///
@@ -338,6 +342,14 @@ pub(crate) fn current_inspector_action() -> Option<InspectorActionInfo> {
 
 pub fn set_current_inspector_audio(info: Option<InspectorAudioInfo>) {
     CURRENT_INSPECTOR_AUDIO.with(|c| *c.borrow_mut() = info);
+}
+
+pub fn set_current_inspector_camera(info: Option<InspectorCameraInfo>) {
+    CURRENT_INSPECTOR_CAMERA.with(|c| *c.borrow_mut() = info);
+}
+
+pub(crate) fn current_inspector_camera() -> Option<InspectorCameraInfo> {
+    CURRENT_INSPECTOR_CAMERA.with(|c| c.borrow().clone())
 }
 
 pub(crate) fn current_inspector_audio() -> Option<InspectorAudioInfo> {

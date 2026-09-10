@@ -327,6 +327,16 @@ pub enum EditorAction {
         edit: crate::screens::hero::AudioFieldEdit,
     },
 
+    /// Inspector → shell, a secção CAMERA (TOP-20 #7, W3).
+    ///
+    /// ⚠️ **Uma das variantes não escreve no documento** (`Preview`): ela liga e desliga a vista
+    /// pela câmera da cena, que é estado de EDITOR. Viaja por aqui na mesma porque é aqui que o
+    /// painel fala com a shell, e a shell é quem tem a vista.
+    InspectorCameraEdit {
+        entity_bits: u64,
+        edit: crate::screens::hero::CameraFieldEdit,
+    },
+
     /// Inspector → shell channel for a §10 Material & Blend field (Blend
     /// Mode). Optional-component edit like [`Self::InspectorSamplingEdit`]
     /// (§3.10); tag `0` (Mix) detaches the `BlendMode` component.

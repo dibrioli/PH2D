@@ -144,6 +144,11 @@ pub(super) fn publish(
     sheets: &BTreeMap<u32, ph2d_sprite_sheet::AuthoredSheet>,
     renderer: &ph2d_render::SpriteRenderer,
     window_size: WindowSize,
+    // ⭐ **A vista está a ser conduzida pela câmera da cena?** (TOP-20 #7)
+    //
+    // ⚠️ **Estado da SHELL, e por isso viaja como argumento** — o painel não tem como o saber, e
+    // derivá-lo do mundo seria impossível: ele não está no mundo.
+    game_camera_preview: bool,
     last_pointer: (f32, f32),
     frame_ms_ewma: f32,
     frame_cpu_ms_ewma: f32,
@@ -1235,6 +1240,19 @@ pub(super) fn publish(
         .gizmo
         .selection
         .and_then(|b| super::inspector_audio::build_audio_info(sim.world_mut(), b, selected_count));
+    // ⭐ A secção CAMERA — `None` para quem não tem `GameCamera` (ADR-0166).
+    //
+    // ⚠️ **Ela pede a PROPORÇÃO da janela**, e é a única da família: o aviso *«a cerca é mais
+    // estreita que a vista»* é geometria do ECRÃ, e não dos quatro números da cerca.
+    let inspector_camera = hero.gizmo.selection.and_then(|b| {
+        super::inspector_camera::build_camera_info(
+            sim.world_mut(),
+            b,
+            selected_count,
+            super::camera_2d::aspect_of(window_size),
+            game_camera_preview,
+        )
+    });
     let inspector_visibility_section = hero.gizmo.selection.and_then(|b| {
         super::inspector_visibility::build_visibility_section_info(
             sim.world(),
@@ -1261,6 +1279,7 @@ pub(super) fn publish(
         ph2d_panel_inspector::set_current_inspector_timer(inspector_timer);
         ph2d_panel_inspector::set_current_inspector_action(inspector_action);
         ph2d_panel_inspector::set_current_inspector_audio(inspector_audio);
+        ph2d_panel_inspector::set_current_inspector_camera(inspector_camera);
         ph2d_panel_inspector::set_current_inspector_physics(inspector_physics);
         ph2d_panel_inspector::set_current_inspector_joint(inspector_joint);
         ph2d_panel_inspector::set_current_inspector_wheel(inspector_wheel);

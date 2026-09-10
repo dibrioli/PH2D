@@ -241,6 +241,7 @@ pub(crate) fn paint_optional_sections(
     action: Option<&ph2d_editor_core::screens::hero::InspectorActionInfo>,
     action_selected: &mut usize,
     audio: Option<&ph2d_editor_core::screens::hero::InspectorAudioInfo>,
+    camera: Option<&ph2d_editor_core::screens::hero::InspectorCameraInfo>,
     notes: &[Vec<(usize, NoteData)>],
 ) -> f32 {
     y = paint_anim_section(
@@ -304,7 +305,7 @@ pub(crate) fn paint_optional_sections(
         action,
         action_selected,
     );
-    paint_audio_section(
+    y = paint_audio_section(
         scene,
         text_system,
         theme,
@@ -317,6 +318,77 @@ pub(crate) fn paint_optional_sections(
         y,
         header_h,
         audio,
+    );
+    paint_camera_section(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        section_tops_y,
+        inner_x,
+        inner_w,
+        body_top_y,
+        y,
+        header_h,
+        camera,
+    )
+}
+
+/// **A secção CAMERA** — moldura e tudo. ⚠️ Sem estado de painel, como a do áudio: um objecto tem
+/// UMA câmera, então não há linha aberta a lembrar.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn paint_camera_section(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: ph2d_tokens::Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    section_tops_y: &mut Vec<f32>,
+    inner_x: f32,
+    inner_w: f32,
+    body_top_y: f32,
+    mut y: f32,
+    header_h: f32,
+    camera: Option<&ph2d_editor_core::screens::hero::InspectorCameraInfo>,
+) -> f32 {
+    let Some(cam) = camera else {
+        return y;
+    };
+    y = close_section(scene, theme, inner_x, inner_w, y);
+    let y_before = y;
+    begin_section(
+        section_tops_y,
+        hit_index,
+        inner_x,
+        inner_w,
+        body_top_y,
+        y_before,
+        ids::INSP_LIVE_CAMERA_SECTION,
+        header_h,
+    );
+    let new_y = crate::sections::camera::paint_camera_section(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        inner_x,
+        inner_w,
+        y,
+        cam,
+    );
+    finish_section(
+        scene,
+        text_system,
+        hit_index,
+        store,
+        inner_x,
+        inner_w,
+        ids::INSP_LIVE_CAMERA_SECTION,
+        y_before,
+        new_y,
+        &[],
     )
 }
 

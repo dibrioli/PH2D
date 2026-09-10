@@ -294,6 +294,8 @@ mod inspector_anchor;
 mod inspector_anim;
 /// ⭐⭐⭐ A secção AUDIO do Inspector (TOP-20 #4, W3) — o snapshot e o commit.
 mod inspector_audio;
+/// ⭐⭐⭐ **A secção CAMERA** (TOP-20 #7) — o snapshot e o commit dos três componentes.
+mod inspector_camera;
 mod inspector_commits_sprite;
 /// ⭐ **A seção COMPONENT do Inspector** (ADR-0164 / F5) — o que esta cópia tem de diferente
 /// da receita, e o gesto que limpa as excepções sem alvo.
@@ -3076,6 +3078,7 @@ impl crate::App {
                 sheets,
                 renderer,
                 window_size,
+                self.game_camera_preview,
                 self.last_pointer,
                 self.frame_ms_ewma,
                 self.frame_cpu_ms_ewma,
@@ -3795,7 +3798,12 @@ impl crate::App {
             let mut anim_edits: Vec<(u64, ph2d_editor::AnimFieldEdit)> = Vec::new();
             let mut timer_edits: Vec<(u64, ph2d_editor::TimerFieldEdit)> = Vec::new();
             let mut audio_edits: Vec<(u64, ph2d_editor::AudioFieldEdit)> = Vec::new();
-            let mut audio_commit = false;
+            let mut camera_edits: Vec<(u64, ph2d_editor::CameraFieldEdit)> = Vec::new();
+            // ⚠️ **`inspector_queue_dirty` e não `audio_commit`**: desde a secção CAMERA (TOP-20
+            // #7) esta bandeira serve DUAS secções, e o nome antigo passou a descrever metade do
+            // que ela significa. *Um nome que já não cobre a população dele mente na próxima
+            // leitura.*
+            let mut inspector_queue_dirty = false;
             let mut action_edits: Vec<(u64, ph2d_editor::ActionFieldEdit)> = Vec::new();
             // ⭐ O `+` do Inspector (F3): quem pediu a paleta neste quadro.
             let mut add_component_for: Option<u64> = None;
@@ -5206,6 +5214,12 @@ impl crate::App {
                     // disparar N sons de uma vez.
                     EditorAction::InspectorAudioEdit { entity_bits, edit } => {
                         audio_edits.push((entity_bits, edit));
+                    }
+                    // ⭐ **A secção CAMERA** (TOP-20 #7). ⚠️ **NÃO espalha sobre a BulkSelect**,
+                    // pela MESMA razão das irmãs — e aqui há uma segunda: o `Preview` é da VISTA,
+                    // e espalhá-lo faria N objectos disputarem um interruptor que é um só.
+                    EditorAction::InspectorCameraEdit { entity_bits, edit } => {
+                        camera_edits.push((entity_bits, edit));
                     }
                     // ⭐ **O `+` do Inspector** (ADR-0166 / F3) — o painel PEDE e a shell abre,
                     // porque só ela sabe o tipo do objeto, o que ele já tem, e o que o registo
@@ -12472,7 +12486,7 @@ impl crate::App {
                             )
                             .is_none()
                             {
-                                audio_commit = true;
+                                inspector_queue_dirty = true;
                             }
                         }
                     }
@@ -12486,12 +12500,29 @@ impl crate::App {
                         ) {
                             toasts.push(t);
                         } else {
-                            audio_commit = true;
+                            inspector_queue_dirty = true;
                         }
                     }
                 }
             }
-            if audio_commit
+            // ⭐⭐⭐ **A secção CAMERA** (TOP-20 #7, W3) — aqui pela MESMA razão da irmã de cima:
+            // as edições são de DUAS naturezas. O `Preview` liga a VISTA (que só a `App` tem) e as
+            // restantes escrevem um campo do documento. *Duas naturezas, um sítio que tem as duas.*
+            for (bits, edit) in &camera_edits {
+                if let ph2d_editor::CameraFieldEdit::Preview(on) = edit {
+                    self.game_camera_preview = *on;
+                    continue;
+                }
+                inspector_camera::apply_camera_edit(
+                    sim,
+                    *bits,
+                    edit,
+                    editor_queue,
+                    component_registry,
+                );
+                inspector_queue_dirty = true;
+            }
+            if inspector_queue_dirty
                 && let Err(e) = ph2d_ecs::scene::apply_editor_commands(
                     sim.world_mut(),
                     editor_queue,

@@ -342,7 +342,7 @@ pub(crate) fn finish_section(
 /// section has to be remembered here — a fact that is easier to keep true
 /// when it has a name and a signature that changes when you forget.
 #[allow(clippy::too_many_arguments, clippy::fn_params_excessive_bools)]
-pub(crate) fn any_live_section(flags: [bool; 14]) -> bool {
+pub(crate) fn any_live_section(flags: [bool; 15]) -> bool {
     flags.iter().any(|&b| b)
 }
 
@@ -512,6 +512,11 @@ pub(crate) struct LiveSnapshots {
     /// objecto, e um objecto que só tenha o marcador de ouvinte não está representado por mais
     /// nenhum snapshot.
     pub audio_info: Option<ph2d_editor_core::screens::hero::InspectorAudioInfo>,
+    /// ⭐⭐⭐ **A secção CAMERA** (TOP-20 #7) — a câmera, quem ela segue e a cerca dela.
+    ///
+    /// ⚠️ **ENTRA no `any_section`** pela mesma razão do `timer_info`: ela vale para qualquer
+    /// objecto, e uma câmera fixa não está representada por mais nenhum snapshot.
+    pub camera_info: Option<ph2d_editor_core::screens::hero::InspectorCameraInfo>,
     pub blend_info: Option<ph2d_editor_core::screens::hero::InspectorBlendInfo>,
     pub physics_info: Option<ph2d_editor_core::screens::hero::InspectorPhysicsInfo>,
     pub joint_info: Option<ph2d_editor_core::screens::hero::InspectorJointInfo>,
@@ -549,6 +554,7 @@ impl LiveSnapshots {
         let timer_info = crate::state::current_inspector_timer();
         let action_info = crate::state::current_inspector_action();
         let audio_info = crate::state::current_inspector_audio();
+        let camera_info = crate::state::current_inspector_camera();
         let any_section = any_live_section([
             transform_info.is_some(),
             sprite_info.is_some(),
@@ -564,6 +570,7 @@ impl LiveSnapshots {
             timer_info.is_some(),
             action_info.is_some(),
             audio_info.is_some(),
+            camera_info.is_some(),
         ]);
         Self {
             transform_info,
@@ -577,6 +584,7 @@ impl LiveSnapshots {
             timer_info,
             action_info,
             audio_info,
+            camera_info,
             blend_info,
             physics_info,
             joint_info,

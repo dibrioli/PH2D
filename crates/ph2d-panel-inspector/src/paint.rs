@@ -152,29 +152,13 @@ fn paint_inspector(
         body_top_y,
     } = crate::paint_body::open_body(slot, scene, text_system, theme, hit_index, store);
     let mut section_tops_y: Vec<f32> = Vec::with_capacity(4);
-    // Os treze snapshots e o `any_section`, numa pergunta só. Ver `paint_frame::LiveSnapshots`.
-    let crate::paint_frame::LiveSnapshots {
-        transform_info,
-        sprite_info,
-        visibility_info,
-        ordering_info,
-        sampling_info,
-        slice_info,
-        anchor_info,
-        anim_info,
-        timer_info,
-        action_info,
-        audio_info,
-        blend_info,
-        physics_info,
-        joint_info,
-        wheel_info,
-        player_info,
-        instance_info,
-        properties_info,
-        name_present,
-        any_section,
-    } = crate::paint_frame::LiveSnapshots::fetch();
+    // Os snapshots e o `any_section`, numa pergunta só. Ver `paint_frame::LiveSnapshots`.
+    //
+    // ⚠️ **Ele NÃO é destruturado, e a diferença é o teto de LOC**: a lista de nomes era vinte e
+    // duas linhas de puro re-vínculo, e cada secção nova acrescentava mais uma — este orquestrador
+    // rebentou o cap de `200` no dia em que a CAMERA chegou, e a lista era metade do que ele fazia.
+    // *Um `let` que só renomeia um campo não é código: é uma segunda lista da primeira.*
+    let snaps = crate::paint_frame::LiveSnapshots::fetch();
     // ⭐⭐ Os dois CARTÕES do topo — o porquê vive no cabeçalho de [`crate::paint_cards`].
     let mut y = crate::paint_cards::paint_top_cards(
         scene,
@@ -182,8 +166,8 @@ fn paint_inspector(
         theme,
         hit_index,
         store,
-        instance_info.as_ref(),
-        properties_info.as_ref(),
+        snaps.instance_info.as_ref(),
+        snaps.properties_info.as_ref(),
         inner_x,
         inner_w,
         body_top_y + Spacing::Xs.px(),
@@ -213,9 +197,9 @@ fn paint_inspector(
         y,
         ROW_H_PX,
         SECTION_HEAD_H,
-        name_present,
-        visibility_info.is_some(),
-        transform_info.is_some(),
+        snaps.name_present,
+        snaps.visibility_info.is_some(),
+        snaps.transform_info.is_some(),
         &notes_per_section,
     );
     // **As três seções da SPRITE** — §3 Render Source, §6 Color & Tint e §4 Sprite Sheet —
@@ -233,7 +217,7 @@ fn paint_inspector(
         body_top_y,
         y,
         SECTION_HEAD_H,
-        sprite_info.as_ref(),
+        snaps.sprite_info.as_ref(),
         &notes_per_section,
     );
     // **As quatro seções COMPARTILHADAS** — §5 9-Slice, §7 Ordering, §9 Sampling e §10 Material
@@ -254,10 +238,10 @@ fn paint_inspector(
         body_top_y,
         y,
         SECTION_HEAD_H,
-        slice_info.as_ref(),
-        ordering_info.as_ref(),
-        sampling_info.as_ref(),
-        blend_info.as_ref(),
+        snaps.slice_info.as_ref(),
+        snaps.ordering_info.as_ref(),
+        snaps.sampling_info.as_ref(),
+        snaps.blend_info.as_ref(),
         &notes_per_section,
     );
     y = crate::paint_frame::paint_physics_sections(
@@ -272,10 +256,10 @@ fn paint_inspector(
         body_top_y,
         y,
         SECTION_HEAD_H,
-        physics_info.as_ref(),
-        joint_info.as_ref(),
-        wheel_info.as_ref(),
-        player_info.as_ref(),
+        snaps.physics_info.as_ref(),
+        snaps.joint_info.as_ref(),
+        snaps.wheel_info.as_ref(),
+        snaps.player_info.as_ref(),
         &notes_per_section,
     );
     // **AS DUAS SEÇÕES COM ESTADO DE PAINEL** — a §11 Animation e a §12 Sockets/Anchors são as
@@ -296,18 +280,19 @@ fn paint_inspector(
         body_top_y,
         y,
         SECTION_HEAD_H,
-        anim_info.as_ref(),
+        snaps.anim_info.as_ref(),
         anim_selected,
-        anchor_info.as_ref(),
+        snaps.anchor_info.as_ref(),
         anchor_selected,
-        timer_info.as_ref(),
+        snaps.timer_info.as_ref(),
         timer_selected,
-        action_info.as_ref(),
+        snaps.action_info.as_ref(),
         action_selected,
-        audio_info.as_ref(),
+        snaps.audio_info.as_ref(),
+        snaps.camera_info.as_ref(),
         &notes_per_section,
     );
-    if any_section {
+    if snaps.any_section {
         crate::paint_frame::paint_trailing_notes(
             scene,
             text_system,
@@ -326,7 +311,7 @@ fn paint_inspector(
         hit_index,
         store,
         PanelFinish {
-            any_section,
+            any_section: snaps.any_section,
             has_selection: selection.is_some(),
             inner_x,
             inner_w,

@@ -69,6 +69,150 @@ pub(crate) fn sync_new_sections(
         inspector_state.last_timer_row = Some(row);
         sync_timer_fields(host, &tm, row, entity_changed || row_changed);
     }
+    // ⭐⭐⭐ **As DUAS que faltavam** (auditoria de 2026-09-10). ⛔ Sem elas o painel mostrava os
+    // valores de PARTIDA do `populate` — nunca os do objecto —, e trocar de objecto deixava os
+    // números do anterior no ecrã. ⚠️ Elas não têm LINHA aberta (um objecto tem um som e uma
+    // câmera), então a aresta é só a entidade.
+    if let Some(au) = crate::state::current_inspector_audio() {
+        sync_audio_fields(host, &au, entity_changed);
+    }
+    if let Some(cam) = crate::state::current_inspector_camera() {
+        sync_camera_fields(host, &cam, entity_changed);
+    }
+}
+
+/// **Escreve um campo de TEXTO do store** — a porta que as três secções partilham.
+///
+/// ⚠️ **O campo em FOCO é do dedo**: reescrevê-lo enquanto se digita apagaria a letra. E o cursor
+/// vai para o fim, porque o texto que chega é outro — deixá-lo onde estava poria o caret a meio de
+/// uma palavra que já não existe.
+fn write_text(host: &mut dyn PanelHostInternal, id: ph2d_a11y::NodeId, value: &str) {
+    if host.store().focus_id() == Some(id) {
+        return;
+    }
+    if let Some(InteractiveState::TextInput {
+        text,
+        caret,
+        selection_anchor,
+        ..
+    }) = host.store_mut().get_mut(id)
+    {
+        text.clear();
+        text.push_str(value);
+        *caret = text.len();
+        *selection_anchor = None;
+    }
+}
+
+/// Semeia os campos da secção AUDIO a partir do snapshot.
+///
+/// ⚠️ **A secção existe desde a wave do som e esta função NÃO** — e o smoke do dono passou, porque
+/// ele nunca comparou um número do painel com o do objecto. *Um painel que mostra o default em vez
+/// do valor não é um painel vazio: é um painel que mente com números plausíveis.*
+fn sync_audio_fields(
+    host: &mut dyn PanelHostInternal,
+    au: &ph2d_editor_core::screens::hero::InspectorAudioInfo,
+    seed: bool,
+) {
+    let Some(src) = au.source.as_ref() else {
+        return;
+    };
+    if !seed {
+        return;
+    }
+    let focus = host.store().focus_id();
+    let drag = host.store().number_input_drag().map(|d| d.id);
+    for (id, v) in [
+        (ids::INSP_AUDIO_VOLUME, f64::from(src.volume_db)),
+        (ids::INSP_AUDIO_PITCH, f64::from(src.pitch)),
+        (ids::INSP_AUDIO_MAX_DIST, f64::from(src.max_distance)),
+        (ids::INSP_AUDIO_ATTENUATION, f64::from(src.attenuation)),
+        (
+            ids::INSP_AUDIO_RADIUS,
+            f64::from(src.non_spatialized_radius),
+        ),
+        (ids::INSP_AUDIO_PANNING, f64::from(src.panning_strength)),
+        (ids::INSP_AUDIO_POLYPHONY, f64::from(src.max_polyphony)),
+    ] {
+        if focus != Some(id) && drag != Some(id) {
+            host.store_mut().set_number_value(id, v);
+        }
+    }
+    write_text(host, ids::INSP_AUDIO_SOUND, &src.sound);
+}
+
+/// Semeia os campos da secção CAMERA a partir do snapshot.
+///
+/// ⚠️ **As CAIXAS espelham o mundo todo o quadro** (como as do timer): a secção decide a partir do
+/// SNAPSHOT e o store aqui só publica o estado para a árvore de acessibilidade. Deixá-las numa
+/// aresta punha-as a mentir a quem as lê por ali.
+///
+/// ⚠️ **Os NÚMEROS e o TEXTO são de ARESTA** — reescrevê-los por quadro apagaria o que o artista
+/// está a digitar antes de o commit da shell chegar.
+fn sync_camera_fields(
+    host: &mut dyn PanelHostInternal,
+    cam: &ph2d_editor_core::screens::hero::InspectorCameraInfo,
+    seed: bool,
+) {
+    for (id, on) in [
+        (ids::INSP_CAMERA_ACTIVE, cam.camera.active),
+        (ids::INSP_CAMERA_PREVIEW, cam.preview_on),
+    ] {
+        if let Some(InteractiveState::Checkbox { value, .. }) = host.store_mut().get_mut(id) {
+            *value = if on {
+                CheckboxValue::Checked
+            } else {
+                CheckboxValue::Unchecked
+            };
+        }
+    }
+    for (bit, &id) in ids::INSP_CAMERA_CULL_BIT.iter().enumerate() {
+        let on = cam.camera.cull_mask & (1u32 << bit) != 0;
+        if let Some(InteractiveState::Checkbox { value, .. }) = host.store_mut().get_mut(id) {
+            *value = if on {
+                CheckboxValue::Checked
+            } else {
+                CheckboxValue::Unchecked
+            };
+        }
+    }
+    if !seed {
+        return;
+    }
+    let focus = host.store().focus_id();
+    let drag = host.store().number_input_drag().map(|d| d.id);
+    let mut numeros: Vec<(ph2d_a11y::NodeId, f64)> = vec![
+        (ids::INSP_CAMERA_HEIGHT, f64::from(cam.camera.height_world)),
+        (ids::INSP_CAMERA_OFFSET_X, f64::from(cam.camera.offset[0])),
+        (ids::INSP_CAMERA_OFFSET_Y, f64::from(cam.camera.offset[1])),
+        (ids::INSP_CAMERA_PRIORITY, f64::from(cam.camera.priority)),
+    ];
+    if let Some(f) = cam.follow.as_ref() {
+        numeros.extend([
+            (ids::INSP_CAMERA_DAMP_X, f64::from(f.damping[0])),
+            (ids::INSP_CAMERA_DAMP_Y, f64::from(f.damping[1])),
+            (ids::INSP_CAMERA_DEAD_X, f64::from(f.dead_zone[0])),
+            (ids::INSP_CAMERA_DEAD_Y, f64::from(f.dead_zone[1])),
+            (ids::INSP_CAMERA_LOOK_X, f64::from(f.lookahead[0])),
+            (ids::INSP_CAMERA_LOOK_Y, f64::from(f.lookahead[1])),
+            (ids::INSP_CAMERA_FOLLOW_OFF_X, f64::from(f.offset[0])),
+            (ids::INSP_CAMERA_FOLLOW_OFF_Y, f64::from(f.offset[1])),
+        ]);
+        write_text(host, ids::INSP_CAMERA_TARGET, &f.target);
+    }
+    if let Some(l) = cam.limits.as_ref() {
+        numeros.extend([
+            (ids::INSP_CAMERA_MIN_X, f64::from(l.min[0])),
+            (ids::INSP_CAMERA_MIN_Y, f64::from(l.min[1])),
+            (ids::INSP_CAMERA_MAX_X, f64::from(l.max[0])),
+            (ids::INSP_CAMERA_MAX_Y, f64::from(l.max[1])),
+        ]);
+    }
+    for (id, v) in numeros {
+        if focus != Some(id) && drag != Some(id) {
+            host.store_mut().set_number_value(id, v);
+        }
+    }
 }
 
 /// Semeia os campos da secção TIMERS a partir do snapshot.

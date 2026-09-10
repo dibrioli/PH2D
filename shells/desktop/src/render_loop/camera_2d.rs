@@ -82,6 +82,7 @@ fn ensure_runtime(world: &mut World) {
                 center: p,
                 anchor: p,
                 last_target: None,
+                velocity: [0.0, 0.0],
                 settled: false,
             });
         }
@@ -171,15 +172,39 @@ pub(crate) fn update(
     };
 
     let dt = fixed_dt as f32;
+    // ⚠️⚠️ **O tempo entre as duas AMOSTRAS do alvo, que NÃO é o passo da lei.** A ponte vê o alvo
+    // uma vez por quadro e um quadro leva `ticks` passos — dividir por um passo quando passaram
+    // dois lê o DOBRO da velocidade, e foi isso que a auditoria de 2026-09-10 mediu (a mira saltava
+    // de `+4,00 m` para `+8,00 m` em toda moldura de dois tiques). Ver [`ph2d_ecs::sample_velocity`].
+    let sample_dt = dt * ticks as f32;
     if !rt.settled {
-        // ⭐ **O nascimento não amortece** — ver o doc do módulo.
-        let mira = ph2d_ecs::aim_at(alvo, None, follow.as_ref().unwrap_or(&SEM_FOLLOW), dt);
+        // ⭐ **O nascimento não amortece E não antecipa** — sem duas amostras não há velocidade.
+        let mira = ph2d_ecs::aim_at(alvo, [0.0, 0.0], follow.as_ref().unwrap_or(&SEM_FOLLOW));
         rt.center = mira;
         rt.anchor = mira;
+        rt.velocity = [0.0, 0.0];
         rt.settled = true;
     } else if let Some(f) = follow.as_ref() {
+        // ⚠️⚠️ **UM QUADRO SEM TEMPO NÃO TOCA EM NADA QUE SEJA POR-TEMPO.**
+        //
+        // ⛔ Foi o terceiro defeito do report de 2026-09-10, e o maior dos três: com `ticks == 0` o
+        // `sample_dt` é zero, a amostra de velocidade devolve `[0, 0]` (não há tempo de onde a
+        // tirar) e o `damp_axis` — cujo braço de `dt <= 0` significa **instantâneo** — adoptava-a.
+        // ⇒ **cada quadro perdido ZERAVA a velocidade suavizada**, e com dois em dez ela nunca
+        // subia: medida, ela lia `0,78 m/s` sobre um herói a `8,00`. *A antecipação estava dez
+        // vezes fraca, e a causa não era a lei — era um quadro sem tempo a responder a uma pergunta
+        // sobre tempo.*
+        //
+        // ⚠️ **A velocidade é ESTADO**, e estado não se re-deriva num instante em que nada passou.
+        if ticks > 0 {
+            // ⚠️ **Uma vez por quadro, fora do laço** — ela é propriedade da AMOSTRA, e o laço
+            // percorre os passos que couberam entre duas amostras. Recalculá-la lá dentro leria a
+            // mesma diferença `ticks` vezes.
+            let cru = ph2d_ecs::sample_velocity(rt.last_target, alvo, sample_dt);
+            rt.velocity = ph2d_ecs::smooth_velocity(rt.velocity, cru, f.lookahead, sample_dt);
+        }
+        let mira = ph2d_ecs::aim_at(alvo, rt.velocity, f);
         for _ in 0..ticks {
-            let mira = ph2d_ecs::aim_at(alvo, rt.last_target, f, dt);
             let (a, c) = ph2d_ecs::follow_step(rt.anchor, rt.center, mira, half, f, None, dt);
             rt.anchor = a;
             rt.center = c;
@@ -189,7 +214,12 @@ pub(crate) fn update(
         rt.center = alvo;
         rt.anchor = alvo;
     }
-    rt.last_target = Some(alvo);
+    // ⚠️⚠️ **A amostra só avança quando TEMPO PASSOU.** Num quadro sem tique nenhum a simulação não
+    // andou, e guardar o alvo ali daria um par `(Δ, sample_dt)` cujo denominador conta um tempo que
+    // o numerador não viu. *Uma amostra é um par, e guardar metade dele estraga o outro lado.*
+    if ticks > 0 {
+        rt.last_target = Some(alvo);
+    }
 
     // ⭐⭐ **A cerca entra AQUI e não dentro do laço**, e a diferença é observável: aplicá-la a cada
     // tique deixaria o amortecimento a puxar para fora e a cerca a puxar de volta, que é o tremor

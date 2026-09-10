@@ -276,3 +276,215 @@ fn a_frame_with_no_fixed_tick_still_gives_the_camera_a_life() {
         [4.0, 4.0]
     );
 }
+
+/// ⛔⛔⛔ **A ANTECIPAÇÃO NUNCA LIDERA MAIS DO QUE A PRÓPRIA DEFINIÇÃO** — o report de 2026-09-10
+/// (*«lookahead parece completamente bugado»*), medido.
+///
+/// # O defeito, e o número dele
+///
+/// A ponte vê o alvo **uma vez por quadro**, e um quadro leva `ticks` passos — mas a primeira
+/// redacção dividia a diferença pelo **passo** em vez de pelo tempo entre as duas amostras. Numa
+/// moldura de dois tiques isso lê exactamente o **DOBRO** da velocidade. Medido, com o herói a
+/// `8 m/s` e antecipação de `0,5 s`:
+///
+/// ```text
+///   quadro  tiques   herói      mira        (a mira devia ser herói + 4,00)
+///        3       1   0,4000    4,4000  ✓
+///        4       2   0,6667    8,6667  ⛔ +8,00 — o DOBRO
+///        5       1   0,8000    4,8000  ✓  (e volta)
+/// ```
+///
+/// `4 m` de ida e volta numa vista de `17,8 m` de largura são **22 % do ecrã**, várias vezes por
+/// segundo. *Nenhum outro gate desta linha o via: todos passam `ticks = 1`.*
+///
+/// # A régua é a DEFINIÇÃO da antecipação, não um número escolhido
+///
+/// Ela diz *«olha onde o alvo estará daqui a `L` segundos»* ⇒ a dianteira não pode passar de
+/// `v · L`. ⛔ Uma barra afinada à mão mediria o nosso próprio defeito.
+///
+/// **Mutação que deve sangrar:** trocar `sample_dt` por `dt` na ponte.
+#[test]
+fn the_lookahead_never_leads_by_more_than_its_own_definition() {
+    let mut sim = mundo();
+    let heroi = objecto(&mut sim, "Heroi", [0.0, 0.0]);
+    camera(&mut sim, "Cam", [0.0, 0.0], GameCamera::default());
+    let cam_e = ph2d_ecs::active_camera_of(sim.world_mut()).unwrap();
+    const L: f32 = 0.5;
+    const VEL: f32 = 8.0;
+    sim.world_mut().entity_mut(cam_e).insert(CameraFollow {
+        target: "Heroi".into(),
+        damping: [5.0, 5.0],
+        dead_zone: [0.0, 0.0],
+        lookahead: [L, 0.0],
+        offset: [0.0, 0.0],
+    });
+    // ⚠️ **O padrão que um vsync de ~60 Hz de facto entrega** — e é ele que produz o fenómeno.
+    // Um padrão de `1` puro deixa este gate VERDE sobre o defeito, que é o que aconteceu.
+    let padrao = [
+        1u32, 1, 0, 1, 2, 1, 1, 0, 2, 1, 1, 1, 2, 1, 0, 1, 1, 2, 1, 1,
+    ];
+    let mut x = 0.0_f32;
+    let mut pior = 0.0_f32;
+    for &t in &padrao {
+        x += VEL * t as f32 * DT as f32;
+        mover(&mut sim, heroi, [x, 0.0]);
+        let _ = update(&mut sim, ASPECT, t, DT);
+        let ancora = sim
+            .world()
+            .get::<ph2d_ecs::CameraRuntime>(cam_e)
+            .unwrap()
+            .anchor[0];
+        pior = pior.max(ancora - x);
+    }
+    assert!(
+        pior <= VEL * L + 1e-3,
+        "a mira liderou {pior:.4} m, e a antecipacao de {L} s a {VEL} m/s vale {} m — acima disso \
+         ela deixou de ser uma antecipacao e passou a ser um salto",
+        VEL * L
+    );
+}
+
+/// ⛔⛔ **PARAR não colapsa a mira num quadro** — a segunda metade do mesmo report.
+///
+/// # O defeito, e o número dele
+///
+/// Uma velocidade tirada de duas amostras vai a **zero** no instante em que o alvo pára, e a mira
+/// cai de `v · L` metros de uma vez. Medido: `+5,6000 → +1,6000`, **quatro metros num quadro** — a
+/// câmera dava um recuo que ninguém pediu. *Antecipar sem suavizar é trocar um atraso por um
+/// solavanco.*
+///
+/// # A régua
+///
+/// A dianteira tem de decair pelo **horizonte da própria antecipação**, e não de repente. A barra é
+/// o passo que a lei dá num tique (`k = min(dt/L, 1)` da [`ph2d_ecs::smooth_velocity`]), com folga:
+/// ⛔ um número escolhido mediria o nosso defeito.
+///
+/// **Mutação que deve sangrar:** trocar o [`ph2d_ecs::smooth_velocity`] pela velocidade CRUA.
+#[test]
+fn stopping_does_not_collapse_the_aim_in_one_frame() {
+    let mut sim = mundo();
+    let heroi = objecto(&mut sim, "Heroi", [0.0, 0.0]);
+    camera(&mut sim, "Cam", [0.0, 0.0], GameCamera::default());
+    let cam_e = ph2d_ecs::active_camera_of(sim.world_mut()).unwrap();
+    const L: f32 = 0.5;
+    const VEL: f32 = 8.0;
+    sim.world_mut().entity_mut(cam_e).insert(CameraFollow {
+        target: "Heroi".into(),
+        damping: [5.0, 5.0],
+        dead_zone: [0.0, 0.0],
+        lookahead: [L, 0.0],
+        offset: [0.0, 0.0],
+    });
+    let mut x = 0.0_f32;
+    // Anda o suficiente para a antecipação estar montada.
+    for _ in 0..120 {
+        x += VEL * DT as f32;
+        mover(&mut sim, heroi, [x, 0.0]);
+        let _ = update(&mut sim, ASPECT, 1, DT);
+    }
+    let lead = |sim: &SimWorld| {
+        sim.world()
+            .get::<ph2d_ecs::CameraRuntime>(cam_e)
+            .unwrap()
+            .anchor[0]
+            - x
+    };
+    let montada = lead(&sim);
+    assert!(
+        montada > 1.0,
+        "a fixtura NAO produz o fenomeno: a antecipacao so' esta' em {montada:.4} m depois de 2 s"
+    );
+    // E agora PÁRA. ⚠️ O passo por tique da lei é `dt/L`; a folga é `3×` isso.
+    let passo_da_lei = (DT as f32) / L;
+    let mut anterior = montada;
+    for n in 0..12 {
+        let _ = update(&mut sim, ASPECT, 1, DT);
+        let agora = lead(&sim);
+        let queda = (anterior - agora) / montada;
+        assert!(
+            queda <= passo_da_lei * 3.0,
+            "quadro {n}: a mira caiu {:.1} % da dianteira num quadro so' (a lei da' {:.1} % por \
+             tique) — e' o solavanco que a suavizacao existe para nao ter",
+            queda * 100.0,
+            passo_da_lei * 100.0
+        );
+        anterior = agora;
+    }
+    assert!(
+        anterior < montada,
+        "e ela tem de DECAIR: ficou em {anterior:.4} contra {montada:.4}"
+    );
+}
+
+/// ⭐⭐⭐ **EM REGIME, a dianteira é EXACTAMENTE `v · L`** — o gate que os outros dois não podiam ser.
+///
+/// # Porque ele existe, e o que ele apanhou
+///
+/// Os dois irmãos acima medem **transientes** (o pico numa moldura de dois tiques, o colapso ao
+/// parar). Este mede o **valor**, e foi ele que expôs o defeito MAIOR do report de 2026-09-10:
+///
+/// ```text
+///   antes das curas   velocidade suavizada = 0,7822 m/s   sobre um herói a 8,0000  ⛔ 10× fraca
+///   depois            velocidade suavizada = 8,0000 m/s                            ✓
+/// ```
+///
+/// ⛔ A causa não era a lei: num quadro **sem tique** o `sample_dt` é zero, a amostra não tem de
+/// onde tirar velocidade e o `damp_axis` — cujo braço de `dt <= 0` significa *instantâneo* —
+/// adoptava esse zero. **Cada quadro perdido zerava a velocidade**, e com dois em dez ela nunca
+/// subia.
+///
+/// # ⚠️⚠️ E esse defeito MASCARAVA o do `sample_dt`
+///
+/// Enquanto nada convergia, o viés do estimador errado era invisível: a mutação `sample_dt → dt`
+/// **sobreviveu** a este ficheiro inteiro. Curado o terceiro, ela passa a ler `11,3373 m/s` sobre
+/// `8,0000` — **+42 %** — e sangra aqui. *Um segundo erro pode ser load-bearing para o primeiro, e
+/// o sinal é a cura não melhorar com o knob que devia curá-la.*
+///
+/// **Mutações que devem sangrar:** `sample_dt → dt` · tirar o `if ticks > 0` da velocidade.
+#[test]
+fn in_steady_state_the_lead_is_exactly_velocity_times_lookahead() {
+    let mut sim = mundo();
+    let heroi = objecto(&mut sim, "Heroi", [0.0, 0.0]);
+    camera(&mut sim, "Cam", [0.0, 0.0], GameCamera::default());
+    let cam_e = ph2d_ecs::active_camera_of(sim.world_mut()).unwrap();
+    const L: f32 = 0.5;
+    const VEL: f32 = 8.0;
+    sim.world_mut().entity_mut(cam_e).insert(CameraFollow {
+        target: "Heroi".into(),
+        damping: [5.0, 5.0],
+        dead_zone: [0.0, 0.0],
+        lookahead: [L, 0.0],
+        offset: [0.0, 0.0],
+    });
+    // ⚠️ **O padrão TEM de ter quadros de 0 e de 2 tiques**: é isso que produz o fenómeno. Um
+    // padrão de `1` puro deixa este gate verde sobre os três defeitos.
+    let padrao = [1u32, 1, 0, 1, 2, 1, 1, 0, 2, 1];
+    assert!(
+        padrao.contains(&0) && padrao.contains(&2),
+        "a fixtura nao produz o fenomeno: sem quadros de 0 e de 2 tiques os tres defeitos sao \
+         invisiveis"
+    );
+    let mut x = 0.0_f32;
+    for i in 0..400 {
+        let t = padrao[i % padrao.len()];
+        x += VEL * t as f32 * DT as f32;
+        mover(&mut sim, heroi, [x, 0.0]);
+        let _ = update(&mut sim, ASPECT, t, DT);
+    }
+    let rt = sim.world().get::<ph2d_ecs::CameraRuntime>(cam_e).unwrap();
+    let v = rt.velocity[0];
+    let dianteira = rt.anchor[0] - x;
+    // ⚠️ **A barra é `1 %` porque o estimador é NÃO-ENVIESADO**, e não porque `1 %` seja bonito: em
+    // regime a média exponencial de uma velocidade constante converge para ela. ⛔ Uma barra larga
+    // aceitaria de volta os `+42 %` do `dt` errado.
+    assert!(
+        (v - VEL).abs() < VEL * 0.01,
+        "a velocidade suavizada leu {v:.4} m/s sobre um alvo a {VEL:.4} — em regime ela tem de \
+         convergir para a verdade, e um desvio aqui e' viés do estimador, nunca ruído"
+    );
+    assert!(
+        (dianteira - VEL * L).abs() < VEL * L * 0.01,
+        "a dianteira leu {dianteira:.4} m e a antecipacao de {L} s a {VEL} m/s vale {:.4}",
+        VEL * L
+    );
+}

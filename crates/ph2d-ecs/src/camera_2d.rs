@@ -184,11 +184,17 @@ pub struct CameraRuntime {
     /// ⚠️ **É estado SEPARADO do centro, e a separação foi medida** (ver [`follow_step`]): fundir os
     /// dois deixa o corpus do degrau e da rampa verde e erra `1,07 px` em toda inversão do alvo.
     pub anchor: [f32; 2],
-    /// Onde o alvo estava no passo anterior — é daqui que sai a velocidade da antecipação.
+    /// Onde o alvo estava na AMOSTRA anterior — é daqui que sai a velocidade da antecipação.
     ///
     /// ⚠️ **`None` no primeiro passo, e isso é informação:** sem passo anterior não há velocidade, e
     /// inventar `0` seria dizer que o alvo está parado quando ele pode estar a 30 m/s.
     pub last_target: Option<[f32; 2]>,
+    /// ⭐⭐ **A velocidade SUAVIZADA do alvo** — o estado que a antecipação exige.
+    ///
+    /// ⚠️ **Ela é ESTADO e não uma derivação por quadro**, e é isso que impede o solavanco: uma
+    /// velocidade crua colapsa a zero no instante em que o alvo pára, e a mira recua de
+    /// `v · lookahead` metros num quadro. Ver [`smooth_velocity`].
+    pub velocity: [f32; 2],
     /// A câmera já foi assente uma vez? ⚠️ Sem isto, uma câmera que nasce em `(0,0)` **viaja** desde
     /// a origem até ao alvo no primeiro segundo de jogo — o `reset_smoothing()` do oráculo.
     pub settled: bool,
@@ -298,26 +304,82 @@ pub fn follow_step(
     (anchor, out)
 }
 
-/// **Onde a câmera quer olhar**, dado o alvo, o passo anterior e a antecipação.
+/// **A velocidade CRUA do alvo**, de uma amostra à seguinte.
 ///
-/// ⚠️ **A velocidade sai da diferença entre dois passos**, e é por isso que o primeiro passo não
-/// antecipa nada: [`CameraRuntime::last_target`] é `None` e não há de onde tirar velocidade.
+/// ⚠️⚠️ **`sample_dt` é o tempo entre as DUAS AMOSTRAS, e NÃO o passo da lei** — e a distinção é o
+/// defeito que a auditoria de 2026-09-10 mediu. A ponte só vê o alvo **uma vez por quadro**, e um
+/// quadro leva `ticks` passos: dividir por um passo quando passaram dois lê o **dobro** da
+/// velocidade. Medido, com o herói a `8 m/s` e antecipação de `0,5 s`: a mira saltava de `+4,00 m`
+/// para **`+8,00 m`** em toda moldura de dois tiques, e voltava na seguinte — `4 m` de ida e volta
+/// numa vista de `17,8 m` de largura, a **22 % do ecrã**, várias vezes por segundo.
+///
+/// ⭐ **`None` no passo anterior devolve ZERO, e é o certo**: sem duas amostras não há velocidade,
+/// e inventar uma faria a câmera antecipar no quadro em que nasce.
 #[must_use]
-pub fn aim_at(
-    target: [f32; 2],
-    previous: Option<[f32; 2]>,
-    follow: &CameraFollow,
-    dt: f32,
-) -> [f32; 2] {
-    let mut out = [target[0] + follow.offset[0], target[1] + follow.offset[1]];
-    let (Some(prev), true) = (previous, dt > 0.0 && dt.is_finite()) else {
-        return out;
+pub fn sample_velocity(previous: Option<[f32; 2]>, target: [f32; 2], sample_dt: f32) -> [f32; 2] {
+    let (Some(prev), true) = (previous, sample_dt > 0.0 && sample_dt.is_finite()) else {
+        return [0.0, 0.0];
     };
-    for i in 0..2 {
-        let v = (target[i] - prev[i]) / dt;
-        out[i] += v * follow.lookahead[i];
+    [
+        (target[0] - prev[0]) / sample_dt,
+        (target[1] - prev[1]) / sample_dt,
+    ]
+}
+
+/// **A velocidade SUAVIZADA** — a que a antecipação de facto usa.
+///
+/// # ⛔⛔ Porque a crua não serve, medido
+///
+/// Uma velocidade tirada de duas amostras é um degrau: ela salta com o ritmo do quadro e, pior,
+/// **colapsa a zero no instante em que o alvo pára**. Medido na mesma auditoria: ao largar a tecla,
+/// a mira caía de `+4,00 m` para `+0,00 m` **num quadro** — a câmera dava um recuo de quatro metros
+/// que ninguém pediu. *Antecipar sem suavizar é trocar um atraso por um solavanco.*
+///
+/// # ⭐ A constante de tempo é a PRÓPRIA antecipação, e por isso não há número novo
+///
+/// A pergunta que a antecipação faz é *«onde é que isto vai estar daqui a `L` segundos?»*. Estimar
+/// a velocidade numa janela mais curta que `L` é medir ruído; numa mais longa é medir o passado.
+/// ⇒ a taxa é `1/L`, que **degenera correctamente**: com `L = 0` não há antecipação nenhuma e a
+/// suavização não tem o que fazer.
+///
+/// ⚠️ **Ela reusa o [`damp_axis`]** — a mesma lei do amortecimento da câmera, com o mesmo cravo no
+/// topo do domínio. *Duas exponenciais escritas à mão no mesmo ficheiro divergiriam no dia em que
+/// uma delas ganhasse uma cerca.*
+#[must_use]
+pub fn smooth_velocity(
+    current: [f32; 2],
+    sample: [f32; 2],
+    lookahead: [f32; 2],
+    sample_dt: f32,
+) -> [f32; 2] {
+    let mut out = current;
+    for (i, o) in out.iter_mut().enumerate() {
+        let l = lookahead[i];
+        // ⚠️ Sem antecipação neste eixo a velocidade não é lida por ninguém — segui-la à letra
+        // mantém o estado honesto sem custo, e evita um ramo que só existe para não dividir por
+        // zero.
+        *o = if l > 0.0 {
+            damp_axis(*o, sample[i], 1.0 / l, sample_dt)
+        } else {
+            sample[i]
+        };
     }
     out
+}
+
+/// **Onde a câmera quer olhar**, dado o alvo, a velocidade dele e a antecipação.
+///
+/// ⚠️⚠️ **Ela NÃO estima velocidade nenhuma, e a ausência é a cura estrutural.** A primeira redacção
+/// fazia as duas coisas — estimar e aplicar — e o `dt` de que precisava para a primeira **não era**
+/// o `dt` que o chamador tinha para a segunda. *Uma função que faz dois trabalhos com um argumento
+/// só convida a chamada errada, e ela foi escrita.* Hoje a velocidade chega pronta
+/// ([`sample_velocity`] + [`smooth_velocity`]) e este passo é uma soma.
+#[must_use]
+pub fn aim_at(target: [f32; 2], velocity: [f32; 2], follow: &CameraFollow) -> [f32; 2] {
+    [
+        target[0] + follow.offset[0] + velocity[0] * follow.lookahead[0],
+        target[1] + follow.offset[1] + velocity[1] * follow.lookahead[1],
+    ]
 }
 
 /// ⭐ **A câmera que MANDA** — maior prioridade, desempate pelo [`crate::StableId`].

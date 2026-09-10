@@ -105,7 +105,7 @@ pub use audio_2d::{
 pub use camera_2d::{
     CAMERA_MAX_HEIGHT_WORLD, CAMERA_MIN_HEIGHT_WORLD, CameraFollow, CameraLimits, CameraRuntime,
     GameCamera, active_camera_of, aim_at, camera_count, clamp_axis_to_limits, damp_axis,
-    dead_zone_goal, follow_step, half_extent,
+    dead_zone_goal, follow_step, half_extent, sample_velocity, smooth_velocity,
 };
 pub mod vec_path_ref;
 pub mod vec_shape;

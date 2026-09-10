@@ -352,31 +352,72 @@ fn the_dead_zone_is_fenced_to_the_window() {
     assert_eq!(z, [7.0, -3.0]);
 }
 
-/// ⭐ **A antecipação não inventa velocidade no primeiro passo.**
+/// ⭐ **A velocidade não se inventa no primeiro passo** — sem duas amostras não há velocidade.
 ///
-/// **Mutação que deve sangrar:** trocar o `None` por `Some(target)` — a mira passaria a antecipar
-/// `0` sempre, e o gate da velocidade real morreria com a suíte verde.
+/// **Mutação que deve sangrar:** devolver o alvo em vez de zero quando `previous` é `None`.
 #[test]
-fn lookahead_needs_a_previous_step_to_exist() {
-    let f = CameraFollow {
-        lookahead: [0.5, 0.0],
-        ..CameraFollow::default()
-    };
-    // Sem passo anterior: a mira é o alvo (mais o offset, que aqui é zero).
-    assert_eq!(aim_at([10.0, 0.0], None, &f, DT), [10.0, 0.0]);
-    // Com passo anterior: o alvo anda 1 m por passo ⇒ 60 m/s ⇒ meio segundo à frente = +30 m.
-    let a = aim_at([10.0, 0.0], Some([9.0, 0.0]), &f, DT);
-    assert!((a[0] - 40.0).abs() < 1e-3, "antecipacao: {a:?}");
+fn velocity_needs_two_samples_to_exist() {
+    assert_eq!(sample_velocity(None, [10.0, 0.0], DT), [0.0, 0.0]);
+    // Um passo de `1 m` em `1/60 s` são `60 m/s`.
+    let v = sample_velocity(Some([9.0, 0.0]), [10.0, 0.0], DT);
+    assert!((v[0] - 60.0).abs() < 1e-3, "velocidade: {v:?}");
 }
 
-/// O `offset` entra na mira mesmo sem antecipação — é o enquadramento, não um efeito de velocidade.
+/// ⭐⭐⭐ **A velocidade divide pelo tempo das DUAS AMOSTRAS, e não pelo passo da lei.**
+///
+/// ⚠️ Foi este o defeito do report de 2026-09-10: a ponte vê o alvo uma vez por quadro e um quadro
+/// leva `ticks` passos. **A MESMA distância dividida por dois tempos dá duas velocidades**, e a
+/// função não tem como saber qual é — quem sabe é o chamador, e é por isso que o parâmetro se
+/// chama `sample_dt`.
 #[test]
-fn the_offset_frames_the_target_even_without_lookahead() {
+fn the_same_distance_over_two_ticks_is_half_the_velocity() {
+    let um = sample_velocity(Some([0.0, 0.0]), [0.2667, 0.0], DT);
+    let dois = sample_velocity(Some([0.0, 0.0]), [0.2667, 0.0], DT * 2.0);
+    assert!((um[0] - 16.0).abs() < 0.02, "um tique: {um:?}");
+    assert!((dois[0] - 8.0).abs() < 0.02, "dois tiques: {dois:?}");
+}
+
+/// ⭐⭐ **A suavização tem por constante de tempo a PRÓPRIA antecipação** — e degenera a zero.
+///
+/// ⚠️ A taxa é `1/L`: perguntar *«onde estará daqui a `L`?»* e estimar a velocidade numa janela
+/// mais curta que `L` é medir ruído. ⛔ Sem antecipação neste eixo não há o que suavizar, e a
+/// função segue a amostra à letra em vez de ter um ramo só para não dividir por zero.
+#[test]
+fn the_velocity_smooths_over_the_lookahead_horizon() {
+    // `L = 0,5` ⇒ taxa `2/s` ⇒ um tique move `2/60 = 3,33 %` do erro.
+    let v = smooth_velocity([0.0, 0.0], [8.0, 8.0], [0.5, 0.0], DT);
+    assert!((v[0] - 8.0 / 30.0).abs() < 1e-3, "com L=0,5: {v:?}");
+    // No eixo SEM antecipação ela segue a amostra.
+    assert!((v[1] - 8.0).abs() < 1e-6, "sem L: {v:?}");
+    // E, em regime, ela converge para a verdade — é isso que a torna NÃO-ENVIESADA.
+    let mut c = [0.0_f32, 0.0];
+    for _ in 0..600 {
+        c = smooth_velocity(c, [8.0, 0.0], [0.5, 0.0], DT);
+    }
+    assert!((c[0] - 8.0).abs() < 1e-3, "regime: {c:?}");
+}
+
+/// ⭐ **A mira é uma SOMA** — ela não estima velocidade nenhuma.
+///
+/// ⚠️ **A ausência é a cura estrutural**: a primeira redacção fazia as duas coisas com um `dt` só, e
+/// o `dt` de que ela precisava para estimar **não era** o que o chamador tinha para aplicar. *Uma
+/// função que faz dois trabalhos com um argumento só convida a chamada errada, e ela foi escrita.*
+#[test]
+fn the_aim_is_a_sum_of_target_offset_and_lead() {
     let f = CameraFollow {
+        lookahead: [0.5, 0.0],
         offset: [0.0, 2.5],
         ..CameraFollow::default()
     };
-    assert_eq!(aim_at([1.0, 1.0], None, &f, DT), [1.0, 3.5]);
+    // Parado: só o offset.
+    assert_eq!(aim_at([1.0, 1.0], [0.0, 0.0], &f), [1.0, 3.5]);
+    // A 60 m/s com meio segundo de antecipação: +30 m no eixo que a tem, e nada no outro.
+    let a = aim_at([10.0, 0.0], [60.0, 60.0], &f);
+    assert!((a[0] - 40.0).abs() < 1e-3, "antecipacao: {a:?}");
+    assert!(
+        (a[1] - 2.5).abs() < 1e-3,
+        "o eixo sem antecipacao nao lidera: {a:?}"
+    );
 }
 
 /// ⭐⭐ **A câmera que manda: maior prioridade, desempate pelo `StableId`, e a desligada não conta.**

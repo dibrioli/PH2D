@@ -9,12 +9,13 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**2 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**).
+**3 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**).
 
 | # | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
 | 00 |   | [00_o_modulo_nasce.md](00_o_modulo_nasce.md) | — | 00 — O esqueleto vira MÓDULO |
 | 01 | ◆ | [01_a_fila.md](01_a_fila.md) | — | 01 — A FILA do módulo do esqueleto |
+| 02 |   | [02_pesquisa_a_malha_sobre_a_imagem.md](02_pesquisa_a_malha_sobre_a_imagem.md) | pesquisa | 02 — A malha sobre a imagem: o estado da arte, medido |
 
 **Subpastas:** [`handoffs/`](handoffs/README.md)
 

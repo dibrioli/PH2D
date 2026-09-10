@@ -11,7 +11,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**5 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **5** são handoffs (registro **morto**).
+**5 arquivos** · **2** citados pelo `CLAUDE.md` (marcados **◆**) · **5** são handoffs (registro **morto**).
 
 | Data | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
@@ -19,7 +19,7 @@
 | 2026-09-03 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-09-03.md](HANDOFF_INTEGRACAO_line_UIUX_2026-09-03.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-09-03 |
 | 2026-09-06 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-09-06.md](HANDOFF_INTEGRACAO_line_UIUX_2026-09-06.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX` — 2026-09-06 |
 | 2026-09-07 | ◆ | [HANDOFF_INTEGRACAO_line_UIUX_2026-09-07.md](HANDOFF_INTEGRACAO_line_UIUX_2026-09-07.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX` — 2026-09-07 |
-| 2026-09-10 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-09-10.md](HANDOFF_INTEGRACAO_line_UIUX_2026-09-10.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-09-10 |
+| 2026-09-10 | ◆ | [HANDOFF_INTEGRACAO_line_UIUX_2026-09-10.md](HANDOFF_INTEGRACAO_line_UIUX_2026-09-10.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-09-10 |
 
 ---
 

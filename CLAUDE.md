@@ -884,26 +884,43 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   [`ph2d-tokens`](crates/ph2d-tokens/src/spacing.rs) — mais o **cartão** no lugar do risco azul, a **lei do grupo**, os
   **apelidos de cor** que resolvem pelo PAI (⛔ **57 valores saíram do `tokens.json`**: editar um deles funde limpo e a
   edição **evapora**), o **chão da janela** (`WindowGround`, degrau ABSOLUTO de `0,04`) que faz de cada área um cartão, e
-  o **gesto que fecha uma coluna** arrastando a borda para dentro — cuja lei é uma **INVOLUÇÃO**
-  ([`hero::dock_columns`](crates/ph2d-editor-core/src/screens/hero/dock_columns.rs): reabrir devolve exactamente o que
-  aquele fecho levou; re-derivar do registo abria **22** onde o fecho levara **1** — *uma involução é uma MEMÓRIA, nunca
-  uma re-derivação*).
+  as **abas de encaixe** com largura por conteúdo, ordem, arrasto entre encaixes, ícone e transbordo (a w50 pôs a cache
+  de texto a **rodar** em vez de se deitar fora: `182 ms` por quadro com tudo aberto passaram a `7,8`).
+  ⛔⛔ **O gesto que FECHAVA uma coluna arrastando a borda SAIU** (ordem do dono, 09/09: *«Deixa o colapsar apenas no
+  menu da barra superior»*) — e ⚠️ **a lei ficou sem quem a accione**: a **INVOLUÇÃO** do
+  [`hero::dock_columns`](crates/ph2d-editor-core/src/screens/hero/dock_columns.rs) continua certa e gateada (reabrir
+  devolve exactamente o que aquele fecho levou; re-derivar do registo abria **22** onde o fecho levara **1** — *uma
+  involução é uma MEMÓRIA, nunca uma re-derivação*), mas medido em 10/09 o `dock_columns::close` tem **ZERO chamadores
+  de produto**, e a shell está **proibida por gate** de o chamar (`the_border_gesture_reaches_the_panel`). ⇒ *retirar um
+  gesto deixa a lei dele viva e órfã, e nenhuma sonda deste repo pergunta se uma PORTA tem chamador* — quem construir o
+  item de menu herda a involução pronta, não a reescreve.
   ⚠️ **`HIER_ROW_H_PX` e `SECTION_GAP_PX` deixaram de existir** — a linha da hierarquia usa o `ROW_H_PX` como todas as
   outras, e o vão de secção é a porta `section_gap_px()`. ⛔ A cura de um uso novo é **converter**, nunca repor a
   constante.
-  **Aberto:** o **DESENHO das abas de painel** (medido contra o Godot e **não construído**: falta largura por conteúdo,
-  quina só nos dois cantos de cima, fundo da aba inactiva, ícone e afordância de transbordo) · a incoerência entre as
-  abas de ENCAIXE (`BgElev`/`Text1`) e as de LAYOUT (`AccentSoft`/`Accent`) — **nada no repo escolhe qual está errada** ·
-  o alvo de toque de uma aba tem **22 px** num app cujo alvo é TABLET · esvaziar os painéis (**1 de 25** censuados) ·
-  ⏳ **as superfícies de UI que as outras cinco linhas de 07/09 trouxeram foram escritas contra a lei de espaçamento
-  ANTIGA e não passam pelas portas do ritmo** — não é regressão nem trabalho da integração, é wave do dono da UI.
-  **Smokes:** abrir o app (a UI nova é o caminho de omissão) · fechar e reabrir a coluna da direita pela borda ·
-  `PH2D_UI_NEW=0` (o clássico tem de ficar byte a byte) · *View → Reset Panel Layout*.
+  **Aberto:** ⛔ os **418** literais de UI pintados nas outras **18** crates (a `painter-layers` sozinha tem `166`) — e
+  eles **BLOQUEIAM** o degrau `G` (esvaziar os painéis), porque `19` de `26` painéis não declaram entrada nenhuma para
+  classificar ([`medicoes/07`](docs/UI_New_and_Simple/medicoes/07_o_buraco_do_hr15_o_texto_PINTADO.md); instrumento:
+  `python3 scripts/censo-texto-pintado.py`) · **três decisões do dono**, todas já com o número ao lado: a pose 2D/3D
+  (`722` sítios de produto, 5 crates), partir o `DrawMode` nos dois eixos (`17` variantes vivas, eram 14) e os 9 toggles
+  de módulo → Layout · o **«travou por um minuto»** de 09/09 segue **sem reprodução** (o gatilho — colapsar por arrasto —
+  saiu na w49, e o penhasco de `182 ms` foi medido e **não** é ele: três ordens de grandeza) · ⏳ **as superfícies de UI
+  que as outras linhas trouxeram foram escritas contra a lei de espaçamento ANTIGA** — wave do dono da UI, não da
+  integração.
+  **Smokes:** abrir o app (a UI nova é o caminho de omissão) · abrir **todos** os painéis pelo menu *Window* e mexer no
+  ecrã (a w50: sem número à vista, o sintoma é o app deixar de engasgar) · *View → Reset Panel Layout*.
+  ⚠️ **`PH2D_UI_NEW=0` NÃO é o ecrã de antes do redesenho** — ele devolve **seis pintores de widget**, a família de temas
+  da barra do topo e o tema de arranque. A estrutura (colunas, encaixes, faixa de abas, transbordo) é a **mesma** nas
+  duas desde 2026-08-30, e há gate a mantê-la assim (`the_look_is_a_widget_skin_never_an_area_model`). ⛔ A cláusula
+  *«o clássico tem de ficar byte a byte»* esteve aqui e era **falsa no dia em que foi escrita** — as abas nasceram em
+  30/08 sem consultar a aparência, e a cláusula entrou no roteador **oito dias depois**
+  ([`medicoes/10`](docs/UI_New_and_Simple/medicoes/10_o_classico_nao_e_um_ecra_anterior.md)).
   ⚠️ **A arrumação vive fora do repo** (`~/.ph2d/layout.txt`, XOR contra o `DEFAULT_VISIBLE`) — um ficheiro velho abre o
   app com um painel fechado, e **apagá-lo é o reset**, não sintoma de regressão.
   **Ler:** [`docs/UI_New_and_Simple/`](docs/UI_New_and_Simple/) ·
-  [handoff de 07/09](docs/UI_New_and_Simple/handoffs/HANDOFF_INTEGRACAO_line_UIUX_2026-09-07.md) (⚠️ o §6 tem o que a
-  fusão parte e é previsível; o §11 as **sete** leis que a jornada pagou) ·
+  [handoff de 10/09](docs/UI_New_and_Simple/handoffs/HANDOFF_INTEGRACAO_line_UIUX_2026-09-10.md) (⚠️ o §6 é o que a
+  fusão parte, com endereço — o `Panel::ICON` obrigatório, o `IconId` cuja **ordem é o índice**, o `slot_tabs` partido em
+  quatro e as **sete catracas a zero de folga**; o §11 as leis que a jornada pagou) ·
+  [handoff de 07/09](docs/UI_New_and_Simple/handoffs/HANDOFF_INTEGRACAO_line_UIUX_2026-09-07.md) ·
   [handoffs](docs/UI_New_and_Simple/handoffs/README.md)
 
 - **Editor / shell — undo, persistência, inspector** — **uma** fila de undo, snapshot-based, registrada por **DIFF num só

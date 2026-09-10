@@ -273,6 +273,27 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   integração de 2026-09-07, a pedido da `line/UIUX`; ⚠️ **é o TERCEIRO cujo doc-comment se declara
   imune** (*«gate de FORMA, não de relógio … uma razão entre duas contagens»*) e cujos dois lados são
   `ms_per_tick`: *dividir dois relógios não deixa de ser um relógio por a razão ser adimensional*).
+  **Promovidos pela integração de 2026-09-10** (a linha pede, o integrador escreve):
+  `the_cache_makes_a_preview_frame_cost_the_tail_not_the_stroke` (razão de dois relógios · 3/3 a
+  `load 4,69`) · `interaction_dispatch_no_alloc` (contador de alocações · 3/3 a `load 2,20`; ⚠️ o
+  ficheiro **não menciona texto** e o diff acusado era da `ph2d-text`) ·
+  `the_ui_clock_does_not_allocate_per_frame` (contador de alocações · 3/3 a `load 18,20`/`18,99` —
+  ⛔ **o QUARTO deste repo cujo doc-comment se declarava imune**, *«uma contagem de blocos é
+  determinística e não flaka»*) · e ⭐ **`o_pen_down_do_filtro_e_linear_nos_vertices`**
+  ([`ph2d-sculpt3d`](crates/ph2d-sculpt3d/tests/mede_o_filtro_de_tecido.rs)), **medido na própria
+  rodada e a espécie mais subtil da família: ele ajusta um EXPOENTE a cinco relógios de parede.**
+  Sob os 14 911 testes em paralelo o ponto de `6 836` vértices lê `18,99 ms` (`2,9×` o isolado)
+  enquanto os outros quatro leem `~1,4×`, e **um ponto** puxa o ajuste log-log de `1,03` para
+  `1,31`, acima da barra de linearidade. *Um gate que ajusta uma curva a relógios é mais frágil que
+  um que compara duas medianas: basta UMA amostra deslocada.*
+  ⭐⭐ **E esta rodada produziu a assinatura mais forte da família, à vista:** **três** corridas da
+  **MESMA** árvore (`line/sculpt3d`, o mesmo commit) devolveram **três conjuntos de reprovadas
+  DIFERENTES** — `{an_abandoned_march, o_pen_down}` · `{the_brush_snapshot}` · `{an_abandoned_march}`
+  —, todos gates de relógio, todos verdes 3/3 sozinhos. *Um defeito de lógica reprova o mesmo caso
+  sempre; só um recurso partilhado troca de vítima entre corridas.*
+  ⚠️ **E uma quinta ficou por promover porque NÃO TEM NOME:** a `line/Vector` reportou *«um do shell
+  que não reproduziu em 4 corridas»* sem o nomear. *Uma flake sem nome não entra numa lista — quem
+  a encontrar outra vez recomeça do zero.*
   *Todo gate que compara duas medianas de um RECURSO é candidato, e a lista nunca estará completa.*
 - ⚠️ **Gates de GPU são `#[ignore]`** e precisam de adapter — *skip gracioso não é verde*; e o `nextest` **cancela na
   primeira falha**: use `--no-fail-fast`, senão suítes inteiras nunca chegam a correr.
@@ -779,13 +800,36 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   fica de fora): duas linhas que o subam em paralelo fundem **mudas**. Cenas **`=26`..`=29`**.
   ⚠️ **O `Thread` NÃO é a `Helix` com um cilindro à volta** — a mola mede a distância a uma CURVA, a
   rosca é um **perfil varrido por movimento de parafuso**, e é isso que fecha o factor da tangente em
-  forma fechada. ⏳ **ABERTO:** a `sd_helix` engorda o tubo `1/c` (a ferramenta da cura já está escrita
-  **duas** vezes) · o arranque da rosca fica afiado (cura medida e **recusada** — a saída é um chanfro
-  de entrada) · o [doc 06](docs/3DModeling/06_resultados_cena_e_gizmo.md) está em **~850 KB**, muito
-  além do joelho de 80–110 KB, e o `doc-split.py` é devido.
+  forma fechada. ⏳ **ABERTO:** o arranque da rosca fica afiado (cura medida e **recusada** — a saída
+  é um chanfro de entrada). ✅ **As outras duas desta lista FECHARAM em 10/09** — a `sd_helix` que
+  engordava o tubo `1/c` (curada na W140, tabela no doc-comment de `ops_spiral.rs`) e o corte do
+  doc 06 — *audite a lista contra o CÓDIGO antes de pegar um item dela: ela manda reconstruir
+  trabalho já pago, que é o defeito de que este §5 avisa sobre si mesmo*.
   [Handoff de 07/09](docs/3DModeling/handoffs/HANDOFF_INTEGRACAO_line_3DModeling_2026-09-07.md) (⚠️ o §8
   tem **seis** coisas que uma leitura rápida do diff entende ao contrário, e o §9 as **seis** premissas
   que a medição derrubou).
+  ⭐⭐⭐ **E a AVALIAÇÃO PONTO A PONTO deixou de ser o tecto (W147, 10/09):** o `Field::at` passou de
+  interpretador da `fidget` a **fita `f64` achatada** com o gradiente a mandar as seis amostras numa
+  passagem só — **bit-a-bit a mesma resposta** (gate sobre o valor e sobre o gradiente), `~3,6×` no valor
+  e `~6,3×` no gradiente. ⛔⛔ **E a cura que este §5 prescrevia — o gradiente ANALÍTICO da `fidget` —
+  está RECUSADA com número:** sobre pontos POSTOS numa aresta ela discorda `1,876e-1` contra uma folga
+  de `2,0e-2` (**`9,4×`**), porque num vinco a derivada não existe e a diferença central e a analítica
+  são **grandezas diferentes** — passar a `f64` não cura. ⚠️⚠️ **A 1.ª medição disse o CONTRÁRIO**
+  (`2,174e-6`): um vinco é uma **superfície**, e uma grelha nunca lá cai — *os pontos do vinco PÕEM-SE,
+  não se procuram*. ⭐⭐⭐ **E o tecto de verdade não era o algoritmo, era o PERFIL DE BUILD:** as crates
+  do campo nunca tinham entrado na lista `[profile.dev.package.*]` `opt-level = 2` do `Cargo.toml` da
+  raiz — a mesma lista, com a mesma justificação escrita, que já existia para o Painter e o áudio.
+  Quatro linhas: a suíte das 3 crates do campo **`372,3 s → 57,1 s`** (`6,5×`), o teste mais longo
+  `307 → 43 s`, o `field3d` do shell `22,8 → 4,1 s`. ⚠️ E a varredura em lote que quase foi deitada
+  fora por dar `5 %` passou a valer `14 %` medida no perfil certo — *a mesma cura mede-se cinco vezes
+  menor no perfil errado*. ⛔ **Os «14 ciclos em série» do censo são RECUSA MEDIDA** (o corredor já
+  satura os núcleos). ⭐⭐ **E o [doc 06](docs/3DModeling/06_resultados_cena_e_gizmo.md) virou ROTEADOR**
+  — `901 KB → 91 KB`, história **verbatim** em
+  [`docs/archive/3dmodeling-06-2026-09-10/`](docs/archive/3dmodeling-06-2026-09-10/06_resultados_cena_e_gizmo.md)
+  com `sha256` e as 144 secções indexadas por §. ⚠️ **A configuração de perfil é o ÓPTIMO MEDIDO, não a
+  primeira que funcionou:** `opt-level = 3` não dá diferença real, juntar mais três crates **parte um
+  teste**, e tirar a `fidget` custa `21 %`. Cenas **`=30`..`=32`**
+  ([handoff de 10/09](docs/3DModeling/handoffs/HANDOFF_INTEGRACAO_line_3DModeling_2026-09-10.md)).
   **Aberto:** ⏳ **O filete só é um ARCO a 90°** — o operador recua o vértice `(1 − 1/√2)·r/sin α` e um
   arco verdadeiro recua `r·(1/sin α − 1)`; numa ponta de estrela (19°) isso é **`2,29×` menos** filete
   do que o número diz. Hoje compensa-se **só nas quinas AGUDAS** (`max(1, factor)`), e as duas curas

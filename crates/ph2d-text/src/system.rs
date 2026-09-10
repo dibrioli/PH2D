@@ -13,7 +13,6 @@
 //! sans-serif + emoji fallback).
 
 use std::borrow::Cow;
-use std::collections::BTreeMap;
 use std::sync::Arc;
 
 // ⚠️ parley 0.11 deixou de re-exportar o `swash`: a 0.6 tinha `pub use swash;`
@@ -22,6 +21,7 @@ use std::sync::Arc;
 // era `u32` (`swash::tag_from_bytes`), hoje é `parley::setting::Tag`, um
 // `#[repr(transparent)] [u8; 4]` vindo do `parlance` — e `Tag::new` é `const fn`,
 // então as constantes abaixo continuam a ser constantes.
+use crate::layout_cache::{LayoutCache, LayoutCacheKey};
 use parley::{
     Alignment, FontContext, FontFamily, FontVariation, FontVariations, FontWeight, Layout,
     LayoutContext, StyleProperty,
@@ -69,28 +69,6 @@ pub fn inter_variable_ttf() -> &'static [u8] {
 /// future fontique breaking change, etc.) so we never panic at startup.
 const INTER_FAMILY: &str = "InterVariable";
 
-/// Cache key for a shaped layout. The layout is fully determined by
-/// text, size, wrap width, weight, and letter-spacing (the font stack
-/// and opsz variation are fixed per `TextSystem` / derived from
-/// `font_size`), so these fields are an exact identity — no collision
-/// risk (unlike a hashed key). f32s are stored as raw bits so the key
-/// is `Eq + Ord` (workspace clippy bans `HashMap` per ADR-0022, so this
-/// is a `BTreeMap` key).
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
-struct LayoutCacheKey {
-    text: String,
-    font_size_bits: u32,
-    max_width_bits: u32,
-    weight_bits: u32,
-    letter_spacing_px_bits: u32,
-}
-
-/// Cap on cached shaped layouts. Steady-state UI text (panel labels, row
-/// names, counts) is well under this; ever-changing text (a focused
-/// NumberInput/TextInput buffer) generates unique keys, so the cache is
-/// cleared wholesale once it overflows to bound memory. // LITERAL-OK: cache budget
-const LAYOUT_CACHE_CAP: usize = 1024;
-
 // Thread-local global text-rendering strategy. Lives here (not in
 // `ph2d-editor-core::paint`) so `TextSystem::prefix_width` can read it
 // internally — that fixes the caret-position bug where measurements
@@ -135,8 +113,10 @@ pub struct TextSystem {
     /// independent of theme/colour, so a hit clones the cached layout and
     /// skips shaping entirely. Invalidation: none needed — `primary_stack`
     /// is fixed per instance; if a future path mutates the font set it
-    /// must `layout_cache.clear()`.
-    layout_cache: BTreeMap<LayoutCacheKey, Layout<()>>,
+    /// must trocar esta cache por uma nova.
+    ///
+    /// ⚠️ **Duas gerações e um contador** — ver [`super::layout_cache`].
+    cache: LayoutCache,
 }
 
 impl TextSystem {
@@ -152,7 +132,7 @@ impl TextSystem {
             font_context,
             layout_context: LayoutContext::new(),
             primary_stack,
-            layout_cache: BTreeMap::new(),
+            cache: LayoutCache::default(),
         }
     }
 
@@ -198,7 +178,7 @@ impl TextSystem {
             font_context,
             layout_context: LayoutContext::new(),
             primary_stack,
-            layout_cache: BTreeMap::new(),
+            cache: LayoutCache::default(),
         }
     }
 
@@ -282,10 +262,10 @@ impl TextSystem {
             weight_bits: weight.value().to_bits(),
             letter_spacing_px_bits: letter_spacing_px.to_bits(),
         };
-        if let Some(cached) = self.layout_cache.get(&key) {
+        if let Some(cached) = self.cache.get(&key) {
             // Hit: clone the shaped layout (skips shape + line-break +
             // align — the dominant per-frame cost).
-            return cached.clone();
+            return cached;
         }
         let mut builder = self.layout_context.ranged_builder(
             &mut self.font_context,
@@ -341,6 +321,7 @@ impl TextSystem {
         builder.push_default(StyleProperty::FontVariations(FontVariations::List(
             Cow::Borrowed(&variations),
         )));
+        self.cache.note_shape();
         let mut layout: Layout<()> = builder.build(text);
         layout.break_all_lines(Some(max_width));
         // ⚠️ `align` perdeu o `container_width` na parley 0.11: o alinhamento passou
@@ -349,11 +330,25 @@ impl TextSystem {
         // respostas para a mesma pergunta é o que a assinatura nova apaga. O
         // `Some(max_width)` de cima é agora a única fonte da largura do contentor.
         layout.align(Alignment::Start, parley::AlignmentOptions::default());
-        if self.layout_cache.len() >= LAYOUT_CACHE_CAP {
-            self.layout_cache.clear();
-        }
-        self.layout_cache.insert(key, layout.clone());
+        self.cache.insert(key, layout.clone());
         layout
+    }
+
+    /// ⭐⭐ **Quantos textos foram MOLDADOS desde que este sistema existe** — o instrumento da
+    /// cache de layouts.
+    ///
+    /// Um quadro em regime lê o mesmo número duas vezes: se ele **cresce** a cada quadro sobre um
+    /// ecrã parado, a cache está a perder o conjunto de trabalho, e o preço é a moldagem inteira
+    /// outra vez. Ver [`Self::layout_cache_len`].
+    #[must_use]
+    pub fn shapes(&self) -> u64 {
+        self.cache.shapes()
+    }
+
+    /// Quantos layouts moldados a cache guarda agora.
+    #[must_use]
+    pub fn layout_cache_len(&self) -> usize {
+        self.cache.len()
     }
 
     /// Measure the width of `prefix` for caret / selection
@@ -655,14 +650,14 @@ mod tests {
         let mut sys = TextSystem::without_system_fonts();
         // First call populates the cache; second (same inputs) hits it.
         let a = sys.layout("Hierarchy", 13.0, 120.0);
-        assert_eq!(sys.layout_cache.len(), 1, "first call should cache");
+        assert_eq!(sys.cache.hot_len(), 1, "first call should cache");
         let b = sys.layout("Hierarchy", 13.0, 120.0);
-        assert_eq!(sys.layout_cache.len(), 1, "hit must not add an entry");
+        assert_eq!(sys.cache.hot_len(), 1, "hit must not add an entry");
         // The cloned (cached) layout is geometrically identical.
         assert_eq!(a.width(), b.width());
         assert_eq!(a.height(), b.height());
         // A different input is a distinct key (miss → new entry).
         let _ = sys.layout("Hierarchy", 14.0, 120.0);
-        assert_eq!(sys.layout_cache.len(), 2, "different size is a new key");
+        assert_eq!(sys.cache.hot_len(), 2, "different size is a new key");
     }
 }

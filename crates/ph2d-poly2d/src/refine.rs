@@ -58,8 +58,20 @@ use crate::Mesh2d;
 pub struct RefineOptions {
     /// Quanto a silhueta desenhada pode afastar-se do campo verdadeiro, **em pixels de ecrã**.
     pub tolerance_px: f64,
-    /// ⚠️ **Tecto do `k`**, e ele é de um RECURSO: o custo de encodar o quadro cresce com `k²`.
-    pub max_split: u32,
+    /// ⛔⛔⛔ **O TECTO É DO NÚMERO DE PEÇAS, e não do `k`** — e a diferença foi um report do dono
+    /// (*«Smooth bugado quebrando a forma»*, 2026-09-10, com foto).
+    ///
+    /// **O recurso é a CAMADA DE RECORTE do renderer**: cada triângulo é um `push_clip` do Vello,
+    /// que dimensiona os buffers dele por heurística e **degrada em SILÊNCIO** quando eles estouram
+    /// — geometria certa, imagem partida. Um tecto no `k` não é um tecto nesse recurso: ele é
+    /// **quadrático** nele, e a malha de partida pode ter qualquer tamanho.
+    ///
+    /// ⚠️⚠️ **A experiência que o dono correu sem saber é a prova:** com o braço quase RECTO (`2°`)
+    /// o desvio já é `0,499 px`, logo o `k` saltava para o tecto e desenhava **7 776** recortes —
+    /// *a mesma geometria que o `Fast` desenha em 216, e partida*. A malha estava provadamente
+    /// correcta: área conservada ao cêntimo, zero triângulos saltados, zero arestas com mais de
+    /// dois donos.
+    pub max_pieces: usize,
 }
 
 impl Default for RefineOptions {
@@ -67,7 +79,11 @@ impl Default for RefineOptions {
         Self {
             // Meio pixel: abaixo disto o anti-aliasing da própria arte é mais largo que o erro.
             tolerance_px: 0.5,
-            max_split: 6,
+            // ⚠️ **NÃO MEDIDO, e dito em voz alta:** o limite do renderer é de GPU e não há aqui
+            // como o medir sem ecrã. O que se sabe é o intervalo que o smoke do dono deu — `216`
+            // desenha, `7 776` parte — e este número fica **do lado seguro** dele, com o botão
+            // `PH2D_SKIN_PIECES` a existir para o fechar numa corrida só.
+            max_pieces: 1024,
         }
     }
 }
@@ -116,7 +132,7 @@ pub fn deviation(
 /// ⚠️ **A raiz quadrada é a lei `O(h²)`, medida** (a tabela no cabeçalho): partir ao meio divide o
 /// desvio por `~3,6`, não por `2`. Um `k` linear no desvio pediria triângulos a mais.
 #[must_use]
-pub fn splits_for(desvio: f64, opts: RefineOptions) -> u32 {
+pub fn splits_for(desvio: f64, pecas: usize, opts: RefineOptions) -> u32 {
     let tol = opts.tolerance_px.max(f64::MIN_POSITIVE);
     if !desvio.is_finite() || desvio <= tol {
         return 1;
@@ -124,10 +140,30 @@ pub fn splits_for(desvio: f64, opts: RefineOptions) -> u32 {
     #[expect(
         clippy::cast_possible_truncation,
         clippy::cast_sign_loss,
-        reason = "a raiz de uma razão finita e positiva, limitada logo a seguir pelo max_split"
+        reason = "a raiz de uma razão finita e positiva, limitada logo a seguir pelo orçamento"
     )]
     let k = (desvio / tol).sqrt().ceil() as u32;
-    k.clamp(1, opts.max_split.max(1))
+    k.clamp(1, max_split(pecas, opts))
+}
+
+/// ⭐ **Quantas partes o ORÇAMENTO ainda paga** — `k` tal que `peças · k² <= max_pieces`.
+///
+/// ⚠️ É aqui que o tecto deixa de ser um número escolhido e passa a ser uma **divisão**: uma malha
+/// de `216` triângulos com orçamento `1024` pode ir a `k = 2`; uma de `50` pode ir a `k = 4`. *Um
+/// tecto no `k` daria à segunda o mesmo direito que à primeira, e é a CONTAGEM que o renderer paga.*
+#[must_use]
+pub fn max_split(pecas: usize, opts: RefineOptions) -> u32 {
+    if pecas == 0 {
+        return 1;
+    }
+    #[expect(
+        clippy::cast_precision_loss,
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "contagens de triângulos de uma malha de imagem, muito abaixo do limite exacto do f64"
+    )]
+    let k = ((opts.max_pieces as f64) / (pecas as f64)).sqrt() as u32;
+    k.max(1)
 }
 
 /// ⭐⭐⭐ **A MALHA POSADA, refinada até à tolerância** — devolve `(malha, posições)`.
@@ -145,7 +181,8 @@ pub fn refine_posed(
     opts: RefineOptions,
 ) -> (Mesh2d, Vec<[f64; 2]>, u32) {
     let posed: Vec<[f64; 2]> = mesh.rest.iter().map(|&p| deform(p)).collect();
-    let k = splits_for(deviation(mesh, &posed, deform), opts);
+    let tecto = max_split(mesh.tris.len(), opts);
+    let k = splits_for(deviation(mesh, &posed, deform), mesh.tris.len(), opts);
     if k <= 1 {
         return (mesh.clone(), posed, 1);
     }
@@ -158,9 +195,9 @@ pub fn refine_posed(
     //
     // ⚠️ **UMA correcção, nunca um laço até convergir:** a segunda estimativa parte da medição já
     // feita **na malha refinada** (`k · √(d/tol)`), que é a lei aplicada onde ela vale — e um laço
-    // seria trabalho por quadro sem tecto, exactamente o que o `max_split` existe para impedir.
+    // seria trabalho por quadro sem tecto, exactamente o que o orçamento existe para impedir.
     let d = deviation(&r, &p, deform);
-    if d <= opts.tolerance_px || k >= opts.max_split.max(1) {
+    if d <= opts.tolerance_px || k >= tecto {
         return (r, p, k);
     }
     #[expect(
@@ -169,7 +206,7 @@ pub fn refine_posed(
         reason = "a razão é finita e positiva, e o clamp logo abaixo é o tecto"
     )]
     let k2 = ((f64::from(k) * (d / opts.tolerance_px.max(f64::MIN_POSITIVE)).sqrt()).ceil() as u32)
-        .clamp(k + 1, opts.max_split.max(1));
+        .clamp(k + 1, tecto.max(k + 1));
     let (r2, p2) = build(mesh, deform, k2);
     (r2, p2, k2)
 }
@@ -203,7 +240,7 @@ fn build(
             let p = ponto_canonico(chave, [a, b, c], t, mesh, kf, i, j);
             #[expect(
                 clippy::cast_possible_truncation,
-                reason = "a malha refinada não passa de 2^32 nós: o max_split limita-a a k² por triângulo"
+                reason = "a malha refinada não passa de 2^32 nós: o orçamento de peças limita-a muito antes"
             )]
             let v = rest.len() as u32;
             rest.push(p);

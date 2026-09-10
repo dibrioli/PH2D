@@ -11456,7 +11456,9 @@ impl crate::App {
             }
             let pele_suave = match self.vec_draw_config.skin_deform {
                 ph2d_tool_vector::SkinDeform::Fast => None,
-                ph2d_tool_vector::SkinDeform::Smooth => Some(ph2d_poly2d::RefineOptions::default()),
+                ph2d_tool_vector::SkinDeform::Smooth => {
+                    Some(crate::skeleton_skin_image::refine_options())
+                }
             };
             // ⭐⭐⭐ **AS IMAGENS PRESAS AO ESQUELETO** — a 2.ª mídia (ordem do dono, 2026-09-09).
             //

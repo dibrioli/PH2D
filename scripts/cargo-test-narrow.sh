@@ -33,6 +33,7 @@
 #   0  verde — todos passaram
 #   1  vermelho de TESTE — compilou, algum teste falhou
 #   2  vermelho de COMPILAÇÃO — nenhum teste chegou a correr
+#   3  PENDUROU — bateu no tecto de tempo (ver `PH2D_TEST_TIMEOUT` abaixo)
 #
 # ⚠️ **Isto NÃO é o gate de fechamento.** O gate batched continua sendo
 # `scripts/nextest-impacted.sh` + clippy `--all-targets` + auditoria, 1× sobre o
@@ -70,11 +71,77 @@ if [ "${PH2D_SKIP_CHECK:-0}" != "1" ]; then
   fi
 fi
 
+# --- ORFÃOS de uma corrida anterior --------------------------------------------
+#
+# ⛔⛔ **Matar quem lançou NÃO mata o teste** (medido 2026-09-10): o binário de teste é
+# reparentado ao `systemd --user` e continua a girar, invisível ao cargo e a quem o lançou. Dois
+# binários de `ph2d-poly2d` ficaram vivos **1h55m** a **299,7% de CPU cada** — ~6 dos 32 núcleos —
+# depois de os processos que os lançaram terem morrido. Ninguém ia colher o resultado.
+#
+# ⚠️ E o `rm -rf target/*/incremental` do fecho de linha (DIRETRIZ §1.5.9) **apaga ficheiros e não
+# mata processo nenhum**.
+#
+# ⚠️⚠️ **A classe de caracteres no padrão NÃO é enfeite: sem ela isto MATA-SE A SI MESMO.** O
+# padrão aparece na linha de comando deste próprio script, o `pkill -f` casa-a, e o script morre
+# com exit 144 — medido, e duas vezes.
+#
+# ⛔⛔⛔ **E ele só mata o REPARENTADO** — medido na 1.ª redacção, que matou **27** binários de uma
+# corrida de `nextest` VIVA que estava a decorrer ao lado. *Um binário de teste desta árvore não é
+# um órfão: um órfão é aquele cujo LANÇADOR morreu.* Numa máquina onde seis linhas correm em
+# paralelo, matar por caminho é sabotar o vizinho.
+#
+# ⇒ o discriminador é o PAI: `PPID 1` ou `systemd` (para onde o kernel reparenta quem ficou sem
+# dono). Com o pai vivo, a corrida é de alguém — e fica em paz.
+raiz="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+orfaos=""
+for pid in $(pgrep -f "${raiz}/target/[^/]*/deps/[a-z_]" 2>/dev/null || true); do
+  ppid="$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d ' ')"
+  pai="$(ps -o comm= -p "${ppid:-0}" 2>/dev/null | tr -d ' ')"
+  case "${ppid:-0}:${pai:-}" in
+    1:* | *:systemd) orfaos="$orfaos $pid" ;;
+  esac
+done
+if [ -n "${orfaos// /}" ]; then
+  echo "⚠ binário(s) de teste ÓRFÃOS desta árvore (o lançador morreu) — a matar:"
+  # shellcheck disable=SC2086
+  ps -o pid=,etime=,pcpu=,args= -p $orfaos 2>/dev/null | cut -c1-140 | sed 's/^/  /' | head -5
+  # shellcheck disable=SC2086
+  kill -9 $orfaos 2>/dev/null || true
+fi
+
 # --- os testes -----------------------------------------------------------------
+#
+# ⛔⛔⛔ **O TECTO DE TEMPO, e ele é do RECURSO «a máquina»** (medido 2026-09-10): antes disto
+# **nenhuma corrida de teste deste repo tinha tecto**, excepto uma crate. O `slow-timeout` do
+# `.config/nextest.toml` vive dentro de um `[[profile.default.overrides]]` com
+# `filter = 'package(ph2d-asset-cooker)'` — o próprio ficheiro escreve a lei (*«a hang never returns
+# to trigger a retry»*) e depois cerca-a com o nome de uma crate.
+#
+# ⚠️ Ele NÃO é um limite de lentidão: é a conversão de uma **pendura** (infinita) numa **falha**.
+# Por isso é largo — quem aperta o relógio é o gate, não esta porta.
+#
+# `PH2D_TEST_TIMEOUT` afina-o (segundos); `0` desliga.
+tempo="${PH2D_TEST_TIMEOUT:-900}"
 out="$(mktemp)"
 trap 'rm -f "${chk:-}" "$out"' EXIT
-cargo test -p "$crate" "$@" >"$out" 2>&1
-rc=$?
+if [ "$tempo" = "0" ]; then
+  cargo test -p "$crate" "$@" >"$out" 2>&1
+  rc=$?
+else
+  timeout --kill-after=10s "$tempo" cargo test -p "$crate" "$@" >"$out" 2>&1
+  rc=$?
+fi
+if [ "$rc" -eq 124 ] || [ "$rc" -eq 137 ]; then
+  echo "✗ $crate — PENDUROU (nenhum teste terminou em ${tempo}s)"
+  echo
+  echo "  Um teste de algoritmo geométrico/topológico que passa de 60 s em debug é uma PENDURA,"
+  echo "  não lentidão. Os últimos nomes que o libtest imprimiu:"
+  grep -E "^test [a-z]" "$out" | tail -5 | sed 's/^/    /'
+  echo
+  printf '  %s\n' "⚠ Confira que não sobrou binário vivo:"
+  printf '      pgrep -af %s\n' "$raiz/target/[^/]*/deps/"
+  exit 3
+fi
 
 # O agregado do libtest, todas as suítes (`cargo test -p` roda lib + cada
 # arquivo de tests/ como binário próprio, então há VÁRIAS linhas `test result:`).

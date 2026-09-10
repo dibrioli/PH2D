@@ -77,7 +77,8 @@ impl Default for MeshOptions {
 #[must_use]
 pub fn mesh_of(alpha: &[u8], width: u32, height: u32, opts: MeshOptions) -> Option<Mesh2d> {
     let (w, h) = (width as usize, height as usize);
-    let aneis = crate::contour(alpha, w, h, opts.alpha_threshold);
+    // ⛔ A recusa do rastreio propaga-se: uma silhueta que não fecha não vira malha nenhuma.
+    let aneis = crate::contour(alpha, w, h, opts.alpha_threshold)?;
     let mut rest: Vec<[f64; 2]> = Vec::new();
     let mut tris: Vec<[u32; 3]> = Vec::new();
     for anel in &aneis {
@@ -86,7 +87,8 @@ pub fn mesh_of(alpha: &[u8], width: u32, height: u32, opts: MeshOptions) -> Opti
             continue;
         }
         let base = u32::try_from(rest.len()).ok()?;
-        let locais = crate::triangulate(&simples);
+        // ⛔ E a do ear-clipping também: um anel que não triangula não entra pela metade.
+        let locais = crate::triangulate(&simples)?;
         if locais.is_empty() {
             continue;
         }

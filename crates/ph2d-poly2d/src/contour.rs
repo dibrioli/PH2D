@@ -26,9 +26,14 @@
 /// ⚠️ **Uma ilha de menos de três pixels não devolve anel**: um ponto e um par não têm interior,
 /// e um triângulo degenerado a jusante é pior que uma ilha ausente.
 #[must_use]
-pub fn contour(alpha: &[u8], width: usize, height: usize, threshold: u8) -> Vec<Vec<[f64; 2]>> {
+pub fn contour(
+    alpha: &[u8],
+    width: usize,
+    height: usize,
+    threshold: u8,
+) -> Option<Vec<Vec<[f64; 2]>>> {
     if width == 0 || height == 0 || alpha.len() < width * height {
-        return Vec::new();
+        return Some(Vec::new());
     }
     let dentro = |x: isize, y: isize| -> bool {
         if x < 0 || y < 0 || x >= width as isize || y >= height as isize {
@@ -58,7 +63,9 @@ pub fn contour(alpha: &[u8], width: usize, height: usize, threshold: u8) -> Vec<
             if dentro(xi, yi - 1) {
                 continue;
             }
-            let anel = trace(&dentro, xi, yi, 8 * width * height);
+            // ⛔ Um anel que bateu no tecto invalida a RESPOSTA INTEIRA, e não só a ilha dele:
+            // quem chama não tem como saber qual ilha ficou por traçar.
+            let anel = trace(&dentro, xi, yi, 8 * width * height)?;
             for &[px, py] in &anel {
                 #[expect(
                     clippy::cast_possible_truncation,
@@ -82,7 +89,7 @@ pub fn contour(alpha: &[u8], width: usize, height: usize, threshold: u8) -> Vec<
             .abs()
             .total_cmp(&crate::signed_area(a).abs())
     });
-    aneis
+    Some(aneis)
 }
 
 /// Os oito vizinhos, em sentido horário a partir de Oeste — a ordem de Moore.
@@ -108,12 +115,25 @@ const VIZINHOS: [(isize, isize); 8] = [
 ///
 /// ⭐ O vizinho anterior na ordem de Moore é sempre adjacente ao achado — é isso que faz esta
 /// escolha estar **sempre** definida, inclusive no primeiro teste.
-fn trace(
+/// ⛔⛔⛔ **O TECTO RECUSA, e não entrega meio anel.**
+///
+/// ⚠️⚠️ **A 1.ª redacção devolvia o anel PARCIAL em silêncio** — e isso troca uma pendura por uma
+/// **malha errada que ninguém vê**: a pele sai com buracos, o artista não recebe aviso nenhum, e
+/// nenhum gate da suíte observava a guarda. *Um algoritmo que pendura é pior que um que entrega
+/// menos, mas os dois são piores que um que RECUSA em voz alta.*
+///
+/// `None` ⇒ a grelha é patológica e o anel não é de confiança; `Some(vec![])` ⇒ uma ilha de um
+/// pixel só, que legitimamente não tem anel.
+///
+/// ⚠️ `pub(crate)` **de propósito**: é o que deixa um gate conduzir o `tecto` a um valor pequeno e
+/// ver a guarda morder. Pelo caminho do produto ela é `8 · largura · altura`, que nenhuma forma
+/// legítima alcança — *uma guarda inalcançável pelo produto só é testável pela porta de dentro.*
+pub(crate) fn trace(
     dentro: &impl Fn(isize, isize) -> bool,
     sx: isize,
     sy: isize,
     tecto: usize,
-) -> Vec<[f64; 2]> {
+) -> Option<Vec<[f64; 2]>> {
     let mut anel: Vec<[f64; 2]> = Vec::new();
     // A casa vazia de onde entrámos — em cima, pela garantia do chamador.
     let mut backtrack = (sx, sy - 1);
@@ -143,8 +163,8 @@ fn trace(
             }
         }
         let Some(((nx, ny), entrada)) = achou else {
-            // Uma ilha de um pixel só: não há anel.
-            return Vec::new();
+            // Uma ilha de um pixel só: não há anel. ⚠️ E isto NÃO é a recusa — é um facto.
+            return Some(Vec::new());
         };
         let proximo = [
             f64::from(i32::try_from(nx).unwrap_or(0)),
@@ -153,14 +173,15 @@ fn trace(
         // ⭐⭐⭐ **O anel fecha quando DUAS células consecutivas se repetem** — estamos no primeiro
         // ponto e o passo seguinte é o segundo.
         if anel.len() >= 2 && atual == anel[0] && proximo == anel[1] {
-            return anel;
+            return Some(anel);
         }
         anel.push(atual);
         (cx, cy) = (nx, ny);
         backtrack = entrada;
         guarda += 1;
         if guarda > tecto {
-            return anel;
+            // ⛔ **A RECUSA.** Devolver o que há aqui seria devolver uma silhueta que não fecha.
+            return None;
         }
     }
 }

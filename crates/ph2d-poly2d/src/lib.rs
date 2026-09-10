@@ -51,7 +51,7 @@ mod triangulate;
 pub use contour::contour;
 pub use grid::{GridOptions, axis_samples, grid_mesh_of};
 pub use mesh::{Mesh2d, MeshOptions, mesh_of};
-pub use refine::{RefineOptions, deviation, refine_posed, splits_for};
+pub use refine::{RefineOptions, deviation, max_split, refine_posed, splits_for};
 pub use simplify::simplify;
 pub use triangulate::triangulate;
 

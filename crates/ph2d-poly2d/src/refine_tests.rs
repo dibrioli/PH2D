@@ -33,6 +33,24 @@ fn malha() -> Mesh2d {
     grid_mesh_of(&a, w, h, &focos, crate::GridOptions::default()).expect("tinta")
 }
 
+/// ⭐⭐⭐ **UM CAMPO QUE ENGANA O ESTIMADOR** — uma onda cujo período é da ordem da célula.
+///
+/// ⚠️⚠️ **Ela existe porque uma mutação SOBREVIVEU:** o tecto do orçamento **dentro da correcção**
+/// nunca era alcançado por nenhuma fixtura. Com o campo suave, a lei `O(h²)` acerta, a correcção
+/// pede `k + 1` e o `clamp` de cima nunca morde — *uma guarda que só o caso patológico alcança
+/// precisa do caso patológico escrito.*
+///
+/// ⭐ Aqui o estimador **ALIASA**: os meios das arestas da malha grossa caem perto dos zeros da
+/// onda, o primeiro `k` sai `5`, e a conferência — que já vê a onda — pede **`19`**. Medido.
+fn campo_traicoeiro() -> impl FnMut([f64; 2]) -> [f64; 2] {
+    move |p: [f64; 2]| {
+        [
+            p[0],
+            5.0_f64.mul_add((p[0] * std::f64::consts::TAU / 7.0).sin(), p[1]),
+        ]
+    }
+}
+
 /// ⭐⭐ **A MESMA malha com os vértices por OUTRA ORDEM.**
 ///
 /// ⚠️⚠️ **Ela existe porque uma mutação SOBREVIVEU:** o `grid_mesh_of` numera os vértices por
@@ -90,7 +108,7 @@ fn without_refining_the_output_is_byte_identical() {
             &mut campo,
             RefineOptions {
                 tolerance_px: f64::INFINITY,
-                max_split: 6,
+                max_pieces: 216 * 36,
             },
         );
         assert_eq!(k, 1, "com tolerancia infinita nao ha' nada a refinar");
@@ -119,7 +137,7 @@ fn the_refined_mesh_has_no_hanging_nodes_and_no_duplicated_points() {
         &mut campo,
         RefineOptions {
             tolerance_px: 0.5,
-            max_split: 6,
+            max_pieces: 216 * 36,
         },
     );
     assert!(k >= 3, "uma dobra a serio tem de pedir refinamento: k={k}");
@@ -190,7 +208,7 @@ fn refining_brings_the_drawn_map_within_the_tolerance() {
             &mut campo,
             RefineOptions {
                 tolerance_px: tol,
-                max_split: 8,
+                max_pieces: 216 * 64,
             },
         );
         let d = deviation(&r, &posed, &mut campo);
@@ -223,41 +241,84 @@ fn refining_brings_the_drawn_map_within_the_tolerance() {
 /// para a mesma resposta — e este gate é o que impede alguém de o «simplificar» para uma divisão.
 #[test]
 fn the_split_count_follows_the_square_root_law() {
+    // Uma malha de UMA peça com orçamento `64²`: o tecto não morde, e o que se lê é a lei.
     let o = RefineOptions {
         tolerance_px: 1.0,
-        max_split: 64,
+        max_pieces: 64 * 64,
     };
-    assert_eq!(splits_for(1.0, o), 1, "no ponto certo nao se parte nada");
-    assert_eq!(splits_for(0.2, o), 1, "abaixo da barra tambem nao");
-    assert_eq!(splits_for(4.0, o), 2, "4x o desvio pede 2 partes, nao 4");
-    assert_eq!(splits_for(9.0, o), 3);
-    assert_eq!(splits_for(100.0, o), 10);
+    assert_eq!(splits_for(1.0, 1, o), 1, "no ponto certo nao se parte nada");
+    assert_eq!(splits_for(0.2, 1, o), 1, "abaixo da barra tambem nao");
+    assert_eq!(splits_for(4.0, 1, o), 2, "4x o desvio pede 2 partes, nao 4");
+    assert_eq!(splits_for(9.0, 1, o), 3);
+    assert_eq!(splits_for(100.0, 1, o), 10);
     // ⛔ Um desvio que não é um número não pode virar um `k` gigante.
-    assert_eq!(splits_for(f64::NAN, o), 1);
-    assert_eq!(splits_for(f64::INFINITY, o), 1);
+    assert_eq!(splits_for(f64::NAN, 1, o), 1);
+    assert_eq!(splits_for(f64::INFINITY, 1, o), 1);
 }
 
-/// ⛔ **O TECTO MORDE, e ele é de um RECURSO** — o custo de encodar o quadro cresce com `k²`.
+/// ⛔⛔⛔ **O ORÇAMENTO DE PEÇAS É HONRADO, E ELE É O RECURSO QUE O RENDERER PAGA.**
 ///
-/// ⚠️ Sem ele uma dobra extrema pediria um `k` de duas casas e o quadro passaria a valer segundos.
-/// A barra do `max_split` é medida no cabeçalho do módulo; aqui prova-se que ela é **honrada**.
+/// > *«Smooth bugado quebrando a forma»* — report do dono, 2026-09-10, com foto.
+///
+/// ⚠️⚠️ **O tecto estava na grandeza ERRADA.** Ele limitava o `k`, e o que o renderer paga é a
+/// **contagem de recortes**: cada triângulo é um `push_clip` do Vello, que dimensiona os buffers
+/// dele por heurística e **degrada em silêncio** quando estouram. Um tecto no `k` é quadrático na
+/// contagem, e a malha de partida pode ter qualquer tamanho ⇒ *o mesmo `k = 6` custa `7 776` peças
+/// numa malha de 216 e `36` numa de 1.*
+///
+/// ⭐ A experiência que o report deu, sem querer: com o braço quase **recto** (`2°`) o desvio já é
+/// `0,499 px`, logo o `k` saturava e a malha ia a `7 776` peças **para desenhar a mesma coisa que
+/// o `Fast` desenha em 216** — e partia. *A malha estava provadamente correcta* (área conservada
+/// ao cêntimo, zero triângulos saltados, zero arestas com mais de dois donos), o que é exactamente
+/// o que aponta o dedo ao consumidor.
+///
+/// (Mutação: o `clamp` do orçamento desaparecer ⇒ RED.)
 #[test]
-fn the_ceiling_on_the_split_is_honoured() {
+fn the_piece_budget_is_honoured_because_it_is_what_the_renderer_pays() {
+    let m = malha();
+    for orcamento in [400usize, 1024, 4000] {
+        let opts = RefineOptions {
+            tolerance_px: 0.001,
+            max_pieces: orcamento,
+        };
+        let mut campo = campo_dobrado(1.8);
+        let (r, _p, k) = refine_posed(&m, &mut campo, opts);
+        assert!(
+            r.tris.len() <= orcamento,
+            "com orcamento {orcamento} a malha saiu com {} pecas (k={k})",
+            r.tris.len()
+        );
+        // ⚠️ E a metade que impede o gate de ficar verde sobre um produto que nunca refina: com um
+        // orçamento folgado ele TEM de gastar o que pode.
+        if orcamento >= m.tris.len() * 4 {
+            assert!(k >= 2, "com orcamento {orcamento} o produto ficou em k={k}");
+        }
+    }
+    // ⭐⭐⭐ **O caso que a CORRECÇÃO alcança**, e que nenhuma fixtura suave produz: com o campo
+    // que aliasa, o primeiro `k` sai `5` e a conferência pede **`19`** — o tecto tem de o segurar.
+    // *Sem isto, um campo patológico furava o orçamento pelo caminho de dentro.*
+    for orcamento in [216 * 36, 216 * 9] {
+        let opts = RefineOptions {
+            tolerance_px: 0.5,
+            max_pieces: orcamento,
+        };
+        let mut campo = campo_traicoeiro();
+        let (r, _p, k) = refine_posed(&m, &mut campo, opts);
+        assert!(
+            r.tris.len() <= orcamento,
+            "o campo traicoeiro furou o orcamento {orcamento}: {} pecas (k={k})",
+            r.tris.len()
+        );
+    }
+    // ⛔ Um orçamento menor que a própria malha não pode partir nada — nem entrar em pânico.
     let apertado = RefineOptions {
         tolerance_px: 0.001,
-        max_split: 3,
+        max_pieces: 10,
     };
-    assert_eq!(splits_for(1000.0, apertado), 3);
-    let m = malha();
-    let mut campo = campo_dobrado(1.2);
+    let mut campo = campo_dobrado(1.8);
     let (r, _p, k) = refine_posed(&m, &mut campo, apertado);
-    assert_eq!(k, 3, "o tecto nao foi honrado no caminho do produto");
-    assert!(
-        r.tris.len() <= m.tris.len() * 9,
-        "com k=3 cada triangulo da' 9, e {} > {}",
-        r.tris.len(),
-        m.tris.len() * 9
-    );
+    assert_eq!(k, 1, "sem orcamento para uma peca a mais, o `k` e' 1");
+    assert_eq!(r.tris.len(), m.tris.len());
 }
 
 /// ⛔ **DENTRO DE UMA CONSTRUÇÃO, CADA PONTO É PERGUNTADO UMA VEZ SÓ** — é o que a chave canónica
@@ -284,7 +345,7 @@ fn within_one_build_each_point_is_asked_once() {
         &mut campo,
         RefineOptions {
             tolerance_px: 0.5,
-            max_split: 6,
+            max_pieces: 216 * 36,
         },
     );
     assert!(k > 1, "a fixtura tem de pedir refinamento");

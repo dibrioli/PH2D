@@ -5446,6 +5446,7 @@ dependencies = [
  "ph2d-panel-vector",
  "ph2d-panel-wet-tuning",
  "ph2d-physics-ecs",
+ "ph2d-poly2d",
  "ph2d-quadchain",
  "ph2d-quadextract",
  "ph2d-quadfill",
@@ -7567,6 +7568,13 @@ name = "ph2d-platformer"
 version = "0.0.0"
 dependencies = [
  "libm",
+]
+
+[[package]]
+name = "ph2d-poly2d"
+version = "0.0.0"
+dependencies = [
+ "serde",
 ]
 
 [[package]]

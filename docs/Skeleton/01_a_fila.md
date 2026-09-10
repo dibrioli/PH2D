@@ -1717,6 +1717,67 @@ costura do painel (o da alcançabilidade também morto por mutação).
 - O `max_split = 6` tem tecto de **CPU**; a tolerância de `0,5 px` é de PRODUTO, e quem a julga é o
   dono.
 
+### F6-d — ⛔⛔⛔ *«Smooth bugado quebrando a forma»* — **o TECTO estava na grandeza errada** (report, 2026-09-10)
+
+> Foto: o braço quase **recto**, a silhueta com **degraus** e a ponta direita comida.
+
+#### A malha está PROVADAMENTE certa — e é isso que aponta o dedo ao consumidor
+
+Medido no caminho exacto do produto (cápsula do smoke, cadeia de 3 ossos, `GridOptions` de omissão):
+
+| | valor |
+|---|---|
+| área de repouso | `30 720,00` refinada contra `30 720,00` guardada — **ao cêntimo** |
+| triângulos que o desenho SALTARIA (`from_triangle` a devolver `None`) | **`0`** |
+| arestas com mais de dois donos | **`0`** |
+| bordo | `288` = `48 × 6`, exactamente o que `k = 6` uniforme dá |
+
+⇒ *sem peças perdidas, sem sobreposição, sem nó pendurado.* O que quebra está **a jusante**.
+
+#### ⭐⭐⭐ A experiência que o report correu sem querer
+
+Com o braço a **`2°`** de dobra o desvio já é **`0,499 px`** — a tolerância de omissão. Logo o `k`
+saltava para o tecto e a malha ia a **`7 776` peças para desenhar a MESMA coisa que o `Fast`
+desenha em `216`** (o desvio dele ali é `0,5 px`). *Mesma geometria, `36×` as peças, partida.*
+
+⇒ **o recurso é a CAMADA DE RECORTE do renderer.** Cada triângulo é um `push_clip` do Vello, que
+dimensiona os buffers dele por heurística e **degrada em SILÊNCIO** quando eles estouram: geometria
+certa, imagem partida — que é exactamente o retrato da foto.
+
+#### ⛔⛔ E o meu tecto era do `k`, que é a grandeza ERRADA
+
+`max_split` limitava as **partes por aresta**; o renderer paga a **contagem**. As duas não são a
+mesma coisa: o `k` é **quadrático** na contagem, e a malha de partida pode ter qualquer tamanho —
+*o mesmo `k = 6` custa `7 776` peças numa malha de 216 e `36` numa de 1.* ⇒ §0.0: um tecto legítimo
+diz de que recurso ele é, e o meu dizia de outro.
+
+O tecto passa a ser **`max_pieces`**, e o `k` sai de uma **divisão** (`peças · k² ≤ orçamento`).
+
+#### ⚠️ O número NÃO está medido, e isso está dito em voz alta
+
+O limite é de **GPU** e não há aqui como o medir sem ecrã: o que se mediu foi a **malha**. O
+intervalo conhecido vem do smoke do dono — **`216` desenha, `7 776` parte** — e o valor de omissão
+(`1 024`) fica do lado seguro dele.
+
+⭐⭐ **E o smoke deixa de PERGUNTAR e passa a MEDIR:** `PH2D_SKIN_PIECES=<n>` fecha o intervalo
+**numa corrida só**, em vez de custar uma volta de report por tentativa; `PH2D_BONE_LOG=1` imprime
+`peças (k=…, orçamento …)` para o report dele carregar o número.
+
+#### ⚠️ Uma mutação SOBREVIVEU e obrigou a uma fixtura patológica
+
+O tecto **dentro da correcção de um passo** não era alcançado por nenhuma fixtura: com um campo
+suave a lei `O(h²)` acerta, a correcção pede `k + 1` e o `clamp` de cima nunca morde. A fixtura que
+o alcança é uma onda cujo **período é da ordem da célula**: o estimador **aliasa** (os meios das
+arestas caem perto dos zeros dela), lê `k = 5`, e a conferência — que já vê a onda — pede **`19`**.
+*Uma guarda que só o caso patológico alcança precisa do caso patológico escrito.*
+
+#### O preço da correcção, dito sem maquiagem
+
+Com o orçamento de omissão a malha do smoke vai a `k = 2` (`864` peças) em vez de `k = 6`
+(`7 776`). O desvio numa dobra de `150°` passa de `13,99 px` (`Fast`) para **`3,5 px`**, e não para
+os `0,41 px` que a F6-c anunciava — *aquele número era real e foi medido sobre uma contagem de peças
+que o renderer não desenha.* Subir o orçamento é do dono, e o botão existe para isso.
+
 ## ⛔ Recusas MEDIDAS deste módulo — não as reconstrua
 
 > ⚠️ **As seis de 2026-09-07/08 entraram aqui na auditoria de 08/09** — elas viviam só em prosa e em

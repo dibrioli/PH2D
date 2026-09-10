@@ -124,6 +124,33 @@ pub(crate) fn joints_in_image(
         .collect()
 }
 
+/// ⭐⭐⭐ **OS NÚMEROS DO `Smooth`, com o orçamento afinável por FORA.**
+///
+/// ⚠️⚠️ **O `PH2D_SKIN_PIECES` existe por causa de um report que eu não consigo reproduzir sem
+/// ecrã** (*«Smooth bugado quebrando a forma»*, dono, 2026-09-10). O recurso é a **camada de
+/// recorte** do renderer, que é GPU: aqui mede-se a MALHA (área conservada ao cêntimo, zero peças
+/// saltadas, zero arestas com mais de dois donos — tudo verde) e **não** se mede o que o Vello
+/// aguenta.
+///
+/// ⇒ o intervalo conhecido vem do smoke dele: `216` peças desenham, `7 776` partem. Este botão
+/// fecha-o **numa corrida só**, em vez de custar uma volta de report por tentativa. *Um smoke que
+/// MEDE vale mais que um smoke que pergunta.*
+#[must_use]
+pub(crate) fn refine_options() -> ph2d_poly2d::RefineOptions {
+    static PECAS: std::sync::OnceLock<Option<usize>> = std::sync::OnceLock::new();
+    let escolhido = *PECAS.get_or_init(|| {
+        std::env::var("PH2D_SKIN_PIECES")
+            .ok()
+            .and_then(|v| v.trim().parse::<usize>().ok())
+            .filter(|n| *n > 0)
+    });
+    let base = ph2d_poly2d::RefineOptions::default();
+    escolhido.map_or(base, |max_pieces| ph2d_poly2d::RefineOptions {
+        max_pieces,
+        ..base
+    })
+}
+
 /// ⭐⭐⭐ **O CAMPO DE DEFORMAÇÃO desta imagem** — a régua da imagem mais a pele.
 ///
 /// ⚠️ **Ele está definido em TODO ponto da imagem, e não só nos vértices da malha**, porque os
@@ -228,7 +255,8 @@ pub(crate) fn draw_skinned_images(
                 }
                 Some(o) => {
                     let escala = to_screen.determinant().abs().sqrt().max(f64::MIN_POSITIVE);
-                    let (m, p, _k) = ph2d_poly2d::refine_posed(
+                    let antes = mesh.tris.len();
+                    let (m, p, k) = ph2d_poly2d::refine_posed(
                         &mesh,
                         &mut campo,
                         ph2d_poly2d::RefineOptions {
@@ -236,6 +264,16 @@ pub(crate) fn draw_skinned_images(
                             ..o
                         },
                     );
+                    // ⚠️ **O diagnóstico da família** (`PH2D_BONE_LOG=1`): sem ele um report de
+                    // *«partiu»* não distingue *quantas peças* de *que dobra* — e foi a CONTAGEM
+                    // que se revelou a grandeza que importa.
+                    if std::env::var_os("PH2D_BONE_LOG").is_some() {
+                        eprintln!(
+                            "[bone] pele suave: {antes} -> {} pecas (k={k}, orcamento {})",
+                            m.tris.len(),
+                            o.max_pieces
+                        );
+                    }
                     (m, p)
                 }
             }

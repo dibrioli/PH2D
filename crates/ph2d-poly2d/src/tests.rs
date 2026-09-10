@@ -37,7 +37,7 @@ fn disco(w: usize, h: usize, cx: f64, cy: f64, r: f64) -> Vec<u8> {
 #[test]
 fn a_square_of_paint_becomes_a_square_of_mesh() {
     let a = caixa(20, 20, 5, 5, 15, 15);
-    let aneis = contour(&a, 20, 20, 1);
+    let aneis = contour(&a, 20, 20, 1).expect("grelha sa'");
     assert_eq!(aneis.len(), 1, "um rectangulo e' UMA ilha");
     assert_eq!(
         aneis[0].len(),
@@ -50,7 +50,7 @@ fn a_square_of_paint_becomes_a_square_of_mesh() {
         4,
         "a simplificacao tinha de achar os quatro cantos e mais nada — deu {s:?}"
     );
-    let t = triangulate(&s);
+    let t = triangulate(&s).expect("anel simples");
     assert_eq!(t.len(), 2, "um quadrado sao DOIS triangulos");
 }
 
@@ -66,7 +66,7 @@ fn a_soft_edge_is_not_shaved_off() {
     let (w, h, r) = (48usize, 48usize, 16.0);
     let a = disco(w, h, 24.0, 24.0, r);
     let raio_de = |t: u8| -> f64 {
-        let aneis = contour(&a, w, h, t);
+        let aneis = contour(&a, w, h, t).expect("grelha sa'");
         let anel = &aneis[0];
         anel.iter()
             .map(|p| (p[0] - 24.0).hypot(p[1] - 24.0))
@@ -193,7 +193,7 @@ fn no_paint_is_no_mesh_and_that_is_a_none() {
     a[210] = 255;
     assert_eq!(mesh_of(&a, 20, 20, MeshOptions::default()), None);
     // E uma grelha mal formada (bytes a menos) não estoura.
-    assert!(contour(&[255, 255], 20, 20, 1).is_empty());
+    assert!(contour(&[255, 255], 20, 20, 1).is_some_and(|r| r.is_empty()));
 }
 
 /// ⭐⭐⭐ **O ISTMO DE UM PIXEL — o critério de paragem de Jacob.**
@@ -218,7 +218,7 @@ fn a_one_pixel_isthmus_does_not_cut_the_ring_in_half() {
     for x in 10..26 {
         a[6 * 40 + x] = 255;
     }
-    let aneis = contour(&a, 40, 12, 1);
+    let aneis = contour(&a, 40, 12, 1).expect("grelha sa'");
     assert_eq!(aneis.len(), 1, "o halter e' UMA ilha ligada");
     let anel = &aneis[0];
     let xs: Vec<f64> = anel.iter().map(|p| p[0]).collect();
@@ -241,7 +241,10 @@ fn the_signed_area_is_one_door() {
     assert!((signed_area(&invertido) + 16.0).abs() < 1e-12);
     assert_eq!(signed_area(&quadrado[..2]), 0.0, "dois pontos nao tem area");
     // ⚠️ E o triangulador normaliza: as duas orientações dão o MESMO número de triângulos.
-    assert_eq!(triangulate(&quadrado).len(), triangulate(&invertido).len());
+    assert_eq!(
+        triangulate(&quadrado).expect("simples").len(),
+        triangulate(&invertido).expect("simples").len()
+    );
 }
 
 /// ⭐⭐ **UM POLÍGONO CÔNCAVO não perde a concavidade** — o *ear-clipping* recusa a orelha que
@@ -260,7 +263,7 @@ fn a_concave_polygon_keeps_its_concavity() {
         [2.0, 6.0],
         [0.0, 6.0],
     ];
-    let t = triangulate(&l);
+    let t = triangulate(&l).expect("anel simples");
     assert_eq!(t.len(), 4, "um hexagono da' quatro triangulos");
     // Nenhum triângulo pode cobrir o canto vazio (5,5).
     let vazio = [5.0, 5.0];
@@ -517,4 +520,120 @@ fn cells_without_paint_are_dropped() {
         None,
         "sem tinta a resposta e' None, nunca uma malha vazia"
     );
+}
+
+/// ⛔⛔⛔ **O TECTO DO RASTREIO RECUSA — ele não entrega meio anel.**
+///
+/// > *«os teus dois tectos são mudos — e isso troca uma pendura por uma malha errada»* (2026-09-10)
+///
+/// ⚠️⚠️ **Ele era MUDO**: ao bater no tecto devolvia o anel PARCIAL, e nenhum teste desta suíte
+/// observava a guarda. O resultado é a forma mais cara de defeito — *a pele sai com buracos e
+/// ninguém fica a saber*. Um algoritmo que pendura é pior que um que entrega menos, mas os dois
+/// são piores que um que **recusa em voz alta**.
+///
+/// ⚠️ **A guarda é inalcançável pelo produto de propósito** (`8 · largura · altura`, e a fronteira
+/// de uma ilha pisa cada pixel poucas vezes) ⇒ o gate conduz o `tecto` pela porta de dentro. *Uma
+/// guarda que o produto nunca alcança só é testável assim, e a alternativa é não a testar.*
+#[test]
+fn the_trace_ceiling_refuses_instead_of_returning_half_a_ring() {
+    // Um quadrado de 10×10: o anel tem 36 células.
+    let (w, h) = (14usize, 14usize);
+    let mut a = vec![0u8; w * h];
+    for y in 2..12 {
+        for x in 2..12 {
+            a[y * w + x] = 255;
+        }
+    }
+    let dentro = |x: isize, y: isize| -> bool {
+        x >= 0
+            && y >= 0
+            && (x as usize) < w
+            && (y as usize) < h
+            && a[y as usize * w + x as usize] >= 1
+    };
+    // Com tecto de sobra o anel fecha e tem o perímetro CONTADO.
+    let inteiro =
+        crate::contour::trace(&dentro, 2, 2, 8 * w * h).expect("com tecto de sobra fecha");
+    assert_eq!(
+        inteiro.len(),
+        36,
+        "o anel do quadrado de 10x10 tem 36 celulas"
+    );
+    // ⛔ E com um tecto apertado ele RECUSA — nunca devolve os primeiros N pontos.
+    for tecto in [4usize, 10, 35] {
+        assert_eq!(
+            crate::contour::trace(&dentro, 2, 2, tecto),
+            None,
+            "com tecto {tecto} o rastreio devolveu um anel em vez de recusar"
+        );
+    }
+}
+
+/// ⛔⛔⛔ **O TECTO DO EAR-CLIPPING RECUSA — ele não entrega meia triangulação.**
+///
+/// ⚠️ A entrada que o dispara é um anel **auto-intersectado** (uma gravata): ele não tem orelha
+/// nenhuma, o laço não corta nada, e a 1.ª redacção devolvia *«o que há»* — uma malha que **não
+/// cobre a forma**, em silêncio.
+///
+/// ⚠️ **E as DUAS saídas do laço**, senão o gate fica verde sobre metade da cura: sair por *«sem
+/// orelha»* e sair por o **contador da guarda** chegar a zero são caminhos diferentes no código.
+#[test]
+fn the_ear_clipping_ceiling_refuses_instead_of_returning_half_a_mesh() {
+    // ⛔⛔ **A gravata de QUATRO pontos NÃO serve, e foi medido:** ela triangula em dois
+    // (`[[3,0,1],[1,2,3]]`), porque com quatro vértices não há ponto nenhum que possa cair dentro
+    // da orelha — o teste de vazio passa por falta de população. *Uma fixtura de caso patológico
+    // pequena demais é um caso são disfarçado.*
+    //
+    // A FIGURA OITO: dois laços de orientação OPOSTA. A área com sinal cancela-se, o
+    // `signed_area >= 0` escolhe um sentido, e o laço de sentido contrário fica sem orelha nenhuma.
+    let oito = [
+        [0.0, 0.0],
+        [2.0, 0.0],
+        [2.0, 2.0],
+        [0.0, 2.0],
+        [4.0, 2.0],
+        [6.0, 2.0],
+        [6.0, 0.0],
+        [4.0, 0.0],
+    ];
+    assert_eq!(
+        triangulate(&oito),
+        None,
+        "a figura oito devolveu uma triangulacao em vez de recusar"
+    );
+    // E a gravata com SEIS pontos, que já tem população para o teste de vazio morder.
+    let gravata = [
+        [0.0, 0.0],
+        [10.0, 10.0],
+        [10.0, 5.0],
+        [10.0, 0.0],
+        [0.0, 10.0],
+        [0.0, 5.0],
+    ];
+    assert_eq!(
+        triangulate(&gravata),
+        None,
+        "um anel auto-intersectado devolveu uma triangulacao em vez de recusar"
+    );
+    // ⚠️⚠️ **E o SEGUNDO caso patológico**, um círculo percorrido DUAS vezes. A 1.ª redacção deste
+    // gate dizia que ele saía pelo *contador da guarda* — **falso, e a mutação provou-o**: aquele
+    // contador era inalcançável (cada volta corta um vértice ou recusa, no máximo `n − 3` vezes,
+    // contra um contador de `n² + 8`) e foi APAGADO. Os dois casos saem pela mesma porta, e é essa
+    // que tem de existir.
+    let duas_voltas: Vec<[f64; 2]> = (0..16)
+        .map(|k| {
+            let a = f64::from(k % 8) * std::f64::consts::TAU / 8.0;
+            [10.0 * a.cos(), 10.0 * a.sin()]
+        })
+        .collect();
+    assert_eq!(
+        triangulate(&duas_voltas),
+        None,
+        "um anel de duas voltas devolveu uma triangulacao em vez de recusar"
+    );
+    // ⭐ O controlo: o MESMO quadrilátero sem cruzamento triangula em dois.
+    let simples = [[0.0, 0.0], [10.0, 0.0], [10.0, 10.0], [0.0, 10.0]];
+    assert_eq!(triangulate(&simples).expect("simples").len(), 2);
+    // ⚠️ E menos de três pontos **não** é recusa: é um polígono sem área.
+    assert_eq!(triangulate(&[[0.0, 0.0], [1.0, 1.0]]), Some(Vec::new()));
 }

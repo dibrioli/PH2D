@@ -5,7 +5,7 @@
 //! nós grandes desta casa já usam (`motion.emitter/params_ui.rs`): o pai responde *o que a
 //! força calcula*, aqui fica *como o artista a disca*.
 
-use super::{AIR_RESIST, MODE, MODE_LABELS};
+use super::{AIR_RESIST, MODE, MODE_LABEL, MODE_LABELS};
 use ph2d_node_registry::{ParamGateAbove, ParamUiHint, ParamWidget};
 
 /// **A LEI DA SEGUNDA OITAVA** (doc 90 §1 — a caça aos knobs mortos, 2026-08-22).
@@ -148,7 +148,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: MODE,
-        label: "Mode",
+        label: MODE_LABEL,
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -165,3 +165,33 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
         widget: ParamWidget::Slider,
     },
 ];
+
+/// **AS SEÇÕES DESTE CARTÃO** (ciclo 5, W3).
+///
+/// ⚠️⚠️ **A secção do meio chama-se `Gust` e NÃO `Field`, e a diferença está medida no
+/// próprio nó:** o ruído do `force.curl` é espacial (ele tem `scale` e `offset_*`), o deste
+/// é **temporal** — cada elemento amostra a sua linha em `t · gust_freq`, e o doc do `eval`
+/// escreve-o à letra (*«ele não é espacial»*). Herdar o título do irmão alinharia a palavra
+/// e faria a secção mentir sobre o que contém.
+///
+/// ⭐ **O `Timing` é o mesmo do `motion.noise`** (lá é `speed`+`loop_len`; aqui é a
+/// frequência da rajada e o período do laço) — a pergunta é a mesma, logo o nome também.
+///
+/// ⛔ **Quatro params ficam SOLTOS**, e são a razão de existir do nó: *para onde sopra*,
+/// *com que força*, e o par [`super::MODE`]/[`super::AIR_RESIST`] que diz *de que maneira*.
+/// Param sem grupo pinta antes de toda secção.
+pub(crate) static PARAM_GROUPS: &[ph2d_node_registry::ParamGroup] = {
+    use ph2d_node_registry::ParamGroup as G;
+    &[
+        // A FORMA da variação.
+        G::new("gust", "Gust"),
+        G::new("type", "Gust"),
+        G::new("octaves", "Gust"),
+        G::new("lacunarity", "Gust"),
+        G::new("roughness", "Gust"),
+        G::new("seed", "Gust"),
+        // O RITMO dela.
+        G::new("gust_freq", "Timing"),
+        G::new("loop_period", "Timing"),
+    ]
+};

@@ -39,6 +39,12 @@ pub const AIR_RESIST: &str = "air_resist";
 /// Os rótulos de [`MODE`] — idênticos aos do `force.wind`, por gate.
 pub const MODE_LABELS: &[&str] = &["Force", "Target Velocity"];
 
+/// O rótulo da PERGUNTA — idêntico ao do `force.wind`, por gate, e ⛔ **não `"Mode"`**: essa
+/// palavra é pintada por 26 nós sobre 24 perguntas diferentes (censo de 2026-09-09), logo
+/// não nomeia nenhuma. O mecanismo está no doc do irmão
+/// [`ph2d_node_force_wind::MODE_LABEL`](../../ph2d-node-force-wind/src/lib.rs).
+pub const MODE_LABEL: &str = "Acts As";
+
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
 
 /// Dead-zone radius around the centre (direction is meaningless as d → 0).
@@ -371,7 +377,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: MODE,
-        label: "Mode",
+        label: MODE_LABEL,
         min: 0.0,
         max: 1.0,
         step: 1.0,

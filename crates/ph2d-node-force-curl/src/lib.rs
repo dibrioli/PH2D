@@ -405,6 +405,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_groups(MANIFEST.id, PARAM_GROUPS);
     reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     // ADR-0130: per-element force: accumulates accel, identity preserved.
@@ -529,3 +530,33 @@ mod cluster_tests;
 #[cfg(test)]
 #[path = "lib_tests.rs"]
 mod tests;
+
+/// **AS SEÇÕES DESTE CARTÃO** (ciclo 5, W3).
+///
+/// ⚠️ **As palavras são as do irmão que já as tinha:** o `motion.noise` corta o campo dele
+/// em `Field` (o que a textura É) e `Timing` (como ela anda). Um ruído em rotacional faz as
+/// mesmas duas perguntas, então repetir os títulos é o que faz o artista aprender uma vez.
+///
+/// ⚠️ **O `offset_x`/`offset_y` entra em `Field` e não numa `Placement` própria:** ele não
+/// põe o nó em lado nenhum — ele desliza a TEXTURA por baixo da cena, que é uma propriedade
+/// do campo, e uma terceira secção para dois params custaria mais fileira do que arruma.
+///
+/// ⛔ **`strength` fica SOLTO**: é a razão de existir do nó, e param sem grupo pinta antes
+/// de toda secção.
+pub static PARAM_GROUPS: &[ph2d_node_registry::ParamGroup] = {
+    use ph2d_node_registry::ParamGroup as G;
+    &[
+        // O QUE a textura é.
+        G::new("type", "Field"),
+        G::new("scale", "Field"),
+        G::new("offset_x", "Field"),
+        G::new("offset_y", "Field"),
+        G::new("octaves", "Field"),
+        G::new("lacunarity", "Field"),
+        G::new("roughness", "Field"),
+        G::new("seed", "Field"),
+        // COMO ela anda.
+        G::new("speed", "Timing"),
+        G::new("loop_period", "Timing"),
+    ]
+};

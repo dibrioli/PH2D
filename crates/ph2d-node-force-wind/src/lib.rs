@@ -67,6 +67,27 @@ pub const AIR_RESIST: &str = "air_resist";
 /// aritmética em cada um — o que se partilha é o VOCABULÁRIO, e há gate a compará-lo.
 pub const MODE_LABELS: &[&str] = &["Force", "Target Velocity"];
 
+/// O rótulo da PERGUNTA que [`MODE_LABELS`] responde — *«isto empurra, ou impõe uma
+/// velocidade?»*.
+///
+/// ## ⛔ Porque ele não é `"Mode"` (censo do repo, 2026-09-09)
+///
+/// `Mode` era a palavra mais usada do catálogo — **26 nós, 24 perguntas distintas** — e por
+/// isso a que menos ensina: o artista tem de a reaprender em cada cartão. Todos os outros
+/// rótulos de enum partilhados da casa significam a **mesma** coisa em todo lado (`Curve`
+/// são 7 nós e 1 pergunta; `Noise Type`, `Time Mode`, `Range`, `Edge`, `Distance` idem).
+///
+/// ⚠️ **A chave do param continua a ser `mode`** ([`MODE`]) — só o rótulo muda, então
+/// nenhum documento já gravado se mexe.
+///
+/// ⚠️ **A referência dá nome a esta pergunta** (o *Treat as Wind* do POP Axis Force), e ali
+/// ela é uma caixa; aqui é um enum de dois valores, porque são os VALORES que ensinam o que
+/// cada lado faz — `Acts As: Target Velocity` diz-se sozinho, `Treat as Wind: ☑` não.
+///
+/// A lei que o defende é derivada, não uma lista de palavras proibidas:
+/// `the_mode_label_names_the_question_it_asks`.
+pub const MODE_LABEL: &str = "Acts As";
+
 /// The static contract of this node type (ADR-0031).
 pub const MANIFEST: NodeManifest = NodeManifest {
     id: NodeTypeId::of("force.wind"),
@@ -393,6 +414,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_groups(MANIFEST.id, params_ui::PARAM_GROUPS);
     reg.register_param_gates(MANIFEST.id, MODE_GATES);
     reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     reg.register_param_hard_min(MANIFEST.id, PARAM_HARD_MIN);

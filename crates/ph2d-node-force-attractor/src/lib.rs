@@ -398,13 +398,14 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     reg.register_param_gates(MANIFEST.id, PARAM_GATES);
+    reg.register_param_groups(MANIFEST.id, PARAM_GROUPS);
     reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     // ADR-0130: per-element force: accumulates accel, identity preserved.
     reg.register_dense_window(MANIFEST.id);
     Ok(())
 }
 
-use ph2d_node_registry::{ParamHardMax, ParamUiHint, ParamWidget};
+use ph2d_node_registry::{ParamGroup, ParamHardMax, ParamUiHint, ParamWidget};
 
 /// **O teto DIGITÁVEL do raio, MEDIDO** — bloco Z, doc 91.
 ///
@@ -584,3 +585,32 @@ static PARAM_UNITS: &[ParamUnitDecl] = &[
 #[cfg(test)]
 #[path = "tests.rs"]
 mod tests;
+
+/// **AS SEÇÕES DESTE CARTÃO** (ciclo 5, W3).
+///
+/// ⚠️ **O corte é por PERGUNTA, e as duas palavras são as que a casa já usa** — o
+/// `Placement`/`Falloff` que o `field.box` e o `field.radial_sweep` shiparam no ciclo 4.
+/// *Quando o objectivo é alinhar irmãos, a autoridade é o irmão, não a minha leitura do
+/// que é essencial.*
+///
+/// ⚠️ **`Placement` aqui é o ALVO, e isso não colapsa a distinção do doc 108 §1.4:** a
+/// secção diz *onde esta força opera*, e para o atractor esse sítio é o ponto para onde
+/// ele aponta — que pode vir de um STREAM, e é por isso que o `target_mode` abre a secção.
+///
+/// ⛔ **`strength` e `repel` ficam SOLTOS de propósito.** Param sem grupo pinta antes de
+/// toda secção, e é ali que a razão de existir do nó tem de estar — *puxa ou empurra, e com
+/// que força* é o que o artista vem cá fazer; escondê-la atrás de um clique seria trocar a
+/// arrumação pelo alcance.
+pub static PARAM_GROUPS: &[ParamGroup] = &[
+    // ONDE esta força opera.
+    ParamGroup::new("target_mode", "Placement"),
+    ParamGroup::new("target_x", "Placement"),
+    ParamGroup::new("target_y", "Placement"),
+    ParamGroup::new("lead", "Placement"),
+    // COMO ela se desvanece com a distância.
+    ParamGroup::new("radius", "Falloff"),
+    ParamGroup::new("curve", "Falloff"),
+    ParamGroup::new(profile::INNER, "Falloff"),
+    ParamGroup::new(profile::PEAK, "Falloff"),
+    ParamGroup::new(profile::REVERSE, "Falloff"),
+];

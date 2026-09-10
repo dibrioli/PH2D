@@ -25,7 +25,7 @@ pub(crate) fn announce() {
         return;
     }
     eprintln!(
-        "[sculpt3d] =33 A DEMAO (o verbo Layer, `layer.cc`).\n\
+        "[sculpt3d] =33 A DEMAO (o verbo Layer).\n\
          [sculpt3d]    Ela deita uma camada de espessura ESCOLHIDA: insista quanto quiser\n\
          [sculpt3d]    que ela PARA na altura autorada, e o falloff decide so' quao DEPRESSA\n\
          [sculpt3d]    cada ponto la' chega -- nao qual altura ele atinge. Medido: peso 1,00\n\

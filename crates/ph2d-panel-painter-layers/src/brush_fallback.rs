@@ -151,7 +151,7 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     dash_samples: 20,
     input_samples: 1,
     stabilizer: 0.5,
-    airbrush_rate_s: 0.1, // LITERAL-PX-OK: Blender default (DNA_brush_types.h:232)
+    airbrush_rate_s: 0.1, // LITERAL-PX-OK: o valor de fabrica da referencia
     edge_to_edge: false,
     // Grid Stamp: the default 32 px cell as its `0..1` track, no lattice offset, lattice drawn.
     grid_cell: [0.2440442, 0.2440442], // LITERAL-PX-OK: sqrt((32 - 1) / (512 - 1)) — 32 px on the size ruler

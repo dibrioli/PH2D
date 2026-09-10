@@ -213,6 +213,6 @@ fn measure_what_the_flank_does_to_the_coat() {
     println!(
         "\n  LEITURA: `atras` > 0 com `alt.atras` > 0 quer dizer que a demao\n  \
          atravessa a peca e levanta a casca do outro lado — o que o front-face\n  \
-         do `layer.cc` existe para impedir, e que nasce DESLIGADO na referencia."
+         da referencia existe para impedir, e que nasce DESLIGADO nela."
     );
 }

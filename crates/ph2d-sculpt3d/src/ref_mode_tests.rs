@@ -613,6 +613,6 @@ fn at_full_strength_the_square_is_the_identity_and_proves_nothing() {
     // E a separação que o slider baixo entrega, com número.
     assert!(
         (at(RefMode::B, 0.5) - 0.25).abs() < 1e-6,
-        "o `layer.cc` pede o QUADRADO: 0,50 → 0,2500, não 0,5000"
+        "a referência pede o QUADRADO: 0,50 → 0,2500, não 0,5000"
     );
 }

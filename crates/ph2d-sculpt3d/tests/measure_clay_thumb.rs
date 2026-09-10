@@ -209,7 +209,7 @@ fn the_tilt_per_unit_of_stroke_is_ours_not_the_references() {
         );
     }
     println!(
-        "\n(o `0,8°/dab` e' CITAVEL do `clay_thumb.cc`; a coluna da direita\n \
+        "\n(o `0,8°/dab` e' CITAVEL da referencia; a coluna da direita\n \
          depende do nosso espacamento e por isso e' NOSSA)"
     );
 }

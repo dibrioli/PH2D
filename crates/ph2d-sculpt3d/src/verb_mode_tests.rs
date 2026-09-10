@@ -410,7 +410,7 @@ fn the_b_pinch_squeezes_across_the_stroke_and_leaves_the_line_alone() {
     assert!(
         along < across * 0.05,
         "o Pinch em `B` moveu {along:.6} AO LONGO do traço contra {across:.6} \
-         através dele — a componente que o `pinch.cc` remove voltou, e com ela \
+         através dele — a componente que a referência remove voltou, e com ela \
          o aperto radial que torna o `B` indistinguível do `S`"
     );
 }

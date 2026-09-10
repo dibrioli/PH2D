@@ -169,6 +169,33 @@ impl crate::App {
 /// câmera segue o mundo **deste** quadro. Ao contrário, ela enquadraria a posição do quadro
 /// anterior — e com um herói a `8 m/s` isso lê-se como *«a câmera atrasa»*.
 ///
+/// # ⛔⛔ E ela anda pelo PASSO FIXO, não pelo relógio de parede — o report de 2026-09-10
+///
+/// *«a movimentação do player não é fluida»*, com a câmera já aprovada. A causa não está em nenhum
+/// dos dois: está em eles correrem em **relógios diferentes**.
+///
+/// O acumulador do passo fixo entrega `ticks` **inteiros** por quadro, e a `60 Hz` sobre um `vsync`
+/// que também é `~60 Hz` essa contagem oscila entre `0`, `1` e `2` — o resto fica no acumulador. A
+/// primeira redacção movia o herói por `wall_dt` (contínuo) enquanto a câmera avançava `ticks`
+/// (aos saltos), e **a posição do herói no ECRÃ é `herói − câmera`**:
+///
+/// ```text
+///   quadro com 0 tiques → o herói andou e a câmera não → ele salta para a frente
+///   quadro com 2 tiques → a câmera andou o dobro       → ele salta para trás
+/// ```
+///
+/// ⭐ **A diferença entre dois relógios é desenhada como tremor**, e nenhum dos dois lados parece
+/// errado quando se olha para ele sozinho — o mundo do herói é suave, o da câmera é determinístico.
+/// ⇒ os dois avançam `ticks × fixed_dt`, e o ecrã fica quieto.
+///
+/// ⚠️ **Num quadro sem tique nenhum o herói NÃO anda**, e é isso que está certo: mover-se ali seria
+/// exactamente o salto que este parágrafo descreve.
+///
+/// ⚠️ **Com `ticks ≥ 2` o herói dá os `n` passos de uma vez e só depois a câmera amortece `n`
+/// vezes** — em vez de intercalar. Para `n = 1` (o caso normal) é idêntico; acima disso a diferença
+/// vive no transiente do amortecimento e é sub-pixel. *Intercalar obrigaria a cena de smoke a
+/// entrar no laço da ponte, e uma cena não manda na ponte.*
+///
 /// ⚠️ **Função LIVRE e não método**, e não é estilo: no sítio onde ela corre a `AppGfx` já está
 /// desmontada em empréstimos por campo, e um `&mut self` emprestaria a `App` uma segunda vez.
 /// *Receber o mundo é o que a torna chamável de onde ela precisa de correr.*
@@ -180,15 +207,20 @@ impl crate::App {
 pub(crate) fn drive_smoke_hero(
     sim: &mut ph2d_ecs::SimWorld,
     input: ph2d_physics_ecs::PlayerInput,
-    dt: f32,
+    ticks: u32,
+    fixed_dt: f64,
 ) {
     // ⚠️ **`jump`/`down` valem por CIMA e BAIXO aqui**, e é uma escolha da cena: o mapa de omissão
     // já os tem nas setas (`↑/Z` e `↓/S`), então o dono não precisa de ligar nada para provar a
     // cerca no eixo Y. ⛔ Não é o que aquelas acções significam num plataforma.
     let dy = f32::from(u8::from(input.jump)) - f32::from(u8::from(input.down));
-    if input.drive == 0.0 && dy == 0.0 {
+    if input.drive == 0.0 && dy == 0.0 || ticks == 0 {
         return;
     }
+    // ⭐ **O MESMO relógio da câmera** — ver a secção do doc acima. `f64` até ao fim e só então
+    // `f32`: `ticks × fixed_dt` em `f32` perderia a igualdade exacta com o que a ponte avança.
+    #[allow(clippy::cast_possible_truncation)]
+    let dt = (f64::from(ticks) * fixed_dt) as f32;
     let world = sim.world_mut();
     let id = ph2d_ecs::StableId(ph2d_ecs::stable_id_for_name(world, "Heroi"));
     let Some(heroi) = ph2d_ecs::entity_of_stable_id(world, id) else {
@@ -206,3 +238,83 @@ pub(crate) fn drive_smoke_hero(
 /// `7,5 s` — devagar o bastante para a janela morta e o amortecimento se verem, depressa o bastante
 /// para o dono chegar à cerca sem se aborrecer. *Um número de smoke também tem de dizer de onde é.*
 const HEROI_M_POR_S: f32 = 8.0; // LITERAL-PX-OK: metros por segundo
+
+#[cfg(test)]
+mod tests {
+    use ph2d_core::Vec2;
+    use ph2d_ecs::{Name, SimWorld, Transform, assign_missing_stable_ids};
+
+    use super::{HEROI_M_POR_S, drive_smoke_hero};
+
+    const DT: f64 = 1.0 / 60.0;
+
+    fn cena() -> SimWorld {
+        let mut sim = SimWorld::default();
+        sim.world_mut()
+            .spawn((Transform::from_translation(Vec2::ZERO), Name::new("Heroi")));
+        assign_missing_stable_ids(sim.world_mut());
+        sim
+    }
+
+    fn x(sim: &SimWorld) -> f32 {
+        sim.world()
+            .iter_entities()
+            .find_map(|e| e.get::<Transform>().map(|t| t.translation.x))
+            .expect("o heroi tem de estar la'")
+    }
+
+    fn anda(drive: f32) -> ph2d_physics_ecs::PlayerInput {
+        ph2d_physics_ecs::PlayerInput {
+            drive,
+            ..ph2d_physics_ecs::PlayerInput::default()
+        }
+    }
+
+    /// ⭐⭐⭐ **Um quadro SEM tique não move o herói** — a lei que o report de 2026-09-10 comprou.
+    ///
+    /// ⚠️ É contra-intuitivo e é o ponto inteiro: mover-se num quadro em que a câmera não avança
+    /// põe o herói `14 px` à frente no ecrã (a `8 m/s` numa janela de `1920 px`), e o quadro
+    /// seguinte, com dois tiques, atira-o de volta. *A diferença entre dois relógios é desenhada
+    /// como tremor.*
+    ///
+    /// **Mutação que deve sangrar:** tirar o `|| ticks == 0` · trocar `ticks × fixed_dt` por um
+    /// `wall_dt`.
+    #[test]
+    fn a_frame_with_no_fixed_tick_does_not_move_the_hero() {
+        let mut sim = cena();
+        drive_smoke_hero(&mut sim, anda(1.0), 0, DT);
+        assert_eq!(
+            x(&sim),
+            0.0,
+            "sem tique o heroi tem de ficar quieto — senao ele anda num quadro em que a camera nao \
+             anda, e isso desenha-se como tremor"
+        );
+    }
+
+    /// ⭐ **E o passo é exactamente `ticks × fixed_dt`** — o mesmo que a ponte da câmera avança.
+    #[test]
+    fn the_hero_advances_on_the_fixed_clock() {
+        let mut sim = cena();
+        drive_smoke_hero(&mut sim, anda(1.0), 1, DT);
+        #[allow(clippy::cast_possible_truncation)]
+        let um = (DT as f32) * HEROI_M_POR_S;
+        assert!((x(&sim) - um).abs() < 1e-6, "um tique: {}", x(&sim));
+
+        // Dois tiques num quadro andam o dobro — a recuperação, e não uma média.
+        let mut sim = cena();
+        drive_smoke_hero(&mut sim, anda(1.0), 2, DT);
+        assert!(
+            (x(&sim) - um * 2.0).abs() < 1e-6,
+            "dois tiques: {}",
+            x(&sim)
+        );
+    }
+
+    /// Sem dedo nenhum ele não anda, mesmo com tiques.
+    #[test]
+    fn an_idle_finger_moves_nothing() {
+        let mut sim = cena();
+        drive_smoke_hero(&mut sim, anda(0.0), 4, DT);
+        assert_eq!(x(&sim), 0.0);
+    }
+}

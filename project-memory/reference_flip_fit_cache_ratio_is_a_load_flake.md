@@ -1,6 +1,6 @@
 ---
 name: reference-flip-fit-cache-ratio-is-a-load-flake
-description: "O gate `the_cache_makes_a_preview_frame_cost_the_tail_not_the_stroke` (shells/desktop/src/flip_fit_cache_tests.rs) é membro da família de flakes de carga do CLAUDE.md §5.0 — medido 2026-09-09."
+description: "DOIS membros novos da família de flakes de carga do CLAUDE.md §5.0, medidos pela line/UIUX — o cache do Flip (razão de relógios, 09/09) e o `interaction_dispatch_no_alloc` (contador de alocações, 10/09)."
 metadata: 
   node_type: memory
   type: reference
@@ -33,3 +33,22 @@ cada corrida de confirmação (lição já registada em [[feedback_a_flake_red_h
 olhar para o commit. A promoção dele para a lista nomeada do `CLAUDE.md` §5.0 é trabalho da
 **integração** (o precedente é `the_cost_of_a_player_is_linear_in_their_number`, promovido em
 2026-09-07 «a pedido da `line/UIUX`») — a linha pede, o integrador escreve.
+
+
+---
+
+## Segundo membro — `interaction_dispatch_no_alloc` (contador de ALOCAÇÕES)
+
+`ph2d-editor-core::interaction_no_alloc interaction_dispatch_no_alloc`, medido em 2026-09-10 numa
+corrida de **22 203** testes: **único ✗**, e verde **3 de 3** sozinho a `load 2,20`.
+
+⭐ **A assinatura mais forte aqui não é o «sozinho» — é a POPULAÇÃO:** o ficheiro do teste **não
+menciona `TextSystem` nem texto**, e o diff acusado (a cache de layouts da `ph2d-text`) não toca
+uma linha da `ph2d-editor-core`. *Quando o caminho do teste não alcança o código mudado, a
+pergunta «é flake?» já está respondida antes de se correr o teste outra vez.*
+
+⚠️ Ele é da espécie **contador de alocações**, que o `CLAUDE.md` §5.0 já nomeia como espécie
+própria (*«um contador de alocações parece imune a carga e não é: sob fan-out o alocador global
+reutiliza arenas de outra maneira»*) — os dois membros que a lista tinha eram
+`apply_from_doc_is_zero_alloc_steady_state` e `the_trusted_len_collect_allocates_once`. Este é o
+**terceiro**.

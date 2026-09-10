@@ -65,7 +65,7 @@ pub struct Strip {
 /// traço conta a mais*, e isso se escreve num vetor só. A referência a monta
 /// transformando o ponto para a moldura local, multiplicando a componente `y`
 /// por [`crate::MULTIPLANE_TIP_STRETCH`] e tomando o comprimento
-/// (`multiplane_scrape.cc:98-104`); num frame ORTONORMAL isso é exatamente
+/// (*Multiplane Scrape*); num frame ORTONORMAL isso é exatamente
 ///
 /// ```text
 /// |d'|² = |d|² + (k² − 1)·(d · â)²
@@ -260,7 +260,7 @@ impl Strip {
         // um vale ou o exagera (a tabela medida está no doc dele).
         //
         // ⚠️ **CRUA, sem ganho nenhum** — o `factors[i] *= max(0, z·(1−z))` do
-        // `clay_strips.cc` não tem termo de calibração, e a magnitude vem do
+        // *Clay Strips* não tem termo de calibração, e a magnitude vem do
         // [`crate::BLENDER_REACH_FRACTION`], que é `raio · força`. Houve aqui um
         // `STRIP_DEPTH_GAIN` por umas horas: ele existia para preservar uma
         // magnitude que era ela própria errada (o `0,1` do SculptGL).

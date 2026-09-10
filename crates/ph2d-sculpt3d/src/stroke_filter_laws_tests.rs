@@ -397,7 +397,7 @@ fn every_new_law_is_one_step_from_the_frozen_pose() {
 
 /// ⭐ **O `ENHANCE_DETAILS` REALÇA NOS DOIS SENTIDOS DO ARRASTO** — o
 /// `-std::abs(strength)` que abre o `calc_enhance_details_filter`
-/// (`sculpt_filter_mesh.cc:1883`, a PRIMEIRA linha da função).
+/// (filtro de malha da referência, a PRIMEIRA linha da função).
 ///
 /// ⚠️ **Gate red-first, e ele nasceu de uma auditoria — não de um smoke.** O
 /// porte encaminhava o arrasto ASSINADO, e um gesto para trás fazia o vértice

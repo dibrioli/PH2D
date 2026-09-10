@@ -1,7 +1,8 @@
 //! **A SONDA QUE DECIDE O DESENHO DA W11** — quanto o envelope LAVA um padrão
 //! DIRECIONAL, medido em vez de afirmado.
 //!
-//! Rodar: `cargo test -p ph2d-sculpt3d --release --test measure_directional_wash -- --ignored --nocapture`
+//! Rodar: `cargo test -p ph2d-sculpt3d --release --test measure_directional_wash -- --ignored
+//! --nocapture`
 //!
 //! # A pergunta, e por que ela vem antes do código
 //!

@@ -65,7 +65,7 @@ impl SculptStroke {
     ///
     /// ⚠️ **Este doc dizia *"NOSSO, e a referencia nao tem"*, e era FALSO** — a
     /// referencia tem-no com outro nome: `calc_enhance_details_filter`
-    /// (`sculpt_filter_mesh.cc:1878`), cuja lei e' `t = detail_directions x
+    ///, cuja lei e' `t = detail_directions x
     /// **-|strength|**` (`:1883`) — ou seja esta expressao com o peso em VALOR
     /// ABSOLUTO.
     ///
@@ -101,7 +101,7 @@ impl SculptStroke {
     /// **O RELAX** — a mesma média do [`Self::target_smooth`] com **uma** linha a
     /// mais, e essa linha é a ferramenta inteira: o que corre ao longo da normal
     /// é REMOVIDO, então o que sobra desliza pela superfície e a forma não se
-    /// mexe (`translation_to_plane`, `sculpt_smooth.cc:458`).
+    /// mexe (`translation_to_plane`, alisador da referência).
     ///
     /// ⚠️ **A normal é a VIVA (`mesh.normals()`), ao contrário do
     /// [`Verb::Inflate`]** — e as duas escolhas estão certas porque a grandeza

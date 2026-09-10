@@ -2,7 +2,7 @@
 //! dele sobre o anel.
 //!
 //! Vollmer, Mencl & Müller, EG 1999, *Improved Laplacian Smoothing of Noisy
-//! Surface Meshes*; o port é o `surface_smooth.cc` +
+//! Surface Meshes*; o port é o *Surface Smooth* +
 //! `sculpt_smooth.cc::surface_smooth_{laplacian,displace}_step` do Blender.
 //!
 //! ⚠️ **Este arquivo existe porque o [`Verb::SurfaceSmooth`] é o ÚNICO verbo que
@@ -40,10 +40,11 @@ use super::*;
 
 /// **α — *Shape Preservation*.** Quanto do ponto de referência do `b` é a pose
 /// do **pen-down** em vez da posição de agora
-/// (`surface_smooth_shape_preservation`, `rna_brush.cc:3357`, faixa `[0, 1]`).
+/// (`surface_smooth_shape_preservation`, declarador de propriedades da referência, faixa `[0,
+/// 1]`).
 ///
 /// ⚠️ **O valor de FÁBRICA do Blender NÃO é legível** — ele vive num `.blend`
-/// binário desde o 4.3 (o `DNA_brush_types.h` inicializa os três campos a `0`,
+/// binário desde o 4.3 (o pincel genérico da referência inicializa os três campos a `0`,
 /// que é o zero do C e não um default), e a §7.0 do plano 21 já registou essa
 /// parede para a W1 inteira. ⇒ **este número é MEDIDO**, e a medição diz que
 /// **não há óptimo**: o knob é uma troca monótona e SUAVE em toda a faixa
@@ -72,7 +73,7 @@ pub const HC_SHAPE_DEFAULT: f32 = 0.5;
 
 /// **β — *Per Vertex Displacement*.** Que fração da correção vem do `b` do
 /// PRÓPRIO vértice em vez da média dos vizinhos
-/// (`surface_smooth_current_vertex`, `rna_brush.cc:3364`).
+/// (`surface_smooth_current_vertex`, declarador de propriedades da referência).
 ///
 /// ⚠️ **A faixa do Blender é `[0, 1]` e a NOSSA começa em `0,5`, porque abaixo
 /// disso o operador AMPLIFICA** — e isto tem forma fechada, não é gosto.

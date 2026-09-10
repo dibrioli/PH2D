@@ -27,7 +27,8 @@
 //! módulo cujo preço é o do DOCUMENTO. Se ele não couber num quadro, o gesto não
 //! existe ao vivo.
 //!
-//! Rodar: `cargo test -p ph2d-sculpt3d --release --test measure_transform -- --ignored --nocapture`
+//! Rodar: `cargo test -p ph2d-sculpt3d --release --test measure_transform -- --ignored
+//! --nocapture`
 
 use ph2d_mesh::{Mesh, shapes};
 use std::time::Instant;

@@ -1,7 +1,7 @@
 //! Os gates do [`super`] — **a tabela vem da REFERÊNCIA, não desta função**.
 //!
 //! ⚠️ **Nenhum número abaixo é computado com `iteration_strengths`.** Eles são a
-//! leitura de `brushes/smooth.cc:34-48` reduzida à mão, entrada por entrada. Um
+//! leitura de *Smooth* reduzida à mão, entrada por entrada. Um
 //! oráculo que chama a função sob teste para dizer o que espera é verde sobre
 //! qualquer lei — a doença que este repositório já registou várias vezes.
 

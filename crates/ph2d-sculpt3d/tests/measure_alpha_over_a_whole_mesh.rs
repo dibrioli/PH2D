@@ -6,7 +6,8 @@
 //! PIXELS, e um preview no objeto amostra VÉRTICES: extrapolar de um para o
 //! outro seria a inferência de segunda ordem que este repo já pagou caro.
 //!
-//! Rodar: `cargo test -p ph2d-sculpt3d --release --test measure_alpha_over_a_whole_mesh -- --ignored --nocapture`
+//! Rodar: `cargo test -p ph2d-sculpt3d --release --test measure_alpha_over_a_whole_mesh --
+//! --ignored --nocapture`
 
 use ph2d_sculpt3d::{Alpha, AlphaImage, Brush};
 

@@ -136,7 +136,7 @@ impl SculptStroke {
         // (`SculptBase.areaNormal` lê `getNormals()`, `areaCenter` lê
         // `getVertices()`), e é o que os quatro verbos de plano dele fazem. O
         // Blender ramifica: o
-        // `sculpt.cc::calc_area_normal_and_center_node_mesh` abre com
+        // motor de escultura da referência abre com
         //
         // ```text
         // if (ss.cache && !ss.cache->accum) { ... orig_positions / orig_normals ... return; }
@@ -155,7 +155,7 @@ impl SculptStroke {
         // ⚠️ **É a mesma lei da [`crate::RefMode::kernel_for`], um andar acima:**
         // uma referência só governa as ferramentas que ela TEM.
         // ⚠️ **E o [`Verb::ClayThumb`] entra na MESMA lista, porque a regra é da
-        // REFERÊNCIA e não do verbo:** o `clay_thumb.cc` chama o mesmo
+        // REFERÊNCIA e não do verbo:** o *Clay Thumb* chama o mesmo
         // `calc_brush_plane`, então herda o `!accum ⇒ orig` acima. Para ele só
         // a NORMAL muda de fonte (o plano dele passa pelo centro do DAB, não
         // pelo centro de área) — e é a normal congelada que impede a base da
@@ -166,7 +166,7 @@ impl SculptStroke {
         // e trocá-lo mudaria o desenho de um verbo que esta wave não toca. Quem
         // o quiser dentro traz a medição junto.
         // ⚠️ **E a [`Verb::MultiplaneScrape`] entra pela MESMA razão que o
-        // polegar:** o `multiplane_scrape.cc:572` chama o mesmo
+        // polegar:** o *Multiplane Scrape* chama o mesmo
         // `calc_brush_plane`, logo herda o `!accum ⇒ orig`.
         //
         // ⚠️ **DOCUMENTADO em vez de gateado, e com o número:** a mutação que o

@@ -95,7 +95,7 @@ impl SculptStroke {
             ..*dab
         };
         // ⚠️ **A INCLINAÇÃO DO POLEGAR avança aqui, e a ORDEM é a da
-        // referência** (`clay_thumb.cc:165-176`): o primeiro passo do traço
+        // referência** (*Clay Thumb*): o primeiro passo do traço
         // **zera e sai** — e para nós ele já sai por outra via, porque o `path`
         // dele é nulo —, e só do segundo em diante o ângulo cresce. Ler
         // `last_center` ANTES da linha abaixo é o que distingue os dois casos;
@@ -154,7 +154,7 @@ impl SculptStroke {
             total += n;
             // ⚠️ **O SEGUNDO PASSE — o `autosmooth_factor` do Blender**, e a
             // posição é a dele: **depois** do verbo e **dentro** da passada de
-            // simetria (`sculpt.cc:3635`, no fim do `do_brush_action`, que é
+            // simetria (motor de escultura da referência, no fim do `do_brush_action`, que é
             // chamado uma vez por cópia). Fora do laço ele alisaria só a última
             // cópia; antes do verbo ele alisaria a superfície que o verbo está
             // prestes a substituir.

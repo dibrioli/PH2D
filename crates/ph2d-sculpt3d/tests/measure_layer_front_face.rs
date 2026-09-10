@@ -10,7 +10,7 @@
 //! # A hipótese, e por que ela é sobre o HARDNESS
 //!
 //! O peso de um dab é `shape = curva(hardness(t)) · alpha · facing · keep`. O
-//! `apply_hardness_to_distances` da referência (`sculpt.cc:7549`) empurra o
+//! `apply_hardness_to_distances` da referência empurra o
 //! platô para fora: com `hardness = h` toda distância `t < h` vira **zero**, e
 //! zero é onde a curva vale **um**. ⇒ **quanto mais duro o pincel, maior a
 //! fração da pegada em que `curva ≡ 1`** — e ali `shape` colapsa em
@@ -28,9 +28,9 @@
 //!
 //! # E o que a referência de facto faz
 //!
-//! `layer.cc:149` é `if (brush.flag & BRUSH_FRONTFACE) calc_front_face(...)` —
+//! *Layer* é `if (brush.flag & BRUSH_FRONTFACE) calc_front_face(...)` —
 //! um **checkbox do artista** (`use_frontface`, rotulado *"Front Faces Only"* em
-//! `properties_paint_common.py:1354`), e **nenhuma linha do Blender inteiro o
+//! painel de pintura da referência), e **nenhuma linha do Blender inteiro o
 //! LIGA** (varrido: o único hit fora de leitura é `use_front_face_ = brush_->flag
 //! & BRUSH_FRONTFACE`, que também lê). Nós o aplicamos **incondicionalmente** em
 //! todo verbo do modo `B`.

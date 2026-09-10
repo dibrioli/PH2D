@@ -6,7 +6,8 @@
 //! era uma ESTIMATIVA. O que decide um chip é o que o artista vê, e o que o
 //! artista vê sai daqui.
 //!
-//! Rodar: `cargo test -p ph2d-sculpt3d --release --test measure_field_verbs -- --ignored --nocapture`
+//! Rodar: `cargo test -p ph2d-sculpt3d --release --test measure_field_verbs -- --ignored
+//! --nocapture`
 
 use ph2d_mesh::Mesh;
 use ph2d_sculpt3d::{Brush, Dab, RefMode, SculptStroke, Symmetry, Verb};

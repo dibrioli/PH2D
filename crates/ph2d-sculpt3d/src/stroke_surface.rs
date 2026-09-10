@@ -22,7 +22,8 @@
 //! com a divergência a somar-se à do polinómio e ninguém a saber qual metade
 //! moveu o barro.
 //!
-//! ⚠️ **E o passo continua a ser ao longo da NORMAL do plano** ([`super::target`]`::aim::to_plane`),
+//! ⚠️ **E o passo continua a ser ao longo da NORMAL do plano**
+//! ([`super::target`]`::aim::to_plane`),
 //! não ao longo da normal LOCAL da superfície. A projeção do paper caminha pela
 //! normal em cada ponto; a diferença é de segunda ordem na curvatura e o preço
 //! de a portar seria uma segunda porta de passo, ao lado da que os quatro verbos

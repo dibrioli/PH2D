@@ -188,7 +188,7 @@ pub struct GripLaw {
     /// única lei que ainda acumula ao longo da lista de dabs.
     pub additive: bool,
     /// O acúmulo satura **ASSINTOTICAMENTE** — o `d + f·força·(1,05 − |d|)` do
-    /// `layer.cc` — em vez de somar linearmente, e o teto é a máscara livre em
+    /// *Layer* — em vez de somar linearmente, e o teto é a máscara livre em
     /// vez de `1`.
     ///
     /// ⚠️ **É a TERCEIRA lei de acumulação, e as três são mutuamente

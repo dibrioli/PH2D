@@ -73,7 +73,7 @@ impl SculptStroke {
     /// **bissetriz das arestas de beira** numa borda.
     ///
     /// ⚠️ **O ramo da borda é o caso NORMAL, e não a exceção que a leitura do
-    /// `sculpt_smooth.cc:558` sugere:** a condição lá é *"borda **e** exactamente
+    /// alisador da referência sugere:** a condição lá é *"borda **e** exactamente
     /// dois vizinhos sobreviveram ao filtro"*, e numa malha manifold a curva de
     /// borda é um LOOP FECHADO ⇒ **todo** vértice dela tem exactamente dois
     /// vizinhos de borda (medido: 12 de 12 no `open_tube3`, o mesmo número que o

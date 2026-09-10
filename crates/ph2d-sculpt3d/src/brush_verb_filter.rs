@@ -32,7 +32,7 @@ use super::*;
 /// **A LEI que um filtro roda** — uma por LEI, nunca uma por verbo.
 ///
 /// A ordem é a do `prop_mesh_filter_types` da referência
-/// (`sculpt_filter_mesh.cc:241`), porque é a ordem em que o artista já viu esta
+///, porque é a ordem em que o artista já viu esta
 /// lista noutro programa.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FilterKind {
@@ -108,7 +108,7 @@ pub enum FilterKind {
     ///
     /// ⚠️ **Entao o que ela ACRESCENTA e' exactamente o TETO, e ele e'
     /// ALCANCAVEL.** O `calc_smooth_filter` chama `clamp_factors(factors, -1,
-    /// 1)` (`sculpt_filter_mesh.cc:375`) e o `calc_enhance_details_filter`
+    /// 1)` e o `calc_enhance_details_filter`
     /// **nao passa pelo `clamp_factors`** (conferido no fonte, `:1885-1925`: a
     /// cadeia e' `fill_factor_from_hide_and_mask` -> `auto_mask::calc_vert_factors`
     /// -> `scale_factors` -> `gather_data_mesh(detail_directions)` ->
@@ -263,7 +263,7 @@ impl FilterKind {
     #[must_use]
     pub fn range(self) -> (f32, f32) {
         match self {
-            // `clamp_factors(factors, -1.0f, 1.0f)` — `sculpt_filter_mesh.cc:375`.
+            // `clamp_factors(factors, -1.0f, 1.0f)` — filtro de malha da referência.
             Self::Smooth => (-1.0, 1.0),
             // ⚠️ **SEM clamp, e a ausência é da referência** (nem
             // `calc_inflate_filter` nem `calc_scale_filter` nem

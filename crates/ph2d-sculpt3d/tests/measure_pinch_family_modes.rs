@@ -5,7 +5,8 @@
 //! ⚠️ **Ela dirige `SculptStroke::dab`, a porta do artista** — a §7.11 já pagou
 //! duas vezes por medir peça isolada, e o que decide um chip é o que se vê.
 //!
-//! Rodar: `cargo test -p ph2d-sculpt3d --release --test measure_pinch_family_modes -- --ignored --nocapture`
+//! Rodar: `cargo test -p ph2d-sculpt3d --release --test measure_pinch_family_modes --
+//! --ignored --nocapture`
 
 use ph2d_mesh::Mesh;
 use ph2d_sculpt3d::{Brush, Dab, RefMode, SculptStroke, Symmetry, Verb};
@@ -22,7 +23,7 @@ const R: f32 = 0.30;
 /// **Quanto o traço ANDA**, em raios de pincel.
 ///
 /// ⚠️ **Ele era zero e a sonda MENTIA sobre o `B` do Pinch.** A lei daquele modo
-/// é o `pinch.cc`, que precisa da direção do gesto e **recusa** sem ela; com
+/// é o *Pinch*, que precisa da direção do gesto e **recusa** sem ela; com
 /// todos os dabs no mesmo centro o [`ph2d_sculpt3d::Dab::path`] fica zero e a
 /// tabela reportava pico `0,0000` — *"o verbo não faz nada"*, que é falso para
 /// qualquer gesto real. Curto de propósito: as bandas radiais abaixo são medidas

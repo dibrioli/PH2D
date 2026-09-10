@@ -1,7 +1,8 @@
 //! **A SONDA DO ALPHA** — a cobertura de cada padrão, e a relação entre o
 //! tamanho de uma feature e a aresta da malha.
 //!
-//! Rodar: `cargo test -p ph2d-sculpt3d --release --test measure_alpha -- --ignored --nocapture`
+//! Rodar: `cargo test -p ph2d-sculpt3d --release --test measure_alpha -- --ignored
+//! --nocapture`
 //!
 //! ⚠️ **A segunda tabela é a que decide um número de produto.** Um padrão é uma
 //! função contínua e a malha o amostra nos VÉRTICES: se a célula do padrão for

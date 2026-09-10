@@ -11,10 +11,10 @@
 //!   satura no valor nominal do pincel.
 //!
 //! ⚠️ **O Blender faz a CONGELADA por default**, e a linha está no
-//! `sculpt.cc:4899`: `original = force_original || (cache ? !cache->accum :
+//! motor de escultura da referência: `original = force_original || (cache ? !cache->accum :
 //! false)` — com *Accumulate* desligado (o de fábrica) o `pbvh::raycast` é
-//! testado contra as posições que o undo guardou (`sculpt.cc:4476-4499`). O
-//! mesmo vale para a amostragem de ÁREA que orienta o dab (`sculpt.cc:1544`).
+//! testado contra as posições que o undo guardou. O
+//! mesmo vale para a amostragem de ÁREA que orienta o dab.
 //!
 //! ⚠️ **E o gesto que separa as duas NÃO é um traço rápido** — é o traço LENTO,
 //! ou parado, sobre o mesmo ponto: ali o mesmo lugar recebe muitos dabs e o

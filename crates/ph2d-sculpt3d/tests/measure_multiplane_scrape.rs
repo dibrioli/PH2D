@@ -8,7 +8,8 @@
 //! volta dos vértices que o traço moveu, por ajuste de plano em cada metade. Uma
 //! sonda que imprimisse o knob estaria a citar o código sob teste.
 //!
-//! Rodar: `cargo test -p ph2d-sculpt3d --release --test measure_multiplane_scrape -- --ignored --nocapture --test-threads=1`
+//! Rodar: `cargo test -p ph2d-sculpt3d --release --test measure_multiplane_scrape -- --ignored
+//! --nocapture --test-threads=1`
 
 use ph2d_mesh::Mesh;
 use ph2d_sculpt3d::{Brush, Dab, SculptStroke, Symmetry, Verb};

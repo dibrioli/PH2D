@@ -36,13 +36,9 @@ pub const REACH_FRACTION: f32 = 0.1;
 /// ⚠️ **Ela chamava-se `STRIP_REACH_FRACTION` e o nome estreitava o fato:** este
 /// é o alcance de TODA tool do Blender, e a faixa era só a que um smoke pegou.
 ///
-/// ⚠️ **`clay_strips.cc:327`, verbatim:**
-///
-/// ```text
-/// const float3 offset = plane_normal * ss.cache->bstrength * ss.cache->radius;
-/// ```
-///
-/// O deslocamento é `raio · força`, **fração 1,0** — o `0,1` do
+/// ⚠️ **Medido no *Clay Strips* da referência:** o deslocamento dele é o
+/// produto da normal do plano pela força e pelo raio. Ou seja, o deslocamento é `raio ·
+/// força`, **fração 1,0** — o `0,1` do
 /// [`REACH_FRACTION`] é o `deform = intensidade · raio · 0,1` do `Brush.js`, do
 /// SculptGL, que **não tem esta ferramenta**. É a mesma classe do defeito que a
 /// §7.21 curou na lei de kernel, uma camada abaixo.
@@ -121,9 +117,9 @@ pub const PINCH_GAIN: f32 = 0.05;
 /// para encher um buraco. É um marco da própria lei, não um gosto, e as duas
 /// medições o confirmam longe de qualquer extremo.
 ///
-/// ⚠️ **NÃO é citável da referência.** O `clay_strips.cc` lê `brush.plane_offset`
-/// e o genérico do DNA é `0.0`; quem declarava o valor por-tool era o
-/// `BKE_brush_sculpt_reset`, que **não existe mais em C** (§7.0 do plano) — a
+/// ⚠️ **NÃO é citável da referência.** O *Clay Strips* lê o deslocamento de
+/// plano do pincel, e no pincel genérico ele é `0,0`; quem declarava o valor
+/// por-ferramenta era a rotina de reset, que **já não existe** (§7.0 do plano) — a
 /// mesma lacuna que bloqueou a W1 e o Draw Sharp. O número acima é NOSSO, e a
 /// tabela ao lado é a razão dele.
 ///
@@ -144,7 +140,7 @@ pub const CLAY_PLANE_FRACTION: f32 = 0.1;
 
 /// Quanto o plano do **Clay Thumb** se inclina a MAIS a cada dab, em graus.
 ///
-/// ✅ **É o literal `0.8f` do `clay_thumb.cc:173`**, lido da fonte — não é nosso.
+/// ✅ **É o literal `0,8` do *Clay Thumb* da referência** — não é nosso.
 ///
 /// ⚠️ **E é por DAB, o que torna a lei dependente do ESPAÇAMENTO** — a
 /// referência declara graus-por-amostra, e quantas amostras cabem num
@@ -156,8 +152,8 @@ pub const CLAY_THUMB_TILT_STEP_DEG: f32 = 0.8;
 
 /// O TETO da inclinação do **Clay Thumb**, em graus.
 ///
-/// ✅ **É o literal `60.0f` do `clay_thumb.cc:175`** (`std::clamp(front_angle,
-/// 0.0f, 60.0f)`).
+/// ✅ **É o literal `60` do *Clay Thumb* da referência**, onde o ângulo é
+/// ceifado entre `0` e `60`.
 ///
 /// ⚠️ **Ele é ALCANÇÁVEL, e é isso que o torna um teto e não um adorno:** a
 /// [`CLAY_THUMB_TILT_STEP_DEG`] o atinge em `60 / 0,8 = 75` dabs, que é um traço
@@ -168,8 +164,8 @@ pub const CLAY_THUMB_TILT_MAX_DEG: f32 = 60.0;
 
 /// O TETO do ângulo entre os dois planos do **Multiplane Scrape**, em graus.
 ///
-/// ✅ **É o `RNA_def_property_range(prop, 0.0f, 160.0f)` do `rna_brush.cc:3382`**
-/// — a faixa que a referência oferece ao artista, lida da fonte.
+/// ✅ **É a faixa que a referência declara para esta propriedade: `0` a `160`**
+/// — o que ela oferece ao artista.
 ///
 /// ⚠️ **Ele é o teto do KNOB, não um limite de recurso**, e a distinção importa
 /// porque `160°` é quase o V totalmente aberto: cada meio-plano se inclina `80°`
@@ -199,7 +195,7 @@ pub const MULTIPLANE_ANGLE_MAX_DEG: f32 = 160.0;
 /// Quanto o V do **Multiplane Scrape** abre de fábrica, em graus.
 ///
 /// ⚠️ **É NOSSO, e a §4 do plano é o motivo.** O único número citável é o do
-/// `DNA_brush_types.h:407` (`multiplane_scrape_angle = 0`), que é o default do
+/// definição de pincel da referência, onde este ângulo nasce em `0` — o default do
 /// pincel **genérico** — o valor de fábrica DESTA ferramenta vive num `.blend`
 /// binário desde o 4.3 (§7.0) e não é legível. Herdar o zero seria deixar o
 /// fallback definir o produto (CLAUDE.md §0): com os dois planos coincidentes o
@@ -234,12 +230,13 @@ pub const DEFAULT_MULTIPLANE_ANGLE_DEG: f32 = 60.0;
 
 /// Quanto a ponta do **Multiplane Scrape** é ESPREMIDA ao longo do traço.
 ///
-/// ✅ **É o `local[1] *= 2.0f` do `multiplane_scrape.cc:103`**, e o comentário
-/// ao lado dele diz para que serve: *"deform the local space along the Y axis to
-/// avoid artifacts on curved strokes. This produces a not round brush tip."*
+/// ✅ **É o factor `2` que a referência aplica ao segundo eixo do espaço local**,
+/// e a razão que ela dá é evitar artefactos em traços CURVOS — ao preço de a
+/// ponta do pincel deixar de ser redonda.
 ///
-/// ⚠️ **O eixo `Y` da moldura DELES corre ao longo do caminho** (`y = n × x` com
-/// `x = n × grab_delta`), então o número aperta a lâmina na direção em que ela
+/// ⚠️ **O segundo eixo da moldura DELES corre ao longo do caminho** (é a normal
+/// cruzada com o eixo que atravessa o traço), então o número aperta a lâmina na direção em que
+/// ela
 /// avança — a pegada vira uma elipse `raio × raio/2`, com o lado CURTO no
 /// sentido da marcha. Herdar a letra `Y` sem herdar o eixo seria estreitar a
 /// lâmina no sentido errado, e o sulco sairia largo e curto em vez de fino e
@@ -248,19 +245,17 @@ pub const MULTIPLANE_TIP_STRETCH: f32 = 2.0;
 
 /// Quanto do ângulo ANTERIOR sobrevive a cada amostra, no modo dinâmico.
 ///
-/// ✅ **É o `0.2f` do `multiplane_scrape.cc:651`** — `math::interpolate(novo,
-/// anterior, 0.2)`, ou seja `0,8 · novo + 0,2 · anterior`. O comentário da
-/// referência dá a razão: *"interpolate between the previous and new sampled
-/// angles to avoid artifacts when if angle difference between two samples is too
-/// big"*.
+/// ✅ **É o `0,2` da referência** — ela interpola entre o ângulo anterior e o
+/// novo, ou seja `0,8 · novo + 0,2 · anterior`. A razão que ela dá é evitar
+/// artefactos quando a diferença de ângulo entre duas amostras é grande.
 ///
 /// ⚠️ **É a única memória do modo dinâmico**, e sem ela a ferramenta pisca: o
 /// ângulo amostrado salta quando a lâmina cruza uma quina, e um V que muda de
 /// abertura entre dois dabs deixa um degrau no sulco.
 pub const MULTIPLANE_ANGLE_SMOOTH: f32 = 0.2;
 
-/// **Onde o slider da DEMÃO para** — a faixa de UI que o `rna_brush.cc:3235`
-/// declara (`RNA_def_property_ui_range(prop, 0, 0.2f, 1, 3)`).
+/// **Onde o slider da DEMÃO para** — a faixa de UI que a referência declara
+/// para esta propriedade: `0` a `0,2`.
 ///
 /// ⚠️ **É a faixa da referência, não um teto de recurso** — uma demão mais alta
 /// não custa nada e não degenera nada; o que ela deixa de ser é uma demão. E é
@@ -268,8 +263,8 @@ pub const MULTIPLANE_ANGLE_SMOOTH: f32 = 0.2;
 /// mesma fonte diz que o número deixa de fazer sentido.
 pub const LAYER_HEIGHT_UI_MAX: f32 = 0.2;
 
-/// **O maior valor que a caixa de texto da demão aceita** — a faixa DURA do
-/// `rna_brush.cc:3234` (`RNA_def_property_range(prop, 0, 1.0f)`).
+/// **O maior valor que a caixa de texto da demão aceita** — a faixa DURA que a
+/// referência declara: `0` a `1`.
 ///
 /// ⚠️ **Na nossa escala isso é o RAIO INTEIRO da esfera de fábrica** (medido,
 /// extensão `2,0`): uma demão de `1,0` empurra a superfície pela própria

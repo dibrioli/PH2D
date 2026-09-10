@@ -15,7 +15,7 @@
 //! duas hipóteses sem escolher um número:** com `hardness = h`, o
 //! `apply_hardness_to_distances` manda a `t < h` para **zero**, então a curva
 //! satura e o `shape` é **constante** em todo o disco interior. A lei do
-//! `layer.cc` leva todo vértice de mesmo `shape` à **mesma altura absoluta** ⇒
+//! *Layer* leva todo vértice de mesmo `shape` à **mesma altura absoluta** ⇒
 //!
 //! * o platô ONDULA ⇒ o pente é do **kernel**;
 //! * o platô é chato e só a **parede** escadeia ⇒ é **discretização**, e

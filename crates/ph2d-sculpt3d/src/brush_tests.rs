@@ -98,7 +98,7 @@ fn the_reference_curve_is_fuller_than_the_smooth_and_by_how_much() {
 
 /// **AS NOVE DO BLENDER ESTÃO NA FAMÍLIA, E CADA UMA É A FÓRMULA DELE.**
 ///
-/// O oráculo é a transcrição **literal** do `blenkernel/intern/brush.cc`
+/// O oráculo é a transcrição **literal** do definidor de pincel da referência
 /// (linhas 1499-1601), escrita aqui em `u = 1 − t` exatamente como o C a
 /// escreve. Ele existe porque a maneira barata de errar um port destes é um
 /// expoente trocado, que **não** falha nenhum dos gates de forma acima: uma
@@ -191,7 +191,7 @@ fn the_hardness_is_the_identity_at_zero_bit_for_bit() {
 /// **A DUREZA É A FÓRMULA QUE O ORIGINAL ESCREVE.**
 ///
 /// O oráculo é a transcrição literal do `apply_hardness_to_distances`
-/// (`sculpt.cc:7549-7575`), em unidades de raio — lá ele multiplica e divide por
+///, em unidades de raio — lá ele multiplica e divide por
 /// `radius` nos dois lados, e aqui a distância já chega normalizada.
 #[test]
 fn the_hardness_remaps_the_distance_the_way_the_reference_does() {
@@ -456,7 +456,7 @@ fn the_auto_smooth_is_off_by_default_like_the_reference() {
     );
 }
 
-/// As DUAS exclusões do `sculpt.cc:3635`, e elas são por VERBO.
+/// As DUAS exclusões do motor de escultura da referência, e elas são por VERBO.
 #[test]
 fn the_second_pass_skips_the_two_verbs_the_reference_skips() {
     for verb in Verb::ALL {

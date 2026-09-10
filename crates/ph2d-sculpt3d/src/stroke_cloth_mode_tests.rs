@@ -357,7 +357,8 @@ fn o_neutro_dos_sete_knobs_e_o_pincel_da_bancada() {
     );
 }
 
-/// **SONDA — o neutro dos sete knobs é o pincel de ANTES, ao bit.**/// **SONDA — o neutro dos sete knobs é o pincel de ANTES, ao bit.**
+/// **SONDA — o neutro dos sete knobs é o pincel de ANTES, ao bit.**/// **SONDA — o neutro dos
+/// sete knobs é o pincel de ANTES, ao bit.**
 ///
 /// ⚠️ Ela existe porque a afirmação «o mundo pré-wave é byte-idêntico» não é
 /// demonstrável de dentro do produto de hoje: o pincel de antes já não existe.

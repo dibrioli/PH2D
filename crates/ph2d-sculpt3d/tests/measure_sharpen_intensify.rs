@@ -7,7 +7,8 @@
 //! era o teto a devolver o mesmo número para qualquer entrada maior. Aqui tudo
 //! passa pela [`sharpen_total_for_measurement`].
 //!
-//! Rodar: `cargo test -p ph2d-sculpt3d --test measure_sharpen_intensify --release -- --ignored --nocapture`
+//! Rodar: `cargo test -p ph2d-sculpt3d --test measure_sharpen_intensify --release -- --ignored
+//! --nocapture`
 
 use ph2d_mesh::{Mesh, shapes};
 use ph2d_sculpt3d::{Brush, SculptStroke, Verb, sharpen_total_for_measurement};

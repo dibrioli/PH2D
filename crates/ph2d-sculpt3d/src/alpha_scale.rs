@@ -132,8 +132,10 @@ pub fn recommended_scale(mesh: &ph2d_mesh::Mesh) -> f32 {
 /// primeiro, e numa esfera UV isso é sistematicamente o meridiano ou o raio do
 /// polo. A amostra toma o **anel inteiro** de cada vértice sorteado.
 ///
-/// ⚠️ **`pub` porque a pergunta ganhou um SEGUNDO consumidor** (a densidade com que uma peça nasce,
-/// no shell) e ela tem de ser respondida por UM estimador: um segundo, escrito lá, mediria a mesma
+/// ⚠️ **`pub` porque a pergunta ganhou um SEGUNDO consumidor** (a densidade com que uma peça
+/// nasce,
+/// no shell) e ela tem de ser respondida por UM estimador: um segundo, escrito lá, mediria a
+/// mesma
 /// malha com outro número, e a divergência apareceria como *a recomendação diz que cabe e o
 /// refinamento diz que não*.
 #[must_use]

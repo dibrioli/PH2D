@@ -2,7 +2,8 @@
 //! [`Verb::Inflate`], antes de ele existir.
 //!
 //! ```text
-//! cargo test -p ph2d-sculpt3d --release --test measure_curvature_normal -- --ignored --nocapture
+//! cargo test -p ph2d-sculpt3d --release --test measure_curvature_normal -- --ignored
+//! --nocapture
 //! ```
 //!
 //! O plano §3 fixa a regra: *cada l-mode nasce como CANDIDATO e só ganha o chip

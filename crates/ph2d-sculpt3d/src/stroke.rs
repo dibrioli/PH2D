@@ -140,7 +140,7 @@ pub struct SculptStroke {
     ///
     /// ⚠️ **Irmão do [`Self::last_center`], e pela mesma razão:** é um fato
     /// sobre o GESTO, não sobre o dab. O `Dab` diz onde a mão apertou; quantos
-    /// dabs já passaram é do traço, e o `clay_thumb.cc` o guarda exatamente
+    /// dabs já passaram é do traço, e o *Clay Thumb* o guarda exatamente
     /// aqui — no `StrokeCache`, não no evento.
     ///
     /// ⚠️ **Avançado UMA vez por chamada a [`Self::dab`], antes do espelho** —
@@ -359,7 +359,7 @@ impl SculptStroke {
         // lugar arbitrário.
         self.last_center = None;
         // ⚠️ **Nem a inclinação**, e a referência escreve a mesma linha
-        // (`clay_thumb.cc:166`, `front_angle = 0` no primeiro passo do traço).
+        // (*Clay Thumb*, `front_angle = 0` no primeiro passo do traço).
         // Sem ela o segundo traço começaria de onde o primeiro parou, e o
         // artista veria a mesma ferramenta cavar mais fundo por ter sido usada
         // antes.
@@ -370,7 +370,7 @@ impl SculptStroke {
         self.scrape_angle_deg = 0.0;
         self.scrape = None;
         // ⚠️ **O `b` do HC morre com o traço**, e é o que faz dele o *"array
-        // zerado no início do traço"* do `surface_smooth.cc`: dentro de um gesto
+        // zerado no início do traço"* do *Surface Smooth*: dentro de um gesto
         // ele PERSISTE entre dabs (a lei da referência), entre gestos não.
         self.hc_b.clear();
         // ⚠️ **A região de tecido morre com o traço**, e é isso que a torna

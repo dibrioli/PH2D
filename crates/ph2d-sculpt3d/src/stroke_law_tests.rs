@@ -504,7 +504,7 @@ fn the_second_pass_runs_inside_the_stroke_and_it_is_the_rim_that_it_rounds() {
     // a sonda de um carimbo mede a crista indo de 0,1709 a 0,1692 (1%) com
     // `auto_smooth` em 1,0, e aqui o mesmo 1,0 come 64%. O mecanismo é a
     // sobreposição: o alisamento roda **uma vez por dab** (é a posição da
-    // referência, `sculpt.cc:3635`) e os dabs de um traço caem uns sobre os
+    // referência) e os dabs de um traço caem uns sobre os
     // outros, então ele compõe sobre os MESMOS vértices enquanto o depósito
     // envelopa. É por isto que o default da referência é **zero** e que a faixa
     // de trabalho dela é 0,1–0,3, e não um defeito do porte.
@@ -645,7 +645,7 @@ fn the_second_pass_reaches_every_mirrored_copy_not_just_the_last_one() {
     // não a enxerga: com `Symmetry::default()` o laço de espelho dá uma volta só,
     // e *dentro* e *fora* dele são a mesma coisa. A afirmação do doc — que a
     // referência o chama no fim do `do_brush_action`, **uma vez por cópia**
-    // (`sculpt.cc:3635`) — só é observável quando há mais de uma.
+    // — só é observável quando há mais de uma.
     //
     // ⚠️ **O oráculo é a APARÊNCIA das duas metades, não um pareamento de
     // índices.** Se o passe rodasse fora do laço, ele alisaria a última cópia e

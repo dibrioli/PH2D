@@ -1,5 +1,5 @@
 //! **OS GATES DA LÂMINA EM V** — [`Verb::MultiplaneScrape`], o
-//! `multiplane_scrape.cc`.
+//! *Multiplane Scrape*.
 //!
 //! ⚠️ **O oráculo é o PERFIL da secção transversal**, e não um ajuste de plano
 //! 3D: a superfície cortada **não é um plano em toda a pegada** (a projeção é
@@ -168,7 +168,7 @@ fn the_factory_angle_cuts_a_vee_and_not_a_flat_floor() {
 /// **E com o V fechado a ferramenta não move UM vértice** — o mecanismo é a
 /// ORIGEM (o plano tangente ao cursor), não a força.
 ///
-/// ⚠️ É o gate que torna o `0` do `DNA_brush_types.h` inutilizável como default,
+/// ⚠️ É o gate que torna o `0` do pincel genérico da referência inutilizável como default,
 /// e por isso vive ao lado do de cima em vez de dentro dele: um afirma a
 /// APARÊNCIA, o outro o mecanismo.
 #[test]

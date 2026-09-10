@@ -15,7 +15,7 @@
 //!
 //! # A lei, e onde ela diverge da referência
 //!
-//! O `sculpt_filter_mesh.cc` computa `translations` a partir de
+//! O filtro de malha da referência computa `translations` a partir de
 //! `orig_data.positions` e escreve `eval + t`; o `reset_translations_to_original`
 //! existe para que um arrasto seja **UMA** operação a partir da pose do
 //! pen-down, e não uma composição de todas as posições por que o rato passou.
@@ -56,7 +56,7 @@ use crate::FilterKind;
 /// pixels custam uma unidade.
 ///
 /// ⚠️ **O número é o do Blender** (`filter_strength = start · −len · 0,001 ·
-/// UI_SCALE`, `sculpt_filter_mesh.cc:2301`): mil pixels de arrasto valem um
+/// UI_SCALE`, filtro de malha da referência): mil pixels de arrasto valem um
 /// `strength` de `1,0`. Sobre a esfera de fábrica (raio ~1) isso é um arrasto de
 /// tela cheia para inflar por um raio inteiro — que é exactamente o que a
 /// referência faz, e é por isso que o número não é uma escolha nossa a defender.
@@ -269,7 +269,7 @@ impl SculptStroke {
                 // expressao da referencia torna a paridade uma identidade em vez
                 // de um epsilon.
                 // ⚠️ **O `f.abs()` é o `-std::abs(strength)` da referência
-                // (`sculpt_filter_mesh.cc:1883`, a PRIMEIRA linha do
+                // (filtro de malha da referência, a PRIMEIRA linha do
                 // `calc_enhance_details_filter`), e sem ele esta lei fazia o
                 // OPOSTO do que o chip promete para metade do gesto.**
                 //

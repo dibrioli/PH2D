@@ -27,7 +27,8 @@
 //! escrever uma barra a partir dela tem de a derivar de um recurso.
 //!
 //! ```text
-//! cargo test -p ph2d-sculpt3d --release --test sonda_da_onda_da_prega -- --ignored --nocapture
+//! cargo test -p ph2d-sculpt3d --release --test sonda_da_onda_da_prega -- --ignored
+//! --nocapture
 //! ```
 
 use ph2d_mesh::Mesh;

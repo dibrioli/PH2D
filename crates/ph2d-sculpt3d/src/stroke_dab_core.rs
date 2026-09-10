@@ -18,7 +18,7 @@ impl SculptStroke {
     /// de [`crate::auto_smooth::iteration_strengths`], que é dinâmico — o
     /// `&'static` de `passes()` não o exprime. É a forma literal da referência:
     /// o `do_smooth_brush` percorre as forças e escala os fatores
-    /// (`brushes/smooth.cc:113`), em vez de as ler do pincel.
+    /// (*Smooth*), em vez de as ler do pincel.
     pub(super) fn dab_core(
         &mut self,
         mesh: &mut Mesh,
@@ -244,7 +244,8 @@ impl SculptStroke {
                 // — quanto cada vértice anda e para que lado — é do
                 // [`crate::kelvinlet`]; o que sobra para a curva é a única coisa
                 // que ela ainda decide, que é ONDE o campo é avaliado, onde ele
-                // simplesmente não é, e como ele chega a zero entre os dois. Multiplicar as duas aplicaria o perfil duas
+                // simplesmente não é, e como ele chega a zero entre os dois. Multiplicar as
+                // duas aplicaria o perfil duas
                 // vezes; deixar a curva fora do `w` largaria a **separação das
                 // cópias da simetria**, que é feita pelo `w > 0` medido contra
                 // ESTE centro.
@@ -270,7 +271,7 @@ impl SculptStroke {
                     c * gate
                 };
                 // ⚠️ **O FRONT-FACE entra no FATOR, e é aqui que ele pertence** —
-                // o `sculpt.cc:7283-7295` faz `factors[i] *= max(dot, 0)`, e o
+                // o motor de escultura da referência faz `factors[i] *= max(dot, 0)`, e o
                 // `fall` é o nosso `factors` (ele alimenta o `w` E o `shape`). O
                 // filtro BINÁRIO do `fit_plane_over` é outro consumidor e continua
                 // onde está: um pesa o dab, o outro pesa a ESTIMATIVA DO PLANO.
@@ -377,7 +378,7 @@ impl SculptStroke {
                 if additive && me.accum[s] >= 1.0 {
                     return;
                 }
-                // ⚠️ **A DEMÃO NÃO TEM EARLY-OUT, e o `calc_faces` do `layer.cc`
+                // ⚠️ **A DEMÃO NÃO TEM EARLY-OUT, e o `calc_faces` do *Layer*
                 // também não tem.** Aqui morava um `if coat && accum >= keep`,
                 // irmão do de cima, e ele era CORRECTO sob a lei antiga: o alvo
                 // era escrito de forma ABSOLUTA a partir do `base`, então

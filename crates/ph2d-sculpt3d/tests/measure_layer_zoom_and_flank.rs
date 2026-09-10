@@ -19,8 +19,8 @@
 //! uma proporcionalidade.
 //!
 //! ⚠️ **A `layer_height` é ABSOLUTA de mundo nos DOIS lados** — o
-//! `layer.cc:101` lê `brush.height` cru e o RNA declara-a `PROP_DISTANCE`
-//! (`rna_brush.cc:3230`, faixa `0..1`, default `0.5`) —, então a razão
+//! *Layer* lê `brush.height` cru e o RNA declara-a `PROP_DISTANCE`
+//! (declarador de propriedades da referência, faixa `0..1`, default `0.5`) —, então a razão
 //! *altura ÷ raio* é o número que o zoom move. É ele que esta sonda persegue.
 
 use ph2d_mesh::{Mesh, shapes};

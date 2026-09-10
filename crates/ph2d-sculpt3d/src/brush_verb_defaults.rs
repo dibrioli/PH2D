@@ -93,10 +93,10 @@ impl Verb {
     /// mesma razão — um verbo pode ter uma referência que o grip não conhece.
     ///
     /// ⚠️ **O `from_live` do [`crate::Grip::Stamp`] é o Accumulate do
-    /// SCULPTGL**, e a faixa não é dele. O `clay_strips.cc::calc_faces` chama
+    /// SCULPTGL**, e a faixa não é dele. O *Clay Strips* chama
     /// `calc_local_positions(position_data.eval, …)` — a posição **VIVA**,
     /// sempre —, e o que o `accum` da referência escolhe é a fonte do PLANO
-    /// (`sculpt.cc`, `!ss.cache->accum` ⇒ pen-down congelado).
+    /// (motor de escultura da referência, `!ss.cache->accum` ⇒ pen-down congelado).
     ///
     /// ⚠️ **E é a combinação que dá o auto-limite:** posição viva contra plano
     /// congelado faz o `z` do portão `z·(1−z)` **encolher** à medida que o barro
@@ -110,14 +110,14 @@ impl Verb {
             law.from_live = true;
         }
         // ⚠️ **A DEMÃO sobrescreve TRÊS colunas, e cada uma tem um motivo do
-        // `layer.cc`:**
+        // *Layer*:**
         //
         // * `coat` — a saturação assintótica, que é a lei dela;
         // * `unit_accum` **falso** — o `accum` da demão **é** o
         //   `displacement_factor` da referência, então o aplicador tem de o
         //   multiplicar (um alvo que já trouxesse o peso levaria a demão inteira
         //   no primeiro dab);
-        // * `from_live` **falso sempre** — o `calc_faces` do `layer.cc` mede as
+        // * `from_live` **falso sempre** — o `calc_faces` do *Layer* mede as
         //   distâncias contra `orig_data.positions` incondicionalmente, e o
         //   [`Self::accumulates`] já tira o interruptor da tela pelo mesmo
         //   motivo. Sem esta linha um documento salvo com o checkbox armado

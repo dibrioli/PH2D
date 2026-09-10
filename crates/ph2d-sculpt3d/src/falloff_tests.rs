@@ -1,7 +1,8 @@
 //! **O CATÁLOGO DIZ A VERDADE** — os gates do NOME e do ORÁCULO EXTERNO.
 //!
 //! O irmão `brush_tests.rs` já pina as nove leis contra a transcrição do
-//! `brush.cc`, e ⚠️ **ele era CEGO ao defeito que esta wave curou**: aquele gate
+//! definidor de pincel da referência, e ⚠️ **ele era CEGO ao defeito que esta wave curou**:
+//! aquele gate
 //! nomeia a VARIANTE, então uma lei do Blender escondida sob um identificador
 //! que o painel nunca mostra o satisfaz igualmente. O que faltava era a outra
 //! metade — *o rótulo que o artista lê é o que o Blender dá àquela lei* — e o
@@ -14,7 +15,8 @@ use super::Falloff;
 /// Até 2026-08-16 o painel pintava **"Smooth"** sobre `(1 − t²)²` e
 /// **"Sharper"** sobre `(1 − t²)⁴` — duas curvas que referência nenhuma tem —
 /// enquanto as leis do Blender viviam sob `Smoothstep` e `Pow4`, identificadores
-/// que ele não usa em lugar nenhum da UI dele (`rna_brush.cc:86` rotula o
+/// que ele não usa em lugar nenhum da UI dele (declarador de propriedades da referência rotula
+/// o
 /// `BRUSH_CURVE_POW4` de *"Sharper"*).
 ///
 /// ⚠️ **A mutação que este gate existe para matar é a barata:** devolver a lei
@@ -23,7 +25,7 @@ use super::Falloff;
 /// o artista escolhe é *"o nome em cima dela é o certo?"*.
 #[test]
 fn the_label_the_artist_reads_is_the_one_blender_gives_that_law() {
-    // (rótulo na tela, a fórmula do `brush.cc` em `u = 1 − t`).
+    // (rótulo na tela, a fórmula do definidor de pincel da referência em `u = 1 − t`).
     #[allow(clippy::type_complexity)]
     let pairs: [(&str, fn(f32) -> f32); 4] = [
         ("Smooth", |u| 3.0 * u * u - 2.0 * u * u * u),
@@ -57,7 +59,7 @@ fn the_label_the_artist_reads_is_the_one_blender_gives_that_law() {
 /// `0,500000` em toda a varredura, então a coluna é `dz / 0,5`.
 ///
 /// ⚠️ **É ele que justifica o `profile_b` declarar [`Falloff::Smooth`]:** a
-/// leitura ESTÁTICA do `brush.cc` dizia que um pincel nasce
+/// leitura ESTÁTICA do definidor de pincel da referência dizia que um pincel nasce
 /// `BRUSH_CURVE_CUSTOM` com uma *curvemapping* semeada, logo *"nenhuma das
 /// nove"* — e o Blender a correr reporta `curve_distance_falloff_preset =
 /// SMOOTH`. *Um pincel não nasce zero-inicializado; ele nasce do arquivo de

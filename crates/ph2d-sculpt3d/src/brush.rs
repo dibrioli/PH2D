@@ -116,8 +116,8 @@ pub struct Brush {
     pub radius: f32,
     /// Intensidade em `[0, 1]` — o que multiplica o falloff para virar o peso.
     pub strength: f32,
-    /// **A ESPESSURA da demão**, em unidades de OBJETO — o `brush.height` do
-    /// `layer.cc`, e só o [`crate::Verb::Layer`] o lê.
+    /// **A ESPESSURA da demão**, em unidades de OBJETO — é a ALTURA que o
+    /// *Layer* da referência lê, e só o [`crate::Verb::Layer`] a usa aqui.
     ///
     /// ⚠️ **ABSOLUTO, e é o que separa a demão do [`crate::Verb::Draw`]:** o
     /// depósito do Draw é `força · RAIO · 0,1`, então mudar o pincel muda a
@@ -125,8 +125,8 @@ pub struct Brush {
     /// mais área com a **mesma** espessura. A referência declara-o
     /// `PROP_DISTANCE` pela mesma razão.
     ///
-    /// ⚠️ **O DEFAULT é nosso, e o da referência foi RECUSADO com medição.** O
-    /// `rna_brush.cc` declara três números para este campo — faixa dura
+    /// ⚠️ **O DEFAULT é nosso, e o da referência foi RECUSADO com medição.** Ela
+    /// declara três números para este campo — faixa dura
     /// `[0, 1]`, faixa de UI `[0, 0,2]` e default `0,5` — e o terceiro cai
     /// **FORA** do segundo: copiá-lo shiparia um slider encostado no máximo, com
     /// o artista só podendo descer. (E o §7.0 deste plano já mediu que os
@@ -200,7 +200,7 @@ pub struct Brush {
     /// cavar. É o que faz um único pincel servir a crista e o vale.
     ///
     /// ⚠️ **Desarmado por default, e o motivo é o mesmo do resto deste módulo:**
-    /// o `flag2 = {}` do `DNA_brush_types.h:207` é o único valor citável, e um
+    /// o conjunto de flags ZERADO do pincel genérico é o único valor citável, e um
     /// modo que se arma sozinho é um pincel cujo desenho muda por uma razão que
     /// o artista não vê. Quem o quer, marca.
     pub scrape_dynamic: bool,
@@ -227,13 +227,13 @@ pub struct Brush {
     /// ⚠️ **Ele NÃO é o [`Brush::mask_hardness`], e os dois nomes se parecem o
     /// bastante para se trocarem em silêncio.** Aquele é a forma da CURVA do
     /// canal de máscara (`(1 − t)^{2(1 − h)}`, do `Masking.js`); este reescreve
-    /// a **DISTÂNCIA** que qualquer curva depois lê — o
-    /// `apply_hardness_to_distances` do `sculpt.cc:7549-7575`, portado em
+    /// a **DISTÂNCIA** que qualquer curva depois lê — o remapeamento de DUREZA
+    /// da referência, portado em
     /// [`Brush::shaped_distance`]. Curva e distância são perguntas diferentes, e
     /// é por isso que os dois coexistem em vez de um vencer o outro.
     ///
     /// ⚠️ **O default é `0.0` e ele é o NEUTRO do próprio código de origem** —
-    /// o `apply_hardness_to_distances` abre com `if (hardness == 0.0f) return;`.
+    /// lá o remapeamento devolve cedo, sem tocar em nada, quando a dureza é zero.
     /// Não é um número que eu escolhi: é o early-out deles.
     ///
     /// ⚠️ **E o valor de FÁBRICA de um pincel do Blender não é legível** (§7.0
@@ -266,7 +266,7 @@ pub struct Brush {
     /// tudo menos a faixa — com o número da medição ao lado.
     pub front_faces_only: bool,
     /// **O ALISAMENTO QUE CORRE DEPOIS DE CADA DAB**, em `[0, 1]` — o
-    /// `autosmooth_factor` do Blender (`sculpt.cc:3636`), e **`0` é o neutro**.
+    /// factor de AUTO-ALISAMENTO da referência, e **`0` é o neutro**.
     ///
     /// ⚠️ **Ele é o que faltava, e a medição é que o nomeia.** O report de
     /// 2026-08-16 (*"tanto hardness como falloffs apresenta problemas graves"*,
@@ -292,8 +292,8 @@ pub struct Brush {
     /// `0,75` → 30,23° · `0,9` → 55,99° · `1,0` → **90,93°**. Acima de 90° a
     /// superfície não é um penhasco, é uma **dobra**.
     ///
-    /// ⚠️ **É o vizinho do `hardness` no RNA do Blender** (`rna_brush.cc:3450`
-    /// contra `:3457`), e a adjacência não é acaso: são os dois knobs que trocam
+    /// ⚠️ **Na referência ele é declarado ao LADO da dureza**, e a adjacência
+    /// não é acaso: são os dois knobs que trocam
     /// **borda dura** por **superfície que a malha consegue carregar**.
     ///
     /// ⚠️ **Nasce em `0`, que é o default do Blender** — subir isto mudaria o
@@ -485,10 +485,10 @@ impl Default for Brush {
             plane_offset: 0.0,
             pinch: 0.5,
             // ⚠️ **PONTA QUADRADA, e o `1.0` que eu shipei era o §0 mordendo em
-            // casa.** O único número citável — `DNA_brush_types.h:264`,
-            // `tip_roundness = 1.0` — é o default do pincel GENÉRICO, não o
-            // desta tool (a tabela por-tool é o `BKE_brush_sculpt_reset`, que
-            // não está no clone, §7.1). Deixei o fallback definir o produto, e o
+            // casa.** O único número citável — a redondeza de ponta `1,0` do
+            // pincel GENÉRICO da referência — não é o desta ferramenta (a tabela
+            // por-ferramenta vive na rotina de reset, que já não existe, §7.1). Deixei o
+            // fallback definir o produto, e o
             // preço foi a ferramenta inteira: com `1` a caixa É a distância
             // euclidiana, e a faixa saía redonda. *"parece redondo"* (Enio).
             //
@@ -515,15 +515,15 @@ impl Default for Brush {
             // ⚠️ **Uma pegada de LADOS IGUAIS por default, e a medição diz que
             // é o certo:** a tira nasce do TRAÇO, não de um dab esticado — é a
             // quina reta que faz os lados ficarem paralelos, e o esticão é um
-            // segundo eixo de estilo. `DNA_brush_types.h:265` diz `1.0` e aqui
-            // ele concorda com o que a sonda mostra.
+            // segundo eixo de estilo. O pincel genérico da referência diz `1,0`
+            // e aqui ele concorda com o que a sonda mostra.
             strip_length: 1.0,
             // ⚠️ **DELEGA à constante MEDIDA**, e não repete o número: o dia em
             // que a varredura mudar de veredito, um literal aqui ficaria a
             // contradizê-la em silêncio — e o gate do V é escrito para não
             // mencionar nenhum dos dois.
             scrape_angle_deg: DEFAULT_MULTIPLANE_ANGLE_DEG,
-            // O `flag2 = {}` do `DNA_brush_types.h:207` — ver o campo.
+            // O conjunto de flags zerado do pincel genérico — ver o campo.
             scrape_dynamic: false,
             // O `_hardness` de fábrica da `Masking` do original.
             mask_hardness: 0.25,

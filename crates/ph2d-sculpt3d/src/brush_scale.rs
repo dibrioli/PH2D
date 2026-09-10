@@ -23,8 +23,8 @@ impl Brush {
     /// slider e o que um dab de fato faz.
     ///
     /// ⚠️ **Ela existe porque o slider e o peso deixaram de ser a mesma coisa.**
-    /// O Blender eleva ao quadrado (`sculpt.cc:2339`, *"square it to make lower
-    /// values more sensitive"*) e o SculptGL não; um `brush.strength` cru no
+    /// A referência eleva ao quadrado (para dar mais sensibilidade à metade
+    /// BAIXA do curso) e o SculptGL não; uma força crua no
     /// sítio de uso seria a segunda resposta que ignora o modo **em silêncio**,
     /// e o `stroke.rs` tem UM consumidor — é ele que pergunta aqui.
     ///
@@ -38,7 +38,7 @@ impl Brush {
     ///
     /// ⚠️ **Medido, e o número é o dobro:** com a demão nascida em `S` (a shell
     /// escrevia `[RefMode::default(); N]` — ver [`RefMode::birth_for`]), o
-    /// slider de fábrica `0,50` entregava peso **0,5000** onde o `layer.cc`
+    /// slider de fábrica `0,50` entregava peso **0,5000** onde o *Layer*
     /// pede **0,2500**. Numa lei que satura isso não deposita mais alto: ela
     /// fecha o platô no dobro da velocidade e **o ombro que o falloff desenha
     /// desaparece** — a parede vira um degrau que a malha só sabe desenhar como
@@ -59,8 +59,7 @@ impl Brush {
     /// `RefMode` sozinhos:** a *lei* é do modo ([`crate::FrontFace`], que o
     /// `S` deixa `Ignored` e o `B` deixa `Continuous`) e o *interruptor* é do
     /// pincel — o Blender tem as duas metades pelo mesmo motivo, com o
-    /// `calc_front_face` a existir sempre e o `if (brush.flag &
-    /// BRUSH_FRONTFACE)` a decidir se ele corre (`layer.cc:149`).
+    /// filtro a existir sempre e um BIT do pincel a decidir se ele corre.
     ///
     /// ⚠️ **Porta e não um `matches!` no sítio de uso:** o painel pergunta para
     /// OFERECER a caixa e o roteador pergunta para HONRAR o clique — duas
@@ -83,13 +82,10 @@ impl Brush {
     /// **O PINCEL DO SEGUNDO PASSE**, ou `None` quando ele não corre — a porta
     /// única do [`Brush::auto_smooth`].
     ///
-    /// Porte do bloco de `sculpt.cc:3635-3647`, que roda **depois** do verbo, em
-    /// cada passada de simetria:
-    ///
-    /// ```text
-    /// if (!ELEM(type, SMOOTH, MASK) && brush.autosmooth_factor > 0)
-    ///     do_smooth_brush(…, brush.autosmooth_factor);
-    /// ```
+    /// Porte do passe que a referência corre **depois** do verbo, em cada
+    /// passada de simetria: se o verbo não é um alisamento nem a máscara, e o
+    /// factor de auto-alisamento é positivo, ela corre o alisamento com esse
+    /// factor como força.
     ///
     /// ⚠️ **As duas exclusões são do original e cada uma tem um motivo
     /// diferente.** Alisar um alisamento é o mesmo verbo duas vezes com pesos
@@ -144,7 +140,7 @@ pub const MAX_MASK_HARDNESS: f32 = 1.0;
 impl Brush {
     /// **A DISTÂNCIA QUE A CURVA VAI LER** — a porta única do `hardness`.
     ///
-    /// Porte literal do `apply_hardness_to_distances` (`sculpt.cc:7549-7575`),
+    /// Porte literal do remapeamento de DUREZA da referência,
     /// em distância NORMALIZADA (`t = d / raio`), que é a forma em que o resto
     /// deste motor fala:
     ///
@@ -160,8 +156,8 @@ impl Brush {
     ///
     /// ⚠️ **Ela remapeia a distância de TODOS os consumidores da curva**, o
     /// canal de máscara incluído, porque é isso que o original faz: o
-    /// `apply_hardness_to_distances` roda **antes** do
-    /// `BKE_brush_calc_curve_factors`, e nenhuma curva sabe que ele existe.
+    /// remapeamento roda **antes** de a curva ser avaliada, e nenhuma curva sabe
+    /// que ele existe.
     /// Aplicá-la só na geometria faria a máscara ler uma distância diferente da
     /// que o pincel usa no mesmo dab.
     #[must_use]

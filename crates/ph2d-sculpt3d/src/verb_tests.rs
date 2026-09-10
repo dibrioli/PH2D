@@ -348,7 +348,8 @@ fn flatten_brings_the_footprint_onto_one_plane() {
         falloff: Falloff::Constant,
         // ⚠️ **A bilateralidade é a LEI DO MODO `B`, e passou a precisar ser
         // pedida.** Ela era o comportamento único do verbo; hoje é o
-        // `PlaneReach::Bilateral` (o `plane.cc`: Height acima, Depth abaixo), e
+        // `PlaneReach::Bilateral` (o verbo de plano da referência: Height acima, Depth
+        // abaixo), e
         // o `S` morde um lado só. *Achatar dos dois lados* é o que este gate
         // afirma, então ele nomeia o modo em que isso é verdade — a metade `S`
         // vive no gate irmão logo abaixo.

@@ -7,7 +7,8 @@
 //! têm valência igual ao número de segmentos (64 na fixture) — a malha do
 //! produto é um cubo subdividido, valência 4 quase em toda parte.
 //!
-//! Rodar: `cargo test -p ph2d-sculpt3d --test measure_sharpen_valence --release -- --ignored --nocapture`
+//! Rodar: `cargo test -p ph2d-sculpt3d --test measure_sharpen_valence --release -- --ignored
+//! --nocapture`
 
 use ph2d_mesh::{Mesh, shapes};
 use ph2d_sculpt3d::{Brush, FilterKind, SculptStroke, Verb};

@@ -6,7 +6,8 @@
 //! produto, o eixo semeado (`elev = 90`), e o passo/faixa das rows.
 //!
 //! ```text
-//! cargo test -p ph2d-sculpt3d --release --test measure_offset_at_the_operating_point -- --ignored --nocapture
+//! cargo test -p ph2d-sculpt3d --release --test measure_offset_at_the_operating_point --
+//! --ignored --nocapture
 //! ```
 
 use ph2d_sculpt3d::{Alpha, AlphaImage, Brush};

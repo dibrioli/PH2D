@@ -26,7 +26,7 @@ impl SculptStroke {
     /// Os outros quinze verbos compõem o alvo SEM peso e é o `accum` que os
     /// atenua (`toward(base, alvo, accum)`). A demão não cabe nisso porque o
     /// `accum` dela **não é um peso** — é o `displacement_factors` do
-    /// `layer.cc`, a fração da camada já depositada, e a referência o consome
+    /// *Layer*, a fração da camada já depositada, e a referência o consome
     /// DENTRO do alvo (`orig + n·altura·disp`) e depois anda até lá por
     /// `factors`, a partir do VIVO. Rodar o `toward` por cima disso aplicaria o
     /// `disp` uma segunda vez.

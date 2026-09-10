@@ -534,7 +534,7 @@ fn the_coat_does_not_offer_accumulate() {
 /// **0,135** com a câmera longe a **5,857** a 4× de zoom — o raio nasce dos
 /// PIXELS e encolhe, a altura é de MUNDO e não encolhe, então a demão vira
 /// espigão. É real, e é **o comportamento da referência**:
-/// `rna_brush.cc:3230` declara `height` como `PROP_DISTANCE`, `layer.cc:101` o
+/// ela declara a ALTURA como uma DISTÂNCIA, o *Layer* dela a
 /// multiplica cru, e o `cache.radius` de lá também sai dos pixels. ⚠️ **O
 /// default do Blender é `0.5` contra o nosso `0.1`** — no mesmo zoom o Layer
 /// dele espiga cinco vezes mais.

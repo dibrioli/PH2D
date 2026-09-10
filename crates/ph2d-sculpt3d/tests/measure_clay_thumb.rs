@@ -9,7 +9,8 @@
 //! dos vértices que o traço achatou, por ajuste de plano. Uma sonda que
 //! imprimisse `dabs × 0,8` estaria a citar o código sob teste.
 //!
-//! Rodar: `cargo test -p ph2d-sculpt3d --release --test measure_clay_thumb -- --ignored --nocapture`
+//! Rodar: `cargo test -p ph2d-sculpt3d --release --test measure_clay_thumb -- --ignored
+//! --nocapture`
 
 use ph2d_mesh::Mesh;
 use ph2d_sculpt3d::{Brush, Dab, SculptStroke, Symmetry, Verb};

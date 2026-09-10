@@ -7,7 +7,7 @@
 //! crescente acima disso. Em `1,0` o Blender aplica o operador **quatro vezes**
 //! — suporte de ~4 anéis — contra uma vez, suporte de 1 anel.
 //!
-//! A lei é `brushes/smooth.cc:34-48`, `iteration_strengths`:
+//! A lei é *Smooth*, `iteration_strengths`:
 //!
 //! ```text
 //! c     = min(força, 1)
@@ -46,7 +46,7 @@
 
 use crate::Pass;
 
-/// O tecto de iterações CHEIAS — o `max_iterations` de `smooth.cc:36`.
+/// O tecto de iterações CHEIAS — o `max_iterations` de *Smooth*.
 ///
 /// ⚠️ **Ele não é um recurso, é a definição do orçamento.** Quatro é o
 /// denominador que torna o fator do artista uma contagem: `0,25` é *uma*
@@ -75,7 +75,7 @@ impl Iterations {
     }
 }
 
-/// **A LEI** — `brushes/smooth.cc:34-48`, verbatim na ordem das operações.
+/// **A LEI** — *Smooth*, verbatim na ordem das operações.
 ///
 /// ⚠️ **A ordem aritmética é a da referência e não a álgebra equivalente:**
 /// `4 · (c − count/4)` e `4c − count` são a mesma matemática e **não** os mesmos

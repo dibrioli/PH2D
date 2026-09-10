@@ -294,7 +294,7 @@ fn the_squeezing_family_stays_inside_the_cursor_ring() {
     let rest = sphere();
     // ⚠️ **O traço ANDA, e a fixture do irmão não andava** — o helper [`stroke`]
     // carimba sempre no mesmo centro, então o [`crate::Dab::path`] fica zero e o
-    // `B` do Pinch **recusa** (a lei dele é o `pinch.cc`, que precisa de
+    // `B` do Pinch **recusa** (a lei dele é o *Pinch*, que precisa de
     // direção). A primeira versão deste gate usou-o e o próprio anti-vácuo
     // abaixo a pegou: *"a fixture não contém o fenômeno (0)"*.
     const STEP: f32 = 0.12 * R;
@@ -364,8 +364,8 @@ fn the_squeezing_family_stays_inside_the_cursor_ring() {
 /// **E O `L` NÃO É OFERECIDO A NENHUM DELES** — a outra metade, porque a de cima
 /// passaria sozinha no dia em que alguém religasse o campo com um alcance menor.
 ///
-/// ⚠️ **A razão é de REFERÊNCIA e não de número:** o `elastic_deform.cc` do
-/// Blender porta este mesmo paper e declara **cinco** famílias — `GRAB`,
+/// ⚠️ **A razão é de REFERÊNCIA e não de número:** o deformador elástico dela
+/// porta este mesmo paper e declara **cinco** famílias — `GRAB`,
 /// `GRAB_BISCALE`, `GRAB_TRISCALE`, `SCALE`, `TWIST` —, e nenhuma é o pinch; o
 /// SculptGL não tem Kelvinlets. Um chip `L` aqui vestia uma LEI inteira com a
 /// autoridade de uma fonte que não a declara, que é o que a §4 do plano proíbe.

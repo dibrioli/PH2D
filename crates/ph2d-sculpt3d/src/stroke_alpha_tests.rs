@@ -349,7 +349,8 @@ fn one_dab_with_and_without(verb: Verb) -> (Vec<f32>, Vec<f32>) {
 ///
 /// ```text
 /// Draw:    d = accum · reach                    = fall · α · intensidade · reach
-/// Crease:  d = accum · reach · shape⁴           = fall · α · intensidade · reach · (fall · α)⁴
+/// Crease:  d = accum · reach · shape⁴           = fall · α · intensidade · reach · (fall ·
+/// α)⁴
 /// ```
 ///
 /// então a razão *armado ÷ liso* do MESMO vértice vale `α` no Draw e `α⁵` no

@@ -418,7 +418,7 @@ fn measure_whether_a_low_lift_turns_the_band_into_a_ring() {
 /// crista cresce **linearmente com o número de dabs**. Com o plano do pen-down
 /// o barro sobe até ele e PARA.
 ///
-/// A referência (`sculpt.cc::calc_area_normal_and_center_node_mesh`) escolhe
+/// A referência escolhe
 /// entre os dois pelo `!ss.cache->accum`: **congelado com o Accumulate
 /// desligado**, vivo com ele ligado.
 #[test]
@@ -554,7 +554,7 @@ fn measure_the_band_cross_section_on_flat_and_curved_clay() {
 }
 
 /// **A FAIXA DEPOSITA NAS COSTAS?** — o terceiro termo da cadeia de fatores da
-/// referência (`clay_strips.cc::calc_faces` → `calc_front_face`).
+/// referência (*Clay Strips* → `calc_front_face`).
 ///
 /// O olho é RASANTE, que é a situação da foto: o artista olha um membro de lado
 /// e passa a faixa perto da silhueta. Um vértice de costas tem `n · (−eye) < 0`

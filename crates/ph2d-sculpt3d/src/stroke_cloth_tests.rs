@@ -356,7 +356,8 @@ fn um_traco_novo_nao_herda_a_regiao() {
 /// `ph2d-mesh` partiria o pincel de tecido em silêncio, e nenhum gate daquela
 /// crate mede a ordem do anel. *Uma reimplementação foi tentada em 06/09 e a
 /// mutação que a apagava sobreviveu — as duas davam o mesmo vector.*
-/// ⚠️ **Numa GRELHA as duas coincidem** — o percurso face a face de um vértice interior devolve
+/// ⚠️ **Numa GRELHA as duas coincidem** — o percurso face a face de um vértice interior
+/// devolve
 /// `[S, O, E, N]`, que é a ordem crescente de índice —, e é por isso que este
 /// gate corre sobre uma ESFERA: *uma fixtura em que as duas leis dão o mesmo não
 /// testa nenhuma das duas.*

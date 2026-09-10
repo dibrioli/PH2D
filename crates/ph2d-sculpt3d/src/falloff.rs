@@ -18,7 +18,7 @@
 ///
 /// # As NOVE do Blender entraram, e a leitura corrigiu a minha própria tabela
 ///
-/// O `blenkernel/intern/brush.cc:1489-1610` traz as nove fórmulas analíticas do
+/// O definidor de pincel da referência traz as nove fórmulas analíticas do
 /// `BRUSH_CURVE_*` em forma fechada, escritas em `u = 1 − t`. Lidas uma a uma —
 /// e **não** de memória — TRÊS das nossas já eram exatamente as dele:
 ///
@@ -48,13 +48,15 @@
 /// [`Falloff::Smoothstep`], os identificadores dele. A wave anterior leu isso
 /// como uma colisão de RÓTULO e resolveu inventando um segundo nome; ⚠️ **o
 /// que ela não perguntou é de onde vinham as duas curvas ocupantes.** Elas não
-/// estão no `brush.cc`, não estão no SculptGL (que é o [`Falloff::Plateau`],
+/// estão no definidor de pincel da referência, não estão no SculptGL (que é o
+/// [`Falloff::Plateau`],
 /// `3d⁴ − 4d³ + 1`) e não trazem medição nenhuma atrás — *uma entrada de
 /// catálogo sem referência e sem número é um botão que ninguém pode julgar*.
 /// Apagadas as duas, a colisão **dissolve**: sobra um nome por lei, e o nome é
 /// o que o Blender escreve na tela.
 ///
-/// ⚠️ **E o que o `brush.cc` NÃO diz é qual delas um pincel VESTE — a fonte
+/// ⚠️ **E o que o definidor de pincel da referência NÃO diz é qual delas um pincel VESTE — a
+/// fonte
 /// não responde e o ORÁCULO respondeu.** A leitura estática era que o
 /// `curve_preset` de um `Brush` zero-inicializado é `BRUSH_CURVE_CUSTOM = 0` e
 /// que o `brush_init_data` semeia a *curvemapping* com `CURVE_PRESET_SMOOTH`,
@@ -241,7 +243,8 @@ impl Falloff {
             Self::Plateau => crate::ref_kernels::falloff(f64::from(t)) as f32,
 
             // As seis do Blender, escritas em `u = 1 − t` porque é assim que o
-            // `brush.cc` as escreve — traduzir a forma abriria espaço para uma
+            // definidor de pincel da referência as escreve — traduzir a forma abriria espaço
+            // para uma
             // divergência que só um gate de valor pegaria.
             Self::Linear => 1.0 - t,
             Self::Sharp => {

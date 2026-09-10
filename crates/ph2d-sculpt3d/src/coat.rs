@@ -1,4 +1,4 @@
-//! **A LEI DA DEMÃO** — a saturação assintótica do `layer.cc`, e nada mais.
+//! **A LEI DA DEMÃO** — a saturação assintótica do *Layer*, e nada mais.
 //!
 //! Módulo próprio e minúsculo porque ela tem **dois** consumidores que não se
 //! veem: o laço do dab (que a corre) e os gates (que a comparam contra a

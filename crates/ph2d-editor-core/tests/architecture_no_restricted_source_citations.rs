@@ -21,7 +21,7 @@
 //!    linha de código entra na tabela de strings do binário. É a única
 //!    sub-espécie que **sai do repositório sem passar pelo `git`**, e por isso
 //!    não tem lista de tolerância nenhuma.
-//! 2. **EM comentário: catraca por crate.** São `253` hoje, e o número **só
+//! 2. **EM comentário: catraca por crate.** São `145` hoje, e o número **só
 //!    desce**. Uma entrada que chegue a zero é **obsoleta e tem de ser
 //!    apagada** — *uma catraca sem censo de obsolescência não desce: ela vira
 //!    licença* (`CLAUDE.md` §5.0).
@@ -94,7 +94,6 @@ const POR_CLASSIFICAR: &[(&str, usize)] = &[
     ("crates/ph2d-quadflow", 13),
     ("crates/ph2d-quantize", 4),
     ("crates/ph2d-render", 5),
-    ("crates/ph2d-sculpt3d", 108),
     ("crates/ph2d-timeline", 1),
     ("crates/ph2d-tokens", 5),
     ("crates/ph2d-tokens-dtcg", 2),

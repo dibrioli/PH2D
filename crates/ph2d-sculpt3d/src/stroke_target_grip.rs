@@ -19,7 +19,8 @@ impl SculptStroke {
     /// O alvo dos quatro verbos de âncora — ver o cabeçalho.
     ///
     /// ⚠️ **Ele recebe MENOS que o irmão do carimbo, e a lista é a medida da
-    /// diferença:** nenhum destes quatro lê o `reach`, o `shape`, a normal do plano ou o índice do
+    /// diferença:** nenhum destes quatro lê o `reach`, o `shape`, a normal do plano ou o
+    /// índice do
     /// vértice — o alvo de um gesto com âncora é função do GESTO (`dab.pull`,
     /// `dab.center`) e da posição, nunca do perfil do dab, que entra depois pelo
     /// `accum`. Passar os três só para simetria com o pai seria três argumentos

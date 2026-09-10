@@ -322,7 +322,7 @@ fn the_mirrored_copy_lays_its_strip_along_its_own_path() {
     //
     // ⚠️ **A divergência residual tem dono e está nomeada:** o nosso
     // `fit_plane` lê a superfície VIVA, e o
-    // `sculpt.cc::calc_area_normal_and_center_node_mesh` ramifica em
+    // motor de escultura da referência ramifica em
     // `!ss.cache->accum` para ler o pen-down congelado. Sob o plano congelado os
     // dois passes de simetria seriam idênticos por construção.
     //

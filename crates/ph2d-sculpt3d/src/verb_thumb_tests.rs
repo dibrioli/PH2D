@@ -1,4 +1,4 @@
-//! **OS GATES DO POLEGAR** — [`Verb::ClayThumb`], o `clay_thumb.cc`.
+//! **OS GATES DO POLEGAR** — [`Verb::ClayThumb`], o *Clay Thumb*.
 //!
 //! ⚠️ **As barras saem da sonda `tests/measure_clay_thumb.rs`**, e não de um
 //! número escolhido: ela mede o corte **nos vértices**, por ajuste de plano por
@@ -172,7 +172,7 @@ fn the_thumb_saturates_at_the_ceiling_instead_of_tilting_for_ever() {
     );
 }
 
-/// **SEM DIREÇÃO NÃO HÁ DEPÓSITO** — os dois `return` do `clay_thumb.cc`
+/// **SEM DIREÇÃO NÃO HÁ DEPÓSITO** — os dois `return` do *Clay Thumb*
 /// (*"delay the first daub"* e `is_zero(grab_delta)`) por uma pergunta só.
 ///
 /// ⚠️ **O CONTROLE é o Flatten no mesmo dab isolado:** ele deposita, o que é o
@@ -239,7 +239,7 @@ fn the_tilt_counts_dabs_not_mirror_copies() {
     );
 }
 
-/// **UM TRAÇO NOVO COMEÇA DO ZERO** — `clay_thumb.cc:166`.
+/// **UM TRAÇO NOVO COMEÇA DO ZERO** — *Clay Thumb*.
 ///
 /// Sem o reset do [`SculptStroke::begin`] o segundo traço herdaria a inclinação
 /// do primeiro, e a mesma ferramenta cavaria mais fundo por ter sido usada

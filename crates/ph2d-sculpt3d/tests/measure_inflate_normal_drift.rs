@@ -9,7 +9,7 @@
 //! # A cerca, e por que ela é medida em vez de removida
 //!
 //! O `Inflate.js:64-66` lê `nAr` — as normais **VIVAS**, que o `updateGeometry`
-//! recomputa a cada dab — e o `inflate.cc` do Blender também. Nós lemos a
+//! recomputa a cada dab — e o *Inflate* do Blender também. Nós lemos a
 //! congelada no pen-down, e o `stroke_target.rs` declara o motivo:
 //!
 //! > *a normal viva sobe junto com a tinta, e um traço parado passaria a inflar

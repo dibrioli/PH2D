@@ -26,7 +26,7 @@ impl Verb {
     /// OFERECER o interruptor e o aplicador pergunta para HONRAR o clique, e
     /// duas cópias divergiriam num controle que aparece e não faz nada.
     ///
-    /// ⚠️ **A DEMÃO fica de fora, e é a referência que a tira:** o `layer.cc`
+    /// ⚠️ **A DEMÃO fica de fora, e é a referência que a tira:** o *Layer*
     /// mede as distâncias contra `orig_data.positions` **incondicionalmente** —
     /// ele não consulta o `BRUSH_ACCUMULATE`, ao contrário dos irmãos de
     /// carimbo. E há razão para isso: o que o Accumulate compra num Draw é
@@ -104,10 +104,10 @@ impl Verb {
                 // enchê-lo: com o ângulo negativo as duas normais tombam ao
                 // contrário, o telhado vira vale e o culling de lado se desliga
                 // (`if (angle >= 0.0f)`). É o `if (flip) angle *= -1` do
-                // `multiplane_scrape.cc:657`, e não uma força negativa.
+                // *Multiplane Scrape*, e não uma força negativa.
                 | Self::MultiplaneScrape
                 // ⚠️ **A DEMÃO cava, e é o `brush.direction` da referência** —
-                // no `layer.cc` o sinal viaja no `cache.bstrength`, que o
+                // no *Layer* o sinal viaja no `cache.bstrength`, que o
                 // Blender já entrega negativo. Aqui ele viaja no alvo (o `sign`
                 // do `compute_target`), porque o nosso `accum` é a MAGNITUDE da
                 // demão e uma magnitude não tem lado.

@@ -545,7 +545,8 @@ fn lateral_pull(
         // `Pinch.js:52-58` / `Crease.js:59-61`: o delta CRU até o centro, em 3D.
         crate::LateralPull::Direct => d,
         // O *Pinch*: a soma da componente PERPENDICULAR ao traço com a
-        // NORMAL, ou seja com a componente ao longo do TRAÇO removida. Ver [`crate::LateralPull::AcrossStroke`].
+        // NORMAL, ou seja com a componente ao longo do TRAÇO removida. Ver
+        // [`crate::LateralPull::AcrossStroke`].
         crate::LateralPull::AcrossStroke => match stroke_axis(normal, path) {
             Some(along) => remove_along(d, along),
             // ⚠️ **Sem direção não há aperto, e é a referência que recusa** —

@@ -9,10 +9,10 @@
 //! `match` que às vezes precisa de um passe anterior é como o próximo caso
 //! especial nasce escondido.
 //!
-//! # A lei, do `calc_sharpen_filter` (`sculpt_filter_mesh.cc:1590-1712`)
+//! # A lei, do filtro de AFIAR da referência
 //!
-//! **O pré-passe**, uma vez por **GESTO** (o `filter_cache` da referência é
-//! construído no `sculpt_filter_specific_init`) — ⚠️ **este cabeçalho já disse
+//! **O pré-passe**, uma vez por **GESTO** (o cache de filtro da referência é
+//! construído na inicialização dele) — ⚠️ **este cabeçalho já disse
 //! *"por sub-passo"*, que era a lei ERRADA que a wave existiu para corrigir**;
 //! o item 1 é o único VIVO a cada sub-passo:
 //!
@@ -40,13 +40,12 @@
 //! que afiar significa e o que nenhum dos outros oito faz.
 //!
 //! ⚠️ **Os dois termos que os defaults desligam ficam FORA, e não é omissão.**
-//! O `sharpen_intensify_detail_strength` nasce em `0` e o
-//! `sharpen_curvature_smooth_iterations` em `0` (`sculpt_filter_mesh.cc:2716` e
-//! `:2727`), então o terceiro termo (`detail_directions × −intensify`) e as N
-//! passadas de alisamento do pré-passe **não correm no produto da referência**.
+//! A intensificação de detalhe nasce em `0` e as iterações de alisamento de
+//! curvatura nascem em `0`, então o terceiro termo e as N passadas de
+//! alisamento do pré-passe **não correm no produto da referência**.
 //! Escrevê-los seria construir dois controles que ninguém pediu para um kernel
 //! cuja lei ainda não foi julgada num smoke; eles entram no dia em que o Enio
-//! os pedir, e o fonte está citado aqui para isso custar uma leitura.
+//! os pedir.
 //!
 //! # ⚠️ A DIVERGÊNCIA, e por que ela não é a do Smooth
 //!
@@ -54,14 +53,12 @@
 //! `Relax` a referência **REPLAYA** a cadeia de eventos do arrasto enquanto nós
 //! aplicamos um passo a partir do `pre`, e nomeia o preço: *o nosso Smooth
 //! satura*. O `Sharpen` é o **terceiro membro da mesma família** — ele está no
-//! `sculpt_mesh_filter_is_continuous` (`:315`) ao lado dos dois —, mas aqui a
-//! iteração **não é opcional**, e a referência diz por quê num comentário ao
-//! lado do próprio clamp:
+//! família CONTÍNUA da referência, ao lado dos dois —, mas aqui a iteração
+//! **não é opcional**, e a razão que ela dá é que **este filtro não funciona a
+//! força cheia: ele precisa de várias iterações para chegar a um estado
+//! estável**.
 //!
-//! > *"This filter can't work at full strength as it needs multiple iterations
-//! > to reach a stable state."* — `sculpt_filter_mesh.cc:1661`
-//!
-//! ⇒ `clamp_factors(factors, 0.0f, 0.5f)`. Um passo de força alta desta lei não
+//! ⇒ a força de cada iteração é ceifada em `0,5`. Um passo de força alta desta lei não
 //! é *"menos afiado"*, é **outra coisa**: o gather é uma soma sobre o anel, e
 //! sem teto ele ultrapassa a vizinhança e inverte a feição.
 //!
@@ -88,8 +85,8 @@
 
 use super::*;
 
-/// **Quanta força uma iteração pode carregar** — o `clamp_factors(factors, 0,
-/// 0.5)` da referência (`sculpt_filter_mesh.cc:1662`), verbatim.
+/// **Quanta força uma iteração pode carregar** — é o tecto de `0,5` que a
+/// referência ceifa em cada iteração.
 ///
 /// ⚠️ **É um limite de ESTABILIDADE do kernel e não uma faixa de gosto**, e é a
 /// única razão pela qual o fatiamento existe: acima dele o gather passa da
@@ -98,8 +95,7 @@ use super::*;
 pub(super) const MAX_STEP: f32 = 0.5;
 
 /// **Quanto da média do próprio anel entra onde há detalhe** — o
-/// `sharpen_smooth_ratio` da referência, no valor de fábrica dela
-/// (`sculpt_filter_mesh.cc:2707`).
+/// razão de alisamento do afiar, no valor de fábrica da referência.
 ///
 /// ⚠️ **Constante e não param, pelo mesmo motivo dos outros dois** — ver o
 /// cabeçalho: ele nasce como um número da referência, e vira controle no dia em

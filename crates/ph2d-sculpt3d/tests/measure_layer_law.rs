@@ -7,7 +7,7 @@
 //! ```
 //!
 //! O plano 21 §5.1 item 6 promete uma *"demão de **altura constante**,
-//! saturante e apagável"*, e o `layer.cc` do Blender tem a lei inteira em três
+//! saturante e apagável"*, e o *Layer* do Blender tem a lei inteira em três
 //! linhas:
 //!
 //! ```text
@@ -281,7 +281,7 @@ fn the_radial_profile_of_a_coat() {
 /// [`ph2d_sculpt3d::Brush::weight`] pergunta `profile(mode)` **sem** o recuo que
 /// o `kernel_for` tem, então um modo que não declara o verbo devolve `None` e o
 /// slider vira o peso CRU — onde a referência deste verbo o eleva ao QUADRADO
-/// (`sculpt.cc:2337-2339`).
+///.
 #[test]
 #[ignore = "sonda"]
 fn the_mode_the_coat_is_born_in() {

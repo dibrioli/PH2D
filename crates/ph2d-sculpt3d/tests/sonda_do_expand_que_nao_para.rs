@@ -20,7 +20,8 @@
 //! escrever uma barra a partir dela tem de dizer de que RECURSO ela é.
 //!
 //! ```text
-//! cargo test -p ph2d-sculpt3d --release --test sonda_do_expand_que_nao_para -- --ignored --nocapture
+//! cargo test -p ph2d-sculpt3d --release --test sonda_do_expand_que_nao_para -- --ignored
+//! --nocapture
 //! ```
 
 use ph2d_mesh::Mesh;

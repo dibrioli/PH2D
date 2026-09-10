@@ -11,7 +11,8 @@
 //! ⚠️ **E o oráculo é a GEOMETRIA:** o raio é lido de volta dos vértices, e a
 //! uniformidade das arestas também. Nada aqui cita a constante do kernel.
 //!
-//! Rodar: `cargo test -p ph2d-sculpt3d --release --test measure_slide_relax -- --ignored --nocapture`
+//! Rodar: `cargo test -p ph2d-sculpt3d --release --test measure_slide_relax -- --ignored
+//! --nocapture`
 
 use ph2d_mesh::Mesh;
 use ph2d_sculpt3d::{Brush, Dab, SculptStroke, Symmetry, Verb};

@@ -1309,6 +1309,7 @@ impl App {
             vec_trim_piece: Vec::new(),
             vec_bucket_face: None,
             bone_hover: None,
+            skin_image_cache: std::collections::BTreeMap::new(),
             bone_preview: None,
             vec_bone_drag: None,
             vec_bone_pose: None,

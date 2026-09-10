@@ -3438,6 +3438,11 @@ impl crate::App {
             // compila. O valor é do QUADRO, e é o mesmo que o gesto e o overlay usam.
             let osso_selecionado =
                 crate::bone_gesture::selected_bone(sim, hero.gizmo.iter_selected());
+            // ⭐ **A selecção CRUA, guardada aqui pela mesma razão que o `osso_selecionado`**: o
+            // `hero` é uma vista do `gfx`, e quem a lê lá em baixo (o *Bind* da 2.ª mídia) já o
+            // tem emprestado de outra maneira. *Ler o valor uma vez é o que torna a pergunta
+            // alcançável nos dois sítios.*
+            let selecao_bits: Vec<u64> = hero.gizmo.iter_selected().collect();
             let mut pending_textpath: Option<crate::vec_text_ride::TextPathCmd> = None;
             let mut pending_textpath_offset: Option<f64> = None;
             // Pattern on Path (plano 23): o comando de vínculo + os dois sliders, drenados como os
@@ -6314,6 +6319,52 @@ impl crate::App {
                 let semente = osso_selecionado.map(ph2d_ecs::Entity::from_bits);
                 let n =
                     crate::skeleton_live::bind(sim, vec_scene, &self.vec_entities, &ids, semente);
+                // ⭐⭐⭐ **E AS IMAGENS ESCOLHIDAS** — a 2.ª mídia (ordem do dono, 2026-09-09).
+                //
+                // ⚠️ **O MESMO botão, e é o desenho todo:** o estado da arte diz que o artista não
+                // deve trabalhar na malha, e o gesto que ele já aprendeu é *escolher e prender*. A
+                // malha é traçada da própria tinta e nunca aparece na tela.
+                //
+                // ⚠️ **O sujeito de uma imagem é a SELECÇÃO do gizmo**, e não a lista de caminhos
+                // do pen — são duas famílias com dois selectores, e ler o do vector daria sempre
+                // zero imagens.
+                let imagens: Vec<(ph2d_ecs::Entity, ph2d_asset::AssetId)> = selecao_bits
+                    .iter()
+                    .copied()
+                    .filter_map(ph2d_ecs::Entity::try_from_bits)
+                    .filter(|&e| sim.world().get::<ph2d_render::Sprite>(e).is_some())
+                    .filter_map(|e| {
+                        sim.world()
+                            .get::<ph2d_ecs::SpritePixels>(e)
+                            .map(|p| (e, p.0))
+                    })
+                    .collect();
+                let mut n_img = 0;
+                for (e, id) in imagens {
+                    let Some(asset) = asset_db.get(&id) else {
+                        continue;
+                    };
+                    let Some((w, h, cow)) = asset.image_rgba8() else {
+                        continue;
+                    };
+                    if crate::skeleton_live::bind_image(
+                        sim,
+                        e,
+                        &cow,
+                        [w, h],
+                        ph2d_poly2d::MeshOptions::default(),
+                        semente,
+                    ) {
+                        n_img += 1;
+                    }
+                }
+                if n_img > 0 {
+                    eprintln!(
+                        "[ph2d-vec] osso: {n_img} imagem(ns) presa(s) -- a malha saiu do recorte da \
+                         propria tinta e nao aparece na tela"
+                    );
+                }
+                let n = n + n_img;
                 if n == 0 {
                     eprintln!(
                         "[ph2d-vec] osso: selecione ao menos UMA forma, e desenhe um esqueleto                          antes (ferramenta Bone)"
@@ -11392,6 +11443,21 @@ impl crate::App {
                     }
                 }
             }
+            // ⭐⭐⭐ **AS IMAGENS PRESAS AO ESQUELETO** — a 2.ª mídia (ordem do dono, 2026-09-09).
+            //
+            // ⚠️ **ANTES dos ossos, e a ordem é a leitura:** a imagem é a ARTE e o rig é o chrome
+            // que se desenha por cima dela. Invertê-la esconderia o esqueleto debaixo do desenho
+            // exactamente quando o artista o está a posar.
+            //
+            // ⚠️ **A sprite original é escondida pelo passe de sprites** (`vec_overlay::skinned`),
+            // senão ela ficaria por baixo, por deformar — e o artista veria a arte DUAS vezes.
+            crate::skeleton_skin_image::draw_skinned_images(
+                sim,
+                asset_db,
+                &mut self.skin_image_cache,
+                cam_affine,
+                vector_scene,
+            );
             // ⭐⭐⭐ **OS OSSOS** (estudo 42 item 5): desenhados enquanto a ferramenta de VETOR está
             // na mão, e só então.
             //

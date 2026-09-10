@@ -122,3 +122,109 @@ pub(crate) fn triangle_xform(
 #[cfg(test)]
 #[path = "skeleton_skin_image_tests.rs"]
 mod tests;
+
+/// ⭐⭐⭐ **DESENHA AS IMAGENS PRESAS AO ESQUELETO** — a metade que se vê.
+///
+/// Devolve quantas desenhou; `0` quer dizer *«nenhuma imagem está presa»* e é o caminho de
+/// omissão de toda cena que não usa a 2.ª mídia.
+///
+/// ⚠️ **Cada triângulo é um RECORTE mais um afim**, e nada mais: o `push_clip` limita o desenho ao
+/// triângulo posado, e a imagem inteira é desenhada com o afim que leva o triângulo de repouso
+/// àquele. Dois triângulos vizinhos concordam nos dois vértices que partilham, logo a aresta comum
+/// é a mesma recta nos dois — **a continuidade é consequência, não tolerância**.
+///
+/// ⚠️ **Os pixels vêm do `AssetDb`, por CONTEÚDO, e passam por uma cache** — ⛔ nunca de uma
+/// leitura da GPU por quadro, e nunca de uma cópia por quadro: o `Asset` entrega um `Cow`, e
+/// convertê-lo a cada quadro copiaria a imagem inteira 60 vezes por segundo. *É a mesma lição que
+/// o `field3d_smoke_state` já escreveu ao lado do slot dele.*
+pub(crate) fn draw_skinned_images(
+    sim: &SimWorld,
+    asset_db: &ph2d_asset::AssetDb,
+    cache: &mut std::collections::BTreeMap<ph2d_asset::AssetId, (u32, u32, RgbaArc)>,
+    cam: ph2d_vector::Affine,
+    scene: &mut ph2d_vector::VectorScene,
+) -> usize {
+    let alvos: Vec<(Entity, ph2d_asset::AssetId)> = sim
+        .world()
+        .iter_entities()
+        .filter(|er| er.get::<ph2d_skeleton_ecs::SkinBind>().is_some())
+        .filter(|er| er.get::<Sprite>().is_some())
+        .filter_map(|er| er.get::<ph2d_ecs::SpritePixels>().map(|p| (er.id(), p.0)))
+        .collect();
+    let mut feitas = 0;
+    for (e, id) in alvos {
+        let Some(mesh) = mesh_of(sim, e) else {
+            continue;
+        };
+        let Some(posed) = posed_local(sim, e, &mesh) else {
+            continue;
+        };
+        let Some((w, h, rgba)) = pixels(asset_db, cache, id) else {
+            continue;
+        };
+        // `local → ecrã`: a pose de mundo da sprite, depois a câmara.
+        let mundo =
+            crate::vec_transform::xform_of_transform(crate::vec_transform::world_transform(sim, e));
+        let to_screen = cam * affine_of(mundo);
+        for &tri in &mesh.tris {
+            let Some((pixel_to_local_deformado, alvo)) = triangle_xform(&mesh, &posed, tri) else {
+                continue;
+            };
+            let mut p = ph2d_vector::BezPath::new();
+            let pt = |q: [f64; 2]| {
+                let s = to_screen * ph2d_vector::Point::new(q[0], q[1]);
+                ph2d_vector::Point::new(s.x, s.y)
+            };
+            p.move_to(pt(alvo[0]));
+            p.line_to(pt(alvo[1]));
+            p.line_to(pt(alvo[2]));
+            p.close_path();
+            scene.push_clip(&p);
+            scene.draw_image_rgba_transformed(
+                &rgba,
+                w,
+                h,
+                to_screen * affine_of(pixel_to_local_deformado),
+                ph2d_vector::ImageQuality::Medium,
+            );
+            scene.pop_layer();
+        }
+        feitas += 1;
+    }
+    feitas
+}
+
+/// Os bytes de uma imagem, uma vez por `AssetId`.
+fn pixels(
+    asset_db: &ph2d_asset::AssetDb,
+    cache: &mut std::collections::BTreeMap<ph2d_asset::AssetId, (u32, u32, RgbaArc)>,
+    id: ph2d_asset::AssetId,
+) -> Option<(u32, u32, RgbaArc)> {
+    if let Some(v) = cache.get(&id) {
+        return Some((v.0, v.1, std::sync::Arc::clone(&v.2)));
+    }
+    let asset = asset_db.get(&id)?;
+    let (w, h, cow) = asset.image_rgba8()?;
+    let arc: RgbaArc = std::sync::Arc::new(cow.into_owned());
+    cache.insert(id, (w, h, std::sync::Arc::clone(&arc)));
+    Some((w, h, arc))
+}
+
+/// A malha guardada nos bytes opacos da pele desta entidade.
+///
+/// ⚠️ **O `SkinBind::source` é opaco de propósito**, e quem sabe decodificá-lo é quem sabe o que a
+/// coisa É: uma entidade com `Sprite` guarda uma [`Mesh2d`], uma com `VecPathRef` guarda um
+/// `VecPath`. ⛔ Um discriminante guardado ao lado seria uma segunda fonte de verdade sobre a
+/// mídia, e ela poderia discordar da entidade.
+#[must_use]
+pub(crate) fn mesh_of(sim: &SimWorld, e: Entity) -> Option<Mesh2d> {
+    let skin = sim.world().get::<ph2d_skeleton_ecs::SkinBind>(e)?;
+    postcard::from_bytes(&skin.source).ok()
+}
+
+/// Os bytes de uma imagem, partilhados — o tipo que o desenho do Vello consome.
+pub(crate) type RgbaArc = std::sync::Arc<Vec<u8>>;
+
+fn affine_of(x: Xform) -> ph2d_vector::Affine {
+    ph2d_vector::Affine::new(x.0)
+}

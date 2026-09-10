@@ -274,6 +274,19 @@ pub(super) fn vector_participant(sim: &World, entity: Entity) -> Option<u64> {
     sim.get::<ph2d_ecs::VecPathRef>(entity).map(|vp| vp.0)
 }
 
+/// ⭐⭐⭐ **ESTA SPRITE É DESENHADA DEFORMADA, pelo Vello?** — a 2.ª mídia do esqueleto.
+///
+/// ⚠️ **Ela é a irmã da [`vector_participant`]**, e responde à mesma pergunta de outra família:
+/// *quem ocupa o lugar dele na ordem mas não emite instância nenhuma, porque o Vello o desenha?*
+///
+/// ⚠️ **DERIVADA, nunca guardada:** uma sprite com pele é uma sprite que o esqueleto deforma, e a
+/// pergunta responde-se olhando os dois componentes. Um terceiro componente a dizê-lo seria uma
+/// fonte de verdade que pode discordar dos outros dois.
+#[must_use]
+pub(super) fn skinned_image(sim: &World, entity: Entity) -> bool {
+    sim.get::<Sprite>(entity).is_some() && sim.get::<ph2d_skeleton_ecs::SkinBind>(entity).is_some()
+}
+
 /// ⭐⭐ **A CONVERSÃO: dos ranks que o ordenador decidiu para a ordem que o presente lê.**
 ///
 /// ⛔ Ela não reordena nada — é leitura. E é uma função com nome, e não um laço inline, porque é
@@ -436,7 +449,19 @@ pub(super) fn run(
                         world_pos: t,
                     });
                 }
+                // ⭐⭐⭐ **UMA IMAGEM PRESA AO ESQUELETO NÃO EMITE INSTÂNCIA** — quem a desenha
+                // é o Vello, deformada ([`crate::skeleton_skin_image`]), exactamente como já
+                // acontece com uma forma vectorial oito linhas acima.
+                //
+                // ⛔⛔ **Sem isto a arte aparece DUAS vezes:** a original, por deformar, fica por
+                // baixo — e assim que o artista dobra o braço ela espreita por fora da deformada.
+                //
+                // ⚠️ **É um facto DERIVADO, e não uma bandeira guardada.** Escrever `Visibility`
+                // aqui poria a shell a discutir com o olho da Hierarquia — *duas fontes de verdade
+                // para o mesmo bool, e a que o artista toca é a que perde*, que é a lei que o
+                // menu *Window* desta mesma linha já pagou.
                 if drawn
+                    && !skinned_image(sim, sim_entity)
                     && let Some(spr) = sim.get::<Sprite>(sim_entity)
                 {
                     let p = gt.translation();

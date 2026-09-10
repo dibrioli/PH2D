@@ -1800,6 +1800,17 @@ pub(crate) struct App {
     /// ⚠️ Resolvido ao lado do [`Self::bone_hover`] porque é a MESMA pergunta — *o que o ponteiro
     /// significa agora* — e porque o sítio do desenho já não tem `&self` livre: o `gfx` está
     /// emprestado mutável, e ler a câmara ali seria o segundo empréstimo.
+    /// ⭐ **Os pixels de cada imagem PRESA ao esqueleto, uma vez por conteúdo.**
+    ///
+    /// ⚠️ **Sem ela o desenho copiava a imagem inteira 60 vezes por segundo:** o `AssetDb` entrega
+    /// um `Cow` e o Vello consome um `Arc`, então a conversão por quadro seria uma cópia por
+    /// quadro. A chave é o `AssetId` (o hash do CONTEÚDO), logo duas sprites com a mesma arte
+    /// partilham a entrada — e um `Ctrl+Z` que troque os pixels traz um id novo, não uma entrada
+    /// obsoleta.
+    pub(crate) skin_image_cache: std::collections::BTreeMap<
+        ph2d_asset::AssetId,
+        (u32, u32, crate::skeleton_skin_image::RgbaArc),
+    >,
     pub(crate) bone_preview: Option<([f64; 2], [f64; 2], bool)>,
     /// ⭐⭐⭐ **O OSSO em desenho** (estudo 42 item 5) — o que o press decidiu (origem em MUNDO e
     /// PAI), e `None` fora do gesto. O `release` faz o osso dali até onde a mão soltou.

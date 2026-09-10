@@ -17,7 +17,7 @@ use crate::{InspectorPanel, sections};
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
-use ph2d_editor_core::screens::HeroSelection;
+use ph2d_editor_core::screens::{HeroLayout, HeroSelection};
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ROW_H_PX, Spacing, Theme};
@@ -55,9 +55,18 @@ pub(crate) fn paint(inspector_state: &mut state::InspectorState, ctx: &mut Paint
         // `store_and_hit_index_mut` accessor avoids the dyn-trait
         // aliasing dance for the &WidgetStore + &mut HitIndex pair.
         let selection_clone: Option<HeroSelection> = ctx.host.selection().cloned();
+        // ⚠️ **A BANDA DOS POPOVERS, e ela NÃO é o `slot`** — resolvido na integração de 2026-09-10.
+        // A `line/UIUX` trocou o 1.º parâmetro desta função de `&HeroLayout` para `slot: Rect`
+        // (*«para saber onde ele PRÓPRIO fica, um painel lê o `slot`»*) e esta linha, no mesmo dia,
+        // acrescentou um quarto popover diferido no fim dela — que pergunta outra coisa: *até onde
+        // um popover pode ESCORREGAR*, que é a banda de chrome e transborda o painel de propósito.
+        // As duas edições fundem sem marcador e o `layout` some do escopo.
+        // ⛔ Ler o `slot` aqui compila e prende o popover dentro da coluna.
+        let popover_layout = ctx.layout;
         let (store, hit_index) = ctx.host.store_and_hit_index_mut();
         paint_inspector(
             ctx.slot,
+            popover_layout,
             selection_clone.as_ref(),
             ctx.scene,
             ctx.text_system,
@@ -131,6 +140,10 @@ pub(crate) fn paint(inspector_state: &mut state::InspectorState, ctx: &mut Paint
 /// o teto de 200 LOC; doc-comment não.*
 fn paint_inspector(
     slot: Rect,
+    // ⚠️ Ao LADO do `slot`, nunca no lugar dele: o `slot` diz onde este painel FICA, o `layout` diz
+    // até onde um popover diferido pode ESCORREGAR (`HeroLayout::popover_region`, que é o que os
+    // outros dez sítios da casa lhe perguntam).
+    layout: &HeroLayout,
     selection: Option<&HeroSelection>,
     scene: &mut VectorScene,
     text_system: &mut TextSystem,

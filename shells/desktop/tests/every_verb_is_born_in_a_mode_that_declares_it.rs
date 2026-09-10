@@ -10,7 +10,7 @@
 //!
 //! ⚠️ **O preço não era o chip apagado, era a FORMA DO BARRO.** O
 //! `Brush::weight` pergunta `profile(mode)`, e `profile(S, Layer)` é `None` ⇒ o
-//! slider virava o peso CRU onde o `layer.cc` o eleva ao quadrado: **0,5000
+//! slider virava o peso CRU onde o verbo *Layer* o eleva ao quadrado: **0,5000
 //! contra 0,2500**, o dobro da taxa de depósito. Numa lei que satura, o dobro da
 //! taxa não deposita mais alto — ele **colapsa o ombro que o falloff desenha**.
 //!

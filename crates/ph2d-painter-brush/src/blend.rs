@@ -1,7 +1,7 @@
 //! Brush blend modes — the 24 modes of Blender's texture-paint brush.
 //!
 //! Behavioural reference (clean-room, no code copied): the mode set is Blender's `IMB_BLEND_*`
-//! dispatched in `imbuf/intern/rectop.cc::IMB_blend_color_byte/float`. Blender's 8-bit texture
+//! family, in its byte and float forms. Blender's 8-bit texture
 //! paint blends in the image's **native (encoded, straight-alpha) space** — it does *not*
 //! linearize — so this engine blends the dab in the layer's stored space and lets the host's
 //! compositor do the sRGB→linear decode at composite time. The per-mode arithmetic is the

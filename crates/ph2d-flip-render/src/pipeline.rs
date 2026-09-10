@@ -425,12 +425,12 @@ pub(crate) fn premult_over() -> wgpu::BlendState {
 }
 
 /// Depth-state da ordem 2D: escreve + teste GREATER **estrito** — o estado EXATO do
-/// GP 2D (`gpencil_cache_utils.cc:449`: `WRITE_DEPTH | BLEND_ALPHA_PREMUL |
-/// DEPTH_GREATER`, depth por-STROKE crescente com o sid). Entre traços/fills o sid
+/// GP 2D (`WRITE_DEPTH | BLEND_ALPHA_PREMUL | DEPTH_GREATER`, com depth por-STROKE
+/// crescente com o sid). Entre traços/fills o sid
 /// maior tem depth estritamente maior e ganha; no MESMO depth (o traço sobre si
 /// mesmo: quina quebrada, junção, auto-cruzamento) a 2ª face é **descartada, não
-/// misturada** → o premult-over nunca acumula ("the stroke cannot overlap itself",
-/// `gpencil_vert.glsl` — o default do GP; o modo per-ponto `GP_STROKE_OVERLAP` que
+/// misturada** → o premult-over nunca acumula ("the stroke cannot overlap itself" —
+/// o default do GP; o modo per-ponto `GP_STROKE_OVERLAP` que
 /// deixa acumular é opção de material, não portada). O par obrigatório disto é o
 /// `discard` de alpha < 0.001 no fragment: sem ele um fragmento transparente
 /// escreveria depth e furaria a geometria sobreposta (o "escamado" histórico).

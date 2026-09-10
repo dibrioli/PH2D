@@ -49,9 +49,9 @@
 //! # Custo: **não há BVH aqui, e é de propósito** (medido, não chutado)
 //!
 //! O `§11` manda cortar contra um *BVH 2D*, e o [`cuts`] é O(segmentos do traço × segmentos
-//! do quadro) — o mesmo O(N²) que a própria referência carrega com um `TODO` em cima
-//! (`grease_pencil_segments_geom.cc`: *"This method of finding intersections is O(N^2) and
-//! should be replaced with something faster"*). Medido em `--release` num quadro de
+//! do quadro) — o mesmo O(N²) que a própria referência carrega, com um `TODO` em cima a
+//! dizer que este método de achar intersecções é O(N²) e devia ser substituído por algo
+//! mais rápido. Medido em `--release` num quadro de
 //! **2940 segmentos** (60 traços × 49 — um quadro de line-art generoso):
 //!
 //! | gesto | custo |

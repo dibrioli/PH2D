@@ -273,8 +273,8 @@ pub fn f_bead_of(dn: f32, prof: DabProfile) -> f32 {
     f_of(dn, prof)
 }
 
-/// **O FADE SUB-PIXEL de UM DAB** — `smoothstep(0, 1, espessura_px)`, o `gpencil_frag.glsl:534` que
-/// o `flip.wgsl` multiplica na máscara.
+/// **O FADE SUB-PIXEL de UM DAB** — `smoothstep(0, 1, espessura_px)`, a lei do fragmento do GP
+/// que o `flip.wgsl` multiplica na máscara.
 ///
 /// ⚠️ **Ele é o PAR do piso de largura, e sem os dois juntos a linha fina está errada de um jeito ou
 /// do outro:** o [`crate::binning::ScreenSpace::radius_px`] nunca deixa o raio abaixo de

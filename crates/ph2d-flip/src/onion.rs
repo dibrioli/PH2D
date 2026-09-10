@@ -1,10 +1,10 @@
 //! Ghost Frames (onion skin) — configuração **e a seleção dos vizinhos** (W3.T3.3).
 //!
 //! Nome de produto: **Ghost Frames** (não "onion skin"). Defaults canônicos do
-//! Grease Pencil 5.2 (`DNA_grease_pencil_types.h:409-436`).
+//! Grease Pencil 5.2, lidos nas declarações de campo dele.
 //!
 //! A escolha de QUEM aparece como fantasma é uma **função pura** ([`ghosts`]) —
-//! port do `get_frame_id` (`grease_pencil_utils.cc:534-603`, `02_referencia §8`).
+//! port da escolha de fantasmas do Grease Pencil (`02_referencia §8`).
 //! Ela é pura de propósito: o render só desenha a lista que ela devolve, e o teste
 //! prova os 3 modos sem GPU nenhuma.
 //!

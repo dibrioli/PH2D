@@ -8,7 +8,7 @@
 //!   por-curva).
 //!
 //! **Sem vértices de padding de adjacência** (o GP 5.2 os usa por um limite de
-//! attribute-count do OpenGL — `draw_grease_pencil_lib.glsl:458`). Aqui há storage
+//! attribute-count do OpenGL, escrito no shader de linha dele). Aqui há storage
 //! buffers WGSL: o vertex shader indexa livremente e faz clamp (aberto) / wrap
 //! (fechado) nos vizinhos `id-1/id+1/id+2`. Fica pro T1.2.
 //!

@@ -298,8 +298,8 @@ pub const SCULPT3D_HARDNESS: NodeId = hash_node_id("sculpt3d.hardness");
 /// Chip ligado a [`SCULPT3D_HARDNESS`].
 pub const SCULPT3D_HARDNESS_NUM: NodeId = hash_node_id("sculpt3d.hardness_num");
 /// **O alisamento que corre depois de cada dab** — o `autosmooth_factor` do
-/// Blender (`sculpt.cc:3636`), e o VIZINHO do [`SCULPT3D_HARDNESS`] no RNA dele
-/// (`rna_brush.cc:3450` contra `:3457`).
+/// Blender, e o VIZINHO do [`SCULPT3D_HARDNESS`] no declarador de propriedades
+/// dele.
 ///
 /// ⚠️ A adjacência não é acaso e a fileira a honra: são os dois knobs que trocam
 /// **borda dura** por **superfície que a malha consegue carregar**, e lê-los
@@ -527,8 +527,8 @@ pub const SCULPT3D_MATCAP: [NodeId; 11] = [
 /// **ACUMULAR na mesma pincelada** — o `BRUSH_ACCUMULATE` do Blender.
 pub const SCULPT3D_ACCUMULATE: NodeId = hash_node_id("sculpt3d.accumulate");
 
-/// **SÓ AS FACES DA FRENTE** — o `BRUSH_FRONTFACE` do Blender
-/// (`use_frontface`, `properties_paint_common.py:1354`).
+/// **SÓ AS FACES DA FRENTE** — o `BRUSH_FRONTFACE` do Blender, oferecido nos
+/// painéis comuns de pintura dele como *Front Faces Only*.
 pub const SCULPT3D_FRONT_FACES: NodeId = hash_node_id("sculpt3d.front_faces");
 
 /// A malha de arestas desenhada por cima da forma.

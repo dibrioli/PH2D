@@ -2,9 +2,9 @@
 //! um gate que nenhuma mutação derruba não está guardando nada
 //! ([[reference_topic_mutation_proofs]]).
 //!
-//! Os casos de `piece_of_point` foram conferidos **um a um** contra o
-//! `foreach_curve_segment` da referência (Blender 5.2, `grease_pencil_select.cc`), que é
-//! quem sabe a resposta certa; a única divergência é a verruga do `clamp_range`, gateada em
+//! Os casos de `piece_of_point` foram conferidos **um a um** contra a travessia de
+//! segmentos de curva da referência (Blender 5.2), que é quem sabe a resposta certa; a
+//! única divergência é a verruga do `clamp_range`, gateada em
 //! [`a_cut_on_the_seam_keeps_the_seam_point_in_the_piece_before_it`].
 
 use super::*;

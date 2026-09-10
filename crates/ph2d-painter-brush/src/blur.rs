@@ -1,9 +1,8 @@
 //! Blur (soften) one dab — average the canvas neighbourhood under the brush and blend it back.
 //!
-//! **Clean-room** behaviour of Blender's 2D image-paint Soften brush
-//! (`editors/sculpt_paint/mesh/paint_image_2d.cc`: `paint_2d_lift_soften` convolves the footprint with
-//! a kernel — Gaussian by default — then composites the blurred buffer over the canvas with
-//! `IMB_BLEND_INTERPOLATE`, i.e. `lerp(canvas, blurred, mask × strength)`). This is the
+//! **Clean-room** behaviour of Blender's 2D image-paint **Soften** brush: it convolves the
+//! footprint with a kernel — Gaussian by default — then composites the blurred buffer over the
+//! canvas by linear interpolation, i.e. `lerp(canvas, blurred, mask × strength)`. This is the
 //! community-standard blur brush (GIMP/Krita/Photoshop): a separable convolution blended back by the
 //! dab mask. Only the algorithm is ported, never the code.
 //!

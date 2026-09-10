@@ -12,7 +12,7 @@ use ph2d_core::Vec2;
 use serde::{Deserialize, Serialize};
 
 /// Largura default de ponto, em unidades de mundo. É o `radius` default do GP
-/// (`BKE_grease_pencil.hh:196` = `0.01`); a espessura em pixels é `raio·zoom` no
+/// (`0.01`, lido no cabeçalho de domínio dele); a espessura em pixels é `raio·zoom` no
 /// render (2D-ortográfico, W1).
 pub const DEFAULT_WIDTH: f32 = 0.01;
 /// Opacidade default de ponto (= "strength" do GP).

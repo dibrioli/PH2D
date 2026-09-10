@@ -1,8 +1,8 @@
 //! Stroke method + jitter unit — the discrete options of the Blender "Stroke" panel.
 //!
-//! Behavioural reference (clean-room, no code copied): Blender
-//! `editors/sculpt_paint/paint_stroke.cc` (the `eBrushStrokeType` dispatch in `PaintStroke::modal`)
-//! and `makesdna/DNA_brush_enums.h` (the enum and the `BRUSH_ABSOLUTE_JITTER` flag). The wire
+//! Behavioural reference (clean-room, no code copied): Blender's stroke engine (the
+//! `eBrushStrokeType` dispatch inside its modal handler) and its brush enums (that enum and the
+//! `BRUSH_ABSOLUTE_JITTER` flag). The wire
 //! discriminants returned by [`StrokeMethod::to_u8`] mirror Blender's `eBrushStrokeType` numeric
 //! values (Dots=0 … Arc=6) so the cross-crate encoding is a documented, stable anchor.
 

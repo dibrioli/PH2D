@@ -149,7 +149,7 @@ static BRUSH: &[Row] = &[
     // ⚠️ **Ela NÃO é a `mask_hardness` logo abaixo**, embora os nomes se
     // pareçam: aquela é o expoente da curva PRÓPRIA do canal de máscara
     // (`Masking.js:66`), esta remapeia a DISTÂNCIA que qualquer falloff consome
-    // (`apply_hardness_to_distances`, `sculpt.cc:7549`). Um verbo pode oferecer
+    // (no Blender, um remapeamento de distância aplicado antes de toda queda). Um verbo pode oferecer
     // as duas ao mesmo tempo, e é por isso que elas não podem compartilhar um
     // controle.
     Row {
@@ -179,7 +179,7 @@ static BRUSH: &[Row] = &[
         place: Place::Knobs,
     },
     // **O ALISAMENTO DE CADA DAB** — logo abaixo da dureza, que é onde o Blender
-    // o põe (`rna_brush.cc:3450` contra `:3457`), e pelo mesmo motivo que pôs a
+    // o põe (são vizinhos no declarador de propriedades dele), e pelo mesmo motivo que pôs a
     // dureza abaixo da força: os dois trocam **borda dura** por **superfície que
     // a malha consegue carregar**, e é ao lado um do outro que a troca se lê.
     //
@@ -362,7 +362,7 @@ static BRUSH: &[Row] = &[
         // esconderia uma continuidade que a física tem; o que ele não pode ser é
         // o default, e não é.
         min: 0.0,
-        // ⚠️ **O teto é o da REFERÊNCIA** (`rna_brush.cc:3382`), não nosso — ver
+        // ⚠️ **O teto é o da REFERÊNCIA** (o declarador de propriedades dela), não nosso — ver
         // [`ph2d_sculpt3d::MULTIPLANE_ANGLE_MAX_DEG`], que traz a tabela do que
         // de facto acontece lá em cima.
         max: ph2d_sculpt3d::MULTIPLANE_ANGLE_MAX_DEG,

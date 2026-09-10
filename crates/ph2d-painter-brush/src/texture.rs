@@ -1,7 +1,7 @@
 //! Brush **texture** — a per-texel mask that modulates the dab's coverage.
 //!
-//! Clean-room model of Blender's brush texture (`editors/sculpt_paint/mesh/paint_image_2d.cc`,
-//! `brush_painter_2d_tex_mapping` + `BKE_brush_sample_tex_3d`), **adapted to 2D**: the `3D` mapping
+//! Clean-room model of Blender's brush texture — the 2D-image-paint texture mapping plus the
+//! brush texture sampler — **adapted to 2D**: the `3D` mapping
 //! mode and the `Z` axis are dropped (degenerate for raster paint). The texture multiplies the
 //! falloff mask per pixel, exactly as the falloff weight does — see [`crate::dab::stamp_dab`].
 //!

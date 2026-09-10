@@ -1,6 +1,6 @@
 //! **A correspondência de traços** — quem vira quem no tween (Tween v2, `04 §2`).
 //!
-//! O GP pareia **por índice** (curva *i* ↔ curva *i*, `interpolate.cc:244-315`): zero
+//! O GP pareia **por índice** (curva *i* ↔ curva *i*): zero
 //! correspondência espacial, e o que salva o usuário é desenhar sempre na mesma ordem.
 //! Aqui a ordem de desenho continua contando — **como um TERMO do custo**, não como a
 //! resposta. Isso é subsunção, não substituição: quando tudo mais empata, o par ordinal

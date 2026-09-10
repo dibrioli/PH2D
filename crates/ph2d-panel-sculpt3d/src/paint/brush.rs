@@ -79,8 +79,8 @@ pub(super) fn paint_brush_tail(
     // cujo valor a ferramenta já traz pode ser `Pro`* —, mas ser ADMISSÍVEL
     // não é ser certo, e a referência mede o contrário:
     //
-    // * no `properties_paint_common.py` o `FalloffPanel` **não** é desenhado por
-    //   `brush_settings_advanced` — ele é painel de primeira classe;
+    // * nos painéis comuns de pintura dele o *Falloff* **não** é desenhado dentro
+    //   das definições avançadas do pincel — ele é painel de primeira classe;
     // * no cabeçalho de ferramenta ele é um **popover sempre visível**
     //   (`layout.popover("VIEW3D_PT_tools_brush_falloff")`).
     //
@@ -286,7 +286,7 @@ fn paint_per_verb_switches(
     // o que ligar, e a caixa lá seria um interruptor de coisa nenhuma.
     //
     // ⚠️ **Ela pergunta se a LEI existe, nunca se o flag está LIGADO** — o
-    // default é desmarcado (é o do Blender, `DNA_brush_types.h:206`), e uma
+    // default é desmarcado (é o do Blender, lido nas declarações de campo dele), e uma
     // caixa que se escondesse no default seria uma caixa que ninguém marca.
     let y = if snap.ui.brush.offers_front_faces() {
         toggle(

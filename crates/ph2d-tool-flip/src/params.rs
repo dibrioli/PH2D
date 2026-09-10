@@ -213,7 +213,7 @@ pub const TRAP_MAX_PX: f64 = 50.0;
 pub const PRECISION_MIN: f64 = 0.5;
 pub const PRECISION_MAX: f64 = 4.0;
 
-/// Como a borracha age (GP `erase.cc`): `Soft` reduz opacidade (default, mais
+/// Como a borracha age (a do Grease Pencil): `Soft` reduz opacidade (default, mais
 /// "pintura"), `Hard` corta a cobertura, `Stroke` apaga o traço inteiro tocado.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum EraseMode {

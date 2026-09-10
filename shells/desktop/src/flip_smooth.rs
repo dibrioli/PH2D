@@ -1,6 +1,6 @@
 //! ADR-0114 W2 T2.7 — **active smoothing** do traço do Flip (o "assentar" que
-//! separa uma mão de desenho premium de uma medíocre). Clean-room do
-//! `paint.cc:544-621` (Grease Pencil 5.2): a intenção, não o código.
+//! separa uma mão de desenho premium de uma medíocre). Clean-room do motor de
+//! traço do Grease Pencil 5.2: a intenção, não o código.
 //!
 //! **O mecanismo, e por que a cauda assenta enquanto a ponta ainda vibra:** o
 //! smoothing é um **blur binomial 1D** (kernel `[1,2,1]/4` repetido — a
@@ -79,7 +79,7 @@ pub(crate) use fit::simplify_to_curve;
 /// do gate que mede a diferença: um `pub(crate)` sem chamador não é código morto silencioso, é uma
 /// **segunda resposta** esperando alguém chamá-la (a lição do `warp_axis` e do `serial_side`).
 ///
-/// (Ramer–Douglas–Peucker) do pen-up (`paint.cc:1673-1799`):
+/// (Ramer–Douglas–Peucker) do pen-up, como no motor de traço do GP:
 /// devolve os ÍNDICES a manter (assim o chamador filtra as pressões junto),
 /// preservando os pontos que desviam > `tol` (em MUNDO) da corda. Reduz a
 /// contagem de pontos sem mudar a forma visível. `< 3` pontos = mantém tudo.

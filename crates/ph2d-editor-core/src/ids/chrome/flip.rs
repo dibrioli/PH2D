@@ -212,7 +212,7 @@ pub const FLIP_STROKE_SWATCH: NodeId = hash_node_id("flip.stroke_swatch");
 
 // ── Erase sub-mode (shown only in Erase mode) ────────────────────────────────
 /// Soft (reduce opacity — default, most paint-like), Hard (cut), Stroke (erase
-/// whole touched stroke). Mirror of GP `erase.cc`.
+/// whole touched stroke). Mirror of the Grease Pencil eraser.
 pub const FLIP_ERASE_SOFT: NodeId = hash_node_id("flip.erase.soft");
 pub const FLIP_ERASE_HARD: NodeId = hash_node_id("flip.erase.hard");
 pub const FLIP_ERASE_STROKE: NodeId = hash_node_id("flip.erase.stroke");

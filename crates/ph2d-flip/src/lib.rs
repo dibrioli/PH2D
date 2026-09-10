@@ -16,9 +16,9 @@
 //! ```
 //!
 //! **Clean-room do Grease Pencil 5.2** (só comportamento; nunca código GPL). As
-//! ops de frame (hold, end-sentinel, refcount, compactação+remap) espelham
-//! `blenkernel/intern/grease_pencil.cc`; a referência comentada com `arquivo:linha`
-//! está em `docs/Flip/02_referencia_algoritmos_blender_5.2.md`.
+//! ops de frame (hold, end-sentinel, refcount, compactação+remap) espelham o núcleo
+//! de quadros do Grease Pencil; a referência comentada está em
+//! `docs/Flip/02_referencia_algoritmos_blender_5.2.md`.
 //!
 //! Foundational-isolada (ADR-0107): crate própria, pontos de extensão por módulo
 //! irmão. Deps só de `ph2d-core` (Vec2), `ph2d-painter-effects` (BlendMode

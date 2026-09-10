@@ -1,8 +1,8 @@
 //! Input conditioning — the "Input Samples" box-average at the front of the stroke pipeline.
 //!
-//! Behavioural reference (clean-room, no code copied): Blender
-//! `editors/sculpt_paint/paint_stroke.cc::PaintStroke::add_sample` + `calc_average_sample` — a ring
-//! buffer of up to `input_samples` recent (position, pressure) samples, averaged *unweighted*
+//! Behavioural reference (clean-room, no code copied): the sample-accumulation stage of Blender's
+//! stroke engine — a ring buffer of up to `input_samples` recent (position, pressure) samples,
+//! averaged *unweighted*
 //! before the sample feeds spacing/stabilize. Blender clamps the window to
 //! `PAINT_MAX_INPUT_SAMPLES` (64).
 

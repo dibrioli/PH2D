@@ -349,8 +349,8 @@ fn a_pointer_event_is_walked_at_the_brushes_spacing_and_stops_where_the_ray_miss
     // `cargo test -p ph2d-sculpt3d` não os alcança. É a mesma causa estrutural
     // que a `line/Vector` e a `line/physics` já registaram.
     // ⚠️ **`steps.anchor()`, e NUNCA o último dab aplicado — as DUAS
-    // referências concordam.** O Blender escreve `last_mouse_position = mval`
-    // (`paint_stroke.cc:509`) **antes** do teste de acerto (`:536-538`): o passo
+    // referências concordam.** O Blender escreve a última posição de rato
+    // **antes** do teste de acerto: o passo
     // é dado e só a aplicação é suprimida. O SculptGL chega ao mesmo lugar pela
     // outra ponta (`SculptBase.js:151-152`).
     //
@@ -955,8 +955,8 @@ fn the_pen_up_closes_the_transform_and_that_is_where_the_undo_step_is_written() 
 /// *"metade de um par"* e que a metade que faltava seria segurar a âncora.
 ///
 /// **As duas referências dizem o oposto, e cada uma pela sua ponta:**
-/// - Blender — `last_mouse_position = mval` (`paint_stroke.cc:509`) é escrito
-///   **ANTES** do teste de acerto (`:536-538`). O passo é dado; só a aplicação
+/// - Blender — a última posição de rato é escrita
+///   **ANTES** do teste de acerto. O passo é dado; só a aplicação
 ///   é suprimida.
 /// - SculptGL — `_lastMouse = mouse` (`SculptBase.js:151-152`), pareado com o
 ///   `break`. O resíduo inteiro é descartado.

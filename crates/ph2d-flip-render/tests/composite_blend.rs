@@ -848,7 +848,7 @@ fn the_dotted_tip_reaches_the_walk_and_the_beads_land_where_the_raster_puts_them
 }
 
 /// 🔴 **O FADE SUB-PIXEL CHEGOU AO PERCURSO** — e aqui o rasterizador é oráculo **exato**, não
-/// aproximado: o fade é um port do `gpencil_frag.glsl:534`, uma multiplicação na cobertura, sem
+/// aproximado: o fade é um port do fragmento do GP, uma multiplicação na cobertura, sem
 /// nenhuma quadratura envolvida.
 ///
 /// Duas metades, e a segunda é a que mata um no-op:

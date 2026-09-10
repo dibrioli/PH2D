@@ -318,7 +318,7 @@ fn the_stored_stroke_follows_the_hand_without_hoarding_points() {
 /// 📏 **SONDA — o que sobra depois da cura da simplificação: a CAPTURA e o SMOOTHING.**
 ///
 /// ⚠️ *"Melhor, mas ainda não tão bom como o Blender"* (Enio, 2026-07-30). O `simplify_rdp` é porte
-/// do `paint.cc` do próprio Blender, então a diferença não está NELE — está nos dois estágios que
+/// do motor de traço do próprio Blender, então a diferença não está NELE — está nos dois estágios que
 /// vêm ANTES e que são nossos:
 ///
 /// - **`MIN_SAMPLE_PX = 2,0`** — a captura DESCARTA todo movimento menor que 2 px de tela. O

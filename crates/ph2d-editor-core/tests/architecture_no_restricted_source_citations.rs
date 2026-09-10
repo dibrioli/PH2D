@@ -21,26 +21,37 @@
 //!    linha de código entra na tabela de strings do binário. É a única
 //!    sub-espécie que **sai do repositório sem passar pelo `git`**, e por isso
 //!    não tem lista de tolerância nenhuma.
-//! 2. **EM comentário: catraca por crate.** São `103` hoje, e o número **só
-//!    desce**. Uma entrada que chegue a zero é **obsoleta e tem de ser
-//!    apagada** — *uma catraca sem censo de obsolescência não desce: ela vira
-//!    licença* (`CLAUDE.md` §5.0).
+//! 2. **EM comentário: catraca por crate.** Ela está **VAZIA** — a dívida foi de
+//!    `351` a `0` —, e por isso qualquer citação nova reprova. Uma entrada que
+//!    chegue a zero é **obsoleta e tem de ser apagada** — *uma catraca sem censo
+//!    de obsolescência não desce: ela vira licença* (`CLAUDE.md` §5.0).
 //!
-//! ## O detector, e as duas maneiras de ele mentir
+//! ## O detector, e as SETE maneiras de ele mentir
 //!
-//! ⚠️ **A primeira redacção pedia `:<linha>`** e lia `64` ficheiros onde a
-//! verdade era muito maior: metade das citações é o nome **nu** entre crases.
-//! ⚠️⚠️ **E alargá-la sem olhar o CONTEXTO mente ao contrário:** `\w+\.h` casa
-//! `rect.h` — a ALTURA de um rectângulo — e essa forma acusa `152` sítios
-//! inocentes só na `ph2d-editor-core`. ⇒ o discriminador é a **linha ser um
-//! comentário**, e com ele o ruído mede **zero**.
+//! ⛔⛔ **As sete foram achadas a MEDIR o que ele acusava, nunca a pensar** — e
+//! quatro delas só apareceram depois de a dívida encolher, porque *uma população
+//! grande esconde os erros do instrumento no meio do trabalho legítimo*.
+//!
+//! 1. **Pedir `:<linha>`** lia `64` ficheiros onde a verdade era muito maior:
+//!    metade das citações é o nome **nu** entre crases.
+//! 2. **Alargar sem olhar o CONTEXTO mente ao contrário:** `\w+\.h` casa
+//!    `rect.h` — a ALTURA de um rectângulo — e acusa `152` sítios inocentes só
+//!    na `ph2d-editor-core`. ⇒ o discriminador é a **linha ser um comentário**.
+//! 3. **Um CAMPO entre crases numa expressão com espaços** (`` `a.w × a.h` ``).
+//! 4. **Um campo nosso que «parecia» cabeçalho** por ter `_` (`list_rect.h`).
+//! 5. **`ficheiro.cc::simbolo`** escapava às quatro outras formas — a citação
+//!    **mais** específica de todas media zero, em seis sítios.
+//! 6. **O HÍFEN cortava o nome** (`bezier-utils.cpp` → `utils.cpp`), logo um
+//!    artefacto já triado continuava a contar.
+//! 7. **A nossa própria bancada, se mora FORA do repo**, lê-se como alheia — o
+//!    discriminador «é da nossa árvore?» só varre o que está dentro.
 //!
 //! ## ⛔ Uma entrada na catraca NÃO é uma acusação
 //!
 //! Ela diz *«ninguém classificou isto ainda»*. A triagem é por ARTEFACTO e é
 //! papel de um revisor que vê os dois lados: uma citação a alvo **permissivo**
-//! (MIT/BSD) é atribuição legítima e **fica** — as sete abaixo são-no, cada uma
-//! com a licença ao lado. Uma citação a alvo **restrito** sai, e o FACTO que ela
+//! (MIT/BSD/…) é atribuição legítima e **fica**, com a licença **lida no
+//! artefacto** ao lado. Uma citação a alvo **restrito** sai, e o FACTO que ela
 //! carregava fica, re-dito em vocabulário do domínio.
 //!
 //! Dep-free (só `std`), como os outros gates de arquitectura.
@@ -86,41 +97,67 @@ const ALVO_PERMISSIVO: &[(&str, &str)] = &[
     // plano da UI é derivado do tema «Modern» dele.
     ("theme_modern.cpp", "Godot, MIT"),
     ("editor_theme_manager.cpp", "Godot, MIT"),
+    ("editor_dock.h", "Godot, MIT"),
     // Chromium — BSD-3. A resolução da bézier de temporização.
     ("cubic_bezier.cc", "Chromium, BSD-3"),
     // Instant Meshes — BSD-3. É o porte fiel que o `ph2d-quadflow` É, e a
     // atribuição é obrigação da licença, não dívida.
+    //
+    // ⚠️ **Quatro dos cinco declaram a licença NA PRÓPRIA linha que os cita**, e
+    // o quinto (`optimizer.cpp`) é o mesmo artefacto instalado — nenhuma destas
+    // foi adivinhada a partir do nome do projecto.
     ("field.cpp", "Instant Meshes, BSD-3"),
     ("extract.cpp", "Instant Meshes, BSD-3"),
+    ("hierarchy.cpp", "Instant Meshes, BSD-3"),
+    ("cleanup.cpp", "Instant Meshes, BSD-3"),
+    ("adjacency.cpp", "Instant Meshes, BSD-3"),
+    ("meshstats.cpp", "Instant Meshes, BSD-3"),
+    ("optimizer.cpp", "Instant Meshes, BSD-3"),
     // Graphics Gems — o ajuste de curva canónico, de uso livre.
     ("FitCurves.c", "Graphics Gems"),
+    // lib2geom — dual `LGPL-2.1-only OR MPL-1.1`, triado 2026-09-09. ⚠️ O
+    // empacotador desta máquina rotula o pacote como «GPL» e o ARTEFACTO
+    // desmente-o: o cabeçalho companheiro instalado e a tag SPDX do próprio
+    // ficheiro concedem a dupla. *A unidade da triagem é o artefacto instalado,
+    // nunca o rótulo do pacote.*
+    ("bezier-utils.cpp", "lib2geom, LGPL-2.1-only OR MPL-1.1"),
+    // libSatsuma — MIT, com `SPDX-License-Identifier: MIT` na linha 2 de CADA um
+    // dos dois. ⚠️⚠️ **É a armadilha do §0.9 ao contrário:** a APLICAÇÃO que os
+    // linka (o oráculo de quantização) é GPL-3.0 e a BIBLIOTECA citada é MIT —
+    // triar pelo nome do projecto restrito pagaria clean-room por um motor que
+    // este repo pode simplesmente ligar.
+    ("CostFunction.hh", "libSatsuma, MIT"),
+    ("Highlevel.cc", "libSatsuma, MIT"),
+    // ⭐⭐ **E estes dois são NOSSOS** — a bancada do PH2D, que vive FORA da
+    // árvore do repo (`ph2d-quadbench/`, ao lado do oráculo). O discriminador
+    // `nomes_da_nossa_arvore` só varre `crates`/`shells`/`docs`/`scripts`, logo
+    // não os alcança: *a nossa própria ferramenta, se morar fora do repo, lê-se
+    // como citação de alvo alheio.* A premissa da pergunta que os mandou triar
+    // estava errada, e foi o revisor que a desmentiu.
+    ("layout.py", "bancada do PH2D, obra própria"),
+    ("metrics.py", "bancada do PH2D, obra própria"),
 ];
 
-/// ⚠️ **O que NÃO entrou, e porquê:** o `layout.py` citado pela bancada da
-/// `ph2d-quantize` é do **oráculo**, que é restrito — e a nota ao lado dele diz
-/// que ele vive *fora da árvore*, o que não o torna permissivo. Fica na catraca
-/// até um revisor que veja os dois lados o classificar.
+/// ⚠️ **A entrada que este ficheiro teve ERRADA, e o registo fica:** o
+/// `layout.py` estava aqui listado como *«do oráculo, restrito»*, com a nota
+/// *«vive fora da árvore»* lida como agravante. O revisor mediu-o: **o upstream
+/// não tem ficheiro nenhum com esse nome**, e ele é a nossa própria bancada.
+/// *Uma acusação de proveniência afirmada pelo vizinho de um ficheiro é um
+/// palpite com cara de triagem* — a licença lê-se no artefacto.
 const _: () = ();
 
 /// A catraca: quantas citações **em comentário** cada crate ainda carrega.
 ///
-/// ⚠️ **Os números só DESCEM.** Chegando a zero, a linha sai — o gate exige-o.
-/// Baseline de 2026-09-09, medido depois de as seis citações fora de comentário
-/// terem sido curadas.
-const POR_CLASSIFICAR: &[(&str, usize)] = &[
-    ("crates/ph2d-anim", 1),
-    ("crates/ph2d-editor-core", 5),
-    ("crates/ph2d-flip", 13),
-    ("crates/ph2d-flip-render", 7),
-    ("crates/ph2d-flip-reshape", 13),
-    ("crates/ph2d-painter-brush", 28),
-    ("crates/ph2d-panel-asset-browser", 1),
-    ("crates/ph2d-panel-sculpt3d", 7),
-    ("crates/ph2d-quadflow", 5),
-    ("crates/ph2d-quantize", 4),
-    ("crates/ph2d-tool-flip", 1),
-    ("shells/desktop", 18),
-];
+/// ⭐⭐⭐ **ELA ESTÁ VAZIA, e isso é o fundo da escada.** A dívida foi de `351`
+/// (censo de abertura) a `145`, a `103`, a **`0`** — parte curada, parte triada
+/// como atribuição legítima a alvo permissivo. Com a lista vazia, **qualquer**
+/// citação nova a ficheiro-fonte externo reprova o gate, e a cura é uma de duas:
+/// dizer o FACTO em vocabulário do domínio, ou — se o artefacto for permissivo —
+/// pô-lo em [`ALVO_PERMISSIVO`] **com a licença lida no próprio artefacto**.
+///
+/// ⚠️ **Os números só DESCEM.** Uma entrada que meça zero é obsoleta e tem de
+/// sair; o gate exige-o, e foi essa metade que apagou as doze que aqui estavam.
+const POR_CLASSIFICAR: &[(&str, usize)] = &[];
 
 /// ⚠️⚠️ **O DETECTOR NÃO SE CONTA A SI PRÓPRIO.**
 ///
@@ -166,6 +203,14 @@ fn citacoes_com(l: &str, nossos: &std::collections::BTreeSet<String>) -> usize {
                     .chars()
                     .next()
                     .is_some_and(|c| c.is_ascii_digit());
+            // ⚠️⚠️ **A QUINTA forma, e ela escapava a TODAS as outras quatro:**
+            // `ficheiro.cc::simbolo` não é seguido de dígito nem de crase, então
+            // nem `com_linha` nem `nu` a viam. Ela é a citação **mais** específica
+            // das cinco — carrega o ficheiro *e* o nome interno —, e media zero.
+            // ⛔ Ela existia em **seis** sítios, um deles numa crate que este
+            // gate dava por curada: *um instrumento que não conhece uma forma
+            // devolve zero sobre ela e lê-se como aprovado.*
+            let com_simbolo = depois.starts_with("::");
             // `` `algo.cc` `` — a extensão fecha uma crase, e o que está entre as
             // duas é UM token só.
             //
@@ -174,17 +219,25 @@ fn citacoes_com(l: &str, nossos: &std::collections::BTreeSet<String>) -> usize {
             // — e ali o `.h` é a ALTURA de um rectângulo NOSSO, dentro de uma
             // expressão com espaços. É a terceira forma de o detector mentir, e
             // as três foram achadas a MEDIR, nunca a pensar.
-            let nu = depois.starts_with('`')
-                && l[..i]
-                    .rfind('`')
-                    .is_some_and(|k| !l[k + 1..i].contains(' '));
-            if !(com_linha || nu) {
+            let abre = l[..i].rfind('`');
+            let nu = depois.starts_with('`') && abre.is_some_and(|k| !l[k + 1..i].contains(' '));
+            // O token entre crases traz um separador de caminho?
+            // (`makesdna/DNA_brush_types.h` traz; `list_rect.h` não.)
+            let com_caminho = nu && abre.is_some_and(|k| l[k + 1..i].contains('/'));
+            if !(com_linha || nu || com_simbolo) {
                 continue;
             }
             // O que vem ANTES do ponto tem de parecer um nome de ficheiro.
+            // ⚠️⚠️ **O HÍFEN faz parte do nome, e não fazia:** sem ele
+            // `bezier-utils.cpp` extraía-se como `utils.cpp`, que não casa com
+            // entrada nenhuma das duas tabelas ⇒ um artefacto **já triado como
+            // permissivo** continuava a contar como dívida, e um restrito com
+            // hífen no nome seria atribuído ao ficheiro errado. *Um extractor
+            // que corta o nome a meio não erra só a contagem: erra a
+            // IDENTIDADE, que é o que a triagem por artefacto precisa.*
             let antes = &l[..i];
             let ultimo = antes
-                .rfind(|c: char| !(c.is_ascii_alphanumeric() || c == '_'))
+                .rfind(|c: char| !(c.is_ascii_alphanumeric() || c == '_' || c == '-'))
                 .map_or(antes, |k| &antes[k + 1..]);
             if ultimo.is_empty() || !ultimo.chars().next().is_some_and(char::is_alphabetic) {
                 continue;
@@ -192,14 +245,24 @@ fn citacoes_com(l: &str, nossos: &std::collections::BTreeSet<String>) -> usize {
             // ⚠️⚠️ **`.h` e `.c` COLIDEM com campos comuns** — `rect.h` é a altura
             // de um rectângulo e `region.h` a de uma região, os dois NOSSOS e os
             // dois escritos em crases sem espaço. ⇒ para estas duas extensões um
-            // nome só conta se PARECER um cabeçalho: com `_` ou maiúscula.
-            // ⛔ **É uma heurística, e o custo tem nome:** um cabeçalho de uma
-            // palavra e minúsculo citado sem número de linha passa despercebido.
-            // A alternativa — contá-los — acusa `7` sítios vivos e manda a cura
-            // errada, que é pior.
+            // nome só conta se PARECER um cabeçalho: **maiúscula** no nome, ou um
+            // **caminho** à frente dele.
+            //
+            // ⚠️⚠️ **A 1.ª redacção aceitava também o `_`, e isso era um FALSO
+            // POSITIVO medido:** `` `list_rect.h` `` é a ALTURA de uma banda de
+            // lista NOSSA (`ph2d-panel-asset-browser`), e o censo mandava alguém
+            // «curar» uma linha viva. *O custo escrito ao lado desta heurística
+            // dizia só a metade que falha para MENOS; ela também falhava para
+            // MAIS, e só a população o disse.*
+            //
+            // ⛔ **O custo que FICA:** um cabeçalho de uma palavra, minúsculo,
+            // sem caminho e citado sem número de linha passa despercebido. As
+            // duas curas são do lado de quem cita — pôr a linha ou pôr o caminho
+            // —, e **toda** citação real desta árvore já faz uma das duas.
             if matches!(*e, "h" | "c")
                 && !com_linha
-                && !ultimo.contains('_')
+                && !com_simbolo
+                && !com_caminho
                 && !ultimo.chars().any(|c| c.is_ascii_uppercase())
             {
                 continue;
@@ -407,6 +470,28 @@ fn o_detector_conta_o_que_deve_e_nada_mais() {
         1,
         "e um caminho SEM espacos continua a contar -- o controlo do discriminador"
     );
+    // ⛔ O QUARTO defeito, achado a medir a populacao: um CAMPO nosso em crases
+    // que tem `_` e por isso «parecia» cabecalho.
+    assert_eq!(
+        citacoes("/// o `visible_h` era `body_h` num e `list_rect.h` no outro"),
+        0,
+        "`list_rect.h` e' a ALTURA de uma banda NOSSA, nao um cabecalho"
+    );
+    assert_eq!(
+        citacoes("/// os campos de `DNA_brush_types.h`"),
+        1,
+        "e um cabecalho com MAIUSCULA conta -- o controlo do mesmo discriminador"
+    );
+    assert_eq!(
+        citacoes("/// os campos de `makesdna/DNA_brush_types.h`"),
+        1,
+        "com caminho tambem"
+    );
+    assert_eq!(
+        citacoes("/// ver `algum/cabecalho.h`"),
+        1,
+        "um cabecalho minusculo COM caminho conta -- a segunda metade da regra"
+    );
     // ⛔ E o caso que so' a arvore responde: um arnes NOSSO nao conta.
     let nossos: std::collections::BTreeSet<String> = ["blender_sculpt_oracle.py".to_string()]
         .into_iter()
@@ -421,12 +506,70 @@ fn o_detector_conta_o_que_deve_e_nada_mais() {
         1,
         "e sem a arvore ele contaria -- o controlo do proprio discriminador"
     );
-    // ⚠️ A catraca só é honesta se o censo de facto encontrar ficheiros.
-    let (_, agora) = censo();
+    // ⚠️⚠️ **O CONTROLO DE VACUIDADE TEVE DE MUDAR DE GRANDEZA no dia em que a
+    // dívida chegou a zero.** Ele media *«o censo acha pelo menos 10 crates COM
+    // citação»* — uma régua calibrada na dívida existir, que passa a reprovar
+    // sobre a árvore limpa e cuja «cura» seria apagá-la. A pergunta que ele
+    // sempre quis fazer é outra: *a TRAVESSIA anda?* ⇒ conta-se o que ela visita,
+    // que é invariante à dívida.
+    let visitados = ficheiros(&raiz()).len();
     assert!(
-        agora.len() >= 10,
-        "o censo achou so' {} crates -- a travessia partiu-se, e um censo partido \
-         devolve zero e le-se como aprovado",
-        agora.len()
+        visitados >= 1000,
+        "a travessia visitou so' {visitados} ficheiros .rs -- ela partiu-se, e um \
+         censo partido devolve zero e le-se como aprovado"
     );
+}
+
+/// ⭐ **A SONDA — onde estão as citações que a catraca ainda tolera.**
+///
+/// ⚠️ **Ela corre o MESMO detector do gate**, e é por isso que existe: uma lista
+/// derivada por `grep` à parte seria uma segunda resposta à mesma pergunta, e a
+/// que envelhece é sempre a que quem cura lê.
+///
+/// ```text
+/// cargo test -p ph2d-editor-core --test architecture_no_restricted_source_citations \
+///   -- --ignored --nocapture onde_estao
+/// ```
+#[test]
+#[ignore = "sonda"]
+fn onde_estao_as_citacoes_que_a_catraca_tolera() {
+    let raiz = raiz();
+    let isentos: std::collections::BTreeSet<&str> =
+        ATRIBUICAO_PERMISSIVA.iter().map(|(p, _)| *p).collect();
+    let nossos = nomes_da_nossa_arvore(&raiz);
+    let mut por_crate: std::collections::BTreeMap<String, Vec<String>> = Default::default();
+    for f in ficheiros(&raiz) {
+        let rel = f
+            .strip_prefix(&raiz)
+            .unwrap_or(&f)
+            .to_string_lossy()
+            .replace('\\', "/");
+        if isentos.contains(rel.trim_start_matches("crates/")) || rel.ends_with(O_PROPRIO_DETECTOR)
+        {
+            continue;
+        }
+        let Ok(texto) = fs::read_to_string(&f) else {
+            continue;
+        };
+        for (i, l) in texto.lines().enumerate() {
+            let n = citacoes_com(l, &nossos);
+            if n == 0 {
+                continue;
+            }
+            por_crate.entry(dono(&rel)).or_default().push(format!(
+                "{rel}:{}  [{n}]  {}",
+                i + 1,
+                l.trim()
+            ));
+        }
+    }
+    let mut total = 0;
+    for (c, linhas) in &por_crate {
+        println!("\n== {c} — {} linha(s) ==", linhas.len());
+        for l in linhas {
+            println!("  {l}");
+        }
+        total += linhas.len();
+    }
+    println!("\n(total: {total} linha(s) em {} crates)", por_crate.len());
 }

@@ -1,4 +1,4 @@
-//! ADR-0114 W2 T2.9 — the Flip eraser (clean-room of GP `erase.cc`, 3 modes).
+//! ADR-0114 W2 T2.9 — the Flip eraser (clean-room of the Grease Pencil eraser, 3 modes).
 //!
 //! - **Soft** (default, most paint-like): reduces per-point opacity by
 //!   `strength · falloff(dist)` within the brush radius; on pen-up, points that
@@ -15,7 +15,7 @@ use ph2d_core::Vec2;
 use ph2d_flip::{Cap, FlipDrawing, FlipStroke, LayerId};
 use ph2d_tool_flip::EraseMode;
 
-/// Below this opacity a soft-erased point is dropped on pen-up (GP `erase.cc`).
+/// Below this opacity a soft-erased point is dropped on pen-up (the GP eraser's law).
 const OPACITY_REMOVE_THRESHOLD: f32 = 0.05;
 
 /// **A opacidade que o Soft deixa num ponto — IDEMPOTENTE** (Enio 2026-07-17:

@@ -1,6 +1,6 @@
 //! The stroke engine — turns a pointer path into dabs per the Blender "Stroke" panel.
 //!
-//! Behavioural reference (clean-room, no code copied): Blender `paint_stroke.cc`. The per-raw-sample
+//! Behavioural reference (clean-room, no code copied): Blender's stroke engine. The per-raw-sample
 //! pipeline is **input-samples box-average** ([`crate::sampler`]) → **stabilize spring** → per-
 //! [`StrokeMethod`] emission → per-dab **dash gate** + **jitter** + pressure **dynamics** + **space-
 //! attenuation**. `Space` resamples the path at `spacing × diameter`; the per-event methods (`Dots`/
@@ -365,8 +365,8 @@ impl Stroke {
                 );
                 self.advance_anchor(target);
             }
-            // Airbrush deposits dabs ONLY on the timer ([`Stroke::tick`]), never on motion (Blender
-            // `paint_stroke.cc`). A move tracks the (stabilized) cursor for the next tick + advances the
+            // Airbrush deposits dabs ONLY on the timer ([`Stroke::tick`]), never on motion — as in
+            // Blender. A move tracks the (stabilized) cursor for the next tick + advances the
             // Rake heading; holding still keeps depositing at one spot (the characteristic spray).
             StrokeMethod::Airbrush => {
                 let target = self.stabilize(avg);

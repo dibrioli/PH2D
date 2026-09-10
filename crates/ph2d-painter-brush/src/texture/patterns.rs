@@ -1,6 +1,6 @@
 //! Procedural texture **patterns** — the per-coordinate samplers behind every [`super::TextureKind`].
 //!
-//! Clean-room from Blender's texture set (`render/texture/intern/texture.cc`: Clouds / Marble / Wood
+//! Clean-room from Blender's procedural texture set (Clouds / Marble / Wood
 //! / Musgrave / Stucci / Magic / Distorted-Noise / Blend) plus painting-useful extras (paper grain,
 //! crosshatch, halftone dots, grid, bricks). Every sampler returns a coverage multiplier in `[0, 1]`
 //! and is **transcendental-free** (HR-5 determinism): only `+ - * /`, `floor`, `abs`, `sqrt` — the

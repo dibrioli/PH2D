@@ -452,7 +452,7 @@ pub(crate) struct Sculpt3dScene {
     /// **Onde o dedo pousou**, em x — a âncora da força.
     ///
     /// ⚠️ Só o eixo X, e não o par: a força é o arrasto HORIZONTAL, a lei da
-    /// referência (`sculpt_filter_mesh.cc:2299`). Guardar o `y` seria carregar
+    /// referência (o filtro de malha dela). Guardar o `y` seria carregar
     /// um número que ninguém lê.
     filter_from_x: f32,
     /// **QUAL lei o filtro roda** — escolhida no painel, não derivada do verbo.

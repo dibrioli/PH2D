@@ -1,4 +1,4 @@
-//! Autokey **por tool** (W3.T3.4) — port de `grease_pencil_frames.cc:344-378`.
+//! Autokey **por tool** (W3.T3.4) — port da lei de quadros do Grease Pencil.
 //!
 //! A regra que separa um app de animação de um app de desenho: **a ferramenta
 //! decide o que nasce**.

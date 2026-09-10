@@ -293,8 +293,8 @@ fn a_stroke_crossing_itself_is_a_clean_union_without_accumulation() {
         return;
     };
     // UM traço (mesmo sid → mesmo depth) em X com opacity 0.5. No default do GP o
-    // traço NÃO compõe sobre si mesmo ("the stroke cannot overlap itself",
-    // `gpencil_vert.glsl`: depth por-STROKE + GREATER estrito): o cruzamento pinta
+    // traço NÃO compõe sobre si mesmo ("the stroke cannot overlap itself":
+    // depth por-STROKE + GREATER estrito): o cruzamento pinta
     // UMA vez — alpha do cruzamento == alpha de um braço — e a parte desenhada
     // PRIMEIRO fica por cima (com cor sólida a sobreposição é união invisível).
     // O modo que deixa o traço acumular sobre si (`GP_STROKE_OVERLAP`, depth
@@ -1835,7 +1835,7 @@ fn a_subpixel_thin_stroke_fades_instead_of_flickering() {
         return;
     };
     // Um traço mais FINO que um pixel não pode "afinar" — ele perde OPACIDADE
-    // (`gpencil_frag.glsl:534`). Sem esse fade, a linha fina pisca e serrilha ao
+    // (a lei do fragmento do GP). Sem esse fade, a linha fina pisca e serrilha ao
     // mover/zoomar, porque o rasterizador acerta ou erra o centro do pixel.
     let thin = render(&device, &queue, &horizontal_stroke(0.35, 1.0));
     let one_px = render(&device, &queue, &horizontal_stroke(1.0, 1.0));

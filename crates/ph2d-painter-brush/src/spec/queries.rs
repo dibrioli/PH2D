@@ -253,8 +253,8 @@ impl BrushSpec {
 
     /// Whether the dab at dash-slot `slot` is painted, given the dash pattern.
     ///
-    /// Behavioural reference: `paint_stroke.cc::add_step` (`dash = (slot % dash_samples) /
-    /// dash_samples`; skip when `dash > dash_ratio`). `dash_samples == 0` ⇒ no dash (always on).
+    /// Behavioural reference — Blender's per-step dash gate: `dash = (slot % dash_samples) /
+    /// dash_samples`, skip when `dash > dash_ratio`. `dash_samples == 0` ⇒ no dash (always on).
     /// With the default `dash_ratio = 1.0` every slot is on (solid).
     #[must_use]
     pub fn dash_on(&self, slot: u32) -> bool {
@@ -267,8 +267,8 @@ impl BrushSpec {
 
     /// "Adjust Strength for Spacing" multiplier applied to each dab's coverage, in `(0, 1]`.
     ///
-    /// Behavioural reference (clean-room): `paint_stroke.cc::paint_stroke_integrate_overlap` +
-    /// `paint_stroke_overlapped_curve`. Models how many neighbouring dab falloff kernels stack at a
+    /// Behavioural reference (clean-room): Blender's overlap integral over the falloff curve.
+    /// Models how many neighbouring dab falloff kernels stack at a
     /// given phase and returns `1 / max_phase(Σ kernels)` so a densely-spaced stroke is normalised to
     /// unit opacity instead of piling up. Returns `1.0` (no attenuation) when the flag is off or
     /// spacing ≥ 100% (Blender's exact gate). Uses this brush's own falloff, like Blender.

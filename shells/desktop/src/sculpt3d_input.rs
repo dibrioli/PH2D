@@ -267,9 +267,8 @@ impl App {
                         let steps_anchor = steps.anchor();
                         // ⚠️ **A ÂNCORA AVANÇA MESMO QUANDO O DAB É DESCARTADO,
                         // e as DUAS referências concordam nisso.** O Blender
-                        // escreve `last_mouse_position = mval`
-                        // (`paint_stroke.cc:509`) **ANTES** do teste de acerto
-                        // (`:536-538`), então o passo é dado e só a aplicação é
+                        // a última posição de rato **ANTES** do teste de
+                        // acerto, então o passo é dado e só a aplicação é
                         // suprimida; o SculptGL faz o mesmo pela outra ponta
                         // (`SculptBase.js:151-152`, `_lastMouse = mouse`, que
                         // descarta o resíduo inteiro). Nenhuma das duas deixa a
@@ -307,8 +306,8 @@ impl App {
                         // `6,485 % → 0,000 %`), e é ele que faz um traço lento
                         // depositar a mesma densidade que um rápido. É também o
                         // que o Blender faz — lá a âncora caminha em passos
-                        // exatos de um espaçamento e para no último
-                        // (`paint_stroke.cc:822` + `:509`), nunca no ponteiro.
+                        // exatos de um espaçamento e para no último, nunca no
+                        // ponteiro.
                         //
                         // Se o `walk` RECUSOU (o carry, `None`), a âncora fica
                         // onde está — o resíduo acumula até valer um passo, e

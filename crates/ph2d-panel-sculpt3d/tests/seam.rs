@@ -1145,7 +1145,7 @@ fn the_accumulate_switch_is_offered_only_where_it_does_something() {
         // que este repo paga a mesma lição na mesma janela (o
         // `stroke_apply_tests` a pagou com o `unit_accum`). `Grip::Stamp` diz
         // *que gesto é este*; quem responde *este verbo lê o interruptor?* é a
-        // porta, e a demão é um carimbo que **não** o lê (o `layer.cc` mede
+        // porta, e a demão é um carimbo que **não** o lê (o verbo *Layer* mede
         // contra o `orig` incondicionalmente). Enquanto os dois concordassem, o
         // gate era verde por acidente.
         let offers = verb.accumulates();
@@ -2121,9 +2121,9 @@ fn the_beta_slider_starts_where_the_engine_stops_amplifying() {
 /// **O Basic nunca esconde a CURVA que dá forma ao dab** — seja qual for o
 /// verbo.
 ///
-/// ⚠️ **A régua é a REFERÊNCIA, não o gosto.** Medido no
-/// `properties_paint_common.py` do Blender: o `FalloffPanel` **não** é desenhado
-/// por `brush_settings_advanced` — ele é painel de primeira classe, e no
+/// ⚠️ **A régua é a REFERÊNCIA, não o gosto.** Medido nos painéis comuns de
+/// pintura do Blender: o *Falloff* **não** é desenhado dentro das definições
+/// avançadas do pincel — ele é painel de primeira classe, e no
 /// cabeçalho de ferramenta ele é um **popover sempre visível**
 /// (`layout.popover("VIEW3D_PT_tools_brush_falloff")`). Ele é *dobrado*, nunca
 /// *ausente*: o artista SEMPRE vê que existe uma curva.

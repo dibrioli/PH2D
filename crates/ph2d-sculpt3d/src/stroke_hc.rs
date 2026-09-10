@@ -2,8 +2,8 @@
 //! dele sobre o anel.
 //!
 //! Vollmer, Mencl & Müller, EG 1999, *Improved Laplacian Smoothing of Noisy
-//! Surface Meshes*; o port é o *Surface Smooth* +
-//! `sculpt_smooth.cc::surface_smooth_{laplacian,displace}_step` do Blender.
+//! Surface Meshes*; o port é o *Surface Smooth* do Blender, cujo alisador de
+//! superfície corre em **duas passagens** — a laplaciana e a de deslocamento.
 //!
 //! ⚠️ **Este arquivo existe porque o [`Verb::SurfaceSmooth`] é o ÚNICO verbo que
 //! não cabe numa função pura por-vértice**, e a §7.6 do plano 21 já o dizia

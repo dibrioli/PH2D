@@ -1,9 +1,9 @@
 //! Radial distance falloff for the brush dab.
 //!
-//! Behavioural reference (clean-room, no code copied): Blender
-//! `blenkernel/intern/brush.cc::BKE_brush_curve_strength` (the `eBrushCurvePreset` shapes) and
-//! `editors/sculpt_paint/mesh/paint_image_2d_curve_mask.cc` (how the curve is sampled into a
-//! per-pixel mask). Blender evaluates each preset on `p = 1 - distance/radius` (so `p = 1` at the
+//! Behavioural reference (clean-room, no code copied): Blender's brush-falloff curve (the
+//! `eBrushCurvePreset` shapes) and the curve-mask stage of 2D image paint, which samples that
+//! curve into a per-pixel mask. Blender evaluates each preset on `p = 1 - distance/radius`
+//! (so `p = 1` at the
 //! dab centre, `p = 0` at the rim); this port keeps that convention.
 
 /// Falloff profile. Shapes mirror Blender's `eBrushCurvePreset` (the single reference for this

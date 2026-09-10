@@ -92,8 +92,8 @@ pub(super) const TWIST_DEADZONE_PX: f32 = 30.0;
 /// [`ORBIT_RAD_PER_PX`].
 pub(super) const SCALE_PER_PX: f32 = 0.01;
 
-/// Quanta força um pixel de arrasto vale no **FILTRO** —
-/// `sculpt_filter_mesh.cc:2301` da referência.
+/// Quanta força um pixel de arrasto vale no **FILTRO** — a régua do filtro de
+/// malha da referência.
 ///
 /// ⚠️ **Não é um teto nem um ajuste de gosto: é a régua da referência.** Ela
 /// decide quantos pixels o artista percorre para atravessar a faixa útil de cada

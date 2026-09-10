@@ -150,8 +150,8 @@ impl Default for ReshapeParams {
     }
 }
 
-/// **A influência do pincel num ponto** — o funil por onde os oito passam
-/// (`brush_point_influence`, `paint_common.cc:98`).
+/// **A influência do pincel num ponto** — o funil por onde os oito passam (no GP é
+/// uma função só, partilhada por todos os verbos de escultura).
 ///
 /// ```text
 /// influência = força · pressão · falloff_multiframe · queda(distância / raio)
@@ -189,7 +189,7 @@ pub struct Session {
     /// Os traços que este gesto pode tocar (índices no desenho), congelados no down.
     mask: Vec<usize>,
     /// **Grab**: `(traço, anel, ponto, peso)` congelados no down, com `pressure = 1.0`
-    /// (o GP fixa a pressão aqui — `sculpt_grab.cc:188`). O conjunto agarrado nunca é
+    /// (o GP fixa a pressão aqui, dentro do próprio Grab). O conjunto agarrado nunca é
     /// reavaliado: é o que faz o Grab *carregar* um trecho em vez de recrutar pontos
     /// novos a cada milímetro. O `anel` é `None` para o contorno e `Some(k)` para o
     /// k-ésimo buraco de uma região.

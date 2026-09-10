@@ -17,29 +17,29 @@ use crate::{InputSample, ReshapeKind, ReshapeParams, influence};
 use ph2d_core::Vec2;
 use ph2d_flip::FlipStroke;
 
-/// Iterações do kernel do Smooth. **Hard-coded em 2 no GP** (`sculpt_smooth.cc:124`,
-/// `const int iterations = 2`) — não é um parâmetro do brush lá, e não é aqui.
+/// Iterações do kernel do Smooth. **Hard-coded em 2 no GP** (uma constante dentro do
+/// próprio verbo) — não é um parâmetro do brush lá, e não é aqui.
 const SMOOTH_ITERATIONS: u32 = 2;
 
-/// O divisor do Pinch (`sculpt_pinch.cc`: `influence * influence / 25.0f`).
+/// O divisor do Pinch no GP: `influência² / 25`.
 /// Quadrático **e** dividido por 25: no máximo 4% de aproximação por amostra — o
 /// aperto é deliberadamente lento e "cremoso". Mexer nisto é mexer na sensação.
 const PINCH_DIVISOR: f32 = 25.0;
 
-/// O ângulo do Twist por amostra, em radianos: **1 grau** (`sculpt_twist.cc`:
-/// `DEG2RADF(invert ? -1.0f : 1.0f) * influence`).
+/// O ângulo do Twist por amostra, em radianos: **1 grau** — no GP, `±1° · influência`,
+/// com o sinal a inverter quando o modificador está premido.
 const TWIST_RAD_PER_SAMPLE: f32 = std::f32::consts::PI / 180.0;
 
-/// O passo do Strength (`sculpt_strength.cc`: *"Brush influence mapped to opacity by
-/// a factor of 0.125"*).
+/// O passo do Strength: no GP a influência do pincel mapeia-se em opacidade por um
+/// factor de `0,125`, e o comentário dele diz isso por extenso.
 const STRENGTH_STEP: f32 = 0.125;
 
 /// O passo do Thickness, em **px de tela de LARGURA** por amostra.
 ///
-/// O GP soma `influence · 0.001` ao **raio**, em unidades de mundo
-/// (`sculpt_thickness.cc`: *"Factor 1/1000 is used to map arbitrary influence value
-/// to a sensible radius"*), onde o raio default é `0.01` — ou seja, **10% do raio
-/// default por amostra**.
+/// O GP soma `influência · 0,001` ao **raio**, em unidades de mundo — o factor `1/1000`
+/// existe lá para mapear uma influência arbitrária num raio sensato, e o comentário do
+/// verbo diz isso —, onde o raio default é `0.01` — ou seja, **10% do raio default por
+/// amostra**.
 ///
 /// A nossa largura é o **diâmetro em px de TELA** (pincel absoluto, Enio 2026-07-11)
 /// e o default é 6 px. Preservando a mesma razão — 10% do default por amostra — o
@@ -74,8 +74,8 @@ fn smooth(pts: &mut [Vec2], p: &ReshapeParams, s: &InputSample, closed: bool) ->
     changed
 }
 
-/// **Push** — empurra na direção do movimento do cursor
-/// (`sculpt_push.cc`: `positions += mouse_delta * influence`).
+/// **Push** — empurra na direção do movimento do cursor: no GP, as posições somam
+/// `Δcursor · influência`.
 fn push(pts: &mut [Vec2], p: &ReshapeParams, s: &InputSample) -> bool {
     let delta = s.delta;
     if delta.x == 0.0 && delta.y == 0.0 {
@@ -127,7 +127,7 @@ pub(crate) fn grab(
 
 /// **Pinch** — aperta os pontos em direção ao cursor (com Ctrl: infla).
 ///
-/// `sculpt_pinch.cc`: o fator é `influence²/25`, e o deslocamento é uma FRAÇÃO do
+/// No GP o fator é `influência²/25`, e o deslocamento é uma FRAÇÃO do
 /// vetor até o cursor — quem já está perto anda pouco, quem está longe (mas dentro do
 /// raio) anda mais. É por isso que o Pinch afina uma silhueta em vez de colapsá-la
 /// num ponto.
@@ -163,7 +163,7 @@ fn rotate_small(v: Vec2, theta: f32) -> Vec2 {
 
 /// **Twist** — torce rigidamente ao redor do cursor (com Ctrl: para o outro lado).
 ///
-/// `sculpt_twist.cc`: `angle = ±1° · influence`, e o ponto anda pela DIFERENÇA entre
+/// No GP, `ângulo = ±1° · influência`, e o ponto anda pela DIFERENÇA entre
 /// o raio girado e o raio original — uma rotação rígida do trecho ao redor do cursor,
 /// não um arrasto tangencial.
 fn twist(pts: &mut [Vec2], p: &ReshapeParams, s: &InputSample) -> bool {
@@ -184,7 +184,7 @@ fn twist(pts: &mut [Vec2], p: &ReshapeParams, s: &InputSample) -> bool {
 
 /// **Thickness** — engrossa (com Ctrl: afina), **aditivo, nunca proporcional**.
 ///
-/// `sculpt_thickness.cc`: `radius = max(radius ± influence·k, 0)`. Aditivo é
+/// No GP, `raio = max(raio ± influência·k, 0)`. Aditivo é
 /// deliberado: um passo proporcional nunca sairia do zero (um ponto de largura 0 ficaria 0
 /// para sempre) e engrossaria o grosso mais que o fino, exagerando a diferença em vez
 /// de nivelá-la.
@@ -207,7 +207,7 @@ pub(crate) fn thickness(st: &mut FlipStroke, p: &ReshapeParams, s: &InputSample)
 
 /// **Strength** — a opacidade por-ponto (com Ctrl: apaga aos poucos).
 ///
-/// `sculpt_strength.cc`: `opacity = clamp(opacity ± influence·0.125, 0, 1)`.
+/// No GP, `opacidade = clamp(opacidade ± influência·0,125, 0, 1)`.
 pub(crate) fn strength(st: &mut FlipStroke, p: &ReshapeParams, s: &InputSample) -> bool {
     let pos = st.positions().to_vec();
     let mut changed = false;
@@ -239,10 +239,9 @@ fn hash01(seed: u64, index: u64) -> f32 {
     ((z >> 40) as f32) / ((1u32 << 24) as f32)
 }
 
-/// **Randomize** — bagunça a posição, **só perpendicular ao movimento** do cursor
-/// (`sculpt_randomize.cc:81-96`).
+/// **Randomize** — bagunça a posição, **só perpendicular ao movimento** do cursor.
 ///
-/// Três coisas que o fonte revela e que a intuição erraria:
+/// Três coisas que o comportamento medido revela e que a intuição erraria:
 ///
 /// 1. **Perpendicular, não radial.** O ruído é aplicado ao longo do `sideways` =
 ///    a normal da direção do mouse. Ruído radial engrossaria/afinaria a silhueta; o

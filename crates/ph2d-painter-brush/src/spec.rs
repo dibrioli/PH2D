@@ -1,6 +1,6 @@
 //! `BrushSpec` — the brush parameters.
 //!
-//! Clean-room model of the relevant fields of Blender's `Brush` (`makesdna/DNA_brush_types.h`):
+//! Clean-room model of the relevant fields of Blender's `Brush` struct:
 //! radius, strength, the per-dab build-up (`flow`/`alpha`), spacing, blend mode, the distance
 //! falloff curve, jitter, and the paint colour. Fields the texture painter does not need yet
 //! (texture slots, stencil masks, projection options) are deliberately omitted — see
@@ -22,9 +22,9 @@ pub const MAX_BRUSH_RADIUS_PX: f32 = 4096.0;
 
 /// Airbrush **Rate** (timer period, seconds) soft-range floor — the fastest spray the UI slider
 /// reaches (~100 Hz). Blender's `rate` `ui_range` is `0.01..1.0` s (default `0.1`); the hard RNA
-/// range is wider, but `rna_brush.cc` is not in the vendored checkout, so this is the well-known
-/// Blender soft range, not an in-tree-verified value. The default `0.1` IS verified
-/// (`DNA_brush_types.h:232`). See [`crate::Stroke::tick`].
+/// range is wider, but the reference's property declarations are not in the vendored checkout, so
+/// this is the well-known Blender soft range, not an in-tree-verified value. The default `0.1` IS
+/// verified in-tree. See [`crate::Stroke::tick`].
 pub const AIRBRUSH_RATE_MIN_S: f32 = 0.01;
 /// Airbrush **Rate** soft-range ceiling (slowest spray, ~1 Hz). See [`AIRBRUSH_RATE_MIN_S`].
 pub const AIRBRUSH_RATE_MAX_S: f32 = 1.0;
@@ -49,8 +49,8 @@ pub struct BrushSpec {
     /// Radial intensity profile.
     pub falloff: Falloff,
     /// Random per-dab position offset when [`Self::jitter_unit`] is [`JitterUnit::Brush`]: a
-    /// fraction of the diameter, `0..1` (Blender `Brush.jitter`, default `0.0`,
-    /// `DNA_brush_types.h:221`). Max radial offset ≈ `jitter × diameter`.
+    /// fraction of the diameter, `0..1` (Blender `Brush.jitter`, default `0.0`, verified
+    /// in-tree). Max radial offset ≈ `jitter × diameter`.
     pub jitter: f32,
     /// Paint colour, straight RGB in `[0, 1]` in the layer's native space.
     pub color: [f32; 3],
@@ -58,9 +58,9 @@ pub struct BrushSpec {
     /// (ignored otherwise). Kept inline so the spec stays `Copy`/alloc-free.
     pub custom_falloff: FalloffCurve,
 
-    // ── Stroke panel (Blender `paint_stroke.cc` / `DNA_brush_types.h`) ──────────────
-    /// How the pointer path becomes dabs (Blender `stroke_method`, default `Space`,
-    /// `DNA_brush_types.h:213`).
+    // ── Stroke panel (Blender's stroke engine + the brush fields) ─────────────────
+    /// How the pointer path becomes dabs (Blender `stroke_method`, default `Space`, verified
+    /// in-tree).
     pub stroke_method: StrokeMethod,
     /// **Grid Stamp — o tamanho da célula em px de imagem** (`[largura, altura]`). Só
     /// [`StrokeMethod::GridStamp`] o lê; nos demais métodos é inerte, e por isso o painel não o pinta.
@@ -82,8 +82,8 @@ pub struct BrushSpec {
     /// sem que o padrão inteiro se re-espace por baixo.
     pub grid_fit: f32,
     /// "Adjust Strength for Spacing" — normalise total deposited opacity so a densely-spaced
-    /// stroke doesn't pile up to full opacity (Blender `BRUSH_SPACE_ATTEN`, default ON,
-    /// `DNA_brush_types.h:206`). Only applies for spacing < 100% (see [`Self::space_overlap_factor`]).
+    /// stroke doesn't pile up to full opacity (Blender `BRUSH_SPACE_ATTEN`, default ON, verified
+    /// in-tree). Only applies for spacing < 100% (see [`Self::space_overlap_factor`]).
     pub space_attenuation: bool,
     /// **Accumulate** (Blender `BRUSH_ACCUMULATE`, bit 13, default OFF): when OFF, a single stroke is
     /// capped at [`Self::strength`] — overlapping dabs (incl. passing the brush back over itself) do
@@ -173,19 +173,19 @@ pub struct BrushSpec {
     /// `disableMultiStroke` do `rough.js`, ligado por default); `1` é a linha que só vagueia.
     pub rough_passes: u32,
     /// Dash "on" fraction of each dash period, `0..1` (Blender `dash_ratio`, default `1.0` = solid,
-    /// `DNA_brush_types.h:275`).
+    /// verified in-tree).
     pub dash_ratio: f32,
-    /// Dash period length in dab-slots (Blender `dash_samples`, default `20`,
-    /// `DNA_brush_types.h:276`). `0` is treated as "no dash" (solid).
+    /// Dash period length in dab-slots (Blender `dash_samples`, default `20`, verified
+    /// in-tree). `0` is treated as "no dash" (solid).
     pub dash_samples: u32,
     /// Unit for [`Self::jitter`] / [`Self::jitter_absolute_px`] (Blender `BRUSH_ABSOLUTE_JITTER`).
     pub jitter_unit: JitterUnit,
     /// Random per-dab offset in pixels when [`Self::jitter_unit`] is [`JitterUnit::View`]
-    /// (Blender `jitter_absolute`, default `0`, `DNA_brush_types.h:223`). Max radial offset
+    /// (Blender `jitter_absolute`, default `0`, verified in-tree). Max radial offset
     /// ≈ `2 × jitter_absolute_px`, independent of brush size.
     pub jitter_absolute_px: f32,
     /// Number of most-recent raw input samples box-averaged before processing, `>= 1`
-    /// (Blender `input_samples`, default `1`, `DNA_brush_types.h:216`).
+    /// (Blender `input_samples`, default `1`, verified in-tree).
     pub input_samples: u32,
     /// Stroke **stabilizer** intensity, `0..1` — a single "how regular" knob (substitute for
     /// Blender's smooth-stroke). `0` = the raw path (straight chords through every sample, exact,
@@ -193,10 +193,10 @@ pub struct BrushSpec {
     /// inter-sample curvature, so a shaky hand draws a clean, regular line. Real-time (causal); the
     /// lag is proportional to the intensity the artist dials in. See [`Stroke`].
     pub stabilizer: f32,
-    /// Airbrush emission period in seconds (Blender `rate`, default `0.1` = 10 Hz,
-    /// `DNA_brush_types.h:232`). Used only by [`StrokeMethod::Airbrush`]; the tool's tick drives it.
+    /// Airbrush emission period in seconds (Blender `rate`, default `0.1` = 10 Hz, verified
+    /// in-tree). Used only by [`StrokeMethod::Airbrush`]; the tool's tick drives it.
     pub airbrush_rate_s: f32,
-    /// "Edge to Edge" — Anchored only (Blender `BRUSH_EDGE_TO_EDGE`, `DNA_brush_enums.h:376`).
+    /// "Edge to Edge" — Anchored only (Blender's `BRUSH_EDGE_TO_EDGE` flag).
     /// OFF: the single stamp is centred on the anchor (press point) with radius = drag distance.
     /// ON: it's centred on the midpoint anchor→cursor with half that radius, so the dab spans
     /// edge-to-edge from the press point to the cursor. See the Anchored arm of [`Stroke::extend`].

@@ -1,9 +1,8 @@
 //! Editable custom falloff curve — the [`Falloff::Custom`](crate::Falloff::Custom) profile.
 //!
 //! Behavioural reference (clean-room, no code copied): Blender's brush falloff
-//! "Custom" `CurveMapping` (`blenkernel/intern/colortools.cc`
-//! `BKE_curvemapping_evaluate`, sampled into the per-texel dab mask by
-//! `editors/sculpt_paint/mesh/paint_image_2d_curve_mask.cc`). `x` is the
+//! "Custom" `CurveMapping`, sampled into the per-texel dab mask by the
+//! curve-mask stage of 2D image paint. `x` is the
 //! normalized distance from the dab centre (`0` = centre, `1` = rim); `y` the
 //! strength.
 //!

@@ -7,8 +7,7 @@
 //! métodos daqui manipulam só `Option<DrawingId>` e a topologia de chaves.
 //!
 //! A mecânica de `add_frame`/`remove_frame`/`remove_leading_end_frames` é
-//! portada 1:1 do Grease Pencil 5.2 (`blenkernel/intern/grease_pencil.cc`, ver
-//! `02_referencia §1`), clean-room.
+//! portada 1:1 do Grease Pencil 5.2 (ver `02_referencia §1`), clean-room.
 
 use crate::cycle::LayerCycle;
 use crate::frame::{FlipFrame, Hold, KeyKind};
@@ -195,7 +194,7 @@ impl FlipLayer {
     }
 
     /// Insere uma chave em `key` apontando `drawing`, com o hold dado. Espelha
-    /// `Layer::add_frame` (`grease_pencil.cc:1535`).
+    /// a inserção de quadro do Grease Pencil.
     ///
     /// Regras (clean-room do GP):
     /// - `key` livre → insere; `key` já é sentinela → sobrescreve; `key` já é
@@ -253,8 +252,7 @@ impl FlipLayer {
         true
     }
 
-    /// Remove a chave em `key`. Espelha `Layer::remove_frame`
-    /// (`grease_pencil.cc:1565`).
+    /// Remove a chave em `key`. Espelha a remoção de quadro do Grease Pencil.
     ///
     /// Devolve:
     /// - `None` se `key` não existe (no-op);

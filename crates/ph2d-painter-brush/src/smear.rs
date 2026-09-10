@@ -1,9 +1,8 @@
 //! Smear one dab — drag the canvas content along the stroke.
 //!
-//! **Clean-room** behaviour of Blender's 2D image-paint Smear
-//! (`editors/sculpt_paint/mesh/paint_image_2d.cc`: `paint_2d_lift_smear` lifts the footprint region
-//! from the *previous* dab position, then blends it at the *current* position with
-//! `IMB_BLEND_INTERPOLATE`, masked by the brush falloff × strength). This is the community-accepted
+//! **Clean-room** behaviour of Blender's 2D image-paint **Smear** brush: it lifts the footprint
+//! region from the *previous* dab position, then blends it at the *current* position by linear
+//! interpolation, masked by the brush falloff × strength. This is the community-accepted
 //! "Smear"/Smearing algorithm — Krita's Color Smudge "Smearing" mode is the same idea ("copies the
 //! area underneath the previous position of the brush onto the new position, taking opacity into
 //! account"). Only the algorithm is ported, never the code.

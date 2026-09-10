@@ -1,8 +1,8 @@
 //! Clone one dab — copy canvas pixels from a fixed source OFFSET to the dab position (the clone stamp).
 //!
-//! **Clean-room** behaviour of Blender's 2D image-paint Clone
-//! (`paint_image_2d.cc`: `paint_2d_clone` lifts the footprint region from `dest − clone_offset·size`
-//! and composites it with `IMB_BLEND_INTERPOLATE`, masked by the brush falloff × strength) ≡ the
+//! **Clean-room** behaviour of Blender's 2D image-paint **Clone** brush — it lifts the footprint
+//! region from `dest − offset·size` and composites it by linear interpolation, masked by the
+//! brush falloff × strength — which is the
 //! Photoshop/GIMP/Krita **Clone Stamp**: sample a source point, then paint the source region at the
 //! cursor, keeping a fixed source→dest offset. Only the algorithm is ported, never the code.
 //!

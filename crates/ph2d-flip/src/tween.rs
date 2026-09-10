@@ -1,5 +1,5 @@
-//! **Tween** — o inbetween automático (W3.T3.6 + **Tween v2**), clean-room do
-//! `interpolate.cc` + `interpolate_curves.cc` do GP (`02_referencia §3`), com os dois
+//! **Tween** — o inbetween automático (W3.T3.6 + **Tween v2**), clean-room da
+//! interpolação de quadros e de curvas do GP (`02_referencia §3`), com os dois
 //! upgrades qualificados de `04 §2`.
 //!
 //! Dois desenhos-chave A e B; o tween produz o desenho intermediário no fator `t`.

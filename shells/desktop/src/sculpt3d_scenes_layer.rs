@@ -1,4 +1,4 @@
-//! **A CENA DA DEMÃO** (`=33`) — a W8, o `layer.cc` do Blender.
+//! **A CENA DA DEMÃO** (`=33`) — a W8, o verbo *Layer* do Blender.
 //!
 //! ⚠️ **Irmã das outras cenas e não parte delas**, pelo teto de LOC da shell e
 //! pela mesma linha de corte: cada arquivo é a história de uma wave.

@@ -1,9 +1,9 @@
 //! Stamp one brush dab into an RGBA8 layer buffer.
 //!
-//! Behavioural reference (clean-room, no code copied): Blender
-//! `editors/sculpt_paint/mesh/paint_image_2d.cc` (the soft 2D brush that walks the dab's bounding
-//! box, weights each texel by the falloff mask, and blends) + `paint_image_2d_curve_mask.cc` (the
-//! per-texel falloff weight). Distance is measured from the dab centre to each **pixel centre**
+//! Behavioural reference (clean-room, no code copied): Blender's **2D image paint** — the soft
+//! brush that walks the dab's bounding box, weights each texel by the falloff mask, and blends,
+//! plus the curve-mask stage that produces that per-texel weight. Distance is measured from the
+//! dab centre to each **pixel centre**
 //! (`px + 0.5`), matching the texel-centre convention.
 
 use crate::ramp_alpha::RampAlphaMode;

@@ -167,6 +167,11 @@ pub(crate) fn announce() {
          [sculpt3d]        que o resultado final seja o mesmo.\n\
          [sculpt3d]        DEU ERRADO SE: o arrasto lento continuar a fazer MUITO mais que o\n\
          [sculpt3d]        rapido, ou se um arrasto pequeno (menos de um dedo) nao fizer nada.\n\
+         [sculpt3d]        ⚠️ O QUE E' ESPERADO E SURPREENDE: arrastar o DOBRO nao faz o\n\
+         [sculpt3d]        dobro -- faz OITO vezes mais. E' a lei do Blender, medida, e por\n\
+         [sculpt3d]        isso o fim do curso e' dificil de dosear. Se quiser mais forca\n\
+         [sculpt3d]        sem essa violencia, use o *Filter Strength*: ele e' honesto, o\n\
+         [sculpt3d]        dobro dele faz mesmo o dobro.\n\
          [sculpt3d]        ⭐ E ha' um controlo NOVO para isso: *Filter Strength*. Ele\n\
          [sculpt3d]        multiplica a resposta -- em 2 o mesmo arrasto faz o dobro, em 0\n\
          [sculpt3d]        nao faz nada, e em -1 faz ao contrario sem voce voltar com a mao.\n\

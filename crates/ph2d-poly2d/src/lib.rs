@@ -42,11 +42,13 @@
 #![forbid(unsafe_code)]
 
 mod contour;
+mod grid;
 mod mesh;
 mod simplify;
 mod triangulate;
 
 pub use contour::contour;
+pub use grid::{GridOptions, axis_samples, grid_mesh_of};
 pub use mesh::{Mesh2d, MeshOptions, mesh_of};
 pub use simplify::simplify;
 pub use triangulate::triangulate;

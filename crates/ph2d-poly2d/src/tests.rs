@@ -274,3 +274,225 @@ fn a_concave_polygon_keeps_its_concavity() {
         assert!(!dentro, "o triangulo {tri:?} cobre o vazio do L");
     }
 }
+
+/// **A cápsula do smoke** — a arte do braço pintado, em alfa.
+fn capsula(w: usize, h: usize) -> Vec<u8> {
+    let (raio, ax, bx) = (
+        h as f64 / 2.0 - 3.0,
+        h as f64 / 2.0,
+        w as f64 - h as f64 / 2.0,
+    );
+    let mut a = vec![0u8; w * h];
+    for y in 0..h {
+        for x in 0..w {
+            let p = [x as f64 + 0.5, y as f64 + 0.5];
+            let cx = p[0].clamp(ax, bx);
+            let d = (p[0] - cx).hypot(p[1] - h as f64 / 2.0);
+            #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+            let v = ((raio + 1.0 - d).clamp(0.0, 1.0) * 255.0) as u8;
+            a[y * w + x] = v;
+        }
+    }
+    a
+}
+
+/// O aspecto de um triângulo: o maior lado sobre a menor altura. `1` é equilátero.
+fn aspecto(p: [[f64; 2]; 3]) -> f64 {
+    let lados: Vec<f64> =
+        (0..3).map(|k| (p[(k + 1) % 3][0] - p[k][0]).hypot(p[(k + 1) % 3][1] - p[k][1])).collect();
+    let s = lados.iter().copied().fold(0.0f64, f64::max);
+    let area = ((p[1][0] - p[0][0]) * (p[2][1] - p[0][1])
+        - (p[1][1] - p[0][1]) * (p[2][0] - p[0][0]))
+        .abs()
+        / 2.0;
+    let altura = if s > 0.0 { 2.0 * area / s } else { 0.0 };
+    if altura > 0.0 { s / altura } else { f64::INFINITY }
+}
+
+/// ⭐⭐⭐ **A MALHA TEM MIOLO, E AS CÉLULAS SÃO QUADRADAS** — o report do dono de 2026-09-10, dito
+/// como número.
+///
+/// > *«a malha criada automaticamente é de péssima qualidade»*
+///
+/// A malha anterior era o **contorno** triangulado por *ear-clipping*. Medida sobre esta MESMA
+/// cápsula, ela dava:
+///
+/// | | contorno | esta grelha |
+/// |---|---:|---:|
+/// | vértices | `18` | > 100 |
+/// | **no MIOLO** | **`0`** | a maioria |
+/// | aspecto mediano | **`17,42`** | `< 3` |
+/// | pior | **`53,10`** | `< 12` |
+///
+/// ⛔⛔ **O `0` no miolo é a causa inteira**: toda a deformação passava pela borda, e as lascas do
+/// leque cisalhavam a arte.
+///
+/// ⚠️ **A barra do aspecto NÃO é escolhida: `2` é o CHÃO** — um quadrado partido em dois dá dois
+/// triângulos rectângulos isósceles, cuja razão maior-lado/menor-altura é exactamente `2`. Pedir
+/// menos seria pedir o impossível a uma grelha.
+///
+/// (Mutação: voltar ao `mesh_of` do contorno ⇒ RED nas quatro colunas.)
+#[test]
+fn the_mesh_has_a_middle_and_the_cells_are_square() {
+    let (w, h) = (320usize, 96usize);
+    let a = capsula(w, h);
+    let focos: Vec<[f64; 2]> = (0..=3).map(|k| [48.0 + f64::from(k) * 74.6, 48.0]).collect();
+    let m = grid_mesh_of(&a, w as u32, h as u32, &focos, GridOptions::default()).expect("tinta");
+
+    // Um vértice está no MIOLO se está a mais de `4 px` da borda da cápsula.
+    let (raio, ax, bx) = (h as f64 / 2.0 - 3.0, h as f64 / 2.0, w as f64 - h as f64 / 2.0);
+    let miolo = m
+        .rest
+        .iter()
+        .filter(|p| {
+            let cx = p[0].clamp(ax, bx);
+            (raio - (p[0] - cx).hypot(p[1] - h as f64 / 2.0)).abs() >= 4.0
+        })
+        .count();
+    assert!(
+        miolo > m.rest.len() / 2,
+        "so' {miolo} de {} vertices no miolo — a deformacao volta a passar pela BORDA",
+        m.rest.len()
+    );
+    assert!(m.rest.len() > 100, "vertices a menos: {}", m.rest.len());
+
+    let mut asp: Vec<f64> = m
+        .tris
+        .iter()
+        .map(|t| aspecto([
+            m.rest[t[0] as usize],
+            m.rest[t[1] as usize],
+            m.rest[t[2] as usize],
+        ]))
+        .collect();
+    asp.sort_by(f64::total_cmp);
+    let (p50, pior) = (asp[asp.len() / 2], asp[asp.len() - 1]);
+    assert!(
+        p50 < 3.0,
+        "aspecto mediano {p50:.2} — as celulas nao sao quadradas (o chao teorico e' 2,0)"
+    );
+    assert!(pior < 12.0, "pior aspecto {pior:.2} — ha' lascas na malha");
+}
+
+/// ⭐⭐⭐ **UMA ARTICULAÇÃO ADENSA A GRELHA À VOLTA DELA** — a segunda metade do pedido.
+///
+/// > *«deveria ser um quadmesh inteligente com maior densidade nas áreas das articulações»*
+///
+/// ⚠️ **A régua é o ESPAÇAMENTO, medido nos dois sítios** — perto da articulação e longe dela —, e
+/// não a contagem total: uma malha uniformemente fina também teria mais vértices, e não é isso que
+/// foi pedido.
+///
+/// (Mutação: o `passo` devolver `coarse` sempre ⇒ RED.)
+#[test]
+fn a_joint_makes_the_grid_denser_around_it() {
+    let opts = GridOptions {
+        fine: 8.0,
+        coarse: 40.0,
+        radius: 30.0,
+        ..GridOptions::default()
+    };
+    let xs = axis_samples(0.0, 400.0, &[200.0], opts);
+    let vao = |a: f64, b: f64| -> f64 {
+        let d: Vec<f64> = xs
+            .windows(2)
+            .filter(|w| w[0] >= a && w[1] <= b)
+            .map(|w| w[1] - w[0])
+            .collect();
+        d.iter().sum::<f64>() / d.len() as f64
+    };
+    let perto = vao(180.0, 220.0);
+    let longe = vao(0.0, 100.0);
+    assert!(
+        perto < longe * 0.6,
+        "junto da articulacao o vao e' {perto:.1} e longe {longe:.1} — nao adensou"
+    );
+    assert!(perto <= 12.0, "o vao junto da dobra ficou em {perto:.1}");
+    // ⚠️ E o corte cai EXACTAMENTE na articulação — a marcha não a salta.
+    assert!(
+        xs.iter().any(|x| (x - 200.0).abs() < 1e-9),
+        "a articulacao em 200 nao virou corte: {xs:?}"
+    );
+}
+
+/// ⭐⭐ **A MARCHA NUNCA SALTA UMA ARTICULAÇÃO**, mesmo com o passo largo a começar antes dela.
+///
+/// ⛔ Sem essa guarda a dobra fica no MEIO de uma célula grande, e o adensamento existe na tabela
+/// e não no sítio que interessa.
+///
+/// ⚠️⚠️ **A lei é «a menos de um quarto do passo fino», e não «em cima»** — e a diferença não é
+/// folga: uma dobra que cai a `1 px` de um corte que já existe **está** naquele corte, e obrigar um
+/// segundo corte ali produziria uma tira de `1 px` de largura, isto é, a célula de aspecto enorme
+/// que esta wave inteira existe para apagar. ⚠️ A primeira redacção deste gate exigia igualdade e
+/// **reprovou sobre produto correcto**.
+///
+/// (Mutação: tirar o `nx.min(f)` ⇒ RED — a dobra do meio fica a `5` de distância, o dobro da barra.)
+#[test]
+fn the_march_never_steps_over_a_joint() {
+    let opts = GridOptions {
+        fine: 10.0,
+        coarse: 10.0,
+        radius: 0.5,
+        ..GridOptions::default()
+    };
+    let focos = [35.0, 64.0, 95.0];
+    // Um passo fixo de 10 a partir de 0 passa por cima das três.
+    let xs = axis_samples(0.0, 200.0, &focos, opts);
+    let barra = opts.fine * 0.25;
+    for f in focos {
+        let d = xs.iter().map(|x| (x - f).abs()).fold(f64::INFINITY, f64::min);
+        assert!(
+            d <= barra + 1e-9,
+            "a articulacao em {f} ficou a {d:.2} do corte mais proximo (barra {barra:.2}): {xs:?}"
+        );
+    }
+}
+
+/// ⛔ **UMA GRELHA MAIS GROSSA PERTO DA DOBRA É O OPOSTO DO PEDIDO**, e a porta COAGE.
+///
+/// ⚠️ Recusar em silêncio seria pior: o artista poria `coarse < fine` e a malha sairia ao contrário
+/// sem ninguém dizer porquê.
+#[test]
+fn a_coarse_smaller_than_fine_is_coerced_not_obeyed() {
+    let invertido = GridOptions {
+        fine: 20.0,
+        coarse: 5.0,
+        radius: 30.0,
+        ..GridOptions::default()
+    };
+    let xs = axis_samples(0.0, 200.0, &[100.0], invertido);
+    for w in xs.windows(2) {
+        let vao = w[1] - w[0];
+        assert!(
+            vao >= 20.0 - 1e-9 || w[1] >= 200.0 - 1e-9,
+            "um vao de {vao:.2} ficou abaixo do `fine` — a coacao nao aconteceu"
+        );
+    }
+}
+
+/// ⛔ **CÉLULAS SEM TINTA NÃO ENTRAM** — e sem tinta nenhuma a resposta é `None`.
+///
+/// ⚠️ A malha **COBRE** a silhueta e não a segue (o *Expansion* do Puppet): o recorte fino é do
+/// alfa da própria arte. Este gate mede a outra metade — que o vazio LONGE da tinta fica de fora.
+#[test]
+fn cells_without_paint_are_dropped() {
+    // Tinta só no canto superior esquerdo de uma grelha grande.
+    let (w, h) = (200usize, 200usize);
+    let mut a = vec![0u8; w * h];
+    for y in 0..30 {
+        for x in 0..30 {
+            a[y * w + x] = 255;
+        }
+    }
+    let m = grid_mesh_of(&a, w as u32, h as u32, &[], GridOptions::default()).expect("tinta");
+    for p in &m.rest {
+        assert!(
+            p[0] <= 80.0 && p[1] <= 80.0,
+            "o vertice {p:?} nasceu longe de toda a tinta"
+        );
+    }
+    assert_eq!(
+        grid_mesh_of(&vec![0u8; w * h], w as u32, h as u32, &[], GridOptions::default()),
+        None,
+        "sem tinta a resposta e' None, nunca uma malha vazia"
+    );
+}

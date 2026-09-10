@@ -1497,9 +1497,89 @@ gates de unidade, e a nota está escrita no cabeçalho do ficheiro. *Um gate de 
 está escrito», nunca «isto corre».*
 
 ⏳ **ABERTO, e nomeado:** a malha é só o **contorno** (o *ear-clipping* não põe vértices no miolo),
-logo um membro grosso dobra pela borda; um **buraco** no meio de uma forma não é traçado, e a malha
-cobre-o; e o número de triângulos por quadro **não foi medido sob cena cheia** — a rota por
-pipeline de triângulos texturados é a optimização, com razão medida, se a de hoje não couber.
+logo um membro grosso dobra pela borda — ⭐ **o dono viu isso na primeira olhada e a F6-b curou-o**;
+um **buraco** no meio de uma forma não é traçado, e a malha cobre-o; e o número de triângulos por
+quadro **não foi medido sob cena cheia** — a rota por pipeline de triângulos texturados é a
+optimização, com razão medida, se a de hoje não couber.
+
+
+### F6-b — ✅ **A MALHA É UMA GRELHA GRADUADA PELAS ARTICULAÇÕES** (report do dono, 2026-09-10)
+
+> *«a malha criada automaticamente é de péssima qualidade. deveria ser um quadmesh inteligente com
+> maior densidade nas áreas das articulações»* (três fotos)
+
+⭐⭐⭐ **Ele tem razão e o número diz quanto — e o número que o explica não é nenhum dos que a F6
+mediu.** Medido sobre a MESMA cápsula do smoke, com a mesma régua nos dois lados:
+
+| | contorno (a F6) | grelha (hoje) | grelha **sem** articulações |
+|---|---:|---:|---:|
+| vértices | `18` | `154` | `69` |
+| **no MIOLO** | **`0`** | **`114`** | `48` |
+| triângulos | `16` | `252` | `102` |
+| aspecto p50 | `17,42` | **`2,30`** | **`2,00`** |
+| pior aspecto | `53,10` | `8,25` | `3,56` |
+
+⛔⛔ **O `0` da coluna do miolo é a causa inteira.** Um *ear-clipping* triangula o **contorno**: toda
+a deformação tinha de passar pela borda, e as lascas do leque cisalhavam a arte — é literalmente o
+que as fotos mostram. ⚠️ **Nenhum dos 9 gates da malha o via**, porque todos perguntavam pela
+*silhueta* (o anel fecha · o perímetro conta `36` · a concavidade sobrevive) e **nenhum perguntava
+pela DISPOSIÇÃO dos vértices** — *uma malha certa por fora pode não ter nada por dentro.*
+
+⚠️⚠️ **A barra do aspecto NÃO foi escolhida: `2` é o CHÃO.** Um quadrado partido em dois dá dois
+triângulos rectângulos isósceles, cuja razão maior-lado/menor-altura é exactamente `2` — e a coluna
+da direita, uma grelha uniforme, **lê `2,00`**. Pedir menos seria pedir o impossível a uma grelha.
+
+#### ⚠️ O que «quadmesh» quer dizer aqui, e o que ele NÃO muda
+
+O que a qualidade da deformação pede é a **DISPOSIÇÃO DOS VÉRTICES**. ⛔ O *primitivo guardado* não
+pode ser um quadrilátero: o desenho é **um afim por triângulo**, e um afim não leva um quadrilátero
+qualquer a outro qualquer (quatro pontos são **oito equações para seis incógnitas**) ⇒ cada célula é
+guardada como **dois triângulos**, sempre com a diagonal `a–c` escolhida no **repouso**. ⛔ Escolhê-la
+pela célula **deformada** (a mais curta das duas, que é a resposta clássica) faria a malha trocar de
+diagonal a meio de um gesto — *o desenho piscaria exactamente enquanto o artista dobra.*
+
+#### ⭐⭐⭐ Porque é uma GRELHA-PRODUTO e não uma quadtree
+
+Os cortes escolhem-se **eixo a eixo** ([`ph2d_poly2d::axis_samples`](../../crates/ph2d-poly2d/src/grid.rs)):
+uma lista de `x` e uma de `y`, densas perto das articulações e largas longe. A malha é o produto das
+duas, e **ela CONFORMA por construção** — dois vizinhos partilham a aresta inteira, sempre.
+
+⛔ Uma *quadtree* graduada (a resposta «óbvia») deixa **nós pendurados** na transição entre níveis, e
+um nó pendurado abre **FENDA** numa deformação: ele move-se pelos pesos dele enquanto a aresta do
+vizinho grosso se move linearmente entre as pontas. Curá-los pede a tabela de moldes de transição
+(5 casos a menos de rotação) — e a grelha-produto entrega o mesmo adensamento sem nenhum deles.
+
+⚠️ **A fronteira DECLARADA:** a densidade é o produto de dois campos de UMA dimensão, então uma
+articulação adensa a **coluna** e a **linha** inteiras dela. Para um membro — que é o caso deste
+módulo — é o que se quer: as dobras ao longo de um braço dão colunas finas em cada uma, e as linhas
+ficam largas porque o membro é fino de través.
+
+#### ⭐⭐ A malha COBRE a tinta, não segue a silhueta
+
+`expand: 2.0` px — o *Expansion* do *Puppet* do After Effects. ⚠️ O recorte fino é do **alfa da
+própria arte**, que já o faz de graça e ao sub-pixel; obrigar a grelha a seguir o contorno traria de
+volta as células deformadas da borda, *que é exactamente o defeito que esta wave cura*.
+
+#### As articulações são REAIS, não um palpite
+
+[`skeleton_skin_image::joints_in_image`](../../shells/desktop/src/skeleton_skin_image.rs) leva cada
+osso de mundo → local → **pixel da imagem** e entrega a lista ao leaf. ⛔ A `ph2d-poly2d` continua
+sem saber o que é um osso — ela recebe pontos. Lista vazia ⇒ grelha **uniforme**, que é a leitura
+certa de *«não há dobra nenhuma para adensar»*.
+
+**Gates:** 5 novos (`the_mesh_has_a_middle_and_the_cells_are_square` · `a_joint_makes_the_grid_denser_around_it`
+· `the_march_never_steps_over_a_joint` · `a_coarse_smaller_than_fine_is_coerced_not_obeyed` ·
+`cells_without_paint_are_dropped`), **5 de 5 mortos por mutação**, com o controlo da árvore limpa.
+
+⚠️⚠️ **E o primeiro deles reprovou sobre produto CORRECTO.** A 1.ª redacção de
+`the_march_never_steps_over_a_joint` exigia um corte **em cima** da articulação; a lei real é *«a
+menos de um quarto do passo fino»*, e a diferença não é folga — uma dobra a `1 px` de um corte que já
+existe **está** naquele corte, e forçar um segundo ali produziria uma tira de `1 px`, isto é, a
+célula de aspecto enorme que esta wave inteira existe para apagar. *Um gate que exige igualdade onde
+a lei tem tolerância mede o defeito que a tolerância evita.*
+
+⏳ **ABERTO:** os três números (`fine 10` · `coarse 26` · `radius 40` px) são de **PRODUTO, não
+tectos de recurso** — o que está medido é a FORMA da resposta, e quem os julga é o smoke do dono.
 
 
 ## ⛔ Recusas MEDIDAS deste módulo — não as reconstrua
@@ -1519,6 +1599,10 @@ pipeline de triângulos texturados é a optimização, com razão medida, se a d
 | **Criar uma acção com o nome do osso** no *Add Smart Bone* | Veredito do dono (*«porque criar Bone Action no inspector e na timeline? Melhor não criar nada»*): duas coisas fabricadas por um clique, nenhuma pedida. |
 | **Herdar o encaminhamento** pendurando os ids da fileira do lado da dobra na `VECTOR_BONE_VERBS` | Reprovado pelo `table_driven_chips_are_registered_too`: ele exige que o `populate` itere a MESMA tabela que o `paint`, e sem esse laço a fileira seguinte nasce **morta sob o dedo**. |
 | **Registar o chip do selector como `Button`** | Mutação medida: o clique **acende e nunca abre lista nenhuma** (`the_action_picker_lists_the_document…` fica vermelho em *«com a lista ABERTA a acção tem de ser pintada»*). É a cicatriz da swatch dos tokens e dos dois números do Input Map. |
+| **A *quadtree* graduada** como malha da imagem (F6-b) | Ela deixa **nós pendurados** na transição entre níveis, e um nó pendurado abre **FENDA** numa deformação: ele move-se pelos pesos dele enquanto a aresta do vizinho grosso se move linearmente entre as pontas. Curá-los pede a tabela de moldes de transição (5 casos a menos de rotação). A **grelha-produto** entrega o mesmo adensamento e **CONFORMA por construção** — dois vizinhos partilham a aresta inteira, sempre. |
+| **Guardar quadriláteros** em vez de dois triângulos (F6-b) | Um afim não leva um quadrilátero qualquer a outro qualquer: quatro pontos são **oito equações para seis incógnitas**. «Quadmesh» aqui é a DISPOSIÇÃO dos vértices, nunca o primitivo guardado. |
+| **Escolher a diagonal da célula pela forma DEFORMADA** (a mais curta das duas — a resposta clássica) | A malha trocaria de diagonal a meio de um gesto ⇒ *o desenho pisca exactamente enquanto o artista dobra.* A diagonal `a–c` fixa-se no **repouso**. |
+| **Fazer a malha SEGUIR a silhueta** em vez de a cobrir (F6-b) | Traz de volta as células deformadas da borda, que são o defeito que a wave cura. O recorte fino é do **alfa da própria arte**, de graça e ao sub-pixel — o *Expansion* do *Puppet* do AE. |
 
 
 | O quê | Por quê | Onde |

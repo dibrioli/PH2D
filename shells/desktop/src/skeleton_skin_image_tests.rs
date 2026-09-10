@@ -79,15 +79,16 @@ fn only_the_alpha_channel_decides_the_silhouette() {
         }
         v
     };
-    let opts = ph2d_poly2d::MeshOptions::default();
-    let preto = mesh_from_rgba(&faz([0, 0, 0], 255), 20, 20, opts).expect("ha' alfa");
-    let branco = mesh_from_rgba(&faz([255, 255, 255], 255), 20, 20, opts).expect("ha' alfa");
+    let opts = ph2d_poly2d::GridOptions::default();
+    let sem_focos: &[[f64; 2]] = &[];
+    let preto = mesh_from_rgba(&faz([0, 0, 0], 255), 20, 20, sem_focos, opts).expect("ha' alfa");
+    let branco = mesh_from_rgba(&faz([255, 255, 255], 255), 20, 20, sem_focos, opts).expect("ha' alfa");
     assert_eq!(
         preto, branco,
         "a cor mudou a malha — so' o ALFA pode decidir a silhueta"
     );
     assert_eq!(
-        mesh_from_rgba(&faz([255, 255, 255], 0), 20, 20, opts),
+        mesh_from_rgba(&faz([255, 255, 255], 0), 20, 20, sem_focos, opts),
         None,
         "tinta branca com alfa ZERO nao e' tinta"
     );
@@ -121,7 +122,7 @@ fn binding_an_image_to_a_still_skeleton_moves_nothing() {
             e,
             &rgba,
             [40, 20],
-            ph2d_poly2d::MeshOptions::default(),
+            ph2d_poly2d::GridOptions::default(),
             Some(ph2d_ecs::Entity::from_bits(osso)),
         ),
         "o bind tinha de acontecer: ha' osso, ha' tinta e a pose nao e' singular"
@@ -164,7 +165,7 @@ fn turning_the_bone_carries_the_image() {
         e,
         &rgba,
         [40, 20],
-        ph2d_poly2d::MeshOptions::default(),
+        ph2d_poly2d::GridOptions::default(),
         Some(raiz),
     ));
     let malha = malha_de(&sim, e).expect("malha");

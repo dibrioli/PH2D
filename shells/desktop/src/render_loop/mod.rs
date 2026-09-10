@@ -6352,7 +6352,7 @@ impl crate::App {
                         e,
                         &cow,
                         [w, h],
-                        ph2d_poly2d::MeshOptions::default(),
+                        ph2d_poly2d::GridOptions::default(),
                         semente,
                     ) {
                         n_img += 1;

@@ -30,7 +30,7 @@
 //! razão medida**, se a rota de hoje não couber no quadro.
 
 use ph2d_ecs::{Entity, SimWorld};
-use ph2d_poly2d::{Mesh2d, MeshOptions};
+use ph2d_poly2d::Mesh2d;
 use ph2d_render::Sprite;
 use ph2d_skeleton::Xform;
 
@@ -68,15 +68,60 @@ pub(crate) fn pixel_to_local(sprite: &Sprite, size_px: [u32; 2]) -> Option<Xform
 ///
 /// ⚠️ **Só o canal ALFA entra.** A cobertura é o que decide a silhueta, e passar as três cores
 /// junto seria dar ao traçador três respostas para a mesma pergunta.
+///
+/// ⭐⭐⭐ **`focos` são as ARTICULAÇÕES, em pixels da imagem** (report do dono, 2026-09-10:
+/// *«deveria ser um quadmesh inteligente com maior densidade nas áreas das articulações»*). Elas
+/// entram porque só quem prende sabe onde a dobra vai acontecer — o leaf da geometria não sabe o
+/// que é um osso, e não devia saber.
 #[must_use]
 pub(crate) fn mesh_from_rgba(
     rgba: &[u8],
     width: u32,
     height: u32,
-    opts: MeshOptions,
+    focos: &[[f64; 2]],
+    opts: ph2d_poly2d::GridOptions,
 ) -> Option<Mesh2d> {
     let alfa: Vec<u8> = rgba.iter().skip(3).step_by(4).copied().collect();
-    ph2d_poly2d::mesh_of(&alfa, width, height, opts)
+    ph2d_poly2d::grid_mesh_of(&alfa, width, height, focos, opts)
+}
+
+/// ⭐⭐⭐ **AS ARTICULAÇÕES DESTE ESQUELETO, em PIXELS DA IMAGEM** — o que gradua a malha.
+///
+/// ⚠️ **Duas conversões, e a ordem importa:** mundo → local da sprite (o inverso da pose dela) →
+/// pixel da imagem (o inverso da [`pixel_to_local`]). Trocá-las põe as articulações no sítio certo
+/// de um espaço errado, e o adensamento cai onde não há dobra nenhuma — *um defeito que não estoura
+/// e não se vê num gate de geometria, só numa malha que fica fina no sítio errado*.
+///
+/// ⚠️ **A ponta e a raiz de cada osso entram as DUAS.** Numa corrente contínua elas coincidem e o
+/// duplicado é inofensivo (a marcha dos cortes usa o mais próximo); numa ponta de corrente, a
+/// ponta é uma dobra a sério — é lá que a mão do personagem gira.
+#[must_use]
+pub(crate) fn joints_in_image(
+    sim: &SimWorld,
+    e: Entity,
+    ossos: &[Entity],
+    size_px: [u32; 2],
+) -> Vec<[f64; 2]> {
+    let Some(sprite) = sim.world().get::<Sprite>(e) else {
+        return Vec::new();
+    };
+    let (Some(p2l), Some(mundo)) = (
+        pixel_to_local(sprite, size_px),
+        crate::vec_transform::xform_of_transform(crate::vec_transform::world_transform(sim, e))
+            .inverse(),
+    ) else {
+        return Vec::new();
+    };
+    let Some(l2p) = p2l.inverse() else {
+        return Vec::new();
+    };
+    let segs = crate::skeleton_live::bone_segments(sim);
+    ossos
+        .iter()
+        .filter_map(|b| segs.iter().find(|(x, _, _)| *x == b.to_bits()))
+        .flat_map(|&(_, a, t)| [a, t])
+        .map(|p| l2p.apply(mundo.apply(p)))
+        .collect()
 }
 
 /// ⭐⭐⭐ **A MALHA POSADA, em espaço LOCAL da sprite** — o que o desenho vai recortar.

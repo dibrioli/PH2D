@@ -315,7 +315,7 @@ pub(crate) fn bind_image(
     e: Entity,
     rgba: &[u8],
     size_px: [u32; 2],
-    opts: ph2d_poly2d::MeshOptions,
+    opts: ph2d_poly2d::GridOptions,
     seed: Option<Entity>,
 ) -> bool {
     let ossos = skeleton_of(sim, seed);
@@ -323,8 +323,11 @@ pub(crate) fn bind_image(
         return false;
     }
     ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+    // ⭐⭐⭐ **AS ARTICULAÇÕES GRADUAM A MALHA** (report do dono, 2026-09-10). Elas saem daqui e não
+    // do leaf da geometria: só quem PRENDE sabe onde a dobra vai acontecer.
+    let focos = crate::skeleton_skin_image::joints_in_image(sim, e, &ossos, size_px);
     let Some(malha) =
-        crate::skeleton_skin_image::mesh_from_rgba(rgba, size_px[0], size_px[1], opts)
+        crate::skeleton_skin_image::mesh_from_rgba(rgba, size_px[0], size_px[1], &focos, opts)
     else {
         return false;
     };

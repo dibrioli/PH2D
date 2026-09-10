@@ -9,8 +9,8 @@
 |---|---|
 | worktree | `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-3DModeling` |
 | ramo | `line/3DModeling` |
-| commits à frente do `main` | **22** (`517a47b4b` … o fecho) |
-| base | `39d48cd76` |
+| commits à frente do `main` | **23** (`517a47b4b` … `9f9b561f8`) |
+| base | `39d48cd76` — **igual ao `main` de hoje**, logo um `--ff-only` aplica-se sem rebase |
 | handoff anterior | [2026-09-07](HANDOFF_INTEGRACAO_line_3DModeling_2026-09-07.md) — ⚠️ **as W136–W146 nunca tiveram handoff**; este cobre-as |
 
 ## 2. ⚠️ OS NÚMEROS QUE SE CONTAM — não os copie, re-conte contra o `main` do dia
@@ -59,6 +59,40 @@ tabelas no [doc 11 §11.9](../11_a_avaliacao_ponto_a_ponto.md):
 não é local: a `fidget` é dependência partilhada, então **toda crate que a use passa a correr os
 testes optimizados**. Medido nesta linha: a suíte das 3 crates do campo vai de `372,3 s` para
 `57,1 s`. ⚠️ O preço é compilar essas quatro uma vez a `opt-2`.
+
+## 3-bis. ⭐ A SUPERFÍCIE DE COLISÃO, MEDIDA contra as outras SEIS linhas vivas
+
+Medido em 2026-09-10 (`git worktree list` + diff de cada linha **a partir da base DELA**). Esta linha
+toca `104` ficheiros, e o que ela partilha com cada uma das outras é:
+
+| linha | ficheiros dela | partilha comigo | o quê |
+|---|---:|---:|---|
+| `line/components` | 227 | **1** | `shells/desktop/src/main.rs` |
+| `line/motion-value` | 167 | **2** | `main.rs` · `project-memory/MEMORY.md` |
+| `line/quadextract` | 46 | **1** | `main.rs` (⚠️ **ATRASADA** — ver abaixo) |
+| `line/sculpt3d` | 276 | **1** | `main.rs` |
+| `line/UIUX` | 138 | **1** | `project-memory/MEMORY.md` |
+| `line/Vector` | 122 | **1** | `main.rs` |
+
+⭐ **Os dois conflitos possíveis são triviais e conhecidos:**
+- **`main.rs`** — a minha edição é **UMA linha de comentário** (`PH2D_FIELD_SMOKE=1..29` → `1..32`).
+- **`MEMORY.md`** — **duas linhas** acrescentadas ao índice. Resolve-se ficando com as de todos.
+
+⛔ **E o `Cargo.toml` da RAIZ, que a §3 declara como o meu risco, NÃO é tocado por mais nenhuma
+linha** — medido, `0` em seis. O risco declarado é real como categoria e **nulo nesta rodada**.
+
+### ⚠️⚠️ A régua que quase deu um alarme falso de `50` ficheiros
+
+A 1.ª medição usou `git diff main..HEAD --name-only` em cada worktree e acusou a `line/quadextract`
+de partilhar **`50`** ficheiros comigo, **21 deles em `crates/ph2d-field/src`** — o meu módulo.
+
+**Era artefacto.** A `quadextract` bifurcou de `53832c884`, que é **anterior** ao `main` de hoje: num
+ramo atrasado, `diff main..HEAD` mostra **ao contrário** tudo o que o `main` ganhou entretanto. O
+teste que o desmente é directo — `git log main..HEAD -- crates/ph2d-field/src` naquela worktree
+devolve **zero commits**.
+
+⇒ **a diferença de uma linha mede-se a partir da BASE DELA** (`merge-base`), nunca contra o `main`;
+e uma linha atrasada precisa de **rebase antes de entrar**, o que é assunto dela e não meu.
 
 ## 4. Contratos congelados encostados
 

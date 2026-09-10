@@ -37,6 +37,39 @@ documento, a `~2,4 ns por nó`.
 ⇒ **o que se paga por amostra é percorrer a fita**, e a alocação era uma parcela, não a causa.
 *Uma citação do doc-comment de uma dependência é uma pista, não uma medição.*
 
+⚠️ E a mesma leitura mostrou que eu tinha **reintroduzido o defeito pela porta das traseiras**: a 1.ª
+fita fazia `clear()` + `resize(n, 0.0)`, ou seja **memsetava o buffer inteiro por chamada** (`98 KB`
+num `gradient_norm` sobre uma peça de 2 048 nós). Hoje o scratch só **cresce**, e não se limpa — é
+seguro por invariante da fita, não por sorte: em ordem topológica cada slot é escrito antes de
+qualquer pai o ler.
+
+## §11.2-bis — A tabela, e o instrumento que a torna legível sob carga
+
+⛔ §5.0: *nenhuma leitura de relógio desta workstation vale acima de `load ~5`* — e esta correu com
+outra linha a passar a suíte inteira. ⭐ A saída é que **a contenção só pode ATRASAR**: a sonda faz
+`R = 9` corridas curtas e fica com o **MÍNIMO**, que é a estimativa do custo sem vizinhos.
+
+⭐⭐ **E o instrumento tem controlo:** a coluna do caminho **velho** foi medida das duas maneiras —
+passagem única com a máquina calma (`load 2,92`) e mínimo-de-9 com ela a arder (`load 11,35`) — e as
+duas concordam a **~5 %** (`113,4 / 529,2 / 2 717,7 / 10 692,5` contra `102,3 / 528,7 / 2 617,3 /
+11 081,6`). *Uma técnica que se propõe a desmentir a carga tem de ser confrontada com uma leitura
+calma, senão é a própria carga a assinar o resultado.*
+
+Mínimo de 9, `load 11,35`, `--release`:
+
+| formas | nós | `at` velho | `at` novo | ganho | `∇` velho | `∇` novo | ganho |
+|---:|---:|---:|---:|---:|---:|---:|---:|
+| 1 | 18 | `102,3` | `16,5` | **`6,2×`** | `644,3` | `53,8` | **`12,0×`** |
+| 4 | 128 | `528,7` | `177,8` | `3,0×` | `3 113,3` | `575,8` | `5,4×` |
+| 16 | 512 | `2 617,3` | `765,2` | `3,4×` | `15 779,6` | `2 409,6` | `6,5×` |
+| 64 | 2 048 | `11 081,6` | `3 062,1` | `3,6×` | `66 641,0` | `10 502,7` | **`6,3×`** |
+
+*(ns por amostra / por gradiente)*
+
+Por nó, a 2 048 nós: **`5,4 ns` → `1,5 ns`** no valor, e **`0,85 ns`** por nó e por ponto no gradiente
+— a `eval_many` amortiza a descodificação pelas seis amostras, e é essa a diferença entre `3,6×` e
+`6,3×`. ⇒ **o que os 52 sítios chamam ficou `~6×` mais barato.**
+
 ## §11.3 — A cura que shipa: a fita `f64`, **bit-a-bit** a mesma resposta
 
 [`point_tape.rs`](../../crates/ph2d-field-eval/src/point_tape.rs) achata o grafo do `Context` em

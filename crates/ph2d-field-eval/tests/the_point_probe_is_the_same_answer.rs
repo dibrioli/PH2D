@@ -171,11 +171,35 @@ fn the_gradient_ruler_did_not_move_a_single_bit() {
     assert!(n > 600, "o corpus do gradiente encolheu para {n}");
 }
 
+/// ⭐⭐ **O MÍNIMO de `R` corridas curtas, e não a média de uma longa.**
+///
+/// ⚠️ §5.0: *nenhuma leitura de relógio desta workstation vale acima de `load ~5`*. Esta tabela
+/// precisa de correr num repo onde **outra linha pode estar com a suíte inteira ao lume**, e esperar
+/// pela máquina calma nem sempre é uma opção.
+///
+/// ⭐ A saída é a **contenção só pode ATRASAR**: uma fatia de CPU roubada, uma migração de núcleo ou
+/// uma falha de cache tornam a corrida mais lenta, nunca mais rápida. ⇒ sobre `R` repetições, o
+/// **mínimo** é a estimativa honesta do custo sem vizinhos, e a mediana é que mede a máquina.
+///
+/// ⛔ Isto **não** transforma uma leitura poluída numa limpa: se todas as `R` apanharem contenção, o
+/// mínimo continua alto. Por isso o `loadavg` é impresso ao lado — e é ele que diz o que a tabela
+/// vale.
+fn menor_de<F: FnMut()>(r: usize, n: usize, mut f: F) -> f64 {
+    let mut melhor = f64::INFINITY;
+    for _ in 0..r {
+        let t = std::time::Instant::now();
+        f();
+        let ns = t.elapsed().as_secs_f64() / n as f64 * 1.0e9;
+        melhor = melhor.min(ns);
+    }
+    melhor
+}
+
 /// ⭐⭐ **A TABELA do preço** — `#[ignore]`, porque um relógio não é um gate (§5.0).
 ///
 /// Corra com:
 /// ```text
-/// cargo test -p ph2d-field-eval --test the_point_probe_is_the_same_answer -- --ignored --nocapture
+/// cargo test --release -p ph2d-field-eval --test the_point_probe_is_the_same_answer -- --ignored --nocapture
 /// ```
 #[test]
 #[ignore = "imprime a tabela do preço; um relógio não é um gate"]
@@ -207,16 +231,21 @@ fn the_table_of_what_a_sample_costs() {
         for (x, y, z) in ps.iter().take(50) {
             sink += velho.at(*x, *y, *z) + novo.at(*x, *y, *z);
         }
-        let t0 = std::time::Instant::now();
-        for (x, y, z) in &ps {
-            sink += velho.at(*x, *y, *z);
-        }
-        let dv = t0.elapsed().as_secs_f64() / ps.len() as f64 * 1.0e9;
-        let t1 = std::time::Instant::now();
-        for (x, y, z) in &ps {
-            sink += novo.at(*x, *y, *z);
-        }
-        let dn = t1.elapsed().as_secs_f64() / ps.len() as f64 * 1.0e9;
+        // ⚠️ `R = 9` repetições, intercaladas de propósito: se a máquina piorar a meio da corrida,
+        // as duas colunas apanham a mesma degradação em vez de uma delas ficar com o troço mau.
+        const R: usize = 9;
+        let mut acc = 0.0f64;
+        let dv = menor_de(R, ps.len(), || {
+            for (x, y, z) in &ps {
+                acc += velho.at(*x, *y, *z);
+            }
+        });
+        let dn = menor_de(R, ps.len(), || {
+            for (x, y, z) in &ps {
+                acc += novo.at(*x, *y, *z);
+            }
+        });
+        sink += acc;
         // ⭐ O que os 52 sítios de facto chamam: seis amostras que viram um `‖∇f‖`.
         let eps = 1.0e-4;
         let g_velho = |x: f64, y: f64, z: f64| {
@@ -228,16 +257,18 @@ fn the_table_of_what_a_sample_costs() {
         for (x, y, z) in ps.iter().take(20) {
             sink += g_velho(*x, *y, *z) + novo.gradient_norm(*x, *y, *z, eps);
         }
-        let t2 = std::time::Instant::now();
-        for (x, y, z) in &ps {
-            sink += g_velho(*x, *y, *z);
-        }
-        let gv = t2.elapsed().as_secs_f64() / ps.len() as f64 * 1.0e9;
-        let t3 = std::time::Instant::now();
-        for (x, y, z) in &ps {
-            sink += novo.gradient_norm(*x, *y, *z, eps);
-        }
-        let gn = t3.elapsed().as_secs_f64() / ps.len() as f64 * 1.0e9;
+        let mut acc2 = 0.0f64;
+        let gv = menor_de(R, ps.len(), || {
+            for (x, y, z) in &ps {
+                acc2 += g_velho(*x, *y, *z);
+            }
+        });
+        let gn = menor_de(R, ps.len(), || {
+            for (x, y, z) in &ps {
+                acc2 += novo.gradient_norm(*x, *y, *z, eps);
+            }
+        });
+        sink += acc2;
         println!(
             "{n:>7} {:>9} {dv:>13.1} {dn:>13.1} {:>8.1}x {gv:>13.1} {gn:>13.1} {:>8.1}x",
             velho.nos(),

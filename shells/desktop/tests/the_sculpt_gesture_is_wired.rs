@@ -793,7 +793,14 @@ fn every_verb_is_reachable_from_the_keyboard() {
 #[test]
 fn the_cavity_has_a_key_and_the_number_reaches_the_device() {
     let src = sculpt_src();
-    let key = function_body(&src, "sculpt3d_key");
+    // ⚠️ **O `Shift+C` mudou de FUNÇÃO na integração de 2026-09-10**, quando o `sculpt3d_keys.rs`
+    // ficou vermelho no teto de LOC por ACUMULAÇÃO de duas linhas e os verbos da LISTA saíram para
+    // o irmão `sculpt3d_keys_scene.rs`. ⭐ O `sculpt_src()` já os concatena (ele varre o `src/`),
+    // logo o que expirou não foi a fonte — foi o NOME da função em que se procura.
+    // ⛔ E o gate não afrouxa por isso: ele continua a exigir o bloco do `K::KeyC` dentro da função
+    // que de facto despacha o `Shift`, e um `Shift+C` que reaparecesse no pai deixaria de ser visto
+    // — que é o mesmo que dizer que ele deixou de estar onde o produto o executa.
+    let key = function_body(&src, "sculpt3d_shift_verbs");
     let block = braced_block(&key, "code == K::KeyC");
     assert!(
         block.contains("scene.cycle_cavity()"),

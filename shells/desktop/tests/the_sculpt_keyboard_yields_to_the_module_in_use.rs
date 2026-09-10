@@ -157,13 +157,32 @@ fn a_tool_in_hand_wins_the_bare_keys() {
 fn the_hoisted_role_key_does_not_swallow_shift_d() {
     let src = keys_src();
     let hoisted = at(&src, "if code == K::KeyD && !ctrl && !shift");
-    let duplicate = at(&src, "scene.duplicate_active()");
+    // ⚠️⚠️ **A ordem que este gate mede ATRAVESSA DOIS ficheiros desde 2026-09-10**, quando o
+    // `sculpt3d_keys.rs` ficou vermelho no teto de LOC por ACUMULAÇÃO de duas linhas e os verbos da
+    // LISTA saíram para o irmão. ⛔ **Concatenar os dois textos e comparar posições seria FRAUDE:**
+    // tudo o que está no filho aparece depois de tudo o que está no pai, então a asserção passaria
+    // por construção, sobre qualquer ordem.
+    //
+    // ⭐ A propriedade parte-se em duas metades que falham por motivos DIFERENTES, e juntas dizem o
+    // mesmo que a comparação antiga dizia — mais o nome da costura:
+    //   (a) no PAI, o braço hoistado precede a CHAMADA que despacha o `Shift`;
+    //   (b) no FILHO, o `Shift+D` é quem duplica.
+    // Se alguém subir o bloco do `shift` para cima do `D` hoistado, (a) reprova; se o duplicar
+    // desaparecer do filho, (b) reprova com o controlo positivo do `at`.
+    let despacho = at(&src, "sculpt3d_shift_verbs(scene, code)");
     assert!(
-        hoisted < duplicate,
-        "controle: o braço hoistado deixou de preceder o duplicar — a ordem que o gate mede mudou"
+        hoisted < despacho,
+        "controle: o braço hoistado deixou de preceder o despacho do Shift — a ordem que o gate \
+         mede mudou"
     );
     assert!(
-        src[hoisted..duplicate].contains("cycle_role()"),
+        src[hoisted..despacho].contains("cycle_role()"),
         "o `D` hoistado não é o do ciclo de papel"
+    );
+    let filho = std::fs::read_to_string("src/sculpt3d_keys_scene.rs")
+        .expect("os verbos da LISTA vivem no irmão desde 2026-09-10");
+    assert!(
+        filho.contains("if code == K::KeyD") && filho.contains("scene.duplicate_active()"),
+        "o `Shift+D` deixou de duplicar no ficheiro dos verbos da LISTA — a outra metade da ordem"
     );
 }

@@ -1169,3 +1169,35 @@ ACHADO_proveniencia_por_nome_interno.md, e ela está VIVA no produto rastreado, 
 E o sweep da vassoura sobre `git ls-files crates/** shells/**` sai **exit 1**, com achado em três
 ficheiros: crates/ph2d-sculpt3d/src/brush_verb_defaults.rs · .../stroke_dab_core.rs ·
 .../verb_layer_front_face_tests.rs. ⛔ A janela NÃO olhou os hits (eles imprimiriam a expressão).
+
+---
+
+## I-2 — a divida de citacoes fecha (2026-09-09, `b8ed3b1cd`)
+
+Censo de citacoes a nome de ficheiro-fonte de alvo RESTRITO no codigo rastreado
+(`crates/**` + `shells/**`, `.rs`): **351 -> 145 -> 103 -> 0**. A catraca
+`POR_CLASSIFICAR` do gate `architecture_no_restricted_source_citations` fica
+VAZIA; qualquer citacao nova reprova.
+
+**Triagem despachada a R (nunca auto-classificada), tres vereditos com a licenca
+lida NO ARTEFACTO:** `bezier-utils.cpp` = lib2geom `LGPL-2.1-only OR MPL-1.1`
+(o rotulo do empacotador diz «GPL» e o artefacto desmente-o) · `CostFunction.hh`
++ `Highlevel.cc` = libSatsuma **MIT**, SPDX na linha 2 de cada (a armadilha do
+§0.9 AO CONTRARIO: a aplicacao que os linka e' GPL-3.0) · `layout.py` = **a
+premissa da minha pergunta estava errada**, e' a NOSSA bancada, o upstream nao
+tem ficheiro nenhum com esse nome.
+
+**Quatro formas cegas NOVAS do detector**, todas achadas a medir a populacao e
+todas so' visiveis depois de ela encolher: um campo nosso com `_` lido como
+cabecalho (`list_rect.h`) · `ficheiro.cc::simbolo`, a forma MAIS especifica de
+todas, a medir zero em SEIS sitios (um numa crate dada por curada) · o HIFEN a
+cortar o nome, que erra a IDENTIDADE e nao so' a contagem · a nossa propria
+bancada, por morar FORA do repo.
+
+⚠️ **O controlo de vacuidade do gate estava calibrado na DIVIDA EXISTIR** e teve
+de mudar de grandeza no dia em que ela chegou a zero: passa a contar o que a
+TRAVESSIA visita.
+
+⏳ **ABERTO:** os nomes de SIMBOLO internos (§4.2 pela mesma linha da SKILL) sao
+populacao maior, parte deles e' API publica (§4.1.13) e o gate nao os mede. E os
+`docs/**` ficam fora do censo por construcao.

@@ -77,7 +77,14 @@ pub(crate) fn paint(_state: &mut SkeletonPanelState, ctx: &mut PaintCtx) {
             inner_x,
             inner_w,
             row_h: ROW_H_PX,
-            row_gap: Spacing::Xs.px(),
+            // ⚠️ **`control_gap_px()` e não `Spacing::Xs`** — escrito na INTEGRAÇÃO de 2026-09-10.
+            // Este painel nasceu de uma secção do `ph2d-panel-vector`, e herdou de lá o
+            // `Spacing::Xs.px()` (**4**); a porta do vão entre controlos vale **3**, e as duas
+            // grandezas divergiram no dia em que o dono fixou o número
+            // (`every_stack_of_rows_asks_the_rhythm`, cuja lista de dívida está **vazia** e assim
+            // fica). ⛔ *Um token certo na pergunta errada passa em todo gate desta casa e continua
+            // fora do ritmo* — o painel de origem é dívida tolerada de outra wave, não o modelo.
+            row_gap: ph2d_tokens::control_gap_px(),
             font: TypeToken::Base.px(),
             open_fold: None,
         };

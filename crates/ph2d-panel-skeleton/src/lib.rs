@@ -64,6 +64,14 @@ impl Panel for SkeletonPanel {
     /// *um painel que fala de algo que não existe é ruído*, que é a mesma lei que a secção seguia.
     const DEFAULT_VISIBLE: bool = false;
     const TITLE: &'static str = "Bones";
+    /// ⚠️ **Escrito na INTEGRAÇÃO de 2026-09-10, não por esta linha.** O `Panel::ICON` nasceu
+    /// obrigatório na `line/UIUX` (fusão 1 da mesma rodada) e este é o único painel novo da rodada
+    /// ⇒ o único que não compilava. ⛔ **O glifo é NOVO de propósito** (`docs/design/icons/bone.svg`,
+    /// Lucide `bone`, ISC, como os outros 137): reaproveitar um já usado reprova o
+    /// `no_two_panels_share_a_glyph`, e reaproveitar um livre mas alheio ao assunto — `Rigid`,
+    /// `Pivot`, `Gizmo` — entrega duas abas indistinguíveis, que é exactamente o defeito que a
+    /// **ausência de default** naquele trait existe para impedir.
+    const ICON: ph2d_editor_core::icons::IconId = ph2d_editor_core::icons::IconId::Bone;
     /// ⚠️ **Uma lista de propriedades não cabe na faixa de baixo** (240 px de altura): ali ela fica
     /// com duas linhas visíveis. ⇒ as duas colunas, e o gesto que o levaria ao fundo não é oferecido.
     const ALLOWED_SLOTS: ph2d_editor_core::screens::slot::SlotSet =

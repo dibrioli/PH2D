@@ -46,6 +46,7 @@ E três defeitos concretos, com foto:
 | ⛔ **O buraco do HR-15: o texto PINTADO** — 108 literais que o gate nunca viu | [`medicoes/07_o_buraco_do_hr15_o_texto_PINTADO.md`](medicoes/07_o_buraco_do_hr15_o_texto_PINTADO.md) |
 | ⭐⭐ **A auditoria da lista ABERTA do §5** — 4 de 5 itens já estavam fechados | [`medicoes/08_a_auditoria_da_lista_aberta.md`](medicoes/08_a_auditoria_da_lista_aberta.md) |
 | ⏳ **O penhasco com TODOS os painéis abertos** — 182 ms/quadro em debug, sem causa ainda | [`medicoes/09_o_penhasco_com_todos_os_paineis_abertos.md`](medicoes/09_o_penhasco_com_todos_os_paineis_abertos.md) |
+| ⛔⛔ **O clássico NÃO é um ecrã anterior** — `PH2D_UI_NEW=0` devolve 6 pintores de widget, nunca a estrutura | [`medicoes/10_o_classico_nao_e_um_ecra_anterior.md`](medicoes/10_o_classico_nao_e_um_ecra_anterior.md) |
 | **O que a subida Vello 0.8→0.10 / wgpu 28→29 / parley 0.6→0.11 abriu** | [`pesquisa/01_o_que_a_subida_abriu.md`](pesquisa/01_o_que_a_subida_abriu.md) |
 | **Que referências existem, com a licença de cada uma** | [`pesquisa/02_referencias_e_licenca.md`](pesquisa/02_referencias_e_licenca.md) |
 | **O diagnóstico das 3 fotos + os princípios que o explicam** | [`pesquisa/03_diagnostico_e_principios.md`](pesquisa/03_diagnostico_e_principios.md) |

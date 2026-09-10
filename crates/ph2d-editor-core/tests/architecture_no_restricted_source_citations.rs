@@ -21,7 +21,7 @@
 //!    linha de código entra na tabela de strings do binário. É a única
 //!    sub-espécie que **sai do repositório sem passar pelo `git`**, e por isso
 //!    não tem lista de tolerância nenhuma.
-//! 2. **EM comentário: catraca por crate.** São `145` hoje, e o número **só
+//! 2. **EM comentário: catraca por crate.** São `103` hoje, e o número **só
 //!    desce**. Uma entrada que chegue a zero é **obsoleta e tem de ser
 //!    apagada** — *uma catraca sem censo de obsolescência não desce: ela vira
 //!    licença* (`CLAUDE.md` §5.0).
@@ -75,31 +75,50 @@ const ATRIBUICAO_PERMISSIVA: &[(&str, &str)] = &[
     ),
 ];
 
+/// ⭐⭐ **ALVOS PERMISSIVOS, pelo NOME do ficheiro CITADO.**
+///
+/// ⚠️ **Isto é melhor que isentar um ficheiro NOSSO inteiro**, que é a forma das
+/// sete entradas acima: aquela cega o ficheiro para todas as citações, incluindo
+/// uma a alvo restrito que entre lá amanhã. Esta isenta exactamente o que foi
+/// triado. *A unidade da triagem é o ARTEFACTO citado, não quem o cita.*
+const ALVO_PERMISSIVO: &[(&str, &str)] = &[
+    // Godot — MIT. A triagem desta casa autoriza LER e PORTAR, e o redesenho
+    // plano da UI é derivado do tema «Modern» dele.
+    ("theme_modern.cpp", "Godot, MIT"),
+    ("editor_theme_manager.cpp", "Godot, MIT"),
+    // Chromium — BSD-3. A resolução da bézier de temporização.
+    ("cubic_bezier.cc", "Chromium, BSD-3"),
+    // Instant Meshes — BSD-3. É o porte fiel que o `ph2d-quadflow` É, e a
+    // atribuição é obrigação da licença, não dívida.
+    ("field.cpp", "Instant Meshes, BSD-3"),
+    ("extract.cpp", "Instant Meshes, BSD-3"),
+    // Graphics Gems — o ajuste de curva canónico, de uso livre.
+    ("FitCurves.c", "Graphics Gems"),
+];
+
+/// ⚠️ **O que NÃO entrou, e porquê:** o `layout.py` citado pela bancada da
+/// `ph2d-quantize` é do **oráculo**, que é restrito — e a nota ao lado dele diz
+/// que ele vive *fora da árvore*, o que não o torna permissivo. Fica na catraca
+/// até um revisor que veja os dois lados o classificar.
+const _: () = ();
+
 /// A catraca: quantas citações **em comentário** cada crate ainda carrega.
 ///
 /// ⚠️ **Os números só DESCEM.** Chegando a zero, a linha sai — o gate exige-o.
 /// Baseline de 2026-09-09, medido depois de as seis citações fora de comentário
 /// terem sido curadas.
 const POR_CLASSIFICAR: &[(&str, usize)] = &[
-    ("crates/ph2d-anim", 6),
-    ("crates/ph2d-editor-core", 15),
+    ("crates/ph2d-anim", 1),
+    ("crates/ph2d-editor-core", 5),
     ("crates/ph2d-flip", 13),
     ("crates/ph2d-flip-render", 7),
     ("crates/ph2d-flip-reshape", 13),
     ("crates/ph2d-painter-brush", 28),
     ("crates/ph2d-panel-asset-browser", 1),
-    ("crates/ph2d-panel-audio-mixer", 1),
     ("crates/ph2d-panel-sculpt3d", 7),
-    ("crates/ph2d-panel-timeline", 1),
-    ("crates/ph2d-quadflow", 13),
+    ("crates/ph2d-quadflow", 5),
     ("crates/ph2d-quantize", 4),
-    ("crates/ph2d-render", 5),
-    ("crates/ph2d-timeline", 1),
-    ("crates/ph2d-tokens", 5),
-    ("crates/ph2d-tokens-dtcg", 2),
     ("crates/ph2d-tool-flip", 1),
-    ("crates/ph2d-tool-painter", 3),
-    ("crates/ph2d-vec-scene", 1),
     ("shells/desktop", 18),
 ];
 
@@ -147,8 +166,18 @@ fn citacoes_com(l: &str, nossos: &std::collections::BTreeSet<String>) -> usize {
                     .chars()
                     .next()
                     .is_some_and(|c| c.is_ascii_digit());
-            // `` `algo.cc` `` — a extensão fecha uma crase, e há outra antes.
-            let nu = depois.starts_with('`') && l[..i].contains('`');
+            // `` `algo.cc` `` — a extensão fecha uma crase, e o que está entre as
+            // duas é UM token só.
+            //
+            // ⚠️⚠️ **O «um token só» é o que separa uma citação de um CAMPO.**
+            // Sem ele, `` `plane_region.w × plane_region.h` `` conta como citação
+            // — e ali o `.h` é a ALTURA de um rectângulo NOSSO, dentro de uma
+            // expressão com espaços. É a terceira forma de o detector mentir, e
+            // as três foram achadas a MEDIR, nunca a pensar.
+            let nu = depois.starts_with('`')
+                && l[..i]
+                    .rfind('`')
+                    .is_some_and(|k| !l[k + 1..i].contains(' '));
             if !(com_linha || nu) {
                 continue;
             }
@@ -158,6 +187,28 @@ fn citacoes_com(l: &str, nossos: &std::collections::BTreeSet<String>) -> usize {
                 .rfind(|c: char| !(c.is_ascii_alphanumeric() || c == '_'))
                 .map_or(antes, |k| &antes[k + 1..]);
             if ultimo.is_empty() || !ultimo.chars().next().is_some_and(char::is_alphabetic) {
+                continue;
+            }
+            // ⚠️⚠️ **`.h` e `.c` COLIDEM com campos comuns** — `rect.h` é a altura
+            // de um rectângulo e `region.h` a de uma região, os dois NOSSOS e os
+            // dois escritos em crases sem espaço. ⇒ para estas duas extensões um
+            // nome só conta se PARECER um cabeçalho: com `_` ou maiúscula.
+            // ⛔ **É uma heurística, e o custo tem nome:** um cabeçalho de uma
+            // palavra e minúsculo citado sem número de linha passa despercebido.
+            // A alternativa — contá-los — acusa `7` sítios vivos e manda a cura
+            // errada, que é pior.
+            if matches!(*e, "h" | "c")
+                && !com_linha
+                && !ultimo.contains('_')
+                && !ultimo.chars().any(|c| c.is_ascii_uppercase())
+            {
+                continue;
+            }
+            // ⛔ Um alvo PERMISSIVO triado e' atribuicao legitima.
+            if ALVO_PERMISSIVO
+                .iter()
+                .any(|(n, _)| *n == format!("{ultimo}{ponto}"))
+            {
                 continue;
             }
             // ⛔ Um ficheiro NOSSO nao e' uma citacao do alvo.
@@ -345,6 +396,17 @@ fn o_detector_conta_o_que_deve_e_nada_mais() {
     assert_eq!(citacoes("/// ver `algo.cc:1234`"), 1, "endereco com linha");
     assert_eq!(citacoes("// algo.cc:12 e outro.py:7"), 2, "duas na linha");
     assert_eq!(citacoes("/// nada aqui"), 0);
+    // ⛔ E o CAMPO dentro de crases com espacos: `.h` ali e' uma ALTURA.
+    assert_eq!(
+        citacoes("/// a caixa e' `plane_region.w × plane_region.h` em pixels"),
+        0,
+        "um campo `.h` numa expressao com espacos nao e' um ficheiro"
+    );
+    assert_eq!(
+        citacoes("/// ver `caminho/algo.cc`"),
+        1,
+        "e um caminho SEM espacos continua a contar -- o controlo do discriminador"
+    );
     // ⛔ E o caso que so' a arvore responde: um arnes NOSSO nao conta.
     let nossos: std::collections::BTreeSet<String> = ["blender_sculpt_oracle.py".to_string()]
         .into_iter()

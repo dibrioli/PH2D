@@ -587,6 +587,17 @@ fn representative(k: PrimitiveKind) -> Option<Primitive> {
 /// arestas: a varredura passa por cima dela. A segunda passagem é **fina e só perto da superfície**,
 /// que é onde a marcha de facto decide. Medido na caixa com os dois recuos: a grossa lê `0,79`, a
 /// fina lê `0,85`.
+#[path = "common/mod.rs"]
+mod common;
+
+/// ⭐⭐ **Cada forma do catálogo, nos núcleos todos** — ver [`common::em_paralelo`], que traz o
+/// report do dono e os números.
+fn por_forma<T: Send>(f: impl Fn(PrimitiveKind) -> T + Sync) -> Vec<(PrimitiveKind, T)> {
+    let kinds: Vec<PrimitiveKind> = PrimitiveKind::ALL.to_vec();
+    let saida = common::em_paralelo(&kinds, |k| f(*k));
+    kinds.into_iter().zip(saida).collect()
+}
+
 fn worst_gradient(f: &Field, e: f64, steps: usize) -> f64 {
     let mut worst = 0.0f64;
     let mut varre = |e: f64, steps: usize, banda: Option<f64>| {
@@ -723,8 +734,8 @@ fn every_primitive_offers_at_least_one_dimension() {
 fn every_row_of_every_primitive_marches_safely_across_its_range() {
     let mut maus = Vec::new();
     let mut medidas = 0;
-    for k in PrimitiveKind::ALL {
-        for (onde, v) in march_over_the_declared_rows(k) {
+    for (k, linhas) in por_forma(march_over_the_declared_rows) {
+        for (onde, v) in linhas {
             medidas += 1;
             // ⚠️ Uma forma com tecto DECLARADO responde pela folga dela — ver
             // [`TETO_MEDIDO_E_NAO_CURADO`], que já traz a tabela e o censo de obsolescência.
@@ -774,7 +785,9 @@ fn march_over_the_declared_rows(k: PrimitiveKind) -> Vec<(String, f64)> {
             Span::Locked | Span::Choice(_) => continue,
             // ⚠️ Sem parede, a faixa é o alcance da VISTA — e o que se varre é uma década em
             // volta do valor de nascimento, que é o que uma mão alcança.
-            Span::FromZero | Span::Positive | Span::Free | Span::Along => {
+            // ⚠️ A `SoftFromZero` entra AQUI e não com as paredes: o número dela é o curso do
+            // slider, e o campo continua correcto acima dele — varre-se a mesma década.
+            Span::FromZero | Span::Positive | Span::SoftFromZero(_) | Span::Free | Span::Along => {
                 let v = d.value.abs().max(0.05);
                 vec![v * 0.25, v * 2.0, v * 4.0]
             }
@@ -1072,7 +1085,11 @@ fn every_row_of_every_primitive_can_be_written() {
                         max
                     }
                 }
-                Span::FromZero | Span::Positive | Span::Free | Span::Along => {
+                Span::FromZero
+                | Span::Positive
+                | Span::SoftFromZero(_)
+                | Span::Free
+                | Span::Along => {
                     if d.value > 0.0 {
                         d.value * 0.5
                     } else {
@@ -1634,13 +1651,12 @@ fn a_chamfer_honours_the_march_on_every_shape() {
 fn every_shape_marches_safely_with_both_recesses_on() {
     let mut furam = Vec::new();
     let mut testadas = 0;
-    for k in PrimitiveKind::ALL {
-        let Some(base) = representative(k) else {
-            continue;
-        };
-        let Some(limite) = ph2d_field::round_limit(&base) else {
-            continue;
-        };
+    // ⭐⭐ **Nos núcleos todos** — ver [`common::em_paralelo`]. Este teste era o poste da suíte na
+    // corrida de 09/09 (`583,0 s`), e é o QUARTO desta família a sê-lo: *cada um que se cura
+    // descobre o seguinte, porque a doença é a forma do laço e não o teste.*
+    for (k, medida) in por_forma(|k| {
+        let base = representative(k)?;
+        let limite = ph2d_field::round_limit(&base)?;
         let meio = limite * 0.5;
         let escreve = |p: &Primitive, chave: &str, v: f32| -> Option<Primitive> {
             let mut p = p.clone();
@@ -1648,17 +1664,16 @@ fn every_shape_marches_safely_with_both_recesses_on() {
             ph2d_field::set_dim(&mut p, 0, i, v).ok()?;
             Some(p)
         };
-        let Some(par) = escreve(&base, "field.dim.round", meio)
-            .and_then(|p| escreve(&p, "field.dim.chamfer", meio))
-        else {
-            continue;
-        };
-        testadas += 1;
+        let par = escreve(&base, "field.dim.round", meio)
+            .and_then(|p| escreve(&p, "field.dim.chamfer", meio))?;
         let d = doc_of(par.clone());
         let passo = f64::from(ph2d_field_eval::safe_march_step(&d));
-        let g = worst_gradient(&field_of(par), 1.2, 30);
-        if passo * g > SLACK {
-            furam.push(format!("{k:?} {:.4}", passo * g));
+        Some(passo * worst_gradient(&field_of(par), 1.2, 30))
+    }) {
+        let Some(v) = medida else { continue };
+        testadas += 1;
+        if v > SLACK {
+            furam.push(format!("{k:?} {v:.4}"));
         }
     }
     assert!(
@@ -2054,9 +2069,12 @@ fn the_two_doors_lower_a_leaf_the_same_way() {
 /// que o gate irmão já tinha apanhado no raio, um nível abaixo.
 #[test]
 fn the_bounding_half_extents_contain_the_piece() {
-    for k in PrimitiveKind::ALL {
+    // ⭐ **Nos núcleos todos** — ver [`por_forma`]. Este era o SEGUNDO teste desta família a correr
+    // em série, e a corrida de 09/09 mediu-o em `1 320,9 s` — sozinho, mais do que toda a suíte das
+    // seis crates junta. *Uma cura de uma linha não é uma cura de um sítio.*
+    for (k, ()) in por_forma(|k| {
         let Some(p) = representative(k) else {
-            continue;
+            return;
         };
         let meias = ph2d_field::bounding_half_extents(&p);
         // ⚠️ **Um cabelo para fora**, pela razão do gate irmão: numa esfera a meia-extensão **é** a
@@ -2145,6 +2163,8 @@ fn the_bounding_half_extents_contain_the_piece() {
                 meias[e]
             );
         }
+    }) {
+        let _ = k;
     }
 }
 

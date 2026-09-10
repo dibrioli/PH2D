@@ -157,25 +157,37 @@ fn worst_gradient(doc: &FieldDoc, steps: i32) -> f64 {
 ///   `[Radial, Bend, Radial]` de `0,31` a **`376`**;
 /// - devolver o piso do `taper` ao `TAPER_FLOOR` fixo leva `[Bend, Twist, Taper]` de `0,04` a
 ///   **`2,21`** e `[Taper, Twist, Taper]` de `0,50` a **`1,88`**.
+#[path = "common/mod.rs"]
+mod common;
+
 #[test]
 fn every_trio_of_modifiers_keeps_the_field_marchable() {
     const SLACK: f64 = 1.02;
     let mut pior = (0.0f64, String::new());
     let mut maus: Vec<String> = Vec::new();
     let mut medidos = 0usize;
-    for a in UnaryKind::ALL {
-        for b in UnaryKind::ALL {
-            for c in UnaryKind::ALL {
-                medidos += 1;
-                let nome = format!("[{a:?}, {b:?}, {c:?}]");
-                let g = worst_gradient(&peca(vec![vivo(a), vivo(b), vivo(c)]), 20);
-                if g > pior.0 {
-                    pior = (g, nome.clone());
-                }
-                if g > SLACK {
-                    maus.push(format!("{nome} {g:.4}"));
-                }
-            }
+    // ⭐⭐ **Os trios correm nos núcleos todos** — ver [`common::em_paralelo`]. Este teste era o
+    // TERCEIRO desta crate a segurar a suíte inteira sozinho: `727,3 s` na corrida de 09/09, com a
+    // suíte das seis crates a somar `727,4 s`. *A suíte ERA este teste.*
+    let trios: Vec<(UnaryKind, UnaryKind, UnaryKind)> = UnaryKind::ALL
+        .iter()
+        .flat_map(|a| {
+            UnaryKind::ALL
+                .iter()
+                .flat_map(move |b| UnaryKind::ALL.iter().map(move |c| (*a, *b, *c)))
+        })
+        .collect();
+    let gs = common::em_paralelo(&trios, |(a, b, c)| {
+        worst_gradient(&peca(vec![vivo(*a), vivo(*b), vivo(*c)]), 20)
+    });
+    for (&(a, b, c), g) in trios.iter().zip(gs) {
+        medidos += 1;
+        let nome = format!("[{a:?}, {b:?}, {c:?}]");
+        if g > pior.0 {
+            pior = (g, nome.clone());
+        }
+        if g > SLACK {
+            maus.push(format!("{nome} {g:.4}"));
         }
     }
     assert_eq!(

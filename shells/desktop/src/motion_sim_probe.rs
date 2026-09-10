@@ -128,3 +128,233 @@ fn which_sim_nodes_have_a_place() {
     }
     eprintln!();
 }
+
+// ---------------------------------------------------------------------------------------------
+// W3 — as SEÇÕES do grupo, e o piso que a própria casa desenhou.
+// ---------------------------------------------------------------------------------------------
+
+/// **O menor cartão que esta casa alguma vez julgou valer uma secção**, em params.
+///
+/// ⛔ **Não é um número escolhido — é MEDIDO**, e o teste abaixo volta a medi-lo a cada
+/// corrida. Ele saiu de `field.box`, a wave do ciclo 4, e é o piso do vale entre os dois
+/// lados: abaixo dele a casa mantém tudo em fila (a lei já escrita no `field.box`: *numa
+/// carta de 3, 4 ou 6 rows dois cabeçalhos organizam menos do que ocupam*, porque
+/// `band_len = params + secções` e uma secção aberta custa **+1 fileira**).
+const SECTION_FLOOR: usize = 9;
+
+/// ⭐⭐⭐ **NENHUM CARTÃO GRANDE DESTE GRUPO É UMA PAREDE DE SLIDERS.**
+///
+/// A pergunta do ciclo 4 (o `field.box` a pintar nove rows em fila ao lado de um irmão
+/// idêntico que já as agrupava) vale por grupo, e aqui ela acusava **três**:
+/// `force.attractor` (11) · `force.curl` (11) · `force.wind` (12), com o `sim.collide` (15)
+/// já arrumado desde a folha 13.
+///
+/// ## ⛔ A catraca tem CENSO DE OBSOLESCÊNCIA, e é a primeira metade do teste
+///
+/// *Uma catraca sem censo não desce: ela vira licença* (`CLAUDE.md` §5.0). Aqui o censo é o
+/// próprio piso: [`SECTION_FLOOR`] tem de continuar a ser **o menor cartão com secções de
+/// todo o registo**. No dia em que outra linha agrupar um cartão mais pequeno, a casa terá
+/// baixado a própria régua — e este gate diz isso em voz alta, em vez de derivar em silêncio
+/// e acender o grupo inteiro sem explicação.
+#[test]
+fn no_big_card_in_this_group_is_a_wall_of_sliders() {
+    use ph2d_nodegraph::cook::OpResolver;
+    let m = crate::motion_state::MotionState::new();
+
+    // 1. O CENSO: o piso ainda descreve a casa?
+    let menor = m
+        .registry
+        .manifests()
+        .filter(|man| !man.params.is_empty())
+        .filter(|man| !m.registry.param_groups(man.id).is_empty())
+        .map(|man| man.params.len())
+        .min()
+        .expect("a casa tem pelo menos um no com seccoes");
+    assert_eq!(
+        menor, SECTION_FLOOR,
+        "o menor cartao COM seccoes da casa passou a ter {menor} params -- a casa mexeu na \
+         propria regua, entao o piso deste gate tem de ser re-medido e a decisao escrita ao \
+         lado (doc 108 W3), nunca ajustada em silencio"
+    );
+
+    // 2. A LEI: no grupo, quem chega ao piso tem secções.
+    let paredes: Vec<(&str, usize)> = grupo()
+        .into_iter()
+        .filter_map(|nome| {
+            let tid = ph2d_nodegraph::node::NodeTypeId::of(nome);
+            let op = m.registry.resolve(tid)?;
+            let n = op.manifest().params.len();
+            (n >= SECTION_FLOOR && m.registry.param_groups(tid).is_empty()).then_some((nome, n))
+        })
+        .collect();
+    assert!(
+        paredes.is_empty(),
+        "estes nos do grupo pintam {SECTION_FLOOR}+ params em fila, sem uma unica seccao -- \
+         o artista tem de ler todos para achar um: {paredes:?}"
+    );
+}
+
+/// ⚠️ **E o inverso: uma secção que o cartão nunca pinta é pior que nenhuma.**
+///
+/// Cada linha de [`ph2d_node_registry::ParamGroup`] nomeia um param, e um nome que o
+/// manifesto não declara (uma chave renomeada, um param apagado) fica **muda** — a secção
+/// existe na tabela e nunca aparece, e nada no ecrã o diz.
+#[test]
+fn every_section_of_this_group_names_a_param_that_exists() {
+    use ph2d_nodegraph::cook::OpResolver;
+    let m = crate::motion_state::MotionState::new();
+    let mut orfaos: Vec<String> = Vec::new();
+    for nome in grupo() {
+        let tid = ph2d_nodegraph::node::NodeTypeId::of(nome);
+        let Some(op) = m.registry.resolve(tid) else {
+            continue;
+        };
+        let man = op.manifest();
+        for g in m.registry.param_groups(tid) {
+            if !man.params.iter().any(|p| p.name == g.param) {
+                orfaos.push(format!("{nome}::{} (seccao `{}`)", g.param, g.group));
+            }
+        }
+    }
+    assert!(
+        orfaos.is_empty(),
+        "estas linhas de seccao nomeiam params que o manifesto nao tem, logo nunca pintam: \
+         {orfaos:?}"
+    );
+}
+
+/// **O QUE OS CARTÕES DA CENA `=113` MOSTRAM** — a fonte dos nomes que o tutorial escreve.
+///
+/// ⚠️ **Não é o mesmo que [`what_the_sim_card_shows`]:** ali cada nó está nos DEFAULTS dele;
+/// aqui está como a cena o autora, e o `sim.collide` da cena é um `Box` — logo o cartão mostra
+/// `Box Width`/`Box Height` onde o default mostraria `Radius`. *Um tutorial nomeia o que o dono
+/// vê, e o que ele vê é a CENA.*
+#[test]
+#[ignore = "sonda de auditoria — corra à mão"]
+fn what_the_sim_scene_cards_show() {
+    let mut m = crate::motion_state::MotionState::new();
+    let _ = crate::motion_demo_legend::monta("113", &mut m.doc, &m.registry);
+    let mut snap = ph2d_panel_motion_graph::snapshot_from(&m.doc.graph, &m.registry);
+    crate::render_loop::motion_bridge::params::card::stamp_card_params(
+        &m,
+        ph2d_editor::ProjectSettings::default(),
+        &mut snap,
+    );
+    for v in &snap.nodes {
+        let rows: Vec<&str> = v.params.iter().map(|c| c.hint.label).collect();
+        eprintln!("  {:<18} | {}", v.display_name, rows.join(" · "));
+        if !v.sections.is_empty() {
+            let secs: Vec<String> = v
+                .sections
+                .iter()
+                .map(|s| format!("{}@{}", s.title, s.at))
+                .collect();
+            eprintln!("  {:<18} > secções: {}", "", secs.join(" · "));
+        }
+    }
+}
+
+/// A FONTE do tutorial deste ciclo — lida para que os nomes do gate e os do texto não possam
+/// divergir em silêncio.
+const TUTORIAL: &str = include_str!("../../../docs/Motion Nodes/tutoriais/src/05_simulacao.html");
+
+/// ⭐⭐⭐ **CADA PASSO DO TUTORIAL É POSSÍVEL NO APP** (ciclo 5, passo 7 — doc 103 §1).
+///
+/// ⛔⛔ **Um passo que manda clicar numa linha AFIRMA que ela está na lista**, e a casa já pagou
+/// por escrever um passo impossível ([memória](../../project-memory/feedback_a_smoke_step_that_names_a_panel_row_must_prove_the_row_is_in_the_list.md)).
+/// No ciclo 4 esta mesma régua apanhou **seis** erros meus antes do dono os ver.
+///
+/// ⚠️ **Ela corre sobre a CENA e não sobre os defaults**, e neste ciclo a diferença morde: o
+/// `sim.collide` da `=113` é um `Box`, logo o cartão mostra `Box Width`/`Box Height` onde o
+/// default mostraria `Radius`. *O dono vê a cena.*
+#[test]
+fn every_row_the_sim_tutorial_names_is_on_the_card() {
+    let mut m = crate::motion_state::MotionState::new();
+    let _ = crate::motion_demo_legend::monta("113", &mut m.doc, &m.registry);
+    let mut snap = ph2d_panel_motion_graph::snapshot_from(&m.doc.graph, &m.registry);
+    crate::render_loop::motion_bridge::params::card::stamp_card_params(
+        &m,
+        ph2d_editor::ProjectSettings::default(),
+        &mut snap,
+    );
+
+    // O que o tutorial manda procurar: (título do cartão, linhas dentro dele).
+    let pedidos: &[(&str, &[&str])] = &[
+        (
+            "Collider",
+            &[
+                "Shape",
+                "Center X",
+                "Center Y",
+                "Box Width",
+                "Box Height",
+                "Angle",
+            ],
+        ),
+        ("Wind", &["Angle", "Strength", "Acts As", "Gust"]),
+        ("Simulation Zone", &["Life Cycle"]),
+    ];
+    for (titulo, linhas) in pedidos {
+        let v = snap
+            .nodes
+            .iter()
+            .find(|v| v.display_name == *titulo)
+            .unwrap_or_else(|| {
+                let havia: Vec<&str> = snap.nodes.iter().map(|v| v.display_name.as_str()).collect();
+                panic!(
+                    "o tutorial manda procurar o cartao `{titulo}` e a cena nao tem nenhum com \
+                     esse nome -- ha': {havia:?}"
+                )
+            });
+        let rows: Vec<&str> = v.params.iter().map(|c| c.hint.label).collect();
+        for l in *linhas {
+            assert!(
+                rows.contains(l),
+                "o tutorial manda clicar em `{l}` no cartao `{titulo}`, e o cartao mostra {rows:?}"
+            );
+        }
+        // ⚠️ **E o título tem de estar de facto NO TUTORIAL** — senão esta lista é uma promessa
+        // sobre um texto que não a faz, e ela envelhece calada.
+        assert!(
+            TUTORIAL.contains(titulo),
+            "o gate defende o cartao `{titulo}` e o tutorial nunca o nomeia"
+        );
+    }
+
+    // ⚠️ **AS SECÇÕES que o tutorial manda ABRIR também são uma afirmação.**
+    for (titulo, seccao) in [("Wind", "Gust"), ("Wind", "Timing")] {
+        let v = snap
+            .nodes
+            .iter()
+            .find(|v| v.display_name == titulo)
+            .expect("o cartao existe (verificado acima)");
+        let secs: Vec<&str> = v.sections.iter().map(|s| s.title).collect();
+        assert!(
+            secs.contains(&seccao),
+            "o tutorial manda abrir a seccao `{seccao}` no cartao `{titulo}`, e ele tem {secs:?}"
+        );
+    }
+}
+
+/// ⭐⭐⭐ **O PREÇO DO GRUPO** (ciclo 5, passo 5 — doc 103 §1).
+///
+/// ⚠️ **As `force.*` são `Pure` e acumulam em `accel`** — sozinhas na cadeia elas não movem um
+/// pixel. A tabela mede-as **na cadeia do produto**, `grid → <nó> → output`, que é onde o
+/// planeador decide se a coisa fica no dispositivo.
+///
+/// ⚠️ **Nenhuma leitura desta workstation vale nada acima de `load ~5`** (`CLAUDE.md` §5.0), e é
+/// por isso que a porta imprime o `/proc/loadavg` na primeira linha: *uma tabela de relógio sem a
+/// carga ao lado não é uma medição, é um número*.
+///
+/// ```text
+/// cargo test -p ph2d-host-desktop --bins --release -- --ignored --nocapture measure_the_sim_group
+/// ```
+#[test]
+#[ignore = "sonda de medição — corra à mão, em RELEASE e com a máquina calma"]
+fn measure_the_sim_group() {
+    let lado: f32 = std::env::var("PH2D_LADO")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(320.0);
+    crate::motion_ciclo_probe::tabela(&grupo(), lado);
+}

@@ -17,7 +17,7 @@ use ph2d_node_registry::NodeRegistry;
 use ph2d_nodegraph::graph::NodeId;
 
 /// Os níveis que são cena de ciclo. ⚠️ **Uma tabela, dois leitores** — ver o cabeçalho.
-const CICLOS: &[&str] = &["111", "112"];
+const CICLOS: &[&str] = &["111", "112", "113"];
 
 /// Este nível é uma cena de ciclo?
 pub(super) fn e_de_ciclo(n: &str) -> bool {
@@ -43,6 +43,15 @@ pub(super) fn build(n: &str, doc: &mut MotionDoc, reg: &NodeRegistry) -> Vec<Nod
             let sinks = super::foco_demo::build(doc, reg).unwrap_or_default();
             crate::motion_demo_legend::publish(super::foco_demo::captions());
             announce::foco();
+            sinks
+        }
+        // ⭐ **DEIXAR A FÍSICA DECIDIR** (ciclo 5, doc 108). O colisor é um `Box` e não o
+        // chão, porque num plano infinito a alça de tamanho escreve num param que a forma
+        // não lê — e um tutorial não aponta para um controlo inerte.
+        "113" => {
+            let sinks = super::sim_demo::build(doc, reg).unwrap_or_default();
+            crate::motion_demo_legend::publish(super::sim_demo::captions());
+            announce::sim();
             sinks
         }
         // ⚠️ Inalcançável: a [`e_de_ciclo`] gateia esta função com a MESMA tabela.

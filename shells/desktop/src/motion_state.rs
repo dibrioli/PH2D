@@ -74,6 +74,9 @@ mod gpu_demos;
 mod gpu_field_demos;
 #[path = "motion_state_pivot_demo.rs"]
 mod pivot_demo;
+/// **DEIXAR A FÍSICA DECIDIR** — a cena de smoke do ciclo 5 (a simulação); ver o cabeçalho dela.
+#[path = "motion_state_sim_demo.rs"]
+mod sim_demo;
 
 /// As DECLARAÇÕES dos módulos de cena da conferência (doc 89) — uma família num
 /// arquivo só, extraída quando este passou o teto de LOC do HR-18. ⚠️ Os caminhos não

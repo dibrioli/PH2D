@@ -43,6 +43,12 @@ mod tutorial_draw;
 #[path = "motion_bridge_deformadores_figures.rs"]
 mod deformadores_figures;
 
+/// As figuras e a tabela do tutorial do **ciclo 5** (a simulação) — duas quedas, um param de
+/// diferença; ver o cabeçalho delas.
+#[cfg(test)]
+#[path = "motion_bridge_sim_figures.rs"]
+mod sim_figures;
+
 /// As figuras do tutorial do **ciclo 4** (os campos) — quadrados do tamanho que o campo lhes
 /// pesou; ver o cabeçalho delas.
 #[cfg(test)]

@@ -169,6 +169,31 @@ pub(super) fn lazy_switch() {
 }
 
 /// **NEM TODOS AO MESMO TEMPO** (`=112`) — a cena de smoke do ciclo 4 (doc 107).
+/// **DEIXAR A FÍSICA DECIDIR** (`=113`) — a cena de smoke do ciclo 5 (doc 108).
+///
+/// ⚠️ **Ela precisa de Play**: é uma simulação, e uma foto parada não a mostra. É por isso
+/// que o passo 1 é o transporte e não um cartão.
+pub(super) fn sim() {
+    eprintln!(
+        "[cena 113] DEIXAR A FISICA DECIDIR (ciclo 5). Uma chuva de pecas cai sobre um
+  BLOCO, empilha-se em cima dele e escorrega pelos lados. A queda RECOMECA sozinha.
+
+  1. Carregue em PLAY. Sem isto nada cai -- esta cena e' uma simulacao.
+  2. Clique no cartao `Collider`. Uma CAIXA aparece a` volta do bloco, no canvas.
+     Arraste-a: o monte muda de sitio. Arraste um CANTO: o bloco fica maior ou menor,
+     e passa a apanhar mais ou menos pecas. Arraste a ARGOLA: o bloco inclina-se e as
+     pecas escorregam. (Antes deste ciclo ele nao tinha alca nenhuma.)
+  3. No cartao `Wind`, na linha `Acts As`, troque `Force` por `Target Velocity`.
+     As pecas deixam de acelerar e passam a cair a velocidade CONSTANTE -- e uma linha
+     `Air Resistance` aparece, que e' o quao depressa elas a alcancam.
+     (Essa linha chamava-se `Mode` e nao dizia nada.)
+  4. Ainda no `Wind`, abra a seccao `Gust` e arraste `Gust`: cada peca passa a ter a
+     sua propria rajada, e a chuva cai torta.
+
+  Tudo isto corre no dispositivo."
+    );
+}
+
 pub(super) fn foco() {
     eprintln!(
         "[cena 112] NEM TODOS AO MESMO TEMPO (ciclo 4). Um pano de pecas iguais, e uma

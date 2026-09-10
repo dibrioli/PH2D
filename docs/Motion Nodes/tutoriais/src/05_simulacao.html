@@ -1,0 +1,382 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>PH2D &middot; Deixar a f&iacute;sica decidir</title>
+<style>
+  @page { size: A4; margin: 16mm 15mm; }
+  :root {
+    --bg: #0f0e12; --card: #17161c; --line: #2a2830;
+    --t1: #ece9f2; --t2: #a9a3b8; --t3: #6f6a7d;
+    --acc: #c9a6ff; --ok: #7ee0b0; --warn: #ffcf7a;
+    --src: #5f9e79; --tra: #6f86c9; --out: #c96a6a;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--t1);
+         font:14px/1.55 "Inter","Segoe UI",system-ui,sans-serif; }
+  h1 { font-size:30px; line-height:1.15; margin:0 0 4px; letter-spacing:-.02em; }
+  h1 small { display:block; font-size:14px; font-weight:400; color:var(--t2); margin-top:6px; }
+  h2 { font-size:19px; margin:26px 0 10px; padding-top:12px; border-top:1px solid var(--line); }
+  h3 { font-size:15px; margin:18px 0 6px; color:var(--acc); }
+  h4 { font-size:13px; margin:14px 0 4px; color:var(--t1); }
+  p { margin:8px 0; }
+  code, kbd { font-family:"JetBrains Mono",ui-monospace,monospace; font-size:12px; }
+  kbd { background:#22202a; border:1px solid var(--line); border-bottom-width:2px;
+        border-radius:5px; padding:1px 6px; color:var(--t1); }
+  .cmd { background:#080810; border:1px solid var(--line); border-left:3px solid var(--acc);
+         border-radius:8px; padding:11px 13px; color:var(--ok); font-family:ui-monospace,monospace;
+         font-size:11.5px; overflow-wrap:anywhere; margin:10px 0; }
+  .steps { counter-reset:s; list-style:none; padding:0; margin:0; }
+  .steps > li { counter-increment:s; position:relative; padding:0 0 0 40px; margin:0 0 16px;
+                break-inside:avoid; }
+  .steps > li::before { content:counter(s); position:absolute; left:0; top:-1px;
+      width:26px; height:26px; border-radius:50%; background:var(--acc); color:#1a1420;
+      font-weight:700; font-size:13px; display:flex; align-items:center; justify-content:center; }
+  .steps b { color:var(--t1); }
+  .out { color:var(--t2); }
+  .out::before { content:"→ "; color:var(--acc); }
+  .bad { color:var(--warn); }
+  .bad::before { content:"⚠ "; }
+  .figs { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:12px 0; }
+  .figs.two { grid-template-columns:repeat(2,1fr); }
+  .fig { background:var(--card); border:1px solid var(--line); border-radius:10px;
+         padding:8px; text-align:center; break-inside:avoid; }
+  .fig img { width:100%; display:block; border-radius:6px; }
+  .fig figcaption { font-size:11px; color:var(--t2); margin-top:6px; }
+  .fig b { color:var(--t1); display:block; font-size:12.5px; }
+  .wide { background:var(--card); border:1px solid var(--line); border-radius:10px;
+          padding:10px; margin:12px 0; break-inside:avoid; }
+  .wide img { width:100%; display:block; border-radius:6px; }
+  .key { font-size:11.5px; color:var(--t2); margin-top:8px; display:flex; flex-wrap:wrap; gap:14px; }
+  .key i { font-style:normal; display:inline-flex; align-items:center; gap:6px; }
+  .key s { width:16px; height:3px; border-radius:2px; display:inline-block; text-decoration:none; }
+  table { border-collapse:collapse; width:100%; margin:6px 0 14px; font-size:11.5px; }
+  th, td { text-align:left; padding:4px 8px; border-bottom:1px solid var(--line); }
+  th { color:var(--t3); font-weight:600; font-size:10.5px; text-transform:uppercase;
+       letter-spacing:.05em; }
+  td.n { text-align:right; font-variant-numeric:tabular-nums; }
+  .note { background:var(--card); border:1px solid var(--line); border-left:3px solid var(--acc);
+          border-radius:8px; padding:10px 13px; margin:12px 0; font-size:13px; break-inside:avoid; }
+  .note b { color:var(--acc); }
+  .card-demo { background:var(--card); border:1px solid var(--line); border-radius:9px;
+       width:230px; overflow:hidden; font-size:11px; }
+  .card-demo .h { padding:5px 9px; font-weight:600; color:#0e0d10; font-size:11.5px; }
+  .card-demo .rows { padding:6px; display:grid; gap:3px; }
+  .card-demo .r { background:#0b0a0e; border-radius:4px; padding:3px 7px; display:flex;
+       justify-content:space-between; position:relative; overflow:hidden; }
+  .card-demo .r i { position:absolute; inset:0 auto 0 0; background:#3b3350; }
+  .card-demo .r span { position:relative; }
+  .card-demo .r .n { color:var(--t1); }
+  .card-demo .r .l { color:var(--t2); }
+  .card-demo .sec { color:var(--t3); padding:3px 7px; font-size:10.5px; }
+  .two-col { display:grid; grid-template-columns:230px 1fr; gap:16px; align-items:start; }
+  .params { font-size:11px; }
+  .params h4 { margin-top:12px; }
+  .soft { color:var(--t3); }
+  footer { margin-top:26px; padding-top:10px; border-top:1px solid var(--line);
+           color:var(--t3); font-size:11px; }
+</style>
+
+<h1>Deixar a f&iacute;sica decidir
+  <small>PH2D &middot; Motion Nodes &middot; tutorial 5 &mdash; os doze n&oacute;s que entregam a
+  &uacute;ltima decis&atilde;o a uma <b>lei</b>, e o que eles pedem em troca</small></h1>
+
+<p>Nos quatro tutoriais anteriores voc&ecirc; disse <b>onde</b> cada objeto est&aacute;,
+<b>como</b> ele anda e <b>quem</b> &eacute; afetado. Tudo o que aconteceu na tela foi voc&ecirc;
+que mandou acontecer.</p>
+
+<p>Este grupo &eacute; diferente: voc&ecirc; deixa de dizer <em>onde a pe&ccedil;a vai parar</em> e
+passa a dizer <em>que for&ccedil;as agem sobre ela</em>. Onde ela p&aacute;ra &eacute; uma
+consequ&ecirc;ncia &mdash; e &eacute; a&iacute; que uma anima&ccedil;&atilde;o come&ccedil;a a
+parecer viva em vez de desenhada.</p>
+
+<div class="note"><b>O que este grupo pede em troca: um rel&oacute;gio.</b> Tudo o que voc&ecirc;
+fez at&eacute; aqui acontecia num instante &mdash; voc&ecirc; mexia num controlo e via o resultado
+parado. Uma simula&ccedil;&atilde;o s&oacute; existe <em>ao longo do tempo</em>: ela precisa de
+<b>Play</b>. &Eacute; a &uacute;nica coisa neste tutorial que n&atilde;o tem atalho.</div>
+
+<h2>1 &middot; Abrir</h2>
+<p>Cole isto inteiro num terminal. Na primeira vez ele compila (alguns minutos); depois abre em
+segundos.</p>
+<div class="cmd">cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value &amp;&amp; env PH2D_GPU_COOK_DEMO=113 cargo run -p ph2d-host-desktop --release</div>
+
+<ol class="steps">
+  <li><b>Carregue em <kbd>Play</kbd>.</b>
+      <div class="out">Uma chuva de pe&ccedil;as cai sobre um <b>bloco</b>, empilha-se em cima dele
+      e escorrega pelos lados. Passados uns segundos a queda <b>recome&ccedil;a sozinha</b>.</div>
+      <div class="bad">Se nada se mexer, o transporte est&aacute; parado. Esta cena &eacute; uma
+      simula&ccedil;&atilde;o: sem Play ela &eacute; uma fotografia do primeiro instante.</div></li>
+</ol>
+
+<h2>2 &middot; O colisor tem al&ccedil;a, e ela &eacute; nova</h2>
+
+<p>O <b>Collider</b> &eacute; literalmente uma coisa que se p&otilde;e num s&iacute;tio &mdash; um
+ch&atilde;o, um prato, uma caixa. At&eacute; este ciclo, punha-se digitando n&uacute;meros em dois
+controlos. Agora ele tem <b>caixa na tela</b>, como qualquer objeto.</p>
+
+<ol class="steps" start="2">
+  <li><b>Clique no cart&atilde;o <code>Collider</code>.</b>
+      <div class="out">Uma caixa aparece &agrave; volta do bloco.</div>
+      <div class="bad">Se nenhuma caixa aparecer, o cart&atilde;o n&atilde;o est&aacute;
+      selecionado &mdash; clique no <em>t&iacute;tulo</em> dele.</div></li>
+  <li><b>Arraste a caixa.</b>
+      <div class="out">O bloco muda de s&iacute;tio, e o monte que cai passa a formar-se onde
+      voc&ecirc; o p&ocirc;s.</div></li>
+  <li><b>Arraste um canto da caixa.</b>
+      <div class="out">O bloco fica maior ou menor &mdash; e apanha mais ou menos pe&ccedil;as. As
+      linhas <code>Box Width</code> e <code>Box Height</code> mexem-se junto.</div></li>
+  <li><b>Arraste a argola de rodar.</b>
+      <div class="out">O bloco inclina-se, e as pe&ccedil;as <b>escorregam</b> em vez de
+      assentarem.</div></li>
+</ol>
+
+<div class="note"><b>A al&ccedil;a muda de forma com a forma.</b> Na linha <code>Shape</code> do
+mesmo cart&atilde;o est&atilde;o quatro op&ccedil;&otilde;es: <b>Plane</b>, <b>Disc</b>,
+<b>Bowl</b> e <b>Box</b>. Um disco e uma ta&ccedil;a medem-se por um <em>raio</em>, uma caixa por
+<em>duas extens&otilde;es</em> &mdash; e a al&ccedil;a passa a medir o que aquela forma de facto
+l&ecirc;. Este &eacute; o primeiro n&oacute; da casa cuja al&ccedil;a depende de um controlo, e
+n&atilde;o s&oacute; do tipo de n&oacute;.</div>
+
+<h2>3 &middot; Empurrar, ou impor uma velocidade</h2>
+
+<p>O cart&atilde;o <b>Wind</b> &eacute; a gravidade desta cena: uma for&ccedil;a apontada para
+baixo. Mas h&aacute; <b>duas maneiras</b> de uma for&ccedil;a agir, e elas d&atilde;o
+anima&ccedil;&otilde;es completamente diferentes.</p>
+
+<ol class="steps" start="6">
+  <li>No cart&atilde;o <code>Wind</code>, na linha <code>Acts As</code>, troque <b>Force</b> por
+      <b>Target Velocity</b>.
+      <div class="out">As pe&ccedil;as deixam de <em>acelerar</em> e passam a cair a velocidade
+      <b>constante</b> &mdash; como uma folha, e n&atilde;o como uma pedra. E uma linha
+      <b><code>Air Resistance</code></b> <em>aparece</em> no cart&atilde;o.</div></li>
+  <li>Arraste o <code>Air Resistance</code>.
+      <div class="out">Ela decide <em>quanto tempo</em> a pe&ccedil;a leva a chegar &agrave;
+      velocidade do vento. Baixo = demora; alto = quase instant&acirc;neo.</div>
+      <div class="bad">Se a linha <code>Air Resistance</code> n&atilde;o tiver aparecido,
+      voc&ecirc; ainda est&aacute; em <b>Force</b> &mdash; e ali ela est&aacute; escondida de
+      prop&oacute;sito: em <b>Force</b> nada a l&ecirc;.</div></li>
+</ol>
+
+<div class="figs two">
+  <figure class="fig"><img src="../fig/sim_force.svg" alt="fila fotografada seis vezes, cada vao maior que o anterior">
+    <b>Acts As &middot; Force</b>
+    <figcaption>os v&atilde;os crescem <em>sempre igual</em> &mdash; ela acelera e nunca
+    p&aacute;ra de acelerar</figcaption></figure>
+  <figure class="fig"><img src="../fig/sim_target.svg" alt="fila fotografada seis vezes, os vaos crescem cada vez menos">
+    <b>Acts As &middot; Target Velocity</b>
+    <figcaption>os v&atilde;os crescem <em>cada vez menos</em> &mdash; ela est&aacute; a chegar
+    &agrave; velocidade do vento</figcaption></figure>
+</div>
+
+<div class="note"><b>Estas duas imagens n&atilde;o s&atilde;o desenhos, e o que se olha nelas
+&eacute; o ESPA&Ccedil;O entre os pontos.</b> S&atilde;o a mesma fila de pe&ccedil;as, fotografada
+seis vezes no mesmo segundo, com um &uacute;nico controlo de diferen&ccedil;a. &Agrave; esquerda
+cada salto &eacute; maior que o anterior <em>pela mesma quantidade</em>; &agrave; direita cada
+salto cresce menos que o anterior, porque a pe&ccedil;a est&aacute; a aproximar-se da velocidade
+do vento e a for&ccedil;a que a empurra vai-se apagando. Se as duas contarem a mesma
+hist&oacute;ria, elas <b>recusam-se a ser geradas</b>.</div>
+
+<div class="note"><b>Este r&oacute;tulo chamava-se <code>Mode</code>, e n&atilde;o dizia nada.</b>
+A palavra <em>Mode</em> aparecia em <b>26</b> cart&otilde;es deste app, sobre <b>24</b> perguntas
+diferentes &mdash; era a palavra mais usada do cat&aacute;logo e a que menos ensinava. Aqui a
+pergunta tem nome: <em>como &eacute; que esta for&ccedil;a age?</em> &mdash; e a resposta
+l&ecirc;-se de uma vez: <code>Acts As: Target Velocity</code>.</div>
+
+<h2>4 &middot; A rajada, e as gavetas do cart&atilde;o</h2>
+
+<p>Uma for&ccedil;a constante &eacute; previs&iacute;vel demais para parecer natural. O
+<b>Wind</b> sabe soprar aos <b>solavancos</b>, e cada pe&ccedil;a recebe a rajada dela &mdash;
+n&atilde;o todas ao mesmo tempo.</p>
+
+<ol class="steps" start="8">
+  <li>No cart&atilde;o <code>Wind</code>, <b>abra a se&ccedil;&atilde;o <code>Gust</code></b>
+      (clique no t&iacute;tulo dela).
+      <div class="out">Seis controlos aparecem, que estavam arrumados l&aacute; dentro.</div></li>
+  <li>Arraste <code>Gust</code>.
+      <div class="out">A chuva passa a cair torta: umas pe&ccedil;as adiantam-se, outras
+      atrasam-se.</div></li>
+  <li>Abra a se&ccedil;&atilde;o <code>Timing</code> e arraste <code>Gust Frequency</code>.
+      <div class="out">A rajada fica mais nervosa ou mais lenta.</div></li>
+</ol>
+
+<div class="note"><b>Por que o cart&atilde;o tem gavetas.</b> Este n&oacute; tem doze controlos.
+Doze deslizantes em fila obrigam voc&ecirc; a ler todos para achar um; tr&ecirc;s
+t&iacute;tulos transformam-nos em tr&ecirc;s perguntas que voc&ecirc; j&aacute; tem na cabe&ccedil;a
+&mdash; <em>para onde sopra e com que for&ccedil;a</em> (em cima, sempre &agrave; vista),
+<em>como ele varia</em> (<code>Gust</code>) e <em>em que ritmo</em> (<code>Timing</code>). Os
+controlos que est&atilde;o em cima, soltos, s&atilde;o a raz&atilde;o de existir do n&oacute;: eles
+nunca se escondem.</div>
+
+<h2>5 &middot; O grupo inteiro</h2>
+
+<p>A cena que voc&ecirc; abriu usa cinco destes n&oacute;s. Os outros sete resolvem o resto.</p>
+
+<h3>Os que d&atilde;o o rel&oacute;gio</h3>
+<ul>
+  <li><b>Simulation Zone</b> &mdash; a mem&oacute;ria. Ela guarda o estado de um instante para o
+      seguinte, e a linha <code>Life Cycle</code> decide se a simula&ccedil;&atilde;o corre
+      <b>para sempre</b>, <b>uma vez</b>, ou em <b>ciclo</b> (&eacute; o que faz esta cena
+      recome&ccedil;ar sozinha).</li>
+  <li><b>Simulation Step</b> &mdash; quem aplica, <em>dentro</em> da zona, o que as for&ccedil;as
+      somaram: a velocidade e a posi&ccedil;&atilde;o do pr&oacute;ximo instante. &Eacute; ele que
+      faz as pe&ccedil;as desta cena ca&iacute;rem, e ele tamb&eacute;m carrega o amortecimento e
+      os limites de velocidade.</li>
+  <li><b>Spawn</b> e <b>Lifetime</b> &mdash; pe&ccedil;as que <em>nascem</em> ao longo do tempo, e
+      que <em>morrem</em> depois de um tempo.</li>
+</ul>
+
+<div class="note"><b>H&aacute; DUAS maneiras de correr uma simula&ccedil;&atilde;o, e voc&ecirc;
+escolhe uma.</b> Dentro de uma <b>Simulation Zone</b>, o que circula <em>&eacute;</em> o estado:
+as posi&ccedil;&otilde;es que saem da zona s&atilde;o a verdade, e quem d&aacute; o passo &eacute;
+o <b>Simulation Step</b> &mdash; foi assim que esta cena foi montada. A outra maneira &eacute; o
+<b>Integrate</b>, para quando a simula&ccedil;&atilde;o &eacute; um <em>desvio de uma
+anima&ccedil;&atilde;o</em> que voc&ecirc; j&aacute; tem: ali o resto do grafo continua a mandar
+na posi&ccedil;&atilde;o e a f&iacute;sica s&oacute; acrescenta o quanto ela se afastou.
+&#9888; <b>N&atilde;o ponha os dois</b>: seriam duas mem&oacute;rias da mesma coisa, e elas
+discordam na primeira pe&ccedil;a que desaparecer.</div>
+
+<h3>As for&ccedil;as</h3>
+<ul>
+  <li><b>Wind</b> &mdash; direcional, com rajada. Com a rajada a zero, ela &eacute; gravidade.</li>
+  <li><b>Attractor</b> &mdash; puxa (ou empurra) para um ponto. O cart&atilde;o dele tem as
+      mesmas gavetas dos campos do tutorial anterior: <code>Placement</code> e
+      <code>Falloff</code>.</li>
+  <li><b>Vortex</b> &mdash; roda as coisas &agrave; volta de um centro.</li>
+  <li><b>Curl</b> &mdash; turbul&ecirc;ncia: um campo de redemoinhos, sem fonte nem sorvedouro.</li>
+  <li><b>Drag</b> &mdash; trava tudo, como ar espesso.</li>
+  <li><b>Buoyancy</b> &mdash; empuxo: as coisas flutuam a uma altura, e podem baloi&ccedil;ar com
+      ondas.</li>
+</ul>
+
+<div class="note"><b>As for&ccedil;as somam-se.</b> Voc&ecirc; pode ligar quatro em fila e todas
+contribuem &mdash; nenhuma anula a anterior. &Eacute; por isso que h&aacute; <em>um</em>
+<b>Integrate</b> no fim: ele aplica a soma, uma vez.</div>
+
+<h2>6 &middot; O que cada controlo faz</h2>
+
+<p>A tabela abaixo &eacute; <b>gerada do pr&oacute;prio app</b>: ela lista o que cada
+cart&atilde;o mostra quando voc&ecirc; larga o n&oacute;, com a faixa e a unidade de cada
+controlo.</p>
+
+<!-- GERADO pelo gerador do tutorial. Nao editar a mao. -->
+<h4 id="p-collider">Collider</h4>
+<table class="params">
+<tr><th>controlo</th><th>faixa</th><th>unidade</th></tr>
+<tr><td>Shape</td><td>Plane · Disc · Bowl · Box</td><td></td></tr>
+<tr><td>Offset</td><td>-1000 a 1000</td><td>px</td></tr>
+<tr><td>Angle</td><td>-180 a 180</td><td>deg</td></tr>
+<tr><td>Radius From</td><td>Point · Fixed · Sprite Size</td><td></td></tr>
+<tr><td>Bounce</td><td>0 a 1</td><td></td></tr>
+<tr><td>Friction</td><td>0 a 1</td><td></td></tr>
+<tr><td>Restitution Randomness</td><td>0 a 1</td><td></td></tr>
+</table>
+<p class="soft">Só noutro modo: <b>Center X</b> aparece quando <b>Shape</b> é Disc ou Bowl ou Box · <b>Center Y</b> aparece quando <b>Shape</b> é Disc ou Bowl ou Box · <b>Radius</b> aparece quando <b>Shape</b> é Disc ou Bowl · <b>Box Width</b> aparece quando <b>Shape</b> é Box · <b>Box Height</b> aparece quando <b>Shape</b> é Box · <b>Particle Radius</b> aparece quando <b>Radius From</b> é Fixed · <b>Size Scale</b> aparece quando <b>Radius From</b> é Sprite Size.</p>
+<h4 id="p-wind">Wind</h4>
+<table class="params">
+<tr><th>controlo</th><th>faixa</th><th>unidade</th></tr>
+<tr><td>Angle</td><td>0 a 360</td><td>graus</td></tr>
+<tr><td>Strength</td><td>0 a 40</td><td></td></tr>
+<tr><td>Acts As</td><td>Force · Target Velocity</td><td></td></tr>
+<tr><td>Gust</td><td>0 a 1</td><td></td></tr>
+<tr><td>Seed</td><td>0 a 100</td><td></td></tr>
+<tr><td>Octaves</td><td>1 a 4</td><td></td></tr>
+<tr><td>Noise Type</td><td>fBm · Turbulence · Ridged</td><td></td></tr>
+<tr><td>Gust Frequency</td><td>0.1 a 5</td><td></td></tr>
+<tr><td>Loop Period</td><td>0 a 20</td><td></td></tr>
+</table>
+<p class="soft">Só noutro modo: <b>Air Resistance</b> aparece quando <b>Acts As</b> é Target Velocity.</p>
+<h4 id="p-zone">Simulation Zone</h4>
+<table class="params">
+<tr><th>controlo</th><th>faixa</th><th>unidade</th></tr>
+<tr><td>Substeps</td><td>1 a 16 <span class="soft">(digitável até 64)</span></td><td></td></tr>
+<tr><td>Start</td><td>0 a 10</td><td>s</td></tr>
+<tr><td>Life Cycle</td><td>Forever · Once · Loop</td><td></td></tr>
+</table>
+<p class="soft">Só noutro modo: <b>Duration</b> aparece quando <b>Life Cycle</b> é Once ou Loop · <b>Loop Delay</b> aparece quando <b>Life Cycle</b> é Loop.</p>
+<h4 id="p-step">Simulation Step</h4>
+<table class="params">
+<tr><th>controlo</th><th>faixa</th><th>unidade</th></tr>
+<tr><td>Damping</td><td>0 a 1</td><td></td></tr>
+<tr><td>Speed Limit</td><td>0 a 4000</td><td>px</td></tr>
+<tr><td>Min Speed</td><td>0 a 4000</td><td>px</td></tr>
+<tr><td>Angular Damping</td><td>0 a 1</td><td></td></tr>
+</table>
+<h4 id="p-attractor">Attractor</h4>
+<table class="params">
+<tr><th>controlo</th><th>faixa</th><th>unidade</th></tr>
+<tr><td>Strength</td><td>0 a 40</td><td></td></tr>
+<tr><td>Repel</td><td>liga / desliga</td><td></td></tr>
+<tr><td>Target X</td><td>-1000 a 1000</td><td>px</td></tr>
+<tr><td>Target Y</td><td>-1000 a 1000</td><td>px</td></tr>
+<tr><td>Target</td><td>Point · Stream</td><td></td></tr>
+<tr><td>Radius</td><td>10 a 2000 <span class="soft">(digitável até 209715187.5)</span></td><td>px</td></tr>
+<tr><td>Curve</td><td>Linear · Quad · Smooth · Smoother</td><td></td></tr>
+<tr><td>Min Distance</td><td>0 a 20</td><td></td></tr>
+<tr><td>Peak Distance</td><td>0 a 20</td><td></td></tr>
+<tr><td>Reversal Distance</td><td>0 a 20</td><td></td></tr>
+</table>
+<p class="soft">Só noutro modo: <b>Predict</b> aparece quando <b>Target</b> é Stream.</p>
+<h4 id="p-vortex">Vortex</h4>
+<table class="params">
+<tr><th>controlo</th><th>faixa</th><th>unidade</th></tr>
+<tr><td>Center X</td><td>-1000 a 1000</td><td>px</td></tr>
+<tr><td>Center Y</td><td>-1000 a 1000</td><td>px</td></tr>
+<tr><td>Strength</td><td>0 a 40</td><td></td></tr>
+<tr><td>Radius</td><td>10 a 2000 <span class="soft">(digitável até 209715187.5)</span></td><td>px</td></tr>
+<tr><td>Curve</td><td>Linear · Quad · Smooth · Smoother</td><td></td></tr>
+<tr><td>Acts As</td><td>Force · Target Velocity</td><td></td></tr>
+<tr><td>Clockwise</td><td>liga / desliga</td><td></td></tr>
+</table>
+<p class="soft">Só noutro modo: <b>Air Resistance</b> aparece quando <b>Acts As</b> é Target Velocity.</p>
+<h4 id="p-curl">Curl Noise</h4>
+<table class="params">
+<tr><th>controlo</th><th>faixa</th><th>unidade</th></tr>
+<tr><td>Strength</td><td>0 a 40</td><td></td></tr>
+<tr><td>Scale</td><td>0.01 a 3</td><td></td></tr>
+<tr><td>Octaves</td><td>1 a 4</td><td></td></tr>
+<tr><td>Seed</td><td>0 a 100</td><td></td></tr>
+<tr><td>Noise Type</td><td>fBm · Turbulence · Ridged</td><td></td></tr>
+<tr><td>Lacunarity</td><td>1 a 4</td><td></td></tr>
+<tr><td>Roughness</td><td>0 a 1</td><td></td></tr>
+<tr><td>Offset X</td><td>-20 a 20</td><td></td></tr>
+<tr><td>Offset Y</td><td>-20 a 20</td><td></td></tr>
+<tr><td>Speed</td><td>0 a 2 <span class="soft">(digitável até 5)</span></td><td></td></tr>
+<tr><td>Loop Period</td><td>0 a 20</td><td></td></tr>
+</table>
+<h4 id="p-drag">Drag</h4>
+<table class="params">
+<tr><th>controlo</th><th>faixa</th><th>unidade</th></tr>
+<tr><td>Coefficient</td><td>0 a 10 <span class="soft">(digitável até 20)</span></td><td></td></tr>
+<tr><td>Drag X</td><td>0 a 3</td><td></td></tr>
+<tr><td>Drag Y</td><td>0 a 3</td><td></td></tr>
+</table>
+<h4 id="p-buoyancy">Buoyancy</h4>
+<table class="params">
+<tr><th>controlo</th><th>faixa</th><th>unidade</th></tr>
+<tr><td>Level</td><td>-1000 a 1000</td><td>px</td></tr>
+<tr><td>Density</td><td>0 a 40</td><td></td></tr>
+<tr><td>Depth</td><td>1 a 300 <span class="soft">(digitável até 26214398.438)</span></td><td>px</td></tr>
+<tr><td>Drag</td><td>0 a 20</td><td></td></tr>
+<tr><td>Wave Amplitude</td><td>0 a 200</td><td>px</td></tr>
+<tr><td>Wave Length</td><td>5 a 2000</td><td>px</td></tr>
+<tr><td>Waves</td><td>1 a 4</td><td></td></tr>
+<tr><td>Wave Speed</td><td>-5 a 5</td><td></td></tr>
+</table>
+<h4 id="p-spawn">Spawn</h4>
+<table class="params">
+<tr><th>controlo</th><th>faixa</th><th>unidade</th></tr>
+<tr><td>Rate</td><td>0 a 60 <span class="soft">(digitável até 15360)</span></td><td></td></tr>
+<tr><td>Scatter</td><td>liga / desliga</td><td></td></tr>
+<tr><td>Seed</td><td>0 a 9999</td><td></td></tr>
+<tr><td>Burst</td><td>0 a 32 <span class="soft">(digitável até 256)</span></td><td></td></tr>
+<tr><td>Burst Speed</td><td>0 a 8</td><td></td></tr>
+<tr><td>Probability</td><td>0 a 1</td><td></td></tr>
+</table>
+<h4 id="p-lifetime">Lifetime</h4>
+<table class="params">
+<tr><th>controlo</th><th>faixa</th><th>unidade</th></tr>
+<tr><td>Life</td><td>0 a 20</td><td>s</td></tr>
+<tr><td>Variance</td><td>0 a 1</td><td></td></tr>
+<tr><td>Seed</td><td>0 a 9999</td><td></td></tr>
+</table>
+
+<footer>PH2D &middot; Motion Nodes &middot; tutorial 5 de 9 &mdash; ciclo da
+<b>simula&ccedil;&atilde;o</b>. Cena de smoke <code>PH2D_GPU_COOK_DEMO=113</code>.</footer>

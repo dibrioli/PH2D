@@ -9,7 +9,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**116 arquivos** · **12** citados pelo `CLAUDE.md` (marcados **◆**) · **2** são handoffs (registro **morto**).
+**118 arquivos** · **12** citados pelo `CLAUDE.md` (marcados **◆**) · **2** são handoffs (registro **morto**).
 
 | # | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
@@ -120,6 +120,8 @@
 | 104 |   | [104_ciclo_1_arranjo.md](104_ciclo_1_arranjo.md) | — | 104 — CICLO 1 · ARRANJO: pôr muitos objectos na tela |
 | 105 |   | [105_ciclo_2_animadores.md](105_ciclo_2_animadores.md) | — | Ciclo 2 — ANIMADORES · «O tempo entra no grafo» |
 | 106 |   | [106_ciclo_3_transformes_e_deformadores.md](106_ciclo_3_transformes_e_deformadores.md) | — | Ciclo 3 — TRANSFORMES & DEFORMADORES · «Dobrar o mundo» |
+| 107 |   | [107_ciclo_4_foco_os_campos.md](107_ciclo_4_foco_os_campos.md) | — | 107 — CICLO 4: FOCO — quem é afectado (os CAMPOS) |
+| 108 |   | [108_ciclo_5_simulacao.md](108_ciclo_5_simulacao.md) | — | 108 — CICLO 5: SIMULAÇÃO — deixar a física decidir |
 | — | ◆ | [BUGS_motion_nodes.md](BUGS_motion_nodes.md) | bugs | Bugs do módulo Motion Nodes — registro + soluções |
 | — |   | [referencia_catalogo_nodes_minicavalry.md](referencia_catalogo_nodes_minicavalry.md) | referência | Mini Cavalry — Referência de Nós (autor) |
 | — |   | [referencia_design_node_graph_ph2d_v1.md](referencia_design_node_graph_ph2d_v1.md) | referência | PH2D — Sistema de Nós — Design Canônico |

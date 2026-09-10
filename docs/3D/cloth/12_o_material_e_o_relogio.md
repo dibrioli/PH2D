@@ -152,10 +152,17 @@ por consumir** e o quadro seguinte continua de onde este parou.
 O alvo tem `8` controlos no filtro — *Filter Type · Strength · Force Axis · Orientation · Cloth
 Mass · Cloth Damping · Use Face Sets · Use Collisions* — e este era o **único sem par aqui**: a
 nossa força de base estava presa em `1,0`. ⇒ a única maneira de o artista pedir mais era **arrastar
-mais**, e a resposta é **quadrática** no arrasto.
+mais**, e a resposta é **CÚBICA** no arrasto.
+
+> ⛔⛔ **Esta linha dizia «quadrática» até 2026-09-09, e a medição desmentiu-a:** dobrar o arrasto
+> dá **`8,0×`**, não `4×`. A fórmula da espec §7 sempre esteve certa (`Σ_j (k−j+1)·S_j·Δt`); a
+> leitura ao lado dela é que supunha `S_j` **constante**, e ele é o arrasto ACUMULADO — cresce com
+> `j`, logo a soma é `k(k+1)(k+2)/6`. *A fórmula estava certa e a palavra escrita ao lado dela
+> não.* ⭐ E a mutação que congela o `S_j` lê exactamente **`4,083×`**: o doc descrevia o mutante.
+> Gate: [`a_resposta_do_filtro_ao_arrasto.rs`](../../../crates/ph2d-sculpt3d/tests/a_resposta_do_filtro_ao_arrasto.rs).
 
 ⚠️ **Ele multiplica a FORÇA, nunca o arrasto** — o arrasto é que decide quantos passos correm;
-escalar os dois seria quadrático no *Strength*. Medido: força `1` move `0,598400`, força `2` move
+escalar os dois seria cúbico no *Strength*. Medido: força `1` move `0,598400`, força `2` move
 `1,196801` (**exactamente o dobro**), força `0` move `0,000000`, e força `−1` faz ao contrário.
 ⚠️ **A faixa é a do alvo e desce a `−10`** — é a única faixa do painel do filtro com piso negativo,
 e o negativo é o gesto para trás sem a mão voltar.
@@ -214,6 +221,8 @@ sorteio do oráculo, não a nossa lei.*
   explodia era o **esticão contra o material** (`7,743` a um gesto). *A peça não ficava maior —
   ficava amarrotada.* Cura sem constante nova, tabela e mutação no
   [doc 10 §5](10_o_elastico_que_nao_para_e_o_volume.md).
-- **A resposta do filtro é quadrática no arrasto** (`Σ_j (k−j+1)·S_j·Δt`, espec §7): dobrar o
-  arrasto quadruplica o efeito. É a lei do alvo, e ela torna o fim da faixa difícil de dosear.
+- **A resposta do filtro é CÚBICA no arrasto** (`Σ_j (k−j+1)·S_j·Δt` com `S_j` a crescer, espec
+  §7): dobrar o arrasto dá **`8,0×`** — `k(k+1)(k+2)/6`. É a lei do alvo, e ela torna o fim da
+  faixa ainda mais difícil de dosear do que esta linha dizia (ela afirmava `4×`, e havia gate
+  nenhum a medi-la até 09/09).
 - **O tamanho da ruga continua a seguir a densidade da malha** (doc [11](11_o_material_a_ruga_e_a_memoria.md) §5).

@@ -141,12 +141,24 @@ pub struct ClothFilterProps {
     /// ⛔⛔ **Ele EXISTE no alvo e faltava-nos** — achado pelo censo do painel
     /// dele em 2026-09-09 (emenda Q23.6: são `8` controlos, e este era o único
     /// deles sem par aqui). Sem ele a única maneira de o artista pedir mais era
-    /// **arrastar mais**, e a resposta é quadrática no arrasto.
+    /// **arrastar mais**, e a resposta é **CÚBICA** no arrasto.
+    ///
+    /// ⛔⛔ **Este doc dizia «quadrática» e a medição desmentiu-o** (2026-09-09):
+    /// dobrar o arrasto dá **`8,0×`**, não `4×`. A fórmula da espec §7 sempre
+    /// esteve certa — `Σ_j (k−j+1)·S_j·Δt` —, e a leitura ao lado dela é que
+    /// supunha `S_j` **constante**: ele é o arrasto ACUMULADO e cresce com `j`,
+    /// logo a soma é `k(k+1)(k+2)/6`. *A fórmula estava certa e a palavra
+    /// escrita ao lado dela não.* ⭐ A mutação que congela o `S_j` lê exactamente
+    /// `4,083×` — **o doc descrevia o mutante**.
     ///
     /// ⚠️ **Ele multiplica a FORÇA, nunca o arrasto** — o arrasto é que decide
     /// quantos passos de simulação correm
     /// ([`crate::stroke_cloth_filter::PASSO_DE_ARRASTO`]); escalar os dois seria
-    /// quadrático no *Strength*, que não é a lei.
+    /// cúbico no *Strength*, que não é a lei.
+    ///
+    /// ⭐ **As duas metades têm gate desde 2026-09-09**, e são duas porque medir
+    /// só a de cima aprovaria a mutação que este parágrafo avisa:
+    /// `ph2d-sculpt3d/tests/a_resposta_do_filtro_ao_arrasto.rs`.
     pub strength: f32,
     /// ⭐⭐⭐ ***Preserve Volume*** — quanto do volume de repouso a peça mantém
     /// (`0` desliga, `1` = todo).

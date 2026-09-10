@@ -48,3 +48,31 @@ a saída** (`voice::a_24k_mono_clip_is_audible_at_48k_out`,
 `engine::a_24k_mono_preview_is_audible_through_the_full_renderer`) — antes, todo gate de
 reprodução comparava stream-vs-resident ou o retorno de `render_add`, e dois silêncios
 comparam iguais ([[feedback_absence_gate_needs_a_presence_sibling]]).
+
+**TERCEIRA OCORRÊNCIA (2026-09-09) — a MESMA causa de 2026-07-08, de volta.** Report do
+Enio: *«os sons estão vivos no audio mixer mas não chegam até mim»* + *«o mesmo problema já
+aconteceu várias vezes»*. Medido: a entrada `application.name:PipeWire ALSA
+[ph2d-host-desktop]` estava outra vez com **`"mute":true`** (volume 1.0, channelMap
+["FL","FR"]), enquanto as ~20 entradas irmãs `ph2d_host_desktop-<hash>` (binários de teste)
+estavam todas `mute:false`. O sink default (`USB Audio Speakers`) estava a 0,89 e não
+mutado ⇒ **só o app estava calado**. Cura aplicada: `systemctl --user stop wireplumber` →
+desmutar SÓ a linha do ph2d (a outra `mute:true` era do `Godot Engine Editor`, deliberada) →
+`start`. Depois do restart o stream vivo `#56822` apareceu `Mute: no`, 100%, roteado ao
+`Speaker__sink` RUNNING.
+
+⚠️ **O padrão é `"mute":true` VOLTAR sozinho.** Não foi identificado o que o (re)mute — um
+clique no mixer do Plasma sobre o stream do app, ou um `pactl set-sink-input-mute` de
+qualquer origem, é gravado pelo `module-stream-restore` e vira permanente. ⇒ *tratar como
+recorrente, não como incidente.*
+
+⭐ **O INSTRUMENTO existe desde 09/09: `bash scripts/audio-mudo.sh`** (mede as 4 causas e
+imprime o comando; `--curar` aplica 1..3; a 4 — qual saída tem as colunas — fica com o
+Enio). ⚠️ **Ele nasceu na `line/components` e só chega ao `main` na integração** — até lá o
+comando é `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-components && bash
+scripts/audio-mudo.sh`.
+
+⛔⛔ **E o app NÃO pode medir isto, por construção:** o mute vive no NÓ do PipeWire, a
+jusante do cpal — do lado de cá o `write_out` entrega o buffer e devolve sucesso. A linha
+`[audio-2d] … pico do master L… R…` (09/09) responde só METADE: pico a mexer prova que o som
+CHEGA à saída, nunca que a saída o ENTREGA. *Pico vivo + silêncio = correr o script, não
+depurar o mixer.*

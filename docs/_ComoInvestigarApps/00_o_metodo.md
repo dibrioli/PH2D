@@ -80,10 +80,15 @@ entrada tem de ser nossa — §3 passo 3.
 Percorra a escada e **pare na primeira porta aberta**
 ([SKILL §2](../_Skill_Especificações/SKILL_Cleanroom_Reimplementacao.md)):
 existe um app **permissivo** que faz a mesma coisa? Então **porte-o**, com
-atribuição, e o clean-room acabou antes de começar. ⭐ Neste sistema há **duas**
-portas permissivas instaladas — Godot (MIT) e OpenToonz (BSD-3) — e o
+atribuição, e o clean-room acabou antes de começar. ⭐ Neste sistema há **três**
+portas permissivas instaladas — Godot (MIT), OpenToonz (BSD-3) e o **motor** do
+MyPaint (`libmypaint`, **ISC**, com os 373 pincéis em **CC0**) — e o
 [inventário](01_o_arsenal.md) diz qual serve a quê. *Uma semana de clean-room
 gasta onde havia porta aberta é a forma mais cara deste erro.*
+
+⚠️ **A terceira ensina que a unidade da triagem é o ARTEFACTO, não o projecto:**
+o app `mypaint` é GPL e o motor que ele usa é ISC, **no mesmo pacote de origem**.
+Pergunte `pacman -Qi <cada biblioteca>`, nunca só o nome que está no menu.
 
 **2. UMA pergunta por vez, e escreva-a antes de correr.**
 *«O `δ` é a diferença dos pontos 3D ou a projecção do movimento no plano do

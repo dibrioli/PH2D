@@ -28,6 +28,9 @@ li vale em todo o curso do controlo, ou só onde a forma nasce?***
 
 - ⭐⭐⭐ [Encolher por `+r` e voltar por `−r` devolve o campo ORIGINAL — um MINORANTE composto com o inverso do que ele minora não é a identidade, e a quina convexa fica viva](feedback_a_minorant_composed_with_the_inverse_of_what_it_minorises_is_not_the_identity.md)
 
+- ⭐⭐⭐ [Uma lei analítica EXACTA pode ser um tecto INSEGURO — a construção degenera antes da geometria (0,7483 da conta em 112 estrelas), e um operador dobrado AOS PARES não é local](feedback_an_exact_analytic_law_can_still_be_an_unsafe_ceiling.md)
+- ⭐⭐⭐ [Uma mistura arredonda ENTRE peças: uma cumeeira DENTRO de uma peça não tem cura por raio — e um plano de chanfro feito por SOMA herda o EIXO MEDIAL do campo somado](feedback_a_blend_never_rounds_an_edge_that_lives_inside_one_piece.md)
+
 ## As réguas — a forma medida no sítio errado
 
 - ⭐⭐⭐ [Uma COERÇÃO estaciona NA cerca, e uma cerca é por definição onde a forma DEGENERA — varra e ponha-a onde a peça volta a marchar (3 tentativas a aterrar no mesmo sítio mau)](feedback_a_coercion_parks_at_the_fence_which_is_where_the_shape_degenerates.md)
@@ -36,6 +39,7 @@ li vale em todo o curso do controlo, ou só onde a forma nasce?***
 - [Um tecto escrito pelo PREÇO pode ser o dobro do que a MARCHA permite — e o representante típico nunca corre o tecto](feedback_a_ceiling_written_from_price_may_be_double_what_the_march_allows.md)
 - [Bissecção a partir da ORIGEM supõe a origem DENTRO — a 1.ª peça de miolo vazio recebe uma acusação inventada](feedback_a_ruler_that_walks_from_the_origin_assumes_the_origin_is_inside.md)
 - [Uma régua que conta «quanto defeito SOBROU» premeia exagerar a cura — mede quantidade, não correcção](feedback_a_ruler_that_counts_leftover_defect_rewards_overshooting.md)
+- ⭐⭐ [«Quão mau é o pior» e «quantos sítios estão maus» são DUAS réguas — o gate de pior-ângulo ficou verde sobre 11 % da superfície](feedback_a_worst_angle_gate_is_blind_to_the_fraction.md)
 - [Um tecto em graus SOBE quando a cura correcta piora o número — troque-o por uma IGUALDADE analítica](feedback_a_ceiling_in_degrees_ratchets_up_an_analytic_equality_does_not.md)
 - [Um gate que copia a FÓRMULA fica verde sobre uma lei que ninguém shipa — com oráculo analítico, atravesse o PRODUTO](feedback_a_gate_that_copies_the_formula_goes_green_over_a_law_nobody_ships.md)
 - ⭐⭐⭐ [Um ramo de união que é um semiespaço INFINITO ganha o `min` fundo DENTRO da peça, onde as coordenadas dele são singulares (`‖∇f‖ = 2,46`) — e a secção, o volume e a silhueta leem `0,000 %`: feche-o com a geometria em que ele assenta, e varra a CAIXA, não a casca](feedback_a_field_can_be_wrong_exactly_where_no_surface_ruler_looks.md)

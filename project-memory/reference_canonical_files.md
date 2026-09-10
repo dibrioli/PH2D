@@ -65,3 +65,5 @@ otimização — ver `CLAUDE.md §5.0`.
 
 Vide também [[feedback_stale_comment_and_dead_code_lie]] e
 [[feedback_a_rule_only_exists_if_it_is_on_the_path_of_who_executes_it]].
+
+- **O app PODE ser reconstruído com uma instância aberta** (medido 2026-09-09): o linker é o `mold` (global `~/.cargo/config.toml`), que **desliga e recria** o ficheiro de saída em vez de o truncar ⇒ **sem `Text file busy`**. Um relink por cima de um binário a correr devolve `EXIT=0`. ⇒ para correr o smoke outra vez sem fechar o que está aberto, basta **outro terminal** — o que prende o terminal é o `cargo run` ficar em primeiro plano, não o build.

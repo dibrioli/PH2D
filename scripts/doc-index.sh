@@ -73,10 +73,11 @@ DIRS = [
             "gate. É o método que produziu o pincel de tecido (86 traços ⇒ 86 gates), e ele "
             "vale para **toda** implementação deste app, não só para as clean-room.\n>\n"
             "> ⚠️ **Leia o `00` antes do `01`:** a tabela de apps sem o método é uma "
-            "lista de programas. E o passo 1 é sempre a TRIAGEM DE LICENÇA — há **duas** "
-            "portas permissivas instaladas nesta máquina (Godot MIT, OpenToonz BSD-3), e "
-            "gastar uma semana de clean-room onde havia porta aberta é a forma mais cara "
-            "deste erro."
+            "lista de programas. E o passo 1 é sempre a TRIAGEM DE LICENÇA — há **três** "
+            "portas permissivas instaladas nesta máquina (Godot MIT, OpenToonz BSD-3, e o "
+            "**motor** do MyPaint: `libmypaint` ISC + 373 pincéis CC0, ⚠️ **com o app à "
+            "volta em GPL**), e gastar uma semana de clean-room onde havia porta aberta é "
+            "a forma mais cara deste erro."
         ),
     ),
     dict(

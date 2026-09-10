@@ -1,6 +1,7 @@
 # O ARSENAL — que app é oráculo de que módulo, e como se corre sem interface
 
-> ⚠️ **Tabela MEDIDA nesta máquina em 2026-09-07**, não lembrada: as versões
+> ⚠️ **Tabela MEDIDA nesta máquina em 2026-09-07** (linha do **MyPaint** e o
+> §2-bis em **2026-09-09**), não lembrada: as versões
 > vêm do binário (`--version`), as licenças do gestor de pacotes
 > (`pacman -Qi <pkg>`), e as portas de linha de comando do `--help` de cada um.
 > ⛔ **Re-meça antes de citar** — um app actualizado muda de porta e de licença,
@@ -13,12 +14,28 @@
 
 ## §1 — A triagem, antes de tudo
 
-⭐⭐ **Duas destas portas são PERMISSIVAS, e isso muda o trabalho inteiro:**
+⭐⭐ **TRÊS destas portas são PERMISSIVAS, e isso muda o trabalho inteiro:**
 
 | app | licença | o que isso autoriza |
 |---|---|---|
 | **Godot** | **MIT** | ⭐ **portar**, com atribuição. Sem parede, sem subagentes, sem vassoura |
 | **OpenToonz** | **BSD-3-Clause** | ⭐ **portar**, com atribuição. Idem |
+| **MyPaint** (as PARTES) | **ISC** + **CC0** | ⭐ **portar E LIGAR**, com atribuição — ver o aviso abaixo |
+
+⚠️⚠️ **O MyPaint é a primeira entrada em que a licença do APP e a do MOTOR
+divergem, e tratá-lo como uma coisa só erra nos DOIS sentidos** (medido
+2026-09-09, `pacman -Qi`):
+
+| artefacto | licença | o que é | veredito |
+|---|---|---|---|
+| `mypaint` (o programa) | GPL-2.0-or-later | a janela GTK | **parede** — corre-se, não se lê |
+| `libmypaint` **1.6.1** | ⭐ **ISC** | **o motor de pincel** (dinâmica, tiles, mistura) | ⭐ **sem parede: ligar ou portar** |
+| `mypaint-brushes` **2.0.2** | ⭐ **CC0** | **373 pincéis** `.myb` (JSON) | ⭐ **domínio público** |
+
+⇒ *A parte que interessa ao Painter — o motor e os pincéis — está do lado
+ABERTO.* Quem walled o «MyPaint» inteiro paga clean-room por código que podia
+simplesmente **usar**; quem o declarou aberto inteiro leu GPL como ISC. **A
+unidade da triagem é o ARTEFACTO instalado, nunca o nome do projecto.**
 
 **Todos os outros abaixo são copyleft** (GPL/LGPL) ⇒ **parede obrigatória**
 ([SKILL](../_Skill_Especificações/SKILL_Cleanroom_Reimplementacao.md)): quem
@@ -45,12 +62,51 @@ clean-room gasta onde havia porta permissiva é a forma mais cara deste erro.*
 | **Natron** | (bin) | GPL2 | **SIM** | Motion Nodes (compositor de nós) | ⭐ `NatronRenderer` — corre projectos `.ntp` **ou** scripts Python, em background |
 | **OpenToonz** | — | **BSD-3-Clause** | ⭐ **NÃO** | Flip (animação 2D) | ⛔ **sem porta de consola: `opentoonz --help` ABRE A GUI e bloqueia** (medido — a corrida foi morta a 120 s). ⇒ aqui o valor é o **fonte**, que é permissivo: leia e porte |
 | **Synfig** | 1.4.5 | GPL-2.0-or-later | **SIM** | Vector · Flip · Timeline | `synfig <ficheiro>` (renderizador de consola) |
+| **MyPaint** | 2.0.1 | GPL-2.0-or-later (⚠️ **mas o motor é ISC e os pincéis CC0** — §1) | ⚠️ **só o APP** | Painter · Flip | ⛔ **o app NÃO tem porta de consola** (`--help` medido: 5 opções, todas de GUI — nenhum export/batch). ⭐ **A porta é a BIBLIOTECA:** liga-se `libmypaint` por `pkg-config --cflags --libs libmypaint` e pinta-se em memória com `mypaint_fixed_tiled_surface_new` — **zero GTK, zero janela** |
 | **Audacity** | — | GPL-3.0-or-later | **SIM** | Áudio | ⏳ **não medido** — não afirme uma porta sem a correr |
 | **Ardour** | — | CC0 + GPL-2/3 + MIT | **SIM** | Áudio (rack, mixer) | ⏳ **não medido** — idem |
 
 ⚠️ **As duas últimas linhas dizem «não medido» de propósito.** *Uma ausência
 afirmada sem olhar a API é um palpite com cara de medição* — esta casa pagou por
 isso pelo menos três vezes. Quem precisar delas mede e edita esta linha.
+
+---
+
+## §2-bis — O oráculo do `libmypaint`, CORRIDO (2026-09-09)
+
+⭐ **Provado nesta máquina, não suposto:** um `.c` de ~90 linhas liga a
+biblioteca, pinta um traço **NOSSO** (diagonal de 64 passos, pressão a subir e a
+descer) numa superfície de 256×256 em memória e despeja PPM + a cobertura de
+tinta. Com os pincéis CC0 que vieram no pacote, as assinaturas separam-se logo:
+
+| pincel | px pintados | tinta (Σ alfa) |
+|---|---|---|
+| `classic/charcoal.myb` | 2 627 | 242,5 |
+| `classic/pen.myb` | 1 631 | 700,1 |
+
+*O carvão espalha-se e mal marca; a caneta cobre menos pixels e crava o dobro e
+meio de tinta.* **373** ficheiros `.myb` em `/usr/share/mypaint-data/2.0/brushes/`,
+e são **JSON** — entram directos em `mypaint_brush_from_string`.
+
+⭐⭐ **Como a licença muda o sítio do harness:** a regra do §3 manda o harness
+viver **fora da árvore** porque ele toca o alvo. Aqui o alvo tocado é **ISC**
+⇒ *este* harness **pode viver no repo**, e a vassoura não se aplica. A parede
+só existe se alguém abrir o **app**.
+
+⛔⛔ **DUAS armadilhas medidas, e as duas dão saída plausível e ERRADA:**
+
+1. **A superfície nasce com LIXO e a API pública não tem `clear`.** Medido:
+   `mypaint_fixed_tiled_surface_new` devolve tiles cheios de `0xFFFF` em **todos**
+   os canais. Quem não zerar lê **canvas inteiro pintado** — a 1.ª corrida desta
+   sonda deu `65 536` de `65 536` px com tinta e uma imagem que parecia certa.
+   ⇒ o arnês pede cada tile com `readonly = FALSE` e zera-o **antes** de pintar.
+2. **A escala do canal é `65535 = 1,0`, não `32768`.** O `guint16` é
+   pré-multiplicado; ler com o meio da gama dá alfa `1,97` por pixel e uma soma
+   de tinta **12,9× inflada** — um número que passa despercebido numa tabela.
+
+⚠️ **O `roi` devolvido pelo `end_atomic` estava CERTO nas duas corridas erradas**
+(`224×193`, a caixa da diagonal): *o oráculo pode acertar a moldura e mentir no
+conteúdo* — confira sempre a imagem **e** um escalar, nunca só um deles.
 
 ---
 

@@ -29,3 +29,4 @@ metadata:
 - [[feedback_a_shared_widget_slot_has_two_questions_and_only_one_was_answered]] — widget partilhado por N rows: quem COMITA tinha 4 armas, o que MOSTRA tinha 1; tocar no campo APAGAVA o valor
 - [[feedback_alive_reachable_and_in_the_wrong_place_are_three_questions]] — VIVO · ALCANÇÁVEL · NO SÍTIO CERTO são três perguntas, e a terceira não tem instrumento
 - [[feedback_an_indicator_drawn_over_a_widget_outside_its_state_table_dies_when_the_table_changes]] — um sinal traçado POR CIMA do widget, fora da tabela de estados dele, morre quando a tabela muda (o tema plano apagou o anel do modo Image Tools); o estado entra como INPUT do pintor
+- [[feedback_a_deferred_popover_that_never_publishes_its_rect_cannot_be_light_dismissed]] — popover pintado num passe DIFERIDO nunca fecha ao clique de fora sem `set_dropdown_popover`; os 4 seletores do Inspector viveram assim · e a IRMÃ: eles penduravam a lista SEMPRE abaixo do chip, e o clamp sem rolagem e' meia-cura

@@ -5,7 +5,7 @@
 >
 > **Como usar um app de referência sem lhe ler o fonte:** ponha-o a correr por script, colha a SAÍDA dele sobre entradas NOSSAS, e transforme cada corrida num gate. É o método que produziu o pincel de tecido (86 traços ⇒ 86 gates), e ele vale para **toda** implementação deste app, não só para as clean-room.
 >
-> ⚠️ **Leia o `00` antes do `01`:** a tabela de apps sem o método é uma lista de programas. E o passo 1 é sempre a TRIAGEM DE LICENÇA — há **duas** portas permissivas instaladas nesta máquina (Godot MIT, OpenToonz BSD-3), e gastar uma semana de clean-room onde havia porta aberta é a forma mais cara deste erro.
+> ⚠️ **Leia o `00` antes do `01`:** a tabela de apps sem o método é uma lista de programas. E o passo 1 é sempre a TRIAGEM DE LICENÇA — há **três** portas permissivas instaladas nesta máquina (Godot MIT, OpenToonz BSD-3, e o **motor** do MyPaint: `libmypaint` ISC + 373 pincéis CC0, ⚠️ **com o app à volta em GPL**), e gastar uma semana de clean-room onde havia porta aberta é a forma mais cara deste erro.
 >
 > ⚠️ **Isto NÃO é o estado atual do módulo.** O estado vivo é o **[`CLAUDE.md §5`](../../CLAUDE.md)**;
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os

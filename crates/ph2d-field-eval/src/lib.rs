@@ -283,10 +283,13 @@ pub enum MeshError {
     Rejected(String),
 }
 
-/// Um documento avaliado ponto a ponto — a porta que o traçado e as sondas usam.
+/// Um documento avaliado ponto a ponto — a porta que as sondas e os gates usam.
+///
+/// ⚠️ **Ela NÃO é o caminho do traçado.** Quem desenha é o [`hybrid`], em `f32` e em lote; esta
+/// responde **um ponto de cada vez**, em `f64`, que é o que uma régua de `‖∇f‖` por diferença
+/// central precisa. Ver [`point_tape`] para o preço que essa escolha custava e como ele saiu.
 pub struct Field {
-    ctx: fidget::context::Context,
-    root: fidget::context::Node,
+    tape: point_tape::PointTape,
 }
 
 impl Field {
@@ -299,21 +302,39 @@ impl Field {
     pub fn from_tree(tree: &Tree) -> Self {
         let mut ctx = fidget::context::Context::new();
         let root = ctx.import(tree);
-        Self { ctx, root }
+        // ⭐ O `Context` morre aqui: a fita já traz o grafo achatado, e guardá-lo seria lastro.
+        Self {
+            tape: point_tape::PointTape::build(&ctx, root),
+        }
     }
 
     /// `f(x, y, z)`. `NaN` se a árvore não puder ser avaliada ali.
     #[must_use]
     pub fn at(&self, x: f64, y: f64, z: f64) -> f64 {
-        self.ctx.eval_xyz(self.root, x, y, z).unwrap_or(f64::NAN)
+        self.tape.eval(x, y, z)
     }
 
     /// `‖∇f‖` por diferença central — a medida de quanto o campo ainda é uma **distância**.
+    ///
+    /// ⭐⭐ **As seis amostras vão numa passagem só** ([`point_tape::PointTape::eval_many`]): elas
+    /// percorrem a MESMA fita, e descodificá-la seis vezes era trabalho repetido. A resposta é
+    /// bit-a-bit a de seis chamadas ao [`Field::at`] — há gate.
+    ///
+    /// ⚠️ **A ordem das seis é load-bearing** e é a mesma de sempre (`+x, −x, +y, −y, +z, −z`): a
+    /// subtracção que vem a seguir é em vírgula flutuante, e trocar quem é o minuendo mudaria bits.
     #[must_use]
     pub fn gradient_norm(&self, x: f64, y: f64, z: f64, eps: f64) -> f64 {
-        let gx = (self.at(x + eps, y, z) - self.at(x - eps, y, z)) / (2.0 * eps);
-        let gy = (self.at(x, y + eps, z) - self.at(x, y - eps, z)) / (2.0 * eps);
-        let gz = (self.at(x, y, z + eps) - self.at(x, y, z - eps)) / (2.0 * eps);
+        let v = self.tape.eval_many(&[
+            [x + eps, y, z],
+            [x - eps, y, z],
+            [x, y + eps, z],
+            [x, y - eps, z],
+            [x, y, z + eps],
+            [x, y, z - eps],
+        ]);
+        let gx = (v[0] - v[1]) / (2.0 * eps);
+        let gy = (v[2] - v[3]) / (2.0 * eps);
+        let gz = (v[4] - v[5]) / (2.0 * eps);
         (gx * gx + gy * gy + gz * gz).sqrt()
     }
 }
@@ -325,6 +346,7 @@ pub fn leaf(p: Primitive, xform: Xform) -> Node {
 }
 
 mod affine;
+mod point_tape;
 use affine::Affine;
 mod hull;
 use hull::hull_uv;

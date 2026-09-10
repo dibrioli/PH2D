@@ -117,6 +117,7 @@
 ## Auditoria (famílias — 2 saltos)
 
 - ⭐ [**Como uma RÉGUA mente** — a família inteira (70 entradas)](reference_topic_measurement_discipline.md)
+- ⛔ [Grelha nunca cai num conjunto de MEDIDA NULA ⇒ reporta-o LIMPO (vinco: 2,2e-6 contra 1,9e-1) — os pontos PÕEM-SE](feedback_a_grid_never_lands_on_a_measure_zero_set_so_it_reports_it_clean.md)
 - [Reprodução/diagnóstico (19)](reference_topic_repro_discipline.md)
 - [Réguas do quad remesh (19) — densidade · limiar · 1.ª aceite · alisador cego · fixtura com ponta](reference_topic_quad_remesh_rulers.md)
 - ⭐ [Agregada que já mede item a item devolve a TABELA — «1 de 5 está mau» não diz QUAL](feedback_an_aggregate_that_already_measures_item_by_item_must_return_the_table.md)

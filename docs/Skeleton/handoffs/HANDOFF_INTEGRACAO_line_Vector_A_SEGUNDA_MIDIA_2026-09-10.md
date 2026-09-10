@@ -328,20 +328,36 @@ corre um teste por processo.
 os gates do `quadfill` ao mesmo tempo) ⇒ **o censo SOBRE-reporta**, que é o lado seguro para
 escolher um tecto.
 
-⭐⭐ **E o censo achou um candidato a PENDURA noutra crate:**
-`ph2d-quadchain::veto a_panic_downstream_does_not_take_down_the_caller` passou dos **420 s** e
-continuava a subir. *O instrumento que se estava a construir para o problema encontrou outro caso
-dele na primeira corrida.*
+### ⭐ O MÁXIMO LEGÍTIMO, medido SOZINHO (e ele NÃO é uma pendura)
 
-⇒ **um tecto de `60 s × 2` global MATARIA testes legítimos** (há `11` acima de `120 s` só em
-`ph2d-field-eval`). O número tem de ficar **acima do máximo legítimo** e **muito abaixo de «uma
-pessoa repara»**. A recomendação desta linha, com a medição ao lado:
+O censo acusou `ph2d-quadchain::veto a_panic_downstream_does_not_take_down_the_caller` a passar dos
+**420 s** e a subir, e a 1.ª leitura desta linha chamou-lhe *«candidato a pendura»*. ⚠️ **Errado, e
+a medição sozinha desmente-o:**
+
+```
+test result: ok. 1 passed  ·  finished in 375.54s  ·  101% cpu  (carga 1,23)
+```
+
+⇒ ele **PASSA**, em `6 min 15 s`, mono-thread e limitado por CPU. *É o teste legítimo mais lento do
+repo, e não um defeito.* A distinção importa porque é exactamente ela que o tecto tem de respeitar.
+
+⇒ **um tecto de `60 s × 2` global MATARIA testes legítimos** — há `11` acima de `120 s` só em
+`ph2d-field-eval`, e este a `375 s`. O número tem de ficar **acima do máximo legítimo medido** e
+**muito abaixo de «uma pessoa repara»** (os órfãos do §9 queimaram `1h55m`). A recomendação desta
+linha, com as duas âncoras ao lado:
 
 ```toml
 [profile.default]
-# O tecto NÃO é de lentidão: é a conversão de uma PENDURA numa FALHA.
+# ⛔ O tecto NÃO é de lentidão: é a conversão de uma PENDURA numa FALHA.
+# Âncoras MEDIDAS (2026-09-10): o teste legítimo mais lento do repo demora 375 s sozinho
+# (`ph2d-quadchain::veto`, e ele PASSA); os órfãos que motivaram isto queimaram 1h55m.
+# 15 min ≈ 2,4× o máximo legítimo, com folga para a máquina carregada.
 slow-timeout = { period = "60s", terminate-after = 15 }   # avisa a 60 s, mata a 15 min
 ```
+
+⚠️ **E ele merece um `[[overrides]]` próprio, não uma excepção global mais larga:** um teste que
+sozinho custa `6 min` é uma decisão de produto de outra linha, e alargar o tecto de TODOS por causa
+dele esconderia a próxima pendura atrás dele.
 
 ⛔ **Isto NÃO foi shipado por esta linha** — ele atravessa as seis worktrees vivas e o CI, e a
 decisão é do Enio.

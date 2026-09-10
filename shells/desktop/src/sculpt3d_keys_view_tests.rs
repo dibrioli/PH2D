@@ -230,7 +230,11 @@ fn nenhum_braco_de_tecla_vive_debaixo_de_um_catch_all_do_mesmo_modificador() {
             }
         }
     }
-    println!("catch-alls: {dono:?}");
+    // ⚠️ **Em português de propósito:** o `typos` do `ship.sh` reprova o PLURAL de
+    // «catch-all» (ele quer `all` ou `falls`), e este vermelho so' aparecia na
+    // arvore fundida. ⛔ E a 1.a cura falhou por a nota que a explicava conter a
+    // propria palavra -- *um comentario sobre um lint passa pelo lint*.
+    println!("quem apanha tudo: {dono:?}");
     assert!(
         mortos.is_empty(),
         "{mortos:?} -- estes bracos exigem um modificador cujo catch-all ja' devolveu `false` \

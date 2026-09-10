@@ -192,6 +192,43 @@ deixado o tecto de pé.
 ⚠️ **Colisão a declarar:** isto edita o `Cargo.toml` da RAIZ, que toda linha toca. São quatro entradas
 no fim do bloco `[profile.dev.package.*]` — apêndice, mas o integrador tem de o saber.
 
+## §11.9 — ⛔⛔ DUAS afinações do perfil MEDIDAS e RECUSADAS
+
+A pergunta do dono foi *«qual o melhor possível?»* — logo as duas opções óbvias acima do que shipa
+foram medidas, e **as duas ficam fora**:
+
+### (a) `opt-level = 3` em vez de `2` — **sem diferença real**
+
+| | corridas (`every_primitive_honours_the_march`) | melhor |
+|---|---|---:|
+| nível `2` (1.ª vez) | `4,852` · `5,465` · `5,565` | `4,85 s` |
+| nível `3` | `4,689` · `4,655` · `4,742` | `4,66 s` |
+| nível `2` (**repetido no fim**) | `4,542` · `4,637` · `4,654` | **`4,54 s`** |
+
+⭐⭐⭐ **O CONTROLO é que decide, e foi ele que salvou o veredito:** o nível `2` **repetido** saiu
+**melhor** que o `3`. As duas medições do MESMO nível `2` diferem entre si (`4,85` e `4,54`) mais do
+que o `2` difere do `3` ⇒ **a diferença é a máquina a acalmar, não o `opt-level`.**
+
+⚠️ Uma 1.ª tabela sobre a suíte inteira dizia `61,1 s` (nível 2) contra `52,5 s` (nível 3) e parecia
+decisiva — e estava **confundida**: as cargas foram `78`, `59` e `46`, sempre a descer. *Um A/B em que
+a carga cai monotonicamente mede a carga.* ⇒ fica o `2`, que é a convenção das outras oito entradas
+do ficheiro.
+
+### (b) Alargar às outras três crates do campo — **PARTE UM TESTE**
+
+Acrescentar `ph2d-field-render`, `-mesh` e `-profile` a `opt-2` fez reprovar o
+`the_shape_constants_are_computed_once_per_shape_not_once_per_tile`:
+
+```text
+quadro MORNO tinha de pagar ZERO varreduras e pagou 4
+```
+
+⚠️ Ele passa nas duas configurações sem essas crates (`407/407` nas duas). **Não há mecanismo
+nomeado** para o `opt-level` mudar uma CONTAGEM de varreduras, e ⛔ *não se liga o que não se
+entende* — a fatia fica fora até alguém explicar aquele `4`.
+
+⇒ **o que shipa é o óptimo dentro do que foi medido**: nível `2`, quatro crates.
+
 ⛔ **E há uma alavanca que foi vista e NÃO tomada, de propósito.** Dentro da `eval_many` o
 `op.eval(…)` volta a fazer o `match` do opcode **por faixa**; içá-lo para fora do laço seria escrever
 à mão as arms de `BinaryOpcode`/`UnaryOpcode`. Isso **quebra a propriedade do §11.3.2** — deixaríamos

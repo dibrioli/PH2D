@@ -45,6 +45,16 @@ LOC). Uma entrada acrescentada no ficheiro antigo por outra linha funde **limpo 
 [profile.dev.package.fidget-core]       opt-level = 2
 ```
 
+⭐⭐ **E esta configuração é o ÓPTIMO MEDIDO, não a primeira que funcionou** (a pergunta do dono foi
+*«qual o melhor possível?»*). Duas afinações acima dela foram medidas e **recusadas** — detalhe e
+tabelas no [doc 11 §11.9](../11_a_avaliacao_ponto_a_ponto.md):
+
+| tentativa | veredito |
+|---|---|
+| `opt-level = 3` em vez de `2` | ⛔ **sem diferença real** — o nível `2` REPETIDO no fim saiu melhor que o `3`; a diferença era a carga a cair |
+| juntar `ph2d-field-render` · `-mesh` · `-profile` | ⛔ **parte um teste** (`quadro MORNO … pagou 4`), sem mecanismo que o explique |
+| tirar a `fidget` (só as 2 crates próprias) | ⛔ custa **`21 %`** (`4,46` → `5,41 s`), medido com 3 corridas de cada lado |
+
 É **apêndice** (nenhuma linha existente mexida), mas é um ficheiro que toda linha toca. ⭐ E o efeito
 não é local: a `fidget` é dependência partilhada, então **toda crate que a use passa a correr os
 testes optimizados**. Medido nesta linha: a suíte das 3 crates do campo vai de `372,3 s` para

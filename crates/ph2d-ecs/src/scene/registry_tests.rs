@@ -181,9 +181,20 @@ fn register_ecs_components_populates_registry() {
     //   numero fundem MUDAS, e o git nao sabe o que a conta significa.
     // ⚠️ **2026-09-09: `79` -> `81`, delta +2** -- o `AudioSource2D` e o `AudioListener2D`
     //   (TOP-20 #4). Quem integrar conta o DELTA, nunca o literal.
-    assert_eq!(reg.len(), 81);
+    // ⚠️ **2026-09-09: `81` -> `84`, delta +3** -- o `GameCamera`, o `CameraFollow` e o
+    //   `CameraLimits` (TOP-20 #7). Quem integrar conta o DELTA, nunca o literal.
+    assert_eq!(reg.len(), 84);
     assert!(reg.get_by_name("ph2d::ecs::AudioSource2D").is_some());
     assert!(reg.get_by_name("ph2d::ecs::AudioListener2D").is_some());
+    assert!(reg.get_by_name("ph2d::ecs::GameCamera").is_some());
+    assert!(reg.get_by_name("ph2d::ecs::CameraFollow").is_some());
+    assert!(reg.get_by_name("ph2d::ecs::CameraLimits").is_some());
+    // ⛔ **O estado VIVO NÃO está registado, e este gate é a metade que o afirma** — a cerca é a
+    // ausência de `Serialize` no tipo, e uma ausência precisa de quem a afirme em voz alta.
+    assert!(
+        reg.get_by_name("ph2d::ecs::CameraRuntime").is_none(),
+        "o CameraRuntime foi registado: cada quadro com clique passa a ser um passo de undo"
+    );
     assert!(reg.get_by_name("ph2d::ecs::VecClipContent").is_some());
     assert!(reg.get_by_name("ph2d::ecs::VecBoolOp").is_some());
     assert!(reg.get_by_name("ph2d::ecs::SpritePixels").is_some());

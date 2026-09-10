@@ -25,6 +25,8 @@ use crate::ComponentDesc;
 /// ⭐⭐⭐ **O SOM de um objecto** (TOP-20 #4) — a fonte e as orelhas.
 pub mod audio;
 pub mod bridges;
+/// ⭐⭐⭐ **O PONTO DE VISTA do jogo** (TOP-20 #7) — a câmera, quem ela segue e a cerca dela.
+pub mod camera;
 pub mod core;
 pub mod field;
 pub mod image;
@@ -42,6 +44,7 @@ pub mod vector;
 const FAMILIES: &[&[ComponentDesc]] = &[
     audio::DESCS,
     bridges::DESCS,
+    camera::DESCS,
     core::DESCS,
     field::DESCS,
     image::DESCS,

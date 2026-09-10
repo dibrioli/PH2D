@@ -489,11 +489,23 @@ pub enum ComponentCategory {
     /// subsistema de áudio inteiro (42 efeitos, 23 presets, espectral, denoise, exportação) e
     /// **nenhum consumidor de cena**.
     Audio,
+    /// ⭐⭐⭐ **O PONTO DE VISTA do jogo** (TOP-20 #7, 2026-09-09) — a câmera, quem ela segue e a
+    /// cerca de que ela não sai.
+    ///
+    /// ⛔ **A alternativa era `Rendering`, e seria mentir**: aquela família responde *«como o pixel
+    /// deste objecto sai»*, e a câmera não é uma propriedade de um objecto que se desenha — ela é
+    /// de onde se olha, e o objecto que a carrega muitas vezes não se desenha de todo.
+    ///
+    /// ⚠️ **Ela nasce com TRÊS tipos**, e a separação é o que o artista lê: câmera sozinha é uma
+    /// câmera fixa; `+ Follow` persegue; `+ Limits` não sai da fase. *A ausência de um componente é
+    /// a resposta — um `follow_enabled` dentro da câmera daria o mesmo estado com cinco controlos
+    /// mortos à vista de quem só quer uma câmera fixa.*
+    Camera,
 }
 
 impl ComponentCategory {
     /// Todas, na ordem em que a paleta as mostra. ⛔ Fonte única da iteração.
-    pub const ALL: [ComponentCategory; 15] = [
+    pub const ALL: [ComponentCategory; 16] = [
         ComponentCategory::Identity,
         ComponentCategory::Transform,
         ComponentCategory::Ordering,
@@ -507,6 +519,7 @@ impl ComponentCategory {
         ComponentCategory::Model3D,
         ComponentCategory::Logic,
         ComponentCategory::Audio,
+        ComponentCategory::Camera,
         ComponentCategory::Scripting,
         ComponentCategory::Instancing,
     ];
@@ -529,6 +542,7 @@ impl ComponentCategory {
             ComponentCategory::Scripting => "Scripting",
             ComponentCategory::Logic => "Logic",
             ComponentCategory::Audio => "Audio",
+            ComponentCategory::Camera => "Camera",
             ComponentCategory::Instancing => "Instancing",
         }
     }

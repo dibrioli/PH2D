@@ -48,6 +48,9 @@ pub mod anchor_mount;
 pub mod audio_2d;
 pub mod baked_form;
 pub mod blend;
+/// ⭐⭐⭐ **A CÂMERA DE JOGO** (TOP-20 #7) — a lei portada do Godot 4.7.2 (MIT), medida como
+/// oráculo. Módulo irmão de [`audio_2d`], append-only.
+pub mod camera_2d;
 /// A sprite como FONTE DE LUZ (plano `docs/Sprite_projeto/18` W8) — módulo irmão, append-only.
 pub mod emissive;
 pub mod flip_object_ref;
@@ -98,6 +101,11 @@ pub use crate::transform_inverse::{
 pub use audio_2d::{
     AUDIO_MAX_DISTANCE_M, AUDIO_MAX_POLYPHONY, AudioBus, AudioListener2D, AudioSource2D, Spatial,
     db_to_linear, listener_count, listener_of, spatialize,
+};
+pub use camera_2d::{
+    CAMERA_MAX_HEIGHT_WORLD, CAMERA_MIN_HEIGHT_WORLD, CameraFollow, CameraLimits, CameraRuntime,
+    GameCamera, active_camera_of, aim_at, camera_count, clamp_axis_to_limits, damp_axis,
+    dead_zone_goal, follow_step, half_extent,
 };
 pub mod vec_path_ref;
 pub mod vec_shape;

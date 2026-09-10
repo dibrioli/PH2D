@@ -379,12 +379,91 @@ impl Verlet {
         }
     }
 
+    /// ⭐⭐⭐ **O TECTO PASSA A VER O CRESCIMENTO DO REPOUSO** — e sem constante
+    /// nova nenhuma.
+    ///
+    /// # O defeito, medido
+    ///
+    /// O tecto de esticão compara `|aresta|` contra `tecto × ℓ`, e o `ℓ` dele é o
+    /// repouso **corrente**, `ℓ_material + τ`. De cinco tipos de filtro, o
+    /// *Expand* é o único que mexe no `τ` ⇒ *o denominador da régua cresce com a
+    /// lei que ela devia limitar*, e o tecto lê «não está esticado» enquanto a
+    /// peça incha. Medido na esfera de fábrica, um arrasto de curso inteiro
+    /// (`sonda_do_expand_que_nao_para`, em `ph2d-sculpt3d/tests/`):
+    ///
+    /// | tipo | 1 gesto | 3 gestos |
+    /// |---|---:|---:|
+    /// | Gravity | `1,000` | `1,000` |
+    /// | Inflate | `1,126` | `1,327` |
+    /// | **Expand** | **`7,743`** | **`14,358`** |
+    /// | Pinch | `1,191` | `1,512` |
+    /// | Scale | `1,128` | `1,435` |
+    ///
+    /// ⭐⭐ **E a prova de que o tecto não o alcança é a linha do tecto MÍNIMO:**
+    /// com `tecto = 1,00` ele proíbe *todo* esticão elástico, e o esticão contra
+    /// o material continua em **`6,854`** — logo aquilo é `τ` INTEIRO.
+    ///
+    /// ⚠️ **O que ele produz não é uma peça maior, é uma peça AMARROTADA:** o
+    /// volume dá `1,067 → 0,245 → 0,761` em um, dois e três gestos. *Não é o
+    /// volume que explode — é a folga que faz o pano dobrar sobre si.*
+    ///
+    /// # A lei, e por que ela não escolhe um número
+    ///
+    /// O `stretch_max` já promete *«nenhuma aresta passa de `tecto ×` o repouso
+    /// dela»*. Esta porta faz a promessa valer também para a metade PLÁSTICA:
+    /// `τ` de cada vértice é limitado a `(tecto − 1) ×` a **menor** aresta de
+    /// material que lhe toca.
+    ///
+    /// ⭐ **O `min` não é conservadorismo, é o que torna a garantia demonstrável:**
+    /// para a aresta `(a, b)` o repouso corrente é `ℓ + (τₐ + τ_b)/2`, e como
+    /// `min_a ≤ ℓ` e `min_b ≤ ℓ`, o limite dá `ℓ + (tecto − 1)·ℓ = tecto·ℓ`.
+    /// Com a média em vez do mínimo a desigualdade não fecha.
+    ///
+    /// ⛔ **Só o CRESCIMENTO é limitado, e a assimetria é deliberada.** Um `τ`
+    /// negativo encolhe o repouso, e ninguém reportou defeito nesse lado — a
+    /// fixture `plano_filtro_expandir_negativo` bate com o oráculo a `0,022`.
+    /// *Limitar o que não foi medido é escolher um número*, e o §0.0 da casa
+    /// proíbe-o. Quem medir o lado que encolhe põe aqui a outra metade.
+    ///
+    /// ⛔⛔ **A lei do alvo NÃO é tocada.** O único sítio que escreve `τ` é a lei
+    /// da referência (`Modo::Expandir`), e mexer lá partiria as fixtures do
+    /// oráculo. Esta porta vive no ficheiro dos limites e é chamada de dentro do
+    /// [`Self::limitar_esticao`], que **já sai por `return`** quando
+    /// `estica_max` é `∞` — que é a omissão do [`Solver`] e o caminho por onde as
+    /// `103` fixtures correm. ⇒ *a paridade é byte-idêntica por construção, não
+    /// por promessa.*
+    fn limitar_o_repouso(&mut self, tecto: f64, n: usize) {
+        if self.restricoes.is_empty() {
+            return;
+        }
+        // A menor aresta de MATERIAL que toca cada vértice. ⚠️ Reusa o buffer de
+        // trabalho do limitador em vez de alocar por passo.
+        if self.dn.len() != n {
+            self.dx = vec![[0.0; 3]; n];
+            self.dn = vec![0.0; n];
+        }
+        self.dn.fill(f64::INFINITY);
+        for r in &self.restricoes {
+            let Alvo::Vertice(b) = r.b else { continue };
+            let (ai, bi) = (r.a as usize, b as usize);
+            self.dn[ai] = self.dn[ai].min(r.l);
+            self.dn[bi] = self.dn[bi].min(r.l);
+        }
+        let folga = (tecto - 1.0).max(0.0);
+        for i in 0..n {
+            if self.dn[i].is_finite() {
+                self.tau[i] = self.tau[i].min(folga * self.dn[i]);
+            }
+        }
+    }
+
     pub(super) fn limitar_esticao(&mut self, solver: &Solver) {
         let tecto = solver.estica_max;
         if !tecto.is_finite() || solver.passagens_limite == 0 {
             return;
         }
         let n = self.x.len();
+        self.limitar_o_repouso(tecto, n);
         // ── ⭐⭐⭐ AS ÂNCORAS DE LONGO ALCANCE ────────────────────────────────
         //
         // ⛔⛔ **Sem elas o tecto local NÃO CONVERGE, e o número está medido.** Um

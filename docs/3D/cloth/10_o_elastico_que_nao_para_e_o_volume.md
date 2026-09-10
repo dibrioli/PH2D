@@ -207,12 +207,32 @@ não mudam essa conversa.
 
 ## §5 — ⏳ ABERTO
 
-- ⛔⛔ **O `Expand` explode, e o número é novo.** Com `s` a chegar a `1,0` em 120
-  passos ele dá esticão máximo **`753×`** e volume **`55×`** o de repouso
-  (sem máscara, `98×`). O tecto reduz para `233×` e não o cura — ele desloca o
-  **repouso** (`τ`) e o tecto é medido contra `ℓ + τ`, logo a lei está a fazer o
-  que lhe pedem. *Isto é maior que o «Expand buckling» que o §5 do roteador
-  nomeia (quantidade certa, padrão errado): a quantidade não está certa.*
+- ✅ **O `Expand` explodia, e FECHOU em 2026-09-09.** O mecanismo escrito aqui
+  estava certo — ele desloca o **repouso** (`τ`) e o tecto mede-se contra `ℓ + τ`,
+  logo o denominador da régua crescia com a lei que ela devia limitar.
+  ⚠️⚠️ **Os NÚMEROS deste item estavam todos errados**, e os três docs desta série
+  davam três valores diferentes (`753×` aqui, `155×` no doc 11, `55×` no doc 12):
+  medido de fresco nos valores de fábrica pela
+  [`sonda_do_expand_que_nao_para`](../../../crates/ph2d-sculpt3d/tests/sonda_do_expand_que_nao_para.rs),
+  o esticão contra o material era **`7,743`** a um gesto e `14,358` a três.
+  ⭐⭐ **E o volume não explodia — ele COLAPSAVA** (`1,067 → 0,245 → 0,761`): o que
+  aquilo produzia não era uma peça maior, era uma **amarrotada**.
+  ⭐ **A prova de que o tecto não o alcançava:** com `tecto = 1,00`, que proíbe
+  *todo* esticão elástico, o esticão contra o material continuava em `6,854` —
+  logo aquilo era `τ` inteiro.
+  **A cura** é [`Verlet::limitar_o_repouso`](../../../crates/ph2d-cloth/src/verlet_limites.rs):
+  o `τ` de cada vértice é limitado a `(tecto − 1) ×` a **menor** aresta de material
+  que lhe toca, ⛔ **sem constante nova** — é o `stretch_max` que o artista já
+  define, aplicado à metade plástica. O `min` é o que torna a garantia
+  demonstrável (`min ≤ ℓ` nos dois extremos ⇒ o repouso da aresta fica em `tecto·ℓ`).
+  Depois: **`1,210 / 1,450 / 1,729`** de esticão e **`1,120 / 1,288 / 1,470`** de
+  volume — o Expand entra na família do Inflate (`1,13`–`1,33`) e do Scale
+  (`1,13`–`1,44`), e a peça passa a **crescer** em vez de dobrar sobre si.
+  Gate `o_expand_obedece_ao_tecto_como_os_outros_quatro`, com a barra **derivada**
+  `tecto²` e a metade que impede um no-op de a satisfazer; mutação: tirar a
+  chamada devolve `7,7432`.
+  ⛔ **A paridade não se moveu** — `limitar_esticao` já saía por `return` com
+  `estica_max = ∞`, que é a omissão do `Solver` e o caminho das `103` fixtures.
 - **A DOBRA continua sem modelo próprio.** Com a cura, os vincos `>60°` caem de
   `247` para `195` e a dobra `p99` de `98,0°` para `75,7°` — melhor, não curado.
   A ferramenta está escrita e testada (`bending.rs`, ângulo diedro com ângulo de

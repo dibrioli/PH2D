@@ -624,3 +624,55 @@ fn a_onda_de_uma_prega_acompanha_a_aresta_da_malha() {
          reprovar por MELHORIA, a nota do gate e' que envelheceu"
     );
 }
+
+/// ⭐⭐⭐ **O `Expand` OBEDECE AO TECTO — e a barra é `tecto²`, derivada.**
+///
+/// # O defeito que este gate fecha
+///
+/// O tecto compara `|aresta|` contra `tecto × ℓ`, e o `ℓ` dele é o repouso
+/// **corrente** (`ℓ_material + τ`). O *Expand* é o único dos cinco tipos que mexe
+/// no `τ` ⇒ *o denominador da régua crescia com a lei que ela devia limitar*.
+/// Medido antes da cura, na esfera de fábrica com um arrasto de curso inteiro:
+/// `7,743` de esticão contra o material a UM gesto e `14,358` a três, contra
+/// `1,1`–`1,4` de todos os outros quatro.
+///
+/// ⚠️ **E o que aquilo produzia não era uma peça maior, era uma AMARROTADA:** o
+/// volume dava `1,067 → 0,245 → 0,761`. Depois da cura ele é monótono —
+/// `1,120 → 1,288 → 1,470` —, que é o que a palavra *expandir* promete.
+///
+/// # A barra NÃO é escolhida
+///
+/// [`ph2d_cloth`] passou a limitar o repouso a `tecto ×` o material
+/// (`Verlet::limitar_o_repouso`), e o tecto de esticão limita a posição a
+/// `tecto ×` o repouso. Compondo, o esticão contra o MATERIAL não pode passar de
+/// **`tecto²`** — `1,21` na omissão. Medido: `1,210`.
+///
+/// ⛔ A folga de `2 %` é a convergência do limitador (ele é uma projecção de
+/// Jacobi com um número finito de passagens), **não** margem para o defeito
+/// voltar: o valor de antes era `6,4×` a barra.
+#[test]
+fn o_expand_obedece_ao_tecto_como_os_outros_quatro() {
+    let repouso = esfera();
+    let props = ClothFilterProps::default();
+    let tecto = f64::from(props.stretch_max);
+    let barra = tecto * tecto * 1.02;
+
+    let m = correr(props, ClothFilterKind::Expand, 1, false);
+    let e = estica(&repouso, &m);
+    let v = volume(&m) / volume(&repouso);
+    println!("[expand] estica contra o material {e:.4} (barra {barra:.4}) | volume {v:.4}");
+
+    assert!(
+        e <= barra,
+        "o Expand furou o tecto: {e:.4} contra a barra DERIVADA tecto^2 = {barra:.4}. \
+         Antes da cura ele dava 7,743 -- se isto reprovar, o `limitar_o_repouso` \
+         deixou de ser chamado ou o tecto voltou a medir-se contra `l + tau`"
+    );
+    // ⚠️ **A METADE QUE DIZ QUE ELE AINDA FAZ ALGUMA COISA.** Sem ela, apagar o
+    // Expand inteiro passaria este gate — um tecto obedecido por um no-op.
+    assert!(
+        v > 1.05,
+        "o Expand deixou de EXPANDIR: volume {v:.4}. O gate nao pode ser satisfeito \
+         por uma lei que nao faz nada"
+    );
+}

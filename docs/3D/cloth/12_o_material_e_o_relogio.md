@@ -207,10 +207,13 @@ repetidas e a base persistente (um campo: a nossa `Verlet::base`).
 ⚠️ **A barra das duas de esfera tem um piso que não é nosso:** o alvo difere de si próprio entre
 realizações até `0,073751` na corrida longa (`5,6 %` do máximo dele). *Uma barra abaixo disso mede o
 sorteio do oráculo, não a nossa lei.*
-- **O `Expand` continua a ser o mais violento dos cinco** mesmo com o `τ` parametrizado pelo
-  arrasto: um arrasto de ecrã inteiro leva o volume a `2,4×`. Ele é o único tipo que mexe no
-  repouso, logo o **tecto de esticão não o mede** — o tecto compara contra um comprimento que a
-  própria lei cresce.
+- ✅ **O `Expand` era o mais violento dos cinco, e FECHOU em 2026-09-09.** O
+  mecanismo escrito aqui estava certo (ele é o único que mexe no repouso, logo o tecto comparava
+  contra um comprimento que a própria lei cresce) e ⚠️ **o número `2,4×` de volume estava errado nos
+  dois sentidos**: medido de fresco, o volume **colapsava** (`1,067 → 0,245 → 0,761`) e quem
+  explodia era o **esticão contra o material** (`7,743` a um gesto). *A peça não ficava maior —
+  ficava amarrotada.* Cura sem constante nova, tabela e mutação no
+  [doc 10 §5](10_o_elastico_que_nao_para_e_o_volume.md).
 - **A resposta do filtro é quadrática no arrasto** (`Σ_j (k−j+1)·S_j·Δt`, espec §7): dobrar o
   arrasto quadruplica o efeito. É a lei do alvo, e ela torna o fim da faixa difícil de dosear.
 - **O tamanho da ruga continua a seguir a densidade da malha** (doc [11](11_o_material_a_ruga_e_a_memoria.md) §5).

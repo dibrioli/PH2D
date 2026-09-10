@@ -183,7 +183,8 @@ fn the_grabbed_clay_never_lets_go_of_the_finger() {
 /// `_negative = true`, o `:57` faz `comp = -1` e o `:64` faz
 /// `if (distToPlane * comp > 0.0) continue` — ou seja, o *Flatten* da
 /// referência **é** o nosso `Scrape`, e o outro lado dela é o nosso `Fill`.
-/// Quem quiser os dois lados escolhe o modo `B`, que é a leitura do `plane.cc`.
+/// Quem quiser os dois lados escolhe o modo `B`, que é a leitura do verbo de
+/// PLANO da referência.
 ///
 /// ⚠️ **Este gate é o que torna o chip `S` uma afirmação em vez de um rótulo.**
 /// Antes desta wave o app dizia s-mode e rodava um Flatten que nenhuma das duas
@@ -258,8 +259,8 @@ fn in_s_mode_the_flatten_is_the_scrape_vertex_by_vertex() {
 /// modos em `S`, e o chip não escolheria nada.
 ///
 /// ⚠️ **Ele passou a dirigir um TRAÇO e não um dab, e não foi conveniência:** o
-/// `B` do Pinch é o `pinch.cc`, cuja lei precisa da direção do gesto — sem ela a
-/// referência **recusa o dab** (`pinch.cc:188-195`) e nós também. Um dab solto
+/// `B` do Pinch é o *Pinch* da referência, cuja lei precisa da direção do gesto
+/// — sem ela ela **recusa o dab** e nós também. Um dab solto
 /// aqui media o `B` no degenerado dele e afirmava a lei errada sobre um conjunto
 /// vazio.
 #[test]
@@ -310,7 +311,7 @@ fn in_s_mode_the_pinch_pulls_straight_at_the_centre() {
         cos_s > 0.9999,
         "em `S` todo vértice anda RETO para o centro (pior cosseno {cos_s})"
     );
-    // O CONTROLE: em `B` a lei do `pinch.cc` remove a componente ao longo do
+    // O CONTROLE: em `B` a lei do *Pinch* remove a componente ao longo do
     // traço, e é isso que faz o mesmo dab andar para OUTRO lugar.
     let (cos_b, _normal_b, moved_b) = run(crate::RefMode::B);
     // ⚠️ **O `assert_eq!(moved, moved_b)` que estava aqui era EXATO e passou a
@@ -334,21 +335,21 @@ fn in_s_mode_the_pinch_pulls_straight_at_the_centre() {
 }
 
 /// **O PINCH EM `B` APERTA ATRAVÉS DO TRAÇO E DEIXA A LINHA QUIETA** — o
-/// `pinch.cc:39-60`, e a lei que fecha o report do Enio de 2026-08-15 (*"Pinch em
+/// *Pinch* da referência, e a lei que fecha o report do Enio de 2026-08-15 (*"Pinch em
 /// B e S bons mas idênticos ou quase idênticos"*).
 ///
 /// ⚠️ **O gate afirmava o CONTRÁRIO até esta wave, e o comentário dele carregava
 /// o erro que a nota do [`crate::LateralPull::Tangential`] agora nomeia:** ele
-/// dizia que o `pinch.cc` projeta *"a tangente ao longo do TRAÇO mais a
+/// dizia que o *Pinch* projeta *"a tangente ao longo do TRAÇO mais a
 /// NORMAL"* e que *"nenhum dos dois projeta como nós"*. As duas frases saíram do
-/// COMENTÁRIO do Blender (*"the X vector (aligned to the stroke)"*), que é falso
-/// no próprio Blender — o código monta `X = cross(area_no, grab_delta)`, que é
-/// **perpendicular** ao traço. Lida a fonte em vez do comentário: o `crease.cc`
-/// projeta **exatamente** como nós, e o `pinch.cc` remove a componente **ao
-/// longo** do traço.
+/// COMENTÁRIO da referência, que afirma um eixo **alinhado ao traço** e é falso
+/// no próprio programa dela — a aritmética monta o produto vectorial da normal
+/// de área com o deslocamento do cursor, que é **perpendicular** ao traço. Medida
+/// a saída em vez de lida a prosa: o *Crease* projeta **exatamente** como nós, e
+/// o *Pinch* remove a componente **ao longo** do traço.
 ///
 /// ⚠️ **E o *"does not secretly flatten"* do nome antigo era uma afirmação sobre
-/// a lei antiga.** O `pinch.cc` **GUARDA** a componente normal (`z_disp`) de
+/// a lei antiga.** O *Pinch* **GUARDA** a componente normal de
 /// propósito, então o Pinch em `B` passa a ter uma — é a mudança de
 /// comportamento desta wave, e ela vem da referência. Quem quer o aperto puro no
 /// plano tem o `S` ao lado no mesmo verbo.
@@ -367,7 +368,7 @@ fn the_b_pinch_squeezes_across_the_stroke_and_leaves_the_line_alone() {
     s.begin(&mesh);
     // ⚠️ **DOIS dabs ao longo de `+x`, e o primeiro não é decoração:** a lei do
     // `B` precisa da direção do gesto, e o [`crate::Dab::path`] nasce em zero —
-    // a referência **recusa** o primeiro dab de cada passe (`pinch.cc:188-195`)
+    // a referência **recusa** o primeiro dab de cada passe
     // e nós recusamos junto. Um dab solto media esta lei no degenerado dela.
     s.dab(
         &mut mesh,
@@ -381,7 +382,7 @@ fn the_b_pinch_squeezes_across_the_stroke_and_leaves_the_line_alone() {
     // ⚠️ **O oráculo é a razão ATRAVÉS ÷ AO LONGO, e ela é adimensional** — um
     // aperto que some é indistinguível de um aperto certo se o gate só medir
     // magnitude, e um traço em `+x` faz de `y` o eixo *através* e de `x` o eixo
-    // *ao longo*. A lei do `pinch.cc` deixa o `x` quieto e é isso que se afirma.
+    // *ao longo*. A lei do *Pinch* deixa o `x` quieto e é isso que se afirma.
     let (mut across, mut along) = (0.0f32, 0.0f32);
     for (p, q) in base.iter().zip(mesh.positions()) {
         let d = [q[0] - p[0], q[1] - p[1], q[2] - p[2]];
@@ -415,7 +416,7 @@ fn the_b_pinch_squeezes_across_the_stroke_and_leaves_the_line_alone() {
     );
 }
 
-/// **SEM DIREÇÃO NÃO HÁ APERTO NO `B`** — a recusa que o `pinch.cc:188-195` faz
+/// **SEM DIREÇÃO NÃO HÁ APERTO NO `B`** — a recusa que o *Pinch* da referência faz
 /// (*"delay the first daub because grab delta is not setup"*, e `return` com
 /// `grab_delta` zero), e a metade que impede alguém de "consertar" o degenerado
 /// inventando um eixo.
@@ -464,13 +465,13 @@ fn without_a_stroke_direction_the_b_pinch_refuses_and_the_s_pinch_does_not() {
     );
 }
 
-/// **O EIXO DO TRAÇO É ORTOGONALIZADO CONTRA A NORMAL** — o `cross` duas vezes
-/// do `pinch.cc:199-200`, e não uma normalização do gesto cru.
+/// **O EIXO DO TRAÇO É ORTOGONALIZADO CONTRA A NORMAL** — os DOIS produtos
+/// vectoriais que a referência faz, e não uma normalização do gesto cru.
 ///
 /// ⚠️ **A diferença só aparece num gesto que MERGULHA**, e um traço sobre uma
 /// esfera mergulha um pouco por curvatura. Sem a ortogonalização o eixo carrega
-/// parte da normal, e a lei passaria a remover parte do `z_disp` que o
-/// `pinch.cc` **guarda** de propósito — um erro que nenhum traço raso denuncia.
+/// parte da normal, e a lei passaria a remover parte da componente normal que o
+/// *Pinch* **guarda** de propósito — um erro que nenhum traço raso denuncia.
 #[test]
 fn the_stroke_axis_is_orthogonalised_against_the_normal() {
     let n = [0.0, 0.0, 1.0];

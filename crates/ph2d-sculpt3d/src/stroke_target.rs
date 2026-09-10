@@ -63,7 +63,7 @@ impl SculptStroke {
         // morreu com essa troca — ver o sítio que constrói o `w`.
         w: f32,
         // **A demão JÁ acumulada depois deste dab** — o `displacement_factors`
-        // do `layer.cc`, depois do `offset_displacement_factors`.
+        // do *Layer* da referência, depois de descontar o já depositado.
         //
         // ⚠️ **Só a família do `GripLaw::coat` o lê**, e ele é PASSADO em vez de
         // lido de `self.accum[s]` por uma razão de ORDEM: o `accum[s]` ainda
@@ -115,7 +115,8 @@ impl SculptStroke {
             // cada vértice em vez da de área.
             //
             // ⚠️ **A normal é a CONGELADA no pen-down, e as DUAS referências
-            // leem a viva** (`Inflate.js:64-66` e o `inflate.cc`). É divergência
+            // leem a viva** (`Inflate.js:64-66` do SculptGL, MIT, e o *Inflate*
+            // da referência). É divergência
             // nossa, ela é deliberada — a normal viva sobe junto com a tinta, e
             // um traço parado passaria a inflar numa direção que gira sozinha —
             // e desde 2026-08-12 ela tem **NÚMERO**, porque a frase acima era uma
@@ -166,7 +167,7 @@ impl SculptStroke {
             // o `comp = −1` que o `Flatten.js:11` traz de fábrica, ou seja o
             // lado que RASPA; quem quer o outro escolhe o `Fill`, que é o mesmo
             // kernel com o flag virado. Em `B` ele morde os dois, que é o
-            // `plane.cc` (Height acima, Depth abaixo).
+            // verbo de PLANO da referência (um controlo acima, outro abaixo).
             Verb::Flatten => {
                 let d = signed_distance(live, plane);
                 match brush.mode.kernel_for(brush.verb).plane {
@@ -230,7 +231,7 @@ impl SculptStroke {
                     live
                 }
             }
-            // **O POLEGAR é o Flatten contra um plano INCLINADO** — `clay_thumb.cc`.
+            // **O POLEGAR é o Flatten contra um plano INCLINADO** — o *Clay Thumb*.
             //
             // ⚠️ **A projeção é a MESMA do [`Verb::Flatten`], bilateral**
             // (`calc_translations_to_plane`, sem `comp` e sem teste de lado); o
@@ -250,7 +251,7 @@ impl SculptStroke {
             // mergulha na normal), e é ele que reproduz os DOIS `return` da
             // referência — o *"delay the first daub"* e o `is_zero(grab_delta)`.
             Verb::ClayThumb => match stroke_axis(n_area, dab.path) {
-                // ⚠️ **O eixo de INCLINAÇÃO é o `X` do `clay_thumb.cc`
+                // ⚠️ **O eixo de INCLINAÇÃO é o do *Clay Thumb*
                 // (`cross(area_normal, grab_delta)`), e ele sai do MESMO door
                 // que devolve o `Y`** — a referência monta `y = n × x`, e num
                 // frame ortonormal isso se inverte exatamente em `x = y × n`.
@@ -281,7 +282,7 @@ impl SculptStroke {
                 None => live,
             },
             // **A LÂMINA EM V é o [`Verb::Scrape`] contra DOIS planos** —
-            // `multiplane_scrape.cc`. A aritmética do alvo é a mesma projeção
+            // *Multiplane Scrape*. A aritmética do alvo é a mesma projeção
             // dos outros cinco verbos de plano; o que a ferramenta acrescenta é
             // inteiramente *qual* plano serve *qual* vértice, e isso mora na
             // moldura que a [`super::plane::ScrapePlanes`] resolveu uma vez por
@@ -343,7 +344,7 @@ impl SculptStroke {
             //
             // ⚠️ **A LEI LATERAL passou a ser função do MODO E DO VERBO**, e é
             // ela que fecha a outra metade do report (*"Pinch em B e S bons mas
-            // idênticos ou quase idênticos"*): o `B` daqui é o `pinch.cc`, que
+            // idênticos ou quase idênticos"*): o `B` daqui é o *Pinch*, que
             // remove a componente ao longo do traço — ver
             // [`crate::RefMode::lateral_for`].
             Verb::Pinch => add_vec(
@@ -408,8 +409,8 @@ impl SculptStroke {
                     -gain * shape.powi(4) * dab.radius * sign,
                 )
             }
-            // **O BLOB** (`crease.cc::do_crease_or_blob_brush`, `invert_strength
-            // = true`) — o Crease com o aperto lateral NEGADO e o depósito para
+            // **O BLOB** (na referência é a MESMA lei do Crease com o booleano
+            // de inversão ligado) — o Crease com o aperto lateral NEGADO e o depósito para
             // CIMA. Ver [`Verb::Blob`] para por que a direção é nossa.
             //
             // ⚠️ **Os DOIS sinais mudam, e não é simetria por gosto:** negar só
@@ -437,7 +438,7 @@ impl SculptStroke {
             // **O RELAX** — a mesma média do [`Verb::Smooth`] com **uma** linha a
             // mais, e essa linha é a ferramenta inteira: o que corre ao longo da
             // normal é REMOVIDO, então o que sobra desliza pela superfície e a
-            // forma não se mexe (`translation_to_plane`, `sculpt_smooth.cc:458`).
+            // forma não se mexe (o deslocamento é projectado no plano tangente).
             //
             // ⚠️ **A normal é a VIVA (`mesh.normals()`), ao contrário do
             // [`Verb::Inflate`]** — e as duas escolhas estão certas porque a
@@ -455,7 +456,7 @@ impl SculptStroke {
             // A família que lê o ANEL vive no irmão [`ring`].
             Verb::SurfaceSmooth => self.target_surface_smooth(mesh, v, s, live, w, brush),
             // **A DEMÃO — o alvo é a camada CHEIA, e o `accum` é a fração dela
-            // já depositada.** `calc_translations` do `layer.cc`, com o
+            // já depositada.** É a lei do *Layer* da referência, com o
             // `displacement_factor` a sair do nosso `accum` em vez de um plano
             // próprio ([`crate::GripLaw::coat`]).
             //
@@ -466,15 +467,7 @@ impl SculptStroke {
             // mesmo lugar, e um alvo ancorado no VIVO subiria a cada passada.
             //
             // ⚠️ **O PESO ENTRA AQUI, e o alvo é a POSIÇÃO FINAL** — o
-            // `calc_translations` do `layer.cc:99-103`, verbatim:
-            //
-            // ```text
-            // offset      = orig_normals[i] * height * displacement_factors[i];
-            // translation = orig_positions[i] + offset - positions[i];
-            // r_translations[i] = translation * factors[i];
-            // ```
-            //
-            // Isto é `live + (meta − live) · factors`, com `meta =
+            // alvo do *Layer* da referência é `live + (meta − live) · factors`, com `meta =
             // base + normal_base · altura · disp`. Duas coisas que esta linha
             // corrige de uma vez, e as duas estavam escritas aqui como decisão:
             //
@@ -499,7 +492,7 @@ impl SculptStroke {
             // a taxa. Era o report do Enio, nos dois eixos.
             //
             // ⚠️ **`factors` é o `shape` e NÃO o `w`** — o
-            // `calc_brush_strength_factors` do `sculpt.cc:7577` chama só o
+            // A cadeia de fatores da referência chama só o
             // `BKE_brush_calc_curve_factors`, ou seja **a curva, sem a força**;
             // a força vive no `cache.bstrength`, que é o nosso `intensity` e já
             // entra na recorrência. Passar o `w` aqui aplicaria a força duas
@@ -551,13 +544,13 @@ fn lateral_pull(
         crate::LateralPull::Tangential => remove_along(d, normal),
         // `Pinch.js:52-58` / `Crease.js:59-61`: o delta CRU até o centro, em 3D.
         crate::LateralPull::Direct => d,
-        // `pinch.cc:39-60` — `x_disp + z_disp`, com a componente ao longo do
-        // TRAÇO removida. Ver [`crate::LateralPull::AcrossStroke`].
+        // O *Pinch*: a soma da componente PERPENDICULAR ao traço com a
+        // NORMAL, ou seja com a componente ao longo do TRAÇO removida. Ver [`crate::LateralPull::AcrossStroke`].
         crate::LateralPull::AcrossStroke => match stroke_axis(normal, path) {
             Some(along) => remove_along(d, along),
             // ⚠️ **Sem direção não há aperto, e é a referência que recusa** —
-            // `pinch.cc:188-195` adia o primeiro dab de cada passe de simetria
-            // e devolve cedo com `grab_delta` zero. Um eixo inventado aqui seria
+            // ela adia o primeiro dab de cada passe de simetria e desiste
+            // quando o deslocamento do cursor é zero. Um eixo inventado aqui seria
             // uma direção que o artista não desenhou.
             None => [0.0; 3],
         },
@@ -567,8 +560,9 @@ fn lateral_pull(
 /// **A DIREÇÃO DO TRAÇO no plano tangente**, unitária — ou `None` quando o dab
 /// não tem uma.
 ///
-/// O `pinch.cc:199-200` monta `X = cross(area_no, grab_delta)` e
-/// `Y = cross(area_no, X)`; o `Y` é o que ele descarta, e é ele que esta função
+/// A referência monta o primeiro eixo como o produto vectorial da normal de
+/// área com o deslocamento do cursor, e o segundo cruzando a normal com esse; é o
+/// SEGUNDO que ela descarta, e é ele que esta função
 /// devolve. Passar pelo `X` e cruzar de volta — em vez de projetar o `path`
 /// direto — é o que **ortogonaliza** o traço contra a normal: um gesto que
 /// mergulha na superfície não leva a componente que mergulha.

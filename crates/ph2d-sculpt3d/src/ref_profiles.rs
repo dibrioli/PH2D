@@ -31,12 +31,12 @@ use crate::ref_mode::{RefMode, StrengthCurve};
 pub struct VerbProfile {
     /// A curva do pincel — D1/E1, o maior número do estudo.
     ///
-    /// ⚠️ **`None` é uma AFIRMAÇÃO, e ela ficou mais forte quando o `brush.cc`
-    /// foi lido** (§7.0 do plano). As nove fórmulas do `BRUSH_CURVE_*` são
-    /// legíveis e **já estão todas em [`Falloff`]** — e por muito tempo esta
-    /// linha afirmava que declarar uma aqui *"seria inventar um número"*,
-    /// porque o `curve_preset` de um `Brush` zero-inicializado é
-    /// `BRUSH_CURVE_CUSTOM = 0`. ⚠️ **O oráculo executável refutou a premissa:**
+    /// ⚠️ **`None` é uma AFIRMAÇÃO, e ela ficou mais forte quando a definição de
+    /// pincel da referência foi lida** (§7.0 do plano). As **nove** curvas
+    /// nomeadas dela são legíveis e **já estão todas em [`Falloff`]** — e por
+    /// muito tempo esta linha afirmava que declarar uma aqui *"seria inventar um
+    /// número"*, porque um pincel zero-inicializado lá cai na curva **custom**.
+    /// ⚠️ **O oráculo executável refutou a premissa:**
     /// um pincel não nasce zero-inicializado, nasce do arquivo de startup, e o
     /// Blender 5.2 a correr reporta `curve_distance_falloff_preset = SMOOTH`
     /// depositando a analítica (ver [`super::profile_b`]). A tabela por-TOOL —
@@ -207,18 +207,17 @@ const fn profile_s(verb: Verb) -> Option<VerbProfile> {
         // ⚠️ **O SculptGL NÃO TEM Sharpen**, e este `None` é essa frase.
         // (O Blender tem o equivalente, `Enhance Details` — doc 20 §9 item 12.)
         //
-        // ⚠️ **Nem Clay Strips** — a faixa é do Blender (`clay_strips.cc`), e o
+        // ⚠️ **Nem Clay Strips** — a faixa é da referência restrita, e o
         // `None` aqui é a MESMA frase. Quem arma um verbo que a fonte não
         // declara cai no [`VerbProfile::SILENT`], que é o nosso default; o chip
         // `S` segue oferecido porque a LEI DE KERNEL dele (lateral direta,
         // plano de um lado, front-face ignorado) é universal naquele motor —
         // é a distinção que o [`RefMode::declares`] documenta.
-        // ⚠️ **Nem o Blob** — o `crease.cc` é do Blender, e este `None` é a
-        // mesma frase que os dois vizinhos carregam.
-        // ⚠️ **Nem o Clay Thumb** — `clay_thumb.cc`, a mesma frase pela terceira
-        // vez.
-        // ⚠️ **Nem o Multiplane Scrape** — `multiplane_scrape.cc`, a quarta.
-        // ⚠️ **Nem o Slide Relax** — `relax.cc`, a quinta. E aqui o `None` custa
+        // ⚠️ **Nem o Blob** — o *Crease* é da referência restrita, e este `None`
+        // é a mesma frase que os dois vizinhos carregam.
+        // ⚠️ **Nem o Clay Thumb** — idem, a mesma frase pela terceira vez.
+        // ⚠️ **Nem o Multiplane Scrape** — idem, a quarta.
+        // ⚠️ **Nem o Slide Relax** — idem, a quinta. E aqui o `None` custa
         // mais que nos outros: o SculptGL não tem verbo NENHUM que redistribua a
         // malha sem mexer na forma, então não há sequer um parente de quem herdar
         // força ou curva — os quatro defaults deste verbo são NOSSOS, e o
@@ -230,7 +229,7 @@ const fn profile_s(verb: Verb) -> Option<VerbProfile> {
         | Verb::ClayThumb
         | Verb::MultiplaneScrape
         | Verb::SlideRelax
-        // ⚠️ **Nem o Surface Smooth** — `surface_smooth.cc`, a sexta. E aqui o
+        // ⚠️ **Nem o Surface Smooth** — idem, a sexta. E aqui o
         // `None` cobra o mesmo que no vizinho: o SculptGL tem o laplaciano cru e
         // nada que devolva o volume, então força e curva de fábrica são NOSSAS.
         | Verb::SurfaceSmooth
@@ -263,22 +262,20 @@ impl Verb {
 /// **A coluna `B`** — o que o Blender DECLARA, e só isso.
 ///
 /// ⛔ **Ela não traz DEFAULTS, e a ausência é MEDIDA — o arquivo foi trazido e
-/// respondeu que a resposta não está nele** (§7.0 do plano). O
-/// `BKE_brush_sculpt_reset`, onde a força, o raio e a curva de fábrica de cada
-/// tool viviam, **não existe mais em C** (`git grep` sobre a árvore: zero):
-/// desde o Blender 4.3 os pincéis são ASSETS, num `.blend` binário. O que
-/// sobrou, o `brush_defaults()` (`brush.cc:597`), copia de um `Brush def = {}`
-/// — **um** conjunto para todas as tools, não uma tabela por ferramenta.
+/// respondeu que a resposta não está nele** (§7.0 do plano). A rotina onde a
+/// força, o raio e a curva de fábrica de CADA ferramenta viviam **já não existe**
+/// (varrido: zero): desde a versão 4.3 os pincéis da referência são **assets**,
+/// num ficheiro binário. O que sobrou copia de **um** conjunto zero-inicializado
+/// para todas as ferramentas, não uma tabela por ferramenta.
 ///
 /// ⇒ *"a força de fábrica do Clay Strips"* não é lida de fonte nenhuma. Isto
 /// **não é uma lacuna do nosso clone**: é onde o Blender passou a guardar a
 /// resposta, e trazer mais arquivos não muda.
 ///
-/// ✅ **O que ela traz é LIDO literalmente** (`sculpt.cc:2337-2339`): o slider é
-/// a RAIZ do peso, com o comentário do próprio Blender ao lado — *"square it to
-/// make lower values more sensitive"*. Vale para TODA tool: ele mora no
-/// `brush_strength`, que é o funil de todas elas — e é por isso que este `match`
-/// não tem braços por verbo.
+/// ✅ **O que ela traz é LIDO literalmente**: o slider é a **RAIZ** do peso, e a
+/// razão que a referência dá é dar mais sensibilidade à metade BAIXA do curso.
+/// Vale para TODA ferramenta — a conversão mora no funil por onde todas passam,
+/// e é por isso que este `match` não tem braços por verbo.
 ///
 /// ✅ **E a CURVA de fábrica também é lida — não da fonte, do Blender A CORRER.**
 /// A leitura estática dizia que o pincel de fábrica veste uma *curvemapping*
@@ -298,18 +295,18 @@ impl Verb {
 /// **O ALCANCE, e só onde a fonte o ESCREVE.**
 ///
 /// ⚠️ **A primeira versão desta wave declarou `1,0` para o catálogo inteiro, e a
-/// medição a derrubou.** Ela partia de UMA leitura (`clay_strips.cc:328`) mais o
-/// oráculo do Draw e tratava a fração como universal; lidas as outras, a
-/// magnitude do Blender **não é um fração do raio na maioria das tools**:
+/// medição a derrubou.** Ela partia de UMA ferramenta (o *Clay Strips*) mais o
+/// oráculo do *Draw* e tratava a fração como universal; medidas as outras, a
+/// magnitude da referência **não é uma fração do raio na maioria delas**:
 ///
-/// | tool | o que o Blender escreve | fração de raio? |
+/// | ferramenta | de que a magnitude dela é feita | fração de raio? |
 /// |---|---|---|
-/// | `draw.cc:196` | `normal · radius · scale · bstrength` | ✅ **1,0** |
-/// | `clay_strips.cc:328` | `plane_normal · bstrength · radius` | ✅ **1,0** |
-/// | `layer.cc:101` | `orig_normal · **brush.height** · factor` | ⛔ é outro KNOB |
-/// | `multiplane_scrape.cc:116` | `closest − position` | ⛔ move para um PLANO |
-/// | `surface_smooth.cc:106` | `scale_factors(factors, bstrength)` | ⛔ é um alisamento |
-/// | `clay_thumb.cc:205` | `bstrength · pressão estabilizada` | ⛔ não medido |
+/// | *Draw* | normal × raio × escala × força | ✅ **1,0** |
+/// | *Clay Strips* | normal do plano × força × raio | ✅ **1,0** |
+/// | *Layer* | normal de origem × **a ALTURA autorada** × fator | ⛔ é outro KNOB |
+/// | *Multiplane Scrape* | o vector até ao ponto mais próximo | ⛔ move para um PLANO |
+/// | *Surface Smooth* | os fatores escalados pela força | ⛔ é um alisamento |
+/// | *Clay Thumb* | força × pressão estabilizada | ⛔ não medido |
 ///
 /// ⇒ Quem a fonte não declara fica `None` e cai no [`crate::REACH_FRACTION`] —
 /// o número que já shipava e que os smokes `=30`/`=31` aprovaram. *Declarar

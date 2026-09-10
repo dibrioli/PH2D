@@ -31,9 +31,9 @@ use super::*;
 ///
 /// ⚠️ **E a segunda metade daquela nota foi REFUTADA por medição, não
 /// construída:** ela prometia *"estado persistente por vértice, que obriga um
-/// plano novo a entrar no `ModelSnapshot` do undo no mesmo commit"*. Medido no
-/// `layer.cc`, o `layer_displacement_factor` da referência mora no `ss.cache` —
-/// construído no pen-down, **destruído no pen-up** —, logo é estado de TRAÇO e
+/// plano novo a entrar no `ModelSnapshot` do undo no mesmo commit"*. Medido: na
+/// referência o deslocamento acumulado por vértice do *Layer* vive no **cache do
+/// traço** — construído no pen-down, **destruído no pen-up** —, logo é estado de TRAÇO e
 /// não do documento; e do nosso lado ele nem sequer é um plano novo, porque o
 /// `accum` que o motor já guarda **é** ele (ver [`crate::GripLaw::coat`]).
 /// *Um custo nomeado num plano é uma afirmação sobre um número que a medição
@@ -72,10 +72,10 @@ pub enum Verb {
     /// em vez de puxar o barro para o eixo (afiando), ele o empurra para fora
     /// (arredondando), e o depósito sobe.
     ///
-    /// ⚠️ **A relação é a do Blender, ao pé da letra** — `crease.cc` tem UMA
-    /// função (`do_crease_or_blob_brush`) e um `bool invert_strength` que troca
-    /// o sinal do termo lateral e **mais nada**; o `offset` normal dos dois é o
-    /// mesmo `sculpt_normal · raio · força`.
+    /// ⚠️ **A relação é a da referência, ao pé da letra** — lá o *Crease* e o
+    /// *Blob* são **a mesma lei**, com um único booleano a trocar o SINAL do
+    /// termo lateral e mais nada; o deslocamento normal dos dois é o mesmo
+    /// produto **normal × raio × força**.
     ///
     /// ⚠️ **E é por isso que ele é um VERBO e não um slider negativo no
     /// `pinch`:** o nosso próprio catálogo já decidiu esta pergunta uma vez —
@@ -120,7 +120,7 @@ pub enum Verb {
     /// [`crate::Footprint`]): miolo chato numa caixa arredondada em vez de um
     /// domo, e um portão parabólico na profundidade que faz a passada
     /// DEPOSITAR barro abaixo do plano em vez de levantar o que já está no
-    /// lugar. É a ferramenta de blocagem do Blender (`clay_strips.cc`), e a que
+    /// lugar. É a ferramenta de blocagem da referência (o *Clay Strips*), e a que
     /// mais muda o que se consegue fazer numa sessão.
     ///
     /// ⚠️ **O SculptGL NÃO A TEM** — ver [`crate::RefMode`]: a metade
@@ -131,20 +131,21 @@ pub enum Verb {
     /// enquanto a mão anda.
     ///
     /// ⚠️ **A lei é a do [`Self::Flatten`]; o que muda é QUAL plano** — o
-    /// `clay_thumb.cc` projeta cada vértice num plano *bilateral*, exatamente
-    /// como o Flatten, e a ferramenta inteira mora na construção do plano:
+    /// *Clay Thumb* da referência projeta cada vértice num plano *bilateral*,
+    /// exatamente como o Flatten, e a ferramenta inteira mora na construção do
+    /// plano:
     ///
-    /// 1. ele passa pelo **centro do dab** (`location_symm`), não pelo centro
-    ///    de área — a diferença com os quatro verbos de plano que a
+    /// 1. ele passa pelo **centro do dab**, não pelo centro de área — a
+    ///    diferença com os quatro verbos de plano que a
     ///    [`crate::stroke_plane`] serve;
     /// 2. a normal dele é a normal de área **girada** em torno do eixo que
-    ///    ATRAVESSA o traço (`x = n × path`, o mesmo `X` que o `pinch.cc`
-    ///    monta);
+    ///    ATRAVESSA o traço (o produto vectorial da normal com o caminho — o
+    ///    mesmo eixo que o *Pinch* monta);
     /// 3. o ângulo dessa rotação **ACUMULA** ao longo do traço
     ///    (`+`[`crate::CLAY_THUMB_TILT_STEP_DEG`]` por dab, teto
-    ///    [`crate::CLAY_THUMB_TILT_MAX_DEG`]) — *"simulate the clay accumulation
-    ///    by increasing the plane angle as more samples are added to the
-    ///    stroke"*, `clay_thumb.cc:170-176`.
+    ///    [`crate::CLAY_THUMB_TILT_MAX_DEG`]) — e o efeito que a referência diz
+    ///    procurar com isso é **simular o barro a acumular**: quanto mais
+    ///    amostras o traço junta, mais inclinado o plano.
     ///
     /// ⚠️ **É o PRIMEIRO verbo cujo alvo depende de quantos dabs já passaram**,
     /// e não só de onde este caiu. O estado mora no [`crate::SculptStroke`], ao
@@ -161,7 +162,7 @@ pub enum Verb {
     /// ⚠️ **O SculptGL NÃO O TEM** — ver [`crate::RefMode`], como os dois
     /// vizinhos acima.
     ClayThumb,
-    /// **A LÂMINA EM V** — o `multiplane_scrape.cc`. O único verbo com **DOIS**
+    /// **A LÂMINA EM V** — o *Multiplane Scrape* da referência. O único verbo com **DOIS**
     /// planos, e é isso que o nome diz: em vez de raspar contra uma superfície,
     /// ele raspa contra um TELHADO, e o que sobra é um sulco de duas facetas
     /// planas com uma aresta viva no meio.
@@ -174,7 +175,7 @@ pub enum Verb {
     /// **em torno de quê**.
     ///
     /// ⚠️ **Qual dos dois um vértice consome é decidido pelo LADO em que ele
-    /// caiu** (`local_positions[i][0] <= 0`, `multiplane_scrape.cc:84`), e cada
+    /// caiu** (o SINAL da coordenada dele no referencial do dab), e cada
     /// meio-plano se inclina **para o lado que ele serve** — é isso que abre o V
     /// em vez de o fechar. Num ângulo negativo (a aresta CÔNCAVA) as normais
     /// tombam ao contrário, o telhado vira vale, e a ferramenta **enche** a
@@ -194,14 +195,13 @@ pub enum Verb {
     ///
     /// ⚠️ **Sem direção não há dobradiça, logo não há depósito** — a mesma
     /// recusa do [`Self::ClayThumb`], pela MESMA porta ([`crate::stroke_axis`]),
-    /// e a referência a escreve com os mesmos dois `return` (*"delay the first
-    /// daub"* e `is_zero(grab_delta_symm)`).
+    /// e a referência a escreve com as mesmas duas desistências: **adiar o
+    /// primeiro dab** do traço, e desistir quando o deslocamento do cursor é zero.
     ///
     /// ⚠️ **O SculptGL NÃO O TEM** — ver [`crate::RefMode`].
     MultiplaneScrape,
     /// **O ÚNICO VERBO QUE NÃO MUDA A FORMA** — ele redistribui os vértices
-    /// SOBRE a superfície (`SCULPT_TOOL_SLIDE_RELAX`, `relax.cc` +
-    /// `sculpt_smooth.cc::calc_relaxed_translations_faces`).
+    /// SOBRE a superfície (é o *Slide Relax* da referência).
     ///
     /// Todos os outros vinte respondem *para onde este vértice vai*; este
     /// responde *este vértice está no lugar errado DA MALHA*. Um traço que
@@ -210,8 +210,8 @@ pub enum Verb {
     /// a estrutura junto.
     ///
     /// **A lei, em duas linhas:** caminhe para a média do anel, e depois
-    /// **remova a componente ao longo da normal**
-    /// (`translation_to_plane(pos, n, smoothed)`, `sculpt_smooth.cc:458`). O que
+    /// **remova a componente ao longo da normal** — ou seja, projecte o
+    /// deslocamento no plano tangente, que é o que a referência faz. O que
     /// sobra é tangencial ⇒ o vértice desliza pela superfície e a silhueta fica
     /// onde estava. É a única linha que separa este verbo do [`Self::Smooth`],
     /// que é a mesma média SEM a subtração.
@@ -248,8 +248,8 @@ pub enum Verb {
     /// ⚠️ **O SculptGL NÃO O TEM** — a quinta vez a mesma frase (ver
     /// [`crate::RefMode`]).
     SlideRelax,
-    /// **O ALISAMENTO QUE DEVOLVE O QUE TIROU** — o `SCULPT_TOOL_SMOOTH` com
-    /// `SCULPT_SMOOTH_DEFORM_SURFACE` (`surface_smooth.cc`), que é o **HC** de
+    /// **O ALISAMENTO QUE DEVOLVE O QUE TIROU** — é o alisamento da referência
+    /// no modo de deformação de SUPERFÍCIE, que é o **HC** de
     /// Vollmer, Mencl & Müller (EG 1999, *Improved Laplacian Smoothing of Noisy
     /// Surface Meshes*).
     ///
@@ -292,7 +292,7 @@ pub enum Verb {
     /// [`crate::RefMode`]).
     SurfaceSmooth,
     /// **A DEMÃO** — uma camada de espessura ESCOLHIDA, saturante e apagável
-    /// (`layer.cc`, o `SCULPT_BRUSH_TYPE_LAYER` do Blender).
+    /// (é o *Layer* da referência).
     ///
     /// **A lei, em três linhas:**
     ///
@@ -322,9 +322,9 @@ pub enum Verb {
     /// altura CHEIA, o `accum` que o motor já guarda passa a ser exactamente o
     /// `displacement_factor` da referência. O plano por-vértice que o plano 21
     /// prometia — e a lei do repo que ele arrastava (*ao adicionar um plano,
-    /// adicione-o ao snapshot de undo no MESMO commit*) — **não existe**: medido
-    /// no `layer.cc`, o `layer_displacement_factor` mora no `ss.cache`, que o
-    /// Blender constrói no pen-down e **destrói no pen-up** (`MEM_delete`), logo
+    /// adicione-o ao snapshot de undo no MESMO commit*) — **não existe**: medido,
+    /// o deslocamento acumulado por vértice do *Layer* vive no **cache do traço**
+    /// da referência, que ela constrói no pen-down e **liberta no pen-up**, logo
     /// ele é estado de TRAÇO, irmão do nosso `pre` congelado e não da máscara.
     ///
     /// ⚠️ **DIVERGÊNCIA DECLARADA — o segundo `f` do Blender não é portado, e a
@@ -474,9 +474,9 @@ impl Verb {
             // que o [`crate::kelvinlet::rim_landing`] foi construído para curar.
             //
             // ⚠️ **A REFERÊNCIA chegou à mesma conclusão, e é isso que fecha:**
-            // o `elastic_deform.cc` do Blender porta este paper e declara CINCO
-            // famílias — `GRAB`, `GRAB_BISCALE`, `GRAB_TRISCALE`, `SCALE`,
-            // `TWIST`. **Nenhuma é o pinch.** O SculptGL não tem Kelvinlets. O
+            // a deformação elástica da referência porta este paper e declara
+            // CINCO famílias — agarrar (em três escalas), escalar e torcer.
+            // **Nenhuma é o pinch.** O SculptGL não tem Kelvinlets. O
             // paper tem a família afim de traço zero como MATEMÁTICA e nenhum
             // escultor a shipa como PINCEL.
             //

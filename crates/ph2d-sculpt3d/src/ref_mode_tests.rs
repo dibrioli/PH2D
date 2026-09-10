@@ -203,26 +203,24 @@ fn the_census_of_offered_chips() {
         15,
         "S: todos menos o Sharpen, o Clay Strips, o Blob, o Clay Thumb, o Multiplane Scrape, o Slide Relax e o Surface Smooth"
     );
-    // ⚠️ O `B` alcança TODO verbo com uma coisa só — o `alpha = root_alpha²` do
-    // `brush_strength`, que é o funil de todas as tools.
+    // ⚠️ O `B` alcança TODO verbo com uma coisa só — a força ELEVADA AO
+    // QUADRADO no funil por onde todas as ferramentas dela passam.
     //
     // ⚠️ **Os DEFAULTS dele seguem bloqueados, e o motivo NÃO é o clone** — o
-    // `brush.cc` foi trazido e respondeu que a resposta não está nele: o
-    // `BKE_brush_sculpt_reset` **não existe mais em C** desde o Blender 4.3
+    // ficheiro de definição de pincel foi trazido e respondeu que a resposta
+    // não está nele: a rotina de reset **já não existe** desde a versão 4.3
     // (§7.0 do plano). Este número é sobre a LEI, não sobre os defaults.
     //
     // ⚠️ **17 desde a W6, 18 desde o Blob, 19 desde o Clay Thumb, 20 desde o
     // Multiplane Scrape, 21 desde o Slide Relax, 22 desde o Surface Smooth, 23
-    // desde a DEMÃO:** os sete são tools do BLENDER (`clay_strips.cc`,
-    // `crease.cc`, `clay_thumb.cc`, `multiplane_scrape.cc`, `relax.cc`,
-    // `surface_smooth.cc`, `layer.cc`), então o `alpha = root_alpha²` do
-    // `brush_strength` — que é o funil de todas elas — vale para as sete por
-    // construção.
+    // desde a DEMÃO:** os sete são ferramentas da referência restrita, então a
+    // força ao quadrado — que mora no funil de todas elas — vale para as sete
+    // por construção.
     assert_eq!(count(RefMode::B), 23, "B: a lei da força vale para todos");
     // A literatura chega paper a paper, nas waves W4/W5/W7.
     //
     // ⚠️ **E o Surface Smooth NÃO o move, embora SEJA um paper** (Vollmer,
-    // Mencl & Müller, EG 1999): o que portámos é o `surface_smooth.cc`, ou seja
+    // Mencl & Müller, EG 1999): o que portámos é o *Surface Smooth*, ou seja
     // *a rendição do Blender do próprio paper* — as duas leis são a MESMA, e um
     // segundo chip declarando-a seria um controle que não muda um vértice.
     // Declarar `L` ali afirmaria um porte a partir do artigo que não foi feito.
@@ -305,8 +303,8 @@ fn the_mode_reaches_the_clay() {
     // VEZES mais, e uma razão entre dois números não diz qual deles é o certo.
     //
     // ✅ SculptGL: `deform = intensidade · raio · 0,1`, força LINEAR.
-    // ✅ Blender: `offset = normal · raio · bstrength`, com `alpha = raiz²`
-    //    (`sculpt.cc:2337`) — e o ORÁCULO executável mediu exactamente isto:
+    // ✅ Referência: deslocamento = normal × raio × força, com a força ELEVADA
+    //    AO QUADRADO — e o ORÁCULO executável mediu exactamente isto:
     //    força {0,25 · 0,5 · 1,0} ⇒ pico {0,03125 · 0,125 · 0,5} com `R = 0,5`.
     let (r, k) = (0.5f32, 0.5f32);
     assert!(
@@ -485,7 +483,7 @@ fn the_literature_mode_is_offered_exactly_where_it_declares_a_law() {
         // ⚠️ **O censo ENCOLHEU em 2026-08-15, e é a primeira vez.** Pinch,
         // Crease e Blob saíram com o `Field::Pinch`: um chip `L` neles vestia
         // uma lei que **nenhuma das três fontes declara** (o
-        // `elastic_deform.cc` do Blender porta o mesmo paper e traz cinco
+        // deformação elástica da referência porta o mesmo paper e traz cinco
         // famílias, nenhuma delas o pinch), e o preço estava medido — 44 a 62 %
         // do gesto caía fora do anel do cursor. Ver
         // [`crate::Verb::elastic_field`] para a tabela inteira.

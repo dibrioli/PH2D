@@ -119,7 +119,7 @@ fn which_sim_nodes_have_a_place() {
             } else {
                 "—"
             },
-            if crate::field_gizmo::spec_for(tid).is_some() {
+            if crate::field_gizmo::spec_for(tid, &|_| 0.0).is_some() {
                 "sim"
             } else {
                 "⛔ NAO"

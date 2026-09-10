@@ -22,31 +22,60 @@ fn approx(a: f32, b: f32) -> bool {
 
 // ── A tabela de specs: qual forma cada field espacial tem ──
 
+/// Um leitor de params **neutro** (tudo `0`) para os gates que só perguntam pelo TIPO.
+///
+/// ⚠️ **O `sim.collide` é o primeiro nó cuja spec depende dos params** (as quatro formas medem-se
+/// com params diferentes), e por isso a [`spec_for`] passou a recebê-los. Onde a forma não
+/// importa, este leitor diz isso em voz alta em vez de fabricar valores.
+const NEUTRO: fn(&str) -> f32 = |_| 0.0;
+
 #[test]
 fn spec_for_covers_the_spatial_fields() {
     // O field ESPACIAL tem spec; os não-espaciais (rank / composição) não. A box é um
     // RETÂNGULO, o radial sweep é um DISCO — a forma decide o mapeamento de tamanho.
     assert_eq!(
-        spec_for(NodeTypeId::of("field.box")).map(|s| s.size),
+        spec_for(NodeTypeId::of("field.box"), &NEUTRO).map(|s| s.size),
         Some(FieldSize::Rect {
             width: "width",
             height: "height"
         })
     );
     assert_eq!(
-        spec_for(NodeTypeId::of("field.radial_sweep")).map(|s| s.size),
+        spec_for(NodeTypeId::of("field.radial_sweep"), &NEUTRO).map(|s| s.size),
         Some(FieldSize::Disk { radius: "radius" })
     );
     // ⭐ O TERCEIRO campo espacial (ciclo 4, W1): o `motion.falloff`. Uma spec serve as
     // três formas dele — `Disk` dá `[r, r]`, que é o disco do Circle, o quadrado de
     // Chebyshev do Rect e o vão do Linear.
     assert_eq!(
-        spec_for(NodeTypeId::of("motion.falloff")).map(|s| s.size),
+        spec_for(NodeTypeId::of("motion.falloff"), &NEUTRO).map(|s| s.size),
         Some(FieldSize::Disk { radius: "radius" })
     );
-    assert!(spec_for(NodeTypeId::of("field.index_range")).is_none());
-    assert!(spec_for(NodeTypeId::of("field.combine")).is_none());
-    assert!(spec_for(NodeTypeId::of("motion.integrate")).is_none());
+    // ⭐ **O COLISOR** (ciclo 5, W1): a spec dele depende dos PARAMS, e é o primeiro assim.
+    // As quatro formas medem-se com params diferentes — a caixa por `box_width`/`box_height`,
+    // o prato e a tigela por `radius`.
+    let forma = |v: f32| -> fn(&str) -> f32 {
+        match v as i32 {
+            3 => |n: &str| if n == "shape" { 3.0 } else { 0.0 },
+            _ => |_: &str| 0.0,
+        }
+    };
+    assert_eq!(
+        spec_for(NodeTypeId::of("sim.collide"), &forma(3.0)).map(|s| s.size),
+        Some(FieldSize::Rect {
+            width: "box_width",
+            height: "box_height"
+        }),
+        "a forma `Box` mede-se pelas duas extensoes"
+    );
+    assert_eq!(
+        spec_for(NodeTypeId::of("sim.collide"), &forma(1.0)).map(|s| s.size),
+        Some(FieldSize::Disk { radius: "radius" }),
+        "o prato e a tigela medem-se pelo raio"
+    );
+    assert!(spec_for(NodeTypeId::of("field.index_range"), &NEUTRO).is_none());
+    assert!(spec_for(NodeTypeId::of("field.combine"), &NEUTRO).is_none());
+    assert!(spec_for(NodeTypeId::of("motion.integrate"), &NEUTRO).is_none());
 }
 
 /// ⭐⭐⭐ **TODO NOME QUE UMA SPEC USA É UM PARAM DECLARADO DO NÓ** — perguntado ao REGISTRY,
@@ -65,11 +94,12 @@ fn every_name_a_spec_uses_is_a_declared_param_of_that_node() {
     ph2d_node_registry_init::register_all_nodes(&mut reg).expect("registry");
     let mut com_spec = 0usize;
     for man in reg.manifests() {
-        let Some(spec) = spec_for(man.id) else {
+        let Some(spec) = spec_for(man.id, &NEUTRO) else {
             continue;
         };
         com_spec += 1;
-        let mut nomes = vec![spec.center_x, spec.center_y, spec.rotation];
+        let mut nomes = vec![spec.center_x, spec.center_y];
+        nomes.extend(spec.rotation);
         match spec.size {
             FieldSize::Rect { width, height } => nomes.extend([width, height]),
             FieldSize::Disk { radius } => nomes.push(radius),
@@ -95,10 +125,10 @@ fn every_name_a_spec_uses_is_a_declared_param_of_that_node() {
 fn spec_names_match_the_nodes() {
     // Os nomes TÊM de bater com os params reais dos nós (ph2d-node-field-box /
     // ph2d-node-field-radial-sweep). Um typo aqui = gizmo que escreve num param fantasma.
-    let bx = spec_for(NodeTypeId::of("field.box")).unwrap();
+    let bx = spec_for(NodeTypeId::of("field.box"), &NEUTRO).unwrap();
     assert_eq!(
         (bx.center_x, bx.center_y, bx.rotation),
-        ("center_x", "center_y", "rotation")
+        ("center_x", "center_y", Some("rotation"))
     );
     assert_eq!(
         bx.size,
@@ -107,10 +137,10 @@ fn spec_names_match_the_nodes() {
             height: "height"
         }
     );
-    let rs = spec_for(NodeTypeId::of("field.radial_sweep")).unwrap();
+    let rs = spec_for(NodeTypeId::of("field.radial_sweep"), &NEUTRO).unwrap();
     assert_eq!(
         (rs.center_x, rs.center_y, rs.rotation),
-        ("center_x", "center_y", "rotation")
+        ("center_x", "center_y", Some("rotation"))
     );
     assert_eq!(rs.size, FieldSize::Disk { radius: "radius" });
 }
@@ -201,7 +231,7 @@ fn write_under_identity_scale_round_trips() {
     let bx = motion.doc.graph.add_node("field.box");
     motion.doc.graph.set_param(bx, "width", 8.0);
     motion.doc.graph.set_param(bx, "height", 4.0);
-    let bsize = spec_for(NodeTypeId::of("field.box")).unwrap().size;
+    let bsize = spec_for(NodeTypeId::of("field.box"), &NEUTRO).unwrap().size;
     let bh = bsize.half(|n: &str| radius_of(&motion, bx, n));
     bsize.write(&mut motion.doc.graph, bx, bh, [1.0, 1.0]);
     assert!(approx(radius_of(&motion, bx, "width"), 8.0));
@@ -209,7 +239,9 @@ fn write_under_identity_scale_round_trips() {
 
     let sw = motion.doc.graph.add_node("field.radial_sweep");
     motion.doc.graph.set_param(sw, "radius", 7.0);
-    let dsize = spec_for(NodeTypeId::of("field.radial_sweep")).unwrap().size;
+    let dsize = spec_for(NodeTypeId::of("field.radial_sweep"), &NEUTRO)
+        .unwrap()
+        .size;
     let dh = dsize.half(|n: &str| radius_of(&motion, sw, n));
     dsize.write(&mut motion.doc.graph, sw, dh, [1.0, 1.0]);
     assert!(approx(radius_of(&motion, sw, "radius"), 7.0));
@@ -356,7 +388,7 @@ fn a_box_field_drag_writes_node_params_never_a_transform() {
     ] {
         motion.doc.graph.set_param(bid, n, v);
     }
-    let spec = spec_for(NodeTypeId::of("field.box")).unwrap();
+    let spec = spec_for(NodeTypeId::of("field.box"), &NEUTRO).unwrap();
     let cam = GizmoCamera {
         center: [0.0, 0.0],
         height_world: 20.0,
@@ -409,7 +441,7 @@ fn a_radial_field_drag_scales_the_radius() {
     motion.doc.graph.set_param(sid, "radius", 5.0);
     motion.doc.graph.set_param(sid, "center_x", 0.0);
     motion.doc.graph.set_param(sid, "center_y", 0.0);
-    let spec = spec_for(NodeTypeId::of("field.radial_sweep")).unwrap();
+    let spec = spec_for(NodeTypeId::of("field.radial_sweep"), &NEUTRO).unwrap();
     let cam = GizmoCamera {
         center: [0.0, 0.0],
         height_world: 20.0,

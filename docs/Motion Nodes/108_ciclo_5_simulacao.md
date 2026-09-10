@@ -94,12 +94,36 @@ substituir.
 
 ## §2 — O PLANO, wave a wave
 
-### W1 — ⭐⭐⭐ AS TRÊS ALÇAS (o achado da §1.5)
+### ✅ W1a — A ALÇA DO COLISOR, e a `spec_for` que passou a ver os PARAMS (2026-09-09)
 
-⚠️ **Uma delas obriga o `spec_for` a crescer:** o `sim.collide` tem **quatro formas**
-(`Plane | Disc | Bowl | Box`) com params de tamanho **diferentes** (`radius` contra
-`box_width`/`box_height`), e a `spec_for` hoje só recebe o **tipo** do nó. O `motion.falloff`
-escapou a isso porque uma `Disk` servia as três formas dele.
+O `sim.collide` é **literalmente uma coisa que se põe num sítio** — um chão, um prato, uma caixa —
+e punha-se com dois sliders. Hoje tem caixa no canvas: mover · girar (`angle`) · redimensionar.
+
+⚠️⚠️ **Ele é o primeiro nó cuja spec depende dos PARAMS e não só do TIPO:** as quatro formas
+(`Plane · Disc · Bowl · Box`) medem-se com params **diferentes**, e o `motion.falloff` do ciclo 4
+escapou a isso porque uma `Disk` servia as três formas dele. ⇒ `spec_for(type_id, &params)`.
+
+⚠️ **O `Plane` recebe a caixa do `Box` de propósito:** um plano é infinito e não tem extensão para
+agarrar, mas o `angle` e o `height` **são** o que a alça move. A alça de tamanho escreve num param
+que aquela forma não lê — **inerte, não mentiroso**. ⛔ Não lhe dar spec nenhuma tirava também o
+mover e o girar, que é exactamente o que ele precisa.
+
+⛔ **Duas mutações, ambas nomeadas:** tirar o braço do colisor, ou congelar a leitura da forma, dão
+*«a forma `Box` mede-se pelas duas extensões»*.
+
+### ⛔ W1b — AS OUTRAS DUAS ALÇAS estão BLOQUEADAS, com o preço medido
+
+O `force.vortex` e o `force.attractor` põem-se no mundo e **não têm param de ângulo** — girar um
+vórtice em torno do próprio centro não move um texel. Uma spec deles teria `rotation: None`, e o
+artista arrastaria a argola de rodar **sem nada acontecer**.
+
+⇒ a cura certa é a `GizmoView` saber **suprimir** a argola, e o preço está **medido: 28 sítios de
+construção dela**, em crates de **outras linhas** (`ph2d-editor-core`, `ph2d-tool-painter`). Um
+campo obrigatório num struct partilhado é o oposto de *«projecte o foundational para isolamento»*
+(CLAUDE.md §0.2), e colide na integração.
+
+⛔ **Nomeado, não contrabandeado — e nada morto shipa.** O `rotation` da spec já é `Option`, então
+o dia em que a `GizmoView` souber suprimir, as duas entram com um braço cada.
 
 ### W2 — ⭐ O `Mode` que não diz nada (o achado da §1.3)
 

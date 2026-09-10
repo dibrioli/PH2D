@@ -175,8 +175,16 @@ impl FieldSize {
 pub(crate) struct FieldGizmoSpec {
     pub(crate) center_x: &'static str,
     pub(crate) center_y: &'static str,
-    /// Rotação em GRAUS (os fields a consomem como `cos_sin_cycles(rotation/360)`).
-    pub(crate) rotation: &'static str,
+    /// Rotação em GRAUS, ou **`None` quando a coisa não tem ângulo**.
+    ///
+    /// ⛔⛔ **`None` é uma alça de rotação INERTE, e é por isso que nenhum nó do repo o usa
+    /// hoje.** O `force.vortex` e o `force.attractor` põem-se no mundo e **não têm** param de
+    /// ângulo (girar um vórtice em torno do próprio centro não move um texel), então uma spec
+    /// deles teria de o pôr a `None` — e o artista arrastaria a argola de rodar sem nada
+    /// acontecer. A cura certa é a [`GizmoView`](ph2d_editor::GizmoView) saber **suprimir** a
+    /// argola, e o preço está MEDIDO: **28 sítios de construção** dela, em crates de outras
+    /// linhas. ⇒ nomeado, não contrabandeado ([doc 108](../../../docs/Motion%20Nodes/108_ciclo_5_simulacao.md) §2).
+    pub(crate) rotation: Option<&'static str>,
     /// Como o tamanho mapeia para os params (retângulo × disco).
     pub(crate) size: FieldSize,
 }
@@ -185,7 +193,7 @@ pub(crate) struct FieldGizmoSpec {
 const BOX_SPEC: FieldGizmoSpec = FieldGizmoSpec {
     center_x: "center_x",
     center_y: "center_y",
-    rotation: "rotation",
+    rotation: Some("rotation"),
     size: FieldSize::Rect {
         width: "width",
         height: "height",
@@ -197,7 +205,7 @@ const BOX_SPEC: FieldGizmoSpec = FieldGizmoSpec {
 const RADIAL_SWEEP_SPEC: FieldGizmoSpec = FieldGizmoSpec {
     center_x: "center_x",
     center_y: "center_y",
-    rotation: "rotation",
+    rotation: Some("rotation"),
     size: FieldSize::Disk { radius: "radius" },
 };
 
@@ -225,7 +233,7 @@ const RADIAL_SWEEP_SPEC: FieldGizmoSpec = FieldGizmoSpec {
 const FALLOFF_SPEC: FieldGizmoSpec = FieldGizmoSpec {
     center_x: "center_x",
     center_y: "center_y",
-    rotation: "rotation",
+    rotation: Some("rotation"),
     size: FieldSize::Disk { radius: "radius" },
 };
 
@@ -233,13 +241,56 @@ const FALLOFF_SPEC: FieldGizmoSpec = FieldGizmoSpec {
 /// ESPACIAL (o `index_range` é por rank, sem geometria; o `combine` compõe dois fields,
 /// sem geometria própria). Porta única — a view, o down e o gate perguntam à mesma.
 #[must_use]
-pub(crate) fn spec_for(type_id: NodeTypeId) -> Option<FieldGizmoSpec> {
+/// ⭐⭐⭐ **A spec do `sim.collide`** (ciclo 5, W1 — [doc 108](../../../docs/Motion%20Nodes/108_ciclo_5_simulacao.md)).
+///
+/// ⛔ **O colisor é literalmente uma coisa que se põe num sítio** — um chão, um prato, uma caixa
+/// — e punha-se com dois sliders. É o achado do ciclo 4 um grupo adiante, e aqui morde mais.
+///
+/// ⚠️⚠️ **Ele é o primeiro nó cuja spec depende dos PARAMS e não só do tipo:** as quatro formas
+/// (`Plane · Disc · Bowl · Box`) medem-se com params **diferentes** — a caixa tem
+/// `box_width`/`box_height`, o prato e a tigela têm `radius`. O `motion.falloff` escapou a isto
+/// porque uma `Disk` servia as três formas dele; aqui não serve, e é por isso que a
+/// [`spec_for`] passou a receber o leitor de params.
+///
+/// ⚠️ **O `Plane` recebe a caixa do `Box`** de propósito: um plano é infinito e não tem extensão
+/// para agarrar, mas o `angle` e o `height` dele **são** o que a alça move — e a alça de tamanho
+/// escreve num param que aquela forma não lê, o que é inerte e não mentiroso (o artista vê a
+/// caixa, arrasta o canto, e a linha do chão não muda de sítio). ⛔ A alternativa — não dar spec
+/// nenhuma ao `Plane` — tiraria também o MOVER e o GIRAR, que são exactamente o que ele precisa.
+fn collide_spec(p: &dyn Fn(&str) -> f32) -> FieldGizmoSpec {
+    /// `0` Plane · `1` Disc · `2` Bowl · `3` Box — a mesma escada do `shape` do nó.
+    const BOX: f32 = 3.0;
+    FieldGizmoSpec {
+        center_x: "center_x",
+        center_y: "center_y",
+        rotation: Some("angle"),
+        size: if (p("shape") - BOX).abs() < 0.5 {
+            FieldSize::Rect {
+                width: "box_width",
+                height: "box_height",
+            }
+        } else {
+            FieldSize::Disk { radius: "radius" }
+        },
+    }
+}
+
+/// A [`FieldGizmoSpec`] de um tipo de nó, ou `None` se o nó **não** é um field
+/// ESPACIAL (o `index_range` é por rank, sem geometria; o `combine` compõe dois fields,
+/// sem geometria própria). Porta única — a view, o down e o gate perguntam à mesma.
+///
+/// ⚠️ **Recebe o leitor de PARAMS desde o ciclo 5:** um nó cuja forma muda os params de tamanho
+/// (o `sim.collide`) não é exprimível por uma tabela indexada só pelo tipo.
+#[must_use]
+pub(crate) fn spec_for(type_id: NodeTypeId, p: &dyn Fn(&str) -> f32) -> Option<FieldGizmoSpec> {
     if type_id == NodeTypeId::of("field.box") {
         Some(BOX_SPEC)
     } else if type_id == NodeTypeId::of("field.radial_sweep") {
         Some(RADIAL_SWEEP_SPEC)
     } else if type_id == NodeTypeId::of("motion.falloff") {
         Some(FALLOFF_SPEC)
+    } else if type_id == NodeTypeId::of("sim.collide") {
+        Some(collide_spec(p))
     } else {
         None
     }
@@ -310,7 +361,8 @@ fn seed_start(cx: f32, cy: f32, rot_deg: f32) -> TransformSnapshot {
 pub(crate) fn selected_field(motion: &MotionState) -> Option<(NodeId, FieldGizmoSpec)> {
     let nid = crate::render_loop::motion_bridge::params::selected_motion_node().map(NodeId)?;
     let type_id = motion.doc.graph.node(nid)?.type_id();
-    Some((nid, spec_for(type_id)?))
+    let p = |name: &str| crate::render_loop::motion_bridge::params::param_value(motion, nid, name);
+    Some((nid, spec_for(type_id, &p)?))
 }
 
 /// A [`GizmoView`] do field espacial selecionado, ou `None`. O chamador (render_loop) já
@@ -332,7 +384,7 @@ pub(crate) fn field_view(
         p(spec.center_x),
         p(spec.center_y),
         half,
-        p(spec.rotation),
+        spec.rotation.map_or(0.0, |r| p(r)),
         camera,
         win_w,
         win_h,
@@ -372,11 +424,9 @@ fn apply_field_drag(
     let g = &mut motion.doc.graph;
     g.set_param(fgd.node, fgd.spec.center_x, new_t.translation[0]);
     g.set_param(fgd.node, fgd.spec.center_y, new_t.translation[1]);
-    g.set_param(
-        fgd.node,
-        fgd.spec.rotation,
-        wrap180(new_t.rotation.to_degrees()),
-    );
+    if let Some(r) = fgd.spec.rotation {
+        g.set_param(fgd.node, r, wrap180(new_t.rotation.to_degrees()));
+    }
     fgd.spec
         .size
         .write(g, fgd.node, fgd.intrinsic_half, new_t.scale);
@@ -419,7 +469,11 @@ impl crate::App {
                 crate::render_loop::motion_bridge::params::param_value(&gfx.motion, nid, name)
             };
             let intrinsic_half = spec.size.half(p);
-            let start = seed_start(p(spec.center_x), p(spec.center_y), p(spec.rotation));
+            let start = seed_start(
+                p(spec.center_x),
+                p(spec.center_y),
+                spec.rotation.map_or(0.0, |r| p(r)),
+            );
             // ⚠️ O `world_pos` do drag TEM de usar as dims da CENA (o sub-retângulo do
             // split), não a janela cheia — senão o cursor mapeia pra um mundo diferente do
             // que o gizmo é PINTADO (o mesmo drift do chrome). A `GizmoCamera` do

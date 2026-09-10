@@ -8,6 +8,20 @@
 
 ---
 
+> ⚠️⚠️ **AUDITADA CONTRA O CÓDIGO em 2026-09-10** (`line/UIUX`). Quatro linhas desta página
+> descreviam trabalho **já pago** ou uma decisão **já tomada**, e uma quinta estava **invertida**.
+> Estão corrigidas em cima, cada uma com a medição dentro. ⛔ *O que se perde ao não reconferir não
+> é tempo, é construir o que já existe* (`CLAUDE.md` §5.0) — e uma delas mandava construir
+> exactamente o gesto que o dono ordenou **retirar**.
+>
+> | linha | era | é |
+> |---|---|---|
+> | §3 — degrau `E` (`allowed_slots` + a fuga do gizmo) | «inclui remover a fuga» | ✅ `26/26` declaram; a fuga ficou **inerte por construção** e FICA, pelas janelas flutuantes |
+> | §3 — degrau `I` (temas `4 → 2`) | «cortar 4 → 2» | ⛔ **INVERTIDO**: são **8** hoje, e o menu do topo mostra **uma família por aparência** |
+> | §5.1 — partir o `DrawMode` | «14 variantes vivas» | ⏳ aberta, e são **17** — o achatamento cresce sozinho |
+> | §8 — um gesto de RECOLHER | «não existe … decisão de produto» | ✅ **decidida CONTRA** pelo dono (2026-09-09); a w49 removeu o gesto |
+> | §8 — a fila de ferramentas dobra | «`54 → 108 px`» | ✅ **curada** na entrega 32 (`tool_bar::bar_split`, o `⋯`) |
+
 ## §1 — A restrição que molda tudo, e ela é um número
 
 **2 076 ids de widget · 25 painéis · 53 widgets primitivos · 67 gates**
@@ -97,7 +111,7 @@ gizmo por baixo de uma delas. O mecanismo está escrito no sítio
 
     B. fundir os 16 apelidos ─── H. separar LAYOUT de PALETA
                                        │
-                                       └── I. cortar os temas 4 → 2
+                                       └── I. cortar os temas 4 → 2   ⛔ INVERTIDO (topo)
 ```
 
 ### ⛔⛔ As travas duras — eram três, **são duas**
@@ -110,8 +124,21 @@ gizmo por baixo de uma delas. O mecanismo está escrito no sítio
    ([`medicoes/03 §5`](../medicoes/03_o_censo_de_cor.md)): *confirmar que um valor é PRODUZIDO
    não é medir que ele é CONSUMIDO.* ⇒ **`I` não depende de `H`**; depende do veredito do Enio
    sobre quantos temas quer.
-2. **`E` inclui remover a fuga do gizmo.** Ela é o remédio do sintoma; com os painéis fora da
-   vista, passaria a fugir de uma moldura que já não a alcança.
+
+   ⛔⛔ **E o degrau `I`, tal como está escrito, está INVERTIDO** (medido 2026-09-10): são **`8`**
+   temas hoje (`Forge` · `Workshop` · `Sunstone` · `Blueprint` · `Dark` · `Gray` · `Light` ·
+   `Oled`), não `4`. O redesenho **acrescentou** os quatro presets do Godot 4.6 em vez de cortar os
+   quatro de sempre. ⚠️ **E a pergunta mudou de forma com isso:** o menu da barra do topo mostra
+   **uma família por aparência** (`screens/hero/menu_rows.rs`), logo o artista nunca vê `8` — vê
+   `4`. ⇒ *«cortar 4 → 2» respondia a um ecrã que já não existe*; a pergunta viva é se os quatro
+   **clássicos** sobrevivem ao dia em que o interruptor `PH2D_UI_NEW` sair, e essa é do dono.
+2. ~~**`E` inclui remover a fuga do gizmo.**~~ ✅ **FECHADA, e por CONSTRUÇÃO** (medido
+   2026-09-10). O `E` está inteiro: **26 de 26** painéis declaram `ALLOWED_SLOTS`. E a fuga
+   deixou de alcançar uma coluna docada no dia em que a área de referência passou a ser a
+   `HeroLayout::draw_area` em vez da janela — *sem uma linha da lei mudar*. ⚠️ **Ela FICA, e o
+   motivo está escrito ao lado dela** (`render_loop/mod.rs`): o que ainda a alcança são as janelas
+   que declaram **flutuar** (Grid Snap, galeria), e apagá-la deixaria o gizmo por baixo de uma
+   delas. ⇒ *não era «remover», era «tirar do caminho» — e a diferença é quem sobra a alcançá-la.*
 3. **`G` é onde a área se ganha, não em `E`.** Medido: ancorar dá **49,6 %** de canvas com tudo
    aberto — contra os 49 % de hoje. O que devolve tela é esvaziar os painéis (e recolher, que
    passa a valer: **94,4 %**).
@@ -134,10 +161,12 @@ compositor da D9. *A UI nova pode ser construída inteira antes de qualquer uma 
 
 ## §5 — ⏳ As três decisões que ainda são suas
 
-1. **Como partir o `DrawMode`.** São **2 modos + 12 ferramentas** achatados em 14 variantes vivas,
-   com gates. Hoje **não se exprime «Edit + ferramenta Fillet»**. ⚠️ É a peça que faz a D6 (modos)
-   e o terceiro eixo (ferramentas) existirem de facto no vetor — sem ela a tabela de modos é
-   verdade no papel.
+1. **Como partir o `DrawMode`.** ⏳ **ABERTA, e a contagem PIOROU: são `17` variantes vivas**
+   (medido 2026-09-10 em `params_mode.rs`; eram `14` quando esta linha foi escrita — entraram
+   `Trim`, `Bucket` e `Bone`). Continua a não se exprimir *«Edit + ferramenta Fillet»*. ⚠️ É a peça
+   que faz a D6 (modos) e o terceiro eixo (ferramentas) existirem de facto no vetor — sem ela a
+   tabela de modos é verdade no papel. ⛔ **E o achatamento cresce sozinho**: cada ferramenta nova
+   do vetor acrescenta uma variante, logo esperar torna a decisão mais cara, nunca mais barata.
 2. **Adoptamos o campo `Mode` do Workspace?** (*"switch to this Mode when activating"* — o atalho
    do Blender que liga Layout e Modo sem os acoplar.) Uma linha de modelo, e resolve *"o layout
    Escultura põe-me em modo Sculpt"*.
@@ -249,8 +278,8 @@ Medido nos três tablets ([`medicoes/06`](../medicoes/06_o_orcamento_de_ecra_em_
 |---|---|
 | **`F` — cabeçalho por área** | ✅ **RESOLVIDO na entrega 33, sem faixa nova**: o inquilino é um **pulldown** no fim da fila de ferramentas, cuja face é a leitura do estado. A faixa (entrega 30, revertida na 31) custava `28 px` permanentes; esta custa `0`. ⛔ **UM** chip e não nove — com os nove crus a fila vai a **2 linhas até no iPad 12,9"** (medido por mutação) |
 | **`G` — esvaziar os painéis** | ⭐⭐⭐ **o `3D Model` FECHOU** (entregas 33 + 35): perdeu **17 das 74** entradas — as vistas e a câmera no 1.º pulldown (*View*), os verbos do gizmo e o referencial nos chips **`MOVE`/`ROT`/`SCALE`/`SPACE` que já existiam** (⛔ eles estavam **mortos**, não ausentes — Enio, 01/09), e a exportação no menu global **File**. ⚠️ O `add.*` (20 na tabela da D2) **já estava fechado** pela paleta de formas da W100 — a tabela é que não sabia. ⏳ Sobram as **operações booleanas** e as **acções**, sem destino decidido; o `verb`/`kind` **ficam no painel** (são propriedade do objecto, pelo critério da própria D2). ⛔ **Nenhum outro painel foi censado** — o `66 de 74` é deste. Recolher as duas colunas dá `89–92 %` |
-| ⏳ **um gesto de RECOLHER** | **não existe** — hoje são dois itens de menu, um por coluna. É a melhor razão custo/benefício que a medição achou, e é decisão de produto |
-| ⛔ **a fila de ferramentas** | ela **DOBRA** (`54 → 108 px`) no iPad 11 e no mini com o pincel em mãos. A restrição escolhe entre as duas curas que o handoff listava: **a faixa não cresce; o excesso vai para um transbordo** |
+| ✅ **um gesto de RECOLHER** | ⛔⛔ **DECIDIDO pelo dono em 2026-09-09, e a decisão foi CONTRA:** *«Vamos retirar a opção de colapsar arrastando. Deixa o colapsar apenas no menu da barra superior»* — depois de o gesto existir (arrastar a borda para dentro) e de ele **prender o app por um minuto** ao ser combinado com o menu. A w49 removeu-o e unificou o piso da largura. ⇒ recolher é, por ordem, **dois itens de menu** — e esta linha não se reabre sem ele. Ver [`medicoes/09 §4`](../medicoes/09_o_penhasco_com_todos_os_paineis_abertos.md) |
+| ✅ **a fila de ferramentas** | **CURADA na entrega 32, pela cura que esta linha já escolhia:** a faixa é **sempre uma linha** e o que não cabe vive atrás do `⋯` (`tool_bar::bar_split`). Medido: `+3,2` pontos de área no iPad 11 e `+3,3` no mini, e a coluna «com pincel» deixou de ser o pior caso. ⚠️ **Foi o TECTO de obsolescência do gate que obrigou a actualizar os números** (`40,8 → 44,0` disparou-o) — [`the_chrome_never_eats_more_of_a_tablet_than_this`](../../../crates/ph2d-editor-core/tests/the_chrome_never_eats_more_of_a_tablet_than_this.rs) |
 
 ### ⛔ E a largura do chrome não escala — o que agrava, não alivia
 

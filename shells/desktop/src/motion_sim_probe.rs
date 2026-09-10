@@ -358,3 +358,52 @@ fn measure_the_sim_group() {
         .unwrap_or(320.0);
     crate::motion_ciclo_probe::tabela(&grupo(), lado);
 }
+
+/// ⭐⭐⭐ **A TABELA DE PREÇO RECUSA-SE A PÔR UM NÚMERO SOBRE UM STREAM VAZIO.**
+///
+/// ⛔⛔ **Achado na medição deste ciclo:** a régua que decidia *«esta linha leva número?»*
+/// perguntava se o nó **DECLARA** precisar de outra porta — e o `sim.zone` e o `sim.spawn` não
+/// declaram nenhuma. Resultado: a tabela imprimiu `9,29 ms · 0,38×` e um veredito de
+/// dispositivo sobre **zero objectos**. *Um número sobre um stream vazio não é um número
+/// pequeno: é a ausência de medição com cara de medição.*
+///
+/// ⭐ A declaração é um **proxy**; a contagem é o **facto**
+/// ([memória](../../project-memory/feedback_a_proxy_predicate_that_becomes_constant_leaves_a_vacuous_assertion.md)).
+///
+/// ⚠️ **A lei é uma IMPLICAÇÃO, não uma lista:** *emitiu zero ⇒ recusada*. Nomear aqui quais
+/// nós vêm vazios pinaria o comportamento de hoje, e o dia em que o `sim.spawn` passasse a
+/// emitir nesta cadeia o gate reprovaria sobre uma melhoria.
+///
+/// ⚠️ **Com os dois CONTROLOS**, senão a implicação é vácua nos dois sentidos: tem de haver no
+/// grupo pelo menos um nó que é medido e pelo menos um que é recusado.
+#[test]
+fn the_price_table_refuses_to_price_an_empty_stream() {
+    // Uma grade minúscula: o que se mede aqui é a REGRA, não o relógio.
+    const LADO: f32 = 4.0;
+    let reg = crate::motion_state::MotionState::new().registry;
+    let (mut medidos, mut recusados) = (0usize, 0usize);
+    for nome in grupo() {
+        let d = crate::motion_ciclo_probe::cook_com(LADO, Some(nome), 1);
+        match crate::motion_ciclo_probe::porque_nao_medir(&reg, nome, d.n) {
+            Some(_) => recusados += 1,
+            None => {
+                medidos += 1;
+                assert!(
+                    d.n > 0,
+                    "`{nome}` emitiu ZERO objectos e mesmo assim a tabela ia po^r-lhe um relogio \
+                     e um veredito de dispositivo -- um numero sobre um stream vazio nao e' um \
+                     numero pequeno, e' a ausencia de medicao com cara de medicao"
+                );
+            }
+        }
+    }
+    assert!(
+        medidos > 0,
+        "nenhum no' do grupo foi dado como mensuravel -- a implicacao ficou vacua"
+    );
+    assert!(
+        recusados > 0,
+        "nenhum no' do grupo foi recusado -- se nada e' recusado, esta regra nao esta' a apanhar \
+         nada e o controlo dela nao prova coisa nenhuma"
+    );
+}

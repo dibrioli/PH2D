@@ -335,4 +335,47 @@ meia dúzia de pixels. Três peças adjacentes do meio põem o quadro em pé.
 **O tutorial:** [`tutoriais/05_simulacao.pdf`](tutoriais/05_simulacao.pdf), 7 páginas, com a tabela
 «o que cada controlo faz» derivada da porta única (11 nós).
 
-### ⏳ W5 — A MEDIÇÃO (passo 5) e o smoke do dono (passo 7)
+### ⏳ W5 — A MEDIÇÃO (passo 5): a RESIDÊNCIA está feita, o RELÓGIO está bloqueado
+
+#### ✅ A residência — e ela não é uma leitura de relógio
+
+⭐ **Dez dos doze nós são reivindicados pelo dispositivo** na cadeia `grid → nó → output`, com
+`320 × 320 = 102 400` objectos. Isto é uma propriedade do **planeador**, não do relógio, então
+vale independentemente da carga da máquina:
+
+| nós | device |
+|---|---|
+| `sim.step` · `sim.lifetime` · `sim.collide` · `motion.integrate` · as **seis** `force.*` | 🟢 a cadeia inteira |
+| `sim.zone` · `sim.spawn` | ⚪ não mensuráveis nesta cadeia (ver abaixo) |
+
+#### ⛔⛔ O RELÓGIO NÃO FOI MEDIDO, e escrever os números seria pior que não os ter
+
+A corrida saiu a **`load 13,06`**, e a lei da casa é que *nenhuma leitura de relógio desta
+workstation vale nada acima de `load ~5`* (`CLAUDE.md` §5.0 — o mesmo binário já deu `11,36` e
+`5,50 ms` para o mesmo passe). O esperador ficou **25 minutos** à espera de calma e desistiu.
+
+⚠️ **A causa não é desta linha:** a máquina tinha três binários de teste de **outras worktrees**
+a correr — dois órfãos da `line/Vector` (`ph2d_poly2d`, reparentados ao init, **33 e 37 minutos**
+a ~270 % de CPU cada) e um da `line/3DModeling`. ⇒ *a medição fica pendente de uma máquina
+calma, e a tabela que a corrida imprimiu **não** entra neste doc.*
+
+#### ⭐⭐⭐ E a corrida devolveu um defeito do INSTRUMENTO PARTILHADO, que vale mais que a tabela
+
+A régua que decide *«esta linha leva número?»* perguntava se o nó **DECLARA** precisar de outra
+porta (`required_inputs`). O `sim.zone` e o `sim.spawn` **não declaram nenhuma** — e a tabela
+imprimiu-lhes `9,29 ms · 0,38×` e um veredito de dispositivo sobre **zero objectos**.
+
+⭐ *Um número sobre um stream vazio não é um número pequeno: é a ausência de medição com cara de
+medição.* A declaração é um **proxy**; a **contagem é o facto** ⇒ `porque_nao_medir(reg, nó, n)`,
+com a razão original mantida (ela é a mais informativa das duas) e `n == 0` acrescentado.
+
+⚠️ **A lei do gate é uma IMPLICAÇÃO, não uma lista** — *emitiu zero ⇒ recusada* —, com os **dois**
+controlos: no grupo tem de haver pelo menos um nó medido e pelo menos um recusado, senão ela é
+vácua nos dois sentidos. Mutação (a régua volta a ser só o proxy): ✗, e a mensagem nomeia o
+`sim.zone`.
+
+⚠️ **E o mesmo instrumento tinha uma armadilha ao lado:** a mediana era `ms[1]`, um literal que
+presumia `repeticoes == 3`. Um chamador com outro número saía por *index out of bounds* — que é
+uma armadilha para o ciclo seguinte, não uma mensagem. Hoje é `ms[ms.len() / 2]`.
+
+### ⏳ W6 — o smoke do dono (passo 7)

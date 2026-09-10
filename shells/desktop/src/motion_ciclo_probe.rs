@@ -405,7 +405,10 @@ pub(crate) const BASE_REPS: usize = NO_REPS;
 /// responde à segunda e a sonda mede a tabela de hash. Devolve `(ms, n, no_device)`.
 /// O que uma linha da tabela diz.
 pub(crate) struct Medida {
-    /// A mediana de 3 cozimentos FRIOS, em ms — com o nó **acordado** (ver [`acordar`]).
+    /// A mediana dos cozimentos FRIOS pedidos, em ms — com o nó **acordado** (ver
+    /// [`acordar`]). ⚠️ **O número de repetições faz parte da medição**: os dois lados de uma
+    /// razão têm de partilhá-lo (o processo aquece entre repetições — medido no ciclo 3, onde
+    /// uma base mais funda leu metade do tempo e piorou a razão).
     pub(crate) ms: f64,
 
     /// Quantos objectos saíram.
@@ -452,7 +455,12 @@ pub(crate) fn cook_com(lado: f32, no: Option<&str>, repeticoes: usize) -> Medida
         ph2d_gpu_cook::plan(&m.doc.graph, &m.registry, &m.registry, sink).is_fully_gpu()
     };
     Medida {
-        ms: ms[1],
+        // ⚠️ **A MEDIANA do que foi de facto corrido, não `ms[1]`.** O literal presumia
+        // `repeticoes == 3` — o valor que os quatro ciclos usaram — e um chamador com outro
+        // número saía por *index out of bounds*, que é uma armadilha para o ciclo seguinte e
+        // não uma mensagem. (Apanhado no ciclo 5, por um gate que só queria a REGRA e passou
+        // `1` para não pagar o relógio.)
+        ms: ms[ms.len() / 2],
         n,
         gpu_neutro,
         gpu_aceso,
@@ -506,6 +514,36 @@ pub(crate) fn quem_o_despertar_nao_acorda(grupo: &[&'static str]) -> Vec<&'stati
 /// denominador: a linha de base é o menor número da tabela e é o divisor de todas as outras.
 /// ⛔ Dar-lhe mais amostras foi construído, medido e revertido — *o número de repetições faz
 /// parte da medição*, então os dois lados de uma razão têm de o partilhar.
+/// **PORQUE ESTA LINHA NÃO LEVA UM NÚMERO** — `None` = pode ser cronometrada.
+///
+/// ⛔⛔ **A 1.ª regra era um PROXY, e o ciclo 5 apanhou-a a deixar passar dois nós.** Ela
+/// perguntava *«o nó DECLARA precisar de outra porta?»* (`required_inputs`) — e o `sim.zone` e
+/// o `sim.spawn` não declaram nenhuma, então receberam relógio e veredito de dispositivo sobre
+/// um stream **VAZIO**: a tabela imprimiu `9,29 ms · 0,38×` sobre **zero objectos**, que é um
+/// número que não quer dizer nada apresentado como se quisesse.
+///
+/// ⭐ A declaração é o proxy; **a contagem é o facto**. Um nó que não emitiu objecto nenhum
+/// nesta cadeia é a identidade aqui, tenha declarado o que tiver declarado.
+///
+/// ⚠️ A razão original fica, e é a mais informativa das duas — o `field.combine` sem o segundo
+/// campo e o `field.shape` sem a geometria dizem **porquê**. ⛔ E alimentar a porta
+/// genericamente continua a ser pior: um campo real na porta do `field.shape` dá-lhe um
+/// polígono de milhares de vértices, e o `O(N·M)` dele passa a medir a fixtura.
+/// ⇒ *um traço é honesto; um número seria mentira.*
+pub(crate) fn porque_nao_medir(
+    reg: &ph2d_node_registry::NodeRegistry,
+    nome: &str,
+    n: usize,
+) -> Option<&'static str> {
+    if reg
+        .required_inputs(ph2d_nodegraph::node::NodeTypeId::of(nome))
+        .is_some_and(|r| !r.is_empty())
+    {
+        return Some("precisa de outra porta");
+    }
+    (n == 0).then_some("nao emitiu objecto nenhum")
+}
+
 pub(crate) fn tabela(grupo: &[&str], lado: f32) {
     eprintln!(
         "\n  load {}",
@@ -541,16 +579,11 @@ pub(crate) fn tabela(grupo: &[&str], lado: f32) {
         // ⚠️ E alimentar a porta genericamente é pior: um campo real na porta do `field.shape`
         // dá-lhe um polígono de milhares de vértices, e o `O(N·M)` dele passa a medir a fixtura.
         // ⇒ **um traço é honesto; um número seria mentira.**
-        if reg
-            .required_inputs(ph2d_nodegraph::node::NodeTypeId::of(nome))
-            .is_some_and(|r| !r.is_empty())
-        {
-            eprintln!(
-                "  {nome:<26} |         — |          — |               — | ⚪ precisa de outra porta"
-            );
+        let d = cook_com(lado, Some(nome), NO_REPS);
+        if let Some(porque) = porque_nao_medir(&reg, nome, d.n) {
+            eprintln!("  {nome:<26} |         — |          — |               — | ⚪ {porque}");
             continue;
         }
-        let d = cook_com(lado, Some(nome), NO_REPS);
         let device = match (d.gpu_neutro, d.gpu_aceso) {
             (true, true) => "🟢 sim".to_string(),
             (false, false) => "🔴 NAO".to_string(),
@@ -566,7 +599,7 @@ pub(crate) fn tabela(grupo: &[&str], lado: f32) {
     }
     eprintln!(
         "\n  🟢 = o planeador reivindica a cadeia inteira · 🔴 = ela cai na CPU
-  ⚪ = NAO MEDIDO: o no' declara precisar de outra porta, e nesta cadeia ele e' a identidade
+  ⚪ = NAO MEDIDO: nesta cadeia o no' e' a identidade (ver `porque_nao_medir`)
   🟡 = a residência DEPENDE de um knob (o `applicable` do kernel lê-o)
   (um quadro de 60 fps tem 16,67 ms)\n"
     );

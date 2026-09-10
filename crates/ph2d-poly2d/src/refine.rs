@@ -71,6 +71,17 @@ pub struct RefineOptions {
     /// *a mesma geometria que o `Fast` desenha em 216, e partida*. A malha estava provadamente
     /// correcta: área conservada ao cêntimo, zero triângulos saltados, zero arestas com mais de
     /// dois donos.
+    ///
+    /// ⭐ **E o custo de CPU está MEDIDO** (máquina calma, `load 3,25` — acima de `~5` uma leitura
+    /// de relógio desta workstation não vale nada):
+    ///
+    /// | peças por imagem | deformar | encodar | soma |
+    /// |---:|---:|---:|---:|
+    /// | `216` (o `Fast`) | `0,004 ms` | `0,016 ms` | **`0,1 %`** de um quadro |
+    /// | `864` (o orçamento de omissão) | `~0,18` | `~0,08` | **`~1,6 %`** |
+    /// | `7 776` | `1,6`–`2,0` | `0,735` | **`10`–`16 %`** |
+    ///
+    /// ⛔ **A GPU continua por medir**, e é a metade que decide.
     pub max_pieces: usize,
 }
 

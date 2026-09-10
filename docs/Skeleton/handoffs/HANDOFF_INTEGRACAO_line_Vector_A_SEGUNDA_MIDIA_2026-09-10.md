@@ -191,10 +191,30 @@ dimensiona os buffers dele por heurística e **degrada em SILÊNCIO** quando est
 `k` é **quadrático** na contagem e a malha de partida pode ter qualquer tamanho ⇒ o tecto passou a
 ser `max_pieces`, e o `k` sai de uma divisão.
 
-⚠️ **O número NÃO está medido** — o limite é de GPU e não há como o medir sem ecrã. O intervalo
-conhecido é o do smoke (`216` desenha, `7 776` parte) e o valor de omissão (`1 024`) fica do lado
-seguro dele. ⭐ `PH2D_SKIN_PIECES=<n>` fecha-o **numa corrida só**; `PH2D_BONE_LOG=1` imprime a
-contagem para o report do dono a carregar.
+⚠️ **O número do RENDERER não está medido** — o limite é de GPU e não há como o medir sem ecrã. O
+intervalo conhecido é o do smoke (`216` desenha, `7 776` parte) e o valor de omissão (`1 024`) fica
+do lado seguro dele. ⭐ `PH2D_SKIN_PIECES=<n>` fecha-o **numa corrida só**; `PH2D_BONE_LOG=1`
+imprime a contagem para o report do dono a carregar.
+
+### ⭐ A medição de CPU, tirada com a máquina CALMA (`load 3,25`)
+
+⚠️ **Ela existe porque a máquina esteve a `load 30–90` durante quase toda a jornada** (outra linha),
+e o `CLAUDE.md` §5.0 é explícito: *nenhuma leitura de relógio desta workstation vale nada acima de
+`load ~5`*. Esta é a corrida que apanhou a janela.
+
+| peças por imagem presa | deformar (CPU) | encodar (CPU) | soma |
+|---:|---:|---:|---:|
+| `216` (o `Fast`) | `0,004 ms` | `0,016 ms` | **`0,1 %`** de um quadro |
+| `864` (o orçamento de omissão, `k = 2`) | `~0,18 ms` | `~0,08 ms` | **`~1,6 %`** |
+| `3 456` | — | `0,304 ms` | — |
+| `7 776` (o que o tecto do `k` dava) | `1,6`–`2,0 ms` | `0,735 ms` | **`10`–`16 %`** |
+
+⇒ **`7 776` peças custam `10`–`16 %` de um quadro só de CPU, por imagem presa** — e a GPU vem por
+cima, **não medida**. O orçamento de omissão põe isso em `~1,6 %`.
+
+⛔ **A GPU continua por medir**, e é a metade que decide: cada peça é um `push_clip` do Vello, e o
+que ele aguenta só o smoke diz.
+
 
 ### §7.2 — ⛔ O candidato CLÁSSICO do colapso foi construído, medido e REFUTADO
 
@@ -260,7 +280,7 @@ pintada em código e **nunca na tela**, com o gate de costura VERDE (ele arma o 
 
 | item | estado |
 |---|---|
-| ⛔ **O custo de GPU do `Smooth`** | **não medido** — é o que o botão `PH2D_SKIN_PIECES` existe para fechar, e é por isso que o `Smooth` nasce **desligado** |
+| ⛔ **O custo de GPU do `Smooth`** | **não medido** — a CPU está (§7.1: `7 776` peças = `10`–`16 %` de um quadro; o orçamento de omissão = `~1,6 %`), a GPU não. É o que `PH2D_SKIN_PIECES` existe para fechar, e é por isso que o `Smooth` nasce **desligado** |
 | ⛔⛔ **O mapa DOBRA sobre si mesmo em dobras fortes** | medido: `−0,129` de área a `60°/junta` (`0,22 %` da imagem) e `−1,017` a `150°` (`2,52 %`). O `Smooth` desenha o campo **com fidelidade, inclusive a dobra**. A causa é o gradiente dos pesos com `raio = comprimento do osso`; a família de curas (pesos mais apertados · *centers of rotation*) **não** foi medida |
 | ⏳ um **buraco** dentro de uma forma não é traçado | a malha cobre-o |
 | ⏳ a contagem de triângulos **sob cena cheia** | nunca medida |

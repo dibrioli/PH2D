@@ -265,7 +265,7 @@ fn paint_palette_grid(
             paint_text(
                 text_system,
                 scene,
-                "Read-only",
+                ph2d_i18n::tr("chrome.color.read_only"),
                 rect.x,
                 hint_y,
                 TypeToken::Xs.px() - 2.0,

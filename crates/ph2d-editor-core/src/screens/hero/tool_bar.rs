@@ -292,7 +292,7 @@ pub fn paint_tool_bar(
             store,
             &PAINTER_SHAPES,
             NodeId(204),
-            "Shape options",
+            ph2d_i18n::tr("chrome.flyout.shape_options"),
             motion,
         );
     }
@@ -309,7 +309,7 @@ pub fn paint_tool_bar(
             store,
             &PAINTER_MASK_SUBS,
             NodeId(205),
-            "Mask options",
+            ph2d_i18n::tr("chrome.flyout.mask_options"),
             motion,
         );
     }

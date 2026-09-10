@@ -179,7 +179,7 @@ pub fn paint(
     paint_text_centered(
         text,
         scene,
-        "Cancel",
+        ph2d_i18n::tr("chrome.cancel"),
         cancel,
         TypeToken::Sm.px(),
         resolve(ColorToken::Text2, theme),
@@ -194,7 +194,7 @@ pub fn paint(
     paint_text_centered(
         text,
         scene,
-        "Done",
+        ph2d_i18n::tr("chrome.done"),
         done,
         TypeToken::Sm.px(),
         resolve(ColorToken::AccentFg, theme),

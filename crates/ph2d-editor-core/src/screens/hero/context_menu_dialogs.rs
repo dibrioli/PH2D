@@ -249,7 +249,7 @@ pub(super) fn paint_new_image_dialog(
     paint_text(
         text_system,
         scene,
-        "New Image",
+        ph2d_i18n::tr("chrome.dialog.new_image"),
         inner_x,
         y + (row_h - font) * 0.5,
         font,
@@ -262,7 +262,7 @@ pub(super) fn paint_new_image_dialog(
     paint_text(
         text_system,
         scene,
-        "Size",
+        ph2d_i18n::tr("chrome.dialog.size"),
         inner_x,
         y + (row_h - font) * 0.5,
         font,
@@ -294,7 +294,7 @@ pub(super) fn paint_new_image_dialog(
     paint_text(
         text_system,
         scene,
-        "Background",
+        ph2d_i18n::tr("chrome.dialog.background"),
         inner_x,
         y + (row_h - font) * 0.5,
         font,
@@ -389,7 +389,7 @@ pub(super) fn paint_sheet_size_dialog(
     paint_text(
         text_system,
         scene,
-        "New Sprite Sheet",
+        ph2d_i18n::tr("chrome.dialog.new_sheet"),
         inner_x,
         y + (row_h - font) * 0.5,
         font,
@@ -401,7 +401,7 @@ pub(super) fn paint_sheet_size_dialog(
     paint_text(
         text_system,
         scene,
-        "Resolution",
+        ph2d_i18n::tr("chrome.dialog.resolution"),
         inner_x,
         y + (row_h - font) * 0.5,
         font,

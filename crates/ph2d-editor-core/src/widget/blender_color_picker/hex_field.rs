@@ -80,7 +80,7 @@ pub fn paint_hex_field(
 ) {
     paint_hex_field_with_state(
         hex,
-        "Hex",
+        ph2d_i18n::tr("chrome.color.hex"),
         None,
         0,
         None,

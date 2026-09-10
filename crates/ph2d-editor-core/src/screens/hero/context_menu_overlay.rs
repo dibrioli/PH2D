@@ -480,7 +480,7 @@ fn paint_scene_list(
         paint_text(
             text_system,
             scene,
-            "No matches",
+            ph2d_i18n::tr("chrome.no_matches"),
             r.x + pad_x,
             r.y + (r.h - font) * 0.5,
             font,

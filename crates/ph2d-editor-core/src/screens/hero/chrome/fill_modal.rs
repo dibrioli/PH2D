@@ -107,7 +107,7 @@ pub fn paint_fill_adjust_modal(
     paint_text(
         text_system,
         scene,
-        "Fill",
+        ph2d_i18n::tr("chrome.fill.title"),
         inner_x,
         cy + (row_h - font) * 0.5,
         font,

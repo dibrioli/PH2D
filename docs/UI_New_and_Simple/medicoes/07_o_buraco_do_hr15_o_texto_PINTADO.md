@@ -99,6 +99,47 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-UIUX && python3 scripts/ce
 ⚠️ E **declara o que não vê**: literais que chegam por variável, `const`, tabela de `&str` ou
 `format!`. ⇒ *`438` é um PISO.*
 
+## §2-ter — ✅ A crate DESTA linha está curada: `52 → 32`, e o resto é declarado
+
+> 2026-09-10. ⚠️ **Só a `ph2d-editor-core`** — as outras 18 são de outras linhas, e a recusa da §3
+> continua de pé para elas.
+
+| | antes | depois |
+|---|---:|---:|
+| literais pintados na `ph2d-editor-core` | `52` | **`32`** |
+| deles, **língua de produto** | `20` | **`0`** |
+| deles, declarados como **não-língua** | — | `32` |
+
+⭐⭐ **E a migração não foi mecânica: ela COLAPSOU quatro rótulos escritos em dois sítios.**
+
+| rótulo | estava escrito em | ficou |
+|---|---|---|
+| *No matches* | `context_menu_overlay.rs` **e** `widget/command_palette.rs` | `chrome.no_matches` |
+| *Shape options* | `screens/hero/left_rail.rs` **e** `screens/hero/tool_bar.rs` | `chrome.flyout.shape_options` |
+| *Mask options* | os mesmos dois | `chrome.flyout.mask_options` |
+| *Hex* | `blender_color_picker/hex_field.rs` **e** `.../paint.rs` | `chrome.color.hex` |
+
+⇒ **8 sítios viraram 4 chaves.** *Uma palavra escrita em dois sítios ainda não é uma palavra do
+app — só uma PORTA é*: mudar *No matches* tocava um dos dois e deixava o outro a dizer a antiga, e
+nenhum gate o via.
+
+### ⛔ Os `32` que ficam são declarados, com o mecanismo
+
+| o quê | quantos | porquê não é língua |
+|---|---:|---|
+| `widget/showcase/*` | 30 | a **Galeria de Widgets é uma bancada**, e o subtítulo dela di-lo (*«reference for peripheral agents»*). Os rótulos são os **nomes dos nossos tipos** (`Rect2Editor`, `BitmaskGrid32`, `VariantEditor (recursive, depth ≤4)`) — traduzir o nome de um tipo nosso é ruído. Mesmo estatuto do `widget-lab`, que até a aparência força para o redesenho *«porque é onde ele se estuda»* |
+| `widget/command_palette/header.rs` | 2 | **símbolos desenhados como letras**: o `X` do fecho e o `x` do visto. O próprio ficheiro já o dizia — *«o mesmo idioma do X de fechar, que também é uma letra»* |
+
+### ⭐ E o gate é o MOLDE para as outras 18 crates
+
+[`no_label_of_this_crate_is_written_in_the_painter`](../../../crates/ph2d-editor-core/tests/no_label_of_this_crate_is_written_in_the_painter.rs)
+— **por crate**, nunca global (a razão está na §3), com o mesmo **ponto fixo** da §2-bis
+reimplementado em Rust, o controlo de vacuidade e a metade de obsolescência.
+
+⭐⭐ **Duas implementações independentes do mesmo ponto fixo — o script em Python e o gate em Rust —
+dão `32` e `32`.** *Uma régua nova que concorda ao número com outra, escrita noutra linguagem por
+outro caminho, é uma régua de que se pode duvidar menos.*
+
 ## §3 — Por que esta linha MEDIU e não CUROU
 
 ⛔ **Não é preguiça, é o custo de merge.** Curar os `438` (§2-bis; a §2 dizia `108`) toca **19 crates**, e onze delas são de

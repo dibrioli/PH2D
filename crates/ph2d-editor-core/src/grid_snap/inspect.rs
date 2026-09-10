@@ -274,9 +274,15 @@ pub fn paint(
     let label_color = resolve(ColorToken::Text2, theme);
 
     let rows: [(String, String); 5] = [
-        ("Probe A".to_string(), snap.probe_a_label.clone()),
+        (
+            ph2d_i18n::tr("chrome.grid_snap.probe_a").to_string(),
+            snap.probe_a_label.clone(),
+        ),
         ("".to_string(), snap.probe_a_extra.clone()),
-        ("Probe B".to_string(), snap.probe_b_label.clone()),
+        (
+            ph2d_i18n::tr("chrome.grid_snap.probe_b").to_string(),
+            snap.probe_b_label.clone(),
+        ),
         (
             "Distance".to_string(),
             if snap.distance == u32::MAX {
@@ -328,7 +334,7 @@ pub fn paint(
     // Probe-input rows — 2 small NumberInputs per probe, side by side.
     y += list_row_gap_px();
     paint_probe_pair_row(
-        "Probe A",
+        ph2d_i18n::tr("chrome.grid_snap.probe_a"),
         super::ids::GS_PROBE_A_X,
         super::ids::GS_PROBE_A_Y,
         state.probe_a,
@@ -345,7 +351,7 @@ pub fn paint(
     );
     y += ROW_H + list_row_gap_px();
     paint_probe_pair_row(
-        "Probe B",
+        ph2d_i18n::tr("chrome.grid_snap.probe_b"),
         super::ids::GS_PROBE_B_X,
         super::ids::GS_PROBE_B_Y,
         state.probe_b,

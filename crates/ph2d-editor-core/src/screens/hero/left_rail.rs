@@ -523,7 +523,7 @@ fn paint_rail(
             store,
             &PAINTER_SHAPES,
             NodeId(201),
-            "Shape options",
+            ph2d_i18n::tr("chrome.flyout.shape_options"),
             motion,
         );
     }
@@ -541,7 +541,7 @@ fn paint_rail(
             store,
             &PAINTER_MASK_SUBS,
             NodeId(202),
-            "Mask options",
+            ph2d_i18n::tr("chrome.flyout.mask_options"),
             motion,
         );
     }

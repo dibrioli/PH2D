@@ -305,7 +305,7 @@ pub fn paint(
         paint_text(
             ts,
             scene,
-            "No matches",
+            ph2d_i18n::tr("chrome.no_matches"),
             content_x,
             content_y,
             font,

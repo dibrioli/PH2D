@@ -510,7 +510,7 @@ mod tooltip_placement_tests {
                 super::cluster_painter::paint_topbar_rail_chip(
                     ids::TOPBAR_IMAGE_TOOLS,
                     IconGlyph::Builtin(IconId::Image),
-                    "IMG",
+                    ph2d_i18n::tr("chrome.topbar.image_chip"),
                     Rect::new(0.0, 0.0, 44.0, 48.0),
                     0.0,
                     &mut scene,

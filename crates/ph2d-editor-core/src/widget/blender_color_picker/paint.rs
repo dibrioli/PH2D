@@ -359,7 +359,7 @@ pub fn paint_blender_color_picker_with_store(
     };
     super::hex_field::paint_hex_field_with_state(
         &local.hex,
-        "Hex",
+        ph2d_i18n::tr("chrome.color.hex"),
         hex_buffer,
         hex_caret,
         hex_anchor,

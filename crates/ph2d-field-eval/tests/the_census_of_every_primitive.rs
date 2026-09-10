@@ -600,18 +600,40 @@ fn por_forma<T: Send>(f: impl Fn(PrimitiveKind) -> T + Sync) -> Vec<(PrimitiveKi
 
 fn worst_gradient(f: &Field, e: f64, steps: usize) -> f64 {
     let mut worst = 0.0f64;
+    // ⭐⭐ **A fileira inteira de uma vez** ([`Field::at_many`]), e não ponto a ponto.
+    //
+    // ⚠️ Medido: numa chamada desta função, `474 552` de ~`600 000` avaliações são o **teste de
+    // banda** da casca — `79 %` do trabalho, e a forma mais cara de o pedir (uma descodificação da
+    // fita por ponto). Só os que passam a banda é que chegam a pagar um gradiente.
+    //
+    // ⛔ A resposta não se mexe: o `at_many` é bit-a-bit o `at`, e o `worst` é um máximo sobre o
+    // mesmo conjunto.
+    let mut pts: Vec<[f64; 3]> = Vec::new();
+    let mut vals: Vec<f64> = Vec::new();
     let mut varre = |e: f64, steps: usize, banda: Option<f64>| {
         let at = |t: usize| -e + 2.0 * e * (t as f64 + 0.5) / steps as f64;
         for i in 0..steps {
             for j in 0..steps {
-                for k in 0..steps {
-                    let (x, y, z) = (at(i), at(j), at(k));
-                    if banda.is_some_and(|b| f.at(x, y, z).abs() > b) {
-                        continue;
+                let (x, y) = (at(i), at(j));
+                if let Some(b) = banda {
+                    pts.clear();
+                    pts.extend((0..steps).map(|k| [x, y, at(k)]));
+                    f.at_many(&pts, &mut vals);
+                    for (p, v) in pts.iter().zip(&vals) {
+                        if v.abs() > b {
+                            continue;
+                        }
+                        let g = f.gradient_norm(p[0], p[1], p[2], 1.0e-4);
+                        if g.is_finite() {
+                            worst = worst.max(g);
+                        }
                     }
-                    let g = f.gradient_norm(x, y, z, 1.0e-4);
-                    if g.is_finite() {
-                        worst = worst.max(g);
+                } else {
+                    for k in 0..steps {
+                        let g = f.gradient_norm(x, y, at(k), 1.0e-4);
+                        if g.is_finite() {
+                            worst = worst.max(g);
+                        }
                     }
                 }
             }
@@ -2514,4 +2536,110 @@ fn no_primitive_forgets_what_the_bounding_sphere_knows() {
             onde[2]
         );
     }
+}
+
+/// ⛔⛔⛔ **ONDE ESTE CENSO GASTA O RELÓGIO** — a sonda que achou o tecto verdadeiro.
+///
+/// # A caçada que ela encerrou
+///
+/// Eu contei as **avaliações** do [`worst_gradient`] e vi que o teste de banda da casca era `79 %`
+/// delas (`474 552` de ~`600 000`). Construí a varredura em lote ([`Field::at_many`]), medi-a
+/// isolada — **`2,6×`** — liguei-a aqui, e o teste melhorou **`5 %`**. Isolar o teste não mudou a
+/// razão (`44,3 → 41,9` sozinho; `72,0 → 68,6` acompanhado), o que **refutou** a hipótese de uma
+/// vizinha paralela o estar a esfomear.
+///
+/// ⭐⭐⭐ **Esta sonda deu a resposta: o mesmo trabalho custa `3,85 s` em `--release` e `44 s` em
+/// `dev`.** O tecto não estava no algoritmo — estava no **perfil de build**. A crate não constava
+/// da lista de `[profile.dev.package.*]` com `opt-level = 2` do `Cargo.toml` da raiz, lista que já
+/// existia com a mesma justificação escrita para o Painter e para o DSP de áudio.
+///
+/// Depois de a acrescentar: **`44,3 s → 5,7 s`**, e aí o lote passou a valer `14 %` (`5,7 → 4,9`)
+/// em vez de `5 %` — *a `opt-0` a descodificação que o lote amortiza está afogada em código
+/// não-optimizado, então a mesma cura mede-se cinco vezes menor no perfil errado.*
+///
+/// ⚠️ **A lição, que custou meia jornada:** uma contagem de OPERAÇÕES não é um perfil, e o número
+/// que se mede depende do perfil de build em que se mede.
+#[test]
+#[ignore = "sonda de diagnóstico: imprime onde o relógio deste censo de facto está"]
+fn where_does_this_census_actually_spend_its_time() {
+    println!(
+        "\nloadavg: {}",
+        std::fs::read_to_string("/proc/loadavg")
+            .unwrap_or_default()
+            .trim()
+    );
+    let (mut t_fita, mut t_passo, mut t_grosso, mut t_casca) = (0.0, 0.0, 0.0, 0.0);
+    let mut linhas: Vec<(f64, String)> = Vec::new();
+
+    for k in PrimitiveKind::ALL {
+        let Some(p) = representative(k) else { continue };
+        let doc = doc_of(p);
+
+        let t = std::time::Instant::now();
+        let f = Field::new(&doc);
+        let d_fita = t.elapsed().as_secs_f64();
+
+        let t = std::time::Instant::now();
+        let _ = ph2d_field_eval::safe_march_step(&doc);
+        let d_passo = t.elapsed().as_secs_f64();
+
+        let t = std::time::Instant::now();
+        let mut w = 0.0f64;
+        for i in 0..24 {
+            for j in 0..24 {
+                for l in 0..24 {
+                    let a = |t: usize| -1.0 + 2.0 * (t as f64 + 0.5) / 24.0;
+                    let g = f.gradient_norm(a(i), a(j), a(l), 1.0e-4);
+                    if g.is_finite() {
+                        w = w.max(g);
+                    }
+                }
+            }
+        }
+        let d_grosso = t.elapsed().as_secs_f64();
+
+        let t = std::time::Instant::now();
+        let mut dentro = 0usize;
+        for i in 0..78 {
+            for j in 0..78 {
+                for l in 0..78 {
+                    let a = |t: usize| -0.85 + 1.7 * (t as f64 + 0.5) / 78.0;
+                    if f.at(a(i), a(j), a(l)).abs() <= 0.03 {
+                        dentro += 1;
+                    }
+                }
+            }
+        }
+        let d_casca = t.elapsed().as_secs_f64();
+
+        t_fita += d_fita;
+        t_passo += d_passo;
+        t_grosso += d_grosso;
+        t_casca += d_casca;
+        linhas.push((
+            d_fita + d_passo + d_grosso + d_casca,
+            format!(
+                "{:<24} fita {d_fita:>7.4} passo {d_passo:>7.4} grosso {d_grosso:>7.4} \
+                 casca {d_casca:>7.4} ({dentro} na banda)",
+                k.key()
+            ),
+        ));
+    }
+
+    linhas.sort_by(|a, b| b.0.partial_cmp(&a.0).expect("sem NaN"));
+    println!("\n== as 12 formas mais caras ==");
+    for (_, l) in linhas.iter().take(12) {
+        println!("{l}");
+    }
+    let total = t_fita + t_passo + t_grosso + t_casca;
+    println!("\n== TOTAL (s) ==");
+    for (nome, v) in [
+        ("construir a fita", t_fita),
+        ("safe_march_step", t_passo),
+        ("varredura grossa (gradientes)", t_grosso),
+        ("casca (teste de banda)", t_casca),
+    ] {
+        println!("{nome:<32} {v:>8.3}  ({:>5.1} %)", 100.0 * v / total);
+    }
+    println!("{:<32} {total:>8.3}", "TOTAL");
 }

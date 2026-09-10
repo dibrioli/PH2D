@@ -140,6 +140,58 @@ sem tocar na resposta:
 - **`f64` SIMD por faixas** dentro da `eval_many` (4 faixas por registo): é bit-a-bit seguro pela
   mesma razão que a `eval_many` é — faixas independentes —, e não foi medido.
 
+## §11.7 — A varredura em LOTE, e o `5 %` que quase a matou
+
+`79 %` das avaliações de um `worst_gradient` não são gradientes: são o **teste de banda** da casca
+(*este ponto está perto da superfície?*), um `at` por ponto de uma grelha de `78³`, cada um a
+percorrer a fita sozinho. ⇒ [`Field::at_many`], que varre em faixas de `L = 8`.
+
+Isolada, ela é **`2,4×`–`2,8×`** mais rápida que o `at` ponto a ponto (`1 386,9` contra `3 586,3`
+ns/pt a 2 048 nós). Ligada ao censo, o teste melhorou… **`5 %`**.
+
+⚠️ **A hipótese óbvia foi construída e REFUTADA:** *«uma vizinha paralela está a esfomear-lhe a
+banda de memória»* — o teste corria ao lado de outro que é 32-way paralelo. Medido **sozinho**, a
+razão é a mesma (`44,3 → 41,9`, `5,4 %`, contra `72,0 → 68,6`, `4,8 %`). *Isolar não mudou nada, logo
+a contenção não explicava nada.*
+
+## §11.8 — ⭐⭐⭐ O TECTO NÃO ESTAVA NO ALGORITMO: ESTAVA NO PERFIL DE BUILD
+
+A sonda [`where_does_this_census_actually_spend_its_time`] mediu o mesmo trabalho — o
+`worst_gradient` das 58 primitivas — nos dois perfis:
+
+| perfil | tempo |
+|---|---:|
+| `--release` | `3,85 s` |
+| `dev` (`opt-level = 0`) | **`44 s`** |
+
+**`11,4×`.** E o `Cargo.toml` da raiz **já tinha a lista** de `[profile.dev.package.*]` com
+`opt-level = 2`, criada para o Painter e para o DSP de áudio, com a justificação escrita ao lado:
+*«at opt-0 they are 15-25x slower»*. As crates do campo implícito nunca lá entraram.
+
+Acrescentadas (`ph2d-field-eval`, `ph2d-field`, `fidget`, `fidget-core`):
+
+| | antes | depois |
+|---|---:|---:|
+| `every_primitive_honours_the_march` | `44,3 s` | **`5,7 s`** |
+| suíte das 3 crates do campo (407 testes) | `372,3 s` | **`57,1 s`** |
+| o teste mais longo da suíte | `307,2 s` | **`43,4 s`** |
+
+⭐⭐ **E aí o lote passou a valer `14 %`** (`5,7 → 4,9 s`) em vez de `5 %`: *a `opt-0` a descodificação
+que o lote amortiza está afogada em código não-optimizado, então a MESMA cura mede-se cinco vezes
+menor no perfil errado.* ⛔ Se eu tivesse decidido pelo `5 %`, tinha deitado fora uma cura boa **e**
+deixado o tecto de pé.
+
+⚠️⚠️ **As duas lições, e custaram meia jornada:**
+1. **Uma contagem de OPERAÇÕES não é um perfil.** Eu contei chamadas, acertei na fracção (`92,3 %` do
+   tempo *é* a casca) e mesmo assim optimizei contra o tecto errado, porque nunca perguntei **quanto
+   custa o total**. O modelo dizia `0,55 s` e o teste dizia `44 s` — *um desacordo de `80×` entre o
+   modelo e o relógio é o achado, não um arredondamento*.
+2. **O número que se mede depende do perfil em que se mede**, e uma cura pode ser rejeitada por ser
+   medida no perfil errado.
+
+⚠️ **Colisão a declarar:** isto edita o `Cargo.toml` da RAIZ, que toda linha toca. São quatro entradas
+no fim do bloco `[profile.dev.package.*]` — apêndice, mas o integrador tem de o saber.
+
 ⛔ **E há uma alavanca que foi vista e NÃO tomada, de propósito.** Dentro da `eval_many` o
 `op.eval(…)` volta a fazer o `match` do opcode **por faixa**; içá-lo para fora do laço seria escrever
 à mão as arms de `BinaryOpcode`/`UnaryOpcode`. Isso **quebra a propriedade do §11.3.2** — deixaríamos

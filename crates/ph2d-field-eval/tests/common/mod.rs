@@ -12,11 +12,22 @@
 //! |---|---:|---:|
 //! | `every_row_of_every_primitive_marches_safely_across_its_range` | `336,8 s` | **`41,6 s`** |
 //!
-//! ⚠️ **A causa de FUNDO é outra e continua por curar:** o `Field::at` é o interpretador `f64` da
-//! `fidget` e custa **`750,8` ns/ponto**, contra `5,3` ns do caminho em LOTE com JIT — **`143×`**.
-//! ⛔ Trocar de caminho não é livre: a régua destes censos é uma **diferença central** com
-//! `eps = 1e-4`, e em `f32` ela perde os dígitos que a decidem. *Este módulo compra o factor que não
-//! custa precisão nenhuma; o outro é uma wave com espec própria.*
+//! ⚠️ **A causa de FUNDO era outra, e a W147 fechou-a** — esta nota dizia *«continua por curar»* e
+//! envelheceu no dia em que alguém a curou. O `Field::at` deixou de ser o interpretador `f64` da
+//! `fidget` e passou a ser uma **fita achatada** (`ph2d-field-eval/src/point_tape.rs`), com o
+//! `gradient_norm` a mandar as seis amostras numa passagem só: **`~3,6×`** no valor e **`~6,3×`** no
+//! gradiente, **bit-a-bit a mesma resposta** (há gate sobre as duas).
+//!
+//! ⛔⛔ **E a cura que esta nota PRESCREVIA está RECUSADA com número.** Ela dizia que o problema do
+//! caminho em lote era a `f32` perder dígitos; o problema real é outro e é **estrutural**: num
+//! **vinco** a derivada não existe, e a diferença central (que devolve a MÉDIA dos dois gradientes
+//! laterais) e o gradiente analítico (que escolhe UM ramo) são **grandezas diferentes** — medido
+//! sobre pontos postos em cima de uma aresta, discordam **`1,876e-1`** contra uma folga de módulo de
+//! `2,0e-2`, ou seja **`9,4×`** a folga inteira. Passar a `f64` não cura nada disso.
+//!
+//! ⇒ o `143×` do caminho em lote **continua inalcançável para esta régua**, e agora pela razão certa.
+//! Tabela, o mecanismo e a armadilha de amostragem que quase inverteu o veredito:
+//! `docs/3DModeling/11_a_avaliacao_ponto_a_ponto.md`.
 //!
 //! ⚠️ **Um ficheiro em `tests/common/` NÃO é um alvo de teste** — é por isso que ele pode ser
 //! partilhado por dois binários de teste sem nascer um terceiro, vazio.

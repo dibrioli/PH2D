@@ -81,6 +81,34 @@ opt-level = 2
 [profile.dev.package.rustfft]
 opt-level = 2
 
+# ⭐⭐⭐ **O MESMO NEGÓCIO PARA O CAMPO IMPLÍCITO** (W147) — e aqui ele foi MEDIDO, não herdado.
+#
+# O modelador SDF avalia um campo **ponto a ponto** em varreduras de `78³`, e os censos dele são o
+# poste do relógio desta workspace. Medido em 2026-09-10, o MESMO trabalho (o `worst_gradient` das
+# 58 primitivas do catálogo):
+#
+#   | `--release` | `3,85 s` |
+#   | `dev` (opt-0) | **`44 s`** |
+#
+# **`11,4×`** — dentro da faixa de `15-25×` que a nota do áudio, seis linhas acima, já tinha
+# registado para aritmética por-amostra.
+#
+# ⚠️⚠️ **É por isto que a caça à optimização deste módulo andou a perseguir o alvo errado:** eu
+# contei as avaliações, construí uma varredura em LOTE que é `2,6×` mais rápida isolada, liguei-a ao
+# censo e o teste melhorou **`5 %`** — porque a `opt-0` a descodificação que o lote amortiza está
+# afogada em código não-optimizado. *O tecto não estava no algoritmo; estava no perfil de build.*
+#
+# ⛔ A `fidget` entra com eles: o `BinaryOpcode::eval` é a função dela, e a `opt-0` ela nem sequer é
+# inlinada — cada nó da fita paga uma chamada.
+[profile.dev.package.ph2d-field-eval]
+opt-level = 2
+[profile.dev.package.ph2d-field]
+opt-level = 2
+[profile.dev.package.fidget]
+opt-level = 2
+[profile.dev.package.fidget-core]
+opt-level = 2
+
 [profile.release]
 opt-level = 3
 lto = "thin"

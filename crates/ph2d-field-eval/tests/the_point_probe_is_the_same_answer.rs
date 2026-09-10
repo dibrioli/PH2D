@@ -171,6 +171,45 @@ fn the_gradient_ruler_did_not_move_a_single_bit() {
     assert!(n > 600, "o corpus do gradiente encolheu para {n}");
 }
 
+/// ⭐⭐⭐ **E a VARREDURA em faixas também** — `at_many` contra `at`, ponto a ponto.
+///
+/// ⚠️ **O tamanho do lote é varrido de propósito, e passa pelas fronteiras da faixa.** Com
+/// `L = 8` faixas, um corpus só de múltiplos de 8 nunca exercita a **cauda preenchida** — que é
+/// exactamente onde um erro de índice devolveria o ponto errado, em silêncio e só no último bloco.
+#[test]
+fn the_batched_sweep_is_the_same_as_asking_one_by_one() {
+    let doc = peca_de(7);
+    let f = Field::new(&doc);
+    let todos = pontos();
+    let mut vals = Vec::new();
+    let mut n = 0usize;
+    for lote in [1usize, 2, 7, 8, 9, 16, 17, 31, 64, 333, todos.len()] {
+        let pts: Vec<[f64; 3]> = todos
+            .iter()
+            .take(lote)
+            .map(|(x, y, z)| [*x, *y, *z])
+            .collect();
+        f.at_many(&pts, &mut vals);
+        assert_eq!(
+            vals.len(),
+            pts.len(),
+            "uma resposta por ponto (lote {lote})"
+        );
+        for (p, v) in pts.iter().zip(&vals) {
+            assert_eq!(
+                f.at(p[0], p[1], p[2]).to_bits(),
+                v.to_bits(),
+                "o lote de {lote} discorda em {p:?} — a cauda preenchida devolveu a faixa errada"
+            );
+            n += 1;
+        }
+    }
+    // ⚠️ A soma dos lotes acima é `1 828`. O piso é **contado**, não escolhido — e a 1.ª redacção
+    // pediu `2 000`, que reprovou sobre um corpus são: *um controlo de vácuo com o número errado
+    // acusa a própria sonda*.
+    assert!(n > 1_800, "o corpus do lote encolheu para {n}");
+}
+
 /// ⭐⭐ **O MÍNIMO de `R` corridas curtas, e não a média de uma longa.**
 ///
 /// ⚠️ §5.0: *nenhuma leitura de relógio desta workstation vale acima de `load ~5`*. Esta tabela
@@ -211,7 +250,7 @@ fn the_table_of_what_a_sample_costs() {
             .trim()
     );
     println!(
-        "\n{:>7} {:>9} {:>13} {:>13} {:>9} {:>13} {:>13} {:>9}",
+        "\n{:>7} {:>9} {:>13} {:>13} {:>9} {:>13} {:>13} {:>9} {:>13} {:>9}",
         "formas",
         "nos_ctx",
         "velho_ns/pt",
@@ -219,7 +258,9 @@ fn the_table_of_what_a_sample_costs() {
         "ganho",
         "velho_ns/grad",
         "novo_ns/grad",
-        "ganho_g"
+        "ganho_g",
+        "lote_ns/pt",
+        "ganho_l"
     );
     for n in [1usize, 4, 16, 64] {
         let doc = peca_de(n);
@@ -269,11 +310,20 @@ fn the_table_of_what_a_sample_costs() {
             }
         });
         sink += acc2;
+        // ⭐⭐ A varredura em LOTE, isolada numa thread só — ver §11.7 do doc do módulo.
+        let batch: Vec<[f64; 3]> = ps.iter().map(|(x, y, z)| [*x, *y, *z]).collect();
+        let mut vals = Vec::new();
+        novo.at_many(&batch, &mut vals);
+        let dl = menor_de(R, ps.len(), || {
+            novo.at_many(&batch, &mut vals);
+        });
         println!(
-            "{n:>7} {:>9} {dv:>13.1} {dn:>13.1} {:>8.1}x {gv:>13.1} {gn:>13.1} {:>8.1}x",
+            "{n:>7} {:>9} {dv:>13.1} {dn:>13.1} {:>8.1}x {gv:>13.1} {gn:>13.1} {:>8.1}x \
+             {dl:>13.1} {:>8.1}x",
             velho.nos(),
             dv / dn,
-            gv / gn
+            gv / gn,
+            dn / dl
         );
         assert!(sink.is_finite() || sink.is_nan(), "o sink existe");
     }

@@ -230,6 +230,84 @@ impl PointTape {
     }
 }
 
+/// Quantas faixas a [`PointTape::eval_slice`] leva de uma vez.
+///
+/// ⚠️ **Medido, não escolhido** — ver `docs/3DModeling/11_a_avaliacao_ponto_a_ponto.md` §11.7. O
+/// recurso é a **cache**: o scratch é `código × L` em `f64`, e a partir de certo `L` a fita deixa de
+/// caber no L1 e o ganho da descodificação amortizada é comido pelos acessos à memória.
+const L: usize = 8;
+
+impl PointTape {
+    /// ⭐⭐⭐ **Uma VARREDURA inteira, em faixas de [`L`]** — a porta de quem pergunta muitos pontos.
+    ///
+    /// # Por que ela existe
+    ///
+    /// Medido: numa chamada de `worst_gradient` do censo, **`474 552` de ~`600 000`** avaliações são
+    /// o teste de banda da casca — `f.at(p).abs() > 0,03` — e cada uma percorria a fita **sozinha**.
+    /// São `79 %` do trabalho, feitas no formato mais caro que existe: uma descodificação por ponto.
+    ///
+    /// ⚠️ **A cauda é PREENCHIDA, não tratada à parte:** um bloco final com menos de `L` pontos
+    /// repete o último ponto nas faixas que sobram e **descarta-as** na saída. Uma faixa com lixo
+    /// produziria `NaN`/denormais que não se lêem mas se pagam; e cair para o caminho escalar aqui
+    /// dentro esbarraria no `RefCell` que este bloco já tem emprestado.
+    pub(crate) fn eval_slice(&self, pts: &[[f64; 3]], out: &mut Vec<f64>) {
+        out.clear();
+        let Some(code) = self.code.as_deref() else {
+            out.resize(pts.len(), f64::NAN);
+            return;
+        };
+        out.reserve(pts.len());
+        SCRATCH.with(|s| {
+            let mut v = s.borrow_mut();
+            cresce(&mut v, code.len() * L);
+            let mut faixa = [[0.0f64; 3]; L];
+            for bloco in pts.chunks(L) {
+                let n = bloco.len();
+                faixa[..n].copy_from_slice(bloco);
+                // A cauda repete o último ponto — dados válidos, resultado descartado.
+                for slot in faixa.iter_mut().take(L).skip(n) {
+                    *slot = bloco[n - 1];
+                }
+                for (i, instr) in code.iter().enumerate() {
+                    let base = i * L;
+                    match *instr {
+                        Instr::X => {
+                            for k in 0..L {
+                                v[base + k] = faixa[k][0];
+                            }
+                        }
+                        Instr::Y => {
+                            for k in 0..L {
+                                v[base + k] = faixa[k][1];
+                            }
+                        }
+                        Instr::Z => {
+                            for k in 0..L {
+                                v[base + k] = faixa[k][2];
+                            }
+                        }
+                        Instr::Const(c) => v[base..base + L].fill(c),
+                        Instr::Unary(op, a) => {
+                            let a = a as usize * L;
+                            for k in 0..L {
+                                v[base + k] = op.eval(v[a + k]);
+                            }
+                        }
+                        Instr::Binary(op, a, b) => {
+                            let (a, b) = (a as usize * L, b as usize * L);
+                            for k in 0..L {
+                                v[base + k] = op.eval(v[a + k], v[b + k]);
+                            }
+                        }
+                    }
+                }
+                let r = self.raiz as usize * L;
+                out.extend_from_slice(&v[r..r + n]);
+            }
+        });
+    }
+}
+
 /// ⭐⭐ **Dá espaço ao scratch SEM o limpar** — e o «sem o limpar» é a metade que interessa.
 ///
 /// ⛔ A 1.ª redacção fazia `clear()` + `resize(n, 0.0)`, que **escreve zeros sobre o buffer inteiro a

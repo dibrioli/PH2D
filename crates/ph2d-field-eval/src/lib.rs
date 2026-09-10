@@ -314,6 +314,19 @@ impl Field {
         self.tape.eval(x, y, z)
     }
 
+    /// ⭐⭐⭐ **`f` em MUITOS pontos, em faixas** — a porta de quem varre uma grelha.
+    ///
+    /// ⚠️ **Ela existe por uma medição, e a medição é surpreendente:** numa varredura do censo,
+    /// **`79 %`** das avaliações não são gradientes — são o **teste de banda** (*este ponto está
+    /// perto da superfície?*), um `at` por ponto de uma grelha de `78³`. Perguntados um a um, cada um
+    /// paga a descodificação inteira da fita.
+    ///
+    /// ⭐ A resposta é **bit-a-bit** a de `at` ponto a ponto, pela mesma razão que a do
+    /// `gradient_norm`: faixas independentes, mesmos operandos, mesma aritmética. Há gate.
+    pub fn at_many(&self, pts: &[[f64; 3]], out: &mut Vec<f64>) {
+        self.tape.eval_slice(pts, out);
+    }
+
     /// `‖∇f‖` por diferença central — a medida de quanto o campo ainda é uma **distância**.
     ///
     /// ⭐⭐ **As seis amostras vão numa passagem só** ([`point_tape::PointTape::eval_many`]): elas

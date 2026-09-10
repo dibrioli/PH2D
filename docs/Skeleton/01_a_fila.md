@@ -1582,6 +1582,141 @@ a lei tem tolerância mede o defeito que a tolerância evita.*
 tectos de recurso** — o que está medido é a FORMA da resposta, e quem os julga é o smoke do dono.
 
 
+### F6-c — ✅ **`SMOOTH`: A MALHA REFINA-SE NA HORA DE DESENHAR** (report do dono, 2026-09-10)
+
+> *«malha bem desenhada. Contudo não é a solução perfeita em termos de deformação pois ao dobrar a
+> articulação temos arestas retas na imagem. Estude um algoritmo com opção de um tipo de smooth na
+> imagem e coloque como alternativa»* (foto com três setas)
+
+#### ⭐⭐⭐ A lei que a wave achou
+
+**A malha não é a deformação — ela é uma AMOSTRAGEM dela.** O campo `Φ(p) = Σ wᵢ(p)·Mᵢ·p` está
+definido em **todo** ponto da imagem, porque os pesos são **derivados** e não guardados. A aresta
+reta não vem do motor: vem do DESENHO, em que cada triângulo é pintado com **um afim**, que é a
+aproximação de 1.ª ordem de um campo curvo.
+
+⇒ o desvio da silhueta desenhada em relação ao campo verdadeiro é **`O(h²)`**, medido sobre a
+cápsula do smoke com uma cadeia de 3 ossos e a silhueta **analítica** amostrada em 2000 pontos:
+
+| | triângulos | desvio p99 a 60° | a 105° | a 150° |
+|---|---:|---:|---:|---:|
+| a grelha guardada | `216` | `3,85 px` | `6,85 px` | **`9,84 px`** |
+| refinada `2×` | `768` | `1,09` | `1,98` | `2,79` |
+| refinada `4×` | `3 086` | `0,29` | `0,54` | **`0,78`** |
+| refinada `8×` | `11 472` | `0,07` | `0,13` | `0,19` |
+
+**Com o `Smooth` ligado:** `9,84 px → 0,41 px` numa dobra de `150°`, com o `k` **derivado** da
+deformação do próprio quadro.
+
+#### ⛔⛔ E o erro NÃO mora nas articulações — a premissa da F6-b não vale para o DESENHO
+
+Com as juntas em `x = 0 · 107 · 213 · 320`, o pior desvio cai em **`x = 119 · 190 · 266`**. Apertar
+a banda fina à volta das juntas leva `3,99 px` a `3,39 px` e mais nada. ⇒ *a densidade que a DOBRA
+precisa e a densidade que o DESENHO precisa não estão no mesmo sítio*: a primeira está na junta, a
+segunda está onde os **pesos** variam depressa — e com `raio = comprimento do osso` isso é o membro
+inteiro. **As duas leis são verdadeiras e nenhuma substitui a outra.**
+
+#### ⚠️ Porque a DESENHAR e não a PRENDER
+
+No instante do *bind* a pose é a de repouso: **não há dobra nenhuma**, logo não há erro para medir.
+A densidade necessária é função da POSE, que só existe no quadro. *Uma malha escolhida no bind é
+escolhida antes de a pergunta ser feita.* ⭐ E a malha guardada fica pequena — o save e o undo
+continuam a fotografar a mesma coisa, e `PROJECT_SCHEMA` e `VEC_SCENE_SCHEMA` **não se mexem**.
+
+#### ⚠️⚠️ A tolerância é em pixels de ECRÃ
+
+Meia unidade local é meio pixel a zoom `1` e **quatro** a zoom `8`. *A suavidade que o olho vê é um
+facto de espaço de ecrã* — por isso a tolerância passa pela escala da câmara antes de entrar no
+leaf, e não é um número de unidades do documento.
+
+#### ⭐⭐⭐ A conformidade é EXACTA, e não uma tolerância
+
+O refinamento é **uniforme, com o mesmo `k` para toda a malha**, e cada ponto novo é nomeado pela
+**aresta canónica** que o gera (o vértice de índice menor primeiro) ⇒ os dois triângulos que
+partilham uma aresta calculam o ponto dela pela **mesma expressão, na mesma ordem**, e obtêm os
+**mesmos bits**. ⛔ Um `k` por triângulo abriria nós pendurados — e aqui uma fenda é pior que numa
+malha normal, porque cada peça é um **recorte independente** e a fenda vira um fio de fundo a
+atravessar a arte.
+
+#### ⛔⛔ O candidato CLÁSSICO foi construído, medido e REFUTADO
+
+Misturar no **logaritmo do movimento rígido** (`se(2)` — o *dual quaternion skinning* do 2D, a
+resposta de manual para o colapso do LBS) **PIORA**: área no pior ponto `−0,129 → −0,280`, e a
+fracção da imagem **dobrada sobre si mesma** vai de `2,52 %` a `4,47 %` numa dobra de `150°`.
+⇒ *o colapso não vem de a mistura das matrizes não ser uma rotação; vem do GRADIENTE DOS PESOS*, e
+o `log` não toca nesse termo.
+
+#### ⛔⛔ E a régua mentiu DUAS vezes antes de dizer a verdade
+
+1. **O ângulo de quina sobre o contorno TRAÇADO** media o artefacto dela própria: o traçado de Moore
+   devolve uma escada de pixels cujos degraus **já viram 90°** no repouso. O campo verdadeiro lia
+   `86°`–`129°` de quina — tão «mau» como o produto.
+2. **O ângulo de quina sobre a silhueta analítica** degenera: onde a silhueta raspa a esquina de um
+   triângulo os dois segmentos ficam minúsculos e o ângulo entre eles é ruído.
+
+⇒ a régua que ficou é o **desvio em PIXELS** entre a silhueta desenhada e a mesma silhueta levada
+pelo campo verdadeiro. Ela é monótona, converge limpa (`O(h²)`) e **zero pontos caem fora da malha**,
+que é o controlo dela.
+
+#### ⚠️ Três gates reprovaram sobre produto CORRECTO, e cada um mudou o que a lei diz
+
+| o gate dizia | o que a medição disse |
+|---|---|
+| *«o refinamento melhora ESTRITAMENTE a cada aperto»* | a correcção de um passo pode **passar** da tolerância pedida, e aí o degrau seguinte já está satisfeito. A lei é **não-crescente** |
+| *«o campo é perguntado uma vez por VÉRTICE»* | a conferência anda pela malha **refinada** (`3` por triângulo) ⇒ o tecto do mecanismo é `~8 V`, não `4 V` |
+| *«a escada de tolerâncias `4 / 2 / 1 / 0,5`»* | o desvio cru da fixtura era `3,82 px`, logo os dois primeiros degraus **não mordiam**. A escada passou a sair do **próprio desvio medido** |
+
+#### ⭐⭐ E o estimador passou a CONFERIR o que entregou
+
+Um gate vermelho exigiu-o: com a tolerância a pedir `0,954 px` o `k` de um só passo entregava
+`0,980`. *Um número que se chama tolerância e não é honrado é um número que mente ao artista.* ⇒
+uma correcção **única**, que parte da medição já feita **na malha refinada** (`k·√(d/tol)`) —
+⛔ nunca um laço até convergir, que seria trabalho por quadro sem tecto.
+
+#### O controlo
+
+Fileira **Deform** no painel *Bones*, com dois segmentos — **Fast** (o de sempre, byte-idêntico) e
+**Smooth**. ⚠️ Ela só é pintada quando há algo **preso**, e ⛔ **não** troca o modo da ferramenta: a
+pergunta é de qualidade de desenho, não do que o arrasto faz.
+
+⚠️ **O gate de costura apanhou-a PINTADA E NÃO REGISTADA** — morta sob o dedo, sem nada na tela que
+o dissesse. É a terceira vez que esta linha paga a mesma lei: *um controlo nunca pintado e um morto
+sob o dedo dão o MESMO report.*
+
+#### ⛔⛔⛔ E a fileira ia nascer VIVA E INALCANÇÁVEL — achado ANTES do smoke
+
+O portão óbvio era o `state::skinned()`, o mesmo dos botões *Expand* e *Release*. ⚠️ **Só que aquela
+pergunta é *«a SELECÇÃO é uma forma presa?»*, e a shell responde-a varrendo `selected_paths()` —
+CAMINHOS VECTORIAIS.** Uma imagem presa é uma **sprite**: ela nunca aparece naquela lista. A fileira
+teria sido pintada em código e **nunca na tela**, com o gate de costura VERDE (ele arma o estado à
+mão).
+
+⇒ *VIVO e ALCANÇÁVEL são duas perguntas, e a segunda quase não tem instrumento neste repo.*
+
+⚠️ E a pergunta certa é sobre a **CENA** (*«há alguma imagem presa?»*) e não sobre a selecção, porque
+a escolha é **global**: ela vive na ferramenta e vale para toda imagem presa. Uma fileira que só
+aparecesse com a imagem escolhida prometeria uma propriedade por-objecto que não existe.
+
+O gate tem **três** metades e a do meio é a que mata: nada · uma **FORMA** presa (não basta) · uma
+**IMAGEM** presa. Provado por mutação — repor o portão na pergunta da selecção dá RED com
+*«uma FORMA presa acendeu a fileira do desenho da IMAGEM»*.
+
+**Gates:** 7 no refinamento (`7 de 7` mortos por mutação, com o controlo da árvore limpa) + 3 na
+costura do painel (o da alcançabilidade também morto por mutação).
+
+⏳ **ABERTO, e nomeado:**
+- **O custo de GPU não foi medido.** O que está medido é a CPU (encoding + deformação); cada
+  triângulo é um `push_clip` do Vello, e o preço de `3 456` camadas por quadro contra `216` só o
+  smoke o diz. É por isso que o `Smooth` **nasce desligado**.
+- ⛔⛔ **O MAPA DOBRA SOBRE SI MESMO em dobras fortes, e isso NÃO é o que esta wave curou.** Medido:
+  a `60°` por junta a área no pior ponto é **`−0,129`** (negativa ⇒ inversão) e `0,22 %` da imagem
+  está dobrada; a `150°` são **`−1,017`** e `2,52 %`. O `Smooth` desenha o campo com fidelidade —
+  **inclusive a dobra**. A causa é o gradiente dos pesos com `raio = comprimento do osso`, e a
+  família de curas (pesos mais apertados · *centers of rotation* · o alcance por osso) não foi
+  medida.
+- O `max_split = 6` tem tecto de **CPU**; a tolerância de `0,5 px` é de PRODUTO, e quem a julga é o
+  dono.
+
 ## ⛔ Recusas MEDIDAS deste módulo — não as reconstrua
 
 > ⚠️ **As seis de 2026-09-07/08 entraram aqui na auditoria de 08/09** — elas viviam só em prosa e em

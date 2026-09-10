@@ -117,6 +117,33 @@ pub(crate) fn body(r: &mut RowCtx, y: f32) -> f32 {
             y = r.action_button(id, label, y);
         }
     }
+    // ⭐⭐⭐ **A ALTERNATIVA DO DESENHO** (report do dono, 2026-09-10: *«ao dobrar a articulação temos
+    // arestas retas na imagem … coloque como alternativa»*).
+    //
+    // ⛔⛔ **O portão dela NÃO é o dos dois botões acima, e a diferença foi achada antes do smoke:**
+    // o [`state::skinned`] pergunta *«a SELECÇÃO é uma forma presa?»* e varre caminhos vectoriais —
+    // uma imagem presa é uma **sprite**, logo nunca lá aparece, e a fileira nascia **viva e
+    // inalcançável**. A pergunta certa é sobre a CENA (*«há alguma imagem presa?»*), porque a
+    // escolha é **global**: ela vive na ferramenta e vale para todas.
+    //
+    // ⛔ Ela **não** troca o modo da ferramenta: a pergunta é de qualidade de desenho, não do que o
+    // arrasto faz.
+    if state::skinned_image() {
+        let escolhido = state::skin_deform();
+        let modos: [(NodeId, &str, bool); 2] = [
+            (
+                ids::VECTOR_BONE_DEFORM_FAST,
+                tr("panel.vector.bone.deform.fast"),
+                escolhido == 0,
+            ),
+            (
+                ids::VECTOR_BONE_DEFORM_SMOOTH,
+                tr("panel.vector.bone.deform.smooth"),
+                escolhido == 1,
+            ),
+        ];
+        y = r.segmented(tr("panel.vector.bone.deform"), &modos, y);
+    }
     // Os dois números do OSSO em foco. Sem osso não há sujeito — e um campo sem sujeito é a
     // classe de controlo morto que o `CLAUDE.md` §5.0 nomeia.
     if state::current_bone().is_some() {

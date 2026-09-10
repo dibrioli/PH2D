@@ -39,6 +39,35 @@ impl BoneAction {
     pub const ALL: [BoneAction; 2] = [BoneAction::Create, BoneAction::Transform];
 }
 
+/// ⭐⭐⭐ **COMO a pele de uma IMAGEM é DESENHADA** — a alternativa que o dono pediu
+/// (2026-09-10: *«ao dobrar a articulação temos arestas retas na imagem. Estude um algoritmo com
+/// opção de um tipo de smooth na imagem e coloque como alternativa»*).
+///
+/// ⚠️ **As duas desenham o MESMO campo** — a diferença é só quantos pedaços o aproximam. O campo
+/// `Σ wᵢ·Mᵢ·p` está definido em todo ponto; cada triângulo é pintado com **um afim**, que é a
+/// aproximação de 1.ª ordem dele, e a aresta reta é o erro dessa aproximação. Medido na cápsula do
+/// smoke com a cadeia dobrada `150°`: **`9,84 px` de desvio contra `0,41 px`**.
+///
+/// ⛔ Isto **não** é um segundo motor de deformação: um segundo motor divergiria do primeiro na
+/// primeira ramificação, e a forma vectorial ficaria a responder a uma lei diferente da imagem.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum SkinDeform {
+    /// Um afim por triângulo da malha guardada. É o que sempre se fez, e é **byte-idêntico**.
+    #[default]
+    Fast,
+    /// A malha é **refinada no quadro** até o desvio caber numa tolerância de pixels de ecrã.
+    /// ⚠️ Paga triângulos: medido `216 → 3 456` a meio pixel numa dobra de `150°`.
+    Smooth,
+}
+
+/// ⚠️ **Os NÚMEROS do refinamento não vivem aqui, e a ausência é a decisão:** este enum é a ESCOLHA
+/// do artista, e quem sabe o que ela custa é quem DESENHA. Pô-los aqui arrastaria a crate da malha
+/// para dentro da ferramenta por causa de um enum de dois estados.
+impl SkinDeform {
+    /// As duas, na ordem em que o grupo as mostra. ⛔ Fonte única da iteração.
+    pub const ALL: [SkinDeform; 2] = [SkinDeform::Fast, SkinDeform::Smooth];
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum DrawMode {
     /// Seta preta: seleciona e TRANSFORMA a forma pelo gizmo. Não toca a geometria.

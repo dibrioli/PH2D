@@ -44,12 +44,14 @@
 mod contour;
 mod grid;
 mod mesh;
+mod refine;
 mod simplify;
 mod triangulate;
 
 pub use contour::contour;
 pub use grid::{GridOptions, axis_samples, grid_mesh_of};
 pub use mesh::{Mesh2d, MeshOptions, mesh_of};
+pub use refine::{RefineOptions, deviation, refine_posed, splits_for};
 pub use simplify::simplify;
 pub use triangulate::triangulate;
 
@@ -79,3 +81,7 @@ pub fn signed_area(ring: &[[f64; 2]]) -> f64 {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+#[path = "refine_tests.rs"]
+mod refine_tests;

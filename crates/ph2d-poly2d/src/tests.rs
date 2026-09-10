@@ -298,15 +298,20 @@ fn capsula(w: usize, h: usize) -> Vec<u8> {
 
 /// O aspecto de um triângulo: o maior lado sobre a menor altura. `1` é equilátero.
 fn aspecto(p: [[f64; 2]; 3]) -> f64 {
-    let lados: Vec<f64> =
-        (0..3).map(|k| (p[(k + 1) % 3][0] - p[k][0]).hypot(p[(k + 1) % 3][1] - p[k][1])).collect();
+    let lados: Vec<f64> = (0..3)
+        .map(|k| (p[(k + 1) % 3][0] - p[k][0]).hypot(p[(k + 1) % 3][1] - p[k][1]))
+        .collect();
     let s = lados.iter().copied().fold(0.0f64, f64::max);
     let area = ((p[1][0] - p[0][0]) * (p[2][1] - p[0][1])
         - (p[1][1] - p[0][1]) * (p[2][0] - p[0][0]))
         .abs()
         / 2.0;
     let altura = if s > 0.0 { 2.0 * area / s } else { 0.0 };
-    if altura > 0.0 { s / altura } else { f64::INFINITY }
+    if altura > 0.0 {
+        s / altura
+    } else {
+        f64::INFINITY
+    }
 }
 
 /// ⭐⭐⭐ **A MALHA TEM MIOLO, E AS CÉLULAS SÃO QUADRADAS** — o report do dono de 2026-09-10, dito
@@ -336,11 +341,17 @@ fn aspecto(p: [[f64; 2]; 3]) -> f64 {
 fn the_mesh_has_a_middle_and_the_cells_are_square() {
     let (w, h) = (320usize, 96usize);
     let a = capsula(w, h);
-    let focos: Vec<[f64; 2]> = (0..=3).map(|k| [48.0 + f64::from(k) * 74.6, 48.0]).collect();
+    let focos: Vec<[f64; 2]> = (0..=3)
+        .map(|k| [48.0 + f64::from(k) * 74.6, 48.0])
+        .collect();
     let m = grid_mesh_of(&a, w as u32, h as u32, &focos, GridOptions::default()).expect("tinta");
 
     // Um vértice está no MIOLO se está a mais de `4 px` da borda da cápsula.
-    let (raio, ax, bx) = (h as f64 / 2.0 - 3.0, h as f64 / 2.0, w as f64 - h as f64 / 2.0);
+    let (raio, ax, bx) = (
+        h as f64 / 2.0 - 3.0,
+        h as f64 / 2.0,
+        w as f64 - h as f64 / 2.0,
+    );
     let miolo = m
         .rest
         .iter()
@@ -359,11 +370,13 @@ fn the_mesh_has_a_middle_and_the_cells_are_square() {
     let mut asp: Vec<f64> = m
         .tris
         .iter()
-        .map(|t| aspecto([
-            m.rest[t[0] as usize],
-            m.rest[t[1] as usize],
-            m.rest[t[2] as usize],
-        ]))
+        .map(|t| {
+            aspecto([
+                m.rest[t[0] as usize],
+                m.rest[t[1] as usize],
+                m.rest[t[2] as usize],
+            ])
+        })
         .collect();
     asp.sort_by(f64::total_cmp);
     let (p50, pior) = (asp[asp.len() / 2], asp[asp.len() - 1]);
@@ -439,7 +452,10 @@ fn the_march_never_steps_over_a_joint() {
     let xs = axis_samples(0.0, 200.0, &focos, opts);
     let barra = opts.fine * 0.25;
     for f in focos {
-        let d = xs.iter().map(|x| (x - f).abs()).fold(f64::INFINITY, f64::min);
+        let d = xs
+            .iter()
+            .map(|x| (x - f).abs())
+            .fold(f64::INFINITY, f64::min);
         assert!(
             d <= barra + 1e-9,
             "a articulacao em {f} ficou a {d:.2} do corte mais proximo (barra {barra:.2}): {xs:?}"
@@ -491,7 +507,13 @@ fn cells_without_paint_are_dropped() {
         );
     }
     assert_eq!(
-        grid_mesh_of(&vec![0u8; w * h], w as u32, h as u32, &[], GridOptions::default()),
+        grid_mesh_of(
+            &vec![0u8; w * h],
+            w as u32,
+            h as u32,
+            &[],
+            GridOptions::default()
+        ),
         None,
         "sem tinta a resposta e' None, nunca uma malha vazia"
     );

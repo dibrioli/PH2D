@@ -140,6 +140,7 @@ pub struct VectorTool {
     /// ⭐ **O que o arrasto faz no modo Osso** (Enio, 2026-09-07). A tool é a dona; o painel pinta
     /// os dois segmentos e a shell lê o espelho.
     bone_action: crate::params::BoneAction,
+    skin_deform: crate::params::SkinDeform,
     /// **O estilo da SIMETRIA de desenho** (plano 25 W6.3) — que espelho, quantas cópias, funde
     /// ou não. O LUGAR da linha não está aqui: ele pertence ao desenho e viaja no componente dele
     /// (`ph2d_ecs::VecSymmetry`). Um centro guardado na ferramenta seria um campo que nunca se lê.
@@ -222,6 +223,7 @@ impl Default for VectorTool {
             pencil_stabilizer: crate::params::PENCIL_STABILIZER_DEFAULT,
             pencil_width_source: ph2d_vec_edit::pencil_width::WidthSource::default(),
             bone_action: crate::params::BoneAction::default(),
+            skin_deform: crate::params::SkinDeform::default(),
             symmetry: ph2d_symmetry::SymmetryStyle::default(),
             marquee: crate::params::MarqueeShape::default(),
             mode: DrawMode::Select,
@@ -302,6 +304,17 @@ impl VectorTool {
     #[must_use]
     pub fn bone_action(&self) -> crate::params::BoneAction {
         self.bone_action
+    }
+
+    /// ⭐ **Como a pele de uma imagem é desenhada** — a alternativa do report de 2026-09-10.
+    pub fn set_skin_deform(&mut self, v: crate::params::SkinDeform) {
+        self.skin_deform = v;
+    }
+
+    /// O que a fileira do painel acende.
+    #[must_use]
+    pub fn skin_deform(&self) -> crate::params::SkinDeform {
+        self.skin_deform
     }
 
     /// **Blend:** cada passo acima do anterior?
@@ -496,6 +509,7 @@ impl VectorTool {
             pencil_stabilizer: self.pencil_stabilizer,
             pencil_width_source: self.pencil_width_source,
             bone_action: self.bone_action,
+            skin_deform: self.skin_deform,
             symmetry: self.symmetry,
             marquee: self.marquee,
         }

@@ -9253,6 +9253,12 @@ impl crate::App {
                     })
                 });
                 ph2d_panel_skeleton::set_current_skinned(presa);
+                // ⭐ E a pergunta da fileira *Deform*, que é OUTRA: ela é sobre a CENA, porque a
+                // escolha é global. ⛔ Varrer `selected_paths` aqui não a responderia — uma imagem
+                // presa é uma sprite, e nunca aparece naquela lista.
+                ph2d_panel_skeleton::set_current_skinned_image(sim.world().iter_entities().any(
+                    |er| crate::render_loop::sim_extract::skinned_image(sim.world(), er.id()),
+                ));
                 // E se a CENA tem esqueleto — é isso que faz a seção aparecer (ou não) fora do modo
                 // Osso. ⛔ Sem esta metade ela seria um cabeçalho permanente num app que nunca viu
                 // um osso, que é exactamente o report que a tabela de escopo curou em 31/08.
@@ -9274,6 +9280,11 @@ impl crate::App {
                         self.vec_draw_config.bone_action == ph2d_tool_vector::BoneAction::Transform,
                     )
                 }));
+                // ⭐ E COMO a pele é desenhada (report das arestas retas, 2026-09-10) — também como
+                // ÍNDICE, e ⛔ sem `Option`: esta pergunta tem sempre resposta.
+                ph2d_panel_skeleton::set_current_skin_deform(usize::from(
+                    self.vec_draw_config.skin_deform == ph2d_tool_vector::SkinDeform::Smooth,
+                ));
                 // ⭐⭐⭐ **O PICK DO ALVO RESOLVE-SE AQUI**, antes de se perguntar qual osso está em
                 // foco — e a ordem é o desenho: quem resolve é *«a selecção passou a ser outra
                 // coisa»*, e o clique que a mudou pode ter vindo do CANVAS **ou** da HIERARQUIA. As
@@ -11443,6 +11454,10 @@ impl crate::App {
                     }
                 }
             }
+            let pele_suave = match self.vec_draw_config.skin_deform {
+                ph2d_tool_vector::SkinDeform::Fast => None,
+                ph2d_tool_vector::SkinDeform::Smooth => Some(ph2d_poly2d::RefineOptions::default()),
+            };
             // ⭐⭐⭐ **AS IMAGENS PRESAS AO ESQUELETO** — a 2.ª mídia (ordem do dono, 2026-09-09).
             //
             // ⚠️ **ANTES dos ossos, e a ordem é a leitura:** a imagem é a ARTE e o rig é o chrome
@@ -11451,12 +11466,17 @@ impl crate::App {
             //
             // ⚠️ **A sprite original é escondida pelo passe de sprites** (`vec_overlay::skinned`),
             // senão ela ficaria por baixo, por deformar — e o artista veria a arte DUAS vezes.
+            //
+            // ⚠️ **A escolha é lida ANTES do `&mut self.skin_image_cache`**: os dois vivem no
+            // `self`, e o compilador não deixa emprestar um deles imutavelmente no meio da chamada
+            // que já empresta o outro mutavelmente.
             crate::skeleton_skin_image::draw_skinned_images(
                 sim,
                 asset_db,
                 &mut self.skin_image_cache,
                 cam_affine,
                 vector_scene,
+                pele_suave,
             );
             // ⭐⭐⭐ **OS OSSOS** (estudo 42 item 5): desenhados enquanto a ferramenta de VETOR está
             // na mão, e só então.

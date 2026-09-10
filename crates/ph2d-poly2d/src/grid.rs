@@ -169,9 +169,12 @@ pub fn grid_mesh_of(
             clippy::cast_sign_loss,
             reason = "os quatro foram limitados à grelha nas linhas acima"
         )]
-        let (ix0, iy0, ix1, iy1) = (a as usize, b as usize, (c.ceil() as usize).min(w), (d
-            .ceil() as usize)
-            .min(h));
+        let (ix0, iy0, ix1, iy1) = (
+            a as usize,
+            b as usize,
+            (c.ceil() as usize).min(w),
+            (d.ceil() as usize).min(h),
+        );
         (iy0..iy1).any(|y| (ix0..ix1).any(|x| alpha[y * w + x] >= opts.alpha_threshold))
     };
 

@@ -124,22 +124,22 @@ pub(crate) fn joints_in_image(
         .collect()
 }
 
-/// ⭐⭐⭐ **A MALHA POSADA, em espaço LOCAL da sprite** — o que o desenho vai recortar.
+/// ⭐⭐⭐ **O CAMPO DE DEFORMAÇÃO desta imagem** — a régua da imagem mais a pele.
 ///
-/// ⚠️ **A pele resolve-se no espaço da própria coisa** ([`crate::skeleton_live`] faz o mesmo para
-/// uma forma vectorial), então os pontos que se deformam têm de estar nesse espaço — e é por isso
-/// que o [`pixel_to_local`] corre ANTES da deformação e não depois.
+/// ⚠️ **Ele está definido em TODO ponto da imagem, e não só nos vértices da malha**, porque os
+/// pesos são **derivados** e não guardados. É essa a lei inteira do `Smooth`: *a malha não é a
+/// deformação, ela é uma amostragem dela* — quem quiser mais pontos pede-os e eles existem.
 ///
-/// Devolve os pontos posados na ordem de [`Mesh2d::rest`]. `None` quando a pele não resolve (todos
-/// os ossos apagados, ou a pose da sprite é singular) — e aí quem chama desenha a sprite normal.
+/// ⛔ Uma segunda porta que compusesse a régua e a pele à mão divergiria desta na primeira
+/// ramificação, e a imagem passaria a responder a uma lei diferente da forma vectorial.
 #[must_use]
-pub(crate) fn posed_local(sim: &SimWorld, e: Entity, mesh: &Mesh2d) -> Option<Vec<[f64; 2]>> {
-    let sprite = sim.world().get::<Sprite>(e)?;
-    let p2l = pixel_to_local(sprite, mesh.size)?;
-    let pele = crate::skeleton_live::skin_of(sim, e)?;
-    let mut pts: Vec<[f64; 2]> = mesh.rest.iter().map(|&p| p2l.apply(p)).collect();
-    pele.deform_points(pts.iter_mut());
-    Some(pts)
+pub(crate) fn deform_field(
+    sim: &SimWorld,
+    e: Entity,
+    size_px: [u32; 2],
+) -> Option<(Xform, ph2d_skeleton::Skin)> {
+    let p2l = pixel_to_local(sim.world().get::<Sprite>(e)?, size_px)?;
+    Some((p2l, crate::skeleton_live::skin_of(sim, e)?))
 }
 
 /// ⭐⭐⭐ **O AFIM DE UM TRIÂNGULO — de pixel da imagem a espaço LOCAL da sprite.**
@@ -188,6 +188,7 @@ pub(crate) fn draw_skinned_images(
     cache: &mut std::collections::BTreeMap<ph2d_asset::AssetId, (u32, u32, RgbaArc)>,
     cam: ph2d_vector::Affine,
     scene: &mut ph2d_vector::VectorScene,
+    smooth: Option<ph2d_poly2d::RefineOptions>,
 ) -> usize {
     let alvos: Vec<(Entity, ph2d_asset::AssetId)> = sim
         .world()
@@ -201,7 +202,7 @@ pub(crate) fn draw_skinned_images(
         let Some(mesh) = mesh_of(sim, e) else {
             continue;
         };
-        let Some(posed) = posed_local(sim, e, &mesh) else {
+        let Some((p2l, pele)) = deform_field(sim, e, mesh.size) else {
             continue;
         };
         let Some((w, h, rgba)) = pixels(asset_db, cache, id) else {
@@ -211,6 +212,34 @@ pub(crate) fn draw_skinned_images(
         let mundo =
             crate::vec_transform::xform_of_transform(crate::vec_transform::world_transform(sim, e));
         let to_screen = cam * affine_of(mundo);
+        // ⭐⭐⭐ **A ALTERNATIVA `Smooth`** (report do dono, 2026-09-10).
+        //
+        // ⚠️⚠️ **A tolerância é em pixels de ECRÃ, e é por isso que ela passa pela câmara aqui:**
+        // meia unidade local é meio pixel a zoom `1` e **quatro** a zoom `8`. *A suavidade que o
+        // olho vê é um facto de espaço de ecrã* — uma tolerância em unidades locais afinaria a
+        // malha para o zoom em que o artista não está.
+        let (mesh, posed) = {
+            let mut escrever = pele.scratch();
+            let mut campo = |p: [f64; 2]| pele.point(p2l.apply(p), &mut escrever);
+            match smooth {
+                None => {
+                    let posed: Vec<[f64; 2]> = mesh.rest.iter().map(|&p| campo(p)).collect();
+                    (mesh, posed)
+                }
+                Some(o) => {
+                    let escala = to_screen.determinant().abs().sqrt().max(f64::MIN_POSITIVE);
+                    let (m, p, _k) = ph2d_poly2d::refine_posed(
+                        &mesh,
+                        &mut campo,
+                        ph2d_poly2d::RefineOptions {
+                            tolerance_px: o.tolerance_px / escala,
+                            ..o
+                        },
+                    );
+                    (m, p)
+                }
+            }
+        };
         for &tri in &mesh.tris {
             let Some((pixel_to_local_deformado, alvo)) = triangle_xform(&mesh, &posed, tri) else {
                 continue;

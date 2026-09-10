@@ -496,3 +496,77 @@ fn the_create_transform_group_is_the_door_and_starts_with_nothing_lit() {
     );
     state::set_current_bone_tool(None);
 }
+
+/// ⭐⭐⭐ **A ALTERNATIVA DO DESENHO CHEGA À FERRAMENTA** — report do dono de 2026-09-10
+/// (*«ao dobrar a articulação temos arestas retas na imagem … coloque como alternativa»*).
+///
+/// ⚠️ **O oráculo é o `EditorAction`, nunca o `WidgetEvent`** — a lição do bug #29, e ela morde
+/// exactamente aqui: uma fileira nova pintada e registada, mas **fora da allowlist de cliques**,
+/// acende sob o rato, come o gesto e o artista fica a olhar para uma imagem que não muda. *Um
+/// controlo de QUALIDADE morto é o pior de todos: não há nada na tela que diga que ele não pegou.*
+#[test]
+fn both_segments_of_the_deform_row_reach_the_tool() {
+    publica_tudo();
+    state::set_current_skinned_image(true);
+    for (id, nome) in [
+        (ids::VECTOR_BONE_DEFORM_FAST, "Fast"),
+        (ids::VECTOR_BONE_DEFORM_SMOOTH, "Smooth"),
+    ] {
+        let acoes = clica(id, nome);
+        assert!(
+            acoes.iter().any(|a| matches!(
+                a,
+                EditorAction::ToolPanelEvent(PanelEvent::Click(c)) if *c == id
+            )),
+            "o segmento {nome} nao chegou a' ferramenta"
+        );
+    }
+    limpa();
+    state::set_current_skinned_image(false);
+}
+
+/// ⛔⛔⛔ **A FILEIRA PERGUNTA PELA CENA, NÃO PELA SELECÇÃO — e a distinção foi achada ANTES do
+/// smoke, com a fileira já escrita.**
+///
+/// O portão óbvio (e errado) era o `state::skinned()`, o mesmo dos botões *Expand* e *Release*.
+/// ⚠️ **Só que aquela pergunta é *«a SELECÇÃO é uma forma presa?»* e a shell responde-a varrendo
+/// `selected_paths()` — CAMINHOS VECTORIAIS.** Uma imagem presa é uma **sprite**, logo nunca
+/// aparece naquela lista: a fileira teria nascido **viva e inalcançável**, pintada em código e
+/// nunca na tela. *VIVO e ALCANÇÁVEL são duas perguntas, e a segunda quase não tem instrumento.*
+///
+/// ⚠️ E a pergunta certa é sobre a **CENA** porque a escolha é **global**: ela vive na ferramenta e
+/// vale para toda imagem presa. Uma fileira que só aparecesse com a imagem escolhida prometeria uma
+/// propriedade por-objecto que não existe.
+///
+/// ⚠️ **TRÊS metades**, e a do meio é a que mata: sem nada · com uma FORMA presa (não basta) · com
+/// uma IMAGEM presa.
+#[test]
+fn the_deform_row_asks_about_the_scene_and_not_about_the_selection() {
+    let pintado = |id| {
+        let mut host = MockPanelHost::with_panel::<SkeletonPanel>();
+        let mut st = SkeletonPanelState;
+        host.painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, id)
+            .is_some()
+    };
+    let fileira =
+        || pintado(ids::VECTOR_BONE_DEFORM_FAST) && pintado(ids::VECTOR_BONE_DEFORM_SMOOTH);
+    limpa();
+    state::set_current_skinned_image(false);
+    assert!(
+        !fileira(),
+        "a fileira e' pintada numa cena SEM imagem presa — um controlo sem sujeito"
+    );
+    // ⭐ A metade que mata: uma FORMA vectorial presa e escolhida **não** é sujeito desta fileira.
+    state::set_current_skinned(true);
+    assert!(
+        !fileira(),
+        "uma FORMA presa acendeu a fileira do desenho da IMAGEM — o portao esta' na pergunta errada"
+    );
+    state::set_current_skinned_image(true);
+    assert!(
+        fileira(),
+        "com uma imagem presa na cena os dois segmentos tem de ser oferecidos"
+    );
+    limpa();
+    state::set_current_skinned_image(false);
+}

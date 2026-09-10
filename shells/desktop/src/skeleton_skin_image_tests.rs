@@ -82,7 +82,8 @@ fn only_the_alpha_channel_decides_the_silhouette() {
     let opts = ph2d_poly2d::GridOptions::default();
     let sem_focos: &[[f64; 2]] = &[];
     let preto = mesh_from_rgba(&faz([0, 0, 0], 255), 20, 20, sem_focos, opts).expect("ha' alfa");
-    let branco = mesh_from_rgba(&faz([255, 255, 255], 255), 20, 20, sem_focos, opts).expect("ha' alfa");
+    let branco =
+        mesh_from_rgba(&faz([255, 255, 255], 255), 20, 20, sem_focos, opts).expect("ha' alfa");
     assert_eq!(
         preto, branco,
         "a cor mudou a malha — so' o ALFA pode decidir a silhueta"
@@ -188,6 +189,28 @@ fn turning_the_bone_carries_the_image() {
         mexeu > 0.5,
         "girar o osso nao moveu a malha (maior deslocamento {mexeu}) — a imagem nao obedece"
     );
+}
+
+/// **A malha, já POSADA** — os vértices de repouso levados pela pele para onde eles estão agora.
+///
+/// ⚠️⚠️ **Ela vive aqui, no ARNÊS, desde 2026-09-10**, e a mudança diz o que a wave fez: no produto
+/// quem pergunta ao campo é o DESENHO, e ele passou a poder pedir-lhe **mais** pontos que os
+/// vértices da malha (o `Smooth`). Deixar no produto uma segunda porta que só sabe perguntar pelos
+/// vértices seria a segunda resposta à mesma pergunta — a mesma razão que já pôs a [`malha_de`]
+/// neste ficheiro.
+fn posed_local(
+    sim: &ph2d_ecs::SimWorld,
+    e: ph2d_ecs::Entity,
+    mesh: &ph2d_poly2d::Mesh2d,
+) -> Option<Vec<[f64; 2]>> {
+    let (p2l, pele) = deform_field(sim, e, mesh.size)?;
+    let mut w = pele.scratch();
+    Some(
+        mesh.rest
+            .iter()
+            .map(|&p| pele.point(p2l.apply(p), &mut w))
+            .collect(),
+    )
 }
 
 /// **A malha guardada nos bytes opacos da pele.** Ela vive aqui, no arnês, porque no produto quem

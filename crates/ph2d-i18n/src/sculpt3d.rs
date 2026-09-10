@@ -32,6 +32,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.sculpt3d.section.scene" => "Scene",
         "panel.sculpt3d.section.bake" => "Bake to Sprite",
         "panel.sculpt3d.radius" => "Radius",
+        "panel.sculpt3d.surface_only" => "Connected Only",
         "panel.sculpt3d.strength" => "Strength",
         "panel.sculpt3d.falloff" => "Falloff",
         // ⚠️ Os rótulos do alvo, sem tradução: *Deformation* e *Simulation

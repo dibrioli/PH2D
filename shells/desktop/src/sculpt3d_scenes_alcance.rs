@@ -43,6 +43,16 @@
 //! ⚠️ **E isto não é um caso inventado:** uma malha com duas partes soltas é o
 //! que um `Import` de um modelo em duas peças entrega (a cena `=9` fabrica
 //! exactamente esse ficheiro) e o que um `Extract` deixa.
+//!
+//! # ⭐ A comparação é UM CLIQUE, e já não duas corridas
+//!
+//! A máscara nasceu atrás de uma variável de ambiente e o dono trocou-a por um
+//! controlo (*«as duas opções devem existir com a segunda como default»*,
+//! 2026-09-10) ⇒ o roteiro desmarca e volta a marcar a caixa **Connected Only**
+//! na mesma sessão. ⚠️ E isso torna o passo (5) um **controlo do próprio
+//! interruptor**: se a bola vizinha não se mexer nas DUAS posições da caixa, ele
+//! está morto — *um controlo que não faz nada lê-se exactamente como um que
+//! funciona*.
 
 use ph2d_mesh::{Face, Mesh};
 
@@ -106,35 +116,35 @@ pub(crate) fn announce() {
          [sculpt3d]    escultura (e' o que um modelo importado em duas partes da'), e por isso\n\
          [sculpt3d]    o pincel ve as duas de uma vez.\n\
          [sculpt3d]\n\
-         [sculpt3d]    O QUE ESTAMOS A TESTAR: hoje o pincel mede distancia em linha reta,\n\
-         [sculpt3d]    PELO AR. Entao ao pintar a bola da esquerda ele agarra tambem a da\n\
-         [sculpt3d]    direita, que esta' perto no espaco e longe pela superficie. Voce aponta\n\
-         [sculpt3d]    uma e mexem-se duas.\n\
+         [sculpt3d]    O QUE ESTAMOS A TESTAR: sem a cura, o pincel mede distancia em linha\n\
+         [sculpt3d]    reta, PELO AR. Entao ao pintar a bola da esquerda ele agarra tambem a\n\
+         [sculpt3d]    da direita, que esta' perto no espaco e longe pela superficie. Voce\n\
+         [sculpt3d]    aponta uma e mexem-se duas.\n\
          [sculpt3d]\n\
          [sculpt3d]    (1) Gire a peca com o botao da DIREITA ate' ver as duas bolas de lado,\n\
          [sculpt3d]        com o vao entre elas no meio da tela.\n\
-         [sculpt3d]    (2) Ponha o pincel GRANDE: abra o painel com a CRASE (`) e leve o\n\
-         [sculpt3d]        `Radius` para perto do maximo.\n\
-         [sculpt3d]    (3) Pinte UMA VEZ na bola da ESQUERDA, no lado dela que olha para o\n\
+         [sculpt3d]    (2) Abra o painel com a CRASE (`) e leve o `Radius` para perto do\n\
+         [sculpt3d]        maximo.\n\
+         [sculpt3d]    (3) Confira que a caixa `Connected Only` esta' MARCADA. E' o default,\n\
+         [sculpt3d]        e e' a cura.\n\
+         [sculpt3d]    (4) Pinte UMA VEZ na bola da ESQUERDA, no lado dela que olha para o\n\
          [sculpt3d]        vao. Um clique so', sem arrastar.\n\
-         [sculpt3d]    (4) OLHE A BOLA DA DIREITA.\n\
-         [sculpt3d]        -> Ela tem de estar INTACTA. Se ela tambem inchou ou afundou, e' o\n\
-         [sculpt3d]           defeito: quase METADE da forca do pincel caiu nela (medido: 47%).\n\
-         [sculpt3d]    (5) Ctrl+Z e repita algumas vezes, em sitios diferentes do vao. O que\n\
-         [sculpt3d]        importa e' se a bola que voce NAO apontou se mexe.\n\
+         [sculpt3d]        -> A bola da DIREITA tem de ficar INTACTA, e a da esquerda tem de\n\
+         [sculpt3d]           receber o relevo todo.\n\
+         [sculpt3d]    (5) Ctrl+Z. Agora DESMARQUE o `Connected Only` e pinte no MESMO sitio.\n\
+         [sculpt3d]        -> Agora a bola da direita TEM de mexer-se. E' o defeito de sempre,\n\
+         [sculpt3d]           e quase metade da forca do pincel cai nela (medido: 47%).\n\
+         [sculpt3d]        Se ela NAO mexer nas duas posicoes da caixa, o interruptor esta'\n\
+         [sculpt3d]        morto -- reporte.\n\
+         [sculpt3d]    (6) Volte a marcar a caixa e repita em sitios diferentes do vao.\n\
          [sculpt3d]\n\
-         [sculpt3d]    ⚠️ NESTA CORRIDA A CURA ESTA' DESLIGADA -- entao a bola da direita VAI\n\
-         [sculpt3d]       mexer-se. E' o defeito de hoje, e e' o lado A da comparacao.\n\
-         [sculpt3d]       Para ver o lado B, feche o app e rode outra vez com a cura ligada:\n\
+         [sculpt3d]    DEU ERRADO SE: com a caixa marcada a bola da ESQUERDA passar a receber\n\
+         [sculpt3d]    menos relevo que com ela desmarcada, ou aparecer um degrau no lado dela\n\
+         [sculpt3d]    virado ao vao. A cura e' para tirar o que era do vizinho, nunca para\n\
+         [sculpt3d]    tirar o que e' seu.\n\
          [sculpt3d]\n\
-         [sculpt3d]         PH2D_SCULPT3D_SMOKE=39 PH2D_SCULPT_ALCANCE=1\n\
-         [sculpt3d]\n\
-         [sculpt3d]       Ali a bola da direita tem de ficar QUIETA, e a da esquerda tem de\n\
-         [sculpt3d]       receber o mesmo relevo de sempre.\n\
-         [sculpt3d]\n\
-         [sculpt3d]    DEU ERRADO SE: com a cura ligada a bola da ESQUERDA passar a receber\n\
-         [sculpt3d]    menos relevo, ou aparecer um degrau no lado dela virado ao vao. A cura\n\
-         [sculpt3d]    e' para tirar o que era do vizinho, nunca para tirar o que e' seu."
+         [sculpt3d]    ⚠️ A caixa vale para todos os pinceis MENOS o Cloth: ali a lei do pano\n\
+         [sculpt3d]       e' dona da propria area, entao a caixa nem aparece."
     );
 }
 

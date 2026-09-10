@@ -79,6 +79,20 @@ impl Brush {
         )
     }
 
+    /// **Este verbo lê o [`Brush::surface_only`]?** — a porta única, pelo mesmo
+    /// argumento do irmão acima.
+    ///
+    /// ⛔⛔ **O [`crate::Verb::Cloth`] NÃO o lê, e a razão é estrutural:** ele
+    /// **desvia antes do `dab_core`** ([`crate::stroke_symmetry`] — ele é dono da
+    /// própria expansão de simetria, porque cada cópia tem a sua região), então a
+    /// máscara de alcance nunca corre nele. *Pintar a caixa ali seria um
+    /// interruptor de coisa nenhuma*, que é exactamente a espécie de controlo
+    /// morto que esta casa caça.
+    #[must_use]
+    pub fn offers_surface_only(&self) -> bool {
+        self.verb != crate::Verb::Cloth
+    }
+
     /// **O PINCEL DO SEGUNDO PASSE**, ou `None` quando ele não corre — a porta
     /// única do [`Brush::auto_smooth`].
     ///

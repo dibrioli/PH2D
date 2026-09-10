@@ -155,6 +155,7 @@ pub fn populate(store: &mut WidgetStore) {
         ids::SCULPT3D_WIREFRAME,
         ids::SCULPT3D_ACCUMULATE,
         ids::SCULPT3D_FRONT_FACES,
+        ids::SCULPT3D_SURFACE_ONLY,
         ids::SCULPT3D_SCRAPE_DYNAMIC,
         ids::SCULPT3D_CLOTH_PIN,
         ids::SCULPT3D_CLOTH_PERSISTENT,

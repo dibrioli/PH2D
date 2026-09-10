@@ -240,6 +240,25 @@ pub(super) fn eared_sphere() -> ph2d_mesh::Mesh {
             verb,
             radius,
             strength,
+            // ⛔⛔ **PREGADO a `false`, e isto é o que faz esta fixtura continuar a
+            // ser a MESMA peça.** O `Brush::surface_only` passou a nascer
+            // `true` por ordem do dono (2026-09-10), e com ele ligado a orelha
+            // sai com outra geometria: o `Crease` de raio `0,055` morde uma borda
+            // **já levantada** — uma peça não-convexa —, e a máscara de alcance
+            // deixa de lhe arrastar o outro lado da dobra.
+            //
+            // ⚠️ **O trabalho desta fixtura é reproduzir uma geometria
+            // ESPECÍFICA** (a que o dono fotografou em 2026-08-22, e sobre a qual
+            // o `the_ear_does_not_ship_an_edge_across_the_piece` foi calibrado).
+            // Deixá-la seguir o default do pincel faria o gate medir **outra
+            // peça** a cada mudança de pincel, em silêncio — e um gate cujo
+            // sujeito muda não afirma nada.
+            //
+            // ⛔ Isto **não** é afrouxar aquele gate: ele continua a exigir que
+            // nada atravesse a peça, sobre a peça que ele sempre mediu. *Se a
+            // máscara melhora ou piora um vinco é pergunta de PRODUTO, e a cena
+            // `=39` é onde ela se responde — não um gate de retopologia.*
+            surface_only: false,
             ..Brush::default()
         };
         // ⚠️ Duas voltas: um `reach` por traço é a lei do envelope, e uma volta só

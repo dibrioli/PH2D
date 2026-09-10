@@ -531,6 +531,16 @@ pub const SCULPT3D_ACCUMULATE: NodeId = hash_node_id("sculpt3d.accumulate");
 /// painéis comuns de pintura dele como *Front Faces Only*.
 pub const SCULPT3D_FRONT_FACES: NodeId = hash_node_id("sculpt3d.front_faces");
 
+/// ⭐⭐⭐ **SÓ O QUE A SUPERFÍCIE LIGA** — o pincel deixa de agarrar o que está
+/// perto no AR e longe pela superfície (o dedo vizinho, a outra metade de uma
+/// dobra, a peça de trás de um modelo importado em duas partes).
+///
+/// ⚠️ **Nasce LIGADO, por decisão do dono** (2026-09-10: *«as duas opções devem
+/// existir com a segunda como default»*). Medido: com ele desligado, `47 %` do
+/// peso de um carimbo cai na peça errada quando há duas a `0,05` de distância.
+/// Cena **`=39`**.
+pub const SCULPT3D_SURFACE_ONLY: NodeId = hash_node_id("sculpt3d.surface_only");
+
 /// A malha de arestas desenhada por cima da forma.
 pub const SCULPT3D_WIREFRAME: NodeId = hash_node_id("sculpt3d.wireframe");
 /// Azimute da lâmpada selecionada, em graus.

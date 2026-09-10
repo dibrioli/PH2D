@@ -301,6 +301,28 @@ fn paint_per_verb_switches(
     } else {
         y
     };
+    // ⭐⭐⭐ **SÓ O QUE A SUPERFÍCIE LIGA** — o irmão de cima, e o vizinho certo: os
+    // dois respondem *«o que é que este carimbo tem o direito de tocar?»*, um
+    // pelo lado que a face olha e outro pelo caminho que a superfície faz.
+    //
+    // ⚠️ **A pergunta é ao MOTOR** ([`Brush::offers_surface_only`]) e ela responde
+    // *«a lei existe»*, nunca *«o flag está ligado»* — uma caixa que se escondesse
+    // quando desmarcada seria uma caixa que ninguém consegue marcar. ⛔ O
+    // `Verb::Cloth` não a oferece porque ele desvia antes do `dab_core`, e pintá-la
+    // ali seria um interruptor de coisa nenhuma.
+    let y = if snap.ui.brush.offers_surface_only() {
+        toggle(
+            ctx,
+            ids::SCULPT3D_SURFACE_ONLY,
+            tr("panel.sculpt3d.surface_only"),
+            snap.ui.brush.surface_only,
+            x,
+            w,
+            y,
+        ) + Spacing::Sm.px()
+    } else {
+        y
+    };
     // **A LÂMINA LÊ A SUPERFÍCIE**, e só onde há lâmina. ⚠️ A pergunta é ao
     // VERBO, a mesma que o motor faz antes de amostrar os dois lados — uma lista
     // paralela aqui seria um interruptor que aparece noutra ferramenta e não

@@ -486,45 +486,78 @@ fn com_que_tecto_o_corte_nao_toca_a_peca_convexa() {
 // (4) O GATE DA COSTURA — a porta está LIGADA no caminho do produto
 // ---------------------------------------------------------------------------
 
-/// ⭐⭐⭐ **UM DAB DE VERDADE não move o dedo vizinho.**
+/// ⭐⭐⭐ **UM DAB DE VERDADE não move o dedo vizinho** — e o irmão abaixo prova
+/// que o interruptor está VIVO.
 ///
 /// ⚠️⚠️ **Este gate é de COSTURA e não de lei** — a lei tem os gates dela dentro
-/// da crate ([`ph2d_sculpt3d::dab_alcance`], que é `pub(crate)`). O que ele
-/// mede é a outra pergunta, a que a casa já pagou várias vezes: *a máscara está
-/// LIGADA no caminho que o artista percorre?* Apagar a chamada do `dab_core`
-/// deixa **todos** os gates de lei verdes e este vermelho.
+/// da crate ([`dab_alcance`], que é `pub(crate)`). O que ele mede é a outra
+/// pergunta, a que a casa já pagou várias vezes: *a máscara está LIGADA no
+/// caminho que o artista percorre?* Apagar a chamada do `dab_core` deixa
+/// **todos** os gates de lei verdes e este vermelho.
+///
+/// ⭐ **Ele deixou de ser `#[ignore]` em 2026-09-10**, quando o dono trocou a
+/// variável de ambiente por um controlo (*«as duas opções devem existir com a
+/// segunda como default»*): uma feature atrás de uma env não podia ter gate de
+/// costura permanente, porque o `OnceLock` a fixava no primeiro toque do
+/// processo. *Um campo é testável; uma env do processo não.*
 ///
 /// ⚠️ **O olho vem de `+z` e o carimbo pousa no ALTO do dedo da esquerda, junto
 /// ao vinco** — o gesto real. ⛔ Um olho ao longo de `x` nunca produz este
 /// carimbo: dali o raio bate no lado de fora do dedo da direita e o vinco fica
 /// ocluso.
-///
-/// ⚠️⚠️ **`#[ignore]` porque a máscara nasce DESLIGADA** (ver
-/// `stroke_dab_core::alcance_armado`, que traz o gate de arquitectura que a
-/// desarmou), e uma feature atrás de uma env não pode ter gate de costura
-/// permanente: o `OnceLock` fixa-a no primeiro toque do processo. ⇒
-///
-/// ```text
-/// PH2D_SCULPT_ALCANCE=1 cargo test -p ph2d-sculpt3d \
-///   --test sonda_do_falloff_pela_superficie -- --ignored um_dab_de_verdade
-/// ```
-///
-/// Medido em 2026-09-10: **`0`** vértices do dedo vizinho com a máscara armada,
-/// **`60`** (pior `0,0256`) sem ela.
 #[test]
-#[ignore = "a mascara nasce desligada -- arme com PH2D_SCULPT_ALCANCE=1"]
 fn um_dab_de_verdade_nao_move_o_dedo_vizinho() {
+    let (esq, dir, pior_esq, _) = carimba_no_dedo_esquerdo(true);
+    assert!(
+        esq > 8 && pior_esq > 1e-4,
+        "o dab nao esculpiu o dedo de CA' ({esq} vertices, pior {pior_esq:.6}) -- o gate \
+         mede um no-op"
+    );
+    assert_eq!(
+        dir, 0,
+        "o dab moveu {dir} vertices do dedo VIZINHO -- a mascara de alcance nao esta' \
+         ligada no `dab_core`, ou o `Brush::surface_only` deixou de nascer `true`"
+    );
+}
+
+/// ⭐⭐ **E O CONTROLO DO PRÓPRIO INTERRUPTOR: desligado, o dab MOVE o vizinho.**
+///
+/// ⛔⛔ **Sem esta metade o gate de cima é indistinguível de um interruptor
+/// MORTO** — se a máscara corresse sempre, ou nunca, o de cima ficaria verde
+/// igual. É a lei desta casa sobre um controlo: *um que não faz nada lê-se
+/// exactamente como um que funciona*.
+///
+/// Medido em 2026-09-10: `60` vértices do dedo vizinho, pior deslocamento
+/// `0,0256`.
+#[test]
+fn com_o_connected_only_desligado_o_dab_move_o_dedo_vizinho() {
+    let (esq, dir, _, pior_dir) = carimba_no_dedo_esquerdo(false);
+    assert!(
+        esq > 8,
+        "o dab nao esculpiu o dedo de CA' -- o gate mede um no-op"
+    );
+    assert!(
+        dir > 8 && pior_dir > 1e-3,
+        "com o `Connected Only` DESLIGADO o dab moveu so' {dir} vertices do vizinho \
+         (pior {pior_dir:.6}) -- ou a fixtura deixou de conter o defeito, ou o \
+         interruptor esta' MORTO e a mascara corre sempre"
+    );
+}
+
+/// Um carimbo no alto do dedo da esquerda; devolve
+/// `(mexeu_esq, mexeu_dir, pior_esq, pior_dir)`.
+fn carimba_no_dedo_esquerdo(surface_only: bool) -> (usize, usize, f32, f32) {
     let folga = 0.05f32;
     let repouso = dois_dedos(folga);
     let mut m = dois_dedos(folga);
     let (s, c) = 20.0f32.to_radians().sin_cos();
     let centro = [-(2.0 + folga) * 0.5 + c, 0.0, s];
     let raio = 0.35f32;
-
     let b = Brush {
         verb: Verb::Draw,
         radius: raio,
         strength: 1.0,
+        surface_only,
         ..Brush::default()
     };
     let mut st = SculptStroke::default();
@@ -535,162 +568,19 @@ fn um_dab_de_verdade_nao_move_o_dedo_vizinho() {
         &Dab::at(centro, raio, [0.0, 0.0, -1.0]),
         Symmetry::default(),
     );
-
-    let (mut mexeu_esq, mut mexeu_dir) = (0usize, 0usize);
-    let (mut pior_esq, mut pior_dir) = (0.0f32, 0.0f32);
+    let (mut ne, mut nd, mut pe, mut pd) = (0usize, 0usize, 0.0f32, 0.0f32);
     for (i, (a, z)) in repouso.positions().iter().zip(m.positions()).enumerate() {
         let d = dist(*a, *z);
         if d <= 0.0 {
             continue;
         }
         if repouso.positions()[i][0] > 0.0 {
-            mexeu_dir += 1;
-            pior_dir = pior_dir.max(d);
+            nd += 1;
+            pd = pd.max(d);
         } else {
-            mexeu_esq += 1;
-            pior_esq = pior_esq.max(d);
+            ne += 1;
+            pe = pe.max(d);
         }
     }
-
-    // ⚠️ **Controlo de NÃO-VACUIDADE primeiro** — um dab que não movesse nada
-    // daria `0` nos dois lados e leria-se como aprovado.
-    assert!(
-        mexeu_esq > 8 && pior_esq > 1e-4,
-        "o dab nao esculpiu o dedo de CA' ({mexeu_esq} vertices, pior {pior_esq:.6}) \
-         -- o gate mede um no-op"
-    );
-    assert_eq!(
-        mexeu_dir, 0,
-        "o dab moveu {mexeu_dir} vertices do dedo VIZINHO (pior {pior_dir:.6}) -- a \
-         mascara de alcance nao esta' ligada no `dab_core`, ou a env \
-         `PH2D_SCULPT_ALCANCE` esta' a `0` nesta corrida"
-    );
-}
-
-// ---------------------------------------------------------------------------
-// (5) A CENA — que peça mostra o defeito a OLHO
-// ---------------------------------------------------------------------------
-
-/// **Duas pontas levantadas da MESMA esfera** — o caso real de dois dedos.
-///
-/// ⚠️ **A superfície LIGA as duas** (elas partilham o corpo), então aqui o
-/// discriminador é o tecto e não o `∞`: a máscara corta se descer uma ponta,
-/// atravessar o vale e subir a outra custar mais que `2 × R`.
-fn duas_pontas(sep_graus: f32, altura: f32, largura_graus: f32) -> Mesh {
-    let mut m = shapes::uv_sphere(160, 240, 1.0);
-    let w = largura_graus.to_radians();
-    let dirs: [[f32; 3]; 2] = [
-        [
-            (-sep_graus).to_radians().sin(),
-            0.0,
-            sep_graus.to_radians().cos(),
-        ],
-        [
-            sep_graus.to_radians().sin(),
-            0.0,
-            sep_graus.to_radians().cos(),
-        ],
-    ];
-    for p in m.positions_mut() {
-        let n = {
-            let l = (p[0] * p[0] + p[1] * p[1] + p[2] * p[2]).sqrt().max(1e-6);
-            [p[0] / l, p[1] / l, p[2] / l]
-        };
-        let mut h = 0.0f32;
-        for d in dirs {
-            let cos = (n[0] * d[0] + n[1] * d[1] + n[2] * d[2]).clamp(-1.0, 1.0);
-            let a = cos.acos() / w;
-            h = h.max(altura * (-a * a).exp());
-        }
-        for k in 0..3 {
-            p[k] += n[k] * h;
-        }
-    }
-    m.rebuild();
-    m
-}
-
-/// Quanto do peso a MÁSCARA cortaria — o passeio com o tecto do produto.
-fn cortado_pela_mascara(m: &Mesh, centro: [f32; 3], r: f32) -> (usize, f64) {
-    let curva = Falloff::default();
-    let mut scratch = QueryScratch::default();
-    let mut bola = Vec::new();
-    m.verts_in_sphere(centro, r, &mut scratch, &mut bola);
-    if bola.is_empty() {
-        return (0, f64::NAN);
-    }
-    let pos = m.positions();
-    let peso = |i: u32| f64::from(curva.weight((dist(pos[i as usize], centro) / r).min(1.0)));
-    let total: f64 = bola.iter().map(|&i| peso(i)).sum();
-    let mut geo = Vec::new();
-    pela_superficie(m, semente(m, centro), 2.0 * r, &mut geo);
-    let cort: f64 = bola
-        .iter()
-        .filter(|&&i| !geo[i as usize].is_finite())
-        .map(|&i| peso(i))
-        .sum();
-    (bola.len(), 100.0 * cort / total)
-}
-
-/// ⭐⭐⭐ **De onde sai a CENA do smoke** — o dono disse *«do modo como o objeto é
-/// não é possível testar»*, e ele tem razão: na orelha os dois lados do sulco são
-/// a MESMA superfície contínua, então a máscara só muda a PROFUNDIDADE do sulco
-/// — uma diferença de grau, que ninguém julga a olho sem as duas lado a lado.
-///
-/// ⇒ esta sonda procura a peça em que o defeito é **inconfundível**: pintar uma
-/// parte e a OUTRA mexer-se. Ela varre a geometria de duas pontas e o raio do
-/// pincel, e imprime quanto a máscara cortaria em cada célula.
-#[test]
-#[ignore = "sonda: escolhe a geometria da cena do smoke"]
-fn qual_peca_mostra_o_defeito_a_olho() {
-    println!("\n== (5) A CENA — quanto a mascara corta em cada geometria ==");
-    println!(
-        "{:>34} {:>7} | {:>7} {:>9}",
-        "peca", "raio", "verts", "cortado"
-    );
-    println!("{}", "-".repeat(64));
-
-    // (a) DUAS PONTAS na mesma esfera — o caso real dos dois dedos.
-    for (sep, alt, larg) in [
-        (12.0f32, 1.0f32, 6.0f32),
-        (12.0, 1.5, 5.0),
-        (10.0, 1.5, 4.0),
-        (8.0, 2.0, 3.5),
-    ] {
-        let m = duas_pontas(sep, alt, larg);
-        // Um ponto no flanco INTERNO da ponta da esquerda, a meia altura.
-        let a = (-sep).to_radians();
-        let meio = 1.0 + alt * 0.5;
-        // Inclinado para dentro: o flanco que olha para a outra ponta.
-        let b = a + larg.to_radians() * 0.9;
-        let centro = [meio * b.sin(), 0.0, meio * b.cos()];
-        for r in [0.20f32, 0.35, 0.50, 0.70] {
-            let (n, pct) = cortado_pela_mascara(&m, centro, r);
-            println!(
-                "{:>34} {r:>7.2} | {n:>7} {pct:>8.2}%",
-                format!("pontas sep={sep:.0} alt={alt:.1} larg={larg:.1}")
-            );
-        }
-    }
-
-    // (b) DOIS LOBOS SOLTOS na mesma malha — a superficie nao os liga, logo o
-    // corte e' total e independente do tecto. E' o caso de um modelo IMPORTADO
-    // em duas partes, ou do resultado de um `extract`.
-    for folga in [0.05f32, 0.15] {
-        let m = dois_dedos(folga);
-        let centro = [-(folga * 0.5), 0.0, 0.0];
-        for r in [0.20f32, 0.35, 0.50] {
-            let (n, pct) = cortado_pela_mascara(&m, centro, r);
-            println!(
-                "{:>34} {r:>7.2} | {n:>7} {pct:>8.2}%",
-                format!("lobos soltos folga={folga:.2}")
-            );
-        }
-    }
-
-    println!(
-        "\n  LEITURA: a cena do smoke e' a celula com o corte MAIOR num raio que um\n  \
-         artista de facto usa. Abaixo de ~10% a diferenca nao se ve a olho, e uma\n  \
-         cena que nao mostra o defeito e' pior que cena nenhuma."
-    );
+    (ne, nd, pe, pd)
 }

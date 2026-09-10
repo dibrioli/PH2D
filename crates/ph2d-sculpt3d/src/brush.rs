@@ -265,6 +265,36 @@ pub struct Brush {
     /// mesma tabela de `falloff`/`strength`/`accumulate`, e ela diz `false` para
     /// tudo menos a faixa — com o número da medição ao lado.
     pub front_faces_only: bool,
+
+    /// ⭐⭐⭐ ***Connected Only*** — o pincel age só no que a superfície LIGA ao
+    /// ponto que o artista aponta.
+    ///
+    /// # O defeito que ele cura, medido
+    ///
+    /// Um dab junta os vértices dentro de uma **esfera** e pesa cada um pela
+    /// distância **pelo ar**. Numa malha com duas partes vizinhas — um modelo
+    /// importado em duas peças, o resultado de um *Extract*, dois dedos — a
+    /// esfera alcança o outro lado. Medido (duas peças, folga `0,05`, raio
+    /// `0,35`): **`47,1 %` do peso do carimbo cai na peça ERRADA**, e um dab real
+    /// move `60` vértices dela.
+    ///
+    /// ⭐ **Ligado, o peso de quem FICA não muda um bit** — a lei é uma máscara e
+    /// não uma régua nova ([`crate::dab_alcance`]), então nada do que já estava
+    /// certo se mexe por causa dela.
+    ///
+    /// # ⚠️ O default é `true` por DECISÃO DO DONO (2026-09-10)
+    ///
+    /// *«As duas opções devem existir com a segunda como default»* — a segunda
+    /// era o lado curado da comparação da cena `=39`. ⛔ A minha proposta era
+    /// nascer desligado, porque um gate de arquitectura tinha apanhado a
+    /// justificação que eu dera para o contrário; o veredito é dele e o registo
+    /// da minha objecção está no [`crate::dab_alcance`].
+    ///
+    /// ⚠️ **Ele é um CAMPO e não uma variável de ambiente**, e isso paga-se em
+    /// duas coisas que uma env não podia dar: o artista escolhe (era a ordem), e
+    /// uma **fixtura pode PREGÁ-LO** para continuar a reproduzir a geometria em
+    /// que foi calibrada — que é o que a [`shells/desktop`] faz com a orelha.
+    pub surface_only: bool,
     /// **O ALISAMENTO QUE CORRE DEPOIS DE CADA DAB**, em `[0, 1]` — o
     /// factor de AUTO-ALISAMENTO da referência, e **`0` é o neutro**.
     ///
@@ -535,6 +565,7 @@ impl Default for Brush {
             // ficaria a contradizê-la em silêncio. Ele também TRAVARIA o arming,
             // que compara com o que o verbo que sai declara.
             front_faces_only: Verb::Draw.default_front_faces_only(),
+            surface_only: true,
             // O default do Blender, e o neutro deste passe — ver o campo.
             auto_smooth: 0.0,
             // ⚠️ **DELEGA, e não repete a palavra `Tri`:** a família que shipa

@@ -89,10 +89,10 @@ impl RefMode {
 
 /// **COMO o número do slider de força vira o peso do dab.**
 ///
-/// ⚠️ **É o E13 do estudo, e a razão está escrita na FONTE:** o
-/// `brush_strength` do Blender (`sculpt.cc:2337-2339`) traz o comentário
-/// *"Primary strength input; square it to make lower values more sensitive"* —
-/// o slider é a RAIZ, não o peso.
+/// ⚠️ **É o E13 do estudo, e a referência é explícita sobre o porquê:** ela
+/// **eleva ao quadrado** o número do slider de força, para dar mais
+/// sensibilidade à metade BAIXA do curso — ou seja, *o slider é a RAIZ do peso,
+/// nunca o peso*.
 ///
 /// ⚠️ **Sozinho isto já torna o chip `B` legítimo pelo §3 do plano:** a meio
 /// curso ele deposita `0,25` contra `0,50` — o dobro de diferença, muito acima
@@ -126,40 +126,45 @@ impl StrengthCurve {
 /// | lei | remove | fonte |
 /// |---|---|---|
 /// | [`Self::Direct`] | nada (3D cru) | `Pinch.js:52-58` · `Crease.js:59-61` |
-/// | [`Self::Tangential`] | a componente **NORMAL** | `crease.cc:112` |
-/// | [`Self::AcrossStroke`] | a componente **AO LONGO DO TRAÇO** | `pinch.cc:39-60` |
+/// | [`Self::Tangential`] | a componente **NORMAL** | o verbo *Crease* da referência |
+/// | [`Self::AcrossStroke`] | a componente **AO LONGO DO TRAÇO** | o verbo *Pinch* da referência |
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum LateralPull {
-    /// Projeta na tangente do plano de área antes de puxar — **o `crease.cc` do
-    /// Blender, e não uma invenção nossa**.
+    /// Projeta na tangente do plano de área antes de puxar — **é o verbo
+    /// *Crease* da referência, e não uma invenção nossa**.
     ///
     /// ⚠️ **O doc que estava aqui dizia o contrário — *"o nosso"*, *"isto NÃO é
-    /// a lei do Blender"* — e a fonte o desmente numa linha.** O
-    /// `crease.cc:110-112` faz exatamente esta projeção, com o porquê ao lado:
-    ///
-    /// > *"The vertices are pinched towards a **line** instead of a single
-    /// > point. Without this we get a 'flat' surface surrounding the pinch."*
+    /// a lei da referência"* — e a medição desmentiu-o.** O *Crease* faz
+    /// exatamente esta projeção, e o efeito dela é o motivo: **os vértices são
+    /// apertados contra uma LINHA em vez de um ponto**, e sem isso a superfície
+    /// à volta do aperto sai chata.
     ///
     /// Remover a componente normal faz o puxão apontar para o **EIXO** que passa
-    /// pelo centro, não para o ponto — que é a frase do comentário dele.
+    /// pelo centro, não para o ponto.
     ///
-    /// ⚠️ **O erro tinha uma causa nomeável, e ela vale para toda leitura de
-    /// fonte alheia:** a nota anterior descrevia o `pinch.cc` a partir do
-    /// COMENTÁRIO dele (*"Project the displacement into the X vector (aligned to
-    /// the stroke)"*) — e esse comentário é **falso no próprio Blender**. O
-    /// código monta `X = cross(area_no, grab_delta)`, que é **perpendicular** ao
-    /// traço. Ler o comentário e não o `cross` inverteu o mapa inteiro: nós
-    /// dizíamos coincidir com ninguém e divergir do Blender, quando na verdade
-    /// **coincidimos com o `crease.cc`** e faltava-nos o `pinch.cc`.
+    /// ⚠️⚠️ **O erro tinha uma causa nomeável, e ela vale para toda leitura de
+    /// fonte alheia: a nota anterior descrevia o *Pinch* a partir do COMENTÁRIO
+    /// dele, e esse comentário é FALSO no próprio programa.** O comentário diz
+    /// que o deslocamento é projetado no eixo *alinhado ao traço*; o que a
+    /// aritmética monta é o produto vectorial da normal da área com o
+    /// deslocamento do cursor, que é **perpendicular** ao traço. Ler a prosa e
+    /// não a conta inverteu o mapa inteiro: nós dizíamos coincidir com ninguém e
+    /// divergir da referência, quando na verdade **coincidíamos com o *Crease***
+    /// e faltava-nos o *Pinch*.
+    ///
+    /// ⭐ *É a mesma lei que o `CLAUDE.md` §0.9 escreve para o oráculo: o
+    /// programa responde COMO, e quem quer o QUÊ mede a saída.*
     Tangential,
     /// Puxa em 3D, sem projetar — **o SculptGL**.
     Direct,
-    /// Remove a componente **ao longo do traço** — o `pinch.cc:39-60`.
+    /// Remove a componente **ao longo do traço** — é o verbo *Pinch* da
+    /// referência.
     ///
-    /// O frame de lá é `X = normalize(cross(area_no, grab_delta))` (perpendicular
-    /// ao traço, no plano tangente) e `Z = area_no`; o resultado é
-    /// `x_disp + z_disp`, com *"the Y component is removed"* — e o `Y` é
-    /// `cross(area_no, X)`, ou seja **a direção do traço**.
+    /// O referencial dela tem por primeiro eixo a **perpendicular ao traço no
+    /// plano tangente** (o produto vectorial normalizado da normal da área com o
+    /// deslocamento do cursor) e por terceiro a **normal da área**; o resultado
+    /// soma esses dois e **descarta o do meio** — que é o produto vectorial da
+    /// normal com o primeiro, ou seja **a direcção do traço**.
     ///
     /// ⇒ Passando o pincel ao longo de uma linha, o barro é espremido dos dois
     /// lados **para** a linha e nunca arrastado ao longo dela: é o que faz um
@@ -167,8 +172,8 @@ pub enum LateralPull {
     /// parecerem antes desta lei existir — as duas eram apertos radiais.
     ///
     /// ⚠️ **Ela precisa de DIREÇÃO, e sem direção não há dab.** A referência
-    /// recusa explicitamente (`pinch.cc:188-195`: *"delay the first daub because
-    /// grab delta is not setup"*, e `return` se `grab_delta` é zero), e nós
+    /// recusa explicitamente: ela **adia o primeiro dab de um traço**, porque o
+    /// deslocamento do cursor ainda não existe, e desiste quando ele é zero. Nós
     /// fazemos o mesmo — o [`crate::Dab::path`] nasce em zero no primeiro dab de
     /// um traço, e um tap solto neste modo **não aperta nada**. Inventar um eixo
     /// ali seria escolher uma direção que o artista não desenhou.
@@ -181,16 +186,16 @@ pub enum LateralPull {
 pub enum PlaneReach {
     /// Corta a crista **e** enche o vale.
     ///
-    /// É a leitura do Blender, lida no cabeçalho do `plane.cc`: *"The Plane
-    /// brush translates the vertices towards the brush plane"*, com **Height**
-    /// para o que está acima e **Depth** para o que está abaixo — dois lados,
-    /// um knob cada. O nosso é este com os dois knobs no máximo.
+    /// É a leitura da referência: o verbo de PLANO dela **desloca os vértices na
+    /// direcção do plano do pincel**, com um controlo para o que está ACIMA dele
+    /// e outro para o que está ABAIXO — dois lados, um knob cada. O nosso é este
+    /// com os dois knobs no máximo.
     Bilateral,
     /// Um lado só, e o outro é `continue` — **a da referência**.
     ///
-    /// O `Flatten.js:64` faz `if (distToPlane * comp > 0.0) continue`, então o
-    /// *Flatten* do SculptGL **é** o nosso `Fill` (ou o nosso `Scrape`, sob
-    /// Ctrl). É o `continue` que torna o verbo auto-limitado.
+    /// O `Flatten.js:64` (SculptGL, MIT) faz `if (distToPlane * comp > 0.0)
+    /// continue`, então o *Flatten* dele **é** o nosso `Fill` (ou o nosso
+    /// `Scrape`, sob Ctrl). É o `continue` que torna o verbo auto-limitado.
     OneSided,
 }
 
@@ -204,8 +209,8 @@ pub enum PlaneReach {
 /// - **nós**: um filtro **binário** na ESTIMATIVA DO PLANO (o `front` do
 ///   `fit_plane_over` — um vértice de costas entra com peso zero na normal e no
 ///   centro de área). O **dab não filtra nada**;
-/// - **o Blender** (`sculpt.cc:7283-7295`): `factors[i] *= max(dot, 0)`, ou seja
-///   pesa **o FATOR DE CADA VÉRTICE** do dab;
+/// - **a referência**: pesa **o FATOR DE CADA VÉRTICE** do dab pelo coseno da
+///   normal contra a vista, ceifado em zero;
 /// - **o SculptGL**: o `_culling`, um **checkbox do usuário desligado de
 ///   fábrica** em dez tools.
 ///
@@ -237,8 +242,8 @@ pub enum FrontFace {
 /// ⚠️ **O puxão lateral NÃO mora aqui, e a ausência é o achado de 2026-08-15:**
 /// os outros dois eixos são fatos sobre o MODO (o Blender achata dos dois lados
 /// em toda tool de plano; ele pesa por face em toda tool de carimbo), mas a lei
-/// lateral dele é **por FERRAMENTA** — o `pinch.cc` remove a componente ao longo
-/// do traço e o `crease.cc` remove a normal. Um campo aqui teria de responder
+/// lateral dele é **por FERRAMENTA** — o *Pinch* remove a componente ao longo
+/// do traço e o *Crease* remove a normal. Um campo aqui teria de responder
 /// duas coisas com um valor, e a porta é a [`RefMode::lateral_for`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct KernelLaw {
@@ -290,8 +295,8 @@ impl RefMode {
             // na frente** (39,86 contra 17,18), porque o `front_face:
             // Ignored` do `S` é fiel ao `Brush.js` (o `_culling` nasce
             // desligado) e **não é a lei desta ferramenta**. O
-            // `clay_strips.cc::calc_faces` aplica o `calc_front_face` como
-            // terceira linha da cadeia de fatores.
+            // *Clay Strips* da referência aplica o filtro de faces de frente
+            // como terceira linha da cadeia de fatores.
             //
             // ⚠️ **A lei de uma referência só vale para as ferramentas que ela
             // TEM** — é a mesma frase que a coluna de defaults já honrava, e
@@ -300,16 +305,16 @@ impl RefMode {
             // parente que o SculptGL tem, e ele não carrega o `invert_strength`
             // que faz de um Blob um Blob. Uma referência governa as ferramentas
             // que ela TEM.
-            // ⚠️ **E nem o Clay Thumb**, pela terceira vez a mesma frase: o
-            // `clay_thumb.cc` é do Blender e o SculptGL não tem parente dele.
-            // ⚠️ **E nem o Multiplane Scrape**, a quarta: `multiplane_scrape.cc`,
-            // e o SculptGL não tem uma ferramenta de DOIS planos.
-            // ⚠️ **E nem o Slide Relax**, a quinta: `relax.cc` é do Blender, e o
+            // ⚠️ **E nem o Clay Thumb**, pela terceira vez a mesma frase: ele é
+            // da referência restrita e o SculptGL não tem parente dele.
+            // ⚠️ **E nem o Multiplane Scrape**, a quarta: idem, e o SculptGL não
+            // tem uma ferramenta de DOIS planos.
+            // ⚠️ **E nem o Slide Relax**, a quinta: idem, e o
             // SculptGL não tem verbo que mexa na MALHA sem mexer na forma.
             // ⚠️ **E nem o Surface Smooth**, a sexta: o `Smooth.js` é o
             // laplaciano CRU — o que o HC acrescenta (o `b`, e a média dele) não
             // tem uma linha de parente lá.
-            // ⚠️ **E nem a DEMÃO**, a sétima: `layer.cc` é do Blender, e o
+            // ⚠️ **E nem a DEMÃO**, a sétima: o *Layer* é da referência restrita, e o
             // SculptGL não tem ferramenta com estado por-vértice ao longo do
             // traço — que é a lei inteira deste verbo.
             Self::S => !matches!(
@@ -480,7 +485,7 @@ impl RefMode {
     ///
     /// Um verbo que o modo não declara cai na lei da referência que o **TEM**.
     /// Hoje o único caso é o [`Verb::ClayStrips`] sob o `S`, e o destino é o
-    /// `B` por ser a referência dele (`clay_strips.cc`); o `L` só é oferecido
+    /// `B` por ser a referência dele (é o *Clay Strips* dela); o `L` só é oferecido
     /// onde declara, então o caminho dele aqui é inalcançável pelo produto e
     /// existe para o `match` ser total.
     #[must_use]
@@ -491,9 +496,9 @@ impl RefMode {
     /// **COMO ESTE MODO APERTA ESTE VERBO** — a porta do puxão lateral, e a
     /// única; o [`KernelLaw`] não a carrega e o doc dele diz por quê.
     ///
-    /// ⚠️ **Ela é por VERBO porque a referência é por verbo.** O Blender tem
-    /// duas ferramentas nesta família e **duas leis diferentes** — o `pinch.cc`
-    /// remove a componente ao longo do traço, o `crease.cc` remove a normal —, e
+    /// ⚠️ **Ela é por VERBO porque a referência é por verbo.** Ela tem
+    /// duas ferramentas nesta família e **duas leis diferentes** — o *Pinch*
+    /// remove a componente ao longo do traço, o *Crease* remove a normal —, e
     /// enquanto isto era um valor só do modo o chip `B` do Pinch vestia a lei do
     /// *crease*. O preço estava medido no report do Enio antes de eu o nomear:
     /// *"Pinch em B e S bons mas idênticos ou quase idênticos"*, e a sonda
@@ -514,8 +519,8 @@ impl RefMode {
     /// mais; a resposta estava na fonte o tempo todo.
     ///
     /// ⚠️ **O `Magnify` fica no `Tangential` e isso é uma AUSÊNCIA declarada:**
-    /// o Blender não tem esta ferramenta (o oposto do pinch lá é o Inflate, que
-    /// é outro verbo), então não há `pinch.cc` a portar e o `B` dele herda a lei
+    /// a referência não tem esta ferramenta (o oposto do pinch lá é o Inflate,
+    /// que é outro verbo), então não há *Pinch* a portar e o `B` dele herda a lei
     /// da família — nomeado aqui em vez de escolhido em silêncio.
     #[must_use]
     pub const fn lateral_for(self, verb: Verb) -> LateralPull {
@@ -524,9 +529,9 @@ impl RefMode {
         match self.for_verb(verb) {
             Self::S | Self::L => LateralPull::Direct,
             Self::B => match verb {
-                // `pinch.cc` — a ferramenta **Pinch** do Blender.
+                // A ferramenta **Pinch** da referência.
                 Verb::Pinch => LateralPull::AcrossStroke,
-                // `crease.cc:112` — as ferramentas **Crease** e **Blob**; o
+                // As ferramentas **Crease** e **Blob** da referência; o
                 // Magnify entra aqui pela ausência que o doc acima nomeia.
                 _ => LateralPull::Tangential,
             },

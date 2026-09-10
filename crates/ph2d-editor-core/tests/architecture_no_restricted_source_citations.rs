@@ -21,7 +21,7 @@
 //!    linha de código entra na tabela de strings do binário. É a única
 //!    sub-espécie que **sai do repositório sem passar pelo `git`**, e por isso
 //!    não tem lista de tolerância nenhuma.
-//! 2. **EM comentário: catraca por crate.** São `351` hoje, e o número **só
+//! 2. **EM comentário: catraca por crate.** São `322` hoje, e o número **só
 //!    desce**. Uma entrada que chegue a zero é **obsoleta e tem de ser
 //!    apagada** — *uma catraca sem censo de obsolescência não desce: ela vira
 //!    licença* (`CLAUDE.md` §5.0).
@@ -86,7 +86,6 @@ const POR_CLASSIFICAR: &[(&str, usize)] = &[
     ("crates/ph2d-flip", 13),
     ("crates/ph2d-flip-render", 7),
     ("crates/ph2d-flip-reshape", 13),
-    ("crates/ph2d-node-registry-init", 2),
     ("crates/ph2d-painter-brush", 28),
     ("crates/ph2d-panel-asset-browser", 1),
     ("crates/ph2d-panel-audio-mixer", 1),
@@ -95,7 +94,7 @@ const POR_CLASSIFICAR: &[(&str, usize)] = &[
     ("crates/ph2d-quadflow", 13),
     ("crates/ph2d-quantize", 4),
     ("crates/ph2d-render", 5),
-    ("crates/ph2d-sculpt3d", 204),
+    ("crates/ph2d-sculpt3d", 177),
     ("crates/ph2d-timeline", 1),
     ("crates/ph2d-tokens", 5),
     ("crates/ph2d-tokens-dtcg", 2),
@@ -137,7 +136,7 @@ fn e_comentario(l: &str) -> bool {
 /// Duas formas: o endereço com linha (`algo.cc:123`) e o nome nu entre crases
 /// (`` `algo.cc` ``). ⚠️ A segunda só conta **entre crases** — é o que separa uma
 /// citação de um `rect.h` que é a altura de um rectângulo.
-fn citacoes(l: &str) -> usize {
+fn citacoes_com(l: &str, nossos: &std::collections::BTreeSet<String>) -> usize {
     let mut n = 0;
     for e in EXT {
         let ponto = format!(".{e}");
@@ -159,12 +158,49 @@ fn citacoes(l: &str) -> usize {
             let ultimo = antes
                 .rfind(|c: char| !(c.is_ascii_alphanumeric() || c == '_'))
                 .map_or(antes, |k| &antes[k + 1..]);
-            if !ultimo.is_empty() && ultimo.chars().next().is_some_and(char::is_alphabetic) {
-                n += 1;
+            if ultimo.is_empty() || !ultimo.chars().next().is_some_and(char::is_alphabetic) {
+                continue;
             }
+            // ⛔ Um ficheiro NOSSO nao e' uma citacao do alvo.
+            if nossos.contains(&format!("{ultimo}{ponto}")) {
+                continue;
+            }
+            n += 1;
         }
     }
     n
+}
+
+/// ⚠️⚠️ **UM FICHEIRO NOSSO NÃO É UMA CITAÇÃO DO ALVO.**
+///
+/// O repo tem arneses com extensão de outra linguagem — `blender_sculpt_oracle.py`,
+/// `sculptgl_oracle.mjs`, `cook_matcaps.sh` — e apontá-los é **referência interna
+/// legítima**, não proveniência de fonte alheio. ⛔ Sem esta metade o censo
+/// inflaciona a dívida e manda alguém «curar» um ponteiro para a nossa própria
+/// bancada. *Um censo que acusa o vivo manda a cura errada.*
+///
+/// O discriminador é exacto e não é heurística: o nome existe na nossa árvore?
+fn nomes_da_nossa_arvore(raiz: &Path) -> std::collections::BTreeSet<String> {
+    let mut out = std::collections::BTreeSet::new();
+    for topo in ["crates", "shells", "docs", "scripts"] {
+        junta_nomes(&raiz.join(topo), &mut out);
+    }
+    out
+}
+
+fn junta_nomes(dir: &Path, out: &mut std::collections::BTreeSet<String>) {
+    let Ok(rd) = fs::read_dir(dir) else { return };
+    for e in rd.flatten() {
+        let p = e.path();
+        let nome = p.file_name().and_then(|n| n.to_str()).unwrap_or("");
+        if p.is_dir() {
+            if nome != "target" && nome != "oracle" && !nome.starts_with('.') {
+                junta_nomes(&p, out);
+            }
+        } else if !nome.is_empty() {
+            out.insert(nome.to_string());
+        }
+    }
 }
 
 /// Todos os `.rs` rastreados de `crates/` e `shells/`.
@@ -202,6 +238,7 @@ fn censo() -> (Vec<String>, std::collections::BTreeMap<String, usize>) {
     let raiz = raiz();
     let isentos: std::collections::BTreeSet<&str> =
         ATRIBUICAO_PERMISSIVA.iter().map(|(p, _)| *p).collect();
+    let nossos = nomes_da_nossa_arvore(&raiz);
     let mut fora = Vec::new();
     let mut em_comentario = std::collections::BTreeMap::new();
     for f in ficheiros(&raiz) {
@@ -221,7 +258,7 @@ fn censo() -> (Vec<String>, std::collections::BTreeMap<String, usize>) {
             continue;
         };
         for (i, l) in texto.lines().enumerate() {
-            let n = citacoes(l);
+            let n = citacoes_com(l, &nossos);
             if n == 0 {
                 continue;
             }
@@ -301,12 +338,28 @@ fn as_citacoes_em_comentario_so_descem() {
 /// `algo.cc:12` **têm** de contar.
 #[test]
 fn o_detector_conta_o_que_deve_e_nada_mais() {
+    let vazio = std::collections::BTreeSet::new();
+    let citacoes = |l: &str| citacoes_com(l, &vazio);
     assert_eq!(citacoes("    let a = rect.h * 2.0;"), 0, "rect.h e' altura");
     assert_eq!(citacoes("    p.c = 1;"), 0, "p.c e' um campo");
     assert_eq!(citacoes("/// o `algo.cc` faz X"), 1, "nome nu entre crases");
     assert_eq!(citacoes("/// ver `algo.cc:1234`"), 1, "endereco com linha");
     assert_eq!(citacoes("// algo.cc:12 e outro.py:7"), 2, "duas na linha");
     assert_eq!(citacoes("/// nada aqui"), 0);
+    // ⛔ E o caso que so' a arvore responde: um arnes NOSSO nao conta.
+    let nossos: std::collections::BTreeSet<String> = ["blender_sculpt_oracle.py".to_string()]
+        .into_iter()
+        .collect();
+    assert_eq!(
+        citacoes_com("/// ver `blender_sculpt_oracle.py`", &nossos),
+        0,
+        "um ficheiro da NOSSA arvore nao e' citacao do alvo"
+    );
+    assert_eq!(
+        citacoes_com("/// ver `blender_sculpt_oracle.py`", &vazio),
+        1,
+        "e sem a arvore ele contaria -- o controlo do proprio discriminador"
+    );
     // ⚠️ A catraca só é honesta se o censo de facto encontrar ficheiros.
     let (_, agora) = censo();
     assert!(

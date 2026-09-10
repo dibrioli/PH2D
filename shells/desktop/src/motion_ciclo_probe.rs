@@ -17,6 +17,27 @@ use crate::motion_state::MotionState;
 use ph2d_nodegraph::graph::{Edge, NodeId};
 
 // ---------------------------------------------------------------------------------------------
+// 0. O GRUPO — derivado do registry quando ele é uma FAMÍLIA.
+// ---------------------------------------------------------------------------------------------
+
+/// ⭐⭐ **Os nós registados cujo nome começa por `prefixo`, em ordem.**
+///
+/// ⚠️ **Um ciclo cujo grupo é uma FAMÍLIA (`force.*`, `value.*`, `rig.*`) não a escreve à mão:**
+/// uma lista escrita aqui envelhece em silêncio no dia em que um nó da família nasce, e o ciclo
+/// fecha com ele por auditar. *A fonte é o registry.*
+pub(crate) fn familia(prefixo: &str) -> Vec<&'static str> {
+    let m = MotionState::new();
+    let mut v: Vec<&'static str> = m
+        .registry
+        .manifests()
+        .filter(|man| man.name.starts_with(prefixo))
+        .map(|man| man.name)
+        .collect();
+    v.sort_unstable();
+    v
+}
+
+// ---------------------------------------------------------------------------------------------
 // 1. O RETRATO — o que cada nó do grupo declara.
 // ---------------------------------------------------------------------------------------------
 

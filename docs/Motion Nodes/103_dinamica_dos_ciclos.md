@@ -107,8 +107,8 @@ inventada. Contagens do registry em 2026-09-05.
 | **1** ✅ | **ARRANJO — pôr muitos objectos na tela** | `motion.grid` · `motion.scatter` · `motion.distribute_radial` · `motion.fibonacci` · `motion.lattice` · `motion.voronoi` · `motion.distribute_poisson` · `motion.distribute_curve` · `motion.path` · `motion.clone` (**10**) | **«Do primeiro objecto ao milhão»** |
 | **2** ✅ | **ANIMADORES — fazer andar** | `motion.oscillator` · `value.lfo` · `motion.wiggle` · `motion.noise` · `motion.stagger` · `motion.orbit` · `motion.spring` · `motion.delay` | «O tempo entra no grafo» |
 | **3** ✅ | TRANSFORMES & DEFORMADORES | `move` · `rotate` · `scale` · `transform` · `mirror` · `look_at` · `bend` · `twist` · `spherize` · `four_point_warp` · `bezier_warp` · `kaleidoscope` · `spline_wrap` | «Dobrar o mundo» |
-| **4** ⏳ **ABERTO** ([doc 107](107_ciclo_4_foco_os_campos.md)) | FOCO — quem é afectado (campos) | `motion.falloff` · `field.box` · `field.radial_sweep` · `field.index_range` · `field.remap` · `field.combine` · `field.shape` | «Nem todos ao mesmo tempo» |
-| 5 | SIMULAÇÃO | `sim.zone` · `sim.spawn` · `sim.step` · `sim.lifetime` · `sim.collide` · `motion.integrate` · as `force.*` | «Deixar a física decidir» |
+| **4** ✅ ([doc 107](107_ciclo_4_foco_os_campos.md)) | FOCO — quem é afectado (campos) | `motion.falloff` · `field.box` · `field.radial_sweep` · `field.index_range` · `field.remap` · `field.combine` · `field.shape` | «Nem todos ao mesmo tempo» |
+| **5** ⏳ **ABERTO** ([doc 108](108_ciclo_5_simulacao.md)) | SIMULAÇÃO | `sim.zone` · `sim.spawn` · `sim.step` · `sim.lifetime` · `sim.collide` · `motion.integrate` · as `force.*` | «Deixar a física decidir» |
 | 6 | VALOR & PULSO — o cérebro | a família `value.*` e `pulse.*` | «Um número que manda em tudo» |
 | 7 | APARÊNCIA (Fx) | `tint` · `color_ramp` · `color_array` · `trail` · `strobe` · `glow` · `drop_shadow` · `rgb_split` · `sub_uv` · `slit_scan` | «A cor e o rasto» |
 | 8 | FONTES & DADOS | `source.shape` · `source.object` · `source.text` · `source.table` · `source.lsystem` · `motion.emitter` | «De onde vêm as coisas» |
@@ -117,6 +117,9 @@ inventada. Contagens do registry em 2026-09-05.
 | **11** | ⚡ **A AVALIAÇÃO GERAL DE PERFORMANCE** — o módulo inteiro, cena a cena | (varredura) | — |
 | **12** | ⚡ **OS TETOS CONFORTÁVEIS** — quantos objectos o sistema aguenta, com número | (decisão do Enio, com a tabela) | — |
 
+> ⚠️ **Estado em 2026-09-09 (fim do dia).** Os ciclos **3** e **4** fecharam com o smoke do
+> dono aprovado, e o **5** abriu ([doc 108](108_ciclo_5_simulacao.md)).
+>
 > ⚠️ **Estado em 2026-09-09.** O ciclo **3** fechou com o smoke do dono aprovado
 > ([doc 106](106_ciclo_3_transformes_e_deformadores.md)) e o **4** abriu
 > ([doc 107](107_ciclo_4_foco_os_campos.md)). O ciclo **2** tem as cinco waves, a medição e o PDF

@@ -450,6 +450,9 @@ mod motion_path_smoke;
 mod motion_shape_bake;
 mod motion_shape_smoke;
 mod motion_shape_smoke_knobs;
+/// A auditoria do grupo do ciclo 5 (a SIMULAÇÃO) — `#[cfg(test)]`, não entra no bin.
+#[cfg(test)]
+mod motion_sim_probe;
 #[cfg(test)]
 mod motion_stamp_cost_probe;
 mod motion_state;

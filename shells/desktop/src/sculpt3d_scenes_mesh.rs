@@ -44,6 +44,15 @@ pub(crate) fn smoke_mesh() -> ph2d_mesh::Mesh {
     if ear::ear_scene() {
         return eared_sphere();
     }
+    // ⭐⭐ **A `=39` abre com DUAS PEÇAS SOLTAS na mesma malha**, e a geometria foi
+    // MEDIDA (ver [`alcance`]): duas pontas LIGADAS só mostram o defeito quando
+    // são finas o bastante para o carimbo tocar `9`–`39` vértices — um alfinete,
+    // não um gesto —, e num raio que o artista usa o corte cai a `6,9 %`, que não
+    // se vê. Com duas peças soltas ele é `47 %` sobre centenas de vértices, e a
+    // pergunta passa a ser binária: *a outra peça mexeu-se, sim ou não?*
+    if alcance::alcance_scene() {
+        return alcance::duas_pecas_vizinhas();
+    }
     if cavity_scene() || filter::filter_scene() || quad::quad_scene() {
         return wrinkled_sphere();
     }

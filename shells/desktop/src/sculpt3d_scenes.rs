@@ -365,6 +365,13 @@ pub(crate) mod quad;
 #[path = "sculpt3d_scenes_ear.rs"]
 pub(crate) mod ear;
 
+/// ⭐ A cena `=39` — **as duas peças vizinhas**, onde se julga se o pincel
+/// toca só no que se aponta. ⚠️ A geometria dela foi MEDIDA e não escolhida:
+/// duas pontas LIGADAS não mostram o defeito num raio usável (`6,9 %` do
+/// carimbo), e duas peças SOLTAS mostram `47 %` sobre centenas de vértices.
+#[path = "sculpt3d_scenes_alcance.rs"]
+pub(crate) mod alcance;
+
 /// **A CENA DO FILTRO DE TECIDO** (`=37`) — irmã da [`thumb`]; ⚠️ **não** é parte
 /// da [`filter`], e o cabeçalho dela diz porquê.
 #[path = "sculpt3d_scenes_cloth_filter.rs"]

@@ -566,3 +566,131 @@ fn um_dab_de_verdade_nao_move_o_dedo_vizinho() {
          `PH2D_SCULPT_ALCANCE` esta' a `0` nesta corrida"
     );
 }
+
+// ---------------------------------------------------------------------------
+// (5) A CENA — que peça mostra o defeito a OLHO
+// ---------------------------------------------------------------------------
+
+/// **Duas pontas levantadas da MESMA esfera** — o caso real de dois dedos.
+///
+/// ⚠️ **A superfície LIGA as duas** (elas partilham o corpo), então aqui o
+/// discriminador é o tecto e não o `∞`: a máscara corta se descer uma ponta,
+/// atravessar o vale e subir a outra custar mais que `2 × R`.
+fn duas_pontas(sep_graus: f32, altura: f32, largura_graus: f32) -> Mesh {
+    let mut m = shapes::uv_sphere(160, 240, 1.0);
+    let w = largura_graus.to_radians();
+    let dirs: [[f32; 3]; 2] = [
+        [
+            (-sep_graus).to_radians().sin(),
+            0.0,
+            sep_graus.to_radians().cos(),
+        ],
+        [
+            sep_graus.to_radians().sin(),
+            0.0,
+            sep_graus.to_radians().cos(),
+        ],
+    ];
+    for p in m.positions_mut() {
+        let n = {
+            let l = (p[0] * p[0] + p[1] * p[1] + p[2] * p[2]).sqrt().max(1e-6);
+            [p[0] / l, p[1] / l, p[2] / l]
+        };
+        let mut h = 0.0f32;
+        for d in dirs {
+            let cos = (n[0] * d[0] + n[1] * d[1] + n[2] * d[2]).clamp(-1.0, 1.0);
+            let a = cos.acos() / w;
+            h = h.max(altura * (-a * a).exp());
+        }
+        for k in 0..3 {
+            p[k] += n[k] * h;
+        }
+    }
+    m.rebuild();
+    m
+}
+
+/// Quanto do peso a MÁSCARA cortaria — o passeio com o tecto do produto.
+fn cortado_pela_mascara(m: &Mesh, centro: [f32; 3], r: f32) -> (usize, f64) {
+    let curva = Falloff::default();
+    let mut scratch = QueryScratch::default();
+    let mut bola = Vec::new();
+    m.verts_in_sphere(centro, r, &mut scratch, &mut bola);
+    if bola.is_empty() {
+        return (0, f64::NAN);
+    }
+    let pos = m.positions();
+    let peso = |i: u32| f64::from(curva.weight((dist(pos[i as usize], centro) / r).min(1.0)));
+    let total: f64 = bola.iter().map(|&i| peso(i)).sum();
+    let mut geo = Vec::new();
+    pela_superficie(m, semente(m, centro), 2.0 * r, &mut geo);
+    let cort: f64 = bola
+        .iter()
+        .filter(|&&i| !geo[i as usize].is_finite())
+        .map(|&i| peso(i))
+        .sum();
+    (bola.len(), 100.0 * cort / total)
+}
+
+/// ⭐⭐⭐ **De onde sai a CENA do smoke** — o dono disse *«do modo como o objeto é
+/// não é possível testar»*, e ele tem razão: na orelha os dois lados do sulco são
+/// a MESMA superfície contínua, então a máscara só muda a PROFUNDIDADE do sulco
+/// — uma diferença de grau, que ninguém julga a olho sem as duas lado a lado.
+///
+/// ⇒ esta sonda procura a peça em que o defeito é **inconfundível**: pintar uma
+/// parte e a OUTRA mexer-se. Ela varre a geometria de duas pontas e o raio do
+/// pincel, e imprime quanto a máscara cortaria em cada célula.
+#[test]
+#[ignore = "sonda: escolhe a geometria da cena do smoke"]
+fn qual_peca_mostra_o_defeito_a_olho() {
+    println!("\n== (5) A CENA — quanto a mascara corta em cada geometria ==");
+    println!(
+        "{:>34} {:>7} | {:>7} {:>9}",
+        "peca", "raio", "verts", "cortado"
+    );
+    println!("{}", "-".repeat(64));
+
+    // (a) DUAS PONTAS na mesma esfera — o caso real dos dois dedos.
+    for (sep, alt, larg) in [
+        (12.0f32, 1.0f32, 6.0f32),
+        (12.0, 1.5, 5.0),
+        (10.0, 1.5, 4.0),
+        (8.0, 2.0, 3.5),
+    ] {
+        let m = duas_pontas(sep, alt, larg);
+        // Um ponto no flanco INTERNO da ponta da esquerda, a meia altura.
+        let a = (-sep).to_radians();
+        let meio = 1.0 + alt * 0.5;
+        // Inclinado para dentro: o flanco que olha para a outra ponta.
+        let b = a + larg.to_radians() * 0.9;
+        let centro = [meio * b.sin(), 0.0, meio * b.cos()];
+        for r in [0.20f32, 0.35, 0.50, 0.70] {
+            let (n, pct) = cortado_pela_mascara(&m, centro, r);
+            println!(
+                "{:>34} {r:>7.2} | {n:>7} {pct:>8.2}%",
+                format!("pontas sep={sep:.0} alt={alt:.1} larg={larg:.1}")
+            );
+        }
+    }
+
+    // (b) DOIS LOBOS SOLTOS na mesma malha — a superficie nao os liga, logo o
+    // corte e' total e independente do tecto. E' o caso de um modelo IMPORTADO
+    // em duas partes, ou do resultado de um `extract`.
+    for folga in [0.05f32, 0.15] {
+        let m = dois_dedos(folga);
+        let centro = [-(folga * 0.5), 0.0, 0.0];
+        for r in [0.20f32, 0.35, 0.50] {
+            let (n, pct) = cortado_pela_mascara(&m, centro, r);
+            println!(
+                "{:>34} {r:>7.2} | {n:>7} {pct:>8.2}%",
+                format!("lobos soltos folga={folga:.2}")
+            );
+        }
+    }
+
+    println!(
+        "\n  LEITURA: a cena do smoke e' a celula com o corte MAIOR num raio que um\n  \
+         artista de facto usa. Abaixo de ~10% a diferenca nao se ve a olho, e uma\n  \
+         cena que nao mostra o defeito e' pior que cena nenhuma."
+    );
+}

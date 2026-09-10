@@ -493,6 +493,7 @@ pub(crate) fn for_scene(mesh: &ph2d_mesh::Mesh) {
     crate::sculpt3d::scenes::viewports::announce();
     crate::sculpt3d::scenes::quad::announce();
     crate::sculpt3d::scenes::ear::announce();
+    crate::sculpt3d::scenes::alcance::announce();
     if crate::sculpt3d::donation_scene() {
         eprintln!(
             "[sculpt3d] =2 A DOACAO: ha uma TELA BRANCA embaixo, e a tecla D alterna\n\

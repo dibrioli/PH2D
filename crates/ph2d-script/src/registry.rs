@@ -77,7 +77,16 @@ mod tests {
         //   `VecInstance`, F4.6c) -- ver a nota dos TRES contadores em `ph2d-ecs`. ⛔ Um componente
         //   que SAI conta tanto como um que entra: ECS 77 ⇒ aqui 78, e o numero foi CONTADO (o
         //   gate imprimiu `left: 78`).
-        assert_eq!(reg.len(), 78);
+        // ⚠️⚠️ **+7 em 2026-09-10, e este espelho esteve VERMELHO desde a wave do `Timer`.** Os
+        //   TOP-20 #2 (`Timers`, +1), #4 (`AudioSource2D` + `AudioListener2D`, +2) e #7
+        //   (`GameCamera` + `CameraFollow` + `CameraLimits`, +3) entraram no `ph2d-ecs` sem que
+        //   ninguem contasse aqui — mais o `TimerRuntime` que o registo do ECS ganhou no mesmo
+        //   bloco. ECS `77 -> 84` ⇒ aqui `78 -> 85`, e o numero foi CONTADO (o gate imprimiu
+        //   `left: 85`).
+        // ⛔⛔ **E o motivo de ter demorado tres waves a aparecer e' de PROCESSO, nao de codigo:**
+        //   cada fecho correu `-p` so' sobre as crates EDITADAS, e este gate vive numa que nenhuma
+        //   das tres tocou. *Um portao que so' corre o que a linha editou e' cego a todo espelho.*
+        assert_eq!(reg.len(), 85);
         assert!(reg.get_by_name("ph2d::script::LuauScript").is_some());
     }
 }

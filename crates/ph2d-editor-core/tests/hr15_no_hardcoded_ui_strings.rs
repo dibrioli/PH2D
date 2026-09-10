@@ -11,12 +11,30 @@
 //! messages, panics) are NOT targets — they aren't user-visible UI
 //! strings, and HR-15 explicitly exempts them.
 //!
-//! Until the Fluent runtime (`ph2d-i18n`) is wired and `t!(...)`
-//! exists, this test enforces a **frozen baseline**: each file in
-//! `BASELINE` is allowed exactly the listed number of violations.
-//! Any file not in `BASELINE` must have zero. When `t!(...)` ships,
-//! reduce `BASELINE` entries to 0 (or remove) and the test becomes
-//! strict.
+//! ⛔⛔ **ESTA PROSA PROMETIA A LEI INTEIRA E ENTREGA DUAS METADES — corrigido em 2026-09-10.**
+//!
+//! Ela dizia: *«Until the Fluent runtime (`ph2d-i18n`) is wired and `t!(...)` exists, this test
+//! enforces a frozen baseline… When `t!(...)` ships, reduce `BASELINE` entries to 0»*. ⚠️ **A porta
+//! CHEGOU e a frase ficou:** o `ph2d_i18n::tr` existe, é usado por seis tabelas
+//! (`vector` · `sculpt3d` · `model3d` · `chrome` · e as chaves do `lib.rs`), e a `ph2d-editor-core`
+//! migrou os rótulos dela em 2026-09-10. *Um gate à espera de uma coisa que já chegou é uma frase
+//! que faz a próxima pessoa acreditar que o HR-15 está fechado.*
+//!
+//! # ⚠️ O que este gate cobre, e o que ele NÃO cobre
+//!
+//! | metade do HR-15 | quem a mede | alcance |
+//! |---|---|---|
+//! | o rótulo de **acessibilidade** e o *placeholder* (`.label(…)` · `.placeholder(…)`) | **este ficheiro** | só `src/widget/`, com baseline congelada |
+//! | o texto **PINTADO** (o que o artista lê no ecrã) | [`no_label_of_this_crate_is_written_in_the_painter`](no_label_of_this_crate_is_written_in_the_painter.rs) | a crate inteira, por ponto fixo sobre as portas de texto |
+//!
+//! ⛔ **Nenhum dos dois sozinho é «o HR-15»**, e foi exactamente por isso que `418` literais
+//! pintados viveram anos sem uma régua: este gate lê dois padrões, e o texto que o artista **vê**
+//! não passa por nenhum deles. Censo e mecanismo:
+//! `docs/UI_New_and_Simple/medicoes/07_o_buraco_do_hr15_o_texto_PINTADO.md`.
+//!
+//! A `BASELINE` abaixo continua a ser o que é: **dívida congelada que só encolhe**. Um ficheiro
+//! fora dela tem de ter zero, e um que desça abaixo do número obriga a baixar a entrada — é a
+//! metade de obsolescência, e é ela que impede a lista de virar licença (`CLAUDE.md` §5.0).
 //!
 //! Failure modes this catches:
 //! - New widget introduces a hardcoded `.label(...)` or

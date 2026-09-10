@@ -209,8 +209,13 @@ varredura mecânica de uma vez.
    painéis que o artista tem abertos o dia inteiro (`hierarchy`, `inspector`, `painter_layers`),
    porque é ali que o censo do degrau `G` fica cego — *curar o maior primeiro é ordenar por
    esforço; curar o mais aberto primeiro é ordenar por resposta.*
-3. ⚠️ **Corrigir a prosa do gate** no mesmo commit: ela promete a lei inteira e entrega dois
-   padrões, e é essa frase que faz a próxima pessoa acreditar que o HR-15 está fechado.
+3. ✅ **FEITO (2026-09-10) — a prosa do gate estava corrigida.** Ela dizia *«Until the Fluent
+   runtime is wired and `t!(...)` exists»*, e a porta **já tinha chegado**. O
+   [`hr15_no_hardcoded_ui_strings`](../../../crates/ph2d-editor-core/tests/hr15_no_hardcoded_ui_strings.rs)
+   passa a nomear **as duas metades** e a dizer que nenhuma delas sozinha é o HR-15: ele mede o
+   rótulo de acessibilidade e o *placeholder* em `src/widget/`; o texto **pintado** tem gate
+   próprio. *Um gate à espera de uma coisa que já chegou é a frase que faz a próxima pessoa
+   acreditar que a lei está fechada.*
 
 ## ⛔ Recusas MEDIDAS
 

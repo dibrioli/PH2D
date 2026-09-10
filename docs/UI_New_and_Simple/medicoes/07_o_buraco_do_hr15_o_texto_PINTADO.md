@@ -201,15 +201,21 @@ varredura mecânica de uma vez.
 
 ## §4 — O que fica recomendado, em ordem
 
-1. **Alargar o gate para VER o texto pintado** (a forma nova: `paint_text*` com literal), com a
-   baseline por crate congelada nos números da §2 — de preferência **na janela de integração**, que
-   é quando as 13 crates estão na mesma árvore e ninguém está a meio de uma wave.
-2. **Curar por CRATE, pela linha dona de cada uma** — a `ph2d-panel-inspector` sozinha é um terço
-   do total. ⭐ **E a ORDEM entre as crates sai da §3-bis, não do tamanho delas:** primeiro os
+1. ✅ **FEITO, e o desenho MUDOU pelo caminho.** Esta linha pedia *«um gate com a baseline por
+   crate congelada, na janela de integração»* — e a §3 do próprio doc explica porque isso não
+   serve: **uma baseline com a dívida de 19 crates dentro põe a próxima linha vermelha por causa de
+   um gate desta.** ⇒ o que existe é
+   [`no_label_of_this_crate_is_written_in_the_painter`](../../../crates/ph2d-editor-core/tests/no_label_of_this_crate_is_written_in_the_painter.rs),
+   **por crate, a zero, na crate desta linha**, com as excepções nomeadas e o mecanismo de cada
+   uma. ⭐ **Cada linha dona de uma crate copia-o com a lista dela** — e nesse dia nenhuma delas
+   tem de editar o teste de outra pessoa. *Uma catraca partilhada e uma catraca replicada medem a
+   mesma coisa; só a segunda respeita o isolamento.*
+2. **Curar por CRATE, pela linha dona de cada uma** — ✅ a `ph2d-editor-core` fechou (§2-ter);
+   ⏳ faltam **18**, e a `ph2d-panel-painter-layers` sozinha (`166`) é `40 %` do que resta. ⭐ **E a ORDEM entre as crates sai da §3-bis, não do tamanho delas:** primeiro os
    painéis que o artista tem abertos o dia inteiro (`hierarchy`, `inspector`, `painter_layers`),
    porque é ali que o censo do degrau `G` fica cego — *curar o maior primeiro é ordenar por
    esforço; curar o mais aberto primeiro é ordenar por resposta.*
-3. ✅ **FEITO (2026-09-10) — a prosa do gate estava corrigida.** Ela dizia *«Until the Fluent
+3. ✅ **FEITO (2026-09-10) — a prosa do gate foi corrigida.** Ela dizia *«Until the Fluent
    runtime is wired and `t!(...)` exists»*, e a porta **já tinha chegado**. O
    [`hr15_no_hardcoded_ui_strings`](../../../crates/ph2d-editor-core/tests/hr15_no_hardcoded_ui_strings.rs)
    passa a nomear **as duas metades** e a dizer que nenhuma delas sozinha é o HR-15: ele mede o

@@ -249,7 +249,11 @@ extend-ignore-identifiers-re = [
     # PLURAL do substantivo do módulo Motion (*«há transformes e tints»* — os nós que escrevem
     # o `Transform` de uma linha). O typos oferece `transfer`/`transformers`, que trocariam uma
     # ORDEM por um verbo de transferência e um NÓ por um filme.
-    "^transformes?$",
+    # ⚠️ **INSENSÍVEL A MAIÚSCULAS, e a razão é medida:** a entrada existia ancorada em
+    # minúsculas e o `typos` continuava a acusar — o nome do grupo aparece como título
+    # (`TRANSFORMES & DEFORMADORES`) e capitalizado (`«Transformes»`), e nenhum dos dois casa
+    # `^transformes?$`. *Uma isenção com o alcance errado lê-se como isenção e não isenta.*
+    "(?i)^transformes?$",
 ]
 
 [default.extend-identifiers]
@@ -271,6 +275,11 @@ instale = "instale"  # pt-BR imperativo ("instale este plano", donated_form.rs) 
 # faltava e o `typos` le-o como `decides`. Nao ha risco de esconder typo real: a
 # palavra so aparece como sufixo de `§4-`.
 decies = "decies"
+# `transformes` — pt, o nome do GRUPO do ciclo 3 dos Motion Nodes. ⚠️ Ele já está isento como
+# identificador (`(?i)^transformes?$` acima), e isso **não alcança um NOME DE FICHEIRO**: o
+# `typos` varre os caminhos, e `03_transformes.html` tokeniza-se em `03_transformes`, que os
+# âncoras não casam. A entrada por PALAVRA apanha o sub-token onde quer que ele esteja.
+transformes = "transformes"
 comercial = "comercial"  # pt-PT ("valor comercial") — o ingles seria `commercial`, mas o texto e' portugues
 contentes = "contentes"  # pt ("as guardas ficavam todas contentes") — o ingles seria `contents`, mas o texto e' portugues (ph2d-trace, 2026-08-23)
 inconveniente = "inconveniente"  # pt ("um gate inconveniente") — o ingles seria `inconvenience`; texto portugues (sim_extract_sheet_tests, 2026-08-23)

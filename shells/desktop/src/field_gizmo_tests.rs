@@ -117,7 +117,7 @@ fn every_name_a_spec_uses_is_a_declared_param_of_that_node() {
     // este gate verde sobre zero nós.
     assert!(
         com_spec >= 3,
-        "so' {com_spec} no(s) com spec de gizmo -- os tre^s campos espaciais te^m de a ter"
+        "so' {com_spec} no(s) com spec de gizmo -- os tres campos espaciais tem de a ter"
     );
 }
 

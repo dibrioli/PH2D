@@ -131,7 +131,7 @@ fn the_sweep_ceiling_is_the_highest_arm_the_router_actually_has() {
     for n in MAX_DEMO_LEVEL + 1..=MAX_DEMO_LEVEL + 8 {
         assert!(
             !monta(n),
-            "a cena `={n}` monta e esta' ACIMA do tecto `{MAX_DEMO_LEVEL}` -- as tre^s \
+            "a cena `={n}` monta e esta' ACIMA do tecto `{MAX_DEMO_LEVEL}` -- as tres \
              travessias param no tecto, entao ela existe e nunca e' diagnosticada"
         );
     }

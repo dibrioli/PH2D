@@ -1,6 +1,6 @@
 <!doctype html>
 <meta charset="utf-8">
-<title>PH2D &middot; Deixar a f&iacute;sica decidir</title>
+<title>PH2D · Deixar a física decidir</title>
 <style>
   @page { size: A4; margin: 16mm 15mm; }
   :root {
@@ -75,185 +75,185 @@
            color:var(--t3); font-size:11px; }
 </style>
 
-<h1>Deixar a f&iacute;sica decidir
-  <small>PH2D &middot; Motion Nodes &middot; tutorial 5 &mdash; os doze n&oacute;s que entregam a
-  &uacute;ltima decis&atilde;o a uma <b>lei</b>, e o que eles pedem em troca</small></h1>
+<h1>Deixar a física decidir
+  <small>PH2D · Motion Nodes · tutorial 5 — os doze nós que entregam a
+  última decisão a uma <b>lei</b>, e o que eles pedem em troca</small></h1>
 
-<p>Nos quatro tutoriais anteriores voc&ecirc; disse <b>onde</b> cada objeto est&aacute;,
-<b>como</b> ele anda e <b>quem</b> &eacute; afetado. Tudo o que aconteceu na tela foi voc&ecirc;
+<p>Nos quatro tutoriais anteriores você disse <b>onde</b> cada objeto está,
+<b>como</b> ele anda e <b>quem</b> é afetado. Tudo o que aconteceu na tela foi você
 que mandou acontecer.</p>
 
-<p>Este grupo &eacute; diferente: voc&ecirc; deixa de dizer <em>onde a pe&ccedil;a vai parar</em> e
-passa a dizer <em>que for&ccedil;as agem sobre ela</em>. Onde ela p&aacute;ra &eacute; uma
-consequ&ecirc;ncia &mdash; e &eacute; a&iacute; que uma anima&ccedil;&atilde;o come&ccedil;a a
+<p>Este grupo é diferente: você deixa de dizer <em>onde a peça vai parar</em> e
+passa a dizer <em>que forças agem sobre ela</em>. Onde ela pára é uma
+consequência — e é aí que uma animação começa a
 parecer viva em vez de desenhada.</p>
 
-<div class="note"><b>O que este grupo pede em troca: um rel&oacute;gio.</b> Tudo o que voc&ecirc;
-fez at&eacute; aqui acontecia num instante &mdash; voc&ecirc; mexia num controlo e via o resultado
-parado. Uma simula&ccedil;&atilde;o s&oacute; existe <em>ao longo do tempo</em>: ela precisa de
-<b>Play</b>. &Eacute; a &uacute;nica coisa neste tutorial que n&atilde;o tem atalho.</div>
+<div class="note"><b>O que este grupo pede em troca: um relógio.</b> Tudo o que você
+fez até aqui acontecia num instante — você mexia num controlo e via o resultado
+parado. Uma simulação só existe <em>ao longo do tempo</em>: ela precisa de
+<b>Play</b>. É a única coisa neste tutorial que não tem atalho.</div>
 
-<h2>1 &middot; Abrir</h2>
+<h2>1 · Abrir</h2>
 <p>Cole isto inteiro num terminal. Na primeira vez ele compila (alguns minutos); depois abre em
 segundos.</p>
 <div class="cmd">cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value &amp;&amp; env PH2D_GPU_COOK_DEMO=113 cargo run -p ph2d-host-desktop --release</div>
 
 <ol class="steps">
   <li><b>Carregue em <kbd>Play</kbd>.</b>
-      <div class="out">Uma chuva de pe&ccedil;as cai sobre um <b>bloco</b>, empilha-se em cima dele
-      e escorrega pelos lados. Passados uns segundos a queda <b>recome&ccedil;a sozinha</b>.</div>
-      <div class="bad">Se nada se mexer, o transporte est&aacute; parado. Esta cena &eacute; uma
-      simula&ccedil;&atilde;o: sem Play ela &eacute; uma fotografia do primeiro instante.</div></li>
+      <div class="out">Uma chuva de peças cai sobre um <b>bloco</b>, empilha-se em cima dele
+      e escorrega pelos lados. Passados uns segundos a queda <b>recomeça sozinha</b>.</div>
+      <div class="bad">Se nada se mexer, o transporte está parado. Esta cena é uma
+      simulação: sem Play ela é uma fotografia do primeiro instante.</div></li>
 </ol>
 
-<h2>2 &middot; O colisor tem al&ccedil;a, e ela &eacute; nova</h2>
+<h2>2 · O colisor tem alça, e ela é nova</h2>
 
-<p>O <b>Collider</b> &eacute; literalmente uma coisa que se p&otilde;e num s&iacute;tio &mdash; um
-ch&atilde;o, um prato, uma caixa. At&eacute; este ciclo, punha-se digitando n&uacute;meros em dois
+<p>O <b>Collider</b> é literalmente uma coisa que se põe num sítio — um
+chão, um prato, uma caixa. Até este ciclo, punha-se digitando números em dois
 controlos. Agora ele tem <b>caixa na tela</b>, como qualquer objeto.</p>
 
 <ol class="steps" start="2">
-  <li><b>Clique no cart&atilde;o <code>Collider</code>.</b>
-      <div class="out">Uma caixa aparece &agrave; volta do bloco.</div>
-      <div class="bad">Se nenhuma caixa aparecer, o cart&atilde;o n&atilde;o est&aacute;
-      selecionado &mdash; clique no <em>t&iacute;tulo</em> dele.</div></li>
+  <li><b>Clique no cartão <code>Collider</code>.</b>
+      <div class="out">Uma caixa aparece à volta do bloco.</div>
+      <div class="bad">Se nenhuma caixa aparecer, o cartão não está
+      selecionado — clique no <em>título</em> dele.</div></li>
   <li><b>Arraste a caixa.</b>
-      <div class="out">O bloco muda de s&iacute;tio, e o monte que cai passa a formar-se onde
-      voc&ecirc; o p&ocirc;s.</div></li>
+      <div class="out">O bloco muda de sítio, e o monte que cai passa a formar-se onde
+      você o pôs.</div></li>
   <li><b>Arraste um canto da caixa.</b>
-      <div class="out">O bloco fica maior ou menor &mdash; e apanha mais ou menos pe&ccedil;as. As
+      <div class="out">O bloco fica maior ou menor — e apanha mais ou menos peças. As
       linhas <code>Box Width</code> e <code>Box Height</code> mexem-se junto.</div></li>
   <li><b>Arraste a argola de rodar.</b>
-      <div class="out">O bloco inclina-se, e as pe&ccedil;as <b>escorregam</b> em vez de
+      <div class="out">O bloco inclina-se, e as peças <b>escorregam</b> em vez de
       assentarem.</div></li>
 </ol>
 
-<div class="note"><b>A al&ccedil;a muda de forma com a forma.</b> Na linha <code>Shape</code> do
-mesmo cart&atilde;o est&atilde;o quatro op&ccedil;&otilde;es: <b>Plane</b>, <b>Disc</b>,
-<b>Bowl</b> e <b>Box</b>. Um disco e uma ta&ccedil;a medem-se por um <em>raio</em>, uma caixa por
-<em>duas extens&otilde;es</em> &mdash; e a al&ccedil;a passa a medir o que aquela forma de facto
-l&ecirc;. Este &eacute; o primeiro n&oacute; da casa cuja al&ccedil;a depende de um controlo, e
-n&atilde;o s&oacute; do tipo de n&oacute;.</div>
+<div class="note"><b>A alça muda de forma com a forma.</b> Na linha <code>Shape</code> do
+mesmo cartão estão quatro opções: <b>Plane</b>, <b>Disc</b>,
+<b>Bowl</b> e <b>Box</b>. Um disco e uma taça medem-se por um <em>raio</em>, uma caixa por
+<em>duas extensões</em> — e a alça passa a medir o que aquela forma de facto
+lê. Este é o primeiro nó da casa cuja alça depende de um controlo, e
+não só do tipo de nó.</div>
 
-<h2>3 &middot; Empurrar, ou impor uma velocidade</h2>
+<h2>3 · Empurrar, ou impor uma velocidade</h2>
 
-<p>O cart&atilde;o <b>Wind</b> &eacute; a gravidade desta cena: uma for&ccedil;a apontada para
-baixo. Mas h&aacute; <b>duas maneiras</b> de uma for&ccedil;a agir, e elas d&atilde;o
-anima&ccedil;&otilde;es completamente diferentes.</p>
+<p>O cartão <b>Wind</b> é a gravidade desta cena: uma força apontada para
+baixo. Mas há <b>duas maneiras</b> de uma força agir, e elas dão
+animações completamente diferentes.</p>
 
 <ol class="steps" start="6">
-  <li>No cart&atilde;o <code>Wind</code>, na linha <code>Acts As</code>, troque <b>Force</b> por
+  <li>No cartão <code>Wind</code>, na linha <code>Acts As</code>, troque <b>Force</b> por
       <b>Target Velocity</b>.
-      <div class="out">As pe&ccedil;as deixam de <em>acelerar</em> e passam a cair a velocidade
-      <b>constante</b> &mdash; como uma folha, e n&atilde;o como uma pedra. E uma linha
-      <b><code>Air Resistance</code></b> <em>aparece</em> no cart&atilde;o.</div></li>
+      <div class="out">As peças deixam de <em>acelerar</em> e passam a cair a velocidade
+      <b>constante</b> — como uma folha, e não como uma pedra. E uma linha
+      <b><code>Air Resistance</code></b> <em>aparece</em> no cartão.</div></li>
   <li>Arraste o <code>Air Resistance</code>.
-      <div class="out">Ela decide <em>quanto tempo</em> a pe&ccedil;a leva a chegar &agrave;
-      velocidade do vento. Baixo = demora; alto = quase instant&acirc;neo.</div>
-      <div class="bad">Se a linha <code>Air Resistance</code> n&atilde;o tiver aparecido,
-      voc&ecirc; ainda est&aacute; em <b>Force</b> &mdash; e ali ela est&aacute; escondida de
-      prop&oacute;sito: em <b>Force</b> nada a l&ecirc;.</div></li>
+      <div class="out">Ela decide <em>quanto tempo</em> a peça leva a chegar à
+      velocidade do vento. Baixo = demora; alto = quase instantâneo.</div>
+      <div class="bad">Se a linha <code>Air Resistance</code> não tiver aparecido,
+      você ainda está em <b>Force</b> — e ali ela está escondida de
+      propósito: em <b>Force</b> nada a lê.</div></li>
 </ol>
 
 <div class="figs two">
   <figure class="fig"><img src="../fig/sim_force.svg" alt="fila fotografada seis vezes, cada vao maior que o anterior">
-    <b>Acts As &middot; Force</b>
-    <figcaption>os v&atilde;os crescem <em>sempre igual</em> &mdash; ela acelera e nunca
-    p&aacute;ra de acelerar</figcaption></figure>
+    <b>Acts As · Force</b>
+    <figcaption>os vãos crescem <em>sempre igual</em> — ela acelera e nunca
+    pára de acelerar</figcaption></figure>
   <figure class="fig"><img src="../fig/sim_target.svg" alt="fila fotografada seis vezes, os vaos crescem cada vez menos">
-    <b>Acts As &middot; Target Velocity</b>
-    <figcaption>os v&atilde;os crescem <em>cada vez menos</em> &mdash; ela est&aacute; a chegar
-    &agrave; velocidade do vento</figcaption></figure>
+    <b>Acts As · Target Velocity</b>
+    <figcaption>os vãos crescem <em>cada vez menos</em> — ela está a chegar
+    à velocidade do vento</figcaption></figure>
 </div>
 
-<div class="note"><b>Estas duas imagens n&atilde;o s&atilde;o desenhos, e o que se olha nelas
-&eacute; o ESPA&Ccedil;O entre os pontos.</b> S&atilde;o a mesma fila de pe&ccedil;as, fotografada
-seis vezes no mesmo segundo, com um &uacute;nico controlo de diferen&ccedil;a. &Agrave; esquerda
-cada salto &eacute; maior que o anterior <em>pela mesma quantidade</em>; &agrave; direita cada
-salto cresce menos que o anterior, porque a pe&ccedil;a est&aacute; a aproximar-se da velocidade
-do vento e a for&ccedil;a que a empurra vai-se apagando. Se as duas contarem a mesma
-hist&oacute;ria, elas <b>recusam-se a ser geradas</b>.</div>
+<div class="note"><b>Estas duas imagens não são desenhos, e o que se olha nelas
+é o ESPAÇO entre os pontos.</b> São a mesma fila de peças, fotografada
+seis vezes no mesmo segundo, com um único controlo de diferença. À esquerda
+cada salto é maior que o anterior <em>pela mesma quantidade</em>; à direita cada
+salto cresce menos que o anterior, porque a peça está a aproximar-se da velocidade
+do vento e a força que a empurra vai-se apagando. Se as duas contarem a mesma
+história, elas <b>recusam-se a ser geradas</b>.</div>
 
-<div class="note"><b>Este r&oacute;tulo chamava-se <code>Mode</code>, e n&atilde;o dizia nada.</b>
-A palavra <em>Mode</em> aparecia em <b>26</b> cart&otilde;es deste app, sobre <b>24</b> perguntas
-diferentes &mdash; era a palavra mais usada do cat&aacute;logo e a que menos ensinava. Aqui a
-pergunta tem nome: <em>como &eacute; que esta for&ccedil;a age?</em> &mdash; e a resposta
-l&ecirc;-se de uma vez: <code>Acts As: Target Velocity</code>.</div>
+<div class="note"><b>Este rótulo chamava-se <code>Mode</code>, e não dizia nada.</b>
+A palavra <em>Mode</em> aparecia em <b>26</b> cartões deste app, sobre <b>24</b> perguntas
+diferentes — era a palavra mais usada do catálogo e a que menos ensinava. Aqui a
+pergunta tem nome: <em>como é que esta força age?</em> — e a resposta
+lê-se de uma vez: <code>Acts As: Target Velocity</code>.</div>
 
-<h2>4 &middot; A rajada, e as gavetas do cart&atilde;o</h2>
+<h2>4 · A rajada, e as gavetas do cartão</h2>
 
-<p>Uma for&ccedil;a constante &eacute; previs&iacute;vel demais para parecer natural. O
-<b>Wind</b> sabe soprar aos <b>solavancos</b>, e cada pe&ccedil;a recebe a rajada dela &mdash;
-n&atilde;o todas ao mesmo tempo.</p>
+<p>Uma força constante é previsível demais para parecer natural. O
+<b>Wind</b> sabe soprar aos <b>solavancos</b>, e cada peça recebe a rajada dela —
+não todas ao mesmo tempo.</p>
 
 <ol class="steps" start="8">
-  <li>No cart&atilde;o <code>Wind</code>, <b>abra a se&ccedil;&atilde;o <code>Gust</code></b>
-      (clique no t&iacute;tulo dela).
-      <div class="out">Seis controlos aparecem, que estavam arrumados l&aacute; dentro.</div></li>
+  <li>No cartão <code>Wind</code>, <b>abra a seção <code>Gust</code></b>
+      (clique no título dela).
+      <div class="out">Seis controlos aparecem, que estavam arrumados lá dentro.</div></li>
   <li>Arraste <code>Gust</code>.
-      <div class="out">A chuva passa a cair torta: umas pe&ccedil;as adiantam-se, outras
+      <div class="out">A chuva passa a cair torta: umas peças adiantam-se, outras
       atrasam-se.</div></li>
-  <li>Abra a se&ccedil;&atilde;o <code>Timing</code> e arraste <code>Gust Frequency</code>.
+  <li>Abra a seção <code>Timing</code> e arraste <code>Gust Frequency</code>.
       <div class="out">A rajada fica mais nervosa ou mais lenta.</div></li>
 </ol>
 
-<div class="note"><b>Por que o cart&atilde;o tem gavetas.</b> Este n&oacute; tem doze controlos.
-Doze deslizantes em fila obrigam voc&ecirc; a ler todos para achar um; tr&ecirc;s
-t&iacute;tulos transformam-nos em tr&ecirc;s perguntas que voc&ecirc; j&aacute; tem na cabe&ccedil;a
-&mdash; <em>para onde sopra e com que for&ccedil;a</em> (em cima, sempre &agrave; vista),
+<div class="note"><b>Por que o cartão tem gavetas.</b> Este nó tem doze controlos.
+Doze deslizantes em fila obrigam você a ler todos para achar um; três
+títulos transformam-nos em três perguntas que você já tem na cabeça
+— <em>para onde sopra e com que força</em> (em cima, sempre à vista),
 <em>como ele varia</em> (<code>Gust</code>) e <em>em que ritmo</em> (<code>Timing</code>). Os
-controlos que est&atilde;o em cima, soltos, s&atilde;o a raz&atilde;o de existir do n&oacute;: eles
+controlos que estão em cima, soltos, são a razão de existir do nó: eles
 nunca se escondem.</div>
 
-<h2>5 &middot; O grupo inteiro</h2>
+<h2>5 · O grupo inteiro</h2>
 
-<p>A cena que voc&ecirc; abriu usa cinco destes n&oacute;s. Os outros sete resolvem o resto.</p>
+<p>A cena que você abriu usa cinco destes nós. Os outros sete resolvem o resto.</p>
 
-<h3>Os que d&atilde;o o rel&oacute;gio</h3>
+<h3>Os que dão o relógio</h3>
 <ul>
-  <li><b>Simulation Zone</b> &mdash; a mem&oacute;ria. Ela guarda o estado de um instante para o
-      seguinte, e a linha <code>Life Cycle</code> decide se a simula&ccedil;&atilde;o corre
-      <b>para sempre</b>, <b>uma vez</b>, ou em <b>ciclo</b> (&eacute; o que faz esta cena
-      recome&ccedil;ar sozinha).</li>
-  <li><b>Simulation Step</b> &mdash; quem aplica, <em>dentro</em> da zona, o que as for&ccedil;as
-      somaram: a velocidade e a posi&ccedil;&atilde;o do pr&oacute;ximo instante. &Eacute; ele que
-      faz as pe&ccedil;as desta cena ca&iacute;rem, e ele tamb&eacute;m carrega o amortecimento e
+  <li><b>Simulation Zone</b> — a memória. Ela guarda o estado de um instante para o
+      seguinte, e a linha <code>Life Cycle</code> decide se a simulação corre
+      <b>para sempre</b>, <b>uma vez</b>, ou em <b>ciclo</b> (é o que faz esta cena
+      recomeçar sozinha).</li>
+  <li><b>Simulation Step</b> — quem aplica, <em>dentro</em> da zona, o que as forças
+      somaram: a velocidade e a posição do próximo instante. É ele que
+      faz as peças desta cena caírem, e ele também carrega o amortecimento e
       os limites de velocidade.</li>
-  <li><b>Spawn</b> e <b>Lifetime</b> &mdash; pe&ccedil;as que <em>nascem</em> ao longo do tempo, e
+  <li><b>Spawn</b> e <b>Lifetime</b> — peças que <em>nascem</em> ao longo do tempo, e
       que <em>morrem</em> depois de um tempo.</li>
 </ul>
 
-<div class="note"><b>H&aacute; DUAS maneiras de correr uma simula&ccedil;&atilde;o, e voc&ecirc;
-escolhe uma.</b> Dentro de uma <b>Simulation Zone</b>, o que circula <em>&eacute;</em> o estado:
-as posi&ccedil;&otilde;es que saem da zona s&atilde;o a verdade, e quem d&aacute; o passo &eacute;
-o <b>Simulation Step</b> &mdash; foi assim que esta cena foi montada. A outra maneira &eacute; o
-<b>Integrate</b>, para quando a simula&ccedil;&atilde;o &eacute; um <em>desvio de uma
-anima&ccedil;&atilde;o</em> que voc&ecirc; j&aacute; tem: ali o resto do grafo continua a mandar
-na posi&ccedil;&atilde;o e a f&iacute;sica s&oacute; acrescenta o quanto ela se afastou.
-&#9888; <b>N&atilde;o ponha os dois</b>: seriam duas mem&oacute;rias da mesma coisa, e elas
-discordam na primeira pe&ccedil;a que desaparecer.</div>
+<div class="note"><b>Há DUAS maneiras de correr uma simulação, e você
+escolhe uma.</b> Dentro de uma <b>Simulation Zone</b>, o que circula <em>é</em> o estado:
+as posições que saem da zona são a verdade, e quem dá o passo é
+o <b>Simulation Step</b> — foi assim que esta cena foi montada. A outra maneira é o
+<b>Integrate</b>, para quando a simulação é um <em>desvio de uma
+animação</em> que você já tem: ali o resto do grafo continua a mandar
+na posição e a física só acrescenta o quanto ela se afastou.
+⚠ <b>Não ponha os dois</b>: seriam duas memórias da mesma coisa, e elas
+discordam na primeira peça que desaparecer.</div>
 
-<h3>As for&ccedil;as</h3>
+<h3>As forças</h3>
 <ul>
-  <li><b>Wind</b> &mdash; direcional, com rajada. Com a rajada a zero, ela &eacute; gravidade.</li>
-  <li><b>Attractor</b> &mdash; puxa (ou empurra) para um ponto. O cart&atilde;o dele tem as
+  <li><b>Wind</b> — direcional, com rajada. Com a rajada a zero, ela é gravidade.</li>
+  <li><b>Attractor</b> — puxa (ou empurra) para um ponto. O cartão dele tem as
       mesmas gavetas dos campos do tutorial anterior: <code>Placement</code> e
       <code>Falloff</code>.</li>
-  <li><b>Vortex</b> &mdash; roda as coisas &agrave; volta de um centro.</li>
-  <li><b>Curl</b> &mdash; turbul&ecirc;ncia: um campo de redemoinhos, sem fonte nem sorvedouro.</li>
-  <li><b>Drag</b> &mdash; trava tudo, como ar espesso.</li>
-  <li><b>Buoyancy</b> &mdash; empuxo: as coisas flutuam a uma altura, e podem baloi&ccedil;ar com
+  <li><b>Vortex</b> — roda as coisas à volta de um centro.</li>
+  <li><b>Curl</b> — turbulência: um campo de redemoinhos, sem fonte nem sorvedouro.</li>
+  <li><b>Drag</b> — trava tudo, como ar espesso.</li>
+  <li><b>Buoyancy</b> — empuxo: as coisas flutuam a uma altura, e podem baloiçar com
       ondas.</li>
 </ul>
 
-<div class="note"><b>As for&ccedil;as somam-se.</b> Voc&ecirc; pode ligar quatro em fila e todas
-contribuem &mdash; nenhuma anula a anterior. &Eacute; por isso que h&aacute; <em>um</em> passo no
-fim que aplica a soma, uma vez s&oacute; &mdash; nesta cena o <b>Simulation Step</b>.</div>
+<div class="note"><b>As forças somam-se.</b> Você pode ligar quatro em fila e todas
+contribuem — nenhuma anula a anterior. É por isso que há <em>um</em> passo no
+fim que aplica a soma, uma vez só — nesta cena o <b>Simulation Step</b>.</div>
 
-<h2>6 &middot; O que cada controlo faz</h2>
+<h2>6 · O que cada controlo faz</h2>
 
-<p>A tabela abaixo &eacute; <b>gerada do pr&oacute;prio app</b>: ela lista o que cada
-cart&atilde;o mostra quando voc&ecirc; larga o n&oacute;, com a faixa e a unidade de cada
+<p>A tabela abaixo é <b>gerada do próprio app</b>: ela lista o que cada
+cartão mostra quando você larga o nó, com a faixa e a unidade de cada
 controlo.</p>
 
 <!-- GERADO pelo gerador do tutorial. Nao editar a mao. -->
@@ -378,5 +378,5 @@ controlo.</p>
 <tr><td>Seed</td><td>0 a 9999</td><td></td></tr>
 </table>
 
-<footer>PH2D &middot; Motion Nodes &middot; tutorial 5 de 9 &mdash; ciclo da
-<b>simula&ccedil;&atilde;o</b>. Cena de smoke <code>PH2D_GPU_COOK_DEMO=113</code>.</footer>
+<footer>PH2D · Motion Nodes · tutorial 5 de 9 — ciclo da
+<b>simulação</b>. Cena de smoke <code>PH2D_GPU_COOK_DEMO=113</code>.</footer>

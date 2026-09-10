@@ -390,7 +390,7 @@ fn the_price_table_refuses_to_price_an_empty_stream() {
                 medidos += 1;
                 assert!(
                     d.n > 0,
-                    "`{nome}` emitiu ZERO objectos e mesmo assim a tabela ia po^r-lhe um relogio \
+                    "`{nome}` emitiu ZERO objectos e mesmo assim a tabela ia por-lhe um relogio \
                      e um veredito de dispositivo -- um numero sobre um stream vazio nao e' um \
                      numero pequeno, e' a ausencia de medicao com cara de medicao"
                 );

@@ -131,7 +131,7 @@ fn the_two_spatial_boxes_group_a_shared_param_the_same_way() {
             assert_eq!(
                 onde, onde0,
                 "`{param}` vive em `{onde}` no {n} e em `{onde0}` no {n0} -- dois irmaos com o \
-                 mesmo vocabulario te^m de o arrumar igual (e `(solto)` e' um sitio)"
+                 mesmo vocabulario tem de o arrumar igual (e `(solto)` e' um sitio)"
             );
         }
     }

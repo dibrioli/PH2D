@@ -73,10 +73,6 @@ mod viewports;
 #[path = "sculpt3d_navball.rs"]
 mod navball;
 
-/// ⭐⭐⭐ **A escultura reivindica este `Delete`?** — a lei pura; ver [`keys_delete`].
-#[path = "sculpt3d_keys_delete.rs"]
-mod keys_delete;
-
 /// ⭐⭐⭐ **A PONTE com a árvore do editor** — uma peça ⟺ uma entidade; ver [`entities`].
 #[path = "sculpt3d_entities.rs"]
 pub(crate) mod entities;

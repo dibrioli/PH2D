@@ -34,6 +34,7 @@ mod preview;
 pub mod rows;
 pub mod slots;
 pub mod state;
+mod state_channel;
 /// **AS ESCOLHAS nomeadas** — os enums que um chip escreve — ver [`state_modes`].
 pub mod state_modes;
 

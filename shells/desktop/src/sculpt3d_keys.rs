@@ -8,8 +8,27 @@
 //! ⚠️ A porta é a mesma de sempre: sem cena armada ela devolve `false` no primeiro `if`, e o
 //! teclado do app segue para o `store` como se este módulo não existisse.
 
-use super::{LIGHT_STEP_DEG, MaskOp, Merge, Primitive, RADIUS_STEP, Verb};
+use super::{LIGHT_STEP_DEG, MaskOp, RADIUS_STEP, Verb};
 use crate::app_state::App;
+
+/// ⭐ **Os verbos da LISTA** — o que o `Shift` arma, cortado daqui na integração de 2026-09-10,
+/// quando este ficheiro ficou vermelho no teto de LOC por ACUMULAÇÃO de duas linhas.
+///
+/// ⚠️ **Ele é declarado AQUI e não no `sculpt3d.rs`, e a razão é uma conta:** o pai estava a `599`
+/// de `600`, e pôr a declaração lá levava-o a `604` — *uma extracção que cura um ficheiro pode
+/// estourar o do lado*. Declarar um filho no módulo de que ele foi cortado é também onde ele
+/// pertence: quem o lê está a ler o teclado, não a raiz do módulo.
+#[path = "sculpt3d_keys_scene.rs"]
+mod keys_scene;
+
+/// ⭐⭐⭐ **A escultura reivindica este `Delete`?** — a lei pura.
+///
+/// ⚠️ **Declarado AQUI e não na raiz do módulo, pela mesma conta do irmão acima:** a
+/// `line/quadextract` levou o `sculpt3d.rs` de `596` a `604` contra um teto de `600` só com estas
+/// duas declarações, e o `Delete` é uma pergunta do TECLADO — quem a lê está a ler este ficheiro,
+/// e o único chamador dela sempre foi este.
+#[path = "sculpt3d_keys_delete.rs"]
+mod keys_delete;
 
 impl App {
     /// As teclas da cena 3D. Devolve `true` se consumiu.
@@ -104,12 +123,12 @@ impl App {
         // clique cedia ao sair do modo, a tecla não. Ver [`App::sculpt3d_keys_live`]
         // para o mecanismo e os números.
         // ⭐⭐⭐ **O `Delete` decide-se numa PORTA própria, e RESOLVE-SE aqui** — ver
-        // [`super::keys_delete`]. ⛔ Ele **não** pode cair no guarda geral abaixo: o report de
+        // [`keys_delete`]. ⛔ Ele **não** pode cair no guarda geral abaixo: o report de
         // 2026-09-04, com a linha impressa como prova, foi *«a ferramenta Motion/Vector está EM
         // MÃOS e reivindica as teclas nuas»* — e o `Delete` não é uma tecla nua. A lei que
         // decide está no irmão, com os quatro factos e a ordem das explicações.
         if code == K::Delete {
-            let factos = super::keys_delete::DeleteFacts {
+            let factos = keys_delete::DeleteFacts {
                 clay_on_screen: self.sculpt3d_clay_on_screen(),
                 text_focused: self.text_entry_focused(),
                 over_panel: crate::forwarding::cursor_over_hero_panel(
@@ -120,9 +139,7 @@ impl App {
                 vector_has_selection: self.vec_pen.selected_vert().is_some()
                     || !self.vec_pen.selected_paths().is_empty(),
             };
-            if let super::keys_delete::DeleteClaim::NotOurs(porque) =
-                super::keys_delete::claim_delete(&factos)
-            {
+            if let keys_delete::DeleteClaim::NotOurs(porque) = keys_delete::claim_delete(&factos) {
                 eprintln!("[sculpt3d] o Delete NAO foi para a escultura: {porque}");
                 return false;
             }
@@ -216,118 +233,8 @@ impl App {
         // dígitos que escolhem ferramenta, e o `match` de baixo não olha o
         // `shift`. Perguntar depois seria a mesma classe do item de menu que
         // nasce morto porque outro consumidor pegou o evento primeiro.
-        if shift {
-            let primitive = match code {
-                K::Digit1 => Some(Primitive::Sphere),
-                K::Digit2 => Some(Primitive::Cube),
-                K::Digit3 => Some(Primitive::Cylinder),
-                K::Digit4 => Some(Primitive::Torus),
-                _ => None,
-            };
-            if let Some(kind) = primitive {
-                let i = scene.add_primitive(kind);
-                eprintln!(
-                    "[sculpt3d] + {} (peca {i}, a cena tem {}) -- Ctrl+Z a tira",
-                    kind.label(),
-                    scene.objects.len()
-                );
-                return true;
-            }
-            if code == K::KeyD {
-                scene.duplicate_active();
-                eprintln!(
-                    "[sculpt3d] DUPLICOU: a cena tem {} pecas -- a copia nasce AO LADO na tela",
-                    scene.objects.len()
-                );
-                return true;
-            }
-            // **FUNDIR.** ⚠️ No `Shift+J` porque *juntar* é o verbo, e porque o
-            // `Shift` é onde os verbos da LISTA moram neste teclado (o `J` sozinho
-            // é des-subdividir, que age numa peça). O log traz o número dos TRÊS
-            // desfechos: a fusão não muda a silhueta da cena — as peças ficam
-            // onde estavam —, então sem a contagem o artista vê a mesma imagem e
-            // não tem como saber se a tecla fez alguma coisa.
-            if code == K::KeyJ {
-                match scene.merge_visible() {
-                    Merge::Done {
-                        pieces,
-                        verts,
-                        faces,
-                    } => eprintln!(
-                        "[sculpt3d] FUNDIDAS {pieces} pecas numa so' -- {verts} vertices / {faces} faces \
-                         (elas nao ficam SOLDADAS: use V para reconstruir a casca) -- Ctrl+Z as separa"
-                    ),
-                    Merge::Nothing => eprintln!(
-                        "[sculpt3d] nao ha' o que fundir: e' preciso mais de UMA peca a' vista \
-                         (Shift+I devolve a cena inteira)"
-                    ),
-                    Merge::Stack => eprintln!(
-                        "[sculpt3d] nao' funde com a pilha montada: a fusao troca a BASE, e todo nivel \
-                         acima e' subdivisao dela -- ACHATE a pilha antes"
-                    ),
-                }
-                return true;
-            }
-            // **ISOLAR.** ⚠️ A resposta visual é a cena SUMIR menos uma peça — é
-            // o *local view* do Blender, e é por isso que o log diz o que voltou
-            // ou o que ficou: uma tela que perde quatro objetos sem uma linha
-            // explicando é indistinguível de um crash de render.
-            // **A CAVIDADE** — o canal que faz a escultura ser LIDA
-            // (`docs/3D/05.1` §4, W10.1).
-            //
-            // ⚠️ **`Shift+C` e não `C`, e a única coisa que isto tira é um alias
-            // acidental:** `C` sozinho limpa a máscara, e como o bloco do `shift`
-            // cai adiante quando nada casa, hoje `Shift+C` também limpa. Nenhum
-            // atalho DOCUMENTADO se move — e o mnemônico do artista é **C**avity,
-            // que é o único que ele vai tentar antes de procurar.
-            if code == K::KeyC {
-                let amount = scene.cycle_cavity();
-                if amount == 0.0 {
-                    eprintln!(
-                        "[sculpt3d] cavidade: DESLIGADA -- o barro liso da W3, ao byte                          (Shift+C liga)"
-                    );
-                } else {
-                    eprintln!(
-                        "[sculpt3d] cavidade: {amount:.2} -- a fresta ESCURECE e a crista CLAREIA                          (Shift+C avanca; volta a zero depois de 1.00)"
-                    );
-                }
-                return true;
-            }
-            // **O ESPALHAMENTO SUB-SUPERFICIAL** (`docs/3D/05.1` §2a, W10.5) —
-            // o terceiro dos três canais que o Enio nomeou, ao lado do AO e da
-            // cavidade.
-            //
-            // ⚠️ `Shift+S` pelo mnemônico do artista (**S**kin / **S**cattering),
-            // e ele estava livre no bloco de shift.
-            if code == K::KeyS {
-                let amount = scene.cycle_sss();
-                if amount == 0.0 {
-                    eprintln!(
-                        "[sculpt3d] espalhamento: DESLIGADO -- o barro de sempre, ao byte                          (Shift+S liga)"
-                    );
-                } else {
-                    eprintln!(
-                        "[sculpt3d] espalhamento: {amount:.2} -- a luz ATRAVESSA a borda da sombra,                          e o VERMELHO vai mais longe que o azul.                          O painel tem as duas pistas: 'Subsurface' e 'Scatter' (o alcance)."
-                    );
-                }
-                return true;
-            }
-            if code == K::KeyI {
-                let on = scene.toggle_isolate();
-                if on {
-                    eprintln!(
-                        "[sculpt3d] ISOLADA: as outras {} pecas sairam da vista (Shift+I devolve) \
-                         -- o pincel nao alcanca o que nao se ve",
-                        scene.objects.len().saturating_sub(1)
-                    );
-                } else {
-                    eprintln!(
-                        "[sculpt3d] a cena inteira voltou: {} pecas a' vista",
-                        scene.objects.len()
-                    );
-                }
-                return true;
-            }
+        if shift && keys_scene::sculpt3d_shift_verbs(scene, code) {
+            return true;
         }
         let held = match code {
             K::KeyG => Some(Verb::Move),

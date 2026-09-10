@@ -132,6 +132,7 @@ pub(super) fn walk(
         let selected = super::slot_tabs::chosen(hero, slot);
         super::slot_tabs::paint_slot_tabs(
             bar,
+            slot,
             &occ,
             selected,
             scene,

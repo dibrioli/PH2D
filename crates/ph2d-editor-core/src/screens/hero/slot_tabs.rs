@@ -43,7 +43,7 @@ use crate::widget::ButtonState;
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, Theme};
+use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, Theme};
 use ph2d_vector::VectorScene;
 
 /// A altura da fila de abas — **uma linha**, o mesmo token da barra de menus e de uma linha de
@@ -54,7 +54,8 @@ pub const TAB_BAR_H: f32 = ROW_H_PX;
 // deles. Re-exportado AQUI pela mesma razão que o gesto de arrastar: um corte por tecto de LOC
 // não pode obrigar os chamadores a aprender uma segunda morada.
 pub use super::slot_tabs_face::{
-    TabFace, face as tab_face, natural_w as tab_natural_w, tab_icon_px, tab_pad_x,
+    TabFace, face as tab_face, natural_w as tab_natural_w, tab_bg, tab_dividers, tab_icon_px,
+    tab_pad_x, tab_radii, tab_row_bg,
 };
 
 /// ⛔ **O salto que separa o id de uma ABA do id do PAINEL que ela escolhe.**
@@ -346,68 +347,6 @@ pub fn tab_rects(bar: Rect, widths: &[f32]) -> Vec<Rect> {
         .collect()
 }
 
-/// ⭐⭐⭐ **A FAIXA RECUA e a aba escolhida SOBE ATÉ AO PAINEL** — os dois tons, numa porta só.
-///
-/// Portado de `theme_modern.cpp` (Godot 4.6, MIT): a faixa e a aba inactiva levam
-/// `surface_lowest_color`; a escolhida é um **duplicado do `base_style`**, isto é, o corpo do
-/// container. ⇒ nesta casa: o **chão** (que a wave 31 derivou, um degrau abaixo do painel) e o
-/// **painel**.
-///
-/// ⛔⛔ **A faixa era `Bg1`, que é o tom do CARTÃO — 12/255 mais CLARO que o painel.** Uma faixa
-/// mais clara do que a superfície em que assenta não recua: ela salta à frente, e a aba escolhida
-/// não tem de onde subir. O gate [`the_tab_row_recedes_and_the_chosen_tab_rises`] mede a ordem, e
-/// não os valores.
-#[must_use]
-pub fn tab_row_bg() -> ColorToken {
-    ColorToken::WindowGround
-}
-
-/// O tom de uma aba, ou `None` para «a faixa aparece por baixo».
-///
-/// ⚠️ A inactiva devolve `None` **e isso É o modelo**: lá ela leva o `surface_lowest_color`, que é
-/// exactamente a cor da faixa — pintá-la seria pintar o que já lá está. Ela lê-se pelo RÓTULO e
-/// pela ausência de quina.
-///
-/// # ⭐⭐ Por que estas abas NÃO usam o acento e as de LAYOUT usam
-///
-/// A auditoria de 2026-09-07 nomeou a divergência e escreveu que *«uma das duas está errada e nada
-/// no repo escolhe qual»*. **Escolhe agora, e as duas estão certas** — elas não são a mesma coisa:
-///
-/// | | [`super::layout_tabs`] | esta |
-/// |---|---|---|
-/// | o que a aba escolhe | a **tarefa** (Draw · Vector · Flip…) | qual painel está à frente |
-/// | onde ela vive | na barra de menus, sobre **nada** | no topo de uma **coluna**, colada ao painel |
-/// | como marca a escolhida | `AccentSoft`/`Accent` | veste o corpo do painel e **solda-se** a ele |
-///
-/// ⇒ *uma aba que assenta num container solda-se a ele; uma que escolhe um MODO não tem container a
-/// que se soldar, e por isso precisa de tinta.* É a mesma lei que separa o chip activo do trilho
-/// (fora do eixo do relógio) de uma linha escolhida numa lista (que sangra, sem quina).
-#[must_use]
-pub fn tab_bg(is_on: bool, state: ButtonState) -> Option<ColorToken> {
-    if is_on {
-        Some(ColorToken::PanelBg)
-    } else if matches!(
-        state,
-        ButtonState::Hovered | ButtonState::Focused | ButtonState::Pressed
-    ) {
-        Some(ColorToken::Bg2)
-    } else {
-        None
-    }
-}
-
-/// ⭐⭐⭐ **A QUINA SÓ EM CIMA** — `set_corner_radius_individual(r, r, 0, 0)` do modelo.
-///
-/// É isto que faz de uma aba uma **aba** em vez de um botão a flutuar numa faixa: os cantos de
-/// baixo quadrados **soldam-na** ao corpo do painel que começa logo abaixo. ⚠️ A porta por-canto já
-/// existia — a wave 10 construiu-a para a lei do grupo do Blender ([`fill_rounded_rect_radii`]), e
-/// a ordem é a do kurbo: `(cima-esq, cima-dir, baixo-dir, baixo-esq)`.
-#[must_use]
-pub fn tab_radii(theme: Theme) -> (f32, f32, f32, f32) {
-    let r = crate::paint::frame_radius(theme, Radius::Sm.px());
-    (r, r, 0.0, 0.0)
-}
-
 /// ⭐⭐⭐ **A LARGURA de uma aba é a do NOME dela** — a lei do modelo, e a cura de um defeito medido.
 ///
 /// ⛔⛔ **Repartir a fila em partes iguais faz dois painéis diferentes lerem-se IGUAIS.** Medido em
@@ -449,16 +388,72 @@ pub fn tab_layout(
     bar: Rect,
     text_system: &mut TextSystem,
 ) -> Vec<(Occupant, Rect)> {
-    if occ.is_empty() || bar.w <= 0.0 || bar.h <= 0.0 {
+    let Some(plan) = tab_plan(occ, front, bar, text_system) else {
         return Vec::new();
+    };
+    occ[plan.start..plan.start + plan.widths.len()]
+        .iter()
+        .copied()
+        .zip(tab_rects(plan.bar, &plan.widths))
+        .collect()
+}
+
+/// ⭐⭐ **O PLANO de uma fila** — quem é pintado, com que largura, em que faixa, e quantos ficam de
+/// fora de cada lado.
+///
+/// ⚠️ **Existe porque a saída de transbordo precisa da MESMA janela que o pintor usa.** Perguntar
+/// *«há abas escondidas?»* por uma segunda conta seria duas respostas à mesma pergunta, e elas
+/// divergiriam no primeiro caso que uma delas não visse — o defeito que este ficheiro já pagou com
+/// a aritmética do trilho, escrita em três cópias.
+pub struct TabPlan {
+    /// O índice, em `occ`, do primeiro ocupante PINTADO.
+    pub start: usize,
+    /// As larguras dos pintados, na ordem em que aparecem.
+    pub widths: Vec<f32>,
+    /// A faixa que sobra para as abas — já **sem** o espaço das setas, quando elas existem.
+    pub bar: Rect,
+    /// Quantos ocupantes ficam escondidos antes e depois da janela.
+    pub hidden_before: usize,
+    pub hidden_after: usize,
+}
+
+/// Ver [`TabPlan`]. `None` quando não há fila nenhuma para dispor.
+#[must_use]
+pub fn tab_plan(
+    occ: &[Occupant],
+    front: Option<NodeId>,
+    bar: Rect,
+    text_system: &mut TextSystem,
+) -> Option<TabPlan> {
+    if occ.is_empty() || bar.w <= 0.0 || bar.h <= 0.0 {
+        return None;
     }
     let widths = tab_widths(occ, text_system);
-    let inner = (bar.w - Spacing::Xs.px() * 2.0).max(0.0);
+    let inset = Spacing::Xs.px() * 2.0;
 
-    // ⭐⭐⭐ **PRIMEIRO tenta-se dar aba a TODOS** — ver [`fitted_widths`]. Só quando nem no piso
-    // elas cabem é que a janela deslizante abaixo entra, e aí há mesmo abas escondidas.
-    if let Some(w) = fitted_widths(&widths, inner) {
-        return occ.iter().copied().zip(tab_rects(bar, &w)).collect();
+    // ⭐⭐⭐ **PRIMEIRO tenta-se dar aba a TODOS, na faixa INTEIRA** — ver [`fitted_widths`]. É esta
+    // tentativa que decide se há setas: reservar-lhes espaço antes de saber se são precisas faria
+    // uma fila que cabia deixar de caber por causa de uma saída que ela não usa.
+    if let Some(w) = fitted_widths(&widths, (bar.w - inset).max(0.0)) {
+        return Some(TabPlan {
+            start: 0,
+            widths: w,
+            bar,
+            hidden_before: 0,
+            hidden_after: 0,
+        });
+    }
+
+    // Transborda ⇒ as duas setas ocupam o fim da faixa, e as abas dispõem-se no que sobra.
+    let bar = Rect::new(
+        bar.x,
+        bar.y,
+        (bar.w - super::slot_tabs_overflow::arrow_w() * 2.0).max(0.0),
+        bar.h,
+    );
+    let inner = (bar.w - inset).max(0.0);
+    if inner <= 0.0 {
+        return None;
     }
 
     // Quantas cabem a partir de `start`. ⚠️ A primeira entra SEMPRE, aparada — um nome mais largo
@@ -496,47 +491,13 @@ pub fn tab_layout(
     if let Some(first) = shown.first_mut() {
         *first = first.min(inner);
     }
-    occ[start..start + n]
-        .iter()
-        .copied()
-        .zip(tab_rects(bar, &shown))
-        .collect()
-}
-
-/// ⭐⭐⭐ **AS DIVISÓRIAS ENTRE ABAS** — o que faz uma aba encolhida continuar a LER-SE como aba.
-///
-/// > *«as abas … não reduzem de tamanho»* — Enio, 2026-09-08, a pedir o encolhimento; e a razão de
-/// > o encolhimento ter sido revertido no dia anterior foi esta: espremidas, elas **desapareciam**.
-///
-/// ⛔⛔ Uma aba **inactiva não pinta fundo nenhum** ([`tab_bg`], portado do `theme_modern.cpp`), e
-/// no Godot isso funciona porque as abas dele **não encolhem** — o nome inteiro é a silhueta. Aqui
-/// elas encolhem, o nome elide, e sem uma marca de separação a fila vira uma tira de texto cortado
-/// sobre uma cor só. *Uma aba sem nome legível e sem corpo não é uma aba: é um espaço.*
-///
-/// ⚠️ **Uma linha, e não um fundo.** Não há degrau disponível entre o chão da fila
-/// ([`tab_row_bg`]) e o corpo do painel que a aba ESCOLHIDA veste: qualquer fundo visível para a
-/// inactiva ficaria **mais claro** que a escolhida e inverteria a hierarquia. Uma divisória divide
-/// sem competir.
-///
-/// ⚠️ **Nenhuma divisória toca a aba escolhida** — ela já tem contorno próprio (o corpo soldado ao
-/// painel), e uma linha ao lado dele leria como uma segunda borda.
-#[must_use]
-pub fn tab_dividers(painted: &[(Occupant, Rect)], selected: Option<NodeId>) -> Vec<Rect> {
-    let inset = Spacing::Xs.px();
-    let w = StrokeToken::Hairline.px();
-    painted
-        .windows(2)
-        .filter(|pair| Some(pair[0].0.node) != selected && Some(pair[1].0.node) != selected)
-        .map(|pair| {
-            let r = pair[0].1;
-            Rect::new(
-                r.x + r.w - w * 0.5,
-                r.y + inset,
-                w,
-                (r.h - inset * 2.0).max(0.0),
-            )
-        })
-        .collect()
+    Some(TabPlan {
+        start,
+        widths: shown,
+        bar,
+        hidden_before: start,
+        hidden_after: occ.len() - (start + n),
+    })
 }
 
 /// Regista os controlos de aba dos painéis registados. Chamado pelo `pre_populate` do hero.
@@ -552,6 +513,8 @@ pub fn tab_dividers(painted: &[(Occupant, Rect)], selected: Option<NodeId>) -> V
 /// `active` e o Up nunca emite `Click`. É o defeito que matou o pill `[SHEET]` e os quatro pills de
 /// vetor, e o gate `hit_indexed_ids_are_registered` não o veria — estes ids são **derivados**.
 pub fn populate(store: &mut WidgetStore) {
+    // ⭐ As duas setas de cada encaixe — ver [`super::slot_tabs_overflow`].
+    super::slot_tabs_overflow::populate(store);
     crate::panel::with_registry_opt(|reg| {
         for p in reg.panels() {
             store.register(
@@ -568,6 +531,7 @@ pub fn populate(store: &mut WidgetStore) {
 #[allow(clippy::too_many_arguments)]
 pub fn paint_slot_tabs(
     bar: Rect,
+    slot: Slot,
     occ: &[Occupant],
     selected: Option<NodeId>,
     scene: &mut VectorScene,
@@ -576,12 +540,30 @@ pub fn paint_slot_tabs(
     hit_index: &mut HitIndex,
     store: &WidgetStore,
 ) {
-    let painted = tab_layout(occ, selected, bar, text_system);
+    let Some(plan) = tab_plan(occ, selected, bar, text_system) else {
+        return;
+    };
+    let painted: Vec<(Occupant, Rect)> = occ[plan.start..plan.start + plan.widths.len()]
+        .iter()
+        .copied()
+        .zip(tab_rects(plan.bar, &plan.widths))
+        .collect();
     if painted.is_empty() {
         return;
     }
     let painted_for_dividers = painted.clone();
+    // ⚠️ **O chão é o da faixa INTEIRA**, e não o da parte que sobrou para as abas: as setas vivem
+    //    dentro da fila, não ao lado dela.
     scene.fill_rect(rect_to_vello(bar), resolve(tab_row_bg(), theme));
+    super::slot_tabs_overflow::paint(
+        bar,
+        slot,
+        plan.hidden_before,
+        plan.hidden_after,
+        scene,
+        theme,
+        hit_index,
+    );
     let radii = tab_radii(theme);
     for (o, r) in painted {
         let is_on = selected == Some(o.node);
@@ -618,7 +600,8 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         hero.store.bump_panel_z(node);
         return true;
     }
-    false
+    // ⭐ As setas de transbordo — elas escolhem o ocupante seguinte, e a janela segue-o.
+    super::slot_tabs_overflow::apply_event(hero, id)
 }
 
 /// ⭐⭐ **REPÕE A ARRUMAÇÃO DE FÁBRICA** — a porta do *Reset Panel Layout*.

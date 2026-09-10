@@ -777,3 +777,108 @@ fn a_tool_panel_joins_the_inspector_as_a_tab_instead_of_replacing_it() {
         "o Inspector não voltou à frente ao fechar a ferramenta"
     );
 }
+
+/// ⭐⭐⭐ **A SETA DE TRANSBORDO ALCANÇA UMA ABA ESCONDIDA** — pintada, registada e roteada.
+///
+/// ⚠️ **Três coisas numa asserção, e a do meio é a que já matou um controlo neste repo:** pintado
+/// e hit-indexado mas sem registo no `populate`, ele não tem `InteractiveState`, o `Up` nunca
+/// emite `Click`, e o botão nasce **morto sob o dedo** com todo o resto verde. ⇒ o teste **acerta
+/// no pixel** (pergunta ao `HitIndex` quem está no centro da seta) antes de despachar.
+#[test]
+fn the_overflow_arrow_reaches_a_hidden_tab() {
+    use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};
+    use ph2d_editor_core::screens::hero::slot_tabs_overflow as ovf;
+
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    let slot = Slot::RightTop;
+
+    // Todos os que ACEITAM a coluna da direita, empilhados nela, com a coluna no mínimo.
+    let movable: Vec<&'static str> = ph2d_editor_core::panel::with_registry_ref(|reg| {
+        reg.panels()
+            .iter()
+            .filter(|p| !p.manifest.can_float && p.manifest.allowed_slots.contains(slot))
+            .map(|p| p.manifest.id)
+            .collect()
+    });
+    let mut h = settled(&movable);
+    for id in &movable {
+        h.store.set_panel_slot(node_of(id), slot);
+    }
+    h.store.set_dock_width(
+        slot.dock_side().expect("a direita é uma coluna"),
+        WidgetStore::DOCK_W_COLLAPSE,
+    );
+    paint(&mut h, 4);
+
+    let occ = slot_tabs::occupants(&h, slot);
+    let mut text = TextSystem::without_system_fonts();
+    let bar = h.last_layout.expect("layout").slot_tabs[slot as usize];
+    let plan =
+        slot_tabs::tab_plan(&occ, slot_tabs::chosen(&h, slot), bar, &mut text).expect("há fila");
+    assert!(
+        plan.hidden_before + plan.hidden_after > 0,
+        "controlo partido: os {} painéis couberam na coluna mínima ({} px) — sem transbordo não há \
+         o que medir",
+        occ.len(),
+        bar.w
+    );
+
+    // ⚠️ **A seta VIVA é a do lado que tem escondidos, e qual é depende de onde a janela parou.**
+    //    Com o escolhido no fim da fila, quem está escondido está ANTES — e a seta da direita é
+    //    a apagada. *Um teste que fixasse a direcção mediria a seta morta metade das vezes.*
+    let (prev_id, next_id) = ovf::arrow_ids(slot);
+    let (prev_rect, next_rect) = ovf::arrow_rects(bar);
+    let (live_id, live_rect, step) = if plan.hidden_before > 0 {
+        (prev_id, prev_rect, -1i32)
+    } else {
+        (next_id, next_rect, 1i32)
+    };
+
+    // ⭐ **O PIXEL:** quem está no centro da seta viva tem de ser a seta.
+    let (nx, ny) = (
+        live_rect.x + live_rect.w * 0.5,
+        live_rect.y + live_rect.h * 0.5,
+    );
+    let under = h.hit_index.hit(nx, ny);
+    assert_eq!(
+        under,
+        Some(live_id),
+        "no centro da seta de transbordo está {under:?}, não a seta"
+    );
+
+    // ⛔ **E a seta MORTA não é tocável** — ela é pintada apagada e fica fora do índice de acerto.
+    let dead_rect = if step < 0 { next_rect } else { prev_rect };
+    assert_ne!(
+        h.hit_index.hit(
+            dead_rect.x + dead_rect.w * 0.5,
+            dead_rect.y + dead_rect.h * 0.5
+        ),
+        Some(if step < 0 { next_id } else { prev_id }),
+        "a seta que não tem para onde ir continua clicável"
+    );
+
+    // ⭐ **A ROTA:** o clique leva o ocupante seguinte para a frente.
+    let before = slot_tabs::chosen(&h, slot);
+    assert!(
+        ph2d_editor_core::screens::hero::slot_tabs::apply_event(
+            &mut h,
+            WidgetEvent::Click(live_id)
+        ),
+        "a seta não consumiu o clique"
+    );
+    paint(&mut h, 2);
+    let after = slot_tabs::chosen(&h, slot);
+    assert_ne!(before, after, "a seta não mudou quem está à frente");
+
+    // ⭐ **E o escolhido novo está PINTADO** — a janela seguiu-o.
+    let occ2 = slot_tabs::occupants(&h, slot);
+    let bar2 = h.last_layout.expect("layout").slot_tabs[slot as usize];
+    let shown: Vec<_> = slot_tabs::tab_layout(&occ2, after, bar2, &mut text)
+        .into_iter()
+        .map(|(o, _)| o.node)
+        .collect();
+    assert!(
+        after.is_some_and(|a| shown.contains(&a)),
+        "o painel que a seta escolheu não aparece na fila: {shown:?}"
+    );
+}

@@ -333,3 +333,78 @@ fn between_the_floor_and_the_full_name_a_tab_never_shows_a_useless_label() {
          este teste existe para medir"
     );
 }
+
+/// ⭐⭐⭐ **UMA FILA QUE TRANSBORDA RESERVA AS DUAS SETAS** — e as abas não entram nelas.
+///
+/// ⚠️ **A ordem da decisão é load-bearing:** primeiro pergunta-se se TODAS cabem na faixa
+/// **inteira**; só depois de a resposta ser não é que as setas nascem. Reservar-lhes espaço antes
+/// faria uma fila que cabia deixar de caber por causa de uma saída que ela não usa — e o gate
+/// irmão abaixo é o que prende essa ordem.
+#[test]
+fn a_row_that_overflows_reserves_the_two_arrows() {
+    use crate::screens::hero::slot_tabs_overflow as ovf;
+    let mut text = TextSystem::without_system_fonts();
+    let many: Vec<Occupant> = (0..14)
+        .map(|i| occupant("p", 300 + i, "Background Removal"))
+        .collect();
+    let bar = bar();
+
+    let plan = tab_plan(&many, Some(many[0].node), bar, &mut text).expect("há fila");
+    assert!(
+        plan.hidden_after > 0,
+        "controlo partido: catorze abas couberam em {} px — esta fixtura não transborda",
+        bar.w
+    );
+    assert!(
+        (plan.bar.w - (bar.w - ovf::arrow_w() * 2.0)).abs() < 0.001,
+        "a faixa das abas não recuou o espaço das duas setas: {:?}",
+        plan.bar
+    );
+
+    // ⛔ Nenhuma aba pintada invade o território das setas.
+    let (prev, _next) = ovf::arrow_rects(bar);
+    for (_, r) in tab_layout(&many, Some(many[0].node), bar, &mut text) {
+        assert!(
+            r.x + r.w <= prev.x + 0.001,
+            "uma aba entrou por baixo das setas: {r:?} contra {prev:?}"
+        );
+    }
+}
+
+/// ⭐ **E uma fila que CABE não tem setas** — dois controlos mudos seriam chrome morto.
+#[test]
+fn a_row_that_fits_keeps_the_whole_band() {
+    let mut text = TextSystem::without_system_fonts();
+    let occ = three();
+    let bar = bar();
+    let plan = tab_plan(&occ, None, bar, &mut text).expect("há fila");
+    assert_eq!((plan.hidden_before, plan.hidden_after), (0, 0));
+    assert!(
+        (plan.bar.w - bar.w).abs() < 0.001,
+        "a faixa encolheu sem haver transbordo: {:?}",
+        plan.bar
+    );
+}
+
+/// ⛔ **O id de uma seta não é o de nenhuma outra coisa** — e as doze são distintas.
+#[test]
+fn the_arrow_ids_are_twelve_distinct_ids() {
+    use crate::screens::hero::slot_tabs_overflow as ovf;
+    use crate::screens::slot::Slot;
+    let mut all = Vec::new();
+    for s in Slot::ALL {
+        let (p, n) = ovf::arrow_ids(s);
+        assert_eq!(ovf::arrow_of(p), Some((s, -1)));
+        assert_eq!(ovf::arrow_of(n), Some((s, 1)));
+        all.push(p);
+        all.push(n);
+    }
+    let mut sorted = all.clone();
+    sorted.sort();
+    sorted.dedup();
+    assert_eq!(sorted.len(), all.len(), "duas setas partilham um id");
+    for o in three() {
+        assert_eq!(ovf::arrow_of(o.node), None);
+        assert_eq!(ovf::arrow_of(tab_node_id(o.node)), None);
+    }
+}

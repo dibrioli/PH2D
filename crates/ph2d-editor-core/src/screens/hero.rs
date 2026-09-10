@@ -100,6 +100,9 @@ pub mod slot_tabs_drag;
 /// ⭐ **O que se vê DENTRO de uma aba** — o glifo e o nome, irmão do [`slot_tabs`] pela mesma
 /// fronteira: aquele responde *quem está na fila e onde*, este *o que uma delas diz*.
 pub mod slot_tabs_face;
+/// ⭐ **A saída para quando há mais abas do que cabem** — irmão do [`slot_tabs`] pela terceira
+/// pergunta da fila: *o que se vê*, *o que uma aba diz*, e **como se chega ao que não se vê**.
+pub mod slot_tabs_overflow;
 pub mod variant_axes;
 // ⚠️ Re-exportado para o gate `every_registered_panel_is_reachable_by_the_z_order_walk`: uma
 // lista que um teste não consegue ler é uma lista que ninguém confere — e esta já custou

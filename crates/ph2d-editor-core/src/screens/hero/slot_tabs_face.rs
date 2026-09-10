@@ -27,10 +27,12 @@
 
 use crate::icons::IconId;
 use crate::paint::{paint_icon, paint_text, resolve};
+use crate::widget::ButtonState;
 use crate::zones::Rect;
+use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{
-    ColorToken, INLINE_ICON_PX, Spacing, StrokeToken, Theme, TypeToken, icon_label_gap_px,
+    ColorToken, INLINE_ICON_PX, Radius, Spacing, StrokeToken, Theme, TypeToken, icon_label_gap_px,
 };
 use ph2d_vector::VectorScene;
 
@@ -141,4 +143,114 @@ pub fn paint(
             color,
         );
     }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════════════
+// ⭐ **O TOM de uma aba** — o chão da fila, o fundo da escolhida, a quina e a divisória.
+//
+// ⚠️ **Vieram do [`super::slot_tabs`] em 2026-09-09, por tecto de LOC — e o corte é por
+// ASSUNTO, não por tamanho:** este ficheiro já respondia *«o que uma aba mostra»*, e a cor
+// dela é a mesma pergunta. O que ficou lá é *quem está na fila e onde*. Os itens continuam
+// re-exportados pelo `slot_tabs`, que é a morada única da feature.
+// ══════════════════════════════════════════════════════════════════════════════════════
+
+/// ⭐⭐⭐ **A FAIXA RECUA e a aba escolhida SOBE ATÉ AO PAINEL** — os dois tons, numa porta só.
+///
+/// Portado de `theme_modern.cpp` (Godot 4.6, MIT): a faixa e a aba inactiva levam
+/// `surface_lowest_color`; a escolhida é um **duplicado do `base_style`**, isto é, o corpo do
+/// container. ⇒ nesta casa: o **chão** (que a wave 31 derivou, um degrau abaixo do painel) e o
+/// **painel**.
+///
+/// ⛔⛔ **A faixa era `Bg1`, que é o tom do CARTÃO — 12/255 mais CLARO que o painel.** Uma faixa
+/// mais clara do que a superfície em que assenta não recua: ela salta à frente, e a aba escolhida
+/// não tem de onde subir. O gate [`the_tab_row_recedes_and_the_chosen_tab_rises`] mede a ordem, e
+/// não os valores.
+#[must_use]
+pub fn tab_row_bg() -> ColorToken {
+    ColorToken::WindowGround
+}
+
+/// O tom de uma aba, ou `None` para «a faixa aparece por baixo».
+///
+/// ⚠️ A inactiva devolve `None` **e isso É o modelo**: lá ela leva o `surface_lowest_color`, que é
+/// exactamente a cor da faixa — pintá-la seria pintar o que já lá está. Ela lê-se pelo RÓTULO e
+/// pela ausência de quina.
+///
+/// # ⭐⭐ Por que estas abas NÃO usam o acento e as de LAYOUT usam
+///
+/// A auditoria de 2026-09-07 nomeou a divergência e escreveu que *«uma das duas está errada e nada
+/// no repo escolhe qual»*. **Escolhe agora, e as duas estão certas** — elas não são a mesma coisa:
+///
+/// | | [`super::layout_tabs`] | esta |
+/// |---|---|---|
+/// | o que a aba escolhe | a **tarefa** (Draw · Vector · Flip…) | qual painel está à frente |
+/// | onde ela vive | na barra de menus, sobre **nada** | no topo de uma **coluna**, colada ao painel |
+/// | como marca a escolhida | `AccentSoft`/`Accent` | veste o corpo do painel e **solda-se** a ele |
+///
+/// ⇒ *uma aba que assenta num container solda-se a ele; uma que escolhe um MODO não tem container a
+/// que se soldar, e por isso precisa de tinta.* É a mesma lei que separa o chip activo do trilho
+/// (fora do eixo do relógio) de uma linha escolhida numa lista (que sangra, sem quina).
+#[must_use]
+pub fn tab_bg(is_on: bool, state: ButtonState) -> Option<ColorToken> {
+    if is_on {
+        Some(ColorToken::PanelBg)
+    } else if matches!(
+        state,
+        ButtonState::Hovered | ButtonState::Focused | ButtonState::Pressed
+    ) {
+        Some(ColorToken::Bg2)
+    } else {
+        None
+    }
+}
+
+/// ⭐⭐⭐ **A QUINA SÓ EM CIMA** — `set_corner_radius_individual(r, r, 0, 0)` do modelo.
+///
+/// É isto que faz de uma aba uma **aba** em vez de um botão a flutuar numa faixa: os cantos de
+/// baixo quadrados **soldam-na** ao corpo do painel que começa logo abaixo. ⚠️ A porta por-canto já
+/// existia — a wave 10 construiu-a para a lei do grupo do Blender ([`fill_rounded_rect_radii`]), e
+/// a ordem é a do kurbo: `(cima-esq, cima-dir, baixo-dir, baixo-esq)`.
+#[must_use]
+pub fn tab_radii(theme: Theme) -> (f32, f32, f32, f32) {
+    let r = crate::paint::frame_radius(theme, Radius::Sm.px());
+    (r, r, 0.0, 0.0)
+}
+
+/// ⭐⭐⭐ **AS DIVISÓRIAS ENTRE ABAS** — o que faz uma aba encolhida continuar a LER-SE como aba.
+///
+/// > *«as abas … não reduzem de tamanho»* — Enio, 2026-09-08, a pedir o encolhimento; e a razão de
+/// > o encolhimento ter sido revertido no dia anterior foi esta: espremidas, elas **desapareciam**.
+///
+/// ⛔⛔ Uma aba **inactiva não pinta fundo nenhum** ([`tab_bg`], portado do `theme_modern.cpp`), e
+/// no Godot isso funciona porque as abas dele **não encolhem** — o nome inteiro é a silhueta. Aqui
+/// elas encolhem, o nome elide, e sem uma marca de separação a fila vira uma tira de texto cortado
+/// sobre uma cor só. *Uma aba sem nome legível e sem corpo não é uma aba: é um espaço.*
+///
+/// ⚠️ **Uma linha, e não um fundo.** Não há degrau disponível entre o chão da fila
+/// ([`tab_row_bg`]) e o corpo do painel que a aba ESCOLHIDA veste: qualquer fundo visível para a
+/// inactiva ficaria **mais claro** que a escolhida e inverteria a hierarquia. Uma divisória divide
+/// sem competir.
+///
+/// ⚠️ **Nenhuma divisória toca a aba escolhida** — ela já tem contorno próprio (o corpo soldado ao
+/// painel), e uma linha ao lado dele leria como uma segunda borda.
+#[must_use]
+pub fn tab_dividers(
+    painted: &[(super::slot_tabs::Occupant, Rect)],
+    selected: Option<NodeId>,
+) -> Vec<Rect> {
+    let inset = Spacing::Xs.px();
+    let w = StrokeToken::Hairline.px();
+    painted
+        .windows(2)
+        .filter(|pair| Some(pair[0].0.node) != selected && Some(pair[1].0.node) != selected)
+        .map(|pair| {
+            let r = pair[0].1;
+            Rect::new(
+                r.x + r.w - w * 0.5,
+                r.y + inset,
+                w,
+                (r.h - inset * 2.0).max(0.0),
+            )
+        })
+        .collect()
 }

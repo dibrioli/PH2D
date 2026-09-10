@@ -88,10 +88,19 @@ fn celula(row: &ph2d_panel_motion_params::ParamRow) -> Option<(String, String, S
             };
             (r.label.clone(), faixa, r.display.suffix.to_string())
         }
+        // ⛔⛔ **O sufixo é PEDIDO à porta da unidade, nunca escrito aqui.** Ele esteve
+        // literal (`"graus"`) e a tabela do ciclo 5 imprimiu **as duas palavras na mesma
+        // página**: o `Angle` do `Collider` saía `deg` (é um `Scalar` com
+        // [`ParamUnit::Angle`], que já perguntava à porta) e o do `Wind` saía `graus`, só
+        // porque um nó usa o widget de ângulo e o outro um deslizante. *Duas palavras para a
+        // mesma unidade, decididas pelo widget que o nó calhou usar.*
         ParamRow::Angle(r) => (
             r.label.clone(),
             format!("{} a {}", fmt_num(r.min_deg), fmt_num(r.max_deg)),
-            "graus".to_string(),
+            ph2d_node_registry::ParamUnit::Angle
+                .fixed_suffix()
+                .unwrap_or_default()
+                .to_string(),
         ),
         ParamRow::Seed(r) => (
             r.label.clone(),
@@ -144,4 +153,41 @@ fn so_noutro_modo(
         ));
     }
     (!notas.is_empty()).then(|| notas.join(" · "))
+}
+
+/// ⭐⭐⭐ **UMA UNIDADE, UMA PALAVRA — em toda a tabela.**
+///
+/// ⛔⛔ Achado ao **ler o PDF do ciclo 5**: a mesma página imprimia `deg` no `Angle` do
+/// `Collider` e `graus` no `Angle` do `Wind`. Os dois são ângulos; o que os separava era o
+/// **widget** — um é um `Scalar` com [`ph2d_node_registry::ParamUnit::Angle`] (e essa rota já
+/// perguntava à porta da unidade), o outro é um `ParamRow::Angle`, cujo sufixo estava escrito
+/// à mão aqui. *Uma lei escrita em dois sítios ainda não é uma lei; só uma PORTA é.*
+///
+/// ⚠️ **Nenhum gate do repo o via, e nenhum o veria:** o `no_tofu_glyphs` mede glifos, o
+/// `hr15_no_hardcoded_ui_strings` mede os widgets, e esta tabela é um artefacto de
+/// documentação gerado por um teste `#[ignore]`. O que a apanhou foi olhar para a página.
+///
+/// A régua aqui é derivada: para cada unidade com face fixa, a tabela de um grupo que a use
+/// não pode conter nenhuma **outra** palavra para ela.
+#[test]
+fn one_unit_one_word_in_a_generated_table() {
+    use ph2d_node_registry::ParamUnit;
+    // Um nó com o widget de ângulo (`force.wind`) e um com um escalar em graus
+    // (`sim.collide`) — é exactamente o par que discordava.
+    let html = derive(&[("wind", "force.wind"), ("collider", "sim.collide")]);
+    let deg = ParamUnit::Angle
+        .fixed_suffix()
+        .expect("o ângulo tem face fixa");
+    assert!(
+        html.contains(&format!("<td>{deg}</td>")),
+        "a tabela tem de trazer a face canónica do ângulo (`{deg}`), e trouxe:\n{html}"
+    );
+    for outra in ["graus", "degrees", "°"] {
+        assert!(
+            !html.contains(&format!("<td>{outra}</td>")),
+            "a tabela imprime `{outra}` para uma unidade cuja face canónica é `{deg}` -- duas \
+             palavras para a mesma unidade, na mesma página, decididas pelo widget que o nó \
+             calhou usar"
+        );
+    }
 }

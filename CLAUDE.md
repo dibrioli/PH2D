@@ -1012,8 +1012,10 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   a peça **RECUSADA** (*Removed GameObject*, `PROJECT_SCHEMA` 116), a **ACRESCENTADA** (*Added GameObject*, **derivada** da
   ausência de elo ⇒ schema intocado) e **mover uma peça na receita move-a em TODAS as cópias** (o passe não sabia
   reparentar, e o `ChildOf` não é componente registado ⇒ a árvore de uma cópia não tinha dono). Cenas **`=5`**, **`=6`** e
-  **`=7`**. ⛔ **A F4.6c está bloqueada na PRÁTICA e não tecnicamente** — apagar os ~2 961 LOC do `VecInstance` em 24
-  ficheiros com a `line/Vector` VIVA é catástrofe de merge; a fatia que a bloqueava (os eixos) foi revogada pelo Enio ·
+  **`=7`**. ✅ **A F4.6c FECHOU em 10/09** — a nota abaixo dizia-a *«bloqueada na PRÁTICA»* (apagar o `VecInstance` com a
+  `line/Vector` VIVA seria catástrofe de merge), e a rodada de seis linhas do mesmo dia **é** o sítio onde as duas
+  aterram juntas: `−5 170` LOC líquidas, o segundo motor de instância do vetor sai, e o rebase conflitou **só** na escada
+  do `PROJECT_SCHEMA`. *Um bloqueio de calendário não é um bloqueio técnico, e ele expira sozinho no dia da integração* ·
   ⏳ **F8: o `FlipDoc`** (headless, logo não é fatia sob a regra *«cada etapa acaba num smoke»*) ·
   ⚠️ **O `physics_ecs_c9` NÃO tem baseline a re-capturar e NÃO corre na varredura impactada** — o `spike.yml` compara os
   **três OS entre si**, então o risco real é eles **discordarem**, e só o CI o mede; a **F4.7 FECHOU** e acrescentou-lhe
@@ -1038,6 +1040,25 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   [Handoff de 07/09](docs/Components/handoffs/HANDOFF_INTEGRACAO_line_components_PREFAB_ABERTO_2026-09-07.md) (⚠️ o §10
   tem **cinco** coisas que uma leitura rápida do diff entende ao contrário — entre elas que o `held_back` **obriga** quem
   o passa a desenhar as retidas noutra passagem — e o §11 as **quatro** premissas que a medição derrubou) ·
+  ⭐⭐⭐ **O TOP-20 anda até ao #7** (10/09): **#2 `Timer`**, **#5 `SignalActions`**, **#4 `AudioSource2D` +
+  `AudioListener2D`** e **#7 `GameCamera` + `CameraFollow` + `CameraLimits`**, cada um com lei pura, ponte e **painel** —
+  mais a **F4.6c** (o 2.º motor de instância do vetor sai, `−5 170` LOC) e a **F8** (o `FlipDoc` partilhado).
+  ⭐ **A lei da câmera é PORTADA do Godot 4.7.2 (MIT) corrido como oráculo sem interface** — 45 fixturas com cabeçalho,
+  paridade de `0,000061 px`, com a **divergência declarada** onde ele oscila e diverge. ⚠️ **Três leis que só a medição
+  deu:** a ordem *zona morta → amortecimento* · a zona morta ter **acumulador próprio** (um estado só erra `1,07 px` em
+  toda inversão do alvo) · e uma cerca mais estreita que a janela **fixar no centro dela** (onde o `f32::clamp` entra em
+  pânico). ⛔⛔ **E a auditoria do *lookahead* achou TRÊS defeitos, com o terceiro a MASCARAR o primeiro** — o `dt` da
+  amostra ≠ o passo da lei (a mira dobrava em toda moldura de 2 tiques) · parar colapsava a mira em `4 m` num quadro · e
+  **um quadro sem tique zerava a velocidade** (`0,78 m/s` sobre `8,00`, dez vezes fraca). ⚠️ **E o painel não era semeado
+  do snapshot — nem o do ÁUDIO, desde a wave dele**: mostrava os defaults do `populate` com números plausíveis.
+  ⚠️⚠️ **O `PROJECT_SCHEMA` desta linha foi RENUMERADO na integração:** ela escreveu `123 → 124` e a `line/Vector`
+  escreveu `123 → 127` no mesmo dia ⇒ o degrau dela é hoje **`127 → 128`**, e o valor certo **não estava em nenhum dos
+  dois lados**. ⛔ *Conte o DELTA contra a árvore em que vai aterrar* — e ⚠️ **a sonda não o diz sozinha**: a coluna
+  «base» do `collision-surface.sh` é o **merge-base**, não o `main` de agora.
+  ⏳ **ABERTO** e as **seis** premissas refutadas:
+  [handoff de 10/09](docs/Components/handoffs/HANDOFF_INTEGRACAO_line_components_2026-09-10.md).
+  **Smokes:** `PH2D_TIMER_SMOKE=1` · `PH2D_SIGNAL_ACTION_SMOKE=1` · `PH2D_AUDIO_2D_SMOKE=1` · `PH2D_GAME_CAMERA_SMOKE=1`.
+  ⚠️ *«meters mexem e não ouço»* é o **sistema**, não o app: `bash scripts/audio-mudo.sh` ·
   F2-F8 do [plano vivo](docs/Components/05_plano_de_implementacao.md).
   **Smokes:** abrir um `.ph2dproj` gravado ANTES de 24/08 (tem de dizer *"Project migrated from format 95 to N"*, com
   **N = o `PROJECT_SCHEMA` de hoje** — ⛔ não o copie para cá, leia-o em

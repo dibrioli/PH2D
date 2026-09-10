@@ -282,6 +282,8 @@ mod anchor_overlay;
 /// ⭐⭐⭐ A ponte do `SignalActions` (TOP-20 #5) — onde um sinal vira jogo.
 /// ⭐⭐⭐ A ponte do SOM DE CENA (TOP-20 #4) — onde um objecto deixa de ser mudo.
 mod audio_2d;
+/// ⭐⭐⭐ **A CÂMERA DE JOGO** (TOP-20 #7) — a costura entre a lei pura e a vista da shell.
+mod camera_2d;
 /// O anel de um objeto VAZIO selecionado — ver o módulo.
 mod empty_object_overlay;
 /// ⭐ A secção TIMERS (TOP-20 #2, W3) — o snapshot e o commit dela.
@@ -305,6 +307,7 @@ mod inspector_timer;
 // à mão no teste mediria a marca em vez do fim.
 pub(crate) mod master_editing;
 pub(crate) use audio_2d::AudioSceneReport;
+pub(crate) use camera_2d::CameraSceneReport;
 mod signal_actions;
 /// ⚠️ A MESMA porta do passe, alcançável dos gates de outro módulo (a cadeia de visibilidade do
 /// vetor lê a marca, e o gate dela tem de a poder carimbar). *Um segundo carimbo escrito à mão no
@@ -1017,6 +1020,7 @@ impl crate::App {
         self.signal_action_smoke();
         #[cfg(feature = "panel-audio-editor")]
         self.audio_2d_smoke();
+        self.game_camera_smoke();
         self.ui_motion_smoke();
         self.timescale_smoke();
         self.stagger_smoke();
@@ -2192,6 +2196,54 @@ impl crate::App {
                 audio_report.started,
                 pico[0],
                 pico[1]
+            );
+        }
+
+        // ⭐⭐⭐ **A CÂMERA DE JOGO** (TOP-20 #7) — a cena passa a poder mandar no enquadramento.
+        //
+        // ⚠️ **Aqui, depois dos relógios e ANTES do extract**, e as duas metades são load-bearing:
+        // depois, porque a câmera segue o mundo **deste** quadro (um passe antes dos tiques
+        // enquadraria o quadro anterior, e num alvo rápido isso lê-se como *«a câmera atrasa»*);
+        // antes, porque o extract é quem lê a `camera` para desenhar.
+        //
+        // ⚠️ **Ele não escreve componente registado nenhum** — o `CameraRuntime` não é gravável —,
+        // logo não passa pelo `preview_drive`.
+        let (vista_da_cena, camera_report) = camera_2d::update(
+            sim,
+            camera_2d::aspect_of(surface.size()),
+            report.ticks,
+            self.fixed_step.fixed_dt(),
+        );
+        // ⭐⭐ **A vista só é TOMADA com a pré-visualização ligada.** Sem isto, toda cena que tenha
+        // uma câmera roubaria o pan e o zoom do artista no primeiro quadro — e a `GameCamera` é um
+        // componente que se anexa pela paleta, então isso aconteceria por acidente.
+        if self.game_camera_preview
+            && let Some(v) = vista_da_cena
+        {
+            camera.center = v.center;
+            camera.height_world = v.height_world;
+            camera.cull_mask = v.cull_mask;
+        }
+        // ⚠️ **Fala uma vez por MUDANÇA, nunca por quadro** — a mesma lei da linha do som.
+        if self.signal_log_reader.is_some() && camera_report != self.last_camera_report {
+            self.last_camera_report = camera_report.clone();
+            eprintln!(
+                "[camera-2d] {} camera(s) · segue={} · alvo `{}` {} · centro ({:.2}, {:.2}){}",
+                camera_report.cameras,
+                camera_report.following,
+                camera_report.target_name,
+                if camera_report.target_found {
+                    "ACHADO"
+                } else {
+                    "POR ACHAR"
+                },
+                camera_report.center[0],
+                camera_report.center[1],
+                if camera_report.limited {
+                    " · na CERCA"
+                } else {
+                    ""
+                }
             );
         }
 

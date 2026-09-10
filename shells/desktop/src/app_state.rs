@@ -606,6 +606,8 @@ pub(crate) struct App {
     /// **por quadro**. ⚠️ Um relatório impresso a 60 Hz não é diagnóstico, é ruído que
     /// esconde o que interessa; ele fala uma vez por MUDANÇA.
     pub(crate) last_audio_report: crate::render_loop::AudioSceneReport,
+    /// O último relatório da CÂMERA DE JOGO — a linha só fala quando ele MUDA.
+    pub(crate) last_camera_report: crate::render_loop::CameraSceneReport,
     /// ⭐ **O cursor do consumidor que MOVE A CENA** — a tabela sinal → papel
     /// (`ph2d_ui_state::SignalBinding`), o item 4 do estudo dos contêineres.
     ///
@@ -801,6 +803,17 @@ pub(crate) struct App {
     pub(crate) signal_action_smoke_done: bool,
     /// ⭐ A cena do SOM DE CENA (TOP-20 #4) já montou?
     pub(crate) audio_2d_smoke_done: bool,
+    /// ⭐ A cena da CÂMERA DE JOGO (TOP-20 #7) já montou?
+    pub(crate) game_camera_smoke_done: bool,
+    /// ⭐⭐⭐ **A vista está a ser conduzida pela CÂMERA DA CENA?** (TOP-20 #7)
+    ///
+    /// ⚠️ **É estado de VISTA, e não documento** — o molde é o *«Show sheet on canvas»* da §4: vive
+    /// só aqui, sem barramento, sem undo, sem save. ⛔ Guardá-lo no `GameCamera` faria uma decisão
+    /// de *quem está a olhar agora* viajar no ficheiro do projecto.
+    ///
+    /// ⚠️ **Ligado, ele toma o pan E o zoom** — uma câmera de jogo é dona do enquadramento inteiro,
+    /// e ficar só com o centro deixaria a roda a lutar contra ela todo quadro.
+    pub(crate) game_camera_preview: bool,
     /// O smoke da UI viva já montou (`PH2D_UI_MOTION_SMOKE`).
     pub(crate) ui_motion_smoke_done: bool,
     /// O smoke do time-scale de seleção (joias §4) já rodou. `PH2D_TIMESCALE_SMOKE=1`.

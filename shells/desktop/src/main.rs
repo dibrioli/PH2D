@@ -136,6 +136,7 @@ mod build_smoke_drive;
 /// A cena de smoke do **Expand** (Outline Stroke + Offset Path) — `PH2D_BUILD_SMOKE=17`.
 mod build_smoke_expand;
 mod build_smoke_router;
+mod camera_2d_smoke;
 /// ⭐⭐ **A ÁREA de desenho visível** — a porta única de *«onde o canvas de facto se vê?»*.
 mod canvas_area;
 /// ⭐⭐ **A cor com que a camada de sprites é limpa** — o fundo que o artista vê no canvas, hoje
@@ -1047,6 +1048,7 @@ impl App {
                 .map(|_| ph2d_runtime::SignalReader::new()),
             signal_action_reader: ph2d_runtime::SignalReader::new(),
             last_audio_report: Default::default(),
+            last_camera_report: Default::default(),
             ui_signal_reader: ph2d_runtime::SignalReader::new(),
             timeline_insert_key: false,
             autokey: Default::default(),
@@ -1099,6 +1101,8 @@ impl App {
             timer_smoke_done: false,
             signal_action_smoke_done: false,
             audio_2d_smoke_done: false,
+            game_camera_smoke_done: false,
+            game_camera_preview: false,
             ui_motion_smoke_done: false,
             timescale_smoke_done: false,
             stagger_smoke_done: false,

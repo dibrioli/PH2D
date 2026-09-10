@@ -63,6 +63,10 @@ fn cat_token(c: C) -> ColorToken {
         // quem faz acontecer: um som é uma saída do jogo, e é essa a distinção que a família
         // Áudio existe para não perder.
         C::Audio => ColorToken::NodeCatOutput,
+        // ⭐ O PONTO DE VISTA fica com a cor de quem ENQUADRA — ao lado da geometria autorada, e
+        // ⛔ não com a das saídas: uma câmera não produz nada, ela escolhe o que se vê. É a mesma
+        // distinção que separou a família Câmera de `Rendering` no catálogo.
+        C::Camera => ColorToken::NodeCatFocus,
         // ⭐ O que FAZ ACONTECER — a lógica autorada (`Timer`, e a fila do TOP-20 atrás dele) ao
         // lado do script, porque é a mesma pergunta com e sem código. ⚠️ Este braço dizia «o
         // resto», e a categoria nova obrigou a nomeá-lo: *um braço chamado «o resto» aceita

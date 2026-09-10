@@ -1,6 +1,6 @@
 ---
 name: reference-flip-fit-cache-ratio-is-a-load-flake
-description: "DOIS membros novos da família de flakes de carga do CLAUDE.md §5.0, medidos pela line/UIUX — o cache do Flip (razão de relógios, 09/09) e o `interaction_dispatch_no_alloc` (contador de alocações, 10/09)."
+description: "TRÊS membros novos da família de flakes de carga do CLAUDE.md §5.0, medidos pela line/UIUX — o cache do Flip (razão de relógios, 09/09), o `interaction_dispatch_no_alloc` e o `the_ui_clock_does_not_allocate_per_frame` (contadores de alocações, 10/09; o 2.º passa 3/3 a load 19, logo o discriminador é o FAN-OUT, não o relógio)."
 metadata: 
   node_type: memory
   type: reference
@@ -52,3 +52,32 @@ própria (*«um contador de alocações parece imune a carga e não é: sob fan-
 reutiliza arenas de outra maneira»*) — os dois membros que a lista tinha eram
 `apply_from_doc_is_zero_alloc_steady_state` e `the_trusted_len_collect_allocates_once`. Este é o
 **terceiro**.
+
+---
+
+## Terceiro membro — `the_ui_clock_does_not_allocate_per_frame` (contador de ALOCAÇÕES, o 4.º da espécie)
+
+`ph2d-editor-core::ui_motion_no_alloc the_ui_clock_does_not_allocate_per_frame`, medido em
+2026-09-10 numa corrida de **1 622** testes: **único ✗**, e verde **3 de 3** sozinho a
+`load 18,20` · `18,99` · `18,99`.
+
+⭐⭐ **A carga alta na confirmação é o que torna esta leitura FORTE, e não fraca.** A regra do §5.0
+manda imprimir o `/proc/loadavg` ao lado da corrida que desmente a flake, porque uma confirmação
+sob carga pode ser a própria flake. Aqui é o contrário: ele passa **três vezes a `load ~19`** ⇒ o
+que o parte não é a carga da máquina, é o **fan-out dentro do processo** — o alocador global a
+reutilizar arenas de outra maneira quando 1 600 testes correm em paralelo. *A espécie está bem
+nomeada: o discriminador é o fan-out, não o relógio.*
+
+⛔⛔ **E o doc-comment dele DECLARA-SE IMUNE, com todas as letras:**
+
+> *«⚠️ **CONTADOR e não relógio, de propósito:** um kill de wall-clock nesta workstation mede o
+> `load average` tanto quanto o código… Uma contagem de blocos é determinística **e não flaka**.»*
+
+É o **quarto** doc-comment deste repo a dizer-se imune e a ser membro (os outros três estão
+nomeados no `CLAUDE.md` §5.0). ⚠️ E a frase está *meia certa*, que é o que a torna perigosa: trocar
+o relógio por um contador **cura a deriva da máquina** e **não cura o fan-out**. *Trocar o eixo em
+que uma régua é frágil não é o mesmo que a tornar robusta.*
+
+**How to apply:** os **três** membros que esta linha mediu (`the_cache_makes_a_preview_frame_cost_the_tail_not_the_stroke`,
+`interaction_dispatch_no_alloc`, `the_ui_clock_does_not_allocate_per_frame`) esperam promoção para
+a lista nomeada do `CLAUDE.md` §5.0 — **a linha pede, o integrador escreve** (DIRETRIZ §1.5.9).

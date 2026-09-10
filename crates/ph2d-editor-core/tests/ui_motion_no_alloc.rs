@@ -14,8 +14,20 @@
 //! que só um relógio ou um contador enxerga precisa de um gate que conte.
 //!
 //! ⚠️ **CONTADOR e não relógio, de propósito:** um kill de wall-clock nesta workstation mede o
-//! `load average` tanto quanto o código (a política que o repositório já escreveu três vezes). Uma
-//! contagem de blocos é determinística e não flaka.
+//! `load average` tanto quanto o código (a política que o repositório já escreveu três vezes).
+//!
+//! ⛔⛔ **E a frase que estava aqui — *«uma contagem de blocos é determinística e não flaka»* — está
+//! MEIA CERTA, que é o que a torna perigosa.** Medido em 2026-09-10: este teste foi o **único ✗**
+//! de uma corrida de `1 622`, e passa **3 de 3 sozinho a `load 18,20`/`18,99`/`18,99`** — com zero
+//! linhas do diff acusado a tocarem o relógio de UI. Ele é a espécie **contador de alocações** que
+//! o `CLAUDE.md` §5.0 nomeia: *«um contador de alocações parece imune a carga e não é: sob fan-out
+//! o alocador global reutiliza arenas de outra maneira»*.
+//!
+//! ⭐ **A carga ALTA na confirmação é o que torna a leitura forte, e não fraca:** se ele passa a
+//! `load 19`, o que o parte não é a carga da máquina — é o **fan-out dentro do processo**.
+//! ⇒ *trocar o eixo em que uma régua é frágil não é o mesmo que a tornar robusta*: o contador cura
+//! a deriva do relógio e **não** cura o fan-out. Ao vê-lo vermelho, re-corra-o sozinho **antes** de
+//! olhar para o seu commit.
 //!
 //! ## A fixture TEM de conter o fenómeno
 //!

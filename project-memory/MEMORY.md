@@ -110,7 +110,7 @@
 - [Gate que varre árvore ≠ filtro de nome](feedback_a_tree_scanning_gate_is_never_reached_by_a_name_filter.md) · [a suíte SEM filtro corre antes de dizer VERDE (4×)](feedback_a_closing_run_with_a_name_filter_never_reaches_a_tree_scanning_gate.md)
 - ⛔ [`--bins` NÃO alcança `tests/`: teto de LOC do shell vermelho há 3 fechos](feedback_a_bins_run_never_reaches_the_gates_that_live_in_tests.md) · [um `tail` é uma JANELA, não um veredito (0 FAILED sobre 212 suites)](feedback_a_tail_is_a_window_not_a_verdict.md)
 - [⚠️ O «sozinho» que desmente uma flake exige a CARGA MEDIDA — li 3/3 vermelho a load 82](feedback_a_flake_red_hides_the_rest_of_the_suite.md)
-- [DOIS membros novos da família de flakes de carga: o cache do Flip (relógios) e o `interaction_dispatch_no_alloc` (alocações)](reference_flip_fit_cache_ratio_is_a_load_flake.md)
+- [TRÊS membros novos da família de flakes de carga (o 3.º passa 3/3 a `load 19` ⇒ o discriminador é o FAN-OUT, não o relógio)](reference_flip_fit_cache_ratio_is_a_load_flake.md)
 - [Clippy do fecho: alvo do DIFF](feedback_the_closing_clippy_must_cover_every_crate_the_line_touched.md) · [flake esconde a suíte — leia X/Y](feedback_a_flake_red_hides_the_rest_of_the_suite.md) · [corrida de fixtura em /tmp mal arquivada como flake de carga](feedback_a_shared_tmp_fixture_race_is_misfiled_as_a_load_flake.md)
 - [Cadência de processo + CI (17)](reference_topic_process_cadence.md)
 

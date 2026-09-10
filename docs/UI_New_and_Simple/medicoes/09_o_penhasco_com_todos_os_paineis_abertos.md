@@ -2,6 +2,8 @@
 
 > Medido em 2026-09-09 pela `line/UIUX`, a caçar o *«travou por um minuto»* do report do dono.
 > ⛔ **Não é a causa daquele report** — ver §4. É outra coisa, e ela existe.
+> ⭐⭐⭐ **CURADO em 2026-09-10 (w50): `157,91 ms` → `7,81`** — a causa era a cache de moldagem de
+> texto a transbordar, e **nenhum** dos três suspeitos que esta página listava (§3).
 
 ## §1 — A medição
 
@@ -37,15 +39,48 @@ não é a soma dela.
 **mesma** `VectorScene` sem `reset()`, logo media uma cena a crescer. Os números acima são os da
 sonda corrigida — e as duas séries são parecidas, o que só se soube depois de corrigir.
 
-## §3 — O que ainda não foi medido (e é por onde se continua)
+## §3 — ⭐⭐⭐ A CAUSA foi achada, e não era nenhum dos três suspeitos
 
-- **Onde** os `182 ms` são gastos. A sonda mede o quadro inteiro; falta um perfil por passe
-  (`panel_walk` · `reserve_slot_tabs` · o `HitIndex` · os clips do Vello).
-- Suspeitos por ordem de barateza: **clips ANINHADOS** (cada flutuante empurra o seu, e uma pilha
-  de camadas do Vello não é linear), o **`HitIndex`** com todas as superfícies registadas, e a
-  medição de texto das abas (`prefix_width` por ocupante por encaixe por quadro).
-- ⚠️ **Em RELEASE isto não foi medido.** Debug corre 20–50× mais devagar, logo `182 ms` ali é
-  plausivelmente um dígito em release — *o que faz disto uma dívida, não um incêndio*.
+> Medido e curado em **2026-09-10** (w50). A §3 desta página dizia *«suspeitos por ordem de
+> barateza: clips ANINHADOS · o `HitIndex` · a medição de texto das abas»* — **os três estão
+> refutados**, e o que ficou de pé é a quarta coisa, que ninguém tinha listado.
+
+O penhasco é a **cache de moldagem de texto** a cair de um penhasco de tamanho, não um passe caro:
+
+| painéis | textos distintos | moldagens em REGIME | ms/quadro (debug) |
+|---|---|---|---|
+| 24 | `775` | `0` | `4,87` |
+| 26 | `1 110` | **`1 109`** | **`157,91`** |
+| 26, **depois da cura** | `1 106` | **`0`** | **`7,81`** |
+
+⚠️ **O mecanismo:** a cache tinha `LAYOUT_CACHE_CAP = 1024` entradas e um `clear()` no transbordo.
+Enquanto o conjunto de trabalho **por quadro** cabe no tecto, ninguém molda nada em regime; quando
+ele o passa, o `clear()` cai **a meio do quadro** e o quadro seguinte volta a moldar **tudo**, para
+transbordar outra vez. *Não é um custo por painel — é um degrau na população inteira*, que é
+exactamente a forma que a §2 tinha medido e não sabia nomear.
+
+⭐ **A cura é ROTAÇÃO, nunca um número maior:** duas gerações (`hot`/`cold`), o transbordo promove a
+quente a fria em vez de a deitar fora, e um acerto na fria **promove** a entrada de volta. O
+residente fica entre `CAP` e `2 × CAP` — logo um conjunto de trabalho de `1 106` cabe. Subir o
+tecto só teria mudado **onde** fica o penhasco.
+
+⚠️ **A régua é um CONTADOR, não um relógio** (`TextSystem::shapes()`): moldagens são determinísticas
+e um portão de tempo entraria na família das flakes de carga (`CLAUDE.md` §5.0).
+
+⇒ o que ficou de pé de perfil, e as duas metades gateadas:
+
+| metade | onde |
+|---|---|
+| mecanismo (a cache roda em vez de se deitar fora) | [`ph2d-text/tests/a_still_screen_never_reshapes_its_text.rs`](../../../crates/ph2d-text/tests/a_still_screen_never_reshapes_its_text.rs) |
+| produto (o ecrã que o artista abre não paga moldagem nenhuma) | [`shells/desktop/tests/the_app_never_reshapes_a_still_screen.rs`](../../../shells/desktop/tests/the_app_never_reshapes_a_still_screen.rs) |
+
+⚠️ **O gate de produto mora no SHELL de propósito:** o conjunto de trabalho que produz o fenómeno é
+o do app inteiro, e a `ph2d-panel-registry-init` liga **22 dos 26** painéis (as features pobres do
+`CLAUDE.md` §2) — ali o penhasco não existe, e o gate sairia verde sem medir nada.
+
+⚠️ **Fica por medir em RELEASE.** Debug corre 20–50× mais devagar; os `7,81 ms` de hoje são um
+dígito lá. *Isto continua a ser uma dívida com número, não um incêndio* — mas o penhasco em si
+desapareceu, e o gate impede que ele volte em silêncio.
 
 ## §4 — ⛔ Por que isto NÃO é o report do dono
 
@@ -63,4 +98,6 @@ que falta para o caçar é uma reprodução.
 | o que | por que não |
 |---|---|
 | atribuir o «minuto» a este penhasco | três ordens de grandeza de diferença, e a rota dele não abre 26 painéis |
-| curar antes de perfilar | não se sabe **onde** os 182 ms são gastos; a lista da §3 são suspeitos, não causas |
+| curar antes de perfilar | ⚠️ **respondida, e a resposta refutou a própria lista**: os 182 ms não estavam em passe nenhum dos três suspeitos, e sim num `clear()` de cache (§3) |
+| subir o `LAYOUT_CACHE_CAP` | só muda **onde** fica o penhasco; a cura é rotação entre duas gerações, e o residente passa a ser `CAP..2×CAP` (§3) |
+| um portão de TEMPO sobre o quadro | moldagens são determinísticas e um relógio entraria na família das flakes de carga (§5.0) — a régua é o contador `TextSystem::shapes()` |

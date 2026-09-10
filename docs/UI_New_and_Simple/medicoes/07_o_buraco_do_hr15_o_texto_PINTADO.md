@@ -49,9 +49,59 @@ runtime (`ph2d-i18n`) is wired and `t!(...)` exists, this test enforces a frozen
 `ph2d_i18n::tr` **existe e é usado** (o painel de escultura, o modelador 3D e o vetorial têm tabela
 própria em `crates/ph2d-i18n/src/`). *O gate está à espera de uma coisa que chegou.*
 
+## §2-bis — ⛔⛔ O número da §2 estava **4× errado**, e a causa é a de sempre
+
+> Corrigido em **2026-09-10**, ao tentar curar a `ph2d-editor-core` e tropeçar em
+> `paint_panel_title(rect, "Widget Gallery", …)` — *uma chamada que a §2 não podia ver, porque ela
+> só conhecia `paint_text*`.*
+
+⚠️ **Um censo textual tem de saber TODAS as formas do que lê** — é a lição que este repo já pagou
+seis vezes, e aqui ela custou um número publicado. Derivadas do fonte, as **portas de texto** (uma
+função que recebe um `&str` e o entrega a um pintor, **ou a outra porta** — a definição é
+recursiva) são **`127`**, não uma.
+
+| | portas que o censo conhecia | literais |
+|---|---:|---:|
+| §2 (2026-09-09) | `1` (`paint_text*`) | `108` |
+| ponto fixo (2026-09-10) | **`127`** | **`438`** |
+
+| crate | literais pintados | chaves `panel.<id>.*` |
+|---|---:|---:|
+| `ph2d-panel-painter-layers` | **166** | **0** |
+| `ph2d-panel-inspector` | **99** | **0** |
+| `ph2d-editor-core` | 52 | — |
+| `ph2d-panel-audio-editor` | 34 | **0** |
+| `ph2d-panel-grid-snap` | 22 | **0** |
+| `ph2d-panel-audio-mixer` | 17 | **0** |
+| `ph2d-panel-flip` · `-motion-params` | 8 · 8 | **0** · **0** |
+| `-equalize-sizes` · `-color-equalization` · `-vector` · `-bgremoval` | 7 · 6 · 5 · 4 | 0 · 0 · 276 · 0 |
+| `-physics` · `-timeline` · `-upscale` | 2 · 2 · 2 | 60 · 48 · 0 |
+| `-asset-browser` · `-hierarchy` · `-padding` · `-widget-lab` | 1 cada | 0 |
+| **total** | **438** em **19** crates | |
+
+⭐⭐ **E as duas colunas juntas dizem o que nenhuma diz sozinha:** o `painter-layers` pinta `166`
+rótulos e declara **zero**; o `inspector`, `99` e **zero**. *Não é que aqueles painéis falem mal a
+tabela — é que eles não a usam de todo* (§3-bis).
+
+⚠️ **Por que a §2 lia `108` e uma recontagem estrita de `paint_text*` lê `79`:** nenhuma das duas
+declarava quantos **saltos** seguia. O `ph2d-panel-timeline` passa os rótulos por um `label()`
+local, a um salto do pintor — invisível a uma leitura e visível à outra. *Um censo que não declara
+o seu alcance não é comparável consigo mesmo.*
+
+⭐ **O instrumento fica no repo e o doc chama-o pelo nome** (`CLAUDE.md` §2 — *ferramenta que nenhum
+passo escrito chama pelo nome morre*):
+
+```
+cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-UIUX && python3 scripts/censo-texto-pintado.py
+```
+
+⛔ Ele **imprime e não escreve** — não há `--write`, e não há catraca global (a razão está na §3).
+⚠️ E **declara o que não vê**: literais que chegam por variável, `const`, tabela de `&str` ou
+`format!`. ⇒ *`438` é um PISO.*
+
 ## §3 — Por que esta linha MEDIU e não CUROU
 
-⛔ **Não é preguiça, é o custo de merge.** Curar os 108 toca **13 crates**, e onze delas são de
+⛔ **Não é preguiça, é o custo de merge.** Curar os `438` (§2-bis; a §2 dizia `108`) toca **19 crates**, e onze delas são de
 outras linhas — cinco delas vivas em 2026-09-09. A memória do repo já regista o preço desta forma
 exacta (*«apagar ~2 961 LOC do `VecInstance` em 24 ficheiros com a `line/Vector` VIVA é catástrofe
 de merge»*), e uma migração mecânica larga é o caso pior: diff enorme, zero conflito semântico,

@@ -49,7 +49,7 @@
 | **Trabalhar em linha paralela (Modo L / workstation)** | DIRETRIZ §1.5 (worktrees, integração `--ff-only` + gate testado, briefing §1.5.8) |
 | **ABRIR uma linha nova** | [MODELO_ABERTURA_LINHA.md](docs/IntegracaoMultiAgente/MODELO_ABERTURA_LINHA.md) — o bloco colável da 1ª mensagem (`/pd-linha-abrir`) |
 | **FECHAR a sua linha** | DIRETRIZ §1.5.9 — gate batched 1× · handoff · `rm -rf target/*/incremental` · **UMA LINHA** no §5 (`/pd-linha-fechar`) |
-| **Você é o agente INTEGRADOR** (só por ordem do Enio) | ⚠️ **`collision-surface.sh` em cada worktree ANTES do primeiro grep** — ele responde de uma vez a lista que a integração redescobre ~1.000 vezes. ⚠️ **Invoque o caminho ABSOLUTO do primário** (`bash /…/PH2D/scripts/collision-surface.sh`): uma worktree forkada antes do script **não o tem**, e ele mede a árvore de onde foi CHAMADO — *um script novo só existe nas árvores que nasceram depois dele*. Depois DIRETRIZ §1.5.3 + `scripts/foundational-integrate.sh` (`/pd-integracao`) |
+| **Você é o agente INTEGRADOR** (só por ordem do Enio) | ⚠️ **`collision-surface.sh` em cada worktree ANTES do primeiro grep** — ele responde de uma vez a lista que a integração redescobre ~1.000 vezes. ⚠️ **Invoque o caminho ABSOLUTO do primário** (`bash /…/PH2D/scripts/collision-surface.sh`): uma worktree forkada antes do script **não o tem**, e ele mede a árvore de onde foi CHAMADO — *um script novo só existe nas árvores que nasceram depois dele*. ⛔⛔ **E a coluna `base:` dele é o MERGE-BASE, não o `main` de agora** (medido 10/09): a partir da 2.ª fusão de uma rodada ela está **desactualizada por construção**, e na 3.ª ela dizia `PROJECT_SCHEMA 124 (base: 123)` com o `main` já em `127` — quem lesse *«+1»* landava um **retrocesso de 4 degraus**. ⇒ *leia o valor do `main` no ficheiro, não na coluna.* Depois DIRETRIZ §1.5.3 + `scripts/foundational-integrate.sh` (`/pd-integracao`) |
 | **Rodar uma jornada Modo L (você, operador)** | [GUIA_JORNADA_MODO_L.md](docs/IntegracaoMultiAgente/GUIA_JORNADA_MODO_L.md) — abrir linhas, quando intervir, quem faz o ship (sem coordenador) |
 | **Você ASSUMIU uma linha que já existe** (troca de janela / retomada pós-integração) | [MODELO_TROCA_DE_AGENTE_NA_LINHA.md](docs/IntegracaoMultiAgente/MODELO_TROCA_DE_AGENTE_NA_LINHA.md) — **`cd` + `pwd` + `git branch --show-current` ANTES de ler qualquer arquivo.** A janela abre na raiz (=`main`) e o mesmo path relativo existe nas 2 árvores: editar a errada compila e commita **sem erro** |
 | **Build lento / quero voar** | DIRETRIZ §6 (stack de velocidade) — §2 abaixo é o resumo |
@@ -188,6 +188,14 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   meses sobre um ficheiro de **536** linhas. ⇒ ao criar uma tolerância, escreva no mesmo commit o
   teste que pergunta *o alvo ainda existe? ainda estoura? a folga ainda o descreve?* — com a
   metade justa, senão uma varredura partida devolve zero obsoletas e lê-se como aprovado.
+- ⛔⛔ **Um TETO DE LOC pode ficar vermelho por ACUMULAÇÃO, e nenhum portão de fecho o vê.** Medido
+  na integração de 2026-09-10: o `screens/hero.rs` chegou a `709` contra o teto de `700` somando
+  **três** linhas que fecharam no mesmo dia — e nenhuma delas o estoura sozinha, logo as três
+  fecharam verdes de boa-fé. *Um teto por-ficheiro é a única grandeza deste repo que SOMA entre
+  linhas sem ninguém a contar* (os schemas somam e há sonda; este soma e não há). ⇒ a cura é do
+  **integrador** e é **corte por responsabilidade**, nunca uma entrada nova no `FILE_OVERAGE_OK`.
+  ⚠️ E um ficheiro com marcador textual de isenção (`// ph2d-loc-cap:`) é imune — o que engana é
+  que os dois se leem igual numa tabela de risco.
 - ⛔⛔ **Uma cena de smoke que ensina o CONTRÁRIO do que acontece é pior que uma cena ausente** — a
   ausente não é acreditada. Medido em 2026-08-30: a `=15` prometia que a bola sem CCD atravessa a
   parede, e as duas paravam **no mesmo sítio** desde a `rapier` 0.35 (que varre contra cenário

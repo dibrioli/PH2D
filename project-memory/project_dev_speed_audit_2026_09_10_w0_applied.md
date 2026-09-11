@@ -28,7 +28,12 @@ Estado em 2026-09-10, fim do dia:
   o `ld.mold` no gate é 12 linkers/198 threads em 20 % do tempo, não é o gargalo.
 - ✅ **W2.0 censo feito:** `App` tem ~401 campos; física toca 126 (22 `impl App`), sculpt 180, vec 89; 425
   ficheiros de smoke (95 k LOC), 22 com `impl App`. ⛔ Uma feature `smokes` por `#[cfg]` foi recusada.
-- ⭐ **ORDEM DO ENIO (10/09, noite): «Amanhã partiremos o shell» — a W2 começa em 11/09.** Ponto de
+- ⭐ **ORDEM DO ENIO (10/09, noite): «Amanhã partiremos o shell» — a W2 começa em 11/09.** ⭐⭐ **Os
+  briefings das linhas estão em `docs/IntegracaoMultiAgente/BRIEFINGS_W2_PARTIR_A_SHELL_2026-09-11.md`:
+  L0 `line/app-host` PRIMEIRO e sozinha (substrato `ph2d-app-host` + `ph2d-app-registry-init` + piloto
+  `field3d` + o HOWTO); L1–L5 (motion, physics, sculpt3d, vec, flip) em paralelo SÓ depois de L0 integrar
+  — as seis tocam as mesmas costuras (`main.rs`, `App`, `render_loop`, `input_dispatch`) e sem ponto de
+  extensão colidem por mesmo-símbolo. A prova de cada linha usa `scripts/nextest-list-diff.py`.** Ponto de
   partida: o censo em `docs/DevOps/AUDITORIA_VELOCIDADE_DE_DESENVOLVIMENTO_2026-09-10.md` §4-C2
   (W2.0: 425 ficheiros de smoke / 95 k LOC, 22 com `impl App`; `App` com ~401 campos; física 126,
   sculpt 180, vec 89) e DIRETRIZ §6.7 item 5. Degrau 1 = cenas de smoke fora da shell atrás de uma

@@ -220,10 +220,10 @@ impl crate::app_state::App {
     /// pode construir a cena: ele decodifica e deixa aqui. Roda no frame, ao lado
     /// do irmão que arma o smoke, e é no-op sem pendência.
     pub(crate) fn sculpt3d_install_pending(&mut self) {
-        if self.sculpt3d_pending.is_none() || self.gfx.is_none() {
+        if self.sculpt3d.pending.is_none() || self.gfx.is_none() {
             return;
         }
-        let Some((pieces, active)) = self.sculpt3d_pending.take() else {
+        let Some((pieces, active)) = self.sculpt3d.pending.take() else {
             return;
         };
         if pieces.is_empty() {

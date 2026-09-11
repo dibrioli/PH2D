@@ -1,0 +1,22 @@
+[package]
+name = "ph2d-app-sculpt3d"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# ⛔ ZERO dependências, e é o ponto (W2/L3): esta crate é a semente por onde a família
+# `sculpt3d` sai da shell, e a primeira coisa que sai é o que NÃO precisa de nada — o
+# estado de PEDIDO que a `App` guardava e as réguas do gesto. Uma dependência aqui teria
+# de ser paga por quem não usa a escultura, e é exactamente isso que o `sculpt_doc`
+# (passa-adiante, ver `Sculpt3dRequests`) existe para não fazer.
+#
+# ⚠️ **A shell depende dela SEM `optional`**, de propósito: é isso que preserva a cerca
+# que a `App` já declarava — um binário construído sem a feature `sculpt3d` carrega os
+# bytes de uma escultura do load ao save **sem os ler**. Um `optional = true` aqui
+# apagaria o campo nesse binário e transformaria o passa-adiante num triturador.
+[dependencies]

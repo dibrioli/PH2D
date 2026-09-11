@@ -53,7 +53,10 @@ fn a_focused_field_owns_the_keyboard_before_any_branch() {
     let guard = at(&src, "self.text_entry_focused()");
     // A primeira coisa que a função pode CONSUMIR é o bake (`Shift+B`); a guarda tem de vir
     // antes dela, senão a metade que ela protege depende de qual tecla foi apertada.
-    let first_consumer = at(&src, "sculpt3d_bake_request = true");
+    // ⚠️ **`sculpt3d_req.bake_request` desde 2026-09-11 (W2/L3-A2)** — os cinco pedidos da
+    // escultura passaram a um `Sculpt3dRequests`. O `at()` faz `expect`, logo este gate
+    // reprova ALTO quando o nome muda, em vez de deixar de medir a ordem em silêncio.
+    let first_consumer = at(&src, "sculpt3d_req.bake_request = true");
     assert!(
         guard < first_consumer,
         "a guarda do campo focado corre DEPOIS de um braço que já consome — digitar num painel \

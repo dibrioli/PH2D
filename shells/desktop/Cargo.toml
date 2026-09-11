@@ -417,6 +417,15 @@ ph2d-mesh-render = { path = "../../crates/ph2d-mesh-render", optional = true }
 # (docs/3D/02.3) e ja chega aqui pelo Painter de qualquer jeito -- marca-la de
 # opcional afirmaria uma removibilidade que ela nao tem.
 ph2d-light = { path = "../../crates/ph2d-light" }
+# A familia `sculpt3d` a sair da shell (W2/L3): por agora as reguas do gesto e o estado de
+# PEDIDO que a `App` guardava solto. Tem ZERO dependencias.
+# ⛔⛔ NAO e' `optional`, e a excepcao e' DELIBERADA -- ela e' a unica crate do modulo que nao
+# o e'. O motivo esta' escrito no campo que ela guarda: o `Sculpt3dRequests::doc` e' um
+# passa-adiante, e um binario construido SEM a feature `sculpt3d` tem de carregar os bytes de
+# uma escultura ja' gravada do load ao save sem os ler. Marca-la opcional apagaria o campo
+# nesse binario e o save seguinte descartaria a escultura do artista, em silencio.
+# ⇒ e' tambem por isso que ela nao pode ganhar dependencias: quem nunca esculpe paga-as.
+ph2d-app-sculpt3d = { path = "../../crates/ph2d-app-sculpt3d" }
 ph2d-sculpt3d = { path = "../../crates/ph2d-sculpt3d", optional = true }
 # O voxel remesh (W7). `optional` pelo mesmo motivo dos outros tres: e a
 # quarta crate do modulo, e a promessa de removibilidade so e verificavel se

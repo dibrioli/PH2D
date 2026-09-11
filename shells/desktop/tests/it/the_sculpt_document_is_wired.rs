@@ -109,7 +109,7 @@ fn the_save_prefers_the_live_scene_and_falls_back_to_the_bytes() {
         .find("to_doc_bytes()")
         .expect("o save le a cena VIVA quando ela existe");
     let stashed = body
-        .find("self.sculpt_doc")
+        .find("self.sculpt3d_req.doc")
         .expect("…e devolve os bytes do arquivo quando nao existe");
     assert!(
         live < stashed,

@@ -36,7 +36,7 @@ impl App {
     /// apagar o trabalho do artista num botão cujo nome não promete isso, e o `D` (que faz a mesma
     /// travessia) também não apaga nada.
     pub(crate) fn sculpt3d_apply_toggle(&mut self) {
-        if !std::mem::replace(&mut self.sculpt3d_toggle_request, false) {
+        if !std::mem::replace(&mut self.sculpt3d_req.toggle_request, false) {
             return;
         }
         if let Some(scene) = self.gfx.as_mut().and_then(|g| g.sculpt3d.as_mut()) {

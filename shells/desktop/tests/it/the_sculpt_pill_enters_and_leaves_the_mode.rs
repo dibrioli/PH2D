@@ -75,7 +75,7 @@ fn the_frame_fulfils_the_toggle_before_the_form_donates() {
     );
     // O braço do dreno: sem ele o pill é um botão que emite uma ação que ninguém escuta.
     assert!(
-        src.contains("EditorAction::ToggleSculpt3d => self.sculpt3d_toggle_request = true"),
+        src.contains("EditorAction::ToggleSculpt3d => self.sculpt3d_req.toggle_request = true"),
         "o dreno de ações não arma o pedido do pill"
     );
 }
@@ -290,8 +290,12 @@ fn the_panel_visibility_is_written_by_the_edge_of_the_clay() {
 #[test]
 fn the_brush_pattern_reads_the_live_layers_before_the_stored_image() {
     let src = fs::read_to_string(FRAME).expect("o laço de frame existe");
+    // ⚠️ **O nome do campo mudou em 2026-09-11 (W2/L3-A2)**: os cinco pedidos da escultura
+    // agruparam-se num `Sculpt3dRequests`, então é `sculpt3d_req.alpha_request`. *Um censo
+    // textual é exactamente o gate que uma reagrupação de campos parte* — e é por isso que
+    // ele reprova alto em vez de passar a medir o vácuo.
     let arm = src
-        .find("sculpt3d_alpha_request, false")
+        .find("sculpt3d_req.alpha_request, false")
         .expect("o braço do padrão por imagem existe");
     let tail = &src[arm..];
     assert!(

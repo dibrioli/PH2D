@@ -115,16 +115,39 @@ use history::{Entry, StrokeUndo, legacy_requested, retopo_line};
 use donation::FormRole;
 use donation::FormStamp;
 
-/// **AS RÉGUAS DO GESTO** — quanto um pixel de arrasto vale, e onde uma
-/// grandeza deixa de existir. Filho (`#[path]`) pelo motivo dos vizinhos: o
-/// corte é de ASSUNTO, e este arquivo passa a dizer *o que a CENA é* enquanto
-/// aquele diz *com que régua a mão fala com ela*.
+// **AS RÉGUAS DO GESTO** — quanto um pixel de arrasto vale, e onde uma grandeza deixa de
+// existir. ⭐ **Saíram para a `ph2d-app-sculpt3d` em 2026-09-11 (W2/L3-A4)**: já eram lei pura
+// e não precisavam da shell para nada. O corte por ASSUNTO que as criou continua a valer —
+// aqui diz-se *o que a CENA é*, lá *com que régua a mão fala com ela*.
+//
+// O glob mantém-se de propósito: os filhos leem `super::ORBIT_RAD_PER_PX` como sempre leram,
+// e a travessia de crate não move um caminho — tal como o corte de arquivo não movia.
+use ph2d_app_sculpt3d::rulers::*;
+
+/// Quanta força um pixel de arrasto vale no **FILTRO** — a régua do filtro de
+/// malha da referência.
 ///
-/// O `use` é de glob de propósito: os filhos leem `super::ORBIT_RAD_PER_PX` como
-/// sempre leram, então o corte não move um caminho.
-#[path = "rulers.rs"]
-mod rulers;
-use rulers::*;
+/// ⚠️ **Não é um teto nem um ajuste de gosto: é a régua da referência.** Ela
+/// decide quantos pixels o artista percorre para atravessar a faixa útil de cada
+/// lei (`FilterKind::range`), e mudá-la muda o quanto a mão anda para o mesmo
+/// resultado — nunca o resultado que uma dada força produz.
+///
+/// Mora aqui, e não no [`filter`], porque é **a mesma espécie** dos vizinhos que o glob
+/// acima traz: pixel de arrasto → grandeza do gesto. O módulo do filtro guarda o que o
+/// gesto FAZ.
+///
+/// ⛔ **É a ÚNICA régua que ficou na shell** (W2/L3-A4), e a razão é que ela não é um número:
+/// é um re-export da `ph2d-sculpt3d`. Levá-la daria à `ph2d-app-sculpt3d` uma dependência que
+/// quem nunca esculpe teria de pagar — e é a ausência dessa conta que deixa aquela crate ser
+/// não-opcional, que por sua vez é o que preserva o passa-adiante do `sculpt_doc`.
+// ⚠️ **A régua é a da ENGINE, e esta linha já foi uma SEGUNDA CÓPIA.** A
+// `ph2d-sculpt3d` exporta `FILTER_DRAG_PER_PX` e documenta-a como a calibração
+// autoritativa do gesto — mas o shell declarava a sua, e o `use super::*` fazia
+// o `filter.rs` resolver para a LOCAL. As duas valiam `0,001`, então
+// nada estava observavelmente errado; o que estava era que re-calibrar na crate
+// (o sítio que a doc dela manda) deixaria a suíte da crate verde sobre um número
+// que o app não usa. Precedente da própria linha: o `DEFAULT_ALPHA_SCALE`.
+pub(crate) use ph2d_sculpt3d::FILTER_DRAG_PER_PX;
 
 /// **AS CENAS DO SMOKE** — a fixture de cada uma. Filho (`#[path]`) pelo motivo
 /// dos outros três: o corte é de responsabilidade, e a lista de cenas cresce uma
@@ -597,6 +620,13 @@ pub(crate) struct Sculpt3dScene {
 
 #[path = "birth.rs"]
 mod birth;
+
+/// ⭐ **O ESTADO DA FAMÍLIA que vive na `App`** — os quatro campos que eram soltos lá
+/// (W2/L3-A2). Ver o cabeçalho dele: a fronteira com o irmão não-gateado da crate é imposta
+/// pela `cfg`, não escolhida.
+#[path = "shell_state.rs"]
+mod shell_state;
+pub(crate) use shell_state::Sculpt3dShellState;
 
 /// ⭐⭐ **O teclado da CÂMERA da escultura** — a divisão em quatro e as seis vistas.
 /// Irmão do [`keys`] pelo tecto de LOC; ver o cabeçalho dele.

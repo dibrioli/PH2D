@@ -63,7 +63,7 @@ impl App {
             if self.sculpt3d_scene_mut().is_none() {
                 return false;
             }
-            self.sculpt3d_bake_request = true;
+            self.sculpt3d_req.bake_request = true;
             return true;
         }
         // **O PAINEL** (W12) — alternar a UI da cena 3D.

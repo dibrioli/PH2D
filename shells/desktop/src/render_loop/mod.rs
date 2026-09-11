@@ -1446,7 +1446,7 @@ impl crate::App {
         // forma vai acender a tinta. A esfera nasce em `sculpt3d_smoke`; aqui nasce o que pintar.
         #[cfg(feature = "sculpt3d")]
         if let Some(hero) = hero_screen.as_mut()
-            && !std::mem::replace(&mut self.sculpt3d_canvas_done, true)
+            && !std::mem::replace(&mut self.sculpt3d_req.canvas_done, true)
         {
             let ppm = hero.project.pixels_per_meter;
             let cell = *next_import_cell;
@@ -1479,7 +1479,7 @@ impl crate::App {
         // ele custa um carimbo por sprite assado, sem tocar a GPU.
         #[cfg(feature = "sculpt3d")]
         if let Some(scene) = sculpt3d.as_mut() {
-            let want = std::mem::replace(&mut self.sculpt3d_bake_request, false);
+            let want = std::mem::replace(&mut self.sculpt3d_req.bake_request, false);
             let selected = hero_screen
                 .as_ref()
                 .and_then(|h| h.gizmo.iter_selected().next());
@@ -1503,7 +1503,7 @@ impl crate::App {
             // IMAGEM. Mora aqui pela MESMA razão do bake logo acima: é o único
             // ponto do frame em que a cena 3D, o mundo 2D, o renderizador e o
             // mapa de atlas estão os quatro em escopo.
-            if std::mem::replace(&mut self.sculpt3d_alpha_request, false) {
+            if std::mem::replace(&mut self.sculpt3d_req.alpha_request, false) {
                 // ── O que o artista VÊ, e não o que o sprite GUARDA. ──
                 // ⚠️ Um sprite cuja aparência vem do sistema de CAMADAS do Painter (procedurais,
                 // ajustes, blend) ainda aponta para a imagem de origem: ler a origem devolve outra
@@ -4821,7 +4821,7 @@ impl crate::App {
                     // SEGUINTE** — a mesma rota do `Shift+B` e do padrão do sprite, e pelo mesmo
                     // motivo, que aqui é mais forte: entrar pode ter de CRIAR a cena, e o `device`
                     // está emprestado neste ponto do laço.
-                    EditorAction::ToggleSculpt3d => self.sculpt3d_toggle_request = true,
+                    EditorAction::ToggleSculpt3d => self.sculpt3d_req.toggle_request = true,
                     EditorAction::UndoImageEdit => undo_image_edit = true,
                     // Os botões Undo/Redo da barra: MESMO caminho do Ctrl+Z. O despacho
                     // espera o fim do frame (`post_frame_undo`) porque `undo_or_redo`
@@ -8741,10 +8741,10 @@ impl crate::App {
             for req in sculpt3d_panel_bridge::dispatch(hero, sculpt3d.as_mut()) {
                 match req {
                     crate::sculpt3d::Sculpt3dFrameRequest::Bake => {
-                        self.sculpt3d_bake_request = true;
+                        self.sculpt3d_req.bake_request = true;
                     }
                     crate::sculpt3d::Sculpt3dFrameRequest::AlphaFromSprite => {
-                        self.sculpt3d_alpha_request = true;
+                        self.sculpt3d_req.alpha_request = true;
                     }
                 }
             }
@@ -12569,7 +12569,7 @@ impl crate::App {
                     .world()
                     .get::<ph2d_ecs::Sculpt3dPieceRef>(ph2d_ecs::Entity::from_bits(src_bits))
             {
-                self.sculpt3d_dup = Some((piece.0, new_bits));
+                self.sculpt3d.dup = Some((piece.0, new_bits));
             }
             // A duplicated sprite copies the source's `Sprite` component verbatim, so it SHARES the
             // source pixels — and if the source is being painted, the unbaked paint+mask never reaches

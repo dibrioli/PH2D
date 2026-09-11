@@ -951,13 +951,10 @@ impl App {
             impasto_smoke_done: false,
             substrate_smoke_done: false,
             line_smoke_done: false,
-            sculpt3d_canvas_done: false,
-            sculpt3d_bake_request: false,
-            sculpt3d_alpha_request: false,
-            sculpt3d_toggle_request: false,
-            sculpt_doc: Vec::new(),
-            #[cfg(feature = "sculpt3d")]
-            sculpt3d_pending: None,
+            // ⭐ Os cinco pedidos da escultura num sítio só (W2/L3-A2) — e o `Default` é o
+            // estado INERTE: sem ninguém pedir nada, o laço do quadro não tem trabalho de
+            // escultura para fazer (gate na crate).
+            sculpt3d_req: Default::default(),
             mask_smoke_done: false,
             sheet_smoke_done: false,
             demo_tool_forced: false,
@@ -1166,12 +1163,11 @@ impl App {
             vec_shape_armed_target: None,
             vec_entities: Default::default(),
             motion_leaf_images: Default::default(),
+            // ⭐ E os quatro que só existem com o módulo ligado (W2/L3-A2): UM `cfg` no lugar
+            // de quatro, que é o ponto — a fronteira entre este e o `sculpt3d_req` acima é
+            // imposta pela `cfg`, não escolhida (ver `sculpt3d/shell_state.rs`).
             #[cfg(feature = "sculpt3d")]
-            sculpt3d_rows: Default::default(),
-            #[cfg(feature = "sculpt3d")]
-            sculpt3d_dup: None,
-            #[cfg(feature = "sculpt3d")]
-            sculpt3d_sel: None,
+            sculpt3d: Default::default(),
             vec_sel: Default::default(),
             frame_ms_ewma: 16.7, // ~60 Hz baseline so the first
                                  // frame's status bar doesn't display

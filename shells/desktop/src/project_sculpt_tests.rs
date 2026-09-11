@@ -53,11 +53,11 @@ fn an_unreadable_sculpture_refuses_the_whole_load() {
         "…nem joga fora o histórico do documento que continua aberto"
     );
     assert!(
-        app.sculpt_doc.is_empty(),
+        app.sculpt3d_req.doc.is_empty(),
         "…nem adota os bytes recusados: o próximo save gravaria o lixo de volta"
     );
     assert!(
-        app.sculpt3d_pending.is_none(),
+        app.sculpt3d.pending.is_none(),
         "…e nada fica pendente para o frame instalar"
     );
 }
@@ -72,7 +72,7 @@ fn an_unreadable_sculpture_refuses_the_whole_load() {
 #[test]
 fn a_loaded_project_leaves_its_sculpture_pending_for_the_frame() {
     let mut app = headless_app();
-    assert!(app.sculpt3d_pending.is_none(), "sessão em branco");
+    assert!(app.sculpt3d.pending.is_none(), "sessão em branco");
 
     let path = tmp_path("sculpt_pending");
     write_project_full(&path, PROJECT_SCHEMA, Vec::new(), a_sculpture());
@@ -80,7 +80,7 @@ fn a_loaded_project_leaves_its_sculpture_pending_for_the_frame() {
     let _ = std::fs::remove_file(&path);
 
     let (pieces, active) = app
-        .sculpt3d_pending
+        .sculpt3d.pending
         .as_ref()
         .expect("a escultura do arquivo");
     assert_eq!(pieces.len(), 1, "a peça do arquivo");
@@ -103,8 +103,8 @@ fn a_project_without_a_sculpture_leaves_nothing_pending() {
     app.project_load_from(&path.to_string_lossy());
     let _ = std::fs::remove_file(&path);
 
-    assert!(app.sculpt3d_pending.is_none());
-    assert!(app.sculpt_doc.is_empty());
+    assert!(app.sculpt3d.pending.is_none());
+    assert!(app.sculpt3d_req.doc.is_empty());
 }
 
 /// **Um build que não constrói a escultura a PASSA ADIANTE** — ele não é um

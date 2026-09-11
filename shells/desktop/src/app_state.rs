@@ -748,44 +748,30 @@ pub(crate) struct App {
     pub(crate) taper_smoke_done: bool,
     /// Latch for the `PH2D_WETPAINT_SMOKE` canvas (Wet Paint mode, ADR-0134 W1; same rationale).
     pub(crate) wetpaint_smoke_done: bool,
-    /// Latch da tela de `PH2D_SCULPT3D_SMOKE=2` — a cena da DOAÇÃO. ⚠️ Sem `cfg`: um campo `bool`
-    /// não é um símbolo do módulo 3D, e gateá-lo obrigaria a gatear o `mem::replace` no laço.
-    pub(crate) sculpt3d_canvas_done: bool,
-    /// **O gesto de ASSAR pediu** (`docs/3D/02.2`) — armado pela tecla, drenado pelo laço.
+    /// ⭐ **O QUE A ESCULTURA PEDE AO LAÇO DO QUADRO, num sítio só** (W2/L3-A2, ADR-0075).
     ///
-    /// ⚠️ **Um pedido, e não a ação:** a tecla chega com a cena emprestada e o bake precisa do
-    /// `sim`, do renderizador, do `AssetDb` e do mapa de atlas — todos vivos só dentro do laço de
-    /// frame. É o mesmo desenho do `sculpt3d_canvas_done` ao lado, e sem `cfg` pela mesma razão:
-    /// um `bool` não é símbolo do módulo 3D.
-    pub(crate) sculpt3d_bake_request: bool,
-    /// **O pedido de usar o sprite selecionado como PADRÃO do pincel.**
+    /// Eram **cinco** campos soltos aqui (`sculpt3d_canvas_done`, `sculpt3d_bake_request`,
+    /// `sculpt3d_alpha_request`, `sculpt3d_toggle_request`, `sculpt_doc`), cada um com a mesma
+    /// razão escrita ao lado: *armar tem a cena emprestada, cumprir precisa do laço*. Hoje são
+    /// [`ph2d_app_sculpt3d::Sculpt3dRequests`], e os três `take_*` dele tornam **inexprimível**
+    /// o defeito que um `bool` público convida — ler o pedido sem o desarmar, que se cumpre a
+    /// cada quadro e se lê como *«o botão assou sozinho»*.
     ///
-    /// ⚠️ **Irmão do `sculpt3d_bake_request` acima, e pela mesma razão:** ler os
-    /// pixels de um sprite precisa do mundo, do renderizador e do mapa de atlas,
-    /// e os três só estão em escopo dentro do laço de frame.
-    pub(crate) sculpt3d_alpha_request: bool,
-    /// **O pill SCULPT pediu para ENTRAR ou SAIR do modo escultura** (ADR-0150).
+    /// ⚠️ **Continua SEM `cfg`, e agora a razão está na crate** (que é não-opcional de
+    /// propósito): o `doc` é um passa-adiante, e um binário sem a feature `sculpt3d` carrega os
+    /// bytes de uma escultura gravada do load ao save **sem os ler**.
+    pub(crate) sculpt3d_req: ph2d_app_sculpt3d::Sculpt3dRequests,
+    /// ⭐ **O que a escultura guarda e SÓ existe com o módulo ligado** (W2/L3-A2).
     ///
-    /// ⚠️ **Terceiro irmão dos dois acima, e pela mesma razão, que aqui é mais forte:** entrar
-    /// pode ter de CRIAR a cena, o que exige o `device` e o tamanho da superfície — e os dois só
-    /// existem depois de a janela nascer. Sem `cfg` pelo motivo dos vizinhos: um `bool` não é um
-    /// símbolo do módulo 3D, e gateá-lo obrigaria a gatear o braço do dreno.
-    pub(crate) sculpt3d_toggle_request: bool,
-    /// **O documento de escultura como veio do arquivo.** ⚠️ **Sem `cfg`, e é
-    /// deliberado:** ele é `Vec<u8>` opaco, não um símbolo do módulo, e é isso
-    /// que faz um binário construído SEM a escultura ser um **passa-adiante** em
-    /// vez de um triturador — ele carrega os bytes do load ao save sem os ler.
-    /// Com o módulo ligado ele é a fonte do save enquanto a cena não existir
-    /// (projeto aberto antes de a GPU aparecer).
-    pub(crate) sculpt_doc: Vec<u8>,
-    /// A escultura **já decodificada**, esperando o device (ADR-0150 W8.3).
-    ///
-    /// ⚠️ Ela é decodificada no LOAD, e não aqui: a recusa de um documento
-    /// ilegível tem de acontecer **antes** de qualquer mutação da sessão, e isso
-    /// exige lê-lo. Guardar o resultado evita a segunda decodificação — que é
-    /// `O(vértices)` com octree e adjacência POR NÍVEL.
+    /// Eram **quatro** campos soltos (`sculpt3d_pending`, `sculpt3d_rows`, `sculpt3d_dup`,
+    /// `sculpt3d_sel`). ⛔ **Eles não puderam juntar-se ao irmão acima**, e a fronteira é
+    /// exactamente a que este ficheiro já declarava: os quatro carregam **tipos do módulo**
+    /// (`LoadedPiece`, `SculptRowsSeen`), logo têm de ser gateados — e uma struct gateada não
+    /// pode guardar o `doc`, cujo valor inteiro é sobreviver a um binário sem a feature.
+    /// ⇒ **dois campos e não um**, com a fronteira a ser *o que a `cfg` obriga*.
+    /// Quando aqueles tipos saírem para a crate (Fase B), os dois fundem-se.
     #[cfg(feature = "sculpt3d")]
-    pub(crate) sculpt3d_pending: Option<(Vec<crate::sculpt3d::LoadedPiece>, usize)>,
+    pub(crate) sculpt3d: crate::sculpt3d::Sculpt3dShellState,
     /// Latch do `PH2D_STACK_SMOKE` (cena da composicao de clips, uma vez).
     pub(crate) stack_smoke_done: bool,
     /// Latch do `PH2D_NEST_SMOKE` (cena do nesting, uma vez).
@@ -1716,25 +1702,9 @@ pub(crate) struct App {
     /// terceira média (ver [`crate::motion_leaf_images`]). Vive aqui porque toda leitura PARA a
     /// GPU, e ela tem de sobreviver ao quadro.
     pub(crate) motion_leaf_images: crate::motion_leaf_images::LeafImages,
-    /// **As peças da escultura que já tiveram linha na Hierarquia** (ADR-0150). ⚠️ Um CONJUNTO
-    /// de ids, e não um mapa de bits: o mapa é o próprio mundo, lido a cada quadro — ver o doc
-    /// de `sculpt3d::entities`, onde está por que um mapa guardado apagaria a escultura no
-    /// primeiro Ctrl+Z.
-    #[cfg(feature = "sculpt3d")]
-    pub(crate) sculpt3d_rows: crate::sculpt3d::entities::SculptRowsSeen,
-    /// **O *Duplicate* de uma linha de escultura, pedido e drenado no quadro seguinte**
-    /// (`(id da peça de origem, bits da entidade cópia)`).
-    ///
-    /// ⚠️ **Um PEDIDO, como o `sculpt3d_toggle_request`**, e pela mesma razão: duplicar uma peça
-    /// precisa da cena, e no ponto em que a Hierarquia responde ao clique ela está emprestada
-    /// pelo laço do quadro.
-    #[cfg(feature = "sculpt3d")]
-    pub(crate) sculpt3d_dup: Option<(u32, u64)>,
-    /// **A última selecção da Hierarquia que a escultura já leu** — o detector de MUDANÇA que
-    /// impede os dois escritores de `active` (a linha escolhida e o `aim` do pen-down) de
-    /// brigarem a cada quadro. Ver `sculpt3d::entities`.
-    #[cfg(feature = "sculpt3d")]
-    pub(crate) sculpt3d_sel: Option<u64>,
+    // ⭐ **Os três que viviam aqui — `sculpt3d_rows`, `sculpt3d_dup`, `sculpt3d_sel` — mudaram-se
+    // para o `sculpt3d: Sculpt3dShellState` lá em cima** (W2/L3-A2), com a `sculpt3d_pending`.
+    // A prosa de cada um viajou com ele; ver `sculpt3d/shell_state.rs`.
     /// Espelho da última sincronia de seleção canvas ↔ Hierarquia (ADR-0110): diz
     /// **quem** mudou neste frame, e por isso quem manda. Ver `sync_selection`.
     pub(crate) vec_sel: crate::vec_selection::VecSelSync,

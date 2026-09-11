@@ -149,10 +149,10 @@ fn with_no_scene_the_pill_is_the_invitation_to_enter() {
 #[test]
 fn a_request_with_no_gpu_is_spent_not_stored() {
     let mut app = crate::app_state::App::new();
-    app.sculpt3d_toggle_request = true;
+    app.sculpt3d_req.toggle_request = true;
     app.sculpt3d_apply_toggle();
     assert!(
-        !app.sculpt3d_toggle_request,
+        !app.sculpt3d_req.toggle_request,
         "o pedido sobreviveu ao frame: a cena nasceria sozinha quando a janela aparecesse"
     );
 }

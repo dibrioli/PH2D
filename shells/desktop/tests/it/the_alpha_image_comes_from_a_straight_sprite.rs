@@ -14,7 +14,7 @@ const PANEL: &str = "src/sculpt3d/panel.rs";
 /// O corpo do bloco que cumpre o pedido, do `mem::replace` do flag até o fim.
 fn fulfilment(src: &str) -> String {
     let at = src
-        .find("self.sculpt3d_alpha_request, false")
+        .find("self.sculpt3d_req.alpha_request, false")
         .expect("o laço de frame cumpre o pedido do alpha por imagem");
     // ⚠️ **O fim é o FIM DO BLOCO, não um número de caracteres.** A 1ª versão
     // pegava 1800 e a 2ª 3600, e as duas reprovaram produto correto assim que o

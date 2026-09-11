@@ -196,7 +196,7 @@ impl crate::App {
     /// nunca abriu o módulo) ela sai no primeiro `let ... else`.
     pub(crate) fn sculpt3d_entities_sync(&mut self) {
         // ⚠️ **O pedido é tomado ANTES do `gfx`**: ele mora no `App` e a cena mora no `AppGfx`.
-        let pedido = self.sculpt3d_dup.take();
+        let pedido = self.sculpt3d.dup.take();
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
@@ -211,7 +211,7 @@ impl crate::App {
         {
             e.insert(Sculpt3dPieceRef(nova.0));
         }
-        sync(&mut gfx.sim, scene, &mut self.sculpt3d_rows);
+        sync(&mut gfx.sim, scene, &mut self.sculpt3d.rows);
         // ⭐⭐⭐ **ESCOLHER A LINHA PÕE A MÃO NA PEÇA** — a outra metade de *«as funções na
         // hierarquia para o mesh»*.
         //
@@ -221,8 +221,8 @@ impl crate::App {
         // impossível enquanto a Hierarquia tivesse uma seleccionada. *É a mesma lei do
         // `vec_selection`: quem MUDOU neste quadro é quem manda.*
         let sel = gfx.hero_screen.as_ref().and_then(|h| h.gizmo.selection);
-        if sel != self.sculpt3d_sel {
-            self.sculpt3d_sel = sel;
+        if sel != self.sculpt3d.sel {
+            self.sculpt3d.sel = sel;
             if let Some(bits) = sel
                 && let Some(piece) = gfx
                     .sim

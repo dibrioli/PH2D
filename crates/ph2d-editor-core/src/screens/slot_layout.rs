@@ -121,9 +121,13 @@ impl HeroLayout {
 /// que a sexta aparecesse: os painéis dela desenhariam **por baixo** das abas, e nenhum gate o
 /// veria (o rect publicado continua dentro da coluna).
 ///
-/// ⇒ a regra é **derivada**: *todo rect docado que TOCA a faixa começa onde ela acaba.* Um que não
-/// a toque — a tira do Flip, que é baixa e vive no fundo da faixa inferior — fica intocado, e isso
-/// está certo: ela nunca esteve debaixo das abas.
+/// ⇒ a regra é **derivada**: *todo rect docado que MORA no encaixe e toca a faixa dele começa
+/// onde ela acaba.* Um que não a toque — a tira do Flip, que é baixa e vive no fundo da faixa
+/// inferior — fica intocado, e isso está certo: ela nunca esteve debaixo das abas.
+///
+/// ⛔⛔ **E o «mora no encaixe» não é decoração — sem ele a faixa de baixo empurrava as duas
+/// COLUNAS** (report do dono, 2026-09-11). O mecanismo, e por que a cura continua derivada em
+/// vez de virar uma lista de nomes, estão no doc de [`in_band`].
 impl HeroLayout {
     /// Ver o doc acima.
     pub fn reserve_slot_tabs(&mut self, counts: [usize; 6], bar_h: f32) {
@@ -149,7 +153,7 @@ impl HeroLayout {
             bars[i] = bar;
             let band_bottom = band.y + band.h;
             for r in self.docked_rects_mut() {
-                if overlaps(*r, bar) {
+                if in_band(*r, band) && overlaps(*r, bar) {
                     let top = bar.y + bar.h;
                     *r = Rect::new(r.x, top, r.w, (band_bottom - top).max(0.0));
                 }
@@ -178,6 +182,33 @@ impl HeroLayout {
 
 fn overlaps(a: Rect, b: Rect) -> bool {
     a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h
+}
+
+/// ⭐⭐⭐ **O rect `r` é INQUILINO da banda `band`?** — e a resposta é a coluna horizontal dela.
+///
+/// ⛔⛔ **Tocar uma faixa não é morar no encaixe dela**, e a diferença custou o report de
+/// 2026-09-11 (*«Inspector e Hierarchy saíram da lateral e foram para a altura da timeline do
+/// Flip»*): as colunas são desenhadas com a altura inteira do chrome **sempre**, e com
+/// `DockSides::NONE` a banda de baixo alarga-se até `6 px` da borda e passa a correr **por baixo**
+/// delas. A regra antiga — *«todo rect docado que TOCA a faixa»* — apanhava-as e mudava-as de
+/// encaixe. ⚠️ E o defeito **prendia**: o `DockSides::from_published` do quadro seguinte media
+/// esses rects contra a coluna inteira, lia ~20 % de cobertura contra uma barra de 50 %, concluía
+/// *«coluna vazia»* e devolvia `NONE` outra vez — dois pontos fixos, com o primeiro quadro a
+/// decidir em qual se cai. *Fechar e reabrir o painel curava porque o toggle parte o ciclo.*
+///
+/// ⭐ **A regra continua DERIVADA** — que era a razão de ser da antiga, e continua a valer: nada
+/// aqui é uma lista de nomes que caduca quando um campo novo aparecer. O que mudou é *qual*
+/// propriedade se deriva: **um rect pertence à banda cuja coluna horizontal ele É.** Todo rect de
+/// [`HeroLayout::docked_rects_mut`] nasce com o `x`/`w` do encaixe dele (`slot_rects` só parte uma
+/// coluna ao meio na VERTICAL), e a banda de baixo é o próprio `self.timeline` ⇒ a igualdade vale
+/// por construção nos casos legítimos, e falha exactamente no caso do defeito.
+///
+/// ⛔ **Contenção não bastaria:** `0..220` cabe dentro de `6..1914`, e só não cabe por causa dos
+/// `6 px` de reserva da alça — uma cura que dependesse desse número voltaria a partir-se no dia em
+/// que ele fosse a zero.
+fn in_band(r: Rect, band: Rect) -> bool {
+    const EPS: f32 = 0.5; // LITERAL-PX-OK: tolerância de igualdade, não um token de desenho
+    (r.x - band.x).abs() <= EPS && (r.w - band.w).abs() <= EPS
 }
 
 #[cfg(test)]

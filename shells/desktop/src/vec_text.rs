@@ -118,7 +118,7 @@ impl crate::app_state::App {
             fill,
             stroke,
             text: String::new(),
-            wrap_width: self.vec_text_wrap, // Auto/Fixed corrente (Width)
+            wrap_width: self.vec_state.text_wrap, // Auto/Fixed corrente (Width)
             id: None,
             center: [0.0, 0.0],
         });

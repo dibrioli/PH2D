@@ -828,17 +828,15 @@ pub(crate) struct App {
     pub(crate) expr_blend_smoke_done: bool,
     /// A cena do C4 (ADR-0152) ja montou? Uma vez por processo.
     pub(crate) morph_fade_smoke_done: bool,
-    /// A cena do **fade vetorial** já montou? (`PH2D_VEC_FADE_SMOKE`, uma vez por sessão.)
-    /// A cena da APARÊNCIA do objecto (`PH2D_VEC_APPEARANCE_SMOKE`) já montou.
-    pub(crate) vec_appearance_smoke_done: bool,
+    /// ⭐⭐ **O estado da família `vec` que já vive fora da shell** (W2/L4, A2 — ADR-0075).
+    ///
+    /// São 19 dos 75 campos `vec_*` que esta struct tinha: os que **nenhum ficheiro de fora da
+    /// família lê** (a não ser os dois roteadores) **e** cujo tipo vem de uma crate. A régua, os
+    /// 11 que o tipo da shell bloqueia e os 45 que são substrato do módulo (`vec_entities`,
+    /// `vec_scene`, `vec_pen`) estão em [`ph2d_app_vec::state`].
+    pub(crate) vec_state: ph2d_app_vec::state::VecState,
     /// A cena do IMPORTAR SVG (`PH2D_VEC_SVG_SMOKE`) já montou — ela escreve o próprio ficheiro.
     pub(crate) svg_import_smoke_done: bool,
-    /// A cena da PILHA DE APARÊNCIA (`PH2D_VEC_STACK_SMOKE`) já montou.
-    pub(crate) vec_stack_smoke_done: bool,
-    /// Em que TEMPO está a cena dos ossos (`PH2D_VEC_BONE_SMOKE`): `0` monta, `1` deixa o `sync`
-    /// dar entidade às formas, `2` prende, `3` acabou. ⚠️ Ela precisa de dois quadros porque
-    /// prender exige a ENTIDADE da forma, e quem a cria corre depois do prólogo.
-    pub(crate) vec_bone_smoke_step: u8,
     /// As três peças da cena entre os dois tempos: `(forma, raiz do esqueleto dela)`.
     /// ⭐ **A IMAGEM da cena de osso** — os bits da sprite e a raiz do esqueleto dela.
     ///
@@ -848,7 +846,6 @@ pub(crate) struct App {
     pub(crate) vec_bone_smoke_img: Option<(u64, Option<ph2d_ecs::Entity>)>,
     pub(crate) vec_bone_smoke_pend:
         Option<[(ph2d_vec_scene::VecPathId, Option<ph2d_ecs::Entity>); 3]>,
-    pub(crate) vec_fade_smoke_done: bool,
     pub(crate) nest_smoke_done: bool,
     /// Latch for `PH2D_PHYSICS_SMOKE` (drop-a-sprite-on-a-floor, once).
     /// **De quem o readout do player é impresso, e a cada meio segundo**
@@ -1155,15 +1152,6 @@ pub(crate) struct App {
     /// input hooks while the `vector` tool is active, and styled each frame from
     /// the tool's palette via `render_loop::vector_bridge`.
     pub(crate) vec_pen: ph2d_vec_edit::PenTool,
-    /// ADR-0108 Fase 1: drag-to-size shape drawing (Rectangle / Ellipse /
-    /// Polygon). Sibling of `vec_pen`; the shell routes canvas input to one or
-    /// the other by `vec_draw_mode` (mirrored from the tool by `vector_bridge`).
-    pub(crate) vec_shape: ph2d_vec_edit::ShapeTool,
-    /// **O LÁPIS** — a mão livre (W1 do plano 25). Irmão do `vec_pen`/`vec_shape`: a shell
-    /// converte tela→mundo e ele acumula as amostras, decima e ajusta a spline AO VIVO. O path
-    /// vivo mora na cena desde o press (o padrão da `ShapeTool`), então preview, undo de um passo
-    /// e seleção no release saem do caminho normal.
-    pub(crate) vec_pencil: ph2d_vec_edit::Pencil,
     /// The tool's current draw-mode + shape parameters, mirrored each frame from
     /// the `VectorTool` (the input dispatch can't downcast — that lives in the
     /// allowlisted bridge). Decides pen vs shape routing + sizes the shapes.
@@ -1338,12 +1326,6 @@ pub(crate) struct App {
     /// antes de qualquer `sync` — sem esta fila de um item, a linha ficaria na cena sem
     /// `VecConnector`: um traço inerte que não segue ninguém.
     pub(crate) vec_connect_pending: Option<(ph2d_vec_scene::VecPathId, ph2d_ecs::VecConnector)>,
-    /// A **LINHA DE CORTE recém-começada** (o press da caneta em modo `Cut`), esperando a
-    /// entidade dela nascer no `vec_entities::sync` para receber o `VecCutPath`. Espelho exato do
-    /// `vec_connect_pending` e do `vec_blend_pending`, e pela mesma razão: sem esta fila de um
-    /// item, a lâmina ficaria na cena como um caminho comum — desenhada como arte, exportada
-    /// como arte, e fora do alcance do botão que existe para a descartar.
-    pub(crate) vec_cut_pending: Option<ph2d_vec_scene::VecPathId>,
     /// O lado por onde cada ponta de cada conector saiu no frame anterior — a memória da
     /// histerese de `side_towards` (sem ela a saída pisca na diagonal). Runtime-only.
     pub(crate) vec_connect_sides: crate::connector_live::SideCache,
@@ -1377,11 +1359,6 @@ pub(crate) struct App {
     /// ENTIDADE (o container não tem path — Fatia 3). Runtime-only: um arrasto vivo não é documento (o
     /// resultado, os `corners`, é; e vive no `VecEnvelope`). Ver [`crate::envelope_gesture`].
     pub(crate) vec_envelope_drag: Option<(u64, usize)>,
-    /// A alça do TEXTO EM CAMINHO está sob arrasto? (W5) Armada no press de Node, limpa no
-    /// release. Runtime-only: um arrasto vivo não é documento — o resultado (`start_offset`) é,
-    /// e vive no `VecTextPath`. Um booleano e não um alvo porque há UMA alça (o `start_offset` do
-    /// texto selecionado); qual texto vem da seleção, como no painel. Ver [`crate::vec_text_ride`].
-    pub(crate) vec_textpath_handle_drag: bool,
     /// O que do MOTION PATH está sob arrasto, se algo — a âncora (translada) ou uma alça
     /// de tangente (molda). Armada no press, limpa no release (ADR-0141, Fatia 3).
     /// Runtime-only: um arrasto vivo não é documento; o resultado (a geometria e as
@@ -1516,11 +1493,6 @@ pub(crate) struct App {
     /// O `Plan` de cada morph enquanto a relação não muda. Runtime-only: derivável das fontes,
     /// fora do save e do undo.
     pub(crate) vec_morph_plans: crate::morph_live::MorphPlans,
-    /// O **overlay ordenado** de TODOS os blends (passos + fontes reempilhadas, em z), cozido em
-    /// MUNDO a cada frame pelo `blend_live::recook` e desenhado por
-    /// `ph2d_vec_render::draw_blend_overlay`. Não está na cena (não é pickável) — é o que torna o
-    /// blend UM objeto, e não N. Runtime-only.
-    pub(crate) vec_blend_overlay: Vec<ph2d_vec_scene::VecPath>,
     /// **As máquinas de Morph VIVAS** (plano 32 W5) — onde cada uma está agora.
     ///
     /// ⚠️ **Runtime-only, e não pode ser outra coisa:** uma máquina é *onde a forma está agora*, e
@@ -1530,11 +1502,6 @@ pub(crate) struct App {
     /// O spine AUTOMÁTICO que o `blend_live::recook` escreveu por último, por blend — a memória que
     /// detecta a edição do spine (modo Node) para marcar `spine_authored` (ADR-0128). Runtime-only.
     pub(crate) vec_blend_spines: crate::blend_live::BlendSpines,
-    /// **Pick Shapes** (ADR-0128 C2b): as formas fechadas que o artista clicou **na ordem**, no
-    /// modo `DrawMode::PickBlend`. O botão Blend as liga nessa sequência (em vez da ordem de z), e a
-    /// prévia do spine as costura no canvas. Esvaziado ao criar o blend ou ao sair do modo.
-    /// Runtime-only.
-    pub(crate) vec_blend_picks: Vec<ph2d_vec_scene::VecPathId>,
     /// O **hospedeiro** do rótulo que o duplo-clique acabou de abrir, esperando a 1ª letra
     /// materializar o objeto de texto (e com ele a entidade) para receber o `VecLabel`. Um
     /// rótulo nasce VAZIO — sem geometria não há path, sem path não há entidade, e sem entidade
@@ -1612,14 +1579,6 @@ pub(crate) struct App {
     /// estender, porque um operando pode ter o seu próprio offset vivo — fundido por `extend`
     /// ele apagaria esse offset, ou seria apagado por ele, em silêncio.
     pub(crate) bool_live: crate::bool_live::BoolLive,
-    /// **O eixo de SESSÃO da simetria**, em MUNDO — a linha que aparece no instante em que o botão
-    /// liga, com a cena vazia e nada seleccionado.
-    ///
-    /// ⚠️ Mora aqui e não na ferramenta porque nasce do centro do **ecrã** (*"a tela é a referência
-    /// para a posição inicial da linha"*), e só a shell tem câmera. `None` = por semear: a
-    /// semeadura acontece na aresta desligado→ligado, e é isso que faz a linha ficar no lugar ao
-    /// longo de quantos desenhos o artista quiser.
-    pub(crate) vec_symmetry_origin: Option<[f64; 2]>,
     /// O **cozimento do FX raster VIVO** — as imagens de Blur/Glow/Drop Shadow por-forma
     /// (`ph2d_ecs::VecFilter`, plano 24). Runtime-only: o documento guarda a RELAÇÃO (o
     /// componente), e isto são os pixels derivados dela, injetados no z da forma.
@@ -1642,21 +1601,12 @@ pub(crate) struct App {
     /// republica; sem isto, escolher uma forma offsetada mostraria os knobs globais do painel e
     /// o chip mentiria sobre o que está na tela. Runtime-only.
     pub(crate) vec_offset_mirrored: Option<ph2d_vec_scene::VecPathId>,
-    /// A forma cujo **perfil de largura** os quatro knobs `W *` estão espelhando (ADR-0148).
-    /// Mesmo papel do [`Self::vec_offset_mirrored`] e pela mesma razão: a borda é a SELEÇÃO, e
-    /// sem ela escolher uma forma com perfil vivo mostraria os knobs globais do painel.
-    pub(crate) vec_profile_mirrored: Option<ph2d_vec_scene::VecPathId>,
     /// A alça de LARGURA agarrada agora (plano 25 §5). Runtime-only: o que o documento guarda é o
     /// `VecStrokeProfile`, e isto é só qual parada o dedo está a mover.
     pub(crate) vec_width_grab: Option<crate::width_handles::Grab>,
     /// O caminho de REFERÊNCIA da cena de smoke do Width Tool, à espera de ganhar o perfil no
     /// frame seguinte (o componente precisa de uma entidade, e ela nasce no `sync`).
     pub(crate) vec_width_ref: Option<ph2d_vec_scene::VecPathId>,
-    /// A forma cujo CONTOUR o painel está espelhando (os três sliders + os dois trios). Mesmo
-    /// papel do [`Self::vec_offset_mirrored`] e pela mesma razão: o `paint` lê o STORE primeiro
-    /// (senão o número saltaria durante o arrasto), então sem uma borda que reescreva o store na
-    /// troca de seleção, escolher outra forma mostraria os valores da anterior. Runtime-only.
-    pub(crate) vec_contour_mirrored: Option<ph2d_vec_scene::VecPathId>,
     /// ADR-0108: undo/redo by snapshot of `vec_scene` (Ctrl+Z / Ctrl+Shift+Z).
     /// Subsumido pela fila GLOBAL (`undo`, abaixo): ainda é populado pelas ops
     /// vetoriais, mas o Ctrl+Z já não o lê — a fila global cobre a geometria via
@@ -1731,17 +1681,6 @@ pub(crate) struct App {
     /// ⚠️ Nasce LIGADO: com o elo ligado o controlo comporta-se **exactamente** como o vão único
     /// que existia antes de 2026-08-30, então quem nunca o desligar não vê diferença nenhuma.
     pub(crate) texpat_gap_link: [bool; 2],
-    pub(crate) vec_grad_drag: Option<ph2d_vec_render::GradHandle>,
-    /// The selected gradient handle (drives the overlay highlight + the Remove-
-    /// point / Influence / Jitter targets, via [`GradHandle::point`]). `None` = none.
-    pub(crate) vec_grad_selected: Option<ph2d_vec_render::GradHandle>,
-    /// In-app path clipboard for Vector Ctrl+C/X/V — a clone of the copied path
-    /// (geometry + style, id-less). `None` until the first copy/cut.
-    pub(crate) vec_clipboard: Option<ph2d_vec_scene::VecClip>,
-    /// Snap + grid settings of the Vector tool (edited by the panel's Snap section).
-    /// "Set Center" armado: a próxima pressão no canvas põe a ORIGEM da forma
-    /// selecionada ali (ADR-0112). Desarma no press.
-    pub(crate) vec_pivot_edit: bool,
     pub(crate) vec_snap: crate::vec_snap::VecSnapSettings,
     /// Snap targets of the CURRENT gesture — collected once at Down (the scene's
     /// shape doesn't change mid-drag; only the dragged thing, which is excluded).
@@ -1765,9 +1704,6 @@ pub(crate) struct App {
     /// Tracking (fração do tamanho, em) corrente do texto — slider Tracking do painel;
     /// persiste entre sessões.
     pub(crate) vec_text_tracking: f64,
-    /// A largura de refluxo corrente do texto (`None` = Auto). Default da PRÓXIMA sessão e
-    /// espelho da que está viva — o mesmo papel dos irmãos `vec_text_*`.
-    pub(crate) vec_text_wrap: Option<f64>,
     /// Alinhamento horizontal corrente do texto (L/C/R) — botões do painel; persiste
     /// entre sessões.
     pub(crate) vec_text_align: ph2d_tool_vector::TextAlign,
@@ -1813,8 +1749,6 @@ pub(crate) struct App {
     /// resposta**: numa ferramenta destrutiva, acender uma coisa e apagar outra é o pior defeito
     /// possível.
     pub(crate) vec_trim_hit: Option<crate::vec_trim::TrimHit>,
-    /// A geometria do realce, em MUNDO — derivada do [`Self::vec_trim_hit`] no mesmo quadro.
-    pub(crate) vec_trim_piece: Vec<ph2d_vec_scene::VecPath>,
     /// ⭐⭐⭐ **A FACE que o Balde vai preencher** (plano 40) — a região sob o cursor neste quadro,
     /// em MUNDO, e `None` quando ele não aponta região nenhuma. O realce desenha-a e o clique
     /// deposita-a, **pela mesma resposta**.

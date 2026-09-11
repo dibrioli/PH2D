@@ -69,13 +69,13 @@ fn glow() -> FxOp {
 impl crate::App {
     /// No prólogo do frame, uma vez. No-op sem a env.
     pub(crate) fn vec_fade_smoke(&mut self) {
-        if self.vec_fade_smoke_done || std::env::var_os("PH2D_VEC_FADE_SMOKE").is_none() {
+        if self.vec_state.fade_smoke_done || std::env::var_os("PH2D_VEC_FADE_SMOKE").is_none() {
             return;
         }
         if self.gfx.is_none() {
             return; // sem mundo ainda; tenta no próximo frame
         }
-        self.vec_fade_smoke_done = true;
+        self.vec_state.fade_smoke_done = true;
 
         // As duas formas, iguais de propósito: o que difere é o FILTRO, e é isso que a cena mede.
         let (plain, filtered): (VecPathId, VecPathId) = {

@@ -55,14 +55,15 @@ const FILEIRA: [BlendMode; 5] = [
 impl crate::App {
     /// No prólogo do frame, uma vez. No-op sem a env.
     pub(crate) fn vec_appearance_smoke(&mut self) {
-        if self.vec_appearance_smoke_done || std::env::var_os("PH2D_VEC_APPEARANCE_SMOKE").is_none()
+        if self.vec_state.appearance_smoke_done
+            || std::env::var_os("PH2D_VEC_APPEARANCE_SMOKE").is_none()
         {
             return;
         }
         if self.gfx.is_none() {
             return; // sem mundo ainda; tenta no próximo frame
         }
-        self.vec_appearance_smoke_done = true;
+        self.vec_state.appearance_smoke_done = true;
 
         let scene = &mut self.gfx.as_mut().expect("gfx").vec_scene;
         for (a, b, rgb) in FUNDO {

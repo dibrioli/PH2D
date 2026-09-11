@@ -80,11 +80,7 @@ impl PathPick {
 /// desenhar em MUNDO por ora; um guia por token em screen-space é o refinamento (quando o realce
 /// virar UI de verdade).
 #[must_use]
-pub fn hover_outline(
-    scene: &VecScene,
-    xforms: &VecXforms,
-    id: VecPathId,
-) -> Option<VecPath> {
+pub fn hover_outline(scene: &VecScene, xforms: &VecXforms, id: VecPathId) -> Option<VecPath> {
     let mut p = scene.paths().iter().find(|p| p.id == id)?.clone();
     ph2d_vec_scene::bake_xform(&mut p, &ph2d_vec_scene::xform_of(xforms, id));
     p.fill = None;

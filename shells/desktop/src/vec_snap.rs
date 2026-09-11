@@ -243,4 +243,3 @@ pub(crate) fn slide_entity_world(sim: &mut SimWorld, bits: u64, delta: [f64; 2])
         t.translation.y += dy;
     }
 }
-

@@ -3,7 +3,7 @@
 //! Espelho exato do `connector_live::upkeep` e do `blend_live::upkeep`: um caminho novo já está
 //! na cena desde o press, mas a **entidade** dele só nasce no `vec_entities::sync`, mais adiante
 //! no mesmo frame — então o componente que o marca como lâmina não pode ser pendurado no press.
-//! A fila de um item (`App::vec_cut_pending`) é o que atravessa esse vão.
+//! A fila de um item (`VecState::cut_pending`) é o que atravessa esse vão.
 //!
 //! # Uma lâmina de cada vez
 //!

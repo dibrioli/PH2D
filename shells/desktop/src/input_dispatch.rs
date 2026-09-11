@@ -1361,7 +1361,7 @@ fn gizmo_anchor_half(
 
 impl App {
     /// **Pick Shapes** (ADR-0128 C2b): alterna a forma FECHADA sob `world` na lista de escolhidas
-    /// ([`crate::App::vec_blend_picks`]), na ordem de clique. Já escolhida → removida (corrigir a
+    /// ([`ph2d_app_vec::state::VecState::blend_picks`]), na ordem de clique. Já escolhida → removida (corrigir a
     /// ordem sem recomeçar); nova → anexada, até o teto de [`crate::blend_live::MAX_BLEND_SOURCES`].
     /// Só FECHADAS entram — uma curva aberta não tem interior para interpolar. Marca
     /// `any_input_this_frame` para a prévia do spine redesenhar.
@@ -1379,10 +1379,10 @@ impl App {
                 })
         };
         let Some(id) = hit else { return };
-        if let Some(pos) = self.vec_blend_picks.iter().position(|&p| p == id) {
-            self.vec_blend_picks.remove(pos);
-        } else if self.vec_blend_picks.len() < crate::blend_live::MAX_BLEND_SOURCES {
-            self.vec_blend_picks.push(id);
+        if let Some(pos) = self.vec_state.blend_picks.iter().position(|&p| p == id) {
+            self.vec_state.blend_picks.remove(pos);
+        } else if self.vec_state.blend_picks.len() < crate::blend_live::MAX_BLEND_SOURCES {
+            self.vec_state.blend_picks.push(id);
         }
         self.any_input_this_frame = true;
     }
@@ -1533,7 +1533,7 @@ impl App {
         // o comportamento errado (o usuário costuma apertar com o mouse parado).
         let c = shape_constraint(self.modifiers);
         if let Some(gfx) = self.gfx.as_mut() {
-            self.vec_shape.set_constraint(&mut gfx.vec_scene, c);
+            self.vec_state.shape.set_constraint(&mut gfx.vec_scene, c);
         }
     }
 
@@ -1754,7 +1754,7 @@ impl App {
         if let Some(gfx) = self.gfx.as_ref() {
             let clip = gfx.vec_scene.copy_paths(&sel);
             if !clip.is_empty() {
-                self.vec_clipboard = Some(clip);
+                self.vec_state.clipboard = Some(clip);
             }
         }
     }
@@ -1768,7 +1768,7 @@ impl App {
     /// Vector Ctrl+V: paste the clipboard, offset ~12 px (screen→world), e seleciona
     /// o resultado. Ctrl+Shift+V cola **no lugar** (sem deslocar). ONE undo step.
     fn vec_paste(&mut self, in_place: bool) {
-        let Some(clip) = self.vec_clipboard.clone() else {
+        let Some(clip) = self.vec_state.clipboard.clone() else {
             return;
         };
         let (dx, dy) = if in_place {
@@ -2073,7 +2073,7 @@ impl App {
     /// posição do cursor, respeitando a convexidade (o canto para na fronteira, não sai
     /// dela). No-op (false) sem um arrasto vivo — a mesma disciplina do `vec_pen_drag_move`.
     fn vec_textpath_handle_move(&mut self, x: f32, y: f32) -> bool {
-        if !self.vec_textpath_handle_drag {
+        if !self.vec_state.textpath_handle_drag {
             return false;
         }
         let Some(gfx) = self.gfx.as_mut() else {
@@ -2087,7 +2087,7 @@ impl App {
             &self.vec_entities,
             self.vec_pen.selected_paths(),
             [f64::from(w[0]), f64::from(w[1])],
-            self.vec_textpath_handle_drag,
+            self.vec_state.textpath_handle_drag,
         )
     }
 
@@ -2107,7 +2107,7 @@ impl App {
             self.vec_pen.selected_paths(),
             world,
             radius,
-            &mut self.vec_textpath_handle_drag,
+            &mut self.vec_state.textpath_handle_drag,
         )
     }
 
@@ -2772,7 +2772,7 @@ impl App {
     /// world position (a radial edge sets the radius). No-op unless a grad drag is
     /// live. Reuses the pure `drag_gradient_handle` geometry helper.
     fn vec_grad_drag_move(&mut self, x: f32, y: f32) -> bool {
-        let Some(handle) = self.vec_grad_drag else {
+        let Some(handle) = self.vec_state.grad_drag else {
             return false;
         };
         let Some(sel) = self.vec_pen.selected() else {
@@ -2829,7 +2829,7 @@ impl App {
     /// No-op unless the Vector tool is active AND a shape gesture is in progress.
     /// A ferramenta de forma não faz hit-test, então o canto é encaixado direto.
     fn vec_shape_drag_move(&mut self, x: f32, y: f32) -> bool {
-        if !self.vector_tool_active() || !self.vec_shape.is_active() {
+        if !self.vector_tool_active() || !self.vec_state.shape.is_active() {
             return false;
         }
         let Some(w) = self
@@ -2844,7 +2844,8 @@ impl App {
         let Some(gfx) = self.gfx.as_mut() else {
             return false;
         };
-        self.vec_shape
+        self.vec_state
+            .shape
             .on_drag(&mut gfx.vec_scene, p, shape_constraint(self.modifiers))
     }
 
@@ -2891,7 +2892,7 @@ impl App {
     }
 
     fn vec_pencil_drag_move(&mut self, x: f32, y: f32) -> bool {
-        if !self.vector_tool_active() || !self.vec_pencil.is_active() {
+        if !self.vector_tool_active() || !self.vec_state.pencil.is_active() {
             return false;
         }
         // **O ESTABILIZADOR corre aqui, em px de TELA, antes da conversão para mundo** — o tremor
@@ -2911,7 +2912,7 @@ impl App {
         let Some(gfx) = self.gfx.as_mut() else {
             return false;
         };
-        self.vec_pencil.on_drag(
+        self.vec_state.pencil.on_drag(
             &mut gfx.vec_scene,
             [f64::from(w[0]), f64::from(w[1])],
             dyn_in,
@@ -3991,14 +3992,14 @@ impl App {
         // "Set Center" armado (ADR-0112): a pressão põe a ORIGEM da forma selecionada
         // sob o cursor e desarma. Vale em QUALQUER modo — inclusive Select, onde o
         // pivô do gizmo é o que se está ajustando.
-        if self.vec_pivot_edit
+        if self.vec_state.pivot_edit
             && self.vector_tool_active()
             && mapped_button == ph2d_host::PointerButton::Primary
             && kind == PointerKind::Down
             && on_canvas
             && !menu_open_before
         {
-            self.vec_pivot_edit = false;
+            self.vec_state.pivot_edit = false;
             if self.vec_set_origin_to_cursor(evt.x, evt.y) {
                 return;
             }
@@ -4252,11 +4253,11 @@ impl App {
             return;
         }
         // O Up que fecha o arrasto da alça do texto — nasceu no Select, morre no Select.
-        if self.vec_textpath_handle_drag
+        if self.vec_state.textpath_handle_drag
             && mapped_button == ph2d_host::PointerButton::Primary
             && kind == PointerKind::Up
         {
-            self.vec_textpath_handle_drag = false;
+            self.vec_state.textpath_handle_drag = false;
             return;
         }
         // ⭐⭐⭐ **O Up que fecha o arrasto de uma ALÇA DE OSSO.**
@@ -4368,8 +4369,8 @@ impl App {
                         let members = self.vec_object_selection_for(id);
                         self.vec_pen.toggle_object_members(&members);
                         // Object selection changed → drop any gradient-handle selection.
-                        self.vec_grad_selected = None;
-                        self.vec_grad_drag = None;
+                        self.vec_state.grad_selected = None;
+                        self.vec_state.grad_drag = None;
                         return;
                     }
                     self.vec_marquee = Some(crate::vec_marquee::VecMarquee::open(
@@ -4420,8 +4421,8 @@ impl App {
                     }
                     // Gradient group 3b: a Down on a gradient handle starts dragging it.
                     if let Some(i) = self.vec_grad_hit(self.last_pointer) {
-                        self.vec_grad_selected = Some(i);
-                        self.vec_grad_drag = Some(i);
+                        self.vec_state.grad_selected = Some(i);
+                        self.vec_state.grad_drag = Some(i);
                         if let Some(gfx) = self.gfx.as_ref() {
                             self.vec_history.begin(&gfx.vec_scene);
                         }
@@ -4463,8 +4464,12 @@ impl App {
                             // UM passo de undo por traço: begin aqui, commit no release (o
                             // mesmo par que a ferramenta de forma usa).
                             self.vec_history.begin(&gfx.vec_scene);
-                            self.vec_pencil
-                                .on_press(&mut gfx.vec_scene, w, px_to_world, dyn_in);
+                            self.vec_state.pencil.on_press(
+                                &mut gfx.vec_scene,
+                                w,
+                                px_to_world,
+                                dyn_in,
+                            );
                         }
                         // O estabilizador começa ONDE A MÃO ENCOSTOU. Sem esta semente o 1º move
                         // mistura a partir de onde o gesto ANTERIOR acabou, e o traço nasce com um
@@ -4569,7 +4574,7 @@ impl App {
                                 self.vec_history.cancel();
                             }
                             self.vec_trim_hit = None;
-                            self.vec_trim_piece.clear();
+                            self.vec_state.trim_piece.clear();
                         }
                         // ⛔ Consome o press SEMPRE que a ferramenta está na mão: um clique no
                         // vazio não pode cair na cadeia de baixo e começar a desenhar uma forma.
@@ -4865,7 +4870,7 @@ impl App {
                                     && click == ph2d_vec_edit::PenClick::Started
                                     && let Some(id) = self.vec_pen.selected()
                                 {
-                                    self.vec_cut_pending = Some(id);
+                                    self.vec_state.cut_pending = Some(id);
                                 }
                             }
                             Some(kind) => {
@@ -4880,7 +4885,7 @@ impl App {
                                     &self.vec_draw_config.values,
                                     px_to_world,
                                 );
-                                self.vec_shape.on_press(
+                                self.vec_state.shape.on_press(
                                     &mut gfx.vec_scene,
                                     kind,
                                     values,
@@ -4900,7 +4905,10 @@ impl App {
                         // Agora sabemos o que o press agarrou: o que se move sai dos
                         // alvos (uma âncora não pode encaixar em si mesma; a forma em
                         // desenho não é referência de nada).
-                        match (self.vec_pen.dragging_anchors(), self.vec_shape.selected()) {
+                        match (
+                            self.vec_pen.dragging_anchors(),
+                            self.vec_state.shape.selected(),
+                        ) {
                             // ⚠️ Os pares vêm PRONTOS do pen: ele passou a guardar o dono de cada
                             // nó, então a re-montagem que morava aqui (`map(|&v| (pid, v))`) some
                             // — e com ela o pressuposto de que todas as âncoras em movimento
@@ -5011,7 +5019,7 @@ impl App {
                         return;
                     }
                     // Gradient group 3b: end a gradient-handle drag (commit iff moved).
-                    if self.vec_grad_drag.take().is_some() {
+                    if self.vec_state.grad_drag.take().is_some() {
                         if let Some(gfx) = self.gfx.as_ref() {
                             self.vec_history.commit_if_changed(&gfx.vec_scene);
                         }
@@ -5108,9 +5116,9 @@ impl App {
                     // do painel enquanto o lápis está armado mas ocioso TEM de cair no chrome,
                     // senão todo clique de painel morre em silêncio (a lição que o
                     // `shape_up_consumes` documenta ao lado).
-                    if self.vec_pencil.is_active() {
+                    if self.vec_state.pencil.is_active() {
                         let committed = if let Some(gfx) = self.gfx.as_mut() {
-                            let c = self.vec_pencil.on_release(&mut gfx.vec_scene);
+                            let c = self.vec_state.pencil.on_release(&mut gfx.vec_scene);
                             if c {
                                 self.vec_history.commit_if_changed(&gfx.vec_scene);
                             } else {
@@ -5121,7 +5129,7 @@ impl App {
                             false
                         };
                         if committed {
-                            let sel = self.vec_pencil.selected();
+                            let sel = self.vec_state.pencil.selected();
                             self.vec_pen.select(sel);
                         }
                         return;
@@ -5159,7 +5167,7 @@ impl App {
                         }
                     } else if shape_up_consumes(
                         self.vec_draw_config.mode,
-                        self.vec_shape.is_active(),
+                        self.vec_state.shape.is_active(),
                     ) {
                         // A shape drag is in progress → finalize it. Commit if the
                         // drag spanned a real size, else discard the stray click
@@ -5170,7 +5178,7 @@ impl App {
                         // through to the chrome dispatch, else every panel click
                         // (mode switch, boolean, close) is silently swallowed.
                         let committed = if let Some(gfx) = self.gfx.as_mut() {
-                            let c = self.vec_shape.on_release(&mut gfx.vec_scene);
+                            let c = self.vec_state.shape.on_release(&mut gfx.vec_scene);
                             if c {
                                 // Solda os endpoints da forma recém-criada com nós
                                 // vizinhos: basta ficarem próximos para se fundirem, e
@@ -5180,7 +5188,7 @@ impl App {
                                 // geometria PRÉ-existente nunca se mexe (só a nova
                                 // snapa nela). Ao fechar num laço, recebe o fill do
                                 // estilo atual — como uma região desenhada pela pen.
-                                if let Some(new_id) = self.vec_shape.selected() {
+                                if let Some(new_id) = self.vec_state.shape.selected() {
                                     let fill = self.vec_pen.style().fill;
                                     let fill_on_close =
                                         (fill.a != 0).then(|| ph2d_vec_scene::Paint::solid(fill));
@@ -5207,7 +5215,7 @@ impl App {
                         if committed {
                             // Seleciona a forma nova para edição imediata — a menos que
                             // o weld a tenha fundido noutro objeto (o id sumiu).
-                            let sel = self.vec_shape.selected().filter(|id| {
+                            let sel = self.vec_state.shape.selected().filter(|id| {
                                 self.gfx.as_ref().is_some_and(|g| {
                                     g.vec_scene.paths().iter().any(|p| p.id == *id)
                                 })
@@ -5262,9 +5270,9 @@ impl App {
                     }
                     // **O lápis** desiste pelo direito também: o traço vivo some sem deixar
                     // rastro e o passo de undo pendente é cancelado.
-                    if self.vec_pencil.is_active() {
+                    if self.vec_state.pencil.is_active() {
                         if let Some(gfx) = self.gfx.as_mut() {
-                            self.vec_pencil.cancel(&mut gfx.vec_scene);
+                            self.vec_state.pencil.cancel(&mut gfx.vec_scene);
                         }
                         self.vec_history.cancel();
                         return;
@@ -5273,7 +5281,7 @@ impl App {
                         self.vec_pen.finish();
                     } else {
                         if let Some(gfx) = self.gfx.as_mut() {
-                            self.vec_shape.cancel(&mut gfx.vec_scene);
+                            self.vec_state.shape.cancel(&mut gfx.vec_scene);
                         }
                         self.vec_history.cancel();
                     }

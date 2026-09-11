@@ -42,6 +42,7 @@
 //! `crate::vec_x` na shell, e os **dois gates que nomeiam um ficheiro da família por caminho de
 //! string** — que é a armadilha que a W1 pagou e que nenhuma leitura de `crate::` vê.
 
+pub mod state;
 pub mod vec_font;
 /// ⚠️ **Atrás da mesma feature que a guardava na shell** (`#[cfg(feature = "panel-vector")]` no
 /// `main.rs`): a pré-visualização de fonte usa `ph2d_panel_vector::FontPreview`, logo ela não
@@ -51,6 +52,6 @@ pub mod vec_font_preview;
 pub mod vec_overlay_diag;
 pub mod vec_pick;
 pub mod vec_snap;
-pub mod vec_snap_sprites;
 pub mod vec_snap_labels;
+pub mod vec_snap_sprites;
 pub mod vec_weld;

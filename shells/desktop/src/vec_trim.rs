@@ -171,21 +171,21 @@ impl crate::App {
     pub(crate) fn refresh_trim_hover(&mut self, pointer: (f32, f32)) {
         if self.vec_draw_config.mode != ph2d_tool_vector::DrawMode::Trim {
             self.vec_trim_hit = None;
-            self.vec_trim_piece.clear();
+            self.vec_state.trim_piece.clear();
             return;
         }
         let Some(world) = self.vec_world_at(pointer) else {
             self.vec_trim_hit = None;
-            self.vec_trim_piece.clear();
+            self.vec_state.trim_piece.clear();
             return;
         };
         let Some(tol) = self.trim_tolerance() else {
             self.vec_trim_hit = None;
-            self.vec_trim_piece.clear();
+            self.vec_state.trim_piece.clear();
             return;
         };
         let achado = self.trim_hit_at(world, tol);
-        self.vec_trim_piece = match (&achado, self.gfx.as_ref()) {
+        self.vec_state.trim_piece = match (&achado, self.gfx.as_ref()) {
             (Some(h), Some(gfx)) => {
                 let xf = crate::vec_transform::build(&gfx.sim, &self.vec_entities);
                 piece_world(&gfx.vec_scene, &xf, h)

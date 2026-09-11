@@ -5957,8 +5957,8 @@ impl crate::App {
                 // A ORDEM da cadeia: no modo Pick Shapes, a de CLIQUE (a lista escolhida a dedo);
                 // fora dele, a de z da seleção (ADR-0128 C2b). O Pick é o "escolher a ordem" do Enio.
                 let picking = self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::PickBlend;
-                let sources = if picking && self.vec_blend_picks.len() >= 2 {
-                    self.vec_blend_picks.clone()
+                let sources = if picking && self.vec_state.blend_picks.len() >= 2 {
+                    self.vec_state.blend_picks.clone()
                 } else {
                     crate::blend_live::selected_closed_in_z(vec_scene, &self.vec_pen)
                 };
@@ -5967,7 +5967,7 @@ impl crate::App {
                 {
                     self.vec_pen.select_many(&[spine]);
                     self.vec_blend_pending = Some((spine, blend));
-                    self.vec_blend_picks.clear();
+                    self.vec_state.blend_picks.clear();
                     // Feito o blend, volta ao Select — o objeto novo está selecionado e o gizmo
                     // manda (o modo Pick já cumpriu o papel de juntar a lista). Inline do
                     // `vec_set_draw_mode` (que re-borrowaria o `gfx` já destructurado): a tool é a
@@ -5991,8 +5991,8 @@ impl crate::App {
             // Pick Shapes a ordem de CLIQUE, fora dele a ordem de z.
             if pending_create_morph {
                 let picking = self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::PickBlend;
-                let sources = if picking && self.vec_blend_picks.len() >= 2 {
-                    self.vec_blend_picks.clone()
+                let sources = if picking && self.vec_state.blend_picks.len() >= 2 {
+                    self.vec_state.blend_picks.clone()
                 } else {
                     crate::blend_live::selected_closed_in_z(vec_scene, &self.vec_pen)
                 };
@@ -6003,7 +6003,7 @@ impl crate::App {
                     let (id, morph) = crate::morph_live::create(vec_scene, a, b);
                     self.vec_pen.select_many(&[id]);
                     self.vec_morph_pending = Some((id, morph));
-                    self.vec_blend_picks.clear();
+                    self.vec_state.blend_picks.clear();
                     crate::render_loop::vector_bridge::set_mode(
                         tools,
                         ph2d_tool_vector::DrawMode::Select,
@@ -7024,8 +7024,8 @@ impl crate::App {
                 let mirror = (sel.len() == 1).then(|| sel[0]).filter(|id| {
                     crate::profile_live::spec_of(sim, &self.vec_entities, *id).is_some()
                 });
-                if mirror != self.vec_profile_mirrored {
-                    self.vec_profile_mirrored = mirror;
+                if mirror != self.vec_state.profile_mirrored {
+                    self.vec_state.profile_mirrored = mirror;
                     if let Some(p) = mirror
                         .and_then(|id| crate::profile_live::spec_of(sim, &self.vec_entities, id))
                         .as_ref()
@@ -7048,7 +7048,7 @@ impl crate::App {
                     // O espelho da seleção acabou de ser ESCRITO por nós: sem isto o bloco do
                     // frame seguinte veria o `mirror` inalterado e não reescreveria nada — mas
                     // com uma seleção de uma forma só ele passaria a divergir na primeira troca.
-                    self.vec_profile_mirrored = (sel.len() == 1).then(|| sel[0]);
+                    self.vec_state.profile_mirrored = (sel.len() == 1).then(|| sel[0]);
                 }
                 let grabbed = matches!(
                     hero.store.active_id(),
@@ -7060,7 +7060,7 @@ impl crate::App {
                 if grabbed && !sel.is_empty() {
                     let stops = crate::profile_live::preset_from_store(&hero.store).to_stops();
                     crate::profile_live::arm(sim, &self.vec_entities, &sel, &stops);
-                    self.vec_profile_mirrored = (sel.len() == 1).then(|| sel[0]);
+                    self.vec_state.profile_mirrored = (sel.len() == 1).then(|| sel[0]);
                 }
             }
             // **A POSIÇÃO dos controles autorados** (W8b.4): o store e o mundo de acordo, nas
@@ -7414,7 +7414,7 @@ impl crate::App {
                 {
                     // A forma nova não tem perfil vivo, e knobs parados num afinamento sobre ela
                     // mentiriam sobre o que está na cena — o mesmo argumento do slider de Offset.
-                    self.vec_profile_mirrored = None;
+                    self.vec_state.profile_mirrored = None;
                     crate::profile_live::write_preset_to_store(
                         &mut hero.store,
                         &ph2d_vec_scene::WidthProfile::UNIFORM,
@@ -7930,7 +7930,7 @@ impl crate::App {
             if let Some(wrap) = pending_vec_text_wrap {
                 crate::vec_text::apply_text_wrap(
                     &mut self.vec_text_edit,
-                    &mut self.vec_text_wrap,
+                    &mut self.vec_state.text_wrap,
                     vec_scene,
                     wrap,
                 );
@@ -8157,8 +8157,8 @@ impl crate::App {
                 crate::texture_pattern_edit::log_shape("DEPOIS", vec_scene, &self.vec_pen);
                 // The old handle no longer addresses the new fill kind — reset the
                 // gradient selection so the overlay highlight + panel don't cling to it.
-                self.vec_grad_selected = None;
-                self.vec_grad_drag = None;
+                self.vec_state.grad_selected = None;
+                self.vec_state.grad_drag = None;
             }
             // ⭐⭐ **A TINTA DO TRAÇO** (plano 35, wave D) — a 4ª condição da costura, outra vez:
             // escolher *Pattern* num traço que ainda não tem padrão **abre o diálogo da arte**.
@@ -8299,11 +8299,12 @@ impl crate::App {
                 );
             }
             if pending_vec_grad_remove {
-                self.vec_grad_selected = crate::input_dispatch::apply_vec_grad_remove_point(
+                self.vec_state.grad_selected = crate::input_dispatch::apply_vec_grad_remove_point(
                     vec_scene,
                     &mut self.vec_history,
                     &self.vec_pen,
-                    self.vec_grad_selected
+                    self.vec_state
+                        .grad_selected
                         .and_then(ph2d_vec_render::GradHandle::point),
                 )
                 .map(ph2d_vec_render::GradHandle::Point);
@@ -8313,7 +8314,8 @@ impl crate::App {
                     vec_scene,
                     &mut self.vec_history,
                     &self.vec_pen,
-                    self.vec_grad_selected
+                    self.vec_state
+                        .grad_selected
                         .and_then(ph2d_vec_render::GradHandle::point),
                     v,
                 );
@@ -8323,19 +8325,20 @@ impl crate::App {
                     vec_scene,
                     &mut self.vec_history,
                     &self.vec_pen,
-                    self.vec_grad_selected
+                    self.vec_state
+                        .grad_selected
                         .and_then(ph2d_vec_render::GradHandle::point),
                     v,
                 );
             }
             if pending_vec_grad_add_stop {
-                self.vec_grad_selected = crate::input_dispatch::apply_vec_grad_add_stop(
+                self.vec_state.grad_selected = crate::input_dispatch::apply_vec_grad_add_stop(
                     vec_scene,
                     &mut self.vec_history,
                     &self.vec_pen,
                 )
                 .map(ph2d_vec_render::GradHandle::Stop)
-                .or(self.vec_grad_selected);
+                .or(self.vec_state.grad_selected);
             }
             if let Some(a) = pending_vec_align {
                 crate::input_dispatch::apply_vec_align(
@@ -8357,12 +8360,13 @@ impl crate::App {
             }
             if pending_vec_grad_remove_stop
                 && let Some(si) = self
-                    .vec_grad_selected
+                    .vec_state
+                    .grad_selected
                     .and_then(ph2d_vec_render::GradHandle::stop)
             {
                 // Only an interior stop can be removed; a no-op otherwise keeps the
                 // current selection (endpoint handles aren't removable stops).
-                self.vec_grad_selected = crate::input_dispatch::apply_vec_grad_remove_stop(
+                self.vec_state.grad_selected = crate::input_dispatch::apply_vec_grad_remove_stop(
                     vec_scene,
                     &mut self.vec_history,
                     &self.vec_pen,
@@ -8372,7 +8376,7 @@ impl crate::App {
             }
             if pending_vec_pivot_edit {
                 // Arma "Set Center": a próxima pressão no canvas põe a ORIGEM ali.
-                self.vec_pivot_edit = true;
+                self.vec_state.pivot_edit = true;
             }
             // ⭐⭐⭐ **A FERRAMENTA ARMA-SE AQUI** — antes de ela republicar o espelho (`vec_cfg`
             // abaixo), senão a escrita da aresta do foco seria revertida no mesmo quadro.
@@ -8388,15 +8392,15 @@ impl crate::App {
                 tools,
                 vec_scene,
                 &mut self.vec_pen,
-                &mut self.vec_shape,
-                &mut self.vec_pencil,
+                &mut self.vec_state.shape,
+                &mut self.vec_state.pencil,
                 &mut self.vec_history,
                 vec_px_to_world,
-                self.vec_grad_selected,
+                self.vec_state.grad_selected,
                 &vec_xf_ops,
                 sim,
                 &self.vec_entities,
-                self.vec_pivot_edit,
+                self.vec_state.pivot_edit,
                 self.vec_snap,
                 self.texpat_lock_aspect,
                 self.texpat_gap_link,
@@ -9159,7 +9163,9 @@ impl crate::App {
                 // quando não há — a mesma regra do Align logo acima. Sem isto o painel mostraria
                 // "Auto" sobre um texto que reflui, e o 1º clique em Fixed não mudaria nada.
                 ph2d_panel_vector::set_current_text_wrap(
-                    target.as_ref().map_or(self.vec_text_wrap, |t| t.wrap_width),
+                    target
+                        .as_ref()
+                        .map_or(self.vec_state.text_wrap, |t| t.wrap_width),
                 );
                 // Semente dos sliders: só quando o ALVO muda (senão brigaria com o drag).
                 let target_id = target.as_ref().map(|t| t.id);
@@ -9246,7 +9252,7 @@ impl crate::App {
                 sim,
                 vec_scene,
                 &self.vec_entities,
-                &mut self.vec_shape,
+                &mut self.vec_state.shape,
                 // O gesto foi o da ferramenta MOLDURA? A forma nasce igual e ganha o `VecFrame`.
                 vec_cfg.mode == ph2d_tool_vector::DrawMode::Frame,
             );
@@ -9580,8 +9586,8 @@ impl crate::App {
                 // `paint` — que lê o store primeiro, para não brigar com o arrasto — mostraria os
                 // números da forma anterior sobre a forma nova.
                 let cont_mirror = cont.map(|(id, _)| id);
-                if cont_mirror != self.vec_contour_mirrored {
-                    self.vec_contour_mirrored = cont_mirror;
+                if cont_mirror != self.vec_state.contour_mirrored {
+                    self.vec_state.contour_mirrored = cont_mirror;
                     if let Some((_, c)) = cont {
                         let frac = if cont_scale > 0.0 {
                             c.d / cont_scale
@@ -9833,7 +9839,7 @@ impl crate::App {
                 sim,
                 vec_scene,
                 &self.vec_entities,
-                &mut self.vec_cut_pending,
+                &mut self.vec_state.cut_pending,
             );
             // **Morph Objects, 1ª metade:** idem, e pela MESMA razão — sem o componente pendurado
             // antes do `settle`, o path recém-empurrado seria assentado como um path comum e o
@@ -9862,8 +9868,8 @@ impl crate::App {
             // pulado, e a lista sai de UMA porta (`vec_gesture_paths`) — o porquê está lá.
             let drawing = crate::vec_transform::gesture_paths(
                 &self.vec_pen,
-                &self.vec_shape,
-                &self.vec_pencil,
+                &self.vec_state.shape,
+                &self.vec_state.pencil,
             );
             crate::vec_transform::settle_origins(sim, vec_scene, &self.vec_entities, &drawing);
             // ADR-0114/ADR-0111: idem para os objetos Flip — o pivô nasce no centro do
@@ -10111,7 +10117,7 @@ impl crate::App {
                 &self.vec_entities,
                 &vec_xf,
                 &mut self.vec_blend_spines,
-                &mut self.vec_blend_overlay,
+                &mut self.vec_state.blend_overlay,
             );
             // **Modo Node: o spine sobe para o topo** (ADR-0128) — acima de TODAS as formas e
             // passos, para ser visto e editado. Retira o traço da cena (some do `dispatch`, logo
@@ -10123,7 +10129,7 @@ impl crate::App {
                     sim,
                     vec_scene,
                     &self.vec_entities,
-                    &mut self.vec_blend_overlay,
+                    &mut self.vec_state.blend_overlay,
                 );
             }
             // **Rótulos:** o texto que pertence a uma forma (ou a um conector) e a segue. A pose
@@ -10218,7 +10224,7 @@ impl crate::App {
                     // A semeadura acontece UMA vez, na aresta desligado→ligado: *"a tela é a
                     // referência para a posição inicial da linha"*. Re-semear por frame faria a
                     // linha seguir a câmera, e panhar o canvas arrastaria o eixo junto.
-                    let origin = *self.vec_symmetry_origin.get_or_insert_with(|| {
+                    let origin = *self.vec_state.symmetry_origin.get_or_insert_with(|| {
                         let (w, h) = (window_size.width as f32, window_size.height as f32);
                         let c = camera.screen_to_world((w * 0.5, h * 0.5), window_size);
                         [f64::from(c[0]), f64::from(c[1])]
@@ -10236,7 +10242,7 @@ impl crate::App {
                     // Desligado, o eixo de sessão morre: a próxima ligação re-semeia no centro do
                     // ecrã, que é o que o artista pede ao ligar. Os COMPONENTES ficam — desarmar
                     // esconde as cópias, não as destrói.
-                    self.vec_symmetry_origin = None;
+                    self.vec_state.symmetry_origin = None;
                     0
                 };
                 // O painel só oferece o **Apply** quando há o que consolidar — e "o que se vê" é
@@ -10257,9 +10263,10 @@ impl crate::App {
             // mundo ECS, e porque é o único lugar que corre entre o `sync` (que dá entidade ao
             // path recém-nascido) e o cozimento logo abaixo: o artista vê a espessura enquanto
             // desenha, que é a promessa do lápis desde o W1a (*"o ajuste é AO VIVO"*).
-            if let Some(id) = self.vec_pencil.active_path() {
+            if let Some(id) = self.vec_state.pencil.active_path() {
                 let stops = self
-                    .vec_pencil
+                    .vec_state
+                    .pencil
                     .width_stops(self.vec_draw_config.pencil_width_source);
                 crate::profile_live::arm(sim, &self.vec_entities, &[id], &stops);
             }
@@ -11206,7 +11213,11 @@ impl crate::App {
             // reempilhadas, na ordem de z (a última fonte por cima do último passo). Desenha depois
             // do `dispatch` (que já pôs as fontes no z da cena, embaixo); o overlay reestabelece a
             // pilha do blend por cima. O interleaving fino contra o resto da cena é da Fase C.
-            ph2d_vec_render::draw_blend_overlay(&self.vec_blend_overlay, cam_affine, vector_scene);
+            ph2d_vec_render::draw_blend_overlay(
+                &self.vec_state.blend_overlay,
+                cam_affine,
+                vector_scene,
+            );
             // ⛔ **AS SETAS DO MORPH NÃO SE DESENHAM** (Enio, 2026-08-25: *"as setas são virtuais e
             // ninguém jamais vê"*). A W3a pintava-as aqui, em âmbar, entre as formas que ligavam.
             // Elas deixaram de existir como desenho porque deixaram de ser AUTORADAS: o conjunto é
@@ -11217,11 +11228,14 @@ impl crate::App {
             // clique numa polilinha (a prévia do spine). Fora do modo Pick, a lista não vale —
             // limpa, para não vazar escolhas velhas para o próximo blend.
             if vector_active && self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::PickBlend {
-                let preview =
-                    crate::blend_live::pick_preview(vec_scene, &vec_xf, &self.vec_blend_picks);
+                let preview = crate::blend_live::pick_preview(
+                    vec_scene,
+                    &vec_xf,
+                    &self.vec_state.blend_picks,
+                );
                 ph2d_vec_render::draw_blend_overlay(&preview, cam_affine, vector_scene);
-            } else if !self.vec_blend_picks.is_empty() {
-                self.vec_blend_picks.clear();
+            } else if !self.vec_state.blend_picks.is_empty() {
+                self.vec_state.blend_picks.clear();
             }
             // **O Picker de caminho-guia** (Enio 2026-07-23): armado, o caminho sob o cursor é o que
             // o clique vai prender — a silhueta dele acende, o idioma do conta-gotas. `path_at` é o
@@ -11281,8 +11295,12 @@ impl crate::App {
             // no dreno do ponteiro e guardada, então o que acende neste quadro é literalmente o que
             // o `vec_trim::apply` vai comer. Uma segunda conta aqui seria a divergência mais cara
             // que uma ferramenta destrutiva pode ter.
-            if !self.vec_trim_piece.is_empty() {
-                ph2d_vec_render::draw_trim_piece(&self.vec_trim_piece, cam_affine, vector_scene);
+            if !self.vec_state.trim_piece.is_empty() {
+                ph2d_vec_render::draw_trim_piece(
+                    &self.vec_state.trim_piece,
+                    cam_affine,
+                    vector_scene,
+                );
             }
             // ⭐⭐⭐ **A FACE que o Balde vai preencher** (plano 40), na TINTA que ele vai depositar.
             // ⚠️ A geometria vem da MESMA porta que o preenchimento usa; e a tinta é a corrente,
@@ -11400,7 +11418,7 @@ impl crate::App {
                     ph2d_vec_render::draw_gradient_handles(
                         vec_scene,
                         Some(sel),
-                        self.vec_grad_selected,
+                        self.vec_state.grad_selected,
                         ph2d_vec_render::path_to_screen(&vec_xf, sel, cam_affine),
                         vector_scene,
                     );
@@ -11710,7 +11728,7 @@ impl crate::App {
                 } else {
                     Vec::new()
                 };
-                if let Some(origin) = self.vec_symmetry_origin {
+                if let Some(origin) = self.vec_state.symmetry_origin {
                     axes.push(crate::symmetry_live::session_axis(
                         self.vec_draw_config.symmetry,
                         origin,
@@ -11792,7 +11810,7 @@ impl crate::App {
             {
                 ph2d_vec_render::draw_text_handle(
                     at,
-                    self.vec_textpath_handle_drag,
+                    self.vec_state.textpath_handle_drag,
                     cam_affine,
                     hero.theme,
                     vector_scene,

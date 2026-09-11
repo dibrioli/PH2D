@@ -170,7 +170,7 @@ impl crate::App {
         if std::env::var_os("PH2D_VEC_BONE_SMOKE").is_none() || self.gfx.is_none() {
             return;
         }
-        match self.vec_bone_smoke_step {
+        match self.vec_state.bone_smoke_step {
             0 => self.bone_smoke_build(),
             // ⚠️⚠️ **NÃO se conta QUADROS aqui, pergunta-se o FATO.** Prender exige a ENTIDADE de
             // cada forma, e quem a cria (`vec_entities::sync`) corre no MEIO do quadro — que um
@@ -252,12 +252,12 @@ impl crate::App {
         };
         self.vec_bone_smoke_img = img;
         self.vec_bone_smoke_pend = Some([(braco, a), (tentaculo, t), (folha, f)]);
-        self.vec_bone_smoke_step = 1;
+        self.vec_state.bone_smoke_step = 1;
     }
 
     /// O 2.º tempo: prende as DUAS primeiras. A folha fica solta de propósito.
     fn bone_smoke_bind(&mut self) {
-        self.vec_bone_smoke_step = 2;
+        self.vec_state.bone_smoke_step = 2;
         let Some(pecas) = self.vec_bone_smoke_pend.take() else {
             return;
         };

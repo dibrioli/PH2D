@@ -78,8 +78,11 @@ impl App {
         // ⚠️ **A lista dos que estão EM GESTO sai da MESMA porta do passe do desenho**
         // ([`crate::vec_transform::gesture_paths`]) — um `&[]` aqui assentaria a forma que a mão
         // está a desenhar, e somar geometria + `Transform` desloca a arte de baixo do cursor.
-        let drawing =
-            crate::vec_transform::gesture_paths(&self.vec_pen, &self.vec_shape, &self.vec_pencil);
+        let drawing = crate::vec_transform::gesture_paths(
+            &self.vec_pen,
+            &self.vec_state.shape,
+            &self.vec_state.pencil,
+        );
         crate::vec_transform::settle_origins(
             &mut gfx.sim,
             &mut gfx.vec_scene,

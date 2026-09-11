@@ -1,6 +1,6 @@
 //! ⭐ **O censo de ALCANCE da paleta de componentes** (ADR-0166 / plano F3), nos DOIS sentidos.
 //!
-//! O molde é o [`crate::field3d_reach_tests`], e a razão é a mesma: *o painel oferece exatamente o
+//! O molde é o `ph2d_app_field3d` (os gates de alcance dela), e a razão é a mesma: *o painel oferece exatamente o
 //! que o gesto faz*. Aqui a pergunta tem duas metades, e cada uma barra um defeito diferente:
 //!
 //! | Sentido | O defeito que ele apanha |

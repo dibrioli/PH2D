@@ -124,12 +124,8 @@ impl crate::app_state::App {
 /// ⚠️ A **máscara** é dita sempre: nenhum dos três formatos tem campo para ela, e
 /// isso não é uma pergunta — é uma constante. Quem a preserva é o documento.
 pub(crate) fn lost_by(fmt: MeshFormat) -> String {
-    let mut lost = vec!["mask"];
-    if !fmt.keeps_colour() {
-        lost.push("colour");
-    }
-    if !fmt.keeps_pieces() {
-        lost.push("pieces merged");
-    }
-    format!("not carried: {}", lost.join(", "))
+    // ⚠️ **UMA porta, e ela mudou-se para o dono** (W2): esta lei é puro `MeshFormat`
+    // (`keeps_colour` / `keeps_pieces`), e o módulo de modelagem 3D passou a ser o **segundo**
+    // consumidor dela ao sair da shell. Duas cópias divergiriam no dia do quarto formato.
+    ph2d_mesh::lost_by(fmt)
 }

@@ -1,0 +1,483 @@
+//! ⭐ **OS CONSTRUTORES DOS SINAIS** (W119–W120) — os números com que cada seta, balão e símbolo
+//! nasce.
+//!
+//! # Por que um arquivo irmão
+//!
+//! O [`super`] responde pelos sólidos e pelas chapas; este pela família dos sinais. O irmão já
+//! estava nas `462` linhas de um tecto de `600`, e as dez formas desta wave passavam-no.
+//! ⛔ *Split, nunca allowlist.*
+
+use ph2d_field::Primitive;
+
+use super::make::round_of;
+
+/// ⚠️ **O balão nasce mais LARGO que alto** — é a proporção de uma linha de texto, e um balão
+/// quadrado lê-se como uma caixa com um bico.
+pub fn a_speech_rect(r: f32) -> Primitive {
+    Primitive::SpeechRect {
+        half_width: r,
+        half_span: r * 0.66,
+        tail: r * 0.45,
+        half_height: r * 0.25,
+        round: round_of(r),
+        chamfer: 0.0,
+    }
+}
+
+pub fn a_speech_oval(r: f32) -> Primitive {
+    Primitive::SpeechOval {
+        half_width: r,
+        half_span: r * 0.62,
+        tail: r * 0.45,
+        half_height: r * 0.25,
+        round: round_of(r),
+        chamfer: 0.0,
+    }
+}
+
+/// A nuvem: a mesma primitiva **sem** fieira.
+pub fn a_cloud(r: f32) -> Primitive {
+    uma_nuvem(r, 0.0)
+}
+
+/// E o balão de pensamento: a mesma, **com** fieira. ⭐ É a porta que muda, não a fórmula.
+pub fn a_thought(r: f32) -> Primitive {
+    uma_nuvem(r, r * 0.40)
+}
+
+fn uma_nuvem(r: f32, tail: f32) -> Primitive {
+    Primitive::Cloud {
+        lobes: 5,
+        half_width: r,
+        half_span: r * 0.50,
+        tail,
+        half_height: r * 0.25,
+        round: round_of(r),
+        chamfer: 0.0,
+    }
+}
+
+/// ⚠️ **O filete do raio nasce a METADE** do das outras: a banda do meio dele é `10 %` da peça, e o
+/// limite dela é mais apertado do que o de uma chapa cheia.
+pub fn a_bolt(r: f32) -> Primitive {
+    Primitive::Bolt {
+        half_width: r * 0.62,
+        half_span: r,
+        half_height: r * 0.25,
+        round: round_of(r) * 0.5,
+        chamfer: 0.0,
+    }
+}
+
+pub fn a_shield(r: f32) -> Primitive {
+    Primitive::Shield {
+        half_width: r * 0.78,
+        half_span: r,
+        half_height: r * 0.25,
+        round: round_of(r),
+        chamfer: 0.0,
+    }
+}
+
+pub fn a_tag(r: f32) -> Primitive {
+    Primitive::Tag {
+        half_width: r,
+        half_span: r * 0.58,
+        point: r * 0.55,
+        hole: r * 0.15,
+        half_height: r * 0.25,
+        round: round_of(r),
+        chamfer: 0.0,
+    }
+}
+
+pub fn a_check(r: f32) -> Primitive {
+    Primitive::Check {
+        half_width: r,
+        half_span: r * 0.72,
+        thickness: r * 0.26,
+        half_height: r * 0.25,
+        round: round_of(r),
+        chamfer: 0.0,
+    }
+}
+
+pub fn a_banner(r: f32) -> Primitive {
+    Primitive::Banner {
+        half_width: r,
+        half_span: r * 0.50,
+        notch: r * 0.32,
+        half_height: r * 0.25,
+        round: round_of(r),
+        chamfer: 0.0,
+    }
+}
+
+/// ⚠️ A espessura nasce a `24 %` e não a `20 %`: o filete de nascimento é `10 %` do enquadramento, e
+/// a parede do filete de uma chave é **metade** da espessura dela.
+pub fn a_brace(r: f32) -> Primitive {
+    Primitive::Brace {
+        half_span: r,
+        thickness: r * 0.24,
+        half_height: r * 0.25,
+        round: round_of(r),
+        chamfer: 0.0,
+    }
+}
+
+// ─────────────────────────── W122 — o fluxograma ───────────────────────────
+//
+// ⚠️ **Elas moram na família `Plates` e não na `Signs`**, e a razão não é gosto: há exactamente
+// sete tokens `NodeCat*` e as sete famílias já os têm todos, então uma família nova partilharia
+// tinta ou pediria um token, que é decisão de design (§7). E o critério bate: as quatro são um
+// contorno 2D de fórmula puxado em Z, que é o que a `Plates` diz que é.
+
+/// ⚠️ **Nasce inclinado**: `skew = 0` é o retângulo, e uma forma que nasce igual a outra da paleta
+/// não ensina o que ela faz.
+pub fn a_parallelogram(r: f32) -> Primitive {
+    Primitive::Parallelogram {
+        half_width: r * 0.80,
+        half_span: r * 0.55,
+        skew: r * 0.30,
+        half_height: r * 0.25,
+        round: round_of(r),
+        chamfer: 0.0,
+    }
+}
+
+/// ⚠️ **Mais largo que alto**, como o símbolo é desenhado — e a razão fica longe da parede
+/// (`half_span ≤ 2·half_width`).
+pub fn a_delay(r: f32) -> Primitive {
+    Primitive::Delay {
+        half_width: r,
+        half_span: r * 0.55,
+        half_height: r * 0.25,
+        round: round_of(r),
+        chamfer: 0.0,
+    }
+}
+
+/// ⚠️ **O bico a `40 %` da parede dele** — com ele curto a peça lê-se como o atraso, e com ele no
+/// máximo as faces retas desaparecem.
+pub fn a_display(r: f32) -> Primitive {
+    Primitive::Display {
+        half_width: r,
+        half_span: r * 0.55,
+        point: r * 0.58,
+        half_height: r * 0.25,
+        round: round_of(r),
+        chamfer: 0.0,
+    }
+}
+
+pub fn an_off_page(r: f32) -> Primitive {
+    Primitive::OffPage {
+        half_width: r * 0.80,
+        half_span: r * 0.70,
+        point: r * 0.45,
+        half_height: r * 0.25,
+        round: round_of(r),
+        chamfer: 0.0,
+    }
+}
+
+// ─────────────────────────── W123 — as duas que saíram do «fica desenhada» ───────────────────────
+
+/// ⚠️ **Três voltas e a fita a `55 %` do passo** — com uma volta não se lê como espiral, e com a
+/// fita a encher o passo o vale entre as voltas (que é a forma) desaparece.
+pub fn a_spiral(r: f32) -> Primitive {
+    let pitch = r * 0.30;
+    Primitive::Spiral {
+        radius: r * 0.16,
+        pitch,
+        turns: 3.0,
+        thickness: pitch * 0.275,
+        half_height: r * 0.25,
+        // ⚠️ **Metade do que as outras nascem**: a parede do filete de uma fita é a meia-espessura
+        // dela, e a fita mede `27,5 %` do passo.
+        round: pitch * 0.06,
+        chamfer: 0.0,
+    }
+}
+
+/// ⚠️ **Nasce COM onda** — a zero ele é o retângulo, e uma forma que nasce igual a outra da paleta
+/// não ensina o que ela faz.
+pub fn a_document(r: f32) -> Primitive {
+    Primitive::Document {
+        half_width: r,
+        half_span: r * 0.62,
+        wave: r * 0.20,
+        half_height: r * 0.25,
+        round: round_of(r),
+        chamfer: 0.0,
+    }
+}
+
+// ─────────────────────────── W124 — a mola e a rede ───────────────────────────
+
+/// ⚠️ **Três voltas e o tubo a `30 %` do passo** — com uma volta não se lê como mola, e com o tubo
+/// a encher o passo ela vira um cilindro.
+pub fn a_helix(r: f32) -> Primitive {
+    let pitch = r * 0.42;
+    Primitive::Helix {
+        radius: r * 0.62,
+        pitch,
+        turns: 3.0,
+        thickness: pitch * 0.15,
+        // ⚠️ **Metade da meia-espessura do tubo**: a parede do filete de uma mola é o raio do tubo,
+        // e ele é fino de propósito.
+        round: pitch * 0.05,
+        chamfer: 0.0,
+    }
+}
+
+/// ⚠️ **Quatro células no bloco** — com duas não se lê como rede, e a parede nasce a `20 %` da
+/// célula, que é a proporção com que a impressão 3D a usa.
+pub fn a_gyroid(r: f32) -> Primitive {
+    let cell = r * 0.5;
+    Primitive::Gyroid {
+        half: [r; 3],
+        cell,
+        thickness: cell * 0.1,
+        // ⚠️ **A parede do filete aqui é a PAREDE da rede**, que é `10 %` da célula.
+        round: cell * 0.03,
+        chamfer: 0.0,
+    }
+}
+
+// ─────────────────────────── W125 — a exacta do catálogo ───────────────────────────
+
+/// ⚠️ **O bojo a `30 %` do raio** — a zero seria o cilindro que a paleta já tem, e no máximo é uma
+/// cápsula.
+pub fn a_rounded_cylinder(r: f32) -> Primitive {
+    Primitive::RoundedCylinder {
+        radius: r,
+        bulge: r * 0.30,
+        half_height: r * 0.55,
+    }
+}
+
+/// ⭐⭐ **A SUPERQUADRÁTICA nasce como um SQUIRCLE** (`4` nos dois expoentes).
+///
+/// ⚠️ **Nem `2` nem o tecto**: a `2` ela é a esfera que a paleta já tem, e no tecto é a caixa que a
+/// paleta já tem — nos dois casos o botão entregaria um sósia de outra entrada. *Uma forma nova tem
+/// de nascer no sítio em que ela é ELA.*
+pub fn a_superquadric(r: f32) -> Primitive {
+    Primitive::Superquadric {
+        half: [r, r * 0.85, r],
+        exponent_top: 4.0,
+        exponent_side: 4.0,
+    }
+}
+
+/// ⭐⭐ **A SUPERFÓRMULA nasce ESTRELA DO MAR** — cinco lobos e um perfil de elipse.
+///
+/// ⚠️ **Não nasce no ponto neutro** (`m = 4`, tudo a `2`), que é a **esfera** — a paleta já a tem, e
+/// um botão que entrega o sósia de outra entrada não diz o que ele faz. *Uma forma nova tem de
+/// nascer no sítio em que ela é ELA.*
+pub fn a_superformula(r: f32) -> Primitive {
+    Primitive::Superformula {
+        half: [r, r * 0.55, r],
+        top_symmetry: 5.0,
+        top_n1: 0.6,
+        top_n2: 1.7,
+        top_n3: 1.7,
+        // O perfil fica no ponto neutro: uma elipse, para a estrela se ver.
+        side_symmetry: 4.0,
+        side_n1: 2.0,
+        side_n2: 2.0,
+        side_n3: 2.0,
+    }
+}
+
+/// ⭐ **O TRIÂNGULO nasce ESCALENO** — os três lados diferentes.
+///
+/// ⚠️ **Nem equilátero nem rectângulo:** os dois são casos que o **prisma de 3 lados** e a **cunha**
+/// já entregam, e um botão que devolve o sósia de outra entrada não diz o que ele faz. *Uma forma
+/// nova nasce no sítio em que ela é ELA* — aqui, a única que só ela alcança.
+pub fn a_triangle(r: f32) -> Primitive {
+    Primitive::Triangle {
+        a: [-r, -r * 0.55],
+        b: [r * 0.9, -r * 0.2],
+        c: [-r * 0.25, r],
+        half_height: r * 0.35,
+        // ⚠️ **Nasce com FILETE**, como toda forma desta casa que o tem — `field3d_shapes_tests`
+        // tem a lei: *uma forma de aresta viva esconde o que o módulo do arredondamento faz*.
+        // O `0,06·r` fica bem abaixo do inraio desta configuração.
+        round: r * 0.06,
+        chamfer: 0.0,
+    }
+}
+
+/// ⭐⭐ **O POLÍGONO nasce IRREGULAR e CÔNCAVO** (W132) — cinco vértices, um deles reentrante.
+///
+/// ⚠️ **Um pentágono regular seria o sósia do prisma de 5 lados**, e um convexo qualquer parece-se
+/// com meia dúzia de entradas do catálogo. O que **só** esta forma alcança é a quina que entra para
+/// dentro: *uma forma nova nasce no sítio em que ela é ELA*, e aqui esse sítio é a concavidade.
+///
+/// Medido sobre esta configuração (grelha de `400²` sobre a caixa): o maior disco que cabe na chapa
+/// tem raio **`0,405·r`**, então o filete de nascimento fica a `15 %` do que a forma aguenta — e o
+/// tecto que o painel oferece é a **meia-altura** (`0,35·r`), que é menor. ⇒ *subir o filete até ao
+/// topo do controlo nunca abre esta peça*, e quem quiser ver a abertura morfológica tem a cena de
+/// smoke com uma chapa estreita.
+pub fn a_polygon(r: f32) -> Primitive {
+    // ⚠️ **Sentido anti-horário e sem auto-intersecção** — conferido, e não suposto: o campo do
+    // enrolamento aceita as duas voltas, mas um contorno que se cruza deixa de ter dentro e fora.
+    let pontos = vec![
+        [-0.95 * r, -0.55 * r],
+        [0.90 * r, -0.30 * r],
+        [0.35 * r, 0.95 * r],
+        // ⭐ **O vértice REENTRANTE** — o entalhe que nenhuma outra forma desta paleta faz.
+        [0.05 * r, 0.10 * r],
+        [-0.55 * r, 0.70 * r],
+    ];
+    Primitive::Polygon {
+        // ⚠️ O `expect` é inalcançável e não é preguiça: os cinco pontos são literais deste arquivo,
+        // finitos e distintos, e a única porta que constrói o perfil já os validou. *Um `unwrap_or`
+        // aqui esconderia uma edição futura que colapsasse a lista.*
+        profile: ph2d_field::polygon_profile(pontos).expect("o polígono de nascimento é válido"),
+        half_height: r * 0.35,
+        // ⚠️ **Nasce com FILETE**, como toda forma desta casa que o tem — ver a lei em
+        // `field3d_shapes_tests`.
+        round: r * 0.06,
+        chamfer: 0.0,
+    }
+}
+
+// ─────────────────────────── W134 — o nó de toro ───────────────────────────
+
+/// ⭐⭐ **O TREVO `(2, 3)`** — o nó mais simples que existe, e o que toda a gente reconhece.
+///
+/// ⚠️ **Ela NÃO nasce no `(1, 1)`**, que é o ponto neutro desta família: ali a corda é uma argola
+/// enrolada, que a composição já faz — *uma forma nova nasce no sítio em que ela é ELA*, e é essa a
+/// lei que a W128 pagou com a superfórmula a nascer esfera.
+///
+/// ⚠️ **A corda a `85 %` do tecto**: o tecto dela é apertado de propósito (a pegada da corda no
+/// tubo — ver [`ph2d_field::KNOT_FOOTPRINT`]), e uma fracção pequena de um tecto pequeno daria um
+/// arame. ⛔ Ela esteve em `55 %` enquanto o tecto era `3×` mais largo.
+pub fn a_torus_knot(r: f32) -> Primitive {
+    let (radius, tube) = (r * 0.60, r * 0.26);
+    let (winds, loops) = (2, 3);
+    Primitive::TorusKnot {
+        radius,
+        tube,
+        cord: ph2d_field::knot_cord_ceiling(radius, tube, winds, loops) * 0.85,
+        winds,
+        loops,
+    }
+}
+
+/// ⭐⭐⭐ **A ROSCA** (W135) — o parafuso: uma entrada, uma mão, flanco de `30°` (a métrica ISO).
+///
+/// ⚠️ **A profundidade a `70 %` do tecto, e não no tecto**: no tecto os filetes tocam-se na raiz e
+/// a terra entre eles fecha — o que faz o [`ph2d_field::thread_round_limit`] cair a zero, e uma
+/// forma que nasce com o filete indisponível ensina o contrário do que o painel oferece.
+/// ⭐ **E ela NASCE com filete**, que é a lei da casa (`every_new_shape_that_can_round_is_born_round`)
+/// e é também a rosca certa: uma raiz redonda é onde um parafuso a sério não parte por fadiga.
+pub fn a_thread(r: f32) -> Primitive {
+    let (radius, pitch, flank) = (r * 0.55, r * 0.18, 30.0);
+    let depth = ph2d_field::thread_depth_ceiling(radius, pitch, flank) * 0.70;
+    Primitive::Thread {
+        radius,
+        half_height: r * 0.50,
+        pitch,
+        depth,
+        flank,
+        starts: 1,
+        hands: 1,
+        round: ph2d_field::thread_round_limit(pitch, depth, flank) * 0.5,
+        chamfer: 0.0,
+    }
+}
+
+/// ⭐⭐ **O PUNHO SERRILHADO** (W135) — a MESMA primitiva com as duas mãos cruzadas e seis entradas,
+/// que é o losango de um punho de ferramenta.
+///
+/// ⚠️ **Duas portas da paleta, uma primitiva** — a mesma lei do tubo/anilha/arco de anel: elas
+/// diferem só nos números com que nascem. ⛔ E a composição **não** o alcança: a mão esquerda é o
+/// ESPELHO da direita, e o `Mirror` desta casa DOBRA o espaço (dá meia peça e o reflexo dela), não
+/// une a peça com o espelho dela.
+///
+/// ⚠️ **As `12` entradas são o LOSANGO, e não um número redondo.** O fio faz `atan(ρ/b)` com o eixo,
+/// e as duas mãos cruzam-se ao dobro disso: a `6` entradas o cruzamento é de `138°` e o losango sai
+/// **esmagado**; a `12` ele é de `106°`, que é quase quadrado. *A régua de um serrilhado é o ângulo
+/// de cruzamento, não a contagem.*
+pub fn a_knurl(r: f32) -> Primitive {
+    let (radius, pitch, flank) = (r * 0.55, r * 0.22, 45.0);
+    let depth = ph2d_field::thread_depth_ceiling(radius, pitch, flank) * 0.60;
+    Primitive::Thread {
+        radius,
+        half_height: r * 0.50,
+        pitch,
+        depth,
+        flank,
+        starts: 12,
+        hands: 2,
+        round: ph2d_field::thread_round_limit(pitch, depth, flank) * 0.5,
+        chamfer: 0.0,
+    }
+}
+
+/// ⭐⭐⭐ **A BEZIER QUADRÁTICA** (W136) — um arco com espessura, com os três pontos de controlo
+/// arrastáveis no canvas (a alça que a W133 construiu para o polígono).
+///
+/// ⚠️ **O ponto do meio NÃO está na curva**, e isso é a forma, não um defeito da alça: ele é o
+/// encontro das duas tangentes, e puxá-lo curva o traço sem lhe tocar — que é como toda caneta do
+/// mundo se comporta.
+pub fn a_bezier(r: f32) -> Primitive {
+    let (thickness, half_height) = (r * 0.07, r * 0.12);
+    Primitive::Bezier {
+        a: [-r * 0.50, -r * 0.25],
+        b: [0.0, r * 0.60],
+        c: [r * 0.50, -r * 0.25],
+        thickness,
+        half_height,
+        round: thickness.min(half_height) * 0.5,
+        chamfer: 0.0,
+    }
+}
+
+/// ⭐⭐⭐ **A PARÁBOLA — e ela É a Bezier**, com os três pontos no sítio que a torna `y = k·x²`.
+///
+/// ⭐ **MEDIDO** (`probe_parabola_is_a_bezier`, 07/09): o desvio da curva à parábola é `5,5e-17` —
+/// exacto ao bit. Em `[−w, w]` os extremos são `(±w, k w²)` e as tangentes ali têm declive `∓2kw`;
+/// elas encontram-se em `(0, −k w²)`, que é o ponto de controlo. ⇒ **duas portas da paleta, uma
+/// primitiva** — a mesma lei do tubo/anilha e do parafuso/serrilhado.
+///
+/// ⛔ **Uma `Primitive::Parabola` à parte seria uma SEGUNDA fórmula para a mesma superfície**, e a
+/// segunda é a que envelhece (a lei que o cone e o tronco já escreviam nesta casa).
+pub fn a_parabola(r: f32) -> Primitive {
+    let (w, k) = (r * 0.50, 1.6 / r.max(f32::EPSILON));
+    let (thickness, half_height) = (r * 0.06, r * 0.12);
+    Primitive::Bezier {
+        a: [-w, k * w * w],
+        b: [0.0, -k * w * w],
+        c: [w, k * w * w],
+        thickness,
+        half_height,
+        round: thickness.min(half_height) * 0.5,
+        chamfer: 0.0,
+    }
+}
+
+/// ⭐⭐ **A ONDA EM ANEL** (W136) — o anel cuja distância ao eixo ondula em `lobes` lóbulos.
+///
+/// ⚠️ **A amplitude nasce longe de zero de propósito:** em `amplitude → 0` ela é um anel, e o anel
+/// já é o [`Primitive::Tube`] — *uma forma nova nasce no sítio em que ela é ELA*, que é a lei que a
+/// superfórmula da W128 pagou por nascer esfera.
+pub fn a_circle_wave(r: f32) -> Primitive {
+    let (radius, amplitude) = (r * 0.50, r * 0.13);
+    let (thickness, half_height) = (
+        ph2d_field::wave_thickness_ceiling(radius, amplitude) * 0.18,
+        r * 0.10,
+    );
+    Primitive::CircleWave {
+        radius,
+        amplitude,
+        lobes: 8,
+        thickness,
+        half_height,
+        round: thickness.min(half_height) * 0.5,
+        chamfer: 0.0,
+    }
+}

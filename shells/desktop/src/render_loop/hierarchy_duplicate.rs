@@ -92,7 +92,7 @@ pub(super) fn drain(
     // ⚠️ **Quem duplica esta entidade não é óbvio, e a escolha errada é SILENCIOSA** — ver
     // [`duplicate_kind`], que é onde a decisão mora (e onde um gate lhe chega).
     if duplicate_kind(sim.world(), src) == DuplicateKind::Field {
-        if let Some(copy) = crate::field3d_scene::duplicate_node(sim.world_mut(), src) {
+        if let Some(copy) = ph2d_app_field3d::scene::duplicate_node(sim.world_mut(), src) {
             // ⭐ A cópia fica selecionada, como no botão do painel: é o que põe o gizmo em cima
             // dela sem ninguém a ter de procurar.
             hero.gizmo.replace_selection(Some(copy));

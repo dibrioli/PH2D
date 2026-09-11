@@ -1,0 +1,35 @@
+[package]
+name = "ph2d-app-registry-init"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+ph2d-app-host = { path = "../ph2d-app-host" }
+# <ph2d-app-sync:deps:begin>
+ph2d-app-field3d = { path = "../ph2d-app-field3d", optional = true }
+# <ph2d-app-sync:deps:end>
+
+[features]
+# ⚠️ **TODA família nasce no `default`.** Uma família fora do `default` é exactamente a
+# recusa medida da auditoria §9 sobre a feature `smokes`: o gate e o CI deixariam de a
+# compilar **em silêncio**. A feature existe para BISSECAR (`--no-default-features
+# --features app-field3d`), nunca para esconder.
+default = [
+# <ph2d-app-sync:default:begin>
+    "app-field3d",
+# <ph2d-app-sync:default:end>
+]
+# Bloco GERADO por `cargo run -p ph2d-app-sync` a partir de uma varredura de
+# `crates/ph2d-app-*`. ⛔ Não edite entre os marcadores à mão — há gate de staleness.
+# <ph2d-app-sync:features:begin>
+app-field3d = ["dep:ph2d-app-field3d"]
+# <ph2d-app-sync:features:end>
+
+[dev-dependencies]
+ph2d-app-sync = { path = "../../tools/ph2d-app-sync" }

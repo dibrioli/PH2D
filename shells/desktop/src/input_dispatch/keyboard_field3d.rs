@@ -16,6 +16,10 @@
 //! `sculpt3d` ao lado regista o dia em que uma porta destas deixou de perguntar o suficiente e comeu
 //! os dígitos de todo painel do app.
 
+// ⭐ **W2: os ganchos de entrada da janela 3D são um trait de extensão sobre o `AppHost`.**
+// Os sítios de chamada abaixo ficaram **byte a byte iguais** — o que mudou foi só esta linha.
+use ph2d_app_field3d::input::Field3dInput;
+
 use winit::event::ElementState;
 use winit::keyboard::PhysicalKey;
 

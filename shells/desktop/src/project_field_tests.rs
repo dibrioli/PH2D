@@ -37,7 +37,7 @@ fn a_doc_naming(key: &str) -> ph2d_field::FieldDoc {
 /// # O defeito, e ele é silencioso duas vezes
 ///
 /// Quando o documento nomeia uma escultura que o registo não conhece, o módulo **lê o arquivo** e
-/// diz o que não voltou ([`crate::field3d_reload::resolve_missing`], W23). Para não repetir o aviso
+/// diz o que não voltou ([`ph2d_app_field3d::reload::resolve_missing`], W23). Para não repetir o aviso
 /// em todo quadro, ele guarda o que já tentou — e guardava-o **pelo processo**.
 ///
 /// Consequência: o artista abre um projeto, a escultura falha (arquivo movido), ele **conserta o
@@ -50,11 +50,11 @@ fn a_doc_naming(key: &str) -> ph2d_field::FieldDoc {
 #[test]
 fn a_load_starts_the_sculpture_reads_over() {
     let mut app = headless_app();
-    crate::field3d_reload::forget_tried();
+    ph2d_app_field3d::reload::forget_tried();
 
     // 1. A primeira tentativa FALHA e é reportada — o comportamento da W23, intacto.
     let doc = a_doc_naming("/tmp/ph2d_gate_nao_existe_nunca.obj");
-    let first = crate::field3d_reload::resolve_missing(&doc);
+    let first = ph2d_app_field3d::reload::resolve_missing(&doc);
     assert_eq!(
         first.len(),
         1,
@@ -63,7 +63,7 @@ fn a_load_starts_the_sculpture_reads_over() {
 
     // 2. A segunda é MUDA de propósito: é o que impede o aviso de repetir em todo quadro.
     assert!(
-        crate::field3d_reload::resolve_missing(&doc).is_empty(),
+        ph2d_app_field3d::reload::resolve_missing(&doc).is_empty(),
         "dentro do mesmo documento, a segunda tentativa não repete o aviso"
     );
 
@@ -76,7 +76,7 @@ fn a_load_starts_the_sculpture_reads_over() {
 
     // 4. A tentativa recomeça — e volta a dizer o que não voltou.
     assert_eq!(
-        crate::field3d_reload::resolve_missing(&doc).len(),
+        ph2d_app_field3d::reload::resolve_missing(&doc).len(),
         1,
         "depois de um Ctrl+O a leitura das esculturas tem de RECOMEÇAR — senão um arquivo \
          consertado no disco nunca é relido, e o silêncio é o mesmo de quando estava certo"
@@ -124,14 +124,14 @@ fn a_part_doc() -> ph2d_field::FieldDoc {
 fn a_world_has_a_part_only_when_there_is_something_to_see() {
     let mut empty = ph2d_ecs::SimWorld::new();
     assert!(
-        !crate::field3d_scene::world_has_a_part(empty.world_mut()),
+        !ph2d_app_field3d::scene::world_has_a_part(empty.world_mut()),
         "um mundo sem peça nenhuma não pode abrir o painel de modelagem"
     );
 
     let mut sim = ph2d_ecs::SimWorld::new();
     let root = ph2d_field_ecs::spawn_doc(sim.world_mut(), &a_part_doc(), "peça");
     assert!(
-        crate::field3d_scene::world_has_a_part(sim.world_mut()),
+        ph2d_app_field3d::scene::world_has_a_part(sim.world_mut()),
         "um mundo com uma peça tem de responder que sim"
     );
 
@@ -150,7 +150,7 @@ fn a_world_has_a_part_only_when_there_is_something_to_see() {
         );
     }
     assert!(
-        !crate::field3d_scene::world_has_a_part(sim.world_mut()),
+        !ph2d_app_field3d::scene::world_has_a_part(sim.world_mut()),
         "com a raiz vazia não há geometria nenhuma — e a raiz continua de pé, que é o caso em que \
          «há raiz» e «há nó» respondem SIM e a tela fica vazia"
     );
@@ -170,9 +170,9 @@ fn a_world_has_a_part_only_when_there_is_something_to_see() {
 #[test]
 fn a_loaded_project_asks_to_open_the_panel_even_with_the_module_disarmed() {
     let mut app = headless_app();
-    crate::field3d_smoke::forget_open_panel_request();
-    crate::field3d_smoke::set_armed_by_panel(false);
-    let _ = crate::field3d_smoke::with_smoke(|_| ());
+    ph2d_app_field3d::smoke::forget_open_panel_request();
+    ph2d_app_field3d::smoke::set_armed_by_panel(false);
+    let _ = ph2d_app_field3d::smoke::with_smoke(|_| ());
 
     let path = tmp_path("field_load_opens");
     write_project_full(&path, PROJECT_SCHEMA, Vec::new(), Vec::new());
@@ -180,22 +180,22 @@ fn a_loaded_project_asks_to_open_the_panel_even_with_the_module_disarmed() {
     let _ = std::fs::remove_file(&path);
 
     assert!(
-        crate::field3d_smoke::take_open_if_part_request(),
+        ph2d_app_field3d::smoke::take_open_if_part_request(),
         "um load tem de deixar a PERGUNTA — o mundo vive no `gfx` e este caminho corre sem janela"
     );
 
     // O quadro responde-a: há peça ⇒ pede a abertura.
     let mut sim = ph2d_ecs::SimWorld::new();
     ph2d_field_ecs::spawn_doc(sim.world_mut(), &a_part_doc(), "peça");
-    if crate::field3d_scene::world_has_a_part(sim.world_mut()) {
-        crate::field3d_smoke::ask_open_panel();
+    if ph2d_app_field3d::scene::world_has_a_part(sim.world_mut()) {
+        ph2d_app_field3d::smoke::ask_open_panel();
     }
     assert!(
-        crate::field3d_smoke::take_open_panel_request(),
+        ph2d_app_field3d::smoke::take_open_panel_request(),
         "⭐ o pedido EXPLÍCITO tem de atravessar a guarda do armado — senão a única porta que abre \
          o painel exige que ele já esteja aberto, e a peça do arquivo nunca aparece"
     );
-    crate::field3d_smoke::forget_open_panel_request();
+    ph2d_app_field3d::smoke::forget_open_panel_request();
 }
 
 /// ⚠️ **E o controle: sem peça, ninguém abre nada.** Um painel que se abrisse em todo Ctrl+O
@@ -203,20 +203,20 @@ fn a_loaded_project_asks_to_open_the_panel_even_with_the_module_disarmed() {
 /// armado existia, e que esta wave tem de preservar.
 #[test]
 fn a_project_without_a_part_opens_nothing() {
-    crate::field3d_smoke::forget_open_panel_request();
-    crate::field3d_smoke::set_armed_by_panel(false);
-    let _ = crate::field3d_smoke::with_smoke(|_| ());
+    ph2d_app_field3d::smoke::forget_open_panel_request();
+    ph2d_app_field3d::smoke::set_armed_by_panel(false);
+    let _ = ph2d_app_field3d::smoke::with_smoke(|_| ());
 
     let mut empty = ph2d_ecs::SimWorld::new();
-    crate::field3d_smoke::ask_open_panel_if_part();
-    if crate::field3d_smoke::take_open_if_part_request()
-        && crate::field3d_scene::world_has_a_part(empty.world_mut())
+    ph2d_app_field3d::smoke::ask_open_panel_if_part();
+    if ph2d_app_field3d::smoke::take_open_if_part_request()
+        && ph2d_app_field3d::scene::world_has_a_part(empty.world_mut())
     {
-        crate::field3d_smoke::ask_open_panel();
+        ph2d_app_field3d::smoke::ask_open_panel();
     }
     assert!(
-        !crate::field3d_smoke::take_open_panel_request(),
+        !ph2d_app_field3d::smoke::take_open_panel_request(),
         "sem peça no mundo, um load não pode abrir o painel de modelagem"
     );
-    crate::field3d_smoke::forget_open_panel_request();
+    ph2d_app_field3d::smoke::forget_open_panel_request();
 }

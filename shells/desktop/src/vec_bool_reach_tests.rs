@@ -10,7 +10,7 @@
 //! seção STATES — com o interruptor **Preview** dentro dela — não era sequer pintada. Não dimmed,
 //! não vazia: ausente, sem uma palavra a dizer o que faltava.
 //!
-//! É a família do [`crate::field3d_reach_tests`]: o que se mede aqui é a SEQUÊNCIA.
+//! É a família do `ph2d_app_field3d` (os gates de alcance dela): o que se mede aqui é a SEQUÊNCIA.
 
 use crate::vec_entities::VecEntityMap;
 use ph2d_ecs::{Entity, Name, SimWorld, Transform, VecBoolGroup};

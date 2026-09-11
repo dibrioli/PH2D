@@ -1,0 +1,571 @@
+//! ⭐ **A MÁQUINA DE ESTADOS DO PONTEIRO** — o que um botão premido, arrastado e solto faz.
+//!
+//! ⚠️ **Separada dos métodos de `App` de propósito, e não por arrumação:** era a costura
+//! ponteiro↔gizmo que ficava sem gate. A [`DIRETIVA_IMPLEMENTACAO`] §1 chama-lhe a causa nº 1 da
+//! semana perdida no Painter — *"a alça está pintada, o arrasto está correto, e ninguém liga os
+//! dois"* passa em todo teste de unidade dos dois lados. Aqui ela é uma função pura sobre o
+//! [`Smoke`], que um gate encena sem janela nenhuma.
+//!
+//! ⚠️ **Módulo-filho de [`super`]**, cortado da `field3d_input` na W34 pelo teto de LOC. O corte é
+//! por **assunto**: o pai possui a *câmera* (órbita, zoom, enquadramento, os métodos de `App`) e
+//! este possui o *gesto* (pegar uma alça, arrastar, digitar um número, largar).
+//!
+//! [`DIRETIVA_IMPLEMENTACAO`]: ../../../docs/IntegracaoMultiAgente/DIRETIVA_IMPLEMENTACAO.md
+
+use super::*;
+
+/// ⭐ **O que o ponteiro FAZ**, sobre o estado do smoke e nada mais.
+///
+/// ⚠️ Separado dos métodos de `App` de propósito, e não por arrumação: era a costura ponteiro↔gizmo
+/// que ficava sem gate. A `DIRETIVA_IMPLEMENTACAO` §1 chama-lhe a causa nº 1 da semana perdida no
+/// Painter — *"a alça está pintada, o arrasto está correto, e ninguém liga os dois"* passa em todo
+/// teste de unidade dos dois lados.
+pub fn begin(
+    s: &mut Smoke,
+    button: winit::event::MouseButton,
+    fallback: Drag,
+    // `Shift`/`Ctrl` em baixo — ver [`Drag::Lasso`].
+    additive: bool,
+    pos: (f32, f32),
+) -> bool {
+    // ⭐⭐⭐ **UM MENU ABERTO GANHA DE TUDO, e até da COSTURA** (W109).
+    //
+    // ⛔⛔ **A 1.ª versão pô-lo DEPOIS da costura, e o gate da costura apanhou-o:** o cabeçalho do
+    // quadrante de baixo-direita nasce encostado ao cruzamento, então o menu que ele abre cai **por
+    // cima da banda de agarrar o divisor** — e metade das linhas dele era inalcançável, com o
+    // ponteiro a virar seta de redimensionar por cima de um menu. *Uma precedência escrita por
+    // analogia («a costura ganha de tudo») deixa de valer quando nasce algo que é modal.*
+    //
+    // ⚠️ **Um menu aberto consome o clique seguinte, caia ele onde cair** — dentro, escolhe; fora,
+    // fecha. Deixar o clique de fora passar orbitaria a peça no mesmo gesto em que o artista só
+    // queria desistir do menu, e é o que todo o chrome desta casa já faz.
+    //
+    // ⚠️ **O quadrante é o que ABRIU o menu, não o activo:** trocar a vista do quadrante errado
+    // seria pior do que não ter menu.
+    if button == winit::event::MouseButton::Left
+        && let Some(i) = s.view_menu
+    {
+        let escolha = s
+            .view_menu_rect
+            .and_then(|m| crate::view_menu::row_at(m, [pos.0, pos.1]));
+        s.view_menu = None;
+        if let Some(v) = escolha {
+            // ⛔ **O activo JÁ é `i`, e um `s.active = i` aqui é uma SEGUNDA CURA** — quem o acertou
+            // foi o clique no chip, que é a única porta que abre este menu. A mutação que a apagava
+            // **SOBREVIVEU** a todos os gates, o que é a definição de código que ninguém pode
+            // remover com confiança. Fica a afirmação, e o gate mede o activo logo depois de abrir.
+            debug_assert_eq!(
+                s.active, i,
+                "o menu só se abre pelo chip, e o chip acerta o activo"
+            );
+            crate::input::fly_to_view(s, v);
+            s.vp_mut().manual = true;
+        }
+        return true;
+    }
+    // ⭐⭐⭐ **A COSTURA GANHA DE TUDO** (W92) — ela está **entre** os viewports, e não dentro de
+    // nenhum. Sem esta precedência (e antes da escolha do activo), apontar para a linha do meio
+    // orbitaria a vista de um dos lados e o divisor seria inalcançável.
+    //
+    // ⚠️ Só com o botão **esquerdo**: o do meio é o pan e o direito é de quem vier a seguir.
+    if button == winit::event::MouseButton::Left
+        && let Some(area) = crate::smoke::canvas_area(s)
+        && let Some((v, h)) = crate::layout::seam_grab(area, s.split, [pos.0, pos.1])
+    {
+        s.drag = Some(Drag::Divider(v, h));
+        s.last_pointer = pos;
+        s.press_at = Some(pos);
+        return true;
+    }
+    // ⭐⭐ **O CHIP DO CABEÇALHO abre o menu daquela vista** (W109) — depois da costura, porque ele
+    // vive **dentro** de um viewport e ela vive entre eles.
+    if button == winit::event::MouseButton::Left
+        && let Some(i) =
+            (0..s.vps.len()).find(|&i| s.vps[i].label.is_some_and(|r| dentro_de(r, pos)))
+    {
+        s.active = i;
+        s.view_menu = Some(i);
+        return true;
+    }
+    // ⭐⭐⭐ **O BOTÃO DESCE NUM VIEWPORT, E É ELE QUE PASSA A COMANDAR** (W90).
+    //
+    // ⚠️ **Antes de tudo, e só no `begin`:** daqui para baixo o módulo inteiro já lê `s.vp()`, então
+    // acertar o activo **aqui** é a única linha que a divisão custa ao caminho do ponteiro. ⛔ E no
+    // `Move`/`Up` a pergunta não se repete, pela mesma lei de captura que a nota abaixo escreve: um
+    // arrasto que mudasse de câmera ao atravessar a costura orbitaria duas peças com um gesto só.
+    if let Some(i) = crate::smoke::viewport_at(s, pos) {
+        s.active = i;
+    }
+    // ⚠️ **Fora da área desenhada, o gesto não é meu.** O `Move` e o `Up` NÃO fazem esta pergunta,
+    // de propósito: um arrasto em curso continua a ser do gesto que o abriu mesmo que o cursor
+    // passeie por fora — a regra de captura que todo gizmo deste shell segue.
+    let Some(area) = s.vp().area else {
+        return false;
+    };
+    if pos.0 < area.x || pos.1 < area.y || pos.0 >= area.x + area.w || pos.1 >= area.y + area.h {
+        return false;
+    }
+    // ⭐⭐ **O GIZMO DE NAVEGAÇÃO ganha de tudo** (W49), e só com o botão esquerdo.
+    //
+    // ⚠️ Ele fica na quina, por cima da peça: sem esta pergunta, um clique numa bola seria um
+    // arrasto na peça — e o widget inteiro nasceria pintado e morto.
+    //
+    // ⭐ **Arrastar a partir dele ORBITA**, e é o gesto principal, não um efeito colateral: a
+    // pesquisa da referência mede os utilizadores *quase 2× mais rápidos* a arrastar do que a
+    // clicar, «independentemente das representações examinadas» (ver `field3d_navball`). Por isso o
+    // `drag` fica em `Orbit` e a bola é só **lembrada** — o `Up` sem movimento é que a usa.
+    if button == winit::event::MouseButton::Left
+        && let Some(p) = local(s, pos)
+        && crate::navball::hits_widget(area, crate::smoke::safe_of(s), p)
+    {
+        let safe = crate::smoke::safe_of(s);
+        s.nav_press = crate::navball::pick(
+            &crate::navball::balls(&s.vp().cam, area, safe),
+            p,
+        );
+        s.drag = Some(Drag::Orbit);
+        s.drag_grip = None;
+        s.gizmo_hot = None;
+        s.last_pointer = pos;
+        s.press_at = Some(pos);
+        s.vp_mut().manual = true;
+        return true;
+    }
+    // ⭐ **A alça ganha do gesto de câmera**, e só com o botão ESQUERDO: o direito continua a
+    // orbitar mesmo por cima do gizmo, que é a saída para quem quer girar a vista sem primeiro
+    // tirar o rato de cima da peça.
+    let grabbed = (button == winit::event::MouseButton::Left)
+        .then(|| local(s, pos).and_then(|p| gizmo::pick(&handles(s), p)))
+        .flatten();
+    // ⭐⭐ **O LAÇO ganha do gesto de câmera, e só com o MODIFICADOR em baixo** (W58) — mas **perde**
+    // para uma alça do gizmo: `Shift`+arrastar uma seta continua a mover a peça, senão o
+    // modificador tiraria ao artista o gesto que ele tem debaixo do dedo.
+    if grabbed.is_none()
+        && button == winit::event::MouseButton::Left
+        && additive
+        && let Some(p) = local(s, pos)
+    {
+        s.drag = Some(Drag::Lasso);
+        s.lasso = Some((p, p));
+        s.drag_grip = None;
+        s.gizmo_hot = None;
+        s.last_pointer = pos;
+        s.press_at = Some(pos);
+        return true;
+    }
+    s.drag = Some(grabbed.map_or(fallback, Drag::Gizmo));
+    // ⭐ A pegada congela a âncora e o pixel: é contra eles que o total se mede até soltar.
+    s.drag_grip = grabbed.and_then(|h| {
+        let anchor = s.gizmo?;
+        let from = local(s, pos)?;
+        let screen = area_screen(s)?;
+        Some(Grip {
+            anchor,
+            from,
+            applied: gizmo::drag(h, anchor, &s.vp().cam, screen, from, from).neutral(),
+            target: h.target(),
+        })
+    });
+    s.gizmo_hot = grabbed;
+    s.last_pointer = pos;
+    // ⚠️ Guardado **antes** de qualquer movimento: é a origem contra a qual o `Up` decide se aquilo
+    // foi um clique ou um arrasto.
+    s.press_at = Some(pos);
+    s.vp_mut().manual = true;
+    true
+}
+
+/// ⚠️ **A que distância um clique deixa de ser um clique** — e o número é o da CASA
+/// ([`ph2d_editor::interaction::NUMBER_INPUT_DRAG_THRESHOLD_PX`]).
+///
+/// Ele tem o nome do campo numérico porque foi lá que a casa o mediu primeiro, mas a grandeza é a
+/// mesma pergunta física: *quanto a mão treme entre carregar e soltar*. Um quarto número para a
+/// mesma pergunta seria a quarta resposta a envelhecer — já há três no shell.
+const CLICK_SLOP_PX: f32 = ph2d_editor::interaction::NUMBER_INPUT_DRAG_THRESHOLD_PX;
+
+/// O ponteiro moveu. Devolve `true` só quando o gesto é desta janela.
+/// ⭐ **O que uma tecla numérica FAZ**, sobre o estado do smoke e nada mais — o irmão do [`advance`],
+/// e separado dos métodos de `App` pela mesma razão: era a costura que ficava sem gate.
+///
+/// ⭐⭐ **O que a tecla de VERBO faz ao estado do smoke** — a terceira saída de um gesto de gizmo.
+///
+/// Devolve `(consumiu, autorou)` pela mesma razão do [`typed_key`] e do [`finish`]: trocar de verbo
+/// a meio de um arrasto **confirma** o que já foi aplicado (o mundo fica como está), logo o quadro
+/// é tão autorado como o de largar o botão.
+///
+/// ⚠️ **Extraída de `App::field3d_mode_key` para poder ser GATEADA** — é a mesma razão por que o
+/// [`typed_key`] e o [`advance`] vivem aqui: *era a costura que ficava sem gate.*
+pub fn mode_key(s: &mut Smoke, mode: crate::gizmo::Mode) -> (bool, bool) {
+    s.gizmo_mode = mode;
+    let autorou = matches!(s.drag, Some(Drag::Gizmo(_)));
+    s.drag = None;
+    s.gizmo_hot = None;
+    s.typed = None;
+    (true, autorou)
+}
+
+/// Devolve `(consumiu, autorou)` — e a **segunda** metade é a que o undo lê.
+///
+/// ⛔⛔ **Ela nasceu de um report do Enio (2026-09-03): *«o undo/redo do módulo não obedece cada
+/// etapa, principalmente se transformação»*.** Um arrasto de gizmo tem **três** saídas — largar o
+/// botão, `Enter`, e trocar de verbo — e só a primeira marcava o quadro como autorado. As outras
+/// duas mudavam a pose e **não registavam passo nenhum**: a transformação ficava colada à ação
+/// SEGUINTE do artista, fosse ela qual fosse.
+///
+/// ⚠️ **O `Cancel` é a excepção CERTA e por isso devolve `false`:** ele repõe a pose de antes do
+/// gesto, logo o diff não vê nada e um passo seria um passo vazio.
+pub fn typed_key(s: &mut Smoke, stroke: crate::typed::Stroke) -> (bool, bool) {
+    use crate::typed as typed;
+    // A entrada só existe **dentro de um arrasto de alça**, e só onde um número tem um significado.
+    let Some(Drag::Gizmo(handle)) = s.drag else {
+        return (false, false);
+    };
+    if !typed::accepts(handle) {
+        return (false, false);
+    }
+    match stroke {
+        // ⭐ **Cancelar desfaz o gesto INTEIRO**: o mundo recebe o inverso do que já lhe foi dado, e
+        // a peça volta a onde estava quando a alça foi agarrada. ⚠️ É por isso que o inverso se
+        // escreve com a própria álgebra (`neutral().since(applied)`) — uma segunda conta de «como se
+        // desfaz um giro» divergiria da primeira no dia em que um verbo novo entrasse.
+        typed::Stroke::Cancel => {
+            if let Some(grip) = s.drag_grip {
+                let back = grip.applied.neutral().since(grip.applied);
+                if !back.is_idle() {
+                    publish(s, grip.anchor.entity, grip.target, back);
+                }
+            }
+            s.drag = None;
+            s.drag_grip = None;
+            s.typed = None;
+            s.press_at = None;
+            // ⚠️ **Net zero**: o mundo levou o inverso do que já tinha recebido, logo não há passo.
+            (true, false)
+        }
+        // Fechar guardando o que está — o mesmo que largar o botão, **e o undo tem de o saber**.
+        typed::Stroke::Commit => {
+            s.typed = None;
+            let (_, autorou) = finish(s);
+            (true, autorou)
+        }
+        stroke => {
+            // ⚠️ Uma entrada só **começa** com um dígito ou um ponto: um `Backspace` sem entrada
+            // aberta não é deste módulo, e engoli-lo tiraria a tecla a quem quer que a espere.
+            let open = s.typed.is_some();
+            if !open && matches!(stroke, typed::Stroke::Backspace) {
+                return (false, false);
+            }
+            let before = s.typed.clone().unwrap_or_default();
+            s.typed = typed::edit(&before, stroke);
+            apply_typed(s, handle);
+            // O gesto continua aberto: o `gesture_in_progress` suprime o passo até ele fechar.
+            (true, false)
+        }
+    }
+}
+
+/// Manda ao mundo o que o número digitado pede — **o total**, contra o que já foi aplicado.
+fn apply_typed(s: &mut Smoke, handle: Handle) {
+    let (Some(text), Some(grip)) = (s.typed.clone(), s.drag_grip) else {
+        return;
+    };
+    let (_, _, fwd) = s.vp().cam.basis();
+    let Some(total) = crate::typed::value_of(&text)
+        .and_then(|v| crate::typed::total(handle, &grip.anchor, fwd, v))
+    else {
+        return;
+    };
+    let delta = total.since(grip.applied);
+    if !delta.is_idle() {
+        publish(s, grip.anchor.entity, grip.target, delta);
+        if let Some(g) = s.drag_grip.as_mut() {
+            g.applied = total;
+        }
+    }
+}
+
+/// O pedido que a ponte com a cena vai aplicar no início do quadro seguinte, acumulado.
+///
+/// ⚠️ **Um só sítio a escrever `pending_move`**: o ponteiro e o teclado mandam a mesma coisa pelo
+/// mesmo cano, e duas cópias da acumulação divergiriam no dia em que os dois acontecessem no mesmo
+/// quadro — que é exactamente o que digitar durante um arrasto é.
+fn publish(
+    s: &mut Smoke,
+    entity: u64,
+    target: gizmo::Target,
+    delta: gizmo::Motion,
+) {
+    // ⚠️ **Só acumula sobre o MESMO sujeito** (W133): dois pedidos da mesma entidade podem ser de
+    // vértices diferentes, e somá-los moveria um ponto com o deslocamento do outro. *A entidade
+    // deixou de ser a identidade do pedido no dia em que uma peça passou a ter N alças.*
+    s.pending_move = Some((
+        entity,
+        target,
+        s.pending_move
+            .filter(|(e, t, _)| *e == entity && *t == target)
+            .map_or(delta, |(_, _, acc)| acc.merge(delta)),
+    ));
+}
+
+/// Houve movimento a valer? — a guarda do cancelamento, para um `Move` de zero pixels não matar
+/// uma viagem que acabou de partir.
+fn dx_dy_moved(x: f32, y: f32, s: &Smoke) -> bool {
+    (x - s.last_pointer.0).abs() + (y - s.last_pointer.1).abs() > f32::EPSILON
+}
+
+pub fn advance(s: &mut Smoke, x: f32, y: f32) -> bool {
+    let Some(drag) = s.drag else {
+        // ⚠️ **Sem arrasto, o hover ainda é atualizado — e o evento NÃO é consumido.** As
+        // duas metades importam: sem a primeira a alça nunca acende e o artista não sabe o
+        // que vai agarrar; com a segunda invertida, a janela 3D engoliria todo movimento de
+        // rato do app 2D.
+        // ⭐ **O realce do gizmo de NAVEGAÇÃO** (W49), pela mesma lei e no mesmo sítio: sem ele o
+        // artista não sabe que bola vai pegar — e o widget lê como decoração.
+        s.nav_hot = match (s.vp().area, local(s, (x, y))) {
+            (Some(area), Some(p))
+                if crate::navball::hits_widget(
+                    area,
+                    crate::smoke::safe_of(s),
+                    p,
+                ) =>
+            {
+                let safe = crate::smoke::safe_of(s);
+                crate::navball::pick(
+                    &crate::navball::balls(&s.vp().cam, area, safe),
+                    p,
+                )
+            }
+            _ => None,
+        };
+        // ⚠️ **Com o cursor no gizmo de navegação, a alça do gizmo 3D não acende.** Os dois
+        // realces ao mesmo tempo diriam que um clique faz duas coisas.
+        s.gizmo_hot = if s.nav_hot.is_some() {
+            None
+        } else {
+            local(s, (x, y)).and_then(|p| gizmo::pick(&handles(s), p))
+        };
+        return false;
+    };
+    // ⭐ **A mão CANCELA a viagem** (W51) — a mesma lei do refinamento do preview e do prato
+    // giratório: uma câmera a viajar por baixo de um arrasto é o app a disputar o rato.
+    if dx_dy_moved(x, y, s) {
+        crate::smoke::cancel_flight(s);
+    }
+    let (dx, dy) = (x - s.last_pointer.0, y - s.last_pointer.1);
+    s.last_pointer = (x, y);
+    match drag {
+        // ⚠️ **Manipulação direta: o modelo segue a mão.** Os sinais são os que a
+        // `line/sculpt3d` já pagou para descobrir, e o gate que os prende aqui mede **o
+        // modelo na tela**, nunca o sinal: foi argumentando sobre sinais que o erro entrou
+        // lá.
+        // ⭐ O laço só **desenha**: ele não mexe na câmera nem no mundo até soltar.
+        Drag::Lasso => {
+            if let (Some(from), Some(p)) = (s.lasso.map(|(a, _)| a), local(s, (x, y))) {
+                s.lasso = Some((from, p));
+            }
+        }
+        Drag::Orbit => law::orbit(&mut s.vp_mut().cam, dx, dy),
+        // ⭐⭐⭐ **O DIVISOR segue o dedo em ABSOLUTO, nunca por incrementos** (W92).
+        //
+        // ⚠️ Uma soma de deltas acumula o erro de cada trava: arrastar até ao batente e voltar
+        // deixaria a costura **deslocada** da mão para sempre. *É a mesma lei que o gizmo deste
+        // módulo já paga com a âncora congelada — mede-se o TOTAL, contra uma origem que não se
+        // mexe.* Aqui a origem é o próprio canvas.
+        Drag::Divider(v, h) => {
+            let (Some(area), crate::layout::Split::Quad { tx, ty }) =
+                (crate::smoke::canvas_area(s), s.split)
+            else {
+                return true;
+            };
+            let (nx, ny) = crate::layout::t_at(area, [x, y]);
+            s.split = s
+                .split
+                .with_t(if v { nx } else { tx }, if h { ny } else { ty });
+        }
+        // O alvo anda ao CONTRÁRIO da mão: mover o ponto olhado para a esquerda é o que faz
+        // o modelo aparecer mais à direita.
+        //
+        // ⚠️ O passo é em **fração do lado menor do quadro**, vezes `half_extent` — é isso
+        // que faz arrastar o mesmo tanto de tela mover o mesmo tanto de modelo em qualquer
+        // zoom. Um passo em unidades de mundo fixas ficaria absurdo assim que se aproxima.
+        Drag::Pan => {
+            let Some(area) = s.vp().area else {
+                return true;
+            };
+            law::pan(&mut s.vp_mut().cam, dx, dy, area.w.min(area.h) * 0.5);
+        }
+        // ⭐ O arrasto do gizmo **não escreve na peça aqui**: ele acumula um PEDIDO que a ponte
+        // com a cena aplica no início do quadro seguinte. É o mesmo caminho dos intents do
+        // painel, e pela mesma razão — o mundo tem um só escritor.
+        Drag::Gizmo(handle) => {
+            // ⭐ **Com um número em cima da mesa, o rato CEDE** (W26). Sem esta linha o movimento
+            // seguinte do ponteiro sobrescreveria o que acabou de ser digitado, e o defeito leria
+            // como *"digitar não faz nada"* — porque o dedo nunca está completamente parado.
+            if s.typed.is_some() {
+                return true;
+            }
+            let (Some(grip), Some(screen), Some(area)) = (s.drag_grip, area_screen(s), s.vp().area)
+            else {
+                return true;
+            };
+            // ⭐ **O TOTAL desde a pegada**, contra a âncora congelada — nunca um incremento contra
+            // a pose de agora, que é o que este gesto está a mudar.
+            let total = gizmo::drag(
+                handle,
+                grip.anchor,
+                &s.vp().cam,
+                screen,
+                grip.from,
+                [x - area.x, y - area.y],
+            );
+            let total = if s.snapping {
+                total.snapped(gizmo::snap_step(screen))
+            } else {
+                total
+            };
+            // O que falta aplicar. ⚠️ Um pedido inerte **não é guardado**: uma alça degenerada
+            // devolve zero, e escrever esse zero acordaria o traçado para redesenhar o mesmo quadro.
+            let delta = total.since(grip.applied);
+            if !delta.is_idle() {
+                // ⚠️ **Pela PORTA, e não por uma segunda cópia da acumulação** (W133) — o doc do
+                // [`publish`] promete *«um só sítio a escrever `pending_move`»* e este arquivo tinha
+                // **dois**. A lei nova (acumular só sobre o mesmo SUJEITO) só existe lá dentro, e
+                // uma cópia aqui nasceria a somar o deslocamento de um vértice noutro.
+                publish(s, grip.anchor.entity, grip.target, delta);
+                if let Some(g) = s.drag_grip.as_mut() {
+                    g.applied = total;
+                }
+            }
+        }
+    }
+    true
+}
+
+/// ⭐ **O ponteiro está sobre a janela 3D?** — a guarda de TODA tecla deste módulo.
+///
+/// ⚠️ **É a diferença entre um atalho e um sequestro.** Enquanto o módulo entrava só por variável de
+/// ambiente, perguntar *"o smoke está armado?"* bastava; com o pill do topo ele pode estar ligado
+/// numa sessão normal, e aí uma tecla engolida é uma tecla que não chega ao campo de texto onde o
+/// artista está a escrever.
+///
+/// ⚠️ **Vive num sítio de propósito.** Ela estava escrita à mão em cada porta de tecla, com a nota
+/// só numa delas — e a tecla seguinte a nascer teria copiado a condição e deixado a nota para trás.
+/// É exatamente o que a `line/sculpt3d` viu envelhecer: a porta dela perguntava *"a cena existe?"*,
+/// o dia em que a cena passou a nascer sozinha chegou, e a partir dali ela comia as teclas de todo
+/// painel do app. *Quem move o número que tornava uma nota verdadeira tem de reconferir a nota.*
+pub(super) fn over_window(s: &Smoke, pos: (f32, f32)) -> bool {
+    // ⚠️⚠️ **A pergunta é sobre o MÓDULO, não sobre uma vista** (W90). Enquanto ela lia
+    // `s.vp().area`, com a divisão aberta uma tecla premida sobre o quadrante *Front* respondia
+    // «não é minha» — e o `Home`, o `Numpad5` e o `Shift+I` deixavam de funcionar em três quartos
+    // do canvas, em silêncio.
+    crate::smoke::viewport_at(s, pos).is_some()
+}
+
+/// **Que verbo esta tecla nomeia** — `None` quando ela não é deste módulo.
+///
+/// ⚠️ **Com MODIFICADOR não é atalho de gizmo, e esta linha é a diferença entre um atalho e um
+/// sequestro do `Ctrl+S`.** A guarda de *"ponteiro sobre a janela 3D"* protege os campos de texto;
+/// ela não protege os atalhos GLOBAIS, que valem em qualquer sítio da janela — e `Ctrl+S` é o
+/// salvar do app. Sem isto, guardar o projeto com o rato em cima da peça trocava o gizmo para
+/// *Size* e **não salvava nada**, em silêncio.
+///
+/// ⚠️ O `Shift` fica de fora da proibição de propósito: `Shift+S` continua a ser um `S`, e nenhum
+/// atalho global da casa o usa.
+pub(super) fn mode_for_key(
+    code: winit::keyboard::KeyCode,
+    modifiers: ph2d_app_host::HostMods,
+) -> Option<gizmo::Mode> {
+    use winit::keyboard::KeyCode;
+    if modifiers.control || modifiers.alt || modifiers.super_key {
+        return None;
+    }
+    match code {
+        KeyCode::KeyG => Some(gizmo::Mode::Move),
+        KeyCode::KeyR => Some(gizmo::Mode::Rotate),
+        KeyCode::KeyS => Some(gizmo::Mode::Scale),
+        _ => None,
+    }
+}
+
+/// O ponteiro subiu: fecha o gesto e decide se ele foi um **clique**.
+///
+/// Devolve `(o gesto era meu?, ele AUTOROU a cena?)`.
+///
+/// ⭐ **Soltar sem ter arrastado é um clique**, e um clique na janela 3D seleciona o objeto sob o
+/// cursor — como em todo modelador. ⚠️ Só o gesto de **câmera** vira clique: soltar uma alça do
+/// gizmo nunca é uma seleção, senão mover um objeto trocaria a seleção para o que estivesse por
+/// baixo dele no fim do gesto, e o artista perderia o que acabou de posicionar.
+pub fn finish(s: &mut Smoke) -> (bool, bool) {
+    let was = s.drag.take();
+    s.drag_grip = None;
+    // A entrada numérica é do GESTO: ela morre com ele, senão o gesto seguinte abriria já a meio de
+    // um número que ninguém digitou.
+    s.typed = None;
+    // ⭐⭐ **UM CLIQUE NUMA BOLA É UMA ESCOLHA DE VISTA** (W49) — e ganha do `pending_pick`, que
+    // seria um clique na PEÇA por baixo do widget.
+    let nav = s.nav_press.take();
+    let still = s.press_at.is_some_and(|from| {
+        (s.last_pointer.0 - from.0).abs() <= CLICK_SLOP_PX
+            && (s.last_pointer.1 - from.1).abs() <= CLICK_SLOP_PX
+    });
+    if let Some(view) = nav.filter(|_| still) {
+        crate::input::fly_to_view(s, view);
+    } else if was == Some(Drag::Orbit)
+        && let (Some(from), Some(area)) = (s.press_at, s.vp().area)
+        && still
+    {
+        // ⚠️ **Não há aqui um `nav.is_none()`, e havia** — ele era **código morto**, e uma prova de
+        // mutação foi quem o disse: para chegar a este ramo é preciso `nav.filter(still)` ser
+        // `None`, isto é `nav.is_none() || !still`; e o `still` exigido aqui colapsa isso em
+        // `nav.is_none()`. *Uma condição que não pode mudar o resultado é uma afirmação falsa sobre
+        // o código para quem o ler a seguir* — e ela sobrevive a toda mutação, de propósito.
+
+        // ⚠️ **`false`, e não um campo guardado — este ramo NÃO pode ser aditivo.** Ele só é
+        // alcançado por `Drag::Orbit`, e um `Down` com o modificador em baixo vai para `Drag::Lasso`
+        // antes de lá chegar. Uma versão anterior guardava a tecla num campo (`additive_press`) e
+        // lia-a aqui: ⛔ **uma mutação que a punha sempre a `false` SOBREVIVEU**, porque o campo era
+        // inalcançável. *É a segunda condição morta que uma prova de mutação apanha nesta função —
+        // e uma condição que não pode mudar o resultado é uma afirmação falsa sobre o código.*
+        s.pending_pick = Some(([from.0 - area.x, from.1 - area.y], false));
+    }
+    // ⭐⭐ **O laço vira PEDIDO ao soltar** (W58) — e um laço que não andou é um clique aditivo, não
+    // um rectângulo de área zero: sem isto, `Shift`+clique num objeto não fazia nada.
+    if was == Some(Drag::Lasso)
+        && let Some((a, b)) = s.lasso.take()
+    {
+        if (a[0] - b[0]).abs() > CLICK_SLOP_PX || (a[1] - b[1]).abs() > CLICK_SLOP_PX {
+            s.pending_lasso = Some((a, b));
+        } else {
+            s.pending_pick = Some((a, true));
+        }
+    }
+    s.lasso = None;
+    s.press_at = None;
+    (was.is_some(), matches!(was, Some(Drag::Gizmo(_))))
+}
+
+/// A mesma porta, aberta para o gate da costura — o caminho real (`App::field3d_pointer_up`) exige
+/// um `App`, que um teste não constrói.
+#[cfg(test)]
+pub fn finish_for_test(s: &mut Smoke) -> (bool, bool) {
+    finish(s)
+}
+
+/// A alça que o gizmo tem de pintar realçada: a **agarrada** ganha da que está sob o cursor.
+///
+/// ⚠️ Não é detalhe: durante um arrasto o cursor sai de cima da alça — é isso que arrastar É —, e
+/// sem esta precedência o realce apagava-se no instante exato em que o gesto começa a valer.
+pub fn hot_handle(s: &Smoke) -> Option<Handle> {
+    match s.drag {
+        Some(Drag::Gizmo(h)) => Some(h),
+        _ => s.gizmo_hot,
+    }
+}
+
+/// Este ponto da janela cai dentro do rectângulo?
+///
+/// ⚠️ **Meio-aberto em cima e à esquerda, aberto em baixo e à direita** — a mesma convenção do
+/// [`crate::layout::hit`], para que dois rectângulos encostados não reclamem o mesmo pixel.
+fn dentro_de(r: ph2d_editor::zones::Rect, p: (f32, f32)) -> bool {
+    p.0 >= r.x && p.1 >= r.y && p.0 < r.x + r.w && p.1 < r.y + r.h
+}

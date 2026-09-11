@@ -1,0 +1,85 @@
+[package]
+name = "ph2d-app-field3d"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# ⭐ **A família `field3d` — a metade da modelagem 3D que vivia na shell.**
+#
+# ⛔ **Ela NÃO depende de `ph2d-host-desktop`, e não pode.** A shell é um `bin`; a seta
+# aponta sempre da shell para a família. O que a família precisa da shell entra pelo
+# trait `ph2d_app_host::AppHost`.
+#
+# ⚠️ A lista abaixo é o CUSTO REAL deste módulo, e ele só se lê aqui: dentro da shell
+# todas estas crates eram dependência do binário, e um ficheiro escrevia
+# `ph2d_i18n::tr(...)` sem nada que o declarasse.
+[dependencies]
+ph2d-app-host      = { path = "../ph2d-app-host" }
+ph2d-viewport3d    = { path = "../ph2d-viewport3d" }
+bevy_ecs           = "0.19"
+ph2d-ecs           = { path = "../ph2d-ecs" }
+ph2d-editor        = { path = "../ph2d-editor" }
+ph2d-editor-core   = { path = "../ph2d-editor-core" }
+ph2d-field         = { path = "../ph2d-field" }
+ph2d-field-ecs     = { path = "../ph2d-field-ecs" }
+ph2d-field-eval    = { path = "../ph2d-field-eval" }
+ph2d-field-mesh    = { path = "../ph2d-field-mesh" }
+ph2d-field-profile = { path = "../ph2d-field-profile" }
+ph2d-field-render  = { path = "../ph2d-field-render" }
+ph2d-i18n          = { path = "../ph2d-i18n" }
+ph2d-mesh          = { path = "../ph2d-mesh" }
+ph2d-panel-model3d = { path = "../ph2d-panel-model3d" }
+ph2d-quadchain     = { path = "../ph2d-quadchain" }
+ph2d-mesh-render   = { path = "../ph2d-mesh-render", optional = true }
+# O `f16` dos texels do matcap. Já está no `Cargo.lock` — aresta, não pacote novo.
+half               = { version = "2", optional = true }
+ph2d-remesh-iso    = { path = "../ph2d-remesh-iso" }
+ph2d-text          = { path = "../ph2d-text" }
+ph2d-timeline      = { path = "../ph2d-timeline" }
+ph2d-tokens        = { path = "../ph2d-tokens" }
+ph2d-tool-registry = { path = "../ph2d-tool-registry" }
+ph2d-vec-scene     = { path = "../ph2d-vec-scene" }
+ph2d-vector        = { path = "../ph2d-vector" }
+rayon  = "1"
+rfd    = "0.17"
+vello  = "0.10"
+winit  = "0.30"
+
+# ⛔⛔ **A FEATURE `sculpt3d` TINHA DE VIR JUNTO, e a ausência dela era MUDA.**
+#
+# O `smoke.rs` carrega o matcap sob `#[cfg(feature = "sculpt3d")]` e tem um braço
+# `#[cfg(not(...))]` que imprime *«sem a feature `sculpt3d` não há matcap; o smoke fica sem
+# cor»*. Numa crate que **não declara** a feature, o `cfg` é falso por construção: a crate
+# compilou **verde** com o carregador do matcap desligado e a cena a sair cinzenta.
+#
+# ⚠️ É exactamente a recusa medida da auditoria §9 (*a feature que esconde as cenas em
+# silêncio*) a acontecer por ACIDENTE, e o aviso que a denunciava era um `warning:
+# unexpected cfg condition value` no meio de 93 erros. *Mover um ficheiro move o código; as
+# features que o governam ficam para trás, e o compilador chama a isso um aviso.*
+[features]
+default = ["sculpt3d"]
+# A mesma promessa verificável do `Cargo.toml` da shell: `optional` é o que torna a
+# removibilidade do módulo de escultura uma afirmação testável, e não uma opinião.
+sculpt3d = ["dep:ph2d-mesh-render", "dep:half"]
+# ⛔⛔ **Os auxiliares de gate deixam de ser alcançáveis quando a família vira CRATE.**
+#
+# `forget_open_panel_request`, `forget_owner`, `sync_scene`, … estavam sob `#[cfg(test)]` e eram
+# lidos por gates da shell. Dentro de uma crate só isso funciona; do outro lado da fronteira a
+# família é uma **dependência**, e `cfg(test)` é falso nela — o gate da shell passa a não ver uma
+# função que está à vista no ficheiro que o erro cita.
+#
+# ⇒ Eles passam a `#[cfg(any(test, feature = "test-support"))]`, e a shell liga a feature nas
+# **dev-dependencies**: no `cargo build` do produto ela fica desligada (as dev-deps não entram),
+# no `cargo test` fica ligada. *A porta de teste é uma feature declarada, não um `cfg` que o
+# vizinho não alcança.*
+test-support = []
+
+[dev-dependencies]
+postcard = { version = "1", features = ["use-std"] }
+# Só a medição `#[ignore]` do `mesh_quality_tests` o usa.
+ph2d-sdf = { path = "../ph2d-sdf" }

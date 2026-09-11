@@ -280,12 +280,12 @@ impl crate::App {
         // ⚠️ Sem esta linha, um arquivo de escultura CONSERTADO no disco nunca era relido — e o
         // segundo silêncio era idêntico ao de quando estava tudo certo. Mesma família das duas
         // linhas acima: *o que o documento anterior possuía e não pode atravessar*.
-        crate::field3d_reload::forget_tried();
+        ph2d_app_field3d::reload::forget_tried();
         // E o ISOLAMENTO da vista (W43): desde que a vista sobrevive a fechar o painel, ela pode
         // atravessar um Ctrl+O — e o `isolated` guarda **bits de entidade**, que o mundo novo
-        // realoca. Ver [`crate::field3d_smoke::forget_isolation_across_documents`]: a câmera fica,
+        // realoca. Ver [`ph2d_app_field3d::smoke::forget_isolation_across_documents`]: a câmera fica,
         // este campo não.
-        crate::field3d_smoke::forget_isolation_across_documents();
+        ph2d_app_field3d::smoke::forget_isolation_across_documents();
         // ⭐⭐ **E o projeto que traz uma PEÇA de modelagem abre o painel dela** (W45).
         //
         // ⚠️ A lei é a do módulo irmão, **lida e não decidida**: *"um projeto com escultura ARMA o
@@ -328,12 +328,12 @@ impl crate::App {
         #[cfg(not(feature = "sculpt3d"))]
         let solo = true;
         if solo {
-            crate::field3d_smoke::ask_open_panel_if_part();
+            ph2d_app_field3d::smoke::ask_open_panel_if_part();
         }
         // ⭐ **E a peça nasce ENQUADRADA** (W46), abra o painel agora ou daqui a uma hora: o pedido
         // fica de pé até a ponte o servir, e ela só corre com o módulo armado. ⚠️ Sem `solo`, de
         // propósito — enquadrar não disputa o canvas com ninguém.
-        crate::field3d_smoke::ask_frame_the_part();
+        ph2d_app_field3d::smoke::ask_frame_the_part();
         self.timeline_insert_key = false;
         self.timeline_reveal_after_apply = false;
         self.autokey = Default::default(); // pins/baselines de pose keyados por bits mortos

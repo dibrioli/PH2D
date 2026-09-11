@@ -31,6 +31,12 @@ ph2d-app-host = { path = "../../crates/ph2d-app-host" }
 # módulos 3D. Ela saiu de `field3d_*` porque `sculpt3d_*` já a consumia em 7 ficheiros —
 # ver o doc do `lib.rs` dela.
 ph2d-viewport3d = { path = "../../crates/ph2d-viewport3d" }
+# ⭐ **A família `field3d` — os 15 207 LOC de produto e 16 990 de teste que viviam nesta crate.**
+# A shell continua a chamá-la pelo nome; a seta aponta da shell para a família, nunca ao contrário.
+ph2d-app-field3d = { path = "../../crates/ph2d-app-field3d" }
+# O ponto de extensão append-only por onde CADA família se regista (bloco gerado por
+# `cargo run -p ph2d-app-sync`). É ele que impede seis linhas de editarem este `[dependencies]`.
+ph2d-app-registry-init = { path = "../../crates/ph2d-app-registry-init" }
 ph2d-core = { path = "../../crates/ph2d-core" }
 ph2d-gpu = { path = "../../crates/ph2d-gpu" }
 # O carimbo de pigmento no device (doc 33). A ponte e' do shell: o tool publica dado simples e
@@ -563,6 +569,9 @@ ph2d-node-fx-drop-shadow = { path = "../../crates/ph2d-node-fx-drop-shadow" }
 ph2d-node-motion-bezier-warp = { path = "../../crates/ph2d-node-motion-bezier-warp" }
 
 [dev-dependencies]
+# W2 — os auxiliares de gate da família (`forget_*`, `sync_scene`, …) vivem atrás da feature
+# `test-support`: um `#[cfg(test)]` da família é invisível para um teste da shell.
+ph2d-app-field3d = { path = "../../crates/ph2d-app-field3d", features = ["test-support"] }
 # O harness headless de painel (`MockPanelHost`) — a shell precisa dele para medir a
 # GEOMETRIA que um painel de fato registra. O censo de linhas (doc 88 B3) mede quantas
 # linhas um nó produz; a metade que faltava é se elas CABEM na altura do dock, e a única

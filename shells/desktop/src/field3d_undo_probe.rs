@@ -4,7 +4,7 @@
 //! # Por que ela existe
 //!
 //! Três jornadas curaram três defeitos reais do registo de passos e **nenhuma reproduziu** o que o
-//! dono vê. A razão é a mesma que o [`crate::fx_undo_smoke`] já tinha escrito para a pilha de
+//! dono vê. A razão é a mesma que o `fx_undo_smoke` da shell já tinha escrito para a pilha de
 //! efeitos: entre o gesto e o passo há uma máquina — `any_input_this_frame`, `held_button`, o
 //! `apply_project` e o quadro **seguinte** a ele — que nenhum gate de estado atravessa, e que um
 //! `PH2D_UNDO_LOG` só descreve se alguém estiver com a mão no rato.
@@ -50,7 +50,7 @@ fn on() -> bool {
 
 impl crate::App {
     /// Roda no prólogo do quadro, ao lado das outras sondas. No-op sem a env.
-    pub(crate) fn field3d_undo_probe(&mut self) {
+    pub fn field3d_undo_probe(&mut self) {
         if !on() || self.gfx.is_none() {
             return;
         }
@@ -59,13 +59,13 @@ impl crate::App {
             // ⭐ **O PILL**, e não a variável de ambiente — é o mesmo `insert(PANEL_ID, true)`.
             5 => {
                 eprintln!("[probe-undo] f={f} abro o MODEL pelo pill");
-                crate::field3d_smoke::ask_open_panel();
+                ph2d_app_field3d::smoke::ask_open_panel();
             }
             25 => self.probe_select_first_node(),
             // A — criar pela paleta (pedido servido num quadro sem evento; W115).
             30 => {
                 eprintln!("[probe-undo] f={f} A: a PALETA escolheu a forma 0");
-                crate::field3d_smoke::ask_shape(0);
+                ph2d_app_field3d::smoke::ask_shape(0);
             }
             // B — arrastar a seta do gizmo, pelo ponteiro real.
             40 => self.probe_grab_an_arrow(f),
@@ -128,7 +128,7 @@ impl crate::App {
                         .is_some_and(|h| h.is_panel_visible(ph2d_panel_model3d::PANEL_ID)),
                 )
             });
-            let armado = crate::field3d_smoke::with_smoke(|_| ()).is_some();
+            let armado = ph2d_app_field3d::smoke::with_smoke(|_| ()).is_some();
             eprintln!(
                 "[probe-undo] f={f} undo={} redo={} nos={nos} mods={mods} x={x:.3} y={y:.3} \
                  sel={sel:?} setas={setas} row0={row0:.3} modal={modal} tool={tool} \
@@ -164,9 +164,9 @@ impl crate::App {
 
     /// Agarra a primeira seta viva do gizmo, no ponto do meio da haste.
     fn probe_grab_an_arrow(&mut self, f: u32) {
-        let ponto = crate::field3d_smoke::with_smoke(|s| {
+        let ponto = ph2d_app_field3d::smoke::with_smoke(|s| {
             let area = s.vp().area?;
-            crate::field3d_input::handles(s)
+            ph2d_app_field3d::input::handles(s)
                 .into_iter()
                 .find_map(|h| match (h.live, &h.shape) {
                     (true, crate::field3d_gizmo::Shape::Arrow { from, to }) => Some((
@@ -245,8 +245,8 @@ impl crate::App {
             .as_ref()
             .and_then(|g| g.hero_screen.as_ref())
             .and_then(|h| h.gizmo.selection);
-        let setas = crate::field3d_smoke::with_smoke(|s| {
-            crate::field3d_input::handles(s)
+        let setas = ph2d_app_field3d::smoke::with_smoke(|s| {
+            ph2d_app_field3d::input::handles(s)
                 .iter()
                 .filter(|h| h.live && matches!(h.shape, crate::field3d_gizmo::Shape::Arrow { .. }))
                 .count()

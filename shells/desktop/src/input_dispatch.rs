@@ -27,6 +27,10 @@
 //! items — so this `impl` block compiles without exposing any field
 //! visibility upstream.
 
+// ⭐ **W2: os ganchos de entrada da janela 3D são um trait de extensão sobre o `AppHost`.**
+// Os sítios de chamada abaixo ficaram **byte a byte iguais** — o que mudou foi só esta linha.
+use ph2d_app_field3d::input::Field3dInput;
+
 use winit::dpi::PhysicalPosition;
 use winit::event::{ElementState, MouseButton, MouseScrollDelta};
 use winit::event_loop::ActiveEventLoop;
@@ -1574,8 +1578,8 @@ impl App {
                     } else {
                         CursorIcon::NsResize
                     }
-                } else if let Some(icon) = crate::field3d_smoke::with_smoke(|s| {
-                    crate::field3d_smoke::divider_cursor(s, self.last_pointer)
+                } else if let Some(icon) = ph2d_app_field3d::smoke::with_smoke(|s| {
+                    ph2d_app_field3d::smoke::divider_cursor(s, self.last_pointer)
                 })
                 .flatten()
                 {

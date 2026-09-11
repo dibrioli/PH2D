@@ -58,6 +58,7 @@ mod normals;
 mod obj;
 mod octree;
 mod persist;
+mod read;
 mod ply;
 mod pose;
 mod ray;
@@ -87,6 +88,7 @@ pub use dyntopo::{Birth, Refine, edge_target, refine_in_sphere, refine_in_sphere
 pub use dyntopo_flip::relax_valence;
 pub use edges::Edges;
 pub use export::{ExportPiece, MeshFormat, triangle_count, write_obj, write_ply, write_stl};
+pub use read::{lost_by, read_pieces};
 pub use extract::{Extract, extract_masked};
 pub use face::{Face, TRI};
 pub use feature_dirs::{FeatureDir, FeatureOptions, FeatureReport, feature_dirs};

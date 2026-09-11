@@ -46,6 +46,9 @@ mod anchor_smoke;
 /// **As três formas de âncora, numa sprite só** (`PH2D_SOCKET_SMOKE=1`, ADR-0072).
 mod anim_smoke;
 mod app_state;
+/// W2 — como esta shell responde ao `ph2d_app_host::AppHost`, o trait por onde uma família de
+/// módulo fala com ela. Um ficheiro, cinco métodos, zero handles devolvidos.
+mod app_host;
 /// **O IMPORT do `.ase`** (Enio, 2026-08-23) — o ficheiro NATIVO do Aseprite vira uma sprite com
 /// grelha e a biblioteca de animações dele. Irmão do `sheet_import` (o par `.png`+`.json`).
 mod ase_import;
@@ -189,40 +192,23 @@ mod envelope_smoke;
 mod expr_blend_smoke;
 mod extrap_smoke;
 mod falloff_smoke;
-mod field3d_export;
-mod field3d_export_job;
-/// ADR-0161 W51 — a VIAGEM entre vistas: a câmera vai suavemente, com a lei de motion da casa.
-mod field3d_flight;
 mod field3d_gizmo;
-mod field3d_gizmo_paint;
-/// ADR-0161 W22 — a porta de ENTRADA: um arquivo de malha vira escultura dentro da peça.
-mod field3d_import;
-/// ADR-0161 — o smoke do módulo de modelagem 3D (`PH2D_FIELD_SMOKE=1..32`): o **campo traçado** na
-/// tela, que é o caminho pelo qual o artista vê a peça (a malha é só para exportar).
-mod field3d_input;
-mod field3d_layout;
-/// ADR-0161 W25 — a VOZ do módulo: uma peça que não cozinha diz porquê, e diz uma vez.
-mod field3d_mode;
-mod field3d_navball;
-mod field3d_navball_paint;
-mod field3d_notice;
-mod field3d_pick;
-/// ADR-0161 W24 — a resolução do preview é DERIVADA do relógio: grossa ao mexer, nítida ao assentar.
-mod field3d_preview;
-/// ADR-0161 W53 — o perfil DESENHADO vira peça: o fluxo do MoI, com a caneta que a casa já tem.
-mod field3d_profile;
-mod field3d_profile_live;
-/// ADR-0161 W23 — o REGRESSO: um projeto carregado regenera cada escultura do arquivo que a nomeia.
-mod field3d_reload;
-mod field3d_scene;
-/// ADR-0161 W100 — a PALETA de formas: o catálogo grande entra pelo modal genérico da casa.
-mod field3d_shape_palette;
-/// ADR-0161 W100 — o CATÁLOGO de formas: rótulo, família e construtor, uma linha por forma.
-mod field3d_shapes;
-mod field3d_smoke;
-/// ADR-0161 W26 — o NUMERO digitado no meio do gesto do gizmo (o `G X 0,5` do Blender).
-mod field3d_typed;
+// ⭐ **Estes dois VOLTARAM da família, e a razão é o SUJEITO de cada um.**
+//
+// - `field3d_undo_probe` conduz a `App` REAL pelo ponteiro real (`self.smoke_pointer_move`,
+//   `self.probe_grab_widget`) — o arnês é da shell, e uma crate de família não lhe chega.
+// - `field3d_snapshot_tests` captura um `ProjectState`, que é a máquina de undo da shell; o doc
+//   dele já se chamava *«a metade de SHELL da ponte ECS»*.
+//
+// ⚠️ **O censo da linha contou `1 impl App` nesta família e eram DOIS** — ele grepou `^impl App`
+// e o segundo está escrito `impl crate::App`. *Um censo por forma textual conta a forma, não a
+// coisa.*
 mod field3d_undo_probe;
+#[cfg(test)]
+#[path = "field3d_snapshot_tests.rs"]
+mod field3d_snapshot_tests;
+mod field3d_layout;
+mod field3d_navball;
 /// ADR-0161 W109 — o cabeçalho CLICÁVEL de cada vista: o menu que troca a câmera daquele quadrante.
 mod field3d_view_menu;
 mod field3d_views;

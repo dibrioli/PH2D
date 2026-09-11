@@ -4764,12 +4764,62 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-app-field3d"
+version = "0.0.0"
+dependencies = [
+ "bevy_ecs",
+ "half",
+ "ph2d-app-host",
+ "ph2d-ecs",
+ "ph2d-editor",
+ "ph2d-editor-core",
+ "ph2d-field",
+ "ph2d-field-ecs",
+ "ph2d-field-eval",
+ "ph2d-field-mesh",
+ "ph2d-field-profile",
+ "ph2d-field-render",
+ "ph2d-i18n",
+ "ph2d-mesh",
+ "ph2d-mesh-render",
+ "ph2d-panel-model3d",
+ "ph2d-quadchain",
+ "ph2d-remesh-iso",
+ "ph2d-sdf",
+ "ph2d-text",
+ "ph2d-timeline",
+ "ph2d-tokens",
+ "ph2d-tool-registry",
+ "ph2d-vec-scene",
+ "ph2d-vector",
+ "ph2d-viewport3d",
+ "postcard",
+ "rayon",
+ "rfd",
+ "vello",
+ "winit",
+]
+
+[[package]]
 name = "ph2d-app-host"
 version = "0.0.0"
 dependencies = [
  "ph2d-editor",
  "rfd",
 ]
+
+[[package]]
+name = "ph2d-app-registry-init"
+version = "0.0.0"
+dependencies = [
+ "ph2d-app-field3d",
+ "ph2d-app-host",
+ "ph2d-app-sync",
+]
+
+[[package]]
+name = "ph2d-app-sync"
+version = "0.0.0"
 
 [[package]]
 name = "ph2d-arc-length"
@@ -5350,7 +5400,9 @@ dependencies = [
  "libm",
  "miniz_oxide 0.8.9",
  "ph2d-anim",
+ "ph2d-app-field3d",
  "ph2d-app-host",
+ "ph2d-app-registry-init",
  "ph2d-aseprite",
  "ph2d-asset",
  "ph2d-asset-index",

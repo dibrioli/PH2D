@@ -46,7 +46,10 @@
 #![forbid(unsafe_code)]
 
 pub mod canvas_area;
+pub mod family;
 pub mod modal;
+
+pub use family::{AppFamily, AppFamilyRegistry, SmokeRouter};
 
 use ph2d_editor::zones::Rect;
 

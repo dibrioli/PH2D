@@ -3261,7 +3261,7 @@ impl crate::App {
                 &{
                     let mut b =
                         crate::vec_bool_shape::badges(sim, &self.vec_entities, &self.bool_live);
-                    b.extend(crate::field3d_scene::link_badges());
+                    b.extend(ph2d_app_field3d::scene::link_badges());
                     b
                 },
                 // O registo — ver o parâmetro na assinatura do `publish`.
@@ -8611,7 +8611,7 @@ impl crate::App {
             //
             // ⚠️ Fecha-se o **painel**, e não se desarma em silêncio: o pill *é* o interruptor do
             // módulo (a linha abaixo), então um desarme invisível deixaria o botão aceso a mentir.
-            // A lei (borda, não estado contínuo) e o porquê estão em `crate::field3d_mode`.
+            // A lei (borda, não estado contínuo) e o porquê estão em `ph2d_app_field3d::mode`.
             {
                 let clay_on = {
                     #[cfg(feature = "sculpt3d")]
@@ -8625,11 +8625,11 @@ impl crate::App {
                         false
                     }
                 };
-                let owner = crate::field3d_mode::Owner {
+                let owner = ph2d_app_field3d::mode::Owner {
                     tool: tools.active().map(ph2d_editor::Tool::id),
                     clay: clay_on,
                 };
-                if crate::field3d_mode::note_owner(owner.clone())
+                if ph2d_app_field3d::mode::note_owner(owner.clone())
                     && hero.is_panel_visible(ph2d_panel_model3d::PANEL_ID)
                 {
                     hero.panel_visibility
@@ -8652,7 +8652,7 @@ impl crate::App {
                 // transição (ele troca o valor guardado), então uma segunda chamada no mesmo
                 // quadro leria `false` — e, enquanto ele vivia dentro do `#[cfg(sculpt3d)]`, uma
                 // build sem aquela feature nunca o avançava.
-                let model_opened = crate::field3d_mode::model_just_opened(
+                let model_opened = ph2d_app_field3d::mode::model_just_opened(
                     hero.is_panel_visible(ph2d_panel_model3d::PANEL_ID),
                 );
                 //
@@ -8660,7 +8660,7 @@ impl crate::App {
                 // acto só, e separá-los deixava uma mutação sobreviver com o produto em ciclo.
                 if model_opened
                     && let Some(neutral) = tools.default_tool_id()
-                    && crate::field3d_mode::model_takes_the_canvas(&owner, &neutral)
+                    && ph2d_app_field3d::mode::model_takes_the_canvas(&owner, &neutral)
                 {
                     tools.set_active(&neutral);
                     self.title_dirty = true;
@@ -8683,12 +8683,12 @@ impl crate::App {
             // load deixou. ⚠️ É aqui e não no load porque **o mundo vive no `gfx`**, e o load corre
             // sem janela: perguntar lá daria *"não há peça"* sempre. Mesma forma (e mesma razão
             // escrita) do `sculpt3d_install_pending` do módulo irmão.
-            if crate::field3d_smoke::take_open_if_part_request()
-                && crate::field3d_scene::world_has_a_part(sim.world_mut())
+            if ph2d_app_field3d::smoke::take_open_if_part_request()
+                && ph2d_app_field3d::scene::world_has_a_part(sim.world_mut())
             {
-                crate::field3d_smoke::ask_open_panel();
+                ph2d_app_field3d::smoke::ask_open_panel();
             }
-            crate::field3d_smoke::set_armed_by_panel(
+            ph2d_app_field3d::smoke::set_armed_by_panel(
                 hero.is_panel_visible(ph2d_panel_model3d::PANEL_ID),
             );
             // ⭐⭐⭐ **A FILA É O CABEÇALHO DA ÁREA** — as vistas e a câmera saíram do painel e
@@ -8707,14 +8707,14 @@ impl crate::App {
             // ⭐ Um clique na peça (ou a peça a nascer) pede uma seleção. É a MESMA porta que a
             // Hierarquia usa — uma seleção própria deste módulo seria uma segunda ideia de "o que
             // está selecionado" dentro do mesmo app.
-            if let Some(req) = crate::field3d_scene::ecs_bridge(
+            if let Some(req) = ph2d_app_field3d::scene::ecs_bridge(
                 sim,
                 hero.gizmo.selection,
                 &hero.gizmo.extra_selection,
                 vec_scene,
             ) {
                 // ⭐ **A lei mora numa porta só** (`field3d_scene::apply`) — o gate chama a MESMA.
-                crate::field3d_scene::apply(&mut hero.gizmo, req);
+                ph2d_app_field3d::scene::apply(&mut hero.gizmo, req);
             }
             // O painel de TOKENS (plano UI/UX W6), na MESMA fase e pela mesma razão: um painel de
             // MUNDO, cuja visibilidade é do artista. ⚠️ Ele tem de correr DEPOIS do dispatch de
@@ -11991,7 +11991,7 @@ impl crate::App {
                     ph2d_editor::zones::Rect::new(viewport.x, viewport.y, viewport.w, viewport.h),
                 );
                 let safe = crate::field3d_navball::safe_corner(area, &obstacles);
-                crate::field3d_smoke::note_safe(safe);
+                ph2d_app_field3d::smoke::note_safe(safe);
                 // ⭐⭐⭐ **E A ESCULTURA LÊ O MESMO PAR** (2026-09-08, ordem do Enio: *«traga esses
                 // features para esse módulo»*). ⚠️ **Calculado UMA vez e publicado nos dois**, e não
                 // duas vezes com a mesma receita: a lista de obstáculos deste quadro é a coisa cara
@@ -12019,17 +12019,17 @@ impl crate::App {
             //
             // ⚠️ **E ela NÃO morre no *reduced motion*** (W52, decisão do Enio): o papel é o
             // `Viewpoint`, e o critério dele é que *o que substitui esta animação é um CORTE que
-            // desorienta mais do que ela*. Ver `crate::field3d_flight::ROLE`.
-            if let Some((generation, fresh)) = crate::field3d_smoke::flight_track() {
+            // desorienta mais do que ela*. Ver `ph2d_app_field3d::flight::ROLE`.
+            if let Some((generation, fresh)) = ph2d_app_field3d::smoke::flight_track() {
                 let id = ph2d_editor::screens::hero::ids::model3d_view_travel(generation);
                 if fresh {
                     // Semear em 0: a primeira vez que um id é visto, o `animate` **chega** ao alvo
                     // (um widget que acaba de aparecer não tem de onde vir). Sem esta linha a
                     // viagem estaria terminada antes de começar.
-                    hero.motion.animate(id, 0.0, crate::field3d_flight::ROLE);
+                    hero.motion.animate(id, 0.0, ph2d_app_field3d::flight::ROLE);
                 }
-                let t = hero.motion.animate(id, 1.0, crate::field3d_flight::ROLE);
-                crate::field3d_smoke::note_flight_progress(t);
+                let t = hero.motion.animate(id, 1.0, ph2d_app_field3d::flight::ROLE);
+                ph2d_app_field3d::smoke::note_flight_progress(t);
             }
             // ⭐⭐⭐ **A ÁREA, e não a JANELA** (report do Enio, 2026-08-31: *«a viewport ainda não
             // se encaixa na área correta para ela — veja que atravessa as réguas»*).
@@ -12041,7 +12041,7 @@ impl crate::App {
             // ⚠️ **A MESMA porta que alimenta o gizmo de navegação** (`field3d_layout::area`), e é
             // por isso que os dois se encaixam: um segundo rect aqui seria a fonte por onde a
             // imagem e a moldura voltavam a discordar.
-            crate::field3d_smoke::draw(
+            ph2d_app_field3d::smoke::draw(
                 crate::field3d_layout::area(
                     hero,
                     ph2d_editor::zones::Rect::new(viewport.x, viewport.y, viewport.w, viewport.h),
@@ -12078,7 +12078,7 @@ impl crate::App {
                         .iter()
                         .enumerate()
                         .map(|(i, r)| {
-                            crate::field3d_gizmo_paint::paint_view_label(
+                            ph2d_app_field3d::gizmo_paint::paint_view_label(
                                 vector_scene,
                                 paint_ctx.text,
                                 *r,
@@ -12093,7 +12093,7 @@ impl crate::App {
                 scene.note_view_labels(chips);
                 // ⭐⭐ **AS COSTURAS E A MOLDURA DO ACTIVO** — o MESMO pintor do módulo vizinho.
                 // Ele já é no-op com uma vista só.
-                crate::field3d_gizmo_paint::paint_split(
+                ph2d_app_field3d::gizmo_paint::paint_split(
                     vector_scene,
                     &quadros,
                     scene.vp_active(),
@@ -12111,7 +12111,7 @@ impl crate::App {
                 {
                     let handles = scene.gizmo_handles();
                     if !handles.is_empty() {
-                        crate::field3d_gizmo_paint::paint(
+                        ph2d_app_field3d::gizmo_paint::paint(
                             vector_scene,
                             &handles,
                             scene.gizmo_hot(),
@@ -12127,7 +12127,7 @@ impl crate::App {
                 // vive. Ver `sculpt3d_navball`.
                 if let Some((area, safe)) = scene.nav_rects() {
                     let balls = scene.navball(area, safe);
-                    crate::field3d_navball_paint::paint(
+                    ph2d_viewport3d::navball_paint::paint(
                         vector_scene,
                         &balls,
                         scene.nav_hot(),
@@ -12145,7 +12145,7 @@ impl crate::App {
                 if let Some(i) = scene.view_menu_open()
                     && let (Some(chip), Some(canvas)) = (scene.chip_of(i), scene.canvas())
                 {
-                    let r = crate::field3d_gizmo_paint::paint_view_menu(
+                    let r = ph2d_app_field3d::gizmo_paint::paint_view_menu(
                         vector_scene,
                         paint_ctx.text,
                         chip,
@@ -12161,24 +12161,24 @@ impl crate::App {
             // ⭐ **O pedido de exportar**, tirado ao lado do de abrir o painel — os dois
             // atravessam da ponte com a cena para o app pela mesma porta, e por isso são
             // consumidos no mesmo sítio.
-            if let Some(level) = crate::field3d_smoke::take_export_request() {
-                crate::field3d_export::field3d_export(level, toasts);
+            if let Some(level) = ph2d_app_field3d::smoke::take_export_request() {
+                ph2d_app_field3d::export::field3d_export(level, toasts);
             }
-            // ⭐⭐⭐ **E a RESPOSTA da bancada** (`crate::field3d_export_job`): desde 2026-08-25 a
+            // ⭐⭐⭐ **E a RESPOSTA da bancada** (`ph2d_app_field3d::export_job`): desde 2026-08-25 a
             // exportação corre fora da thread que desenha, e o que volta é a mensagem pronta.
             // ⚠️ Ela é drenada **aqui**, ao lado do pedido, pela lei das caixas de correio deste
             // módulo — *uma porta, vários pedintes*.
-            if let Some(done) = crate::field3d_export_job::take_finished() {
+            if let Some(done) = ph2d_app_field3d::export_job::take_finished() {
                 toasts.push(ph2d_editor::Toast::info(done));
             }
             // ⭐ **E o de IMPORTAR**, pela mesma porta e pelo mesmo motivo (ADR-0161 W22).
-            if crate::field3d_smoke::take_import_request() {
-                crate::field3d_import::field3d_import(toasts);
+            if ph2d_app_field3d::smoke::take_import_request() {
+                ph2d_app_field3d::import::field3d_import(toasts);
             }
             // ⭐⭐⭐ **E o de RELIGAR** (W76), pela mesma porta e pelo mesmo motivo: escolher o
             // arquivo é um diálogo, e um diálogo não corre com o mundo emprestado.
-            if let Some(e) = crate::field3d_smoke::take_relink_request() {
-                crate::field3d_import::field3d_relink(e, toasts);
+            if let Some(e) = ph2d_app_field3d::smoke::take_relink_request() {
+                ph2d_app_field3d::import::field3d_relink(e, toasts);
             }
             // ⭐⭐ **O PERFIL DESENHADO VIRA PEÇA** (W53) — o fluxo do MoI, que o motor tem medido e
             // gateado desde a W3 e que **nenhum botão alcançava**.
@@ -12190,9 +12190,9 @@ impl crate::App {
             // aparecerem só quando há o que extrudar (a lei da W34).
             {
                 let closed = crate::blend_live::selected_closed_in_z(vec_scene, &self.vec_pen);
-                crate::field3d_smoke::note_profile(closed.first().copied());
-                if let Some(which) = crate::field3d_smoke::take_profile_request() {
-                    let msg = crate::field3d_profile::from_selection(vec_scene, &closed, which);
+                ph2d_app_field3d::smoke::note_profile(closed.first().copied());
+                if let Some(which) = ph2d_app_field3d::smoke::take_profile_request() {
+                    let msg = ph2d_app_field3d::profile::from_selection(vec_scene, &closed, which);
                     toasts.push(ph2d_editor::Toast::info(msg));
                 }
             }
@@ -12206,11 +12206,11 @@ impl crate::App {
             #[cfg(feature = "sculpt3d")]
             {
                 let live = sculpt3d.as_ref().map(crate::sculpt3d::Sculpt3dScene::mesh);
-                crate::field3d_smoke::note_live_sculpt(live.is_some());
-                if crate::field3d_smoke::take_scene_sculpt_request() {
+                ph2d_app_field3d::smoke::note_live_sculpt(live.is_some());
+                if ph2d_app_field3d::smoke::take_scene_sculpt_request() {
                     let msg = live.map_or_else(
                         || "There is no sculpture in the scene to bring in".to_string(),
-                        |m| crate::field3d_import::field3d_scene_sculpt(m.clone()),
+                        |m| ph2d_app_field3d::import::field3d_scene_sculpt(m.clone()),
                     );
                     toasts.push(ph2d_editor::Toast::info(msg));
                 }
@@ -12223,10 +12223,10 @@ impl crate::App {
             // carrega a disponibilidade de *Extrude*/*Revolve*/*Sculpt from scene*, e construí-lo
             // antes das notas deste quadro mostraria a resposta do quadro anterior — visível
             // exatamente no gesto que importa (escolher o contorno e abrir a paleta a seguir).
-            if crate::field3d_smoke::take_shape_palette_request() {
-                let (live_sculpt, profile) = crate::field3d_smoke::palette_conditions();
+            if ph2d_app_field3d::smoke::take_shape_palette_request() {
+                let (live_sculpt, profile) = ph2d_app_field3d::smoke::palette_conditions();
                 hero.store
-                    .open_command_palette(crate::field3d_shape_palette::build(
+                    .open_command_palette(ph2d_app_field3d::shape_palette::build(
                         live_sculpt,
                         profile,
                     ));
@@ -12237,19 +12237,19 @@ impl crate::App {
             // *«às vezes não faz nada»*.
             if let Some(id) = hero
                 .store
-                .take_command_pick_if(|id| crate::field3d_shape_palette::slot_of_pick(id).is_some())
-                && let Some(slot) = crate::field3d_shape_palette::slot_of_pick(id)
+                .take_command_pick_if(|id| ph2d_app_field3d::shape_palette::slot_of_pick(id).is_some())
+                && let Some(slot) = ph2d_app_field3d::shape_palette::slot_of_pick(id)
             {
-                crate::field3d_smoke::ask_shape(slot);
+                ph2d_app_field3d::smoke::ask_shape(slot);
             }
             // ⭐ **E o que o módulo tem a DIZER** (W23 + W25): a escultura que não voltou do
             // arquivo, e a peça que não cozinha. A ponte com a cena descobre as duas ao cozer o
             // documento, e a fila de avisos é daqui. Sem esta linha as duas falham em silêncio — a
             // peça some da tela e nada explica porquê.
-            for msg in crate::field3d_notice::drain() {
+            for msg in ph2d_app_field3d::notice::drain() {
                 toasts.push(ph2d_editor::Toast::info(msg));
             }
-            if crate::field3d_smoke::take_open_panel_request() {
+            if ph2d_app_field3d::smoke::take_open_panel_request() {
                 // O ID vem do PAINEL, nunca de um literal: uma segunda cópia da chave de
                 // visibilidade é como se abre um painel que ninguém pinta.
                 hero.panel_visibility

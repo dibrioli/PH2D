@@ -17,7 +17,7 @@ fn a_field_node_never_goes_to_the_generic_arm() {
     let world = sim.world_mut();
 
     // Um nó de modelagem 3D, criado pela porta de produção.
-    let root = ph2d_field_ecs::spawn_doc(world, &crate::field3d_smoke::scene(1), "Model");
+    let root = ph2d_field_ecs::spawn_doc(world, &ph2d_app_field3d::smoke::scene(1), "Model");
     assert_eq!(
         duplicate_kind(world, root),
         DuplicateKind::Field,

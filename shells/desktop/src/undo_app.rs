@@ -333,7 +333,7 @@ impl crate::App {
         // ⚠️ **Tirada em TODO quadro, ao lado da outra** — deixá-la pousada faria a próxima
         // supressão legítima registar um passo que já foi registado.
         let had_input = std::mem::take(&mut self.any_input_this_frame)
-            | crate::field3d_smoke::take_authored_change();
+            | ph2d_app_field3d::smoke::take_authored_change();
         // O clique no botão Undo/Redo da barra entra pela MESMA porta do Ctrl+Z (que pode
         // rotear para o Áudio, o Painter, o global ou o image-edit). Ele arma o
         // `undo_request` logo abaixo, e o passo é aplicado ainda neste frame.
@@ -387,7 +387,7 @@ impl crate::App {
         // simultâneas é pior do que não nomear nenhuma.*
         let motivo = if self.held_button.is_some() {
             Some("botao do rato em baixo")
-        } else if crate::field3d_smoke::gesture_in_progress() {
+        } else if ph2d_app_field3d::smoke::gesture_in_progress() {
             Some("arrasto do gizmo 3D em curso")
         } else if self.flip_colorize.live_busy(self.flip_style.as_ref()) {
             Some("colorize a recalcular")

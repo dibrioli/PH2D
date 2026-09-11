@@ -53,8 +53,8 @@ use ph2d_render::layer_compositor::{LayerCompositor, LayerOp, Region};
 use ph2d_render::{Camera2d, SpriteRenderer};
 use ph2d_vec_scene::Xform;
 
-use crate::flip_entities::FlipEntityMap;
-use crate::flip_transform::{art_to_world, build as build_flip_models};
+use crate::flip::entities::FlipEntityMap;
+use crate::flip::transform::{art_to_world, build as build_flip_models};
 // ⚠️ The tile resolution + cap are SHARED with the vector bake — one number for
 // "how crisp a stamped tile is" (a Flip tile and a vector tile of the same world
 // size have the same inner resolution). A second const would drift.

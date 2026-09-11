@@ -66,7 +66,7 @@ O plano `10_regiao_por_curvas.md` **em versões antigas** mandava aposentar o
 PRÓPRIO traço, então esculpir a linha move a cor junto; a rota das curvas COPIA os vértices
 para um traço novo, e sob seleção a cor fica para trás até 5,8 larguras de linha.
 
-Há **5 gates** protegendo isso (`shells/desktop/src/flip_fill_identity_tests.rs`); 3 sangram
+Há **5 gates** protegendo isso (`shells/desktop/src/flip/fill_identity_tests.rs`); 3 sangram
 se você desligar o ramo. Se algum plano seu esbarrar nessa remoção, o pré-requisito é a
 costura **fonte ≠ cozido no nível da REGIÃO** (o padrão do ADR-0121 das Live Corners) — é
 projeto com aceitação própria, não a remoção de um caso particular.
@@ -106,9 +106,9 @@ waves que landaram depois**, e lista **6 itens como abertos que EXISTEM no códi
 
 | o doc diz aberto | está em |
 |---|---|
-| "transformar a seleção (girar/escalar)" | `shells/desktop/src/flip_selection_gizmo.rs` (518 LOC) |
-| "domínio Point" | `shells/desktop/src/flip_select_points.rs` |
-| "destrava o segment mode" | `shells/desktop/src/flip_select_segment.rs` |
+| "transformar a seleção (girar/escalar)" | `shells/desktop/src/flip/selection_gizmo.rs` (518 LOC) |
+| "domínio Point" | `shells/desktop/src/flip/select_points.rs` |
+| "destrava o segment mode" | `shells/desktop/src/flip/select_segment.rs` |
 | "multi-seleção de chaves na tira" | `flip_reshape.rs` → `flip_multiframe::targets(…, strip.selected_keys(), …)` |
 | "modo Selected dos fantasmas" | `onion.rs` consome `strip.selected_keys()` |
 | "instância de drawing na UI" | botão `FLIP_KEY_INSTANCE` + `INSTANCE_DOT` |

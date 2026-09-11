@@ -110,14 +110,14 @@ fechada (`flip_fill::filled_shape_target`). O critério exige `s.closed`.
 > grande").
 
 **A asserção-vermelha** virou o gate verde `a_hand_drawn_shape_paints_itself_even_though_it_is_not_closed`
-(`shells/desktop/src/flip_fill_tests.rs`), com a mutação provada: devolva o `s.closed` ao filtro e ele
+(`shells/desktop/src/flip/fill_tests.rs`), com a mutação provada: devolva o `s.closed` ao filtro e ele
 vê dois traços (o vetorizado) em vez de um.
 
 ### C.3 — O fix (o que fazer)
 
 **Não exija `closed` para reconhecer a forma — e não feche o traço do usuário.**
 
-1. **`shells/desktop/src/flip_fill.rs::filled_shape_target`**: tirar o `s.closed` do filtro. O
+1. **`shells/desktop/src/flip/fill.rs::filled_shape_target`**: tirar o `s.closed` do filtro. O
    critério que fica de pé (e que separa "preencheu a forma" de "preencheu um pedaço entre duas") é o
    resto: line-art (não-região) · o **clique dentro** do polígono dos pontos · a **área** do contorno
    traçado batendo com a do traço (±`AREA_TOL`).

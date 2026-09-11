@@ -24,7 +24,7 @@
 //! Se algum dia a borracha precisar mesmo do número do pincel, ela deve pedi-lo à tool
 //! (que é a dona da regra do link), nunca re-derivá-lo aqui.
 
-const SRC: &str = include_str!("../../src/flip_erase.rs");
+const SRC: &str = include_str!("../../src/flip/erase.rs");
 
 /// O corpo de `flip_erase_apply` — a função que traduz estilo → (raio, força) do apply.
 /// Recortar a função (e não o arquivo) importa: o módulo tem testes que legitimamente

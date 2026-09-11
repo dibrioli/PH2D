@@ -34,7 +34,7 @@ use ph2d_render::Camera2d;
 use ph2d_vec_scene::Xform;
 use ph2d_vector::{Affine, BezPath, Brush, Circle, Color, Fill, Point, Stroke, VectorScene};
 
-use crate::flip_tween_correct::screen_affine;
+use crate::flip::tween_correct::screen_affine;
 
 /// Espessura da PONTE (o par ponta-a-ponta), em px de tela — a resposta, com peso.
 const BRIDGE_PX: f64 = 2.0; // LITERAL-PX-OK: chrome de overlay, espessura de tela
@@ -50,7 +50,7 @@ const BRIDGE_RGBA: [f32; 4] = [0.35, 0.9, 0.45, 0.95]; // LITERAL-COLOR-OK: over
 const WHISKER_RGBA: [f32; 4] = [0.35, 0.9, 0.45, 0.5]; // LITERAL-COLOR-OK: overlay de helper
 
 /// Desenha os helpers instalados. `active` = a pergunta do modo, respondida pela MESMA
-/// porta do tick ([`crate::flip_gap_live::wants_gap_helpers`]) — o caller a passa
+/// porta do tick ([`crate::flip::gap_live::wants_gap_helpers`]) — o caller a passa
 /// resolvida para este módulo não re-derivar política.
 pub(super) fn draw(
     active: bool,

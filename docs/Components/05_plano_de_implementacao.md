@@ -2975,7 +2975,7 @@ O §F4.6g curou a mídia Flip a partir de um censo **textual**. Mas *um censo af
 está lá, nunca que ela FECHA o que promete* — e um gate de texto verde sobre uma semântica errada
 lê-se exactamente como um produto correcto. ⇒ a mídia ganhou os dois gates de comportamento que os
 irmãos vectoriais já tinham
-([`flip_entities_fixpoint_tests`](../../shells/desktop/src/flip_entities_fixpoint_tests.rs)):
+([`flip_entities_fixpoint_tests`](../../shells/desktop/src/flip/entities_fixpoint_tests.rs)):
 apagar tarde (tira do MUNDO) e criar tarde (põe no DOCUMENTO) — *as duas metades da mesma latência*.
 
 #### ⭐⭐⭐ E a prova de mutação apanhou uma FIXTURA, não uma linha

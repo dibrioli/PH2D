@@ -13,7 +13,7 @@
 //! Espelha `vec_path_ref.rs` (o vetor). O que ela NÃO faz: não põe geometria no
 //! ECS. O `FlipDoc` continua dono, e a shell mantém o ciclo de vida (objeto
 //! criado ⇒ entidade; objeto removido ⇒ entidade despawnada) num módulo só — ver
-//! `shells/desktop/src/flip_entities.rs`.
+//! `shells/desktop/src/flip/entities.rs`.
 
 use bevy_ecs::component::Component;
 use serde::{Deserialize, Serialize};

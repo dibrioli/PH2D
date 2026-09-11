@@ -19,7 +19,7 @@
 //! (mutação `take(0)` sangra lá). Aqui fica só a metade que nenhum teste alcança — **quem
 //! PERGUNTA à tira**.
 
-const SRC: &str = include_str!("../../src/flip_colorize.rs");
+const SRC: &str = include_str!("../../src/flip/colorize.rs");
 
 /// O corpo do `flip_colorize_apply`, do `pub(crate) fn` até o fecho da função seguinte.
 fn apply_body() -> &'static str {
@@ -37,7 +37,7 @@ fn apply_body() -> &'static str {
 }
 
 /// A sessão viva mora num irmão (`flip_colorize_live.rs`) pelo teto de LOC do shell.
-const LIVE: &str = include_str!("../../src/flip_colorize_live.rs");
+const LIVE: &str = include_str!("../../src/flip/colorize_live.rs");
 
 fn live_body() -> &'static str {
     let start = LIVE
@@ -135,7 +135,7 @@ fn the_live_adjust_reruns_every_frame_the_gesture_wrote() {
     );
 }
 
-const SMOKE: &str = include_str!("../../src/flip_colorize_smoke.rs");
+const SMOKE: &str = include_str!("../../src/flip/colorize_smoke.rs");
 
 /// 🔴 **A cena de smoke ARMA a seleção que a fatia precisa.**
 ///
@@ -152,7 +152,7 @@ const SMOKE: &str = include_str!("../../src/flip_colorize_smoke.rs");
 #[test]
 fn the_smoke_scene_arms_the_multiframe_selection_and_reports_it() {
     assert!(
-        SMOKE.contains("self.flip_strip.selection.clone_from(&keys)"),
+        SMOKE.contains("self.flip_state.strip.selection.clone_from(&keys)"),
         "a cena tem de MARCAR as chaves na tira — sem isso a C3 fica atrás de um gesto \
          manual e o Apply colore um quadro só, indistinguível da feature quebrada"
     );

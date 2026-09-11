@@ -439,7 +439,7 @@ fn holding_the_flip_keys_peeks_the_neighbour_drawing_of_the_active_layer() {
         Some(fg_id),
         &[],
         None,
-        Some(crate::flip_peek::PeekDir::Prev),
+        Some(crate::flip::peek::PeekDir::Prev),
     );
     assert_eq!(base.len(), 2, "BG + FG (sem fantasmas: ghosts None)");
     assert_eq!(base[1].cache_key.1, d8, "sem peek o FG mostra a chave 8");
@@ -461,7 +461,7 @@ fn holding_the_flip_keys_peeks_the_neighbour_drawing_of_the_active_layer() {
         Some(fg_id),
         &[],
         None,
-        Some(crate::flip_peek::PeekDir::Next),
+        Some(crate::flip::peek::PeekDir::Next),
     );
     assert_eq!(
         next[1].cache_key.1, d8,
@@ -477,8 +477,8 @@ fn peeking_where_there_is_no_neighbour_stays_put() {
     let doc = doc_bg_fg();
     let fg_id = doc.objects()[0].layers().last().unwrap().id;
     for (ph_frame, dir) in [
-        (8, crate::flip_peek::PeekDir::Here),
-        (0, crate::flip_peek::PeekDir::Prev),
+        (8, crate::flip::peek::PeekDir::Here),
+        (0, crate::flip::peek::PeekDir::Prev),
     ] {
         let (base, _) = collect_layers(&doc, &at(ph_frame), None, Some(fg_id), &[], None, None);
         let (peeked, _) =
@@ -522,7 +522,7 @@ fn mid_hold_the_peek_anchors_on_the_active_key_not_the_raw_frame() {
         Some(l),
         &[],
         None,
-        Some(crate::flip_peek::PeekDir::Prev),
+        Some(crate::flip::peek::PeekDir::Prev),
     );
     assert_eq!(
         peeked[0].cache_key.1, d0,

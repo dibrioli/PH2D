@@ -28,7 +28,7 @@
 //!   gesto já é o passo. Correr um dreno na rede seria aplicar a intenção duas vezes.
 //!
 //! ⭐ **Este gate achou um buraco no minuto em que foi escrito:** o
-//! `crate::flip_transform::settle_origins` — o pivô dos objectos **Flip** — corria no passe do
+//! `crate::flip::transform::settle_origins` — o pivô dos objectos **Flip** — corria no passe do
 //! desenho e **não estava na rede**. É o MESMO mecanismo que o gate do *duplicar* já tinha
 //! apanhado para o pivô vectorial (uma entidade cunhada tarde nasce com `Transform::default()`, e
 //! o quadro seguinte assenta-a sozinho), noutra mídia.
@@ -39,7 +39,7 @@ const NET_SRC: &str = include_str!("../../src/vec_tree_settle.rs");
 /// ⚠️⚠️ **O CÓDIGO da rede, sem a prosa — e esta linha nasceu de uma mutação SOBREVIVENTE.**
 ///
 /// A 1.ª redacção varria o ficheiro inteiro, e apagar a chamada ao
-/// `crate::flip_transform::settle_origins` deixava o gate **VERDE**: o caminho continuava lá, no
+/// `crate::flip::transform::settle_origins` deixava o gate **VERDE**: o caminho continuava lá, no
 /// **comentário** que explica por que ele foi acrescentado. *Um censo textual que não separa prosa
 /// de código mente nos DOIS sentidos* — é lei desta casa, e esta régua pagou-a na estreia.
 fn net_code() -> String {
@@ -150,7 +150,7 @@ fn the_net_knows_every_derived_writer_of_the_drawing_pass() {
 /// entidade pela Hierarquia leva o objecto do documento **no quadro seguinte** —, e é essa
 /// convergência tardia que nasce como passo fantasma.
 ///
-/// ⭐ **Achou o `crate::flip_entities::sync`**, o irmão exacto do vectorial: mesma forma, mesma
+/// ⭐ **Achou o `crate::flip::entities::sync`**, o irmão exacto do vectorial: mesma forma, mesma
 /// latência, e fora da rede. ⚠️ E a régua apanha a **mídia seguinte** de graça: quem escrever um
 /// `mesh_entities::sync` vê o gate vermelho antes de o defeito existir.
 #[test]

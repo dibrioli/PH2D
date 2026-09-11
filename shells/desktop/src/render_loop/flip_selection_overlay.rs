@@ -123,7 +123,7 @@ pub(super) fn draw_flip_selection(
     if !active || !editing {
         return;
     }
-    let Some((oid, lid, did)) = crate::flip_select::visible_drawing(doc, playhead, active_layer)
+    let Some((oid, lid, did)) = crate::flip::select::visible_drawing(doc, playhead, active_layer)
     else {
         return;
     };
@@ -252,14 +252,14 @@ pub(super) fn draw_flip_selection(
 /// e a tela fica muda até soltar. Desenhada mesmo antes do slop (a caixa de 1 px é a
 /// confirmação de que o gesto começou).
 pub(super) fn draw_flip_marquee(
-    gesture: Option<crate::flip_edit_gesture::EditGesture>,
+    gesture: Option<crate::flip::edit_gesture::EditGesture>,
     vector_scene: &mut VectorScene,
 ) {
     use ph2d_vector::{Affine, Brush, Color, Stroke};
-    let Some(crate::flip_edit_gesture::EditGesture::Marquee { start, cur, .. }) = gesture else {
+    let Some(crate::flip::edit_gesture::EditGesture::Marquee { start, cur, .. }) = gesture else {
         return;
     };
-    let (x0, y0, x1, y1) = crate::flip_edit_gesture::marquee_rect(start, cur);
+    let (x0, y0, x1, y1) = crate::flip::edit_gesture::marquee_rect(start, cur);
     let mut path = BezPath::new();
     path.move_to(Point::new(f64::from(x0), f64::from(y0)));
     path.line_to(Point::new(f64::from(x1), f64::from(y0)));
@@ -286,7 +286,7 @@ fn art_screen_affine(
     pose: ph2d_flip::Pose,
     cam: ph2d_vector::Affine,
 ) -> ph2d_vector::Affine {
-    let [a, b, c, d, e, f] = crate::flip_transform::art_to_world(l2w, pose).0;
+    let [a, b, c, d, e, f] = crate::flip::transform::art_to_world(l2w, pose).0;
     cam * ph2d_vector::Affine::new([a, b, c, d, e, f])
 }
 

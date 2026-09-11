@@ -2154,7 +2154,7 @@ fn squares_cover_more_area_than_round_dots() {
 // larga) passa; a HACHURA (voltas a meio raio) é a que sangra.
 
 /// O passo de densificação do PRODUTO: `RESAMPLE_STEP_FRACTION = 0.4` × a largura
-/// (`shells/desktop/src/flip_draw.rs::resample_step`), ou seja `0.8 · r`.
+/// (`shells/desktop/src/flip/draw.rs::resample_step`), ou seja `0.8 · r`.
 ///
 /// Escrito aqui como número e **não importado** de propósito: este gate mede o que o
 /// produto faz *hoje*. Se aquele número mudar, o teste tem de ser **re-lido** — um

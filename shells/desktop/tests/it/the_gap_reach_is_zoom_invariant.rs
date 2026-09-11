@@ -38,7 +38,7 @@ fn reach_expr<'a>(src: &'a str, file: &str, marker: &str) -> &'a str {
 #[test]
 fn the_gap_reach_is_zoom_invariant() {
     // O clique real.
-    let click = include_str!("../../src/flip_fill.rs");
+    let click = include_str!("../../src/flip/fill.rs");
     let click_reach = reach_expr(click, "flip_fill.rs", "gap_reach:");
     // Controle positivo: o `px_to_world` legítimo (precision/debug) EXISTE no arquivo.
     assert!(
@@ -56,7 +56,7 @@ fn the_gap_reach_is_zoom_invariant() {
     );
 
     // O overlay ao vivo.
-    let live = include_str!("../../src/flip_gap_live.rs");
+    let live = include_str!("../../src/flip/gap_live.rs");
     let live_reach = reach_expr(live, "flip_gap_live.rs", "let reach =");
     assert!(
         !live_reach.contains("px_to_world"),

@@ -24,7 +24,7 @@ erro de unidade é a classe que mais mata feature no PH2D (px de tela × mundo �
 **How to apply:** todo teste de um caminho que **cruza espaços** usa os números do PRODUTO — a
 câmera real, a janela real, a escala real do objeto. Se a matemática só funciona quando um fator é
 1.0, o teste não prova nada. Gate que virou vermelho no instante em que existiu:
-`the_bucket_fills_at_the_real_camera_scale` (`shells/desktop/src/flip_fill.rs`).
+`the_bucket_fills_at_the_real_camera_scale` (`shells/desktop/src/flip/fill.rs`).
 
 **Corolário:** quando um valor de teste é escolhido "porque simplifica", escreva ao lado *por que*
 ele não esconde nada — ou troque-o pelo número real.

@@ -215,55 +215,7 @@ mod field3d_views;
 /// Motion Nodes: o gizmo de canvas de um field espacial (`field.box`, …). Espelho do
 /// `flip_selection_gizmo` — `GizmoTarget::MotionField`, apply nos params do NÓ.
 mod field_gizmo;
-mod flip_airbrush_smoke;
-mod flip_autokey;
-mod flip_colorize;
-mod flip_colorize_smoke;
-mod flip_demo;
-mod flip_draw;
-mod flip_edit_gesture;
-mod flip_edit_smoke;
-mod flip_entities;
-mod flip_erase;
-mod flip_fill;
-mod flip_fill_dilate;
-mod flip_fill_smoke;
-mod flip_fill_target;
-mod flip_gap_live;
-mod flip_gizmo_view;
-mod flip_hardness_smoke;
-mod flip_layers;
-mod flip_multiframe;
-mod flip_multiplane_smoke;
-mod flip_peek;
-mod flip_pose_gizmo;
-mod flip_pose_smoke;
-mod flip_pressure_smoke;
-mod flip_resample_smoke;
-mod flip_reshape;
-mod flip_segment_smoke;
-mod flip_select;
-mod flip_select_pick;
-mod flip_select_points;
-mod flip_select_segment;
-mod flip_selection_gizmo;
-mod flip_selection_smoke;
-mod flip_self_overlap_smoke;
-mod flip_smooth;
-mod flip_state;
-mod flip_strip;
-mod flip_strip_drag;
-mod flip_strip_pins;
-mod flip_strip_resolve;
-mod flip_strip_smoke;
-mod flip_tip_smoke;
-mod flip_trace;
-mod flip_transform;
-mod flip_tween_correct;
-mod flip_tween_pairs_smoke;
-mod flip_tween_phase_smoke;
-mod flip_tween_smoke;
-mod flip_tween_torsion_smoke;
+mod flip;
 mod forwarding;
 /// A cena de smoke da MOLDURA (`PH2D_BUILD_SMOKE=49`) — irmã de `build_smoke`, teto de LOC.
 mod frame_smoke;
@@ -1409,10 +1361,10 @@ impl App {
         self.run_render_frame();
         // **A SELEÇÃO** (`flip_select`, W6): no modo Edit ela é o alvo dos ajustes do
         // painel. Só a MUDANÇA de estilo age.
-        crate::flip_select::flip_edit_style_refresh(self);
+        crate::flip::select::flip_edit_style_refresh(self);
         // **O DOMÍNIO da seleção** (W8): a troca Stroke↔Point converte a seleção no
         // documento (broadcast/promoção) — uma vez, quando o toggle muda.
-        crate::flip_select::flip_edit_domain_refresh(self);
+        crate::flip::select::flip_edit_domain_refresh(self);
         // Depois do frame (estado já reconciliado pelo `sync`, `self` livre do borrow
         // do render loop): drena um Ctrl+Z/Y pendente e registra a ação do frame na
         // fila de undo global, por diff de estado (ver `undo::post_frame_undo`).

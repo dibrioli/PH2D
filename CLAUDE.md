@@ -271,7 +271,7 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   `emitter_sim_ceiling_probe` ([`ph2d-gpu-cook`](crates/ph2d-gpu-cook/tests/it/gpu_cpu_parity_sim.rs) —
   ⚠️ **`#[ignore]`, logo o CI nunca o correu**; os dois medidos em 2026-08-29, na subida do stack) ·
   a família `flip_smooth::resample_measurement::precisao::orcamento` — **3 testes** em
-  [`flip_fit_budget_tests.rs`](shells/desktop/src/flip_fit_budget_tests.rs), medida 22/08 pela
+  [`flip_fit_budget_tests.rs`](shells/desktop/src/flip/fit_budget_tests.rs), medida 22/08 pela
   `line/3DModeling` e confirmada 23/08 pela `line/sculpt3d`, com a falha a MUDAR de teste entre
   corridas · `the_cost_of_sampling_a_path_is_flat_in_its_anchors` (Timeline) ·
   `the_region_refresh_is_bound_by_the_footprint_not_by_the_mesh`

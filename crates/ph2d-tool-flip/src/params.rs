@@ -526,7 +526,7 @@ mod pressure_tests {
     /// par de valores é distinguível, em nenhuma malha, com nenhum pincel.
     ///
     /// ⛔ **O BLOQUEADOR TEM ENDEREÇO, e não é «falta tablet».** A porta é
-    /// chamada (`shells/desktop/src/flip_draw.rs`, `stroke_from_samples` →
+    /// chamada (`shells/desktop/src/flip/draw.rs`, `stroke_from_samples` →
     /// `pressure_width_factor`); o que é literal é a ENTRADA — o gesto empurra
     /// `1.0` em `FlipDraw::begin` e `FlipDraw::extend`
     /// (`flip_draw.rs:467` e `:484`). Duas coisas faltam, e as duas moram no

@@ -518,7 +518,7 @@ pub(crate) fn build_initial_state(
         ui_machines: Default::default(),
         // ADR-0114: cena Flip + demo ready-to-smoke (a tool do W2 cria objetos
         // interativamente; aqui um objeto animado pra abrir e ver na hora).
-        flip: crate::flip_demo::demo_scene(),
+        flip: crate::flip::demo::demo_scene(),
         // ADR-0114 W1: rasterizador do traço, no formato HDR do game_rt (criado
         // logo acima, antes do literal — `surface` já foi movido aqui).
         flip_render,

@@ -122,7 +122,7 @@ descolamento chega a **5,8 larguras de linha**:
 | Smooth | 0,0000 | **0,8972** |
 
 O mecanismo é o **auto-masking do W6**. A R3 virou **proteger** a propriedade:
-`shells/desktop/src/flip_fill_identity_tests.rs`, 5 gates, **3 sangram** quando o ramo é
+`shells/desktop/src/flip/fill_identity_tests.rs`, 5 gates, **3 sangram** quando o ramo é
 desligado. O plano já está corrigido no §12 — se você ler a linha da tabela de fatias, ela
 está riscada.
 

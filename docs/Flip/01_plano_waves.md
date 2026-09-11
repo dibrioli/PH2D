@@ -292,7 +292,7 @@ Mas elas não são três trabalhos — são **três portas que já existem** atr
 | «nem cria sprite sheets» | ✅ certo — `Pack into Sheet` / `Auto-Arrange` / `Bake Sheet` / `Export Sheet` existem e empacotam **sprites** |
 
 ⚠️ **O buraco é um só, e tem endereço:** a entidade de um objeto Flip é
-`Transform + Name + FlipObjectRef + RootOrder` ([`flip_entities.rs`](../../shells/desktop/src/flip_entities.rs)) —
+`Transform + Name + FlipObjectRef + RootOrder` ([`flip_entities.rs`](../../shells/desktop/src/flip/entities.rs)) —
 **sem `Sprite`, sem pixels**. É por isso que as três portas não o alcançam: nenhuma delas sabe o que
 é um traço, e todas sabem o que é um pixel.
 

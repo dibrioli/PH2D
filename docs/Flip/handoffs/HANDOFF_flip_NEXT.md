@@ -151,7 +151,7 @@ b4cd145d  fix: "fill impreciso" — o teto na unidade errada (o zoom quebrava o 
 
 Duas features desta sessão que você vai encontrar e precisa conhecer:
 
-- **O alvo VIVO** (`shells/desktop/src/flip_live.rs`): a última coisa criada — traço ou
+- **O alvo VIVO** (`shells/desktop/src/flip/live.rs`): a última coisa criada — traço ou
   preenchimento — continua respondendo ao painel até o usuário fazer outra coisa. Guarda o
   **INSUMO** (as amostras cruas do traço; a lista de traços pristina de antes do fill) e reaplica
   **sempre a partir dele**, nunca do resultado anterior (senão os parâmetros se compõem e o slider

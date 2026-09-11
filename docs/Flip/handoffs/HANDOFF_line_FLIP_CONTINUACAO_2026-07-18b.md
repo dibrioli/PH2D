@@ -163,7 +163,7 @@ grade inteira).
 
 O `06_fill_balde.md` §8 listava **"T4.5 — Fill multiframe"** como carry-over, e o handoff
 desta rodada (§3.1) repetiu: *"o que falta é o wiring do RANGE"*. **Está feito desde o W7** —
-`shells/desktop/src/flip_fill.rs:491-519` já roda o balde em todas as chaves selecionadas na
+`shells/desktop/src/flip/fill.rs:491-519` já roda o balde em todas as chaves selecionadas na
 tira, com as duas decisões difíceis tomadas e comentadas (falloff sempre 1.0; quadros
 vizinhos preenchem em silêncio). O `06 §8` foi corrigido.
 

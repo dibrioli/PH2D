@@ -309,5 +309,5 @@ ADR, zero contrato congelado, e os 3 ids são hash-de-string (o `node_id_collisi
 O diff mora em: `crates/ph2d-flip` · `ph2d-flip-render` · `ph2d-panel-flip` · `ph2d-tool-flip` · três
 ids em `ph2d-editor-core` · e `shells/desktop/src/flip_*`.
 
-Território comum plausível: **`shells/desktop/src/flip_draw.rs`** (qualquer wave do Flip o toca) e
+Território comum plausível: **`shells/desktop/src/flip/draw.rs`** (qualquer wave do Flip o toca) e
 **`crates/ph2d-editor-core/src/ids/chrome/flip.rs`** (append-only — três linhas no fim de um bloco).

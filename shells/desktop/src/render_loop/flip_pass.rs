@@ -22,7 +22,7 @@
 //! loga packs vs hits por frame.
 
 use super::flip_pass_cache::TessCache;
-use crate::flip_transform::art_to_world;
+use crate::flip::transform::art_to_world;
 use ph2d_core::Playhead;
 use ph2d_flip::{FlipDoc, FlipDrawing, FlipObjectId, LayerId};
 use ph2d_flip_render::{CameraRaw, FlipCompose, FlipGpuData, FlipRenderer};
@@ -138,7 +138,7 @@ pub(crate) fn render(
     // O PEEK (Shift & Trace fatia 2): `Some` = uma folha vizinha na mão (a camada
     // ATIVA amostra o desenho anterior/atual/seguinte). O shell passa `ghosts: None`
     // junto — o flip é uma folha na mão, não uma pilha translúcida.
-    peek: Option<crate::flip_peek::PeekDir>,
+    peek: Option<crate::flip::peek::PeekDir>,
     game_rt: &GameRt,
     camera: &Camera2d,
     window: WindowSize,
@@ -438,7 +438,7 @@ fn collect_layers<'a>(
     active_layer: Option<LayerId>,
     models: &[(FlipObjectId, Xform)],
     ghosts: Option<super::flip_pass_ghosts::GhostSources<'_>>,
-    peek: Option<crate::flip_peek::PeekDir>,
+    peek: Option<crate::flip::peek::PeekDir>,
 ) -> (Vec<LayerRef<'a>>, Option<&'a FlipGpuData>) {
     // Camada-alvo do preview: a ativa do 1º objeto (se ainda existe) ou o topo —
     // exatamente o fallback que o `bake_stroke` usa. `None` sem preview.
@@ -484,7 +484,7 @@ fn collect_layers<'a>(
             // sobre o qual se folheia. Sem peek, `sample == frame` e nada muda.
             let sample = match peek {
                 Some(dir) if peek_target == Some((obj.id.0, layer.id)) => {
-                    crate::flip_peek::peek_frame(layer, frame, dir)
+                    crate::flip::peek::peek_frame(layer, frame, dir)
                 }
                 _ => frame,
             };
@@ -519,7 +519,7 @@ fn collect_layers<'a>(
                         // só a forma. Herdar a pose do quadro corrente empilharia todos
                         // os fantasmas em cima da arte de agora. O `shift` é o Shift &
                         // Trace (a folha deslizada) — identidade fora do modo.
-                        model: crate::flip_transform::art_to_world_traced(
+                        model: crate::flip::transform::art_to_world_traced(
                             &model,
                             layer.frame_pose(g.key),
                             g.shift,

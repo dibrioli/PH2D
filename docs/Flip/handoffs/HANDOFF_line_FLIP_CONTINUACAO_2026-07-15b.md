@@ -69,7 +69,7 @@ GPU `gpu_render`/`gpu_fill_fit` `--ignored` verdes; typos limpo; release builda.
 
 Estes três são a alavanca da próxima fase. Estude-os antes de escrever qualquer gizmo/gesto.
 
-### 3.1 O gizmo reparametrizado (`shells/desktop/src/flip_pose_gizmo.rs`, W7.5 F2)
+### 3.1 O gizmo reparametrizado (`shells/desktop/src/flip/pose_gizmo.rs`, W7.5 F2)
 A decisão-mãe: **não reescrever a matemática do gizmo**. A pose é reparametrizada como um
 **TRS ancorado no centro da arte** (`pose(p) = t_c + R·S·(p − c_local)`), o
 `ph2d_editor::compute_gizmo_transform` canônico (modifiers, snap, contador de voltas do

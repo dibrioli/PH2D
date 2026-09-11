@@ -58,7 +58,7 @@ fn strip_snapshot(
     flip: &FlipDoc,
     active_layer: Option<LayerId>,
     playhead: &ph2d_core::Playhead,
-    strip: &crate::flip_strip::FlipStrip,
+    strip: &crate::flip::strip::FlipStrip,
 ) -> ph2d_panel_flip_frames::FlipStripSnapshot {
     use ph2d_panel_flip_frames::{FlipCell, FlipStripSnapshot};
     let Some(obj) = flip.objects().first() else {
@@ -95,7 +95,7 @@ fn strip_snapshot(
             instanced: obj.drawing(drawing).is_some_and(|d| d.is_instanced()),
             selected: sel.contains(&key),
             pinned: strip.pinned_keys().contains(&key),
-            weight: crate::flip_multiframe::cell_weight(sel, raw, key, strip.falloff),
+            weight: crate::flip::multiframe::cell_weight(sel, raw, key, strip.falloff),
         })
         .collect();
     FlipStripSnapshot {
@@ -151,7 +151,7 @@ pub(crate) fn publish(
     flip: &FlipDoc,
     active_layer: Option<LayerId>,
     playhead: &ph2d_core::Playhead,
-    strip: &crate::flip_strip::FlipStrip,
+    strip: &crate::flip::strip::FlipStrip,
 ) -> (bool, Option<FlipStyleSnapshot>) {
     let flip_active = tools
         .active()

@@ -1,0 +1,74 @@
+//! ⭐ **A família Flip, numa pasta só** (W2/L5, 2026-09-11).
+//!
+//! # Por que esta pasta existe
+//!
+//! A `shells/desktop` é UMA crate de 493 k linhas, a última unidade de todo build grande
+//! (34–45 s sozinha no fim do gate) — e a metade de cada módulo que fala com a `App` foi ficando
+//! aqui por inércia ([auditoria de 10/09](../../../../docs/DevOps/AUDITORIA_VELOCIDADE_DE_DESENVOLVIMENTO_2026-09-10.md)
+//! §4-C2). A família Flip eram **78 ficheiros soltos na raiz de `src/`**, indistinguíveis dos das
+//! outras cinco famílias a olho ou a `ls`.
+//!
+//! Juntá-los numa pasta faz três coisas, e a terceira é a que importa: o `main.rs` troca **49
+//! linhas `mod`** por uma · a fronteira da família passa a ser legível (o que é Flip está aqui, e
+//! só aqui) · e o corte da W2 Fase B passa a ser **mover UMA pasta** em vez de escolher 78
+//! ficheiros um a um.
+//!
+//! # O que ainda NÃO está aqui, e porquê
+//!
+//! O **passe de render** do Flip vive em [`crate::render_loop`] (`flip_pass*`, `flip_bridge`,
+//! `flip_cursor`, os overlays) — ele precisa do `AppGfx`, do dispositivo wgpu e do laço de
+//! desenho, que são da shell e não da família. Sai quando o substrato da `ph2d-app-host` o
+//! cobrir, não antes.
+//!
+//! ⚠️ E o **documento** ([`ph2d_flip::FlipDoc`]) nunca foi desta pasta: ele é partilhado desde a
+//! F8 dos Componentes e vive numa crate de módulo. A ponte a não partir.
+
+pub(crate) mod airbrush_smoke;
+pub(crate) mod autokey;
+pub(crate) mod colorize;
+pub(crate) mod colorize_smoke;
+pub(crate) mod demo;
+pub(crate) mod draw;
+pub(crate) mod edit_gesture;
+pub(crate) mod edit_smoke;
+pub(crate) mod entities;
+pub(crate) mod erase;
+pub(crate) mod fill;
+pub(crate) mod fill_dilate;
+pub(crate) mod fill_smoke;
+pub(crate) mod fill_target;
+pub(crate) mod gap_live;
+pub(crate) mod gizmo_view;
+pub(crate) mod hardness_smoke;
+pub(crate) mod layers;
+pub(crate) mod multiframe;
+pub(crate) mod multiplane_smoke;
+pub(crate) mod peek;
+pub(crate) mod pose_gizmo;
+pub(crate) mod pose_smoke;
+pub(crate) mod pressure_smoke;
+pub(crate) mod resample_smoke;
+pub(crate) mod reshape;
+pub(crate) mod segment_smoke;
+pub(crate) mod select;
+pub(crate) mod select_pick;
+pub(crate) mod select_points;
+pub(crate) mod select_segment;
+pub(crate) mod selection_gizmo;
+pub(crate) mod selection_smoke;
+pub(crate) mod self_overlap_smoke;
+pub(crate) mod smooth;
+pub(crate) mod state;
+pub(crate) mod strip;
+pub(crate) mod strip_drag;
+pub(crate) mod strip_pins;
+pub(crate) mod strip_resolve;
+pub(crate) mod strip_smoke;
+pub(crate) mod tip_smoke;
+pub(crate) mod trace;
+pub(crate) mod transform;
+pub(crate) mod tween_correct;
+pub(crate) mod tween_pairs_smoke;
+pub(crate) mod tween_phase_smoke;
+pub(crate) mod tween_smoke;
+pub(crate) mod tween_torsion_smoke;

@@ -5,7 +5,7 @@
 > saíram do fonte (`sculpt_*.cc`), não do olho.
 >
 > Crate: [`ph2d-flip-reshape`](../../crates/ph2d-flip-reshape/) (CPU pura, headless) ·
-> fronteira: [`shells/desktop/src/flip_reshape.rs`](../../shells/desktop/src/flip_reshape.rs) ·
+> fronteira: [`shells/desktop/src/flip/reshape.rs`](../../shells/desktop/src/flip/reshape.rs) ·
 > UI: modo **Sculpt** no painel do Flip. Referência: [`02 §7`](02_referencia_algoritmos_blender_5.2.md).
 
 ---

@@ -91,7 +91,7 @@ oposto) é reusado **byte a byte**: `start_transform` = TRS da pose, `parent_wor
 OBJETO, `sprite_half_intrinsic` = meia-bbox crua do desenho. A volta é `trs_to_pose`
 (inverso exato). Rotate pivota no centro da arte posada; scale segura o canto oposto.
 
-- **Módulo:** `shells/desktop/src/flip_pose_gizmo.rs` (+ `_tests`, 6 gates com 3 mutações
+- **Módulo:** `shells/desktop/src/flip/pose_gizmo.rs` (+ `_tests`, 6 gates com 3 mutações
   provadas) e a cena `flip_pose_smoke.rs`. Estado do arrasto: `App.flip_pose_drag`
   (`FlipPoseDrag` = `GizmoDragState` + alvo `oid/lid/key` + `c_local`).
 - **Foundational tocado (append-only — integrador, anote):** `GizmoTarget::FlipPose`

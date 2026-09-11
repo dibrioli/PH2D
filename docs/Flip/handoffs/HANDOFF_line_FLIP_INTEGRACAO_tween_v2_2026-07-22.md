@@ -272,9 +272,9 @@ b_len)` não bate com os desenhos-chave é descartado e cai no automático (nunc
 
 | arquivo | o quê |
 |---|---|
-| `shells/desktop/src/flip_tween_correct.rs` | a sessão (`TweenCorrect` na `FlipStrip`, estado de autoria) + o gesto puro (`apply_click`) + o pick em tela (`nearest_stroke`) + `build`/upkeep |
+| `shells/desktop/src/flip/tween_correct.rs` | a sessão (`TweenCorrect` na `FlipStrip`, estado de autoria) + o gesto puro (`apply_click`) + o pick em tela (`nearest_stroke`) + `build`/upkeep |
 | `shells/desktop/src/render_loop/flip_tween_overlay.rs` | o overlay esquemático (linhas por confiança + anéis de órfão), px de tela, irmão do `flip_selection_overlay` |
-| `shells/desktop/src/flip_tween_pairs_smoke.rs` | a cena `PH2D_FLIP_TWEEN_PAIRS_SMOKE=1` |
+| `shells/desktop/src/flip/tween_pairs_smoke.rs` | a cena `PH2D_FLIP_TWEEN_PAIRS_SMOKE=1` |
 
 ### 9.3 Arquivos COMPARTILHADOS tocados (onde um merge futuro morde)
 
@@ -282,7 +282,7 @@ b_len)` não bate com os desenhos-chave é descartado e cai no automático (nunc
 |---|---|---|
 | `crates/ph2d-editor-core/src/ids/chrome/flip.rs` | `+FLIP_TWEEN_PAIRS` (id novo) | append |
 | `ph2d-panel-flip-frames` (`ids/state/toolbar_plan/populate/event`) | +botão **Pairs** (snapshot `tween_pairs`, toggle, `BUTTONS` 17→18) | append em listas |
-| `shells/desktop/src/flip_strip.rs` | porta única `current_tween_interval`; toggle Pairs + Add usa o plano corrigido | 581 LOC |
+| `shells/desktop/src/flip/strip.rs` | porta única `current_tween_interval`; toggle Pairs + Add usa o plano corrigido | 581 LOC |
 | `shells/desktop/src/{main,render_loop/mod}.rs` | `mod flip_tween_correct/pairs_smoke` + a chamada de overlay/upkeep/smoke no prólogo | +poucas linhas |
 | `shells/desktop/src/render_loop/mod.rs` (`suppress_gizmo`) | **Pairs suprime o gizmo do objeto** — a caixa dele registra hits no `hit_index`, `on_canvas` vira falso e o clique de re-par seria roubado (o MESMO caso das tools de vetor, ao lado do qual entrou) | +2 linhas na condição |
 | `shells/desktop/src/input_dispatch.rs` | 1 branch (`flip_wants_tween_pairs` no pen-down, antes dos modos) | append |
@@ -349,7 +349,7 @@ guardas: anel degenerado e pequeno (`< 8 pontos`).
 | `crates/ph2d-flip/src/tween.rs` | fase entre auto-flip e `fit` no `tween_stroke`; mesma porta no `tween_ring` (furo) | append; `pb` virou `mut` |
 | `crates/ph2d-flip/src/tween_flip.rs` | doc do `opposite_winding` aponta para `tween_phase` (o item que ele nomeava fechou) | comentário |
 | `crates/ph2d-flip/tests/it/tween_arc_probe.rs` | **novo** — o gate de regressão do arco + a sonda | isolado |
-| `shells/desktop/src/flip_tween_phase_smoke.rs` | **novo** — a cena `PH2D_FLIP_TWEEN_PHASE_SMOKE=1` + gate | isolado |
+| `shells/desktop/src/flip/tween_phase_smoke.rs` | **novo** — a cena `PH2D_FLIP_TWEEN_PHASE_SMOKE=1` + gate | isolado |
 | `shells/desktop/src/{main,render_loop/mod}.rs` | `mod` + a chamada do smoke no prólogo | append (ao lado dos outros smokes) |
 
 ⚠️ **Byte-idêntico para traço aberto e para anel < 8 pontos** — os gates de furo do `tween`

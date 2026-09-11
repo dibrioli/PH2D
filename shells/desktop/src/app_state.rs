@@ -1171,7 +1171,7 @@ pub(crate) struct App {
     /// partilhado com os Componentes desde a F8). Este aqui é o estado de INTERACÇÃO: gestos em
     /// voo, arrastos, hover, a tira de quadros, o espelho do estilo da tool. Um é o que se grava,
     /// o outro morre com a sessão.
-    pub(crate) flip_state: crate::flip_state::FlipState,
+    pub(crate) flip_state: crate::flip::state::FlipState,
     /// **Alguma transição de ESTADO de UI está em voo** (plano UI/UX W7).
     ///
     /// ⚠️ Ele existe para o `post_frame_undo`, e a razão é a mesma do `live_busy` do Colorize:

@@ -10,7 +10,7 @@
 > banal); a saga e as lições estão em [`BUGS_flip.md` #8-#10](BUGS_flip.md). O que segue descreve o
 > estado **corrigido**.
 >
-> Código: `crates/ph2d-flip-fill/` (o solver, CPU puro) · `shells/desktop/src/flip_fill.rs` (a
+> Código: `crates/ph2d-flip-fill/` (o solver, CPU puro) · `shells/desktop/src/flip/fill.rs` (a
 > fronteira modelo↔solver) · `crates/ph2d-flip-render/src/fill_holes.rs` (a triangulação).
 
 ---

@@ -457,7 +457,7 @@
 > re-litigado na fatia 3 pela decisão da fatia 1.
 >
 > Código previsto: crate nova `crates/ph2d-flip-colorize/` (o motor) · a costura no
-> `shells/desktop/src/flip_*.rs` · a UI em `crates/ph2d-panel-flip/`.
+> `shells/desktop/src/flip/` · a UI em `crates/ph2d-panel-flip/`.
 
 ---
 
@@ -639,7 +639,7 @@ O rabisco atravessa as poses empilhadas e pinta **o range de quadros**.
 
 O handoff desta rodada (§3.1) e o [`06 §8`](06_fill_balde.md) dizem que *"o que falta é o
 wiring do RANGE"* e listam **T4.5 — Fill multiframe** como carry-over do W4. **Não falta: ele
-está no produto**, `shells/desktop/src/flip_fill.rs:491-519` (W7) — o mesmo clique preenche
+está no produto**, `shells/desktop/src/flip/fill.rs:491-519` (W7) — o mesmo clique preenche
 todas as chaves selecionadas na tira, via `flip_multiframe::targets(…, strip.selected_keys(),
 …)`, e as duas decisões difíceis já estão tomadas e comentadas:
 
@@ -706,7 +706,7 @@ Medido nesta base (fmt já aplicado). Os dois apertados são exatamente os que a
 | arquivo | LOC | teto | folga |
 |---|---|---|---|
 | `ph2d-flip-fill/src/raster.rs` | 679 | 700 | **21** |
-| `shells/desktop/src/flip_fill.rs` | 564 | 600 (HR-18) | **36** |
+| `shells/desktop/src/flip/fill.rs` | 564 | 600 (HR-18) | **36** |
 | `ph2d-panel-flip/src/paint_sections.rs` | 541 | 600 | 59 |
 | `ph2d-tool-flip/src/tool.rs` | 559 | 700 | 141 |
 

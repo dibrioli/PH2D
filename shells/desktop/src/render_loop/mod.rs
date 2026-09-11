@@ -3305,11 +3305,11 @@ impl crate::App {
                 );
             hero.gizmo.pose_view = flip_edit_mode
                 .then(|| {
-                    crate::flip_pose_gizmo::pose_view(
+                    crate::flip::pose_gizmo::pose_view(
                         sim,
                         flip,
                         &self.flip_state.entities,
-                        crate::flip_pose_gizmo::PoseViewInputs {
+                        crate::flip::pose_gizmo::PoseViewInputs {
                             playhead: &self.playhead,
                             active_layer: self.flip_state.active_layer,
                             last_pointer: self.last_pointer,
@@ -3321,11 +3321,11 @@ impl crate::App {
                 .flatten();
             hero.gizmo.selection_view = flip_edit_mode
                 .then(|| {
-                    crate::flip_selection_gizmo::selection_view(
+                    crate::flip::selection_gizmo::selection_view(
                         sim,
                         flip,
                         &self.flip_state.entities,
-                        crate::flip_selection_gizmo::SelectionViewInputs {
+                        crate::flip::selection_gizmo::SelectionViewInputs {
                             playhead: &self.playhead,
                             active_layer: self.flip_state.active_layer,
                             last_pointer: self.last_pointer,
@@ -4683,7 +4683,7 @@ impl crate::App {
                         // `gfx.flip` + the active-layer pointer (mirror of the vector
                         // Boolean/Arrange capture). No-op for non-Flip ids. Still
                         // forward `ev` to the tool below (it ignores layer ids).
-                        crate::flip_layers::apply_panel_event(
+                        crate::flip::layers::apply_panel_event(
                             &ev,
                             flip,
                             &mut self.flip_state.active_layer,
@@ -4702,7 +4702,7 @@ impl crate::App {
                         // frame do clique, então o estado da tecla ainda é o do gesto — e
                         // nenhum contrato precisa ser tocado para a tira ganhar
                         // multisseleção (W7).
-                        crate::flip_strip::apply_panel_event(
+                        crate::flip::strip::apply_panel_event(
                             &ev,
                             flip,
                             self.flip_state.active_layer,
@@ -8756,7 +8756,7 @@ impl crate::App {
             // GLOBAL e por DIFF: `post_frame_undo` compara o `ProjectState`, do qual o
             // `FlipDoc` faz parte. É o mesmo motivo pelo qual o drain do `PanelEvent`
             // logo acima também ignora o seu.)
-            let _ = crate::flip_strip_drag::apply_strip_intents(
+            let _ = crate::flip::strip_drag::apply_strip_intents(
                 flip,
                 self.flip_state.active_layer,
                 &mut self.flip_state.strip,
@@ -8979,7 +8979,7 @@ impl crate::App {
                     .map(ph2d_ecs::Entity::from_bits)
                     .filter(|e| sim.world().get_entity(*e).is_ok())
                     .map_or(ph2d_vec_scene::Xform::IDENTITY, |e| {
-                        crate::flip_transform::object_xform(sim, e)
+                        crate::flip::transform::object_xform(sim, e)
                     });
                 // W8/§4.C: o realce fala a linguagem do DOMÍNIO — halo de traço (Stroke),
                 // dots (Point), ou halo do PEDAÇO + preview de hover (Segment).
@@ -8993,7 +8993,8 @@ impl crate::App {
                     _ => flip_selection_overlay::OverlayDomain::Stroke,
                 };
                 let hover = self
-                    .flip_state.segment_hover
+                    .flip_state
+                    .segment_hover
                     .as_ref()
                     .map(|(si, pts)| (*si, pts.as_slice()));
                 flip_selection_overlay::draw_flip_selection(
@@ -9013,7 +9014,10 @@ impl crate::App {
                     vector_scene,
                 );
                 // A caixa do marquee (W6.1) — em px de tela, como o realce.
-                flip_selection_overlay::draw_flip_marquee(self.flip_state.edit_gesture, vector_scene);
+                flip_selection_overlay::draw_flip_marquee(
+                    self.flip_state.edit_gesture,
+                    vector_scene,
+                );
 
                 // **§12 Sockets / Named Anchors** (spec Sprite 07 §7.6) — os marcadores só
                 // aparecem com a seção EXPANDIDA, senão todo sprite com âncoras ficaria coberto
@@ -9101,12 +9105,12 @@ impl crate::App {
                 // worker (`flip_gap_live`, coords de ARTE); a pergunta do modo é a MESMA
                 // porta do tick, e a projeção é a MESMA cadeia do render (l2w ∘ pose).
                 flip_gap_overlay::draw(
-                    crate::flip_gap_live::wants_gap_helpers(flip_active, flip_style),
+                    crate::flip::gap_live::wants_gap_helpers(flip_active, flip_style),
                     &self.flip_state.gap.segments,
                     &l2w,
                     // A MESMA pose que a autoria dobra (`flip_transform::active_pose`) —
                     // função livre porque aqui `self.gfx` está destruturado.
-                    crate::flip_transform::active_pose(
+                    crate::flip::transform::active_pose(
                         flip,
                         self.flip_state.active_layer,
                         &self.playhead,
@@ -9238,7 +9242,7 @@ impl crate::App {
             // ADR-0114: idem para os objetos Flip (objeto novo ⇒ entidade; entidade
             // apagada ⇒ objeto). No W0 é no-op (nenhuma tool cria objetos ainda); a
             // tool do W2 passa a populá-lo.
-            crate::flip_entities::sync(sim, flip, &mut self.flip_state.entities);
+            crate::flip::entities::sync(sim, flip, &mut self.flip_state.entities);
             // Live Shapes: mantém o `VecShape::Text` na entidade do texto ativo (a
             // entidade já existe pós-sync) para o objeto lembrar que é texto — re-cook,
             // painel, Convert e save/undo. Idempotente; só com sessão viva.
@@ -9880,7 +9884,12 @@ impl crate::App {
             let flip_gesturing = (self.flip_state.draw.is_active() || self.flip_state.erasing)
                 .then(|| flip.objects().first().map(|o| o.id))
                 .flatten();
-            crate::flip_transform::settle_origins(sim, flip, &self.flip_state.entities, flip_gesturing);
+            crate::flip::transform::settle_origins(
+                sim,
+                flip,
+                &self.flip_state.entities,
+                flip_gesturing,
+            );
             // **A ordem de z é a projeção da árvore — e a árvore é lida AQUI, depois do
             // `sync`.** Não é arrumação (BUGS #15): a lista do painel foi publicada no
             // prólogo do frame, quando a forma recém-criada ainda não tinha entidade.
@@ -11931,7 +11940,8 @@ impl crate::App {
             // registram hits no `hit_index` que fazem `on_canvas` virar falso — roubando TODO
             // clique de re-par. Enquanto Pairs está aberto, o gizmo do objeto some (a seleção
             // fica armada; só a caixa/alças somem).
-            let flip_pairs_active = self.flip_state.active && self.flip_state.strip.tween_correct.is_some();
+            let flip_pairs_active =
+                self.flip_state.active && self.flip_state.strip.tween_correct.is_some();
             let suppress_gizmo = painter_deform_transform
                 || flip_pairs_active
                 || tools

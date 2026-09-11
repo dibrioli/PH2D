@@ -513,7 +513,7 @@ pub(super) fn publish(
                 if !flip_gizmo_on {
                     return None;
                 }
-                return crate::flip_gizmo_view::view(
+                return crate::flip::gizmo_view::view(
                     sim,
                     flip,
                     sim_entity,

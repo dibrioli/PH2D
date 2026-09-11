@@ -182,7 +182,7 @@ impl ProjectState {
         VecScene,
         crate::vec_entities::VecEntityMap,
         FlipDoc,
-        crate::flip_entities::FlipEntityMap,
+        crate::flip::entities::FlipEntityMap,
     ) {
         // 1. Limpa: toda entidade editável tem `Transform` (sprites, formas,
         //    objetos Flip, grupos). O despawn cascateia por `ChildOf`, então um
@@ -199,7 +199,7 @@ impl ProjectState {
         // 3. Reconstrói as pontes a partir dos `VecPathRef`/`FlipObjectRef`
         //    restaurados.
         let vec_map = crate::vec_entities::rebuild_map(sim);
-        let flip_map = crate::flip_entities::rebuild_map(sim);
+        let flip_map = crate::flip::entities::rebuild_map(sim);
         ((*self.vec).clone(), vec_map, (*self.flip).clone(), flip_map)
     }
 }

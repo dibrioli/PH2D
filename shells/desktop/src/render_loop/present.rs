@@ -255,7 +255,7 @@ impl crate::App {
                 //   compositor 22-modos) no `game_rt`, amostrado pelo playhead,
                 //   MESMA câmera dos sprites. O blit final usa LoadOp::Load (preserva
                 //   os sprites por baixo). No-op sem camada Flip ativa (default).
-                let flip_models = crate::flip_transform::build(sim, &self.flip_state.entities);
+                let flip_models = crate::flip::transform::build(sim, &self.flip_state.entities);
                 // Ghost Frames só existem enquanto a tool Flip está no comando (é
                 // chrome de autoria, não da cena) — e só fora do play.
                 // O PEEK (F1/F2/F3 presos): uma folha vizinha na mão — os fantasmas

@@ -332,7 +332,7 @@ pareia POR ÍNDICE — preencher uma chave e não a outra parearia LINHA com REG
 
 ### O que a R3 virou
 
-**Proteger a propriedade**, não apagar o ramo: `shells/desktop/src/flip_fill_identity_tests.rs`
+**Proteger a propriedade**, não apagar o ramo: `shells/desktop/src/flip/fill_identity_tests.rs`
 (5 gates; 3 sangram quando o ramo é desligado). Para de fato substituir o ramo um dia, a rota
 das curvas precisaria de **fonte ≠ cozido no nível da REGIÃO** — a costura que o ADR-0121 já
 construiu para as Live Corners: guardar a *referência* (traço, vértice) de onde cada ponto veio

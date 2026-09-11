@@ -97,7 +97,7 @@ halo e máscara-grossa certos sem tocá-los). Helpers: `selected_point_indices`,
 primeiro), aberto nunca. Convenção espelhada do render (`ph2d_flip_render::pack::stroke_segments`).
 **O §4.B vive disto** — é a lista de segmentos que o raycast vai varrer.
 
-### 3.3 O gizmo da seleção (`shells/desktop/src/flip_selection_gizmo.rs`, §4.A)
+### 3.3 O gizmo da seleção (`shells/desktop/src/flip/selection_gizmo.rs`, §4.A)
 Espelho do gizmo da POSE. A **porta única** é a `grabbable_selection_box` (recusa: instância ·
 sem extensão) + `padded_gizmo_box` (a folga, DERIVADA do `ph2d_editor::HANDLE_SIZE_PX`). A
 view **desenha** e o down do Edit **testa o interior** pela mesma função. O bake é

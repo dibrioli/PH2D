@@ -35,7 +35,7 @@ fn corpo<'a>(src: &'a str, assinatura: &str) -> &'a str {
 
 #[test]
 fn the_flip_preview_bakes_through_the_same_door() {
-    let src = fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/src/flip_draw.rs"))
+    let src = fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/src/flip/draw.rs"))
         .expect("flip_draw.rs");
 
     let preview = corpo(&src, "fn flip_preview_data");

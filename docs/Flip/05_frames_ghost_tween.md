@@ -401,15 +401,15 @@ com chaves próprias, onde o erro MOSTRA.
 | Peça | Arquivo |
 |---|---|
 | Vão, exposição, ciclos, navegação por desenho, células | `crates/ph2d-flip/src/{layer,cycle,expose}.rs` |
-| Alvo do multiframe (dedup + falloff) | `shells/desktop/src/flip_multiframe.rs` |
+| Alvo do multiframe (dedup + falloff) | `shells/desktop/src/flip/multiframe.rs` |
 | Ghost Frames (função pura) | `crates/ph2d-flip/src/onion.rs` |
 | Autokey (política + `ensure_key`) | `crates/ph2d-flip/src/autokey.rs` |
 | Tween (motor + op de documento) | `crates/ph2d-flip/src/tween.rs` |
 | Tint de fantasma no shader | `crates/ph2d-flip-render/src/shaders/flip{,_fill}.wgsl` + `CameraRaw::with_ghost_tint` |
 | Passe de fantasmas | `shells/desktop/src/render_loop/flip_pass_ghosts.rs` |
 | A tira (painel) | `crates/ph2d-panel-flip-frames/` |
-| Estado de autoria + drain dos eventos da tira | `shells/desktop/src/flip_strip.rs` |
-| Autokey por-tool (o ponto ÚNICO) | `shells/desktop/src/flip_autokey.rs` |
+| Estado de autoria + drain dos eventos da tira | `shells/desktop/src/flip/strip.rs` |
+| Autokey por-tool (o ponto ÚNICO) | `shells/desktop/src/flip/autokey.rs` |
 
 **Gates executáveis:** `crates/ph2d-panel-flip-frames/tests/it/seam.rs` (todo controle da barra
 chega ao barramento — um botão novo sem braço no `event.rs` = VERMELHO) · testes de unidade do
@@ -469,5 +469,5 @@ O quadro **ativo** entra sempre, com influência cheia, mesmo fora da seleção 
 como fallback`* da referência). Multiframe **nunca inventa quadro**: as chaves selecionadas já
 existem, e o alvo ativo veio pronto do autokey.
 
-Motor: `shells/desktop/src/flip_multiframe.rs`. Consumidor: `flip_reshape.rs` (um
+Motor: `shells/desktop/src/flip/multiframe.rs`. Consumidor: `flip_reshape.rs` (um
 `Session::begin` por desenho; o `frame_falloff` desce pelo funil único `influence()` do solver).

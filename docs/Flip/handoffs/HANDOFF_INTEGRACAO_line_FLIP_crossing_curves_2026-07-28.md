@@ -273,7 +273,7 @@ os dois perfis viram o mesmo ⇒ RED.
   de paridade CPU×GPU da `line/gpu-nodes`.
 - **Nenhum schema** (`PROJECT_SCHEMA` 46 · `FLIP_SCHEMA` 12), **nenhum contrato congelado**,
   **nenhum ADR**, **nenhum id/token/i18n**.
-- Arquivo novo: `shells/desktop/src/flip_hardness_smoke.rs` (+ `mod` no `main.rs` e a chamada no
+- Arquivo novo: `shells/desktop/src/flip/hardness_smoke.rs` (+ `mod` no `main.rs` e a chamada no
   prólogo, ao lado dos outros smokes).
 - **SEIS notas corrigidas** que descreviam o airbrush como *"o oposto do pico do `pow`"* — o
   default mudou, então a frase virou falsa; os números do doc 03 §8 e do smoke do airbrush foram

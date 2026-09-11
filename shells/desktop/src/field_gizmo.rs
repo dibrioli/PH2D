@@ -6,7 +6,7 @@
 //! caçar a rotação; o idioma dos apps pro (C4D/Cavalry/Houdini mograph) é uma **alça na
 //! tela** — mover/girar/escalar o field onde a ação está.
 //!
-//! # É o ESPELHO do [`crate::flip_selection_gizmo`], com um sink diferente
+//! # É o ESPELHO do [`crate::flip::selection_gizmo`], com um sink diferente
 //!
 //! O Flip já resolveu "um drag de gizmo de sprite que escreve num sink que **não é** um
 //! `Transform` de entidade": a pose de uma chave (`FlipPose`) e a geometria de uma

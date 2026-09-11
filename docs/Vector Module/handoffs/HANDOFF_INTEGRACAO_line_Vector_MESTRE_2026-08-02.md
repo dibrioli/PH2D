@@ -193,7 +193,7 @@ aconteceu com o `keyboard.rs` na integração de 27/07 (+9 de uma linha, +13 de 
 ### 6.4 — Uma FLAKE pré-existente que NÃO é desta linha
 
 `flip_smooth::…::a_long_stroke_is_bounded_by_the_redundancy_floor_not_by_a_budget`
-(`shells/desktop/src/flip_fit_budget_tests.rs`, dona: `line/FLIP`).
+(`shells/desktop/src/flip/fit_budget_tests.rs`, dona: `line/FLIP`).
 
 Reprova **sob a suíte** e passa **isolada** — medido aqui: razão **3,1×** isolada contra a barra
 5,0. O doc dela já antecipa (*"um stall de agendamento move a razão inteira"*: é uma razão entre

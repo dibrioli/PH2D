@@ -8,7 +8,7 @@
 //! geometria sai daqui já em **px de TELA** e o `stroke` desenha sob `Affine::IDENTITY`,
 //! porque no Vello o transform do `stroke` MULTIPLICA a espessura. A cadeia arte→tela é a
 //! MESMA que o render dobra (`câmera ∘ objeto ∘ pose_da_chave`), e A e B carregam poses
-//! diferentes — cada lado tem seu afim ([`crate::flip_tween_correct::screen_affine`]).
+//! diferentes — cada lado tem seu afim ([`crate::flip::tween_correct::screen_affine`]).
 
 use ph2d_flip::FlipStroke;
 use ph2d_host::WindowSize;
@@ -16,7 +16,7 @@ use ph2d_render::Camera2d;
 use ph2d_vec_scene::Xform;
 use ph2d_vector::{Affine, BezPath, Brush, Circle, Color, Fill, Point, Stroke, VectorScene};
 
-use crate::flip_tween_correct::{Side, TweenCorrect, screen_affine, stroke_centroid};
+use crate::flip::tween_correct::{Side, TweenCorrect, screen_affine, stroke_centroid};
 
 /// Espessura do contorno de A/B, em px de tela — fino: é referência, não a arte final.
 const OUTLINE_PX: f64 = 1.5; // LITERAL-PX-OK: chrome de overlay, espessura de tela

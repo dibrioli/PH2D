@@ -386,7 +386,8 @@ impl App {
                 // não um tick de simulação (60 Hz): senão "avançar um quadro" andaria
                 // um quinto de desenho e o animador nunca cairia numa chave.
                 let fps = self
-                    .flip_state.active
+                    .flip_state
+                    .active
                     .then(|| self.flip_fps())
                     .flatten()
                     .unwrap_or_else(|| 1.0 / self.playhead.fixed_dt());

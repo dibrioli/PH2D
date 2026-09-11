@@ -389,7 +389,11 @@ impl crate::App {
             Some("botao do rato em baixo")
         } else if ph2d_app_field3d::smoke::gesture_in_progress() {
             Some("arrasto do gizmo 3D em curso")
-        } else if self.flip_state.colorize.live_busy(self.flip_state.style.as_ref()) {
+        } else if self
+            .flip_state
+            .colorize
+            .live_busy(self.flip_state.style.as_ref())
+        {
             Some("colorize a recalcular")
         } else if self.ui_state_live {
             Some("transicao de estado de UI ao vivo")

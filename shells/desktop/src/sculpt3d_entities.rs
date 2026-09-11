@@ -1,5 +1,5 @@
 //! ⭐⭐⭐ **A PONTE entre a CENA da escultura e a árvore do editor** — irmã de
-//! [`crate::flip_entities`] (o Flip) e [`crate::vec_entities`] (o vetor), e pela mesma lei.
+//! [`crate::flip::entities`] (o Flip) e [`crate::vec_entities`] (o vetor), e pela mesma lei.
 //!
 //! Cada peça da cena 3D tem uma entidade ECS que a referencia
 //! ([`ph2d_ecs::Sculpt3dPieceRef`]). A cena é dona da **geometria** (a pilha de multires, a

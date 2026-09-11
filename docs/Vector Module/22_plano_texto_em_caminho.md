@@ -578,7 +578,7 @@ nenhuma mutação mata *parece* cobertura e não é. A razão que ficou sangra c
 | `panel.vector.section.textpath` | `ph2d-i18n/src/lib.rs` | Uma linha numa tabela compartilhada |
 | `paint_textpath.rs` · `state_textpath.rs` · `vec_text_ride.rs` | painel + shell (NOVOS) | Arquivos próprios ⇒ isolados |
 | `event.rs::track_slider_event` | `ph2d-panel-vector` | **Extração** do `apply_event` (teto de 200 LOC/fn) — move 5 braços existentes |
-| `VERTS_REWRITE` ganhou `.replace_cooked(` | `shells/desktop/tests/every_host_that_rewrites_verts_faces_the_radius_handle.rs` | Arch-gate de OUTRA wave que esta linha cegou e curou (§6, W3) |
+| `VERTS_REWRITE` ganhou `.replace_cooked(` | `shells/desktop/tests/it/every_host_that_rewrites_verts_faces_the_radius_handle.rs` | Arch-gate de OUTRA wave que esta linha cegou e curou (§6, W3) |
 | `ArcPath::closest_arc` (W5) | `ph2d-vec-scene/src/arc_path.rs` | Método novo, mesmo arquivo — aditivo |
 | `draw_text_handle` (W5) | `ph2d-vec-render/src/text_handle.rs` (NOVO) | Arquivo próprio ⇒ isolado; re-exportado no `lib.rs` |
 | `VecOverlayPlan.textpath_handle` (W5) | `shells/desktop/src/vec_overlay.rs` | Campo apendado ao struct de plano de overlay (Node-only, testado) |

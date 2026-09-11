@@ -10,7 +10,7 @@ metadata:
 Em **batches fan-out de N tools paralelas** (ex.: `image_tools_4` 2026-05-23 — 4 sessões adicionando 4 image tools), o `ph2d-tool-sync` regenera os blocos entre marcadores codegen mas **NÃO** atualiza:
 
 1. **`crates/ph2d-tool-registry-init/src/lib.rs::image_tools_cluster_in_canonical_order`** — unit test com `vec![…]` hardcoded da ordem do cluster `image_tools` por `order`. Sem extensão, fail no test.
-2. **`crates/ph2d-tool-registry-init/tests/tool_manifest_design_sync.rs::expected_icon_slug`** — fn que mapeia `manifest_id → icon_slug`. Sem entries para novos tools, retorna `<unknown>` e o test `every_registered_manifest_has_matching_design_toml` falha.
+2. **`crates/ph2d-tool-registry-init/tests/it/tool_manifest_design_sync.rs::expected_icon_slug`** — fn que mapeia `manifest_id → icon_slug`. Sem entries para novos tools, retorna `<unknown>` e o test `every_registered_manifest_has_matching_design_toml` falha.
 
 **Why:** o Coord pre-work do batch `ccf0cf0` (4 SVGs + 4 IconId + 4 design TOMLs) parou um passo antes — não estendeu esses 2 testes. Cada Implementador rodando sync individualmente tropeça neles. Estender uma vez, no primeiro commit do batch, unblocks todas as outras sessões paralelas (elas só rodam sync e veem registry-init já curado).
 

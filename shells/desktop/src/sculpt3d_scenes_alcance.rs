@@ -17,7 +17,7 @@
 //!
 //! # ⭐⭐⭐ E a geometria desta cena foi MEDIDA, não escolhida
 //!
-//! A sonda [`sonda_do_falloff_pela_superficie`](../../../crates/ph2d-sculpt3d/tests/sonda_do_falloff_pela_superficie.rs)
+//! A sonda [`sonda_do_falloff_pela_superficie`](../../../crates/ph2d-sculpt3d/tests/it/sonda_do_falloff_pela_superficie.rs)
 //! §5 varreu as duas famílias possíveis e imprimiu quanto a máscara corta em
 //! cada uma:
 //!

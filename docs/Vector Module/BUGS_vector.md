@@ -314,7 +314,7 @@ dela). Nenhum produtor o podia emitir; só um teste que o chamava à mão o fazi
 outra, em vez de três linhas em três allowlists longas que outras waves editam. A pilha de EFEITOS
 tinha a mesma forma espalhada por dois ficheiros e foi cortada igual (`event_fx_stack.rs`).
 
-**O instrumento que faltava:** [`seam_paint_stack.rs`](../../crates/ph2d-panel-vector/tests/seam_paint_stack.rs)
+**O instrumento que faltava:** [`seam_paint_stack.rs`](../../crates/ph2d-panel-vector/tests/it/seam_paint_stack.rs)
 — 7 gates com **gesto real** (Down+Up sobre o rectângulo que o painel pintou), cujo oráculo é o
 `EditorAction` e nunca o `WidgetEvent`. Três nasceram vermelhos sobre o produto shipado; a semente
 da cor foi provada por mutação. ⚠️ Esta crate tinha **40 ficheiros `seam_*`** e a pilha não tinha

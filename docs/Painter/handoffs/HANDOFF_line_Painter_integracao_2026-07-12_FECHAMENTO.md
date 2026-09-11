@@ -73,7 +73,7 @@ Perf no fechamento: **3,41 ms/movimento @2048² · 3,66 @4096²** (alvo ≤4, ki
 | `ph2d-ecs/src/painted_doc.rs` | `PaintedDoc` ganhou o relevo (`heights`/`covers`) | **médio** — ver 2.3 |
 | `ph2d-ecs/src/scene/registry.rs` | **+1 componente registrado** | **ALTO** — ver 2.3 |
 | `ph2d-render/src/registry.rs` · `ph2d-script/src/registry.rs` | **contagem** de componentes | **ALTO** — ver 2.3 |
-| `ph2d-editor-core/tests/architecture_panel_loc_cap.rs` | allowlist | baixo |
+| `ph2d-editor-core/tests/it/architecture_panel_loc_cap.rs` | allowlist | baixo |
 | `shells/desktop/src/**` (9 arquivos) | bridge/persistência/smoke | médio |
 
 ### 2.3 🔴 A ARMADILHA QUE ME CUSTOU UM "VERDE" FALSO — leia isto

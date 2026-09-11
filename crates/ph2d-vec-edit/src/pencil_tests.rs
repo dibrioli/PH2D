@@ -233,7 +233,7 @@ fn a_stray_click_leaves_nothing_behind() {
 /// A limpeza do path órfão no `on_press` está CERTA e fica (um gesto que não fechou não pode deixar
 /// lixo na cena); o que estava errado era um chamador que nunca fechava o gesto. Este gate afirma o
 /// lado do MOTOR — soltar encerra —, que é o que torna aquela limpeza inofensiva; o lado do
-/// despacho é gateado no `shells/desktop/tests/the_pencil_owns_its_whole_gesture.rs`.
+/// despacho é gateado no `shells/desktop/tests/it/the_pencil_owns_its_whole_gesture.rs`.
 #[test]
 fn a_committed_stroke_survives_the_next_one() {
     let mut scene = VecScene::new();

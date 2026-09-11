@@ -88,7 +88,7 @@ exactamente o ponto que o gate antigo media.
    de `blend_state_for` é a mesma, e `ph2d_ecs::BlendMode` não se moveu. Só o par de
    fatores de **uma** tag mudou.
 
-**Gates novos** ([`blend_mode_regression.rs`](../../../crates/ph2d-render/tests/blend_mode_regression.rs)):
+**Gates novos** ([`blend_mode_regression.rs`](../../../crates/ph2d-render/tests/it/blend_mode_regression.rs)):
 
 | gate | o que prende |
 |---|---|
@@ -238,7 +238,7 @@ não podia correr. Foi essa corrida que expôs a flake.
 
 ⚠️ **O único ✗ é uma FLAKE NOVA e pré-existente, registada no `CLAUDE.md` §5.0 como a
 sétima:** `the_region_refresh_is_bound_by_the_footprint_not_by_the_mesh`
-([`ph2d-mesh`](../../../crates/ph2d-mesh/tests/measure_normals.rs)) — **verde 3 de 3
+([`ph2d-mesh`](../../../crates/ph2d-mesh/tests/it/measure_normals.rs)) — **verde 3 de 3
 sozinha**, a `0,65 s` contra `1,53 s` no fan-out, numa crate que este diff **não toca**.
 Ela divide dois relógios de parede (`costs[1] / costs[0]`, barra `3,0`).
 

@@ -141,7 +141,7 @@ coisa, e o erro sai disfarçado de erro de build.
 **Fazer:** `rust-version = "1.95"` → `"1.98"`.
 
 ⚠️ **As duas movem-se JUNTAS, e há um gate que o exige:**
-[`crates/ph2d-editor-core/tests/architecture_msrv_is_the_pinned_toolchain.rs`](../../crates/ph2d-editor-core/tests/architecture_msrv_is_the_pinned_toolchain.rs).
+[`crates/ph2d-editor-core/tests/it/architecture_msrv_is_the_pinned_toolchain.rs`](../../crates/ph2d-editor-core/tests/it/architecture_msrv_is_the_pinned_toolchain.rs).
 Ele lê o `channel` do `rust-toolchain.toml` e o `rust-version` do `Cargo.toml` e exige que sejam
 iguais. Mexer num sem o outro **reprova**.
 

@@ -137,7 +137,7 @@ decoração — `CLAUDE.md` §0 exige que um limite diga **de que recurso** ele 
 sozinho manda o artista adivinhar se foi a ferramenta, o formato ou um bug; *«a sheet is one texture,
 and it is 8-bit»* diz-lhe o que mudar se não quiser pagar.
 
-O gate é [`a_verb_that_costs_precision_says_so`](../../shells/desktop/tests/a_verb_that_costs_precision_says_so.rs):
+O gate é [`a_verb_that_costs_precision_says_so`](../../shells/desktop/tests/it/a_verb_that_costs_precision_says_so.rs):
 todo ficheiro que chama `read_sprite_source` **nomeia** uma porta de commit, a lei, ou o marcador
 `PRECISION-READONLY:` com o motivo. ⛔ Não há allowlist, de propósito — a justificação viaja com o
 código.

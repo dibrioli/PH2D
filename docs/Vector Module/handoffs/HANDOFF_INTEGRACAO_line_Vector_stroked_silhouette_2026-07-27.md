@@ -137,11 +137,11 @@ dep nova; a shell já dependia das duas crates).
 ```
 crates/ph2d-vec-boolean/src/expand.rs                          + silhouette_paths
 crates/ph2d-vec-boolean/src/lib.rs                             re-export
-crates/ph2d-vec-boolean/tests/silhouette_of_a_stroked_shape.rs NOVO (5 gates)
-crates/ph2d-vec-boolean/tests/silhouette_cost.rs               NOVO (a medição)
+crates/ph2d-vec-boolean/tests/it/silhouette_of_a_stroked_shape.rs NOVO (5 gates)
+crates/ph2d-vec-boolean/tests/it/silhouette_cost.rs               NOVO (a medição)
 crates/ph2d-vec-render/src/silhouette.rs                       + o parâmetro `sil`
 crates/ph2d-vec-render/src/silhouette_tests.rs                 NOVO (5 gates)
-crates/ph2d-render/tests/fx_look_probe.rs                      PH2D_FX_RASTER + cenas 12/13
+crates/ph2d-render/tests/it/fx_look_probe.rs                      PH2D_FX_RASTER + cenas 12/13
 shells/desktop/src/fx_silhouette.rs                            NOVO
 shells/desktop/src/fx_silhouette_tests.rs                      NOVO (9 gates)
 shells/desktop/src/fx_live.rs                                  repassa `sil`

@@ -219,9 +219,9 @@ binding é uma **tabela lateral**, exatamente como o `KernelResolver` ganhou 6 c
 
 | Contrato | Gate | Este plano |
 |---|---|---|
-| Nodes (`NodeOp=2`/`OpResolver=1`/`NodeManifest=8`) | `ph2d-nodegraph/tests/architecture_contract_surface.rs` | ⚠️ **intocado** — a HSM da W7 é crate nova, **não** um grafo de nós |
-| Tools (`Tool=12`/`RasterEditTool=5`/`CanvasPaintTool=1`/`PanelEvent=4`) | `ph2d-editor-core/tests/architecture_tool_contract_surface.rs` | intocado — os modos novos são internos ao `VectorTool` |
-| Vector doc (`VectorOp≤16`/`Vertex`/`Segment`/…) | `ph2d-vector-doc/tests/architecture_vector_contract_surface.rs` | intocado — **o gate varre só `ph2d-vector-doc` + `-traits`**, e todas as waves vivem em `ph2d-vec-*`, `ph2d-ecs`, `ph2d-panel-vector` e `shells/desktop` |
+| Nodes (`NodeOp=2`/`OpResolver=1`/`NodeManifest=8`) | `ph2d-nodegraph/tests/it/architecture_contract_surface.rs` | ⚠️ **intocado** — a HSM da W7 é crate nova, **não** um grafo de nós |
+| Tools (`Tool=12`/`RasterEditTool=5`/`CanvasPaintTool=1`/`PanelEvent=4`) | `ph2d-editor-core/tests/it/architecture_tool_contract_surface.rs` | intocado — os modos novos são internos ao `VectorTool` |
+| Vector doc (`VectorOp≤16`/`Vertex`/`Segment`/…) | `ph2d-vector-doc/tests/it/architecture_vector_contract_surface.rs` | intocado — **o gate varre só `ph2d-vector-doc` + `-traits`**, e todas as waves vivem em `ph2d-vec-*`, `ph2d-ecs`, `ph2d-panel-vector` e `shells/desktop` |
 
 ### 6.2 O registro de componentes
 

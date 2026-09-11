@@ -191,7 +191,7 @@ quique precisa das **três** condições ao mesmo tempo; cada uma sozinha dá ze
 
 ⚠️ A lição não é *"0,25 é um valor mau"* — é a FRONTEIRA: **um número escolhido
 para uma fixture não atravessa para a mão do artista.** Gate novo
-`shells/desktop/tests/a_smoke_scene_ships_the_default_tuning.rs`.
+`shells/desktop/tests/it/a_smoke_scene_ships_the_default_tuning.rs`.
 
 **(b) *"o laranja ao pousar se aproxima da rampa … na direção da normal"*** — **a
 LEI, e a seta que ele desenhou é o mecanismo.** Com `drive = 0` o freio da

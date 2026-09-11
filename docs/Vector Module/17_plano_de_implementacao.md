@@ -361,7 +361,7 @@ Smokes do Enio por wave. Cada smoke é o **único critério que vale** para a wa
 
 ### T0.12 — Ativar arch-gate vazio `vector_contract_surface`
 
-**Local:** novo arquivo `crates/ph2d-vector-doc/tests/architecture_vector_contract_surface.rs` (criado em W1).
+**Local:** novo arquivo `crates/ph2d-vector-doc/tests/it/architecture_vector_contract_surface.rs` (criado em W1).
 
 **Conteúdo (stub W0):** arquivo presente com test `architecture_vector_contract_surface_placeholder` que sempre passa. Activa em T1.1 quando crate criado.
 

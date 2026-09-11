@@ -107,7 +107,7 @@ dois lados** ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]):
 | `ph2d-ecs/src/scene/registry.rs` | `reg.len()` **29 → 31** (`VecBlend` **e** `VecMorph`) | ✔ |
 | `ph2d-render/src/registry.rs` | `reg.len()` **30 → 32** | ✔ |
 | `ph2d-script/src/registry.rs` | `reg.len()` **30 → 32** | ✔ |
-| `ph2d-panel-vector/tests/seam.rs` | `VECTOR_SECTIONS.len()` **19 → 20** (a seção Morph) | ✔ |
+| `ph2d-panel-vector/tests/it/seam.rs` | `VECTOR_SECTIONS.len()` **19 → 20** (a seção Morph) | ✔ |
 
 **⚠️ `.typos.toml` — allowlist duplicada MATA o gate no parse** (o TOML morre e nada é escaneado,
 [[feedback_duplicate_allowlist_key_kills_the_gate_at_parse]]). Eu adicionei 3 chaves: `candidata`,
@@ -126,7 +126,7 @@ VECTOR_MORPH_T            = hash_node_id("vector.morph.t")
 VECTOR_MORPH_T_NUM        = hash_node_id("vector.morph.t_num")
 VECTOR_SECTION_MORPH      = hash_node_id("vector.section.morph")   -- e em ids::VECTOR_SECTIONS
 ```
-Cada um tem uma linha em `ph2d-editor-core/tests/node_id_collisions.rs` **e** em
+Cada um tem uma linha em `ph2d-editor-core/tests/it/node_id_collisions.rs` **e** em
 `ph2d-panel-vector/src/ids.rs` (re-export por nome). As três listas têm de andar juntas.
 
 **Variant de enum apendado:** `ph2d_tool_vector::params::DrawMode::PickBlend` (o 8º pill). Append-only;
@@ -368,7 +368,7 @@ renumerar o código não renumera os arquivos do Enio.
 - **[ARMADILHA nova, gateada] O `filter` do `settle_origins` ENUMERA os seus leitores.** São quatro
   componentes de geometria derivada, e o 5º que esquecer a linha não vê erro de compilação — vê a
   forma nova a saltar, um frame depois, num sítio que não é o dela. Gate novo:
-  `shells/desktop/tests/settle_skips_every_derived_geometry.rs`, com um **irmão que guarda a lista
+  `shells/desktop/tests/it/settle_skips_every_derived_geometry.rs`, com um **irmão que guarda a lista
   do gate contra o próprio drift**. [[feedback_a_condition_that_enumerates_its_readers_rots]]
 - **A 1ª versão desse gate gritou LOBO**, e a lição vale: ela varria `*_live.rs` e cobrava que todo
   host estivesse na lista — mas o `flip_live.rs` é *"o alvo vivo"* do painel do Flip e não tem uma

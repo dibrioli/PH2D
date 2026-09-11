@@ -152,7 +152,7 @@ detalhe de agenda:
 > os oito pills sem `InteractiveState`): **uma capacidade que nasce antes do seu consumidor nasce
 > muda**, e o gate que a mede escolhe a ordem cómoda.
 
-⛔ Não reverter esta ordem sem ler [`the_registry_is_installed_before_the_hero.rs`](../../shells/desktop/tests/the_registry_is_installed_before_the_hero.rs).
+⛔ Não reverter esta ordem sem ler [`the_registry_is_installed_before_the_hero.rs`](../../shells/desktop/tests/it/the_registry_is_installed_before_the_hero.rs).
 
 ### W2 — A GPU (⚠️ abre com o gate de M5-bis) · **a wave grande** — 3 de 4 feitas
 
@@ -165,7 +165,7 @@ detalhe de agenda:
 - ✅ **W2.2** (`9c745088f`) — `SpriteRenderer::acquire_individual_16` + `individual_format`.
 - ✅ **W2.3** (`71902be05`) — a auditoria. Doze sítios de falha **silenciosa**, dez encaminhados pela
   porta `Asset::image_rgba8` / `image_dimensions`, e o gate
-  [`reading_pixels_goes_through_the_precision_door`](../../shells/desktop/tests/reading_pixels_goes_through_the_precision_door.rs)
+  [`reading_pixels_goes_through_the_precision_door`](../../shells/desktop/tests/it/reading_pixels_goes_through_the_precision_door.rs)
   a impedir o décimo-terceiro — **sem allowlist central**: o bypass declara-se no sítio com
   `PRECISION-BYPASS:`.
 - ⏳ **W2.4** — virar a importação. ⚠️ **BLOQUEADA PELA W3**, ver W2-ter.
@@ -270,7 +270,7 @@ reprova.
   para toda a gente. *Uma linha de proveniência que deriva o que devia medir mente na primeira
   exceção.* Sem medição ela diz `—`, nunca um palpite.
 - ✅ O par `RGBA8 / RGBA16` volta — **pintado, registado E com braço no `event.rs`**, e o gate
-  [`seam_precision`](../../crates/ph2d-panel-inspector/tests/seam_precision.rs) afirma as três
+  [`seam_precision`](../../crates/ph2d-panel-inspector/tests/it/seam_precision.rs) afirma as três
   juntas, porque cada uma falha em silêncio de maneira diferente. ⛔ Ressuscitar aqueles ids só é
   legítimo porque agora existe **modelo** por trás deles.
 - ✅ A conversão vive no shell ([`precision_convert.rs`](../../shells/desktop/src/precision_convert.rs)),
@@ -347,7 +347,7 @@ que a previsão analítica dava. ⛔ Não é defeito a curar — o olho integra 
 
 #### W6.2 — a descida do ECRÃ ⛔ recusada, e o que ficou no lugar
 
-Construída, medida ([`tonemap_descent_gpu`](../../crates/ph2d-render/tests/tonemap_descent_gpu.rs),
+Construída, medida ([`tonemap_descent_gpu`](../../crates/ph2d-render/tests/it/tonemap_descent_gpu.rs),
 RTX + wgpu 28) e **revertida** — o código executável do shader não mudou uma linha:
 
 | | |
@@ -523,7 +523,7 @@ minuto.
 
 | O que foi tentado | O que a medição disse | Onde |
 |---|---|---|
-| Dither no passe de tonemap (ecrã) | folga **0,0283 LSB** de 0,5; ao pico da CPU, **5,98%** dos pixels movem | [`tonemap.wgsl`](../../crates/ph2d-render/src/shaders/tonemap.wgsl) · [sonda](../../crates/ph2d-render/tests/tonemap_descent_gpu.rs) |
+| Dither no passe de tonemap (ecrã) | folga **0,0283 LSB** de 0,5; ao pico da CPU, **5,98%** dos pixels movem | [`tonemap.wgsl`](../../crates/ph2d-render/src/shaders/tonemap.wgsl) · [sonda](../../crates/ph2d-render/tests/it/tonemap_descent_gpu.rs) |
 | Dither com meio passo inteiro (o «de manual») | move 96 valores que já estavam na grelha | [`dither.rs`](../../crates/ph2d-color/src/dither.rs) |
 | Acender o LUT AgX agora que o gatilho disparou | falta o **bake**; o LUT identidade aplica curva log (o *dull look* recusado no M14.5 r7) | [`tonemap.wgsl`](../../crates/ph2d-render/src/shaders/tonemap.wgsl) |
 | Preservar 16 bits no Upscale filtrado / Rasterize / Equalize / Color-Eq / Painter | eles **calculam** o pixel de saída; sem resampler de 16 bits o rótulo mentiria | [doc 19 §4](19_auditoria_precisao_por_ferramenta.md) |

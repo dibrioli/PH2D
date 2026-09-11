@@ -195,7 +195,7 @@ layout nenhum: o blob é chaveado por `stable_type_id = blake3(nome_canônico)[.
 então registrar `ph2d::physics::PhysicsJoint` cunha um id novo e todo blob já em disco fica onde estava.
 É o oposto do W2c, que apendou um campo **DENTRO** do `Collider`, onde postcard é posicional. E bumpar à
 toa não é neutro: schema divergente **recusa o arquivo inteiro**, jogando fora todo projeto já salvo. O
-raciocínio está falsificável em `crates/ph2d-physics-ecs/tests/joint_persistence.rs` — se algo mover o
+raciocínio está falsificável em `crates/ph2d-physics-ecs/tests/it/joint_persistence.rs` — se algo mover o
 layout, o 1º gate fica vermelho e o bump passa a ser devido. **Se outra linha também
 bumpou, o valor certo não está em nenhum dos dois lados: some os bumps.** Escolher um lado faz os saves
 da outra passarem na checagem de versão e serem lidos com o layout errado — e postcard não tem nome de
@@ -233,7 +233,7 @@ válido. Não "conserte" o hash.
 - `tests/node_id_collisions.rs` — +14 linhas, **append-only**, num conflito mantenha os dois lados.
 - `paint.rs:217` — `notes_per_section: [_; 10]` (era 9). **Se outra linha também adicionou seção, re-conte.**
 - `ph2d-vector/src/lib.rs:58` — `PathEl` na lista de re-export: mantenha os dois lados.
-- ⚠️ `crates/ph2d-editor-core/tests/architecture_workspace_file_loc_cap.rs` — a entrada
+- ⚠️ `crates/ph2d-editor-core/tests/it/architecture_workspace_file_loc_cap.rs` — a entrada
   `ph2d-ecs/src/transform.rs` **baixou 784 → 768** (W5). Re-**MEÇA** o arquivo depois do
   `fmt` no merge; não escolha um dos dois números.
 - ⚠️ `ph2d-panel-timeline/src/transport.rs` — **`const ITEMS: [Item; 14]`** (era 13). Contagem

@@ -99,7 +99,7 @@ sem um conflito e **quebram o produto**. Cada uma tem gate; rode-os na **árvore
    de bits usa `Entity::try_from_bits` — `crates/ph2d-timeline/src/apply.rs` (passes 1 **e** 2) e
    `shells/desktop/src/timeline_persist.rs::wire_of`. **Um merge que ressuscite `from_bits` faz o
    Ctrl+O de qualquer projeto com animação derrubar o app.**
-   → gate: `crates/ph2d-timeline/tests/detached_bindings.rs`.
+   → gate: `crates/ph2d-timeline/tests/it/detached_bindings.rs`.
 2. **A guarda do `stamp_wire_ids`.** `crates/ph2d-timeline/src/persist.rs`: um `WireId::NULL`
    **nunca** sobrescreve um hash guardado. Sem ela, **o Ctrl+S apaga a identidade de toda track
    dormente** (objeto deletado) e ela nunca mais recola — nem por undo, nem recriando o objeto.
@@ -187,8 +187,8 @@ Na minha árvore: **tudo verde** (incluindo os arch gates — LOC caps dos pain�
 quadradinho — **cada uma vermelha no gate esperado**.
 
 **Gates novos que você herda:**
-`crates/ph2d-timeline/tests/detached_bindings.rs` (o crash + o destruidor de identidade) ·
-`crates/ph2d-panel-timeline/tests/strip_ease_grip_seam.rs` (**pinta o painel de verdade** e mede o
+`crates/ph2d-timeline/tests/it/detached_bindings.rs` (o crash + o destruidor de identidade) ·
+`crates/ph2d-panel-timeline/tests/it/strip_ease_grip_seam.rs` (**pinta o painel de verdade** e mede o
 alvo — `MockPanelHost::paint` devolve o hit index) · `shells/desktop/src/project_tests.rs` (o `App`
 headless).
 

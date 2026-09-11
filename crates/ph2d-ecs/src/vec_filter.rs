@@ -32,7 +32,7 @@ impl VecFilter {
     /// O teto de degraus numa pilha.
     ///
     /// **O recurso que aperta é a TELA do painel, não a GPU** — e isso está MEDIDO, não suposto
-    /// (`ph2d-render/tests/fx_stack_gpu.rs::the_cost_of_a_stack_is_linear_in_the_number_of_ops`,
+    /// (`ph2d-render/tests/it/fx_stack_gpu.rs::the_cost_of_a_stack_is_linear_in_the_number_of_ops`,
     /// RTX, 512×512, sigma 8 px): `0 degraus 0,082 ms · 1 → 0,084 · 2 → 0,149 · 3 → 0,220 ·
     /// 4 → 0,336 · 6 → **0,429 ms**`. O custo é linear, ~0,07 ms por degrau, e uma pilha CHEIA
     /// custa **2,6 % de um frame de 60 fps**. Cada degrau, em compensação, é um card de 4-6 linhas

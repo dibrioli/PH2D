@@ -77,7 +77,7 @@ propagar `&Registry` por todos os painters.
 
 ### 5. Design ↔ Manifest cross-validation
 
-`crates/ph2d-tool-registry-init/tests/tool_manifest_design_sync.rs` enforça
+`crates/ph2d-tool-registry-init/tests/it/tool_manifest_design_sync.rs` enforça
 parity field-by-field entre cada `docs/design/tools/<slug>.toml` e o `MANIFEST`
 const correspondente. Drift falha CI com diff legível.
 
@@ -92,7 +92,7 @@ const correspondente. Drift falha CI com diff legível.
 
 ### 7. HR-18 file LOC cap ativo
 
-`shells/desktop/tests/file_loc_caps.rs` gates `.rs` files ≤ 600 LOC.
+`shells/desktop/tests/it/file_loc_caps.rs` gates `.rs` files ≤ 600 LOC.
 Exceções via `// ph2d-loc-cap: <reason>` no top do arquivo (primeiros 20
 linhas). Duas exceções ativas hoje, ambas pendentes Wave 2.5:
 
@@ -144,11 +144,11 @@ re-exported from `ph2d_tokens::*`.
 
 ### Pillar 3: cross-validation + lint extends
 
-- `crates/ph2d-tokens/tests/design_token_sync.rs` (new) — 9 tests
+- `crates/ph2d-tokens/tests/it/design_token_sync.rs` (new) — 9 tests
   re-parse `tokens.json` with `serde_json` (dev-only dep,
   independent of build.rs's ad-hoc parser) and assert every public
   token API agrees with the JSON. Drift fails CI with inline diff.
-- `crates/ph2d-editor-core/tests/no_literal_color.rs` (extended) —
+- `crates/ph2d-editor-core/tests/it/no_literal_color.rs` (extended) —
   matcher now catches `Color::WHITE/BLACK/TRANSPARENT`,
   `Color::{rgba8, rgb8, from_rgba8, from_rgba, from_rgb}(`, all of
   the above prefixed with `VelloColor::`. Same allowlist mechanism
@@ -156,7 +156,7 @@ re-exported from `ph2d_tokens::*`.
   the existing tree annotated as legitimate (token-cast bridges,
   alpha-checker tiles, drop-overlay scrim theme-invariant, note
   text on highlighter background).
-- `crates/ph2d-editor-core/tests/no_magic_numeric.rs` (new, warn mode) —
+- `crates/ph2d-editor-core/tests/it/no_magic_numeric.rs` (new, warn mode) —
   bans bare `\d+\.\d+` literals in `widget/**` and `screens/**`
   outside structural ratios `{0.0, ±0.5, ±1.0, ±2.0}`. Allowlist
   via `// LITERAL-PX-OK: <reason>` per-line +
@@ -641,7 +641,7 @@ Definição de "perfeição" pelos 2 critérios operacionais do Enio:
   hero.rs 1334 → 976 LOC. **Adicionar TopBar action novo = drop arquivo
   + 2 linhas em `chrome/mod.rs`. Zero edit em hero.rs.**
 
-- **A.2 — alphabetical registry gate.** [`architecture_register_all_alphabetical`](../../../crates/ph2d-tool-registry-init/tests/architecture_register_all_alphabetical.rs)
+- **A.2 — alphabetical registry gate.** [`architecture_register_all_alphabetical`](../../../crates/ph2d-tool-registry-init/tests/it/architecture_register_all_alphabetical.rs)
   gateia ordem em `register_all()` + Cargo.toml `[dependencies]`. Inserir
   tool nova em posição alfabética = merge conflict surface trivial.
 
@@ -653,17 +653,17 @@ Definição de "perfeição" pelos 2 critérios operacionais do Enio:
   `ColorToken::X.resolve(theme)`, sizes via `Spacing/Radius/StrokeToken/
   TypeToken`, AccessKit obrigatório, LOC cap 500, showcase coverage).
 
-- **B.2 — showcase coverage.** [`architecture_widget_showcase_coverage`](../../../crates/ph2d-editor-core/tests/architecture_widget_showcase_coverage.rs)
+- **B.2 — showcase coverage.** [`architecture_widget_showcase_coverage`](../../../crates/ph2d-editor-core/tests/it/architecture_widget_showcase_coverage.rs)
   força todo `src/widget/*.rs` aparecer em `widget/showcase/` ou ter
   opt-out justificado (13 chrome-internal opt-outs).
 
-- **B.3 — widget LOC cap.** [`architecture_widget_loc_cap`](../../../crates/ph2d-editor-core/tests/architecture_widget_loc_cap.rs)
+- **B.3 — widget LOC cap.** [`architecture_widget_loc_cap`](../../../crates/ph2d-editor-core/tests/it/architecture_widget_loc_cap.rs)
   cap 500 LOC por widget primitive (HR-18 estendida para `editor-core/src/widget/`).
   Maior atual: `tool_rail.rs` 454.
 
 ### Eixo C — Mockup ↔ impl gate
 
-- **C.1 — mockup tokens.** [`mockup_tokens_exist`](../../../crates/ph2d-tokens/tests/mockup_tokens_exist.rs):
+- **C.1 — mockup tokens.** [`mockup_tokens_exist`](../../../crates/ph2d-tokens/tests/it/mockup_tokens_exist.rs):
   todo `var(--*)` em `docs/design/screens/*.html` resolve via
   `docs/design/styles/*.css` (alias layer over tokens.json — ex.
   `--fw-medium: 500`) OU `docs/design/tokens.json` direto OU `--var-name`

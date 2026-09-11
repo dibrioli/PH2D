@@ -46,7 +46,7 @@
 //! esse produto exige um `κ` em `1/comprimento`, e é por isso que
 //! [`ph2d_mesh::world_curvature_at`] existe ao lado do canal do Cavity, que é
 //! **invariante de escala por construção** (medido:
-//! `ph2d-mesh/tests/measure_curvature_units.rs`).
+//! `ph2d-mesh/tests/it/measure_curvature_units.rs`).
 //!
 //! ⚠️ Isto CORRIGE o *"um dado, dois usos"* do `05.1` §2a: é o mesmo **gather**,
 //! não o mesmo **número**.

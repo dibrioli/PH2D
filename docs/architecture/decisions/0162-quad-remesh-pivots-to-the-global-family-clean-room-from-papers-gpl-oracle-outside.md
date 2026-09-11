@@ -50,7 +50,7 @@ como conhecido da literatura; o que mudou é a medição de **quanto** ele custa
 
 1. **«Guide strokes com pressão do stylus»** — **não há pressão** nesta engine. O `winit` escreve
    `force: None` nos três backends de desktop, e existe um gate a afirmá-lo
-   (`shells/desktop/tests/the_desktop_shell_has_no_pen_pressure.rs`). O stroke de densidade por
+   (`shells/desktop/tests/it/the_desktop_shell_has_no_pen_pressure.rs`). O stroke de densidade por
    pressão **não é uma fase do remesher**: é uma camada de tablet que ainda não existe.
 2. **«O remesher é um nó do DAG não-destrutivo, como tudo na PH2D»** — o módulo Sculpt **não tem
    DAG**. Ele é snapshot + pilha de undo (`StrokeUndo`). O grafo de nós (`ph2d-nodegraph`, ADR-0032)

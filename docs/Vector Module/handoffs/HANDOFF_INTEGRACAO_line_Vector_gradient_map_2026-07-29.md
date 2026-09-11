@@ -92,14 +92,14 @@ gama nos meios-tons, e o único lugar onde isso apareceria é uma screenshot.
 
 | onde | quantos | o que provam |
 |---|---|---|
-| `ph2d-render/tests/fx_stack_gradient_map_gpu.rs` (⚠️ `#[ignore]`, precisa de adapter) | 8 | **a subsunção do Duotone ao byte** · paridade com o Painter · ordem de autoria não muda um byte · o degenerado · força por-stop · Smooth achata NO stop interno · cobertura intocada |
+| `ph2d-render/tests/it/fx_stack_gradient_map_gpu.rs` (⚠️ `#[ignore]`, precisa de adapter) | 8 | **a subsunção do Duotone ao byte** · paridade com o Painter · ordem de autoria não muda um byte · o degenerado · força por-stop · Smooth achata NO stop interno · cobertura intocada |
 | `ph2d-render/src/fx_stack_tests.rs` | 1 | um pointwise com modos próprios nunca cai no plano do campo — **e um falloff sempre cai** (as duas metades) |
-| `ph2d-panel-vector/tests/seam_filters.rs` | 3 | o trilho é oferecido só por quem tem rampa (presença E ausência) · punhos alcançáveis e **sem sobreposição** · `+`/`−` chegam ao bus |
+| `ph2d-panel-vector/tests/it/seam_filters.rs` | 3 | o trilho é oferecido só por quem tem rampa (presença E ausência) · punhos alcançáveis e **sem sobreposição** · `+`/`−` chegam ao bus |
 | `shells/desktop/src/fx_live_tests.rs` | 4 | a rota por slot · o `+` neutro em Linear **e não-neutro em Smooth** · o piso do `−` · o espelho dos tetos |
 | `shells/desktop/tests/the_picker…rs` | 2 | a shell entrega à porta única com o slot (+ controle positivo do scanner) |
-| `ph2d-panel-painter-layers/tests/seam_curve_drag_ownership.rs` | 2 | **o arrasto de outro painel sobrevive E não é consumido** + o CONTROLE de que o próprio segue drenado |
+| `ph2d-panel-painter-layers/tests/it/seam_curve_drag_ownership.rs` | 2 | **o arrasto de outro painel sobrevive E não é consumido** + o CONTROLE de que o próprio segue drenado |
 | `ph2d-editor-core` (`interaction::state::tests`) | 1 | a recusa do predicado é **não-destrutiva** (é o que torna a recuperação possível) |
-| `ph2d-editor-core/tests/architecture_curve_drag_asks_whose_gesture.rs` | 1 | nenhum painel responde *"é meu"* com **tautologia** (`\|_\| true`), com controle positivo de sítios lidos |
+| `ph2d-editor-core/tests/it/architecture_curve_drag_asks_whose_gesture.rs` | 1 | nenhum painel responde *"é meu"* com **tautologia** (`\|_\| true`), com controle positivo de sítios lidos |
 
 **Mutações: 7 tentadas, 6 sangram, 1 não compila** (o tipo a impede — os arrays do snapshot e do
 componente têm o tamanho tipado pelas duas constantes).

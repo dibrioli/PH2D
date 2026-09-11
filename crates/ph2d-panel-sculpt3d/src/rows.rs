@@ -68,7 +68,7 @@ pub use types::{Place, Row, Section};
 
 /// O teto da pista de **Extract Smooth**, em passadas.
 ///
-/// ⚠️ **OITO, e o número é MEDIDO** (`ph2d-mesh/tests/measure_extract.rs`): o
+/// ⚠️ **OITO, e o número é MEDIDO** (`ph2d-mesh/tests/it/measure_extract.rs`): o
 /// relaxamento da costura **CONVERGE**, e o que ele compra por passada cai
 /// rápido. Numa costura serrilhada — a que uma mão pintada deixa — a rugosidade
 /// da beira vai de **0,09369 a 0,05117 em oito passadas (−45%)**, e da oitava em
@@ -92,7 +92,7 @@ pub(super) fn always(_: &Sculpt3dUi) -> bool {
 /// declare `elastic_field`) não existe curva do dab — o suporte é o
 /// `kelvinlet::rim_landing`, que é uma indicadora com aterrissagem, e o
 /// `shaped_distance` **não é chamado**. Medido pela porta do produto em
-/// `ph2d-sculpt3d/tests/measure_where_the_curve_knobs_reach.rs`
+/// `ph2d-sculpt3d/tests/it/measure_where_the_curve_knobs_reach.rs`
 /// (`neither_curve_knob_reaches_an_elastic_field`): dois valores de dureza dão o
 /// mesmo barro **ao bit**, e o MESMO verbo no `s-mode` os separa.
 ///

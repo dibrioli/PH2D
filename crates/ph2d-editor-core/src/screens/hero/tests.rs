@@ -289,7 +289,7 @@ fn hero_apply_event_unrelated_click_returns_false() {
 // `view.widget_gallery_visible` (migrated to `panel_visibility`) and
 // asserts on `paint_hero_screen` output that needs the typed registry
 // installed with `WidgetGalleryPanel`. Recreated at
-// `crates/ph2d-panel-widget-gallery/tests/widget_gallery_paint.rs`.
+// `crates/ph2d-panel-widget-gallery/tests/it/widget_gallery_paint.rs`.
 /// Regression: the Widget Gallery must publish content_h /
 /// visible_h to the store after painting so the wheel dispatch
 /// can clamp the scroll bound on `GAL_PANEL`. Without this the
@@ -613,7 +613,7 @@ fn picking_filter_option_sets_project_and_raises_action() {
 // `grid.snap_state.panel_visible` field (now removed) and routes a
 // `hero.apply_event` that needs the typed `GridSnapPanel` installed.
 // Recreated at
-// `crates/ph2d-panel-grid-snap/tests/grid_snap_paint.rs`.
+// `crates/ph2d-panel-grid-snap/tests/it/grid_snap_paint.rs`.
 /// Same shape as `gallery_publishes_scroll_bounds_after_paint`, but
 /// for the Grid Settings floating panel. Pins the end-to-end wheel
 /// pipeline so Enio's "scroll wheel doesn't work" report has a
@@ -689,7 +689,7 @@ fn grid_settings_publishes_scroll_bounds_and_wheel_advances_scroll() {
 // ADR-0029 Phase C.3: disabled in editor-core — touches
 // `view.widget_gallery_visible` and routes a `hero.apply_event` that
 // needs the typed registry with `WidgetGalleryPanel`. Recreated at
-// `crates/ph2d-panel-widget-gallery/tests/widget_gallery_paint.rs`.
+// `crates/ph2d-panel-widget-gallery/tests/it/widget_gallery_paint.rs`.
 /// Regression: right-clicking inside the gallery body → choosing
 /// "Create note" must push a `NoteData` keyed on `GAL_PANEL` (NOT
 /// `INSP_PANEL`) so the gallery renders it on the next frame. The
@@ -749,7 +749,7 @@ fn gallery_create_note_targets_gal_panel() {
 // ADR-0029 Phase C.3: disabled in editor-core — touches
 // `view.widget_gallery_visible` and routes a `hero.apply_event` that
 // needs the typed registry with `WidgetGalleryPanel`. Recreated at
-// `crates/ph2d-panel-widget-gallery/tests/widget_gallery_paint.rs`.
+// `crates/ph2d-panel-widget-gallery/tests/it/widget_gallery_paint.rs`.
 /// Regression: right-clicking on a gallery section header →
 /// choosing a color must write `section_outline_color` so the
 /// gallery's next paint draws the colored ring around that

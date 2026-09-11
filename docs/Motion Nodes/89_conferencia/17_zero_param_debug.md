@@ -54,7 +54,7 @@ derivada, esquecer fá-lo-ia **desaparecer em silêncio**, que é o pior dos doi
 
 ⇒ **Três achados, não um:** os dois `debug.*` saem do catálogo, e o `pulse.signal` ganha
 `NodeUiManifest` (*Signal*, categoria `Output`). O censo virou gate permanente:
-`shells/desktop/tests/every_offered_node_has_a_name_and_every_fixture_has_none.rs`.
+`shells/desktop/tests/it/every_offered_node_has_a_name_and_every_fixture_has_none.rs`.
 
 ### §0.2 — O que o LOWERING deixa passar do grafo para a tela (a medição que decide o `motion.output`)
 

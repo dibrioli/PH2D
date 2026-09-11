@@ -289,7 +289,7 @@ naquela).
 
 ### Gates (todos mutation-tested)
 
-`crates/ph2d-audio-edit/tests/pieces_and_structure.rs` (18) — permutação · reorder byte-reversível ·
+`crates/ph2d-audio-edit/tests/it/pieces_and_structure.rs` (18) — permutação · reorder byte-reversível ·
 undo restaura os cortes · markers colados no áudio (reorder E ripple delete) · stretch muda
 comprimento e não pitch · **canais travados juntos** · split não move amostra.
 
@@ -298,7 +298,7 @@ canal atrasado tem auto-similaridade idêntica e as duas buscas dão a mesma res
 mostrou. Agora usa **carriers diferentes sob envelope compartilhado**: baseline 0,01 frames de desvio,
 mutante 20,4. Se alguém mexer no sinal de teste, **re-mute**.
 
-`crates/ph2d-panel-audio-editor/tests/seam.rs` (+6) + `no_dead_buttons.rs` (estendido).
+`crates/ph2d-panel-audio-editor/tests/it/seam.rs` (+6) + `no_dead_buttons.rs` (estendido).
 
 ### Aberto / não coberto
 

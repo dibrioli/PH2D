@@ -63,7 +63,7 @@ resolver `fn luts`. Espelho de `register_reduces`.
 - ⚠️ **`codegen::kernel_module` mudou de assinatura: 6 → 7 args** (ganhou `luts: &[LutSpec]`
   após `reduces`). **Este é o único `pub fn` cross-cutting da linha.** Todos os chamadores já
   atualizados: `encode.rs` (produto), `tests/gpu_cpu_parity.rs`, `codegen_tests.rs`,
-  `tests/generated_wgsl_validates.rs`, `shells/desktop/tests/motion_gpu_kernel_budgets.rs`.
+  `tests/generated_wgsl_validates.rs`, `shells/desktop/tests/it/motion_gpu_kernel_budgets.rs`.
 - `encode.rs`: `encode_kernel_stage` ganhou o param `luts`, anexa os buffers ao bind group
   **após os reduces**; `build_luts` (lê o text param via `graph.node_text_param_overrides`,
   sobe a tabela `f32`). `lib.rs`: `lut_hold` (segura até o submit), construído **fora do loop

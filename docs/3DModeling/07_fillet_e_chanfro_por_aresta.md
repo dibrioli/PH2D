@@ -3,7 +3,7 @@
 > **Pergunta do Enio, 2026-08-28:** *"avalie a possibilidade de chamfer e fillet por edge e por
 > vertex, em vez do objeto todo. relate"*
 >
-> Sonda executável: [`spike_per_edge_radius.rs`](../../crates/ph2d-field-eval/tests/spike_per_edge_radius.rs)
+> Sonda executável: [`spike_per_edge_radius.rs`](../../crates/ph2d-field-eval/tests/it/spike_per_edge_radius.rs)
 > — 3 gates + 1 medição, `0,43 s`. Tudo o que este doc afirma sai dela ou de um doc já medido.
 
 ---

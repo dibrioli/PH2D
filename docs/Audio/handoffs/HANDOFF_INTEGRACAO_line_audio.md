@@ -53,7 +53,7 @@ byte_identical_to_the_old_whole_buffer_loop` + os 6 de `streaming_sounds_identic
   edita o `Cargo.toml`**.
 - **`crates/ph2d-ui-testkit/src/lib.rs`**: **aditivo** — `MockPanelHost::store()` (view read-only, p/
   um seam test assertar o que `populate` semeou). Nada muda de forma.
-- **`crates/ph2d-editor-core/tests/hr15_no_hardcoded_ui_strings.rs`**: **1 linha** — a allowlist
+- **`crates/ph2d-editor-core/tests/it/hr15_no_hardcoded_ui_strings.rs`**: **1 linha** — a allowlist
   apontava `ph2d-panel-audio-editor/src/paint.rs`; a string se mudou p/ `paint_sections.rs` quando o
   painel virou seções colapsáveis. **Mesma string, arquivo novo.**
 - **`CLAUDE.md` §5** e **`SKILL_Stack`**: entradas de estado do módulo de áudio.

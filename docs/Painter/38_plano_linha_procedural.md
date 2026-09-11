@@ -297,7 +297,7 @@ porque *os três são o mesmo assunto*.
 ## 6. O que fica FORA, com o motivo
 
 - **Pressure Shapes.** Temos a feature (`dynamics.rs`) e **não temos o dispositivo**:
-  `shells/desktop/tests/the_desktop_shell_has_no_pen_pressure.rs` demonstra, varrendo a grade inteira
+  `shells/desktop/tests/it/the_desktop_shell_has_no_pen_pressure.rs` demonstra, varrendo a grade inteira
   de sliders, que nenhuma combinação move um pixel. A cura é **subir o winit** (fundação de janela do
   app inteiro ⇒ cross-line, classe ADR) ou um caminho de tablet por plataforma. Não é wave de pincel.
 - **A matriz de dinâmica completa** (doc 37 §2). Depois da W2 e da W3 haverá duas entradas e três

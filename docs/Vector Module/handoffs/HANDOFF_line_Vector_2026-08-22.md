@@ -96,12 +96,12 @@ grupo, e é isso que faz todo arquivo ≤ v86 desenhar igual.
    de pendência ~2611, o braço do clique ~2963, a chamada do selo ~2430, a publicação do `absorbed`
    ~7530 e o bloco de honra ~7789). É o arquivo mais disputado do repo: **espere conflito textual
    aqui** e resolva pelos ESTÁGIOS do índice, nunca pelos marcadores.
-2. ⚠️ **`shells/desktop/tests/the_boolean_cooks_before_the_alignment.rs`** — o arch-gate da ORDEM
+2. ⚠️ **`shells/desktop/tests/it/the_boolean_cooks_before_the_alignment.rs`** — o arch-gate da ORDEM
    dos produtores mudou de âncora (`"self.bool_live"` → a chamada do cozimento). **Se outra linha
    tocou o mesmo gate, funda com cuidado**: a âncora velha volta a ser ambígua no instante em que
    alguém lê `self.bool_live` mais cedo no frame — e um dos dois gates ficava **VERDE POR
    ACIDENTE** com ela.
-3. **`crates/ph2d-editor-core/tests/architecture_panel_loc_cap.rs`** — a permissão de
+3. **`crates/ph2d-editor-core/tests/it/architecture_panel_loc_cap.rs`** — a permissão de
    `paint_hierarchy_row` **desceu** 291 → 281 (a tabela de tom saiu para `badge_tone`). ⛔ Se um
    merge a fizer subir, é regressão: *"as permissões encolhem, nunca crescem"*.
 4. **`crates/ph2d-panel-hierarchy/src/row.rs`** — o campo `badge` da linha, que era sempre `None`

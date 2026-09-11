@@ -123,7 +123,7 @@ DESENHADO*.
 
 | Gate | Onde | Afirma |
 |---|---|---|
-| `an_opacity_track_fades_a_vector_path` | `ph2d-timeline/tests/a_vector_path_fades.rs` | a rampa aterra no componente |
+| `an_opacity_track_fades_a_vector_path` | `ph2d-timeline/tests/it/a_vector_path_fades.rs` | a rampa aterra no componente |
 | `an_undriven_vector_path_reads_opaque_instead_of_zero` | idem | o `rest` de um caminho não conduzido é **1,0** — `0,0` faria toda track nova nascer invisível |
 | `the_rest_of_a_vector_path_comes_from_the_bridge_not_from_a_sprite` | idem | o braço de leitura é o par do de escrita |
 | `the_bridge_is_exclusive_and_never_writes_both_substrates` | idem | ⭐ **nasceu de uma mutação sobrevivente** (§4.1) |
@@ -266,7 +266,7 @@ motivo escrito lá). *Um zero de «não medido» e um de «vale zero» são o me
 | `the_isolated_draw_fades_with_the_frames_resolved_style` | `ph2d-vec-render/src/standalone_tests.rs` | a forma isolada honra o estilo — **e `alpha = 255` é byte-idêntico** (sem essa metade a cura compra correcção com um re-cook por quadro) |
 | `the_derived_geometry_fades_with_the_same_style` | idem | o outro braço (offset/pattern/espelho), que a 1.ª fixtura não alcançava |
 | `the_job_carries_the_style_the_key_was_built_from` | `fx_live_memo_tests.rs` | o desenho recebe **o mesmo** estilo que entrou na chave |
-| `the_batch_draws_with_the_frames_resolved_style` | `shells/desktop/tests/the_atlas_clips_every_cell.rs` | arch-gate — a chamada precisa de GPU, e é o idioma que aquele ficheiro já usa para as outras duas leis do `cook_batch` |
+| `the_batch_draws_with_the_frames_resolved_style` | `shells/desktop/tests/it/the_atlas_clips_every_cell.rs` | arch-gate — a chamada precisa de GPU, e é o idioma que aquele ficheiro já usa para as outras duas leis do `cook_batch` |
 | `two_rows_of_the_same_object_carry_different_numbers` | `track_values_tests.rs` | a chave é o ALVO (por `entity`, X e Y mostrariam o mesmo número) |
 | `a_channel_with_no_number_publishes_nothing_not_zero` | idem | a ausência não vira zero pintado |
 | `a_row_that_left_takes_its_number_with_it` | idem | a publicação limpa |

@@ -106,7 +106,7 @@ Sem inconsistência aritmética; MAX_ASSET_SIZE atua como umbrella cap consisten
 - **Crate:** `crates/ph2d-vector-doc/src/postcard_schema.rs`
   - `AssetBounds`: 7 fields novos + defaults.
   - `bounded_decode`: 7 `check_bound` calls novos.
-- **Tests:** `crates/ph2d-vector-doc/tests/triangle_round_trip.rs`
+- **Tests:** `crates/ph2d-vector-doc/tests/it/triangle_round_trip.rs`
   - 7 fixtures adversariais novas.
   - `asset_bounds_defaults_match_adr_0056_section_2_6` expandido para 13 assertions.
 

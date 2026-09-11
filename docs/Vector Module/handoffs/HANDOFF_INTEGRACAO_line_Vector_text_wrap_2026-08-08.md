@@ -177,7 +177,7 @@ passo seguinte.
 só o gate novo sangra. *Dois gates verdes compostos não provam a corrente inteira*
 [[feedback_green_composed_gates_can_hide_an_unproven_connector]].
 
-O gate novo é **`shells/desktop/tests/the_width_chips_are_wired.rs`** (3 asserções): cada chip é
+O gate novo é **`shells/desktop/tests/it/the_width_chips_are_wired.rs`** (3 asserções): cada chip é
 citado por um braço que **escreve o pedido** · Auto pede `Some(None)` e Fixed **semeia** (sem a
 2ª metade, dois botões que fazem a mesma coisa passariam) · e o dreno chama a porta E escreve o
 `wrap_width` dos textos **selecionados**. ⚠️ Ele afirma a **relação**, nunca uma distância em

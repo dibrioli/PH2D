@@ -164,7 +164,7 @@ certa, e o módulo simplesmente **não armava**. Virou um **parse**; dois gates 
 | suíte **DEBUG** das crates do módulo | ✅ **em série** — *a linha tem precedente registrado: o `ph2d-flip-colorize` panicava só em debug* |
 
 ⚠️ **FLAKE DE CARGA CONHECIDA, e ela NÃO é desta linha.** Rodando as cinco crates do módulo em
-paralelo em **debug**, dois gates de `crates/ph2d-mesh/tests/measure_normals.rs` reprovam —
+paralelo em **debug**, dois gates de `crates/ph2d-mesh/tests/it/measure_normals.rs` reprovam —
 `measure_normals_parallel_speedup` e `the_region_refresh_is_bound_by_the_footprint_not_by_the_mesh`.
 Os dois são gates de **RAZÃO** com relógio, e **passam isolados** (verificado: 3/3). A linha **não
 toca aquele arquivo** (conferido por `git diff --name-only`), e é a mesma família do

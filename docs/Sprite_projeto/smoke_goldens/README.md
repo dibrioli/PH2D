@@ -2,7 +2,7 @@
 
 Pixel-identifiable PNG goldens for the smoke fixtures at [`assets/smoke_fixtures/sprite_inspector_v2/`](../../../assets/smoke_fixtures/sprite_inspector_v2/). Spec §15.8.2 protocol.
 
-W0 creates the directory only — the PNG goldens land wave-by-wave alongside their `.scene` fixtures (W2 / W3 / W4 / W5). The `smoke_fixture_renderable` gate ([`crates/ph2d-render/tests/smoke_fixture_renderable.rs`](../../../crates/ph2d-render/tests/smoke_fixture_renderable.rs)) asserts directory presence today; per-fixture load + golden-diff lands when the matching wave wires the feature.
+W0 creates the directory only — the PNG goldens land wave-by-wave alongside their `.scene` fixtures (W2 / W3 / W4 / W5). The `smoke_fixture_renderable` gate ([`crates/ph2d-render/tests/it/smoke_fixture_renderable.rs`](../../../crates/ph2d-render/tests/it/smoke_fixture_renderable.rs)) asserts directory presence today; per-fixture load + golden-diff lands when the matching wave wires the feature.
 
 | Wave | Goldens                                                                                                          |
 |------|------------------------------------------------------------------------------------------------------------------|

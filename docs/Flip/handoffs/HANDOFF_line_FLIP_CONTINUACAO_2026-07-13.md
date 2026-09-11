@@ -136,7 +136,7 @@ com as quinas afiadas, em qualquer zoom.
 
 1. **O oráculo é o PIXEL, não a geometria.** Três gates de geometria diziam "a borda do fill está a
    0,3 px do eixo" — e a tela mostrava a cor descolada. Renderize e OLHE:
-   `crates/ph2d-flip-render/tests/gpu_fill_fit.rs` (grava PNGs em `/tmp`, mede vazamento e transbordo).
+   `crates/ph2d-flip-render/tests/it/gpu_fill_fit.rs` (grava PNGs em `/tmp`, mede vazamento e transbordo).
    Rode `-- --ignored --nocapture`. **Estenda-o** com a sua cena antes de declarar vitória.
 2. **Varra o ZOOM.** O erro do contorno vetorizado é assado em DOC e a linha é px de TELA: o zoom
    **multiplica** o desvio. Um gate que mede num zoom só não vê o defeito (foi assim três vezes:

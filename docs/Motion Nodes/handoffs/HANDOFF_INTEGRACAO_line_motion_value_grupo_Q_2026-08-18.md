@@ -409,7 +409,7 @@ TRAP 1 da conferência vale para a foundation, não só para o catálogo.*
 
 ### Os gates (7 novos) e as 5 mutações
 
-`crates/ph2d-node-registry-init/tests/time_port.rs`, os três nós num laço:
+`crates/ph2d-node-registry-init/tests/it/time_port.rs`, os três nós num laço:
 
 | gate | o que prende |
 |---|---|

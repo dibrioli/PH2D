@@ -193,7 +193,7 @@ fn a_deliberate_corner_survives_the_simplification() {
 }
 
 /// **SONDA — o PASSO que o pipeline REAL produz, em raios.** O rasterizador tem um penhasco
-/// medido (`ph2d-flip-render/tests/painter_look.rs::measure_where_the_neighbour_budget_breaks`):
+/// medido (`ph2d-flip-render/tests/it/painter_look.rs::measure_where_the_neighbour_budget_breaks`):
 /// abaixo de `0,1875 × raio` o orçamento de vizinhos não cobre o alcance e a tinta some
 /// (−184 de 255 em `0,10·r`; **−255** em `0,05·r`). Esta sonda responde a única pergunta que
 /// decide se o penhasco é do PRODUTO: *que passo `stroke_from_samples` de fato entrega?*

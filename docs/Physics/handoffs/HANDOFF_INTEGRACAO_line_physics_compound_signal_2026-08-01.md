@@ -223,7 +223,7 @@ são **readouts** (contato, sinal, trigger), **autoria** (a peça editável, a a
 3. **`shells/desktop/src/render_loop/mod.rs`** — o dreno dos sinais foi posto **depois** do
    `physics_bridge::dispatch` e dos `break_reports`. A **ordem é load-bearing**: drenar antes
    do dispatch publica os eventos do tick anterior.
-4. **`shells/desktop/tests/every_physics_component_is_authorable.rs`** — `WRITERS` **6 → 7**
+4. **`shells/desktop/tests/it/every_physics_component_is_authorable.rs`** — `WRITERS` **6 → 7**
    (entrou `inspector_commits.rs`). Esta lista **falha alto** de propósito.
 5. **`physics_smoke.rs`** — as cenas `70`..`73` e as quatro entradas em `PAUSED_SCENES`.
    Lista compartilhada: **só ADICIONE**.

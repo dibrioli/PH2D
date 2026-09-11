@@ -261,7 +261,7 @@ conserte dentro de uma wave de filtro.
 - ⚠️ **Os três gates de LOC medem coisas diferentes, e um verde pode ser do gate
   errado:** o `architecture_workspace_file_loc_cap` (700) **EXCLUI `ph2d-panel-*`**;
   quem é dono deles é o `architecture_panel_loc_cap` (**600**, e só `src/**`); a shell
-  tem o `shells/desktop/tests/file_loc_caps.rs` (600). *Foi assim que o `state.rs`
+  tem o `shells/desktop/tests/it/file_loc_caps.rs` (600). *Foi assim que o `state.rs`
   chegou a 727 com um teto verde ao lado.*
 - ⚠️ **O `state.rs` do painel foi PARTIDO** (`slots.rs`), com **re-export** mantendo
   todo caminho — porque um arch-gate lê o fonte atrás de `VerbSlot::for_verb`. *Quem

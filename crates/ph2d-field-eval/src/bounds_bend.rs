@@ -10,7 +10,7 @@
 //! E ela não fica ali: a caixa da dobra é a entrada da torção, que é a entrada da inclinação, e é
 //! ela que o `bend_reach` lê para dizer quanta parede o divisor cobra. *Uma folga na primeira lei
 //! da pilha multiplica-se por todas as seguintes*
-//! ([`crates/ph2d-field-render/tests/what_a_stack_of_deformers_costs_the_march.rs`]).
+//! ([`crates/ph2d-field-render/tests/it/what_a_stack_of_deformers_costs_the_march.rs`]).
 //!
 //! # ⭐ A conta, e por que ela é ESTÁVEL
 //!

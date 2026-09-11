@@ -145,7 +145,7 @@ fora dos arquivos desta linha, é escalada pro Enio, não renegociação.
   a **aba nomeada** no grupo; arrastar a alça ↔ na régua redimensiona a duração com snap.
 
 ⚠️ **Flake conhecida, PRÉ-EXISTENTE** (não desta linha): `the_cost_of_depth_is_linear_not_explosive`
-(`ph2d-timeline/tests/nesting_clock.rs`) é gate de RAZÃO sensível a carga — passa
+(`ph2d-timeline/tests/it/nesting_clock.rs`) é gate de RAZÃO sensível a carga — passa
 isolado; **re-rode sozinho antes de suspeitar do merge**.
 
 ---

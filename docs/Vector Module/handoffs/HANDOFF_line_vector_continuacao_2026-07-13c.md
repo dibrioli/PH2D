@@ -200,7 +200,7 @@ mecanismo, e o blend seria o primeiro deles.
 
 ## §6 — Pendências e ressalvas
 
-- **`crates/ph2d-flip-render/tests/pack_perf.rs`** — o agente da wave passada mexeu **fora do
+- **`crates/ph2d-flip-render/tests/it/pack_perf.rs`** — o agente da wave passada mexeu **fora do
   escopo** (o teto de perf virou por-perfil: 700 ms debug / 120 ms release, porque o teto único
   de 120 ms era calibrado para o release e o `nextest --workspace` roda em **debug**, onde o
   mesmo trabalho leva 78 ms ocioso e passa de 130 ms sob carga). **O Enio ainda não vetou nem
@@ -227,6 +227,6 @@ mecanismo, e o blend seria o primeiro deles.
 | A ponte com o frame | `shells/desktop/src/shape_build_gesture.rs` — `build_session_upkeep/down/move/up/cancel` |
 | O arranjo (as faces) | `crates/ph2d-vec-boolean/src/arrangement.rs` — **não jogue fora e não construa um DCEL**: o realce e o resultado saírem do MESMO motor é a única razão de não poderem divergir |
 | O realce | `crates/ph2d-vec-render/src/build_faces.rs` — `edge_strokes()` é onde mora "o ponto sobe pelo afim, a espessura não" |
-| Os gates | `shells/desktop/src/shape_build_tests.rs` (a cena do artista) · `crates/ph2d-vec-boolean/tests/arrangement_product_shapes.rs` (o arranjo, com formas do produto) · `build_faces.rs::tests` (o zoom) |
+| Os gates | `shells/desktop/src/shape_build_tests.rs` (a cena do artista) · `crates/ph2d-vec-boolean/tests/it/arrangement_product_shapes.rs` (o arranjo, com formas do produto) · `build_faces.rs::tests` (o zoom) |
 | A cena de smoke | `shells/desktop/src/build_smoke.rs` (`PH2D_BUILD_SMOKE`) |
-| A medição | `crates/ph2d-vec-boolean/tests/measure_face_hit.rs` — 19,9 µs/hover com 8 formas de 64 verts. **Não otimize sem medir de novo.** |
+| A medição | `crates/ph2d-vec-boolean/tests/it/measure_face_hit.rs` — 19,9 µs/hover com 8 formas de 64 verts. **Não otimize sem medir de novo.** |

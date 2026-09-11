@@ -13,7 +13,7 @@
 > critério 2, 27/08): a família é um conjunto de receitas aparentadas, e o cartão oferece **uma
 > fileira com o nome de cada versão** — o modelo dos *Prefab Variants* do Unity, derivação sem
 > eixos. O nome é **rótulo**, e há censo executável a prová-lo
-> ([`the_name_declares_nothing.rs`](../../shells/desktop/tests/the_name_declares_nothing.rs)).
+> ([`the_name_declares_nothing.rs`](../../shells/desktop/tests/it/the_name_declares_nothing.rs)).
 >
 > ### ⛔ Recusas MEDIDAS — não as reconstrua sem ler
 >

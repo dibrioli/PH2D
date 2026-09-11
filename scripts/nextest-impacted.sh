@@ -101,10 +101,11 @@ for name in sorted(hit):
 
 if [ -z "$CHANGED" ]; then
     echo "[nextest-impacted] no crate changes vs ${BASE}; running determinism golden only."
-    # `binary(...)` matches the TEST BINARY name (tests/transform_determinism.rs);
-    # `test(...)` matches individual fn NAMES (cross_os_golden_hash_pinned, …) which
-    # do NOT contain "transform_determinism" → it silently matched 0 (false-green).
-    exec cargo nextest run "${FAIL_MODE[@]}" -E 'binary(transform_determinism)' --cargo-profile ci-test "$@"
+    # Desde 2026-09-10 (W1: um binário de teste por crate) o ficheiro é o MÓDULO
+    # `transform_determinism` do binário `it` da ph2d-ecs, e o nome de cada teste leva o
+    # prefixo do módulo — `test(/^transform_determinism::/)` casa os dele e só os dele.
+    # (Antes era `binary(transform_determinism)`; `binary(it)` casaria TODAS as crates.)
+    exec cargo nextest run "${FAIL_MODE[@]}" -E 'test(/^transform_determinism::/)' --cargo-profile ci-test "$@"
 fi
 
 # rdeps(set) = the crate AND everything that depends on it (the real "impacted"
@@ -118,7 +119,7 @@ done
 # can never silently skip it locally. `binary(...)` (NOT `test(...)`) — the golden
 # lives in the `transform_determinism` test binary; its fn names don't contain that
 # string, so `test(/transform_determinism/)` matched 0 and gave a false-green gate.
-EXPR="$EXPR + binary(transform_determinism)"
+EXPR="$EXPR + test(/^transform_determinism::/)"
 
 # ⭐⭐⭐ REDE OBRIGATÓRIA nº 2: os gates de ARQUITETURA que varrem a WORKSPACE INTEIRA.
 #
@@ -131,7 +132,7 @@ EXPR="$EXPR + binary(transform_determinism)"
 # ⚠️ É um ponto cego ESTRUTURAL, não um esquecimento: um gate cujo domínio é a
 # workspace inteira nunca pertence ao fecho de dependências de quem o viola. *Um
 # selector de impacto por dependências é cego a toda regra global.*
-EXPR="$EXPR + binary(architecture_workspace_file_loc_cap) + binary(file_loc_caps)"
+EXPR="$EXPR + test(/^architecture_workspace_file_loc_cap::/) + test(/^file_loc_caps::/)"
 
 echo "[nextest-impacted] changed: $(echo "$CHANGED" | tr '\n' ' ')"
 echo "[nextest-impacted] -E '$EXPR'"

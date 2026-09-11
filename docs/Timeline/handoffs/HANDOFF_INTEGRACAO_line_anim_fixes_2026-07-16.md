@@ -30,9 +30,9 @@
 ```
 crates/ph2d-timeline/src/stack.rs              (hold_at)
 crates/ph2d-timeline/src/stack_eval.rs         (1 chamada)
-crates/ph2d-timeline/tests/loop_wrap.rs        NOVO
+crates/ph2d-timeline/tests/it/loop_wrap.rs        NOVO
 crates/ph2d-panel-timeline/src/populate.rs     (1 linha)
-crates/ph2d-panel-timeline/tests/close_button_seam.rs  NOVO
+crates/ph2d-panel-timeline/tests/it/close_button_seam.rs  NOVO
 ```
 
 **Zero foundational, zero shell, zero `render_loop`.** É o oposto da linha anterior — nada

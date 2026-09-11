@@ -402,7 +402,7 @@ fila esgota, o custo é o **ótimo inteiro demonstrado** (`prova = sim`).
 
 Régua: `ph2d-quadbench/layout.py` reconstrói o layout de `.patch`/`.corners` e
 escreve um ficheiro de **números** (nenhum formato do oráculo entra na engine);
-a sonda é [`tests/oracle_bench.rs`](../../../crates/ph2d-quantize/tests/oracle_bench.rs).
+a sonda é [`tests/oracle_bench.rs`](../../../crates/ph2d-quantize/tests/it/oracle_bench.rs).
 Alvo de cada arco = comprimento ÷ aresta média da saída final do oráculo.
 
 | malha | patches (valências) | arcos | meio-inteiras | expansões | fluxos | aumentos | **prova** | custo → limite | ms |
@@ -444,7 +444,7 @@ podia matar o plano, e ela chegou **antes** do F3, como o §6 mandava.
 
 ### ⭐ E o que custa, medido — o custo NÃO é o tamanho, é a HETEROGENEIDADE
 
-Sonda: [`tests/scaling.rs`](../../../crates/ph2d-quantize/tests/scaling.rs), sobre grelhas toroidais de
+Sonda: [`tests/scaling.rs`](../../../crates/ph2d-quantize/tests/it/scaling.rs), sobre grelhas toroidais de
 `n × m` patches de 4 lados (`2·n·m` arcos). *"Dispersão"* mistura alvos diferentes arco a arco.
 
 | arcos | dispersão | aumentos de fluxo | ms |
@@ -2256,7 +2256,7 @@ fielmente o que o layout manda.
 |---|---|---|
 | a semente do `θ` (a cura da explosão) | `ph2d-crossfield/src/continuation.rs` | ⭐ medida e no lugar, **inerte** enquanto o peso for `0` |
 | o termo de alinhamento + a varredura | `ALIGN_WEIGHT` | ⭐ funciona (`25,7° → 13,7°`), **desligado** pelo bloqueio |
-| ⭐⭐ o gate do género | `ph2d-quadfill/tests/alignment_topology.rs` | varre `[0, ALIGN_WEIGHT]` — **liga-se sozinho** quando a constante sair de zero |
+| ⭐⭐ o gate do género | `ph2d-quadfill/tests/it/alignment_topology.rs` | varre `[0, ALIGN_WEIGHT]` — **liga-se sozinho** quando a constante sair de zero |
 | ⛔ o vermelho pré-existente | `the_genus_survives_on_every_torus` | `#[ignore]`, com o mecanismo no doc |
 | a rede da porta (`aligned` no relatório) | `quad_remesh_global` | guardada por `ALIGN_WEIGHT == 0`, para não pagar a cadeia duas vezes por nada |
 
@@ -3008,7 +3008,7 @@ produz ali uma fronteira malformada (*"o lado 5 acaba em 81 e o lado 6 começa e
 manhã e é agora que ela ganha o lugar dela.*
 
 ⛔ **E a fragilidade tem gate próprio e vermelho:**
-`the_tracer_survives_the_aligned_field` (`#[ignore]`, em `ph2d-trace/tests/trace.rs`).
+`the_tracer_survives_the_aligned_field` (`#[ignore]`, em `ph2d-trace/tests/it/trace.rs`).
 
 ### ⭐ Um gate mais severo que o produto não mede o produto
 
@@ -3432,7 +3432,7 @@ rectângulo — uma grade construída dentro dele nasce enviesada. ⛔ **Não me
 
 ### ⭐ A isolação: 2D puro, sem malha, sem campo, sem cadeia
 
-[`tests/fan_sector.rs`](../../../crates/ph2d-quadfill/tests/fan_sector.rs) monta **um**
+[`tests/fan_sector.rs`](../../../crates/ph2d-quadfill/tests/it/fan_sector.rs) monta **um**
 sector do leque no domínio — o caso **ideal**: `n`-gono regular, cortes a meio de cada
 lado, centro na origem — e corre a **mesma** [`fan::coons`](../../../crates/ph2d-quadfill/src/fan.rs)
 que o produto corre. Depois mede o enviesamento das células.
@@ -3622,7 +3622,7 @@ Mais três instrumentos, porque a linha corrigida não impede a próxima:
 - **`FillReport::slid` / `quad_patches`** — numerador e denominador, pela mesma razão
   que o `fell_back` existe: *«idêntico» lê igual quando a cura não funciona e quando a
   cura nunca correu*.
-- **Gates** em [`tests/rulers.rs`](../../../crates/ph2d-quadfill/tests/rulers.rs), os
+- **Gates** em [`tests/rulers.rs`](../../../crates/ph2d-quadfill/tests/it/rulers.rs), os
   três provados por mutação (repor os dois bugs originais deixa os três vermelhos).
 
 ## §4-tresetquadragies — ⭐⭐⭐ O MAPA CONFORME: rejeitado, e ele deu NOME ao defeito
@@ -4257,7 +4257,7 @@ que não seja escolhida localmente.
 |---|---|---|
 | «o campo dentro dos nossos patches não é combável, a dívida é do F3» | `0` patches sujos em 3 das 4 fixturas, esfera lisa incluída | [`aligned.rs`](../../../crates/ph2d-quadfill/src/aligned.rs) |
 | uma **barra em graus** sobre a holonomia | a grandeza não chega a `90°`; a resposta é um **inteiro** | [`comb.rs`](../../../crates/ph2d-crossfield/src/comb.rs) |
-| `assert!(holonomia >= 0.0)` como rede | tautologia sobre um ângulo — passa com `0` de «não medido» | [`interior.rs`](../../../crates/ph2d-quadfill/tests/interior.rs) |
+| `assert!(holonomia >= 0.0)` como rede | tautologia sobre um ângulo — passa com `0` de «não medido» | [`interior.rs`](../../../crates/ph2d-quadfill/tests/it/interior.rs) |
 
 ## §4-unetquinquagies — ⭐⭐⭐ O PONTO FIXO SOBRE O LAYOUT: contrai a `½`, é alcançado, e não endireita nada (2026-08-23)
 

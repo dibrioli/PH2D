@@ -89,7 +89,7 @@ pub fn populate(store: &mut WidgetStore) {
     //
     // `image_action_pills()` é a mesma função que o painter chama (e traz o seu próprio fallback
     // pré-registry), então painter e registo **não podem** divergir sem uma edição que os separe.
-    // Gate do comportamento: `ph2d-tool-registry-init/tests/every_image_tool_pill_dispatches.rs`.
+    // Gate do comportamento: `ph2d-tool-registry-init/tests/it/every_image_tool_pill_dispatches.rs`.
     for pill in image_action_pills() {
         store.register(
             pill.id,

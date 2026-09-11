@@ -170,7 +170,7 @@ Na worktree, ANTES do rebase:
 - `cargo clippy --all-targets` nas crates tocadas + shell: **0 warnings**.
 - `cargo fmt --all`: limpo.
 - **`architecture_workspace_file_loc_cap`** (crates, 700) **e**
-  `shells/desktop/tests/file_loc_caps.rs` (shell, 600): verdes. ⚠️ **Os DOIS** —
+  `shells/desktop/tests/it/file_loc_caps.rs` (shell, 600): verdes. ⚠️ **Os DOIS** —
   o segundo não roda num `cargo test -p` filtrado e já ficou vermelho-latente
   nesta linha três vezes.
 - `node_id_collisions` · `no_tofu_glyphs` · `arch_safe_clamp_only` ·

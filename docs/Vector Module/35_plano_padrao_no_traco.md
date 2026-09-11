@@ -258,9 +258,9 @@ restore (com `utime`, senão o cargo fica *stale*).
 | 7 | `the_target_chip_only_shows_when_both_exist` | idem |
 
 Mais a costura das duas fileiras novas
-([`seam_stroke_paint.rs`](../../crates/ph2d-panel-vector/tests/seam_stroke_paint.rs), gesto REAL) e os
+([`seam_stroke_paint.rs`](../../crates/ph2d-panel-vector/tests/it/seam_stroke_paint.rs), gesto REAL) e os
 quatro sítios da shell
-([`the_stroke_paint_row_is_wired.rs`](../../shells/desktop/tests/the_stroke_paint_row_is_wired.rs)).
+([`the_stroke_paint_row_is_wired.rs`](../../shells/desktop/tests/it/the_stroke_paint_row_is_wired.rs)).
 
 ---
 

@@ -84,7 +84,7 @@ foram (erro sistemático) são perguntas diferentes.
 
 ## Gates
 
-**`ph2d-render/tests/impasto_light_gpu.rs`** (`--ignored`, GPU real):
+**`ph2d-render/tests/it/impasto_light_gpu.rs`** (`--ignored`, GPU real):
 - `gpu_impasto_light_matches_the_cpu_pass` — 5 materiais, contra `apply_impasto_light`.
 - `the_shader_leaves_flat_paint_byte_identical` / `the_shader_does_not_touch_bare_paper` — `assert_eq!`.
 

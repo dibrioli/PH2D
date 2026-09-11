@@ -188,13 +188,13 @@ crates/ph2d-render/src/layer_compositor/{mod,tests}.rs   composite_source() + os
 crates/ph2d-render/src/layer_compositor/compositor/mod.rs o pipeline usa a porta
 crates/ph2d-render/src/fx_stack{,_shader}.rs             module_sources + fx_blend + Globals.blend
 crates/ph2d-render/src/fx_stack_tests.rs                 NOVO (6 gates CPU, incl. naga)
-crates/ph2d-render/tests/fx_stack_blend_gpu.rs           NOVO (4 gates + a sonda da cena)
+crates/ph2d-render/tests/it/fx_stack_blend_gpu.rs           NOVO (4 gates + a sonda da cena)
 crates/ph2d-render/tests/fx_stack_*.rs                   + `blend: 0` nos literais
 crates/ph2d-ecs/src/vec_filter{,_tests}.rs               o modelo + o split de LOC
 crates/ph2d-editor-core/src/ids/chrome/vector_filters.rs os ids do chip e das opções
 crates/ph2d-panel-vector/src/{paint,populate,event,state}_filters.rs  a fileira Blend
 crates/ph2d-panel-vector/src/{paint,state,ids,lib,paint_sections}.rs  o popover diferido
-crates/ph2d-panel-vector/tests/seam_filters.rs           + 2 gates, fixtures atualizadas
+crates/ph2d-panel-vector/tests/it/seam_filters.rs           + 2 gates, fixtures atualizadas
 shells/desktop/src/fx_live{,_tests}.rs                   blend_code() + 2 gates
 shells/desktop/src/render_loop/mod.rs                    o edit + o publish dos nomes
 shells/desktop/src/fx_blend_smoke.rs                     NOVO (a cena =34)

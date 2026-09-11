@@ -143,7 +143,7 @@ display é função pura do `keep`). Confirmado por render-and-look.
 | `cargo test -p ph2d-tool-painter` | 834 passaram |
 | `cargo fmt --check` (pin **1.95**) | limpo |
 | `cargo clippy --all-targets` | **0 warnings** nas crates tocadas |
-| LOC caps | verdes nos **dois** gates (`architecture_workspace_file_loc_cap` **e** `shells/desktop/tests/file_loc_caps.rs`, que **não** roda com `cargo test -p`) |
+| LOC caps | verdes nos **dois** gates (`architecture_workspace_file_loc_cap` **e** `shells/desktop/tests/it/file_loc_caps.rs`, que **não** roda com `cargo test -p`) |
 | `arch_safe_clamp_only` | verde |
 | `typos` | **zero hits novos** (os 7 do `BUGS_painter.md` são falso-positivos de português **pré-existentes**, todos fora da entrada nova) |
 

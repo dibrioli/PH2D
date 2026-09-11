@@ -351,7 +351,7 @@ terminal no **VOLUME** (`APhysicsVolume::TerminalVelocity`), e nós temos zonas 
 ### ⟨FECHADA⟩ o que de facto shipou, e onde o plano errou
 
 **O "medido" acima era herdado, e foi RE-MEDIDO antes de uma linha ser escrita**
-(`ph2d-physics-ecs/tests/measure_terminal.rs`, a sonda que o §0 exige). Largando
+(`ph2d-physics-ecs/tests/it/measure_terminal.rs`, a sonda que o §0 exige). Largando
 de mil metros, a descida por segundo é:
 
 | s | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
@@ -460,7 +460,7 @@ controle aéreo** por uma janela — primitivo que **já existe**
 próprio jogador a segurar a direção contrária.
 ### ⟨FECHADA⟩ o que de facto shipou, e onde o plano errou
 
-**O "medido" acima foi RE-MEDIDO** (`ph2d-physics-ecs/tests/measure_launch.rs`),
+**O "medido" acima foi RE-MEDIDO** (`ph2d-physics-ecs/tests/it/measure_launch.rs`),
 e as duas metades confirmaram-se com número:
 
 * uma explosão ao lado do personagem alcança **1** corpo sob Spring e **ZERO**

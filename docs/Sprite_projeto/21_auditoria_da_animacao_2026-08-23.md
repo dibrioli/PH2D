@@ -144,7 +144,7 @@ afirma que todo id pintado está **registado** no store — o *segundo* dos trê
 doc dele nomeia (*pintar · registar · despachar*). O F1 é o **terceiro**, e um id perfeitamente
 registado que despacha a partir da fonte errada passa por ele sem um arranhão.
 
-⇒ [`seam_anim.rs`](../../crates/ph2d-panel-inspector/tests/seam_anim.rs), irmão do `seam_player.rs`,
+⇒ [`seam_anim.rs`](../../crates/ph2d-panel-inspector/tests/it/seam_anim.rs), irmão do `seam_player.rs`,
 com a mesma disciplina: todo clique passa pelo `click_at` **real**. Inclui
 `every_edit_the_model_declares_is_reachable_by_a_gesture` — as 18 variantes de `AnimFieldEdit`, com
 o `match` exaustivo a garantir que uma variante nova **não compila** até alguém a amostrar.
@@ -266,5 +266,5 @@ chamadores fora do laço de quadro) — a costura dele é coberta por um arch-ga
 - O relógio: [`sprite_anim_tick.rs`](../../shells/desktop/src/render_loop/sprite_anim_tick.rs)
 - O snapshot + o commit: [`inspector_anim.rs`](../../shells/desktop/src/render_loop/inspector_anim.rs) ·
   gates em `inspector_anim_tests.rs` (autoria) e `inspector_anim_transport_tests.rs` (transporte)
-- A costura de clique: [`seam_anim.rs`](../../crates/ph2d-panel-inspector/tests/seam_anim.rs) (10)
+- A costura de clique: [`seam_anim.rs`](../../crates/ph2d-panel-inspector/tests/it/seam_anim.rs) (10)
 - A spec: [`08_animation_inline.md`](08_animation_inline.md)

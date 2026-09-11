@@ -50,7 +50,7 @@ toca os 5 sites de painel-novo** (registry-init/shell/z-order/visibility/forward
 - **tool route:** `crates/ph2d-tool-painter/src/tool/paint/watercolor_settings.rs` —
   `route_brush_watercolor_event` (Click arm ~`:23-42`, SetValue arm ~`:94`). Novo setter + espelhar
   em `reset_brush_watercolor` (`:313`).
-- **gate automático:** o seam test `crates/ph2d-panel-painter-layers/tests/seam.rs:427/454` itera os
+- **gate automático:** o seam test `crates/ph2d-panel-painter-layers/tests/it/seam.rs:427/454` itera os
   DOIS arrays → cobre o id novo e **FALHA** se faltar o forward em `event.rs` ou o arm no route.
   (Esse é o alvo irrefutável do item — não "compila logo funciona".)
 

@@ -189,7 +189,7 @@ repeater · largura variável · mais primitivas · `vec_save` não serializa po
 
 ## §5 — Ressalvas e dívidas que eu deixo explícitas
 
-- **`crates/ph2d-flip-render/tests/pack_perf.rs`** — um agente anterior mexeu **fora do escopo**
+- **`crates/ph2d-flip-render/tests/it/pack_perf.rs`** — um agente anterior mexeu **fora do escopo**
   (o teto de perf virou por-perfil: 700 ms debug / 120 ms release). **O Enio nunca vetou nem
   aprovou.** Deixei: reverter reintroduz um vermelho intermitente na suíte. Revert de 3 linhas
   se ele quiser devolver ao dono do Flip.

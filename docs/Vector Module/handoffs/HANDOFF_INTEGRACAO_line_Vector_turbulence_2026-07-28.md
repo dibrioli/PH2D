@@ -94,7 +94,7 @@ de **0,058 para 0,12 ms** a 512², que é a própria dispersão da medição. É
 então nenhum texel viaja mais que isso, e `3σ` seria margem paga por um borrão que não existe.
 
 Sondas: `measure_the_turbulence_octave_cost` · `measure_what_an_extra_octave_still_moves` ·
-`measure_the_smoke_scene_pairs` (todas em `crates/ph2d-render/tests/fx_stack_turbulence_gpu.rs`).
+`measure_the_smoke_scene_pairs` (todas em `crates/ph2d-render/tests/it/fx_stack_turbulence_gpu.rs`).
 
 ---
 

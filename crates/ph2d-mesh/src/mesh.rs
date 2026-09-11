@@ -109,7 +109,7 @@ pub struct Mesh {
     ///
     /// ⚠️ **E ela NÃO é `2/|κ|`.** O proxy pela curvatura é grátis e sai exato
     /// numa esfera — e erra **420% num toro e 511% numa chapa**
-    /// (`ph2d-sdf/tests/measure_thickness.rs`), que é justamente a forma pela
+    /// (`ph2d-sdf/tests/it/measure_thickness.rs`), que é justamente a forma pela
     /// qual a luz atravessa. Um proxy que só acerta na fixture que o validaria
     /// não é uma medição.
     ///

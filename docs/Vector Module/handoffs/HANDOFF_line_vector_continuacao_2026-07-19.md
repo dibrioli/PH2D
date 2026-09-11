@@ -31,7 +31,7 @@ saíram maus na mesma leva** — o Enio: *"três implementações paupérrimas"*
 > Todos os oráculos perguntavam *"o buffer diz o que eu disse que dizia"*. Nenhum perguntava
 > *"isto parece a ferramenta cujo nome tem"*.
 
-O aparelho que faltava agora existe — **`crates/ph2d-vec-scene/tests/fx_look.rs`** + `tests/look/`:
+O aparelho que faltava agora existe — **`crates/ph2d-vec-scene/tests/it/fx_look.rs`** + `tests/look/`:
 
 ```
 PH2D_FX_LOOK_DIR=/tmp/look cargo test -p ph2d-vec-scene --test fx_look --release -- --ignored --nocapture

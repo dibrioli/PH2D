@@ -3,7 +3,7 @@
 **Status:** Accepted (sorting audit 2026-05-31) — fix implementado, golden intacto, repro test verde.
 **Amends:** [ADR-0073 — Sorting canonical order](0073-sorting-canonical-order.md) §2 (estágio YSort) + [amendment-1](0073-amendment-1.md) (mantém Z-bucketiza-antes).
 **Spec section refined:** `docs/Sprite_projeto/05_ordering_sorting.md` §5.2 passo-3 (semântica de cascata YSort).
-**Reference:** [`crates/ph2d-ecs/src/sort_key.rs`](../../../crates/ph2d-ecs/src/sort_key.rs) (`ysort_key`), [`crates/ph2d-ecs/tests/ysort_direction_and_root_repro.rs`](../../../crates/ph2d-ecs/tests/ysort_direction_and_root_repro.rs).
+**Reference:** [`crates/ph2d-ecs/src/sort_key.rs`](../../../crates/ph2d-ecs/src/sort_key.rs) (`ysort_key`), [`crates/ph2d-ecs/tests/it/ysort_direction_and_root_repro.rs`](../../../crates/ph2d-ecs/tests/it/ysort_direction_and_root_repro.rs).
 
 ---
 

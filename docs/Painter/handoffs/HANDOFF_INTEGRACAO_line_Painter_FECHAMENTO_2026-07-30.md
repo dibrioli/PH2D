@@ -105,7 +105,7 @@ referências cruzadas entre os três.
 
 ### 3.4 ⚠️ O pino do fingerprint MOVEU — e há um gate que o audita
 
-`crates/ph2d-wet-paint/tests/fingerprint.rs` tem agora **três** pinos:
+`crates/ph2d-wet-paint/tests/it/fingerprint.rs` tem agora **três** pinos:
 
 | const | rota | o que prova |
 |---|---|---|
@@ -160,7 +160,7 @@ vermelhos juntos é semântica.
 esconde pânico (o `voronoi.rs` do colorize). Rode as duas na árvore combinada.
 
 ⚠️ **Gates que um `cargo test -p` filtrado NÃO alcança** e que só a árvore combinada expõe:
-`shells/desktop/tests/file_loc_caps.rs` e os arch-gates de `shells/desktop/tests/` — a
+`shells/desktop/tests/it/file_loc_caps.rs` e os arch-gates de `shells/desktop/tests/` — a
 `line/Vector` e a `line/physics` já fecharam com eles vermelhos no próprio tip por causa disso.
 
 ---

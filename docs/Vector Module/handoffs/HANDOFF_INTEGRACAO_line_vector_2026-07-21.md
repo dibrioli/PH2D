@@ -42,7 +42,7 @@ Tudo aditivo salvo onde marcado. Nenhuma crate nova.
 | `crates/ph2d-ecs/src/scene/registry.rs` | registro do `VecOffset` — **e o contador subiu 32 → 33** | ⚠️ **ver §3** |
 | `crates/ph2d-editor-core/src/ids/chrome/vector.rs` | 23 ids novos (seção Expand + Apply de efeitos + os 2 modos de quina) | ✅ novos |
 | `crates/ph2d-editor-core/src/interaction/state/store_core.rs` | `Store::set_slider_value` — o painel republica o slider quando a seleção muda de offset | ✅ método novo |
-| `crates/ph2d-editor-core/tests/node_id_collisions.rs` | os ids novos entram na varredura de colisão | ✅ |
+| `crates/ph2d-editor-core/tests/it/node_id_collisions.rs` | os ids novos entram na varredura de colisão | ✅ |
 | `crates/ph2d-i18n/src/lib.rs` | 3 chaves: `panel.vector.section.expand`, `…mode.fillet`, `…mode.chamfer` | ✅ |
 | `crates/ph2d-vec-scene/` | `stroke_style.rs` / `width_profile.rs` / `stroke_plan.rs` (**arquivos novos**, extraídos do `lib.rs` pelo teto de LOC) + `path_ops::curve_bbox_in_frame` (pub novo) + `effect.rs`/`corner_live.rs`/`geometry.rs` (aditivo) | ⚠️ **ver §3** |
 | `crates/ph2d-vec-boolean/` | `expand.rs` + `expand_ribbon.rs` (**novos**) — `offset_path` / `outline_stroke` / `power_stroke` / `MIN_OFFSET` | ✅ novos |

@@ -29,7 +29,7 @@ use super::{ObjectId, SceneObject, Sculpt3dScene, SculptStroke};
 /// MEDIDA:** voxelizar é limitado por TRIÂNGULO e não por célula — subir a
 /// resolução de 64 para 192 (**23× as células**) custa só **1,52×**, enquanto
 /// subir a malha de 13,7 k para 425 k custa **11,3×**
-/// (`ph2d-sdf/tests/measure_ao.rs`). Um campo FINO é barato; então não há
+/// (`ph2d-sdf/tests/it/measure_ao.rs`). Um campo FINO é barato; então não há
 /// economia a fazer aqui, e um segundo número seria um knob que compra pouco e
 /// precisa concordar com o do remesh.
 const AO_FIELD_RESOLUTION: u32 = ph2d_sdf::DEFAULT_RESOLUTION;
@@ -399,7 +399,7 @@ impl Sculpt3dScene {
     ///
     /// ⚠️ **É um BOTÃO porque não cabe num pen-up, e o número é medido:** o campo
     /// custa ~301 ms e o traço ~37 ms na malha que a cena `=16` abre
-    /// (`ph2d-sdf/tests/measure_ao.rs`). Um passe automático por traço gastaria
+    /// (`ph2d-sdf/tests/it/measure_ao.rs`). Um passe automático por traço gastaria
     /// um terço de segundo a cada pincelada para produzir um dado que o traço
     /// seguinte invalida.
     ///

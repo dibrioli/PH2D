@@ -108,7 +108,7 @@ reconstruir o revogado.*
 
 **9 gates · 8 mutações, 8 mortas.** A tabela e o placar estão no **§3-bis**, que é onde os gates
 de facto ficaram. O gate de fonte do shell
-(`shells/desktop/tests/the_node_ops_are_wired.rs`) proíbe o regresso **pelo nome**:
+(`shells/desktop/tests/it/the_node_ops_are_wired.rs`) proíbe o regresso **pelo nome**:
 `!contains("canvas: layout.canvas,")`.
 
 ---
@@ -1644,7 +1644,7 @@ uma vez, fora do `cfg` (ele **consome** a transição: uma segunda chamada no me
 ### §22.4 — ⭐⭐ A cura nº3: **um layout só comanda o que nenhuma ponte possui**
 
 A lista de abertos encolheu, e a fronteira tem gate derivado da árvore
-(`shells/desktop/tests/a_layout_never_commands_a_panel_a_bridge_owns.rs`). A classificação é
+(`shells/desktop/tests/it/a_layout_never_commands_a_panel_a_bridge_owns.rs`). A classificação é
 **mecânica**:
 
 | o que a ponte escreve | é… | porquê |
@@ -1921,7 +1921,7 @@ reconstrói.
 
 ⚠️ **O gate tem de ser de IDA-E-VOLTA e atravessar as duas crates** — medir só a fórmula
 confirmaria a fórmula, e o que estava errado era ela **não ser a inversa de quem a aplica**:
-`crates/ph2d-panel-motion-graph/tests/the_divider_lands_where_the_pointer_is.rs`, com a docagem da
+`crates/ph2d-panel-motion-graph/tests/it/the_divider_lands_where_the_pointer_is.rs`, com a docagem da
 timeline **obrigatória** (sem ela o gate mede o caso que nunca falhou) e um irmão que segura o dedo
 parado por dez quadros.
 
@@ -1965,7 +1965,7 @@ A `D2` tinha escrito, desde 30/08, *«⚠️ o preço que o Enio aceitou: a barr
 de altura permanente»* — e **uma segunda faixa foi construída na semana seguinte**. Uma nota não
 trava nada.
 
-⇒ `crates/ph2d-editor-core/tests/the_chrome_never_eats_more_of_a_tablet_than_this.rs`: a área de
+⇒ `crates/ph2d-editor-core/tests/it/the_chrome_never_eats_more_of_a_tablet_than_this.rs`: a área de
 desenho, em % da janela, nos **três** tablets, pelas mesmas funções do `hero::frame_layout` (com as
 duas passagens — a altura da fila depende da largura da área). Piso medido, e **tecto** de
 obsolescência: uma célula que suba `2` pontos reprova, porque nesse dia a barra deixou de defender

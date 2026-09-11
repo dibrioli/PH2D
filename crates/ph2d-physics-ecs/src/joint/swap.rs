@@ -21,7 +21,7 @@ impl PhysicsJoint {
     ///
     /// ## And every SIGNED quantity is measured from A to B, so it negates
     ///
-    /// MEASURED (`ph2d-physics/tests/measure_joint_pair.rs`), same rig twice:
+    /// MEASURED (`ph2d-physics/tests/it/measure_joint_pair.rs`), same rig twice:
     ///
     /// | quantity | authored | bare swap | this |
     /// |---|---|---|---|

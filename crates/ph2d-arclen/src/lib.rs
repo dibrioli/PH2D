@@ -37,7 +37,7 @@
 //! ⚠️ **Foi bisseção pura de 40 iterações até 2026-07-23**, e o preço estava medido: cada
 //! iteração chama [`arclen_to`] (16 nós × 2 avaliações), ou seja **~1300 `sqrt` por inversa**,
 //! **1700 ns**. O motion path amostra isto por entidade e por frame; a medição está na Fatia 0
-//! do [ADR-0141] (`ph2d-timeline/tests/measure_motion_path.rs`) e deu **12×**.
+//! do [ADR-0141] (`ph2d-timeline/tests/it/measure_motion_path.rs`) e deu **12×**.
 //!
 //! Só `sqrt` — que é exatamente arredondado em IEEE-754 e portanto não é fonte de skew entre
 //! plataformas, ao contrário de `sin`/`exp`/`powf`.

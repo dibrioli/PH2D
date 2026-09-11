@@ -44,7 +44,7 @@ shells/desktop/src/project_schema_tests.rs
 
 **Tudo o resto funde sozinho** — incluindo `render_loop/mod.rs`, `input_dispatch.rs`,
 `app_state.rs`, `main.rs`, `Cargo.lock`, `shells/desktop/Cargo.toml` e
-`crates/ph2d-editor-core/tests/hr12_widgets_a11y.rs` (todos `Auto-merging`, sem `CONFLICT`).
+`crates/ph2d-editor-core/tests/it/hr12_widgets_a11y.rs` (todos `Auto-merging`, sem `CONFLICT`).
 
 ⚠️ **Fundir sozinho não é fundir certo** — o allowlist do `hr12_widgets_a11y` e o `render_loop`
 são listas cujo texto funde e cuja semântica pode não. Quem responde por isso é o
@@ -112,7 +112,7 @@ A membership é por **glob** (`crates/*`), então o `Cargo.toml` da raiz **não*
 | `ph2d-editor-core/src/ids/chrome/vector_sections.rs` | +6: `VECTOR_SECTION_TEXPAT`, `…_TEXPAT_STROKE`, `VECTOR_SECTION_BRUSH` | **sim** |
 | `ph2d-editor-core/src/ids/chrome/vector_texture_pattern.rs` | **ficheiro novo** (+163): os ids do padrão, **derivados por slot** | **sim** |
 | `ph2d-editor-core/src/ids/chrome/mod.rs` | +2 (`mod` + `pub use`) | **sim** |
-| `ph2d-editor-core/tests/hr12_widgets_a11y.rs` | +4: uma entrada de allowlist para `paint_brush.rs`, com a justificação | **sim** |
+| `ph2d-editor-core/tests/it/hr12_widgets_a11y.rs` | +4: uma entrada de allowlist para `paint_brush.rs`, com a justificação | **sim** |
 | `ph2d-i18n/src/vector.rs` | 6 chaves novas (lista em §5) | **sim** |
 | `ph2d-ui-state/src/transition.rs` | mecânico: o `StrokeSpec` deixou de ser `Copy` ⇒ `.clone()` / `clone_from` | não-aditivo, **trivial** |
 | `ph2d-tool-vector/src/tool_adopt.rs` | mecânico: `s.color` -> `s.color()` | idem |
@@ -206,7 +206,7 @@ constantes soltas: quem acrescentar um knob acrescenta uma variante, não um id.
 
 | O quê | Valor | Onde | Nota |
 |---|---|---|---|
-| Secções do painel vetorial | **40** | `crates/ph2d-panel-vector/tests/seam.rs:654` | ⚠️ **CONTADO** (o gate imprime `left: 40`), nunca escolhido — subiu `38 -> 39 -> 40` nesta linha. Se outra linha acrescentar uma secção, **re-conte**, não some. |
+| Secções do painel vetorial | **40** | `crates/ph2d-panel-vector/tests/it/seam.rs:654` | ⚠️ **CONTADO** (o gate imprime `left: 40`), nunca escolhido — subiu `38 -> 39 -> 40` nesta linha. Se outra linha acrescentar uma secção, **re-conte**, não some. |
 | `TEXPAT_SLOTS` | 2 | `ids/chrome/vector_texture_pattern.rs` | preenchimento + traço |
 | Cena de smoke `PH2D_BUILD_SMOKE` | **76** e **77** | `shells/desktop/src/build_smoke_router.rs` | ⚠️ o número da próxima cena **CONTA-SE lendo o roteador**; `77` era o primeiro livre no dia do fecho |
 

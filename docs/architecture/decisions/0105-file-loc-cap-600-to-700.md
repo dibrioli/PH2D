@@ -6,7 +6,7 @@ blindagem Fase 0.4 (which introduced the 600 cap), ADR-0075 (build-speed / decom
 
 ## Context
 
-The workspace-wide file cap (`crates/ph2d-editor-core/tests/architecture_workspace_file_loc_cap.rs`)
+The workspace-wide file cap (`crates/ph2d-editor-core/tests/it/architecture_workspace_file_loc_cap.rs`)
 was set to **600 LOC** at the blindagem Fase 0.4 baseline (2026-06-20), when `crates/` was full of
 900–2400-line god-files and the goal was a ratchet **down**.
 

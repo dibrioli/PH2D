@@ -15,7 +15,7 @@
 //! 3. **O eixo que não era** (`..._scales_with_the_brush_radius`): o raio NÃO multiplica o custo — o
 //!    `TRAIL_HALF` do engine clipa a janela do traço.
 //! 4. **De que o passo é feito** — e a resposta que fechou a frente: `ns/célula` é **PLANO** de 512² a
-//!    4096² (`ph2d-wet-paint/tests/measure_density.rs`), logo o custo não é layout nem cache; é
+//!    4096² (`ph2d-wet-paint/tests/it/measure_density.rs`), logo o custo não é layout nem cache; é
 //!    trabalho por célula, e o número de células é o que a mão do artista escolhe.
 //! 5. **Quem PAGA o tempo** — e é aqui que a família fecha: o custo por passo é o piso da física, mas
 //!    *quem* o paga era escolha nossa. A sim saiu da thread do frame

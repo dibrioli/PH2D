@@ -95,13 +95,13 @@
 | `crates/ph2d-editor-core/src/interaction/types.rs` | variant **apendado** `TimelineHitKind::ContainerRow` + `impl wants_double_click()` + mod de teste | **Sim** — ⚠️ mesma-enum de outra linha = mesmo-símbolo (§1.5.5), PARAR |
 | `crates/ph2d-editor-core/src/interaction/dispatch/pointer_up.rs` | **EDIT** no braço timeline: a enumeração inline virou `kind.wants_double_click()` | Não (edit pequeno, 1 braço) |
 | `crates/ph2d-editor-core/src/widget/dropdown.rs` → `dropdown/{mod,popover}.rs` | **RENAME + split de pasta** (cap de 500 LOC) + `DropdownOption.icon`/`.with_icon()` | ⚠️ ver §5.2 |
-| `crates/ph2d-editor-core/tests/architecture_widget_loc_cap.rs` | entrada `dropdown.rs` **REMOVIDA** da allowlist (obrigatório — o stale-entry gate exige) | ⚠️ lista compartilhada, ver §5.2 |
-| `crates/ph2d-editor-core/tests/hr12_widgets_a11y.rs` | +1 entrada `A11Y_OPT_OUT` (`dropdown/popover.rs` — paint puro, o pai possui a a11y) | Sim |
+| `crates/ph2d-editor-core/tests/it/architecture_widget_loc_cap.rs` | entrada `dropdown.rs` **REMOVIDA** da allowlist (obrigatório — o stale-entry gate exige) | ⚠️ lista compartilhada, ver §5.2 |
+| `crates/ph2d-editor-core/tests/it/hr12_widgets_a11y.rs` | +1 entrada `A11Y_OPT_OUT` (`dropdown/popover.rs` — paint puro, o pai possui a a11y) | Sim |
 | `crates/ph2d-i18n/src/lib.rs` | +2 chaves: `panel.timeline.tab.containers`, `panel.timeline.host_not_placed` | **Sim** |
 | `shells/desktop/src/input_dispatch/keyboard.rs` | 2 guards `!cursor_over_timeline()` **inseridos** nos blocos de clipboard/Delete | Não (edit em bloco existente) |
 | `shells/desktop/src/render_loop/{mod,timeline_bridge}.rs` | o loop do transporte espelha a INSTÂNCIA aberta (`on_nav_change`) + plumbing do `edit_path` | Majoritariamente sim |
 | `shells/desktop/src/nest_smoke.rs` | cena 2 + banner atualizado | Sim |
-| `shells/desktop/tests/the_hovered_area_owns_the_clipboard_chord.rs` | **arquivo novo, só teste** | Sim |
+| `shells/desktop/tests/it/the_hovered_area_owns_the_clipboard_chord.rs` | **arquivo novo, só teste** | Sim |
 | `docs/architecture/decisions/0133-…` | **emenda** (+33: a lista, os três verbos, o 2 s) | Sim |
 | `project-memory/` | 2 memórias novas + índice | Sim |
 
@@ -161,7 +161,7 @@ dentro, `+ Lane` + dropdown de fonte (folha × caixa) + `+` da lane coloca; arra
 strip troca de lane; editar o pico do Rise muda os três pulos.
 
 ⚠️ **Flake conhecida, PRÉ-EXISTENTE:** `the_cost_of_depth_is_linear_not_explosive`
-(`ph2d-timeline/tests/nesting_clock.rs`) é um gate de RAZÃO sensível a carga — sob binários
+(`ph2d-timeline/tests/it/nesting_clock.rs`) é um gate de RAZÃO sensível a carga — sob binários
 de teste concorrentes ele já piscou vermelho e passa isolado. Se cair no ship, re-rode
 `cargo test -p ph2d-timeline --test nesting_clock` sozinho antes de suspeitar do merge.
 

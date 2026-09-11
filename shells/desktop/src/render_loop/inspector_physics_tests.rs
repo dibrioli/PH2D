@@ -1,7 +1,7 @@
 //! **The other half of the §11 seam: does the click produce a body that
 //! FALLS?**
 //!
-//! `ph2d-panel-inspector/tests/seam_physics.rs` proves panel → bus. These
+//! `ph2d-panel-inspector/tests/it/seam_physics.rs` proves panel → bus. These
 //! prove bus → ECS → simulation, which is the half the repo has been burned
 //! by before: a tool can pass every gate in its own crate and be completely
 //! dead in the product ([[feedback_tool_unit_green_integration_dead]]).

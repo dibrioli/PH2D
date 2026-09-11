@@ -53,7 +53,7 @@ alguém lhe toca — e escolher outra animação é tocar-lhe. Uma pausa explíc
 
 ## §3 — Gates novos (todos com mutação a sangrar)
 
-**`crates/ph2d-panel-inspector/tests/seam_anim.rs` — 10 gates, ficheiro NOVO.** A §11 tinha 20
+**`crates/ph2d-panel-inspector/tests/it/seam_anim.rs` — 10 gates, ficheiro NOVO.** A §11 tinha 20
 gates da lei pura e 13 do commit, e **zero** que carregassem num pixel — o defeito reportado vive
 exatamente entre os dois. Irmão do `seam_player.rs`, com `click_at` real.
 

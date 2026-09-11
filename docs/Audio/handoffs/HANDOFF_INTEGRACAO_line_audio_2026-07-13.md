@@ -112,7 +112,7 @@ Hoje são **10 sítios** (o ADR + este handoff + 4 doc-comments no código + 2 m
 docs/architecture/decisions/0120-audio-preview-is-a-buffer-you-own-not-a-buffer-you-rebuild.md
 docs/Audio/handoffs/HANDOFF_INTEGRACAO_line_audio_2026-07-13.md            (este arquivo)
 crates/ph2d-audio/src/buffer.rs                             crates/ph2d-audio-edit/src/ops.rs
-crates/ph2d-audio-edit/tests/measure_preview.rs             shells/desktop/src/audio.rs
+crates/ph2d-audio-edit/tests/it/measure_preview.rs             shells/desktop/src/audio.rs
 shells/desktop/src/audio/editor/fx_preview.rs               shells/desktop/src/audio/editor/fx_rack.rs
 project-memory/feedback_an_optimization_needs_a_gate_that_proves_it_fires.md
 project-memory/feedback_measure_perf_symptom_scale.md

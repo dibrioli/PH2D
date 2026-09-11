@@ -105,7 +105,7 @@ Um gerador escaneia `crates/ph2d-tool-*` e gera, em `ph2d-tool-registry-init`:
 - `register_all(reg: &mut Registry)` — os `ToolManifest` (dado; já existe, passa a ser **gerado**).
 - `register_all_tools(reg: &mut ToolRegistry)` — chama `ph2d_tool_<slug>::make() -> Box<dyn Tool>` de cada crate (behavior).
 
-O shell chama **uma linha** (`register_all_tools(&mut tools)`) no lugar dos N `register(Box::new(...))`. `workspace.members` já é glob (`crates/*`). Um **staleness gate** (espelha `ph2d-node-registry-init/tests/staleness.rs`) falha se o arquivo gerado estiver dessincronizado do scan. Adicionar tool ⇒ largar crate + `cargo run -p ph2d-tool-sync`. Zero edit central.
+O shell chama **uma linha** (`register_all_tools(&mut tools)`) no lugar dos N `register(Box::new(...))`. `workspace.members` já é glob (`crates/*`). Um **staleness gate** (espelha `ph2d-node-registry-init/tests/it/staleness.rs`) falha se o arquivo gerado estiver dessincronizado do scan. Adicionar tool ⇒ largar crate + `cargo run -p ph2d-tool-sync`. Zero edit central.
 
 ### 2.4 editor-core = foundation; gate de ciclo estendido
 

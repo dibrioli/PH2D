@@ -39,8 +39,8 @@ Tudo **aditivo**. Nenhuma assinatura existente mudou de forma.
 | `ph2d-editor-core/src/interaction/types.rs` | **variante nova** `GraphHitKind::ParamRow { node: u64, row: u16 }` | uma row de param desenhada no cartão precisa de um alvo de gesto; `editor-core` **não a interpreta** (o mesmo *«atravessa como inteiro»* do nó e da aresta) |
 | `ph2d-editor-core/src/paint_shapes.rs` | `fill_rounded_rect_srgb8` (função nova) | pintar a **amostra de cor de um param** — cor do DOCUMENTO, não do tema. ⚠️ Não é fuga ao HR-15: a assinatura só aceita bytes vindos de fora, e o tipo `Color` é privado à crate |
 | `ph2d-editor-core/src/text_elide.rs` | `title_elided_width` (função nova) | **cura de um defeito shipado**: media-se em `NORMAL` e pintava-se em `SEMI_BOLD`, e o número cortava (`0....`). A porta mede no peso em que pinta |
-| `ph2d-editor-core/tests/hr12_widgets_a11y.rs` | +2 entradas na lista de pintores puros | `paint_card_params.rs` e `paint_socket.rs` — quem regista os alvos deles é o `hits.rs` |
-| `ph2d-editor-core/tests/architecture_motion_chrome_never_wraps_a_row_label.rs` | catraca `ELIDED_TODAY` **28 → 30** | as 4 rows novas do cartão que cortam |
+| `ph2d-editor-core/tests/it/hr12_widgets_a11y.rs` | +2 entradas na lista de pintores puros | `paint_card_params.rs` e `paint_socket.rs` — quem regista os alvos deles é o `hits.rs` |
+| `ph2d-editor-core/tests/it/architecture_motion_chrome_never_wraps_a_row_label.rs` | catraca `ELIDED_TODAY` **28 → 30** | as 4 rows novas do cartão que cortam |
 | `ph2d-ui-testkit/src/lib.rs` | `paint_and_count_geometry_with_layout` | contar geometria de um painel do **split**; a variante `for_viewport` dá rect de área zero ao Motion e o gate ficaria **vácuo** |
 | `ph2d-motion-region/src/lib.rs` | `Region::half_extents` | a grelha de vizinhança do `motion.scatter` precisa de indexar o espaço da região sem reconstruir a caixa |
 | `shells/desktop/src/main.rs` | +2 `mod` `#[cfg(test)]` | as duas sondas do ciclo 2 — não entram no binário |
@@ -313,9 +313,9 @@ não muda; o `Cargo.lock` ganha `+ph2d-param-editors` (é o único pacote novo, 
 |---|---|---|
 | `Cargo.lock` | `+ph2d-param-editors` | trivial (regenera) |
 | `crates/ph2d-editor-core/src/screens/task_layout.rs` | o layout `Nodes` passa a **nomear `"inspector"`** | ⚠️ **uma linha, mas de outra linha**: quem mexer nos layouts colide |
-| `shells/desktop/tests/a_layout_never_commands_a_panel_a_bridge_owns.rs` | o controlo perdeu `"motion"` | ⚠️ é o gate que **obrigou** à linha acima |
-| `crates/ph2d-editor-core/tests/architecture_motion_chrome_never_wraps_a_row_label.rs` | `SCANNED_CRATES` ganha a crate nova | a lei segue o código |
-| `crates/ph2d-editor-core/tests/hr12_widgets_a11y.rs` | isenção do `paint_card.rs` | ⛔ **vermelho PRÉ-EXISTENTE de 06/09** |
+| `shells/desktop/tests/it/a_layout_never_commands_a_panel_a_bridge_owns.rs` | o controlo perdeu `"motion"` | ⚠️ é o gate que **obrigou** à linha acima |
+| `crates/ph2d-editor-core/tests/it/architecture_motion_chrome_never_wraps_a_row_label.rs` | `SCANNED_CRATES` ganha a crate nova | a lei segue o código |
+| `crates/ph2d-editor-core/tests/it/hr12_widgets_a11y.rs` | isenção do `paint_card.rs` | ⛔ **vermelho PRÉ-EXISTENTE de 06/09** |
 | `shells/desktop/src/motion_state_conferencia_demos_table.rs` | o CSV da cena escreve-se por `rename` atómico | cura de flake |
 
 ### §14.4 — ⛔ As TRÊS coisas que um integrador entende ao contrário

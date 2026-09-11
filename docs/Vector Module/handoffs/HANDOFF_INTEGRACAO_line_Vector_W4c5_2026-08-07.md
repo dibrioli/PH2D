@@ -113,7 +113,7 @@ uma feature que corre **duas vezes na vida de um projeto**.
 injectada por fn-pointers) e o codec **não é** — ele corre na fronteira, então uma dependência
 normal na direcção certa basta.
 
-⚠️ **E agora a frase tem gate:** `crates/ph2d-tokens/tests/the_leaf_stays_dep_free.rs` afirma que a
+⚠️ **E agora a frase tem gate:** `crates/ph2d-tokens/tests/it/the_leaf_stays_dep_free.rs` afirma que a
 secção `[dependencies]` dela está **vazia**, com controle positivo. Um comentário não impede a linha
 seguinte.
 
@@ -165,7 +165,7 @@ linha falham.
 do W6 (`TOKENS_PANEL`/`_CLOSE`/`_RESET_ALL`) **nunca estiveram** naquela lista, e acrescentar só os
 dois de hoje deixaria a lacuna aberta com a aparência de fechada.
 
-**Ponto de merge sensível:** `crates/ph2d-editor-core/tests/node_id_collisions.rs` — a lista é
+**Ponto de merge sensível:** `crates/ph2d-editor-core/tests/it/node_id_collisions.rs` — a lista é
 escrita à mão e outra linha pode ter acrescentado entradas no fim. **Só ADICIONE**; o gate falha
 alto se duas entradas colidirem.
 

@@ -28,7 +28,7 @@ use serde::{Deserialize, Serialize};
 /// | `Constrained`| `4` | Fallback uncompressed (RGBA8 raw)                  |
 ///
 /// Valores 5+ são INVÁLIDOS — `TierIndex::new` retorna `None` para qualquer
-/// `u8 > 4`. Arch-gate em `crates/ph2d-asset/tests/architecture_texture_ktx2.rs`
+/// `u8 > 4`. Arch-gate em `crates/ph2d-asset/tests/it/architecture_texture_ktx2.rs`
 /// trava essa invariante via test exhaustive.
 ///
 /// **Migration warning ⚠️ (audit ε-H1 W1.T4):** quando `ph2d_host::DeviceTier`

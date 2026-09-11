@@ -69,7 +69,7 @@ sob o gate testado (ADR-0107).
 | `shells/desktop/src/undo.rs` | `ProjectState` ganha 3º campo `flip: FlipDoc` | ⚠️ **Vector também** |
 | `shells/desktop/src/project.rs` | `PROJECT_SCHEMA` **1→2** (o `flip` mudou o formato do save) | 🔴 **ver §3.2** |
 | `shells/desktop/src/forwarding.rs` | `cursor_over_hero_panel` (roda do painel) | — |
-| `shells/desktop/tests/architecture_no_downcast_to_concrete_tool_in_shell.rs` | `flip_bridge` na `DOWNCAST_ALLOWLIST` | — |
+| `shells/desktop/tests/it/architecture_no_downcast_to_concrete_tool_in_shell.rs` | `flip_bridge` na `DOWNCAST_ALLOWLIST` | — |
 
 **Nenhum ponto de extensão central foi editado de forma não-append-only.**
 

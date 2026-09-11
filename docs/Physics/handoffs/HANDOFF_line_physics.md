@@ -362,8 +362,8 @@
 - Shell: parâmetro **`simulate: bool`** em `physics_bridge::dispatch` (⚠️ **assinatura
   MUDOU** — 1 chamador, o `render_loop/mod.rs`); módulo de teste
   **`render_loop/physics_bridge_tests`**.
-- Testes novos: `ph2d-physics-ecs/tests/hold.rs` ·
-  `ph2d-panel-timeline/tests/transport_physics_seam.rs`.
+- Testes novos: `ph2d-physics-ecs/tests/it/hold.rs` ·
+  `ph2d-panel-timeline/tests/it/transport_physics_seam.rs`.
 
 **Alocados e CRIADOS no W5 (corpos filhos):**
 - `ph2d-ecs`: módulo NOVO **`transform_inverse.rs`** (`pub mod`) — `Transform::inverse_compose`,
@@ -373,7 +373,7 @@
   **`PhysicsBridge.chain`**. ⚠️ `scratch_capacity()` passou a **somar** os buffers.
 - `shells/desktop`: módulo NOVO **`physics_smoke_rigs.rs`** (cenas 6/7/8 movidas; `spawn_floor`
   virou `pub(crate)`); env **`PH2D_PHYSICS_SMOKE=8`**.
-- Testes novos: `ph2d-ecs/tests/transform_inverse.rs` · `ph2d-physics-ecs/tests/child_bodies.rs`.
+- Testes novos: `ph2d-ecs/tests/it/transform_inverse.rs` · `ph2d-physics-ecs/tests/it/child_bodies.rs`.
 - ⚠️ Catraca de LOC **BAIXADA**: `ph2d-ecs/src/transform.rs` 784 → **768**.
 
 **Alocados e CRIADOS no W3:**
@@ -596,7 +596,7 @@
 | onde | a recusa |
 |---|---|
 | [(topo)](../../archive/tracker-physics-2026-08-18/HANDOFF_line_physics.md#L10) | ⛔ O que estiver aqui marcado **«medido e REJEITADO»** continua rejeitado: uma |
-| [Todo teto foi MEDIDO (`ph2d-physics/tests/measure_settings.rs`, `--rel](../../archive/tracker-physics-2026-08-18/HANDOFF_line_physics.md#L434) | ⚠️ **A hipótese óbvia do contact Hz — Nyquist em `1/(2·substep_dt)` = 120 Hz — foi REFUTADA |
+| [Todo teto foi MEDIDO (`ph2d-physics/tests/it/measure_settings.rs`, `--rel](../../archive/tracker-physics-2026-08-18/HANDOFF_line_physics.md#L434) | ⚠️ **A hipótese óbvia do contact Hz — Nyquist em `1/(2·substep_dt)` = 120 Hz — foi REFUTADA |
 | [Gates: 11 novos (5 bridge · 3 unit · 2 seam-painel · 1 seam-inspector)](../../archive/tracker-physics-2026-08-18/HANDOFF_line_physics.md#L621) | mortos sob o mouse**. Agora dirige `click_at`. |
 | [§](../../archive/tracker-physics-2026-08-18/HANDOFF_line_physics.md#L697) | Três números MEDIDOS, e os três primeiros palpites foram REFUTADOS |
 | [⚠️ A auditoria de 2 lentes achou SEIS coisas — e as duas graves eram m](../../archive/tracker-physics-2026-08-18/HANDOFF_line_physics.md#L833) | das três listas compartilhadas — *painted, hit-registered e mortos sob o |

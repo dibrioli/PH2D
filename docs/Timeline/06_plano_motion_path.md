@@ -76,7 +76,7 @@ aqui — é **medição para decidir**; o gate nasce na Fatia 2, contra o númer
 
 ### ✅ FATIA 0 FECHADA (2026-07-23) — **Newton, e a barra reescrita**
 
-Harness: [`crates/ph2d-timeline/tests/measure_motion_path.rs`](../../crates/ph2d-timeline/tests/measure_motion_path.rs).
+Harness: [`crates/ph2d-timeline/tests/it/measure_motion_path.rs`](../../crates/ph2d-timeline/tests/it/measure_motion_path.rs).
 Números e o raciocínio completo: **emenda ao §Kill do ADR-0141**.
 
 **O que a medição decidiu:**

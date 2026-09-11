@@ -85,7 +85,7 @@ ph2d-chrome-sync = { path = "../../tools/ph2d-chrome-sync" }
 ph2d-widget-sync = { path = "../../tools/ph2d-widget-sync" }
 # ADR-0029 Phase C.1 NOTE: Inspector regression tests that need
 # `ph2d_panel_inspector::*` are scheduled to migrate to
-# `crates/ph2d-panel-inspector/tests/inspector_regression.rs` in
+# `crates/ph2d-panel-inspector/tests/it/inspector_regression.rs` in
 # Phase D (cycle-free integration tests). A dev-dep here would
 # duplicate `ph2d-editor-core` in the test build graph (cargo
 # treats dev-dep cycles as distinct crate instances).

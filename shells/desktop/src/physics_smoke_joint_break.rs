@@ -8,7 +8,7 @@
 //!
 //! ⚠️ **É um teto de CARGA, não de impacto**, e a cena é montada para dizer isso:
 //! o pico de uma pancada resolve DENTRO de um sub-passo do solver e não é
-//! observável de fora (medido, `ph2d-physics/tests/measure_joint_break.rs`). O
+//! observável de fora (medido, `ph2d-physics/tests/it/measure_joint_break.rs`). O
 //! que se vê aqui é o que a feature de fato faz — *"isto está segurando mais do
 //! que aguenta"*.
 //!

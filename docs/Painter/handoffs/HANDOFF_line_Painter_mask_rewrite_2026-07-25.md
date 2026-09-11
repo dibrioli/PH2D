@@ -245,5 +245,5 @@ teto vazar).
 ## 10. Fechamento (o gate batched, 1× no fim)
 
 `nextest-impacted` + `clippy --all-targets` + `architecture_workspace_file_loc_cap` +
-`shells/desktop/tests/file_loc_caps.rs` + `fmt --check` + auditoria ≥2 lentes + build do host.
+`shells/desktop/tests/it/file_loc_caps.rs` + `fmt --check` + auditoria ≥2 lentes + build do host.
 Depois: handoff de integração (DIRETRIZ §1.5.9), smoke pro Enio, **PARE**.

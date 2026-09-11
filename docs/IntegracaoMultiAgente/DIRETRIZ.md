@@ -685,8 +685,8 @@ Algumas tarefas não cabem em §3.A-D porque tocam múltiplos crates por naturez
 
 | Contrato | Arquivos | Arch-gate (cap) | ADR | Mudar exige |
 |---|---|---|---|---|
-| **Sistema de nós** (W2.T4, 2026-05-22) | `crates/ph2d-nodegraph/src/{lib,node,port,effect,attr,cook,graph}.rs` + `crates/ph2d-expr/src/lib.rs` | [`architecture_contract_surface`](../../crates/ph2d-nodegraph/tests/architecture_contract_surface.rs) — `NodeOp ≤ 2` métodos, `OpResolver ≤ 1` método, `NodeManifest ≤ 8` campos | [ADR-0039](../architecture/decisions/0039-nodegraph-contract-freeze-w2t4.md) | Bump cap + ADR estendendo 0039 + (se `ph2d-expr`) re-provar paridade CPU↔WGSL |
-| **Sistema de tools** (TG-E + ADR-0041, 2026-05-22) | `crates/ph2d-editor-core/src/tool.rs` (`Tool`, `RasterEditTool`, `CanvasPaintTool`, `PanelEvent`) + canal genérico em `crates/ph2d-editor-core/src/action_bus.rs` (`EditorAction::{ActivateTool, OneShotImageOp, ToolPanelEvent, CancelActiveTool}`) | [`architecture_tool_contract_surface`](../../crates/ph2d-editor-core/tests/architecture_tool_contract_surface.rs) — `Tool ≤ 12` métodos, `RasterEditTool ≤ 5` métodos, `CanvasPaintTool ≤ 1` método, `PanelEvent ≤ 4` variants | [ADR-0040](../architecture/decisions/0040-tool-as-isolated-feature-crate.md) + [ADR-0041](../architecture/decisions/0041-rasteredit-rename-and-deactivate.md) | Bump cap + amendment de ADR-0040 §7 |
+| **Sistema de nós** (W2.T4, 2026-05-22) | `crates/ph2d-nodegraph/src/{lib,node,port,effect,attr,cook,graph}.rs` + `crates/ph2d-expr/src/lib.rs` | [`architecture_contract_surface`](../../crates/ph2d-nodegraph/tests/it/architecture_contract_surface.rs) — `NodeOp ≤ 2` métodos, `OpResolver ≤ 1` método, `NodeManifest ≤ 8` campos | [ADR-0039](../architecture/decisions/0039-nodegraph-contract-freeze-w2t4.md) | Bump cap + ADR estendendo 0039 + (se `ph2d-expr`) re-provar paridade CPU↔WGSL |
+| **Sistema de tools** (TG-E + ADR-0041, 2026-05-22) | `crates/ph2d-editor-core/src/tool.rs` (`Tool`, `RasterEditTool`, `CanvasPaintTool`, `PanelEvent`) + canal genérico em `crates/ph2d-editor-core/src/action_bus.rs` (`EditorAction::{ActivateTool, OneShotImageOp, ToolPanelEvent, CancelActiveTool}`) | [`architecture_tool_contract_surface`](../../crates/ph2d-editor-core/tests/it/architecture_tool_contract_surface.rs) — `Tool ≤ 12` métodos, `RasterEditTool ≤ 5` métodos, `CanvasPaintTool ≤ 1` método, `PanelEvent ≤ 4` variants | [ADR-0040](../architecture/decisions/0040-tool-as-isolated-feature-crate.md) + [ADR-0041](../architecture/decisions/0041-rasteredit-rename-and-deactivate.md) | Bump cap + amendment de ADR-0040 §7 |
 
 **O que NÃO mexe nesses contratos** (vide §3.A, sem Coord):
 
@@ -718,23 +718,23 @@ Violação = build vermelho. Não há "vou abrir exceção".
 
 | Gate | O que barra |
 |---|---|
-| [`no_literal_color`](../../crates/ph2d-editor-core/tests/no_literal_color.rs) | hex `0xRRGGBB`, `Color::rgba8(...)`, `Color::WHITE` em widget/screens |
+| [`no_literal_color`](../../crates/ph2d-editor-core/tests/it/no_literal_color.rs) | hex `0xRRGGBB`, `Color::rgba8(...)`, `Color::WHITE` em widget/screens |
 | `no_magic_numeric` | `f32`/`f64` literais em UI fora do allowlist (`0.0`, `±0.5`, `±1.0`, `±2.0`) |
-| [`hr12_widgets_a11y`](../../crates/ph2d-editor-core/tests/hr12_widgets_a11y.rs) | widget que não emite `Node` AccessKit |
-| [`architecture_widget_loc_cap`](../../crates/ph2d-editor-core/tests/architecture_widget_loc_cap.rs) | widget primitive > 500 LOC |
-| [`architecture_widget_showcase_coverage`](../../crates/ph2d-editor-core/tests/architecture_widget_showcase_coverage.rs) | widget que não aparece no Widget Gallery (nem em opt-out) |
-| [`architecture_no_chip_without_steppers`](../../crates/ph2d-editor-core/tests/architecture_no_chip_without_steppers.rs) | chip pill sem `link_slider_number`/`mark_chip_no_stepper` (phantom stepper) |
-| [`architecture_panel_wiring_parity`](../../crates/ph2d-editor-core/tests/architecture_panel_wiring_parity.rs) | id hit-indexado no paint sem registro em `populate.rs` (não-focável → clique morto) |
-| [`architecture_workspace_file_loc_cap`](../../crates/ph2d-editor-core/tests/architecture_workspace_file_loc_cap.rs) | arquivo `crates/*/src/**` > 700 LOC ([ADR-0105](../architecture/decisions/0105-file-loc-cap-600-to-700.md); fora dos caps de painel/widget/runtime) |
-| [`architecture_docs_reference_live_gates`](../../crates/ph2d-editor-core/tests/architecture_docs_reference_live_gates.rs) | doc instrucional cita gate `architecture_*` inexistente |
+| [`hr12_widgets_a11y`](../../crates/ph2d-editor-core/tests/it/hr12_widgets_a11y.rs) | widget que não emite `Node` AccessKit |
+| [`architecture_widget_loc_cap`](../../crates/ph2d-editor-core/tests/it/architecture_widget_loc_cap.rs) | widget primitive > 500 LOC |
+| [`architecture_widget_showcase_coverage`](../../crates/ph2d-editor-core/tests/it/architecture_widget_showcase_coverage.rs) | widget que não aparece no Widget Gallery (nem em opt-out) |
+| [`architecture_no_chip_without_steppers`](../../crates/ph2d-editor-core/tests/it/architecture_no_chip_without_steppers.rs) | chip pill sem `link_slider_number`/`mark_chip_no_stepper` (phantom stepper) |
+| [`architecture_panel_wiring_parity`](../../crates/ph2d-editor-core/tests/it/architecture_panel_wiring_parity.rs) | id hit-indexado no paint sem registro em `populate.rs` (não-focável → clique morto) |
+| [`architecture_workspace_file_loc_cap`](../../crates/ph2d-editor-core/tests/it/architecture_workspace_file_loc_cap.rs) | arquivo `crates/*/src/**` > 700 LOC ([ADR-0105](../architecture/decisions/0105-file-loc-cap-600-to-700.md); fora dos caps de painel/widget/runtime) |
+| [`architecture_docs_reference_live_gates`](../../crates/ph2d-editor-core/tests/it/architecture_docs_reference_live_gates.rs) | doc instrucional cita gate `architecture_*` inexistente |
 | `mockup_tokens_exist` | `var(--X)` em mockup HTML não resolve em tokens.json |
 | `architecture_register_all_alphabetical` | `register_all*` / Cargo deps fora de ordem |
 | `staleness` (tool + node) | sync esquecido |
-| [`architecture_cycle_prevention`](../../crates/ph2d-editor-core/tests/architecture_cycle_prevention.rs) | `editor-core` ⊥ `panel-*`/`ph2d-editor`; `editor-core` ⊥ `tool-*` (exceto `ph2d-tool-registry`); `panel-*` ⊥ outro `panel-*` |
+| [`architecture_cycle_prevention`](../../crates/ph2d-editor-core/tests/it/architecture_cycle_prevention.rs) | `editor-core` ⊥ `panel-*`/`ph2d-editor`; `editor-core` ⊥ `tool-*` (exceto `ph2d-tool-registry`); `panel-*` ⊥ outro `panel-*` |
 | 🔒 `architecture_tool_contract_surface` | caps Tool/RasterEditTool/PanelEvent (§4) |
 | 🔒 `architecture_contract_surface` (nodegraph) | caps NodeOp/OpResolver/NodeManifest (§4) |
 | `tool_manifest_design_sync` | `docs/design/tools/<slug>.toml` divergente do MANIFEST |
-| [`no_tofu_glyphs`](../../crates/ph2d-editor-core/tests/no_tofu_glyphs.rs) | glifos fora da fonte Inter bundled (setas, ⌘, ↵, ✕, ▸ etc.) viram tofu |
+| [`no_tofu_glyphs`](../../crates/ph2d-editor-core/tests/it/no_tofu_glyphs.rs) | glifos fora da fonte Inter bundled (setas, ⌘, ↵, ✕, ▸ etc.) viram tofu |
 
 **Exceção declarada legítima:** comentário `// LITERAL-COLOR-OK: <razão>` ou `// LITERAL-PX-OK: <razão>` na mesma linha. Coord valida na revisão.
 
@@ -849,7 +849,7 @@ Faltou → **bounce pro Implementador antes de mergear.** Não "vou abrir exceç
 - ❌ Validar baseline no início da sessão se último commit já está verde
 - ❌ `cargo build` antes de `cargo test` (test já compila)
 - ❌ Re-`Read` arquivo que acabou de editar
-- ❌ Ficheiro NOVO em `tests/` por teste: **cada `tests/*.rs` é um binário** que religa a closure da crate (na shell, 910 crates); há 1 446 hoje e são 80 % do tempo de verificação do workspace (§6.7). Acrescente ao ficheiro existente ou faça teste unitário no `src/`.
+- ❌ Ficheiro NOVO solto em `tests/`: **cada `tests/*.rs` é um binário** que religa a closure da crate (na shell, 910 crates) — eram 1 446 até 10/09 (80 % do tempo de verificação do workspace) e a W1 juntou-os num `tests/it/main.rs` por crate. **Teste de integração novo = ficheiro em `tests/it/` + uma linha `mod` no `main.rs`** (o nome do teste passa a `ficheiro::fn`). ⛔ Única excepção: um ficheiro com `#[global_allocator]` fica binário PRÓPRIO em `tests/` (dois alocadores não cabem num binário; um contador global veria os vizinhos).
 - ❌ `cargo run … --release` para smoke de comportamento — é `--profile smoke` (161 s → 3 s por correcção); o `release` é para PERFORMANCE.
 
 ### 6.4 Pre-commit hook tiered
@@ -944,8 +944,10 @@ fechado**, não por micro-task (vide §6.6.A.2).
    LTO) optimiza a shell de 306 k linhas num só thread: **161 s** por correcção; o `smoke` custa **3 s**.
    `--release` só para smoke de PERFORMANCE (tectos, milhões de objectos), e o passo do smoke diz quando.
 3. **Os testes não são lentos a correr (20 041 em 98 s); são lentos a NASCER:** 1 521 binários, e uma
-   linha numa crate foundational religa 2 128 deles. Logo: (a) **não crie ficheiro novo em `tests/`** sem
-   necessidade (§6.3); (b) teste pesado corre em `--profile ci-test` — `cargo-test-narrow.sh` para um crate,
+   linha numa crate foundational religava 2 128 deles. ✅ **W1 feita em 10/09: 1 446 → 127 binários**, com a
+   lista de 22 635 testes idêntica antes e depois — check frio do workspace **93 → 51 s**, gate após uma linha
+   foundational **93 → 60 s**. Logo: (a) **teste de integração novo = módulo em
+   `tests/it/`** (§6.3); (b) teste pesado corre em `--profile ci-test` — `cargo-test-narrow.sh` para um crate,
    `nextest-impacted.sh` para o diff — e nunca `cargo test` cru no `dev` (55 min numa suíte, medido).
 4. **Todo teste tem tecto** (`.config/nextest.toml`: 60 s avisa, 180 s mata) e a suíte **não cancela** no
    1.º ✗. Precisa de mais? `[[profile.default.overrides]]` com o número medido. Gate de relógio/alocação
@@ -961,8 +963,8 @@ fechado**, não por micro-task (vide §6.6.A.2).
    `check`, incremental, binários nem proc-macros — só rlibs de registry) · `-Zthreads` (2,4× na shell,
    **nightly**: mede-se com `cargo +nightly` em target próprio, não se shipa) · «o Rust 1.98 tem flags
    novas» (nada no estável desde 1.91; o 1.99 de outubro recupera 2–7 % pelo LLVM 23).
-8. **Ondas por abrir, em ordem:** W1 um binário de teste por crate + `ph2d-arch-gates` (155 gates puros de
-   fonte) · W2.0 censo de `App` por família · W2 cenas de smoke fora da shell, depois `ph2d-app-<módulo>` ·
+8. **Ondas por abrir, em ordem:** ✅ W1 feita (10/09); resta a W1b — a crate `ph2d-arch-gates` com os 155
+   gates puros de código-fonte que hoje religam a closure da crate onde vivem · W2.0 censo de `App` por família · W2 cenas de smoke fora da shell, depois `ph2d-app-<módulo>` ·
    W3 CI (archive + partition, impactado no PR, GPU por software) · W4 medir `-Zthreads`, subir a 1.99.
    Quem abrir uma lê o §6 e o §9 do doc antes.
 
@@ -1117,10 +1119,10 @@ Os números abaixo saem do fonte do gate — se divergirem dele, **o fonte está
 
 | Árvore coberta | Cap | Gate (a fonte do número) |
 |---|---:|---|
-| `crates/**` (workspace inteira) | **700** | `ph2d-editor-core/tests/architecture_workspace_file_loc_cap.rs` (`FILE_LOC_CAP`) — ADR-0105 subiu 600→700; existentes acima ficam **congelados** numa allowlist (podem encolher, nunca crescer) |
-| `shells/<plat>/src/**` | **600** | `shells/desktop/tests/file_loc_caps.rs` (`FILE_LOC_CAP`) — HR-18 |
-| `ph2d-panel-*/src/**` | **600** arquivo · **200** função | `ph2d-editor-core/tests/architecture_panel_loc_cap.rs` (`PANEL_FILE_LOC_CAP` / `PANEL_FN_LOC_CAP`) |
-| `ph2d-editor-core/src/widget/**` | **500** | `ph2d-editor-core/tests/architecture_widget_loc_cap.rs` (`WIDGET_LOC_CAP`) |
+| `crates/**` (workspace inteira) | **700** | `ph2d-editor-core/tests/it/architecture_workspace_file_loc_cap.rs` (`FILE_LOC_CAP`) — ADR-0105 subiu 600→700; existentes acima ficam **congelados** numa allowlist (podem encolher, nunca crescer) |
+| `shells/<plat>/src/**` | **600** | `shells/desktop/tests/it/file_loc_caps.rs` (`FILE_LOC_CAP`) — HR-18 |
+| `ph2d-panel-*/src/**` | **600** arquivo · **200** função | `ph2d-editor-core/tests/it/architecture_panel_loc_cap.rs` (`PANEL_FILE_LOC_CAP` / `PANEL_FN_LOC_CAP`) |
+| `ph2d-editor-core/src/widget/**` | **500** | `ph2d-editor-core/tests/it/architecture_widget_loc_cap.rs` (`WIDGET_LOC_CAP`) |
 | `ph2d-tool-runtime/src/**` | **650** | `ph2d-tool-runtime/tests/architecture_runtime_loc_cap.rs` (`CAP`) |
 
 ⚠️ **Cap de FUNÇÃO e cap de ARQUIVO são grandezas diferentes:** extrair um corpo grande para uma
@@ -1150,8 +1152,8 @@ de medir — a re-quebra de linhas do fmt reexpande o arquivo depois do corte.
 | Icon SVG | `docs/design/icons/<slug>.svg` |
 | Shell init | `shells/desktop/src/init.rs` |
 | Arch tests editor | `crates/ph2d-editor-core/tests/` |
-| Arch tests contrato tool 🔒 | `crates/ph2d-editor-core/tests/architecture_tool_contract_surface.rs` |
-| Arch tests contrato nodegraph 🔒 | `crates/ph2d-nodegraph/tests/architecture_contract_surface.rs` |
+| Arch tests contrato tool 🔒 | `crates/ph2d-editor-core/tests/it/architecture_tool_contract_surface.rs` |
+| Arch tests contrato nodegraph 🔒 | `crates/ph2d-nodegraph/tests/it/architecture_contract_surface.rs` |
 
 **Removido em ADR-0040 TG-D (`c4063b7`):** `crates/ph2d-editor-core/src/tools/` foi **deletado**. Foundation ⊥ tools gateado. Memória/doc apontando lá = stale.
 

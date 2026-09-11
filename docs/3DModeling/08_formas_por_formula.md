@@ -4,7 +4,7 @@
 > caro que um criado por fórmula. Isso é correto? […] quais objetos poderíamos criar com fórmulas.
 > Tome como referência as shapes do módulo vetor e me traga uma lista extensiva e exaustiva."*
 >
-> Sonda: [`spike_formula_vs_profile.rs`](../../crates/ph2d-field-eval/tests/spike_formula_vs_profile.rs).
+> Sonda: [`spike_formula_vs_profile.rs`](../../crates/ph2d-field-eval/tests/it/spike_formula_vs_profile.rs).
 
 ---
 
@@ -270,7 +270,7 @@ Uma linha no catálogo (`field3d_shapes.rs`), uma variante no `Primitive` com os
 fechados (`dims` · `set_dim` · `round_limit` · `characteristic_size` · `bounding_radius` ·
 `scale_primitive` · `fillet_inflates`), a fórmula em `ops.rs`, e o rótulo i18n. **O censo derivado
 faz o resto**: as quatro perguntas do
-[`the_census_of_every_primitive`](../../crates/ph2d-field-eval/tests/the_census_of_every_primitive.rs)
+[`the_census_of_every_primitive`](../../crates/ph2d-field-eval/tests/it/the_census_of_every_primitive.rs)
 passam a valer para ela sem uma linha de mudança, e um `Primitive` novo é **erro de compilação** até
 alguém dizer com que números ela se mede.
 

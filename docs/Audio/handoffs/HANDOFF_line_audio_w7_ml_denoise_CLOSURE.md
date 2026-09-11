@@ -71,7 +71,7 @@ reproduce the ADR-0123 §3.5 numbers exactly).
 
 | gate | where | proves |
 |---|---|---|
-| `denoise_ml_reproduces_the_reference_cli_gain` | `ph2d-audio-ml/tests/parity_with_reference_cli.rs` | the wrapper = the model (presence). Pairs pinned-noisy input (~6 dB) with ≥18 dB out |
+| `denoise_ml_reproduces_the_reference_cli_gain` | `ph2d-audio-ml/tests/it/parity_with_reference_cli.rs` | the wrapper = the model (presence). Pairs pinned-noisy input (~6 dB) with ≥18 dB out |
 | `amount_zero_is_byte_identical…` (×2) | ml crate | the rack's neutral point, on the real fixture and a tone |
 | `no_ml_runtime_reaches_the_mixer` | `ph2d-audio/tests/` | `tract`/`deep_filter`/`ph2d-audio-ml`/`ndarray` never a dep of the RT mixer (absence; the parity gate is its presence sibling) |
 | `audio_ml_is_off_by_default` | `shells/desktop/tests/` | structural proof from the manifest that a default build resolves no `tract`. **Mutation-checked** (adding `audio-ml` to `default` turns it RED) |
@@ -122,7 +122,7 @@ their owners:
    with reproduction presence-gate tests. Split the `#[cfg(test)] mod tests` into a sibling
    `engine_tests.rs` via `#[path]` (still `crate::engine::tests`; **no RT/render code moved**).
    712→621. A real decomposition, not a `FILE_OVERAGE_OK` bump.
-3. **`crates/ph2d-editor-core/tests/architecture_adr_numbers_are_unique.rs`** — committed
+3. **`crates/ph2d-editor-core/tests/it/architecture_adr_numbers_are_unique.rs`** — committed
    unformatted; ran `rustfmt`. Cosmetic.
 
 ---
@@ -218,9 +218,9 @@ reaching for the shell's chrome).
 | `tick` drops the finished, keeps the running (out-of-order) | same |
 | The bar paints, an empty queue does not, the fill tracks the fraction | same — **counts `Scene::encoding().n_paths`**, not "did not panic" |
 | a11y bounds are the track that gets painted | same |
-| **Progress climbs across the run** (not `{0,1}`, spread over all four quarters) | `ph2d-audio-ml/tests/progress_is_reported_as_the_model_runs.rs` |
+| **Progress climbs across the run** (not `{0,1}`, spread over all four quarters) | `ph2d-audio-ml/tests/it/progress_is_reported_as_the_model_runs.rs` |
 | Watching the run changes no sample; `amount 0` reports nothing | same |
-| Every Spectral control is inert while a job runs — **and works again after** | `ph2d-panel-audio-editor/tests/seam.rs` |
+| Every Spectral control is inert while a job runs — **and works again after** | `ph2d-panel-audio-editor/tests/it/seam.rs` |
 | Parity with the reference CLI still green | `parity_with_reference_cli` (untouched) |
 
 **Mutation-tested (4 mutants, all killed):**

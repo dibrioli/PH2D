@@ -14,7 +14,7 @@ authors.workspace = true
 # network download at build time). The heavy inference stack is CONFINED here,
 # exactly like `realfft` in `ph2d-audio-spectral`, libvorbis in
 # `ph2d-audio-encode` and symphonia in `ph2d-audio-decode`: `tract` must never
-# reach the RT mixer (`ph2d-audio`). Gate: `ph2d-audio/tests/no_ml_runtime_reaches_the_mixer.rs`.
+# reach the RT mixer (`ph2d-audio`). Gate: `ph2d-audio/tests/it/no_ml_runtime_reaches_the_mixer.rs`.
 #
 # Control thread only, offline: HR-3 (no-alloc) and HR-5 (no transcendentals) do
 # NOT apply here — it may allocate and call the model freely.

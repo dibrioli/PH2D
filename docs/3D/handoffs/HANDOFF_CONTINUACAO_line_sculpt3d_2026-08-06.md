@@ -161,7 +161,7 @@ re-derive; e se for mover o número de alguma, reconfira a nota** (`CLAUDE.md` �
 ### 4.1 — O **AO ASSADO** (o irmão da cavidade) — **medido hoje, desenho decidido**
 
 O plano dizia *"o AO assado do §3 é o irmão desta wave e usa o mesmo canal de
-vértice"*. A sonda nova (`crates/ph2d-sdf/tests/measure_ao.rs`) mediu o
+vértice"*. A sonda nova (`crates/ph2d-sdf/tests/it/measure_ao.rs`) mediu o
 pré-requisito dele **antes de uma linha ser escrita**, e mudou metade da frase:
 
 | malha | res 64 | res 128 | res 192 |

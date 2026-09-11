@@ -69,7 +69,7 @@ re-digitados. Com ele, a mesma mutação **morre**.
 | `ph2d-editor-core/src/screens/layout.rs` | **`MOTION_TIMELINE_H` (200)** + `MOTION_TIMELINE_MAX_FRAC` (0.45) + **`HeroLayout::dock_timeline_into_motion()`** (pura) + 4 gates |
 | `ph2d-editor-core/src/screens/hero.rs` | **`PANEL_MOTION_GRAPH` / `PANEL_TIMELINE`** (consts públicas — o seam) |
 | `ph2d-editor-core/src/screens/hero/paint.rs` | chama o dock quando os DOIS painéis estão visíveis |
-| `ph2d-editor-core/tests/the_hero_paint_docks_the_timeline_into_motion.rs` | **arch-gate novo** (§3b) |
+| `ph2d-editor-core/tests/it/the_hero_paint_docks_the_timeline_into_motion.rs` | **arch-gate novo** (§3b) |
 | `shells/.../motion_bridge.rs` | a timeline **abre com a tool** (mesma borda que já dava `play()`) |
 | `shells/.../motion_bridge_dock_tests.rs` | seam: o "antes" (eles se sobrepunham) e o "depois" |
 | **`ph2d-panel-timeline`** | **ZERO mudanças.** É o resultado, não uma omissão. |

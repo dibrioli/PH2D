@@ -10,7 +10,7 @@
 >
 > **Método:** censo medido antes de qualquer proposta (`CLAUDE.md` §0 — *meça antes de
 > limitar*). Harness em `ph2d-tool-painter::tool::paint::measure_gpu_frontier` (lado CPU)
-> e `ph2d-render/tests/layer_compositor_gpu.rs::measure_the_stack_depth_on_the_device`
+> e `ph2d-render/tests/it/layer_compositor_gpu.rs::measure_the_stack_depth_on_the_device`
 > (lado GPU), os dois `#[ignore]`d. Máquina: RTX 5060 Ti 16 GB / 32 cores / tier
 > `workstation`. Release.
 >

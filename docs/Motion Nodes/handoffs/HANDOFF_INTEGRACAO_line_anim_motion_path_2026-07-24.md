@@ -113,7 +113,7 @@ próprio gate, e ganhou um gate irmão de **magnitude** (`ph2d-arclen`), porque 
 > número errado passa — **confira `0xd52a_2b63_cd39_0e29` na árvore combinada**.
 
 **(b) Um arch-gate da `line/Vector` foi REESCRITO.**
-`shells/desktop/tests/the_patternpath_handles_are_drawn_and_dragged.rs` media **`< 1200`
+`shells/desktop/tests/it/the_patternpath_handles_are_drawn_and_dragged.rs` media **`< 1200`
 bytes** entre dois presses no `input_dispatch`. É a **3ª instância** no repo de
 [[feedback_a_gate_anchored_on_a_byte_distance_is_a_proxy_that_expires]]. Duas coisas
 foram feitas: o meu bloco mudou-se para **depois** do cluster de Select do vetor (não

@@ -38,7 +38,7 @@ use crate::AnimValue;
 /// ```
 ///
 /// All mock impls in [`crate::mocks`] satisfy `Send + Sync` (verified
-/// in `ph2d-vector-doc/tests/_audit_send_sync.rs` — R4 audit Lens-L).
+/// in `ph2d-vector-doc/tests/it/_audit_send_sync.rs` — R4 audit Lens-L).
 pub trait AttributeEvaluator {
     /// Sample the attribute at time `t`.
     fn sample(&self, t: f64) -> AnimValue;

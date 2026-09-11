@@ -223,7 +223,7 @@ abaixo é histórico — não re-investigue.
     chegar. **Esquecer (4) compila, pinta a barra e o thumb arrasta — mas a roda dá
     zoom na câmera.** O **Audio Mixer estava exatamente assim** e ninguém tinha
     notado; corrigido junto.
-  - Gate nova: `shells/desktop/tests/scrollable_panels_intercept_the_wheel.rs` —
+  - Gate nova: `shells/desktop/tests/it/scrollable_panels_intercept_the_wheel.rs` —
     lê os ids de `scrollbar_panel_for_id` e exige cada um dentro de um `inside(...)`
     de `cursor_over_hero_panel`. **Mutation-testada** (apagar `|| inside(AUDIO_MIXER_PANEL)`
     faz falhar). A 1ª versão escaneava a função inteira e passava mesmo assim — o
@@ -372,7 +372,7 @@ abaixo é histórico — não re-investigue.
     seu offset DC. Um gate não tinha o que fechar. Corrigido pra `sin(TAU·hz·t)`.
   - **`fx_params.rs` estourou o cap de 600 do shell (HR-18)** → tabela extraída pra
     `audio/fx_params_table.rs` (447 + 262). O cap do shell é **600**, não os 700 do
-    workspace — foi `shells/desktop/tests/file_loc_caps.rs` que pegou.
+    workspace — foi `shells/desktop/tests/it/file_loc_caps.rs` que pegou.
 - **W6 Bloco 1 — Loop points + `smpl` chunk + audição click-free (2026-07-10)**.
   Primeiro bloco do **asset-prep de games**: uma **região de loop** no clipe (metadado,
   NÃO edição de undo), snap a zero-crossing, **audição contínua sem clique**, e o loop

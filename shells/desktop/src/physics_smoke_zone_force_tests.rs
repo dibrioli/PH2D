@@ -5,8 +5,8 @@
 //!
 //! ⚠️ **E os gates aqui julgam a CENA, não a lei.** A lei tem os dela
 //! (`ph2d-platformer::kinematic_tests`), a porta tem os dela
-//! (`ph2d-physics/tests/zone_push.rs`) e o produto tem os dele
-//! (`ph2d-physics-ecs/tests/player_zone_force.rs`). O que só esta cena pode afirmar é
+//! (`ph2d-physics/tests/it/zone_push.rs`) e o produto tem os dele
+//! (`ph2d-physics-ecs/tests/it/player_zone_force.rs`). O que só esta cena pode afirmar é
 //! que **os quatro corpos que ela monta são comparáveis** — se diferirem em forma,
 //! densidade, freio ou ponto de partida, o artista olha para uma diferença que não é a
 //! que a wave produziu.

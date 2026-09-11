@@ -457,7 +457,7 @@ kills de relógio dão vermelho e **nenhum é código** — o mesmo binário med
 mesmo passe. **Nenhuma leitura de relógio desta workstation significa alguma coisa acima de
 `load ~5`.**
 
-⚠️ **Gates de GPU:** `crates/ph2d-render/tests/impasto_light_gpu.rs` é `#[ignore]` e precisa de
+⚠️ **Gates de GPU:** `crates/ph2d-render/tests/it/impasto_light_gpu.rs` é `#[ignore]` e precisa de
 adapter — **rode-o na RTX** (`cargo test -p ph2d-render --release --test impasto_light_gpu --
 --ignored`). Sem adapter ele faz *skip gracioso*, **que não é verde**, e é ele que prova o
 `the_paper_alone_survives_the_gpu_producer` e o `the_wgsl_globals_measures_exactly_the_rust_globals`

@@ -4,7 +4,7 @@
 > Detalhe técnico → [`SKILL_Stack_PH2D_Definitiva.md`](../../SKILL_Stack_PH2D_Definitiva.md) (HR-1..HR-18).
 > Decisão da subida → [ADR-0168](../architecture/decisions/0168-the-stack-rises-to-its-ceilings-and-four-dependencies-stay-behind-on-purpose.md).
 > ⚠️ **Esta tabela é GATEADA** contra o `Cargo.lock` por
-> [`architecture_stack_versions_doc_matches_the_lockfile`](../../crates/ph2d-editor-core/tests/architecture_stack_versions_doc_matches_the_lockfile.rs).
+> [`architecture_stack_versions_doc_matches_the_lockfile`](../../crates/ph2d-editor-core/tests/it/architecture_stack_versions_doc_matches_the_lockfile.rs).
 > Ela não pode envelhecer em silêncio: quem subir uma dependência **tem** de a editar, ou o portão fica vermelho.
 
 ## A tabela

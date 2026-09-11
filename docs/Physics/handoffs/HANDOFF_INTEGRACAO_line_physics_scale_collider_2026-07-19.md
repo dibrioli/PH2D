@@ -49,12 +49,12 @@ collider casa com o sprite, não colapsa num círculo), **Cuboid** escala per-ei
 | `crates/ph2d-physics/src/world.rs` | `pub mod shape;` + `pub use shape::…`; arm `ShapeDesc::Ellipse` em `spawn_body` (`convex_polyline`, fallback a `ball`) |
 | `crates/ph2d-physics/src/lib.rs` | re-export `ELLIPSE_SEGS`/`ellipse_vertices` (via `world`) |
 | `crates/ph2d-physics/Cargo.toml` | `libm = "=0.2.16"` (pin do workspace — usada por `ellipse_vertices`; machete OK) |
-| `crates/ph2d-physics/tests/ellipse_collider.rs` | **NOVO** — AABB da elipse no sim + determinismo da tesselação |
+| `crates/ph2d-physics/tests/it/ellipse_collider.rs` | **NOVO** — AABB da elipse no sim + determinismo da tesselação |
 | `crates/ph2d-physics-ecs/src/scale.rs` | **NOVO** — `scaled_shape` (a porta única) |
 | `crates/ph2d-physics-ecs/src/bridge.rs` | `body_desc` chama `scaled_shape(col.shape, t.scale)` (removeu o `match` inline) |
 | `crates/ph2d-physics-ecs/src/lib.rs` | re-export `scaled_shape` + `ShapeDesc`/`ellipse_vertices`/`ELLIPSE_SEGS` |
 | `crates/ph2d-physics-ecs/src/bin/physics_ecs_c9.rs` | +1 bola não-uniformemente escalada (elipse cross-OS); doc `body_count 52` |
-| `crates/ph2d-physics-ecs/tests/scale_reaches_the_collider.rs` | **NOVO** — 6 gates (4 pure + 2 behavioral) |
+| `crates/ph2d-physics-ecs/tests/it/scale_reaches_the_collider.rs` | **NOVO** — 6 gates (4 pure + 2 behavioral) |
 | `shells/desktop/src/render_loop/physics_overlay.rs` | `collider_outline(ShapeDesc, …)` + arm `Ellipse`; `outlines` resolve por `scaled_shape`; +2 gates |
 | `shells/desktop/src/physics_smoke.rs` | cena `PH2D_PHYSICS_SMOKE=9` (`physics_smoke_scale`) + linha na tabela + dispatch |
 | `CLAUDE.md` · `docs/Physics/{HANDOFF_line_physics,BUGS_physics}.md` | docs (esta wave) |
@@ -148,8 +148,8 @@ overlay **acende** o sensor (magenta idle→bright) + estado consultável (`bodi
 `sections/physics.rs` · `populate.rs` · `event_physics.rs` · `tests/seam_physics.rs`. shell:
 `render_loop/physics_overlay.rs` (cores + `triggered`) · `render_loop/mod.rs` (coleta `triggered`) ·
 `render_loop/inspector_physics.rs` (build + apply) · `physics_smoke.rs` (`=10`) · `project.rs`
-(schema 27) · `project_tests.rs` (tripla-pin). Testes: `ph2d-physics/tests/sensors.rs`,
-`ph2d-physics-ecs/tests/sensors.rs`, `+persistence.rs`.
+(schema 27) · `project_tests.rs` (tripla-pin). Testes: `ph2d-physics/tests/it/sensors.rs`,
+`ph2d-physics-ecs/tests/it/sensors.rs`, `+persistence.rs`.
 
 **Gates (10 novos, 3 mutações provadas — ver §W7 do tracker).** Verde local: 33 bins de física,
 overlay 13/13, panel seam 11/11, inspector 7/7, project 14/14, clippy `--all-targets` (física +
@@ -192,9 +192,9 @@ relativa; rapier `FixedJoint`). Um Pin com a rotação congelada.
 `ph2d-physics-ecs/src/joint.rs` (variant + `has_length` explícito + `shares_a_point` + testes) ·
 `ph2d-physics-ecs/src/bridge/joints.rs` (anchor policy + mapeamento) · `ph2d-editor-core/src/ids/inspector.rs`
 (`INSP_JOINT_KIND` [3]→[4]) · `ph2d-panel-inspector/src/sections/joint.rs` (label + `KIND_ROPE` gate) ·
-`ph2d-panel-inspector/tests/seam_joint.rs` (sweep 0..4) · `shells/desktop/src/render_loop/inspector_joint.rs`
+`ph2d-panel-inspector/tests/it/seam_joint.rs` (sweep 0..4) · `shells/desktop/src/render_loop/inspector_joint.rs`
 (tag↔kind) · `physics_smoke_rigs.rs` (`=11`) · `physics_smoke.rs` (dispatch/tabela) · `project.rs`
-(schema 28) · `project_tests.rs` (tripla-pin). Teste: `ph2d-physics-ecs/tests/weld.rs`.
+(schema 28) · `project_tests.rs` (tripla-pin). Teste: `ph2d-physics-ecs/tests/it/weld.rs`.
 
 **Gates (ver §Weld).** Verde local: 34 bins de física, joint/panel/project, clippy, machete, fmt,
 LOC-cap, node_id_collisions.

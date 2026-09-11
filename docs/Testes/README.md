@@ -123,7 +123,7 @@ cargo check --workspace
 
 - `docs/architecture/decisions/0041-rasteredit-rename-and-deactivate.md` — ADR canônico
 - `crates/ph2d-editor-core/src/tool.rs` — trait renomeado + métodos novos
-- `crates/ph2d-editor-core/tests/architecture_tool_contract_surface.rs` — caps atualizados (4→5)
+- `crates/ph2d-editor-core/tests/it/architecture_tool_contract_surface.rs` — caps atualizados (4→5)
 - DIRETRIZ + SKILL_Stack + CLAUDE atualizados (rename + entry v6.10)
 
 ---
@@ -379,9 +379,9 @@ Vide `audits/etapa-3.md`. Resumo:
 
 - `crates/ph2d-tool-runtime/src/lib.rs` — `drive_multi_preview_cache` helper + 4 tests + fix A1
 - `crates/ph2d-tool-runtime/tests/architecture_runtime_loc_cap.rs` — cap 500→650
-- `shells/desktop/tests/architecture_no_per_tool_branch_in_render_loop.rs` — NOVO gate #1
-- `shells/desktop/tests/architecture_no_downcast_to_concrete_tool_in_shell.rs` — NOVO gate #2 com allowlist
-- `crates/ph2d-tool-registry-init/tests/architecture_image_tool_kind_contract.rs` — NOVO gate #3
+- `shells/desktop/tests/it/architecture_no_per_tool_branch_in_render_loop.rs` — NOVO gate #1
+- `shells/desktop/tests/it/architecture_no_downcast_to_concrete_tool_in_shell.rs` — NOVO gate #2 com allowlist
+- `crates/ph2d-tool-registry-init/tests/it/architecture_image_tool_kind_contract.rs` — NOVO gate #3
 - `shells/desktop/src/render_loop/color_equalization_bridge.rs` — usa drive_multi_preview_cache
 - `shells/desktop/src/app_state.rs` — ColorEqualizationPreview virou type alias
 - `shells/desktop/src/input_handlers.rs` — fix C3 (removeu drain duplicado)
@@ -460,9 +460,9 @@ Vide `audits/etapa-4.md`. Resumo:
 - `tools/ph2d-panel-sync/` — Cargo.toml + src/{lib.rs, main.rs}
 - `tools/ph2d-chrome-sync/` — Cargo.toml + src/{lib.rs, main.rs}
 - `tools/ph2d-widget-sync/` — Cargo.toml + src/{lib.rs, main.rs}
-- `crates/ph2d-panel-registry-init/tests/staleness.rs` — 3 sub-gates (semantic comparison)
-- `crates/ph2d-editor-core/tests/architecture_chrome_dispatch_in_sync.rs` — 2 sub-gates
-- `crates/ph2d-editor-core/tests/architecture_widget_mod_in_sync.rs` — 1 sub-gate
+- `crates/ph2d-panel-registry-init/tests/it/staleness.rs` — 3 sub-gates (semantic comparison)
+- `crates/ph2d-editor-core/tests/it/architecture_chrome_dispatch_in_sync.rs` — 2 sub-gates
+- `crates/ph2d-editor-core/tests/it/architecture_widget_mod_in_sync.rs` — 1 sub-gate
 - Markers `<ph2d-panel-sync:*>`, `<ph2d-chrome-sync:*>`, `<ph2d-widget-sync:*>` em arquivos centrais
 - `docs/Testes/audits/etapa-4.md` — full audit report
 
@@ -556,12 +556,12 @@ Apesar disso, smoke recomendado nos painéis tocados por substituição token + 
 **Novos:**
 - `crates/ph2d-color/` — Cargo.toml + src/{lib.rs, linear.rs, srgb.rs, premultiplied.rs, oklch.rs}
 - `crates/ph2d-editor-core/src/math.rs` — `safe_clamp` helper + 3 tests
-- `crates/ph2d-editor-core/tests/architecture_panel_loc_cap.rs`
-- `crates/ph2d-editor-core/tests/arch_no_absolute_drag_pattern.rs`
-- `crates/ph2d-editor-core/tests/arch_no_char_count_widths.rs`
-- `crates/ph2d-editor-core/tests/arch_safe_clamp_only.rs`
-- `crates/ph2d-editor-core/tests/arch_mode_has_reconcile.rs`
-- `crates/ph2d-editor-core/tests/arch_color_space_typed.rs`
+- `crates/ph2d-editor-core/tests/it/architecture_panel_loc_cap.rs`
+- `crates/ph2d-editor-core/tests/it/arch_no_absolute_drag_pattern.rs`
+- `crates/ph2d-editor-core/tests/it/arch_no_char_count_widths.rs`
+- `crates/ph2d-editor-core/tests/it/arch_safe_clamp_only.rs`
+- `crates/ph2d-editor-core/tests/it/arch_mode_has_reconcile.rs`
+- `crates/ph2d-editor-core/tests/it/arch_color_space_typed.rs`
 - `crates/ph2d-panel-color-equalization/src/paint_sections.rs`
 - `crates/ph2d-panel-color-equalization/src/paint_histogram.rs`
 
@@ -682,8 +682,8 @@ cargo run -p ph2d-memory-gc
 - `metrics/loc-trend.json` — primeiro sample (2026-05-24)
 
 **Modificados (audit refinements):**
-- `crates/ph2d-editor-core/tests/arch_mode_has_reconcile.rs` (M-1)
-- `crates/ph2d-editor-core/tests/arch_color_space_typed.rs` (M-2)
+- `crates/ph2d-editor-core/tests/it/arch_mode_has_reconcile.rs` (M-1)
+- `crates/ph2d-editor-core/tests/it/arch_color_space_typed.rs` (M-2)
 
 ---
 

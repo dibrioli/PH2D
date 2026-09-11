@@ -349,7 +349,7 @@ recalcula** ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]). O `Vec
   contorno alcança a largura e para **duro** (com o Glow do mesmo σ como controle) · o Color
   Overlay repinta **sem mover cobertura** em três forças · o op pontual custa muito menos que um
   borrão · **a margem é um fato do TIPO** (puro, roda sem device).
-- **GPU (`ph2d-render/tests/fx_stack_gpu.rs`, 8, `#[ignore]`):** rampa alarga com sigma · o halo é
+- **GPU (`ph2d-render/tests/it/fx_stack_gpu.rs`, 8, `#[ignore]`):** rampa alarga com sigma · o halo é
   do EFEITO e a FORMA sobrevive por cima · **a ORDEM da pilha muda o desenho** (o gate da wave) ·
   pilha vazia é a identidade · o custo por degrau (medição) · `stack_reach` (puro, roda em qualquer
   runner) · os 3 de render/register/resize que reproduzem os panics da W1.

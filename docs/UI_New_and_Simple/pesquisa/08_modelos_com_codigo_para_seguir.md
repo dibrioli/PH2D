@@ -204,13 +204,13 @@ shell **publica por quadro** (escala de raio · estilo das linhas · aparência 
 mantidos por re-export (43 chamadores).
 
 **Os gates:**
-- [`every_frame_goes_through_the_theme_door`](../../../crates/ph2d-editor-core/tests/every_frame_goes_through_the_theme_door.rs)
+- [`every_frame_goes_through_the_theme_door`](../../../crates/ph2d-editor-core/tests/it/every_frame_goes_through_the_theme_door.rs)
   — censo pelo FONTE: todo ficheiro de `widget/` + `screens/hero/` que chame `stroke_rounded_rect`
   conhece a porta, ou está em `NOT_YET` (**22 ficheiros**, só encolhe) ou em `EXEMPT` (4, por
   mecanismo: a porta, o pintor só-clássico, a pele de documento, os contornos de canvas que **são**
   a mensagem). Com a metade de obsolescência. ⚠️ A 1.ª corrida acusou **9** ficheiros que o meu
   `grep -c` de véspera não tinha visto — *um censo escrito à mão conta o que o autor lembrou*.
-- [`the_modern_family_paints_fewer_frames`](../../../crates/ph2d-editor-core/tests/the_modern_family_paints_fewer_frames.rs)
+- [`the_modern_family_paints_fewer_frames`](../../../crates/ph2d-editor-core/tests/it/the_modern_family_paints_fewer_frames.rs)
   — carrega no PIXEL: a galeria inteira pintada no `forge` e no `dark`, e o `dark` emite
   **estritamente menos caminhos** (as molduras que não estão lá); controlo: dois temas da mesma
   família emitem geometria **igual**.
@@ -268,7 +268,7 @@ directório.*
 
 | peça | o que é |
 |---|---|
-| **o censo alargado** | [`every_frame_goes_through_the_theme_door`](../../../crates/ph2d-editor-core/tests/every_frame_goes_through_the_theme_door.rs) varre também `crates/ph2d-panel-*/src` e `shells/desktop/src` (chaves com o prefixo da crate). Red-first: acusou **exactamente os 59** antes de uma conversão |
+| **o censo alargado** | [`every_frame_goes_through_the_theme_door`](../../../crates/ph2d-editor-core/tests/it/every_frame_goes_through_the_theme_door.rs) varre também `crates/ph2d-panel-*/src` e `shells/desktop/src` (chaves com o prefixo da crate). Red-first: acusou **exactamente os 59** antes de uma conversão |
 | **72 sítios pela porta, 7 isentos por mecanismo** | cartões (Inspector · 7 do Painter) · canvases de curva/falloff · barras de gradiente e amostras de paleta · chips com estado (blend · brush · shape · paper · dropdown do Painter · chrome do grafo) · botões (stack lane · container list · preview toggle · apply) · campos de renomear (asset · clip · marker ⇒ `Focused`) · linhas seleccionadas com tinta (Hierarquia · Flip ⇒ `Active`) · popovers (font/icon dropdown · menu do grafo · probe · lista de tracks) · nós e backdrops do grafo · previews de imagem. Isentos: o marquee do grafo · o crachá `pre` no fio · o halo de socket · os indicadores de «largar aqui» (Flip · Hierarquia · Painter) · o contorno de secção em cor de marcador (Inspector) · a diagonal da matriz de física · as **strips** da timeline (duas adjacentes com a mesma tinta só se separam pelo contorno) |
 | ⭐ **`Feel::Selected`** | a peça que faltava no vocabulário: **SELECCIONADO entre iguais, onde a tinta não chega** (um nó no grafo, a amostra escolhida entre várias, uma linha activa sem preenchimento). Lido da fonte do Godot: o `GraphNode` Modern tem `border_width 0` em repouso e o **seleccionado leva 2 px em `mono`** (`gn_panel_selected_style`, `editor_theme_manager.cpp:1444`) — não no acento. É a terceira moldura que um tema moderno traça (foco · erro · selecção). ⚠️ **Não é o `Active`**: um controlo activo COM tinta própria diz-se pela tinta |
 | `dropdown_feel` | a redução `DropdownState → Feel` sai do pintor do `Dropdown` para uma porta `pub`, porque o Painter desenha um chip de dropdown à mão (a mesma razão do `chip_border_color`) |
@@ -373,7 +373,7 @@ no doc-comment) e `a_card_stands_off_its_panel` (≥ 12/255, OLED de fora).
 
 **A porta:** [`paint::fill_ring(theme, feel, classic_w, classic_colour) -> Option<(recuo, cor)>`](../../../crates/ph2d-editor-core/src/paint.rs), a irmã do `stroke_frame` para a moldura que é um preenchimento. ⚠️ **O recuo É a largura do anel** e volta da porta: escolhê-lo no pintor daria meia moldura no foco.
 
-**O gate:** [`a_ring_painted_as_a_fill_is_still_a_frame`](../../../crates/ph2d-editor-core/tests/a_ring_painted_as_a_fill_is_still_a_frame.rs) — ⚠️ **a régua não pode ser «um `fill` numa cor de borda é suspeito»**: a maioria é legítima e não é moldura (divisores, a trilha de um slider, a bandeja de um grupo), e o fonte não distingue — a espessura vive numa variável. ⇒ a régua é a **DECLARAÇÃO**: os 8 sítios estão numa tabela dizendo o que são (`Ring` · `Divider` · `Track`), e um `Ring` **tem de chamar a porta**. Com a metade de obsolescência. Mais o gate de pixel `the_colour_swatch_loses_the_ring_that_was_a_fill` (clássico 2 caminhos, moderno 1, OLED = clássico).
+**O gate:** [`a_ring_painted_as_a_fill_is_still_a_frame`](../../../crates/ph2d-editor-core/tests/it/a_ring_painted_as_a_fill_is_still_a_frame.rs) — ⚠️ **a régua não pode ser «um `fill` numa cor de borda é suspeito»**: a maioria é legítima e não é moldura (divisores, a trilha de um slider, a bandeja de um grupo), e o fonte não distingue — a espessura vive numa variável. ⇒ a régua é a **DECLARAÇÃO**: os 8 sítios estão numa tabela dizendo o que são (`Ring` · `Divider` · `Track`), e um `Ring` **tem de chamar a porta**. Com a metade de obsolescência. Mais o gate de pixel `the_colour_swatch_loses_the_ring_that_was_a_fill` (clássico 2 caminhos, moderno 1, OLED = clássico).
 
 **Três itens do §7.3 fechados por MEDIÇÃO, sem escrever código:**
 
@@ -399,7 +399,7 @@ que o token tinha: `TOGGLE_H` e `HEX_ROW_H` (o picker de cor), o `SWATCH_W` do r
 (**cujo doc já dizia *«sized to the row height»***) e o `ROW_H` do editor de áudio (*«transport
 button row height»*). ⚠️ **Nenhum teste ficou vermelho:** o app teria linhas de duas alturas e o
 defeito só se vê a olho. As quatro passam a ler o token, e a espécie morre num censo:
-[`the_row_height_is_one_number`](../../../crates/ph2d-editor-core/tests/the_row_height_is_one_number.rs)
+[`the_row_height_is_one_number`](../../../crates/ph2d-editor-core/tests/it/the_row_height_is_one_number.rs)
 — toda constante cujo NOME diz «altura de linha» ou deriva do token, ou está declarada com a
 régua própria (as **9** legítimas: listas densas de 22 px, a linha de socket do grafo que escala
 com o zoom, o alvo de toque de 44 px de uma barra de progresso, o menu flutuante da vista 3D).
@@ -532,7 +532,7 @@ modelo, G2 = **4 px**) e `row_pitch_px()` (a conveniência, `altura + vão`). **
 `altura + vão`, e há sítios que empilham uma caixa cuja altura é medida em tempo de pintura;
 *uma porta que só serve metade dos chamadores deixa a outra metade a escrever o número.*
 
-O portão é [`the_gap_between_two_rows_is_one_answer`](../../../crates/ph2d-editor-core/tests/the_gap_between_two_rows_is_one_answer.rs),
+O portão é [`the_gap_between_two_rows_is_one_answer`](../../../crates/ph2d-editor-core/tests/it/the_gap_between_two_rows_is_one_answer.rs),
 com **duas** metades porque as cópias tinham duas formas: nenhum sítio escreve o passo à mão, e
 nenhuma função chamada «vão de linha» escolhe um degrau. **2 de 2 mutações mortas.**
 
@@ -791,7 +791,7 @@ recolhido, e só chega à cena no `end`; um risco pinta-se ali e já. Se a conta
 
 #### ⭐ O censo que impede o 24.º risco
 
-[`the_boundary_of_a_section_is_a_card`](../../../crates/ph2d-editor-core/tests/the_boundary_of_a_section_is_a_card.rs),
+[`the_boundary_of_a_section_is_a_card`](../../../crates/ph2d-editor-core/tests/it/the_boundary_of_a_section_is_a_card.rs),
 com **duas** metades — e a segunda é a que o torna honesto:
 
 - nenhum painel nomeia `paint_section_separator`;
@@ -1599,7 +1599,7 @@ total. *O número que shipou é a evidência do que cabia.* ⚠️ E as duas met
 
 #### O portão
 
-`crates/ph2d-editor-core/tests/the_indent_of_a_child_is_one_number.rs` — 5 testes:
+`crates/ph2d-editor-core/tests/it/the_indent_of_a_child_is_one_number.rs` — 5 testes:
 
 1. toda superfície que recua por nível chama a porta;
 2. **a metade de obsolescência**: as 5 declaradas ainda recuam;

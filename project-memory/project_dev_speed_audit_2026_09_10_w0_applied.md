@@ -19,8 +19,11 @@ Estado em 2026-09-10, fim do dia:
   `--profile smoke` (o `--release` fica para smokes de PERFORMANCE).
 - ⚠️ `~/.cargo/config.toml` e o settings do VSCode são POR MÁQUINA (fora do repo): o Mac e o
   Windows não foram tocados, e o `hw-profile.sh` continua a mandar lá.
-- **Por abrir, em ordem:** W1 (1 446 binários de teste de integração → um por crate; os 155
-  gates puros de código-fonte → uma crate `ph2d-arch-gates`) · W2.0 (censo de quanto de `App`
+- ✅ **W1 FEITA no mesmo dia, na `main` por ordem do Enio (sem linha):** 1 446 → 127 binários de
+  teste de integração (`tests/it/main.rs` + um `mod` por ficheiro, 73 crates, script com prova: lista
+  de 22 635 testes idêntica antes/depois; 19 ficheiros com `#[global_allocator]` ficam binário próprio).
+  Regra nova: teste de integração novo = ficheiro em `tests/it/` + `mod` no `main.rs` (DIRETRIZ §6.3).
+- **Por abrir, em ordem:** W1b (os 155 gates puros de código-fonte → uma crate `ph2d-arch-gates`) · W2.0 (censo de quanto de `App`
   cada família da shell toca) · W2 (cenas de smoke não citadas apagadas, as citadas para crates
   próprias atrás de uma feature; depois `ph2d-app-<módulo>` por família, Motion primeiro) ·
   W3 (CI: archive + partition, impactado no PR, GPU por software) · W4 (nightly só para medir

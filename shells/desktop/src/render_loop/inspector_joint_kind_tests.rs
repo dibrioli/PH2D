@@ -208,7 +208,7 @@ fn a_joint_param_edit_lands_only_when_the_queue_is_flushed() {
         "after the flush the component must carry the new stiffness — this is the \
          edit the render loop failed to flush, so the joint sat at k=30. The \
          bridge picking a flushed component change up and tightening the spring \
-         is proven end to end in ph2d-physics-ecs/tests/joint_live_edit.rs"
+         is proven end to end in ph2d-physics-ecs/tests/it/joint_live_edit.rs"
     );
 }
 

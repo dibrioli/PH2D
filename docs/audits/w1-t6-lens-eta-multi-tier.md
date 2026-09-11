@@ -74,7 +74,7 @@ API atual retorna `Result<BTreeMap, Error>` — sucesso OR erro, nunca parcial. 
 
 ### L1 — CLI `tier_filename` duplica `TierIndex::name()` shape
 
-[`main.rs:206-214`](../../tools/asset-cooker/src/main.rs) emite `"desktop"/"mobile"/"web"/"lowend"/"constrained"` (lowercase). `TierIndex::name()` em [`crates/ph2d-asset/tests/architecture_texture_ktx2.rs:26-30`](../../crates/ph2d-asset/tests/architecture_texture_ktx2.rs) retorna `"Desktop"/"Mobile"/.../"Constrained"` (CamelCase). Inconsistência cosmética: filename é lowercase-kebab convenção, log/Display é CamelCase. Aceitável mas adiciona vapor.
+[`main.rs:206-214`](../../tools/asset-cooker/src/main.rs) emite `"desktop"/"mobile"/"web"/"lowend"/"constrained"` (lowercase). `TierIndex::name()` em [`crates/ph2d-asset/tests/it/architecture_texture_ktx2.rs:26-30`](../../crates/ph2d-asset/tests/it/architecture_texture_ktx2.rs) retorna `"Desktop"/"Mobile"/.../"Constrained"` (CamelCase). Inconsistência cosmética: filename é lowercase-kebab convenção, log/Display é CamelCase. Aceitável mas adiciona vapor.
 
 **Recomendação:** quando `TierIndex` materializar como alias-target (W1.T6.x follow-up no plano vivo), add `TierIndex::filename_slug() -> &str` para single source of truth.
 

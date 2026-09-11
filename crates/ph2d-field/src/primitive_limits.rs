@@ -21,7 +21,7 @@ pub const MIN_PRISM_SIDES: u32 = 3;
 /// A primeira redação deste doc dizia, com confiança: *«o custo **não** é o recurso — o preço por
 /// ponto mal se mexe com os lados»*, e citava o `spike_formula_vs_profile`, que tinha medido `7,00×`
 /// os nós a dar `1,21×` o relógio. ⛔ **É falso aqui.** A sonda
-/// [`measure_prism_sides`](../../ph2d-field-eval/tests/measure_prism_sides.rs) mediu:
+/// [`measure_prism_sides`](../../ph2d-field-eval/tests/it/measure_prism_sides.rs) mediu:
 ///
 /// | lados | ns/ponto | × o cilindro | desvio da quina |
 /// |---|---|---|---|
@@ -61,7 +61,7 @@ pub const MIN_STAR_POINTS: u32 = 3;
 ///
 /// Uma estrela de `n` pontas é o disco dos vales unido a `n` pipas de quatro semiplanos cada —
 /// `4n`, contra `n` de um prisma do mesmo número. A sonda
-/// [`measure_star_points`](../../ph2d-field-eval/tests/measure_star_points.rs) mediu, com a **mesma
+/// [`measure_star_points`](../../ph2d-field-eval/tests/it/measure_star_points.rs) mediu, com a **mesma
 /// régua do prisma** (o cilindro exato = `1,00×`):
 ///
 /// | pontas | semiplanos | nós | ns/ponto | × o cilindro |
@@ -89,7 +89,7 @@ pub const MIN_GEAR_TEETH: u32 = 3;
 
 /// ⭐⭐⭐ **O TETO de dentes — MEDIDO, e o número está na tabela ao lado** (W106).
 ///
-/// A sonda é [`measure_gear_teeth`](../../ph2d-field-eval/tests/measure_gear_teeth.rs), e a régua é
+/// A sonda é [`measure_gear_teeth`](../../ph2d-field-eval/tests/it/measure_gear_teeth.rs), e a régua é
 /// a mesma que escolheu o [`MAX_STAR_POINTS`]: o preço contra o **cilindro**, que é a referência
 /// que o [`MAX_PRISM_SIDES`] usa e shipa a `3,80×`.
 ///
@@ -155,7 +155,7 @@ pub const MIN_CLOUD_LOBES: u32 = 3;
 ///
 /// # ⚠️ A primeira régua respondeu à pergunta errada
 ///
-/// A sonda do **preço** ([`measure_cloud_lobes`](../../ph2d-field-eval/tests/measure_cloud_lobes.rs))
+/// A sonda do **preço** ([`measure_cloud_lobes`](../../ph2d-field-eval/tests/it/measure_cloud_lobes.rs))
 /// diz que `12` bossas custam `3,95×` o cilindro — exactamente a barra que o [`MAX_PRISM_SIDES`] já
 /// shipa. ⛔ **E `12` fura a peça**: numa união n-ária o tecto de `‖∇f‖` é `√(quantas peças estão
 /// ACTIVAS)`, e acima de `passo × ‖∇f‖ = 1` a marcha de esferas **atravessa a superfície**.

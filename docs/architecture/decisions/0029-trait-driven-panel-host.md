@@ -373,14 +373,14 @@ Implementar como tests permanentes em CI:
 
 ### 6.1 Cycle prevention (já existe, ativa)
 
-`crates/ph2d-editor-core/tests/architecture_cycle_prevention.rs` —
+`crates/ph2d-editor-core/tests/it/architecture_cycle_prevention.rs` —
 `panel_crates_depend_only_on_editor_core` sai de `#[ignore]`. Falha se
 qualquer `crates/ph2d-panel-*/Cargo.toml` tem `ph2d-editor` no
 `[dependencies]`.
 
 ### 6.2 Surface area gate (novo)
 
-`crates/ph2d-editor-core/tests/architecture_panel_host_surface.rs` —
+`crates/ph2d-editor-core/tests/it/architecture_panel_host_surface.rs` —
 parseia o source de `panel/host.rs` + `internal_host.rs`, conta métodos
 `fn` em cada trait. Asserta:
 

@@ -97,7 +97,7 @@ primitivos e centenas de ícones, é a diferença entre pagar o atlas todo quadr
 `mark_texture_dirty` / `mark_override_image_dirty`, senão a imagem **congela**. Conferido: temos
 **um** consumidor (`shells/desktop/src/fx_live.rs:393`), com o wrapper em
 `crates/ph2d-render/src/vello_pass.rs:130` e **dois gates** a defendê-lo
-(`shells/desktop/tests/every_recook_tells_vello_the_pixels_changed.rs`, incluindo um que impede
+(`shells/desktop/tests/it/every_recook_tells_vello_the_pixels_changed.rs`, incluindo um que impede
 satisfazer o censo com um `mark_texture_dirty` que não faz nada).
 
 ⚠️ **Mas o censo é do `fx_live` apenas.** Qualquer superfície de UI nova que recozinhe pixels

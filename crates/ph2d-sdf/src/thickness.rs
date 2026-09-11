@@ -7,7 +7,7 @@
 //! que chega pela frente: o teto dele é a média dessa luz sobre a esfera, medido
 //! em `1/π ≈ 0,318` do lambert cheio, e ele chega lá virando um **disco cinza
 //! sem cor** (a separação R−B cai de 0,0375 em `t = 1,5` para 0,0001 em `t = 24`
-//! — `ph2d-mesh-render/tests/measure_sss_curve.rs`).
+//! — `ph2d-mesh-render/tests/it/measure_sss_curve.rs`).
 //!
 //! Ou seja: **empurrar aquele eixo não faz cera, faz um disco chapado.** Cera,
 //! folha, orelha e mão contra a lanterna são todas a MESMA coisa — luz que entra

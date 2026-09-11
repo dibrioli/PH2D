@@ -763,7 +763,7 @@ perspectivas = "perspectivas"
 #   `intervalos` — os INTERVALOS que o Trim recorta (`ph2d-vec-scene/src/fx_trim.rs`).
 #   `invertendo` — "…INVERTENDO o sinal" nos gates de render e de medição.
 #   `irracional` — a razão IRRACIONAL que o gate de medição usa para o playhead nunca
-#     cair na grade (`ph2d-timeline/tests/measure_motion_path.rs`).
+#     cair na grade (`ph2d-timeline/tests/it/measure_motion_path.rs`).
 altas = "altas"
 artic = "artic"
 atitude = "atitude"

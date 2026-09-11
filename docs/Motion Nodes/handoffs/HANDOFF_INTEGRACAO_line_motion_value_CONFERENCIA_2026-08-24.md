@@ -40,7 +40,7 @@ ffe5da981  o mar não parecia mar — dois defeitos com a mesma assinatura (Bug 
 | `shells/desktop/Cargo.toml` (+7 deps de path) | **aditivo** | as cenas de smoke passam a citar chaves de param pelo símbolo (`ph2d_node_force_wind::MODE`) em vez de as escrever à mão. |
 | `shells/desktop/src/render_loop/mod.rs` (**1 hunk**) | substituição | `publish_objects` passa a receber `Appearance { atlas, cooked }`. ⚠️ Ficheiro de **10 875** linhas com allowlist — é o de maior probabilidade de conflito da linha, mas o hunk é pequeno e localizado. |
 | `.typos.toml` (+8) | **aditivo** | duas entradas ancoradas (`^dispersa(m\|-se)?$`, `^excepcional$`). ⚠️ **Colisão silenciosa provável** — toda linha apende no fim da mesma lista. |
-| `crates/ph2d-gpu-cook/tests/gpu_cpu_parity_sim.rs` | aditivo | um gate `#[ignore]` de paridade do perfil de distância do atrator. |
+| `crates/ph2d-gpu-cook/tests/it/gpu_cpu_parity_sim.rs` | aditivo | um gate `#[ignore]` de paridade do perfil de distância do atrator. |
 | `crates/ph2d-panel-motion-params/*` (10 ficheiros) | do módulo | secções dobráveis + o seed a correr ANTES do `paint_rows`. |
 
 **Crates NOVAS (2):** `ph2d-motion-region` (folha, a REGIÃO de uma distribuição) e

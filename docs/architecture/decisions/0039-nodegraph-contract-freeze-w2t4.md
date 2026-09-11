@@ -18,7 +18,7 @@ A vertical Motion (W2) provou o contrato inteiro num caminho real:
 
 **Congelar a superfície de `ph2d-nodegraph` + `ph2d-expr`.** Concretamente:
 
-1. **Caps do arch-gate apertados ao tamanho atual, sem folga** (`crates/ph2d-nodegraph/tests/architecture_contract_surface.rs`): `NodeOp` ≤ 2 métodos, `OpResolver` ≤ 1, `NodeManifest` ≤ 8 campos. Qualquer adição à superfície *que os node-crates implementam* passa a tripar o gate — é o que faz o freeze "morder".
+1. **Caps do arch-gate apertados ao tamanho atual, sem folga** (`crates/ph2d-nodegraph/tests/it/architecture_contract_surface.rs`): `NodeOp` ≤ 2 métodos, `OpResolver` ≤ 1, `NodeManifest` ≤ 8 campos. Qualquer adição à superfície *que os node-crates implementam* passa a tripar o gate — é o que faz o freeze "morder".
 2. **Marcadores 🔒 nos `lib.rs`** dos dois crates declarando o estado congelado e a data.
 3. **Formato textual `v1` é a grammar congelada** (inclui o registro `p` de params). Qualquer registro novo pós-freeze bumpa para `v2`.
 

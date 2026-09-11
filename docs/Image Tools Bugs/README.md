@@ -15,7 +15,7 @@ rápido (a correção e o "porquê" ficam aqui, não só no histórico de git).
 ## 1. Outline rosa/magenta no Apply do Bg Removal sobre zona protegida
 
 
-**Gate:** crates/ph2d-editor-core/tests/arch_color_space_typed.rs (heuristic match — refine if wrong)
+**Gate:** crates/ph2d-editor-core/tests/it/arch_color_space_typed.rs (heuristic match — refine if wrong)
 **Tool:** Bg Removal (Chroma) · **Fase:** Apply (bake) · **Status:** ✅ corrigido (2026-05-20)
 
 ### Sintoma
@@ -114,7 +114,7 @@ Ponteiros: `shells/desktop/src/hero_intents/image_edit.rs` (bake
 ## 2. Ferramenta de imagem continua ativa com "Image Tools" desligado
 
 
-**Gate:** crates/ph2d-editor-core/tests/arch_mode_has_reconcile.rs (heuristic match — refine if wrong)
+**Gate:** crates/ph2d-editor-core/tests/it/arch_mode_has_reconcile.rs (heuristic match — refine if wrong)
 **Tool:** Bg Removal / Padding (qualquer tool stateful de imagem) ·
 **Fase:** ativação/desativação · **Status:** ✅ corrigido (2026-05-21,
 commit `3ef9190`)
@@ -216,7 +216,7 @@ de ids. Cobre Bg Removal, Padding, Trim, Make Square, Real Size e
 ## 3. Toasts "Tool → X" com glifo quebrado (seta vira tofu)
 
 
-**Gate:** crates/ph2d-editor-core/tests/no_tofu_glyphs.rs (heuristic match — refine if wrong)
+**Gate:** crates/ph2d-editor-core/tests/it/no_tofu_glyphs.rs (heuristic match — refine if wrong)
 **Tool:** todas (troca de ferramenta) · **Status:** ✅ corrigido
 (2026-05-21, commit `b62e0c5`)
 

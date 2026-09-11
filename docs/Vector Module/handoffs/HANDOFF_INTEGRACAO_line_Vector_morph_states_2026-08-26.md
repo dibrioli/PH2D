@@ -91,7 +91,7 @@ SUPERFÍCIE DE COLISÃO — line/Vector contra main
 |---|---|---|---|
 | **`PROJECT_SCHEMA`** | **98** | 97 | [`project_schema.rs`](../../../shells/desktop/src/project_schema.rs) + a **escada** ao lado + a **tripla** em [`project_schema_tests.rs`](../../../shells/desktop/src/project_schema_tests.rs) — **três sítios** |
 | **registro de componentes** (2 espelhos) | **72** | 71 | `ph2d-render/src/registry.rs` · `ph2d-script/src/registry.rs` |
-| **contagem de secções do painel Vector** | **37** | 36 | `crates/ph2d-panel-vector/tests/seam.rs` |
+| **contagem de secções do painel Vector** | **37** | 36 | `crates/ph2d-panel-vector/tests/it/seam.rs` |
 
 ⚠️ **Se outra linha também subiu qualquer um deles, o valor certo é a CONTAGEM, não o de nenhum dos
 dois lados** — e a colisão passa **muda** quando as duas escrevem o mesmo literal.

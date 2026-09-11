@@ -70,7 +70,7 @@ const COPIES: usize = 3;
 ///
 /// ⚠️ **O RECURSO É TEMPO, e o número é MEDIDO** — o mesmo teto do `motion.trail`, pelo mesmo
 /// motivo (linhas emitidas no caminho de CPU) e com a mesma tabela ao lado dele. Medido pela
-/// porta do produto (`ph2d-node-registry-init/tests/measure_instance_ceiling.rs`): este nó
+/// porta do produto (`ph2d-node-registry-init/tests/it/measure_instance_ceiling.rs`): este nó
 /// custa **~9–13 ns por linha emitida**, então o teto antigo de `65_536` valia ~0,6 ms — um
 /// vigésimo de um quadro de 60 fps —, e este vale ~2,5 ms. ⚠️ **Nenhum dos três nós que
 /// carregavam este literal trazia uma medição**, e a justificativa escrita era uma CONTAGEM

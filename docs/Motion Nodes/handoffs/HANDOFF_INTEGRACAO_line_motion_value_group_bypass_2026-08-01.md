@@ -104,7 +104,7 @@ Dois splits mecânicos por causa dos tetos (extração, não hack):
 - `motion_bridge_subgraph.rs` → clipboard saiu para `motion_bridge_subgraph_clipboard.rs` (**472**).
 
 **Todos os arquivos tocados < 600** (shell) e **< 700** (crates). O gate de LOC do shell
-(`shells/desktop/tests/file_loc_caps.rs`, teste de **integração**) **não sai** no `cargo test -p
+(`shells/desktop/tests/it/file_loc_caps.rs`, teste de **integração**) **não sai** no `cargo test -p
 ph2d-host-desktop --bins` — o integrador roda `cargo test -p ph2d-host-desktop --test file_loc_caps`
 (conferido verde no tip: 2/2).
 
@@ -134,7 +134,7 @@ Cada mutação restaurada por `cp` + `touch`.
    textual **fora** dos arquivos da linha, é colisão de mesmo-símbolo → PARE, DIRETRIZ §1.5.5).
 2. Gate da árvore combinada: `cargo fmt --check`, `cargo clippy --workspace --all-targets`,
    `nextest`/`cargo test` impactado, **os dois gates de LOC** (`architecture_workspace_file_loc_cap`
-   **e** `shells/desktop/tests/file_loc_caps.rs`).
+   **e** `shells/desktop/tests/it/file_loc_caps.rs`).
 3. `--ff-only`. Sem ADR, sem número a disputar, sem contrato.
 
 ---

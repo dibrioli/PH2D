@@ -47,7 +47,7 @@ Tudo **aditivo**, e o footprint fora do módulo é pequeno de propósito.
 | `shells/desktop/src/app_state.rs` | 1 campo `nest_smoke_done: bool` | **Sim** |
 | `shells/desktop/src/main.rs` | `mod nest_smoke;` | **Sim** |
 | `shells/desktop/src/nest_smoke.rs` | **arquivo novo** (cena de smoke) | **Sim** |
-| `crates/ph2d-ecs/tests/nesting_sorts_as_a_block.rs` | **arquivo novo, só TESTE** | **Sim** |
+| `crates/ph2d-ecs/tests/it/nesting_sorts_as_a_block.rs` | **arquivo novo, só TESTE** | **Sim** |
 
 ⚠️ **`ph2d-ecs` não teve fonte alterada.** A Fatia 0 mediu o z-order do nesting e descobriu que
 **a resposta já existia** — `SortingGroup` (Unity Sorting Group) já estava na `main`. O que

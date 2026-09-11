@@ -193,7 +193,7 @@ Foi reescrito para medir o lado de DENTRO (a cor ficar **aquém** do eixo, o def
 
 | risco | número | por que fica |
 |---|---|---|
-| O arranjo é **O(segmentos²)** | **80,8 ms** com 200 traços (5800 segmentos); critério de morte do §8 = 100 ms | passa com pouca folga. O caminho (broadphase por grade) é conhecido e não foi preciso. Sonda: `crates/ph2d-flip-fill/tests/probe_arrange_perf.rs` |
+| O arranjo é **O(segmentos²)** | **80,8 ms** com 200 traços (5800 segmentos); critério de morte do §8 = 100 ms | passa com pouca folga. O caminho (broadphase por grade) é conhecido e não foi preciso. Sonda: `crates/ph2d-flip-fill/tests/it/probe_arrange_perf.rs` |
 | Resíduo do contorno vetorizado vs Draw:Filled | até **314 px** (linha de 8 px, dureza 0,20) | é o erro de VETORIZAÇÃO, não de lei. A rota do arranjo o leva a zero; o gate mede a rota que sobra quando aquela recusa. Barra em 400 (27% acima do pior observado, **30×** abaixo do que a lei antiga produzia) |
 | **Grow ≠ 0** e **Trap armado** derrubam a rota do arranjo | — | recusa deliberada: ela põe a fronteira no eixo e não sabe deslocar. **Aceitar seria ignorar um slider em silêncio.** |
 | Perf do Trap: a EDT é 67% do custo | — | `rayon` está **BARRADO por ADR-0109**. Alavancas single-thread esgotadas, tabela pronta. **Exige ordem do Enio + ADR novo** |
@@ -204,10 +204,10 @@ Foi reescrito para medir o lado de DENTRO (a cor ficar **aquém** do eixo, o def
 
 | arquivo | o que decide |
 |---|---|
-| `crates/ph2d-flip-render/tests/probe_bucket_vs_draw_filled.rs` | a varredura que **escolheu a lei** (`w+2s` vs `2s` vs `zero`), contra a referência aprovada |
-| `crates/ph2d-flip-render/tests/probe_halo_under_soft_line.rs` | a medição que provou que o gate de presença **reprovava o Draw:Filled** |
-| `crates/ph2d-flip-fill/tests/probe_arrange_perf.rs` | a perf do arranjo contra o critério de morte do §8 |
-| `crates/ph2d-flip-fill/tests/probe_offsets.rs` | o erro de vetorização é **de um lado só** |
+| `crates/ph2d-flip-render/tests/it/probe_bucket_vs_draw_filled.rs` | a varredura que **escolheu a lei** (`w+2s` vs `2s` vs `zero`), contra a referência aprovada |
+| `crates/ph2d-flip-render/tests/it/probe_halo_under_soft_line.rs` | a medição que provou que o gate de presença **reprovava o Draw:Filled** |
+| `crates/ph2d-flip-fill/tests/it/probe_arrange_perf.rs` | a perf do arranjo contra o critério de morte do §8 |
+| `crates/ph2d-flip-fill/tests/it/probe_offsets.rs` | o erro de vetorização é **de um lado só** |
 
 Rodam com `-- --ignored --nocapture`.
 

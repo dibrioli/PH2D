@@ -419,7 +419,7 @@ impl PhysicsJoint {
     /// A seed, not a physical constant — the checkbox is off by default (P7), so
     /// this is only the number the artist finds in the row when they turn
     /// breaking on, and the one they then tune. Picked off the MEASURED scale
-    /// (`ph2d-physics/tests/measure_joint_break.rs`), where a hanging weight
+    /// (`ph2d-physics/tests/it/measure_joint_break.rs`), where a hanging weight
     /// reads its own weight exactly: 1 kg = 9.81 N, 10 kg = 98.1 N. **100 N is
     /// "it holds about ten kilos"** — high enough that a joint does not part the
     /// instant the box is ticked, low enough to reach by hanging a few crates.

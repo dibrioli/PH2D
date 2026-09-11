@@ -55,7 +55,7 @@ não mudou).
    PARA FORA dele de propósito. E o **Motion node `ph2d-node-motion-expression` agora DELEGA** a esse parser
    (`pub(crate) use ph2d_expr_parse::parse;`) — um parser só, os dois consumidores não divergem
    (gate `the_motion_node_delegates_to_the_one_parser`).
-4. **`fade_fingerprint` é o guardião** (`crates/ph2d-timeline/tests/fade_fingerprint.rs`) — um documento sem
+4. **`fade_fingerprint` é o guardião** (`crates/ph2d-timeline/tests/it/fade_fingerprint.rs`) — um documento sem
    expressão/extrapolação é **byte-idêntico** ao motor pré-linha (Clips/Strips/Fade intactos). Tem de ficar
    VERDE; se sangrar, a linha tocou o blend por engano.
 5. **Os gates de shell só correm na varredura IMPACTADA** (a lição que `line/physics`/`line/Vector`

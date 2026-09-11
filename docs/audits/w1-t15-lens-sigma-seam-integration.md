@@ -7,7 +7,7 @@
   Mais o caminho de batch `cook_all` (W1.T6) → decode.
 - **Método:** análise estática do grafo de dependências + leitura do mapeamento
   `from_vk_format` vs formatos emitidos por `target_matrix` + **gate executável novo**
-  (`tools/asset-cooker/tests/seam_cook_decode_ktx2.rs`).
+  (`tools/asset-cooker/tests/it/seam_cook_decode_ktx2.rs`).
 - **Lente nova:** σ ainda não usada nas 6 rodadas anteriores (γ/δ/ε/ζ/η/θ/ι/κ/λ/μ/ν/ξ);
   rotação per [[feedback-audit-lens-diversity]]. Round único, anti-Goodhart.
 
@@ -53,7 +53,7 @@ ctt 0.4.0 gravasse, digamos, um VkFormat de bloco ASTC fora do subset que
 
 ### Fix inline (σ-1)
 
-Novo gate executável: `tools/asset-cooker/tests/seam_cook_decode_ktx2.rs`
+Novo gate executável: `tools/asset-cooker/tests/it/seam_cook_decode_ktx2.rs`
 (7 testes). Cozinha o fixture canônico `gradient_64x64` (W1.T11) para cada
 `(Tier, AssetClass)` e **decodifica o resultado pelo parser real**, assertando:
 
@@ -101,7 +101,7 @@ VkFormat ID — confirmado.
 | σ-1 | HIGH | Seam cook→decode sem gate executável; hipótese central não travada | **FECHADO inline** (`seam_cook_decode_ktx2.rs`, 7 testes) |
 | σ-2 | LOW | `cook_all` não testava decode dos artefatos de batch (só `.len()==5` + magic) | **FECHADO** (incluído no gate σ-1, teste `cook_all_every_tier_decodes_to_a_known_format`) |
 | σ-3 | NIT (adjacent — W2) | O seam para `ph2d-asset::Asset::TextureKtx2` ainda é manual: nada testa que um blob colocado no variant decodifica. Mas o variant carrega `Arc<Vec<u8>>` opaco e o decode é responsabilidade do renderer W2 (asset.rs:37). Honesto-deferred. | Reportado — owner = W2 renderer |
-| σ-4 | HIGH (adjacent — **NÃO minha pasta de origem**) | `tools/asset-cooker/tests/cooker_determinism.rs:72 prefab_cook_hash_is_locked` FALHA em HEAD: hash atual `6feb338498d6d0b6dbe4a018187c4dfb3725db624bea71301231d380dcc8afab` ≠ pinado `905a9b77...`. **Causa raiz confirmada:** commit `4591f7e` (Sprite Inspector v2 session) expandiu `ph2d::render::Sprite` v3→v4 (20 campos); `simple_sprite.json5` contém um Sprite → postcard agora serializa os campos default novos → bytes cookados mudam → blake3 muda. **Verificado independente do meu dev-dep** (reproduz com a dep removida — prefab cook não usa ktx2). O fix exige atualizar o hash pinado **+** o prefab id referenciado em `tests/fixtures/scene/two_sprites.json5` — ambos dependem do schema Sprite v4. | **Reportado ao Coordenador — owner = Sprite Inspector v2 / commit 4591f7e.** NÃO fixado ([[feedback-audit-scope-discipline]]). |
+| σ-4 | HIGH (adjacent — **NÃO minha pasta de origem**) | `tools/asset-cooker/tests/it/cooker_determinism.rs:72 prefab_cook_hash_is_locked` FALHA em HEAD: hash atual `6feb338498d6d0b6dbe4a018187c4dfb3725db624bea71301231d380dcc8afab` ≠ pinado `905a9b77...`. **Causa raiz confirmada:** commit `4591f7e` (Sprite Inspector v2 session) expandiu `ph2d::render::Sprite` v3→v4 (20 campos); `simple_sprite.json5` contém um Sprite → postcard agora serializa os campos default novos → bytes cookados mudam → blake3 muda. **Verificado independente do meu dev-dep** (reproduz com a dep removida — prefab cook não usa ktx2). O fix exige atualizar o hash pinado **+** o prefab id referenciado em `tests/fixtures/scene/two_sprites.json5` — ambos dependem do schema Sprite v4. | **Reportado ao Coordenador — owner = Sprite Inspector v2 / commit 4591f7e.** NÃO fixado ([[feedback-audit-scope-discipline]]). |
 
 ---
 

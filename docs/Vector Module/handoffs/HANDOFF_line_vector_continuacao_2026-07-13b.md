@@ -208,7 +208,7 @@ topo") depende disso. Ordene por z (`scene.paths().iter().position(...)`) como o
   graça do `apply_many`. Testei com formas de catálogo e sai certo. **Não jogue fora e não
   construa um DCEL** — o realce e o resultado saírem do MESMO motor é a única razão de eles
   não poderem divergir.
-- **A medição** (`ph2d-vec-boolean/tests/measure_face_hit.rs`): 19,9 µs/hover com 8 formas de
+- **A medição** (`ph2d-vec-boolean/tests/it/measure_face_hit.rs`): 19,9 µs/hover com 8 formas de
   64 verts; ~140 µs frio por região nova. O `Topology`+`WindingNumber` do linesweeper é o
   escape hatch se um dia o número mudar. **Não otimize sem medir de novo.**
 - **O seam do pill** (`clicking_build_pill_reaches_the_tool`) — o modo chega à tool. Isso está
@@ -220,7 +220,7 @@ topo") depende disso. Ordene por z (`scene.paths().iter().position(...)`) como o
 
 ## §7 — O que eu fiz FORA do escopo, e você pode precisar reverter
 
-`crates/ph2d-flip-render/tests/pack_perf.rs`: o teto de perf era **único (120 ms)**, calibrado
+`crates/ph2d-flip-render/tests/it/pack_perf.rs`: o teto de perf era **único (120 ms)**, calibrado
 para os ~14 ms do **release** — mas o `nextest --workspace` roda em **debug**, onde o mesmo
 trabalho leva **78 ms ocioso** e passa de **130 ms** sob a carga paralela da suíte. Ficava
 vermelho na suíte cheia e verde isolado, e ia bloquear o integrador e o CI.

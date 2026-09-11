@@ -1,6 +1,6 @@
 //! **The transport's Physics toggle, at the seam the product actually runs.**
 //!
-//! `crates/ph2d-physics-ecs/tests/hold.rs` proves `PhysicsBridge::hold` behaves.
+//! `crates/ph2d-physics-ecs/tests/it/hold.rs` proves `PhysicsBridge::hold` behaves.
 //! That is worth nothing on its own: a `hold` nobody calls is unit-green and
 //! dead in the product ([[feedback_tool_unit_green_integration_dead]]). These
 //! gates drive `physics_bridge::dispatch` — the function the frame loop calls,

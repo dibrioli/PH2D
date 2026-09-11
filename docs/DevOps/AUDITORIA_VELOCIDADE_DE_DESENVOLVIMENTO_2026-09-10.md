@@ -57,10 +57,11 @@
 | `check --workspace --all-targets` frio, `-j 32` / `-j 6` | **93 s / 156 s** | §3.1 |
 | suíte inteira (20 041 testes, 32 threads): executar | **98 s** | §3.3 |
 
-**O que muda com o plano, por onda:** W0 (só configuração, sem tocar código): o smoke do Enio deixa de custar
-161 s num núcleo, a máquina volta a ser usada por inteiro nos builds grandes, e todo teste passa a ter tecto.
-W1 (testes): 1 521 binários → ~110, e os 2 128 religamentos por linha foundational → ~120. W2 (arquitectura):
-a shell deixa de ser a unidade de 45 s no fim de todo gate. Detalhe e preço em §6.
+**O que muda com o plano, por onda:** ✅ W0 (só configuração, feita 10/09): o smoke do Enio passou de 161 s num
+núcleo para 3 s, a máquina voltou a ser usada por inteiro nos builds grandes, e todo teste tem tecto. ✅ W1
+(testes, feita 10/09): 1 446 binários → 127; check frio do workspace 93 → 51 s; gate após uma linha foundational
+93 → 60 s. W2 (arquitectura, por abrir): a shell deixa de ser a unidade de 34–45 s no fim de todo gate. Detalhe
+e preço em §6.
 
 ## §1 — Método e ressalvas
 
@@ -419,6 +420,24 @@ cada, mas são 2 128, e a `-j 6` enchem o gate de fecho por inteiro).
 **Preço.** Mecânico; o risco é o de gates que contam ficheiros. O perfil `ci-test` fica **também** menor em disco
 (138 GB hoje).
 
+✅ **FEITA no mesmo dia (10/09), na `main` por ordem do Enio** — por script com prova
+(`tests/it/main.rs` + um `mod` por ficheiro, 73 crates; **1 446 → 127 binários**; a lista do `cargo nextest
+list` tem **22 635 testes idênticos** antes e depois; a suíte inteira correu verde, 1 flake de carga da família
+conhecida re-medido 3/3 sozinho). O que a transformação exigiu, além de mover: 110 `mod x;` viram
+`use crate::x;` (os 28 ficheiros da física que incluíam `platform_scene.rs` por `#[path]` compilavam-no 29×), 178
+`include_str!` reapontados um nível acima, 10 ajudantes içados para o `main.rs`, e **19 ficheiros com
+`#[global_allocator]` ficam binário próprio** (dois alocadores não cabem num binário; um contador global veria
+os vizinhos). Três gates e um script liam a antiga forma (`binary(nome)`, `tests/*.rs` sem descer, um `file!()`)
+e foram corrigidos; 588 citações de caminho em docs e 181 em comentários reapontadas.
+
+| medido, `-j 32` | antes | **depois** |
+|---|---:|---:|
+| `check --workspace --all-targets` frio | 93 s (3 100 unidades) | **51 s** (1 782) |
+| gate após 1 linha em `ph2d-color` (`test --no-run --workspace --profile ci-test`) | 92,9 s (3 412 unidades, 2 128 de teste) | **59,7 s** (2 091 / 807) |
+| binários de teste de integração | 1 446 | **127** |
+
+O que sobra do gate (60 s) é a cadeia `editor-core → painter → shell` (a shell `bin(test)` 34 s), que é a W2.
+
 ### C4 — Gates de relógio na suíte de fan-out, e nenhum tecto global ⭐⭐⭐ (config + convenção)
 
 **Mecanismo.** 241 ficheiros de teste medem `Instant`; 25 já estão na lista de flakes do `CLAUDE.md §5.0`, e a
@@ -543,7 +562,7 @@ muitos núcleos»*) — relevante nesta.
 |---|---|---|---|---|
 | **W0** config | **C0 perfil `smoke`** (variante da §3.9-b) · C1 `jobs` · C4 tecto + grupo + `fail-fast` + junit · C5 `incremental=false` · C6 RA | `Cargo.toml` · `~/.cargo/config.toml` · `.config/nextest.toml` · settings do VSCode · o comando de smoke no `CLAUDE.md §5.0` e na DIRETRIZ §1.5.9 | **< 1 h**, zero código | o smoke do Enio deixa de custar 161 s num núcleo; check do workspace 156 → 93 s; todo teste com tecto; suíte sem cancelar no 1.º ✗; RA deixa de competir |
 | **W0.1** medir | threads do `ld.mold` no gate de testes (C1) · A/B `line-tables-only` (C8) · `build-override` (C8) | — | ½ jornada calma | os três números que faltam a este doc |
-| **W1** testes | C3: um binário por crate; `ph2d-arch-gates`; C4 de fundo (`measure_*` por binário; instruções onde couber) | `tests/` de 107 crates | 1–2 jornadas, uma linha | 1 521 → ~110 binários; −80 % do tempo de verificação de testes; disco do `ci-test` |
+| **W1** testes ✅ (10/09) | C3: um binário por crate — **feita**: 1 446 → 127, check frio 93 → 51 s, gate foundational 93 → 60 s (§4-C3). Resta a **W1b**: `ph2d-arch-gates` (155 gates puros de fonte) e C4 de fundo (`measure_*`; instruções onde couber) | `tests/it/` em 73 crates | feita em ~2 h | ver §4-C3 |
 | **W2.0** censo | quantos campos de `App` cada família da shell toca; qual o ponto de extensão | — | ½ jornada | o preço REAL da W2 |
 | **W2** arquitectura | C2: smokes para crates (feature `smokes`); depois `ph2d-app-<módulo>` por família, motion primeiro | `shells/desktop` → N crates | várias linhas, uma por família | front-end da shell 36 s → proporcional ao que ficar; edição num módulo deixa de recompilar a shell |
 | **W3** CI | C9: archive + partition, impactado no PR, GPU por software | `.github/workflows` | 1 jornada | push de 30–85 min → uma fracção; 313 membros cobertos |

@@ -80,7 +80,7 @@ todo dentro da física. **A W-AreaTorque (D) traz UM id de UI** (`INSP_PHYS_AREA
 - `ph2d_physics::world::contacts::{PeakKey, accumulate_peaks, active_pair}` (pub/pub(super)/priv) · `PhysicsWorld.contact_peaks` (campo priv)
 - **módulo novo** `crates/ph2d-physics/src/world/convenience.rs` (`mod convenience;` no `world.rs`) — só MOVEU `add_dynamic_circle`/`add_static_cuboid` (inherent methods, paths intactos)
 - shell: `FLASH_IMPACT_BOOST_PX` · `IMPACT_FULL_NS` · `App::physics_smoke_impact_demolition`
-- testes novos: `crates/ph2d-physics/tests/measure_impact.rs` (harness `#[ignore]`)
+- testes novos: `crates/ph2d-physics/tests/it/measure_impact.rs` (harness `#[ignore]`)
 
 **W-TickContacts (C):**
 - `ph2d_physics::{PeakSample, PeakKey}` — `PeakKey` virou `pub` (era `pub(crate)`), `PeakSample` é NOVO (o valor do `contact_peaks`: `impact`+`point`+`impulse`, era só `f32`)
@@ -96,7 +96,7 @@ todo dentro da física. **A W-AreaTorque (D) traz UM id de UI** (`INSP_PHYS_AREA
 - `effector::apply` aplica `apply_torque_impulse`; `zone_effect` ganhou `torque` no `inert`.
 - inspector: `PhysicsFieldEdit::AreaTorque(f32)` · `InspectorPhysicsInfo.area_torque` · **id novo `ids::INSP_PHYS_AREA_TORQUE`** (`insp_phys_area_torque`) — pintado em `physics_rows.rs`, registrado em `populate.rs`, roteado em `event_physics.rs`, aplicado em `inspector_physics_apply.rs` (`AREA_TORQUE`).
 - shell: `physics_overlay::{torque_glyph, TORQUE_RGBA, TORQUE_GLYPH_PX, TORQUE_ARC_SEGS}` (o glifo violeta) · `App::physics_smoke_spin_zone` (cena 32) · `App::physics_smoke_author_spin` (cena 33) · **arquivo novo** `shells/desktop/src/physics_smoke_zones.rs` (`mod physics_smoke_zones;` no `main.rs`).
-- teste novo: `crates/ph2d-physics-ecs/tests/area_torque.rs`.
+- teste novo: `crates/ph2d-physics-ecs/tests/it/area_torque.rs`.
 - **fix de sync (`9ec4b43b`):** `sync_physics_fields` (`ph2d-panel-inspector/src/sync.rs`) ganhou as 6 rows de área (Force X/Y, Torque, Drag, Fluid Density, Shape Drag) — display, nenhum símbolo público novo; gate novo em `tests/seam_physics.rs`. **Corrige um gap de TODA a família de área** (as rows eram write-only desde o W-Area), não só do torque.
 
 **Números que se CONTAM e NÃO se escolhem:**

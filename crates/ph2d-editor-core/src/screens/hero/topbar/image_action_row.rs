@@ -10,7 +10,7 @@
 //! o bug de 2026-08-19 (*«botão sheet não funciona»*): a fila cresceu sozinha e as listas
 //! ESCRITAS À MÃO que a serviam — o registo no store e o despacho do clique — não. Ambas passaram
 //! a ler daqui; o gate é
-//! `ph2d-tool-registry-init/tests/every_image_tool_pill_dispatches.rs`.
+//! `ph2d-tool-registry-init/tests/it/every_image_tool_pill_dispatches.rs`.
 //!
 //! *Uma lista derivada ao lado de uma lista escrita à mão não é redundância: é uma divergência com
 //! data marcada.*

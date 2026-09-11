@@ -17,7 +17,7 @@ que ninguém olhou* (Grupo W, handoff de 2026-08-19).
 
 | instrumento | espécies que apanha | como correr |
 |---|---|---|
-| [`dead_knob_sweep.rs`](../../crates/ph2d-node-registry-init/tests/dead_knob_sweep.rs) | morto no braço default · inerte no modo que o painel mostra · descartado a jusante | `cargo test -p ph2d-node-registry-init --test dead_knob_sweep --release -- --ignored --nocapture` |
+| [`dead_knob_sweep.rs`](../../crates/ph2d-node-registry-init/tests/it/dead_knob_sweep.rs) | morto no braço default · inerte no modo que o painel mostra · descartado a jusante | `cargo test -p ph2d-node-registry-init --test dead_knob_sweep --release -- --ignored --nocapture` |
 | [`knobs_declarados_nunca_lidos.py`](ferramentas/knobs_declarados_nunca_lidos.py) | declarado e nunca LIDO | `python3 "docs/Motion Nodes/ferramentas/knobs_declarados_nunca_lidos.py"` |
 
 **A quarta espécie não existe neste catálogo:** os **613** params declarados têm **todos** uma
@@ -294,7 +294,7 @@ asserção é um par: **inerte fora, vivo dentro de pelo menos um**.
 
 1. ✅ Os gates — 17 tabelas em 11 crates, side-metadata (⛔ nenhum toca o `NodeManifest`
    congelado, §6 do CLAUDE.md).
-2. ✅ A prova A — [`param_gates_are_exact.rs`](../../crates/ph2d-node-registry-init/tests/param_gates_are_exact.rs).
+2. ✅ A prova A — [`param_gates_are_exact.rs`](../../crates/ph2d-node-registry-init/tests/it/param_gates_are_exact.rs).
    **Todos os 17 índices estavam certos**, e isso é uma medição, não uma verificação de leitura.
 3. ✅ A prova B — [`motion_bridge_params_visible_tests.rs`](../../shells/desktop/src/render_loop/motion_bridge_params_visible_tests.rs).
 4. ✅ A cena `=82` — [`..._demos_gates.rs`](../../shells/desktop/src/motion_state_conferencia_demos_gates.rs).

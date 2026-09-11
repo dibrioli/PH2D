@@ -7,7 +7,7 @@
 //! (`Gravity` e `Scale`) e os outros três são leis que o pincel já tinha,
 //! alcançadas por outro accionamento.
 //!
-//! O censo que decidiu isto está em `ph2d-cloth/tests/mede_a_composicao_do_filtro.rs`.
+//! O censo que decidiu isto está em `ph2d-cloth/tests/it/mede_a_composicao_do_filtro.rs`.
 
 use ph2d_cloth::verlet_gesto::Modo;
 

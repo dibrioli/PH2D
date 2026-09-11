@@ -122,7 +122,7 @@ quiser o smoke de verdade tem de **fabricar** um v95 (checkout de um commit anti
 | **Superfície pública nova (F0, feita)** | `ComponentRegistry::register_default::<T>` · `ComponentTypeEntry::insert_default` · `ComponentTypeEntry::desc` | ⚠️ **`register_inner` é privado** — as duas portas públicas são `register` (sem default) e `register_default` |
 | **Sítios de chamada convertidos (F0, feita)** | **109** `reg.register::<T>` → `register_default::<T>`, menos **27** revertidos (sem `Default`) = **82** convertidos | ⚠️ 5 arquivos: `ph2d-ecs/scene/registry.rs` (70, um deles num teste) · `-render` (1) · `-script` (1) · `-physics-ecs` (32) · `-field-ecs` (5). **É a maior superfície de colisão desta linha** — uma linha que acrescente um componente toca o mesmo arquivo |
 | **Dependências novas (F0, feita)** | `ph2d-ecs` → `ph2d-component-desc` · `shells/desktop` → idem · `ph2d-panel-inspector` → idem | ⚠️ conta para o `machete` no `ship.sh` |
-| **Arquivos de teste novos (F0, feita)** | `shells/desktop/tests/every_registered_component_is_described.rs` (5 censos) · `ph2d-panel-inspector/tests/the_ordering_labels_come_from_the_descriptor.rs` (2) | nomes novos, sem colisão |
+| **Arquivos de teste novos (F0, feita)** | `shells/desktop/tests/it/every_registered_component_is_described.rs` (5 censos) · `ph2d-panel-inspector/tests/it/the_ordering_labels_come_from_the_descriptor.rs` (2) | nomes novos, sem colisão |
 | Componentes acrescentados na F0 | **nenhum** — a F0 não move contador | ✅ a **F1** moveu: `ph2d-ecs` 69 → **70** (só o `SiblingOrder`; o `StableId` ficou FORA do registo) → **73** (os três do corte), espelhos 70 → 71 → **74** |
 | Envs de smoke | `PH2D_INSTANCE_SMOKE=<n>` (F4+) · `PH2D_ASSET_BROWSER_SMOKE` (F7) | roteador de cenas próprio |
 | Campo novo no `ProjectFile` | `stable_id_counter` (F1 — FORA do `ProjectState`, undo não rebobina) | conta no degrau do schema |
@@ -1040,7 +1040,7 @@ indireto (B contém instância de V que é-a B) é recusado com mensagem; prova 
 > ⚠️ **E o mecanismo revogado continua VIVO num canto:** o
 > [`vec_variants.rs`](../../shells/desktop/src/vec_variants.rs) do sistema vetorial ainda lê
 > `Size=Small, State=Idle` do `Name` e pinta uma fileira por propriedade, e o censo
-> [`the_name_declares_nothing.rs`](../../shells/desktop/tests/the_name_declares_nothing.rs)
+> [`the_name_declares_nothing.rs`](../../shells/desktop/tests/it/the_name_declares_nothing.rs)
 > **não varre aquele ficheiro**. É o que a F4.6c apaga.
 
 ### O desenho que foi revogado (history — não implemente a partir daqui)
@@ -1509,8 +1509,8 @@ dirigida; captura de `VecScene` O(paths mudados) por contador de versão ou `Arc
 ### ⛔⛔⛔ §F8.0 — **O ESTUDO (2026-09-02): metade desta fase não se justifica, e há número**
 
 O `CLAUDE.md` §0.0 manda medir antes de limitar; aqui mediu-se **antes de otimizar**, que é a mesma
-lei. Benches novos: [`measure_restore`](../../crates/ph2d-ecs/tests/measure_restore.rs) ·
-[`measure_scene_clone`](../../crates/ph2d-vec-scene/tests/measure_scene_clone.rs).
+lei. Benches novos: [`measure_restore`](../../crates/ph2d-ecs/tests/it/measure_restore.rs) ·
+[`measure_scene_clone`](../../crates/ph2d-vec-scene/tests/it/measure_scene_clone.rs).
 
 | custo | quando corre | medido | veredito |
 |---|---|---:|---|
@@ -2621,7 +2621,7 @@ ordem que esta fase existe para honrar.
 
 #### ⛔⛔ A medição, e ela condena — muito mais do que a da cena
 
-[`ph2d-flip/tests/measure_doc_clone.rs`], fixtura de **20 traços × 60 pontos por quadro** (uma
+[`ph2d-flip/tests/it/measure_doc_clone.rs`], fixtura de **20 traços × 60 pontos por quadro** (uma
 figura simples ⇒ um **piso**, não um caso escolhido):
 
 | quadros | clone | % de um quadro | bytes/estado | ×256 na pilha |
@@ -2898,7 +2898,7 @@ voltar: **por uma porta nova**, com a suíte inteira verde.
 Ele é gateável, e a janela é o próprio passe do desenho — do `vec_transform::settle_origins` ao
 `vec_scene.reorder_to`, **88 linhas com nove chamadas**. Toda função ali ou é **reconciliação** (e
 tem de estar na rede) ou é um **DRENO de intenção**, e esses são nomeados um a um
-([`the_net_knows_every_derived_writer`](../../shells/desktop/tests/the_net_knows_every_derived_writer.rs)).
+([`the_net_knows_every_derived_writer`](../../shells/desktop/tests/it/the_net_knows_every_derived_writer.rs)).
 
 ⚠️ **A distinção não é de estilo, é de natureza:** um escritor derivado converge o estado **sozinho**
 (fora da rede, o quadro seguinte converge-o sem entrada e nasce o fantasma); um dreno só age quando
@@ -3328,7 +3328,7 @@ o clique chega à ferramenta.
 
 ### §14.3 — Os gates
 
-[`action_verb_is_a_dropdown.rs`](../../crates/ph2d-panel-inspector/tests/action_verb_is_a_dropdown.rs),
+[`action_verb_is_a_dropdown.rs`](../../crates/ph2d-panel-inspector/tests/it/action_verb_is_a_dropdown.rs),
 três, com o **gesto real** (`ph2d-host` entra como dev-dep da crate do painel: um
 `WidgetEvent::Click` sintético pula a checagem de focabilidade e passa sobre um chip morto sob o
 dedo — a família dos dez chips do impasto):
@@ -3373,7 +3373,7 @@ hit-registada, e a barra de rolagem no `DROPDOWN_SCROLLBAR_ID` (o dispatch já a
 quem estiver aberto, pelo `store.dropdown_popover()` que a §14.2 passou a publicar).
 *Uma lei escrita em quatro sítios ainda não é uma lei — só uma PORTA é.*
 
-**Gates** — [`a_long_popover_scrolls.rs`](../../crates/ph2d-panel-inspector/tests/a_long_popover_scrolls.rs)
+**Gates** — [`a_long_popover_scrolls.rs`](../../crates/ph2d-panel-inspector/tests/it/a_long_popover_scrolls.rs)
 mais um terceiro em `action_verb_is_a_dropdown.rs`, com as mutações corridas:
 
 | gate | mutação que o faz sangrar |

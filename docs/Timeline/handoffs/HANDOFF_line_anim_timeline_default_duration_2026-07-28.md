@@ -119,7 +119,7 @@ a menos que seja a assinatura de "infinito autorado de propósito" (ver a regra 
   caminho de reset, siga esta regra** (estampe 4 s só quando TUDO é derivado).
 - **O smoke `PH2D_EXPR_BLEND_SMOKE` abre os clips em 4 s** (a cena fica 6 s — o arranjo é [0,6));
   Arrange usa o corte da CENA + fatias das strips, não o override do clip. Gate de fonte:
-  `shells/desktop/tests/the_expr_blend_smoke_authors_clip_durations.rs`.
+  `shells/desktop/tests/it/the_expr_blend_smoke_authors_clip_durations.rs`.
 
 ---
 
@@ -156,5 +156,5 @@ cd Worktrees/line-anim && env PH2D_EXPR_BLEND_SMOKE=1 cargo run -p ph2d-host-des
 - `crates/ph2d-panel-timeline/src/{transport,transport_widgets}.rs` (o chip mostra ∞)
 - `shells/desktop/src/timeline_persist.rs` (**load legado + reset por-deleção → 4 s** + gates)
 - `shells/desktop/src/expr_blend_smoke.rs` (clips do smoke em 4 s + instrução)
-- `shells/desktop/tests/the_expr_blend_smoke_authors_clip_durations.rs` (gate de fonte)
+- `shells/desktop/tests/it/the_expr_blend_smoke_authors_clip_durations.rs` (gate de fonte)
 - `docs/Timeline/handoffs/HANDOFF_INTEGRACAO_line_anim_expr_blend_2026-07-27.md` (as 3 rodadas anteriores)

@@ -332,7 +332,7 @@ nunca `raio × zoom` escrito à mão, que seria a segunda régua.
 
 ⚠️ **Duas costuras não são alcançáveis de um teste** (o closure de `build_view` pede `HeroScreen` +
 `PresentWorld` + câmera; o passe de pintura pede uma superfície) ⇒
-[`tests/an_empty_object_is_reachable.rs`](../../../shells/desktop/tests/an_empty_object_is_reachable.rs)
+[`tests/an_empty_object_is_reachable.rs`](../../../shells/desktop/tests/it/an_empty_object_is_reachable.rs)
 varre a FONTE dos dois fios, e o negativo dele proíbe o `return None` antigo de voltar ao lado do novo.
 
 ### §9.2 O *Revert* deixa a POSE onde está — [`instance_sync.rs`](../../../shells/desktop/src/instance_sync.rs)

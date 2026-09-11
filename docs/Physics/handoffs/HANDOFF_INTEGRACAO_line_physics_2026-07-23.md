@@ -90,7 +90,7 @@ oposto há tempo: o rate vence o modelo proporcional *e* dispensa o clamp do arr
 desencorajava a combinação certa.
 
 **Nenhum schema, nenhum contrato, nenhum id novo.** Gates novos em
-`ph2d-panel-timeline/tests/duration_chip_gesture.rs` (um estrutural + um que **arrasta um
+`ph2d-panel-timeline/tests/it/duration_chip_gesture.rs` (um estrutural + um que **arrasta um
 ponteiro de verdade** e exige que 20 px pousem em segundos, não em milhares); **3 mutações,
 3 sangram**. O `Time` e o `Frame` herdam o mesmo conserto pela MESMA porta (`chip()`), que é
 o certo: as três são grandezas sem teto e uma resposta só.
@@ -112,7 +112,7 @@ Tudo **aditivo**. Nenhum arquivo fora do domínio de física foi reescrito.
 | `ph2d-panel-inspector/src/{populate,event_physics,sections/physics{,_rows}}.rs` | registra · despacha · pinta | a row |
 | `ph2d-physics-ecs/src/components{,.rs}` | **SPLIT**: a família das ZONAS sai para `components/area.rs` | cap de 700 LOC (§5) |
 | `shells/desktop/src/render_loop/inspector_physics_area.rs` | **NOVO**: os braços de ZONA do apply | cap de 600 LOC (§5) |
-| `shells/desktop/tests/every_physics_component_is_authorable.rs` | +1 arquivo na lista `WRITERS` | o split moveu 6 escritores |
+| `shells/desktop/tests/it/every_physics_component_is_authorable.rs` | +1 arquivo na lista `WRITERS` | o split moveu 6 escritores |
 
 ⚠️ **`ph2d-editor-core/src/ids/inspector.rs` e `inspector_model_physics.rs` são os dois pontos
 onde outra linha pode ter mexido na mesma janela.** As adições são **append** no fim dos blocos

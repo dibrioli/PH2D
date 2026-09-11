@@ -50,7 +50,7 @@ de subsistemas do host — os dois coexistem, e a razão está no doc do módulo
 | `shells/desktop/src/main.rs` | +3 linhas no construtor, na mesma posição | **sim** |
 | `shells/desktop/src/render_loop/mod.rs` | **3 hunks** (o `advance_frame`; os 2 `for` de toast viram `publish`; o dreno) | 2 substituem, 1 acrescenta |
 | `shells/desktop/src/signal_smoke.rs` `_tests.rs` | o router `=1`/`=2` + a metade da física | **sim** (o `=1` não se move) |
-| `shells/desktop/tests/the_signal_frame_has_one_order.rs` | arch-gate novo | novo |
+| `shells/desktop/tests/it/the_signal_frame_has_one_order.rs` | arch-gate novo | novo |
 | `Cargo.lock` | a aresta da crate nova | **sim** |
 
 ⚠️ **O `CLAUDE.md` NÃO foi tocado, de propósito.** Ele é o arquivo mais disputado do repo (seis

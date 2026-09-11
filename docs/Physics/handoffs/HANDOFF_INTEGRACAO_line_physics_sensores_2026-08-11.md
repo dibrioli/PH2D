@@ -72,13 +72,13 @@ Fora de `crates/ph2d-phys*`, `crates/ph2d-platformer` e `docs/Physics/`:
 | `ph2d-editor-core/src/screens/hero/inspector_model_player.rs` | campos do snapshot da §14 | **sim** |
 | `ph2d-panel-inspector/src/{sections/player.rs,player_rows.rs}` | as rows novas | **sim** |
 | `ph2d-panel-inspector/src/{event_player,populate_physics,sync_physics}.rs` | fiação das rows | **sim** |
-| `ph2d-panel-inspector/tests/seam_player.rs` | seams + `PLAYER_ROW_COUNT` **40 → 42** | **sim** |
+| `ph2d-panel-inspector/tests/it/seam_player.rs` | seams + `PLAYER_ROW_COUNT` **40 → 42** | **sim** |
 | `shells/desktop/src/main.rs` | 1 `mod` de cena | **sim** |
 | `shells/desktop/src/physics_smoke.rs` | 1 braço do roteador (`"109"`) | **sim** |
 | `shells/desktop/src/render_loop/physics_overlay*.rs` | o desenho dos sensores | **sim** |
 | `shells/desktop/src/render_loop/mod.rs` | a leitura dos sensores no frame | **sim** |
 | `shells/desktop/src/{project,project_schema_tests}.rs` | **o schema** | ⚠️ **não** |
-| `shells/desktop/tests/the_overlay_reads_the_sensors_the_bridge_published.rs` | arch-gate novo | **sim** |
+| `shells/desktop/tests/it/the_overlay_reads_the_sensors_the_bridge_published.rs` | arch-gate novo | **sim** |
 
 ⚠️ **E `bridge/player.rs` foi PARTIDO** (734 > 700): a PERNA saiu para o irmão
 `bridge/player_leg.rs` — *o que o tique FAZ com a resposta* × *como a resposta é

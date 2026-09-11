@@ -33,7 +33,7 @@ Tudo **ADITIVO** (nenhuma assinatura existente mudou de forma, exceto o schema �
 | Arquivo | O quê | Risco de conflito |
 |---|---|---|
 | `crates/ph2d-editor-core/src/ids/chrome/flip.rs` | **19 `NodeId`s novos** (§3). Arquivo **exclusivo do Flip** — outra linha não escreve nele. | **Baixo** |
-| `crates/ph2d-editor-core/tests/node_id_collisions.rs` | 19 entradas novas na tabela do gate. **Lista append-only compartilhada.** | **Médio — resolva por UNIÃO** |
+| `crates/ph2d-editor-core/tests/it/node_id_collisions.rs` | 19 entradas novas na tabela do gate. **Lista append-only compartilhada.** | **Médio — resolva por UNIÃO** |
 | `shells/desktop/src/flip_*.rs` + `render_loop/flip_*.rs` | 20 arquivos, todos **exclusivos do Flip** (prefixo `flip_`). | **Baixo** |
 | `shells/desktop/src/{main,app_state,input_dispatch,input_dispatch/keyboard,render_loop/mod}.rs` | **154 linhas aditivas** (declarar os módulos novos, campos de estado do gesto, roteamento do canvas/tecla). Arquivos que **toda linha encosta**. | **Médio — união de blocos** |
 | `shells/desktop/src/project.rs` | `PROJECT_SCHEMA` **7 → 9** + o par pinado. | **ALTO — é um contador que SOMA (§3)** |
@@ -169,7 +169,7 @@ integre antes do OK do Enio.**
 
 ## 7. Armadilhas que eu deixaria explícitas ao integrador
 
-1. **`crates/ph2d-flip-render/tests/pack_perf.rs` — a linha `line/Vector` editou um arquivo MEU.**
+1. **`crates/ph2d-flip-render/tests/it/pack_perf.rs` — a linha `line/Vector` editou um arquivo MEU.**
    Eles calibraram o teto do 1º assert por perfil (700 ms debug / 120 ms release; commit `a2313f32`
    deles). **Eu não toquei o arquivo** → sem conflito textual, a versão deles vence. **Mas o
    arquivo tem DOIS asserts, e o outro (`ms < 30.0`, linha ~73) tem o MESMO defeito**: teto

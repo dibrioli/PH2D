@@ -83,7 +83,7 @@ nextest-impacted escapam — o integrador drena latentes, orce 2-4 iterações; 
 > **Fix (`d9df426f`):** `draw_repeat_image` desenha **PRIMEIRO** (tiles = conteúdo de canvas; chrome
 > por cima) — ordem agora: repeat tiles → selection overlay → draw_overlays. Bônus: brush ring e
 > marching ants voltam a aparecer sobre os tiles vizinhos (a hit-region 3×3 já era pintável).
-> **Asserção-vermelha:** gate novo `shells/desktop/tests/repeat_image_tiles_draw_under_the_editing_chrome.rs`
+> **Asserção-vermelha:** gate novo `shells/desktop/tests/it/repeat_image_tiles_draw_under_the_editing_chrome.rs`
 > (lê o fonte do dispatch; reordenar de volta = RED). Gates rodados: check/clippy `-p ph2d-host-desktop`
 > verdes, LOC caps verdes, 530 lib-tests do tool + brush verdes.
 >

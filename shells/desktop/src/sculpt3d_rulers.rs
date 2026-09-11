@@ -34,7 +34,7 @@ pub(super) const ORBIT_RAD_PER_PX: f32 = 0.01;
 ///
 /// **50 px é MEDIDO, não escolhido:** é o que reproduz o tamanho aparente do
 /// default anterior (0,12 do span) na cena do smoke a 720p — ver
-/// `ph2d-mesh-render/tests/measure_screen_radius.rs`.
+/// `ph2d-mesh-render/tests/it/measure_screen_radius.rs`.
 pub(super) const DEFAULT_RADIUS_PX: f32 = 50.0;
 
 /// Passo das teclas de LUZ (`Q`/`E` giram, `R`/`F` sobem e descem), em graus

@@ -473,7 +473,7 @@ pub const SCULPT3D_SSS_SCATTER_NUM: NodeId = hash_node_id("sculpt3d.sss_scatter_
 /// **ASSAR O AO** — o botão que mede quanto do céu cada vértice enxerga.
 ///
 /// ⚠️ É um BOTÃO e não um passe automático porque o bake não cabe num pen-up:
-/// ~338 ms na malha que a cena `=16` abre (`ph2d-sdf/tests/measure_ao.rs`).
+/// ~338 ms na malha que a cena `=16` abre (`ph2d-sdf/tests/it/measure_ao.rs`).
 pub const SCULPT3D_BAKE_AO: NodeId = hash_node_id("sculpt3d.bake_ao");
 
 /// **ASSAR A FORMA NO SPRITE** — o objetivo 2 do módulo (`docs/3D/02.2`).

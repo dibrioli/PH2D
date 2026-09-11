@@ -30,8 +30,8 @@
 | `ph2d-editor-core/src/text_elide.rs` | a porta que **CORTA** um rótulo (elipse) em vez de o quebrar | sim |
 | `ph2d-editor-core/src/paint_text.rs` · `paint.rs` | `paint_text_weighted` `pub(crate)` para o `text_elide` medir e pintar no MESMO peso | sim |
 | `ph2d-editor-core/src/widget/slider_with_chip.rs` | passa a usar a porta que corta | comportamento (o rótulo deixa de escrever por cima) |
-| `ph2d-editor-core/tests/architecture_motion_chrome_never_wraps_a_row_label.rs` | **gate novo** (censo exacto, `ELIDED_TODAY = 27`) | novo |
-| `ph2d-editor-core/tests/hr12_widgets_a11y.rs` | 1 entrada em `PANEL_A11Y_DELEGATE_OK` | aditivo |
+| `ph2d-editor-core/tests/it/architecture_motion_chrome_never_wraps_a_row_label.rs` | **gate novo** (censo exacto, `ELIDED_TODAY = 27`) | novo |
+| `ph2d-editor-core/tests/it/hr12_widgets_a11y.rs` | 1 entrada em `PANEL_A11Y_DELEGATE_OK` | aditivo |
 | `ph2d-expr-parse/src/lib.rs` | profundidade máxima — uma expressão funda **RECUSA** em vez de abortar o editor por estouro de pilha | comportamento (o modo de falha era `SIGABRT`) |
 | `ph2d-text/src/system.rs` | medição por peso, para o elide | sim |
 | `shells/desktop/` | membranas, cenas de smoke, testes | sim |

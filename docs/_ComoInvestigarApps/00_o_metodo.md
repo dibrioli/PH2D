@@ -154,7 +154,7 @@ população, e há gate a dizê-lo (`onde_o_maximo_nao_decide_decide_o_p95`).
 | **Quem escreveu o produto** | esta janela, que **nunca** viu o fonte (deny em `.claude/settings.local.json`) |
 | **Entradas** | grelha `64×64` e esfera UV `96×64` — **nossas** |
 | **Corpus** | `86` traços · `149` ficheiros · com rastreio **por passo** em `10` deles |
-| **Placar** | **`79` dentro da barra**, `7` abertos (`VERDE_N`/`ABERTO_N` no [bancada](../../crates/ph2d-cloth/tests/oraculo_do_pincel.rs) — ⛔ conte-os lá, nunca aqui) |
+| **Placar** | **`79` dentro da barra**, `7` abertos (`VERDE_N`/`ABERTO_N` no [bancada](../../crates/ph2d-cloth/tests/it/oraculo_do_pincel.rs) — ⛔ conte-os lá, nunca aqui) |
 | **Leis achadas** | duas `φ` · o peso de face uniforme · a área fixa do Grab · a base persistente que **satura** · as cinco cláusulas da colisão |
 | **Leis REFUTADAS** | `11`, escritas |
 | **O que o método deu de graça** | o corpus **é** a suíte de regressão; e foi um traço dela que apanhou um defeito de `11,5×` no produto (o `δ` incremental do Grab) |

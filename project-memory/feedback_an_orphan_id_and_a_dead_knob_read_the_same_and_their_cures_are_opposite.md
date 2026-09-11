@@ -54,7 +54,7 @@ Sem o segundo, o id existe, tem estado, aparece em todo censo — e **nenhum pix
 A pergunta em falta é a terceira: ***algum sítio dá um rectângulo a este id?***
 
 **How to apply:** ao acrescentar um painel, o gate barato é textual e mora na crate dele —
-*todo `ids::X` do `populate.rs` aparece num pintor* (`ph2d-panel-widget-lab/tests/geometry.rs`).
+*todo `ids::X` do `populate.rs` aparece num pintor* (`ph2d-panel-widget-lab/tests/it/geometry.rs`).
 ⚠️ E o irmão: **um corpo que `push_clip` tem de chamar `paint_scrollbar`** — um painel que recorta
 e não rola é a pior das três formas (sem recorte desenha por cima e vê-se; com recorte e rolagem
 funciona; **com recorte e sem rolagem esconde os controlos e não diz nada**). ⛔ Essa nota já estava

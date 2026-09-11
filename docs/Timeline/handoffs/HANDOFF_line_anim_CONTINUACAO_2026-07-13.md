@@ -257,7 +257,7 @@ Backlog da timeline (`docs/Timeline/01_plano_timeline_ui.md`). Sem bloqueio conh
 | **UI da pilha** | `crates/ph2d-panel-timeline/src/stack_lane_paint.rs` (pintura + **`hit_plan`**) · `strip_drag.rs` (arrasto/trim/stretch) |
 | **Eventos** | `event.rs` (`stack_event` é a **porta única** da pilha) |
 | **Toast da recusa** | `shells/desktop/src/render_loop/autokey_pass.rs` (latch `AutokeyState.refusal`) |
-| **Gates de costura** | `crates/ph2d-panel-timeline/tests/seam.rs` (anti-item-morto: **cada linha de menu levanta o intent que o NOME dela promete**) |
+| **Gates de costura** | `crates/ph2d-panel-timeline/tests/it/seam.rs` (anti-item-morto: **cada linha de menu levanta o intent que o NOME dela promete**) |
 
 **Smoke:** `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-anim && cargo run -p ph2d-host-desktop` ·
 **`L`** abre a timeline · o app já sobe com 8 objetos nomeados.

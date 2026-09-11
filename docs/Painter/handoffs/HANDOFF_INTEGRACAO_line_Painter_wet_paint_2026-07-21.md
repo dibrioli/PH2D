@@ -93,7 +93,7 @@
   a lei #1 da jornada, pinada em literais) + `wetpaint_commit/tests.rs` (14 gates do doc 21).
 - `ph2d-panel-painter-layers`: `seam_wetpaint.rs` + os 2 seams do wet em `seam.rs`.
 - `ph2d-editor-core`: `workspace_src_files_under_loc_cap` · `no_magic_numeric` · `node_id_collisions`.
-- Perf (manual, `--release -- --ignored`): `ph2d-wet-paint/tests/perf.rs` (mediana por classe).
+- Perf (manual, `--release -- --ignored`): `ph2d-wet-paint/tests/it/perf.rs` (mediana por classe).
 
 ## 5. Auditoria de fechamento (2 lentes sobre o diff acumulado)
 

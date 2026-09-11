@@ -22,7 +22,7 @@
 //! which axis is pressure, nor its range). The Wayland backend has no `zwp_tablet_v2` whatsoever.
 //! The cure is a winit bump (cross-line, ADR class) or a per-platform tablet path — never "one
 //! function". The full write-up, with the price of each consumer, lives in the executable gate
-//! `shells/desktop/tests/the_desktop_shell_has_no_pen_pressure.rs`.
+//! `shells/desktop/tests/it/the_desktop_shell_has_no_pen_pressure.rs`.
 
 use std::cell::Cell;
 

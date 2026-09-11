@@ -125,7 +125,7 @@ Tipos novos e privados da shell (fora de disputa): `instance_variant::{SwapRefus
 
 ### 3.6 ⚠️ A lista `TABLE_PARITY_PENDING` é uma CATRACA partilhada
 
-`crates/ph2d-editor-core/tests/architecture_panel_wiring_parity.rs` ganha uma lista com **9**
+`crates/ph2d-editor-core/tests/it/architecture_panel_wiring_parity.rs` ganha uma lista com **9**
 entradas, de **4 painéis de outras linhas** (`bgremoval` · `color-equalization` · `painter-layers`
 · 1 do `inspector` que não é desta linha). ⛔ **Ela só encolhe.** Uma linha paralela que registe um
 desses chips tem de **apagar a linha correspondente** — o gate tem a metade *«já não descreve

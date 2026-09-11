@@ -46,7 +46,7 @@ Esta sessão escreveu nomes plausíveis sem `cargo search` — exatamente o anti
 
 ### HIGH-2 · Arch-gate `architecture_ctt_features_pinned` quebra em 2 formatos TOML válidos
 
-**Onde:** `/Volumes/MAC_EXTERNO/PROJETOS/_PH2D_definitiva/tools/asset-cooker/tests/architecture_ctt_features_pinned.rs:31-37`
+**Onde:** `/Volumes/MAC_EXTERNO/PROJETOS/_PH2D_definitiva/tools/asset-cooker/tests/it/architecture_ctt_features_pinned.rs:31-37`
 
 Testado empiricamente nesta auditoria com `rustc /tmp/test_archgate.rs`. O parser manual `cargo_toml.find("\nctt = {")` + `[start..].find("] }")` falha nestes 2 casos válidos de TOML:
 
@@ -91,7 +91,7 @@ O consolidated audit (linha 47) afirma "ADR-0055-v4 §2.3 já decidiu: cook em G
 
 ### MEDIUM-1 · D3 defer adequado SE arch-gate cobrir features list (cobre — confirmado)
 
-**Onde:** `tools/asset-cooker/tests/architecture_ctt_features_pinned.rs:24,53-61`
+**Onde:** `tools/asset-cooker/tests/it/architecture_ctt_features_pinned.rs:24,53-61`
 
 O defer de D3 (wrapper guard ban Compressonator+UltraFast+BC7) está justificado pelo argumento "`encoder-amd` ausente da feature list elimina `ctt-compressonator` do dep graph". Verifiquei via `cargo tree -p ph2d-asset-cooker --depth=4 | grep ctt` (executado nesta auditoria): `ctt-compressonator` **NÃO aparece** na árvore. O encoder está fisicamente removido do binário. ✅
 
@@ -190,7 +190,7 @@ Re-leitura focada de `encode.rs` (referenciado no prompt) procurando off-by-one 
 **Cite paths absolutos:**
 
 - `/Volumes/MAC_EXTERNO/PROJETOS/_PH2D_definitiva/deny.toml:120-124`
-- `/Volumes/MAC_EXTERNO/PROJETOS/_PH2D_definitiva/tools/asset-cooker/tests/architecture_ctt_features_pinned.rs:31-37`
+- `/Volumes/MAC_EXTERNO/PROJETOS/_PH2D_definitiva/tools/asset-cooker/tests/it/architecture_ctt_features_pinned.rs:31-37`
 - `/Volumes/MAC_EXTERNO/PROJETOS/_PH2D_definitiva/.github/workflows/spike.yml:140-191`
 - `/Volumes/MAC_EXTERNO/PROJETOS/_PH2D_definitiva/docs/audits/ctt-source-audit-2026-05-27-CONSOLIDATED.md:47`
 - `~/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ctt-0.4.0/src/processing/encode.rs:59-60`

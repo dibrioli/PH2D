@@ -69,7 +69,7 @@ réguas que **nunca tinham sido corridas na retopologia que ele aprovou**. Corri
 defeitos de calibração: o **piso do ápice** escondia as pontas da foto, e a **barra da grade**
 saía do vazio entre os *nossos* defeitos. Ver [`02_as_reguas_e_as_barras.md`](02_as_reguas_e_as_barras.md) §1 e §3.
 
-⇒ **portão sobre as fixturas dos DOIS lados** (`ph2d-quadfill/tests/pontas_do_dono.rs`): GREEN
+⇒ **portão sobre as fixturas dos DOIS lados** (`ph2d-quadfill/tests/it/pontas_do_dono.rs`): GREEN
 na aprovada, RED nas duas reprovadas, com as margens exigidas.
 
 ## §6 — A CALOTA da ponta (03/09)

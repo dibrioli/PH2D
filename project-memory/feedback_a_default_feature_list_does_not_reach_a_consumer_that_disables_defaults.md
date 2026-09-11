@@ -29,7 +29,7 @@ diferentes: (1) a feature está ligada neste build (`cfg!(feature = "…")`), (2
 registro que este grafo produz de fato contém o id (o push é codegen — feature
 ligada ainda pode significar painel ausente se o `pub struct <N>Panel` foi
 renomeado ou o bloco gerado ficou velho). Gate vivo:
-`shells/desktop/tests/every_panel_the_shell_drives_is_in_its_registry.rs`.
+`shells/desktop/tests/it/every_panel_the_shell_drives_is_in_its_registry.rs`.
 
 Instância específica de [[feedback_tool_unit_green_integration_dead]], com um
 mecanismo próprio que vale reconhecer de longe. Irmão de

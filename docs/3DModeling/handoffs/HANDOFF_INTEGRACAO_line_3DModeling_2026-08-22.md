@@ -46,7 +46,7 @@ conflito.
 | ⚠️ `crates/ph2d-editor-core/src/screens/hero/topbar/mod.rs` | **+5/-84** | a tabela de tooltips **saiu** para o irmão novo `topbar/tooltips.rs` (+101/-0) |
 | `crates/ph2d-editor-core/src/screens/hero/topbar/tooltips.rs` | +101/-0 | **arquivo NOVO** (o destino da tabela acima) |
 | `crates/ph2d-editor-core/src/screens/hero.rs` · `hero/fixture.rs` · `topbar/chip_name.rs` | +8 · +6 · +1 | fio do pill |
-| `crates/ph2d-editor-core/tests/architecture_every_panel_is_painted.rs` | +41/-0 | o gate novo do z-order |
+| `crates/ph2d-editor-core/tests/it/architecture_every_panel_is_painted.rs` | +41/-0 | o gate novo do z-order |
 | `crates/ph2d-i18n/src/model3d.rs` · `lib.rs` | +114 · +2 | **tabela nova** + a linha que a liga |
 | `crates/ph2d-tokens/src/color.rs` · `docs/design/tokens.json` | +11 · +9 | tokens novos do módulo (HR-15) |
 | `crates/ph2d-panel-registry-init/{Cargo.toml,src/lib.rs}` | +3 · +2 | registrar o painel |
@@ -166,8 +166,8 @@ navegação orbital vive no **shell**. Foi a mesma decisão que manteve a `line/
 | `cargo audit` | ✓ 3 avisos **allowed** (`memmap2` RUSTSEC-2026-0186/0221, `unsound`) — **pré-existentes, não desta linha** |
 | `typos` (project-wide) | ✓ limpo — ⚠️ **estava VERMELHO**, ver abaixo |
 | `bash scripts/doc-index.sh --check` | ✓ 14 índices em dia — ⚠️ ver §5.2 |
-| `shells/desktop/tests/file_loc_caps.rs` | ✓ — ⚠️ **estava VERMELHO**, ver abaixo |
-| `ph2d-editor-core/tests/architecture_workspace_file_loc_cap.rs` | ✓ — ⚠️ **estava VERMELHO** |
+| `shells/desktop/tests/it/file_loc_caps.rs` | ✓ — ⚠️ **estava VERMELHO**, ver abaixo |
+| `ph2d-editor-core/tests/it/architecture_workspace_file_loc_cap.rs` | ✓ — ⚠️ **estava VERMELHO** |
 | `CARGO_INCREMENTAL=0 bash scripts/nextest-impacted.sh` | ✓ **10.197 testes, 10.197 verdes** (1171 skipped) — ⚠️ **dois estavam VERMELHOS**, ver 5.1.1 e 5.1.2 |
 
 ### 5.1 ⚠️ QUATRO vermelhos latentes, encontrados ao preparar ESTE handoff — todos curados

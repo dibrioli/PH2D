@@ -137,7 +137,7 @@ Rode `./scripts/ship.sh` e **corrija todo `✗` antes de pushar**. Pontos espec�
 5. **A matriz de CI** (linux + macOS + windows + replay-hash + bench, ~30 min). O `tract` puxa `cc`
    como build-dep (kernels do `tract-linalg`) — o CI **já tem compilador C** (vorbis/AVIF), mas
    confirme que o job de macOS/windows não tropeça na 1ª vez que compila o stack ML.
-6. **Testes de perf determinísticos** (`ph2d-audio-edit/tests/measure_range_edit.rs`,
+6. **Testes de perf determinísticos** (`ph2d-audio-edit/tests/it/measure_range_edit.rs`,
    `..._pricing_is_export_work_not_edit_work.rs`) — usam dhat/contagem, não wall-clock, então não
    flakam no CI. Se algum medir tempo, é `#[ignore]`.
 

@@ -182,7 +182,7 @@ fn bounds(dabs: &[Dab], w: u32, h: u32) -> Option<DirtyRect> {
 /// fronteira é ~linear na ÁREA DA REGIÃO (sobe e desce a mesma janela) e o carimbo da CPU é ~linear
 /// nas VISITAS (`Σ` pegadas). A razão entre as duas — a redundância — é o que decide, e sem um piso
 /// a rota do device **PERDE** exatamente onde ela parece mais atraente. Medido pela porta do artista
-/// (`ph2d-paint-gpu/tests/measure_product_stamp.rs`, RTX, 4096², pincel r=155):
+/// (`ph2d-paint-gpu/tests/it/measure_product_stamp.rs`, RTX, 4096², pincel r=155):
 ///
 /// | figura | região | visitas | redundância | CPU | device | ganho |
 /// |---|---|---|---|---|---|---|

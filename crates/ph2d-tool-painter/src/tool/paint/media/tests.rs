@@ -1,6 +1,6 @@
 //! The medium switch's own laws — exclusivity, the modes a medium owns, and the two rules that make
 //! leaving one safe. The panel-side proof (a pointer picking each medium, one section on screen) lives
-//! in `ph2d-panel-painter-layers/tests/seam_paint_media.rs`; this half is the model.
+//! in `ph2d-panel-painter-layers/tests/it/seam_paint_media.rs`; this half is the model.
 
 use super::PaintMedia;
 use crate::tool::PainterTool;

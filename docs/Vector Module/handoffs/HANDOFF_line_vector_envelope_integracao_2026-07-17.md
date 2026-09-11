@@ -98,7 +98,7 @@ linha também registrou um componente, **o valor certo não está em nenhum dos 
 | `shells/desktop/src/vec_transform.rs` | `+ VecEnvelope` no filtro do `settle_origins` |
 | `shells/desktop/src/build_smoke.rs` | a cena `PH2D_BUILD_SMOKE=11` |
 | `shells/desktop/Cargo.toml` | dep `ph2d-vec-envelope` (`cargo machete` — é usada) |
-| `shells/desktop/tests/settle_skips_every_derived_geometry.rs` | `+ "VecEnvelope"` no `DERIVED` |
+| `shells/desktop/tests/it/settle_skips_every_derived_geometry.rs` | `+ "VecEnvelope"` no `DERIVED` |
 
 **O gate `settle_skips_every_derived_geometry` tem DOIS testes que se completam** — o de presença
 vê o `envelope_live.rs` forçar identidade e exige `VecEnvelope` na lista. Os dois passam.
@@ -143,7 +143,7 @@ Gates da fatia (todos mutation-tested):
 | **invariância à subdivisão** | `ph2d-vec-envelope/tests/split_invariance.rs` (4) | partir uma cúbica e deformar == deformar a inteira; o ingênuo FALHA (prova de mutação); fixture curvo/isoparamétrico |
 | **gesto Quad** | `ph2d-vec-envelope/src/quad.rs` (7 unit) | repouso=identidade · cantos mapeiam exato · paralelogramo=afim · **convexo mantém o horizonte fora** (+ irmão presença) · jacobiana=diferença finita |
 | **host do envelope** | `shells/desktop/src/envelope_live_tests.rs` (6) | repouso não muda · gaiola puxada deforma **pelo motor** (byte-a-byte) · vive na identidade · **a fonte autorada sobrevive** · degenerada congela · **a sequência REAL do frame deforma** (o gate que reproduziu o smoke) |
-| **settle DERIVED** | `shells/desktop/tests/settle_skips_every_derived_geometry.rs` (2) | o `VecEnvelope` está no filtro E na lista |
+| **settle DERIVED** | `shells/desktop/tests/it/settle_skips_every_derived_geometry.rs` (2) | o `VecEnvelope` está no filtro E na lista |
 
 **Cena pronta (não peça montagem ao Enio) — o `cd` é ABSOLUTO e vai JUNTO** ([[feedback_run_command_include_cd]]):
 

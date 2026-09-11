@@ -38,8 +38,8 @@ Nove arquivos fora de `ph2d-tool-painter` / `ph2d-painter-brush`:
 | `ph2d-panel-painter-layers/src/populate.rs` | tira o registro do Conserve | subtrativo |
 | `ph2d-panel-painter-layers/src/brush_fallback.rs` | tira `sculpt_conserve` / `sculpt_conserves` | subtrativo |
 | `ph2d-panel-painter-layers/src/paint_brush.rs` | esconde o Accumulate com impasto (`&& !brush.impasto`) | +1 linha |
-| `ph2d-panel-painter-layers/tests/seam_sculpt.rs` | remove o seam gate do Conserve | subtrativo |
-| `ph2d-panel-painter-layers/tests/seam.rs` | **+1 gate** (presença/ausência do Accumulate) | aditivo |
+| `ph2d-panel-painter-layers/tests/it/seam_sculpt.rs` | remove o seam gate do Conserve | subtrativo |
+| `ph2d-panel-painter-layers/tests/it/seam.rs` | **+1 gate** (presença/ausência do Accumulate) | aditivo |
 | `shells/desktop/src/render_loop/push_look_probe.rs` | a sonda deixa de armar o Conserve | 2 linhas |
 | `CLAUDE.md` | §5 do Painter | 🔴 texto — **toda linha edita o §5** |
 

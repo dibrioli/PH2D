@@ -4,7 +4,7 @@
     python3 "docs/Motion Nodes/ferramentas/knobs_declarados_nunca_lidos.py"
 
 ⚠️ **Esta é a única das quatro espécies que a execução NÃO acha.** A varredura dinâmica
-(`crates/ph2d-node-registry-init/tests/dead_knob_sweep.rs`) cozinha o nó duas vezes e compara
+(`crates/ph2d-node-registry-init/tests/it/dead_knob_sweep.rs`) cozinha o nó duas vezes e compara
 as colunas: ela acusa um param que não muda a saída. Mas um param **nunca lido** também não
 muda a saída, então ela o acusaria pelo mesmo motivo que acusa um param lido-e-descartado — e
 as duas curas são opostas (uma é ligar o fio, a outra é consertar o cálculo). Separar as duas

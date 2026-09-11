@@ -163,11 +163,11 @@ Novos neste lote (todos **mutation-proved** — 13 mutações, 13 vermelhos, ver
 
 | Arquivo | Prova |
 |---|---|
-| `ph2d-timeline/tests/clip_clock.rs` (7) | o bug da régua como número (4.0→2.0); sem pilha = identidade; NotPlaying/PlaysTwice; "a régua e o K concordam sobre SE o clip toca" |
-| `ph2d-timeline/tests/lone_fade.rs` (6) | o salto como um LIMITE (passo/frame < 0.1 a 240 Hz vs snap de 3.0); a lacuna segura; path-independence; overlap intacto; primeiro strip entra do repouso; held não toca |
-| `ph2d-anim/tests/reverse.rs` (8) | `reversed(span-t)==original(t)` ponto a ponto, por variante de `Interp` |
-| `ph2d-panel-timeline/tests/view_tabs_seam.rs` (10) | um teste **CLICA** cada aba + Duplicate + `I` pela pintura real; cada aba registra só a sua metade; régua do clip sem scrub sob pilha; rename SOBRE o chip |
-| `ph2d-timeline/tests/seam_determinism.rs` | atualizado: o número que o R10 mudou (peso-0 = pose SEGURADA, não repouso) — a espinha (pose CERTA, não só consistente) fica |
+| `ph2d-timeline/tests/it/clip_clock.rs` (7) | o bug da régua como número (4.0→2.0); sem pilha = identidade; NotPlaying/PlaysTwice; "a régua e o K concordam sobre SE o clip toca" |
+| `ph2d-timeline/tests/it/lone_fade.rs` (6) | o salto como um LIMITE (passo/frame < 0.1 a 240 Hz vs snap de 3.0); a lacuna segura; path-independence; overlap intacto; primeiro strip entra do repouso; held não toca |
+| `ph2d-anim/tests/it/reverse.rs` (8) | `reversed(span-t)==original(t)` ponto a ponto, por variante de `Interp` |
+| `ph2d-panel-timeline/tests/it/view_tabs_seam.rs` (10) | um teste **CLICA** cada aba + Duplicate + `I` pela pintura real; cada aba registra só a sua metade; régua do clip sem scrub sob pilha; rename SOBRE o chip |
+| `ph2d-timeline/tests/it/seam_determinism.rs` | atualizado: o número que o R10 mudou (peso-0 = pose SEGURADA, não repouso) — a espinha (pose CERTA, não só consistente) fica |
 | `ruler::tests` / `tab::tests` / `geom_tests` | o `clock_for` puro; a tabela de abas; cada aba dá altura só à sua metade |
 
 Comando de paridade (o integrador roda no fim da jornada, DIRETRIZ §1.5.4):

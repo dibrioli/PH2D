@@ -249,7 +249,7 @@ Para o Bug B, um log em (a) o relógio que o apply usa e (b) o relógio que o au
 
 ## 7. Estado / suítes / flake
 
-- Todas as suítes verdes em `cargo test -p` (`ph2d-timeline`, `ph2d-panel-timeline`, `ph2d-editor-core`, shell) no fechamento do `935cc71e9`, **exceto** a flake conhecida e PRÉ-EXISTENTE `the_cost_of_depth_is_linear_not_explosive` (`ph2d-timeline/tests/nesting_clock.rs`) — gate de RAZÃO sensível a carga; **passa isolado**, re-rode sozinho antes de suspeitar de merge.
+- Todas as suítes verdes em `cargo test -p` (`ph2d-timeline`, `ph2d-panel-timeline`, `ph2d-editor-core`, shell) no fechamento do `935cc71e9`, **exceto** a flake conhecida e PRÉ-EXISTENTE `the_cost_of_depth_is_linear_not_explosive` (`ph2d-timeline/tests/it/nesting_clock.rs`) — gate de RAZÃO sensível a carga; **passa isolado**, re-rode sozinho antes de suspeitar de merge.
 - Clippy 0.
 - **Os gates existentes de véu/clamp PASSAM** e o produto FALHA — essa é a bandeira vermelha da §3: os fixtures chamam `set_clip_length_override` na mão e nunca dirigem o gesto real (Enter na caixa). Os gates novos têm de CLICAR/DIGITAR.
 - Gates relevantes já no repo: `ruler.rs::the_shade_starts_at_the_authored_end_and_only_when_authored` · `timeline_bridge_container_tests.rs::{the_duration_chip_writes_the_scope_on_screen, an_authored_duration_pins_the_playhead_and_pauses_the_run_past_it}` · `number_input_mapped_link.rs::{a_flagged_chip_commits_an_unchanged_value_on_enter, ...}` · `seam.rs::the_length_chip_writes_the_scope_the_one_door_names`.

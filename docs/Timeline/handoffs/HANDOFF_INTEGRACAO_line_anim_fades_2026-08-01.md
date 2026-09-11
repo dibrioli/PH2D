@@ -142,7 +142,7 @@ falha que havia.
 
 **Flakes conhecidas, PRÉ-EXISTENTES, não desta linha** (re-rode isoladas antes de suspeitar
 do merge):
-- `ph2d-timeline/tests/nesting_clock.rs::the_cost_of_depth_is_linear_not_explosive` — gate de
+- `ph2d-timeline/tests/it/nesting_clock.rs::the_cost_of_depth_is_linear_not_explosive` — gate de
   RAZÃO sensível a carga.
 - `ph2d-sculpt3d --test measure_brush_kernel` — gate de RELÓGIO (13,4 s isolado, verde); a
   crate **nem depende** da timeline. Falhou sob a suíte paralela nesta máquina, passa sozinho.

@@ -42,7 +42,7 @@ pub(crate) struct ProjectState {
     pub(crate) world: WorldSnapshot,
     /// ⭐⭐⭐ **A cena vetorial, PARTILHADA entre passos** (F8, 2026-09-02).
     ///
-    /// ⛔⛔ **Medido antes de mudar** (`ph2d-vec-scene/tests/measure_scene_clone.rs`): um passo
+    /// ⛔⛔ **Medido antes de mudar** (`ph2d-vec-scene/tests/it/measure_scene_clone.rs`): um passo
     /// clonava a cena INTEIRA — `236 KB` a 1 000 formas, `1,18 MB` a 5 000 —, e a pilha guarda
     /// `UNDO_CAP` passos ⇒ **60 MB** e **303 MB** só de cópias da mesma cena.
     ///
@@ -57,7 +57,7 @@ pub(crate) struct ProjectState {
     pub(crate) vec: std::sync::Arc<VecScene>,
     /// ⭐⭐⭐ **O documento Flip, PARTILHADO entre passos** (F8, 2026-09-07) — a irmã da
     /// [`Self::vec`], e a MEDIÇÃO que a decidiu veio primeiro
-    /// (`ph2d-flip/tests/measure_doc_clone.rs`).
+    /// (`ph2d-flip/tests/it/measure_doc_clone.rs`).
     ///
     /// ⛔⛔ **Ele é PIOR que a cena vetorial, e por muito.** A cena custava `303 MB` de pilha a
     /// **5 000 formas** — um documento invulgar. O Flip custa **`228 MB` a 24 quadros**, que é

@@ -62,7 +62,7 @@ rayon"* (a 1ª é o ADR-0109), autorizada pelo Enio com a palavra *"rayon"*, e o
 
 ### 2.3 A rede de segurança que decide tudo
 
-**`crates/ph2d-wet-paint/tests/fingerprint.rs`** — a sessão roteirizada,
+**`crates/ph2d-wet-paint/tests/it/fingerprint.rs`** — a sessão roteirizada,
 byte a byte. **Toda** wave desta frente é reescrita de hot loop e se prova por
 ele; ele está **intocado** desde o ADR-0134. Se ele ficar vermelho depois do
 merge, **pare**: não é conflito textual, é semântica.

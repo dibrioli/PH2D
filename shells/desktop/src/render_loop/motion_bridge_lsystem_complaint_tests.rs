@@ -5,7 +5,7 @@
 //! Item aberto desde 2026-08-29: *o feedback ao vivo de uma regra malformada — hoje ela cai em
 //! silêncio*. A metade do NÓ (a queixa nascer no mesmo `return Err` que descarta a regra) tem
 //! gate próprio na crate
-//! ([`a_dropped_rule_says_why`](../../../../crates/ph2d-node-source-lsystem/tests/a_dropped_rule_says_why.rs)).
+//! ([`a_dropped_rule_says_why`](../../../../crates/ph2d-node-source-lsystem/tests/it/a_dropped_rule_says_why.rs)).
 //!
 //! ⚠️⚠️ **Esta é a OUTRA metade, e ela é independente:** uma lei perfeita que nenhuma row
 //! carrega é exactamente um controlo morto ao contrário — o app *sabe* o que está mal e o

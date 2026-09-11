@@ -153,7 +153,7 @@ motor, não transcrição de kernel.
 | um kernel-modelo simples (24 linhas) | `crates/ph2d-node-motion-rotate/src/lib.rs` |
 | um kernel-modelo com variantes por-canal | `crates/ph2d-node-motion-oscillator/src/` (o `GPU_KERNEL` + `OSC_P/ROT/SIZE`) |
 | um kernel-modelo com lei de contagem + broadcast | `crates/ph2d-node-value-math/src/lib.rs` |
-| os gates de paridade (o padrão a copiar) | `crates/ph2d-gpu-cook/tests/gpu_cpu_parity.rs` e `_sim.rs` |
+| os gates de paridade (o padrão a copiar) | `crates/ph2d-gpu-cook/tests/it/gpu_cpu_parity.rs` e `_sim.rs` |
 
 ---
 

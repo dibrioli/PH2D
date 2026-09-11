@@ -447,7 +447,7 @@ pub fn cursor_over_hero_panel(gfx: Option<&AppGfx>, x: f32, y: f32) -> bool {
         // scrollbar thumb, so both must intercept the wheel — a panel that scrolls
         // by thumb but zooms the camera on the wheel is the same bug twice. Missing
         // until 2026-07-09: the mixer's wheel silently zoomed the camera.
-        // `shells/desktop/tests/scrollable_panels_intercept_the_wheel.rs` gates this.
+        // `shells/desktop/tests/it/scrollable_panels_intercept_the_wheel.rs` gates this.
         || inside(AUDIO_MIXER_PANEL)
         || inside(AUDIO_EDITOR_PANEL)
         // Motion Nodes graph panel (M1) — the bottom half of the center split.

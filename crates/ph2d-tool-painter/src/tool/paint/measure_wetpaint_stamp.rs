@@ -406,7 +406,7 @@ fn measure_what_the_artist_asks_for_against_what_the_stroke_lays() {
 /// **O PINCEL GRANDE FICOU CARO — E O SLIDER QUE JÁ SHIPA É A RESPOSTA?**
 ///
 /// ⚠️ A wave do cap (§5.51) tirou o teto do pincel, e a decomposição seguinte
-/// (`ph2d-wet-paint/tests/measure_dab_halves.rs`) mediu o depósito **plano em
+/// (`ph2d-wet-paint/tests/it/measure_dab_halves.rs`) mediu o depósito **plano em
 /// ~30 ns/r²** de raio 60 a 400 — ou seja, **honestamente limitado pela
 /// PEGADA**, sem anomalia a consertar. Isso RE-PRECIFICA a nota do §5.50, que
 /// via escala sub-linear (1 : 1,8 : 2,3) e a atribuía ao cap: era o cap

@@ -293,7 +293,7 @@ Ponteiros, não cópias (duas cópias da mesma regra divergem):
   um bump **recusa todo projeto já salvo**.
 - **LOC:** crates ≤700 · shell ≤600 · arquivos de painel ≤600 · fn de painel ≤200. `fmt`
   **antes** de medir; split por **ASSUNTO** em módulo irmão, nunca allowlist. ⚠️ O
-  `shells/desktop/tests/file_loc_caps.rs` e o `arch_safe_clamp_only` **não rodam** num
+  `shells/desktop/tests/it/file_loc_caps.rs` e o `arch_safe_clamp_only` **não rodam** num
   `cargo test -p` filtrado — entram no gate de fechamento.
 - **Rode a suíte em DEBUG e RELEASE.** Um gate desta família já reprovou só em debug.
 - **Git:** nunca `git add -A`/`.`/`stash`/`--force`; `git commit --no-verify`; mensagem com

@@ -758,7 +758,7 @@ lhe faz.* Ele passa a fazer as quatro, incluindo o sentido inverso — **derivad
 
 > Quatro dos últimos cinco defeitos deste painel foram **o Enio** que os achou, não os gates. Este
 > ficheiro é a tentativa de os achar primeiro:
-> [`every_asset_browser_control_answers.rs`](../../shells/desktop/tests/every_asset_browser_control_answers.rs).
+> [`every_asset_browser_control_answers.rs`](../../shells/desktop/tests/it/every_asset_browser_control_answers.rs).
 
 ### §14.1 — As quatro, e quais tinham instrumento
 

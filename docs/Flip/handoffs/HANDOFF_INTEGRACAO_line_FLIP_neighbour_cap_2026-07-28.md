@@ -86,7 +86,7 @@ estruturalmente impossível (o que a caminhada visitou é da própria passagem, 
 
 ## 5. Gates
 
-**Novo, red-first:** `crates/ph2d-flip-render/tests/sampling_invariance.rs::`
+**Novo, red-first:** `crates/ph2d-flip-render/tests/it/sampling_invariance.rs::`
 **`the_ink_is_a_fact_of_the_path_not_of_how_finely_it_was_sampled`** — a MESMA figura, de
 `0,80·r` a `0,04·r`, contra o **depósito REAL do Painter** (não uma cópia da regra do produto),
 com a **mesma barra em toda densidade**. Nasceu vermelho em **−184**.

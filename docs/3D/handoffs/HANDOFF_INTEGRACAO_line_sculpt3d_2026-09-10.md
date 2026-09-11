@@ -303,10 +303,10 @@ aqui, senão as duas cópias divergem e a que o artista lê é a que envelhece.
 |---|---|---|
 | ⏳ **O caso BRANDO da máscara** — duas partes LIGADAS por parede fina | razão `superfície/ar = π/2 ≈ 1,57`, **menor** que o viés `√2` do passeio ⇒ este instrumento não a mede. Pede geodésica a sério (método do calor, ou MMP) | [`dab_alcance.rs`](../../../crates/ph2d-sculpt3d/src/dab_alcance.rs) |
 | ⏳ **O tamanho da ruga** ainda segue a densidade da malha | `8`–`32` passagens levam a onda de `10` para `20`–`27` arestas numa malha fina, e **achatam** a peça numa grossa (`0,329 → 0,0016`). ⛔ *«mais varreduras»* é **recusa medida** (o arrasto vai de `0,071` a `0,709`) | [`cloth/11 §5`](../cloth/11_o_material_a_ruga_e_a_memoria.md) |
-| ⏳ **UM traço do corpus do tecido fora da barra** | `plano_apertar_ponto_plano_local`, `2,04` da barra pelo `p95`. É o regime §5.2-ter em que o próprio alvo inverte a malha e a ORDEM decide — **decisão do dono**, e a saída (b) foi **REFUTADA** com número (`b0a1e615c`) | [`oraculo_do_pincel.rs`](../../../crates/ph2d-cloth/tests/oraculo_do_pincel.rs) |
-| ⏳ **Nomes de SÍMBOLO internos** do alvo | §4.2 pela mesma linha da SKILL, população maior e mais subtil (parte é API pública, permitida pelo §4.1.13). **O gate não os mede** | [`architecture_no_restricted_source_citations.rs`](../../../crates/ph2d-editor-core/tests/architecture_no_restricted_source_citations.rs) |
+| ⏳ **UM traço do corpus do tecido fora da barra** | `plano_apertar_ponto_plano_local`, `2,04` da barra pelo `p95`. É o regime §5.2-ter em que o próprio alvo inverte a malha e a ORDEM decide — **decisão do dono**, e a saída (b) foi **REFUTADA** com número (`b0a1e615c`) | [`oraculo_do_pincel.rs`](../../../crates/ph2d-cloth/tests/it/oraculo_do_pincel.rs) |
+| ⏳ **Nomes de SÍMBOLO internos** do alvo | §4.2 pela mesma linha da SKILL, população maior e mais subtil (parte é API pública, permitida pelo §4.1.13). **O gate não os mede** | [`architecture_no_restricted_source_citations.rs`](../../../crates/ph2d-editor-core/tests/it/architecture_no_restricted_source_citations.rs) |
 | ⏳ **Os `docs/**` ficam fora do censo de citações** por construção | o `docs/Flip/02_referencia_*.md` declara-se *«a referência comentada»* | idem |
-| ⏳ **Uma linha de doc DUPLICADA, pré-existente** | `crates/ph2d-flip-render/tests/gpu_render.rs:1298` tem a mesma frase duas vezes na mesma linha física (`149` colunas). Está no `main`, não é desta linha, e não a corrigi para não poluir o diff | — |
+| ⏳ **Uma linha de doc DUPLICADA, pré-existente** | `crates/ph2d-flip-render/tests/it/gpu_render.rs:1298` tem a mesma frase duas vezes na mesma linha física (`149` colunas). Está no `main`, não é desta linha, e não a corrigi para não poluir o diff | — |
 
 ---
 
@@ -322,7 +322,7 @@ Todos lidos pelo **exit code**, logo depois do comando:
 | `architecture_widget_loc_cap` | **`exit 0`** |
 | `architecture_panel_loc_cap` | **`exit 0`** |
 | `arch_safe_clamp_only` | **`exit 0`** |
-| `shells/desktop/tests/file_loc_caps.rs` | **`exit 0`** (2 passed) |
+| `shells/desktop/tests/it/file_loc_caps.rs` | **`exit 0`** (2 passed) |
 | `BASE=main scripts/nextest-impacted.sh` | **`exit 0`** — **14 720 de 14 720 passaram**, 1 722 skipped, 513 s |
 | `cleanroom-sweep.sh` × **as duas vassouras** | **✓ limpo** (70 e 94 entradas) |
 | `typos` (⚠️ é gate de `ship`, corrido aqui de propósito) | **`exit 0`** — depois de curar um vermelho desta linha |

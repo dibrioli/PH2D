@@ -57,7 +57,7 @@ migração em vez de os deixar à convenção.
 
 ⇒ **Se outra linha chamar `flat_button_surface`, ela NÃO compila depois da fusão.**
 A migração é mecânica (passar `(state, t)` e o tema); o gate
-`crates/ph2d-editor-core/tests/the_chip_axis_has_one_door.rs` recusa uma segunda porta.
+`crates/ph2d-editor-core/tests/it/the_chip_axis_has_one_door.rs` recusa uma segunda porta.
 
 **Quem denuncia a colisão é o COMPILADOR**, e é para isso que o mapa ficou privado — um `cargo
 check -p <crate-da-outra-linha>` depois da fusão é a prova, não um grep. ⚠️ O grep abaixo é só

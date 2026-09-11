@@ -226,7 +226,7 @@ impl Sculpt3dScene {
     /// ⭐⭐⭐ **E ele ENCOSTA NO VÉRTICE, não fica no ponto da face** (espec §7: o
     /// alvo do aperto é o **vértice activo** no instante da abertura). ⚠️ **A
     /// diferença foi MEDIDA e não é decoração:** na bancada do oráculo
-    /// (`ph2d-cloth/tests/oraculo_do_filtro.rs`) apertar para o ponto solto do
+    /// (`ph2d-cloth/tests/it/oraculo_do_filtro.rs`) apertar para o ponto solto do
     /// cursor em vez do vértice dá erro `0,696942`; para o vértice, `0,010755` —
     /// **65× melhor**. *A diferença entre apertar para um ponto da malha e para
     /// um ponto que não pertence a ela.*

@@ -10,7 +10,7 @@ Cada cap é **número exato** (não range). Bump = ADR-0070-amendment-N obrigat�
 
 ### 11.2.1 `architecture_sprite_inspector_surface` (criado em W1.T1.12)
 
-Localização: `crates/ph2d-render/tests/architecture_sprite_inspector_surface.rs`.
+Localização: `crates/ph2d-render/tests/it/architecture_sprite_inspector_surface.rs`.
 
 ```rust
 /// Arch-gate dos caps numéricos do Sprite Inspector v2.
@@ -264,7 +264,7 @@ fn validate_named_anchor_sanitizes_and_rejects_dup() {
 
 ### 11.2.5 `clip_children_regression` (fixture concreta — Lens E E17 fix)
 
-Localização: `crates/ph2d-render/tests/clip_children_regression.rs`.
+Localização: `crates/ph2d-render/tests/it/clip_children_regression.rs`.
 
 Gate visual contra os 5 issues abertos do Godot. **Pixel-comparison cross-OS é inviável** (wgpu backend differences entre Vulkan/Metal/DX12 produzem ULP-divergence em rasterization + blending — vide audit Lens A H6 + Lens C H2). Estratégia de gate atualizada:
 
@@ -310,7 +310,7 @@ Vide [05_ordering_sorting.md §5.6](05_ordering_sorting.md).
 
 ### 11.2.7 `migrate_sprite_v3_to_v4`
 
-Localização: `crates/ph2d-render/tests/migrate_sprite_v3_to_v4.rs`.
+Localização: `crates/ph2d-render/tests/it/migrate_sprite_v3_to_v4.rs`.
 
 5 fixtures v3 binárias congeladas em `fixtures/` carregam como v4 com defaults benignos. Vide [10_schema_versionamento.md §10.6](10_schema_versionamento.md).
 
@@ -379,10 +379,10 @@ Estes JÁ existem mas precisam ser revisados/ampliados após Sprite v4:
 | `render_instance_is_pod_compatible` | `crates/ph2d-render/src/sprite.rs#L304` | Atualizar `assert_eq!(bytes.len(), 144)` |
 | `vertex_attributes_cover_full_stride` | `crates/ph2d-render/src/sprite.rs#L327` | Atualizar last shader_location para 14 (flip_uv) |
 | `sprite_constructors_default_straight_alpha` | `crates/ph2d-render/src/sprite.rs#L378` | Confirma `Sprite::atlas/individual` retornam v4 com defaults benignos |
-| `hr12_widgets_a11y` | `crates/ph2d-editor-core/tests/hr12_widgets_a11y.rs` | Novos widgets (OKLCH picker, NamedAnchorEditor) emitem AccessKit |
-| `architecture_widget_loc_cap` | `crates/ph2d-editor-core/tests/architecture_widget_loc_cap.rs` | Cada widget novo ≤ 500 LOC |
-| `architecture_widget_showcase_coverage` | `crates/ph2d-editor-core/tests/architecture_widget_showcase_coverage.rs` | Widget novo aparece no Gallery |
-| `no_literal_color` | `crates/ph2d-editor-core/tests/no_literal_color.rs` | Sem hex literal em sections novos |
+| `hr12_widgets_a11y` | `crates/ph2d-editor-core/tests/it/hr12_widgets_a11y.rs` | Novos widgets (OKLCH picker, NamedAnchorEditor) emitem AccessKit |
+| `architecture_widget_loc_cap` | `crates/ph2d-editor-core/tests/it/architecture_widget_loc_cap.rs` | Cada widget novo ≤ 500 LOC |
+| `architecture_widget_showcase_coverage` | `crates/ph2d-editor-core/tests/it/architecture_widget_showcase_coverage.rs` | Widget novo aparece no Gallery |
+| `no_literal_color` | `crates/ph2d-editor-core/tests/it/no_literal_color.rs` | Sem hex literal em sections novos |
 | `mockup_tokens_exist` | `crates/ph2d-editor-core/tests/mockup_tokens_exist.rs` | Mockup `inspector_v2.html` tokens válidos |
 
 ## 11.5 Smoke gates (do Enio)

@@ -8,7 +8,7 @@
 //! ⚠️ **Nenhum destes gates tem lado APROVADO, e isso é uma escolha e não uma
 //! falta:** o corpus do filtro EXISTE desde 2026-09-07
 //! (`fixtures/cloth/filtro/`, `17` corridas) e quem o mede é o
-//! `ph2d-cloth/tests/oraculo_do_filtro.rs` — **a lei**. O que se afirma aqui é a
+//! `ph2d-cloth/tests/it/oraculo_do_filtro.rs` — **a lei**. O que se afirma aqui é a
 //! nossa COSTURA (a peça inteira, o ponto congelado, o gesto que acumula), que o
 //! oráculo não observa porque ela não é lei nenhuma dele. *Uma barra calibrada
 //! sem o lado aprovado mediria os nossos próprios defeitos — e é por isso que

@@ -149,7 +149,7 @@ do rebase**, não só o que conflitou.
 é onde o painel de física do W2b **nasceu invisível**: ligar a feature na crate de
 registry **não alcança ninguém**, porque o shell põe `default-features = false` e
 re-enumera. O gate que pega isso é
-`shells/desktop/tests/every_panel_the_shell_drives_is_in_its_registry.rs`, e ele
+`shells/desktop/tests/it/every_panel_the_shell_drives_is_in_its_registry.rs`, e ele
 está no diff — **rode-o na árvore combinada**.
 
 ### 3.3 Os gates que **só correm na varredura impactada**

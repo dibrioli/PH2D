@@ -205,7 +205,7 @@ mod chrome_claims_tests {
     /// dela.**
     ///
     /// ⚠️ **Registo do achado (2026-08-30).** O instrumento
-    /// `ph2d-editor-core/tests/the_painted_control_reaches_a_consumer.rs` acusou
+    /// `ph2d-editor-core/tests/it/the_painted_control_reaches_a_consumer.rs` acusou
     /// `ids::INPUT_MAP_SURFACE` de *«registada e consultada por ninguém»*. **É um FALSO POSITIVO**,
     /// e o mecanismo do engano está no cabeçalho do próprio instrumento: a régua dele procura um
     /// sítio que **NOMEIE** o id (`id == ids::X`, um braço de `match`, uma tabela com o id por

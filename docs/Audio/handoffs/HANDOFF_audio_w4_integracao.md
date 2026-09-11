@@ -15,7 +15,7 @@
    - **`crates/ph2d-ui-testkit`** — `MockPanelHost::store()`, acessor **read-only** novo, pra um
      seam test poder afirmar sobre o que o `populate` semeou (seção dobrada, default), não só
      sobre o que um evento fez. Nada muda de forma; nenhum caller existente é afetado.
-   - **`crates/ph2d-editor-core/tests/hr15_no_hardcoded_ui_strings.rs`** — a entrada de BASELINE
+   - **`crates/ph2d-editor-core/tests/it/hr15_no_hardcoded_ui_strings.rs`** — a entrada de BASELINE
      de `paint.rs` **migrou** para `paint_sections.rs` quando o painel foi dividido em seções
      (mesma string, arquivo novo). Baseline **movido**, não afrouxado.
 3. **ZERO contrato congelado encostado** (CLAUDE.md §6): `NodeOp`/`OpResolver`/`NodeManifest`,

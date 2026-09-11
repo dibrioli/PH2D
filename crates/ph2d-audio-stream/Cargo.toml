@@ -14,7 +14,7 @@ authors.workspace = true
 #
 # This is where the codecs live, and that is the whole point of the split: `ph2d-audio`
 # is the real-time mixer and must never grow a decoder (gate:
-# `ph2d-audio/tests/no_codec_reaches_the_mixer.rs`). It pops already-decoded chunks; we
+# `ph2d-audio/tests/it/no_codec_reaches_the_mixer.rs`). It pops already-decoded chunks; we
 # fill them, on a thread that is allowed to allocate, block on a file, and take its time.
 [dependencies]
 ph2d-audio = { path = "../ph2d-audio" }

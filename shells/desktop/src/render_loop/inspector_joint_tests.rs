@@ -1,7 +1,7 @@
 //! **The other half of the §12 seam: does the click produce a joint that
 //! HOLDS?**
 //!
-//! `ph2d-panel-inspector/tests/seam_joint.rs` proves panel → bus. These prove
+//! `ph2d-panel-inspector/tests/it/seam_joint.rs` proves panel → bus. These prove
 //! bus → ECS → simulation — the half a tool can fail while every gate in its
 //! own crate stays green ([[feedback_tool_unit_green_integration_dead]]).
 

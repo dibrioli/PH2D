@@ -126,7 +126,7 @@ kernel com params suficientes (≈28+) **panicava em produção no primeiro
 dispatch**, não no `cargo test`. E `identity_literal` (`codegen.rs:68-70`) usa
 `{v:?}`: uma identity `NaN`/`inf` emitiria tokens que não são literais WGSL
 (falha de parse no primeiro unplug da coluna). **Fix:** gate
-`shells/desktop/tests/motion_gpu_kernel_budgets.rs` sobre o
+`shells/desktop/tests/it/motion_gpu_kernel_budgets.rs` sobre o
 `register_all_nodes` REAL (sem lista à mão — cobre kernel futuro no dia em que
 registrar): orçamento lido do TEXTO GERADO do módulo (o mesmo que a pipeline
 compila — sem fórmula paralela que derive), identities finitas, com dois
@@ -260,9 +260,9 @@ distância-rejeita-tudo; sem divisão viva pelos kernels amostrados).
 |---|---|
 | `crates/ph2d-gpu-cook/src/gather.rs` | `broadcast_length_mismatch` + 4 gates unitários |
 | `crates/ph2d-gpu-cook/src/lib.rs` | variant `BroadcastLengthMismatch` + checagem no cook + `UNIFORM_BYTES` pub |
-| `crates/ph2d-gpu-cook/tests/gpu_cpu_parity.rs` | gate de dispositivo do broadcast (mutação-testado) |
-| `crates/ph2d-gpu-cook/tests/generated_wgsl_validates.rs` | +value.math +value.switch |
-| `shells/desktop/tests/motion_gpu_kernel_budgets.rs` | **novo** — orçamento do uniform + identities finitas, sobre `register_all_nodes` |
+| `crates/ph2d-gpu-cook/tests/it/gpu_cpu_parity.rs` | gate de dispositivo do broadcast (mutação-testado) |
+| `crates/ph2d-gpu-cook/tests/it/generated_wgsl_validates.rs` | +value.math +value.switch |
+| `shells/desktop/tests/it/motion_gpu_kernel_budgets.rs` | **novo** — orçamento do uniform + identities finitas, sobre `register_all_nodes` |
 | `crates/ph2d-eval-motion/src/scrub_tests.rs` | medição `#[ignore]` do loop-wrap starvation (101/101 evals) |
 | `shells/desktop/src/motion_state.rs` · `render_loop/motion_bridge_gpu.rs` | os 2 comentários apodrecidos reescritos |
 

@@ -11,7 +11,7 @@
 //! `Error::DeserializeUnexpectedEnd` when it reaches for `skew_x` —
 //! `#[serde(default)]` does NOT fire on trailing-missing fields under
 //! postcard (empirically pinned for `Sprite` in
-//! `ph2d-render/tests/sprite_versioned_postcard.rs`, ratified in
+//! `ph2d-render/tests/it/sprite_versioned_postcard.rs`, ratified in
 //! ADR-0070-amendment-2 §2; the same wire semantics apply here).
 //!
 //! Dispatch via this wrapper enum is the only type-safe back-compat

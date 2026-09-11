@@ -178,7 +178,7 @@ Rodado **1× sobre o diff acumulado**, na worktree:
 - `cargo clippy --all-targets` nas crates tocadas + shell: **0 warnings**.
 - `cargo fmt --all`: limpo.
 - **`architecture_workspace_file_loc_cap`** (crates, 700) e
-  **`shells/desktop/tests/file_loc_caps.rs`** (shell, 600): verdes — ⚠️ os dois,
+  **`shells/desktop/tests/it/file_loc_caps.rs`** (shell, 600): verdes — ⚠️ os dois,
   porque o segundo **não roda** num `cargo test -p` filtrado e já foi
   vermelho-latente nesta linha três vezes.
 - `architecture_panel_wiring_parity` · `node_id_collisions` ·

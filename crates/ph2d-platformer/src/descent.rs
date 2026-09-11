@@ -4,7 +4,7 @@
 //! # ⚠️ Não existia velocidade terminal, e o número é desta wave
 //!
 //! A auditoria afirmava-o e uma premissa herdada não é uma medição. Medido pela
-//! porta do produto (`ph2d-physics-ecs/tests/measure_terminal.rs`), largando de
+//! porta do produto (`ph2d-physics-ecs/tests/it/measure_terminal.rs`), largando de
 //! mil metros, a descida por segundo é:
 //!
 //! | s | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |

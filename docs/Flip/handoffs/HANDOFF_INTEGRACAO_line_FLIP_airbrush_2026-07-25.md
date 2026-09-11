@@ -70,7 +70,7 @@ zero). Render-and-look confirmou: o padrão é uma espinha fina, o airbrush um d
 
 ## 3. Gates (red-first, mutação-provados nesta sessão)
 
-- `ph2d-flip-render/tests/gpu_render.rs::an_airbrush_has_a_flatter_core_than_the_standard_brush`
+- `ph2d-flip-render/tests/it/gpu_render.rs::an_airbrush_has_a_flatter_core_than_the_standard_brush`
   (RTX, `#[ignore]`): meio-raio ~249 airbrush vs ~0 padrão; borda macia; o domo segura perto do
   eixo (252 vs 222). **RED provado**: mutando `if (airbrush)` → `if (false)` (a flag ignorada, cai
   no `pow`), o meio-raio do airbrush desaba para o pico → o gate falha; restaurei o shader por

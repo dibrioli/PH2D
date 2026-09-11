@@ -227,7 +227,7 @@ nunca entrou, o gate ficou verde sob mutação, e eu quase concluí que o gate �
 Um botão pode estar **pintado, mapeado em `event.rs`, coberto por seam test — e MORTO no app**, se
 faltar no `populate.rs`. O seam injeta `Click(id)` direto; no app o clique chega como **posição**, e
 é o `WidgetStore` (que o `populate` enche) que traduz. **Gate:
-`ph2d-panel-audio-editor/tests/no_dead_buttons.rs`** — a lista `CLICKABLE` é o checklist. **Botão
+`ph2d-panel-audio-editor/tests/it/no_dead_buttons.rs`** — a lista `CLICKABLE` é o checklist. **Botão
 novo = entrada nova ali**, ou ele não está testado.
 
 ### 4.5 O cap de LOC do shell é **compartilhado entre linhas**

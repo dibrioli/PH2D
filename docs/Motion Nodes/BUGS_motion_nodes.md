@@ -422,7 +422,7 @@ duas crates abaixo, num caminho partilhado por **toda a sprite do app**.
 ### A medição, antes de tocar em nada
 
 Sonda `measure_alpha_response_of_every_mode`
-([`blend_mode_regression.rs`](../../crates/ph2d-render/tests/blend_mode_regression.rs)) —
+([`blend_mode_regression.rs`](../../crates/ph2d-render/tests/it/blend_mode_regression.rs)) —
 fundo opaco cinza (byte 55 no alvo linear), frente cinza 128, byte do centro:
 
 | modo | α=0,00 | α=0,25 | α=0,50 | α=0,75 | α=1,00 |

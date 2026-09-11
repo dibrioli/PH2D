@@ -166,7 +166,7 @@ dois** atravessa: *o clique sai do painel?*
 1. **As três rotas da família vivem num módulo** ([`event_paint_stack.rs`](../../crates/ph2d-panel-vector/src/event_paint_stack.rs)),
    à vista uma da outra. A pilha de EFEITOS tinha a mesma forma espalhada por dois ficheiros e foi
    cortada igual (`event_fx_stack.rs`).
-2. **A família ganha um `seam_*` com gesto REAL** ([`seam_paint_stack.rs`](../../crates/ph2d-panel-vector/tests/seam_paint_stack.rs),
+2. **A família ganha um `seam_*` com gesto REAL** ([`seam_paint_stack.rs`](../../crates/ph2d-panel-vector/tests/it/seam_paint_stack.rs),
    7 gates), cujo oráculo é o `EditorAction` e nunca o `WidgetEvent`. ⚠️ Esta crate tinha **40**
    ficheiros `seam_*` e a pilha não tinha nenhum.
 

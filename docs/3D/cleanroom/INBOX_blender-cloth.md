@@ -13,7 +13,7 @@ listagem de nomes, nunca o conteúdo; o `.claude/settings.local.json` da worktre
 
 ## Medições do I contra as 46 fixtures (2026-09-06) — para o E emendar e o R atestar
 
-Arnês: `crates/ph2d-cloth/tests/oraculo_do_pincel.rs` (a lei nossa em `ph2d-cloth/src/verlet*.rs`).
+Arnês: `crates/ph2d-cloth/tests/it/oraculo_do_pincel.rs` (a lei nossa em `ph2d-cloth/src/verlet*.rs`).
 
 - ✅ Os SEIS traços de um passo de força dão erro **0,0000** por vértice — §4.1/§4.2/§5.4 ao bit.
 - ⚠️ **Anel-1:** com o anel sobre os QUADS, `plano_arrastar_radial_global` bate a 1 % e o `_local` sai
@@ -393,7 +393,7 @@ cursor? A medição diz cursor; a espec, lida à letra, diz a inicial.
 
 ## Os gates 19, 20 e 21 estão IMPLEMENTADOS — e o 20 precisou de uma correcção medida (2026-09-06)
 
-Os três da emenda Q11 vivem em `crates/ph2d-cloth/tests/oraculo_do_pincel.rs`, com as duas réguas da
+Os três da emenda Q11 vivem em `crates/ph2d-cloth/tests/it/oraculo_do_pincel.rs`, com as duas réguas da
 §5.2-ter escritas como a espec as define (quadrilátero invertido pela normal de Newell contra o
 repouso — ⛔ não a soma das metades triangulares; assimetria de espelho com o numerador em norma do
 máximo e o denominador na euclidiana).

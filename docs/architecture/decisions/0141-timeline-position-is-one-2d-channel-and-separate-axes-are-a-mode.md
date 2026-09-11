@@ -187,7 +187,7 @@ de geometria — o desconto tem nome e não é inventado na hora.
 
 ### ⚠️ A barra declarada FALHOU, e a substituta é medida (Fatia 0, 2026-07-23)
 
-Harness: [`crates/ph2d-timeline/tests/measure_motion_path.rs`](../../../crates/ph2d-timeline/tests/measure_motion_path.rs)
+Harness: [`crates/ph2d-timeline/tests/it/measure_motion_path.rs`](../../../crates/ph2d-timeline/tests/it/measure_motion_path.rs)
 (release, custo de UMA amostra em ns).
 
 ```text

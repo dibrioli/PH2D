@@ -36,9 +36,9 @@ causa regressão visual que nenhuma gate pega* (`architecture_panel_loc_cap.rs:9
 | # | Entrega | Caminho | Gate nova |
 |---|---|---|---|
 | 0.1 | Testkit comportamental headless | `crates/ph2d-ui-testkit/` (`MockPanelHost` impl `PanelHostInternal` sobre `WidgetStore`+`ActionBus` reais + helpers + teste-exemplo no padding) | — (habilita 1.x) |
-| 0.2 | Paridade de wiring por painel | `crates/ph2d-editor-core/tests/architecture_panel_wiring_parity.rs` (generaliza `architecture_topbar_registration_parity`) | id **hit-indexado no paint ⟹ registrado** em `populate.rs`/global (focável) |
-| 0.3 | Docs não citam gate morta | `crates/ph2d-editor-core/tests/architecture_docs_reference_live_gates.rs` | token `architecture_*` em doc instrucional ⟹ existe teste real |
-| 0.4 | Cap LOC por-arquivo, workspace | `crates/ph2d-editor-core/tests/architecture_workspace_file_loc_cap.rs` | todo `.rs` de `crates/` ≤ 600 LOC (allowlist = dívida congelada) |
+| 0.2 | Paridade de wiring por painel | `crates/ph2d-editor-core/tests/it/architecture_panel_wiring_parity.rs` (generaliza `architecture_topbar_registration_parity`) | id **hit-indexado no paint ⟹ registrado** em `populate.rs`/global (focável) |
+| 0.3 | Docs não citam gate morta | `crates/ph2d-editor-core/tests/it/architecture_docs_reference_live_gates.rs` | token `architecture_*` em doc instrucional ⟹ existe teste real |
+| 0.4 | Cap LOC por-arquivo, workspace | `crates/ph2d-editor-core/tests/it/architecture_workspace_file_loc_cap.rs` | todo `.rs` de `crates/` ≤ 600 LOC (allowlist = dívida congelada) |
 
 > **Registro de decisão (0.2):** a 1ª versão checava `populate ⟹ event.rs`. O **kill-criterion
 > do plano disparou** (>30% falso-positivo: dispatch via tabela-de-mapeamento indireta no grid-snap,

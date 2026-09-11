@@ -145,7 +145,7 @@ nunca veria e que teriam feito o CI vermelho **na sua mão**:
 
 1. `ph2d-node-motion-drive` estava **desformatado** desde um commit anterior desta linha.
 2. `motion_bridge_params.rs` bateu **604 > 600** — o cap do **shell**
-   (`shells/desktop/tests/file_loc_caps.rs`), que é um gate **distinto** do cap de 700 do
+   (`shells/desktop/tests/it/file_loc_caps.rs`), que é um gate **distinto** do cap de 700 do
    workspace. Resolvido por **split** (`motion_bridge_color.rs`), nunca por allowlist.
 
 **Ainda assim, conte com 2–4 iterações de vermelho no `ship.sh`.** Ele roda o que o gate

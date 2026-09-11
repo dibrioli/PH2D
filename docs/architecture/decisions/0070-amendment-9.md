@@ -12,7 +12,7 @@
 
 **Amends:** [ADR-0070 — Sprite schema v4 (`SpriteVersioned` + `RenderInstance` ABI)](0070-sprite-schema-v4.md) §1.7 ABI.
 **Slot rationale:** `-5` sampling CPU-tail; `-6` uv_xform GPU @location(15); `-7` clip_group + clip_meta CPU-tail. Este é o próximo slot livre, e é de novo **CPU-only** ⇒ o vertex layout (164 B / 12 attrs) não se mexe.
-**Reference:** [`crates/ph2d-render/src/sprite/instance.rs`](../../../crates/ph2d-render/src/sprite/instance.rs) · [`crates/ph2d-render/src/sprite_collect.rs`](../../../crates/ph2d-render/src/sprite_collect.rs) (`sort_render_order`) · [`crates/ph2d-render/tests/architecture_sprite_inspector_surface.rs`](../../../crates/ph2d-render/tests/architecture_sprite_inspector_surface.rs) · [`crates/ph2d-gpu-cook/src/lower.rs`](../../../crates/ph2d-gpu-cook/src/lower.rs) (`INSTANCE_WORDS`).
+**Reference:** [`crates/ph2d-render/src/sprite/instance.rs`](../../../crates/ph2d-render/src/sprite/instance.rs) · [`crates/ph2d-render/src/sprite_collect.rs`](../../../crates/ph2d-render/src/sprite_collect.rs) (`sort_render_order`) · [`crates/ph2d-render/tests/it/architecture_sprite_inspector_surface.rs`](../../../crates/ph2d-render/tests/it/architecture_sprite_inspector_surface.rs) · [`crates/ph2d-gpu-cook/src/lower.rs`](../../../crates/ph2d-gpu-cook/src/lower.rs) (`INSTANCE_WORDS`).
 
 ---
 

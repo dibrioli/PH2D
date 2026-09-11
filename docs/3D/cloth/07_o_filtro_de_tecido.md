@@ -2,7 +2,7 @@
 
 > ⚠️ **Este doc descreve o mundo no dia em que foi escrito** (2026-09-07). O estado
 > vivo é o `CLAUDE.md` §5; os números vivos estão no código, e as duas listas do
-> [`oraculo_do_filtro.rs`](../../../crates/ph2d-cloth/tests/oraculo_do_filtro.rs)
+> [`oraculo_do_filtro.rs`](../../../crates/ph2d-cloth/tests/it/oraculo_do_filtro.rs)
 > são a fonte do placar — ⛔ **não copie o placar para aqui.**
 
 A W10 sempre foi *«Cloth (XPBD) + Cloth Filter (5 tipos)»*
@@ -15,7 +15,7 @@ O pincel fechou em 06–07/09; isto é a outra metade.
 
 *Antes de construir um item de lista aberta, MEÇA se a composição já o exprime*
 (`CLAUDE.md` §5.0). A bancada é
-[`mede_a_composicao_do_filtro.rs`](../../../crates/ph2d-cloth/tests/mede_a_composicao_do_filtro.rs)
+[`mede_a_composicao_do_filtro.rs`](../../../crates/ph2d-cloth/tests/it/mede_a_composicao_do_filtro.rs)
 e ela responde pelo OBSERVÁVEL — o que a malha faz —, nunca por leitura de código.
 
 | o que se perguntou | o que a medição deu |
@@ -90,7 +90,7 @@ nada. Há gate: um passo move `0,0100` e três movem `0,0596`.
 
 O oráculo passou a ter corpus de filtro (**17 corridas**, `fixtures/cloth/filtro/`,
 espec §10.17), colhido por um subagente-E fora da árvore. ⛔ **O placar vive nas
-duas listas do [`oraculo_do_filtro.rs`](../../../crates/ph2d-cloth/tests/oraculo_do_filtro.rs)** —
+duas listas do [`oraculo_do_filtro.rs`](../../../crates/ph2d-cloth/tests/it/oraculo_do_filtro.rs)** —
 conte-o lá.
 
 ⭐⭐⭐ **E a bancada apanhou duas leituras erradas minhas, as duas da mesma
@@ -129,7 +129,7 @@ gravidade de cena não existem neste app. *Uma lei sem entrada não se mede.*
 > esses filtros novos têm péssima performance e estão impossíveis de usar»*
 
 A sonda é
-[`mede_o_filtro_de_tecido.rs`](../../../crates/ph2d-sculpt3d/tests/mede_o_filtro_de_tecido.rs),
+[`mede_o_filtro_de_tecido.rs`](../../../crates/ph2d-sculpt3d/tests/it/mede_o_filtro_de_tecido.rs),
 e ela mede o **EXPOENTE** e não um relógio: um número de milissegundos desta
 workstation não sobrevive à carga, mas *se dobrar os vértices multiplica o custo
 por quatro, nenhuma máquina salva a ferramenta*.

@@ -103,7 +103,7 @@ mesmo número de operações binárias** que a cadeia de verbo fixo — é o mes
 ## 7. A prova
 
 - **Motor** — 5 gates em
-  [`the_chain_folds_with_a_verb_per_step.rs`](../../crates/ph2d-vec-boolean/tests/the_chain_folds_with_a_verb_per_step.rs):
+  [`the_chain_folds_with_a_verb_per_step.rs`](../../crates/ph2d-vec-boolean/tests/it/the_chain_folds_with_a_verb_per_step.rs):
   o verbo uniforme é a booleana de sempre · verbos diferentes desenham diferente · a dobra é sobre
   o **acumulado** e não sobre a base · a ordem decide · a base sozinha não é operação.
 - **Cozimento** — 8 gates em `bool_live_tests.rs`, em pares CAPACIDADE/HERANÇA.
@@ -175,7 +175,7 @@ não localiza causa nenhuma, por mais vezes que se repita.
 
 **A conta desta classe neste repo:** as 36 células da matriz de física · os 10 chips do Painter ·
 as 4 pills PENCIL/SHAPE/SELECT/DIRECT (CI-verde-e-mortas por sessões) · e agora estes 4. O gate
-novo [`bool_registration_parity.rs`](../../crates/ph2d-panel-vector/tests/bool_registration_parity.rs)
+novo [`bool_registration_parity.rs`](../../crates/ph2d-panel-vector/tests/it/bool_registration_parity.rs)
 apanha **o quinto**, no dia em que alguém o acrescentar — que é a diferença entre consertar e
 prevenir.
 

@@ -35,7 +35,7 @@
 | `shells/desktop/src/undo_selection.rs` | **arquivo NOVO** — as 3 leis da seleção que sobrevive (split de LOC) | ✅ |
 | `shells/desktop/src/input_dispatch/keyboard_hierarchy*.rs` | `Delete` e `Ctrl/Cmd+D` na Hierarquia | ✅ |
 | `shells/desktop/src/main.rs`, `input_dispatch.rs` | roteamento das teclas novas | ✅ |
-| `shells/desktop/tests/the_undo_preserves_the_vector_selection.rs` | o arch-gate ganha a metade 3D | ✅ |
+| `shells/desktop/tests/it/the_undo_preserves_the_vector_selection.rs` | o arch-gate ganha a metade 3D | ✅ |
 | `project-memory/*` | uma memória nova + índice | ✅ |
 
 ## 3 — Símbolos que podem COLIDIR (saída do `collision-surface.sh`, não de memória)

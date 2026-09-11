@@ -22,7 +22,7 @@
 //!    Arquimedes o raio é **monótono** no ângulo, então `ρ ∈ [r₀, r_fim]` limita `θ` a `[0, Θ]`.
 //!
 //!    ⚠️⚠️ **E deixa uma PENA nas duas pontas, que fica DECLARADA** — ver
-//!    [`SPIRAL_FEATHER`](../../ph2d-field-eval/tests/measure_sharp_edges.rs). A fita tem espessura,
+//!    [`SPIRAL_FEATHER`](../../ph2d-field-eval/tests/it/measure_sharp_edges.rs). A fita tem espessura,
 //!    e um corte circular é **tangente** aos flancos dela: a ponta afina ao longo de `π·fill/c` de
 //!    ângulo (`101°` no representante). Medido: o filete não a alcança (`3,1 %` da superfície sobre
 //!    um vinco de `61,7°`) e deixa uma crista de curvatura de `2,12` contra a barra de `2,0`.

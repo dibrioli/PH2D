@@ -128,7 +128,7 @@ echo
 echo "▸ TETOS DE LOC nos arquivos que a linha tocou (700 workspace · 600 painel/shell · 500 widget · 650 tool-runtime)"
 # ⚠️ ESPELHA `is_excluded()` do gate real (architecture_workspace_file_loc_cap.rs).
 # Sem isto o script grita sobre arquivos que o gate NUNCA cobra — medido em
-# 2026-08-18: acusou `ph2d-gpu-cook/tests/gpu_cpu_parity.rs` (6.247 linhas) como
+# 2026-08-18: acusou `ph2d-gpu-cook/tests/it/gpu_cpu_parity.rs` (6.247 linhas) como
 # violação, e `tests/` é a PRIMEIRA exclusão do gate. Um mapa que inventa alarme
 # gasta o mesmo tempo que o grep que ele veio poupar, e ensina a ignorá-lo.
 over=0

@@ -177,7 +177,7 @@ pub(super) const CFILTER_VOLUME: Row = Row {
 /// a amplitude a SUBIR — mecanismo, tabela e as duas ressalvas (a malha grossa
 /// achata; a régua conta lobos e é grosseira) no gate
 /// `a_onda_de_uma_prega_acompanha_a_aresta_da_malha` e na
-/// `ph2d-sculpt3d/tests/sonda_da_onda_da_prega.rs`.
+/// `ph2d-sculpt3d/tests/it/sonda_da_onda_da_prega.rs`.
 ///
 /// ⛔ **Isto ainda NÃO é um segundo botão** — as passagens vivem numa env var
 /// (`PH2D_DOBRA_N`), não têm preço medido, e na malha grossa destroem o caimento.

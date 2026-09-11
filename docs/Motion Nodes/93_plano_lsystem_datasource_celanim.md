@@ -103,7 +103,7 @@ JavaScript.
 
 > ⛔⛔ **CORRIGIDO EM 2026-08-28 — DUAS DAS TRÊS LEIS QUE ESTA SECÇÃO DIZIA FALTAR JÁ EXISTEM.**
 > A secção abaixo dizia que ao `motion.sub_uv` faltavam *ping-pong*, *duração desigual* e
-> *tocar uma vez*. A medição — [`cel_animation_laws_the_graph_already_has.rs`](../../crates/ph2d-node-registry-init/tests/cel_animation_laws_the_graph_already_has.rs),
+> *tocar uma vez*. A medição — [`cel_animation_laws_the_graph_already_has.rs`](../../crates/ph2d-node-registry-init/tests/it/cel_animation_laws_the_graph_already_has.rs),
 > quatro gates que COZEM o grafo e lêem a célula que o artista vê — refuta duas:
 >
 > | lei | o plano dizia | a medição diz |

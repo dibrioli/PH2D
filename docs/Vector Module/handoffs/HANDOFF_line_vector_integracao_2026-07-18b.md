@@ -613,7 +613,7 @@ teto de uma grelha. `32×32` custa 0,66 ms de cozimento. O recurso por medir con
 
 ## §16 — ⬛ A MUDANÇA DE MÉTODO, e é o que mais vale levar daqui
 
-`crates/ph2d-vec-scene/tests/fx_look.rs` + `tests/look/mod.rs` — uma **folha de contacto**: uma
+`crates/ph2d-vec-scene/tests/it/fx_look.rs` + `tests/look/mod.rs` — uma **folha de contacto**: uma
 linha por capacidade, uma coluna por valor do parâmetro, num PNG.
 
 ```

@@ -70,7 +70,7 @@ artista lia, com razão, *"já virou minha geometria"*.
    matriz medida; **o donut do smoke com `Side=Inner` a `d=+0.6` devolve OITO caminhos**.
    (Juntar num compound `EvenOdd` preserva a área a **3,55e-15** — *cabe* —, mas o (1) já
    decide, e a rota do `LiveGeometry` toma o `Vec` nativamente.) Sonda:
-   `crates/ph2d-vec-boolean/tests/probe_offset_as_effect.rs`.
+   `crates/ph2d-vec-boolean/tests/it/probe_offset_as_effect.rs`.
 
 ### Os números
 
@@ -119,7 +119,7 @@ física). O contador do `ComponentRegistry` foi de 32 → 33 (o número que exis
 ### Gates (15 novos) e mutações (14, todas sangram)
 
 `shells/desktop/src/offset_live_tests.rs` (11) · `crates/ph2d-vec-render/src/lib.rs` (2) ·
-`shells/desktop/tests/the_frame_draws_the_live_offset_geometry.rs` (3, arch) ·
+`shells/desktop/tests/it/the_frame_draws_the_live_offset_geometry.rs` (3, arch) ·
 `vec_expand_tests.rs::the_command_offsets_the_cooked_shape_not_the_raw_one`.
 
 | # | mutação | veredito |
@@ -388,7 +388,7 @@ Commits, do mais novo ao mais velho — cada um com gates mutation-tested:
 
 **Panic**: os reports antigos de panic no offset ao vivo **cessaram** depois de `9c0446df`
 (a causa era o estado dobrado). O motor foi varrido fino (27k sweeps, zero panic/NaN —
-sonda `crates/ph2d-vec-boolean/tests/probe_offset_fine_sweep.rs`, `--ignored`). Se voltar,
+sonda `crates/ph2d-vec-boolean/tests/it/probe_offset_fine_sweep.rs`, `--ignored`). Se voltar,
 peça o backtrace (`RUST_BACKTRACE=1`).
 
 ## §3 — As ferramentas (USE-AS, elas acharam tudo até aqui)

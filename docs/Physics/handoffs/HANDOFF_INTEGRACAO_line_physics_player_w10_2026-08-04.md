@@ -301,7 +301,7 @@ valor dele removia a deriva (1,0 dava 0,3276 contra 0,3295 do controle).
 - **Lei** (`ph2d-platformer::ride::tests`, 4 novos): byte-identidade do eixo no
   plano · **andar ao longo da rampa não acorda o amortecedor** (o gate da
   correção) · o teto zera a aproximação num tique · o default é uma decisão.
-- **Produto** (`ph2d-physics-ecs/tests/platform_idle.rs`, 5): com o amortecedor
+- **Produto** (`ph2d-physics-ecs/tests/it/platform_idle.rs`, 5): com o amortecedor
   no teto o personagem fica parado em 10°/20°/30°/40° **e por um minuto** · o
   resíduo do default é pinado **dos dois lados** · o plano é o controle · a perna
   segura a altura.

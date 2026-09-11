@@ -111,7 +111,7 @@ pub const ALLOWED_COS: f32 = std::f32::consts::FRAC_1_SQRT_2;
 /// a normal do manifold — e **medi-la por caixas mente**: com a caixa do corpo
 /// 0,016 m ABAIXO da prancha (nenhuma sobreposição, o centro bem abaixo da base
 /// dela) a prancha ainda o expulsou com um pico de **0,3267 N·s**
-/// (`ph2d-physics-ecs/tests/measure_drop_retire.rs`). Toda lei geométrica que já
+/// (`ph2d-physics-ecs/tests/it/measure_drop_retire.rs`). Toda lei geométrica que já
 /// se tentou aqui morreu nesse número.
 ///
 /// # ⚠️ E por que a leitura é SÓ-LEITURA

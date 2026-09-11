@@ -159,7 +159,7 @@ mais**, e a resposta é **CÚBICA** no arrasto.
 > leitura ao lado dela é que supunha `S_j` **constante**, e ele é o arrasto ACUMULADO — cresce com
 > `j`, logo a soma é `k(k+1)(k+2)/6`. *A fórmula estava certa e a palavra escrita ao lado dela
 > não.* ⭐ E a mutação que congela o `S_j` lê exactamente **`4,083×`**: o doc descrevia o mutante.
-> Gate: [`a_resposta_do_filtro_ao_arrasto.rs`](../../../crates/ph2d-sculpt3d/tests/a_resposta_do_filtro_ao_arrasto.rs).
+> Gate: [`a_resposta_do_filtro_ao_arrasto.rs`](../../../crates/ph2d-sculpt3d/tests/it/a_resposta_do_filtro_ao_arrasto.rs).
 
 ⚠️ **Ele multiplica a FORÇA, nunca o arrasto** — o arrasto é que decide quantos passos correm;
 escalar os dois seria cúbico no *Strength*. Medido: força `1` move `0,598400`, força `2` move

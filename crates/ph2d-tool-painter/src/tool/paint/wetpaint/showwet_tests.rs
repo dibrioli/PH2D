@@ -14,7 +14,7 @@
 //! Medido antes da correção (mesmo fixture): **Paint pigmento 0 divergia em
 //! 2787 px** (o véu vivo mostrava 215 dos 3002 que o recompose mostra) e
 //! **pigmento 600 divergia em 9 px**. A causa é uma só, e vive no motor —
-//! `crates/ph2d-wet-paint/tests/the_accumulate_declares_what_it_wrote.rs`.
+//! `crates/ph2d-wet-paint/tests/it/the_accumulate_declares_what_it_wrote.rs`.
 
 use super::*;
 use crate::tool::PainterTool;

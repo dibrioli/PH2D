@@ -77,7 +77,7 @@ verificado, não presumido).
 
 **Novos** (todos com irmão de PRESENÇA — "não vaza" fica verde num readout morto):
 
-- `shells/desktop/tests/audio_pricing_is_export_work_not_edit_work.rs`
+- `shells/desktop/tests/it/audio_pricing_is_export_work_not_edit_work.rs`
   - `the_edit_frame_only_prices_when_the_delivery_section_is_open` — **arch-gate sobre o arquivo do
     produto** (idioma do `the_z_projection_reads_the_tree_after_the_sync`). Recusa um `true` literal
     no call site e exige as duas metades. **Sem ele, todo gate de unidade fica verde com o bug de

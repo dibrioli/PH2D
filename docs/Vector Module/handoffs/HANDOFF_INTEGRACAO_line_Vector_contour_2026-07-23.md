@@ -219,7 +219,7 @@ integração, só ACRESCENTE.
   declara uma POLÍTICA sobre eles.
 - `ph2d-i18n` — uma chave (`panel.vector.section.contour`).
 - `ph2d-vec-boolean::offset_path` — o `catch_unwind` da §2 (+ `offset_path_inner`).
-- `ph2d-editor-core/tests/architecture_panel_wiring_parity.rs` — `VECTOR_CONTOUR_TO` na allowlist
+- `ph2d-editor-core/tests/it/architecture_panel_wiring_parity.rs` — `VECTOR_CONTOUR_TO` na allowlist
   das picker-swatches (a 3ª do mesmo painel, pela mesma porta que Stroke/Fill).
 - `ph2d-panel-vector` — 3 splits por LOC cap: `state_expand.rs` (os knobs panel-local do Offset
   Path), `event_contour.rs`, `contour_params.rs`.

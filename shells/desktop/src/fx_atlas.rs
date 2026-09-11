@@ -4,7 +4,7 @@
 //! # Por que existe
 //!
 //! O `fx_live` rasterizava cada forma filtrada num render próprio do Vello. Medido
-//! (`ph2d-render/tests/fx_scene_scale_cost.rs`, RTX): um render custa **~0,12 ms antes de desenhar
+//! (`ph2d-render/tests/it/fx_scene_scale_cost.rs`, RTX): um render custa **~0,12 ms antes de desenhar
 //! coisa alguma**, e a MESMA área de arte que 32 renders cobrem em **4,0 ms** sai em **0,39 ms**
 //! numa passagem só. Numa cena de jogo as formas filtradas ANIMAM, logo erram o memo todas, todo
 //! frame — e o custo que multiplica é esse fixo, não o filtro.

@@ -711,7 +711,7 @@ fn the_device_refuses_a_personal_space_it_cannot_see() {
 // ⚠️ A outra metade — *o device lê o mesmo número que a CPU* — **não cabe neste
 // nível**: a `Params` que estes gates constroem já traz o quadrado feito, e o
 // quadrado apaga o sinal. Ela vive com adapter, em
-// `ph2d-gpu-cook/tests/gpu_boids.rs::a_negative_personal_space_matches_the_cpu`.
+// `ph2d-gpu-cook/tests/it/gpu_boids.rs::a_negative_personal_space_matches_the_cpu`.
 
 /// **DOIS AGENTES QUE NÃO SE VEEM AINDA SE EMPURRAM.**
 ///

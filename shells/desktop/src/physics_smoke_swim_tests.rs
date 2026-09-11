@@ -6,7 +6,7 @@
 //!
 //! ⚠️ **E os gates aqui julgam a CENA, não a lei.** A lei tem os dela
 //! (`ph2d-platformer::swim_tests` e `lib_swim_tests`) e o produto tem os dele
-//! (`ph2d-physics-ecs/tests/player_swims.rs`). O que só esta cena pode afirmar é
+//! (`ph2d-physics-ecs/tests/it/player_swims.rs`). O que só esta cena pode afirmar é
 //! que **os dois corpos que ela monta são comparáveis** (senão o artista olha
 //! para uma diferença que não é a que a wave produziu) e que **a poça rasa é de
 //! facto rasa** — o número que o passo 1 da mensagem promete.

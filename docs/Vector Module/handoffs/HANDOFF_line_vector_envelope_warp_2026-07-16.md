@@ -142,7 +142,7 @@ deformador é **parâmetro** (uma grade de 4 lados que mora no próprio path) �
 
 ⚠️ **Se fores pelo `*_live`:** o `settle_origins` tem um `filter` que ENUMERA os componentes de
 geometria derivada, e o 5º que esquecer a linha quebra em silêncio. O gate
-`shells/desktop/tests/settle_skips_every_derived_geometry.rs` cobra-o — **acrescenta o teu
+`shells/desktop/tests/it/settle_skips_every_derived_geometry.rs` cobra-o — **acrescenta o teu
 componente a `DERIVED` e ao filter, e o gate fica verde**. Ele foi escrito nesta sessão exatamente
 para tu não descobrires isso pelo olho.
 

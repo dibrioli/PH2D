@@ -544,7 +544,7 @@ os pés (ou só os ombros) não é vista"*.
 ### ⚠️ A nota SUBESTIMAVA o defeito, e a medição veio antes de uma linha
 
 A frase descrevia uma beirada rasa. O que a sonda
-(`ph2d-physics-ecs/tests/measure_wall_flank.rs`) achou é maior: com uma parede
+(`ph2d-physics-ecs/tests/it/measure_wall_flank.rs`) achou é maior: com uma parede
 que tem uma **fresta** na altura da cintura, e **pé e ombro ainda encostados na
 pedra**, o **pulo de parede é recusado por inteiro**.
 
@@ -834,7 +834,7 @@ tabela e um **não aperte o `RISE`**.
 **O momento seguro de re-solidificar uma prancha que o SOBREPÕE não é função da
 pose sozinha**, e uma lei que o afirme é verde num regime e vermelha no outro.
 
-**O que shipa:** `crates/ph2d-physics-ecs/tests/measure_drop_retire.rs` (5 sondas
+**O que shipa:** `crates/ph2d-physics-ecs/tests/it/measure_drop_retire.rs` (5 sondas
 `#[ignore]`, incluindo o mapa da janela) e `platform_drop_ladder.rs` (4 gates).
 ⚠️ **Dois dos gates afirmam o DEFEITO, não a cura** — o precedente do
 `the_documented_hardening_is_still_there_and_this_is_its_number` do Painter — e

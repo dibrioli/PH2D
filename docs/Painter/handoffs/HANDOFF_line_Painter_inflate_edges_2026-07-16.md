@@ -316,7 +316,7 @@ perf INFLATE 3,30/3,79 (kill 8). Mutações da jornada: **6/7** (a 7ª é sub-LS
 | **shell** | 4 braços passaram a chamar `chrome_hit::pointer_over_chrome` (`painter_canvas_input`, `eyedropper`, `protect_brush` ×2) | baixo |
 | `ph2d-tool-painter` | `sculpt_offset::ball_taper` (`pub(super)`), módulos novos `paint::sculpt_inflate`, `sculpt_tests::inflate_edge{,_probes}` | baixo — só a linha Painter |
 | env novos | `PH2D_CHROME_DIAG=1` (quem recusou o canvas) · `PH2D_DIAG_SMOOTH=<0..1>` (sonda) | nenhum |
-| gates novos | `shells/desktop/tests/the_chrome_swallows_the_click_it_was_given.rs` (4) | nenhum |
+| gates novos | `shells/desktop/tests/it/the_chrome_swallows_the_click_it_was_given.rs` (4) | nenhum |
 
 **Nenhum contrato congelado tocado** (`Tool`/`CanvasPaintTool`/`NodeOp` intactos); nenhum id de UI, i18n
 ou token novo. **`smooth_norm` default segue 0** — a mudança está RECOMENDADA (§8) e é decisão do Enio.

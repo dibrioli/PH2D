@@ -158,7 +158,7 @@ consumidores a compõem — âncoras, hit-test, caixa do gizmo.
 o `VecViewState` **do zero** a cada evento — porta que só sabe o que a ÁRVORE diz. Os gates
 passavam porque montam o `clips` à mão. **Um gate de unidade é cego à fiação da shell.**
 
-O arch-gate novo `shells/desktop/tests/the_gesture_reads_what_the_frame_drew.rs` é o par dele, e
+O arch-gate novo `shells/desktop/tests/it/the_gesture_reads_what_the_frame_drew.rs` é o par dele, e
 tem controle positivo. ⚠️ **Se ele ficar vermelho no rebase, o produto está quebrado, não o gate.**
 
 ---

@@ -136,7 +136,7 @@ Rode `cargo test -p ph2d-host-desktop --release` **inteiro**, sem filtro.
 
 ### 4.3 Gates de GPU
 
-`ph2d-render/tests/impasto_light_gpu.rs` é `#[ignore]` e precisa de adapter. Na RTX:
+`ph2d-render/tests/it/impasto_light_gpu.rs` é `#[ignore]` e precisa de adapter. Na RTX:
 `cargo test -p ph2d-render --release -- --ignored`. **Sem adapter ele faz skip gracioso, que não é
 verde** (a mesma armadilha que a `line/FLIP` documentou).
 

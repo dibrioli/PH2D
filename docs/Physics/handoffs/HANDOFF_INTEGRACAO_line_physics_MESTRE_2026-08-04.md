@@ -65,7 +65,7 @@ DEPOIS das entradas v52/v53 do 3D) e o pin em
 
 **Doze arquivos são tocados pelos dois lados. DEZ fundem sozinhos:**
 `Cargo.lock` · `.typos.toml` · `crates/ph2d-editor-core/src/lib.rs` ·
-`crates/ph2d-editor-core/tests/node_id_collisions.rs` ·
+`crates/ph2d-editor-core/tests/it/node_id_collisions.rs` ·
 `crates/ph2d-i18n/src/lib.rs` · `shells/desktop/Cargo.toml` ·
 `shells/desktop/src/app_state.rs` · `shells/desktop/src/input_dispatch/keyboard.rs` ·
 `shells/desktop/src/main.rs` · `shells/desktop/src/render_loop/mod.rs`.

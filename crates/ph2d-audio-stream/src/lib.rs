@@ -6,7 +6,7 @@
 //!
 //! - **`ph2d-audio`** is the real-time mixer. It pops already-decoded chunks and hands the spent
 //!   ones back. It does not decode, allocate, free, or block — and it has **no codec dependency**,
-//!   enforced by `ph2d-audio/tests/no_codec_reaches_the_mixer.rs`.
+//!   enforced by `ph2d-audio/tests/it/no_codec_reaches_the_mixer.rs`.
 //! - **here**, on an ordinary thread, we may do all four.
 //!
 //! ## What it buys

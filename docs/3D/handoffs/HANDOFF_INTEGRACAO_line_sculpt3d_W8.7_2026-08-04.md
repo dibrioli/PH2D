@@ -201,7 +201,7 @@ manda apagar-e-olhar.
 ⚠️ **A MEDIÇÃO MUDOU O DESENHO ANTES DA PRIMEIRA LINHA, e o integrador deve saber disso porque o
 PLANO dizia o contrário.** O `06.1` afirmava que a wave *"não pode herdar"* dois pré-requisitos
 (anéis mutáveis, octree de folhas mutáveis). É uma afirmação sobre um número, e a sonda
-`ph2d-mesh/tests/measure_dyntopo.rs` a derrubou: reconstruir custa **0,59 ms a 6k · 1,55 a 24k · 5,50
+`ph2d-mesh/tests/it/measure_dyntopo.rs` a derrubou: reconstruir custa **0,59 ms a 6k · 1,55 a 24k · 5,50
 a 98k** vértices, contra o K1 de 8 ms por dab. Então o refino nasce sobre o `rebuild` que já existe,
 a estrutura mutável virou **W9.2**, e o gatilho dela é um número medido em vez de um palpite. (O mesmo
 dab toca 0,33% das faces a 98k — razão 307× —, que é o tamanho do ganho que ela vai comprar.)

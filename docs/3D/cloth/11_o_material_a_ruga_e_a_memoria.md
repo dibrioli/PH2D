@@ -158,7 +158,7 @@ falam.
   variou a RIGIDEZ com as PASSAGENS presas em `1`: a rigidez diz com que força a
   restrição empurra **ali**, a passagem diz até onde a resistência **viaja**. Numa
   malha fina, `8`–`32` passagens levam a onda de `10` para `20`–`27` arestas com a
-  amplitude a SUBIR ([`sonda_da_onda_da_prega`](../../../crates/ph2d-sculpt3d/tests/sonda_da_onda_da_prega.rs)).
+  amplitude a SUBIR ([`sonda_da_onda_da_prega`](../../../crates/ph2d-sculpt3d/tests/it/sonda_da_onda_da_prega.rs)).
   ⛔ Ainda **não** é um botão: na malha grossa as mesmas passagens achatam a peça
   (`0,329 → 0,0016` de amplitude) e a régua conta lobos, que é grosseiro. ⇒ o
   solver hierárquico continua a ser a cura publicada, mas como a via **barata** de
@@ -190,6 +190,6 @@ de áudio) reprovou na mesma corrida e **já está na lista** — é a mesma fam
 - Produto: [`stroke.rs`](../../../crates/ph2d-sculpt3d/src/stroke.rs)
   (`cloth_material`, `cloth_left`) ·
   [`stroke_cloth_filter.rs`](../../../crates/ph2d-sculpt3d/src/stroke_cloth_filter.rs).
-- Gates: [`mede_o_tecido_que_estica.rs`](../../../crates/ph2d-sculpt3d/tests/mede_o_tecido_que_estica.rs)
+- Gates: [`mede_o_tecido_que_estica.rs`](../../../crates/ph2d-sculpt3d/tests/it/mede_o_tecido_que_estica.rs)
   — dez, e as **três** novas provadas por mutação (a persistência do material, a
   invalidação dela, e a lei de dobra).

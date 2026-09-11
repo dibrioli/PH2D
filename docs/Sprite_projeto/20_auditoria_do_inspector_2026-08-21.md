@@ -260,7 +260,7 @@ Hand-packed / CookedTexture (`snapshots.rs:646-693`) — como toda image tool co
 ### 5.1 ✅ 30 testes do Inspector estão DESLIGADOS e o destino da migração nunca foi criado
 
 Medido: `grep -c '#\[cfg(any())\]' crates/ph2d-editor-core/src/screens/hero/tests.rs` = **30**. Cada
-um leva `// ADR-0029 Phase C.1: disabled — migrate to crates/ph2d-panel-inspector/tests/inspector_regression.rs`.
+um leva `// ADR-0029 Phase C.1: disabled — migrate to crates/ph2d-panel-inspector/tests/it/inspector_regression.rs`.
 `find . -name 'inspector_regression*'` (fora de `target/`) = **vazio**. Entre os desligados:
 `transform_field_commit_raises_pending_with_selection:930` · `transform_reset_button_publishes_identity:982` ·
 `visibility_toggle_publishes_pending_with_selection:1027` · `strategy_click_*:1063,1126,1293` ·
@@ -337,8 +337,8 @@ menos defendido, ao contrário do que a idade sugere.*
 
 | onda | o que fecha | ficheiro |
 |---|---|---|
-| 1 | `InspectorSpriteEdit` (**21** variantes) · `InspectorSpriteEmissiveChange` | [`inspector_regression.rs`](../../crates/ph2d-panel-inspector/tests/inspector_regression.rs) |
-| 2 | Sampling · Blend · Visibility (seção + interruptor) · Transform · Name | [`inspector_regression_sections.rs`](../../crates/ph2d-panel-inspector/tests/inspector_regression_sections.rs) |
+| 1 | `InspectorSpriteEdit` (**21** variantes) · `InspectorSpriteEmissiveChange` | [`inspector_regression.rs`](../../crates/ph2d-panel-inspector/tests/it/inspector_regression.rs) |
+| 2 | Sampling · Blend · Visibility (seção + interruptor) · Transform · Name | [`inspector_regression_sections.rs`](../../crates/ph2d-panel-inspector/tests/it/inspector_regression_sections.rs) |
 | 3 | limpeza do cemitério (**30 → 9**) + a conversão px↔m | ambos |
 
 **Medido no fim: nenhuma família de `EditorAction::Inspector*` fica sem afirmação viva.**
@@ -422,7 +422,7 @@ Lente G. Fonte: [`README.md:36-47`](README.md) + [`03_inspector_secoes.md`](03_i
 
 ### 6.1 ✅ O aparato de goldens é andaime — e dois gatilhos já dispararam
 
-[`smoke_fixture_renderable.rs`](../../crates/ph2d-render/tests/smoke_fixture_renderable.rs) tem **4** testes `#[ignore]` com corpo `unimplemented!()`.
+[`smoke_fixture_renderable.rs`](../../crates/ph2d-render/tests/it/smoke_fixture_renderable.rs) tem **4** testes `#[ignore]` com corpo `unimplemented!()`.
 `ls docs/Sprite_projeto/smoke_goldens/` e `ls assets/smoke_fixtures/sprite_inspector_v2/` = **só um
 README cada**. O único teste que corre afirma que a **pasta** existe.
 

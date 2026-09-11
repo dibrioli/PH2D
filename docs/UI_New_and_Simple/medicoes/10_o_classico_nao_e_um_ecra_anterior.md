@@ -42,7 +42,7 @@ moldura, o vão, a quina, o recuo, o cartão, o chão da janela, o `panel_chrome
 
 ⇒ o interruptor responde *«a **caixa** já era assim?»*. Ele nunca respondeu *«o **ecrã** já era
 assim?»* — e o gate irmão
-[`the_two_looks_are_one_switch_apart`](../../../crates/ph2d-editor-core/tests/the_two_looks_are_one_switch_apart.rs)
+[`the_two_looks_are_one_switch_apart`](../../../crates/ph2d-editor-core/tests/it/the_two_looks_are_one_switch_apart.rs)
 sempre soube disso: o doc dele diz, com todas as letras, que mede **três pintores de widget**.
 
 ## §3 — ⛔ Por que a cura NÃO é gatear as abas pela aparência
@@ -58,7 +58,7 @@ aparece. Isso deve valer para Hierarchy também»*) **não traz aparência nenhu
 
 ## §4 — A lei fica executável
 
-[`the_look_is_a_widget_skin_never_an_area_model`](../../../crates/ph2d-editor-core/tests/the_look_is_a_widget_skin_never_an_area_model.rs)
+[`the_look_is_a_widget_skin_never_an_area_model`](../../../crates/ph2d-editor-core/tests/it/the_look_is_a_widget_skin_never_an_area_model.rs)
 — um censo derivado com as **três** metades que este repo já pagou:
 
 1. **A lei** — nenhum ficheiro de `screens/` consome a aparência, salvo a excepção nomeada.

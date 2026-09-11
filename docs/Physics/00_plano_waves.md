@@ -31,7 +31,7 @@ hábito e não uma regra. Agora é regra, e vale para **toda wave futura desta l
 Uma wave só fecha quando o que ela construiu é alcançável por um artista **sem escrever código**:
 
 1. **Existe** — todo componente registrado tem um caminho de escrita a partir do Inspector.
-   Gate: `shells/desktop/tests/every_physics_component_is_authorable.rs` (estrutural, sobre o fonte).
+   Gate: `shells/desktop/tests/it/every_physics_component_is_authorable.rs` (estrutural, sobre o fonte).
 2. **É pintado e registrado** — o controle aparece e é focável.
    Gate: `architecture_panel_wiring_parity`.
 3. **O clique chega ao barramento** — cada row/chip despachado, com a recusa no `event`, nunca no laço de pintura
@@ -271,7 +271,7 @@ Duas fricções reais que a wave tem de resolver de propósito, não por acident
   (gizmo de ancoragem), mapeamento para `ImpulseJointSet`/`MultibodyJointSet` do rapier (acesso cru via
   `bodies_mut`/`colliders_mut` do wrapper). Determinismo preservado (mesma proibição de simd/parallel).
 - ~~Bump `PROJECT_SCHEMA` (**21 → 22**)~~ — **NÃO acontece, e a contagem é que decide** (*"o valor se CONTA, não se escolhe"*). O blob de um componente no snapshot é chaveado por `stable_type_id = blake3(nome_canônico)[..8]`, derivado do **NOME** e não de uma posição no registry: registrar `ph2d::physics::PhysicsJoint` cunha um id novo e **não move nada**. É o oposto do W2c, que apendou `layer` DENTRO do `Collider`, onde postcard é posicional e o bump era obrigatório.
-  Bumpar assim mesmo não é neutro: um schema divergente **recusa o arquivo inteiro** (`project.rs`), então jogaria fora todo projeto já salvo — para melhorar a mensagem de erro na única direção que não funciona de qualquer jeito (um build ANTIGO lendo um arquivo com joints). O raciocínio está falsificável em `crates/ph2d-physics-ecs/tests/joint_persistence.rs`: se uma mudança futura de fato mover o layout, o 1º gate fica vermelho e o bump passa a ser devido. **`PROJECT_SCHEMA` segue em 21.**
+  Bumpar assim mesmo não é neutro: um schema divergente **recusa o arquivo inteiro** (`project.rs`), então jogaria fora todo projeto já salvo — para melhorar a mensagem de erro na única direção que não funciona de qualquer jeito (um build ANTIGO lendo um arquivo com joints). O raciocínio está falsificável em `crates/ph2d-physics-ecs/tests/it/joint_persistence.rs`: se uma mudança futura de fato mover o layout, o 1º gate fica vermelho e o bump passa a ser devido. **`PROJECT_SCHEMA` segue em 21.**
 
 ### Gates (red-first, mutation-tested)
 1. **pêndulo de 2 corpos determinístico** — hash estável cross-OS (estende `physics-ecs-c9` com uma cena de

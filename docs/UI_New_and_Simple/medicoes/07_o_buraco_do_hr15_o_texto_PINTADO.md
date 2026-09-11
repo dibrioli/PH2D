@@ -5,7 +5,7 @@
 ## §1 — O que o gate vê, e o que ele não vê
 
 O `CLAUDE.md` §0.3 diz **«zero string hardcoded — tudo via tokens / i18n (HR-15)»**, e o gate que
-o defende é [`hr15_no_hardcoded_ui_strings.rs`](../../../crates/ph2d-editor-core/tests/hr15_no_hardcoded_ui_strings.rs).
+o defende é [`hr15_no_hardcoded_ui_strings.rs`](../../../crates/ph2d-editor-core/tests/it/hr15_no_hardcoded_ui_strings.rs).
 O doc dele nomeia, de si próprio, exactamente **dois** padrões:
 
 | padrão | o que é |
@@ -139,7 +139,7 @@ nenhum gate o via.
 
 ### ⭐ E o gate é o MOLDE para as outras 18 crates
 
-[`no_label_of_this_crate_is_written_in_the_painter`](../../../crates/ph2d-editor-core/tests/no_label_of_this_crate_is_written_in_the_painter.rs)
+[`no_label_of_this_crate_is_written_in_the_painter`](../../../crates/ph2d-editor-core/tests/it/no_label_of_this_crate_is_written_in_the_painter.rs)
 — **por crate**, nunca global (a razão está na §3), com o mesmo **ponto fixo** da §2-bis
 reimplementado em Rust, o controlo de vacuidade e a metade de obsolescência.
 
@@ -205,7 +205,7 @@ varredura mecânica de uma vez.
    crate congelada, na janela de integração»* — e a §3 do próprio doc explica porque isso não
    serve: **uma baseline com a dívida de 19 crates dentro põe a próxima linha vermelha por causa de
    um gate desta.** ⇒ o que existe é
-   [`no_label_of_this_crate_is_written_in_the_painter`](../../../crates/ph2d-editor-core/tests/no_label_of_this_crate_is_written_in_the_painter.rs),
+   [`no_label_of_this_crate_is_written_in_the_painter`](../../../crates/ph2d-editor-core/tests/it/no_label_of_this_crate_is_written_in_the_painter.rs),
    **por crate, a zero, na crate desta linha**, com as excepções nomeadas e o mecanismo de cada
    uma. ⭐ **Cada linha dona de uma crate copia-o com a lista dela** — e nesse dia nenhuma delas
    tem de editar o teste de outra pessoa. *Uma catraca partilhada e uma catraca replicada medem a
@@ -217,7 +217,7 @@ varredura mecânica de uma vez.
    esforço; curar o mais aberto primeiro é ordenar por resposta.*
 3. ✅ **FEITO (2026-09-10) — a prosa do gate foi corrigida.** Ela dizia *«Until the Fluent
    runtime is wired and `t!(...)` exists»*, e a porta **já tinha chegado**. O
-   [`hr15_no_hardcoded_ui_strings`](../../../crates/ph2d-editor-core/tests/hr15_no_hardcoded_ui_strings.rs)
+   [`hr15_no_hardcoded_ui_strings`](../../../crates/ph2d-editor-core/tests/it/hr15_no_hardcoded_ui_strings.rs)
    passa a nomear **as duas metades** e a dizer que nenhuma delas sozinha é o HR-15: ele mede o
    rótulo de acessibilidade e o *placeholder* em `src/widget/`; o texto **pintado** tem gate
    próprio. *Um gate à espera de uma coisa que já chegou é a frase que faz a próxima pessoa

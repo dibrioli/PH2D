@@ -100,7 +100,7 @@ pub struct ClothFilterStep {
     ///
     /// ⚠️ **Ele é uma RECTA, não um quadrado.** O `B` do traço é
     /// `10 · força² · flip`, e por isso um traço não consegue carregá-lo — está
-    /// medido em `ph2d-cloth/tests/mede_a_composicao_do_filtro.rs`.
+    /// medido em `ph2d-cloth/tests/it/mede_a_composicao_do_filtro.rs`.
     pub s: f32,
     /// A direcção de mundo do «baixo» da gravidade, unitária.
     pub gravity_axis: [f32; 3],

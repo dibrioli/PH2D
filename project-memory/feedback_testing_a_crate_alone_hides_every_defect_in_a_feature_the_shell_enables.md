@@ -70,7 +70,7 @@ clicável**, porque quem a pinta é a `ph2d-editor-core`, que não sabe nada de 
   procure quem o consome com `default-features = false` e re-declara features.
 - ⭐ A cura durável é um gate que lê **os dois manifestos** e exige
   `default(registry) ∩ panel-* ⊆ default(shell)` —
-  `shells/desktop/tests/every_panel_the_registry_ships_reaches_the_binary.rs`.
+  `shells/desktop/tests/it/every_panel_the_registry_ships_reaches_the_binary.rs`.
 - ⚠️ Esse gate nasceu com o **próprio parser partido** (dividia por vírgula antes de descascar
   comentários e perdia 6 painéis) e só o **controlo positivo do corpus** (`>= 20`) o apanhou.
   *Um gate que lê manifesto precisa de saber quantas entradas devia ver.*

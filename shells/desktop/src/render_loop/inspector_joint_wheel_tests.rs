@@ -2,7 +2,7 @@
 //!
 //! A metade de shell da seção: o snapshot que ela lê e a edição que ela aplica.
 //! Os gates de PAINEL (o clique chega, a caixa é semeada, o valor é espelhado)
-//! moram em `ph2d-panel-inspector/tests/seam_wheel.rs`; aqui mora o que
+//! moram em `ph2d-panel-inspector/tests/it/seam_wheel.rs`; aqui mora o que
 //! acontece com o COMPONENTE.
 
 use ph2d_ecs::scene::{EditorCommandQueue, apply_editor_commands};

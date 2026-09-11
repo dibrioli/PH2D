@@ -158,7 +158,7 @@ pub struct ClothFilterProps {
     ///
     /// ⭐ **As duas metades têm gate desde 2026-09-09**, e são duas porque medir
     /// só a de cima aprovaria a mutação que este parágrafo avisa:
-    /// `ph2d-sculpt3d/tests/a_resposta_do_filtro_ao_arrasto.rs`.
+    /// `ph2d-sculpt3d/tests/it/a_resposta_do_filtro_ao_arrasto.rs`.
     pub strength: f32,
     /// ⭐⭐⭐ ***Preserve Volume*** — quanto do volume de repouso a peça mantém
     /// (`0` desliga, `1` = todo).

@@ -189,7 +189,7 @@ mexer numa decisão vizinha sem medição que a justifique.
 `at_full_strength_the_square_is_the_identity_and_proves_nothing` (a cegueira
 PINADA, para ninguém "simplificar" o gate de volta à força cheia) ·
 `the_panel_opens_every_verb_in_a_mode_that_declares_it` · e o arch-gate de fonte
-`shells/desktop/tests/every_verb_is_born_in_a_mode_that_declares_it.rs` (de FONTE
+`shells/desktop/tests/it/every_verb_is_born_in_a_mode_that_declares_it.rs` (de FONTE
 porque o `Sculpt3dScene::new` recebe um `wgpu::Device` e não há como construir o
 nascimento headless — ele afirma a PROPRIEDADE, com controle positivo).
 **4 mutações, 4 sangram** (a do `birth_for` sangra DUAS).

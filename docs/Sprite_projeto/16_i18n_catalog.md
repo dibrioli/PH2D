@@ -238,7 +238,7 @@ sprite-frames-count = { $count ->
 
 ## 16.7 Estado `ph2d-i18n` runtime
 
-`crates/ph2d-i18n/` é **stub atualmente** (verificado em [editor-core/Cargo.toml](../../crates/ph2d-editor-core/Cargo.toml) comentário "M13 deferred Fluent"). Gate `hr15_no_hardcoded_ui_strings` ([crates/ph2d-editor-core/tests/hr15_no_hardcoded_ui_strings.rs](../../crates/ph2d-editor-core/tests/hr15_no_hardcoded_ui_strings.rs)) atualmente usa string-table workaround.
+`crates/ph2d-i18n/` é **stub atualmente** (verificado em [editor-core/Cargo.toml](../../crates/ph2d-editor-core/Cargo.toml) comentário "M13 deferred Fluent"). Gate `hr15_no_hardcoded_ui_strings` ([crates/ph2d-editor-core/tests/it/hr15_no_hardcoded_ui_strings.rs](../../crates/ph2d-editor-core/tests/it/hr15_no_hardcoded_ui_strings.rs)) atualmente usa string-table workaround.
 
 **W7.T7.1 entrega:**
 1. Bundles `.ftl` físicos em paths canônicos (§16.1).

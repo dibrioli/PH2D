@@ -92,15 +92,15 @@ padrão precisa estão ali, mortos**:
 
 O `Paint` vive na [`ph2d-vec-scene`](../../crates/ph2d-vec-scene/src/paint.rs). O gate
 `architecture_vector_contract_surface`
-([`ph2d-vector-doc/tests/`](../../crates/ph2d-vector-doc/tests/architecture_vector_contract_surface.rs))
+([`ph2d-vector-doc/tests/`](../../crates/ph2d-vector-doc/tests/it/architecture_vector_contract_surface.rs))
 varre `src/**/*.rs` **por NOME de crate**, e os nomes que ele varre são exactamente **dois**:
 
 ```
-$ grep -o '"ph2d-[a-z-]*"' crates/ph2d-vector-doc/tests/architecture_vector_contract_surface.rs | sort -u
+$ grep -o '"ph2d-[a-z-]*"' crates/ph2d-vector-doc/tests/it/architecture_vector_contract_surface.rs | sort -u
 "ph2d-vector-doc"
 "ph2d-vector-traits"
 
-$ grep -c "vec-scene\|vec_scene" crates/ph2d-vector-doc/tests/architecture_vector_contract_surface.rs
+$ grep -c "vec-scene\|vec_scene" crates/ph2d-vector-doc/tests/it/architecture_vector_contract_surface.rs
 0
 ```
 
@@ -565,7 +565,7 @@ produto**, que é o oposto do que o pedido diz.
 ### A cerca executável
 
 `the_pattern_has_no_canvas_handles_anymore`
-([`shells/desktop/tests/the_shape_art_picker_is_wired.rs`](../../shells/desktop/tests/the_shape_art_picker_is_wired.rs))
+([`shells/desktop/tests/it/the_shape_art_picker_is_wired.rs`](../../shells/desktop/tests/it/the_shape_art_picker_is_wired.rs))
 recusa os quatro nomes e **exige** que a porta que ficou no lugar exista — senão ele ficaria verde
 num produto que **perdeu** a posição em vez de a ter mudado de sítio. ⚠️ *Uma decisão de produto que
 vive só num documento é uma decisão que a próxima janela reconstrói de boa-fé.*

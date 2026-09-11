@@ -356,7 +356,7 @@ traço paga vive na SHELL.
 O `PainterGpuPreview` era construído **lazily** (`get_or_insert_with`, dentro do `drive`), ou seja no
 primeiro frame que precisasse do preview GPU — o primeiro traço. E as três peças dele **compilam
 shaders**. Medido na RTX com o driver já quente
-(`ph2d-render/tests/measure_first_stroke_pipelines.rs`):
+(`ph2d-render/tests/it/measure_first_stroke_pipelines.rs`):
 
 | peça | ms |
 |---|---|

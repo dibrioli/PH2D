@@ -16,7 +16,7 @@ O ADR-0117 mediu a memória do editor e deixou uma pendência explícita:
 > (…) Se o Enio quiser knobs fluidos em clipes longos, é o próximo ADR, e ele tem um alvo medido
 > para mirar."*
 
-Medi o alvo (`crates/ph2d-audio-edit/tests/measure_preview.rs`), num clipe de 3 min (65,9 MB) com
+Medi o alvo (`crates/ph2d-audio-edit/tests/it/measure_preview.rs`), num clipe de 3 min (65,9 MB) com
 uma seleção de **1 segundo** — o gesto real: você seleciona um trecho e mexe num knob.
 
 | | |

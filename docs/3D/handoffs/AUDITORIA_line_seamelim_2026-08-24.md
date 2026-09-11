@@ -23,7 +23,7 @@ transições dali e mede `ExtractReport::shift_residual`.
 
 **ASSERÇÃO-VERMELHA:**
 `our_welded_map_closes_its_seams_at_the_floor_of_f32`
-([`gate_seam_closes.rs`](../../../crates/ph2d-quadextract/tests/gate_seam_closes.rs)) —
+([`gate_seam_closes.rs`](../../../crates/ph2d-quadextract/tests/it/gate_seam_closes.rs)) —
 mede **no fim da cadeia**, com a barra lida da referência pelo mesmo verificador.
 **Provada por mutação, duas vezes:**
 

@@ -180,7 +180,7 @@ sozinha pode cruzar o cap na soma (aconteceu com `keyboard.rs` na integração d
 corte é por **RESPONSABILIDADE**, nunca por tamanho.
 
 ⚠️ **Flake conhecida, PRÉ-EXISTENTE:** `the_cost_of_depth_is_linear_not_explosive`
-(`ph2d-timeline/tests/nesting_clock.rs`) é gate de RAZÃO sensível a carga. Medido isolado
+(`ph2d-timeline/tests/it/nesting_clock.rs`) é gate de RAZÃO sensível a carga. Medido isolado
 agora: **6/6 verde**. Re-rode sozinho antes de suspeitar do merge.
 
 ---

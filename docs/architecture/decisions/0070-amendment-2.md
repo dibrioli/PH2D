@@ -4,7 +4,7 @@
 **Amends:** [ADR-0070 — Sprite schema v4 (`SpriteVersioned` + `RenderInstance` ABI)](0070-sprite-schema-v4.md)
 **Slot rationale:** Numbered `-2` because `-1` is pre-reserved by spec/HANDOFF for the dual-buffer perf mitigation that fires from W1.T1.7b criterion bench (ADR-0070 §2.5 / `Sprite_projeto/15_plano_de_implementacao.md:63` / `HANDOFF_sprite_inspector_v2.md:158`). This amendment lands first because the empirical T0.13 finding is W0 work; dual-buffer is conditional W1 work.
 **Spec sections superseded:** `docs/Sprite_projeto/10_schema_versionamento.md` §10.4 (DECISÃO HÍBRIDA PÓS-AUDIT).
-**Reference:** [`crates/ph2d-render/tests/sprite_versioned_postcard.rs`](../../../crates/ph2d-render/tests/sprite_versioned_postcard.rs) — empirical pin via `postcard_rejects_trailing_serde_default_on_short_payload`.
+**Reference:** [`crates/ph2d-render/tests/it/sprite_versioned_postcard.rs`](../../../crates/ph2d-render/tests/it/sprite_versioned_postcard.rs) — empirical pin via `postcard_rejects_trailing_serde_default_on_short_payload`.
 
 ---
 
@@ -19,7 +19,7 @@ The §10.4 prose hedged the second tier: *"`#[serde(default)]` LEVE — depende 
 
 ## 2. Empirical finding (T0.13, 2026-05-28)
 
-Test `postcard_rejects_trailing_serde_default_on_short_payload` in `crates/ph2d-render/tests/sprite_versioned_postcard.rs`:
+Test `postcard_rejects_trailing_serde_default_on_short_payload` in `crates/ph2d-render/tests/it/sprite_versioned_postcard.rs`:
 
 ```rust
 #[derive(serde::Serialize)]
@@ -77,7 +77,7 @@ The empirical pin asserts `Error::DeserializeUnexpectedEnd` by explicit `match` 
 
 ## 7. Provenance
 
-- Empirical evidence: [`crates/ph2d-render/tests/sprite_versioned_postcard.rs`](../../../crates/ph2d-render/tests/sprite_versioned_postcard.rs)
+- Empirical evidence: [`crates/ph2d-render/tests/it/sprite_versioned_postcard.rs`](../../../crates/ph2d-render/tests/it/sprite_versioned_postcard.rs)
 - Postcard version pinned: `=1.1.3` in [`crates/ph2d-render/Cargo.toml`](../../../crates/ph2d-render/Cargo.toml)
 - Round 1 audit findings (Lens B + Lens C): consolidated into the test suite changes preceding this amendment.
 - Round 2 audit findings (Lens A + Lens E): A-C1 (this CRITICAL — write the amendment) + E-H1 (restore `#[serde(default)]` on `SpriteV3.anchor` as documentary mirror).

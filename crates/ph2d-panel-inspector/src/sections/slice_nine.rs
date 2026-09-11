@@ -357,7 +357,7 @@ mod tests {
     /// ⚠️ **A comparação contra as variantes do MOTOR não pode viver aqui:** este painel é chrome
     /// e não depende do `ph2d-ecs`, de propósito (a mesma razão do `FILTER_LABELS` da §9). Quem
     /// vê as duas metades é a shell, e o gate está lá:
-    /// `shells/desktop/tests/the_slice_section_offers_every_mode_the_engine_has.rs`.
+    /// `shells/desktop/tests/it/the_slice_section_offers_every_mode_the_engine_has.rs`.
     #[test]
     fn every_id_array_has_a_label_for_each_slot() {
         assert_eq!(ids::INSP_SLICE_TILE_MODE.len(), TILE_MODE_LABELS.len());

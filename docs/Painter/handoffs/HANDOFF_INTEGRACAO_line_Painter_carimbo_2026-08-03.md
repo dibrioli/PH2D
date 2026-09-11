@@ -363,7 +363,7 @@ Quatro, todos na shell:
 | `shells/desktop/src/render_loop/mod.rs` | **+74 / −4** | ⚠️ **o único quente** — é o arquivo que toda linha toca. O acréscimo é a **linha `deposito:` do `[frame]`** e o flush do carimbo; sem sobreposição semântica com timeline/física/vetor, mas o conflito **textual** é provável. |
 | `shells/desktop/src/render_loop/painter_bridge.rs` | edição | só painter |
 | `shells/desktop/src/render_loop/painter_stamp_device.rs` | **novo** | zero risco (add) |
-| `shells/desktop/tests/the_shell_installs_the_stamp_bridge_at_the_document_bind.rs` | **novo** | zero risco (add) |
+| `shells/desktop/tests/it/the_shell_installs_the_stamp_bridge_at_the_document_bind.rs` | **novo** | zero risco (add) |
 | `shells/desktop/Cargo.toml` | **+3** | uma aresta, no bloco de deps internas |
 
 ⚠️ **Os gates de `shells/desktop/tests/` só correm na varredura impactada** — um fechamento por

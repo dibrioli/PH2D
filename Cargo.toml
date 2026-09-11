@@ -30,7 +30,7 @@ edition = "2024"
 # `input_dispatch.rs`, estáveis só em 1.95). O gate que devia pegar isto nunca
 # rodou 1.92 — `rust-toolchain.toml` vence `rustup default` —, então ele media o
 # PIN e ficava verde. Ver
-# `crates/ph2d-editor-core/tests/architecture_msrv_is_the_pinned_toolchain.rs`
+# `crates/ph2d-editor-core/tests/it/architecture_msrv_is_the_pinned_toolchain.rs`
 # (o caminho `tests/…` que esta nota citava nunca existiu na raiz).
 #
 # 1.95 → 1.98 em 2026-08-29 (`docs/Atualizar Stack/`, bloco A). O piso volta a ser

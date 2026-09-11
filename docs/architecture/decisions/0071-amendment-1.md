@@ -3,7 +3,7 @@
 **Status:** Accepted (ADR-0164 F1 passo 6, 2026-08-25).
 **Amends:** [ADR-0071 — Tint channels are multiplicative](0071-tint-channels-multiplicative.md) — o **conjunto** de canais, não a lei da multiplicação.
 **Companion:** [ADR-0070-amendment-8](0070-amendment-8.md) (o corte inteiro: 20 → 13 campos).
-**Reference:** [`sprite_corner_tint.rs`](../../../crates/ph2d-ecs/src/sprite_corner_tint.rs) · gate `tint_channel_count` em [`architecture_sprite_inspector_surface.rs`](../../../crates/ph2d-render/tests/architecture_sprite_inspector_surface.rs).
+**Reference:** [`sprite_corner_tint.rs`](../../../crates/ph2d-ecs/src/sprite_corner_tint.rs) · gate `tint_channel_count` em [`architecture_sprite_inspector_surface.rs`](../../../crates/ph2d-render/tests/it/architecture_sprite_inspector_surface.rs).
 
 ---
 

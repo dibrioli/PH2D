@@ -72,7 +72,7 @@ todo gesto agarrá-la na origem do pai — a família que o doc de `transform_in
 Trocar as duas linhas **compila** e põe a âncora no espaço errado.
 
 **Gate que prende as duas:** `the_two_walks_agree_about_a_mounted_child`
-([`anchor_mount_hierarchy.rs`](../../../crates/ph2d-ecs/tests/anchor_mount_hierarchy.rs)). Um merge
+([`anchor_mount_hierarchy.rs`](../../../crates/ph2d-ecs/tests/it/anchor_mount_hierarchy.rs)). Um merge
 que toque `transform.rs` ou `transform_inverse.rs` tem de o correr.
 
 ---

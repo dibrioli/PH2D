@@ -67,7 +67,7 @@ arquivo, o Mergiraf funde o resíduo textual (ADR-0107).
 | `ph2d-render/src/{renderer.rs,renderer_draw.rs,lib.rs,sprite_collect.rs}` | mod | integra o passe FX | **ALTO** — o renderer é foundational MUITO compartilhado |
 | `ph2d-editor-core/src/screens/{hero.rs,paint.rs,layout.rs}` | mod | dock timeline | **ALTO** — o hero screen é compartilhado |
 | `ph2d-gpu-cook/Cargo.toml` | mod | 17 dev-deps de valor | baixo (append) |
-| `ph2d-gpu-cook/tests/gpu_cpu_parity.rs` | mod | +17 gates RTX + cross-gate | baixo (append) |
+| `ph2d-gpu-cook/tests/it/gpu_cpu_parity.rs` | mod | +17 gates RTX + cross-gate | baixo (append) |
 | `ph2d-node-registry-init/{Cargo.toml,src/lib.rs}` | mod | node-sync (17 crates) | **regenerável** — se conflitar, rode `cargo run -p ph2d-node-sync` DEPOIS do rebase |
 | `shells/desktop/src/{main.rs,render_loop/*,init.rs,app_state.rs,motion_state.rs}` | mod | wiring dos smokes + FX + dock | médio |
 | `project-memory/feedback_a_correct_number_can_carry_a_false_story.md` | NOVO | memória | baixo (⚠️ o índice `MEMORY.md` NÃO foi atualizado — adicione a linha de ponteiro na integração) |
@@ -129,7 +129,7 @@ ph2d-node-sync` (ele re-gera a lista canônica da árvore combinada). Depois con
   `✗`. **Cuidado:** o `ship.sh` roda `--release`/`ci-test`; alguns nós (ex.: os que
   colhem janela) e o `ph2d-flip-colorize` de outras áreas têm diferença debug×release,
   mas os value-nodes daqui passam nos dois perfis (medido).
-- **Gate de LOC da shell** (`shells/desktop/tests/file_loc_caps.rs`, 600) e o
+- **Gate de LOC da shell** (`shells/desktop/tests/it/file_loc_caps.rs`, 600) e o
   `architecture_workspace_file_loc_cap` (crates, 700): rode isolados — o `cargo test
   -p` filtrado NÃO os alcança (a armadilha do `file_loc_caps`). `cook.rs` já foi
   split (fingerprint saiu) para caber nos 700.

@@ -7,7 +7,7 @@
 //!
 //! ⚠️ **A entrada mais cara guarda a malha INTEIRA** ([`StrokeUndo::Remeshed`]),
 //! e é isso que torna este arquivo necessário: medido pela residência do
-//! processo (`ph2d-sdf/tests/probe_repeat_remesh.rs`), um remesh a 512 empilha
+//! processo (`ph2d-sdf/tests/it/probe_repeat_remesh.rs`), um remesh a 512 empilha
 //! **146 MB** e o campo transiente que o produziu pede **922 MB** no pico —
 //! contra os 3500 MB que o HR-13 declara para o app inteiro. Sem teto, *fazer
 //! remesh algumas vezes* é uma escada até o fim da memória.

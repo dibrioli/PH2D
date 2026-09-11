@@ -70,7 +70,7 @@ pub const HALF_ROUND_TRIP_DRIFT_LSB: f32 = 0.062_012;
 /// ⚠️ **É `pub` para a SONDA, não para um segundo motor.** A descida do ecrã (o passe de tonemap)
 /// **não** leva dither: foi construída, medida e recusada — a folga que o hardware deixa lá é de
 /// `0,0283` LSB, 7% desta amplitude. A sonda que mediu isso
-/// (`crates/ph2d-render/tests/tonemap_descent_gpu.rs`) compara-se com este número, e é o único
+/// (`crates/ph2d-render/tests/it/tonemap_descent_gpu.rs`) compara-se com este número, e é o único
 /// consumidor de fora.
 ///
 /// ⛔ *Não* reconstrua o dither na GPU a partir daqui — o mecanismo está no cabeçalho de

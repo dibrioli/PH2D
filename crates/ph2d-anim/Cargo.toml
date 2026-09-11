@@ -37,5 +37,5 @@ ph2d-core = { path = "../ph2d-core" }
 # The real save format is the document's choice (postcard); JSON keeps the test legible.
 serde_json = "1"
 # dhat-rs for the HR-3 zero-alloc playback gate (tests/no_alloc.rs), mirroring
-# ph2d-ecs/tests/propagate_no_alloc.rs + ph2d-audio/tests/no_alloc_render.rs.
+# ph2d-ecs/tests/propagate_no_alloc.rs + ph2d-audio/tests/it/no_alloc_render.rs.
 dhat = "0.3"

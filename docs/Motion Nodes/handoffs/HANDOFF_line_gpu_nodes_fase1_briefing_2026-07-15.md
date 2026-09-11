@@ -45,7 +45,7 @@ se sobrar, começa a **Fase 2** (portar os primeiros nós). As etapas 3–4 são
 
 - **`ph2d_nodegraph::attr::par_build(n, f)`** + `PAR_THRESHOLD=8192` — o cook da CPU já usa todos os cores
   para os maps por-instância (16 nós retrofitados). **Este é o teu caminho CANÔNICO e o fallback.**
-- **Golden `crates/ph2d-eval-motion/tests/cook_determinism.rs`** — reprodutibilidade + FNV pinado de um
+- **Golden `crates/ph2d-eval-motion/tests/it/cook_determinism.rs`** — reprodutibilidade + FNV pinado de um
   chain a 25.6k instâncias. **Todo kernel GPU que você portar tem que casar com a `eval` CPU dentro de ε; o
   golden protege a CPU.**
 - **Perf medida:** cook de 500k = 4,93 ms na CPU (32 threads). É o teu baseline — a GPU precisa bater isso

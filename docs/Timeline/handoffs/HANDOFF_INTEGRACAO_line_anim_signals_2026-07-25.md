@@ -115,11 +115,11 @@ e06d22387 docs(adr): 0143 -- sinais da timeline
 
 ## Gates (todos verdes; mutação-provados)
 
-- **W0** `ph2d-timeline/tests/signals_crossed.rs` (7): mut **igualdade-de-frame → RED**, mut **drop-wrap → RED**.
+- **W0** `ph2d-timeline/tests/it/signals_crossed.rs` (7): mut **igualdade-de-frame → RED**, mut **drop-wrap → RED**.
 - **W1** `shells/desktop/src/render_loop/timeline_bridge_signal_tests.rs` (6): mut **drop-forward-guard →
-  paused+reverse RED** · `shells/desktop/tests/timeline_signal_emits_in_arrange_only.rs` (arch-gate).
+  paused+reverse RED** · `shells/desktop/tests/it/timeline_signal_emits_in_arrange_only.rs` (arch-gate).
 - **W2** `marker_rename_tests.rs` (+2 signal) · `snapshot`/`ruler` compilados.
-- **W3 (o menu, mutação-provado):** `ph2d-panel-timeline/tests/marker_menu_seam.rs` (4 — cada linha CLICA
+- **W3 (o menu, mutação-provado):** `ph2d-panel-timeline/tests/it/marker_menu_seam.rs` (4 — cada linha CLICA
   o seam real: Rename arma label-mode, Set Signal arma signal-mode, Delete levanta `RemoveMarker`, e o
   anti-item-morto varre `TIMELINE_MARKER_MENU`; **mut** neutralizar o arm do `event.rs` → 4 RED · **mut**
   Rename em signal-mode → label RED) · `dispatch/tests/timeline.rs`: **`right_clicking_a_marker_opens_the_marker_menu`**

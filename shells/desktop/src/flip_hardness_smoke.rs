@@ -9,7 +9,7 @@
 //! `over`), nunca o de um **DAB** dele. As duas rodadas anteriores igualaram a lei do dab — que é
 //! muito mais RALA — e é isso que abria as cunhas.
 //!
-//! **Números MEDIDOS** (`ph2d-flip-render/tests/painter_look.rs`, contra o depósito de verdade,
+//! **Números MEDIDOS** (`ph2d-flip-render/tests/it/painter_look.rs`, contra o depósito de verdade,
 //! numa estrela de um traço só):
 //!
 //! | | falta de tinta | px fora de 16 |

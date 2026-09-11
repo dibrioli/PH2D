@@ -3,7 +3,7 @@
 > **Pedido do Enio, 2026-09-09:** *«Além das junções de tipo Organic, Fillet e Chamfer, faça pesquisa
 > de outros tipos funcionais, de boa aparência e de boa performance e me relate quais existem»*
 
-Instrumento: [`probe_the_other_junctions.rs`](../../crates/ph2d-field-eval/tests/probe_the_other_junctions.rs).
+Instrumento: [`probe_the_other_junctions.rs`](../../crates/ph2d-field-eval/tests/it/probe_the_other_junctions.rs).
 
 ```
 cargo test --release -p ph2d-field-eval --test probe_the_other_junctions -- --ignored --nocapture

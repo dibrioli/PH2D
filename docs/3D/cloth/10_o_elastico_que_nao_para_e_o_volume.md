@@ -213,7 +213,7 @@ não mudam essa conversa.
   ⚠️⚠️ **Os NÚMEROS deste item estavam todos errados**, e os três docs desta série
   davam três valores diferentes (`753×` aqui, `155×` no doc 11, `55×` no doc 12):
   medido de fresco nos valores de fábrica pela
-  [`sonda_do_expand_que_nao_para`](../../../crates/ph2d-sculpt3d/tests/sonda_do_expand_que_nao_para.rs),
+  [`sonda_do_expand_que_nao_para`](../../../crates/ph2d-sculpt3d/tests/it/sonda_do_expand_que_nao_para.rs),
   o esticão contra o material era **`7,743`** a um gesto e `14,358` a três.
   ⭐⭐ **E o volume não explodia — ele COLAPSAVA** (`1,067 → 0,245 → 0,761`): o que
   aquilo produzia não era uma peça maior, era uma **amarrotada**.
@@ -304,7 +304,7 @@ que separa é a única que vale — *quantas destas agulhas vivem numa linha que
   (`semear_lra`, `limitar_esticao`, `restringir_volume`, `conservar_volume`).
 - Produto: [`cloth_filter_props.rs`](../../../crates/ph2d-sculpt3d/src/cloth_filter_props.rs)
   (`stretch_max`, `volume`, e a porta `solver()`).
-- Gates: [`mede_o_tecido_que_estica.rs`](../../../crates/ph2d-sculpt3d/tests/mede_o_tecido_que_estica.rs)
+- Gates: [`mede_o_tecido_que_estica.rs`](../../../crates/ph2d-sculpt3d/tests/it/mede_o_tecido_que_estica.rs)
   — seis, três provados por mutação (a âncora de longo alcance, a passagem de
   Provot e a restrição de volume, cada uma desligada faz um gate reprovar).
 - Painel: *Stretch Limit* e *Preserve Volume*, os dois `Basic`, visíveis quando a

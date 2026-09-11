@@ -88,14 +88,14 @@ descodificar a fita seis vezes era trabalho repetido — a faixa `k` faz exactam
 chamada escalar do ponto `k` faria.
 
 ⇒ **nenhuma régua do módulo se mexe.** Gates:
-[`the_point_probe_is_the_same_answer.rs`](../../crates/ph2d-field-eval/tests/the_point_probe_is_the_same_answer.rs)
+[`the_point_probe_is_the_same_answer.rs`](../../crates/ph2d-field-eval/tests/it/the_point_probe_is_the_same_answer.rs)
 — `to_bits()`, sobre o valor **e** sobre o gradiente, num corpus de 1 a 40 formas.
 
 ## §11.4 — ⛔⛔ A cura PUBLICADA está RECUSADA, e o número é `9,4×` a folga
 
 A nota mandava trocar a diferença central pelo **gradiente analítico** da `fidget`
 (`GradSliceEval`, o que o `hybrid.rs` já usa). Medido
-([`probe_the_analytic_gradient_blocker.rs`](../../crates/ph2d-field-eval/tests/probe_the_analytic_gradient_blocker.rs)):
+([`probe_the_analytic_gradient_blocker.rs`](../../crates/ph2d-field-eval/tests/it/probe_the_analytic_gradient_blocker.rs)):
 
 | região | pontos | mediana | pior |
 |---|---:|---:|---:|

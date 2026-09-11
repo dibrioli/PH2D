@@ -1,7 +1,7 @@
 # Audit W1.T11 + W1.T14 — Lens ι (Iota): Determinism & Fixture Correctness
 
 - **Commit**: `aa6766b` (feat(asset-cooker): W1.T11 + W1.T14 — 7 fixtures canônicos + R8→BC4 proof-of-life)
-- **Scope**: `tools/asset-cooker/src/texture/fixtures.rs` + `tools/asset-cooker/tests/sample_cook_brush_atlas.rs` + `tools/asset-cooker/src/texture/cook.rs` (fixture alias) + `tools/asset-cooker/src/texture/mod.rs` (re-export).
+- **Scope**: `tools/asset-cooker/src/texture/fixtures.rs` + `tools/asset-cooker/tests/it/sample_cook_brush_atlas.rs` + `tools/asset-cooker/src/texture/cook.rs` (fixture alias) + `tools/asset-cooker/src/texture/mod.rs` (re-export).
 - **Lens**: ι — determinismo (HR-6 ready), fixture pattern correctness, cross-platform stability para W1.T10 canonical-runner replay-hash gate.
 - **Date**: 2026-05-28
 - **Auditor**: Claude Opus 4.7 (adversarial single-pass).
@@ -122,7 +122,7 @@ faz pra `simple_sprite.json5` (`prefab_cook_hash_is_locked`). Custo: 5 LOC.
 ### HIGH-2 — KTX2 size upper bound em `bc4_smaller_than_uncompressed_baseline` é frouxo demais
 
 - **Severity**: HIGH (regression mask)
-- **File**: `tools/asset-cooker/tests/sample_cook_brush_atlas.rs:99-105`
+- **File**: `tools/asset-cooker/tests/it/sample_cook_brush_atlas.rs:99-105`
 
 ```rust
 let upper_bound = raw_r8_bytes + (raw_r8_bytes / 10);  // 64KB + 10% = 70.4KB

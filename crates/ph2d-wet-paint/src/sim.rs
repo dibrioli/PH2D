@@ -96,7 +96,7 @@ pub struct Sim {
 /// **Onde um passo interrompido parou.**
 ///
 /// Um passo é uma sequência de sete estágios com cadências próprias, e na escala do produto ele custa
-/// **38,7 ms** (medido, `ph2d-wet-paint/tests/measure_pass_cost.rs`) — mais que **dois quadros** de
+/// **38,7 ms** (medido, `ph2d-wet-paint/tests/it/measure_pass_cost.rs`) — mais que **dois quadros** de
 /// 60 Hz. Enquanto ele era ATÔMICO, o frame que o continha estourava por construção, e nenhum
 /// orçamento conserta isso: o smoke do Enio mediu `tool-tick pico 73,70ms` com o app a 55 fps.
 ///

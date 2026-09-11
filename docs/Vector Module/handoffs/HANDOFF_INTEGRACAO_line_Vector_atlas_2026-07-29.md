@@ -108,9 +108,9 @@ falar em coordenadas **locais da forma** — a tradução é feita **uma vez, na
 
 | onde | quantos | o que provam |
 |---|---|---|
-| `ph2d-render/tests/fx_stack_atlas_gpu.rs` (⚠️ `#[ignore]`, precisa de adapter) | 2 | a célula filtra **byte a byte** como a forma sozinha (**0 de 27648**) · `run` == `run_from([0,0])` |
+| `ph2d-render/tests/it/fx_stack_atlas_gpu.rs` (⚠️ `#[ignore]`, precisa de adapter) | 2 | a célula filtra **byte a byte** como a forma sozinha (**0 de 27648**) · `run` == `run_from([0,0])` |
 | `shells/desktop/src/fx_atlas_tests.rs` | 6 | células disjuntas · cena típica num render só · lotes em vez de formas perdidas · determinismo |
-| `shells/desktop/tests/the_atlas_clips_every_cell.rs` | 2 | cada célula é recortada · o lote é UM render |
+| `shells/desktop/tests/it/the_atlas_clips_every_cell.rs` | 2 | cada célula é recortada · o lote é UM render |
 
 **8 mutações, 8 sangram.**
 

@@ -4,7 +4,7 @@
 **Amends:** [ADR-0070 — Sprite schema v4 (`SpriteVersioned` + `RenderInstance` ABI)](0070-sprite-schema-v4.md) §1.7 ABI.
 **Slot rationale:** `-1` segue pré-reservado (dual-buffer perf, ADR-0070 §2.5); `-2` back-compat empírico; `-3` flip_uv flags; `-4` basis; `-5` sampling CPU-tail; `-6` uv_xform GPU @location(15). Este é o próximo slot livre.
 **Spec sections clarified:** `docs/Sprite_projeto/01_anatomia_canonica.md` §1.7 (ABI tail), `docs/Sprite_projeto/06_mask_clip.md` §6.2/§6.4.
-**Reference:** [`crates/ph2d-render/src/sprite.rs`](../../../crates/ph2d-render/src/sprite.rs) (campos + helpers), [`crates/ph2d-render/tests/render_instance_pod_size_v4.rs`](../../../crates/ph2d-render/tests/render_instance_pod_size_v4.rs), [`crates/ph2d-render/tests/architecture_sprite_inspector_surface.rs`](../../../crates/ph2d-render/tests/architecture_sprite_inspector_surface.rs).
+**Reference:** [`crates/ph2d-render/src/sprite.rs`](../../../crates/ph2d-render/src/sprite.rs) (campos + helpers), [`crates/ph2d-render/tests/it/render_instance_pod_size_v4.rs`](../../../crates/ph2d-render/tests/it/render_instance_pod_size_v4.rs), [`crates/ph2d-render/tests/it/architecture_sprite_inspector_surface.rs`](../../../crates/ph2d-render/tests/it/architecture_sprite_inspector_surface.rs).
 
 ---
 

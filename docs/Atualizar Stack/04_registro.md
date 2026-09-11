@@ -390,7 +390,7 @@ de onde veio, e essa autoridade caduca com ela.*
 hashes de determinismo — nenhum perguntava *«em que ÂNGULO ele parou?»*. Por isso a suíte inteira
 ficou verde sobre uma pilha visivelmente torta, e foi preciso um humano a olhar para uma foto.
 
-O gate novo é [`resting_pose.rs`](../../crates/ph2d-physics-ecs/tests/resting_pose.rs), e a barra
+O gate novo é [`resting_pose.rs`](../../crates/ph2d-physics-ecs/tests/it/resting_pose.rs), e a barra
 dele **não é um número escolhido: é um oráculo medido na mesma corrida** — a pose de uma simulação
 a que se *proíbe* dormir. Um número mágico envelheceria com o solver; este re-mede-se sozinho.
 
@@ -454,7 +454,7 @@ residente só volta a subir se estiver marcada **suja**, e o `register_texture` 
 é a família das compensações, ao contrário: uma **ausência** que a biblioteca passou a exigir.
 
 **Cura:** `VelloPass::mark_texture_dirty`, chamada no único sítio que re-coze.
-**Gate:** [`every_recook_tells_vello_the_pixels_changed.rs`](../../shells/desktop/tests/every_recook_tells_vello_the_pixels_changed.rs)
+**Gate:** [`every_recook_tells_vello_the_pixels_changed.rs`](../../shells/desktop/tests/it/every_recook_tells_vello_the_pixels_changed.rs)
 — ⚠️ **um censo de FONTE, e a razão está escrita nele:** provar isto a sério exige dois renders com
 o conteúdo mudado entre eles e um adaptador de GPU, e os gates de GPU desta casa são `#[ignore]`,
 logo o CI nunca os corre. O censo defende a **emparelhação** (quem escreve numa textura registada
@@ -813,7 +813,7 @@ E exclui também «marcar os 52 com `#[ignore]`»: isso troca um verde falso por
 numa máquina que **tem** GPU — e 51 dos 52 são **gates**, não sondas (só um imprime sem afirmar).
 
 **A cura:** um gate só —
-[`gpu_gates_are_not_vacuous.rs`](../../crates/ph2d-render/tests/gpu_gates_are_not_vacuous.rs) —
+[`gpu_gates_are_not_vacuous.rs`](../../crates/ph2d-render/tests/it/gpu_gates_are_not_vacuous.rs) —
 que falha com uma mensagem que **NOMEIA a contagem**, e a contagem é **derivada do fonte**, nunca
 escrita à mão. `PH2D_ALLOW_NO_GPU=1` renuncia: **uma** saída explícita em vez de 52 implícitas.
 
@@ -1062,7 +1062,7 @@ cena do tecto não medido.*
 **(i) «o assador da fita deixa LASCAS».** Era a suspeita mais natural: `power_stroke` fecha em
 `Region::of(NonZero)` → `drop_slivers`, que varre peças com **área ≤ 1e-4 do total** — logo uma a
 `1,1e-4` **sobrevive** e seria tinta solta à volta do traço. Medido
-([`measure_power_stroke_slivers.rs`](../../crates/ph2d-vec-boolean/tests/measure_power_stroke_slivers.rs))
+([`measure_power_stroke_slivers.rs`](../../crates/ph2d-vec-boolean/tests/it/measure_power_stroke_slivers.rs))
 sobre a senoide adversária (curvatura que troca de sinal, onde o doc do `drop_slivers` diz que as
 lascas nascem), varrendo os **3 perfis não-uniformes do catálogo × 5 larguras**:
 

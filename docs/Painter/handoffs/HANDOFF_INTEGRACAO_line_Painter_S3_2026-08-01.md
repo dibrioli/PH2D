@@ -100,7 +100,7 @@ depois das duas capturas (o eraser e o reset do warp), e quando disparar imprime
 | `cargo clippy -p ph2d-tool-painter --release --all-targets` | **0 warnings** |
 | `cargo test -p ph2d-wet-paint --release --test fingerprint` | **3 / 3** (ADR-0134 intacto) |
 | `architecture_workspace_file_loc_cap` (isolado) | **2 / 2** |
-| `shells/desktop/tests/file_loc_caps.rs` (isolado) | **2 / 2** |
+| `shells/desktop/tests/it/file_loc_caps.rs` (isolado) | **2 / 2** |
 | `architecture_tool_contract_surface` | **4 / 4** |
 
 ⚠️ Os dois de LOC foram rodados **isolados de propósito**: eles não correm num `cargo test -p` filtrado,

@@ -42,4 +42,4 @@ kept for completeness but are `cfg`'d out and never compiled with our feature se
 
 Re-vendor from a new tag by copying `libDF/src/*.rs` + `models/DeepFilterNet3_onnx.tar.gz`
 + the two `LICENSE-*` files, then re-applying the two changes above. Confirm the
-parity gate (`crates/ph2d-audio-ml/tests/parity_with_reference_cli.rs`) still holds.
+parity gate (`crates/ph2d-audio-ml/tests/it/parity_with_reference_cli.rs`) still holds.

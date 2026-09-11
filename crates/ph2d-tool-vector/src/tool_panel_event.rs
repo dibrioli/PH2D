@@ -324,7 +324,7 @@ mod tests {
         //
         // ⚠️ Ela **não** é uma isenção: um modo aqui declara que a porta dele vive noutro sítio, e
         // o gate irmão que mede essa porta é o `the_two_bone_segments_are_the_door_to_the_mode`
-        // (`ph2d-panel-vector/tests/seam.rs`). *Uma excepção sem o endereço da porta é um modo
+        // (`ph2d-panel-vector/tests/it/seam.rs`). *Uma excepção sem o endereço da porta é um modo
         // inalcançável com uma nota bonita.*
         const SEM_PILL: [DrawMode; 1] = [DrawMode::Bone];
         // ⛔ **O CENSO**: todo modo do vocabulário aparece na tabela acima, ou na lista das

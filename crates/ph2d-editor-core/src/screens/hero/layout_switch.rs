@@ -77,4 +77,4 @@ pub fn apply(hero: &mut HeroScreen, layout: TaskLayout) {
 // ⚠️ **Os gates deste módulo NÃO vivem aqui.** Ele mede-se pelo que acontece aos painéis, e nesta
 // crate o `test_support::ensure_panel_registry` é um `{}` — uma varredura sobre zero painéis
 // passaria sobre nada. Eles vivem em
-// `ph2d-panel-registry-init/tests/switching_layout_rearranges_the_screen.rs`.
+// `ph2d-panel-registry-init/tests/it/switching_layout_rearranges_the_screen.rs`.

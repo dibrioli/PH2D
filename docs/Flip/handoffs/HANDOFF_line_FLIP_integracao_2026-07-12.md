@@ -27,8 +27,8 @@
 | `crates/ph2d-editor-core/src/ids/chrome/flip.rs` | ids novos W3/W4 (fill + strip) — **módulo próprio do Flip**, append-only por design |
 | `crates/ph2d-editor-core/src/screens/layout.rs` | slot novo `flip_strip: Rect` + `FLIP_STRIP_H = 132.0` (faixa inferior, coluna do timeline) |
 | `crates/ph2d-editor-core/src/screens/hero/paint.rs` | entrada `FLIP_STRIP_PANEL` no walk de z-order (sem ela o painel docado nunca é pintado) |
-| `crates/ph2d-editor-core/tests/node_id_collisions.rs` | entradas novas dos ids Flip (append na lista do gate) |
-| `crates/ph2d-editor-core/tests/architecture_panel_wiring_parity.rs` | crate nova `ph2d-panel-flip-frames` incluída no scan |
+| `crates/ph2d-editor-core/tests/it/node_id_collisions.rs` | entradas novas dos ids Flip (append na lista do gate) |
+| `crates/ph2d-editor-core/tests/it/architecture_panel_wiring_parity.rs` | crate nova `ph2d-panel-flip-frames` incluída no scan |
 | `crates/ph2d-ui-testkit/{src/lib.rs,Cargo.toml}` | **`MockPanelHost::paint`** — o gate "pintado ≠ populado" (BUGS #8): roda `Panel::paint` real headless; +2 path-deps (`ph2d-vector`, `ph2d-text`). Extensão aditiva; qualquer linha pode adotar |
 | `crates/ph2d-panel-registry-init/{src/lib.rs,Cargo.toml}` | registro do painel novo `ph2d-panel-flip-frames` (feature `panel-flip-frames`) |
 | `shells/desktop/*` | arquivos NOVOS `flip_autokey/flip_fill(+tests)/flip_live/flip_strip` + rewrites nos `flip_*` existentes; wiring pontual (poucas linhas cada) em `app_state`, `forwarding`, `input_dispatch`, `input_handlers`, `main`, `project`, `undo`, `render_loop/{mod,present,flip_*}` |

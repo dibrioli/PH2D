@@ -135,7 +135,7 @@ pub(crate) fn choice_name(key: &str, index: usize) -> String {
 /// ⚠️ **A CHAMADA a `drain_intents` fica no `render_loop/mod.rs`, de propósito** — e não aqui,
 /// que seria o sítio arrumado. O gate
 /// `the_authored_intent_queue_has_a_drain_and_it_runs_before_the_signal_drain`
-/// (`shells/desktop/tests/the_two_halves_read_the_glyph_through_one_door.rs`) mede a ORDEM do
+/// (`shells/desktop/tests/it/the_two_halves_read_the_glyph_through_one_door.rs`) mede a ORDEM do
 /// quadro **por posição de texto dentro do `mod.rs`**: virar o quadro < drenar o painel < ler os
 /// sinais. Levar a chamada para um irmão apaga a única lente que essa lei tem — *e foi medido: o
 /// gate reprovou com «a fila de intents não tem dreno», que é a acusação certa lida do lugar

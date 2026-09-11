@@ -99,7 +99,7 @@ Contagem: `source` + `size` + `tint` + `anchor` + `premultiplied` (5 v3) + `vers
 | `RenderInstance` vertex attrs (GPU) | **11** (locations 2..14, com per_corner_tint ocupando 9..12) | wgpu default `max_vertex_attributes = 16` → 5 slots livres |
 | `RenderInstance` `size_of` | **144 bytes** | 72 v3 + 64 (per_corner) + 4 (opacity) + 4 (flip_uv). |
 
-Arch-gate em `crates/ph2d-render/tests/architecture_sprite_inspector_surface.rs` (W1.T1.12 cria).
+Arch-gate em `crates/ph2d-render/tests/it/architecture_sprite_inspector_surface.rs` (W1.T1.12 cria).
 
 ### 2.3 Migrator v3 → v4 (HR-14 obrigatório) — wrapper enum versionado
 

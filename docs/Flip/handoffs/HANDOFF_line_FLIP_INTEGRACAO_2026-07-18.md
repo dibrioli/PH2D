@@ -109,7 +109,7 @@ mais é escaneado ([[feedback_duplicate_allowlist_key_kills_the_gate_at_parse]])
 **Arquivos NOVOS (3)** — nascem sem conflito:
 `crates/ph2d-panel-flip/src/paint_rows.rs` (split de LOC) ·
 `shells/desktop/src/flip_erase_tests.rs` (split de LOC) ·
-`shells/desktop/tests/the_eraser_uses_the_erasers_own_numbers.rs` (arch-gate novo).
+`shells/desktop/tests/it/the_eraser_uses_the_erasers_own_numbers.rs` (arch-gate novo).
 
 ---
 

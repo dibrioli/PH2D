@@ -3,7 +3,7 @@
 **Status:** Accepted (2026-08-22, `line/Sprite`) — implementado, com gate de paridade entre as duas travessias de mundo.
 **Amends:** [ADR-0072 — Named Anchor unification](0072-named-anchor-unification.md) §2.6 (Runtime API) e §5 (critérios de fecho da W5).
 **Spec:** [`docs/Sprite_projeto/07_named_anchors.md`](../../Sprite_projeto/07_named_anchors.md).
-**Referência:** [`crates/ph2d-ecs/src/anchor_mount.rs`](../../../crates/ph2d-ecs/src/anchor_mount.rs) · gate [`anchor_mount_hierarchy.rs`](../../../crates/ph2d-ecs/tests/anchor_mount_hierarchy.rs).
+**Referência:** [`crates/ph2d-ecs/src/anchor_mount.rs`](../../../crates/ph2d-ecs/src/anchor_mount.rs) · gate [`anchor_mount_hierarchy.rs`](../../../crates/ph2d-ecs/tests/it/anchor_mount_hierarchy.rs).
 **Tags:** sprite, anchor, socket, runtime, hierarchy
 
 ---

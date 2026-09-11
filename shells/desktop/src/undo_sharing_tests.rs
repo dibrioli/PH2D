@@ -55,7 +55,7 @@ fn capture_with_prev(
 
 // ── ⭐⭐ A CENA É PARTILHADA ENTRE PASSOS (F8, 2026-09-02) ───────────────────────────────────────
 //
-// ⛔⛔ **Medido antes de mudar** (`ph2d-vec-scene/tests/measure_scene_clone.rs`): um passo clonava
+// ⛔⛔ **Medido antes de mudar** (`ph2d-vec-scene/tests/it/measure_scene_clone.rs`): um passo clonava
 // a cena INTEIRA — `236 KB` a 1 000 formas, `1,18 MB` a 5 000 — e a pilha guarda `UNDO_CAP` passos
 // ⇒ **60 MB** e **303 MB** só de cópias da mesma cena. A esmagadora maioria dos passos não toca no
 // documento vetorial (mover um objecto, renomear, pôr um componente), e para esses os dois passos
@@ -145,7 +145,7 @@ fn wrapping_the_scene_in_an_arc_does_not_move_a_byte_of_the_format() {
 
 // ── ⭐⭐ O DOCUMENTO FLIP É PARTILHADO ENTRE PASSOS (F8, 2026-09-07) ────────────────────────────
 //
-// ⛔⛔ **Medido antes de mudar** (`ph2d-flip/tests/measure_doc_clone.rs`), e o número é PIOR que o
+// ⛔⛔ **Medido antes de mudar** (`ph2d-flip/tests/it/measure_doc_clone.rs`), e o número é PIOR que o
 // da cena: um passo clonava o documento inteiro — `934 KB` a **24 quadros**, que é *um segundo de
 // animação* — e a pilha guarda `UNDO_CAP` passos ⇒ **228 MB**. A `96` quadros são **912 MB**, e a
 // pilha cheia chega a `1 GB` com **~108 quadros desenhados**.

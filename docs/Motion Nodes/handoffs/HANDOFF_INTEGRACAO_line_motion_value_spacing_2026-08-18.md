@@ -76,7 +76,7 @@ família apresentarem a mesma grandeza de dois jeitos.
 
 ### 2.3 O gate que impede a célula de renascer
 
-`ph2d-node-registry-init/tests/path_controls.rs` — três gates que medem as duas rotas sobre a
+`ph2d-node-registry-init/tests/it/path_controls.rs` — três gates que medem as duas rotas sobre a
 MESMA curva desenhada:
 
 - o **CONTROLE** (as duas pousam na curva: sem ele, *"o composto recorta"* seria satisfeito por uma

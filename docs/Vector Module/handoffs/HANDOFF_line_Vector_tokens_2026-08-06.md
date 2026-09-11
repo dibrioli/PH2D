@@ -102,7 +102,7 @@ cascateou como previsto (dois `pub const RAIL_W` → `fn rail_w()`), e o **TETO 
 `spacing.* = 1024 px` o *Reset This Mode* pousa em `y = 2206` numa viewport de 900 **e a rolagem
 alcança-o**, em toda escala testada até `65536 px`. ⇒ **não há cap a escrever** — o penhasco
 `y ≈ 158 + 2·px` é função da altura da JANELA, e um literal estaria errado para metade dos
-monitores. Gate: `ph2d-panel-tokens/tests/scale_ceiling.rs`.
+monitores. Gate: `ph2d-panel-tokens/tests/it/scale_ceiling.rs`.
 
 ### ~~W4c.3 — MATH~~ ✅ FEITA (2026-08-06, `ae56c1abd` + `1754f14e2`)
 `NumValue::Expr(String)` + a crate leaf **`ph2d-token-math`**. `{spacing.md} * 2` é o que o plano

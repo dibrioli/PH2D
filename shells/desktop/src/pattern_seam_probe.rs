@@ -273,7 +273,7 @@ fn noise_with_gap(w: u32, h: u32, salto_alvo: u8) -> Arc<Vec<u8>> {
 /// fecha **tem** de a mostrar — senão esta sonda estaria a medir o nada e a aprovar-se sozinha.
 ///
 /// ⚠️ É `#[ignore]` porque precisa de adapter, e neste repo **nenhum job de CI corre `--ignored`**
-/// (`crates/ph2d-render/tests/gpu_gates_are_not_vacuous.rs` mediu-o). Ele corre à mão, aqui.
+/// (`crates/ph2d-render/tests/it/gpu_gates_are_not_vacuous.rs` mediu-o). Ele corre à mão, aqui.
 #[test]
 #[ignore = "needs a GPU adapter; run with --ignored"]
 fn the_seam_costs_the_tiles_own_gap_and_nothing_else() {

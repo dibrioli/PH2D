@@ -171,7 +171,7 @@ const MAX_LENGTH: usize = 32;
 /// ⚠️ **O valor que shipava era `65_536` e a justificativa era uma CONTAGEM**, não um custo
 /// (*"4096 vivas × 32 ecos já é 131k quads"*) — no módulo cuja `line/gpu-nodes` mediu **4,19 M
 /// partículas em 3,6 ms**. Medido pela porta do produto
-/// (`ph2d-node-registry-init/tests/measure_instance_ceiling.rs`, fonte a MEXER-SE), o custo é
+/// (`ph2d-node-registry-init/tests/it/measure_instance_ceiling.rs`, fonte a MEXER-SE), o custo é
 /// **linear na linha emitida** e não tem joelho:
 ///
 /// | linhas emitidas | ms/tick | % de um quadro de 60 fps |

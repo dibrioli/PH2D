@@ -97,8 +97,8 @@ na lista `default` DELE, **e ligá-la também na lista `default` da SHELL** — 
 `default-features = false` no `registry-init` e **re-enumera** os painéis. Sem o quinto, o pill `TOK`
 (e a tecla `T`) alternam a visibilidade de um painel que não está no registro, **com todos os gates
 de unidade verdes**. Quem pega são
-`shells/desktop/tests/every_panel_the_shell_drives_is_in_its_registry.rs` (o genérico) e
-`shells/desktop/tests/the_tokens_panel_is_reachable_and_persisted.rs::the_shell_compiles_the_tokens_panel_into_its_registry`
+`shells/desktop/tests/it/every_panel_the_shell_drives_is_in_its_registry.rs` (o genérico) e
+`shells/desktop/tests/it/the_tokens_panel_is_reachable_and_persisted.rs::the_shell_compiles_the_tokens_panel_into_its_registry`
 (o desta linha, escrito para esta armadilha).
 
 **Deps externas: NENHUMA.** As únicas mudanças de `Cargo.toml` são a crate nova, a aresta de path

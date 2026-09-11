@@ -574,7 +574,7 @@ seam.
   recarga junto com o coyote · o pulo que não empurra · a parede que não gasta ·
   um aperto uma carga · o controle com `air_jumps = 0`.
 - `ph2d-platformer/src/lib_dash_tests.rs` (1) — o **terceiro** cancelamento.
-- `ph2d-physics-ecs/tests/player_multi_jump.rs` (3) — pela porta do produto.
+- `ph2d-physics-ecs/tests/it/player_multi_jump.rs` (3) — pela porta do produto.
 - `shells/desktop/src/physics_smoke_multi_jump_tests.rs` (4) — a aritmética em
   tempo de COMPILAÇÃO · o contraste · o controle · **o pouso**.
 
@@ -590,7 +590,7 @@ proxy antigo de volta.
   de atravessar · não deixa nada para trás · nada a interrompe · SUBSTITUI a
   velocidade em vez de somar · o sensor só é pedido onde a lei pode agir · o
   pulo que o trouxe não o faz subir.
-- `ph2d-physics-ecs/tests/player_ledge.rs` (7) — pela porta do produto.
+- `ph2d-physics-ecs/tests/it/player_ledge.rs` (7) — pela porta do produto.
 - `shells/desktop/src/physics_smoke_ledge_tests.rs` — a aritmética das alturas em
   tempo de COMPILAÇÃO contra os números MEDIDOS do pulo colado à parede.
 
@@ -634,8 +634,8 @@ onde ele pára), e a lei tem os seus próprios gates.
   água, a outra media a velocidade de CHEGADA ao mergulho — as duas legítimas).
   Uma guarda de composição pergunta *quem escreve o eixo*, e quem responde é a
   porta que compõe.
-- `ph2d-physics-ecs/tests/player_glide.rs` (5) — pela porta do produto.
-- `ph2d-physics-ecs/tests/player_swims.rs` (+1) — o planeio na água de verdade.
+- `ph2d-physics-ecs/tests/it/player_glide.rs` (5) — pela porta do produto.
+- `ph2d-physics-ecs/tests/it/player_swims.rs` (+1) — o planeio na água de verdade.
 - `shells/desktop/src/physics_smoke_glide_tests.rs` (4) + a sonda que dimensiona
   o vão.
 
@@ -658,21 +658,21 @@ corrigido em vez de contrabandeado.
 
 ### Da `W-LedgeSensor`
 
-- `ph2d-physics-ecs/tests/player_ledge_sensor.rs` (6) — o leque acha o lábio que
+- `ph2d-physics-ecs/tests/it/player_ledge_sensor.rs` (6) — o leque acha o lábio que
   um raio erra · uma amostra DENTRO recusa o leque inteiro · o vencedor é o mais
   PERTO · o offset DESLIZA sem redimensionar · e os dois **CONTROLES** de redução
   literal (`span = 0` e `offset_y = 0` reproduzem o raio único).
-- `ph2d-panel-inspector/tests/seam_player.rs` — as três rows novas na varredura.
+- `ph2d-panel-inspector/tests/it/seam_player.rs` — as três rows novas na varredura.
 
 **5 mutações, 5 sangram** — e a da recusa **sobreviveu duas vezes por FIXTURE**
 (§2d).
 
 ### Da ÂNCORA (§2f)
 
-- `ph2d-physics-ecs/tests/player_probe_view.rs` (+1) —
+- `ph2d-physics-ecs/tests/it/player_probe_view.rs` (+1) —
   `the_published_fan_rides_the_body_it_belongs_to`, com o repouso como CONTROLE e
   a asserção de que o corpo ANDOU no tique medido.
-- `ph2d-physics-ecs/tests/player_bridge_source.rs` — a porta única do texto da
+- `ph2d-physics-ecs/tests/it/player_bridge_source.rs` — a porta única do texto da
   ponte, partilhada pelos dois arch-gates (§5).
 - Sonda `measure_probe_lag` (`--ignored --nocapture`) — a tabela que atribuiu o
   defeito e mede a cura.

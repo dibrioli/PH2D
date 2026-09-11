@@ -112,7 +112,7 @@ que já existia no shell **continuou verde sem ser tocado** — é a melhor evid
 | arquivo | o que a linha fez | risco |
 |---|---|---|
 | `ph2d-editor-core/src/ids/chrome/flip.rs` | **+6 ids** (`FLIP_MODE_COLORIZE`, `FLIP_COLORIZE_*`) | **só ADIÇÃO** — a lista é compartilhada e ADICIONAR é seguro ([[feedback_a_shared_list_is_merged_against_todays_main]]) |
-| `ph2d-editor-core/tests/node_id_collisions.rs` + `architecture_panel_wiring_parity.rs` | os ids novos entram nas listas | idem |
+| `ph2d-editor-core/tests/it/node_id_collisions.rs` + `architecture_panel_wiring_parity.rs` | os ids novos entram nas listas | idem |
 | `shells/desktop/src/undo.rs` | `post_frame_undo` pergunta `flip_colorize.live_busy(...)` ao lado do `held_button` | **1 linha lógica** num ponto quente do shell — conferir se outra linha mexeu no mesmo `if` |
 | `shells/desktop/src/undo_route.rs` | `UndoOwner::Colorize` (rabisco pendente é dono do Ctrl+Z) | idem |
 | `shells/desktop/src/render_loop/mod.rs` | drain do Apply/Clear + `flip_colorize_live_adjust()` no prólogo | adição no prólogo |

@@ -72,7 +72,7 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Painter && \
 
 ## 4. O template de paridade (copie o da luz, não invente outro)
 
-`crates/ph2d-render/src/impasto_light.rs` + `crates/ph2d-render/tests/impasto_light_gpu.rs` são o
+`crates/ph2d-render/src/impasto_light.rs` + `crates/ph2d-render/tests/it/impasto_light_gpu.rs` são o
 precedente **e a régua**:
 
 1. ⚠️ **"Bit-a-bit" NÃO é a política deste projeto** — o compositor declara que runtime não é bit-idêntico
@@ -127,7 +127,7 @@ o [ADR-0109](../../architecture/decisions/0109-rayon-exception-watercolor-compos
 ## 8. Como fechar
 
 1. **Gate batched 1× no fim** (`scripts/nextest-impacted.sh` + clippy `--all-targets` + os DOIS gates de
-   LOC — o `shells/desktop/tests/file_loc_caps.rs` **não** roda com `cargo test -p`).
+   LOC — o `shells/desktop/tests/it/file_loc_caps.rs` **não** roda com `cargo test -p`).
 2. ⚠️ Os gates de GPU são `#[ignore]` e **precisam de adapter**: rode-os explicitamente
    (`-- --ignored`) na RTX. Sem adapter eles fazem *skip gracioso*, que **não é verde**.
 3. **Cena de smoke com números MEDIDOS** — o Enio smoka olhando, e uma cena que afirma o que a medição

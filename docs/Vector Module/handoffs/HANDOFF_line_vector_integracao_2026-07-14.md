@@ -132,7 +132,7 @@ conflito será **textual** (duas linhas apendando no mesmo bloco). Mergiraf reso
 
 ### 2.3 `ph2d-i18n` — +1 chave (`panel.vector.section.blend`). Apêndice trivial.
 
-### 2.4 `ph2d-flip-render/tests/pack_perf.rs` — **NÃO é meu** ⚠
+### 2.4 `ph2d-flip-render/tests/it/pack_perf.rs` — **NÃO é meu** ⚠
 
 Um agente anterior desta linha mexeu **fora do escopo** (o teto de perf virou por-perfil: 700 ms
 debug / 120 ms release). **O Enio nunca vetou nem aprovou.** Deixei: reverter reintroduz um
@@ -170,7 +170,7 @@ posicional ⇒ um save v7 **não** pode ser lido como v8.
 ### 3.2 `VECTOR_SECTIONS` — **18 → 19**
 
 O gate `every_section_header_is_registered_as_collapsible`
-(`crates/ph2d-panel-vector/tests/seam.rs`) **afirma a contagem**. Se outra linha acrescentar uma
+(`crates/ph2d-panel-vector/tests/it/seam.rs`) **afirma a contagem**. Se outra linha acrescentar uma
 seção ao painel Vector, os números **somam** — mesma regra do §3.1.
 
 ### 3.3 Números de ADR — ver §4.
@@ -256,7 +256,7 @@ espúrio → limpa o redo → "o undo só faz uma etapa").
 
 - `shells/desktop/src/vec_zorder_fixpoint_tests.rs` (5 gates, mutation-tested: ler a árvore antes
   do `sync` derruba 4).
-- `shells/desktop/tests/the_z_projection_reads_the_tree_after_the_sync.rs` — **arch-gate de ordem
+- `shells/desktop/tests/it/the_z_projection_reads_the_tree_after_the_sync.rs` — **arch-gate de ordem
   do frame**, textual, sobre o `render_loop/mod.rs`. Os unit tests rodam um *espelho* da sequência,
   e um espelho **não vê** o dia em que alguém reordena o frame de verdade.
 

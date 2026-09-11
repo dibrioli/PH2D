@@ -18,7 +18,7 @@
 //! não era do bake: o `Globals` do `impasto_light.wgsl` tinha ganhado um campo e
 //! deixado um `pad` para trás, então o uniform media 240 bytes contra os 224 do
 //! Rust e o wgpu **recusava todo dispatch** da luz de impasto na GPU. Os seis
-//! gates que o teriam pego moram em `ph2d-render/tests/impasto_light_gpu.rs` e
+//! gates que o teriam pego moram em `ph2d-render/tests/it/impasto_light_gpu.rs` e
 //! são `#[ignore]` — eles precisam de adapter, e a varredura de GPU daquela wave
 //! rodou as crates do módulo 3D e **não** a do renderizador.
 //!

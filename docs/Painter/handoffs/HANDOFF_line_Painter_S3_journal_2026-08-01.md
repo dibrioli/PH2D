@@ -282,7 +282,7 @@ ms sem uma linha de código mudar.
 * `cargo clippy -p ph2d-tool-painter --release --all-targets` (⚠️ `-p` sozinho roda em **debug** e
   esconde dead-code de release);
 * `cargo test -p ph2d-wet-paint --release --test fingerprint` (3/3 — a troca não pode movê-lo);
-* o gate de LOC da shell (`shells/desktop/tests/file_loc_caps.rs`) e o
+* o gate de LOC da shell (`shells/desktop/tests/it/file_loc_caps.rs`) e o
   `architecture_workspace_file_loc_cap` **isolados** — eles não correm no `cargo test -p` filtrado, e
   esta linha já shipou dívida vermelho-latente por isso;
 * **NÃO integre e NÃO faça ship** (CLAUDE.md §0.7): feche, escreva o handoff de integração

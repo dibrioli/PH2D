@@ -7,7 +7,7 @@ Feche a linha `$1`.
 1. Gate batched, 1× sobre o diff acumulado (nunca por task):
    - `bash scripts/nextest-impacted.sh`
    - clippy `--all-targets` + features
-   - `shells/desktop/tests/file_loc_caps.rs` (o gate da shell; o workspace_file_loc_cap
+   - `shells/desktop/tests/it/file_loc_caps.rs` (o gate da shell; o workspace_file_loc_cap
      cobre só crates/ — essa lacuna já deixou vermelho latente 2×)
    - `arch_safe_clamp_only` e os arch-gates de shell (só correm na varredura impactada)
    - auditoria com ≥2 lentes

@@ -33,7 +33,7 @@
 //! ⚠️ Um render do Vello custa **~0,12 ms antes de desenhar coisa alguma** — ele corre a cadeia de
 //! binning/tiling inteira e submete, seja qual for o conteúdo. Com um render por forma, uma cena
 //! de 32 formas filtradas gastava **4,0 ms só em raster**; a MESMA área de arte numa passagem só
-//! custa **0,39 ms** (medido na RTX: `ph2d-render/tests/fx_scene_scale_cost.rs`). Num editor isso
+//! custa **0,39 ms** (medido na RTX: `ph2d-render/tests/it/fx_scene_scale_cost.rs`). Num editor isso
 //! é invisível — o artista mexe numa forma de cada vez —, mas o eixo é o do Enio: *"performance em
 //! tempo real em runtime para games"*, e num jogo as formas filtradas **animam**, logo erram o
 //! memo **todas, todo frame**. O que multiplica é o fixo, não o filtro.

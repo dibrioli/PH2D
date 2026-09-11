@@ -324,7 +324,7 @@ aplica. A aceitação é a SUÍTE DE TESTES, no espírito do golden-test de nó)
       RationalTime.to_seconds roundtrip estável; from_frame exato.
   [ ] Zero-alloc (dhat): loop de playback sample() em N frames = 0 allocs
       (HR-3). Espelhe o padrão per-crate tests/*_no_alloc.rs de outra crate
-      (ex. ph2d-ecs/tests/propagate_no_alloc.rs, ph2d-audio/tests/no_alloc_render.rs).
+      (ex. ph2d-ecs/tests/propagate_no_alloc.rs, ph2d-audio/tests/it/no_alloc_render.rs).
   [ ] AnimCurve implementa AnimationCurveSampler de verdade (2º mock morto).
   [ ] Doctest/exemplo curto: montar um Track, amostrar, mostrar o valor.
   [ ] clippy --all-targets -D warnings + fmt (rustup run <pin> cargo fmt).

@@ -14,7 +14,7 @@ use ph2d_editor_core::ids;
 /// **A TOPOLOGIA** — hoje uma row só, a resolução do remesh.
 ///
 /// ⚠️ **A FAIXA É MEDIDA, e o recurso é a memória do campo TRANSIENTE**
-/// (`ph2d-sdf/tests/measure_remesh.rs`, esfera `uv(96,144)`):
+/// (`ph2d-sdf/tests/it/measure_remesh.rs`, esfera `uv(96,144)`):
 ///
 /// | resolução | células | campo | malha de saída |
 /// |---|---|---|---|

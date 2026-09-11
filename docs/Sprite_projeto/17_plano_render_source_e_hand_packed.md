@@ -41,7 +41,7 @@ Três achados que **não** estavam na lista do Enio:
 **Cobertura de teste da seção inteira: zero.** Os dois testes que existiam
 (`strategy_click_raises_pending_when_kind_differs`, `strategy_click_no_pending_without_sprite_selection`)
 estão `#[cfg(any())]` em `hero/tests.rs` com a nota *"migrate to
-crates/ph2d-panel-inspector/tests/inspector_regression.rs"* — **a migração nunca aconteceu**, e aquele
+crates/ph2d-panel-inspector/tests/it/inspector_regression.rs"* — **a migração nunca aconteceu**, e aquele
 arquivo não existe. É por isso que apodreceu em silêncio.
 
 ## §2 — A lei (uma frase, e todo o resto é dela)
@@ -308,7 +308,7 @@ são um defeito que só aparece no consumidor, meses depois, noutro programa.
 - ✅ **Testes de costura** — ⚠️ e a nota *"hoje há zero"* estava **meia certa, com a metade errada a
   importar**: o DESPACHO já tinha teste (`screens::hero::tests`, que chama `apply_event`
   diretamente). O que não existia era o que vem ANTES: que a seção **pinte** os botões e os
-  **registe no índice de acerto**. `ph2d-panel-inspector/tests/seam_render_source.rs` corre o
+  **registe no índice de acerto**. `ph2d-panel-inspector/tests/it/seam_render_source.rs` corre o
   caminho inteiro (popular → publicar → **pintar** → despachar) e prova quatro coisas: os três
   botões são alcançáveis · cada um levanta a SUA ação · clicar no já-ativo não é edição · o
   `Reimport` desabilitado **não age** (com controle positivo).

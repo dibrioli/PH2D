@@ -31,7 +31,7 @@
 //! # ⚠️ E os 2,0 m estão DEZ CENTÍMETROS acima de um penhasco
 //!
 //! Os `0,3 m de margem` acima são a folga que a lei de aposentadoria EXIGE, e
-//! a medição (`ph2d-physics-ecs/tests/measure_drop_retire.rs`) mostra que ela é
+//! a medição (`ph2d-physics-ecs/tests/it/measure_drop_retire.rs`) mostra que ela é
 //! mais apertada do que parece. Nesta geometria exacta — pranchas de
 //! meia-espessura `0,15`, um aperto e uma tentativa de voltar:
 //!
@@ -150,7 +150,7 @@ pub(crate) const DROP_SMOKE_MESSAGE: &str = concat!(
 
 /// A distância entre os andares de cada uma das três escadas da cena 97 — as
 /// três células que a W20 mediu, e que o artista tem de conseguir distinguir a
-/// olho (`ph2d-physics-ecs/tests/measure_drop_retire.rs`).
+/// olho (`ph2d-physics-ecs/tests/it/measure_drop_retire.rs`).
 const WALL_RISES: [f32; 3] = [1.80, 2.00, 1.60];
 /// Onde cada escada fica, no eixo X.
 const WALL_X: [f32; 3] = [-7.0, 0.0, 7.0];

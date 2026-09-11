@@ -105,7 +105,7 @@ Para cada nó, nesta ordem — **não pule o passo 1**:
      da CPU; a exceção é o lowering, que é PresentWorld).
 3. **`reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL)`** no `register()` do crate.
 4. **Gates (por nó, antes de ir pro próximo):**
-   - Adicione o crate ao `registry()` de `crates/ph2d-gpu-cook/tests/generated_wgsl_validates.rs`
+   - Adicione o crate ao `registry()` de `crates/ph2d-gpu-cook/tests/it/generated_wgsl_validates.rs`
      **e** de `gpu_cpu_parity.rs` (+ dev-dep no `Cargo.toml` do ph2d-gpu-cook) — o naga então
      valida TODO subconjunto de colunas do seu kernel de graça.
    - **Paridade ε**: um teste no padrão dos existentes — chain real com o nó, ≥25,6k

@@ -49,7 +49,7 @@ pub(crate) struct PainterGpuPreview {
 ///
 /// ⚠️ O `get_or_insert_with` do [`drive`] a criava no primeiro frame que precisasse do preview GPU — que
 /// é o **primeiro traço do artista** — e as três peças dela **COMPILAM shaders**. Medido na RTX
-/// (`ph2d-render/tests/measure_first_stroke_pipelines.rs`, driver já quente): `LayerCompositor` **6,01
+/// (`ph2d-render/tests/it/measure_first_stroke_pipelines.rs`, driver já quente): `LayerCompositor` **6,01
 /// ms** + `ImpastoLightPass` **16,30** + `PreviewPremul` **5,70** = **28,01 ms**, ou seja quase dois
 /// quadros de 60 fps, pagos exatamente no gesto em que o artista está esperando a tinta aparecer.
 ///
@@ -72,7 +72,7 @@ pub(crate) fn prewarm(
         *session_slot = Some(PainterGpuPreview::new(renderer.gpu()));
     }
     // ⚠️ E os RECURSOS do COMPOSITOR e do premul, que nascem do TAMANHO DO CANVAS e que só a 1ª
-    // execução aloca — medido em `ph2d-render/tests/measure_first_stroke_pipelines.rs`.
+    // execução aloca — medido em `ph2d-render/tests/it/measure_first_stroke_pipelines.rs`.
     //
     // ⚠️ **O passe de LUZ fica de fora, e isto é uma limitação NOMEADA, não um descuido.** Uma pilha
     // recém-bindada não tem relevo, então `impasto_gpu_planes_in` recusa, a luz não roda, e nem as

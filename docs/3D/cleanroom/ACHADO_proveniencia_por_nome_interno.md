@@ -67,7 +67,7 @@ flag de enum da casa alheia, uma chamada com os nomes de parâmetro dela.
 `crates/ph2d-sculpt3d/src/brush_verb.rs:177,203,214,252,295` ·
 `crates/ph2d-sculpt3d/src/ref_profiles.rs:305` ·
 `crates/ph2d-sculpt3d/src/stroke_dab_core.rs:302` ·
-`crates/ph2d-sculpt3d/tests/measure_layer_front_face.rs:31` ·
+`crates/ph2d-sculpt3d/tests/it/measure_layer_front_face.rs:31` ·
 `docs/3D/20_divergencias_tools.md:26` · `docs/3D/21_plano_modos_e_ferramentas.md:437` ·
 `docs/3D/handoffs/HANDOFF_CONTINUACAO_line_sculpt3d_2026-08-18.md:235` ·
 `docs/3D/handoffs/HANDOFF_INTEGRACAO_line_sculpt3d_MESTRE_2026-08-17.md:189` ·

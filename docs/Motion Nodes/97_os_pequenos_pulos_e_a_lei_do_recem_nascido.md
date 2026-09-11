@@ -239,7 +239,7 @@ sobre **folhas**; esta é sobre **tinta**, e a cura que se achou não precisa de
 
 ## §8 — Os gates, e as duas mutações que os obrigaram a existir
 
-[`tests/newborn_law.rs`](../../crates/ph2d-node-source-lsystem/tests/newborn_law.rs) — quatro:
+[`tests/newborn_law.rs`](../../crates/ph2d-node-source-lsystem/tests/it/newborn_law.rs) — quatro:
 
 | gate | o que afirma |
 |---|---|

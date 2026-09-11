@@ -16,7 +16,7 @@ O cook do grafo rodava **CPU single-thread**. Esta linha o paraleliza com rayon,
   (`grid` é gerador row-major → posição `i` = `(i/cols, i%cols)`.)
 - **Slice B — o marshalling.** `lower_to_instances_onto` (Stream→`Vec<RenderInstance>`, um gather +
   `sin_cos` por instância) usa `par_extend` acima do threshold (ordem preservada, sem Vec temporário).
-- **Slice C — o golden que faltava.** `crates/ph2d-eval-motion/tests/cook_determinism.rs`: cozinha
+- **Slice C — o golden que faltava.** `crates/ph2d-eval-motion/tests/it/cook_determinism.rs`: cozinha
   `grid→oscillator→move→transform` a **25.600 instâncias** (acima do threshold → o caminho paralelo
   RODA) e afirma (1) **reprodutibilidade** — dois cooks byte-idênticos (uma redução float paralela
   divergiria run-a-run) e (2) um **FNV pinado** (`0x1aa7…713f`, capturado em Linux; HR-5 → esperado

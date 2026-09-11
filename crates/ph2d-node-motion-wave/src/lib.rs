@@ -27,7 +27,7 @@
 //!     motion.drive(Custom "wave_h", Add) --> wave.state
 //! ```
 //!
-//! Medido (`ph2d-node-registry-init/tests/measure_wave_producers.rs`, 21×21, 240
+//! Medido (`ph2d-node-registry-init/tests/it/measure_wave_producers.rs`, 21×21, 240
 //! tiques): o campo passa de `max |h| = 0,2231` para `0,8056`, com um segundo pico
 //! exactamente sobre a caixa, e **419 das 441 células fora da máscara se movem** —
 //! o bump **propaga**, que é o que separa um PRODUTOR de tinta pintada no campo de

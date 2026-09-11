@@ -5,7 +5,7 @@
 > A F1 existia para medir o risco #1 (§2.4: *a redução pode comer o ganho*).
 > Ela mediu, e **derrubou três coisas que este plano afirmava** — as três
 > minhas. Números reproduzíveis (3 corridas apertadas), poça de 1,66 M células
-> a 4096², sonda `ph2d-wet-paint/tests/measure_flow_reduction.rs`:
+> a 4096², sonda `ph2d-wet-paint/tests/it/measure_flow_reduction.rs`:
 >
 > | grandeza | medido |
 > |---|---|

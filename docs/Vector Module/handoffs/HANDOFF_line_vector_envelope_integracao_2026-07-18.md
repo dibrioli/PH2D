@@ -142,14 +142,14 @@ O que isto significa para o merge:
 | `shells/desktop/src/envelope_live.rs` | **`dissolve` + enum `Keep`** (Expand/Release são a MESMA função) + **porta única `container_of`/`sole_container`** |
 | `shells/desktop/src/vec_selection.rs` | passa a CHAMAR `envelope_live::sole_container` (as cópias privadas foram apagadas) |
 | `crates/ph2d-editor-core/src/ids/chrome/vector.rs` | 4 ids novos em bloco **append-only** + `VECTOR_SECTION_ENVELOPE` na `VECTOR_SECTIONS` |
-| `crates/ph2d-editor-core/tests/node_id_collisions.rs` | os 4 ids na tabela |
+| `crates/ph2d-editor-core/tests/it/node_id_collisions.rs` | os 4 ids na tabela |
 | `crates/ph2d-i18n/src/lib.rs` | `"panel.vector.section.envelope" => "Envelope"` (só o HEADER — labels de botão são literais em todo este painel) |
 | `crates/ph2d-panel-vector/src/paint_envelope.rs` | **NOVO** — a seção (módulo irmão, teto de 600 LOC) |
 | `crates/ph2d-panel-vector/src/populate_envelope.rs` | **NOVO** — o registro dos 3 widgets |
 | `crates/ph2d-panel-vector/src/{paint_sections,populate}.rs` | `#[path]` dos irmãos + a chamada (ordem da seção / registro) |
 | `crates/ph2d-panel-vector/src/{state,lib}.rs` | `set_current_has_envelope` (publisher) + re-export |
 | `crates/ph2d-panel-vector/src/event.rs` | os 3 ids na allowlist `forwards_plain_click` |
-| `crates/ph2d-panel-vector/tests/seam.rs` | 2 gates novos + a contagem de seções **20 → 21** |
+| `crates/ph2d-panel-vector/tests/it/seam.rs` | 2 gates novos + a contagem de seções **20 → 21** |
 | `shells/desktop/src/render_loop/mod.rs` | 3 flags `pending_*_envelope` + drain + consumo + o publisher `set_current_has_envelope` |
 
 ⚠️ **Números que somam neste merge:** a contagem de seções do `seam.rs` (`VECTOR_SECTIONS.len() == 21`)
@@ -335,7 +335,7 @@ Fatia D fechada, **C agora é de fato quase de graça**: cada preset é uma fun�
 ### 8.4 — Dívida de LOC das Fatias 3/4, paga aqui
 
 `build_smoke.rs` (666) e `vec_gizmo_view.rs` (610) **já estavam acima do teto de 600 desde as Fatias
-3/4**, e eu não peguei: o gate HR-18 do **shell** mora em `shells/desktop/tests/file_loc_caps.rs` e
+3/4**, e eu não peguei: o gate HR-18 do **shell** mora em `shells/desktop/tests/it/file_loc_caps.rs` e
 **não roda com `cargo test -p ph2d-editor-core`** (que foi o que rodei ao fechar aquelas fatias). É a
 mesma classe de [[feedback_loc_cap_split_not_allowlist_and_fmt_reexpands]], num diretório diferente.
 
@@ -571,7 +571,7 @@ varre por QUERY (a arte segue deformada); o overlay é desenhado pela SELEÇÃO 
 foi extrair a POLÍTICA para uma função pura (`surviving_selection`, 3 gates) **+ um arch-gate sobre o
 FONTE** provando que o `apply_project` a chama, e que a captura vem ANTES do restore.
 
-> **Para o integrador:** `shells/desktop/tests/the_undo_preserves_the_vector_selection.rs` lê
+> **Para o integrador:** `shells/desktop/tests/it/the_undo_preserves_the_vector_selection.rs` lê
 > `src/undo.rs` por texto. Se o merge reformatar o `apply_project`, ele fala — é intencional.
 
 ### 11.2 — "Os pontos travam ao arrastar" (`f5d59c96`)
@@ -653,7 +653,7 @@ localmente no HEAD `73d59ff4`, e que o integrador deve ver verde de novo:
 
 ⚠️ **Latentes que o ship costuma acordar nesta linha** (2-4 iterações é o normal): `typos` já foi
 drenado, mas ele **varre a árvore combinada** — outra linha pode trazer palavra nova. E o gate de LOC
-do **shell** mora em `shells/desktop/tests/file_loc_caps.rs` e **não roda** com `cargo test -p
+do **shell** mora em `shells/desktop/tests/it/file_loc_caps.rs` e **não roda** com `cargo test -p
 ph2d-editor-core`; esta linha já pagou esse pedágio duas vezes.
 
 ### Pontos de atrito prováveis num merge com outra linha
@@ -662,8 +662,8 @@ ph2d-editor-core`; esta linha já pagou esse pedágio duas vezes.
 |---|---|
 | `crates/ph2d-ecs/src/lib.rs` | 1 linha de `pub use` (append) |
 | `crates/ph2d-editor-core/src/ids/chrome/vector.rs` | bloco **append-only** no fim + `VECTOR_SECTIONS` |
-| `crates/ph2d-editor-core/tests/node_id_collisions.rs` | tabela (append) |
-| `crates/ph2d-editor-core/tests/arch_mode_has_reconcile.rs` | 1 entrada em `BENIGN_SET_MODE` |
+| `crates/ph2d-editor-core/tests/it/node_id_collisions.rs` | tabela (append) |
+| `crates/ph2d-editor-core/tests/it/arch_mode_has_reconcile.rs` | 1 entrada em `BENIGN_SET_MODE` |
 | `.typos.toml` | 1 chave nova — ⚠️ **chave duplicada mata o gate no PARSE**, confira antes de resolver |
 | `shells/desktop/src/render_loop/mod.rs` | drain + publisher + 2 blocos de overlay |
 | `shells/desktop/src/main.rs` | 2 `mod` novos |

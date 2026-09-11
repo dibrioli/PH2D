@@ -58,7 +58,7 @@ três superfícies juntas.*
 ## §4 — O alvo de toque: `22` é veredito do dono, e não da aba
 
 A faixa de abas tem a altura de uma linha (`ROW_H_PX = 22`). ⚠️ **A aba não é um caso especial:**
-o gate [`the_app_default_slider_style_is_the_one_the_owner_chose`](../../../crates/ph2d-editor-core/tests/the_app_default_slider_style_is_the_one_the_owner_chose.rs)
+o gate [`the_app_default_slider_style_is_the_one_the_owner_chose`](../../../crates/ph2d-editor-core/tests/it/the_app_default_slider_style_is_the_one_the_owner_chose.rs)
 regista, com a citação, que **o dono escolheu a linha de 22** — e a escada de densidade existe e
 tem os outros dois degraus prontos (`cozy` 26 · `comfortable` 32, em `tokens.json`).
 

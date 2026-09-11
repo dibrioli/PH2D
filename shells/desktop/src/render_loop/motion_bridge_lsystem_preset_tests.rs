@@ -28,7 +28,7 @@ fn text_of(motion: &MotionState, nid: ph2d_nodegraph::graph::NodeId, key: &str) 
 /// elementos a medir **1 291 unidades de mundo** numa coluna de ~4; o Sprig passava com 16 a
 /// desenhar uma linha de largura **exactamente 0,00**. *Uma contagem é a única grandeza que
 /// SOBE com este defeito.* A contagem saiu; as réguas que de facto reprovam vivem em
-/// [`presets_frame_themselves`](../../../../crates/ph2d-node-source-lsystem/tests/presets_frame_themselves.rs)
+/// [`presets_frame_themselves`](../../../../crates/ph2d-node-source-lsystem/tests/it/presets_frame_themselves.rs)
 /// e medem o TAMANHO, os dois eixos da caixa, e a resposta ao `Angle`.
 ///
 /// O que sobrevive aqui é a costura: a tabela é bem formada e cada texto de facto deriva.

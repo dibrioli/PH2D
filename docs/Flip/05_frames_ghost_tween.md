@@ -411,7 +411,7 @@ com chaves próprias, onde o erro MOSTRA.
 | Estado de autoria + drain dos eventos da tira | `shells/desktop/src/flip_strip.rs` |
 | Autokey por-tool (o ponto ÚNICO) | `shells/desktop/src/flip_autokey.rs` |
 
-**Gates executáveis:** `crates/ph2d-panel-flip-frames/tests/seam.rs` (todo controle da barra
+**Gates executáveis:** `crates/ph2d-panel-flip-frames/tests/it/seam.rs` (todo controle da barra
 chega ao barramento — um botão novo sem braço no `event.rs` = VERMELHO) · testes de unidade do
 modelo (ciclos, ghosts nos 3 modos, autokey nas 4 combinações, tween com extremos exatos) ·
 `a_ghost_is_the_same_silhouette_recoloured_and_faded` na bateria GPU.

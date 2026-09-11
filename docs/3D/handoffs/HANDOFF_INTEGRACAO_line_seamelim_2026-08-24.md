@@ -37,7 +37,7 @@ estão no handoff da corrente.
 | `crates/ph2d-gridmap/src/solve.rs` | `Assembly` ganha `by_vert`; o numerador de Poisson passa a ter **uma porta** (`poisson_numerator`) | ⚠️ refactor sem mudança de comportamento — o `Relaxer` passou a chamar a porta em vez de repetir a conta |
 | `crates/ph2d-gridmap/src/round.rs` | `RoundOptions::welded_rounds` e `RoundReport::{weld, seam}` novos; doc de `shift_frac_max` emendado | aditivo |
 | `crates/ph2d-gridmap/src/round_tests.rs` | `chain()` passa a `pub(crate)` (a sonda da soldadura usa a MESMA cadeia) | aditivo |
-| `crates/ph2d-quadextract/tests/gate_seam_closes.rs` | **novo** — o gate nº1 medido no mapa por canto | ficheiro novo |
+| `crates/ph2d-quadextract/tests/it/gate_seam_closes.rs` | **novo** — o gate nº1 medido no mapa por canto | ficheiro novo |
 | `crates/ph2d-quadextract/examples/chain_info.rs` | bifurca para o caminho soldado | aditivo |
 | `shells/desktop/src/sculpt3d_history_retopo_extract.rs` | bifurca para o caminho soldado **dentro** de `PH2D_RETOPO_EXTRACT` | aditivo |
 

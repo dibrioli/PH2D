@@ -262,7 +262,7 @@ fn measure_what_a_step_of_the_products_puddle_is_made_of() {
 /// A grade do fluido era **1:1 com os pixels do canvas**, então a 4096² a
 /// física pagava **16,7 M células** — e o custo é comprovadamente **linear nas
 /// células** (o `ns/célula` é PLANO de 512² a 4096²,
-/// `ph2d-wet-paint/tests/measure_density.rs`). A razão desacopla as duas.
+/// `ph2d-wet-paint/tests/it/measure_density.rs`). A razão desacopla as duas.
 ///
 /// ⚠️ **Esta sonda substituiu a `measure_what_a_coarser_grid_would_buy`, e o
 /// doc dela continha uma AFIRMAÇÃO QUE A CONSTRUÇÃO DERRUBOU:** *"mudar a razão

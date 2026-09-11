@@ -306,7 +306,7 @@ pub struct WidthPreset {
 /// É o *Width Profile* do Illustrator reduzido ao que se distingue por PALAVRA: lá a lista é de
 /// miniaturas (sete desenhos sem nome), e um nome só serve se descrever a curva. Estas quatro
 /// descrevem, e foram **medidas** antes de escritas
-/// (`ph2d-vec-boolean/tests/measure_width_presets.rs`, o multiplicador em cinco pontos do arco):
+/// (`ph2d-vec-boolean/tests/it/measure_width_presets.rs`, o multiplicador em cinco pontos do arco):
 ///
 /// | perfil  | t=0   | 0.25  | 0.50  | 0.75  | 1.00  | fita (área a 8 px × 100) |
 /// |---------|-------|-------|-------|-------|-------|--------------------------|

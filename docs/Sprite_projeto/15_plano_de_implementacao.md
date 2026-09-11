@@ -27,7 +27,7 @@
 | **T0.10** | Re-auditoria pós-correção (3ª lente: Determinism + Multi-OS) | Sem novos findings Crítico+Alto |
 | **T0.11** | **ADR-0025-amendment-1 — Skew em Transform (formal cascade)** ✨ POST-AUDIT | Accepted |
 | **T0.12** | **Gerar 5 fixtures v3 binárias `crates/ph2d-render/tests/fixtures/`** ANTES do bump v3→v4 ✨ POST-AUDIT | atlas.postcard + atlas_with_anchor + individual + premultiplied + max_size geradas e commited |
-| **T0.13** | **Empirical test: postcard + `SpriteVersioned` wrapper enum** ✨ POST-AUDIT | Test em `crates/ph2d-render/tests/sprite_versioned_postcard.rs` carrega v3 fixture + asserta `migrate_v3_to_v4` produz defaults benignos. Valida postcard semantics ANTES de W1. |
+| **T0.13** | **Empirical test: postcard + `SpriteVersioned` wrapper enum** ✨ POST-AUDIT | Test em `crates/ph2d-render/tests/it/sprite_versioned_postcard.rs` carrega v3 fixture + asserta `migrate_v3_to_v4` produz defaults benignos. Valida postcard semantics ANTES de W1. |
 | **T0.14** | Ratificação Enio dos 6 ADRs + 1 amendment | W0 fechada |
 
 ### Critério de fechamento W0

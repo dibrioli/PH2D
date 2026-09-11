@@ -102,7 +102,7 @@ exceção declarada (o ramo dele **escreve**, zerando `vel`) e se apoia num inva
 debug** afirma a cada passo. ⚠️ **A rede se pagou na PRIMEIRA execução da suíte**, achando uma
 divergência real (velocidade fóssil no rastro de um drip, e o fingerprint da sessão inclui `vel`).
 
-**O oráculo é DIFERENCIAL** (`crates/ph2d-wet-paint/tests/spans.rs`): a mesma sessão roda com
+**O oráculo é DIFERENCIAL** (`crates/ph2d-wet-paint/tests/it/spans.rs`): a mesma sessão roda com
 `Grid::spans_enabled` ligado e desligado — o **mesmo laço com o intervalo mais largo**, não uma segunda
 implementação — e **todo campo persistente** tem de sair idêntico ao byte, em **seis formas de sessão**,
 mais o Fast Dry e a rota de undo. **O fingerprint pinado do engine está INTACTO.**

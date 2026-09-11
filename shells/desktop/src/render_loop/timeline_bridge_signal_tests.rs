@@ -1,6 +1,6 @@
 //! Gates for the timeline-signal outbox (ADR-0143 W1): the bridge EMITS the crossing
 //! law's result as a decoupled event, forward SCENE play only. The crossing law itself
-//! is gated in `ph2d-timeline/tests/signals_crossed.rs`; here we pin the BRIDGE half —
+//! is gated in `ph2d-timeline/tests/it/signals_crossed.rs`; here we pin the BRIDGE half —
 //! play-only, a seek re-baselines instead of bursting, reverse is silent — which the
 //! pure law cannot see. Sibling `#[path]` module (`use super::*`) so `timeline_bridge.rs`
 //! stays under the shell LOC cap.

@@ -150,7 +150,7 @@ impl WidgetStore {
     ///
     /// ✅ **`scrollbar_panel_for_id` é uma propriedade que um polegar já TEM de satisfazer:** sem
     /// o braço dele o arrasto da barra não funciona, e o
-    /// `shells/desktop/tests/scrollable_panels_intercept_the_wheel.rs` nomeia-o como uma das
+    /// `shells/desktop/tests/it/scrollable_panels_intercept_the_wheel.rs` nomeia-o como uma das
     /// quatro edições obrigatórias. *Uma barra nova nasce coberta porque já tinha de nascer ali.*
     ///
     /// ⚠️ **O polegar do popover de um dropdown fica de FORA, e é nomeado:** ele é chaveado pelo

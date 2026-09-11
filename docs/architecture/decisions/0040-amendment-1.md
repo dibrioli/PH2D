@@ -32,7 +32,7 @@ pub enum EditorAction {
 }
 ```
 
-Arch-gate `architecture_tool_contract_surface` em `crates/ph2d-editor-core/tests/architecture_tool_contract_surface.rs` cap bumped: `EditorAction = 5` (era 4).
+Arch-gate `architecture_tool_contract_surface` em `crates/ph2d-editor-core/tests/it/architecture_tool_contract_surface.rs` cap bumped: `EditorAction = 5` (era 4).
 
 ### 2.2 Caps preservados (sem amendment)
 
@@ -65,7 +65,7 @@ Reuse de `ToolPanelEvent::SetValue|Click(id, value)` era considerado mas payload
 ## 4. Implementação (Wave 1)
 
 - **T1.2** (W1): `ph2d-vector-doc::edit_log::VectorOp` enum definição (ADR-0056 §2.8).
-- **T1.X**: Bump cap em `crates/ph2d-editor-core/tests/architecture_tool_contract_surface.rs`.
+- **T1.X**: Bump cap em `crates/ph2d-editor-core/tests/it/architecture_tool_contract_surface.rs`.
 - **T1.Y**: Update dispatch handlers em chrome handlers + `apply_event` consumers.
 
 ---

@@ -376,7 +376,7 @@ fn every_plant_declares_the_grammar_mode_it_authors() {
 /// ⇒ O oráculo passou a ser a gramática que a própria coluna manda fazer
 /// ([`ls::grammar_for`]), lida dos params do grafo REAL. A afirmação de identidade contra a
 /// gramática de fábrica não se perdeu: mudou de casa para
-/// `crates/ph2d-node-source-lsystem/tests/presets_frame_themselves.rs`, onde é uma lei do nó
+/// `crates/ph2d-node-source-lsystem/tests/it/presets_frame_themselves.rs`, onde é uma lei do nó
 /// em vez de uma propriedade desta cena.
 ///
 /// ⚠️ **Ao BIT e não «parecido»**: uma barra frouxa aceitaria outra associação de

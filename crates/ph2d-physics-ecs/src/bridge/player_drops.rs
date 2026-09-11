@@ -19,7 +19,7 @@ use super::PhysicsBridge;
 ///
 /// ⚠️ **As duas metades são obrigatórias, e cada uma cura um defeito que a
 /// outra tem** — as duas foram medidas
-/// (`ph2d-physics-ecs/tests/measure_drop_retire.rs`).
+/// (`ph2d-physics-ecs/tests/it/measure_drop_retire.rs`).
 ///
 /// # ⚠️ Só a geometria EXPULSA o personagem
 ///

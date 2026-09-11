@@ -5,7 +5,7 @@
 >
 > ⛔ **A resposta a *«quanto custa esta faixa?»* deixou de ser uma opinião.** Os números abaixo saem
 > do **produto**, pelas mesmas funções que o `hero::frame_layout` usa, e vivem num gate:
-> `crates/ph2d-editor-core/tests/the_chrome_never_eats_more_of_a_tablet_than_this.rs`.
+> `crates/ph2d-editor-core/tests/it/the_chrome_never_eats_more_of_a_tablet_than_this.rs`.
 
 ---
 

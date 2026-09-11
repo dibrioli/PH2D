@@ -521,7 +521,7 @@ fn recentering_a_centred_mesh_is_a_no_op() {
 /// `l-mode` pede (Enio, 2026-08-13).
 ///
 /// O dab elástico gasta **49-64% do tempo aqui** (medido em
-/// `ph2d-sculpt3d/tests/measure_field_cost.rs`, na malha que o módulo abre), e
+/// `ph2d-sculpt3d/tests/it/measure_field_cost.rs`, na malha que o módulo abre), e
 /// esta função tem TRÊS metades com naturezas diferentes: a **descoberta** (dois
 /// passes SERIAIS de dedup, `vértice → faces → vértices`), as **normais**
 /// (`rayon`, já paralelas) e a **curvatura** (idem). Só um número separa

@@ -54,7 +54,7 @@
 //! com **duas arestas entre o mesmo par**.
 //!
 //! ⚠️ **É raro, silencioso, e apodrece tudo o que vem depois.** Medido em
-//! 2026-08-21 (`ph2d-remesh-iso/tests/manifold_probe.rs`): **UMA** ocorrência em
+//! 2026-08-21 (`ph2d-remesh-iso/tests/it/manifold_probe.rs`): **UMA** ocorrência em
 //! 9 968 trocas de uma única rodada sobre a esfera de 13 682 vértices — e a
 //! aresta ofensora sai com **quatro** faces, que é a assinatura de *criada duas
 //! vezes* (uma diagonal criada por cima de outra que já existia teria três).

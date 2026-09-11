@@ -281,7 +281,7 @@ quem chegou primeiro** — e quem chegou primeiro é quem paga a regressão.
 ⛔⛔ **A causa de fundo é a mesma da auditoria do Input Map, e é o achado que importa:** dos doze
 gates da W4, **nenhum olhava para o que era PINTADO**. Todos mediam o mapa e o estado publicado.
 É por isso que doze verdes conviveram com um cabeçalho alheio a aparecer. O gate novo
-([`seam_morph_states.rs`](../../crates/ph2d-panel-vector/tests/seam_morph_states.rs)) mede a
+([`seam_morph_states.rs`](../../crates/ph2d-panel-vector/tests/it/seam_morph_states.rs)) mede a
 **ausência nos dois sentidos** — um morph não pinta o cabeçalho `States`, e poses não pintam o
 `Morph States` —, e a mutação que repõe a forma exacta da W4 sangra com essa mensagem.
 

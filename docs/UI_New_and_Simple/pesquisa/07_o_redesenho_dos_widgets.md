@@ -552,7 +552,7 @@ clicável**, porque quem a pinta é a `ph2d-editor-core`, que não sabe nada de 
 | `build_typed_registry_matches_enabled_features` | ✅ verde | é **consistente** com um painel desligado |
 
 ⭐ **A cura durável** lê os **dois manifestos** e exige `default(registry) ∩ panel-* ⊆ default(shell)`:
-`shells/desktop/tests/every_panel_the_registry_ships_reaches_the_binary.rs`. Mutação: com as duas
+`shells/desktop/tests/it/every_panel_the_registry_ships_reaches_the_binary.rs`. Mutação: com as duas
 linhas do shell fora — o estado exacto em que o Enio abriu o app — ele fica vermelho e **imprime a
 cura**. ⚠️ Ele nasceu com o **próprio parser partido** (dividia por vírgula antes de descascar
 comentários, perdia 6 painéis) e só o **controlo positivo do corpus** (`>= 20`) o apanhou.

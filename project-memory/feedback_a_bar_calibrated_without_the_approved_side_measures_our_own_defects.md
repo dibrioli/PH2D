@@ -35,5 +35,5 @@ há aprovado, diga-o. Quando uma régua acusa «0 de N», pergunte *quem são os
 foto está lá. Quando a saída de outra ferramenta é a referência, confira de que ENTRADA ela
 veio (caixa, contagem) — a aprovada era de outra escultura. E olhe para o artefacto: um arame de
 cada ponta (renderizador de 80 linhas) mostrou o que nenhuma coluna mostrava. Portão que fica:
-`crates/ph2d-quadfill/tests/pontas_do_dono.rs`. Ligado a [[feedback-the-measured-refusal-you-need-is-in-the-neighbouring-knob]] e
+`crates/ph2d-quadfill/tests/it/pontas_do_dono.rs`. Ligado a [[feedback-the-measured-refusal-you-need-is-in-the-neighbouring-knob]] e
 [[feedback-a-missing-knob-cell-can-hide-a-defect-measure-before-pricing]].

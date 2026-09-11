@@ -348,7 +348,7 @@ guardas: anel degenerado e pequeno (`< 8 pontos`).
 | `crates/ph2d-flip/src/lib.rs` | `mod tween_phase;` | 1 linha |
 | `crates/ph2d-flip/src/tween.rs` | fase entre auto-flip e `fit` no `tween_stroke`; mesma porta no `tween_ring` (furo) | append; `pb` virou `mut` |
 | `crates/ph2d-flip/src/tween_flip.rs` | doc do `opposite_winding` aponta para `tween_phase` (o item que ele nomeava fechou) | comentário |
-| `crates/ph2d-flip/tests/tween_arc_probe.rs` | **novo** — o gate de regressão do arco + a sonda | isolado |
+| `crates/ph2d-flip/tests/it/tween_arc_probe.rs` | **novo** — o gate de regressão do arco + a sonda | isolado |
 | `shells/desktop/src/flip_tween_phase_smoke.rs` | **novo** — a cena `PH2D_FLIP_TWEEN_PHASE_SMOKE=1` + gate | isolado |
 | `shells/desktop/src/{main,render_loop/mod}.rs` | `mod` + a chamada do smoke no prólogo | append (ao lado dos outros smokes) |
 

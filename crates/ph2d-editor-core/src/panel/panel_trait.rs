@@ -99,7 +99,7 @@ pub trait Panel: Sized + 'static {
     ///
     /// ⛔ **`false` por omissão, e é a metade que importa:** um painel que não flutua **nunca**
     /// publica um rect por cima da área de desenho, e há gate a medi-lo sobre o quadro real
-    /// (`ph2d-panel-registry-init/tests/a_docked_panel_never_reaches_the_drawing_area.rs`).
+    /// (`ph2d-panel-registry-init/tests/it/a_docked_panel_never_reaches_the_drawing_area.rs`).
     ///
     /// ⚠️ **Declarar `true` é declarar que o artista o ARRASTA** — o Grid Snap, a galeria de
     /// widgets e o `authored` têm rect próprio com clamp na crate deles, e é por isso que eles o

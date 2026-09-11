@@ -330,7 +330,7 @@ fn the_scene_that_asks_for_handles_starts_paused() {
 /// **E a cena 63 sobrevive aos dois gestos do PISO** — a afirmação que a mensagem
 /// faz, no rig que o artista abre.
 ///
-/// A bancada (`ph2d-physics-ecs/tests/pulley_route_floor.rs`) prova o mecanismo com
+/// A bancada (`ph2d-physics-ecs/tests/it/pulley_route_floor.rs`) prova o mecanismo com
 /// um elevador de 12 m; esta prova a CENA, cuja corda mede 80,9 m e cujo tambor é
 /// diferencial — geometria que nenhuma fixture de bancada tem.
 ///

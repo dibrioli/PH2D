@@ -7,7 +7,7 @@ metadata:
   originSessionId: 14afaada-70a5-49d0-a3c1-e84cd2bb2756
 ---
 
-A fonte bundled (Inter) **não cobre** os blocos Unicode `U+2190..U+21FF` (setas `→ ← ↵ ⇒`) nem `U+2300..U+23FF` (técnicos `⌘ ⎕ ⌥`). Qualquer um deles numa string que o editor renderiza vira **caixa de tofu**. O gate `crates/ph2d-editor-core/tests/no_tofu_glyphs.rs` varre **`ph2d-editor-core` + `shells/desktop`** e falha se achar esses glifos **DENTRO de string literal** (normal ou raw). **Comentários e doc-comments são pulados de propósito** — `//! grid → tint → output` é legítimo e comum nos nós.
+A fonte bundled (Inter) **não cobre** os blocos Unicode `U+2190..U+21FF` (setas `→ ← ↵ ⇒`) nem `U+2300..U+23FF` (técnicos `⌘ ⎕ ⌥`). Qualquer um deles numa string que o editor renderiza vira **caixa de tofu**. O gate `crates/ph2d-editor-core/tests/it/no_tofu_glyphs.rs` varre **`ph2d-editor-core` + `shells/desktop`** e falha se achar esses glifos **DENTRO de string literal** (normal ou raw). **Comentários e doc-comments são pulados de propósito** — `//! grid → tint → output` é legítimo e comum nos nós.
 
 A pegadinha que me pegou (Motion M1, integração 2026-07-09): **mensagens de teste são string literal**. `.expect("grid → stagger → oscillator is well-typed")` e `assert!(…, "X → Y")` em `shells/desktop/src/render_loop/motion_bridge_tests.rs` derrubaram o gate. O `cargo test -p` da crate do nó nunca roda esse gate (ele vive em `ph2d-editor-core`), então passou 22 commits e só apareceu no gate da árvore combinada, no integrador.
 

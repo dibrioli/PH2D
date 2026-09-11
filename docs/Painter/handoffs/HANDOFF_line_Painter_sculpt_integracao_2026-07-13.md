@@ -114,7 +114,7 @@ propósito, um de cada vez, e o gate caiu. A tabela é o que o próximo agente p
 | `a_session_does_not_follow_the_artist_to_the_next_sprite` (§6.2) | tirar o `end_sculpt_session()` do `reset_transient_edit_state` |
 | `a_feathered_selection_does_not_attenuate_once_per_pointer_batch` (§6.3) | dobrar a máscara no total acumulado em vez de no dab |
 
-E o **seam** (`crates/ph2d-panel-painter-layers/tests/seam_sculpt.rs`, 6 testes — incl. o do chip em px,
+E o **seam** (`crates/ph2d-panel-painter-layers/tests/it/seam_sculpt.rs`, 6 testes — incl. o do chip em px,
 §6.7), com as 3 armadilhas do handoff anterior provadas uma a uma:
 
 * **não registrar** no `WidgetStore` → o chip pinta, registra hit-rect, e está **morto** sob o mouse ✗

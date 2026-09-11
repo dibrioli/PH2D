@@ -130,7 +130,7 @@ Quem responde *"qual ponta o artista abriu?"* é **`fx_live::colour_target(id) -
 
 ## Gates
 
-**9 no arquivo novo** `crates/ph2d-render/tests/fx_stack_duotone_gpu.rs` (⚠️ `#[ignore]`, precisam de
+**9 no arquivo novo** `crates/ph2d-render/tests/it/fx_stack_duotone_gpu.rs` (⚠️ `#[ignore]`, precisam de
 adapter — rodados na RTX: **9/9**), mais a varredura de tipos (13/13) e os gates de seam/decode.
 
 O que carrega a wave é o **oráculo em CPU independente** sobre a conversão OKLab do `ph2d-color` —

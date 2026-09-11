@@ -70,7 +70,7 @@ composição de 2 camadas `0.5 + 0.5·(1−0.5)`). A passagem mais NOVA fica por
 
 ## 3. Gates (red-first, mutação-provados nesta sessão)
 
-- `ph2d-flip-render/tests/gpu_render.rs::a_stroke_with_self_overlap_accumulates_at_the_crossing`
+- `ph2d-flip-render/tests/it/gpu_render.rs::a_stroke_with_self_overlap_accumulates_at_the_crossing`
   (RTX, `#[ignore]`): cross ~191 vs braço ~128; cross > arm; a passagem nova (azul) por cima; a
   quina também acumula. **RED provado**: revertendo a depth para por-traço (`z = z`), `cross=127
   == arm=127` → o gate falha; o gate OFF (`..._without_accumulation`) permanece verde. Restaurei

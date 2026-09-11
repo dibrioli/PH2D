@@ -14,7 +14,7 @@ metadata:
 > fundo: *uma struct não se parte entre arquivos, então a adição de campo é irredutível — a
 > folga tem de vir de outro lugar*. ⚠️ E há **quatro caps distintos** neste repo — workspace
 > **700** · painel **600** arquivo / **200** função · shell **600** · widget **500** — confundi-los
-> é erro recorrente. A fonte é o gate, nunca uma nota: [`architecture_workspace_file_loc_cap.rs`](../crates/ph2d-editor-core/tests/architecture_workspace_file_loc_cap.rs).
+> é erro recorrente. A fonte é o gate, nunca uma nota: [`architecture_workspace_file_loc_cap.rs`](../crates/ph2d-editor-core/tests/it/architecture_workspace_file_loc_cap.rs).
 >
 > *Registro do texto original, para quem quiser a história:*
 

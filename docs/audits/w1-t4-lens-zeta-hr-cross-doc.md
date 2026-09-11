@@ -59,7 +59,7 @@ NÃO precisa amendment ADR — o ADR é silent, não inconsistente.
 
 **Local:**
 - `crates/ph2d-asset/src/asset.rs:50-79` (`byte_size` impl)
-- `crates/ph2d-asset/tests/architecture_texture_ktx2.rs:60-71` (gate `asset_texture_ktx2_byte_size_matches_blob_len`)
+- `crates/ph2d-asset/tests/it/architecture_texture_ktx2.rs:60-71` (gate `asset_texture_ktx2_byte_size_matches_blob_len`)
 
 **Evidência:** comparação inter-variant:
 - `Prefab`: `components.iter().map(|c| c.data.len() + size_of_val(c)).sum() + children.len() * size_of_val(...) + size_of_val(&**p)` — conta payload + per-item overhead + container.
@@ -123,7 +123,7 @@ Inconsistência de overhead vs outras variants registrada como F-3 (não bloquea
 
 ### V-4 — Cargo.toml WIP-isolation rationale verificada ✅
 
-`git status --short crates/ph2d-asset/` confirma: `M crates/ph2d-asset/Cargo.toml` + `M crates/ph2d-asset/tests/import_image.rs` continuam unstaged — isto é, **WIP alheio do imageio fan-out ainda está nessa árvore**, exatamente como o commit message descreve. `git show d59a467 -- crates/ph2d-asset/Cargo.toml` retorna empty (commit não tocou Cargo.toml).
+`git status --short crates/ph2d-asset/` confirma: `M crates/ph2d-asset/Cargo.toml` + `M crates/ph2d-asset/tests/it/import_image.rs` continuam unstaged — isto é, **WIP alheio do imageio fan-out ainda está nessa árvore**, exatamente como o commit message descreve. `git show d59a467 -- crates/ph2d-asset/Cargo.toml` retorna empty (commit não tocou Cargo.toml).
 
 Rationale "evita commitar Cargo.toml com WIP alheio" é factualmente verdadeira **no momento do commit** (e ainda agora, 16h depois). `feedback-scoped-commit-shared-index` foi respeitada.
 

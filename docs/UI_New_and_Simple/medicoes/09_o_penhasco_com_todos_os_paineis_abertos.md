@@ -72,7 +72,7 @@ e um portão de tempo entraria na família das flakes de carga (`CLAUDE.md` §5.
 | metade | onde |
 |---|---|
 | mecanismo (a cache roda em vez de se deitar fora) | [`ph2d-text/tests/a_still_screen_never_reshapes_its_text.rs`](../../../crates/ph2d-text/tests/a_still_screen_never_reshapes_its_text.rs) |
-| produto (o ecrã que o artista abre não paga moldagem nenhuma) | [`shells/desktop/tests/the_app_never_reshapes_a_still_screen.rs`](../../../shells/desktop/tests/the_app_never_reshapes_a_still_screen.rs) |
+| produto (o ecrã que o artista abre não paga moldagem nenhuma) | [`shells/desktop/tests/it/the_app_never_reshapes_a_still_screen.rs`](../../../shells/desktop/tests/it/the_app_never_reshapes_a_still_screen.rs) |
 
 ⚠️ **O gate de produto mora no SHELL de propósito:** o conjunto de trabalho que produz o fenómeno é
 o do app inteiro, e a `ph2d-panel-registry-init` liga **22 dos 26** painéis (as features pobres do

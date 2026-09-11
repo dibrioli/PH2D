@@ -5,7 +5,7 @@
 //!
 //! O plano escreveu a suspeita — *"planar é um multiplicador de gravidade sob
 //! botão"* — e mandou conferi-la. A sonda
-//! (`ph2d-physics-ecs/tests/measure_glide.rs`) **refutou-a**, e achou uma
+//! (`ph2d-physics-ecs/tests/it/measure_glide.rs`) **refutou-a**, e achou uma
 //! terceira forma que não estava escrita em lugar nenhum. As três candidatas,
 //! cada uma sendo uma forma que este módulo já usa algures:
 //!

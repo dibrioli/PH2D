@@ -11,7 +11,7 @@
 //!
 //! ⚠️ **A enumeração que o prova NÃO mora aqui**, e a razão é o ADR-0075: uma crate-nó não
 //! pode depender de outra, muito menos do `registry-init` (seria um ciclo). Ela vive em
-//! `ph2d-node-registry-init/tests/no_value_op_is_trigonometric.rs`, que é a única casa de onde
+//! `ph2d-node-registry-init/tests/it/no_value_op_is_trigonometric.rs`, que é a única casa de onde
 //! o catálogo inteiro é visível.
 
 use super::*;

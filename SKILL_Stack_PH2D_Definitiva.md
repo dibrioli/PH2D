@@ -318,10 +318,10 @@ Cargo features são explosivas em combinação. Esta é a lista canônica; combi
 >
 > | HR | o que a seção diz | o que de facto executa |
 > |---|---|---|
-> | HR-3 | `tests/budget/no_alloc_hot_path.rs` | [`ph2d-audio/tests/no_alloc_render.rs`](crates/ph2d-audio/tests/no_alloc_render.rs) · [`ph2d-ecs/tests/propagate_no_alloc.rs`](crates/ph2d-ecs/tests/propagate_no_alloc.rs) · [`ph2d-editor-core/tests/interaction_no_alloc.rs`](crates/ph2d-editor-core/tests/interaction_no_alloc.rs) |
+> | HR-3 | `tests/budget/no_alloc_hot_path.rs` | [`ph2d-audio/tests/it/no_alloc_render.rs`](crates/ph2d-audio/tests/it/no_alloc_render.rs) · [`ph2d-ecs/tests/propagate_no_alloc.rs`](crates/ph2d-ecs/tests/propagate_no_alloc.rs) · [`ph2d-editor-core/tests/interaction_no_alloc.rs`](crates/ph2d-editor-core/tests/interaction_no_alloc.rs) |
 > | HR-5 | `tests/determinism/replay_cross_platform.rs` | os jobs `determinism` + `determinism-compare` do [`spike.yml`](.github/workflows/spike.yml), sobre os bins `c9` ([`ph2d-physics/src/bin/c9.rs`](crates/ph2d-physics/src/bin/c9.rs), `physics_ecs_c9`) — matriz 3-OS |
 > | HR-11 | `tests/security/mcp_governance.rs`, macro `#[mcp_destructive]`, `governance::Guard` | [`ph2d-mcp/src/governance.rs`](crates/ph2d-mcp/src/governance.rs) — e o mecanismo é `ConfirmationToken`/`ConfirmationStore`, **não** um `Guard` |
-> | HR-16 | `tests/determinism/lateral_storage_replay.rs` + lint `pairs_sorted()` | [`ph2d-script/tests/lateral_storage_determinism.rs`](crates/ph2d-script/tests/lateral_storage_determinism.rs) + [`lateral_storage_rejects_non_pod.rs`](crates/ph2d-script/tests/lateral_storage_rejects_non_pod.rs) |
+> | HR-16 | `tests/determinism/lateral_storage_replay.rs` + lint `pairs_sorted()` | [`ph2d-script/tests/it/lateral_storage_determinism.rs`](crates/ph2d-script/tests/it/lateral_storage_determinism.rs) + [`lateral_storage_rejects_non_pod.rs`](crates/ph2d-script/tests/it/lateral_storage_rejects_non_pod.rs) |
 >
 > **Oito NÃO TÊM executor nenhum** — a regra é boa, mas nada a cobra, então ela depende de
 > disciplina e de revisão: **HR-1** (`no_os_in_core.rs`) · **HR-2** (a crate `ph2d-clippy` e a
@@ -330,7 +330,7 @@ Cargo features são explosivas em combinação. Esta é a lista canônica; combi
 > (`luau_gc.rs`) · **HR-14** (`migration_chain.rs`) · **HR-17** (`examples_compile.rs`).
 >
 > **E uma tem gate e a seção não o nomeia:** **HR-12** é cobrada por
-> [`hr12_widgets_a11y.rs`](crates/ph2d-editor-core/tests/hr12_widgets_a11y.rs).
+> [`hr12_widgets_a11y.rs`](crates/ph2d-editor-core/tests/it/hr12_widgets_a11y.rs).
 >
 > ⚠️ **Ao escrever um `Enforced by` novo, aponte um caminho que existe** — o gate
 > `architecture_docs_paths_and_smokes_resolve` cobra os links deste arquivo, mas um caminho
@@ -487,7 +487,7 @@ Crescimento de funcionalidade acontece por adição de módulo `mod X;` (arquivo
 
 **Rationale:** god-files são hostis a multi-agente (superfície de conflito), a LLM (excesso de contexto por janela), e a auditoria (complexidade ciclomática inauditável). Bound estrito força decomposição contínua por responsabilidade. Pré-migração 2026-05-16, `shells/desktop/src/main.rs` tinha 3463 LOC com `render_frame()` (1825 LOC) e `window_event()` (706 LOC) violando todos os caps — o PR de decomposição (ADR-0027) extraiu `init.rs`, `input_dispatch.rs`, `hero_intents.rs` reduzindo `main.rs` a 2421 LOC (transitional; cap ativa quando dispatcher genérico full landar).
 
-**Enforced by:** `shells/desktop/tests/file_loc_caps.rs` (**ativo** desde 2026-05-16), com `FILE_LOC_CAP = 600`. ⚠️ Este 600 é do **shell**; o cap do **workspace** é **700** (`architecture_workspace_file_loc_cap.rs`, [ADR-0105](docs/architecture/decisions/0105-file-loc-cap-600-to-700.md)), o de **painel** 600 arquivo / 200 função, e o de **widget** 500 — quatro caps distintos, e confundi-los é erro recorrente. O cap de função **existe e roda**, mas só no escopo `ph2d-panel-*` (`PANEL_FN_LOC_CAP = 200`).
+**Enforced by:** `shells/desktop/tests/it/file_loc_caps.rs` (**ativo** desde 2026-05-16), com `FILE_LOC_CAP = 600`. ⚠️ Este 600 é do **shell**; o cap do **workspace** é **700** (`architecture_workspace_file_loc_cap.rs`, [ADR-0105](docs/architecture/decisions/0105-file-loc-cap-600-to-700.md)), o de **painel** 600 arquivo / 200 função, e o de **widget** 500 — quatro caps distintos, e confundi-los é erro recorrente. O cap de função **existe e roda**, mas só no escopo `ph2d-panel-*` (`PANEL_FN_LOC_CAP = 200`).
 
 Exceções por `// ph2d-loc-cap: <razão>` nas primeiras 20 linhas — a janela é curta de propósito, para que quem abre o arquivo **veja a declaração de dívida**.
 
@@ -1099,7 +1099,7 @@ Render: shell entrega `id<MTLTexture>` (iOS), `vk::Image` (Android), `wgpu::Surf
 
 **Adicionar uma tool ao editor (fan-out via codegen, [ADR-0040](docs/architecture/decisions/0040-tool-as-isolated-feature-crate.md) fechado 2026-05-22):**
 
-A receita virou **3 passos**: largar a pasta + rodar o sync + verificar. Sem edit central, sem variant novo de `EditorAction`. O contrato `Tool`/`RasterEditTool`/`PanelEvent` em `crates/ph2d-editor-core/src/tool.rs` está **congelado** (caps em `crates/ph2d-editor-core/tests/architecture_tool_contract_surface.rs`).
+A receita virou **3 passos**: largar a pasta + rodar o sync + verificar. Sem edit central, sem variant novo de `EditorAction`. O contrato `Tool`/`RasterEditTool`/`PanelEvent` em `crates/ph2d-editor-core/src/tool.rs` está **congelado** (caps em `crates/ph2d-editor-core/tests/it/architecture_tool_contract_surface.rs`).
 
 1. **Largue o crate** em `crates/ph2d-tool-<slug>/` (o glob de `workspace.members` cobre — NÃO edite o `Cargo.toml` raiz):
    - `Cargo.toml`: deps mínimas (`ph2d-tool-registry` + `ph2d-editor-core` p/ `Tool`/`FloatingPanel` se stateful + dom-específicas).

@@ -130,7 +130,7 @@ pub type RegionId = u32;
 | `RepresentationMode` variants | **3 FROZEN** | `Cubic` (default visível), `SpiroAssist`, `HyperbezierAssist`. Decisão D Antigravity 1ª iteração — Bézier cúbico default; Spiro/hyper opt-in. |
 | `WindingRule` variants | **2 FROZEN** | `EvenOdd`, `NonZero`. Default `NonZero` (SVG canon). |
 
-Arch-gate `crates/ph2d-vector-doc/tests/architecture_vector_contract_surface.rs` (W1.T1.2 cria) força caps numéricos. Falha em build se cap excedido.
+Arch-gate `crates/ph2d-vector-doc/tests/it/architecture_vector_contract_surface.rs` (W1.T1.2 cria) força caps numéricos. Falha em build se cap excedido.
 
 ### 2.4 Dual-representation: Bézier cúbico default + Spiro/Hyperbezier Assist Modes (decisão D Antigravity)
 

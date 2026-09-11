@@ -35,7 +35,7 @@ metadata:
 | Registro de painéis | `crates/ph2d-panel-registry-init/src/lib.rs` → `register_all_panels` |
 | Vitrine de widgets | `crates/ph2d-editor-core/src/widget/showcase/` |
 | Gates de arquitetura | `crates/ph2d-editor-core/tests/` |
-| Gate dos tokens | `crates/ph2d-tokens/tests/mockup_tokens_exist.rs` |
+| Gate dos tokens | `crates/ph2d-tokens/tests/it/mockup_tokens_exist.rs` |
 | Design system (fonte) | `docs/design/` — `tokens.json` · `styles/tokens.css` · `screens/*.html` · `tools/*.toml` · `icons/*.svg` |
 
 ⚠️ **Todas as dez linhas foram testadas com `test -e` no dia da reescrita.** Se uma falhar,

@@ -12,7 +12,7 @@ que replica o que o shader faz é apenas um detector de regressão: ele fica **v
 com o bug bem visível na tela**.
 
 **Caso que ensinou (Flip, 2026-07-11):** escrevi
-`ph2d-flip-render/tests/gpu_render.rs::assert_matches_analytic` replicando na CPU a
+`ph2d-flip-render/tests/it/gpu_render.rs::assert_matches_analytic` replicando na CPU a
 geometria do vertex + a máscara do fragment + a regra de depth (first-wins). 9
 testes verdes, 2 mutações provadas (asserção-vermelha real) — e o smoke do Enio
 reprovou na hora: as quinas saíam **mordidas**. A mordida É o first-wins; o oráculo

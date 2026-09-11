@@ -98,7 +98,7 @@ fmt falhava.
 | Armadilha | O que aconteceu |
 |---|---|
 | **`cargo check -p` verde por 33 commits** | escondeu duas bombas que só o gate de fechamento viu: uma crate **desformatada** e um arquivo em **604 > 600 LOC**. Ambas teriam feito o CI vermelho na mão do integrador. |
-| **Dois caps de LOC diferentes** | o do **workspace** é 700 (`architecture_workspace_file_loc_cap`); o do **shell** é **600** (`shells/desktop/tests/file_loc_caps.rs`). Rode os DOIS. LOC estourado = **split em módulo irmão**, NUNCA allowlist. |
+| **Dois caps de LOC diferentes** | o do **workspace** é 700 (`architecture_workspace_file_loc_cap`); o do **shell** é **600** (`shells/desktop/tests/it/file_loc_caps.rs`). Rode os DOIS. LOC estourado = **split em módulo irmão**, NUNCA allowlist. |
 | **Um filtro dentro de um gate é um buraco nele** | o guard `every_row_range_contains_its_value_for_every_node_and_param` estava **verde** porque filtrava `.starts_with("motion.")` — e os nós novos são `sim.*`. O nome prometia "every node". Pergunte sempre **sobre o quê** um gate está verde. |
 | **`python` `str.replace()` que não casa é no-op SILENCIOSO** | o `fmt` reflowa o texto entre edições e a âncora deixa de casar; o teste antigo passa e você comemora. Use `assert old in s`, ou o `Edit` tool. |
 | **`perl`/`sed` com literal acentuado** | corrompe o arquivo em mojibake. Texto em pt-BR só via `Edit`. |

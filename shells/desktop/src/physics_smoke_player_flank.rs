@@ -13,7 +13,7 @@
 //! parede. O sensor lia só a **cintura**, que é justamente o que atravessa o
 //! vazio, então a lei respondia *"não há parede aqui"*.
 //!
-//! **Medido** (`ph2d-physics-ecs/tests/measure_wall_flank.rs`), com a janela na
+//! **Medido** (`ph2d-physics-ecs/tests/it/measure_wall_flank.rs`), com a janela na
 //! altura da cintura:
 //!
 //! | janela | pulo de parede |

@@ -67,7 +67,7 @@ partilhada não-namespaced.
 | `crates/ph2d-i18n/src/sculpt3d.rs` | **+6** chaves `panel.sculpt3d.quad_*` | baixo — mesmo namespace |
 | `shells/desktop/Cargo.toml` | **+6** deps de path para as crates novas | textual; região contígua no fim do bloco |
 | `shells/desktop/src/sculpt3d_*.rs` | 28 ficheiros, **todos** com prefixo `sculpt3d_` | ⭐ pasta do módulo por convenção de nome |
-| `shells/desktop/tests/the_sculpt_mesh_edits_are_wired.rs` | +74/−14, o seam do painel | do módulo |
+| `shells/desktop/tests/it/the_sculpt_mesh_edits_are_wired.rs` | +74/−14, o seam do painel | do módulo |
 | ⚠️ `scripts/nextest-impacted.sh` | **CURA DE INFRA — leia o §5** | ⭐⭐ afecta **todas** as linhas |
 | `CLAUDE.md` | §5, bloco do módulo 3D | ⚠️ **o único ficheiro que a linha e o `main` tocaram os dois** — ver §3 |
 | `docs/architecture/decisions/{0160,0162}*.md` + `README.md` | os dois ADRs + índice derivado | ver §4 |

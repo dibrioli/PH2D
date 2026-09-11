@@ -1,6 +1,6 @@
 //! **O gerador de rig — a metade de shell** (W-Rig).
 //!
-//! O kernel já prova a TOPOLOGIA (`ph2d-physics-ecs/tests/rig.rs`). O que se
+//! O kernel já prova a TOPOLOGIA (`ph2d-physics-ecs/tests/it/rig.rs`). O que se
 //! prova aqui é o que só o shell sabe: quem vira corpo, o que ele **não** pode
 //! reescrever, e que clicar duas vezes não faz dois rigs.
 

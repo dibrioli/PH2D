@@ -11,7 +11,7 @@
 //! ⚠️ **E os gates aqui julgam a CENA, não a lei.** A lei tem os dela
 //! (`ph2d-platformer::crouch_tests`), a porta tem os dela
 //! (`ph2d-physics`, `world::sweep`) e o produto tem os dele
-//! (`ph2d-physics-ecs/tests/platform_headroom_sweep.rs`).
+//! (`ph2d-physics-ecs/tests/it/platform_headroom_sweep.rs`).
 
 use super::{CROUCH_HEIGHT, NARROW_HALF, NARROW_X, STONE_BOTTOM, WIDE_X, build_stone_scene};
 use ph2d_ecs::{Name, SimWorld, Transform};

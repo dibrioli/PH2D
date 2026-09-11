@@ -74,7 +74,7 @@ Nove decisões já registradas que qualquer wave desta família tem de honrar (o
 1. ✅ **ENCARADA E MEDIDA, e estava incompleta.** A cerca dizia *"All eight are FILLABLE closed shapes;
    **Arc (wedge) and Spiral are follow-ups** … Order is the wire format for the `kind` index — **append
    only**"*. A segunda metade **vale e foi honrada** (os 8 índices ficaram onde estavam). A primeira foi
-   MEDIDA em vez de assumida (`ph2d-vec-scene/tests/which_shapes_close.rs`): das 47 formas do `cook()`,
+   MEDIDA em vez de assumida (`ph2d-vec-scene/tests/it/which_shapes_close.rs`): das 47 formas do `cook()`,
    **42 fecham** e **5 não** — e a cerca nomeava só duas delas. As cinco são **Spiral · Line · Arc ·
    NoteBracket · Brace**; as outras três estavam na mesma classe sem ninguém ter olhado. ⚠️ E o fato que a
    §7.3 mandava conferir resolveu a favor: **`Pie` FECHA** (`verts=4`), então pizza/rosquinha/anel são

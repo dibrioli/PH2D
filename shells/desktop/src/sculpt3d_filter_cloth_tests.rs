@@ -42,7 +42,7 @@ fn scene(device: &wgpu::Device, verb: Verb) -> Sculpt3dScene {
 ///
 /// ⚠️ **A diferença foi medida contra o oráculo e vale `65×`**: apertar para o
 /// ponto solto onde o raio bateu dá erro `0,696942` na bancada
-/// (`ph2d-cloth/tests/oraculo_do_filtro.rs`); para o vértice, `0,010755`. ⛔ E
+/// (`ph2d-cloth/tests/it/oraculo_do_filtro.rs`); para o vértice, `0,010755`. ⛔ E
 /// nenhum gate da LEI a via: a bancada corre sobre fixtures, e quem escolhe o
 /// ponto no produto é esta função. *Um gate que mede a lei é cego a quem lhe
 /// entrega os argumentos.*

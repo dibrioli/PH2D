@@ -2289,7 +2289,7 @@ novo.** Detector: `grep -rlnE '\.(cc|cpp|c|h|hh|hpp):[0-9]+' --include='*.rs' cr
 | 1 | `crates/ph2d-editor-core/src/ids/chrome/sculpt3d.rs` | 301,302 | **(a)** ⛔ alvo restrito (GPL) | só endereço |
 | 2 | `crates/ph2d-editor-core/src/paint.rs` | 247 | (b) permissivo — FICA | só endereço |
 | 3 | `crates/ph2d-editor-core/src/widget/list_rows/selection.rs` | 11 | (b) permissivo — FICA | só endereço |
-| 4 | `crates/ph2d-editor-core/tests/a_list_is_not_a_form.rs` | 29 | (b) permissivo — FICA | só endereço |
+| 4 | `crates/ph2d-editor-core/tests/it/a_list_is_not_a_form.rs` | 29 | (b) permissivo — FICA | só endereço |
 | 5 | `crates/ph2d-flip-render/src/pipeline.rs` | 428 | **(a)** ⛔ alvo restrito (GPL) | ⛔ **COM EXPRESSÃO** @ 428 |
 | 6 | `crates/ph2d-flip-reshape/src/brushes.rs` | 20,243 | **(a)** ⛔ alvo restrito (GPL) | só endereço |
 | 7 | `crates/ph2d-flip-reshape/src/lib.rs` | 154,192 | **(a)** ⛔ alvo restrito (GPL) | ⛔ **COM EXPRESSÃO** @ 154 |
@@ -2336,10 +2336,10 @@ novo.** Detector: `grep -rlnE '\.(cc|cpp|c|h|hh|hpp):[0-9]+' --include='*.rs' cr
 | 48 | `crates/ph2d-sculpt3d/src/verb_mode_tests.rs` | 262,337,370,418,468 | **(a)** ⛔ alvo restrito (GPL) | só endereço |
 | 49 | `crates/ph2d-sculpt3d/src/verb_strip_law_tests.rs` | 296 | **(a)** ⛔ alvo restrito (GPL) | só endereço |
 | 50 | `crates/ph2d-sculpt3d/src/verb_thumb_tests.rs` | 242 | **(a)** ⛔ alvo restrito (GPL) | só endereço |
-| 51 | `crates/ph2d-sculpt3d/tests/measure_layer_front_face.rs` | 13,31 | **(a)** ⛔ alvo restrito (GPL) | ⛔ **COM EXPRESSÃO** @ 13,31 |
-| 52 | `crates/ph2d-sculpt3d/tests/measure_layer_law.rs` | 284 | **(a)** ⛔ alvo restrito (GPL) | só endereço |
-| 53 | `crates/ph2d-sculpt3d/tests/measure_layer_zoom_and_flank.rs` | 22,23 | **(a)** ⛔ alvo restrito (GPL) | ⛔ **COM EXPRESSÃO** @ 22,23 |
-| 54 | `crates/ph2d-sculpt3d/tests/measure_raycast_feedback.rs` | 14,16,17 | **(a)** ⛔ alvo restrito (GPL) | ⛔ **COM EXPRESSÃO** @ 14 |
+| 51 | `crates/ph2d-sculpt3d/tests/it/measure_layer_front_face.rs` | 13,31 | **(a)** ⛔ alvo restrito (GPL) | ⛔ **COM EXPRESSÃO** @ 13,31 |
+| 52 | `crates/ph2d-sculpt3d/tests/it/measure_layer_law.rs` | 284 | **(a)** ⛔ alvo restrito (GPL) | só endereço |
+| 53 | `crates/ph2d-sculpt3d/tests/it/measure_layer_zoom_and_flank.rs` | 22,23 | **(a)** ⛔ alvo restrito (GPL) | ⛔ **COM EXPRESSÃO** @ 22,23 |
+| 54 | `crates/ph2d-sculpt3d/tests/it/measure_raycast_feedback.rs` | 14,16,17 | **(a)** ⛔ alvo restrito (GPL) | ⛔ **COM EXPRESSÃO** @ 14 |
 | 55 | `crates/ph2d-tokens/src/slider_style.rs` | 108 | (b) permissivo — FICA | só endereço |
 | 56 | `crates/ph2d-tokens/src/spacing.rs` | 164,178,210,229,271 | (b) permissivo — FICA | só endereço |
 | 57 | `crates/ph2d-tokens/src/visuals.rs` | 128 | (b) permissivo — FICA | só endereço |
@@ -2349,7 +2349,7 @@ novo.** Detector: `grep -rlnE '\.(cc|cpp|c|h|hh|hpp):[0-9]+' --include='*.rs' cr
 | 61 | `shells/desktop/src/sculpt3d_input.rs` | 271,311 | **(a)** ⛔ alvo restrito (GPL) | só endereço |
 | 62 | `shells/desktop/src/sculpt3d_rulers.rs` | 96 | **(a)** ⛔ alvo restrito (GPL) | só endereço |
 | 63 | `shells/desktop/src/sculpt3d_space_tests.rs` | 129,130,140 | **(a)** ⛔ alvo restrito (GPL) | ⛔ **COM EXPRESSÃO** @ 129,130,140 |
-| 64 | `shells/desktop/tests/the_sculpt_gesture_is_wired.rs` | 353,372,958 | **(a)** ⛔ alvo restrito (GPL) | ⛔ **COM EXPRESSÃO** @ 958 · ⚠️ endereço dentro de `assert!` @ 372 |
+| 64 | `shells/desktop/tests/it/the_sculpt_gesture_is_wired.rs` | 353,372,958 | **(a)** ⛔ alvo restrito (GPL) | ⛔ **COM EXPRESSÃO** @ 958 · ⚠️ endereço dentro de `assert!` @ 372 |
 
 **Totais: 64 ficheiros · (a) 57 · (b) 7 · (c) falso positivo **0** · com transcrição: 29.**
 

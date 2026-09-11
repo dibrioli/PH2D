@@ -81,7 +81,7 @@ Postcard formato: v3 → bytes `[0u32, ...source bytes...]`; v4 → bytes `[1u32
 
 ## 10.4 Back-compat com `#[serde(default = "fn")]`
 
-> **⚠️ SUPERSEDED por [ADR-0070-amendment-2](../architecture/decisions/0070-amendment-2.md) §3 (ratificado 2026-05-28 em W0).** A "Decisão híbrida pós-audit" abaixo está empiricamente FALSIFICADA: postcard 1.1.3 rejeita trailing-missing fields com `Error::DeserializeUnexpectedEnd` (test pin: `crates/ph2d-render/tests/sprite_versioned_postcard.rs::postcard_rejects_trailing_serde_default_on_short_payload`). `#[serde(default = "fn")]` é **dead** sob postcard (não-self-describing positional format). O wrapper enum (§10.3) é caminho ÚNICO de back-compat; o migrator W1.T1.6 é **mandatório** (não fallback). Mantenha as anotações `#[serde(default)]` em v4 fields como documentário/aspiracional para hypothetical self-describing format swap futuro (JSON debug bridge), mas NUNCA as use como tier de back-compat.
+> **⚠️ SUPERSEDED por [ADR-0070-amendment-2](../architecture/decisions/0070-amendment-2.md) §3 (ratificado 2026-05-28 em W0).** A "Decisão híbrida pós-audit" abaixo está empiricamente FALSIFICADA: postcard 1.1.3 rejeita trailing-missing fields com `Error::DeserializeUnexpectedEnd` (test pin: `crates/ph2d-render/tests/it/sprite_versioned_postcard.rs::postcard_rejects_trailing_serde_default_on_short_payload`). `#[serde(default = "fn")]` é **dead** sob postcard (não-self-describing positional format). O wrapper enum (§10.3) é caminho ÚNICO de back-compat; o migrator W1.T1.6 é **mandatório** (não fallback). Mantenha as anotações `#[serde(default)]` em v4 fields como documentário/aspiracional para hypothetical self-describing format swap futuro (JSON debug bridge), mas NUNCA as use como tier de back-compat.
 
 Alternativa LEVE ao migrator explícito (HISTÓRICO; não usar): cada campo novo em v4 tem `#[serde(default = "fn")]`. Postcard v3 deserializa em `SpriteV4` direto, com defaults benignos preenchendo os ausentes.
 
@@ -136,7 +136,7 @@ pub struct Sprite {
 **Decisão híbrida pós-audit (HISTÓRICA — SUPERSEDED):**
 - ~~**PRIMARY:** wrapper enum `SpriteVersioned` (§10.3) para carregamento de v3 legacy.~~ → agora **SOLE**.
 - ~~**DEFESA-EM-PROFUNDIDADE:** `#[serde(default = "fn")]` em campos novos como fallback caso versioned path falhe em corner case.~~ → **EMPIRICAMENTE FALSO** sob postcard (W0.T0.13 pin); manter as anotações é documentário apenas, NÃO tier funcional.
-- **EMPIRICAL VALIDATION (W0.T0.13) EXECUTADA 2026-05-28:** postcard retorna `Error::DeserializeUnexpectedEnd` em trailing-missing; vide [ADR-0070-amendment-2](../architecture/decisions/0070-amendment-2.md) §2 + `crates/ph2d-render/tests/sprite_versioned_postcard.rs`.
+- **EMPIRICAL VALIDATION (W0.T0.13) EXECUTADA 2026-05-28:** postcard retorna `Error::DeserializeUnexpectedEnd` em trailing-missing; vide [ADR-0070-amendment-2](../architecture/decisions/0070-amendment-2.md) §2 + `crates/ph2d-render/tests/it/sprite_versioned_postcard.rs`.
 
 **Decisão pós-amendment-2 (LIVE):** wrapper enum `SpriteVersioned` (§10.3) é caminho único; migrator W1.T1.6 é mandatório (não fallback).
 
@@ -200,7 +200,7 @@ Trade-off: branch no extract phase. Bench em W2 decide. ADR-0070 documenta a dec
 
 **Geração CRITICAL em W0.T0.12** (NÃO em W1) — antes de qualquer mudança no `Sprite` struct. Sem isso, fixtures pós-bump viram tautologia (v3 forjado pelo migrator reverso, não v3 original).
 
-Em `crates/ph2d-render/tests/migrate_sprite_v3_to_v4.rs` (a criar em W0.T0.12, NÃO W1):
+Em `crates/ph2d-render/tests/it/migrate_sprite_v3_to_v4.rs` (a criar em W0.T0.12, NÃO W1):
 
 ```rust
 #[test]

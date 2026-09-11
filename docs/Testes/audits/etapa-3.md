@@ -9,7 +9,7 @@
 
 ### [C1] Allowlist gate #2 com 5 entries fantasma (pre-permissão)
 
-`shells/desktop/tests/architecture_no_downcast_to_concrete_tool_in_shell.rs:62-68` listava 5 arquivos `hero_intents/image_edit/*.rs` que **NÃO contêm downcasts reais**. `grep -c "downcast_" ...` retornava 0 pra todos. Allowlist pré-concedendo permissão futura é exato oposto da disciplina que o gate enforça.
+`shells/desktop/tests/it/architecture_no_downcast_to_concrete_tool_in_shell.rs:62-68` listava 5 arquivos `hero_intents/image_edit/*.rs` que **NÃO contêm downcasts reais**. `grep -c "downcast_" ...` retornava 0 pra todos. Allowlist pré-concedendo permissão futura é exato oposto da disciplina que o gate enforça.
 
 **Fix:** Removidos os 5 entries fantasma. Allowlist agora só tem entries com downcasts reais (6: eyedropper, protect_brush, bgremoval_preview, color_equalization_bridge, upscale_bridge, padding_bridge, equalize_sizes_bridge, image_edit.rs).
 
@@ -17,7 +17,7 @@
 
 ### [C2] Baseline gate #1 = 20 com 4 unidades de folga "achatada"
 
-`shells/desktop/tests/architecture_no_per_tool_branch_in_render_loop.rs:70` definia `BASELINE_MENTIONS: usize = 20` mas count real era 16. Gate "warns if count GROWS" não cumpre o propósito se há folga > 0.
+`shells/desktop/tests/it/architecture_no_per_tool_branch_in_render_loop.rs:70` definia `BASELINE_MENTIONS: usize = 20` mas count real era 16. Gate "warns if count GROWS" não cumpre o propósito se há folga > 0.
 
 **Fix:** Snapped `BASELINE_MENTIONS = 16`. Gate agora falha em qualquer adição. Bumping down em Etapas 4-7 é encouraged.
 

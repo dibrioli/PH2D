@@ -51,7 +51,7 @@ os explica»* sobrevive, com uma ordem de grandeza menos margem. ⇒ INBOX **Q19
 ⭐⭐⭐ **E a fila deixou de ser ordenada pelo TAMANHO do erro** (06/09, 3.ª sessão). O tamanho não diz
 se falta lei: Gauss–Seidel não comuta, e parte do resíduo de alguns traços vive num regime em que a
 **ordem** de resolução decide tanto quanto a lei (a família do §5.2-ter, provada no aperto). A sonda
-[`sonda_do_chao_de_ruido`](../../../crates/ph2d-cloth/tests/oraculo_do_pincel.rs) corre cada traço
+[`sonda_do_chao_de_ruido`](../../../crates/ph2d-cloth/tests/it/oraculo_do_pincel.rs) corre cada traço
 nas **duas** ordens e devolve o resíduo **em unidades do que uma ordem errada custa** — e essa razão
 **inverte a fila que este plano tinha**:
 

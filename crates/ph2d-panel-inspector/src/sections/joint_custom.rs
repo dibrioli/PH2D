@@ -177,7 +177,7 @@ mod tests {
     ///
     /// ⚠️ **Esta é a SEGUNDA afirmação da mesma lei** — a primeira é
     /// `PhysicsJoint::motor_in_metres`, gateada em
-    /// `ph2d-physics-ecs/tests/joint_custom_unit.rs`. O painel é loose-coupled
+    /// `ph2d-physics-ecs/tests/it/joint_custom_unit.rs`. O painel é loose-coupled
     /// com o motor (a convenção de toda seção irmã), então ele não pode
     /// PERGUNTAR; o que o mantém honesto é as duas terem gate, e este arquivo
     /// nomear a outra.

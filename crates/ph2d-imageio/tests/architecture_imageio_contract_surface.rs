@@ -23,7 +23,7 @@
 /// Count `fn ` declarations inside the body of `trait_decl` (up to its
 /// first closing `\n}`). Doc-comment lines (`///`) are skipped so prose
 /// containing `fn` does not inflate the count. Copy of the helper from
-/// `ph2d-editor-core/tests/architecture_tool_contract_surface.rs`.
+/// `ph2d-editor-core/tests/it/architecture_tool_contract_surface.rs`.
 fn trait_method_count(src: &str, trait_decl: &str) -> usize {
     let start = src
         .find(trait_decl)

@@ -28,7 +28,7 @@ artista vê e conclui que agiu; este ele não vê e conclui que **a funcionalida
 **How to apply:**
 - ⭐⭐ **Quem TROCA uma superfície de UI deixa atrás um gate que mede o REALOJAMENTO por rows, não
   por prosa.** Cura de 04/09:
-  `ph2d-editor-core/tests/the_bar_relocated_every_row_of_the_menus_it_replaced.rs` — parte dos
+  `ph2d-editor-core/tests/it/the_bar_relocated_every_row_of_the_menus_it_replaced.rs` — parte dos
   títulos da barra, **carrega em cada linha** e segue as cascatas reais (⛔ nunca uma tabela
   `row → submenu` escrita à mão: já existem duas no produto e uma terceira divergiria em silêncio),
   e exige que toda row de [`LEGACY_PILL_MENUS`] caia nesse fecho.

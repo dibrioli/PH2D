@@ -15,7 +15,7 @@ Editor ganhou os seus. Escrevi então o mesmo gate para o outro lado — o **mix
 de um jogo**, que é o que a linha "Audio buffers" da §12.1 (30 MB no iPad, 80 MB no desktop) sempre
 descreveu.
 
-Ele nasceu **vermelho** (`crates/ph2d-audio/tests/the_mixer_fits_its_budget.rs`):
+Ele nasceu **vermelho** (`crates/ph2d-audio/tests/it/the_mixer_fits_its_budget.rs`):
 
 ```
 one 3-minute stereo track, decoded: 65,9 MB

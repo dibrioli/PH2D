@@ -54,9 +54,9 @@ outras linhas do lock são arestas internas). Se o lock conflituar, **regenere**
 | ficheiro | linhas | o quê | risco |
 |---|---:|---|---|
 | `ph2d-editor-core/src/screens/task_layout.rs` | +9 −1 | o layout `Nodes` passa a **nomear `"inspector"`** | ⚠️ **quem mexer nos layouts colide**; a linha é obrigatória (ver §5.2) |
-| `shells/desktop/tests/a_layout_never_commands_a_panel_a_bridge_owns.rs` | +8 −1 | o controlo perde `"motion"` | ⚠️ é o gate que **obriga** à linha acima |
-| `ph2d-editor-core/tests/hr12_widgets_a11y.rs` | +14 | isenção do `paint_card.rs` | ⛔ vermelho **pré-existente de 06/09** |
-| `ph2d-editor-core/tests/architecture_motion_chrome_never_wraps_a_row_label.rs` | +10 −1 | a crate nova entra no `SCANNED_CRATES` | a lei segue o código |
+| `shells/desktop/tests/it/a_layout_never_commands_a_panel_a_bridge_owns.rs` | +8 −1 | o controlo perde `"motion"` | ⚠️ é o gate que **obriga** à linha acima |
+| `ph2d-editor-core/tests/it/hr12_widgets_a11y.rs` | +14 | isenção do `paint_card.rs` | ⛔ vermelho **pré-existente de 06/09** |
+| `ph2d-editor-core/tests/it/architecture_motion_chrome_never_wraps_a_row_label.rs` | +10 −1 | a crate nova entra no `SCANNED_CRATES` | a lei segue o código |
 | `ph2d-editor-core/src/text_elide.rs` | +75 | `title_elided_width` (a largura no peso em que se PINTA) | append-only |
 | `ph2d-editor-core/src/paint_shapes.rs` | +25 | `fill_polygon` | append-only |
 | `ph2d-editor-core/src/interaction/types.rs` | +9 | um campo no `GraphGesture` | ⚠️ tipo partilhado |
@@ -64,7 +64,7 @@ outras linhas do lock são arestas internas). Se o lock conflituar, **regenere**
 | `ph2d-motion-region/src/lib.rs` | +11 | o doc/`#[must_use]` do `is_rect` (cura de 06/09) | trivial |
 | `shells/desktop/src/main.rs` | +6 | registo das duas sondas novas | ⚠️ **ficheiro-hub** |
 | `scripts/tutorial-pdf.sh` | +66 | a ferramenta do PDF | novo |
-| `ph2d-node-registry-init/tests/spring_ceiling.rs` | ver §5.3 | o gate mudou de canto | ⚠️ o gate **já estava no main** |
+| `ph2d-node-registry-init/tests/it/spring_ceiling.rs` | ver §5.3 | o gate mudou de canto | ⚠️ o gate **já estava no main** |
 
 ---
 

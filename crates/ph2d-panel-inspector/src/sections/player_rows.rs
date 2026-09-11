@@ -405,7 +405,7 @@ const GLIDE_ROWS: [PlayerRow; 1] = [(
 /// autorar*. Juntá-los pediria que ele descobrisse a diferença lendo a dica.
 ///
 /// ⚠️ **Sem teto no valor DIGITÁVEL, e o §0 é o motivo:** medido pela porta do
-/// produto (`ph2d-physics-ecs/tests/measure_terminal.rs`), uma queda livre de
+/// produto (`ph2d-physics-ecs/tests/it/measure_terminal.rs`), uma queda livre de
 /// mil metros chega a **142,57 m/s aos 8 s** e continua a crescer — o número
 /// que a faixa do slider tem de conseguir descrever é o da MEDIÇÃO, não um
 /// redondo confortável.

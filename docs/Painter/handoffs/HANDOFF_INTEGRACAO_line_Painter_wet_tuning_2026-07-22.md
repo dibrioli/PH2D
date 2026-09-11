@@ -51,11 +51,11 @@
 | `ph2d-editor-core/src/widget/scrollbar.rs` + `widget/mod.rs` | `WET_TUNING_SCROLLBAR_ID = NodeId(837)` — **próximo livre: 838** |
 | `ph2d-editor-core/src/interaction/dispatch/scroll.rs` | braço 837 → `WET_TUNING_PANEL` no `scrollbar_panel_for_id` |
 | `ph2d-editor-core/src/screens/hero/paint.rs` | `WET_TUNING_PANEL` na fallback de z-order |
-| `ph2d-editor-core/tests/hr12_widgets_a11y.rs` | entrada `PANEL_A11Y_DELEGATE_OK` p/ `paint_wetpaint_tilt.rs` (classe do `paint_shape_dab.rs`) |
+| `ph2d-editor-core/tests/it/hr12_widgets_a11y.rs` | entrada `PANEL_A11Y_DELEGATE_OK` p/ `paint_wetpaint_tilt.rs` (classe do `paint_shape_dab.rs`) |
 | `ph2d-i18n/src/lib.rs` | +51 chaves `panel.wet_tuning.*` (título, 6 grupos, 40 knobs, K–M, nota) |
 | `ph2d-panel-registry-init` | via `ph2d-panel-sync` (gerado) + `EXPECTED_TYPED` +1 (braço `panel-wet-tuning`) |
 | `shells/desktop/Cargo.toml` | dep `ph2d-panel-wet-tuning` + `default` + feature `panel-wet-tuning` (a lição do physics: registry-init tem `default-features=false`) |
-| `shells/desktop/tests/every_panel_the_shell_drives_is_in_its_registry.rs` | row `("wet_tuning", "panel-wet-tuning")` |
+| `shells/desktop/tests/it/every_panel_the_shell_drives_is_in_its_registry.rs` | row `("wet_tuning", "panel-wet-tuning")` |
 | `shells/desktop/src/forwarding.rs` | `WET_TUNING_PANEL` no `cursor_over_hero_panel` (wheel intercept) |
 | `shells/desktop/src/render_loop/painter_bridge.rs` | publish do snapshot + espelho de visibilidade (`tuning_open`; OFF escrito FORA do downcast) + z-bump no edge |
 | `ph2d-wet-paint` (engine) | portas ADITIVAS: `dispatch_pressure_dab_lane_blend` · `dispatch_pressure_dab_tool` (prev explícito) · `render_pigment_region_visual` (+`PigmentVisual`; `render_pigment_only_region` delega, off byte-idêntico) · `wet_canvas_now`/`dry_canvas_now`/`fast_dry_now` (sem `capture_history` — o clone de grid por aperto seria a doença do ADR-0117) · `tilt_dir_for_spoke` (cardinais EXATOS) · `knob_defaults()` const · `Tuning::default` delega |
@@ -96,7 +96,7 @@ invariante em vez de estabelecê-lo).
 pronta*) e ficou **fora de escopo**: hoje ele e o Paint Mode mostram os dois a palavra
 "Watercolor", o que é adjacência a decidir com o Enio — fundir, renomear, ou deixar.
 
-**Gates:** `ph2d-panel-painter-layers/tests/seam_paint_media.rs` (3, dirigidos por **ponteiro
+**Gates:** `ph2d-panel-painter-layers/tests/it/seam_paint_media.rs` (3, dirigidos por **ponteiro
 real**: abre o chip, repinta, clica a opção) + `tool/paint/media/tests.rs` (6). **7 mutações, 7
 sangram**; 1 sobrevivente **documentado** (o registro em `populate` é redundante —
 `paint_dropdown_chip` já faz `register_if_absent`; a entrada fica pelo `wiring_parity`).
@@ -138,7 +138,7 @@ por-slot) — a forma exata que deixa um meio apodrecer sozinho. `set_paint_medi
 ferramenta ANTES de armar o meio**.
 
 **Gates:** `tool::documents::rebind_tests` (o repro, com 1 e 2 camadas — a 2ª derrota o
-`doc_is_disposable`) + `shells/desktop/tests/the_painter_asks_the_tool_whether_it_needs_a_document.rs`
+`doc_is_disposable`) + `shells/desktop/tests/it/the_painter_asks_the_tool_whether_it_needs_a_document.rs`
 (2 arch-gates: a decisão pergunta ao tool · a limpeza do memo está **fora** do ramo do bake) + 2 de
 modelo (`the_painter_opens_on_the_plain_digital_brush`, `picking_a_medium_while_holding_a_rail_tool_arms_it`).
 **5 mutações, 5 sangram.**
@@ -165,7 +165,7 @@ Fix: os smokes dão o canvas e abrem em **Digital**; o artista escolhe o meio no
   (dropado); a **cor** é sincada entre todos os slots (`sync_brush_color_across_modes`), então o azul
   chega na água de graça. **Nenhuma API nova.**
 
-**Gate:** `shells/desktop/tests/the_smokes_open_the_painter_in_digital.rs` (a decisão é env-gated ⇒
+**Gate:** `shells/desktop/tests/it/the_smokes_open_the_painter_in_digital.rs` (a decisão é env-gated ⇒
 nenhum unit test a alcança) — lê a fonte dos 2 smokes e recusa `set_paint_media(PaintMedia::<não-
 Digital>)` + controle positivo. 1 mutação, sangra.
 

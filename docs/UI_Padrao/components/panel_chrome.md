@@ -4,7 +4,7 @@
 **Aplica a:** todo painel flutuante (`ph2d-panel-*` + showcase). Sem exceção.
 **Fontes vivas:** [Widget Gallery](../../../crates/ph2d-panel-widget-gallery/), [Inspector](../../../crates/ph2d-panel-inspector/), [Hierarchy](../../../crates/ph2d-panel-hierarchy/) — todas devem se comportar igual ao descrito aqui.
 **Implementação canônica:** [`crates/ph2d-editor-core/src/widget/panel_chrome.rs`](../../../crates/ph2d-editor-core/src/widget/panel_chrome.rs).
-**Gates:** [`architecture_panel_loc_cap`](../../../crates/ph2d-editor-core/tests/architecture_panel_loc_cap.rs).
+**Gates:** [`architecture_panel_loc_cap`](../../../crates/ph2d-editor-core/tests/it/architecture_panel_loc_cap.rs).
 
 ---
 

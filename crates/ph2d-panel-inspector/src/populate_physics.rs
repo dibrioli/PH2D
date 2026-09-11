@@ -109,7 +109,7 @@ pub(super) fn populate_joint(store: &mut WidgetStore) {
         (ids::INSP_JOINT_AXIS_MIN[2], -45.0, -3600.0, 3600.0, 1.0), // LITERAL-PX-OK: degrees
         (ids::INSP_JOINT_AXIS_MAX[2], 45.0, -3600.0, 3600.0, 1.0),  // LITERAL-PX-OK: degrees
         // Break thresholds (W-J7). The seed and the span come off the MEASURED
-        // scale (`ph2d-physics/tests/measure_joint_break.rs`): a hanging weight
+        // scale (`ph2d-physics/tests/it/measure_joint_break.rs`): a hanging weight
         // reads its own weight exactly, so 100 N is "it holds about ten kilos"
         // and 10 kN is a joint nothing in a scene will reach by accident. Never
         // negative — a negative threshold is crossed by every load, so the joint

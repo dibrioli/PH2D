@@ -5,8 +5,8 @@
 //!
 //! ⚠️ **E os gates aqui julgam a CENA, não a lei.** A lei tem os dela
 //! (`ph2d-platformer::kinematic_tests`), a consulta tem os dela
-//! (`ph2d-physics/tests/buoyed_query.rs`) e o produto tem os dele
-//! (`ph2d-physics-ecs/tests/player_in_water.rs`). O que só esta cena pode
+//! (`ph2d-physics/tests/it/buoyed_query.rs`) e o produto tem os dele
+//! (`ph2d-physics-ecs/tests/it/player_in_water.rs`). O que só esta cena pode
 //! afirmar é que **os três corpos que ela monta são de facto comparáveis** — se
 //! eles diferirem em forma, densidade ou altura de largada, o artista olha para
 //! uma diferença que não é a que a wave produziu.

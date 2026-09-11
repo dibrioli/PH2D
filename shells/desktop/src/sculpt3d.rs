@@ -413,7 +413,7 @@ pub(crate) struct Sculpt3dScene {
     /// razão de ele existir é que um `Grip::Hold` faz **um dab por EVENTO de
     /// ponteiro**: a ~1000 Hz de mouse e 60 fps são ~16 dabs por quadro, e o
     /// dab do `l-mode` custa 1,05 ms num pincel de 10 % (medido em
-    /// `ph2d-sculpt3d/tests/measure_field_cost.rs`).
+    /// `ph2d-sculpt3d/tests/it/measure_field_cost.rs`).
     ///
     /// ⚠️ **Descartar os intermediários é BYTE-IDÊNTICO, e isso é MEDIDO, não
     /// suposto** (`measure_what_coalescing_a_hold_gesture_changes`): 16 eventos

@@ -32,7 +32,7 @@
 //! o `painter_layers` e companhia vêm **com a ferramenta**; nomeá-los aqui era decoração que o
 //! quadro seguinte reescrevia. O que sobra — a hierarquia, a linha do tempo, o painel do
 //! modelador — é o que o layout de facto arruma. O gate que defende a fronteira vive em
-//! `shells/desktop/tests/a_layout_never_commands_a_panel_a_bridge_owns.rs`, porque o censo de quem
+//! `shells/desktop/tests/it/a_layout_never_commands_a_panel_a_bridge_owns.rs`, porque o censo de quem
 //! é da ferramenta só existe nas pontes.
 //!
 //! # ⛔ DOIS dos oito não existem, e o bloqueador é de outra pessoa

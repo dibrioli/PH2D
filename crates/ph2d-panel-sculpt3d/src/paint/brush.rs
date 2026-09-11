@@ -107,7 +107,7 @@ pub(super) fn paint_brush_tail(
     // casos **este selector nao molda nada**.
     //
     // ⭐ **E a inercia deixou de ser uma AFIRMACAO e passou a ser MEDIDA**, pela porta do produto:
-    // `ph2d-sculpt3d/tests/measure_where_the_curve_knobs_reach.rs` roda o MESMO gesto com duas
+    // `ph2d-sculpt3d/tests/it/measure_where_the_curve_knobs_reach.rs` roda o MESMO gesto com duas
     // curvas e compara o barro (e o canal) **ao bit** nos tres regimes, com o controle positivo do
     // `Verb::Draw` ao lado. *Um comentario que diz «isto e' inerte» envelhece calado; um gate que o
     // mede sangra no dia em que deixar de ser verdade.*

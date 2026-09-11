@@ -110,7 +110,7 @@ Raiz: `~/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs-0.18.1/sr
 - `:139-180` `canonicalize`: chave = concatenação `(type_id LE, bytes)` de cada componente; `sort_by` sobre a chave; `row.parent` remapeado por `new_index`. Empate entre linhas byte-idênticas fica arbitrário — e como o `parent` dos filhos aponta para UMA das gêmeas, duas entidades idênticas com filhos diferentes não são de facto intercambiáveis [INF]; hoje raro porque `Name` é único no editor (`name_unique.rs`), mas entidades sem `Name` podem existir.
 - `:74-78` captura = `world_to_snapshot` + `canonicalize` a cada frame com input; `:404` `undo_baseline == current` é `PartialEq` do `ProjectState` inteiro (ordem do `Vec` importa); `:109-117` restore despawna `With<Transform>` e respawna tudo (bits novos ⇒ `rebuild_map` `:120-121`).
 
-Outros consumidores do índice/ordem: `crates/ph2d-ecs/src/scene/spawn.rs:78-102` (`spawn_prefab` recursivo, filhos após pai) e `:110-135` (`spawn_scene`: `relations` por índice em `instances`) — código morto em produção. `crates/ph2d-ecs/src/scene/snapshot.rs:149-203` (`HierarchySnapshot`, DFS por `(RootOrder, to_bits)`) é estrutura **separada**, só para o painel. Grep por `.entities`/`row.parent` fora desses: **zero** outros sítios. Testes que dependem do round-trip: `save.rs:265-352`, `crates/ph2d-ecs/tests/end_to_end_m14.rs:92-106`, `crates/ph2d-physics-ecs/tests/persistence.rs:104-107`, `joint_persistence.rs:57,107,173`, `shells/desktop/src/project_tests.rs`, `shells/desktop/tests/the_ui_state_machines_run_and_undo_waits.rs:89` (gate por grep do texto `capture_project`).
+Outros consumidores do índice/ordem: `crates/ph2d-ecs/src/scene/spawn.rs:78-102` (`spawn_prefab` recursivo, filhos após pai) e `:110-135` (`spawn_scene`: `relations` por índice em `instances`) — código morto em produção. `crates/ph2d-ecs/src/scene/snapshot.rs:149-203` (`HierarchySnapshot`, DFS por `(RootOrder, to_bits)`) é estrutura **separada**, só para o painel. Grep por `.entities`/`row.parent` fora desses: **zero** outros sítios. Testes que dependem do round-trip: `save.rs:265-352`, `crates/ph2d-ecs/tests/it/end_to_end_m14.rs:92-106`, `crates/ph2d-physics-ecs/tests/it/persistence.rs:104-107`, `joint_persistence.rs:57,107,173`, `shells/desktop/src/project_tests.rs`, `shells/desktop/tests/it/the_ui_state_machines_run_and_undo_waits.rs:89` (gate por grep do texto `capture_project`).
 
 Versões: `WorldSnapshot::VERSION = 1` (`save.rs:53`, nunca bumpado); `PROJECT_SCHEMA = 84`, load **recusa** `!=` (`shells/desktop/src/project_load.rs:46`). Trocar `parent: Option<u32>` por `parent: StableId` é bump dos dois.
 
@@ -136,7 +136,7 @@ Definição: `crates/ph2d-ecs/src/name.rs:80-89` (FNV-1a, `0` reservado ⇒ `1`)
 
 ### (6) Benches de `capture_project` / `world_to_snapshot`
 
-**Não existe nenhum.** [CODE] `[[bench]]` só em `crates/ph2d-input/Cargo.toml:21`, `crates/ph2d-render/Cargo.toml:93` e `tests/spike/Cargo.toml:90` (`c2_query.rs` = Luau vs Rust, criterion 0.7). `scripts/` não menciona captura/snapshot. A única sonda de relógio vizinha é `crates/ph2d-ecs/tests/nesting_sorts_as_a_block.rs:246` (`#[ignore]`, custo do `SortingGroup`, não da captura). Os 6,89 ms do doc 01 §7 vêm do spike apagado. ⚠️ `capture_project` é inalcançável headless (`gfx == None ⇒ None`, `shells/desktop/src/project_tests.rs:216`) e `canonicalize` é privado na shell ⇒ o bench tem de mirar `world_to_snapshot + canonicalize` em `crates/ph2d-ecs` (mover `canonicalize` para lá).
+**Não existe nenhum.** [CODE] `[[bench]]` só em `crates/ph2d-input/Cargo.toml:21`, `crates/ph2d-render/Cargo.toml:93` e `tests/spike/Cargo.toml:90` (`c2_query.rs` = Luau vs Rust, criterion 0.7). `scripts/` não menciona captura/snapshot. A única sonda de relógio vizinha é `crates/ph2d-ecs/tests/it/nesting_sorts_as_a_block.rs:246` (`#[ignore]`, custo do `SortingGroup`, não da captura). Os 6,89 ms do doc 01 §7 vêm do spike apagado. ⚠️ `capture_project` é inalcançável headless (`gfx == None ⇒ None`, `shells/desktop/src/project_tests.rs:216`) e `canonicalize` é privado na shell ⇒ o bench tem de mirar `world_to_snapshot + canonicalize` em `crates/ph2d-ecs` (mover `canonicalize` para lá).
 
 ---
 
@@ -189,7 +189,7 @@ Definição: `crates/ph2d-ecs/src/name.rs:80-89` (FNV-1a, `0` reservado ⇒ `1`)
 - /home/enio/Documentos/Projetos/PH2D/crates/ph2d-timeline/src/frame_solve.rs
 - /home/enio/Documentos/Projetos/PH2D/tests/spike/benches/c2_query.rs
 - /home/enio/Documentos/Projetos/PH2D/tests/spike/Cargo.toml
-- /home/enio/Documentos/Projetos/PH2D/crates/ph2d-ecs/tests/nesting_sorts_as_a_block.rs
+- /home/enio/Documentos/Projetos/PH2D/crates/ph2d-ecs/tests/it/nesting_sorts_as_a_block.rs
 - /home/enio/Documentos/Projetos/PH2D/docs/Components/01_auditoria_modelo_de_objeto.md
 - /home/enio/Documentos/Projetos/PH2D/docs/Components/04_decisao_arquitetura.md
 - /home/enio/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs-0.18.1/src/world/mod.rs

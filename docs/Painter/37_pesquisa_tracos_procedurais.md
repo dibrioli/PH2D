@@ -111,7 +111,7 @@ porque lá a espessura é geometria (o contorno da fita de largura variável **�
 ⚠️ **Nós já temos a FEATURE e não temos o DISPOSITIVO — e isso está pinado num teste que roda.**
 `crates/ph2d-painter-brush/src/dynamics.rs` mapeia pressão → raio e pressão → cobertura, com mínimo
 por canal (o default é `size_pressure: true`, `size_min: 0.1`). E
-`shells/desktop/tests/the_desktop_shell_has_no_pen_pressure.rs` demonstra, varrendo a grade inteira
+`shells/desktop/tests/it/the_desktop_shell_has_no_pen_pressure.rs` demonstra, varrendo a grade inteira
 de sliders, que **nenhuma combinação move um pixel**, porque a shell entrega `1.0` literal.
 
 O levantamento daquele gate (2026-07-31) é categórico, e a nota que circulava — *"custa uma

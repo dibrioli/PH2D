@@ -15,7 +15,7 @@ impl Mesh {
     /// BYTES**, e a lição é do ADR-0117: um teto por CONTAGEM é multiplicador,
     /// não limite — a pilha de undo do escultor guarda a malha inteira a cada
     /// remesh, e a 512 isso são **146 MB por entrada** (medido em
-    /// `ph2d-sdf/tests/probe_repeat_remesh.rs`, pela residência do processo).
+    /// `ph2d-sdf/tests/it/probe_repeat_remesh.rs`, pela residência do processo).
     ///
     /// ⚠️ **E a soma dos planos PÚBLICOS não serve**, que é por que este método
     /// mora aqui e não no chamador: posições, normais e faces são ~74 MB dos

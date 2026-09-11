@@ -41,7 +41,7 @@ CLAUDE.md
 - **`scripts/collision-surface.sh`** (commit `b06f08b37`) — a superfície de colisão numa
   chamada. A tabela do §3 abaixo foi produzida por ele; **re-rode-o depois do rebase**, que é
   quando os números da base mudam.
-- **`crates/ph2d-editor-core/tests/architecture_docs_paths_and_smokes_resolve.rs`** (commit
+- **`crates/ph2d-editor-core/tests/it/architecture_docs_paths_and_smokes_resolve.rs`** (commit
   `528cadb7b`) — um gate novo sobre o cânone instrucional. Esta linha edita o `CLAUDE.md`, logo
   **entra no escopo dele**; os caminhos e smokes que a linha cita foram conferidos contra o
   disco (§5).
@@ -57,7 +57,7 @@ CLAUDE.md
 | `shells/desktop/src/motion_state_demo_router.rs` | 2 braços de `match` (`=58`/`=59`) | SIM (lista ordenada) |
 | `shells/desktop/src/render_loop/motion_bridge_params_channel.rs` | os 3 canais de tamanho num braço de unidade só | não-aditivo, **1 braço** |
 | `shells/desktop/src/motion_state_demo_conferencia*.rs` | narração das cenas | SIM |
-| `crates/ph2d-gpu-cook/tests/gpu_cpu_parity.rs` | 3 gates de paridade novos | SIM |
+| `crates/ph2d-gpu-cook/tests/it/gpu_cpu_parity.rs` | 3 gates de paridade novos | SIM |
 | `docs/Motion Nodes/ferramentas/placar_conferencia.py` | a chave da tabela `HAND` passou de nº de linha para TRECHO, + verificação | não-aditivo, **ferramenta de doc** |
 | `CLAUDE.md` | §5 do Motion: 1 linha de estado + 2 de *Aberto* | ⚠️ **colide com a `main`** |
 
@@ -147,7 +147,7 @@ Todo canal novo desta linha é **side-metadata do registry** (`ReadChannel`, `Pa
 - **O gate de docs NOVO da `main`** (`architecture_docs_paths_and_smokes_resolve`) entra em
   cena porque esta linha edita o `CLAUDE.md`. Os caminhos e o smoke que a linha acrescenta
   foram conferidos contra o disco; **re-rode-o depois do rebase**.
-- **LOC:** ⚠️ `crates/ph2d-gpu-cook/tests/gpu_cpu_parity.rs` mede **6 247** linhas, e o
+- **LOC:** ⚠️ `crates/ph2d-gpu-cook/tests/it/gpu_cpu_parity.rs` mede **6 247** linhas, e o
   `collision-surface.sh` o assinala. Ele está **fora do gate por desenho** (o
   `workspace_src_files_under_loc_cap` exclui `**/tests/**`) e era **6 120** no fork — esta
   linha acrescentou 127. Não é um bloqueio; é um número que alguém vai querer atacar.

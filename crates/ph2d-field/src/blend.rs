@@ -13,7 +13,7 @@
 //! | **mordida** | onde fica a silhueta do canto | o orgânico (`1,00×`) · o chanfro **não** (`1,71×`) |
 //!
 //! **Nenhum carácter bate as duas**, e escolher qual calibrar é decisão de produto. Os números saem
-//! de `ph2d-field-eval/tests/the_four_characters.rs`, que é o oráculo delas.
+//! de `ph2d-field-eval/tests/it/the_four_characters.rs`, que é o oráculo delas.
 
 use serde::{Deserialize, Serialize};
 

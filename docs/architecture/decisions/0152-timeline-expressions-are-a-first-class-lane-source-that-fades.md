@@ -21,7 +21,7 @@ Hoje uma expressão é aplicada **depois** que o fade já compôs tudo, e por is
 
 ## 1. Contexto e a força que obriga a decidir
 
-O ADR-0144 pôs a avaliação de expressões num **passe pós-composição separado** (`expr_pass::run`, chamado ao fim do apply), que lê o valor já composto e **sobrescreve** a propriedade (`write_prop`, última-escrita-vence). Essa escolha foi deliberada: manter o `eval_frame`/blend intocado, para o **fade fingerprint** (`crates/ph2d-timeline/tests/fade_fingerprint.rs`, hash cravado `0x69dca8811eb0f8f8`) ficar trivialmente seguro.
+O ADR-0144 pôs a avaliação de expressões num **passe pós-composição separado** (`expr_pass::run`, chamado ao fim do apply), que lê o valor já composto e **sobrescreve** a propriedade (`write_prop`, última-escrita-vence). Essa escolha foi deliberada: manter o `eval_frame`/blend intocado, para o **fade fingerprint** (`crates/ph2d-timeline/tests/it/fade_fingerprint.rs`, hash cravado `0x69dca8811eb0f8f8`) ficar trivialmente seguro.
 
 O preço dessa isolação é **exatamente** a incompatibilidade que o Enio quer eliminar. Sobrescrever fora do blend significa que uma expressão **nunca**:
 - cruza (crossfade) com outra strip — dá última-escrita-vence, não média ponderada;

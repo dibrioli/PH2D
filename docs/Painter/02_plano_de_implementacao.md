@@ -38,7 +38,7 @@ eventos a um tool de teste, com coords de imagem corretas (des-pan/des-zoom) e p
 - Arquivo: `ph2d-editor-core/src/tool.rs`.
 - Add `struct CanvasPointer`, `enum PointerPhase`, `trait CanvasPaintTool { fn on_canvas_pointer(&mut self, ev: CanvasPointer) -> bool; }`.
 - Add ao `trait Tool`: `fn as_canvas_paint_mut(&mut self) -> Option<&mut dyn CanvasPaintTool> { None }`.
-- Bump cap em `ph2d-editor-core/tests/architecture_tool_contract_surface.rs`: `Tool 11→12`, novo `CanvasPaintTool ≤ 1`.
+- Bump cap em `ph2d-editor-core/tests/it/architecture_tool_contract_surface.rs`: `Tool 11→12`, novo `CanvasPaintTool ≤ 1`.
 - Gate: `cargo test -p ph2d-editor-core --test architecture_tool_contract_surface` verde.
 
 ### T0.3 — Roteamento tela→imagem + pressão/tilt (shell + editor-core)

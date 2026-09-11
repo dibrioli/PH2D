@@ -27,7 +27,7 @@
 //!
 //! A W4c.1 deixou a dívida: *o painel de Tokens desenha-se a si mesmo com estes tokens, então um
 //! valor absurdo pode empurrar para fora da tela o botão que o desfaria*. Medido
-//! (`ph2d-panel-tokens/tests/scale_ceiling.rs`): com `spacing.* = 1024 px` o *Reset This Mode*
+//! (`ph2d-panel-tokens/tests/it/scale_ceiling.rs`): com `spacing.* = 1024 px` o *Reset This Mode*
 //! pousa em `y = 2206` numa viewport de 900 — **e a rolagem alcança-o**, em toda a escala testada
 //! até `65536 px`. O escape não é um número, é o corpo rolável que o painel já tem.
 //!

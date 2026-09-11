@@ -732,7 +732,7 @@ empurra todas as `StyleProperty` no parley builder.
 > vectoriais (2026-08-30). ⚠️ **Isto não está provado ser a causa** — o MSAA stippla de forma
 > estável entre quadros, e o report diz *animadas*. O que está provado é que a coupling existia.
 > Registo completo: `docs/Atualizar Stack/04_registro.md` §22.
-> Gate: `ph2d-render/tests/the_pass_aa_is_never_chosen_by_a_text_preference.rs`.
+> Gate: `ph2d-render/tests/it/the_pass_aa_is_never_chosen_by_a_text_preference.rs`.
 >
 > O resto desta secção fica como **história** — ela explica por que a bandeira nasceu.
 

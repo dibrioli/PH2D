@@ -144,7 +144,7 @@ em **animação**, e animação é precisamente o que toca com o solver off.
 `the_transport_toggle_decides_whether_play_steps_the_solver` ·
 `arming_mid_take_resumes_it_does_not_replay_what_was_skipped` ·
 `the_simulation_is_disarmed_by_default` · `a_baked_take_plays_with_the_simulation_disarmed` ·
-os 5 de `ph2d-physics-ecs/tests/hold.rs` · os 2 de `transport_physics_seam.rs` ·
+os 5 de `ph2d-physics-ecs/tests/it/hold.rs` · os 2 de `transport_physics_seam.rs` ·
 `arming_physics_reaches_the_snapshot_the_panel_paints`.
 **12 gates, 13 mutações, 13 sangram.**
 
@@ -288,7 +288,7 @@ Nomeada no tracker, não contrabandeada.
 `a_parented_joint_anchors_where_it_is_drawn` ·
 `a_degenerate_parent_never_poisons_the_transform` ·
 `a_root_body_is_unchanged_by_the_conversion` (regressão) — mais os 5 de
-`ph2d-ecs/tests/transform_inverse.rs` e o `hot_path_no_alloc` estendido com uma
+`ph2d-ecs/tests/it/transform_inverse.rs` e o `hot_path_no_alloc` estendido com uma
 hierarquia (sem ela, o "não aloca por frame" do caminho novo era afirmado sobre
 código que a fixture nunca entrava).
 **12 gates, 10 mutações, 10 sangram** — uma por sítio religado, mais a guarda,
@@ -475,9 +475,9 @@ respondem à MESMA pergunta ("que forma, deste tamanho?"). `scaled_shape` +
 
 ### Gates que fecham este bug
 
-`crates/ph2d-physics-ecs/tests/scale_reaches_the_collider.rs` (4 pure + 2
+`crates/ph2d-physics-ecs/tests/it/scale_reaches_the_collider.rs` (4 pure + 2
 behavioral via sim: a bola 2× repousa mais alto, a **parenteada** repousa como
-raiz 2×) · `crates/ph2d-physics/tests/ellipse_collider.rs` (AABB da elipse no
+raiz 2×) · `crates/ph2d-physics/tests/it/ellipse_collider.rs` (AABB da elipse no
 sim + determinismo da tesselação) · `render_loop::physics_overlay` (elipse
 desenhada como elipse · o contorno cresce com a escala do PAI). **7 mutações,
 todas sangram.**
@@ -627,7 +627,7 @@ de três níveis.
 
 ### Gates que fecham este bug
 
-`ph2d-physics-ecs/tests/readback_order.rs` — o Reset (nasceu vermelho em 4,9101 m),
+`ph2d-physics-ecs/tests/it/readback_order.rs` — o Reset (nasceu vermelho em 4,9101 m),
 o play (0,0032 m) e a cadeia de três níveis. Mutação: tirar a profundidade da chave
 de ordenação derruba os três.
 
@@ -762,7 +762,7 @@ e ela já traz o instrumento (folga por tique, saltos por tique, partição por 
 
 **Gates:** `ph2d-platformer::ride::tests` (o eixo: byte-identidade no plano · andar ao
 longo da rampa não acorda o amortecedor · o teto zera a aproximação · o default é uma
-decisão) + `ph2d-physics-ecs/tests/platform_idle.rs` (o produto: com o amortecedor no
+decisão) + `ph2d-physics-ecs/tests/it/platform_idle.rs` (o produto: com o amortecedor no
 teto o personagem fica parado em 10°/20°/30°/40° e por um minuto · o resíduo do
 default é medido dos dois lados · o plano é o controle · a perna segura a altura).
 **4 mutações, 4 sangram** — o eixo de volta ao `up` sangra a lei **e** o produto.
@@ -962,7 +962,7 @@ se mover: a altura de repouso do player mudou em toda cena que tenha um.
 **Gates:** `ph2d-platformer` (a lei declara o canal · e ele é zero no ar E no
 tique da decolagem) + `ph2d-physics::world::player` (o canal fatiado entrega o
 MESMO impulso total · a fila é drenada · zero não entra nela) +
-`ph2d-physics-ecs/tests/platform_idle.rs` (o resíduo do default, pinado dos dois
+`ph2d-physics-ecs/tests/it/platform_idle.rs` (o resíduo do default, pinado dos dois
 lados · o teto custa um décimo do peso e não metade). **A mutação — agrupar o
 `gravity_hold` de volta no motor — sangra os dois gates de produto com os números
 pré-wave exactos (0,1916 m e 11,496 mm) e deixa os outros quatro verdes**, que é

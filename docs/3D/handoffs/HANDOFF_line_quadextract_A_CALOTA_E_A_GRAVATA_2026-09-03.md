@@ -104,10 +104,10 @@ faces (`+69 %`) e a saída de `20 658` para `21 928` quads (`+6 %`).
 |---|---|
 | `crates/ph2d-remesh-iso/src/sizing.rs` | `Cap` + a calota no campo por vértice (antes da renormalização) e reclamada depois |
 | `crates/ph2d-remesh-iso/src/lib.rs` | `remesh_isotropic_graded_capped` |
-| `crates/ph2d-remesh-iso/tests/calota.rs` | 3 gates da porta (identidade ao bit · pedido inválido · afina sem estourar o orçamento) |
+| `crates/ph2d-remesh-iso/tests/it/calota.rs` | 3 gates da porta (identidade ao bit · pedido inválido · afina sem estourar o orçamento) |
 | `crates/ph2d-quadfill/src/untangle.rs` (+ `_tests`) | `untangle_bowties` + 3 gates |
 | `crates/ph2d-quadfill/src/finish_extract.rs` | as **três** saídas do acabamento desfazem gravatas; `FinishReport::untangled` |
-| `crates/ph2d-quadfill/tests/pontas_do_dono.rs` + `fixtures/pontas/nossa_com_calota.obj.gz` | o gate de aceitação: a nossa saída passa o que a aprovada passa |
+| `crates/ph2d-quadfill/tests/it/pontas_do_dono.rs` + `fixtures/pontas/nossa_com_calota.obj.gz` | o gate de aceitação: a nossa saída passa o que a aprovada passa |
 | `shells/desktop/src/sculpt3d_retopo_target.rs` (+ `_tests`) | `TIP_CAP_STEP`/`TIP_CAP_RADIUS`/`tip_caps` + gate |
 | `shells/desktop/src/sculpt3d_retopo_rulers.rs` | as três chaves da frente no log da candidata |
 | `shells/desktop/src/sculpt3d_photo_button.rs` | a sonda corre a fase zero **do produto** + a linha `F1 CALOTA` |

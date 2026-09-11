@@ -388,8 +388,8 @@ design; nomeado no ADR §3).
 | as 3 cenas de smoke (`=7`/`=8`/`=9`) | `shells/desktop/src/motion_state_gpu_neighbour_demos.rs` |
 | a rota das cenas no shell | `shells/desktop/src/motion_state.rs` (arms `Ok("7"/"8"/"9")`) |
 | os gates das cenas (plano GPU + a varredura é linear/cruza fronteiras) | `shells/desktop/src/motion_state_gpu_tests.rs` |
-| as MEDIÇÕES do boids (equilíbrio, headroom, órbita — todas `#[ignore]`) | `crates/ph2d-gpu-cook/tests/gpu_boids_scale.rs` |
-| a paridade + o gate do degrau + a medição da respiração do collide | `crates/ph2d-gpu-cook/tests/gpu_collide.rs` |
+| as MEDIÇÕES do boids (equilíbrio, headroom, órbita — todas `#[ignore]`) | `crates/ph2d-gpu-cook/tests/it/gpu_boids_scale.rs` |
+| a paridade + o gate do degrau + a medição da respiração do collide | `crates/ph2d-gpu-cook/tests/it/gpu_collide.rs` |
 
 ⚠️ **Como rodar uma medição** (elas são `#[ignore]` e precisam da RTX, `--release`,
 serial senão contaminam a GPU uma da outra):

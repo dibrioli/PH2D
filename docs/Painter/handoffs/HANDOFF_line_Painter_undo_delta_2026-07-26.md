@@ -190,7 +190,7 @@ troca; o intervalo sai de um diff; **o cap é em BYTES**, nunca em contagem.
   esta wave **não deve** bumpar schema. Se você achar que precisa, pare e reporte: é sinal de que o
   delta vazou para a persistência.
 - **LOC:** `undo.rs` está em **593/700**; `tool/paint.rs` está no teto de **700**; a shell tem cap
-  **próprio de 600** (`shells/desktop/tests/file_loc_caps.rs`) que o gate da workspace **não** cobre.
+  **próprio de 600** (`shells/desktop/tests/it/file_loc_caps.rs`) que o gate da workspace **não** cobre.
   Rode os dois no fechamento.
 - **Gate de fechamento desta linha** (todos verdes hoje): `cargo fmt --all --check` · `clippy
   --all-targets` · `typos` project-wide · `machete` · `architecture_workspace_file_loc_cap` ·

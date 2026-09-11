@@ -372,7 +372,7 @@ fn adding_a_body_to_a_plain_sprite_still_seeds_a_collider_from_it() {
 /// ⚠️ **O oráculo é a CENA, nunca o componente:** uma jangada sem peso próprio
 /// (`GravityScale(0)`, então todo milímetro é do personagem) tem de afundar MAIS
 /// quando o artista autora uma massa maior. Medido pela sonda irmã
-/// (`ph2d-physics-ecs/tests/measure_kinematic_case.rs`), um player Snap pressiona
+/// (`ph2d-physics-ecs/tests/it/measure_kinematic_case.rs`), um player Snap pressiona
 /// com 100,0% de `m·g`, exactamente como o dinâmico.
 #[test]
 fn authoring_the_mass_of_a_kinematic_player_reaches_the_ground() {

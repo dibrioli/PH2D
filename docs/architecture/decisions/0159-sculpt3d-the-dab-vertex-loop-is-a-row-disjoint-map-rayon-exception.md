@@ -17,7 +17,7 @@
 
 O report do Enio (2026-08-13) é *"o resultado ficou muito bom do modo L mas com
 um pouco de queda de FPS"*. A medição
-(`ph2d-sculpt3d/tests/measure_field_cost.rs`, pela porta do produto, na malha
+(`ph2d-sculpt3d/tests/it/measure_field_cost.rs`, pela porta do produto, na malha
 que o módulo abre — `sculpt_sphere`, 196 608 triângulos) decompõe um dab do
 `l-mode` a 30 % de raio, **6,406 ms**, assim:
 

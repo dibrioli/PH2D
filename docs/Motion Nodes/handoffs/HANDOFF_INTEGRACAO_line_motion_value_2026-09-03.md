@@ -44,7 +44,7 @@ TETOS DE LOC     nenhum ficheiro da linha passa
 | `ph2d-tokens/src/color.rs` + `docs/design/tokens.json` | **`PortValue`** (teal, matiz 190) nos **3 temas** | um token novo no fim da lista; nenhum existente mudou de valor |
 | `ph2d-editor-core/src/paint_shapes.rs` | `fill_polygon(scene, pts, color)` | primitiva nova ao lado do `fill_diamond`/`fill_slash`; nenhuma assinatura mexida |
 | `ph2d-node-registry/src/lib.rs` | `register_primary_input` / `primary_input` + o mapa | side-metadata, **ausente ⇒ `0`** — os 133 tipos que não a declaram ficam byte-idênticos |
-| `ph2d-editor-core/tests/hr12_widgets_a11y.rs` | **1 entrada** em `PANEL_A11Y_DELEGATE_OK` | acrescenta uma linha; a justificação é uma propriedade **verificada por contagem** (zero `HitIndex`/`WidgetStore` no ficheiro) |
+| `ph2d-editor-core/tests/it/hr12_widgets_a11y.rs` | **1 entrada** em `PANEL_A11Y_DELEGATE_OK` | acrescenta uma linha; a justificação é uma propriedade **verificada por contagem** (zero `HitIndex`/`WidgetStore` no ficheiro) |
 
 ⚠️ **O `NodeManifest` NÃO foi tocado** — e a decisão é load-bearing: a porta principal de um nó
 entrou no **registry** exactamente porque o contrato está congelado (§6). Um campo novo ali

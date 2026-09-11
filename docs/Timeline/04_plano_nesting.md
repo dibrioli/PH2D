@@ -55,7 +55,7 @@ de perf nasce na Fatia 2, contra o número que esta fatia produzir.
 
 ### ✅ FATIA 0 FECHADA (2026-07-18) — **(B) confirmada**
 
-Harness: [`crates/ph2d-ecs/tests/nesting_sorts_as_a_block.rs`](../../crates/ph2d-ecs/tests/nesting_sorts_as_a_block.rs).
+Harness: [`crates/ph2d-ecs/tests/it/nesting_sorts_as_a_block.rs`](../../crates/ph2d-ecs/tests/it/nesting_sorts_as_a_block.rs).
 
 **Pergunta 1 — o z: já estava respondida, e não por nós.** É o **`SortingGroup`** (o *Sorting
 Group* do Unity, `ph2d-ecs/src/sorting.rs`): *"a sub-árvore inteira ordena como UMA unidade, na

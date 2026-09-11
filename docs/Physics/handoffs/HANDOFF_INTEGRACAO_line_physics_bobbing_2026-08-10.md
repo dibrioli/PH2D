@@ -93,7 +93,7 @@ inteira — o gate afirma o **PICO**.
 
 ## §3 — Gates e mutações
 
-**3 gates novos**, todos em `crates/ph2d-physics-ecs/tests/player_in_water.rs`:
+**3 gates novos**, todos em `crates/ph2d-physics-ecs/tests/it/player_in_water.rs`:
 
 * `the_water_lock_contains_the_arc_shaping` — largado **submerso** (a única
   largada em que a trava arma no tique 1, logo a única que isola *a trava

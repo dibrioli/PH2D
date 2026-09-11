@@ -295,7 +295,7 @@ durante o desenvolvimento.
 ### 5.3 Selection-anchor para "select all" / drag-to-select
 
 
-**Gate:** crates/ph2d-editor-core/tests/arch_no_absolute_drag_pattern.rs (heuristic match — refine if wrong)
+**Gate:** crates/ph2d-editor-core/tests/it/arch_no_absolute_drag_pattern.rs (heuristic match — refine if wrong)
 - **Sintoma**: duplo-click não selecionava tudo; drag não estendia
   seleção; Cmd+A inexistente.
 - **Causa**: `TextInput`/`NumberInput`/`Combobox` só tinham `caret`

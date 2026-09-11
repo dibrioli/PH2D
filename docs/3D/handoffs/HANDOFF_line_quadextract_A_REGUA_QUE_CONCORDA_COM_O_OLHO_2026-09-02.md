@@ -32,7 +32,7 @@
 | **Barra da grade** | `TIP_DENSITY_MAX = 1,0` (era `1,5`) | vazio `0,88…1,10`, calibrado nos DOIS lados |
 | **Selector** | `decide::worse`: chave `cut` antes de `over`; `rulers::still_broken` arma por `cut` | a amputação decide antes da mediana |
 | **Unidade** | produto = **alvo** (`one.rs`); bancada/sondas = **mediana** (`median_edge`) | censo idêntico entre candidatas; comparável com outra ferramenta |
-| **Portão dos dois lados** | `ph2d-quadfill/tests/pontas_do_dono.rs` + `tests/fixtures/pontas/` (5 `.obj.gz`, README com proveniência) | RED nas reprovadas, GREEN na aprovada, margens exigidas |
+| **Portão dos dois lados** | `ph2d-quadfill/tests/it/pontas_do_dono.rs` + `tests/fixtures/pontas/` (5 `.obj.gz`, README com proveniência) | RED nas reprovadas, GREEN na aprovada, margens exigidas |
 | **Dijkstra com heap** | `apex::path_ball` | `71 s → 0,5 s` numa fixtura |
 | Sondas | `photo_rulers::tips` usa a lei da casa (tinha cópia própria); `photo_button` imprime `AMPUTADAS`/`GRADE` | |
 | Instrumentos (scratch, fora da árvore) | `regua_ponta.py` (bateria por ponta sobre pares `.obj`), `render_ponta.py` (arame de cada ponta, lado e frente, PNG sem dependências) | ⚠️ vivem em `/tmp/claude-1000/…/scratchpad/`; se forem precisos, recriar a partir do plano §92/§96 |

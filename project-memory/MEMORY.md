@@ -26,15 +26,15 @@
 
 ## Comunicação & decisão
 - ⭐ [**Como um CONTROLO mente** — a família inteira (10 entradas): morto vs ausente · faixa · rótulo · enum serializado](reference_topic_control_design_hazards.md)
-- ⛔ [Passo que manda clicar numa LINHA de painel afirma que ela está na lista…](feedback_a_smoke_step_that_names_a_panel_row_must_prove_the_row_is_in_the_list.md)
+- ⛔ [Passo que manda clicar numa LINHA de painel afirma que ela está na lista — e o dono aprova o smoke com o passo impossível dentro](feedback_a_smoke_step_that_names_a_panel_row_must_prove_the_row_is_in_the_list.md)
 - ⛔ **Nada armengado: SILENCIAR um diagnóstico é armengo mesmo com a ferramenta defeituosa** ([§SUPRESSÃO, 29/08](feedback_perfection_no_deferrals.md)) — e meio-feito é pior que não começar
 - ⛔ [Restaurar uma mutação com `mv` devolve mtime ANTIGO e o cargo guarda o build DA MUTAÇÃO — `touch` no fim](feedback_a_mutation_restore_by_mv_leaves_cargo_with_the_mutated_build.md)
-- ⭐⭐ [Constante cara DENTRO do construtor de uma árvore corre onde a ÁRVORE é construída…](feedback_a_constant_folded_into_a_tree_is_recomputed_wherever_the_tree_is.md)
-- ⭐⭐ [A CARA de um app é a tabela de tokens, não os widgets — redesenhar 44 pintores com a mesma pele deixa «a mesma cara»…](feedback_the_face_of_an_app_is_its_token_table_not_its_widgets.md)
-- ⛔ [Sonda que arma o módulo por env var mede OUTRO programa que o pill…](feedback_a_probe_that_arms_a_module_by_env_var_measures_another_program_than_the_pill.md)
-- ⛔ [Gesto escrito em DUAS metades aceita a variante nova em SÓ UMA…](feedback_a_gesture_written_in_two_halves_accepts_a_new_variant_in_only_one.md)
-- ⭐ [**Campo IMPLÍCITO (SDF) e réguas de FORMA** — a família inteira…](reference_topic_implicit_field_laws.md)
-- ⭐⭐ [Máximo AMOSTRADO que vira limite de segurança erra sempre PARA BAIXO…](feedback_a_sampled_maximum_that_becomes_a_safety_bound_errs_only_downwards.md)
+- ⭐⭐ [Constante cara DENTRO do construtor de uma árvore corre onde a ÁRVORE é construída — 6 → 3 852 por quadro, com a imagem perfeita](feedback_a_constant_folded_into_a_tree_is_recomputed_wherever_the_tree_is.md)
+- ⭐⭐ [A CARA de um app é a tabela de tokens, não os widgets — redesenhar 44 pintores com a mesma pele deixa «a mesma cara»; comece pelos 5 números](feedback_the_face_of_an_app_is_its_token_table_not_its_widgets.md)
+- ⛔ [Sonda que arma o módulo por env var mede OUTRO programa que o pill — o cache incremental nunca vigiou as colunas do módulo (5 reports)](feedback_a_probe_that_arms_a_module_by_env_var_measures_another_program_than_the_pill.md)
+- ⛔ [Gesto escrito em DUAS metades aceita a variante nova em SÓ UMA — silêncio absoluto, e a fixtura que chama a porta interna fica verde](feedback_a_gesture_written_in_two_halves_accepts_a_new_variant_in_only_one.md)
+- ⭐ [**Campo IMPLÍCITO (SDF) e réguas de FORMA** — a família inteira (14): união coplanar incha · `max` cru = aresta viva · o semiespaço INFINITO ganha o `min` dentro da peça · o gate no REPRESENTANTE](reference_topic_implicit_field_laws.md)
+- ⭐⭐ [Máximo AMOSTRADO que vira limite de segurança erra sempre PARA BAIXO — a variável da varredura é parte da correcção (16,3 % → 0,0000 %)](feedback_a_sampled_maximum_that_becomes_a_safety_bound_errs_only_downwards.md)
 - 📚 [Comunicação & decisão: mais 50 lições, uma linha cada, verbatim](reference_topic_communication_and_decision_lessons.md)
 
 ## Git & colisão multi-agente
@@ -42,9 +42,9 @@
 - 📚 [Git & colisão multi-agente: mais 4 lições, uma linha cada, verbatim](reference_topic_git_lessons_loose.md)
 
 ## Ship / CI / integração
-- ✅ [AUDITORIA de velocidade 10/09: W0 APLICADA (perfil `smoke` 161 s → 3 s…](project_dev_speed_audit_2026_09_10_w0_applied.md)
+- ✅ [AUDITORIA de velocidade 10/09: W0 APLICADA (perfil `smoke` 161 s → 3 s, `jobs = 32`, tecto nextest) e W1 FEITA (1 446 → 127 binários de teste, `tests/it/`); W1b/W2 por abrir](project_dev_speed_audit_2026_09_10_w0_applied.md)
 - [Multi-máquina: GitHub fonte única](project_multi_machine_setup.md) · [fast mode: dia sem push](feedback_fast_mode_ship.md)
-- ⏳ [**`line/motion-value` espera a PRÓXIMA rodada** — 5 de 6 linhas entraram em 06/09 e esta ficou de fora…](project_motion_value_waits_for_the_next_integration_round.md)
+- ⏳ [**`line/motion-value` espera a PRÓXIMA rodada** — 5 de 6 linhas entraram em 06/09 e esta ficou de fora; as 5 mitigações em vigor](project_motion_value_waits_for_the_next_integration_round.md)
 - [Integração multi-linha (12) — ordem se MEDE](reference_topic_integration_discipline.md)
 - [CI corre 26 de 313 membros — «suíte verde» ≠ «CI verde»](project_ci_runs_26_of_313_workspace_members.md)
 - [A suíte em DEBUG parece pendurada por UM teste: `field-eval` custa 55 min sozinho — corra-o à parte](reference_one_field_eval_test_costs_55_minutes_of_the_debug_suite.md)
@@ -55,16 +55,16 @@
 - 📚 [Ship / CI / integração: mais 17 lições, uma linha cada, verbatim](reference_topic_ship_ci_integration_lessons.md)
 
 ## Auditoria (famílias — 2 saltos)
-- ⛔ [`touch` NÃO mede uma edição (incremental vê hash igual; mtime suja TODOS os targets)…](feedback_a_touch_does_not_measure_an_edit_and_timings_inflate_under_contention.md)
+- ⛔ [`touch` NÃO mede uma edição (incremental vê hash igual; mtime suja TODOS os targets) · `--timings` é parede por unidade, dobra sob contenção](feedback_a_touch_does_not_measure_an_edit_and_timings_inflate_under_contention.md)
 - ⭐ [**Como uma RÉGUA mente** — a família inteira (70 entradas)](reference_topic_measurement_discipline.md)
-- ⛔ [Grelha nunca cai num conjunto de MEDIDA NULA ⇒ reporta-o LIMPO…](feedback_a_grid_never_lands_on_a_measure_zero_set_so_it_reports_it_clean.md)
-- ⛔⛔ [Contar operações ≠ perfil, e o PERFIL DE BUILD decide o número…](feedback_an_operation_count_is_not_a_profile_and_the_build_profile_decides_the_number.md)
+- ⛔ [Grelha nunca cai num conjunto de MEDIDA NULA ⇒ reporta-o LIMPO (vinco: 2,2e-6 contra 1,9e-1) — os pontos PÕEM-SE](feedback_a_grid_never_lands_on_a_measure_zero_set_so_it_reports_it_clean.md)
+- ⛔⛔ [Contar operações ≠ perfil, e o PERFIL DE BUILD decide o número: suíte 372→57 s por 4 linhas de opt-level; a mesma cura lia 5% a opt-0 e 14% a opt-2](feedback_an_operation_count_is_not_a_profile_and_the_build_profile_decides_the_number.md)
 - [Reprodução/diagnóstico (19)](reference_topic_repro_discipline.md)
 - [Réguas do quad remesh (19) — densidade · limiar · 1.ª aceite · alisador cego · fixtura com ponta](reference_topic_quad_remesh_rulers.md)
 - ⛔ [Régua de vazamento cuja máscara usa o predicado DO PRODUTO lê 0,00 % sobre o defeito](feedback_a_leak_ruler_masked_by_the_products_own_predicate_hides_the_leak.md)
 - ⛔ [viés em NDC não é constante no mundo: 3e-3 = 30 % da distância do olho](feedback_a_depth_bias_constant_in_ndc_is_not_constant_in_the_world.md)
-- ⛔ [Barra calibrada SEM o lado aprovado mede os nossos defeitos; o PISO do censo decide o que a régua vê…](feedback_a_bar_calibrated_without_the_approved_side_measures_our_own_defects.md)
-- [Ofício de gate (47) — folga = ponto cego · mutação que não mata…](reference_topic_gate_discipline.md)
+- ⛔ [Barra calibrada SEM o lado aprovado mede os nossos defeitos; o PISO do censo decide o que a régua vê (4× «nenhuma melhoria»)](feedback_a_bar_calibrated_without_the_approved_side_measures_our_own_defects.md)
+- [Ofício de gate (47) — folga = ponto cego · mutação que não mata · metade justa · feito≠entregue · censo textual · censo que presume o destino · censo que partilha estado](reference_topic_gate_discipline.md)
 - [Estado autorado & relógios (19)](reference_topic_authored_state_and_clocks.md)
 - [modo que não exclui ninguém é outro produtor](feedback_a_mode_whose_entry_excludes_nobody_is_just_another_producer.md)
 - [Costura de UI (15)](reference_topic_ui_seam_discipline.md) — ⭐ [o hit rect é também o DENOMINADOR](feedback_a_hit_rect_is_also_the_denominator_not_only_the_target.md)
@@ -72,7 +72,7 @@
 - [Ofício de gate — mais 1 (censo textual que não separa prosa de código mente nos DOIS sentidos)](reference_topic_gate_discipline.md)
 - [Ofício de gate — mais 1 (censo que presume o DESTINO do efeito acusa o vivo — e manda a cura errada)](reference_topic_gate_discipline.md)
 - [Ofício de gate — mais 1 (censo que partilha estado acusa 14 vivos; e os 3 que sobram são cegueiras do oráculo)](reference_topic_gate_discipline.md)
-- ⛔ [Faixa RESERVADA ≠ faixa PINTADA: 6 gates de geometria verdes sobre um ecrã EM BRANCO…](feedback_a_reserved_band_is_not_a_painted_band_and_geometry_gates_go_green_over_a_blank_screen.md)
+- ⛔ [Faixa RESERVADA ≠ faixa PINTADA: 6 gates de geometria verdes sobre um ecrã EM BRANCO — o oráculo é a cena (glifos+segmentos), em VÁRIOS zooms](feedback_a_reserved_band_is_not_a_painted_band_and_geometry_gates_go_green_over_a_blank_screen.md)
 - [Provas de mutação (7) — 3 controles no arnês](reference_topic_mutation_proofs.md)
 - [escrevo a guarda certa e não a gateio (3×)](feedback_i_write_the_right_guard_and_do_not_gate_it.md)
 - [filtro que casa ZERO imprime «SOBREVIVEU»](feedback_a_mutation_proof_needs_a_control_on_its_own_filter.md)
@@ -84,7 +84,7 @@
 - 📚 [Auditoria (famílias — 2 saltos): mais 9 lições, uma linha cada, verbatim](reference_topic_audit_lessons.md)
 
 ## Padrões de código (gotchas silenciosos)
-- ⛔ [Medir um texto num peso e pintá-lo noutro faz o pintor CORTÁ-LO…](feedback_measuring_a_text_at_one_weight_and_painting_it_at_another_elides_the_text.md)
+- ⛔ [Medir um texto num peso e pintá-lo noutro faz o pintor CORTÁ-LO (`0....`, e ao afastar some) — a porta é `title_elided_width`, ao lado do pintor](feedback_measuring_a_text_at_one_weight_and_painting_it_at_another_elides_the_text.md)
 - [Registro de painel (5 sites)](reference_topic_panel_registration.md)
 - [Gotchas de código (14)](reference_topic_code_gotchas.md)
 - 📚 [Padrões de código (gotchas silenciosos): mais 6 lições, uma linha cada, verbatim](reference_topic_code_pattern_gotchas.md)
@@ -92,11 +92,9 @@
 ## Arquitetura / norte / perf
 - [Blindagem Fase 0 — ph2d-ui-testkit](project_blindagem_phase0_2026_06_20.md)
 - [Pintura voltou](project_painter_brush_came_back_cleanroom.md) = [clean-room Blender](project_blender_texture_paint_reference.md) + [Texture Layer](project_texture_layer_design.md)
-- ⭐⭐⭐ [Porta de tipo LARGO: «compila e desenha» não é a barra de uma cena…](feedback_a_port_that_accepts_anything_still_teaches_what_you_plug_into_it.md)
-- ⭐⭐ [Partilhar um nó para igualar entradas torna o grafo ilegível…](feedback_a_correct_property_can_cost_the_legibility_that_was_the_whole_point.md)
-- ⭐⭐ [Superfície que SUBSTITUI outra copia o que a antiga RESOLVE (faixa do canal
-- ⭐⭐ do fio
-- ⭐⭐ a FACE), não só o que ela mostra — 109 de 454 rows](feedback_a_replacement_surface_must_copy_what_the_old_one_RESOLVES_not_only_what_it_shows.md)
+- ⭐⭐⭐ [Porta de tipo LARGO: «compila e desenha» não é a barra de uma cena — ela ensina o idioma (grid no `shape` do duplicator; o certo saiu 140→102 nós)](feedback_a_port_that_accepts_anything_still_teaches_what_you_plug_into_it.md)
+- ⭐⭐ [Partilhar um nó para igualar entradas torna o grafo ilegível — a igualdade por CONSTRUÇÃO é tão forte e não cruza a tela (13 ilhas, não 4)](feedback_a_correct_property_can_cost_the_legibility_that_was_the_whole_point.md)
+- ⭐⭐ [Superfície que SUBSTITUI outra copia o que a antiga RESOLVE (faixa do canal · do fio · a FACE), não só o que ela mostra — 109 de 454 rows](feedback_a_replacement_surface_must_copy_what_the_old_one_RESOLVES_not_only_what_it_shows.md)
 - ⭐⭐ [**A DINÂMICA DOS CICLOS** do Motion (05/09): um grupo de nós por ciclo · params NO cartão e o painel lateral SAI · **o smoke é o TUTORIAL em PDF**](project_motion_cycle_dynamic.md)
 - [Norte node-centric](project_node_centric_decision_2026_05_21.md) · [motion keyframes adiados](project_motion_keyframes_deferred_timeline_integration.md)
 - [Vector cutover ADR-0108](project_vector_cutover_adr0108.md)

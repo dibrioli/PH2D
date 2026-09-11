@@ -55,7 +55,7 @@ perguntas, e a terceira é a que alguém chama por engano.
 
 A dívida era: *o painel de Tokens desenha-se a si mesmo com estes tokens, então um valor absurdo
 pode empurrar para fora da tela o botão que o desfaria*. Medição
-(`crates/ph2d-panel-tokens/tests/scale_ceiling.rs`, sonda `-- --ignored --nocapture`):
+(`crates/ph2d-panel-tokens/tests/it/scale_ceiling.rs`, sonda `-- --ignored --nocapture`):
 
 ```
 spacing.* (px) |  y (scroll 0) | rolagem que o alcanca |   y ja' rolado
@@ -153,7 +153,7 @@ antes de suspeitar do merge**.
 
 **7** no `num_runtime` (`crates/ph2d-tokens/src/num_runtime_tests.rs`) · **3** de teto/alcance no
 painel (`scale_ceiling.rs`) · **3** no arch-gate da shell
-(`shells/desktop/tests/the_scale_is_published_before_the_paint.rs`).
+(`shells/desktop/tests/it/the_scale_is_published_before_the_paint.rs`).
 
 **6 mutações, 6 sangram:**
 

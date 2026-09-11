@@ -10,7 +10,7 @@
 //! and a Hold/Hold track samples **BYTE-IDENTICALLY** to the pre-extrapolation
 //! engine, so `Track::sample`'s Hold branch returns the boundary key value
 //! DIRECTLY and never enters this module. That byte-identity is what keeps the
-//! fade fingerprint (`ph2d-timeline/tests/fade_fingerprint.rs`) stable: the
+//! fade fingerprint (`ph2d-timeline/tests/it/fade_fingerprint.rs`) stable: the
 //! crossfade's `hold_at` crosses to values read by this same sampler, so a
 //! non-Hold mode changes them — but only when opt-in.
 //!

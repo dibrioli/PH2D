@@ -241,7 +241,7 @@ impl WidgetStore {
     /// This is why there is no door that hands over the gesture without answering
     /// the ownership question: the compiler is the gate. A predicate that answers
     /// `true` unconditionally re-opens the hole, and
-    /// `crates/ph2d-editor-core/tests/architecture_curve_drag_asks_whose_gesture.rs`
+    /// `crates/ph2d-editor-core/tests/it/architecture_curve_drag_asks_whose_gesture.rs`
     /// refuses that shape in panel crates.
     pub fn take_curve_point_drag_if(
         &mut self,

@@ -582,6 +582,7 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   na terceira: *uma lei escrita em dois sítios ainda não é uma lei — só uma PORTA é*
   ([`stroke_uniform.rs`](crates/ph2d-vec-render/src/stroke_uniform.rs)). ⚠️ O **caminho rápido é
   intocado**: afim conforme desenha byte a byte, e só o caso partido paga o clone por instância.
+  ⏳ **A metade-shell do módulo COMEÇOU a sair** (W2/L4, 11/09 — `crates/ph2d-app-vec`): ⭐ **8 ficheiros de 129, e o número é um FECHO sobre o grafo de compilação, não escopo** — ⛔ **`#[path]` é aresta dura nos DOIS sentidos** (um pai que declara um filho acoplado não sai), e as três réguas anteriores erraram todas a favor de mover demasiado; os **121** que ficam puxam **47** módulos da shell, e a A3 (`mod vec;`) **não foi feita** com o preço medido ([doc 48](docs/Vector%20Module/48_a_familia_vec_sai_da_shell_o_que_o_fecho_de_compilacao_permite.md) · [handoff](docs/Vector%20Module/handoffs/HANDOFF_INTEGRACAO_line_app_vec_FASE_A_2026-09-11.md)).
   **Ler:** [`docs/Vector Module/`](docs/Vector%20Module/) · [`BUGS_vector.md`](docs/Vector%20Module/BUGS_vector.md) ·
   [handoffs](docs/Vector%20Module/handoffs/README.md) · [história](docs/archive/estado-2026-08-18/vector.md)
 

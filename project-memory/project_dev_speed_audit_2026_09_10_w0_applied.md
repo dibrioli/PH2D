@@ -23,7 +23,14 @@ Estado em 2026-09-10, fim do dia:
   teste de integração (`tests/it/main.rs` + um `mod` por ficheiro, 73 crates, script com prova: lista
   de 22 635 testes idêntica antes/depois; 19 ficheiros com `#[global_allocator]` ficam binário próprio).
   Regra nova: teste de integração novo = ficheiro em `tests/it/` + `mod` no `main.rs` (DIRETRIZ §6.3).
-- **Por abrir, em ordem:** W1b (os 155 gates puros de código-fonte → uma crate `ph2d-arch-gates`) · W2.0 (censo de quanto de `App`
+- ✅ **W0.1 medida (10/09):** `[profile.dev] debug = "line-tables-only"` aplicado (−6 % tempo, −25 % disco
+  de deps); `build-override` **recusado** (gate 145 → 146 s — as duplicadas são feature/`check`≠`build`);
+  o `ld.mold` no gate é 12 linkers/198 threads em 20 % do tempo, não é o gargalo.
+- ✅ **W2.0 censo feito:** `App` tem ~401 campos; física toca 126 (22 `impl App`), sculpt 180, vec 89; 425
+  ficheiros de smoke (95 k LOC), 22 com `impl App`. ⛔ Uma feature `smokes` por `#[cfg]` foi recusada.
+- **Por abrir, em ordem:** W2 (cenas de smoke para crates atrás de um trait `SmokeHost`; depois
+  `ph2d-app-<módulo>` por família — dias por família, motion primeiro) · W1b (`ph2d-arch-gates`, valor baixo
+  depois da W1) · W2.0 (censo de quanto de `App`
   cada família da shell toca) · W2 (cenas de smoke não citadas apagadas, as citadas para crates
   próprias atrás de uma feature; depois `ph2d-app-<módulo>` por família, Motion primeiro) ·
   W3 (CI: archive + partition, impactado no PR, GPU por software) · W4 (nightly só para medir

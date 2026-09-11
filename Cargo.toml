@@ -43,7 +43,14 @@ authors = ["Enio Oliveira Dias Brito <dibrioli@gmail.com>"]
 
 [profile.dev]
 opt-level = 0
-debug = true
+# `line-tables-only` (era `true` = DWARF completo) — medido 2026-09-10 (auditoria de
+# velocidade §4-C8, A/B a frio sobre a amostra da DIRETIVA §2-bis: `cargo build --tests
+# -p ph2d-anim -p ph2d-timeline`): 22,2 s · 2,2 GB → 20,9 s · 1,8 GB (deps 1,6 → 1,2 GB,
+# **−25 % de disco**). O backtrace mantém `file:line` (é a `.debug_line`, que este nível
+# guarda); o que sai é a informação de tipos/variáveis para o `gdb`, que ninguém usa no
+# ciclo de teste. A Oxide (omicron) usa o mesmo valor. ⚠️ Mudar isto refaz o `target/debug`
+# de cada worktree uma vez.
+debug = "line-tables-only"
 # ⚠️ **O DWARF fica nos `.o`/`.dwo` em vez de ser COPIADO para dentro de cada artefato.** Medido em
 # 2026-08-16 (A/B sobre `cargo build --tests -p ph2d-anim -p ph2d-timeline`, targets separados):
 # `off` = 11 GB · `unpacked` = 4,4 GB, com os 6.479 `.dwo` JÁ contados — **2,5×, 60% a menos**.

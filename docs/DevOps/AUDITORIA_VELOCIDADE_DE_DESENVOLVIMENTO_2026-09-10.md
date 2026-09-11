@@ -394,6 +394,33 @@ da shell no `ci-test` (§3.6) — e é o segundo que uma linha paga a cada `next
 **Preço.** Degrau 1: uma linha, uma jornada, risco baixo (é mover ficheiros e uma feature). Degrau 2: várias
 linhas, uma por família, **em ordem de LOC** (motion primeiro). Degrau 3 vai com o 2.
 
+✅ **W2.0 — o censo, feito em 10/09 (depois da W1).** O que a shell é por dentro, medido:
+
+| | ficheiros | LOC |
+|---|---:|---:|
+| produto (`src/` sem `*_tests.rs`) | 1 122 | 307 118 |
+| testes dentro do `src/` | 662 | 186 134 |
+| **cenas de smoke/demo** (produto) | **425** | **95 057** (+ 170 ficheiros / 36 418 de testes delas) |
+
+- **`App` tem ~401 campos públicos** (`app_state.rs`). Membros distintos de `self.` que cada família toca:
+  sculpt3d **180** (6 ficheiros com `impl App`) · physics **126** (22 `impl App`) · vec 89 · flip 75 · motion 59
+  (0 `impl App` — funções soltas) · field3d 33 · painter 16 · instance 13. O `input_dispatch` sozinho toca **273**.
+- **As cenas de smoke dependem sobretudo de crates de módulo e umas das outras** (`ph2d_nodegraph` 213 usos,
+  `ph2d_ecs` 148, `ph2d_core` 141, `ph2d_vec_scene` 105; e `crate::motion_demo_legend`, `build_smoke`,
+  `field3d_smoke`, `smoke_layout`, `physics_smoke_player` entre si) — e de **seis módulos internos da shell**
+  (`instance_docs`, `image_import`, `instantiate`, `render_loop`, `vec_entities`, `audio`), com **22 dos 425
+  ficheiros a escrever `impl App`** (936 usos de `self.`).
+- ⇒ **O degrau 1 é viável mas não é «mover ficheiros»:** os 22 `impl App` e as seis portas internas são a
+  interface a desenhar (um trait `SmokeHost`, ou eventos/recursos do ECS, ADR-0075), e os 403 restantes vão
+  atrás. **O degrau 2 é um refactor de dias por família** — a física toca 126 campos de `App` em 22 ficheiros
+  `impl App`. ⛔ Uma *feature* `smokes` que só esconda os módulos atrás de `#[cfg]` foi considerada e
+  **recusada**: com a feature no `default` ninguém compila sem ela; fora do `default`, o gate de fecho e o CI
+  deixariam de compilar as cenas e os gates delas **em silêncio** (`no_two_smoke_scenes_claim_the_same_level`
+  vive no `src/`). O que muda o tecto é a crate, não a `cfg`.
+- **W1b (`ph2d-arch-gates`) desceu de valor com a W1:** os 155 gates puros de fonte já não religam 155 closures
+  — vivem no `it` da sua crate, que compila uma vez. O que resta é o tempo de front-end deles dentro do `it` da
+  shell (4 s medidos). Fica na fila, atrás da W2.
+
 **O que NÃO é a cura:** `bevy_dylib`-style dynamic linking (recusa medida na DIRETRIZ arquivada: ajuda o link,
 que com `mold` já não domina — a §3.7 confirma ou refuta) · partir por «arquivos» sem partir a crate (o
 `render_loop/mod.rs` de 812 KB e o `input_dispatch.rs` de 355 KB são o mesmo front-end, só que em pedaços).
@@ -500,7 +527,25 @@ crates com incremental (**todas as do workspace no `dev`**), nem `bin`/`proc-mac
 **só as rlibs de registry/git** — que é onde os 85 % de acertos vêm. Continua a valer para worktree fria e para o
 `ci-test` (deps a `opt-level 3` sem incremental). Não é alavanca do inner loop; é do `--workspace` frio.
 
-### C8 — `debug = true` no `dev` e host/target sem unificação ⭐ (config; medir)
+### C8 — `debug = true` no `dev` e host/target sem unificação ⭐ (config; medido em 10/09, W0.1)
+
+**Medido (10/09, depois da W1):**
+- **`debug = "line-tables-only"` no `dev`** — A/B a frio, `cargo build --tests -p ph2d-anim -p ph2d-timeline`
+  (a amostra da DIRETIVA §2-bis Regra 3): `full` **22,2 s · 2,2 GB** (deps 1,6 GB) → `line-tables-only`
+  **20,9 s · 1,8 GB** (deps 1,2 GB): **−6 % de tempo, −25 % de disco nas deps**, e o backtrace mantém
+  `file:line` (é o que a `.debug_line` dá). A Oxide usa exactamente este valor, com `build-override` igual.
+- **O linker no gate de testes** (contador com o nome certo, `ld.mold`, 93 amostras num build frio do
+  `ci-test`): um linker vivo em **20 %** das amostras, até **12 `ld.mold` em simultâneo com 198 threads**, carga
+  máxima 66 e média 41 enquanto liga. É fan-out real mas limitado — não é o gargalo (a `-j 32` o codegen já
+  sobre-subscreve 2×); um `--thread-count` menor no `mold` fica como afinação opcional, não como cura.
+- **Host/target — RECUSA MEDIDA.** 164 crates externas compiladas 2× (585 s de unidades num build frio do
+  gate `ci-test` de 145 s a `-j 32`). Com `[profile.ci-test.build-override]` igual às deps (`opt-level 3`,
+  `debug false`, 16 CGUs, sem incremental) o mesmo build frio deu **146 s** e 137 duplicadas (só 27 unificaram);
+  no `dev` (`[profile.dev.build-override]` igual ao `dev`) a amostra deu **24,0 → 24,8 s**. As duplicadas que
+  ficam são **variantes de features** e **`check` contra `build`** (um `syn` como dep de proc-macro tem de ser
+  compilado a sério; como dep de alvo só precisa de metadata) — não é desalinhamento de perfil, e o Zed/Oxide
+  ganham porque têm outra estrutura de deps. ⇒ **não se adopta**.
+- ✅ **Aplicado (10/09):** `[profile.dev] debug = "line-tables-only"`. Não aplicado: `build-override`.
 
 - `[profile.dev] debug = true` põe DWARF completo em cada um dos 1 446 binários de teste do `dev`; o Zed usa
   `"limited"`, a Oxide `"line-tables-only"` (backtrace com `file:line` intacto). O repo já tem
@@ -561,7 +606,7 @@ muitos núcleos»*) — relevante nesta.
 | onda | o quê | ficheiros | preço | efeito esperado |
 |---|---|---|---|---|
 | **W0** config | **C0 perfil `smoke`** (variante da §3.9-b) · C1 `jobs` · C4 tecto + grupo + `fail-fast` + junit · C5 `incremental=false` · C6 RA | `Cargo.toml` · `~/.cargo/config.toml` · `.config/nextest.toml` · settings do VSCode · o comando de smoke no `CLAUDE.md §5.0` e na DIRETRIZ §1.5.9 | **< 1 h**, zero código | o smoke do Enio deixa de custar 161 s num núcleo; check do workspace 156 → 93 s; todo teste com tecto; suíte sem cancelar no 1.º ✗; RA deixa de competir |
-| **W0.1** medir | threads do `ld.mold` no gate de testes (C1) · A/B `line-tables-only` (C8) · `build-override` (C8) | — | ½ jornada calma | os três números que faltam a este doc |
+| **W0.1** medir ✅ (10/09) | threads do `ld.mold` no gate (12 linkers, 198 threads, 20 % do tempo — não é o gargalo) · `line-tables-only` **aplicado** (−6 % tempo, −25 % disco de deps) · `build-override` **recusado** (145 → 146 s) — tudo em §4-C8 | `Cargo.toml` | feito | — |
 | **W1** testes ✅ (10/09) | C3: um binário por crate — **feita**: 1 446 → 127, check frio 93 → 51 s, gate foundational 93 → 60 s (§4-C3). Resta a **W1b**: `ph2d-arch-gates` (155 gates puros de fonte) e C4 de fundo (`measure_*`; instruções onde couber) | `tests/it/` em 73 crates | feita em ~2 h | ver §4-C3 |
 | **W2.0** censo | quantos campos de `App` cada família da shell toca; qual o ponto de extensão | — | ½ jornada | o preço REAL da W2 |
 | **W2** arquitectura | C2: smokes para crates (feature `smokes`); depois `ph2d-app-<módulo>` por família, motion primeiro | `shells/desktop` → N crates | várias linhas, uma por família | front-end da shell 36 s → proporcional ao que ficar; edição num módulo deixa de recompilar a shell |
@@ -625,3 +670,5 @@ Sem editar código, o `touch` obriga o cargo a reconstruir a shell como se uma l
 | «O link (`mold`) é o que multiplica a carga por slot de `-j`» | `-j 32` no `ci-test`: 32 `rustc`, 202 threads, carga 80, **0** linkers no instante; no `release` o `ld.mold` vive 3 amostras em 124 | é o codegen (16 CGUs) — o link do gate de testes (2 128 binários) fica **por medir** com o contador certo (`ld.mold`) |
 | «`lto = thin` com 16 CGUs chega para o smoke» | 38 s por linha (4,2×) contra 3 s sem LTO + incremental (54×) | o thin LTO ainda re-optimiza a crate inteira; o incremental não |
 | «O `-j` resolve o gate de fecho» | 93 s a `-j 32`, 102 s a `-j 6` | o gate está preso à cadeia `editor-core → painter → shell` (45 s de shell num processo) |
+| «`build-override` igual ao perfil unifica host/target e poupa as 164 crates duplicadas» (Zed/Oxide) | gate `ci-test` frio 145 → 146 s (164 → 137 duplicadas); dev 24,0 → 24,8 s | as duplicadas são variantes de feature e `check`≠`build`, não perfis desalinhados (§4-C8) |
+| «Uma feature `smokes` tira as cenas do custo da shell» | 425 ficheiros / 95 k LOC, 22 com `impl App`, gates das cenas no `src/` | no `default` ninguém compila sem ela; fora dele o gate e o CI deixam de compilar as cenas em silêncio — o que muda o tecto é a crate (§4-C2, W2.0) |

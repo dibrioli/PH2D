@@ -959,6 +959,8 @@ fechado**, não por micro-task (vide §6.6.A.2).
 6. **`jobs = 32` nesta máquina** (era 6; a nota media codegen e prendia o front-end): check frio do
    workspace 156 → 93 s. É config por máquina (`~/.cargo/config.toml`), não do repo.
 7. **Recusas medidas — não reconstrua:** `cargo-hakari`/unificação de features (não há cascata) ·
+   `build-override` igual ao perfil para unificar host/target (gate 145 → 146 s: as duplicadas são variantes
+   de feature e `check`≠`build`) · uma feature `smokes` só com `#[cfg]` (esconde as cenas do gate em silêncio) ·
    Cranelift (não está pronto, força `panic=abort`) · `sccache` como alavanca do inner loop (não guarda
    `check`, incremental, binários nem proc-macros — só rlibs de registry) · `-Zthreads` (2,4× na shell,
    **nightly**: mede-se com `cargo +nightly` em target próprio, não se shipa) · «o Rust 1.98 tem flags

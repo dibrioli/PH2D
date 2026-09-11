@@ -75,7 +75,14 @@ fn src(path: &str) -> String {
     fs::read_to_string(path).unwrap_or_else(|_| panic!("{path} existe"))
 }
 
-/// O corpo de uma função, do `fn` até ao fecho na indentação de método.
+/// O corpo de uma função, do `fn` até ao fecho — **em qualquer das duas indentações**.
+///
+/// ⚠️ **A segunda nasceu em 2026-09-11 (W2/L3-A2)**, quando as portas da escultura que só
+/// precisavam da cena viraram funções LIVRES: elas fecham com `}` na coluna 0, e não com
+/// `    }`. Procurar só a de método faria a janela engolir **o resto do ficheiro** — e um
+/// censo que mede DEMAIS lê-se tão aprovado como um que mede nada, porque a asserção aqui é
+/// uma AUSÊNCIA (`!body.contains(DOOR)`): bastaria a função seguinte não ter a porta para o
+/// gate passar sobre uma que a tivesse.
 fn function_body(src: &str, name: &str) -> String {
     // ⛔⛔ **Ancorar no `impl`, nunca no principio do ficheiro** (W2): num trait de extensao cada
     // nome aparece DUAS vezes — a declaracao (sem corpo) e a implementacao. Uma fatia a partir da
@@ -88,7 +95,12 @@ fn function_body(src: &str, name: &str) -> String {
     let i = src.find(&format!("fn {name}(")).unwrap_or_else(|| {
         panic!("controlo positivo: `{name}` não existe — o gate varreria o vazio")
     });
-    let end = src[i..].find("\n    }").map_or(src.len(), |j| i + j);
+    let end = src[i..]
+        .find("\n    }")
+        .into_iter()
+        .chain(src[i..].find("\n}"))
+        .min()
+        .map_or(src.len(), |j| i + j);
     src[i..end].to_string()
 }
 
@@ -139,19 +151,27 @@ fn a_drag_already_running_is_never_dropped_by_crossing_the_frame() {
     //
     // ⇒ por isso a agulha é a DO MÓDULO (o 3D pergunta pelo trait de host desde a W2) e há um
     // controlo positivo a seguir ao laço: se a função certa não for encontrada, o gate cai.
-    for (path, module, door) in [
-        (FAMILY_INPUT, "field3d", HOST_DOOR),
-        ("src/sculpt3d/input.rs", "sculpt3d", DOOR),
+    //
+    // ⚠️⚠️ **E o NOME deixou de se compor do módulo no mesmo dia** (W2/L3-A2), por outra linha:
+    // as duas famílias tinham a convenção `<fam>_pointer_up` e a escultura saiu dela — a porta
+    // dela só precisava da cena e virou função LIVRE dentro de `mod sculpt3d`, onde repetir o
+    // prefixo do módulo seria gaguejar. ⇒ a linha da tabela traz o nome INTEIRO e a porta que
+    // àquele módulo diz respeito. ⛔ Compor qualquer um dos dois era o que fazia este gate
+    // reprovar pelo «controlo positivo» — que se lê como o gate partido, e não como a tabela
+    // desactualizada, que é o que de facto estava.
+    for (path, nome, door) in [
+        (FAMILY_INPUT, "field3d_pointer_up", HOST_DOOR),
+        ("src/sculpt3d/input.rs", "pointer_up", DOOR),
     ] {
-        let body = function_body(&src(path), &format!("{module}_pointer_up"));
+        let body = function_body(&src(path), nome);
         assert!(
             !body.is_empty(),
-            "controlo positivo: o corpo de `{module}_pointer_up` ({path}) veio VAZIO — a asserção \
-             de ausência abaixo seria verdadeira por construção"
+            "controlo positivo: o corpo de `{nome}` ({path}) veio VAZIO — a asserção de ausência \
+             abaixo seria verdadeira por construção"
         );
         assert!(
             !body.contains(door),
-            "`{module}_pointer_up` largaria um arrasto em curso ao cruzar a moldura"
+            "`{nome}` largaria um arrasto em curso ao cruzar a moldura"
         );
     }
 }

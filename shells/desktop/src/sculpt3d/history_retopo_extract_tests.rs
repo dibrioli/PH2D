@@ -197,10 +197,7 @@ fn a_extraccao_alisa_contra_a_escultura_e_nao_contra_a_remalhada() {
     // ⛔ **Os DOIS ficheiros**, desde o corte: o alisamento cru não pode voltar por nenhum.
     for (nome, texto) in [
         ("one", src),
-        (
-            "extract",
-            include_str!("history_retopo_extract.rs") as &str,
-        ),
+        ("extract", include_str!("history_retopo_extract.rs") as &str),
     ] {
         assert_eq!(
             texto.matches(concat!("ph2d_quadfill::", "smooth(")).count(),

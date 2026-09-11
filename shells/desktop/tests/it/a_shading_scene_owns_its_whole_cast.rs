@@ -156,12 +156,18 @@ fn the_scene_rig_reaches_the_session() {
     //
     // Os `*_tests.rs` ficam de fora: uma fixture que semeia um rig deixaria o
     // gate verde citando a si mesmo.
-    let mut found: Vec<String> = fs::read_dir("src")
-        .expect("o diretório do shell existe")
+    // ⚠️ **A varredura mudou de RAIZ em 2026-09-11 (W2/L3-A3)**: a família saiu de
+    // `src/sculpt3d_*.rs` para `src/sculpt3d/`, então quem a delimita é o DIRECTÓRIO e o
+    // filtro `starts_with("sculpt3d")` morreu com o prefixo. ⛔ **Foi o controlo positivo
+    // abaixo que o disse** — com a raiz antiga esta varredura casaria só com o directório
+    // (que não acaba em `.rs`) e devolveria zero, que é a passagem por vácuo que ele existe
+    // para não ter.
+    let mut found: Vec<String> = fs::read_dir("src/sculpt3d")
+        .expect("a pasta da família existe")
         .filter_map(Result::ok)
         .map(|e| e.file_name().to_string_lossy().into_owned())
-        .filter(|n| n.starts_with("sculpt3d") && n.ends_with(".rs") && !n.ends_with("_tests.rs"))
-        .filter_map(|n| fs::read_to_string(format!("src/{n}")).ok())
+        .filter(|n| n.ends_with(".rs") && !n.ends_with("_tests.rs"))
+        .filter_map(|n| fs::read_to_string(format!("src/sculpt3d/{n}")).ok())
         .filter(|c| c.contains("fn new(device: &wgpu::Device"))
         .collect();
     // **Controle positivo:** o construtor tem de existir e ser UM. Zero é a

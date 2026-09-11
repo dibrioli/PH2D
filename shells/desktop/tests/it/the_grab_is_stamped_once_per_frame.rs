@@ -78,8 +78,11 @@ fn the_pen_up_drains_the_pending_pull_before_it_closes_the_stroke() {
 #[test]
 fn the_frame_drains_the_pending_pull() {
     let src = read("render_loop/mod.rs");
+    // ⚠️ **`flush_grab(scene)` e não `flush_grab()` desde 2026-09-11 (W2/L3-A2)**: a porta
+    // virou função LIVRE e passou a RECEBER a cena — a shell é que a procura. O parêntese
+    // vazio era a assinatura de método, e casá-lo agora deixaria o gate a medir nada.
     assert!(
-        src.contains("flush_grab()"),
+        src.contains("flush_grab(scene)"),
         "o laço de quadro não drena o puxão — com o evento apenas registando, o \
          barro só andaria no pen-up"
     );

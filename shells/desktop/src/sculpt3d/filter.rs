@@ -34,6 +34,7 @@
 
 use super::Sculpt3dScene;
 
+use ph2d_sculpt3d::ClothFilterOrientation;
 /// Quanta força um pixel de arrasto vale no **FILTRO** — a régua do filtro de
 /// malha da referência.
 ///
@@ -57,7 +58,6 @@ use super::Sculpt3dScene;
 // (o sítio que a doc dela manda) deixaria a suíte da crate verde sobre um número
 // que o app não usa. Precedente da própria linha: o `DEFAULT_ALPHA_SCALE`.
 pub(crate) use ph2d_sculpt3d::FILTER_DRAG_PER_PX;
-use ph2d_sculpt3d::ClothFilterOrientation;
 
 /// ⭐⭐⭐ **O QUE O ARTISTA AFINOU NO FILTRO DE TECIDO.**
 ///

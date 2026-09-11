@@ -80,7 +80,8 @@ fn a_loaded_project_leaves_its_sculpture_pending_for_the_frame() {
     let _ = std::fs::remove_file(&path);
 
     let (pieces, active) = app
-        .sculpt3d.pending
+        .sculpt3d
+        .pending
         .as_ref()
         .expect("a escultura do arquivo");
     assert_eq!(pieces.len(), 1, "a peça do arquivo");

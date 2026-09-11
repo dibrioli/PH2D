@@ -134,6 +134,9 @@ mod tests {
         };
         // O ciclo de um binário sem escultura: nada lê o documento, tudo o resto é drenado.
         let _ = (r.take_bake(), r.take_alpha(), r.take_toggle());
-        assert_eq!(r.doc, bytes, "os bytes da escultura não sobreviveram ao quadro");
+        assert_eq!(
+            r.doc, bytes,
+            "os bytes da escultura não sobreviveram ao quadro"
+        );
     }
 }

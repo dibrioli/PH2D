@@ -32,7 +32,13 @@ const CALL: &str = "alpha_stencil: Some(self.stencil_for(pose))";
 /// partiu dois arquivos por teto de LOC, e um gate que fixasse o endereço ficaria
 /// verde por vácuo no terceiro corte — o controle positivo abaixo é o que
 /// transforma *"não achei"* em falha alta.
-const ROOT: &str = "src";
+/// ⚠️ **A raiz encolheu para a PASTA em 2026-09-11 (W2/L3-A3)**, e isso torna a lei do
+/// parágrafo acima *mais* forte, não menos: a família deixou de ser reconhecida por um prefixo
+/// no nome do ficheiro e passou a ser o directório, então um irmão novo nasce coberto mesmo
+/// que alguém o baptize mal. ⛔ Foi o controlo positivo (`seen == 1`) quem apanhou a troca —
+/// com `"src"` a varredura não-recursiva vê o directório, não os `.rs` lá dentro, e devolvia
+/// **zero**.
+const ROOT: &str = "src/sculpt3d";
 
 #[test]
 fn the_clay_preview_is_handed_the_view() {

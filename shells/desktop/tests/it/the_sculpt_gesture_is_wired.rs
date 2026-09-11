@@ -362,10 +362,7 @@ fn a_pointer_event_is_walked_at_the_brushes_spacing_and_stops_where_the_ray_miss
     // o `Drag::Sculpt` é um `match` sobre o `Grip` com três braços, e dois deles
     // percorrem o caminho — a asserção de ausência abaixo (*a âncora não avança
     // fora do ramo que carimbou*) lia os TRÊS e falhava sobre produto correto.
-    let arm = grip_arm(
-        &function_body(&sculpt_src(), "pointer_move"),
-        "Grip::Stamp",
-    );
+    let arm = grip_arm(&function_body(&sculpt_src(), "pointer_move"), "Grip::Stamp");
     assert!(
         arm.contains("ph2d_sculpt3d::walk(") && arm.contains("min_spacing("),
         "o arrasto tem de percorrer o caminho no espaçamento do pincel"

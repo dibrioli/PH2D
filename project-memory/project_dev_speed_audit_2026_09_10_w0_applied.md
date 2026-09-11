@@ -28,6 +28,12 @@ Estado em 2026-09-10, fim do dia:
   o `ld.mold` no gate é 12 linkers/198 threads em 20 % do tempo, não é o gargalo.
 - ✅ **W2.0 censo feito:** `App` tem ~401 campos; física toca 126 (22 `impl App`), sculpt 180, vec 89; 425
   ficheiros de smoke (95 k LOC), 22 com `impl App`. ⛔ Uma feature `smokes` por `#[cfg]` foi recusada.
+- ⭐ **ORDEM DO ENIO (10/09, noite): «Amanhã partiremos o shell» — a W2 começa em 11/09.** Ponto de
+  partida: o censo em `docs/DevOps/AUDITORIA_VELOCIDADE_DE_DESENVOLVIMENTO_2026-09-10.md` §4-C2
+  (W2.0: 425 ficheiros de smoke / 95 k LOC, 22 com `impl App`; `App` com ~401 campos; física 126,
+  sculpt 180, vec 89) e DIRETRIZ §6.7 item 5. Degrau 1 = cenas de smoke fora da shell atrás de uma
+  interface (trait `SmokeHost` ou eventos ECS); apagar as cenas que nenhum doc cita; depois
+  `ph2d-app-<módulo>` por família, motion primeiro. ⛔ Não é uma feature `smokes` por `#[cfg]`.
 - **Por abrir, em ordem:** W2 (cenas de smoke para crates atrás de um trait `SmokeHost`; depois
   `ph2d-app-<módulo>` por família — dias por família, motion primeiro) · W1b (`ph2d-arch-gates`, valor baixo
   depois da W1) · W2.0 (censo de quanto de `App`

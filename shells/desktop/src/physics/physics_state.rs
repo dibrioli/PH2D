@@ -52,9 +52,9 @@ pub(crate) struct PhysicsState {
 
     /// **O arrasto de âncora de junta em curso** (W-J2), ou `None`. As duas alças
     /// de canvas — o ponto A cheio e o anel B vazado — abrem este mesmo gesto,
-    /// que escreve pela porta de âncora da ponte; ver [`crate::joint_anchor_drag`].
+    /// que escreve pela porta de âncora da ponte; ver [`crate::physics::joint_anchor_drag`].
     /// Runtime-only: o arrasto não é o documento, a âncora que ele escreve é.
-    pub(crate) joint_anchor_drag: Option<crate::joint_anchor_drag::JointAnchorDrag>,
+    pub(crate) joint_anchor_drag: Option<crate::physics::joint_anchor_drag::JointAnchorDrag>,
 
     /// Armado pelo botão *Draw Joint* do §11, desarmado por uma criação
     /// completa — e deliberadamente NÃO por uma recusa, para que um release no
@@ -63,8 +63,8 @@ pub(crate) struct PhysicsState {
     /// documento.
     pub(crate) joint_draw_armed: bool,
 
-    /// O gesto em curso, ou `None`. Ver [`crate::joint_draw`].
-    pub(crate) joint_draw: Option<crate::joint_draw::JointDraw>,
+    /// O gesto em curso, ou `None`. Ver [`crate::physics::joint_draw`].
+    pub(crate) joint_draw: Option<crate::physics::joint_draw::JointDraw>,
 
     /// A entidade cujo readout de player o laço imprime, ou `None`.
     ///

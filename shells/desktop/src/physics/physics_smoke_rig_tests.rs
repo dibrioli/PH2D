@@ -21,8 +21,8 @@ fn rigged() -> (SimWorld, usize, usize) {
         r
     };
     let queue = ph2d_ecs::scene::EditorCommandQueue::default();
-    let plan = crate::joint_rig::plan(&mut sim, &[torso.to_bits()]);
-    let out = crate::joint_rig::apply(
+    let plan = crate::physics::joint_rig::plan(&mut sim, &[torso.to_bits()]);
+    let out = crate::physics::joint_rig::apply(
         &mut sim,
         &plan,
         ph2d_physics_ecs::JointKind::Pin,

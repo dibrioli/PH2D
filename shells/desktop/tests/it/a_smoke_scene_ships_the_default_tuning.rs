@@ -25,7 +25,13 @@
 use std::fs;
 
 /// A cena que o report nomeou.
-const SCENE: &str = "src/physics_smoke_kinematic.rs";
+/// ⚠️ **A cena mudou de CRATE na W2/L2** — ela só povoa um `World`, então saiu
+/// para `ph2d-app-physics`. O caminho é relativo ao `CARGO_MANIFEST_DIR` da shell,
+/// e por isso sobe dois níveis. ⛔ *Um caminho não avisa que envelheceu: quem o
+/// obriga a falar é o gate `the_scanner_reads_the_scene_it_claims_to_scan`, o
+/// controlo positivo que exige encontrar a cena antes de afirmar seja o que for
+/// sobre ela.*
+const SCENE: &str = "../../crates/ph2d-app-physics/src/physics_smoke_kinematic.rs";
 
 /// O CÓDIGO da cena — sem os comentários.
 ///

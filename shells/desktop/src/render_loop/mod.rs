@@ -129,7 +129,7 @@ mod inspector_player_out_tests;
 mod inspector_player_tests;
 // ⚠️ `pub(crate)`: a porta `apply_physics_edit` é a ÚNICA regra de "como uma
 // entidade vira corpo" (o collider sai da CAIXA DO SPRITE), e o gerador de rig
-// (`crate::joint_rig`, W-Rig) a chama de fora — uma segunda regra lá faria um rig
+// (`crate::physics::joint_rig`, W-Rig) a chama de fora — uma segunda regra lá faria um rig
 // cujos colliders discordam dos que o botão *Add Body* produz. Mesmo alcance do
 // `inspector_joint` logo acima, pelo mesmo motivo.
 /// A lei do relógio, perguntada pelos DOIS emissores de sinal — ver o módulo.
@@ -2779,7 +2779,7 @@ impl crate::App {
         // dispatch da física, que é a fase em que o tempo do mundo anda. Um canal
         // PRÓPRIO, porque uma explosão é um impulso e não deixa estado no mundo
         // para uma marca derivada ler (o irmão exato do `ContactFlash`).
-        crate::body_grab::age_blast_flash(&mut self.blast_flash);
+        crate::physics::body_grab::age_blast_flash(&mut self.blast_flash);
         // **O READOUT do player, a cada meio segundo** (`W-PlayerOut` A5) — a
         // metade do smoke que torna a afinação legível sem um `println` à mão.
         //
@@ -8852,8 +8852,8 @@ impl crate::App {
                     .and_then(|d| d.posed_limit(sim)),
                 // W-J4: a banda elástica, se um gesto de criar está em voo (e o
                 // corpo A ainda existe — apagá-lo sob o gesto o invalida).
-                crate::joint_draw::body_alive(sim, self.physics.joint_draw)
-                    .then(|| crate::joint_draw::band(self.physics.joint_draw))
+                crate::physics::joint_draw::body_alive(sim, self.physics.joint_draw)
+                    .then(|| crate::physics::joint_draw::band(self.physics.joint_draw))
                     .flatten(),
                 // W-Grab: a mola da mão, lida do ÚNICO dono do fato (a ponte);
                 // o ponto de pega é derivado da pose VIVA do corpo, então o
@@ -13213,13 +13213,13 @@ impl crate::App {
                 // canvas, entao sem uma saida o unico jeito de sair era completar
                 // um joint que o artista nao queria. Pela porta unica
                 // `toggle_joint_draw`, a MESMA que o Esc usa.
-                crate::joint_draw::toggle(
+                crate::physics::joint_draw::toggle(
                     &mut self.physics.joint_draw_armed,
                     &mut self.physics.joint_draw,
                 );
             }
             if join_chain {
-                let (made, last) = crate::joint_draw::join_chain(
+                let (made, last) = crate::physics::joint_draw::join_chain(
                     sim,
                     &inspector_selection,
                     inspector_joint::kind_of(self.physics.join_kind),
@@ -13249,8 +13249,8 @@ impl crate::App {
             // (ele não pode: são dois botões).
             if rig_now {
                 let roots: Vec<u64> = hero.gizmo.iter_selected().collect();
-                let plan = crate::joint_rig::plan(sim, &roots);
-                let out = crate::joint_rig::apply(
+                let plan = crate::physics::joint_rig::plan(sim, &roots);
+                let out = crate::physics::joint_rig::apply(
                     sim,
                     &plan,
                     inspector_joint::kind_of(self.physics.join_kind),

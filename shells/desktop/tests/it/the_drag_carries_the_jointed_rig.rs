@@ -44,7 +44,7 @@ fn source() -> String {
 fn seed_calls(src: &str) -> Vec<String> {
     let mut out = Vec::new();
     let mut rest = src;
-    while let Some(i) = rest.find("crate::joint_rig_drag::seed_group_drag_starts(") {
+    while let Some(i) = rest.find("crate::physics::joint_rig_drag::seed_group_drag_starts(") {
         let after = &rest[i..];
         let end = after
             .find(");")
@@ -175,7 +175,7 @@ fn the_site_that_can_open_any_gesture_also_asks_for_a_translate() {
 /// veria dois chips fazendo a mesma coisa.
 #[test]
 fn the_drag_expands_by_the_policy_it_was_handed() {
-    let door = fs::read_to_string("src/joint_rig_drag.rs").expect("joint_rig_drag.rs");
+    let door = fs::read_to_string("src/physics/joint_rig_drag.rs").expect("joint_rig_drag.rs");
     assert!(
         door.contains("ph2d_physics_ecs::jointed_by(sim.world_mut(), &seed, reach)"),
         "o arrasto tem de expandir por `jointed_by` com o alcance que recebeu"

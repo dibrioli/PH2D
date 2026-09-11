@@ -46,16 +46,29 @@ const RULER_WORDS: &[&str] = &[
 const OPENS_TIMELINE: &str = "panel_visibility.insert(\"timeline\", true)";
 
 fn scene_sources() -> String {
-    let dir = fs::read_dir("src").expect("src");
+    // ⚠️⚠️ **DUAS pastas desde a W2/L2, e ler só uma deixa este gate CEGO a 70 das
+    // 108 cenas** — que é o defeito que ele existe para apanhar. A família partiu-se
+    // em `shells/desktop/src/physics/` (o que precisa da `App`) e
+    // `crates/ph2d-app-physics/src/` (o que só povoa um `World`), e um varredor de
+    // uma pasta só devolveria um conjunto mais pequeno **sem reprovar**: é o
+    // controlo positivo abaixo (`…_can_match_something`) que o obriga a falar.
     let mut out = String::new();
-    for e in dir.flatten() {
-        let name = e.file_name().to_string_lossy().to_string();
-        if name.starts_with("physics_smoke") && name.ends_with(".rs") && !name.contains("_tests") {
-            out.push_str(&fs::read_to_string(e.path()).expect("fonte de cena"));
-            // A cerca, pela mesma razão que o gate irmão a tem: sem ela a ÚLTIMA
-            // `fn` de cada arquivo engole o começo do seguinte, e "o seguinte" é a
-            // ordem de `read_dir`, que o sistema de arquivos escolhe.
-            out.push_str("\nfn __cerca_de_arquivo__() {}\n");
+    for dir in ["src/physics", "../../crates/ph2d-app-physics/src"] {
+        let Ok(rd) = fs::read_dir(dir) else {
+            continue;
+        };
+        for e in rd.flatten() {
+            let name = e.file_name().to_string_lossy().to_string();
+            if name.starts_with("physics_smoke")
+                && name.ends_with(".rs")
+                && !name.contains("_tests")
+            {
+                out.push_str(&fs::read_to_string(e.path()).expect("fonte de cena"));
+                // A cerca: sem ela a ÚLTIMA `fn` de cada arquivo engole o começo do
+                // seguinte, e "o seguinte" é a ordem de `read_dir`, que o sistema de
+                // arquivos escolhe.
+                out.push_str("\nfn __cerca_de_arquivo__() {}\n");
+            }
         }
     }
     out
@@ -97,7 +110,7 @@ fn body_of<'a>(src: &'a str, f: &str) -> Option<&'a str> {
 
 /// `(número, fn, corpo, mensagem)` de toda cena.
 fn scenes() -> Vec<(String, String, String, String)> {
-    let dispatch = fs::read_to_string("src/physics_smoke.rs").expect("physics_smoke.rs");
+    let dispatch = fs::read_to_string("src/physics/physics_smoke.rs").expect("physics_smoke.rs");
     let all = scene_sources();
     let arms = scene_arms(&dispatch);
     assert!(
@@ -157,7 +170,7 @@ fn ruler_scenes() -> Vec<(String, String, String)> {
 /// falha então diz exatamente quantas cenas ficam mudando de assunto.
 #[test]
 fn every_physics_smoke_scene_has_a_ruler_because_the_prologue_opens_the_timeline() {
-    let dispatch = fs::read_to_string("src/physics_smoke.rs").expect("physics_smoke.rs");
+    let dispatch = fs::read_to_string("src/physics/physics_smoke.rs").expect("physics_smoke.rs");
     let prologue = body_of(&dispatch, "physics_smoke").expect("o prólogo do smoke sumiu");
     let asking: Vec<String> = ruler_scenes()
         .into_iter()

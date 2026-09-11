@@ -1,6 +1,6 @@
 //! **POSAR ARRASTANDO A PONTA** (W-IK) — o gesto de cinemática inversa.
 //!
-//! Irmão do [`crate::body_grab`], e a diferença entre os dois é o RELÓGIO:
+//! Irmão do [`crate::physics::body_grab`], e a diferença entre os dois é o RELÓGIO:
 //!
 //! | | a MÃO (W-Grab) | a POSE (W-IK) |
 //! |---|---|---|

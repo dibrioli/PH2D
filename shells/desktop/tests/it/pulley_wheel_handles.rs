@@ -15,7 +15,8 @@ use std::fs;
 /// A metade do gesto que é da RODLANA — módulo filho desde o split do W6, e é
 /// nele que estas afirmações moram agora.
 fn wheel_module() -> String {
-    fs::read_to_string("src/joint_anchor_drag_wheel.rs").expect("joint_anchor_drag_wheel.rs")
+    fs::read_to_string("src/physics/joint_anchor_drag_wheel.rs")
+        .expect("joint_anchor_drag_wheel.rs")
 }
 
 /// **Mover o eixo de uma roldana MONTADA passa pela porta de re-colocação.**
@@ -68,7 +69,8 @@ fn committing_a_wheel_position_reseats_the_same_axle() {
 /// mexendo em metade dos sítios.
 #[test]
 fn both_radius_handles_ask_one_door() {
-    let parent = fs::read_to_string("src/joint_anchor_drag.rs").expect("joint_anchor_drag.rs");
+    let parent =
+        fs::read_to_string("src/physics/joint_anchor_drag.rs").expect("joint_anchor_drag.rs");
     let wheel = wheel_module();
     assert!(
         parent.contains("wheel::open_grab(sim, joint, kind, cursor)")
@@ -175,7 +177,7 @@ fn authoring_the_radius_through_the_panel_reopens_the_rope_length() {
 /// alguém tem de lembrar de atualizar.
 #[test]
 fn the_mounted_axle_snaps_and_the_snapped_point_is_what_lands() {
-    let src = fs::read_to_string("src/joint_anchor_drag.rs").expect("joint_anchor_drag.rs");
+    let src = fs::read_to_string("src/physics/joint_anchor_drag.rs").expect("joint_anchor_drag.rs");
     // A janela é o braço `Grab::World`, delimitado pelo braço seguinte — nunca
     // uma distância em bytes, o proxy que já expirou duas vezes neste repo.
     let at = src
@@ -275,7 +277,7 @@ fn the_rope_eyedropper_arms_a_modal_pick_against_the_route() {
     }
     // E a tolerância é a MESMA do resto do editor, lida do único lugar onde ela mora.
     assert!(
-        src.contains("crate::joint_anchor_drag::SNAP_PX"),
+        src.contains("crate::physics::joint_anchor_drag::SNAP_PX"),
         "a tolerância tem de vir do `SNAP_PX` compartilhado; um segundo número faria \
          dois alvos de canvas responderem a distâncias diferentes"
     );

@@ -1,6 +1,6 @@
 //! **POSAR PELA JUNTA** (W-FK) — o gesto de cinemática DIRETA.
 //!
-//! Irmão do [`crate::body_pose`] em tudo que é fiação (o mesmo relógio parado, o
+//! Irmão do [`crate::physics::body_pose`] em tudo que é fiação (o mesmo relógio parado, o
 //! mesmo `Transform` autorado, o mesmo passo de undo, a mesma porta de escrita)
 //! e o oposto dele em INTENÇÃO:
 //!
@@ -32,7 +32,7 @@
 //!
 //! # A escrita é a MESMA porta da IK
 //!
-//! [`crate::body_pose::write_world_pose`] converte mundo → local contra o pai,
+//! [`crate::physics::body_pose::write_world_pose`] converte mundo → local contra o pai,
 //! preserva escala e skew e recusa o não-finito. Uma segunda conversão aqui
 //! divergiria no primeiro corpo parenteado — o defeito que o W5 levou quatro
 //! waves para encontrar porque toda fixture usava corpo-raiz.
@@ -81,7 +81,7 @@ impl App {
         let world = gfx.camera.screen_to_world(self.last_pointer, window);
         let poses = gfx.physics.fk_move(world);
         for (e, translation, rotation) in poses {
-            crate::body_pose::write_world_pose(&mut gfx.sim, e, translation, rotation);
+            crate::physics::body_pose::write_world_pose(&mut gfx.sim, e, translation, rotation);
         }
         self.any_input_this_frame = true;
     }

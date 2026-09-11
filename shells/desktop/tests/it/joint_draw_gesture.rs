@@ -152,7 +152,7 @@ fn the_band_is_drawn_even_with_the_outline_off() {
 /// Mutação-testada: `None` no lugar do par vai RED aqui.
 #[test]
 fn the_release_hands_the_two_points_to_the_creation_door() {
-    let src = fs::read_to_string("src/joint_draw.rs").expect("joint_draw.rs");
+    let src = fs::read_to_string("src/physics/joint_draw.rs").expect("joint_draw.rs");
     let call_at = src
         .find("create_joint_at(")
         .expect("o release não chama mais a porta de criação com pontos");
@@ -178,7 +178,7 @@ fn the_release_hands_the_two_points_to_the_creation_door() {
 /// recusa faria o artista re-clicar o botão a cada mira errada.
 #[test]
 fn a_completed_gesture_disarms_and_a_refusal_does_not() {
-    let src = fs::read_to_string("src/joint_draw.rs").expect("joint_draw.rs");
+    let src = fs::read_to_string("src/physics/joint_draw.rs").expect("joint_draw.rs");
     let release = &src[src
         .find("pub(crate) fn joint_draw_release")
         .expect("o release sumiu")..];

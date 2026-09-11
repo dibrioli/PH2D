@@ -41,7 +41,7 @@ const WRITERS: [&str; 9] = [
     // que os dois arquivos entram na lista. Um componente cuja única UI é uma
     // alça continua sendo alcançável no produto, que é o que este gate mede.
     "src/render_loop/inspector_joint_wheel.rs",
-    "src/joint_anchor_drag.rs",
+    "src/physics/joint_anchor_drag.rs",
     // ⚠️ **E nem todo caminho de autoria é um NÚMERO.** O nome do sinal (W-Signal)
     // é uma STRING, então ele não passa pelo `PhysicsFieldEdit` — vai pelo mesmo
     // pipeline canônico de componente que o nome da entidade usa (fila de comandos

@@ -1129,7 +1129,7 @@ pub(super) fn publish(
     // em toda situação menos a que ele existe para servir.
     let rig_parts = {
         let roots: Vec<u64> = hero.gizmo.iter_selected().collect();
-        let plan = crate::joint_rig::plan(sim, &roots);
+        let plan = crate::physics::joint_rig::plan(sim, &roots);
         if plan.is_offered() {
             u8::try_from(plan.parts.len()).unwrap_or(u8::MAX)
         } else {

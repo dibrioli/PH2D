@@ -58,37 +58,88 @@ const HANDLE_WORDS: &[&str] = &[
 /// *"até a próxima `fn `"* — um segundo critério de fronteira seria a segunda
 /// porta que diverge da primeira.
 fn scene_sources() -> String {
-    let dir = fs::read_dir("src").expect("src");
+    // ⚠️⚠️ **DUAS pastas desde a W2/L2, e ler só uma deixa este gate CEGO a 70 das
+    // 108 cenas** — que é o defeito que ele existe para apanhar. A família partiu-se
+    // em `shells/desktop/src/physics/` (o que precisa da `App`) e
+    // `crates/ph2d-app-physics/src/` (o que só povoa um `World`), e um varredor de
+    // uma pasta só devolveria um conjunto mais pequeno **sem reprovar**: é o
+    // controlo positivo abaixo (`…_can_match_something`) que o obriga a falar.
     let mut out = String::new();
-    for e in dir.flatten() {
-        let name = e.file_name().to_string_lossy().to_string();
-        if name.starts_with("physics_smoke") && name.ends_with(".rs") && !name.contains("_tests") {
-            out.push_str(&fs::read_to_string(e.path()).expect("fonte de cena"));
-            out.push_str("\nfn __cerca_de_arquivo__() {}\n");
+    for dir in ["src/physics", "../../crates/ph2d-app-physics/src"] {
+        let Ok(rd) = fs::read_dir(dir) else {
+            continue;
+        };
+        for e in rd.flatten() {
+            let name = e.file_name().to_string_lossy().to_string();
+            if name.starts_with("physics_smoke")
+                && name.ends_with(".rs")
+                && !name.contains("_tests")
+            {
+                out.push_str(&fs::read_to_string(e.path()).expect("fonte de cena"));
+                // A cerca: sem ela a ÚLTIMA `fn` de cada arquivo engole o começo do
+                // seguinte, e "o seguinte" é a ordem de `read_dir`, que o sistema de
+                // arquivos escolhe.
+                out.push_str("\nfn __cerca_de_arquivo__() {}\n");
+            }
         }
     }
     out
 }
 
 /// `"63" => self.physics_smoke_composition(),` → `{ "63": "physics_smoke_composition" }`.
+/// ⚠️⚠️ **DUAS formas de braço desde a W2/L2, e ler só uma torna este gate VÁCUO.**
+/// O roteador despacha hoje de duas maneiras:
+///
+/// - `"3" => self.physics_smoke_author(),` — as 17 cenas que ainda são método,
+///   porque precisam da timeline, do playhead ou do readout;
+/// - `"22" => self.run_physics_scene(crate::…::physics_smoke_damping),` — as 101
+///   que já vivem na crate e são funções livres.
+///
+/// A 1.ª redacção lia `self.` e parava no primeiro `(`, então na forma nova ela
+/// colhia **`run_physics_scene`** — o nome do INVÓLUCRO — para as 101, e nenhuma
+/// cena se classificava. *Um parser que devolve o nome errado não acusa: ele
+/// esvazia o conjunto, e um conjunto vazio lê-se como «está tudo bem».* É o
+/// controlo positivo (`the_needles_can_match_something`) que impede isso.
+///
+/// ⚠️ E o texto é **achatado** antes de ser lido: o `rustfmt` parte um braço longo
+/// em três linhas (`… => self\n .run_physics_scene(\n crate::…)`), e um parser
+/// linha-a-linha perde exactamente os braços mais compridos.
 fn scene_arms(dispatch: &str) -> BTreeMap<String, String> {
+    let plano: String = dispatch.split_whitespace().collect::<Vec<_>>().join(" ");
     let mut out = BTreeMap::new();
-    for line in dispatch.lines() {
-        let t = line.trim();
-        let Some(rest) = t.strip_prefix('"') else {
+    let mut rest = plano.as_str();
+    while let Some(i) = rest.find("\" => ") {
+        let (antes, depois) = rest.split_at(i);
+        rest = &depois[5..];
+        // o número é o que está entre aspas imediatamente antes do `=>`
+        let Some(num) = antes.rsplit('"').next() else {
             continue;
         };
-        let Some((num, tail)) = rest.split_once('"') else {
+        if num.is_empty() || !num.chars().all(|c| c.is_ascii_digit()) {
             continue;
+        }
+        // o braço vai até à vírgula que o fecha
+        let arm = rest.split_once("), ").map_or(rest, |(a, _)| a);
+        let nome = if let Some(dentro) = arm.split("run_physics_scene(").nth(1) {
+            // `crate::mod::fn` ou `ph2d_app_physics::mod::fn` → o último segmento
+            dentro
+                .split(')')
+                .next()
+                .unwrap_or("")
+                .rsplit("::")
+                .next()
+                .unwrap_or("")
+                .trim()
+                .to_string()
+        } else {
+            arm.split("self.")
+                .nth(1)
+                .and_then(|c| c.split_once('('))
+                .map(|(f, _)| f.trim().to_string())
+                .unwrap_or_default()
         };
-        let Some(call) = tail.split("self.").nth(1) else {
-            continue;
-        };
-        let Some((f, _)) = call.split_once('(') else {
-            continue;
-        };
-        if num.chars().all(|c| c.is_ascii_digit()) {
-            out.insert(num.to_string(), f.to_string());
+        if !nome.is_empty() {
+            out.insert(num.to_string(), nome);
         }
     }
     out
@@ -117,7 +168,7 @@ fn body_of<'a>(src: &'a str, f: &str) -> Option<&'a str> {
 /// portas que `wheel_handles` tem (`show_overlay && at_rest`), e uma classe
 /// derivada duas vezes é a que diverge quando o critério muda.
 fn handle_gesture_scenes() -> Vec<(String, String, String)> {
-    let dispatch = fs::read_to_string("src/physics_smoke.rs").expect("physics_smoke.rs");
+    let dispatch = fs::read_to_string("src/physics/physics_smoke.rs").expect("physics_smoke.rs");
     let all = scene_sources();
     let arms = scene_arms(&dispatch);
     assert!(
@@ -160,7 +211,7 @@ fn handle_gesture_scenes() -> Vec<(String, String, String)> {
 /// **A cena que manda arrastar uma alça nasce pausada.**
 #[test]
 fn a_scene_that_asks_for_a_handle_gesture_starts_paused() {
-    let dispatch = fs::read_to_string("src/physics_smoke.rs").expect("physics_smoke.rs");
+    let dispatch = fs::read_to_string("src/physics/physics_smoke.rs").expect("physics_smoke.rs");
     let start = dispatch
         .find("const PAUSED_SCENES")
         .expect("a lista de cenas pausadas sumiu");

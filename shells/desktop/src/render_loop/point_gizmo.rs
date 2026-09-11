@@ -256,7 +256,7 @@ pub(super) fn rope_stop_handles(
         .filter(|v| v.kind == ph2d_physics_ecs::JointKind::Pulley)
     {
         let legs = physics.rope_stop_legs(v.entity);
-        let stops = crate::joint_anchor_drag::stops_of(sim, v.entity);
+        let stops = crate::physics::joint_anchor_drag::stops_of(sim, v.entity);
         for (side, kind) in [PointHandleKind::RopeStopA, PointHandleKind::RopeStopB]
             .into_iter()
             .enumerate()

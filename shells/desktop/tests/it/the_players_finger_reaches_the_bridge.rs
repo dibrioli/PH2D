@@ -1,6 +1,6 @@
 //! **ARCH-GATE do fio da entrada do player** (W3).
 //!
-//! A política de teclas é pura e tem gates próprios (`crate::player_input`), e a
+//! A política de teclas é pura e tem gates próprios (`crate::physics::player_input`), e a
 //! lei tem os dela na `ph2d-platformer`. O que **nenhum dos dois alcança** é o
 //! FIO: um `winit::KeyEvent` não pode ser construído fora do winit (a parede que
 //! fez o corpo do `on_keyboard_input` virar `key_input`), e o `render_loop` exige

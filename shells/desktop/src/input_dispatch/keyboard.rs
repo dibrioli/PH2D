@@ -147,7 +147,7 @@ impl App {
         // dono (o nudge de nó do Vector), e roubá-la aqui faria esta wave
         // regredir uma ferramenta que ninguém pediu para mexer — o evento segue
         // o caminho de sempre, e o que muda é um par de bools que ninguém lê
-        // numa cena sem player. A política é pura (`crate::player_input`),
+        // numa cena sem player. A política é pura (`crate::physics::player_input`),
         // porque um `winit::KeyEvent` não pode ser construído num teste.
         // ⚠️ **E um ACORDE nunca é entrada de jogo** (report do Enio, cena 112:
         // *"os players pulam e se movem sozinhos"*). O dedo do jogador observa a

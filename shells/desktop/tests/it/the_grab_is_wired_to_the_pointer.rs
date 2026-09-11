@@ -57,7 +57,7 @@ fn on_mouse_input_body(src: &str) -> String {
 fn the_press_asks_the_grab_door_with_the_clock_and_the_transport() {
     let src = dispatch_src();
     let i = src
-        .find("crate::body_grab::take_hold(")
+        .find("crate::physics::body_grab::take_hold(")
         .expect("o Down tem de chamar a porta da mão");
     let call = &src[i..i + src[i..].find(");").expect("chamada sem fechamento")];
     assert!(
@@ -70,7 +70,7 @@ fn the_press_asks_the_grab_door_with_the_clock_and_the_transport() {
          Chamada:\n{call}"
     );
     assert_eq!(
-        src.matches("crate::body_grab::take_hold(").count(),
+        src.matches("crate::physics::body_grab::take_hold(").count(),
         1,
         "UMA porta, UM sítio: uma 2ª chamada é a 2ª cópia da regra"
     );
@@ -85,7 +85,7 @@ fn taking_hold_suppresses_the_gizmo_drag() {
     let src = dispatch_src();
     // A janela entre a chamada da porta e o `opened_drag = true` do pick de canvas.
     let i = src
-        .find("crate::body_grab::take_hold(")
+        .find("crate::physics::body_grab::take_hold(")
         .expect("a porta é chamada");
     let after = &src[i..];
     let end = after
@@ -171,7 +171,7 @@ fn the_point_tools_are_intercepted_before_the_canvas_pick() {
         .find("self.poke_press(")
         .expect("o intercept das ferramentas de ponto existe");
     let hand = src
-        .find("crate::body_grab::take_hold(")
+        .find("crate::physics::body_grab::take_hold(")
         .expect("o sítio da mão existe");
     assert!(
         poke < hand,
@@ -211,7 +211,7 @@ fn the_point_intercept_asks_the_one_door() {
 fn the_poke_press_asks_the_door_with_the_clock_and_the_transport() {
     let src = dispatch_src();
     let i = src
-        .find("crate::body_grab::poke_at(")
+        .find("crate::physics::body_grab::poke_at(")
         .expect("o press de ponto chama a porta");
     let call = &src[i..i + 400];
     for needle in [

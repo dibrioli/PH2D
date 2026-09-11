@@ -37,7 +37,7 @@
 // depois de alguém correr o alvo de teste certo: um `cargo check -p` da lib não o
 // alcança. Foi exactamente esta armadilha que a W1 pagou e que o briefing da W2
 // mandou procurar.
-const WALK: &str = include_str!("../../src/physics_smoke_player.rs");
+const WALK: &str = include_str!("../../src/physics/physics_smoke_player.rs");
 const TAPE: &str =
     include_str!("../../../../crates/ph2d-app-physics/src/physics_smoke_player_tape.rs");
 const FORGIVE: &str =

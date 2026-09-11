@@ -131,8 +131,11 @@ fn a_pulley_cannot_be_pinned_to_the_world() {
 /// recusando — que é exatamente o defeito que o smoke reportou.
 #[test]
 fn the_canvas_release_on_empty_routes_to_the_world_pin() {
-    let src = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/src/joint_draw.rs"))
-        .expect("joint_draw.rs");
+    let src = std::fs::read_to_string(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/src/physics/joint_draw.rs"
+    ))
+    .expect("physics/joint_draw.rs");
     assert!(
         src.contains("inspector_joint_world::create_world_pin_at"),
         "o release do canvas não chama a porta do pino de mundo — soltar no vazio \

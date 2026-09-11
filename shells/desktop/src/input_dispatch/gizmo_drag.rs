@@ -8,7 +8,7 @@
 // ph2d-loc-cap: ~735 LOC — the keyed-handle-id multi-select rotate/scale/translate
 // advance paths are inherently large; a finer per-path split is a desktop-gizmo follow-up.
 // +12 (gold-standard joint anchor): the joint tail — REMOVED again by W-J2; the
-// anchor dots open `crate::joint_anchor_drag`, which writes one side's local.
+// anchor dots open `crate::physics::joint_anchor_drag`, which writes one side's local.
 // +43 (frame resize): the snapshot install + the `else if` arm that resizes a frame's
 // box instead of writing its pose. Both DELEGATE (`crate::vec_frame_resize`), so the
 // arm is the branch and the ratio, nothing else — the same shape as the flow-reorder
@@ -725,7 +725,7 @@ impl App {
         // joint entity used to clear `PhysicsJoint::anchored`, because the dot
         // opened a generic Translate and the joint's `Transform` was its anchor.
         // Both halves of that are gone: the dot opens
-        // `crate::joint_anchor_drag` instead, and clearing the sentinel
+        // `crate::physics::joint_anchor_drag` instead, and clearing the sentinel
         // re-derives BOTH locals from the seed policy — so dragging the A dot
         // would have thrown away a B anchor the artist had just placed. A
         // reposition knows its side and writes that local directly.

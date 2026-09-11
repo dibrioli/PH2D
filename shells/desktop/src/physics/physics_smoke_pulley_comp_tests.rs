@@ -308,8 +308,11 @@ fn the_scene_fits_the_frame_it_sets() {
 /// fecha a classe — este aqui pina a cena.
 #[test]
 fn the_scene_that_asks_for_handles_starts_paused() {
-    let src = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/src/physics_smoke.rs"))
-        .expect("physics_smoke.rs");
+    let src = std::fs::read_to_string(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/src/physics/physics_smoke.rs"
+    ))
+    .expect("physics_smoke.rs");
     let start = src.find("const PAUSED_SCENES").expect("a lista sumiu");
     // ⚠️ **A janela vai até o `];`, nunca até um número de BYTES.** A primeira
     // versão deste gate lia `&src[start..start + 400]` e ele EXPIROU no dia em

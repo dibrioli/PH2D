@@ -264,15 +264,15 @@ impl crate::App {
             "60" => self.run_physics_scene(
                 ph2d_app_physics::physics_smoke_pulley_break::physics_smoke_break,
             ),
-            "61" => {
-                self.run_physics_scene(crate::physics_smoke_pulley_tackle::physics_smoke_tackle)
-            }
-            "62" => {
-                self.run_physics_scene(crate::physics_smoke_pulley_diff::physics_smoke_differential)
-            }
-            "63" => {
-                self.run_physics_scene(crate::physics_smoke_pulley_comp::physics_smoke_composition)
-            }
+            "61" => self.run_physics_scene(
+                crate::physics::physics_smoke_pulley_tackle::physics_smoke_tackle,
+            ),
+            "62" => self.run_physics_scene(
+                crate::physics::physics_smoke_pulley_diff::physics_smoke_differential,
+            ),
+            "63" => self.run_physics_scene(
+                crate::physics::physics_smoke_pulley_comp::physics_smoke_composition,
+            ),
             "64" => self.run_physics_scene(
                 ph2d_app_physics::physics_smoke_pulley_weston::physics_smoke_weston,
             ),
@@ -282,14 +282,14 @@ impl crate::App {
             "66" => self.run_physics_scene(
                 ph2d_app_physics::physics_smoke_joint_copy::physics_smoke_joint_copy,
             ),
-            "67" => self.run_physics_scene(crate::physics_smoke_rig::physics_smoke_rig),
+            "67" => self.run_physics_scene(crate::physics::physics_smoke_rig::physics_smoke_rig),
             "68" => self.run_physics_scene(
                 ph2d_app_physics::physics_smoke_soft_weld::physics_smoke_soft_weld,
             ),
             "69" => self.run_physics_scene(
                 ph2d_app_physics::physics_smoke_compound::physics_smoke_compound,
             ),
-            "70" => self.run_physics_scene(crate::physics_smoke_part::physics_smoke_part),
+            "70" => self.run_physics_scene(crate::physics::physics_smoke_part::physics_smoke_part),
             "71" => {
                 self.run_physics_scene(ph2d_app_physics::physics_smoke_foot::physics_smoke_foot)
             }

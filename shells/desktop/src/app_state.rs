@@ -1389,9 +1389,9 @@ pub(crate) struct App {
     /// **O transiente da família `physics`, com um dono só** (W2/L2) — o gesto de
     /// junta em curso, o que o próximo clique vai fazer, a ferramenta do ponteiro
     /// e os latches das cenas de smoke. Eram SETE campos soltos espalhados por
-    /// quatro regiões deste ficheiro; ver [`crate::physics_state::PhysicsState`]
+    /// quatro regiões deste ficheiro; ver [`crate::physics::physics_state::PhysicsState`]
     /// para o porquê e para o molde (`MotionState`).
-    pub(crate) physics: crate::physics_state::PhysicsState,
+    pub(crate) physics: crate::physics::physics_state::PhysicsState,
     /// O `Plan` de cada morph enquanto a relação não muda. Runtime-only: derivável das fontes,
     /// fora do save e do undo.
     pub(crate) vec_morph_plans: crate::morph_live::MorphPlans,

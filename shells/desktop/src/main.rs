@@ -93,9 +93,6 @@ mod baked_form;
 /// (re-cook por frame). Espelha `connector_live`.
 mod blend_live;
 mod blend_smoke;
-mod body_fk;
-mod body_grab;
-mod body_pose;
 /// ⭐ **O gesto do modo OSSO** (estudo 42 item 5): arrastar no vazio faz um osso, e o pai é o osso
 /// seleccionado — arrasto-arrasto-arrasto é uma cadeia.
 mod bone_gesture;
@@ -315,10 +312,6 @@ mod instance_verbs_walk;
 /// ⭐ **INSTANCIAR** (ADR-0164 / F4.2) — a porta que compõe a cópia profunda com o remap.
 mod instantiate;
 mod integration;
-mod joint_anchor_drag;
-mod joint_draw;
-mod joint_rig;
-mod joint_rig_drag;
 mod keymap;
 /// A cena de smoke do Knot (o entrelace celta over/under) — irmão de `build_smoke`.
 mod knot_smoke;
@@ -427,17 +420,9 @@ mod pattern_path_smoke;
 #[path = "pattern_seam_probe.rs"]
 mod pattern_seam_probe;
 mod pencil_smoke;
-mod physics_smoke;
-mod physics_smoke_joint_anim;
-mod physics_smoke_out;
-mod physics_smoke_part;
-mod physics_smoke_player;
-mod physics_smoke_pulley_comp;
-mod physics_smoke_pulley_diff;
-mod physics_smoke_pulley_tackle;
-mod physics_smoke_rig;
-mod physics_smoke_rigs;
-mod physics_state;
+/// A família `physics` (W2/L2): o que dela PRECISA da shell.
+/// O resto vive em `crates/ph2d-app-physics`.
+mod physics;
 /// **O import de uma folha hand-packed** (`folha.png` + `folha.json`) — irmão do
 /// `image_import`, e o primeiro consumidor que o `parse_atlas_meta` tem desde 2026-05-12.
 /// **A folha como OBJETO** (plano `docs/Sprite_projeto/17` §7) — criar uma a partir da seleção e
@@ -447,7 +432,6 @@ mod physics_state;
 /// (ou de folha) ser agarrável no canvas. Pura, e por isso testada.
 mod pick_order;
 mod picker_smoke;
-mod player_input;
 /// As fronteiras da folha — confinar uma peça, e contar o que está mal.
 /// **A conversão de precisão dos pixels de uma sprite** — o que os botões `RGBA8 / RGBA16` do
 /// Inspector fazem (plano `docs/Sprite_projeto/18` W5).
@@ -1110,7 +1094,7 @@ impl App {
             anchor_gizmo_drag: None,
             // O agregado da família `physics` (W2/L2). O `Default` reproduz,
             // campo a campo, os sete inicializadores que viviam soltos aqui.
-            physics: crate::physics_state::PhysicsState::default(),
+            physics: crate::physics::physics_state::PhysicsState::default(),
             vec_morph_plans: crate::morph_live::MorphPlans::new(),
             morph_machines: Default::default(),
             vec_blend_spines: crate::blend_live::BlendSpines::new(),

@@ -1,7 +1,7 @@
 //! **The smoke scenes where bodies are RELATED** — to each other, or to the
 //! Hierarchy (`PH2D_PHYSICS_SMOKE` 6, 7, 8 and 11).
 //!
-//! Sibling of [`crate::physics_smoke`], which keeps the prologue and the scenes
+//! Sibling of [`crate::physics::physics_smoke`], which keeps the prologue and the scenes
 //! about a body on its own (a drop, a pile, an empty state, the world knobs),
 //! and of [`ph2d_app_physics::physics_smoke_props`], which varies ONE property of one body.
 //! Split under the shell's 600-LOC cap, and the seam is a real one: everything

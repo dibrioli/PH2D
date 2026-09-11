@@ -2476,7 +2476,7 @@ impl App {
         let world = gfx.camera.screen_to_world((sx, sy), window);
         let playing = self.playhead.is_playing();
         let simulating = self.timeline.flags.simulate_physics;
-        let Some(hit) = crate::body_grab::poke_at(
+        let Some(hit) = crate::physics::body_grab::poke_at(
             &mut gfx.physics,
             &gfx.sim,
             &self.physics.interaction,
@@ -2491,7 +2491,7 @@ impl App {
         // e o overlay lê o campo VIVO da ponte (`attract_marks`), sem cópia aqui.
         if self.physics.interaction.tool == ph2d_physics_ecs::InteractionTool::Explode {
             let radius = self.physics.interaction.clamped().blast_radius;
-            self.blast_flash = Some((world, radius, crate::body_grab::BLAST_FLASH_TICKS));
+            self.blast_flash = Some((world, radius, crate::physics::body_grab::BLAST_FLASH_TICKS));
             if hit > 0
                 && let Some(gfx) = self.gfx.as_mut()
             {
@@ -2653,8 +2653,8 @@ impl App {
         };
         let window_size = gfx.surface.size();
         let world_pos = gfx.camera.screen_to_world((sx, sy), window_size);
-        let tol =
-            crate::joint_anchor_drag::SNAP_PX * gfx.camera.height_world / window_size.height as f32;
+        let tol = crate::physics::joint_anchor_drag::SNAP_PX * gfx.camera.height_world
+            / window_size.height as f32;
         match gfx.physics.rope_at_world(world_pos, tol) {
             Some(rope) => {
                 if crate::render_loop::inspector_joint_wheel::set_wheel_rope(
@@ -3455,7 +3455,7 @@ impl App {
         // W-Grab: **soltar a mão vem ANTES de tudo.** Este handler tem muitos
         // early-returns e uma mão que sobrevive ao release fica colada no cursor
         // para sempre; e vale para qualquer botão, porque uma mão não é um
-        // modificador (ver `crate::body_grab::release_body_grab`).
+        // modificador (ver `crate::physics::body_grab::release_body_grab`).
         if state == ElementState::Released {
             self.release_body_grab();
             self.release_body_pose();
@@ -5706,7 +5706,7 @@ impl App {
                         }
                     }
                     // Joint-anchor point handles: a Down on either dot opens the
-                    // anchor drag (`crate::joint_anchor_drag`) for that END. A
+                    // anchor drag (`crate::physics::joint_anchor_drag`) for that END. A
                     // joint has no sprite for the canvas-pick Translate path
                     // (`pick_sprites_at_world`) to resolve, so they are
                     // recognised HERE by hit id, before the generic handle path
@@ -5734,7 +5734,7 @@ impl App {
                         && hero.store.panel_at(evt.x, evt.y).is_none()
                         && !menu_open_before
                     {
-                        let opened = crate::joint_anchor_drag::open_drag(
+                        let opened = crate::physics::joint_anchor_drag::open_drag(
                             &gfx.physics,
                             &gfx.sim,
                             &gfx.camera,
@@ -5907,7 +5907,7 @@ impl App {
                             // W-JG: e, num Translate em repouso **com ALT**, o
                             // **rig articulado** do conjunto entra junto — a
                             // MESMA porta que o pick de canvas usa
-                            // (`crate::joint_rig_drag`), porque duas cópias da
+                            // (`crate::physics::joint_rig_drag`), porque duas cópias da
                             // regra é como arrastar pela alça passaria a
                             // carregar a corrente e arrastar pelo corpo, não.
                             let selected: Vec<u64> = hero.gizmo.iter_selected().collect();
@@ -5922,7 +5922,7 @@ impl App {
                                 } else {
                                     None
                                 };
-                            crate::joint_rig_drag::seed_group_drag_starts(
+                            crate::physics::joint_rig_drag::seed_group_drag_starts(
                                 &mut self.group_drag_starts,
                                 &mut gfx.sim,
                                 entity_bits,
@@ -6137,7 +6137,7 @@ impl App {
                             // de autoria — o mesmo relógio que decide se o Alt
                             // carrega o rig (W-JG, condição 2) decide isto, do
                             // outro lado. Pegou ⇒ nenhum arrasto de gizmo abre
-                            // (`crate::body_grab` explica por que os dois juntos
+                            // (`crate::physics::body_grab` explica por que os dois juntos
                             // seriam um gesto inerte cavalgando um vivo).
                             // W-JointTools: qual gesto de POSE este press abre,
                             // se algum. Uma pergunta só, feita à porta que também
@@ -6149,7 +6149,7 @@ impl App {
                                 .joint
                                 .gesture(self.modifiers.alt_key());
                             let grabbed = !locked
-                                && (crate::body_grab::take_hold(
+                                && (crate::physics::body_grab::take_hold(
                                     &mut gfx.physics,
                                     &self.physics.interaction,
                                     entity,
@@ -6164,7 +6164,7 @@ impl App {
                                 // gizmo abre), pela mesma razão: dois gestos
                                 // sobre o mesmo `Transform` no mesmo frame é o
                                 // de trás vencendo em silêncio.
-                                || crate::body_pose::take_pose(
+                                || crate::physics::body_pose::take_pose(
                                     &mut gfx.physics,
                                     gesture == Some(ph2d_physics_ecs::JointGesture::Ik),
                                     entity,
@@ -6172,7 +6172,7 @@ impl App {
                                 )
                                 // W-FK: e no modo FK o press gira o elo em torno
                                 // da PRÓPRIA junta, levando os descendentes.
-                                || crate::body_fk::take_fk(
+                                || crate::physics::body_fk::take_fk(
                                     &mut gfx.physics,
                                     &gfx.sim,
                                     gesture == Some(ph2d_physics_ecs::JointGesture::Fk),
@@ -6238,7 +6238,7 @@ impl App {
                                         .joint
                                         .drag_reach(self.modifiers.alt_key())
                                 };
-                                crate::joint_rig_drag::seed_group_drag_starts(
+                                crate::physics::joint_rig_drag::seed_group_drag_starts(
                                     &mut self.group_drag_starts,
                                     &mut gfx.sim,
                                     bits,
@@ -7195,7 +7195,7 @@ fn select_wheel_at(
     at: (f32, f32),
 ) -> bool {
     let w = camera.screen_to_world(at, win);
-    let tol = crate::joint_anchor_drag::SNAP_PX * camera.height_world / win.height as f32;
+    let tol = crate::physics::joint_anchor_drag::SNAP_PX * camera.height_world / win.height as f32;
     let Some(wheel) = physics.wheel_at_world(w, tol) else {
         return false;
     };

@@ -11,7 +11,7 @@
 |---|---|
 | branch | `line/app-flip` |
 | merge-base | `8fa4f115b` (main de 11/09) |
-| commits | 5 |
+| commits | 7 |
 | contadores partilhados movidos | **NENHUM** — `PROJECT_SCHEMA` 128, `FLIP_SCHEMA` 13, `DOC_VERSION` 18, registos 86/86, iguais à base |
 | contratos congelados (§6) | **intocados** (`node.rs`, `tool.rs`) |
 | ADR novo | nenhum ⇒ fora de toda disputa de número |
@@ -128,7 +128,61 @@ régua nas duas pontas: `300 → 280`. *Duas leituras da mesma grandeza a discor
    `rustfmt` reexpandiu-as e ele foi a **605**. Curado por corte (424 + 198), ⛔ nunca por entrada
    nova no `FILE_OVERAGE_OK`. *O `cargo check` não o vê; o `collision-surface.sh` vê.*
 
-## 7 — A prova (§3 do briefing)
+## 6-bis — ⛔⛔ O gate de fecho apanhou SETE vermelhos, e são QUATRO sub-espécies
+
+Nenhum é defeito de produto: os sete são gates que leem o **fonte como texto**. Vale a pena a
+lista, porque as outras cinco linhas da W2 vão encontrá-las todas:
+
+| sub-espécie | o que muda | exemplos |
+|---|---|---|
+| (a) o **ficheiro** mudou de sítio | o `include_str!` falha a LER | 8 em `tests/it/` |
+| (b) o **sujeito** mudou de METADE | o ficheiro existe, a função não está lá | `flip_canvas_down`/`flip_preview_data` → `draw_app.rs` · `let reach =` → `gap_live_app.rs` · as 3 asserções do `the_smoke_scene_arms` → `colorize_smoke_app.rs` |
+| (c) o **literal do caminho** mudou de grafia | o gate afirma uma string de path | `flip_gizmo_view::pick_all_at_world` → `flip::gizmo_view::…` · `flip_strip_drag::apply_strip_intents` · `flip_multiframe::targets` |
+| (d) ⛔ a **relação** entre DUAS funções que se separaram | o gate lê um ficheiro e precisa de dois | `the_flip_preview_bakes_through_the_same_door`: `flip_preview_data` foi para o `_app` e `stroke_from_samples` ficou no irmão |
+
+⚠️ **A (d) é a que engana:** um gate que afirma *«A delega em B»* e lê só o ficheiro de A fica
+**verde sobre a metade que não mudou**. Este só reprovou porque o `corpo()` dele usa `.expect()`
+— um gate com `unwrap_or(rest.len())` teria passado a medir o ficheiro inteiro.
+
+⭐ **O método que usei, e que recomendo às outras cinco:** para cada asserção, `grep -rl` pela
+string **antes** de editar o gate, e correr cada um a seguir a ver `N passed` com **N ≠ 0**.
+
+## 7 — A auditoria (DIRETIVA §3, duas lentes)
+
+```
+LENTE:  correcção — a extracção não mudou produto
+CLAIM:  nenhuma linha de LÓGICA mudou; tudo é movimento, renome de caminho/campo, ou fmt
+TRAÇO:  git diff main -M --name-status → 37 .rs MODIFICADOS (o resto é rename/novo)
+        → diff -U0 desses 37 → +200/−298 linhas → classificadas → 24 não-mecânicas
+        → as 24 inspeccionadas uma a uma: são reembrulho do rustfmt (a cadeia
+          `self.flip_active` → `self.flip_state.active` estoura a largura e parte a linha),
+          o campo novo no construtor, e os literais dos gates
+        → controlo: `dy / 16.0` em input_dispatch.rs:3391 lê-se como linha NOVA no diff e é
+          a MESMA linha, só que a chamada à volta dela passou a multi-linha
+ASSERÇÃO-VERMELHA: `nextest-list-diff.py antes depois` — ONLY-A ≠ 0 se um teste sumisse;
+        + `nextest-impacted.sh` (13 321 testes) vermelho se o comportamento mudasse
+NÃO-CHECADO-PELA-COMPILAÇÃO: que a cena de smoke DESENHA o mesmo — é o smoke do §9
+LOC LIDAS: ~2 400 (os 37 ficheiros modificados, por hunk) + os 7 gates inteiros
+```
+
+```
+LENTE:  vacuidade de gate — algum gate ficou VERDE a medir nada?
+CLAIM:  todo gate que lê fonte do flip continua a apontar para o sujeito real
+TRAÇO:  14 caminhos de fonte `flip` lidos por gates → todos resolvem (0 inexistentes)
+        → 10 marcadores que os gates extraem (`fn flip_preview_data`, `let reach =`, …)
+          contados na árvore: 9 são ÚNICOS; o `let reach =` aparece em 10 ficheiros MAS é
+          único DENTRO do `gap_live_app.rs`, que é o que o gate lê — logo não-ambíguo
+        → as duas expressões de alcance conferidas à mão: `(style.gap as f32) * obj_scale`
+          nos dois lados, que é exactamente o que o gate afirma
+ASSERÇÃO-VERMELHA: os 10 gates re-mirados correram e deram `10 passed` (não zero — um
+        filtro que casa nada imprime verde, e a minha 1.ª corrida deu `0 passaram`)
+NÃO-CHECADO-PELA-COMPILAÇÃO: um gate com `unwrap_or(len())` em vez de `.expect()` passaria
+        a medir o ficheiro inteiro em silêncio — não achei nenhum entre os 14, mas a
+        varredura foi sobre os que TOCAM flip, não sobre os 155 do repo
+LOC LIDAS: os 14 ficheiros de gate (~1 100)
+```
+
+## 8 — A prova (§3 do briefing)
 
 **(a) Nenhum teste se perde** — `cargo nextest list --workspace --cargo-profile ci-test`, antes e
 depois, por `scripts/nextest-list-diff.py`:
@@ -157,11 +211,11 @@ honesta:** as seis linhas da W2 abriram no mesmo dia e a máquina esteve entre `
 (CLAUDE.md §5) — um `--timings` a frio tirado hoje mediria a contenção das outras cinco linhas, não
 a unidade da shell. **Fica para a Fase B, com o `loadavg` impresso ao lado.**
 
-**(d) Gate de fecho** — §8.
+**(d) Gate de fecho** — `nextest-impacted.sh`: **13 321 testes, 13 321 passaram, 0 falharam** (`load 21,6` ao lado). `clippy --all-targets` nas duas crates: limpo. `cargo fmt --all --check`: limpo. `doc-index.sh --check`: 19 índices em dia.
 
-**(e) Smoke** — §9.
+**(e) Smoke** — §10.
 
-## 8 — Foundational tocado, e símbolos novos
+## 9 — Foundational tocado, e símbolos novos
 
 **Foundational:** `shells/desktop/src/app_state.rs` (os 21 campos saem, 1 entra),
 `shells/desktop/src/main.rs` (49 `mod` → 1; o construtor: 21 linhas → 1),
@@ -180,7 +234,7 @@ confere.
 
 ⛔ **Nenhum id, const, variant, token ou número de schema novo.** Nada a colidir.
 
-## 9 — O que smoke-testar (nada mudou de produto — é isso que se confirma)
+## 10 — O que smoke-testar (nada mudou de produto — é isso que se confirma)
 
 Esta é uma extracção: o comportamento tem de ser **idêntico**. Os dois que exercitam os caminhos
 mais tocados (o `FlipState` e as metades partidas):
@@ -193,13 +247,13 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-app-flip && env PH2D_FLIP_
 cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-app-flip && env PH2D_FLIP_COLORIZE_SMOKE=1 cargo run -p ph2d-host-desktop --profile smoke
 ```
 
-## 10 — O que só o `ship.sh` apanha
+## 11 — O que só o `ship.sh` apanha
 
 `fmt` e `clippy --all-targets` correm aqui (§ abaixo); **não** correram: `machete` (há uma crate
 nova com 9 deps — é o candidato mais provável a um `✗`), `deny`, `audit`, `typos`, e o `doc-index`
 sobre o `docs/Flip/handoffs/README.md`, que ganha esta entrada.
 
-## 11 — Fase B (o que fica, e a ordem)
+## 12 — Fase B (o que fica, e a ordem)
 
 1. `git rebase main` depois de a L0 integrar.
 2. Ler o `HOWTO_partir_uma_familia_da_shell.md` inteiro.

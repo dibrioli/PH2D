@@ -59,7 +59,7 @@ pub fn register_all_app_families() -> AppFamilyRegistry {
     reg.push(ph2d_app_sculpt3d::FAMILY);
     #[cfg(feature = "app-vec")]
     reg.push(ph2d_app_vec::FAMILY);
-    // <ph2d-app-sync:end>
+// <ph2d-app-sync:end>
     reg
 }
 

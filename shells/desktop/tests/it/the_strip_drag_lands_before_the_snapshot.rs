@@ -37,7 +37,7 @@ fn at(needle: &str) -> usize {
 
 #[test]
 fn the_strip_drag_is_applied_before_the_strip_snapshot_is_published() {
-    let drain = at("flip_strip_drag::apply_strip_intents(");
+    let drain = at("flip::strip_drag::apply_strip_intents(");
     let publish = at("flip_bridge::publish(");
     assert!(
         drain < publish,
@@ -53,9 +53,9 @@ fn the_strip_drag_is_applied_before_the_strip_snapshot_is_published() {
 /// (uma chamada que existe, uma que não) é o que prova que a busca discrimina.
 #[test]
 fn the_anchors_are_real_and_a_missing_one_is_noticed() {
-    assert!(SRC.contains("flip_strip_drag::apply_strip_intents("));
+    assert!(SRC.contains("flip::strip_drag::apply_strip_intents("));
     assert!(
-        !SRC.contains("flip_strip_drag::apply_strip_intents_that_do_not_exist("),
+        !SRC.contains("flip::strip_drag::apply_strip_intents_that_do_not_exist("),
         "o scanner tem de saber dizer não"
     );
 }

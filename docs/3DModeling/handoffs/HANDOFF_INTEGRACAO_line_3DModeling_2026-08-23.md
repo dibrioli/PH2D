@@ -226,7 +226,7 @@ ph2d-host-desktop` com filtro de nome chegava a ele. Curadas para `->` no commit
 - ⚠️ **A QUINTA família de flake de relógio foi confirmada nesta linha** e está registada no
   `CLAUDE.md` §5: `the_fit_rebuilds_the_neighbourhood_not_the_whole_stroke` e
   `a_long_stroke_is_bounded_by_the_redundancy_floor_not_by_a_budget`
-  ([`flip_fit_budget_tests.rs`](../../../shells/desktop/src/flip/fit_budget_tests.rs)) reprovaram
+  ([`flip_fit_budget_tests.rs`](../../../crates/ph2d-app-flip/src/fit_budget_tests.rs)) reprovaram
   sobre um diff que **não toca uma linha do Flip** e passaram 5 de 5 sozinhas. ⭐ A assinatura: **o
   conjunto de reprovadas muda entre corridas do mesmo binário**. *Re-rode sozinho antes de suspeitar
   do merge.*

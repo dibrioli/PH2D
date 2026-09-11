@@ -78,8 +78,11 @@ fn the_pressure_sliders_cannot_move_a_pixel_at_the_pressure_this_shell_delivers(
 /// literalmente o primeiro passo de quem for ligar a caneta).
 #[test]
 fn the_flip_canvas_entry_points_carry_no_pressure() {
-    let src = fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/src/flip/draw.rs"))
-        .expect("flip_draw.rs");
+    // ⚠️ **A metade `_app`** (W2/L5, 2026-09-11): o `draw` partiu-se — a LEI do traço foi para
+    // `ph2d-app-flip` e o que toca a `App` ficou na shell. As portas de canvas são do lado da
+    // `App`, logo é esta metade que se lê.
+    let src = fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/src/flip/draw_app.rs"))
+        .expect("flip/draw_app.rs");
     for porta in [
         "fn flip_canvas_down(&mut self, x: f32, y: f32)",
         "fn flip_canvas_move(&mut self, x: f32, y: f32)",

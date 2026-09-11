@@ -155,7 +155,7 @@ não*), então o shader não muda uma linha.
 ## 7. ⚠️ Flake PRÉ-EXISTENTE, **medida no `main`**
 
 `the_fit_rebuilds_the_neighbourhood_not_the_whole_stroke`
-(`shells/desktop/src/flip/fit_budget_tests.rs`, da `line/FLIP`) é um kill de **wall-clock cru em
+(`crates/ph2d-app-flip/src/fit_budget_tests.rs`, da `line/FLIP`) é um kill de **wall-clock cru em
 debug** (`ms < 5.0`, com *"medido local: 0,72 ms"* ao lado) e reprova sob carga.
 
 **Não é desta linha, e a prova não é argumento:**

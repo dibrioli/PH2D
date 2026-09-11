@@ -35,8 +35,11 @@ fn corpo<'a>(src: &'a str, assinatura: &str) -> &'a str {
 
 #[test]
 fn the_flip_preview_bakes_through_the_same_door() {
-    let src = fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/src/flip/draw.rs"))
-        .expect("flip_draw.rs");
+    // ⚠️ **A metade `_app`** (W2/L5, 2026-09-11): o `draw` partiu-se — a LEI do traço foi para
+    // `ph2d-app-flip` e o que toca a `App` ficou na shell. As portas de canvas são do lado da
+    // `App`, logo é esta metade que se lê.
+    let src = fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/src/flip/draw_app.rs"))
+        .expect("flip/draw_app.rs");
 
     let preview = corpo(&src, "fn flip_preview_data");
     assert!(
@@ -52,8 +55,13 @@ fn the_flip_preview_bakes_through_the_same_door() {
          bake aplica — é exatamente a divergência que esta cerca existe para impedir."
     );
 
-    // A metade nova: a porta de cima é uma DELEGAÇÃO, não um segundo pipeline.
-    let bake = corpo(&src, "pub(crate) fn stroke_from_samples(");
+    // ⚠️ **AS DUAS METADES DO GATE CAÍRAM EM DOIS FICHEIROS** (W2/L5, 2026-09-11): o `preview`
+    // é método da `App` e ficou na shell; a porta de baixo (`stroke_from_samples`) é LEI e foi
+    // para a shell, no ficheiro irmao. Um gate que afirma uma relação entre duas funções tem de seguir as duas
+    // quando elas se separam — ler só uma delas ficaria VERDE sobre a metade que não mudou.
+    let lei = fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/src/flip/draw.rs"))
+        .expect("flip/draw.rs");
+    let bake = corpo(&lei, "pub(crate) fn stroke_from_samples(");
     assert!(
         bake.contains("stroke_from_samples_cached("),
         "`stroke_from_samples` deixou de delegar à porta de baixo. Com dois corpos, o traço \

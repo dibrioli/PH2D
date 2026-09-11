@@ -50,7 +50,7 @@ fn live_body() -> &'static str {
 fn the_apply_asks_the_strip_which_frames_the_gesture_writes() {
     let body = apply_body();
     assert!(
-        body.contains("flip_multiframe::targets"),
+        body.contains("ph2d_app_flip::multiframe::targets"),
         "o Apply tem de perguntar os alvos ao multiframe — sem isso o rabisco colore só o \
          quadro ativo e a fatia C3 não existe no produto"
     );

@@ -268,10 +268,10 @@ a densidade**, então até o ajuste local é superlinear ali. **O eixo é parte 
 
 | arquivo | o que acrescenta |
 |---|---|
-| `shells/desktop/src/flip/fit_cache_tests.rs` | **NOVO** — 4 gates + 1 sonda do cache |
+| `crates/ph2d-app-flip/src/fit_cache_tests.rs` | **NOVO** — 4 gates + 1 sonda do cache |
 | `shells/desktop/tests/it/the_desktop_shell_has_no_pen_pressure.rs` | **NOVO** — 2 gates da caneta |
 | `shells/desktop/tests/it/the_flip_preview_bakes_through_the_same_door.rs` | reescrito: afirma as DUAS metades da porta |
-| `shells/desktop/src/flip/fit_budget_tests.rs` | 2 flakes curadas (eixo + redutor) |
+| `crates/ph2d-app-flip/src/fit_budget_tests.rs` | 2 flakes curadas (eixo + redutor) |
 | `crates/ph2d-flip-render/src/ink_drop_tests.rs` | oráculo supersampleado + a sonda da 3ª lei |
 | `crates/ph2d-flip-render/tests/it/walk_perf.rs` | a sonda do pan (`#[ignore]`) |
 

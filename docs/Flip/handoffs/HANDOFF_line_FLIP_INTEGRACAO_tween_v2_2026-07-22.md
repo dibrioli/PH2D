@@ -274,7 +274,7 @@ b_len)` não bate com os desenhos-chave é descartado e cai no automático (nunc
 |---|---|
 | `shells/desktop/src/flip/tween_correct.rs` | a sessão (`TweenCorrect` na `FlipStrip`, estado de autoria) + o gesto puro (`apply_click`) + o pick em tela (`nearest_stroke`) + `build`/upkeep |
 | `shells/desktop/src/render_loop/flip_tween_overlay.rs` | o overlay esquemático (linhas por confiança + anéis de órfão), px de tela, irmão do `flip_selection_overlay` |
-| `shells/desktop/src/flip/tween_pairs_smoke.rs` | a cena `PH2D_FLIP_TWEEN_PAIRS_SMOKE=1` |
+| `crates/ph2d-app-flip/src/tween_pairs_smoke.rs` | a cena `PH2D_FLIP_TWEEN_PAIRS_SMOKE=1` |
 
 ### 9.3 Arquivos COMPARTILHADOS tocados (onde um merge futuro morde)
 
@@ -349,7 +349,7 @@ guardas: anel degenerado e pequeno (`< 8 pontos`).
 | `crates/ph2d-flip/src/tween.rs` | fase entre auto-flip e `fit` no `tween_stroke`; mesma porta no `tween_ring` (furo) | append; `pb` virou `mut` |
 | `crates/ph2d-flip/src/tween_flip.rs` | doc do `opposite_winding` aponta para `tween_phase` (o item que ele nomeava fechou) | comentário |
 | `crates/ph2d-flip/tests/it/tween_arc_probe.rs` | **novo** — o gate de regressão do arco + a sonda | isolado |
-| `shells/desktop/src/flip/tween_phase_smoke.rs` | **novo** — a cena `PH2D_FLIP_TWEEN_PHASE_SMOKE=1` + gate | isolado |
+| `crates/ph2d-app-flip/src/tween_phase_smoke.rs` | **novo** — a cena `PH2D_FLIP_TWEEN_PHASE_SMOKE=1` + gate | isolado |
 | `shells/desktop/src/{main,render_loop/mod}.rs` | `mod` + a chamada do smoke no prólogo | append (ao lado dos outros smokes) |
 
 ⚠️ **Byte-idêntico para traço aberto e para anel < 8 pontos** — os gates de furo do `tween`

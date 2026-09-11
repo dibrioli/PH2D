@@ -205,7 +205,7 @@ Summary [62.627s] 3887 tests run: 3886 passed (1 slow), 1 failed, 279 skipped
 
 ⚠️ **A única falha é a QUINTA flake de relógio, e foi registada no §5.0 por esta linha.**
 A família `flip_smooth::resample_measurement::precisao::orcamento`
-(`shells/desktop/src/flip/fit_budget_tests.rs`) mede razões de tempos **sub-milissegundo**
+(`crates/ph2d-app-flip/src/fit_budget_tests.rs`) mede razões de tempos **sub-milissegundo**
 (`1,36 → 8,77 ms`), e sob o fan-out de `3 887` testes:
 
 | corrida | qual falhou |

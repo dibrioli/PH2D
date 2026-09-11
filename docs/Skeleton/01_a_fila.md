@@ -992,7 +992,7 @@ PERCORRE a acção*. A fixtura é a **mesma** de propósito: duas cenas para o m
 
 ⚠️ **FLAKE DE CARGA, membro NOVO da família do §5.0** — apanhada no fecho desta wave e a promover no
 handoff: `the_cache_makes_a_preview_frame_cost_the_tail_not_the_stroke`
-([`flip_fit_cache_tests.rs`](../../shells/desktop/src/flip/fit_cache_tests.rs)). ⚠️ O ficheiro é
+([`flip_fit_cache_tests.rs`](../../crates/ph2d-app-flip/src/fit_cache_tests.rs)). ⚠️ O ficheiro é
 **novo** para a lista — os três membros já catalogados vivem no `flip_fit_budget_tests.rs`. As três
 assinaturas: gate de RAZÃO de custo · **zero** linhas do diff naquela crate · **5 de 5 verde
 sozinho**, com `loadavg 42,6–43,5` impresso ao lado de cada corrida (outra linha a compilar nesta

@@ -2343,7 +2343,7 @@ novo.** Detector: `grep -rlnE '\.(cc|cpp|c|h|hh|hpp):[0-9]+' --include='*.rs' cr
 | 55 | `crates/ph2d-tokens/src/slider_style.rs` | 108 | (b) permissivo — FICA | só endereço |
 | 56 | `crates/ph2d-tokens/src/spacing.rs` | 164,178,210,229,271 | (b) permissivo — FICA | só endereço |
 | 57 | `crates/ph2d-tokens/src/visuals.rs` | 128 | (b) permissivo — FICA | só endereço |
-| 58 | `shells/desktop/src/flip/smooth.rs` | 3,82 | **(a)** ⛔ alvo restrito (GPL) | só endereço |
+| 58 | `crates/ph2d-app-flip/src/smooth.rs` | 3,82 | **(a)** ⛔ alvo restrito (GPL) | só endereço |
 | 59 | `shells/desktop/src/sculpt3d.rs` | 455 | **(a)** ⛔ alvo restrito (GPL) | só endereço |
 | 60 | `shells/desktop/src/sculpt3d_filter_tests.rs` | 77,104 | **(a)** ⛔ alvo restrito (GPL) | ⛔ **COM EXPRESSÃO** @ 77 · ⚠️ endereço dentro de `assert!` @ 104 |
 | 61 | `shells/desktop/src/sculpt3d_input.rs` | 271,311 | **(a)** ⛔ alvo restrito (GPL) | só endereço |

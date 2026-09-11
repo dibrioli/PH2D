@@ -208,7 +208,7 @@ Não é dívida escondida — é o corte do plano, e cada item está em [[06.1-W
 ## 7. ⚠️ A flake que o W3 reportou **passou hoje**
 
 `the_fit_rebuilds_the_neighbourhood_not_the_whole_stroke`
-(`shells/desktop/src/flip/fit_budget_tests.rs`, da `line/FLIP`) é um kill de **wall-clock cru em
+(`crates/ph2d-app-flip/src/fit_budget_tests.rs`, da `line/FLIP`) é um kill de **wall-clock cru em
 debug** e reprovava sob carga quando o handoff da W3 foi escrito. **Nesta árvore, hoje, ela passou**
 — está entre os 3008 verdes.
 

@@ -401,7 +401,7 @@ com chaves próprias, onde o erro MOSTRA.
 | Peça | Arquivo |
 |---|---|
 | Vão, exposição, ciclos, navegação por desenho, células | `crates/ph2d-flip/src/{layer,cycle,expose}.rs` |
-| Alvo do multiframe (dedup + falloff) | `shells/desktop/src/flip/multiframe.rs` |
+| Alvo do multiframe (dedup + falloff) | `crates/ph2d-app-flip/src/multiframe.rs` |
 | Ghost Frames (função pura) | `crates/ph2d-flip/src/onion.rs` |
 | Autokey (política + `ensure_key`) | `crates/ph2d-flip/src/autokey.rs` |
 | Tween (motor + op de documento) | `crates/ph2d-flip/src/tween.rs` |
@@ -469,5 +469,5 @@ O quadro **ativo** entra sempre, com influência cheia, mesmo fora da seleção 
 como fallback`* da referência). Multiframe **nunca inventa quadro**: as chaves selecionadas já
 existem, e o alvo ativo veio pronto do autokey.
 
-Motor: `shells/desktop/src/flip/multiframe.rs`. Consumidor: `flip_reshape.rs` (um
+Motor: `crates/ph2d-app-flip/src/multiframe.rs`. Consumidor: `flip_reshape.rs` (um
 `Session::begin` por desenho; o `frame_falloff` desce pelo funil único `influence()` do solver).

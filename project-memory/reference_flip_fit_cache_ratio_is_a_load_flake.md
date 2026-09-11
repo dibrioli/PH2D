@@ -9,7 +9,7 @@ metadata:
 ---
 
 `flip_smooth::resample_measurement::precisao::cache::the_cache_makes_a_preview_frame_cost_the_tail_not_the_stroke`
-([`shells/desktop/src/flip/fit_cache_tests.rs`](shells/desktop/src/flip/fit_cache_tests.rs)) é um
+([`crates/ph2d-app-flip/src/fit_cache_tests.rs`](crates/ph2d-app-flip/src/fit_cache_tests.rs)) é um
 **gate de RAZÃO ENTRE DOIS RELÓGIOS** (`ms_sem / ms_com`, barra `> 3.0`) e pertence à família de
 flakes de recurso sob fan-out do `CLAUDE.md` §5.0.
 

@@ -140,3 +140,20 @@ mod tests {
         );
     }
 }
+
+/// **O que esta família declara à shell** (`ph2d-app-registry-init`).
+///
+/// ⚠️⚠️ **`routers: &[]` é a verdade MEDIDA da Fase A** — `"sculpt3d"` está na catraca
+/// `FAMILIAS_COM_O_ROTEADOR_AINDA_NA_SHELL` do registo, que é o único sítio onde *«ainda não
+/// saiu»* se distingue de *«alguém esqueceu»*.
+///
+/// ⭐ **O grosso do trabalho desta linha foi de ENDEREÇO, não de fronteira:** os ~180 ficheiros
+/// `src/sculpt3d_*.rs` da shell viraram a pasta `src/sculpt3d/`, que é o que torna o corte da Fase
+/// B mecânico. O `PH2D_SCULPT3D_SMOKE` é lido em `sculpt3d/scenes_*.rs` — ainda na shell, porque
+/// as cenas tocam a `App`.
+///
+/// ⇒ a entrada sai da catraca no dia em que a Fase B trouxer esse roteador para cá.
+pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
+    key: "sculpt3d",
+    routers: &[],
+};

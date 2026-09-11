@@ -20,3 +20,6 @@ authors.workspace = true
 # bytes de uma escultura do load ao save **sem os ler**. Um `optional = true` aqui
 # apagaria o campo nesse binário e transformaria o passa-adiante num triturador.
 [dependencies]
+# ⚠️ A INTERFACE da shell (`AppFamily`), não o agregador — importar de
+# `ph2d-app-registry-init` fecharia o ciclo `registry → família → registry`.
+ph2d-app-host = { path = "../ph2d-app-host" }

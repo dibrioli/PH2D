@@ -303,16 +303,14 @@ pub(crate) fn holes_scene() -> bool {
     std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref() == Some("4")
 }
 
-/// `=17` — a cena do **AO ASSADO**: um TORO, onde a oclusão é inequívoca.
-///
-/// ⚠️ **A forma é o oráculo, e é a mesma dos gates.** O aro INTERNO enxerga a
-/// parede oposta através do furo e o EXTERNO enxerga o céu — não há como um bake
-/// correto inverter isso, e não há como o artista confundir *"o AO chegou"* com
-/// *"a luz mudou"*. Numa esfera lisa não haveria nada a ocluir, e o smoke não
-/// conseguiria distinguir a feature de um slider inerte.
-pub(crate) fn ao_scene() -> bool {
-    std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref() == Some("17")
-}
+// ⛔ **A cena `=17` (o AO ASSADO, num TORO) foi APAGADA em 2026-09-11** (W2/L3, ordem do
+// Enio de 10/09: *uma cena que nenhum doc cita pelo número é ~1 k linhas pagas em todo build
+// por ninguém*). Ela era o oráculo do AO assado — o aro interno via a parede oposta pelo furo
+// e o externo via o céu —, e o censo das DUAS formas de citação (`PH2D_SCULPT3D_SMOKE=17` e
+// o `` `=17` `` nu nos docs da família) não achou uma só referência viva: os docs do AO assado
+// (`docs/3D/05-Shading/05.1-Shader-de-runtime.md`, ADR-0156) citam a `=16` e a `=19`.
+// ⚠️ **Quem precisar do oráculo de volta reconstrói-o com o toro** — `ph2d_mesh::shapes::torus(96, 48, 1.0, 0.42)`
+// era a malha, e a razão da forma está escrita acima.
 
 /// `=16` — a cena do **ALPHA**: uma esfera DENSA o bastante para o padrão ser
 /// amostrado como padrão.

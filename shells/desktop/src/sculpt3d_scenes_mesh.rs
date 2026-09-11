@@ -71,14 +71,10 @@ pub(crate) fn smoke_mesh() -> ph2d_mesh::Mesh {
     if alpha_scene() || directional_alpha_scene() {
         return ph2d_mesh::shapes::uv_sphere(533, 800, 1.0);
     }
-    // ⚠️ **A `=17` abre um TORO, e o furo é o ponto.** O AO mede o que um cone
-    // enxerga a meio corpo de distância, então a cena precisa de uma parede
-    // OPOSTA — e o alcance default (maior lado ÷ 8) é medido como GRATUITO
-    // (custo plano de 5,6 a 6,3 ms enquanto o raio cresce 6×), o que faz do
-    // número uma decisão de LOOK que este smoke existe para tomar.
-    if ao_scene() {
-        return ph2d_mesh::shapes::torus(96, 48, 1.0, 0.42);
-    }
+    // ⛔ **O braço da `=17` (o toro do AO assado) saiu com a cena, em 2026-09-11** — ver a
+    // nota no lugar do `ao_scene()` em `sculpt3d_scenes.rs`. O alcance default do AO
+    // (maior lado ÷ 8) continua medido como GRATUITO (custo plano de 5,6 a 6,3 ms enquanto o
+    // raio cresce 6×); o que se perdeu foi a CENA que tornava essa decisão de look visível.
     if turn_scene()
         || document_scene()
         || export_scene()

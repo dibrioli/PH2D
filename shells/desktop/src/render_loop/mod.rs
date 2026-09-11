@@ -2787,7 +2787,7 @@ impl crate::App {
         // do laço de tiques, então ler antes dele imprimiria o tique anterior — e
         // um readout um tique atrasado é indistinguível de um readout certo,
         // menos exactamente no instante em que o artista está a olhar.
-        if let Some(bits) = self.player_readout_log {
+        if let Some(bits) = self.physics.player_readout_log {
             const EVERY: u64 = 30;
             let tick = self.fixed_step.tick_count();
             if tick.is_multiple_of(EVERY) {
@@ -3148,7 +3148,7 @@ impl crate::App {
                 // Which pose channels the Bake selector shows as chosen.
                 self.bake_channels.tag(),
                 // The pending join KIND the §11 selector shows as chosen.
-                self.join_kind,
+                self.physics.join_kind,
                 // The armed §12 joint-body eyedropper, so the waiting slot's
                 // picker paints pressed.
                 self.joint_body_pick,
@@ -3206,7 +3206,7 @@ impl crate::App {
                 self.wheel_body_pick,
                 self.wheel_rope_pick,
                 // W-J4: o gesto de desenhar está armado?
-                self.joint_draw_armed,
+                self.physics.joint_draw_armed,
                 // W-J2/W-J2b: every grabbable joint anchor. Resolved HERE
                 // because `publish` does not take the bridge, and through the
                 // SAME door `sync_joint_pivots` uses for the A pivot — two
@@ -3249,7 +3249,7 @@ impl crate::App {
                     hs
                 },
                 // The candidate a live anchor drag has caught (the crosshair).
-                self.joint_anchor_drag.and_then(|d| d.snap),
+                self.physics.joint_anchor_drag.and_then(|d| d.snap),
                 // **O SELO do papel booleano de cada linha** (2026-08-22). ⚠️ Ele lê o plano do
                 // quadro ANTERIOR: a hierarquia publica aqui, e a booleana cozinha lá em baixo
                 // no mesmo `run_render_frame`. O atraso é de um quadro e o `vec_bool_shape` o
@@ -5390,7 +5390,7 @@ impl crate::App {
                             // The pending join KIND, the same class as BakeChannels:
                             // an app-state option the Join gesture reads, not a
                             // per-body edit. No fan-out, no Collider write.
-                            self.join_kind = tag;
+                            self.physics.join_kind = tag;
                         } else if inspector_selection.is_empty() {
                             physics_edits.push((entity_bits, edit));
                         } else {
@@ -8595,7 +8595,7 @@ impl crate::App {
                 hero,
                 physics,
                 self.show_colliders,
-                &mut self.interaction,
+                &mut self.physics.interaction,
                 // W25: a corrida gravada é um fato do DOCUMENTO, e este é o
                 // painel do documento. A §14 mostra o mesmo par de números; as
                 // duas vistas caem na mesma porta (`run_stash`).
@@ -8847,11 +8847,11 @@ impl crate::App {
                 // W-J3: o limite que o arrasto está posando AGORA, para o
                 // fantasma de B. Lido do componente (o arrasto já escreveu nele
                 // neste frame), então a silhueta e o arco mostram o mesmo número.
-                self.joint_anchor_drag.and_then(|d| d.posed_limit(sim)),
+                self.physics.joint_anchor_drag.and_then(|d| d.posed_limit(sim)),
                 // W-J4: a banda elástica, se um gesto de criar está em voo (e o
                 // corpo A ainda existe — apagá-lo sob o gesto o invalida).
-                crate::joint_draw::body_alive(sim, self.joint_draw)
-                    .then(|| crate::joint_draw::band(self.joint_draw))
+                crate::joint_draw::body_alive(sim, self.physics.joint_draw)
+                    .then(|| crate::joint_draw::band(self.physics.joint_draw))
                     .flatten(),
                 // W-Grab: a mola da mão, lida do ÚNICO dono do fato (a ponte);
                 // o ponto de pega é derivado da pose VIVA do corpo, então o
@@ -8863,7 +8863,7 @@ impl crate::App {
                 // condições que `body_grab::poke_at` — uma mira que promete o que
                 // o clique não faz é pior que mira nenhuma.
                 (self.playhead.is_playing() && self.timeline.flags.simulate_physics)
-                    .then(|| self.interaction.aim_radius())
+                    .then(|| self.physics.interaction.aim_radius())
                     .flatten()
                     .map(|r| (pointer_world, r)),
                 // O campo VIVO, do ÚNICO dono do fato (a ponte).
@@ -13211,13 +13211,13 @@ impl crate::App {
                 // canvas, entao sem uma saida o unico jeito de sair era completar
                 // um joint que o artista nao queria. Pela porta unica
                 // `toggle_joint_draw`, a MESMA que o Esc usa.
-                crate::joint_draw::toggle(&mut self.joint_draw_armed, &mut self.joint_draw);
+                crate::joint_draw::toggle(&mut self.physics.joint_draw_armed, &mut self.physics.joint_draw);
             }
             if join_chain {
                 let (made, last) = crate::joint_draw::join_chain(
                     sim,
                     &inspector_selection,
-                    inspector_joint::kind_of(self.join_kind),
+                    inspector_joint::kind_of(self.physics.join_kind),
                 );
                 // Select the LAST joint so §12 (Physics Joint) appears
                 // immediately — the Kind selector and tuning are right there.
@@ -13248,7 +13248,7 @@ impl crate::App {
                 let out = crate::joint_rig::apply(
                     sim,
                     &plan,
-                    inspector_joint::kind_of(self.join_kind),
+                    inspector_joint::kind_of(self.physics.join_kind),
                     editor_queue,
                     component_registry,
                 );

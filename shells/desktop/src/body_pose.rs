@@ -99,7 +99,7 @@ impl App {
             .posing_tip()
             .and_then(|e| gfx.sim.world().get::<Transform>(e))
             .map_or(0.0, |t| t.rotation);
-        let opts = self.interaction.ik_options();
+        let opts = self.physics.interaction.ik_options();
         let poses = gfx.physics.ik_move(world, tip_angle, opts);
         for (e, translation, rotation) in poses {
             write_world_pose(&mut gfx.sim, e, translation, rotation);

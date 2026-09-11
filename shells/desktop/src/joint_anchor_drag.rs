@@ -242,7 +242,7 @@ impl App {
     /// posing a limit and typing one cannot disagree about clamping, about
     /// units, or about which field they mean.
     pub(crate) fn advance_joint_anchor_drag(&mut self) {
-        let Some(mut drag) = self.joint_anchor_drag else {
+        let Some(mut drag) = self.physics.joint_anchor_drag else {
             return;
         };
         // Ctrl (Cmd on macOS) is the editor's snap modifier — the same key the
@@ -354,7 +354,7 @@ impl App {
                 None
             }
         };
-        self.joint_anchor_drag = Some(drag);
+        self.physics.joint_anchor_drag = Some(drag);
     }
 }
 

@@ -428,6 +428,7 @@ mod pattern_path_smoke;
 mod pattern_seam_probe;
 mod pencil_smoke;
 mod physics_smoke;
+mod physics_state;
 mod physics_smoke_authoring;
 mod physics_smoke_blast;
 mod physics_smoke_brake;
@@ -1082,15 +1083,12 @@ impl App {
             vec_bone_smoke_pend: None,
             vec_bone_smoke_img: None,
             nest_smoke_done: false,
-            player_readout_log: None,
-            physics_smoke_done: false,
             instance_smoke_done: false,
             instance_echo: Default::default(),
             show_colliders: true,
             onion_ghosts: Vec::new(),
             emissive_instances: Vec::new(),
             frost_instances: Vec::new(),
-            interaction: ph2d_physics_ecs::InteractionSettings::default(),
             blast_flash: None,
             bake_channels: crate::render_loop::physics_bake::BakeChannels::default(),
             gilrs,
@@ -1183,11 +1181,10 @@ impl App {
             joint_clipboard: None,
             wheel_body_pick: None,
             wheel_rope_pick: None,
-            joint_anchor_drag: None,
             anchor_gizmo_drag: None,
-            joint_draw_armed: false,
-            joint_draw: None,
-            join_kind: 0, // Pin — the default joint kind for "Join Selected Bodies"
+            // O agregado da família `physics` (W2/L2). O `Default` reproduz,
+            // campo a campo, os sete inicializadores que viviam soltos aqui.
+            physics: crate::physics_state::PhysicsState::default(),
             vec_morph_plans: crate::morph_live::MorphPlans::new(),
             morph_machines: Default::default(),
             vec_blend_spines: crate::blend_live::BlendSpines::new(),

@@ -83,13 +83,13 @@ impl crate::App {
         let Some(which) = std::env::var("PH2D_PHYSICS_SMOKE").ok() else {
             return;
         };
-        if self.physics_smoke_done {
+        if self.physics.smoke_done {
             return;
         }
         if self.gfx.is_none() {
             return; // world not up yet; retry next frame
         }
-        self.physics_smoke_done = true;
+        self.physics.smoke_done = true;
 
         match which.trim() {
             "2" => self.physics_smoke_pile(),

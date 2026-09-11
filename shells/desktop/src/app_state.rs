@@ -847,16 +847,6 @@ pub(crate) struct App {
     pub(crate) vec_bone_smoke_pend:
         Option<[(ph2d_vec_scene::VecPathId, Option<ph2d_ecs::Entity>); 3]>,
     pub(crate) nest_smoke_done: bool,
-    /// Latch for `PH2D_PHYSICS_SMOKE` (drop-a-sprite-on-a-floor, once).
-    /// **De quem o readout do player é impresso, e a cada meio segundo**
-    /// (`W-PlayerOut` A5) — `None` fora da cena de smoke que o pede.
-    ///
-    /// ⚠️ **Um campo e não uma env var lida por quadro:** quem sabe QUAL
-    /// entidade é o sujeito é a cena que a montou, e re-perguntar ao ambiente
-    /// obrigaria o laço a adivinhar (o primeiro player? o selecionado?) — uma
-    /// segunda resposta para algo que a cena já sabe.
-    pub(crate) player_readout_log: Option<u64>,
-    pub(crate) physics_smoke_done: bool,
     /// Latch de `PH2D_INSTANCE_SMOKE` (o ragdoll instanciado 3×, ADR-0164 F4).
     pub(crate) instance_smoke_done: bool,
     /// **O eco do mestre** (ADR-0164 / F4.4) — o que a receita tinha no passe anterior, que é
@@ -888,15 +878,6 @@ pub(crate) struct App {
     /// ⚠️ Vive aqui pelo mesmo motivo do vizinho: é lixo de quadro, e re-alocá-lo por quadro seria
     /// uma alocação por frame para uma lista quase sempre vazia.
     pub(crate) frost_instances: Vec<ph2d_render::RenderInstance>,
-    /// **A ferramenta de INTERAÇÃO com a física** (W-Hand) — o que o ponteiro faz
-    /// a uma cena que está rodando: a MÃO (segura um corpo), a EXPLOSÃO (um
-    /// estouro radial) ou a ATRAÇÃO (um campo sustentado).
-    ///
-    /// Transiente, e é decisão (ver `ph2d_physics_ecs::interaction`): descreve o
-    /// PONTEIRO, não a cena, então nada disto viaja no arquivo de projeto e
-    /// nenhum schema bumpa. Irmã do `show_colliders` acima — e, como ele, o painel
-    /// de física a EXIBE por uma porta só, sem guardar cópia.
-    pub(crate) interaction: ph2d_physics_ecs::InteractionSettings,
     /// Where the last blast went off and how big it was, plus how many ticks of
     /// flash it has left. Purely for the overlay: an explosion is instantaneous, so
     /// without a decaying mark the only visible trace is bodies that moved — the
@@ -1399,34 +1380,18 @@ pub(crate) struct App {
     /// sprite, então aquele gesto resolveria `None` sobre ela para sempre.
     /// Runtime-only: um pick pela metade é um gesto em andamento, não documento.
     pub(crate) wheel_rope_pick: Option<u64>,
-    /// **The open joint-anchor drag** (W-J2), or `None`. Both canvas handles — the
-    /// filled A dot and the hollow B ring — open this one gesture, which writes
-    /// through the bridge's anchor door; see `crate::joint_anchor_drag`. Runtime
-    /// only: the drag is not the document, the anchor it writes is.
-    pub(crate) joint_anchor_drag: Option<crate::joint_anchor_drag::JointAnchorDrag>,
     /// **§12 — o arrasto de uma alça do gizmo de âncora** (ADR-0072 §2.3).
     ///
     /// ⚠️ Slot próprio e não o do joint: são dois gestos sobre dois modelos, e partilhar o slot
     /// faria um `Up` de um limpar o outro. O undo fecha os dois num passo só pela MESMA porta —
     /// o `post_frame_undo` suprime enquanto o botão está premido.
     pub(crate) anchor_gizmo_drag: Option<crate::render_loop::anchor_gizmo::AnchorDrag>,
-    /// **The canvas joint-drawing gesture is ARMED** (W-J4): the next press on a
-    /// body starts a rubber band, and the release on another body creates the
-    /// joint with the anchors AT the two points.
-    ///
-    /// Armed by the §11 *Draw Joint* button, disarmed by a completed creation —
-    /// and deliberately NOT by a refusal, so a release into empty space leaves
-    /// the gesture ready for another try (the eyedropper's precedent).
-    /// Runtime-only: it is what the pointer is about to do, not the document.
-    pub(crate) joint_draw_armed: bool,
-    /// The gesture in flight, or `None`. See [`crate::joint_draw`].
-    pub(crate) joint_draw: Option<crate::joint_draw::JointDraw>,
-    /// **The pending join KIND** for the next *Join Selected Bodies* — a
-    /// `JointKind` tag (`0` Pin · `1` Spring · `2` Rope · `3` Weld). The §11
-    /// join-kind selector sets it; `create_joint` reads it, so the artist creates
-    /// the joint TYPE they want in one gesture. Runtime-only: it is a pending UI
-    /// choice, not the document. Defaults to Pin.
-    pub(crate) join_kind: u8,
+    /// **O transiente da família `physics`, com um dono só** (W2/L2) — o gesto de
+    /// junta em curso, o que o próximo clique vai fazer, a ferramenta do ponteiro
+    /// e os latches das cenas de smoke. Eram SETE campos soltos espalhados por
+    /// quatro regiões deste ficheiro; ver [`crate::physics_state::PhysicsState`]
+    /// para o porquê e para o molde (`MotionState`).
+    pub(crate) physics: crate::physics_state::PhysicsState,
     /// O `Plan` de cada morph enquanto a relação não muda. Runtime-only: derivável das fontes,
     /// fora do save e do undo.
     pub(crate) vec_morph_plans: crate::morph_live::MorphPlans,

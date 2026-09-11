@@ -168,7 +168,7 @@ impl crate::App {
         let gfx = self.gfx.as_mut().expect("gfx");
         let bits = build(gfx.sim.world_mut());
         // ⚠️ **Quem sabe QUAL entidade é o sujeito é a cena** — ver o campo.
-        self.player_readout_log = Some(bits);
+        self.physics.player_readout_log = Some(bits);
 
         eprintln!(
             "[physics-smoke 113] A SAIDA DO PLAYER (W-PlayerOut). O corredor\n\

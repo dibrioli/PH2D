@@ -68,14 +68,14 @@ impl App {
     /// o joint que o Esc cancelou. Dois campos, um fato: quem os limpa é uma
     /// função, não dois call sites que precisam lembrar dos dois.
     pub(crate) fn disarm_joint_draw(&mut self) {
-        disarm(&mut self.joint_draw_armed, &mut self.joint_draw);
+        disarm(&mut self.physics.joint_draw_armed, &mut self.physics.joint_draw);
     }
 
     /// **Esc cancela**, e só consome a tecla quando há o que cancelar — o formato
     /// da família de Escapes do shell (Build / Pen / shape do Painter), senão o
     /// Esc pararia de fazer blur de widget no resto do app.
     pub(crate) fn joint_draw_cancel_key(&mut self) -> bool {
-        if !self.joint_draw_armed {
+        if !self.physics.joint_draw_armed {
             return false;
         }
         self.disarm_joint_draw();
@@ -90,7 +90,7 @@ impl App {
     /// **O press.** Com o gesto ARMADO, começa a banda no corpo sob o cursor.
     /// Devolve `true` se consumiu o evento.
     pub(crate) fn joint_draw_press(&mut self, sx: f32, sy: f32) -> bool {
-        if !self.joint_draw_armed {
+        if !self.physics.joint_draw_armed {
             return false;
         }
         self.any_input_this_frame = true;
@@ -104,7 +104,7 @@ impl App {
         // bola nele"* tanto quanto o contrário. As duas direções produzem o
         // MESMO joint — o que muda é qual ponta o gesto nomeia primeiro —, e
         // recusar uma delas é ensinar que o gesto não existe.
-        self.joint_draw = Some(JointDraw {
+        self.physics.joint_draw = Some(JointDraw {
             body_a: body_at(gfx, world),
             from: world,
             to: world,
@@ -114,14 +114,14 @@ impl App {
 
     /// **O arrasto.** Só move a ponta da banda; nada é autorado até o release.
     pub(crate) fn joint_draw_move(&mut self, sx: f32, sy: f32) {
-        let Some(mut d) = self.joint_draw else {
+        let Some(mut d) = self.physics.joint_draw else {
             return;
         };
         let Some(gfx) = self.gfx.as_ref() else {
             return;
         };
         d.to = gfx.camera.screen_to_world((sx, sy), gfx.surface.size());
-        self.joint_draw = Some(d);
+        self.physics.joint_draw = Some(d);
     }
 
     /// **O release** — onde o joint nasce, ou onde a recusa é explicada.
@@ -130,10 +130,10 @@ impl App {
     /// (`create_joint_at`), e a mola/corda ganha de brinde o comprimento que o
     /// arrasto mediu: o gesto autora a geometria inteira, não só o par.
     pub(crate) fn joint_draw_release(&mut self, sx: f32, sy: f32) {
-        let Some(d) = self.joint_draw.take() else {
+        let Some(d) = self.physics.joint_draw.take() else {
             return;
         };
-        let kind = crate::render_loop::inspector_joint::kind_of(self.join_kind);
+        let kind = crate::render_loop::inspector_joint::kind_of(self.physics.join_kind);
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
@@ -241,7 +241,7 @@ impl App {
         }
         // O gesto terminou: desarma, e SELECIONA o joint novo — a §12 abre no
         // que você acabou de desenhar, exatamente como no botão (W-JointCreate).
-        self.joint_draw_armed = false;
+        self.physics.joint_draw_armed = false;
         if let Some(hero) = gfx.hero_screen.as_mut() {
             hero.gizmo.selection = Some(joint.to_bits());
             hero.gizmo.extra_selection.clear();

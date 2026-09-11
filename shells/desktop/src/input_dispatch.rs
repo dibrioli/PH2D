@@ -2479,7 +2479,7 @@ impl App {
         let Some(hit) = crate::body_grab::poke_at(
             &mut gfx.physics,
             &gfx.sim,
-            &self.interaction,
+            &self.physics.interaction,
             world,
             playing,
             simulating,
@@ -2489,8 +2489,8 @@ impl App {
         // A metade VISÍVEL. A explosão é instantânea, então a marca é o único
         // vestígio dela que não é "corpos que se moveram"; a atração é sustentada
         // e o overlay lê o campo VIVO da ponte (`attract_marks`), sem cópia aqui.
-        if self.interaction.tool == ph2d_physics_ecs::InteractionTool::Explode {
-            let radius = self.interaction.clamped().blast_radius;
+        if self.physics.interaction.tool == ph2d_physics_ecs::InteractionTool::Explode {
+            let radius = self.physics.interaction.clamped().blast_radius;
             self.blast_flash = Some((world, radius, crate::body_grab::BLAST_FLASH_TICKS));
             if hit > 0
                 && let Some(gfx) = self.gfx.as_mut()
@@ -4156,7 +4156,7 @@ impl App {
         if mapped_button == ph2d_host::PointerButton::Primary
             && kind == PointerKind::Down
             && !menu_open_before
-            && !self.interaction.tool.needs_a_body()
+            && !self.physics.interaction.tool.needs_a_body()
             && self.over_canvas_or_gizmo(evt.x, evt.y)
             && self.poke_press(evt.x, evt.y)
         {
@@ -4166,7 +4166,7 @@ impl App {
         // em que as âncoras nascem NOS pontos que a mão indicou. Modal como o
         // eyedropper acima (precede picking/gizmo, independe de ferramenta): o
         // press começa a banda elástica, o Move a estica, o release cria.
-        if self.joint_draw_armed
+        if self.physics.joint_draw_armed
             && mapped_button == ph2d_host::PointerButton::Primary
             && kind == PointerKind::Down
             && !menu_open_before
@@ -4175,7 +4175,7 @@ impl App {
         {
             return;
         }
-        if self.joint_draw.is_some() {
+        if self.physics.joint_draw.is_some() {
             match kind {
                 PointerKind::Move => {
                     self.joint_draw_move(evt.x, evt.y);
@@ -5745,8 +5745,8 @@ impl App {
                         );
                         if opened.is_some() {
                             // Disjoint field write: `gfx`/`hero` borrow
-                            // `self.gfx`, this is `self.joint_anchor_drag`.
-                            self.joint_anchor_drag = opened;
+                            // `self.gfx`, this is `self.physics.joint_anchor_drag`.
+                            self.physics.joint_anchor_drag = opened;
                             began_joint_anchor = true;
                             // **Grabbing a handle SELECTS its joint.** Half of
                             // what "without selecting it in the Hierarchy" means
@@ -5915,7 +5915,7 @@ impl App {
                                 if matches!(gkind, ph2d_editor::GizmoDragKind::Translate)
                                     && !self.playhead.is_playing()
                                 {
-                                    self.interaction.joint.drag_reach(self.modifiers.alt_key())
+                                    self.physics.interaction.joint.drag_reach(self.modifiers.alt_key())
                                 } else {
                                     None
                                 };
@@ -6140,11 +6140,11 @@ impl App {
                             // se algum. Uma pergunta só, feita à porta que também
                             // decide o alcance do arrasto — é dela que sai o Alt
                             // significar *leve o rig inteiro* nos cinco modos.
-                            let gesture = self.interaction.joint.gesture(self.modifiers.alt_key());
+                            let gesture = self.physics.interaction.joint.gesture(self.modifiers.alt_key());
                             let grabbed = !locked
                                 && (crate::body_grab::take_hold(
                                     &mut gfx.physics,
-                                    &self.interaction,
+                                    &self.physics.interaction,
                                     entity,
                                     world_pos,
                                     self.playhead.is_playing(),
@@ -6226,7 +6226,7 @@ impl App {
                                 let carry_reach = if self.playhead.is_playing() {
                                     None
                                 } else {
-                                    self.interaction.joint.drag_reach(self.modifiers.alt_key())
+                                    self.physics.interaction.joint.drag_reach(self.modifiers.alt_key())
                                 };
                                 crate::joint_rig_drag::seed_group_drag_starts(
                                     &mut self.group_drag_starts,
@@ -6265,7 +6265,7 @@ impl App {
                     // as a field (not a `&mut self` method) because `gfx`/`hero`
                     // are borrowed from `self.gfx` for the whole of this arm —
                     // disjoint fields are fine, a second `&mut self` is not.
-                    self.joint_anchor_drag = None;
+                    self.physics.joint_anchor_drag = None;
                     // Fase 0f: resolve the rubber-band rect — pick every
                     // sprite whose world bbox intersects, then apply
                     // replace or add depending on `add_mode` (Shift held

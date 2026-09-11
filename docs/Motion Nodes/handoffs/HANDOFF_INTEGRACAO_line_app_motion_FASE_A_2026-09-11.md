@@ -14,7 +14,7 @@
 | | |
 |---|---|
 | branch | `line/app-motion` |
-| HEAD | `<final>` |
+| último commit de CÓDIGO | `dd7255f04` (os seguintes são só docs) |
 | merge-base com `main` | `8fa4f115b` |
 | commits | **9** |
 | ficheiros tocados | 433 |
@@ -332,7 +332,7 @@ da5a9783d  A1  as 3 cenas que nenhum doc cita
 1fe1caab5  A3-docs  57 citações de caminho reapontadas por script
 363d67c18  fmt + o doc-comment órfão (clippy -D warnings)
 dd7255f04  os 2 gates que varrem por CAMINHO e por NOME, reapontados
-<final>    o handoff
+a708282a9  o handoff (+ a prova do smoke)
 ```
 
 Sem dependências cruzadas fora desta ordem.

@@ -97,7 +97,11 @@ fn the_dispatch_wires_press_move_and_release() {
             "o MOVE (arrastar) não está no dispatch do ponteiro",
         ),
         (
-            "self.motion_path_drag = None;",
+            // ⚠️ O campo saiu da `App` para o estado da família na W2/L1 (2026-09-11):
+            // `App::motion_path_drag` → `App::motion_shell.path_drag`. Um gate que casa
+            // TEXTO no despacho segue o nome, não a propriedade — e é por isso que ele
+            // reprovou (alto, e no sítio certo) em vez de passar a medir outra coisa.
+            "self.motion_shell.path_drag = None;",
             "o RELEASE não limpa o arrasto — a âncora ficaria colada ao cursor após soltar",
         ),
         (

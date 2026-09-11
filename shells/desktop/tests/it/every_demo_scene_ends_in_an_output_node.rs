@@ -19,7 +19,11 @@ use std::fs;
 /// Toda cena de conferência constrói pelo menos um nó de saída.
 #[test]
 fn every_demo_scene_ends_in_an_output_node() {
-    let dir = fs::read_dir("src").expect("shells/desktop/src");
+    // ⚠️ A família mudou-se para `src/motion/` na W2/L1 (2026-09-11) — e foi o CONTROLE
+    // POSITIVO lá em baixo que o disse, em voz alta, em vez de deixar esta varredura ficar
+    // verde a medir zero cenas. *É a única razão pela qual um gate que varre por CAMINHO é
+    // seguro.*
+    let dir = fs::read_dir("src/motion").expect("shells/desktop/src/motion");
 
     let mut scanned = Vec::new();
     let mut silent = Vec::new();

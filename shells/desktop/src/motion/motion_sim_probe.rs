@@ -256,7 +256,8 @@ fn what_the_sim_scene_cards_show() {
 
 /// A FONTE do tutorial deste ciclo — lida para que os nomes do gate e os do texto não possam
 /// divergir em silêncio.
-const TUTORIAL: &str = include_str!("../../../../docs/Motion Nodes/tutoriais/src/05_simulacao.html");
+const TUTORIAL: &str =
+    include_str!("../../../../docs/Motion Nodes/tutoriais/src/05_simulacao.html");
 
 /// ⭐⭐⭐ **CADA PASSO DO TUTORIAL É POSSÍVEL NO APP** (ciclo 5, passo 7 — doc 103 §1).
 ///

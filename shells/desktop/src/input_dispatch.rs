@@ -2214,11 +2214,14 @@ impl App {
     /// (instante, posição) é rastreado aqui — o mesmo recurso do `vec_text_double_click`.
     fn motion_path_curve_double_click(&mut self, x: f32, y: f32) -> bool {
         let now = std::time::Instant::now();
-        let is_double = self.motion_shell.path_last_click.is_some_and(|(t, (px, py))| {
-            now.duration_since(t).as_millis() <= Self::MOTION_PATH_DCLICK_MS
-                && (x - px).abs() <= Self::MOTION_PATH_DCLICK_SLOP_PX
-                && (y - py).abs() <= Self::MOTION_PATH_DCLICK_SLOP_PX
-        });
+        let is_double = self
+            .motion_shell
+            .path_last_click
+            .is_some_and(|(t, (px, py))| {
+                now.duration_since(t).as_millis() <= Self::MOTION_PATH_DCLICK_MS
+                    && (x - px).abs() <= Self::MOTION_PATH_DCLICK_SLOP_PX
+                    && (y - py).abs() <= Self::MOTION_PATH_DCLICK_SLOP_PX
+            });
         self.motion_shell.path_last_click = Some((now, (x, y)));
         if !is_double {
             return false;

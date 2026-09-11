@@ -106,7 +106,10 @@ pub(crate) fn captions() -> Vec<crate::motion::motion_demo_legend::Caption> {
         .iter()
         .enumerate()
         .map(|(k, r)| {
-            crate::motion::motion_demo_legend::Caption::new([0.0, row_y(k) + ROW_GAP * 0.36], r.caption)
+            crate::motion::motion_demo_legend::Caption::new(
+                [0.0, row_y(k) + ROW_GAP * 0.36],
+                r.caption,
+            )
         })
         .collect()
 }

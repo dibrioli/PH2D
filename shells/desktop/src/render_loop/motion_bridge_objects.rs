@@ -103,7 +103,10 @@ pub(super) use streams::{appearance_tile, appearance_vector, pose_stream};
 /// **A metade VETORIAL do publicador de objetos** — um passo nomeado porque é ela
 /// que disputa o nome com o publicador de curvas, e um gate tem de poder dirigi-la
 /// sem um atlas (que é da metade dos SPRITES, e precisa de GPU).
-pub(super) fn publish_vector_bakes(cook: &mut Cook, bakes: &crate::motion::motion_object_bake::ObjectBake) {
+pub(super) fn publish_vector_bakes(
+    cook: &mut Cook,
+    bakes: &crate::motion::motion_object_bake::ObjectBake,
+) {
     for (name, obj) in bakes.objects() {
         if super::shapes::is_reserved(name) {
             continue; // the editor's namespace (`motion_bridge_shapes::is_reserved`)

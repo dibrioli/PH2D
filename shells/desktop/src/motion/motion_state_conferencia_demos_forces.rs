@@ -437,7 +437,10 @@ pub(crate) fn captions() -> Vec<crate::motion::motion_demo_legend::Caption> {
     band_labels()
         .map(|(k, label)| {
             let at = band_at(k);
-            crate::motion::motion_demo_legend::Caption::new([at[0], at[1] + GAP_Y * 0.44], short_of(label))
+            crate::motion::motion_demo_legend::Caption::new(
+                [at[0], at[1] + GAP_Y * 0.44],
+                short_of(label),
+            )
         })
         .collect()
 }

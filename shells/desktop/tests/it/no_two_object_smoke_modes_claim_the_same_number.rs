@@ -17,7 +17,8 @@ use std::fs;
 
 #[test]
 fn no_two_object_smoke_modes_claim_the_same_number() {
-    let src = fs::read_to_string("src/motion/motion_object_smoke.rs").expect("motion_object_smoke.rs");
+    let src =
+        fs::read_to_string("src/motion/motion_object_smoke.rs").expect("motion_object_smoke.rs");
 
     // `<modo> if f == <frame> =>` → as linhas em que o par aparece.
     let mut claims: BTreeMap<(u32, u32), Vec<usize>> = BTreeMap::new();

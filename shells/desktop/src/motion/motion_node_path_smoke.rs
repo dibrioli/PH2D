@@ -483,9 +483,7 @@ pub(crate) fn motion_node_path_smoke(app: &mut crate::App) {
             } else if mode == 4 {
                 let outs = name_and_wire_trim(&mut gfx.sim, &map, &mut gfx.motion.doc.graph);
                 gfx.motion.sinks.extend(outs);
-            } else if let Some(out) =
-                name_and_wire(&mut gfx.sim, &map, &mut gfx.motion.doc.graph)
-            {
+            } else if let Some(out) = name_and_wire(&mut gfx.sim, &map, &mut gfx.motion.doc.graph) {
                 gfx.motion.sinks.push(out);
             }
             let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));

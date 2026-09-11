@@ -89,7 +89,8 @@ fn scene_has_legend(level: u32) -> bool {
 /// A caixa que os objectos de uma cena ocupam, em unidades de mundo.
 fn scene_bounds(level: u32) -> Option<([f32; 2], [f32; 2], usize)> {
     let mut m = MotionState::new();
-    let (sinks, _) = crate::motion::motion_demo_legend::monta(&level.to_string(), &mut m.doc, &m.registry);
+    let (sinks, _) =
+        crate::motion::motion_demo_legend::monta(&level.to_string(), &mut m.doc, &m.registry);
     let sink = *sinks.first()?;
     crate::render_loop::motion_shape_gen::publish(&mut m, 0.0);
     let out = m

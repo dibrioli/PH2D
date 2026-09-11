@@ -283,8 +283,7 @@ pub(crate) fn motion_autofix_smoke(app: &mut crate::App) {
             gfx.motion.sinks.push(out_p);
             let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
             let badges =
-                ph2d_motion_diagnose::diagnose(&gfx.motion.doc.graph, &gfx.motion.registry)
-                    .len();
+                ph2d_motion_diagnose::diagnose(&gfx.motion.doc.graph, &gfx.motion.registry).len();
             eprintln!(
                 "[autofix smoke =3] montei DOIS setups inertes SEM gesto construtivo: \
                  {badges} produtor(es) inerte(s) marcado(s) (esperado 2 — a force.wind e o \
@@ -398,11 +397,10 @@ pub(crate) fn motion_autofix_smoke(app: &mut crate::App) {
             gfx.motion.sinks.push(out);
             let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
             ph2d_panel_motion_graph::request_graph_selection(vec![bend.0]);
-            let needy =
-                ph2d_motion_diagnose::diagnose(&gfx.motion.doc.graph, &gfx.motion.registry)
-                    .iter()
-                    .filter(|d| d.deficit == ph2d_motion_diagnose::Deficit::MissingSource("P"))
-                    .count();
+            let needy = ph2d_motion_diagnose::diagnose(&gfx.motion.doc.graph, &gfx.motion.registry)
+                .iter()
+                .filter(|d| d.deficit == ph2d_motion_diagnose::Deficit::MissingSource("P"))
+                .count();
             eprintln!(
                 "[autofix smoke =5] montei `motion.bend -> output` com NADA alimentando o \
                  bend: {needy} no(s) sem fonte de pontos marcado(s) (esperado 1 — o bend le \
@@ -489,9 +487,7 @@ pub(crate) fn motion_autofix_smoke(app: &mut crate::App) {
             let missing =
                 ph2d_motion_diagnose::diagnose(&gfx.motion.doc.graph, &gfx.motion.registry)
                     .iter()
-                    .filter(|d| {
-                        matches!(d.deficit, ph2d_motion_diagnose::Deficit::MissingInput(_))
-                    })
+                    .filter(|d| matches!(d.deficit, ph2d_motion_diagnose::Deficit::MissingInput(_)))
                     .count();
             eprintln!(
                 "[autofix smoke =6] montei `Shape (source.shape, estrela) -> duplicator.shape \
@@ -515,8 +511,16 @@ pub(crate) fn motion_autofix_smoke(app: &mut crate::App) {
         // =8 (A RAMIFICAÇÃO MORTA): um `value.switch` com a `in1` vazia e uma serra a
         // varrer o `select` — a fileira AFUNDA no degrau do meio. Irmão próprio.
         _ => {
-            crate::motion::motion_autofix_smoke_appropriate::motion_autofix_smoke_appropriate(app, mode(), f);
-            crate::motion::motion_autofix_smoke_dead_branch::motion_autofix_smoke_dead_branch(app, mode(), f);
+            crate::motion::motion_autofix_smoke_appropriate::motion_autofix_smoke_appropriate(
+                app,
+                mode(),
+                f,
+            );
+            crate::motion::motion_autofix_smoke_dead_branch::motion_autofix_smoke_dead_branch(
+                app,
+                mode(),
+                f,
+            );
         }
     }
 }

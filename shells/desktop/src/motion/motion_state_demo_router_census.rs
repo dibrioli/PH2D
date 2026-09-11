@@ -63,8 +63,12 @@ fn measure_scene_layout() {
         // pela terceira vez nesta linha (a sonda de movimento e o harness do texto
         // pagaram as outras duas).
         let mut state = MotionState::new();
-        let sinks =
-            crate::motion::motion_demo_legend::monta(&level.to_string(), &mut state.doc, &state.registry).0;
+        let sinks = crate::motion::motion_demo_legend::monta(
+            &level.to_string(),
+            &mut state.doc,
+            &state.registry,
+        )
+        .0;
         if sinks.is_empty() {
             continue;
         }
@@ -301,8 +305,12 @@ fn motion_route_census() {
         std::collections::BTreeMap::new();
     for level in 1..=MAX_DEMO_LEVEL {
         let mut state = MotionState::new();
-        let sinks =
-            crate::motion::motion_demo_legend::monta(&level.to_string(), &mut state.doc, &state.registry).0;
+        let sinks = crate::motion::motion_demo_legend::monta(
+            &level.to_string(),
+            &mut state.doc,
+            &state.registry,
+        )
+        .0;
         if sinks.is_empty() {
             continue;
         }
@@ -398,8 +406,12 @@ fn where_the_drops_note_shows_up() {
     let mut achados = 0;
     for level in 1..=ate.min(MAX_DEMO_LEVEL) {
         let mut state = MotionState::new();
-        let sinks =
-            crate::motion::motion_demo_legend::monta(&level.to_string(), &mut state.doc, &state.registry).0;
+        let sinks = crate::motion::motion_demo_legend::monta(
+            &level.to_string(),
+            &mut state.doc,
+            &state.registry,
+        )
+        .0;
         if sinks.is_empty() {
             continue;
         }

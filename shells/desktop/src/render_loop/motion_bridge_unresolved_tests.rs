@@ -172,11 +172,12 @@ fn the_inner_layer_honours_the_chip_too() {
 fn the_compare_scene_earns_the_badge_it_advertises() {
     let mut m = MotionState::new();
     m.doc = MotionDoc::new();
-    let sinks = crate::motion::motion_state::conferencia_demos_compare::build_compare_demo_document(
-        &mut m.doc,
-        &m.registry,
-    )
-    .expect("a cena monta");
+    let sinks =
+        crate::motion::motion_state::conferencia_demos_compare::build_compare_demo_document(
+            &mut m.doc,
+            &m.registry,
+        )
+        .expect("a cena monta");
     m.pump.mark_dirty();
     m.pump.pump(
         &m.doc.graph,

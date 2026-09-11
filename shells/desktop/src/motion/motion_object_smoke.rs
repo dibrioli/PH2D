@@ -29,7 +29,6 @@ use ph2d_render::Sprite;
 // ela é um ASSUNTO — *o mesmo objeto em dois tempos* — e traz a própria fixture
 // animada, que nenhum dos outros modos precisa. Cortado pelo teto de LOC da shell.
 /// O modo `=8` — a POSE do objeto (doc 89 folha 14), irmão pelo corte que o `=7` já fez.
-
 #[path = "motion_object_smoke_pose.rs"]
 mod pose;
 
@@ -117,7 +116,6 @@ fn build_stamp_graph(graph: &mut Graph, name: &str) -> NodeId {
     ph2d_panel_motion_graph::request_graph_selection(vec![src.0]);
     out
 }
-
 
 /// O frame corrente do roteiro (o hook não pode acrescentar campo em `App`).
 static FRAME: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);

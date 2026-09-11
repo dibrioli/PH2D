@@ -66,11 +66,20 @@ EOF
 fi
 
 # ---------- 2. re-sync codegen, auto-commit ONLY generated targets ----------
-echo "▸ [2/5] re-sync codegen (tool/node registries)"
+echo "▸ [2/5] re-sync codegen (tool/node/app registries)"
 cargo run -q -p ph2d-tool-sync
 cargo run -q -p ph2d-node-sync
+# ⚠️ O TERCEIRO gerador nasceu na W2/L0 (2026-09-11) e este passo não o conhecia: o
+# `ph2d-app-registry-init` lista as FAMÍLIAS da shell (crates/ph2d-app-*), e o bloco dele é
+# append-only por construção — cinco linhas vão acrescentar a família delas. Sem esta linha,
+# TODA integração de família reprovava no passo 3 com «o corpo de `register_all_app_families`
+# não descreve a árvore», que é o gate de staleness a funcionar sobre um passo que faltava.
+# ⛔ Um gerador novo que não entre aqui transforma o gate dele num bloqueio de integração em vez
+# de uma rede: a regeneração é trabalho mecânico do integrador, como os outros dois.
+cargo run -q -p ph2d-app-sync
 GEN_GLOBS=('crates/ph2d-tool-registry-init' 'crates/ph2d-node-registry-init'
-           'crates/ph2d-panel-registry-init' 'crates/ph2d-editor-core/src/icons.rs'
+           'crates/ph2d-panel-registry-init' 'crates/ph2d-app-registry-init'
+           'crates/ph2d-editor-core/src/icons.rs'
            'Cargo.lock')
 git add -- "${GEN_GLOBS[@]}" 2>/dev/null || true
 # Anything dirty OUTSIDE the generated targets after a sync is unexpected.
@@ -86,7 +95,7 @@ fi
 
 # ---------- 3. staleness gate (generated surfaces match the crate glob) ----------
 echo "▸ [3/5] registry staleness"
-cargo test -q -p ph2d-tool-registry-init -p ph2d-node-registry-init
+cargo test -q -p ph2d-tool-registry-init -p ph2d-node-registry-init -p ph2d-app-registry-init
 
 # ---------- 4. combined-tree BUILD gate (the ADR-0107 core) ----------
 # Foundational touched anywhere? → the whole workspace must still compile.

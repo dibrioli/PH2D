@@ -193,7 +193,7 @@ bash scripts/foundational-integrate.sh
 ```
 
 Ele executa, em ordem, e aborta com a orientação certa em qualquer falha:
-`git rebase main` → re-sync (tool/node) + commit da regen → staleness gate → **gate da árvore
+`git rebase main` → re-sync (tool/node/**app**) + commit da regen → staleness gate → **gate da árvore
 COMBINADA** (`cargo check --workspace` se a linha tocou foundational; senão `-p` nas crates
 mudadas) → `nextest-impacted` → `git -C <primário> merge --ff-only`.
 

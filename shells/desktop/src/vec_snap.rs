@@ -18,161 +18,33 @@
 
 use crate::Transform;
 use crate::app_state::App;
-use ph2d_ecs::{Entity, SimWorld, VecPathRef};
-use ph2d_editor::grid_snap::GridSnapState;
-use ph2d_vec_edit::snap::{
-    SnapConfig, SnapResult, SnapSource, SnapTargets, bbox_key_points, collect_targets, snap,
-};
-use ph2d_vec_render::{Guide, GuideKind};
+use ph2d_ecs::{Entity, SimWorld};
+use ph2d_vec_edit::snap::{SnapConfig, SnapTargets, bbox_key_points, collect_targets, snap};
 use ph2d_vec_scene::VecPathId;
 
-/// Distância máxima de encaixe EM FORMA, em pixels de tela (convertida para world
-/// pelo zoom). A grade tem o raio de magnetismo dela. 10px dá um ímã confortável
-/// (8 era tímido p/ mouse); Alt ignora o snap quando atrapalha.
-const SNAP_PX: f64 = 10.0;
-
-/// ⭐⭐ **A FOLGA COM QUE SOLDAR DECIDE QUE DUAS PONTAS SÃO O MESMO NÓ** — em unidades de MUNDO.
-///
-/// ⚠️ **É o MESMO ímã do encaixe, e a razão é uma só resposta por pergunta.** O app já decide, a
-/// cada traço desenhado, que duas coisas a menos de [`SNAP_PX`] na tela são para ficar no mesmo
-/// sítio; soldar reusa esse veredito em vez de inventar um segundo número que divergiria dele no
-/// dia em que um dos dois mudasse. Report do Enio (2026-09-01): *"ainda não consegue conectar as
-/// duas curvas … as linhas não compartilham o mesmo nó"*.
-///
-/// ⛔ **Não é o `WELD_TOL`** (`1e-6`, exacto), que responde a outra pergunta: *estas duas pontas JÁ
-/// são o mesmo nó?* — depois de a solda as ter fundido numa coordenada só. Uma delas mede intenção,
-/// a outra mede um facto.
-#[must_use]
-pub(crate) fn vec_weld_tolerance(px_to_world: f64) -> f64 {
-    SNAP_PX * px_to_world
-}
-
-/// Ajustes de snap do módulo vetorial. Só o encaixe em FORMAS — a grade é do
-/// subsistema universal.
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub(crate) struct VecSnapSettings {
-    /// Encaixar em âncoras / bbox das outras formas.
-    pub on: bool,
-    /// Encaixar **sobre** a geometria.
-    pub path: bool,
-    /// Encaixar nos cruzamentos entre curvas.
-    pub crossings: bool,
-    /// Encaixar nas **guias** do documento.
-    ///
-    /// ⚠️ Nasce LIGADO, ao contrário das duas de posição: uma guia só existe porque o artista
-    /// a arrastou até lá, então o ímã dela não muda o app debaixo de ninguém — num documento
-    /// sem guias este interruptor é inerte por construção.
-    pub guides: bool,
-}
-
-impl Default for VecSnapSettings {
-    fn default() -> Self {
-        // ⚠️ As duas reivindicações de POSIÇÃO nascem DESLIGADAS, e é decisão de produto: um
-        // ímã que agarra a linha inteira (e não só os pontos notáveis dela) muda como todo
-        // gesto de desenho se comporta, e ligá-lo por default mudaria o app debaixo de quem
-        // não pediu. Ficam a um clique, na seção que já existe.
-        Self {
-            on: true,
-            path: false,
-            crossings: false,
-            guides: true,
-        }
-    }
-}
-
-/// Pergunta à grade universal onde `p` encaixa. `None` = grade desligada, ou o
-/// ponto está fora do raio de magnetismo dela (o arrasto segue liso entre pontos
-/// de rede). `sprite_half_size` é `[0, 0]`: encaixamos pontos, não sprites.
-pub(crate) fn ask_grid(state: &mut GridSnapState, p: [f64; 2]) -> Option<[f64; 2]> {
-    if !state.snap_enabled {
-        return None;
-    }
-    let w = [p[0] as f32, p[1] as f32];
-    let s = state.snap_world(w, [0.0, 0.0]);
-    (s != w).then(|| [f64::from(s[0]), f64::from(s[1])])
-}
-
-/// As guias de um encaixe. Para um eixo X encaixado, a fonte deslocada divide o
-/// `x` com o alvo → o segmento sai vertical, e é a linha que o usuário vê.
-///
-/// As três espécies que **não** são alinhamento não têm forma do outro lado a que ligar: a
-/// guia degenera num ponto (`a == b`) e o desenho vira a marca da espécie. A grade e as duas
-/// reivindicações de posição reclamam os dois eixos com o MESMO alvo, então a deduplicação
-/// deixa uma marca só — não duas sobrepostas.
-#[must_use]
-pub(crate) fn guides_of(r: &SnapResult) -> Vec<Guide> {
-    let d = r.delta();
-    let mut out = Vec::new();
-    for axis in [r.x, r.y] {
-        let Some(a) = axis else { continue };
-        let moved = [a.source[0] + d[0], a.source[1] + d[1]];
-        let kind = match a.from {
-            SnapSource::Shape => GuideKind::Align,
-            SnapSource::Grid => GuideKind::Grid,
-            SnapSource::Curve => GuideKind::Curve,
-            SnapSource::Crossing => GuideKind::Crossing,
-            SnapSource::Guide => GuideKind::GuideHit,
-        };
-        let guide = Guide {
-            a: moved,
-            b: if kind == GuideKind::Align {
-                a.target
-            } else {
-                moved
-            },
-            kind,
-        };
-        if !out.contains(&guide) {
-            out.push(guide);
-        }
-    }
-    out
-}
-
-/// O que `snap_dragged_vec_during_drag` faz com as guias, por tipo de arraste do
-/// gizmo. Pura p/ ser testável sem gfx — trava a política de snap-por-gesto.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub(crate) enum DragSnap {
-    /// Translate: o snap desliza a forma inteira pelo delta (feito aqui no shell).
-    SlideTranslate,
-    /// Scale: o encaixe acontece DENTRO do gizmo (`advance_gizmo_drag` alimenta o
-    /// `world_snap_fn` com os alvos vetoriais e já publica as guias) — não mexemos.
-    GizmoOwnsGuides,
-    /// Rotate/MovePivot: sem snap espacial de posição — as guias saem da tela.
-    ClearGuides,
-}
-
-/// Roteia o gesto do gizmo para a disposição de snap correspondente.
-#[must_use]
-pub(crate) fn drag_snap_kind(kind: ph2d_editor::GizmoDragKind) -> DragSnap {
-    use ph2d_editor::GizmoDragKind::{MovePivot, Rotate, ScaleCorner, ScaleEdge, Translate};
-    match kind {
-        Translate => DragSnap::SlideTranslate,
-        ScaleCorner { .. } | ScaleEdge { .. } => DragSnap::GizmoOwnsGuides,
-        Rotate | MovePivot => DragSnap::ClearGuides,
-    }
-}
+// ⭐ **A LEI mora em `ph2d_app_vec::vec_snap`; aqui fica o que PERGUNTA à janela** (W2/L4, A2).
+//
+// A re-exportação é o que mantém `crate::vec_snap::ask_grid` / `::guides_of` / `::VecSnapSettings`
+// / `::vec_weld_tolerance` a resolver nos cinco ficheiros da shell que os chamam — mover a lei
+// custou ZERO alterações neles. ⚠️ E o módulo do outro lado chama-se `vec_snap` de propósito: o
+// nome do módulo entra no nome de cada teste, e renomeá-lo lê-se, na lista do nextest, como perda.
+pub(crate) use ph2d_app_vec::vec_snap::{
+    DragSnap, VecSnapSettings, ask_grid, drag_snap_kind, guides_of, ids_of_bits, snap_cfg,
+    vec_weld_tolerance, wants_curves,
+};
 
 impl App {
     /// Configuração de snap EM FORMA para este frame. `px_to_world` = world-units
     /// por pixel. O Alt segurado desliga tudo (forma e grade).
     pub(crate) fn vec_snap_cfg(&self, px_to_world: f64) -> SnapConfig {
-        let bypass = self.modifiers.alt_key();
-        SnapConfig {
-            enabled: !bypass,
-            to_points: self.vec_snap.on,
-            to_path: self.vec_snap.path,
-            to_crossings: self.vec_snap.crossings,
-            to_guides: self.vec_snap.guides,
-            threshold: SNAP_PX * px_to_world,
-        }
+        snap_cfg(&self.vec_snap, self.modifiers.alt_key(), px_to_world)
     }
 
     /// A cena precisa oferecer a GEOMETRIA neste gesto? Porta única: quem recolhe os alvos e
     /// quem os resolve perguntam à mesma função, senão o recolhimento pararia de trazer as
     /// curvas no dia em que um terceiro interruptor de posição nascer.
     pub(crate) fn vec_snap_wants_curves(&self) -> bool {
-        self.vec_snap.path || self.vec_snap.crossings
+        wants_curves(&self.vec_snap)
     }
 
     /// world-units por pixel de tela (delta de 1 px na horizontal).
@@ -289,16 +161,9 @@ impl App {
 
     /// Os `VecPathId` das entidades `bits` que são vetoriais (o resto é ignorado).
     pub(crate) fn vec_ids_of_bits(&self, bits: &[u64]) -> Vec<VecPathId> {
-        self.gfx.as_ref().map_or_else(Vec::new, |g| {
-            bits.iter()
-                .filter_map(|&b| {
-                    g.sim
-                        .world()
-                        .get::<VecPathRef>(Entity::from_bits(b))
-                        .map(|v| v.0)
-                })
-                .collect()
-        })
+        self.gfx
+            .as_ref()
+            .map_or_else(Vec::new, |g| ids_of_bits(&g.sim, bits))
     }
 
     /// As formas vetoriais arrastadas por um gizmo: a primária (`primary_bits`) mais
@@ -379,138 +244,3 @@ pub(crate) fn slide_entity_world(sim: &mut SimWorld, bits: u64, delta: [f64; 2])
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::{DragSnap, drag_snap_kind, guides_of};
-    use ph2d_editor::GizmoDragKind;
-    use ph2d_vec_edit::snap::{SnapAxis, SnapResult, SnapSource};
-    use ph2d_vec_render::GuideKind;
-
-    /// A política de snap-por-gesto: Translate desliza a forma (aqui), Scale deixa o
-    /// gizmo encaixar (não mexe nas guias), Rotate/MovePivot limpam. Se scale voltasse
-    /// a "SlideTranslate" o canto âncora saltaria; se limpasse, a guia do scale sumiria.
-    #[test]
-    fn drag_snap_kind_routes_by_gesture() {
-        assert_eq!(
-            drag_snap_kind(GizmoDragKind::Translate),
-            DragSnap::SlideTranslate
-        );
-        assert_eq!(drag_snap_kind(GizmoDragKind::Rotate), DragSnap::ClearGuides);
-        assert_eq!(
-            drag_snap_kind(GizmoDragKind::MovePivot),
-            DragSnap::ClearGuides
-        );
-        assert_eq!(
-            drag_snap_kind(GizmoDragKind::ScaleCorner {
-                dx_sign: 1.0,
-                dy_sign: -1.0,
-            }),
-            DragSnap::GizmoOwnsGuides,
-        );
-        assert_eq!(
-            drag_snap_kind(GizmoDragKind::ScaleEdge { axis: 0, sign: 1.0 }),
-            DragSnap::GizmoOwnsGuides,
-        );
-    }
-
-    /// Um encaixe em X faz a fonte deslocada dividir o `x` com o alvo → a guia sai
-    /// VERTICAL. É o que torna a linha legível: ela liga os dois pontos alinhados.
-    #[test]
-    fn an_x_snap_draws_a_vertical_segment_between_the_two_points() {
-        let r = SnapResult {
-            x: Some(SnapAxis {
-                delta: 0.5,
-                source: [9.5, 100.0],
-                target: [10.0, 20.0],
-                from: SnapSource::Shape,
-            }),
-            y: None,
-        };
-        let g = guides_of(&r);
-        assert_eq!(g.len(), 1);
-        assert_eq!(g[0].a, [10.0, 100.0], "a fonte, já encaixada");
-        assert_eq!(g[0].b, [10.0, 20.0], "o alvo");
-        assert_eq!(g[0].a[0], g[0].b[0], "vertical");
-        assert_eq!(g[0].kind, GuideKind::Align);
-    }
-
-    /// Os dois eixos encaixados: a fonte carrega AMBOS os deltas, então cada guia
-    /// continua axis-aligned (uma vertical, uma horizontal).
-    #[test]
-    fn both_axes_produce_two_axis_aligned_guides() {
-        let r = SnapResult {
-            x: Some(SnapAxis {
-                delta: 1.0,
-                source: [9.0, 5.0],
-                target: [10.0, 50.0],
-                from: SnapSource::Shape,
-            }),
-            y: Some(SnapAxis {
-                delta: -2.0,
-                source: [9.0, 5.0],
-                target: [80.0, 3.0],
-                from: SnapSource::Shape,
-            }),
-        };
-        let g = guides_of(&r);
-        assert_eq!(g.len(), 2);
-        assert_eq!(g[0].a, [10.0, 3.0]);
-        assert_eq!(g[0].a[0], g[0].b[0], "guia de X é vertical");
-        assert_eq!(g[1].a[1], g[1].b[1], "guia de Y é horizontal");
-    }
-
-    /// A grade reivindica os dois eixos com o MESMO ponto de rede: uma cruz, não
-    /// duas sobrepostas. E ela não tem forma do outro lado — a guia degenera.
-    #[test]
-    fn a_grid_snap_is_one_cross_not_two_lines() {
-        let lattice = SnapAxis {
-            delta: 0.4,
-            source: [9.6, 20.4],
-            target: [10.0, 20.0],
-            from: SnapSource::Grid,
-        };
-        let r = SnapResult {
-            x: Some(lattice),
-            y: Some(SnapAxis {
-                delta: -0.4,
-                ..lattice
-            }),
-        };
-        let g = guides_of(&r);
-        assert_eq!(g.len(), 1, "uma cruz só");
-        assert_eq!(g[0].a, [10.0, 20.0], "no ponto de rede");
-        assert_eq!(g[0].a, g[0].b, "degenerado: sem linha");
-        assert_eq!(g[0].kind, GuideKind::Grid);
-    }
-
-    /// Forma num eixo, grade no outro: duas guias distintas — a linha da forma e a
-    /// cruz da grade, esta última no ponto onde a forma de fato parou.
-    #[test]
-    fn a_shape_snap_and_a_grid_snap_coexist() {
-        let r = SnapResult {
-            x: Some(SnapAxis {
-                delta: -0.3,
-                source: [9.8, 20.4],
-                target: [9.5, 99.0],
-                from: SnapSource::Shape,
-            }),
-            y: Some(SnapAxis {
-                delta: -0.4,
-                source: [9.8, 20.4],
-                target: [10.0, 20.0],
-                from: SnapSource::Grid,
-            }),
-        };
-        let g = guides_of(&r);
-        assert_eq!(g.len(), 2);
-        assert!(
-            g[0].kind == GuideKind::Align && g[0].a[0] == g[0].b[0],
-            "linha vertical da forma"
-        );
-        assert!(
-            g[1].kind == GuideKind::Grid && g[1].a == g[1].b,
-            "cruz da grade"
-        );
-        assert_eq!(g[1].a, [9.5, 20.0], "onde a forma parou de verdade");
-    }
-}

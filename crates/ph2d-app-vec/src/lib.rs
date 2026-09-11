@@ -50,5 +50,7 @@ pub mod vec_font;
 pub mod vec_font_preview;
 pub mod vec_overlay_diag;
 pub mod vec_pick;
+pub mod vec_snap;
+pub mod vec_snap_sprites;
 pub mod vec_snap_labels;
 pub mod vec_weld;

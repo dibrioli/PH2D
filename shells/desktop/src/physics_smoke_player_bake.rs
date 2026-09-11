@@ -27,55 +27,51 @@
 
 use ph2d_core::Vec2;
 
-use crate::App;
 use crate::physics_smoke_player::{slab, spawn_player};
 
-impl App {
-    /// **A corrida vira animação** — jogar, assar, e assistir ao que se jogou.
-    pub(crate) fn physics_smoke_bake_run(&mut self) {
-        let gfx = self.gfx.as_mut().expect("gfx");
-        let world = gfx.sim.world_mut();
+/// **A corrida vira animação** — jogar, assar, e assistir ao que se jogou.
+pub fn physics_smoke_bake_run(ctx: &mut ph2d_app_physics::SceneCtx<'_>) {
+    let world = &mut *ctx.world;
 
-        // Um chão com um DEGRAU e um VÃO: o suficiente para a corrida ter forma,
-        // e curto o bastante para caber no alcance default do bake.
-        slab(
-            world,
-            "Ground A",
-            Vec2::new(2.0, -0.5),
-            [8.0, 0.5],
-            0.0,
-            [0.35, 0.35, 0.4, 1.0],
-        );
-        slab(
-            world,
-            "Step",
-            Vec2::new(12.0, 0.0),
-            [3.0, 0.5],
-            0.0,
-            [0.38, 0.36, 0.44, 1.0],
-        );
-        // O vão: largo o bastante para exigir um pulo, estreito o bastante para
-        // um pulo default o vencer.
-        slab(
-            world,
-            "Ground B",
-            Vec2::new(22.0, 0.0),
-            [5.0, 0.5],
-            0.0,
-            [0.32, 0.42, 0.36, 1.0],
-        );
-        slab(
-            world,
-            "Backstop",
-            Vec2::new(28.0, 2.0),
-            [0.5, 2.0],
-            0.0,
-            [0.30, 0.34, 0.42, 1.0],
-        );
+    // Um chão com um DEGRAU e um VÃO: o suficiente para a corrida ter forma,
+    // e curto o bastante para caber no alcance default do bake.
+    slab(
+        world,
+        "Ground A",
+        Vec2::new(2.0, -0.5),
+        [8.0, 0.5],
+        0.0,
+        [0.35, 0.35, 0.4, 1.0],
+    );
+    slab(
+        world,
+        "Step",
+        Vec2::new(12.0, 0.0),
+        [3.0, 0.5],
+        0.0,
+        [0.38, 0.36, 0.44, 1.0],
+    );
+    // O vão: largo o bastante para exigir um pulo, estreito o bastante para
+    // um pulo default o vencer.
+    slab(
+        world,
+        "Ground B",
+        Vec2::new(22.0, 0.0),
+        [5.0, 0.5],
+        0.0,
+        [0.32, 0.42, 0.36, 1.0],
+    );
+    slab(
+        world,
+        "Backstop",
+        Vec2::new(28.0, 2.0),
+        [0.5, 2.0],
+        0.0,
+        [0.30, 0.34, 0.42, 1.0],
+    );
 
-        spawn_player(world, Vec2::new(-4.0, 1.4));
-        eprintln!("{BAKE_RUN_SMOKE_MESSAGE}");
-    }
+    spawn_player(world, Vec2::new(-4.0, 1.4));
+    eprintln!("{BAKE_RUN_SMOKE_MESSAGE}");
 }
 
 /// O roteiro da cena 95 — o gesto é JOGAR e depois ASSAR, e o passo 6 é a

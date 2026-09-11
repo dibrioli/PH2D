@@ -104,71 +104,66 @@ pub(crate) fn build_compound(world: &mut World) {
 #[path = "physics_smoke_compound_tests.rs"]
 mod tests;
 
-impl crate::App {
-    /// **Cena 69 (W-Compound).** Duas mesas iguais; só uma tem pernas de verdade.
-    pub(crate) fn physics_smoke_compound(&mut self) {
-        let gfx = self.gfx.as_mut().expect("gfx");
-        build_compound(gfx.sim.world_mut());
-        gfx.camera.center = CAMERA_CENTRE;
-        gfx.camera.height_world = CAMERA_HEIGHT;
-        if let Some(hero) = gfx.hero_screen.as_mut() {
-            hero.panel_visibility.insert("physics", true);
-        }
+/// **Cena 69 (W-Compound).** Duas mesas iguais; só uma tem pernas de verdade.
+pub fn physics_smoke_compound(ctx: &mut ph2d_app_physics::SceneCtx<'_>) {
+    build_compound(ctx.world);
+    ctx.want.camera_center = Some(CAMERA_CENTRE);
+    ctx.want.camera_height_world = Some(CAMERA_HEIGHT);
+    ctx.want.panels.push("physics");
 
-        eprintln!(
-            "[physics-smoke 69] O CORPO COMPOSTO -- ate aqui um corpo tinha UMA forma,\n  \
-               e a query da ponte dizia isso no tipo. Um artista que desenhava uma mesa\n  \
-               recebia metade dela sem fisica, EM SILENCIO.\n\n  \
-               As duas mesas sao IDENTICAS no desenho: um tampo e duas pernas, filhas\n  \
-               dele na Hierarquia. So o COLLIDER das pernas difere.\n\n  \
-               1. ESQUERDA (pernas VERMELHAS) -- as pernas sao so desenho. O tampo\n     \
-                  desce ate encostar ELE no chao ({t0:.2} m) e as pernas ATRAVESSAM:\n     \
-                  a ponta de baixo delas para em {l0:.2} m -- 1,8 m ABAIXO do chao,\n     \
-                  cujo topo esta em -0,80.\n  \
-               2. DIREITA (pernas VERDES) -- cada perna carrega um `Collider` e NAO um\n     \
-                  `RigidBody`, entao ela e mais uma FORMA do tampo. A mesa para sobre\n     \
-                  as pernas: tampo em {t1:.2} m, ponta em {l1:.2} m.\n\n  \
-               (!) Toque B: o contorno agora desenha as PECAS tambem. Antes desta wave\n     \
-               ele so desenhava colliders que fossem corpos, entao uma peca era\n     \
-               invisivel -- e um collider invisivel e exatamente o que o contorno\n     \
-               existe para nao deixar acontecer.\n\n  \
-               AUTORE VOCE MESMO: selecione 'Bare Leg 1' na Hierarquia. A secao\n  \
-               Physics Body oferece TRES portas, e a do meio e nova:\n  \
-               - 'Add Physics Body' faz dela um corpo PROPRIO (e ai a mesa se\n    \
-                 desmonta: duas massas que o solver pode separar);\n  \
-               - 'Add Shape to Bare Top' faz dela uma PECA do tampo -- e a mesa da\n    \
-                 esquerda passa a se comportar como a da direita;\n  \
-               - 'Rig N Parts' monta o personagem inteiro (W-Rig).\n  \
-               O rotulo NOMEIA o dono porque um collider e invisivel e a hierarquia\n  \
-               pode ter um grupo no meio.\n\n  \
-               (!) SCRUB: toque Play, deixe assentar e arraste a regua PARA TRAS ate o\n     \
-               zero. As duas mesas tem de cair de novo IGUAL. Se a da direita afundar\n     \
-               no replay, as pecas nao voltaram ao mundo reconstruido -- a licao do\n     \
-               Weston.\n\n  \
-               === W-PartFace: a PECA agora e EDITAVEL ===\n  \
-               Ate esta wave, criar uma peca era uma porta de mao unica. Selecionando\n  \
-               'Solid Leg 1' o painel dizia \"Not simulated\" -- o oposto da verdade --\n  \
-               e mostrava as SEMENTES (caixa 0,50 x 0,50, offset 0, densidade 1,00) em\n  \
-               vez da forma autorada; a porta que a criou era re-oferecida, e clica-la\n  \
-               reescrevia o collider com os defaults, EM SILENCIO.\n\n  \
-               3. Selecione 'Solid Leg 1'. A secao agora abre a TERCEIRA face:\n     \
-                  - o cabecalho diz \"Shape of Solid Top -- simulated as part of it\";\n     \
-                  - Collider/dimensoes/Offset/Density/Bounce/Friction/Layer/Trigger\n       \
-                    sao as propriedades que a PONTE de fato le de uma peca, e cada\n       \
-                    uma chega ao solver;\n     \
-                  - as portas sao 'Make Independent Body' e 'Remove Shape'.\n     \
-                  Mude Half Width para 0,4 e veja a mesa alargar o pe: antes o campo\n     \
-                  nao existia, e o valor digitado nao chegava a lugar nenhum.\n  \
-               4. Selecione 'Solid Top'. Abaixo das dimensoes DELE aparece\n     \
-                  \"+ 2 more shapes from children\" -- sem essa linha, com o contorno\n     \
-                  desligado nada distinguia um corpo composto de um de forma unica.\n  \
-               5. E confira a recusa: em 'Solid Leg 1' NAO ha mais 'Add Shape to ...'.\n     \
-                  Ela e a porta da face VAZIA, e clica-la sobre algo que ja tem forma\n     \
-                  so apagava o que o artista afinou.\n",
-            t0 = MEASURED_TOP_Y[0],
-            l0 = MEASURED_LEG_TIP_Y[0],
-            t1 = MEASURED_TOP_Y[1],
-            l1 = MEASURED_LEG_TIP_Y[1],
-        );
-    }
+    eprintln!(
+        "[physics-smoke 69] O CORPO COMPOSTO -- ate aqui um corpo tinha UMA forma,\n  \
+           e a query da ponte dizia isso no tipo. Um artista que desenhava uma mesa\n  \
+           recebia metade dela sem fisica, EM SILENCIO.\n\n  \
+           As duas mesas sao IDENTICAS no desenho: um tampo e duas pernas, filhas\n  \
+           dele na Hierarquia. So o COLLIDER das pernas difere.\n\n  \
+           1. ESQUERDA (pernas VERMELHAS) -- as pernas sao so desenho. O tampo\n     \
+              desce ate encostar ELE no chao ({t0:.2} m) e as pernas ATRAVESSAM:\n     \
+              a ponta de baixo delas para em {l0:.2} m -- 1,8 m ABAIXO do chao,\n     \
+              cujo topo esta em -0,80.\n  \
+           2. DIREITA (pernas VERDES) -- cada perna carrega um `Collider` e NAO um\n     \
+              `RigidBody`, entao ela e mais uma FORMA do tampo. A mesa para sobre\n     \
+              as pernas: tampo em {t1:.2} m, ponta em {l1:.2} m.\n\n  \
+           (!) Toque B: o contorno agora desenha as PECAS tambem. Antes desta wave\n     \
+           ele so desenhava colliders que fossem corpos, entao uma peca era\n     \
+           invisivel -- e um collider invisivel e exatamente o que o contorno\n     \
+           existe para nao deixar acontecer.\n\n  \
+           AUTORE VOCE MESMO: selecione 'Bare Leg 1' na Hierarquia. A secao\n  \
+           Physics Body oferece TRES portas, e a do meio e nova:\n  \
+           - 'Add Physics Body' faz dela um corpo PROPRIO (e ai a mesa se\n    \
+             desmonta: duas massas que o solver pode separar);\n  \
+           - 'Add Shape to Bare Top' faz dela uma PECA do tampo -- e a mesa da\n    \
+             esquerda passa a se comportar como a da direita;\n  \
+           - 'Rig N Parts' monta o personagem inteiro (W-Rig).\n  \
+           O rotulo NOMEIA o dono porque um collider e invisivel e a hierarquia\n  \
+           pode ter um grupo no meio.\n\n  \
+           (!) SCRUB: toque Play, deixe assentar e arraste a regua PARA TRAS ate o\n     \
+           zero. As duas mesas tem de cair de novo IGUAL. Se a da direita afundar\n     \
+           no replay, as pecas nao voltaram ao mundo reconstruido -- a licao do\n     \
+           Weston.\n\n  \
+           === W-PartFace: a PECA agora e EDITAVEL ===\n  \
+           Ate esta wave, criar uma peca era uma porta de mao unica. Selecionando\n  \
+           'Solid Leg 1' o painel dizia \"Not simulated\" -- o oposto da verdade --\n  \
+           e mostrava as SEMENTES (caixa 0,50 x 0,50, offset 0, densidade 1,00) em\n  \
+           vez da forma autorada; a porta que a criou era re-oferecida, e clica-la\n  \
+           reescrevia o collider com os defaults, EM SILENCIO.\n\n  \
+           3. Selecione 'Solid Leg 1'. A secao agora abre a TERCEIRA face:\n     \
+              - o cabecalho diz \"Shape of Solid Top -- simulated as part of it\";\n     \
+              - Collider/dimensoes/Offset/Density/Bounce/Friction/Layer/Trigger\n       \
+                sao as propriedades que a PONTE de fato le de uma peca, e cada\n       \
+                uma chega ao solver;\n     \
+              - as portas sao 'Make Independent Body' e 'Remove Shape'.\n     \
+              Mude Half Width para 0,4 e veja a mesa alargar o pe: antes o campo\n     \
+              nao existia, e o valor digitado nao chegava a lugar nenhum.\n  \
+           4. Selecione 'Solid Top'. Abaixo das dimensoes DELE aparece\n     \
+              \"+ 2 more shapes from children\" -- sem essa linha, com o contorno\n     \
+              desligado nada distinguia um corpo composto de um de forma unica.\n  \
+           5. E confira a recusa: em 'Solid Leg 1' NAO ha mais 'Add Shape to ...'.\n     \
+              Ela e a porta da face VAZIA, e clica-la sobre algo que ja tem forma\n     \
+              so apagava o que o artista afinou.\n",
+        t0 = MEASURED_TOP_Y[0],
+        l0 = MEASURED_LEG_TIP_Y[0],
+        t1 = MEASURED_TOP_Y[1],
+        l1 = MEASURED_LEG_TIP_Y[1],
+    );
 }

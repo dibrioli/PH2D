@@ -288,52 +288,47 @@ pub(crate) fn build_joint_custom_scene(world: &mut World) {
 #[path = "physics_smoke_joint_custom_tests.rs"]
 mod tests;
 
-impl crate::App {
-    /// **Cena 79 (W-JointCustom).** O joint que o artista descreve por eixo.
-    pub(crate) fn physics_smoke_joint_custom(&mut self) {
-        let gfx = self.gfx.as_mut().expect("gfx");
-        build_joint_custom_scene(gfx.sim.world_mut());
-        gfx.camera.center = [-1.0, 0.0];
-        gfx.camera.height_world = 14.0;
-        if let Some(hero) = gfx.hero_screen.as_mut() {
-            hero.panel_visibility.insert("physics", true);
-        }
+/// **Cena 79 (W-JointCustom).** O joint que o artista descreve por eixo.
+pub fn physics_smoke_joint_custom(ctx: &mut ph2d_app_physics::SceneCtx<'_>) {
+    build_joint_custom_scene(ctx.world);
+    ctx.want.camera_center = Some([-1.0, 0.0]);
+    ctx.want.camera_height_world = Some(14.0);
+    ctx.want.panels.push("physics");
 
-        eprintln!(
-            "[physics-smoke 79] O JOINT DESCRITO POR EIXO -- a configuracao e' AUTORADA.\n\n  \
-               O kit tinha oito presets, e cada um e' uma configuracao FIXA: um Pin\n  \
-               trava os dois eixos lineares e deixa o angular, um Slider trava Y e o\n  \
-               angular, uma solda trava os tres. O Custom deixa voce dizer -- cada grau\n  \
-               de liberdade e' **Free / Limited / Locked**, e o motor diz em QUAL deles\n  \
-               age.\n\n  \
-               Tres bancadas. **Aperte Espaco** e assista:\n     \
-                  - EM CIMA, o CARRINHO QUE GIRA (laranja): X limitado a +-{stroke:.1} m,\n       \
-                    Y travado, rotacao LIVRE. Ele vai e volta entre os batentes E gira.\n       \
-                    Ao lado, em CINZA, o CONTROLE: um SLIDER com o mesmo curso e o\n       \
-                    mesmo motor. Medido em 5 s: os dois percorrem 1,1 m, o Slider\n       \
-                    gira **0,00 rad** e o Custom **13,72**. Essa diferenca e' a wave\n       \
-                    inteira -- nenhum preset diz *deslize entre batentes E gire*.\n     \
-                  - NO MEIO, a CALHA VERTICAL (azul): X travado, Y limitado a -1,5 m,\n       \
-                    rotacao livre. O bloco CAI 1,50 m ate' o batente de baixo e fica\n       \
-                    pendurado ali balancando.\n     \
-                  - EMBAIXO, O EIXO DO MOTOR E' ESCOLHIDO: dois joints de configuracao\n       \
-                    IDENTICA (tudo livre) e o MESMO motor. O da esquerda tem o motor no\n       \
-                    eixo de ROTACAO e gira; o da direita tem no eixo X e desliza. Medido:\n       \
-                    **15,00 rad de giro contra 0,00**, e **2,00 m de curso contra\n       \
-                    0,00**. Configuracao identica, so' o eixo do motor difere.\n\n  \
-               (!) AUTORE UM: selecione dois corpos, escolha **Custom** em 'Join As' na\n      \
-                   secao Physics Body e aperte 'Join Selected Bodies'. A secao Physics\n      \
-                   Joint mostra tres linhas -- X, Y, Rotation --, cada uma com\n      \
-                   Free/Limited/Locked, e o par Min/Max aparece **so'** no modo Limited\n      \
-                   (um batente num eixo travado e' um numero que o solver nao le).\n\n  \
-               (!) E OLHE A UNIDADE. Com o motor armado aparece 'Motor Axis'. Ponha-o em\n      \
-                   Rotation e as rows do motor dizem graus; ponha em X ou Y e elas dizem\n      \
-                   metros. E' a mesma pergunta que num Pin e' respondida pelo TIPO e aqui\n      \
-                   pelo EIXO -- rotular errado faria voce digitar 90 e a peca andar 1,57 m.\n\n  \
-               (!) Aperte **B**: o glifo do Custom e' um HEXAGONO (nem o anel do pino,\n      \
-                   nem o quadrado da solda), com um anel dentro quando o eixo de rotacao\n      \
-                   esta' livre.\n",
-            stroke = STROKE,
-        );
-    }
+    eprintln!(
+        "[physics-smoke 79] O JOINT DESCRITO POR EIXO -- a configuracao e' AUTORADA.\n\n  \
+           O kit tinha oito presets, e cada um e' uma configuracao FIXA: um Pin\n  \
+           trava os dois eixos lineares e deixa o angular, um Slider trava Y e o\n  \
+           angular, uma solda trava os tres. O Custom deixa voce dizer -- cada grau\n  \
+           de liberdade e' **Free / Limited / Locked**, e o motor diz em QUAL deles\n  \
+           age.\n\n  \
+           Tres bancadas. **Aperte Espaco** e assista:\n     \
+              - EM CIMA, o CARRINHO QUE GIRA (laranja): X limitado a +-{stroke:.1} m,\n       \
+                Y travado, rotacao LIVRE. Ele vai e volta entre os batentes E gira.\n       \
+                Ao lado, em CINZA, o CONTROLE: um SLIDER com o mesmo curso e o\n       \
+                mesmo motor. Medido em 5 s: os dois percorrem 1,1 m, o Slider\n       \
+                gira **0,00 rad** e o Custom **13,72**. Essa diferenca e' a wave\n       \
+                inteira -- nenhum preset diz *deslize entre batentes E gire*.\n     \
+              - NO MEIO, a CALHA VERTICAL (azul): X travado, Y limitado a -1,5 m,\n       \
+                rotacao livre. O bloco CAI 1,50 m ate' o batente de baixo e fica\n       \
+                pendurado ali balancando.\n     \
+              - EMBAIXO, O EIXO DO MOTOR E' ESCOLHIDO: dois joints de configuracao\n       \
+                IDENTICA (tudo livre) e o MESMO motor. O da esquerda tem o motor no\n       \
+                eixo de ROTACAO e gira; o da direita tem no eixo X e desliza. Medido:\n       \
+                **15,00 rad de giro contra 0,00**, e **2,00 m de curso contra\n       \
+                0,00**. Configuracao identica, so' o eixo do motor difere.\n\n  \
+           (!) AUTORE UM: selecione dois corpos, escolha **Custom** em 'Join As' na\n      \
+               secao Physics Body e aperte 'Join Selected Bodies'. A secao Physics\n      \
+               Joint mostra tres linhas -- X, Y, Rotation --, cada uma com\n      \
+               Free/Limited/Locked, e o par Min/Max aparece **so'** no modo Limited\n      \
+               (um batente num eixo travado e' um numero que o solver nao le).\n\n  \
+           (!) E OLHE A UNIDADE. Com o motor armado aparece 'Motor Axis'. Ponha-o em\n      \
+               Rotation e as rows do motor dizem graus; ponha em X ou Y e elas dizem\n      \
+               metros. E' a mesma pergunta que num Pin e' respondida pelo TIPO e aqui\n      \
+               pelo EIXO -- rotular errado faria voce digitar 90 e a peca andar 1,57 m.\n\n  \
+           (!) Aperte **B**: o glifo do Custom e' um HEXAGONO (nem o anel do pino,\n      \
+               nem o quadrado da solda), com um anel dentro quando o eixo de rotacao\n      \
+               esta' livre.\n",
+        stroke = STROKE,
+    );
 }

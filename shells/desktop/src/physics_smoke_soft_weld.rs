@@ -148,59 +148,54 @@ pub(crate) fn build_soft_weld(world: &mut World) {
 #[path = "physics_smoke_soft_weld_tests.rs"]
 mod tests;
 
-impl crate::App {
-    /// **Cena 68 (W-SoftWeld).** Quatro vigas iguais, quatro soldas diferentes.
-    pub(crate) fn physics_smoke_soft_weld(&mut self) {
-        let gfx = self.gfx.as_mut().expect("gfx");
-        build_soft_weld(gfx.sim.world_mut());
-        gfx.camera.center = CAMERA_CENTRE;
-        gfx.camera.height_world = CAMERA_HEIGHT;
-        if let Some(hero) = gfx.hero_screen.as_mut() {
-            hero.panel_visibility.insert("physics", true);
-        }
+/// **Cena 68 (W-SoftWeld).** Quatro vigas iguais, quatro soldas diferentes.
+pub fn physics_smoke_soft_weld(ctx: &mut ph2d_app_physics::SceneCtx<'_>) {
+    build_soft_weld(ctx.world);
+    ctx.want.camera_center = Some(CAMERA_CENTRE);
+    ctx.want.camera_height_world = Some(CAMERA_HEIGHT);
+    ctx.want.panels.push("physics");
 
-        eprintln!(
-            "[physics-smoke 68] A SOLDA QUE CEDE -- ate aqui este conjunto so sabia\n  \
-               segurar um angulo ABSOLUTAMENTE (Weld, Slider) ou deixa-lo\n  \
-               INTEIRAMENTE LIVRE (Spring, Rope, Rod, o giro do Wheel). Nao havia\n  \
-               nada no meio: um poste que balanca e volta, um pescoco que resiste\n  \
-               mas cede, uma placa que treme -- nenhum era exprimivel.\n\n  \
-               As quatro vigas sao IDENTICAS (mesmo braco de {arm:.1} m, mesma parede,\n  \
-               mesma gravidade). So a SOLDA difere.\n\n  \
-               1. CINZA   -- solda RIGIDA, a de sempre. E o CONTROLE: {d0:.2} graus.\n  \
-               2. VERDE   -- solda MOLE, dureza {k1:.0} (o default): pende {d1:.2} graus e PARA.\n  \
-               3. LARANJA -- solda MOLE, dureza {k2:.0}: pende {d2:.1} graus. E o mesmo knob.\n  \
-               4. AZUL    -- solda MOLE + uma bola pesada caindo na ponta.\n\n  \
-               A 4a faixa e a que mostra a palavra inteira: a viga verga ate\n  \
-               {peak:.1} graus sob a bola, a bola escorrega pela rampa que a propria\n  \
-               vergadura fez, e o braco VOLTA para {rest:.2} graus. Uma solda rigida\n  \
-               nao teria se mexido; uma dobradica nao teria voltado.\n\n  \
-               (!) E AS PECAS CONTINUAM UMA. A ponta soldada nao se afasta da parede\n     \
-               ({sep:.4} m em todas as faixas). Foi a medicao que escolheu o desenho:\n     \
-               com os TRES eixos moles o braco derivava 0,92 m para longe da parede e\n     \
-               balancava 104 graus sem nunca assentar -- as pecas vinham APART, que se\n     \
-               le como a solda FALHANDO, nao vergando. Hoje so o ANGULO cede.\n\n  \
-               AUTORE VOCE MESMO: selecione qualquer '... Weld' na Hierarquia. Na\n  \
-               secao Joint aparece a chave [Rigid | Soft].\n  \
-               - clique 'Soft' na CINZA: ela passa a pender como a verde.\n  \
-               - clique 'Rigid' na LARANJA: ela endireita na hora.\n  \
-               - com 'Soft' marcado, Stiffness e Damping aparecem LOGO ABAIXO. Sao os\n     \
-                 MESMOS dois campos que uma Spring usa -- e com 'Rigid' eles somem, em\n     \
-                 vez de ficar na tela sem alcancar o solver.\n  \
-               - baixe a Stiffness da verde ate 1: ela vira borracha (65 graus). Suba\n     \
-                 para 1000: ela endurece (0,16 grau). A faixa inteira ASSENTA.\n\n  \
-               (!) SCRUB: toque Play, deixe as vigas assentarem e arraste a regua PARA\n     \
-               TRAS ate o zero. Elas tem de voltar a ficar RETAS e cair de novo igual.\n     \
-               Se a verde voltar rigida, o `soft` nao sobreviveu ao rebuild.\n",
-            arm = ARM_HALF[0] * 2.0,
-            d0 = MEASURED_DROOP_DEG[0],
-            k1 = LANE_STIFFNESS[1],
-            d1 = MEASURED_DROOP_DEG[1],
-            k2 = LANE_STIFFNESS[2],
-            d2 = MEASURED_DROOP_DEG[2],
-            peak = MEASURED_IMPACT_PEAK_DEG,
-            rest = MEASURED_IMPACT_REST_DEG,
-            sep = MEASURED_SEPARATION_M,
-        );
-    }
+    eprintln!(
+        "[physics-smoke 68] A SOLDA QUE CEDE -- ate aqui este conjunto so sabia\n  \
+           segurar um angulo ABSOLUTAMENTE (Weld, Slider) ou deixa-lo\n  \
+           INTEIRAMENTE LIVRE (Spring, Rope, Rod, o giro do Wheel). Nao havia\n  \
+           nada no meio: um poste que balanca e volta, um pescoco que resiste\n  \
+           mas cede, uma placa que treme -- nenhum era exprimivel.\n\n  \
+           As quatro vigas sao IDENTICAS (mesmo braco de {arm:.1} m, mesma parede,\n  \
+           mesma gravidade). So a SOLDA difere.\n\n  \
+           1. CINZA   -- solda RIGIDA, a de sempre. E o CONTROLE: {d0:.2} graus.\n  \
+           2. VERDE   -- solda MOLE, dureza {k1:.0} (o default): pende {d1:.2} graus e PARA.\n  \
+           3. LARANJA -- solda MOLE, dureza {k2:.0}: pende {d2:.1} graus. E o mesmo knob.\n  \
+           4. AZUL    -- solda MOLE + uma bola pesada caindo na ponta.\n\n  \
+           A 4a faixa e a que mostra a palavra inteira: a viga verga ate\n  \
+           {peak:.1} graus sob a bola, a bola escorrega pela rampa que a propria\n  \
+           vergadura fez, e o braco VOLTA para {rest:.2} graus. Uma solda rigida\n  \
+           nao teria se mexido; uma dobradica nao teria voltado.\n\n  \
+           (!) E AS PECAS CONTINUAM UMA. A ponta soldada nao se afasta da parede\n     \
+           ({sep:.4} m em todas as faixas). Foi a medicao que escolheu o desenho:\n     \
+           com os TRES eixos moles o braco derivava 0,92 m para longe da parede e\n     \
+           balancava 104 graus sem nunca assentar -- as pecas vinham APART, que se\n     \
+           le como a solda FALHANDO, nao vergando. Hoje so o ANGULO cede.\n\n  \
+           AUTORE VOCE MESMO: selecione qualquer '... Weld' na Hierarquia. Na\n  \
+           secao Joint aparece a chave [Rigid | Soft].\n  \
+           - clique 'Soft' na CINZA: ela passa a pender como a verde.\n  \
+           - clique 'Rigid' na LARANJA: ela endireita na hora.\n  \
+           - com 'Soft' marcado, Stiffness e Damping aparecem LOGO ABAIXO. Sao os\n     \
+             MESMOS dois campos que uma Spring usa -- e com 'Rigid' eles somem, em\n     \
+             vez de ficar na tela sem alcancar o solver.\n  \
+           - baixe a Stiffness da verde ate 1: ela vira borracha (65 graus). Suba\n     \
+             para 1000: ela endurece (0,16 grau). A faixa inteira ASSENTA.\n\n  \
+           (!) SCRUB: toque Play, deixe as vigas assentarem e arraste a regua PARA\n     \
+           TRAS ate o zero. Elas tem de voltar a ficar RETAS e cair de novo igual.\n     \
+           Se a verde voltar rigida, o `soft` nao sobreviveu ao rebuild.\n",
+        arm = ARM_HALF[0] * 2.0,
+        d0 = MEASURED_DROOP_DEG[0],
+        k1 = LANE_STIFFNESS[1],
+        d1 = MEASURED_DROOP_DEG[1],
+        k2 = LANE_STIFFNESS[2],
+        d2 = MEASURED_DROOP_DEG[2],
+        peak = MEASURED_IMPACT_PEAK_DEG,
+        rest = MEASURED_IMPACT_REST_DEG,
+        sep = MEASURED_SEPARATION_M,
+    );
 }

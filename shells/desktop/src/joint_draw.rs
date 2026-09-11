@@ -68,7 +68,10 @@ impl App {
     /// o joint que o Esc cancelou. Dois campos, um fato: quem os limpa é uma
     /// função, não dois call sites que precisam lembrar dos dois.
     pub(crate) fn disarm_joint_draw(&mut self) {
-        disarm(&mut self.physics.joint_draw_armed, &mut self.physics.joint_draw);
+        disarm(
+            &mut self.physics.joint_draw_armed,
+            &mut self.physics.joint_draw,
+        );
     }
 
     /// **Esc cancela**, e só consome a tecla quando há o que cancelar — o formato

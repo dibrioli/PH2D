@@ -30,7 +30,6 @@ use ph2d_core::Vec2;
 use ph2d_ecs::Transform;
 use ph2d_physics_ecs::PlatformPlayer;
 
-use crate::App;
 use crate::physics_smoke_player::{slab, spawn_player};
 
 /// A altura de flutuação agachado — acima do piso geométrico de 0,50 que a
@@ -54,13 +53,10 @@ pub(crate) const LEDGE_EDGE_X: f32 = 15.0;
 /// A face esquerda da PAREDE.
 pub(crate) const WALL_FACE_X: f32 = 22.0;
 
-impl App {
-    /// **O que ele vê** — a arena dos cinco sensores.
-    pub(crate) fn physics_smoke_probes(&mut self) {
-        let gfx = self.gfx.as_mut().expect("gfx");
-        let _ = build_probe_scene(gfx.sim.world_mut());
-        eprintln!("{PROBES_SMOKE_MESSAGE}");
-    }
+/// **O que ele vê** — a arena dos cinco sensores.
+pub fn physics_smoke_probes(ctx: &mut ph2d_app_physics::SceneCtx<'_>) {
+    let _ = build_probe_scene(ctx.world);
+    eprintln!("{PROBES_SMOKE_MESSAGE}");
 }
 
 /// **A geometria da cena 108**, separada do `App` de propósito.

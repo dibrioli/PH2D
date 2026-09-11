@@ -215,52 +215,47 @@ pub(crate) fn spawn_props_with(world: &mut World, bump_half_y: f32) {
     car(world, "Rigid", 4.0, JointKind::Pin, RIGID);
 }
 
-impl crate::App {
-    /// **Cena 57 (W-Wheel).** Dois carros idênticos, uma pista de lombadas, e a
-    /// única diferença é como as rodas estão presas.
-    pub(crate) fn physics_smoke_wheel(&mut self) {
-        let gfx = self.gfx.as_mut().expect("gfx");
-        spawn_props(gfx.sim.world_mut());
-        if let Some(hero) = gfx.hero_screen.as_mut() {
-            hero.panel_visibility.insert("physics", true);
-        }
+/// **Cena 57 (W-Wheel).** Dois carros idênticos, uma pista de lombadas, e a
+/// única diferença é como as rodas estão presas.
+pub fn physics_smoke_wheel(ctx: &mut ph2d_app_physics::SceneCtx<'_>) {
+    spawn_props(ctx.world);
+    ctx.want.panels.push("physics");
 
-        eprintln!(
-            "[physics-smoke 57] A RODA -- o cubo que gira E cavalga uma suspensao.\n  \
-               Aperte B para ver os joints, e depois PLAY (o toggle Physics ja esta armado).\n\n  \
-               1. OLHE AS RODAS, nao os carros. Mesma massa, mesmas rodas, mesmo motor,\n     \
-                  mesma pista -- a UNICA diferenca e o tipo de joint:\n     \
-                  - VERDE (embaixo): rodas por 'Wheel'. Cada cubo SOBE E DESCE dentro do\n       \
-                    carro ao passar nas lombadas -- e isso que uma suspensao e.\n     \
-                  - LARANJA (em cima): rodas por 'Pin'. Elas giram igual e NAO se movem\n       \
-                    em relacao ao carro: eixo rigido, que era tudo o que este kit tinha.\n     \
-                  (medido, curso percorrido pelo cubo dentro do chassi ao longo da pista:\n      \
-                  verde {travel:.3} m, laranja {rigid_travel:.3} m)\n  \
-               2. E o carro suspenso MERGULHA nas lombadas, em vez de subir inteiro. Isso\n     \
-                  e um carro de verdade, nao um defeito: com duas suspensoes independentes\n     \
-                  uma comprime enquanto a outra estende. (Ele tambem anda 2% mais longe --\n     \
-                  {sprung_d:.2} m contra {rigid_d:.2} -- porque a roda fica no chao; e real,\n     \
-                  medido, e pequeno demais para se ver. Nao e o ponto da cena.)\n  \
-               3. Selecione uma roda verde ('Sprung F Joint') na Hierarquia. A secao do\n     \
-                  joint mostra as TRES coisas que so uma roda tem juntas:\n     \
-                  - 'Travel' + Min/Max em METROS: os batentes da suspensao. Ponha Max\n       \
-                    em 0.02 e de Play -- o curso some e o verde vira o laranja.\n     \
-                  - 'Stiffness' e 'Damping': a mola. Ponha Stiffness em 60 e de Play --\n       \
-                    o carro senta no batente. Volte para 400.\n     \
-                  - 'Motor' em GRAUS por segundo: a tracao. Note a unidade -- o limite\n       \
-                    esta em METROS e o motor em GRAUS no MESMO joint, porque sao dois\n       \
-                    graus de liberdade diferentes.\n  \
-               4. O DESENHO diz o tipo: um anel (o cubo, que gira) MAIS um zigue-zague\n     \
-                  ao longo do eixo (a suspensao) -- nem so o anel de um pino, nem so o\n     \
-                  zigue-zague de uma mola.\n  \
-               5. E o gesto de CRIAR: selecione um chassi e uma roda, va na secao\n     \
-                  Physics Body, escolha 'Wheel' no seletor 'Join As' e clique em Join.",
-            travel = MEASURED_TRAVEL_M,
-            rigid_travel = MEASURED_RIGID_TRAVEL_M,
-            sprung_d = MEASURED_SPRUNG_DIST_M,
-            rigid_d = MEASURED_RIGID_DIST_M,
-        );
-    }
+    eprintln!(
+        "[physics-smoke 57] A RODA -- o cubo que gira E cavalga uma suspensao.\n  \
+           Aperte B para ver os joints, e depois PLAY (o toggle Physics ja esta armado).\n\n  \
+           1. OLHE AS RODAS, nao os carros. Mesma massa, mesmas rodas, mesmo motor,\n     \
+              mesma pista -- a UNICA diferenca e o tipo de joint:\n     \
+              - VERDE (embaixo): rodas por 'Wheel'. Cada cubo SOBE E DESCE dentro do\n       \
+                carro ao passar nas lombadas -- e isso que uma suspensao e.\n     \
+              - LARANJA (em cima): rodas por 'Pin'. Elas giram igual e NAO se movem\n       \
+                em relacao ao carro: eixo rigido, que era tudo o que este kit tinha.\n     \
+              (medido, curso percorrido pelo cubo dentro do chassi ao longo da pista:\n      \
+              verde {travel:.3} m, laranja {rigid_travel:.3} m)\n  \
+           2. E o carro suspenso MERGULHA nas lombadas, em vez de subir inteiro. Isso\n     \
+              e um carro de verdade, nao um defeito: com duas suspensoes independentes\n     \
+              uma comprime enquanto a outra estende. (Ele tambem anda 2% mais longe --\n     \
+              {sprung_d:.2} m contra {rigid_d:.2} -- porque a roda fica no chao; e real,\n     \
+              medido, e pequeno demais para se ver. Nao e o ponto da cena.)\n  \
+           3. Selecione uma roda verde ('Sprung F Joint') na Hierarquia. A secao do\n     \
+              joint mostra as TRES coisas que so uma roda tem juntas:\n     \
+              - 'Travel' + Min/Max em METROS: os batentes da suspensao. Ponha Max\n       \
+                em 0.02 e de Play -- o curso some e o verde vira o laranja.\n     \
+              - 'Stiffness' e 'Damping': a mola. Ponha Stiffness em 60 e de Play --\n       \
+                o carro senta no batente. Volte para 400.\n     \
+              - 'Motor' em GRAUS por segundo: a tracao. Note a unidade -- o limite\n       \
+                esta em METROS e o motor em GRAUS no MESMO joint, porque sao dois\n       \
+                graus de liberdade diferentes.\n  \
+           4. O DESENHO diz o tipo: um anel (o cubo, que gira) MAIS um zigue-zague\n     \
+              ao longo do eixo (a suspensao) -- nem so o anel de um pino, nem so o\n     \
+              zigue-zague de uma mola.\n  \
+           5. E o gesto de CRIAR: selecione um chassi e uma roda, va na secao\n     \
+              Physics Body, escolha 'Wheel' no seletor 'Join As' e clique em Join.",
+        travel = MEASURED_TRAVEL_M,
+        rigid_travel = MEASURED_RIGID_TRAVEL_M,
+        sprung_d = MEASURED_SPRUNG_DIST_M,
+        rigid_d = MEASURED_RIGID_DIST_M,
+    );
 }
 
 #[cfg(test)]

@@ -158,49 +158,44 @@ pub(crate) fn build_differential(world: &mut World) {
 #[path = "physics_smoke_pulley_diff_tests.rs"]
 mod tests;
 
-impl crate::App {
-    /// **Cena 62 (W-Pulley W4).** Dois sarilhos com a MESMA carga e o MESMO
-    /// contrapeso; a única diferença é o SEGUNDO diâmetro do tambor.
-    pub(crate) fn physics_smoke_differential(&mut self) {
-        let gfx = self.gfx.as_mut().expect("gfx");
-        build_differential(gfx.sim.world_mut());
-        // Sem isto o tambor — que a mensagem manda selecionar — nasce 7 m acima
-        // do topo da tela. Ver o doc de `CAMERA_CENTRE`.
-        gfx.camera.center = CAMERA_CENTRE;
-        gfx.camera.height_world = CAMERA_HEIGHT;
-        if let Some(hero) = gfx.hero_screen.as_mut() {
-            hero.panel_visibility.insert("physics", true);
-        }
+/// **Cena 62 (W-Pulley W4).** Dois sarilhos com a MESMA carga e o MESMO
+/// contrapeso; a única diferença é o SEGUNDO diâmetro do tambor.
+pub fn physics_smoke_differential(ctx: &mut ph2d_app_physics::SceneCtx<'_>) {
+    build_differential(ctx.world);
+    // Sem isto o tambor — que a mensagem manda selecionar — nasce 7 m acima
+    // do topo da tela. Ver o doc de `CAMERA_CENTRE`.
+    ctx.want.camera_center = Some(CAMERA_CENTRE);
+    ctx.want.camera_height_world = Some(CAMERA_HEIGHT);
+    ctx.want.panels.push("physics");
 
-        eprintln!(
-            "[physics-smoke 62] O TAMBOR DIFERENCIAL -- a vantagem mecanica CONTINUA.\n  \
-               Aperte B para ver os vinculos, e depois PLAY (o toggle Physics ja esta armado).\n\n  \
-               Os DOIS sarilhos tem a MESMA carga ({load:.0} kg) e o MESMO contrapeso\n  \
-               ({counter:.0} kg). A unica diferenca e o SEGUNDO diametro do tambor -- e eles\n  \
-               andam para lados OPOSTOS.\n\n  \
-               1. VERDE (esquerda) -- o tambor tem DOIS raios: a corda entra em {r_in:.2} m e\n     \
-                  sai em {r_out:.3} m. Girar o eixo recolhe de um lado e paga do outro em\n     \
-                  proporcoes diferentes, entao a vantagem e {gear:.0}x: 1 kg segura ate {hold:.0} kg.\n     \
-                  O contrapeso DESCE e LEVANTA os {load:.0} kg (+{geared:.2} m em 2 s).\n     \
-                  Repare nos DOIS aneis concentricos: e deles que o numero sai.\n  \
-               2. VERMELHO (direita) -- o mesmo tambor com UM raio so. Numa corda que\n     \
-                  DESLIZA a tensao e uniforme, logo a vantagem e 1: os {load:.0} kg vencem\n     \
-                  1 kg, CAEM ({plain:.2} m) e batem no chao.\n\n  \
-               (!) Ninguem digitou um \"{gear:.0}\" em lugar nenhum -- ele e o quociente de duas\n     \
-               circunferencias que estao DESENHADAS. Foi por nao ter peca na cena que o\n     \
-               campo `ratio` do W-Pulley saiu.\n\n  \
-               AUTORE VOCE MESMO: selecione 'Plain Rope Drum' (o tambor da direita) na\n  \
-               Hierarquia. Na secao 'Pulley Wheel' a row 'Out Radius (m)' esta em 0 --\n  \
-               uma roldana comum. Digite {r_out:.3}: o segundo anel aparece e, no Play, a\n  \
-               carga da direita para de cair. Voltar a 0 a solta.",
-            load = LOAD_MASS,
-            counter = COUNTER_MASS,
-            r_in = R_IN,
-            r_out = R_OUT,
-            gear = R_IN / R_OUT,
-            hold = COUNTER_MASS * R_IN / R_OUT,
-            geared = MEASURED_GEARED_RISE,
-            plain = MEASURED_PLAIN_DROP,
-        );
-    }
+    eprintln!(
+        "[physics-smoke 62] O TAMBOR DIFERENCIAL -- a vantagem mecanica CONTINUA.\n  \
+           Aperte B para ver os vinculos, e depois PLAY (o toggle Physics ja esta armado).\n\n  \
+           Os DOIS sarilhos tem a MESMA carga ({load:.0} kg) e o MESMO contrapeso\n  \
+           ({counter:.0} kg). A unica diferenca e o SEGUNDO diametro do tambor -- e eles\n  \
+           andam para lados OPOSTOS.\n\n  \
+           1. VERDE (esquerda) -- o tambor tem DOIS raios: a corda entra em {r_in:.2} m e\n     \
+              sai em {r_out:.3} m. Girar o eixo recolhe de um lado e paga do outro em\n     \
+              proporcoes diferentes, entao a vantagem e {gear:.0}x: 1 kg segura ate {hold:.0} kg.\n     \
+              O contrapeso DESCE e LEVANTA os {load:.0} kg (+{geared:.2} m em 2 s).\n     \
+              Repare nos DOIS aneis concentricos: e deles que o numero sai.\n  \
+           2. VERMELHO (direita) -- o mesmo tambor com UM raio so. Numa corda que\n     \
+              DESLIZA a tensao e uniforme, logo a vantagem e 1: os {load:.0} kg vencem\n     \
+              1 kg, CAEM ({plain:.2} m) e batem no chao.\n\n  \
+           (!) Ninguem digitou um \"{gear:.0}\" em lugar nenhum -- ele e o quociente de duas\n     \
+           circunferencias que estao DESENHADAS. Foi por nao ter peca na cena que o\n     \
+           campo `ratio` do W-Pulley saiu.\n\n  \
+           AUTORE VOCE MESMO: selecione 'Plain Rope Drum' (o tambor da direita) na\n  \
+           Hierarquia. Na secao 'Pulley Wheel' a row 'Out Radius (m)' esta em 0 --\n  \
+           uma roldana comum. Digite {r_out:.3}: o segundo anel aparece e, no Play, a\n  \
+           carga da direita para de cair. Voltar a 0 a solta.",
+        load = LOAD_MASS,
+        counter = COUNTER_MASS,
+        r_in = R_IN,
+        r_out = R_OUT,
+        gear = R_IN / R_OUT,
+        hold = COUNTER_MASS * R_IN / R_OUT,
+        geared = MEASURED_GEARED_RISE,
+        plain = MEASURED_PLAIN_DROP,
+    );
 }

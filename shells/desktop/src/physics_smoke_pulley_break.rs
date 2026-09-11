@@ -177,56 +177,51 @@ pub(crate) fn build_break(world: &mut World) {
     breaker(world, "Axle", 7.0, 3.0, 0.0, None, Some(AXLE_LIMIT), AXLE);
 }
 
-impl crate::App {
-    /// **Cena 60 (W-Pulley W2).** Três cordas: uma que segura, uma que parte, e
-    /// uma cujo EIXO cede antes de a corda sentir qualquer coisa.
-    ///
-    /// Os números saem da sonda `probe_smoke_60`, rodada sobre ESTA cena.
-    pub(crate) fn physics_smoke_break(&mut self) {
-        let gfx = self.gfx.as_mut().expect("gfx");
-        build_break(gfx.sim.world_mut());
-        if let Some(hero) = gfx.hero_screen.as_mut() {
-            hero.panel_visibility.insert("physics", true);
-        }
+/// **Cena 60 (W-Pulley W2).** Três cordas: uma que segura, uma que parte, e
+/// uma cujo EIXO cede antes de a corda sentir qualquer coisa.
+///
+/// Os números saem da sonda `probe_smoke_60`, rodada sobre ESTA cena.
+pub fn physics_smoke_break(ctx: &mut ph2d_app_physics::SceneCtx<'_>) {
+    build_break(ctx.world);
+    ctx.want.panels.push("physics");
 
-        eprintln!(
-            "[physics-smoke 60] A RUPTURA -- a corda parte, e o eixo tambem.\n  \
-               Aperte B para ver os vinculos, e depois PLAY (o toggle Physics ja esta armado).\n\n  \
-               1. VERDE (esquerda) -- 3 kg numa corda de {limit:.0} N. O peso e 29,4 N, entao ela\n     \
-                  SEGURA: a carga fica onde esta ({holds:.2} m em 2 s). E o controle.\n  \
-               2. VERMELHO (meio) -- a MESMA corda de {limit:.0} N e o MESMO peso de 3 kg. A\n     \
-                  unica diferenca e que esta carga ja chega DESCENDO a 6 m/s -- e ai a\n     \
-                  corda parte na hora, carregando {jerk:.0} N.\n     \
-                  ⚠️ Esse numero e o coracao da cena: uma corda INEXTENSIVEL que para uma\n     \
-                  massa em movimento aplica uma forca que nao tem relacao com o peso --\n     \
-                  177x ele, aqui. 'Break force' e um limiar de CARGA, e um tranco e uma\n     \
-                  carga enorme.\n  \
-               3. AMARELO (direita) -- a corda e INDESTRUTIVEL e o EIXO da roldana aguenta\n     \
-                  so {axle:.0} N. A corda segura 29,4 N, mas o eixo carrega a RESULTANTE do\n     \
-                  desvio (~1,4x num enlace de 90 graus, 2x num de 180): {axle_load:.1} N. O eixo\n     \
-                  cede, a roldana SAI DA ROTA, e a carga cai -- sem tranco nenhum, porque\n     \
-                  a rota sem ela e mais CURTA, entao a corda fica frouxa por construcao.\n  \
-               4. OLHE OS READOUTS. Com B ligado, cada corda mostra 'carga / limiar' ao lado\n     \
-                  dela; quando ela parte, o numero CONGELA na carga que cruzou. E o mesmo\n     \
-                  readout dos outros joints -- ate esta wave a polia era o unico tipo que\n     \
-                  nao podia partir, e mostrava um '0 / 0 N' permanente.\n  \
-               5. SELECIONE a corda ('Holds Rope') na Hierarquia. No Inspector, na secao\n     \
-                  Physics Joint, ha 'Breakable' e 'Break Force (N)'. Baixe o limiar COM O\n     \
-                  RELOGIO ANDANDO e ela parte na hora.\n  \
-               6. SELECIONE uma roldana ('Holds Rope Wheel 1'). Na secao 'Pulley Wheel' ha\n     \
-                  'Axle Breaks' e 'Break Force (N)' -- o limiar do EIXO, que e outro numero\n     \
-                  e outra grandeza. Uma corda tem tensao uniforme (um limiar so, nas duas\n     \
-                  pontas); cada eixo carrega a resultante do enlace DELE.\n  \
-               7. Reset devolve tudo: uma ruptura e um fato da CORRIDA, nunca uma edicao\n     \
-                  que o artista tenha de desfazer. Scrub para tras tambem -- a corda volta\n     \
-                  inteira e rompe de novo no mesmo tique.",
-            limit = ROPE_LIMIT,
-            holds = MEASURED_HOLDS_DRIFT,
-            jerk = MEASURED_JERK,
-            axle = AXLE_LIMIT,
-            axle_load = MEASURED_AXLE_LOAD,
-        );
-    }
+    eprintln!(
+        "[physics-smoke 60] A RUPTURA -- a corda parte, e o eixo tambem.\n  \
+           Aperte B para ver os vinculos, e depois PLAY (o toggle Physics ja esta armado).\n\n  \
+           1. VERDE (esquerda) -- 3 kg numa corda de {limit:.0} N. O peso e 29,4 N, entao ela\n     \
+              SEGURA: a carga fica onde esta ({holds:.2} m em 2 s). E o controle.\n  \
+           2. VERMELHO (meio) -- a MESMA corda de {limit:.0} N e o MESMO peso de 3 kg. A\n     \
+              unica diferenca e que esta carga ja chega DESCENDO a 6 m/s -- e ai a\n     \
+              corda parte na hora, carregando {jerk:.0} N.\n     \
+              ⚠️ Esse numero e o coracao da cena: uma corda INEXTENSIVEL que para uma\n     \
+              massa em movimento aplica uma forca que nao tem relacao com o peso --\n     \
+              177x ele, aqui. 'Break force' e um limiar de CARGA, e um tranco e uma\n     \
+              carga enorme.\n  \
+           3. AMARELO (direita) -- a corda e INDESTRUTIVEL e o EIXO da roldana aguenta\n     \
+              so {axle:.0} N. A corda segura 29,4 N, mas o eixo carrega a RESULTANTE do\n     \
+              desvio (~1,4x num enlace de 90 graus, 2x num de 180): {axle_load:.1} N. O eixo\n     \
+              cede, a roldana SAI DA ROTA, e a carga cai -- sem tranco nenhum, porque\n     \
+              a rota sem ela e mais CURTA, entao a corda fica frouxa por construcao.\n  \
+           4. OLHE OS READOUTS. Com B ligado, cada corda mostra 'carga / limiar' ao lado\n     \
+              dela; quando ela parte, o numero CONGELA na carga que cruzou. E o mesmo\n     \
+              readout dos outros joints -- ate esta wave a polia era o unico tipo que\n     \
+              nao podia partir, e mostrava um '0 / 0 N' permanente.\n  \
+           5. SELECIONE a corda ('Holds Rope') na Hierarquia. No Inspector, na secao\n     \
+              Physics Joint, ha 'Breakable' e 'Break Force (N)'. Baixe o limiar COM O\n     \
+              RELOGIO ANDANDO e ela parte na hora.\n  \
+           6. SELECIONE uma roldana ('Holds Rope Wheel 1'). Na secao 'Pulley Wheel' ha\n     \
+              'Axle Breaks' e 'Break Force (N)' -- o limiar do EIXO, que e outro numero\n     \
+              e outra grandeza. Uma corda tem tensao uniforme (um limiar so, nas duas\n     \
+              pontas); cada eixo carrega a resultante do enlace DELE.\n  \
+           7. Reset devolve tudo: uma ruptura e um fato da CORRIDA, nunca uma edicao\n     \
+              que o artista tenha de desfazer. Scrub para tras tambem -- a corda volta\n     \
+              inteira e rompe de novo no mesmo tique.",
+        limit = ROPE_LIMIT,
+        holds = MEASURED_HOLDS_DRIFT,
+        jerk = MEASURED_JERK,
+        axle = AXLE_LIMIT,
+        axle_load = MEASURED_AXLE_LOAD,
+    );
 }
 
 #[cfg(test)]

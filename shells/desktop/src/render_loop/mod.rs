@@ -8847,7 +8847,9 @@ impl crate::App {
                 // W-J3: o limite que o arrasto está posando AGORA, para o
                 // fantasma de B. Lido do componente (o arrasto já escreveu nele
                 // neste frame), então a silhueta e o arco mostram o mesmo número.
-                self.physics.joint_anchor_drag.and_then(|d| d.posed_limit(sim)),
+                self.physics
+                    .joint_anchor_drag
+                    .and_then(|d| d.posed_limit(sim)),
                 // W-J4: a banda elástica, se um gesto de criar está em voo (e o
                 // corpo A ainda existe — apagá-lo sob o gesto o invalida).
                 crate::joint_draw::body_alive(sim, self.physics.joint_draw)
@@ -13211,7 +13213,10 @@ impl crate::App {
                 // canvas, entao sem uma saida o unico jeito de sair era completar
                 // um joint que o artista nao queria. Pela porta unica
                 // `toggle_joint_draw`, a MESMA que o Esc usa.
-                crate::joint_draw::toggle(&mut self.physics.joint_draw_armed, &mut self.physics.joint_draw);
+                crate::joint_draw::toggle(
+                    &mut self.physics.joint_draw_armed,
+                    &mut self.physics.joint_draw,
+                );
             }
             if join_chain {
                 let (made, last) = crate::joint_draw::join_chain(

@@ -41,7 +41,6 @@ use ph2d_core::Vec2;
 use ph2d_ecs::Transform;
 use ph2d_physics_ecs::PlatformPlayer;
 
-use crate::App;
 use crate::physics_smoke_player::{slab, spawn_player};
 
 /// O vão livre entre as duas paredes.
@@ -61,84 +60,81 @@ const WINDOW_EVERY: f32 = 3.0;
 /// lisa e o artista ter um controle antes do caso.
 const FIRST_WINDOW: f32 = 3.0;
 
-impl App {
-    /// **A parede com janelas** — subir um poço cuja parede direita tem buracos.
-    pub(crate) fn physics_smoke_flank(&mut self) {
-        let gfx = self.gfx.as_mut().expect("gfx");
-        let world = gfx.sim.world_mut();
+/// **A parede com janelas** — subir um poço cuja parede direita tem buracos.
+pub fn physics_smoke_flank(ctx: &mut ph2d_app_physics::SceneCtx<'_>) {
+    let world = &mut *ctx.world;
 
-        slab(
-            world,
-            "Floor",
-            Vec2::new(0.0, -0.5),
-            [12.0, 0.5],
-            0.0,
-            [0.35, 0.35, 0.4, 1.0],
-        );
+    slab(
+        world,
+        "Floor",
+        Vec2::new(0.0, -0.5),
+        [12.0, 0.5],
+        0.0,
+        [0.35, 0.35, 0.4, 1.0],
+    );
 
-        // A parede ESQUERDA e' lisa: ela e' o CONTROLE, e o artista sente a
-        // diferenca sem trocar de cena.
-        let left_cx = -(GAP * 0.5) - 0.5;
-        slab(
-            world,
-            "WallSolid",
-            Vec2::new(left_cx, WALL_TOP * 0.5),
-            [0.5, WALL_TOP * 0.5],
-            0.0,
-            [0.30, 0.34, 0.42, 1.0],
-        );
+    // A parede ESQUERDA e' lisa: ela e' o CONTROLE, e o artista sente a
+    // diferenca sem trocar de cena.
+    let left_cx = -(GAP * 0.5) - 0.5;
+    slab(
+        world,
+        "WallSolid",
+        Vec2::new(left_cx, WALL_TOP * 0.5),
+        [0.5, WALL_TOP * 0.5],
+        0.0,
+        [0.30, 0.34, 0.42, 1.0],
+    );
 
-        // A parede DIREITA e' a mesma parede com buracos. Ela nasce como uma
-        // pilha de blocos, e o que fica entre eles sao as janelas.
-        let right_cx = (GAP * 0.5) + 0.5;
-        let mut lo = 0.0f32;
-        let mut n = 0;
-        let mut y = FIRST_WINDOW;
-        while y + WINDOW < WALL_TOP {
-            slab(
-                world,
-                "WallWindowed",
-                Vec2::new(right_cx, (lo + y) * 0.5),
-                [0.5, (y - lo) * 0.5],
-                0.0,
-                [0.42, 0.34, 0.30, 1.0],
-            );
-            lo = y + WINDOW;
-            y += WINDOW_EVERY;
-            n += 1;
-        }
+    // A parede DIREITA e' a mesma parede com buracos. Ela nasce como uma
+    // pilha de blocos, e o que fica entre eles sao as janelas.
+    let right_cx = (GAP * 0.5) + 0.5;
+    let mut lo = 0.0f32;
+    let mut n = 0;
+    let mut y = FIRST_WINDOW;
+    while y + WINDOW < WALL_TOP {
         slab(
             world,
             "WallWindowed",
-            Vec2::new(right_cx, (lo + WALL_TOP) * 0.5),
-            [0.5, (WALL_TOP - lo) * 0.5],
+            Vec2::new(right_cx, (lo + y) * 0.5),
+            [0.5, (y - lo) * 0.5],
             0.0,
             [0.42, 0.34, 0.30, 1.0],
         );
-
-        // Um beiral la' em cima, para a subida LEVAR a algum lugar.
-        slab(
-            world,
-            "Ledge",
-            Vec2::new(3.4, WALL_TOP - 0.4),
-            [2.5, 0.4],
-            0.0,
-            [0.32, 0.44, 0.36, 1.0],
-        );
-
-        spawn_player(world, Vec2::new(0.0, 1.4));
-
-        // ⚠️ A capacidade e' ARMADA aqui, e nao herdada: parede nasce desligada
-        // no produto (o aviso do `physics_smoke_player_wall`).
-        let mut q = world.query::<(&mut PlatformPlayer, &Transform)>();
-        for (mut p, _) in q.iter_mut(world) {
-            p.wall_slide_speed = 3.0;
-            p.wall_jump_height = 2.0;
-        }
-        eprintln!(
-            "{FLANK_SMOKE_MESSAGE_HEAD}{n} janelas de 0,8 m na parede direita.\n{FLANK_SMOKE_MESSAGE}"
-        );
+        lo = y + WINDOW;
+        y += WINDOW_EVERY;
+        n += 1;
     }
+    slab(
+        world,
+        "WallWindowed",
+        Vec2::new(right_cx, (lo + WALL_TOP) * 0.5),
+        [0.5, (WALL_TOP - lo) * 0.5],
+        0.0,
+        [0.42, 0.34, 0.30, 1.0],
+    );
+
+    // Um beiral la' em cima, para a subida LEVAR a algum lugar.
+    slab(
+        world,
+        "Ledge",
+        Vec2::new(3.4, WALL_TOP - 0.4),
+        [2.5, 0.4],
+        0.0,
+        [0.32, 0.44, 0.36, 1.0],
+    );
+
+    spawn_player(world, Vec2::new(0.0, 1.4));
+
+    // ⚠️ A capacidade e' ARMADA aqui, e nao herdada: parede nasce desligada
+    // no produto (o aviso do `physics_smoke_player_wall`).
+    let mut q = world.query::<(&mut PlatformPlayer, &Transform)>();
+    for (mut p, _) in q.iter_mut(world) {
+        p.wall_slide_speed = 3.0;
+        p.wall_jump_height = 2.0;
+    }
+    eprintln!(
+        "{FLANK_SMOKE_MESSAGE_HEAD}{n} janelas de 0,8 m na parede direita.\n{FLANK_SMOKE_MESSAGE}"
+    );
 }
 
 /// A primeira linha da cena 98 — ⚠️ ela IMPRIME o que a cena montou. Se o número

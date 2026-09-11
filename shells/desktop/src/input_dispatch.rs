@@ -5915,7 +5915,10 @@ impl App {
                                 if matches!(gkind, ph2d_editor::GizmoDragKind::Translate)
                                     && !self.playhead.is_playing()
                                 {
-                                    self.physics.interaction.joint.drag_reach(self.modifiers.alt_key())
+                                    self.physics
+                                        .interaction
+                                        .joint
+                                        .drag_reach(self.modifiers.alt_key())
                                 } else {
                                     None
                                 };
@@ -6140,7 +6143,11 @@ impl App {
                             // se algum. Uma pergunta só, feita à porta que também
                             // decide o alcance do arrasto — é dela que sai o Alt
                             // significar *leve o rig inteiro* nos cinco modos.
-                            let gesture = self.physics.interaction.joint.gesture(self.modifiers.alt_key());
+                            let gesture = self
+                                .physics
+                                .interaction
+                                .joint
+                                .gesture(self.modifiers.alt_key());
                             let grabbed = !locked
                                 && (crate::body_grab::take_hold(
                                     &mut gfx.physics,
@@ -6226,7 +6233,10 @@ impl App {
                                 let carry_reach = if self.playhead.is_playing() {
                                     None
                                 } else {
-                                    self.physics.interaction.joint.drag_reach(self.modifiers.alt_key())
+                                    self.physics
+                                        .interaction
+                                        .joint
+                                        .drag_reach(self.modifiers.alt_key())
                                 };
                                 crate::joint_rig_drag::seed_group_drag_starts(
                                     &mut self.group_drag_starts,

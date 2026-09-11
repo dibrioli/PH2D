@@ -141,54 +141,49 @@ pub(crate) fn build_signal_leave_scene(world: &mut World) {
 #[path = "physics_smoke_signal_leave_tests.rs"]
 mod tests;
 
-impl crate::App {
-    /// **Cena 76 (W-SignalLeave).** A porta que abre E fecha.
-    pub(crate) fn physics_smoke_signal_leave(&mut self) {
-        let gfx = self.gfx.as_mut().expect("gfx");
-        build_signal_leave_scene(gfx.sim.world_mut());
-        gfx.camera.center = CAMERA_CENTRE;
-        gfx.camera.height_world = CAMERA_HEIGHT;
-        if let Some(hero) = gfx.hero_screen.as_mut() {
-            hero.panel_visibility.insert("physics", true);
-        }
+/// **Cena 76 (W-SignalLeave).** A porta que abre E fecha.
+pub fn physics_smoke_signal_leave(ctx: &mut ph2d_app_physics::SceneCtx<'_>) {
+    build_signal_leave_scene(ctx.world);
+    ctx.want.camera_center = Some(CAMERA_CENTRE);
+    ctx.want.camera_height_world = Some(CAMERA_HEIGHT);
+    ctx.want.panels.push("physics");
 
-        eprintln!(
-            "[physics-smoke 76] A PORTA QUE FECHA -- o extremo que faltava.\n\n  \
-               A cena 73 deu a' fisica o poder de gritar quando algo CHEGA. O outro\n  \
-               extremo ficou diferido com o motivo escrito: emitir os dois sob o MESMO\n  \
-               nome tornaria o sinal ambiguo -- quem escuta nao saberia se a porta abriu\n  \
-               ou fechou. A resposta e' um SEGUNDO nome, e e' o que esta cena mostra.\n\n  \
-               1. Toque Play e olhe o canto superior. Tres andarilhos iguais cruzam da\n     \
-                  esquerda para a direita, um por pista:\n     \
-                  - EM CIMA '{n0}' (rosa) -- um SENSOR com os DOIS nomes. Sobe\n       \
-                    'Signal: door_open' quando ele ENTRA e 'Signal: door_close' quando\n       \
-                    ele SAI. Dois toasts, nessa ordem.\n     \
-                  - MEIO '{n1}' (ambar) -- um corpo SOLIDO com os dois nomes. O\n       \
-                    andarilho BATE ('bell_hit') e QUICA para longe ('bell_part'): o\n       \
-                    mesmo par, no extremo solido.\n     \
-                  - EMBAIXO '{n2}' (cinza) -- a MESMA porta, marcada SO' na chegada.\n       \
-                    Sobe 'half_open' e **nada mais**. Ela e' o CONTROLE: um extremo sem\n       \
-                    o componente dele e' SILENCIO, nao o outro nome -- senao toda cena\n       \
-                    ja' autorada passaria a disparar o dobro.\n\n  \
-               2. AUTORE VOCE MESMO: selecione '{n2}' na Hierarquia. Na secao Physics\n     \
-                  Body as DUAS ultimas rows sao campos de texto -- 'Signal on hit...' e\n     \
-                  'Signal on leave...'. Escreva 'half_close' na segunda e de Play de\n     \
-                  novo: agora ela fecha tambem.\n\n  \
-               3. E O CONSERTO QUE VEIO JUNTO: selecione '{n0}' e olhe as duas rows.\n     \
-                  Elas MOSTRAM 'door_open' e 'door_close'. Ate esta wave a row de\n     \
-                  chegada era WRITE-ONLY: digitar funcionava, e re-selecionar a\n     \
-                  entidade mostrava um campo em BRANCO sobre um componente que dizia\n     \
-                  'door' -- indistinguivel de *o nome nao foi guardado*.\n\n  \
-               (!) Arraste a regua para TRAS depois de um andarilho atravessar: nada\n      \
-                   dispara. Uma descontinuidade do relogio nao e' uma saida -- o\n      \
-                   consumidor fecharia uma porta que, no tempo para onde voce foi,\n      \
-                   esta' aberta.\n\n  \
-               (!) Os dois nomes sao dois CONTRATOS, nao um nome com uma fase. Quem\n      \
-                   escuta casa numa string, e este outbox e' o MESMO em que a timeline\n      \
-                   emite os sinais dos markers, que nao tem fase nenhuma.\n",
-            n0 = LANE_NAMES[0],
-            n1 = LANE_NAMES[1],
-            n2 = LANE_NAMES[2],
-        );
-    }
+    eprintln!(
+        "[physics-smoke 76] A PORTA QUE FECHA -- o extremo que faltava.\n\n  \
+           A cena 73 deu a' fisica o poder de gritar quando algo CHEGA. O outro\n  \
+           extremo ficou diferido com o motivo escrito: emitir os dois sob o MESMO\n  \
+           nome tornaria o sinal ambiguo -- quem escuta nao saberia se a porta abriu\n  \
+           ou fechou. A resposta e' um SEGUNDO nome, e e' o que esta cena mostra.\n\n  \
+           1. Toque Play e olhe o canto superior. Tres andarilhos iguais cruzam da\n     \
+              esquerda para a direita, um por pista:\n     \
+              - EM CIMA '{n0}' (rosa) -- um SENSOR com os DOIS nomes. Sobe\n       \
+                'Signal: door_open' quando ele ENTRA e 'Signal: door_close' quando\n       \
+                ele SAI. Dois toasts, nessa ordem.\n     \
+              - MEIO '{n1}' (ambar) -- um corpo SOLIDO com os dois nomes. O\n       \
+                andarilho BATE ('bell_hit') e QUICA para longe ('bell_part'): o\n       \
+                mesmo par, no extremo solido.\n     \
+              - EMBAIXO '{n2}' (cinza) -- a MESMA porta, marcada SO' na chegada.\n       \
+                Sobe 'half_open' e **nada mais**. Ela e' o CONTROLE: um extremo sem\n       \
+                o componente dele e' SILENCIO, nao o outro nome -- senao toda cena\n       \
+                ja' autorada passaria a disparar o dobro.\n\n  \
+           2. AUTORE VOCE MESMO: selecione '{n2}' na Hierarquia. Na secao Physics\n     \
+              Body as DUAS ultimas rows sao campos de texto -- 'Signal on hit...' e\n     \
+              'Signal on leave...'. Escreva 'half_close' na segunda e de Play de\n     \
+              novo: agora ela fecha tambem.\n\n  \
+           3. E O CONSERTO QUE VEIO JUNTO: selecione '{n0}' e olhe as duas rows.\n     \
+              Elas MOSTRAM 'door_open' e 'door_close'. Ate esta wave a row de\n     \
+              chegada era WRITE-ONLY: digitar funcionava, e re-selecionar a\n     \
+              entidade mostrava um campo em BRANCO sobre um componente que dizia\n     \
+              'door' -- indistinguivel de *o nome nao foi guardado*.\n\n  \
+           (!) Arraste a regua para TRAS depois de um andarilho atravessar: nada\n      \
+               dispara. Uma descontinuidade do relogio nao e' uma saida -- o\n      \
+               consumidor fecharia uma porta que, no tempo para onde voce foi,\n      \
+               esta' aberta.\n\n  \
+           (!) Os dois nomes sao dois CONTRATOS, nao um nome com uma fase. Quem\n      \
+               escuta casa numa string, e este outbox e' o MESMO em que a timeline\n      \
+               emite os sinais dos markers, que nao tem fase nenhuma.\n",
+        n0 = LANE_NAMES[0],
+        n1 = LANE_NAMES[1],
+        n2 = LANE_NAMES[2],
+    );
 }

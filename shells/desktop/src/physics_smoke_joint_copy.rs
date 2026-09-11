@@ -112,58 +112,53 @@ pub(crate) fn build_joint_copy(world: &mut World) {
 #[path = "physics_smoke_joint_copy_tests.rs"]
 mod tests;
 
-impl crate::App {
-    /// **Cena 66 (W-JointCopy).** Quatro portões iguais; um afinado, três por
-    /// afinar — e um clique que os iguala.
-    pub(crate) fn physics_smoke_joint_copy(&mut self) {
-        let gfx = self.gfx.as_mut().expect("gfx");
-        build_joint_copy(gfx.sim.world_mut());
-        gfx.camera.center = CAMERA_CENTRE;
-        gfx.camera.height_world = CAMERA_HEIGHT;
-        if let Some(hero) = gfx.hero_screen.as_mut() {
-            hero.panel_visibility.insert("physics", true);
-        }
+/// **Cena 66 (W-JointCopy).** Quatro portões iguais; um afinado, três por
+/// afinar — e um clique que os iguala.
+pub fn physics_smoke_joint_copy(ctx: &mut ph2d_app_physics::SceneCtx<'_>) {
+    build_joint_copy(ctx.world);
+    ctx.want.camera_center = Some(CAMERA_CENTRE);
+    ctx.want.camera_height_world = Some(CAMERA_HEIGHT);
+    ctx.want.panels.push("physics");
 
-        eprintln!(
-            "[physics-smoke 66] COPIAR E COLAR AS PROPRIEDADES DE UM JOINT -- afine\n  \
-               UM e carimbe o rig inteiro.\n  \
-               A cena nasce PARADA e o contorno JA ESTA LIGADO -- B o ALTERNA.\n\n  \
-               Quatro portoes IGUAIS, pendurados no cenario pela mesma altura, com o\n  \
-               mesmo corpo e o mesmo tipo de joint (Pin). So a dobradica difere:\n  \
-               1. VERDE (esquerda) -- 'Pin A' esta AFINADO: batentes de +/-{limit:.0} graus.\n  \
-               2. LARANJA (os tres) -- dobradicas cruas, sem batente nenhum.\n\n  \
-               DE PLAY antes de copiar, para ver o problema: o verde mal se mexe\n  \
-               ({tuned:.0} graus, que e' o proprio batente) e os tres laranjas DESABAM e\n  \
-               giram ate quase dar a volta ({plain:.0} graus). Volte a regua ao zero.\n\n  \
-               O GESTO (o 'Copy properties to...' do Unreal PhAT):\n  \
-               1. selecione 'Pin A' na Hierarquia. Na secao Joint, no fim, ha\n     \
-                  'Copy Properties'. Clique.\n  \
-               2. selecione 'Pin B', 'Pin C' e 'Pin D' (Ctrl+clique nos tres).\n  \
-               3. o botao agora diz **'Paste to 3 Joints'** -- a contagem esta NO\n     \
-                  rotulo, porque um clique que muda tres objetos tem de dizer isso\n     \
-                  antes. Clique.\n  \
-               4. Play: os quatro batem no mesmo batente ({pasted:.0} graus) -- os tres\n     \
-                  que giravam 180 param junto com o verde.\n\n  \
-               O QUE **NAO** VIAJA, e vale conferir -- e' o desenho inteiro:\n  \
-               - as DUAS PONTAS. Cada pino continua segurando o SEU portao; colar as\n    \
-                 pontas seria duplicar o joint, nao copiar as propriedades dele.\n  \
-               - a ANCORA. Arraste o dot ambar de 'Pin D' para o meio do portao ANTES\n    \
-                 de colar: depois da colagem ele continua ali. O offset e' medido no\n    \
-                 corpo, e o corpo do vizinho pode ter outro tamanho.\n  \
-               - o interruptor **Active**. Desligue 'Pin C' (Active = Off) e cole por\n    \
-                 cima: ele continua desligado. Active e' o 'experimente o rig sem\n    \
-                 este aqui' -- uma investigacao sobre UM joint, e a colagem age sobre\n    \
-                 muitos.\n\n  \
-               E O TIPO **VIAJA**, de proposito: metade destes numeros nao tem unidade\n  \
-               propria (o curso e' RADIANO num Pin e METRO num Slider). Troque 'Pin A'\n  \
-               para Spring, afine rigidez/amortecimento, copie e cole nos outros: os\n  \
-               tres viram Spring com os MESMOS numeros. Sem o tipo junto, colar um\n  \
-               '0,785' de um Pin num Slider viraria 0,785 METRO de curso.\n\n  \
-               (!) UM Ctrl+Z desfaz a colagem inteira -- os tres joints num passo so.\n",
-            limit = TUNED_LIMIT_DEG,
-            tuned = MEASURED_TUNED_DEG,
-            plain = MEASURED_PLAIN_DEG,
-            pasted = MEASURED_PASTED_DEG,
-        );
-    }
+    eprintln!(
+        "[physics-smoke 66] COPIAR E COLAR AS PROPRIEDADES DE UM JOINT -- afine\n  \
+           UM e carimbe o rig inteiro.\n  \
+           A cena nasce PARADA e o contorno JA ESTA LIGADO -- B o ALTERNA.\n\n  \
+           Quatro portoes IGUAIS, pendurados no cenario pela mesma altura, com o\n  \
+           mesmo corpo e o mesmo tipo de joint (Pin). So a dobradica difere:\n  \
+           1. VERDE (esquerda) -- 'Pin A' esta AFINADO: batentes de +/-{limit:.0} graus.\n  \
+           2. LARANJA (os tres) -- dobradicas cruas, sem batente nenhum.\n\n  \
+           DE PLAY antes de copiar, para ver o problema: o verde mal se mexe\n  \
+           ({tuned:.0} graus, que e' o proprio batente) e os tres laranjas DESABAM e\n  \
+           giram ate quase dar a volta ({plain:.0} graus). Volte a regua ao zero.\n\n  \
+           O GESTO (o 'Copy properties to...' do Unreal PhAT):\n  \
+           1. selecione 'Pin A' na Hierarquia. Na secao Joint, no fim, ha\n     \
+              'Copy Properties'. Clique.\n  \
+           2. selecione 'Pin B', 'Pin C' e 'Pin D' (Ctrl+clique nos tres).\n  \
+           3. o botao agora diz **'Paste to 3 Joints'** -- a contagem esta NO\n     \
+              rotulo, porque um clique que muda tres objetos tem de dizer isso\n     \
+              antes. Clique.\n  \
+           4. Play: os quatro batem no mesmo batente ({pasted:.0} graus) -- os tres\n     \
+              que giravam 180 param junto com o verde.\n\n  \
+           O QUE **NAO** VIAJA, e vale conferir -- e' o desenho inteiro:\n  \
+           - as DUAS PONTAS. Cada pino continua segurando o SEU portao; colar as\n    \
+             pontas seria duplicar o joint, nao copiar as propriedades dele.\n  \
+           - a ANCORA. Arraste o dot ambar de 'Pin D' para o meio do portao ANTES\n    \
+             de colar: depois da colagem ele continua ali. O offset e' medido no\n    \
+             corpo, e o corpo do vizinho pode ter outro tamanho.\n  \
+           - o interruptor **Active**. Desligue 'Pin C' (Active = Off) e cole por\n    \
+             cima: ele continua desligado. Active e' o 'experimente o rig sem\n    \
+             este aqui' -- uma investigacao sobre UM joint, e a colagem age sobre\n    \
+             muitos.\n\n  \
+           E O TIPO **VIAJA**, de proposito: metade destes numeros nao tem unidade\n  \
+           propria (o curso e' RADIANO num Pin e METRO num Slider). Troque 'Pin A'\n  \
+           para Spring, afine rigidez/amortecimento, copie e cole nos outros: os\n  \
+           tres viram Spring com os MESMOS numeros. Sem o tipo junto, colar um\n  \
+           '0,785' de um Pin num Slider viraria 0,785 METRO de curso.\n\n  \
+           (!) UM Ctrl+Z desfaz a colagem inteira -- os tres joints num passo so.\n",
+        limit = TUNED_LIMIT_DEG,
+        tuned = MEASURED_TUNED_DEG,
+        plain = MEASURED_PLAIN_DEG,
+        pasted = MEASURED_PASTED_DEG,
+    );
 }

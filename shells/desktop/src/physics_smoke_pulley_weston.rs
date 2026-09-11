@@ -209,74 +209,69 @@ pub(crate) fn build_weston(world: &mut World) {
 #[path = "physics_smoke_pulley_weston_tests.rs"]
 mod tests;
 
-impl crate::App {
-    /// **Cena 64 (W-Weston).** Duas máquinas com as MESMAS duas circunferências, a
-    /// mesma carga e o mesmo contrapeso; a única diferença é o chip `Drum | Weston`.
-    pub(crate) fn physics_smoke_weston(&mut self) {
-        let gfx = self.gfx.as_mut().expect("gfx");
-        build_weston(gfx.sim.world_mut());
-        gfx.camera.center = CAMERA_CENTRE;
-        gfx.camera.height_world = CAMERA_HEIGHT;
-        if let Some(hero) = gfx.hero_screen.as_mut() {
-            hero.panel_visibility.insert("physics", true);
-        }
+/// **Cena 64 (W-Weston).** Duas máquinas com as MESMAS duas circunferências, a
+/// mesma carga e o mesmo contrapeso; a única diferença é o chip `Drum | Weston`.
+pub fn physics_smoke_weston(ctx: &mut ph2d_app_physics::SceneCtx<'_>) {
+    build_weston(ctx.world);
+    ctx.want.camera_center = Some(CAMERA_CENTRE);
+    ctx.want.camera_height_world = Some(CAMERA_HEIGHT);
+    ctx.want.panels.push("physics");
 
-        eprintln!(
-            "[physics-smoke 64] A TALHA DE WESTON -- a vantagem sai de duas\n  \
-               circunferencias que se consegue DESENHAR.\n  \
-               A cena nasce PARADA e o contorno JA ESTA LIGADO -- B o ALTERNA.\n\n  \
-               Os DOIS rigs tem as MESMAS duas circunferencias ({r_in:.3} e {r_ret:.4}), a\n  \
-               MESMA carga ({load:.0} kg) e o MESMO contrapeso ({counter:.0} kg). A unica\n  \
-               diferenca e o chip 'Differential' -- e eles andam para lados OPOSTOS.\n\n  \
-               1. VERDE (esquerda) -- WESTON. A corda sai pelo aro GRANDE, desce, abraca\n     \
-                  a cadernal movel e VOLTA ao mesmo eixo pelo PEQUENO. O eixo compra\n     \
-                  R/(R-r) = {wgear:.0}x, a cadernal dobra: vantagem {wmech:.0}x. 1 kg segura ate\n     \
-                  {whold:.0} kg, e os {load:.0} kg SOBEM (+{wrise:.2} m em 2 s). Olhe o CONTRAPESO:\n     \
-                  ele desce {wdrop:.2} m no mesmo tempo -- CERCA de {wmech:.0}x o que a carga\n     \
-                  sobe (medido 8,50: os 8 valem para um passo infinitesimal, e em 6,8 m\n     \
-                  de curso a geometria da rota muda). E essa razao que se ve de longe.\n  \
-               2. VERMELHO (direita) -- TAMBOR. As MESMAS duas circunferencias, mas a\n     \
-                  corda troca de diametro NO PROPRIO NO: ela nem chega ao aro pequeno\n     \
-                  por fora. O eixo compra R/r = {dgear:.2}x, vantagem {dmech:.2}x -- quase nada\n     \
-                  alem da talha sozinha. Os {load:.0} kg CAEM ({ddrop:.2} m) ate o chao.\n\n  \
-               (!) E POR ISSO QUE A MAQUINA EXISTE: para o TAMBOR chegar aos {wmech:.0}x da\n     \
-               Weston ele precisaria de um aro de saida de {hair:.3} m -- um QUARTO do\n     \
-               irmao. Para chegar a 32x, de 0,031: um tambor de espessura de fio de\n     \
-               cabelo, enquanto a Weston chega la com 0,469. E a DIFERENCA de dois\n     \
-               raios gordos que e pequena, e e ela que a Weston usa.\n  \
-               (!) O contrapeso VERMELHO e arremessado para cima quando a carga pousa,\n     \
-               e isso e a corda sendo corda: ela so PUXA.\n\n  \
-               AUTORE VOCE MESMO (o chip): selecione 'Drum Rope Axle' na Hierarquia. Na\n  \
-               secao Pulley Wheel a row 'Differential' mostra [Drum | Weston] e o\n  \
-               readout 'Gear' mostra {dgear:.2} : 1. Clique 'Weston': o Gear salta para\n  \
-               {wgear:.2} : 1 e, no Play, a carga da DIREITA para de cair e sobe.\n  \
-               - a row so aparece porque ha um SEGUNDO diametro. Digite 0 em\n    \
-                 'Out Radius (m)' e ela desaparece: sem o que retornar por, o chip\n    \
-                 armaria o nada.\n  \
-               - digite {r_in:.3} (o MESMO valor da entrada) em 'Out Radius' e ela\n    \
-                 desaparece tambem: com os dois raios iguais a talha esta TRAVADA (a\n    \
-                 carga nao anda por mais que se puxe), e isso nao e um orcamento que\n    \
-                 uma corda -- que so puxa -- saiba segurar.\n\n  \
-               E O DESENHO: no rig VERDE a corda TOCA os dois aneis do eixo (desce do\n  \
-               grande, sobe para o pequeno) e o ramo que sobra ate o poste e o lado\n  \
-               SOLTO -- ele nao carrega nada. No VERMELHO ela troca de diametro no no\n  \
-               e sai direto para a cadernal. Os dois aneis sao os MESMOS nas duas\n  \
-               figuras; o que muda e o CAMINHO.",
-            load = LOAD_MASS,
-            counter = COUNTER_MASS,
-            r_in = R_IN,
-            r_ret = R_RET,
-            wgear = R_IN / (R_IN - R_RET),
-            wmech = 2.0 * R_IN / (R_IN - R_RET),
-            whold = COUNTER_MASS * 2.0 * R_IN / (R_IN - R_RET),
-            dgear = R_IN / R_RET,
-            dmech = 2.0 * R_IN / R_RET,
-            // O `r_saida` que daria ao TAMBOR a MESMA engrenagem da Weston:
-            // `R/r_saida = R/(R−r)` ⇒ `r_saida = R − r`.
-            hair = R_IN - R_RET,
-            wrise = MEASURED_WESTON_RISE,
-            wdrop = MEASURED_WESTON_COUNTER_DROP,
-            ddrop = MEASURED_DRUM_DROP,
-        );
-    }
+    eprintln!(
+        "[physics-smoke 64] A TALHA DE WESTON -- a vantagem sai de duas\n  \
+           circunferencias que se consegue DESENHAR.\n  \
+           A cena nasce PARADA e o contorno JA ESTA LIGADO -- B o ALTERNA.\n\n  \
+           Os DOIS rigs tem as MESMAS duas circunferencias ({r_in:.3} e {r_ret:.4}), a\n  \
+           MESMA carga ({load:.0} kg) e o MESMO contrapeso ({counter:.0} kg). A unica\n  \
+           diferenca e o chip 'Differential' -- e eles andam para lados OPOSTOS.\n\n  \
+           1. VERDE (esquerda) -- WESTON. A corda sai pelo aro GRANDE, desce, abraca\n     \
+              a cadernal movel e VOLTA ao mesmo eixo pelo PEQUENO. O eixo compra\n     \
+              R/(R-r) = {wgear:.0}x, a cadernal dobra: vantagem {wmech:.0}x. 1 kg segura ate\n     \
+              {whold:.0} kg, e os {load:.0} kg SOBEM (+{wrise:.2} m em 2 s). Olhe o CONTRAPESO:\n     \
+              ele desce {wdrop:.2} m no mesmo tempo -- CERCA de {wmech:.0}x o que a carga\n     \
+              sobe (medido 8,50: os 8 valem para um passo infinitesimal, e em 6,8 m\n     \
+              de curso a geometria da rota muda). E essa razao que se ve de longe.\n  \
+           2. VERMELHO (direita) -- TAMBOR. As MESMAS duas circunferencias, mas a\n     \
+              corda troca de diametro NO PROPRIO NO: ela nem chega ao aro pequeno\n     \
+              por fora. O eixo compra R/r = {dgear:.2}x, vantagem {dmech:.2}x -- quase nada\n     \
+              alem da talha sozinha. Os {load:.0} kg CAEM ({ddrop:.2} m) ate o chao.\n\n  \
+           (!) E POR ISSO QUE A MAQUINA EXISTE: para o TAMBOR chegar aos {wmech:.0}x da\n     \
+           Weston ele precisaria de um aro de saida de {hair:.3} m -- um QUARTO do\n     \
+           irmao. Para chegar a 32x, de 0,031: um tambor de espessura de fio de\n     \
+           cabelo, enquanto a Weston chega la com 0,469. E a DIFERENCA de dois\n     \
+           raios gordos que e pequena, e e ela que a Weston usa.\n  \
+           (!) O contrapeso VERMELHO e arremessado para cima quando a carga pousa,\n     \
+           e isso e a corda sendo corda: ela so PUXA.\n\n  \
+           AUTORE VOCE MESMO (o chip): selecione 'Drum Rope Axle' na Hierarquia. Na\n  \
+           secao Pulley Wheel a row 'Differential' mostra [Drum | Weston] e o\n  \
+           readout 'Gear' mostra {dgear:.2} : 1. Clique 'Weston': o Gear salta para\n  \
+           {wgear:.2} : 1 e, no Play, a carga da DIREITA para de cair e sobe.\n  \
+           - a row so aparece porque ha um SEGUNDO diametro. Digite 0 em\n    \
+             'Out Radius (m)' e ela desaparece: sem o que retornar por, o chip\n    \
+             armaria o nada.\n  \
+           - digite {r_in:.3} (o MESMO valor da entrada) em 'Out Radius' e ela\n    \
+             desaparece tambem: com os dois raios iguais a talha esta TRAVADA (a\n    \
+             carga nao anda por mais que se puxe), e isso nao e um orcamento que\n    \
+             uma corda -- que so puxa -- saiba segurar.\n\n  \
+           E O DESENHO: no rig VERDE a corda TOCA os dois aneis do eixo (desce do\n  \
+           grande, sobe para o pequeno) e o ramo que sobra ate o poste e o lado\n  \
+           SOLTO -- ele nao carrega nada. No VERMELHO ela troca de diametro no no\n  \
+           e sai direto para a cadernal. Os dois aneis sao os MESMOS nas duas\n  \
+           figuras; o que muda e o CAMINHO.",
+        load = LOAD_MASS,
+        counter = COUNTER_MASS,
+        r_in = R_IN,
+        r_ret = R_RET,
+        wgear = R_IN / (R_IN - R_RET),
+        wmech = 2.0 * R_IN / (R_IN - R_RET),
+        whold = COUNTER_MASS * 2.0 * R_IN / (R_IN - R_RET),
+        dgear = R_IN / R_RET,
+        dmech = 2.0 * R_IN / R_RET,
+        // O `r_saida` que daria ao TAMBOR a MESMA engrenagem da Weston:
+        // `R/r_saida = R/(R−r)` ⇒ `r_saida = R − r`.
+        hair = R_IN - R_RET,
+        wrise = MEASURED_WESTON_RISE,
+        wdrop = MEASURED_WESTON_COUNTER_DROP,
+        ddrop = MEASURED_DRUM_DROP,
+    );
 }

@@ -158,79 +158,74 @@ pub(crate) fn build_keys(world: &mut World) {
 #[path = "physics_smoke_part_tests.rs"]
 mod tests;
 
-impl crate::App {
-    /// **Cena 70 (W-PartFace).** A chave entala; afinar a PEÇA a faz passar.
-    pub(crate) fn physics_smoke_part(&mut self) {
-        let gfx = self.gfx.as_mut().expect("gfx");
-        build_keys(gfx.sim.world_mut());
-        gfx.camera.center = CAMERA_CENTRE;
-        gfx.camera.height_world = CAMERA_HEIGHT;
-        if let Some(hero) = gfx.hero_screen.as_mut() {
-            hero.panel_visibility.insert("physics", true);
-        }
+/// **Cena 70 (W-PartFace).** A chave entala; afinar a PEÇA a faz passar.
+pub fn physics_smoke_part(ctx: &mut ph2d_app_physics::SceneCtx<'_>) {
+    build_keys(ctx.world);
+    ctx.want.camera_center = Some(CAMERA_CENTRE);
+    ctx.want.camera_height_world = Some(CAMERA_HEIGHT);
+    ctx.want.panels.push("physics");
 
-        eprintln!(
-            "[physics-smoke 70] A CHAVE E A FENDA -- uma PECA e mais uma forma do corpo\n  \
-               ancestral (um filho com `Collider` e SEM `RigidBody`). A wave anterior deu\n  \
-               o gesto de CRIAR uma; esta da a volta que faltava: EDITA-LA.\n\n  \
-               Ate agora, selecionar uma peca abria a face VAZIA do painel, que dizia\n  \
-               \"Not simulated\" -- o oposto da verdade -- e mostrava SEMENTES (caixa\n  \
-               0,50 x 0,50, offset 0, densidade 1,00) em vez da forma autorada. E a porta\n  \
-               que a criou seguia oferecida: clica-la reescrevia o collider com os\n  \
-               defaults, EM SILENCIO.\n\n  \
-               Duas chaves IDENTICAS, cada uma com um cabo (o CORPO) e duas pecas: o\n  \
-               palhetao embaixo e a guarda em cima. So a LARGURA do palhetao difere.\n  \
-               A fenda tem {slot:.2} m de meia-largura.\n\n  \
-               1. Toque Play.\n     \
-                  - ESQUERDA (palhetao VERMELHO, meia-largura {w0:.2}) -- largo demais:\n       \
-                    ENTALA no muro, cabo parado em {h0:.2} m.\n     \
-                  - DIREITA (palhetao VERDE, meia-largura {w1:.2}) -- passa limpo e cai\n       \
-                    no chao: cabo em {h1:.2} m.\n\n  \
-               2. A ENTREGA DA WAVE. Pause, toque Reset, e selecione 'Wide Bit' na\n     \
-                  Hierarquia. A secao Physics Body abre a TERCEIRA face:\n     \
-                  - o cabecalho diz \"Shape of Wide Handle -- simulated as part of it\",\n       \
-                    e NAO \"Not simulated\";\n     \
-                  - Collider / Half Width / Half Height / Offset / Density / Bounce /\n       \
-                    Friction / Layer / Trigger / One-Way sao exatamente as propriedades\n       \
-                    que a PONTE le de uma peca -- nem uma a mais;\n     \
-                  - nao ha Gravity, Mass, CCD, Freeze nem Bake: sao do CORPO, e o solver\n       \
-                    os ignora numa peca.\n     \
-                  Mude **Half Width** para {w1:.2} e toque Play. A chave PASSA.\n     \
-                  Antes desta wave esse campo nao existia -- e, se existisse, o valor\n     \
-                  digitado nao chegava ao ECS.\n\n  \
-               3. O SEGUNDO CAMINHO. Reset, selecione 'Wide Bit' e aperte **Remove\n     \
-                  Shape**. O palhetao deixa de existir para o solver (o desenho fica) e\n     \
-                  o cabo passa. Ate esta wave uma peca era porta de MAO UNICA: criada\n     \
-                  por um clique e desfeita so apagando o objeto.\n\n  \
-               4. O TERCEIRO. Reset, selecione 'Wide Bit' e aperte **Make Independent\n     \
-                  Body**. Ela deixa de ser peca e vira um corpo PROPRIO: agora sao duas\n     \
-                  massas que o solver pode separar, e a chave se desmonta.\n\n  \
-               5. O READOUT. Selecione 'Wide Handle' (o CORPO). Abaixo das dimensoes\n     \
-                  DELE aparece \"+ 2 more shapes from children\". Sem essa linha, com o\n     \
-                  contorno desligado nada distinguia um corpo de forma unica de um que\n     \
-                  carrega mais duas -- uma peca era invisivel dos DOIS lados.\n\n  \
-               6. A RECUSA. Em 'Wide Bit' NAO ha mais 'Add Shape to ...'. Ela e a porta\n     \
-                  da face VAZIA; clica-la sobre algo que ja tem forma so apagava o que o\n     \
-                  artista afinou (medido: a barra virava a caixa do sprite, com\n       \
-                  offset, densidade e camada zerados).\n\n  \
-               === Os DOIS defeitos do smoke anterior ===\n  \
-               7. A MAO. Toque Play e, com a ferramenta de interacao em Hand, ARRASTE\n     \
-                  o palhetao (a peca) com o mouse. A chave inteira vem junto.\n     \
-                  Antes: a mao procurava um corpo que a peca nao tem, recusava em\n     \
-                  silencio, e o press caia adiante para o GIZMO.\n  \
-               8. E era o gizmo que produzia a penetracao: com o relogio ANDANDO, o\n     \
-                  re-describe da peca era gateado em REPOUSO, entao arrastar movia o\n     \
-                  DESENHO e deixava o collider onde estava -- a forma atravessava o\n     \
-                  estatico, sem erro e sem warning. Agora, com o Play rodando,\n     \
-                  selecione 'Wide Bit' e mude Half Width: a fenda responde NA HORA.\n\n  \
-               (!) Toque B para o contorno: as pecas sao desenhadas na cor do DONO,\n     \
-                   porque e o corpo dele que as governa. Com o Play rodando, o\n     \
-                   contorno da peca tem de acompanhar o desenho dela em toda edicao.\n",
-            slot = SLOT_HALF,
-            w0 = BIT_HALF_X[0],
-            w1 = BIT_HALF_X[1],
-            h0 = MEASURED_HANDLE_Y[0],
-            h1 = MEASURED_HANDLE_Y[1],
-        );
-    }
+    eprintln!(
+        "[physics-smoke 70] A CHAVE E A FENDA -- uma PECA e mais uma forma do corpo\n  \
+           ancestral (um filho com `Collider` e SEM `RigidBody`). A wave anterior deu\n  \
+           o gesto de CRIAR uma; esta da a volta que faltava: EDITA-LA.\n\n  \
+           Ate agora, selecionar uma peca abria a face VAZIA do painel, que dizia\n  \
+           \"Not simulated\" -- o oposto da verdade -- e mostrava SEMENTES (caixa\n  \
+           0,50 x 0,50, offset 0, densidade 1,00) em vez da forma autorada. E a porta\n  \
+           que a criou seguia oferecida: clica-la reescrevia o collider com os\n  \
+           defaults, EM SILENCIO.\n\n  \
+           Duas chaves IDENTICAS, cada uma com um cabo (o CORPO) e duas pecas: o\n  \
+           palhetao embaixo e a guarda em cima. So a LARGURA do palhetao difere.\n  \
+           A fenda tem {slot:.2} m de meia-largura.\n\n  \
+           1. Toque Play.\n     \
+              - ESQUERDA (palhetao VERMELHO, meia-largura {w0:.2}) -- largo demais:\n       \
+                ENTALA no muro, cabo parado em {h0:.2} m.\n     \
+              - DIREITA (palhetao VERDE, meia-largura {w1:.2}) -- passa limpo e cai\n       \
+                no chao: cabo em {h1:.2} m.\n\n  \
+           2. A ENTREGA DA WAVE. Pause, toque Reset, e selecione 'Wide Bit' na\n     \
+              Hierarquia. A secao Physics Body abre a TERCEIRA face:\n     \
+              - o cabecalho diz \"Shape of Wide Handle -- simulated as part of it\",\n       \
+                e NAO \"Not simulated\";\n     \
+              - Collider / Half Width / Half Height / Offset / Density / Bounce /\n       \
+                Friction / Layer / Trigger / One-Way sao exatamente as propriedades\n       \
+                que a PONTE le de uma peca -- nem uma a mais;\n     \
+              - nao ha Gravity, Mass, CCD, Freeze nem Bake: sao do CORPO, e o solver\n       \
+                os ignora numa peca.\n     \
+              Mude **Half Width** para {w1:.2} e toque Play. A chave PASSA.\n     \
+              Antes desta wave esse campo nao existia -- e, se existisse, o valor\n     \
+              digitado nao chegava ao ECS.\n\n  \
+           3. O SEGUNDO CAMINHO. Reset, selecione 'Wide Bit' e aperte **Remove\n     \
+              Shape**. O palhetao deixa de existir para o solver (o desenho fica) e\n     \
+              o cabo passa. Ate esta wave uma peca era porta de MAO UNICA: criada\n     \
+              por um clique e desfeita so apagando o objeto.\n\n  \
+           4. O TERCEIRO. Reset, selecione 'Wide Bit' e aperte **Make Independent\n     \
+              Body**. Ela deixa de ser peca e vira um corpo PROPRIO: agora sao duas\n     \
+              massas que o solver pode separar, e a chave se desmonta.\n\n  \
+           5. O READOUT. Selecione 'Wide Handle' (o CORPO). Abaixo das dimensoes\n     \
+              DELE aparece \"+ 2 more shapes from children\". Sem essa linha, com o\n     \
+              contorno desligado nada distinguia um corpo de forma unica de um que\n     \
+              carrega mais duas -- uma peca era invisivel dos DOIS lados.\n\n  \
+           6. A RECUSA. Em 'Wide Bit' NAO ha mais 'Add Shape to ...'. Ela e a porta\n     \
+              da face VAZIA; clica-la sobre algo que ja tem forma so apagava o que o\n     \
+              artista afinou (medido: a barra virava a caixa do sprite, com\n       \
+              offset, densidade e camada zerados).\n\n  \
+           === Os DOIS defeitos do smoke anterior ===\n  \
+           7. A MAO. Toque Play e, com a ferramenta de interacao em Hand, ARRASTE\n     \
+              o palhetao (a peca) com o mouse. A chave inteira vem junto.\n     \
+              Antes: a mao procurava um corpo que a peca nao tem, recusava em\n     \
+              silencio, e o press caia adiante para o GIZMO.\n  \
+           8. E era o gizmo que produzia a penetracao: com o relogio ANDANDO, o\n     \
+              re-describe da peca era gateado em REPOUSO, entao arrastar movia o\n     \
+              DESENHO e deixava o collider onde estava -- a forma atravessava o\n     \
+              estatico, sem erro e sem warning. Agora, com o Play rodando,\n     \
+              selecione 'Wide Bit' e mude Half Width: a fenda responde NA HORA.\n\n  \
+           (!) Toque B para o contorno: as pecas sao desenhadas na cor do DONO,\n     \
+               porque e o corpo dele que as governa. Com o Play rodando, o\n     \
+               contorno da peca tem de acompanhar o desenho dela em toda edicao.\n",
+        slot = SLOT_HALF,
+        w0 = BIT_HALF_X[0],
+        w1 = BIT_HALF_X[1],
+        h0 = MEASURED_HANDLE_Y[0],
+        h1 = MEASURED_HANDLE_Y[1],
+    );
 }

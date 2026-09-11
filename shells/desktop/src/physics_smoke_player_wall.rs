@@ -27,7 +27,6 @@ use ph2d_core::Vec2;
 use ph2d_ecs::Transform;
 use ph2d_physics_ecs::PlatformPlayer;
 
-use crate::App;
 use crate::physics_smoke_player::{slab, spawn_player};
 
 /// O vão livre entre as duas paredes — ver o aviso do módulo.
@@ -35,56 +34,53 @@ const GAP: f32 = 2.4;
 /// A altura das paredes.
 const WALL_HALF_Y: f32 = 7.0;
 
-impl App {
-    /// **O poço** — subir um corredor vertical em ziguezague.
-    pub(crate) fn physics_smoke_well(&mut self) {
-        let gfx = self.gfx.as_mut().expect("gfx");
-        let world = gfx.sim.world_mut();
+/// **O poço** — subir um corredor vertical em ziguezague.
+pub fn physics_smoke_well(ctx: &mut ph2d_app_physics::SceneCtx<'_>) {
+    let world = &mut *ctx.world;
 
+    slab(
+        world,
+        "Floor",
+        Vec2::new(0.0, -0.5),
+        [12.0, 0.5],
+        0.0,
+        [0.35, 0.35, 0.4, 1.0],
+    );
+    // As duas paredes. ⚠️ Elas nascem do CHÃO para cima: um poço cujas
+    // paredes começassem no ar deixaria o personagem cair para fora dele
+    // pelo lado, e a cena mediria a pontaria em vez do gesto.
+    for (name, cx) in [("WallL", -(GAP * 0.5) - 0.5), ("WallR", (GAP * 0.5) + 0.5)] {
         slab(
             world,
-            "Floor",
-            Vec2::new(0.0, -0.5),
-            [12.0, 0.5],
+            name,
+            Vec2::new(cx, WALL_HALF_Y),
+            [0.5, WALL_HALF_Y],
             0.0,
-            [0.35, 0.35, 0.4, 1.0],
+            [0.30, 0.34, 0.42, 1.0],
         );
-        // As duas paredes. ⚠️ Elas nascem do CHÃO para cima: um poço cujas
-        // paredes começassem no ar deixaria o personagem cair para fora dele
-        // pelo lado, e a cena mediria a pontaria em vez do gesto.
-        for (name, cx) in [("WallL", -(GAP * 0.5) - 0.5), ("WallR", (GAP * 0.5) + 0.5)] {
-            slab(
-                world,
-                name,
-                Vec2::new(cx, WALL_HALF_Y),
-                [0.5, WALL_HALF_Y],
-                0.0,
-                [0.30, 0.34, 0.42, 1.0],
-            );
-        }
-        // E um beiral lá em cima, para a subida LEVAR a algum lugar.
-        for (name, cx) in [("LedgeL", -3.4), ("LedgeR", 3.4)] {
-            slab(
-                world,
-                name,
-                Vec2::new(cx, WALL_HALF_Y * 2.0 - 0.4),
-                [2.5, 0.4],
-                0.0,
-                [0.32, 0.44, 0.36, 1.0],
-            );
-        }
-
-        spawn_player(world, Vec2::new(0.0, 1.4));
-
-        // ⚠️ **A capacidade é ARMADA aqui**, e não herdada: ela nasce desligada
-        // no produto (ver o aviso do módulo).
-        let mut q = world.query::<(&mut PlatformPlayer, &Transform)>();
-        for (mut p, _) in q.iter_mut(world) {
-            p.wall_slide_speed = 3.0;
-            p.wall_jump_height = 2.0;
-        }
-        eprintln!("{WELL_SMOKE_MESSAGE}");
     }
+    // E um beiral lá em cima, para a subida LEVAR a algum lugar.
+    for (name, cx) in [("LedgeL", -3.4), ("LedgeR", 3.4)] {
+        slab(
+            world,
+            name,
+            Vec2::new(cx, WALL_HALF_Y * 2.0 - 0.4),
+            [2.5, 0.4],
+            0.0,
+            [0.32, 0.44, 0.36, 1.0],
+        );
+    }
+
+    spawn_player(world, Vec2::new(0.0, 1.4));
+
+    // ⚠️ **A capacidade é ARMADA aqui**, e não herdada: ela nasce desligada
+    // no produto (ver o aviso do módulo).
+    let mut q = world.query::<(&mut PlatformPlayer, &Transform)>();
+    for (mut p, _) in q.iter_mut(world) {
+        p.wall_slide_speed = 3.0;
+        p.wall_jump_height = 2.0;
+    }
+    eprintln!("{WELL_SMOKE_MESSAGE}");
 }
 
 /// O roteiro da cena 92 — o gesto é o ZIGUEZAGUE, e o que se julga é subir sem

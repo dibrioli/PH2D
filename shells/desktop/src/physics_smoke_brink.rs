@@ -145,13 +145,14 @@ pub(crate) const BRINK_SMOKE_MESSAGE: &str = concat!(
     "     governa ANDAR, e so' isso.\n",
 );
 
-impl crate::App {
-    /// **A cena 119** — o roteiro está em [`BRINK_SMOKE_MESSAGE`].
-    pub(crate) fn physics_smoke_brink(&mut self) {
-        let Some(gfx) = self.gfx.as_mut() else {
-            return;
-        };
-        build_brink_scene(gfx.sim.world_mut());
-        eprint!("{BRINK_SMOKE_MESSAGE}");
-    }
+/// **A cena 119** — o roteiro está em [`BRINK_SMOKE_MESSAGE`].
+pub fn physics_smoke_brink(ctx: &mut ph2d_app_physics::SceneCtx<'_>) {
+    // ⚠️ A guarda `let Some(gfx) = self.gfx … else { return }` que estava aqui
+    // MORREU com a conversão, e não por descuido: ela perguntava *«já há
+    // janela?»*, e quem responde a isso passou a ser o **roteador**, que é o
+    // único chamador e só corre depois de o `gfx` existir. Mantê-la obrigaria
+    // esta função a receber a shell inteira para reperguntar o que quem a chama
+    // já sabe — que é exactamente o acoplamento que esta wave desfaz.
+    build_brink_scene(ctx.world);
+    eprint!("{BRINK_SMOKE_MESSAGE}");
 }

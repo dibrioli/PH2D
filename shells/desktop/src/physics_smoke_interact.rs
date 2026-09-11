@@ -159,62 +159,57 @@ fn crate_(
     ));
 }
 
-impl crate::App {
-    /// **Cena 53 (W-Hand).** Quatro estações, TOCANDO, com o painel de física
-    /// aberto.
-    pub(crate) fn physics_smoke_interact(&mut self) {
-        let gfx = self.gfx.as_mut().expect("gfx");
-        spawn_props(gfx.sim.world_mut());
-        if let Some(hero) = gfx.hero_screen.as_mut() {
-            hero.panel_visibility.insert("physics", true);
-        }
+/// **Cena 53 (W-Hand).** Quatro estações, TOCANDO, com o painel de física
+/// aberto.
+pub fn physics_smoke_interact(ctx: &mut ph2d_app_physics::SceneCtx<'_>) {
+    spawn_props(ctx.world);
+    ctx.want.panels.push("physics");
 
-        eprintln!(
-            "[physics-smoke 53] A cena esta TOCANDO e o painel PHYSICS esta aberto (tecla W).\n  \
-               Abra a secao INTERACTION -- e la que se escolhe o que o ponteiro faz.\n\n  \
-               1. Aperte B (mostra os colliders). Com uma ferramenta de PONTO em maos o\n     \
-                  cursor ganha um ANEL verde-limao apagado: e o alcance dela.\n  \
-               2. HAND / Spring: pegue a PRANCHA (barra verde) pela PONTA e levante. Ela\n     \
-                  BALANCA e vem atras do cursor -- e uma mola.\n     \
-                  (medido: 0,445 rad de giro, ponto de pega a 0,119 m do cursor)\n     \
-                  Stiffness governa o atraso num arrasto rapido (4 m/s): 50 -> 1,012 m,\n     \
-                  400 (default) -> 0,369 m, 1600 -> 0,169 m, 6400 -> 0,069 m.\n     \
-                  Damping e uma RAZAO: 1,00 e o critico e nao passa do cursor; 0,25 chega\n     \
-                  antes (0,071 m de atraso) mas PASSA 0,132 m; 0,00 nunca assenta.\n  \
-               3. HAND / Rigid: pegue a prancha pela ponta de novo. Ela sobe NIVELADA, sem\n     \
-                  atraso e sem balancar -- na atitude que tinha.\n     \
-                  (medido: 0,000 rad de giro, ponto de pega a 0,000 m do cursor)\n     \
-                  ATENCAO, e o preco da palavra: um hold rigido ATRAVESSA parede. Tente\n     \
-                  arrastar a prancha para dentro do muro cinza -- ela passa. So a mola\n     \
-                  respeita geometria.\n  \
-               4. HAND / Rope, Slack 1,5: a prancha fica PENDURADA e gira livre dentro da\n     \
-                  coleira. Levante MENOS que 1,5 m e ela nao sai do chao (a corda esta\n     \
-                  frouxa -- isso e a corda funcionando).\n     \
-                  (medido levantando 2,5 m: -2,00 rad de giro, ponto de pega a 1,19 m)\n  \
-               5. BLAST: escolha 'Blast' e clique no PE DA TORRE. Ela EXPLODE.\n     \
-                  (medido: raio 3, impulso 10 -> 6 caixotes atingidos, e a pilha abre de\n      \
-                   0,90 para 5,61 m de espalhamento medio)\n     \
-                  Clique FORA do anel: 0 corpos, nada acontece. Radius desenha o anel,\n     \
-                  Impulse e a forca no centro (o falloff pesa dai para a borda).\n  \
-               6. PULL: escolha 'Pull' e SEGURE o botao sobre o ENXAME (direita). As oito\n     \
-                  bolinhas se JUNTAM no cursor e FICAM la.\n     \
-                  (medido: forca 50, raio 4 -> o raio medio da nuvem cai de 1,28 para\n      \
-                   0,43 m em 1 s)\n     \
-                  Force NEGATIVA repele: -20 abre a nuvem para 9,23 m em 1 s (elas saem\n     \
-                  de quadro; -50 as manda a 14,63 m). Repelir espalha para longe -- e\n     \
-                  forca sustentada, nao um estalo.\n  \
-               7. O MURO MOVEL (ponta esquerda): 'Ledge' e ESTATICO e tem uma bolinha em\n     \
-                  cima. Escolha Hand, selecione o muro e ARRASTE-O PARA BAIXO com o\n     \
-                  relogio ANDANDO: o collider vai junto e a bolinha DESCE com ele.\n     \
-                  (medido: descendo 0,80 m a testemunha desce 0,800 m)\n     \
-                  Era o bug do collider fantasma: antes desta wave o desenho ia e o\n     \
-                  collider ficava onde estava.\n  \
-               8. Desmarque 'Physics' no transporte: nenhuma das tres ferramentas dispara\n     \
-                  (sem passo de solver nada se move) e o anel de mira SOME.\n  \
-               9. Arraste a regua para TRAS: nenhum cutucao volta -- eles nao estao no\n     \
-                  documento, e a cena re-simula da pose autorada."
-        );
-    }
+    eprintln!(
+        "[physics-smoke 53] A cena esta TOCANDO e o painel PHYSICS esta aberto (tecla W).\n  \
+           Abra a secao INTERACTION -- e la que se escolhe o que o ponteiro faz.\n\n  \
+           1. Aperte B (mostra os colliders). Com uma ferramenta de PONTO em maos o\n     \
+              cursor ganha um ANEL verde-limao apagado: e o alcance dela.\n  \
+           2. HAND / Spring: pegue a PRANCHA (barra verde) pela PONTA e levante. Ela\n     \
+              BALANCA e vem atras do cursor -- e uma mola.\n     \
+              (medido: 0,445 rad de giro, ponto de pega a 0,119 m do cursor)\n     \
+              Stiffness governa o atraso num arrasto rapido (4 m/s): 50 -> 1,012 m,\n     \
+              400 (default) -> 0,369 m, 1600 -> 0,169 m, 6400 -> 0,069 m.\n     \
+              Damping e uma RAZAO: 1,00 e o critico e nao passa do cursor; 0,25 chega\n     \
+              antes (0,071 m de atraso) mas PASSA 0,132 m; 0,00 nunca assenta.\n  \
+           3. HAND / Rigid: pegue a prancha pela ponta de novo. Ela sobe NIVELADA, sem\n     \
+              atraso e sem balancar -- na atitude que tinha.\n     \
+              (medido: 0,000 rad de giro, ponto de pega a 0,000 m do cursor)\n     \
+              ATENCAO, e o preco da palavra: um hold rigido ATRAVESSA parede. Tente\n     \
+              arrastar a prancha para dentro do muro cinza -- ela passa. So a mola\n     \
+              respeita geometria.\n  \
+           4. HAND / Rope, Slack 1,5: a prancha fica PENDURADA e gira livre dentro da\n     \
+              coleira. Levante MENOS que 1,5 m e ela nao sai do chao (a corda esta\n     \
+              frouxa -- isso e a corda funcionando).\n     \
+              (medido levantando 2,5 m: -2,00 rad de giro, ponto de pega a 1,19 m)\n  \
+           5. BLAST: escolha 'Blast' e clique no PE DA TORRE. Ela EXPLODE.\n     \
+              (medido: raio 3, impulso 10 -> 6 caixotes atingidos, e a pilha abre de\n      \
+               0,90 para 5,61 m de espalhamento medio)\n     \
+              Clique FORA do anel: 0 corpos, nada acontece. Radius desenha o anel,\n     \
+              Impulse e a forca no centro (o falloff pesa dai para a borda).\n  \
+           6. PULL: escolha 'Pull' e SEGURE o botao sobre o ENXAME (direita). As oito\n     \
+              bolinhas se JUNTAM no cursor e FICAM la.\n     \
+              (medido: forca 50, raio 4 -> o raio medio da nuvem cai de 1,28 para\n      \
+               0,43 m em 1 s)\n     \
+              Force NEGATIVA repele: -20 abre a nuvem para 9,23 m em 1 s (elas saem\n     \
+              de quadro; -50 as manda a 14,63 m). Repelir espalha para longe -- e\n     \
+              forca sustentada, nao um estalo.\n  \
+           7. O MURO MOVEL (ponta esquerda): 'Ledge' e ESTATICO e tem uma bolinha em\n     \
+              cima. Escolha Hand, selecione o muro e ARRASTE-O PARA BAIXO com o\n     \
+              relogio ANDANDO: o collider vai junto e a bolinha DESCE com ele.\n     \
+              (medido: descendo 0,80 m a testemunha desce 0,800 m)\n     \
+              Era o bug do collider fantasma: antes desta wave o desenho ia e o\n     \
+              collider ficava onde estava.\n  \
+           8. Desmarque 'Physics' no transporte: nenhuma das tres ferramentas dispara\n     \
+              (sem passo de solver nada se move) e o anel de mira SOME.\n  \
+           9. Arraste a regua para TRAS: nenhum cutucao volta -- eles nao estao no\n     \
+              documento, e a cena re-simula da pose autorada."
+    );
 }
 
 #[cfg(test)]

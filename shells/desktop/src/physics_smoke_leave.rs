@@ -173,13 +173,10 @@ pub(crate) const LEAVE_SMOKE_MESSAGE: &str = concat!(
     "   nao se move.\n",
 );
 
-impl crate::App {
-    /// **A cena 118** — o roteiro está em [`LEAVE_SMOKE_MESSAGE`].
-    pub(crate) fn physics_smoke_leave(&mut self) {
-        let gfx = self.gfx.as_mut().expect("gfx");
-        let _ = build_leave_scene(gfx.sim.world_mut());
-        eprintln!("{LEAVE_SMOKE_MESSAGE}");
-    }
+/// **A cena 118** — o roteiro está em [`LEAVE_SMOKE_MESSAGE`].
+pub fn physics_smoke_leave(ctx: &mut ph2d_app_physics::SceneCtx<'_>) {
+    let _ = build_leave_scene(ctx.world);
+    eprintln!("{LEAVE_SMOKE_MESSAGE}");
 }
 
 #[cfg(test)]

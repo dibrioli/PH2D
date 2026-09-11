@@ -145,55 +145,50 @@ pub(crate) fn build_rafts(world: &mut World) {
 #[path = "physics_smoke_raft_tests.rs"]
 mod tests;
 
-impl crate::App {
-    /// **Cena 72 (W-CompoundZone).** A jangada composta boia NIVELADA.
-    pub(crate) fn physics_smoke_raft(&mut self) {
-        let gfx = self.gfx.as_mut().expect("gfx");
-        build_rafts(gfx.sim.world_mut());
-        gfx.camera.center = CAMERA_CENTRE;
-        gfx.camera.height_world = CAMERA_HEIGHT;
-        if let Some(hero) = gfx.hero_screen.as_mut() {
-            hero.panel_visibility.insert("physics", true);
-        }
+/// **Cena 72 (W-CompoundZone).** A jangada composta boia NIVELADA.
+pub fn physics_smoke_raft(ctx: &mut ph2d_app_physics::SceneCtx<'_>) {
+    build_rafts(ctx.world);
+    ctx.want.camera_center = Some(CAMERA_CENTRE);
+    ctx.want.camera_height_world = Some(CAMERA_HEIGHT);
+    ctx.want.panels.push("physics");
 
-        eprintln!(
-            "[physics-smoke 72] A JANGADA COMPOSTA -- uma ZONA tem de ver o corpo\n  \
-               inteiro, nao a primeira forma dele. Tres jangadas de MESMA silhueta\n  \
-               (2,40 x 0,50) e MESMA massa (1,200000, medida), so' mudando de que\n  \
-               elas sao FEITAS.\n\n  \
-               1. Toque Play e olhe as tres. As TRES tem de ficar NIVELADAS:\n     \
-                  - ESQUERDA '{n0}' -- uma caixa larga. E' o CONTROLE: sem ele nada\n       \
-                    nesta cena e' atribuivel. Centro em {y0:.3}.\n     \
-                  - MEIO '{n1}' -- a MESMA silhueta partida em duas (verde = o\n       \
-                    CORPO, azul = a PECA). Mesma linha d'agua: {y1:.3}.\n     \
-                  - DIREITA '{n2}' -- a caixa larga com uma peca-SENSOR empilhada\n       \
-                    (magenta). Ela desloca a MESMA agua e carrega peso a mais,\n       \
-                    entao afunda: {y2:.3}. Um sensor e' marcador, nao materia.\n\n  \
-               2. O QUE ESTAVA QUEBRADO. Antes desta wave a do meio CAPOTAVA: medido,\n     \
-                  -90,007 graus, de pe' na agua. O empuxo saia de UMA forma so', entao\n     \
-                  nascia DESCENTRADO -- e uma forca no lugar errado e' um torque.\n\n  \
-               (!) A intuicao erra o sintoma: meia-forca faria esperar \"afunda o\n      \
-                   dobro\". Meia-forca e forca-no-lugar-errado sao defeitos\n      \
-                   diferentes, e este era o segundo.\n\n  \
-               3. E O DEFEITO ERA INVISIVEL POR COMPENSACAO. A zona aplicava o empuxo\n     \
-                  uma vez por PAR de colliders, entao a composta levava\n     \
-                  \"2 x meia-forca\" = a forca certa. A LINHA D'AGUA parecia certa; so'\n     \
-                  a INCLINACAO denunciava. Consertar so' uma das metades a faria boiar\n     \
-                  com metade da submersao.\n\n  \
-               4. Selecione '{n1} Deck' na Hierarquia: e' uma PECA, com a face de\n     \
-                  Physics Body que a wave anterior deu a ela. Troque o chip para\n     \
-                  **Sensor** e a jangada do meio CAPOTA -- e esta' certo: metade dela\n     \
-                  passa a ter peso sem deslocar agua, o que e' um barco desequilibrado.\n     \
-                  Volte para **Solid** e ela se endireita.\n\n  \
-               (!) Toque B para o contorno. O collider da poca e' magenta (sensor); as\n      \
-                   pecas sao desenhadas na cor do DONO, porque e' o corpo dele que as\n      \
-                   governa.\n",
-            n0 = LANE_NAMES[0],
-            n1 = LANE_NAMES[1],
-            n2 = LANE_NAMES[2],
-            y0 = MEASURED_Y[0],
-            y1 = MEASURED_Y[1],
-            y2 = MEASURED_Y[2],
-        );
-    }
+    eprintln!(
+        "[physics-smoke 72] A JANGADA COMPOSTA -- uma ZONA tem de ver o corpo\n  \
+           inteiro, nao a primeira forma dele. Tres jangadas de MESMA silhueta\n  \
+           (2,40 x 0,50) e MESMA massa (1,200000, medida), so' mudando de que\n  \
+           elas sao FEITAS.\n\n  \
+           1. Toque Play e olhe as tres. As TRES tem de ficar NIVELADAS:\n     \
+              - ESQUERDA '{n0}' -- uma caixa larga. E' o CONTROLE: sem ele nada\n       \
+                nesta cena e' atribuivel. Centro em {y0:.3}.\n     \
+              - MEIO '{n1}' -- a MESMA silhueta partida em duas (verde = o\n       \
+                CORPO, azul = a PECA). Mesma linha d'agua: {y1:.3}.\n     \
+              - DIREITA '{n2}' -- a caixa larga com uma peca-SENSOR empilhada\n       \
+                (magenta). Ela desloca a MESMA agua e carrega peso a mais,\n       \
+                entao afunda: {y2:.3}. Um sensor e' marcador, nao materia.\n\n  \
+           2. O QUE ESTAVA QUEBRADO. Antes desta wave a do meio CAPOTAVA: medido,\n     \
+              -90,007 graus, de pe' na agua. O empuxo saia de UMA forma so', entao\n     \
+              nascia DESCENTRADO -- e uma forca no lugar errado e' um torque.\n\n  \
+           (!) A intuicao erra o sintoma: meia-forca faria esperar \"afunda o\n      \
+               dobro\". Meia-forca e forca-no-lugar-errado sao defeitos\n      \
+               diferentes, e este era o segundo.\n\n  \
+           3. E O DEFEITO ERA INVISIVEL POR COMPENSACAO. A zona aplicava o empuxo\n     \
+              uma vez por PAR de colliders, entao a composta levava\n     \
+              \"2 x meia-forca\" = a forca certa. A LINHA D'AGUA parecia certa; so'\n     \
+              a INCLINACAO denunciava. Consertar so' uma das metades a faria boiar\n     \
+              com metade da submersao.\n\n  \
+           4. Selecione '{n1} Deck' na Hierarquia: e' uma PECA, com a face de\n     \
+              Physics Body que a wave anterior deu a ela. Troque o chip para\n     \
+              **Sensor** e a jangada do meio CAPOTA -- e esta' certo: metade dela\n     \
+              passa a ter peso sem deslocar agua, o que e' um barco desequilibrado.\n     \
+              Volte para **Solid** e ela se endireita.\n\n  \
+           (!) Toque B para o contorno. O collider da poca e' magenta (sensor); as\n      \
+               pecas sao desenhadas na cor do DONO, porque e' o corpo dele que as\n      \
+               governa.\n",
+        n0 = LANE_NAMES[0],
+        n1 = LANE_NAMES[1],
+        n2 = LANE_NAMES[2],
+        y0 = MEASURED_Y[0],
+        y1 = MEASURED_Y[1],
+        y2 = MEASURED_Y[2],
+    );
 }

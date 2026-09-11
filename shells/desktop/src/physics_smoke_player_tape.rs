@@ -12,60 +12,56 @@
 
 use ph2d_core::Vec2;
 
-use crate::App;
 use crate::physics_smoke_player::{slab, spawn_player};
 
-impl App {
-    /// **A corrida se REPETE quando a régua volta.**
-    ///
-    /// Até esta wave o player era a única coisa que quebrava *"o mundo é função
-    /// de `(tique, cena)`"*: o laço de replay de um scrub dirigia as plataformas
-    /// e deixava o personagem **sem perna e sem caminhada**, então ele caía
-    /// pelos tiques replayados e parava onde a gravidade o deixasse.
-    ///
-    /// ⚠️ A pista tem degraus e uma saliência **para a corrida ter FORMA**: uma
-    /// trajetória que só translada é uma em que um replay errado ainda parece
-    /// plausível.
-    pub(crate) fn physics_smoke_tape(&mut self) {
-        let gfx = self.gfx.as_mut().expect("gfx");
-        let world = gfx.sim.world_mut();
+/// **A corrida se REPETE quando a régua volta.**
+///
+/// Até esta wave o player era a única coisa que quebrava *"o mundo é função
+/// de `(tique, cena)`"*: o laço de replay de um scrub dirigia as plataformas
+/// e deixava o personagem **sem perna e sem caminhada**, então ele caía
+/// pelos tiques replayados e parava onde a gravidade o deixasse.
+///
+/// ⚠️ A pista tem degraus e uma saliência **para a corrida ter FORMA**: uma
+/// trajetória que só translada é uma em que um replay errado ainda parece
+/// plausível.
+pub fn physics_smoke_tape(ctx: &mut ph2d_app_physics::SceneCtx<'_>) {
+    let world = &mut *ctx.world;
 
-        slab(
-            world,
-            "Floor",
-            Vec2::new(0.0, -0.5),
-            [9.0, 0.5],
-            0.0,
-            [0.35, 0.35, 0.4, 1.0],
-        );
-        slab(
-            world,
-            "Step1",
-            Vec2::new(2.5, 0.3),
-            [1.2, 0.3],
-            0.0,
-            [0.30, 0.42, 0.36, 1.0],
-        );
-        slab(
-            world,
-            "Step2",
-            Vec2::new(6.0, 0.9),
-            [1.2, 0.3],
-            0.0,
-            [0.30, 0.42, 0.36, 1.0],
-        );
-        slab(
-            world,
-            "Ledge",
-            Vec2::new(11.0, 1.6),
-            [2.0, 0.3],
-            0.0,
-            [0.42, 0.36, 0.30, 1.0],
-        );
-        spawn_player(world, Vec2::new(-7.0, 1.0));
+    slab(
+        world,
+        "Floor",
+        Vec2::new(0.0, -0.5),
+        [9.0, 0.5],
+        0.0,
+        [0.35, 0.35, 0.4, 1.0],
+    );
+    slab(
+        world,
+        "Step1",
+        Vec2::new(2.5, 0.3),
+        [1.2, 0.3],
+        0.0,
+        [0.30, 0.42, 0.36, 1.0],
+    );
+    slab(
+        world,
+        "Step2",
+        Vec2::new(6.0, 0.9),
+        [1.2, 0.3],
+        0.0,
+        [0.30, 0.42, 0.36, 1.0],
+    );
+    slab(
+        world,
+        "Ledge",
+        Vec2::new(11.0, 1.6),
+        [2.0, 0.3],
+        0.0,
+        [0.42, 0.36, 0.30, 1.0],
+    );
+    spawn_player(world, Vec2::new(-7.0, 1.0));
 
-        eprintln!("{TAPE_SMOKE_MESSAGE}");
-    }
+    eprintln!("{TAPE_SMOKE_MESSAGE}");
 }
 
 /// O roteiro da cena 86 — o gesto é o SCRUB, não o traço.

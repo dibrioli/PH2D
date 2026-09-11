@@ -139,56 +139,51 @@ pub(crate) fn spawn_props(world: &mut World) {
     }
 }
 
-impl crate::App {
-    /// **Cena 54 (W-IK).** Três cadeias, PAUSADA, com o painel de física aberto.
-    pub(crate) fn physics_smoke_ik(&mut self) {
-        let gfx = self.gfx.as_mut().expect("gfx");
-        spawn_props(gfx.sim.world_mut());
-        if let Some(hero) = gfx.hero_screen.as_mut() {
-            hero.panel_visibility.insert("physics", true);
-        }
-        // A ferramenta NÃO é armada em código: o passo 1 é escolher 'Pose' no
-        // painel, e um smoke que arma o estado por baixo pula exatamente a
-        // costura que ele deveria provar (a cicatriz que o `impasto_smoke`
-        // prega, e que os smokes do Painter tiveram de corrigir).
+/// **Cena 54 (W-IK).** Três cadeias, PAUSADA, com o painel de física aberto.
+pub fn physics_smoke_ik(ctx: &mut ph2d_app_physics::SceneCtx<'_>) {
+    spawn_props(ctx.world);
+    ctx.want.panels.push("physics");
+    // A ferramenta NÃO é armada em código: o passo 1 é escolher 'Pose' no
+    // painel, e um smoke que arma o estado por baixo pula exatamente a
+    // costura que ele deveria provar (a cicatriz que o `impasto_smoke`
+    // prega, e que os smokes do Painter tiveram de corrigir).
 
-        eprintln!(
-            "[physics-smoke 54] A cena esta PAUSADA e o painel PHYSICS esta aberto (tecla W).\n  \
-               Posar e AUTORAR: o resultado e a pose do documento, nao simulacao. Por isso\n  \
-               esta cena nao toca -- com o relogio andando o solver sobrescreveria tudo.\n\n  \
-               1. Abra a secao INTERACTION e escolha a ferramenta 'Pose'. A dica embaixo\n     \
-                  muda para 'Paused + drag a jointed body' -- as outras tres pedem Play.\n  \
-               2. Aperte B (mostra os colliders e os joints).\n  \
-               3. O BRACO (esquerda, verde): arraste a MAO (o elo da ponta) para cima e\n     \
-                  para os lados. O COTOVELO e o OMBRO dobram atras dela -- e isso que a\n     \
-                  cinematica inversa e. O ombro claro e ESTATICO e NAO se move: ele e a\n     \
-                  raiz, e a cena e quem diz isso (nenhuma escolha foi pedida).\n     \
-                  (medido: alvo (-5,5 / 4,5) -> mao a 0,002 m dele, cotovelo em\n      \
-                   (-6,13 / 3,72), ombro parado em (-7,00 / 2,50))\n  \
-               4. Arraste a mao para MUITO longe (para fora da tela). A cadeia ESTICA e\n     \
-                  APONTA para o cursor -- ela nao enrola sobre si mesma nem trava numa\n     \
-                  direcao qualquer.\n     \
-                  (medido, alvo (30 / 20): alcance 2,50 de 2,50 e a cadeia aponta a 25,3\n      \
-                   graus, que e exatamente a direcao do alvo)\n  \
-               5. A PERNA (centro): a canela laranja tem o JOELHO limitado a [0, 2] rad.\n     \
-                  Arraste-a em volta do quadril, para todos os lados: a junta NUNCA passa\n     \
-                  da faixa. O solver do rapier ignora limites; sem a projecao desta wave\n     \
-                  o joelho ia a -1,82 rad (dobrado ao contrario) e o Play desfazia a pose\n     \
-                  no primeiro tick.\n  \
-               6. A COBRA (direita, azul): quatro elos e NENHUMA ancora. Arraste a cabeca:\n     \
-                  a cadeia inteira acompanha e TRANSLADA -- a raiz e livre, porque nao ha\n     \
-                  nada estatico a que ela se prenda.\n     \
-                  (medido: puxando a cabeca 3,5 m para cima, a CAUDA anda 1,91 m)\n  \
-               7. Smoothing (o unico knob): 0,05 responde na hora, 1,00 e macio e nao\n     \
-                  chega ao alvo. E o unico numero do solver que muda algo -- o outro foi\n     \
-                  medido INERTE e por isso nao tem slider.\n  \
-               8. Tip Angle 'Match': a ponta mantem a ATITUDE que tinha enquanto voce a\n     \
-                  arrasta. Em 'Free' ela gira com a cadeia.\n  \
-               9. Ctrl+Z: UM passo desfaz o arrasto INTEIRO, com todos os elos juntos.\n  \
-              10. Marque 'Physics' no transporte e de Play: a cadeia cai a partir da pose\n     \
-                  que voce autorou. Posar nao simula -- ele prepara o que a simulacao usa."
-        );
-    }
+    eprintln!(
+        "[physics-smoke 54] A cena esta PAUSADA e o painel PHYSICS esta aberto (tecla W).\n  \
+           Posar e AUTORAR: o resultado e a pose do documento, nao simulacao. Por isso\n  \
+           esta cena nao toca -- com o relogio andando o solver sobrescreveria tudo.\n\n  \
+           1. Abra a secao INTERACTION e escolha a ferramenta 'Pose'. A dica embaixo\n     \
+              muda para 'Paused + drag a jointed body' -- as outras tres pedem Play.\n  \
+           2. Aperte B (mostra os colliders e os joints).\n  \
+           3. O BRACO (esquerda, verde): arraste a MAO (o elo da ponta) para cima e\n     \
+              para os lados. O COTOVELO e o OMBRO dobram atras dela -- e isso que a\n     \
+              cinematica inversa e. O ombro claro e ESTATICO e NAO se move: ele e a\n     \
+              raiz, e a cena e quem diz isso (nenhuma escolha foi pedida).\n     \
+              (medido: alvo (-5,5 / 4,5) -> mao a 0,002 m dele, cotovelo em\n      \
+               (-6,13 / 3,72), ombro parado em (-7,00 / 2,50))\n  \
+           4. Arraste a mao para MUITO longe (para fora da tela). A cadeia ESTICA e\n     \
+              APONTA para o cursor -- ela nao enrola sobre si mesma nem trava numa\n     \
+              direcao qualquer.\n     \
+              (medido, alvo (30 / 20): alcance 2,50 de 2,50 e a cadeia aponta a 25,3\n      \
+               graus, que e exatamente a direcao do alvo)\n  \
+           5. A PERNA (centro): a canela laranja tem o JOELHO limitado a [0, 2] rad.\n     \
+              Arraste-a em volta do quadril, para todos os lados: a junta NUNCA passa\n     \
+              da faixa. O solver do rapier ignora limites; sem a projecao desta wave\n     \
+              o joelho ia a -1,82 rad (dobrado ao contrario) e o Play desfazia a pose\n     \
+              no primeiro tick.\n  \
+           6. A COBRA (direita, azul): quatro elos e NENHUMA ancora. Arraste a cabeca:\n     \
+              a cadeia inteira acompanha e TRANSLADA -- a raiz e livre, porque nao ha\n     \
+              nada estatico a que ela se prenda.\n     \
+              (medido: puxando a cabeca 3,5 m para cima, a CAUDA anda 1,91 m)\n  \
+           7. Smoothing (o unico knob): 0,05 responde na hora, 1,00 e macio e nao\n     \
+              chega ao alvo. E o unico numero do solver que muda algo -- o outro foi\n     \
+              medido INERTE e por isso nao tem slider.\n  \
+           8. Tip Angle 'Match': a ponta mantem a ATITUDE que tinha enquanto voce a\n     \
+              arrasta. Em 'Free' ela gira com a cadeia.\n  \
+           9. Ctrl+Z: UM passo desfaz o arrasto INTEIRO, com todos os elos juntos.\n  \
+          10. Marque 'Physics' no transporte e de Play: a cadeia cai a partir da pose\n     \
+              que voce autorou. Posar nao simula -- ele prepara o que a simulacao usa."
+    );
 }
 
 #[cfg(test)]

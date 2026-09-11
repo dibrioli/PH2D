@@ -211,52 +211,49 @@ pub(crate) fn build(world: &mut World) {
     }
 }
 
-impl crate::App {
-    pub(crate) fn physics_smoke_kin_pure(&mut self) {
-        let gfx = self.gfx.as_mut().expect("gfx");
-        build(gfx.sim.world_mut());
+pub fn physics_smoke_kin_pure(ctx: &mut ph2d_app_physics::SceneCtx<'_>) {
+    build(ctx.world);
 
-        eprintln!(
-            "[physics-smoke 103] OS TRES MODOS (W-KinPure). Tres pistas com o\n\
-             MESMO percurso: VERDE em cima = Pure (o puro sangue), LARANJA no\n\
-             meio = Kinematic, CIANO em baixo = Dynamic. Um dedo so' para os\n\
-             tres.\n\
-             \n\
-             ⚠️ Se a linha acima nao aparecer, pare: a cena nao montou.\n\
-             \n\
-             1) ANDE PARA A DIREITA (seta ->). No CAIXOTE (x = 3) as duas pistas\n\
-                de baixo empurram e a de CIMA nao: o verde PARA nele e o\n\
-                caixote fica onde estava. Medido em 3 s: ciano 8,70 m,\n\
-                laranja 8,70 m, VERDE 0,0000.\n\
-             \n\
-             2) A PLATAFORMA PENDURADA (x = 9) e' a segunda metade do chao. Suba\n\
-                nela: ela AFUNDA sob o ciano e o laranja e NAO se move sob o\n\
-                verde. Medido: ciano -0,4036 m, laranja -0,3684, VERDE 0,0000.\n\
-                E' o PESO -- a outra metade da 3a lei, a que um caixote nao\n\
-                mostra. (A prancha nao tem peso proprio, entao todo milimetro\n\
-                que ela desce e' do personagem.)\n\
-             \n\
-             3) A PAREDE (x = 13) para os TRES. Cenario nao quer dizer fantasma:\n\
-                o puro sangue e' solido, o mundo so' nao lhe obedece.\n\
-             \n\
-             4) PULE (espaco) nas tres pistas. O verde pula IGUAL ao laranja --\n\
-                e' o mesmo controlador com dois canais calados, nao um segundo\n\
-                personagem. (Medido bit a bit num gate, nao no olho.)\n\
-             \n\
-             5) O CARD QUE SOME -- faca este passo, e' a metade que prova o\n\
-                canal: selecione o LARANJA e veja 'Platform Player' > REACTION\n\
-                (tres sliders). Agora selecione o VERDE: o card NAO existe. Nada\n\
-                ali seria lido, e um slider inerte ensina a desconfiar dos\n\
-                outros. Troque o chip 'Body' do verde para Kinematic e o card\n\
-                volta COM OS NUMEROS QUE LA' ESTAVAM -- o modo cala, nao apaga.\n\
-             \n\
-             6) A MASSA (esta e' a cena que faltava a' W-KinWeight): com o\n\
-                LARANJA em cima da plataforma, va' a 'Physics Body' > Mass:\n\
-                Manual e suba a massa. A plataforma tem de afundar MAIS. No\n\
-                VERDE esse par Auto/Manual nem e' oferecido -- sob o puro sangue\n\
-                ninguem le' a massa."
-        );
-    }
+    eprintln!(
+        "[physics-smoke 103] OS TRES MODOS (W-KinPure). Tres pistas com o\n\
+         MESMO percurso: VERDE em cima = Pure (o puro sangue), LARANJA no\n\
+         meio = Kinematic, CIANO em baixo = Dynamic. Um dedo so' para os\n\
+         tres.\n\
+         \n\
+         ⚠️ Se a linha acima nao aparecer, pare: a cena nao montou.\n\
+         \n\
+         1) ANDE PARA A DIREITA (seta ->). No CAIXOTE (x = 3) as duas pistas\n\
+            de baixo empurram e a de CIMA nao: o verde PARA nele e o\n\
+            caixote fica onde estava. Medido em 3 s: ciano 8,70 m,\n\
+            laranja 8,70 m, VERDE 0,0000.\n\
+         \n\
+         2) A PLATAFORMA PENDURADA (x = 9) e' a segunda metade do chao. Suba\n\
+            nela: ela AFUNDA sob o ciano e o laranja e NAO se move sob o\n\
+            verde. Medido: ciano -0,4036 m, laranja -0,3684, VERDE 0,0000.\n\
+            E' o PESO -- a outra metade da 3a lei, a que um caixote nao\n\
+            mostra. (A prancha nao tem peso proprio, entao todo milimetro\n\
+            que ela desce e' do personagem.)\n\
+         \n\
+         3) A PAREDE (x = 13) para os TRES. Cenario nao quer dizer fantasma:\n\
+            o puro sangue e' solido, o mundo so' nao lhe obedece.\n\
+         \n\
+         4) PULE (espaco) nas tres pistas. O verde pula IGUAL ao laranja --\n\
+            e' o mesmo controlador com dois canais calados, nao um segundo\n\
+            personagem. (Medido bit a bit num gate, nao no olho.)\n\
+         \n\
+         5) O CARD QUE SOME -- faca este passo, e' a metade que prova o\n\
+            canal: selecione o LARANJA e veja 'Platform Player' > REACTION\n\
+            (tres sliders). Agora selecione o VERDE: o card NAO existe. Nada\n\
+            ali seria lido, e um slider inerte ensina a desconfiar dos\n\
+            outros. Troque o chip 'Body' do verde para Kinematic e o card\n\
+            volta COM OS NUMEROS QUE LA' ESTAVAM -- o modo cala, nao apaga.\n\
+         \n\
+         6) A MASSA (esta e' a cena que faltava a' W-KinWeight): com o\n\
+            LARANJA em cima da plataforma, va' a 'Physics Body' > Mass:\n\
+            Manual e suba a massa. A plataforma tem de afundar MAIS. No\n\
+            VERDE esse par Auto/Manual nem e' oferecido -- sob o puro sangue\n\
+            ninguem le' a massa."
+    );
 }
 
 #[cfg(test)]

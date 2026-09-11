@@ -118,47 +118,42 @@ pub(crate) fn build(world: &mut World) {
 #[path = "physics_smoke_stop_tests.rs"]
 mod tests;
 
-impl crate::App {
-    /// **Cena 75 (W-RopeStop).** Dois guinchos, um com limitador e um sem.
-    pub(crate) fn physics_smoke_stop(&mut self) {
-        let gfx = self.gfx.as_mut().expect("gfx");
-        build(gfx.sim.world_mut());
-        gfx.camera.center = [0.0, 3.5];
-        gfx.camera.height_world = 12.0;
-        if let Some(hero) = gfx.hero_screen.as_mut() {
-            hero.panel_visibility.insert("physics", true);
-        }
-        eprintln!(
-            "[physics-smoke 75] O LIMITADOR -- a carga para ANTES da roldana.\n  \
-               Dois guinchos IDENTICOS: o VERMELHO (esquerda) sem limitador, o VERDE\n  \
-               (direita) com um de {STOP_M} m. A corda, as roldanas e as marcas ja'\n  \
-               estao na tela (o contorno nasce LIGADO; B o desliga).\n\n  \
-               1. De PLAY e olhe as duas cargas subirem.\n     \
-                  -> A VERMELHA entra na roldana. Passado esse ponto a rota fica\n        \
-                     DEGENERADA e a corda DEIXA DE SEGURAR: a carga cai de volta, sem\n        \
-                     erro e sem aviso. (medido: folga de tangente 0,0000 m, e depois a\n        \
-                     carga voltando a descer: folga 1,18 m aos 10 s, 2,41 aos 12,5,\n        \
-                     3,40 aos 15 -- ela foi DEVOLVIDA)\n     \
-                  -> A VERDE PARA e fica PARADA: 1,5865 m, imovel do momento em que\n        \
-                     encosta na marca ate' o fim (o limitador pedia 1,6 -- 0,8% de\n        \
-                     esticamento da corda, o mesmo que o PULLEY_BIAS ja' documenta).\n\n  \
-               2. PAUSE e olhe as marcas: um CIRCULO COM UM X, em cima da corda, em\n     \
-                  cada ponta de cada polia. Na vermelha as duas estao coladas na\n     \
-                  roldana -- e' assim que 'desligado' se parece: a trava esta' no\n     \
-                  proprio aro, que e' onde a corda ja' podia chegar.\n\n  \
-               3. ARRASTE a marca do guincho vermelho para BAIXO, pela corda. Ela anda\n     \
-                  SOBRE o traço (nao sai dele nem com o cursor longe). De PLAY: agora\n     \
-                  aquela carga tambem para, exatamente onde voce deixou a marca.\n\n  \
-               4. CLIQUE NUMA RODA -- no ANEL dela ou no cubo do meio. Ela e'\n     \
-                  SELECIONADA: as alcas de centro e de aro aparecem, e a secao da\n     \
-                  roldana abre no Inspector. Antes desta wave a unica porta de entrada\n     \
-                  era achar o nome na Hierarquia.\n\n  \
-               (!) Clique no MIOLO do disco, longe do anel: NADA e' selecionado, e e' o\n      \
-                   certo -- uma roldana grande emoldura a arte que passa por dentro\n      \
-                   dela, e reclamar o disco faria a polia engolir o clique de tudo o\n      \
-                   que ela emoldura.\n\n  \
-               (!) A marca so' anda ate' a amarracao e ate' a roldana: ela nao vai para\n      \
-                   tras do corpo nem para o outro lado da roda.\n",
-        );
-    }
+/// **Cena 75 (W-RopeStop).** Dois guinchos, um com limitador e um sem.
+pub fn physics_smoke_stop(ctx: &mut ph2d_app_physics::SceneCtx<'_>) {
+    build(ctx.world);
+    ctx.want.camera_center = Some([0.0, 3.5]);
+    ctx.want.camera_height_world = Some(12.0);
+    ctx.want.panels.push("physics");
+    eprintln!(
+        "[physics-smoke 75] O LIMITADOR -- a carga para ANTES da roldana.\n  \
+           Dois guinchos IDENTICOS: o VERMELHO (esquerda) sem limitador, o VERDE\n  \
+           (direita) com um de {STOP_M} m. A corda, as roldanas e as marcas ja'\n  \
+           estao na tela (o contorno nasce LIGADO; B o desliga).\n\n  \
+           1. De PLAY e olhe as duas cargas subirem.\n     \
+              -> A VERMELHA entra na roldana. Passado esse ponto a rota fica\n        \
+                 DEGENERADA e a corda DEIXA DE SEGURAR: a carga cai de volta, sem\n        \
+                 erro e sem aviso. (medido: folga de tangente 0,0000 m, e depois a\n        \
+                 carga voltando a descer: folga 1,18 m aos 10 s, 2,41 aos 12,5,\n        \
+                 3,40 aos 15 -- ela foi DEVOLVIDA)\n     \
+              -> A VERDE PARA e fica PARADA: 1,5865 m, imovel do momento em que\n        \
+                 encosta na marca ate' o fim (o limitador pedia 1,6 -- 0,8% de\n        \
+                 esticamento da corda, o mesmo que o PULLEY_BIAS ja' documenta).\n\n  \
+           2. PAUSE e olhe as marcas: um CIRCULO COM UM X, em cima da corda, em\n     \
+              cada ponta de cada polia. Na vermelha as duas estao coladas na\n     \
+              roldana -- e' assim que 'desligado' se parece: a trava esta' no\n     \
+              proprio aro, que e' onde a corda ja' podia chegar.\n\n  \
+           3. ARRASTE a marca do guincho vermelho para BAIXO, pela corda. Ela anda\n     \
+              SOBRE o traço (nao sai dele nem com o cursor longe). De PLAY: agora\n     \
+              aquela carga tambem para, exatamente onde voce deixou a marca.\n\n  \
+           4. CLIQUE NUMA RODA -- no ANEL dela ou no cubo do meio. Ela e'\n     \
+              SELECIONADA: as alcas de centro e de aro aparecem, e a secao da\n     \
+              roldana abre no Inspector. Antes desta wave a unica porta de entrada\n     \
+              era achar o nome na Hierarquia.\n\n  \
+           (!) Clique no MIOLO do disco, longe do anel: NADA e' selecionado, e e' o\n      \
+               certo -- uma roldana grande emoldura a arte que passa por dentro\n      \
+               dela, e reclamar o disco faria a polia engolir o clique de tudo o\n      \
+               que ela emoldura.\n\n  \
+           (!) A marca so' anda ate' a amarracao e ate' a roldana: ela nao vai para\n      \
+               tras do corpo nem para o outro lado da roda.\n",
+    );
 }

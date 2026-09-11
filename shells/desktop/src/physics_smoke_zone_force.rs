@@ -193,73 +193,68 @@ pub(crate) fn build_zone_force_scene(world: &mut World) {
 #[path = "physics_smoke_zone_force_tests.rs"]
 mod tests;
 
-impl crate::App {
-    pub(crate) fn physics_smoke_zone_force(&mut self) {
-        let gfx = self.gfx.as_mut().expect("gfx");
-        // ⚠️ **Sem gravidade, e é a premissa da cena** — a correnteza passa a ser a
-        // única coisa a agir, então *onde eles pararam* É *o que ela fez*. Escrito
-        // pela porta que o painel de física do W2b usa, não num campo privado.
-        gfx.physics.set_settings(ph2d_physics_ecs::PhysicsSettings {
-            gravity_y: 0.0,
-            ..Default::default()
-        });
-        build_zone_force_scene(gfx.sim.world_mut());
-        gfx.camera.center = CAMERA_CENTRE;
-        gfx.camera.height_world = CAMERA_HEIGHT;
-        if let Some(hero) = gfx.hero_screen.as_mut() {
-            hero.panel_visibility.insert("physics", true);
-        }
+pub fn physics_smoke_zone_force(ctx: &mut ph2d_app_physics::SceneCtx<'_>) {
+    // ⚠️ **Sem gravidade, e é a premissa da cena** — a correnteza passa a ser a
+    // única coisa a agir, então *onde eles pararam* É *o que ela fez*. Escrito
+    // pela porta que o painel de física do W2b usa, não num campo privado.
+    ctx.want.settings = Some(ph2d_physics_ecs::PhysicsSettings {
+        gravity_y: 0.0,
+        ..Default::default()
+    });
+    build_zone_force_scene(ctx.world);
+    ctx.want.camera_center = Some(CAMERA_CENTRE);
+    ctx.want.camera_height_world = Some(CAMERA_HEIGHT);
+    ctx.want.panels.push("physics");
 
-        eprintln!(
-            "[physics-smoke 106] A CORRENTEZA LEVA OS TRES MODOS (W-ZoneForce).\n  \
-               Uma correnteza de {f:.0} N, SEM gravidade, e quatro capsulas identicas\n  \
-               em raias proprias -- todas com o MESMO freio de caminhada:\n    \
-                 VERDE = caixote solto, sem lei de player (o TETO do que a zona faz)\n    \
-                 AMBAR = player DINAMICO (o que ja' funcionava)\n    \
-                 AZUL  = player CINEMATICO (Snap/Push)\n    \
-                 ROXO  = player PURO (o mundo fisico como cenario)\n\n  \
-               1. OS TRES PLAYERS TEM DE VIAJAR JUNTOS. Deixe correr 2 s: eles andam\n     \
-                  {d:.1} / {k:.1} / {p:.1} m e o caixote {c:.1}.\n     \
-                  O QUE ESTAVA QUEBRADO: o AZUL e o ROXO andavam 0,0 m -- em QUALQUER\n     \
-                  forca. Se eles ficarem parados enquanto o ambar viaja, PARE.\n\n  \
-               2. ELES ANDAM MENOS QUE O CAIXOTE, e isso e' o certo: a caminhada\n     \
-                  RESISTE a' correnteza -- o VERDE some de quadro em ~1 s, e e' assim\n     \
-                  que se ve' o teto. O que se julga aqui e' a CONCORDANCIA entre os\n     \
-                  tres players, nao a distancia.\n\n  \
-               3. ANDE (A e D). Nao ha' nada a selecionar: ha' UM teclado, logo UM\n     \
-                  dedo, e a ponte entrega a mesma entrada a TODO player da cena --\n     \
-                  os tres andam juntos. Medido, com 2 s de correnteza:\n       \
-                    A (contra) {ag:5.1} m . solto {ng:5.1} m . D (a favor) {dg:5.1} m\n     \
-                  ⚠️ Ele NAO progride contra: a caminhada muda o quanto a correnteza\n     \
-                  o leva, nao o LADO. Isso e' aritmetica, nao defeito -- esta cena\n     \
-                  nao tem chao nenhum, entao o player esta sempre no AR e a\n     \
-                  autoridade dele e' a `air_acceleration` (20 m/s2) contra os\n     \
-                  {acc:5.2} m/s2 desta correnteza ({f:.0} N sobre 0,366 kg).\n\n  \
-               3b. E A ABLACAO QUE INVERTE ISSO: no Inspector da zona baixe a Force\n     \
-                  para 7 N (= 19,1 m/s2, logo ABAIXO dos 20 da caminhada). Segure A e\n     \
-                  ele passa a progredir CONTRA a correnteza -- medido -9,2 m. Volte\n     \
-                  para {f:.0} e ele volta a ser levado. A fronteira e' exatamente a\n     \
-                  autoridade da caminhada, e ver os dois lados dela vale mais que ver\n     \
-                  um so'. (Com chao sob os pes a autoridade seria 60 e ele venceria\n     \
-                  os {acc:5.2} sem baixar nada -- medido -8,6 m.)\n\n  \
-               4. GIRE A ZONA (selecione 'Current' e mude a rotacao no Inspector). O\n     \
-                  sopro gira com ela e leva os tres para o novo lado -- o frame\n     \
-                  (W-AreaFrame) chega ao cinematico pela MESMA porta do solver, sem\n     \
-                  uma segunda derivacao.\n\n  \
-               (!) ABLACAO: no Inspector da zona ponha Falloff em 1. Quem esta' na\n      \
-                   margem da correnteza passa a andar bem menos que quem esta' no eixo\n      \
-                   -- nos tres modos.\n\n  \
-               (!) Toque B para o contorno: a zona fica magenta (sensor), com a SETA\n      \
-                   laranja a dizer para que lado ela sopra.\n",
-            f = FORCE,
-            acc = FORCE / CAPSULE_MASS,
-            c = CARRIED[0],
-            d = CARRIED[1],
-            k = CARRIED[2],
-            p = CARRIED[3],
-            ag = WALKED[0],
-            ng = WALKED[1],
-            dg = WALKED[2],
-        );
-    }
+    eprintln!(
+        "[physics-smoke 106] A CORRENTEZA LEVA OS TRES MODOS (W-ZoneForce).\n  \
+           Uma correnteza de {f:.0} N, SEM gravidade, e quatro capsulas identicas\n  \
+           em raias proprias -- todas com o MESMO freio de caminhada:\n    \
+             VERDE = caixote solto, sem lei de player (o TETO do que a zona faz)\n    \
+             AMBAR = player DINAMICO (o que ja' funcionava)\n    \
+             AZUL  = player CINEMATICO (Snap/Push)\n    \
+             ROXO  = player PURO (o mundo fisico como cenario)\n\n  \
+           1. OS TRES PLAYERS TEM DE VIAJAR JUNTOS. Deixe correr 2 s: eles andam\n     \
+              {d:.1} / {k:.1} / {p:.1} m e o caixote {c:.1}.\n     \
+              O QUE ESTAVA QUEBRADO: o AZUL e o ROXO andavam 0,0 m -- em QUALQUER\n     \
+              forca. Se eles ficarem parados enquanto o ambar viaja, PARE.\n\n  \
+           2. ELES ANDAM MENOS QUE O CAIXOTE, e isso e' o certo: a caminhada\n     \
+              RESISTE a' correnteza -- o VERDE some de quadro em ~1 s, e e' assim\n     \
+              que se ve' o teto. O que se julga aqui e' a CONCORDANCIA entre os\n     \
+              tres players, nao a distancia.\n\n  \
+           3. ANDE (A e D). Nao ha' nada a selecionar: ha' UM teclado, logo UM\n     \
+              dedo, e a ponte entrega a mesma entrada a TODO player da cena --\n     \
+              os tres andam juntos. Medido, com 2 s de correnteza:\n       \
+                A (contra) {ag:5.1} m . solto {ng:5.1} m . D (a favor) {dg:5.1} m\n     \
+              ⚠️ Ele NAO progride contra: a caminhada muda o quanto a correnteza\n     \
+              o leva, nao o LADO. Isso e' aritmetica, nao defeito -- esta cena\n     \
+              nao tem chao nenhum, entao o player esta sempre no AR e a\n     \
+              autoridade dele e' a `air_acceleration` (20 m/s2) contra os\n     \
+              {acc:5.2} m/s2 desta correnteza ({f:.0} N sobre 0,366 kg).\n\n  \
+           3b. E A ABLACAO QUE INVERTE ISSO: no Inspector da zona baixe a Force\n     \
+              para 7 N (= 19,1 m/s2, logo ABAIXO dos 20 da caminhada). Segure A e\n     \
+              ele passa a progredir CONTRA a correnteza -- medido -9,2 m. Volte\n     \
+              para {f:.0} e ele volta a ser levado. A fronteira e' exatamente a\n     \
+              autoridade da caminhada, e ver os dois lados dela vale mais que ver\n     \
+              um so'. (Com chao sob os pes a autoridade seria 60 e ele venceria\n     \
+              os {acc:5.2} sem baixar nada -- medido -8,6 m.)\n\n  \
+           4. GIRE A ZONA (selecione 'Current' e mude a rotacao no Inspector). O\n     \
+              sopro gira com ela e leva os tres para o novo lado -- o frame\n     \
+              (W-AreaFrame) chega ao cinematico pela MESMA porta do solver, sem\n     \
+              uma segunda derivacao.\n\n  \
+           (!) ABLACAO: no Inspector da zona ponha Falloff em 1. Quem esta' na\n      \
+               margem da correnteza passa a andar bem menos que quem esta' no eixo\n      \
+               -- nos tres modos.\n\n  \
+           (!) Toque B para o contorno: a zona fica magenta (sensor), com a SETA\n      \
+               laranja a dizer para que lado ela sopra.\n",
+        f = FORCE,
+        acc = FORCE / CAPSULE_MASS,
+        c = CARRIED[0],
+        d = CARRIED[1],
+        k = CARRIED[2],
+        p = CARRIED[3],
+        ag = WALKED[0],
+        ng = WALKED[1],
+        dg = WALKED[2],
+    );
 }

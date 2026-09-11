@@ -1,0 +1,24 @@
+[package]
+name = "ph2d-app-physics"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+# ⚠️ A regra desta crate é a DIRECÇÃO das setas: ela depende das crates do
+# módulo e do ECS, e **nunca da shell** (que é um `bin` e não pode ser
+# dependência de ninguém). É isso que faz dela uma unidade de compilação que o
+# `cargo check -p ph2d-app-physics` fecha sem tocar nas 493 k linhas do
+# `shells/desktop` — o ponto inteiro da W2 (auditoria de velocidade §4-C2).
+# ⚠️ Versão LITERAL, como as irmãs (`ph2d-ecs`, `ph2d-physics-ecs`): este
+# workspace **não tem** `[workspace.dependencies]`, e herdar dele não compila.
+bevy_ecs = "0.19"
+ph2d-core = { path = "../ph2d-core" }
+ph2d-ecs = { path = "../ph2d-ecs" }
+ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
+ph2d-render = { path = "../ph2d-render" }

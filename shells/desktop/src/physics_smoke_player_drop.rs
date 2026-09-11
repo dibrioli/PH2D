@@ -57,7 +57,6 @@ use ph2d_ecs::{Name, Transform};
 use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, OneWayPlatform, RigidBody};
 use ph2d_render::{Sprite, WHITE_TILE_KEY};
 
-use crate::App;
 use crate::physics_smoke_player::{slab, spawn_player};
 
 /// A distância entre os andares — ver o aviso do módulo.
@@ -69,58 +68,55 @@ const FIRST: f32 = 2.0;
 /// Quantos andares a escada tem.
 const FLOORS: usize = 3;
 
-impl App {
-    /// **A escada de pranchas** — descer com baixo + pulo, subir só com o pulo.
-    pub(crate) fn physics_smoke_pass_through(&mut self) {
-        let gfx = self.gfx.as_mut().expect("gfx");
-        let world = gfx.sim.world_mut();
+/// **A escada de pranchas** — descer com baixo + pulo, subir só com o pulo.
+pub fn physics_smoke_pass_through(ctx: &mut ph2d_app_physics::SceneCtx<'_>) {
+    let world = &mut *ctx.world;
 
-        // O chão SÓLIDO, e ele é o controle da cena inteira: o mesmo gesto que
-        // atravessa as pranchas não o atravessa, e o personagem para ali.
-        slab(
-            world,
-            "Floor",
-            Vec2::new(0.0, -0.5),
-            [12.0, 0.5],
-            0.0,
-            [0.35, 0.35, 0.4, 1.0],
-        );
+    // O chão SÓLIDO, e ele é o controle da cena inteira: o mesmo gesto que
+    // atravessa as pranchas não o atravessa, e o personagem para ali.
+    slab(
+        world,
+        "Floor",
+        Vec2::new(0.0, -0.5),
+        [12.0, 0.5],
+        0.0,
+        [0.35, 0.35, 0.4, 1.0],
+    );
 
-        // As pranchas. ⚠️ **Um tom próprio, e não é enfeite:** uma plataforma
-        // jump-through comporta-se de forma diferente de um chão, e uma cena em
-        // que as duas se parecem obriga o artista a descobrir qual é qual
-        // tentando atravessar cada uma.
-        for i in 0..FLOORS {
-            let y = FIRST + RISE * i as f32;
-            let half = [4.0, PLANK_HALF_Y];
-            world.spawn((
-                Name::new(format!("Plank{}", i + 1)),
-                Transform::from_translation(Vec2::new(0.0, y)),
-                Sprite::atlas(
-                    WHITE_TILE_KEY,
-                    [half[0] * 2.0, half[1] * 2.0],
-                    [0.86, 0.70, 0.38, 1.0],
-                ),
-                RigidBody {
-                    kind: BodyKind::Static,
+    // As pranchas. ⚠️ **Um tom próprio, e não é enfeite:** uma plataforma
+    // jump-through comporta-se de forma diferente de um chão, e uma cena em
+    // que as duas se parecem obriga o artista a descobrir qual é qual
+    // tentando atravessar cada uma.
+    for i in 0..FLOORS {
+        let y = FIRST + RISE * i as f32;
+        let half = [4.0, PLANK_HALF_Y];
+        world.spawn((
+            Name::new(format!("Plank{}", i + 1)),
+            Transform::from_translation(Vec2::new(0.0, y)),
+            Sprite::atlas(
+                WHITE_TILE_KEY,
+                [half[0] * 2.0, half[1] * 2.0],
+                [0.86, 0.70, 0.38, 1.0],
+            ),
+            RigidBody {
+                kind: BodyKind::Static,
+            },
+            Collider {
+                shape: ColliderShape::Cuboid {
+                    half_x: half[0],
+                    half_y: half[1],
                 },
-                Collider {
-                    shape: ColliderShape::Cuboid {
-                        half_x: half[0],
-                        half_y: half[1],
-                    },
-                    ..Collider::default()
-                },
-                OneWayPlatform,
-            ));
-        }
-
-        // Em cima de tudo: a escada é para DESCER, e o gesto novo é o primeiro
-        // que o artista vai querer experimentar.
-        let top = FIRST + RISE * (FLOORS - 1) as f32;
-        spawn_player(world, Vec2::new(0.0, top + PLANK_HALF_Y + 0.9));
-        eprintln!("{DROP_SMOKE_MESSAGE}");
+                ..Collider::default()
+            },
+            OneWayPlatform,
+        ));
     }
+
+    // Em cima de tudo: a escada é para DESCER, e o gesto novo é o primeiro
+    // que o artista vai querer experimentar.
+    let top = FIRST + RISE * (FLOORS - 1) as f32;
+    spawn_player(world, Vec2::new(0.0, top + PLANK_HALF_Y + 0.9));
+    eprintln!("{DROP_SMOKE_MESSAGE}");
 }
 
 /// O roteiro da cena 91 — o gesto é **BAIXO + PULO**, e o que se julga é *um
@@ -155,58 +151,55 @@ const WALL_RISES: [f32; 3] = [1.80, 2.00, 1.60];
 /// Onde cada escada fica, no eixo X.
 const WALL_X: [f32; 3] = [-7.0, 0.0, 7.0];
 
-impl App {
-    /// **A cena 97 — AS DUAS BORDAS DA DESCIDA** (W20).
-    ///
-    /// Três escadas da MESMA prancha (meia-espessura 0,15) e nada diferente
-    /// entre elas além do VÃO. É esse o desenho: o que muda o comportamento é um
-    /// número só, e as três células estão nos dois lados e no meio da lei.
-    pub(crate) fn physics_smoke_drop_edges(&mut self) {
-        let gfx = self.gfx.as_mut().expect("gfx");
-        let world = gfx.sim.world_mut();
+/// **A cena 97 — AS DUAS BORDAS DA DESCIDA** (W20).
+///
+/// Três escadas da MESMA prancha (meia-espessura 0,15) e nada diferente
+/// entre elas além do VÃO. É esse o desenho: o que muda o comportamento é um
+/// número só, e as três células estão nos dois lados e no meio da lei.
+pub fn physics_smoke_drop_edges(ctx: &mut ph2d_app_physics::SceneCtx<'_>) {
+    let world = &mut *ctx.world;
 
-        slab(
-            world,
-            "Floor",
-            Vec2::new(0.0, -0.5),
-            [16.0, 0.5],
-            0.0,
-            [0.35, 0.35, 0.4, 1.0],
-        );
+    slab(
+        world,
+        "Floor",
+        Vec2::new(0.0, -0.5),
+        [16.0, 0.5],
+        0.0,
+        [0.35, 0.35, 0.4, 1.0],
+    );
 
-        for (i, (&rise, &x)) in WALL_RISES.iter().zip(WALL_X.iter()).enumerate() {
-            for f in 0..FLOORS {
-                let y = FIRST + rise * f as f32;
-                let half = [2.5, PLANK_HALF_Y];
-                world.spawn((
-                    Name::new(format!("Plank{}-{}", i + 1, f + 1)),
-                    Transform::from_translation(Vec2::new(x, y)),
-                    Sprite::atlas(
-                        WHITE_TILE_KEY,
-                        [half[0] * 2.0, half[1] * 2.0],
-                        [0.86, 0.70, 0.38, 1.0],
-                    ),
-                    RigidBody {
-                        kind: BodyKind::Static,
+    for (i, (&rise, &x)) in WALL_RISES.iter().zip(WALL_X.iter()).enumerate() {
+        for f in 0..FLOORS {
+            let y = FIRST + rise * f as f32;
+            let half = [2.5, PLANK_HALF_Y];
+            world.spawn((
+                Name::new(format!("Plank{}-{}", i + 1, f + 1)),
+                Transform::from_translation(Vec2::new(x, y)),
+                Sprite::atlas(
+                    WHITE_TILE_KEY,
+                    [half[0] * 2.0, half[1] * 2.0],
+                    [0.86, 0.70, 0.38, 1.0],
+                ),
+                RigidBody {
+                    kind: BodyKind::Static,
+                },
+                Collider {
+                    shape: ColliderShape::Cuboid {
+                        half_x: half[0],
+                        half_y: half[1],
                     },
-                    Collider {
-                        shape: ColliderShape::Cuboid {
-                            half_x: half[0],
-                            half_y: half[1],
-                        },
-                        ..Collider::default()
-                    },
-                    OneWayPlatform,
-                ));
-            }
+                    ..Collider::default()
+                },
+                OneWayPlatform,
+            ));
         }
-
-        // No topo da escada do MEIO — a que sempre funcionou —, para o artista
-        // começar pelo controle e só depois julgar as bordas.
-        let top = FIRST + WALL_RISES[1] * (FLOORS - 1) as f32;
-        spawn_player(world, Vec2::new(WALL_X[1], top + PLANK_HALF_Y + 0.9));
-        eprintln!("{EDGES_SMOKE_MESSAGE}");
     }
+
+    // No topo da escada do MEIO — a que sempre funcionou —, para o artista
+    // começar pelo controle e só depois julgar as bordas.
+    let top = FIRST + WALL_RISES[1] * (FLOORS - 1) as f32;
+    spawn_player(world, Vec2::new(WALL_X[1], top + PLANK_HALF_Y + 0.9));
+    eprintln!("{EDGES_SMOKE_MESSAGE}");
 }
 
 /// O roteiro da cena 97 — o gesto é o MESMO da 91, e o que se julga é a

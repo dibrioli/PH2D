@@ -34,125 +34,120 @@ use ph2d_physics_ecs::{
 };
 use ph2d_render::{Sprite, WHITE_TILE_KEY};
 
-use crate::App;
 use crate::physics_smoke_player::{slab, spawn_player};
 
 /// O vão da chaminé — o número da tabela do topo do módulo.
 const GAP: f32 = 0.6;
 
-impl App {
-    /// **A chaminé** — um vão estreito, e a janela em que o pulo passa por ele.
-    pub(crate) fn physics_smoke_chimney(&mut self) {
-        let gfx = self.gfx.as_mut().expect("gfx");
-        let world = gfx.sim.world_mut();
+/// **A chaminé** — um vão estreito, e a janela em que o pulo passa por ele.
+pub fn physics_smoke_chimney(ctx: &mut ph2d_app_physics::SceneCtx<'_>) {
+    let world = &mut *ctx.world;
 
+    slab(
+        world,
+        "Floor",
+        Vec2::new(0.0, -0.5),
+        [10.0, 0.5],
+        0.0,
+        [0.35, 0.35, 0.4, 1.0],
+    );
+    for (name, x) in [("WallL", -10.5), ("WallR", 10.5)] {
         slab(
             world,
-            "Floor",
-            Vec2::new(0.0, -0.5),
-            [10.0, 0.5],
+            name,
+            Vec2::new(x, 2.0),
+            [0.5, 2.5],
             0.0,
-            [0.35, 0.35, 0.4, 1.0],
+            [0.30, 0.30, 0.34, 1.0],
         );
-        for (name, x) in [("WallL", -10.5), ("WallR", 10.5)] {
-            slab(
-                world,
-                name,
-                Vec2::new(x, 2.0),
-                [0.5, 2.5],
-                0.0,
-                [0.30, 0.30, 0.34, 1.0],
-            );
-        }
-
-        // ⚠️ **A face de baixo em 2,2 é o que torna a cena julgável:** a cabeça
-        // do personagem em repouso está em 1,4 (`float 0,9` + meia-altura 0,5),
-        // então há 0,8 m de subida antes do vão — tempo de sobra para o sensor
-        // ver a quina — e um pulo de altura cheia (~2,1 m) atravessa a chaminé
-        // com folga. Uma laje mais alta faria o pulo cortado bater sem nunca
-        // chegar lá, e a cena mediria o `cut_gravity`.
-        let under = 2.2;
-        for (name, cx) in [
-            ("ShelfL", -(GAP * 0.5) - 4.0),
-            ("ShelfR", (GAP * 0.5) + 4.0),
-        ] {
-            slab(
-                world,
-                name,
-                Vec2::new(cx, under + 0.4),
-                [4.0, 0.4],
-                0.0,
-                [0.42, 0.36, 0.30, 1.0],
-            );
-        }
-        // O piso de cima — atravessar a chaminé tem de levar a algum lugar.
-        for (name, cx) in [("TopL", -6.0), ("TopR", 6.0)] {
-            slab(
-                world,
-                name,
-                Vec2::new(cx, 4.4),
-                [3.5, 0.4],
-                0.0,
-                [0.32, 0.44, 0.36, 1.0],
-            );
-        }
-
-        spawn_player(world, Vec2::new(0.0, 1.4));
-        eprintln!("{CHIMNEY_SMOKE_MESSAGE}");
     }
 
-    /// **O vagão** — pular parado sobre uma plataforma que anda.
-    pub(crate) fn physics_smoke_wagon(&mut self) {
-        let gfx = self.gfx.as_mut().expect("gfx");
-        let world = gfx.sim.world_mut();
-
-        // Um chão lá embaixo, só para o personagem não cair para sempre quando
-        // errar o pouso — que é exatamente o que a cena existe para mostrar.
+    // ⚠️ **A face de baixo em 2,2 é o que torna a cena julgável:** a cabeça
+    // do personagem em repouso está em 1,4 (`float 0,9` + meia-altura 0,5),
+    // então há 0,8 m de subida antes do vão — tempo de sobra para o sensor
+    // ver a quina — e um pulo de altura cheia (~2,1 m) atravessa a chaminé
+    // com folga. Uma laje mais alta faria o pulo cortado bater sem nunca
+    // chegar lá, e a cena mediria o `cut_gravity`.
+    let under = 2.2;
+    for (name, cx) in [
+        ("ShelfL", -(GAP * 0.5) - 4.0),
+        ("ShelfR", (GAP * 0.5) + 4.0),
+    ] {
         slab(
             world,
-            "Ground",
-            Vec2::new(0.0, -4.0),
-            [40.0, 0.5],
+            name,
+            Vec2::new(cx, under + 0.4),
+            [4.0, 0.4],
             0.0,
-            [0.35, 0.35, 0.4, 1.0],
+            [0.42, 0.36, 0.30, 1.0],
         );
-
-        // ⚠️ **O vagão é dinâmico com gravidade ZERO e massa 1000**, não
-        // cinemático: um corpo cinemático é dirigido por uma pose por tique (o
-        // `SceneAtTick` da timeline) e esta cena não tem curva nenhuma. Sem
-        // gravidade e sem arrasto ele viaja a velocidade constante, e a massa
-        // grande faz a reação do personagem (a 3ª lei, W6) não o desviar.
-        world.spawn((
-            Name::new("Wagon"),
-            Transform::from_translation(Vec2::new(-12.0, 0.0)),
-            Sprite::atlas(WHITE_TILE_KEY, [8.0, 0.6], [0.45, 0.40, 0.30, 1.0]),
-            RigidBody {
-                kind: BodyKind::Dynamic,
-            },
-            Collider {
-                shape: ColliderShape::Cuboid {
-                    half_x: 4.0,
-                    half_y: 0.3,
-                },
-                ..Collider::default()
-            },
-            LockRotation,
-            GravityScale(0.0),
-            MassOverride(1000.0),
-            MaterialCombine {
-                restitution: CombineRule::Average,
-                friction: CombineRule::Average,
-            },
-            InitialVelocity {
-                linvel: [3.0, 0.0],
-                angvel: 0.0,
-            },
-        ));
-
-        // Em cima do vagão, no meio dele.
-        spawn_player(world, Vec2::new(-12.0, 0.3 + 0.9));
-        eprintln!("{WAGON_SMOKE_MESSAGE}");
     }
+    // O piso de cima — atravessar a chaminé tem de levar a algum lugar.
+    for (name, cx) in [("TopL", -6.0), ("TopR", 6.0)] {
+        slab(
+            world,
+            name,
+            Vec2::new(cx, 4.4),
+            [3.5, 0.4],
+            0.0,
+            [0.32, 0.44, 0.36, 1.0],
+        );
+    }
+
+    spawn_player(world, Vec2::new(0.0, 1.4));
+    eprintln!("{CHIMNEY_SMOKE_MESSAGE}");
+}
+
+/// **O vagão** — pular parado sobre uma plataforma que anda.
+pub fn physics_smoke_wagon(ctx: &mut ph2d_app_physics::SceneCtx<'_>) {
+    let world = &mut *ctx.world;
+
+    // Um chão lá embaixo, só para o personagem não cair para sempre quando
+    // errar o pouso — que é exatamente o que a cena existe para mostrar.
+    slab(
+        world,
+        "Ground",
+        Vec2::new(0.0, -4.0),
+        [40.0, 0.5],
+        0.0,
+        [0.35, 0.35, 0.4, 1.0],
+    );
+
+    // ⚠️ **O vagão é dinâmico com gravidade ZERO e massa 1000**, não
+    // cinemático: um corpo cinemático é dirigido por uma pose por tique (o
+    // `SceneAtTick` da timeline) e esta cena não tem curva nenhuma. Sem
+    // gravidade e sem arrasto ele viaja a velocidade constante, e a massa
+    // grande faz a reação do personagem (a 3ª lei, W6) não o desviar.
+    world.spawn((
+        Name::new("Wagon"),
+        Transform::from_translation(Vec2::new(-12.0, 0.0)),
+        Sprite::atlas(WHITE_TILE_KEY, [8.0, 0.6], [0.45, 0.40, 0.30, 1.0]),
+        RigidBody {
+            kind: BodyKind::Dynamic,
+        },
+        Collider {
+            shape: ColliderShape::Cuboid {
+                half_x: 4.0,
+                half_y: 0.3,
+            },
+            ..Collider::default()
+        },
+        LockRotation,
+        GravityScale(0.0),
+        MassOverride(1000.0),
+        MaterialCombine {
+            restitution: CombineRule::Average,
+            friction: CombineRule::Average,
+        },
+        InitialVelocity {
+            linvel: [3.0, 0.0],
+            angvel: 0.0,
+        },
+    ));
+
+    // Em cima do vagão, no meio dele.
+    spawn_player(world, Vec2::new(-12.0, 0.3 + 0.9));
+    eprintln!("{WAGON_SMOKE_MESSAGE}");
 }
 
 /// O roteiro da cena 89 — o gesto é MIRAR, e o número é a largura da mira.

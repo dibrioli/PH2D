@@ -105,55 +105,50 @@ pub(crate) fn spawn_props(world: &mut World) {
     );
 }
 
-impl crate::App {
-    /// **Cena 55 (W-FK + W-JointTools).** Dois rigs, PAUSADA, painel aberto.
-    pub(crate) fn physics_smoke_fk(&mut self) {
-        let gfx = self.gfx.as_mut().expect("gfx");
-        spawn_props(gfx.sim.world_mut());
-        if let Some(hero) = gfx.hero_screen.as_mut() {
-            hero.panel_visibility.insert("physics", true);
-        }
-        // O modo NÃO é armado em código: o passo 1 é escolher no painel, e um
-        // smoke que arma o estado por baixo pula exatamente a costura que ele
-        // deveria provar.
+/// **Cena 55 (W-FK + W-JointTools).** Dois rigs, PAUSADA, painel aberto.
+pub fn physics_smoke_fk(ctx: &mut ph2d_app_physics::SceneCtx<'_>) {
+    spawn_props(ctx.world);
+    ctx.want.panels.push("physics");
+    // O modo NÃO é armado em código: o passo 1 é escolher no painel, e um
+    // smoke que arma o estado por baixo pula exatamente a costura que ele
+    // deveria provar.
 
-        eprintln!(
-            "[physics-smoke 55] A cena esta PAUSADA e o painel PHYSICS esta aberto (tecla W).\n  \
-               A secao JOINTS tem CINCO modos de arrastar uma cadeia. Compare-os na\n  \
-               mesma cena -- e o unico jeito de a lista fazer sentido.\n\n  \
-               1. Abra a secao JOINTS. O modo inicial e 'Body', que e o que o editor\n     \
-                  sempre fez. Aperte B para ver colliders e joints.\n  \
-               2. BODY: arraste a MAO (o elo da ponta do braco). So ela anda; o joint\n     \
-                  fica esticado, e voce VE isso pelo segmento ambar.\n  \
-               3. RIG: arraste a mesma mao. A cadeia INTEIRA acompanha -- inclusive o\n     \
-                  OMBRO claro, que e estatico. E o certo: voce esta mudando a parede\n     \
-                  de lugar junto com o braco.\n     \
-                  (medido: o conjunto carregado e UpperArm+Forearm+Hand+SHOULDER)\n  \
-               4. LINKS: arraste a mao de novo. Os elos moveis acompanham e o OMBRO\n     \
-                  FICA. E o modo de posar um braco sem arrancar o ombro da parede.\n     \
-                  (medido: o conjunto carregado e UpperArm+Forearm+Hand, sem o ombro)\n  \
-               5. Em QUALQUER modo, segure ALT e arraste: e sempre o rig inteiro. O\n     \
-                  atalho nao muda de significado com o modo -- inclusive em IK/FK, onde\n     \
-                  ele SUPRIME a pose (Alt quer dizer 'leve tudo', que e um arrasto).\n  \
-               6. IK: arraste a mao. O cotovelo e o ombro dobram ATRAS dela -- e a\n     \
-                  cinematica inversa (cena 54 tem a demonstracao completa).\n  \
-               7. FK: arraste a COXA da perna (o elo verde da direita). Ela gira em\n     \
-                  torno do QUADRIL e a canela laranja vai junto, rigidamente. Depois\n     \
-                  arraste a CANELA: ela gira em torno do JOELHO e a coxa nao se mexe.\n     \
-                  E isso que separa FK de IK: aqui voce autora UM angulo.\n     \
-                  (medido: girando a coxa 90 graus a canela viaja 2,12 m e a coxa\n      \
-                   0,71 m, com a distancia entre elas em 1,000 antes e depois -- a\n      \
-                   peca e rigida; girando a CANELA o conjunto movido e so ela)\n  \
-               8. FK + LIMITE: arraste a canela em volta do joelho, para todos os\n     \
-                  lados. A junta esta limitada a [0, 2] rad e NUNCA passa disso --\n     \
-                  uma pose que o Play desfaz no primeiro tick nao e uma pose.\n     \
-                  E ao voltar para dentro da faixa o elo volta AO CURSOR na hora.\n  \
-               9. Ctrl+Z: UM passo desfaz o arrasto INTEIRO, com todos os elos juntos.\n  \
-              10. Marque 'Physics' no transporte e de Play: os rigs caem a partir da\n     \
-                  pose que voce autorou. Posar nao simula -- ele prepara o que a\n     \
-                  simulacao usa."
-        );
-    }
+    eprintln!(
+        "[physics-smoke 55] A cena esta PAUSADA e o painel PHYSICS esta aberto (tecla W).\n  \
+           A secao JOINTS tem CINCO modos de arrastar uma cadeia. Compare-os na\n  \
+           mesma cena -- e o unico jeito de a lista fazer sentido.\n\n  \
+           1. Abra a secao JOINTS. O modo inicial e 'Body', que e o que o editor\n     \
+              sempre fez. Aperte B para ver colliders e joints.\n  \
+           2. BODY: arraste a MAO (o elo da ponta do braco). So ela anda; o joint\n     \
+              fica esticado, e voce VE isso pelo segmento ambar.\n  \
+           3. RIG: arraste a mesma mao. A cadeia INTEIRA acompanha -- inclusive o\n     \
+              OMBRO claro, que e estatico. E o certo: voce esta mudando a parede\n     \
+              de lugar junto com o braco.\n     \
+              (medido: o conjunto carregado e UpperArm+Forearm+Hand+SHOULDER)\n  \
+           4. LINKS: arraste a mao de novo. Os elos moveis acompanham e o OMBRO\n     \
+              FICA. E o modo de posar um braco sem arrancar o ombro da parede.\n     \
+              (medido: o conjunto carregado e UpperArm+Forearm+Hand, sem o ombro)\n  \
+           5. Em QUALQUER modo, segure ALT e arraste: e sempre o rig inteiro. O\n     \
+              atalho nao muda de significado com o modo -- inclusive em IK/FK, onde\n     \
+              ele SUPRIME a pose (Alt quer dizer 'leve tudo', que e um arrasto).\n  \
+           6. IK: arraste a mao. O cotovelo e o ombro dobram ATRAS dela -- e a\n     \
+              cinematica inversa (cena 54 tem a demonstracao completa).\n  \
+           7. FK: arraste a COXA da perna (o elo verde da direita). Ela gira em\n     \
+              torno do QUADRIL e a canela laranja vai junto, rigidamente. Depois\n     \
+              arraste a CANELA: ela gira em torno do JOELHO e a coxa nao se mexe.\n     \
+              E isso que separa FK de IK: aqui voce autora UM angulo.\n     \
+              (medido: girando a coxa 90 graus a canela viaja 2,12 m e a coxa\n      \
+               0,71 m, com a distancia entre elas em 1,000 antes e depois -- a\n      \
+               peca e rigida; girando a CANELA o conjunto movido e so ela)\n  \
+           8. FK + LIMITE: arraste a canela em volta do joelho, para todos os\n     \
+              lados. A junta esta limitada a [0, 2] rad e NUNCA passa disso --\n     \
+              uma pose que o Play desfaz no primeiro tick nao e uma pose.\n     \
+              E ao voltar para dentro da faixa o elo volta AO CURSOR na hora.\n  \
+           9. Ctrl+Z: UM passo desfaz o arrasto INTEIRO, com todos os elos juntos.\n  \
+          10. Marque 'Physics' no transporte e de Play: os rigs caem a partir da\n     \
+              pose que voce autorou. Posar nao simula -- ele prepara o que a\n     \
+              simulacao usa."
+    );
 }
 
 #[cfg(test)]

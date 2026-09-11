@@ -24,75 +24,71 @@
 
 use ph2d_core::Vec2;
 
-use crate::App;
 use crate::physics_smoke_player::{slab, spawn_player};
 
-impl App {
-    /// **A ladeira** — 40° de um lado, 50° do outro, o limite autorado no meio.
-    pub(crate) fn physics_smoke_slope(&mut self) {
-        let gfx = self.gfx.as_mut().expect("gfx");
-        let world = gfx.sim.world_mut();
+/// **A ladeira** — 40° de um lado, 50° do outro, o limite autorado no meio.
+pub fn physics_smoke_slope(ctx: &mut ph2d_app_physics::SceneCtx<'_>) {
+    let world = &mut *ctx.world;
 
+    slab(
+        world,
+        "Floor",
+        Vec2::new(0.0, -0.5),
+        [16.0, 0.5],
+        0.0,
+        [0.35, 0.35, 0.4, 1.0],
+    );
+    // ⚠️ **As duas paredes não são cenário: são o que impede a cena de
+    // terminar num personagem caindo para sempre**, que é metade do que
+    // torna a `=81` injulgável.
+    for (name, x) in [("WallL", -16.5), ("WallR", 16.5)] {
         slab(
             world,
-            "Floor",
-            Vec2::new(0.0, -0.5),
-            [16.0, 0.5],
+            name,
+            Vec2::new(x, 2.0),
+            [0.5, 2.5],
             0.0,
-            [0.35, 0.35, 0.4, 1.0],
+            [0.30, 0.30, 0.34, 1.0],
         );
-        // ⚠️ **As duas paredes não são cenário: são o que impede a cena de
-        // terminar num personagem caindo para sempre**, que é metade do que
-        // torna a `=81` injulgável.
-        for (name, x) in [("WallL", -16.5), ("WallR", 16.5)] {
-            slab(
-                world,
-                name,
-                Vec2::new(x, 2.0),
-                [0.5, 2.5],
-                0.0,
-                [0.30, 0.30, 0.34, 1.0],
-            );
-        }
-
-        // ── ESQUERDA: 40°, um grau abaixo do limite. SOBE. ───────────────────
-        // ⚠️ O SINAL da rotação decide de que lado a rampa sobe, e é ele que a
-        // `=81` errou. Negativo aqui: ela sobe indo para a ESQUERDA, que é o
-        // lado de onde o personagem chega.
-        slab(
-            world,
-            "Ramp40",
-            Vec2::new(-6.0, 1.1),
-            [3.0, 0.5],
-            -40.0_f32.to_radians(),
-            [0.30, 0.50, 0.35, 1.0],
-        );
-        // O patamar no alto — subir tem de levar a algum lugar. Ele encosta na
-        // ponta da rampa (`x = −8`) e na parede (`x = −16`), então o topo é um
-        // chão de verdade e não uma beirada.
-        slab(
-            world,
-            "Plateau",
-            Vec2::new(-12.0, 3.0),
-            [4.0, 0.41],
-            0.0,
-            [0.32, 0.44, 0.36, 1.0],
-        );
-
-        // ── DIREITA: 50°, um grau acima do limite. ESCORREGA. ────────────────
-        slab(
-            world,
-            "Ramp50",
-            Vec2::new(5.0, 1.2),
-            [3.0, 0.5],
-            50.0_f32.to_radians(),
-            [0.55, 0.32, 0.30, 1.0],
-        );
-
-        spawn_player(world, Vec2::new(0.0, 2.0));
-
-        eprintln!("{SLOPE_SMOKE_MESSAGE}");
     }
+
+    // ── ESQUERDA: 40°, um grau abaixo do limite. SOBE. ───────────────────
+    // ⚠️ O SINAL da rotação decide de que lado a rampa sobe, e é ele que a
+    // `=81` errou. Negativo aqui: ela sobe indo para a ESQUERDA, que é o
+    // lado de onde o personagem chega.
+    slab(
+        world,
+        "Ramp40",
+        Vec2::new(-6.0, 1.1),
+        [3.0, 0.5],
+        -40.0_f32.to_radians(),
+        [0.30, 0.50, 0.35, 1.0],
+    );
+    // O patamar no alto — subir tem de levar a algum lugar. Ele encosta na
+    // ponta da rampa (`x = −8`) e na parede (`x = −16`), então o topo é um
+    // chão de verdade e não uma beirada.
+    slab(
+        world,
+        "Plateau",
+        Vec2::new(-12.0, 3.0),
+        [4.0, 0.41],
+        0.0,
+        [0.32, 0.44, 0.36, 1.0],
+    );
+
+    // ── DIREITA: 50°, um grau acima do limite. ESCORREGA. ────────────────
+    slab(
+        world,
+        "Ramp50",
+        Vec2::new(5.0, 1.2),
+        [3.0, 0.5],
+        50.0_f32.to_radians(),
+        [0.55, 0.32, 0.30, 1.0],
+    );
+
+    spawn_player(world, Vec2::new(0.0, 2.0));
+
+    eprintln!("{SLOPE_SMOKE_MESSAGE}");
 }
 
 /// O roteiro da cena 88 — os dois lados são o mesmo número visto por fora.

@@ -4825,6 +4825,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-app-physics"
+version = "0.0.0"
+dependencies = [
+ "bevy_ecs",
+ "ph2d-core",
+ "ph2d-ecs",
+ "ph2d-physics-ecs",
+ "ph2d-render",
+]
+
+[[package]]
 name = "ph2d-app-registry-init"
 version = "0.0.0"
 dependencies = [
@@ -5439,6 +5450,7 @@ dependencies = [
  "ph2d-app-field3d",
  "ph2d-app-flip",
  "ph2d-app-host",
+ "ph2d-app-physics",
  "ph2d-app-registry-init",
  "ph2d-app-vec",
  "ph2d-aseprite",

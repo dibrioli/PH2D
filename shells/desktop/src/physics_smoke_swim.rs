@@ -271,69 +271,64 @@ pub(crate) fn build_swim_scene(world: &mut World) {
 #[path = "physics_smoke_swim_tests.rs"]
 mod tests;
 
-impl crate::App {
-    pub(crate) fn physics_smoke_swim(&mut self) {
-        let gfx = self.gfx.as_mut().expect("gfx");
-        build_swim_scene(gfx.sim.world_mut());
-        gfx.camera.center = CAMERA_CENTRE;
-        gfx.camera.height_world = CAMERA_HEIGHT;
-        if let Some(hero) = gfx.hero_screen.as_mut() {
-            hero.panel_visibility.insert("physics", true);
-        }
+pub fn physics_smoke_swim(ctx: &mut ph2d_app_physics::SceneCtx<'_>) {
+    build_swim_scene(ctx.world);
+    ctx.want.camera_center = Some(CAMERA_CENTRE);
+    ctx.want.camera_height_world = Some(CAMERA_HEIGHT);
+    ctx.want.panels.push("physics");
 
-        eprintln!(
-            "[physics-smoke 105] NADAR (W-Swim).\n  \
-               Tres capsulas IDENTICAS; o que muda e' UM knob e UM modo:\n    \
-                 AMBAR = swim_speed 0 (a capacidade nasce assim) -- a BOIA, o CONTROLE\n    \
-                 AZUL  = swim_speed {s:.1} m/s -- o NADADOR (corpo dinamico)\n    \
-                 VERDE = o mesmo nadador, corpo CINEMATICO\n  \
-               Os tres recebem a MESMA entrada: ha' um teclado, logo um dedo.\n\n  \
-               1. ATRAVESSE A POCA RASA (D). Os tres tem de CAMINHAR por ela, sem\n     \
-                  nadar. E' o LIMIAR: de pe' no cais o corpo le' buoyed = 0,68,\n     \
-                  abaixo do 1,0 que arma o regime. Se o azul comecar a nadar\n     \
-                  numa poca que da' pela canela, PARE -- e' o arco de todo salto\n     \
-                  sobre agua rasa que se perde junto.\n\n  \
-               2. CAIA NA POCA FUNDA (continue D ate' o fim do cais). Os tres\n     \
-                  entram; a partir dali eles deixam de fazer a mesma coisa.\n\n  \
-               3. SEGURE W (pulo) DENTRO D'AGUA. O azul E O VERDE SOBEM -- o botao\n     \
-                  virou BRACADA, e a especie do corpo nao e' uma pergunta que a\n     \
-                  agua faca. O ambar nao faz nada com ele.\n     \
-                  (!) E o azul NAO PULA: quem nada nao pula, e o coyote nao e'\n     \
-                  gasto por um pulo que nao houve.\n\n  \
-               4. SEGURE S (baixo). O azul MERGULHA ate' o fundo; o ambar continua\n     \
-                  a boiar. Medido, a altura media da segunda metade de seis\n     \
-                  segundos, largado submerso:\n       \
-                    AZUL   baixo {d:+.2} m · parado {i:+.2} · cima {u:+.2}\n       \
-                    AMBAR  {f:+.2} nas TRES -- os botoes sao mudos sem a capacidade\n     \
-                  (!) SOLTE TUDO: o azul volta a' SUPERFICIE e FICA la'. O repouso\n     \
-                  do nado e' a LINHA (o Swim Line da §14, em pesos), e o default\n     \
-                  1,0 e' a mesma altura em que o ambar boia -- 25% submerso nesta\n     \
-                  poca. Quanto fica submerso e' a razao entre as DUAS densidades\n     \
-                  (a do fluido na zona, a do corpo no collider): 2x da' 50%,\n     \
-                  1,25x da' 80%. Se o azul afundar e ficar no fundo parado, PARE.\n     \
-                  (!) MERGULHAR PEDE AUTORIDADE: nesta poca o empuxo liquido vale\n     \
-                  ~29,4 m/s^2, e o ponto de partida da lei e' 12 -- esta cena usa\n     \
-                  {a:.0}. Com 12 o azul so' subiria mais devagar, e isso e' a\n     \
-                  fisica da cena, nao um defeito.\n\n  \
-               5. A/D DENTRO D'AGUA. O azul nada de lado com o orcamento DELE; o\n     \
-                  ambar so' e' arrastado. A caminhada CALA na agua -- se o azul\n     \
-                  acelerasse como no chao, seriam dois servos no mesmo eixo.\n\n  \
-               6. NADE PARA FORA (W ate' passar do cais e depois D). Sair da agua\n     \
-                  larga a trava: fora dela ele volta a ser um personagem no ar.\n     \
-                  (!) Sair com o W apertado ENCHE o buffer do pulo -- se houver\n     \
-                  chao dentro de 0,1 s ele salta. E' o `hop out`, e e' o preco\n     \
-                  honesto de um botao com dois significados.\n\n  \
-               (!) O card SWIM esta' na §14 do Inspector (selecione o azul).\n      \
-                   Baixe o Swim Line para 0,3 e atravesse a poca rasa outra vez:\n      \
-                   agora ele NADA nela -- e la' dentro ele fica mais ALTO, porque\n      \
-                   o mesmo numero e' a porta E o repouso.\n\n  \
-               (!) Toque B para o contorno: as duas pocas ficam magenta (sensor).\n",
-            s = SWIM_SPEED,
-            a = SWIM_ACCEL,
-            d = DIVE_IDLE_RISE[0],
-            i = DIVE_IDLE_RISE[1],
-            u = DIVE_IDLE_RISE[2],
-            f = FLOATER_RISE,
-        );
-    }
+    eprintln!(
+        "[physics-smoke 105] NADAR (W-Swim).\n  \
+           Tres capsulas IDENTICAS; o que muda e' UM knob e UM modo:\n    \
+             AMBAR = swim_speed 0 (a capacidade nasce assim) -- a BOIA, o CONTROLE\n    \
+             AZUL  = swim_speed {s:.1} m/s -- o NADADOR (corpo dinamico)\n    \
+             VERDE = o mesmo nadador, corpo CINEMATICO\n  \
+           Os tres recebem a MESMA entrada: ha' um teclado, logo um dedo.\n\n  \
+           1. ATRAVESSE A POCA RASA (D). Os tres tem de CAMINHAR por ela, sem\n     \
+              nadar. E' o LIMIAR: de pe' no cais o corpo le' buoyed = 0,68,\n     \
+              abaixo do 1,0 que arma o regime. Se o azul comecar a nadar\n     \
+              numa poca que da' pela canela, PARE -- e' o arco de todo salto\n     \
+              sobre agua rasa que se perde junto.\n\n  \
+           2. CAIA NA POCA FUNDA (continue D ate' o fim do cais). Os tres\n     \
+              entram; a partir dali eles deixam de fazer a mesma coisa.\n\n  \
+           3. SEGURE W (pulo) DENTRO D'AGUA. O azul E O VERDE SOBEM -- o botao\n     \
+              virou BRACADA, e a especie do corpo nao e' uma pergunta que a\n     \
+              agua faca. O ambar nao faz nada com ele.\n     \
+              (!) E o azul NAO PULA: quem nada nao pula, e o coyote nao e'\n     \
+              gasto por um pulo que nao houve.\n\n  \
+           4. SEGURE S (baixo). O azul MERGULHA ate' o fundo; o ambar continua\n     \
+              a boiar. Medido, a altura media da segunda metade de seis\n     \
+              segundos, largado submerso:\n       \
+                AZUL   baixo {d:+.2} m · parado {i:+.2} · cima {u:+.2}\n       \
+                AMBAR  {f:+.2} nas TRES -- os botoes sao mudos sem a capacidade\n     \
+              (!) SOLTE TUDO: o azul volta a' SUPERFICIE e FICA la'. O repouso\n     \
+              do nado e' a LINHA (o Swim Line da §14, em pesos), e o default\n     \
+              1,0 e' a mesma altura em que o ambar boia -- 25% submerso nesta\n     \
+              poca. Quanto fica submerso e' a razao entre as DUAS densidades\n     \
+              (a do fluido na zona, a do corpo no collider): 2x da' 50%,\n     \
+              1,25x da' 80%. Se o azul afundar e ficar no fundo parado, PARE.\n     \
+              (!) MERGULHAR PEDE AUTORIDADE: nesta poca o empuxo liquido vale\n     \
+              ~29,4 m/s^2, e o ponto de partida da lei e' 12 -- esta cena usa\n     \
+              {a:.0}. Com 12 o azul so' subiria mais devagar, e isso e' a\n     \
+              fisica da cena, nao um defeito.\n\n  \
+           5. A/D DENTRO D'AGUA. O azul nada de lado com o orcamento DELE; o\n     \
+              ambar so' e' arrastado. A caminhada CALA na agua -- se o azul\n     \
+              acelerasse como no chao, seriam dois servos no mesmo eixo.\n\n  \
+           6. NADE PARA FORA (W ate' passar do cais e depois D). Sair da agua\n     \
+              larga a trava: fora dela ele volta a ser um personagem no ar.\n     \
+              (!) Sair com o W apertado ENCHE o buffer do pulo -- se houver\n     \
+              chao dentro de 0,1 s ele salta. E' o `hop out`, e e' o preco\n     \
+              honesto de um botao com dois significados.\n\n  \
+           (!) O card SWIM esta' na §14 do Inspector (selecione o azul).\n      \
+               Baixe o Swim Line para 0,3 e atravesse a poca rasa outra vez:\n      \
+               agora ele NADA nela -- e la' dentro ele fica mais ALTO, porque\n      \
+               o mesmo numero e' a porta E o repouso.\n\n  \
+           (!) Toque B para o contorno: as duas pocas ficam magenta (sensor).\n",
+        s = SWIM_SPEED,
+        a = SWIM_ACCEL,
+        d = DIVE_IDLE_RISE[0],
+        i = DIVE_IDLE_RISE[1],
+        u = DIVE_IDLE_RISE[2],
+        f = FLOATER_RISE,
+    );
 }

@@ -107,86 +107,81 @@ pub(crate) fn build_world_pin(world: &mut World) {
 #[path = "physics_smoke_world_pin_tests.rs"]
 mod tests;
 
-impl crate::App {
-    /// **Cena 65 (W-JointWorld).** Dois pêndulos idênticos; só o da esquerda
-    /// precisa de um objeto inventado para existir.
-    pub(crate) fn physics_smoke_world_pin(&mut self) {
-        let gfx = self.gfx.as_mut().expect("gfx");
-        build_world_pin(gfx.sim.world_mut());
-        gfx.camera.center = CAMERA_CENTRE;
-        gfx.camera.height_world = CAMERA_HEIGHT;
-        if let Some(hero) = gfx.hero_screen.as_mut() {
-            hero.panel_visibility.insert("physics", true);
-        }
+/// **Cena 65 (W-JointWorld).** Dois pêndulos idênticos; só o da esquerda
+/// precisa de um objeto inventado para existir.
+pub fn physics_smoke_world_pin(ctx: &mut ph2d_app_physics::SceneCtx<'_>) {
+    build_world_pin(ctx.world);
+    ctx.want.camera_center = Some(CAMERA_CENTRE);
+    ctx.want.camera_height_world = Some(CAMERA_HEIGHT);
+    ctx.want.panels.push("physics");
 
-        eprintln!(
-            "[physics-smoke 65] O PINO DE MUNDO -- prender algo ao cenario deixa de\n  \
-               custar um objeto inventado.\n  \
-               A cena nasce PARADA e o contorno JA ESTA LIGADO -- B o ALTERNA.\n\n  \
-               Os dois pendulos sao IGUAIS: mesmo corpo, mesma altura de ancora\n  \
-               ({anchor:.0} m), mesmo tipo (Pin), mesmo braco ({arm:.0} m). A diferenca esta\n  \
-               na HIERARQUIA, nao na fisica.\n\n  \
-               1. LARANJA (esquerda) -- o jeito ANTIGO. Para pendurar UMA bola foi\n     \
-                  preciso inventar 'Invented Hook': um corpo estatico que nao\n     \
-                  representa nada, existe so para o joint ter uma segunda ponta, e\n     \
-                  fica na Hierarquia para sempre podendo ser movido por acidente.\n  \
-               2. VERDE (direita) -- o PINO DE MUNDO. Na Hierarquia ha 'New Bob' e\n     \
-                  'Wall Pin', e mais nada. A ancora e o proprio joint.\n\n  \
-               3. E AGORA OLHE AS DUAS ANCORAS DE CIMA (W-WorldPinGlyph). O pino de\n     \
-                  MUNDO tem a HACHURA DE CHAO -- a barrinha com riscos atravessados,\n     \
-                  a notacao de apoio fixo dos diagramas de mecanismo. O laranja NAO\n     \
-                  tem: ele tem a linha TRACEJADA de posse indo ate o gancho\n     \
-                  inventado, porque do lado dele ha um corpo.\n     \
-                  (!) Ate esta wave os DOIS desenhavam a MESMA figura, byte a byte:\n     \
-                  o lado do mundo era dito por uma AUSENCIA -- a tracejada tinha\n     \
-                  comprimento zero e nao pintava -- e ausencia e' ambigua.\n     \
-                  (!) A hachura desce pela GRAVIDADE, nao pelo eixo da tela. Abra o\n     \
-                  painel Physics (tecla W) e ponha a gravidade DE LADO: ela vira\n     \
-                  junto, porque chao e' o lado para onde as coisas caem.\n\n  \
-               Os dois balancam IGUAL ({swing:.3} m de percurso em 2 s, os DOIS): o\n  \
-               pino de mundo e um pivo de verdade, nao um corpo congelado.\n\n  \
-               AUTORE VOCE MESMO: selecione 'Wall Pin' na Hierarquia. Na secao Joint,\n  \
-               a row 'Body B' diz **World** (nao '(missing)') e NAO tem conta-gotas --\n  \
-               nao ha corpo a apontar. Logo abaixo, 'Anchor B' mostra [Object | World].\n  \
-               - clique 'Object': o pino perde o mundo, 'Body B' volta a '(missing)' e\n    \
-                 o conta-gotas REAPARECE. No Play a bola VERDE cai.\n  \
-               - clique 'World' de novo: ela volta a pender.\n  \
-               - com o pino selecionado, ha DUAS alcas no MESMO ponto -- um pino\n    \
-                 satisfeito tem prego e ponto-de-corpo no mesmo lugar, e o que as\n    \
-                 mantem sendo duas e' o miolo contra a BANDA de fora do anel\n    \
-                 (W-WorldPinLocal):\n    \
-                 . o ANEL (a banda de fora) e' o PREGO. Arraste: a ancora anda e a\n      \
-                   bola vai junto. Ctrl+Z desfaz em UM passo.\n    \
-                 . o DOT (o miolo) e' ONDE NO CORPO o pino prende. Arraste ao longo\n      \
-                   da barra: o prego fica, e no Play a bola pende de OUTRO ponto\n      \
-                   dela. Ate esta wave esse numero nao tinha porta nenhuma -- nem\n      \
-                   alca, nem row -- e era inalcancavel depois da criacao.\n    \
-                 (!) O gesto do PREGO mudou de alca: era o dot, e ele nem seguia o\n      \
-                   mouse (a porta lia o ponto do corpo e escrevia o prego).\n  \
-               - e faca o mesmo em 'Old Pin' (o laranja): clicar 'World' ali\n    \
-                 ABANDONA o gancho inventado -- e ai da para apagar o objeto.\n\n  \
-               DESENHE UM NO CANVAS: na secao Physics Body de qualquer corpo, 'Join\n  \
-               As' escolhe o tipo e 'Draw Joint on Canvas' arma o gesto. Ele vale nas\n  \
-               DUAS direcoes, e as duas produzem o MESMO pino:\n  \
-               - aperte SOBRE o corpo e solte no VAZIO;\n  \
-               - ou aperte no VAZIO (o prego na parede) e solte SOBRE o corpo.\n  \
-               O vazio E o mundo, e a ancora nasce no ponto do CENARIO -- nao onde a\n  \
-               mao terminou. (Ate esta wave as duas eram RECUSA: so dava para ligar\n  \
-               objeto a objeto.)\n  \
-               - e ARRASTE O DOT AMBAR do pino: a ancora anda, e o corpo vai junto.\n    \
-                 (Ela tambem nao se movia -- o arrasto escrevia onde no CORPO o pino\n    \
-                 prende, e o desenho ficava parado.)\n  \
-               - um Pin nasce SEM TRANCO: o corpo fica onde estava, e passa a pender\n    \
-                 do ponto que voce apontou.\n  \
-               - uma Spring/Rope prende ONDE voce apertou no corpo, e o arrasto mede o\n    \
-                 comprimento de repouso.\n  \
-               - a POLIA e recusada, com o porque: a corda puxa as DUAS pontas.\n\n  \
-               (!) SCRUB: toque Play, deixe correr, edite qualquer numero do pino e\n     \
-               arraste a regua PARA TRAS. A bola verde tem de continuar pendurada. Se\n     \
-               ela cair, o replay correu sem a ancora -- e a licao do Weston.\n",
-            anchor = ANCHOR_Y,
-            arm = ARM,
-            swing = MEASURED_SWING,
-        );
-    }
+    eprintln!(
+        "[physics-smoke 65] O PINO DE MUNDO -- prender algo ao cenario deixa de\n  \
+           custar um objeto inventado.\n  \
+           A cena nasce PARADA e o contorno JA ESTA LIGADO -- B o ALTERNA.\n\n  \
+           Os dois pendulos sao IGUAIS: mesmo corpo, mesma altura de ancora\n  \
+           ({anchor:.0} m), mesmo tipo (Pin), mesmo braco ({arm:.0} m). A diferenca esta\n  \
+           na HIERARQUIA, nao na fisica.\n\n  \
+           1. LARANJA (esquerda) -- o jeito ANTIGO. Para pendurar UMA bola foi\n     \
+              preciso inventar 'Invented Hook': um corpo estatico que nao\n     \
+              representa nada, existe so para o joint ter uma segunda ponta, e\n     \
+              fica na Hierarquia para sempre podendo ser movido por acidente.\n  \
+           2. VERDE (direita) -- o PINO DE MUNDO. Na Hierarquia ha 'New Bob' e\n     \
+              'Wall Pin', e mais nada. A ancora e o proprio joint.\n\n  \
+           3. E AGORA OLHE AS DUAS ANCORAS DE CIMA (W-WorldPinGlyph). O pino de\n     \
+              MUNDO tem a HACHURA DE CHAO -- a barrinha com riscos atravessados,\n     \
+              a notacao de apoio fixo dos diagramas de mecanismo. O laranja NAO\n     \
+              tem: ele tem a linha TRACEJADA de posse indo ate o gancho\n     \
+              inventado, porque do lado dele ha um corpo.\n     \
+              (!) Ate esta wave os DOIS desenhavam a MESMA figura, byte a byte:\n     \
+              o lado do mundo era dito por uma AUSENCIA -- a tracejada tinha\n     \
+              comprimento zero e nao pintava -- e ausencia e' ambigua.\n     \
+              (!) A hachura desce pela GRAVIDADE, nao pelo eixo da tela. Abra o\n     \
+              painel Physics (tecla W) e ponha a gravidade DE LADO: ela vira\n     \
+              junto, porque chao e' o lado para onde as coisas caem.\n\n  \
+           Os dois balancam IGUAL ({swing:.3} m de percurso em 2 s, os DOIS): o\n  \
+           pino de mundo e um pivo de verdade, nao um corpo congelado.\n\n  \
+           AUTORE VOCE MESMO: selecione 'Wall Pin' na Hierarquia. Na secao Joint,\n  \
+           a row 'Body B' diz **World** (nao '(missing)') e NAO tem conta-gotas --\n  \
+           nao ha corpo a apontar. Logo abaixo, 'Anchor B' mostra [Object | World].\n  \
+           - clique 'Object': o pino perde o mundo, 'Body B' volta a '(missing)' e\n    \
+             o conta-gotas REAPARECE. No Play a bola VERDE cai.\n  \
+           - clique 'World' de novo: ela volta a pender.\n  \
+           - com o pino selecionado, ha DUAS alcas no MESMO ponto -- um pino\n    \
+             satisfeito tem prego e ponto-de-corpo no mesmo lugar, e o que as\n    \
+             mantem sendo duas e' o miolo contra a BANDA de fora do anel\n    \
+             (W-WorldPinLocal):\n    \
+             . o ANEL (a banda de fora) e' o PREGO. Arraste: a ancora anda e a\n      \
+               bola vai junto. Ctrl+Z desfaz em UM passo.\n    \
+             . o DOT (o miolo) e' ONDE NO CORPO o pino prende. Arraste ao longo\n      \
+               da barra: o prego fica, e no Play a bola pende de OUTRO ponto\n      \
+               dela. Ate esta wave esse numero nao tinha porta nenhuma -- nem\n      \
+               alca, nem row -- e era inalcancavel depois da criacao.\n    \
+             (!) O gesto do PREGO mudou de alca: era o dot, e ele nem seguia o\n      \
+               mouse (a porta lia o ponto do corpo e escrevia o prego).\n  \
+           - e faca o mesmo em 'Old Pin' (o laranja): clicar 'World' ali\n    \
+             ABANDONA o gancho inventado -- e ai da para apagar o objeto.\n\n  \
+           DESENHE UM NO CANVAS: na secao Physics Body de qualquer corpo, 'Join\n  \
+           As' escolhe o tipo e 'Draw Joint on Canvas' arma o gesto. Ele vale nas\n  \
+           DUAS direcoes, e as duas produzem o MESMO pino:\n  \
+           - aperte SOBRE o corpo e solte no VAZIO;\n  \
+           - ou aperte no VAZIO (o prego na parede) e solte SOBRE o corpo.\n  \
+           O vazio E o mundo, e a ancora nasce no ponto do CENARIO -- nao onde a\n  \
+           mao terminou. (Ate esta wave as duas eram RECUSA: so dava para ligar\n  \
+           objeto a objeto.)\n  \
+           - e ARRASTE O DOT AMBAR do pino: a ancora anda, e o corpo vai junto.\n    \
+             (Ela tambem nao se movia -- o arrasto escrevia onde no CORPO o pino\n    \
+             prende, e o desenho ficava parado.)\n  \
+           - um Pin nasce SEM TRANCO: o corpo fica onde estava, e passa a pender\n    \
+             do ponto que voce apontou.\n  \
+           - uma Spring/Rope prende ONDE voce apertou no corpo, e o arrasto mede o\n    \
+             comprimento de repouso.\n  \
+           - a POLIA e recusada, com o porque: a corda puxa as DUAS pontas.\n\n  \
+           (!) SCRUB: toque Play, deixe correr, edite qualquer numero do pino e\n     \
+           arraste a regua PARA TRAS. A bola verde tem de continuar pendurada. Se\n     \
+           ela cair, o replay correu sem a ancora -- e a licao do Weston.\n",
+        anchor = ANCHOR_Y,
+        arm = ARM,
+        swing = MEASURED_SWING,
+    );
 }

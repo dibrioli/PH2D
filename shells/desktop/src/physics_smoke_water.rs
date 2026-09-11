@@ -190,55 +190,50 @@ pub(crate) fn build_water_scene(world: &mut World) {
 #[path = "physics_smoke_water_tests.rs"]
 mod tests;
 
-impl crate::App {
-    pub(crate) fn physics_smoke_water(&mut self) {
-        let gfx = self.gfx.as_mut().expect("gfx");
-        build_water_scene(gfx.sim.world_mut());
-        gfx.camera.center = CAMERA_CENTRE;
-        gfx.camera.height_world = CAMERA_HEIGHT;
-        if let Some(hero) = gfx.hero_screen.as_mut() {
-            hero.panel_visibility.insert("physics", true);
-        }
+pub fn physics_smoke_water(ctx: &mut ph2d_app_physics::SceneCtx<'_>) {
+    build_water_scene(ctx.world);
+    ctx.want.camera_center = Some(CAMERA_CENTRE);
+    ctx.want.camera_height_world = Some(CAMERA_HEIGHT);
+    ctx.want.panels.push("physics");
 
-        eprintln!(
-            "[physics-smoke 100] O PERSONAGEM E A AGUA -- quatro reports numa cena so'.\n  \
-               Um cais solido a esquerda, uma poca a direita, uma jangada a boiar, e uma\n  \
-               CAPSULA VERDE que e' o CONTROLE: mesma forma e mesma densidade do\n  \
-               personagem, sem o componente de player. Ela boia em {line:.3}.\n\n  \
-               1. A AGUA NAO E' CHAO (W-Water). Ande para a DIREITA (D) e caia na poca.\n     \
-                  Ele tem de MOLHAR O PE'. O QUE ESTAVA QUEBRADO: ele ficava DE PE' sobre\n     \
-                  a superficie, em 0,903 -- a altura de flutuacao exacta acima da agua --\n     \
-                  e a correnteza nao o movia um milimetro. O sensor de chao tratava um\n     \
-                  SENSOR como pedra, e o mesmo raio serve o teto e a parede: ele tambem\n     \
-                  batia a cabeca num volume de gatilho (0,17 m de desvio, medido).\n\n  \
-               1b. E A AGUA NAO O ALIMENTA (W-Submerged). Depois de cair, PULE dentro\n     \
-                   da poca varias vezes e olhe a capsula VERDE ao lado: os dois tem de\n     \
-                   assentar na MESMA linha ({y0:.3} contra {line:.3}, medido) e a\n     \
-                   oscilacao tem de DECAIR. O QUE ESTAVA QUEBRADO: ele bombeava --\n     \
-                   -1,05 / +4,71 / +12,08 / -20,31 -- e saia de quadro. A modelagem do\n     \
-                   arco de um pulo sobe com g e desce com 2g, o que devolve o corpo ao\n     \
-                   mesmo nivel com raiz-de-2 da velocidade; sobre chao isso e' absorvido,\n     \
-                   sobre AGUA acumula. Hoje ela CALA enquanto o fluido o tiver, e so\n     \
-                   re-arma quando ele pousa em algo solido.\n\n  \
-               2. A JANGADA NAO SOBE AO SEU ENCONTRO (W-ClingPull). Reset, e pule (Espaco)\n     \
-                  do cais para a jangada. No primeiro toque ela tem de ir para BAIXO.\n     \
-                  O QUE ESTAVA QUEBRADO: ela SUBIA 96,90 mm ao encontro dele antes de\n     \
-                  descer, porque a metade esticada da perna PUXA -- e a 3a lei transmitia\n     \
-                  a puxada. Hoje: {rise:.2} mm.\n\n  \
-               3. O POUSO NAO ESCORREGA (W-Landing). Pule no cais e olhe a aterragem: ela\n     \
-                  tem de PARAR, nao derrapar. Do toque ao repouso: {land:.3} s.\n     \
-                  O QUE ESTAVA QUEBRADO: 0,500 s, e o perfil era um decaimento -- ele se\n     \
-                  aproximava do chao para sempre sem chegar.\n\n  \
-               (!) A rigidez da perna passou de 400 para 2000, e o teto MEDIDO e' 3600\n      \
-                   (= 1/dt^2): acima dele a mola passa do alvo e o personagem afunda e\n      \
-                   range. Experimente no Inspector -- 1200 da' 0,217 s, 3600 da' 0,033 s\n      \
-                   -- e repare que a DERIVA de rampa fica em zero em toda a faixa.\n\n  \
-               (!) Toque B para o contorno. A poca e' magenta (sensor) e o personagem\n      \
-                   ciano (dinamico); a capsula verde nao tem perna nenhuma.\n",
-            line = WATERLINE,
-            y0 = MEASURED[0],
-            rise = MEASURED[1],
-            land = MEASURED[2],
-        );
-    }
+    eprintln!(
+        "[physics-smoke 100] O PERSONAGEM E A AGUA -- quatro reports numa cena so'.\n  \
+           Um cais solido a esquerda, uma poca a direita, uma jangada a boiar, e uma\n  \
+           CAPSULA VERDE que e' o CONTROLE: mesma forma e mesma densidade do\n  \
+           personagem, sem o componente de player. Ela boia em {line:.3}.\n\n  \
+           1. A AGUA NAO E' CHAO (W-Water). Ande para a DIREITA (D) e caia na poca.\n     \
+              Ele tem de MOLHAR O PE'. O QUE ESTAVA QUEBRADO: ele ficava DE PE' sobre\n     \
+              a superficie, em 0,903 -- a altura de flutuacao exacta acima da agua --\n     \
+              e a correnteza nao o movia um milimetro. O sensor de chao tratava um\n     \
+              SENSOR como pedra, e o mesmo raio serve o teto e a parede: ele tambem\n     \
+              batia a cabeca num volume de gatilho (0,17 m de desvio, medido).\n\n  \
+           1b. E A AGUA NAO O ALIMENTA (W-Submerged). Depois de cair, PULE dentro\n     \
+               da poca varias vezes e olhe a capsula VERDE ao lado: os dois tem de\n     \
+               assentar na MESMA linha ({y0:.3} contra {line:.3}, medido) e a\n     \
+               oscilacao tem de DECAIR. O QUE ESTAVA QUEBRADO: ele bombeava --\n     \
+               -1,05 / +4,71 / +12,08 / -20,31 -- e saia de quadro. A modelagem do\n     \
+               arco de um pulo sobe com g e desce com 2g, o que devolve o corpo ao\n     \
+               mesmo nivel com raiz-de-2 da velocidade; sobre chao isso e' absorvido,\n     \
+               sobre AGUA acumula. Hoje ela CALA enquanto o fluido o tiver, e so\n     \
+               re-arma quando ele pousa em algo solido.\n\n  \
+           2. A JANGADA NAO SOBE AO SEU ENCONTRO (W-ClingPull). Reset, e pule (Espaco)\n     \
+              do cais para a jangada. No primeiro toque ela tem de ir para BAIXO.\n     \
+              O QUE ESTAVA QUEBRADO: ela SUBIA 96,90 mm ao encontro dele antes de\n     \
+              descer, porque a metade esticada da perna PUXA -- e a 3a lei transmitia\n     \
+              a puxada. Hoje: {rise:.2} mm.\n\n  \
+           3. O POUSO NAO ESCORREGA (W-Landing). Pule no cais e olhe a aterragem: ela\n     \
+              tem de PARAR, nao derrapar. Do toque ao repouso: {land:.3} s.\n     \
+              O QUE ESTAVA QUEBRADO: 0,500 s, e o perfil era um decaimento -- ele se\n     \
+              aproximava do chao para sempre sem chegar.\n\n  \
+           (!) A rigidez da perna passou de 400 para 2000, e o teto MEDIDO e' 3600\n      \
+               (= 1/dt^2): acima dele a mola passa do alvo e o personagem afunda e\n      \
+               range. Experimente no Inspector -- 1200 da' 0,217 s, 3600 da' 0,033 s\n      \
+               -- e repare que a DERIVA de rampa fica em zero em toda a faixa.\n\n  \
+           (!) Toque B para o contorno. A poca e' magenta (sensor) e o personagem\n      \
+               ciano (dinamico); a capsula verde nao tem perna nenhuma.\n",
+        line = WATERLINE,
+        y0 = MEASURED[0],
+        rise = MEASURED[1],
+        land = MEASURED[2],
+    );
 }

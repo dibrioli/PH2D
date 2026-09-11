@@ -139,57 +139,52 @@ pub(crate) fn build_characters(world: &mut World) {
 #[path = "physics_smoke_foot_tests.rs"]
 mod tests;
 
-impl crate::App {
-    /// **Cena 71 (W-PartSensor).** O sensor de pé responde *"estou no chão?"*.
-    pub(crate) fn physics_smoke_foot(&mut self) {
-        let gfx = self.gfx.as_mut().expect("gfx");
-        build_characters(gfx.sim.world_mut());
-        gfx.camera.center = CAMERA_CENTRE;
-        gfx.camera.height_world = CAMERA_HEIGHT;
-        // ⚠️ O contorno NÃO é armado aqui: `show_colliders` já nasce `true` no
-        // `App`, e uma linha que reafirma um default é uma linha que ninguém
-        // consegue distinguir de uma que faz algo.
-        if let Some(hero) = gfx.hero_screen.as_mut() {
-            hero.panel_visibility.insert("physics", true);
-        }
+/// **Cena 71 (W-PartSensor).** O sensor de pé responde *"estou no chão?"*.
+pub fn physics_smoke_foot(ctx: &mut ph2d_app_physics::SceneCtx<'_>) {
+    build_characters(ctx.world);
+    ctx.want.camera_center = Some(CAMERA_CENTRE);
+    ctx.want.camera_height_world = Some(CAMERA_HEIGHT);
+    // ⚠️ O contorno NÃO é armado aqui: `show_colliders` já nasce `true` no
+    // `App`, e uma linha que reafirma um default é uma linha que ninguém
+    // consegue distinguir de uma que faz algo.
+    ctx.want.panels.push("physics");
 
-        eprintln!(
-            "[physics-smoke 71] O SENSOR DE PE -- ser sensor e' propriedade da FORMA,\n  \
-               nunca do corpo. Tres personagens IDENTICOS: tronco SOLIDO (o corpo) e um\n  \
-               pe' marcado **Sensor** (uma PECA, um filho com `Collider` e sem\n  \
-               `RigidBody`). E' o isGrounded de Box2D e Unity.\n\n  \
-               (!) O CONTORNO E' O ORACULO (ele ja' vem ligado; tecla B alterna).\n      \
-                   Magenta APAGADO = nada dentro. Magenta VIVO = disparado.\n\n  \
-               1. Toque Play e olhe os pes:\n     \
-                  - ESQUERDA ('{n0}') ja' esta' no chao -- o pe' acende e FICA.\n     \
-                  - MEIO ('{n1}') paira (GravityScale 0) -- o pe' NUNCA acende. E' o\n       \
-                    CONTROLE: sem ele a cena nao distinguiria \"o sensor dispara\" de\n       \
-                    \"todo pe' fica aceso\".\n     \
-                  - DIREITA ('{n2}') cai de {drop:.1} m -- o pe' acende NO INSTANTE em\n       \
-                    que encosta. E' a transicao, e ela e' o que um jogo consome.\n\n  \
-               2. O TRONCO NAO ACENDE, e isso e' a wave. Marcar uma peca como sensor nao\n     \
-                  pode transformar o corpo inteiro num gatilho; quem acende e' a FORMA\n     \
-                  que o artista marcou.\n\n  \
-               3. O PE ATRAVESSA. Repare que os tres troncos assentam na MESMA altura,\n     \
-                  apoiados no proprio collider: um pe' sensor nao escora nada. Selecione\n     \
-                  '{n0} Foot' e troque o chip para **Solid** -- na hora ele vira apoio e\n     \
-                  o tronco sobe {lift:.2} m.\n\n  \
-               === O que estava quebrado ===\n  \
-               O chip SEMPRE chegou ao solver: medido, o tronco assenta em 1,6990 com o\n  \
-               pe' solido e em 1,4990 com o pe' sensor -- a peca de fato atravessava. O\n  \
-               que nao chegava era o CANAL: o par reportado pelo solver era\n  \
-               (tronco, chao), e o codigo perguntava se o collider PROPRIO do tronco era\n  \
-               sensor -- nao e'. A sobreposicao era descartada, `triggered_sensors()`\n  \
-               voltava VAZIO, e como o contorno e' o unico consumidor deste canal o pe'\n  \
-               ficava apagado PARA SEMPRE.\n\n  \
-               A premissa estava escrita no proprio doc do wrapper: \"each body owns one\n  \
-               collider, so the pair is reported by body handle\". Era verdade ate a\n  \
-               W-Compound, e ninguem reconferiu a nota.\n",
-            n0 = LANE_NAMES[0],
-            n1 = LANE_NAMES[1],
-            n2 = LANE_NAMES[2],
-            drop = SPAWN_Y[2],
-            lift = (FOOT_HALF[1] * 2.0),
-        );
-    }
+    eprintln!(
+        "[physics-smoke 71] O SENSOR DE PE -- ser sensor e' propriedade da FORMA,\n  \
+           nunca do corpo. Tres personagens IDENTICOS: tronco SOLIDO (o corpo) e um\n  \
+           pe' marcado **Sensor** (uma PECA, um filho com `Collider` e sem\n  \
+           `RigidBody`). E' o isGrounded de Box2D e Unity.\n\n  \
+           (!) O CONTORNO E' O ORACULO (ele ja' vem ligado; tecla B alterna).\n      \
+               Magenta APAGADO = nada dentro. Magenta VIVO = disparado.\n\n  \
+           1. Toque Play e olhe os pes:\n     \
+              - ESQUERDA ('{n0}') ja' esta' no chao -- o pe' acende e FICA.\n     \
+              - MEIO ('{n1}') paira (GravityScale 0) -- o pe' NUNCA acende. E' o\n       \
+                CONTROLE: sem ele a cena nao distinguiria \"o sensor dispara\" de\n       \
+                \"todo pe' fica aceso\".\n     \
+              - DIREITA ('{n2}') cai de {drop:.1} m -- o pe' acende NO INSTANTE em\n       \
+                que encosta. E' a transicao, e ela e' o que um jogo consome.\n\n  \
+           2. O TRONCO NAO ACENDE, e isso e' a wave. Marcar uma peca como sensor nao\n     \
+              pode transformar o corpo inteiro num gatilho; quem acende e' a FORMA\n     \
+              que o artista marcou.\n\n  \
+           3. O PE ATRAVESSA. Repare que os tres troncos assentam na MESMA altura,\n     \
+              apoiados no proprio collider: um pe' sensor nao escora nada. Selecione\n     \
+              '{n0} Foot' e troque o chip para **Solid** -- na hora ele vira apoio e\n     \
+              o tronco sobe {lift:.2} m.\n\n  \
+           === O que estava quebrado ===\n  \
+           O chip SEMPRE chegou ao solver: medido, o tronco assenta em 1,6990 com o\n  \
+           pe' solido e em 1,4990 com o pe' sensor -- a peca de fato atravessava. O\n  \
+           que nao chegava era o CANAL: o par reportado pelo solver era\n  \
+           (tronco, chao), e o codigo perguntava se o collider PROPRIO do tronco era\n  \
+           sensor -- nao e'. A sobreposicao era descartada, `triggered_sensors()`\n  \
+           voltava VAZIO, e como o contorno e' o unico consumidor deste canal o pe'\n  \
+           ficava apagado PARA SEMPRE.\n\n  \
+           A premissa estava escrita no proprio doc do wrapper: \"each body owns one\n  \
+           collider, so the pair is reported by body handle\". Era verdade ate a\n  \
+           W-Compound, e ninguem reconferiu a nota.\n",
+        n0 = LANE_NAMES[0],
+        n1 = LANE_NAMES[1],
+        n2 = LANE_NAMES[2],
+        drop = SPAWN_Y[2],
+        lift = (FOOT_HALF[1] * 2.0),
+    );
 }

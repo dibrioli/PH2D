@@ -108,53 +108,48 @@ pub(crate) fn build_signal_scene(world: &mut World) {
 #[path = "physics_smoke_signal_tests.rs"]
 mod tests;
 
-impl crate::App {
-    /// **Cena 73 (W-Signal).** Uma colisão CAUSA alguma coisa.
-    pub(crate) fn physics_smoke_signal(&mut self) {
-        let gfx = self.gfx.as_mut().expect("gfx");
-        build_signal_scene(gfx.sim.world_mut());
-        gfx.camera.center = CAMERA_CENTRE;
-        gfx.camera.height_world = CAMERA_HEIGHT;
-        if let Some(hero) = gfx.hero_screen.as_mut() {
-            hero.panel_visibility.insert("physics", true);
-        }
+/// **Cena 73 (W-Signal).** Uma colisão CAUSA alguma coisa.
+pub fn physics_smoke_signal(ctx: &mut ph2d_app_physics::SceneCtx<'_>) {
+    build_signal_scene(ctx.world);
+    ctx.want.camera_center = Some(CAMERA_CENTRE);
+    ctx.want.camera_height_world = Some(CAMERA_HEIGHT);
+    ctx.want.panels.push("physics");
 
-        eprintln!(
-            "[physics-smoke 73] A PORTA -- a primeira cena em que uma COLISAO faz\n  \
-               alguma coisa acontecer.\n\n  \
-               Ate esta wave a fisica publicava QUATRO canais de leitura (quem esta'\n  \
-               dentro de um sensor, quem toca quem, as transicoes, o pico do impacto),\n  \
-               todos gateados, e nenhum deles fazia nada. Faltava o publicador -- nao o\n  \
-               consumidor: o outbox e' o MESMO em que a timeline emite os sinais dos\n  \
-               markers, e o consumidor v1 dele e' um TOAST.\n\n  \
-               1. Toque Play e olhe o canto superior: tres bolas iguais caem de {drop:.0} m.\n     \
-                  - ESQUERDA '{n0}' -- um SENSOR marcado. A bola ATRAVESSA e sobe um\n       \
-                    toast 'Signal: door'. Um sensor nunca gera contato, entao um canal\n       \
-                    so' de colisao solida deixaria a porta -- o caso canonico de\n       \
-                    gameplay -- em silencio.\n     \
-                  - MEIO '{n1}' -- um corpo SOLIDO marcado. A bola BATE e sobe\n       \
-                    'Signal: bell'.\n     \
-                  - DIREITA '{n2}' -- a MESMA plataforma, SEM o componente. Nada sobe,\n       \
-                    e ela e' o CONTROLE: sem ela a cena nao distingue *o sinal\n       \
-                    disparou* de *tudo dispara*.\n\n  \
-               2. UMA vez, nao uma por quadro. A bola do sino fica encostada nele e o\n     \
-                  toast NAO se repete -- o canal reporta a CHEGADA, nao o estado. Um som\n     \
-                  que toca sessenta vezes por segundo nao e' um som.\n\n  \
-               3. AUTORE VOCE MESMO: selecione '{n2}' (a plataforma quieta) na\n     \
-                  Hierarquia. Na secao Physics Body, a ultima row e' um campo de texto\n     \
-                  'Signal on hit...'. Escreva 'quiet' e de Play de novo: agora ela\n     \
-                  grita tambem. Apague o texto e ela volta a calar -- um nome em BRANCO\n     \
-                  nao e' um sinal (a mesma regra do marker da timeline: um sinal sem\n     \
-                  nome nao e' um contrato que alguem possa casar).\n\n  \
-               (!) Arraste a regua para TRAS: nada dispara. Um evento descreve uma\n      \
-                   transicao que a simulacao ATRAVESSOU, e um scrub nao e' uma chegada.\n\n  \
-               (!) O toast e' o consumidor v1, e de proposito: ele e' a prova visivel de\n      \
-                   que o canal desacoplado fecha a volta. Um script Luau ou uma pista de\n      \
-                   audio ouvindo o MESMO nome nao muda uma linha da fisica.\n",
-            drop = DROP_Y,
-            n0 = LANE_NAMES[0],
-            n1 = LANE_NAMES[1],
-            n2 = LANE_NAMES[2],
-        );
-    }
+    eprintln!(
+        "[physics-smoke 73] A PORTA -- a primeira cena em que uma COLISAO faz\n  \
+           alguma coisa acontecer.\n\n  \
+           Ate esta wave a fisica publicava QUATRO canais de leitura (quem esta'\n  \
+           dentro de um sensor, quem toca quem, as transicoes, o pico do impacto),\n  \
+           todos gateados, e nenhum deles fazia nada. Faltava o publicador -- nao o\n  \
+           consumidor: o outbox e' o MESMO em que a timeline emite os sinais dos\n  \
+           markers, e o consumidor v1 dele e' um TOAST.\n\n  \
+           1. Toque Play e olhe o canto superior: tres bolas iguais caem de {drop:.0} m.\n     \
+              - ESQUERDA '{n0}' -- um SENSOR marcado. A bola ATRAVESSA e sobe um\n       \
+                toast 'Signal: door'. Um sensor nunca gera contato, entao um canal\n       \
+                so' de colisao solida deixaria a porta -- o caso canonico de\n       \
+                gameplay -- em silencio.\n     \
+              - MEIO '{n1}' -- um corpo SOLIDO marcado. A bola BATE e sobe\n       \
+                'Signal: bell'.\n     \
+              - DIREITA '{n2}' -- a MESMA plataforma, SEM o componente. Nada sobe,\n       \
+                e ela e' o CONTROLE: sem ela a cena nao distingue *o sinal\n       \
+                disparou* de *tudo dispara*.\n\n  \
+           2. UMA vez, nao uma por quadro. A bola do sino fica encostada nele e o\n     \
+              toast NAO se repete -- o canal reporta a CHEGADA, nao o estado. Um som\n     \
+              que toca sessenta vezes por segundo nao e' um som.\n\n  \
+           3. AUTORE VOCE MESMO: selecione '{n2}' (a plataforma quieta) na\n     \
+              Hierarquia. Na secao Physics Body, a ultima row e' um campo de texto\n     \
+              'Signal on hit...'. Escreva 'quiet' e de Play de novo: agora ela\n     \
+              grita tambem. Apague o texto e ela volta a calar -- um nome em BRANCO\n     \
+              nao e' um sinal (a mesma regra do marker da timeline: um sinal sem\n     \
+              nome nao e' um contrato que alguem possa casar).\n\n  \
+           (!) Arraste a regua para TRAS: nada dispara. Um evento descreve uma\n      \
+               transicao que a simulacao ATRAVESSOU, e um scrub nao e' uma chegada.\n\n  \
+           (!) O toast e' o consumidor v1, e de proposito: ele e' a prova visivel de\n      \
+               que o canal desacoplado fecha a volta. Um script Luau ou uma pista de\n      \
+               audio ouvindo o MESMO nome nao muda uma linha da fisica.\n",
+        drop = DROP_Y,
+        n0 = LANE_NAMES[0],
+        n1 = LANE_NAMES[1],
+        n2 = LANE_NAMES[2],
+    );
 }

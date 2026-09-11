@@ -189,56 +189,51 @@ pub(crate) fn build_kin_water_scene(world: &mut World) {
 #[path = "physics_smoke_kin_water_tests.rs"]
 mod tests;
 
-impl crate::App {
-    pub(crate) fn physics_smoke_kin_water(&mut self) {
-        let gfx = self.gfx.as_mut().expect("gfx");
-        build_kin_water_scene(gfx.sim.world_mut());
-        gfx.camera.center = CAMERA_CENTRE;
-        gfx.camera.height_world = CAMERA_HEIGHT;
-        if let Some(hero) = gfx.hero_screen.as_mut() {
-            hero.panel_visibility.insert("physics", true);
-        }
+pub fn physics_smoke_kin_water(ctx: &mut ph2d_app_physics::SceneCtx<'_>) {
+    build_kin_water_scene(ctx.world);
+    ctx.want.camera_center = Some(CAMERA_CENTRE);
+    ctx.want.camera_height_world = Some(CAMERA_HEIGHT);
+    ctx.want.panels.push("physics");
 
-        eprintln!(
-            "[physics-smoke 104] A AGUA E O MODO CINEMATICO (W-KinFluid).\n  \
-               Uma poca FUNDA e tres capsulas IDENTICAS largadas da mesma altura:\n    \
-                 VERDE  = capsula solta, sem lei de player nenhuma (o CONTROLE)\n    \
-                 AMBAR  = player DINAMICO (o que ja' funcionava)\n    \
-                 AZUL   = player CINEMATICO (o que nao existia para a agua)\n\n  \
-               1. OS TRES TEM DE PARAR NA AGUA. Deixe correr. Largados de 1,5 m eles\n     \
-                  afundam {c:.3} / {d:.3} / {k:.3} m e assentam LOGO ACIMA da\n     \
-                  superficie.\n     \
-                  O QUE ESTAVA QUEBRADO: o AZUL afundava 139,67 m -- queda livre com\n     \
-                  o multiplicador de queda por cima -- e sumia de quadro. Se ele\n     \
-                  atravessar o fundo da poca enquanto os outros boiam, PARE.\n\n  \
-               2. A CAUSA NAO ERA A MASSA INFINITA. O `ActiveCollisionTypes` default\n     \
-                  do rapier so' liga pares que comecam em DYNAMIC, entao uma poca\n     \
-                  ESTATICA e um corpo CINEMATICO nunca existiam um para o outro no\n     \
-                  grafo de intersecao. Nao era o impulso a nao alcancar massa\n     \
-                  infinita: era o PAR que nao existia.\n\n  \
-               3. ELES TEM DE BOBEAR JUNTOS. Isto NAO e' um repouso: o player\n     \
-                  oscila ~{ba:.2} m (ambar) e ~{bk:.2} m (azul) entre o 3o e o 6o\n     \
-                  segundo -- concordam na quarta decimal. A capsula VERDE oscila\n     \
-                  menos (0,81), e essa diferenca e' da lei de player, anterior a\n     \
-                  esta wave. O que se julga aqui e' o AMBAR e o AZUL fazerem A\n     \
-                  MESMA COISA, nao uma altura.\n\n  \
-               4. ANDE PARA DENTRO (A/D com o azul selecionado no Inspector, §14).\n     \
-                  Ele tem de MOLHAR O PE' e ser freado pela agua nos dois eixos --\n     \
-                  o meio resiste, e resiste igual na horizontal.\n\n  \
-               (!) ABLACAO: no painel de fisica (tecla W nao; use o Inspector da\n      \
-                   POCA) zere o Fluid Drag. A oscilacao sobe de {bk:.2} para 2,90 m\n      \
-                   e NAO decai -- empuxo sem resistencia e' uma mola sem\n      \
-                   amortecimento, e o arrasto e' a metade que fecha a lei.\n\n  \
-               (!) A FORCA da zona (uma correnteza) NAO estava nesta wave, e a\n      \
-                   W-ZoneForce a fechou: ela chega hoje aos tres modos, pela MESMA\n      \
-                   porta que o solver usa (nao uma re-derivacao). Cena =106.\n\n  \
-               (!) Toque B para o contorno: a poca fica magenta (sensor) e acende\n      \
-                   quando ha' corpo dentro.\n",
-            c = SANK[0],
-            d = SANK[1],
-            k = SANK[2],
-            ba = BOB[0],
-            bk = BOB[1],
-        );
-    }
+    eprintln!(
+        "[physics-smoke 104] A AGUA E O MODO CINEMATICO (W-KinFluid).\n  \
+           Uma poca FUNDA e tres capsulas IDENTICAS largadas da mesma altura:\n    \
+             VERDE  = capsula solta, sem lei de player nenhuma (o CONTROLE)\n    \
+             AMBAR  = player DINAMICO (o que ja' funcionava)\n    \
+             AZUL   = player CINEMATICO (o que nao existia para a agua)\n\n  \
+           1. OS TRES TEM DE PARAR NA AGUA. Deixe correr. Largados de 1,5 m eles\n     \
+              afundam {c:.3} / {d:.3} / {k:.3} m e assentam LOGO ACIMA da\n     \
+              superficie.\n     \
+              O QUE ESTAVA QUEBRADO: o AZUL afundava 139,67 m -- queda livre com\n     \
+              o multiplicador de queda por cima -- e sumia de quadro. Se ele\n     \
+              atravessar o fundo da poca enquanto os outros boiam, PARE.\n\n  \
+           2. A CAUSA NAO ERA A MASSA INFINITA. O `ActiveCollisionTypes` default\n     \
+              do rapier so' liga pares que comecam em DYNAMIC, entao uma poca\n     \
+              ESTATICA e um corpo CINEMATICO nunca existiam um para o outro no\n     \
+              grafo de intersecao. Nao era o impulso a nao alcancar massa\n     \
+              infinita: era o PAR que nao existia.\n\n  \
+           3. ELES TEM DE BOBEAR JUNTOS. Isto NAO e' um repouso: o player\n     \
+              oscila ~{ba:.2} m (ambar) e ~{bk:.2} m (azul) entre o 3o e o 6o\n     \
+              segundo -- concordam na quarta decimal. A capsula VERDE oscila\n     \
+              menos (0,81), e essa diferenca e' da lei de player, anterior a\n     \
+              esta wave. O que se julga aqui e' o AMBAR e o AZUL fazerem A\n     \
+              MESMA COISA, nao uma altura.\n\n  \
+           4. ANDE PARA DENTRO (A/D com o azul selecionado no Inspector, §14).\n     \
+              Ele tem de MOLHAR O PE' e ser freado pela agua nos dois eixos --\n     \
+              o meio resiste, e resiste igual na horizontal.\n\n  \
+           (!) ABLACAO: no painel de fisica (tecla W nao; use o Inspector da\n      \
+               POCA) zere o Fluid Drag. A oscilacao sobe de {bk:.2} para 2,90 m\n      \
+               e NAO decai -- empuxo sem resistencia e' uma mola sem\n      \
+               amortecimento, e o arrasto e' a metade que fecha a lei.\n\n  \
+           (!) A FORCA da zona (uma correnteza) NAO estava nesta wave, e a\n      \
+               W-ZoneForce a fechou: ela chega hoje aos tres modos, pela MESMA\n      \
+               porta que o solver usa (nao uma re-derivacao). Cena =106.\n\n  \
+           (!) Toque B para o contorno: a poca fica magenta (sensor) e acende\n      \
+               quando ha' corpo dentro.\n",
+        c = SANK[0],
+        d = SANK[1],
+        k = SANK[2],
+        ba = BOB[0],
+        bk = BOB[1],
+    );
 }

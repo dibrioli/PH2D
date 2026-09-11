@@ -129,77 +129,71 @@ pub(crate) fn build_rig_doll(world: &mut World) -> Entity {
 #[path = "physics_smoke_rig_tests.rs"]
 mod tests;
 
-impl crate::App {
-    /// **Cena 67 (W-Rig).** Um boneco de sprites, sem física nenhuma — e um
-    /// clique que o transforma num ragdoll.
-    pub(crate) fn physics_smoke_rig(&mut self) {
-        let gfx = self.gfx.as_mut().expect("gfx");
-        crate::physics_smoke::spawn_floor(gfx.sim.world_mut());
-        let torso = build_rig_doll(gfx.sim.world_mut());
-        gfx.camera.center = CAMERA_CENTRE;
-        gfx.camera.height_world = CAMERA_HEIGHT;
-        // Já com o tronco marcado: a §11 abre na FACE VAZIA, que é onde o botão
-        // do rig mora — e é a face que o artista de verdade encontra.
-        if let Some(hero) = gfx.hero_screen.as_mut() {
-            hero.gizmo.selection = Some(torso.to_bits());
-            hero.gizmo.extra_selection.clear();
-        }
+/// **Cena 67 (W-Rig).** Um boneco de sprites, sem física nenhuma — e um
+/// clique que o transforma num ragdoll.
+pub fn physics_smoke_rig(ctx: &mut ph2d_app_physics::SceneCtx<'_>) {
+    crate::physics_smoke::spawn_floor(ctx.world);
+    let torso = build_rig_doll(ctx.world);
+    ctx.want.camera_center = Some(CAMERA_CENTRE);
+    ctx.want.camera_height_world = Some(CAMERA_HEIGHT);
+    // Já com o tronco marcado: a §11 abre na FACE VAZIA, que é onde o botão
+    // do rig mora — e é a face que o artista de verdade encontra.
+    ctx.want.select = Some(torso.to_bits());
 
-        eprintln!(
-            "[physics-smoke 67] O RIG SAI DA HIERARQUIA -- um clique transforma um\n  \
-               desenho parenteado num ragdoll.\n  \
-               A cena nasce PARADA, o contorno JA ESTA LIGADO (B alterna) e o TRONCO\n  \
-               ja esta selecionado.\n\n  \
-               O boneco tem {parts} partes desenhadas e ZERO corpos -- olhe a secao\n  \
-               Physics Body: ela diz 'Not simulated'. Repare na Hierarquia que o\n  \
-               TRONCO tem QUATRO filhos (cabeca, o grupo 'Arms', e as duas pernas):\n  \
-               isso e' uma ARVORE, e uma corrente por selecao nao consegue expressa-la\n  \
-               (ela ligaria tudo em FILA).\n\n  \
-               O GESTO (o ragdoll wizard do Fyrox):\n  \
-               1. com o 'Torso' selecionado, a secao Physics Body mostra DOIS botoes:\n     \
-                  'Add Physics Body' (so este objeto) e **'Rig {parts} Parts from\n     \
-                  Hierarchy'**. A contagem esta NO rotulo, porque o clique alcanca a\n     \
-                  subarvore inteira e voce tem de ver isso antes.\n  \
-               2. clique em Rig. Toast: 'Rigged {parts} new bodies with {joints} joints'.\n  \
-               3. toque com **ESPACO** (ou o botao play do transporte, no painel da\n     \
-                  timeline que ja abriu embaixo): o boneco DESABA sobre o piso e os\n     \
-                  membros se DOBRAM -- o tronco cai ~{drop:.1} m e as juntas seguram\n     \
-                  (a violacao da restricao do pescoco fica abaixo de {gap_mm:.1} mm\n     \
-                  em 3 s).\n  \
-               4. **REBOBINE**: no transporte da timeline, o botao |< (ir para o\n     \
-                  inicio) -- ou arraste a regua de volta ao zero. TODAS as partes\n     \
-                  voltam a pose autorada, nao so o tronco.\n     \
-                  (!) NAO e' o botao 'Reset to Defaults' do painel de fisica (tecla\n     \
-                  W): aquele reseta a GRAVIDADE e os sub-passos, nao a simulacao.\n     \
-                  Era exatamente isto que estava quebrado -- e nao era do rig nem\n     \
-                  dos joints: o readback escrevia um FILHO antes do PAI, entao o\n     \
-                  local dele absorvia a queda inteira do pai (4,91 m medidos num\n     \
-                  par sem joint nenhum).\n\n  \
-               O QUE CONFERIR, e vale mais que a queda:\n  \
-               - a Hierarquia ganhou {joints} objetos-joint nomeados pelo par que eles\n    \
-                 ligam ('Torso : Head', 'Torso : ArmL', ...). Nenhum deles se chama\n    \
-                 'Arms : ArmL': o GRUPO e' transparente e os bracos penduram do\n    \
-                 TRONCO. Selecione 'Arms' -- ele NAO ganhou corpo.\n  \
-               - **clique em Rig de novo.** Nada acontece, e e' de proposito: uma\n    \
-                 aresta que ja tem joint e' pulada. E' o que deixa voce acrescentar\n    \
-                 um membro depois e re-rigar sem duplicar o que ja existe.\n  \
-               - UM Ctrl+Z desfaz o rig inteiro -- os {parts} corpos e os {joints}\n    \
-                 joints num passo so.\n  \
-               - as juntas nascem com **BATENTE de +/-{limit:.0} graus** (secao Joint,\n    \
-                 Limits). Sem eles a cabeca dobra 176 graus para DENTRO do peito --\n    \
-                 o ragdoll-macarrao. Desligue os limites de um joint e de Play para\n    \
-                 ver a diferenca. A faixa e' simetrica em torno da pose que voce\n    \
-                 DESENHOU, entao um braco inclinado ganha limites inclinados junto.\n  \
-               - as ancoras nascem na EMENDA (onde as silhuetas se encontram), nao\n    \
-                 no meio entre os centros: o pescoco fica no PESCOCO, e nao dentro\n    \
-                 do peito. Tecla B mostra os contornos para conferir.\n\n  \
-               (!) Depois do rig a §12 abre no ULTIMO joint: afine UM (limites, mola)\n  \
-               e use Copy/Paste Properties (cena 66) para carimbar os outros.\n",
-            parts = DOLL_PARTS,
-            joints = DOLL_JOINTS,
-            drop = MEASURED_TORSO_DROP,
-            gap_mm = MEASURED_JOINT_GAP * 1000.0,
-            limit = RIG_LIMIT_DEG,
-        );
-    }
+    eprintln!(
+        "[physics-smoke 67] O RIG SAI DA HIERARQUIA -- um clique transforma um\n  \
+           desenho parenteado num ragdoll.\n  \
+           A cena nasce PARADA, o contorno JA ESTA LIGADO (B alterna) e o TRONCO\n  \
+           ja esta selecionado.\n\n  \
+           O boneco tem {parts} partes desenhadas e ZERO corpos -- olhe a secao\n  \
+           Physics Body: ela diz 'Not simulated'. Repare na Hierarquia que o\n  \
+           TRONCO tem QUATRO filhos (cabeca, o grupo 'Arms', e as duas pernas):\n  \
+           isso e' uma ARVORE, e uma corrente por selecao nao consegue expressa-la\n  \
+           (ela ligaria tudo em FILA).\n\n  \
+           O GESTO (o ragdoll wizard do Fyrox):\n  \
+           1. com o 'Torso' selecionado, a secao Physics Body mostra DOIS botoes:\n     \
+              'Add Physics Body' (so este objeto) e **'Rig {parts} Parts from\n     \
+              Hierarchy'**. A contagem esta NO rotulo, porque o clique alcanca a\n     \
+              subarvore inteira e voce tem de ver isso antes.\n  \
+           2. clique em Rig. Toast: 'Rigged {parts} new bodies with {joints} joints'.\n  \
+           3. toque com **ESPACO** (ou o botao play do transporte, no painel da\n     \
+              timeline que ja abriu embaixo): o boneco DESABA sobre o piso e os\n     \
+              membros se DOBRAM -- o tronco cai ~{drop:.1} m e as juntas seguram\n     \
+              (a violacao da restricao do pescoco fica abaixo de {gap_mm:.1} mm\n     \
+              em 3 s).\n  \
+           4. **REBOBINE**: no transporte da timeline, o botao |< (ir para o\n     \
+              inicio) -- ou arraste a regua de volta ao zero. TODAS as partes\n     \
+              voltam a pose autorada, nao so o tronco.\n     \
+              (!) NAO e' o botao 'Reset to Defaults' do painel de fisica (tecla\n     \
+              W): aquele reseta a GRAVIDADE e os sub-passos, nao a simulacao.\n     \
+              Era exatamente isto que estava quebrado -- e nao era do rig nem\n     \
+              dos joints: o readback escrevia um FILHO antes do PAI, entao o\n     \
+              local dele absorvia a queda inteira do pai (4,91 m medidos num\n     \
+              par sem joint nenhum).\n\n  \
+           O QUE CONFERIR, e vale mais que a queda:\n  \
+           - a Hierarquia ganhou {joints} objetos-joint nomeados pelo par que eles\n    \
+             ligam ('Torso : Head', 'Torso : ArmL', ...). Nenhum deles se chama\n    \
+             'Arms : ArmL': o GRUPO e' transparente e os bracos penduram do\n    \
+             TRONCO. Selecione 'Arms' -- ele NAO ganhou corpo.\n  \
+           - **clique em Rig de novo.** Nada acontece, e e' de proposito: uma\n    \
+             aresta que ja tem joint e' pulada. E' o que deixa voce acrescentar\n    \
+             um membro depois e re-rigar sem duplicar o que ja existe.\n  \
+           - UM Ctrl+Z desfaz o rig inteiro -- os {parts} corpos e os {joints}\n    \
+             joints num passo so.\n  \
+           - as juntas nascem com **BATENTE de +/-{limit:.0} graus** (secao Joint,\n    \
+             Limits). Sem eles a cabeca dobra 176 graus para DENTRO do peito --\n    \
+             o ragdoll-macarrao. Desligue os limites de um joint e de Play para\n    \
+             ver a diferenca. A faixa e' simetrica em torno da pose que voce\n    \
+             DESENHOU, entao um braco inclinado ganha limites inclinados junto.\n  \
+           - as ancoras nascem na EMENDA (onde as silhuetas se encontram), nao\n    \
+             no meio entre os centros: o pescoco fica no PESCOCO, e nao dentro\n    \
+             do peito. Tecla B mostra os contornos para conferir.\n\n  \
+           (!) Depois do rig a §12 abre no ULTIMO joint: afine UM (limites, mola)\n  \
+           e use Copy/Paste Properties (cena 66) para carimbar os outros.\n",
+        parts = DOLL_PARTS,
+        joints = DOLL_JOINTS,
+        drop = MEASURED_TORSO_DROP,
+        gap_mm = MEASURED_JOINT_GAP * 1000.0,
+        limit = RIG_LIMIT_DEG,
+    );
 }

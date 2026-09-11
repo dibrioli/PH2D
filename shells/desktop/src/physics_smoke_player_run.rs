@@ -22,43 +22,39 @@
 
 use ph2d_core::Vec2;
 
-use crate::App;
 use crate::physics_smoke_player::{slab, spawn_player};
 
-impl App {
-    /// **A corrida sobrevive ao arquivo** — jogar, salvar, fechar, reabrir, assar.
-    pub(crate) fn physics_smoke_recorded_run(&mut self) {
-        let gfx = self.gfx.as_mut().expect("gfx");
-        let world = gfx.sim.world_mut();
+/// **A corrida sobrevive ao arquivo** — jogar, salvar, fechar, reabrir, assar.
+pub fn physics_smoke_recorded_run(ctx: &mut ph2d_app_physics::SceneCtx<'_>) {
+    let world = &mut *ctx.world;
 
-        slab(
-            world,
-            "Ground",
-            Vec2::new(4.0, -0.5),
-            [10.0, 0.5],
-            0.0,
-            [0.35, 0.35, 0.4, 1.0],
-        );
-        slab(
-            world,
-            "Step",
-            Vec2::new(15.0, 0.0),
-            [3.0, 0.5],
-            0.0,
-            [0.38, 0.36, 0.44, 1.0],
-        );
-        slab(
-            world,
-            "Backstop",
-            Vec2::new(19.0, 2.0),
-            [0.5, 2.0],
-            0.0,
-            [0.30, 0.34, 0.42, 1.0],
-        );
+    slab(
+        world,
+        "Ground",
+        Vec2::new(4.0, -0.5),
+        [10.0, 0.5],
+        0.0,
+        [0.35, 0.35, 0.4, 1.0],
+    );
+    slab(
+        world,
+        "Step",
+        Vec2::new(15.0, 0.0),
+        [3.0, 0.5],
+        0.0,
+        [0.38, 0.36, 0.44, 1.0],
+    );
+    slab(
+        world,
+        "Backstop",
+        Vec2::new(19.0, 2.0),
+        [0.5, 2.0],
+        0.0,
+        [0.30, 0.34, 0.42, 1.0],
+    );
 
-        spawn_player(world, Vec2::new(-4.0, 1.4));
-        eprintln!("{RECORDED_RUN_SMOKE_MESSAGE}");
-    }
+    spawn_player(world, Vec2::new(-4.0, 1.4));
+    eprintln!("{RECORDED_RUN_SMOKE_MESSAGE}");
 }
 
 /// O roteiro da cena 96 — o gesto é JOGAR, SALVAR, **FECHAR**, e reabrir.

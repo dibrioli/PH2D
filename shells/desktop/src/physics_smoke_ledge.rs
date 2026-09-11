@@ -42,7 +42,6 @@ use ph2d_core::Vec2;
 use ph2d_ecs::{Entity, Name};
 use ph2d_physics_ecs::PlatformPlayer;
 
-use crate::App;
 use crate::physics_smoke_player::{slab, spawn_player};
 
 /// O topo do patamar BAIXO — ⚠️ **1,0 e não 1,5**, e o número vem do pulo
@@ -109,13 +108,10 @@ fn lane(world: &mut bevy_ecs::world::World, x0: f32, tag: &str, grab: f32) -> En
     p
 }
 
-impl App {
-    /// **O parapeito** — a beirada.
-    pub(crate) fn physics_smoke_ledge(&mut self) {
-        let gfx = self.gfx.as_mut().expect("gfx");
-        let _ = build_ledge_scene(gfx.sim.world_mut());
-        eprintln!("{LEDGE_SMOKE_MESSAGE}");
-    }
+/// **O parapeito** — a beirada.
+pub fn physics_smoke_ledge(ctx: &mut ph2d_app_physics::SceneCtx<'_>) {
+    let _ = build_ledge_scene(ctx.world);
+    eprintln!("{LEDGE_SMOKE_MESSAGE}");
 }
 
 /// **A geometria da cena 111**, separada do `App` de propósito — é ela que os

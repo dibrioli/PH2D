@@ -31,7 +31,6 @@ use ph2d_core::Vec2;
 use ph2d_ecs::{Entity, Name};
 use ph2d_physics_ecs::PlatformPlayer;
 
-use crate::App;
 use crate::physics_smoke_player::{slab, spawn_player};
 
 /// O topo do patamar de onde se salta.
@@ -139,13 +138,10 @@ fn lane(world: &mut bevy_ecs::world::World, x0: f32, tag: &str, glide: f32) -> E
     p
 }
 
-impl App {
-    /// **O vão** — o planeio.
-    pub(crate) fn physics_smoke_glide(&mut self) {
-        let gfx = self.gfx.as_mut().expect("gfx");
-        let _ = build_glide_scene(gfx.sim.world_mut());
-        eprintln!("{GLIDE_SMOKE_MESSAGE}");
-    }
+/// **O vão** — o planeio.
+pub fn physics_smoke_glide(ctx: &mut ph2d_app_physics::SceneCtx<'_>) {
+    let _ = build_glide_scene(ctx.world);
+    eprintln!("{GLIDE_SMOKE_MESSAGE}");
 }
 
 /// **A geometria da cena 112**, separada do `App` de propósito — é ela que os

@@ -177,114 +177,106 @@ pub(crate) fn build(world: &mut World) {
     rig(world, "Zigzag", 4.5, ZIGZAG, true);
 }
 
-impl crate::App {
-    /// **Cena 58 (W-Pulley).** Dois elevadores, mesmo par de massas, e a única
-    /// diferença é o caminho da corda.
-    /// **Cena 59 (W-Pulley W2).** Quatro guinchos: um que ergue, um que baixa, e
-    /// um PAR que só difere no diâmetro do tambor.
-    ///
-    /// Os números saem da sonda `probe_smoke_59`, rodada sobre ESTA cena.
-    pub(crate) fn physics_smoke_winch(&mut self) {
-        let gfx = self.gfx.as_mut().expect("gfx");
-        build_winch(gfx.sim.world_mut());
-        if let Some(hero) = gfx.hero_screen.as_mut() {
-            hero.panel_visibility.insert("physics", true);
-        }
+/// **Cena 58 (W-Pulley).** Dois elevadores, mesmo par de massas, e a única
+/// diferença é o caminho da corda.
+/// **Cena 59 (W-Pulley W2).** Quatro guinchos: um que ergue, um que baixa, e
+/// um PAR que só difere no diâmetro do tambor.
+///
+/// Os números saem da sonda `probe_smoke_59`, rodada sobre ESTA cena.
+pub fn physics_smoke_winch(ctx: &mut ph2d_app_physics::SceneCtx<'_>) {
+    build_winch(ctx.world);
+    ctx.want.panels.push("physics");
 
-        eprintln!(
-            "[physics-smoke 59] O GUINCHO -- uma roldana com MOTOR.\n  \
-               O contorno JA ESTA LIGADO (B o alterna). De PLAY para os passos 1-4 e 6\n  \
-               (o toggle Physics ja esta armado); o passo 5 pede o relogio PARADO.\n\n  \
-               1. AZUL (esquerda) -- o tambor recolhe e o gancho SOBE, sem ninguem\n     \
-                  puxar nada. A corda encurta a `w*r`: 60 graus/s num tambor de 0,45 m\n     \
-                  sao 0,47 m/s de corda. (medido em 2 s: subiu {hoist:.2} m.)\n  \
-               2. VERMELHO -- o MESMO tambor com o motor NEGATIVO: ele paga corda e a\n     \
-                  carga desce. Quem a baixa e a GRAVIDADE -- a corda so deixa de\n     \
-                  segurar. Ela nunca EMPURRA. (desceu {lower:.2} m.)\n  \
-               3. ROXO e VERDE (direita) -- o CAMBIO, e e o coracao desta wave. Os dois\n     \
-                  motores giram na MESMA velocidade (60 graus/s); o que muda e o\n     \
-                  DIAMETRO do tambor: 0,60 contra 0,20. O roxo sobe {ratio:.2}x mais rapido,\n     \
-                  que e exatamente a razao dos raios. Era isto que o antigo campo\n     \
-                  'Ratio' prometia e nao entregava -- agora ele e uma PECA na cena.\n  \
-               4. SELECIONE um tambor na Hierarquia ('Hoist Rope Wheel 1'). No Inspector,\n     \
-                  na secao 'Pulley Wheel', ha uma row nova: Motor (graus/s). Mude o numero\n     \
-                  COM O RELOGIO ANDANDO -- o guincho responde na hora. Ponha negativo e\n     \
-                  ele inverte; ponha zero e a roldana volta a ser uma roldana livre.\n  \
-               5. PAUSE e ARRASTE o ponto do ARO para mudar o RAIO -- alca de ponto so\n     \
-                  existe em REPOUSO (tocando, o overlay desenha a geometria do SOLVER).\n     \
-                  Volte a tocar: a mesma rotacao passa a recolher mais (ou menos) corda.\n     \
-                  O diametro e o cambio, e da para senti-lo com o dedo.\n  \
-               6. SCRUB a regua para tras: o guincho REBOBINA junto com o mundo, porque\n     \
-                  o quanto ele ja recolheu viaja no checkpoint. Reset devolve tudo ao\n     \
-                  comeco.\n  \
-               ⚠️ NAO deixe um guincho recolhendo ate o gancho ALCANCAR o tambor: nao ha\n     \
-                  colisor na roldana, entao a carga passa por ela e a corda a sacode. O\n     \
-                  teto interno limita a violencia (sem ele a carga sai de quadro a\n     \
-                  milhares de m/s), mas o lugar certo de parar e antes.",
-            hoist = MEASURED_HOIST_RISE,
-            lower = MEASURED_LOWER_DROP,
-            ratio = MEASURED_GEAR_RATIO,
-        );
-    }
+    eprintln!(
+        "[physics-smoke 59] O GUINCHO -- uma roldana com MOTOR.\n  \
+           O contorno JA ESTA LIGADO (B o alterna). De PLAY para os passos 1-4 e 6\n  \
+           (o toggle Physics ja esta armado); o passo 5 pede o relogio PARADO.\n\n  \
+           1. AZUL (esquerda) -- o tambor recolhe e o gancho SOBE, sem ninguem\n     \
+              puxar nada. A corda encurta a `w*r`: 60 graus/s num tambor de 0,45 m\n     \
+              sao 0,47 m/s de corda. (medido em 2 s: subiu {hoist:.2} m.)\n  \
+           2. VERMELHO -- o MESMO tambor com o motor NEGATIVO: ele paga corda e a\n     \
+              carga desce. Quem a baixa e a GRAVIDADE -- a corda so deixa de\n     \
+              segurar. Ela nunca EMPURRA. (desceu {lower:.2} m.)\n  \
+           3. ROXO e VERDE (direita) -- o CAMBIO, e e o coracao desta wave. Os dois\n     \
+              motores giram na MESMA velocidade (60 graus/s); o que muda e o\n     \
+              DIAMETRO do tambor: 0,60 contra 0,20. O roxo sobe {ratio:.2}x mais rapido,\n     \
+              que e exatamente a razao dos raios. Era isto que o antigo campo\n     \
+              'Ratio' prometia e nao entregava -- agora ele e uma PECA na cena.\n  \
+           4. SELECIONE um tambor na Hierarquia ('Hoist Rope Wheel 1'). No Inspector,\n     \
+              na secao 'Pulley Wheel', ha uma row nova: Motor (graus/s). Mude o numero\n     \
+              COM O RELOGIO ANDANDO -- o guincho responde na hora. Ponha negativo e\n     \
+              ele inverte; ponha zero e a roldana volta a ser uma roldana livre.\n  \
+           5. PAUSE e ARRASTE o ponto do ARO para mudar o RAIO -- alca de ponto so\n     \
+              existe em REPOUSO (tocando, o overlay desenha a geometria do SOLVER).\n     \
+              Volte a tocar: a mesma rotacao passa a recolher mais (ou menos) corda.\n     \
+              O diametro e o cambio, e da para senti-lo com o dedo.\n  \
+           6. SCRUB a regua para tras: o guincho REBOBINA junto com o mundo, porque\n     \
+              o quanto ele ja recolheu viaja no checkpoint. Reset devolve tudo ao\n     \
+              comeco.\n  \
+           ⚠️ NAO deixe um guincho recolhendo ate o gancho ALCANCAR o tambor: nao ha\n     \
+              colisor na roldana, entao a carga passa por ela e a corda a sacode. O\n     \
+              teto interno limita a violencia (sem ele a carga sai de quadro a\n     \
+              milhares de m/s), mas o lugar certo de parar e antes.",
+        hoist = MEASURED_HOIST_RISE,
+        lower = MEASURED_LOWER_DROP,
+        ratio = MEASURED_GEAR_RATIO,
+    );
+}
 
-    pub(crate) fn physics_smoke_pulley(&mut self) {
-        let gfx = self.gfx.as_mut().expect("gfx");
-        build(gfx.sim.world_mut());
-        if let Some(hero) = gfx.hero_screen.as_mut() {
-            hero.panel_visibility.insert("physics", true);
-        }
+pub fn physics_smoke_pulley(ctx: &mut ph2d_app_physics::SceneCtx<'_>) {
+    build(ctx.world);
+    ctx.want.panels.push("physics");
 
-        eprintln!(
-            "[physics-smoke 58] A POLIA -- uma corda por roldanas de verdade.\n  \
-               A cena nasce PARADA e o contorno JA ESTA LIGADO -- B o ALTERNA, entao\n  \
-               aperta-lo aqui o DESLIGA e as alcas somem junto. Faca o passo das ALCAS\n  \
-               primeiro; o PLAY vem por ultimo (o toggle Physics ja esta armado).\n\n  \
-               1. OLHE AS RODAS, e depois a corda. Cada roldana e um CIRCULO do tamanho\n     \
-                  que ela tem, com um raio-guia; a corda toca a SUPERFICIE dela e nao passa\n     \
-                  pelo centro. No verde as duas rodas tem tamanhos MUITO diferentes de\n     \
-                  proposito -- de PLAY e olhe os raios-guia girando: a roda GRANDE gira mais\n     \
-                  devagar, porque a mesma corda por um raio maior a faz dar menos voltas.\n  \
-               2. VERDE (esquerda) -- o elevador. A carga de 3 kg ganha do contrapeso de\n     \
-                  1 kg e desce; o que um lado desce o outro sobe, porque a corda nao\n     \
-                  estica. (medido em 3 s: desceu {simple_drop:.2} m ate o chao e o contrapeso\n     \
-                  subiu {simple_rise:.2} m -- o MESMO numero.)\n  \
-               3. AMBAR (direita) -- a MESMA corda por QUATRO roldanas em ziguezague, e o\n     \
-                  MESMO par de massas. A carga desce {zig_drop:.2} m: identico ao verde.\n     \
-                  Isso NAO e um bug -- numa corda unica a tensao e uniforme, entao mais\n     \
-                  roldanas so alongam o caminho. (A vantagem mecanica de verdade vem de\n     \
-                  uma roldana montada num corpo que se MOVE, ou de um tambor dirigido:\n     \
-                  sao as duas waves seguintes.)\n  \
-               4. SELECIONE uma roldana na Hierarquia ('Simple Rope Wheel 1'). Aparecem\n     \
-                  DOIS pontos ambar: o do CENTRO (arraste e ela se muda de lugar) e o do\n     \
-                  ARO, a direita (arraste e ela muda de TAMANHO). Em qualquer um dos dois\n     \
-                  a corda re-roteia na hora, e Ctrl+Z desfaz.\n  \
-               5. E no Inspector abre a secao 'Pulley Wheel', com tres coisas:\n     \
-                  Radius (o MESMO numero que a alca do aro -- dois gestos, um valor),\n     \
-                  Order (a posicao dela ao longo da corda, contando de 1) e Wrap.\n     \
-                  EXPERIMENTE: selecione 'Zigzag Rope Wheel 2' e marque 'Under' --\n     \
-                  a corda salta para o outro lado daquela roldana (medido: o lado\n     \
-                  resolvido vai de -1 para +1). 'Auto' e o algoritmo decidindo;\n     \
-                  Over/Under sao o escape manual, e ate esta secao eles nao tinham\n     \
-                  gesto nenhum -- eram estado salvo em arquivo que nada alcancava.\n  \
-               6. ACRESCENTE uma roldana: selecione a corda ('Simple Rope') na Hierarquia\n     \
-                  e clique 'Add Wheel' no fim da secao do joint. Ela nasce SOBRE a corda\n     \
-                  (no meio do ultimo trecho, para nao dar um puxao) e vira um objeto na\n     \
-                  Hierarquia -- arraste o dot dela para onde a corda tem de passar.\n     \
-                  Para tirar uma, delete o objeto: uma roldana e um objeto como outro\n     \
-                  qualquer, entao Delete e Ctrl+Z ja funcionam.\n  \
-               7. E o gesto de CRIAR, pelas DUAS rotas:\n     \
-                  (a) selecione dois corpos, escolha 'Pulley' no seletor 'Join As' da\n     \
-                      secao Physics Body e clique em Join;\n     \
-                  (b) OU aperte sobre um corpo no canvas, arraste e solte sobre o outro.\n     \
-                  Nas duas, DUAS roldanas nascem como objetos na Hierarquia, acima de cada\n     \
-                  corpo, e a corda ja nasce esticada.\n  \
-               8. E o que NAO esta mais la: o campo 'Ratio'. Ele vendia uma talha que a\n     \
-                  fisica nao tem -- ver o item 3.",
-            simple_drop = MEASURED_SIMPLE_LOAD_DROP,
-            simple_rise = MEASURED_SIMPLE_CW_RISE,
-            zig_drop = MEASURED_ZIGZAG_LOAD_DROP,
-        );
-    }
+    eprintln!(
+        "[physics-smoke 58] A POLIA -- uma corda por roldanas de verdade.\n  \
+           A cena nasce PARADA e o contorno JA ESTA LIGADO -- B o ALTERNA, entao\n  \
+           aperta-lo aqui o DESLIGA e as alcas somem junto. Faca o passo das ALCAS\n  \
+           primeiro; o PLAY vem por ultimo (o toggle Physics ja esta armado).\n\n  \
+           1. OLHE AS RODAS, e depois a corda. Cada roldana e um CIRCULO do tamanho\n     \
+              que ela tem, com um raio-guia; a corda toca a SUPERFICIE dela e nao passa\n     \
+              pelo centro. No verde as duas rodas tem tamanhos MUITO diferentes de\n     \
+              proposito -- de PLAY e olhe os raios-guia girando: a roda GRANDE gira mais\n     \
+              devagar, porque a mesma corda por um raio maior a faz dar menos voltas.\n  \
+           2. VERDE (esquerda) -- o elevador. A carga de 3 kg ganha do contrapeso de\n     \
+              1 kg e desce; o que um lado desce o outro sobe, porque a corda nao\n     \
+              estica. (medido em 3 s: desceu {simple_drop:.2} m ate o chao e o contrapeso\n     \
+              subiu {simple_rise:.2} m -- o MESMO numero.)\n  \
+           3. AMBAR (direita) -- a MESMA corda por QUATRO roldanas em ziguezague, e o\n     \
+              MESMO par de massas. A carga desce {zig_drop:.2} m: identico ao verde.\n     \
+              Isso NAO e um bug -- numa corda unica a tensao e uniforme, entao mais\n     \
+              roldanas so alongam o caminho. (A vantagem mecanica de verdade vem de\n     \
+              uma roldana montada num corpo que se MOVE, ou de um tambor dirigido:\n     \
+              sao as duas waves seguintes.)\n  \
+           4. SELECIONE uma roldana na Hierarquia ('Simple Rope Wheel 1'). Aparecem\n     \
+              DOIS pontos ambar: o do CENTRO (arraste e ela se muda de lugar) e o do\n     \
+              ARO, a direita (arraste e ela muda de TAMANHO). Em qualquer um dos dois\n     \
+              a corda re-roteia na hora, e Ctrl+Z desfaz.\n  \
+           5. E no Inspector abre a secao 'Pulley Wheel', com tres coisas:\n     \
+              Radius (o MESMO numero que a alca do aro -- dois gestos, um valor),\n     \
+              Order (a posicao dela ao longo da corda, contando de 1) e Wrap.\n     \
+              EXPERIMENTE: selecione 'Zigzag Rope Wheel 2' e marque 'Under' --\n     \
+              a corda salta para o outro lado daquela roldana (medido: o lado\n     \
+              resolvido vai de -1 para +1). 'Auto' e o algoritmo decidindo;\n     \
+              Over/Under sao o escape manual, e ate esta secao eles nao tinham\n     \
+              gesto nenhum -- eram estado salvo em arquivo que nada alcancava.\n  \
+           6. ACRESCENTE uma roldana: selecione a corda ('Simple Rope') na Hierarquia\n     \
+              e clique 'Add Wheel' no fim da secao do joint. Ela nasce SOBRE a corda\n     \
+              (no meio do ultimo trecho, para nao dar um puxao) e vira um objeto na\n     \
+              Hierarquia -- arraste o dot dela para onde a corda tem de passar.\n     \
+              Para tirar uma, delete o objeto: uma roldana e um objeto como outro\n     \
+              qualquer, entao Delete e Ctrl+Z ja funcionam.\n  \
+           7. E o gesto de CRIAR, pelas DUAS rotas:\n     \
+              (a) selecione dois corpos, escolha 'Pulley' no seletor 'Join As' da\n     \
+                  secao Physics Body e clique em Join;\n     \
+              (b) OU aperte sobre um corpo no canvas, arraste e solte sobre o outro.\n     \
+              Nas duas, DUAS roldanas nascem como objetos na Hierarquia, acima de cada\n     \
+              corpo, e a corda ja nasce esticada.\n  \
+           8. E o que NAO esta mais la: o campo 'Ratio'. Ele vendia uma talha que a\n     \
+              fisica nao tem -- ver o item 3.",
+        simple_drop = MEASURED_SIMPLE_LOAD_DROP,
+        simple_rise = MEASURED_SIMPLE_CW_RISE,
+        zig_drop = MEASURED_ZIGZAG_LOAD_DROP,
+    );
 }
 
 #[cfg(test)]

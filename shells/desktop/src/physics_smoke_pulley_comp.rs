@@ -244,95 +244,90 @@ pub(crate) fn build_composition(world: &mut World) {
 #[path = "physics_smoke_pulley_comp_tests.rs"]
 mod tests;
 
-impl crate::App {
-    /// **Cena 63 (W-Pulley W5).** Duas máquinas com a MESMA carga e o MESMO
-    /// contrapeso; a única diferença é o segundo diâmetro do tambor.
-    pub(crate) fn physics_smoke_composition(&mut self) {
-        let gfx = self.gfx.as_mut().expect("gfx");
-        build_composition(gfx.sim.world_mut());
-        // O rig sobe a 10 m e a câmera padrão mostra até 5: sem isto, tudo acima
-        // das cargas — inclusive os dois tambores e as alças deles — nasce fora
-        // do quadro. Ver o doc de `CAMERA_CENTRE`.
-        gfx.camera.center = CAMERA_CENTRE;
-        gfx.camera.height_world = CAMERA_HEIGHT;
-        if let Some(hero) = gfx.hero_screen.as_mut() {
-            hero.panel_visibility.insert("physics", true);
-        }
+/// **Cena 63 (W-Pulley W5).** Duas máquinas com a MESMA carga e o MESMO
+/// contrapeso; a única diferença é o segundo diâmetro do tambor.
+pub fn physics_smoke_composition(ctx: &mut ph2d_app_physics::SceneCtx<'_>) {
+    build_composition(ctx.world);
+    // O rig sobe a 10 m e a câmera padrão mostra até 5: sem isto, tudo acima
+    // das cargas — inclusive os dois tambores e as alças deles — nasce fora
+    // do quadro. Ver o doc de `CAMERA_CENTRE`.
+    ctx.want.camera_center = Some(CAMERA_CENTRE);
+    ctx.want.camera_height_world = Some(CAMERA_HEIGHT);
+    ctx.want.panels.push("physics");
 
-        eprintln!(
-            "[physics-smoke 63] A COMPOSICAO -- as duas vantagens MULTIPLICAM.\n  \
-               A cena nasce PARADA e o contorno JA ESTA LIGADO -- B o ALTERNA, entao\n  \
-               aperta-lo aqui o DESLIGA e as alcas somem junto. Faca o passo das ALCAS\n  \
-               primeiro (o ultimo bloco); o PLAY vem por ultimo (o toggle Physics ja\n  \
-               esta armado).\n\n  \
-               Os DOIS sarilhos tem a MESMA carga ({load:.0} kg) e o MESMO contrapeso\n  \
-               ({counter:.0} kg), e os DOIS tem uma cadernal MOVEL pendurada na carga.\n  \
-               A unica diferenca e o SEGUNDO diametro do tambor -- e eles andam para\n  \
-               lados OPOSTOS.\n\n  \
-               1. VERDE (esquerda) -- o tambor tem DOIS raios ({r_in:.2} e {r_out:.3}), entao\n     \
-                  ele sozinho vale {gear:.0}x; a cadernal movel dobra de novo. Vantagem {mech:.0}x:\n     \
-                  1 kg segura ate {hold:.0} kg, e os {load:.0} kg SOBEM (+{geared:.2} m em 2 s).\n     \
-                  Olhe o CONTRAPESO: ele desce {drop:.2} m no mesmo tempo -- {mech:.0}x o que a\n     \
-                  carga sobe. E essa razao que se ve de longe.\n  \
-               2. VERMELHO (direita) -- o mesmo rig com um tambor de UM raio. Sobra a\n     \
-                  talha: vantagem 2, e 1 kg so segura 2 kg. Os {load:.0} kg CAEM ({plain:.2} m)\n     \
-                  ate o chao.\n\n  \
-               (!) A carga de {load:.0} kg esta ENTRE as duas vantagens de proposito: pesada\n     \
-               demais para a talha sozinha, leve demais para a composicao. E por isso\n     \
-               que a MESMA massa sobe de um lado e cai do outro.\n  \
-               (!) O contrapeso VERMELHO e arremessado para cima quando a carga pousa, e\n     \
-               isso e a corda sendo corda: ela so PUXA. Um contrapeso de 1 kg puxado\n     \
-               por 7 kg sai voando, e subir afrouxa a corda em vez de a esticar.\n\n  \
-               AUTORE VOCE MESMO: selecione 'Plain Rope Drum' na Hierarquia e digite\n  \
-               {r_out:.3} na row 'Out Radius (m)' da secao Pulley Wheel. O segundo anel\n  \
-               aparece e, no Play, a carga da direita para de cair.\n\n  \
-               E AGORA SEM DIGITAR NADA (W6) -- a cena nasce PARADA, e e por isso:\n     \
-               as alcas de roldana so existem em REPOUSO (tocando, o overlay desenha a\n     \
-               geometria do SOLVER, e elas autoram a AUTORADA). Com B ligado:\n  \
-               - selecione 'Geared Rope Drum': ele tem TRES alcas ambar. O centro o\n    \
-                 move; o aro da DIREITA e o raio de entrada; o da ESQUERDA e o de\n    \
-                 SAIDA -- e so ele existe porque este tambor tem um segundo raio.\n    \
-                 Arraste o da esquerda para FORA: a vantagem cai (2R/r encolhe) e no\n    \
-                 Play a carga sobe menos. Puxe-o para DENTRO e ela sobe mais.\n  \
-               - selecione 'Geared Rope Sheave' (a cadernal montada na carga) e arraste\n    \
-                 o CENTRO dela: o eixo se re-coloca NO BLOCO e FICA. Antes desta wave\n    \
-                 ele voltava sozinho ao soltar -- o centro de uma roldana montada e\n    \
-                 derivado, e quem nao desarma o sentinela escreve num campo que o\n    \
-                 frame seguinte reescreve.\n\n  \
-               E O PISO -- dois gestos que NAO podem dar tranco:\n  \
-               - com a corda 'Geared Rope' selecionada, digite 2 na row\n    \
-                 'Rope Length (m)' da secao Physics Joint. A corda desta cena mede\n    \
-                 {l0:.1} m, entao 2 e impossivel: o numero volta para {l0:.1} sozinho\n    \
-                 (a corda nao pode ser mais curta que o caminho que ela enfia) e o\n    \
-                 Play continua liso. Sem o piso isso era {viol:.0} m de violacao, e o\n    \
-                 solver a comia num tique so.\n  \
-               - clique 'Add Wheel': nasce uma 3a roldana e o comprimento sobe\n    \
-                 sozinho ({l0:.4} -> {l0_added:.4} m). Nesta cena a roldana nova cai\n    \
-                 quase sobre a linha da corda, entao o Play muda pouco -- o que se\n    \
-                 confere aqui e que ele nao TRANCA (maior salto {jump:.4} m, o mesmo\n    \
-                 da cena intocada).\n\n  \
-               E A CORDA QUE PARA DE SEGURAR -- arraste o CENTRO de 'Geared Rope\n  \
-               Drum' para cima da ponta de baixo da corda, ate a roldana ENGOLIR a\n  \
-               ancora: a rota fica impossivel (uma tangente de um ponto DENTRO do\n  \
-               circulo nao existe), o passe de impulso pula a corda, e ela tem de\n  \
-               ficar VERMELHA -- a mesma cor de um joint rompido, sem o estouro, e\n  \
-               dita reta em vez de roteada. Antes desta wave ela seguia AMBAR, que\n  \
-               e o desenho de uma corda que funciona: o unico sinal na tela era a\n  \
-               carga caindo. Arraste de volta e o ambar volta com a simulacao.",
-            load = LOAD_MASS,
-            counter = COUNTER_MASS,
-            r_in = R_IN,
-            r_out = R_OUT,
-            gear = R_IN / R_OUT,
-            mech = 2.0 * R_IN / R_OUT,
-            hold = COUNTER_MASS * 2.0 * R_IN / R_OUT,
-            geared = MEASURED_GEARED_RISE,
-            drop = MEASURED_GEARED_COUNTER_DROP,
-            plain = MEASURED_PLAIN_DROP,
-            l0 = MEASURED_GEARED_ROPE_LENGTH,
-            l0_added = MEASURED_GEARED_ROPE_LENGTH_ADDED,
-            jump = MEASURED_GEARED_WORST_JUMP,
-            viol = MEASURED_GEARED_ROPE_LENGTH - 2.0,
-        );
-    }
+    eprintln!(
+        "[physics-smoke 63] A COMPOSICAO -- as duas vantagens MULTIPLICAM.\n  \
+           A cena nasce PARADA e o contorno JA ESTA LIGADO -- B o ALTERNA, entao\n  \
+           aperta-lo aqui o DESLIGA e as alcas somem junto. Faca o passo das ALCAS\n  \
+           primeiro (o ultimo bloco); o PLAY vem por ultimo (o toggle Physics ja\n  \
+           esta armado).\n\n  \
+           Os DOIS sarilhos tem a MESMA carga ({load:.0} kg) e o MESMO contrapeso\n  \
+           ({counter:.0} kg), e os DOIS tem uma cadernal MOVEL pendurada na carga.\n  \
+           A unica diferenca e o SEGUNDO diametro do tambor -- e eles andam para\n  \
+           lados OPOSTOS.\n\n  \
+           1. VERDE (esquerda) -- o tambor tem DOIS raios ({r_in:.2} e {r_out:.3}), entao\n     \
+              ele sozinho vale {gear:.0}x; a cadernal movel dobra de novo. Vantagem {mech:.0}x:\n     \
+              1 kg segura ate {hold:.0} kg, e os {load:.0} kg SOBEM (+{geared:.2} m em 2 s).\n     \
+              Olhe o CONTRAPESO: ele desce {drop:.2} m no mesmo tempo -- {mech:.0}x o que a\n     \
+              carga sobe. E essa razao que se ve de longe.\n  \
+           2. VERMELHO (direita) -- o mesmo rig com um tambor de UM raio. Sobra a\n     \
+              talha: vantagem 2, e 1 kg so segura 2 kg. Os {load:.0} kg CAEM ({plain:.2} m)\n     \
+              ate o chao.\n\n  \
+           (!) A carga de {load:.0} kg esta ENTRE as duas vantagens de proposito: pesada\n     \
+           demais para a talha sozinha, leve demais para a composicao. E por isso\n     \
+           que a MESMA massa sobe de um lado e cai do outro.\n  \
+           (!) O contrapeso VERMELHO e arremessado para cima quando a carga pousa, e\n     \
+           isso e a corda sendo corda: ela so PUXA. Um contrapeso de 1 kg puxado\n     \
+           por 7 kg sai voando, e subir afrouxa a corda em vez de a esticar.\n\n  \
+           AUTORE VOCE MESMO: selecione 'Plain Rope Drum' na Hierarquia e digite\n  \
+           {r_out:.3} na row 'Out Radius (m)' da secao Pulley Wheel. O segundo anel\n  \
+           aparece e, no Play, a carga da direita para de cair.\n\n  \
+           E AGORA SEM DIGITAR NADA (W6) -- a cena nasce PARADA, e e por isso:\n     \
+           as alcas de roldana so existem em REPOUSO (tocando, o overlay desenha a\n     \
+           geometria do SOLVER, e elas autoram a AUTORADA). Com B ligado:\n  \
+           - selecione 'Geared Rope Drum': ele tem TRES alcas ambar. O centro o\n    \
+             move; o aro da DIREITA e o raio de entrada; o da ESQUERDA e o de\n    \
+             SAIDA -- e so ele existe porque este tambor tem um segundo raio.\n    \
+             Arraste o da esquerda para FORA: a vantagem cai (2R/r encolhe) e no\n    \
+             Play a carga sobe menos. Puxe-o para DENTRO e ela sobe mais.\n  \
+           - selecione 'Geared Rope Sheave' (a cadernal montada na carga) e arraste\n    \
+             o CENTRO dela: o eixo se re-coloca NO BLOCO e FICA. Antes desta wave\n    \
+             ele voltava sozinho ao soltar -- o centro de uma roldana montada e\n    \
+             derivado, e quem nao desarma o sentinela escreve num campo que o\n    \
+             frame seguinte reescreve.\n\n  \
+           E O PISO -- dois gestos que NAO podem dar tranco:\n  \
+           - com a corda 'Geared Rope' selecionada, digite 2 na row\n    \
+             'Rope Length (m)' da secao Physics Joint. A corda desta cena mede\n    \
+             {l0:.1} m, entao 2 e impossivel: o numero volta para {l0:.1} sozinho\n    \
+             (a corda nao pode ser mais curta que o caminho que ela enfia) e o\n    \
+             Play continua liso. Sem o piso isso era {viol:.0} m de violacao, e o\n    \
+             solver a comia num tique so.\n  \
+           - clique 'Add Wheel': nasce uma 3a roldana e o comprimento sobe\n    \
+             sozinho ({l0:.4} -> {l0_added:.4} m). Nesta cena a roldana nova cai\n    \
+             quase sobre a linha da corda, entao o Play muda pouco -- o que se\n    \
+             confere aqui e que ele nao TRANCA (maior salto {jump:.4} m, o mesmo\n    \
+             da cena intocada).\n\n  \
+           E A CORDA QUE PARA DE SEGURAR -- arraste o CENTRO de 'Geared Rope\n  \
+           Drum' para cima da ponta de baixo da corda, ate a roldana ENGOLIR a\n  \
+           ancora: a rota fica impossivel (uma tangente de um ponto DENTRO do\n  \
+           circulo nao existe), o passe de impulso pula a corda, e ela tem de\n  \
+           ficar VERMELHA -- a mesma cor de um joint rompido, sem o estouro, e\n  \
+           dita reta em vez de roteada. Antes desta wave ela seguia AMBAR, que\n  \
+           e o desenho de uma corda que funciona: o unico sinal na tela era a\n  \
+           carga caindo. Arraste de volta e o ambar volta com a simulacao.",
+        load = LOAD_MASS,
+        counter = COUNTER_MASS,
+        r_in = R_IN,
+        r_out = R_OUT,
+        gear = R_IN / R_OUT,
+        mech = 2.0 * R_IN / R_OUT,
+        hold = COUNTER_MASS * 2.0 * R_IN / R_OUT,
+        geared = MEASURED_GEARED_RISE,
+        drop = MEASURED_GEARED_COUNTER_DROP,
+        plain = MEASURED_PLAIN_DROP,
+        l0 = MEASURED_GEARED_ROPE_LENGTH,
+        l0_added = MEASURED_GEARED_ROPE_LENGTH_ADDED,
+        jump = MEASURED_GEARED_WORST_JUMP,
+        viol = MEASURED_GEARED_ROPE_LENGTH - 2.0,
+    );
 }

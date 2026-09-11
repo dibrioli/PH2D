@@ -29,7 +29,6 @@ use ph2d_physics_ecs::{
 };
 use ph2d_render::{Sprite, WHITE_TILE_KEY};
 
-use crate::App;
 use crate::physics_smoke_player::slab;
 
 /// A altura de flutuação da cena — a das outras cenas de player.
@@ -94,13 +93,10 @@ fn player(
     e.id()
 }
 
-impl App {
-    /// **O estouro** — o empurrão de fora, nos três modos.
-    pub(crate) fn physics_smoke_blast(&mut self) {
-        let gfx = self.gfx.as_mut().expect("gfx");
-        let _ = build_blast_scene(gfx.sim.world_mut());
-        eprintln!("{BLAST_SMOKE_MESSAGE}");
-    }
+/// **O estouro** — o empurrão de fora, nos três modos.
+pub fn physics_smoke_blast(ctx: &mut ph2d_app_physics::SceneCtx<'_>) {
+    let _ = build_blast_scene(ctx.world);
+    eprintln!("{BLAST_SMOKE_MESSAGE}");
 }
 
 /// **A geometria da cena 117**, separada do `App` de propósito — é ela que os

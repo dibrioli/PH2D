@@ -30,7 +30,6 @@ use ph2d_core::Vec2;
 use ph2d_ecs::{Entity, Name};
 use ph2d_physics_ecs::PlatformPlayer;
 
-use crate::App;
 use crate::physics_smoke_player::{slab, spawn_player};
 
 /// O topo da prateleira BAIXA — cabe num pulo só (1,903 medido).
@@ -84,13 +83,10 @@ fn lane(world: &mut bevy_ecs::world::World, x0: f32, tag: &str, air_jumps: u32) 
     p
 }
 
-impl App {
-    /// **A prateleira alta** — o pulo do ar.
-    pub(crate) fn physics_smoke_multi_jump(&mut self) {
-        let gfx = self.gfx.as_mut().expect("gfx");
-        let _ = build_multi_jump_scene(gfx.sim.world_mut());
-        eprintln!("{MULTI_JUMP_SMOKE_MESSAGE}");
-    }
+/// **A prateleira alta** — o pulo do ar.
+pub fn physics_smoke_multi_jump(ctx: &mut ph2d_app_physics::SceneCtx<'_>) {
+    let _ = build_multi_jump_scene(ctx.world);
+    eprintln!("{MULTI_JUMP_SMOKE_MESSAGE}");
 }
 
 /// **A geometria da cena 110**, separada do `App` de propósito — é ela que os

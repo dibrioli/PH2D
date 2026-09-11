@@ -46,7 +46,6 @@ use ph2d_core::Vec2;
 use ph2d_ecs::Transform;
 use ph2d_physics_ecs::PlatformPlayer;
 
-use crate::App;
 use crate::physics_smoke_player::{slab, spawn_player};
 
 /// A altura de flutuação agachado — acima do piso geométrico de 0,50 que a
@@ -65,13 +64,10 @@ pub(crate) const NARROW_X: [f32; 4] = [6.0, 10.0, 14.0, 18.0];
 /// Onde a laje LARGA de controle começa.
 pub(crate) const WIDE_X: f32 = 24.0;
 
-impl App {
-    /// **A pedra estreita** — o teto que não cabe num raio.
-    pub(crate) fn physics_smoke_stone(&mut self) {
-        let gfx = self.gfx.as_mut().expect("gfx");
-        let _ = build_stone_scene(gfx.sim.world_mut());
-        eprintln!("{STONE_SMOKE_MESSAGE}");
-    }
+/// **A pedra estreita** — o teto que não cabe num raio.
+pub fn physics_smoke_stone(ctx: &mut ph2d_app_physics::SceneCtx<'_>) {
+    let _ = build_stone_scene(ctx.world);
+    eprintln!("{STONE_SMOKE_MESSAGE}");
 }
 
 /// **A geometria da cena 107**, separada do `App` de propósito.

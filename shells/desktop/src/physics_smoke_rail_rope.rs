@@ -108,49 +108,44 @@ pub(crate) fn build_rail_rope_scene(world: &mut World) {
 #[path = "physics_smoke_rail_rope_tests.rs"]
 mod tests;
 
-impl crate::App {
-    /// **Cena 77 (W-RailRope).** O trilho como elo de corda.
-    pub(crate) fn physics_smoke_rail_rope(&mut self) {
-        let gfx = self.gfx.as_mut().expect("gfx");
-        build_rail_rope_scene(gfx.sim.world_mut());
-        gfx.camera.center = CAMERA_CENTRE;
-        gfx.camera.height_world = CAMERA_HEIGHT;
-        if let Some(hero) = gfx.hero_screen.as_mut() {
-            hero.panel_visibility.insert("physics", true);
-        }
+/// **Cena 77 (W-RailRope).** O trilho como elo de corda.
+pub fn physics_smoke_rail_rope(ctx: &mut ph2d_app_physics::SceneCtx<'_>) {
+    build_rail_rope_scene(ctx.world);
+    ctx.want.camera_center = Some(CAMERA_CENTRE);
+    ctx.want.camera_height_world = Some(CAMERA_HEIGHT);
+    ctx.want.panels.push("physics");
 
-        eprintln!(
-            "[physics-smoke 77] O MASTRO TELESCOPICO -- o trilho como elo de corda.\n\n  \
-               O W-LeadDrag ensinou o rig a ser arrastado como uma CORDA e deixou o\n  \
-               Slider de fora, com a nota dizendo que a lei e' ANGULAR e que um trilho\n  \
-               'pediria outra lei'. A lei nao era outra: e' a MESMA na outra coordenada.\n  \
-               A dobradica escolhe o ANGULO que mantem o ponto apontado; o trilho\n  \
-               escolhe o DESLIZE.\n\n  \
-               Tres correntes de quatro elos, cada uma com o curso de {stroke:.1} m por\n  \
-               junta. Segure **Alt** e arraste a cabeca (o elo mais a ESQUERDA):\n     \
-                  - EM CIMA '{n0}' (azul) -- arraste PARA OS LADOS, ao longo do trilho.\n       \
-                    Cada elo come meio metro de curso e so' entao arrasta o vizinho: um\n       \
-                    MASTRO TELESCOPICO. Medido numa puxada de 2 m: os quatro andam\n       \
-                    2,0 / 1,5 / 1,0 / 0,5 -- o perfil decai da mao para a cauda, que e'\n       \
-                    o que arrastar uma corda parece.\n     \
-                  - MEIO '{n1}' (ambar) -- os MESMOS trilhos, arrastados PARA CIMA ou\n       \
-                    PARA BAIXO. A corrente vai INTEIRA (2,0 / 2,0 / 2,0 / 2,0): um rail\n       \
-                    nao tem liberdade na perpendicular, e essa metade e' o que impede a\n       \
-                    lei de virar 'deslize sempre'.\n     \
-                  - EMBAIXO '{n2}' (cinza) -- o CONTROLE, uma corrente SOLDADA. Ela vai\n       \
-                    inteira em QUALQUER direcao. Sem ela a cena nao distingue *o trilho\n       \
-                    desliza* de *tudo e' rigido*.\n\n  \
-               (!) O CURSO e' load-bearing, e da' para ver: selecione uma junta da pista\n      \
-                   de cima e DESMARQUE 'Limits' na secao Physics Joint. Agora o primeiro\n      \
-                   trilho absorve a puxada INTEIRA e nada atras dele se mexe -- que e' o\n      \
-                   que um rail sem batente de fato faz.\n\n  \
-               (!) O arrasto tem MEMORIA (a corda e' funcao do CAMINHO): vai ate' o fim\n      \
-                   do curso, volta, e vai de novo -- o carrinho fica onde a SOMA dos\n      \
-                   movimentos o pos, nao onde a posicao final do cursor sugere.\n",
-            stroke = STROKE,
-            n0 = LANE_NAMES[0],
-            n1 = LANE_NAMES[1],
-            n2 = LANE_NAMES[2],
-        );
-    }
+    eprintln!(
+        "[physics-smoke 77] O MASTRO TELESCOPICO -- o trilho como elo de corda.\n\n  \
+           O W-LeadDrag ensinou o rig a ser arrastado como uma CORDA e deixou o\n  \
+           Slider de fora, com a nota dizendo que a lei e' ANGULAR e que um trilho\n  \
+           'pediria outra lei'. A lei nao era outra: e' a MESMA na outra coordenada.\n  \
+           A dobradica escolhe o ANGULO que mantem o ponto apontado; o trilho\n  \
+           escolhe o DESLIZE.\n\n  \
+           Tres correntes de quatro elos, cada uma com o curso de {stroke:.1} m por\n  \
+           junta. Segure **Alt** e arraste a cabeca (o elo mais a ESQUERDA):\n     \
+              - EM CIMA '{n0}' (azul) -- arraste PARA OS LADOS, ao longo do trilho.\n       \
+                Cada elo come meio metro de curso e so' entao arrasta o vizinho: um\n       \
+                MASTRO TELESCOPICO. Medido numa puxada de 2 m: os quatro andam\n       \
+                2,0 / 1,5 / 1,0 / 0,5 -- o perfil decai da mao para a cauda, que e'\n       \
+                o que arrastar uma corda parece.\n     \
+              - MEIO '{n1}' (ambar) -- os MESMOS trilhos, arrastados PARA CIMA ou\n       \
+                PARA BAIXO. A corrente vai INTEIRA (2,0 / 2,0 / 2,0 / 2,0): um rail\n       \
+                nao tem liberdade na perpendicular, e essa metade e' o que impede a\n       \
+                lei de virar 'deslize sempre'.\n     \
+              - EMBAIXO '{n2}' (cinza) -- o CONTROLE, uma corrente SOLDADA. Ela vai\n       \
+                inteira em QUALQUER direcao. Sem ela a cena nao distingue *o trilho\n       \
+                desliza* de *tudo e' rigido*.\n\n  \
+           (!) O CURSO e' load-bearing, e da' para ver: selecione uma junta da pista\n      \
+               de cima e DESMARQUE 'Limits' na secao Physics Joint. Agora o primeiro\n      \
+               trilho absorve a puxada INTEIRA e nada atras dele se mexe -- que e' o\n      \
+               que um rail sem batente de fato faz.\n\n  \
+           (!) O arrasto tem MEMORIA (a corda e' funcao do CAMINHO): vai ate' o fim\n      \
+               do curso, volta, e vai de novo -- o carrinho fica onde a SOMA dos\n      \
+               movimentos o pos, nao onde a posicao final do cursor sugere.\n",
+        stroke = STROKE,
+        n0 = LANE_NAMES[0],
+        n1 = LANE_NAMES[1],
+        n2 = LANE_NAMES[2],
+    );
 }

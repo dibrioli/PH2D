@@ -153,39 +153,36 @@ fn crate_(
     ));
 }
 
-impl crate::App {
-    /// **Cena 52 (W-Grab).** Três estações, TOCANDO.
-    pub(crate) fn physics_smoke_grab(&mut self) {
-        let gfx = self.gfx.as_mut().expect("gfx");
-        spawn_props(gfx.sim.world_mut());
+/// **Cena 52 (W-Grab).** Três estações, TOCANDO.
+pub fn physics_smoke_grab(ctx: &mut ph2d_app_physics::SceneCtx<'_>) {
+    spawn_props(ctx.world);
 
-        eprintln!(
-            "[physics-smoke 52] A cena esta TOCANDO. Arraste um corpo com o mouse.\n  \
-               1. Aperte B (mostra os colliders; a MAO aparece como um zigzag VERDE-LIMAO\n     \
-                  do cursor ate o ponto que voce pegou -- ela E uma mola).\n  \
-               2. A DUPLA (meio): a bola azul e o caixote laranja tem o MESMO tamanho e o\n     \
-                  caixote e 25x mais denso. Arraste um, depois o outro: seguem IGUAL.\n     \
-                  (medido: 3,00 m e 2,99 m sob o mesmo gesto -- razao 1,004)\n  \
-               3. A PAREDE (esquerda): arraste 'Pusher' (o caixote azul da ponta) para a\n     \
-                  DIREITA, tentando atravessar o muro cinza. Ele PARA encostado nele --\n     \
-                  a mao cede contra o contato, nao teleporta.\n     \
-                  (medido: o cursor foi para x=-3,0 e o caixote parou em x=-6,75,\n      \
-                   que e exatamente encostado; penetracao zero)\n  \
-               4. A TORRE (direita): pegue a bola azul da DUPLA, ganhe velocidade para a\n     \
-                  direita e SOLTE em movimento. Ela voa e DERRUBA a pilha -- soltar nao\n     \
-                  zera a velocidade.\n     \
-                  (medido: soltando a 8 m/s a bola viaja 2,62 m depois do release)\n  \
-               5. O muro cinza e ESTATICO: a MAO nao o pega (uma mola nao move massa\n     \
-                  infinita) -- o clique cai no caminho de sempre, que SELECIONA e\n     \
-                  ARRASTA. E desde a W-Hand o collider vai junto: arraste o muro e o\n     \
-                  caixote passa a bater onde ele esta AGORA (era o bug do collider\n     \
-                  fantasma; a cena 53 o demonstra com uma testemunha em cima).\n  \
-               6. Desmarque 'Physics' no transporte e tente arrastar: a mao NAO aparece\n     \
-                  (sem passo de solver ela nao puxaria nada). Marque de novo e volta.\n  \
-               7. Pause: em repouso o arrasto volta a ser AUTORIA de pose (e com ALT\n     \
-                  carrega o rig -- W-JG). O relogio e o interruptor.\n  \
-               8. Arraste a regua para TRAS: o cutucao NAO volta -- ele nao esta no\n     \
-                  documento, e a cena re-simula da pose autorada."
-        );
-    }
+    eprintln!(
+        "[physics-smoke 52] A cena esta TOCANDO. Arraste um corpo com o mouse.\n  \
+           1. Aperte B (mostra os colliders; a MAO aparece como um zigzag VERDE-LIMAO\n     \
+              do cursor ate o ponto que voce pegou -- ela E uma mola).\n  \
+           2. A DUPLA (meio): a bola azul e o caixote laranja tem o MESMO tamanho e o\n     \
+              caixote e 25x mais denso. Arraste um, depois o outro: seguem IGUAL.\n     \
+              (medido: 3,00 m e 2,99 m sob o mesmo gesto -- razao 1,004)\n  \
+           3. A PAREDE (esquerda): arraste 'Pusher' (o caixote azul da ponta) para a\n     \
+              DIREITA, tentando atravessar o muro cinza. Ele PARA encostado nele --\n     \
+              a mao cede contra o contato, nao teleporta.\n     \
+              (medido: o cursor foi para x=-3,0 e o caixote parou em x=-6,75,\n      \
+               que e exatamente encostado; penetracao zero)\n  \
+           4. A TORRE (direita): pegue a bola azul da DUPLA, ganhe velocidade para a\n     \
+              direita e SOLTE em movimento. Ela voa e DERRUBA a pilha -- soltar nao\n     \
+              zera a velocidade.\n     \
+              (medido: soltando a 8 m/s a bola viaja 2,62 m depois do release)\n  \
+           5. O muro cinza e ESTATICO: a MAO nao o pega (uma mola nao move massa\n     \
+              infinita) -- o clique cai no caminho de sempre, que SELECIONA e\n     \
+              ARRASTA. E desde a W-Hand o collider vai junto: arraste o muro e o\n     \
+              caixote passa a bater onde ele esta AGORA (era o bug do collider\n     \
+              fantasma; a cena 53 o demonstra com uma testemunha em cima).\n  \
+           6. Desmarque 'Physics' no transporte e tente arrastar: a mao NAO aparece\n     \
+              (sem passo de solver ela nao puxaria nada). Marque de novo e volta.\n  \
+           7. Pause: em repouso o arrasto volta a ser AUTORIA de pose (e com ALT\n     \
+              carrega o rig -- W-JG). O relogio e o interruptor.\n  \
+           8. Arraste a regua para TRAS: o cutucao NAO volta -- ele nao esta no\n     \
+              documento, e a cena re-simula da pose autorada."
+    );
 }

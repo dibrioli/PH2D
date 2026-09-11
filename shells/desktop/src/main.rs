@@ -428,7 +428,6 @@ mod pattern_path_smoke;
 mod pattern_seam_probe;
 mod pencil_smoke;
 mod physics_smoke;
-mod physics_state;
 mod physics_smoke_authoring;
 mod physics_smoke_blast;
 mod physics_smoke_brake;
@@ -512,6 +511,7 @@ mod physics_smoke_wheel;
 mod physics_smoke_world_pin;
 mod physics_smoke_zone_force;
 mod physics_smoke_zones;
+mod physics_state;
 /// **O import de uma folha hand-packed** (`folha.png` + `folha.json`) — irmão do
 /// `image_import`, e o primeiro consumidor que o `parse_atlas_meta` tem desde 2026-05-12.
 /// **A folha como OBJETO** (plano `docs/Sprite_projeto/17` §7) — criar uma a partir da seleção e

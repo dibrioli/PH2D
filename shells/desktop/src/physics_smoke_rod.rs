@@ -192,43 +192,38 @@ pub(crate) fn spawn_props(world: &mut World) {
     );
 }
 
-impl crate::App {
-    /// **Cena 56 (W-Rod).** Três pêndulos comparáveis + uma treliça, TOCANDO —
-    /// esta cena é sobre o que a simulação faz, não sobre um gesto de autoria.
-    pub(crate) fn physics_smoke_rod(&mut self) {
-        let gfx = self.gfx.as_mut().expect("gfx");
-        spawn_props(gfx.sim.world_mut());
-        if let Some(hero) = gfx.hero_screen.as_mut() {
-            hero.panel_visibility.insert("physics", true);
-        }
+/// **Cena 56 (W-Rod).** Três pêndulos comparáveis + uma treliça, TOCANDO —
+/// esta cena é sobre o que a simulação faz, não sobre um gesto de autoria.
+pub fn physics_smoke_rod(ctx: &mut ph2d_app_physics::SceneCtx<'_>) {
+    spawn_props(ctx.world);
+    ctx.want.panels.push("physics");
 
-        eprintln!(
-            "[physics-smoke 56] A BARRA RIGIDA -- o vinculo que faltava.\n  \
-               Aperte B para ver os joints, e depois PLAY (o toggle Physics ja esta armado).\n\n  \
-               1. OS TRES PENDULOS (esquerda). Mesmo comprimento autorado (2 m), mesma\n     \
-                  carga, os tres soltos na horizontal. Olhe a DISTANCIA ate o gancho:\n     \
-                  - CIANO (corda): afrouxa e o peso DESPENCA antes de a linha esticar.\n     \
-                  - AMARELO (mola): cede sob a carga e balanca comprida.\n     \
-                  - VERDE (barra): gira com o comprimento INTACTO, do 1o ao ultimo quadro.\n     \
-                  (medido, menor distancia ao longo de 3 s: corda {rope:.2} m, mola {spring:.2} m,\n      \
-                  barra {rod:.2} m -- as tres autoradas com 2,00)\n  \
-               2. Selecione a barra verde na Hierarquia. A secao do joint mostra UM\n     \
-                  numero -- 'Length (m)'. Sem rigidez, sem limites, sem motor: um rod\n     \
-                  e um numero so. Mude para 3 e a barra se estica ate 3 m.\n  \
-               3. O DESENHO diz o tipo: uma barra sao DUAS linhas paralelas entre os\n     \
-                  olhais -- nem o zigue-zague da mola nem a curva da corda.\n  \
-               4. A TRELICA (direita): o apice verde esta preso por DUAS barras a dois\n     \
-                  pontos estaticos. Arraste-o e solte: ele volta. Duas cordas o\n     \
-                  deixariam cair, porque corda so PUXA.\n     \
-                  (medido: o apice desvia {truss:.3} m do lugar em 3 s de simulacao)\n  \
-               5. E o gesto de CRIAR: selecione dois corpos quaisquer, va na secao\n     \
-                  Physics Body, escolha 'Rod' no seletor 'Join As' e clique em Join.",
-            rope = MEASURED_ROPE_MIN,
-            spring = MEASURED_SPRING_MIN,
-            rod = MEASURED_ROD_MIN,
-            truss = MEASURED_TRUSS_DRIFT,
-        );
-    }
+    eprintln!(
+        "[physics-smoke 56] A BARRA RIGIDA -- o vinculo que faltava.\n  \
+           Aperte B para ver os joints, e depois PLAY (o toggle Physics ja esta armado).\n\n  \
+           1. OS TRES PENDULOS (esquerda). Mesmo comprimento autorado (2 m), mesma\n     \
+              carga, os tres soltos na horizontal. Olhe a DISTANCIA ate o gancho:\n     \
+              - CIANO (corda): afrouxa e o peso DESPENCA antes de a linha esticar.\n     \
+              - AMARELO (mola): cede sob a carga e balanca comprida.\n     \
+              - VERDE (barra): gira com o comprimento INTACTO, do 1o ao ultimo quadro.\n     \
+              (medido, menor distancia ao longo de 3 s: corda {rope:.2} m, mola {spring:.2} m,\n      \
+              barra {rod:.2} m -- as tres autoradas com 2,00)\n  \
+           2. Selecione a barra verde na Hierarquia. A secao do joint mostra UM\n     \
+              numero -- 'Length (m)'. Sem rigidez, sem limites, sem motor: um rod\n     \
+              e um numero so. Mude para 3 e a barra se estica ate 3 m.\n  \
+           3. O DESENHO diz o tipo: uma barra sao DUAS linhas paralelas entre os\n     \
+              olhais -- nem o zigue-zague da mola nem a curva da corda.\n  \
+           4. A TRELICA (direita): o apice verde esta preso por DUAS barras a dois\n     \
+              pontos estaticos. Arraste-o e solte: ele volta. Duas cordas o\n     \
+              deixariam cair, porque corda so PUXA.\n     \
+              (medido: o apice desvia {truss:.3} m do lugar em 3 s de simulacao)\n  \
+           5. E o gesto de CRIAR: selecione dois corpos quaisquer, va na secao\n     \
+              Physics Body, escolha 'Rod' no seletor 'Join As' e clique em Join.",
+        rope = MEASURED_ROPE_MIN,
+        spring = MEASURED_SPRING_MIN,
+        rod = MEASURED_ROD_MIN,
+        truss = MEASURED_TRUSS_DRIFT,
+    );
 }
 
 #[cfg(test)]

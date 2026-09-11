@@ -122,53 +122,48 @@ pub(crate) fn build_lead_scene(world: &mut World) {
 #[path = "physics_smoke_lead_tests.rs"]
 mod tests;
 
-impl crate::App {
-    /// **Cena 74 (W-LeadDrag).** Quatro rigs, PAUSADA, painel aberto.
-    pub(crate) fn physics_smoke_lead(&mut self) {
-        let gfx = self.gfx.as_mut().expect("gfx");
-        build_lead_scene(gfx.sim.world_mut());
-        gfx.camera.center = CAMERA_CENTRE;
-        gfx.camera.height_world = CAMERA_HEIGHT;
-        if let Some(hero) = gfx.hero_screen.as_mut() {
-            hero.panel_visibility.insert("physics", true);
-        }
-        eprintln!(
-            "[physics-smoke 74] A CORDA E A PECA -- o que acontece ao arrastar o corpo\n  \
-               da ponta A. A cena esta PAUSADA e o painel PHYSICS esta aberto (tecla W);\n  \
-               aperte B para ver colliders e joints.\n\n  \
-               Dois destes gestos eram MORTOS: pegar a cabeca de uma cadeia solta era\n  \
-               recusado, e uma peca soldada nao abria gesto nenhum -- o artista\n  \
-               arrastava e nada acontecia, sem aviso.\n\n  \
-               1. Abra a secao JOINTS e escolha FK. Arraste 'Rope 1', o elo mais a\n     \
-                  ESQUERDA da fileira azul (a cabeca da cadeia).\n     \
-                  -> A CORRENTE INTEIRA vai junto, RIGIDA, sem dobrar em lugar nenhum.\n     \
-                  (medido: 4 corpos, todos com o mesmo deslocamento)\n\n  \
-               2. Agora escolha IK e arraste a MESMA 'Rope 1'.\n     \
-                  -> A corrente e' ARRASTADA: os elos de tras seguem com atraso e o\n        \
-                     ULTIMO chega por ultimo, como puxar uma corda pela ponta.\n     \
-                  (medido, nos primeiros 20 cm: 0,200 / 0,102 / 0,020 / 0,020 -- a\n      \
-                   cauda mal se mexe; aos 2 m ja' e' 2,000 / 1,562 / 1,102 / 1,030,\n      \
-                   porque puxada longa o bastante tudo acaba andando)\n\n  \
-               3. FAZ CURVA: em IK, arraste 'Rope 1' em ARCO em vez de reto. A corda\n     \
-                  guarda o CAMINHO -- ela nao volta a' forma anterior quando voce\n     \
-                  retorna ao ponto de partida, e e' isso que a torna uma corda em vez\n     \
-                  de um bloco articulado.\n\n  \
-               4. A PECA (fileira ambar): em FK, arraste QUALQUER um dos tres elos.\n     \
-                  Eles sao SOLDADOS, entao nao ha' onde dobrar e a peca vai inteira.\n     \
-                  (medido: abre gesto, move 3 corpos, e nenhum deles GIRA)\n\n  \
-               5. Pegue tambem 'Rope 3', do MEIO da corrente azul. A cabeca continua\n     \
-                  sendo a mesma -- o rig tem UM 'para cima', e nao um por gesto.\n     \
-                  (antes desta wave a raiz dependia de qual elo a mao pegou: pegar a\n      \
-                   cabeca enraizava na cauda e vice-versa)\n\n  \
-               6. O CONTROLE (fileira verde, presa ao poste): em FK arraste 'Arm 1'.\n     \
-                  Ela GIRA em torno do poste, como sempre girou -- ha' uma dobradica\n     \
-                  acima dela, e o ramo novo nao pode roubar esse caso.\n\n  \
-               (!) O SUPORTE cinza esta SOLDADO a' parede. Arraste-o em FK: nada\n      \
-                   acontece, e e' o certo -- sem dobradica e sem poder viajar, o gesto\n      \
-                   RECUSA. Se a parede verde sair do lugar, e' bug (foi um defeito real\n      \
-                   desta wave, achado por medicao no meio dela).\n\n  \
-               (!) Alt+arrastar continua significando 'leve o rig inteiro' em qualquer\n      \
-                   modo, inclusive nestes dois.\n",
-        );
-    }
+/// **Cena 74 (W-LeadDrag).** Quatro rigs, PAUSADA, painel aberto.
+pub fn physics_smoke_lead(ctx: &mut ph2d_app_physics::SceneCtx<'_>) {
+    build_lead_scene(ctx.world);
+    ctx.want.camera_center = Some(CAMERA_CENTRE);
+    ctx.want.camera_height_world = Some(CAMERA_HEIGHT);
+    ctx.want.panels.push("physics");
+    eprintln!(
+        "[physics-smoke 74] A CORDA E A PECA -- o que acontece ao arrastar o corpo\n  \
+           da ponta A. A cena esta PAUSADA e o painel PHYSICS esta aberto (tecla W);\n  \
+           aperte B para ver colliders e joints.\n\n  \
+           Dois destes gestos eram MORTOS: pegar a cabeca de uma cadeia solta era\n  \
+           recusado, e uma peca soldada nao abria gesto nenhum -- o artista\n  \
+           arrastava e nada acontecia, sem aviso.\n\n  \
+           1. Abra a secao JOINTS e escolha FK. Arraste 'Rope 1', o elo mais a\n     \
+              ESQUERDA da fileira azul (a cabeca da cadeia).\n     \
+              -> A CORRENTE INTEIRA vai junto, RIGIDA, sem dobrar em lugar nenhum.\n     \
+              (medido: 4 corpos, todos com o mesmo deslocamento)\n\n  \
+           2. Agora escolha IK e arraste a MESMA 'Rope 1'.\n     \
+              -> A corrente e' ARRASTADA: os elos de tras seguem com atraso e o\n        \
+                 ULTIMO chega por ultimo, como puxar uma corda pela ponta.\n     \
+              (medido, nos primeiros 20 cm: 0,200 / 0,102 / 0,020 / 0,020 -- a\n      \
+               cauda mal se mexe; aos 2 m ja' e' 2,000 / 1,562 / 1,102 / 1,030,\n      \
+               porque puxada longa o bastante tudo acaba andando)\n\n  \
+           3. FAZ CURVA: em IK, arraste 'Rope 1' em ARCO em vez de reto. A corda\n     \
+              guarda o CAMINHO -- ela nao volta a' forma anterior quando voce\n     \
+              retorna ao ponto de partida, e e' isso que a torna uma corda em vez\n     \
+              de um bloco articulado.\n\n  \
+           4. A PECA (fileira ambar): em FK, arraste QUALQUER um dos tres elos.\n     \
+              Eles sao SOLDADOS, entao nao ha' onde dobrar e a peca vai inteira.\n     \
+              (medido: abre gesto, move 3 corpos, e nenhum deles GIRA)\n\n  \
+           5. Pegue tambem 'Rope 3', do MEIO da corrente azul. A cabeca continua\n     \
+              sendo a mesma -- o rig tem UM 'para cima', e nao um por gesto.\n     \
+              (antes desta wave a raiz dependia de qual elo a mao pegou: pegar a\n      \
+               cabeca enraizava na cauda e vice-versa)\n\n  \
+           6. O CONTROLE (fileira verde, presa ao poste): em FK arraste 'Arm 1'.\n     \
+              Ela GIRA em torno do poste, como sempre girou -- ha' uma dobradica\n     \
+              acima dela, e o ramo novo nao pode roubar esse caso.\n\n  \
+           (!) O SUPORTE cinza esta SOLDADO a' parede. Arraste-o em FK: nada\n      \
+               acontece, e e' o certo -- sem dobradica e sem poder viajar, o gesto\n      \
+               RECUSA. Se a parede verde sair do lugar, e' bug (foi um defeito real\n      \
+               desta wave, achado por medicao no meio dela).\n\n  \
+           (!) Alt+arrastar continua significando 'leve o rig inteiro' em qualquer\n      \
+               modo, inclusive nestes dois.\n",
+    );
 }

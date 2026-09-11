@@ -182,59 +182,54 @@ pub(crate) fn build_tackle(world: &mut World) {
 #[path = "physics_smoke_pulley_tackle_tests.rs"]
 mod tests;
 
-impl crate::App {
-    /// **Cena 61 (W-Pulley W3).** Duas montagens com a MESMA carga e o MESMO
-    /// contrapeso; a única diferença é se a roldana está montada no bloco.
-    ///
-    /// Os números saem da sonda `probe_smoke_61`, rodada sobre ESTA cena.
-    pub(crate) fn physics_smoke_tackle(&mut self) {
-        let gfx = self.gfx.as_mut().expect("gfx");
-        build_tackle(gfx.sim.world_mut());
-        if let Some(hero) = gfx.hero_screen.as_mut() {
-            hero.panel_visibility.insert("physics", true);
-        }
+/// **Cena 61 (W-Pulley W3).** Duas montagens com a MESMA carga e o MESMO
+/// contrapeso; a única diferença é se a roldana está montada no bloco.
+///
+/// Os números saem da sonda `probe_smoke_61`, rodada sobre ESTA cena.
+pub fn physics_smoke_tackle(ctx: &mut ph2d_app_physics::SceneCtx<'_>) {
+    build_tackle(ctx.world);
+    ctx.want.panels.push("physics");
 
-        eprintln!(
-            "[physics-smoke 61] A TALHA -- a roldana montada num corpo que se move.\n  \
-               O contorno dos vinculos ja esta ligado; de PLAY (o toggle Physics ja esta armado).\n\n  \
-               Os DOIS rigs tem a mesma carga ({block:.0} kg) e o mesmo contrapeso\n  \
-               ({counter:.0} kg, METADE dela). A unica diferenca e onde a roldana esta.\n\n  \
-               1. VERDE (esquerda) -- a roldana de baixo esta MONTADA no bloco: e a\n     \
-                  cadernal MOVEL de uma talha, entao DOIS ramos da corda o seguram e\n     \
-                  cada um carrega metade do peso. Ele fica onde esta ({tackle:.2} m em 2 s).\n  \
-               2. VERMELHO (direita) -- a mesma corda, o mesmo contrapeso, mas a corda\n     \
-                  e amarrada DIRETO no bloco: UM ramo. Ele CAI ({plain:.1} m) e bate no chao.\n\n  \
-               ⚠️ Ninguem autorou um \"2\" em lugar nenhum -- a vantagem e a geometria do\n     \
-               enlace, e e por isso que o `ratio` da v1 saiu: numa corda sobre roldanas\n     \
-               LIVRES a tensao e uniforme e nao ha vantagem nenhuma a ganhar de diametro.\n\n  \
-               AUTORE VOCE MESMO: selecione 'Plain Rope Wheel 1' (a roldana da direita)\n  \
-               na Hierarquia. Na secao 'Pulley Wheel' a row 'Mounted On' diz '(scenery)'.\n  \
-               Clique o CONTA-GOTAS ao lado dela e depois clique no bloco VERMELHO: a\n  \
-               roldana passa a citar o nome dele. (Este rig nao vira uma talha so com\n  \
-               isso -- a corda dele esta amarrada NO bloco, entao ele ja e o proprio no;\n  \
-               o que a row prova e que a montagem e autoravel com dois cliques.)\n  \
-               A LIXEIRA ao lado desmonta de volta para o cenario.\n\n  \
-               E A CORDA TAMBEM SE RE-ESCOLHE (W1): a row 'Rope' ganhou um\n  \
-               CONTA-GOTAS. Selecione uma roldana, clique nele e depois clique EM\n  \
-               CIMA DA CORDA no canvas -- o alvo e o traco desenhado, nao um corpo.\n  \
-               Prove que ela funciona onde importa: RENOMEIE uma corda na Hierarquia\n  \
-               (a roldana dela fica orfa e a row passa a dizer '(no rope)'); o\n  \
-               conta-gotas segue oferecido, e um clique na corda a religa. Antes\n  \
-               desta wave a unica volta era apagar a roldana e refaze-la.\n\n  \
-               E O IMA (W6): PAUSE primeiro (uma alca de ponto e rest-only -- durante o\n  \
-               play o overlay desenha a geometria do SOLVER, e a alca autora a AUTORADA).\n  \
-               Selecione 'Tackle Rope Wheel 1' (a roldana MONTADA, a de baixo no rig\n  \
-               verde) e arraste o DOT central com CTRL apertado. Ele cola\n  \
-               nos {snap} pontos do collider do bloco que a carrega -- o centro e os\n  \
-               quatro cardinais do disco --, e a marca do encaixe acende no ponto.\n  \
-               ⚠️ Sem CTRL o arrasto e livre, como sempre foi. E na roldana do CENARIO\n  \
-               (a de cima) o ima NAO abre: ela nao pertence a corpo nenhum, entao nao ha\n  \
-               a que colar -- e e essa recusa que ele nao pode ter perdido.",
-            block = BLOCK_MASS,
-            counter = COUNTER_MASS,
-            tackle = MEASURED_TACKLE_DRIFT,
-            plain = MEASURED_PLAIN_DROP,
-            snap = MEASURED_SNAP_TARGETS,
-        );
-    }
+    eprintln!(
+        "[physics-smoke 61] A TALHA -- a roldana montada num corpo que se move.\n  \
+           O contorno dos vinculos ja esta ligado; de PLAY (o toggle Physics ja esta armado).\n\n  \
+           Os DOIS rigs tem a mesma carga ({block:.0} kg) e o mesmo contrapeso\n  \
+           ({counter:.0} kg, METADE dela). A unica diferenca e onde a roldana esta.\n\n  \
+           1. VERDE (esquerda) -- a roldana de baixo esta MONTADA no bloco: e a\n     \
+              cadernal MOVEL de uma talha, entao DOIS ramos da corda o seguram e\n     \
+              cada um carrega metade do peso. Ele fica onde esta ({tackle:.2} m em 2 s).\n  \
+           2. VERMELHO (direita) -- a mesma corda, o mesmo contrapeso, mas a corda\n     \
+              e amarrada DIRETO no bloco: UM ramo. Ele CAI ({plain:.1} m) e bate no chao.\n\n  \
+           ⚠️ Ninguem autorou um \"2\" em lugar nenhum -- a vantagem e a geometria do\n     \
+           enlace, e e por isso que o `ratio` da v1 saiu: numa corda sobre roldanas\n     \
+           LIVRES a tensao e uniforme e nao ha vantagem nenhuma a ganhar de diametro.\n\n  \
+           AUTORE VOCE MESMO: selecione 'Plain Rope Wheel 1' (a roldana da direita)\n  \
+           na Hierarquia. Na secao 'Pulley Wheel' a row 'Mounted On' diz '(scenery)'.\n  \
+           Clique o CONTA-GOTAS ao lado dela e depois clique no bloco VERMELHO: a\n  \
+           roldana passa a citar o nome dele. (Este rig nao vira uma talha so com\n  \
+           isso -- a corda dele esta amarrada NO bloco, entao ele ja e o proprio no;\n  \
+           o que a row prova e que a montagem e autoravel com dois cliques.)\n  \
+           A LIXEIRA ao lado desmonta de volta para o cenario.\n\n  \
+           E A CORDA TAMBEM SE RE-ESCOLHE (W1): a row 'Rope' ganhou um\n  \
+           CONTA-GOTAS. Selecione uma roldana, clique nele e depois clique EM\n  \
+           CIMA DA CORDA no canvas -- o alvo e o traco desenhado, nao um corpo.\n  \
+           Prove que ela funciona onde importa: RENOMEIE uma corda na Hierarquia\n  \
+           (a roldana dela fica orfa e a row passa a dizer '(no rope)'); o\n  \
+           conta-gotas segue oferecido, e um clique na corda a religa. Antes\n  \
+           desta wave a unica volta era apagar a roldana e refaze-la.\n\n  \
+           E O IMA (W6): PAUSE primeiro (uma alca de ponto e rest-only -- durante o\n  \
+           play o overlay desenha a geometria do SOLVER, e a alca autora a AUTORADA).\n  \
+           Selecione 'Tackle Rope Wheel 1' (a roldana MONTADA, a de baixo no rig\n  \
+           verde) e arraste o DOT central com CTRL apertado. Ele cola\n  \
+           nos {snap} pontos do collider do bloco que a carrega -- o centro e os\n  \
+           quatro cardinais do disco --, e a marca do encaixe acende no ponto.\n  \
+           ⚠️ Sem CTRL o arrasto e livre, como sempre foi. E na roldana do CENARIO\n  \
+           (a de cima) o ima NAO abre: ela nao pertence a corpo nenhum, entao nao ha\n  \
+           a que colar -- e e essa recusa que ele nao pode ter perdido.",
+        block = BLOCK_MASS,
+        counter = COUNTER_MASS,
+        tackle = MEASURED_TACKLE_DRIFT,
+        plain = MEASURED_PLAIN_DROP,
+        snap = MEASURED_SNAP_TARGETS,
+    );
 }

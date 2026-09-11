@@ -34,7 +34,6 @@ use ph2d_core::Vec2;
 use ph2d_ecs::{Entity, Name};
 use ph2d_physics_ecs::{PlatformPlayer, WalkSurface};
 
-use crate::App;
 use crate::physics_smoke_brake::{DECK_END, DECK_START, DECK_TOP, FLOAT, MARK_X, PIT_TOP};
 use crate::physics_smoke_player::{slab, spawn_player};
 
@@ -170,13 +169,10 @@ fn lane(
     (deck, p)
 }
 
-impl App {
-    /// **A superfície fala** — de que o chão é feito.
-    pub(crate) fn physics_smoke_surface(&mut self) {
-        let gfx = self.gfx.as_mut().expect("gfx");
-        let _ = build_surface_scene(gfx.sim.world_mut());
-        eprintln!("{SURFACE_SMOKE_MESSAGE}");
-    }
+/// **A superfície fala** — de que o chão é feito.
+pub fn physics_smoke_surface(ctx: &mut ph2d_app_physics::SceneCtx<'_>) {
+    let _ = build_surface_scene(ctx.world);
+    eprintln!("{SURFACE_SMOKE_MESSAGE}");
 }
 
 /// **A geometria da cena 115**, separada do `App` de propósito — é ela que os

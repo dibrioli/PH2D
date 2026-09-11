@@ -37,7 +37,6 @@ use ph2d_core::Vec2;
 use ph2d_ecs::Transform;
 use ph2d_physics_ecs::PlatformPlayer;
 
-use crate::App;
 use crate::physics_smoke_player::{slab, spawn_player};
 
 /// A altura de flutuação agachado desta cena — ver o piso geométrico no topo.
@@ -49,61 +48,58 @@ const LOW_BOTTOM: f32 = 1.2;
 /// O fundo do túnel ALTO, o CONTROLE: acima do topo de pé.
 const TALL_BOTTOM: f32 = 1.6;
 
-impl App {
-    /// **O corredor baixo** — passar por onde não se cabe de pé.
-    pub(crate) fn physics_smoke_crouch(&mut self) {
-        let gfx = self.gfx.as_mut().expect("gfx");
-        let world = gfx.sim.world_mut();
+/// **O corredor baixo** — passar por onde não se cabe de pé.
+pub fn physics_smoke_crouch(ctx: &mut ph2d_app_physics::SceneCtx<'_>) {
+    let world = &mut *ctx.world;
 
-        slab(
-            world,
-            "Floor",
-            Vec2::new(20.0, -0.5),
-            [40.0, 0.5],
-            0.0,
-            [0.35, 0.35, 0.4, 1.0],
-        );
+    slab(
+        world,
+        "Floor",
+        Vec2::new(20.0, -0.5),
+        [40.0, 0.5],
+        0.0,
+        [0.35, 0.35, 0.4, 1.0],
+    );
 
-        // O túnel BAIXO: comprido de propósito, para o artista ter tempo de
-        // soltar o botão lá dentro e ver que ele NÃO se levanta.
-        tunnel(
-            world,
-            "Low Tunnel",
-            6.0,
-            20.0,
-            LOW_BOTTOM,
-            [0.42, 0.32, 0.34, 1.0],
-        );
-        // O CONTROLE: o mesmo gesto de andar, e este ele atravessa de pé.
-        tunnel(
-            world,
-            "Tall Tunnel",
-            26.0,
-            38.0,
-            TALL_BOTTOM,
-            [0.32, 0.42, 0.36, 1.0],
-        );
+    // O túnel BAIXO: comprido de propósito, para o artista ter tempo de
+    // soltar o botão lá dentro e ver que ele NÃO se levanta.
+    tunnel(
+        world,
+        "Low Tunnel",
+        6.0,
+        20.0,
+        LOW_BOTTOM,
+        [0.42, 0.32, 0.34, 1.0],
+    );
+    // O CONTROLE: o mesmo gesto de andar, e este ele atravessa de pé.
+    tunnel(
+        world,
+        "Tall Tunnel",
+        26.0,
+        38.0,
+        TALL_BOTTOM,
+        [0.32, 0.42, 0.36, 1.0],
+    );
 
-        // Uma parede no fim, para o personagem não sair de quadro a correr.
-        slab(
-            world,
-            "Backstop",
-            Vec2::new(44.5, 1.5),
-            [0.5, 2.0],
-            0.0,
-            [0.30, 0.34, 0.42, 1.0],
-        );
+    // Uma parede no fim, para o personagem não sair de quadro a correr.
+    slab(
+        world,
+        "Backstop",
+        Vec2::new(44.5, 1.5),
+        [0.5, 2.0],
+        0.0,
+        [0.30, 0.34, 0.42, 1.0],
+    );
 
-        spawn_player(world, Vec2::new(0.0, 1.4));
+    spawn_player(world, Vec2::new(0.0, 1.4));
 
-        // ⚠️ **A capacidade é ARMADA aqui**, e não herdada (ver o topo).
-        let mut q = world.query::<(&mut PlatformPlayer, &Transform)>();
-        for (mut p, _) in q.iter_mut(world) {
-            p.crouch_height = CROUCH_HEIGHT;
-            p.crouch_speed = CROUCH_SPEED;
-        }
-        eprintln!("{CROUCH_SMOKE_MESSAGE}");
+    // ⚠️ **A capacidade é ARMADA aqui**, e não herdada (ver o topo).
+    let mut q = world.query::<(&mut PlatformPlayer, &Transform)>();
+    for (mut p, _) in q.iter_mut(world) {
+        p.crouch_height = CROUCH_HEIGHT;
+        p.crouch_speed = CROUCH_SPEED;
     }
+    eprintln!("{CROUCH_SMOKE_MESSAGE}");
 }
 
 /// Uma laje-teto entre `x0` e `x1`, com a face de baixo em `bottom`.

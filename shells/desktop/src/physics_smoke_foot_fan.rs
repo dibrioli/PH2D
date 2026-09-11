@@ -30,7 +30,6 @@ use ph2d_core::Vec2;
 use ph2d_ecs::{Entity, Name};
 use ph2d_physics_ecs::PlatformPlayer;
 
-use crate::App;
 use crate::physics_smoke_player::{slab, spawn_player};
 
 /// A fenda que o CORPO atravessa — mais estreita que a distância entre os pés.
@@ -61,13 +60,10 @@ fn floor_span(world: &mut bevy_ecs::world::World, name: &str, x0: f32, x1: f32) 
     );
 }
 
-impl App {
-    /// **A fenda** — a perna é um leque.
-    pub(crate) fn physics_smoke_foot_fan(&mut self) {
-        let gfx = self.gfx.as_mut().expect("gfx");
-        let _ = build_foot_fan_scene(gfx.sim.world_mut());
-        eprintln!("{FOOT_FAN_SMOKE_MESSAGE}");
-    }
+/// **A fenda** — a perna é um leque.
+pub fn physics_smoke_foot_fan(ctx: &mut ph2d_app_physics::SceneCtx<'_>) {
+    let _ = build_foot_fan_scene(ctx.world);
+    eprintln!("{FOOT_FAN_SMOKE_MESSAGE}");
 }
 
 /// **A geometria da cena 109**, separada do `App` de propósito — é ela que os

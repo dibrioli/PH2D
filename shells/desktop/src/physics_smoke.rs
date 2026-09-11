@@ -78,6 +78,51 @@ pub(crate) fn spawn_floor(world: &mut bevy_ecs::world::World) {
 }
 
 impl crate::App {
+    /// **Corre UMA cena da crate e aplica o que ela PEDIU** (W2/L2).
+    ///
+    /// As 101 cenas que já vivem em [`ph2d_app_physics`] são funções livres sobre
+    /// um [`ph2d_app_physics::SceneCtx`]: elas povoam o mundo e **declaram** o que
+    /// querem da shell (enquadrar a câmera, abrir um painel, escolher um objecto,
+    /// impor definições de mundo). Quem executa esses pedidos é esta função — uma
+    /// vez, para todas.
+    ///
+    /// ⚠️ **O `ctx` vive num ESCOPO fechado, e isso é load-bearing:** ele empresta
+    /// `gfx.sim` mutavelmente, então enquanto existir ninguém toca no resto do
+    /// `gfx`. Fechá-lo antes de aplicar o `want` é o que permite escrever na
+    /// câmera e no `hero_screen` logo a seguir — e é por isso que as cenas que
+    /// ainda são método de `App` (as que precisam da timeline ou do playhead)
+    /// entram por OUTRO braço do `match`, nunca por dentro deste.
+    fn run_physics_scene(&mut self, build: impl FnOnce(&mut ph2d_app_physics::SceneCtx<'_>)) {
+        let Some(gfx) = self.gfx.as_mut() else {
+            return;
+        };
+        let mut ctx = ph2d_app_physics::SceneCtx::new(gfx.sim.world_mut(), gfx.physics.settings());
+        build(&mut ctx);
+        let want = std::mem::take(&mut ctx.want);
+        drop(ctx);
+
+        if let Some(c) = want.camera_center {
+            gfx.camera.center = c;
+        }
+        if let Some(h) = want.camera_height_world {
+            gfx.camera.height_world = h;
+        }
+        if let Some(s) = want.settings {
+            gfx.physics.set_settings(s);
+        }
+        if !want.panels.is_empty() || want.select.is_some() {
+            if let Some(hero) = gfx.hero_screen.as_mut() {
+                for k in &want.panels {
+                    hero.panel_visibility.insert(k, true);
+                }
+                if let Some(bits) = want.select {
+                    hero.gizmo.selection = Some(bits);
+                    hero.gizmo.extra_selection.clear();
+                }
+            }
+        }
+    }
+
     /// Frame prologue, once. No-op without the env.
     pub(crate) fn physics_smoke(&mut self) {
         let Some(which) = std::env::var("PH2D_PHYSICS_SMOKE").ok() else {
@@ -99,127 +144,188 @@ impl crate::App {
             "6" => self.physics_smoke_joints(),
             "7" => self.physics_smoke_bake(),
             "8" => self.physics_smoke_parented(),
-            "9" => self.physics_smoke_scale(),
-            "10" => self.physics_smoke_sensor(),
+            "9" => self.run_physics_scene(crate::physics_smoke_collider::physics_smoke_scale),
+            "10" => self.run_physics_scene(crate::physics_smoke_collider::physics_smoke_sensor),
             "11" => self.physics_smoke_weld(),
-            "12" => self.physics_smoke_gravity(),
-            "13" => self.physics_smoke_capsule(),
-            "14" => self.physics_smoke_launch(),
-            "15" => self.physics_smoke_ccd(),
-            "16" => self.physics_smoke_lock_rotation(),
-            "17" => self.physics_smoke_offset(),
-            "18" => self.physics_smoke_freeze_position(),
-            "19" => self.physics_smoke_mass(),
-            "20" => self.physics_smoke_dominance(),
-            "21" => self.physics_smoke_material(),
-            "22" => self.physics_smoke_damping(),
-            "23" => self.physics_smoke_one_way(),
-            "24" => self.physics_smoke_area(),
-            "25" => self.physics_smoke_contacts(),
-            "26" => self.physics_smoke_area_drag(),
-            "27" => self.physics_smoke_buoyancy(),
-            "28" => self.physics_smoke_form_drag(),
-            "29" => self.physics_smoke_events(),
-            "30" => self.physics_smoke_impact_demolition(),
-            "31" => self.physics_smoke_fast_impact(),
-            "32" => self.physics_smoke_spin_zone(),
-            "33" => self.physics_smoke_author_spin(),
-            "34" => self.physics_smoke_force_frame(),
-            "35" => self.physics_smoke_falloff(),
-            "36" => self.physics_smoke_mirror(),
+            "12" => self.run_physics_scene(crate::physics_smoke_props::physics_smoke_gravity),
+            "13" => self.run_physics_scene(crate::physics_smoke_props::physics_smoke_capsule),
+            "14" => self.run_physics_scene(crate::physics_smoke_props::physics_smoke_launch),
+            "15" => self.run_physics_scene(crate::physics_smoke_props::physics_smoke_ccd),
+            "16" => self.run_physics_scene(crate::physics_smoke_props::physics_smoke_lock_rotation),
+            "17" => self.run_physics_scene(crate::physics_smoke_props::physics_smoke_offset),
+            "18" => {
+                self.run_physics_scene(crate::physics_smoke_props::physics_smoke_freeze_position)
+            }
+            "19" => self.run_physics_scene(crate::physics_smoke_collision::physics_smoke_mass),
+            "20" => self.run_physics_scene(crate::physics_smoke_collision::physics_smoke_dominance),
+            "21" => self.run_physics_scene(crate::physics_smoke_collision::physics_smoke_material),
+            "22" => self.run_physics_scene(crate::physics_smoke_damping::physics_smoke_damping),
+            "23" => self.run_physics_scene(crate::physics_smoke_collision::physics_smoke_one_way),
+            "24" => self.run_physics_scene(crate::physics_smoke_collision::physics_smoke_area),
+            "25" => self.run_physics_scene(crate::physics_smoke_contacts::physics_smoke_contacts),
+            "26" => self.run_physics_scene(crate::physics_smoke_contacts::physics_smoke_area_drag),
+            "27" => self.run_physics_scene(crate::physics_smoke_contacts::physics_smoke_buoyancy),
+            "28" => self.run_physics_scene(crate::physics_smoke_contacts::physics_smoke_form_drag),
+            "29" => self.run_physics_scene(crate::physics_smoke_events::physics_smoke_events),
+            "30" => {
+                self.run_physics_scene(crate::physics_smoke_events::physics_smoke_impact_demolition)
+            }
+            "31" => self.run_physics_scene(crate::physics_smoke_events::physics_smoke_fast_impact),
+            "32" => self.run_physics_scene(crate::physics_smoke_zones::physics_smoke_spin_zone),
+            "33" => self.run_physics_scene(crate::physics_smoke_zones::physics_smoke_author_spin),
+            "34" => self.run_physics_scene(crate::physics_smoke_zones::physics_smoke_force_frame),
+            "35" => self.run_physics_scene(crate::physics_smoke_zones::physics_smoke_falloff),
+            "36" => self.run_physics_scene(crate::physics_smoke_zones::physics_smoke_mirror),
             "37" => self.physics_smoke_bake_range(),
-            "38" => self.physics_smoke_joint_anchor(),
-            "39" => self.physics_smoke_bake_joint(),
-            "40" => self.physics_smoke_author_joint(),
-            "41" => self.physics_smoke_anchor_follows(),
-            "42" => self.physics_smoke_live_tune(),
-            "43" => self.physics_smoke_joint_glyphs(),
-            "44" => self.physics_smoke_joint_handles(),
-            "45" => self.physics_smoke_joint_pose(),
-            "46" => self.physics_smoke_joint_draw(),
-            "47" => self.physics_smoke_joint_slider(),
-            "48" => self.physics_smoke_joint_motor(),
-            "49" => self.physics_smoke_joint_break(),
-            "50" => self.physics_smoke_joint_pair(),
-            "51" => self.physics_smoke_joint_rig(),
-            "52" => self.physics_smoke_grab(),
-            "53" => self.physics_smoke_interact(),
-            "54" => self.physics_smoke_ik(),
-            "55" => self.physics_smoke_fk(),
-            "56" => self.physics_smoke_rod(),
-            "57" => self.physics_smoke_wheel(),
-            "58" => self.physics_smoke_pulley(),
-            "59" => self.physics_smoke_winch(),
-            "60" => self.physics_smoke_break(),
-            "61" => self.physics_smoke_tackle(),
-            "62" => self.physics_smoke_differential(),
-            "63" => self.physics_smoke_composition(),
-            "64" => self.physics_smoke_weston(),
-            "65" => self.physics_smoke_world_pin(),
-            "66" => self.physics_smoke_joint_copy(),
-            "67" => self.physics_smoke_rig(),
-            "68" => self.physics_smoke_soft_weld(),
-            "69" => self.physics_smoke_compound(),
-            "70" => self.physics_smoke_part(),
-            "71" => self.physics_smoke_foot(),
-            "72" => self.physics_smoke_raft(),
-            "73" => self.physics_smoke_signal(),
-            "74" => self.physics_smoke_lead(),
-            "75" => self.physics_smoke_stop(),
-            "76" => self.physics_smoke_signal_leave(),
-            "77" => self.physics_smoke_rail_rope(),
+            "38" => {
+                self.run_physics_scene(crate::physics_smoke_authoring::physics_smoke_joint_anchor)
+            }
+            "39" => {
+                self.run_physics_scene(crate::physics_smoke_joint_bake::physics_smoke_bake_joint)
+            }
+            "40" => {
+                self.run_physics_scene(crate::physics_smoke_authoring::physics_smoke_author_joint)
+            }
+            "41" => {
+                self.run_physics_scene(crate::physics_smoke_authoring::physics_smoke_anchor_follows)
+            }
+            "42" => self.run_physics_scene(crate::physics_smoke_authoring::physics_smoke_live_tune),
+            "43" => self
+                .run_physics_scene(crate::physics_smoke_joint_glyphs::physics_smoke_joint_glyphs),
+            "44" => self
+                .run_physics_scene(crate::physics_smoke_joint_handles::physics_smoke_joint_handles),
+            "45" => {
+                self.run_physics_scene(crate::physics_smoke_joint_pose::physics_smoke_joint_pose)
+            }
+            "46" => {
+                self.run_physics_scene(crate::physics_smoke_joint_draw::physics_smoke_joint_draw)
+            }
+            "47" => self
+                .run_physics_scene(crate::physics_smoke_joint_slider::physics_smoke_joint_slider),
+            "48" => {
+                self.run_physics_scene(crate::physics_smoke_joint_motor::physics_smoke_joint_motor)
+            }
+            "49" => {
+                self.run_physics_scene(crate::physics_smoke_joint_break::physics_smoke_joint_break)
+            }
+            "50" => {
+                self.run_physics_scene(crate::physics_smoke_joint_pair::physics_smoke_joint_pair)
+            }
+            "51" => self.run_physics_scene(crate::physics_smoke_joint_rig::physics_smoke_joint_rig),
+            "52" => self.run_physics_scene(crate::physics_smoke_grab::physics_smoke_grab),
+            "53" => self.run_physics_scene(crate::physics_smoke_interact::physics_smoke_interact),
+            "54" => self.run_physics_scene(crate::physics_smoke_ik::physics_smoke_ik),
+            "55" => self.run_physics_scene(crate::physics_smoke_fk::physics_smoke_fk),
+            "56" => self.run_physics_scene(crate::physics_smoke_rod::physics_smoke_rod),
+            "57" => self.run_physics_scene(crate::physics_smoke_wheel::physics_smoke_wheel),
+            "58" => self.run_physics_scene(crate::physics_smoke_pulley::physics_smoke_pulley),
+            "59" => self.run_physics_scene(crate::physics_smoke_pulley::physics_smoke_winch),
+            "60" => self.run_physics_scene(crate::physics_smoke_pulley_break::physics_smoke_break),
+            "61" => {
+                self.run_physics_scene(crate::physics_smoke_pulley_tackle::physics_smoke_tackle)
+            }
+            "62" => {
+                self.run_physics_scene(crate::physics_smoke_pulley_diff::physics_smoke_differential)
+            }
+            "63" => {
+                self.run_physics_scene(crate::physics_smoke_pulley_comp::physics_smoke_composition)
+            }
+            "64" => {
+                self.run_physics_scene(crate::physics_smoke_pulley_weston::physics_smoke_weston)
+            }
+            "65" => self.run_physics_scene(crate::physics_smoke_world_pin::physics_smoke_world_pin),
+            "66" => {
+                self.run_physics_scene(crate::physics_smoke_joint_copy::physics_smoke_joint_copy)
+            }
+            "67" => self.run_physics_scene(crate::physics_smoke_rig::physics_smoke_rig),
+            "68" => self.run_physics_scene(crate::physics_smoke_soft_weld::physics_smoke_soft_weld),
+            "69" => self.run_physics_scene(crate::physics_smoke_compound::physics_smoke_compound),
+            "70" => self.run_physics_scene(crate::physics_smoke_part::physics_smoke_part),
+            "71" => self.run_physics_scene(crate::physics_smoke_foot::physics_smoke_foot),
+            "72" => self.run_physics_scene(crate::physics_smoke_raft::physics_smoke_raft),
+            "73" => self.run_physics_scene(crate::physics_smoke_signal::physics_smoke_signal),
+            "74" => self.run_physics_scene(crate::physics_smoke_lead::physics_smoke_lead),
+            "75" => self.run_physics_scene(crate::physics_smoke_stop::physics_smoke_stop),
+            "76" => self
+                .run_physics_scene(crate::physics_smoke_signal_leave::physics_smoke_signal_leave),
+            "77" => self.run_physics_scene(crate::physics_smoke_rail_rope::physics_smoke_rail_rope),
             "78" => self.physics_smoke_joint_anim(),
-            "79" => self.physics_smoke_joint_custom(),
+            "79" => self
+                .run_physics_scene(crate::physics_smoke_joint_custom::physics_smoke_joint_custom),
             "80" => self.physics_smoke_float(),
             "81" => self.physics_smoke_walk(),
             "82" => self.physics_smoke_author_player(),
             "83" => self.physics_smoke_jump(),
             "85" => self.physics_smoke_reaction(),
-            "86" => self.physics_smoke_tape(),
-            "87" => self.physics_smoke_forgive(),
-            "88" => self.physics_smoke_slope(),
-            "89" => self.physics_smoke_chimney(),
-            "90" => self.physics_smoke_wagon(),
-            "91" => self.physics_smoke_pass_through(),
-            "92" => self.physics_smoke_well(),
-            "93" => self.physics_smoke_dash(),
-            "94" => self.physics_smoke_crouch(),
-            "95" => self.physics_smoke_bake_run(),
-            "96" => self.physics_smoke_recorded_run(),
-            "97" => self.physics_smoke_drop_edges(),
-            "98" => self.physics_smoke_flank(),
-            "99" => self.physics_smoke_wall_grab(),
-            "100" => self.physics_smoke_water(),
-            "101" => self.physics_smoke_kinematic(),
-            "102" => self.physics_smoke_kin_push(),
-            "103" => self.physics_smoke_kin_pure(),
-            "104" => self.physics_smoke_kin_water(),
-            "105" => self.physics_smoke_swim(),
-            "106" => self.physics_smoke_zone_force(),
-            "107" => self.physics_smoke_stone(),
+            "86" => self.run_physics_scene(crate::physics_smoke_player_tape::physics_smoke_tape),
+            "87" => {
+                self.run_physics_scene(crate::physics_smoke_player_forgive::physics_smoke_forgive)
+            }
+            "88" => self.run_physics_scene(crate::physics_smoke_player_slope::physics_smoke_slope),
+            "89" => {
+                self.run_physics_scene(crate::physics_smoke_player_carry::physics_smoke_chimney)
+            }
+            "90" => self.run_physics_scene(crate::physics_smoke_player_carry::physics_smoke_wagon),
+            "91" => {
+                self.run_physics_scene(crate::physics_smoke_player_drop::physics_smoke_pass_through)
+            }
+            "92" => self.run_physics_scene(crate::physics_smoke_player_wall::physics_smoke_well),
+            "93" => self.run_physics_scene(crate::physics_smoke_player_dash::physics_smoke_dash),
+            "94" => {
+                self.run_physics_scene(crate::physics_smoke_player_crouch::physics_smoke_crouch)
+            }
+            "95" => {
+                self.run_physics_scene(crate::physics_smoke_player_bake::physics_smoke_bake_run)
+            }
+            "96" => {
+                self.run_physics_scene(crate::physics_smoke_player_run::physics_smoke_recorded_run)
+            }
+            "97" => {
+                self.run_physics_scene(crate::physics_smoke_player_drop::physics_smoke_drop_edges)
+            }
+            "98" => self.run_physics_scene(crate::physics_smoke_player_flank::physics_smoke_flank),
+            "99" => {
+                self.run_physics_scene(crate::physics_smoke_player_grab::physics_smoke_wall_grab)
+            }
+            "100" => self.run_physics_scene(crate::physics_smoke_water::physics_smoke_water),
+            "101" => {
+                self.run_physics_scene(crate::physics_smoke_kinematic::physics_smoke_kinematic)
+            }
+            "102" => self.run_physics_scene(crate::physics_smoke_kin_push::physics_smoke_kin_push),
+            "103" => self.run_physics_scene(crate::physics_smoke_kin_pure::physics_smoke_kin_pure),
+            "104" => {
+                self.run_physics_scene(crate::physics_smoke_kin_water::physics_smoke_kin_water)
+            }
+            "105" => self.run_physics_scene(crate::physics_smoke_swim::physics_smoke_swim),
+            "106" => {
+                self.run_physics_scene(crate::physics_smoke_zone_force::physics_smoke_zone_force)
+            }
+            "107" => self.run_physics_scene(crate::physics_smoke_stone::physics_smoke_stone),
             // ⚠️ **O NUMERO E' CONTADO, nunca escolhido** — a `=105` estava
             // tomada (o mergulho), e a nota que a dava como livre tinha
             // envelhecido. Quem pega o proximo LE' este `match`, e o compilador
             // e' o gate: um segundo braco com o mesmo literal e' `unreachable`.
-            "108" => self.physics_smoke_probes(),
-            "109" => self.physics_smoke_foot_fan(),
-            "110" => self.physics_smoke_multi_jump(),
-            "111" => self.physics_smoke_ledge(),
-            "112" => self.physics_smoke_glide(),
+            "108" => self.run_physics_scene(crate::physics_smoke_probes::physics_smoke_probes),
+            "109" => self.run_physics_scene(crate::physics_smoke_foot_fan::physics_smoke_foot_fan),
+            "110" => {
+                self.run_physics_scene(crate::physics_smoke_multi_jump::physics_smoke_multi_jump)
+            }
+            "111" => self.run_physics_scene(crate::physics_smoke_ledge::physics_smoke_ledge),
+            "112" => self.run_physics_scene(crate::physics_smoke_glide::physics_smoke_glide),
             "113" => self.physics_smoke_out(),
-            "114" => self.physics_smoke_brake(),
-            "115" => self.physics_smoke_surface(),
+            "114" => self.run_physics_scene(crate::physics_smoke_brake::physics_smoke_brake),
+            "115" => self.run_physics_scene(crate::physics_smoke_surface::physics_smoke_surface),
             // ⚠️ **O NUMERO E' CONTADO, nunca escolhido** — lido deste `match`,
             // que e' a fonte; a nota da §5 do CLAUDE.md dava a `=105` como a
             // proxima livre e tinha envelhecido em onze cenas.
-            "116" => self.physics_smoke_terminal(),
-            "117" => self.physics_smoke_blast(),
+            "116" => self.run_physics_scene(crate::physics_smoke_terminal::physics_smoke_terminal),
+            "117" => self.run_physics_scene(crate::physics_smoke_blast::physics_smoke_blast),
             // ⚠️ **O NUMERO E' CONTADO, nunca escolhido** — lido deste `match`,
             // que e' a fonte. O compilador e' o gate: um segundo braco com o
             // mesmo literal e' `unreachable`.
-            "118" => self.physics_smoke_leave(),
+            "118" => self.run_physics_scene(crate::physics_smoke_leave::physics_smoke_leave),
             // ⚠️ **O NUMERO E' CONTADO, nunca escolhido** — lido deste `match`.
-            "119" => self.physics_smoke_brink(),
+            "119" => self.run_physics_scene(crate::physics_smoke_brink::physics_smoke_brink),
             _ => self.physics_smoke_drop(),
         }
         // ⭐ **A resolução NOME → IDENTIDADE, uma vez, para TODA cena** (ADR-0164 F1).

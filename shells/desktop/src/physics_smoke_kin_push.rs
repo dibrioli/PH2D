@@ -147,48 +147,45 @@ pub(crate) fn build(world: &mut World) {
     }
 }
 
-impl crate::App {
-    pub(crate) fn physics_smoke_kin_push(&mut self) {
-        let gfx = self.gfx.as_mut().expect("gfx");
-        build(gfx.sim.world_mut());
+pub fn physics_smoke_kin_push(ctx: &mut ph2d_app_physics::SceneCtx<'_>) {
+    build(ctx.world);
 
-        eprintln!(
-            "[physics-smoke 102] O QUE ESTA AO LADO TAMBEM (W-KinPush). Duas pistas\n\
-             com o MESMO trio de obstaculos: LARANJA em cima = Snap (cinematico),\n\
-             CIANO em baixo = Spring (dinamico, o CONTROLE). Um dedo so' para os\n\
-             dois.\n\
-             \n\
-             ⚠️ Se a linha acima nao aparecer, pare: a cena nao montou.\n\
-             \n\
-             1) ANDE PARA A DIREITA (seta ->). Os DOIS tem de empurrar o caixote\n\
-                claro a' frente deles. Medido NESTA cena em 3 s: ciano 6,39 m e\n\
-                laranja 4,95 -- antes desta wave o laranja empurrava 0,0000 e\n\
-                apenas PARAVA nele. (Os dois numeros diferem porque a parede\n\
-                limita a viagem; em pista LIVRE eles medem 16,55 e 16,54.)\n\
-             \n\
-             2) O CAIXOTE ESCURO (x = 7) e' 16x mais denso. Ele anda bem MENOS\n\
-                que o claro nas DUAS pistas -- medido, 1,55 contra 4,95 no\n\
-                laranja e 2,99 contra 6,39 no ciano. A massa manda, e e' o sinal\n\
-                de que isto e' um impulso e nao um teleporte.\n\
-             \n\
-             3) A PAREDE (x = 12) e' estatica: ela nao pode ceder um milimetro,\n\
-                e os dois personagens tem de PARAR nela. Massa infinita absorve\n\
-                o empurrao inteiro, e nao ha caso especial nenhum para isso.\n\
-             \n\
-             4) ENCOSTE E FIQUE. Com o personagem pressionado contra o caixote\n\
-                preso na parede, nada pode VIBRAR: medida, a folga em regime e'\n\
-                constante. Era este o risco da wave -- empurra, o caixote foge,\n\
-                o slide segue, empurra outra vez.\n\
-             \n\
-             5) O KNOB -- faca este passo, e' a metade que prova o canal:\n\
-                selecione o LARANJA, abra 'Platform Player' > REACTION e baixe\n\
-                'Push on Bodies' de 1,00 para 0. Ande de novo: o laranja volta a\n\
-                ser um fantasma de lado (ele PARA no caixote sem o mover) e o\n\
-                ciano continua a empurrar. Suba de volta para 1,00 e ele volta.\n\
-                ⚠️ No CIANO esse mesmo knob e' INERTE, e o rotulo o diz: um\n\
-                corpo dinamico ja' empurra pelo solver."
-        );
-    }
+    eprintln!(
+        "[physics-smoke 102] O QUE ESTA AO LADO TAMBEM (W-KinPush). Duas pistas\n\
+         com o MESMO trio de obstaculos: LARANJA em cima = Snap (cinematico),\n\
+         CIANO em baixo = Spring (dinamico, o CONTROLE). Um dedo so' para os\n\
+         dois.\n\
+         \n\
+         ⚠️ Se a linha acima nao aparecer, pare: a cena nao montou.\n\
+         \n\
+         1) ANDE PARA A DIREITA (seta ->). Os DOIS tem de empurrar o caixote\n\
+            claro a' frente deles. Medido NESTA cena em 3 s: ciano 6,39 m e\n\
+            laranja 4,95 -- antes desta wave o laranja empurrava 0,0000 e\n\
+            apenas PARAVA nele. (Os dois numeros diferem porque a parede\n\
+            limita a viagem; em pista LIVRE eles medem 16,55 e 16,54.)\n\
+         \n\
+         2) O CAIXOTE ESCURO (x = 7) e' 16x mais denso. Ele anda bem MENOS\n\
+            que o claro nas DUAS pistas -- medido, 1,55 contra 4,95 no\n\
+            laranja e 2,99 contra 6,39 no ciano. A massa manda, e e' o sinal\n\
+            de que isto e' um impulso e nao um teleporte.\n\
+         \n\
+         3) A PAREDE (x = 12) e' estatica: ela nao pode ceder um milimetro,\n\
+            e os dois personagens tem de PARAR nela. Massa infinita absorve\n\
+            o empurrao inteiro, e nao ha caso especial nenhum para isso.\n\
+         \n\
+         4) ENCOSTE E FIQUE. Com o personagem pressionado contra o caixote\n\
+            preso na parede, nada pode VIBRAR: medida, a folga em regime e'\n\
+            constante. Era este o risco da wave -- empurra, o caixote foge,\n\
+            o slide segue, empurra outra vez.\n\
+         \n\
+         5) O KNOB -- faca este passo, e' a metade que prova o canal:\n\
+            selecione o LARANJA, abra 'Platform Player' > REACTION e baixe\n\
+            'Push on Bodies' de 1,00 para 0. Ande de novo: o laranja volta a\n\
+            ser um fantasma de lado (ele PARA no caixote sem o mover) e o\n\
+            ciano continua a empurrar. Suba de volta para 1,00 e ele volta.\n\
+            ⚠️ No CIANO esse mesmo knob e' INERTE, e o rotulo o diz: um\n\
+            corpo dinamico ja' empurra pelo solver."
+    );
 }
 
 #[cfg(test)]

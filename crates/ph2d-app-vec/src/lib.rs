@@ -55,3 +55,22 @@ pub mod vec_snap;
 pub mod vec_snap_labels;
 pub mod vec_snap_sprites;
 pub mod vec_weld;
+
+/// **O que esta família declara à shell** (`ph2d-app-registry-init`).
+///
+/// ⚠️⚠️ **`routers: &[]` aqui é a verdade MEDIDA da Fase A, não um esquecimento** — e por isso a
+/// chave `"vec"` está escrita na catraca `FAMILIAS_COM_O_ROTEADOR_AINDA_NA_SHELL` do registo, que
+/// é o único sítio onde *«ainda não saiu»* se distingue de *«alguém esqueceu»*.
+///
+/// Medido em 2026-09-11: dos nomes `PH2D_VEC_*_SMOKE` que esta crate menciona, **nenhum é lido
+/// aqui** — eles aparecem só em doc-comments dos campos de [`state::VecState`], que são a memória
+/// *«esta cena já montou?»*. Quem **lê** a variável e escolhe a cena é o roteador da shell, porque
+/// ele toca a `App`. ⛔ *Uma varredura textual pelo nome da variável mede MENÇÃO, não posse* — foi
+/// exactamente essa leitura que, na integração, quase escreveu quatro roteadores que esta crate
+/// não responde.
+///
+/// ⇒ a entrada sai da catraca no dia em que a Fase B trouxer o roteador de cenas para cá.
+pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
+    key: "vec",
+    routers: &[],
+};

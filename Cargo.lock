@@ -4827,6 +4827,7 @@ name = "ph2d-app-vec"
 version = "0.0.0"
 dependencies = [
  "fontique",
+ "ph2d-app-host",
  "ph2d-ecs",
  "ph2d-editor",
  "ph2d-panel-vector",

@@ -22,6 +22,10 @@ authors.workspace = true
 # desta lista trazia quatro (`ph2d-core`, `ph2d-host`, `ph2d-render`, `ph2d-skeleton-ecs`) que
 # vinham dos ficheiros que o fecho de módulos acabou por NÃO deixar mover.
 [dependencies]
+# ⚠️ A INTERFACE da shell (`AppFamily`), não o agregador — a família declara-se com um valor
+# desta crate, e importá-lo do `ph2d-app-registry-init` fecharia o ciclo `registry → família
+# → registry`. Ver o doc-comment de `ph2d-app-host::family`.
+ph2d-app-host = { path = "../ph2d-app-host" }
 ph2d-ecs = { path = "../ph2d-ecs" }
 ph2d-editor = { path = "../ph2d-editor" }
 ph2d-text = { path = "../ph2d-text" }

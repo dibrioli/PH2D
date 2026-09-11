@@ -14,7 +14,7 @@
 //! **O fluxo:** modo Colorize → escolha a cor na swatch **Color** → rabisque DENTRO de uma
 //! região → troque a cor → rabisque noutra → **Apply**. **Clear** joga os rabiscos fora.
 
-use crate::flip::fill_dilate::{boundaries, fill_stroke};
+use ph2d_app_flip::fill_dilate::{boundaries, fill_stroke};
 use ph2d_core::Vec2;
 use ph2d_editor::Job;
 use ph2d_flip::{DrawingId, FlipDrawing, FlipObjectId, FlipStroke, Point};
@@ -405,7 +405,7 @@ impl crate::App {
         // aconteceu: se o ATIVO não produziu nada, nem chegamos aqui.
         //
         // **`falloff = false`**: colorir é op discreta, como o balde. Meia-cor não existe.
-        let extra: Vec<DrawingId> = crate::flip::multiframe::targets(
+        let extra: Vec<DrawingId> = ph2d_app_flip::multiframe::targets(
             &gfx.flip,
             oid,
             lid,

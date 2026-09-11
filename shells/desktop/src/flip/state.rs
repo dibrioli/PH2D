@@ -81,7 +81,7 @@ pub(crate) struct FlipState {
     pub trace_drag: Option<crate::flip::trace::TraceDrag>,
     /// O PEEK do Shift & Trace (fatia 2): a folha que F1/F2/F3 estão segurando —
     /// `None` fora do aperto. Press arma (só com a tool Flip), release desarma sempre.
-    pub peek: Option<crate::flip::peek::PeekDir>,
+    pub peek: Option<ph2d_app_flip::peek::PeekDir>,
     /// ADR-0114 W7.5: o arrasto do gizmo de POSE em curso (modo Edit, quadro
     /// instanciado) — rotate/scale escrevendo a pose da chave, nunca o `Transform`.
     /// `None` fora de um arrasto. Ver `flip_pose_gizmo`.

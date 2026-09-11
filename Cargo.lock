@@ -4801,6 +4801,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-app-flip"
+version = "0.0.0"
+dependencies = [
+ "ph2d-core",
+ "ph2d-flip",
+ "ph2d-flip-fill",
+ "ph2d-flip-reshape",
+ "ph2d-painter-effects",
+ "winit",
+]
+
+[[package]]
 name = "ph2d-app-host"
 version = "0.0.0"
 dependencies = [
@@ -5420,6 +5432,7 @@ dependencies = [
  "miniz_oxide 0.8.9",
  "ph2d-anim",
  "ph2d-app-field3d",
+ "ph2d-app-flip",
  "ph2d-app-host",
  "ph2d-app-registry-init",
  "ph2d-app-vec",

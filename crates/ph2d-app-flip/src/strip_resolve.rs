@@ -11,10 +11,7 @@ use ph2d_flip::{FlipDoc, FlipObjectId, Frame, LayerId};
 
 /// O objeto e a camada que a tira edita: o 1º objeto (igual ao `bake_stroke`) e a
 /// camada ativa (fallback: o topo).
-pub(crate) fn target(
-    flip: &FlipDoc,
-    active_layer: Option<LayerId>,
-) -> Option<(FlipObjectId, LayerId)> {
+pub fn target(flip: &FlipDoc, active_layer: Option<LayerId>) -> Option<(FlipObjectId, LayerId)> {
     let obj = flip.objects().first()?;
     let lid = active_layer
         .filter(|id| obj.layer(*id).is_some())
@@ -24,7 +21,7 @@ pub(crate) fn target(
 
 /// Leva o playhead ao quadro `f` (no FPS do objeto) e PAUSA — quem clica numa
 /// célula quer ver aquele desenho, não continuar tocando a partir dele.
-pub(crate) fn seek(playhead: &mut Playhead, fps: f32, f: Frame) {
+pub fn seek(playhead: &mut Playhead, fps: f32, f: Frame) {
     playhead.pause();
     playhead.seek_frame(i64::from(f.max(0)), f64::from(fps));
 }
@@ -33,11 +30,11 @@ pub(crate) fn seek(playhead: &mut Playhead, fps: f32, f: Frame) {
 /// quadro-fonte atual. `None` se não há dois keyframes para interpolar entre.
 ///
 /// **Porta única:** o botão Add Tween e o construtor da sessão de correção de pares
-/// ([`crate::flip::tween_correct::build`]) chamam ESTA função — o plano corrigido tem de ser
+/// ([`crate::tween_correct::build`]) chamam ESTA função — o plano corrigido tem de ser
 /// commitado no MESMO intervalo em que foi construído, e duas resoluções divergiriam (a
 /// sessão pinada a um intervalo, o Add commitando noutro, e as correções seriam ignoradas
 /// em silêncio).
-pub(crate) fn current_tween_interval(
+pub fn current_tween_interval(
     flip: &FlipDoc,
     active_layer: Option<LayerId>,
     playhead: &Playhead,
@@ -52,12 +49,7 @@ pub(crate) fn current_tween_interval(
 
 /// O **quadro-fonte** da camada agora: sob um ciclo, o quadro do vão que está sendo
 /// exibido. Toda op de chave age NELE (a célula que se vê é a que se edita).
-pub(crate) fn source_frame(
-    flip: &FlipDoc,
-    oid: FlipObjectId,
-    lid: LayerId,
-    playhead: &Playhead,
-) -> Frame {
+pub fn source_frame(flip: &FlipDoc, oid: FlipObjectId, lid: LayerId, playhead: &Playhead) -> Frame {
     let Some(obj) = flip.object(oid) else {
         return 0;
     };
@@ -76,7 +68,7 @@ pub(crate) fn source_frame(
 /// Não é mágica escondida: a exposição vira uma sentinela VISÍVEL (a célula alarga na
 /// tira) e editável (a caixa **Hold**). Idempotente — se a última chave já tem
 /// exposição fixa, nada muda.
-pub(crate) fn ensure_cycle_span(flip: &mut FlipDoc, oid: FlipObjectId, lid: LayerId) -> bool {
+pub fn ensure_cycle_span(flip: &mut FlipDoc, oid: FlipObjectId, lid: LayerId) -> bool {
     let Some(layer) = flip.object(oid).and_then(|o| o.layer(lid)) else {
         return false;
     };

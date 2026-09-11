@@ -378,6 +378,9 @@ ph2d-vec-connect = { path = "../../crates/ph2d-vec-connect" }
 ph2d-vec-svg = { path = "../../crates/ph2d-vec-svg" }
 # ADR-0114: documento do Flip (animação quadro-a-quadro). W0 = dados + ponte ECS
 # (flip_entities) + undo/save; render e tool vêm nas waves seguintes.
+# ⭐ A metade de APLICAÇÃO do Flip (W2/L5): as leis do editor que não precisam da shell.
+# ⛔ A dependência é de sentido ÚNICO — a crate nunca vê a `App`, senão é ciclo.
+ph2d-app-flip = { path = "../../crates/ph2d-app-flip" }
 ph2d-flip = { path = "../../crates/ph2d-flip" }
 # ADR-0114 W1: pipeline wgpu dedicado do traço do Flip (passe no present.rs).
 ph2d-flip-render = { path = "../../crates/ph2d-flip-render" }

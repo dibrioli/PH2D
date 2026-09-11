@@ -95,7 +95,7 @@ fn strip_snapshot(
             instanced: obj.drawing(drawing).is_some_and(|d| d.is_instanced()),
             selected: sel.contains(&key),
             pinned: strip.pinned_keys().contains(&key),
-            weight: crate::flip::multiframe::cell_weight(sel, raw, key, strip.falloff),
+            weight: ph2d_app_flip::multiframe::cell_weight(sel, raw, key, strip.falloff),
         })
         .collect();
     FlipStripSnapshot {

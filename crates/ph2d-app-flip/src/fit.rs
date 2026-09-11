@@ -78,7 +78,7 @@ use super::{Vec2, resample_smooth};
 /// [`fit_resumido`].
 #[cfg(test)]
 #[must_use]
-pub(crate) fn simplify_to_curve(points: &[Vec2], tol: f32, step: f32) -> Vec<usize> {
+pub fn simplify_to_curve(points: &[Vec2], tol: f32, step: f32) -> Vec<usize> {
     fit(points, tol, step, SAFETY)
 }
 
@@ -174,7 +174,7 @@ fn fit_resumido(
 /// O ajuste com a margem forçada — só a sonda que a escolheu chama por aqui.
 #[cfg(test)]
 #[must_use]
-pub(crate) fn fit_tuned(points: &[Vec2], tol: f32, step: f32, safety: f32) -> Vec<usize> {
+pub fn fit_tuned(points: &[Vec2], tol: f32, step: f32, safety: f32) -> Vec<usize> {
     fit(points, tol, step, safety)
 }
 
@@ -262,7 +262,7 @@ fn span_error(
 /// volta a carregar peso no dia em que a regra de alcance for afrouxada, e fica NOMEADA para
 /// ninguém a "descobrir" como buraco.
 #[derive(Default)]
-pub(crate) struct FitCache {
+pub struct FitCache {
     /// A entrada EXATA do último ajuste (o array SUAVIZADO, não as amostras cruas).
     entrada: Vec<Vec2>,
     tol: f32,
@@ -280,7 +280,7 @@ pub(crate) struct FitCache {
 impl FitCache {
     /// O [`simplify_to_curve`] com memória. **Devolve exatamente o que ele devolveria** — o gate
     /// `the_cached_fit_is_the_fit` afirma isso índice a índice, quadro a quadro.
-    pub(crate) fn simplify(&mut self, points: &[Vec2], tol: f32, passo: f32) -> &[usize] {
+    pub fn simplify(&mut self, points: &[Vec2], tol: f32, passo: f32) -> &[usize] {
         let n = points.len();
         if n < 3 || tol <= 0.0 {
             // O caminho degenerado do [`fit`], reproduzido aqui: `entrada` fica VAZIA, então o
@@ -316,7 +316,7 @@ impl FitCache {
 
     /// Quantos nós a última chamada reaproveitou (ver [`Self::semente`]).
     #[cfg(test)]
-    pub(crate) fn reaproveitados(&self) -> usize {
+    pub fn reaproveitados(&self) -> usize {
         self.semente
     }
 
@@ -325,7 +325,7 @@ impl FitCache {
     ///
     /// ⚠️ **Não é correção, é higiene.** O cache é um memo puro: se por acaso o prefixo de um traço
     /// NOVO coincidisse bit a bit com o do anterior, reusar os nós ainda seria a resposta certa.
-    pub(crate) fn clear(&mut self) {
+    pub fn clear(&mut self) {
         self.entrada.clear();
         self.entrada.shrink_to_fit();
         self.keep.clear();

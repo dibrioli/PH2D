@@ -146,7 +146,7 @@ impl GapHelpers {
         }
 
         // ── 3. Sai um worker (um só; geometria CLONADA — ele nunca vê o FlipDoc). ──
-        let lines = crate::flip::fill_dilate::boundaries(drawing);
+        let lines = ph2d_app_flip::fill_dilate::boundaries(drawing);
         self.job = Some((
             want,
             Job::spawn("gap-helpers", move |_| preview_closures(&lines, reach)),
@@ -182,7 +182,7 @@ impl crate::App {
         // O desenho NA TELA, read-only — nunca o `flip_autokey` (que CRIA chave; um
         // overlay que autora seria o gesto acontecendo sem ninguém gesticular).
         let Some((oid, lid)) =
-            crate::flip::strip_resolve::target(&gfx.flip, self.flip_state.active_layer)
+            ph2d_app_flip::strip_resolve::target(&gfx.flip, self.flip_state.active_layer)
         else {
             self.flip_state.gap.clear();
             return;

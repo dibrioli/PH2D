@@ -377,7 +377,7 @@ fn the_arrow_click_reaches_the_world() {
         .find("self.modal_owns_the_keyboard(")
         .expect("a porta modal deixou de ser chamada -- a tecla volta a fazer duas coisas");
     let editor = kb
-        .find("crate::flip::peek::key_transition")
+        .find("ph2d_app_flip::peek::key_transition")
         .expect("o primeiro consumidor do editor sumiu");
     assert!(
         feed < gate,

@@ -23,7 +23,7 @@ use winit::keyboard::KeyCode;
 
 /// Que folha o peek mostra.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub(crate) enum PeekDir {
+pub enum PeekDir {
     /// F1 — o desenho ANTERIOR.
     Prev,
     /// F2 — o desenho ATUAL, sozinho (sem fantasmas): julgar a pose limpa.
@@ -38,7 +38,7 @@ pub(crate) enum PeekDir {
 /// (viraria dois significados para um aperto), e um F5 solto não pode ser engolido
 /// (não é nosso).
 #[must_use]
-pub(crate) fn key_transition(
+pub fn key_transition(
     cur: Option<PeekDir>,
     code: KeyCode,
     pressed: bool,
@@ -68,7 +68,7 @@ pub(crate) fn key_transition(
 /// O quadro que a camada ATIVA amostra sob o peek — o quadro dado, quando não há para
 /// onde folhear (`Here`, primeira/última chave, camada vazia).
 #[must_use]
-pub(crate) fn peek_frame(layer: &FlipLayer, frame: Frame, dir: PeekDir) -> Frame {
+pub fn peek_frame(layer: &FlipLayer, frame: Frame, dir: PeekDir) -> Frame {
     if dir == PeekDir::Here {
         return frame;
     }

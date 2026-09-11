@@ -35,7 +35,7 @@ pub(crate) struct FlipDraw {
     /// O ajuste já decidido deste traço — estado DERIVADO, e por isso mora ao lado das amostras de
     /// que deriva. O preview roda o pipeline inteiro por quadro; sem isto ele re-decide, a cada
     /// quadro, um traço que a lei já garante que não muda.
-    fit: crate::flip::smooth::FitCache,
+    fit: ph2d_app_flip::smooth::FitCache,
 }
 
 /// Distância mínima (px de tela) entre amostras — abaixo disso o move é
@@ -82,7 +82,7 @@ impl FlipDraw {
     /// vez, e emprestar o `FlipDraw` inteiro travaria o cache contra as próprias amostras.
     pub(crate) fn preview_parts(
         &mut self,
-    ) -> (&[Vec2], &[f32], &mut crate::flip::smooth::FitCache) {
+    ) -> (&[Vec2], &[f32], &mut ph2d_app_flip::smooth::FitCache) {
         (&self.points, &self.pressures, &mut self.fit)
     }
 
@@ -251,7 +251,7 @@ pub(crate) fn stroke_from_samples(
         points,
         pressures,
         world_to_local,
-        &mut crate::flip::smooth::FitCache::default(),
+        &mut ph2d_app_flip::smooth::FitCache::default(),
     )
 }
 
@@ -269,9 +269,9 @@ pub(crate) fn stroke_from_samples_cached(
     points: &[Vec2],
     pressures: &[f32],
     world_to_local: &Xform,
-    fit: &mut crate::flip::smooth::FitCache,
+    fit: &mut ph2d_app_flip::smooth::FitCache,
 ) -> FlipStroke {
-    let smoothed = crate::flip::smooth::active_smooth(points, style.smoothing);
+    let smoothed = ph2d_app_flip::smooth::active_smooth(points, style.smoothing);
     // ⚠️ **Contra a CURVA que será desenhada, não contra a corda reta** (Enio 2026-07-30). O
     // `simplify_rdp` cobrava a tolerância contra a corda enquanto o `resample_smooth` desenha uma
     // Catmull-Rom pelos sobreviventes — num gancho a corda parecia boa e o traço ficava a 8,46 % da
@@ -285,7 +285,7 @@ pub(crate) fn stroke_from_samples_cached(
     // ficam. É a MESMA porta do preview e do bake, então os dois seguem idênticos.
     // ⚠️ A 4ª entrada é a tolerância do PRÓPRIO RDP acima: a reamostragem não re-adiciona
     // pontos num span que o simplificador acabou de declarar reto (ver `resample_smooth`).
-    let (pts, prs) = crate::flip::smooth::resample_smooth(
+    let (pts, prs) = ph2d_app_flip::smooth::resample_smooth(
         &pts,
         &prs,
         resample_step(style),

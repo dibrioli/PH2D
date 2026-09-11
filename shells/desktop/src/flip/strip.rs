@@ -10,11 +10,11 @@
 //! que a timeline e o resto do engine leem): quando a integração com a timeline
 //! chegar (W6), não há relógio para reconciliar — já é o mesmo.
 
-use crate::flip::strip_resolve::{ensure_cycle_span, seek, source_frame, target};
+use ph2d_app_flip::strip_resolve::{ensure_cycle_span, seek, source_frame, target};
 // O intervalo do tween é um resolvedor (mudou-se para o irmão junto com os outros três),
 // mas é o único com consumidores FORA daqui — re-exportado para os caller paths ficarem
 // intactos, o mesmo que o `inspector_model_physics` fez quando a física se dividiu.
-pub(crate) use crate::flip::strip_resolve::current_tween_interval;
+pub(crate) use ph2d_app_flip::strip_resolve::current_tween_interval;
 use ph2d_core::Playhead;
 use ph2d_flip::{
     CycleMode, DupMode, Easing, EasingFamily, EasingMode, FlipDoc, Frame, Hold, Interp, KeyKind,

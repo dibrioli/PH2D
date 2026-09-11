@@ -26,7 +26,7 @@ use ph2d_flip::{Fill, FlipDrawing, FlipStroke, Point, Rgba};
 /// o `contour_widths` para saber que linha cada ponto do contorno veste. É a mesma lista
 /// de propósito: a versão anterior re-derivava o conjunto para a 2ª pergunta com um
 /// filtro próprio, e os dois só concordavam por acidente (ver o doc do `local_line`).
-pub(crate) fn boundaries(drawing: &FlipDrawing) -> Vec<(Vec<Vec2>, Vec<f32>, bool)> {
+pub fn boundaries(drawing: &FlipDrawing) -> Vec<(Vec<Vec2>, Vec<f32>, bool)> {
     drawing
         .strokes
         .iter()
@@ -63,7 +63,7 @@ pub(crate) fn boundaries(drawing: &FlipDrawing) -> Vec<(Vec<Vec2>, Vec<f32>, boo
 /// zoom), e o eixo fica a meia-espessura da silhueta. Sem dilatar, a metade externa da
 /// linha não tem cor por baixo: com um pincel MACIO ela mistura com o fundo, e o contorno
 /// ganha um halo escuro (o *"o fill não se ajusta à linha"* do smoke).
-pub(crate) fn fill_stroke(
+pub fn fill_stroke(
     outer: &[Vec2],
     holes: Vec<Vec<Vec2>>,
     color: Rgba,

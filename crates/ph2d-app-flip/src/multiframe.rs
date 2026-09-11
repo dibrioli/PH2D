@@ -27,12 +27,12 @@ use ph2d_flip::{DrawingId, FlipDoc, FlipObjectId, Frame, LayerId};
 
 /// Um quadro-alvo do gesto.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub(crate) struct Target {
-    pub(crate) did: DrawingId,
+pub struct Target {
+    pub did: DrawingId,
     /// A chave (a 1ª, se o desenho é instanciado por várias — ver o dedup).
-    pub(crate) frame: Frame,
+    pub frame: Frame,
     /// `1.0` no quadro ativo; menor nos vizinhos quando o falloff está ligado.
-    pub(crate) falloff: f32,
+    pub falloff: f32,
 }
 
 /// Piso do falloff. O quadro mais distante da seleção não pode receber influência ZERO —
@@ -55,7 +55,7 @@ const MIN_FALLOFF: f32 = 0.15; // LITERAL-OK: piso de influencia, medido pelo me
 ///
 /// `delta` = distância em quadros do alvo ao quadro ATIVO (o SINAL não importa: simétrico).
 #[must_use]
-pub(crate) fn falloff_at(delta: i32) -> f32 {
+pub fn falloff_at(delta: i32) -> f32 {
     // `delta == 0` ⇒ `0.5^0 = 1.0` (influência cheia), sem caso especial. `powi` é
     // multiplicação repetida — determinístico e transcendental-free (HR-5).
     0.5f32.powi(delta.abs()).max(MIN_FALLOFF)
@@ -66,12 +66,7 @@ pub(crate) fn falloff_at(delta: i32) -> f32 {
 /// desligado; senão a meia-vida do falloff. É a MESMA `falloff_at` que a escultura usa,
 /// então a cor da célula não pode mentir sobre a força do gesto.
 #[must_use]
-pub(crate) fn cell_weight(
-    selection: &[Frame],
-    active_frame: Frame,
-    k: Frame,
-    falloff_on: bool,
-) -> f32 {
+pub fn cell_weight(selection: &[Frame], active_frame: Frame, k: Frame, falloff_on: bool) -> f32 {
     if selection.len() < 2 || !falloff_on {
         return 1.0;
     }
@@ -92,7 +87,7 @@ pub(crate) fn cell_weight(
 /// Nenhuma chave é CRIADA aqui: as selecionadas já existem (é o que "chave" significa na
 /// tira), e o alvo ativo veio pronto. Multiframe **não inventa quadro**.
 #[must_use]
-pub(crate) fn targets(
+pub fn targets(
     flip: &FlipDoc,
     oid: FlipObjectId,
     lid: LayerId,

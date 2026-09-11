@@ -1,0 +1,45 @@
+[package]
+name = "ph2d-app-flip"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# ⭐ A METADE DE APLICAÇÃO do módulo Flip (W2/L5, 2026-09-11) — a parte que vivia na
+# `shells/desktop` por inércia e que não precisa da shell para existir.
+#
+# # Por que esta crate existe
+#
+# `shells/desktop` é UMA crate de 493 k linhas e a ÚLTIMA unidade de todo build grande
+# (34–45 s sozinha no fim do gate de fecho; o front-end dela é monotarefa). Dentro dela
+# viviam famílias inteiras de módulos — 26 777 linhas só do Flip — que ali estavam porque
+# a ponte com a `App` foi ficando, não porque precisassem da janela.
+# Ver `docs/DevOps/AUDITORIA_VELOCIDADE_DE_DESENVOLVIMENTO_2026-09-10.md` §4-C2.
+#
+# # A REGRA desta crate, e ela é a razão de ela funcionar
+#
+# ⛔ **Esta crate NUNCA depende da shell.** A shell é um binário: uma dependência de volta
+# seria um ciclo. O corte é aciclico por construção — a shell chama aqui, e o que precisa
+# de `App` fica lá (ADR-0075: desacopla-se por estado + eventos, nunca por plugin).
+#
+# ⚠️ **O DOCUMENTO não é daqui.** `ph2d_flip::FlipDoc` é partilhado (a F8 dos Componentes
+# fechou-o em 10/09) e vive na crate de módulo — é a ponte a não partir. O que mora aqui é
+# a metade de APLICAÇÃO: as leis puras, os construtores de cena, o estado de interacção.
+
+[dependencies]
+# Vec2 e a aritmética partilhada.
+ph2d-core = { path = "../ph2d-core" }
+# O MODELO do Flip: objectos, camadas, desenhos, traços. O documento vem daqui, nunca da shell.
+ph2d-flip = { path = "../ph2d-flip" }
+# O balde (a dilatação do vão) e a escultura de traço — as leis que o editor chama.
+ph2d-flip-fill = { path = "../ph2d-flip-fill" }
+ph2d-flip-reshape = { path = "../ph2d-flip-reshape" }
+# O modo de mistura das camadas do Flip.
+ph2d-painter-effects = { path = "../ph2d-painter-effects" }
+# ⚠️ Só pelo `KeyCode` do `peek`: a POLÍTICA de teclado é pura (tecla -> transição), e é ela
+# que está aqui; quem alimenta o evento é a shell.
+winit = "0.30"

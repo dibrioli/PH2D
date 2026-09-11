@@ -28,8 +28,8 @@ use ph2d_flip_fill::{FillError, FillMode, FillParams, fill_at};
 use ph2d_tool_flip::FlipStyleSnapshot;
 use ph2d_vec_scene::Xform;
 
-use crate::flip::fill_dilate::{boundaries, fill_stroke};
 use crate::flip::fill_target::{curve_region, filled_shape_target};
+use ph2d_app_flip::fill_dilate::{boundaries, fill_stroke};
 
 /// O traço invisível que fecha um vão — persistente, sem cor, sem preenchimento.
 fn closure_stroke(a: Vec2, b: Vec2) -> FlipStroke {
@@ -402,7 +402,7 @@ impl crate::App {
         // Os quadros vizinhos são preenchidos em SILÊNCIO (sem toast): um quadro em que a
         // região não fecha não pode derrubar o clique nos outros — o toast fala pelo quadro
         // ATIVO, que é onde o usuário está olhando.
-        let extra: Vec<_> = crate::flip::multiframe::targets(
+        let extra: Vec<_> = ph2d_app_flip::multiframe::targets(
             &gfx.flip,
             oid,
             lid,

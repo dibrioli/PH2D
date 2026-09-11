@@ -37,7 +37,7 @@ fn iters_for(smoothing: f32) -> u32 {
 /// dele derivariam, e "o Smooth da caneta e o Smooth do pincel alisam diferente" é
 /// exatamente o tipo de bug que ninguém procura.
 #[must_use]
-pub(crate) fn active_smooth(raw: &[Vec2], smoothing: f32) -> Vec<Vec2> {
+pub fn active_smooth(raw: &[Vec2], smoothing: f32) -> Vec<Vec2> {
     let iters = iters_for(smoothing);
     if iters == 0 || raw.len() < 3 {
         return raw.to_vec();
@@ -66,11 +66,11 @@ fn perp_dist(p: Vec2, a: Vec2, b: Vec2) -> f32 {
 /// O ajuste que decide QUAIS pontos o traço guarda — módulo irmão porque é outro assunto: aqui
 /// (`flip_smooth`) mora o que se faz com uma lista de pontos; lá, **quantos pontos ela deve ter**.
 #[path = "fit.rs"]
-pub(crate) mod fit;
-pub(crate) use fit::FitCache;
+pub mod fit;
+pub use fit::FitCache;
 /// O ajuste sem memória — **oráculo dos testes**, sem chamador de produção (ver [`fit`]).
 #[cfg(test)]
-pub(crate) use fit::simplify_to_curve;
+pub use fit::simplify_to_curve;
 
 /// **Simplify RDP** — ⚠️ **REFERÊNCIA CONGELADA, sem chamador de produção desde 2026-07-30.**
 ///
@@ -85,7 +85,7 @@ pub(crate) use fit::simplify_to_curve;
 /// contagem de pontos sem mudar a forma visível. `< 3` pontos = mantém tudo.
 #[must_use]
 #[cfg(test)]
-pub(crate) fn simplify_rdp(points: &[Vec2], tol: f32) -> Vec<usize> {
+pub fn simplify_rdp(points: &[Vec2], tol: f32) -> Vec<usize> {
     let n = points.len();
     if n < 3 {
         return (0..n).collect();
@@ -198,7 +198,7 @@ fn knot_velocity(prev: Vec2, cur: Vec2, next: Vec2, dt_prev: f32, dt_next: f32) 
 /// a decisão que o simplificador acabou de tomar** — a densidade das curvas de verdade fica intacta.
 /// `flat_tol ≤ 0` desliga a regra (todo span subdivide, o comportamento anterior).
 #[must_use]
-pub(crate) fn resample_smooth(
+pub fn resample_smooth(
     pts: &[Vec2],
     prs: &[f32],
     step: f32,

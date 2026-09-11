@@ -122,7 +122,7 @@ impl crate::App {
             return Vec::new();
         };
         let Some((oid, lid)) =
-            crate::flip::strip_resolve::target(&gfx.flip, self.flip_state.active_layer)
+            ph2d_app_flip::strip_resolve::target(&gfx.flip, self.flip_state.active_layer)
         else {
             return Vec::new();
         };

@@ -137,7 +137,7 @@ pub(crate) fn reshape_begin(
     // deduplicados por desenho (um desenho instanciado por duas chaves é UM alvo, senão o
     // pincel o esculpiria em dobro).
     let frame = flip.object(oid).map_or(0, |o| o.frame_at(playhead));
-    let mf = crate::flip::multiframe::targets(
+    let mf = ph2d_app_flip::multiframe::targets(
         flip,
         oid,
         lid,

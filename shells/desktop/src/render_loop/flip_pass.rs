@@ -138,7 +138,7 @@ pub(crate) fn render(
     // O PEEK (Shift & Trace fatia 2): `Some` = uma folha vizinha na mão (a camada
     // ATIVA amostra o desenho anterior/atual/seguinte). O shell passa `ghosts: None`
     // junto — o flip é uma folha na mão, não uma pilha translúcida.
-    peek: Option<crate::flip::peek::PeekDir>,
+    peek: Option<ph2d_app_flip::peek::PeekDir>,
     game_rt: &GameRt,
     camera: &Camera2d,
     window: WindowSize,
@@ -438,7 +438,7 @@ fn collect_layers<'a>(
     active_layer: Option<LayerId>,
     models: &[(FlipObjectId, Xform)],
     ghosts: Option<super::flip_pass_ghosts::GhostSources<'_>>,
-    peek: Option<crate::flip::peek::PeekDir>,
+    peek: Option<ph2d_app_flip::peek::PeekDir>,
 ) -> (Vec<LayerRef<'a>>, Option<&'a FlipGpuData>) {
     // Camada-alvo do preview: a ativa do 1º objeto (se ainda existe) ou o topo —
     // exatamente o fallback que o `bake_stroke` usa. `None` sem preview.
@@ -484,7 +484,7 @@ fn collect_layers<'a>(
             // sobre o qual se folheia. Sem peek, `sample == frame` e nada muda.
             let sample = match peek {
                 Some(dir) if peek_target == Some((obj.id.0, layer.id)) => {
-                    crate::flip::peek::peek_frame(layer, frame, dir)
+                    ph2d_app_flip::peek::peek_frame(layer, frame, dir)
                 }
                 _ => frame,
             };

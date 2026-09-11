@@ -19,7 +19,7 @@ use ph2d_flip::{Fill, FlipDoc, FlipStroke, Hold, KeyKind, Point, Rgba};
 use ph2d_painter_effects::BlendMode;
 
 /// A cena Flip de boot: vazia por padrão; o objeto-demo sob `PH2D_FLIP_DEMO`.
-pub(crate) fn demo_scene() -> FlipDoc {
+pub fn demo_scene() -> FlipDoc {
     let mut doc = FlipDoc::new();
     if std::env::var_os("PH2D_FLIP_DEMO").is_none() {
         return doc;

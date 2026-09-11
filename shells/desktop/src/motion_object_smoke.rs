@@ -29,11 +29,6 @@ use ph2d_render::Sprite;
 // ela é um ASSUNTO — *o mesmo objeto em dois tempos* — e traz a própria fixture
 // animada, que nenhum dos outros modos precisa. Cortado pelo teto de LOC da shell.
 /// O modo `=8` — a POSE do objeto (doc 89 folha 14), irmão pelo corte que o `=7` já fez.
-/// O sufixo GPU do modo `=5`, irmão pela mesma razão: este arquivo é o DESPACHANTE, e
-/// a fiação de cada cena mora ao lado dele.
-#[path = "motion_object_smoke_osc.rs"]
-mod osc;
-use osc::build_stamp_graph_osc;
 
 #[path = "motion_object_smoke_pose.rs"]
 mod pose;
@@ -123,76 +118,6 @@ fn build_stamp_graph(graph: &mut Graph, name: &str) -> NodeId {
     out
 }
 
-/// O grafo do FREEZE (report do Enio, 2026-08-05): `source.object → dup1 ← grid1`,
-/// `dup1 → dup2 ← grid2 → output` — DOIS duplicators em série, cada grade 20×20, para
-/// **20×20 × 20×20 = 160.000** estrelas. É a cena que congelava como vetor vivo (160k
-/// Vello fills/frame) e que agora deve renderizar como TILES instanciados (o LOD).
-fn build_stamp_graph_2dup(graph: &mut Graph, name: &str) -> NodeId {
-    let src = graph.add_node("source.object");
-    let grid1 = graph.add_node("motion.grid");
-    let dup1 = graph.add_node("motion.duplicator");
-    let grid2 = graph.add_node("motion.grid");
-    let dup2 = graph.add_node("motion.duplicator");
-    let out = graph.add_node("motion.output");
-    graph.set_pos(src, Pos { x: 0.0, y: -320.0 });
-    graph.set_pos(grid1, Pos { x: 0.0, y: -200.0 });
-    graph.set_pos(
-        dup1,
-        Pos {
-            x: 200.0,
-            y: -260.0,
-        },
-    );
-    graph.set_pos(
-        grid2,
-        Pos {
-            x: 200.0,
-            y: -140.0,
-        },
-    );
-    graph.set_pos(
-        dup2,
-        Pos {
-            x: 400.0,
-            y: -200.0,
-        },
-    );
-    graph.set_pos(
-        out,
-        Pos {
-            x: 600.0,
-            y: -200.0,
-        },
-    );
-    let wire = |g: &mut Graph, a: NodeId, ap: u16, b: NodeId, bp: u16| {
-        g.connect(Edge {
-            from: (a, ap),
-            to: (b, bp),
-            delayed: false,
-        })
-        .expect("connect");
-    };
-    // shape → dup1.shape; grid1 → dup1.points; dup1 → dup2.shape; grid2 → dup2.points.
-    wire(graph, src, 0, dup1, 0);
-    wire(graph, grid1, 0, dup1, 1);
-    wire(graph, dup1, 0, dup2, 0);
-    wire(graph, grid2, 0, dup2, 1);
-    wire(graph, dup2, 0, out, 0);
-    graph.set_text_param(src, "object", name);
-    // grid1 = 20×20 = 400 (a inner block); grid2 = 20×20 = 400 (the outer tiling,
-    // wider gaps so the 400 blocks spread out).
-    for (g, gap) in [(grid1, 0.6f32), (grid2, 14.0f32)] {
-        graph.set_param(g, "rows", 20.0);
-        graph.set_param(g, "cols", 20.0);
-        graph.set_param(g, "gap_x", gap);
-        graph.set_param(g, "gap_y", gap);
-    }
-    graph.set_label(src, "The Object");
-    graph.set_label(dup1, "Inner 20x20");
-    graph.set_label(dup2, "Outer 20x20 = 160k");
-    ph2d_panel_motion_graph::request_graph_selection(vec![src.0]);
-    out
-}
 
 /// O frame corrente do roteiro (o hook não pode acrescentar campo em `App`).
 static FRAME: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
@@ -400,100 +325,6 @@ impl crate::App {
                      o centro sair em branco, FALHOU. Renomeie o grupo e as copias somem."
                 );
             }
-            // =5 — VETOR VIVO (decisao do Enio): um `source.object` de VETOR nao
-            // assa mais uma tile raster — ele emite `geometry_id` e o vector pass o
-            // desenha CRISP em qualquer zoom (ADR-0154 reusado para objetos). Uma
-            // estrela vetorial carimbada numa grade 4x4 + um `motion.oscillator` que
-            // a ondula. ⚠️ Um grafo com vetor vivo RECUSA para a CPU (a GPU nao tem
-            // rota `geometry_id`), entao `gpu_live` deve ser FALSE — o stamp de GPU
-            // sobrevive para objetos de SPRITE PURO (=1). A entra a estrela (frame
-            // 3), a entidade e nomeada + o grafo montado (frame 6), e o diagnostico
-            // e lido depois que o pump cozinhou algumas vezes (frame 40).
-            5 if f == 3 => {
-                let gfx = self.gfx.as_mut().expect("gfx");
-                gfx.vec_scene.push_path(star_shape());
-            }
-            5 if f == 6 => {
-                let map = self.vec_entities.clone();
-                let gfx = self.gfx.as_mut().expect("gfx");
-                if name_vector_entity(&mut gfx.sim, &map) {
-                    let out = build_stamp_graph_osc(&mut gfx.motion.doc.graph, OBJECT);
-                    gfx.motion.sinks.push(out);
-                }
-                let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
-            }
-            5 if f == 40 => {
-                let gfx = self.gfx.as_ref().expect("gfx");
-                let m = &gfx.motion;
-                // Um grafo com vetor vivo RECUSA para a CPU (a GPU nao tem rota
-                // `geometry_id`) — `gpu_live` deve ser FALSE. O pump lowerou as N
-                // copias como VectorInstances (crisp), cada uma com o handle da
-                // estrela no `geometry_id`.
-                let live = m.gpu_live;
-                let vecs = m.pump.vector_instances.len();
-                let gid = m
-                    .pump
-                    .vector_instances
-                    .first()
-                    .map(|v| v.geometry_id)
-                    .unwrap_or(0);
-                eprintln!(
-                    "[motion.obj smoke =5] A ESTRELA vetorial 'Object' agora e VETOR VIVO \
-                     (`geometry_id`, NAO uma tile raster) carimbada numa grade 4x4 e ONDULADA por \
-                     um oscillator. gpu_live={live} vector_instances={vecs} geometry_id={gid}. \
-                     O QUE OLHAR: as 16 estrelas ondulando no Y, NITIDAS em QUALQUER zoom (o ponto \
-                     da wave — de perto E de longe, sem a suavizada da tile raster de antes), com \
-                     o preenchimento laranja E o contorno marrom (a arte AUTORADA, nao branca). Se \
-                     vector_instances=16 E geometry_id>0 E as estrelas aparecem crisp e coloridas, \
-                     passou. gpu_live DEVE ser false: um grafo com vetor vivo recusa para a CPU de \
-                     proposito — o stamp de GPU sobrevive para objetos de SPRITE PURO (=1). Se as \
-                     copias sairem BRANCAS/sem cor, o draw_shape_instance ignorou o fill — PARE."
-                );
-            }
-            // =6 — O FREEZE DAS 160k (report do Enio): dois duplicators em série →
-            // 400×400 = 160.000 estrelas. Como vetor vivo isso congela (32,6 ms/frame
-            // só de CPU + GPU); o LOD move as instâncias acima do joelho (20k) para
-            // TILES instanciados (o caminho pré-Parte-1, que escalava a milhões),
-            // deixando o resto crisp. A estrela entra (frame 3), é nomeada + o grafo de
-            // 2 duplicators montado (frame 6), e o diagnóstico é lido depois que o pump
-            // cozinhou e o LOD particionou (frame 40).
-            6 if f == 3 => {
-                let gfx = self.gfx.as_mut().expect("gfx");
-                gfx.vec_scene.push_path(star_shape());
-            }
-            6 if f == 6 => {
-                let map = self.vec_entities.clone();
-                let gfx = self.gfx.as_mut().expect("gfx");
-                if name_vector_entity(&mut gfx.sim, &map) {
-                    let out = build_stamp_graph_2dup(&mut gfx.motion.doc.graph, OBJECT);
-                    gfx.motion.sinks.push(out);
-                }
-                let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
-            }
-            6 if f == 40 => {
-                let gfx = self.gfx.as_ref().expect("gfx");
-                let m = &gfx.motion;
-                // Pós-LOD: as instâncias acima do joelho foram para `instances` (tiles
-                // GPU-instanciados); só o que ficou abaixo do joelho segue em
-                // `vector_instances` (crisp). Numa cena de 160k, TUDO vira tile ⇒
-                // `instances ~= 160000` e `vector_instances ~= 0`, e o app NÃO congela.
-                let tiles = m.pump.instances.len();
-                let vecs = m.pump.vector_instances.len();
-                eprintln!(
-                    "[motion.obj smoke =6] 160.000 estrelas (2 duplicators em serie, 20x20 x 20x20). \
-                     O LOD moveu as instancias acima do joelho ({} > LOD_COUNT) para TILES \
-                     instanciados: instances={} vector_instances={}. \
-                     O QUE OLHAR: a grade inteira aparece e o app RODA LISO (nao congela como \
-                     antes) — as estrelas sao tiles instanciados na GPU (o caminho que escalava a \
-                     milhoes). Reduza a grade (ou os duplicators) para poucas copias e elas voltam \
-                     a ser VETOR VIVO crisp (=5). Se instances~=160000 e vector_instances~=0 e a \
-                     tela nao trava, o LOD funcionou; se o app CONGELAR, o LOD nao particionou \
-                     (verifique que o tile do objeto foi assado — texture_id).",
-                    crate::render_loop::motion_bridge::objects_lod_count(),
-                    tiles,
-                    vecs
-                );
-            }
             7 if f == 3 => {
                 let gfx = self.gfx.as_mut().expect("gfx");
                 spawn_flip_walk_named(&mut gfx.flip, OBJECT);
@@ -517,30 +348,6 @@ impl crate::App {
                      chegou ao bake; se a direita SUMIR, o canal deslocado nao foi publicado. \
                      Pare o play e faca scrub: a diferenca de fase tem de se manter em \
                      qualquer quadro."
-                );
-            }
-            // =10 — o MESMO que a `=7`, com o offset a vir de um FIO. A `=7` autora o
-            // override, e a membrana lia o override: as duas metades concordavam por acidente
-            // e o defeito era invisível. Ver `times::build_driven_offset_graph`.
-            10 if f == 3 => {
-                let gfx = self.gfx.as_mut().expect("gfx");
-                spawn_flip_walk_named(&mut gfx.flip, OBJECT);
-            }
-            10 if f == 6 => {
-                let gfx = self.gfx.as_mut().expect("gfx");
-                let outs = build_driven_offset_graph(&mut gfx.motion.doc.graph, OBJECT);
-                gfx.motion.sinks.extend(outs);
-                let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
-                self.playhead.play();
-                eprintln!(
-                    "[motion.obj smoke =10] a MESMA cena da =7, mas o +0,25 s vem de um FIO \
-                     (o no' Number a' esquerda), nao de um numero escrito no proprio objecto. \
-                     O QUE OLHAR: as duas grades desenham a MESMA arte e a da DIREITA esta \
-                     sempre UM PASSO a frente. SE A DIREITA SUMIR, a membrana voltou a ler o \
-                     valor autorado em vez do que o fio poe — que e' o defeito que esta cena \
-                     existe para apanhar (a =7 nao o via: la' os dois lados liam o mesmo \
-                     numero por acidente). Arraste o Value do Number: a fase da direita tem \
-                     de seguir o arrasto."
                 );
             }
             _ => {}

@@ -14,6 +14,7 @@ ph2d-app-host = { path = "../ph2d-app-host" }
 # <ph2d-app-sync:deps:begin>
 ph2d-app-field3d = { path = "../ph2d-app-field3d", optional = true }
 ph2d-app-flip = { path = "../ph2d-app-flip", optional = true }
+ph2d-app-physics = { path = "../ph2d-app-physics", optional = true }
 ph2d-app-vec = { path = "../ph2d-app-vec", optional = true }
 # <ph2d-app-sync:deps:end>
 
@@ -26,6 +27,7 @@ default = [
 # <ph2d-app-sync:default:begin>
     "app-field3d",
     "app-flip",
+    "app-physics",
     "app-vec",
 # <ph2d-app-sync:default:end>
 ]
@@ -34,6 +36,7 @@ default = [
 # <ph2d-app-sync:features:begin>
 app-field3d = ["dep:ph2d-app-field3d"]
 app-flip = ["dep:ph2d-app-flip"]
+app-physics = ["dep:ph2d-app-physics"]
 app-vec = ["dep:ph2d-app-vec"]
 # <ph2d-app-sync:features:end>
 

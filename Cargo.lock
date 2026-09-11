@@ -4829,6 +4829,7 @@ name = "ph2d-app-physics"
 version = "0.0.0"
 dependencies = [
  "bevy_ecs",
+ "ph2d-app-host",
  "ph2d-core",
  "ph2d-ecs",
  "ph2d-physics-ecs",
@@ -4842,6 +4843,7 @@ dependencies = [
  "ph2d-app-field3d",
  "ph2d-app-flip",
  "ph2d-app-host",
+ "ph2d-app-physics",
  "ph2d-app-sync",
  "ph2d-app-vec",
 ]

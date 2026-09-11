@@ -166,3 +166,22 @@ pub mod physics_smoke_wheel;
 pub mod physics_smoke_world_pin;
 pub mod physics_smoke_zone_force;
 pub mod physics_smoke_zones;
+
+/// **O que esta família declara à shell** (`ph2d-app-registry-init`).
+///
+/// ⚠️⚠️ **`routers: &[]` é a verdade MEDIDA da Fase A** — e por isso `"physics"` está na catraca
+/// `FAMILIAS_COM_O_ROTEADOR_AINDA_NA_SHELL` do registo, que é o único sítio onde *«ainda não
+/// saiu»* se distingue de *«alguém esqueceu»*.
+///
+/// ⭐ **E a distinção importa aqui mais que em qualquer outra família da rodada:** as **cenas**
+/// saíram — são elas a maior parte dos 112 ficheiros desta crate —, mas o `env::var` que escolhe
+/// qual delas montar ficou em [`physics_smoke`] na shell, porque ele toca a `App`. *Ter as cenas
+/// não é ter o roteador*, e uma leitura rápida do tamanho desta crate concluiria o contrário.
+///
+/// ⇒ a entrada sai da catraca no dia em que a Fase B trouxer o `PH2D_PHYSICS_SMOKE` para cá.
+///
+/// [`physics_smoke`]: https://github.com/dibrioli/PH2D/blob/main/shells/desktop/src/physics/physics_smoke.rs
+pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
+    key: "physics",
+    routers: &[],
+};

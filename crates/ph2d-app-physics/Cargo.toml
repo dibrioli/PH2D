@@ -10,6 +10,9 @@ authors.workspace = true
 [lib]
 
 [dependencies]
+# ⚠️ A INTERFACE da shell (`AppFamily`), não o agregador — importar de
+# `ph2d-app-registry-init` fecharia o ciclo `registry → família → registry`.
+ph2d-app-host = { path = "../ph2d-app-host" }
 # ⚠️ A regra desta crate é a DIRECÇÃO das setas: ela depende das crates do
 # módulo e do ECS, e **nunca da shell** (que é um `bin` e não pode ser
 # dependência de ninguém). É isso que faz dela uma unidade de compilação que o

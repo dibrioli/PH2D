@@ -79,20 +79,32 @@ fn every_smoke_scene_survives_becoming_objects() {
 /// cena 1 — que é exactamente o que se quer apanhar.
 #[test]
 fn every_smoke_scene_builds_and_is_its_own() {
-    let docs: Vec<_> = (1..=CENAS).map(crate::smoke::scene).collect();
-    for (i, doc) in docs.iter().enumerate() {
-        assert!(
-            !doc.nodes().is_empty(),
-            "a cena {} saiu sem nós",
-            i as u32 + 1
-        );
+    use crate::smoke::scenes::PODADAS;
+    let um = crate::smoke::scene(1);
+    for n in 1..=CENAS {
+        let doc = crate::smoke::scene(n);
+        assert!(!doc.nodes().is_empty(), "a cena {n} saiu sem nós");
+        if PODADAS.contains(&n) {
+            continue;
+        }
+        if n > 1 {
+            assert_ne!(
+                doc, um,
+                "a cena {n} é a cena 1 disfarçada — falta o braço dela no `match` do roteador \
+                 (e ela NÃO está na lista `PODADAS`, então não foi apagada de propósito)"
+            );
+        }
     }
-    for i in 1..docs.len() {
-        assert_ne!(
-            docs[i],
-            docs[0],
-            "a cena {} é a cena 1 disfarçada — falta o braço dela no `match` do roteador",
-            i + 1
+    // ⭐ **O CONTROLO POSITIVO da lista.** Sem esta metade a `PODADAS` seria uma isenção que
+    // ninguém verifica: alguém voltaria a escrever o braço da `15` e a lista continuaria a mandar
+    // saltá-la — e a partir daí uma cena real ficaria fora do censo, em silêncio. *Uma lista de
+    // dívida tolerada sem censo de obsolescência não desce: ela vira licença* (`CLAUDE.md §5.0`).
+    for &n in PODADAS {
+        assert_eq!(
+            crate::smoke::scene(n),
+            um,
+            "a cena {n} está na lista `PODADAS` e o roteador responde por ela — a lista já não \
+             descreve a árvore, e o censo acima está a saltar uma cena viva"
         );
     }
 }

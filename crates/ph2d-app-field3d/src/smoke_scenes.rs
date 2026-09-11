@@ -105,6 +105,27 @@ pub fn leaf(p: Primitive, x: Xform) -> Node {
 /// ser dela própria, e a `CENAS + 1` tem de cair no `_`.
 pub const CENAS: u32 = 32;
 
+/// **As cenas PODADAS em 2026-09-11** — nenhum doc as citava pelo número e nenhum código as usava
+/// (ordem do Enio, briefing W2 §3.2). `952` linhas.
+///
+/// # ⛔⛔ Por que a lista é EXPLÍCITA, e não um buraco em silêncio
+///
+/// Este roteador promete `1..CENAS` e o gate [`every_smoke_scene_builds_and_is_its_own`] existe
+/// exactamente para apanhar **um braço em falta** — ele afirma que nenhum nível é *«a cena 1
+/// disfarçada»*. Uma poda sem esta lista fá-lo reprovar sobre trabalho deliberado, e a cura
+/// preguiçosa (afrouxar o gate) apagaria a lei: a partir daí uma cena genuinamente esquecida
+/// passaria despercebida.
+///
+/// ⇒ A lista **é** a diferença entre *«apagada de propósito»* e *«esquecida»*, e o gate lê-a nos
+/// dois sentidos: salta estas, e **exige que cada uma caia mesmo no `_`** — se alguém voltar a
+/// escrever o braço da 15 sem a tirar daqui, isso reprova.
+///
+/// ⚠️ **Não se renumera o que sobra.** Os números são o endereço público de cada cena (o dono
+/// escreve `PH2D_FIELD_SMOKE=26`), e um doc que cita a `=26` deixaria de falar da mesma peça.
+///
+/// [`every_smoke_scene_builds_and_is_its_own`]: crate::smoke::scenes::scene_tests
+pub const PODADAS: &[u32] = &[8, 9, 10, 12, 13, 15, 16, 17, 18, 19, 20, 21, 22, 23];
+
 pub fn scene(n: u32) -> FieldDoc {
     let s = std::f32::consts::FRAC_1_SQRT_2;
 
@@ -347,203 +368,16 @@ pub fn scene(n: u32) -> FieldDoc {
                 NodeId(4),
             )
         }
-        8 => {
-            // ⭐⭐⭐ **OS TRÊS CARACTERES LADO A LADO** (W99) — a mesma junta, três formas.
-            //
-            // ⚠️ **O mesmo número nos três, de propósito**: é a única disposição em que se vê o que
-            // a calibração compra. O filete e o orgânico põem a silhueta do canto **no mesmo
-            // sítio** (medido, `the_four_characters`); o chanfro come mais, e é essa a diferença
-            // que o artista escolhe.
-            println!(
-                "[field-smoke] cena 8 — OS TRÊS CARACTERES: três colunas com a MESMA junta de \
-                 0,18 — Fillet (arco) · Chamfer (corte reto) · Organic (derretido)"
-            );
-            let coluna = |x: f32, blend: Blend| {
-                let mut poste = leaf(
-                    Primitive::Box {
-                        half: [0.16, 0.5, 0.16],
-                        round: 0.0,
-                        chamfer: 0.0,
-                    },
-                    Xform::at(x, 0.0, 0.0),
-                );
-                // ⚠️ O verbo do poste é o que carrega o carácter: cada coluna junta-se à base com a
-                // forma dela.
-                poste.verb = Some(Op::Union(blend));
-                poste
-            };
-            FieldDoc::new(
-                vec![
-                    // A base: uma laje comum às três, para haver junta que ver.
-                    leaf(
-                        Primitive::Box {
-                            half: [1.1, 0.12, 0.35],
-                            round: 0.0,
-                            chamfer: 0.0,
-                        },
-                        Xform::at(0.0, -0.5, 0.0),
-                    ),
-                    coluna(-0.7, Blend::Exact { radius: 0.18 }),
-                    coluna(0.0, Blend::Chamfer { radius: 0.18 }),
-                    coluna(0.7, Blend::Organic { radius: 0.18 }),
-                    combine(
-                        Op::Union(Blend::Sharp),
-                        vec![NodeId(0), NodeId(1), NodeId(2), NodeId(3)],
-                    ),
-                ],
-                NodeId(4),
-            )
-        }
-        9 => {
-            println!(
-                "[field-smoke] cena 9 — AS TRÊS FORMAS NOVAS (W101): cone fechado · tronco de cone \
-                 · cápsula · prisma de 6 lados, todos com o filete que nasceram a ter"
-            );
-            // ⚠️ **Lado a lado e no MESMO tamanho**, de propósito: a cena existe para se ver o que
-            // cada uma é, e uma delas maior que as outras leria como a forma sendo diferente.
-            let x = |v: f32| Xform {
-                translation: [v, 0.0, 0.0],
-                ..Xform::IDENTITY
-            };
-            FieldDoc::new(
-                vec![
-                    leaf(
-                        Primitive::Cone {
-                            bottom: 0.26,
-                            top: 0.0,
-                            half_height: 0.32,
-                            round: 0.026,
-                            chamfer: 0.0,
-                        },
-                        x(-0.82),
-                    ),
-                    leaf(
-                        Primitive::Cone {
-                            bottom: 0.26,
-                            top: 0.13,
-                            half_height: 0.32,
-                            round: 0.026,
-                            chamfer: 0.0,
-                        },
-                        x(-0.27),
-                    ),
-                    leaf(
-                        Primitive::Capsule {
-                            radius: 0.16,
-                            half_height: 0.26,
-                        },
-                        x(0.27),
-                    ),
-                    leaf(
-                        Primitive::Prism {
-                            sides: 6,
-                            bottom: 0.26,
-                            top: 0.26,
-                            half_height: 0.32,
-                            round: 0.026,
-                            chamfer: 0.0,
-                        },
-                        x(0.82),
-                    ),
-                    // ⚠️ **União de ARESTA VIVA** (`Blend::Sharp`): elas não se tocam, e um filete
-                    // de junção aqui seria um número que não faz nada — a cena mostraria um
-                    // controlo que o artista concluiria estar partido.
-                    combine(
-                        Op::Union(Blend::Sharp),
-                        vec![NodeId(0), NodeId(1), NodeId(2), NodeId(3)],
-                    ),
-                ],
-                NodeId(4),
-            )
-        }
-        10 => {
-            println!(
-                "[field-smoke] cena 10 — O LOTE DA W102: pirâmide · tronco de pirâmide · cunha · \
-                 arco de toro (meia volta), lado a lado"
-            );
-            let x = |v: f32| Xform {
-                translation: [v, 0.0, 0.0],
-                ..Xform::IDENTITY
-            };
-            FieldDoc::new(
-                vec![
-                    leaf(
-                        Primitive::Prism {
-                            sides: 4,
-                            bottom: 0.26,
-                            top: 0.0,
-                            half_height: 0.34,
-                            round: 0.026,
-                            chamfer: 0.0,
-                        },
-                        x(-0.82),
-                    ),
-                    leaf(
-                        Primitive::Prism {
-                            sides: 4,
-                            bottom: 0.26,
-                            top: 0.13,
-                            half_height: 0.32,
-                            round: 0.026,
-                            chamfer: 0.0,
-                        },
-                        x(-0.27),
-                    ),
-                    leaf(
-                        Primitive::Wedge {
-                            half: [0.26, 0.18, 0.21],
-                            round: 0.013,
-                            chamfer: 0.0,
-                        },
-                        x(0.27),
-                    ),
-                    leaf(
-                        Primitive::TorusArc {
-                            major: 0.26,
-                            minor: 0.073,
-                            angle: std::f32::consts::PI,
-                            round: 0.026,
-                            chamfer: 0.0,
-                        },
-                        x(0.82),
-                    ),
-                    // ⚠️ Aresta viva na junção, como a cena 9: elas não se tocam, e um filete de
-                    // junção seria um número que não faz nada.
-                    combine(
-                        Op::Union(Blend::Sharp),
-                        vec![NodeId(0), NodeId(1), NodeId(2), NodeId(3)],
-                    ),
-                ],
-                NodeId(4),
-            )
-        }
         // ⭐ As quatro do LOTE de formas e da torção vivem no irmão — ver [`lote`].
         11 => lote::cena_11(),
-        12 => lote::cena_12(),
-        13 => lote::cena_13(),
         14 => lote::cena_14(),
-        15 => edge::cena_15(),
-        16 => edge::cena_16(),
-        17 => edge::cena_17(),
-        // ⭐ As NOVE PORTAS da W119 — ver [`lote::cena_18`].
-        18 => shapes::cena_18(),
-        // ⭐ As DEZ PORTAS da W120 — ver [`lote::cena_19`].
-        19 => shapes::cena_19(),
-        // ⭐ As QUATRO PORTAS da W122 — ver [`lote::cena_20`].
-        20 => shapes::cena_20(),
-        // ⭐ As DUAS da W123 — ver [`shapes::cena_21`].
-        21 => shapes::cena_21(),
-        // ⭐ A MOLA e a REDE da W124 — ver [`shapes::cena_22`].
-        22 => shapes::cena_22(),
-        // ⭐ O CILINDRO COM BOJO da W125 — ver [`shapes::cena_23`].
-        23 => formula::cena_23(),
-        // ⭐⭐ A SUPERQUADRÁTICA da W127 — ver [`shapes::cena_24`].
+        // ⭐⭐ A SUPERQUADRÁTICA da W127 — ver [`formula::cena_24`].
         24 => formula::cena_24(),
-        // ⭐⭐⭐ A SUPERFÓRMULA da W128 — ver [`shapes::cena_25`].
+        // ⭐⭐⭐ A SUPERFÓRMULA da W128 — ver [`formula::cena_25`].
         25 => formula::cena_25(),
-        // ⭐⭐ O TRIÂNGULO da W131 — ver [`shapes::cena_26`].
+        // ⭐⭐ O TRIÂNGULO da W131 — ver [`formula::cena_26`].
         26 => formula::cena_26(),
-        // ⭐⭐ O POLÍGONO de `N` vértices da W132 — ver [`shapes::cena_27`].
+        // ⭐⭐ O POLÍGONO de `N` vértices da W132 — ver [`formula::cena_27`].
         27 => formula::cena_27(),
         // ⭐⭐⭐ O NÓ DE TORO da W134 — ver [`formula::cena_28`].
         28 => formula::cena_28(),
@@ -556,6 +390,28 @@ pub fn scene(n: u32) -> FieldDoc {
         // ⭐⭐⭐ AS CINCO JUNTAS NOVAS da W145 — ver [`edge::cena_32`].
         32 => edge::cena_32(),
         _ => {
+            // ⛔⛔ **O ROTEADOR DIZ QUANDO O NÚMERO NÃO EXISTE** (W2).
+            //
+            // A poda de 2026-09-11 tirou 14 cenas que nenhum doc citava, e isso deixou **buracos no
+            // meio** da faixa `1..CENAS`: um `PH2D_FIELD_SMOKE=15` cai aqui. Sem esta linha o dono
+            // pediria a 15, veria a 1, e leria a mensagem *«cena 1»* como se a 15 fosse a 1 — que é
+            // a forma mais barata de *«uma cena que ensina o contrário do que acontece»*
+            // (`CLAUDE.md §5.0`), e a mais cara de diagnosticar.
+            //
+            // ⚠️ Ele avisa e **desenha a 1** em vez de recusar: um smoke que não abre nada é pior
+            // para quem está a aprender a ferramenta do que um que abre a cena de sempre a dizer
+            // porquê.
+            if n != 1 {
+                let porque = if PODADAS.contains(&n) {
+                    "podada em 2026-09-11 (nenhum doc a citava pelo número)"
+                } else {
+                    "fora da faixa"
+                };
+                println!(
+                    "[field-smoke] ⚠️ a cena {n} NÃO existe — {porque}. A faixa viva é \
+                     1..{CENAS} menos {PODADAS:?}. A abrir a cena 1 no lugar dela."
+                );
+            }
             println!(
                 "[field-smoke] cena 1 — junção de 3 cilindros: filete interno 0,12 + aros externos 0,05"
             );
@@ -606,6 +462,3 @@ mod formula;
 /// ⭐ As cenas do lote de formas e da torção — ver [`lote`].
 #[path = "smoke_scenes_lote.rs"]
 mod lote;
-/// ⭐ E as cenas dos LOTES DE FORMAS — ver [`shapes`].
-#[path = "smoke_scenes_shapes.rs"]
-mod shapes;

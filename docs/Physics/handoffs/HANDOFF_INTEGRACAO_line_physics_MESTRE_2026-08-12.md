@@ -575,7 +575,7 @@ seam.
   um aperto uma carga · o controle com `air_jumps = 0`.
 - `ph2d-platformer/src/lib_dash_tests.rs` (1) — o **terceiro** cancelamento.
 - `ph2d-physics-ecs/tests/it/player_multi_jump.rs` (3) — pela porta do produto.
-- `shells/desktop/src/physics_smoke_multi_jump_tests.rs` (4) — a aritmética em
+- `crates/ph2d-app-physics/src/physics_smoke_multi_jump_tests.rs` (4) — a aritmética em
   tempo de COMPILAÇÃO · o contraste · o controle · **o pouso**.
 
 **7 mutações, 7 sangram:** a feature inteira · o buffer não consumido · a
@@ -591,7 +591,7 @@ proxy antigo de volta.
   velocidade em vez de somar · o sensor só é pedido onde a lei pode agir · o
   pulo que o trouxe não o faz subir.
 - `ph2d-physics-ecs/tests/it/player_ledge.rs` (7) — pela porta do produto.
-- `shells/desktop/src/physics_smoke_ledge_tests.rs` — a aritmética das alturas em
+- `crates/ph2d-app-physics/src/physics_smoke_ledge_tests.rs` — a aritmética das alturas em
   tempo de COMPILAÇÃO contra os números MEDIDOS do pulo colado à parede.
 
 **11 mutações, 11 sangram:** o `distance == 0` que recusa a parede · os dois
@@ -636,7 +636,7 @@ onde ele pára), e a lei tem os seus próprios gates.
   porta que compõe.
 - `ph2d-physics-ecs/tests/it/player_glide.rs` (5) — pela porta do produto.
 - `ph2d-physics-ecs/tests/it/player_swims.rs` (+1) — o planeio na água de verdade.
-- `shells/desktop/src/physics_smoke_glide_tests.rs` (4) + a sonda que dimensiona
+- `crates/ph2d-app-physics/src/physics_smoke_glide_tests.rs` (4) + a sonda que dimensiona
   o vão.
 
 **7 mutações, 7 sangram:** o teto vira alvo · o teto cravado · ignorar o botão ·

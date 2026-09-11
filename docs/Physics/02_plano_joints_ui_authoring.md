@@ -619,7 +619,7 @@ E a árvore não precisou ser inventada. Ela já está desenhada: é a Hierarqui
 | metade | onde | o que ela responde |
 |---|---|---|
 | **topologia** | `ph2d-physics-ecs::rig` (`rig_edges` / `subtree_parts`) | *dada uma lista de partes e a árvore, quais são as arestas?* — pura, headless, sobre o ECS **autorado** |
-| **quem é parte** | `shells/desktop/src/joint_rig.rs` | precisa de `Sprite`, e a crate de física não conhece `ph2d-render` **nem deve** |
+| **quem é parte** | `shells/desktop/src/physics/joint_rig.rs` | precisa de `Sprite`, e a crate de física não conhece `ph2d-render` **nem deve** |
 | **como uma parte vira corpo** | a porta da §11 (`PhysicsFieldEdit::Add`) | ela já sabe tirar o collider da **CAIXA DO SPRITE**; uma segunda regra faria um rig cujos colliders discordam dos que o botão *Add Body* produz |
 
 É o mesmo corte do `jointed_group` (W-BakeJoint): função pura sobre o estado autorado, gateável sem

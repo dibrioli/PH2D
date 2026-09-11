@@ -165,7 +165,7 @@ uma hora um terreno vazio que não estava vazio.*
   winit KeyEvent
      |
      v
-  PlayerKeys            shells/desktop/src/player_input.rs   -- 6 bools, TECLAS CRAVADAS
+  PlayerKeys            shells/desktop/src/physics/player_input.rs   -- 6 bools, TECLAS CRAVADAS
      |                    (Arrow/WASD, Z=pulo, Q=arranque, R=agarrar)
      v
   PlayerInput           ph2d-platformer/src/sense.rs         -- 5 campos FIXOS
@@ -224,7 +224,7 @@ input.axis("move_left", "move_right")   // -1..1, a subtracao do Godot
 ⛔ **Não haverá um `Axis` de primeira classe.** É a decisão do Godot e ela ganha aqui pelo mesmo
 motivo: um eixo de primeira classe obriga a decidir **agora** o que fazer quando as duas metades
 são dispositivos diferentes, e a subtracção responde **sozinha** (as duas seguradas dão zero — que
-é exactamente a lei que o [`PlayerKeys::drive`](../../shells/desktop/src/player_input.rs) já
+é exactamente a lei que o [`PlayerKeys::drive`](../../shells/desktop/src/physics/player_input.rs) já
 implementa à mão, e que este mapa passa a dar de graça).
 
 ### 2.4 ⛔ Contextos com prioridade — **e aqui não é teoria, é um defeito já medido**

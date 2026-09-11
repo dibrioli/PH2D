@@ -534,7 +534,7 @@ Rodar, se o integrador quiser reconferir:
 * ⚠️ **`=84` não existe, de propósito** — o roteador é um `match` de literais e o
   compilador é o gate (um segundo braço com o mesmo literal é `unreachable`).
 * ⚠️ **O número da próxima cena se CONTA lendo o `match`** em
-  `shells/desktop/src/physics_smoke.rs`, **nunca uma nota** — a nota da §5 do
+  `shells/desktop/src/physics/physics_smoke.rs`, **nunca uma nota** — a nota da §5 do
   `CLAUDE.md` já envelheceu em onze cenas uma vez.
 
 As sondas que decidiram H e I rodam assim:

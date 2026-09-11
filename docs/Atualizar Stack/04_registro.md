@@ -1157,7 +1157,7 @@ Cada item é uma mudança de plataforma que **compila** e só se vê na tela:
 4. **Os diálogos de ficheiro** (`rfd` 0.17) — *Save*, *Save As…*, *Open Project…*, *Import…*.
 5. **Som de verdade** (`cpal` 0.18).
 6. **O tato da física** (`rapier` 0.35, solver reescrito). ⚠️ **Os números de cena, CONTADOS no
-   roteador** [`physics_smoke.rs`](../../shells/desktop/src/physics_smoke.rs), não de memória:
+   roteador** [`physics_smoke.rs`](../../shells/desktop/src/physics/physics_smoke.rs), não de memória:
    **`=4`** é a pilha alta que assenta e adormece (o doc dela diz *«bodies that come to rest, because
    Sleep is only observable on something that stops»*) · **`=16`** é a trava de rotação, que esta
    subida **encontrou partida em silêncio** e curou · **`=15`** é o CCD, que **melhorou** (um corpo

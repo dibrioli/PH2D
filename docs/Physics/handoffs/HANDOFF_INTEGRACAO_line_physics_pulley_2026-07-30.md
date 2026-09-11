@@ -154,7 +154,7 @@ Em ordem de probabilidade.
 
 1. **`PROJECT_SCHEMA`** — §2. Já colidiu duas vezes com a `line/FLIP`.
 2. **Os três ids de gizmo (969-971)** — colidem por VALOR, e o git funde limpo.
-3. **`shells/desktop/src/physics_smoke.rs`** — a tabela de despacho de cenas
+3. **`shells/desktop/src/physics/physics_smoke.rs`** — a tabela de despacho de cenas
    ganhou onze linhas (`54`..`64`). Toda linha que acrescenta cena toca este
    `match`; o merge é textual e o conflito é óbvio, mas **o número da cena se
    CONTA como o schema**.

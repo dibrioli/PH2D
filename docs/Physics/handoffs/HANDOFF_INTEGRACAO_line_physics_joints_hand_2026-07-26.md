@@ -150,7 +150,7 @@ desta integração**.
    (`interaction`, `blast_flash`) e dois `mod`. Listas compartilhadas: **só
    ADICIONE** ([[feedback_a_shared_list_is_merged_against_todays_main]]).
 4. **`crates/ph2d-i18n/src/lib.rs`** — ver §4.
-5. **`shells/desktop/src/physics_smoke.rs`** — o dispatch de cenas ganhou `"53"`.
+5. **`shells/desktop/src/physics/physics_smoke.rs`** — o dispatch de cenas ganhou `"53"`.
    Lista compartilhada com nada mais; append puro.
 
 **Depois de CADA commit resolvido:** varra marcadores de conflito

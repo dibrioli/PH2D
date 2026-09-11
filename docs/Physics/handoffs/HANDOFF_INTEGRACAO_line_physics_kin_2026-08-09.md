@@ -38,7 +38,7 @@ Fora de `crates/ph2d-phys*`, `crates/ph2d-platformer` e `docs/Physics/`:
 | `crates/ph2d-panel-inspector/src/{sections/physics_body.rs, sections/physics_rows.rs, event_physics.rs, populate_physics.rs, sync_physics.rs}` | a `W-KinWeight` | ⚠️ **não** — ver abaixo |
 | `crates/ph2d-panel-inspector/tests/seam_{player,physics}.rs` | seams | **sim** |
 | `shells/desktop/src/main.rs` | 3 `mod` de cena de smoke | **sim** |
-| `shells/desktop/src/physics_smoke.rs` | 3 braços do roteador (`"102"`, `"103"`, `"104"`) | **sim** |
+| `shells/desktop/src/physics/physics_smoke.rs` | 3 braços do roteador (`"102"`, `"103"`, `"104"`) | **sim** |
 | `shells/desktop/src/project.rs` + `project_schema_tests.rs` | **`PROJECT_SCHEMA` 69 → 70** (§3) | ⚠️ **não** |
 | `shells/desktop/src/render_loop/inspector_{player,physics}*.rs` | fiação da §14 | **sim** |
 | `CLAUDE.md` | a §5 desta linha | **sim** |

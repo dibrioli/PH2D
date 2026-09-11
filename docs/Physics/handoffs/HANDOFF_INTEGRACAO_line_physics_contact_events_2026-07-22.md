@@ -52,7 +52,7 @@ Os commits, em ordem:
 | `CLAUDE.md` §5 | **frases apendadas** ao bloco *"Física global"* — A (smoke-OK), B (smoke-OK, cena virou DEMOLIÇÃO), C (nova) | ⚠️ **É o único ponto quente.** Estritamente **ADITIVO**; se outra linha tocar o mesmo parágrafo, mantenha **todas** as adições |
 | `project-memory/MEMORY.md` + `.md`s novos | memórias aditivas (o slip de cwd; fixture-por-fase; e a de C) | trivial (lista compartilhada — só ADICIONE) |
 | `shells/desktop/src/main.rs` | (já no commit A) `mod physics_smoke_events;` | trivial |
-| `shells/desktop/src/physics_smoke.rs` | 3 braços: `"29"`/`"30"`/`"31"` no `match` | trivial (append) |
+| `shells/desktop/src/physics/physics_smoke.rs` | 3 braços: `"29"`/`"30"`/`"31"` no `match` | trivial (append) |
 | `shells/desktop/src/render_loop/physics_overlay.rs` | (A) laço do flash; (C) `draw` ganhou o param `flashes: &[ContactFlash]` e o `contact_flashes` lê ELE | baixo — um chamador só (`mod.rs`) |
 | `shells/desktop/src/render_loop/mod.rs` | (C) `let flashes = physics.contact_flashes().to_vec();` passado ao `draw` | baixo — 2 linhas |
 | `docs/Physics/00_plano_waves.md` | +3 linhas na tabela de waves | trivial |
@@ -95,7 +95,7 @@ todo dentro da física. **A W-AreaTorque (D) traz UM id de UI** (`INSP_PHYS_AREA
 - `ph2d_physics::AreaEffect.torque: f32` — **campo NOVO** no bundle do `desc` (⚠️ **não serializado**, então não é bump; quem constrói um `AreaEffect` literal precisa dele — 9 fixtures + a ponte, já tratados).
 - `effector::apply` aplica `apply_torque_impulse`; `zone_effect` ganhou `torque` no `inert`.
 - inspector: `PhysicsFieldEdit::AreaTorque(f32)` · `InspectorPhysicsInfo.area_torque` · **id novo `ids::INSP_PHYS_AREA_TORQUE`** (`insp_phys_area_torque`) — pintado em `physics_rows.rs`, registrado em `populate.rs`, roteado em `event_physics.rs`, aplicado em `inspector_physics_apply.rs` (`AREA_TORQUE`).
-- shell: `physics_overlay::{torque_glyph, TORQUE_RGBA, TORQUE_GLYPH_PX, TORQUE_ARC_SEGS}` (o glifo violeta) · `App::physics_smoke_spin_zone` (cena 32) · `App::physics_smoke_author_spin` (cena 33) · **arquivo novo** `shells/desktop/src/physics_smoke_zones.rs` (`mod physics_smoke_zones;` no `main.rs`).
+- shell: `physics_overlay::{torque_glyph, TORQUE_RGBA, TORQUE_GLYPH_PX, TORQUE_ARC_SEGS}` (o glifo violeta) · `App::physics_smoke_spin_zone` (cena 32) · `App::physics_smoke_author_spin` (cena 33) · **arquivo novo** `crates/ph2d-app-physics/src/physics_smoke_zones.rs` (`mod physics_smoke_zones;` no `main.rs`).
 - teste novo: `crates/ph2d-physics-ecs/tests/it/area_torque.rs`.
 - **fix de sync (`9ec4b43b`):** `sync_physics_fields` (`ph2d-panel-inspector/src/sync.rs`) ganhou as 6 rows de área (Force X/Y, Torque, Drag, Fluid Density, Shape Drag) — display, nenhum símbolo público novo; gate novo em `tests/seam_physics.rs`. **Corrige um gap de TODA a família de área** (as rows eram write-only desde o W-Area), não só do torque.
 

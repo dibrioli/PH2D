@@ -88,7 +88,7 @@ criado.
 
 | aviso | arquivo | origem |
 |---|---|---|
-| `unused import: stable_name_id` | `shells/desktop/src/joint_draw_tests.rs:10` | `f94cb31cc` (física, F1 passo 5a) |
+| `unused import: stable_name_id` | `shells/desktop/src/physics/joint_draw_tests.rs:10` | `f94cb31cc` (física, F1 passo 5a) |
 | `unused import: stable_name_id` | `shells/desktop/src/render_loop/inspector_joint_tests.rs:12` | idem |
 | `#[must_use]` sem mensagem sobre tipo já `#[must_use]` | `crates/ph2d-component-desc` | `3d4af68a1` |
 

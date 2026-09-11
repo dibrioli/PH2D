@@ -56,7 +56,7 @@ collider casa com o sprite, não colapsa num círculo), **Cuboid** escala per-ei
 | `crates/ph2d-physics-ecs/src/bin/physics_ecs_c9.rs` | +1 bola não-uniformemente escalada (elipse cross-OS); doc `body_count 52` |
 | `crates/ph2d-physics-ecs/tests/it/scale_reaches_the_collider.rs` | **NOVO** — 6 gates (4 pure + 2 behavioral) |
 | `shells/desktop/src/render_loop/physics_overlay.rs` | `collider_outline(ShapeDesc, …)` + arm `Ellipse`; `outlines` resolve por `scaled_shape`; +2 gates |
-| `shells/desktop/src/physics_smoke.rs` | cena `PH2D_PHYSICS_SMOKE=9` (`physics_smoke_scale`) + linha na tabela + dispatch |
+| `shells/desktop/src/physics/physics_smoke.rs` | cena `PH2D_PHYSICS_SMOKE=9` (`physics_smoke_scale`) + linha na tabela + dispatch |
 | `CLAUDE.md` · `docs/Physics/{HANDOFF_line_physics,BUGS_physics}.md` | docs (esta wave) |
 
 ## §4 — Gates (todos verde local; mutação-provados)
@@ -87,7 +87,7 @@ Rode `env RUSTUP_TOOLCHAIN=1.95 bash scripts/ship.sh` (o `ship.sh` chama `cargo`
 
 ## §6 — Smoke visual — `PH2D_PHYSICS_SMOKE=9`
 
-Construído (`shells/desktop/src/physics_smoke.rs::physics_smoke_scale`). 4 bolas caem, cada uma
+Construído (`shells/desktop/src/physics/physics_smoke.rs::physics_smoke_scale`). 4 bolas caem, cada uma
 um `Ball` escalado diferente: **círculo** de referência · **2× uniforme** (círculo maior,
 repousa mais alto) · **não-uniforme** (ELIPSE, cai deitada e balança — um `Ball` que rola como
 elipse) · **parenteada** sob um rig 2× (o collider herda a escala do PAI, prova a escala de

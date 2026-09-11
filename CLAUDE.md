@@ -130,7 +130,7 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   ⛔ **Não copie esses valores para cá** — esta seção já os teve errados cinco vezes.
 - **O número da próxima cena de smoke se CONTA lendo o roteador**, nunca uma nota (a nota já envelheceu em 11 cenas
   de uma vez): Motion [`motion_state_demo_router.rs`](shells/desktop/src/motion_state_demo_router.rs) · Física
-  [`physics_smoke.rs`](shells/desktop/src/physics_smoke.rs) · os gates `no_two_*_scenes_claim_the_same_level`.
+  [`physics_smoke.rs`](shells/desktop/src/physics/physics_smoke.rs) · os gates `no_two_*_scenes_claim_the_same_level`.
 - **Antes de construir um item de lista aberta, MEÇA se a composição já o exprime.** Seis células da conferência do
   Motion envelheceram antes de alguém voltar a elas: *o que se perde ao não reconferir não é tempo, é construir o que já existe.*
 - **⛔ O que foi MEDIDO E REJEITADO não se reconstrói** — e desde 2026-08-18 ele tem **endereço**:
@@ -488,7 +488,7 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   `press_point >= dead_zone` é **coagido na porta**. ⛔ **LEI Nº 1 honrada:** a `InputTape` grava a **acção resolvida**, nunca a
   tecla — remapear não reescreve o passado nem parte o `physics_ecs_c9`. ⚠️ **Faltam os âmbitos com prioridade** (o que o Unreal
   tem e o Godot não): **bloqueado** — só têm sentido com um modo de jogo, e o `shells/game`/R1 está adiado pelo Enio; a cura de
-  hoje é uma **lista negra à mão** no [`player_input.rs`](shells/desktop/src/player_input.rs). ⏳ Falta também o *override*
+  hoje é uma **lista negra à mão** no [`player_input.rs`](shells/desktop/src/physics/player_input.rs). ⏳ Falta também o *override*
   por-jogador em `~/.ph2d/` ·
   ✅ **(2) A MÁQUINA DE ESTADOS DO MORPH FECHOU** ([plano 32](docs/Vector%20Module/32_plano_maquina_de_estados_do_morph.md) W1–W11j,
   [handoff](docs/Vector%20Module/handoffs/HANDOFF_INTEGRACAO_line_Vector_morph_states_2026-08-26.md)) — um botão faz o conjunto,

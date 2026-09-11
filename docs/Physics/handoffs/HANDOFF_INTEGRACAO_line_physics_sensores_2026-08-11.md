@@ -74,7 +74,7 @@ Fora de `crates/ph2d-phys*`, `crates/ph2d-platformer` e `docs/Physics/`:
 | `ph2d-panel-inspector/src/{event_player,populate_physics,sync_physics}.rs` | fiação das rows | **sim** |
 | `ph2d-panel-inspector/tests/it/seam_player.rs` | seams + `PLAYER_ROW_COUNT` **40 → 42** | **sim** |
 | `shells/desktop/src/main.rs` | 1 `mod` de cena | **sim** |
-| `shells/desktop/src/physics_smoke.rs` | 1 braço do roteador (`"109"`) | **sim** |
+| `shells/desktop/src/physics/physics_smoke.rs` | 1 braço do roteador (`"109"`) | **sim** |
 | `shells/desktop/src/render_loop/physics_overlay*.rs` | o desenho dos sensores | **sim** |
 | `shells/desktop/src/render_loop/mod.rs` | a leitura dos sensores no frame | **sim** |
 | `shells/desktop/src/{project,project_schema_tests}.rs` | **o schema** | ⚠️ **não** |

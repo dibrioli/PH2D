@@ -128,7 +128,7 @@ kinematic dirigida pela timeline.
 
 ⚠️ **A W3 acrescentou o que o plano não previu: a cena precisa de CONTROLE.** A caminhada é
 uma resposta a um dedo, e nada num log a mostra, então o fio do teclado
-(`shells/desktop/src/player_input.rs` → `physics_bridge::hand_input_to_players`) entrou
+(`shells/desktop/src/physics/player_input.rs` → `physics_bridge::hand_input_to_players`) entrou
 junto. Ele **observa sem consumir** — a seta já tem dono (o nudge de nó do Vector) — e a
 política é pura, porque um `winit::KeyEvent` não pode ser construído num teste.
 

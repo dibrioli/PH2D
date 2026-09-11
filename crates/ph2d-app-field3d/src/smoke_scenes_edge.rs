@@ -14,9 +14,6 @@
 // já tem, e que continuam a existir **uma vez**.
 use super::*;
 
-
-
-
 /// ⭐⭐⭐ **AS CINCO JUNTAS NOVAS, lado a lado sobre a MESMA peça** (W145, pedido do Enio de 09/09).
 ///
 /// # Por que um SALIENTE SOBRE UMA CHAPA, e não duas caixas a cruzar

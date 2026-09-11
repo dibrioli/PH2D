@@ -394,8 +394,8 @@ fn views_now() -> Vec<ph2d_panel_model3d::ModeChip> {
 fn camera_now() -> Vec<ph2d_panel_model3d::ModeChip> {
     let ortho =
         with_smoke(|s| matches!(s.vp().cam.lens, ph2d_field_render::Lens::Ortho)).unwrap_or(false);
-    let quad = with_smoke(|s| matches!(s.split, crate::layout::Split::Quad { .. }))
-        .unwrap_or(false);
+    let quad =
+        with_smoke(|s| matches!(s.split, crate::layout::Split::Quad { .. })).unwrap_or(false);
     vec![
         ph2d_panel_model3d::ModeChip {
             key: CAMERA_ACTS[ORTHO_SLOT],

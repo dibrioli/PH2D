@@ -253,11 +253,7 @@ pub struct Smoke {
     /// guardar só o último faria a peça andar menos do que a mão — devagar, e só quando o rato vai
     /// depressa, que é o defeito mais difícil de acreditar. Cada verbo acumula à maneira dele
     /// (`Motion::merge`).
-    pub pending_move: Option<(
-        u64,
-        crate::gizmo::Target,
-        crate::gizmo::Motion,
-    )>,
+    pub pending_move: Option<(u64, crate::gizmo::Target, crate::gizmo::Motion)>,
     /// ⭐ **O arrasto do gizmo em curso**, congelado no instante da pegada.
     ///
     /// ⚠️ **A âncora é congelada de propósito.** Ela é republicada a cada quadro a partir da pose do

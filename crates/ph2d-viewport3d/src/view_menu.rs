@@ -132,4 +132,3 @@ pub fn widest_row(text: &mut ph2d_text::TextSystem, font_px: f32) -> f32 {
         .map(|v| text.prefix_width(ph2d_i18n::tr(v.key()), font_px))
         .fold(0.0_f32, f32::max)
 }
-

@@ -122,8 +122,10 @@ fn the_two_edges_do_not_mask_each_other() {
 fn the_render_loop_actually_makes_the_modes_cede() {
     let src = std::fs::read_to_string(
         // ⚠️ **O SUJEITO deste gate é a SHELL** (ele mede que o laço/despacho dela CHAMA esta
-    // família), logo a raiz da varredura é a da shell e não a desta crate.
-    std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../shells/desktop/src").join("render_loop/mod.rs"),
+        // família), logo a raiz da varredura é a da shell e não a desta crate.
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../shells/desktop/src")
+            .join("render_loop/mod.rs"),
     )
     .expect("o loop existe");
     // ⚠️ Comentários fora: a prosa que EXPLICA a lei cita os mesmos nomes que ela usa.
@@ -292,8 +294,7 @@ fn rearming_does_not_replant_the_demo_over_the_artists_piece() {
     // O artista fecha o painel (agora isto DESARMA) e volta a abri-lo.
     set_armed_by_panel(false);
     assert!(
-        crate::scene::ecs_bridge(&mut sim, None, &[], &crate::scene::no_drawing())
-            .is_none(),
+        crate::scene::ecs_bridge(&mut sim, None, &[], &crate::scene::no_drawing()).is_none(),
         "desarmado, a ponte é inerte — não coze, não semeia, não pede seleção"
     );
     set_armed_by_panel(true);

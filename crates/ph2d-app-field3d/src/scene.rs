@@ -377,8 +377,7 @@ pub fn sync_scene_and_birth(
     // pedido do painel**: a lei dela é global (`key_isolation`) e o que ela precisa é da seleção,
     // que esta função tem. A voz é a mesma do chip — um só canal, como sempre.
     if crate::smoke::take_isolate_key_request() {
-        let on =
-            crate::smoke::toggle_isolate_by_key(selection.first().map(|e| e.to_bits()));
+        let on = crate::smoke::toggle_isolate_by_key(selection.first().map(|e| e.to_bits()));
         crate::notice::say(if on.is_some() {
             "Isolated: showing only this object (Shift+I brings the part back)".into()
         } else {
@@ -436,10 +435,8 @@ pub fn sync_scene_and_birth(
     //
     // ⚠️ **`None` e `Err` são coisas diferentes e só uma é um problema**: apagar o último filho de
     // uma peça devolve `None` e é um gesto normal, cujo resultado normal é a tela ficar vazia.
-    let cooked = match ph2d_field_ecs::cook(
-        world,
-        cook_root(world, root, crate::smoke::isolated()),
-    ) {
+    let cooked = match ph2d_field_ecs::cook(world, cook_root(world, root, crate::smoke::isolated()))
+    {
         Some(Ok(doc)) => {
             // Voltou a estar bem: o próximo problema — mesmo que seja o mesmo — volta a ser dito.
             crate::notice::clear();

@@ -295,8 +295,7 @@ pub fn paint_view_label(
         return None;
     }
     let font = ph2d_tokens::TypeToken::Sm.px();
-    let chip =
-        crate::view_menu::chip(rect, LABEL_INSET_PX, text.prefix_width(line, font), font);
+    let chip = crate::view_menu::chip(rect, LABEL_INSET_PX, text.prefix_width(line, font), font);
     // ⭐ **O chip pinta-se por baixo do texto**, discreto: ele existe para dizer *«isto agarra-se»*,
     // e um fundo com o peso de um botão competiria com a peça o tempo todo.
     ph2d_editor::paint::fill_rounded_rect(

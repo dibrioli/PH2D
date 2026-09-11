@@ -209,13 +209,7 @@ fn a_shape_born_from_the_palette_marks_the_frame_as_authored() {
     crate::scene::sync_scene(&mut sim, Some(&doc), 0.0);
     let _ = take_authored_change();
     ask_shape(0);
-    crate::scene::sync_scene_and_birth(
-        &mut sim,
-        None,
-        &[],
-        0.0,
-        &crate::scene::no_drawing(),
-    );
+    crate::scene::sync_scene_and_birth(&mut sim, None, &[], 0.0, &crate::scene::no_drawing());
     assert!(
         take_authored_change(),
         "a forma da paleta nasceu num quadro que não se declarou — ela funde-se na acção \
@@ -231,9 +225,7 @@ fn a_shape_born_from_the_palette_marks_the_frame_as_authored() {
 #[test]
 fn the_shell_feeds_every_gesture_exit_into_the_undo_input_mark() {
     let src = include_str!("input.rs");
-    let marcas = src
-        .matches("self.note_authored_change();")
-        .count();
+    let marcas = src.matches("self.note_authored_change();").count();
     assert!(
         marcas >= 4,
         "só {marcas} saídas alimentam a marca de entrada do undo — as quatro são mover, \

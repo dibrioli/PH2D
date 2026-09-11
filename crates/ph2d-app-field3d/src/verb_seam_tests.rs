@@ -38,13 +38,7 @@ fn the_joint_radius_travels_from_the_snapshot_to_the_cooked_document() {
     let (base, calado, corta) = (irmaos[0], irmaos[1], irmaos[2]);
 
     // ── O retrato oferece a linha a quem se junta, e não à base ──
-    crate::scene::sync_scene_and_birth(
-        &mut sim,
-        None,
-        &[corta],
-        0.0,
-        &crate::scene::no_drawing(),
-    );
+    crate::scene::sync_scene_and_birth(&mut sim, None, &[corta], 0.0, &crate::scene::no_drawing());
     let linha = ph2d_panel_model3d::state::current()
         .rows
         .into_iter()
@@ -52,13 +46,7 @@ fn the_joint_radius_travels_from_the_snapshot_to_the_cooked_document() {
         .expect("a forma que corta tem de oferecer o raio da junção dela");
     assert_eq!(linha.entity, corta.to_bits());
 
-    crate::scene::sync_scene_and_birth(
-        &mut sim,
-        None,
-        &[base],
-        0.0,
-        &crate::scene::no_drawing(),
-    );
+    crate::scene::sync_scene_and_birth(&mut sim, None, &[base], 0.0, &crate::scene::no_drawing());
     assert!(
         !ph2d_panel_model3d::state::current()
             .rows

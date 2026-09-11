@@ -26,9 +26,9 @@
 //! [ADR-0150]: ../../../docs/architecture/decisions/0150-3d-sculpt-is-a-mesh-that-donates-shading-sculptgl-referenced.md
 //! [`project-memory`]: ../../../project-memory/feedback_inherited_affordance_must_be_rederived.md
 
-use ph2d_app_host::AppHost;
 use crate::gizmo::{self, Handle};
 use crate::smoke::{Drag, Grip, Smoke, with_smoke};
+use ph2d_app_host::AppHost;
 use ph2d_field_render::Screen;
 
 /// **As alças do gizmo, projetadas para o enquadramento deste quadro** — ou vazio quando não há
@@ -60,12 +60,7 @@ pub fn handles(s: &Smoke) -> Vec<gizmo::Projected> {
         Some(v) => gizmo::project_vertices(anchor, &v.points, &s.vp().cam, screen),
         None => Vec::new(),
     };
-    saida.extend(gizmo::project(
-        anchor,
-        &s.vp().cam,
-        screen,
-        s.gizmo_mode,
-    ));
+    saida.extend(gizmo::project(anchor, &s.vp().cam, screen, s.gizmo_mode));
     saida
 }
 
@@ -436,8 +431,7 @@ impl<H: AppHost + ?Sized> Field3dInput for H {
         if self.mods().alt || self.mods().super_key {
             return false;
         }
-        let Some(view) = crate::views::view_for_key(code, self.mods().control)
-        else {
+        let Some(view) = crate::views::view_for_key(code, self.mods().control) else {
             return false;
         };
         let pos = self.pointer();

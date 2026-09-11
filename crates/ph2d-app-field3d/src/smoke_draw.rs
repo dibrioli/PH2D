@@ -91,12 +91,7 @@ pub fn draw(
 
         // ⭐⭐⭐ **AS COSTURAS E A MOLDURA DO ACTIVO** (W90) — por cima das imagens e por baixo do
         // gizmo, que é onde uma moldura de janela vive.
-        crate::gizmo_paint::paint_split(
-            scene_out,
-            &quadros[..n],
-            smoke.active.min(n - 1),
-            theme,
-        );
+        crate::gizmo_paint::paint_split(scene_out, &quadros[..n], smoke.active.min(n - 1), theme);
 
         // ⭐ **O chrome é do viewport ACTIVO**, e daqui para baixo `area` é o retângulo dele.
         //
@@ -190,10 +185,7 @@ pub fn draw(
                 // ⚠️ Enquanto se escreve `-0.` não há número nenhum, e uma ficha que saltasse para
                 // `0,000` mentiria sobre o que a tecla seguinte vai fazer. Assim que o texto é um
                 // número, o mundo já o aplicou — as duas metades dizem a mesma coisa.
-                match (
-                    smoke.typed.as_deref(),
-                    crate::input::hot_handle(smoke),
-                ) {
+                match (smoke.typed.as_deref(), crate::input::hot_handle(smoke)) {
                     (Some(t), Some(handle)) => crate::gizmo_paint::paint_readout_text(
                         scene_out,
                         text,
@@ -201,13 +193,9 @@ pub fn draw(
                         at,
                         theme,
                     ),
-                    _ => crate::gizmo_paint::paint_readout(
-                        scene_out,
-                        text,
-                        grip.applied,
-                        at,
-                        theme,
-                    ),
+                    _ => {
+                        crate::gizmo_paint::paint_readout(scene_out, text, grip.applied, at, theme)
+                    }
                 }
             }
             scene_out.pop_layer();

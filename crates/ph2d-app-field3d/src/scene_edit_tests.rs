@@ -470,8 +470,8 @@ fn a_duplicate_is_a_real_node_not_a_nameless_twin() {
         .next()
         .expect("o primeiro");
 
-    let bits = crate::scene::duplicate_with_view(world, first, &a_view().0, a_view().1)
-        .expect("duplica");
+    let bits =
+        crate::scene::duplicate_with_view(world, first, &a_view().0, a_view().1).expect("duplica");
     let copy = bevy_ecs::entity::Entity::from_bits(bits);
 
     assert!(

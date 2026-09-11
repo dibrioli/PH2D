@@ -215,12 +215,9 @@ fn measure_export_mesh_quality() {
             // A grade cobre [-1, 1] em cada eixo: a célula é 2 / 2^prof.
             let cell = 2.0 / f64::from(1u32 << depth);
             let t0 = std::time::Instant::now();
-            let m = ph2d_field_eval::extract::extract(
-                &doc,
-                &crate::smoke::sampled_registry(),
-                depth,
-            )
-            .expect("a cena malha");
+            let m =
+                ph2d_field_eval::extract::extract(&doc, &crate::smoke::sampled_registry(), depth)
+                    .expect("a cena malha");
             let ms = t0.elapsed().as_secs_f64() * 1000.0;
             let quads = m.faces().iter().filter(|f| !f.is_tri()).count();
             let r = measure(&m, &field, cell);

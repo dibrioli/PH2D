@@ -16,16 +16,39 @@ fn root() -> PathBuf {
         .to_path_buf()
 }
 
+/// ⚠️ **O `rustfmt` INDENTA o marcador de fecho, e o bloco gerado não sabe disso.**
+///
+/// O `// <ph2d-app-sync:end>` está dentro de uma função, logo o `cargo fmt` põe-lhe quatro espaços
+/// à frente — e a fatia «entre os marcadores» passa a acabar nesses quatro espaços, que o gerador
+/// nunca escreveu. *Um gate que compara texto gerado com texto formatado compara duas coisas
+/// diferentes*, e a leitura errada é «o bloco está velho, corra o sync» — que não cura nada,
+/// porque o sync escreve exactamente o que já lá está.
+///
+/// ⇒ a comparação é feita sobre a indentação do fecho aparada. ⛔ **Não se apara o corpo inteiro**:
+/// a indentação DENTRO do bloco é significativa, e apará-la deixaria passar um bloco gerado com o
+/// recuo errado.
 fn between<'a>(src: &'a str, begin: &str, end: &str) -> &'a str {
-    let b = src.find(begin).unwrap_or_else(|| panic!("marcador {begin} ausente"));
-    let e = src.find(end).unwrap_or_else(|| panic!("marcador {end} ausente"));
+    let b = src
+        .find(begin)
+        .unwrap_or_else(|| panic!("marcador {begin} ausente"));
+    let e = src
+        .find(end)
+        .unwrap_or_else(|| panic!("marcador {end} ausente"));
     assert!(e > b, "marcadores fora de ordem: {begin} depois de {end}");
     let corpo = b + begin.len();
     let inicio = src[corpo..]
         .find('\n')
         .map(|i| corpo + i + 1)
         .expect("quebra de linha depois do marcador");
-    &src[inicio..e]
+    // o recuo que o `rustfmt` pôs no marcador de fecho não faz parte do bloco gerado
+    let fatia = &src[inicio..e];
+    fatia.rfind('\n').map_or(fatia, |i| {
+        if fatia[i + 1..].trim().is_empty() {
+            &fatia[..=i]
+        } else {
+            fatia
+        }
+    })
 }
 
 #[test]

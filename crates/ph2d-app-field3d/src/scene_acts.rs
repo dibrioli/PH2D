@@ -86,10 +86,7 @@ pub fn acts_for(
 /// ⚠️ Uma chave `scene:` fica de FORA: ela nomeia a escultura viva da cena, que não veio de arquivo
 /// nenhum — pedir um `.obj` para a substituir seria mandar o artista procurar o que nunca existiu.
 /// Quem a repõe é o `+ Sculpt from scene`, e o `resolve_missing` já lhe pede sozinho.
-pub fn missing_sculpture(
-    world: &bevy_ecs::world::World,
-    e: bevy_ecs::entity::Entity,
-) -> bool {
+pub fn missing_sculpture(world: &bevy_ecs::world::World, e: bevy_ecs::entity::Entity) -> bool {
     let Some(ph2d_field_ecs::FieldNode {
         shape: ph2d_field::NodeShape::Sampled { key },
     }) = world.get::<ph2d_field_ecs::FieldNode>(e)

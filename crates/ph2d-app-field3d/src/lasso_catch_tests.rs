@@ -54,12 +54,7 @@ fn a_lasso_catches_the_shapes_that_hide_behind_each_other() {
                 s.lasso = s.lasso.map(|(from, _)| (from, b));
                 crate::input::finish_for_test(s);
             });
-            match crate::scene::ecs_bridge(
-                sim,
-                None,
-                &[],
-                &crate::scene::no_drawing(),
-            ) {
+            match crate::scene::ecs_bridge(sim, None, &[], &crate::scene::no_drawing()) {
                 Some(SelectRequest::AddMany(bits)) => bits.len(),
                 other => panic!("{n} formas empilhadas: o laço não pediu seleção: {other:?}"),
             }
@@ -136,8 +131,7 @@ fn the_surface_half_catches_what_the_origin_half_cannot_see() {
             s.lasso = s.lasso.map(|(from, _)| (from, b));
             crate::input::finish_for_test(s);
         });
-        let req =
-            crate::scene::ecs_bridge(sim, None, &[], &crate::scene::no_drawing());
+        let req = crate::scene::ecs_bridge(sim, None, &[], &crate::scene::no_drawing());
         let Some(SelectRequest::AddMany(v)) = req else {
             panic!("o laço não apanhou os corpos que entram nele: {req:?}");
         };
@@ -190,8 +184,7 @@ fn a_lasso_does_not_catch_what_is_behind_the_camera() {
             s.lasso = s.lasso.map(|(from, _)| (from, b));
             crate::input::finish_for_test(s);
         });
-        match crate::scene::ecs_bridge(sim, None, &[], &crate::scene::no_drawing())
-        {
+        match crate::scene::ecs_bridge(sim, None, &[], &crate::scene::no_drawing()) {
             Some(SelectRequest::AddMany(bits)) => bits.len(),
             other => panic!("o laço não pediu seleção: {other:?}"),
         }
@@ -248,12 +241,7 @@ fn the_probe_of_how_many_a_lasso_catches_when_they_overlap() {
                     s.lasso = s.lasso.map(|(from, _)| (from, b));
                     crate::input::finish_for_test(s);
                 });
-                match crate::scene::ecs_bridge(
-                    sim,
-                    None,
-                    &[],
-                    &crate::scene::no_drawing(),
-                ) {
+                match crate::scene::ecs_bridge(sim, None, &[], &crate::scene::no_drawing()) {
                     Some(SelectRequest::AddMany(bits)) => bits.len(),
                     _ => 0,
                 }

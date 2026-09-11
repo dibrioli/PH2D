@@ -27,8 +27,7 @@ fn the_part_is_born_with_an_object_selected_once_and_only_once() {
         0.0,
         &crate::scene::no_drawing(),
     );
-    let crate::scene::SelectRequest::Entity(bits) =
-        born.expect("nascer tem de pedir uma seleção")
+    let crate::scene::SelectRequest::Entity(bits) = born.expect("nascer tem de pedir uma seleção")
     else {
         panic!("nascer pede uma ENTIDADE, não uma limpeza");
     };
@@ -44,13 +43,8 @@ fn the_part_is_born_with_an_object_selected_once_and_only_once() {
         "é um filho direto da peça"
     );
 
-    let (_, again) = crate::scene::sync_scene_and_birth(
-        &mut sim,
-        None,
-        &[],
-        0.0,
-        &crate::scene::no_drawing(),
-    );
+    let (_, again) =
+        crate::scene::sync_scene_and_birth(&mut sim, None, &[], 0.0, &crate::scene::no_drawing());
     assert_eq!(
         again, None,
         "o quadro seguinte não volta a mandar selecionar"

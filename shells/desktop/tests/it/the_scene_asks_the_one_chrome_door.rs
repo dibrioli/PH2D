@@ -43,7 +43,8 @@ const FAMILY_INPUT: &str = "../../crates/ph2d-app-field3d/src/input.rs";
 /// ⚠️ **Um terceiro módulo a fazer o mesmo herda esta lista.** O `field3d` já nomeava o `sculpt3d`
 /// como *«um irmão por curar»* num doc-comment — o que é uma nota, não um gate: os dois só ficaram
 /// curados quando a porta passou a ser uma.
-///⚠️⚠️ **A PORTA passou a ter DOIS caminhos, e o censo segue os dois** (W2).
+///
+/// ⚠️⚠️ **A PORTA passou a ter DOIS caminhos, e o censo segue os dois** (W2).
 ///
 /// A familia `field3d` saiu da shell e deixou de poder nomear o `chrome_hit`: ela pergunta
 /// `self.pointer_over_chrome(...)`, um metodo do trait de host. **Continua a ser a mesma porta** —
@@ -154,7 +155,6 @@ fn a_drag_already_running_is_never_dropped_by_crossing_the_frame() {
         );
     }
 }
-
 
 /// ⭐⭐ **E O TRAIT ROUTEIA A PORTA PARA O INDICE DE ACERTO DE VERDADE** (W2).
 ///

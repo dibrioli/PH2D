@@ -49,7 +49,7 @@ pub fn register_all_app_families() -> AppFamilyRegistry {
     // <ph2d-app-sync:begin>
     #[cfg(feature = "app-field3d")]
     reg.push(ph2d_app_field3d::FAMILY);
-// <ph2d-app-sync:end>
+    // <ph2d-app-sync:end>
     reg
 }
 

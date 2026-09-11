@@ -135,8 +135,7 @@ pub(super) fn apply(
             ph2d_panel_model3d::ModelIntent::Camera { slot } => {
                 crate::smoke::with_smoke(|s| {
                     if slot == super::panel::ORTHO_SLOT {
-                        s.vp_mut().cam.lens =
-                            crate::input::law::other_lens(s.vp_mut().cam.lens);
+                        s.vp_mut().cam.lens = crate::input::law::other_lens(s.vp_mut().cam.lens);
                     } else if slot == super::panel::QUAD_SLOT {
                         // ⭐⭐⭐ **A DIVISÃO** (W90) — ver `smoke::toggle_split`.
                         crate::smoke::toggle_split(s);

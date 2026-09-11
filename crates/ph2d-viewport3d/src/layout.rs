@@ -116,10 +116,7 @@ impl Split {
 /// Prefab* faz exactamente a mesma pergunta e não tem nada de 3D. ⇒ a lei mudou-se outra vez, para
 /// um módulo com o nome da PERGUNTA ([`ph2d_app_host::canvas_area::visible`]), e isto é o alias que os
 /// chamadores do 3D já tinham. *Um segundo cliente é o sinal de que o nome da porta estava errado.*
-pub fn area(
-    hero: &ph2d_editor::screens::hero::HeroScreen,
-    viewport: EditorRect,
-) -> EditorRect {
+pub fn area(hero: &ph2d_editor::screens::hero::HeroScreen, viewport: EditorRect) -> EditorRect {
     ph2d_app_host::canvas_area::visible(hero, viewport)
 }
 
@@ -263,7 +260,6 @@ pub fn hit(rects: impl IntoIterator<Item = EditorRect>, p: [f32; 2]) -> Option<u
         .into_iter()
         .position(|r| p[0] >= r.x && p[0] < r.x + r.w && p[1] >= r.y && p[1] < r.y + r.h)
 }
-
 
 // ⚠️ **O irmão**: os gates de *«que área é esta»*, cortados daqui pelo tecto de LOC — ver o
 // cabeçalho dele.

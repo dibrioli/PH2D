@@ -119,10 +119,7 @@ pub fn begin(
         && crate::navball::hits_widget(area, crate::smoke::safe_of(s), p)
     {
         let safe = crate::smoke::safe_of(s);
-        s.nav_press = crate::navball::pick(
-            &crate::navball::balls(&s.vp().cam, area, safe),
-            p,
-        );
+        s.nav_press = crate::navball::pick(&crate::navball::balls(&s.vp().cam, area, safe), p);
         s.drag = Some(Drag::Orbit);
         s.drag_grip = None;
         s.gizmo_hot = None;
@@ -215,7 +212,7 @@ pub fn mode_key(s: &mut Smoke, mode: crate::gizmo::Mode) -> (bool, bool) {
 /// ⚠️ **O `Cancel` é a excepção CERTA e por isso devolve `false`:** ele repõe a pose de antes do
 /// gesto, logo o diff não vê nada e um passo seria um passo vazio.
 pub fn typed_key(s: &mut Smoke, stroke: crate::typed::Stroke) -> (bool, bool) {
-    use crate::typed as typed;
+    use crate::typed;
     // A entrada só existe **dentro de um arrasto de alça**, e só onde um número tem um significado.
     let Some(Drag::Gizmo(handle)) = s.drag else {
         return (false, false);
@@ -289,12 +286,7 @@ fn apply_typed(s: &mut Smoke, handle: Handle) {
 /// ⚠️ **Um só sítio a escrever `pending_move`**: o ponteiro e o teclado mandam a mesma coisa pelo
 /// mesmo cano, e duas cópias da acumulação divergiriam no dia em que os dois acontecessem no mesmo
 /// quadro — que é exactamente o que digitar durante um arrasto é.
-fn publish(
-    s: &mut Smoke,
-    entity: u64,
-    target: gizmo::Target,
-    delta: gizmo::Motion,
-) {
+fn publish(s: &mut Smoke, entity: u64, target: gizmo::Target, delta: gizmo::Motion) {
     // ⚠️ **Só acumula sobre o MESMO sujeito** (W133): dois pedidos da mesma entidade podem ser de
     // vértices diferentes, e somá-los moveria um ponto com o deslocamento do outro. *A entidade
     // deixou de ser a identidade do pedido no dia em que uma peça passou a ter N alças.*
@@ -323,17 +315,10 @@ pub fn advance(s: &mut Smoke, x: f32, y: f32) -> bool {
         // artista não sabe que bola vai pegar — e o widget lê como decoração.
         s.nav_hot = match (s.vp().area, local(s, (x, y))) {
             (Some(area), Some(p))
-                if crate::navball::hits_widget(
-                    area,
-                    crate::smoke::safe_of(s),
-                    p,
-                ) =>
+                if crate::navball::hits_widget(area, crate::smoke::safe_of(s), p) =>
             {
                 let safe = crate::smoke::safe_of(s);
-                crate::navball::pick(
-                    &crate::navball::balls(&s.vp().cam, area, safe),
-                    p,
-                )
+                crate::navball::pick(&crate::navball::balls(&s.vp().cam, area, safe), p)
             }
             _ => None,
         };

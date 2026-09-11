@@ -39,11 +39,7 @@ const HEIGHT_OF_EXTENT: f32 = 0.35;
 ///
 /// ⚠️ Ela **não** toca o mundo: o terceiro salto é o da ponte com a cena, que é quem o tem. Mesma
 /// forma (e mesma razão) da escultura importada.
-pub fn from_selection(
-    scene: &VecScene,
-    closed: &[VecPathId],
-    which: ProfileShape,
-) -> String {
+pub fn from_selection(scene: &VecScene, closed: &[VecPathId], which: ProfileShape) -> String {
     if closed.is_empty() {
         // ⚠️ Não devia acontecer — o botão só é oferecido com contorno escolhido —, mas dizê-lo é
         // mais barato do que um `expect` que derruba o app se a costura se soltar.

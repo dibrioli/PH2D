@@ -41,11 +41,7 @@ fn drawn_profile(pts: &[([f64; 2], f64)]) -> Profile {
 ///
 /// A onda é `1 + 0,16·sin(3·azimute)·sin(2·polar)` — três lobos em volta, dois de cima a baixo.
 #[cfg(test)]
-pub fn organic_blob_for_probe(
-    rings: usize,
-    segments: usize,
-    radius: f32,
-) -> ph2d_mesh::Mesh {
+pub fn organic_blob_for_probe(rings: usize, segments: usize, radius: f32) -> ph2d_mesh::Mesh {
     organic_blob(rings, segments, radius)
 }
 

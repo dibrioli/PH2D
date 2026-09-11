@@ -42,6 +42,8 @@ impl AppHost for App {
         self.gfx
             .as_ref()
             .and_then(|g| g.hero_screen.as_ref())
-            .map_or(viewport, |h| ph2d_app_host::canvas_area::visible(h, viewport))
+            .map_or(viewport, |h| {
+                ph2d_app_host::canvas_area::visible(h, viewport)
+            })
     }
 }

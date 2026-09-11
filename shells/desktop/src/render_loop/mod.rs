@@ -12235,10 +12235,9 @@ impl crate::App {
             // este canal já tinha TRÊS consumidores (a biblioteca do Motion, o `Ctrl+K` e o `+` do
             // Inspector), e um `take` incondicional engoliria o pick de outro — com o sintoma a ser
             // *«às vezes não faz nada»*.
-            if let Some(id) = hero
-                .store
-                .take_command_pick_if(|id| ph2d_app_field3d::shape_palette::slot_of_pick(id).is_some())
-                && let Some(slot) = ph2d_app_field3d::shape_palette::slot_of_pick(id)
+            if let Some(id) = hero.store.take_command_pick_if(|id| {
+                ph2d_app_field3d::shape_palette::slot_of_pick(id).is_some()
+            }) && let Some(slot) = ph2d_app_field3d::shape_palette::slot_of_pick(id)
             {
                 ph2d_app_field3d::smoke::ask_shape(slot);
             }

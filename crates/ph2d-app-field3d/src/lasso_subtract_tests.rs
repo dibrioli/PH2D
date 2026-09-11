@@ -131,13 +131,7 @@ fn the_panel_chip_reaches_the_lasso_and_the_row_only_exists_when_it_serves() {
             ph2d_panel_model3d::state::push_intent_for_test(
                 ph2d_panel_model3d::ModelIntent::SetLassoMode { slot },
             );
-            crate::scene::sync_scene_and_birth(
-                sim,
-                None,
-                &alvos,
-                0.0,
-                &crate::scene::no_drawing(),
-            );
+            crate::scene::sync_scene_and_birth(sim, None, &alvos, 0.0, &crate::scene::no_drawing());
             assert_eq!(
                 crate::smoke::with_smoke(|s| s.lasso_subtracts),
                 Some(esperado),
@@ -161,13 +155,7 @@ fn the_panel_chip_reaches_the_lasso_and_the_row_only_exists_when_it_serves() {
         ph2d_panel_model3d::state::push_intent_for_test(
             ph2d_panel_model3d::ModelIntent::SetLassoMode { slot: 1 },
         );
-        crate::scene::sync_scene_and_birth(
-            sim,
-            None,
-            &alvos,
-            0.0,
-            &crate::scene::no_drawing(),
-        );
+        crate::scene::sync_scene_and_birth(sim, None, &alvos, 0.0, &crate::scene::no_drawing());
         assert_eq!(
             crate::smoke::with_smoke(|s| s.lasso_subtracts),
             Some(true),

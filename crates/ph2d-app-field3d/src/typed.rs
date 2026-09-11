@@ -121,12 +121,7 @@ pub fn accepts(handle: Handle) -> bool {
 /// ⭐ **O TOTAL que este número pede**, na unidade da ficha.
 ///
 /// `view_fwd` é a direção da vista — o eixo da argola que nunca fica de perfil.
-pub fn total(
-    handle: Handle,
-    anchor: &Anchor,
-    view_fwd: [f32; 3],
-    value: f32,
-) -> Option<Motion> {
+pub fn total(handle: Handle, anchor: &Anchor, view_fwd: [f32; 3], value: f32) -> Option<Motion> {
     let along = |a: [f32; 3]| Motion::Translate([a[0] * value, a[1] * value, a[2] * value]);
     match handle {
         Handle::Axis(n) => Some(along(anchor.axes[n])),

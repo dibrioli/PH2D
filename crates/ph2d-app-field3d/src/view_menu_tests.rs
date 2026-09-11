@@ -108,10 +108,9 @@ fn the_painter_publishes_the_chip_and_only_with_the_split_open() {
             s.split = crate::layout::Split::One;
         });
         desenha();
-        let sozinha = crate::smoke::with_smoke(|s| {
-            s.vps.iter().filter(|v| v.label.is_some()).count()
-        })
-        .expect("armado");
+        let sozinha =
+            crate::smoke::with_smoke(|s| s.vps.iter().filter(|v| v.label.is_some()).count())
+                .expect("armado");
         assert_eq!(
             sozinha, 0,
             "com uma vista só não há rótulo pintado, logo não pode haver chip clicável"

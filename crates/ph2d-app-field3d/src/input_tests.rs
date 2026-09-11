@@ -307,9 +307,18 @@ mod mode_keys {
     #[test]
     fn a_modifier_makes_it_someone_elses_shortcut() {
         for m in [
-            HostMods { control: true, ..HostMods::default() },
-            HostMods { alt: true, ..HostMods::default() },
-            HostMods { super_key: true, ..HostMods::default() },
+            HostMods {
+                control: true,
+                ..HostMods::default()
+            },
+            HostMods {
+                alt: true,
+                ..HostMods::default()
+            },
+            HostMods {
+                super_key: true,
+                ..HostMods::default()
+            },
         ] {
             for code in [KeyCode::KeyG, KeyCode::KeyR, KeyCode::KeyS] {
                 assert_eq!(
@@ -326,7 +335,13 @@ mod mode_keys {
     #[test]
     fn shift_alone_is_still_the_letter() {
         assert_eq!(
-            mode_for_key(KeyCode::KeyR, HostMods { shift: true, ..HostMods::default() }),
+            mode_for_key(
+                KeyCode::KeyR,
+                HostMods {
+                    shift: true,
+                    ..HostMods::default()
+                }
+            ),
             Some(Mode::Rotate)
         );
     }

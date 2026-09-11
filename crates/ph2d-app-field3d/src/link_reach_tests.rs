@@ -191,13 +191,7 @@ fn the_act_slot_resolves_to_a_key_not_to_a_number() {
         ph2d_panel_model3d::state::push_intent_for_test(ph2d_panel_model3d::ModelIntent::Act {
             slot,
         });
-        crate::scene::sync_scene_and_birth(
-            &mut sim,
-            None,
-            &sel,
-            0.0,
-            &crate::scene::no_drawing(),
-        );
+        crate::scene::sync_scene_and_birth(&mut sim, None, &sel, 0.0, &crate::scene::no_drawing());
         assert!(
             sim.world().get::<FieldProfileSource>(sel[0]).is_none(),
             "o clique no slot {slot} não largou o desenho — o despacho está a resolver o slot por \
@@ -211,13 +205,7 @@ fn the_act_slot_resolves_to_a_key_not_to_a_number() {
 fn a_linked_shape_wears_the_badge_and_a_loose_one_does_not() {
     let (mut sim, sel) = a_drawn_shape();
     crate::smoke::set_armed_by_panel(true);
-    crate::scene::sync_scene_and_birth(
-        &mut sim,
-        None,
-        &sel,
-        0.0,
-        &crate::scene::no_drawing(),
-    );
+    crate::scene::sync_scene_and_birth(&mut sim, None, &sel, 0.0, &crate::scene::no_drawing());
     // ⚠️ **A pergunta é sobre o selo do VÍNCULO, e não sobre o mapa estar vazio.** Ela era
     // `is_empty()` enquanto o vínculo e o isolamento eram os únicos selos; a W97 pôs o **verbo** em
     // toda linha que participa da receita, de propósito. *Uma mudança de modelo obriga a
@@ -228,13 +216,7 @@ fn a_linked_shape_wears_the_badge_and_a_loose_one_does_not() {
         "uma extrusão SOLTA está a usar o selo do vínculo"
     );
     link(sim.world_mut(), sel[0], 7);
-    crate::scene::sync_scene_and_birth(
-        &mut sim,
-        None,
-        &sel,
-        0.0,
-        &crate::scene::no_drawing(),
-    );
+    crate::scene::sync_scene_and_birth(&mut sim, None, &sel, 0.0, &crate::scene::no_drawing());
     assert_eq!(
         link_badges().get(&sel[0].to_bits()).copied(),
         Some(LINK_BADGE),
@@ -261,13 +243,7 @@ fn an_isolated_linked_node_shows_the_isolation_not_the_link() {
     let (mut sim, sel) = a_drawn_shape();
     crate::smoke::set_armed_by_panel(true);
     link(sim.world_mut(), sel[0], 7);
-    crate::scene::sync_scene_and_birth(
-        &mut sim,
-        None,
-        &sel,
-        0.0,
-        &crate::scene::no_drawing(),
-    );
+    crate::scene::sync_scene_and_birth(&mut sim, None, &sel, 0.0, &crate::scene::no_drawing());
     // O controle: sem isolamento, o mesmo nó usa o selo do vínculo.
     assert_eq!(
         link_badges().get(&sel[0].to_bits()).copied(),
@@ -276,13 +252,7 @@ fn an_isolated_linked_node_shows_the_isolation_not_the_link() {
     );
 
     assert!(crate::smoke::toggle_isolate(Some(sel[0].to_bits())));
-    crate::scene::sync_scene_and_birth(
-        &mut sim,
-        None,
-        &sel,
-        0.0,
-        &crate::scene::no_drawing(),
-    );
+    crate::scene::sync_scene_and_birth(&mut sim, None, &sel, 0.0, &crate::scene::no_drawing());
     assert_eq!(
         link_badges().get(&sel[0].to_bits()).copied(),
         Some(crate::scene::acts::ISOLATE_BADGE),
@@ -489,13 +459,7 @@ fn only_the_base_badge_yields_to_the_link_badge() {
     link(sim.world_mut(), sel[0], 7);
 
     // A forma é a ÚNICA do grupo, logo é a base — e a base cede.
-    crate::scene::sync_scene_and_birth(
-        &mut sim,
-        None,
-        &sel,
-        0.0,
-        &crate::scene::no_drawing(),
-    );
+    crate::scene::sync_scene_and_birth(&mut sim, None, &sel, 0.0, &crate::scene::no_drawing());
     assert_eq!(
         link_badges().get(&sel[0].to_bits()).copied(),
         Some(LINK_BADGE),
@@ -520,21 +484,9 @@ fn only_the_base_badge_yields_to_the_link_badge() {
     // ser quando é ELA a falar — e aí o verbo ganha.
     ph2d_field_ecs::set_verb(sim.world_mut(), irmao, Some(Op::Difference(Blend::Sharp)))
         .expect("é um nó");
-    crate::scene::sync_scene_and_birth(
-        &mut sim,
-        None,
-        &sel,
-        0.0,
-        &crate::scene::no_drawing(),
-    );
+    crate::scene::sync_scene_and_birth(&mut sim, None, &sel, 0.0, &crate::scene::no_drawing());
     link(sim.world_mut(), irmao, 9);
-    crate::scene::sync_scene_and_birth(
-        &mut sim,
-        None,
-        &sel,
-        0.0,
-        &crate::scene::no_drawing(),
-    );
+    crate::scene::sync_scene_and_birth(&mut sim, None, &sel, 0.0, &crate::scene::no_drawing());
     assert_eq!(
         link_badges().get(&irmao.to_bits()).copied(),
         Some("SUB"),

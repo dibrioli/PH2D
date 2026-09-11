@@ -122,7 +122,7 @@ const OUTSIDE_THE_DOOR: &[(&str, &str)] = &[
         "CANVAS: a camada de audio pinta-se SOBRE o desenho, fora de todo painel",
     ),
     (
-        "shells/desktop/src/field3d_gizmo_paint.rs",
+        "crates/ph2d-app-field3d/src/gizmo_paint.rs",
         "CANVAS: o gizmo 3D",
     ),
 ];
@@ -158,6 +158,17 @@ fn ui_sources() -> Vec<PathBuf> {
             let p = e.path();
             let name = p.file_name().and_then(|n| n.to_str()).unwrap_or_default();
             if name.starts_with("ph2d-panel-") {
+                walk(&p.join("src"), &mut out);
+            }
+            // ⭐⭐ **E as crates de FAMÍLIA, desde a W2** (11/09). A metade da UI de um módulo que
+            // vivia em `shells/desktop/src` está a mudar-se para `crates/ph2d-app-<fam>`, uma
+            // família de cada vez — e uma varredura que não as siga perde a população **em
+            // silêncio**: a isenção fica obsoleta, o censo de obsolescência acusa-a, e a leitura
+            // fácil é apagar a isenção. *Isso não cura nada: apaga a cobertura junto com a linha.*
+            //
+            // ⚠️ A `ph2d-viewport3d` está aqui pela mesma razão — ela é a moldura 3D partilhada
+            // pelos dois módulos 3D, e é código de UI como qualquer painel.
+            if name.starts_with("ph2d-app-") || name == "ph2d-viewport3d" {
                 walk(&p.join("src"), &mut out);
             }
         }

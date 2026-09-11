@@ -257,13 +257,7 @@ fn row(name: &str) -> &'static Row {
 fn offered(row: &Row, build: Build) -> bool {
     let (mut sim, sel) = build();
     let _ = ph2d_panel_model3d::drain_intents();
-    crate::scene::sync_scene_and_birth(
-        &mut sim,
-        None,
-        &sel,
-        0.0,
-        &crate::scene::no_drawing(),
-    );
+    crate::scene::sync_scene_and_birth(&mut sim, None, &sel, 0.0, &crate::scene::no_drawing());
     (row.read)(&ph2d_panel_model3d::state::current())
 }
 
@@ -410,10 +404,7 @@ fn every_row_of_every_shape_has_a_label() {
         // ⭐ **A peça sai do próprio CATÁLOGO**, casando a chave do botão com a da família — nada
         // de uma segunda tabela de representantes que envelhece ao lado desta.
         let alvo = format!("panel.model3d.add.{}", k.key());
-        let Some(slot) = crate::shapes::SHAPES
-            .iter()
-            .position(|s| s.key == alvo)
-        else {
+        let Some(slot) = crate::shapes::SHAPES.iter().position(|s| s.key == alvo) else {
             continue;
         };
         let Some(p) = crate::shapes::shape_at(slot, 0.3) else {

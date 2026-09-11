@@ -11,7 +11,6 @@
 
 use super::*;
 
-
 /// ⭐⭐⭐ **A cena `=24`: A FAMÍLIA INTEIRA NUM KNOB** (W127) — quatro pontos do mesmo controlo.
 ///
 /// ⚠️ **Quatro peças e não uma**, porque o que esta forma vende não é uma silhueta: é a

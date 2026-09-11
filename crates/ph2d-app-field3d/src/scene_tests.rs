@@ -152,13 +152,7 @@ fn a_panel_edit_reaches_the_node_and_the_snapshot_in_the_same_frame() {
         param: ph2d_field::Param::Dim(0),
         value: 0.2,
     });
-    super::sync_scene_and_birth(
-        &mut sim,
-        None,
-        &[root],
-        7.5,
-        &crate::scene::no_drawing(),
-    );
+    super::sync_scene_and_birth(&mut sim, None, &[root], 7.5, &crate::scene::no_drawing());
 
     let world = sim.world_mut();
     assert!(
@@ -196,13 +190,7 @@ fn a_refused_edit_publishes_the_value_the_document_actually_kept() {
         param: ph2d_field::Param::Dim(3),
         value: 5.0,
     });
-    super::sync_scene_and_birth(
-        &mut sim,
-        None,
-        &[root],
-        0.0,
-        &crate::scene::no_drawing(),
-    );
+    super::sync_scene_and_birth(&mut sim, None, &[root], 0.0, &crate::scene::no_drawing());
 
     let snap = ph2d_panel_model3d::state::current();
     let row = snap
@@ -233,13 +221,7 @@ fn the_panel_shows_the_dimensions_of_what_is_selected() {
     // A cena 2 é UMA caixa: largura, altura, profundidade e filete.
     sync_scene(&mut sim, Some(&scene(2)), 0.0);
     let root = the_root(&mut sim);
-    super::sync_scene_and_birth(
-        &mut sim,
-        None,
-        &[root],
-        0.0,
-        &crate::scene::no_drawing(),
-    );
+    super::sync_scene_and_birth(&mut sim, None, &[root], 0.0, &crate::scene::no_drawing());
 
     let keys: Vec<&str> = ph2d_panel_model3d::state::current()
         .rows
@@ -275,13 +257,7 @@ fn the_panel_shows_the_dimensions_of_what_is_selected() {
     );
 
     // ⚠️ **Sem seleção, o painel diz-lo** — em vez de mostrar uma lista de tudo que ninguém pediu.
-    super::sync_scene_and_birth(
-        &mut sim,
-        None,
-        &[],
-        0.0,
-        &crate::scene::no_drawing(),
-    );
+    super::sync_scene_and_birth(&mut sim, None, &[], 0.0, &crate::scene::no_drawing());
     assert!(ph2d_panel_model3d::state::current().rows.is_empty());
 }
 
@@ -306,13 +282,7 @@ fn every_dimension_name_has_a_translation() {
                 .collect()
         };
         for e in all {
-            super::sync_scene_and_birth(
-                &mut sim,
-                None,
-                &[e],
-                0.0,
-                &crate::scene::no_drawing(),
-            );
+            super::sync_scene_and_birth(&mut sim, None, &[e], 0.0, &crate::scene::no_drawing());
             for row in ph2d_panel_model3d::state::current().rows {
                 assert_ne!(
                     ph2d_i18n::tr(row.key),

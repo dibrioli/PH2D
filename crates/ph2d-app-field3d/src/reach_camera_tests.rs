@@ -29,13 +29,7 @@ fn every_camera_chip_moves_the_camera() {
     armed(|| {
         let (mut sim, _root) = scene(&flat());
         let _ = ph2d_panel_model3d::drain_intents();
-        crate::scene::sync_scene_and_birth(
-            &mut sim,
-            None,
-            &[],
-            0.0,
-            &crate::scene::no_drawing(),
-        );
+        crate::scene::sync_scene_and_birth(&mut sim, None, &[], 0.0, &crate::scene::no_drawing());
 
         let snap = ph2d_panel_model3d::state::current();
         assert_eq!(
@@ -75,8 +69,7 @@ fn every_camera_chip_moves_the_camera() {
             );
             crate::smoke::note_flight_progress(1.0);
             assert_eq!(
-                crate::smoke::with_smoke(|s| crate::views::named_view(&s.vp().cam))
-                    .flatten(),
+                crate::smoke::with_smoke(|s| crate::views::named_view(&s.vp().cam)).flatten(),
                 Some(v),
                 "o chip {slot} ({v:?}) não pôs a câmera na vista dele"
             );
@@ -90,27 +83,18 @@ fn every_camera_chip_moves_the_camera() {
 
         // ⭐ A LENTE alterna, e volta.
         let lens_of = || {
-            crate::smoke::with_smoke(|s| {
-                matches!(s.vp().cam.lens, ph2d_field_render::Lens::Ortho)
-            })
-            .unwrap_or(false)
+            crate::smoke::with_smoke(|s| matches!(s.vp().cam.lens, ph2d_field_render::Lens::Ortho))
+                .unwrap_or(false)
         };
         let before = lens_of();
         ph2d_panel_model3d::state::push_intent_for_test(ModelIntent::Camera {
             slot: crate::scene::panel::ORTHO_SLOT,
         });
-        crate::scene::sync_scene_and_birth(
-            &mut sim,
-            None,
-            &[],
-            0.0,
-            &crate::scene::no_drawing(),
-        );
+        crate::scene::sync_scene_and_birth(&mut sim, None, &[], 0.0, &crate::scene::no_drawing());
         assert_ne!(lens_of(), before, "o chip da lente não trocou a lente");
         // …e o retrato DIZ o estado novo: um interruptor que não acende mente sobre o que fez.
         assert_eq!(
-            ph2d_panel_model3d::state::current().camera[crate::scene::panel::ORTHO_SLOT]
-                .active,
+            ph2d_panel_model3d::state::current().camera[crate::scene::panel::ORTHO_SLOT].active,
             lens_of(),
             "o chip da lente não reflete a lente que está posta"
         );
@@ -122,13 +106,7 @@ fn every_camera_chip_moves_the_camera() {
         ph2d_panel_model3d::state::push_intent_for_test(ModelIntent::Camera {
             slot: crate::scene::panel::FRAME_SLOT,
         });
-        crate::scene::sync_scene_and_birth(
-            &mut sim,
-            None,
-            &[],
-            0.0,
-            &crate::scene::no_drawing(),
-        );
+        crate::scene::sync_scene_and_birth(&mut sim, None, &[], 0.0, &crate::scene::no_drawing());
         crate::smoke::note_flight_progress(1.0);
         let t = crate::smoke::with_smoke(|s| s.vp().cam.target).expect("armado");
         assert!(
@@ -148,13 +126,7 @@ fn every_camera_chip_moves_the_camera() {
         ph2d_panel_model3d::state::push_intent_for_test(ModelIntent::Camera {
             slot: crate::scene::panel::QUAD_SLOT,
         });
-        crate::scene::sync_scene_and_birth(
-            &mut sim,
-            None,
-            &[],
-            0.0,
-            &crate::scene::no_drawing(),
-        );
+        crate::scene::sync_scene_and_birth(&mut sim, None, &[], 0.0, &crate::scene::no_drawing());
         assert_eq!(
             quantos(),
             crate::layout::Split::quad().count(),
@@ -162,21 +134,14 @@ fn every_camera_chip_moves_the_camera() {
         );
         // …e o retrato DIZ o estado novo, como o da lente.
         assert!(
-            ph2d_panel_model3d::state::current().camera[crate::scene::panel::QUAD_SLOT]
-                .active,
+            ph2d_panel_model3d::state::current().camera[crate::scene::panel::QUAD_SLOT].active,
             "o chip da divisão não acende com a divisão aberta"
         );
         // ⭐ **E fecha**, deixando UMA vista — um interruptor que só liga é meio interruptor.
         ph2d_panel_model3d::state::push_intent_for_test(ModelIntent::Camera {
             slot: crate::scene::panel::QUAD_SLOT,
         });
-        crate::scene::sync_scene_and_birth(
-            &mut sim,
-            None,
-            &[],
-            0.0,
-            &crate::scene::no_drawing(),
-        );
+        crate::scene::sync_scene_and_birth(&mut sim, None, &[], 0.0, &crate::scene::no_drawing());
         assert_eq!(quantos(), 1, "o chip da divisão não voltou à vista única");
     });
 }
@@ -190,21 +155,9 @@ fn the_lit_view_chip_goes_out_when_the_camera_leaves_it() {
         let (mut sim, _root) = scene(&flat());
         let _ = ph2d_panel_model3d::drain_intents();
         ph2d_panel_model3d::state::push_intent_for_test(ModelIntent::SetView { slot: 0 });
-        crate::scene::sync_scene_and_birth(
-            &mut sim,
-            None,
-            &[],
-            0.0,
-            &crate::scene::no_drawing(),
-        );
+        crate::scene::sync_scene_and_birth(&mut sim, None, &[], 0.0, &crate::scene::no_drawing());
         crate::smoke::note_flight_progress(1.0);
-        crate::scene::sync_scene_and_birth(
-            &mut sim,
-            None,
-            &[],
-            0.0,
-            &crate::scene::no_drawing(),
-        );
+        crate::scene::sync_scene_and_birth(&mut sim, None, &[], 0.0, &crate::scene::no_drawing());
         assert!(
             ph2d_panel_model3d::state::current().views[0].active,
             "o controle: a vista escolhida tem de acender"
@@ -213,13 +166,7 @@ fn the_lit_view_chip_goes_out_when_the_camera_leaves_it() {
         crate::smoke::with_smoke(|s| {
             crate::input::law::orbit(&mut s.vp_mut().cam, 4.0, 0.0);
         });
-        crate::scene::sync_scene_and_birth(
-            &mut sim,
-            None,
-            &[],
-            0.0,
-            &crate::scene::no_drawing(),
-        );
+        crate::scene::sync_scene_and_birth(&mut sim, None, &[], 0.0, &crate::scene::no_drawing());
         assert!(
             ph2d_panel_model3d::state::current()
                 .views

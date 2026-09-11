@@ -227,4 +227,3 @@ pub fn hits_widget(area: EditorRect, safe: EditorRect, at: [f32; 2]) -> bool {
 fn dot(a: [f32; 3], b: [f32; 3]) -> f32 {
     a[0].mul_add(b[0], a[1].mul_add(b[1], a[2] * b[2]))
 }
-

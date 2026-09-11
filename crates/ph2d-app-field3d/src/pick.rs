@@ -66,13 +66,8 @@ pub fn owners_under(
     screen: Screen,
     px: &[[f32; 2]],
 ) -> Vec<Option<Entity>> {
-    let hits = ph2d_field_render::surfaces_under(
-        doc,
-        &crate::smoke::sampled_registry(),
-        cam,
-        screen,
-        px,
-    );
+    let hits =
+        ph2d_field_render::surfaces_under(doc, &crate::smoke::sampled_registry(), cam, screen, px);
     if hits.iter().all(Option::is_none) {
         return vec![None; px.len()];
     }

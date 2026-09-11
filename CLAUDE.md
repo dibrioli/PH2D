@@ -49,6 +49,7 @@
 | **Trabalhar em linha paralela (Modo L / workstation)** | DIRETRIZ §1.5 (worktrees, integração `--ff-only` + gate testado, briefing §1.5.8) |
 | **ABRIR uma linha nova** | [MODELO_ABERTURA_LINHA.md](docs/IntegracaoMultiAgente/MODELO_ABERTURA_LINHA.md) — o bloco colável da 1ª mensagem (`/pd-linha-abrir`) |
 | **FECHAR a sua linha** | DIRETRIZ §1.5.9 — gate batched 1× · handoff · `rm -rf target/*/incremental` · **UMA LINHA** no §5 (`/pd-linha-fechar`) |
+| **PARTIR uma família da shell** (W2: `motion` · `physics` · `sculpt3d` · `vec` · `flip`) | [`HOWTO_partir_uma_familia_da_shell.md`](docs/IntegracaoMultiAgente/HOWTO_partir_uma_familia_da_shell.md) — o molde MEDIDO no piloto (`field3d`, 90 ficheiros, 11/09). ⚠️ **Leia a §2 ANTES de mover o primeiro ficheiro:** metade das 11 armadilhas tem modo de falha **mudo** (o censo que varre por prefixo passa a varrer zero e fica verde; a *feature* que não viaja com o código; o `#[cfg(test)]` que o vizinho deixa de ver), e a hora de as evitar é antes. O substrato é [`ph2d-app-host`](crates/ph2d-app-host/) + o registo gerado [`ph2d-app-registry-init`](crates/ph2d-app-registry-init/) (`cargo run -p ph2d-app-sync`) |
 | **Você é o agente INTEGRADOR** (só por ordem do Enio) | ⚠️ **`collision-surface.sh` em cada worktree ANTES do primeiro grep** — ele responde de uma vez a lista que a integração redescobre ~1.000 vezes. ⚠️ **Invoque o caminho ABSOLUTO do primário** (`bash /…/PH2D/scripts/collision-surface.sh`): uma worktree forkada antes do script **não o tem**, e ele mede a árvore de onde foi CHAMADO — *um script novo só existe nas árvores que nasceram depois dele*. ⛔⛔ **E a coluna `base:` dele é o MERGE-BASE, não o `main` de agora** (medido 10/09): a partir da 2.ª fusão de uma rodada ela está **desactualizada por construção**, e na 3.ª ela dizia `PROJECT_SCHEMA 124 (base: 123)` com o `main` já em `127` — quem lesse *«+1»* landava um **retrocesso de 4 degraus**. ⇒ *leia o valor do `main` no ficheiro, não na coluna.* Depois DIRETRIZ §1.5.3 + `scripts/foundational-integrate.sh` (`/pd-integracao`) |
 | **Rodar uma jornada Modo L (você, operador)** | [GUIA_JORNADA_MODO_L.md](docs/IntegracaoMultiAgente/GUIA_JORNADA_MODO_L.md) — abrir linhas, quando intervir, quem faz o ship (sem coordenador) |
 | **Você ASSUMIU uma linha que já existe** (troca de janela / retomada pós-integração) | [MODELO_TROCA_DE_AGENTE_NA_LINHA.md](docs/IntegracaoMultiAgente/MODELO_TROCA_DE_AGENTE_NA_LINHA.md) — **`cd` + `pwd` + `git branch --show-current` ANTES de ler qualquer arquivo.** A janela abre na raiz (=`main`) e o mesmo path relativo existe nas 2 árvores: editar a errada compila e commita **sem erro** |
@@ -202,6 +203,24 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   **fixo** de graça). ⚠️ **O doc da biblioteca já estava corrigido; a CENA é que não foi** — quando
   um comportamento muda, o smoke que o demonstra é o **último** sítio a ser lembrado e o **primeiro**
   que o Enio lê (§0.8).
+- ⛔⛔ **MOVER CÓDIGO PARTE GATES EM DUAS ESPÉCIES, e só UMA avisa** (medido na W2/L0, 11/09:
+  **15** correcções ao mover 90 ficheiros). ⚠️ *A que falha alto é a barata; a que fica VERDE é a
+  que se leva para o main.*
+  - **Falha alto** (11): `include_str!` com caminho relativo · o gémeo em runtime
+    (`read_to_string(CARGO_MANIFEST_DIR/…)`, que só falha **quando o teste corre** — um `#[ignore]`
+    ou um filtro e ele nunca falha) · valores esperados que são **nomes de ficheiro** · a agulha que
+    nomeia um endereço de fiação.
+  - ⛔ **Fica MUDA** (4): um censo que varre um directório por **prefixo de nome** (`starts_with(
+    "field3d_")`) passa a varrer **zero** ficheiros, e `bad.is_empty()` sobre uma lista vazia é
+    trivialmente verdadeiro. A cura é um **piso de população** no próprio gate, e ele fica **mais
+    forte do que era antes da mudança**.
+  - ⚠️ **E três coisas que só a fronteira nova revela:** uma **feature** não viaja com o código (um
+    `#[cfg(feature = "x")]` numa crate que não a declara é falso **por construção** — o piloto
+    compilou verde com o matcap desligado) · um `#[cfg(test)]` é **invisível** do outro lado da
+    crate (⇒ feature `test-support`, do tamanho do que ATRAVESSA: 1 item de 16) · e uma fronteira
+    põe um **elo novo** na corrente que nenhum gate mede (a família pergunta ao trait, e uma
+    implementação que respondesse `false` deixava os dois lados verdes).
+  Molde inteiro, com os números: [`HOWTO_partir_uma_familia_da_shell.md`](docs/IntegracaoMultiAgente/HOWTO_partir_uma_familia_da_shell.md).
 - **Integrar não é aprovar.** Smoke é do Enio; integrar e shipar só por ordem explícita dele (§0.7).
 - ⚠️ **O TRACKER também é roteador — e mandar a narrativa para ele só REALOCOU a doença.** A regra
   «uma linha no §5» funcionou para o `CLAUDE.md` e criou o `HANDOFF_line_physics.md` a **710 KB**,
@@ -754,7 +773,7 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   isso que o undo, o olho, o cadeado e o reparentar da casa valem aqui sem código próprio.
   ⚠️ **Só uma OPERAÇÃO pode ter filhos**, e a lei impõe-se na **derivação** (`promote_leaf_hosts`),
   nunca em cada gesto. ⚠️ **O painel oferece EXATAMENTE o que o gesto faz** (W34) — a lei está em
-  [`field3d_reach_tests.rs`](shells/desktop/src/field3d_reach_tests.rs), e ela apanha os dois
+  [`reach_tests.rs`](crates/ph2d-app-field3d/src/reach_tests.rs), e ela apanha os dois
   lados (botão mudo · gesto inalcançável).
   ⚠️ **A peça ATRAVESSA o arquivo** (W35) — ela é uma árvore de entidades e o `ProjectState` é o
   mundo inteiro, então o `PROJECT_SCHEMA` **não se mexe**; a nota que dizia o contrário era velha.
@@ -885,8 +904,16 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   escritas à mão** — os dois estão derivados agora. *O §5 só se edita na integração, então ele acumula
   trabalho já pago — audite a lista antes de pegar um item dela, e confira o CÓDIGO antes de acreditar
   numa ausência.*
+  ⭐⭐ **E A FAMÍLIA SAIU DA SHELL** (11/09, W2/L0 — o **piloto** de partir a `shells/desktop`): os
+  90 ficheiros `field3d_*` (29 234 LOC) vivem em [`ph2d-app-field3d`](crates/ph2d-app-field3d/), a
+  moldura 3D que a escultura também consumia saiu para a folha
+  [`ph2d-viewport3d`](crates/ph2d-viewport3d/), e o `impl App` virou trait de extensão sobre
+  [`ph2d-app-host`](crates/ph2d-app-host/). ⚠️ **14 cenas de smoke foram PODADAS** (nenhum doc as
+  citava; a lista é `scenes::PODADAS` e o roteador diz o porquê a quem pedir uma delas) — as vivas
+  são as mesmas de antes, com os **mesmos números**. Molde, armadilhas e provas:
+  [`HOWTO_partir_uma_familia_da_shell.md`](docs/IntegracaoMultiAgente/HOWTO_partir_uma_familia_da_shell.md).
   **Smokes:** pill **MODEL** · `PH2D_FIELD_SMOKE=<n>` (o roteador é
-  [`field3d_smoke_scenes.rs`](shells/desktop/src/field3d_smoke_scenes.rs)).
+  [`smoke_scenes.rs`](crates/ph2d-app-field3d/src/smoke_scenes.rs)).
   ⚠️ **Preferência fora do repo:** `~/.ph2d/prefs.txt` — um `reduced_motion=1` esquecido reprova
   smokes sobre produto correto **em todo o resto do app**, e a viagem entre vistas é a excepção.
   **Ler:** [`docs/3DModeling/`](docs/3DModeling/) ·

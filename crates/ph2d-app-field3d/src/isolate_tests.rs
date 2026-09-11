@@ -220,13 +220,7 @@ fn a_born_group_says_so() {
     ph2d_panel_model3d::state::push_intent_for_test(ph2d_panel_model3d::ModelIntent::ApplyOp {
         slot: 0,
     });
-    crate::scene::sync_scene_and_birth(
-        &mut sim,
-        None,
-        &[leaf],
-        0.0,
-        &crate::scene::no_drawing(),
-    );
+    crate::scene::sync_scene_and_birth(&mut sim, None, &[leaf], 0.0, &crate::scene::no_drawing());
 
     let said = crate::notice::drain();
     assert!(

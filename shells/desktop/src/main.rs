@@ -45,10 +45,10 @@ mod anchor_gizmo_drag;
 mod anchor_smoke;
 /// **As três formas de âncora, numa sprite só** (`PH2D_SOCKET_SMOKE=1`, ADR-0072).
 mod anim_smoke;
-mod app_state;
 /// W2 — como esta shell responde ao `ph2d_app_host::AppHost`, o trait por onde uma família de
 /// módulo fala com ela. Um ficheiro, cinco métodos, zero handles devolvidos.
 mod app_host;
+mod app_state;
 /// **O IMPORT do `.ase`** (Enio, 2026-08-23) — o ficheiro NATIVO do Aseprite vira uma sprite com
 /// grelha e a biblioteca de animações dele. Irmão do `sheet_import` (o par `.png`+`.json`).
 mod ase_import;
@@ -203,12 +203,12 @@ mod field3d_gizmo;
 // ⚠️ **O censo da linha contou `1 impl App` nesta família e eram DOIS** — ele grepou `^impl App`
 // e o segundo está escrito `impl crate::App`. *Um censo por forma textual conta a forma, não a
 // coisa.*
-mod field3d_undo_probe;
+mod field3d_layout;
+mod field3d_navball;
 #[cfg(test)]
 #[path = "field3d_snapshot_tests.rs"]
 mod field3d_snapshot_tests;
-mod field3d_layout;
-mod field3d_navball;
+mod field3d_undo_probe;
 /// ADR-0161 W109 — o cabeçalho CLICÁVEL de cada vista: o menu que troca a câmera daquele quadrante.
 mod field3d_view_menu;
 mod field3d_views;

@@ -62,8 +62,6 @@ pub fn cena_11() -> Result<FieldDoc, ph2d_field::FieldError> {
     )
 }
 
-
-
 /// A cena `=14` — ver o roteador.
 pub fn cena_14() -> Result<FieldDoc, ph2d_field::FieldError> {
     println!(

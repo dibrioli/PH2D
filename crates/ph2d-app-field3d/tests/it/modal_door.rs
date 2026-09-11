@@ -27,7 +27,10 @@ fn every_field3d_modal_goes_through_the_door() {
     let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
     let mut bad = Vec::new();
     let mut vistos = 0usize;
-    for entry in std::fs::read_dir(&dir).expect("o src da família existe").flatten() {
+    for entry in std::fs::read_dir(&dir)
+        .expect("o src da família existe")
+        .flatten()
+    {
         let path = entry.path();
         let Some(name) = path.file_name().and_then(|s| s.to_str()) else {
             continue;

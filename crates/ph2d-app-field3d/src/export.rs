@@ -41,8 +41,7 @@ pub enum ExportLevel {
 
 impl ExportLevel {
     /// ⭐ **A fonte da contagem** — o painel deriva os botões daqui, como faz com `Mode::ALL`.
-    pub const ALL: [ExportLevel; 3] =
-        [ExportLevel::Draft, ExportLevel::Fine, ExportLevel::Max];
+    pub const ALL: [ExportLevel; 3] = [ExportLevel::Draft, ExportLevel::Fine, ExportLevel::Max];
 
     /// A resolução da grade deste nível — **MEDIDA**, não escolhida.
     ///

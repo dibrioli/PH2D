@@ -186,12 +186,11 @@ pub(super) fn resolve_lasso(
     if px.is_empty() {
         return None;
     }
-    let mut bits: Vec<u64> =
-        crate::pick::owners_under(sim.world(), root, doc, &cam, screen, &px)
-            .into_iter()
-            .flatten()
-            .map(|e| e.to_bits())
-            .collect();
+    let mut bits: Vec<u64> = crate::pick::owners_under(sim.world(), root, doc, &cam, screen, &px)
+        .into_iter()
+        .flatten()
+        .map(|e| e.to_bits())
+        .collect();
     // ⭐⭐⭐ **E TUDO O QUE TEM A ORIGEM DENTRO DO RECTÂNGULO** (W58b) — a metade que faltava.
     //
     // ⛔ **Medido (Enio, 2026-08-24: «o retângulo de seleção não seleciona mais de 2 objetos ao
@@ -406,12 +405,7 @@ fn view() -> Option<(ph2d_field_render::Orbit, ph2d_field_render::Screen)> {
 /// ⚠️ **Ele lê o vértice do DOCUMENTO, e não do pedido.** O arrasto publica o total desde a pegada
 /// em deltas, e cada delta soma-se ao que a peça tem **agora** — que é o que faz um arrasto sobre um
 /// vértice coagido (o polígono que recusou a escrita) parar em vez de acumular no vazio.
-fn apply_vertex(
-    sim: &mut SimWorld,
-    primary: u64,
-    index: usize,
-    motion: crate::gizmo::Motion,
-) {
+fn apply_vertex(sim: &mut SimWorld, primary: u64, index: usize, motion: crate::gizmo::Motion) {
     let crate::gizmo::Motion::Translate(d) = motion else {
         // ⚠️ **Inalcançável pelo caminho do produto** e não um `unreachable!`: a alça de vértice só
         // produz translação (`ph2d_viewport3d::gizmo_drag`), mas um `panic` aqui trocaria um gesto

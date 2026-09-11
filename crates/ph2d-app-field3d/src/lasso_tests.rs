@@ -170,8 +170,7 @@ fn a_lasso_over_both_balls_asks_for_both() {
                 "soltar o laço não deixou pedido nenhum — a moldura desenhava e não escolhia"
             );
         });
-        let req =
-            crate::scene::ecs_bridge(sim, None, &[], &crate::scene::no_drawing());
+        let req = crate::scene::ecs_bridge(sim, None, &[], &crate::scene::no_drawing());
         let Some(SelectRequest::AddMany(bits)) = req else {
             panic!("o laço não pediu uma seleção múltipla: {req:?}");
         };
@@ -203,8 +202,7 @@ fn a_lasso_over_one_ball_asks_for_one() {
             s.lasso = s.lasso.map(|(from, _)| (from, b));
             crate::input::finish_for_test(s);
         });
-        let req =
-            crate::scene::ecs_bridge(sim, None, &[], &crate::scene::no_drawing());
+        let req = crate::scene::ecs_bridge(sim, None, &[], &crate::scene::no_drawing());
         let Some(SelectRequest::AddMany(bits)) = req else {
             panic!("o laço não pediu uma seleção: {req:?}");
         };
@@ -238,8 +236,7 @@ fn a_lasso_over_nothing_leaves_the_selection_alone() {
             crate::input::finish_for_test(s);
         });
         assert!(
-            crate::scene::ecs_bridge(sim, None, &[], &crate::scene::no_drawing())
-                .is_none(),
+            crate::scene::ecs_bridge(sim, None, &[], &crate::scene::no_drawing()).is_none(),
             "um laço que não apanhou nada pediu para mexer na seleção"
         );
     });
@@ -255,8 +252,7 @@ fn the_modifier_turns_a_click_into_a_toggle() {
         crate::smoke::with_smoke(|s| {
             s.pending_pick = Some((on_ball, true));
         });
-        let req =
-            crate::scene::ecs_bridge(sim, None, &[], &crate::scene::no_drawing());
+        let req = crate::scene::ecs_bridge(sim, None, &[], &crate::scene::no_drawing());
         assert!(
             matches!(req, Some(SelectRequest::Toggle(_))),
             "um clique com modificador não pediu para ALTERNAR: {req:?}"
@@ -274,9 +270,8 @@ fn the_modifier_turns_a_click_into_a_toggle() {
         crate::smoke::with_smoke(|s| {
             s.pending_pick = Some((on_ball, true));
         });
-        let again =
-            crate::scene::ecs_bridge(sim, None, &[], &crate::scene::no_drawing())
-                .expect("o 2.º pedido");
+        let again = crate::scene::ecs_bridge(sim, None, &[], &crate::scene::no_drawing())
+            .expect("o 2.º pedido");
         crate::scene::apply(&mut gizmo, again);
         assert_eq!(
             gizmo.selected_len(),
@@ -287,8 +282,7 @@ fn the_modifier_turns_a_click_into_a_toggle() {
         crate::smoke::with_smoke(|s| {
             s.pending_pick = Some((on_ball, false));
         });
-        let req =
-            crate::scene::ecs_bridge(sim, None, &[], &crate::scene::no_drawing());
+        let req = crate::scene::ecs_bridge(sim, None, &[], &crate::scene::no_drawing());
         assert!(
             matches!(req, Some(SelectRequest::Entity(_))),
             "um clique SEM modificador deixou de substituir a seleção: {req:?}"
@@ -299,12 +293,7 @@ fn the_modifier_turns_a_click_into_a_toggle() {
         });
         assert!(
             matches!(
-                crate::scene::ecs_bridge(
-                    sim,
-                    None,
-                    &[],
-                    &crate::scene::no_drawing()
-                ),
+                crate::scene::ecs_bridge(sim, None, &[], &crate::scene::no_drawing()),
                 Some(SelectRequest::Clear)
             ),
             "um clique no fundo deixou de limpar"
@@ -313,8 +302,7 @@ fn the_modifier_turns_a_click_into_a_toggle() {
             s.pending_pick = Some(([4.0, 4.0], true));
         });
         assert!(
-            crate::scene::ecs_bridge(sim, None, &[], &crate::scene::no_drawing())
-                .is_none(),
+            crate::scene::ecs_bridge(sim, None, &[], &crate::scene::no_drawing()).is_none(),
             "um clique ADITIVO no fundo limpou a seleção — a tecla pediu o contrário"
         );
     });
@@ -367,12 +355,7 @@ fn a_lasso_over_many_asks_for_all_of_them() {
                 s.lasso = s.lasso.map(|(from, _)| (from, b));
                 crate::input::finish_for_test(s);
             });
-            match crate::scene::ecs_bridge(
-                sim,
-                None,
-                &[],
-                &crate::scene::no_drawing(),
-            ) {
+            match crate::scene::ecs_bridge(sim, None, &[], &crate::scene::no_drawing()) {
                 Some(SelectRequest::AddMany(bits)) => bits.len(),
                 other => panic!("{n} bolas: o laço não pediu uma seleção múltipla: {other:?}"),
             }

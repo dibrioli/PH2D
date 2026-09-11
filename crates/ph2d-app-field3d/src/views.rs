@@ -10,9 +10,7 @@ pub use ph2d_viewport3d::views::*;
 
 #[cfg(test)]
 #[allow(unused_imports)]
-pub use {
-    ph2d_field_render::Orbit,
-};
+pub use ph2d_field_render::Orbit;
 
 #[cfg(test)]
 #[path = "views_tests.rs"]

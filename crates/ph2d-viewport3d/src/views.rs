@@ -170,4 +170,3 @@ pub fn view_for_key(code: winit::keyboard::KeyCode, ctrl: bool) -> Option<Standa
         _ => return None,
     })
 }
-

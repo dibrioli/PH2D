@@ -68,9 +68,7 @@ pub use state::{Drag, Grip, InFlight, Ready, Smoke};
 #[path = "viewports.rs"]
 mod viewports;
 use state::{MatcapTexels, STATE};
-pub use viewports::{
-    canvas_area, divider_cursor, ensure_viewports, toggle_split, viewport_at,
-};
+pub use viewports::{canvas_area, divider_cursor, ensure_viewports, toggle_split, viewport_at};
 
 /// ⭐ **O catálogo das cenas** vive no irmão — ver [`field3d_smoke_scenes`](self::scenes).
 #[path = "smoke_scenes.rs"]
@@ -222,10 +220,7 @@ pub fn sampled_registry() -> ph2d_field_eval::hybrid::Registry {
 }
 
 /// Põe uma escultura no registo, sob um nome.
-pub fn register_sampled(
-    key: &str,
-    field: std::sync::Arc<dyn ph2d_field_eval::hybrid::Sampled>,
-) {
+pub fn register_sampled(key: &str, field: std::sync::Arc<dyn ph2d_field_eval::hybrid::Sampled>) {
     SAMPLED.with(|r| r.borrow_mut().insert(key.to_string(), field));
 }
 
@@ -433,9 +428,13 @@ pub use isolate::{key_isolation, next_isolation};
 mod frame;
 pub use frame::draw;
 
-/// ⚠️ A metade de shell da ponte ECS vive num arquivo irmão, pendurada aqui pelo padrão do
-/// `joint_rig`: o que ela prova — que o componente sobrevive ao snapshot real — só o shell sabe.
-
+// ⚠️ **A metade de SHELL da ponte ECS deixou de estar pendurada aqui** (W2): o
+// `field3d_snapshot_tests.rs` captura um `ProjectState`, que é a máquina de undo da shell, e o doc
+// dele já se chamava *«a metade de SHELL da ponte ECS»*. Ele ficou lá, declarado no `main.rs`.
+//
+// ⛔ O doc-comment dele sobreviveu à remoção do `mod` e passou a documentar o `trace_tests` logo
+// abaixo — *um `///` órfão não fica órfão: ele adopta o item seguinte*, em silêncio, e foi o
+// clippy que o apanhou.
 #[cfg(test)]
 mod trace_tests {
     use super::*;

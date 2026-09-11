@@ -195,13 +195,27 @@ fn an_empty_family_paints_no_header() {
 /// `field3d_yields_to_modal`.
 #[test]
 fn the_field3d_keys_stand_down_while_the_palette_is_open() {
-    /// O corpo de uma função, do `fn nome` até ao `fn ` seguinte.
+    /// O corpo de uma função, do `fn nome` até ao `fn ` seguinte — **dentro do `impl`**.
+    ///
+    /// ⛔⛔ **A busca parte do `impl`, e não do princípio do ficheiro, por causa da W2.** Quando o
+    /// `impl App` virou um **trait de extensão**, cada nome de método passou a aparecer **duas**
+    /// vezes: uma na DECLARAÇÃO do trait (sem corpo) e outra no `impl`. Um `src.find(nome)` cru
+    /// aterra na declaração e devolve um corpo **vazio** — e um corpo vazio não contém a porta,
+    /// logo o gate reprova sobre código correcto.
+    ///
+    /// ⚠️ *O modo de falha bom foi este: ele reprovou ALTO.* O irmão perigoso teria sido um gate
+    /// que procurasse a AUSÊNCIA de alguma coisa — esse teria passado a verde sobre a declaração
+    /// vazia e não se saberia.
     fn corpo<'a>(src: &'a str, nome: &str) -> &'a str {
-        let ini = src
+        let impl_ini = src
+            .find("impl<H: AppHost + ?Sized> Field3dInput for H {")
+            .expect("o bloco `impl` do trait de extensão tem de existir");
+        let dentro = &src[impl_ini..];
+        let ini = dentro
             .find(nome)
-            .unwrap_or_else(|| panic!("a entrada `{nome}` tem de existir"));
-        let resto = &src[ini + nome.len()..];
-        &resto[..resto.find("\n    pub fn ").unwrap_or(resto.len())]
+            .unwrap_or_else(|| panic!("a entrada `{nome}` tem de existir dentro do `impl`"));
+        let resto = &dentro[ini + nome.len()..];
+        &resto[..resto.find("\n    fn ").unwrap_or(resto.len())]
     }
     const PORTA: &str = "self.field3d_yields_to_modal()";
     let input = include_str!("input.rs");

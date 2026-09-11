@@ -26,6 +26,11 @@
 use std::fs;
 
 const DOOR: &str = "chrome_hit::pointer_over_chrome(";
+/// A MESMA porta, vista do lado de uma familia que ja' nao e' desta crate: ela pergunta ao
+/// `ph2d_app_host::AppHost`, e quem atende e' a shell (`src/app_host.rs`).
+const HOST_DOOR: &str = "self.pointer_over_chrome(";
+/// O input do modulo 3D vive em `crates/ph2d-app-field3d` desde a W2.
+const FAMILY_INPUT: &str = "../../crates/ph2d-app-field3d/src/input.rs";
 
 /// **As portas que entram ANTES do despacho de chrome** — cada uma deve a pergunta, por si.
 ///
@@ -38,19 +43,29 @@ const DOOR: &str = "chrome_hit::pointer_over_chrome(";
 /// ⚠️ **Um terceiro módulo a fazer o mesmo herda esta lista.** O `field3d` já nomeava o `sculpt3d`
 /// como *«um irmão por curar»* num doc-comment — o que é uma nota, não um gate: os dois só ficaram
 /// curados quando a porta passou a ser uma.
-const SCENE_PORTS: [(&str, &str); 4] = [
-    ("src/field3d_input.rs", "field3d_pointer_down"),
-    ("src/field3d_input.rs", "field3d_wheel"),
+///⚠️⚠️ **A PORTA passou a ter DOIS caminhos, e o censo segue os dois** (W2).
+///
+/// A familia `field3d` saiu da shell e deixou de poder nomear o `chrome_hit`: ela pergunta
+/// `self.pointer_over_chrome(...)`, um metodo do trait de host. **Continua a ser a mesma porta** —
+/// quem a atende e' a shell — e e' por isso que existe o gate irmao
+/// `the_host_routes_the_door_to_the_one_index`: sem ele, a familia podia perguntar a um trait cuja
+/// implementacao respondesse `false`, e este censo ficaria VERDE sobre um clique comido.
+///
+/// ⇒ cada entrada traz a agulha DELA. *Um censo com uma agulha so' obriga os dois lados a falar a
+/// mesma lingua, e depois da fronteira eles nao falam.*
+const SCENE_PORTS: [(&str, &str, &str); 4] = [
+    (FAMILY_INPUT, "field3d_pointer_down", HOST_DOOR),
+    (FAMILY_INPUT, "field3d_wheel", HOST_DOOR),
     // ⚠️ **O pen-down da escultura mudou-se para um irmão em 2026-09-08**, pelo tecto de LOC.
     // *Um gate que nomeia um FICHEIRO envelhece com o primeiro corte* — e o modo de falha aqui é
     // o pior: o `function_body` entra em pânico com «controlo positivo», que se lê como o gate
     // partido em vez de como a lista desactualizada.
-    ("src/sculpt3d_input_down.rs", "sculpt3d_pointer_down"),
-    ("src/sculpt3d_input.rs", "sculpt3d_wheel"),
+    ("src/sculpt3d_input_down.rs", "sculpt3d_pointer_down", DOOR),
+    ("src/sculpt3d_input.rs", "sculpt3d_wheel", DOOR),
 ];
 
 const SCENE_FILES: [&str; 3] = [
-    "src/field3d_input.rs",
+    FAMILY_INPUT,
     "src/sculpt3d_input_down.rs",
     "src/sculpt3d_input.rs",
 ];
@@ -61,6 +76,14 @@ fn src(path: &str) -> String {
 
 /// O corpo de uma função, do `fn` até ao fecho na indentação de método.
 fn function_body(src: &str, name: &str) -> String {
+    // ⛔⛔ **Ancorar no `impl`, nunca no principio do ficheiro** (W2): num trait de extensao cada
+    // nome aparece DUAS vezes — a declaracao (sem corpo) e a implementacao. Uma fatia a partir da
+    // declaracao atravessa para dentro do PRIMEIRO metodo implementado, que por acaso contem a
+    // agulha ⇒ o gate passaria a VERDE sobre uma funcao que deixou de perguntar.
+    let src = match src.find("Field3dInput for H {") {
+        Some(k) => &src[k..],
+        None => src,
+    };
     let i = src.find(&format!("fn {name}(")).unwrap_or_else(|| {
         panic!("controlo positivo: `{name}` não existe — o gate varreria o vazio")
     });
@@ -70,11 +93,11 @@ fn function_body(src: &str, name: &str) -> String {
 
 #[test]
 fn every_scene_that_pre_empts_the_chrome_asks_the_one_door() {
-    for (path, port) in SCENE_PORTS {
+    for (path, port, door) in SCENE_PORTS {
         let body = function_body(&src(path), port);
         assert!(
-            body.contains(DOOR),
-            "`{port}` ({path}) não pergunta a `{DOOR}` — a cena engole os cliques da moldura, e o \
+            body.contains(door),
+            "`{port}` ({path}) não pergunta a `{door}` — a cena engole os cliques da moldura, e o \
              sintoma é o report de 2026-08-30 (*«é como se tudo fosse canvas»*)"
         );
     }
@@ -108,14 +131,47 @@ fn the_second_door_stays_dead() {
 /// orbitar sozinha ao largar sobre chrome.
 #[test]
 fn a_drag_already_running_is_never_dropped_by_crossing_the_frame() {
-    for (path, module) in [
-        ("src/field3d_input.rs", "field3d"),
-        ("src/sculpt3d_input.rs", "sculpt3d"),
+    // ⛔⛔ **Este gate afirma uma AUSÊNCIA, e é a espécie que passa em silêncio.** Um caminho que
+    // deixasse de existir, ou um `function_body` que devolvesse a fatia errada, dão a mesma
+    // resposta que o produto correcto: *não contém a porta*. Ele só reprovou na W2 porque o
+    // `read_to_string` entra em pânico — foi o `expect` que o salvou, não a asserção.
+    //
+    // ⇒ por isso a agulha é a DO MÓDULO (o 3D pergunta pelo trait de host desde a W2) e há um
+    // controlo positivo a seguir ao laço: se a função certa não for encontrada, o gate cai.
+    for (path, module, door) in [
+        (FAMILY_INPUT, "field3d", HOST_DOOR),
+        ("src/sculpt3d_input.rs", "sculpt3d", DOOR),
     ] {
         let body = function_body(&src(path), &format!("{module}_pointer_up"));
         assert!(
-            !body.contains(DOOR),
+            !body.is_empty(),
+            "controlo positivo: o corpo de `{module}_pointer_up` ({path}) veio VAZIO — a asserção \
+             de ausência abaixo seria verdadeira por construção"
+        );
+        assert!(
+            !body.contains(door),
             "`{module}_pointer_up` largaria um arrasto em curso ao cruzar a moldura"
         );
     }
+}
+
+
+/// ⭐⭐ **E O TRAIT ROUTEIA A PORTA PARA O INDICE DE ACERTO DE VERDADE** (W2).
+///
+/// ⛔ Sem este gate a corrente parte-se no meio, em silencio: a familia pergunta
+/// `self.pointer_over_chrome(...)` (o censo acima fica verde), a shell implementa o metodo, e uma
+/// implementacao que devolvesse `false` — ou que consultasse uma lista de ids escrita a mao —
+/// reabriria exactamente o report de 2026-08-30 (*«e' como se tudo fosse canvas»*) com os dois
+/// lados a parecer certos.
+///
+/// *Uma fronteira nova poe um elo novo na corrente, e um elo sem gate e' onde ela se parte.*
+#[test]
+fn the_host_routes_the_door_to_the_one_index() {
+    let host = src("src/app_host.rs");
+    let body = function_body(&host, "pointer_over_chrome");
+    assert!(
+        body.contains(DOOR),
+        "o `AppHost` da shell deixou de encaminhar `pointer_over_chrome` para o `{DOOR}` — a \
+         familia pergunta a uma porta que ja' nao pergunta ao indice de acerto"
+    );
 }

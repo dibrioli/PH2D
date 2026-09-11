@@ -232,7 +232,7 @@ fn a_shape_born_from_the_palette_marks_the_frame_as_authored() {
 fn the_shell_feeds_every_gesture_exit_into_the_undo_input_mark() {
     let src = include_str!("input.rs");
     let marcas = src
-        .matches("self.any_input_this_frame |= authored;")
+        .matches("self.note_authored_change();")
         .count();
     assert!(
         marcas >= 4,

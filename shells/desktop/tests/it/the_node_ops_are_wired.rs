@@ -575,7 +575,7 @@ fn the_three_d_module_is_drawn_into_the_area_never_into_the_window() {
     )
     .expect("render_loop/mod.rs");
     let call = src
-        .find("crate::field3d_smoke::draw(")
+        .find("ph2d_app_field3d::smoke::draw(")
         .expect("o modulo 3D e' desenhado");
     // A janela dos argumentos: do nome da função até ao fim da chamada.
     let args = &src[call..call + 400];

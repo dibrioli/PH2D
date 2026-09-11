@@ -270,23 +270,32 @@ fn measure_the_cost_of_coming_back() {
 fn only_one_place_turns_a_path_into_a_sculpture() {
     let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
     let mut hits: Vec<String> = Vec::new();
+    let mut vistos = 0usize;
     for entry in std::fs::read_dir(&dir).expect("lê o diretório").flatten() {
         let name = entry.file_name().to_string_lossy().to_string();
-        if !name.starts_with("field3d_") || !name.ends_with(".rs") || name.ends_with("_tests.rs") {
+        if !name.ends_with(".rs") || name.ends_with("_tests.rs") {
             continue;
         }
         let Ok(src) = std::fs::read_to_string(entry.path()) else {
             continue;
         };
+        vistos += 1;
         for line in src.lines().filter(|l| !l.trim_start().starts_with("//")) {
             if line.contains("read_pieces") {
                 hits.push(name.clone());
             }
         }
     }
+    // ⛔ **PISO DE POPULAÇÃO.** Este censo filtrava por `starts_with("field3d_")`, que casa
+    // ZERO ficheiros nesta crate: ele passaria VERDE a varrer nada. *Um censo sem piso não
+    // sabe que perdeu o sujeito.*
+    assert!(
+        vistos >= 40,
+        "este censo varreu {vistos} ficheiros e esperava >= 40 -- perdeu o sujeito"
+    );
     assert_eq!(
         hits,
-        vec!["field3d_import.rs".to_string()],
+        vec!["import.rs".to_string()],
         "um arquivo de malha vira escultura num sítio só; estes o leem: {hits:?}"
     );
 }

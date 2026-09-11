@@ -330,7 +330,7 @@ fn a_refinement_yields_to_the_hand_and_a_motion_trace_never_does() {
 #[test]
 fn the_draw_does_not_build_its_own_projection() {
     let src = std::fs::read_to_string(
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/field3d_smoke_draw.rs"),
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/smoke_draw.rs"),
     )
     .expect("o arquivo do desenho existe");
     let offenders: Vec<&str> = src
@@ -522,7 +522,7 @@ fn the_export_never_goes_through_the_preview_coarsening() {
             .unwrap_or_default()
             .to_string();
         // Os testes deste módulo chamam-no de propósito — eles são o juiz da lei, não um caminho.
-        if nome.ends_with("_tests.rs") || nome == "field3d_preview.rs" {
+        if nome.ends_with("_tests.rs") || nome == "preview.rs" {
             continue;
         }
         let src = std::fs::read_to_string(&path).expect("o arquivo lê-se");
@@ -536,7 +536,7 @@ fn the_export_never_goes_through_the_preview_coarsening() {
     }
     assert_eq!(
         chamadores,
-        vec!["field3d_smoke_draw.rs".to_string()],
+        vec!["smoke_draw.rs".to_string()],
         "o engrossamento do preview tem UM chamador — o traçador. Um segundo (a exportação, o \
          cozimento de malha, o vínculo) faria o `Resolution` do artista deixar de ter efeito \
          observável nenhum: {chamadores:?}"

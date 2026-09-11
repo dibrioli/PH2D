@@ -82,7 +82,12 @@ fn the_visible_area_has_one_door_and_both_clients_use_it() {
         stage.contains("canvas_area::visible("),
         "o palco deixou de perguntar a` porta da area visivel"
     );
-    let field3d = code_of("field3d_layout.rs");
+    // ⚠️ A lei mudou-se para a moldura 3D partilhada (`ph2d-viewport3d`), que e' consumida
+    // pelos DOIS modulos 3D — e o `code_of` desta crate ja' nao lhe chega.
+    let field3d = std::fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../crates/ph2d-viewport3d/src/layout.rs"),
+    )
+    .expect("a moldura 3D partilhada");
     assert!(
         field3d.contains("canvas_area::visible("),
         "o modulo 3D voltou a ter a propria copia da area visivel"

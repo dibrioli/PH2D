@@ -439,7 +439,7 @@ fn the_relink_answer_rewrites_the_key_on_the_node() {
 #[test]
 fn every_act_the_row_can_emit_says_something_other_than_its_own_key() {
     let src = std::fs::read_to_string(
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/field3d_scene_acts.rs"),
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/scene_acts.rs"),
     )
     .expect("o irmão das ações existe");
     let keys: Vec<String> = src

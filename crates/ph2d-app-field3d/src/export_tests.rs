@@ -221,7 +221,9 @@ fn the_grid_that_feeds_the_chain_is_the_draft_grid() {
 #[test]
 fn the_frame_drains_the_export_bench() {
     let src = std::fs::read_to_string(
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/render_loop/mod.rs"),
+        // ⚠️ **O SUJEITO deste gate é a SHELL** (ele mede que o laço/despacho dela CHAMA esta
+    // família), logo a raiz da varredura é a da shell e não a desta crate.
+    std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../shells/desktop/src").join("render_loop/mod.rs"),
     )
     .expect("o loop existe");
     // ⚠️ Comentários fora: a primeira versão do gate irmão reprovou sobre a PROSA que explica a

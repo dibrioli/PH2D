@@ -204,8 +204,9 @@ fn nothing_can_empty_the_viewport_list() {
     /// ⭐ **O único sítio autorizado, com o motivo.** Ver `smoke::ensure_viewports`: ele
     /// reconstrói a lista quando a divisão muda (a vista do artista muda de quadrante, então não é
     /// um `push`), e **prende o `n` a `≥ 1` na primeira linha** — é lá que a invariante vive.
-    const AUTORIZADOS: [(&str, &str); 1] = [("field3d_viewports.rs", "smoke.vps = novos;")];
+    const AUTORIZADOS: [(&str, &str); 1] = [("viewports.rs", "smoke.vps = novos;")];
     let mut achados: Vec<String> = Vec::new();
+    let mut vistos = 0usize;
     for entry in std::fs::read_dir(&dir).expect("src existe") {
         let path = entry.expect("entrada").path();
         let nome = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
@@ -213,9 +214,10 @@ fn nothing_can_empty_the_viewport_list() {
         // deste gate apanhou a lista de verbos que ele define, que é o modo de falha clássico de um
         // censo por texto. E a fronteira certa não é *«este ficheiro»*: é *«código que corre no
         // app»*, porque a invariante é sobre ele.
-        if !nome.starts_with("field3d_") || !nome.ends_with(".rs") || nome.ends_with("_tests.rs") {
+        if !nome.ends_with(".rs") || nome.ends_with("_tests.rs") {
             continue;
         }
+        vistos += 1;
         let src = std::fs::read_to_string(&path).expect("lê");
         for (i, linha) in src.lines().enumerate() {
             if linha.trim_start().starts_with("//") {
@@ -232,6 +234,13 @@ fn nothing_can_empty_the_viewport_list() {
             }
         }
     }
+    // ⛔ **PISO DE POPULAÇÃO.** Este censo filtrava por `starts_with("field3d_")`, que casa
+    // ZERO ficheiros nesta crate: ele passaria VERDE a varrer nada. *Um censo sem piso não
+    // sabe que perdeu o sujeito.*
+    assert!(
+        vistos >= 40,
+        "este censo varreu {vistos} ficheiros e esperava >= 40 -- perdeu o sujeito"
+    );
     assert!(
         achados.is_empty(),
         "alguém encolhe a lista de viewports, e ela não pode ficar vazia — o `Smoke::vp` faz \

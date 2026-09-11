@@ -282,7 +282,20 @@ fn an_unknown_export_extension_is_refused_not_silently_defaulted() {
 /// porque o artista confia nele e só descobre no outro programa.
 #[test]
 fn the_loss_warning_reads_the_same_table_the_writer_does() {
-    let body = function_body(&sculpt_src(), "lost_by");
+    // ⭐ **A lei mudou-se para o DONO do formato (`ph2d-mesh`) na W2**, porque o modulo de
+    // modelagem 3D passou a ser o segundo consumidor dela ao sair da shell. O gate segue-a — e
+    // ficou mais FORTE, porque agora prova a corrente inteira: que a shell DELEGA, e que quem
+    // recebe PERGUNTA ao formato. *A lei que se mede tem de ser a lei que corre.*
+    let delegacao = function_body(&sculpt_src(), "lost_by");
+    assert!(
+        delegacao.contains("ph2d_mesh::lost_by("),
+        "o aviso do shell deixou de delegar ao dono do formato — e uma segunda copia da tabela \
+         dira' \"cor preservada\" sobre um STL no dia em que alguem trocar o escritor"
+    );
+    let body = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../crates/ph2d-mesh/src/read.rs"),
+    )
+    .expect("a lei do aviso vive no dono do formato");
     assert!(
         body.contains("keeps_colour()") && body.contains("keeps_pieces()"),
         "o aviso tem de PERGUNTAR ao formato, não repetir a tabela"

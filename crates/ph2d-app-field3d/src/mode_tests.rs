@@ -121,7 +121,9 @@ fn the_two_edges_do_not_mask_each_other() {
 #[test]
 fn the_render_loop_actually_makes_the_modes_cede() {
     let src = std::fs::read_to_string(
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/render_loop/mod.rs"),
+        // ⚠️ **O SUJEITO deste gate é a SHELL** (ele mede que o laço/despacho dela CHAMA esta
+    // família), logo a raiz da varredura é a da shell e não a desta crate.
+    std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../shells/desktop/src").join("render_loop/mod.rs"),
     )
     .expect("o loop existe");
     // ⚠️ Comentários fora: a prosa que EXPLICA a lei cita os mesmos nomes que ela usa.
@@ -133,16 +135,16 @@ fn the_render_loop_actually_makes_the_modes_cede() {
 
     for needed in [
         // 1. o loop pergunta quem tomou o canvas…
-        "crate::mode::note_owner(owner",
+        "ph2d_app_field3d::mode::note_owner(owner",
         // 2. …e FECHA o painel quando alguém tomou (não basta desarmar em silêncio)
         "insert(ph2d_panel_model3d::PANEL_ID, false)",
         // 3. …e a metade simétrica: abrir o MODEL tira o barro da tela…
-        "crate::mode::model_just_opened(",
+        "ph2d_app_field3d::mode::model_just_opened(",
         "scene.toggle_clay()",
         // 4. …E LARGA A FERRAMENTA EM MÃOS (2026-08-31, a terceira linha da tabela). ⚠️ Sem esta,
         //    abrir o MODEL com o Motion em mãos deixa a ponte dele a reabrir o grafo a cada
         //    quadro — o report *«se abro Nodes e depois Model, o grafo de Nodes persiste»*.
-        "crate::mode::model_takes_the_canvas(&owner",
+        "ph2d_app_field3d::mode::model_takes_the_canvas(&owner",
         "tools.set_active(&neutral)",
     ] {
         assert!(
@@ -184,7 +186,9 @@ fn the_sculpt_pointer_refuses_an_empty_scene_before_it_indexes_one() {
     // ficheiro antigo — passou a procurar a guarda onde ela já não estava.
     // *Um censo que nomeia um FICHEIRO envelhece com o primeiro corte; ler a
     // família inteira é o que o mantém a medir a mesma coisa.*
-    let raiz = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+    // ⚠️ **O SUJEITO deste gate é a SHELL** (ele mede que o laço/despacho dela CHAMA esta
+    // família), logo a raiz da varredura é a da shell e não a desta crate.
+    let raiz = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../shells/desktop/src");
     let src: String = ["sculpt3d_input_down.rs", "sculpt3d_input.rs"]
         .iter()
         .map(|f| std::fs::read_to_string(raiz.join(f)).expect("o irmão da escultura existe"))

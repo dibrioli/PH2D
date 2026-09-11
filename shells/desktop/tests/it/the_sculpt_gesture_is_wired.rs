@@ -59,30 +59,72 @@ fn the_modifiers_are_read_once_at_pen_down_and_hold_for_the_whole_stroke() {
         down.contains("Verb::Smooth"),
         "o Shift tem de virar Smooth enquanto segurar — o atalho universal"
     );
-    let mv = function_body(&src, "sculpt3d_pointer_move");
+    let mv = function_body(&src, "pointer_move");
     assert!(
         !mv.contains("modifiers") && !mv.contains("shift") && !mv.contains("ctrl"),
         "o Move não pode reler modificador: o traço mudaria de ferramenta no meio"
     );
 }
 
+/// A promessa de removibilidade do `docs/3D/02.3` no nível do FRAME: num run normal
+/// `sculpt3d` é `None` e o dispatch 2D segue como se o módulo não existisse.
+///
+/// ⚠️⚠️ **A promessa é UMA e passou a ser cumprida de DUAS maneiras** (W2/L3-A2), e o gate
+/// tem de conhecer as duas — senão ele reprova sobre produto correto, ou (pior) fica verde
+/// sobre a metade que deixou de olhar:
+///
+/// - **Guarda de RUNTIME** — as portas que recebem `&mut self` procuram a cena e devolvem
+///   `false` quando não há. São as que leem janela (`gfx`, `last_pointer`, `modifiers`) e por
+///   isso continuam em `impl App`.
+/// - ⭐ **Guarda de TIPO** — as três que só precisavam da cena passaram a **recebê-la**, e
+///   são portanto *inconstruíveis* sem ela: nenhum `if` as pode esquecer. Isto é **mais
+///   forte** que a guarda de runtime, mas move a metade observável para o SÍTIO DE CHAMADA —
+///   e é por isso que a segunda asserção existe. Sem ela o gate provaria uma assinatura e
+///   ficaria cego a um despacho que chamasse a porta sem procurar a cena (o que hoje nem
+///   compila, mas compilaria no dia em que alguém guardasse um `&mut Sculpt3dScene` algures).
 #[test]
 fn every_3d_port_is_inert_without_a_scene() {
-    // A promessa de removibilidade do `docs/3D/02.3` no nível do FRAME: num run
-    // normal `sculpt3d` é `None`, cada porta devolve `false` no primeiro `if`, e
-    // o dispatch 2D segue como se o módulo não existisse.
     let src = sculpt_src();
-    for port in [
-        "sculpt3d_pointer_down",
-        "sculpt3d_pointer_up",
-        "sculpt3d_pointer_move",
-        "sculpt3d_wheel",
-        "sculpt3d_key",
-    ] {
+
+    // (a) as que guardam em RUNTIME
+    for port in ["sculpt3d_pointer_down", "sculpt3d_wheel", "sculpt3d_key"] {
         let body = function_body(&src, port);
         assert!(
             body.contains("sculpt3d_scene_mut()") && body.contains("return false"),
             "`{port}` tem de recusar sem cena armada"
+        );
+    }
+
+    // (b) as que guardam pelo TIPO — a assinatura PEDE a cena…
+    for port in ["flush_grab", "pointer_up", "pointer_move"] {
+        let sig = src
+            .find(&format!("fn {port}("))
+            .map(|i| &src[i..(i + 120).min(src.len())])
+            .unwrap_or_else(|| panic!("a porta livre `{port}` sumiu ou mudou de nome"));
+        assert!(
+            sig.contains("scene: &mut Sculpt3dScene"),
+            "`{port}` deixou de RECEBER a cena: sem isso a inércia volta a depender de um \
+             `if` que alguém pode esquecer, e este gate deixaria de a provar"
+        );
+    }
+
+    // …e (c) quem as chama procura-a ANTES. ⚠️ O `sculpt_src()` não alcança o despacho (ele
+    // lê só a família), então estes dois ficheiros são nomeados de propósito — é o preço de a
+    // guarda ter mudado de lado.
+    for (file, port) in [
+        ("render_loop/mod.rs", "flush_grab"),
+        ("input_dispatch.rs", "pointer_up"),
+        ("input_dispatch.rs", "pointer_move"),
+    ] {
+        let d = source(file);
+        let call = d
+            .find(&format!("crate::sculpt3d::{port}"))
+            .unwrap_or_else(|| panic!("`{file}` deixou de chamar a porta `{port}`"));
+        let antes = &d[call.saturating_sub(220)..call];
+        assert!(
+            antes.contains("sculpt3d_scene_mut()"),
+            "`{file}` chama `{port}` sem procurar a cena imediatamente antes — a inércia do \
+             módulo passou a depender de onde aquele `&mut Sculpt3dScene` foi arranjado"
         );
     }
 }
@@ -114,7 +156,7 @@ fn the_model_follows_the_hand() {
     // Os dois sinais estavam TROCADOS e o smoke os pegou: `yaw` positivo leva o
     // OLHO para `+X`, e a câmera indo para a direita faz o modelo parecer ir
     // para a esquerda.
-    let body = function_body(&sculpt_src(), "sculpt3d_pointer_move");
+    let body = function_body(&sculpt_src(), "pointer_move");
     assert!(
         body.contains(".orbit(-dx * ORBIT_RAD_PER_PX, dy * ORBIT_RAD_PER_PX)"),
         "a órbita da shell tem de negar o `dx` e NÃO o `dy`"
@@ -145,7 +187,7 @@ fn a_click_on_the_chrome_is_not_a_click_on_the_model() {
     // continua sendo do gesto que o abriu, mesmo que o cursor passeie sobre um
     // painel. É a regra de captura que todo gizmo deste shell segue, e gateá-la
     // aqui impede que alguém "complete" a correção e quebre o traço longo.
-    for port in ["sculpt3d_pointer_move", "sculpt3d_pointer_up"] {
+    for port in ["pointer_move", "pointer_up"] {
         let body = function_body(&src, port);
         assert!(
             !body.contains("chrome_hit::pointer_over_chrome(")
@@ -321,7 +363,7 @@ fn a_pointer_event_is_walked_at_the_brushes_spacing_and_stops_where_the_ray_miss
     // percorrem o caminho — a asserção de ausência abaixo (*a âncora não avança
     // fora do ramo que carimbou*) lia os TRÊS e falhava sobre produto correto.
     let arm = grip_arm(
-        &function_body(&sculpt_src(), "sculpt3d_pointer_move"),
+        &function_body(&sculpt_src(), "pointer_move"),
         "Grip::Stamp",
     );
     assert!(
@@ -428,7 +470,7 @@ fn the_grab_holds_its_footprint_instead_of_re_picking() {
     // ⇒ A propriedade é a mesma em duas metades: quem segura **não percorre um
     // caminho** (a metade que o walk violaria) e o puxão **chega ao `grab_at`**
     // (a metade que um registo sem consumidor violaria — o gesto ficaria mudo).
-    let mv = function_body(&src, "sculpt3d_pointer_move");
+    let mv = function_body(&src, "pointer_move");
     let holding = grip_arm(&mv, "Grip::Hold");
     assert!(
         !holding.contains("walk("),
@@ -463,7 +505,7 @@ fn the_grab_holds_its_footprint_instead_of_re_picking() {
 #[test]
 fn the_hook_walks_the_path_and_hands_each_step_its_own_increment() {
     let src = sculpt_src();
-    let mv = function_body(&src, "sculpt3d_pointer_move");
+    let mv = function_body(&src, "pointer_move");
     let hooking = grip_arm(&mv, "Grip::Hook");
     assert!(
         hooking.contains("walk(") && hooking.contains("hook_step("),
@@ -514,7 +556,7 @@ fn the_hook_walks_the_path_and_hands_each_step_its_own_increment() {
 #[test]
 fn the_drag_asks_the_grip_and_answers_every_one_of_them() {
     let src = sculpt_src();
-    let mv = function_body(&src, "sculpt3d_pointer_move");
+    let mv = function_body(&src, "pointer_move");
     let sculpting = braced_block(&mv, "Drag::Sculpt => match scene.brush.verb.grip()");
     for arm in ["Grip::Hold", "Grip::Hook", "Grip::Turn", "Grip::Stamp"] {
         assert!(
@@ -538,7 +580,7 @@ fn the_drag_asks_the_grip_and_answers_every_one_of_them() {
 #[test]
 fn the_turn_takes_its_axis_from_the_ray_that_grabbed_the_clay() {
     let src = sculpt_src();
-    let mv = function_body(&src, "sculpt3d_pointer_move");
+    let mv = function_body(&src, "pointer_move");
     let turning = grip_arm(&mv, "Grip::Turn(kind)");
     assert!(
         turning.contains("turn_at(kind"),
@@ -947,7 +989,7 @@ fn the_rotation_takes_its_axis_and_its_centre_from_the_pivot() {
 /// mudo.
 #[test]
 fn the_pen_up_closes_the_transform_and_that_is_where_the_undo_step_is_written() {
-    let body = function_body(&sculpt_src(), "sculpt3d_pointer_up");
+    let body = function_body(&sculpt_src(), "pointer_up");
     assert!(
         body.contains("Drag::Transform") && body.contains("scene.close_transform()"),
         "o pen-up não fecha a sessão do transform -- o gesto não teria undo"
@@ -1054,7 +1096,7 @@ fn the_armed_filter_claims_the_left_button_before_the_stroke() {
     );
 
     // O fecho é o do TRAÇO — o `filter_begin` preenche os mesmos dois arrays.
-    let up = function_body(&src, "sculpt3d_pointer_up");
+    let up = function_body(&src, "pointer_up");
     let filter_up = up
         .find("Some(Drag::Filter)")
         .expect("o pen-up tem de reconhecer o arrasto do filtro");
@@ -1067,7 +1109,7 @@ fn the_armed_filter_claims_the_left_button_before_the_stroke() {
     // ⚠️ **A força é o `x` CRU** — o arrasto TOTAL desde o pen-down. Com o `dx`
     // do evento a força seria o último movimento do rato, e voltar com o dedo
     // deixaria de desfazer.
-    let mv = function_body(&src, "sculpt3d_pointer_move");
+    let mv = function_body(&src, "pointer_move");
     let arm = match_arm(&mv, "Drag::Filter");
     assert!(
         arm.contains("filter_at(x)") && !arm.contains("dx"),

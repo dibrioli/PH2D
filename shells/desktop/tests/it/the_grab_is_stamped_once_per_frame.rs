@@ -54,12 +54,12 @@ fn the_pen_up_drains_the_pending_pull_before_it_closes_the_stroke() {
     let src = read("sculpt3d/input.rs");
     // ⚠️ **A janela é o CORPO do pen-up, e a 1ª versão deste gate anchorava no
     // ARQUIVO — a mutação sobreviveu por isso.** O dreno de QUADRO
-    // (`sculpt3d_flush_grab`) chama a mesma função ~170 linhas acima, então
+    // (`flush_grab`) chama a mesma função ~170 linhas acima, então
     // `find` sobre o arquivo devolvia sempre aquela e a comparação era
     // verdadeira por construção: *um gate que não pode falhar pelo motivo que
     // alega*.
     let start = src
-        .find("fn sculpt3d_pointer_up")
+        .find("fn pointer_up")
         .expect("o dono do pen-up se mudou");
     let body = &src[start..];
     let flush = body
@@ -79,7 +79,7 @@ fn the_pen_up_drains_the_pending_pull_before_it_closes_the_stroke() {
 fn the_frame_drains_the_pending_pull() {
     let src = read("render_loop/mod.rs");
     assert!(
-        src.contains("sculpt3d_flush_grab()"),
+        src.contains("flush_grab()"),
         "o laço de quadro não drena o puxão — com o evento apenas registando, o \
          barro só andaria no pen-up"
     );

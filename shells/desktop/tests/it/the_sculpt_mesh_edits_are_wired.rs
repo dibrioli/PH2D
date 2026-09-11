@@ -41,7 +41,7 @@ fn the_gpu_is_handed_the_window_that_answers_for_every_channel() {
 #[test]
 fn releasing_the_button_turns_the_stroke_into_an_undo_entry() {
     let src = sculpt_src();
-    let up = function_body(&src, "sculpt3d_pointer_up");
+    let up = function_body(&src, "pointer_up");
     assert!(
         up.contains("Drag::Sculpt") && up.contains("close_stroke()"),
         "soltar um traço tem de fechá-lo; sem isso o Ctrl+Z não tem o que desfazer"

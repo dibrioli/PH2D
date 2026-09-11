@@ -305,18 +305,28 @@ fn as_tres_portas_do_gizmo_sao_chamadas_pelo_despacho_do_ponteiro() {
         "\n",
         include_str!("input.rs")
     );
+    // ⚠️⚠️ **E em 2026-09-11 (W2/L3-A2) as três portas deixaram de ter a MESMA FORMA:** o
+    // `move` e o `up` só precisavam da cena e viraram funções LIVRES (`fn pointer_move`, à
+    // coluna 0), enquanto o `down` arbitra quem fica com o gesto — lê `gfx`, `last_pointer` e
+    // `modifiers` — e continua método. *O censo tem de aceitar as duas formas*, e é por isso
+    // que o terminador da janela abaixo procura **as duas indentações**: a heurística antiga
+    // (`"\n    pub(crate) fn "`) nunca casaria depois de uma função livre, e a janela engoliria
+    // o resto do ficheiro — um censo que mede DEMAIS lê-se tão aprovado como um que mede nada.
     for (porta, dentro) in [
         ("nav_pointer_down", "fn sculpt3d_pointer_down"),
-        ("nav_pointer_move", "fn sculpt3d_pointer_move"),
-        ("nav_pointer_up", "fn sculpt3d_pointer_up"),
+        ("nav_pointer_move", "fn pointer_move"),
+        ("nav_pointer_up", "fn pointer_up"),
     ] {
         let Some(inicio) = fonte.find(dentro) else {
             panic!("o despacho `{dentro}` mudou de nome ou de ficheiro -- este censo ficou cego");
         };
-        // A janela é da função até à seguinte do mesmo nível.
+        // A janela é da função até à seguinte, em qualquer das duas formas.
         let resto = &fonte[inicio..];
         let fim = resto[1..]
             .find("\n    pub(crate) fn ")
+            .into_iter()
+            .chain(resto[1..].find("\npub(crate) fn "))
+            .min()
             .map_or(resto.len(), |i| i + 1);
         assert!(
             resto[..fim].contains(porta),

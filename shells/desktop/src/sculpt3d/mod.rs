@@ -32,6 +32,10 @@ mod input_down;
 
 #[path = "input.rs"]
 mod input;
+/// ⭐ **As três portas do gesto que só precisam da CENA** (W2/L3-A2) — a shell procura-a (é
+/// ela que tem o `gfx`) e estas aplicam a lei. Ver a nota no fim do [`input`]: as outras nove
+/// continuam em `impl App` porque leem janela, e essa é a lista que o substrato tem de cobrir.
+pub(crate) use input::{flush_grab, pointer_move, pointer_up};
 
 /// **O TRANSFORM PONDERADO PELA MÁSCARA** — mover, girar e escalar a parte
 /// LIVRE. Filho (`#[path]`) pelo motivo dos vizinhos; o corte é *o que a mão na

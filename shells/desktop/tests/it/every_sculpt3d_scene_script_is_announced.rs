@@ -41,7 +41,12 @@ fn scan() -> (BTreeSet<String>, String, usize) {
             // A forma canônica de um roteiro: `pub(crate) fn announce()` num arquivo de cena.
             if src.contains("pub(crate) fn announce()")
                 && let Some(stem) = path.file_stem().and_then(|s| s.to_str())
-                && let Some(tail) = stem.strip_prefix("sculpt3d_scenes_")
+                // ⚠️ **O prefixo encolheu em 2026-09-11 (W2/L3-A3)**: a família saiu de
+                // `src/sculpt3d_*.rs` para `src/sculpt3d/`, então o ficheiro chama-se
+                // `scenes_ear.rs` e não `sculpt3d_scenes_ear.rs`. ⛔ **Quem o disse foi o
+                // controlo positivo (`defs.len() >= 2`)** — sem ele a varredura devolveria
+                // zero roteiros e este gate passaria a medir o VÁCUO, verde.
+                && let Some(tail) = stem.strip_prefix("scenes_")
             {
                 defs.insert(tail.to_string());
             }

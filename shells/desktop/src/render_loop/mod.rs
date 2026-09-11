@@ -1072,7 +1072,11 @@ impl crate::App {
         // 1,2. E ANTES do desenho, senão o barro que este quadro mostra é o do
         // quadro anterior.
         #[cfg(feature = "sculpt3d")]
-        self.sculpt3d_flush_grab();
+        // ⭐ A shell PROCURA a cena (é ela que tem o `gfx`) e a família aplica a lei — desde
+        // 2026-09-11 (W2/L3-A2) esta porta é uma função livre, não um `impl App`.
+        if let Some(scene) = self.sculpt3d_scene_mut() {
+            crate::sculpt3d::flush_grab(scene);
+        }
         // A escultura que um Ctrl+O deixou pendente — ela espera o device, que o
         // load não tinha (ADR-0150 W8.3).
         #[cfg(feature = "sculpt3d")]

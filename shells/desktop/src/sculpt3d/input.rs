@@ -11,25 +11,6 @@ use crate::app_state::App;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 impl App {
-    /// `PH2D_SCULPT3D_SMOKE=1` — a cena pronta: uma esfera de barro para
-    /// esculpir. `=2` acrescenta a TELA e é a cena da **doação**
-    /// (`crate::sculpt3d::donation`). Roda uma vez, no primeiro frame com GPU.
-    /// **O dreno de QUADRO do puxão do Grab.** Ver
-    /// [`Sculpt3dScene::pending_grab`] e `flush_pending_grab`: o evento de
-    /// ponteiro regista, o quadro carimba, e o pen-up drena o resto.
-    ///
-    /// ⚠️ **Sem cena aberta é no-op** — e não um `expect`: este é chamado do
-    /// laço de quadro incondicionalmente, como os irmãos ao lado dele.
-    pub(crate) fn sculpt3d_flush_grab(&mut self) {
-        if let Some(scene) = self.sculpt3d_scene_mut() {
-            scene.flush_pending_grab();
-            // ⭐ **E o passo do filtro de tecido, pela MESMA porta e pelo mesmo
-            // motivo**: um evento de ponteiro regista, o quadro corre. Sem isto o
-            // solver avançaria uma vez por evento do sistema, e um rato de
-            // `1000 Hz` entrega dezasseis por quadro.
-            scene.flush_cloth_filter();
-        }
-    }
 
     pub(crate) fn sculpt3d_smoke(&mut self) {
         // Guard estático, o mesmo idioma dos outros smokes do shell — evita um
@@ -80,10 +61,135 @@ impl App {
             .flatten()
     }
 
-    pub(crate) fn sculpt3d_pointer_up(&mut self) -> bool {
+
+
+    /// A roda aproxima.
+    pub(crate) fn sculpt3d_wheel(&mut self, steps: f32) -> bool {
+        // A mesma lei do `pointer_down`: a moldura do app não é da cena. O
+        // despachante já pergunta pelo PAINEL antes de chamar aqui, e a metade
+        // que ele não faz é a dos fundos de chrome — mas a pergunta é feita
+        // INTEIRA e neste arquivo de propósito: quem decide de quem é o gesto é
+        // o módulo da cena, não o roteador. Sem isto, rolar sobre a barra do topo
+        // dá DOLLY na escultura por baixo, em silêncio.
+        let pos = self.last_pointer;
+        if crate::chrome_hit::pointer_over_chrome(self.gfx.as_ref(), pos.0, pos.1) {
+            return false;
+        }
         let Some(scene) = self.sculpt3d_scene_mut() else {
             return false;
         };
+        // Mesma lei do `pointer_down`: barro fora da tela, roda do 2D. Sem isto
+        // o zoom do canvas ficaria preso enquanto a forma acende a tinta.
+        if !scene.shows_clay() {
+            return false;
+        }
+        scene.camera.dolly(steps);
+        true
+    }
+
+    /// **Onde a cena mora** — `AppGfx.sculpt3d`, que nasce `None`.
+    ///
+    /// ⚠️ **`pub(crate)` desde 2026-09-11 (W2/L3-A2)**, e a mudança de visibilidade é o
+    /// desenho: as portas do gesto que só precisam da cena viraram funções livres, então quem
+    /// as chama (o `input_dispatch`, o `render_loop`) tem de poder **procurar** a cena. É
+    /// esta função — e não um método por campo — o que a shell empresta à família.
+    pub(crate) fn sculpt3d_scene_mut(&mut self) -> Option<&mut Sculpt3dScene> {
+        self.gfx.as_mut()?.sculpt3d.as_mut()
+    }
+}
+
+impl Sculpt3dScene {
+    /// Aplica um dab onde o cursor aponta. Devolve `false` se o raio errou a
+    /// malha — e errar é normal: a mão sai do modelo o tempo todo.
+    pub(super) fn sculpt_at(&mut self, x: f32, y: f32) -> bool {
+        // Na peça ATIVA — quem a escolheu foi o `aim` do pen-down. Ver o doc
+        // dele: um traço pertence a uma peça, e trocar no meio é um pânico.
+        let Some(hit) = self.pick_active(x, y) else {
+            return false;
+        };
+        let ray = self.ray_at(x, y);
+        if std::env::var("PH2D_SCULPT3D_DIAG").ok().as_deref() == Some("1") {
+            // ⚠️ **O instrumento que responde *"o pincel cai onde o cursor
+            // aponta?"* com um NÚMERO.** Ele reprojeta o acerto pela porta
+            // `project` — o inverso exato do `ray_through` — e imprime o erro em
+            // pixels. Um desvio grande acusa a fiação (viewport, escala, um
+            // flip); zero acusa a percepção, e aí a causa é outra.
+            let back = self
+                .camera
+                .project(self.pose().point_to_world(hit.point), self.viewport());
+            let err = back.map(|(bx, by)| ((bx - x).hypot(by - y), bx, by));
+            eprintln!(
+                "[sculpt3d] clique ({x:.1}, {y:.1}) viewport {:?} -> acerto {:?} \
+                 -> volta {err:?}",
+                self.viewport(),
+                hit.point
+            );
+        }
+        let brush = self.armed_brush(hit.point);
+        // ⚠️ **REFINA E DEPOIS CARIMBA** — ver `refine_for_dab`. E a malha que a
+        // linha seguinte recebe pode ter mais vértices que a do `pick_active`
+        // acima: é por isso que ela é pedida de novo, por índice, em vez de
+        // segurada numa referência desde o topo.
+        self.refine_for_dab(hit.point, brush.radius);
+        let eye = self.dir_to_local(ray.dir());
+        self.stroke.dab(
+            self.objects[self.active].stack.mesh_mut(),
+            &brush,
+            // ⚠️ **O olho é o `dir` do raio que ACABOU de produzir este acerto**,
+            // e não uma direção derivada da câmera de novo: duas respostas para
+            // *"de onde se está olhando"* divergem no frame em que a câmera se
+            // move entre o pick e o dab.
+            &Dab::at(hit.point, brush.radius, eye),
+            self.symmetry,
+        );
+        Self::mesh_changed(
+            &mut self.objects[self.active].dirty,
+            &mut self.edits,
+            // ⚠️ **`last_gpu_dirty`, não `last_refreshed`.** Um traço de máscara
+            // não move geometria, então ele não refresca normal nenhuma — e
+            // perguntar *"o que refresquei?"* devolveria VAZIO, deixando a
+            // máscara invisível na GPU com todos os gates de CPU verdes.
+            self.stroke.last_gpu_dirty(),
+        );
+        true
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════════════
+// ⭐ **AS TRÊS PORTAS QUE SÓ PRECISAM DA CENA** — funções LIVRES desde 2026-09-11 (W2/L3-A2).
+//
+// Medido método a método, os doze `impl App` desta família usavam **onze** `self.X` ao todo, e
+// **estas três usavam UM**: o acessor da cena. Um `impl App` à volta delas não acrescentava
+// nada — só tornava invisível que a lei já era independente da shell.
+//
+// ⛔ **As outras nove FICAM em `impl App`, e a lista é a que a `line/app-host` tem de cobrir:**
+// `gfx` (o `device` e o tamanho da superfície — de onde a cena se cria), `last_pointer` e
+// `modifiers` (estado de janela), e três predicados de ARBITRAGEM que perguntam por outras
+// famílias (`text_entry_focused`, `vec_pen`, e quem tem o canvas). Nenhum desses é da escultura
+// — é por isso que eles não saem daqui por decisão desta linha (CLAUDE.md §5: *a navegação
+// orbital mora na shell de propósito*).
+// ═══════════════════════════════════════════════════════════════════════════════════════
+
+    /// `PH2D_SCULPT3D_SMOKE=1` — a cena pronta: uma esfera de barro para
+    /// esculpir. `=2` acrescenta a TELA e é a cena da **doação**
+    /// (`crate::sculpt3d::donation`). Roda uma vez, no primeiro frame com GPU.
+    /// **O dreno de QUADRO do puxão do Grab.** Ver
+    /// [`Sculpt3dScene::pending_grab`] e `flush_pending_grab`: o evento de
+    /// ponteiro regista, o quadro carimba, e o pen-up drena o resto.
+    ///
+    /// ⚠️ **Sem cena aberta é no-op** — e não um `expect`: este é chamado do
+    /// laço de quadro incondicionalmente, como os irmãos ao lado dele.
+pub(crate) fn flush_grab(scene: &mut Sculpt3dScene) {
+        scene.flush_pending_grab();
+        // ⭐ **E o passo do filtro de tecido, pela MESMA porta e pelo mesmo
+        // motivo**: um evento de ponteiro regista, o quadro corre. Sem isto o
+        // solver avançaria uma vez por evento do sistema, e um rato de
+        // `1000 Hz` entrega dezasseis por quadro.
+        scene.flush_cloth_filter();
+}
+
+
+pub(crate) fn pointer_up(scene: &mut Sculpt3dScene) -> bool {
         if scene.seam_release() {
             return true;
         }
@@ -126,10 +232,7 @@ impl App {
 
     /// O ponteiro moveu. Só consome com um arrasto EM CURSO — senão a cena 3D
     /// engoliria todo hover do app.
-    pub(crate) fn sculpt3d_pointer_move(&mut self, x: f32, y: f32) -> bool {
-        let Some(scene) = self.sculpt3d_scene_mut() else {
-            return false;
-        };
+pub(crate) fn pointer_move(scene: &mut Sculpt3dScene, x: f32, y: f32) -> bool {
         // ⚠️ **A costura primeiro, pelo motivo do pen-down.**
         if scene.seam_at(x, y) {
             scene.last = (x, y);
@@ -319,89 +422,3 @@ impl App {
         }
         true
     }
-
-    /// A roda aproxima.
-    pub(crate) fn sculpt3d_wheel(&mut self, steps: f32) -> bool {
-        // A mesma lei do `pointer_down`: a moldura do app não é da cena. O
-        // despachante já pergunta pelo PAINEL antes de chamar aqui, e a metade
-        // que ele não faz é a dos fundos de chrome — mas a pergunta é feita
-        // INTEIRA e neste arquivo de propósito: quem decide de quem é o gesto é
-        // o módulo da cena, não o roteador. Sem isto, rolar sobre a barra do topo
-        // dá DOLLY na escultura por baixo, em silêncio.
-        let pos = self.last_pointer;
-        if crate::chrome_hit::pointer_over_chrome(self.gfx.as_ref(), pos.0, pos.1) {
-            return false;
-        }
-        let Some(scene) = self.sculpt3d_scene_mut() else {
-            return false;
-        };
-        // Mesma lei do `pointer_down`: barro fora da tela, roda do 2D. Sem isto
-        // o zoom do canvas ficaria preso enquanto a forma acende a tinta.
-        if !scene.shows_clay() {
-            return false;
-        }
-        scene.camera.dolly(steps);
-        true
-    }
-
-    pub(super) fn sculpt3d_scene_mut(&mut self) -> Option<&mut Sculpt3dScene> {
-        self.gfx.as_mut()?.sculpt3d.as_mut()
-    }
-}
-
-impl Sculpt3dScene {
-    /// Aplica um dab onde o cursor aponta. Devolve `false` se o raio errou a
-    /// malha — e errar é normal: a mão sai do modelo o tempo todo.
-    pub(super) fn sculpt_at(&mut self, x: f32, y: f32) -> bool {
-        // Na peça ATIVA — quem a escolheu foi o `aim` do pen-down. Ver o doc
-        // dele: um traço pertence a uma peça, e trocar no meio é um pânico.
-        let Some(hit) = self.pick_active(x, y) else {
-            return false;
-        };
-        let ray = self.ray_at(x, y);
-        if std::env::var("PH2D_SCULPT3D_DIAG").ok().as_deref() == Some("1") {
-            // ⚠️ **O instrumento que responde *"o pincel cai onde o cursor
-            // aponta?"* com um NÚMERO.** Ele reprojeta o acerto pela porta
-            // `project` — o inverso exato do `ray_through` — e imprime o erro em
-            // pixels. Um desvio grande acusa a fiação (viewport, escala, um
-            // flip); zero acusa a percepção, e aí a causa é outra.
-            let back = self
-                .camera
-                .project(self.pose().point_to_world(hit.point), self.viewport());
-            let err = back.map(|(bx, by)| ((bx - x).hypot(by - y), bx, by));
-            eprintln!(
-                "[sculpt3d] clique ({x:.1}, {y:.1}) viewport {:?} -> acerto {:?} \
-                 -> volta {err:?}",
-                self.viewport(),
-                hit.point
-            );
-        }
-        let brush = self.armed_brush(hit.point);
-        // ⚠️ **REFINA E DEPOIS CARIMBA** — ver `refine_for_dab`. E a malha que a
-        // linha seguinte recebe pode ter mais vértices que a do `pick_active`
-        // acima: é por isso que ela é pedida de novo, por índice, em vez de
-        // segurada numa referência desde o topo.
-        self.refine_for_dab(hit.point, brush.radius);
-        let eye = self.dir_to_local(ray.dir());
-        self.stroke.dab(
-            self.objects[self.active].stack.mesh_mut(),
-            &brush,
-            // ⚠️ **O olho é o `dir` do raio que ACABOU de produzir este acerto**,
-            // e não uma direção derivada da câmera de novo: duas respostas para
-            // *"de onde se está olhando"* divergem no frame em que a câmera se
-            // move entre o pick e o dab.
-            &Dab::at(hit.point, brush.radius, eye),
-            self.symmetry,
-        );
-        Self::mesh_changed(
-            &mut self.objects[self.active].dirty,
-            &mut self.edits,
-            // ⚠️ **`last_gpu_dirty`, não `last_refreshed`.** Um traço de máscara
-            // não move geometria, então ele não refresca normal nenhuma — e
-            // perguntar *"o que refresquei?"* devolveria VAZIO, deixando a
-            // máscara invisível na GPU com todos os gates de CPU verdes.
-            self.stroke.last_gpu_dirty(),
-        );
-        true
-    }
-}

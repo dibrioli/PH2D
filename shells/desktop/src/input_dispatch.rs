@@ -3088,9 +3088,19 @@ impl App {
         // ADR-0150 W1/M2: a órbita da cena 3D. Só consome com um arrasto EM
         // CURSO — a porta devolve `false` sem cena armada e sem botão preso, e
         // é por isso que ela não rouba o hover do app 2D.
+        // ⭐ A shell procura a cena; a lei do gesto é função livre da família (W2/L3-A2).
+        // ⚠️ **O `false` sem cena armada continua a ser a resposta** — ele mudou de sítio
+        // (era o `else` do `let Some` lá dentro), não de valor: sem cena esta porta não rouba
+        // o hover do app 2D, e é essa a promessa que a linha de cima descreve.
         #[cfg(feature = "sculpt3d")]
-        if self.sculpt3d_pointer_move(self.last_pointer.0, self.last_pointer.1) {
-            return;
+        {
+            let (px, py) = self.last_pointer;
+            if self
+                .sculpt3d_scene_mut()
+                .is_some_and(|scene| crate::sculpt3d::pointer_move(scene, px, py))
+            {
+                return;
+            }
         }
         // ADR-0161 W4: a órbita da janela 3D de MODELAGEM (irmã da de cima, e com
         // a mesma lei: só consome com um arrasto EM CURSO).
@@ -3538,7 +3548,13 @@ impl App {
         {
             let taken = match state {
                 ElementState::Pressed => self.sculpt3d_pointer_down(button),
-                ElementState::Released => self.sculpt3d_pointer_up(),
+                // ⚠️ **Os dois lados do `match` deixaram de ter a mesma FORMA** (W2/L3-A2), e
+                // é mensagem, não descuido: o pen-up só precisa da CENA e é função livre; o
+                // pen-down arbitra quem fica com o gesto e para isso lê `gfx`, `last_pointer`
+                // e `modifiers` — logo continua em `impl App`, com a razão escrita lá.
+                ElementState::Released => self
+                    .sculpt3d_scene_mut()
+                    .is_some_and(crate::sculpt3d::pointer_up),
             };
             if taken {
                 return;

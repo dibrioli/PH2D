@@ -818,9 +818,12 @@ mod vec_expand;
 /// ⭐ A cena de smoke do **fade vetorial** (`PH2D_VEC_FADE_SMOKE=1`) — a linha do tempo a
 /// desvanecer um caminho, com e sem filtro raster.
 mod vec_fade_smoke;
-mod vec_font;
+// ⭐ W2/L4: a família `vec` começou a sair para `crates/ph2d-app-vec`. A re-exportação mantém
+// `crate::vec_font::…` a resolver em todo o resto da shell — mover 8 ficheiros custou ZERO
+// alterações nos ~60 sítios que os chamam, e é o molde para a Fase B.
+pub(crate) use ph2d_app_vec::vec_font;
 #[cfg(feature = "panel-vector")]
-mod vec_font_preview;
+pub(crate) use ph2d_app_vec::vec_font_preview;
 /// A moldura da SELEÇÃO (plano UI/UX W0): o que o painel mostra, e o que o chip escreve.
 mod vec_frame_edit;
 mod vec_frame_labels;
@@ -836,13 +839,13 @@ mod vec_layout_edit;
 mod vec_marquee;
 mod vec_morph_edit;
 mod vec_overlay;
-mod vec_overlay_diag;
+pub(crate) use ph2d_app_vec::vec_overlay_diag;
 /// O offset de CAD de uma camada da pilha (v22) — o memo do cozimento.
 mod vec_paint_dilate;
 mod vec_paint_stack;
 mod vec_pencil_input;
 /// O **Picker de caminho-guia** — o gesto de duas mãos partilhado pelo Pattern e pelo Text on Path.
-mod vec_pick;
+pub(crate) use ph2d_app_vec::vec_pick;
 mod vec_resize_box_edit;
 mod vec_selection;
 mod vec_shape_live;
@@ -871,7 +874,7 @@ mod vec_ui_state_edit;
 /// ⚠️ **Este doc voltou para cá** (auditoria de 2026-08-30): o módulo da cena de smoke dos eixos
 /// entrou por baixo dele e **herdou-o**, deixando este ficheiro — o que a F4.6c vai apagar — sem a
 /// única linha que dizia o que ele é. *Um comentário separado do seu item muda de dono.*
-mod vec_weld;
+pub(crate) use ph2d_app_vec::vec_weld;
 mod vec_widget_drive;
 mod vec_widget_edit;
 mod vec_widget_value;

@@ -18,7 +18,7 @@ use ph2d_vector_font::{AxisTag, VariableFont, VariableFontAxis};
 
 /// Um eixo de variação de uma fonte (fora o `wght`, que tem slider próprio) — nome
 /// legível + range + default. Alimenta a seção Axes do painel.
-pub(crate) struct AxisDesc {
+pub struct AxisDesc {
     pub tag: AxisTag,
     pub name: String,
     pub min: f32,
@@ -112,7 +112,7 @@ fn with_db<R>(f: impl FnOnce(&mut FontDb) -> R) -> R {
 /// Devolve `Some(name)` se parseou (para virar a família corrente), `None` se os
 /// bytes não são uma fonte válida. Não toca o `Collection` do sistema.
 #[must_use]
-pub(crate) fn import(name: String, bytes: Vec<u8>) -> Option<String> {
+pub fn import(name: String, bytes: Vec<u8>) -> Option<String> {
     let font = Arc::new(VariableFont::new(bytes).ok()?);
     IMPORTED.with(|m| m.borrow_mut().insert(name.clone(), font));
     Some(name)
@@ -121,7 +121,7 @@ pub(crate) fn import(name: String, bytes: Vec<u8>) -> Option<String> {
 /// A fonte de uma sessão de texto: a família escolhida (do sistema) ou a embutida.
 /// Chamado a cada regen — barato após o 1º load (lookup + `Arc::clone`).
 #[must_use]
-pub(crate) fn resolve(family: Option<&str>) -> Arc<VariableFont> {
+pub fn resolve(family: Option<&str>) -> Arc<VariableFont> {
     let Some(name) = family else {
         return embedded();
     };
@@ -138,7 +138,7 @@ pub(crate) fn resolve(family: Option<&str>) -> Arc<VariableFont> {
 /// aplica. Constrói o catálogo do sistema na 1ª chamada (é quando o usuário abre o
 /// seletor / o dropdown).
 #[must_use]
-pub(crate) fn pickable_families() -> Vec<Option<String>> {
+pub fn pickable_families() -> Vec<Option<String>> {
     let imported: Vec<String> = IMPORTED.with(|m| m.borrow().keys().cloned().collect());
     with_db(|db| {
         let mut names: Vec<Option<String>> =
@@ -153,7 +153,7 @@ pub(crate) fn pickable_families() -> Vec<Option<String>> {
 /// Cicla a família escolhida por `dir` (+1 próxima / −1 anterior) sobre
 /// [`pickable_families`], com wrap. `None` = a entrada embutida.
 #[must_use]
-pub(crate) fn cycle_family(current: Option<&str>, dir: i32) -> Option<String> {
+pub fn cycle_family(current: Option<&str>, dir: i32) -> Option<String> {
     let names = pickable_families();
     let cur = names
         .iter()
@@ -165,7 +165,7 @@ pub(crate) fn cycle_family(current: Option<&str>, dir: i32) -> Option<String> {
 
 /// O rótulo a exibir para a família corrente (a embutida tem nome próprio).
 #[must_use]
-pub(crate) fn display_name(family: Option<&str>) -> String {
+pub fn display_name(family: Option<&str>) -> String {
     family.map_or_else(|| "Inter (bundled)".to_owned(), str::to_owned)
 }
 
@@ -173,7 +173,7 @@ pub(crate) fn display_name(family: Option<&str>) -> String {
 /// expõe — o que a seção Axes do painel mostra. Vazio para fontes estáticas ou que só
 /// têm peso. Resolve a fonte (cacheada) e lê o `fvar`.
 #[must_use]
-pub(crate) fn variation_axes(family: Option<&str>) -> Vec<AxisDesc> {
+pub fn variation_axes(family: Option<&str>) -> Vec<AxisDesc> {
     resolve(family)
         .axes()
         .iter()
@@ -207,7 +207,7 @@ pub(crate) fn variation_axes(family: Option<&str>) -> Vec<AxisDesc> {
 /// resposta para a primeira. Esta é a segunda, e ela sai do `fvar` da fonte — nunca da lista que
 /// já o excluiu.
 #[must_use]
-pub(crate) fn has_weight_axis(family: Option<&str>) -> bool {
+pub fn has_weight_axis(family: Option<&str>) -> bool {
     resolve(family)
         .axes()
         .iter()
@@ -217,7 +217,7 @@ pub(crate) fn has_weight_axis(family: Option<&str>) -> bool {
 /// A lista `(tag, default)` dos eixos extras de `family` — o estado inicial de
 /// `VecTextEdit::extra_axes` / o default corrente da shell quando a família muda.
 #[must_use]
-pub(crate) fn seed_extra_axes(family: Option<&str>) -> Vec<(AxisTag, f32)> {
+pub fn seed_extra_axes(family: Option<&str>) -> Vec<(AxisTag, f32)> {
     variation_axes(family)
         .into_iter()
         .map(|a| (a.tag, a.default))

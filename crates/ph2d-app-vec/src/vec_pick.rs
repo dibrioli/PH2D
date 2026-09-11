@@ -21,7 +21,7 @@ use ph2d_vec_scene::{StrokeSpec, VecPath, VecPathId, VecScene, VecXforms};
 /// ESCOLHE o guia, e não deve virar a fonte). Guardar o id da fonte torna o vínculo sempre um par
 /// explícito `(fonte, guia)` — o oposto exato da adivinhação de seleção.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum PathPick {
+pub enum PathPick {
     /// Um MOTIVO do Pattern on Path à espera do caminho que ele vai cavalgar.
     PatternMotif(VecPathId),
     /// Um TEXTO do Text on Path à espera do caminho que ele vai seguir.
@@ -60,7 +60,7 @@ pub(crate) enum PathPick {
 impl PathPick {
     /// A forma-FONTE (o motivo ou o texto). O clique nunca a toma como o próprio guia — prender uma
     /// forma a si mesma não quer dizer nada, e o `link` a recusaria de qualquer modo.
-    pub(crate) fn source(self) -> VecPathId {
+    pub fn source(self) -> VecPathId {
         match self {
             PathPick::PatternMotif(id)
             | PathPick::TextObject(id)
@@ -80,7 +80,7 @@ impl PathPick {
 /// desenhar em MUNDO por ora; um guia por token em screen-space é o refinamento (quando o realce
 /// virar UI de verdade).
 #[must_use]
-pub(crate) fn hover_outline(
+pub fn hover_outline(
     scene: &VecScene,
     xforms: &VecXforms,
     id: VecPathId,

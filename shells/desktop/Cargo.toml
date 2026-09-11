@@ -346,6 +346,8 @@ ph2d-vector = { path = "../../crates/ph2d-vector" }
 # + render `ph2d-vec-render` sobre o VectorScene fundacional). Aditiva — coexiste
 # com o sistema de edição antigo até o cutover (Fase R).
 ph2d-vec-scene = { path = "../../crates/ph2d-vec-scene" }
+# ⭐ A metade-shell da família `vec`, extraída em W2/L4 — a shell chama-a, ela nunca chama a shell.
+ph2d-app-vec = { path = "../../crates/ph2d-app-vec" }
 # A lei de LADRILHO do Texture Pattern (plano 33): o `texture_pattern_live` assa a arte no
 # reticulado pedido antes de a entregar ao render. Folha ZERO-dep.
 ph2d-vec-pattern = { path = "../../crates/ph2d-vec-pattern" }
@@ -670,7 +672,7 @@ panel-motion-params  = ["ph2d-panel-registry-init/panel-motion-params", "dep:ph2
 # Vector Style panel + its render_loop bridge (`vector_bridge` publishes the
 # snapshot via `ph2d_panel_vector::set_current_vector_style` + reads the OKLCH
 # picker back into the tool), so the shell needs the direct dep too.
-panel-vector         = ["ph2d-panel-registry-init/panel-vector", "dep:ph2d-panel-vector"]
+panel-vector         = ["ph2d-panel-registry-init/panel-vector", "dep:ph2d-panel-vector", "ph2d-app-vec/panel-vector"]
 # ⭐⭐⭐ O painel do ESQUELETO — a shell publica-lhe o osso em foco, a âncora, o limite e o controlo
 # por quadro (`ph2d_panel_skeleton::set_current_*`), e decide se ele é visto: ele só tem sujeito
 # numa cena que tem ossos.

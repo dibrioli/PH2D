@@ -30,7 +30,7 @@ static FRAME: AtomicU64 = AtomicU64::new(0);
 /// Grita quando um guard **recusa** um arrasto — a resposta direta a *"o ponto está travando"*, que
 /// pode significar duas coisas MUITO diferentes: o guard a recusar (o ponto para de propósito) ou o
 /// frame a engasgar (o ponto atrasa). Sem distinguir as duas, a investigação começa no lugar errado.
-pub(crate) fn refused(what: &str, detail: &str) {
+pub fn refused(what: &str, detail: &str) {
     if std::env::var_os("PH2D_VEC_OVERLAY_DIAG").is_some() {
         eprintln!("[vec-diag] RECUSADO {what}: {detail}");
     }
@@ -41,7 +41,7 @@ pub(crate) fn refused(what: &str, detail: &str) {
 const SUSPECT_K: f64 = 3.0;
 
 /// Imprime o estado do overlay uma vez por segundo enquanto a env estiver ligada.
-pub(crate) fn dump(scene: &VecScene, sim: &SimWorld, selection: Option<u64>) {
+pub fn dump(scene: &VecScene, sim: &SimWorld, selection: Option<u64>) {
     if std::env::var_os("PH2D_VEC_OVERLAY_DIAG").is_none() {
         return;
     }

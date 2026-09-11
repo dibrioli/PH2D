@@ -1,0 +1,43 @@
+[package]
+name = "ph2d-app-vec"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# ⭐ **A metade-shell da família `vec`, fora da shell** (W2/L4 — auditoria de velocidade de
+# 2026-09-10 §4-C2). A `shells/desktop` é um `bin` de 493 k linhas e a última unidade de todo
+# build grande; esta crate é onde a ponte `App` ⇄ módulo vectorial passa a viver.
+#
+# ⛔ **Ela NÃO depende da shell, e não pode** — a shell é um binário. O sentido é sempre
+# shell → crate: quem precisa de algo que só a shell tem (janela, `gfx`, painéis, a captura do
+# undo) **fica na shell** e é nomeado no handoff de integração. É a mesma lei do ADR-0075.
+#
+# ⚠️ **A lista de dependências é MEDIDA, um a um, sobre os ficheiros que de facto aqui vivem** —
+# o `cargo machete` do `ship.sh` reprova uma dependência declarada e não usada, e a 1ª redacção
+# desta lista trazia quatro (`ph2d-core`, `ph2d-host`, `ph2d-render`, `ph2d-skeleton-ecs`) que
+# vinham dos ficheiros que o fecho de módulos acabou por NÃO deixar mover.
+[dependencies]
+ph2d-ecs = { path = "../ph2d-ecs" }
+ph2d-editor = { path = "../ph2d-editor" }
+ph2d-text = { path = "../ph2d-text" }
+ph2d-tokens = { path = "../ph2d-tokens" }
+ph2d-vec-edit = { path = "../ph2d-vec-edit" }
+ph2d-vec-render = { path = "../ph2d-vec-render" }
+ph2d-vec-scene = { path = "../ph2d-vec-scene" }
+ph2d-vector = { path = "../ph2d-vector" }
+ph2d-vector-font = { path = "../ph2d-vector-font" }
+ph2d-panel-vector = { path = "../ph2d-panel-vector", optional = true }
+fontique = "0.11.1"
+
+# ⚠️ **A feature ESPELHA a da shell, e isso não é zelo — é o que o `mod` dizia.** O
+# `vec_font_preview` estava atrás de `#[cfg(feature = "panel-vector")]` no `main.rs`, logo a
+# pré-visualização de fonte **não** entra num build sem painel vectorial. Uma 1ª redacção desta
+# crate declarou a dependência como obrigatória por eu ter lido só o `use` do ficheiro e não o
+# `mod` que o declara: *a condição de compilação de um módulo não está escrita nele.*
+[features]
+panel-vector = ["dep:ph2d-panel-vector"]

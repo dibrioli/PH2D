@@ -4822,6 +4822,23 @@ name = "ph2d-app-sync"
 version = "0.0.0"
 
 [[package]]
+name = "ph2d-app-vec"
+version = "0.0.0"
+dependencies = [
+ "fontique",
+ "ph2d-ecs",
+ "ph2d-editor",
+ "ph2d-panel-vector",
+ "ph2d-text",
+ "ph2d-tokens",
+ "ph2d-vec-edit",
+ "ph2d-vec-render",
+ "ph2d-vec-scene",
+ "ph2d-vector",
+ "ph2d-vector-font",
+]
+
+[[package]]
 name = "ph2d-arc-length"
 version = "0.0.0"
 
@@ -5403,6 +5420,7 @@ dependencies = [
  "ph2d-app-field3d",
  "ph2d-app-host",
  "ph2d-app-registry-init",
+ "ph2d-app-vec",
  "ph2d-aseprite",
  "ph2d-asset",
  "ph2d-asset-index",

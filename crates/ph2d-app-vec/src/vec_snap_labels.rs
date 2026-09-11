@@ -49,7 +49,7 @@ const CHIP_MIN_W_PX: f32 = 60.0; // LITERAL-PX-OK: ficha do rótulo (chrome)
 /// estar livre para o renderizador de texto. E a ficha **cobre** o tracejado sob
 /// ela de propósito — o número É aquele segmento, então lê melhor ocupando-o do
 /// que pairando ao lado, onde teria de escolher um dos dois lados sem critério.
-pub(crate) fn draw(
+pub fn draw(
     guides: &[ph2d_vec_render::Guide],
     cam: Affine,
     px_per_world: f64,

@@ -33,7 +33,7 @@ fn contornos_mundo(scene: &VecScene, xforms: &VecXforms, id: u64) -> Vec<Contour
 /// ⛔ **Um caminho que É cortado dissolve-se por inteiro**, e um composto perde o buraco: depois da
 /// solda os contornos são arcos de uma rede, e um arco não tem dentro. É o preço declarado de
 /// *"consome os originais"*.
-pub(crate) fn apply_vec_weld(
+pub fn apply_vec_weld(
     scene: &mut VecScene,
     history: &mut ph2d_vec_edit::History,
     pen: &mut ph2d_vec_edit::PenTool,

@@ -20,7 +20,7 @@ const SPACE_ADVANCE_EM: f64 = 0.25;
 /// Uma preview por família selecionável, na ordem canônica de
 /// [`crate::vec_font::pickable_families`] — o índice publicado casa com o que a
 /// shell aplica ao escolher a opção.
-pub(crate) fn build_previews() -> Vec<FontPreview> {
+pub fn build_previews() -> Vec<FontPreview> {
     crate::vec_font::pickable_families()
         .into_iter()
         .map(|family| {

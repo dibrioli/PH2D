@@ -4849,6 +4849,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-app-sculpt3d"
+version = "0.0.0"
+
+[[package]]
 name = "ph2d-app-sync"
 version = "0.0.0"
 
@@ -5454,6 +5458,7 @@ dependencies = [
  "ph2d-app-host",
  "ph2d-app-physics",
  "ph2d-app-registry-init",
+ "ph2d-app-sculpt3d",
  "ph2d-app-vec",
  "ph2d-aseprite",
  "ph2d-asset",

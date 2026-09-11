@@ -363,6 +363,16 @@ caminho novo, uma de cada tipo de pedido:
 
 ⚠️ **Rode também SEM a env var** — o app tem de abrir exactamente como antes.
 
+**Smoke compilado (DIRETRIZ §1.5.9 item 9)** — 2.ª corrida, byte a byte o mesmo comando:
+
+```
+$ cargo build -p ph2d-host-desktop --profile smoke
+    Finished `smoke` profile [optimized] target(s) in 0.18s
+```
+
+**zero linhas `Compiling`**; binário em `target/smoke/ph2d-host-desktop` (78 MB, 17:54).
+⚠️ Ele está quente **nesta worktree** — que é a do `cd` do comando acima, e não a do primário.
+
 ---
 
 ## §12 — O que só o `ship.sh` apanha

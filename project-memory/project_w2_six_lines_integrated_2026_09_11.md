@@ -49,6 +49,17 @@ por linha e a `sculpt3d` um nome explícito; campos que a `flip` já retirara da
 ⚠️ **Um filtro por PALAVRA ao resolver deixa órfã a primeira linha de um doc-comment de duas** —
 aconteceu com o `flip_entities` e só se vê olhando o resultado.
 
+⭐⭐⭐ **E a regra ficou com INSTRUMENTO, a pedido do dono** (*«não seria necessário atualizar os docs
+canónicos para que nenhum outro agente volte a trazer problemas de performance na compilação?»*):
+**`the_shell_only_shrinks`** em `crates/ph2d-editor-core/tests/it/`. ⛔⛔ **O buraco que ele fecha é
+estrutural:** todo tecto de LOC deste repo é **por FICHEIRO** (workspace 700 · painel · widget ·
+tool-runtime · `file_loc_caps` da shell) e **nenhum mede a unidade que o compilador constrói** — 465 k
+linhas em 1 801 ficheiros de ~258 passam em todos eles com folga, e é a CRATE que decide o relógio.
+É a forma do `CLAUDE.md` §5.0 um nível acima: lá quem soma entre linhas sem ninguém a contar é o tecto
+por-ficheiro; aqui é a crate. Catraca com as **duas** metades + controlo positivo, as três provadas por
+mutação. ⚠️ E a ferramenta que já existia para isto (`ph2d-loc-trend`) **não é chamada pelo `ship.sh`
+nem pelo CI** — o padrão que o `CLAUDE.md` §2 nomeia: *ponteiro não é adoção*.
+
 **Aberto:** a **Fase B** das cinco famílias (o corte pelo `HOWTO_partir_uma_familia_da_shell.md`),
 que é onde os roteadores saem e a catraca volta a vazia; `ship.sh` + CI **não correram** (ordem do
 Enio); o smoke é dele e não foi corrido.

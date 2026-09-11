@@ -18,8 +18,8 @@
 //! Os números abaixo saíram da sonda `probe_smoke_78`, rodada ANTES desta
 //! mensagem ser escrita.
 
-use crate::physics_smoke::spawn_floor;
 use ph2d_anim::{AnimValue, Interp, RationalTime};
+use ph2d_app_physics::common::spawn_floor;
 use ph2d_core::Vec2;
 use ph2d_ecs::{Entity, Name, Transform, World, stable_name_id};
 use ph2d_physics_ecs::{

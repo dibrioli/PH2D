@@ -53,7 +53,7 @@ use ph2d_physics_ecs::{
 };
 use ph2d_render::{Sprite, WHITE_TILE_KEY};
 
-use crate::physics_smoke_player::slab;
+use ph2d_app_physics::common::slab;
 
 /// A altura de flutuação — a mesma das outras cenas de player.
 const FLOAT: f32 = 0.9;

@@ -321,7 +321,7 @@ fn a_multi_selection_inside_one_rig_seeds_each_body_once() {
 #[ignore = "sonda: imprime os números da cena 51, não afirma nada"]
 fn probe_smoke_51() {
     let mut sim = SimWorld::new();
-    crate::physics_smoke_joint_rig::spawn_rigs(sim.world_mut());
+    ph2d_app_physics::physics_smoke_joint_rig::spawn_rigs(sim.world_mut());
     let by_name = |sim: &mut SimWorld, want: &str| -> Entity {
         let mut q = sim.world_mut().query::<(Entity, &Name)>();
         q.iter(sim.world())

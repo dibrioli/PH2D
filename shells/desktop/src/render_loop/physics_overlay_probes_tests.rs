@@ -317,7 +317,7 @@ fn measure_what_each_mark_measures_on_screen() {
 
     let run = |label: &str, x: f32, y: f32, hold: PlayerInput, n: u64| {
         let mut sim = SimWorld::new();
-        let player = crate::physics_smoke_probes::build_probe_scene(sim.world_mut());
+        let player = ph2d_app_physics::physics_smoke_probes::build_probe_scene(sim.world_mut());
         {
             let mut t = sim.world_mut().get_mut::<Transform>(player).unwrap();
             t.translation.x = x;
@@ -358,14 +358,14 @@ fn measure_what_each_mark_measures_on_screen() {
     run("PARADO no chao", 2.0, 0.9, idle, 40);
     run(
         "EMPURRANDO a parede, no ar",
-        crate::physics_smoke_probes::WALL_FACE_X - 0.25,
+        ph2d_app_physics::physics_smoke_probes::WALL_FACE_X - 0.25,
         2.5,
         PlayerInput { drive: 1.0, ..idle },
         20,
     );
     run(
         "SUBINDO junto da quina",
-        crate::physics_smoke_probes::LEDGE_EDGE_X - 0.1,
+        ph2d_app_physics::physics_smoke_probes::LEDGE_EDGE_X - 0.1,
         1.4,
         PlayerInput { jump: true, ..idle },
         4,
@@ -379,7 +379,7 @@ fn measure_whether_the_reading_follows_a_dragged_body() {
     use ph2d_physics_ecs::{PhysicsBridge, PlayerInput, ProbeShape};
 
     let mut sim = SimWorld::new();
-    let player = crate::physics_smoke_probes::build_probe_scene(sim.world_mut());
+    let player = ph2d_app_physics::physics_smoke_probes::build_probe_scene(sim.world_mut());
     {
         let mut t = sim.world_mut().get_mut::<Transform>(player).unwrap();
         t.translation.x = 2.0;

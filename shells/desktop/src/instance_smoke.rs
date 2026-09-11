@@ -374,7 +374,7 @@ impl crate::App {
     fn instance_smoke_ragdoll(&mut self) {
         let vec_entities = &mut self.vec_entities;
         let gfx = self.gfx.as_mut().expect("gfx");
-        crate::physics_smoke::spawn_floor(gfx.sim.world_mut());
+        ph2d_app_physics::common::spawn_floor(gfx.sim.world_mut());
         // Campos DISJUNTOS do `AppGfx` (+ o mapa, que é do `App`) — empréstimos separados, sem
         // clonar o registo nem o documento.
         let mut docs = crate::instance_docs::OwnedDocs {

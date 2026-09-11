@@ -16,6 +16,7 @@
 //! ponto de partida a deixa TANGENTE, e ela deixa de pairar na primeira rampa.
 
 use ph2d_anim::{AnimValue, Interp, RationalTime};
+use ph2d_app_physics::common::{slab, spawn_player};
 use ph2d_core::Vec2;
 use ph2d_ecs::stable_name_id;
 use ph2d_ecs::{Entity, Name, Transform};
@@ -32,63 +33,6 @@ mod reaction_tests;
 
 /// A altura de flutuação destas cenas — ver o aviso do módulo.
 const FLOAT: f32 = 0.9;
-
-/// O personagem: cápsula dinâmica, rotação travada (D4), com a config do plano.
-pub(crate) fn spawn_player(world: &mut bevy_ecs::world::World, at: Vec2) -> Entity {
-    world
-        .spawn((
-            Name::new("Player"),
-            Transform::from_translation(at),
-            Sprite::atlas(WHITE_TILE_KEY, [0.4, 1.0], [0.25, 0.85, 1.0, 1.0]),
-            RigidBody {
-                kind: BodyKind::Dynamic,
-            },
-            Collider {
-                shape: ColliderShape::Capsule {
-                    half_height: 0.3,
-                    radius: 0.2,
-                },
-                ..Collider::default()
-            },
-            LockRotation,
-            PlatformPlayer {
-                float_height: FLOAT,
-                ..PlatformPlayer::default()
-            },
-        ))
-        .id()
-}
-
-/// Um bloco estático, opcionalmente inclinado.
-pub(crate) fn slab(
-    world: &mut bevy_ecs::world::World,
-    name: &str,
-    at: Vec2,
-    half: [f32; 2],
-    rot: f32,
-    tint: [f32; 4],
-) -> Entity {
-    world
-        .spawn((
-            Name::new(name.to_string()),
-            Transform {
-                rotation: rot,
-                ..Transform::from_translation(at)
-            },
-            Sprite::atlas(WHITE_TILE_KEY, [half[0] * 2.0, half[1] * 2.0], tint),
-            RigidBody {
-                kind: BodyKind::Static,
-            },
-            Collider {
-                shape: ColliderShape::Cuboid {
-                    half_x: half[0],
-                    half_y: half[1],
-                },
-                ..Collider::default()
-            },
-        ))
-        .id()
-}
 
 /// A plataforma vai e volta.
 ///

@@ -30,9 +30,9 @@ const SKIN: [f32; 4] = [0.85, 0.70, 0.55, 1.0];
 const CLOTH: [f32; 4] = [0.35, 0.55, 0.85, 1.0];
 
 /// Quantas PARTES o boneco tem — o número que o botão mostra.
-pub(crate) const DOLL_PARTS: usize = 6;
+pub const DOLL_PARTS: usize = 6;
 /// E quantos joints o rig faz: uma aresta por parte que não é a raiz.
-pub(crate) const DOLL_JOINTS: usize = DOLL_PARTS - 1;
+pub const DOLL_JOINTS: usize = DOLL_PARTS - 1;
 
 const CAMERA_CENTRE: [f32; 2] = [0.0, 1.4];
 const CAMERA_HEIGHT: f32 = 8.0;
@@ -41,7 +41,7 @@ const CAMERA_HEIGHT: f32 = 8.0;
 ///
 /// A queda do TRONCO, em metros — o boneco larga de `y = 3,0` e desaba sobre o
 /// piso. É o número que separa *"o rig funcionou"* de *"nada ficou ligado"*.
-pub(crate) const MEASURED_TORSO_DROP: f32 = 3.12;
+pub const MEASURED_TORSO_DROP: f32 = 3.12;
 /// **A VIOLAÇÃO da restrição do pescoço** em 3 s, em metros: a distância entre as
 /// duas âncoras do joint, que um Pin prende no MESMO ponto. Zero enquanto ele
 /// segura — e é ELE que cresce quando não segura.
@@ -55,12 +55,12 @@ pub(crate) const MEASURED_TORSO_DROP: f32 = 3.12;
 /// ⚠️ E o defeito que este número existe para vigiar era real: até a W-Rig
 /// consertar a porta de criação, a âncora de um corpo PARENTEADO nascia em espaço
 /// LOCAL (1,65 m fora) e o boneco esparramava.
-pub(crate) const MEASURED_JOINT_GAP: f32 = 0.0001;
+pub const MEASURED_JOINT_GAP: f32 = 0.0001;
 
 /// A meia-faixa de batente com que cada junta do rig nasce, em graus — o número
 /// mora no kernel (`ph2d_physics_ecs::RIG_LIMIT_DEG`, com a tabela da medição ao
 /// lado); aqui é só o eco para a mensagem.
-pub(crate) const RIG_LIMIT_DEG: f32 = ph2d_physics_ecs::RIG_LIMIT_DEG;
+pub const RIG_LIMIT_DEG: f32 = ph2d_physics_ecs::RIG_LIMIT_DEG;
 
 fn limb(
     world: &mut World,
@@ -84,7 +84,7 @@ fn limb(
 ///
 /// As partes se TOCAM de propósito: o joint da rota por seleção nasce no ponto
 /// MÉDIO dos dois corpos, e entre dois retângulos encostados o meio É a emenda.
-pub(crate) fn build_rig_doll(world: &mut World) -> Entity {
+pub fn build_rig_doll(world: &mut World) -> Entity {
     let torso = world
         .spawn((
             Name::new("Torso"),
@@ -132,7 +132,7 @@ mod tests;
 /// **Cena 67 (W-Rig).** Um boneco de sprites, sem física nenhuma — e um
 /// clique que o transforma num ragdoll.
 pub fn physics_smoke_rig(ctx: &mut ph2d_app_physics::SceneCtx<'_>) {
-    crate::physics_smoke::spawn_floor(ctx.world);
+    ph2d_app_physics::common::spawn_floor(ctx.world);
     let torso = build_rig_doll(ctx.world);
     ctx.want.camera_center = Some(CAMERA_CENTRE);
     ctx.want.camera_height_world = Some(CAMERA_HEIGHT);

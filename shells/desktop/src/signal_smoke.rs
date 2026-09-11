@@ -140,7 +140,7 @@ impl crate::App {
             // recopiada: duas cenas que respondem *"o que a física grita?"* divergiriam, e a
             // que o Enio aprovou é aquela.
             let gfx = self.gfx.as_mut().expect("gfx");
-            crate::physics_smoke_signal::build_signal_scene(gfx.sim.world_mut());
+            ph2d_app_physics::physics_smoke_signal::build_signal_scene(gfx.sim.world_mut());
             gfx.camera.center = [0.0, 1.8];
             gfx.camera.height_world = 11.0;
             // Sem isto o solver não roda: o relógio tem DOIS consumidores e quem decide se

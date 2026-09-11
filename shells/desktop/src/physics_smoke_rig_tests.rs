@@ -11,7 +11,7 @@ use ph2d_physics_ecs::{PhysicsBridge, PhysicsJoint, RigidBody};
 /// ninguém duvidava, e não que o GERADOR produz o que a cena promete.
 fn rigged() -> (SimWorld, usize, usize) {
     let mut sim = SimWorld::new();
-    crate::physics_smoke::spawn_floor(sim.world_mut());
+    ph2d_app_physics::common::spawn_floor(sim.world_mut());
     let torso = build_rig_doll(sim.world_mut());
 
     let reg = {

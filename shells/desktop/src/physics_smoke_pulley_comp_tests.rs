@@ -272,7 +272,7 @@ fn the_scene_fits_the_frame_it_sets() {
         CAMERA_CENTRE[1] + CAMERA_HEIGHT * 0.5,
         CAMERA_CENTRE[1] - CAMERA_HEIGHT * 0.5,
     );
-    let worst = crate::physics_smoke_pulley::outside_frame(
+    let worst = ph2d_app_physics::physics_smoke_pulley::outside_frame(
         sim.world_mut(),
         CAMERA_CENTRE,
         CAMERA_HEIGHT,

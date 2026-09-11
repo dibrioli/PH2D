@@ -89,3 +89,80 @@ impl<'w> SceneCtx<'w> {
         self.world
     }
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// As cenas. ⚠️ Esta lista é ORDENADA e gerada da pasta: o roteador da shell
+// continua a ser a ÚNICA fonte de QUE nível corre o quê (CLAUDE.md §5.0) —
+// aqui só se declara que o ficheiro existe.
+// ─────────────────────────────────────────────────────────────────────────
+pub mod common;
+pub mod physics_smoke_authoring;
+pub mod physics_smoke_blast;
+pub mod physics_smoke_brake;
+pub mod physics_smoke_brink;
+pub mod physics_smoke_collider;
+pub mod physics_smoke_collision;
+pub mod physics_smoke_compound;
+pub mod physics_smoke_contacts;
+pub mod physics_smoke_damping;
+pub mod physics_smoke_events;
+pub mod physics_smoke_fk;
+pub mod physics_smoke_foot;
+pub mod physics_smoke_foot_fan;
+pub mod physics_smoke_glide;
+pub mod physics_smoke_grab;
+pub mod physics_smoke_ik;
+pub mod physics_smoke_interact;
+pub mod physics_smoke_joint_bake;
+pub mod physics_smoke_joint_break;
+pub mod physics_smoke_joint_copy;
+pub mod physics_smoke_joint_custom;
+pub mod physics_smoke_joint_draw;
+pub mod physics_smoke_joint_glyphs;
+pub mod physics_smoke_joint_handles;
+pub mod physics_smoke_joint_motor;
+pub mod physics_smoke_joint_pair;
+pub mod physics_smoke_joint_pose;
+pub mod physics_smoke_joint_rig;
+pub mod physics_smoke_joint_slider;
+pub mod physics_smoke_kin_pure;
+pub mod physics_smoke_kin_push;
+pub mod physics_smoke_kin_water;
+pub mod physics_smoke_kinematic;
+pub mod physics_smoke_lead;
+pub mod physics_smoke_leave;
+pub mod physics_smoke_ledge;
+pub mod physics_smoke_multi_jump;
+pub mod physics_smoke_player_bake;
+pub mod physics_smoke_player_carry;
+pub mod physics_smoke_player_crouch;
+pub mod physics_smoke_player_dash;
+pub mod physics_smoke_player_drop;
+pub mod physics_smoke_player_flank;
+pub mod physics_smoke_player_forgive;
+pub mod physics_smoke_player_grab;
+pub mod physics_smoke_player_run;
+pub mod physics_smoke_player_slope;
+pub mod physics_smoke_player_tape;
+pub mod physics_smoke_player_wall;
+pub mod physics_smoke_probes;
+pub mod physics_smoke_props;
+pub mod physics_smoke_pulley;
+pub mod physics_smoke_pulley_break;
+pub mod physics_smoke_pulley_weston;
+pub mod physics_smoke_raft;
+pub mod physics_smoke_rail_rope;
+pub mod physics_smoke_rod;
+pub mod physics_smoke_signal;
+pub mod physics_smoke_signal_leave;
+pub mod physics_smoke_soft_weld;
+pub mod physics_smoke_stone;
+pub mod physics_smoke_stop;
+pub mod physics_smoke_surface;
+pub mod physics_smoke_swim;
+pub mod physics_smoke_terminal;
+pub mod physics_smoke_water;
+pub mod physics_smoke_wheel;
+pub mod physics_smoke_world_pin;
+pub mod physics_smoke_zone_force;
+pub mod physics_smoke_zones;

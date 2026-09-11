@@ -7,7 +7,7 @@ use ph2d_physics_ecs::PhysicsBridge;
 /// Monta a cena e simula `secs` segundos pela PORTA REAL (a ponte).
 fn run(secs: f32) -> SimWorld {
     let mut sim = SimWorld::new();
-    crate::physics_smoke::spawn_floor(sim.world_mut());
+    ph2d_app_physics::common::spawn_floor(sim.world_mut());
     build_keys(sim.world_mut());
     ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let mut bridge = PhysicsBridge::new();
@@ -101,7 +101,7 @@ fn the_wide_key_is_stopped_by_the_wall_and_the_slim_one_goes_through() {
 #[test]
 fn narrowing_the_part_lets_the_wide_key_through() {
     let mut sim = SimWorld::new();
-    crate::physics_smoke::spawn_floor(sim.world_mut());
+    ph2d_app_physics::common::spawn_floor(sim.world_mut());
     build_keys(sim.world_mut());
     ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let bit = entity(&mut sim, "Wide Bit");
@@ -127,7 +127,7 @@ fn narrowing_the_part_lets_the_wide_key_through() {
 #[test]
 fn removing_the_part_also_lets_the_wide_key_through() {
     let mut sim = SimWorld::new();
-    crate::physics_smoke::spawn_floor(sim.world_mut());
+    ph2d_app_physics::common::spawn_floor(sim.world_mut());
     build_keys(sim.world_mut());
     ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let bit = entity(&mut sim, "Wide Bit");

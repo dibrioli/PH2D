@@ -140,7 +140,7 @@ fn probe_smoke_52() {
     let stage = || {
         let mut sim = SimWorld::new();
         let mut bridge = PhysicsBridge::new();
-        crate::physics_smoke_grab::spawn_props(sim.world_mut());
+        ph2d_app_physics::physics_smoke_grab::spawn_props(sim.world_mut());
         // Um segundo de assentamento antes de qualquer gesto (a torre encosta).
         for t in 1..=60 {
             bridge.dispatch(&mut sim, true, t);

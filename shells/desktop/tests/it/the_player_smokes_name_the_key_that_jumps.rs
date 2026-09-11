@@ -29,9 +29,19 @@
 // fábrica) e o gate que a usava passou a **medir comportamento** em vez de texto. Deixá-la aqui
 // seria um `include_str!` de um ficheiro que ninguém lê -- e um dia alguém escreveria um gate
 // novo sobre ela, a afirmar sobre um sítio onde a lei já não mora.
+// ⚠️ **Duas destas três atravessam a fronteira da crate desde a W2/L2**, e é por
+// isso que o caminho sobe quatro níveis: as cenas `_tape` e `_forgive` mudaram-se
+// para `crates/ph2d-app-physics/`, e a `_player` ficou na shell (ela autora uma
+// track de timeline). ⛔ Um `include_str!` com caminho relativo **não avisa quando
+// o alvo se muda** — ele deixa de compilar, que é o modo de falha bom, mas só
+// depois de alguém correr o alvo de teste certo: um `cargo check -p` da lib não o
+// alcança. Foi exactamente esta armadilha que a W1 pagou e que o briefing da W2
+// mandou procurar.
 const WALK: &str = include_str!("../../src/physics_smoke_player.rs");
-const TAPE: &str = include_str!("../../src/physics_smoke_player_tape.rs");
-const FORGIVE: &str = include_str!("../../src/physics_smoke_player_forgive.rs");
+const TAPE: &str =
+    include_str!("../../../../crates/ph2d-app-physics/src/physics_smoke_player_tape.rs");
+const FORGIVE: &str =
+    include_str!("../../../../crates/ph2d-app-physics/src/physics_smoke_player_forgive.rs");
 
 /// Os arquivos que carregam roteiro de player, com o nome que o erro deve citar.
 const SCRIPTS: [(&str, &str); 3] = [

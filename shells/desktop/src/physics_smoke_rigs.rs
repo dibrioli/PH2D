@@ -3,12 +3,12 @@
 //!
 //! Sibling of [`crate::physics_smoke`], which keeps the prologue and the scenes
 //! about a body on its own (a drop, a pile, an empty state, the world knobs),
-//! and of [`crate::physics_smoke_props`], which varies ONE property of one body.
+//! and of [`ph2d_app_physics::physics_smoke_props`], which varies ONE property of one body.
 //! Split under the shell's 600-LOC cap, and the seam is a real one: everything
 //! here needs a SECOND thing to be meaningful — a joint needs two bodies, a bake
 //! needs the timeline, a parented body needs an ancestor.
 
-use crate::physics_smoke::spawn_floor;
+use ph2d_app_physics::common::spawn_floor;
 use ph2d_core::Vec2;
 use ph2d_ecs::{Name, Transform, stable_name_id};
 use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, JointKind, PhysicsJoint, RigidBody};

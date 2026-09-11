@@ -8,7 +8,7 @@
 //! Os números da mensagem saem da sonda `probe_smoke_62`, rodada sobre ESTAS
 //! constantes.
 
-use super::physics_smoke_pulley::{GROUND, ball};
+use ph2d_app_physics::physics_smoke_pulley::{GROUND, ball};
 use ph2d_core::Vec2;
 use ph2d_ecs::{Name, Transform, World, stable_name_id};
 use ph2d_physics_ecs::{

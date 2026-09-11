@@ -129,7 +129,7 @@ fn the_move_dispatch_advances_the_anchor_drag() {
         "no Move site advances the joint-anchor drag"
     );
     assert!(
-        src.contains("self.joint_anchor_drag = None;"),
+        src.contains("self.physics.joint_anchor_drag = None;"),
         "no Up site closes the joint-anchor drag — it would keep following the \
          cursor after the button is released"
     );

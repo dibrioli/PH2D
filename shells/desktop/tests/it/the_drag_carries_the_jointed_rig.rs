@@ -120,16 +120,26 @@ fn every_site_asks_the_reach_door_at_rest_with_the_raw_alt() {
         exprs.len()
     );
     for expr in &exprs {
+        // ⚠️ **Sem espaço em branco, e a razão é medida (W2/L2):** quando os sete
+        // campos soltos da física viraram um `PhysicsState`, o nome cresceu quatro
+        // caracteres, o `rustfmt` partiu esta chamada em SEIS linhas, e este gate
+        // reprovou sobre wiring que não mudou uma vírgula. *Um gate textual que
+        // compara uma linha inteira está a afirmar sobre a FORMATAÇÃO, não sobre a
+        // costura* — e quem o acorda é o formatador, não um defeito.
+        let plano: String = expr.split_whitespace().collect();
         assert!(
-            expr.contains("self.playhead.is_playing()"),
+            plano.contains("self.playhead.is_playing()"),
             "a condição do relógio sumiu de um `carry_reach`:\n{expr}"
         );
         assert!(
-            expr.contains("self.interaction.joint.drag_reach(self.modifiers.alt_key())"),
+            plano.contains("self.physics.interaction.joint.drag_reach(self.modifiers.alt_key())"),
             "o alcance tem de vir da porta única, com o Alt cru:\n{expr}"
         );
+        // ⚠️ Esta é NEGATIVA, e por isso o `plano` importa ainda mais: uma quebra
+        // de linha entre o `!` e o `self` faria a acusação evaporar em silêncio —
+        // o modo de falha de um gate negativo é ficar verde.
         assert!(
-            !expr.contains("!self.modifiers.alt_key()"),
+            !plano.contains("!self.modifiers.alt_key()"),
             "o Alt voltou a ser ESCAPE (`!alt`) — a polaridade foi invertida em \
              2026-07-26 por ordem do Enio:\n{expr}"
         );

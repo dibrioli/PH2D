@@ -13,7 +13,7 @@ use std::fs;
 fn gesture_block() -> String {
     let src = fs::read_to_string("src/input_dispatch.rs").expect("input_dispatch.rs");
     let start = src
-        .find("if self.joint_draw_armed")
+        .find("if self.physics.joint_draw_armed")
         .expect("o arm do gesto de desenhar sumiu do handler de ponteiro");
     let rest = &src[start..];
     let end = rest
@@ -61,7 +61,7 @@ fn the_gesture_is_modal_and_precedes_the_generic_picking() {
         .find("pub(crate) fn on_mouse_input")
         .expect("o handler de botão do mouse sumiu — este gate tem de ser re-apontado")..];
     let gesture = dispatch
-        .find("if self.joint_draw_armed")
+        .find("if self.physics.joint_draw_armed")
         .expect("o arm do gesto não está no dispatch de ponteiro");
     let pick = dispatch
         .find("pick_sprites_at_world")
@@ -92,7 +92,7 @@ fn the_gesture_is_modal_and_precedes_the_generic_picking() {
 fn the_band_is_drawn_even_with_the_outline_off() {
     let call = fs::read_to_string("src/render_loop/mod.rs").expect("render_loop/mod.rs");
     assert!(
-        call.contains("joint_draw::band(self.joint_draw)"),
+        call.contains("joint_draw::band(self.physics.joint_draw)"),
         "o `physics_overlay::draw` não recebe mais a banda do gesto"
     );
     let overlay =
@@ -183,7 +183,7 @@ fn a_completed_gesture_disarms_and_a_refusal_does_not() {
         .find("pub(crate) fn joint_draw_release")
         .expect("o release sumiu")..];
     let disarm = release
-        .find("self.joint_draw_armed = false")
+        .find("self.physics.joint_draw_armed = false")
         .expect("um gesto completo não desarma — o próximo press criaria outro joint");
     let refusal = release
         .find("return; // segue armado")
@@ -292,7 +292,7 @@ fn the_draw_button_toggles_through_the_single_door() {
          derruba a banda), nunca escrever `joint_draw_armed` direto: {block}"
     );
     assert!(
-        !block.contains("self.joint_draw_armed = true"),
+        !block.contains("self.physics.joint_draw_armed = true"),
         "e não pode voltar a só ARMAR — foi isso que prendeu o artista no modo: {block}"
     );
 }

@@ -57,15 +57,19 @@ fn outside_frame_has_no_production_caller() {
         let Ok(src) = std::fs::read_to_string(f) else {
             continue;
         };
+        // ⚠️⚠️ **O salto vem ANTES da contagem, e a 1.ª redacção não o tinha:**
+        // um ficheiro cujo nome diz `_tests` ou que vive em `tests/` é um gate, e
+        // é exactamente quem PODE chamar — mas ele também é quem escreve o nome
+        // procurado como TEXTO. Este próprio ficheiro contém `pub fn
+        // outside_frame(` numa string, então contá-lo dava **2 definições** e o
+        // controlo positivo reprovava sobre uma árvore sã. *Uma varredura que se
+        // inclui a si própria mede o instrumento junto com o sujeito.*
+        let nome = f.to_string_lossy();
+        if nome.contains("_tests.rs") || nome.contains("/tests/") {
+            continue;
+        }
         if src.contains("pub fn outside_frame(") {
             definicoes += 1;
-        }
-        // Um ficheiro cujo nome diz `_tests` ou que vive em `tests/` é um gate —
-        // é exactamente quem PODE chamar.
-        let nome = f.to_string_lossy();
-        let e_teste = nome.contains("_tests.rs") || nome.contains("/tests/");
-        if e_teste {
-            continue;
         }
         for (i, linha) in src.lines().enumerate() {
             if linha.contains("outside_frame(") && !linha.contains("pub fn outside_frame(") {

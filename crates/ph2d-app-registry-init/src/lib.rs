@@ -81,17 +81,53 @@ mod tests {
         }
     }
 
+    /// **As famílias cuja extracção está a MEIO: a crate existe, os roteadores ainda não saíram.**
+    ///
+    /// ⚠️ **Isto é uma catraca, e ela só ENCOLHE** — cada nome sai daqui no dia em que a Fase B
+    /// daquela família levar o roteador de cenas para a crate. A lista chega a **vazia** e então
+    /// este bloco e a metade `if` do gate abaixo desaparecem com ela.
+    ///
+    /// ⛔⛔ **Por que ela tem de existir, em vez de o gate simplesmente aceitar `routers: &[]`:**
+    /// *«ainda não mudou»* e *«alguém esqueceu»* leem-se **exactamente igual** numa lista vazia —
+    /// é a mesma forma do `id órfão` contra o `controlo morto` (CLAUDE.md §5), cuja cura é oposta.
+    /// Escrever o nome aqui torna a ausência **declarada**: quem lê sabe que é dívida conhecida, e
+    /// quem acrescentar uma família nova sem roteador **reprova**, que é o que a L0 desenhou.
+    ///
+    /// ⚠️ **E a catraca traz o censo de obsolescência** (CLAUDE.md §5.0: *«uma catraca sem censo de
+    /// obsolescência não desce: ela vira LICENÇA»*) — a segunda metade do gate reprova um nome que
+    /// já não descreve nada, seja porque a família passou a declarar roteador, seja porque ela
+    /// deixou de existir.
+    ///
+    /// ⭐ **Medido em 2026-09-11, na integração das seis linhas da W2:** das cinco famílias da
+    /// Fase A, só a `flip` lê as próprias `PH2D_*_SMOKE` dentro da crate (15 delas); `vec`,
+    /// `motion`, `physics` e `sculpt3d` extraíram código e **não** o roteador — o `match` de cenas
+    /// toca a `App`, que é precisamente o que a Fase B ainda deve.
+    const FAMILIAS_COM_O_ROTEADOR_AINDA_NA_SHELL: &[&str] = &[];
+
     /// ⚠️ **Uma família registada tem de declarar pelo menos um roteador, e todo roteador tem de ter
     /// nível.** Sem esta metade, uma família que se registasse com `routers: &[]` passaria no gate
     /// acima **por vacuidade** — a armadilha do censo que mede zero e se lê como aprovado.
+    ///
+    /// A única excepção é **declarada, uma a uma**, na
+    /// [`FAMILIAS_COM_O_ROTEADOR_AINDA_NA_SHELL`] — e a excepção é gateada nos **dois** sentidos.
     #[test]
     fn every_registered_family_declares_a_reachable_router() {
         let reg = register_all_app_families();
         for f in reg.families() {
+            let a_meio = FAMILIAS_COM_O_ROTEADOR_AINDA_NA_SHELL.contains(&f.key);
             assert!(
-                !f.routers.is_empty(),
+                !f.routers.is_empty() || a_meio,
                 "a família `{}` regista-se e não declara roteador nenhum — ela é inalcançável pelo \
-                 smoke do dono, e o gate de colisão passa sobre ela por vacuidade",
+                 smoke do dono, e o gate de colisão passa sobre ela por vacuidade. Se a extracção \
+                 dela está a MEIO (a crate saiu, o roteador de cenas ficou na shell), escreva o \
+                 nome em `FAMILIAS_COM_O_ROTEADOR_AINDA_NA_SHELL` — uma ausência declarada é \
+                 dívida; uma ausência muda é um defeito",
+                f.key
+            );
+            assert!(
+                !(a_meio && !f.routers.is_empty()),
+                "a família `{}` está em `FAMILIAS_COM_O_ROTEADOR_AINDA_NA_SHELL` e JÁ declara \
+                 roteador — a entrada está obsoleta: apague-a (a catraca só encolhe)",
                 f.key
             );
             for r in f.routers {
@@ -108,6 +144,17 @@ mod tests {
                     f.key
                 );
             }
+        }
+        // ⛔ A OUTRA metade do censo de obsolescência: um nome na catraca que já não corresponde a
+        // família nenhuma desta build. Sem ela, uma família apagada (ou renomeada) deixaria a
+        // entrada para trás e a lista pararia de encolher sem ninguém ver — que é literalmente a
+        // «catraca que vira licença».
+        for orfao in FAMILIAS_COM_O_ROTEADOR_AINDA_NA_SHELL {
+            assert!(
+                reg.families().iter().any(|f| f.key == *orfao),
+                "`{orfao}` está em `FAMILIAS_COM_O_ROTEADOR_AINDA_NA_SHELL` e não é família \
+                 nenhuma desta build — a entrada está obsoleta, apague-a"
+            );
         }
     }
 

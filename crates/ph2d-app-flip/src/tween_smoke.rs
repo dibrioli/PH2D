@@ -22,19 +22,19 @@
 use ph2d_core::Vec2;
 use ph2d_flip::{FlipStroke, Hold, KeyKind, Point, Rgba};
 use std::sync::OnceLock;
-use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::atomic::AtomicU32;
 
-static FRAME: AtomicU32 = AtomicU32::new(0);
+pub static FRAME: AtomicU32 = AtomicU32::new(0);
 
-fn enabled() -> bool {
+pub fn enabled() -> bool {
     static ON: OnceLock<bool> = OnceLock::new();
     *ON.get_or_init(|| std::env::var_os("PH2D_FLIP_TWEEN_SMOKE").is_some())
 }
 
-const INK: Rgba = Rgba::new(0.92, 0.92, 0.95, 1.0);
+pub const INK: Rgba = Rgba::new(0.92, 0.92, 0.95, 1.0);
 
 /// Uma polilinha amostrada em `n` pontos, na espessura do traço de linha.
-fn line(pts: &[Vec2]) -> FlipStroke {
+pub fn line(pts: &[Vec2]) -> FlipStroke {
     let mut s = FlipStroke::new();
     for p in pts {
         s.push_point(Point {
@@ -48,7 +48,7 @@ fn line(pts: &[Vec2]) -> FlipStroke {
     s
 }
 
-fn seg(a: Vec2, b: Vec2, n: usize) -> Vec<Vec2> {
+pub fn seg(a: Vec2, b: Vec2, n: usize) -> Vec<Vec2> {
     (0..n)
         .map(|i| {
             let t = i as f32 / (n - 1) as f32;
@@ -58,7 +58,7 @@ fn seg(a: Vec2, b: Vec2, n: usize) -> Vec<Vec2> {
 }
 
 /// Gira `p` de `deg` graus em torno de `c` — o braço da pose B.
-fn turn(p: Vec2, c: Vec2, deg: f32) -> Vec2 {
+pub fn turn(p: Vec2, c: Vec2, deg: f32) -> Vec2 {
     let r = deg.to_radians();
     let (s, co) = (r.sin(), r.cos());
     let d = p - c;
@@ -66,14 +66,14 @@ fn turn(p: Vec2, c: Vec2, deg: f32) -> Vec2 {
 }
 
 /// O ombro — o pivô que o braço tem de manter parado durante o arco.
-const SHOULDER: Vec2 = Vec2::new(0.0, 1.2);
+pub const SHOULDER: Vec2 = Vec2::new(0.0, 1.2);
 
 /// **Monta as duas chaves no objeto** — a arte da cena, numa porta só.
 ///
 /// O gate abaixo encena pela MESMA função: uma cena de smoke que afirma três coisas e um
 /// gate que monta a arte por conta própria são dois fixtures que divergem, e aí a mensagem
 /// impressa passa a descrever um desenho que ninguém mais produz.
-pub(crate) fn stage(obj: &mut ph2d_flip::FlipObject) -> ph2d_flip::LayerId {
+pub fn stage(obj: &mut ph2d_flip::FlipObject) -> ph2d_flip::LayerId {
     let l = obj.add_layer("L");
     let torso = || line(&seg(Vec2::new(0.0, 1.2), Vec2::new(0.0, -0.6), 8));
     let leg = |dx: f32| line(&seg(Vec2::new(0.0, -0.6), Vec2::new(dx, -2.2), 8));
@@ -106,87 +106,6 @@ pub(crate) fn stage(obj: &mut ph2d_flip::FlipObject) -> ph2d_flip::LayerId {
         dr.strokes.push(line(&arm_b));
     }
     l
-}
-
-impl crate::App {
-    /// Roda no prólogo do frame (ao lado dos outros smokes). No-op sem a env.
-    pub(crate) fn flip_tween_smoke(&mut self) {
-        if !enabled() || self.gfx.is_none() {
-            return;
-        }
-        if FRAME.fetch_add(1, Ordering::Relaxed) != 3 {
-            return;
-        }
-        let gfx = self.gfx.as_mut().expect("gfx");
-        let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("flip"));
-
-        let oid = gfx.flip.push_object("Tween Smoke");
-        let obj = gfx.flip.object_mut(oid).expect("objeto recém-criado");
-        obj.fps = 12.0;
-        stage(obj);
-
-        self.flip_state.strip.tween_count = 3;
-        self.playhead.seek(0.0);
-        self.playhead.pause();
-
-        // ⚠️ **A cena DIZ o que construiu** — sem isto, um Add que gera inbetweens tortos é
-        // indistinguível de uma cena montada errada ([[feedback_ready_to_smoke_example]]).
-        eprintln!(
-            "\n[tween-smoke] cena montada: um bonequinho de palito em 2 quadros \
-             (0 e 8), Tween ja esta em 3."
-        );
-        eprintln!(
-            "\n\
-             O QUE ESTA NA TELA\n\
-             ==================\n\
-             Um boneco de palito: um TRONCO em pe, um BRACO saindo do ombro para a\n\
-             direita (como o ponteiro de um relogio marcando 3 horas), uma PERNA para a\n\
-             esquerda, e um CHAPEUZINHO em cima.\n\
-             \n\
-             Ele tem so DOIS desenhos: o quadro 0 (esse) e o quadro 8. No quadro 8 o\n\
-             braco girou para cima-e-para-a-esquerda (marcando ~10 horas), a perna trocou\n\
-             de lado, e o chapeu sumiu.\n\
-             \n\
-             O QUE FAZER\n\
-             ===========\n\
-             Aperte **Add** na barra da tira. Ele inventa os 3 quadros do meio (2, 4, 6).\n\
-             Depois use as setas ^/v (ou clique nas celulas da tira) para folhear\n\
-             0 -> 2 -> 4 -> 6 -> 8, ida e volta. E o boneco se mexendo.\n\
-             \n\
-             O QUE OLHAR (3 coisas, todas no quadro 4 -- o do meio)\n\
-             ======================================================\n\
-             \n\
-             1) O BRACO TEM DE FICAR DO MESMO TAMANHO.\n\
-             \n\
-                CERTO  : ele varre um arco, como o ponteiro do relogio indo das 3 para as\n\
-                         10 horas. Sempre do mesmo comprimento.\n\
-                ERRADO : ele ENCOLHE ate a METADE no quadro 4 e volta a crescer -- como\n\
-                         uma antena de radio recolhendo e saindo de novo.\n\
-             \n\
-                (Esse encolhimento e' o que o Blender faz, e o que nos faziamos ate ontem:\n\
-                 a ponta do braco corta o caminho em linha reta em vez de dar a volta.)\n\
-             \n\
-             2) O TRONCO NAO PODE SE MEXER, NEM UM POUCO.\n\
-             \n\
-                Ele foi desenhado IGUAL nos dois quadros, entao tem de ficar parado.\n\
-             \n\
-                Se ele escorregar para baixo ou para o lado, e' porque ele casou o\n\
-                tronco com a PERNA -- eu desenhei o quadro 8 na ordem trocada (perna\n\
-                primeiro) de proposito, que e' o que um animador faz sem pensar.\n\
-             \n\
-             3) O CHAPEU (marque **Fade** e aperte Add de novo).\n\
-             \n\
-                SEM Fade : o chapeu fica parado e inteiro ate o quadro 8, onde some de\n\
-                           uma vez. E' o padrao.\n\
-                COM Fade : ele vai ficando transparente quadro a quadro E acompanha o\n\
-                           movimento -- em vez de ficar pregado no ar enquanto o resto do\n\
-                           boneco se mexe embaixo dele.\n\
-             \n\
-             4) (opcional) O chip **Ease** muda o RITMO, nao o caminho: com 'Ease In' o\n\
-                boneco comeca devagar e acelera; com 'Ease Out', o contrario. Aperte Add\n\
-                de novo depois de trocar -- ele refaz, nao empilha.\n"
-        );
-    }
 }
 
 #[cfg(test)]
@@ -335,7 +254,7 @@ mod tests {
 #[cfg(test)]
 #[test]
 #[ignore = "sonda: imprime o que a cena de smoke mostra, quadro a quadro"]
-fn the_tween_smoke_look() {
+pub fn the_tween_smoke_look() {
     use ph2d_flip::{FlipDoc, TweenOptions, TweenRequest};
 
     for fade in [false, true] {

@@ -135,7 +135,10 @@ fn the_live_adjust_reruns_every_frame_the_gesture_wrote() {
     );
 }
 
-const SMOKE: &str = include_str!("../../src/flip/colorize_smoke.rs");
+/// ⚠️ **A metade `_app`** (W2/L5, 2026-09-11): a cena partiu-se — a geometria foi para
+/// `ph2d-app-flip` e o ARMAR (que toca `gfx.flip` e a tira) ficou na shell. As três coisas que
+/// este gate afirma são todas do armar, logo é esta metade que se lê.
+const SMOKE: &str = include_str!("../../src/flip/colorize_smoke_app.rs");
 
 /// 🔴 **A cena de smoke ARMA a seleção que a fatia precisa.**
 ///

@@ -25,18 +25,18 @@
 use ph2d_core::Vec2;
 use ph2d_flip::{FlipStroke, Hold, KeyKind, Point, Rgba};
 use std::sync::OnceLock;
-use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::atomic::AtomicU32;
 
-static FRAME: AtomicU32 = AtomicU32::new(0);
+pub static FRAME: AtomicU32 = AtomicU32::new(0);
 
-fn enabled() -> bool {
+pub fn enabled() -> bool {
     static ON: OnceLock<bool> = OnceLock::new();
     *ON.get_or_init(|| std::env::var_os("PH2D_FLIP_AIRBRUSH_SMOKE").is_some())
 }
 
 /// UM traço reto e GROSSO (vertical), na hardness 0.5: onde o padrão vira pico e o airbrush vira
 /// domo. `dx` desloca a cópia em x; `airbrush` troca o falloff. Opacity 1.0 (o falloff É o ponto).
-fn thick_stroke(dx: f32, airbrush: bool) -> FlipStroke {
+pub fn thick_stroke(dx: f32, airbrush: bool) -> FlipStroke {
     let ink = Rgba::new(0.20, 0.55, 0.85, 1.0); // um azul de tinta, o mesmo nos dois
     let mut s = FlipStroke::new();
     for &y in &[-0.9_f32, 0.9] {
@@ -54,7 +54,7 @@ fn thick_stroke(dx: f32, airbrush: bool) -> FlipStroke {
 
 /// **Monta a cena** — porta única (o gate/mensagem encenam por aqui). Uma camada, um quadro: o
 /// traço padrão à esquerda, o airbrush à direita. Devolve `(x_std, x_air)` das duas cópias.
-pub(crate) fn stage(obj: &mut ph2d_flip::FlipObject) -> (f32, f32) {
+pub fn stage(obj: &mut ph2d_flip::FlipObject) -> (f32, f32) {
     obj.fps = 12.0;
     obj.onion.enabled = false; // um quadro só; o onion sujaria a leitura do perfil.
 
@@ -66,65 +66,4 @@ pub(crate) fn stage(obj: &mut ph2d_flip::FlipObject) -> (f32, f32) {
         strokes.push(thick_stroke(x_air, true)); // DIREITA: airbrush (domo)
     }
     (x_std, x_air)
-}
-
-impl crate::App {
-    /// Roda no prólogo do frame (ao lado dos outros smokes). No-op sem a env.
-    pub(crate) fn flip_airbrush_smoke(&mut self) {
-        if !enabled() || self.gfx.is_none() {
-            return;
-        }
-        if FRAME.fetch_add(1, Ordering::Relaxed) != 3 {
-            return;
-        }
-        let gfx = self.gfx.as_mut().expect("gfx");
-        let tool_ok = gfx.tools.set_active(&ph2d_editor::ToolId::new("flip"));
-
-        let oid = gfx.flip.push_object("Airbrush Smoke");
-        let obj = gfx.flip.object_mut(oid).expect("objeto recem-criado");
-        let (x_std, x_air) = stage(obj);
-
-        self.playhead.seek(0.0);
-        self.playhead.pause();
-
-        eprintln!(
-            "\n[airbrush-smoke] cena montada: 2 tracos grossos a hardness 0.5 -- padrao em x={x_std}, \
-             airbrush em x={x_air}. Ferramenta flip ativa: {}.",
-            if tool_ok {
-                "sim"
-            } else {
-                "NAO (PARE: sem ela o traco nao e dirigido pela tool Flip)"
-            }
-        );
-        eprintln!(
-            "\n\
-             ============================================================\n\
-             ANTES DE TUDO: este terminal imprimiu, logo acima, a linha\n\
-             comecando com '[airbrush-smoke] cena montada'? Se NAO, PARE:\n\
-             o smoke nao rodou (arvore ou variavel de ambiente errada).\n\
-             ============================================================\n\
-             \n\
-             O que esta na tela: o MESMO traco grosso, a MESMA hardness\n\
-             (0.5), desenhado DUAS vezes:\n\
-               - ESQUERDA : Airbrush OFF -- o pincel padrao (a lei do\n\
-                            Painter): nucleo CHEIO ate a hardness, depois\n\
-                            cai ate zero na borda.\n\
-               - DIREITA  : Airbrush ON  -- um DOMO largo: a tinta cobre\n\
-                            quase toda a largura antes de rolar suave a\n\
-                            zero na borda (borda SEMPRE macia).\n\
-             \n\
-             ------------------------------------------------------------\n\
-             Medido (sonda headless, banda raio 10 a hardness 0.5):\n\
-                 eixo (centro)     255 padrao  vs  252 airbrush\n\
-                 aro  (dn ~0.8)     55 padrao  vs  231 airbrush\n\
-                 aro  (dn ~0.9)      7 padrao  vs  192 airbrush\n\
-             ------------------------------------------------------------\n\
-             \n\
-             O AJUSTE: no painel Flip (modo DRAW), abaixo do toggle Self\n\
-             Overlap, ha o toggle 'Airbrush'. Ligado, o slider Hardness\n\
-             vira a DENSIDADE da nevoa (0 = tenue, 1 = domo quase solido\n\
-             de borda macia). Casa com o Self Overlap: a acumulacao de\n\
-             airbrush e o build-up fisico da tinta. Se algo destoar, diga.\n"
-        );
-    }
 }

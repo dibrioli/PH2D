@@ -20,9 +20,25 @@
 //! crate de módulo. Ele é o que se grava e o que o undo fotografa. O que sai da shell para aqui é
 //! a metade de *aplicação*, nunca o modelo.
 
+pub mod airbrush_smoke;
+pub mod colorize_smoke;
 pub mod demo;
+pub mod edit_smoke;
 pub mod fill_dilate;
+pub mod fill_smoke;
+pub mod gap_live;
 pub mod multiframe;
+pub mod multiplane_smoke;
 pub mod peek;
+pub mod pose_smoke;
+pub mod segment_smoke;
+pub mod selection_smoke;
+pub mod self_overlap_smoke;
 pub mod smooth;
 pub mod strip_resolve;
+pub mod strip_smoke;
+pub mod tip_smoke;
+pub mod tween_pairs_smoke;
+pub mod tween_phase_smoke;
+pub mod tween_smoke;
+pub mod tween_torsion_smoke;

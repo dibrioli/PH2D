@@ -9105,7 +9105,7 @@ impl crate::App {
                 // worker (`flip_gap_live`, coords de ARTE); a pergunta do modo é a MESMA
                 // porta do tick, e a projeção é a MESMA cadeia do render (l2w ∘ pose).
                 flip_gap_overlay::draw(
-                    crate::flip::gap_live::wants_gap_helpers(flip_active, flip_style),
+                    ph2d_app_flip::gap_live::wants_gap_helpers(flip_active, flip_style),
                     &self.flip_state.gap.segments,
                     &l2w,
                     // A MESMA pose que a autoria dobra (`flip_transform::active_pose`) —

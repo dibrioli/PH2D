@@ -33,7 +33,7 @@ type GapKey = (u64, u32);
 /// Fill sim; **Unpaint não** (o Unpaint não roda o solver, então um helper ali seria a
 /// tela prometendo um fechamento que o clique não faz).
 #[must_use]
-pub(crate) fn wants_gap_helpers(active: bool, style: Option<FlipStyleSnapshot>) -> bool {
+pub fn wants_gap_helpers(active: bool, style: Option<FlipStyleSnapshot>) -> bool {
     active && style.is_some_and(|s| s.mode == FlipMode::Fill && s.fill_mode != FillMode::Unpaint)
 }
 
@@ -45,7 +45,7 @@ pub(crate) fn wants_gap_helpers(active: bool, style: Option<FlipStyleSnapshot>) 
 /// widget no store e o `SetValue` que o tool clampa — o mesmo par que o próprio slider
 /// emite num arrasto (`panel-flip/event.rs`).
 #[must_use]
-pub(crate) fn gap_wheel_track(
+pub fn gap_wheel_track(
     active: bool,
     style: Option<FlipStyleSnapshot>,
     notches: f32,
@@ -60,14 +60,14 @@ pub(crate) fn gap_wheel_track(
 
 /// Unidades de MUNDO de Gap por tique da roda — 0,05 doc (20 tiques no alcance de 0 a 1,0),
 /// a mesma ordem de granularidade dos ~40 tiques que o antigo 1 px/tique dava em 0..40.
-const GAP_WHEEL_STEP: f64 = 0.05;
+pub const GAP_WHEEL_STEP: f64 = 0.05;
 
 /// FNV-1a sobre o CONTEÚDO do desenho — posições, larguras, `closed` e os flags que
 /// separam linha de preenchimento. É um SUPERSET do que o `boundaries()` filtra, de
 /// propósito: repetir o filtro aqui seria a 2ª cópia de "o que é fronteira" (a que
 /// diverge em silêncio); sobre-invalidar só custa um worker a mais, nunca um helper
 /// velho.
-fn fingerprint(drawing: &FlipDrawing) -> u64 {
+pub fn fingerprint(drawing: &FlipDrawing) -> u64 {
     const OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
     const PRIME: u64 = 0x0000_0100_0000_01b3;
     let mut h = OFFSET;
@@ -94,11 +94,11 @@ fn fingerprint(drawing: &FlipDrawing) -> u64 {
 
 /// O estado dos helpers: o resultado instalado + o worker em voo.
 #[derive(Default)]
-pub(crate) struct GapHelpers {
+pub struct GapHelpers {
     /// A chave do resultado INSTALADO — o que o overlay está desenhando.
     key: Option<GapKey>,
     /// Os segmentos instalados, em coords de ARTE (o overlay projeta por frame).
-    pub(crate) segments: Vec<GapHelper>,
+    pub segments: Vec<GapHelper>,
     /// O cálculo em voo (no máximo UM) e a chave que ele computa.
     job: Option<(GapKey, Job<Vec<GapHelper>>)>,
 }
@@ -106,7 +106,7 @@ pub(crate) struct GapHelpers {
 impl GapHelpers {
     /// Fora do modo Fill: nada na tela, nada em voo. (Derrubar o `Job` descarta o
     /// resultado; a thread termina sozinha.)
-    pub(crate) fn clear(&mut self) {
+    pub fn clear(&mut self) {
         self.key = None;
         self.segments.clear();
         self.job = None;
@@ -114,7 +114,7 @@ impl GapHelpers {
 
     /// Um passo da máquina: colhe o worker se terminou, e lança outro se o alvo mudou.
     /// Devolve `true` quando INSTALOU segmentos novos (o chamador pede repaint).
-    pub(crate) fn drive(&mut self, reach: f32, drawing: &FlipDrawing) -> bool {
+    pub fn drive(&mut self, reach: f32, drawing: &FlipDrawing) -> bool {
         // Alcance nulo: `closures()` seria vazio por definição — instala vazio sem
         // pagar worker nenhum (é o estado do slider em 0, o default).
         let want: GapKey = (fingerprint(drawing), reach.to_bits());
@@ -146,64 +146,12 @@ impl GapHelpers {
         }
 
         // ── 3. Sai um worker (um só; geometria CLONADA — ele nunca vê o FlipDoc). ──
-        let lines = ph2d_app_flip::fill_dilate::boundaries(drawing);
+        let lines = crate::fill_dilate::boundaries(drawing);
         self.job = Some((
             want,
             Job::spawn("gap-helpers", move |_| preview_closures(&lines, reach)),
         ));
         installed
-    }
-}
-
-impl crate::App {
-    /// Roda no prólogo do frame (ao lado do ajuste ao vivo do Colorize): mantém os
-    /// helpers do Gap Closure sincronizados com o desenho NA TELA e o alcance atual.
-    pub(crate) fn flip_gap_helpers_tick(&mut self) {
-        if !wants_gap_helpers(self.flip_state.active, self.flip_state.style) {
-            self.flip_state.gap.clear();
-            return;
-        }
-        let Some(style) = self.flip_state.style else {
-            self.flip_state.gap.clear();
-            return;
-        };
-        // **A MESMA régua do clique** (`fill_click`): o Gap é em unidades de MUNDO, a
-        // geometria é LOCAL, então só a escala do objeto atravessa (mundo→local) — SEM
-        // `px_to_world`. Helper e clique têm de usar a mesma fórmula, senão a tela mostra
-        // um vão que o clique não fecha. É a régua zoom-invariante (Enio 2026-07-25).
-        let w2l = self.flip_active_world_to_local();
-        let obj_scale = w2l.mean_scale() as f32;
-        let Some(gfx) = self.gfx.as_ref() else {
-            self.flip_state.gap.clear();
-            return;
-        };
-        let reach = (style.gap as f32) * obj_scale;
-
-        // O desenho NA TELA, read-only — nunca o `flip_autokey` (que CRIA chave; um
-        // overlay que autora seria o gesto acontecendo sem ninguém gesticular).
-        let Some((oid, lid)) =
-            ph2d_app_flip::strip_resolve::target(&gfx.flip, self.flip_state.active_layer)
-        else {
-            self.flip_state.gap.clear();
-            return;
-        };
-        let Some(obj) = gfx.flip.object(oid) else {
-            self.flip_state.gap.clear();
-            return;
-        };
-        let frame = obj.frame_at(&self.playhead);
-        let Some(drawing) = obj
-            .layer(lid)
-            .and_then(|l| l.drawing_at_cycled(frame))
-            .and_then(|did| obj.drawing(did))
-        else {
-            self.flip_state.gap.clear();
-            return;
-        };
-        if self.flip_state.gap.drive(reach, drawing) {
-            // Sem repaint o resultado espera o próximo input para aparecer.
-            self.title_dirty = true;
-        }
     }
 }
 

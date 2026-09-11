@@ -15,24 +15,24 @@ use ph2d_core::Vec2;
 use ph2d_flip::{FlipStroke, Hold, KeyKind, Point, Rgba};
 use std::f32::consts::TAU;
 use std::sync::OnceLock;
-use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::atomic::AtomicU32;
 
-static FRAME: AtomicU32 = AtomicU32::new(0);
+pub static FRAME: AtomicU32 = AtomicU32::new(0);
 
-fn enabled() -> bool {
+pub fn enabled() -> bool {
     static ON: OnceLock<bool> = OnceLock::new();
     *ON.get_or_init(|| std::env::var_os("PH2D_FLIP_TWEEN_PHASE_SMOKE").is_some())
 }
 
-const INK: Rgba = Rgba::new(0.92, 0.92, 0.95, 1.0);
+pub const INK: Rgba = Rgba::new(0.92, 0.92, 0.95, 1.0);
 /// Quantos pontos no blob (denso o bastante para a fase ter sentido — bem acima do piso).
-const N: usize = 40;
+pub const N: usize = 40;
 
 /// **Um blob-vírgula**: um círculo de raio `r` com um "nariz" apontando para `+X`, começando
 /// pelo vértice `start` (a COSTURA), transladado por `off`. A e B usam o MESMO blob (mesma
 /// forma), só a costura e a posição mudam — é isso que torna a fase o único jeito de o meio
 /// sair limpo. É a MESMA arte que o gate do motor usa, na `ph2d-flip`.
-fn blob(r: f32, start: usize, off: Vec2) -> FlipStroke {
+pub fn blob(r: f32, start: usize, off: Vec2) -> FlipStroke {
     let mut s = FlipStroke::new();
     for i in 0..N {
         let a = ((i + start) % N) as f32 / N as f32 * TAU;
@@ -52,7 +52,7 @@ fn blob(r: f32, start: usize, off: Vec2) -> FlipStroke {
 /// **Monta as duas chaves** — o mesmo blob, costura movida meia-volta, deslizando da esquerda
 /// para a direita. Porta única: o gate encena por AQUI (senão a mensagem impressa descreveria
 /// um desenho que ninguém mais produz).
-pub(crate) fn stage(obj: &mut ph2d_flip::FlipObject) -> ph2d_flip::LayerId {
+pub fn stage(obj: &mut ph2d_flip::FlipObject) -> ph2d_flip::LayerId {
     let l = obj.add_layer("L");
     // CHAVE 0: blob à ESQUERDA, costura no nariz (índice 0).
     if let Some(d0) = obj.insert_frame(l, 0, Hold::Implicit, KeyKind::Keyframe) {
@@ -69,70 +69,6 @@ pub(crate) fn stage(obj: &mut ph2d_flip::FlipObject) -> ph2d_flip::LayerId {
             .push(blob(1.2, N / 2, Vec2::new(2.2, 0.0)));
     }
     l
-}
-
-impl crate::App {
-    /// Roda no prólogo do frame (ao lado dos outros smokes). No-op sem a env.
-    pub(crate) fn flip_tween_phase_smoke(&mut self) {
-        if !enabled() || self.gfx.is_none() {
-            return;
-        }
-        if FRAME.fetch_add(1, Ordering::Relaxed) != 3 {
-            return;
-        }
-        let gfx = self.gfx.as_mut().expect("gfx");
-        let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("flip"));
-
-        let oid = gfx.flip.push_object("Phase Smoke");
-        let obj = gfx.flip.object_mut(oid).expect("objeto recém-criado");
-        obj.fps = 12.0;
-        stage(obj);
-
-        self.flip_state.strip.tween_count = 3;
-        self.playhead.seek(0.0);
-        self.playhead.pause();
-
-        eprintln!(
-            "\n[phase-smoke] cena montada: o MESMO blob em 2 quadros (0 e 8), desenhado a \
-             partir de pontos de partida diferentes. Tween ja esta em 3."
-        );
-        eprintln!(
-            "\n\
-             O QUE ESTA NA TELA\n\
-             ==================\n\
-             Um BLOB (uma gota/virgula com um narizinho apontando para a DIREITA), a\n\
-             esquerda do centro. Ele tem so DOIS desenhos: o quadro 0 (esse) e o quadro 8,\n\
-             onde o MESMO blob esta a direita do centro.\n\
-             \n\
-             A pegadinha: nos dois quadros o blob e' identico em FORMA, mas foi 'desenhado'\n\
-             a partir de pontos de partida diferentes -- no quadro 0 o traço fecha no\n\
-             nariz; no quadro 8, nas costas. Num traço FECHADO o ponto de partida e'\n\
-             arbitrario (e' so onde a linha fecha), e o tween pareia ponto-por-ponto a\n\
-             partir dali.\n\
-             \n\
-             O QUE FAZER\n\
-             ===========\n\
-             Aperte **Add** na barra da tira. Ele inventa os 3 quadros do meio (2, 4, 6).\n\
-             Folheie 0 -> 2 -> 4 -> 6 -> 8 com as setas ^/v (ou clicando nas celulas).\n\
-             \n\
-             O QUE OLHAR (o quadro 4 -- o do meio)\n\
-             =====================================\n\
-             \n\
-             O BLOB TEM DE DESLIZAR EM LINHA RETA, da esquerda para a direita, sempre em\n\
-             pe e do mesmo tamanho.\n\
-             \n\
-                CERTO  : uma gota inteira que atravessa RETO pelo centro, o narizinho\n\
-                         sempre apontando para a direita.\n\
-                ERRADO : ela MERGULHA para baixo e faz um LAÇO (uma cambalhota), voltando\n\
-                         a subir e chegando de cabeca para baixo -- porque o nariz de um\n\
-                         quadro foi pareado com as COSTAS do outro, e a espiral leu isso\n\
-                         como uma virada de 180 graus.\n\
-             \n\
-             (Esse laço e' o que o pareamento por indice faz com traço fechado quando a\n\
-              costura muda de lugar. O alinhamento de fase gira o pareamento ate as duas\n\
-              formas coincidirem, e ai o giro fantasma some.)\n"
-        );
-    }
 }
 
 #[cfg(test)]
@@ -214,7 +150,7 @@ mod tests {
 #[cfg(test)]
 #[test]
 #[ignore = "sonda: imprime o que a cena de fase mostra, quadro a quadro"]
-fn the_phase_smoke_look() {
+pub fn the_phase_smoke_look() {
     use ph2d_flip::{FlipDoc, TweenOptions, TweenRequest};
 
     let mut doc = FlipDoc::default();

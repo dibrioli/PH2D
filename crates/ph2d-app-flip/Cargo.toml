@@ -38,6 +38,14 @@ ph2d-flip = { path = "../ph2d-flip" }
 # O balde (a dilatação do vão) e a escultura de traço — as leis que o editor chama.
 ph2d-flip-fill = { path = "../ph2d-flip-fill" }
 ph2d-flip-reshape = { path = "../ph2d-flip-reshape" }
+# O ESTILO e os modos da tool (`FlipStyleSnapshot`, `FillMode`, `GAP_MAX_WORLD`) — as cenas de
+# smoke e os helpers ao vivo lêem-nos; a tool em si continua a ser quem os autora.
+ph2d-tool-flip = { path = "../ph2d-tool-flip" }
+# ⚠️ Só pelo `Job` (o worker do Gap Closure) e pelos ids/acções que uma cena de smoke arma.
+# NÃO é a shell: o `ph2d-editor` é a crate de widgets, e a shell também depende dela.
+ph2d-editor = { path = "../ph2d-editor" }
+# HR-5: a trigonometria determinística (o mesmo `libm` que o resto do desenho usa).
+libm = "0.2"
 # O modo de mistura das camadas do Flip.
 ph2d-painter-effects = { path = "../ph2d-painter-effects" }
 # ⚠️ Só pelo `KeyCode` do `peek`: a POLÍTICA de teclado é pura (tecla -> transição), e é ela

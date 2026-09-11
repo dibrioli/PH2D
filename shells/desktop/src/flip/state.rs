@@ -51,7 +51,7 @@ pub(crate) struct FlipState {
     /// Doc 06 §8: os helpers ao vivo do Gap Closure — os vãos que o alcance atual
     /// fecha, computados num worker (o custo é 5-339 ms, medido) e desenhados pelo
     /// overlay em modo Fill. Display-only: nunca toca o documento.
-    pub gap: crate::flip::gap_live::GapHelpers,
+    pub gap: ph2d_app_flip::gap_live::GapHelpers,
     /// ADR-0114 C2: o botão Apply/Clear do Colorize foi clicado neste frame? O drain de
     /// painel roda com `self.gfx` preso; o gesto real (que precisa de `self` livre) roda no
     /// topo do frame seguinte. Falso fora do clique.

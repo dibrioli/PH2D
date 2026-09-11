@@ -9,7 +9,7 @@ use super::*;
 use ph2d_core::Vec2;
 use ph2d_flip::{FlipStroke, Point, Rgba};
 
-fn stroke(pts: &[(f32, f32)]) -> FlipStroke {
+pub fn stroke(pts: &[(f32, f32)]) -> FlipStroke {
     let mut s = FlipStroke::new();
     for &(x, y) in pts {
         s.push_point(Point {
@@ -24,7 +24,7 @@ fn stroke(pts: &[(f32, f32)]) -> FlipStroke {
 
 /// O fixture canônico do BUGS #23: a caixa cuja parede direita tem o vão COLINEAR de
 /// 1,0 (entre (2,-0.5) e (2,0.5)) — o vão que só o par ponta-a-ponta fecha.
-fn canonical_gap_drawing() -> FlipDrawing {
+pub fn canonical_gap_drawing() -> FlipDrawing {
     let mut d = FlipDrawing::new();
     d.strokes.push(stroke(&[(2.0, -2.0), (2.0, -0.5)]));
     d.strokes.push(stroke(&[(2.0, 0.5), (2.0, 2.0)]));
@@ -38,7 +38,7 @@ fn canonical_gap_drawing() -> FlipDrawing {
 }
 
 /// O helper do vão canônico está na lista — e é uma PONTE (as duas pontas reais)?
-fn has_tip_pair(segments: &[ph2d_flip_fill::GapHelper]) -> bool {
+pub fn has_tip_pair(segments: &[ph2d_flip_fill::GapHelper]) -> bool {
     segments.iter().any(|h| {
         let (lo, hi) = if h.seg.a.y < h.seg.b.y {
             (h.seg.a, h.seg.b)
@@ -51,7 +51,7 @@ fn has_tip_pair(segments: &[ph2d_flip_fill::GapHelper]) -> bool {
 
 /// Dirige a máquina até o worker instalar (ou o timeout estourar) — o mesmo poll por
 /// frame do produto.
-fn drive_until_installed(g: &mut GapHelpers, reach: f32, d: &FlipDrawing) {
+pub fn drive_until_installed(g: &mut GapHelpers, reach: f32, d: &FlipDrawing) {
     for _ in 0..400 {
         if g.drive(reach, d) {
             return;
@@ -64,7 +64,7 @@ fn drive_until_installed(g: &mut GapHelpers, reach: f32, d: &FlipDrawing) {
 /// **A porta do modo** — helpers só em Fill, e NUNCA em Unpaint (que não roda o solver:
 /// um helper ali prometeria um fechamento que o clique não faz).
 #[test]
-fn helpers_exist_only_in_fill_mode_and_never_in_unpaint() {
+pub fn helpers_exist_only_in_fill_mode_and_never_in_unpaint() {
     use ph2d_tool_flip::{FillMode, FlipMode, FlipStyleSnapshot};
     let style = |mode, fill_mode| {
         Some(FlipStyleSnapshot {
@@ -102,7 +102,7 @@ fn helpers_exist_only_in_fill_mode_and_never_in_unpaint() {
 /// Mutação que sangra: tirar o clamp (o track passa de 1.0 e o tool clamparia sozinho,
 /// mas o KNOB do painel desenharia fora do trilho) — ou inverter o passo.
 #[test]
-fn the_wheel_moves_one_world_step_per_notch_and_clamps() {
+pub fn the_wheel_moves_one_world_step_per_notch_and_clamps() {
     use ph2d_tool_flip::{FillMode, FlipMode, FlipStyleSnapshot, GAP_MAX_WORLD};
     let fill = |gap| {
         Some(FlipStyleSnapshot {
@@ -144,7 +144,7 @@ fn the_wheel_moves_one_world_step_per_notch_and_clamps() {
 /// **Alcance zero instala vazio SEM worker** — é o default do slider, e pagar uma
 /// thread para computar uma lista vazia por definição seria ruído.
 #[test]
-fn reach_zero_installs_empty_without_a_worker() {
+pub fn reach_zero_installs_empty_without_a_worker() {
     let d = canonical_gap_drawing();
     let mut g = GapHelpers::default();
     let changed = g.drive(0.0, &d);
@@ -160,7 +160,7 @@ fn reach_zero_installs_empty_without_a_worker() {
 /// Mutações que sangram: nunca lançar o worker (o poll estoura) · ignorar a chave e
 /// relançar sempre (o `job.is_none()` do fim cai).
 #[test]
-fn the_canonical_gap_installs_its_helper_once_and_caches_it() {
+pub fn the_canonical_gap_installs_its_helper_once_and_caches_it() {
     let d = canonical_gap_drawing();
     let mut g = GapHelpers::default();
     drive_until_installed(&mut g, 1.0, &d);
@@ -179,7 +179,7 @@ fn the_canonical_gap_installs_its_helper_once_and_caches_it() {
 /// par não fecha, então o helper dele TEM de sumir; um helper que fica é o slider
 /// mentindo para baixo).
 #[test]
-fn a_new_reach_relaunches_and_the_helper_follows() {
+pub fn a_new_reach_relaunches_and_the_helper_follows() {
     let d = canonical_gap_drawing();
     let mut g = GapHelpers::default();
     drive_until_installed(&mut g, 1.0, &d);
@@ -199,7 +199,7 @@ fn a_new_reach_relaunches_and_the_helper_follows() {
 /// alcance sobre um desenho mudado relança — sem isto o artista apaga uma parede e os
 /// helpers continuam descrevendo a que não existe.
 #[test]
-fn an_edited_drawing_invalidates_the_cache() {
+pub fn an_edited_drawing_invalidates_the_cache() {
     let mut d = canonical_gap_drawing();
     let mut g = GapHelpers::default();
     drive_until_installed(&mut g, 1.0, &d);
@@ -226,7 +226,7 @@ fn an_edited_drawing_invalidates_the_cache() {
 ///
 /// Mutação que sangra: instalar incondicionalmente no `try_take` (ignorar `jk == want`).
 #[test]
-fn a_stale_result_is_discarded_not_installed() {
+pub fn a_stale_result_is_discarded_not_installed() {
     let d = canonical_gap_drawing();
     let mut g = GapHelpers::default();
     let _ = g.drive(1.0, &d); // o worker de 1,0 sai…

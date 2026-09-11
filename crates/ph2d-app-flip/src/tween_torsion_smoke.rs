@@ -16,18 +16,18 @@ use ph2d_core::Vec2;
 use ph2d_flip::{FlipStroke, Hold, KeyKind, Point, Rgba};
 use std::f32::consts::PI;
 use std::sync::OnceLock;
-use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::atomic::AtomicU32;
 
-static FRAME: AtomicU32 = AtomicU32::new(0);
+pub static FRAME: AtomicU32 = AtomicU32::new(0);
 
-fn enabled() -> bool {
+pub fn enabled() -> bool {
     static ON: OnceLock<bool> = OnceLock::new();
     *ON.get_or_init(|| std::env::var_os("PH2D_FLIP_TWEEN_TORSION_SMOKE").is_some())
 }
 
-const INK: Rgba = Rgba::new(0.92, 0.92, 0.95, 1.0);
+pub const INK: Rgba = Rgba::new(0.92, 0.92, 0.95, 1.0);
 /// Pontos na asa (as MESMAS proporções do fixture do motor, `bumped_arm`: 9 pontos, braço 96).
-const N: usize = 9;
+pub const N: usize = 9;
 
 /// **Uma ASA**: um braço do ombro (origem) ao longo de `+X` (comprimento 96), com uma CORCOVA
 /// perpendicular de amplitude `hump` (perfil `sin`, mean-free — o resíduo PURO), o todo girado
@@ -35,7 +35,7 @@ const N: usize = 9;
 /// corcova está PRESA ao corpo, e é o giro grande que a faz apontar para o lado errado no meio
 /// pelo lerp. É o MESMO fixture (proporções) que o gate do motor usa, na `ph2d-flip`
 /// (`bumped_arm`): braço 96, corcova até 34 (≈ 1/3 do braço).
-fn wing(hump: f32, deg: f32) -> FlipStroke {
+pub fn wing(hump: f32, deg: f32) -> FlipStroke {
     let (s, co) = deg.to_radians().sin_cos();
     let mut out = FlipStroke::new();
     for i in 0..N {
@@ -57,7 +57,7 @@ fn wing(hump: f32, deg: f32) -> FlipStroke {
 /// braço 0 sem corcova torna o resíduo o crescimento INTEIRO da corcova (o caso limpo). Porta
 /// única: o gate encena por AQUI (senão a mensagem impressa descreveria um desenho que ninguém
 /// mais produz).
-pub(crate) fn stage(obj: &mut ph2d_flip::FlipObject) -> ph2d_flip::LayerId {
+pub fn stage(obj: &mut ph2d_flip::FlipObject) -> ph2d_flip::LayerId {
     let l = obj.add_layer("L");
     if let Some(d0) = obj.insert_frame(l, 0, Hold::Implicit, KeyKind::Keyframe) {
         obj.drawing_mut(d0)
@@ -72,63 +72,6 @@ pub(crate) fn stage(obj: &mut ph2d_flip::FlipObject) -> ph2d_flip::LayerId {
             .push(wing(34.0, 160.0));
     }
     l
-}
-
-impl crate::App {
-    /// Roda no prólogo do frame (ao lado dos outros smokes). No-op sem a env.
-    pub(crate) fn flip_tween_torsion_smoke(&mut self) {
-        if !enabled() || self.gfx.is_none() {
-            return;
-        }
-        if FRAME.fetch_add(1, Ordering::Relaxed) != 3 {
-            return;
-        }
-        let gfx = self.gfx.as_mut().expect("gfx");
-        let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("flip"));
-
-        let oid = gfx.flip.push_object("Torsion Smoke");
-        let obj = gfx.flip.object_mut(oid).expect("objeto recém-criado");
-        obj.fps = 12.0;
-        stage(obj);
-
-        self.flip_state.strip.tween_count = 3;
-        self.playhead.seek(0.0);
-        self.playhead.pause();
-
-        eprintln!(
-            "\n[torsion-smoke] cena montada: uma ASA em 2 quadros (0 e 8). Tween ja esta em 3."
-        );
-        eprintln!(
-            "\n\
-             O QUE ESTA NA TELA\n\
-             ==================\n\
-             Uma ASA (um braço saindo do ombro para a DIREITA, quase reto, com uma corcovinha\n\
-             de leve para cima). Ela tem so DOIS desenhos: o quadro 0 (esse) e o quadro 8,\n\
-             onde a MESMA asa girou ~160 graus (agora aponta para a ESQUERDA-e-para-baixo) E\n\
-             ganhou uma corcova bem MAIOR.\n\
-             \n\
-             O QUE FAZER\n\
-             ===========\n\
-             Aperte **Add** na barra da tira. Ele inventa os 3 quadros do meio (2, 4, 6).\n\
-             Folheie 0 -> 2 -> 4 -> 6 -> 8 com as setas ^/v (ou clicando nas celulas).\n\
-             \n\
-             O QUE OLHAR (o quadro 4 -- o do meio)\n\
-             =====================================\n\
-             \n\
-             A asa tem de girar meia-viagem (~80 graus) COM a corcova crescendo do lado\n\
-             CERTO -- a corcova acompanha o corpo enquanto ele gira.\n\
-             \n\
-                CERTO  : uma asa meio-girada, com uma corcova de tamanho intermediario\n\
-                         apontando para FORA da curva, na atitude do corpo a 80 graus.\n\
-                ERRADO : a asa fica quase RETA no meio (a corcova ACHATA/some), ou a\n\
-                         corcova aponta para o lado errado -- porque o resíduo (o crescimento\n\
-                         da corcova) foi somado a 160 graus enquanto o corpo so girou 80, e\n\
-                         os dois se cancelam.\n\
-             \n\
-             (Esse achatamento e' a torção do resíduo sob giro grande. A co-rotação gira o\n\
-              resíduo JUNTO com o corpo, e a corcova do meio aparece inteira e no lugar.)\n"
-        );
-    }
 }
 
 #[cfg(test)]
@@ -223,7 +166,7 @@ mod tests {
 #[cfg(test)]
 #[test]
 #[ignore = "sonda: imprime o que a cena de torção mostra, quadro a quadro"]
-fn the_torsion_smoke_look() {
+pub fn the_torsion_smoke_look() {
     use ph2d_flip::{FlipDoc, TweenOptions, TweenRequest};
 
     let mut doc = FlipDoc::default();

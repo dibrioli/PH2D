@@ -3394,7 +3394,7 @@ impl App {
         // fill, e esta é a divergência deliberada, documentada em vez de silenciosa.
         if !over_panel
             && (self.modifiers.control_key() || self.modifiers.super_key())
-            && let Some(track) = crate::flip::gap_live::gap_wheel_track(
+            && let Some(track) = ph2d_app_flip::gap_live::gap_wheel_track(
                 self.flip_state.active,
                 self.flip_state.style,
                 dy / 16.0,

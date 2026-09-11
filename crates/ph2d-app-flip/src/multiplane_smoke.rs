@@ -22,17 +22,17 @@
 use ph2d_core::Vec2;
 use ph2d_flip::{Fill, FlipStroke, Hold, KeyKind, Point, Rgba};
 use std::sync::OnceLock;
-use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::atomic::AtomicU32;
 
-static FRAME: AtomicU32 = AtomicU32::new(0);
+pub static FRAME: AtomicU32 = AtomicU32::new(0);
 
-fn enabled() -> bool {
+pub fn enabled() -> bool {
     static ON: OnceLock<bool> = OnceLock::new();
     *ON.get_or_init(|| std::env::var_os("PH2D_FLIP_MULTIPLANE_SMOKE").is_some())
 }
 
 /// Um traço grosso a partir de uma lista de pontos (uma polilinha), na cor dada.
-fn line(points: &[(f32, f32)], width: f32, colour: Rgba) -> FlipStroke {
+pub fn line(points: &[(f32, f32)], width: f32, colour: Rgba) -> FlipStroke {
     let mut s = FlipStroke::new();
     for &(x, y) in points {
         s.push_point(Point {
@@ -47,7 +47,7 @@ fn line(points: &[(f32, f32)], width: f32, colour: Rgba) -> FlipStroke {
 }
 
 /// Um polígono PREENCHIDO (silhueta sólida — lê como plano, não como contorno).
-fn filled(points: &[(f32, f32)], colour: Rgba) -> FlipStroke {
+pub fn filled(points: &[(f32, f32)], colour: Rgba) -> FlipStroke {
     let mut s = line(points, 0.06, colour);
     s.closed = true;
     s.fill = Some(Fill {
@@ -58,7 +58,7 @@ fn filled(points: &[(f32, f32)], colour: Rgba) -> FlipStroke {
 }
 
 /// A serra do FUNDO: dois picos pálidos atravessando a largura, altos na tela.
-fn mountains() -> FlipStroke {
+pub fn mountains() -> FlipStroke {
     let sky = Rgba::new(0.62, 0.72, 0.86, 1.0);
     filled(
         &[
@@ -73,7 +73,7 @@ fn mountains() -> FlipStroke {
 }
 
 /// A ÁRVORE do meio: um tronco marrom + uma copa verde triangular, em `x = 0`.
-fn tree() -> (FlipStroke, FlipStroke) {
+pub fn tree() -> (FlipStroke, FlipStroke) {
     let trunk = line(
         &[(0.0, -0.45), (0.0, 0.05)],
         0.16,
@@ -87,7 +87,7 @@ fn tree() -> (FlipStroke, FlipStroke) {
 }
 
 /// A CERCA da frente: quatro postes saturados embaixo + uma travessa, em warm.
-fn fence() -> FlipStroke {
+pub fn fence() -> FlipStroke {
     // Uma polilinha só: sobe/desce por cada poste e cruza a travessa — traço grosso.
     let warm = Rgba::new(0.90, 0.55, 0.22, 1.0);
     line(
@@ -112,7 +112,7 @@ fn fence() -> FlipStroke {
 /// camadas nascem de TRÁS para a FRENTE (índice 0 = fundo); a última (Cerca) é a
 /// ATIVA, que é o fallback do bridge. Cada plano é um único quadro estático — a
 /// paralaxe é do PAN, não da animação. Devolve as três `(nome, depth)` autoradas.
-pub(crate) fn stage(obj: &mut ph2d_flip::FlipObject) -> [(&'static str, f32); 3] {
+pub fn stage(obj: &mut ph2d_flip::FlipObject) -> [(&'static str, f32); 3] {
     obj.fps = 12.0;
     // Sem fantasmas: um único quadro por plano, e o onion sujaria a leitura da
     // paralaxe (o assunto aqui é o PAN, não o inbetween).
@@ -150,70 +150,4 @@ pub(crate) fn stage(obj: &mut ph2d_flip::FlipObject) -> [(&'static str, f32); 3]
     // depth fica no default 1.0.
 
     [("Ceu", 0.15), ("Arvore", 0.50), ("Cerca", 1.00)]
-}
-
-impl crate::App {
-    /// Roda no prólogo do frame (ao lado dos outros smokes). No-op sem a env.
-    pub(crate) fn flip_multiplane_smoke(&mut self) {
-        if !enabled() || self.gfx.is_none() {
-            return;
-        }
-        if FRAME.fetch_add(1, Ordering::Relaxed) != 3 {
-            return;
-        }
-        let gfx = self.gfx.as_mut().expect("gfx");
-        let tool_ok = gfx.tools.set_active(&ph2d_editor::ToolId::new("flip"));
-
-        let oid = gfx.flip.push_object("Multiplane Smoke");
-        let obj = gfx.flip.object_mut(oid).expect("objeto recém-criado");
-        let planes = stage(obj);
-
-        self.playhead.seek(0.0);
-        self.playhead.pause();
-
-        eprintln!(
-            "\n[multiplane-smoke] cena montada: 3 planos {planes:?} (nome, depth). \
-             Ferramenta flip ativa: {}.",
-            if tool_ok {
-                "sim"
-            } else {
-                "NAO (PARE: sem ela a paralaxe nao e dirigida pela tool Flip)"
-            }
-        );
-        eprintln!(
-            "\n\
-             ============================================================\n\
-             ANTES DE TUDO: este terminal imprimiu, logo acima, a linha\n\
-             comecando com '[multiplane-smoke] cena montada'? Se NAO,\n\
-             PARE: o smoke nao rodou (arvore ou variavel de ambiente\n\
-             errada).\n\
-             ============================================================\n\
-             \n\
-             O que esta na tela: uma PAISAGEM em tres planos.\n\
-               - FUNDO  : uma serra AZUL-PALIDA atravessando o alto.\n\
-               - MEIO   : uma ARVORE verde no centro.\n\
-               - FRENTE : uma CERCA laranja embaixo (4 postes).\n\
-             Parado, os tres estao alinhados (a camera esta sobre a\n\
-             origem, e ai todos os planos coincidem -- e' o certo).\n\
-             \n\
-             ------------------------------------------------------------\n\
-             O TESTE: de PAN na camera (arraste o fundo para o lado, ou\n\
-             use o gesto de pan do app) para a ESQUERDA e para a DIREITA.\n\
-             ------------------------------------------------------------\n\
-             A CERCA (frente) deve correr RAPIDO com a camera; a ARVORE\n\
-             (meio) na METADE da velocidade; a SERRA (fundo) quase nao se\n\
-             move. Ao panhar 3 unidades de mundo isso e', medido:\n\
-                 Cerca  216 px  |  Arvore  108 px  |  Ceu  32 px\n\
-             ou seja o deslocamento e' EXATAMENTE depth x pan.\n\
-             Se os tres se movem JUNTOS (mesma velocidade), a paralaxe\n\
-             esta quebrada -- me diga.\n\
-             \n\
-             ------------------------------------------------------------\n\
-             O AJUSTE: no painel Flip, no bloco de cada camada, ha um\n\
-             segundo slider abaixo da Opacity -- e' o DEPTH. Arraste o\n\
-             Depth do 'Ceu' para 100% e panhe: agora a serra corre junto\n\
-             com a cerca (virou flat). Volte para ~15% e ela volta a\n\
-             ficar para tras. Cada camada tem o seu.\n"
-        );
-    }
 }

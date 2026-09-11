@@ -11,7 +11,7 @@ use ph2d_flip::{FlipObject, FlipObjectId, TweenPlan};
 /// Se este gate falhar porque a faísca pareou, o salto/comprimento dela caiu abaixo do teto
 /// de recusa — reabra a cena, não a mensagem.
 #[test]
-fn the_scene_orphans_the_spark_until_paired() {
+pub fn the_scene_orphans_the_spark_until_paired() {
     let mut obj = FlipObject::new(FlipObjectId(1), "Pairs");
     let l = stage(&mut obj);
     let da = obj.layer(l).unwrap().frames()[&0].drawing.unwrap();

@@ -39,7 +39,7 @@ fn reach_expr<'a>(src: &'a str, file: &str, marker: &str) -> &'a str {
 fn the_gap_reach_is_zoom_invariant() {
     // O clique real.
     let click = include_str!("../../src/flip/fill.rs");
-    let click_reach = reach_expr(click, "flip_fill.rs", "gap_reach:");
+    let click_reach = reach_expr(click, "flip/fill.rs", "gap_reach:");
     // Controle positivo: o `px_to_world` legítimo (precision/debug) EXISTE no arquivo.
     assert!(
         click.contains("px_to_world"),
@@ -56,8 +56,11 @@ fn the_gap_reach_is_zoom_invariant() {
     );
 
     // O overlay ao vivo.
-    let live = include_str!("../../src/flip/gap_live.rs");
-    let live_reach = reach_expr(live, "flip_gap_live.rs", "let reach =");
+    // ⚠️ **A metade `_app`** (W2/L5, 2026-09-11): o módulo partiu-se em dois — as leis foram
+    // para `ph2d-app-flip` e o que toca a `App` ficou aqui. A régua do alcance vive dentro do
+    // `flip_gap_helpers_tick`, logo é na metade da shell que ela se lê.
+    let live = include_str!("../../src/flip/gap_live_app.rs");
+    let live_reach = reach_expr(live, "flip/gap_live_app.rs", "let reach =");
     assert!(
         !live_reach.contains("px_to_world"),
         "o alcance do Gap no OVERLAY voltou a depender do zoom (`px_to_world`): `{live_reach}`"

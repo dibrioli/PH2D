@@ -9,21 +9,21 @@
 use ph2d_core::Vec2;
 use ph2d_flip::{FlipStroke, Hold, KeyKind, Point, Rgba, StrokeTip};
 use std::sync::OnceLock;
-use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::atomic::AtomicU32;
 
-static FRAME: AtomicU32 = AtomicU32::new(0);
+pub static FRAME: AtomicU32 = AtomicU32::new(0);
 
-fn enabled() -> bool {
+pub fn enabled() -> bool {
     static ON: OnceLock<bool> = OnceLock::new();
     *ON.get_or_init(|| std::env::var_os("PH2D_FLIP_TIP_SMOKE").is_some())
 }
 
-const INK: Rgba = Rgba::new(0.92, 0.92, 0.95, 1.0);
+pub const INK: Rgba = Rgba::new(0.92, 0.92, 0.95, 1.0);
 
 /// Um traço horizontal reto na altura `y`, com a `tip`, a `width` (mundo) e o `spacing`
 /// dados. O `spacing` é um MÚLTIPLO do diâmetro (relativo à espessura), então a MESMA razão
 /// pontilha igual num traço fino e num grosso — é o que este smoke prova.
-fn line(y: f32, tip: StrokeTip, spacing: f32, width: f32) -> FlipStroke {
+pub fn line(y: f32, tip: StrokeTip, spacing: f32, width: f32) -> FlipStroke {
     let mut s = FlipStroke::new();
     for i in 0..=12 {
         s.push_point(Point {
@@ -40,7 +40,7 @@ fn line(y: f32, tip: StrokeTip, spacing: f32, width: f32) -> FlipStroke {
 
 /// **Monta a chave** com os três traços de referência empilhados. Porta única: o gate encena
 /// por AQUI (senão a mensagem descreveria um desenho que ninguém mais produz).
-pub(crate) fn stage(obj: &mut ph2d_flip::FlipObject) -> ph2d_flip::LayerId {
+pub fn stage(obj: &mut ph2d_flip::FlipObject) -> ph2d_flip::LayerId {
     let l = obj.add_layer("L");
     if let Some(d) = obj.insert_frame(l, 0, Hold::Implicit, KeyKind::Keyframe) {
         let strokes = &mut obj.drawing_mut(d).expect("desenho").strokes;
@@ -54,66 +54,6 @@ pub(crate) fn stage(obj: &mut ph2d_flip::FlipObject) -> ph2d_flip::LayerId {
         strokes.push(line(-2.5, StrokeTip::Dots, 2.0, 0.6)); // contas redondas (GROSSA)
     }
     l
-}
-
-impl crate::App {
-    /// Roda no prólogo do frame (ao lado dos outros smokes). No-op sem a env.
-    pub(crate) fn flip_tip_smoke(&mut self) {
-        if !enabled() || self.gfx.is_none() {
-            return;
-        }
-        if FRAME.fetch_add(1, Ordering::Relaxed) != 3 {
-            return;
-        }
-        let gfx = self.gfx.as_mut().expect("gfx");
-        let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("flip"));
-
-        let oid = gfx.flip.push_object("Tip Smoke");
-        let obj = gfx.flip.object_mut(oid).expect("objeto recém-criado");
-        obj.fps = 12.0;
-        stage(obj);
-
-        // A ferramenta Flip já está ativa (o painel aparece). O MODO (Draw) e o *tip* o
-        // artista escolhe pelo painel REAL — nada é pré-armado por baixo (a doutrina: o smoke
-        // que arma o estado por baixo pula justamente a costura que devia provar).
-        self.playhead.seek(0.0);
-        self.playhead.pause();
-
-        eprintln!(
-            "\n[tip-smoke] cena montada: 3 tracos finos de referencia (Line / Dots / Squares) + 1 GROSSO pontilhado."
-        );
-        eprintln!(
-            "\n\
-             O QUE ESTA NA TELA\n\
-             ==================\n\
-             Quatro tracos horizontais empilhados:\n\
-               em CIMA   : uma LINHA cheia (o traco de sempre).\n\
-               2o        : CONTAS REDONDAS (dots) fina.\n\
-               3o        : CONTAS QUADRADAS (squares) fina.\n\
-               em BAIXO  : CONTAS REDONDAS num traco GROSSO -- o report do Enio.\n\
-             As quatro usam o MESMO espacamento (2.0). O espacamento e RELATIVO A ESPESSURA\n\
-             (um multiplo do diametro do traco), entao o traco grosso mostra o padrao IGUAL\n\
-             ao fino -- antes, com espacamento absoluto, o grosso fundia num borrao.\n\
-             \n\
-             O QUE FAZER (o seletor REAL)\n\
-             ============================\n\
-             No painel do Flip, clique o modo **Draw**. Na secao **Brush** aparece um seletor\n\
-             **Tip** [Line | Dots | Squares] e (com contas) um slider **Spacing**.\n\
-             \n\
-               1. Clique **Dots**, suba o **Size** para um pincel GROSSO e DESENHE -- as\n\
-                  contas aparecem, na mesma razao de um pincel fino (o bug do report).\n\
-               2. Troque para **Squares**: as contas viram quadrados.\n\
-               3. Arraste **Spacing** (1.0 = encostadas .. 6.0 = bem esparsas).\n\
-               4. Volte para **Line**: o Spacing SOME e o traco volta a ser a linha de sempre.\n\
-             \n\
-             O QUE OLHAR\n\
-             ===========\n\
-             O padrao tem de aparecer em QUALQUER espessura -- contas REDONDAS/QUADRADAS de\n\
-             verdade (nao 'linha tracejada' nem um borrao solido), do tamanho da largura, e o\n\
-             Spacing controla o VAO como multiplo do diametro. Zoom in/out: contas mantem o\n\
-             tamanho em DOCUMENTO (a espessura e o Size ja medem mundo).\n"
-        );
-    }
 }
 
 #[cfg(test)]

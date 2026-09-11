@@ -50,7 +50,7 @@ const BRIDGE_RGBA: [f32; 4] = [0.35, 0.9, 0.45, 0.95]; // LITERAL-COLOR-OK: over
 const WHISKER_RGBA: [f32; 4] = [0.35, 0.9, 0.45, 0.5]; // LITERAL-COLOR-OK: overlay de helper
 
 /// Desenha os helpers instalados. `active` = a pergunta do modo, respondida pela MESMA
-/// porta do tick ([`crate::flip::gap_live::wants_gap_helpers`]) — o caller a passa
+/// porta do tick ([`ph2d_app_flip::gap_live::wants_gap_helpers`]) — o caller a passa
 /// resolvida para este módulo não re-derivar política.
 pub(super) fn draw(
     active: bool,

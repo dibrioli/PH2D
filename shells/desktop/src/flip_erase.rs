@@ -285,9 +285,9 @@ impl crate::App {
     /// `input_dispatch` reads the published style cache — no downcast.
     #[must_use]
     pub(crate) fn flip_wants_erase(&self) -> bool {
-        self.flip_active
+        self.flip_state.active
             && matches!(
-                self.flip_style.map(|s| s.mode),
+                self.flip_state.style.map(|s| s.mode),
                 Some(ph2d_tool_flip::FlipMode::Erase)
             )
     }
@@ -298,14 +298,14 @@ impl crate::App {
         if !self.flip_wants_erase() {
             return false;
         }
-        self.flip_erasing = true;
+        self.flip_state.erasing = true;
         self.flip_erase_apply(x, y);
         true
     }
 
     /// Move while erasing: erase at the cursor. `true` while a gesture is live.
     pub(crate) fn flip_erase_canvas_move(&mut self, x: f32, y: f32) -> bool {
-        if !self.flip_erasing {
+        if !self.flip_state.erasing {
             return false;
         }
         self.flip_erase_apply(x, y);
@@ -314,18 +314,18 @@ impl crate::App {
 
     /// Pen-up: end the gesture + (Soft mode) drop the faded points.
     pub(crate) fn flip_erase_canvas_up(&mut self) -> bool {
-        if !self.flip_erasing {
+        if !self.flip_state.erasing {
             return false;
         }
-        self.flip_erasing = false;
+        self.flip_state.erasing = false;
         let soft = matches!(
-            self.flip_style.map(|s| s.erase),
+            self.flip_state.style.map(|s| s.erase),
             Some(ph2d_tool_flip::EraseMode::Soft)
         );
         if soft {
-            let active_layer = self.flip_active_layer;
+            let active_layer = self.flip_state.active_layer;
             let playhead = self.playhead;
-            let strip = &mut self.flip_strip;
+            let strip = &mut self.flip_state.strip;
             if let Some(gfx) = self.gfx.as_mut() {
                 cleanup_soft(&mut gfx.flip, &playhead, active_layer, strip);
             }
@@ -335,16 +335,16 @@ impl crate::App {
 
     /// Erase once under the cursor (screen coords → world + radius from the brush).
     fn flip_erase_apply(&mut self, x: f32, y: f32) {
-        let Some(style) = self.flip_style else {
+        let Some(style) = self.flip_state.style else {
             return;
         };
-        let active_layer = self.flip_active_layer;
+        let active_layer = self.flip_state.active_layer;
         // Fronteira MUNDO→LOCAL (ADR-0111): a geometria de um objeto já movido pelo
         // gizmo é LOCAL, então o cursor (mundo) desce ao espaço local e o raio recua
         // pela escala. Identidade num objeto não-movido (o comum) → no-op.
         let w2l = self.flip_active_world_to_local();
         let playhead = self.playhead;
-        let strip = &mut self.flip_strip;
+        let strip = &mut self.flip_state.strip;
         if let Some(gfx) = self.gfx.as_mut() {
             let win = gfx.surface.size();
             let w = gfx.camera.screen_to_world((x, y), win);

@@ -243,14 +243,14 @@ impl crate::App {
 
     /// Pen-move no modo Edit: arrasta a caixa, ou move a seleção. `true` = gesto vivo.
     pub(crate) fn flip_edit_canvas_move(&mut self, x: f32, y: f32) -> bool {
-        let Some(gesture) = self.flip_edit_gesture else {
+        let Some(gesture) = self.flip_state.edit_gesture else {
             return false;
         };
         match gesture {
             EditGesture::Marquee {
                 start, additive, ..
             } => {
-                self.flip_edit_gesture = Some(EditGesture::Marquee {
+                self.flip_state.edit_gesture = Some(EditGesture::Marquee {
                     start,
                     cur: (x, y),
                     additive,
@@ -276,12 +276,12 @@ impl crate::App {
                 } else {
                     collapse_to
                 };
-                self.flip_edit_gesture = Some(EditGesture::MovePoints {
+                self.flip_state.edit_gesture = Some(EditGesture::MovePoints {
                     last: now,
                     down,
                     collapse_to,
                 });
-                let active_layer = self.flip_active_layer;
+                let active_layer = self.flip_state.active_layer;
                 let playhead = self.playhead;
                 if let Some(gfx) = self.gfx.as_mut()
                     && let Some((oid, lid, key, did)) =
@@ -312,12 +312,12 @@ impl crate::App {
                 } else {
                     collapse_to
                 };
-                self.flip_edit_gesture = Some(EditGesture::Move {
+                self.flip_state.edit_gesture = Some(EditGesture::Move {
                     last: now,
                     down,
                     collapse_to,
                 });
-                let active_layer = self.flip_active_layer;
+                let active_layer = self.flip_state.active_layer;
                 let playhead = self.playhead;
                 if let Some(gfx) = self.gfx.as_mut()
                     && let Some((oid, lid, key, did)) =
@@ -336,7 +336,7 @@ impl crate::App {
     /// O passo de undo sai do **diff pós-frame** (como todo o resto do Flip) — um arrasto
     /// inteiro vira UM passo porque o diff só roda quando não há gesto em curso.
     pub(crate) fn flip_edit_canvas_up(&mut self) -> bool {
-        let Some(gesture) = self.flip_edit_gesture.take() else {
+        let Some(gesture) = self.flip_state.edit_gesture.take() else {
             return false;
         };
         let EditGesture::Marquee {
@@ -354,7 +354,7 @@ impl crate::App {
                 ..
             } = gesture
             {
-                let active_layer = self.flip_active_layer;
+                let active_layer = self.flip_state.active_layer;
                 let playhead = self.playhead;
                 if let Some(gfx) = self.gfx.as_mut()
                     && let Some((oid, _l, did)) =
@@ -378,7 +378,7 @@ impl crate::App {
                 ..
             } = gesture
             {
-                let active_layer = self.flip_active_layer;
+                let active_layer = self.flip_state.active_layer;
                 let playhead = self.playhead;
                 let domain = self.flip_edit_domain_now();
                 if let Some(gfx) = self.gfx.as_mut()
@@ -435,7 +435,7 @@ impl crate::App {
         let min = Vec2::new(a.x.min(b.x), a.y.min(b.y));
         let max = Vec2::new(a.x.max(b.x), a.y.max(b.y));
 
-        let active_layer = self.flip_active_layer;
+        let active_layer = self.flip_state.active_layer;
         let playhead = self.playhead;
         // No domínio POINT a caixa acende ÂNCORAS; no SEGMENT ela acende os PEDAÇOS que
         // tocou (o pós-processo da referência: a caixa dá uma máscara de pontos, o modo a

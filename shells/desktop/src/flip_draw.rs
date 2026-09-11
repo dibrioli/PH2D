@@ -383,7 +383,7 @@ impl crate::App {
     /// publicado pelo `flip_bridge` — sem downcast (o `input_dispatch` é livre).
     #[must_use]
     pub(crate) fn flip_wants_canvas(&self) -> bool {
-        self.flip_active && matches!(self.flip_style.map(|s| s.mode), Some(FlipMode::Draw))
+        self.flip_state.active && matches!(self.flip_state.style.map(|s| s.mode), Some(FlipMode::Draw))
     }
 
     /// O afim MUNDO→LOCAL do objeto Flip ativo (o 1º). ADR-0111: o gizmo pode ter
@@ -416,7 +416,7 @@ impl crate::App {
         let Some(oid) = gfx.flip.objects().first().map(|o| o.id) else {
             return Xform::IDENTITY;
         };
-        self.flip_entities
+        self.flip_state.entities
             .get(&oid)
             .map(|&bits| ph2d_ecs::Entity::from_bits(bits))
             .filter(|e| gfx.sim.world().get_entity(*e).is_ok())
@@ -434,7 +434,7 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_ref() else {
             return ph2d_flip::Pose::IDENTITY;
         };
-        crate::flip_transform::active_pose(&gfx.flip, self.flip_active_layer, &self.playhead)
+        crate::flip_transform::active_pose(&gfx.flip, self.flip_state.active_layer, &self.playhead)
     }
 
     /// O afim MUNDO→LOCAL(objeto) **sem a pose da chave** — o funil do gesto de MOVER.
@@ -464,14 +464,14 @@ impl crate::App {
         };
         let win = gfx.surface.size();
         let w = gfx.camera.screen_to_world((x, y), win);
-        self.flip_draw.begin(Vec2::new(w[0], w[1]), 1.0);
+        self.flip_state.draw.begin(Vec2::new(w[0], w[1]), 1.0);
         true
     }
 
     /// Move enquanto desenha: adiciona uma amostra (override a <2px). Devolve
     /// `true` se um traço está em curso (consome o move).
     pub(crate) fn flip_canvas_move(&mut self, x: f32, y: f32) -> bool {
-        if !self.flip_draw.is_active() {
+        if !self.flip_state.draw.is_active() {
             return false;
         }
         let Some(gfx) = self.gfx.as_ref() else {
@@ -480,7 +480,7 @@ impl crate::App {
         let win = gfx.surface.size();
         let w = gfx.camera.screen_to_world((x, y), win);
         let px_per_world = win.height.max(1) as f32 / gfx.camera.height_world.max(f32::EPSILON);
-        self.flip_draw
+        self.flip_state.draw
             .extend(Vec2::new(w[0], w[1]), 1.0, px_per_world);
         true
     }
@@ -490,15 +490,15 @@ impl crate::App {
     /// gesto ou < 2 amostras.
     #[must_use]
     pub(crate) fn flip_preview_data(&mut self) -> Option<FlipGpuData> {
-        if !self.flip_draw.is_active() {
+        if !self.flip_state.draw.is_active() {
             return None;
         }
-        let style = self.flip_style?;
+        let style = self.flip_state.style?;
         // O preview é dobrado na fatia da camada ativa (espaço LOCAL do objeto); as
         // amostras são MUNDO → converte, senão o preview folga do traço final. A
         // largura é px de tela ABSOLUTO (o render não escala pelo zoom) → sem câmera.
         let w2l = self.flip_active_world_to_local();
-        let (pts, prs, fit) = self.flip_draw.preview_parts();
+        let (pts, prs, fit) = self.flip_state.draw.preview_parts();
         if pts.len() < 2 {
             return None;
         }
@@ -520,19 +520,19 @@ impl crate::App {
     /// Pen-up: assa o traço acumulado no `FlipDoc`. Devolve `true` se um gesto
     /// estava em curso (consome o Up, mesmo que um toque simples não vire traço).
     pub(crate) fn flip_canvas_up(&mut self) -> bool {
-        if !self.flip_draw.is_active() {
+        if !self.flip_state.draw.is_active() {
             return false;
         }
-        let Some((points, pressures)) = self.flip_draw.take() else {
+        let Some((points, pressures)) = self.flip_state.draw.take() else {
             return true; // toque simples (<2 pontos): consumido, sem traço
         };
-        let style = self.flip_style;
-        let active_layer = self.flip_active_layer;
+        let style = self.flip_state.style;
+        let active_layer = self.flip_state.active_layer;
         // Fronteira MUNDO→LOCAL (ADR-0111): num objeto já movido pelo gizmo o traço
         // é guardado no espaço local dele. Identidade num objeto novo (o comum).
         let w2l = self.flip_active_world_to_local();
         let playhead = self.playhead;
-        let strip_ref = &mut self.flip_strip;
+        let strip_ref = &mut self.flip_state.strip;
         if let Some(gfx) = self.gfx.as_mut()
             && let Some(style) = style
         {

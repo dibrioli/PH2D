@@ -501,7 +501,7 @@ impl crate::App {
     /// **O flip por DESENHO** (atalho das setas ↑/↓ e dos botões da tira): leva o
     /// playhead à chave anterior/seguinte da camada ativa, PULANDO os holds.
     pub(crate) fn flip_step_drawing(&mut self, next: bool) {
-        let active_layer = self.flip_active_layer;
+        let active_layer = self.flip_state.active_layer;
         let Some(gfx) = self.gfx.as_ref() else { return };
         let Some((oid, lid)) = target(&gfx.flip, active_layer) else {
             return;
@@ -521,7 +521,7 @@ impl crate::App {
         };
         if let Some(f) = to {
             seek(&mut self.playhead, fps, f);
-            self.flip_strip.selection = vec![f];
+            self.flip_state.strip.selection = vec![f];
         }
     }
 }

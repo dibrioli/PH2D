@@ -179,7 +179,7 @@ impl crate::App {
             }
         }
         self.vec_entities = map;
-        self.flip_entities = flip_map;
+        self.flip_state.entities = flip_map;
         self.vec_sel = crate::vec_selection::VecSelSync::default();
         self.vec_pen.clear();
         // E de volta, filtrada pelo que sobreviveu. O `vec_sel` ficou zerado de propósito: no frame
@@ -226,7 +226,7 @@ impl crate::App {
         self.vec_shape_armed_target = None;
         // O Colorize ao vivo guarda a base congelada de um desenho que este restore acaba de
         // substituir — re-Aplicar sobre ela apagaria o estado restaurado. A sessão termina.
-        self.flip_colorize.end_live();
+        self.flip_state.colorize.end_live();
         self.undo_baseline = Some(state.clone());
         // ⚠️ **E a marca do baseline também** — ela é a selecção que pertence ao estado que acabou
         // de virar presente. Sem esta linha o passo SEGUINTE seria empurrado com a marca de antes
@@ -389,7 +389,7 @@ impl crate::App {
             Some("botao do rato em baixo")
         } else if ph2d_app_field3d::smoke::gesture_in_progress() {
             Some("arrasto do gizmo 3D em curso")
-        } else if self.flip_colorize.live_busy(self.flip_style.as_ref()) {
+        } else if self.flip_state.colorize.live_busy(self.flip_state.style.as_ref()) {
             Some("colorize a recalcular")
         } else if self.ui_state_live {
             Some("transicao de estado de UI ao vivo")

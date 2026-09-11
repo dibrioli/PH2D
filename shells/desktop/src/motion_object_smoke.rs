@@ -361,7 +361,7 @@ impl crate::App {
             }
             4 if f == 6 => {
                 let vec_map = self.vec_entities.clone();
-                let flip_map = self.flip_entities.clone();
+                let flip_map = self.flip_state.entities.clone();
                 let gfx = self.gfx.as_mut().expect("gfx");
                 if let Some(group) = find_group(&mut gfx.sim, OBJECT) {
                     // O vetor (a unica forma da cena) vira filho SEM NOME no centro — o

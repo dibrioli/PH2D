@@ -269,26 +269,26 @@ impl crate::App {
     /// pedaço e o clique pega outro.
     pub(crate) fn flip_segment_hover_refresh(&mut self) {
         let is_segment = matches!(
-            self.flip_style.map(|s| s.edit_domain),
+            self.flip_state.style.map(|s| s.edit_domain),
             Some(ph2d_tool_flip::EditDomain::Segment)
         );
-        if !self.flip_wants_edit() || !is_segment || self.flip_edit_gesture.is_some() {
-            self.flip_segment_hover = None;
-            self.flip_segment_hover_at = None;
+        if !self.flip_wants_edit() || !is_segment || self.flip_state.edit_gesture.is_some() {
+            self.flip_state.segment_hover = None;
+            self.flip_state.segment_hover_at = None;
             return;
         }
         // Cursor parado ⇒ pedaço inalterado (o desenho não muda sem um gesto, e o gesto
         // zera o hover acima). Guarda barata: nada de hit-test/cortes com o mouse quieto.
         let cursor = self.last_pointer;
-        if self.flip_segment_hover_at == Some(cursor) {
+        if self.flip_state.segment_hover_at == Some(cursor) {
             return;
         }
-        self.flip_segment_hover_at = Some(cursor);
+        self.flip_state.segment_hover_at = Some(cursor);
 
-        let active_layer = self.flip_active_layer;
+        let active_layer = self.flip_state.active_layer;
         let playhead = self.playhead;
         let w2l = self.flip_active_world_to_local();
-        self.flip_segment_hover = self.gfx.as_ref().and_then(|gfx| {
+        self.flip_state.segment_hover = self.gfx.as_ref().and_then(|gfx| {
             let win = gfx.surface.size();
             let world = gfx.camera.screen_to_world(cursor, win);
             let px_to_world = gfx.camera.height_world.max(f32::EPSILON) / win.height.max(1) as f32;

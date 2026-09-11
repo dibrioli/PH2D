@@ -132,8 +132,8 @@ pub(crate) fn apply_marquee_points(
 /// assimetria documentada do W8 vale, com o Segment do lado do Point — e é por isso que
 /// este `match` casa os dois juntos em vez de dar ao Segment um braço próprio.
 pub(crate) fn flip_edit_domain_refresh(app: &mut crate::App) {
-    let now = app.flip_style.map(|s| s.edit_domain);
-    let prev = std::mem::replace(&mut app.flip_edit_domain, now);
+    let now = app.flip_state.style.map(|s| s.edit_domain);
+    let prev = std::mem::replace(&mut app.flip_state.edit_domain, now);
     let (Some(prev), Some(now)) = (prev, now) else {
         return; // tool inativa (ou 1ª volta): nada a converter
     };
@@ -145,7 +145,7 @@ pub(crate) fn flip_edit_domain_refresh(app: &mut crate::App) {
     if !app.flip_wants_edit() {
         return;
     }
-    let active_layer = app.flip_active_layer;
+    let active_layer = app.flip_state.active_layer;
     let playhead = app.playhead;
     let Some(gfx) = app.gfx.as_mut() else {
         return;

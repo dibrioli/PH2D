@@ -157,30 +157,30 @@ fn scribble_undo_pops_lifo_redo_restores_and_a_new_scribble_kills_the_redo() {
 #[test]
 fn a_refused_apply_keeps_the_scribbles_the_artist_drew() {
     let mut app = crate::App::new();
-    app.flip_active = true;
-    app.flip_style = Some(ph2d_tool_flip::FlipStyleSnapshot {
+    app.flip_state.active = true;
+    app.flip_state.style = Some(ph2d_tool_flip::FlipStyleSnapshot {
         mode: FlipMode::Colorize,
         ..Default::default()
     });
     for n in [1u8, 2] {
         let (col, pts) = scr(n);
-        app.flip_colorize.push_scribble(col, pts);
+        app.flip_state.colorize.push_scribble(col, pts);
     }
-    assert_eq!(app.flip_colorize.scribbles.len(), 2, "semeado");
+    assert_eq!(app.flip_state.colorize.scribbles.len(), 2, "semeado");
 
     // `App::new()` é headless (`gfx: None`), então o Apply RECUSA na 1ª saída.
     app.flip_colorize_apply();
 
     assert_eq!(
-        app.flip_colorize.scribbles.len(),
+        app.flip_state.colorize.scribbles.len(),
         2,
         "um Apply recusado devolveu {} rabiscos em vez de 2 — o artista perdeu o \
          trabalho e o Ctrl+Z não o traz de volta",
-        app.flip_colorize.scribbles.len()
+        app.flip_state.colorize.scribbles.len()
     );
     // E o Ctrl+Z continua alcançável (o Colorize ainda é dono do atalho).
     assert!(
-        app.flip_colorize.can_undo_scribble(),
+        app.flip_state.colorize.can_undo_scribble(),
         "com rabisco pendente o Colorize tem de seguir dono do Ctrl+Z"
     );
 }

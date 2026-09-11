@@ -243,7 +243,7 @@ impl crate::App {
     /// A tool Flip quer o canvas para RE-PAREAR agora? (ativa + sessão de pares aberta.)
     #[must_use]
     pub(crate) fn flip_wants_tween_pairs(&self) -> bool {
-        self.flip_active && self.flip_strip.tween_correct.is_some()
+        self.flip_state.active && self.flip_state.strip.tween_correct.is_some()
     }
 
     /// **Re-pina a sessão ao intervalo atual quando o artista navega.** A sessão SEGUE o
@@ -253,16 +253,16 @@ impl crate::App {
     /// intervalo diferente). Rodado por frame quando ativa (barato: só compara, reconstrói na
     /// troca).
     pub(crate) fn flip_tween_pairs_upkeep(&mut self) {
-        if self.flip_strip.tween_correct.is_none() {
+        if self.flip_state.strip.tween_correct.is_none() {
             return;
         }
-        let active_layer = self.flip_active_layer;
+        let active_layer = self.flip_state.active_layer;
         let playhead = self.playhead;
         let Some(gfx) = self.gfx.as_ref() else {
             return;
         };
         let session = self
-            .flip_strip
+            .flip_state.strip
             .tween_correct
             .as_ref()
             .map(|tc| (tc.layer, tc.from, tc.to));
@@ -273,7 +273,7 @@ impl crate::App {
         );
         if rebuild {
             let rebuilt = build(&gfx.flip, active_layer, &playhead);
-            self.flip_strip.tween_correct = rebuilt;
+            self.flip_state.strip.tween_correct = rebuilt;
         }
     }
 
@@ -288,12 +288,12 @@ impl crate::App {
             let Some(gfx) = self.gfx.as_ref() else {
                 return false;
             };
-            let Some(tc) = self.flip_strip.tween_correct.as_ref() else {
+            let Some(tc) = self.flip_state.strip.tween_correct.as_ref() else {
                 return false;
             };
             let win = gfx.surface.size();
             let l2w = self
-                .flip_entities
+                .flip_state.entities
                 .get(&tc.oid)
                 .copied()
                 .map(ph2d_ecs::Entity::from_bits)
@@ -306,7 +306,7 @@ impl crate::App {
             let aff_b = screen_affine(&l2w, tc.pose_b, cam);
             nearest_stroke(&tc.a, aff_a, &tc.b, aff_b, f64::from(x), f64::from(y))
         };
-        if let Some(tc) = self.flip_strip.tween_correct.as_mut() {
+        if let Some(tc) = self.flip_state.strip.tween_correct.as_mut() {
             tc.pending = apply_click(&mut tc.plan, tc.pending, hit);
         }
         true

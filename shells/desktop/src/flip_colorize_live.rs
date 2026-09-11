@@ -105,16 +105,16 @@ impl crate::App {
     /// depois dele o [`FlipColorize::live_busy`] assume o mesmo papel — um recálculo pendente
     /// **é** o gesto não ter terminado. Só a instalação que zera a fila registra o passo.
     pub(crate) fn flip_colorize_live_adjust(&mut self) {
-        if self.flip_colorize.live.is_none() {
+        if self.flip_state.colorize.live.is_none() {
             return;
         }
         // Sair do modo Colorize encerra a adjustabilidade (o painel some, a base congelada
         // deixa de descrever o que está na tela).
-        let Some(style) = self.flip_style.filter(|_| self.flip_wants_colorize()) else {
-            self.flip_colorize.end_live();
+        let Some(style) = self.flip_state.style.filter(|_| self.flip_wants_colorize()) else {
+            self.flip_state.colorize.end_live();
             return;
         };
-        let oid = self.flip_colorize.live.as_ref().expect("live").oid;
+        let oid = self.flip_state.colorize.live.as_ref().expect("live").oid;
         let w2l = self.flip_active_world_to_local();
         let obj_scale = w2l.mean_scale() as f32;
         let Some(gfx) = self.gfx.as_mut() else {
@@ -128,7 +128,7 @@ impl crate::App {
         // um único quadro não é mais `base + as MINHAS regiões` (o artista desenhou, encheu
         // com o balde, apagou), a sessão MORRE inteira e o Trap novo simplesmente não
         // retro-aplica — o artista clica Apply de novo.
-        let live = self.flip_colorize.live.as_ref().expect("live is Some");
+        let live = self.flip_state.colorize.live.as_ref().expect("live is Some");
         let intact = live.frames.iter().all(|f| {
             gfx.flip
                 .object(oid)
@@ -136,12 +136,12 @@ impl crate::App {
                 .is_some_and(|d| d.strokes.len() == f.base.len() + f.produced)
         });
         if !intact {
-            self.flip_colorize.end_live(); // desenho editado ou sumido (undo/delete)
+            self.flip_state.colorize.end_live(); // desenho editado ou sumido (undo/delete)
             return;
         }
 
         // ── 1. Colhe o resultado pronto, se houver. ──
-        let live = self.flip_colorize.live.as_mut().expect("live is Some");
+        let live = self.flip_state.colorize.live.as_mut().expect("live is Some");
         if let Some(done) = live.job.as_mut().and_then(Job::try_take) {
             live.job = None;
             for (f, regions) in live.frames.iter_mut().zip(done.regions) {
@@ -161,7 +161,7 @@ impl crate::App {
         }
 
         // ── 2. O pedido mais recente ainda não foi honrado? Sai um worker (um só). ──
-        let live = self.flip_colorize.live.as_mut().expect("live is Some");
+        let live = self.flip_state.colorize.live.as_mut().expect("live is Some");
         if live.job.is_some() || (style.trap == live.trap && style.colorize_bleed == live.bleed) {
             return;
         }

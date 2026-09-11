@@ -144,7 +144,7 @@ impl crate::App {
     /// A tool Flip quer o canvas para RABISCAR agora? (ativa + modo Colorize.)
     #[must_use]
     pub(crate) fn flip_wants_colorize(&self) -> bool {
-        self.flip_active && matches!(self.flip_style.map(|s| s.mode), Some(FlipMode::Colorize))
+        self.flip_state.active && matches!(self.flip_state.style.map(|s| s.mode), Some(FlipMode::Colorize))
     }
 
     /// Tela → mundo (o rabisco é capturado em MUNDO, como o `flip_draw`).
@@ -161,22 +161,22 @@ impl crate::App {
         if !self.flip_wants_colorize() {
             return false;
         }
-        let Some(style) = self.flip_style else {
+        let Some(style) = self.flip_state.style else {
             return false;
         };
         let Some((w, _)) = self.flip_colorize_world(x, y) else {
             return false;
         };
-        self.flip_colorize.current.clear();
-        self.flip_colorize.current.push(w);
-        self.flip_colorize.current_color = style.colorize_color;
-        self.flip_colorize.active = true;
+        self.flip_state.colorize.current.clear();
+        self.flip_state.colorize.current.push(w);
+        self.flip_state.colorize.current_color = style.colorize_color;
+        self.flip_state.colorize.active = true;
         true
     }
 
     /// Pen-move: acumula amostras (só as que andaram ≥ `MIN_SAMPLE_PX`).
     pub(crate) fn flip_colorize_canvas_move(&mut self, x: f32, y: f32) -> bool {
-        if !self.flip_colorize.active {
+        if !self.flip_state.colorize.active {
             return false;
         }
         let Some((w, px_to_world)) = self.flip_colorize_world(x, y) else {
@@ -184,34 +184,34 @@ impl crate::App {
         };
         let min = MIN_SAMPLE_PX * px_to_world;
         let moved = self
-            .flip_colorize
+            .flip_state.colorize
             .current
             .last()
             .is_none_or(|p| (w - *p).length() >= min);
         if moved {
-            self.flip_colorize.current.push(w);
+            self.flip_state.colorize.current.push(w);
         }
         true
     }
 
     /// Pen-up: fecha o rabisco em curso e o acumula (≥ 2 pontos).
     pub(crate) fn flip_colorize_canvas_up(&mut self) -> bool {
-        if !self.flip_colorize.active {
+        if !self.flip_state.colorize.active {
             return false;
         }
-        self.flip_colorize.active = false;
-        let color = self.flip_colorize.current_color;
-        let pts = std::mem::take(&mut self.flip_colorize.current);
+        self.flip_state.colorize.active = false;
+        let color = self.flip_state.colorize.current_color;
+        let pts = std::mem::take(&mut self.flip_state.colorize.current);
         if pts.len() >= 2 {
             // Pela porta única: um rabisco novo também descarta os removidos (redo local).
-            self.flip_colorize.push_scribble(color, pts);
+            self.flip_state.colorize.push_scribble(color, pts);
         }
         true
     }
 
     /// **Clear** — descarta os rabiscos acumulados.
     pub(crate) fn flip_colorize_clear(&mut self) {
-        self.flip_colorize.clear();
+        self.flip_state.colorize.clear();
     }
 
     /// GPU-data dos rabiscos acumulados (+ o em curso) pro **overlay ao vivo**.
@@ -225,21 +225,21 @@ impl crate::App {
         if !self.flip_wants_colorize() {
             return None;
         }
-        let live = self.flip_colorize.active && self.flip_colorize.current.len() >= 2;
-        if self.flip_colorize.scribbles.is_empty() && !live {
+        let live = self.flip_state.colorize.active && self.flip_state.colorize.current.len() >= 2;
+        if self.flip_state.colorize.scribbles.is_empty() && !live {
             return None;
         }
-        let style = self.flip_style?;
+        let style = self.flip_state.style?;
         // MUNDO → LOCAL da camada ativa (a mesma conversão do preview do Draw; o Apply
         // usa a MESMA `w2l` e a MESMA largura, então o que se vê é o que semeia).
         let w2l = self.flip_active_world_to_local();
         let width = scribble_width(&style, &w2l);
         let mut d = FlipDrawing::default();
-        let committed = self.flip_colorize.scribbles.iter().map(|(c, p)| (*c, p));
+        let committed = self.flip_state.colorize.scribbles.iter().map(|(c, p)| (*c, p));
         let in_flight = live.then_some({
             (
-                self.flip_colorize.current_color,
-                &self.flip_colorize.current,
+                self.flip_state.colorize.current_color,
+                &self.flip_state.colorize.current,
             )
         });
         for (color, pts) in committed.chain(in_flight) {
@@ -269,13 +269,13 @@ impl crate::App {
     /// cada região como um traço preenchido, no desenho-alvo (autokey `Modify`, como o
     /// balde). Consome os rabiscos.
     pub(crate) fn flip_colorize_apply(&mut self) {
-        if self.flip_colorize.scribbles.is_empty() {
+        if self.flip_state.colorize.scribbles.is_empty() {
             return;
         }
-        let Some(style) = self.flip_style else {
+        let Some(style) = self.flip_state.style else {
             return;
         };
-        let active_layer = self.flip_active_layer;
+        let active_layer = self.flip_state.active_layer;
         let w2l = self.flip_active_world_to_local();
         // A MESMA largura que o overlay desenhou — o que o artista pinta é o que semeia.
         let seed_width = scribble_width(&style, &w2l);
@@ -293,7 +293,7 @@ impl crate::App {
         // Uma recusa não pode custar o trabalho do artista: só o SUCESSO consome (no fim).
         let mut palette: Vec<[u8; 4]> = Vec::new();
         let mut seeds: Vec<Scribble> = Vec::new();
-        for (color, world_pts) in &self.flip_colorize.scribbles {
+        for (color, world_pts) in &self.flip_state.colorize.scribbles {
             let label = palette.iter().position(|c| c == color).unwrap_or_else(|| {
                 palette.push(*color);
                 palette.len() - 1
@@ -312,7 +312,7 @@ impl crate::App {
             });
         }
 
-        let strip = &mut self.flip_strip;
+        let strip = &mut self.flip_state.strip;
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
@@ -425,14 +425,14 @@ impl crate::App {
         // ✅ SÓ AGORA as sementes foram consumidas — o Apply teve sucesso. Um redo de rabisco
         // pós-Apply devolveria uma semente sem o contexto que a criou, então a fila de
         // removidos morre junto.
-        self.flip_colorize.scribbles.clear();
-        self.flip_colorize.popped.clear();
+        self.flip_state.colorize.scribbles.clear();
+        self.flip_state.colorize.popped.clear();
 
         // A operação fica VIVA: mexer no Trap/Bleed agora re-roda o corte em tempo real
         // (`flip_colorize_live_adjust`), sem clicar Apply de novo — em TODOS os quadros que
         // o gesto escreveu, senão os vizinhos ficariam presos no Trap da 1ª rodada e a tira
         // mostraria dois ajustes diferentes para uma operação só.
-        self.flip_colorize.live = Some(LiveApply {
+        self.flip_state.colorize.live = Some(LiveApply {
             palette,
             seeds,
             oid,

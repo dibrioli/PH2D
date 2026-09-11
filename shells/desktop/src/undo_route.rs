@@ -125,9 +125,9 @@ impl crate::App {
         // passa direto ao Global (que é quem desfaz/refaz o Apply).
         let colorize_owns = self.flip_wants_colorize()
             && if redo {
-                self.flip_colorize.can_redo_scribble()
+                self.flip_state.colorize.can_redo_scribble()
             } else {
-                self.flip_colorize.can_undo_scribble()
+                self.flip_state.colorize.can_undo_scribble()
             };
         let Some(gfx) = self.gfx.as_mut() else { return };
         let painter_active = gfx
@@ -178,9 +178,9 @@ impl crate::App {
             }
             UndoOwner::Colorize => {
                 if redo {
-                    self.flip_colorize.redo_scribble();
+                    self.flip_state.colorize.redo_scribble();
                 } else {
-                    self.flip_colorize.undo_scribble();
+                    self.flip_state.colorize.undo_scribble();
                 }
             }
             // O passo é APLICADO no `post_frame_undo` (fim do frame, `self` livre e o

@@ -157,7 +157,7 @@ impl crate::App {
                     ));
                 }
                 // A camada ATIVA é a da arte (a `Cutter` é só tesoura).
-                self.flip_active_layer = Some(art);
+                self.flip_state.active_layer = Some(art);
                 self.playhead.pause();
             }
             // Entra no Edit e arma o domínio Segment pelas portas REAIS (os mesmos eventos

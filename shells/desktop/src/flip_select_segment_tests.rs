@@ -373,8 +373,8 @@ fn on_the_border_of_a_filled_shape_the_ink_wins_over_the_fill() {
 /// condição sob teste (domínio ≠ Segment, ou gesto ativo) decide se a guarda barra.
 fn app_armed_in_segment() -> crate::App {
     let mut app = crate::App::new();
-    app.flip_active = true;
-    app.flip_style = Some(ph2d_tool_flip::FlipStyleSnapshot {
+    app.flip_state.active = true;
+    app.flip_state.style = Some(ph2d_tool_flip::FlipStyleSnapshot {
         mode: ph2d_tool_flip::FlipMode::Edit,
         edit_domain: ph2d_tool_flip::EditDomain::Segment,
         ..Default::default()
@@ -382,7 +382,7 @@ fn app_armed_in_segment() -> crate::App {
     app.last_pointer = (5.0, 5.0);
     // Um carimbo DIFERENTE do cursor atual, senão a guarda "cursor parado" curto-circuita
     // antes de a condição sob teste ser avaliada.
-    app.flip_segment_hover_at = Some((1.0, 1.0));
+    app.flip_state.segment_hover_at = Some((1.0, 1.0));
     app
 }
 
@@ -395,14 +395,14 @@ fn app_armed_in_segment() -> crate::App {
 #[test]
 fn the_hover_clears_when_the_domain_is_not_segment() {
     let mut app = app_armed_in_segment();
-    app.flip_style = Some(ph2d_tool_flip::FlipStyleSnapshot {
+    app.flip_state.style = Some(ph2d_tool_flip::FlipStyleSnapshot {
         mode: ph2d_tool_flip::FlipMode::Edit,
         edit_domain: ph2d_tool_flip::EditDomain::Point, // ← só isto muda
         ..Default::default()
     });
     app.flip_segment_hover_refresh();
     assert_eq!(
-        app.flip_segment_hover_at, None,
+        app.flip_state.segment_hover_at, None,
         "a guarda deixou passar fora do Segment (o cursor foi estampado)"
     );
 }
@@ -416,10 +416,10 @@ fn the_hover_clears_when_the_domain_is_not_segment() {
 #[test]
 fn the_hover_is_suppressed_during_a_gesture() {
     let mut app = app_armed_in_segment();
-    app.flip_edit_gesture = Some(crate::flip_edit_gesture::EditGesture::Click);
+    app.flip_state.edit_gesture = Some(crate::flip_edit_gesture::EditGesture::Click);
     app.flip_segment_hover_refresh();
     assert_eq!(
-        app.flip_segment_hover_at, None,
+        app.flip_state.segment_hover_at, None,
         "a guarda deixou o hover competir com um gesto ativo (o cursor foi estampado)"
     );
 }
@@ -436,7 +436,7 @@ fn the_hover_proceeds_when_armed_and_the_cursor_moved() {
     let mut app = app_armed_in_segment();
     app.flip_segment_hover_refresh();
     assert_eq!(
-        app.flip_segment_hover_at,
+        app.flip_state.segment_hover_at,
         Some((5.0, 5.0)),
         "a guarda barrou um hover legitimo (armado, sem gesto, cursor movido)"
     );

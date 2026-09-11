@@ -336,9 +336,9 @@ impl crate::App {
     /// que o `flip_bridge` publica — sem downcast (o `input_dispatch` é livre).
     #[must_use]
     pub(crate) fn flip_wants_fill(&self) -> bool {
-        self.flip_active
+        self.flip_state.active
             && matches!(
-                self.flip_style.map(|s| s.mode),
+                self.flip_state.style.map(|s| s.mode),
                 Some(ph2d_tool_flip::FlipMode::Fill)
             )
     }
@@ -354,13 +354,13 @@ impl crate::App {
         if !self.flip_wants_fill() {
             return false;
         }
-        let Some(style) = self.flip_style else {
+        let Some(style) = self.flip_state.style else {
             return false;
         };
-        let active_layer = self.flip_active_layer;
+        let active_layer = self.flip_state.active_layer;
         let w2l = self.flip_active_world_to_local();
         let playhead = self.playhead;
-        let strip = &mut self.flip_strip;
+        let strip = &mut self.flip_state.strip;
 
         let Some(gfx) = self.gfx.as_mut() else {
             return false;

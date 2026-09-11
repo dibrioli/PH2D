@@ -107,9 +107,9 @@ impl crate::App {
     /// A tool Flip quer o canvas para DESLOCAR fantasmas agora? (ativa + modo Trace.)
     #[must_use]
     pub(crate) fn flip_wants_trace(&self) -> bool {
-        self.flip_active
+        self.flip_state.active
             && matches!(
-                self.flip_style.map(|s| s.mode),
+                self.flip_state.style.map(|s| s.mode),
                 Some(ph2d_tool_flip::FlipMode::Trace)
             )
     }
@@ -121,7 +121,7 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_ref() else {
             return Vec::new();
         };
-        let Some((oid, lid)) = crate::flip_strip_resolve::target(&gfx.flip, self.flip_active_layer)
+        let Some((oid, lid)) = crate::flip_strip_resolve::target(&gfx.flip, self.flip_state.active_layer)
         else {
             return Vec::new();
         };
@@ -139,15 +139,15 @@ impl crate::App {
             layer,
             src,
             &obj.onion,
-            self.flip_strip.selected_keys(),
-            self.flip_strip.pinned_keys(),
+            self.flip_state.strip.selected_keys(),
+            self.flip_state.strip.pinned_keys(),
         )
         .into_iter()
         .filter_map(|g| {
             let art = obj.drawing(g.drawing)?;
             let (c, h) = crate::flip_pose_gizmo::drawing_center_half(art)?;
             let shift = self
-                .flip_strip
+                .flip_state.strip
                 .trace
                 .get(&g.key)
                 .copied()
@@ -193,7 +193,7 @@ impl crate::App {
                 ]);
                 Vec2::new(c[0] as f32, c[1] as f32)
             });
-            self.flip_trace_drag = Some(TraceDrag {
+            self.flip_state.trace_drag = Some(TraceDrag {
                 key: g.key,
                 last_obj: p,
                 rotate,
@@ -205,23 +205,23 @@ impl crate::App {
     /// Movimento com arrasto de trace aberto: translada (ou gira) a folha da chave.
     /// No-op sem gesto.
     pub(crate) fn flip_trace_canvas_move(&mut self, x: f32, y: f32) -> bool {
-        if self.flip_trace_drag.is_none() {
+        if self.flip_state.trace_drag.is_none() {
             return false;
         }
         // O modo trocou sob o gesto (atalho/painel): largar é mais honesto que continuar
         // deslocando um fantasma que o modo novo nem mostra como alvo.
         if !self.flip_wants_trace() {
-            self.flip_trace_drag = None;
+            self.flip_state.trace_drag = None;
             return false;
         }
         let Some(p) = self.trace_pointer_obj(x, y) else {
             return false;
         };
-        let Some(mut d) = self.flip_trace_drag else {
+        let Some(mut d) = self.flip_state.trace_drag else {
             return false;
         };
         let cur = self
-            .flip_strip
+            .flip_state.strip
             .trace
             .get(&d.key)
             .copied()
@@ -238,15 +238,15 @@ impl crate::App {
                 rotated(cur, c, a1 - a0)
             }
         };
-        self.flip_strip.trace.insert(d.key, next);
+        self.flip_state.strip.trace.insert(d.key, next);
         d.last_obj = p;
-        self.flip_trace_drag = Some(d);
+        self.flip_state.trace_drag = Some(d);
         true
     }
 
     /// Pen-up: fecha o arrasto de trace. Devolve `true` se havia um.
     pub(crate) fn flip_trace_canvas_up(&mut self) -> bool {
-        self.flip_trace_drag.take().is_some()
+        self.flip_state.trace_drag.take().is_some()
     }
 }
 

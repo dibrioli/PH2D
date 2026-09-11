@@ -386,7 +386,7 @@ impl App {
                 // não um tick de simulação (60 Hz): senão "avançar um quadro" andaria
                 // um quinto de desenho e o animador nunca cairia numa chave.
                 let fps = self
-                    .flip_active
+                    .flip_state.active
                     .then(|| self.flip_fps())
                     .flatten()
                     .unwrap_or_else(|| 1.0 / self.playhead.fixed_dt());
@@ -398,7 +398,7 @@ impl App {
             // ADR-0114 W3.T3.5 — **o flip do animador**: as setas pulam por DESENHO
             // (não por quadro), atravessando os holds. É o inner loop da profissão:
             // ir e voltar entre os dois desenhos que se está comparando.
-            KeyCode::ArrowUp | KeyCode::ArrowDown if self.flip_active => {
+            KeyCode::ArrowUp | KeyCode::ArrowDown if self.flip_state.active => {
                 self.flip_step_drawing(code == KeyCode::ArrowDown);
             }
             _ => {}

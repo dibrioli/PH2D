@@ -255,22 +255,22 @@ impl crate::App {
                 //   compositor 22-modos) no `game_rt`, amostrado pelo playhead,
                 //   MESMA câmera dos sprites. O blit final usa LoadOp::Load (preserva
                 //   os sprites por baixo). No-op sem camada Flip ativa (default).
-                let flip_models = crate::flip_transform::build(sim, &self.flip_entities);
+                let flip_models = crate::flip_transform::build(sim, &self.flip_state.entities);
                 // Ghost Frames só existem enquanto a tool Flip está no comando (é
                 // chrome de autoria, não da cena) — e só fora do play.
                 // O PEEK (F1/F2/F3 presos): uma folha vizinha na mão — os fantasmas
                 // somem JUNTO (a folha na mão não é uma pilha translúcida) e não há
                 // peek no play (o relógio já está folheando por conta própria).
-                let peek = if self.flip_active && !self.playhead.is_playing() {
-                    self.flip_peek
+                let peek = if self.flip_state.active && !self.playhead.is_playing() {
+                    self.flip_state.peek
                 } else {
                     None
                 };
-                let ghost_selection = (self.flip_active && peek.is_none()).then(|| {
+                let ghost_selection = (self.flip_state.active && peek.is_none()).then(|| {
                     super::flip_pass_ghosts::GhostSources {
-                        selected: self.flip_strip.selected_keys(),
-                        pinned: self.flip_strip.pinned_keys(),
-                        trace: Some(&self.flip_strip.trace),
+                        selected: self.flip_state.strip.selected_keys(),
+                        pinned: self.flip_state.strip.pinned_keys(),
+                        trace: Some(&self.flip_state.strip.trace),
                     }
                 });
                 super::flip_pass::render(
@@ -279,7 +279,7 @@ impl crate::App {
                     flip_compose,
                     flip_composite,
                     flip_preview.as_ref(),
-                    self.flip_active_layer,
+                    self.flip_state.active_layer,
                     &flip_models,
                     &self.playhead,
                     ghost_selection,

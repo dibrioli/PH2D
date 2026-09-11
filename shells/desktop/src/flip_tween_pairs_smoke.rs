@@ -120,13 +120,13 @@ impl crate::App {
         obj.fps = 12.0;
         stage(obj);
 
-        self.flip_strip.tween_count = 3;
+        self.flip_state.strip.tween_count = 3;
         self.playhead.seek(0.0);
         self.playhead.pause();
         // **Pairs JÁ ABERTO** — o overlay aparece de cara, senão o artista teria de saber
         // ligar o toggle antes de ver qualquer coisa (um smoke que não mostra a feature na
         // largada não é ready-to-smoke).
-        self.flip_strip.tween_correct = crate::flip_tween_correct::build(
+        self.flip_state.strip.tween_correct = crate::flip_tween_correct::build(
             &self.gfx.as_ref().unwrap().flip,
             None,
             &self.playhead,

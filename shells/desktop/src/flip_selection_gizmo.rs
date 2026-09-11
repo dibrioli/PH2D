@@ -371,7 +371,7 @@ impl crate::App {
             return false;
         }
         let playhead = self.playhead;
-        let active_layer = self.flip_active_layer;
+        let active_layer = self.flip_state.active_layer;
         let ctrl = self.modifiers.control_key() || self.modifiers.super_key();
         let Some(gfx) = self.gfx.as_ref() else {
             return false;
@@ -392,7 +392,7 @@ impl crate::App {
             return false;
         };
         let Some(e) = self
-            .flip_entities
+            .flip_state.entities
             .get(&t.oid)
             .map(|&b| ph2d_ecs::Entity::from_bits(b))
             .filter(|e| gfx.sim.world().get_entity(*e).is_ok())
@@ -414,7 +414,7 @@ impl crate::App {
         // `flip_pose_gizmo`), então o termo reduz literalmente ao de antes.
         let pivot =
             ph2d_editor::anchor_pivot_world(hit.kind, [0.0, 0.0], t.h_local, world_snap, ctrl);
-        self.flip_selection_drag = Some(FlipSelectionDrag {
+        self.flip_state.selection_drag = Some(FlipSelectionDrag {
             drag: ph2d_editor::GizmoDragState {
                 kind: hit.kind,
                 entity_bits: e.to_bits(),
@@ -442,7 +442,7 @@ impl crate::App {
     /// Down pelo delta afim do gizmo e o escreve na geometria. `true` = consumido.
     /// (`take`-e-restaura porque o snapshot é um `Vec`, não `Copy`.)
     pub(crate) fn flip_selection_gizmo_move(&mut self, x: f32, y: f32) -> bool {
-        let Some(mut pd) = self.flip_selection_drag.take() else {
+        let Some(mut pd) = self.flip_state.selection_drag.take() else {
             return false;
         };
         let mods = GizmoModifiers {
@@ -451,7 +451,7 @@ impl crate::App {
             alt: self.modifiers.alt_key(),
         };
         let Some(gfx) = self.gfx.as_mut() else {
-            self.flip_selection_drag = Some(pd);
+            self.flip_state.selection_drag = Some(pd);
             return true;
         };
         let size = gfx.surface.size();
@@ -504,7 +504,7 @@ impl crate::App {
                 }
             }
         }
-        self.flip_selection_drag = Some(pd);
+        self.flip_state.selection_drag = Some(pd);
         self.title_dirty = true;
         true
     }
@@ -512,7 +512,7 @@ impl crate::App {
     /// Pen-UP: fecha o arrasto de seleção. `true` = havia um. O passo de undo sai do
     /// diff pós-frame, como todo gesto do Flip.
     pub(crate) fn flip_selection_gizmo_up(&mut self) -> bool {
-        self.flip_selection_drag.take().is_some()
+        self.flip_state.selection_drag.take().is_some()
     }
 }
 

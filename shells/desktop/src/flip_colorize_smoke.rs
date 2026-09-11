@@ -143,16 +143,16 @@ impl crate::App {
 
         // ── Os DOIS rabiscos (MUNDO ≈ LOCAL num objeto fresco): vermelho à esquerda,
         //    azul à direita. Traços verticais, não pontos (um ponto degenera o corte). ──
-        self.flip_colorize.push_scribble(
+        self.flip_state.colorize.push_scribble(
             [220, 70, 70, 255],
             seg(Vec2::new(-2.0, -1.5), Vec2::new(-2.0, 1.5), 8),
         );
-        self.flip_colorize.push_scribble(
+        self.flip_state.colorize.push_scribble(
             [70, 120, 220, 255],
             seg(Vec2::new(2.6, -1.5), Vec2::new(2.6, 1.5), 8),
         );
 
-        self.flip_strip.selection.clone_from(&keys);
+        self.flip_state.strip.selection.clone_from(&keys);
         self.playhead.pause();
         // ⚠️ **A cena DIZ o que construiu.** "Não sei se o arquivo de teste está certo" é
         // uma pergunta que o smoke tem de responder sozinho — sem isto, um Apply que colore
@@ -161,7 +161,7 @@ impl crate::App {
             "\n[colorize-smoke] cena montada: {} chave(s) em {keys:?}, {} marcada(s) na \
              tira. O divisor anda 0.0 / 0.6 / 1.2 entre elas.",
             keys.len(),
-            self.flip_strip.selection.len()
+            self.flip_state.strip.selection.len()
         );
         eprintln!(
             "\n[colorize-smoke] Modo Colorize. Dois rabiscos ja estao na tela (vermelho esq,\n\

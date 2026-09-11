@@ -239,7 +239,7 @@ impl crate::App {
             return false;
         }
         let playhead = self.playhead;
-        let active_layer = self.flip_active_layer;
+        let active_layer = self.flip_state.active_layer;
         let ctrl = self.modifiers.control_key() || self.modifiers.super_key();
         let Some(gfx) = self.gfx.as_ref() else {
             return false;
@@ -260,7 +260,7 @@ impl crate::App {
             return false;
         };
         let Some(e) = self
-            .flip_entities
+            .flip_state.entities
             .get(&t.oid)
             .map(|&b| ph2d_ecs::Entity::from_bits(b))
             .filter(|e| gfx.sim.world().get_entity(*e).is_ok())
@@ -279,7 +279,7 @@ impl crate::App {
         // reduz LITERALMENTE ao que havia antes (`+ 0.0 * scale` é exato).
         let pivot =
             ph2d_editor::anchor_pivot_world(hit.kind, [0.0, 0.0], t.h_local, world_snap, ctrl);
-        self.flip_pose_drag = Some(FlipPoseDrag {
+        self.flip_state.pose_drag = Some(FlipPoseDrag {
             drag: ph2d_editor::GizmoDragState {
                 kind: hit.kind,
                 entity_bits: e.to_bits(),
@@ -306,7 +306,7 @@ impl crate::App {
     /// snapshot do Down (nunca do estado vivo — deltas compostos por frame driftariam)
     /// e a escreve pelo choke point `set_frame_pose`. `true` = consumido.
     pub(crate) fn flip_pose_gizmo_move(&mut self, x: f32, y: f32) -> bool {
-        let Some(mut pd) = self.flip_pose_drag else {
+        let Some(mut pd) = self.flip_state.pose_drag else {
             return false;
         };
         let mods = GizmoModifiers {
@@ -339,7 +339,7 @@ impl crate::App {
         if let Some(obj) = gfx.flip.object_mut(pd.oid) {
             obj.set_frame_pose(pd.lid, pd.key, pose);
         }
-        self.flip_pose_drag = Some(pd);
+        self.flip_state.pose_drag = Some(pd);
         self.title_dirty = true;
         true
     }
@@ -348,7 +348,7 @@ impl crate::App {
     /// undo sai do diff pós-frame, como todo gesto do Flip (`post_frame_undo` espera
     /// o botão soltar).
     pub(crate) fn flip_pose_gizmo_up(&mut self) -> bool {
-        self.flip_pose_drag.take().is_some()
+        self.flip_state.pose_drag.take().is_some()
     }
 }
 

@@ -180,7 +180,7 @@ impl crate::App {
     /// cada chamador a inventar a mesma resposta.
     #[must_use]
     pub(crate) fn flip_edit_domain_now(&self) -> ph2d_tool_flip::EditDomain {
-        self.flip_style
+        self.flip_state.style
             .map(|s| s.edit_domain)
             .unwrap_or(ph2d_tool_flip::EditDomain::Stroke)
     }
@@ -188,9 +188,9 @@ impl crate::App {
     /// A tool Flip quer o canvas para SELECIONAR agora? (ativa + modo Edit.)
     #[must_use]
     pub(crate) fn flip_wants_edit(&self) -> bool {
-        self.flip_active
+        self.flip_state.active
             && matches!(
-                self.flip_style.map(|s| s.mode),
+                self.flip_state.style.map(|s| s.mode),
                 Some(ph2d_tool_flip::FlipMode::Edit)
             )
     }
@@ -210,7 +210,7 @@ impl crate::App {
         } else {
             Pick::Replace
         };
-        let active_layer = self.flip_active_layer;
+        let active_layer = self.flip_state.active_layer;
         let domain = self.flip_edit_domain_now();
         // Dois funis, dois usos: o **pose-aware** (arte) leva o cursor ao espaço da
         // GEOMETRIA — é onde o hit-test tem de perguntar. O **pose-free** (objeto) semeia
@@ -285,7 +285,7 @@ impl crate::App {
             // mover não: o gesto vira Click e o usuário é AVISADO (zero no-op silencioso).
             let instanced = drawing.is_instanced();
             self.title_dirty = true;
-            self.flip_edit_gesture = Some(match plan {
+            self.flip_state.edit_gesture = Some(match plan {
                 DownPoints::Move { .. } if instanced => {
                     gfx.toasts.push(ph2d_editor::Toast::warning(
                         "Point move needs exclusive art - Unlink the key first",
@@ -332,7 +332,7 @@ impl crate::App {
         // Shift+arrasto num traço já selecionado seria ambíguo (alternar ou mover?): o
         // Shift manda, e o gesto vira alternar — o arrasto não pega.
         self.title_dirty = true;
-        self.flip_edit_gesture = Some(match plan_down(drawing, hit, shift, in_box) {
+        self.flip_state.edit_gesture = Some(match plan_down(drawing, hit, shift, in_box) {
             Down::Move { collapse_to } => crate::flip_edit_gesture::EditGesture::Move {
                 last: move_seed,
                 down: (x, y),
@@ -353,7 +353,7 @@ impl crate::App {
     /// Apaga os traços selecionados do desenho visível. `true` = apagou algo (e a tecla
     /// foi consumida — ver o chamador em `input_dispatch::keyboard`).
     pub(crate) fn flip_delete_selected(&mut self) -> bool {
-        let active_layer = self.flip_active_layer;
+        let active_layer = self.flip_state.active_layer;
         let playhead = self.playhead;
         let Some(gfx) = self.gfx.as_mut() else {
             return false;
@@ -367,7 +367,7 @@ impl crate::App {
         // Domínio POINT: dissolve as âncoras selecionadas (o traço continua ligado pelos
         // que ficam; traço esvaziado sai). Domínio Stroke: apaga os traços, como sempre.
         let n = if matches!(
-            self.flip_style.map(|s| s.edit_domain),
+            self.flip_state.style.map(|s| s.edit_domain),
             Some(ph2d_tool_flip::EditDomain::Point)
         ) {
             drawing.delete_selected_points()
@@ -405,32 +405,32 @@ impl crate::App {
 /// destruiria em silêncio.
 pub(crate) fn flip_edit_style_refresh(app: &mut crate::App) {
     let editing = app.flip_wants_edit();
-    let Some(style) = app.flip_style.filter(|_| editing) else {
-        app.flip_edit_style = None;
+    let Some(style) = app.flip_state.style.filter(|_| editing) else {
+        app.flip_state.edit_style = None;
         return;
     };
-    let active_layer = app.flip_active_layer;
+    let active_layer = app.flip_state.active_layer;
     let playhead = app.playhead;
     let Some(gfx) = app.gfx.as_mut() else {
         return;
     };
     let Some((oid, _lid, did)) = visible_drawing(&gfx.flip, &playhead, active_layer) else {
-        app.flip_edit_style = None;
+        app.flip_state.edit_style = None;
         return;
     };
     let Some(drawing) = gfx.flip.object_mut(oid).and_then(|o| o.drawing_mut(did)) else {
         return;
     };
     if !drawing.any_selected() {
-        app.flip_edit_style = None;
+        app.flip_state.edit_style = None;
         return;
     }
     // A 1ª volta com seleção só MEMORIZA — não escreve nada (ver a regra 1).
-    let Some(prev) = app.flip_edit_style else {
-        app.flip_edit_style = Some(style);
+    let Some(prev) = app.flip_state.edit_style else {
+        app.flip_state.edit_style = Some(style);
         return;
     };
-    app.flip_edit_style = Some(style);
+    app.flip_state.edit_style = Some(style);
     if apply_style_delta(drawing, &prev, &style) {
         app.title_dirty = true;
     }

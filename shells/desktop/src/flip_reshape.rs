@@ -194,9 +194,9 @@ impl crate::App {
     /// cache que o `flip_bridge` publica — sem downcast (o `input_dispatch` é livre).
     #[must_use]
     pub(crate) fn flip_wants_reshape(&self) -> bool {
-        self.flip_active
+        self.flip_state.active
             && matches!(
-                self.flip_style.map(|s| s.mode),
+                self.flip_state.style.map(|s| s.mode),
                 Some(ph2d_tool_flip::FlipMode::Reshape)
             )
     }
@@ -222,7 +222,7 @@ impl crate::App {
         if !self.flip_wants_reshape() {
             return false;
         }
-        let Some(style) = self.flip_style else {
+        let Some(style) = self.flip_state.style else {
             return false;
         };
         let Some((local, px_to_world, w2l)) = self.flip_local_at(x, y) else {
@@ -231,10 +231,10 @@ impl crate::App {
         let invert = self.modifiers.control_key();
         let p = params_from(&style, px_to_world, &w2l, invert);
 
-        let active_layer = self.flip_active_layer;
+        let active_layer = self.flip_state.active_layer;
         let playhead = self.playhead;
-        let falloff_on = self.flip_strip.falloff;
-        let strip = &mut self.flip_strip;
+        let falloff_on = self.flip_state.strip.falloff;
+        let strip = &mut self.flip_state.strip;
         let Some(gfx) = self.gfx.as_mut() else {
             return false;
         };
@@ -260,7 +260,7 @@ impl crate::App {
             self.title_dirty = true;
             return true;
         };
-        self.flip_reshape = Some(FlipReshape {
+        self.flip_state.reshape = Some(FlipReshape {
             targets,
             last_local: local,
             oid,
@@ -272,10 +272,10 @@ impl crate::App {
     /// aplica mais, que é como o pincel do GP se comporta). `true` enquanto o gesto
     /// está vivo.
     pub(crate) fn flip_reshape_canvas_move(&mut self, x: f32, y: f32) -> bool {
-        if self.flip_reshape.is_none() {
+        if self.flip_state.reshape.is_none() {
             return false;
         }
-        let Some(style) = self.flip_style else {
+        let Some(style) = self.flip_state.style else {
             return true;
         };
         let Some((local, px_to_world, w2l)) = self.flip_local_at(x, y) else {
@@ -284,7 +284,7 @@ impl crate::App {
         let invert = self.modifiers.control_key();
         let p = params_from(&style, px_to_world, &w2l, invert);
 
-        let Some(g) = self.flip_reshape.as_mut() else {
+        let Some(g) = self.flip_state.reshape.as_mut() else {
             return true;
         };
         let s = InputSample {
@@ -303,7 +303,7 @@ impl crate::App {
     /// Pen-up: encerra o gesto (a máscara congelada morre com ele). O passo de undo
     /// sai de graça — o `post_frame_undo` registra o diff quando o botão é solto.
     pub(crate) fn flip_reshape_canvas_up(&mut self) -> bool {
-        self.flip_reshape.take().is_some()
+        self.flip_state.reshape.take().is_some()
     }
 }
 

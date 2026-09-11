@@ -250,6 +250,7 @@ mod flip_selection_gizmo;
 mod flip_selection_smoke;
 mod flip_self_overlap_smoke;
 mod flip_smooth;
+mod flip_state;
 mod flip_strip;
 mod flip_strip_drag;
 mod flip_strip_pins;
@@ -1196,36 +1197,17 @@ impl App {
             vec_draw_config: ph2d_tool_vector::VectorDrawConfig::default(),
             vec_pencil_hand: crate::vec_pencil_input::PencilHand::default(),
             // ADR-0114 W2: estado de desenho do Flip (publicado pelo flip_bridge).
-            flip_active: false,
-            flip_style: None,
+            flip_state: Default::default(),
             ui_state_live: false,
             ui_cooked: crate::render_loop::ui_state_bridge::Cooked::default(),
             ui_preview: crate::render_loop::ui_preview::UiPreview::default(),
             ui_states_move_all: false,
             ui_states_anchor: None,
             ui_preview_leave: false,
-            flip_draw: crate::flip_draw::FlipDraw::default(),
-            flip_colorize: crate::flip_colorize::FlipColorize::default(),
-            flip_gap: crate::flip_gap_live::GapHelpers::default(),
-            pending_flip_colorize_apply: false,
-            pending_flip_colorize_clear: false,
-            flip_active_layer: None,
-            flip_erasing: false,
-            flip_strip: crate::flip_strip::FlipStrip::default(),
-            flip_reshape: None,
-            flip_edit_style: None,
-            flip_segment_hover: None,
-            flip_segment_hover_at: None,
-            flip_edit_gesture: None,
-            flip_trace_drag: None,
-            flip_peek: None,
             player_tape: ph2d_physics_ecs::InputTape::new(),
             discarded_run: ph2d_physics_ecs::InputTape::new(),
-            flip_pose_drag: None,
-            flip_selection_drag: None,
             field_gizmo_drag: None,
             warp_drag: None,
-            flip_edit_domain: None,
             vec_marquee: None,
             vec_connect: None,
             vec_conn_handle: None,
@@ -1325,7 +1307,6 @@ impl App {
             vec_shape_armed_target: None,
             vec_entities: Default::default(),
             motion_leaf_images: Default::default(),
-            flip_entities: Default::default(),
             #[cfg(feature = "sculpt3d")]
             sculpt3d_rows: Default::default(),
             #[cfg(feature = "sculpt3d")]

@@ -159,12 +159,12 @@ impl crate::App {
     /// Roda no prólogo do frame (ao lado do ajuste ao vivo do Colorize): mantém os
     /// helpers do Gap Closure sincronizados com o desenho NA TELA e o alcance atual.
     pub(crate) fn flip_gap_helpers_tick(&mut self) {
-        if !wants_gap_helpers(self.flip_active, self.flip_style) {
-            self.flip_gap.clear();
+        if !wants_gap_helpers(self.flip_state.active, self.flip_state.style) {
+            self.flip_state.gap.clear();
             return;
         }
-        let Some(style) = self.flip_style else {
-            self.flip_gap.clear();
+        let Some(style) = self.flip_state.style else {
+            self.flip_state.gap.clear();
             return;
         };
         // **A MESMA régua do clique** (`fill_click`): o Gap é em unidades de MUNDO, a
@@ -174,20 +174,20 @@ impl crate::App {
         let w2l = self.flip_active_world_to_local();
         let obj_scale = w2l.mean_scale() as f32;
         let Some(gfx) = self.gfx.as_ref() else {
-            self.flip_gap.clear();
+            self.flip_state.gap.clear();
             return;
         };
         let reach = (style.gap as f32) * obj_scale;
 
         // O desenho NA TELA, read-only — nunca o `flip_autokey` (que CRIA chave; um
         // overlay que autora seria o gesto acontecendo sem ninguém gesticular).
-        let Some((oid, lid)) = crate::flip_strip_resolve::target(&gfx.flip, self.flip_active_layer)
+        let Some((oid, lid)) = crate::flip_strip_resolve::target(&gfx.flip, self.flip_state.active_layer)
         else {
-            self.flip_gap.clear();
+            self.flip_state.gap.clear();
             return;
         };
         let Some(obj) = gfx.flip.object(oid) else {
-            self.flip_gap.clear();
+            self.flip_state.gap.clear();
             return;
         };
         let frame = obj.frame_at(&self.playhead);
@@ -196,10 +196,10 @@ impl crate::App {
             .and_then(|l| l.drawing_at_cycled(frame))
             .and_then(|did| obj.drawing(did))
         else {
-            self.flip_gap.clear();
+            self.flip_state.gap.clear();
             return;
         };
-        if self.flip_gap.drive(reach, drawing) {
+        if self.flip_state.gap.drive(reach, drawing) {
             // Sem repaint o resultado espera o próximo input para aparecer.
             self.title_dirty = true;
         }

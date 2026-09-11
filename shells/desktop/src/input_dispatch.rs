@@ -3395,7 +3395,7 @@ impl App {
         if !over_panel
             && (self.modifiers.control_key() || self.modifiers.super_key())
             && let Some(track) =
-                crate::flip_gap_live::gap_wheel_track(self.flip_active, self.flip_style, dy / 16.0)
+                crate::flip_gap_live::gap_wheel_track(self.flip_state.active, self.flip_state.style, dy / 16.0)
         {
             if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
                 // As DUAS metades do que o próprio slider faz num arrasto (ver
@@ -3738,7 +3738,7 @@ impl App {
         // traço só no modo Draw, em canvas vazio — em Select cai no gizmo/pick.
         if kind == PointerKind::Up
             && mapped_button == ph2d_host::PointerButton::Primary
-            && self.flip_draw.is_active()
+            && self.flip_state.draw.is_active()
             && self.flip_canvas_up()
         {
             return;
@@ -3746,7 +3746,7 @@ impl App {
         // Flip eraser (T2.9): the pen-UP ends an erase gesture (+ Soft cleanup).
         if kind == PointerKind::Up
             && mapped_button == ph2d_host::PointerButton::Primary
-            && self.flip_erasing
+            && self.flip_state.erasing
             && self.flip_erase_canvas_up()
         {
             return;
@@ -5507,7 +5507,7 @@ impl App {
                             &self.vec_entities,
                             &self.vec_view_derived,
                             &self.vec_live_drawn,
-                            &self.flip_entities,
+                            &self.flip_state.entities,
                             (evt.x, evt.y),
                         );
                         if let Some(bits) = hits.first().copied() {
@@ -5598,7 +5598,7 @@ impl App {
                         !crate::flip_gizmo_view::pick_all_at_world(
                             &gfx.sim,
                             &gfx.flip,
-                            &self.flip_entities,
+                            &self.flip_state.entities,
                             world_pos,
                             crate::flip_gizmo_view::stroke_hit_r(&gfx.camera, window_size),
                         )
@@ -5953,7 +5953,7 @@ impl App {
                             &self.vec_entities,
                             &self.vec_view_derived,
                             &self.vec_live_drawn,
-                            &self.flip_entities,
+                            &self.flip_state.entities,
                             (evt.x, evt.y),
                         );
                         // O SPINE de um Blend Object NÃO é selecionável no modo Select (ADR-0128,
@@ -6299,7 +6299,7 @@ impl App {
                             bits.extend(crate::flip_gizmo_view::pick_in_world_rect(
                                 &gfx.sim,
                                 &gfx.flip,
-                                &self.flip_entities,
+                                &self.flip_state.entities,
                                 rmin,
                                 rmax,
                             ));

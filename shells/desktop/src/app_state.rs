@@ -1160,13 +1160,18 @@ pub(crate) struct App {
     /// vive aqui porque é a shell que possui a entrada, e porque a `lazy_mouse_step` mora numa
     /// crate que o `Pencil` não pode ver (`vec_pencil_input`).
     pub(crate) vec_pencil_hand: crate::vec_pencil_input::PencilHand,
-    /// ADR-0114 W2: a tool Flip está ativa? Cacheado do registry pelo `flip_bridge`
-    /// (o `input_dispatch` não pode fazer downcast — vive no bridge allowlistado).
-    pub(crate) flip_active: bool,
-    /// ADR-0114 W2: o estilo de brush + modo espelhados do `FlipTool` a cada frame
-    /// pelo `flip_bridge`. `None` quando a tool está inativa. O `input_dispatch` lê
-    /// isto (sem downcast) pra decidir desenhar + assar o traço.
-    pub(crate) flip_style: Option<ph2d_tool_flip::FlipStyleSnapshot>,
+    /// ⭐ **TODO o estado de editor da família Flip, num campo só** (W2/L5, 2026-09-11).
+    ///
+    /// Eram **21 campos** soltos de `App` (`flip_active`, `flip_draw`, `flip_strip`, …). A W2 os
+    /// junta num dono só para que a família possa sair da shell como uma UNIDADE — a crate
+    /// `ph2d-app-flip` passa a ser dona do tipo, e a shell guarda uma referência a ele
+    /// (ADR-0075: o desacoplamento é por estado/eventos, nunca por plugin).
+    ///
+    /// ⚠️ **Não confundir com [`AppGfx::flip`]**, que é o DOCUMENTO (`ph2d_flip::FlipDoc`,
+    /// partilhado com os Componentes desde a F8). Este aqui é o estado de INTERACÇÃO: gestos em
+    /// voo, arrastos, hover, a tira de quadros, o espelho do estilo da tool. Um é o que se grava,
+    /// o outro morre com a sessão.
+    pub(crate) flip_state: crate::flip_state::FlipState,
     /// **Alguma transição de ESTADO de UI está em voo** (plano UI/UX W7).
     ///
     /// ⚠️ Ele existe para o `post_frame_undo`, e a razão é a mesma do `live_busy` do Colorize:
@@ -1204,47 +1209,6 @@ pub(crate) struct App {
     /// **Esc pediu para SAIR da preview.** Um pedido e não a saída: sair devolve poses ao mundo,
     /// e o mundo mora dentro do `gfx` — o mesmo protocolo dos verbos de estado ao lado.
     pub(crate) ui_preview_leave: bool,
-    /// ADR-0114 W2: o traço do Flip em curso (amostras mundo+pressão); assado no
-    /// `FlipDoc` no pen-up. Vazio quando não há gesto.
-    pub(crate) flip_draw: crate::flip_draw::FlipDraw,
-    /// ADR-0114 C2 (Colorize): os rabiscos coloridos acumulados + o rabisco em curso
-    /// (transientes — sementes do corte LazyBrush, não arte). Apply os transforma em
-    /// regiões preenchidas; Clear os descarta. Ver `flip_colorize`.
-    pub(crate) flip_colorize: crate::flip_colorize::FlipColorize,
-    /// Doc 06 §8: os helpers ao vivo do Gap Closure — os vãos que o alcance atual
-    /// fecha, computados num worker (o custo é 5-339 ms, medido) e desenhados pelo
-    /// overlay em modo Fill. Display-only: nunca toca o documento.
-    pub(crate) flip_gap: crate::flip_gap_live::GapHelpers,
-    /// ADR-0114 C2: o botão Apply/Clear do Colorize foi clicado neste frame? O drain de
-    /// painel roda com `self.gfx` preso; o gesto real (que precisa de `self` livre) roda no
-    /// topo do frame seguinte. Falso fora do clique.
-    pub(crate) pending_flip_colorize_apply: bool,
-    pub(crate) pending_flip_colorize_clear: bool,
-    /// ADR-0114 W2: a camada ATIVA do Flip (alvo do traço/borracha + destaque no
-    /// painel). Setada pela seleção de linha no painel (drain do shell); `None`
-    /// ⇒ o bake usa a camada de topo (o `flip_bridge` também destaca a de topo).
-    pub(crate) flip_active_layer: Option<ph2d_flip::LayerId>,
-    /// ADR-0114 W2 T2.9: uma borracha do Flip está em curso (Down..Up no modo
-    /// Erase). Enquanto `true`, cada move apaga sob o cursor; o pen-up faz o
-    /// cleanup do Soft. `false` quando não há gesto.
-    pub(crate) flip_erasing: bool,
-    /// ADR-0114 W3: o estado de autoria da TIRA de frames (autokey/additive/quantos
-    /// inbetweens/seleção de chaves). O documento (frames, desenhos, ciclos) vive no
-    /// `FlipDoc`; aqui só o que não é documento.
-    pub(crate) flip_strip: crate::flip_strip::FlipStrip,
-    /// ADR-0114 W5: o gesto de ESCULTURA em curso (Down..Up no modo Reshape). Carrega
-    /// a máscara congelada no pen-down — e, no Grab, os pesos. `None` quando não há
-    /// gesto. Ver `flip_reshape`.
-    pub(crate) flip_reshape: Option<crate::flip_reshape::FlipReshape>,
-    /// ADR-0114 W6.1: o GESTO em curso no modo Edit — a caixa do marquee, ou a translação
-    /// da seleção. `None` fora de um arrasto. Ver `flip_edit_gesture`.
-    pub(crate) flip_edit_gesture: Option<crate::flip_edit_gesture::EditGesture>,
-    /// Shift & Trace: o arrasto de DESLOCAR um fantasma em curso (modo Trace). O mapa
-    /// de deslocamentos mora em `flip_strip.trace`; aqui é só o gesto.
-    pub(crate) flip_trace_drag: Option<crate::flip_trace::TraceDrag>,
-    /// O PEEK do Shift & Trace (fatia 2): a folha que F1/F2/F3 estão segurando —
-    /// `None` fora do aperto. Press arma (só com a tool Flip), release desarma sempre.
-    pub(crate) flip_peek: Option<crate::flip_peek::PeekDir>,
     /// **As teclas de caminhada seguradas** (W3) — o dedo do jogador.
     ///
     /// Estado de JANELA, não do documento: ele nasce vazio a cada execução e
@@ -1273,14 +1237,6 @@ pub(crate) struct App {
     /// o descarte seguinte sobrescreve o que está aqui. Não existe caminho em
     /// que ele ressuscite uma corrida velha.
     pub(crate) discarded_run: ph2d_physics_ecs::InputTape,
-    /// ADR-0114 W7.5: o arrasto do gizmo de POSE em curso (modo Edit, quadro
-    /// instanciado) — rotate/scale escrevendo a pose da chave, nunca o `Transform`.
-    /// `None` fora de um arrasto. Ver `flip_pose_gizmo`.
-    pub(crate) flip_pose_drag: Option<crate::flip_pose_gizmo::FlipPoseDrag>,
-    /// ADR-0114 §4.A: o arrasto do gizmo de SELEÇÃO em curso (modo Edit, arte
-    /// exclusiva) — rotate/scale assando o delta na geometria dos pontos selecionados.
-    /// `None` fora de um arrasto. Ver `flip_selection_gizmo`.
-    pub(crate) flip_selection_drag: Option<crate::flip_selection_gizmo::FlipSelectionDrag>,
     /// Motion Nodes: o arrasto do gizmo de canvas de um field espacial em curso (ver
     /// [`crate::field_gizmo`]). `None` = nenhum. Espelho do `flip_selection_drag`, mas o
     /// apply escreve os params do NÓ (via `Graph::set_param`), nunca um `Transform`.
@@ -1290,25 +1246,6 @@ pub(crate) struct App {
     /// famílias diferentes e nunca coexistem numa selecção — partilhar o slot faria um
     /// arrasto largar-se sozinho ao trocar de nó.
     pub(crate) warp_drag: Option<crate::warp_gizmo_drag::WarpGizmoDrag>,
-    /// ADR-0114 W8: o DOMÍNIO da seleção do frame ANTERIOR — a memória que deixa a
-    /// troca do toggle (Stroke↔Point) converter a seleção no documento UMA vez
-    /// (broadcast/promoção, `flip_select::flip_edit_domain_refresh`). `None` = tool
-    /// inativa.
-    pub(crate) flip_edit_domain: Option<ph2d_tool_flip::EditDomain>,
-    /// ADR-0114 W6: o estilo do painel no frame ANTERIOR, enquanto há seleção no modo
-    /// Edit. É o que deixa **só a MUDANÇA** agir sobre os traços selecionados: sem esta
-    /// memória, o passe reaplicaria o estilo a cada frame e selecionar um traço vermelho
-    /// com o painel em azul o pintaria de azul no ato do clique. Ver `flip_select`.
-    pub(crate) flip_edit_style: Option<ph2d_tool_flip::FlipStyleSnapshot>,
-    /// ADR-0114 §4.C: o PEDAÇO sob o cursor no modo Segment — `(traço, pontos do pedaço)`,
-    /// a promessa do que o clique vai pegar. Recomputado pelo passe
-    /// `flip_segment_hover_refresh` **só quando o cursor MOVE** (e nunca durante um gesto),
-    /// e lido pelo overlay. `None` = sem hover (fora do Segment, ou o cursor no vazio).
-    pub(crate) flip_segment_hover: Option<(usize, Vec<usize>)>,
-    /// A posição de cursor com que o `flip_segment_hover` foi computado — a guarda que
-    /// evita refazer o pick (hit-test + cortes) a cada frame com o mouse parado. Ver
-    /// `flip_select_segment::hover_refresh`.
-    pub(crate) flip_segment_hover_at: Option<(f32, f32)>,
     /// ADR-0108 Fase 1: o gesto de REGIÃO do modo Node (px de tela, o mesmo `(f32, f32)` do
     /// `last_pointer`) — arrastar do vazio com a ferramenta Vector activa. `None` = parado; no
     /// release dirige `box_select_with` ou `lasso_select_with`, conforme a forma que ele congelou.
@@ -1814,9 +1751,6 @@ pub(crate) struct App {
     /// terceira média (ver [`crate::motion_leaf_images`]). Vive aqui porque toda leitura PARA a
     /// GPU, e ela tem de sobreviver ao quadro.
     pub(crate) motion_leaf_images: crate::motion_leaf_images::LeafImages,
-    /// `FlipObjectId` → entidade ECS que o representa na Hierarquia (ADR-0114). O
-    /// invariante "um objeto ⟺ uma entidade" é mantido por `flip_entities::sync`.
-    pub(crate) flip_entities: crate::flip_entities::FlipEntityMap,
     /// **As peças da escultura que já tiveram linha na Hierarquia** (ADR-0150). ⚠️ Um CONJUNTO
     /// de ids, e não um mapa de bits: o mapa é o próprio mundo, lido a cada quadro — ver o doc
     /// de `sculpt3d::entities`, onde está por que um mapa guardado apagaria a escultura no

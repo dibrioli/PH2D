@@ -171,7 +171,7 @@ impl crate::App {
             &self.vec_entities,
             &self.vec_view_derived,
             &self.vec_live_drawn,
-            &self.flip_entities,
+            &self.flip_state.entities,
             pointer,
         )
         .first()

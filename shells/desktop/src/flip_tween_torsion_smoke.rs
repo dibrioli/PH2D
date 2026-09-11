@@ -91,7 +91,7 @@ impl crate::App {
         obj.fps = 12.0;
         stage(obj);
 
-        self.flip_strip.tween_count = 3;
+        self.flip_state.strip.tween_count = 3;
         self.playhead.seek(0.0);
         self.playhead.pause();
 

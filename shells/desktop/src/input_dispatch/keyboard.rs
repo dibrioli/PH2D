@@ -200,12 +200,12 @@ impl App {
 
         if let PhysicalKey::Code(code) = physical_key {
             let (next, consumed) = crate::flip_peek::key_transition(
-                self.flip_peek,
+                self.flip_state.peek,
                 code,
                 state == ElementState::Pressed,
-                self.flip_active,
+                self.flip_state.active,
             );
-            self.flip_peek = next;
+            self.flip_state.peek = next;
             if consumed {
                 return;
             }

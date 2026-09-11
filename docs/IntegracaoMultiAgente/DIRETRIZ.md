@@ -340,18 +340,22 @@ fecha a linha ([`CLAUDE.md §0.7`](../../CLAUDE.md)). Conteúdo mínimo (curto, 
    > escreve e caro para todos os que leem, sempre.**
 
 9. ⚠️ **DEIXE O BINÁRIO DO SMOKE COMPILADO — o Enio não espera build.** O smoke é
-   `cargo run -p ph2d-host-desktop --release` ([`CLAUDE.md §5`](../../CLAUDE.md)), e **nada na
+   `cargo run -p ph2d-host-desktop --profile smoke` ([`CLAUDE.md §5`](../../CLAUDE.md)), e **nada na
    jornada da linha o produz**: o inner loop é `cargo check -p` (não gera código) e o gate batched
    roda no perfil `ci-test`, que é outro `target/`. Resultado: a linha fecha **100% verde** e o
-   primeiro gesto dele ainda paga um build de release inteiro — `lto = "thin"` +
-   `codegen-units = 1` ([`Cargo.toml`](../../Cargo.toml) `[profile.release]`), o build mais caro
-   do repo. *Ele é o dono do produto, não um engenheiro esperando compilar* (`CLAUDE.md §0.8`).
+   primeiro gesto dele ainda paga um build optimizado inteiro. ⚠️ **`--profile smoke`, não
+   `--release`, desde 2026-09-10:** o `release` (`lto = "thin"` + `codegen-units = 1`) optimiza a
+   shell de 306 k linhas num só thread e cada correcção pós-smoke custava **161 s**; o `smoke`
+   (16 CGUs, sem LTO, incremental) custa **3 s** — medido na
+   [auditoria de velocidade](../DevOps/AUDITORIA_VELOCIDADE_DE_DESENVOLVIMENTO_2026-09-10.md) §3.9.
+   O `--release` fica para smokes de PERFORMANCE (tectos, milhões de objectos), e o passo do smoke
+   diz quando o pede. *Ele é o dono do produto, não um engenheiro esperando compilar* (`CLAUDE.md §0.8`).
 
    **Último passo da linha, depois do commit final e do item 7:**
    ```bash
-   cd "$(git rev-parse --show-toplevel)"        # a SUA worktree
-   cargo build -p ph2d-host-desktop --release   # + as --features de cada smoke que as exija
-   cargo build -p ph2d-host-desktop --release   # 2ª corrida = a PROVA: "Finished" em segundos e
+   cd "$(git rev-parse --show-toplevel)"              # a SUA worktree
+   cargo build -p ph2d-host-desktop --profile smoke   # + as --features de cada smoke que as exija
+   cargo build -p ph2d-host-desktop --profile smoke   # 2ª corrida = a PROVA: "Finished" em segundos e
                                                 # ZERO linhas "Compiling". Cole-a no handoff.
    ```
    - **Compile a MESMA linha de comando que você entrega**, byte a byte: pacote, perfil,

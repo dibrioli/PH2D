@@ -68,6 +68,34 @@ slow-timeout = { period = "60s", terminate-after = 2 }
 #   · the_cost_of_depth_is_linear_not_explosive .... 3.00x contra barra 2.9
 #   · the_cost_of_a_gated_stroke_follows_the_footprint_not_the_canvas
 #                                                   1.72x (varrer o plano daria 4x)
+# ⭐ 2026-09-10 (auditoria de velocidade, docs/DevOps/AUDITORIA_VELOCIDADE_DE_DESENVOLVIMENTO_2026-09-10.md
+# §4-C4): a lista passa a ser a FAMÍLIA inteira do CLAUDE.md §5.0 — todo gate que compara dois
+# relógios ou conta alocações sob a suíte de fan-out. Os 23 nomes foram verificados a existir
+# na árvore no dia da escrita. Cada um corre SOZINHO (`threads-required = num-cpus`) e no FIM
+# (`priority = -100`), quando a suíte esvazia: o custo é a soma deles serializados (segundos) uma
+# vez por corrida, e a barra de nenhum foi tocada. Um gate novo desta espécie entra AQUI pelo
+# nome — ou, melhor, nasce num ficheiro `measure_*.rs` para entrar por `binary(/^measure_/)`.
 [[profile.default.overrides]]
-filter = 'test(measure_normals_parallel_speedup) + test(the_cost_of_sampling_a_path_is_flat_in_its_anchors) + test(the_cost_of_depth_is_linear_not_explosive) + test(the_cost_of_a_gated_stroke_follows_the_footprint_not_the_canvas)'
+filter = 'test(an_abandoned_march_returns_nothing_and_returns_fast) + test(apply_from_doc_is_zero_alloc_steady_state) + test(a_round_live_offset_costs_like_the_other_joins) + test(a_wet_move_costs_what_the_footprint_costs_not_what_the_canvas_costs) + test(emitter_sim_ceiling_probe) + test(interaction_dispatch_no_alloc) + test(measure_brush_kernel) + test(measure_normals_parallel_speedup) + test(only_the_lower_row_breathes_and_it_moves_with_the_playhead) + test(o_pen_down_do_filtro_e_linear_nos_vertices) + test(packing_a_dense_scribble_is_bounded) + test(the_brush_snapshot_costs_the_same_on_a_canvas_sixteen_times_bigger) + test(the_cache_makes_a_preview_frame_cost_the_tail_not_the_stroke) + test(the_cost_of_a_gated_stroke_follows_the_footprint_not_the_canvas) + test(the_cost_of_a_player_is_linear_in_their_number) + test(the_cost_of_depth_is_linear_not_explosive) + test(the_cost_of_sampling_a_path_is_flat_in_its_anchors) + test(the_mask_stroke_cost_does_not_follow_the_canvas) + test(the_quads_are_as_square_as_the_oracles) + test(the_region_refresh_is_bound_by_the_footprint_not_by_the_mesh) + test(the_shape_match_is_linear_in_the_mesh) + test(the_trusted_len_collect_allocates_once) + test(the_ui_clock_does_not_allocate_per_frame)'
 threads-required = 'num-cpus'
+priority = -100
+
+# ── Tecto GLOBAL e as três regras que viviam em scripts ─────────────────────────
+#
+# Medido 2026-09-10 (auditoria §3.3): nos dois últimos logs completos da suíte (20 041 testes)
+# NENHUM teste passa dos 60 s no `ci-test` (o máximo é 42 s, `ph2d-gridmap`), e o executor não
+# tinha tecto nenhum fora do `ph2d-asset-cooker` — foi assim que dois binários órfãos queimaram
+# 1 h 55 min a ~6 núcleos (handoff do esqueleto de 10/09) e uma suíte de `dev` custou 55 min.
+# `period = 60s` só AVISA (SLOW); `terminate-after = 3` MATA aos 180 s e conta como falha. O Zed
+# mata aos 60 s; a Oxide aos 900 s com o motivo escrito ao lado. Quem precisar de mais pede por
+# `[[overrides]]` com o número medido — nunca subindo o global.
+# `fail-fast = false`: a regra do CLAUDE.md §5.0 («use --no-fail-fast») vivia em dois scripts e
+# uma corrida parou em 11 240 com 1 007 por correr. Aqui é o default; `--fail-fast` na linha de
+# comando continua a existir para quem quiser o cancelamento.
+# `junit`: o histórico por teste (tempo, flaky) que hoje só existe raspando logs.
+[profile.default]
+slow-timeout = { period = "60s", terminate-after = 3 }
+fail-fast = false
+
+[profile.default.junit]
+path = "junit.xml"

@@ -220,8 +220,11 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   (0% de história, consultado por `HR-N`) funciona e um diário numerado fora de ordem não.
 - ⚠️ **As listas de `Smokes:` abaixo são NOMES de variável, não o comando.** Ao passar um smoke ao Enio, escreva-o **inteiro e copiável de uma vez**, com o caminho absoluto da árvore em que você trabalha (§0.8):
   ```
-  cd /home/enio/Documentos/Projetos/PH2D && env PH2D_<NOME>=<n> cargo run -p ph2d-host-desktop --release
+  cd /home/enio/Documentos/Projetos/PH2D && env PH2D_<NOME>=<n> cargo run -p ph2d-host-desktop --profile smoke
   ```
+  ⚠️ **`--profile smoke`, não `--release`** (desde 2026-09-10): o `release` optimiza a shell de 306 k linhas num
+  só thread e cada correcção pós-smoke custava **161 s**; o `smoke` custa **3 s** (medido, [auditoria](docs/DevOps/AUDITORIA_VELOCIDADE_DE_DESENVOLVIMENTO_2026-09-10.md) §3.9). O `--release` fica só para smoke de
+  **PERFORMANCE** (tectos, milhões de objectos) — o `smoke` não tem LTO e corre mais devagar.
   ⚠️ **Modo L: o caminho é o da SUA worktree** (`.../PH2D/Worktrees/line-<módulo>`), não o do primário — o Enio roda de outro diretório, e sem o `cd` o comando falha ou testa a árvore errada.
 - ⚠️ **Nenhuma leitura de relógio desta workstation vale nada acima de `load ~5`** (medido: o mesmo binário deu 11,36 e
   5,50 ms para o mesmo passe). Gates de razão reprovam sob carga sem que uma linha de código tenha mudado.

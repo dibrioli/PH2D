@@ -314,6 +314,10 @@ que o Enio vai rodar tem de **abrir o app**, não começar o build mais caro do 
 medidos na mesma worktree em 27/08: `debug`+`ci-test`/`incremental` = **14,5 GB** (leve tudo),
 `target/release` = **2,0 GB** (fica). O `release` também **não** tem incremental — a linha do
 `rm -rf …/target/*/incremental` não o toca (`target/release/incremental` está vazio, 0 B).
+⚠️ **Desde 2026-09-10 o binário do smoke vive em `target/smoke/`** (perfil `smoke`, DIRETRIZ §1.5.9
+item 9 — 4,7 GB medidos, e ESSE tem `incremental/`): a regra acima apaga-lhe o incremental sem risco
+(o cargo recria; custa só o re-aquecer de ~75 s na próxima build), e o `target/smoke/release`… não
+existe — o directório do perfil é `target/smoke/`, e é ele o entregável que fica, como o `release`.
 
 ### Regra 3 — `split-debuginfo = "unpacked"` no `[profile.dev]` — **2,5×, MEDIDO**
 
@@ -355,7 +359,7 @@ mesmo alvo dos dois modos e compara a pegada real.
 | **`~/.cache/sccache`** | É o **cache quente** que serve os deps entre worktrees (hit de ~78% num target FRIO). Apagá-lo torna o 1º build de amanhã lento — é o oposto de arrumar. O instinto "limpar caches pra liberar memória" está **errado** aqui. |
 | **Fonte, `.git`, trabalho não-commitado** | Óbvio, e é o que a §1.2 protege. |
 | **`git clean -fdx` · `git reset --hard` · `git checkout .`** | "Limpar a árvore" com esses APAGA trabalho não-commitado em silêncio, e o gate "passa" ([[feedback_mutation_undo_with_cp_never_git_checkout]], [[feedback_destructive_git_outside_pasta]]). Para limpar artefato, use `rm -rf <target>` — cirúrgico, nunca um comando git destrutivo. |
-| **`target/release/` de uma linha FECHADA com smoke pendente** | Depois da DIRETRIZ §1.5.9 item 9, aquele binário **é o entregável** — apagá-lo devolve exatamente a espera que a regra existe para tirar do Enio, e o portão não vê a diferença (a worktree está limpa e fria justamente porque a linha fechou). São **2,0 GB**; o resto do target da mesma worktree são **14,5 GB** e continua livre: `rm -rf "$t"/debug "$t"/ci-test` em vez de `rm -rf "$t"`. Já smokado (ou linha integrada e o Enio disse ok)? Aí o release cai junto. |
+| **`target/release/` (ou `target/smoke/`, desde 2026-09-10) de uma linha FECHADA com smoke pendente** | Depois da DIRETRIZ §1.5.9 item 9, aquele binário **é o entregável** — apagá-lo devolve exatamente a espera que a regra existe para tirar do Enio, e o portão não vê a diferença (a worktree está limpa e fria justamente porque a linha fechou). São **2,0 GB**; o resto do target da mesma worktree são **14,5 GB** e continua livre: `rm -rf "$t"/debug "$t"/ci-test` em vez de `rm -rf "$t"`. Já smokado (ou linha integrada e o Enio disse ok)? Aí o release cai junto. |
 | **`git worktree remove` / `git branch -d`** | Uma linha integrada segue viva pra próxima wave; removê-la sem **ordem explícita do Enio** perde a worktree e qualquer commit não-pushado dela. Limpar o `target/` já libera o disco **sem** encostar na linha. |
 | **`git push` / `git commit`** | Fim-de-dia é arrumação, não entrega. Só por ordem explícita (CLAUDE.md §0.7). |
 

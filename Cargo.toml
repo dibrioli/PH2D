@@ -120,6 +120,22 @@ strip = "symbols"
 inherits = "release"
 debug = true
 
+# `smoke` — o perfil do CICLO do dono e do binário que a linha deixa construído
+# (CLAUDE.md §5.0, DIRETRIZ §1.5.9 item 9). O `release` continua a ser o que se
+# ENTREGA e o que se MEDE. Medido 2026-09-10 (auditoria de velocidade, §3.9-b):
+# reconstruir a shell depois de UMA linha editada custa 161 s no `release`
+# (`codegen-units = 1` + thin LTO = a crate de 306 k linhas optimizada num só
+# thread, 31 núcleos parados) e **3,0 s** aqui; a frio, 75 s contra 184 s. O que
+# se perde é a optimização entre crates (LTO): smokes de PERFORMANCE (tectos,
+# o Motion a milhões de objectos, PH2D_PAINT_PERF) continuam a pedir `--release`.
+# ⚠️ Este perfil tem `incremental/` próprio (`target/smoke/incremental`); a regra
+# de fecho `rm -rf target/*/incremental` apaga-o sem risco — só custa o re-aquecer.
+[profile.smoke]
+inherits = "release"
+codegen-units = 16
+lto = "off"
+incremental = true
+
 # CI-tuned test profile. Used by the workflow's `cargo nextest run
 # --cargo-profile ci-test` and `cargo test --doc --profile ci-test`
 # calls instead of `--release`.
@@ -142,6 +158,12 @@ opt-level = 1
 debug = false
 lto = "off"
 codegen-units = 16
+# O `ci-test` corre em BATCH (workspace inteiro, 1-2× por jornada): incremental
+# não colhe nada e custava 26 GB de `target/ci-test/incremental` no primário
+# (medido 2026-09-10). A regra `CARGO_INCREMENTAL=0` vivia em dois scripts e no
+# CLAUDE.md — e o `incremental/` provou que alguém correu o perfil sem ela. Aqui
+# ela está no ficheiro que o cargo lê; o `dev` (inner loop) fica intacto.
+incremental = false
 
 [profile.ci-test.package."*"]
 opt-level = 3

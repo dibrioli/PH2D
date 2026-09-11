@@ -88,6 +88,7 @@
 - [Write diz «updated» — leia o verbo](feedback_write_on_an_existing_path_says_updated_not_created.md) · [o symlink da memória escreve no primário](feedback_the_memory_symlink_points_at_the_primary_tree_not_your_worktree.md)
 
 ## Ship / CI / integração
+- ✅ [AUDITORIA de velocidade 10/09: W0 APLICADA (perfil `smoke` 161 s → 3 s · `jobs = 32` · tecto nextest · ci-test sem incremental · RA por pacote); W1/W2 por abrir](project_dev_speed_audit_2026_09_10_w0_applied.md)
 - [Multi-máquina: GitHub fonte única](project_multi_machine_setup.md) · [fast mode: dia sem push](feedback_fast_mode_ship.md)
 - ⏳ [**`line/motion-value` espera a PRÓXIMA rodada** — 5 de 6 linhas entraram em 06/09 e esta ficou de fora; as 5 mitigações em vigor](project_motion_value_waits_for_the_next_integration_round.md)
 - [Ship = Enio-only](feedback_ship_only_enio_end_of_all_lines.md) · [integração = Enio-only](feedback_integration_only_enio_command_end_of_all_lines.md)
@@ -116,6 +117,7 @@
 
 ## Auditoria (famílias — 2 saltos)
 
+- ⛔ [`touch` NÃO mede uma edição (incremental vê hash igual; mtime suja TODOS os targets) · `--timings` é parede por unidade, dobra sob contenção](feedback_a_touch_does_not_measure_an_edit_and_timings_inflate_under_contention.md)
 - ⭐ [**Como uma RÉGUA mente** — a família inteira (70 entradas)](reference_topic_measurement_discipline.md)
 - ⛔ [Grelha nunca cai num conjunto de MEDIDA NULA ⇒ reporta-o LIMPO (vinco: 2,2e-6 contra 1,9e-1) — os pontos PÕEM-SE](feedback_a_grid_never_lands_on_a_measure_zero_set_so_it_reports_it_clean.md)
 - ⛔⛔ [Contar operações ≠ perfil, e o PERFIL DE BUILD decide o número: suíte 372→57 s por 4 linhas de opt-level; a mesma cura lia 5% a opt-0 e 14% a opt-2](feedback_an_operation_count_is_not_a_profile_and_the_build_profile_decides_the_number.md)

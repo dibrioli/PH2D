@@ -49,6 +49,8 @@ pub fn register_all_app_families() -> AppFamilyRegistry {
     // <ph2d-app-sync:begin>
     #[cfg(feature = "app-field3d")]
     reg.push(ph2d_app_field3d::FAMILY);
+    #[cfg(feature = "app-flip")]
+    reg.push(ph2d_app_flip::FAMILY);
     #[cfg(feature = "app-vec")]
     reg.push(ph2d_app_vec::FAMILY);
 // <ph2d-app-sync:end>

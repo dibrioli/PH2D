@@ -4805,6 +4805,7 @@ name = "ph2d-app-flip"
 version = "0.0.0"
 dependencies = [
  "libm",
+ "ph2d-app-host",
  "ph2d-core",
  "ph2d-editor",
  "ph2d-flip",
@@ -4828,6 +4829,7 @@ name = "ph2d-app-registry-init"
 version = "0.0.0"
 dependencies = [
  "ph2d-app-field3d",
+ "ph2d-app-flip",
  "ph2d-app-host",
  "ph2d-app-sync",
  "ph2d-app-vec",

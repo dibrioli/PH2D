@@ -31,6 +31,9 @@ authors.workspace = true
 # a metade de APLICAÇÃO: as leis puras, os construtores de cena, o estado de interacção.
 
 [dependencies]
+# ⚠️ A INTERFACE da shell (`AppFamily`), não o agregador — importar de
+# `ph2d-app-registry-init` fecharia o ciclo `registry → família → registry`.
+ph2d-app-host = { path = "../ph2d-app-host" }
 # Vec2 e a aritmética partilhada.
 ph2d-core = { path = "../ph2d-core" }
 # O MODELO do Flip: objectos, camadas, desenhos, traços. O documento vem daqui, nunca da shell.

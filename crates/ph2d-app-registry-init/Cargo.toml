@@ -13,6 +13,7 @@ authors.workspace = true
 ph2d-app-host = { path = "../ph2d-app-host" }
 # <ph2d-app-sync:deps:begin>
 ph2d-app-field3d = { path = "../ph2d-app-field3d", optional = true }
+ph2d-app-flip = { path = "../ph2d-app-flip", optional = true }
 ph2d-app-vec = { path = "../ph2d-app-vec", optional = true }
 # <ph2d-app-sync:deps:end>
 
@@ -24,6 +25,7 @@ ph2d-app-vec = { path = "../ph2d-app-vec", optional = true }
 default = [
 # <ph2d-app-sync:default:begin>
     "app-field3d",
+    "app-flip",
     "app-vec",
 # <ph2d-app-sync:default:end>
 ]
@@ -31,6 +33,7 @@ default = [
 # `crates/ph2d-app-*`. ⛔ Não edite entre os marcadores à mão — há gate de staleness.
 # <ph2d-app-sync:features:begin>
 app-field3d = ["dep:ph2d-app-field3d"]
+app-flip = ["dep:ph2d-app-flip"]
 app-vec = ["dep:ph2d-app-vec"]
 # <ph2d-app-sync:features:end>
 

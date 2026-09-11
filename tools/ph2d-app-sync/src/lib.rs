@@ -110,6 +110,19 @@ pub fn render_features(crates: &[String]) -> String {
 /// ⚠️ Devolve `None` quando um marcador falta **ou está fora de ordem** — um `rewrite` que
 /// silenciosamente não escrevesse deixaria o gate de staleness a comparar o ficheiro consigo
 /// próprio e a passar.
+///
+/// ⛔⛔ **O corte do fim é no início da LINHA do marcador, nunca no texto dele — senão o gerador
+/// e o `rustfmt` entram em PING-PONG e o `ship.sh` reprova para sempre.** O bloco do `lib.rs` vive
+/// **dentro** de `register_all_app_families()`, logo o `cargo fmt` indenta o `// <…:end>` com
+/// quatro espaços; cortar em `src[posição_do_texto..]` deixa esses espaços na região substituída e
+/// **apaga-os** a cada corrida. O resultado é um par que nunca converge: `fmt` indenta, o sync
+/// desindenta, e `cargo fmt --check` acusa uma árvore que acabou de ser formatada.
+///
+/// ⚠️ *Medido na integração de 2026-09-11*, e a armadilha é mais fina do que parece: o gate de
+/// staleness **já** compensava isto (compara com a indentação do fecho aparada), então o defeito
+/// estava invisível a todo portão da linha — só o `cargo fmt --check`, que a L0 não correu, o via.
+/// *Uma compensação a jusante esconde o defeito a montante, e quem lê o gate conclui que o assunto
+/// está tratado.*
 #[must_use]
 pub fn rewrite(src: &str, begin: &str, end: &str, body: &str) -> Option<String> {
     let b = src.find(begin)?;
@@ -117,15 +130,43 @@ pub fn rewrite(src: &str, begin: &str, end: &str, body: &str) -> Option<String> 
     if e < b {
         return None;
     }
+    // recua até ao início da linha do marcador de fecho, para que a indentação dele sobreviva
+    let end_line = src[..e].rfind('\n').map_or(0, |i| i + 1);
     let after_begin = b + begin.len();
     // engole a quebra de linha que segue o marcador de abertura
     let body_start = src[after_begin..].find('\n').map(|i| after_begin + i + 1)?;
-    Some(format!("{}{}{}", &src[..body_start], body, &src[e..]))
+    Some(format!(
+        "{}{}{}",
+        &src[..body_start],
+        body,
+        &src[end_line..]
+    ))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// ⛔ **O marcador de fecho INDENTADO sobrevive a uma corrida do gerador.**
+    ///
+    /// Sem isto o par `cargo fmt` ⇄ `ph2d-app-sync` nunca converge (ver o doc de [`rewrite`]), e o
+    /// sintoma chega longe da causa: `cargo fmt --check` a acusar uma árvore acabada de formatar.
+    /// ⚠️ **Este teste é um PONTO FIXO, não uma comparação de texto** — ele corre o `rewrite`
+    /// DUAS vezes e exige a mesma saída, que é a propriedade que de facto se quer.
+    #[test]
+    fn an_indented_end_marker_survives_a_second_run() {
+        let src = "fn f() {\n    // <b>\n    velho\n    // <e>\n}\n";
+        let um = rewrite(src, "// <b>", "// <e>", "    novo\n").expect("marcadores");
+        assert!(
+            um.contains("\n    // <e>"),
+            "a indentação do marcador de fecho evaporou: {um:?}"
+        );
+        let dois = rewrite(&um, "// <b>", "// <e>", "    novo\n").expect("marcadores");
+        assert_eq!(
+            um, dois,
+            "o gerador não é um ponto fixo — ping-pong com o rustfmt"
+        );
+    }
 
     #[test]
     fn a_family_renders_all_four_blocks() {

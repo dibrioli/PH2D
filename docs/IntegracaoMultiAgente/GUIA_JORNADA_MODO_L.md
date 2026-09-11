@@ -64,7 +64,8 @@ topo daquele doc**, e é a razão de o bloco existir separado.
   entrega tem de **abrir o app**, não começar um build. Nada no dia dela produz esse binário — o
   loop é `cargo check` (não gera código) e o gate roda noutro perfil —, então sem esse passo você
   espera o build mais caro do repo antes de ver a feature. O handoff traz a prova: a 2ª corrida do
-  `cargo build … --release` dizendo *Finished* em segundos, **sem nenhuma linha `Compiling`**.
+  `cargo build … --profile smoke` dizendo *Finished* em segundos, **sem nenhuma linha `Compiling`**
+  (desde 10/09 o smoke é o perfil `smoke`: uma correcção reconstrói em 3 s, contra 161 s no `release`).
   Abriu e ficou compilando? A linha pulou o item 9 — peça o passo, não o build.
 - **Você só age quando um agente te REPORTA** (os 2 casos irredutíveis):
 

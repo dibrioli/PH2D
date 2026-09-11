@@ -211,8 +211,8 @@ violação do 1.5.1 — pare e reporte). Linha integrada segue viva pra próxima
 morreu de vez → `git worktree remove Worktrees/line-<x> && git branch -d line/<x>`.
 
 ⚠️ **Antes de reportar "main verde local", deixe o binário do smoke compilado NO PRIMÁRIO** —
-`cargo build -p ph2d-host-desktop --release` de dentro da raiz (mais as `--features` de cada
-smoke que o Enio vá rodar). Depois da fusão é o **main** que ele smoka, e a árvore que ele abre é
+`cargo build -p ph2d-host-desktop --profile smoke` de dentro da raiz (mais as `--features` de cada
+smoke que o Enio vá rodar; `--release` só se o smoke for de PERFORMANCE — §1.5.9 item 9). Depois da fusão é o **main** que ele smoka, e a árvore que ele abre é
 a do primário: as worktrees podem estar todas quentes e ele ainda pagar o build inteiro. Regra,
 armadilhas e a prova (2ª corrida sem `Compiling`): §1.5.9 item 9.
 
@@ -822,8 +822,9 @@ Faltou → **bounce pro Implementador antes de mergear.** Não "vou abrir exceç
 | Situação | Comando | Tempo |
 |---|---|---|
 | Editou 1 arquivo, quer ver se compila | `cargo check -p <crate>` | 3-15s |
-| Editou crate, quer rodar testes | `cargo test -p <crate>` | 5-30s |
-| Quer rodar UM teste | `cargo test -p <crate> -- <pattern>` | 1-5s |
+| Editou crate, quer rodar testes | `bash scripts/cargo-test-narrow.sh <crate>` (tecto de 900 s, varre órfãos) | 5-30s |
+| Quer rodar UM teste | `bash scripts/cargo-test-narrow.sh <crate> <pattern>` | 1-5s |
+| Teste PESADO (malha, campo, física) | `cargo nextest run -p <crate> --cargo-profile ci-test` — no `dev` uma suíte custou 55 min | — |
 | Editou foundational, quer ver downstream | `cargo check --workspace` | 30-60s warm |
 | Vai commitar (T2 hook vai rodar) | **nada** — deixa o hook validar | 0s |
 | **Antes do push (obrigatório)** | `./scripts/ship.sh` | 3-8min warm |
@@ -848,6 +849,8 @@ Faltou → **bounce pro Implementador antes de mergear.** Não "vou abrir exceç
 - ❌ Validar baseline no início da sessão se último commit já está verde
 - ❌ `cargo build` antes de `cargo test` (test já compila)
 - ❌ Re-`Read` arquivo que acabou de editar
+- ❌ Ficheiro NOVO em `tests/` por teste: **cada `tests/*.rs` é um binário** que religa a closure da crate (na shell, 910 crates); há 1 446 hoje e são 80 % do tempo de verificação do workspace (§6.7). Acrescente ao ficheiro existente ou faça teste unitário no `src/`.
+- ❌ `cargo run … --release` para smoke de comportamento — é `--profile smoke` (161 s → 3 s por correcção); o `release` é para PERFORMANCE.
 
 ### 6.4 Pre-commit hook tiered
 
@@ -876,6 +879,8 @@ Acidentalmente trigou T2 workspace numa pasta isolada? Provavelmente staged junt
 - Setup caro em `OnceLock` lazy, compartilhado entre tests do mesmo binário.
 - Input minimal: 1 caso simples + 1 caso edge.
 - IO real → `#[ignore]` + `cargo test -- --ignored` no CI separado.
+- **Gate que compara dois RELÓGIOS ou conta ALOCAÇÕES** → entra na lane do `.config/nextest.toml` pelo nome (corre sozinho e no fim), ou nasce num ficheiro `measure_*.rs`; **a barra não se afrouxa** — sob 32 processos ela flaka por FOME, não por defeito (CLAUDE.md §5.0, a família com 23 membros).
+- **Tecto global desde 10/09:** 60 s avisa (`SLOW`), **180 s mata** e conta como falha. Um teste que precise de mais recebe `[[profile.default.overrides]]` com o número medido ao lado — nunca se sobe o global (hoje o mais lento da suíte leva 42 s).
 
 ---
 
@@ -915,8 +920,10 @@ A pesquisa de alavancas de build de **2026-05-29** foi **verbatim** para
 ⚠️ **Ela é um veredito sobre um Mac**: o que ela apurou foi que o rust-analyzer full não cabe em
 8 GiB, que o linker é o `ld64.lld` do `/opt/homebrew`, e que **"`mold` é incompatível"** — três
 frases que, lidas numa workstation Linux com mold e 128 GiB, dizem o **oposto** do que vale aqui.
-Os vereditos ainda vivos (Cranelift ❌, `-Zthreads` ❌, `prefer-dynamic` ❌, hakari = medir antes)
-estão condensados no [`CLAUDE.md §2`](../../CLAUDE.md) e em §6.0. **Não a leia para decidir stack
+Os vereditos ainda vivos (Cranelift ❌, `prefer-dynamic` ❌) estão condensados no [`CLAUDE.md §2`](../../CLAUDE.md)
+e em §6.0; ⚠️ **dois foram RE-MEDIDOS em 2026-09-10 (§6.7):** `hakari` passou de *«medir antes»* a
+**recusado** (não há cascata de unificação: 1 · 1 · 0 unidades), e `-Zthreads` passou de ❌ a *«2,4× na unidade
+da shell, mas nightly — só para medir»*. **Não a leia para decidir stack
 nesta máquina** — leia-a só para não re-fazer a pesquisa.
 
 #### C. Anti-padrão que matou a velocidade (não repita)
@@ -924,6 +931,40 @@ nesta máquina** — leia-a só para não re-fazer a pesquisa.
 Mandar cada implementador rodar `cargo test` + `clippy --all-targets` + **spawnar 2
 auditores POR TASK** = tempestade de builds redundantes. Auditoria é **por módulo
 fechado**, não por micro-task (vide §6.6.A.2).
+
+### 6.7 O que a auditoria de 2026-09-10 mediu — as regras que ficam
+
+> Fonte, com os números, o método e as recusas medidas:
+> [`docs/DevOps/AUDITORIA_VELOCIDADE_DE_DESENVOLVIMENTO_2026-09-10.md`](../DevOps/AUDITORIA_VELOCIDADE_DE_DESENVOLVIMENTO_2026-09-10.md).
+> Isto é o resumo OPERACIONAL — o que muda no que você faz.
+
+1. **O inner loop está bom e não é onde o tempo vai:** `cargo check -p ph2d-host-desktop` depois de uma
+   edição real custa **1,8 s** (na shell) a **3,3 s** (numa crate com 106 dependentes). O `-j` não o muda.
+2. **O smoke é `cargo run -p ph2d-host-desktop --profile smoke`.** O `release` (`codegen-units = 1` + thin
+   LTO) optimiza a shell de 306 k linhas num só thread: **161 s** por correcção; o `smoke` custa **3 s**.
+   `--release` só para smoke de PERFORMANCE (tectos, milhões de objectos), e o passo do smoke diz quando.
+3. **Os testes não são lentos a correr (20 041 em 98 s); são lentos a NASCER:** 1 521 binários, e uma
+   linha numa crate foundational religa 2 128 deles. Logo: (a) **não crie ficheiro novo em `tests/`** sem
+   necessidade (§6.3); (b) teste pesado corre em `--profile ci-test` — `cargo-test-narrow.sh` para um crate,
+   `nextest-impacted.sh` para o diff — e nunca `cargo test` cru no `dev` (55 min numa suíte, medido).
+4. **Todo teste tem tecto** (`.config/nextest.toml`: 60 s avisa, 180 s mata) e a suíte **não cancela** no
+   1.º ✗. Precisa de mais? `[[profile.default.overrides]]` com o número medido. Gate de relógio/alocação
+   novo entra na **lane** pelo nome (§6.5) — a barra fica.
+5. **A shell é o caminho crítico de todo build grande** (45 s sozinha no fim de todo gate; 493 k linhas em
+   `src/`, dobrou em quatro semanas). Código de um módulo que só a shell «precisava» de ter — cenas de
+   smoke, ponte `App` ⇄ módulo — é a próxima onda (W2 do doc): **não acrescente ali o que pode viver na
+   crate do módulo.** Uma cena de smoke nova que nenhum doc cite pelo número é 1 k linhas pagas por ninguém.
+6. **`jobs = 32` nesta máquina** (era 6; a nota media codegen e prendia o front-end): check frio do
+   workspace 156 → 93 s. É config por máquina (`~/.cargo/config.toml`), não do repo.
+7. **Recusas medidas — não reconstrua:** `cargo-hakari`/unificação de features (não há cascata) ·
+   Cranelift (não está pronto, força `panic=abort`) · `sccache` como alavanca do inner loop (não guarda
+   `check`, incremental, binários nem proc-macros — só rlibs de registry) · `-Zthreads` (2,4× na shell,
+   **nightly**: mede-se com `cargo +nightly` em target próprio, não se shipa) · «o Rust 1.98 tem flags
+   novas» (nada no estável desde 1.91; o 1.99 de outubro recupera 2–7 % pelo LLVM 23).
+8. **Ondas por abrir, em ordem:** W1 um binário de teste por crate + `ph2d-arch-gates` (155 gates puros de
+   fonte) · W2.0 censo de `App` por família · W2 cenas de smoke fora da shell, depois `ph2d-app-<módulo>` ·
+   W3 CI (archive + partition, impactado no PR, GPU por software) · W4 medir `-Zthreads`, subir a 1.99.
+   Quem abrir uma lê o §6 e o §9 do doc antes.
 
 ---
 

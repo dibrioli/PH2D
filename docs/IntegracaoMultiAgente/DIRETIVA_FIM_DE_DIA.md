@@ -281,6 +281,11 @@ worktrees manterem um build multi-perfil vivo ao mesmo tempo, sem nada reclamar 
 
 ### Regra 1 — `CARGO_INCREMENTAL=0` no gate de fechamento
 
+> ✅ **Desde 2026-09-10 a regra vive no `Cargo.toml`** (`[profile.ci-test] incremental = false`): o prefixo
+> abaixo continua correcto e passou a ser redundante. Os 26 GB de `target/ci-test/incremental` medidos no
+> primário nesse dia provaram que uma regra em dois scripts não chegava a quem corria o perfil à mão
+> ([auditoria](../DevOps/AUDITORIA_VELOCIDADE_DE_DESENVOLVIMENTO_2026-09-10.md) §4-C5).
+
 O perfil `ci-test` existe para **uma** coisa: o `cargo nextest run --workspace --cargo-profile ci-test`
 do fechamento e do `ship.sh`. Ele roda em **BATCH**, sobre a workspace inteira, uma ou duas vezes por
 jornada. Compilação incremental existe para tornar a *próxima edição* barata — um gate que varre tudo

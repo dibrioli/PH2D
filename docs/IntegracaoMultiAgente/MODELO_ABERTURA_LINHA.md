@@ -116,8 +116,9 @@ G. UI canônica sempre: zero hex, zero f32 literal de UI, tudo por
 I. DEIXE O SMOKE COMPILADO. O ÚLTIMO passo da linha — depois do commit
    final e da limpeza do incremental — é construir, DENTRO da sua
    worktree, o binário do comando que você vai entregar ao Enio:
-   `cargo build -p ph2d-host-desktop --release` (+ as `--features` de
-   cada smoke que as exija). Nada do seu dia o produz: `cargo check`
+   `cargo build -p ph2d-host-desktop --profile smoke` (+ as `--features` de
+   cada smoke que as exija; `--release` só para smoke de PERFORMANCE —
+   o `smoke` reconstrói em 3 s, o `release` em 161 s, medido 10/09). Nada do seu dia o produz: `cargo check`
    não gera código e o gate roda no perfil `ci-test`, que é outro
    target/ — sem este passo o primeiro gesto dele é esperar o build
    mais caro do repo. Rode 2× e cole a 2ª saída no handoff ("Finished"

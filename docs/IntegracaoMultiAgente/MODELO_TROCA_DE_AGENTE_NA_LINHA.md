@@ -92,7 +92,8 @@ COMO ESTA SESSÃO TERMINA:
    `target/*/incremental` da worktree (25 GB, risco zero, o cargo recria).
    ⚠️ E o item 9, que é o ÚLTIMO passo de todos: deixar o binário do smoke
    JÁ COMPILADO na sua worktree — `cargo build -p ph2d-host-desktop
-   --release` (+ features), rodado 2× com a 2ª saída colada no handoff
+   --profile smoke` (+ features; `--release` só para smoke de PERFORMANCE),
+   rodado 2× com a 2ª saída colada no handoff
    ("Finished" em segundos, zero "Compiling"). O Enio não espera build:
    nada no seu dia produz esse binário (o `check` não gera código, o gate
    é perfil `ci-test`), e uma edição posterior o invalida em SILÊNCIO.

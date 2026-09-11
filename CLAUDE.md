@@ -86,7 +86,7 @@
 - **A sonda destas três leis é `bash scripts/agent-loop-profile.sh`** — ela lê os transcripts e imprime paralelismo · turnos/sessão · `test:check` · % de edições pela ferramenta, cada um com o baseline de 2026-08-18 ao lado. *Uma regra sem instrumento é uma nota que envelhece.*
 - **Slot warm por CoW** (só `constrained`): `bash scripts/slot-seed.sh <slot>` → prefixe cada cargo com o `CARGO_TARGET_DIR` impresso. No `workstation` os slots são opcionais (`target/` único basta).
 - **Diagnóstico via LSP (maior alavanca):** `constrained` = `cargo-check-narrow.sh` on-demand (RA é RAM-blocked); `workstation` = **rust-analyzer full como oráculo**, não leia saída crua do cargo.
-- **Gate batched no fim do módulo:** `scripts/nextest-impacted.sh` + clippy `--all-targets` + auditoria ≥2 lentes, **1× sobre o diff acumulado**. ⚠️ **Prefixe o nextest com `CARGO_INCREMENTAL=0`** — o perfil `ci-test` só roda em BATCH (uma ou duas vezes por jornada, sobre a workspace inteira), então compilação incremental não colhe nada ali e paga **11 GB** (medido 2026-08-16). O `cargo check -p` do inner loop fica em paz, de propósito. E ao FECHAR a linha, reclame o resto: `rm -rf target/*/incremental` (DIRETRIZ §1.5.9 item 7).
+- **Gate batched no fim do módulo:** `scripts/nextest-impacted.sh` + clippy `--all-targets` + auditoria ≥2 lentes, **1× sobre o diff acumulado**. ⚠️ O perfil `ci-test` tem **`incremental = false` no `Cargo.toml`** desde 10/09 (a regra do prefixo `CARGO_INCREMENTAL=0` vivia em dois scripts e **26 GB** de `target/ci-test/incremental` provaram que não chegava a quem corria o perfil à mão); o `cargo check -p` do inner loop fica em paz, de propósito. ⭐ **O que a auditoria de 10/09 mediu e as regras que ficam: DIRETRIZ §6.7** — o inner loop está bom (1,8–3,3 s), o custo mora nos TESTES e no `--release` (o smoke é `--profile smoke`, 161 s → 3 s). E ao FECHAR a linha, reclame o resto: `rm -rf target/*/incremental` (DIRETRIZ §1.5.9 item 7).
 - **Cargos simultâneos:** `constrained` ≤3 (RAM 8 GiB); `workstation` ~cores/6 (build) / ~cores/3 (check) — vide hw-profile.
 - **NÃO use:** Cranelift (ruim p/ check-loop + gaps macOS). Linker = `mold` no Linux (**nunca no `.cargo/config.toml` do repo** — global), `lld/ld-prime` no macOS (mold é ELF-only).
 
@@ -234,8 +234,9 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   passa sozinho na máquina calma. O sinal de que é carga: o mesmo teste verde isolado (3–5 de 3–5),
   o diff sem uma linha no módulo dele — e num grupo, o **CONJUNTO de reprovadas MUDA entre corridas
   do mesmo binário** (um defeito de lógica reprova o mesmo caso sempre). ⇒ *re-rode sozinho ANTES de
-  olhar para o seu commit*, e re-corra com `--no-fail-fast`: o nextest cancela no 1º ✗ e **esconde o
-  resto da suíte** (uma corrida parou em 11.240 com 1.007 por correr).
+  olhar para o seu commit*. O `fail-fast = false` é o default do `.config/nextest.toml` desde 10/09 —
+  antes o nextest cancelava no 1º ✗ e **escondia o resto da suíte** (uma corrida parou em 11.240 com
+  1.007 por correr); numa árvore mais velha, `--no-fail-fast` à mão.
   **Membros confirmados (2026-08-16..23):** `a_round_live_offset_costs_like_the_other_joins`
   ([`ph2d-vec-boolean`](crates/ph2d-vec-boolean/tests/offset_live_cost.rs) — o caso canónico: único
   ✗ de 15.323, no pico do fan-out, commit sem uma linha de produção) ·
@@ -306,8 +307,10 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   que não reproduziu em 4 corridas»* sem o nomear. *Uma flake sem nome não entra numa lista — quem
   a encontrar outra vez recomeça do zero.*
   *Todo gate que compara duas medianas de um RECURSO é candidato, e a lista nunca estará completa.*
-- ⚠️ **Gates de GPU são `#[ignore]`** e precisam de adapter — *skip gracioso não é verde*; e o `nextest` **cancela na
-  primeira falha**: use `--no-fail-fast`, senão suítes inteiras nunca chegam a correr.
+- ⚠️ **Gates de GPU são `#[ignore]`** e precisam de adapter — *skip gracioso não é verde*; e o `nextest` só deixou de
+  **cancelar na primeira falha** em 10/09 (`fail-fast = false` no `.config/nextest.toml`) — numa árvore mais
+  velha, `--no-fail-fast`, senão suítes inteiras nunca chegam a correr. E desde o mesmo dia **todo teste tem
+  tecto** (60 s avisa, 180 s mata): quem precisa de mais pede por `[[overrides]]` com o número medido.
 
 ### §5.1 — Módulos
 

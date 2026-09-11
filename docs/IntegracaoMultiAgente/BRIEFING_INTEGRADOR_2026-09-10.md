@@ -238,8 +238,9 @@ nomeada, não um número congelado). Nenhuma das seis passa do tecto individualm
    worktrees têm o delas quente; o do **primário é de 07/09** e está obsoleto. O Enio smoka o
    **main**, na árvore do **primário**:
    ```
-   cd /home/enio/Documentos/Projetos/PH2D && cargo build -p ph2d-host-desktop --release
-   cd /home/enio/Documentos/Projetos/PH2D && cargo build -p ph2d-host-desktop --release   # 2ª = a PROVA
+   cd /home/enio/Documentos/Projetos/PH2D && cargo build -p ph2d-host-desktop --profile smoke
+   cd /home/enio/Documentos/Projetos/PH2D && cargo build -p ph2d-host-desktop --profile smoke   # 2ª = a PROVA
+   # (desde 10/09: perfil `smoke`, não `--release` — 3 s por correcção contra 161 s)
    ```
    A 2ª corrida tem de dizer *Finished* em segundos com **zero** linhas `Compiling`.
 5. ⛔ **NÃO faça push nem ship sem ordem explícita do Enio** (`CLAUDE.md §0.7`).

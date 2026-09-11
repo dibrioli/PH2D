@@ -1695,7 +1695,7 @@ pub(crate) struct App {
     /// invariante "um path ⟺ uma entidade" é mantido por `vec_entities::sync`.
     pub(crate) vec_entities: crate::vec_entities::VecEntityMap,
     /// ⭐ **A arte, em CPU, dos quads que o Motion desenha na cena vectorial** — a memória da
-    /// terceira média (ver [`crate::motion::motion_leaf_images`]). Vive aqui porque toda leitura PARA a
+    /// terceira média (ver [`ph2d_app_motion::motion_leaf_images`]). Vive aqui porque toda leitura PARA a
     /// GPU, e ela tem de sobreviver ao quadro.
     /// ⭐ **O estado de shell da familia MOTION** — quatro campos que eram soltos aqui e
     /// que so' esta familia le' (W2/L1). Ver [`crate::motion::motion_shell_state`].

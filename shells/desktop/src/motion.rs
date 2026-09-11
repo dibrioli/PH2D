@@ -46,7 +46,6 @@ pub(crate) mod motion_delay_smoke;
 pub(crate) mod motion_demo_legend;
 pub(crate) mod motion_flip_bake;
 pub(crate) mod motion_fx_smoke;
-pub(crate) mod motion_leaf_images;
 pub(crate) mod motion_node_path_smoke;
 pub(crate) mod motion_object_bake;
 /// Irmão do acima por RESPONSABILIDADE: ele produz pixels (GPU), este diz quantos (CPU).

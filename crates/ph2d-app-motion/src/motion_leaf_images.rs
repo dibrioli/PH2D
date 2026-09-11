@@ -19,13 +19,13 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 /// A arte já recortada de um quad: `(largura, altura, RGBA premultiplicado ou não — como veio)`.
-pub(crate) type Art = (u32, u32, Arc<Vec<u8>>);
+pub type Art = (u32, u32, Arc<Vec<u8>>);
 
 /// A chave: a textura e a região dela, com a região quantizada para o `f32` não a fragmentar.
 type Key = (u32, [i32; 4]);
 
 #[derive(Default)]
-pub(crate) struct LeafImages {
+pub struct LeafImages {
     /// O atlas partilhado, lido inteiro (`texture_id == 0` amostra dele).
     ///
     /// ⛔⛔ **Ele já foi guardado pela VIDA DO PROCESSO, e eram `268 MB`** — achado §2.5 da
@@ -48,7 +48,7 @@ impl LeafImages {
     /// `(textura, região)`, e são pequenos (a arte de uma folha). O que sai é a cópia INTEIRA do
     /// atlas — `8192² × 4 = 268 MB` —, que só serve para RESOLVER recortes novos. Uma folha nova
     /// paga uma leitura; nenhuma folha nova paga zero.
-    pub(crate) fn end_frame(&mut self) {
+    pub fn end_frame(&mut self) {
         self.atlas = None;
     }
 
@@ -59,7 +59,7 @@ impl LeafImages {
     /// `gpu`/`atlas`/`individual` e não é alcançável de um teste — *uma decisão enterrada num
     /// método que precisa de um contexto de GPU não tem gate possível*, que é a mesma frase que
     /// o doc do [`crop`] já dizia sobre a aritmética.
-    pub(crate) fn sync_to(&mut self, epoch: u64) {
+    pub fn sync_to(&mut self, epoch: u64) {
         if self.epoch != epoch {
             self.epoch = epoch;
             self.atlas = None;
@@ -79,14 +79,14 @@ impl LeafImages {
     /// ⇒ o `art` mudou-se para o [`Synced`], que só se obtém daqui. Hoje, esquecer a
     /// sincronização é **erro de compilação** — que é a única forma de gate que uma mutação não
     /// atravessa.
-    pub(crate) fn synced(&mut self, epoch: u64) -> Synced<'_> {
+    pub fn synced(&mut self, epoch: u64) -> Synced<'_> {
         self.sync_to(epoch);
         Synced { cache: self }
     }
 
     /// Quantas artes o cache guarda — `(tem o atlas inteiro?, quantos recortes)`.
     #[cfg(test)]
-    pub(crate) fn cached(&self) -> (bool, usize) {
+    pub fn cached(&self) -> (bool, usize) {
         (self.atlas.is_some(), self.recortes.len())
     }
 
@@ -96,7 +96,7 @@ impl LeafImages {
     /// precisa de um `GpuContext`; sem ela, a lei de invalidação só seria demonstrável com
     /// adapter, e os gates de GPU desta casa são `#[ignore]` — *skip gracioso não é verde*.
     #[cfg(test)]
-    pub(crate) fn seed_for_tests(&mut self, epoch: u64, side: u32, recortes: usize) {
+    pub fn seed_for_tests(&mut self, epoch: u64, side: u32, recortes: usize) {
         self.epoch = epoch;
         self.atlas = Some((side, Arc::new(vec![0u8; 4])));
         self.recortes.clear();
@@ -154,7 +154,7 @@ impl LeafImages {
 }
 
 /// **O CACHE JÁ SINCRONIZADO** — ver [`LeafImages::synced`], que é a única forma de o obter.
-pub(crate) struct Synced<'c> {
+pub struct Synced<'c> {
     cache: &'c mut LeafImages,
 }
 
@@ -162,7 +162,7 @@ impl Synced<'_> {
     /// **A arte de um quad**, memoizada. `None` = esta textura não se resolve (formato que a
     /// porta de leitura recusa, id que já não existe) — e a linha simplesmente não desenha, que
     /// é o mesmo que a membrana faz com um nome que ninguém publicou.
-    pub(crate) fn art(
+    pub fn art(
         &mut self,
         gpu: &ph2d_gpu::GpuContext,
         atlas: &ph2d_render::TextureAtlas,
@@ -179,7 +179,7 @@ impl Synced<'_> {
 ///
 /// ⚠️ **Função com nome e sem GPU de propósito** — é a única aritmética aqui, e uma
 /// aritmética enterrada num método que precisa de um contexto de GPU não tem gate possível.
-pub(crate) fn crop(w: u32, h: u32, px: &[u8], uv: [f32; 4]) -> Option<Art> {
+pub fn crop(w: u32, h: u32, px: &[u8], uv: [f32; 4]) -> Option<Art> {
     if w == 0 || h == 0 || px.len() < (w as usize * h as usize * 4) {
         return None;
     }

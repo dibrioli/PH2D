@@ -444,7 +444,7 @@ pub(crate) fn publish(motion: &mut MotionState, seconds: f64) {
 pub(crate) fn encode(
     insts: &[VectorInstance],
     store: &VecPathStore,
-    art: &mut dyn FnMut(u32, [f32; 4]) -> Option<crate::motion::motion_leaf_images::Art>,
+    art: &mut dyn FnMut(u32, [f32; 4]) -> Option<ph2d_app_motion::motion_leaf_images::Art>,
     cam: Affine,
     scene: &mut VectorScene,
 ) {

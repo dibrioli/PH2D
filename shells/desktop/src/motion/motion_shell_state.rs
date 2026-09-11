@@ -42,7 +42,7 @@ pub(crate) struct MotionShellState {
     pub(crate) path_last_click: Option<(std::time::Instant, (f32, f32))>,
 
     /// ⭐ **A arte, em CPU, dos quads que o Motion desenha na cena vectorial** — a memória da
-    /// terceira média (ver [`crate::motion::motion_leaf_images`]). Vive aqui porque toda leitura PARA a
+    /// terceira média (ver [`ph2d_app_motion::motion_leaf_images`]). Vive aqui porque toda leitura PARA a
     /// GPU, e ela tem de sobreviver ao quadro.
-    pub(crate) leaf_images: crate::motion::motion_leaf_images::LeafImages,
+    pub(crate) leaf_images: ph2d_app_motion::motion_leaf_images::LeafImages,
 }

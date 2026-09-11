@@ -11205,7 +11205,7 @@ impl crate::App {
             if motion_tool_active {
                 // ⭐⭐⭐ **A ARTE dos quads do passe vectorial** (a terceira média): resolvida
                 // aqui porque é aqui que o `renderer` e a GPU estão em mão, e memoizada em
-                // [`crate::motion::motion_leaf_images`] porque cada leitura PARA a GPU.
+                // [`ph2d_app_motion::motion_leaf_images`] porque cada leitura PARA a GPU.
                 let (gpu, atlas, individual) =
                     (surface.gpu(), renderer.atlas(), renderer.individual());
                 // ⚠️ **O `synced` é a única porta**, e ele recebe o relógio de mudança do

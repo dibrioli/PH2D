@@ -116,6 +116,7 @@ ph2d-node-motion-shape = { path = "../../crates/ph2d-node-motion-shape" }
 # registered node ops) and the transport; `motion_bridge` cooks it per frame
 # while the Motion tool is active.
 ph2d-motion-doc = { path = "../../crates/ph2d-motion-doc" }
+ph2d-app-motion = { path = "../../crates/ph2d-app-motion" }
 ph2d-node-registry-init = { path = "../../crates/ph2d-node-registry-init" }
 # The reroute node types the wire-splice gesture inserts (doc 45): the shell picks the one
 # that fits the wire, so it must name them.

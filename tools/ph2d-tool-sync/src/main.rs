@@ -60,8 +60,16 @@ fn main() {
         IMAGE_TOOLS_ORDER_END,
         &render_image_tools_order_lines(&design_entries),
     );
+    // ⚠️ `tests/it/` e não `tests/`: a consolidação W1 (2026-09-10, auditoria de
+    // velocidade §6) passou a um binário de teste por crate — cada antigo
+    // `tests/<x>.rs` virou `tests/it/<x>.rs`, declarado por um `mod` no
+    // `tests/it/main.rs`. Este é o ÚNICO sítio do repo que abre um ficheiro de
+    // teste por caminho fixo (os outros varrem o directório), e por isso foi o
+    // único que a W1 partiu sem ninguém ver: nada invoca este sync no laço
+    // interno — ele só corre no passo 2 do `foundational-integrate.sh`, ou
+    // seja, o defeito nasceu num dia e só apareceu na primeira integração.
     rewrite(
-        &init.join("tests/tool_manifest_design_sync.rs"),
+        &init.join("tests/it/tool_manifest_design_sync.rs"),
         ICON_SLUGS_BEGIN,
         ICON_SLUGS_END,
         &render_icon_slug_lines(&design_entries),

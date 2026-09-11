@@ -4815,6 +4815,7 @@ dependencies = [
  "ph2d-app-field3d",
  "ph2d-app-host",
  "ph2d-app-sync",
+ "ph2d-app-vec",
 ]
 
 [[package]]

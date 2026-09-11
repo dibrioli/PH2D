@@ -9,7 +9,7 @@
 //! builder is `pub(crate)` so a sibling shape test can drive it (ADR-0154 gates).
 
 use super::color::{color_groups, linear_rgba_to_srgb8};
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 /// O vocabulário de unidades (o que o número de um param É). O `display_face` — a única
 /// conversão — mudou-se para `params_wire`, que é onde a pergunta *"em que face esta row se
 /// lê?"* passou a viver inteira; aqui fica só quem a consome.

@@ -7,7 +7,7 @@
 //!
 //! Declared by the parent as a `#[path]` sibling, so `super` is `render_loop::motion_bridge`.
 
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 use ph2d_motion_doc::{Backdrop, Subgraph};
 use ph2d_nodegraph::graph::{Graph, NodeId};
 use ph2d_panel_motion_graph::RenameTarget;

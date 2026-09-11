@@ -10,7 +10,7 @@
 use super::{
     MAX_HANDLES, WarpBox, WarpGizmoSpec, WarpHandle, boundary, handles, outline, spec_for,
 };
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 use ph2d_nodegraph::graph::{Graph, NodeId};
 
 /// **Quem alimenta a porta 0 deste nó** — o layout a cuja caixa os offsets se referem.

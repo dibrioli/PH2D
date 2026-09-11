@@ -4,7 +4,7 @@
 //! The param-row / widget tests live in `motion_bridge_param_tests.rs`.
 
 use super::*;
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 
 /// The Behaviours seam, cooked through the REAL registry (not a unit-test
 /// stub): `grid -> stagger -> oscillator` is well-typed (validate passes — the

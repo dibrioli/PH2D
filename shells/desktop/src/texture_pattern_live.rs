@@ -74,7 +74,7 @@ struct Key {
     /// congelamento.*
     ///
     /// ⚠️ **NORMALIZADA pela translação COMUM**, e isso é a lei do assado, não uma optimização: o
-    /// [`crate::motion_object_bake::bake_rgba_many`] põe a caixa da UNIÃO na origem do ladrilho, e
+    /// [`crate::motion::motion_object_bake::bake_rgba_many`] põe a caixa da UNIÃO na origem do ladrilho, e
     /// por isso arrastar o conjunto inteiro devolve o mesmo desenho — o que muda o ladrilho é um
     /// membro mexer-se **em relação aos outros**. ⛔ Sem a normalização, arrastar o grupo re-assaria
     /// (render + readback de GPU) a **cada quadro**, que é exactamente a razão pela qual o `origin`
@@ -227,7 +227,7 @@ impl TexturePatternLive {
     ///
     /// Assar uma forma em pixels é render + readback — GPU. Cablá-lo aqui poria uma `GpuContext` na
     /// assinatura e tornaria **todo** gate deste memo dependente de uma placa; com a injecção, o
-    /// quadro passa a porta única [`crate::motion_object_bake::bake_rgba`] e os gates passam um
+    /// quadro passa a porta única [`crate::motion::motion_object_bake::bake_rgba`] e os gates passam um
     /// bitmap sintético. *Um memo que só se pode medir com GPU é um memo que não se mede.*
     pub(crate) fn recook(
         &mut self,

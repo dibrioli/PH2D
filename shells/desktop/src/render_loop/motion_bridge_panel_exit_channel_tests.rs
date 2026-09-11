@@ -5,7 +5,7 @@
 //! responde *«o que o cartão ainda NÃO alcança»* — um censo sobre o catálogo inteiro —, e este
 //! *«o canal, alcança-o assim»*. Um leitor que procure a lei do clique num censo não a acha.
 
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 
 /// ⭐⭐⭐ **O CLIQUE ANDA PELA LISTA DE CANAIS, E ESCREVE AS DUAS METADES.**
 ///

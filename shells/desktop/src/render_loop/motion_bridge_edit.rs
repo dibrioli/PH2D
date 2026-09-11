@@ -151,10 +151,10 @@ pub(super) fn copy_selection(motion: &mut MotionState, nodes: Vec<u32>, cards: V
         .enumerate()
         .map(|(i, id)| (*id, i))
         .collect();
-    let clip_subgraphs: Vec<crate::motion_state::ClipSubgraph> = relevant
+    let clip_subgraphs: Vec<crate::motion::motion_state::ClipSubgraph> = relevant
         .iter()
         .filter_map(|sid| ph2d_motion_doc::subgraph::find(&motion.doc.subgraphs, *sid))
-        .map(|s| crate::motion_state::ClipSubgraph {
+        .map(|s| crate::motion::motion_state::ClipSubgraph {
             title: s.title.clone(),
             // A parent OUTSIDE the copied set becomes a top-level group of the clip
             // (`None`), so the paste hangs it from whatever level it lands in.
@@ -164,7 +164,7 @@ pub(super) fn copy_selection(motion: &mut MotionState, nodes: Vec<u32>, cards: V
         })
         .collect();
 
-    let clip_nodes: Vec<crate::motion_state::ClipNode> = sources
+    let clip_nodes: Vec<crate::motion::motion_state::ClipNode> = sources
         .iter()
         .map(|src| {
             let inst = motion
@@ -172,7 +172,7 @@ pub(super) fn copy_selection(motion: &mut MotionState, nodes: Vec<u32>, cards: V
                 .graph
                 .node(*src)
                 .expect("filtered to live nodes above");
-            crate::motion_state::ClipNode {
+            crate::motion::motion_state::ClipNode {
                 type_name: inst.type_name.clone(),
                 params: motion
                     .doc
@@ -198,7 +198,7 @@ pub(super) fn copy_selection(motion: &mut MotionState, nodes: Vec<u32>, cards: V
         })
         .collect();
 
-    let clip_edges: Vec<crate::motion_state::ClipEdge> = motion
+    let clip_edges: Vec<crate::motion::motion_state::ClipEdge> = motion
         .doc
         .graph
         .edges()
@@ -207,14 +207,14 @@ pub(super) fn copy_selection(motion: &mut MotionState, nodes: Vec<u32>, cards: V
         .filter_map(|e| {
             let from = *index.get(&NodeId(e.from.0.0))?;
             let to = *index.get(&NodeId(e.to.0.0))?;
-            Some(crate::motion_state::ClipEdge {
+            Some(crate::motion::motion_state::ClipEdge {
                 from: (from, e.from.1),
                 to: (to, e.to.1),
             })
         })
         .collect();
 
-    motion.clip = Some(crate::motion_state::GraphClip {
+    motion.clip = Some(crate::motion::motion_state::GraphClip {
         nodes: clip_nodes,
         edges: clip_edges,
         subgraphs: clip_subgraphs,

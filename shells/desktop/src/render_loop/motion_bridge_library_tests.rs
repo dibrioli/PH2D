@@ -3,7 +3,7 @@
 //! `ph2d-editor-core::screens::hero::chrome::command_palette`; here we prove the Motion-specific glue:
 //! the model built from the live catalog, and the `OpenLibrary` intent stashing the spawn.
 
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 use ph2d_panel_motion_graph::GraphIntent;
 
 /// **The palette model groups the live catalog by category, sub-clustering the two overloaded ones.**
@@ -108,7 +108,7 @@ fn the_palette_model_is_filtered_to_the_compatible_types() {
 /// would fall back to a plain add).
 #[test]
 fn open_library_intent_stashes_the_spawn_and_wire_context() {
-    use crate::motion_state::LibraryOpen;
+    use crate::motion::motion_state::LibraryOpen;
     let mut m = MotionState::new();
     assert!(
         m.open_library.is_none(),

@@ -8,7 +8,7 @@
 
 use super::super::build_params_snapshot;
 use super::{WireFace, wire_face};
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 use ph2d_editor::ProjectSettings;
 use ph2d_node_registry::ParamUnit;
 use ph2d_panel_motion_params::ParamRow;

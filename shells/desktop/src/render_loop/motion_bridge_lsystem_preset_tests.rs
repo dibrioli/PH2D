@@ -8,7 +8,7 @@
 //! artista vai encontrar. Trocá-la tornaria este nó incompatível com o conhecimento do mundo.
 
 use super::params::{apply_lsystem_preset, param_value};
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 use ph2d_node_source_lsystem as ls;
 
 fn text_of(motion: &MotionState, nid: ph2d_nodegraph::graph::NodeId, key: &str) -> String {

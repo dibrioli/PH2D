@@ -15,7 +15,7 @@
 //! ```
 
 use super::tutorial_draw as draw;
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 use ph2d_nodegraph::attr::Column;
 use ph2d_nodegraph::graph::{Edge, NodeId};
 

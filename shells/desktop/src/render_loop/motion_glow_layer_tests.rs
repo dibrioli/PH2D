@@ -1,8 +1,8 @@
 //! Os gates da camada que o glow bright-passa (bug do Enio, 2026-08-20).
 
 use super::*;
-use crate::motion_object_bake::ObjectBake;
-use crate::motion_shape_bake::ShapeBake;
+use crate::motion::motion_object_bake::ObjectBake;
+use crate::motion::motion_shape_bake::ShapeBake;
 
 /// Uma instância vetorial viva daquela geometria, na posição `x`.
 fn vi(geometry_id: u32, x: f32) -> VectorInstance {
@@ -127,7 +127,7 @@ fn a_parametric_shape_reaches_the_layer_through_its_own_bake() {
     let mut shapes = ShapeBake::default();
     shapes.seed_for_test(
         9,
-        crate::motion_shape_bake::ShapeTile {
+        crate::motion::motion_shape_bake::ShapeTile {
             texture_id: 77,
             world_size: [2.0, 3.0],
             local_center: [0.0, 0.0],
@@ -157,7 +157,7 @@ fn an_object_tile_wins_over_a_shape_tile_for_the_same_geometry() {
     let mut shapes = ShapeBake::default();
     shapes.seed_for_test(
         5,
-        crate::motion_shape_bake::ShapeTile {
+        crate::motion::motion_shape_bake::ShapeTile {
             texture_id: 77,
             world_size: [9.0, 9.0],
             local_center: [0.0, 0.0],

@@ -5,7 +5,7 @@
 //! generalização `FieldSize` (retângulo da box × disco do radial sweep).
 
 use super::*;
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 use ph2d_editor::screens::layout::CenterSplit;
 use ph2d_editor::{
     GizmoCamera, GizmoDragKind, GizmoDragState, GizmoModifiers, GizmoSnap, GizmoTarget,

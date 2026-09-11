@@ -31,7 +31,7 @@ use ph2d_vec_scene::{ShapeKind as VecKind, VecPath, cook};
 use ph2d_vec_scene::{ellipse, gear, heart, regular_polygon_rounded, rounded_rect, star_rounded};
 use ph2d_vector::{Affine, VectorScene};
 
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 
 /// O cache de geometria, no irmão que o teto de LOC pediu. Re-exportado sob o nome de
 /// sempre: `motion_shape_gen::VecPathStore` continua a resolver, então nenhum chamador
@@ -444,7 +444,7 @@ pub(crate) fn publish(motion: &mut MotionState, seconds: f64) {
 pub(crate) fn encode(
     insts: &[VectorInstance],
     store: &VecPathStore,
-    art: &mut dyn FnMut(u32, [f32; 4]) -> Option<crate::motion_leaf_images::Art>,
+    art: &mut dyn FnMut(u32, [f32; 4]) -> Option<crate::motion::motion_leaf_images::Art>,
     cam: Affine,
     scene: &mut VectorScene,
 ) {

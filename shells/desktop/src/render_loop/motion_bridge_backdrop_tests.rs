@@ -7,7 +7,7 @@
 //! takes a node with it).
 
 use super::backdrops;
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 
 /// A state whose pump has already cooked once, so `is_dirty` is `false` and a
 /// later `true` can only have come from the edit under test.

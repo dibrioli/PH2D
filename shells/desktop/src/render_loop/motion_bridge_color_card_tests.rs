@@ -6,7 +6,7 @@
 //! espécie de controlo morto que uma sonda de alcance lê como vivo* — e a distância entre as
 //! duas coisas, aqui, é a leitura de volta do selector, que vive na shell.
 
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 use ph2d_editor::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor::widget::{ChannelMode, Harmony, InterpolationMode};
 use ph2d_panel_motion_graph::card_editor_swatch_id;

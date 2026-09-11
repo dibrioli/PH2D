@@ -21,7 +21,7 @@
 
 use std::collections::BTreeMap;
 
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 
 /// **A SOAK do quadro** — nada acumula ao longo de horas de laço. Vive ao lado da porta das
 /// membranas porque é aqui que a varredura mora.

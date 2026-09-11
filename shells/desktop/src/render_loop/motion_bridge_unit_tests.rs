@@ -14,7 +14,7 @@
 //! re-asserts the ordering of the whole tuple.
 
 use super::params::build_params_snapshot;
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 use ph2d_editor::{DisplayUnit, ProjectSettings};
 use ph2d_panel_motion_params::{ParamRow, ScalarRow};
 

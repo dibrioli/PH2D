@@ -29,7 +29,7 @@
 
 use super::warp_gizmo;
 use super::warp_gizmo_fixtures as fx;
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 use ph2d_nodegraph::graph::NodeId;
 
 /// `motion.grid → <nó> → motion.output`, marchada na CPU — a rota que ESTA sonda escolhe.

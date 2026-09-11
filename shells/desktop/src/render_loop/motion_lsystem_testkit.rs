@@ -5,7 +5,7 @@
 //! de desenho que veio junto: os gates das FITAS e os das FOLHAS vivem em módulos irmãos, e
 //! duas cópias do arnês divergiriam — *uma fixtura escrita duas vezes é duas fixturas*.
 
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 use ph2d_node_source_lsystem as ls;
 use ph2d_nodegraph::attr::Column;
 

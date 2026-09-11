@@ -17,7 +17,7 @@
 //! cargo test -p ph2d-host-desktop --bins --release -- --ignored --nocapture what_the_card_still_cannot_reach
 //! ```
 
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 
 /// Os gates da wave que fechou o **selector de canal** — irmão por responsabilidade (o censo
 /// aqui, a lei do clique lá).

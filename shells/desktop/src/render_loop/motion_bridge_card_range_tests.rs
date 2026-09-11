@@ -9,7 +9,7 @@
 
 use super::card_params_tests::open_every_section;
 use super::*;
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 
 /// ⭐⭐⭐ **O CARTÃO ARRASTA NA MESMA FAIXA QUE O PAINEL** — sobre **todo tipo de nó do registry**.
 ///

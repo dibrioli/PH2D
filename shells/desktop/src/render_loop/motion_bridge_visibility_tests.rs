@@ -12,7 +12,7 @@
 //! `#[path]`, então `super` é `render_loop::motion_bridge`.
 
 use super::params::build_params_snapshot;
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 use ph2d_editor::ProjectSettings;
 
 /// **Os oito sliders de polígono de controle somem quando o artista escolhe a

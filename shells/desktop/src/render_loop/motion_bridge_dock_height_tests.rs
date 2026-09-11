@@ -6,7 +6,7 @@
 //! sobre o que o painel PUBLICA depois de pintar. Elas partilham o `MockPanelHost` e mais nada.
 
 use super::params::build_params_snapshot;
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 use ph2d_editor::ProjectSettings;
 /// A altura do dock do inspector, do dono dela — nunca um literal copiado.
 use ph2d_editor::screens::layout::INSPECTOR_MAX_H;

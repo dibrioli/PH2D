@@ -7,7 +7,7 @@
 //! recebe?»* — a mesma porta de visibilidade, um segundo consumidor.
 
 use super::*;
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 
 /// **ABRE TODAS AS SECÇÕES** de um nó — o que torna a pergunta *«o cartão OFERECE isto?»*
 /// diferente de *«o cartão MOSTRA isto agora?»*.

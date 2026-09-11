@@ -4,7 +4,7 @@
 //! The first one is the whole design in a single assertion.
 
 use super::*;
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 use ph2d_motion_doc::subgraph;
 use ph2d_nodegraph::graph::NodeId;
 use ph2d_panel_motion_graph::{GraphIntent, NodeViewKind, drain_intents, push_intent};

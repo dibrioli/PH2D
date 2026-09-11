@@ -6,7 +6,7 @@
 //! os dois caminhos dão os MESMOS bits? · os dois chegam ao device? · o que custa cada um
 //! na CPU a um milhão de elementos?
 
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 use ph2d_nodegraph::attr::Column;
 use ph2d_nodegraph::cook::Cook;
 use ph2d_nodegraph::graph::{Edge, Graph, NodeId};

@@ -26,7 +26,7 @@
 //! `Transform` (ADR-0111). A polyline published in local space would put the instances where the
 //! shape *was authored*, not where it *is* — and it would look right until the artist moved it.
 
-use crate::motion_state::FormaEscolhida;
+use crate::motion::motion_state::FormaEscolhida;
 use ph2d_ecs::{Entity, Name, SimWorld};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_vec_scene::{VecScene, VecXforms, xform_of};

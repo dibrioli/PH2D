@@ -145,7 +145,7 @@ mod tests {
     //! intent funnel (`apply_graph_intents` → `apply_connect`), not the doc directly.
     use super::super::apply_graph_intents;
     use super::*;
-    use crate::motion_state::MotionState;
+    use crate::motion::motion_state::MotionState;
     use ph2d_panel_motion_graph::{GraphIntent, drain_intents, push_intent};
 
     /// The table answers the type question: a registered conversion resolves to its

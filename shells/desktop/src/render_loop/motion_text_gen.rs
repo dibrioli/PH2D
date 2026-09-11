@@ -33,7 +33,7 @@ use ph2d_vec_scene::VecPath;
 use ph2d_vec_scene::text_path::GlyphFrame;
 use ph2d_vector_font::{AxisTag, GlyphId, VariableFont};
 
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 use crate::vec_glyph::{TextLayout, TextPlacement, walk_glyphs};
 use crate::vec_glyph_build::glyph_to_vec_path;
 

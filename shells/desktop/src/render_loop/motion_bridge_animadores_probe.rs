@@ -9,7 +9,7 @@
 //!
 //! `cargo test -p ph2d-host-desktop --bins --release -- --ignored --nocapture measure_the_animator_group`
 
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 use ph2d_nodegraph::cook::Cook;
 use ph2d_nodegraph::graph::{Edge, NodeId};
 

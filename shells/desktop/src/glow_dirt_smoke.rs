@@ -216,7 +216,7 @@ pub(crate) fn spawn_if_enabled(
     asset_db: &ph2d_asset::AssetDb,
     next_cell: &mut u32,
     atlas_asset_map: &mut std::collections::BTreeMap<u32, ph2d_asset::AssetId>,
-    motion: &mut crate::motion_state::MotionState,
+    motion: &mut crate::motion::motion_state::MotionState,
 ) -> bool {
     let pixels = dirt_pixels();
     let cell = *next_cell;

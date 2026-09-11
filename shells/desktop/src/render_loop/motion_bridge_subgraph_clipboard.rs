@@ -94,7 +94,7 @@ pub(crate) fn duplicate_nesting(
 /// byte-identical to the pre-nesting paste.
 pub(crate) fn paste_nesting(
     motion: &mut MotionState,
-    clip: &crate::motion_state::GraphClip,
+    clip: &crate::motion::motion_state::GraphClip,
     new_ids: &[NodeId],
     ox: f32,
     oy: f32,

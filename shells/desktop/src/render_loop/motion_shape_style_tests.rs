@@ -7,7 +7,7 @@
 //! instância, o trecho revelado, a linha interrompida.
 
 use super::{build_shape_path, manifest_default};
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 use ph2d_node_motion_shape::{ALL_KINDS, ShapeParams, param, shape_key};
 use ph2d_nodegraph::attr::Column;
 

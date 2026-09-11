@@ -14,7 +14,7 @@
 //! todo teste que monte uma destas cenas a toma antes.
 
 use super::warp_gizmo;
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 use ph2d_nodegraph::graph::{Edge, NodeId};
 use std::sync::{Mutex, MutexGuard, OnceLock};
 
@@ -61,7 +61,7 @@ pub(super) fn cadeia(tipo: &str) -> (MotionState, NodeId) {
 /// existe: *a fixtura tem de ser a do report*. Montada, não marchada.
 pub(super) fn cena_do_dono(depois_do_mirror: bool) -> (MotionState, NodeId) {
     let mut m = MotionState::new();
-    let sinks = crate::motion_demo_legend::monta("111", &mut m.doc, &m.registry).0;
+    let sinks = crate::motion::motion_demo_legend::monta("111", &mut m.doc, &m.registry).0;
     m.sinks = sinks;
     let acha = |t: &str| -> Option<NodeId> {
         m.doc

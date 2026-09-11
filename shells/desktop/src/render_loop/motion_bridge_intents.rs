@@ -13,7 +13,7 @@ use super::{
     MotionState, apply_delete_selection, apply_disconnect, backdrops, connect, edit, reconcile,
     rewire, subgraph,
 };
-use crate::motion_state::FormaEscolhida;
+use crate::motion::motion_state::FormaEscolhida;
 use ph2d_editor::ToastQueue;
 use ph2d_editor::screens::layout::CenterSplit;
 
@@ -268,7 +268,7 @@ pub(super) fn apply_graph_intents(
                 splice,
                 compatible,
             } => {
-                motion.open_library = Some(crate::motion_state::LibraryOpen {
+                motion.open_library = Some(crate::motion::motion_state::LibraryOpen {
                     spawn: (x, y),
                     connect_from,
                     splice,

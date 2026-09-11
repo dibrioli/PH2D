@@ -6,7 +6,7 @@
 //! a cura do plumbing no delete.
 
 use super::*;
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 
 /// M2-dynamics: a wire that would close a cycle is retried as a `pre`
 /// (delayed) edge — the one legal meaning of a cycle in this substrate — so a

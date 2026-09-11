@@ -530,7 +530,7 @@ pub(crate) fn build_initial_state(
         // Its instances sample one opaque atlas tile (computed above) so the raw
         // M0 output renders as clean solid quads.
         motion: {
-            let mut m = crate::motion_state::MotionState::new();
+            let mut m = crate::motion::motion_state::MotionState::new();
             m.default_uv_rect = motion_default_uv;
             m
         },

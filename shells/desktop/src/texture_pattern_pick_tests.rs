@@ -367,9 +367,9 @@ fn the_tile_ceiling_costs_resolution_never_the_aspect() {
     let maior = razoes.last().expect("ha' casos").1;
     assert_eq!(
         maior[1],
-        crate::motion_object_bake::MAX_TILE_SIDE,
+        crate::motion::motion_object_bake::MAX_TILE_SIDE,
         "a fixtura nao chega ao tecto ({maior:?}) - este gate estaria a medir o caso comum"
     );
     // E o caso pequeno NÃO satura, senão a escada não é uma escada.
-    assert!(razoes[0].1[1] < crate::motion_object_bake::MAX_TILE_SIDE);
+    assert!(razoes[0].1[1] < crate::motion::motion_object_bake::MAX_TILE_SIDE);
 }

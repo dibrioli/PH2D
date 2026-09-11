@@ -29,7 +29,7 @@ use super::motion_lsystem_leaves::{
     say_if_the_level_hid_every_leaf,
 };
 use super::motion_lsystem_rows::plant_and_leaves;
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 
 // ⛔⛔ **O TECTO `MAX_RIBBONS = 4096` FOI REMOVIDO — ele não era de recurso nenhum.**
 //

@@ -9,7 +9,7 @@
 
 use super::card_params_tests::open_every_section;
 use super::*;
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 
 /// **O CENSO: quantos params cada tipo de nó põe no cartão** — a sonda que responde *«o cartão
 /// está vazio porque ninguém o encheu, ou porque ninguém o pintou?»* sem arqueologia de pixels.

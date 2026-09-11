@@ -26,7 +26,7 @@ pub(super) struct FxGear<'a> {
     pub window_size: WindowSize,
     pub scene_viewport: Option<[f32; 4]>,
     pub sim: &'a mut ph2d_ecs::SimWorld,
-    pub motion: &'a crate::motion_state::MotionState,
+    pub motion: &'a crate::motion::motion_state::MotionState,
     pub motion_active: bool,
     pub present: &'a mut ph2d_ecs::PresentWorld,
     /// O scratch das instâncias emissivas — vive no `App` porque é lixo de quadro, e re-alocá-lo

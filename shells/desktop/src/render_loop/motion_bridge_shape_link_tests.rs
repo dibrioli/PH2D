@@ -14,7 +14,7 @@
 //! verde no dia em que ele deixar de a chamar.*
 
 use super::*;
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 use ph2d_node_motion_shape::ShapeKind;
 use ph2d_panel_motion_params::MotionParamIntent;
 

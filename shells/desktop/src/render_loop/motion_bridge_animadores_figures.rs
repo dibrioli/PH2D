@@ -14,7 +14,7 @@
 //! `cargo test -p ph2d-host-desktop --bins --release -- --ignored --nocapture dump_animadores_figures`
 
 use super::tutorial_draw::{moldura, svg};
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 use ph2d_nodegraph::attr::Column;
 use ph2d_nodegraph::cook::Cook;
 use ph2d_nodegraph::graph::{Edge, NodeId};

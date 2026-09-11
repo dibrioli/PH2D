@@ -10,7 +10,7 @@
 //! família de gate nova entraria numa e não na outra — e o defeito seria um controle que
 //! aparece num sítio do painel e não noutro.
 
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 use ph2d_node_registry::{NodeRegistry, ParamGate, ParamGateAbove, ParamGateText};
 use ph2d_nodegraph::graph::NodeId;
 use ph2d_nodegraph::node::NodeTypeId;

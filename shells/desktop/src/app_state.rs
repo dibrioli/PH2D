@@ -226,7 +226,7 @@ pub(crate) struct AppGfx {
     /// `Cook` + node registry + reused instance buffer. Cooked per frame by
     /// `render_loop::motion_bridge` while the `motion` tool is active. Mirror of
     /// `vec_scene` — document ≠ tool (ADR-0040).
-    pub(crate) motion: crate::motion_state::MotionState,
+    pub(crate) motion: crate::motion::motion_state::MotionState,
     /// Global rigid-body physics (ADR-0131 W1). Owns the transient rapier
     /// world + entity↔handle map, driven at the `Playhead` tick by
     /// `render_loop::physics_bridge`. Derived from `RigidBody`/`Collider`
@@ -1695,11 +1695,11 @@ pub(crate) struct App {
     /// invariante "um path ⟺ uma entidade" é mantido por `vec_entities::sync`.
     pub(crate) vec_entities: crate::vec_entities::VecEntityMap,
     /// ⭐ **A arte, em CPU, dos quads que o Motion desenha na cena vectorial** — a memória da
-    /// terceira média (ver [`crate::motion_leaf_images`]). Vive aqui porque toda leitura PARA a
+    /// terceira média (ver [`crate::motion::motion_leaf_images`]). Vive aqui porque toda leitura PARA a
     /// GPU, e ela tem de sobreviver ao quadro.
     /// ⭐ **O estado de shell da familia MOTION** — quatro campos que eram soltos aqui e
-    /// que so' esta familia le' (W2/L1). Ver [`crate::motion_shell_state`].
-    pub(crate) motion_shell: crate::motion_shell_state::MotionShellState,
+    /// que so' esta familia le' (W2/L1). Ver [`crate::motion::motion_shell_state`].
+    pub(crate) motion_shell: crate::motion::motion_shell_state::MotionShellState,
     // ⭐ **Os três que viviam aqui — `sculpt3d_rows`, `sculpt3d_dup`, `sculpt3d_sel` — mudaram-se
     // para o `sculpt3d: Sculpt3dShellState` lá em cima** (W2/L3-A2), com a `sculpt3d_pending`.
     // A prosa de cada um viajou com ele; ver `sculpt3d/shell_state.rs`.

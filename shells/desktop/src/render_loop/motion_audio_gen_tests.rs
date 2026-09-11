@@ -5,7 +5,7 @@
 //! as bandas saem, e o nó lê pela MESMA chave que o shell escreveu.
 
 use super::*;
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 use ph2d_audio::{AudioFormat, ChannelLayout, SampleData};
 use ph2d_node_audio_bands::{Scale, Weighting, param};
 use ph2d_node_registry::NodeRegistry;

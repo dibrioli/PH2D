@@ -9,7 +9,7 @@
 //! through the middle of one thing rather than along a seam.
 
 use super::params_file;
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 use crate::render_loop::motion_bridge::{backdrops, color, gpu, subgraph};
 
 /// Apply this frame's params-panel edits to the selected node, bracketed into

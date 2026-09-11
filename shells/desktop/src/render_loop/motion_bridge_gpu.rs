@@ -7,7 +7,7 @@
 //! motor, `ph2d-gpu-cook`'s `gpu_cpu_parity`). The bridge's `dispatch` reads the
 //! route and drives the pump / `GpuCook` accordingly.
 
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 use ph2d_node_registry::NodeRegistry;
 use ph2d_nodegraph::cook::TimeScopes;
 use ph2d_nodegraph::graph::{Graph, NodeId};

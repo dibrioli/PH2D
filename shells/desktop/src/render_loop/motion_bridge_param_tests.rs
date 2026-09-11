@@ -13,7 +13,7 @@
 //! `motion_bridge_channel_tests.rs`; both cuts are by subject, not by line count.
 
 use super::params::build_params_snapshot;
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 // The display face a row is built in. `default()` is what the APP ships
 // (Pixels, 100 px/m), so a fixture reads the same numbers the artist does.
 use ph2d_editor::ProjectSettings;

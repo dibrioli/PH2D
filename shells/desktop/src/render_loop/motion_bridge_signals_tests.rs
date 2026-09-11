@@ -16,10 +16,10 @@
 //! (o lugar onde ela é feita).
 
 use super::{collect_signals, signal_nodes};
-use crate::motion_state::gpu_adsr_demo::{
+use crate::motion::motion_state::gpu_adsr_demo::{
     COMPASSO, DIVIDE_BY, SIDE, TIC, build_gpu_adsr_demo_document, build_gpu_signal_demo_document,
 };
-use crate::motion_state::{MotionSignalOut, MotionState};
+use crate::motion::motion_state::{MotionSignalOut, MotionState};
 use ph2d_motion_doc::MotionDoc;
 use ph2d_node_registry::NodeRegistry;
 use ph2d_nodegraph::cook::TimeScopes;

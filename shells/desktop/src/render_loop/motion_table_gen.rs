@@ -15,7 +15,7 @@ use std::sync::Arc;
 
 use ph2d_nodegraph::attr::{Column, Stream};
 
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 
 /// O que o diálogo oferece quando o nó pede uma [`ph2d_node_registry::FileKind::Table`].
 ///

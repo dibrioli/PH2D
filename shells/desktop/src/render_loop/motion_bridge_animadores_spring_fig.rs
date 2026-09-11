@@ -10,7 +10,7 @@
 //! foi escolhida pela pergunta que cada metade responde, nunca pelo número de linhas.
 
 use super::animadores_figures::{DT, liga, no_com, pontos, realimenta};
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 use ph2d_nodegraph::cook::Cook;
 
 /// ⭐⭐⭐ **A FIGURA DA MOLA — e ela não é uma nuvem: é uma CURVA NO TEMPO.**

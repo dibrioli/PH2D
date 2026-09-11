@@ -6,7 +6,7 @@
 //! do inspector; aqui pergunta-se *este rótulo é LEGÍVEL?* — uma varredura do registry inteiro
 //! que não olha para altura nenhuma. Elas partilham o `MotionState` e mais nada.
 
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 
 /// ⛔⛔ **TODA PORTA DO CATÁLOGO TEM UM NOME LEGÍVEL** — o censo que fecha o report do Enio.
 ///

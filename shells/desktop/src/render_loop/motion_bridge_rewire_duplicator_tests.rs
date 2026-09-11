@@ -10,7 +10,7 @@
 //! Mecanismo e tabelas: [doc 98 §4.2 e §4.3](../../../../docs/Motion%20Nodes/98_auditoria_de_performance_2026-09-01.md).
 
 use super::*;
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 use ph2d_editor::ToastQueue;
 use ph2d_nodegraph::graph::Edge;
 

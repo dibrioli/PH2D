@@ -14,7 +14,7 @@
 //! (`build_params_snapshot`), nunca uma `TextRow` montada à mão.
 
 use super::params::build_params_snapshot;
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 use ph2d_editor::ProjectSettings;
 use ph2d_node_source_lsystem as ls;
 use ph2d_panel_motion_params::ParamRow;

@@ -4,7 +4,7 @@
 //! not actually integrate would pass a structural gate and fail this one.
 use super::super::apply_graph_intents;
 use super::*;
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 use ph2d_motion_doc::MotionDoc;
 use ph2d_panel_motion_graph::{drain_intents, push_intent};
 

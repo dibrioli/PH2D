@@ -6,7 +6,7 @@
 //! nada — sem erro, sem aviso, com o artista a ver um bloco de texto que sumiu.
 
 use super::{build_stream, publish};
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 use crate::render_loop::motion_shape_gen::VecPathStore;
 use ph2d_node_source_text::{Align, Pivot, TextParams};
 use ph2d_nodegraph::attr::{Column, Stream};

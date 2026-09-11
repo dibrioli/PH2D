@@ -11,7 +11,7 @@
 //! - a faixa do **arrasto** e, quando diferem, o tecto **digitável**;
 //! - o que existe mas **só noutro modo**, derivado dos `ParamGate` do registry.
 
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 
 /// Um número para a tabela: inteiro quando é inteiro, senão até três casas.
 fn fmt_num(v: f64) -> String {

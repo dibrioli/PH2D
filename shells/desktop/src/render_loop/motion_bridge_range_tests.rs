@@ -9,7 +9,7 @@
 //! the sliders ran to billions.
 
 use super::params::build_params_snapshot;
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 use ph2d_editor::ProjectSettings;
 
 /// Every node type in the registry, with its params — the sweep the older guards

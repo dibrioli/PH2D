@@ -34,7 +34,7 @@
 //! DISCORDAM, destino que também é `FromWire`) esta porta devolve `None` e a lacuna fica.
 
 use super::params_channel::channel_unit;
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 use ph2d_node_registry::{ParamUnit, ParamWidget};
 use ph2d_nodegraph::cook::OpResolver;
 use ph2d_nodegraph::graph::NodeId;

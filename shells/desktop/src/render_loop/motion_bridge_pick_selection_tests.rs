@@ -9,7 +9,7 @@
 //! VERDE**.
 
 use super::apply_graph_intents;
-use crate::motion_state::{FormaEscolhida, MotionState};
+use crate::motion::motion_state::{FormaEscolhida, MotionState};
 use ph2d_panel_motion_graph::{GraphIntent, drain_intents, push_intent};
 
 /// Empurra o clique do botão pelo funil real.

@@ -12,7 +12,7 @@
 
 #[allow(unused_imports)]
 use super::*;
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 use ph2d_nodegraph::graph::Edge;
 
 /// ⛔⛔⛔ **«LFO NEM OSCILLATOR CONSEGUEM ATUAR SOBRE ANGLE DE ROTATE»** — report do Enio,

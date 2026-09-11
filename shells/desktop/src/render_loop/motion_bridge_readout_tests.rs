@@ -1,7 +1,7 @@
 //! Guards for the inline readouts (F2). `super` is `motion_bridge::readout`.
 
 use super::*;
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 use ph2d_nodegraph::cook::OpResolver;
 use ph2d_nodegraph::graph::{Edge, Graph, NodeId, Pos};
 

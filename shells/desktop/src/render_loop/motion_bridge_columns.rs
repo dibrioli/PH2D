@@ -24,7 +24,7 @@
 //! manda calar, a segunda é uma acusação legítima. Para o picker as duas dão a mesma
 //! lista vazia de chips, e é por isso que ele viveu sem a distinção.
 
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::graph::NodeId;
 

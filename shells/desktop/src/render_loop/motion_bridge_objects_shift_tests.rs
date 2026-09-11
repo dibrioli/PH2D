@@ -14,8 +14,8 @@ use super::*;
 /// ⚠️ **É um `MotionState`, e não um `Graph` solto, desde 2026-08-28:** o `off` pode vir de um
 /// FIO, e resolver um param conduzido é cozinhar o driver — o que precisa do registry e do
 /// cook, não só do documento.
-fn state_with_shifted_source(named: &str, off: f32) -> crate::motion_state::MotionState {
-    let mut m = crate::motion_state::MotionState::new();
+fn state_with_shifted_source(named: &str, off: f32) -> crate::motion::motion_state::MotionState {
+    let mut m = crate::motion::motion_state::MotionState::new();
     let n = m.doc.graph.add_node("source.object");
     m.doc.graph.set_text_param(n, "object", named);
     m.doc
@@ -25,8 +25,8 @@ fn state_with_shifted_source(named: &str, off: f32) -> crate::motion_state::Moti
 }
 
 /// O mesmo, com o `time_offset` **CONDUZIDO POR UM FIO** em vez de autorado.
-fn state_with_driven_shift(named: &str, off: f32) -> crate::motion_state::MotionState {
-    let mut m = crate::motion_state::MotionState::new();
+fn state_with_driven_shift(named: &str, off: f32) -> crate::motion::motion_state::MotionState {
+    let mut m = crate::motion::motion_state::MotionState::new();
     let n = m.doc.graph.add_node("source.object");
     m.doc.graph.set_text_param(n, "object", named);
     let num = m.doc.graph.add_node("value.number");
@@ -39,7 +39,7 @@ fn state_with_driven_shift(named: &str, off: f32) -> crate::motion_state::Motion
 }
 
 /// Semeia o canal cru de `named` no cook do estado e devolve-o pronto a publicar.
-fn seed_raw(m: &mut crate::motion_state::MotionState, named: &str, texture_id: u32) {
+fn seed_raw(m: &mut crate::motion::motion_state::MotionState, named: &str, texture_id: u32) {
     m.pump.cook.set_external(
         named.to_string(),
         appearance_tile(
@@ -127,7 +127,7 @@ fn a_flips_shifted_tile_beats_the_transparent_copy() {
 /// custem duas tiles.
 #[test]
 fn the_wanted_shifts_are_the_documents_own_plus_zero() {
-    let mut m = crate::motion_state::MotionState::new();
+    let mut m = crate::motion::motion_state::MotionState::new();
     for off in [0.25_f32, 0.25, -0.5, 0.0] {
         let n = m.doc.graph.add_node("source.object");
         m.doc.graph.set_text_param(n, "object", "Walk");

@@ -42,7 +42,7 @@ const COLUNAS: usize = 3;
 fn colher(modo: f32) -> Vec<Vec<[f32; 2]>> {
     let reg = registry();
     let mut doc = MotionDoc::default();
-    let (sinks, _) = crate::motion_demo_legend::monta("113", &mut doc, &reg);
+    let (sinks, _) = crate::motion::motion_demo_legend::monta("113", &mut doc, &reg);
     let vento = doc
         .graph
         .nodes()

@@ -3,7 +3,7 @@
 //! through the REAL intent funnel (`apply_graph_intents`), not by poking the doc.
 
 use super::apply_graph_intents;
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 use ph2d_nodegraph::graph::NodeId;
 use ph2d_panel_motion_graph::{GraphIntent, drain_intents, push_intent};
 

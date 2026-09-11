@@ -25,7 +25,7 @@
 //! `motion_bridge_tests.rs` (+ `motion_bridge_param_tests.rs` and
 //! `motion_bridge_plumbing_tests.rs`), all split out for the HR-18 LOC cap.
 
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 use ph2d_editor::screens::layout::CenterSplit;
 use ph2d_editor::{HeroScreen, ToastQueue, ToolId, ToolRegistry};
 

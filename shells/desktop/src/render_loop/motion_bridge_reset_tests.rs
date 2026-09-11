@@ -13,7 +13,7 @@
 //! reverte um param*, e a que fica verde quando o produto perde o braço.
 
 use super::params::build_params_snapshot;
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 use ph2d_editor::ProjectSettings;
 use ph2d_panel_motion_params::ParamRow;
 

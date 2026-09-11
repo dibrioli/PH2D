@@ -40,7 +40,7 @@ use ph2d_nodegraph::graph::{Graph, NodeId};
 use ph2d_nodegraph::node::NodeTypeId;
 use ph2d_render::Camera2d;
 
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 
 /// As dims `(w, h)` que a CENA de fato ocupa — o sub-retângulo do split (a porta única
 /// [`CenterSplit::scene_viewport`]) quando a tool Motion divide o centro, ou a janela cheia

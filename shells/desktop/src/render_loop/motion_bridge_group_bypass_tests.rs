@@ -2,7 +2,7 @@
 //! `#[path]` sibling, so `super` is that module (its `cook_graph` and helpers are in scope).
 
 use super::*;
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 use ph2d_motion_doc::Subgraph;
 use ph2d_nodegraph::graph::{Edge, NodeId};
 

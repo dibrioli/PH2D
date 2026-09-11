@@ -3,7 +3,7 @@
 //! wires carry": the live number a wire drives into a param, and the live columns
 //! the upstream stream offers the `value.attribute` Custom picker.
 
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 
 /// **The live number a wire is putting into `param`** (doc 58), or `None` if nothing
 /// drives it — read from the cook's MEMO (`Cook::peek`) on a CPU frame, and from the
@@ -377,7 +377,7 @@ mod tests {
         use ph2d_nodegraph::attr::{Column, Stream};
         use ph2d_nodegraph::graph::NodeId;
         use std::collections::BTreeMap;
-        let mut motion = crate::motion_state::MotionState::new();
+        let mut motion = crate::motion::motion_state::MotionState::new();
         motion.doc = ph2d_motion_doc::MotionDoc::new();
         let attr = crate::picker_smoke::build_picker_scene(&mut motion.doc.graph);
         // The node feeding attr's input port 0 (tint) — the one the tap must carry.
@@ -409,7 +409,7 @@ mod tests {
     #[test]
     fn the_source_picker_offers_the_published_shape_names() {
         use ph2d_nodegraph::attr::{Column, Stream};
-        let mut motion = crate::motion_state::MotionState::new();
+        let mut motion = crate::motion::motion_state::MotionState::new();
         motion.doc = ph2d_motion_doc::MotionDoc::new();
         // The app published two drawn shapes into the graph's external channel.
         let seg = || Stream::new(2).with("P", Column::Vec2(vec![[0.0, 0.0], [1.0, 1.0]]));
@@ -426,7 +426,7 @@ mod tests {
     #[test]
     fn the_picker_offers_columns_from_the_cpu_pump_memo() {
         use ph2d_nodegraph::graph::NodeId;
-        let mut motion = crate::motion_state::MotionState::new();
+        let mut motion = crate::motion::motion_state::MotionState::new();
         motion.doc = ph2d_motion_doc::MotionDoc::new();
         let attr = crate::picker_smoke::build_picker_scene(&mut motion.doc.graph);
         let sinks: Vec<NodeId> = motion
@@ -462,7 +462,7 @@ mod tests {
     fn a_driven_param_reads_its_value_from_the_gpu_tap() {
         use ph2d_nodegraph::attr::{Column, Stream};
         use std::collections::BTreeMap;
-        let mut motion = crate::motion_state::MotionState::new();
+        let mut motion = crate::motion::motion_state::MotionState::new();
         motion.doc = ph2d_motion_doc::MotionDoc::new();
         let a = motion.doc.graph.add_node("value.gain");
         let b = motion.doc.graph.add_node("value.gain");

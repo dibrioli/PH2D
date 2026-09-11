@@ -1026,7 +1026,7 @@ impl crate::App {
         self.build_smoke();
         self.field3d_undo_probe();
         self.stack_smoke();
-        crate::motion_path_smoke::motion_path_smoke(self);
+        crate::motion::motion_path_smoke::motion_path_smoke(self);
         self.harmony_smoke();
         self.timeline_onion_smoke();
         self.signal_smoke();
@@ -1106,12 +1106,12 @@ impl crate::App {
         self.flip_selection_smoke();
         self.flip_segment_smoke();
         self.blend_smoke();
-        crate::motion_node_path_smoke::motion_node_path_smoke(self);
-        crate::motion_object_smoke::motion_object_smoke(self);
-        crate::motion_shape_smoke::motion_shape_smoke(self);
-        crate::motion_autofix_smoke::motion_autofix_smoke(self);
-        crate::motion_delay_smoke::motion_delay_smoke(self);
-        crate::motion_fx_smoke::motion_fx_smoke(self);
+        crate::motion::motion_node_path_smoke::motion_node_path_smoke(self);
+        crate::motion::motion_object_smoke::motion_object_smoke(self);
+        crate::motion::motion_shape_smoke::motion_shape_smoke(self);
+        crate::motion::motion_autofix_smoke::motion_autofix_smoke(self);
+        crate::motion::motion_delay_smoke::motion_delay_smoke(self);
+        crate::motion::motion_fx_smoke::motion_fx_smoke(self);
         self.adapter_smoke();
         self.attribute_demo_smoke();
         self.picker_smoke();
@@ -1668,7 +1668,7 @@ impl crate::App {
         // **A FAMÍLIA `PH2D_GPU_COOK_DEMO` PRECISA DA FERRAMENTA MOTION** — ver
         // `motion_state_demo_router::demo_wants_the_motion_tool`, onde está a medição que o
         // expôs. Sem isto a cena monta, a legenda imprime, e a tela fica VAZIA.
-        if crate::motion_state::demo_router::demo_wants_the_motion_tool(motion.sinks.len())
+        if crate::motion::motion_state::demo_router::demo_wants_the_motion_tool(motion.sinks.len())
             && !std::mem::replace(&mut self.demo_tool_forced, true)
         {
             // ⚠️ **O resultado é GUARDADO e o latch só queima se a troca deu certo.** O
@@ -10877,7 +10877,7 @@ impl crate::App {
                 crate::vec_entities::object_selection_for(sim, vec_scene, &self.vec_entities, id)
             };
             let mut bake_shape = |id| {
-                crate::motion_object_bake::bake_rgba_many(
+                crate::motion::motion_object_bake::bake_rgba_many(
                     &mut self.texture_pattern_scratch,
                     vec_scene,
                     &vec_xf,
@@ -10946,7 +10946,7 @@ impl crate::App {
                 // lê — e o readback é a metade lenta deste assador, como o doc dele diz.
                 let glows = ph2d_node_fx_glow::from_graph(&motion.doc.graph)
                     .is_some_and(|g| g.intensity > 0.0);
-                let crate::motion_state::MotionState {
+                let crate::motion::motion_state::MotionState {
                     shape_bake,
                     shape_store,
                     object_bake,
@@ -11205,7 +11205,7 @@ impl crate::App {
             if motion_tool_active {
                 // ⭐⭐⭐ **A ARTE dos quads do passe vectorial** (a terceira média): resolvida
                 // aqui porque é aqui que o `renderer` e a GPU estão em mão, e memoizada em
-                // [`crate::motion_leaf_images`] porque cada leitura PARA a GPU.
+                // [`crate::motion::motion_leaf_images`] porque cada leitura PARA a GPU.
                 let (gpu, atlas, individual) =
                     (surface.gpu(), renderer.atlas(), renderer.individual());
                 // ⚠️ **O `synced` é a única porta**, e ele recebe o relógio de mudança do
@@ -11720,7 +11720,7 @@ impl crate::App {
                 // smoke"*) — o rótulo pousa em cima do caso que ele explica. No-op quando
                 // nenhuma cena publicou, que é todo arranque normal do editor.
                 super::render_loop::demo_legend::draw(
-                    &crate::motion_demo_legend::captions(),
+                    &crate::motion::motion_demo_legend::captions(),
                     cam_affine,
                     hero.theme,
                     paint_ctx.text,

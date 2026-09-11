@@ -4,7 +4,7 @@
 //! Rotation option they hinge on. The widget-range WIDENING (`contain` /
 //! `channel_range_override`) stays with `build_params_snapshot`, its only caller.
 
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 use ph2d_node_registry::ParamUnit;
 
 /// Reset a behaviour node's magnitude params to a sensible default for the newly

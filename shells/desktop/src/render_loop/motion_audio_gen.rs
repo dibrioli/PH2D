@@ -41,7 +41,7 @@ use ph2d_audio_spectral::Spectrogram;
 use ph2d_node_audio_bands::{BandSpec, FILE_KEY, MANIFEST, VALUE_COL, fold, smooth_over_columns};
 use ph2d_nodegraph::attr::{Column, Stream};
 
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 
 /// O default do manifesto para um param — o fallback que o `ctx.param` do nó toma
 /// quando não há override. Ler pelo mesmo caminho dos dois lados é o que faz a

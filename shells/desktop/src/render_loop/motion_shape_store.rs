@@ -22,7 +22,7 @@ use ph2d_vec_scene::VecPath;
 /// que estava aqui — *"o crescimento é um por descritor visitado, nomeado e limitado
 /// pela sessão"* — era verdadeira. Com o Trim animado ele passou a crescer **uma
 /// entrada por QUADRO**, e o que mata não é esta tabela (uns 500 B por entrada): é o
-/// [`crate::motion_shape_bake`], que assa **uma textura de GPU por `geometry_id`**.
+/// [`crate::motion::motion_shape_bake`], que assa **uma textura de GPU por `geometry_id`**.
 /// *Um cache cuja chave pode mudar a 60 Hz não é um cache — é uma fuga com memória.*
 ///
 /// ⚠️ **O handle é um CONTADOR, nunca um índice.** Ele era `by_handle.len()`, e um
@@ -84,7 +84,7 @@ impl VecPathStore {
     /// Store a `VecPath` with NO content key, returning a fresh handle (`>= 1`).
     /// The keyed [`intern`](Self::intern) dedups by descriptor for `source.shape`
     /// primitives; a `source.object` DOCUMENT vector has no descriptor string, and
-    /// its own content-cache ([`crate::motion_object_bake::ObjectBake`], keyed by
+    /// its own content-cache ([`crate::motion::motion_object_bake::ObjectBake`], keyed by
     /// `VecPathId` + content) already decides WHEN to re-store, so this just parks
     /// the current geometry and hands back the handle the membrane emits as
     /// `geometry_id`. One entry per content CHANGE (a static object stores once).
@@ -120,7 +120,7 @@ impl VecPathStore {
     /// publicarem ([`super::motion_externals::publish_all`]).
     ///
     /// Devolve os handles para quem tem caches por-handle os poder libertar; hoje quem
-    /// consome é o [`crate::motion_shape_bake`], que segura uma TEXTURA por handle.
+    /// consome é o [`crate::motion::motion_shape_bake`], que segura uma TEXTURA por handle.
     pub(crate) fn sweep(&mut self) -> Vec<u32> {
         let mut dropped = Vec::new();
         self.handle_of.retain(|key, h| {

@@ -5,7 +5,7 @@
 //! quem o transforma num `Signal` é o shell, que já é dono da outbox e já drena as outras duas
 //! fontes. O produtor não chama ninguém (ADR-0075).
 
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 
 /// Os nós `pulse.signal` do grafo, em ordem de id — as TOMADAS da marcha.
 ///
@@ -60,7 +60,7 @@ pub(crate) fn collect_signals(motion: &mut MotionState) {
         };
         motion
             .signals_out
-            .push(crate::motion_state::MotionSignalOut {
+            .push(crate::motion::motion_state::MotionSignalOut {
                 name: name.to_string(),
                 tick,
                 rows,

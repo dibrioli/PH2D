@@ -13,7 +13,7 @@
 //! armam uma CONTAGEM · as duas últimas armam o MODO e o ESPAÇAMENTO*, com controle positivo para
 //! uma varredura vazia não passar por verde.
 
-const SCENE: &str = include_str!("../../src/motion_node_path_smoke.rs");
+const SCENE: &str = include_str!("../../src/motion/motion_node_path_smoke.rs");
 
 /// A metade do arquivo que monta a cena `=2` — o resto (a cena `=1`, o roteiro de frames) não é
 /// assunto deste gate, e lê-lo inteiro faria a `count` da cena original contar como prova.

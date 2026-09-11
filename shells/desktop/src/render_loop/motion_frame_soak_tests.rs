@@ -20,7 +20,7 @@
 //! `trim_offset` pelo relógio, ou seja cunha uma chave de conteúdo nova a cada quadro — é o
 //! pior caso que o catálogo sabe encenar, e foi o que matou o app.
 
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 
 /// Quantos quadros a soak corre. **240 = 4 segundos a 60 fps** — o suficiente para separar
 /// *cresce* de *não cresce* (o defeito medido crescia 1 por quadro), e barato o bastante
@@ -71,7 +71,7 @@ fn frame(state: &mut MotionState, sinks: &[ph2d_nodegraph::graph::NodeId], sec: 
 #[test]
 fn a_scene_that_changes_every_frame_does_not_accumulate() {
     let mut state = MotionState::new();
-    let sinks = crate::motion_state::conferencia_demos_style::build_style_demo_document(
+    let sinks = crate::motion::motion_state::conferencia_demos_style::build_style_demo_document(
         &mut state.doc,
         &state.registry,
     )

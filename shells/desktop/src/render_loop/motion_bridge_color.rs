@@ -7,7 +7,7 @@
 //! picker speak **sRGB8** (what a human picks). Every conversion between the two lives below,
 //! so there is exactly one place to be wrong — and one place the round-trip guard has to hold.
 
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 
 /// The colour groups declared by a node type — the 4-channel RGBA param names
 /// behind each [`ParamWidget::Color`](ph2d_node_registry::ParamWidget) hint.
@@ -487,7 +487,7 @@ mod tests {
     /// `apply_gradient_stop_pick` and stop 0 stays black.
     #[test]
     fn a_gradient_stop_pick_re_serializes_the_string() {
-        let mut motion = crate::motion_state::MotionState::new();
+        let mut motion = crate::motion::motion_state::MotionState::new();
         motion.doc = ph2d_motion_doc::MotionDoc::new();
         let nid = motion.doc.graph.add_node("motion.color_ramp");
         motion

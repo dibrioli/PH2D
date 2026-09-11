@@ -21,7 +21,7 @@
 //! seguir vive um quadro ([`crate::modal`]). Aqui ele passa por `modal::pick_file`, que
 //! cronometra. Gate: `every_field3d_modal_goes_through_the_door` varre a árvore.
 
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 use ph2d_node_registry::{FileKind, ParamWidget};
 
 /// **O filtro de um [`FileKind`]** — o rótulo que o diálogo mostra e as extensões que aceita.

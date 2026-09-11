@@ -61,9 +61,9 @@ pub(crate) use shift::wanted_shifts;
 // segunda cópia poria o halo noutro sítio que o tile do LOD).
 pub(crate) use lod::vector_instance_as_tile;
 
-use crate::motion_flip_bake::FlipTile;
-use crate::motion_object_bake::ObjectVector;
-use crate::motion_state::MotionState;
+use crate::motion::motion_flip_bake::FlipTile;
+use crate::motion::motion_object_bake::ObjectVector;
+use crate::motion::motion_state::MotionState;
 
 /// Os streams que DESCREVEM um objeto — a aparência e a pose. Irmão pelo teto de LOC,
 /// e o corte é por FAMÍLIA: os três respondem *"o que o grafo recebe quando nomeia X"*.
@@ -103,7 +103,7 @@ pub(super) use streams::{appearance_tile, appearance_vector, pose_stream};
 /// **A metade VETORIAL do publicador de objetos** — um passo nomeado porque é ela
 /// que disputa o nome com o publicador de curvas, e um gate tem de poder dirigi-la
 /// sem um atlas (que é da metade dos SPRITES, e precisa de GPU).
-pub(super) fn publish_vector_bakes(cook: &mut Cook, bakes: &crate::motion_object_bake::ObjectBake) {
+pub(super) fn publish_vector_bakes(cook: &mut Cook, bakes: &crate::motion::motion_object_bake::ObjectBake) {
     for (name, obj) in bakes.objects() {
         if super::shapes::is_reserved(name) {
             continue; // the editor's namespace (`motion_bridge_shapes::is_reserved`)
@@ -119,8 +119,8 @@ pub(super) fn publish(
     cook: &mut Cook,
     sim: &mut SimWorld,
     look: Appearance<'_>,
-    bakes: &crate::motion_object_bake::ObjectBake,
-    flip_bakes: &crate::motion_flip_bake::FlipObjectBake,
+    bakes: &crate::motion::motion_object_bake::ObjectBake,
+    flip_bakes: &crate::motion::motion_flip_bake::FlipObjectBake,
 ) {
     // Sprites resolve directly (a sprite already IS a tile). A `(&Sprite, &Name)`
     // query walks exactly the entities that can be a source; `world_mut()` builds
@@ -222,8 +222,8 @@ fn group_externals(
     cook: &mut Cook,
     sim: &mut SimWorld,
     look: Appearance<'_>,
-    bakes: &crate::motion_object_bake::ObjectBake,
-    flip_bakes: &crate::motion_flip_bake::FlipObjectBake,
+    bakes: &crate::motion::motion_object_bake::ObjectBake,
+    flip_bakes: &crate::motion::motion_flip_bake::FlipObjectBake,
 ) {
     // The named groups present this frame (collected first so the walk below can
     // borrow the world immutably without the query iterator alive).
@@ -332,7 +332,7 @@ pub(crate) fn entity_is_in_a_named_group(world: &ph2d_ecs::World, entity: Entity
 /// the `VecPathId`/`FlipObjectId`), NOT by the entity's `Name` — so a group child
 /// with **no name** still resolves (its drawing was baked under its id). The id is
 /// also undo/rename-stable (unlike `Entity::to_bits`, which the bake never uses), so
-/// the lookup survives a respawn. The bake's [`crate::motion_object_bake::select_present`]
+/// the lookup survives a respawn. The bake's [`crate::motion::motion_object_bake::select_present`]
 /// bakes exactly the drawings a named group references, via
 /// [`entity_is_in_a_named_group`] — the same tree relation this walk descends.
 fn resolve_leaf(
@@ -340,8 +340,8 @@ fn resolve_leaf(
     entity: Entity,
     acc: &Transform,
     look: Appearance<'_>,
-    bakes: &crate::motion_object_bake::ObjectBake,
-    flip_bakes: &crate::motion_flip_bake::FlipObjectBake,
+    bakes: &crate::motion::motion_object_bake::ObjectBake,
+    flip_bakes: &crate::motion::motion_flip_bake::FlipObjectBake,
 ) -> Option<LeafInstance> {
     let p = [acc.translation.x, acc.translation.y];
     if let Some(spr) = world.get::<Sprite>(entity) {
@@ -372,8 +372,8 @@ fn resolve_drawing_leaf(
     world: &ph2d_ecs::World,
     entity: Entity,
     acc: &Transform,
-    bakes: &crate::motion_object_bake::ObjectBake,
-    flip_bakes: &crate::motion_flip_bake::FlipObjectBake,
+    bakes: &crate::motion::motion_object_bake::ObjectBake,
+    flip_bakes: &crate::motion::motion_flip_bake::FlipObjectBake,
 ) -> Option<LeafInstance> {
     if let Some(r) = world.get::<VecPathRef>(entity) {
         // A vector child stamps LIVE (`geometry_id`) — crisp at any zoom.

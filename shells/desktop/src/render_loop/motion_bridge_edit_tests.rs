@@ -2,7 +2,7 @@
 //! the parent as a `#[path]` sibling, so `super` is `render_loop::motion_bridge`.
 
 use super::edit;
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 use ph2d_editor::ToastQueue;
 use ph2d_nodegraph::graph::{Edge, Graph, NodeId};
 

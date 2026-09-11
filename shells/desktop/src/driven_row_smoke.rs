@@ -168,7 +168,7 @@ impl crate::App {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::motion_state::MotionState;
+    use crate::motion::motion_state::MotionState;
     use crate::render_loop::motion_bridge::params::{
         build_params_snapshot, driven_value_for_probe,
     };

@@ -341,58 +341,10 @@ mod morph_live;
 mod morph_machine_drive;
 mod morph_set;
 mod morph_states_smoke;
-/// A sonda do custo do carimbo (report do Enio, 2026-09-06) — `#[cfg(test)]`, não entra no bin.
-/// A auditoria do grupo do ciclo 2 (doc 105) — `#[cfg(test)]`, não entra no bin.
-#[cfg(test)]
-mod motion_animadores_probe;
-mod motion_autofix_smoke;
-mod motion_autofix_smoke_appropriate;
-mod motion_autofix_smoke_dead_branch;
-/// A auditoria do grupo do ciclo 4 (os CAMPOS) — `#[cfg(test)]`, não entra no bin.
-#[cfg(test)]
-mod motion_campos_probe;
-/// A outra metade dele — **o PREÇO** (relógio, contagem, dispositivo). Irmão pelo tecto de
-/// LOC, cortado por responsabilidade: o que um nó DECLARA fica ali, o que ele CUSTA aqui.
-#[cfg(test)]
-mod motion_ciclo_preco;
-/// ⭐ **O INSTRUMENTO DE UM CICLO**, para qualquer grupo — retrato, params, cartão,
-/// nomes e vocabulário. Nasceu ao abrir o ciclo 4, quando ia ser copiado do 3.
-#[cfg(test)]
-mod motion_ciclo_probe;
-/// O PREÇO do mesmo grupo — irmão do acima pelo tecto de LOC, cortado por
-/// responsabilidade: retratos ali, relógio e dispositivo aqui.
-#[cfg(test)]
-mod motion_deformadores_preco;
-/// A auditoria do grupo do ciclo 3 (doc 106) — `#[cfg(test)]`, não entra no bin.
-#[cfg(test)]
-mod motion_deformadores_probe;
-mod motion_delay_smoke;
-/// **A legenda de uma cena de smoke, no canvas** (Enio 2026-08-23) — o rótulo pousa
-/// em cima do caso que ele explica, em vez de num terminal atrás da janela.
-mod motion_demo_legend;
-mod motion_flip_bake;
-mod motion_fx_smoke;
-mod motion_leaf_images;
-mod motion_shell_state;
-mod motion_node_path_smoke;
-mod motion_object_bake;
-/// Irmão do acima por RESPONSABILIDADE: ele produz pixels (GPU), este diz quantos (CPU).
-mod motion_object_bake_dims;
-mod motion_object_smoke;
-/// Irmã das duas acima: reduz um assado ao cartão do painel.
-mod motion_object_thumb;
-mod motion_path_smoke;
-/// O tile de uma forma PARAMÉTRICA (`source.shape`) — irmão do `motion_object_bake`,
-/// e a metade que faz o glow alcançar as formas (bug do Enio, 2026-08-20).
-mod motion_shape_bake;
-mod motion_shape_smoke;
-mod motion_shape_smoke_knobs;
-/// A auditoria do grupo do ciclo 5 (a SIMULAÇÃO) — `#[cfg(test)]`, não entra no bin.
-#[cfg(test)]
-mod motion_sim_probe;
-#[cfg(test)]
-mod motion_stamp_cost_probe;
-mod motion_state;
+/// ⭐ **A familia MOTION** — 269 ficheiros que viviam soltos em `src/`, agrupados em
+/// `src/motion/` pela W2/L1 (2026-09-11). As 27 raizes (e a `#[cfg(test)]` de oito
+/// delas) mudaram-se para [`crate::motion`], que e' o unico `mod` que fica aqui.
+mod motion;
 mod mount_smoke;
 mod multi_node_smoke;
 mod name_unique;

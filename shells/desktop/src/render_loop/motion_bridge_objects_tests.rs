@@ -195,9 +195,9 @@ fn an_unnamed_group_child_resolves_by_its_drawing_id() {
     // Bakes seeded under those drawing ids, as a real (id-keyed) bake does: the
     // vector carries a LIVE handle (geometry_id 70) AND a LOD tile (texture_id 700 —
     // used only above the count threshold, post-cook), the Flip a baked texture_id 90.
-    let mut vbake = crate::motion_object_bake::ObjectBake::default();
+    let mut vbake = crate::motion::motion_object_bake::ObjectBake::default();
     vbake.seed_for_test(7, 70, 700, [2.0, 1.0]);
-    let mut fbake = crate::motion_flip_bake::FlipObjectBake::default();
+    let mut fbake = crate::motion::motion_flip_bake::FlipObjectBake::default();
     fbake.seed_for_test(9, 90, [3.0, 4.0]);
 
     let world = sim.world();
@@ -309,7 +309,7 @@ fn lod_vi(gid: u32, x: f32) -> VectorInstance {
 /// buffer prove the decision is PER-GEOMETRY, not per-buffer.
 #[test]
 fn a_high_count_geometry_becomes_tiles_a_low_count_one_stays_crisp() {
-    let mut bake = crate::motion_object_bake::ObjectBake::default();
+    let mut bake = crate::motion::motion_object_bake::ObjectBake::default();
     bake.seed_for_test(1, 5, 500, [1.0, 1.0]); // gid 5 → tile 500
     bake.seed_for_test(2, 6, 600, [1.0, 1.0]); // gid 6 → tile 600
     // gid 5 stamped 6×, gid 6 stamped 2×; threshold 3.
@@ -377,7 +377,7 @@ fn the_lod_tile_lands_exactly_where_the_crisp_vector_would() {
 #[test]
 fn below_threshold_or_without_a_tile_everything_stays_crisp() {
     // (a) below threshold: 2 instances, threshold 3 → untouched.
-    let mut bake = crate::motion_object_bake::ObjectBake::default();
+    let mut bake = crate::motion::motion_object_bake::ObjectBake::default();
     bake.seed_for_test(1, 5, 500, [1.0, 1.0]);
     let mut vectors = vec![lod_vi(5, 0.0), lod_vi(5, 1.0)];
     let mut instances: Vec<RenderInstance> = Vec::new();
@@ -387,7 +387,7 @@ fn below_threshold_or_without_a_tile_everything_stays_crisp() {
         "2 <= 3 stays crisp"
     );
     // (b) over the threshold but NO tile baked → must NOT blank; stays crisp.
-    let empty = crate::motion_object_bake::ObjectBake::default();
+    let empty = crate::motion::motion_object_bake::ObjectBake::default();
     let mut vectors = vec![
         lod_vi(5, 0.0),
         lod_vi(5, 1.0),
@@ -406,7 +406,7 @@ fn below_threshold_or_without_a_tile_everything_stays_crisp() {
 /// unknown geometry to `None` — the wire the partition reads.
 #[test]
 fn tile_texture_for_gid_finds_the_baked_tile() {
-    let mut bake = crate::motion_object_bake::ObjectBake::default();
+    let mut bake = crate::motion::motion_object_bake::ObjectBake::default();
     bake.seed_for_test(1, 5, 500, [1.0, 1.0]);
     assert_eq!(bake.tile_texture_for_gid(5), Some(500));
     assert_eq!(bake.tile_texture_for_gid(99), None, "an unbaked geometry");
@@ -422,7 +422,7 @@ fn tile_texture_for_gid_finds_the_baked_tile() {
 #[ignore = "sonda manual de escala; rode em --release --nocapture"]
 fn the_lod_partition_cost_at_scale() {
     use std::time::Instant;
-    let mut bake = crate::motion_object_bake::ObjectBake::default();
+    let mut bake = crate::motion::motion_object_bake::ObjectBake::default();
     bake.seed_for_test(1, 5, 500, [1.0, 1.0]); // gid 5 → tile 500 (acima do joelho ⇒ tiles)
     println!("\n=== PARTICAO DO LOD: apply_object_lod (ms/frame CPU) ===");
     for &n in &[10_000usize, 40_000, 160_000] {
@@ -521,7 +521,7 @@ fn the_drawn_curve_survives_the_object_publisher() {
     );
 
     // 2) O publicador de OBJETOS, que roda depois no MESMO frame.
-    let mut vbake = crate::motion_object_bake::ObjectBake::default();
+    let mut vbake = crate::motion::motion_object_bake::ObjectBake::default();
     vbake.seed_named_for_test(path_id_of(&scene), Some("Path 0"), 70, 700, [2.0, 1.0]);
     super::publish_vector_bakes(&mut cook, &vbake);
 
@@ -556,7 +556,7 @@ fn the_drawn_curve_survives_the_object_publisher() {
 /// no limiar, que é exactamente onde a aparência do glow vira.
 #[test]
 fn the_lod_threshold_is_where_a_shape_starts_being_visible_to_the_glow() {
-    let mut bake = crate::motion_object_bake::ObjectBake::default();
+    let mut bake = crate::motion::motion_object_bake::ObjectBake::default();
     bake.seed_for_test(1, 7, 700, [1.0, 1.0]);
     let stamps = |n: usize| -> Vec<VectorInstance> {
         #[expect(clippy::cast_precision_loss, reason = "uma fixture pequena")]

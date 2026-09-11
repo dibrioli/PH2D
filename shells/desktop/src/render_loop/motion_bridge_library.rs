@@ -8,7 +8,7 @@
 //! Plus the two handshake ends: `open_pending_palette` (a gesture asked → open, filtered) and
 //! `route_palette_pick` (last frame's pick → the right graph edit).
 
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 use ph2d_editor::HeroScreen;
 
 /// Route LAST frame's palette pick into a graph edit — mapping the picked id back to its canonical

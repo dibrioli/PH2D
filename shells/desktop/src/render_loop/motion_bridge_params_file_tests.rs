@@ -10,7 +10,7 @@
 // e `super::super` é o `params`. O mesmo salto de um nível a mais já custou uma compilação
 // nesta linha.
 use super::{file_filter, kind_of};
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 use ph2d_node_registry::FileKind;
 
 /// **Toda espécie declarada resolve para um filtro utilizável.**

@@ -49,14 +49,14 @@
 //!
 //! Uma geometria viva **sem tile assado** não pode contribuir — não há de onde tirar
 //! a silhueta. Hoje **todas** têm um: os `source.object` (Sprite / Vector / Flip)
-//! por [`crate::motion_object_bake`], e o `source.shape` paramétrico por
-//! [`crate::motion_shape_bake`], o irmão que esta ordem trouxe. A sonda
+//! por [`crate::motion::motion_object_bake`], e o `source.shape` paramétrico por
+//! [`crate::motion::motion_shape_bake`], o irmão que esta ordem trouxe. A sonda
 //! [`unreachable_geometries`] conta o que sobrar — ela é o que fará um caminho
 //! FUTURO (o 3D) nascer visível em vez de mudo.
 
 use super::motion_bridge::vector_instance_as_tile;
-use crate::motion_object_bake::ObjectBake;
-use crate::motion_shape_bake::ShapeBake;
+use crate::motion::motion_object_bake::ObjectBake;
+use crate::motion::motion_shape_bake::ShapeBake;
 use ph2d_eval_motion::VectorInstance;
 use ph2d_render::RenderInstance;
 
@@ -90,9 +90,9 @@ pub(crate) fn layer_instances(
             out.push(vector_instance_as_tile(vi, texture_id));
         } else if let Some(tile) = shapes.tile_for_gid(vi.geometry_id) {
             // A forma PARAMÉTRICA: o tamanho vem do tile e a âncora do bbox — ver
-            // [`crate::motion_shape_bake::tile_quad`], que é onde um halo torto
+            // [`crate::motion::motion_shape_bake::tile_quad`], que é onde um halo torto
             // nasceria.
-            out.push(crate::motion_shape_bake::tile_quad(vi, tile));
+            out.push(crate::motion::motion_shape_bake::tile_quad(vi, tile));
         }
     }
     out

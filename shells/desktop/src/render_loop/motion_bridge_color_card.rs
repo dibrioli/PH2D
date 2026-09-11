@@ -11,7 +11,7 @@
 //! abre — mesmo que a cor escolhida lá dentro não chegue a lado nenhum. *Um controlo que abre e
 //! não guarda é a espécie de morto que uma sonda de alcance lê como vivo.*
 
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 use ph2d_panel_motion_graph::card_editor_swatch_id;
 
 /// **A que amostra o selector aberto pertence.** `param` é a chave de TEXTO (a serialização), e

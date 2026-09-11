@@ -9,7 +9,7 @@
 //! o produto roda mede o silêncio, não o produto.*
 
 use super::*;
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 use ph2d_motion_doc::MotionDoc;
 
 /// `grid → value.attribute(attr) → motion.drive → output`, cozido uma vez.
@@ -172,7 +172,7 @@ fn the_inner_layer_honours_the_chip_too() {
 fn the_compare_scene_earns_the_badge_it_advertises() {
     let mut m = MotionState::new();
     m.doc = MotionDoc::new();
-    let sinks = crate::motion_state::conferencia_demos_compare::build_compare_demo_document(
+    let sinks = crate::motion::motion_state::conferencia_demos_compare::build_compare_demo_document(
         &mut m.doc,
         &m.registry,
     )

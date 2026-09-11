@@ -3,7 +3,7 @@
 //! the private `gpu_route`/`graph_has_*`/`cook_publishes_live_geometry`.
 
 use super::*;
-use crate::motion_state::MotionState;
+use crate::motion::motion_state::MotionState;
 
 // A stand-in boundary node id (the routing never dereferences it).
 fn node() -> NodeId {
@@ -293,7 +293,7 @@ fn every_fall_through_to_the_cpu_names_itself() {
 #[test]
 fn the_route_is_recorded_on_the_edge_and_recorded_even_when_silent() {
     // ⚠️ Sem tocar na variável de ambiente: o que se mede é o REGISTO, não a impressão.
-    let mut motion = crate::motion_state::MotionState::new();
+    let mut motion = crate::motion::motion_state::MotionState::new();
     assert_eq!(
         motion.route_said, None,
         "um documento novo ainda não roteou"

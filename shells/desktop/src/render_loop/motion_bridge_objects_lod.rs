@@ -51,7 +51,7 @@ pub(crate) const LOD_COUNT: usize = 16_000;
 pub(crate) fn apply_object_lod(
     instances: &mut Vec<RenderInstance>,
     vector_instances: &mut Vec<VectorInstance>,
-    object_bake: &crate::motion_object_bake::ObjectBake,
+    object_bake: &crate::motion::motion_object_bake::ObjectBake,
     threshold: usize,
 ) {
     if vector_instances.is_empty() {

@@ -68,6 +68,7 @@
 - [Ofício de gate (47) — folga = ponto cego · mutação que não mata · metade justa · feito≠entregue · censo textual · censo que presume o destino · censo que partilha estado](reference_topic_gate_discipline.md)
 - [Estado autorado & relógios (19)](reference_topic_authored_state_and_clocks.md)
 - [modo que não exclui ninguém é outro produtor](feedback_a_mode_whose_entry_excludes_nobody_is_just_another_producer.md)
+- ⛔⛔ [«**fecho e reabro e volta ao normal**» é assinatura de CICLO, não de transitório — procure a grandeza que o quadro N+1 deriva do que o N publicou (2 pontos fixos; a conta estava certa em todos os quadros)](feedback_close_and_reopen_cures_it_is_the_signature_of_a_feedback_loop.md)
 - [Costura de UI (15)](reference_topic_ui_seam_discipline.md) — ⭐ [o hit rect é também o DENOMINADOR](feedback_a_hit_rect_is_also_the_denominator_not_only_the_target.md)
 - [seção partilhada regride quem chegou primeiro](feedback_a_shared_section_header_is_a_regression_to_whoever_arrived_first.md)
 - [Ofício de gate — mais 1 (censo textual que não separa prosa de código mente nos DOIS sentidos)](reference_topic_gate_discipline.md)

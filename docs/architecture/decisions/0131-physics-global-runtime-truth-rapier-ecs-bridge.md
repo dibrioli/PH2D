@@ -90,7 +90,7 @@ escreve keys editáveis nas tracks da entidade.
 mundo** (D5), e **lê os transforms de volta** para o ECS.
 
 **Onde mora o `PhysicsWorld`:** é **estado de sim do editor/shell**, à imagem do pump do Motion
-(`MotionCookPump` em `shells/desktop/src/motion_state.rs`, dirigido no `render_loop`), **NÃO** dentro do
+(`MotionCookPump` em `shells/desktop/src/motion/motion_state.rs`, dirigido no `render_loop`), **NÃO** dentro do
 `WorldSnapshot` serializado. Consequência decisiva, e é o coração do runtime-truth:
 
 > **O `PhysicsWorld` NÃO é persistido. Os components SÃO.** O mundo vivo é DERIVADO das components a

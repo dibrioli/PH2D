@@ -97,7 +97,7 @@ um **serviço do sequenciador** (D2), não um kernel de boids. Fases fechadas:
 | 4 | boids a **MILHÕES**: modo `spread √N` + teto MEDIDO + demo `=7` | `9e4d955d` |
 | 5 | o **PUSH-APART** (`motion.collide`) na GPU: o 1º kernel ITERADO | `f9519620`+`9595ff1f` |
 
-**As três cenas de smoke novas** (`shells/desktop/src/motion_state_gpu_neighbour_demos.rs`),
+**As três cenas de smoke novas** (`shells/desktop/src/motion/motion_state_gpu_neighbour_demos.rs`),
 todas rodam sob `PH2D_GPU_COOK=1`:
 
 - **`=7`, a murmuração** — `boids(1.048.576, spread √N, seek 0) → scale → output`, o
@@ -385,9 +385,9 @@ design; nomeado no ADR §3).
 | `GridSpec` + `sweeps_param` (o contrato da grade) | `crates/ph2d-nodegraph/src/gpu.rs` |
 | o kernel do BOIDS (varredura 3×3 fixa, seed √N) | `crates/ph2d-node-motion-boids/src/{lib,gpu}.rs` |
 | o kernel do COLLIDE (gather, cull de célula, GridSpec com sweeps) | `crates/ph2d-node-motion-collide/src/{lib,gpu}.rs` |
-| as 3 cenas de smoke (`=7`/`=8`/`=9`) | `shells/desktop/src/motion_state_gpu_neighbour_demos.rs` |
-| a rota das cenas no shell | `shells/desktop/src/motion_state.rs` (arms `Ok("7"/"8"/"9")`) |
-| os gates das cenas (plano GPU + a varredura é linear/cruza fronteiras) | `shells/desktop/src/motion_state_gpu_tests.rs` |
+| as 3 cenas de smoke (`=7`/`=8`/`=9`) | `shells/desktop/src/motion/motion_state_gpu_neighbour_demos.rs` |
+| a rota das cenas no shell | `shells/desktop/src/motion/motion_state.rs` (arms `Ok("7"/"8"/"9")`) |
+| os gates das cenas (plano GPU + a varredura é linear/cruza fronteiras) | `shells/desktop/src/motion/motion_state_gpu_tests.rs` |
 | as MEDIÇÕES do boids (equilíbrio, headroom, órbita — todas `#[ignore]`) | `crates/ph2d-gpu-cook/tests/it/gpu_boids_scale.rs` |
 | a paridade + o gate do degrau + a medição da respiração do collide | `crates/ph2d-gpu-cook/tests/it/gpu_collide.rs` |
 

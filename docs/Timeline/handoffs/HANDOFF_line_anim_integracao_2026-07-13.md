@@ -81,7 +81,7 @@ e o pin do Vector existe justamente porque um campo do `VecVertex` pode passar d
 | `shells/desktop/src/project_tests.rs` | — (arquivo NOVO meu) | Recebe o `mod tests` que saiu do `project.rs`. É aqui que o pin do §1 tem de aterrissar. |
 | `shells/desktop/src/input_dispatch.rs` | FLIP · Vector | Meu diff é **só deleção** (~37 linhas, ≈1586): as 2 fns do sidecar morto. Os hunks deles são em outros pontos (FLIP ≈2012/2293/2324). |
 | `shells/desktop/src/input_dispatch/keyboard.rs` | FLIP · Vector | Meu diff é **só deleção** (o bloco Ctrl+S/Ctrl+O do sidecar, ≈300) + um comentário. **Se a resolução ressuscitar o bloco, NÃO COMPILA** (ele chama fns que não existem mais) — o que é a falha segura. |
-| `shells/desktop/src/motion_state.rs` + `_tests.rs` | motion-value | Meu diff é doc-comment + 1 teste novo. Os hunks se sobrepõem no MESMO bloco de doc (meu `@@ -125,9`, o deles `@@ -129,9`). **Os dois são comentário: fique com os dois.** |
+| `shells/desktop/src/motion/motion_state.rs` + `_tests.rs` | motion-value | Meu diff é doc-comment + 1 teste novo. Os hunks se sobrepõem no MESMO bloco de doc (meu `@@ -125,9`, o deles `@@ -129,9`). **Os dois são comentário: fique com os dois.** |
 | `crates/ph2d-timeline/` · `crates/ph2d-panel-timeline/` | **ninguém** (exceto `marker_rename.rs`, que a motion-value toca e eu **não**) | Exclusivo. |
 | `CLAUDE.md` | Vector | Append. Editei a entrada **Timeline** e a **Persistência de projeto** (§5). |
 | `project-memory/MEMORY.md` + 4 memórias novas | todas as linhas | Append. |

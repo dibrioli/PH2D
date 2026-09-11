@@ -70,7 +70,7 @@ A cadência é: **o Enio diz "próximo" e VOCÊ escolhe a fatia.** Cada fatia:
 3. **HR-5 — produção transcendental-free** (`sin`/`cos`/`exp`/`pow`/`atan2` proibidos; `sqrt` permitido). Use as
    aproximações polinomiais já existentes (`trig.rs` — parabolic sin/cos, Rajan atan2) — **copie o leaf**.
    Exceção documentada: `ph2d_expr::eval` é **HR-5-EXEMPT** por contrato próprio (presentation-side).
-4. **Demo auto-playing pequena** em `shells/desktop/src/motion_demo_strobe.rs` — o documento Motion **default**,
+4. **Demo auto-playing pequena** em `shells/desktop/src/motion/motion_demo_strobe.rs` — o documento Motion **default**,
    que dá boot já animando os nós NOVOS. Regra permanente do Enio: **"simplifique o exemplo"** — a demo isola os
    nós da fatia; não vire um monstro de 40 nós. E: **feature nova = exemplo pronto pro smoke**, nunca "monte você".
 5. **Testes de integração FALSIFICÁVEIS** (não "compila = verde"): o teste tem que **falhar** se a costura

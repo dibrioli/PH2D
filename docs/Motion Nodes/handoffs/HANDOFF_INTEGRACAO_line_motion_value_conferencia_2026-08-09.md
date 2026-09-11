@@ -85,8 +85,8 @@ linha em 02/08.
 | arquivo | adição |
 |---|---|
 | `crates/ph2d-node-value-attribute/src/lib.rs` | o 8º canal do `READ_CHANNELS`: **Falloff** |
-| `shells/desktop/src/motion_state.rs` | o `mod` + `use` + o braço **`Ok("23")`** do roteador de demo |
-| `shells/desktop/src/motion_gpu_coverage.rs` (+124) | a cena `=23` no corpus do censo (e as cenas das waves anteriores) |
+| `shells/desktop/src/motion/motion_state.rs` | o `mod` + `use` + o braço **`Ok("23")`** do roteador de demo |
+| `shells/desktop/src/motion/motion_gpu_coverage.rs` (+124) | a cena `=23` no corpus do censo (e as cenas das waves anteriores) |
 | `shells/desktop/src/main.rs`, `render_loop/mod.rs` | +1 linha cada (o `lens_smoke`) |
 
 ⚠️ **O roteador de demo é um `match` sobre `&str`** — duas linhas reivindicando `Ok("23")` viram

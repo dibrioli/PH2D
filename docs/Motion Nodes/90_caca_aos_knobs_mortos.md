@@ -297,7 +297,7 @@ asserção é um par: **inerte fora, vivo dentro de pelo menos um**.
 2. ✅ A prova A — [`param_gates_are_exact.rs`](../../crates/ph2d-node-registry-init/tests/it/param_gates_are_exact.rs).
    **Todos os 17 índices estavam certos**, e isso é uma medição, não uma verificação de leitura.
 3. ✅ A prova B — [`motion_bridge_params_visible_tests.rs`](../../shells/desktop/src/render_loop/motion_bridge_params_visible_tests.rs).
-4. ✅ A cena `=82` — [`..._demos_gates.rs`](../../shells/desktop/src/motion_state_conferencia_demos_gates.rs).
+4. ✅ A cena `=82` — [`..._demos_gates.rs`](../../shells/desktop/src/motion/motion_state_conferencia_demos_gates.rs).
 
 ### §7.4 — O que as PROVAS DE MUTAÇÃO encontraram (e uma delas era num teste meu)
 

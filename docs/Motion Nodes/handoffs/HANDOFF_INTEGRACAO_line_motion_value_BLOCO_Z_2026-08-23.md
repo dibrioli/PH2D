@@ -389,8 +389,8 @@ do gate não acusa"*), e aconteceu comigo em dois blocos seguidos. Vai a **87**.
 | `…/shape.rs` · `…/cluster.rs` | `ring_area(pos, ring)` · `cluster_goals_weighted(…, buckets, …)` |
 | `…/params_ui.rs` | `PARAM_GROUPS` (Mesh / Physics / Pin) |
 | `shells/desktop/src/motion_state_conferencia_demos_body{,_tests}.rs` | **NOVOS** — a cena `=87` |
-| `shells/desktop/src/motion_state_demo_conferencia_body.rs` | **NOVO** — o anúncio |
-| `shells/desktop/src/motion_state_demo_router.rs` | `Some("87")` + `MAX_DEMO_LEVEL` 84 → **87** |
+| `shells/desktop/src/motion/motion_state_demo_conferencia_body.rs` | **NOVO** — o anúncio |
+| `shells/desktop/src/motion/motion_state_demo_router.rs` | `Some("87")` + `MAX_DEMO_LEVEL` 84 → **87** |
 
 **Dois splits por HR-18:** `columns.rs` (o `lib.rs` bateu em 697/700) e `port_tests.rs`
 (o `tests.rs` bateu em 731/700).

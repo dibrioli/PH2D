@@ -85,7 +85,7 @@ SUPERFÍCIE DE COLISÃO — line/motion-value contra main
 
 **⚠️ NÚMEROS QUE SOMAM, e que o git funde MUDO se a outra linha escrever o mesmo literal:**
 
-- **`MAX_DEMO_LEVEL: 89 → 95`** em [`motion_state_demo_router.rs`](../../../shells/desktop/src/motion_state_demo_router.rs),
+- **`MAX_DEMO_LEVEL: 89 → 95`** em [`motion_state_demo_router.rs`](../../../shells/desktop/src/motion/motion_state_demo_router.rs),
   com **seis** níveis novos reclamados: **`90 91 92 93 94 95`**. ⚠️ Se outra linha reclamou um
   destes, o valor certo **conta-se** (não se escolhe um dos lados) e o gate
   `no_two_*_scenes_claim_the_same_level` diz.

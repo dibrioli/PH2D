@@ -70,8 +70,8 @@ Esta é a coisa mais fácil de errar aqui, e ela nasceu **hoje**:
 
 | | |
 |---|---|
-| `shells/desktop/src/motion_path_smoke.rs` **no `main`** | o **MOTION PATH da TIMELINE** (ADR-0141, integrado em 25/07): a posição de um objeto vira um CAMINHO, a track escalar é a distância percorrida |
-| `shells/desktop/src/motion_path_smoke.rs` **nesta linha** | o nó **`motion.path`** dos Motion Nodes: o canal do app para o grafo |
+| `shells/desktop/src/motion/motion_path_smoke.rs` **no `main`** | o **MOTION PATH da TIMELINE** (ADR-0141, integrado em 25/07): a posição de um objeto vira um CAMINHO, a track escalar é a distância percorrida |
+| `shells/desktop/src/motion/motion_path_smoke.rs` **nesta linha** | o nó **`motion.path`** dos Motion Nodes: o canal do app para o grafo |
 
 **Mesmo nome de arquivo, features diferentes, donos diferentes.** No rebase os dois colidem como
 "mesmo símbolo" (DIRETRIZ §1.5.5) — e a resolução **não é** fundir os dois: é **renomear o desta

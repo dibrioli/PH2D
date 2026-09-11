@@ -148,7 +148,7 @@ motor, não transcrição de kernel.
 | o pump plural (N fronteiras numa marcha) | `crates/ph2d-eval-motion/src/lib.rs` + `lower.rs` |
 | a rota + o cook no shell | `shells/desktop/src/render_loop/motion_bridge_gpu.rs` |
 | a costura dos readouts/sonda (memo CPU vs tap GPU) | `motion_bridge_readout.rs` + `motion_bridge_edit.rs::sample_probe` |
-| o flip do default | `shells/desktop/src/motion_state.rs::gpu_enabled_from_env` |
+| o flip do default | `shells/desktop/src/motion/motion_state.rs::gpu_enabled_from_env` |
 | as cenas de smoke | `motion_state_gpu_demos.rs` (1–5) + `motion_state_gpu_panel_demo.rs` (6) |
 | um kernel-modelo simples (24 linhas) | `crates/ph2d-node-motion-rotate/src/lib.rs` |
 | um kernel-modelo com variantes por-canal | `crates/ph2d-node-motion-oscillator/src/` (o `GPU_KERNEL` + `OSC_P/ROT/SIZE`) |

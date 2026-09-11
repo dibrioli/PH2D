@@ -26,7 +26,7 @@ O tutorial é a resposta a essa pergunta, treze vezes.
 ## §2 — Passo 2: a AUDITORIA
 
 ⚠️ **A auditoria começa por MEDIR o que existe.** Sonda:
-[`motion_deformadores_probe.rs`](../../shells/desktop/src/motion_deformadores_probe.rs), três
+[`motion_deformadores_probe.rs`](../../shells/desktop/src/motion/motion_deformadores_probe.rs), três
 testes `#[ignore]`.
 
 ### §2.1 — O retrato (`audit_the_deformer_group`)

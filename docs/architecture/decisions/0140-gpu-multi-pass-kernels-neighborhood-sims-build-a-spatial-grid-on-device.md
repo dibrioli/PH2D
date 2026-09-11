@@ -2,7 +2,7 @@
 
 - **Status:** PROPOSTA. Sucede a linha `line/gpu-nodes` (Fases 0–2 + o emitter/id-gather do [ADR-0130](0130-gpu-emitter-the-id-gather-is-arithmetic-because-the-window-is-dense.md) integradas). É o Fase 3 do [plano mestre](../../plans/2026-07-gpu-resident-node-pipeline.md) — *"estruturas espaciais na GPU (os O(N²) que rayon não salva)"*.
 - **NÃO toca o contrato congelado** ([ADR-0126](0126-gpu-node-kernels-are-side-metadata-contract-stays-frozen.md)): `NodeOp=2`/`NodeManifest=8`/`OpResolver=1` intactos. O programa de passes é **metadado lateral** do `GpuKernel`, **append-only** — um kernel single-passe (todos os 32 de hoje) é o caso vazio e fica **byte-idêntico**.
-- **Método:** o **censo medido** (item #1 do handoff de continuação, `shells/desktop/src/motion_gpu_coverage.rs`) + o **deep-dive da máquina do sequenciador**. Os dois fatos decisivos foram verificados no código ANTES de qualquer desenho ([[feedback_a_frontier_is_not_a_census]]): (a) qual documento real está na CPU e por quê; (b) exatamente o que o sequenciador NÃO sabe fazer.
+- **Método:** o **censo medido** (item #1 do handoff de continuação, `shells/desktop/src/motion/motion_gpu_coverage.rs`) + o **deep-dive da máquina do sequenciador**. Os dois fatos decisivos foram verificados no código ANTES de qualquer desenho ([[feedback_a_frontier_is_not_a_census]]): (a) qual documento real está na CPU e por quê; (b) exatamente o que o sequenciador NÃO sabe fazer.
 
 ---
 

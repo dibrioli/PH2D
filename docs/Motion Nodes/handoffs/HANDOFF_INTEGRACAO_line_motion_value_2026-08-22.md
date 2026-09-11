@@ -41,14 +41,14 @@
 
 A base do fork tem o roteador de smoke até a cena **59**. Esta linha reclama **60 a 82**, e sobe
 `MAX_DEMO_LEVEL` de 59 para **82** em
-[`motion_state_demo_router.rs`](../../../shells/desktop/src/motion_state_demo_router.rs).
+[`motion_state_demo_router.rs`](../../../shells/desktop/src/motion/motion_state_demo_router.rs).
 
 ⚠️ **É o caso-tipo do «número que soma entre linhas»** (CLAUDE.md §5.0): o roteador é uma lista de
 braços e **o PRIMEIRO vence** — dois braços com o mesmo número deixam o segundo inalcançável **em
 silêncio**, que foi como a cena dos tokens da `line/Vector` sumiu em 2026-08-02. O git não sabe o
 que o número significa: se outra linha também reclamou `=60`, o merge sai **limpo e errado**.
 
-**O que fazer:** `git grep -nE 'Some\("(6[0-9]|7[0-9]|8[0-2])"\)' -- shells/desktop/src/motion_state_demo_router.rs`
+**O que fazer:** `git grep -nE 'Some\("(6[0-9]|7[0-9]|8[0-2])"\)' -- shells/desktop/src/motion/motion_state_demo_router.rs`
 em CADA worktree antes de fundir. O gate `no_two_smoke_scenes_claim_the_same_level` apanha o
 duplicado **depois** de fundido; grepar antes evita a renumeração em cascata.
 

@@ -79,7 +79,7 @@ linha, e que você deve seguir em cada fatia:
 1. **Pesquise o algoritmo padrão-ouro ANTES de codar** — e cite-o pelo nome (Schneider, Wang,
    Bridson, Ephraim-Malah…). Não invente o que a indústria já resolveu.
 2. **HR-5:** zero transcendental em produção (`sqrt` é permitido).
-3. **Demo auto-tocável no documento de boot** (`shells/desktop/src/motion_demo_strobe.rs`) —
+3. **Demo auto-tocável no documento de boot** (`shells/desktop/src/motion/motion_demo_strobe.rs`) —
    o Enio não deve ter que montar um grafo para ver a sua feature.
 4. **Guards FALSIFICÁVEIS**, provando a cadeia inteira. Depois **MUTE o código** e confirme
    que o guard fica **VERMELHO**. Um guard que não sabe falhar não prova nada.

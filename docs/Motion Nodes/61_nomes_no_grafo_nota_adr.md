@@ -123,7 +123,7 @@ vazia.
 | `shells/desktop/src/keymap.rs` | `KeyCode::F2` + 1 caso no gate | Baixo |
 | `.../motion_bridge_intents.rs` | `pub(super) fn rename` (3 alvos, 1 undo) | Baixo |
 | `.../motion_bridge_rename_tests.rs` | **arquivo novo** (seam) | — |
-| `shells/desktop/src/motion_demo_strobe.rs` | **os 19 cards do boot ganharam nome** | Baixo |
+| `shells/desktop/src/motion/motion_demo_strobe.rs` | **os 19 cards do boot ganharam nome** | Baixo |
 
 **Contrato congelado:** verde (`NodeManifest`=8 / `NodeOp`=2 / `OpResolver`=1).
 

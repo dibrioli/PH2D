@@ -140,7 +140,7 @@ ilegível.
 | Cenas | ⚠️ **nenhum nível novo no roteador de `GPU_COOK_DEMO`** (segue em **57**, próxima livre **58**); a cena é um **modo** de uma env que já existia |
 | Censo | **125 nós · 547 params · 528 com hint · 159 com unidade** — ⚠️ **RECONCILIA** com o do grupo P (`125 · 545 · 526 · 158`) exactamente pelos dois params desta wave, dos quais só o `spacing` carrega unidade |
 
-**O ponto de merge sensível:** `shells/desktop/src/motion_node_path_smoke.rs` (165 → 320 LOC, cap
+**O ponto de merge sensível:** `shells/desktop/src/motion/motion_node_path_smoke.rs` (165 → 320 LOC, cap
 600) e `docs/Motion Nodes/89_conferencia/06_animadores.md` (a linha 46 e a Contagem). Nenhuma outra
 linha viva toca os dois.
 

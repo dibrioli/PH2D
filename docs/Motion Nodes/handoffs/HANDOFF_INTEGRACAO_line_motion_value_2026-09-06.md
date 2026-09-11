@@ -94,7 +94,7 @@ porque nenhum é schema):
    — é uma **catraca**, e duas linhas que a subam escrevem o mesmo tipo de literal em sítios
    próximos. O valor certo depois da fusão é o **contado**, nunca o de nenhum dos dois lados.
 3. ⚠️ **`MAX_DEMO_LEVEL: u32 = 110`** e o braço `Some("110")` em
-   [`motion_state_demo_router.rs`](../../../shells/desktop/src/motion_state_demo_router.rs) — o
+   [`motion_state_demo_router.rs`](../../../shells/desktop/src/motion/motion_state_demo_router.rs) — o
    número da próxima cena **CONTA-SE do roteador**. O gate `no_two_smoke_scenes_claim_the_same_level`
    mede o **piso**, não o teto: duas cenas com o mesmo número passam sem o acordar.
 4. ⚠️ **`ParamSpec` apendados** em dois manifestos: `motion.spring` (+`mode`, `duration`, `bounce`)
@@ -316,7 +316,7 @@ não muda; o `Cargo.lock` ganha `+ph2d-param-editors` (é o único pacote novo, 
 | `shells/desktop/tests/it/a_layout_never_commands_a_panel_a_bridge_owns.rs` | o controlo perdeu `"motion"` | ⚠️ é o gate que **obrigou** à linha acima |
 | `crates/ph2d-editor-core/tests/it/architecture_motion_chrome_never_wraps_a_row_label.rs` | `SCANNED_CRATES` ganha a crate nova | a lei segue o código |
 | `crates/ph2d-editor-core/tests/it/hr12_widgets_a11y.rs` | isenção do `paint_card.rs` | ⛔ **vermelho PRÉ-EXISTENTE de 06/09** |
-| `shells/desktop/src/motion_state_conferencia_demos_table.rs` | o CSV da cena escreve-se por `rename` atómico | cura de flake |
+| `shells/desktop/src/motion/motion_state_conferencia_demos_table.rs` | o CSV da cena escreve-se por `rename` atómico | cura de flake |
 
 ### §14.4 — ⛔ As TRÊS coisas que um integrador entende ao contrário
 

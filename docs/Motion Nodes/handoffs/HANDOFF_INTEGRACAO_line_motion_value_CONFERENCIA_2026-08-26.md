@@ -35,7 +35,7 @@ Compartilhado de facto tocado:
 - **`shells/desktop/Cargo.toml` + `Cargo.lock`** — a dependência nova do shell no
   `ph2d-node-motion-clone`.
 - **`crates/ph2d-render/`** — o passe do Flip passou a receber o sub-rect da cena (Bug #10).
-- **`shells/desktop/src/motion_state_demo_router.rs`** — 11 cenas novas (`=96`..`=106`), e
+- **`shells/desktop/src/motion/motion_state_demo_router.rs`** — 11 cenas novas (`=96`..`=106`), e
   ⚠️ o `MAX_DEMO_LEVEL` subiu de **97 para 106** (ele estava parado em 97 com cenas até 102 —
   as `=98`..`=102` **nunca tinham sido diagnosticadas**).
 

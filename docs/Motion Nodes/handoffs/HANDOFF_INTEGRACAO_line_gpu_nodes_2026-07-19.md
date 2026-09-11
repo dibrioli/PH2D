@@ -67,7 +67,7 @@ Se outra linha tiver integrado antes desta, os pontos de contato são:
 | `ph2d-nodegraph/src/gpu.rs` | **médio** | foundational; +124 linhas, mas **append-only** (campos novos no fim do `GpuKernel`, tipos novos no fim do módulo). Nenhuma assinatura existente mudou de forma |
 | `ph2d-eval-motion/src/lib.rs` | **médio** | 730 → 555 LOC: o lowering saiu para `lower.rs`. Uma linha que tenha editado o lowering vai conflitar por MOVIMENTO, não por conteúdo |
 | `shells/desktop/src/render_loop/motion_bridge*.rs` | **baixo** | 7 arquivos, todos do domínio Motion |
-| `shells/desktop/src/motion_state.rs` | **baixo** | 2 pontos: o `gpu_enabled` e o braço `Ok("6")` do demo |
+| `shells/desktop/src/motion/motion_state.rs` | **baixo** | 2 pontos: o `gpu_enabled` e o braço `Ok("6")` do demo |
 | `project-memory/MEMORY.md` | **baixo** | **só ADIÇÕES** — nunca remova linhas ao fundir ([[feedback_a_shared_list_is_merged_against_todays_main]]) |
 
 ⚠️ **Contrato congelado NÃO foi tocado.** `NodeOp`/`OpResolver`/`NodeManifest`

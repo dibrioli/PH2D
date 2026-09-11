@@ -53,8 +53,8 @@ CLAUDE.md
 | arquivo | o quê | aditivo? |
 |---|---|---|
 | **`crates/ph2d-nodegraph/src/time.rs`** | 6º `TimeMode::Curve` + `TIME_CURVE_SAMPLES` + o campo `TimeMap.curve` + a lei `rem_euclid` | **SIM** — variant e campo APENDADOS; `TimeMap::default()` é o `Scale` de sempre |
-| `shells/desktop/src/motion_state.rs` | 2 `mod` novos (cenas `=58`/`=59`) | SIM (lista) |
-| `shells/desktop/src/motion_state_demo_router.rs` | 2 braços de `match` (`=58`/`=59`) | SIM (lista ordenada) |
+| `shells/desktop/src/motion/motion_state.rs` | 2 `mod` novos (cenas `=58`/`=59`) | SIM (lista) |
+| `shells/desktop/src/motion/motion_state_demo_router.rs` | 2 braços de `match` (`=58`/`=59`) | SIM (lista ordenada) |
 | `shells/desktop/src/render_loop/motion_bridge_params_channel.rs` | os 3 canais de tamanho num braço de unidade só | não-aditivo, **1 braço** |
 | `shells/desktop/src/motion_state_demo_conferencia*.rs` | narração das cenas | SIM |
 | `crates/ph2d-gpu-cook/tests/it/gpu_cpu_parity.rs` | 3 gates de paridade novos | SIM |

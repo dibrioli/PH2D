@@ -24,7 +24,7 @@ Nenhum gate acusa: o grafo está bem-tipado, a aresta existe, o `connect` não f
 
 **How to apply:** em toda sonda, gerador ou fixtura que corre `cook` em vários instantes, chame
 `advance_tick` a seguir a cada um — o precedente vivo é `the_ease_kills_the_twitch_and_keeps_the_motion`
-em `shells/desktop/src/motion_delay_gate_tests.rs`. E ao medir CUSTO, meça **dois** números: o
+em `shells/desktop/src/motion/motion_delay_gate_tests.rs`. E ao medir CUSTO, meça **dois** números: o
 tique **frio** (`Cook` novo — o que o nó custa quando tem de correr) e o de **regime** (o n-ésimo
 tique do mesmo `Cook`), porque um nó `Pure` cujo resultado não muda com o tempo lê `0,00 ms` em
 regime — o memo responde, e isso é a resposta, não um erro. Ver [[feedback_a_ruler_placed_after_the_tidying_step_measures_the_tidying]].

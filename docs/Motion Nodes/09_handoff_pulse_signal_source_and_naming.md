@@ -30,7 +30,7 @@ valor completo) é estratégico e opcional — decida com o Enio. **NÃO integre
 
 ## 1. O bug que o Enio achou (o "clock-on-Rotation")
 
-Cena default hoje (`shells/desktop/src/motion_demo_strobe.rs`):
+Cena default hoje (`shells/desktop/src/motion/motion_demo_strobe.rs`):
 
 ```text
 grid → move → tint → counter → strobe → output
@@ -199,7 +199,7 @@ Você continua em `line/MotionNodes` (worktree `Worktrees/line-MotionNodes`, ADR
 
 ## 8. Ponteiros
 
-- Cena a reescrever: `shells/desktop/src/motion_demo_strobe.rs` · doc default: `shells/desktop/src/motion_state.rs`.
+- Cena a reescrever: `shells/desktop/src/motion/motion_demo_strobe.rs` · doc default: `shells/desktop/src/motion/motion_state.rs`.
 - Nós existentes a espelhar: `crates/ph2d-node-pulse-threshold/` (produtor), `crates/ph2d-node-pulse-counter/`
   (a renomear), `crates/ph2d-node-motion-strobe/` (consumidor).
 - Codegen registry: `tools/ph2d-node-sync` → `crates/ph2d-node-registry-init/`.

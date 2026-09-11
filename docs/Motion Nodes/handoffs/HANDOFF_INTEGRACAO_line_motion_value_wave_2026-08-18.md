@@ -144,7 +144,7 @@ o **ESTADO** da folha; a nota me convidou a isso.
 
 ### O ÚNICO ponto de merge sensível
 
-O corte do **clipboard** em `shells/desktop/src/motion_state.rs`. Uma linha que
+O corte do **clipboard** em `shells/desktop/src/motion/motion_state.rs`. Uma linha que
 acrescente um `mod` ou toque no `GraphClip` **funde limpa** contra um arquivo de
 onde a família saiu — a mesma classe do corte do `project.rs`. O caminho de quem
 chama **não muda** (`motion_state::GraphClip` segue válido pelo re-export), então

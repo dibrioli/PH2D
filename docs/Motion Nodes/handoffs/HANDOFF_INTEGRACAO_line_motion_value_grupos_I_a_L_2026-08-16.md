@@ -97,7 +97,7 @@ varredura de marcadores tem de incluir **`|||||||`** (diff3), não só `<<<`/`>>
 
 ## §4 — Ponto de merge sensível: UM
 
-`shells/desktop/src/motion_state_demo_router.rs` cruzou 600 LOC ⇒ as **nove** cenas de grupo
+`shells/desktop/src/motion/motion_state_demo_router.rs` cruzou 600 LOC ⇒ as **nove** cenas de grupo
 (`=41..=49`) saíram para o irmão `motion_state_demo_conferencia.rs`, **uma função por cena**.
 
 ⚠️ **O irmão NÃO tem `match` nenhum, de propósito.** O roteador continua a ser a ÚNICA lista de

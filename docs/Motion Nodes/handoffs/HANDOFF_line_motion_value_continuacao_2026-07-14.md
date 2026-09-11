@@ -63,7 +63,7 @@ cargo check -p ph2d-eval-motion -p ph2d-panel-motion-graph
    SEMÂNTICA, não por código.** Sem pesquisa = fatia rejeitada.
 2. **HR-5 — produção transcendental-free** (`sin`/`cos`/`exp`/`pow`/`atan2` proibidos; `sqrt` OK).
    Use as aproximações que já existem (`trig.rs` parabólico) — **copie o leaf**.
-3. **Demo auto-playing pequena** no boot document (`shells/desktop/src/motion_demo_strobe.rs`).
+3. **Demo auto-playing pequena** no boot document (`shells/desktop/src/motion/motion_demo_strobe.rs`).
    Regra permanente: **"simplifique o exemplo"**. Feature nova = **exemplo pronto pro smoke**, nunca
    *"monte você"*.
 4. **Testes FALSIFICÁVEIS** (não "compila = verde"): o teste tem que **falhar** se a costura

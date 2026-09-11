@@ -173,7 +173,7 @@ linha de `**Contagem:**` escrita na folha, então **nenhuma envelheceu desta vez
    com o `cd` da worktree — e um `grep` read-only responde da árvore errada **sem erro
    nenhum**.
 9. ⚠️ **O número da próxima cena se CONTA lendo o `match`**, nunca uma nota:
-   `shells/desktop/src/motion_state_demo_router.rs`. Medido hoje: cenas **1..56
+   `shells/desktop/src/motion/motion_state_demo_router.rs`. Medido hoje: cenas **1..56
    contínuas** ⇒ **próxima livre 57**. O roteador é a **ÚNICA** lista de níveis (o irmão
    `motion_state_demo_conferencia.rs` **não tem `match` nenhum, de propósito** — dois
    `match` em dois arquivos deixariam um nível reivindicado duas vezes passar em

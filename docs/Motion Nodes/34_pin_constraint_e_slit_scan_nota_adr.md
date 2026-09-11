@@ -147,7 +147,7 @@ DIR  (slit scan): grid ─> oscillator ─> slit_scan ─> move(+7) ─> output
 
 **Testes de unidade:** 48 verdes nas 5 crates (9 pin · 14 integrate · 7 slit-scan · 10 collide · 8 spring).
 
-**Testes de CORRENTE INTEIRA** (`shells/desktop/src/motion_state_tests.rs`, registry REAL, `pre`
+**Testes de CORRENTE INTEIRA** (`shells/desktop/src/motion/motion_state_tests.rs`, registry REAL, `pre`
 avançado tick a tick — cozinhar um frame isolado mostraria a pose de seed e não provaria nada):
 
 - `the_pinned_row_holds_while_the_rest_falls_into_the_attractor`

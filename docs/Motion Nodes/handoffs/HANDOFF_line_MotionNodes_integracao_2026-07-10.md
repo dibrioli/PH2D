@@ -26,7 +26,7 @@
 |---|---|---|
 | `crates/ph2d-nodegraph/src/cook.rs` (+54) + `cook_tests.rs` | `pub struct CookCheckpoint` + `Cook::checkpoint()`/`restore()` — métodos INERENTES novos (M2.N2, doc 11). `NodeOp`/`OpResolver`/`NodeManifest` **intactos** | **foundational (o substrato)** — conflita só se outra linha tocar `cook.rs`; hand-merge/Mergiraf, é aditivo |
 | `crates/ph2d-eval-motion/*` | avaliador do Motion: `checkpoint.rs` (novo), `lib.rs` split → `eval_tests.rs`/`scrub_tests.rs`, `MotionCookPump::{scrub_to_scoped,advance_or_scrub_scoped,cook_sinks_into}` | módulo-owned; baixo |
-| `shells/desktop/src/motion_state.rs`, `motion_state_tests.rs`, `motion_demo_strobe.rs` (novo), `render_loop/motion_bridge*.rs` | cena boot (3 cadeias de valor) + bridge do Motion; `motion_demo_particles.rs` DELETADO | shell, módulo-owned; baixo |
+| `shells/desktop/src/motion/motion_state.rs`, `motion_state_tests.rs`, `motion_demo_strobe.rs` (novo), `render_loop/motion_bridge*.rs` | cena boot (3 cadeias de valor) + bridge do Motion; `motion_demo_particles.rs` DELETADO | shell, módulo-owned; baixo |
 | `SKILL_Stack_PH2D_Definitiva.md` (+44) | §11.13 (família pulse/value) — doc | conflita só se outra linha editar §11.13; hand-merge aditivo |
 | `Cargo.lock` (+99) | só as 11 crates PATH novas | regenera (`cargo build`) na árvore combinada |
 
@@ -125,8 +125,8 @@ git diff --name-only $(git merge-base main line/MotionNodes)..line/MotionNodes
 | Arquivo | Por quê |
 |---|---|
 | `crates/ph2d-node-registry-init/{Cargo.toml,src/lib.rs}` | **GERADO** (`cargo run -p ph2d-node-sync`): +`ph2d-node-motion-step` +`ph2d-node-pulse-beat` −`ph2d-node-pulse-counter`. **É o ponto de merge textual** com qualquer outra linha que adicione nós. |
-| `shells/desktop/src/motion_demo_strobe.rs` | Cena default reescrita (beat no lugar de clock+threshold). Arquivo é da própria feature Motion. |
-| `shells/desktop/src/motion_state.rs` + `motion_state_tests.rs` | Doc-comments + contagem de nós 8→7 + testes renomeados/re-calibrados (batidas em t=0/1.4/2.8). |
+| `shells/desktop/src/motion/motion_demo_strobe.rs` | Cena default reescrita (beat no lugar de clock+threshold). Arquivo é da própria feature Motion. |
+| `shells/desktop/src/motion/motion_state.rs` + `motion_state_tests.rs` | Doc-comments + contagem de nós 8→7 + testes renomeados/re-calibrados (batidas em t=0/1.4/2.8). |
 | `SKILL_Stack_PH2D_Definitiva.md` §11.13 | Entradas Pulse beat (nova) + Motion step (renomeada) + horizonte. |
 | `docs/Motion Nodes/08…md` (nota de rename) · `09…md` (o handoff-missão, novo) · Cargo.lock | Docs + lockfile do rename/crate nova. |
 

@@ -28,7 +28,7 @@
 | `crates/ph2d-editor-core/src/screens/hero/topbar/mod.rs` + `hero/paint.rs` | os nove chips da barra do grafo dizem o que fazem | **SIM** — só rótulo/dica |
 | `crates/ph2d-panel-motion-params/` | `ParamRow::File`, `MotionParamIntent::PickFile`, `row_state.rs` (split de LOC) | **SIM** — variante nova + split |
 | `shells/desktop/src/render_loop/motion_bridge_*` | o resolvedor do diálogo, o `bake`, o `mark_lsystem_custom`, o `drop_preset_drivers`, `motion_bridge_params_text_rows.rs` (split de LOC) | **SIM** |
-| `shells/desktop/src/motion_state_demo_router.rs` | cenas **`=107`** e **`=108`**; `MAX_DEMO_LEVEL` **107 → 108** | ⚠️ **NÚMERO QUE SOMA** — ver §3 |
+| `shells/desktop/src/motion/motion_state_demo_router.rs` | cenas **`=107`** e **`=108`**; `MAX_DEMO_LEVEL` **107 → 108** | ⚠️ **NÚMERO QUE SOMA** — ver §3 |
 | `crates/ph2d-node-motion-sub-uv/` | `Effect::Pure` → **`Effect::Temporal`** + os *holds* | ⚠️ **não é aditivo** — ver §5 |
 
 ---
@@ -68,7 +68,7 @@ SUPERFÍCIE DE COLISÃO — line/motion-value contra main
 
 | símbolo | valor desta linha | onde |
 |---|---|---|
-| `MAX_DEMO_LEVEL` | **107 → 108** | `shells/desktop/src/motion_state_demo_router.rs:26` |
+| `MAX_DEMO_LEVEL` | **107 → 108** | `shells/desktop/src/motion/motion_state_demo_router.rs:26` |
 | cena de demo | **`=107`** (sujidade na lente) e **`=108`** (L-System) | o mesmo roteador |
 | cena de objeto | **`PH2D_MOTION_OBJ_SMOKE=11`** (o ritmo) | `motion_object_smoke_holds.rs` |
 | crates novas | `ph2d-node-source-lsystem`, `ph2d-node-value-number` | `Cargo.lock` + `registry-init` |

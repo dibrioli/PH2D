@@ -264,7 +264,7 @@ distância-rejeita-tudo; sem divisão viva pelos kernels amostrados).
 | `crates/ph2d-gpu-cook/tests/it/generated_wgsl_validates.rs` | +value.math +value.switch |
 | `shells/desktop/tests/it/motion_gpu_kernel_budgets.rs` | **novo** — orçamento do uniform + identities finitas, sobre `register_all_nodes` |
 | `crates/ph2d-eval-motion/src/scrub_tests.rs` | medição `#[ignore]` do loop-wrap starvation (101/101 evals) |
-| `shells/desktop/src/motion_state.rs` · `render_loop/motion_bridge_gpu.rs` | os 2 comentários apodrecidos reescritos |
+| `shells/desktop/src/motion/motion_state.rs` · `render_loop/motion_bridge_gpu.rs` | os 2 comentários apodrecidos reescritos |
 
 **Contrato congelado intocado** (nada em `NodeOp`/`OpResolver`/`NodeManifest`;
 tudo metadado lateral e testes). Ids/consts novos: nenhum. Foundational

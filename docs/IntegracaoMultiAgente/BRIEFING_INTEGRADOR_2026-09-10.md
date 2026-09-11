@@ -156,7 +156,7 @@ acentuado em doc-comments — foi o `typos` que apanhou dois vermelhos na integr
 |---|---|---|
 | ⭐ `ExtraBuffers` / `kernel_module` 8 → 6 params (23 sítios, todos dela) | `ph2d-gpu-cook` | **zero vítimas medidas** — nenhuma das outras cinco toca essa crate. Se aparecer uma chamada nova, a cura é mecânica (agrupar `grid`/`reduces`/`luts` no struct). ⛔ Não é cosmética: eram 8 sobre um tecto de 7 |
 | `.typos.toml` (raiz) | 2 entradas | claimant único |
-| `MAX_DEMO_LEVEL` `110 → 114` (cenas `=111..=114`) | `shells/desktop/src/motion_state_demo_router.rs` | claimant único. ⚠️ O gate `no_two_smoke_scenes_claim_the_same_level` mede o **piso**, não o tecto |
+| `MAX_DEMO_LEVEL` `110 → 114` (cenas `=111..=114`) | `shells/desktop/src/motion/motion_state_demo_router.rs` | claimant único. ⚠️ O gate `no_two_smoke_scenes_claim_the_same_level` mede o **piso**, não o tecto |
 
 ### Fusão 6 — `line/3DModeling`
 | o quê | endereço | cura |

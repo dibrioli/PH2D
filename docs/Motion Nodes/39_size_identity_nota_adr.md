@@ -92,7 +92,7 @@ assertion `left == right` failed: a Scale at amount = 1 is a no-op on the render
 | Onde | O quê |
 |---|---|
 | `ph2d-nodegraph::attr` | **`pub const SIZE_IDENTITY: [f32; 2] = [1.0, 1.0]`** (aditiva) |
-| `shells/desktop/src/motion_state.rs` | `default_size` = `SIZE_IDENTITY` (era `[0.4, 0.4]`) |
+| `shells/desktop/src/motion/motion_state.rs` | `default_size` = `SIZE_IDENTITY` (era `[0.4, 0.4]`) |
 | demo | `motion.scale(0.4)` em cada cena (13 nós no doc de boot) |
 
 **Contrato intacto** (`NodeManifest`/`NodeOp`/`OpResolver` = 8/2/1, provado depois).

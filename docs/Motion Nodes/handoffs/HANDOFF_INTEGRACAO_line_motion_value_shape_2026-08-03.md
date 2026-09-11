@@ -53,13 +53,13 @@ que o `VelloPass` **já** renderiza — **SEM passe de GPU novo**.
 - `shells/desktop/src/render_loop/motion_shape_gen.rs` — `VecPathStore` + `read_params` (a mesma
   porta que o nó, ver abaixo) + `build_shape_path` (dispatch p/ `ph2d-vec-scene`) + `publish`
   (varre nós `source.shape`, interna, publica) + `encode` (desenha no present).
-- `shells/desktop/src/motion_state.rs` — campo `shape_store: VecPathStore` no `MotionState`.
+- `shells/desktop/src/motion/motion_state.rs` — campo `shape_store: VecPathStore` no `MotionState`.
 - `shells/desktop/src/render_loop/mod.rs` — `pub(crate) mod motion_shape_gen;` · `motion_shape_gen::publish(motion)`
   **no call-site do `publish_shapes` (~linha 5086)**, não dentro de `motion_bridge.rs` — ⚠️ **de propósito**:
   `motion_bridge.rs` estava a 599/600 LOC, e a chamada lá o estourava (603); no call-site a ordem é a
   mesma (roda logo após o `shapes::publish` que limpa os externals). · a chamada `encode` logo após o
   `ph2d_vec_render::dispatch` (~linha 6340), gated em `motion_tool_active` (como os sprites do Motion).
-- `shells/desktop/src/motion_shape_smoke.rs` + `main.rs` (`mod`) + `mod.rs` (o hook no prólogo).
+- `shells/desktop/src/motion/motion_shape_smoke.rs` + `main.rs` (`mod`) + `mod.rs` (o hook no prólogo).
 - `shells/desktop/Cargo.toml` — **a ÚNICA mudança de `Cargo.toml`**: dep na crate-nó (a shell chama
   `ShapeParams::read`/`shape_key`).
 

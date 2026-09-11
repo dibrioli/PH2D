@@ -62,7 +62,7 @@ transporte, ~34 nós registrados). O que a linha anterior acabou de integrar:
   - **Fatia 1 (12):** `pulse.counter` (redutor PURO pulse→value) + `motion.drive` (consumidor value→canal, com a **regra de broadcast 1→N**).
   - **Fatia 2 (13):** `value.lfo` (produtor contínuo) + `value.map_range` (o `fit` — cola universal).
   - **Fatia 3 (14):** `pulse.sample_hold` (o `sah~`, fecha o combo `LFO→SampleHold→drive` do doc 09) + `value.instance_field` (o ÚNICO que MINTA campo len-N da identidade — Index/Ramp/Random).
-- **Cena boot** (`shells/desktop/src/motion_demo_strobe.rs`, 15 nós): 3 cadeias de valor demonstradas
+- **Cena boot** (`shells/desktop/src/motion/motion_demo_strobe.rs`, 15 nós): 3 cadeias de valor demonstradas
   — X broadcast (beat→counter→drive), Y sample-and-hold (lfo→sample_hold→map_range→drive), Size
   gradiente por-elemento (instance_field→map_range→drive), tudo piscando no beat. **Smoke aprovado.**
 
@@ -145,7 +145,7 @@ Leia `crates/ph2d-node-value-lfo/` e `crates/ph2d-node-pulse-sample-hold/` como 
   O teste `every_row_range_contains_its_value_for_every_node_and_param` **exige que o range contenha
   o default** de todo param — se não contém, quebra.
 - **Cena boot pro smoke (regra "exemplo pronto"):** wire seus nós novos em
-  `shells/desktop/src/motion_demo_strobe.rs` (auto-play), atualize a contagem de nós +
+  `shells/desktop/src/motion/motion_demo_strobe.rs` (auto-play), atualize a contagem de nós +
   doc-comments em `motion_state.rs`/`motion_state_tests.rs`, e escreva ≥1 teste de integração
   headless **falsificado dos dois lados** (o que prova que está vivo E correto).
 - **LOC cap:** 700/arquivo (workspace), 600 (shell). Split em módulo-irmão, nunca allowlist. Rode

@@ -108,7 +108,7 @@ testes daquela crate passaram sem uma edição de asserção.
 
 > A regra de cadência é do Enio: **implementar em GRUPOS de nós, e a cada grupo UMA cena de
 > smoke**. A próxima cena livre é a **`=61`** — ⚠️ e esse número se **CONTA lendo o `match`**
-> do [`motion_state_demo_router.rs`](../../../shells/desktop/src/motion_state_demo_router.rs),
+> do [`motion_state_demo_router.rs`](../../../shells/desktop/src/motion/motion_state_demo_router.rs),
 > nunca esta linha (ela envelhece no primeiro grupo).
 
 ### Grupo S — os DEFEITOS, antes de qualquer knob

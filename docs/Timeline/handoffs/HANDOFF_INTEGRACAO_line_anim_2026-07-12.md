@@ -196,7 +196,7 @@ A ordem virou função **pura** (`hit_plan`) com gate — nenhum teste de `apply
 | **Resultado** | o merge textual "funciona" e a **compilação quebra** — ou, pior, um resolvedor apressado **restaura o campo** e a divergência de relógio volta **em silêncio** |
 
 **Arquivos que as duas linhas tocam:** `CLAUDE.md` · `crates/ph2d-eval-motion/src/lib.rs` ·
-`shells/desktop/src/motion_state.rs` · `motion_state_tests.rs` · `render_loop/motion_bridge.rs`.
+`shells/desktop/src/motion/motion_state.rs` · `motion_state_tests.rs` · `render_loop/motion_bridge.rs`.
 
 **Os 7 usos vivos** (`line/motion-value:motion_bridge.rs`): `transport.play()` · `transport.toggle()` ·
 `transport.advance(1)` · `transport.tick` (×2) · `transport.playhead(fixed_dt)` (×2).

@@ -182,7 +182,16 @@ seguinte.**
 `nextest-impacted.sh` **14 974/14 974** · `clippy --all-targets -D warnings` verde ·
 tectos de LOC verde · `fmt --check` verde · `typos` verde · `doc-index.sh --check` 19 índices em dia.
 
-**(e) Smoke** — §11.
+**(e) Smoke — o binário fica COMPILADO** (§1.5.9 item 9), `cd` e perfil byte a byte iguais aos do §11:
+```
+$ cargo build -p ph2d-host-desktop --profile smoke     # 1.ª: Finished `smoke` in 1m 41s
+$ cargo build -p ph2d-host-desktop --profile smoke     # 2.ª — A PROVA:
+    Finished `smoke` profile [optimized] target(s) in 0.34s      ← zero linhas "Compiling"
+```
+⭐ **E uma sanidade de ARRANQUE** (`PH2D_SCULPT3D_SMOKE=1`, 25 s), que nenhum teste alcança — o
+`AppGfx` segura uma surface de janela real: o app abre, arma a cena (`malha com 98306 vértices /
+98304 faces`), imprime o roteiro inteiro do módulo e fica vivo. *Um pânico de runtime vindo de
+uma extracção não seria apanhado por gate nenhum.*
 
 ### `collision-surface.sh` (item 3 do §1.5.9)
 

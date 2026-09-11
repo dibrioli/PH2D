@@ -1026,7 +1026,7 @@ impl crate::App {
         self.build_smoke();
         self.field3d_undo_probe();
         self.stack_smoke();
-        self.motion_path_smoke();
+        crate::motion_path_smoke::motion_path_smoke(self);
         self.harmony_smoke();
         self.timeline_onion_smoke();
         self.signal_smoke();
@@ -1106,12 +1106,12 @@ impl crate::App {
         self.flip_selection_smoke();
         self.flip_segment_smoke();
         self.blend_smoke();
-        self.motion_node_path_smoke();
-        self.motion_object_smoke();
-        self.motion_shape_smoke();
-        self.motion_autofix_smoke();
-        self.motion_delay_smoke();
-        self.motion_fx_smoke();
+        crate::motion_node_path_smoke::motion_node_path_smoke(self);
+        crate::motion_object_smoke::motion_object_smoke(self);
+        crate::motion_shape_smoke::motion_shape_smoke(self);
+        crate::motion_autofix_smoke::motion_autofix_smoke(self);
+        crate::motion_delay_smoke::motion_delay_smoke(self);
+        crate::motion_fx_smoke::motion_fx_smoke(self);
         self.adapter_smoke();
         self.attribute_demo_smoke();
         self.picker_smoke();

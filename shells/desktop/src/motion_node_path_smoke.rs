@@ -449,49 +449,47 @@ fn mode() -> u8 {
     })
 }
 
-impl crate::App {
-    /// Roda no prólogo do frame, ao lado do `build_smoke`. No-op sem a env.
-    ///
-    /// **Dois frames, e a ordem importa:** a forma entra primeiro; a ENTIDADE dela só existe depois
-    /// que o `vec_entities::sync` do frame a cria — e é na entidade que o **nome** mora (ADR-0110).
-    /// Nomear antes seria nomear algo que ainda não existe, e o publisher não veria curva nenhuma.
-    pub(crate) fn motion_node_path_smoke(&mut self) {
-        use std::sync::atomic::Ordering;
-        let mode = mode();
-        if mode == 0 || self.gfx.is_none() {
-            return;
-        }
-        match FRAME.fetch_add(1, Ordering::Relaxed) {
-            3 => {
-                let gfx = self.gfx.as_mut().expect("gfx");
-                if mode == 2 {
-                    push_spacing_shapes(&mut gfx.vec_scene);
-                } else {
-                    push_shape(&mut gfx.vec_scene);
-                }
+/// Roda no prólogo do frame, ao lado do `build_smoke`. No-op sem a env.
+///
+/// **Dois frames, e a ordem importa:** a forma entra primeiro; a ENTIDADE dela só existe depois
+/// que o `vec_entities::sync` do frame a cria — e é na entidade que o **nome** mora (ADR-0110).
+/// Nomear antes seria nomear algo que ainda não existe, e o publisher não veria curva nenhuma.
+pub(crate) fn motion_node_path_smoke(app: &mut crate::App) {
+    use std::sync::atomic::Ordering;
+    let mode = mode();
+    if mode == 0 || app.gfx.is_none() {
+        return;
+    }
+    match FRAME.fetch_add(1, Ordering::Relaxed) {
+        3 => {
+            let gfx = app.gfx.as_mut().expect("gfx");
+            if mode == 2 {
+                push_spacing_shapes(&mut gfx.vec_scene);
+            } else {
+                push_shape(&mut gfx.vec_scene);
             }
-            6 => {
-                // O mapa path↔entidade vive no `App` (o `sync` do frame o preenche); o mundo, a
-                // cena e o grafo vivem no `AppGfx`.
-                let map = self.vec_entities.clone();
-                let gfx = self.gfx.as_mut().expect("gfx");
-                if mode == 2 {
-                    let outs = name_and_wire_spacing(&mut gfx.sim, &map, &mut gfx.motion.doc.graph);
-                    gfx.motion.sinks.extend(outs);
-                } else if mode == 3 {
-                    let outs = name_and_wire_normal(&mut gfx.sim, &map, &mut gfx.motion.doc.graph);
-                    gfx.motion.sinks.extend(outs);
-                } else if mode == 4 {
-                    let outs = name_and_wire_trim(&mut gfx.sim, &map, &mut gfx.motion.doc.graph);
-                    gfx.motion.sinks.extend(outs);
-                } else if let Some(out) =
-                    name_and_wire(&mut gfx.sim, &map, &mut gfx.motion.doc.graph)
-                {
-                    gfx.motion.sinks.push(out);
-                }
-                let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
-            }
-            _ => {}
         }
+        6 => {
+            // O mapa path↔entidade vive no `App` (o `sync` do frame o preenche); o mundo, a
+            // cena e o grafo vivem no `AppGfx`.
+            let map = app.vec_entities.clone();
+            let gfx = app.gfx.as_mut().expect("gfx");
+            if mode == 2 {
+                let outs = name_and_wire_spacing(&mut gfx.sim, &map, &mut gfx.motion.doc.graph);
+                gfx.motion.sinks.extend(outs);
+            } else if mode == 3 {
+                let outs = name_and_wire_normal(&mut gfx.sim, &map, &mut gfx.motion.doc.graph);
+                gfx.motion.sinks.extend(outs);
+            } else if mode == 4 {
+                let outs = name_and_wire_trim(&mut gfx.sim, &map, &mut gfx.motion.doc.graph);
+                gfx.motion.sinks.extend(outs);
+            } else if let Some(out) =
+                name_and_wire(&mut gfx.sim, &map, &mut gfx.motion.doc.graph)
+            {
+                gfx.motion.sinks.push(out);
+            }
+            let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+        }
+        _ => {}
     }
 }

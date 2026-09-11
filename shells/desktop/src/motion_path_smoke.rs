@@ -119,137 +119,135 @@ pub(crate) fn author(doc: &mut TimelineDoc, bits: u64, path: &MotionPath) {
     }
 }
 
-impl crate::App {
-    /// No prólogo do frame, uma vez. No-op sem a env.
-    pub(crate) fn motion_path_smoke(&mut self) {
-        if self.motion_path_smoke_done {
-            return;
-        }
-        if std::env::var_os("PH2D_PATH_SMOKE").is_none() {
-            return;
-        }
-        if self.gfx.is_none() {
-            return; // ainda sem mundo; tenta no próximo frame
-        }
-        self.motion_path_smoke_done = true;
-        if std::env::var_os("PH2D_PATH_SMOKE").is_some_and(|v| v == "2") {
-            self.path_scene_orient();
-            return;
-        }
-
-        let bits = {
-            let gfx = self.gfx.as_mut().expect("gfx");
-            gfx.sim
-                .world_mut()
-                .spawn((
-                    Transform::from_translation(Vec2::new(-6.0, -2.0)),
-                    Sprite::atlas(0, [0.8, 0.8], [1.0, 0.55, 0.15, 1.0]),
-                    Name::new("Traveller"),
-                ))
-                .id()
-                .to_bits()
-        };
-        // Um SEGUNDO objeto, parado: é ele que prova o item 5 (clicar nele apaga a
-        // trajetória). Sem um vizinho, "só o selecionado" não é demonstrável.
-        {
-            let gfx = self.gfx.as_mut().expect("gfx");
-            gfx.sim.world_mut().spawn((
-                Transform::from_translation(Vec2::new(0.0, 4.0)),
-                Sprite::atlas(0, [0.8, 0.8], [0.35, 0.45, 0.6, 1.0]),
-                Name::new("Bystander"),
-            ));
-        }
-
-        let path = demo_path();
-        author(&mut self.timeline.doc, bits, &path);
-
-        // A trajetória só é desenhada para o SELECIONADO — então a cena o seleciona,
-        // senão o smoke abre sem mostrar a própria feature.
-        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
-            hero.gizmo.replace_selection(Some(bits));
-        }
-
-        let dots = (3.0 * self.timeline.doc.fps_display).round() as usize;
-        let keys = self
-            .timeline
-            .doc
-            .binding_for(bits, PropKind::Position)
-            .and_then(|b| self.timeline.doc.active_clip().track(b.target))
-            .map_or(0, |t| t.keys().len());
-        eprintln!(
-            "[path-smoke] trajetoria em S: {} ancoras = {keys} keyframes (uma por ponto, \
-             como no After Effects), {:.2} unidades de percurso, {dots} pontos de tempo \
-             em 3 s.",
-            path.len(),
-            path.length()
-        );
-        eprintln!(
-            "[path-smoke] abra a timeline (L) e olhe o ESPACAMENTO dos losangos: \
-             juntos nas pontas (ease), esparramados no meio. Play para conferir."
-        );
-        eprintln!(
-            "[path-smoke] ARRASTE um QUADRADO (a ancora): a curva segue e NAO quebra \
-             (as alcas Auto Bezier re-suavizam). ARRASTE um CIRCULO (a ponta da alca): \
-             a curva se MOLDA a mao. As alcas so aparecem nas ancoras curvas do meio."
-        );
-        eprintln!(
-            "[path-smoke] E A PERGUNTA DA WAVE (Enio, 2026-07-30): crie um CLIP NOVO no \
-             dropdown. Ele tem de abrir em BRANCO -- nenhuma curva, nenhum quadrado, \
-             nenhum circulo, e nada agarravel onde a trajetoria do outro clip passava. \
-             Ponha o objeto onde quiser e aperte K: a ancora nasce ONDE VOCE CLICOU, e o \
-             clip 1 nao se mexe um pixel quando voce volta a ele."
-        );
+/// No prólogo do frame, uma vez. No-op sem a env.
+pub(crate) fn motion_path_smoke(app: &mut crate::App) {
+    if app.motion_path_smoke_done {
+        return;
+    }
+    if std::env::var_os("PH2D_PATH_SMOKE").is_none() {
+        return;
+    }
+    if app.gfx.is_none() {
+        return; // ainda sem mundo; tenta no próximo frame
+    }
+    app.motion_path_smoke_done = true;
+    if std::env::var_os("PH2D_PATH_SMOKE").is_some_and(|v| v == "2") {
+        path_scene_orient(app);
+        return;
     }
 
-    /// Cena `=2`: **o auto-orient, e a recusa ao lado dele.**
-    ///
-    /// Duas setas na MESMA trajetória, com o MESMO pedido — e uma delas tem uma track
-    /// de Rotation. Sem o par, "recusado" seria uma palavra num doc; com ele, é a
-    /// diferença entre duas coisas na tela.
-    fn path_scene_orient(&mut self) {
-        let path = demo_path();
-        let mut spawn = |y: f32, tint: [f32; 4], name: &str| -> u64 {
-            let gfx = self.gfx.as_mut().expect("gfx");
-            gfx.sim
-                .world_mut()
-                .spawn((
-                    Transform::from_translation(Vec2::new(-6.0, -2.0 + y)),
-                    // Fina e comprida: um quadrado girando é indistinguível de um
-                    // quadrado parado, e o que esta cena mostra é EXATAMENTE o giro.
-                    Sprite::atlas(0, [1.4, 0.35], tint),
-                    Name::new(name),
-                ))
-                .id()
-                .to_bits()
-        };
-        let follower = spawn(0.0, [1.0, 0.55, 0.15, 1.0], "Follower");
-        let blocked = spawn(5.0, [0.35, 0.55, 1.0, 1.0], "Blocked");
-
-        let doc = &mut self.timeline.doc;
-        for bits in [follower, blocked] {
-            author(doc, bits, &path);
-            doc.set_auto_orient(bits, true);
-        }
-        // A track que RECUSA — um único key, que já basta: o conflito é sobre quem
-        // possui o campo, não sobre quanto ele se move.
-        doc.insert_key(
-            blocked,
-            PropKind::Rotation,
-            RationalTime::from_seconds(0.0),
-            AnimValue::Float(0.0),
-            Interp::Hold,
-        );
-
-        let (a, b) = (doc.auto_orient(follower), doc.auto_orient(blocked));
-        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
-            hero.gizmo.replace_selection(Some(follower));
-        }
-        eprintln!("[path-smoke] laranja {a:?} | azul {b:?}");
-        eprintln!(
-            "[path-smoke] Play: a LARANJA encara para onde vai; a AZUL nao gira \
-             (tem track de Rotation, e o auto-orient dela esta RECUSADO)."
-        );
+    let bits = {
+        let gfx = app.gfx.as_mut().expect("gfx");
+        gfx.sim
+            .world_mut()
+            .spawn((
+                Transform::from_translation(Vec2::new(-6.0, -2.0)),
+                Sprite::atlas(0, [0.8, 0.8], [1.0, 0.55, 0.15, 1.0]),
+                Name::new("Traveller"),
+            ))
+            .id()
+            .to_bits()
+    };
+    // Um SEGUNDO objeto, parado: é ele que prova o item 5 (clicar nele apaga a
+    // trajetória). Sem um vizinho, "só o selecionado" não é demonstrável.
+    {
+        let gfx = app.gfx.as_mut().expect("gfx");
+        gfx.sim.world_mut().spawn((
+            Transform::from_translation(Vec2::new(0.0, 4.0)),
+            Sprite::atlas(0, [0.8, 0.8], [0.35, 0.45, 0.6, 1.0]),
+            Name::new("Bystander"),
+        ));
     }
+
+    let path = demo_path();
+    author(&mut app.timeline.doc, bits, &path);
+
+    // A trajetória só é desenhada para o SELECIONADO — então a cena o seleciona,
+    // senão o smoke abre sem mostrar a própria feature.
+    if let Some(hero) = app.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+        hero.gizmo.replace_selection(Some(bits));
+    }
+
+    let dots = (3.0 * app.timeline.doc.fps_display).round() as usize;
+    let keys = app
+        .timeline
+        .doc
+        .binding_for(bits, PropKind::Position)
+        .and_then(|b| app.timeline.doc.active_clip().track(b.target))
+        .map_or(0, |t| t.keys().len());
+    eprintln!(
+        "[path-smoke] trajetoria em S: {} ancoras = {keys} keyframes (uma por ponto, \
+         como no After Effects), {:.2} unidades de percurso, {dots} pontos de tempo \
+         em 3 s.",
+        path.len(),
+        path.length()
+    );
+    eprintln!(
+        "[path-smoke] abra a timeline (L) e olhe o ESPACAMENTO dos losangos: \
+         juntos nas pontas (ease), esparramados no meio. Play para conferir."
+    );
+    eprintln!(
+        "[path-smoke] ARRASTE um QUADRADO (a ancora): a curva segue e NAO quebra \
+         (as alcas Auto Bezier re-suavizam). ARRASTE um CIRCULO (a ponta da alca): \
+         a curva se MOLDA a mao. As alcas so aparecem nas ancoras curvas do meio."
+    );
+    eprintln!(
+        "[path-smoke] E A PERGUNTA DA WAVE (Enio, 2026-07-30): crie um CLIP NOVO no \
+         dropdown. Ele tem de abrir em BRANCO -- nenhuma curva, nenhum quadrado, \
+         nenhum circulo, e nada agarravel onde a trajetoria do outro clip passava. \
+         Ponha o objeto onde quiser e aperte K: a ancora nasce ONDE VOCE CLICOU, e o \
+         clip 1 nao se mexe um pixel quando voce volta a ele."
+    );
+}
+
+/// Cena `=2`: **o auto-orient, e a recusa ao lado dele.**
+///
+/// Duas setas na MESMA trajetória, com o MESMO pedido — e uma delas tem uma track
+/// de Rotation. Sem o par, "recusado" seria uma palavra num doc; com ele, é a
+/// diferença entre duas coisas na tela.
+fn path_scene_orient(app: &mut crate::App) {
+    let path = demo_path();
+    let mut spawn = |y: f32, tint: [f32; 4], name: &str| -> u64 {
+        let gfx = app.gfx.as_mut().expect("gfx");
+        gfx.sim
+            .world_mut()
+            .spawn((
+                Transform::from_translation(Vec2::new(-6.0, -2.0 + y)),
+                // Fina e comprida: um quadrado girando é indistinguível de um
+                // quadrado parado, e o que esta cena mostra é EXATAMENTE o giro.
+                Sprite::atlas(0, [1.4, 0.35], tint),
+                Name::new(name),
+            ))
+            .id()
+            .to_bits()
+    };
+    let follower = spawn(0.0, [1.0, 0.55, 0.15, 1.0], "Follower");
+    let blocked = spawn(5.0, [0.35, 0.55, 1.0, 1.0], "Blocked");
+
+    let doc = &mut app.timeline.doc;
+    for bits in [follower, blocked] {
+        author(doc, bits, &path);
+        doc.set_auto_orient(bits, true);
+    }
+    // A track que RECUSA — um único key, que já basta: o conflito é sobre quem
+    // possui o campo, não sobre quanto ele se move.
+    doc.insert_key(
+        blocked,
+        PropKind::Rotation,
+        RationalTime::from_seconds(0.0),
+        AnimValue::Float(0.0),
+        Interp::Hold,
+    );
+
+    let (a, b) = (doc.auto_orient(follower), doc.auto_orient(blocked));
+    if let Some(hero) = app.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+        hero.gizmo.replace_selection(Some(follower));
+    }
+    eprintln!("[path-smoke] laranja {a:?} | azul {b:?}");
+    eprintln!(
+        "[path-smoke] Play: a LARANJA encara para onde vai; a AZUL nao gira \
+         (tem track de Rotation, e o auto-orient dela esta RECUSADO)."
+    );
 }
 
 #[cfg(test)]

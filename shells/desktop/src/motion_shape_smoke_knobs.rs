@@ -132,35 +132,33 @@ pub(crate) fn build_knob_row(g: &mut Graph) -> NodeId {
     out
 }
 
-impl crate::App {
-    /// O corpo da cena `=3`, delegado de [`crate::App::motion_shape_smoke`] pelo braço `_`
-    /// (o pai já avançou o `FRAME`). Só a combinação `(3, 3)` age.
-    pub(super) fn motion_shape_smoke_knobs(&mut self, mode: u32, f: u32) {
-        if (mode, f) != (3, 3) {
-            return;
-        }
-        let gfx = self.gfx.as_mut().expect("gfx");
-        let out = build_knob_row(&mut gfx.motion.doc.graph);
-        gfx.motion.sinks.push(out);
-        let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
-        eprintln!(
-            "[shape smoke =3] SETE formas lado a lado, e nenhuma especie nova: (1) circulo \
-             INTEIRO, o controle · (2) o MESMO circulo com Inner 0,55 = uma ROSQUINHA · (3) o \
-             mesmo com Inner + Sweep 220 + Start 30 = um ANEL PARCIAL girado · (4) a PIZZA com \
-             Sweep 70 (ela nascia num angulo fixo que nenhum slider movia) · (5) um SQUIRCLE \
-             (Corner 0,55 + Smoothing 0,85 — o corner smoothing do Figma) · (6) uma caixa de \
-             cantos DESIGUAIS (Corner 0,25, canto de cima-direita +0,45, o de baixo-esquerda \
-             AFIADO por -0,2) · (7) O MESMO anel parcial do (3), agora com Corner 0,18: as \
-             QUATRO quinas dele ARREDONDADAS. SE AS SETE PARECEREM A MESMA COISA, PARE. \
-             ⚠️ COMPARE O (3) COM O (7): e' o par que responde ao seu smoke — a rosca cortada \
-             nao tinha knob de quina, e a medicao achou o porque: o handle do arco sobrava na \
-             ponta, a borda radial ABAULAVA (0,1865 de desvio num raio 1) e o motor de quinas \
-             lia a ponta como curva CONTINUA, entao nao havia quina para arredondar. Agora a \
-             borda e' reta ao bit e as quatro quinas existem. Clique qualquer forma: o painel \
-             mostra SO os knobs daquela especie, e o Corner aparece em 36 das 43 (as 7 de fora \
-             — circulo, elipse, coracao, pilula, cilindro, juncao, lua — nao tem quina nenhuma)."
-        );
+/// O corpo da cena `=3`, delegado de [`crate::motion_shape_smoke::motion_shape_smoke`] pelo braço `_`
+/// (o pai já avançou o `FRAME`). Só a combinação `(3, 3)` age.
+pub(crate) fn motion_shape_smoke_knobs(app: &mut crate::App, mode: u32, f: u32) {
+    if (mode, f) != (3, 3) {
+        return;
     }
+    let gfx = app.gfx.as_mut().expect("gfx");
+    let out = build_knob_row(&mut gfx.motion.doc.graph);
+    gfx.motion.sinks.push(out);
+    let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+    eprintln!(
+        "[shape smoke =3] SETE formas lado a lado, e nenhuma especie nova: (1) circulo \
+         INTEIRO, o controle · (2) o MESMO circulo com Inner 0,55 = uma ROSQUINHA · (3) o \
+         mesmo com Inner + Sweep 220 + Start 30 = um ANEL PARCIAL girado · (4) a PIZZA com \
+         Sweep 70 (ela nascia num angulo fixo que nenhum slider movia) · (5) um SQUIRCLE \
+         (Corner 0,55 + Smoothing 0,85 — o corner smoothing do Figma) · (6) uma caixa de \
+         cantos DESIGUAIS (Corner 0,25, canto de cima-direita +0,45, o de baixo-esquerda \
+         AFIADO por -0,2) · (7) O MESMO anel parcial do (3), agora com Corner 0,18: as \
+         QUATRO quinas dele ARREDONDADAS. SE AS SETE PARECEREM A MESMA COISA, PARE. \
+         ⚠️ COMPARE O (3) COM O (7): e' o par que responde ao seu smoke — a rosca cortada \
+         nao tinha knob de quina, e a medicao achou o porque: o handle do arco sobrava na \
+         ponta, a borda radial ABAULAVA (0,1865 de desvio num raio 1) e o motor de quinas \
+         lia a ponta como curva CONTINUA, entao nao havia quina para arredondar. Agora a \
+         borda e' reta ao bit e as quatro quinas existem. Clique qualquer forma: o painel \
+         mostra SO os knobs daquela especie, e o Corner aparece em 36 das 43 (as 7 de fora \
+         — circulo, elipse, coracao, pilula, cilindro, juncao, lua — nao tem quina nenhuma)."
+    );
 }
 
 #[cfg(test)]

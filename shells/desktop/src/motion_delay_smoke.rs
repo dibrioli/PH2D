@@ -112,19 +112,17 @@ fn on() -> bool {
 
 static FRAME: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
 
-impl crate::App {
-    /// Roda no prólogo do frame, ao lado do `build_smoke`. No-op sem a env.
-    pub(crate) fn motion_delay_smoke(&mut self) {
-        use std::sync::atomic::Ordering;
-        if !on() || self.gfx.is_none() || FRAME.fetch_add(1, Ordering::Relaxed) != 4 {
-            return;
-        }
-        let gfx = self.gfx.as_mut().expect("gfx");
-        let g = &mut gfx.motion.doc.graph;
-        // A de cima TREME; a de baixo é a mesma coisa com o nó no meio.
-        let raw = row(g, 1.4, false, -460.0);
-        let eased = row(g, -0.2, true, -300.0);
-        gfx.motion.sinks.extend(raw.into_iter().chain(eased));
-        let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+/// Roda no prólogo do frame, ao lado do `build_smoke`. No-op sem a env.
+pub(crate) fn motion_delay_smoke(app: &mut crate::App) {
+    use std::sync::atomic::Ordering;
+    if !on() || app.gfx.is_none() || FRAME.fetch_add(1, Ordering::Relaxed) != 4 {
+        return;
     }
+    let gfx = app.gfx.as_mut().expect("gfx");
+    let g = &mut gfx.motion.doc.graph;
+    // A de cima TREME; a de baixo é a mesma coisa com o nó no meio.
+    let raw = row(g, 1.4, false, -460.0);
+    let eased = row(g, -0.2, true, -300.0);
+    gfx.motion.sinks.extend(raw.into_iter().chain(eased));
+    let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
 }

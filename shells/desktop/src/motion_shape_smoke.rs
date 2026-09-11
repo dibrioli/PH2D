@@ -155,78 +155,76 @@ static FRAME: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0
 /// `u32::MAX` = ainda nao criado.
 static SHAPE_NODE: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(u32::MAX);
 
-impl crate::App {
-    /// Roda no prologo do frame, ao lado dos outros smokes. No-op sem a env.
-    pub(crate) fn motion_shape_smoke(&mut self) {
-        use std::sync::atomic::Ordering;
-        if mode() == 0 || self.gfx.is_none() {
-            return;
+/// Roda no prologo do frame, ao lado dos outros smokes. No-op sem a env.
+pub(crate) fn motion_shape_smoke(app: &mut crate::App) {
+    use std::sync::atomic::Ordering;
+    if mode() == 0 || app.gfx.is_none() {
+        return;
+    }
+    let f = FRAME.fetch_add(1, Ordering::Relaxed);
+    match (mode(), f) {
+        // Frame 3: monta o grafo, empurra o sink, abre a tool Motion.
+        (1, 3) => {
+            let gfx = app.gfx.as_mut().expect("gfx");
+            let (src, out) = build_shape_graph(&mut gfx.motion.doc.graph, STAR);
+            gfx.motion.sinks.push(out);
+            SHAPE_NODE.store(src.0, Ordering::Relaxed);
+            let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+            eprintln!(
+                "[shape smoke =1] source.shape (STAR) carimbada numa grade 4x4 = 16 COPIAS \
+                 nitidas (vetor VIVO na GPU, nao uma tile assada). O no nasce SELECIONADO: o \
+                 painel de params mostra SO os controles que a estrela usa (Shape, Size, \
+                 Sides/Points, Corner, Point Depth) — nao os da engrenagem. Edite-os e as 16 \
+                 copias mudam SEM PISCAR. No frame 90 o kind vira ENGRENAGEM ao vivo."
+            );
         }
-        let f = FRAME.fetch_add(1, Ordering::Relaxed);
-        match (mode(), f) {
-            // Frame 3: monta o grafo, empurra o sink, abre a tool Motion.
-            (1, 3) => {
-                let gfx = self.gfx.as_mut().expect("gfx");
-                let (src, out) = build_shape_graph(&mut gfx.motion.doc.graph, STAR);
-                gfx.motion.sinks.push(out);
-                SHAPE_NODE.store(src.0, Ordering::Relaxed);
-                let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+        // Frame 90: troca o kind para Gear — as 16 copias re-constroem.
+        (1, 90) => {
+            let src = SHAPE_NODE.load(Ordering::Relaxed);
+            if src != u32::MAX {
+                let gfx = app.gfx.as_mut().expect("gfx");
+                gfx.motion.doc.graph.set_param(NodeId(src), "kind", GEAR);
                 eprintln!(
-                    "[shape smoke =1] source.shape (STAR) carimbada numa grade 4x4 = 16 COPIAS \
-                     nitidas (vetor VIVO na GPU, nao uma tile assada). O no nasce SELECIONADO: o \
-                     painel de params mostra SO os controles que a estrela usa (Shape, Size, \
-                     Sides/Points, Corner, Point Depth) — nao os da engrenagem. Edite-os e as 16 \
-                     copias mudam SEM PISCAR. No frame 90 o kind vira ENGRENAGEM ao vivo."
+                    "[shape smoke =1] kind -> ENGRENAGEM: as 16 copias RE-CONSTROEM ao vivo, \
+                     SEM PISCAR. Agora o painel troca para os controles da engrenagem (Teeth, \
+                     Tooth Depth, Hole) e ela tem um FURO central de verdade. Mudar um numero \
+                     re-coze so o que esta a jusante; cada copia continua nitida em qualquer zoom."
                 );
             }
-            // Frame 90: troca o kind para Gear — as 16 copias re-constroem.
-            (1, 90) => {
-                let src = SHAPE_NODE.load(Ordering::Relaxed);
-                if src != u32::MAX {
-                    let gfx = self.gfx.as_mut().expect("gfx");
-                    gfx.motion.doc.graph.set_param(NodeId(src), "kind", GEAR);
-                    eprintln!(
-                        "[shape smoke =1] kind -> ENGRENAGEM: as 16 copias RE-CONSTROEM ao vivo, \
-                         SEM PISCAR. Agora o painel troca para os controles da engrenagem (Teeth, \
-                         Tooth Depth, Hole) e ela tem um FURO central de verdade. Mudar um numero \
-                         re-coze so o que esta a jusante; cada copia continua nitida em qualquer zoom."
-                    );
-                }
-            }
-            // =2, frame 3: o grafo do BUG — Shape -> dup <- grid -> rotate -> output.
-            (2, 3) => {
-                let gfx = self.gfx.as_mut().expect("gfx");
-                let (rot, out) = build_rotated_shape_graph(&mut gfx.motion.doc.graph, 25.0);
-                gfx.motion.sinks.push(out);
-                SHAPE_NODE.store(rot.0, Ordering::Relaxed);
-                let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+        }
+        // =2, frame 3: o grafo do BUG — Shape -> dup <- grid -> rotate -> output.
+        (2, 3) => {
+            let gfx = app.gfx.as_mut().expect("gfx");
+            let (rot, out) = build_rotated_shape_graph(&mut gfx.motion.doc.graph, 25.0);
+            gfx.motion.sinks.push(out);
+            SHAPE_NODE.store(rot.0, Ordering::Relaxed);
+            let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+            eprintln!(
+                "[shape smoke =2] `source.shape (STAR) -> duplicator <- grid -> motion.rotate \
+                 -> output`, GPU cook LIGADO (o default). ANTES: no instante em que o rotate \
+                 (um estagio GPU) rodava depois da fonte, as 16 estrelas viravam RETANGULOS \
+                 brancos do atlas (a lowering GPU e' sprite-only: hardcoda texture_id, sem \
+                 rota geometry_id) — e o rotate/grid moviam os retangulos, nao as estrelas. \
+                 AGORA: o documento tem uma fonte de aparencia -> RECUSA para o render da CPU \
+                 -> 16 ESTRELAS NITIDAS giradas 25 graus, sem um unico retangulo. SE VIR \
+                 RETANGULOS BRANCOS, PARE. No frame 90 o angulo vira 75 e as estrelas GIRAM."
+            );
+        }
+        // =2, frame 90: gira mais — as 16 estrelas nitidas viram para 75 graus.
+        (2, 90) => {
+            let rot = SHAPE_NODE.load(Ordering::Relaxed);
+            if rot != u32::MAX {
+                let gfx = app.gfx.as_mut().expect("gfx");
+                gfx.motion.doc.graph.set_param(NodeId(rot), "angle", 75.0);
                 eprintln!(
-                    "[shape smoke =2] `source.shape (STAR) -> duplicator <- grid -> motion.rotate \
-                     -> output`, GPU cook LIGADO (o default). ANTES: no instante em que o rotate \
-                     (um estagio GPU) rodava depois da fonte, as 16 estrelas viravam RETANGULOS \
-                     brancos do atlas (a lowering GPU e' sprite-only: hardcoda texture_id, sem \
-                     rota geometry_id) — e o rotate/grid moviam os retangulos, nao as estrelas. \
-                     AGORA: o documento tem uma fonte de aparencia -> RECUSA para o render da CPU \
-                     -> 16 ESTRELAS NITIDAS giradas 25 graus, sem um unico retangulo. SE VIR \
-                     RETANGULOS BRANCOS, PARE. No frame 90 o angulo vira 75 e as estrelas GIRAM."
+                    "[shape smoke =2] angle -> 75: as 16 estrelas NITIDAS giram (o deformer \
+                     move as ESTRELAS agora, nao retangulos). Continuam vetor crisp em qualquer \
+                     zoom — o render caiu na CPU porque a GPU nao carrega o geometry_id."
                 );
             }
-            // =2, frame 90: gira mais — as 16 estrelas nitidas viram para 75 graus.
-            (2, 90) => {
-                let rot = SHAPE_NODE.load(Ordering::Relaxed);
-                if rot != u32::MAX {
-                    let gfx = self.gfx.as_mut().expect("gfx");
-                    gfx.motion.doc.graph.set_param(NodeId(rot), "angle", 75.0);
-                    eprintln!(
-                        "[shape smoke =2] angle -> 75: as 16 estrelas NITIDAS giram (o deformer \
-                         move as ESTRELAS agora, nao retangulos). Continuam vetor crisp em qualquer \
-                         zoom — o render caiu na CPU porque a GPU nao carrega o geometry_id."
-                    );
-                }
-            }
-            // =3 (OS KNOBS DE FORMA): a fileira de seis, cada uma exercendo um knob que
-            // nao existia. Irmao proprio pelo teto de 600 LOC do shell.
-            _ => self.motion_shape_smoke_knobs(mode(), f),
         }
+        // =3 (OS KNOBS DE FORMA): a fileira de seis, cada uma exercendo um knob que
+        // nao existia. Irmao proprio pelo teto de 600 LOC do shell.
+        _ => crate::motion_shape_smoke_knobs::motion_shape_smoke_knobs(app, mode(), f),
     }
 }

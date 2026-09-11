@@ -212,6 +212,11 @@ mod tests {
 /// ⚠️ **O override é LIMPO, não sobrescrito.** Deixá-lo em `0,25` ao lado do fio faria a
 /// escada errada acertar por acidente — a cena leria «funciona» sobre o defeito, que é
 /// exactamente o que a `=7` fazia.
+/// ⚠️ **`#[cfg(test)]` desde a W2/L1 (11/09):** a cena `=10` que o consumia foi apagada
+/// pelo censo de citações (nenhum doc a citava), e o que sobra é o GATE — a propriedade
+/// *«um param conduzido por fio não deixa override»* continua a ser real e medida. O
+/// construtor é a fixtura dela, não código de produto.
+#[cfg(test)]
 pub(super) fn build_driven_offset_graph(graph: &mut Graph, name: &str) -> Vec<NodeId> {
     let sinks = build_two_times_graph(graph, name);
     let shifted: Vec<NodeId> = graph

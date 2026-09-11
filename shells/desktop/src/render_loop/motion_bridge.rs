@@ -90,13 +90,6 @@ pub(crate) use objects::vector_instance_as_tile;
 // `objects::group_externals` descends, and the object-bake gate pins that they agree.
 pub(crate) use objects::{Appearance, entity_is_in_a_named_group, sprite_appearance};
 
-/// The LOD count knee (the const lives in the private `objects` module) — for the
-/// `=6` smoke diagnostic, so the printed threshold and the one the partition uses are
-/// the same number.
-pub(crate) fn objects_lod_count() -> usize {
-    objects::LOD_COUNT
-}
-
 #[cfg(feature = "panel-motion-graph")]
 #[path = "motion_bridge_edit.rs"]
 mod edit;

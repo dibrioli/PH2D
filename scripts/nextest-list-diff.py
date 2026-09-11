@@ -52,11 +52,25 @@ def parse(path, depth):
 
 
 def main():
-    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    # ⚠️ O VALOR de `--depth` tem de sair dos posicionais, senão `--depth 2` conta como um
+    # terceiro ficheiro e o script imprime a ajuda em vez de comparar (medido 2026-09-11, W2/L4:
+    # a forma documentada no cabeçalho nunca tinha sido corrida). Um flag que devolve a ajuda
+    # lê-se como «usei-o mal», não como «ele está quebrado» — e o `--depth` é precisamente o que
+    # aperta a prova de uma extracção, logo é o que ninguém confirmou.
     depth = 1
-    for i, a in enumerate(sys.argv):
+    args = []
+    skip = False
+    for i, a in enumerate(sys.argv[1:]):
+        if skip:
+            skip = False
+            continue
         if a == "--depth":
-            depth = int(sys.argv[i + 1])
+            depth = int(sys.argv[i + 2])
+            skip = True
+        elif a.startswith("--depth="):
+            depth = int(a.split("=", 1)[1])
+        elif not a.startswith("--"):
+            args.append(a)
     if len(args) != 2:
         print(__doc__)
         return 2

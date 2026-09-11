@@ -17,31 +17,43 @@ só ali estão por inércia — 425 ficheiros de cenas de smoke (95 k LOC) e a p
 **Por que linhas.** As famílias são disjuntas em ficheiros (`motion_*`, `physics_*`, `sculpt3d_*`, `vec_*`,
 `flip_*`, `field3d_*`) e cada uma é dias de trabalho: são paralelizáveis, e o Modo L existe para isso.
 
-**Por que NÃO seis de uma vez desde o primeiro dia.** Todas tocam as MESMAS costuras partilhadas: a lista de
+**Por que as seis NÃO fazem o CORTE de uma vez.** Todas tocam as MESMAS costuras partilhadas: a lista de
 `mod` no `main.rs`, os campos de `App` em `app_state.rs`, o `render_loop/mod.rs` (812 KB), o
 `input_dispatch.rs` (355 KB, toca 273 membros de `App`), o `Cargo.toml` da shell e os roteadores de smoke.
 Seis linhas a mexer nisso ao mesmo tempo **sem um ponto de extensão** dão colisões de mesmo-símbolo na
-integração — exactamente o caso em que a DIRETRIZ §1.5.5 manda a linha PARAR. ⇒ **Uma linha primeiro
-constrói o substrato** (a interface que uma família usa para falar com a shell, e o registo *append-only* por
-onde ela se liga — CLAUDE.md §0.2: *«ao CRIAR foundational novo, projete-o para isolamento»*), prova-o com
-**uma família piloto** de ponta a ponta, e escreve o **molde** que as outras seguem. Depois de integrada,
-**cinco linhas em paralelo**, cada uma a tocar as costuras só por ADIÇÃO (uma crate nova, uma linha no
-registo, remoções na sua família).
+integração — exactamente o caso em que a DIRETRIZ §1.5.5 manda a linha PARAR. ⇒ **Uma linha constrói o
+substrato** (a interface que uma família usa para falar com a shell, e o registo *append-only* por onde ela
+se liga — CLAUDE.md §0.2: *«ao CRIAR foundational novo, projete-o para isolamento»*), prova-o com **uma
+família piloto** de ponta a ponta, e escreve o **molde**. **As outras cinco abrem no mesmo dia** (§1) e fazem
+primeiro o que não precisa do substrato — que é a maior parte dos dias de cada família —, tocando as
+costuras só por ADIÇÃO/REMOÇÃO nas regiões da sua família; o **corte** final é depois de o substrato
+integrar, pelo molde.
 
 **Janela aberta, medido em 11/09 de manhã:** as oito linhas vivas estão integradas e limpas (`ahead=0`,
 zero ficheiros da shell pendentes). Mover ficheiros da shell hoje não colide com ninguém.
 
-## §1 — A ordem
+## §1 — A ordem: as SEIS abrem hoje, em duas FASES (decisão do Enio, 11/09)
 
-| rodada | linha | módulo | quando abre |
-|---|---|---|---|
-| **1** | **L0** `line/app-host` | substrato (`ph2d-app-host` + `ph2d-app-registry-init`) **+ piloto `field3d`** + o HOWTO | **agora** |
-| — | integração de L0 (ordem do Enio) | | quando L0 fechar |
-| **2** | L1 `line/app-motion` · L2 `line/app-physics` · L3 `line/app-sculpt3d` · L4 `line/app-vec` · L5 `line/app-flip` | uma família cada, pelo HOWTO de L0 | **só depois de L0 integrada** |
-| 3 | os pequenos: `fx` (6 k) · `instance` (5,5 k) · `painter` (6,5 k) · `inspector` (8 k) · `ui` · `project` | podem ser absorvidos por L1–L5 se a família for a dona, senão uma linha curta | depois da rodada 2 |
+> A 1.ª redacção deste doc abria L0 sozinha e as cinco famílias só depois de ela integrar. O Enio perguntou
+> *«não podemos abrir todas em paralelo?»* — e pode-se, porque **a maior parte do trabalho de uma família é
+> dentro dos ficheiros dela** e não precisa do substrato: apagar cenas não citadas, desfazer o `impl App`,
+> agrupar a família numa pasta, preparar a crate. O que NÃO pode acontecer é cinco linhas inventarem cinco
+> interfaces com a shell. Daí as duas fases.
 
-⛔ **Não abrir L1–L5 antes de L0 integrar.** Sem o substrato, cada uma inventaria a sua interface e as
-seis não fundem. ⛔ **Nunca duas linhas na mesma família.**
+| linha | módulo | abre | **Fase A** (desde já, sem o substrato) | **Fase B** (depois de L0 integrar + `git rebase main`) |
+|---|---|---|---|---|
+| **L0** `line/app-host` | substrato + piloto `field3d` + HOWTO | hoje | §4 inteiro | — (é ela que integra primeiro) |
+| L1 `line/app-motion` | motion | hoje | §5-A | §5-B: o corte pelo HOWTO |
+| L2 `line/app-physics` | physics | hoje | §5-A | §5-B |
+| L3 `line/app-sculpt3d` | sculpt3d | hoje | §5-A | §5-B |
+| L4 `line/app-vec` | vec | hoje | §5-A | §5-B |
+| L5 `line/app-flip` | flip | hoje | §5-A | §5-B |
+| (3.ª rodada) | `fx` · `instance` · `painter` · `inspector` · `ui` · `project` | depois | absorvidos pela família dona, ou uma linha curta | |
+
+**Ordem de integração:** L0 **primeiro** (é o substrato); as cinco depois, na ordem que o `collision-surface.sh`
+medir. ⛔ **Nunca duas linhas na mesma família.** ⛔ Uma família que na Fase A precise de algo que só o
+substrato pode dar **PÁRA nessa parte e avança nas outras** — não desenha a porta (regra B do MODELO: nunca
+negocie com outra linha; a porta é da L0 e uma extensão dela é decisão do integrador).
 
 ## §2 — O censo por família (medido em `shells/desktop/src`, 11/09)
 
@@ -138,11 +150,31 @@ diz quais existem).
 ## §5 — L1–L5 — uma família cada, pelo HOWTO
 
 **Objectivo (o mesmo para as cinco, com os parâmetros da tabela do §2):** tirar a família `<FAM>` da shell
-para `crates/ph2d-app-<FAM>` **pelo molde de L0** (`HOWTO_partir_uma_familia_da_shell.md`), com a prova do
-§3 e o handoff. As cenas de smoke que nenhum doc cita **apagam-se** (lista no handoff); as citadas vão com a
-família. O que a família precisa da shell e o substrato de L0 não oferece **é reportado ao Enio antes de se
-inventar** (regra B do MODELO: nunca renegocie com outra linha) — o substrato é da L0, e uma extensão dele é
-uma decisão do integrador, não de cinco linhas.
+para `crates/ph2d-app-<FAM>`, em duas fases, com a prova do §3 em CADA fase (a lista de testes e os
+roteadores são a rede: nada se perde sem ser de propósito) e o handoff no fim.
+
+**§5-A — Fase A, desde já (só ficheiros da família; zero interface nova com a shell):**
+1. **Censo de citações e poda:** cada cena de smoke do roteador da família que **nenhum doc cita pelo
+   número** apaga-se (lista no handoff, com o roteador e o nível). ⚠️ Uma cena citada como *pendente de
+   smoke* (a `=114` do Motion) fica.
+2. **Desfazer o acoplamento, dentro da família:** cada `impl App` da família vira função livre sobre
+   `&mut World`/recursos/APIs das crates do módulo; os campos de `App` que só a família lê **saem de `App`
+   para UM estado da família** (um recurso do ECS, ou uma única struct `<Fam>State` num único campo de
+   `App` — ADR-0075) — o censo do §2 dá o número de partida (`impl App` · membros) e o handoff dá o de
+   chegada. ⛔ O que precisa da shell e não é da família (janela, gfx, painéis, captura de undo) **fica
+   como está** e é NOMEADO no handoff — é a lista que a L0 tem de cobrir.
+3. **Agrupar:** `shells/desktop/src/<fam>_*.rs` → `shells/desktop/src/<fam>/` (um `mod <fam>;` no
+   `main.rs` no lugar de N linhas; os testes vão junto). O corte da Fase B passa a ser mover UMA pasta.
+4. **A crate nasce:** `crates/ph2d-app-<FAM>` com `Cargo.toml` + o que **já** só depende de crates do
+   módulo e do ECS (construtores de cena puros, leis) — a shell chama-os; a crate **não** depende da shell.
+5. Prova do §3 (as cinco) sobre a Fase A e um **handoff intermédio** com os números: LOC movidas, `impl
+   App` de N para M, membros de N para M, cenas apagadas, e a lista do que só o substrato resolve.
+
+**§5-B — Fase B, depois de L0 integrar:** `git rebase main`, ler o `HOWTO_partir_uma_familia_da_shell.md`
+inteiro, e fazer o corte: o resto da pasta vai para a crate, a família regista-se em `ph2d-app-registry-init`,
+o que é genuinamente da shell passa pelo trait de `ph2d-app-host`. Prova do §3 outra vez, handoff final.
+⛔ Se o HOWTO não cobrir algo de que a família precisa, **PARE e reporte** com a lista — a extensão do
+substrato é decisão do integrador, não de cinco linhas em paralelo.
 
 | linha | família | o que a torna diferente |
 |---|---|---|
@@ -172,16 +204,19 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-app-<FAM> && env PH2D_<ROT
 
 ## §7 — Os comandos de abertura (uma linha cada; o `/pd-linha-abrir` renderiza o bloco do MODELO)
 
+**As seis abrem hoje**, uma janela nova por linha (MODELO §«Como usar»). O agente responde «Linha pronta.
+Aguardo a tarefa.» — a tarefa já vai no comando; responder «siga» basta.
+
 ```
 /pd-linha-abrir app-host "W2 L0: o substrato para partir a shell (crates ph2d-app-host + ph2d-app-registry-init) + o PILOTO field3d (53 ficheiros, 1 impl App) + o HOWTO_partir_uma_familia_da_shell.md que as outras cinco linhas seguem. Prova: nextest-list-diff ONLY-A=0, roteadores iguais, LOC da shell e unidade bin(check-test) antes/depois." "docs/IntegracaoMultiAgente/BRIEFINGS_W2_PARTIR_A_SHELL_2026-09-11.md §0-§4 (INTEIRO antes de tocar num ficheiro); docs/DevOps/AUDITORIA_VELOCIDADE_DE_DESENVOLVIMENTO_2026-09-10.md §4-C2; DIRETRIZ §6.7"
 ```
 
-Só depois de L0 integrada:
+As cinco famílias (mesmo dia; Fase A até a L0 integrar, Fase B depois do rebase):
 
 ```
-/pd-linha-abrir app-motion "W2 L1: tirar a família motion da shell para crates/ph2d-app-motion pelo HOWTO de L0 (232 ficheiros, 141 cenas de smoke; a =114 fica). Prova do §3 dos briefings." "docs/IntegracaoMultiAgente/BRIEFINGS_W2_PARTIR_A_SHELL_2026-09-11.md §3 e §5; docs/IntegracaoMultiAgente/HOWTO_partir_uma_familia_da_shell.md (INTEIRO)"
-/pd-linha-abrir app-physics "W2 L2: tirar a família physics da shell para crates/ph2d-app-physics pelo HOWTO de L0 (94 ficheiros, 22 impl App — a mais acoplada: o que o substrato não oferece reporta-se, não se inventa). Prova do §3." "docs/IntegracaoMultiAgente/BRIEFINGS_W2_PARTIR_A_SHELL_2026-09-11.md §3 e §5; docs/IntegracaoMultiAgente/HOWTO_partir_uma_familia_da_shell.md (INTEIRO)"
-/pd-linha-abrir app-sculpt3d "W2 L3: tirar a família sculpt3d da shell para crates/ph2d-app-sculpt3d pelo HOWTO de L0 (83 ficheiros, 6 impl App, 180 membros; a navegação orbital fica na shell por decisão escrita). Prova do §3." "docs/IntegracaoMultiAgente/BRIEFINGS_W2_PARTIR_A_SHELL_2026-09-11.md §3 e §5; docs/IntegracaoMultiAgente/HOWTO_partir_uma_familia_da_shell.md (INTEIRO)"
-/pd-linha-abrir app-vec "W2 L4: tirar a família vec da shell para crates/ph2d-app-vec pelo HOWTO de L0 (68 ficheiros, 3 impl App; vec_entities só sai se o substrato o expõe). Prova do §3." "docs/IntegracaoMultiAgente/BRIEFINGS_W2_PARTIR_A_SHELL_2026-09-11.md §3 e §5; docs/IntegracaoMultiAgente/HOWTO_partir_uma_familia_da_shell.md (INTEIRO)"
-/pd-linha-abrir app-flip "W2 L5: tirar a família flip da shell para crates/ph2d-app-flip pelo HOWTO de L0 (61 ficheiros, 0 impl App; o FlipDoc partilhado é a ponte a não partir). Prova do §3." "docs/IntegracaoMultiAgente/BRIEFINGS_W2_PARTIR_A_SHELL_2026-09-11.md §3 e §5; docs/IntegracaoMultiAgente/HOWTO_partir_uma_familia_da_shell.md (INTEIRO)"
+/pd-linha-abrir app-motion "W2 L1: tirar a família motion da shell para crates/ph2d-app-motion. FASE A desde já (só ficheiros motion_*: poda das cenas não citadas — a =114 fica —, impl App/membros de App para um MotionState, agrupar em src/motion/, nascer a crate com o que só depende das crates do módulo); FASE B depois de L0 integrar (rebase + o corte pelo HOWTO). 232 ficheiros, 141 cenas, 0 impl App, 59 membros. Prova do §3 nas duas fases." "docs/IntegracaoMultiAgente/BRIEFINGS_W2_PARTIR_A_SHELL_2026-09-11.md §0-§3 e §5 (INTEIRO antes de tocar num ficheiro); docs/DevOps/AUDITORIA_VELOCIDADE_DE_DESENVOLVIMENTO_2026-09-10.md §4-C2"
+/pd-linha-abrir app-physics "W2 L2: tirar a família physics da shell para crates/ph2d-app-physics. FASE A desde já (só ficheiros physics_*: poda das cenas não citadas, os 22 impl App e 126 membros de App para um PhysicsState — a mais acoplada: o que só o substrato resolve NOMEIA-SE no handoff, não se inventa —, agrupar em src/physics/, nascer a crate); FASE B depois de L0 integrar (rebase + corte pelo HOWTO). Prova do §3 nas duas fases." "docs/IntegracaoMultiAgente/BRIEFINGS_W2_PARTIR_A_SHELL_2026-09-11.md §0-§3 e §5 (INTEIRO antes de tocar num ficheiro); docs/DevOps/AUDITORIA_VELOCIDADE_DE_DESENVOLVIMENTO_2026-09-10.md §4-C2"
+/pd-linha-abrir app-sculpt3d "W2 L3: tirar a família sculpt3d da shell para crates/ph2d-app-sculpt3d. FASE A desde já (só ficheiros sculpt3d_*: poda das cenas não citadas, 6 impl App e 180 membros para um Sculpt3dState — a navegação orbital FICA na shell por decisão escrita no §5 do CLAUDE.md —, agrupar em src/sculpt3d/, nascer a crate); FASE B depois de L0 integrar (rebase + corte pelo HOWTO). Prova do §3 nas duas fases." "docs/IntegracaoMultiAgente/BRIEFINGS_W2_PARTIR_A_SHELL_2026-09-11.md §0-§3 e §5 (INTEIRO antes de tocar num ficheiro); docs/DevOps/AUDITORIA_VELOCIDADE_DE_DESENVOLVIMENTO_2026-09-10.md §4-C2"
+/pd-linha-abrir app-vec "W2 L4: tirar a família vec da shell para crates/ph2d-app-vec. FASE A desde já (só ficheiros vec_*: poda das cenas não citadas, 3 impl App e 89 membros para um VecState, agrupar em src/vec/, nascer a crate; vec_entities é usado por cenas de OUTRAS famílias — fica na shell até o substrato o expor); FASE B depois de L0 integrar (rebase + corte pelo HOWTO). Prova do §3 nas duas fases." "docs/IntegracaoMultiAgente/BRIEFINGS_W2_PARTIR_A_SHELL_2026-09-11.md §0-§3 e §5 (INTEIRO antes de tocar num ficheiro); docs/DevOps/AUDITORIA_VELOCIDADE_DE_DESENVOLVIMENTO_2026-09-10.md §4-C2"
+/pd-linha-abrir app-flip "W2 L5: tirar a família flip da shell para crates/ph2d-app-flip. FASE A desde já (só ficheiros flip_*: poda das cenas não citadas, 75 membros de App para um FlipState, agrupar em src/flip/, nascer a crate; o FlipDoc partilhado é a ponte a não partir); FASE B depois de L0 integrar (rebase + corte pelo HOWTO). 61 ficheiros, 19 cenas, 0 impl App. Prova do §3 nas duas fases." "docs/IntegracaoMultiAgente/BRIEFINGS_W2_PARTIR_A_SHELL_2026-09-11.md §0-§3 e §5 (INTEIRO antes de tocar num ficheiro); docs/DevOps/AUDITORIA_VELOCIDADE_DE_DESENVOLVIMENTO_2026-09-10.md §4-C2"
 ```

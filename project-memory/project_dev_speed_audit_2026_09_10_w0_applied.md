@@ -31,7 +31,9 @@ Estado em 2026-09-10, fim do dia:
 - ⭐ **ORDEM DO ENIO (10/09, noite): «Amanhã partiremos o shell» — a W2 começa em 11/09.** ⭐⭐ **Os
   briefings das linhas estão em `docs/IntegracaoMultiAgente/BRIEFINGS_W2_PARTIR_A_SHELL_2026-09-11.md`:
   L0 `line/app-host` PRIMEIRO e sozinha (substrato `ph2d-app-host` + `ph2d-app-registry-init` + piloto
-  `field3d` + o HOWTO); L1–L5 (motion, physics, sculpt3d, vec, flip) em paralelo SÓ depois de L0 integrar
+  `field3d` + o HOWTO); L1–L5 (motion, physics, sculpt3d, vec, flip) abrem NO MESMO DIA (decisão do Enio, 11/09) em
+  duas fases: Fase A só nos ficheiros da família (poda de cenas, `impl App` → estado próprio, agrupar em
+  pasta, nascer a crate) e Fase B — o corte pelo HOWTO — só depois de L0 integrar e rebasear
   — as seis tocam as mesmas costuras (`main.rs`, `App`, `render_loop`, `input_dispatch`) e sem ponto de
   extensão colidem por mesmo-símbolo. A prova de cada linha usa `scripts/nextest-list-diff.py`.** Ponto de
   partida: o censo em `docs/DevOps/AUDITORIA_VELOCIDADE_DE_DESENVOLVIMENTO_2026-09-10.md` §4-C2

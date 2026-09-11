@@ -34,8 +34,8 @@ fn at(needle: &str) -> usize {
 
 /// A posição da 1ª chamada a `method` sobre `recv`, **tolerante à quebra de linha**.
 ///
-/// ⚠️ Existe porque a agulha `self.vec_pencil.on_press(` MORREU quando o W1d acrescentou um
-/// argumento: o `rustfmt` quebrou a chamada em duas linhas (`self.vec_pencil\n    .on_press(`) e o
+/// ⚠️ Existe porque a agulha `self.vec_state.pencil.on_press(` MORREU quando o W1d acrescentou um
+/// argumento: o `rustfmt` quebrou a chamada em duas linhas (`self.vec_state.pencil\n    .on_press(`) e o
 /// gate ficou **VERMELHO sobre código correto** — a mesma classe de proxy que o cabeçalho deste
 /// arquivo condena, só que em vez de distância em bytes era a FORMATAÇÃO. Uma chamada é um
 /// receptor seguido de um método; o espaço em branco entre os dois é do `rustfmt`, não do produto.
@@ -73,10 +73,10 @@ fn window(from: usize, until: &str) -> &'static str {
 #[test]
 fn the_scanner_finds_what_it_scans_for() {
     for (recv, method) in [
-        ("self.vec_pencil", "on_press"),
+        ("self.vec_state.pencil", "on_press"),
         ("self.vec_pen", "on_press"),
-        ("self.vec_shape", "on_press"),
-        ("self.vec_pencil", "on_release"),
+        ("self.vec_state.shape", "on_press"),
+        ("self.vec_state.pencil", "on_release"),
     ] {
         assert!(
             call_at(recv, method).is_some(),
@@ -99,9 +99,9 @@ fn the_scanner_finds_what_it_scans_for() {
 /// **O press do lápis precede o da caneta E o da forma.**
 #[test]
 fn the_pencil_press_runs_before_the_pen_and_the_shape() {
-    let pencil = call("self.vec_pencil", "on_press");
+    let pencil = call("self.vec_state.pencil", "on_press");
     let pen = call("self.vec_pen", "on_press");
-    let shape = call("self.vec_shape", "on_press");
+    let shape = call("self.vec_state.shape", "on_press");
     assert!(
         pencil < pen && pencil < shape,
         "o braco do lapis (byte {pencil}) roda DEPOIS da caneta ({pen}) ou da forma ({shape}) — \
@@ -130,7 +130,7 @@ fn the_pencil_move_is_dispatched() {
 /// **O release comita o passo de undo**, e as duas metades (commit / cancel) existem.
 #[test]
 fn the_pencil_release_commits_one_undo_step() {
-    let release = call("self.vec_pencil", "on_release");
+    let release = call("self.vec_state.pencil", "on_release");
     assert!(
         SRC[release..].contains("commit_if_changed"),
         "o release do lapis nao comita passo de undo nenhum"
@@ -161,7 +161,7 @@ fn the_pencil_release_commits_one_undo_step() {
 /// cadeia de modo, ele não pode estar dentro de nenhum ramo dela.
 #[test]
 fn the_pencil_release_is_its_own_arm_before_the_mode_chain() {
-    let release = call("self.vec_pencil", "on_release");
+    let release = call("self.vec_state.pencil", "on_release");
     let mode_chain = at("if shape_kind_for_mode(&self.vec_draw_config).is_none() {");
     assert!(
         release < mode_chain,
@@ -176,7 +176,7 @@ fn the_pencil_release_is_its_own_arm_before_the_mode_chain() {
 #[test]
 fn the_secondary_button_cancels_a_live_pencil_stroke() {
     assert!(
-        SRC.contains("self.vec_pencil.cancel("),
+        SRC.contains("self.vec_state.pencil.cancel("),
         "o lapis nao tem tecla de fuga — um traco comecado por acidente nao pode ser descartado"
     );
 }
@@ -216,7 +216,7 @@ fn the_stabiliser_filters_screen_px_and_the_press_seeds_the_hand() {
         "\n                    // Modo Connect",
     );
     assert!(
-        press.contains("self.vec_pencil") && press.contains(".on_press("),
+        press.contains("self.vec_state.pencil") && press.contains(".on_press("),
         "controle positivo: a janela do press nao contem o proprio press"
     );
     assert!(

@@ -108,7 +108,7 @@ impl Scope {
 ///
 /// ⛔⛔ **DUAS irmãs ficaram de fora, e a razão é uma SEGUNDA SELEÇÃO INVISÍVEL.** O *Blend* e o
 /// *Morph* parecem iguais e não são: o `Pick Shapes` troca o `DrawMode` **sem olhar a seleção**, e
-/// os dois botões correm sobre o `vec_blend_picks` — uma lista que o `blend_pick_at` coleta e que
+/// os dois botões correm sobre o `VecState::blend_picks` — uma lista que o `blend_pick_at` coleta e que
 /// **nunca toca no `PenTool`**. Uma regra de *"esconde com a seleção vazia"* aplicada a olho teria
 /// escondido justamente os dois controles que ainda funcionam.
 /// *Uma etiqueta de escopo é um fato medido por controle, e duas seções vizinhas podem discordar.*

@@ -263,7 +263,7 @@ fn the_selection_commands_vanish_when_there_is_nothing_to_command() {
 ///
 /// *Blend* e *Morph* parecem irmãs das cinco acima e não são: o `Pick Shapes` troca o `DrawMode`
 /// **sem olhar a seleção** (`tool_panel_event.rs:160`), e os dois botões correm sobre o
-/// `vec_blend_picks` — uma lista que o `blend_pick_at` coleta e que **nunca toca no `PenTool`**
+/// `VecState::blend_picks` — uma lista que o `blend_pick_at` coleta e que **nunca toca no `PenTool`**
 /// (`input_dispatch.rs:1362`).
 ///
 /// *Uma regra de "esconde com a seleção vazia" aplicada a olho teria escondido justamente os dois

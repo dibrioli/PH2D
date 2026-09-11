@@ -144,7 +144,7 @@ fn the_cut_mode_draws_with_the_pen_and_owns_no_press_branch() {
             "adota em todo clique, nao so' no que CRIA um caminho",
         ),
         (
-            "self.vec_cut_pending = Some(",
+            "self.vec_state.cut_pending = Some(",
             "o caminho novo nunca vira lamina",
         ),
     ] {

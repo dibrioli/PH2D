@@ -147,7 +147,7 @@ fn the_highlight_is_cleared_outside_the_tool() {
         "o refresh nao pergunta pelo modo"
     );
     assert!(
-        corpo.contains("self.vec_trim_piece.clear();"),
+        corpo.contains("self.vec_state.trim_piece.clear();"),
         "fora do modo o realce tem de ser LIMPO, nao apenas nao-actualizado"
     );
 }

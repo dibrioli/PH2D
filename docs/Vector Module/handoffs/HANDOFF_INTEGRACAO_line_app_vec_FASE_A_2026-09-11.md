@@ -141,7 +141,7 @@ que **aperta** a prova de uma extracção (`módulo::fn` em vez de só `fn`). **
 | **(b) roteadores iguais** | **106 antes, 106 depois, `diff` vazio.** Os 5 gates `no_two_*_scenes_claim_the_same_level` vivem em ficheiros que a linha não tocou ⇒ intocados |
 | **(c) a shell encolheu** | **493 265 → 491 019 LOC** (−2 246, **−0,46 %**) |
 | **(d) gate de fecho** | `fmt --check` ✓ · `clippy --all-targets --all-features` nas 2 crates ✓ · `typos` ✓ · `doc-index --check` ✓ (19 índices) · **9 gates de teto de LOC** ✓ · **`nextest-impacted.sh`: 13 324 testes, 0 falhas** (a `load 70`, com os gates de razão da família de flakes incluídos) |
-| **(e) smoke do dono** | binário compilado, §10 |
+| **(e) smoke do dono** | binário **compilado e quente** — `cargo build -p ph2d-host-desktop --profile smoke`, 1.ª corrida `1m 03s`, **2.ª corrida: `Finished` em `0,21 s`, ZERO linhas `Compiling`** (`target/smoke/ph2d-host-desktop`, 77,8 MB). ⚠️ Comportamento **idêntico** por construção: a extracção não muda produto |
 
 ⛔⛔ **O item (c) do briefing pede TAMBÉM a unidade `bin (check-test)` num `--timings` a frio, e eu
 NÃO a entrego — de propósito, e o motivo é aritmética, não carga:** a extracção tirou **0,46 %** da

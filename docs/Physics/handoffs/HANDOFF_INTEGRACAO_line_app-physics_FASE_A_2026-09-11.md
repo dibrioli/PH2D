@@ -12,10 +12,13 @@
 | | |
 |---|---|
 | branch | `line/app-physics` |
-| HEAD | `c5a7e4f5c3be014ce648fd613402c9254eb7a80a` |
 | merge-base | `8fa4f115bbdedb7635581af8c528a8aedd5c8d74` |
-| commits | 7 |
-| diff | 214 ficheiros, +9 606 / −9 195 |
+| commits | **10** (os 7 de código + 3 de docs, este incluído) |
+| diff | 215 ficheiros, ~+10 k / −9,2 k |
+
+⚠️ **O HEAD não está escrito aqui de propósito:** um handoff que cita o próprio sha fica errado no
+instante em que é commitado — e um integrador que confie nele funde a árvore de antes do handoff.
+Leia-o: `git -C Worktrees/line-app-physics rev-parse HEAD`.
 
 ⚠️ **O diff parece pequeno para 22 k linhas movidas porque o git detecta as
 renomeações** — 108 dos 214 ficheiros são `R` (rename), com 0 linhas de mudança.

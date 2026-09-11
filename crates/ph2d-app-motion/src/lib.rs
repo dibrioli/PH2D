@@ -32,3 +32,21 @@
 /// ⭐ **A arte, em CPU, dos quads que o Motion desenha na cena vectorial** — a memoria da terceira
 /// media. O unico modulo da familia que ja' era FECHADO: zero `crate::`, zero `App`, zero `gfx`.
 pub mod motion_leaf_images;
+
+/// **O que esta família declara à shell** (`ph2d-app-registry-init`).
+///
+/// ⚠️⚠️ **`routers: &[]` é a verdade MEDIDA da Fase A** — `"motion"` está na catraca
+/// `FAMILIAS_COM_O_ROTEADOR_AINDA_NA_SHELL` do registo, o único sítio onde *«ainda não saiu»* se
+/// distingue de *«alguém esqueceu»*.
+///
+/// ⭐⭐ **Esta é a família que MENOS código tirou da shell (491 LOC) e a que mais ficheiros tocou
+/// (436), e as duas coisas são a mesma:** a jornada foi desprender a família da `App` — os 10
+/// `impl crate::App` viraram funções livres, quatro campos soltos viraram uma struct, e os ~130
+/// ficheiros `motion_*.rs` viraram a pasta `src/motion/`. ⛔ *Uma leitura do diff pelo saldo de
+/// linhas conclui que esta linha quase não trabalhou, e conclui ao contrário.* Os roteadores do
+/// Motion (`PH2D_GPU_COOK_DEMO`, `PH2D_MOTION_OBJ_SMOKE`, …) continuam na shell porque as cenas
+/// tocam a `App` — é isso, exactamente, que a Fase B corta.
+pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
+    key: "motion",
+    routers: &[],
+};

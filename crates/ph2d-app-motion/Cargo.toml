@@ -13,6 +13,9 @@ authors.workspace = true
 # e' inexprimivel em Cargo. E' essa impossibilidade que torna o corte VERIFICAVEL em vez de
 # prometido: o que aqui entra provou que so' precisa de crates de MODULO (W2/L1, 2026-09-11).
 [dependencies]
+# ⚠️ A INTERFACE da shell (`AppFamily`), não o agregador — importar de
+# `ph2d-app-registry-init` fecharia o ciclo `registry → família → registry`.
+ph2d-app-host = { path = "../ph2d-app-host" }
 ph2d-gpu = { path = "../ph2d-gpu" }
 ph2d-motion-doc = { path = "../ph2d-motion-doc" }
 ph2d-node-registry = { path = "../ph2d-node-registry" }

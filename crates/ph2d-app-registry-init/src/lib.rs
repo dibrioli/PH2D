@@ -51,13 +51,15 @@ pub fn register_all_app_families() -> AppFamilyRegistry {
     reg.push(ph2d_app_field3d::FAMILY);
     #[cfg(feature = "app-flip")]
     reg.push(ph2d_app_flip::FAMILY);
+    #[cfg(feature = "app-motion")]
+    reg.push(ph2d_app_motion::FAMILY);
     #[cfg(feature = "app-physics")]
     reg.push(ph2d_app_physics::FAMILY);
     #[cfg(feature = "app-sculpt3d")]
     reg.push(ph2d_app_sculpt3d::FAMILY);
     #[cfg(feature = "app-vec")]
     reg.push(ph2d_app_vec::FAMILY);
-// <ph2d-app-sync:end>
+    // <ph2d-app-sync:end>
     reg
 }
 
@@ -110,7 +112,8 @@ mod tests {
     /// Fase A, só a `flip` lê as próprias `PH2D_*_SMOKE` dentro da crate (15 delas); `vec`,
     /// `motion`, `physics` e `sculpt3d` extraíram código e **não** o roteador — o `match` de cenas
     /// toca a `App`, que é precisamente o que a Fase B ainda deve.
-    const FAMILIAS_COM_O_ROTEADOR_AINDA_NA_SHELL: &[&str] = &["physics", "sculpt3d", "vec"];
+    const FAMILIAS_COM_O_ROTEADOR_AINDA_NA_SHELL: &[&str] =
+        &["motion", "physics", "sculpt3d", "vec"];
 
     /// ⚠️ **Uma família registada tem de declarar pelo menos um roteador, e todo roteador tem de ter
     /// nível.** Sem esta metade, uma família que se registasse com `routers: &[]` passaria no gate

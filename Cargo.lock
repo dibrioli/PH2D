@@ -4828,6 +4828,7 @@ dependencies = [
 name = "ph2d-app-motion"
 version = "0.0.0"
 dependencies = [
+ "ph2d-app-host",
  "ph2d-gpu",
  "ph2d-motion-doc",
  "ph2d-node-registry",
@@ -4856,6 +4857,7 @@ dependencies = [
  "ph2d-app-field3d",
  "ph2d-app-flip",
  "ph2d-app-host",
+ "ph2d-app-motion",
  "ph2d-app-physics",
  "ph2d-app-sculpt3d",
  "ph2d-app-sync",

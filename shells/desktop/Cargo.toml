@@ -24,6 +24,9 @@ ph2d-morph-machine = { path = "../../crates/ph2d-morph-machine" }
 # Transform::compose and must use the same impl).
 libm = { version = "=0.2.16", default-features = false }
 ph2d-host = { path = "../../crates/ph2d-host" }
+# ⭐ **A porta por onde uma família de módulo fala com a shell** (W2, ADR-0075). A shell é o lado
+# que a IMPLEMENTA (`src/app_host.rs`); as crates `ph2d-app-*` são as que a consomem.
+ph2d-app-host = { path = "../../crates/ph2d-app-host" }
 ph2d-core = { path = "../../crates/ph2d-core" }
 ph2d-gpu = { path = "../../crates/ph2d-gpu" }
 # O carimbo de pigmento no device (doc 33). A ponte e' do shell: o tool publica dado simples e

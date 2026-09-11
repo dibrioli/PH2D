@@ -1,0 +1,25 @@
+[package]
+name = "ph2d-app-host"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# ⛔ **A lista de dependências é o CONTRATO desta crate, e ela é curta de propósito.**
+#
+# `ph2d-app-host` é a INTERFACE por onde uma família de módulo fala com a shell — não é
+# a shell, e não é um sítio onde código de família se encosta. Toda dependência nova aqui
+# é paga pelas SEIS famílias, porque todas a ligam. Se uma família precisa de um tipo que
+# só ela usa, o tipo é dela.
+#
+# - `ph2d-editor`: o vocabulário de ecrã (`zones::Rect`, `HeroScreen`) — a fronteira é
+#   desenhada em coordenadas de ecrã, não há como não o ter.
+# - `rfd`: o diálogo de ficheiro do sistema. Já está no `Cargo.lock` (0.17.2, STACK_VERSOES)
+#   e não é pacote novo — ⚠️ ele é quem SEGURA o `pollster` (`stack-audit.sh --tetos`).
+[dependencies]
+ph2d-editor = { path = "../ph2d-editor" }
+rfd = "0.17"

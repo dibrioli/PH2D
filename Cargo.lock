@@ -4764,6 +4764,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-app-host"
+version = "0.0.0"
+dependencies = [
+ "ph2d-editor",
+ "rfd",
+]
+
+[[package]]
 name = "ph2d-arc-length"
 version = "0.0.0"
 
@@ -5342,6 +5350,7 @@ dependencies = [
  "libm",
  "miniz_oxide 0.8.9",
  "ph2d-anim",
+ "ph2d-app-host",
  "ph2d-aseprite",
  "ph2d-asset",
  "ph2d-asset-index",

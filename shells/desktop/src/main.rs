@@ -949,7 +949,7 @@ impl App {
             emissive_instances: Vec::new(),
             frost_instances: Vec::new(),
             blast_flash: None,
-            bake_channels: crate::render_loop::physics_bake::BakeChannels::default(),
+            bake_channels: crate::physics::bake::BakeChannels::default(),
             gilrs,
             audio,
             #[cfg(feature = "panel-audio-editor")]

@@ -2,7 +2,7 @@
 //!
 //! É a lei do [doc 63 §6](../../../../docs/Motion%20Nodes/63_pesquisa_industria_2026_e_plano_estado_da_arte.md)
 //! (*"a FFT NUNCA entra no cook"*) aplicada a um segundo tipo de dado, e o desenho é o mesmo do
-//! [`super::motion_audio_gen`]: a shell faz o trabalho pesado e **publica** o resultado no canal
+//! [`crate::render_loop::motion_audio_gen`]: a shell faz o trabalho pesado e **publica** o resultado no canal
 //! externo, sob a chave que o nó lê. Os dois nós de tabela não dependem do leitor — o gate
 //! `a_node_that_reads_a_file_cannot_even_depend_on_the_reader` lê os `Cargo.toml` deles para o provar.
 //!

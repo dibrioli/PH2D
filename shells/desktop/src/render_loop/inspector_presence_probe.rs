@@ -13,7 +13,7 @@
 use ph2d_ecs::{SimWorld, World};
 
 pub(crate) fn ordering(world: &World, bits: u64) -> bool {
-    super::inspector_ordering::build_ordering_info(world, bits, &[], 1).is_some()
+    crate::render_loop::inspector_ordering::build_ordering_info(world, bits, &[], 1).is_some()
 }
 
 /// ⭐ **O `Z Index` que a §7 MOSTRA** — `None` = `—` (vem da árvore).
@@ -22,40 +22,40 @@ pub(crate) fn ordering(world: &World, bits: u64) -> bool {
 /// a lei da §7 precisa de afirmar **o que o campo diz**, não só que a seção existe. *Uma seção
 /// presente com um zero fabricado passaria a metade 1 e mentiria ao artista.*
 pub(crate) fn ordering_z_index(world: &World, bits: u64) -> Option<Option<i32>> {
-    super::inspector_ordering::build_ordering_info(world, bits, &[], 1).map(|i| i.z_index)
+    crate::render_loop::inspector_ordering::build_ordering_info(world, bits, &[], 1).map(|i| i.z_index)
 }
 
 pub(crate) fn sampling(world: &World, bits: u64) -> bool {
-    super::inspector_ordering::build_sampling_info(world, bits, &[], 1).is_some()
+    crate::render_loop::inspector_ordering::build_sampling_info(world, bits, &[], 1).is_some()
 }
 
 pub(crate) fn blend(world: &World, bits: u64) -> bool {
-    super::inspector_ordering::build_blend_info(world, bits, &[], 1).is_some()
+    crate::render_loop::inspector_ordering::build_blend_info(world, bits, &[], 1).is_some()
 }
 
 pub(crate) fn slice(world: &World, bits: u64) -> bool {
-    super::inspector_slice::build_slice_info(world, bits, &[], 1).is_some()
+    crate::render_loop::inspector_slice::build_slice_info(world, bits, &[], 1).is_some()
 }
 
 pub(crate) fn visibility_section(world: &World, bits: u64) -> bool {
-    super::inspector_visibility::build_visibility_section_info(world, bits, &[], 1).is_some()
+    crate::render_loop::inspector_visibility::build_visibility_section_info(world, bits, &[], 1).is_some()
 }
 
 pub(crate) fn anchors(world: &World, bits: u64) -> bool {
-    super::inspector_anchor::build_anchor_info(world, bits, &[], 1, 100.0).is_some()
+    crate::render_loop::inspector_anchor::build_anchor_info(world, bits, &[], 1, 100.0).is_some()
 }
 
 pub(crate) fn anim(world: &World, bits: u64) -> bool {
-    super::inspector_anim::build_anim_info(world, bits, 1).is_some()
+    crate::render_loop::inspector_anim::build_anim_info(world, bits, 1).is_some()
 }
 
 pub(crate) fn physics(world: &World, bits: u64) -> bool {
-    super::inspector_physics::build_physics_info(world, bits, 0, 0, 0, false, 0, (0.0, 5.0), 0)
+    crate::physics::physics::build_physics_info(world, bits, 0, 0, 0, false, 0, (0.0, 5.0), 0)
         .is_some()
 }
 
 pub(crate) fn player(sim: &SimWorld, bits: u64) -> bool {
-    super::inspector_player::build_player_info(
+    ph2d_app_physics::inspector::player::build_player_info(
         sim,
         bits,
         0.0,

@@ -255,11 +255,11 @@ fn draw_entity_marks(
         if !open {
             continue;
         }
-        let (hs, n) = super::anchor_gizmo::handles(sprite_world, a, ppm);
+        let (hs, n) = crate::render_loop::anchor_gizmo::handles(sprite_world, a, ppm);
         for h in hs.iter().take(n).flatten() {
             let p = to_screen * Point::new(f64::from(h.world.x), f64::from(h.world.y));
             // A de ROTAÇÃO leva uma haste até ao centro: é ela que faz o gesto ler-se como rodar.
-            if h.kind == super::anchor_gizmo::AnchorHandleKind::Rotate {
+            if h.kind == crate::render_loop::anchor_gizmo::AnchorHandleKind::Rotate {
                 let mut arm = BezPath::new();
                 arm.move_to(c);
                 arm.line_to(p);
@@ -293,7 +293,7 @@ fn draw_entity_marks(
 /// **O PLANO de desenho deste quadro** — que entidade, em que modo, e por que ordem.
 ///
 /// ⚠️ **Puro de propósito: sem cena, sem texto, sem câmara.** É a mesma escolha (e a mesma razão)
-/// do [`super::anchor_gizmo`]: as três passagens abaixo decidem *quem aparece*, e uma decisão
+/// do [`crate::render_loop::anchor_gizmo`]: as três passagens abaixo decidem *quem aparece*, e uma decisão
 /// enterrada num laço de desenho é inalcançável por teste — que é exatamente onde os erros de
 /// overlay moram (a marca que não aparece, a que aparece duas vezes, a que rouba o destaque).
 #[derive(Clone, Debug, PartialEq)]

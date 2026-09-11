@@ -94,8 +94,11 @@ fn the_press_asks_one_door_which_gesture_this_is() {
 fn the_press_asks_both_pose_doors_with_the_clock() {
     let src = dispatch_src();
     for (needle, gesture) in [
-        ("crate::physics::body_pose::take_pose(", "JointGesture::Ik"),
-        ("crate::physics::body_fk::take_fk(", "JointGesture::Fk"),
+        (
+            "ph2d_app_physics::body_pose::take_pose(",
+            "JointGesture::Ik",
+        ),
+        ("ph2d_app_physics::body_fk::take_fk(", "JointGesture::Fk"),
     ] {
         let call = call_at(&src, needle);
         assert!(
@@ -127,7 +130,7 @@ fn the_press_asks_both_pose_doors_with_the_clock() {
 /// para o ângulo do cursor no primeiro Move.
 #[test]
 fn the_fk_press_is_given_the_world_and_the_grab_point() {
-    let call = call_at(&dispatch_src(), "crate::physics::body_fk::take_fk(");
+    let call = call_at(&dispatch_src(), "ph2d_app_physics::body_fk::take_fk(");
     assert!(
         call.contains("&gfx.sim"),
         "sem o mundo não há como achar a âncora da junta. Chamada:\n{call}"
@@ -148,8 +151,8 @@ fn the_fk_press_is_given_the_world_and_the_grab_point() {
 fn taking_a_pose_suppresses_the_gizmo_drag() {
     let src = dispatch_src();
     for needle in [
-        "crate::physics::body_pose::take_pose(",
-        "crate::physics::body_fk::take_fk(",
+        "ph2d_app_physics::body_pose::take_pose(",
+        "ph2d_app_physics::body_fk::take_fk(",
     ] {
         let at = src.find(needle).expect("a porta é chamada");
         // O `let grabbed = ...` que contém a chamada, achado para trás — não uma

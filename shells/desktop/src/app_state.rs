@@ -870,7 +870,7 @@ pub(crate) struct App {
     /// Which pose channels the next physics Bake writes (§11). Transient — a
     /// bake-time preference, not saved: it says how the button behaves, not what
     /// the document is. Default `All`.
-    pub(crate) bake_channels: crate::render_loop::physics_bake::BakeChannels,
+    pub(crate) bake_channels: crate::physics::bake::BakeChannels,
     /// gilrs context (M8). `None` if init failed (e.g. Linux without
     /// /dev/input read perms in CI sandboxes — we degrade gracefully
     /// instead of crashing the renderer).

@@ -1,7 +1,7 @@
 //! **O DESENHO do gizmo dos deformadores de quadrilátero** — o contorno, os braços e as
 //! alças que o `motion.four_point_warp` e o `motion.bezier_warp` passam a ter na tela.
 //!
-//! A geometria vive em [`super::warp_gizmo`], pura e testada; aqui mora só tinta.
+//! A geometria vive em [`crate::render_loop::warp_gizmo`], pura e testada; aqui mora só tinta.
 //!
 //! ## O que se desenha, e por que cada peça
 //!
@@ -21,7 +21,7 @@
 //! como transform faria a linha engordar com o zoom. É a lei que o `anchor_overlay`
 //! escreveu no cabeçalho dele, e ela vale igual aqui.
 
-use super::warp_gizmo::{self, MAX_HANDLES, WarpHandle, WarpHandleKind};
+use crate::render_loop::warp_gizmo::{self, MAX_HANDLES, WarpHandle, WarpHandleKind};
 use ph2d_host::WindowSize;
 use ph2d_render::Camera2d;
 use ph2d_vector::{Affine, BezPath, Brush, Color, Point, Stroke, VectorScene};
@@ -45,7 +45,7 @@ const ARM_PX: f64 = 1.0;
 /// ⚠️ O factor `0,85` **também é da casa**, com a razão escrita no
 /// `ph2d_vec_render::draw_connector_waypoints`: *«um quadrado de mesma área "pesa" mais que o
 /// círculo»*.
-pub(super) const CORNER_PX: f64 = super::warp_gizmo::GRAB_PX as f64 * 0.85;
+pub(super) const CORNER_PX: f64 = crate::render_loop::warp_gizmo::GRAB_PX as f64 * 0.85;
 
 /// O raio (do centro ao vértice) do losango de uma tangente.
 ///
@@ -60,7 +60,7 @@ pub(super) const CORNER_PX: f64 = super::warp_gizmo::GRAB_PX as f64 * 0.85;
 /// usava `GRAB_PX` cru e o gate reprovou-a a `0,71×` da barra — a régua apanhou-me a confundir o
 /// raio com o alcance.*
 pub(super) const TANGENT_PX: f64 =
-    super::warp_gizmo::GRAB_PX as f64 * 0.85 * std::f64::consts::SQRT_2;
+    crate::render_loop::warp_gizmo::GRAB_PX as f64 * 0.85 * std::f64::consts::SQRT_2;
 
 /// A cor do contorno e das alças de canto.
 const HANDLE_RGBA: [f32; 4] = [0.35, 0.78, 1.0, 1.0];
@@ -142,7 +142,7 @@ pub(super) fn draw_warp_gizmo(
     // ⚠️ **A janela da CENA, resolvida AQUI e não pelo chamador.** Passar a janela cheia
     // desloca e encolhe tudo o que é desenhado em coordenadas de mundo — e, pior, faz a
     // tinta discordar do hit-test, que usa a janela certa. Ver
-    // [`super::warp_gizmo::scene_window`], que carrega o relato do defeito.
+    // [`crate::render_loop::warp_gizmo::scene_window`], que carrega o relato do defeito.
     let to_screen =
         camera.world_to_screen_affine(warp_gizmo::scene_window(center_split, full_window));
     let pt = |w: [f32; 2]| to_screen * Point::new(f64::from(w[0]), f64::from(w[1]));

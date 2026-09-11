@@ -75,10 +75,10 @@ pub(crate) fn apply(
             // inalcançável até 2026-09-09. ⚠️ `as_deref_mut` porque o laço passa por aqui N vezes
             // e um `Option<&mut _>` não é `Copy`.
             SignalVerb::PlaySound => {
-                super::audio_2d::play_target(sim, audio.as_deref_mut(), fx.target)
+                crate::render_loop::audio_2d::play_target(sim, audio.as_deref_mut(), fx.target)
             }
             SignalVerb::StopSound => {
-                super::audio_2d::stop_target(sim, audio.as_deref_mut(), fx.target)
+                crate::render_loop::audio_2d::stop_target(sim, audio.as_deref_mut(), fx.target)
             }
         };
         if ok {

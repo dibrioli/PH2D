@@ -109,7 +109,7 @@ fn probe_smoke_63_floor() {
 
     let (mut sim, mut bridge) = scene();
     let bits = rope_bits(&mut sim);
-    crate::render_loop::inspector_joint_wheel::add_pulley_wheel(&mut sim, &bridge, bits);
+    crate::physics::joint_wheel::add_pulley_wheel(&mut sim, &bridge, bits);
     bridge.dispatch(&mut sim, false, 0);
     let after = state(&mut sim, &bridge);
     println!(
@@ -387,7 +387,7 @@ fn the_composition_scene_survives_the_floors_two_gestures() {
     // (a) Acrescentar uma roldana pelo caminho do PRODUTO.
     let (mut sim, mut bridge) = scene();
     let bits = rope(&mut sim).to_bits();
-    crate::render_loop::inspector_joint_wheel::add_pulley_wheel(&mut sim, &bridge, bits);
+    crate::physics::joint_wheel::add_pulley_wheel(&mut sim, &bridge, bits);
     bridge.dispatch(&mut sim, false, 0);
     let wheels_after = bridge.rope_wheels(rope(&mut sim)).count();
     assert!(

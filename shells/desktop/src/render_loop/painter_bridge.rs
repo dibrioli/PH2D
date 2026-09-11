@@ -43,8 +43,8 @@
 //! texture in its place. So the composite (incl. base-layer opacity) IS the
 //! sprite, in-place, through the same sprite shader as Apply.
 
-use super::painter_bridge_assets::{load_brush_shape_image, load_brush_texture_image};
-use super::painter_gpu_preview::{self, PainterGpuPreview};
+use crate::render_loop::painter_bridge_assets::{load_brush_shape_image, load_brush_texture_image};
+use crate::render_loop::painter_gpu_preview::{self, PainterGpuPreview};
 use crate::app_state::{PainterPreview, PainterPreviewGpu};
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_ecs::SimWorld;
@@ -109,7 +109,7 @@ pub(super) fn dispatch(
     // timings + the canvas dims. This is what tells the difference between "the GPU producer's partial
     // upload fired" and "the mask stroke fell to a full CPU composite every frame" — the two the
     // headless proxy cannot tell apart. Zero cost when the var is unset.
-    let perf_t0 = super::paint_perf::on().then(std::time::Instant::now);
+    let perf_t0 = crate::render_loop::paint_perf::on().then(std::time::Instant::now);
     let mut dbg_trivial = false;
     let mut dbg_gray = false;
     let mut dbg_active_is_mask = false;
@@ -238,7 +238,7 @@ pub(super) fn dispatch(
             );
             // E instala a ponte do CARIMBO no mesmo vão, pela mesma razão: construir o passe
             // compila um shader, e o custo não pode cair no primeiro traço (doc 33 §S3).
-            super::painter_stamp_device::install(painter, renderer);
+            crate::render_loop::painter_stamp_device::install(painter, renderer);
             // Impasto smoke: arm the brush the first time a document binds, so the artist drags and sees
             // thick lit paint instead of hunting for the knobs. One-shot; never overwrites their edits.
             crate::impasto_smoke::arm_brush_once(painter);
@@ -329,8 +329,8 @@ pub(super) fn dispatch(
     // them (Enio, 2026-07-25, 4096²: o preview zerou e o custo mudou de lugar).
     let (mut ph_ov_tol, mut ph_ov_selection, mut ph_ov_chrome) = (0f32, 0f32, 0f32);
     // …and the same treatment for PANEL (by step) and CHROME (by overlay call).
-    let mut ph_panel_sub = [0f32; super::paint_perf::PANEL_SUB];
-    let mut ph_chrome_sub = [0f32; super::paint_perf::CHROME_SUB];
+    let mut ph_panel_sub = [0f32; crate::render_loop::paint_perf::PANEL_SUB];
+    let mut ph_chrome_sub = [0f32; crate::render_loop::paint_perf::CHROME_SUB];
     let elapsed_ms =
         |m: Option<std::time::Instant>| m.map_or(0.0, |t| t.elapsed().as_secs_f64() as f32 * 1e3);
     let m_preview = perf_t0.map(|_| std::time::Instant::now());
@@ -477,7 +477,7 @@ pub(super) fn dispatch(
         // TRANSITION, and a line per frame is the one format that hides transitions.
         if std::env::var_os("PH2D_PREVIEW_DIAG").is_some() {
             let now = (gpu_owns_preview, painter_dirty_bbox);
-            if super::paint_perf::preview_diag_changed(now) {
+            if crate::render_loop::paint_perf::preview_diag_changed(now) {
                 eprintln!(
                     "[preview-diag] gpu_owns={gpu_owns_preview} cpu_dirty_bbox={painter_dirty_bbox:?}"
                 );
@@ -659,7 +659,7 @@ pub(super) fn dispatch(
         // Keep the shape-editor grab tolerance in sync with the live camera every frame (not just on a
         // painter Down/Move/Up), so the on-canvas handles are drawn where they'll be grabbed — no snap
         // when the first grab after a zoom refreshes the tol.
-        super::painter_bridge_overlays::refresh_shape_grab_tol(
+        crate::render_loop::painter_bridge_overlays::refresh_shape_grab_tol(
             painter,
             hero,
             sim,
@@ -673,7 +673,7 @@ pub(super) fn dispatch(
         // chrome extending past the sprite border — a shape crossing the seam lost its editor overlay
         // beyond the edge, and the brush ring / marching ants vanished over the neighbour tiles
         // (the "overlay stops at the seam" bug, Enio 2026-07-11).
-        super::painter_bridge_overlays::draw_repeat_image(
+        crate::render_loop::painter_bridge_overlays::draw_repeat_image(
             painter,
             hero,
             sim,
@@ -684,7 +684,7 @@ pub(super) fn dispatch(
         );
         // Selection overlay next (under the editor handles + brush ring): marching ants + hatching + the
         // crosshair cursor.
-        super::painter_bridge_selection_overlay::draw_selection_overlay(
+        crate::render_loop::painter_bridge_selection_overlay::draw_selection_overlay(
             painter,
             hero,
             sim,
@@ -695,7 +695,7 @@ pub(super) fn dispatch(
         );
         ph_ov_selection = elapsed_ms(m_ov_sel);
         let m_ov_chrome = perf_t0.map(|_| std::time::Instant::now());
-        super::painter_bridge_overlays::draw_overlays(
+        crate::render_loop::painter_bridge_overlays::draw_overlays(
             painter,
             hero,
             sim,
@@ -763,7 +763,7 @@ pub(super) fn dispatch(
     {
         // Record this frame's dispatch info + sub-phase split; the frame timer (`run_render_frame`)
         // pairs it with the whole-frame time and the aggregator prints ONE summary per window.
-        super::paint_perf::record_dispatch(super::paint_perf::FrameInfo {
+        crate::render_loop::paint_perf::record_dispatch(crate::render_loop::paint_perf::FrameInfo {
             gpu: gpu_owns_preview,
             dispatch_ms: t0.elapsed().as_secs_f64() as f32 * 1e3,
             preview_ms: ph_preview,

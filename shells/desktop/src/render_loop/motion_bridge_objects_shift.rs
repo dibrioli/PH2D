@@ -26,7 +26,7 @@ use super::*;
 ///
 /// ⚠️ **`&mut MotionState` + `seconds`, e não `(cook, graph)`, desde 2026-08-28:** o `off` de
 /// cada pedido é um param que pode vir de um FIO, e resolver um param conduzido é cozinhar o
-/// driver ([`super::super::motion_externals::resolved_params`]). Com a assinatura antiga esta
+/// driver ([`crate::render_loop::motion_externals::resolved_params`]). Com a assinatura antiga esta
 /// membrana lia `override → default` enquanto o `eval` do nó monta a MESMA chave por
 /// `ctx.param` — que resolve o conduzido — e as duas chaves DIVERGIAM: o objeto sumia.
 pub(crate) fn publish_shifted(motion: &mut MotionState, seconds: f64) {

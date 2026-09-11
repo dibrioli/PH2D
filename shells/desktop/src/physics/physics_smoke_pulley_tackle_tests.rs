@@ -124,7 +124,7 @@ fn the_mount_gesture_leads_somewhere() {
     assert_eq!(read(&mut sim).body, 0, "ela nasce no CENÁRIO");
 
     // O clique no corpo, pela porta que o pick de canvas termina.
-    crate::render_loop::inspector_joint_wheel::set_wheel_mount(&mut sim, wheel.to_bits(), block);
+    crate::physics::joint_wheel::set_wheel_mount(&mut sim, wheel.to_bits(), block);
     let mounted = read(&mut sim);
     assert_eq!(
         mounted.body,
@@ -144,7 +144,7 @@ fn the_mount_gesture_leads_somewhere() {
     assert!(seeded.mounted, "a ponte tinha de semear o eixo local");
 
     // E a lixeira desfaz — pela porta pura, que é a que o painel alcança.
-    let unmounted = crate::render_loop::inspector_joint_wheel::wheel_with_edit(
+    let unmounted = crate::physics::joint_wheel::wheel_with_edit(
         seeded,
         ph2d_editor::WheelFieldEdit::Unmount,
     )
@@ -163,7 +163,7 @@ fn the_mount_gesture_leads_somewhere() {
 fn arming_the_mount_pick_writes_nothing() {
     let wheel = ph2d_physics_ecs::PulleyWheel::default();
     assert!(
-        crate::render_loop::inspector_joint_wheel::wheel_with_edit(
+        crate::physics::joint_wheel::wheel_with_edit(
             wheel,
             ph2d_editor::WheelFieldEdit::PickMountBody,
         )

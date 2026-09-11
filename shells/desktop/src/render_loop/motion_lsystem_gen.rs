@@ -24,11 +24,11 @@ use ph2d_node_source_lsystem as ls;
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_vec_scene::{VecPath, VecVertex};
 
-use super::motion_lsystem_leaves::{
+use crate::render_loop::motion_lsystem_leaves::{
     Anchor, Job, anchors_of, say_if_a_wire_drives_an_inert_param, say_if_the_letter_is_missing,
     say_if_the_level_hid_every_leaf,
 };
-use super::motion_lsystem_rows::plant_and_leaves;
+use crate::render_loop::motion_lsystem_rows::plant_and_leaves;
 use crate::motion::motion_state::MotionState;
 
 // ⛔⛔ **O TECTO `MAX_RIBBONS = 4096` FOI REMOVIDO — ele não era de recurso nenhum.**
@@ -378,7 +378,7 @@ fn plant_geometry(branches: &[ls::branch::Branch], origin: [f32; 2]) -> Option<V
 
 /// **Publica as fitas** de cada `source.lsystem` em modo `Branches`.
 ///
-/// ⚠️ **Chamada de [`super::motion_externals::publish_all`]**, ao lado das outras quatro
+/// ⚠️ **Chamada de [`crate::render_loop::motion_externals::publish_all`]**, ao lado das outras quatro
 /// membranas e **antes** da varredura do store — que é o que impede as geometrias deste quadro
 /// de serem apagadas antes de alguém as pedir.
 pub(crate) fn publish(motion: &mut MotionState, seconds: f64) {
@@ -395,7 +395,7 @@ pub(crate) fn publish(motion: &mut MotionState, seconds: f64) {
     // no cook (três campos disjuntos do `MotionState`).
     let mut jobs: Vec<Job> = Vec::new();
     for id in ids {
-        let resolved = super::motion_externals::resolved_params(motion, id, seconds, &ls::MANIFEST);
+        let resolved = crate::render_loop::motion_externals::resolved_params(motion, id, seconds, &ls::MANIFEST);
         let get = |name: &str| resolved.get(name).copied().unwrap_or(0.0);
         if get(ls::param::GEOMETRY).round() as i32 != ls::GEOMETRY_BRANCHES {
             continue;
@@ -439,7 +439,7 @@ pub(crate) fn publish(motion: &mut MotionState, seconds: f64) {
             resolved.clone(),
             names,
             get(ls::param::LEAF_FIRST_LEVEL),
-            super::motion_lsystem_rows::LeafLook {
+            crate::render_loop::motion_lsystem_rows::LeafLook {
                 front: get(ls::param::LEAF_FRONT),
                 keep_own_colour: get(ls::param::LEAF_EFFECTS).round() as i32 == 0,
                 size: get(ls::param::LEAF_SIZE),

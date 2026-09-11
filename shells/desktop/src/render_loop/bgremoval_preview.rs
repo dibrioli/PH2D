@@ -53,7 +53,7 @@ use std::sync::Arc;
 /// the sprite pipeline (replacing the gamma/blend-divergent Vello
 /// overlay). The slot id lives in `bgremoval_preview_gpu`; the next
 /// frame's `sim_extract` reads it directly to emit a
-/// [`PreviewOverride`](super::sim_extract::PreviewOverride) — no
+/// [`PreviewOverride`](crate::render_loop::sim_extract::PreviewOverride) — no
 /// override is plumbed through this return.
 #[allow(clippy::too_many_arguments)]
 #[must_use]

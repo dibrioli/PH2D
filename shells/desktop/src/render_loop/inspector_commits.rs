@@ -13,7 +13,7 @@
 //!
 //! ⚠️ **A exceção de LOC deste arquivo foi RETIRADA em 2026-08-19, e não movida.** Ela pedia por
 //! escrito, desde 2026-06-02, *"splitting into per-field sibling modules is a focused
-//! Sprite-Inspector follow-up"* — e é exatamente isso que a [`super::inspector_strategy`] é: a
+//! Sprite-Inspector follow-up"* — e é exatamente isso que a [`crate::render_loop::inspector_strategy`] é: a
 //! troca de estratégia de origem saiu daqui inteira (−157 linhas), o arquivo voltou a **555** e o
 //! teto de 600 do HR-18 volta a morder de verdade. *Um marcador que só precisa existir para o
 //! gate passar não envelhece com barulho* — este envelheceu 36 linhas em silêncio antes de sair.
@@ -185,7 +185,7 @@ pub(super) fn dispatch(
     // W2 Sprite Inspector v2 — a família da SPRITE mora no irmão `_sprite`, com quem já sabe o
     // que uma sprite editável é. (E este ficheiro estava no teto de 600 LOC — *o corte é por
     // assunto*.)
-    if super::inspector_commits_sprite::apply_sprite_edits(
+    if crate::render_loop::inspector_commits_sprite::apply_sprite_edits(
         sprite_edits,
         sim,
         editor_queue,
@@ -201,7 +201,7 @@ pub(super) fn dispatch(
     // and we apply per edit so a read-modify-write field (YSort /
     // SortingGroup) re-reads the just-written component next iteration.
     for &(entity_bits, edit) in ordering_edits {
-        super::inspector_ordering::apply_ordering_edit(
+        crate::render_loop::inspector_ordering::apply_ordering_edit(
             sim,
             entity_bits,
             edit,
@@ -215,7 +215,7 @@ pub(super) fn dispatch(
     }
     // W3 §9 sampling edits (TextureFilter/Repeat optional components).
     for &(entity_bits, edit) in sampling_edits {
-        super::inspector_ordering::apply_sampling_edit(
+        crate::render_loop::inspector_ordering::apply_sampling_edit(
             sim,
             entity_bits,
             edit,
@@ -231,7 +231,7 @@ pub(super) fn dispatch(
     // repetido, cap de 64) e devolve um aviso — recusar em silêncio faria o artista escrever um
     // nome, ver a lista não mudar, e não saber porquê.
     for (entity_bits, edit) in anchor_edits {
-        if let Some(t) = super::inspector_anchor::apply_anchor_edit(
+        if let Some(t) = crate::render_loop::inspector_anchor::apply_anchor_edit(
             sim,
             *entity_bits,
             edit,
@@ -250,7 +250,7 @@ pub(super) fn dispatch(
     // §11 Animation (spec Sprite 08). ⚠️ Recusa com aviso, como a §12 — um nome repetido tem de
     // dizer porquê, senão o artista escreve e vê a lista não mudar.
     for (entity_bits, edit) in anim_edits {
-        if let Some(t) = super::inspector_anim::apply_anim_edit(
+        if let Some(t) = crate::render_loop::inspector_anim::apply_anim_edit(
             sim,
             *entity_bits,
             edit,
@@ -269,7 +269,7 @@ pub(super) fn dispatch(
     // vazio ou o tecto atingido têm de dizer porquê, senão o artista escreve e vê a lista não
     // mudar.
     for (entity_bits, edit) in timer_edits {
-        if let Some(t) = super::inspector_timer::apply_timer_edit(
+        if let Some(t) = crate::render_loop::inspector_timer::apply_timer_edit(
             sim,
             *entity_bits,
             edit,
@@ -286,7 +286,7 @@ pub(super) fn dispatch(
     }
     // ⭐ **A secção SIGNAL ACTIONS** (TOP-20 #5, W3). Recusa com aviso, como as irmãs.
     for (entity_bits, edit) in action_edits {
-        if let Some(t) = super::inspector_action::apply_action_edit(
+        if let Some(t) = crate::render_loop::inspector_action::apply_action_edit(
             sim,
             *entity_bits,
             edit,
@@ -304,7 +304,7 @@ pub(super) fn dispatch(
     // §5 9-Slice — a autoria de 9-slice (componente opcional; `Attach`/`Detach` são edições
     // como as outras). Ver `inspector_slice`.
     for &(entity_bits, edit) in slice_edits {
-        super::inspector_slice::apply_slice_edit(
+        crate::render_loop::inspector_slice::apply_slice_edit(
             sim,
             entity_bits,
             edit,
@@ -318,7 +318,7 @@ pub(super) fn dispatch(
     }
     // §10 Material & Blend edits (BlendMode optional component).
     for &(entity_bits, edit) in blend_edits {
-        super::inspector_ordering::apply_blend_edit(
+        crate::render_loop::inspector_ordering::apply_blend_edit(
             sim,
             entity_bits,
             edit,
@@ -331,7 +331,7 @@ pub(super) fn dispatch(
         }
     }
     for &(entity_bits, edit) in physics_edits {
-        super::inspector_physics::apply_physics_edit(
+        crate::physics::physics::apply_physics_edit(
             sim,
             entity_bits,
             edit,
@@ -346,7 +346,7 @@ pub(super) fn dispatch(
     // W3 §8 visibility-section edits (VisibilityLayer / ClipChildren /
     // MaskInteraction / OnScreenEnabler optional components).
     for &(entity_bits, edit) in visibility_section_edits {
-        super::inspector_visibility::apply_visibility_section_edit(
+        crate::render_loop::inspector_visibility::apply_visibility_section_edit(
             sim,
             entity_bits,
             edit,
@@ -449,7 +449,7 @@ pub(super) fn dispatch(
 
 #[cfg(test)]
 mod sprite_field_tests {
-    use super::super::inspector_commits_sprite::{
+    use crate::render_loop::inspector_commits_sprite::{
         SpriteEditTarget, SpriteEditables, apply_sprite_field, clamp_frame,
     };
     use ph2d_ecs::{SpriteCornerTint, SpriteGrid};

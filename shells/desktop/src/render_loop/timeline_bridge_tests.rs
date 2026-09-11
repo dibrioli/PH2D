@@ -353,7 +353,7 @@ fn a_clock_running_into_the_containers_list_is_paused_by_the_bridge() {
     let mut sim = ph2d_ecs::SimWorld::new();
     let mut st = TimelineState::new();
     let mut intents = Vec::new();
-    let mut ak = super::super::autokey_pass::AutokeyState::default();
+    let mut ak = crate::render_loop::autokey_pass::AutokeyState::default();
 
     let mut ph = Playhead::new(1.0 / 60.0);
     ph.play();

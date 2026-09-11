@@ -1,5 +1,5 @@
 //! **A TRADUÇÃO do vocabulário** entre a tool (o que o painel mostra) e o documento (o que a
-//! geometria guarda) — irmão do [`super::vector_bridge`] pelo teto de 600 LOC da shell (HR-18).
+//! geometria guarda) — irmão do [`crate::render_loop::vector_bridge`] pelo teto de 600 LOC da shell (HR-18).
 //!
 //! ⚠️ O corte é por RESPONSABILIDADE: ali mora *o que a ponte FAZ neste frame* (visibilidade,
 //! read-back do picker, restyle, publicação), aqui *como um nome de um lado vira o nome do outro*.

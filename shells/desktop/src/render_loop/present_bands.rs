@@ -1,4 +1,4 @@
-//! ⭐⭐⭐ **AS FAIXAS DE DESENHO** (ADR-0154 Fase 2) — irmão por ASSUNTO do [`super::present`], e
+//! ⭐⭐⭐ **AS FAIXAS DE DESENHO** (ADR-0154 Fase 2) — irmão por ASSUNTO do [`crate::render_loop::present`], e
 //! pelo tecto de 600 LOC do shell (HR-18).
 //!
 //! ⚠️ **Este corte foi imposto por um gate que esteve VERMELHO sem ninguém ver**

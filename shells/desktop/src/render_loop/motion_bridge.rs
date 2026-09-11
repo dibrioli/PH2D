@@ -345,7 +345,7 @@ pub(super) fn dispatch(
     // Juntar aqui, e não alargar o `signal_taps`, é o que impede o dreno de sinais de um
     // dia ver um nó que não é um `pulse.signal` — *o canal é partilhado, o significado não*.
     let mut taps = motion.signal_taps.clone();
-    for n in super::warp_gizmo::taps_for(motion) {
+    for n in crate::render_loop::warp_gizmo::taps_for(motion) {
         if !taps.contains(&n) {
             taps.push(n);
         }
@@ -358,7 +358,7 @@ pub(super) fn dispatch(
     motion.pump.clear_tap_fires();
     // As MEMBRANAS: post-drain, pre-cook. O instante e' propriedade do GRUPO, entao
     // as tres moram numa porta so (`motion_externals`).
-    super::motion_externals::publish_all(motion, playhead.time());
+    crate::render_loop::motion_externals::publish_all(motion, playhead.time());
     // Time scopes (M2.N1): each `motion.time_remap` node rewrites the clock of
     // its upstream subtree. Rebuilt per frame — one pass over the node list, and
     // empty for a graph with no remapper (the common case), so the cook takes

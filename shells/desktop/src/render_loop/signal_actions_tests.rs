@@ -1,4 +1,4 @@
-//! **Os gates da ponte do `SignalActions`** — irmão de [`super::signal_actions`] por CAP de LOC.
+//! **Os gates da ponte do `SignalActions`** — irmão de [`crate::render_loop::signal_actions`] por CAP de LOC.
 //!
 //! ⚠️ **A RESOLUÇÃO tem os gates dela no `ph2d-ecs`** (casar nomes, achar o alvo, a ordem). Aqui
 //! prova-se o que só existe com o mundo E o ledger: que a escrita chega, e que ela **não** chega

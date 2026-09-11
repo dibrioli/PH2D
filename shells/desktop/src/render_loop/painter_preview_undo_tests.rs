@@ -10,8 +10,8 @@
 //! device) e confronta o que o produtor GPU mostra com o que o produtor CPU mostraria para o MESMO
 //! documento — o único oráculo que responde à pergunta que o report faz.
 
-use super::painter_preview_handoff_tests::app_frame;
-use super::painter_preview_pipeline_tests::{assert_screen_equals, cp, impasto_tool, screen_truth};
+use crate::render_loop::painter_preview_handoff_tests::app_frame;
+use crate::render_loop::painter_preview_pipeline_tests::{assert_screen_equals, cp, impasto_tool, screen_truth};
 use crate::app_state::{PainterPreview, PainterPreviewGpu};
 use ph2d_editor::tool::{CanvasPaintTool, PointerPhase};
 use ph2d_tool_painter::PainterTool;

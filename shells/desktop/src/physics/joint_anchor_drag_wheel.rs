@@ -10,7 +10,7 @@
 //! Filho e não irmão para alcançar os privados de [`super`] (`Grab`, `distance`)
 //! sem os tornar públicos — o mesmo `#[path]` que os `mod tests` deste repo usam.
 
-use super::{Grab, distance};
+use crate::physics::joint_anchor_drag::{Grab, distance};
 use ph2d_ecs::SimWorld;
 use ph2d_editor::gizmo::PointHandleKind;
 

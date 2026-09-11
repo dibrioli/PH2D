@@ -1,0 +1,523 @@
+//! **W4 gates — the baked curve is the simulation, and it costs ONE undo step.**
+//!
+//! The oracle is deliberately the product path: the keys are written by
+//! `bake_selection`, then read back by `ph2d_timeline::apply_from_doc` into a
+//! `Transform` — the same function the frame loop calls. A gate that evaluated
+//! the track directly would prove the fit works and say nothing about whether
+//! an artist pressing play sees the drop they baked.
+
+use ph2d_core::Vec2;
+use ph2d_ecs::scene::{ComponentRegistry, EditorCommandQueue, register_ecs_components};
+use ph2d_ecs::{Entity, Name, SimWorld, Transform};
+use ph2d_physics_ecs::{
+    BodyKind, Collider, ColliderShape, PhysicsBridge, RigidBody, register_physics_components,
+};
+use ph2d_timeline::{PropKind, TimelineState};
+
+use super::{BakeChannels, BakeOutcome, DEFAULT_BAKE_SECONDS, bake_selection, ticks_for};
+
+/// How many Ctrl+Z presses it takes to empty the timeline's undo stack — the
+/// count as the artist experiences it. Destructive, so it is the LAST thing a
+/// test does with that state. Counted rather than read off a field because
+/// "how many presses" is the question, and a depth accessor would be a second
+/// way to ask it.
+pub fn undo_presses(timeline: &mut TimelineState) -> usize {
+    let mut n = 0;
+    while timeline.undo() {
+        n += 1;
+    }
+    n
+}
+
+pub const DT: f64 = 1.0 / 60.0;
+pub const BAKE_SECONDS: f64 = 1.5;
+
+pub fn registry() -> ComponentRegistry {
+    let mut reg = ComponentRegistry::new();
+    register_ecs_components(&mut reg);
+    register_physics_components(&mut reg);
+    reg
+}
+
+/// A ball dropped off-centre onto a sloped-ish floor so it bounces AND rolls:
+/// all three channels move, which is what makes "the curve is the sim" a claim
+/// about more than a parabola.
+pub fn scene() -> (SimWorld, Entity) {
+    let mut sim = SimWorld::new();
+    sim.world_mut().spawn((
+        Name::new("Floor"),
+        RigidBody {
+            kind: BodyKind::Static,
+        },
+        Collider {
+            shape: ColliderShape::Cuboid {
+                half_x: 8.0,
+                half_y: 0.2,
+            },
+            ..Collider::default()
+        },
+        Transform {
+            rotation: 0.12,
+            ..Transform::from_translation(Vec2::new(0.0, 0.0))
+        },
+    ));
+    let ball = sim
+        .world_mut()
+        .spawn((
+            Name::new("Ball"),
+            RigidBody {
+                kind: BodyKind::Dynamic,
+            },
+            Collider {
+                shape: ColliderShape::Ball { radius: 0.25 },
+                restitution: 0.35,
+                ..Collider::default()
+            },
+            Transform::from_translation(Vec2::new(-1.0, 2.0)),
+        ))
+        .id();
+    (sim, ball)
+}
+
+/// The trajectory the artist would see by pressing play, as `(t, x, y, rot)`.
+pub fn simulated(ticks: u64) -> Vec<(f64, f32, f32, f32)> {
+    let (mut sim, ball) = scene();
+    let mut bridge = PhysicsBridge::new();
+    let mut out = Vec::new();
+    bridge.dispatch(&mut sim, false, 0);
+    for tick in 0..=ticks {
+        if tick > 0 {
+            bridge.dispatch(&mut sim, true, tick);
+        }
+        let t = sim.world().get::<Transform>(ball).unwrap();
+        out.push((
+            tick as f64 * DT,
+            t.translation.x,
+            t.translation.y,
+            t.rotation,
+        ));
+    }
+    out
+}
+
+/// Bake the scene and hand back everything a gate might want to look at.
+pub fn baked() -> (TimelineState, SimWorld, Entity, BakeOutcome) {
+    let (mut sim, ball) = scene();
+    let mut bridge = PhysicsBridge::new();
+    let mut timeline = TimelineState::default();
+    let queue = EditorCommandQueue::default();
+    let reg = registry();
+    let outcome = bake_selection(
+        &mut timeline,
+        &mut bridge,
+        &mut sim,
+        &[ball],
+        0.0,
+        BAKE_SECONDS,
+        DT,
+        BakeChannels::All,
+        &mut ph2d_physics_ecs::InputTape::new(),
+        &queue,
+        &reg,
+    );
+    ph2d_ecs::scene::apply_editor_commands(sim.world_mut(), &queue, &reg).expect("apply");
+    (timeline, sim, ball, outcome)
+}
+
+/// **The baked curve reproduces the simulated trajectory EXACTLY at every tick.**
+///
+/// An APPEARANCE oracle: read the curve back through `apply_from_doc` — the
+/// frame loop's own function — into a `Transform`, and compare against what the
+/// sim did at that instant. Sampled at every tick, which is where the keys are:
+/// with one key per tick and no fit, the curve returns the simulated pose
+/// verbatim.
+///
+/// The bar was the fit's declared fidelity (~1-3% of range); it is now the noise
+/// floor, because there is no fit — the keys ARE the samples. Expressed against
+/// each channel's RANGE so a 2 m drop and a 2 cm nudge are not held to the same
+/// millimetre. (Between-tick behaviour — no overshoot — is the bouncing-ball
+/// gate in the sibling file; this one is the at-tick exactness.)
+#[test]
+fn the_baked_curve_reproduces_the_simulated_motion() {
+    let ticks = ticks_for(BAKE_SECONDS, DT);
+    let truth = simulated(ticks);
+    let (mut timeline, mut sim, ball, _) = baked();
+
+    let span = |pick: fn(&(f64, f32, f32, f32)) -> f32| {
+        let (mut lo, mut hi) = (f32::MAX, f32::MIN);
+        for s in &truth {
+            lo = lo.min(pick(s));
+            hi = hi.max(pick(s));
+        }
+        (hi - lo).max(1e-3)
+    };
+    let (span_x, span_y, span_r) = (span(|s| s.1), span(|s| s.2), span(|s| s.3));
+    // Exact, not "close": one key per tick means the sampled pose IS the key
+    // value at the tick times. The bar is a noise floor, orders of magnitude
+    // under the fit's old 1-3% — a mutation that re-introduced a fit would round
+    // the motion above this at once.
+    const TOL: f32 = 1e-3;
+
+    let mut worst = 0.0f32;
+    for s in &truth {
+        ph2d_timeline::apply_from_doc(sim.world_mut(), &mut timeline.doc, s.0);
+        let t = *sim.world().get::<Transform>(ball).unwrap();
+        let dx = (t.translation.x - s.1).abs() / span_x;
+        let dy = (t.translation.y - s.2).abs() / span_y;
+        let dr = (t.rotation - s.3).abs() / span_r;
+        worst = worst.max(dx).max(dy).max(dr);
+        assert!(
+            dx < TOL && dy < TOL && dr < TOL,
+            "at t={:.3}s the baked curve is at ({:.4}, {:.4}, {:.4}) but the \
+             simulation was at ({:.4}, {:.4}, {:.4}) — {:.2}% / {:.2}% / {:.2}% \
+             of each channel's range; one key per tick must reproduce this \
+             exactly",
+            s.0,
+            t.translation.x,
+            t.translation.y,
+            t.rotation,
+            s.1,
+            s.2,
+            s.3,
+            dx * 100.0,
+            dy * 100.0,
+            dr * 100.0
+        );
+    }
+    let _ = worst;
+}
+
+/// **A bake is ONE undo step, not one per frame.** (The plan's gate 3.)
+///
+/// 90 ticks × 3 channels = 270 dense keys, all written inside one bracket. The
+/// artist pressed one button, so Ctrl+Z is one press. Counted through the real
+/// `TimelineHistory`, which is what Ctrl+Z actually pops.
+#[test]
+fn a_whole_bake_is_a_single_undo_step() {
+    let (mut sim, ball) = scene();
+    let mut bridge = PhysicsBridge::new();
+    let mut timeline = TimelineState::default();
+    let queue = EditorCommandQueue::default();
+    let reg = registry();
+
+    let outcome = bake_selection(
+        &mut timeline,
+        &mut bridge,
+        &mut sim,
+        &[ball],
+        0.0,
+        BAKE_SECONDS,
+        DT,
+        BakeChannels::All,
+        &mut ph2d_physics_ecs::InputTape::new(),
+        &queue,
+        &reg,
+    );
+    assert!(!outcome.is_empty(), "the fixture baked nothing");
+
+    let presses = undo_presses(&mut timeline);
+    assert_eq!(
+        presses,
+        1,
+        "a bake of {} ticks across {} tracks takes {presses} Ctrl+Z presses to \
+         undo — the artist pressed one button",
+        ticks_for(BAKE_SECONDS, DT),
+        outcome.tracks,
+    );
+}
+
+/// **One Ctrl+Z takes the whole bake away.**
+///
+/// The other half of the step count: a single step that only reverts the
+/// *cleanup* and leaves 270 dense keys behind would satisfy the count above and
+/// be worse than no undo at all.
+#[test]
+fn undoing_a_bake_leaves_no_keys_behind() {
+    let (mut timeline, _sim, ball, _) = baked();
+    assert!(
+        timeline
+            .doc
+            .binding_for(ball.to_bits(), PropKind::TranslationY)
+            .is_some(),
+        "the fixture did not bake a Y track"
+    );
+
+    timeline.undo();
+
+    for prop in PropKind::ALL {
+        let has_keys = timeline
+            .doc
+            .binding_for(ball.to_bits(), prop)
+            .and_then(|b| timeline.doc.active_clip().track(b.target))
+            .is_some_and(|t| !t.is_empty());
+        assert!(
+            !has_keys,
+            "{prop:?} still holds keys after one undo of the bake that made them"
+        );
+    }
+}
+
+/// **The same scene bakes to the same curve.** (ADR-0131 D7.)
+///
+/// The sampler's determinism is gated in `ph2d-physics-ecs`; this is the claim
+/// for everything downstream of it — the fit, the column merge, the key times.
+/// Compared as the curve's own numbers, because that is what gets saved.
+#[test]
+fn baking_twice_writes_the_same_curve() {
+    let keys = || {
+        let (timeline, _sim, ball, _) = baked();
+        let mut out: Vec<(PropKind, Vec<(f64, f32)>)> = Vec::new();
+        for prop in PropKind::ALL {
+            if let Some(track) = timeline
+                .doc
+                .binding_for(ball.to_bits(), prop)
+                .and_then(|b| timeline.doc.active_clip().track(b.target))
+            {
+                out.push((
+                    prop,
+                    track
+                        .keys()
+                        .iter()
+                        .map(|k| {
+                            (
+                                k.t.to_seconds(),
+                                match k.value {
+                                    ph2d_anim::AnimValue::Float(f) => f,
+                                    _ => f32::NAN,
+                                },
+                            )
+                        })
+                        .collect(),
+                ));
+            }
+        }
+        out
+    };
+    assert_eq!(
+        keys(),
+        keys(),
+        "two bakes of one scene wrote different curves"
+    );
+}
+
+/// **The bake hands the pose over: the body ends Kinematic.**
+///
+/// Without this the curve is written and then overwritten by the solver every
+/// frame, and the button reads as broken (module docs). Asserted on the ECS
+/// after the command queue is applied — the same path the §11 chip takes, so a
+/// gate passing here means the chip works too.
+#[test]
+fn a_baked_body_is_handed_over_to_the_scene() {
+    let (_timeline, sim, ball, outcome) = baked();
+    assert!(!outcome.is_empty());
+    assert_eq!(
+        sim.world().get::<RigidBody>(ball).map(|rb| rb.kind),
+        Some(BodyKind::Kinematic),
+        "the baked body is still simulated, so the solver will overwrite the \
+         curve that was just written and nothing on screen will change"
+    );
+}
+
+/// **A body that never moves produces no bake, and no undo step.**
+///
+/// The empty case has to be empty all the way down: no tracks, and no bracket
+/// left on the stack for the artist to press Ctrl+Z through.
+///
+/// ⚠️ Two layers hold this up and only one of them is the early-out. Deleting
+/// the `work.is_empty()` branch leaves this gate GREEN, because
+/// `commit_if_changed` compares the document and refuses to push a step for a
+/// bake that changed nothing. That is not a hole — it is which claim belongs to
+/// which layer: the branch's claim is about cost, the step count's is about
+/// correctness, and this gate asks the second one.
+#[test]
+fn baking_a_body_that_never_moves_writes_nothing() {
+    let mut sim = SimWorld::new();
+    let wall = sim
+        .world_mut()
+        .spawn((
+            Name::new("Wall"),
+            RigidBody {
+                kind: BodyKind::Static,
+            },
+            Collider {
+                shape: ColliderShape::Cuboid {
+                    half_x: 1.0,
+                    half_y: 1.0,
+                },
+                ..Collider::default()
+            },
+            Transform::from_translation(Vec2::new(0.0, 0.0)),
+        ))
+        .id();
+
+    let mut bridge = PhysicsBridge::new();
+    let mut timeline = TimelineState::default();
+    let queue = EditorCommandQueue::default();
+    let reg = registry();
+    let outcome = bake_selection(
+        &mut timeline,
+        &mut bridge,
+        &mut sim,
+        &[wall],
+        0.0,
+        BAKE_SECONDS,
+        DT,
+        BakeChannels::All,
+        &mut ph2d_physics_ecs::InputTape::new(),
+        &queue,
+        &reg,
+    );
+
+    assert!(
+        outcome.is_empty(),
+        "a static wall baked {} tracks",
+        outcome.tracks
+    );
+    assert_eq!(
+        undo_presses(&mut timeline),
+        0,
+        "an empty bake left an undo step the artist has to press through"
+    );
+}
+
+/// **The default range is enough for the thing it exists for.**
+///
+/// `DEFAULT_BAKE_SECONDS` claims a drop has finished inside it. That claim is
+/// checkable, so it is checked — a default that silently cut the motion off
+/// halfway would produce a curve that stops in mid-air.
+///
+/// ⚠️ Its own FLAT-floor fixture, not the bouncing scene above. That one is
+/// built on a tilted floor to make all three channels move, which means the
+/// ball rolls downhill and off the end — it is still travelling at 5 s, at 10 s
+/// and at any number you pick, because nothing stops it. Measuring "has the
+/// motion finished" there measures the ramp, and the first version of this gate
+/// failed for exactly that reason while `DEFAULT_BAKE_SECONDS` was fine.
+#[test]
+fn the_default_range_outlasts_a_drop() {
+    let mut sim = SimWorld::new();
+    sim.world_mut().spawn((
+        Name::new("Floor"),
+        RigidBody {
+            kind: BodyKind::Static,
+        },
+        Collider {
+            shape: ColliderShape::Cuboid {
+                half_x: 8.0,
+                half_y: 0.2,
+            },
+            ..Collider::default()
+        },
+        Transform::from_translation(Vec2::new(0.0, 0.0)),
+    ));
+    // From the top of the default view, which is what the constant claims for.
+    let ball = sim
+        .world_mut()
+        .spawn((
+            Name::new("Ball"),
+            RigidBody {
+                kind: BodyKind::Dynamic,
+            },
+            Collider {
+                shape: ColliderShape::Ball { radius: 0.25 },
+                restitution: 0.35,
+                ..Collider::default()
+            },
+            Transform::from_translation(Vec2::new(0.0, 4.0)),
+        ))
+        .id();
+
+    let ticks = ticks_for(DEFAULT_BAKE_SECONDS, DT);
+    let mut bridge = PhysicsBridge::new();
+    let mut ys = Vec::new();
+    for tick in 1..=ticks {
+        bridge.dispatch(&mut sim, true, tick);
+        ys.push(sim.world().get::<Transform>(ball).unwrap().translation.y);
+    }
+
+    let settled = (ys[ys.len() - 1] - ys[ys.len() - 20]).abs();
+    assert!(
+        settled < 0.01,
+        "at the end of the default {DEFAULT_BAKE_SECONDS}s range the body is \
+         still moving ({settled:.4} m over the last 20 ticks) — the default cuts \
+         the motion off"
+    );
+    assert!(
+        ys[0] > 3.5 && ys[ys.len() - 1] < 0.5,
+        "the fixture is not a drop: it starts at {:.2} and ends at {:.2}",
+        ys[0],
+        ys[ys.len() - 1]
+    );
+}
+
+/// Bake the fixture writing only `channels`, and report which tracks it left.
+fn baked_with(channels: BakeChannels) -> (TimelineState, Entity) {
+    let (mut sim, ball) = scene();
+    let mut bridge = PhysicsBridge::new();
+    let mut timeline = TimelineState::default();
+    let queue = EditorCommandQueue::default();
+    let reg = registry();
+    bake_selection(
+        &mut timeline,
+        &mut bridge,
+        &mut sim,
+        &[ball],
+        0.0,
+        BAKE_SECONDS,
+        DT,
+        channels,
+        &mut ph2d_physics_ecs::InputTape::new(),
+        &queue,
+        &reg,
+    );
+    (timeline, ball)
+}
+
+fn has_track(timeline: &TimelineState, ball: Entity, prop: PropKind) -> bool {
+    timeline.doc.binding_for(ball.to_bits(), prop).is_some()
+}
+
+/// **A channel subset bakes ONLY those tracks.** The fixture bounces on a
+/// TILTED floor, so all three channels move — a "Rotation only" bake must still
+/// leave X and Y untouched (the layering case: keep the hand-animated position,
+/// add the physics tumble).
+///
+/// The `All` block is the control: it proves every channel DID move, so the
+/// subsets below are actually withholding motion rather than baking channels
+/// that happened to be flat.
+///
+/// Mutation-tested: iterating `PoseChannel::ALL` instead of `channels.channels()`
+/// in `bake_selection` writes X and Y under a Rotation-only bake, and this goes
+/// red.
+#[test]
+fn baking_a_channel_subset_writes_only_those_tracks() {
+    let (all, ball) = baked_with(BakeChannels::All);
+    for p in [
+        PropKind::TranslationX,
+        PropKind::TranslationY,
+        PropKind::Rotation,
+    ] {
+        assert!(has_track(&all, ball, p), "All should have baked {p:?}");
+    }
+
+    let (rot, ball) = baked_with(BakeChannels::Rotation);
+    assert!(
+        has_track(&rot, ball, PropKind::Rotation),
+        "Rotation-only must bake the rotation track"
+    );
+    assert!(
+        !has_track(&rot, ball, PropKind::TranslationX)
+            && !has_track(&rot, ball, PropKind::TranslationY),
+        "Rotation-only wrote a position track — the channel selection was ignored"
+    );
+
+    let (pos, ball) = baked_with(BakeChannels::Position);
+    assert!(
+        has_track(&pos, ball, PropKind::TranslationX)
+            && has_track(&pos, ball, PropKind::TranslationY),
+        "Position-only must bake X and Y"
+    );
+    assert!(
+        !has_track(&pos, ball, PropKind::Rotation),
+        "Position-only wrote a rotation track — the channel selection was ignored"
+    );
+}

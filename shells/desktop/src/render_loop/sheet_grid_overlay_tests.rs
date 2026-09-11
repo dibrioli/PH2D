@@ -149,7 +149,7 @@ fn the_lines_land_on_the_cells_the_ghosts_draw() {
             let want_cy = l.y0 - (f64::from(row) + 0.5) * l.cell_h;
             // Onde o fantasma a põe (deslocamento relativo à viva, espelho aplicado no `ghost`).
             let got =
-                match super::super::sim_extract_sheet::cell(&s.0, s.1, [0.0, 0.0, 1.0, 1.0], i) {
+                match crate::render_loop::sim_extract_sheet::cell(&s.0, s.1, [0.0, 0.0, 1.0, 1.0], i) {
                     Some((_, off)) => {
                         let (mut dx, mut dy) = (f64::from(off[0]), f64::from(off[1]));
                         if s.0.flip_x {
@@ -185,7 +185,7 @@ fn the_unfolded_lattice_is_centred_on_the_pivot_and_matches_the_painted_quad() {
         let s = spr(4, 2, live);
         let l = lat(&s, PPM, true).unwrap();
         // ⭐ O retículo E o quad que a pintura desenha descrevem o MESMO rectângulo.
-        let size = super::super::sim_extract_sheet::unfolded_quad(&s.0, s.1).unwrap();
+        let size = crate::render_loop::sim_extract_sheet::unfolded_quad(&s.0, s.1).unwrap();
         let pivot = s.0.resolve_anchor(PPM);
         assert_eq!((l.w, l.h), (f64::from(size[0]), f64::from(size[1])));
         assert_eq!(l.x0, f64::from(pivot[0]) - f64::from(size[0]) * 0.5);

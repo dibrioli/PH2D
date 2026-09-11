@@ -1,6 +1,6 @@
 //! **A CONVERSÃO ENTRE ESTRATÉGIAS DE ORIGEM** do Inspector (`Render Source` → `Strategy`).
 //!
-//! Irmão de [`super::inspector_commits`], e o corte é o que o marcador de exceção de LOC daquele
+//! Irmão de [`crate::render_loop::inspector_commits`], e o corte é o que o marcador de exceção de LOC daquele
 //! arquivo prescreve por escrito desde 2026-06-02 (*"splitting into per-field sibling modules is a
 //! focused Sprite-Inspector follow-up"*). O corte é por responsabilidade: lá ficam os *drains* de
 //! campo do Inspector (Transform / Visibility / Name / Sprite / Reimport); aqui fica a única coisa

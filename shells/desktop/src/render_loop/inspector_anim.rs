@@ -1,5 +1,5 @@
 //! **§11 Animation** (spec Sprite 08) — o snapshot que a seção lê e o commit que ela escreve.
-//! Irmão do [`super::inspector_anchor`], pela mesma razão dele.
+//! Irmão do [`crate::render_loop::inspector_anchor`], pela mesma razão dele.
 //!
 //! # ⚠️ A conversão da VELOCIDADE mora aqui, nas duas pontas
 //!
@@ -15,7 +15,7 @@ use ph2d_ecs::{
 };
 use ph2d_editor::{AnimFieldEdit, InspectorAnimInfo, InspectorAnimRow, Toast};
 
-use super::inspector_ordering::queue_set;
+use crate::render_loop::inspector_ordering::queue_set;
 
 const ANIMATIONS: &str = "ph2d::ecs::SpriteAnimations";
 const ANIMATOR: &str = "ph2d::ecs::SpriteAnimator";
@@ -129,7 +129,7 @@ pub(super) fn build_anim_info(
     // sem `Sprite`, a seção inteira não se pinta — em vez de oferecer knobs sobre um pool vazio.
     world.get::<ph2d_render::Sprite>(entity)?;
     // ⭐ **E a §11 aparece com UM DOS SEUS DOIS componentes** (ADR-0166 / F3) — ver a nota gémea na
-    // [`super::inspector_slice::build_slice_info`]. O «+ Add Animation» era a única rota; hoje é o
+    // [`crate::render_loop::inspector_slice::build_slice_info`]. O «+ Add Animation» era a única rota; hoje é o
     // `+` do cabeçalho.
     //
     // ⚠️ **O `SpriteAnimator` conta, e um gate foi quem o disse.** A seção tem duas metades e elas

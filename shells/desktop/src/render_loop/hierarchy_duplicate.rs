@@ -1,4 +1,4 @@
-//! ⭐ **A row *Duplicate* da Hierarquia** — irmão de [`super::hierarchy`] por ASSUNTO (e porque
+//! ⭐ **A row *Duplicate* da Hierarquia** — irmão de [`crate::render_loop::hierarchy`] por ASSUNTO (e porque
 //! aquele ficheiro voltou ao tecto de 600 LOC).
 //!
 //! Lá mora o dreno das dezassete intenções da lista; aqui mora **o que duplicar quer dizer** — a

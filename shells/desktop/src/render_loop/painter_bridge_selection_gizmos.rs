@@ -2,7 +2,7 @@
 //! at once, all STANDARDISED to the Sprite transform gizmo: the shape outline (thin) inside an oriented
 //! bounding box with 8 scale squares (corners + edge mids), a centre-move square, and — only for a Polygon —
 //! the sides diamond. A square reads as a **circle** when the cursor is in its rotate ring (the rotate cue).
-//! Each shape gets a DISTINCT fluorescent accent. Reuses the shared [`super::painter_bridge_gizmo`] helpers.
+//! Each shape gets a DISTINCT fluorescent accent. Reuses the shared [`crate::render_loop::painter_bridge_gizmo`] helpers.
 
 use ph2d_ecs::SimWorld;
 use ph2d_editor::HeroScreen;
@@ -45,7 +45,7 @@ pub(super) fn draw_selection_gizmos(
     };
     // A grelha desta sprite (ADR-0164 F1 passo 6) — ausente = uma célula.
     let sprite_grid = sim.world().get::<ph2d_ecs::SpriteGrid>(entity).copied();
-    let affine = super::bgremoval_preview::sprite_image_to_screen_affine(
+    let affine = crate::render_loop::bgremoval_preview::sprite_image_to_screen_affine(
         iw,
         ih,
         tr,
@@ -61,24 +61,24 @@ pub(super) fn draw_selection_gizmos(
         (c[0] * c[0] + c[1] * c[1]).sqrt()
     };
     let cur = Point::new(f64::from(cursor.0), f64::from(cursor.1));
-    let accents = super::painter_bridge_gizmo::GIZMO_ACCENTS;
+    let accents = crate::render_loop::painter_bridge_gizmo::GIZMO_ACCENTS;
     let scene = vector_scene.inner_mut();
     for g in &gizmos {
         // Each gizmo gets a DISTINCT fluorescent accent so overlapping gizmos never read the same colour.
-        let pal = super::painter_bridge_gizmo::palette_accent(
+        let pal = crate::render_loop::painter_bridge_gizmo::palette_accent(
             hero.theme,
             accents[g.accent % accents.len()],
         );
         // Thin shape outline (ellipse / polygon / freehand spine) — always drawn.
         if g.outline.len() >= 2 {
             let pts: Vec<Point> = g.outline.iter().map(|&p| map(p)).collect();
-            super::painter_bridge_gizmo::stroke_open(scene, &pts, &pal);
+            crate::render_loop::painter_bridge_gizmo::stroke_open(scene, &pts, &pal);
         }
         // Oriented transform box (closed) — drawn for EVERY editable shape, including a converted curve
         // (Enio 2026-07-04: convert/simplify curves also carry the global move/rotate/scale gizmo). Drawn
         // FIRST so a converted curve's control points sit ON TOP of the box.
         let box_pts: Vec<Point> = g.box_corners.iter().map(|&p| map(p)).collect();
-        super::painter_bridge_gizmo::stroke_box(scene, &box_pts, &pal);
+        crate::render_loop::painter_bridge_gizmo::stroke_box(scene, &box_pts, &pal);
         // 8 scale squares — each reads as a CIRCLE when the cursor is in its rotate ring (band just outside).
         let center_sp = map(g.center);
         let inner = f64::from(g.scale_tol) * scale;
@@ -89,13 +89,13 @@ pub(super) fn draw_selection_gizmos(
             let in_rotate_ring =
                 d > inner && d <= outer && cur.distance(center_sp) > sp.distance(center_sp);
             if in_rotate_ring {
-                super::painter_bridge_gizmo::circle_handle(scene, sp, &pal);
+                crate::render_loop::painter_bridge_gizmo::circle_handle(scene, sp, &pal);
             } else {
-                super::painter_bridge_gizmo::square_handle(scene, sp, &pal);
+                crate::render_loop::painter_bridge_gizmo::square_handle(scene, sp, &pal);
             }
         }
         if let Some(d) = g.diamond {
-            super::painter_bridge_gizmo::diamond_handle(scene, map(d), &pal);
+            crate::render_loop::painter_bridge_gizmo::diamond_handle(scene, map(d), &pal);
         }
         // A CONVERTED curve ALSO edits per-anchor — draw the point editor ON TOP of the box, with the SAME
         // visual language as the stroke Curve overlay: the SELECTED anchor's tangent handles (thin stems +
@@ -106,20 +106,20 @@ pub(super) fn draw_selection_gizmos(
                 for (handle, is_out) in [(t.in_handle, false), (t.out_handle, true)] {
                     let Some(h) = handle else { continue };
                     let hp = map(h);
-                    super::painter_bridge_gizmo::stroke_open(scene, &[a, hp], &pal);
+                    crate::render_loop::painter_bridge_gizmo::stroke_open(scene, &[a, hp], &pal);
                     if t.grabbed_out == Some(is_out) {
-                        super::painter_bridge_gizmo::square_handle(scene, hp, &pal);
+                        crate::render_loop::painter_bridge_gizmo::square_handle(scene, hp, &pal);
                     } else {
-                        super::painter_bridge_gizmo::circle_handle(scene, hp, &pal);
+                        crate::render_loop::painter_bridge_gizmo::circle_handle(scene, hp, &pal);
                     }
                 }
             }
             for (i, &p) in curve.anchors.iter().enumerate() {
                 let sp = map(p);
                 if curve.selected == Some(i) {
-                    super::painter_bridge_gizmo::circle_handle(scene, sp, &pal);
+                    crate::render_loop::painter_bridge_gizmo::circle_handle(scene, sp, &pal);
                 } else {
-                    super::painter_bridge_gizmo::square_handle(scene, sp, &pal);
+                    crate::render_loop::painter_bridge_gizmo::square_handle(scene, sp, &pal);
                 }
             }
         }
@@ -130,7 +130,7 @@ pub(super) fn draw_selection_gizmos(
     // and of any OTHER overlapping gizmo's geometry (the loop above paints later gizmos over earlier ones)
     // (Enio 2026-07-04: "os retângulos centrais … devem ter o z index mais alto que as curvas e seus pontos").
     for g in &gizmos {
-        let pal = super::painter_bridge_gizmo::palette_accent(
+        let pal = crate::render_loop::painter_bridge_gizmo::palette_accent(
             hero.theme,
             accents[g.accent % accents.len()],
         );
@@ -141,6 +141,6 @@ pub(super) fn draw_selection_gizmos(
             4 => "P", // a peca COLADA — nao e operacao de conjunto, e um `n` aqui diria que e
             _ => "n",
         };
-        super::painter_bridge_gizmo::center_glyph_handle(scene, map(g.center), &pal, op_glyph);
+        crate::render_loop::painter_bridge_gizmo::center_glyph_handle(scene, map(g.center), &pal, op_glyph);
     }
 }

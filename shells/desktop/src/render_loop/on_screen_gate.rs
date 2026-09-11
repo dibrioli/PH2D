@@ -94,7 +94,7 @@ pub(crate) fn hides(world: &World, entity: Entity, own_pos: [f32; 2]) -> bool {
 
 /// ⭐ **«O processamento desta entidade está pausado por um enabler?»** — a metade de CORRER.
 ///
-/// Hoje o consumidor é o tique da animação de sprite ([`super::sprite_anim_tick`]), que é o único
+/// Hoje o consumidor é o tique da animação de sprite ([`crate::render_loop::sprite_anim_tick`]), que é o único
 /// comportamento por-entidade e por-quadro que o artista autora nesta shell. ⚠️ **A física NÃO
 /// entra**: o solver é global e vive noutra crate (`ph2d-physics-ecs`); pausá-la por-corpo é outra
 /// decisão, com outro dono.

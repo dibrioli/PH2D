@@ -1,5 +1,5 @@
 //! **A metade do gizmo de warp que fala com o DOCUMENTO** — cortada do
-//! [`super::warp_gizmo`] no teto de LOC (HR-18), pela costura que aquele arquivo já
+//! [`crate::render_loop::warp_gizmo`] no teto de LOC (HR-18), pela costura que aquele arquivo já
 //! anunciava.
 //!
 //! Lá em cima é geometria PURA: dá-se uma caixa e uma porta de param, e saem alças em
@@ -29,7 +29,7 @@ pub(crate) fn upstream_of(graph: &Graph, node: NodeId) -> Option<NodeId> {
 
 /// O nó de warp seleccionado e o que ele oferece, ou `None`.
 pub(crate) fn selected_warp(motion: &MotionState) -> Option<(NodeId, WarpGizmoSpec)> {
-    let nid = super::super::motion_bridge::params::selected_motion_node().map(NodeId)?;
+    let nid = crate::render_loop::motion_bridge::params::selected_motion_node().map(NodeId)?;
     let ty = motion.doc.graph.node(nid)?.type_id();
     Some((nid, spec_for(ty)?))
 }
@@ -99,7 +99,7 @@ pub(crate) fn param_port<'a>(
     motion: &'a MotionState,
     node: NodeId,
 ) -> impl Fn(&str) -> f32 + use<'a> {
-    move |name: &str| super::super::motion_bridge::params::param_value(motion, node, name)
+    move |name: &str| crate::render_loop::motion_bridge::params::param_value(motion, node, name)
 }
 
 /// O valor da porta `warp` deste nó — desligada lê `1`, como o `eval`.

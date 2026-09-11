@@ -32,7 +32,7 @@ fn a_plant_in_branches_mode_publishes_fewer_ribbons_than_it_has_bones() {
 
     // Quantos ossos a mesma planta tem, pela porta do próprio nó.
     let resolved =
-        super::super::motion_externals::resolved_params(&mut state, n, 0.0, &ls::MANIFEST);
+        crate::render_loop::motion_externals::resolved_params(&mut state, n, 0.0, &ls::MANIFEST);
     let sk = ls::skeleton("F", "F -> F[+F]F[-F]F", |name: &str| {
         resolved.get(name).copied().unwrap_or(0.0)
     });
@@ -170,7 +170,7 @@ fn a_big_plant_is_published_whole_and_no_second_ceiling_clips_it() {
     let built = super::ribbons_built() - before;
 
     let resolved =
-        super::super::motion_externals::resolved_params(&mut state, n, 0.0, &ls::MANIFEST);
+        crate::render_loop::motion_externals::resolved_params(&mut state, n, 0.0, &ls::MANIFEST);
     let sk = ls::skeleton("F", "F -> F[+F]F[-F]F", |name: &str| {
         resolved.get(name).copied().unwrap_or(0.0)
     });
@@ -240,7 +240,7 @@ fn no_wedge_is_left_uncovered_where_a_branch_meets_its_parent() {
     // o gate em 18 s. `624` ramos já dão `124` juntas, que é população de sobra para a lei.
     state.doc.graph.set_param(n, ls::param::GENERATIONS, 4.0);
     let resolved =
-        super::super::motion_externals::resolved_params(&mut state, n, 0.0, &ls::MANIFEST);
+        crate::render_loop::motion_externals::resolved_params(&mut state, n, 0.0, &ls::MANIFEST);
     let sk = ls::skeleton("F", "F -> F[+F]F[-F]F", |name: &str| {
         resolved.get(name).copied().unwrap_or(0.0)
     });

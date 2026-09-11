@@ -128,7 +128,7 @@ fn colher(fig: &Fig) -> Vec<([f32; 2], f32)> {
 /// O SVG: **um quadrado por elemento, do tamanho que o cook lhe deu**.
 ///
 /// ⚠️ **O desenho é próprio e a PALETA é partilhada**, que é a lei escrita no
-/// [`draw`](super::motion_bridge_tutorial_draw): o ciclo 2 desenha nuvens de pontos, o 3 marcas
+/// [`draw`](crate::render_loop::motion_bridge_tutorial_draw): o ciclo 2 desenha nuvens de pontos, o 3 marcas
 /// orientadas, e este quadrados — *duas paletas seriam dois tutoriais com duas caras*.
 fn svg(cel: &[([f32; 2], f32)]) -> String {
     let pontos: Vec<[f32; 2]> = cel.iter().map(|(p, _)| *p).collect();

@@ -1,7 +1,7 @@
 //! **The smoke scenes for a canvas AUTHORING gesture** — dragging a physics
 //! handle, not watching the solver (`PH2D_PHYSICS_SMOKE` 38).
 //!
-//! Sibling of [`crate::physics_smoke_rigs`] (which demos the rigs) — split off it
+//! Sibling of [`crate::physics::physics_smoke_rigs`] (which demos the rigs) — split off it
 //! under the shell's 600-LOC cap, and the seam is real: those scenes prove the
 //! SOLVER does the right thing, and these prove an EDIT gesture on the canvas
 //! does. The first of them is the joint-anchor point gizmo.

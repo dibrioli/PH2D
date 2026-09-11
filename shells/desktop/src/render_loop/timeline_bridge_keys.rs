@@ -1,4 +1,4 @@
-//! **A AUTORIA de uma chave** — irmão de [`super::timeline_bridge`] por teto de LOC (HR-18, 600),
+//! **A AUTORIA de uma chave** — irmão de [`crate::render_loop::timeline_bridge`] por teto de LOC (HR-18, 600),
 //! e o corte é por RESPONSABILIDADE: lá mora o que corre **a cada quadro** (o relógio, os intents,
 //! o apply, os sinais); aqui o que responde *«que chave é que este K insere, e onde?»*.
 //!

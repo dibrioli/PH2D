@@ -136,7 +136,7 @@ impl App {
         let Some(d) = self.physics.joint_draw.take() else {
             return;
         };
-        let kind = crate::render_loop::inspector_joint::kind_of(self.physics.join_kind);
+        let kind = crate::physics::joint::kind_of(self.physics.join_kind);
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
@@ -170,7 +170,7 @@ impl App {
         // prender, e o `None` abaixo diz isso com um toast em vez de criar um
         // objeto que não liga coisa alguma.
         let created = match (d.body_a, target) {
-            (Some(a), Some(b)) => crate::render_loop::inspector_joint::create_joint_at(
+            (Some(a), Some(b)) => crate::physics::joint::create_joint_at(
                 &mut gfx.sim,
                 a.to_bits(),
                 b.to_bits(),
@@ -181,12 +181,12 @@ impl App {
             // ponto é qual é a porta pura `gesture_points` — a troca escrita
             // aqui nos dois braços nasceria invertida num terceiro.
             (Some(a), None) | (None, Some(a)) => {
-                let (on_body, anchor) = crate::render_loop::inspector_joint_world::gesture_points(
+                let (on_body, anchor) = crate::physics::joint_world::gesture_points(
                     d.body_a.is_some(),
                     d.from,
                     world,
                 );
-                crate::render_loop::inspector_joint_world::create_world_pin_at(
+                crate::physics::joint_world::create_world_pin_at(
                     &mut gfx.sim,
                     a.to_bits(),
                     kind,
@@ -300,7 +300,7 @@ pub(crate) fn join_chain(
     let mut last = None;
     for pair in order.windows(2) {
         if let Some(j) =
-            crate::render_loop::inspector_joint::create_joint(sim, pair[0], pair[1], kind)
+            crate::physics::joint::create_joint(sim, pair[0], pair[1], kind)
         {
             made += 1;
             last = Some(j);

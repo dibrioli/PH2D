@@ -54,7 +54,7 @@ use ph2d_vec_scene::{VecPathId, VecScene};
 
 use crate::vec_entities::VecEntityMap;
 
-use super::ui_state_bridge::{UiMachines, request};
+use crate::render_loop::ui_state_bridge::{UiMachines, request};
 
 /// O modo de preview: se está ligado, o que restaurar, e onde o rato está.
 #[derive(Default)]

@@ -210,7 +210,7 @@ fn the_playhead_runs_free_past_the_authored_end() {
     let mut sim = ph2d_ecs::SimWorld::new();
     let mut st = TimelineState::new();
     let mut intents = Vec::new();
-    let mut ak = super::super::autokey_pass::AutokeyState::default();
+    let mut ak = crate::render_loop::autokey_pass::AutokeyState::default();
     let mut ph = Playhead::new(1.0 / 60.0);
 
     // SEM duracao autorada: um scrub alem do conteudo fica onde caiu (hoje).
@@ -337,7 +337,7 @@ fn a_clip_duration_no_longer_pins_the_playhead_with_no_stack() {
     let mut sim = ph2d_ecs::SimWorld::new();
     let mut st = TimelineState::new();
     let mut intents = Vec::new();
-    let mut ak = super::super::autokey_pass::AutokeyState::default();
+    let mut ak = crate::render_loop::autokey_pass::AutokeyState::default();
 
     // Sem pilha, sem scene_length, um override de CLIP = 2 — o estado do screenshot.
     st.doc.set_clip_length_override(0, Some(2.0));
@@ -509,7 +509,7 @@ fn run_inside_a_container_plays_the_interior_at_its_own_clock() {
         .unwrap();
     }
     let mut intents = Vec::new();
-    let mut ak = super::super::autokey_pass::AutokeyState::default();
+    let mut ak = crate::render_loop::autokey_pass::AutokeyState::default();
     let mut container_ph = Playhead::new(1.0 / 60.0);
     container_ph.pause();
     container_ph.seek(1.0); // segundo 1 LOCAL do container

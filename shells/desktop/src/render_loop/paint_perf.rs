@@ -150,7 +150,7 @@ pub(crate) fn stamp_pointer() {
 /// Irmão do [`stamp_pointer`]: aquele diz quando o evento CHEGOU, este diz quanto ele CUSTOU. Os dois
 /// juntos são a diferença entre *"o frame demora a sair"* e *"pintar é caro e ninguém estava olhando"*.
 /// Registra o custo do FOLD dos planos de relevo (a metade de CPU do `try_drive`) e se ele percorreu a
-/// tela inteira. Chamado de [`super::painter_gpu_preview`], onde a janela é resolvida — o `record_dispatch`
+/// tela inteira. Chamado de [`crate::render_loop::painter_gpu_preview`], onde a janela é resolvida — o `record_dispatch`
 /// o drena para o `FrameInfo` do quadro. No-op sem a env var.
 pub(crate) fn note_gpu_fold(ms: f32, full: bool) {
     if !on() {

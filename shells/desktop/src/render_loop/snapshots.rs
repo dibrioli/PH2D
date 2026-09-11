@@ -266,7 +266,7 @@ pub(super) fn publish(
         // lá destruía o asset. ⇒ ela sai da lista: o sítio dela é a biblioteca.
         //
         // ⭐ **E a lei é a MESMA do canvas**, não uma segunda: o
-        // [`super::off_canvas::is_unedited_recipe`] já responde *«esta entidade é peça de uma
+        // [`crate::render_loop::off_canvas::is_unedited_recipe`] já responde *«esta entidade é peça de uma
         // receita que ninguém está a editar agora?»*, e é o que o extract usa para não a desenhar.
         // Uma cópia dessa regra aqui divergiria no dia em que a edição de receita mudasse.
         //
@@ -277,7 +277,7 @@ pub(super) fn publish(
             .copied()
             .filter(|id| {
                 live.bridge.entity_for(*id).is_some_and(|bits| {
-                    super::off_canvas::is_unedited_recipe(
+                    crate::render_loop::off_canvas::is_unedited_recipe(
                         sim.world(),
                         ph2d_ecs::Entity::from_bits(bits),
                     )
@@ -375,7 +375,7 @@ pub(super) fn publish(
     // quantas cópias seguem, e a saída. ⚠️ Publicada como o `grid_view` e pela mesma razão: quem
     // sabe que há uma receita aberta é o MUNDO, e a crate do chrome não o alcança. `None` fecha a
     // barra, e é o caminho de sempre.
-    hero.set_prefab_edit(super::master_editing::open_view(sim));
+    hero.set_prefab_edit(crate::render_loop::master_editing::open_view(sim));
     // M14.4g Telemetry Phase A: publish real stats. Sprite
     // and entity counts come from PresentWorld (the source of
     // truth for "what we shipped to the GPU this frame"); fps
@@ -621,7 +621,7 @@ pub(super) fn publish(
     // Poda ANTES de construir as views: só a morte de uma entidade tira alguém da
     // seleção (ver `gizmo_prune` — o atalho "sem view = morreu" expulsava as
     // entidades vetoriais, que não têm `Sprite`).
-    super::gizmo_prune::prune_dead(&mut hero.gizmo, sim);
+    crate::render_loop::gizmo_prune::prune_dead(&mut hero.gizmo, sim);
     // Onda 2: rebuild the views every frame, from the pruned selection. An entity
     // with no `Sprite` simply has no view — it stays selected and paints no gizmo.
     hero.gizmo.view = hero
@@ -630,7 +630,7 @@ pub(super) fn publish(
         .and_then(|bits| build_view(bits, sim, present));
     // **O NÚMERO do arrasto** (C3) — ao lado da view, e pelo mesmo motivo: os dois descrevem o
     // gesto em curso e são reconstruídos do mundo a cada quadro. Ver `gizmo_readout`.
-    super::gizmo_readout::publish(hero, sim, camera, window_size);
+    crate::render_loop::gizmo_readout::publish(hero, sim, camera, window_size);
     // The POINT gizmo — every joint's anchors. A joint has a `Transform` but no
     // box (so `build_view` returns None for it); these are the handles it gets,
     // and they are NOT selection-gated: a joint has no sprite to pick, so a
@@ -641,7 +641,7 @@ pub(super) fn publish(
     // ⚠️ `join_draw_armed` chega aqui pela SEGUNDA vez de propósito: ele pinta o
     // botão Pressed no §11 e torna estas alças inertes, e é o MESMO fato — durante
     // o gesto de desenhar, as âncoras já postas ficam à vista e fora de alcance.
-    hero.gizmo.point_view = super::point_gizmo::build_point_view(
+    hero.gizmo.point_view = crate::render_loop::point_gizmo::build_point_view(
         joint_anchor_handles,
         camera,
         window_size,
@@ -1038,25 +1038,25 @@ pub(super) fn publish(
     });
     let sel = &inspector_selection; // W3 §7/§9 snapshots (§7 sibling module)
     let inspector_ordering = hero.gizmo.selection.and_then(|b| {
-        super::inspector_ordering::build_ordering_info(sim.world(), b, sel, selected_count)
+        crate::render_loop::inspector_ordering::build_ordering_info(sim.world(), b, sel, selected_count)
     });
     let inspector_sampling = hero.gizmo.selection.and_then(|b| {
-        super::inspector_ordering::build_sampling_info(sim.world(), b, sel, selected_count)
+        crate::render_loop::inspector_ordering::build_sampling_info(sim.world(), b, sel, selected_count)
     });
     let inspector_blend = hero.gizmo.selection.and_then(|b| {
-        super::inspector_ordering::build_blend_info(sim.world(), b, sel, selected_count)
+        crate::render_loop::inspector_ordering::build_blend_info(sim.world(), b, sel, selected_count)
     });
     // §5 9-Slice. ⚠️ Publicado para TODA entidade digna de Inspector, com ou sem o componente:
     // é o snapshot que diz `present: false`, e é isso que faz a seção mostrar o «+ Add 9-Slice».
     // Publicar só quando o componente existe faria a seção aparecer depois de a feature estar
     // ligada — ou seja, nunca, porque não haveria por onde ligá-la.
     let inspector_slice = hero.gizmo.selection.and_then(|b| {
-        super::inspector_slice::build_slice_info(sim.world(), b, sel, selected_count)
+        crate::render_loop::inspector_slice::build_slice_info(sim.world(), b, sel, selected_count)
     });
     // §12 Sockets / Named Anchors (ADR-0072). Publicado para toda entidade digna de Inspector —
     // é o snapshot que diz `present: false`, e é isso que faz a seção mostrar o «+ Add Anchor».
     let inspector_anchor = hero.gizmo.selection.and_then(|b| {
-        super::inspector_anchor::build_anchor_info(
+        crate::render_loop::inspector_anchor::build_anchor_info(
             sim.world(),
             b,
             sel,
@@ -1086,7 +1086,7 @@ pub(super) fn publish(
     // ⚠️ **`None` quando o selecionado não é peça de cópia nenhuma**, e aí a seção não existe: é a
     // lei da F3 (o Inspector mostra o que o objeto TEM). ⛔ Ao contrário da §5 e da §12, ela NÃO se
     // publica «vazia com um +»: não há gesto de anexar uma instância — ela nasce de *Instantiate*.
-    let inspector_instance = super::inspector_instance::build_instance_info(
+    let inspector_instance = crate::render_loop::inspector_instance::build_instance_info(
         sim,
         component_registry,
         hero.gizmo.selection,
@@ -1095,7 +1095,7 @@ pub(super) fn publish(
     // que é»*, lido das chaves do nome. ⚠️ **Ele NÃO depende de ser cópia**: é exactamente o caso
     // que faltava, e era por isso que reescrever as chaves não mudava nada no Inspector.
     let inspector_properties =
-        super::inspector_properties::build_properties_info(sim, hero.gizmo.selection);
+        crate::render_loop::inspector_properties::build_properties_info(sim, hero.gizmo.selection);
     // W3: the Join gesture needs exactly TWO bodies, and only the shell can
     // see the selection — the panel is handed one entity at a time. Asked once
     // here, so the painter (which offers the button) and the event handler
@@ -1161,7 +1161,7 @@ pub(super) fn publish(
     });
 
     let inspector_physics = hero.gizmo.selection.and_then(|b| {
-        super::inspector_physics::build_physics_info(
+        crate::physics::physics::build_physics_info(
             sim.world(),
             b,
             join_count,
@@ -1186,12 +1186,12 @@ pub(super) fn publish(
             }
             _ => 0,
         };
-        super::inspector_joint::build_joint_info(sim, b, pick_armed, joint_paste_targets)
+        crate::physics::joint::build_joint_info(sim, b, pick_armed, joint_paste_targets)
     });
     // §13 Pulley Wheel (W-Pulley W1) — a irmã da §12, e a seleção é a MESMA
     // pergunta: uma roldana é uma entidade, então ela é o objeto selecionado.
     let inspector_wheel = hero.gizmo.selection.and_then(|b| {
-        super::inspector_joint_wheel::build_wheel_info(
+        crate::physics::joint_wheel::build_wheel_info(
             sim,
             b,
             wheel_body_pick == Some(b),
@@ -1207,7 +1207,7 @@ pub(super) fn publish(
     let recorded_run_seconds = (player_tape_ticks as f64 * fixed_dt) as f32;
     let discarded_run_seconds = (discarded_run_ticks as f64 * fixed_dt) as f32;
     let inspector_player = hero.gizmo.selection.and_then(|b| {
-        super::inspector_player::build_player_info(
+        ph2d_app_physics::inspector::player::build_player_info(
             sim,
             b,
             recorded_run_seconds,
@@ -1219,17 +1219,17 @@ pub(super) fn publish(
     let inspector_anim = hero
         .gizmo
         .selection
-        .and_then(|b| super::inspector_anim::build_anim_info(sim.world(), b, selected_count));
+        .and_then(|b| crate::render_loop::inspector_anim::build_anim_info(sim.world(), b, selected_count));
     // ⭐ A secção TIMERS — `None` para quem não tem o componente (ADR-0166).
     let inspector_timer = hero
         .gizmo
         .selection
-        .and_then(|b| super::inspector_timer::build_timer_info(sim.world(), b, selected_count));
+        .and_then(|b| crate::render_loop::inspector_timer::build_timer_info(sim.world(), b, selected_count));
     // ⭐ A secção SIGNAL ACTIONS — `None` para quem não tem o componente (ADR-0166).
     let inspector_action = hero
         .gizmo
         .selection
-        .and_then(|b| super::inspector_action::build_action_info(sim.world(), b, selected_count));
+        .and_then(|b| crate::render_loop::inspector_action::build_action_info(sim.world(), b, selected_count));
     // ⭐ A secção AUDIO — `None` para quem não tem a fonte NEM as orelhas (ADR-0166).
     //
     // ⚠️ **Ela pede o mundo em MUTÁVEL**, e é a única da família: as três coisas que ela deriva —
@@ -1239,22 +1239,22 @@ pub(super) fn publish(
     let inspector_audio = hero
         .gizmo
         .selection
-        .and_then(|b| super::inspector_audio::build_audio_info(sim.world_mut(), b, selected_count));
+        .and_then(|b| crate::render_loop::inspector_audio::build_audio_info(sim.world_mut(), b, selected_count));
     // ⭐ A secção CAMERA — `None` para quem não tem `GameCamera` (ADR-0166).
     //
     // ⚠️ **Ela pede a PROPORÇÃO da janela**, e é a única da família: o aviso *«a cerca é mais
     // estreita que a vista»* é geometria do ECRÃ, e não dos quatro números da cerca.
     let inspector_camera = hero.gizmo.selection.and_then(|b| {
-        super::inspector_camera::build_camera_info(
+        crate::render_loop::inspector_camera::build_camera_info(
             sim.world_mut(),
             b,
             selected_count,
-            super::camera_2d::aspect_of(window_size),
+            crate::render_loop::camera_2d::aspect_of(window_size),
             game_camera_preview,
         )
     });
     let inspector_visibility_section = hero.gizmo.selection.and_then(|b| {
-        super::inspector_visibility::build_visibility_section_info(
+        crate::render_loop::inspector_visibility::build_visibility_section_info(
             sim.world(),
             b,
             sel,

@@ -15,7 +15,7 @@
 //!
 //! ⛔ **E a sonda que eu escrevi para o diagnosticar MENTIU** porque marchava na CPU antes de
 //! perguntar: ***uma sonda que escolhe a rota mede a rota que ela escolheu.*** É por isso que a
-//! montagem da cena vive em [`fx`](super::warp_gizmo_fixtures) **sem marcha nenhuma**, e é este
+//! montagem da cena vive em [`fx`](crate::render_loop::warp_gizmo_fixtures) **sem marcha nenhuma**, e é este
 //! ficheiro que entrega o quadro ao device.
 //!
 //! ⚠️ **`#[ignore]`, e a razão é o adapter** (CLAUDE.md §5.0: *skip gracioso não é verde*) — sem

@@ -138,7 +138,7 @@ pub(crate) fn apply(
         // apagaria a forma, o offset e o material que o artista escolheu — o
         // gerador desfazendo trabalho no clique que deveria acrescentar.
         if sim.world().get::<RigidBody>(e).is_none() {
-            crate::render_loop::inspector_physics::apply_physics_edit(
+            crate::physics::physics::apply_physics_edit(
                 sim,
                 e.to_bits(),
                 ph2d_editor::PhysicsFieldEdit::Add,
@@ -159,7 +159,7 @@ pub(crate) fn apply(
         // **A = o PAI.** O filho pende do pai, e é o lado A que o pivô segue
         // (`sync_joint_pivots`, W-AnchorFollow) — invertido, o dot de um braço
         // seguiria a mão.
-        if let Some(j) = crate::render_loop::inspector_joint::create_joint(
+        if let Some(j) = crate::physics::joint::create_joint(
             sim,
             parent.to_bits(),
             child.to_bits(),

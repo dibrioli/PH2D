@@ -1,4 +1,4 @@
-//! Os testes do gizmo da §12 — irmão de [`super::anchor_gizmo`] por assunto.
+//! Os testes do gizmo da §12 — irmão de [`crate::render_loop::anchor_gizmo`] por assunto.
 //!
 //! ⚠️ **O que eles provam é a classe de erro que gizmo tem**, e nenhuma delas é de compilação:
 //! a alça que agarra a vizinha · o arrasto que anda ao contrário · o canto que arrasta o canto

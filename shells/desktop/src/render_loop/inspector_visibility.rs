@@ -16,7 +16,7 @@ use ph2d_ecs::{
 };
 use ph2d_editor::{InspectorVisibilityMixed, InspectorVisibilitySectionInfo, VisibilityFieldEdit};
 
-use super::inspector_ordering::{queue_remove, queue_set};
+use crate::render_loop::inspector_ordering::{queue_remove, queue_set};
 
 fn clip_mode_tag(m: ClipMode) -> u8 {
     match m {

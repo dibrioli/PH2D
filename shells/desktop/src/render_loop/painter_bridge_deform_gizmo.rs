@@ -2,7 +2,7 @@
 //! Transform temperament active, draws the whole-region bounding box: an oriented box with 8 scale squares
 //! (corners + edge mids) + a centre-move square. A square reads as a **circle** when the cursor is in its
 //! rotate ring (the rotate cue), exactly like the Sprite / selection gizmos. Reuses the shared
-//! [`super::painter_bridge_gizmo`] helpers + the sprite→screen affine.
+//! [`crate::render_loop::painter_bridge_gizmo`] helpers + the sprite→screen affine.
 
 use ph2d_ecs::SimWorld;
 use ph2d_editor::HeroScreen;
@@ -39,7 +39,7 @@ pub(super) fn draw_deform_gizmo(
     };
     // A grelha desta sprite (ADR-0164 F1 passo 6) — ausente = uma célula.
     let sprite_grid = sim.world().get::<ph2d_ecs::SpriteGrid>(entity).copied();
-    let affine = super::bgremoval_preview::sprite_image_to_screen_affine(
+    let affine = crate::render_loop::bgremoval_preview::sprite_image_to_screen_affine(
         iw,
         ih,
         tr,
@@ -56,30 +56,30 @@ pub(super) fn draw_deform_gizmo(
     };
     let cur = Point::new(f64::from(cursor.0), f64::from(cursor.1));
     // A single fluorescent accent (the first) — there's only ever one Transform gizmo.
-    let accents = super::painter_bridge_gizmo::GIZMO_ACCENTS;
-    let pal = super::painter_bridge_gizmo::palette_accent(hero.theme, accents[0]);
+    let accents = crate::render_loop::painter_bridge_gizmo::GIZMO_ACCENTS;
+    let pal = crate::render_loop::painter_bridge_gizmo::palette_accent(hero.theme, accents[0]);
     let scene = vector_scene.inner_mut();
     // Warp mesh: draw the clean 4×4 CURVED control lines, then a draggable square handle at each COARSE
     // control point (only those are grabbable).
     if let Some(lines) = &g.mesh_lines {
         for line in lines {
             let pts: Vec<Point> = line.iter().map(|&p| map(p)).collect();
-            super::painter_bridge_gizmo::stroke_open(scene, &pts, &pal);
+            crate::render_loop::painter_bridge_gizmo::stroke_open(scene, &pts, &pal);
         }
         if let Some(handles) = &g.mesh_handles {
             for &p in handles {
-                super::painter_bridge_gizmo::square_handle(scene, map(p), &pal);
+                crate::render_loop::painter_bridge_gizmo::square_handle(scene, map(p), &pal);
             }
         }
         return;
     }
     // Oriented transform box / distort quad (closed).
     let box_pts: Vec<Point> = g.box_corners.iter().map(|&p| map(p)).collect();
-    super::painter_bridge_gizmo::stroke_box(scene, &box_pts, &pal);
+    crate::render_loop::painter_bridge_gizmo::stroke_box(scene, &box_pts, &pal);
     if g.corner_only {
         // Distort: only the 4 corners are draggable (perspective) — no edges / rotate / centre.
         for &c in &g.box_corners {
-            super::painter_bridge_gizmo::square_handle(scene, map(c), &pal);
+            crate::render_loop::painter_bridge_gizmo::square_handle(scene, map(c), &pal);
         }
         return;
     }
@@ -93,11 +93,11 @@ pub(super) fn draw_deform_gizmo(
         let in_rotate_ring =
             d > inner && d <= outer && cur.distance(center_sp) > sp.distance(center_sp);
         if in_rotate_ring {
-            super::painter_bridge_gizmo::circle_handle(scene, sp, &pal);
+            crate::render_loop::painter_bridge_gizmo::circle_handle(scene, sp, &pal);
         } else {
-            super::painter_bridge_gizmo::square_handle(scene, sp, &pal);
+            crate::render_loop::painter_bridge_gizmo::square_handle(scene, sp, &pal);
         }
     }
     // Centre-move square.
-    super::painter_bridge_gizmo::square_handle(scene, center_sp, &pal);
+    crate::render_loop::painter_bridge_gizmo::square_handle(scene, center_sp, &pal);
 }

@@ -185,3 +185,22 @@ pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
     key: "physics",
     routers: &[],
 };
+
+// ─────────────────────────────────────────────────────────────────────────
+// **O que a Fase B trouxe de `shells/desktop/src/physics/`.**
+// ─────────────────────────────────────────────────────────────────────────
+pub mod anchor_side;
+pub mod body_fk;
+pub mod body_grab;
+pub mod body_pose;
+pub mod physics_smoke_part;
+pub mod physics_smoke_pulley_comp;
+pub mod physics_smoke_pulley_diff;
+pub mod physics_smoke_pulley_tackle;
+pub mod physics_smoke_rig;
+pub mod run_stash;
+
+// As três metades que vieram de `render_loop/`.
+pub mod bridge;
+pub mod inspector;
+pub mod overlay;

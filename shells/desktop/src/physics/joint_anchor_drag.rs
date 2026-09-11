@@ -36,8 +36,8 @@ use crate::App;
 use ph2d_editor::screens::hero::JointFieldEdit;
 use ph2d_physics_ecs::PhysicsJoint;
 
-use crate::render_loop::inspector_joint::joint_with_edit;
-use crate::render_loop::point_gizmo::anchor_side;
+use crate::physics::joint::joint_with_edit;
+use ph2d_app_physics::anchor_side::anchor_side;
 
 /// A point-handle drag in flight — an anchor, a limit wall, or a length ring.
 #[derive(Copy, Clone, Debug)]
@@ -63,7 +63,7 @@ pub(crate) struct JointAnchorDrag {
 /// unused components. A limit is an angle, so its grab offset is an angle; a
 /// length is a radius, so its grab offset is a radius.
 #[derive(Copy, Clone, Debug)]
-enum Grab {
+pub enum Grab {
     /// Anchor: the world vector from the cursor to the anchor.
     World([f32; 2]),
     /// Limit wall: the angle (rad) from the cursor's bearing to the wall's.
@@ -208,7 +208,7 @@ fn bearing(from: [f32; 2], p: [f32; 2]) -> f32 {
     libm::atan2f(p[1] - from[1], p[0] - from[0])
 }
 
-fn distance(a: [f32; 2], b: [f32; 2]) -> f32 {
+pub(crate) fn distance(a: [f32; 2], b: [f32; 2]) -> f32 {
     (b[0] - a[0]).hypot(b[1] - a[1])
 }
 
@@ -424,7 +424,7 @@ fn write_rail_end(
 ///
 /// `raw` arrives in the COMPONENT's own unit, whichever that is; the conversion
 /// to what the §12 row shows happens here, through
-/// [`crate::render_loop::inspector_joint::limit_out`] — the same function the
+/// [`crate::physics::joint::limit_out`] — the same function the
 /// snapshot uses. Three decisions live here.
 ///
 /// ⚠️ **The dragged wall is UNWRAPPED against the value it is replacing, and
@@ -468,7 +468,7 @@ fn write_limit(sim: &mut SimWorld, joint: ph2d_ecs::Entity, kind: PointHandleKin
     };
     // Out through the SAME door the §12 row reads its value from, so a posed
     // limit and a typed one cannot mean different things.
-    let ui = crate::render_loop::inspector_joint::limit_out(current.kind, walled);
+    let ui = crate::physics::joint::limit_out(current.kind, walled);
     let edit = if matches!(kind, PointHandleKind::LimitMin) {
         JointFieldEdit::LimitMin(ui)
     } else {

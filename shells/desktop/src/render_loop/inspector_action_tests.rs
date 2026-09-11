@@ -1,4 +1,4 @@
-//! **Os gates da costura da secção SIGNAL ACTIONS** — irmão de [`super::inspector_action`].
+//! **Os gates da costura da secção SIGNAL ACTIONS** — irmão de [`crate::render_loop::inspector_action`].
 
 use super::*;
 use ph2d_ecs::Transform;

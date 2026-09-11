@@ -1,7 +1,7 @@
 //! **O CACHE de geometria** que as três rotas de vetor vivo partilham — o `source.shape`
 //! paramétrico, os glifos do `source.text` e os desenhos do `source.object`.
 //!
-//! Irmão do [`super::motion_shape_gen`], cortado pelo teto de 600 LOC da shell e por
+//! Irmão do [`crate::render_loop::motion_shape_gen`], cortado pelo teto de 600 LOC da shell e por
 //! ASSUNTO: lá mora *como uma forma vira geometria*, aqui mora *onde ela fica e quando é
 //! largada* — que é a pergunta que um laço de jogo a correr horas faz.
 
@@ -117,7 +117,7 @@ impl VecPathStore {
 
     /// **Esquece as geometrias COM CHAVE que ninguém pediu neste quadro** e devolve os
     /// handles largados. Chamada uma vez por quadro, depois de todas as membranas
-    /// publicarem ([`super::motion_externals::publish_all`]).
+    /// publicarem ([`crate::render_loop::motion_externals::publish_all`]).
     ///
     /// Devolve os handles para quem tem caches por-handle os poder libertar; hoje quem
     /// consome é o [`crate::motion::motion_shape_bake`], que segura uma TEXTURA por handle.

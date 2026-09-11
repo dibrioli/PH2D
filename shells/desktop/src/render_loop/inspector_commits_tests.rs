@@ -1,4 +1,4 @@
-//! **Os gates dos CANTOS por-índice** — irmão de [`super::inspector_commits`] pelo cap HR-18 (600):
+//! **Os gates dos CANTOS por-índice** — irmão de [`crate::render_loop::inspector_commits`] pelo cap HR-18 (600):
 //! o módulo de teste levava aquele ficheiro a 622. *Cortar é a cura.*
 
 #[cfg(test)]

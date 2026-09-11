@@ -32,7 +32,7 @@ use ph2d_render::Camera2d;
 
 use ph2d_editor::gizmo::{PointGizmoView, PointHandle, PointHandleKind};
 
-use super::physics_overlay_joint_glyphs::{length_handle_world, limit_end_screen};
+use ph2d_app_physics::overlay::joint_glyphs::{length_handle_world, limit_end_screen};
 
 /// Every anchor that should be grabbable this frame, sorted by `(entity, side)`.
 ///
@@ -358,16 +358,8 @@ pub(crate) fn resolve_anchor_hit(
     Some((Entity::from_bits(h.key), h.kind))
 }
 
-/// The [`JointSide`] a handle kind authors, or `None` for the parameter grips
-/// (they write the joint COMPONENT, not an anchor).
-#[must_use]
-pub(crate) fn anchor_side(kind: PointHandleKind) -> Option<JointSide> {
-    match kind {
-        PointHandleKind::AnchorA => Some(JointSide::A),
-        PointHandleKind::AnchorB => Some(JointSide::B),
-        _ => None,
-    }
-}
+// ⚠️ O `anchor_side` mudou-se para `ph2d_app_physics::anchor_side` (W2/L2 Fase B): ele é uma
+// lei de JUNTA entre dois tipos de crate de módulo, e não perguntava nada ao gizmo.
 
 #[cfg(test)]
 #[path = "point_gizmo_tests.rs"]

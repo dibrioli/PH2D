@@ -1,6 +1,6 @@
 //! **O commit da §2 Sprite** — o que uma [`SpriteFieldEdit`] escreve no componente.
 //!
-//! ⚠️ **Irmão de [`super::inspector_commits`] por CAP de LOC** (HR-18, 600 no shell): aquele
+//! ⚠️ **Irmão de [`crate::render_loop::inspector_commits`] por CAP de LOC** (HR-18, 600 no shell): aquele
 //! ficheiro é o **roteador** de todos os commits do Inspector e cresce uma família por seção — a
 //! §11 Animation levou-o a 611 em 2026-08-23. A regra da casa é cortar para o irmão, nunca
 //! declarar exceção, e o que sai é o que não é roteamento.
@@ -222,7 +222,7 @@ const CORNER_TINT_TYPE: &str = "ph2d::ecs::SpriteCornerTint";
 
 /// ⭐ **A família da SPRITE do commit do Inspector** — devolve `true` se o título ficou sujo.
 ///
-/// ⚠️ Vive aqui e não em [`super::inspector_commits`] porque é aqui que mora o que uma sprite
+/// ⚠️ Vive aqui e não em [`crate::render_loop::inspector_commits`] porque é aqui que mora o que uma sprite
 /// editável É (o [`SpriteEditables`], os quatro componentes em que ela foi cortada na F1.6) — e
 /// porque aquele ficheiro estava no teto de 600 LOC. *O corte é por assunto.*
 pub(super) fn apply_sprite_edits(

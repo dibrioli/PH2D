@@ -106,7 +106,7 @@ fn narrowing_the_part_lets_the_wide_key_through() {
     ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let bit = entity(&mut sim, "Wide Bit");
     // O MESMO edit que o campo do painel emite.
-    crate::render_loop::inspector_physics_tests::apply(
+    crate::physics::physics_tests::apply(
         &mut sim,
         bit,
         ph2d_editor::PhysicsFieldEdit::HalfX(BIT_HALF_X[1]),
@@ -131,7 +131,7 @@ fn removing_the_part_also_lets_the_wide_key_through() {
     build_keys(sim.world_mut());
     ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let bit = entity(&mut sim, "Wide Bit");
-    crate::render_loop::inspector_physics_tests::apply(
+    crate::physics::physics_tests::apply(
         &mut sim,
         bit,
         ph2d_editor::PhysicsFieldEdit::Remove,

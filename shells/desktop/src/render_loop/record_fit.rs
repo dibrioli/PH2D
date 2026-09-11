@@ -8,7 +8,7 @@
 //! ⚠️ **The physics BAKE used to share this and no longer does.** A fit
 //! RESAMPLES the motion, and a resampled bounce is a rounded one — the smokes
 //! rejected it (Enio: "sem simplificação; busque a perfeição"), so the bake now
-//! writes one key per tick with no fit at all (`super::physics_bake` module
+//! writes one key per tick with no fit at all (`crate::physics::bake` module
 //! docs). The record keeps this because a *hand* gesture is noisy and dense with
 //! tremor the animator does not want as keys; a solver is neither. The two
 //! inputs turned out to want opposite treatments, which is why the calibration

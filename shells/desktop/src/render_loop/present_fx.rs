@@ -1,4 +1,4 @@
-//! ⭐⭐ **OS PASSES DE LUZ do quadro** — irmão por ASSUNTO do [`super::present`], e pelo tecto de
+//! ⭐⭐ **OS PASSES DE LUZ do quadro** — irmão por ASSUNTO do [`crate::render_loop::present`], e pelo tecto de
 //! 600 LOC do shell (HR-18).
 //!
 //! Duas famílias, a MESMA máquina e listas diferentes: a **sprite emissiva** (a §8 do Sprite
@@ -16,7 +16,7 @@
 use ph2d_host::WindowSize;
 
 /// ⚠️ **A engrenagem viaja numa struct, e não em onze argumentos** — o mesmo motivo do
-/// [`super::present_bands::BandGear`]: os dois passes usam exactamente as mesmas peças, e passá-las
+/// [`crate::render_loop::present_bands::BandGear`]: os dois passes usam exactamente as mesmas peças, e passá-las
 /// soltas faria duas listas que divergiriam na primeira peça nova.
 pub(super) struct FxGear<'a> {
     pub renderer: &'a mut ph2d_render::SpriteRenderer,
@@ -48,7 +48,7 @@ pub(super) fn run(gpu: &ph2d_gpu::GpuContext, g: FxGear<'_>) {
     //
     // ⚠️ Sem nenhuma sprite a emitir a lista sai VAZIA e este bloco não toca a GPU: o
     //   quadro é byte-idêntico ao de antes desta feature existir (há gate).
-    super::sprite_emissive::collect(g.sim, g.present, g.instances);
+    crate::render_loop::sprite_emissive::collect(g.sim, g.present, g.instances);
     if !g.instances.is_empty() {
         g.renderer.render_instances_only(
             g.motion_fx.rt_view(),
@@ -63,7 +63,7 @@ pub(super) fn run(gpu: &ph2d_gpu::GpuContext, g: FxGear<'_>) {
         g.motion_fx.bloom_over(
             gpu,
             g.game_rt.view(),
-            &super::sprite_emissive::bloom_params(),
+            &crate::render_loop::sprite_emissive::bloom_params(),
             // ⚠️ **Sem rampa, e é a mesma razão dos outros campos deste sítio**: a
             // rampa é autoria de um NÓ, e um emissor de sprite não tem nó nenhum.
             None,
@@ -93,19 +93,19 @@ pub(super) fn run(gpu: &ph2d_gpu::GpuContext, g: FxGear<'_>) {
     // ⚠️ **A LISTA DO GLOW É A CAMADA MOTION, e não o passe de sprites**
     // (bug do Enio, 2026-08-20: *"Glow não funciona com shape"*, e a
     // ordem dele depois: *"tudo deve brilhar"*). Ver
-    // [`super::motion_glow_layer`] — a metade vetorial viva entra aqui
+    // [`crate::render_loop::motion_glow_layer`] — a metade vetorial viva entra aqui
     // pelo TILE assado, porque um halo é imediatamente reduzido por seis
     // níveis de mip e nunca precisou de nitidez de tela.
-    let glow_layer = super::motion_glow_layer::layer_instances(
+    let glow_layer = crate::render_loop::motion_glow_layer::layer_instances(
         &g.motion.pump.instances,
         &g.motion.pump.vector_instances,
         &g.motion.object_bake,
         &g.motion.shape_bake,
     );
     // ⚠️ **`PH2D_GLOW_DIAG=1`** — de que é feita a camada, quando ela muda.
-    // Ver o doc de [`super::motion_glow_layer::diag`]: «o halo não
+    // Ver o doc de [`crate::render_loop::motion_glow_layer::diag`]: «o halo não
     // aparece» tem cinco causas indistinguíveis a olho.
-    super::motion_glow_layer::diag(
+    crate::render_loop::motion_glow_layer::diag(
         &g.motion.pump.instances,
         &g.motion.pump.vector_instances,
         &g.motion.object_bake,
@@ -138,9 +138,9 @@ pub(super) fn run(gpu: &ph2d_gpu::GpuContext, g: FxGear<'_>) {
         // é o custo que o caminho de sempre não pode pagar.
         let dirt_cooked = |id| g.renderer.cooked_texture_id(id);
         let dirt = ph2d_node_fx_glow::dirt::source(&g.motion.doc.graph).and_then(|n| {
-            super::motion_glow_dirt::resolve(
+            crate::render_loop::motion_glow_dirt::resolve(
                 g.sim,
-                super::motion_bridge::Appearance {
+                crate::render_loop::motion_bridge::Appearance {
                     atlas: g.renderer.atlas(),
                     cooked: &dirt_cooked,
                 },
@@ -152,11 +152,11 @@ pub(super) fn run(gpu: &ph2d_gpu::GpuContext, g: FxGear<'_>) {
                 // documenta cinco). Ele é legítimo — um nome pode ser escrito antes
                 // de a sprite existir —, então não é erro; mas ficar mudo é o que
                 // torna *"escrevi o nome e não aconteceu nada"* indiagnosticável.
-                super::motion_glow_dirt::diag_unresolved(&n);
+                crate::render_loop::motion_glow_dirt::diag_unresolved(&n);
                 None
             })
         });
-        let dirt = dirt.and_then(|r| super::motion_glow_dirt::mask(r, g.renderer));
+        let dirt = dirt.and_then(|r| crate::render_loop::motion_glow_dirt::mask(r, g.renderer));
         g.motion_fx.bloom_over(
             gpu,
             g.game_rt.view(),

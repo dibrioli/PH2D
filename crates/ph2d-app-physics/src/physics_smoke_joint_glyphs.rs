@@ -1,7 +1,7 @@
 //! **A cena do VOCABULÁRIO visual dos joints** (`PH2D_PHYSICS_SMOKE=43`, W-J1).
 //!
 //! Irmã de [`crate::physics_smoke_authoring`] (que demonstra um GESTO de
-//! autoria) e de [`crate::physics_smoke_rigs`] (que demonstra o SOLVER): esta
+//! autoria) e de [`crate::physics::physics_smoke_rigs`] (que demonstra o SOLVER): esta
 //! demonstra o **desenho** — o que um joint diz de si mesmo no canvas. Até esta
 //! wave os quatro tipos desenhavam a mesma figura, e tudo que o artista autorou
 //! (tipo, alcance, comprimento, folga) era número cego no §12.

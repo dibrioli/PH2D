@@ -1,11 +1,11 @@
-//! **AS LINHAS DA GRELHA** sobre a folha aberta — irmão do [`super::sheet_overlay`], que decora a
+//! **AS LINHAS DA GRELHA** sobre a folha aberta — irmão do [`crate::render_loop::sheet_overlay`], que decora a
 //! folha-OBJETO. Este decora a grelha de UMA sprite.
 //!
 //! Enio, 2026-08-23: *«você digita 8 quadros e não vê onde eles começam ou terminam»*.
 //!
 //! # ⚠️ As células fantasma sozinhas não respondem à pergunta
 //!
-//! O [`super::sim_extract_sheet`] põe a arte de todas as células no ecrã, e isso mostra a tira
+//! O [`crate::render_loop::sim_extract_sheet`] põe a arte de todas as células no ecrã, e isso mostra a tira
 //! inteira — mas **não mostra onde ela é cortada**. Numa folha cuja arte encosta de célula a
 //! célula (um ciclo de caminhada, uma explosão), a imagem aberta lê-se como um desenho contínuo, e
 //! o artista continua sem saber se o `hframes` está certo. *A pergunta é sobre os CORTES, e um
@@ -39,7 +39,7 @@ const LIVE_PX: f64 = 2.0;
 /// Desenha a grelha da sprite cuja folha está aberta.
 ///
 /// `px_per_world` é a escala do afim da câmara — é ela que traz as constantes de TELA acima para o
-/// espaço em que a cena é montada, como no [`super::sheet_overlay`].
+/// espaço em que a cena é montada, como no [`crate::render_loop::sheet_overlay`].
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn draw(
     sim: &ph2d_ecs::SimWorld,
@@ -166,7 +166,7 @@ pub(crate) fn lattice(
     pixels_per_meter: f32,
     unfolded: bool,
 ) -> Option<Lattice> {
-    let cells = super::sim_extract_sheet::cell_count(grid)?;
+    let cells = crate::render_loop::sim_extract_sheet::cell_count(grid)?;
     let (hf, vf) = (grid.hframes.max(1), grid.vframes.max(1));
     let (cell_w, cell_h) = (f64::from(spr.size[0]), f64::from(spr.size[1]));
     if cell_w <= 0.0 || cell_h <= 0.0 {
@@ -261,7 +261,7 @@ pub(crate) fn gizmo_box(
     }
 }
 
-/// Traço, pela mesma porta do irmão [`super::sheet_overlay`].
+/// Traço, pela mesma porta do irmão [`crate::render_loop::sheet_overlay`].
 fn stroke(scene: &mut VectorScene, path: &BezPath, xf: Affine, color: Color, width: f64) {
     scene.inner_mut().stroke(
         &Stroke::new(width.max(f64::EPSILON)),

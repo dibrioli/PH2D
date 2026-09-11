@@ -1,4 +1,4 @@
-//! **Os gates da costura da §11** — irmão de [`super::inspector_anim`] por CAP de LOC.
+//! **Os gates da costura da §11** — irmão de [`crate::render_loop::inspector_anim`] por CAP de LOC.
 //!
 //! ⚠️ **Só a shell vê as duas metades**: o painel é chrome e não depende do motor, e a lei da
 //! animação vive no `ph2d-ecs`. É aqui que se prova que o snapshot diz o que a cena tem e que o

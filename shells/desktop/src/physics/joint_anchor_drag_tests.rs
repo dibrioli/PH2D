@@ -217,7 +217,7 @@ fn the_length_ring_writes_rest_for_a_spring_and_max_for_a_rope() {
 #[test]
 fn every_kind_that_offers_a_length_ring_can_have_it_dragged() {
     for tag in 0..u8::try_from(ph2d_editor::ids::INSP_JOINT_KIND.len()).expect("cabe") {
-        let kind = crate::render_loop::inspector_joint::kind_of(tag);
+        let kind = crate::physics::joint::kind_of(tag);
         let Some(field) = kind.length_field() else {
             continue;
         };

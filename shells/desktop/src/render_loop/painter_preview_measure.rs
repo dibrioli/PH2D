@@ -7,8 +7,8 @@
 //!
 //! Todas `#[ignore]`: precisam de adapter, e rodam com `--release --ignored`.
 
-use super::painter_preview_handoff_tests::app_frame;
-use super::painter_preview_pipeline_tests::{cp, impasto_tool};
+use crate::render_loop::painter_preview_handoff_tests::app_frame;
+use crate::render_loop::painter_preview_pipeline_tests::{cp, impasto_tool};
 use crate::app_state::PainterPreviewGpu;
 use ph2d_editor::tool::{CanvasPaintTool, PointerPhase};
 use ph2d_tool_painter::PainterTool;

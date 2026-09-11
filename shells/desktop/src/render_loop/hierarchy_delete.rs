@@ -1,6 +1,6 @@
 //! ⭐⭐⭐ **O GESTO DE APAGAR na Hierarquia, e as TRÊS respostas que ele pode ter** (ADR-0164).
 //!
-//! ⚠️ **Irmão por ASSUNTO do [`super::hierarchy`]**, cortado quando a recusa de uma peça (F5.10)
+//! ⚠️ **Irmão por ASSUNTO do [`crate::render_loop::hierarchy`]**, cortado quando a recusa de uma peça (F5.10)
 //! levou aquele ficheiro a 618 de 600. *Um tecto paga-se com um corte.*
 //!
 //! # As três respostas, e por que elas não podem ser duas

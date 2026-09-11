@@ -410,11 +410,11 @@ pub(super) fn run(
                 let mut builder = present.spawn((SimRef(sim_entity), gt));
                 // ⭐⭐⭐ **UMA porta, TRÊS razões** — o olho da Hierarquia / a peça de uma receita,
                 // a máscara de camadas contra a da câmara, e o rect do `OnScreenEnabler`. As três
-                // vivem em [`super::off_canvas::draws_this_frame`], onde cada uma tem gate e prova
+                // vivem em [`crate::render_loop::off_canvas::draws_this_frame`], onde cada uma tem gate e prova
                 // de mutação; soltas aqui dentro do closure, nenhuma delas era observável.
                 let t = gt.translation();
                 let drawn =
-                    super::off_canvas::draws_this_frame(sim, sim_entity, cull_mask, [t.x, t.y]);
+                    crate::render_loop::off_canvas::draws_this_frame(sim, sim_entity, cull_mask, [t.x, t.y]);
                 let override_for_entity = preview_overrides
                     .iter()
                     .copied()

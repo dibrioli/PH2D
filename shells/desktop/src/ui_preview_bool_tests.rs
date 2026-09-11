@@ -2,8 +2,8 @@
 //! e o corte é por ASSUNTO: ali mora *entrar captura, sair devolve o mundo ao bit*; aqui, a única
 //! escrita que uma pose faz **fora do próprio id**.
 
-use super::render_loop::ui_preview::UiPreview;
-use super::render_loop::ui_state_bridge::UiMachines;
+use crate::render_loop::ui_preview::UiPreview;
+use crate::render_loop::ui_state_bridge::UiMachines;
 use crate::vec_entities::VecEntityMap;
 use ph2d_ecs::{Name, SimWorld, Transform};
 use ph2d_ui_state::{ObjectPose, StateRole, StateSets, UiState};

@@ -2479,7 +2479,7 @@ impl App {
         let world = gfx.camera.screen_to_world((sx, sy), window);
         let playing = self.playhead.is_playing();
         let simulating = self.timeline.flags.simulate_physics;
-        let Some(hit) = crate::physics::body_grab::poke_at(
+        let Some(hit) = ph2d_app_physics::body_grab::poke_at(
             &mut gfx.physics,
             &gfx.sim,
             &self.physics.interaction,
@@ -2494,7 +2494,7 @@ impl App {
         // e o overlay lê o campo VIVO da ponte (`attract_marks`), sem cópia aqui.
         if self.physics.interaction.tool == ph2d_physics_ecs::InteractionTool::Explode {
             let radius = self.physics.interaction.clamped().blast_radius;
-            self.blast_flash = Some((world, radius, crate::physics::body_grab::BLAST_FLASH_TICKS));
+            self.blast_flash = Some((world, radius, ph2d_app_physics::body_grab::BLAST_FLASH_TICKS));
             if hit > 0
                 && let Some(gfx) = self.gfx.as_mut()
             {
@@ -2536,7 +2536,7 @@ impl App {
             .map(ph2d_ecs::Entity::from_bits);
         match target {
             Some(t) => {
-                if crate::render_loop::inspector_joint::set_joint_body(
+                if crate::physics::joint::set_joint_body(
                     &mut gfx.sim,
                     joint,
                     slot_b,
@@ -2631,7 +2631,7 @@ impl App {
             })
             .map(ph2d_ecs::Entity::from_bits);
         if let Some(t) = target {
-            crate::render_loop::inspector_joint_wheel::set_wheel_mount(&mut gfx.sim, wheel, t);
+            crate::physics::joint_wheel::set_wheel_mount(&mut gfx.sim, wheel, t);
         }
         self.wheel_body_pick = None;
     }
@@ -2660,7 +2660,7 @@ impl App {
             / window_size.height as f32;
         match gfx.physics.rope_at_world(world_pos, tol) {
             Some(rope) => {
-                if crate::render_loop::inspector_joint_wheel::set_wheel_rope(
+                if crate::physics::joint_wheel::set_wheel_rope(
                     &mut gfx.sim,
                     wheel,
                     rope,
@@ -3354,9 +3354,33 @@ impl App {
         self.advance_anchor_gizmo_drag();
         // W-Grab: e a MÃO, que também não é arrasto de gizmo — ela move a âncora
         // de uma mola no solver, e o `Transform` chega pelo readback do dispatch.
-        self.advance_body_grab();
-        self.advance_body_pose();
-        self.advance_body_fk();
+        //
+        // ⚠️⚠️ **Os três eram `impl App` e passaram a funções da crate da família** (W2/L2 Fase B).
+        // A conversão `ecrã → mundo` fica AQUI, e é o ponto inteiro: a câmera e o tamanho da
+        // janela são da shell, e o gesto só quer um ponto em mundo. ⭐ *Nenhum sexto método do
+        // `AppHost` foi preciso* — o que parecia «precisar da `App`» eram três tipos de crate de
+        // módulo que a shell por acaso segurava.
+        if let Some(gfx) = self.gfx.as_mut() {
+            let window = gfx.surface.size();
+            let world = gfx.camera.screen_to_world(self.last_pointer, window);
+            let opts = self.physics.interaction.ik_options();
+            ph2d_app_physics::body_grab::advance_body_grab(&mut gfx.physics, world);
+            // ⚠️ Os dois de POSE devolvem «autorou» e a shell é que marca o quadro: o gesto sabe
+            // *que* autorou, e *quando* um quadro conta para o diff de undo é decisão daqui.
+            let autorou = ph2d_app_physics::body_pose::advance_body_pose(
+                &mut gfx.physics,
+                &mut gfx.sim,
+                world,
+                opts,
+            ) | ph2d_app_physics::body_fk::advance_body_fk(
+                &mut gfx.physics,
+                &mut gfx.sim,
+                world,
+            );
+            if autorou {
+                self.any_input_this_frame = true;
+            }
+        }
         // Enio 2026-07-10: snap vetorial em TEMPO REAL — depois de o advance seguir o
         // cursor, gruda a forma arrastada no vizinho mais próximo (ponta p/ aberta,
         // vértice p/ fechada). Roda todo Move, então a forma prende/solta ao vivo.
@@ -3468,11 +3492,13 @@ impl App {
         // W-Grab: **soltar a mão vem ANTES de tudo.** Este handler tem muitos
         // early-returns e uma mão que sobrevive ao release fica colada no cursor
         // para sempre; e vale para qualquer botão, porque uma mão não é um
-        // modificador (ver `crate::physics::body_grab::release_body_grab`).
+        // modificador (ver `ph2d_app_physics::body_grab::release_body_grab`).
         if state == ElementState::Released {
-            self.release_body_grab();
-            self.release_body_pose();
-            self.release_body_fk();
+            if let Some(gfx) = self.gfx.as_mut() {
+                ph2d_app_physics::body_grab::release_body_grab(&mut gfx.physics);
+                ph2d_app_physics::body_pose::release_body_pose(&mut gfx.physics);
+                ph2d_app_physics::body_fk::release_body_fk(&mut gfx.physics);
+            }
             // **§12** — e a alça do gizmo de âncora, pela MESMA razão escrita acima: este handler
             // tem muitos early-returns, e uma alça que sobrevive ao release fica colada ao cursor.
             self.end_anchor_gizmo_drag();
@@ -6156,7 +6182,7 @@ impl App {
                             // de autoria — o mesmo relógio que decide se o Alt
                             // carrega o rig (W-JG, condição 2) decide isto, do
                             // outro lado. Pegou ⇒ nenhum arrasto de gizmo abre
-                            // (`crate::physics::body_grab` explica por que os dois juntos
+                            // (`ph2d_app_physics::body_grab` explica por que os dois juntos
                             // seriam um gesto inerte cavalgando um vivo).
                             // W-JointTools: qual gesto de POSE este press abre,
                             // se algum. Uma pergunta só, feita à porta que também
@@ -6168,7 +6194,7 @@ impl App {
                                 .joint
                                 .gesture(self.modifiers.alt_key());
                             let grabbed = !locked
-                                && (crate::physics::body_grab::take_hold(
+                                && (ph2d_app_physics::body_grab::take_hold(
                                     &mut gfx.physics,
                                     &self.physics.interaction,
                                     entity,
@@ -6183,7 +6209,7 @@ impl App {
                                 // gizmo abre), pela mesma razão: dois gestos
                                 // sobre o mesmo `Transform` no mesmo frame é o
                                 // de trás vencendo em silêncio.
-                                || crate::physics::body_pose::take_pose(
+                                || ph2d_app_physics::body_pose::take_pose(
                                     &mut gfx.physics,
                                     gesture == Some(ph2d_physics_ecs::JointGesture::Ik),
                                     entity,
@@ -6191,7 +6217,7 @@ impl App {
                                 )
                                 // W-FK: e no modo FK o press gira o elo em torno
                                 // da PRÓPRIA junta, levando os descendentes.
-                                || crate::physics::body_fk::take_fk(
+                                || ph2d_app_physics::body_fk::take_fk(
                                     &mut gfx.physics,
                                     &gfx.sim,
                                     gesture == Some(ph2d_physics_ecs::JointGesture::Fk),

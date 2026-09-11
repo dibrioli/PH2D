@@ -1,6 +1,6 @@
 //! ⭐⭐⭐ **O VIDRO JATEADO por trás da receita aberta** (Enio, 2026-09-07: *«crie a feature de
 //! borrar discretamente o que está por trás do prefab como um vidro jateado»*) — irmão por ASSUNTO
-//! do [`super::present`], e pelo tecto de 600 LOC do shell (HR-18).
+//! do [`crate::render_loop::present`], e pelo tecto de 600 LOC do shell (HR-18).
 //!
 //! # A ordem do quadro com o vidro em cima
 //!
@@ -70,7 +70,7 @@ pub(super) fn lift(
 }
 
 /// A engrenagem do vidro. ⚠️ **Uma struct e não dezasseis argumentos** — o mesmo motivo do
-/// [`super::present_bands::BandGear`].
+/// [`crate::render_loop::present_bands::BandGear`].
 pub(super) struct Gear<'a> {
     pub world_rt: &'a mut ph2d_render::WorldRt,
     pub band_blit: &'a ph2d_render::BandBlit,

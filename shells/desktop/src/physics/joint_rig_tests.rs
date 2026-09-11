@@ -322,7 +322,7 @@ fn a_rigged_joint_is_born_limited_and_a_plain_join_is_not() {
     let (mut sim2, _) = doll();
     let a = named(&mut sim2, "Torso");
     let b = named(&mut sim2, "Head");
-    let j = crate::render_loop::inspector_joint::create_joint(
+    let j = crate::physics::joint::create_joint(
         &mut sim2,
         a.to_bits(),
         b.to_bits(),

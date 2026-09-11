@@ -1,4 +1,4 @@
-//! **Os gates de [`super::anchor_overlay`]** — irmão por CAP de LOC (HR-18, 600 no shell).
+//! **Os gates de [`crate::render_loop::anchor_overlay`]** — irmão por CAP de LOC (HR-18, 600 no shell).
 //!
 //! ⚠️ **Corte mecânico, conteúdo verbatim.** O módulo de testes saiu inteiro quando os
 //! quatro pedidos do Enio de 2026-08-23 levaram o ficheiro acima do teto. A regra da casa é

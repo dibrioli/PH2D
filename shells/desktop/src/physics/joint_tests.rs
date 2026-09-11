@@ -1,0 +1,445 @@
+//! **The other half of the §12 seam: does the click produce a joint that
+//! HOLDS?**
+//!
+//! `ph2d-panel-inspector/tests/it/seam_joint.rs` proves panel → bus. These prove
+//! bus → ECS → simulation — the half a tool can fail while every gate in its
+//! own crate stays green ([[feedback_tool_unit_green_integration_dead]]).
+
+use ph2d_core::Vec2;
+use ph2d_ecs::scene::{
+    ComponentRegistry, EditorCommandQueue, apply_editor_commands, register_ecs_components,
+};
+use ph2d_ecs::{Entity, Name, SimWorld, Transform};
+use ph2d_editor::JointFieldEdit;
+use ph2d_physics_ecs::{
+    BodyKind, Collider, ColliderShape, JointKind, PhysicsBridge, PhysicsJoint, RigidBody,
+};
+
+use crate::physics::joint::{apply_joint_edit, build_joint_info, create_joint, set_joint_body};
+
+pub(super) fn registry() -> ComponentRegistry {
+    let mut reg = ComponentRegistry::new();
+    register_ecs_components(&mut reg);
+    ph2d_physics_ecs::register_physics_components(&mut reg);
+    reg
+}
+
+/// A hook and a plank, both physical, neither jointed. `named` decides whether
+/// they arrive with names — the case that decides whether a joint can refer to
+/// them at all.
+pub(super) fn two_bodies(named: bool) -> (SimWorld, Entity, Entity) {
+    let mut sim = SimWorld::new();
+    let mut spawn = |x: f32, y: f32, kind: BodyKind, name: &str| {
+        let e = sim
+            .world_mut()
+            .spawn((
+                RigidBody { kind },
+                Collider {
+                    shape: ColliderShape::Ball { radius: 0.25 },
+                    ..Collider::default()
+                },
+                Transform::from_translation(Vec2::new(x, y)),
+            ))
+            .id();
+        if named {
+            sim.world_mut()
+                .get_entity_mut(e)
+                .expect("just spawned")
+                .insert(Name::new(name));
+        }
+        e
+    };
+    let hook = spawn(0.0, 6.0, BodyKind::Static, "Hook");
+    let plank = spawn(0.0, 5.0, BodyKind::Dynamic, "Plank");
+    (sim, hook, plank)
+}
+
+/// **The gesture produces a joint that actually holds the plank up.**
+///
+/// The oracle is the simulation, not the components: after Join, playing for
+/// two seconds must leave the plank hanging near where it started instead of
+/// falling away.
+#[test]
+fn joining_two_bodies_makes_a_joint_that_holds() {
+    let (mut sim, hook, plank) = two_bodies(true);
+    create_joint(&mut sim, hook.to_bits(), plank.to_bits(), JointKind::Pin).expect("join");
+
+    let mut bridge = PhysicsBridge::new();
+    for tick in 1..=120 {
+        ph2d_physics_ecs::resolve_body_names(sim.world_mut());
+        bridge.dispatch(&mut sim, true, tick);
+    }
+    assert_eq!(
+        bridge.joint_count(),
+        1,
+        "the joint never reached the solver"
+    );
+    let y = sim
+        .world()
+        .get::<Transform>(plank)
+        .expect("plank")
+        .translation
+        .y;
+    assert!(
+        y > 4.0,
+        "the plank fell to y={y} — it was joined to a static hook and should \
+         still be hanging near y=5"
+    );
+}
+
+/// **Bodies with no name are named, because a joint refers to them by name.**
+///
+/// Not a side effect to apologise for: an unnamed body is one a joint cannot
+/// point at, and the timeline's bindings have the same requirement.
+#[test]
+fn joining_unnamed_bodies_names_them_first() {
+    let (mut sim, hook, plank) = two_bodies(false);
+    assert!(
+        sim.world().get::<Name>(hook).is_none(),
+        "fixture precondition"
+    );
+
+    let joint =
+        create_joint(&mut sim, hook.to_bits(), plank.to_bits(), JointKind::Pin).expect("join");
+
+    let a = sim.world().get::<Name>(hook).expect("hook was named");
+    let b = sim.world().get::<Name>(plank).expect("plank was named");
+    assert_ne!(a.as_str(), b.as_str(), "both bodies got the SAME name");
+    let j = *sim.world().get::<PhysicsJoint>(joint).expect("joint");
+    // ⚠️ A IDENTIDADE, não o hash do nome (ADR-0164 F1): é o que o joint guarda desde a F1.
+    let id = |e| ph2d_ecs::stable_id_of(sim.world(), e).map_or(0, |s: ph2d_ecs::StableId| s.0);
+    assert_eq!(j.body_a, id(hook));
+    assert_eq!(j.body_b, id(plank));
+    assert!(j.names_two_bodies());
+}
+
+/// **A body cannot be joined to itself.**
+#[test]
+fn joining_a_body_to_itself_creates_nothing() {
+    let (mut sim, hook, _) = two_bodies(true);
+    assert!(create_joint(&mut sim, hook.to_bits(), hook.to_bits(), JointKind::Pin).is_none());
+    let mut q = sim.world_mut().query::<&PhysicsJoint>();
+    assert_eq!(q.iter(sim.world()).count(), 0);
+}
+
+/// **The new joint lands at the midpoint of the two bodies.**
+///
+/// One rule for every kind — and for a Pin between two touching bodies, which
+/// is the chain-link case, the midpoint IS the correct pivot.
+#[test]
+fn the_new_joint_lands_between_the_two_bodies() {
+    let (mut sim, hook, plank) = two_bodies(true);
+    let joint =
+        create_joint(&mut sim, hook.to_bits(), plank.to_bits(), JointKind::Pin).expect("join");
+    let t = sim.world().get::<Transform>(joint).expect("transform");
+    assert_eq!(
+        t.translation.y, 5.5,
+        "hook at 6, plank at 5 -> pivot at 5.5"
+    );
+}
+
+/// **Degrees in the Inspector, radians in the component.**
+///
+/// The boundary `Transform::rotation_rad` already keeps. A value that crossed
+/// it unconverted would be off by a factor of 57 and still look like a number.
+#[test]
+fn the_angle_fields_convert_at_the_boundary() {
+    let (mut sim, hook, plank) = two_bodies(true);
+    let joint =
+        create_joint(&mut sim, hook.to_bits(), plank.to_bits(), JointKind::Pin).expect("join");
+    let reg = registry();
+    let queue = EditorCommandQueue::default();
+
+    apply_joint_edit(
+        &sim,
+        joint.to_bits(),
+        JointFieldEdit::LimitMax(90.0),
+        &queue,
+        &reg,
+    );
+    apply_editor_commands(sim.world_mut(), &queue, &reg).expect("commands apply");
+
+    let j = *sim.world().get::<PhysicsJoint>(joint).expect("joint");
+    assert!(
+        (j.limit_max - std::f32::consts::FRAC_PI_2).abs() < 1e-6,
+        "90° should be stored as π/2 radians; it is {}",
+        j.limit_max
+    );
+    // And it comes back out in degrees, so the round trip is closed.
+    let info = build_joint_info(&mut sim, joint.to_bits(), 0, 0).expect("info");
+    assert!((info.limit_max_ui - 90.0).abs() < 1e-3);
+}
+
+/// ⭐ **A §12 continua a NOMEAR os corpos — e renomear já não parte o elo** (ADR-0164 F1).
+///
+/// ⚠️ **Este gate pinava o defeito.** Ele renomeava um corpo e exigia
+/// `info.bound == false`: *"depois do rename a seção tem de reportar o elo como partido"*.
+/// Era o comportamento certo **para um id que era o nome** — e é exatamente o que a wave da
+/// identidade cura. Hoje o joint guarda o `StableId`, e o painel resolve o NOME a partir dele:
+/// renomear muda o rótulo que a §12 mostra, e não o elo.
+///
+/// ⚠️ O caso em que o elo PARTE de verdade — o corpo que desaparece — continua medido abaixo.
+#[test]
+fn renaming_a_body_relabels_the_section_without_breaking_the_link() {
+    let (mut sim, hook, plank) = two_bodies(true);
+    let joint =
+        create_joint(&mut sim, hook.to_bits(), plank.to_bits(), JointKind::Pin).expect("join");
+    let info = build_joint_info(&mut sim, joint.to_bits(), 0, 0).expect("info");
+    assert_eq!(info.body_a_name, "Hook");
+    assert_eq!(info.body_b_name, "Plank");
+    assert!(info.bound);
+
+    *sim.world_mut().get_mut::<Name>(plank).expect("name") = Name::new("Renamed");
+    let info = build_joint_info(&mut sim, joint.to_bits(), 0, 0).expect("info");
+    assert!(
+        info.bound,
+        "renomear PARTIU o elo — era o defeito que o StableId cura, e ele voltou"
+    );
+    assert_eq!(
+        info.body_b_name, "Renamed",
+        "a seccao tem de mostrar o nome NOVO: ela resolve o rotulo a partir da identidade"
+    );
+
+    // ⚠️ E o elo parte de verdade quando o corpo DESAPARECE.
+    sim.world_mut().entity_mut(plank).despawn();
+    let info = build_joint_info(&mut sim, joint.to_bits(), 0, 0).expect("info");
+    assert!(
+        !info.bound,
+        "um corpo que sumiu tem de reportar o elo como partido"
+    );
+}
+
+/// **§12 is offered only for a joint.**
+#[test]
+fn a_plain_body_has_no_joint_section() {
+    let (mut sim, hook, _) = two_bodies(true);
+    assert!(build_joint_info(&mut sim, hook.to_bits(), 0, 0).is_none());
+}
+
+/// ⭐ **Dois corpos com o MESMO NOME já podem ser juntados** (ADR-0164 F1).
+///
+/// ⚠️ **Este gate pinava a limitação, e a razão que ele dava era exacta:** *"a guarda `a == b`
+/// compara ENTIDADES; um joint guarda HASHES DE NOME. Dois corpos distintos com o mesmo nome
+/// resolvem para um id, então o joint nunca poderia prender"*. A premissa era verdadeira — e
+/// era o defeito.
+///
+/// Hoje o joint guarda a **identidade**, e dois corpos homónimos têm ids diferentes: ele
+/// prende certo. Recusar o gesto agora seria proibir uma coisa que passou a funcionar. A
+/// guarda `a == b` (um corpo preso a si mesmo) fica, e é a irmã abaixo que a mede.
+#[test]
+fn two_bodies_sharing_a_name_can_now_be_joined() {
+    let (mut sim, hook, plank) = two_bodies(true);
+    *sim.world_mut().get_mut::<Name>(plank).expect("name") = Name::new("Hook");
+    let j = create_joint(&mut sim, hook.to_bits(), plank.to_bits(), JointKind::Pin)
+        .expect("dois homonimos sao dois OBJETOS, e a juncao deles prende");
+    let stored = *sim.world().get::<PhysicsJoint>(j).expect("o joint vive");
+    let id = |e| ph2d_ecs::stable_id_of(sim.world(), e).map_or(0, |s: ph2d_ecs::StableId| s.0);
+    assert_eq!(stored.body_a, id(hook));
+    assert_eq!(stored.body_b, id(plank));
+    assert_ne!(
+        stored.body_a, stored.body_b,
+        "dois corpos homonimos tem de guardar ids DIFERENTES — se colapsarem, a identidade \
+         voltou a ser o nome",
+    );
+}
+
+/// Spawn a named physical body — a third body for the re-pick tests.
+fn body(sim: &mut SimWorld, x: f32, y: f32, kind: BodyKind, name: &str) -> Entity {
+    sim.world_mut()
+        .spawn((
+            RigidBody { kind },
+            Collider {
+                shape: ColliderShape::Ball { radius: 0.25 },
+                ..Collider::default()
+            },
+            Transform::from_translation(Vec2::new(x, y)),
+            Name::new(name),
+        ))
+        .id()
+}
+
+/// **Setting a body re-binds that slot IN PLACE, and the joint still binds.**
+///
+/// Re-pick slot A from Hook to a new anchor Post: the component names Post, slot
+/// B is untouched, `set_joint_body` returns `true`, and the joint still reaches
+/// the solver. It writes in place (no editor queue) because the pick resolves
+/// mid-frame in the pointer handler, and the global diff-based undo captures a
+/// direct write. Mutation-tested: writing the WRONG slot leaves `body_a` on
+/// Hook, and not writing does the same — both go red on the `body_a == Post`
+/// assertion.
+#[test]
+fn set_joint_body_rebinds_slot_a_and_the_joint_still_binds() {
+    let (mut sim, hook, plank) = two_bodies(true);
+    let joint =
+        create_joint(&mut sim, hook.to_bits(), plank.to_bits(), JointKind::Pin).expect("join");
+    let post = body(&mut sim, 3.0, 6.0, BodyKind::Static, "Post");
+
+    assert!(
+        set_joint_body(&mut sim, joint.to_bits(), false, post),
+        "the re-bind was refused"
+    );
+
+    let j = *sim.world().get::<PhysicsJoint>(joint).expect("joint");
+    // ⚠️ A IDENTIDADE do objeto chamado assim (ADR-0164 F1) — o joint deixou de guardar o
+    // hash do nome, então perguntar pelo hash mediria uma coisa que já não existe.
+    let id_named = |sim: &mut SimWorld, n: &str| ph2d_ecs::stable_id_for_name(sim.world_mut(), n);
+    let want_a = id_named(&mut sim, "Post");
+    let want_b = id_named(&mut sim, "Plank");
+    assert_eq!(j.body_a, want_a, "slot A did not re-bind to Post");
+    assert_eq!(
+        j.body_b, want_b,
+        "slot B was touched — the wrong slot moved"
+    );
+
+    // Not dormant: the re-bound joint still reaches the solver.
+    let mut bridge = PhysicsBridge::new();
+    for tick in 1..=60 {
+        ph2d_physics_ecs::resolve_body_names(sim.world_mut());
+        bridge.dispatch(&mut sim, true, tick);
+    }
+    assert_eq!(
+        bridge.joint_count(),
+        1,
+        "the re-bound joint never reached the solver"
+    );
+    let _ = plank;
+}
+
+/// **A self-joint is refused, and the joint is left untouched.**
+///
+/// Re-picking slot A to the body already in slot B would name both ends the same
+/// body — a joint that can never bind. `set_joint_body` returns `false` and
+/// writes nothing (so the shell keeps the pick armed for another click), rather
+/// than leaving a silently-dormant joint. Mutation-tested: dropping the guard
+/// writes the self-joint and this goes red on the "untouched" assertion.
+#[test]
+fn set_joint_body_refuses_a_self_joint() {
+    let (mut sim, hook, plank) = two_bodies(true);
+    let joint =
+        create_joint(&mut sim, hook.to_bits(), plank.to_bits(), JointKind::Pin).expect("join");
+    let before = *sim.world().get::<PhysicsJoint>(joint).expect("joint");
+    // Slot A is currently Hook; re-pick it to Plank, which is already slot B.
+    assert!(
+        !set_joint_body(&mut sim, joint.to_bits(), false, plank),
+        "picking the body already in the other slot must be refused"
+    );
+    let after = *sim.world().get::<PhysicsJoint>(joint).expect("joint");
+    assert_eq!(before, after, "a refused re-pick must not touch the joint");
+}
+
+/// **A §12 chama um pino de MUNDO de ligado, com um corpo só** (W-JointWorld).
+///
+/// ⚠️ O controle é a metade que importa: o MESMO joint, sem o marcador, tem de
+/// ser `bound: false`. Sem ele o gate ficaria verde sobre um `bound` cravado em
+/// `true`, e o painel diria "ligado" para todo joint meio-autorado do app.
+#[test]
+fn a_world_pin_reads_as_bound_with_a_single_body() {
+    let (mut sim, _hook, _plank) = two_bodies(true);
+    // ⚠️ Autorado direto, e não pelo `create_joint`: aquela porta EXIGE dois
+    // corpos (ela toma bits de entidade, e `Entity::from_bits(0)` nem existe).
+    // Este é o estado real em que o artista fica — um joint com uma ponta só,
+    // esperando o par Object|World.
+    let joint = sim
+        .world_mut()
+        .spawn((
+            ph2d_ecs::Name::new("Wall Pin"),
+            PhysicsJoint {
+                // Autorado por NOME e resolvido logo abaixo — a mesma costura do roteador.
+                body_a: ph2d_ecs::stable_name_id("Hook"),
+                body_b: 0,
+                kind: JointKind::Pin,
+                ..PhysicsJoint::default()
+            },
+            ph2d_ecs::Transform::default(),
+        ))
+        .id();
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
+
+    let before = crate::physics::joint::build_joint_info(&mut sim, joint.to_bits(), 0, 0)
+        .expect("a §12 tem de existir para um joint selecionado");
+    assert!(
+        !before.bound,
+        "CONTROLE: sem o marcador, `body_b == 0` é meio-autorado — não ligado"
+    );
+
+    sim.world_mut()
+        .entity_mut(joint)
+        .insert(ph2d_physics_ecs::JointWorldAnchor);
+    let after = crate::physics::joint::build_joint_info(&mut sim, joint.to_bits(), 0, 0)
+        .expect("a §12 tem de existir para um joint selecionado");
+    assert!(
+        after.bound,
+        "um pino de mundo está SEGURANDO — chamá-lo de não-ligado aponta o \
+         artista para um problema que não existe"
+    );
+    assert!(
+        after.world_anchored,
+        "a §12 tem de saber que o lado B é o cenário, senão ela pinta \"(missing)\""
+    );
+}
+
+/// **A âncora de um corpo PARENTEADO nasce onde os dois corpos de fato estão.**
+///
+/// ⚠️ **Defeito PRÉ-EXISTENTE, achado pela W-Rig.** O ponto médio saía de
+/// `Transform.translation` cru, e `Transform` é **LOCAL** e compõe com o pai
+/// (W5): juntar um corpo-filho punha a âncora no meio entre a pose de MUNDO de um
+/// e o OFFSET do outro — um lugar que não é nem um nem outro. Medido na cena 67
+/// antes do conserto: o pescoço de um boneco nascia em `y = 1,85` com a emenda em
+/// `y = 3,5`, **1,65 m abaixo**, e o ragdoll inteiro esparramava porque cada
+/// membro pendia de um ponto flutuando no ar longe dele.
+///
+/// Isto alcança as TRÊS rotas de criação (o botão Join, o arrasto no canvas e o
+/// rig), e sobreviveu porque **toda** fixture, cena e demo desta linha usava
+/// corpos-RAIZ — onde local e mundo coincidem. É a mesma frase que o W5 escreveu
+/// sobre si mesmo, no arquivo ao lado.
+#[test]
+fn a_joint_between_parented_bodies_anchors_in_world_space() {
+    use ph2d_ecs::ChildOf;
+
+    let mut sim = SimWorld::new();
+    let parent = sim
+        .world_mut()
+        .spawn((
+            Name::new("Torso"),
+            RigidBody {
+                kind: BodyKind::Dynamic,
+            },
+            Collider::default(),
+            Transform::from_translation(Vec2::new(0.0, 3.0)),
+        ))
+        .id();
+    // Filho: LOCAL `(0, 0.7)`, MUNDO `(0, 3.7)`.
+    let child = sim
+        .world_mut()
+        .spawn((
+            Name::new("Head"),
+            RigidBody {
+                kind: BodyKind::Dynamic,
+            },
+            Collider::default(),
+            Transform::from_translation(Vec2::new(0.0, 0.7)),
+            ChildOf(parent),
+        ))
+        .id();
+
+    let j = crate::physics::joint::create_joint(
+        &mut sim,
+        parent.to_bits(),
+        child.to_bits(),
+        JointKind::Pin,
+    )
+    .expect("joint criado");
+
+    let pivot = sim
+        .world()
+        .get::<Transform>(j)
+        .expect("o joint tem Transform")
+        .translation;
+    assert!(
+        (pivot.y - 3.35).abs() < 1e-3,
+        "a âncora nasceu em y = {:.3}; o meio entre (0,3.0) e (0,3.7) é 3.35. \
+         y ≈ 1.85 significa que o `Transform` LOCAL do filho foi lido como mundo",
+        pivot.y
+    );
+    assert!((pivot.x).abs() < 1e-3, "x = {:.3}", pivot.x);
+}

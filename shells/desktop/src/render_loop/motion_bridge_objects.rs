@@ -56,7 +56,7 @@ pub(crate) use shift::publish_shifted;
 pub(crate) use shift::wanted_shifts;
 // The faithful VectorInstance→tile conversion. ⚠️ **Era `cfg(test)`** — a partição
 // usava-a internamente e só o gate a nomeava. Ganhou um consumidor de PRODUÇÃO em
-// 2026-08-20: o [`super::super::motion_glow_layer`] deriva com ela a camada que o
+// 2026-08-20: o [`crate::render_loop::motion_glow_layer`] deriva com ela a camada que o
 // bright-pass do glow desenha, e as duas vistas TÊM de ser a mesma conversão (uma
 // segunda cópia poria o halo noutro sítio que o tile do LOD).
 pub(crate) use lod::vector_instance_as_tile;

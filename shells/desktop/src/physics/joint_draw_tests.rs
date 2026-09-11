@@ -65,7 +65,7 @@ fn a_drawn_joint_anchors_at_the_two_points_of_the_gesture() {
     let press = [-0.5, 0.5]; // A's top-left corner
     let release = [3.5, -0.5]; // B's bottom-right corner
 
-    let j = crate::render_loop::inspector_joint::create_joint_at(
+    let j = crate::physics::joint::create_joint_at(
         &mut sim,
         a.to_bits(),
         b.to_bits(),
@@ -102,7 +102,7 @@ fn a_drawn_pin_puts_both_anchors_on_the_press_point() {
         let a = body(&mut sim, "A", [0.0, 0.0]);
         let b = body(&mut sim, "B", [1.0, 0.0]);
         let press = [0.4, 0.2];
-        let j = crate::render_loop::inspector_joint::create_joint_at(
+        let j = crate::physics::joint::create_joint_at(
             &mut sim,
             a.to_bits(),
             b.to_bits(),
@@ -132,7 +132,7 @@ fn the_selection_route_still_seeds_its_anchors() {
     let mut sim = SimWorld::new();
     let a = body(&mut sim, "A", [0.0, 0.0]);
     let b = body(&mut sim, "B", [3.0, 0.0]);
-    let j = crate::render_loop::inspector_joint::create_joint(
+    let j = crate::physics::joint::create_joint(
         &mut sim,
         a.to_bits(),
         b.to_bits(),
@@ -208,7 +208,7 @@ fn a_body_is_never_joined_to_itself() {
     let mut sim = SimWorld::new();
     let a = body(&mut sim, "A", [0.0, 0.0]);
     assert!(
-        crate::render_loop::inspector_joint::create_joint_at(
+        crate::physics::joint::create_joint_at(
             &mut sim,
             a.to_bits(),
             a.to_bits(),

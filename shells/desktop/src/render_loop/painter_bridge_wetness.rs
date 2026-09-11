@@ -44,7 +44,7 @@ pub(super) fn draw_wetness_overlay(
     // afim é o de sempre, byte-idêntico.
     let sprite_grid = sim.world().get::<ph2d_ecs::SpriteGrid>(entity).copied();
     // `base` maps FULL image-px → screen; the sub-image rides it after a translate to the rect origin.
-    let base = super::bgremoval_preview::sprite_image_to_screen_affine(
+    let base = crate::render_loop::bgremoval_preview::sprite_image_to_screen_affine(
         cw,
         ch,
         tr,

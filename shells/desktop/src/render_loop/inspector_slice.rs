@@ -1,6 +1,6 @@
 //! **§5 9-Slice** — o snapshot que a seção lê e o commit que ela escreve.
 //!
-//! Irmão do [`super::inspector_ordering`], e pela mesma razão dele: uma família de seção por
+//! Irmão do [`crate::render_loop::inspector_ordering`], e pela mesma razão dele: uma família de seção por
 //! ficheiro, com o cap de LOC a decidir o corte.
 //!
 //! A seção que a spec
@@ -18,7 +18,7 @@ use ph2d_ecs::scene::{ComponentRegistry, EditorCommandQueue};
 use ph2d_ecs::{Entity, SimWorld, SliceNine, World};
 use ph2d_editor::{InspectorSliceInfo, InspectorSliceMixed, SliceFieldEdit};
 
-use super::inspector_ordering::queue_set;
+use crate::render_loop::inspector_ordering::queue_set;
 
 /// Nome canónico do componente no `ComponentRegistry`. ⚠️ Uma string errada aqui não falha a
 /// compilação: o comando é descartado em silêncio e a edição não acontece. É o mesmo nome que

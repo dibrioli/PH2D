@@ -34,7 +34,7 @@ pub(super) fn draw_line_overlay(
                 sim.world().get::<ph2d_render::Sprite>(entity),
             )
         {
-            let base_affine = super::bgremoval_preview::sprite_image_to_screen_affine(
+            let base_affine = crate::render_loop::bgremoval_preview::sprite_image_to_screen_affine(
                 iw,
                 ih,
                 tr,
@@ -47,9 +47,9 @@ pub(super) fn draw_line_overlay(
                 Affine, BezPath, Brush, Circle, Color, Fill, Point, RoundedRect, Stroke,
             };
             // Line stroke gizmo = fluorescent ORANGE (each stroke shape type gets a distinct accent).
-            let pal = super::painter_bridge_gizmo::palette_accent(
+            let pal = crate::render_loop::painter_bridge_gizmo::palette_accent(
                 hero.theme,
-                super::painter_bridge_gizmo::GIZMO_ACCENTS[3],
+                crate::render_loop::painter_bridge_gizmo::GIZMO_ACCENTS[3],
             );
             let op_glyph = painter.active_op_glyph();
             let handle = Color::new([0.80, 0.84, 0.92, 0.92]); // LITERAL-COLOR-OK: corner handle
@@ -64,13 +64,13 @@ pub(super) fn draw_line_overlay(
             // Edit-in-tile (Enio 2026-07-11): draw the editable chrome (gizmo + segments + corner dots + CAD
             // handles + centre move) in EACH visible wrapped tile too (`overlay_tile_offsets`), so a Line is
             // grabbable there; the auxiliary VALUE labels (dimensions + fillet/chamfer amounts) stay on centre.
-            for (ox, oy) in super::painter_bridge_overlays::overlay_tile_offsets(painter, iw, ih) {
+            for (ox, oy) in crate::render_loop::painter_bridge_overlays::overlay_tile_offsets(painter, iw, ih) {
                 let affine = base_affine * Affine::translate((ox, oy));
                 let map = |p: [f32; 2]| affine * Point::new(f64::from(p[0]), f64::from(p[1]));
                 let is_centre = ox == 0.0 && oy == 0.0;
                 // Transform gizmo (editing phase) — drawn FIRST (under the segments + dots).
                 if let Some(gz) = overlay.transform_gizmo.as_ref() {
-                    super::painter_bridge_gizmo::draw_transform_gizmo(
+                    crate::render_loop::painter_bridge_gizmo::draw_transform_gizmo(
                         scene, gz, affine, &pal, cursor,
                     );
                 }
@@ -82,18 +82,18 @@ pub(super) fn draw_line_overlay(
                 if pts.len() >= 2 {
                     let sp: Vec<Point> = pts.iter().map(|&p| map(p)).collect();
                     if overlay.closed && pts.len() >= 3 {
-                        super::painter_bridge_gizmo::stroke_box(scene, &sp, &pal);
+                        crate::render_loop::painter_bridge_gizmo::stroke_box(scene, &sp, &pal);
                     } else {
-                        super::painter_bridge_gizmo::stroke_open(scene, &sp, &pal);
+                        crate::render_loop::painter_bridge_gizmo::stroke_open(scene, &sp, &pal);
                     }
                 }
                 // A handle at each committed corner; the SELECTED corner reads as a circle.
                 for (i, &p) in overlay.points.iter().enumerate() {
                     let sp = map(p);
                     if overlay.selected == Some(i) {
-                        super::painter_bridge_gizmo::circle_handle(scene, sp, &pal);
+                        crate::render_loop::painter_bridge_gizmo::circle_handle(scene, sp, &pal);
                     } else {
-                        super::painter_bridge_gizmo::square_handle(scene, sp, &pal);
+                        crate::render_loop::painter_bridge_gizmo::square_handle(scene, sp, &pal);
                     }
                 }
                 // Per-corner CAD gizmos: a CIRCLE (Fillet) + a SQUARE (Chamfer) handle at each real corner;
@@ -157,7 +157,7 @@ pub(super) fn draw_line_overlay(
                 // Centre MOVE handle LAST — above the segments, corner dots and CAD gizmos so the
                 // drag-the-whole-shape handle stays grabbable on top (highest z-index for the centre square).
                 if let Some(gz) = overlay.transform_gizmo.as_ref() {
-                    super::painter_bridge_gizmo::draw_transform_center(
+                    crate::render_loop::painter_bridge_gizmo::draw_transform_center(
                         scene, gz, affine, &pal, op_glyph,
                     );
                 }

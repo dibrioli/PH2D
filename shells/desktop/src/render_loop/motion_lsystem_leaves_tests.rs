@@ -2,7 +2,7 @@
 //! que alfa.
 //!
 //! ⚠️ **Este arquivo existe por um TETO DE LOC** (HR-18, 600 para `shells/`), e o corte segue
-//! o do produto: o irmão [`super::motion_lsystem_gen`] responde *como um ramo vira forma*.
+//! o do produto: o irmão [`crate::render_loop::motion_lsystem_gen`] responde *como um ramo vira forma*.
 //!
 //! ⛔⛔ **Vários destes gates atravessam até à INSTÂNCIA** (`instances_of`), e não é zelo: a
 //! folha publicava a rotação numa coluna chamada `rotation` e a convenção do Motion chama-lhe

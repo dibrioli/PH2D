@@ -2,8 +2,8 @@
 //! CPU→GPU→CPU dance on real hardware. Split from `painter_preview_pipeline_tests.rs` (HR-18 file
 //! LOC cap); the harness (Screen, oracles, the smoke arming) lives there and is shared.
 
-use super::painter_bridge::{UploadPlan, plan_upload};
-use super::painter_preview_pipeline_tests::{
+use crate::render_loop::painter_bridge::{UploadPlan, plan_upload};
+use crate::render_loop::painter_preview_pipeline_tests::{
     ENTITY, assert_screen_equals, cp, impasto_tool, screen_truth,
 };
 use crate::app_state::{PainterPreview, PainterPreviewGpu};
@@ -14,18 +14,18 @@ use std::sync::Arc;
 
 /// One frame of the app's preview lifecycle, in `dispatch`'s exact order: the GPU producer gets
 /// first refusal (`try_drive`), a GPU-owned frame clears the CPU cache, a CPU-owned frame drains
-/// the tool and runs the real upload door ([`super::painter_bridge::upload_cpu_preview`]).
+/// the tool and runs the real upload door ([`crate::render_loop::painter_bridge::upload_cpu_preview`]).
 /// Returns whether the GPU producer owned the slot this frame.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn app_frame(
     renderer: &mut ph2d_render::SpriteRenderer,
     painter: &mut PainterTool,
-    session: &mut Option<super::painter_gpu_preview::PainterGpuPreview>,
+    session: &mut Option<crate::render_loop::painter_gpu_preview::PainterGpuPreview>,
     preview: &mut Option<PainterPreview>,
     preview_gpu: &mut Option<PainterPreviewGpu>,
     toasts: &mut ph2d_editor::toast::ToastQueue,
 ) -> bool {
-    let gpu_owns = super::painter_gpu_preview::try_drive(
+    let gpu_owns = crate::render_loop::painter_gpu_preview::try_drive(
         session,
         renderer,
         painter,
@@ -40,7 +40,7 @@ pub(super) fn app_frame(
         dirty_bbox = painter.take_preview_upload_bbox();
         // The shell owns its preview buffer (drives the REAL helper), so the tool stays the sole
         // owner of its canvas — exactly as `dispatch` does it.
-        let mirror = super::painter_bridge::own_preview_buffer(
+        let mirror = crate::render_loop::painter_bridge::own_preview_buffer(
             preview.take(),
             ENTITY,
             w,
@@ -58,7 +58,7 @@ pub(super) fn app_frame(
     // Idle (drain None) reads the unchanged version → the plan Skips; a dirty frame reads the bumped
     // one → it uploads.
     let cache_version = painter.canvas_version();
-    super::painter_bridge::upload_cpu_preview(
+    crate::render_loop::painter_bridge::upload_cpu_preview(
         renderer,
         preview.as_ref().filter(|_| !gpu_owns),
         dirty_bbox,
@@ -472,7 +472,7 @@ fn the_paper_alone_survives_the_gpu_producer() {
         ph2d_render::TextureAtlas::dummy(&gpu),
         8,
     );
-    let mut t = super::painter_preview_pipeline_tests::impasto_tool(size);
+    let mut t = crate::render_loop::painter_preview_pipeline_tests::impasto_tool(size);
     t.set_substrate_depth(1.0);
     let (mut session, mut preview, mut toasts) =
         (None, None, ph2d_editor::toast::ToastQueue::default());

@@ -1,6 +1,6 @@
 //! ⭐ **O objeto VAZIO na raiz** — o botão `Add` do cabeçalho da Hierarquia (ADR-0166 / F3).
 //!
-//! Irmão POR ASSUNTO da [`super::hierarchy`], e não uma função lá dentro: o `dispatch` dela não é
+//! Irmão POR ASSUNTO da [`crate::render_loop::hierarchy`], e não uma função lá dentro: o `dispatch` dela não é
 //! alcançável de um teste (pede janela, câmera, documento vetorial e o `HeroLive`), e a lei *"o que
 //! nasce quando o artista cria um objeto"* é precisamente a que a F3 tem de defender com um gate.
 //! O corte também devolveu o ficheiro-mãe ao teto de 600 LOC, que ele tinha acabado de passar.

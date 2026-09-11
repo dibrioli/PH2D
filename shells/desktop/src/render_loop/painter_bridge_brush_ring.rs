@@ -49,7 +49,7 @@ pub(super) fn draw_brush_ring(
                 // the same footprint the engine paints); we sweep that ellipse's boundary in image px
                 // and push each point through the affine's LINEAR part (the ring is cursor-anchored,
                 // so no translation), so the ring matches exactly where the dabs land.
-                let affine = super::bgremoval_preview::sprite_image_to_screen_affine(
+                let affine = crate::render_loop::bgremoval_preview::sprite_image_to_screen_affine(
                     iw,
                     ih,
                     tr,

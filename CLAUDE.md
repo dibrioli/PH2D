@@ -600,7 +600,17 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   `bXYOverride` do Unreal, quando houver quem peça · a trava de beirada não tem gesto de canvas · **quatro ❌** na
   [auditoria 09](docs/Physics/09_auditoria_engines.md) e ⚠️ **nenhum é trabalho pendente** (dois foram **recusados por
   medição**, um é arquitetura com *não agora* escrito, um está fora da fila) — *um ❌ «recusado com motivo» e um ❌
-  «ninguém fez» leem igual numa tabela* · o buraco real contra o referencial é *obstacle actions: climbing* (plano 08 §4.8).
+  «ninguém fez» leem igual numa tabela* · o buraco real contra o referencial é *obstacle actions: climbing* (plano 08 §4.8) ·
+  ⭐⭐ **A família SAIU da shell pela metade (W2/L2 Fase A, 11/09):** as cenas e as leis vivem em
+  [`ph2d-app-physics`](crates/ph2d-app-physics/) (112 ficheiros, 22,5 k LOC) e o que precisa da `App`
+  agrupou-se em [`shells/desktop/src/physics/`](shells/desktop/src/physics/) — `impl App` de **88 para 13**
+  blocos, 7 campos de `App` num `PhysicsState`, e a shell de **493 k para 471 k** linhas, com **zero**
+  contador partilhado a mexer-se. ⏳ **A Fase B (o corte pelo HOWTO da `line/app-host`) NÃO começou**, e o
+  §6 do [handoff](docs/Physics/handoffs/HANDOFF_INTEGRACAO_line_app-physics_FASE_A_2026-09-11.md) tem a lista
+  **NOMEADA** do que só o substrato resolve (timeline · playhead · readout · inspector da roldana · ponteiro) —
+  ⚠️ e o §9 as **nove** armadilhas medidas, entre elas que apagar um `mod` re-liga o `#[cfg(test)]` dele ao
+  **vizinho**, em silêncio, e que o censo de cenas do briefing apagaria **28 cenas VIVAS** (elas são citadas
+  pelo atalho `` `=N` ``, não pela env).
   **Smokes:** `PH2D_PHYSICS_SMOKE=<n>` (⚠️ **`=84` não existe, de propósito**; ⚠️ **a `=15` tem as
   paredes CINEMÁTICAS desde 30/08 e isso é load-bearing** — com paredes estáticas as duas bolas
   param no mesmo sítio desde a `rapier` 0.35, e a cena passa a ensinar o contrário do que diz).

@@ -15,12 +15,6 @@
 //! smoke scar): if the bridge were dead, the sprites would hang in the air
 //! instead of falling — the honest failure, not a hidden pre-step.
 
-use ph2d_app_physics::common::spawn_floor;
-use ph2d_core::Vec2;
-use ph2d_ecs::{Name, Transform};
-use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, RigidBody};
-use ph2d_render::{Sprite, WHITE_TILE_KEY};
-
 /// **As cenas que abrem PARADAS.** Uma cena que espera um gesto do artista
 /// (adicionar um corpo, assar, arrastar um rig) não pode ter meio caído antes de
 /// ele chegar ao mouse.

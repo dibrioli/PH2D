@@ -28,6 +28,7 @@ pub(crate) mod autokey;
 pub(crate) mod colorize;
 pub(crate) mod colorize_smoke_app;
 pub(crate) mod draw;
+pub(crate) mod draw_app;
 pub(crate) mod edit_gesture;
 pub(crate) mod edit_smoke_app;
 pub(crate) mod entities;

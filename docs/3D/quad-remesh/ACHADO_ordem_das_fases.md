@@ -1394,7 +1394,7 @@ hipótese sobre o algoritmo, é sobre a **lista de fases**.
 
 #### O que a rota do produto atravessa
 
-[`sculpt3d_history_retopo_extract.rs`](../../../shells/desktop/src/sculpt3d_history_retopo_extract.rs)
+[`sculpt3d/history_retopo_extract.rs`](../../../shells/desktop/src/sculpt3d/history_retopo_extract.rs)
 (o default desde 25/08) vai:
 
 ```text
@@ -1402,7 +1402,7 @@ F1 remesh-iso → F2 crossfield → F3 trace → G1 corte → G2 pente → G3/G5
 ```
 
 ⛔⛔⛔ **`ph2d-quantize` (o F4) não aparece.** A rota do *fill*
-([`…_retopo_global.rs`](../../../shells/desktop/src/sculpt3d_history_retopo_global.rs))
+([`…_retopo_global.rs`](../../../shells/desktop/src/sculpt3d/history_retopo_global.rs))
 chama-o — `quantize_within(&l, Budget::new(…))` — e é a **única** diferença de fase entre
 as duas antes do preenchimento.
 

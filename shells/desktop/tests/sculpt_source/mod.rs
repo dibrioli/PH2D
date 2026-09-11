@@ -301,24 +301,34 @@ pub fn match_arm(src: &str, anchor: &str) -> String {
 
 /// A fiação do módulo 3D no shell, **o CLUSTER inteiro**.
 ///
-/// ⚠️ O corte entre *a cena* (`sculpt3d.rs`), *o gesto* (`_input.rs`), *a
+/// ⚠️ O corte entre *a cena* (`sculpt3d/mod.rs`), *o gesto* (`_input.rs`), *a
 /// doação* (`_donation.rs`) e *a história* (`_history.rs`) é de responsabilidade
 /// e já se moveu DUAS vezes (o teto de LOC). Um gate que nomeia o ARQUIVO de
 /// cada função vira vermelho no próximo split, **sobre produto correto** — a
 /// `line/Vector` pagou isso duas vezes e esta linha pagou uma. As asserções aqui
 /// são sobre o que a fiação FAZ, então ela lê **todo `sculpt3d*.rs`**: o quinto
 /// arquivo nasce coberto, que é como o quarto nasceu descoberto.
+/// ⚠️⚠️ **E em 2026-09-11 (W2/L3-A3) a família saiu de `src/sculpt3d_*.rs` para `src/sculpt3d/`.**
+/// A varredura passa a ler **a pasta**, que é o mesmo argumento uma casa acima: o ficheiro novo
+/// nasce coberto por ser irmão, não por alguém o acrescentar aqui. ⛔ **O controlo positivo
+/// (`names.len() >= 4`) é o que impediu isto de passar em silêncio** — com a varredura na antiga
+/// `src/` o filtro `starts_with("sculpt3d")` só casaria com o DIRECTÓRIO (que não acaba em `.rs`),
+/// e a função devolveria a string vazia: todo gate que a consome ficaria verde sobre o VÁCUO.
 pub fn sculpt_src() -> String {
-    let dir = format!("{}/src", env!("CARGO_MANIFEST_DIR"));
+    let dir = format!("{}/src/sculpt3d", env!("CARGO_MANIFEST_DIR"));
     let mut names: Vec<String> = fs::read_dir(&dir)
-        .expect("src/")
+        .expect("src/sculpt3d/")
         .filter_map(|e| e.ok().map(|e| e.file_name().to_string_lossy().into_owned()))
         // ⚠️ **Os `_tests.rs` do cluster ficam de FORA**, e não é higiene: um
         // arch-gate que afirma AUSÊNCIA (*"esta fiação não chama X"*) passaria a
         // ler o texto dos próprios testes, onde a palavra proibida aparece de
         // propósito — um oráculo que casa com o teste de si mesmo não está
         // olhando para o produto.
-        .filter(|n| n.starts_with("sculpt3d") && n.ends_with(".rs") && !n.ends_with("_tests.rs"))
+        // ⚠️ **O `starts_with("sculpt3d")` MORREU com a pasta** — dentro dela nenhum ficheiro
+        // carrega o prefixo, e mantê-lo devolveria zero nomes. Quem delimita a família hoje é o
+        // DIRECTÓRIO, que é mais forte: um irmão novo não tem como ficar de fora por ser mal
+        // nomeado.
+        .filter(|n| n.ends_with(".rs") && !n.ends_with("_tests.rs"))
         .collect();
     names.sort();
     assert!(
@@ -327,7 +337,7 @@ pub fn sculpt_src() -> String {
     );
     let joined = names
         .iter()
-        .map(|n| source(n))
+        .map(|n| source(&format!("sculpt3d/{n}")))
         .collect::<Vec<_>>()
         .join("\n");
     elide_active_object(&joined)
@@ -338,7 +348,7 @@ pub fn sculpt_src() -> String {
 /// ⚠️ Desde a W8.1 a cena é uma LISTA, e toda pilha é alcançada por uma de três
 /// grafias da MESMA porta: `self.obj().stack`, `self.obj_mut().stack` e —
 /// onde o borrow checker exige campos disjuntos — `self.objects[self.active].
-/// stack` (ver `sculpt3d_space.rs`). O que estes gates afirmam é **qual verbo da
+/// stack` (ver `sculpt3d/space.rs`). O que estes gates afirmam é **qual verbo da
 /// pilha é chamado**, nunca por qual das três grafias; sem esta normalização
 /// eles ficariam vermelhos a cada rearranjo de empréstimo, **sobre produto
 /// correto** — que é o proxy que expira, pela oitava vez nesta linha.
@@ -359,7 +369,7 @@ fn elide_active_object(src: &str) -> String {
         // chamado**, e ele não mudou.
         .replace("self.piece_mut().stack", "self.stack")
         // ⚠️ **Os DOIS receptores**, e o segundo não é simetria: o gesto lê a
-        // cena por uma variável (`scene.level()`, em `sculpt3d_input.rs`) e o
+        // cena por uma variável (`scene.level()`, em `sculpt3d/input.rs`) e o
         // resto por `self`. Elidir só um deixaria o gate do log do nível
         // vermelho sobre produto correto — foi o que aconteceu.
         .replace("self.level_count()", "self.stack.level_count()")

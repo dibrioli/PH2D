@@ -11,7 +11,7 @@
 //! ⚠️ **E a FIXTURE media o oposto do produto.** Ela fixava o centro do dab na
 //! esfera ORIGINAL, e o mecanismo inteiro depende de o centro subir com a tinta
 //! (no produto ele é `hit.point`, o acerto do raycast contra a malha **viva** —
-//! `sculpt3d_input.rs`). Com o centro parado, o vértice sobe e se AFASTA, a
+//! `sculpt3d/input.rs`). Com o centro parado, o vértice sobe e se AFASTA, a
 //! distância viva CRESCE e o armado sai mais fraco que o desarmado; medido:
 //!
 //! | passadas | centro fixo (armado ÷ desarmado) | centro na superfície viva |

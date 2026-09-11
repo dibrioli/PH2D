@@ -16,7 +16,7 @@
 
 use std::fs;
 
-const SHADING: &str = "src/sculpt3d_scenes_shading.rs";
+const SHADING: &str = "src/sculpt3d/scenes_shading.rs";
 
 /// As cenas que o módulo de sombreamento declara, pelo literal que cada uma compara.
 fn scenes(src: &str) -> Vec<String> {
@@ -93,9 +93,9 @@ fn a_shading_scene_owns_its_whole_cast() {
 #[test]
 fn the_primary_mesh_door_is_actually_asked_before_the_fallback() {
     // ⚠️ **A `smoke_mesh` mudou de ficheiro em 2026-09-07** (corte de LOC do
-    // roteador de cenas) — ver o irmão no `sculpt3d_scenes_tests.rs`.
+    // roteador de cenas) — ver o irmão no `sculpt3d/scenes_tests.rs`.
     let src =
-        fs::read_to_string("src/sculpt3d_scenes_mesh.rs").expect("o escolhedor de malha existe");
+        fs::read_to_string("src/sculpt3d/scenes_mesh.rs").expect("o escolhedor de malha existe");
     let at = src
         .find("pub(crate) fn smoke_mesh(")
         .expect("controle: a porta da peca primaria existe");
@@ -149,7 +149,7 @@ fn the_scene_rig_reaches_the_session() {
     // ⚠️ **A FAMÍLIA, e não um arquivo — e a promessa acima era FALSA até agora.**
     // O doc deste gate já dizia que *"o construtor pode mudar de arquivo sem
     // envelhecer esta asserção"*, e ele lia `src/sculpt3d.rs` cravado: quando o
-    // construtor saiu para o irmão `sculpt3d_birth.rs` (o pai cruzou o teto de
+    // construtor saiu para o irmão `sculpt3d/birth.rs` (o pai cruzou o teto de
     // LOC), o gate reprovou produto correto. É a mesma cicatriz que o
     // `project_tokens::install` da `line/Vector` pagou — *afirme a PROPRIEDADE,
     // nunca o endereço* —, e desta vez ela estava escrita no próprio doc.

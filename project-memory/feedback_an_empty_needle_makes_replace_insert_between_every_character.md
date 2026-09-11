@@ -10,7 +10,7 @@ metadata:
 
 Ao cortar um bloco com `a = s[s.index(X):s.index(Y)]` e depois `s.replace(a, n)`: se `Y`
 aparecer **antes** de `X`, a fatia sai **vazia** — e `str.replace("", n)` insere `n` **entre
-cada carácter do ficheiro**. Medido em 2026-09-04: `sculpt3d_keys.rs` foi de `581` para
+cada carácter do ficheiro**. Medido em 2026-09-04: `sculpt3d/keys.rs` foi de `581` para
 `646 277` linhas, e o compilador cuspiu `312` erros de *«unknown start of token»*.
 
 **Why:** a disciplina da casa (`CLAUDE.md` §2) manda pôr `assert` de contagem em toda edição

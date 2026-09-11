@@ -171,7 +171,7 @@ pub enum ClothFilterOrientation {
     /// vive em quem resolve.
     ///
     /// Medido por `na_vista_o_baixo_e_o_vertical_do_ecra_e_nao_a_profundidade`
-    /// (`shells/desktop/src/sculpt3d_filter_cloth_tests.rs`), sobre um ecrã
+    /// (`shells/desktop/src/sculpt3d/filter_cloth_tests.rs`), sobre um ecrã
     /// **INCLINADO** — com o ecrã alinhado ao mundo os dois braços do
     /// referencial coincidem **ao bit**, e ali o gate seria verde por vácuo.
     View,

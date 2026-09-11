@@ -402,7 +402,7 @@ pub struct Grip {
 
 /// O gesto de navegação em curso.
 ///
-/// ⚠️ Os botões são os **mesmos** do módulo de escultura (`sculpt3d_input.rs`): esquerdo e direito
+/// ⚠️ Os botões são os **mesmos** do módulo de escultura (`sculpt3d/input.rs`): esquerdo e direito
 /// orbitam, o do meio faz pan. Não é herança por analogia — são duas janelas 3D no mesmo app, e uma
 /// mão que aprendeu a girar numa tem de girar na outra.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

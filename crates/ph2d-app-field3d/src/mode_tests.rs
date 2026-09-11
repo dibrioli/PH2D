@@ -191,7 +191,7 @@ fn the_sculpt_pointer_refuses_an_empty_scene_before_it_indexes_one() {
     // ⚠️ **O SUJEITO deste gate é a SHELL** (ele mede que o laço/despacho dela CHAMA esta
     // família), logo a raiz da varredura é a da shell e não a desta crate.
     let raiz = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../shells/desktop/src");
-    let src: String = ["sculpt3d_input_down.rs", "sculpt3d_input.rs"]
+    let src: String = ["sculpt3d/input_down.rs", "sculpt3d/input.rs"]
         .iter()
         .map(|f| std::fs::read_to_string(raiz.join(f)).expect("o irmão da escultura existe"))
         .collect::<Vec<_>>()

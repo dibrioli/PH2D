@@ -85,7 +85,7 @@ só**. O que falta ao Hand-packed não é um store — é **identidade durável*
    em `project_schema_tests.rs` — três sítios, nunca um.
    ⚠️ **Bumpa UMA vez e nunca mais:** daqui em diante folhas, regiões e o Hand-packed inteiro
    evoluem contra a versão INTERNA do blob. É o precedente literal do `TimelineDoc` e do `sculpt`
-   (`sculpt3d_doc.rs`: *"o `PROJECT_SCHEMA` bumpa uma vez, e daqui em diante o módulo evolui contra
+   (`sculpt3d/doc.rs`: *"o `PROJECT_SCHEMA` bumpa uma vez, e daqui em diante o módulo evolui contra
    este"*). Sem isto, cada wave de Hand-packed recusaria todo projeto já salvo.
 2. **Uma componente irmã, no espírito do `PaintedDoc`:** `ph2d_ecs::SpritePixels(pub AssetId)` — a
    identidade durável dos pixels próprios deste sprite. Componente ⇒ viaja no `WorldSnapshot` ⇒

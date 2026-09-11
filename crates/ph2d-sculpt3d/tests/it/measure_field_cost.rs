@@ -275,7 +275,7 @@ fn measure_what_a_field_evaluation_is_made_of() {
 /// 60 fps são ~16 dabs por quadro.
 ///
 /// ⚠️ **O argumento para coalescer já está escrito no braço vizinho do
-/// `sculpt3d_input.rs`**, no `Grip::Turn`: *"daria N dabs com o mesmo total
+/// `sculpt3d/input.rs`**, no `Grip::Turn`: *"daria N dabs com o mesmo total
 /// acumulado no mesmo lugar — trabalho idêntico repetido, porque o alvo é
 /// função do `pre` congelado e do gesto TOTAL"*. O `Hold` tem a mesma lei.
 ///

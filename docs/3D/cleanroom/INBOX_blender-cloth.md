@@ -1152,7 +1152,7 @@ marcador de pendência obsoleto que sobreviveu ao atestado. Um leitor que confie
 implementar uma emenda atestada; e uma emenda genuinamente pendente lê-se IGUAL.
 
 ### INC-3 (I-2, 2026-09-09) — exposição ao ler a 2.ª região da tarefa nº 1 do BLOCO-RETOMADA
-Origem: ficheiro do NOSSO produto, `shells/desktop/src/sculpt3d_filter.rs`, doc de módulo, linhas 9-16.
+Origem: ficheiro do NOSSO produto, `shells/desktop/src/sculpt3d/filter.rs`, doc de módulo, linhas 9-16.
 Quando: passo 4 do BLOCO-LINHA, ao abrir a região que o R-1 nomeou para reescrita.
 O QUE É (descrito, ⛔ NUNCA reproduzido — §6.1): o doc de módulo cita um ficheiro INTERNO do alvo
 COM número de linha, e transcreve DUAS atribuições do fonte dele (a que forma o deslocamento

@@ -8,7 +8,7 @@
 //! `wgpu::Device`, e o que eles afirmam não é geometria: é *quem pergunta a
 //! quem*. A metade que É geometria mora nos gates de unidade — a fusão em
 //! `ph2d-mesh` (`merge_tests.rs`) e a tabela de slots em
-//! `sculpt3d_slots_tests.rs` —, e as duas metades são necessárias: a lei pode
+//! `sculpt3d/slots_tests.rs` —, e as duas metades são necessárias: a lei pode
 //! estar certa e não ser consultada.
 
 use crate::sculpt_source;

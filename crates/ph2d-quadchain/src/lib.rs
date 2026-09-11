@@ -6,7 +6,7 @@
 //! A cadeia que transforma uma malha de triângulos numa malha de **quads alinhados à superfície**
 //! tem sete passos, e a ordem deles é load-bearing (a fase zero sozinha vale `2×` no enviesamento
 //! final). Até 2026-08-24 essa ordem vivia **dentro do shell do módulo de escultura**
-//! (`sculpt3d_history_retopo_extract.rs`, `pub(in crate::sculpt3d)`) — alcançável por um módulo só.
+//! (`sculpt3d/history_retopo_extract.rs`, `pub(in crate::sculpt3d)`) — alcançável por um módulo só.
 //!
 //! ⚠️ **E o segundo consumidor chegou**: o modelador implícito extrai a peça por *Dual Contouring*
 //! sobre grade, e o placar dele

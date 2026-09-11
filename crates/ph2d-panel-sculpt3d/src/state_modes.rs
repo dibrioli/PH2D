@@ -120,7 +120,7 @@ impl RetopoMode {
     // MENTIA.** Dizia *«este motor consome a densidade adaptativa? só o local — e é por isso
     // que o painel avisa quando o knob não é zero no outro»*, e o `Follow Curvature` chega
     // **aos dois** motores desde 2026-08-21 (o comentário no sítio da chamada, em
-    // `sculpt3d_panel.rs`, já o dizia). ⚠️ **E ela não tinha UM leitor** — nem o aviso que o
+    // `sculpt3d/panel.rs`, já o dizia). ⚠️ **E ela não tinha UM leitor** — nem o aviso que o
     // doc dela descrevia existia.
     //
     // ⚠️ **É a espécie ÓRFÃ, não a MORTA** (memória `an_orphan_id_and_a_dead_knob…`): a cura

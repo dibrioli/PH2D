@@ -176,8 +176,8 @@ cerca 1 a funcionar no produto. Topologia `χ 2` · `0` bordo · `0` não-manifo
 | `crates/ph2d-quadfill/src/finish_extract.rs` | o remate nas três saídas + `FinishReport::snapped` |
 | `crates/ph2d-quadfill/src/untangle_tests.rs` | o censo das três saídas passa a contar o remate |
 | `crates/ph2d-quadfill/examples/pontas.rs` | o instrumento (`--recentrar`, `--unit`, `--rematar`) |
-| `shells/desktop/src/sculpt3d_photo_button.rs` | a tabela na sonda, em `F1` e na `SAIDA` |
-| `shells/desktop/src/sculpt3d_retopo_one.rs` | o acabamento diz o que fez (`untangled` · `snapped`) |
+| `shells/desktop/src/sculpt3d/photo_button.rs` | a tabela na sonda, em `F1` e na `SAIDA` |
+| `shells/desktop/src/sculpt3d/retopo_one.rs` | o acabamento diz o que fez (`untangled` · `snapped`) |
 
 ## §11 — ⭐⭐⭐ A SEGUNDA METADE DO DIA: o knob que abria em ZERO (plano §109)
 

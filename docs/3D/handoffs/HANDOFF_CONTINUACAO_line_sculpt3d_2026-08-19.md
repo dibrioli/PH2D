@@ -38,7 +38,7 @@ Enio, 2026-08-18: ***"não temos undo para Filter"***.
   sobre `src/*.rs` **não a acha**, porque aquele arquivo está num SUBDIRETÓRIO;
   eu caí nisso).
 - Existe gate a prová-la: `the_whole_drag_is_one_undo_step`
-  (`shells/desktop/src/sculpt3d_filter_tests.rs:249`) — e ele **passa**.
+  (`shells/desktop/src/sculpt3d/filter_tests.rs:249`) — e ele **passa**.
 - ⛔ A guarda `sculpt3d_keys_live()` (que inclui `!a_tool_owns_the_bare_keys()`)
   **NÃO é o defeito** — eu suspeitei dela e **recuei**: se o Motion ou o Vector
   estão em mãos, o `Ctrl+Z` deve desfazer o grafo deles, não a escultura. Mover o
@@ -46,7 +46,7 @@ Enio, 2026-08-18: ***"não temos undo para Filter"***.
 
 ### ⭐ A CAUSA, achada por leitura e confirmada no fonte
 
-`shells/desktop/src/sculpt3d_undo.rs:351-385`, o braço `StrokeUndo::Stroke`, é um
+`shells/desktop/src/sculpt3d/undo.rs:351-385`, o braço `StrokeUndo::Stroke`, é um
 **`if/else`**:
 
 ```rust
@@ -61,7 +61,7 @@ if let Some(masks) = masks {
 ```
 
 E quem decide qual ramo corre é o `close_stroke`
-(`shells/desktop/src/sculpt3d_history.rs:~530`):
+(`shells/desktop/src/sculpt3d/history.rs:~530`):
 
 ```rust
 masks: self.brush.verb.paints_mask().then(|| self.stroke.base_masks().to_vec()),

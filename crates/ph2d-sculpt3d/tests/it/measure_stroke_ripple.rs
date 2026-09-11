@@ -29,7 +29,7 @@
 //! # A porta é a do PRODUTO
 //!
 //! Os dabs entram por `SculptStroke::begin` + `SculptStroke::dab`, que é o que o
-//! shell chama (`sculpt3d_input.rs`), e o centro de cada um sai de um **pick**,
+//! shell chama (`sculpt3d/input.rs`), e o centro de cada um sai de um **pick**,
 //! que é o que o `sculpt_at` faz a cada passo do `walk`. A metade 3 dirige o
 //! [`walk`] REAL e pergunta a [`ph2d_sculpt3d::Walk::anchor`], sem uma linha de
 //! re-expressão.

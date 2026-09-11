@@ -128,8 +128,8 @@ com ela.
 - **`ph2d-panel-sculpt3d`** — `paint/brush.rs` (as duas fileiras) · `event.rs` (os dois braços) ·
   `censo_das_fileiras_tests.rs` (**novo**).
 - **`ph2d-editor-core`** — os dois arrays de ids. **`ph2d-i18n`** — duas chaves.
-- **`shells/desktop`** — `sculpt3d_input.rs` (a pergunta com o pincel na mão) ·
-  `sculpt3d_undo_tests.rs` (o gate percorre o braço que o gesto percorre).
+- **`shells/desktop`** — `sculpt3d/input.rs` (a pergunta com o pincel na mão) ·
+  `sculpt3d/undo_tests.rs` (o gate percorre o braço que o gesto percorre).
 - **`docs/3D/cleanroom/`** — a espec emendada quatro vezes (Q8·Q9·Q10·Q11, todas atestadas), o
   ledger, o INBOX e **6 fixtures novas**.
 

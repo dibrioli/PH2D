@@ -28,7 +28,7 @@
 | `crates/ph2d-gridmap/` | `align.rs`, `arcline.rs`, `assembly.rs`, `round_report.rs` **novos**; `weld_solve.rs`/`weld_round.rs`/`round.rs`/`solve.rs` estendidos | sim |
 | `crates/ph2d-quadextract/` | `walk.rs` (resgates), `lib.rs`, gates e exemplos | sim |
 | `crates/ph2d-quadfill/` | `finish.rs` expõe `smooth`; `examples/fill_chain.rs` **novo** | sim |
-| ⚠️ `shells/desktop/` | `sculpt3d_history_retopo_{extract,global}.rs`, `_remesh.rs`, `_scenes_quad.rs`, `_quad_shape.rs`, `_remesh_refusal.rs`, `sculpt3d_history.rs` | sim — ⚠️ **é o shell**, ver §3 |
+| ⚠️ `shells/desktop/` | `sculpt3d_history_retopo_{extract,global}.rs`, `_remesh.rs`, `_scenes_quad.rs`, `_quad_shape.rs`, `_remesh_refusal.rs`, `sculpt3d/history.rs` | sim — ⚠️ **é o shell**, ver §3 |
 
 ⭐ **Quatro ficheiros NOVOS nasceram de cortes de LOC** (`border.rs`, `assembly.rs`,
 `round_report.rs`) — corte por **responsabilidade**, nunca allowlist. Os três estavam

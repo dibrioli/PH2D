@@ -16,7 +16,7 @@
 //! | Pack / Bake Sheet | `sheet_bake.rs` | uma folha é **uma** textura, e é de 8 bits |
 //! | Merge Sprites | `sprite_merge.rs` | o acumulador é de 8 bits — **e despawna as fontes** |
 //! | `Strategy → Atlas` | `inspector_strategy.rs` | o atlas partilhado é de 8 bits |
-//! | doar a forma ao 3D | `sculpt3d_bake.rs` | o `base × luz` é de 8 bits |
+//! | doar a forma ao 3D | `sculpt3d/bake.rs` | o `base × luz` é de 8 bits |
 //!
 //! Os quatro rebaixavam 16 bits sem uma palavra, e o único vestígio era a linha `Format` do
 //! Inspector mudar sozinha — que é **literalmente** a queixa que abriu esta wave (Enio, 2026-08-20:
@@ -148,7 +148,7 @@ fn the_four_verbs_the_sweep_found_are_real_and_now_declare() {
             "render_loop/inspector_strategy.rs",
             "o atlas partilhado e' de 8 bits",
         ),
-        ("sculpt3d_bake.rs", "o `base x luz` e' de 8 bits"),
+        ("sculpt3d/bake.rs", "o `base x luz` e' de 8 bits"),
     ] {
         let path = shell_src().join(rel);
         let src = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("read {path:?}: {e}"));

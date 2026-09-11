@@ -52,7 +52,7 @@ ONDE ESTÁ O CÓDIGO E OS GATES
     measure_quad_shape.rs
 · `crates/ph2d-gridmap/src/round.rs` — o §5. 3 gates + 2 sondas
   (`--ignored`), em `round_tests.rs`.
-· `shells/desktop/src/sculpt3d_history_retopo_extract.rs` — o botão,
+· `shells/desktop/src/sculpt3d/history_retopo_extract.rs` — o botão,
   DESLIGADO. 2 gates (o do interruptor e o que CONTA a bifurcação).
 · Handoff da casa (técnico, com as tabelas):
   docs/3D/handoffs/HANDOFF_INTEGRACAO_line_quadextract_2026-08-24.md

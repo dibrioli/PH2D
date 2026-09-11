@@ -259,7 +259,7 @@ dois lados (`ph2d_quadfill::quad_shape`):
 | ⛔ nós, orelha | `1,98` | `27°` | **9.159** de 78.403 |
 
 - **Gate vermelho com endereço:** `the_quads_are_as_square_as_the_oracles`
-  (`#[ignore]`, `shells/desktop/src/sculpt3d_quad_shape.rs`).
+  (`#[ignore]`, `shells/desktop/src/sculpt3d/quad_shape.rs`).
 - **Causa nomeada e medida:** a 2.ª família de linhas da grade não fica ortogonal à
   1.ª — assinatura da interpolação transfinita, que casa com a **fronteira** do patch
   e enviesa no **meio**. ⇒ *o interior de um patch tem de nascer de parametrização

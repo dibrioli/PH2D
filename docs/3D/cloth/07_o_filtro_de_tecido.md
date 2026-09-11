@@ -46,8 +46,8 @@ direcção de MUNDO* — o discriminador é a **equivariância**.
 | `ClothFilterKind` · `ClothFilterOrientation` | [`cloth_filter_kind.rs`](../../../crates/ph2d-sculpt3d/src/cloth_filter_kind.rs) | o vocabulário do painel |
 | `FilterLaw` | [`filter_law.rs`](../../../crates/ph2d-sculpt3d/src/filter_law.rs) | a **união** das nove leis de malha com os cinco tipos de tecido |
 | `cloth_filter_{begin,step,end}` | [`stroke_cloth_filter.rs`](../../../crates/ph2d-sculpt3d/src/stroke_cloth_filter.rs) | o adaptador |
-| o gesto + o painel | `shells/desktop/src/sculpt3d_filter.rs` · `ph2d-panel-sculpt3d` | duas fileiras de chips + a do referencial |
-| a cena **`=37`** | [`sculpt3d_scenes_cloth_filter.rs`](../../../shells/desktop/src/sculpt3d_scenes_cloth_filter.rs) | o roteiro do dono, em nove passos |
+| o gesto + o painel | `shells/desktop/src/sculpt3d/filter.rs` · `ph2d-panel-sculpt3d` | duas fileiras de chips + a do referencial |
+| a cena **`=37`** | [`sculpt3d/scenes_cloth_filter.rs`](../../../shells/desktop/src/sculpt3d/scenes_cloth_filter.rs) | o roteiro do dono, em nove passos |
 
 ### §2.1 — Por que uma UNIÃO e não um terceiro modo armado
 
@@ -218,6 +218,6 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-sculpt3d && env PH2D_SCULP
 ```
 
 O roteiro dos nove passos é impresso pela própria cena
-([`sculpt3d_scenes_cloth_filter.rs`](../../../shells/desktop/src/sculpt3d_scenes_cloth_filter.rs)) —
+([`sculpt3d/scenes_cloth_filter.rs`](../../../shells/desktop/src/sculpt3d/scenes_cloth_filter.rs)) —
 ⛔ **não o duplique aqui**, senão as duas cópias divergem e a que o artista lê é a
 que envelhece.

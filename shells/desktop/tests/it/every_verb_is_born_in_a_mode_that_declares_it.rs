@@ -2,7 +2,7 @@
 //!
 //! O `Sculpt3dUi::default()` do painel deriva o modo de nascimento de cada verbo
 //! desde a W6 — e **não é ele quem faz o estado nascer**. O
-//! `shells/desktop/src/sculpt3d_birth.rs` escrevia
+//! `shells/desktop/src/sculpt3d/birth.rs` escrevia
 //! `[RefMode::default(); Verb::ALL.len()]`, um `S` chapado, e a segunda resposta
 //! era a que shipava: medido em `crates/ph2d-sculpt3d/tests/it/measure_layer_law.rs`
 //! (P8), **7 dos 23 verbos** nasciam num modo que não os declara — os sete cuja
@@ -24,7 +24,7 @@ use std::path::Path;
 
 #[test]
 fn every_verb_is_born_in_a_mode_that_declares_it() {
-    let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("src/sculpt3d_birth.rs");
+    let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("src/sculpt3d/birth.rs");
     let src = std::fs::read_to_string(&path)
         .unwrap_or_else(|e| panic!("o dono do nascimento mudou-se: {} ({e})", path.display()));
 

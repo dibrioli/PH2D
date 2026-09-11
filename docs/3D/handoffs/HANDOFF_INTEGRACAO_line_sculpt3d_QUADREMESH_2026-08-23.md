@@ -40,7 +40,7 @@ libQEx, vcglib ou do traçador do quadwild (GPL). Membro por **glob** (`crates/*
 | `crates/ph2d-trace/src/{lib,patches}.rs` | `PatchLayout::face_dir` (o campo viaja com o layout) + `prune.rs` (novo, **desligado**) | aditivo |
 
 ⭐ **Consumidores conferidos por `grep`: o único que lia estes campos é
-`shells/desktop/src/sculpt3d_quad_shape.rs`, e está actualizado.** Nenhuma outra linha
+`shells/desktop/src/sculpt3d/quad_shape.rs`, e está actualizado.** Nenhuma outra linha
 usa `ph2d-crossfield` ou `ph2d-quadfill` — eles são F2/F5 da cadeia do quad remesh.
 
 ### ⚠️ Ferramenta PARTILHADA — o único ponto que outra linha pode encostar
@@ -59,12 +59,12 @@ mexido, este é o ficheiro a olhar primeiro.*
 
 ### Shell (`shells/desktop/src/`) — **só sondas de `sculpt3d`**
 
-`sculpt3d_field_follow.rs` · `sculpt3d_holonomy_probe.rs` (novo) ·
-`sculpt3d_patch_valence.rs` (novo) · `sculpt3d_quad_shape.rs` ·
-`sculpt3d_simplest_case.rs` (novo) · `sculpt3d_undo.rs` (**só** as 3 linhas de
+`sculpt3d/field_follow.rs` · `sculpt3d/holonomy_probe.rs` (novo) ·
+`sculpt3d/patch_valence.rs` (novo) · `sculpt3d/quad_shape.rs` ·
+`sculpt3d/simplest_case.rs` (novo) · `sculpt3d/undo.rs` (**só** as 3 linhas de
 `#[path] mod` que declaram as sondas novas).
 
-⚠️ **`sculpt3d_undo.rs` é o único ponto do shell que outra linha do sculpt3d encostaria**
+⚠️ **`sculpt3d/undo.rs` é o único ponto do shell que outra linha do sculpt3d encostaria**
 — e a mudança é um bloco de declarações de módulo no fim, **append-only**.
 
 ### Documentação e configuração

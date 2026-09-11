@@ -62,7 +62,7 @@ cinco ficheiros do §2.
 
 ⚠️ **Os ficheiros de código MODIFICADOS** (onde uma linha paralela pode encostar): 22, dos quais 16
 são `ph2d-sculpt3d`, 4 são `ph2d-panel-sculpt3d`/`editor-core`/`i18n` e **4 são da shell**
-(`sculpt3d_input.rs`, `sculpt3d_pull.rs`, `sculpt3d_undo_tests.rs`,
+(`sculpt3d/input.rs`, `sculpt3d/pull.rs`, `sculpt3d/undo_tests.rs`,
 `tests/the_sculpt_gesture_is_wired.rs`). Os outros **26 ficheiros de código são NOVOS** — a crate
 `ph2d-cloth` inteira (15) e onze irmãos por corte de responsabilidade.
 

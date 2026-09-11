@@ -52,7 +52,7 @@ conflito.
 | `crates/ph2d-panel-registry-init/{Cargo.toml,src/lib.rs}` | +3 · +2 | registrar o painel |
 | ⚠️ `shells/desktop/src/render_loop/hierarchy.rs` | **+94/-1** | o módulo entra na Hierarquia |
 | `shells/desktop/src/render_loop/mod.rs` · `input_dispatch.rs` · `input_dispatch/keyboard.rs` · `main.rs` · `init.rs` · `undo.rs` · `hero_intents/hierarchy.rs` | +73 · +21 · +37 · +19 · +4 · +5 · +10 | despacho, teclas, boot, undo |
-| ⚠️ `shells/desktop/src/sculpt3d.rs` · `sculpt3d_export.rs` · `sculpt3d_import.rs` | +11/-1 · +6/-1 · +1/-1 | ⚠️ **fronteira com a `line/sculpt3d`** — ver §2.2 |
+| ⚠️ `shells/desktop/src/sculpt3d/mod.rs` · `sculpt3d/export.rs` · `sculpt3d/import.rs` | +11/-1 · +6/-1 · +1/-1 | ⚠️ **fronteira com a `line/sculpt3d`** — ver §2.2 |
 | `shells/desktop/Cargo.toml` · `crates/ph2d-editor-core/Cargo.toml` | +35 · +7 | deps das crates novas |
 | `.typos.toml` | +11/-0 | ver §5 |
 | `Cargo.lock` | +487/-42 | ver §3 |

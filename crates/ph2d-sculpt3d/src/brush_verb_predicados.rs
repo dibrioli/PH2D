@@ -82,7 +82,7 @@ impl Verb {
     /// (`the_plane_offset_lifts_the_plane_the_verbs_project_onto`).
     ///
     /// ⚠️ **Nenhuma UI pergunta isto hoje** (o shell arma `invert = ctrl`
-    /// incondicionalmente, `sculpt3d.rs`): o consumidor é o [`Brush::reach`], e o
+    /// incondicionalmente, `sculpt3d/mod.rs`): o consumidor é o [`Brush::reach`], e o
     /// chip que decide oferecer ou não o controle é da wave que trouxer painel.
     ///
     /// ⚠️ **Os dois [`Grip::Turn`] ficam de fora, e a razão é que o gesto já tem

@@ -171,9 +171,9 @@ Quatro commits, todos com gate: `9a423062d` · `84492aac4` · `82822f14c` · `e3
 5. **`ph2d_crossfield::Dual::scale_by_density`** — a correcção conforme `α = −∗ds` no transporte.
    Força `1` (a da teoria, sem curso). Entra como **candidata**, com uma guarda: *uma candidata
    com densidade que ampute MAIS pontas que a melhor sem correcção não é oferecida.*
-6. **O selector** (`sculpt3d_retopo_decide.rs`) ganhou duas chaves — amputação por contagem+`p90`
+6. **O selector** (`sculpt3d/retopo_decide.rs`) ganhou duas chaves — amputação por contagem+`p90`
    e densidade da ponta — e `still_broken` passou a armar socorro por elas.
-7. **Três cortes de LOC por responsabilidade**: `sculpt3d_retopo_one.rs` (correr UMA candidata),
+7. **Três cortes de LOC por responsabilidade**: `sculpt3d/retopo_one.rs` (correr UMA candidata),
    `_decide.rs` (escolher entre duas), `_target_tests.rs`. E duas portas que apagaram duplicação
    real: `one::par` e `corrida`.
 
@@ -213,5 +213,5 @@ do §5 do `CLAUDE.md` — áudio e `flip_smooth::…::orcamento` — passam sozi
   `decide::melhor` · `Dual::scale_by_density` · `ScaleField::adaptive_ranged`.
 - **Foundational tocado:** `ph2d-crossfield` (método novo, aditivo) e `ph2d-quadflow`
   (`adaptive_ranged` novo; `adaptive_between` ganhou um parâmetro, privado).
-- **Ficheiros no tecto de LOC** (`598`, `600` é o cap): `sculpt3d_history_retopo_extract.rs`.
+- **Ficheiros no tecto de LOC** (`598`, `600` é o cap): `sculpt3d/history_retopo_extract.rs`.
   *A próxima linha que lhe acrescentar código corta primeiro.*

@@ -165,7 +165,7 @@ do `layer.cc` foi feito hoje** (`135b5e754`).
 | o aplicador | `stroke_apply.rs`, flag `coat` | o alvo já é a posição final; o `accum` continua sendo o `disp` |
 | defaults | `brush.rs:132` | `layer_height` **0,1**, faixas `[0, 1]` dura e `[0, 0,2]` de slider |
 | 16 gates | `verb_layer_tests.rs` | **verdes, e cegos** — §2 |
-| cena de smoke | `sculpt3d_scenes_layer.rs`, **`=33`** | 8 passos, e **nenhum toca hardness ou auto_smooth** |
+| cena de smoke | `sculpt3d/scenes_layer.rs`, **`=33`** | 8 passos, e **nenhum toca hardness ou auto_smooth** |
 
 ### §4.1 — O que já foi CONFERIDO contra o `layer.cc` (não re-derive)
 

@@ -1,7 +1,7 @@
 //! Os gates de [`Dual::boost_align`] — o ponto de extensão que reforça o alinhamento ao relevo
 //! onde quem chama sabe que o relevo manda mais (a calota de um espinho afiado, 2026-09-02).
 //!
-//! ⚠️ Ele nasceu como INSTRUMENTO (`PH2D_TIP_ALIGN`, `sculpt3d_retopo_one.rs`) e não como cura:
+//! ⚠️ Ele nasceu como INSTRUMENTO (`PH2D_TIP_ALIGN`, `sculpt3d/retopo_one.rs`) e não como cura:
 //! medido, a `k = 5` as cinco réguas da grade da peça do dono ficam verdes **e** a extracção deixa
 //! um laço de `14` arestas no bico da agulha — o mecanismo está em
 //! `docs/3D/quad-remesh/PLANO_a_graduacao_da_ponta.md` §102. O que estes gates defendem é o

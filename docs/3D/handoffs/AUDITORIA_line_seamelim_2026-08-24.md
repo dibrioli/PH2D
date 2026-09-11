@@ -58,9 +58,9 @@ detector de «alguma coisa partiu».
 `PH2D_RETOPO_EXTRACT=1`, e o caminho de sempre continua alcançável e intocado.
 
 **TRAÇO:** botão → `quad_remesh_global`
-([`retopo_global.rs:76`](../../../shells/desktop/src/sculpt3d_history_retopo_global.rs)) →
+([`retopo_global.rs:76`](../../../shells/desktop/src/sculpt3d/history_retopo_global.rs)) →
 `extract_requested()` (**uma** chamada, com gate a contá-la) →
-`quad_remesh_extract` ([`retopo_extract.rs:62`](../../../shells/desktop/src/sculpt3d_history_retopo_extract.rs))
+`quad_remesh_extract` ([`retopo_extract.rs:62`](../../../shells/desktop/src/sculpt3d/history_retopo_extract.rs))
 → `ph2d_gridmap::welded_enabled()` (linha 107) → `round_welded` (linha 110) ou
 `round_to_integers` (linha 112).
 

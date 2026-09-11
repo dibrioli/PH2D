@@ -139,7 +139,7 @@ o §5 do `CLAUDE.md` já escreve para este módulo.
    ⭐ **O `typos` FOI CORRIDO nesta árvore e devolve `exit 0`.** Eu nomeei-o como o
    candidato real e depois medi-o em vez de o deixar para a fusão — e ele **tinha
    um vermelho**, desta linha: `catch-alls` em
-   `shells/desktop/src/sculpt3d_keys_view_tests.rs` (ele quer `all` ou `falls`).
+   `shells/desktop/src/sculpt3d/keys_view_tests.rs` (ele quer `all` ou `falls`).
    ⚠️ **E a 1.ª cura falhou duas vezes de maneira instrutiva:** a nota que
    explicava a cura **continha a própria palavra** (*um comentário sobre um lint
    passa pelo lint*), e a 2.ª redacção trouxe `portugues` sem acento, que ele
@@ -179,7 +179,7 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-sculpt3d && env PH2D_SCULP
 ```
 
 **(c) AS QUATRO VIEWPORTS e os dois gizmos** — cena `=38`
-(`sculpt3d_scenes_viewports.rs`):
+(`sculpt3d/scenes_viewports.rs`):
 
 ```
 cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-sculpt3d && env PH2D_SCULPT3D_SMOKE=38 cargo run -p ph2d-host-desktop --release

@@ -3,7 +3,7 @@
 //! Toda cena desta linha carrega um roteiro (`announce`) que diz ao artista o que julgar, e os
 //! números dele saem do motor de propósito — é o roteiro que torna o smoke *julgável* em vez de
 //! *olhado*. Mas o roteiro só chega à tela se alguém o **chamar**, e o chamador vive noutro arquivo
-//! (`sculpt3d_scripts.rs`): escrever a cena e esquecer a linha compila, passa em toda a suíte, e
+//! (`sculpt3d/scripts.rs`): escrever a cena e esquecer a linha compila, passa em toda a suíte, e
 //! entrega ao Enio uma janela sem instruções.
 //!
 //! ⚠️ **É o irmão do `no_two_sculpt3d_scenes_claim_the_same_level`, e o modo de falha é o mesmo

@@ -26,7 +26,7 @@
 //! **Medido pela porta do produto** (`measure_stroke_ripple`, §3): de 41 dabs
 //! emitidos num traço, os APLICADOS eram `40, 40, 39, 39, 39, 38, 35` — e
 //! missavam **também contra a esfera pristina**, então não era o barro que tinha
-//! subido. No shell isso não custava um carimbo: `sculpt3d_input.rs` faz `break`
+//! subido. No shell isso não custava um carimbo: `sculpt3d/input.rs` faz `break`
 //! quando um pick erra e a âncora avança para o fim do percurso mesmo assim, de
 //! modo que **um** furo no dab 7 de 41 apagava os dabs 8..41.
 

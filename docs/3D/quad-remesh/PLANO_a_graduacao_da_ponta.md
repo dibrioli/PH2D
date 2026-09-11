@@ -129,7 +129,7 @@ sizing»*.
 
 O campo **PEDE** `0,471` (melhor que o alvo `0,59`!) e a cadeia entrega `1,502`. ⛔ **Mas o
 mapa adaptativo nunca chega à saída:** a
-[`sculpt3d_history_retopo_extract.rs`](../../../shells/desktop/src/sculpt3d_history_retopo_extract.rs)
+[`sculpt3d/history_retopo_extract.rs`](../../../shells/desktop/src/sculpt3d/history_retopo_extract.rs)
 tem, desde 30/08, a guarda
 
 ```rust
@@ -280,7 +280,7 @@ nova da ponta faz ganhar.
 ## §14 — O que se ligou, e o que NÃO se ligou
 
 - ⭐ **`worse` ganha a chave da ponta**, entre `>60°` e o enviesamento mediano
-  ([`sculpt3d_retopo_rulers.rs`](../../../shells/desktop/src/sculpt3d_retopo_rulers.rs)).
+  ([`sculpt3d/retopo_rulers.rs`](../../../shells/desktop/src/sculpt3d/retopo_rulers.rs)).
   `PH2D_RETOPO_TIPKEY=0` bissecta. ⛔ **Nunca à frente dos furos.**
 - ⛔ **Nada de `ISO_ADAPT`, nada de `Follow Curvature`** — a célula que atinge o alvo continua a
   perder por causa dos furos, e os furos são a queixa mais antiga. *A wave que os fecha é outra.*
@@ -946,7 +946,7 @@ entram na conta. *A ponta apontada seria invisível a todas as réguas desta lin
 ⇒ ⭐⭐ **A peça que o dono está a testar não é a que ele exportou a 30/08.** As duas
 hipóteses de §45 ficam ambas de pé; a que sobra é *outra escultura*, e o passo seguinte é
 tê-la: no app, **`Ctrl+Shift+E`** escreve a escultura num ficheiro
-([`sculpt3d_export.rs`](../../../shells/desktop/src/sculpt3d_export.rs), o par do
+([`sculpt3d/export.rs`](../../../shells/desktop/src/sculpt3d/export.rs), o par do
 `Ctrl+Shift+O`).
 
 ⚠️ **A lição não é «a hipótese estava errada» — é que ela era barata de medir e cara de
@@ -1569,8 +1569,8 @@ escala conforme** que o `CLAUDE.md` §5 já nomeia, com espec própria.
 ## §88 — Cortes de LOC que esta wave forçou (HR-18)
 
 O ficheiro do caminho chegou a `694` linhas. ⛔ Sem tolerância: **três cortes por
-responsabilidade** — `sculpt3d_retopo_one.rs` (correr UMA candidata), `sculpt3d_retopo_decide.rs`
-(escolher entre duas) e `sculpt3d_retopo_target_tests.rs` (os gates do alvo). ⭐ E a cascata de
+responsabilidade** — `sculpt3d/retopo_one.rs` (correr UMA candidata), `sculpt3d/retopo_decide.rs`
+(escolher entre duas) e `sculpt3d/retopo_target_tests.rs` (os gates do alvo). ⭐ E a cascata de
 cinco comparações de **dez argumentos posicionais** virou uma porta (`decide::melhor`) — *conferir
 à mão que nenhum par estava trocado foi trabalho de auditoria neste mesmo dia.* ⚠️ **Quatro gates
 textuais reprovaram no corte**, que é o serviço deles: cada um foi repontado com a razão escrita

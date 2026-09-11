@@ -64,8 +64,8 @@ campos re-escrita no shell seria a segunda representação do mesmo rig.
 | `shells/desktop/src/baked_form.rs` | **NÃO** | *o que um objeto assado É*: canais, carimbo, acendida, codec |
 | `shells/desktop/src/baked_form_planes.rs` | **NÃO** | o que o passe exige (veio de `sculpt3d_bake_planes.rs`) |
 | `shells/desktop/src/project_baked_form.rs` | não | o documento: collect / restore |
-| `shells/desktop/src/sculpt3d_bake.rs` | **sim** | só o **GESTO**, que precisa da malha |
-| `shells/desktop/src/sculpt3d_scripts.rs` | sim | os roteiros por-cena (split de LOC) |
+| `shells/desktop/src/sculpt3d/bake.rs` | **sim** | só o **GESTO**, que precisa da malha |
+| `shells/desktop/src/sculpt3d/scripts.rs` | sim | os roteiros por-cena (split de LOC) |
 
 ⚠️ **Esse corte É a wave**, e o gate `the_relight_is_not_behind_the_sculpt_feature` é o que o torna
 verificável. ⚠️ **`AppGfx.baked_forms`/`baked_light`/`next_baked_form`** — o mapa saiu da
@@ -160,8 +160,8 @@ que precisam invalidar, que é a lista que nasce incompleta no dia seguinte.
 
 **Onde o código mora:** `ph2d-mesh::merge` (concatenar é operação de **malha**, e ali é gateável sem
 device — o assunto é aritmética de **ÍNDICE**, cujo modo de falha **desenha** em vez de dar erro) ·
-`shells/desktop/src/sculpt3d_slots.rs` (a tabela + o `sync_mesh`, que veio do `sculpt3d_donation.rs`) ·
-os dois verbos em `sculpt3d_objects.rs`.
+`shells/desktop/src/sculpt3d/slots.rs` (a tabela + o `sync_mesh`, que veio do `sculpt3d/donation.rs`) ·
+os dois verbos em `sculpt3d/objects.rs`.
 
 ⚠️ **`plan_slots` é função LIVRE e pura**, o precedente do `place` do import e do `swap_window` do
 desfazer: uma `Sculpt3dScene` não nasce sem `wgpu::Device`, então uma decisão que morasse dentro dela
@@ -207,7 +207,7 @@ a estrutura mutável virou **W9.2**, e o gatilho dela é um número medido em ve
 dab toca 0,33% das faces a 98k — razão 307× —, que é o tamanho do ganho que ela vai comprar.)
 
 **Onde o código mora:** `ph2d-mesh/src/dyntopo.rs` (o motor, gateável sem device) ·
-`Mesh::triangulate` · `shells/desktop/src/sculpt3d_dyntopo.rs` (o arm) ·
+`Mesh::triangulate` · `shells/desktop/src/sculpt3d/dyntopo.rs` (o arm) ·
 `ph2d-sculpt3d::SculptStroke::grow_to`.
 
 ⚠️ **A peça que faz a wave ser correta é o `grow_to`, e ela é a que um integrador desavisado

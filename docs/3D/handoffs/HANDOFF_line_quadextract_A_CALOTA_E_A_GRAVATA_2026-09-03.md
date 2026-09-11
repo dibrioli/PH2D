@@ -108,10 +108,10 @@ faces (`+69 %`) e a saída de `20 658` para `21 928` quads (`+6 %`).
 | `crates/ph2d-quadfill/src/untangle.rs` (+ `_tests`) | `untangle_bowties` + 3 gates |
 | `crates/ph2d-quadfill/src/finish_extract.rs` | as **três** saídas do acabamento desfazem gravatas; `FinishReport::untangled` |
 | `crates/ph2d-quadfill/tests/it/pontas_do_dono.rs` + `fixtures/pontas/nossa_com_calota.obj.gz` | o gate de aceitação: a nossa saída passa o que a aprovada passa |
-| `shells/desktop/src/sculpt3d_retopo_target.rs` (+ `_tests`) | `TIP_CAP_STEP`/`TIP_CAP_RADIUS`/`tip_caps` + gate |
-| `shells/desktop/src/sculpt3d_retopo_rulers.rs` | as três chaves da frente no log da candidata |
-| `shells/desktop/src/sculpt3d_photo_button.rs` | a sonda corre a fase zero **do produto** + a linha `F1 CALOTA` |
-| `shells/desktop/src/sculpt3d_history_retopo_extract.rs` | `mod target` visível ao módulo |
+| `shells/desktop/src/sculpt3d/retopo_target.rs` (+ `_tests`) | `TIP_CAP_STEP`/`TIP_CAP_RADIUS`/`tip_caps` + gate |
+| `shells/desktop/src/sculpt3d/retopo_rulers.rs` | as três chaves da frente no log da candidata |
+| `shells/desktop/src/sculpt3d/photo_button.rs` | a sonda corre a fase zero **do produto** + a linha `F1 CALOTA` |
+| `shells/desktop/src/sculpt3d/history_retopo_extract.rs` | `mod target` visível ao módulo |
 | `docs/3D/quad-remesh/PLANO_a_graduacao_da_ponta.md` | §105 |
 
 ---

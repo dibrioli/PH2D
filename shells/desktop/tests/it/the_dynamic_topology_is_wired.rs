@@ -176,7 +176,7 @@ fn the_edge_target_is_derived_once_from_the_brush_radius() {
 /// própria, porque uma tabela aqui seria a segunda lista a apodrecer.
 #[test]
 fn every_scene_level_that_exists_arms_the_module() {
-    let src = sculpt_source::source("sculpt3d_scenes.rs");
+    let src = sculpt_source::source("sculpt3d/scenes.rs");
     let levels: Vec<u32> = src
         .match_indices("Some(\"")
         .filter_map(|(at, _)| {

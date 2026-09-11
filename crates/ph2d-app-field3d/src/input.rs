@@ -5,7 +5,15 @@
 //! [ADR-0150] já resolveu esta pergunta para a escultura: *a navegação orbital mora no SHELL, nunca
 //! numa `Tool`*. É o que impede que uma janela 3D obrigue a mexer no `Tool=12` — que está
 //! **congelado** (`CLAUDE.md §6`) e cuja alteração exigiria ADR e Coordenador. Este arquivo é o
-//! gémeo do `sculpt3d_input` da shell para o outro módulo 3D, com a mesma forma e os mesmos botões.
+//! gémeo do `sculpt3d/input.rs` da shell para o outro módulo 3D, com a mesma forma e os mesmos
+//! botões.
+//!
+//! ⚠️ **Era um intra-doc link `[crate::sculpt3d_input]` e é texto por DUAS razões independentes,
+//! cada uma suficiente** (as duas chegaram no mesmo dia, 2026-09-11, por linhas diferentes):
+//! a W2/L0 trouxe este ficheiro para `ph2d-app-field3d`, e `crate::` deixou de ser a shell; e a
+//! W2/L3 fez a família da escultura virar UMA pasta (`crate::sculpt3d::input`, módulo **privado**),
+//! e um intra-doc link para item privado é aviso do rustdoc. *Aqui o endereço vale mais que a
+//! hiperligação.*
 //!
 //! # A superfície partilhada é de QUATRO linhas
 //!
@@ -88,7 +96,7 @@ fn local(s: &Smoke, p: (f32, f32)) -> Option<[f32; 2]> {
 }
 
 /// Radianos de órbita por pixel de arrasto — **o mesmo número do módulo de escultura**
-/// (`sculpt3d_rulers::ORBIT_RAD_PER_PX`).
+/// (`sculpt3d::rulers::ORBIT_RAD_PER_PX`, hoje em `src/sculpt3d/rulers.rs`).
 const ORBIT_RAD_PER_PX: f32 = 0.01;
 
 /// Fator de zoom por passo de roda — **a mesma lei do `dolly`** da câmera da casa

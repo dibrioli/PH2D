@@ -345,7 +345,7 @@ fn as_tres_saidas_do_acabamento_desfazem_o_avesso() {
 /// saída.
 #[test]
 fn o_relatorio_conta_a_malha_entregue() {
-    let src = include_str!("../../../shells/desktop/src/sculpt3d_history_retopo_extract.rs");
+    let src = include_str!("../../../shells/desktop/src/sculpt3d/history_retopo_extract.rs");
     assert!(
         !src.contains("non_quads: out.face_count() - e.quads"),
         "⛔ a subtração que estourou voltou"

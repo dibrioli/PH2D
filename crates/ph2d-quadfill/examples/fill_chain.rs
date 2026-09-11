@@ -7,7 +7,7 @@
 //! # Por que ele existe
 //!
 //! A rota que **shipa** é a da extracção
-//! (`shells/desktop/src/sculpt3d_history_retopo_extract.rs`), e ela **não chama o F4**:
+//! (`shells/desktop/src/sculpt3d/history_retopo_extract.rs`), e ela **não chama o F4**:
 //! vai `F1 → F2 → F3 → corte → pente → G3/G5 → extracção`. A rota do *fill*
 //! (`…_retopo_global.rs`) chama-o — `ph2d_quantize::quantize_within` — e é a **única**
 //! diferença de fase entre as duas antes do preenchimento.

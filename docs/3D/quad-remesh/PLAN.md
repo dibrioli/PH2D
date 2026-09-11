@@ -50,7 +50,7 @@ segundo estágio morre com *"Could not open config file"* e **exit 0** — falha
 
 ### 1.2 Corpus (10 malhas) e saídas de referência: ARQUIVADAS
 
-Escrito por `shells/desktop/src/sculpt3d_corpus.rs` (`#[cfg(test)]`, `#[ignore]`), porque as fixturas
+Escrito por `shells/desktop/src/sculpt3d/corpus.rs` (`#[cfg(test)]`, `#[ignore]`), porque as fixturas
 de escultura são desenhadas com os **verbos do produto** e não existem fora do shell.
 
 | malha | vértices | triângulos | por que está no corpus |
@@ -133,7 +133,7 @@ mapa global), mas ele fica como item aberto: sem ele, as decisões de extração
 |---|---|---|
 | campo + extração | `crates/ph2d-quadflow/` (5 114 LOC) | **FICA** — vira `RemeshBackend::Preview` (BSD, ADR-0160) |
 | voxel remesh | `crates/ph2d-sdf/` (3 011 LOC) | **FICA**, é outro produto (arrumação destrutiva) |
-| a única porta | `Sculpt3dScene::quad_remesh(detail, adaptive)` em `sculpt3d_history_remesh.rs` | **é a costura inteira** — 5 chamadas a `ph2d_quadflow::*`, num só sítio |
+| a única porta | `Sculpt3dScene::quad_remesh(detail, adaptive)` em `sculpt3d/history_remesh.rs` | **é a costura inteira** — 5 chamadas a `ph2d_quadflow::*`, num só sítio |
 | undo | `StrokeUndo::Remeshed(Box<Mesh>)` | inalterado: um remesh não partilha estrutura com o que estava lá |
 | UI | `SCULPT3D_QUAD_REMESH` + `Detail` + `Follow Curvature` | ganha o seletor de backend |
 | malha | `crates/ph2d-mesh/` (20 824 LOC) — `Mesh`, octree, `Adjacency` | **reusar**; ⛔ não criar uma segunda half-edge |
@@ -1202,7 +1202,7 @@ medido: **18** nas fixturas do gate, e **o mesmo 18** com densidades de 2 809 a
 
 ## 4-duodecies — ⭐⭐ F5.2: **A PORTA** — o botão passou a chamar a cadeia global
 
-**Entregue:** `shells/desktop/src/sculpt3d_history_retopo_global.rs`
+**Entregue:** `shells/desktop/src/sculpt3d/history_retopo_global.rs`
 (`Sculpt3dScene::quad_remesh_global`), as três recusas novas, o log com os
 irregulares, e a porta de bissecação `PH2D_RETOPO_LEGACY=1`.
 
@@ -1351,7 +1351,7 @@ low-poly importado.
 o botão foi repontado para a cadeia global, **nenhum foi repontado**: a
 `quad_remesh_global` ficou com **um** chamador de teste em toda a workspace, com um
 clique, `detail = 0,5`, sobre a única fixtura que caía do lado que não partia.
-⇒ Os dois ganharam irmão global em `sculpt3d_global_retopo_tests.rs`.
+⇒ Os dois ganharam irmão global em `sculpt3d/global_retopo_tests.rs`.
 
 ### ⛔ O defeito que o gate novo encontrou, e que fica ABERTO
 
@@ -1544,7 +1544,7 @@ com BICO d=0.50 | GLOBAL 260 quads (100% quads) 19   irreg 0    bordo 17   dobra
 Eu reportei **«17 buracos»** onde a linha diz `0 bordo` e `17 dobradas`, e abri o
 plano com *«os buracos na hooked_sphere»* em primeiro lugar. Medido agora por uma
 porta que **não precisa de GPU** (`the_two_engines_on_the_same_piece_without_a_device`,
-[`sculpt3d_global_retopo_tests.rs`](../../../shells/desktop/src/sculpt3d_global_retopo_tests.rs)):
+[`sculpt3d/global_retopo_tests.rs`](../../../shells/desktop/src/sculpt3d/global_retopo_tests.rs)):
 
 | fixtura | arcos com uso ≠ 2 | `boundary_edges` | `open_edges` da saída |
 |---|---|---|---|
@@ -1932,7 +1932,7 @@ As fotos de 2026-08-22 trouxeram uma feição que **nenhuma fixtura tinha**: uma
 borda saliente com um **vinco fundo e côncavo** colado a ela. A `wrinkled` tem
 sulcos rasos, a `ridged` relevo convexo, a `hooked` uma protuberância esticada.
 
-⇒ [`eared_sphere`](../../../shells/desktop/src/sculpt3d_fixtures.rs) + a cena de
+⇒ [`eared_sphere`](../../../shells/desktop/src/sculpt3d/fixtures.rs) + a cena de
 smoke **`=36`**, esculpidas com os verbos do produto.
 
 ### ⭐ A régua que faltava, e o SENTIDO dela
@@ -3103,7 +3103,7 @@ posições, e nenhum alisador lhe toca.
 
 ### ⭐⭐⭐ A causa, nomeada: **a SEGUNDA família de linhas**
 
-A sonda de uma família não discriminava. Medindo **as duas** ([`sculpt3d_field_follow.rs`](../../../shells/desktop/src/sculpt3d_field_follow.rs)):
+A sonda de uma família não discriminava. Medindo **as duas** ([`sculpt3d/field_follow.rs`](../../../shells/desktop/src/sculpt3d/field_follow.rs)):
 
 | | só a família `u` | ⭐ **as duas famílias** |
 |---|---|---|
@@ -3140,7 +3140,7 @@ artista lê **diz o enviesamento**. Dois gates verdes guardam isso —
 | `SQUARE_ROUNDS > 0` | cauda melhora, mediana não; `3,4×` dobras | [`relax.rs`](../../../crates/ph2d-quadfill/src/relax.rs) |
 | alisador de quads como cura | a saída **crua** do oráculo já é boa | esta secção |
 | culpar a forma dos nossos patches | os dele são 10 triângulos com espalhamento `18×` | esta secção |
-| sonda de campo com **uma** família | um quad esmagado **passa** nela | [`sculpt3d_field_follow.rs`](../../../shells/desktop/src/sculpt3d_field_follow.rs) |
+| sonda de campo com **uma** família | um quad esmagado **passa** nela | [`sculpt3d/field_follow.rs`](../../../shells/desktop/src/sculpt3d/field_follow.rs) |
 | `a_rhombus_becomes_a_square` como prova da lei | é **tautologia**: `h·iᵏ` é quadrado para qualquer `h` | [`relax_tests.rs`](../../../crates/ph2d-quadfill/src/relax_tests.rs) |
 
 ---
@@ -3709,7 +3709,7 @@ de classe — local contra global — que motivou o pivô do ADR-0162, um nível
 Com as réguas de valência corrigidas, as faces de patch `n = 4` medem `16°` e as de
 leque `19°` — próximas. ⇒ *o leque é sintoma de um F3 que emite `n ≠ 4` a mais, ou é
 o preenchimento?* Sonda:
-[`sculpt3d_patch_valence.rs`](../../../shells/desktop/src/sculpt3d_patch_valence.rs).
+[`sculpt3d/patch_valence.rs`](../../../shells/desktop/src/sculpt3d/patch_valence.rs).
 
 ### ⚠️ A régua, e as DUAS validações
 
@@ -3756,7 +3756,7 @@ pelo campo. É a operação que a referência faz e nós não.
 
 | o quê | porquê não | onde |
 |---|---|---|
-| reescrever o F3 para emitir só patches de 4 lados | o oráculo emite `0 %` de quads na esfera e mede `6°` | [`sculpt3d_patch_valence.rs`](../../../shells/desktop/src/sculpt3d_patch_valence.rs) |
+| reescrever o F3 para emitir só patches de 4 lados | o oráculo emite `0 %` de quads na esfera e mede `6°` | [`sculpt3d/patch_valence.rs`](../../../shells/desktop/src/sculpt3d/patch_valence.rs) |
 | derivar a valência e conferi-la contra o nosso `side_arcs` | são duas definições (lado ≠ arco); a validação é `χ = 2` | idem |
 
 ## §4-quinquietquadragies — ⭐⭐⭐ O CAMPO ESTÁ ILIBADO: ~76% dos nossos cantos são INVENTADOS (2026-08-23)
@@ -3835,8 +3835,8 @@ acaba num vértice regular é uma junção em T que o campo não pediu — e sã
 
 | o quê | porquê não | onde |
 |---|---|---|
-| culpar o F2 pela fragmentação | 8 singularidades contra 8 dele (e 8 contra 12 na orelha) | [`sculpt3d_patch_valence.rs`](../../../shells/desktop/src/sculpt3d_patch_valence.rs) |
-| a linha «ORACULO» do `how_many_patches_are_uncombable` | cruzava campo e patches de **malhas diferentes** | [`sculpt3d_field_follow.rs`](../../../shells/desktop/src/sculpt3d_field_follow.rs) |
+| culpar o F2 pela fragmentação | 8 singularidades contra 8 dele (e 8 contra 12 na orelha) | [`sculpt3d/patch_valence.rs`](../../../shells/desktop/src/sculpt3d/patch_valence.rs) |
+| a linha «ORACULO» do `how_many_patches_are_uncombable` | cruzava campo e patches de **malhas diferentes** | [`sculpt3d/field_follow.rs`](../../../shells/desktop/src/sculpt3d/field_follow.rs) |
 
 ## §4-sexetquadragies — ⭐⭐⭐ A AFIRMAÇÃO VERIFICADA: 18 irregulares contra o piso de 8 (2026-08-23)
 
@@ -3896,7 +3896,7 @@ partido em arcos onde a subdivisão por comprimento impõe ângulo torto.
 
 | o quê | porquê não | onde |
 |---|---|---|
-| usar a UNIÃO de `corners` para testar a regra do ângulo | ela contém todo nó em T por construção — não discrimina | [`sculpt3d_patch_valence.rs`](../../../shells/desktop/src/sculpt3d_patch_valence.rs) |
+| usar a UNIÃO de `corners` para testar a regra do ângulo | ela contém todo nó em T por construção — não discrimina | [`sculpt3d/patch_valence.rs`](../../../shells/desktop/src/sculpt3d/patch_valence.rs) |
 
 ## §4-septemetquadragies — ⭐⭐⭐ A PODA CONFIRMA O DIAGNÓSTICO E É REJEITADA — a ordem da obra ficou medida (2026-08-23)
 

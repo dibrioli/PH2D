@@ -101,7 +101,7 @@ drop-crate. O que sai da pasta do módulo:
 |---|---|---|
 | `shells/desktop/Cargo.toml` | 2 deps `optional` + a feature `sculpt3d` (na lista `default`) | ✅ só adiciona |
 | `shells/desktop/src/main.rs` | `#[cfg(feature)] mod sculpt3d;` | ✅ |
-| `shells/desktop/src/sculpt3d.rs` | **arquivo novo** — cena, gesto e passe | ✅ |
+| `shells/desktop/src/sculpt3d/mod.rs` | **arquivo novo** — cena, gesto e passe | ✅ |
 | `shells/desktop/src/app_state.rs` | 1 campo em `AppGfx` (`sculpt3d`), sob `cfg` | ✅ |
 | `shells/desktop/src/init.rs` | `sculpt3d: None` no literal de `AppGfx` | ✅ |
 | `shells/desktop/src/render_loop/mod.rs` | `sculpt3d: _` no destructuring + a chamada do smoke | ⚠️ **o destructuring é ponto de colisão — ver §3** |

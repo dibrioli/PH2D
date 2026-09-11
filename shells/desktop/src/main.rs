@@ -486,12 +486,12 @@ mod project_tokens;
 mod radial_input;
 mod render_loop;
 mod scroll_smoke;
+/// A família 3D inteira — **uma pasta, um `mod`** (W2/L3, 2026-09-11). Os 111 ficheiros
+/// `sculpt3d_*.rs` que viviam soltos aqui no `src/` passaram a `src/sculpt3d/`, e o
+/// `sculpt3d_keys_view` — que era o único irmão declarado à parte — é hoje
+/// [`sculpt3d::keys_view`]. ⇒ o corte da Fase B é mover UMA pasta.
 #[cfg(feature = "sculpt3d")]
 mod sculpt3d;
-/// ⭐⭐ O teclado da CÂMERA da escultura — a divisão em quatro e as seis vistas.
-/// Irmão do `sculpt3d::keys` pelo tecto de LOC; ver o cabeçalho dele.
-#[cfg(feature = "sculpt3d")]
-mod sculpt3d_keys_view;
 mod shape_build;
 mod shape_build_gesture;
 /// O BAKE da folha — as peças passam a ser N janelas para UMA textura (plano §7.3, W5.2).

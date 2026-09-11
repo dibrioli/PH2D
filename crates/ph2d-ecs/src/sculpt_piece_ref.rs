@@ -15,7 +15,7 @@
 //!
 //! Não põe geometria no ECS. A cena continua dona, e a shell mantém o ciclo de vida — peça
 //! criada ⇒ entidade; peça removida ⇒ entidade despawnada; entidade apagada pela Hierarquia ⇒
-//! peça removida — num módulo só: `shells/desktop/src/sculpt3d_entities.rs`.
+//! peça removida — num módulo só: `shells/desktop/src/sculpt3d/entities.rs`.
 //!
 //! ⚠️ **Um `u32` cru, e não um tipo do módulo de escultura**, para manter `ph2d-ecs` sem
 //! dependência da shell: a direcção da seta importa — a shell conhece os dois, nenhum dos dois

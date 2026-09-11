@@ -49,12 +49,12 @@ caça ao defeito que o Enio fotografou (idempotência · almofada · mordida · 
 | ficheiro | o que mudou |
 |---|---|
 | `Cargo.toml` | **`rayon = "1"`** — dep NOVA para esta crate (⚠️ ver §5) |
-| `sculpt3d_history_retopo_extract.rs` | o botão: alvo por CONTAGEM, reparo de entrada, `catch_unwind`, `worse` por `open_edges` |
-| `sculpt3d_retopo_target.rs` · `sculpt3d_retopo_rulers.rs` | **ficheiros novos** — o corte por HR-18 (§7) |
-| `sculpt3d_history_retopo_extract_tests.rs` | os gates do acima |
-| `sculpt3d_history_remesh.rs` · `sculpt3d_history_retopo_global.rs` · `sculpt3d_quad_shape.rs` | `QuadRemeshReport` ganha `mirrored` e `doublets`; a linha do log nomeia-os |
-| `sculpt3d_scenes_quad.rs` | o **roteiro** da cena `=35` (passos 0, 4 e 8) |
-| `sculpt3d_photo_probes.rs` + `_rulers` + `_button` + `_measure` | as sondas, e o corte por HR-18 (§7) |
+| `sculpt3d/history_retopo_extract.rs` | o botão: alvo por CONTAGEM, reparo de entrada, `catch_unwind`, `worse` por `open_edges` |
+| `sculpt3d/retopo_target.rs` · `sculpt3d/retopo_rulers.rs` | **ficheiros novos** — o corte por HR-18 (§7) |
+| `sculpt3d/history_retopo_extract_tests.rs` | os gates do acima |
+| `sculpt3d/history_remesh.rs` · `sculpt3d/history_retopo_global.rs` · `sculpt3d/quad_shape.rs` | `QuadRemeshReport` ganha `mirrored` e `doublets`; a linha do log nomeia-os |
+| `sculpt3d/scenes_quad.rs` | o **roteiro** da cena `=35` (passos 0, 4 e 8) |
+| `sculpt3d/photo_probes.rs` + `_rulers` + `_button` + `_measure` | as sondas, e o corte por HR-18 (§7) |
 
 ### `CLAUDE.md`
 
@@ -98,8 +98,8 @@ SUPERFÍCIE DE COLISÃO — line/quadextract contra main
 
 ▸ TETOS DE LOC nos arquivos que a linha tocou
   ✗  1310 / 700   crates/ph2d-quadextract/examples/chain_info.rs
-  ✗   737 / 600   shells/desktop/src/sculpt3d_history_retopo_extract.rs
-  ✗  1134 / 600   shells/desktop/src/sculpt3d_photo_probes.rs
+  ✗   737 / 600   shells/desktop/src/sculpt3d/history_retopo_extract.rs
+  ✗  1134 / 600   shells/desktop/src/sculpt3d/photo_probes.rs
 ```
 
 ⚠️⚠️ **PRAZO DE VALIDADE (DIRETRIZ §1.5.9 item 3):** esta tabela mede contra o `main` de **29/08**.
@@ -147,7 +147,7 @@ superfície do `ph2d-vector-doc` e os quatro schemas estão **intocados** (§3).
 | risco | estado |
 |---|---|
 | **`cargo fmt --all`** | ⭐ **ERA O RISCO REAL, e está curado.** No `main` dava `0`; nesta worktree dava **40 pontos em 32 ficheiros** (§7) |
-| **`cargo machete`** (dep declarada e não usada) | ⚠️ **`rayon` é NOVA em `shells/desktop/Cargo.toml`** e É usada (`sculpt3d_history_retopo_extract.rs`, as duas tentativas em paralelo). O machete deve passar — mas é o único candidato desta linha |
+| **`cargo machete`** (dep declarada e não usada) | ⚠️ **`rayon` é NOVA em `shells/desktop/Cargo.toml`** e É usada (`sculpt3d/history_retopo_extract.rs`, as duas tentativas em paralelo). O machete deve passar — mas é o único candidato desta linha |
 | **`cargo deny` / `cargo audit`** | ⭐ sem risco: `Cargo.lock` não ganhou **nenhum pacote externo** (o `rayon` já estava na árvore) |
 | **`typos`** | ⚠️ não corrido aqui; o diff tem muito texto em PT com acentuação |
 | **clippy latente** | ⭐ `0` avisos nas 8 crates da linha, `--all-targets`, `--release` |
@@ -176,7 +176,7 @@ linha. ⭐ Um `--ff-only` resolve tudo se nenhuma outra linha tocar os ficheiros
 cd /home/enio/Documentos/Projetos/PH2D && env PH2D_SCULPT3D_SMOKE=35 cargo run -p ph2d-host-desktop --release
 ```
 1. **Ctrl+Shift+O** → o `.obj` do artista. (⚠️ arrastar **não** funciona: o Wayland não entrega
-   `DroppedFile`, medido em `sculpt3d_import.rs`.)
+   `DroppedFile`, medido em `sculpt3d/import.rs`.)
 2. Crase (`` ` ``) → secção **Topology** → **Quad Retopology**.
 3. O terminal escreve o roteiro numerado inteiro na abertura.
 4. **Clicar duas vezes seguidas**: a contagem de quads tem de ficar parada (a régua da

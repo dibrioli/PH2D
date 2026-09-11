@@ -104,7 +104,7 @@ pub const EXTRACT_TRAVEL: f32 = f32::INFINITY;
 /// há defeito, e quem chama arma-a **só** quando [`crate::tip_deviation`] acusa.
 ///
 /// ⭐ **A varredura completa e a leitura vivem no sítio da chamada**
-/// (`sculpt3d_history_retopo_extract.rs`), ao lado da condição que a arma — *uma tabela que
+/// (`sculpt3d/history_retopo_extract.rs`), ao lado da condição que a arma — *uma tabela que
 /// justifica uma escolha tem de estar onde a escolha é feita.*
 pub const EXTRACT_TRAVEL_RESCUE: f32 = 0.5;
 

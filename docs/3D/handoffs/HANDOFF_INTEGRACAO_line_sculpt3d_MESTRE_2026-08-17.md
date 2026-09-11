@@ -208,7 +208,7 @@ passam, e o que sobra do report é o **item 2**, que é outro eixo.
 | registro do `ph2d-ecs` | **INTOCADO** ⇒ os **três** espelhos (`ph2d-render` · `ph2d-script`) também |
 | **`*/Cargo.toml` · `Cargo.lock`** | **ZERO** — nenhuma crate nova, **nenhuma dep externa nova**, nenhuma aresta interna |
 | **ADR** | **nenhum** ⇒ a linha fica **FORA de toda disputa de número** (o próximo livre no `main` é **0160**) |
-| `ph2d-i18n` | só o **irmão** `sculpt3d.rs` (**+5**). ⚠️ O `lib.rs` **não** é tocado ⇒ a cadeia `vector::tr(k).or_else(sculpt3d::tr)` que a integração de 10/08 instalou fica **intacta** |
+| `ph2d-i18n` | só o **irmão** `sculpt3d/mod.rs` (**+5**). ⚠️ O `lib.rs` **não** é tocado ⇒ a cadeia `vector::tr(k).or_else(sculpt3d::tr)` que a integração de 10/08 instalou fica **intacta** |
 | ids novos | **9**, e **todos `hash_node_id`** ⇒ fora de todo gate de contagem numérica |
 | `SCULPT3D_VERB` | **20 → 23** — ⚠️ o tamanho é o do `Verb::ALL` (**23**, conferido) e há gate que os compara |
 | scrollbar id | **nenhum novo** (o do painel segue **840**) |

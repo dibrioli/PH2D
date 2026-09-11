@@ -820,7 +820,7 @@ classifica. Três coisas decidem, e o tamanho sozinho não é nenhuma delas:
 3. ⭐⭐ **E a propagação não é hipótese — está MEDIDA neste módulo.** Um censo da árvore feito por este
    R acha a **mesma oração de finalidade** re-emitida em **dois sítios do produto** —
    `crates/ph2d-sculpt3d/src/cloth_filter_kind.rs:169-171` (`ae653d314`) e
-   `shells/desktop/src/sculpt3d_filter.rs:274-276` (`dd8bfd404`) —, os dois escritos em **2026-09-07**
+   `shells/desktop/src/sculpt3d/filter.rs:274-276` (`dd8bfd404`) —, os dois escritos em **2026-09-07**
    por janelas desta linha que leram a mesma linha não atestada; e mais **três** sítios que repetem só
    o **facto** de comportamento (`stroke_cloth_filter.rs:94-95` · `verlet_gesto_pincel.rs:109-110` ·
    `sculpt3d_filter.rs:353-355`), que é o que mostra quão consumida a passagem foi.
@@ -894,7 +894,7 @@ nenhuma emenda, e viu os dois lados. **Incidente FECHADO.**
 ### INC-3 (I-2, 2026-09-09) — a expressão chegou por um ficheiro NOSSO, e a régua não muda de forma por isso
 
 **Objecto (⛔ descrito, nunca reproduzido — §6.1).** Doc de módulo de
-`shells/desktop/src/sculpt3d_filter.rs`, linhas 9-16 na versão de `3cf248b30` —
+`shells/desktop/src/sculpt3d/filter.rs`, linhas 9-16 na versão de `3cf248b30` —
 `sha256 fc906cd68f8302abde3019e40844bd13587e1e25ee2d06b4d6fd31543b447709`. Carrega **um nome interno
 de ficheiro do alvo com número de linha** e **duas atribuições transcritas** do fonte dele (a que
 forma o deslocamento horizontal e a que forma a força a partir dele) — ~2 linhas de expressão e ~4
@@ -959,7 +959,7 @@ vocabulário do domínio, com os dois ficheiros de gate nomeados ao lado. Confer
   1,0»* é a nossa lei, não a leitura da referência a escala arbitrária. Já está dito noutro sítio da
   casa; ⛔ não é erro, mas quem apertar a paridade da força tem de o reconferir.
 - ⛔⛔ **E a cura está INCOMPLETA por uma casa de distância:** o bloco novo nomeia
-  `shells/desktop/src/sculpt3d_filter_tests.rs` como «quem mede» — e esse ficheiro carrega, na
+  `shells/desktop/src/sculpt3d/filter_tests.rs` como «quem mede» — e esse ficheiro carrega, na
   linha **77**, **a mesma citação e a mesma transcrição** que acabaram de sair do doc de módulo, e na
   linha **104** o nome interno do alvo **dentro da mensagem de um `assert!`**. *Mover a dívida para o
   ficheiro vizinho e apontar-lhe o dedo é a forma mais barata de a manter.*
@@ -2344,11 +2344,11 @@ novo.** Detector: `grep -rlnE '\.(cc|cpp|c|h|hh|hpp):[0-9]+' --include='*.rs' cr
 | 56 | `crates/ph2d-tokens/src/spacing.rs` | 164,178,210,229,271 | (b) permissivo — FICA | só endereço |
 | 57 | `crates/ph2d-tokens/src/visuals.rs` | 128 | (b) permissivo — FICA | só endereço |
 | 58 | `crates/ph2d-app-flip/src/smooth.rs` | 3,82 | **(a)** ⛔ alvo restrito (GPL) | só endereço |
-| 59 | `shells/desktop/src/sculpt3d.rs` | 455 | **(a)** ⛔ alvo restrito (GPL) | só endereço |
-| 60 | `shells/desktop/src/sculpt3d_filter_tests.rs` | 77,104 | **(a)** ⛔ alvo restrito (GPL) | ⛔ **COM EXPRESSÃO** @ 77 · ⚠️ endereço dentro de `assert!` @ 104 |
-| 61 | `shells/desktop/src/sculpt3d_input.rs` | 271,311 | **(a)** ⛔ alvo restrito (GPL) | só endereço |
-| 62 | `shells/desktop/src/sculpt3d_rulers.rs` | 96 | **(a)** ⛔ alvo restrito (GPL) | só endereço |
-| 63 | `shells/desktop/src/sculpt3d_space_tests.rs` | 129,130,140 | **(a)** ⛔ alvo restrito (GPL) | ⛔ **COM EXPRESSÃO** @ 129,130,140 |
+| 59 | `shells/desktop/src/sculpt3d/mod.rs` | 455 | **(a)** ⛔ alvo restrito (GPL) | só endereço |
+| 60 | `shells/desktop/src/sculpt3d/filter_tests.rs` | 77,104 | **(a)** ⛔ alvo restrito (GPL) | ⛔ **COM EXPRESSÃO** @ 77 · ⚠️ endereço dentro de `assert!` @ 104 |
+| 61 | `shells/desktop/src/sculpt3d/input.rs` | 271,311 | **(a)** ⛔ alvo restrito (GPL) | só endereço |
+| 62 | `shells/desktop/src/sculpt3d/rulers.rs` | 96 | **(a)** ⛔ alvo restrito (GPL) | só endereço |
+| 63 | `shells/desktop/src/sculpt3d/space_tests.rs` | 129,130,140 | **(a)** ⛔ alvo restrito (GPL) | ⛔ **COM EXPRESSÃO** @ 129,130,140 |
 | 64 | `shells/desktop/tests/it/the_sculpt_gesture_is_wired.rs` | 353,372,958 | **(a)** ⛔ alvo restrito (GPL) | ⛔ **COM EXPRESSÃO** @ 958 · ⚠️ endereço dentro de `assert!` @ 372 |
 
 **Totais: 64 ficheiros · (a) 57 · (b) 7 · (c) falso positivo **0** · com transcrição: 29.**
@@ -2415,7 +2415,7 @@ de sub-sistema. Os 57 ficheiros do censo acima são da **mesma casa de origem** 
 | # | ficheiro | linhas | o que fica, o que sai |
 |---|---|---|---|
 | 1 | `crates/ph2d-sculpt3d/src/cloth_filter_kind.rs` | **169-171** (doc do variante do referencial de vista) | **FICA** o facto: nessa orientação a direcção de queda é o eixo vertical do ecrã e **não** a profundidade, e este é o único caso especial do referencial, resolvido por quem tem a matriz. **SAI** a oração de finalidade sobre o que o artista vê |
-| 2 | `shells/desktop/src/sculpt3d_filter.rs` | **278-281** (doc do passo que lê a câmera) | idem — **FICA** o facto e o *porquê ARQUITECTURAL* (este é o único sítio com matriz de câmera, e por isso o caso especial vive aqui); **SAI** a oração de finalidade |
+| 2 | `shells/desktop/src/sculpt3d/filter.rs` | **278-281** (doc do passo que lê a câmera) | idem — **FICA** o facto e o *porquê ARQUITECTURAL* (este é o único sítio com matriz de câmera, e por isso o caso especial vive aqui); **SAI** a oração de finalidade |
 
 ⇒ **Instrução funcional para os dois:** cada um passa a dizer **só o comportamento** — *qual eixo*,
 e que é o do ecrã e não o da profundidade — **com a fixture/gate que o mede nomeado ao lado**, na
@@ -2429,11 +2429,11 @@ artista vê. ⚠️ **Não é o facto que é dívida** (facto de comportamento n
 |---|---|---|
 | `crates/ph2d-sculpt3d/src/stroke_cloth_filter.rs` | **94-95** | diz o eixo e cita a espec; nenhuma finalidade |
 | `crates/ph2d-cloth/src/verlet_gesto_pincel.rs` | **106-110** | diz que esta crate não sabe o que é uma vista e que o caso especial é resolvido antes de chegar; é **desenho NOSSO** |
-| `shells/desktop/src/sculpt3d_filter.rs` | **356-360** (era 353-355 antes da cura do INC-3, que deslocou o ficheiro) | diz **por que aqui** — argumento de arquitectura desta casa |
+| `shells/desktop/src/sculpt3d/filter.rs` | **356-360** (era 353-355 antes da cura do INC-3, que deslocou o ficheiro) | diz **por que aqui** — argumento de arquitectura desta casa |
 
-⚠️ **Adjacente e também FICA:** `shells/desktop/src/sculpt3d_filter_cloth_tests.rs:162` (é sobre a
+⚠️ **Adjacente e também FICA:** `shells/desktop/src/sculpt3d/filter_cloth_tests.rs:162` (é sobre a
 **régua**, não sobre o eixo) e a formulação *«o baixo é o −cima do ECRÃ»* de
-`shells/desktop/src/sculpt3d_filter.rs:392` + `docs/3D/08_as_tres_features_do_modelador.md:58` —
+`shells/desktop/src/sculpt3d/filter.rs:392` + `docs/3D/08_as_tres_features_do_modelador.md:58` —
 **idioma próprio desta casa**, usado no modelador 3D, obra sem relação com este alvo.
 
 ### ⭐ A TERCEIRA ocorrência: ACHADA, e não estava na árvore

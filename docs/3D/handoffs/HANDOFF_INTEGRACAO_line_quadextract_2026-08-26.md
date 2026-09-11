@@ -191,7 +191,7 @@ fechou»*.
 `examples/{chain_info,manifold_census,loop_census,fixture_extract}.rs` ·
 `ph2d-gridmap`: `weld_round.rs`, ⭐ `align.rs` + `align_tests.rs` (a régua do espiral),
 ⭐ `arcline.rs` + `arcline_tests.rs` (o portão da wave dos arcos), `lib.rs` ·
-`shells/desktop`: `sculpt3d_history_retopo_{global,extract}.rs`, `sculpt3d_scenes_quad.rs` ·
+`shells/desktop`: `sculpt3d_history_retopo_{global,extract}.rs`, `sculpt3d/scenes_quad.rs` ·
 doc: `docs/3D/quad-remesh/ACHADO_ordem_das_fases.md` §13–§23.17.
 
 ⚠️ **Clean-room:** todo artefacto passou `scripts/cleanroom-sweep.sh` (56 entradas) antes de

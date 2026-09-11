@@ -137,5 +137,5 @@ Instrumentos desta janela (scratch, fora da árvore — recriáveis a partir do 
 - **Portões corridos 1× no fecho:** `cargo test -p ph2d-quadfill` (67 · 19 ignorados) ·
   `cargo test -p ph2d-host-desktop` (4 786 · 268 ignorados) · `cargo clippy -p ph2d-quadfill
   -p ph2d-host-desktop --all-targets` · `cargo fmt --all --check` · `cleanroom-sweep.sh`.
-- **Ficheiros no tecto de LOC:** `sculpt3d_history_retopo_extract.rs` (`598/600`, intocado).
+- **Ficheiros no tecto de LOC:** `sculpt3d/history_retopo_extract.rs` (`598/600`, intocado).
   `local.rs` foi a `819` e voltou a `420` pelo corte do `apex.rs` (`417`).

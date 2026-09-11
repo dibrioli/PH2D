@@ -200,7 +200,7 @@ enxerga.
   exercitado no retrato, onde a razão vale `1,0` e toda conversão espúria é a
   identidade. A mutação que o re-converte pela razão sangra em **1,0**.
 * **`a_scaled_piece_wears_the_same_stamp_on_screen`** + o irmão da função pura,
-  num módulo de teste NOVO (`sculpt3d_space_tests.rs`) — ⚠️ o `stencil_of` é uma
+  num módulo de teste NOVO (`sculpt3d/space_tests.rs`) — ⚠️ o `stencil_of` é uma
   função **LIVRE** justamente para um gate de CPU a alcançar: montar a cena exige
   `wgpu::Device`.
 * **o arch-gate do preview ganhou a SEGUNDA METADE** — ele afirmava que o preview

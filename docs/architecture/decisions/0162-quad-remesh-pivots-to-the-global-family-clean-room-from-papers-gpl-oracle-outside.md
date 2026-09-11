@@ -68,7 +68,7 @@ sculpts do diagnóstico), `ref/` (saídas do oráculo), `ours/` (saídas nossas)
 `run_oracle.sh`, `docs/papers/`.
 
 ⚠️ **A porta do corpus está DENTRO da engine de propósito** — as fixturas de escultura são desenhadas
-com os verbos do produto e não existem fora dele (`shells/desktop/src/sculpt3d_corpus.rs`,
+com os verbos do produto e não existem fora dele (`shells/desktop/src/sculpt3d/corpus.rs`,
 `#[cfg(test)]`, escreve para um caminho **absoluto** fora da árvore). A F0 do plano move isto para o
 harness.
 

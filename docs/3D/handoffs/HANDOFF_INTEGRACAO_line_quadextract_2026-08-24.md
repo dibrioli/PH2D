@@ -33,10 +33,10 @@ commits da outra para dentro desta e o integrador veria a mesma obra duas vezes.
 | `crates/ph2d-gridmap/src/corners.rs` | **ficheiro NOVO** | a ponte para a extracção, em **dados simples** — zero aresta nova no grafo de crates |
 | `crates/ph2d-gridmap/src/solve.rs` | `Assembly`/`assemble` e `measure` **saem de `run`** para `pub(crate)`; `Tri`/`Partner`/`prepare` viram `pub(crate)` | ⚠️ **É a única edição a código pré-existente desta linha.** O relaxador do arredondamento resolve o **mesmo** sistema; montá-lo por conta própria seria a mesma lei escrita duas vezes. `run` **encolheu**; o ficheiro foi de 566 para 621 LOC (teto 700) |
 | `crates/ph2d-gridmap/src/lib.rs` | 2 `pub mod` + 2 `pub use` | aditivo |
-| `shells/desktop/src/sculpt3d_history_retopo_extract.rs` | **ficheiro NOVO** (211 LOC) | o caminho novo do botão, **desligado** |
-| `shells/desktop/src/sculpt3d_history_retopo_global.rs` | **+7 linhas**: uma bifurcação no topo de `quad_remesh_global` | ⛔ **É o único sítio**, e há gate a contá-lo |
-| `shells/desktop/src/sculpt3d_history.rs` | +1 `mod` irmão | aditivo |
-| `shells/desktop/src/sculpt3d_remesh_refusal.rs` | +1 variante `Extract` + o braço de `explain` + o de `keeps_the_piece` | ⚠️ `match` exaustivo: a variante nova **obriga** os dois braços |
+| `shells/desktop/src/sculpt3d/history_retopo_extract.rs` | **ficheiro NOVO** (211 LOC) | o caminho novo do botão, **desligado** |
+| `shells/desktop/src/sculpt3d/history_retopo_global.rs` | **+7 linhas**: uma bifurcação no topo de `quad_remesh_global` | ⛔ **É o único sítio**, e há gate a contá-lo |
+| `shells/desktop/src/sculpt3d/history.rs` | +1 `mod` irmão | aditivo |
+| `shells/desktop/src/sculpt3d/remesh_refusal.rs` | +1 variante `Extract` + o braço de `explain` + o de `keeps_the_piece` | ⚠️ `match` exaustivo: a variante nova **obriga** os dois braços |
 | `shells/desktop/Cargo.toml` | +2 deps internas (`ph2d-gridmap`, `ph2d-quadextract`) | ⚠️ o `Cargo.lock` só ganha **arestas internas**; nenhum pacote externo novo |
 
 ## 3 — Símbolos que podem COLIDIR
@@ -80,8 +80,8 @@ contar, não escolher. Quem integrar decide qual fica com `0164` e qual sobe par
 
 | símbolo | valor | onde |
 |---|---|---|
-| `RemeshRefusal::Extract` | variante nova, **no fim** do enum | `sculpt3d_remesh_refusal.rs` |
-| `PH2D_RETOPO_EXTRACT` | env nova (`"0"` desliga) | `sculpt3d_history_retopo_extract.rs` |
+| `RemeshRefusal::Extract` | variante nova, **no fim** do enum | `sculpt3d/remesh_refusal.rs` |
+| `PH2D_RETOPO_EXTRACT` | env nova (`"0"` desliga) | `sculpt3d/history_retopo_extract.rs` |
 | `ph2d_gridmap::round::LOCAL_TOL` | `1.0e-2` | medido, ver §6 |
 | `ph2d_gridmap::round::LOCAL_CAP` | `20_000` | medido |
 | `ph2d_gridmap::round::SWEEPS` | `200` | orçamento do degrau 2 |

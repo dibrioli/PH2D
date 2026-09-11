@@ -208,7 +208,7 @@ hipótese condicional (*"se as duas coincidirem…"*) para ser a medição.
 | registro do `ph2d-ecs` + os **três** espelhos | **INTOCADO** |
 | `*/Cargo.toml` · `Cargo.lock` | **ZERO** — nenhuma crate nova, nenhuma dep nova |
 | ADR | **nenhum** ⇒ a linha fica **FORA de toda disputa de número** |
-| `ph2d-i18n` | só o **irmão** `sculpt3d.rs` (+5). ⚠️ O `lib.rs` **não** é tocado ⇒ a cadeia `vector::tr(k).or_else(sculpt3d::tr)` da integração de 10/08 fica intacta |
+| `ph2d-i18n` | só o **irmão** `sculpt3d/mod.rs` (+5). ⚠️ O `lib.rs` **não** é tocado ⇒ a cadeia `vector::tr(k).or_else(sculpt3d::tr)` da integração de 10/08 fica intacta |
 | ids novos | **1**, e é `hash_node_id("sculpt3d.front_faces")` ⇒ fora de todo gate de contagem |
 | scrollbar id | nenhum novo (o do painel segue **840**) |
 | cenas de smoke | **nenhuma nova** — a `=33` já existia e ganhou três passos |

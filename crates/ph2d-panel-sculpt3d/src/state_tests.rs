@@ -7,7 +7,7 @@ use super::*;
 /// a shell.
 ///
 /// ⚠️ **Este `Default` já estava certo e não era o que shipava.** Ele derivava a
-/// resposta num laço inline enquanto o `sculpt3d_birth.rs` da shell escrevia um
+/// resposta num laço inline enquanto o `sculpt3d/birth.rs` da shell escrevia um
 /// `S` chapado; duas respostas para uma pergunta, e a que ganhava era a que
 /// ninguém tinha escrito de propósito. O gate afirma as duas metades: que todo
 /// verbo abre num modo **oferecido**, e que o número é o da porta

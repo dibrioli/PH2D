@@ -957,7 +957,7 @@ sobre elas que a conclusão assenta.
 ### §8-novendecies.4 — ⚠️ A régua que faltava, e ela é irmã de uma que esta linha já pagou
 
 `the_local_ruler_across_files` e a sonda do botão passam a imprimir
-[`piece_signature`](../../../shells/desktop/src/sculpt3d_photo_rulers.rs) — **área, volume e
+[`piece_signature`](../../../shells/desktop/src/sculpt3d/photo_rulers.rs) — **área, volume e
 alcance**. ⛔ *Uma tabela que compara A com B tem de dizer que A e B são comparáveis*, e nenhuma
 régua deste repo o dizia. É a irmã exacta do [ACHADO de 28/08](../quad-remesh/ACHADO_o_acabamento_e_a_regua_da_densidade.md)
 — ali a comparação com o oráculo omitia a **contagem de faces** dos dois lados; aqui omitia a
@@ -994,7 +994,7 @@ A célula `2` é **byte-idêntica** à `1` — os `9 414` quads, as três median
 «a adaptação move `7 %`»: é ZERO.*
 
 ⭐ **A causa é uma rede de segurança a funcionar como desenhada:** a
-[`sculpt3d_history_retopo_extract.rs`](../../../shells/desktop/src/sculpt3d_history_retopo_extract.rs)
+[`sculpt3d/history_retopo_extract.rs`](../../../shells/desktop/src/sculpt3d/history_retopo_extract.rs)
 corre a **corrida inteira sem campo** quando a saída adaptativa fica partida
 (`if adaptive > 0.0 && still_broken(&out)`), e o [`worse`] escolhe. A nossa saída tem `4` arestas
 de bordo ⇒ a rede arma **sempre** nesta peça.
@@ -1138,9 +1138,9 @@ resolvido por excepção** — os três foram cortados por **responsabilidade**:
 
 | ficheiro | era | é | o corte |
 |---|---|---|---|
-| `sculpt3d_photo_rulers.rs` | `663` | `594` | `sculpt3d_photo_piece.rs` — *«são a mesma peça?»* é a pergunta ANTERIOR a *«esta malha é boa?»* |
-| `sculpt3d_history_retopo_extract.rs` | `626` | `595` | o registo por candidata foi para o `rulers`, ao lado do [`worse`] — *o registo que explica uma escolha lê as mesmas grandezas que a fazem* |
-| `sculpt3d_retopo_rulers_tests.rs` | `747` | `589` | `sculpt3d_retopo_tip_tests.rs` — as chaves de **defeito** e a de **cobertura** são duas perguntas |
+| `sculpt3d/photo_rulers.rs` | `663` | `594` | `sculpt3d/photo_piece.rs` — *«são a mesma peça?»* é a pergunta ANTERIOR a *«esta malha é boa?»* |
+| `sculpt3d/history_retopo_extract.rs` | `626` | `595` | o registo por candidata foi para o `rulers`, ao lado do [`worse`] — *o registo que explica uma escolha lê as mesmas grandezas que a fazem* |
+| `sculpt3d/retopo_rulers_tests.rs` | `747` | `589` | `sculpt3d/retopo_tip_tests.rs` — as chaves de **defeito** e a de **cobertura** são duas perguntas |
 
 ⚠️ E o `crates/ph2d-gridmap/src/cut.rs` bateu no tecto de `700` da workspace: **o doc do campo
 novo foi comprimido**, não o código.

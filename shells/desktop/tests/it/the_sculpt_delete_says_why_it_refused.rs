@@ -22,7 +22,7 @@
 //! agora nomeia a porta em vez de reproduzir o `if` dela.
 
 /// O teclado da escultura.
-const KEYS: &str = include_str!("../../src/sculpt3d_keys.rs");
+const KEYS: &str = include_str!("../../src/sculpt3d/keys.rs");
 /// Onde os guardas das teclas NUAS moram.
 const DISPATCH: &str = include_str!("../../src/input_dispatch.rs");
 

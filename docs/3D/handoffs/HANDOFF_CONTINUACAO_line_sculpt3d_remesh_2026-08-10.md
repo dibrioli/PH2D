@@ -26,7 +26,7 @@ coisa, e a wave mudou de assunto.
 ## 2. ⬛ O remesh DESTRUÍA a escultura, e reportava sucesso — FECHADO (`21f091c0f`)
 
 Acima de ~300 o `remesh` devolvia **`Ok` com zero vértices**, e o
-`sculpt3d_history.rs` instalava isso no lugar da peça:
+`sculpt3d/history.rs` instalava isso no lugar da peça:
 
 ```rust
 let (out, report) = ph2d_sdf::remesh(self.mesh(), resolution).ok()?;

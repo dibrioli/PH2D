@@ -268,9 +268,9 @@ coisa — o defeito estava num caminho que ele não percorria*.
 | # | o quê | onde |
 |---|---|---|
 | C1 | o piso do recurso passa a valer no campo adaptativo | `scale.rs` |
-| C2 | a contagem de buracos **viaja no resultado** e chega ao log (`casca FECHADA` / `⚠️ N BURACO(S)`) | `im_faces.rs` · `extract.rs` · `sculpt3d_panel.rs` |
-| C3 | o gate de produto varre a **grelha dos dois knobs** + componentes conexas | `sculpt3d_undo_tests.rs` |
-| C4 | gate dos **dois cliques** sem desfazer, que é o que o roteiro pede | `sculpt3d_undo_tests.rs` |
+| C2 | a contagem de buracos **viaja no resultado** e chega ao log (`casca FECHADA` / `⚠️ N BURACO(S)`) | `im_faces.rs` · `extract.rs` · `sculpt3d/panel.rs` |
+| C3 | o gate de produto varre a **grelha dos dois knobs** + componentes conexas | `sculpt3d/undo_tests.rs` |
+| C4 | gate dos **dois cliques** sem desfazer, que é o que o roteiro pede | `sculpt3d/undo_tests.rs` |
 
 ⚠️ **C2 curava um segundo defeito de tabela:** o diagnóstico dos buracos estava
 guardado em `stats[0]`/`stats[1]`, e o chamador deriva `max_sides` do maior

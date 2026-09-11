@@ -40,7 +40,7 @@ O QUE ESTA JANELA DEIXA POR FAZER (a primeira tarefa é a nº 1)
 **1. ⛔ REESCREVER DUAS REGIÕES PRÉ-EXISTENTES (2026-09-07), e é por isto que a
    janela anterior queimou.** Ficheiros:
    - `crates/ph2d-sculpt3d/src/cloth_filter_kind.rs`
-   - `shells/desktop/src/sculpt3d_filter.rs`
+   - `shells/desktop/src/sculpt3d/filter.rs`
    São **doc-comments**, não lei: dois deles repetem uma oração de FINALIDADE que tem
    de passar a dizer só o **comportamento**, com a fixture que o mede ao lado. Outros
    três sítios repetem apenas o FACTO e ficam (facto não é protegível).

@@ -39,7 +39,7 @@ estão no handoff da corrente.
 | `crates/ph2d-gridmap/src/round_tests.rs` | `chain()` passa a `pub(crate)` (a sonda da soldadura usa a MESMA cadeia) | aditivo |
 | `crates/ph2d-quadextract/tests/it/gate_seam_closes.rs` | **novo** — o gate nº1 medido no mapa por canto | ficheiro novo |
 | `crates/ph2d-quadextract/examples/chain_info.rs` | bifurca para o caminho soldado | aditivo |
-| `shells/desktop/src/sculpt3d_history_retopo_extract.rs` | bifurca para o caminho soldado **dentro** de `PH2D_RETOPO_EXTRACT` | aditivo |
+| `shells/desktop/src/sculpt3d/history_retopo_extract.rs` | bifurca para o caminho soldado **dentro** de `PH2D_RETOPO_EXTRACT` | aditivo |
 
 ⚠️ **Nenhuma crate fora de `ph2d-gridmap` mudou de comportamento por omissão.** O
 `shells/desktop` só muda dentro de um caminho que já shipa desligado.

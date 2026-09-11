@@ -26,7 +26,7 @@ use ph2d_mesh::{Mesh, Ray, shapes::sculpt_sphere};
 use ph2d_sculpt3d::{Brush, Dab, Falloff, SculptStroke, Symmetry, Verb};
 
 /// **O CENTRO DO DAB, COMO O PRODUTO O ACHA** — um raio de fora para dentro,
-/// re-picado a CADA passo (`sculpt3d_input.rs`: cada passo do `walk` chama
+/// re-picado a CADA passo (`sculpt3d/input.rs`: cada passo do `walk` chama
 /// `sculpt_at(sx, sy)`, que é um pick).
 ///
 /// ⚠️ **É esta linha que carrega o auto-limite, e a primeira versão desta sonda

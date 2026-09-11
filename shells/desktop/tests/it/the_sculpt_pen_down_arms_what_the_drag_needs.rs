@@ -38,7 +38,7 @@
 use ph2d_sculpt3d::{Grip, Verb};
 
 /// O roteador do gesto.
-const SRC: &str = include_str!("../../src/sculpt3d_input.rs");
+const SRC: &str = include_str!("../../src/sculpt3d/input.rs");
 
 /// O nome de um grip, como ele aparece no fonte.
 fn nome(g: Grip) -> &'static str {

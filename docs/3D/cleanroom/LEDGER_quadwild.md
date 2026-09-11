@@ -723,7 +723,7 @@ escrever**, porque é a fronteira que dá valor ao resto do ledger.
 | | |
 |---|---|
 | ⛔ **NÃO escrito, e a recusa é o ponto** | a eliminação da variável de costura no G3 / qualquer linha de `solve.rs` ou `round.rs`. ⚠️ **Esta janela leu o laço de arredondamento da referência** para a revisão estrutural do [§R-pós.3](#r-pós3) — escrevê-lo aqui converteria em silêncio a rota do ADR-0167 na que ele rejeitou. ⇒ **janela I nova** ([handoff §8-bis](../handoffs/HANDOFF_INTEGRACAO_line_quadextract_2026-08-24.md)) |
-| ⭐ **escrito** | [`sculpt3d_scenes_quad.rs`](../../../shells/desktop/src/sculpt3d_scenes_quad.rs) — o **roteiro de smoke** da cena `=35` para o caminho novo, mais dois gates. ⛔ **Zero linhas de algoritmo**, em crate nenhuma da cadeia; é texto de terminal e a bifurcação que o escolhe |
+| ⭐ **escrito** | [`sculpt3d/scenes_quad.rs`](../../../shells/desktop/src/sculpt3d/scenes_quad.rs) — o **roteiro de smoke** da cena `=35` para o caminho novo, mais dois gates. ⛔ **Zero linhas de algoritmo**, em crate nenhuma da cadeia; é texto de terminal e a bifurcação que o escolhe |
 | a razão de ser produto e não doc | o roteiro **existente** manda *"PARE"* diante de uma casca esburacada — correcto no caminho de sempre, **falso** no novo, onde o buraco está medido. *Um smoke que manda reportar como regressão o que já está medido gasta o dono do produto duas vezes.* |
 
 ⚠️ **A parede não foi atravessada:** o ficheiro tocado não pertence ao alvo funcional da

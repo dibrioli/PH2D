@@ -390,7 +390,7 @@ fn the_placement_runs_before_any_piece_enters_the_scene() {
 /// *"delega"* de *"copiou o mesmo número"* — e é a cópia que apodrece no dia em
 /// que o default do renderizador mudar.
 ///
-/// ⚠️ **E ele lê o CLUSTER inteiro, não `sculpt3d_birth.rs`** — a prosa do
+/// ⚠️ **E ele lê o CLUSTER inteiro, não `sculpt3d/birth.rs`** — a prosa do
 /// [`sculpt_src`] já mede que nomear o arquivo de uma função vira vermelho no
 /// próximo split, sobre produto correto. A propriedade é *a fiação delega*, e
 /// ela sobrevive ao arquivo mudar de nome.

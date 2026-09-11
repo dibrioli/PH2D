@@ -182,7 +182,7 @@ fase zero passou a graduar com renormalização, ganhou a calota e o acabamento 
 
 ## §10 — E o defeito que a própria cura revelou: o default escrito DUAS vezes
 
-O `sculpt3d_birth.rs` guardava a sua cópia dos dois defaults do botão — **com o comentário do
+O `sculpt3d/birth.rs` guardava a sua cópia dos dois defaults do botão — **com o comentário do
 vizinho a dizer que *«um default escrito duas vezes é o que diverge»***. Ele divergiu no dia em
 que o painel mudou. Hoje o botão **deriva** do painel, com gate a proibir o literal
 (`the_curvature_knob_opens_where_it_was_measured`).

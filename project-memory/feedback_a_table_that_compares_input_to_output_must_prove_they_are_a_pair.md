@@ -33,7 +33,7 @@ densidade dele. Ali a régua omitia a **contagem de faces** dos dois lados; aqui
   medida, não com o nome do ficheiro. Aqui a coluna é `tri/quad + valência máxima`.
 - ⚠️ Uma conclusão que **reenquadra o trabalho** («afinal não é preciso inventar X») é
   precisamente a que merece a re-medição: ela dissolve recusas já pagas.
-- A régua durável ficou em `piece_signature` (`shells/desktop/src/sculpt3d_photo_rulers.rs`).
+- A régua durável ficou em `piece_signature` (`shells/desktop/src/sculpt3d/photo_rulers.rs`).
 
 Relacionadas: [[feedback_comparing_two_measurements_with_different_denominators_invents_an_effect]] ·
 [[feedback_a_measured_refusal_answers_one_question_recheck_it_when_yours_is_another]] ·

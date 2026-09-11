@@ -321,7 +321,7 @@ fn a_new_edit_goes_through_the_door_that_clears_the_redo() {
     // ⚠️ **UMA resposta a *quando uma EDIÇÃO NOVA torna o futuro inalcançável*.**
     // A W8.2 quase abriu a segunda: o delete precisa gravar com a peça que SAIU
     // (e não com a ativa) e a primeira versão escreveu um `push` paralelo em
-    // `sculpt3d_objects.rs`. Este gate o pegou; a cura foi `record_for`, com o
+    // `sculpt3d/objects.rs`. Este gate o pegou; a cura foi `record_for`, com o
     // `record` delegando.
     //
     // ⚠️ **O `forget_history` da W8.3 é excluído, e não é isenção de
@@ -619,7 +619,7 @@ fn the_remesh_refuses_with_the_stack_built_instead_of_flattening_it() {
     // ⚠️ **O enum MUDOU DE FICHEIRO em 2026-08-21** (o pai estourou a HR-18), e
     // este gate reprovou por isso — que é o gate a funcionar: ele afirma sobre o
     // fonte, e o fonte mudou de sítio.
-    let enum_src = std::fs::read_to_string("src/sculpt3d_remesh_refusal.rs")
+    let enum_src = std::fs::read_to_string("src/sculpt3d/remesh_refusal.rs")
         .expect("o enum das recusas é legível a partir do pacote");
     let body = enum_src
         .split("pub(in crate::sculpt3d) enum RemeshRefusal {")

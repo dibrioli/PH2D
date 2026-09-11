@@ -41,7 +41,7 @@ nasce.*
 
 ## §2 — A CURA: dois sítios, e cada um é uma lei diferente
 
-### (a) O registo passa a perguntar um FATO — `sculpt3d_history.rs`
+### (a) O registo passa a perguntar um FATO — `sculpt3d/history.rs`
 
 `close_stroke` chama `mask_window_changed()`, que **compara a janela congelada
 contra o plano vivo**:
@@ -61,7 +61,7 @@ fato. Sem plano vivo não há o que ter mudado (o congelado é o `DEFAULT_MASK`)
 **Custo:** O(janela tocada) de comparação de `f32`, uma vez por gesto — contra a
 `rebuild()` da octree que ela evita.
 
-### (b) O desfazer trata DOIS CANAIS INDEPENDENTES — `sculpt3d_undo.rs`
+### (b) O desfazer trata DOIS CANAIS INDEPENDENTES — `sculpt3d/undo.rs`
 
 O braço `StrokeUndo::Stroke` era um `if/else` (*ou* máscara *ou* geometria).
 Virou:
@@ -81,7 +81,7 @@ onde essa pergunta more.
 
 ---
 
-## §3 — O código MORTO que também mentia — `sculpt3d_input.rs`
+## §3 — O código MORTO que também mentia — `sculpt3d/input.rs`
 
 O `else` do `begin_filter` no pen-down imprimia
 *«o verbo em maos nao filtra a malha — escolha Smooth, Inflate, Slide Relax ou
@@ -107,14 +107,14 @@ os dois últimos nasceram depois dela e por isso foram provados por **mutação*
 
 | gate | arquivo | como foi provado |
 |---|---|---|
-| `the_filter_undoes_the_geometry_whatever_verb_is_in_hand` | `sculpt3d_filter_tests.rs` | ⭐ **RED-FIRST** — reprovou com a mensagem exacta do report |
-| `undoing_a_filter_tells_the_screen` | `sculpt3d_filter_tests.rs` | **RED-FIRST** |
-| `a_mask_stroke_undoes_and_tells_the_screen` | `sculpt3d_undo_tests.rs` (**novo**) | **M1** — tirar `uploaded=false`/`edits+=1` do braço da máscara ⇒ sangra |
-| `a_geometry_stroke_leaves_the_mask_channel_alone` | `sculpt3d_undo_tests.rs` (**novo**) | **M3** — `mask_window_changed → true` ⇒ sangra |
+| `the_filter_undoes_the_geometry_whatever_verb_is_in_hand` | `sculpt3d/filter_tests.rs` | ⭐ **RED-FIRST** — reprovou com a mensagem exacta do report |
+| `undoing_a_filter_tells_the_screen` | `sculpt3d/filter_tests.rs` | **RED-FIRST** |
+| `a_mask_stroke_undoes_and_tells_the_screen` | `sculpt3d/undo_tests.rs` (**novo**) | **M1** — tirar `uploaded=false`/`edits+=1` do braço da máscara ⇒ sangra |
+| `a_geometry_stroke_leaves_the_mask_channel_alone` | `sculpt3d/undo_tests.rs` (**novo**) | **M3** — `mask_window_changed → true` ⇒ sangra |
 
-⚠️ **O `sculpt3d_undo_tests.rs` nasce porque a família inteira do undo tinha UM
+⚠️ **O `sculpt3d/undo_tests.rs` nasce porque a família inteira do undo tinha UM
 teste** — o `swap_window` solto, uma unidade pura no `mod tests` do
-`sculpt3d_history.rs`. Os catorze braços que a cena aplica só eram tocados pelo
+`sculpt3d/history.rs`. Os catorze braços que a cena aplica só eram tocados pelo
 gate do filtro. Este arquivo é a casa deles.
 
 ⚠️ **O caminho de módulo é `sculpt3d::history::undo::tests`**, não

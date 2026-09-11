@@ -61,14 +61,14 @@ const SCENE_PORTS: [(&str, &str, &str); 4] = [
     // *Um gate que nomeia um FICHEIRO envelhece com o primeiro corte* — e o modo de falha aqui é
     // o pior: o `function_body` entra em pânico com «controlo positivo», que se lê como o gate
     // partido em vez de como a lista desactualizada.
-    ("src/sculpt3d_input_down.rs", "sculpt3d_pointer_down", DOOR),
-    ("src/sculpt3d_input.rs", "sculpt3d_wheel", DOOR),
+    ("src/sculpt3d/input_down.rs", "sculpt3d_pointer_down", DOOR),
+    ("src/sculpt3d/input.rs", "sculpt3d_wheel", DOOR),
 ];
 
 const SCENE_FILES: [&str; 3] = [
     FAMILY_INPUT,
-    "src/sculpt3d_input_down.rs",
-    "src/sculpt3d_input.rs",
+    "src/sculpt3d/input_down.rs",
+    "src/sculpt3d/input.rs",
 ];
 
 fn src(path: &str) -> String {
@@ -141,7 +141,7 @@ fn a_drag_already_running_is_never_dropped_by_crossing_the_frame() {
     // controlo positivo a seguir ao laço: se a função certa não for encontrada, o gate cai.
     for (path, module, door) in [
         (FAMILY_INPUT, "field3d", HOST_DOOR),
-        ("src/sculpt3d_input.rs", "sculpt3d", DOOR),
+        ("src/sculpt3d/input.rs", "sculpt3d", DOOR),
     ] {
         let body = function_body(&src(path), &format!("{module}_pointer_up"));
         assert!(

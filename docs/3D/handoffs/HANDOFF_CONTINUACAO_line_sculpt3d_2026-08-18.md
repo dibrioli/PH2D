@@ -47,7 +47,7 @@ Depois: `git rebase main` (obrigatório no início de **cada** jornada) e
 A porta do 3D perguntava *"existe uma cena?"* e **sair do modo nunca destrói a
 cena**, então o primeiro clique no pill armava o portão para o resto da sessão e o
 Motion Nodes perdia os atalhos. Ele toca `input_dispatch.rs` ·
-`input_dispatch/keyboard.rs` · `sculpt3d_keys.rs` — **leia-o antes de encostar em
+`input_dispatch/keyboard.rs` · `sculpt3d/keys.rs` — **leia-o antes de encostar em
 teclado**.
 
 ---
@@ -274,7 +274,7 @@ conserte dentro de uma wave de filtro.
   primeiros** clusters são o grupo da ESQUERDA; ele entra **depois do FLIP**, e um
   merge que o mova quebra o layout **sem nenhum gate reclamar**.
 - ⚠️ **O `ph2d-i18n/src/lib.rs` foi PARTIDO** — as chaves `panel.sculpt3d.*` moram no
-  irmão `sculpt3d.rs` e os irmãos são consultados **em CADEIA**
+  irmão `sculpt3d/mod.rs` e os irmãos são consultados **em CADEIA**
   (`vector::tr(k).or_else(sculpt3d::tr)`). **Um irmão novo entra nessa cadeia, nunca
   num segundo `match`.**
 - ⚠️ **Se você bumpar `PROJECT_SCHEMA`** (hoje **84**): o valor se **CONTA** contra o

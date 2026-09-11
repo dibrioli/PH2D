@@ -28,7 +28,7 @@
 | `crates/ph2d-quadfill/src/relax.rs` | `square_relax{,_capped,_aligned}` públicos · `steer` (o alinhamento) · cerca de viagem · raio de reprojecção que encolhe · saída por assentamento |
 | `crates/ph2d-quadfill/src/quality.rs` | `Hint` + `surface_hint` — a direcção que a superfície prefere, por face da saída |
 | `crates/ph2d-quadchain/src/lib.rs` | passa a **acabar** (entregava a malha crua) · `ChainTiming::finish` · `ChainReport::finish` |
-| ⚠️ `shells/desktop/src/sculpt3d_history_retopo_extract.rs` | o botão chama a porta em vez do Laplaciano cru |
+| ⚠️ `shells/desktop/src/sculpt3d/history_retopo_extract.rs` | o botão chama a porta em vez do Laplaciano cru |
 | `crates/ph2d-quadextract/examples/{chain_info,piece_report}.rs` | os instrumentos: `PH2D_RELAX_SCAN=1` varre **através da porta**; `PH2D_REF=<peça>.obj` mede relevo e fidelidade contra a escultura |
 
 ⚠️ **Tudo aditivo.** Nenhuma assinatura pública existente mudou de forma; `ChainTiming` e
@@ -712,7 +712,7 @@ Três mudanças, todas dentro do gate que já existia:
 
 - **(0) `Ctrl+Shift+O`** para trazer a peça dele. ⚠️ O roteiro nunca nomeou o gesto, e
   **arrastar não funciona nesta máquina** (o Wayland não entrega `DroppedFile` — medido em
-  `sculpt3d_import.rs`). *O smoke pedia uma peça e não dizia como a pôr lá dentro.*
+  `sculpt3d/import.rs`). *O smoke pedia uma peça e não dizia como a pôr lá dentro.*
 - **(4)** os **dois** defeitos separados, com o curado marcado e o que sobra nomeado.
 - **(8)** clicar **duas vezes seguidas** e ver a contagem ficar parada — a régua do §8-ter,
   que era a única das três curas sem passo de smoke.

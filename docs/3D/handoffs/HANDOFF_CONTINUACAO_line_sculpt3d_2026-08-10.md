@@ -45,7 +45,7 @@ resgatar, e **não** existe rebase pendente: `main` **é** a sua base.
 (`dff370122`) **não é ancestral do `main`**. Se você for procurar o trabalho da W14→W17
 por SHA, não vai achar — ele está lá **por conteúdo** (conferido: `height_per_depth` 3×
 em `crates/ph2d-sculpt3d/src/alpha_frame.rs`, `stencil_for|stencil_of` 5× em
-`shells/desktop/src/sculpt3d_space.rs`, e o gate `the_stamp_does_not_swim_with_depth`).
+`shells/desktop/src/sculpt3d/space.rs`, e o gate `the_stamp_does_not_swim_with_depth`).
 
 ⚠️ **`main` está `ahead 5` de `origin/main`** — a integração de ontem é **local e não
 pushada**. Não pushe: ship é ordem explícita do Enio, feita pelo integrador
@@ -84,7 +84,7 @@ herdada do handoff da W4-W8 e não reconferida. Medido por grep hoje, no `main`:
 
 | Item da lista velha | Medição de hoje |
 |---|---|
-| import / export | **FEITO** — `sculpt3d_import.rs` (W8.4, o corredor do `import_obj`) e `sculpt3d_export.rs` (W8.5, `Ctrl+Shift+E`, formato pela EXTENSÃO) |
+| import / export | **FEITO** — `sculpt3d/import.rs` (W8.4, o corredor do `import_obj`) e `sculpt3d/export.rs` (W8.5, `Ctrl+Shift+E`, formato pela EXTENSÃO) |
 | merge / isolate | **FEITO** — `SceneObjects::merge_visible` e `::toggle_isolate` (W8.8, cena `=13`) |
 | objeto misto (O2) | **FEITO pela rota assada** — W8.6, smoke OK 2026-08-04 |
 | marching cubes | **ABERTO** — o que shipou foi **Surface Nets**, e por escolha (um vértice por célula, valência 4 quase em toda parte: a topologia que subdivide bem) |
@@ -146,7 +146,7 @@ em vez de num número: **quem move o fato reconfere a nota**.
   primeiros** clusters são o grupo da ESQUERDA (o `split` do `paint_top_bar`); ele entra
   **depois do FLIP**, e um merge que o mova quebra o layout **sem nenhum gate reclamar**.
 * ⚠️ **O `ph2d-i18n/src/lib.rs` foi PARTIDO** (as chaves `panel.sculpt3d.*` moram no irmão
-  `sculpt3d.rs`, as `panel.vector.*` em `vector.rs`), e os irmãos são consultados **em
+  `sculpt3d/mod.rs`, as `panel.vector.*` em `vector.rs`), e os irmãos são consultados **em
   CADEIA** antes do vazamento. **Um irmão novo entra nessa cadeia, nunca num segundo
   `match`** — ficar com um lado apaga a família inteira do outro painel, que passa a
   pintar os próprios identificadores na tela com a suíte verde.

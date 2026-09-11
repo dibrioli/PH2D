@@ -18,7 +18,7 @@
 //!
 //! # ⚠️ E a metade que já tinha mordido: DUAS cópias do mesmo default
 //!
-//! O `sculpt3d_birth.rs` tinha a sua própria cópia dos dois números, **com o comentário do
+//! O `sculpt3d/birth.rs` tinha a sua própria cópia dos dois números, **com o comentário do
 //! vizinho a dizer que um default escrito duas vezes é o que diverge**. Ele divergiu no dia em
 //! que o painel mudou. Hoje o botão **deriva** do painel, e este gate proíbe o literal.
 
@@ -39,7 +39,7 @@ fn o_knob_da_curvatura_abre_no_valor_medido() {
 
 #[test]
 fn o_botao_nao_guarda_uma_segunda_copia_dos_defaults() {
-    let src = include_str!("../../src/sculpt3d_birth.rs");
+    let src = include_str!("../../src/sculpt3d/birth.rs");
     for campo in ["quad_detail", "quad_adapt"] {
         let derivado =
             format!("{campo}: ph2d_panel_sculpt3d::state::Sculpt3dUi::default().{campo}");

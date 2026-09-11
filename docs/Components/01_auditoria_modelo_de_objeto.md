@@ -131,7 +131,7 @@ A prova é de dependências, não de leitura:
 - `NodeId(pub u32)` ([`graph.rs:35`](../../crates/ph2d-nodegraph/src/graph.rs)) é um índice do grafo, gerado e persistido pelo **formato textual** do `ph2d-motion-doc` — outro espaço de nomes, outro arquivo (`ProjectFile.motion`, que é **texto**), outro undo (`MotionHistory`).
 - Quem depende de `ph2d-ecs`: **21 crates**. Quem depende de `ph2d-nodegraph`: **134** (125 delas são `ph2d-node-*`). **A interseção é `shells/desktop` e mais nada.**
 
-A ligação entre os dois universos é feita **só na shell**, por bake explícito: `motion_object_bake.rs`, `motion_flip_bake.rs`, `sculpt3d_bake.rs`. É uma cópia de resultado, não uma identidade compartilhada.
+A ligação entre os dois universos é feita **só na shell**, por bake explícito: `motion_object_bake.rs`, `motion_flip_bake.rs`, `sculpt3d/bake.rs`. É uma cópia de resultado, não uma identidade compartilhada.
 
 **Corolário para o desenho:** *"componente ECS, nó do DAG e item do inspetor são a mesma abstração?"* — hoje são **três** abstrações com **três** espaços de id, **três** undos e **três** formatos de persistência. Qualquer proposta que os unifique está propondo uma **fusão**, não uma limpeza; e qualquer proposta que os mantenha separados está descrevendo o que já existe.
 

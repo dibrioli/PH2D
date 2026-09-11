@@ -172,8 +172,8 @@ pub(crate) const EDGE: f32 = 1.0;
 /// superfície com um mapa que se sabe conforme.
 ///
 /// ⭐ **A sonda que decide é `what_does_the_chain_do_to_a_plain_sphere`**
-/// (`shells/desktop/src/sculpt3d_field_follow.rs`) para a esfera e
-/// `what_shape_are_our_quads` (`sculpt3d_quad_shape.rs`) para as esculturas, com as
+/// (`shells/desktop/src/sculpt3d/field_follow.rs`) para a esfera e
+/// `what_shape_are_our_quads` (`sculpt3d/quad_shape.rs`) para as esculturas, com as
 /// colunas separadas por valência — porque *um número que soma duas populações
 /// opostas esconde as duas*.
 pub(crate) const RECTANGLE_MAP: bool = false;

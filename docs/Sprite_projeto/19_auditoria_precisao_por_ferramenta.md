@@ -118,7 +118,7 @@ naquele menu.** Os quatro rebaixavam 16 bits **sem uma palavra**:
 | **Pack / Bake Sheet** | [`sheet_bake.rs`](../../shells/desktop/src/sheet_bake.rs) | uma folha é **uma** textura, e o `AuthoredSheet.rgba` é `Vec<u8>` | **sim** — mesma lei do atlas (§3.3 do plano 18) |
 | **Merge Sprites** | [`sprite_merge.rs`](../../shells/desktop/src/hero_intents/sprite_merge.rs) | o acumulador é de 8 bits e o «over» é aritmética sobre a cor | **sim** — preservar pede um compositor de 16 bits |
 | **`Strategy → Atlas`** | [`inspector_strategy.rs`](../../shells/desktop/src/render_loop/inspector_strategy.rs) | o atlas partilhado é uma textura, e é de 8 bits | **sim** — é a própria lei do §3.3 |
-| **doar a forma ao 3D** | [`sculpt3d_bake.rs`](../../shells/desktop/src/sculpt3d_bake.rs) | o `base × luz` é escrito numa textura de 8 bits | **sim** — o produto é aritmética sobre a cor |
+| **doar a forma ao 3D** | [`sculpt3d/bake.rs`](../../shells/desktop/src/sculpt3d/bake.rs) | o `base × luz` é escrito numa textura de 8 bits | **sim** — o produto é aritmética sobre a cor |
 
 ⚠️ **Repare na última coluna: os quatro estavam a fazer a coisa CERTA.** O defeito não era converter
 — era **converter em silêncio**. E o único vestígio era a linha `Format` do Inspector mudar sozinha,

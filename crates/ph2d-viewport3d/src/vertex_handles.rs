@@ -28,7 +28,7 @@ use super::*;
 ///
 /// ⚠️ **Um vértice que não projecta é `live = false`**, e não é omitido: a lista é indexada pela
 /// ordem, e saltar um faria a alça `n` passar a ser a `n+1` — a peça mexeria no ponto errado.
-pub(crate) fn project_vertices(
+pub fn project_vertices(
     anchor: Anchor,
     points: &[[f32; 2]],
     cam: &Orbit,

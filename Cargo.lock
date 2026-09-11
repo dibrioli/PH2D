@@ -5513,6 +5513,7 @@ dependencies = [
  "ph2d-vec-svg",
  "ph2d-vector",
  "ph2d-vector-font",
+ "ph2d-viewport3d",
  "postcard",
  "rayon",
  "rfd",
@@ -8295,6 +8296,22 @@ version = "0.0.0"
 dependencies = [
  "glam 0.30.10",
  "ph2d-color",
+]
+
+[[package]]
+name = "ph2d-viewport3d"
+version = "0.0.0"
+dependencies = [
+ "ph2d-app-host",
+ "ph2d-editor",
+ "ph2d-field",
+ "ph2d-field-render",
+ "ph2d-i18n",
+ "ph2d-text",
+ "ph2d-tokens",
+ "ph2d-tool-registry",
+ "ph2d-vector",
+ "winit",
 ]
 
 [[package]]

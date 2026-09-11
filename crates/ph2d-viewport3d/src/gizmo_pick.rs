@@ -5,13 +5,13 @@
 //! comum passou as `600` do gate de LOC do shell na W133, e ⛔ *split, nunca allowlist*.
 //!
 //! ⚠️ **Módulo-filho por `#[path]`**, como a lei do arrasto e as alças de vértice: ele vê os tipos e
-//! as constantes do pai por `use super::*`, e o `pub(crate) use` mantém `field3d_gizmo::pick` a
+//! as constantes do pai por `use super::*`, e o `pub use` mantém `field3d_gizmo::pick` a
 //! resolver em todos os chamadores.
 
 use super::*;
 
 /// **De quem é este ponto?** — `None` quando nenhuma alça o reclama.
-pub(crate) fn pick(projected: &[Projected], p: [f32; 2]) -> Option<Handle> {
+pub fn pick(projected: &[Projected], p: [f32; 2]) -> Option<Handle> {
     projected
         .iter()
         .find(|h| h.live && hits(&h.shape, p))

@@ -5,7 +5,7 @@
 //! `VERTEX_HALF_PX` do punho) e a razão de cada uma vale mais do que o número. O [`super`] passou as
 //! `600` do gate de LOC do shell na W133 — ⛔ *split, nunca allowlist*.
 //!
-//! ⚠️ **Módulo-filho com `pub(crate) use ...::*` no pai**: todos os caminhos que já existiam
+//! ⚠️ **Módulo-filho com `pub use ...::*` no pai**: todos os caminhos que já existiam
 //! (`field3d_gizmo::GRAB_PX`, `::ARM_PX`, …) continuam a resolver, e os irmãos que fazem
 //! `use super::*` continuam a vê-las.
 
@@ -14,14 +14,14 @@
 /// ⚠️ Constante na tela e não no mundo, de propósito: um gizmo de tamanho de mundo fixo fica maior
 /// do que a janela ao aproximar e some ao afastar, e é a mesma peça que se está a manipular nos dois
 /// casos. O comprimento em mundo sai daqui dividido por [`Screen::px_per_world`].
-pub(crate) const ARM_PX: f32 = 90.0;
+pub const ARM_PX: f32 = 90.0;
 
 /// A folga no centro. Nada é desenhado nem apontável dentro dela — é ela que separa as três setas
 /// umas das outras e do disco de vista.
-pub(crate) const INNER_PX: f32 = 15.0;
+pub const INNER_PX: f32 = 15.0;
 
 /// O raio de agarre: a que distância do traço um clique ainda é daquela alça.
-pub(crate) const GRAB_PX: f32 = 9.0;
+pub const GRAB_PX: f32 = 9.0;
 
 /// ⭐ **Meia-aresta do quadradinho de um vértice** (W133) — e ela é **DERIVADA**, não escolhida.
 ///
@@ -34,18 +34,18 @@ pub(crate) const GRAB_PX: f32 = 9.0;
 /// ⚠️ **O AGARRE é maior do que o desenho**, e é a mesma folga do punho (`+ GRAB_PX/2`): um alvo que
 /// agarra exactamente onde pinta obriga a mão a acertar no pixel, e um vértice é o alvo mais pequeno
 /// que esta janela oferece.
-pub(crate) const VERTEX_HALF_PX: f32 = GRIP_HALF_PX * 0.5;
+pub const VERTEX_HALF_PX: f32 = GRIP_HALF_PX * 0.5;
 
 /// Comprimento e meia-largura da ponta da seta.
-pub(crate) const HEAD_PX: f32 = 17.0;
-pub(crate) const HEAD_HALF_W_PX: f32 = 5.5;
+pub const HEAD_PX: f32 = 17.0;
+pub const HEAD_HALF_W_PX: f32 = 5.5;
 
 /// Espessura do traço da haste (e das argolas).
-pub(crate) const SHAFT_HALF_W_PX: f32 = 1.3;
+pub const SHAFT_HALF_W_PX: f32 = 1.3;
 
 /// Onde fica o quadrado de plano, em fração do braço, e o lado dele.
-pub(crate) const PLANE_AT: f32 = 0.38;
-pub(crate) const PLANE_SIDE: f32 = 0.22;
+pub const PLANE_AT: f32 = 0.38;
+pub const PLANE_SIDE: f32 = 0.22;
 
 /// ⚠️ **O comprimento projetado abaixo do qual uma seta deixa de ser uma alça** — e o número é
 /// **derivado**, não escolhido.
@@ -57,11 +57,11 @@ pub(crate) const PLANE_SIDE: f32 = 0.22;
 ///
 /// Escondê-la é o que o Blender faz, e o efeito colateral é bom: com a seta escondida sobra o
 /// quadrado de plano perpendicular a ela, que é exatamente o gesto que aquele enquadramento pede.
-pub(crate) const MIN_ARM_PX: f32 = INNER_PX + 2.0 * GRAB_PX;
+pub const MIN_ARM_PX: f32 = INNER_PX + 2.0 * GRAB_PX;
 
 /// Em quantos pedaços uma argola é amostrada. Ela é um **círculo do mundo**, e o que se pinta e se
 /// aponta é a projeção dele — uma elipse, que só uma poligonal aproxima.
-pub(crate) const RING_SEGMENTS: usize = 48;
+pub const RING_SEGMENTS: usize = 48;
 
 /// ⚠️ **O quanto uma argola tem de estar virada para o observador** — também **derivado**.
 ///
@@ -72,7 +72,7 @@ pub(crate) const RING_SEGMENTS: usize = 48;
 ///
 /// A saída existe e é a [`Handle::ViewRing`]: a argola do plano da tela nunca fica de perfil
 /// consigo mesma.
-pub(crate) const RING_MIN_DOT: f32 = GRAB_PX / ARM_PX;
+pub const RING_MIN_DOT: f32 = GRAB_PX / ARM_PX;
 
 /// ⚠️ **O piso que decide o que está «atrás», e ele nomeia o recurso: a precisão da representação.**
 ///
@@ -85,14 +85,14 @@ pub(crate) const RING_MIN_DOT: f32 = GRAB_PX / ARM_PX;
 /// pior que ele faz é deixar passar um segmento a mais na borda, que ninguém vê.
 ///
 /// (É o irmão do `PRECISION_FLOOR` do traçador, e pelo mesmo motivo.)
-pub(crate) const RING_FRONT_EPS: f32 = 1.0e-5;
+pub const RING_FRONT_EPS: f32 = 1.0e-5;
 
 /// O raio da argola de vista, em frações do braço. Ela fica **por fora** das três, como a branca do
 /// Blender — é a de fora que se agarra sem pensar.
-pub(crate) const VIEW_RING_R: f32 = 1.18;
+pub const VIEW_RING_R: f32 = 1.18;
 
 /// Meia-aresta do punho de tamanho.
-pub(crate) const GRIP_HALF_PX: f32 = 6.5;
+pub const GRIP_HALF_PX: f32 = 6.5;
 
 /// ⚠️ **A direção do punho de tamanho é de TELA, e ela é cosmética.**
 ///
@@ -101,7 +101,7 @@ pub(crate) const GRIP_HALF_PX: f32 = 6.5;
 /// redimensionar; movê-lo para outro canto não mudaria uma linha da conta.
 ///
 /// (`y` cresce para BAIXO em pixels, daí o sinal.)
-pub(crate) const GRIP_DIR: [f32; 2] = [
+pub const GRIP_DIR: [f32; 2] = [
     std::f32::consts::FRAC_1_SQRT_2,
     -std::f32::consts::FRAC_1_SQRT_2,
 ];

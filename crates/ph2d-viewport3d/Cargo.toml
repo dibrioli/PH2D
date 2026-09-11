@@ -1,0 +1,32 @@
+[package]
+name = "ph2d-viewport3d"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# A moldura de uma janela 3D: vistas nomeadas, navball, split de viewports, gizmo de
+# transformação. ⛔ ZERO dependências de família — é isso que a torna partilhável pelos
+# dois módulos 3D (modelagem e escultura) sem que um dependa do outro.
+#
+# ⏳ `ph2d-field-render` está aqui só pelo `Orbit`/`Screen` (o tipo de câmera). Dívida
+# nomeada no doc do `lib.rs`: o vocabulário 3D devia ser uma folha própria.
+[dependencies]
+ph2d-app-host     = { path = "../ph2d-app-host" }
+ph2d-editor       = { path = "../ph2d-editor" }
+ph2d-field        = { path = "../ph2d-field" }
+ph2d-field-render = { path = "../ph2d-field-render" }
+ph2d-tokens       = { path = "../ph2d-tokens" }
+ph2d-vector       = { path = "../ph2d-vector" }
+# ⚠️ Os quatro abaixo eram INVISÍVEIS dentro da shell — lá são dependência do binário, e um
+# módulo escreve `ph2d_i18n::tr(...)` sem nada que o declare no ficheiro. Só o `cargo check`
+# da crate nova os nomeia: *o custo real de um módulo só se lê quando ele sai da crate que
+# paga tudo por ele.*
+ph2d-i18n          = { path = "../ph2d-i18n" }
+ph2d-tool-registry = { path = "../ph2d-tool-registry" }
+ph2d-text          = { path = "../ph2d-text" }
+winit = "0.30"

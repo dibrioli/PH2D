@@ -302,6 +302,6 @@ fn a_projected_plane_is_a_rhombus_not_a_box() {
 }
 
 /// Os gates do **arrasto** vivem no irmão — a lei que eles medem também
-/// ([`crate::field3d_gizmo::drag`]).
-#[path = "field3d_gizmo_drag_tests.rs"]
+/// ([`crate::gizmo::drag`]).
+#[path = "gizmo_drag_tests.rs"]
 mod drag;

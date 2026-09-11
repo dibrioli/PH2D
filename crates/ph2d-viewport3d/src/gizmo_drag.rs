@@ -20,7 +20,7 @@ use super::*;
 /// **multiplica**. Um `[f32; 3]` para os três obrigaria quem recebe a adivinhar qual é qual pelo
 /// modo em que o gizmo estava — e num quadro em que o modo mudou a meio, a adivinha erra.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub(crate) enum Motion {
+pub enum Motion {
     Translate([f32; 3]),
     /// Em torno de `axis` (unitário, no mundo), pelo **pivô da âncora**.
     Rotate {
@@ -41,7 +41,7 @@ impl Motion {
     ///
     /// Variantes diferentes não se compõem: o segundo ganha. Não pode acontecer num arrasto (a alça
     /// fixa o verbo), e inventar uma soma entre um giro e uma escala seria pior do que ceder.
-    pub(crate) fn merge(self, next: Motion) -> Motion {
+    pub fn merge(self, next: Motion) -> Motion {
         match (self, next) {
             (Motion::Translate(a), Motion::Translate(b)) => {
                 Motion::Translate([a[0] + b[0], a[1] + b[1], a[2] + b[2]])
@@ -59,7 +59,7 @@ impl Motion {
     ///
     /// ⚠️ É a inversa exacta de [`Motion::merge`], e existe pelo mesmo motivo que ela: cada verbo
     /// compõe à maneira dele. `total.since(applied).merge(applied) == total` — que é o gate.
-    pub(crate) fn since(self, applied: Motion) -> Motion {
+    pub fn since(self, applied: Motion) -> Motion {
         match (self, applied) {
             (Motion::Translate(t), Motion::Translate(a)) => {
                 Motion::Translate([t[0] - a[0], t[1] - a[1], t[2] - a[2]])
@@ -75,7 +75,7 @@ impl Motion {
     }
 
     /// O pedido **neutro** deste verbo — o ponto de partida de um arrasto.
-    pub(crate) fn neutral(self) -> Motion {
+    pub fn neutral(self) -> Motion {
         match self {
             Motion::Translate(_) => Motion::Translate([0.0; 3]),
             Motion::Rotate { axis, .. } => Motion::Rotate { axis, angle: 0.0 },
@@ -87,7 +87,7 @@ impl Motion {
     ///
     /// `step` é o passo da translação, em unidades de mundo, e vem **derivado do enquadramento**
     /// ([`snap_step`]). O ângulo e o fator têm passos próprios, e cada um diz por que é aquele.
-    pub(crate) fn snapped(self, step: f32) -> Motion {
+    pub fn snapped(self, step: f32) -> Motion {
         let round_to = |v: f32, q: f32| -> f32 { if q > 0.0 { (v / q).round() * q } else { v } };
         match self {
             Motion::Translate(d) => Motion::Translate([
@@ -110,7 +110,7 @@ impl Motion {
     }
 
     /// Um pedido que não pede nada — o que uma alça degenerada devolve.
-    pub(crate) fn is_idle(self) -> bool {
+    pub fn is_idle(self) -> bool {
         match self {
             Motion::Translate(d) => d.iter().all(|v| v.abs() < f32::EPSILON),
             Motion::Rotate { angle, .. } => angle.abs() < f32::EPSILON,
@@ -120,10 +120,10 @@ impl Motion {
 }
 
 /// O passo de ângulo do gesto preso. Ver [`Motion::snapped`].
-pub(crate) const SNAP_ANGLE: f32 = std::f32::consts::PI / 12.0;
+pub const SNAP_ANGLE: f32 = std::f32::consts::PI / 12.0;
 
 /// O passo do fator de tamanho. Ver [`Motion::snapped`].
-pub(crate) const SNAP_FACTOR: f32 = 0.1;
+pub const SNAP_FACTOR: f32 = 0.1;
 
 /// ⭐ **O passo da translação presa, DERIVADO do enquadramento** — o menor número redondo (1-2-5)
 /// cujo comprimento na tela ainda se consegue mirar.
@@ -137,7 +137,7 @@ pub(crate) const SNAP_FACTOR: f32 = 0.1;
 /// escolher entre eles, e prender à grelha passa a ser sorteio. Sobe-se então a escada 1-2-5 até o
 /// primeiro degrau que passa.
 #[must_use]
-pub(crate) fn snap_step(screen: Screen) -> f32 {
+pub fn snap_step(screen: Screen) -> f32 {
     let min_world = GRAB_PX / screen.px_per_world().max(f32::MIN_POSITIVE);
     if !min_world.is_finite() || min_world <= 0.0 {
         return SNAP_FACTOR;
@@ -157,7 +157,7 @@ pub(crate) fn snap_step(screen: Screen) -> f32 {
 /// Devolve um pedido **inerte** ([`Motion::is_idle`]) quando a alça não é utilizável neste
 /// enquadramento — a mesma condição que [`project`] usa para a esconder, porque uma alça invisível
 /// não pode arrastar.
-pub(crate) fn drag(
+pub fn drag(
     handle: Handle,
     anchor: Anchor,
     cam: &Orbit,
@@ -226,7 +226,7 @@ pub(crate) fn drag(
         // pelo vértice daria o **mesmo** plano — e a origem é o que a âncora já tem.
         //
         // ⛔ **Devolve um deslocamento de MUNDO**, e quem o converte para as duas coordenadas locais
-        // é a ponte ([`crate::field3d_scene_gizmo`]) — a lei do gizmo não sabe que existe uma tabela
+        // é a ponte (`ph2d_app_field3d::scene_gizmo`) — a lei do gizmo não sabe que existe uma tabela
         // de linhas nem qual é a ordem dela.
         Handle::Vertex(_) => Motion::Translate(plane_delta(
             anchor.local[2],

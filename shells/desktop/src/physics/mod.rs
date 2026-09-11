@@ -27,6 +27,7 @@ pub(crate) mod joint_draw;
 pub(crate) mod joint_rig;
 pub(crate) mod joint_rig_drag;
 pub(crate) mod physics_smoke;
+pub(crate) mod physics_smoke_base;
 pub(crate) mod physics_smoke_joint_anim;
 pub(crate) mod physics_smoke_out;
 pub(crate) mod physics_smoke_part;

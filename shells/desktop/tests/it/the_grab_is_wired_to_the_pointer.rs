@@ -198,7 +198,7 @@ fn the_point_intercept_asks_the_one_door() {
         .expect("o guard do intercept");
     let guard = &src[start..i];
     assert!(
-        guard.contains("!self.interaction.tool.needs_a_body()"),
+        guard.contains("!self.physics.interaction.tool.needs_a_body()"),
         "o guard do intercept não pergunta a `needs_a_body` — ele está \
          enumerando ferramentas:\n{guard}"
     );
@@ -216,7 +216,7 @@ fn the_poke_press_asks_the_door_with_the_clock_and_the_transport() {
     let call = &src[i..i + 400];
     for needle in [
         "&mut gfx.physics",
-        "&self.interaction",
+        "&self.physics.interaction",
         "playing",
         "simulating",
     ] {
@@ -265,12 +265,12 @@ fn the_overlay_is_handed_the_tool_marks() {
         "o flash do estouro não chega ao overlay"
     );
     assert!(
-        call.contains("self.interaction.aim_radius()"),
+        call.contains("self.physics.interaction.aim_radius()"),
         "a mira não chega ao overlay"
     );
     // A mira é gateada nas MESMAS duas condições da porta.
     let aim = call
-        .find("self.interaction.aim_radius()")
+        .find("self.physics.interaction.aim_radius()")
         .expect("checked above");
     // Tudo o que vem ANTES da mira dentro desta chamada — e não uma janela de
     // 300 bytes, pelo mesmo motivo do corte acima.

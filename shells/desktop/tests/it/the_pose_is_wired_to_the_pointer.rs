@@ -65,7 +65,7 @@ fn call_at(src: &str, needle: &str) -> String {
 fn the_press_asks_one_door_which_gesture_this_is() {
     let src = squeezed(&dispatch_src());
     assert_eq!(
-        src.matches("self.interaction.joint.gesture(self.modifiers.alt_key())")
+        src.matches("self.physics.interaction.joint.gesture(self.modifiers.alt_key())")
             .count(),
         1,
         "UMA pergunta por press, e o Alt entra NELA — é ele que suprime o gesto"

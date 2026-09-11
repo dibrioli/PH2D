@@ -952,10 +952,27 @@ fechado**, não por micro-task (vide §6.6.A.2).
 4. **Todo teste tem tecto** (`.config/nextest.toml`: 60 s avisa, 180 s mata) e a suíte **não cancela** no
    1.º ✗. Precisa de mais? `[[profile.default.overrides]]` com o número medido. Gate de relógio/alocação
    novo entra na **lane** pelo nome (§6.5) — a barra fica.
-5. **A shell é o caminho crítico de todo build grande** (45 s sozinha no fim de todo gate; 493 k linhas em
-   `src/`, dobrou em quatro semanas). Código de um módulo que só a shell «precisava» de ter — cenas de
-   smoke, ponte `App` ⇄ módulo — é a próxima onda (W2 do doc): **não acrescente ali o que pode viver na
-   crate do módulo.** Uma cena de smoke nova que nenhum doc cite pelo número é 1 k linhas pagas por ninguém.
+5. **A shell é o caminho crítico de todo build grande** (34–45 s sozinha no fim de todo gate) — ela é **UMA**
+   unidade de compilação e a **última** de toda build grande. ✅ **W2 FEITA em 11/09, em seis linhas
+   paralelas: 526 809 → 465 105 LOC (−61 704, −11,7 %) e −222 ficheiros**, com as famílias a nascerem em
+   `crates/ph2d-app-{field3d,vec,flip,physics,sculpt3d,motion}` sobre o substrato `ph2d-app-host` +
+   `ph2d-app-registry-init`. ⇒ **a regra que fica: código de FAMÍLIA vive em `crates/ph2d-app-<família>`;
+   a shell é COMPOSIÇÃO.** O molde, as 5 portas do trait de host e as **15** armadilhas medidas (⛔ quatro
+   delas MUDAS — uma feature não viaja com o código, um `#[cfg(test)]` é invisível do outro lado da crate,
+   um censo que varre por prefixo passa a varrer zero) estão no
+   [`HOWTO_partir_uma_familia_da_shell.md`](HOWTO_partir_uma_familia_da_shell.md).
+   ⛔⛔ **E a regra tem instrumento, porque nenhum tecto de LOC deste repo a via:** todos são
+   **por FICHEIRO**, e 465 k linhas em 1 801 ficheiros de ~258 passam em todos eles com folga — *o que soma
+   agora é a CRATE* (seis linhas a acrescentar 200 cada não acordam gate nenhum, que é a forma do §5.0 do
+   `CLAUDE.md` um nível acima). A catraca é **`the_shell_only_shrinks`**
+   (`crates/ph2d-editor-core/tests/it/`), com as **duas** metades — cresceu acima do tecto, ou encolheu
+   tanto que o tecto deixou de a descrever. ⚠️ **Quando ela reprovar, MOVA para a crate da família; subir o
+   número é desfazer a W2 uma wave de cada vez.** A folga de `4 000` linhas é para a raiz de composição
+   (ligar uma família custa linhas no `main.rs`), **não** para um módulo.
+   ⏳ **A Fase B das cinco famílias fica aberta**: os roteadores de cenas (`PH2D_*_SMOKE`) ainda tocam a
+   `App` e por isso ficaram na shell — só a `flip` levou os dela. Quem estiver a meio está **declarado** na
+   catraca `FAMILIAS_COM_O_ROTEADOR_AINDA_NA_SHELL` do `ph2d-app-registry-init`, que volta a vazia quando a
+   Fase B acabar. Uma cena de smoke nova que nenhum doc cite pelo número é 1 k linhas pagas por ninguém.
 6. **`jobs = 32` nesta máquina** (era 6; a nota media codegen e prendia o front-end): check frio do
    workspace 156 → 93 s. É config por máquina (`~/.cargo/config.toml`), não do repo.
 7. **Recusas medidas — não reconstrua:** `cargo-hakari`/unificação de features (não há cascata) ·
@@ -965,10 +982,19 @@ fechado**, não por micro-task (vide §6.6.A.2).
    `check`, incremental, binários nem proc-macros — só rlibs de registry) · `-Zthreads` (2,4× na shell,
    **nightly**: mede-se com `cargo +nightly` em target próprio, não se shipa) · «o Rust 1.98 tem flags
    novas» (nada no estável desde 1.91; o 1.99 de outubro recupera 2–7 % pelo LLVM 23).
-8. **Ondas por abrir, em ordem:** ✅ W1 feita (10/09); resta a W1b — a crate `ph2d-arch-gates` com os 155
-   gates puros de código-fonte que hoje religam a closure da crate onde vivem · W2.0 censo de `App` por família · W2 cenas de smoke fora da shell, depois `ph2d-app-<módulo>` ·
-   W3 CI (archive + partition, impactado no PR, GPU por software) · W4 medir `-Zthreads`, subir a 1.99.
+8. **Ondas, em ordem:** ✅ **W1 feita** (10/09) · ✅ **W2 Fase A feita** (11/09, as seis linhas integradas —
+   item 5) · ⏳ **W2 Fase B**: o corte pelo HOWTO, família a família, que é onde os roteadores de cenas
+   saem da shell · **W1b** — a crate `ph2d-arch-gates` com os 155 gates puros de código-fonte que hoje
+   religam a closure da crate onde vivem (valor baixo depois da W1) · **W3** CI (archive + partition,
+   impactado no PR, GPU por software) · **W4** medir `-Zthreads`, subir a 1.99.
    Quem abrir uma lê o §6 e o §9 do doc antes.
+9. ⛔⛔ **Um gerador novo entra no passo 2 do `foundational-integrate.sh` no MESMO commit.** Medido na
+   integração de 11/09: a L0 criou o `ph2d-app-sync` e o script só corria os dois geradores antigos ⇒
+   **toda** família reprovava no passo 3 por staleness, e o gate que devia ser uma rede virou um bloqueio
+   de integração. A regeneração dos registos é trabalho mecânico do integrador, como os outros dois.
+   ⚠️ E o irmão desta: **um consumidor que abre um ficheiro por caminho FIXO não é visto por nenhum portão
+   de linha** — o `ph2d-tool-sync` lia `tests/<x>.rs` e a W1 mudara tudo para `tests/it/`; nada o invoca no
+   laço interno, então o defeito nasceu num dia e apareceu na primeira integração seguinte.
 
 ---
 

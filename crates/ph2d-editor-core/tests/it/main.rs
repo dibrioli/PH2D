@@ -41,6 +41,7 @@ mod architecture_panel_host_surface;
 mod architecture_panel_loc_cap;
 mod architecture_panel_wiring_parity;
 mod architecture_stack_versions_doc_matches_the_lockfile;
+mod architecture_the_shell_only_shrinks;
 mod architecture_tool_contract_surface;
 mod architecture_topbar_registration_parity;
 mod architecture_widget_loc_cap;

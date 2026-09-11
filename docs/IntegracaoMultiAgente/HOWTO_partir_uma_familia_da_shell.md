@@ -8,6 +8,14 @@
 > Contexto: [BRIEFINGS_W2](BRIEFINGS_W2_PARTIR_A_SHELL_2026-09-11.md) ·
 > [auditoria §4-C2](../DevOps/AUDITORIA_VELOCIDADE_DE_DESENVOLVIMENTO_2026-09-10.md) · DIRETRIZ §6.7.
 >
+> ⭐⭐⭐ **E a regra que este HOWTO serve tem INSTRUMENTO desde 11/09:** a catraca
+> **`the_shell_only_shrinks`** (`crates/ph2d-editor-core/tests/it/`) mede a shell INTEIRA e
+> reprova nos dois sentidos — cresceu acima do tecto, ou encolheu tanto que o tecto deixou de a
+> descrever. ⚠️ **Ela existe porque nenhum tecto de LOC deste repo via esta grandeza:** todos são
+> por FICHEIRO, e 465 k linhas em 1 801 ficheiros de ~258 passam em todos eles com folga — *o que
+> soma aqui é a CRATE*. ⛔ **Quando ela reprovar, a cura é mover para a crate da família; subir o
+> número é desfazer a W2 uma wave de cada vez.**
+>
 > ⚠️ **Leia a §2 (as armadilhas) ANTES de mover o primeiro ficheiro.** Metade delas tem modo de
 > falha **mudo** — o gate fica verde e mede nada — e a hora de as evitar é antes, não depois.
 

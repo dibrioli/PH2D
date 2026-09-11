@@ -88,6 +88,16 @@
 - **Slot warm por CoW** (só `constrained`): `bash scripts/slot-seed.sh <slot>` → prefixe cada cargo com o `CARGO_TARGET_DIR` impresso. No `workstation` os slots são opcionais (`target/` único basta).
 - **Diagnóstico via LSP (maior alavanca):** `constrained` = `cargo-check-narrow.sh` on-demand (RA é RAM-blocked); `workstation` = **rust-analyzer full como oráculo**, não leia saída crua do cargo.
 - **Gate batched no fim do módulo:** `scripts/nextest-impacted.sh` + clippy `--all-targets` + auditoria ≥2 lentes, **1× sobre o diff acumulado**. ⚠️ O perfil `ci-test` tem **`incremental = false` no `Cargo.toml`** desde 10/09 (a regra do prefixo `CARGO_INCREMENTAL=0` vivia em dois scripts e **26 GB** de `target/ci-test/incremental` provaram que não chegava a quem corria o perfil à mão); o `cargo check -p` do inner loop fica em paz, de propósito. ⭐ **O que a auditoria de 10/09 mediu e as regras que ficam: DIRETRIZ §6.7** — o inner loop está bom (1,8–3,3 s), o custo mora nos TESTES e no `--release` (o smoke é `--profile smoke`, 161 s → 3 s). E ao FECHAR a linha, reclame o resto: `rm -rf target/*/incremental` (DIRETRIZ §1.5.9 item 7).
+- ⛔⛔ **CÓDIGO DE FAMÍLIA VIVE EM `crates/ph2d-app-<família>`; a shell é COMPOSIÇÃO.** A
+  `shells/desktop` é **UMA** unidade de compilação e a **última** de toda build grande (34–45 s
+  sozinha no portão de fecho) — é ela, não o linker nem o `check`, o tecto do relógio deste repo.
+  A W2 (11/09) tirou de lá **61 704 linhas** em seis linhas paralelas. ⚠️ **Todo tecto de LOC deste
+  repo é por FICHEIRO e nenhum via isto**: 465 k linhas em 1 801 ficheiros de ~258 passam em todos
+  eles com folga — *o que soma agora é a CRATE*, e seis linhas a somar 200 cada não acordam gate
+  nenhum. ⇒ a catraca é `the_shell_only_shrinks` (`ph2d-editor-core/tests/it/`), com as duas
+  metades (cresceu / o tecto ficou para trás). **Quando ela reprovar, MOVA para a crate da família
+  — nunca suba o número.** Molde, as 5 portas do trait de host e as 15 armadilhas medidas:
+  [`HOWTO_partir_uma_familia_da_shell.md`](docs/IntegracaoMultiAgente/HOWTO_partir_uma_familia_da_shell.md).
 - **Cargos simultâneos:** `constrained` ≤3 (RAM 8 GiB); `workstation` ~cores/6 (build) / ~cores/3 (check) — vide hw-profile.
 - **NÃO use:** Cranelift (ruim p/ check-loop + gaps macOS). Linker = `mold` no Linux (**nunca no `.cargo/config.toml` do repo** — global), `lld/ld-prime` no macOS (mold é ELF-only).
 

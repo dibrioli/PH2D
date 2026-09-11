@@ -42,6 +42,7 @@
 - 📚 [Git & colisão multi-agente: mais 4 lições, uma linha cada, verbatim](reference_topic_git_lessons_loose.md)
 
 ## Ship / CI / integração
+- ✅ [**W2 INTEGRADA 11/09**: as seis linhas no main, shell −61.704 LOC; e os QUATRO defeitos de substrato que só a integração vê (gerador fora do gate · invariante forte demais para a Fase A · ping-pong fmt⇄sync escondido por uma compensação a jusante)](project_w2_six_lines_integrated_2026_09_11.md)
 - ✅ [AUDITORIA de velocidade 10/09: W0 APLICADA (perfil `smoke` 161 s → 3 s, `jobs = 32`, tecto nextest) e W1 FEITA (1 446 → 127 binários de teste, `tests/it/`); W1b/W2 por abrir](project_dev_speed_audit_2026_09_10_w0_applied.md)
 - [Multi-máquina: GitHub fonte única](project_multi_machine_setup.md) · [fast mode: dia sem push](feedback_fast_mode_ship.md)
 - ⏳ [**`line/motion-value` espera a PRÓXIMA rodada** — 5 de 6 linhas entraram em 06/09 e esta ficou de fora; as 5 mitigações em vigor](project_motion_value_waits_for_the_next_integration_round.md)

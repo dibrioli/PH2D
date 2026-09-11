@@ -133,7 +133,10 @@ mod tests {
         assert!(render_rs(&c).contains("ph2d_app_field3d::FAMILY"));
         assert!(render_deps(&c).contains("path = \"../ph2d-app-field3d\""));
         assert!(render_default(&c).contains("\"app-field3d\","));
-        assert_eq!(render_features(&c), "app-field3d = [\"dep:ph2d-app-field3d\"]\n");
+        assert_eq!(
+            render_features(&c),
+            "app-field3d = [\"dep:ph2d-app-field3d\"]\n"
+        );
     }
 
     /// ⛔ Os dois agregadores partilham o prefixo e NÃO são famílias.

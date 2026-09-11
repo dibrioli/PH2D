@@ -35,7 +35,11 @@ fn main() {
     for (b, e, body) in [
         (TOML_DEPS_BEGIN, TOML_DEPS_END, render_deps(&found)),
         (TOML_DEFAULT_BEGIN, TOML_DEFAULT_END, render_default(&found)),
-        (TOML_FEATURES_BEGIN, TOML_FEATURES_END, render_features(&found)),
+        (
+            TOML_FEATURES_BEGIN,
+            TOML_FEATURES_END,
+            render_features(&found),
+        ),
     ] {
         src = rewrite(&src, b, e, &body).unwrap_or_else(|| panic!("marcadores {b} no Cargo.toml"));
     }

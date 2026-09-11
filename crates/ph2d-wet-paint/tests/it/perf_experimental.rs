@@ -14,7 +14,6 @@
 //! transfer (`colorops::transfer`) puts those multiples straight back and
 //! bleeds here.
 
-
 use std::time::Instant;
 
 use ph2d_wet_paint::painter::Engine;

@@ -5,7 +5,6 @@
 //! These are NEW doors — the pinned session fingerprint never calls them, so
 //! their existence cannot move it; these gates are their own floor.
 
-
 use ph2d_wet_paint::painter::{Engine, Tool};
 use ph2d_wet_paint::render::{
     PigmentVisual, RenderLayer, render_pigment_only_region, render_pigment_region_visual,

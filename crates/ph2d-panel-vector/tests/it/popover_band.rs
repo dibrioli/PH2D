@@ -130,9 +130,18 @@ fn no_popover_in_this_panel_clamps_against_the_window() {
             "paint_filters_blend.rs",
             include_str!("../../src/paint_filters_blend.rs"),
         ),
-        ("paint_markers.rs", include_str!("../../src/paint_markers.rs")),
-        ("paint_catalog.rs", include_str!("../../src/paint_catalog.rs")),
-        ("font_dropdown.rs", include_str!("../../src/font_dropdown.rs")),
+        (
+            "paint_markers.rs",
+            include_str!("../../src/paint_markers.rs"),
+        ),
+        (
+            "paint_catalog.rs",
+            include_str!("../../src/paint_catalog.rs"),
+        ),
+        (
+            "font_dropdown.rs",
+            include_str!("../../src/font_dropdown.rs"),
+        ),
     ];
     for (name, src) in FILES {
         // Controle positivo: o scanner esta' a olhar para um ficheiro que de facto clampa.

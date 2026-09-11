@@ -169,7 +169,20 @@ mensurável*. Uma segunda medição sob carga provaria menos do que esta frase.
 ⚠️ A 1.ª corrida do `nextest-impacted` deu **2 vermelhos**, os dois causados por esta linha e os
 dois da classe que o briefing nomeia — estão no §7, com a cura. A corrida acima é depois dela.
 
-### (e) Smoke
+### (e) O binário do smoke fica COMPILADO (DIRETRIZ §1.5.9 item 9)
+
+```
+$ cargo build -p ph2d-host-desktop --profile smoke     # 1.ª
+    Finished `smoke` profile [optimized] target(s) in 1m 51s
+$ cargo build -p ph2d-host-desktop --profile smoke     # 2.ª — A PROVA
+    Finished `smoke` profile [optimized] target(s) in 0.19s
+    (linhas "Compiling": 0)
+```
+
+Feito **depois** do último commit e **depois** do `rm -rf target/*/incremental` (4,1 GB
+devolvidos). É o perfil `smoke`, não `release` — o dono não paga build.
+
+### (f) Smoke
 
 O comportamento **não muda** — a extracção não toca produto. As cenas são as mesmas, com os
 mesmos números (menos as 3 apagadas do §8). Comando no §11.

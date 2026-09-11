@@ -2151,7 +2151,7 @@ impl App {
         // UM passo de undo por GESTO, não por frame de arrasto: o `commit_if_changed` do
         // release fecha o que este `begin` abriu.
         self.timeline.history.begin(&self.timeline.doc);
-        self.motion_path_drag = Some(hit);
+        self.motion_shell.path_drag = Some(hit);
         true
     }
 
@@ -2214,12 +2214,12 @@ impl App {
     /// (instante, posição) é rastreado aqui — o mesmo recurso do `vec_text_double_click`.
     fn motion_path_curve_double_click(&mut self, x: f32, y: f32) -> bool {
         let now = std::time::Instant::now();
-        let is_double = self.motion_path_last_click.is_some_and(|(t, (px, py))| {
+        let is_double = self.motion_shell.path_last_click.is_some_and(|(t, (px, py))| {
             now.duration_since(t).as_millis() <= Self::MOTION_PATH_DCLICK_MS
                 && (x - px).abs() <= Self::MOTION_PATH_DCLICK_SLOP_PX
                 && (y - py).abs() <= Self::MOTION_PATH_DCLICK_SLOP_PX
         });
-        self.motion_path_last_click = Some((now, (x, y)));
+        self.motion_shell.path_last_click = Some((now, (x, y)));
         if !is_double {
             return false;
         }
@@ -2256,7 +2256,7 @@ impl App {
     /// As duas reescrevem as distâncias que as keys guardam na MESMA operação.
     fn motion_path_anchor_move(&mut self, x: f32, y: f32) -> bool {
         use crate::render_loop::motion_path_overlay::MotionPathGrab;
-        let Some(grab) = self.motion_path_drag else {
+        let Some(grab) = self.motion_shell.path_drag else {
             return false;
         };
         let Some(gfx) = self.gfx.as_ref() else {
@@ -4307,11 +4307,11 @@ impl App {
         // O Up que fecha o arrasto de uma ÂNCORA do motion path — e que FECHA o passo de
         // undo que o press abriu. Sem este `commit_if_changed` o `begin` fica pendurado e
         // o próximo gesto o herda: um Ctrl+Z desfaria os dois de uma vez.
-        if self.motion_path_drag.is_some()
+        if self.motion_shell.path_drag.is_some()
             && mapped_button == ph2d_host::PointerButton::Primary
             && kind == PointerKind::Up
         {
-            self.motion_path_drag = None;
+            self.motion_shell.path_drag = None;
             self.timeline.history.commit_if_changed(&self.timeline.doc);
             return;
         }

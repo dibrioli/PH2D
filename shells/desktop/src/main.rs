@@ -373,6 +373,7 @@ mod motion_demo_legend;
 mod motion_flip_bake;
 mod motion_fx_smoke;
 mod motion_leaf_images;
+mod motion_shell_state;
 mod motion_node_path_smoke;
 mod motion_object_bake;
 /// Irmão do acima por RESPONSABILIDADE: ele produz pixels (GPU), este diz quantos (CPU).
@@ -969,7 +970,6 @@ impl App {
             taper_smoke_done: false,
             wetpaint_smoke_done: false,
             stack_smoke_done: false,
-            motion_path_smoke_done: false,
             timeline_onion_smoke_done: false,
             harmony_smoke_done: false,
             signal_smoke_done: false,
@@ -1079,8 +1079,6 @@ impl App {
             morph_preview: false,
             morph_preview_leave: false,
             vec_envelope_drag: None,
-            motion_path_drag: None,
-            motion_path_last_click: None,
             vec_patternpath_handle: None,
             vec_path_pick: None,
             vec_widget_applied: Default::default(),
@@ -1162,7 +1160,7 @@ impl App {
             vec_bucket_new: Vec::new(),
             vec_shape_armed_target: None,
             vec_entities: Default::default(),
-            motion_leaf_images: Default::default(),
+            motion_shell: Default::default(),
             // ⭐ E os quatro que só existem com o módulo ligado (W2/L3-A2): UM `cfg` no lugar
             // de quatro, que é o ponto — a fronteira entre este e o `sculpt3d_req` acima é
             // imposta pela `cfg`, não escolhida (ver `sculpt3d/shell_state.rs`).

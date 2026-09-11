@@ -121,7 +121,7 @@ pub(crate) fn author(doc: &mut TimelineDoc, bits: u64, path: &MotionPath) {
 
 /// No prólogo do frame, uma vez. No-op sem a env.
 pub(crate) fn motion_path_smoke(app: &mut crate::App) {
-    if app.motion_path_smoke_done {
+    if app.motion_shell.path_smoke_done {
         return;
     }
     if std::env::var_os("PH2D_PATH_SMOKE").is_none() {
@@ -130,7 +130,7 @@ pub(crate) fn motion_path_smoke(app: &mut crate::App) {
     if app.gfx.is_none() {
         return; // ainda sem mundo; tenta no próximo frame
     }
-    app.motion_path_smoke_done = true;
+    app.motion_shell.path_smoke_done = true;
     if std::env::var_os("PH2D_PATH_SMOKE").is_some_and(|v| v == "2") {
         path_scene_orient(app);
         return;

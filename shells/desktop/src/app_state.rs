@@ -775,8 +775,6 @@ pub(crate) struct App {
     /// Latch do `PH2D_STACK_SMOKE` (cena da composicao de clips, uma vez).
     pub(crate) stack_smoke_done: bool,
     /// Latch do `PH2D_NEST_SMOKE` (cena do nesting, uma vez).
-    /// Latch do `PH2D_PATH_SMOKE` (a cena do motion path, uma vez).
-    pub(crate) motion_path_smoke_done: bool,
     /// O smoke do onion da timeline (ADR-0142 W1) já rodou. `PH2D_ONION_SMOKE=1`.
     pub(crate) timeline_onion_smoke_done: bool,
     /// Latch do `PH2D_HARMONY_SMOKE` (abre o picker com Triad, uma vez).
@@ -1271,12 +1269,10 @@ pub(crate) struct App {
     /// Carrega o alvo (e o índice, e qual alça) para que o move não precise re-perguntar
     /// qual binding é — a seleção pode mudar no meio de um arrasto (um atalho, um undo), e
     /// o gesto continua sendo sobre o que foi pego.
-    pub(crate) motion_path_drag: Option<crate::render_loop::motion_path_overlay::MotionPathGrab>,
     /// O último clique primário no canvas — `(instante, posição)` — para detectar o
     /// DUPLO-clique no caminho (ADR-0141), que insere um ponto na trajetória. O canvas não
     /// emite `DoubleClick` (é evento por-widget do chrome), então o par é rastreado aqui, o
     /// mesmo recurso do duplo-clique de texto (`vec_last_canvas_click`). Runtime-only.
-    pub(crate) motion_path_last_click: Option<(std::time::Instant, (f32, f32))>,
     /// Qual das duas alças do PATTERN (Start/End, plano 23 W4) está sob arrasto, se alguma. Armada
     /// no press de Select, limpa no release. Runtime-only: o arrasto não é documento — o resultado
     /// (`start_offset`/`end_offset`) é, e vive no `VecPatternPath`. Um `Option` e não um booleano
@@ -1701,7 +1697,9 @@ pub(crate) struct App {
     /// ⭐ **A arte, em CPU, dos quads que o Motion desenha na cena vectorial** — a memória da
     /// terceira média (ver [`crate::motion_leaf_images`]). Vive aqui porque toda leitura PARA a
     /// GPU, e ela tem de sobreviver ao quadro.
-    pub(crate) motion_leaf_images: crate::motion_leaf_images::LeafImages,
+    /// ⭐ **O estado de shell da familia MOTION** — quatro campos que eram soltos aqui e
+    /// que so' esta familia le' (W2/L1). Ver [`crate::motion_shell_state`].
+    pub(crate) motion_shell: crate::motion_shell_state::MotionShellState,
     // ⭐ **Os três que viviam aqui — `sculpt3d_rows`, `sculpt3d_dup`, `sculpt3d_sel` — mudaram-se
     // para o `sculpt3d: Sculpt3dShellState` lá em cima** (W2/L3-A2), com a `sculpt3d_pending`.
     // A prosa de cada um viajou com ele; ver `sculpt3d/shell_state.rs`.

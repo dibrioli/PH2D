@@ -32,7 +32,31 @@
 //! ⚠️ E o braço da MÁSCARA do `close_stroke` é inerte aqui por construção: ele
 //! pergunta `verb.paints_mask()`, e nenhum verbo que filtra pinta máscara.
 
-use super::{FILTER_DRAG_PER_PX, Sculpt3dScene};
+use super::Sculpt3dScene;
+
+/// Quanta força um pixel de arrasto vale no **FILTRO** — a régua do filtro de
+/// malha da referência.
+///
+/// ⚠️ **Não é um teto nem um ajuste de gosto: é a régua da referência.** Ela
+/// decide quantos pixels o artista percorre para atravessar a faixa útil de cada
+/// lei (`FilterKind::range`), e mudá-la muda o quanto a mão anda para o mesmo
+/// resultado — nunca o resultado que uma dada força produz.
+///
+/// ⚠️⚠️ **Ela morava no pai «por ser a mesma espécie dos vizinhos», e os VIZINHOS mudaram-se**
+/// (W2/L3-A4): as outras nove réguas do gesto saíram para a `ph2d-app-sculpt3d`, e esta não
+/// pôde ir — não é um número, é um re-export da `ph2d-sculpt3d`, e levá-la daria àquela crate
+/// uma dependência que quem nunca esculpe teria de pagar (é a ausência dessa conta que a deixa
+/// ser não-opcional, e é isso que preserva o passa-adiante do `sculpt_doc`).
+/// ⇒ *a razão de morar no pai DISSOLVEU-SE com a mudança deles*, e o sítio certo passou a ser
+/// o único consumidor — este ficheiro.
+// ⚠️ **A régua é a da ENGINE, e esta linha já foi uma SEGUNDA CÓPIA.** A
+// `ph2d-sculpt3d` exporta `FILTER_DRAG_PER_PX` e documenta-a como a calibração
+// autoritativa do gesto — mas o shell declarava a sua, e o `use super::*` fazia
+// o `filter.rs` resolver para a LOCAL. As duas valiam `0,001`, então
+// nada estava observavelmente errado; o que estava era que re-calibrar na crate
+// (o sítio que a doc dela manda) deixaria a suíte da crate verde sobre um número
+// que o app não usa. Precedente da própria linha: o `DEFAULT_ALPHA_SCALE`.
+pub(crate) use ph2d_sculpt3d::FILTER_DRAG_PER_PX;
 use ph2d_sculpt3d::ClothFilterOrientation;
 
 /// ⭐⭐⭐ **O QUE O ARTISTA AFINOU NO FILTRO DE TECIDO.**

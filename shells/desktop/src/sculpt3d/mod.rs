@@ -17,20 +17,17 @@ use ph2d_mesh_render::{Camera3d, MeshRenderer};
 use ph2d_sculpt3d::{Brush, Dab, Grip, SculptStroke, Symmetry, Verb};
 
 /// **A DOAÇÃO** — o carimbo, a rasterização e o interruptor de três posições.
-/// Filho (`#[path]`) para alcançar os campos privados da cena; o corte é *o que
+/// Filho para alcançar os campos privados da cena; o corte é *o que
 /// o escultor FAZ* (aqui) contra *o que a forma DOA* (lá).
-#[path = "donation.rs"]
 pub(crate) mod donation;
 
-/// **O GESTO** — as portas de ponteiro, roda e teclado. Filho (`#[path]`) para
+/// **O GESTO** — as portas de ponteiro, roda e teclado. Filho para
 /// alcançar os campos privados da cena; o corte é *o que a cena É* (aqui) contra
 /// *o que a mão FAZ* (lá), o mesmo que separa a [`donation`].
 /// ⭐⭐ **QUEM TOMA O GESTO** — o pen-down, separado do que o gesto FAZ. Ver o
 /// cabeçalho dele: um é arbitragem, o outro é execução.
-#[path = "input_down.rs"]
 mod input_down;
 
-#[path = "input.rs"]
 mod input;
 /// ⭐ **As três portas do gesto que só precisam da CENA** (W2/L3-A2) — a shell procura-a (é
 /// ela que tem o `gfx`) e estas aplicam a lei. Ver a nota no fim do [`input`]: as outras nove
@@ -38,57 +35,48 @@ mod input;
 pub(crate) use input::{flush_grab, pointer_move, pointer_up};
 
 /// **O TRANSFORM PONDERADO PELA MÁSCARA** — mover, girar e escalar a parte
-/// LIVRE. Filho (`#[path]`) pelo motivo dos vizinhos; o corte é *o que a mão na
+/// LIVRE. Filho pelo motivo dos vizinhos; o corte é *o que a mão na
 /// tela quer dizer* (lá) contra *a LEI* (no kernel, `ph2d-sculpt3d`).
-#[path = "transform.rs"]
 mod transform;
 
 /// **O FILTRO** — o verbo corrente na malha INTEIRA, com o arrasto a dar a
 /// força. Irmão do [`transform`], e o corte é o mesmo: a LEI mora no kernel
 /// (`ph2d_sculpt3d::stroke_filter`), e o que mora aqui é *o que a mão na tela
 /// quer dizer*.
-#[path = "filter.rs"]
 mod filter;
 
 /// **O TECLADO** — que tecla escolhe o quê. Irmão do [`input`], e o corte é
 /// entre *o que a mão faz com o PONTEIRO* e *o que ela ESCOLHE com o teclado*;
 /// ele nasceu quando a tabela de teclas levou o arquivo do gesto ao teto de LOC.
-#[path = "keys.rs"]
 mod keys;
 
 /// ⭐⭐⭐ **O GIZMO DE TRANSFORMAÇÃO** — as alças que se agarram (ordem do Enio,
-/// 2026-09-08). Filho (`#[path]`) pelo motivo dos vizinhos; a LEI das alças é a
+/// 2026-09-08). Filho pelo motivo dos vizinhos; a LEI das alças é a
 /// do módulo de modelagem ([`crate::field3d_gizmo`]) e o que mora aqui é **esta
 /// câmera e a restrição que cada alça impõe ao gesto**.
-#[path = "gizmo.rs"]
 mod gizmo;
 
 /// ⭐⭐⭐ **OS QUATRO VIEWPORTS** — frente, lado, cima e a vista do artista, ao
-/// mesmo tempo (ordem do Enio, 2026-09-08). Filho (`#[path]`) pelo motivo dos
+/// mesmo tempo (ordem do Enio, 2026-09-08). Filho pelo motivo dos
 /// vizinhos; a lei da DIVISÃO é a do módulo de modelagem
 /// ([`crate::field3d_layout`]) e o que mora aqui é **uma câmera por quadrante**.
-#[path = "viewports.rs"]
 mod viewports;
 
 /// ⭐⭐ **O GIZMO DA VIEWPORT** — as seis bolas de eixo no canto e as seis vistas
-/// nomeadas (ordem do Enio, 2026-09-08). Filho (`#[path]`) pelo motivo dos
+/// nomeadas (ordem do Enio, 2026-09-08). Filho pelo motivo dos
 /// vizinhos; a LEI do widget é a do módulo de modelagem
 /// ([`crate::field3d_navball`]) e o que mora aqui é **a câmera desta cena**.
-#[path = "navball.rs"]
 mod navball;
 
 /// ⭐⭐⭐ **A PONTE com a árvore do editor** — uma peça ⟺ uma entidade; ver [`entities`].
-#[path = "entities.rs"]
 pub(crate) mod entities;
 
 /// **O CURSOR** — onde a mão está mirando, na tela (W12). Irmão dos três abaixo,
 /// e o mais estreito: *onde o gesto vai pousar*, e nada além.
-#[path = "cursor.rs"]
 mod cursor;
 
 /// **ENTRAR E SAIR** — o pill SCULPT. Irmão do [`input`] e do [`keys`], e o corte é o mesmo com
 /// outro sujeito: aqueles perguntam *o que a mão faz com o barro*, este *quem é dono da tela*.
-#[path = "mode.rs"]
 mod mode;
 pub(crate) use mode::sync_pill;
 
@@ -97,21 +85,16 @@ pub(crate) use cursor::{OFF_SURFACE_RGBA, ON_SURFACE_RGBA};
 /// **O PAINEL** — o retrato que ele pinta e o gesto que ele devolve (W12).
 /// Terceiro irmão do [`input`] e do [`keys`]: o mesmo corte, com um vocabulário
 /// próprio (o gesto chega como DADO, um frame depois, pela fila de intents).
-#[path = "panel.rs"]
 mod panel;
 pub(crate) use panel::Sculpt3dFrameRequest;
 
-/// **COMO O BARRO É MOSTRADO** — o desenho e as opções de vista. Filho
-/// (`#[path]`) pelo mesmo motivo dos vizinhos, e o corte é *o que a cena É*
+/// **COMO O BARRO É MOSTRADO** — o desenho e as opções de vista. Filho pelo mesmo motivo dos vizinhos, e o corte é *o que a cena É*
 /// (aqui) contra *como ela APARECE* (lá): as duas metades crescem por motivos
 /// diferentes, e foi um canal de sombreamento novo que cruzou o teto de LOC.
-#[path = "view.rs"]
 mod view;
 
-/// **O que a cena LEMBRA** — a pilha de níveis e a fila de desfazer. Filho
-/// (`#[path]`) para alcançar os campos privados; o corte é *o que a cena É e o
+/// **O que a cena LEMBRA** — a pilha de níveis e a fila de desfazer. Filho para alcançar os campos privados; o corte é *o que a cena É e o
 /// que a mão faz* (aqui) contra *o que ela guarda para poder voltar* (lá).
-#[path = "history.rs"]
 mod history;
 
 use history::{Entry, StrokeUndo, legacy_requested, retopo_line};
@@ -128,35 +111,9 @@ use donation::FormStamp;
 // e a travessia de crate não move um caminho — tal como o corte de arquivo não movia.
 use ph2d_app_sculpt3d::rulers::*;
 
-/// Quanta força um pixel de arrasto vale no **FILTRO** — a régua do filtro de
-/// malha da referência.
-///
-/// ⚠️ **Não é um teto nem um ajuste de gosto: é a régua da referência.** Ela
-/// decide quantos pixels o artista percorre para atravessar a faixa útil de cada
-/// lei (`FilterKind::range`), e mudá-la muda o quanto a mão anda para o mesmo
-/// resultado — nunca o resultado que uma dada força produz.
-///
-/// Mora aqui, e não no [`filter`], porque é **a mesma espécie** dos vizinhos que o glob
-/// acima traz: pixel de arrasto → grandeza do gesto. O módulo do filtro guarda o que o
-/// gesto FAZ.
-///
-/// ⛔ **É a ÚNICA régua que ficou na shell** (W2/L3-A4), e a razão é que ela não é um número:
-/// é um re-export da `ph2d-sculpt3d`. Levá-la daria à `ph2d-app-sculpt3d` uma dependência que
-/// quem nunca esculpe teria de pagar — e é a ausência dessa conta que deixa aquela crate ser
-/// não-opcional, que por sua vez é o que preserva o passa-adiante do `sculpt_doc`.
-// ⚠️ **A régua é a da ENGINE, e esta linha já foi uma SEGUNDA CÓPIA.** A
-// `ph2d-sculpt3d` exporta `FILTER_DRAG_PER_PX` e documenta-a como a calibração
-// autoritativa do gesto — mas o shell declarava a sua, e o `use super::*` fazia
-// o `filter.rs` resolver para a LOCAL. As duas valiam `0,001`, então
-// nada estava observavelmente errado; o que estava era que re-calibrar na crate
-// (o sítio que a doc dela manda) deixaria a suíte da crate verde sobre um número
-// que o app não usa. Precedente da própria linha: o `DEFAULT_ALPHA_SCALE`.
-pub(crate) use ph2d_sculpt3d::FILTER_DRAG_PER_PX;
-
-/// **AS CENAS DO SMOKE** — a fixture de cada uma. Filho (`#[path]`) pelo motivo
+/// **AS CENAS DO SMOKE** — a fixture de cada uma. Filho pelo motivo
 /// dos outros três: o corte é de responsabilidade, e a lista de cenas cresce uma
 /// entrada por wave.
-#[path = "scenes.rs"]
 mod scenes;
 
 /// O QUE A CENA DIZ ao artista — ver o módulo.
@@ -167,12 +124,10 @@ pub(crate) use announce_mod::announce;
 /// **AS MALHAS DE FIXTURE** — como cada modelo de smoke é esculpido. Irmão das
 /// cenas, e o corte é entre *que cena o smoke monta* e *como a malha dela é
 /// FEITA*; ele nasceu quando o arquivo das cenas cruzou o cap de LOC.
-#[path = "fixtures.rs"]
 mod fixtures;
 
 /// **O CORPUS DE BENCHMARK do remesher** — ver [`corpus`]. `#[cfg(test)]`.
 #[cfg(test)]
-#[path = "corpus.rs"]
 mod corpus;
 
 pub(crate) use scenes::shading::env_scene;
@@ -192,53 +147,43 @@ pub(crate) use scenes::{
 mod drag_kinds;
 use drag_kinds::{Drag, TwistSweep};
 
-/// **A MÁSCARA** — as quatro operações que agem na malha inteira. Filho
-/// (`#[path]`) pelo motivo dos outros: o corte é de responsabilidade.
-#[path = "mask.rs"]
+/// **A MÁSCARA** — as quatro operações que agem na malha inteira. Filho pelo motivo dos outros: o corte é de responsabilidade.
 mod mask;
 
 use mask::MaskOp;
 
-/// **OS VERBOS DA LISTA** — acrescentar, duplicar, apagar. Filho (`#[path]`)
+/// **OS VERBOS DA LISTA** — acrescentar, duplicar, apagar. Filho
 /// pelo motivo dos outros: o corte é de responsabilidade.
-#[path = "objects.rs"]
 mod objects;
 #[path = "preview.rs"]
 mod sculpt3d_preview;
 
 pub(crate) use objects::{Extracted, Merge, Primitive};
 
-/// **ONDE as coisas estão** — as portas de espaço. Filho (`#[path]`) pelo motivo
+/// **ONDE as coisas estão** — as portas de espaço. Filho pelo motivo
 /// dos outros: o corte é de responsabilidade, e este é o assunto que a lista de
 /// objetos inventou.
-#[path = "space.rs"]
 mod space;
 
-/// **O QUE O DEVICE TEM** — a tabela de slots e o upload. Filho (`#[path]`) pelo
+/// **O QUE O DEVICE TEM** — a tabela de slots e o upload. Filho pelo
 /// motivo dos outros; ele saiu da [`donation`] quando o isolamento tornou *quem
 /// mora em cada slot* uma pergunta com resposta não-óbvia.
-#[path = "dyntopo.rs"]
 mod dyntopo;
-#[path = "slots.rs"]
 mod slots;
 
 /// **O OBJETO MISTO (O2)** — a forma acende um SPRITE da cena, e continua
-/// acendendo depois de a malha sair. Filho (`#[path]`) e irmão da [`donation`]:
+/// acendendo depois de a malha sair. Filho e irmão da [`donation`]:
 /// lá a forma acende a tela do Painter, aqui um objeto da cena — duas perguntas
 /// diferentes, e só a segunda sobrevive à escultura.
-#[path = "bake.rs"]
 pub(crate) mod bake;
 
-/// **OS VERBOS QUE PUXAM** — Grab, Snake Hook, Twist, Local Scale. Filho
-/// (`#[path]`) pelo motivo dos outros: o corte é de responsabilidade, e o deles
+/// **OS VERBOS QUE PUXAM** — Grab, Snake Hook, Twist, Local Scale. Filho pelo motivo dos outros: o corte é de responsabilidade, e o deles
 /// é uma LEI própria (a pegada é presa no pen-down, e o alvo é função do puxão
 /// TOTAL, nunca da soma dos passos).
-#[path = "pull.rs"]
 mod pull;
 
 /// **O DOCUMENTO** — a cena como bytes, e os bytes como cena. Filho pelo mesmo
 /// motivo: ele lê `objects`/`active`/`next_id` e as filas de desfazer.
-#[path = "doc.rs"]
 mod doc;
 
 /// **A PORTA DE ENTRADA** — um arquivo de malha vira peças. Filho pelo mesmo
@@ -248,12 +193,10 @@ mod doc;
 /// (`field3d_import`), e ele **não** duplica o leitor — o `read_pieces` é a única resposta da casa a
 /// *"que malha há neste arquivo?"*, e uma segunda diria "cor preservada" sobre um STL no dia em que
 /// alguém trocasse o leitor.
-#[path = "import.rs"]
 pub(crate) mod import;
 
 /// **A PORTA DE SAÍDA** — a cena vira um arquivo que outro programa abre. Irmão
 /// da entrada, e o par dela: sem isto a escultura entra, salva e não sai.
-#[path = "export.rs"]
 mod export;
 
 /// ⭐ **O aviso do que cada formato NÃO carrega**, partilhado com a modelagem 3D
@@ -622,13 +565,11 @@ pub(crate) struct Sculpt3dScene {
     donated: Option<FormStamp>,
 }
 
-#[path = "birth.rs"]
 mod birth;
 
 /// ⭐ **O ESTADO DA FAMÍLIA que vive na `App`** — os quatro campos que eram soltos lá
 /// (W2/L3-A2). Ver o cabeçalho dele: a fronteira com o irmão não-gateado da crate é imposta
 /// pela `cfg`, não escolhida.
-#[path = "shell_state.rs"]
 mod shell_state;
 pub(crate) use shell_state::Sculpt3dShellState;
 
@@ -639,5 +580,4 @@ pub(crate) use shell_state::Sculpt3dShellState;
 /// ficheiro da família fora desta árvore. Passou a filho em 2026-09-11 (W2/L3-A3), e é
 /// por isso que os testes dele mudaram de `sculpt3d_keys_view::…` para
 /// `sculpt3d::keys_view::…`: o nome da função não mudou, a casa dela sim.
-#[path = "keys_view.rs"]
 mod keys_view;

@@ -54,21 +54,24 @@ fn declarados(dir: &Path) -> BTreeSet<String> {
             if t.starts_with("//") {
                 continue;
             }
-            if let Some(r) = t.strip_prefix("#[path = \"") {
-                if let Some(n) = r.split('"').next() {
-                    out.insert(n.to_string());
-                }
+            if let Some(n) = t
+                .strip_prefix("#[path = \"")
+                .and_then(|r| r.split('"').next())
+            {
+                out.insert(n.to_string());
             }
             // `mod x;` · `pub mod x;` · `pub(crate) mod x;` — nunca `mod x {`.
-            if let Some(r) = t.split("mod ").nth(1) {
-                if let Some(n) = r.strip_suffix(';') {
-                    if !n.is_empty()
+            if let Some(n) = t
+                .split("mod ")
+                .nth(1)
+                .and_then(|r| r.strip_suffix(';'))
+                .filter(|n| {
+                    !n.is_empty()
                         && n.chars()
                             .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_')
-                    {
-                        out.insert(format!("{n}.rs"));
-                    }
-                }
+                })
+            {
+                out.insert(format!("{n}.rs"));
             }
         }
     }

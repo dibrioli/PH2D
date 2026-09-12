@@ -7,7 +7,7 @@
 //! # ⚠️ O módulo mantém o nome, e o irmão que ficou
 //!
 //! `sprite_snap_points` — quem varre o mundo à procura de sprites — **ficou na shell**, e não por
-//! tocar `gfx`: ele chama `crate::vec_transform`, que não pôde sair porque **declara** por
+//! tocar `gfx`: ele chama `crate::transform`, que não pôde sair porque **declara** por
 //! `#[path]` um teste que precisa de `crate::profile_live`. *A aresta que prende um ficheiro pode
 //! estar num módulo que ele declara, não no que ele usa.*
 //!

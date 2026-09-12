@@ -1,5 +1,5 @@
 //! O BUILDER de glyph — contorno de fonte (skrifa via `ph2d-vector-font`) → UM `VecPath`
-//! compound. Módulo irmão de [`crate::vec_glyph`] (que fica com o LAYOUT: linhas,
+//! compound. Módulo irmão de [`crate::glyph`] (que fica com o LAYOUT: linhas,
 //! alinhamento, tracking, centragem); separado pelo teto de 600 LOC/arquivo (HR-18).
 //!
 //! O contorno externo vai em `verts`, os furos (miolo do `o`, `e`, `a`…) em `subpaths`,
@@ -14,7 +14,7 @@
 //! **O glyph pousa por um AFIM, não por um ponto** ([`GlyphFrame`]). Num texto reto o
 //! referencial é a identidade transladada e a aritmética é BYTE-IDÊNTICA à do ponto que
 //! havia antes (`1.0.mul_add(a, b)` é exatamente `a + b`, `0.0.mul_add(a, b)` é `b`) —
-//! pinado pelo fingerprint em [`crate::vec_glyph`]. Num texto em caminho o mesmo builder
+//! pinado pelo fingerprint em [`crate::glyph`]. Num texto em caminho o mesmo builder
 //! recebe o referencial daquele glifo e nada mais muda: é por isso que Live Corners,
 //! furos, a marcação Smooth e o `FillRule` não precisaram saber que o caminho existe.
 //!
@@ -31,7 +31,7 @@ use ph2d_vector_font::{GlyphOutline, PathCommand};
 /// com a origem no **pen origin** dele. Devolve `None` quando o glyph não tem área
 /// preenchível (espaço, contorno degenerado).
 #[must_use]
-pub(crate) fn glyph_to_vec_path(
+pub fn glyph_to_vec_path(
     outline: &GlyphOutline,
     scale: f64,
     frame: &GlyphFrame,
@@ -220,7 +220,7 @@ fn dist2(a: [f64; 2], b: [f64; 2]) -> f64 {
 mod tests {
     use super::*;
     // O teste do Style cruza a fronteira: `resolve_style` é do layout (módulo irmão).
-    use crate::vec_glyph::resolve_style;
+    use crate::glyph::resolve_style;
     use ph2d_core::Vec2;
     use ph2d_vec_edit::PenStyle;
     use ph2d_vec_scene::Rgba8;

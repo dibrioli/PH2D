@@ -29,15 +29,15 @@ use ph2d_vec_scene::{VecPathId, VecScene, VecXforms};
 
 /// O blend: as duas fontes + o que ele produziu (re-roda quando o artista mexe no Steps/Stack).
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct BlendSession {
+pub struct BlendSession {
     /// As duas fontes, em z (fundo → topo). Elas **não** são consumidas.
-    pub(crate) a: VecPathId,
-    pub(crate) b: VecPathId,
-    pub(crate) steps: u32,
+    pub a: VecPathId,
+    pub b: VecPathId,
+    pub steps: u32,
     /// Cada passo nasce **acima** do anterior (`true`) ou **abaixo** (`false`).
-    pub(crate) stack_up: bool,
+    pub stack_up: bool,
     /// Os passos que a última rodada produziu — é o que a próxima apaga.
-    pub(crate) produced: Vec<VecPathId>,
+    pub produced: Vec<VecPathId>,
 }
 
 impl BlendSession {
@@ -46,7 +46,7 @@ impl BlendSession {
     /// **As fontes entram na conta**, e não é detalhe: um blend cuja 1ª intermediária fica DEBAIXO
     /// da forma que a originou não lê como uma transição — lê como bagunça (Enio, smoke). A ordem
     /// de z de uma sequência é parte do resultado, não um efeito colateral de quem nasceu primeiro.
-    pub(crate) fn stack(&self) -> Vec<VecPathId> {
+    pub fn stack(&self) -> Vec<VecPathId> {
         let mut z = Vec::with_capacity(self.produced.len() + 2);
         z.push(self.a);
         z.extend(self.produced.iter().copied());
@@ -65,7 +65,7 @@ impl BlendSession {
 /// Exige exatamente DUAS fechadas (três não têm um "entre" definido, e adivinhar seria pior que
 /// recusar). Um passo de undo por chamada. `steps`/`stack_up` vêm do chamador.
 #[allow(clippy::too_many_arguments)] // o shell destruturado passa cada ref separada
-pub(crate) fn apply(
+pub fn apply(
     scene: &mut VecScene,
     history: &mut ph2d_vec_edit::History,
     pen: &mut ph2d_vec_edit::PenTool,
@@ -193,5 +193,5 @@ fn world(scene: &VecScene, xforms: &VecXforms, id: VecPathId) -> Option<ph2d_vec
 }
 
 #[cfg(test)]
-#[path = "vec_blend_tests.rs"]
+#[path = "blend_tests.rs"]
 mod tests;

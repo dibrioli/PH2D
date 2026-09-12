@@ -26,7 +26,7 @@ use ph2d_vec_scene::VecScene;
 /// ⚠️ O `None` é a metade que importa: é ele que impede a caixa de ser pintada. *Uma caixa que
 /// descreve um objecto que não está lá é pior que caixa nenhuma* — a mesma lei do `resize_box`.
 #[must_use]
-pub(crate) fn selected_stroke_present(scene: &VecScene, pen: &PenTool) -> Option<bool> {
+pub fn selected_stroke_present(scene: &VecScene, pen: &PenTool) -> Option<bool> {
     let [id] = pen.selected_paths() else {
         return None;
     };
@@ -46,7 +46,7 @@ pub(crate) fn selected_stroke_present(scene: &VecScene, pen: &PenTool) -> Option
 /// voltar a marcar devolve o que se está a ver. ⛔ Guardar a ficha removida **no documento** seria
 /// estado invisível a envenenar o undo; guardá-la na shell seria estado de sessão que o save não
 /// leva.
-pub(crate) fn toggle(
+pub fn toggle(
     scene: &mut VecScene,
     history: &mut History,
     pen: &PenTool,
@@ -71,5 +71,5 @@ pub(crate) fn toggle(
 }
 
 #[cfg(test)]
-#[path = "vec_stroke_present_tests.rs"]
+#[path = "stroke_present_tests.rs"]
 mod tests;

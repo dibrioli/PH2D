@@ -17,7 +17,7 @@
 
 use ph2d_vec_scene::{BlendMode, Opacity, VecPathId, VecScene};
 
-/// ⛔ **A publicação da vista MUDOU-SE para o [`crate::vec_paint_stack`]** (v20, estudo 42 item 4).
+/// ⛔ **A publicação da vista MUDOU-SE para o [`crate::paint_stack`]** (v20, estudo 42 item 4).
 ///
 /// Ela lia duas propriedades; a vista passou a ter três (as duas mais a PILHA), e duas funções a
 /// montar o mesmo `Appearance` seriam a segunda porta pela qual as duas metades divergem — uma
@@ -29,7 +29,7 @@ use ph2d_vec_scene::{BlendMode, Opacity, VecPathId, VecScene};
 /// repõe o mesmo valor é invisível para ele — mas o `bool` é o que deixa quem chama decidir sem
 /// re-comparar o documento. E o `Opacity::new` prende a faixa numa porta só (⚠️ incluindo o `NaN`,
 /// que de outra forma chegaria ao `push_layer` do Vello).
-pub(crate) fn set_opacity(scene: &mut VecScene, sel: &[VecPathId], v: f32) -> bool {
+pub fn set_opacity(scene: &mut VecScene, sel: &[VecPathId], v: f32) -> bool {
     let novo = Opacity::new(v);
     let mut mudou = false;
     for id in sel {
@@ -48,7 +48,7 @@ pub(crate) fn set_opacity(scene: &mut VecScene, sel: &[VecPathId], v: f32) -> bo
 /// ⚠️ O que chega do painel é o **código** do modo (`BlendMode::to_u8`), não a linha do popover:
 /// a lista é derivada da tradução para o Vello, e reconstruí-la aqui para traduzir um índice seria
 /// a segunda cópia dela — a que passa a discordar no primeiro modo novo.
-pub(crate) fn set_blend(scene: &mut VecScene, sel: &[VecPathId], code: u8) -> bool {
+pub fn set_blend(scene: &mut VecScene, sel: &[VecPathId], code: u8) -> bool {
     let novo = BlendMode::from_u8(code);
     let mut mudou = false;
     for id in sel {
@@ -63,5 +63,5 @@ pub(crate) fn set_blend(scene: &mut VecScene, sel: &[VecPathId], code: u8) -> bo
 }
 
 #[cfg(test)]
-#[path = "vec_appearance_tests.rs"]
+#[path = "appearance_tests.rs"]
 mod tests;

@@ -42,19 +42,31 @@
 //! `crate::vec_x` na shell, e os **dois gates que nomeiam um ficheiro da família por caminho de
 //! string** — que é a armadilha que a W1 pagou e que nenhuma leitura de `crate::` vê.
 
-pub mod state;
-pub mod vec_font;
-/// ⚠️ **Atrás da mesma feature que a guardava na shell** (`#[cfg(feature = "panel-vector")]` no
-/// `main.rs`): a pré-visualização de fonte usa `ph2d_panel_vector::FontPreview`, logo ela não
-/// existe num build sem painel vectorial.
+pub mod appearance;
+pub mod blend;
+pub mod bucket_claim;
+pub mod bucket_repro;
+pub mod component_edit;
+pub mod driven_style;
+pub mod entity_map;
+pub mod font;
+/// ⚠️ **Atrás da mesma feature que a guardava na shell** — a pré-visualização de fonte
+/// usa `ph2d_panel_vector::FontPreview`, logo ela não existe num build sem painel vectorial.
 #[cfg(feature = "panel-vector")]
-pub mod vec_font_preview;
-pub mod vec_overlay_diag;
-pub mod vec_pick;
-pub mod vec_snap;
-pub mod vec_snap_labels;
-pub mod vec_snap_sprites;
-pub mod vec_weld;
+pub mod font_preview;
+pub mod glyph;
+pub mod glyph_build;
+pub mod overlay;
+pub mod overlay_diag;
+pub mod paint_stack;
+pub mod pick;
+pub mod shape_live;
+pub mod snap;
+pub mod snap_labels;
+pub mod snap_sprites;
+pub mod state;
+pub mod stroke_present;
+pub mod weld;
 
 /// **O que esta família declara à shell** (`ph2d-app-registry-init`).
 ///

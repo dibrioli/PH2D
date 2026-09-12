@@ -19,7 +19,7 @@
 //! | `vec_snap_point` · `vec_snap_move` | `gfx.hero_screen.grid` — estado de PAINEL |
 //! | `vec_rebuild_snap_targets` | `gfx.guides` + a orquestração do gesto |
 //! | `dragged_entity_bits` · `dragged_vec_path_ids` · `snap_dragged_vec_during_drag` | `gfx.hero_screen.gizmo` |
-//! | `sprite_snap_points` · `vec_move_sources` | `crate::vec_transform`, que **não pôde sair** (declara um `#[path]` de um teste que precisa de `crate::profile_live`) |
+//! | `sprite_snap_points` · `vec_move_sources` | `crate::transform`, que **não pôde sair** (declara um `#[path]` de um teste que precisa de `crate::profile_live`) |
 
 use ph2d_ecs::{Entity, SimWorld, VecPathRef};
 use ph2d_editor::grid_snap::GridSnapState;

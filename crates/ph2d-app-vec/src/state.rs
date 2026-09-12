@@ -131,7 +131,7 @@ pub struct VecState {
     /// A alça do TEXTO EM CAMINHO está sob arrasto? (W5) Armada no press de Node, limpa no
     /// release. Runtime-only: um arrasto vivo não é documento — o resultado (`start_offset`) é,
     /// e vive no `VecTextPath`. Um booleano e não um alvo porque há UMA alça (o `start_offset` do
-    /// texto selecionado); qual texto vem da seleção, como no painel. Ver [`crate::vec_text_ride`].
+    /// texto selecionado); qual texto vem da seleção, como no painel. Ver [`crate::text_ride`].
     pub textpath_handle_drag: bool,
 
     /// A geometria do realce, em MUNDO — derivada do [`Self::vec_trim_hit`] no mesmo quadro.

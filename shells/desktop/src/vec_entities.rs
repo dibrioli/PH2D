@@ -13,12 +13,13 @@
 
 use ph2d_ecs::{ChildOf, Entity, Name, RootOrder, SimWorld, Transform, VecPathRef};
 use ph2d_vec_scene::{VecPathId, VecScene, VecViewState};
-use std::collections::BTreeMap;
 
 /// `VecPathId` → `Entity::to_bits()`. Autoritativo: só ele decide se um path
 /// perdeu a entidade (ou vice-versa), então nem um respawn fantasma nem um path
 /// órfão podem acontecer.
-pub(crate) type VecEntityMap = BTreeMap<VecPathId, u64>;
+// ⭐ **O alias mudou-se para a crate da família** (W2/L4 Fase B): 18 ficheiros precisavam só
+// dele e ficavam presos a este módulo, que está preso a três predicados de outras famílias.
+pub(crate) use ph2d_app_vec::entity_map::VecEntityMap;
 
 /// Nome inicial de um path novo. O usuário renomeia pela Hierarquia como qualquer
 /// entidade; o id só garante unicidade no nascimento.
@@ -218,7 +219,7 @@ pub(crate) fn view_state(sim: &SimWorld, map: &VecEntityMap) -> VecViewState {
 
 /// Teto de profundidade das caminhadas de ancestral (defesa, não limite de produto).
 /// Partilhado com o irmão [`selection`] — uma árvore corrompida tem UMA profundidade máxima.
-pub(crate) const MAX_DEPTH: usize = 64;
+pub(crate) use ph2d_app_vec::entity_map::MAX_DEPTH;
 
 /// `Visibility` do próprio E de cada ancestral.
 fn visible_chain(w: &ph2d_ecs::World, entity: Entity) -> bool {

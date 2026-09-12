@@ -371,10 +371,10 @@ fn escala_da_selecao(por_caminho: &[(u64, Vec<Contour>)]) -> f64 {
 }
 
 #[cfg(test)]
-#[path = "vec_weld_tests.rs"]
+#[path = "weld_tests.rs"]
 mod tests;
 
 /// Os gates do que se VÊ — irmão pelo tecto de LOC (HR-18), cortado por responsabilidade.
 #[cfg(test)]
-#[path = "vec_weld_look_tests.rs"]
+#[path = "weld_look_tests.rs"]
 mod look_tests;

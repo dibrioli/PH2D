@@ -26,9 +26,11 @@ use ph2d_vec_scene::VecPathId;
 //
 // A re-exportação é o que mantém `crate::vec_snap::ask_grid` / `::guides_of` / `::VecSnapSettings`
 // / `::vec_weld_tolerance` a resolver nos cinco ficheiros da shell que os chamam — mover a lei
-// custou ZERO alterações neles. ⚠️ E o módulo do outro lado chama-se `vec_snap` de propósito: o
-// nome do módulo entra no nome de cada teste, e renomeá-lo lê-se, na lista do nextest, como perda.
-pub(crate) use ph2d_app_vec::vec_snap::{
+// custou ZERO alterações neles. ⚠️ **O módulo do outro lado chamava-se `vec_snap` e na Fase B passou a `snap`** — o prefixo sai
+// porque dentro da crate tudo é a família (HOWTO §1.3), e isso também desfez uma colisão de
+// BASENAME real com `crates/ph2d-ecs/src/vec_bindings.rs`. O nome do módulo entra no nome de cada
+// teste, então a prova (`nextest-list-diff`) corre a `--depth 1`, que compara a FUNÇÃO.
+pub(crate) use ph2d_app_vec::snap::{
     DragSnap, VecSnapSettings, ask_grid, drag_snap_kind, guides_of, ids_of_bits, snap_cfg,
     vec_weld_tolerance, wants_curves,
 };

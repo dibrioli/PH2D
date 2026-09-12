@@ -2,7 +2,7 @@
 
 use super::{set_blend, set_opacity};
 // ⚠️ A publicacao da vista mudou-se para o `vec_paint_stack` quando ela passou a levar a PILHA.
-use crate::vec_paint_stack::published;
+use crate::paint_stack::published;
 use ph2d_vec_scene::{BlendMode, Opacity, VecPath, VecScene, VecVertex};
 
 fn cena() -> (VecScene, Vec<u64>) {

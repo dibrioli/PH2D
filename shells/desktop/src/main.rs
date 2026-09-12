@@ -593,10 +593,10 @@ mod value_wrap_smoke;
 mod variant_axes_smoke;
 mod variant_flow_smoke;
 mod vec_anchor_edit;
-mod vec_appearance;
+pub(crate) use ph2d_app_vec::appearance as vec_appearance;
 mod vec_appearance_smoke;
 mod vec_bindings;
-mod vec_blend;
+pub(crate) use ph2d_app_vec::blend as vec_blend;
 /// ⭐⭐⭐ **O desenho ganha OSSOS** (`PH2D_VEC_BONE_SMOKE=1`, estudo 42 item 5) — irmã da cena da
 /// pilha de aparência, teto de LOC.
 mod vec_bone_smoke;
@@ -611,12 +611,16 @@ mod vec_bool_reach_tests;
 mod vec_bool_shape;
 /// ⭐⭐⭐ **SOLDAR** (plano 39) — linhas cruzadas partem-se em arcos que partilham o nó.
 mod vec_bucket;
-mod vec_bucket_claim;
-mod vec_bucket_repro;
+pub(crate) use ph2d_app_vec::bucket_claim as vec_bucket_claim;
+// ⛔ **O `bucket_repro` NÃO é re-exportado, e a ausência é a cura** (W2/L4 Fase B): aquele módulo
+// abre com `#![cfg(test)]`, e **`cfg(test)` é falso numa crate que é DEPENDÊNCIA** (HOWTO §2.5) —
+// da shell ele simplesmente não existe. Ele é a sonda do report de 2026-09-02 e corre com os testes
+// da própria `ph2d-app-vec`, que é onde o sujeito dele vive; um alias aqui só pedia à shell um nome
+// que nenhuma build dela pode ver.
 /// O chip *Clip content* — a projeção e a edição do RECORTE, que vale para qualquer forma
 /// vetorial FECHADA (e não só para a moldura, desde 2026-08-21).
 mod vec_clip_edit;
-mod vec_component_edit;
+pub(crate) use ph2d_app_vec::component_edit as vec_component_edit;
 /// ⭐⭐⭐ **A secção *Component* do painel vetorial, ligada ao mecanismo GERAL** (F4.6c) — nasce
 /// DESLIGADA (`PH2D_VEC_COMPONENT_GENERAL=1` arma). Ver o cabeçalho de lá.
 mod vec_component_general;
@@ -632,7 +636,7 @@ mod vec_cut_line;
 /// ⭐ **A APARÊNCIA CONDUZIDA por um motor** — a metade de shell da ponte que a linha do
 /// tempo abre para a opacidade de um caminho vetorial (`ph2d_ecs::VecDrivenStyle`).
 /// Irmão do `vec_widget_drive`: o corte é *quem produz o número*, nunca o que se faz com ele.
-mod vec_driven_style;
+pub(crate) use ph2d_app_vec::driven_style as vec_driven_style;
 mod vec_entities;
 mod vec_expand;
 /// ⭐ A cena de smoke do **fade vetorial** (`PH2D_VEC_FADE_SMOKE=1`) — a linha do tempo a
@@ -641,41 +645,41 @@ mod vec_fade_smoke;
 // ⭐ W2/L4: a família `vec` começou a sair para `crates/ph2d-app-vec`. A re-exportação mantém
 // `crate::vec_font::…` a resolver em todo o resto da shell — mover 8 ficheiros custou ZERO
 // alterações nos ~60 sítios que os chamam, e é o molde para a Fase B.
-pub(crate) use ph2d_app_vec::vec_font;
+pub(crate) use ph2d_app_vec::font as vec_font;
 #[cfg(feature = "panel-vector")]
-pub(crate) use ph2d_app_vec::vec_font_preview;
+pub(crate) use ph2d_app_vec::font_preview as vec_font_preview;
 /// A moldura da SELEÇÃO (plano UI/UX W0): o que o painel mostra, e o que o chip escreve.
 mod vec_frame_edit;
 mod vec_frame_labels;
 mod vec_frame_resize;
 mod vec_frame_spans;
 mod vec_gizmo_view;
-mod vec_glyph;
-mod vec_glyph_build;
+pub(crate) use ph2d_app_vec::glyph as vec_glyph;
+pub(crate) use ph2d_app_vec::glyph_build as vec_glyph_build;
 /// A porta única de "onde está o caminho-guia, e como se percorre por arco?" (texto E pattern).
 mod vec_guide;
 /// A CÓPIA segue a âncora do mestre — o corolário da âncora viva, do lado do componente.
 mod vec_layout_edit;
 mod vec_marquee;
 mod vec_morph_edit;
-mod vec_overlay;
-pub(crate) use ph2d_app_vec::vec_overlay_diag;
+pub(crate) use ph2d_app_vec::overlay as vec_overlay;
+pub(crate) use ph2d_app_vec::overlay_diag as vec_overlay_diag;
 /// O offset de CAD de uma camada da pilha (v22) — o memo do cozimento.
 mod vec_paint_dilate;
-mod vec_paint_stack;
+pub(crate) use ph2d_app_vec::paint_stack as vec_paint_stack;
 mod vec_pencil_input;
 /// O **Picker de caminho-guia** — o gesto de duas mãos partilhado pelo Pattern e pelo Text on Path.
-pub(crate) use ph2d_app_vec::vec_pick;
+pub(crate) use ph2d_app_vec::pick as vec_pick;
 mod vec_resize_box_edit;
 mod vec_selection;
-mod vec_shape_live;
+pub(crate) use ph2d_app_vec::shape_live as vec_shape_live;
 mod vec_shape_params;
 mod vec_snap;
 /// Os alvos de snap vindos do RASTER (irmão de `vec_snap`, teto de LOC).
 mod vec_snap_sprites;
 mod vec_stack_smoke;
 mod vec_stroke_paint;
-mod vec_stroke_present;
+pub(crate) use ph2d_app_vec::stroke_present as vec_stroke_present;
 mod vec_svg_export;
 mod vec_text;
 mod vec_text_object;
@@ -694,7 +698,7 @@ mod vec_ui_state_edit;
 /// ⚠️ **Este doc voltou para cá** (auditoria de 2026-08-30): o módulo da cena de smoke dos eixos
 /// entrou por baixo dele e **herdou-o**, deixando este ficheiro — o que a F4.6c vai apagar — sem a
 /// única linha que dizia o que ele é. *Um comentário separado do seu item muda de dono.*
-pub(crate) use ph2d_app_vec::vec_weld;
+pub(crate) use ph2d_app_vec::weld as vec_weld;
 mod vec_widget_drive;
 mod vec_widget_edit;
 mod vec_widget_value;

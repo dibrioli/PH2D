@@ -27,7 +27,7 @@
 
 /// O que um clique num verbo de componente PEDE.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum ComponentEdit {
+pub enum ComponentEdit {
     Create,
     /// ⭐⭐⭐ **Edit Prefab** — abre a RECEITA desta cópia (2026-09-07). Ver
     /// [`crate::instance_verbs::Verb::Edit`]: no modelo geral a receita está escondida do canvas,
@@ -46,7 +46,7 @@ pub(crate) enum ComponentEdit {
 
 /// Este id é um verbo de componente? Porta única do roteador.
 #[must_use]
-pub(crate) fn component_edit_for_id(id: ph2d_editor::NodeId) -> Option<ComponentEdit> {
+pub fn component_edit_for_id(id: ph2d_editor::NodeId) -> Option<ComponentEdit> {
     match id {
         _ if id == ph2d_editor::ids::VECTOR_COMPONENT_CREATE => Some(ComponentEdit::Create),
         _ if id == ph2d_editor::ids::VECTOR_COMPONENT_EDIT => Some(ComponentEdit::Edit),

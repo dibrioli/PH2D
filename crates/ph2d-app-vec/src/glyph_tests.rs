@@ -1,4 +1,4 @@
-//! Gates do LAYOUT de texto ([`crate::vec_glyph`]) — módulo irmão pelo teto de 600 LOC
+//! Gates do LAYOUT de texto ([`crate::glyph`]) — módulo irmão pelo teto de 600 LOC
 //! (HR-18). Fica FILHO de `vec_glyph` (via `#[path]`), então alcança o que é privado lá
 //! dentro — a `glyph_frame`, que é a porta que estes gates existem para prender.
 

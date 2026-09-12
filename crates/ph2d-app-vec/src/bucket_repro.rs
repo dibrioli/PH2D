@@ -4,7 +4,7 @@
 use ph2d_vec_scene::{VecVertex, VertexKind};
 
 /// `d` de SVG → contornos `(vértices, fecha?)`, o inverso exacto do que o exportador escreve.
-pub(crate) fn contornos_de(d: &str) -> Vec<(Vec<VecVertex>, bool)> {
+pub fn contornos_de(d: &str) -> Vec<(Vec<VecVertex>, bool)> {
     use ph2d_vector::PathEl;
     let bp = ph2d_vector::BezPath::from_svg(d).expect("d valido");
     let mut out: Vec<(Vec<VecVertex>, bool)> = Vec::new();
@@ -71,10 +71,10 @@ pub(crate) fn contornos_de(d: &str) -> Vec<(Vec<VecVertex>, bool)> {
 }
 
 /// Um `<path>` lido do SVG: `(id, é preenchimento?, cor, o `d`)`.
-pub(crate) type PathLido = (u64, bool, String, String);
+pub type PathLido = (u64, bool, String, String);
 
 /// `(id, é preenchimento?, cor, d)` de cada `<path>` de um SVG exportado.
-pub(crate) fn paths_do_svg(txt: &str) -> Vec<PathLido> {
+pub fn paths_do_svg(txt: &str) -> Vec<PathLido> {
     let mut out = Vec::new();
     for l in txt.lines().filter(|l| l.contains("<path ")) {
         let pega = |chave: &str| -> Option<String> {
@@ -102,7 +102,7 @@ mod probe {
 
     /// Um contorno como a rede o recebe.
     type Contorno = (Vec<VecVertex>, bool);
-    use crate::vec_bucket_claim::{Receita, ancoras_da_face, donos};
+    use crate::bucket_claim::{Receita, ancoras_da_face, donos};
     use ph2d_ecs::FillAnchor;
 
     fn ler(nome: &str) -> Vec<super::PathLido> {

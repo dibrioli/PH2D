@@ -29,7 +29,7 @@ use ph2d_vector_font::{AxisTag, GlyphId, VariableFont};
 /// origem E caminho"* — que nada sabe honrar, e é dele que nasce o bug em que metade do código
 /// lê um e metade lê o outro.
 #[derive(Clone, Copy, Debug)]
-pub(crate) enum TextPlacement<'a> {
+pub enum TextPlacement<'a> {
     /// Bloco reto, ancorado num ponto de mundo (a baseline da 1ª linha).
     At([f64; 2]),
     /// Cavalgando um caminho parametrizado por arco.
@@ -88,7 +88,7 @@ fn glyph_frame(placement: &TextPlacement<'_>, pen: [f64; 2], advance: f64) -> Op
 /// argumentos. `line_height` é múltiplo do tamanho; `tracking` é fração do tamanho (em)
 /// somada entre glyphs; `align` posiciona cada linha em relação à origem (o clique).
 #[derive(Clone, Copy, Debug)]
-pub(crate) struct TextLayout {
+pub struct TextLayout {
     pub size: f64,
     pub line_height: f64,
     pub tracking: f64,
@@ -107,10 +107,7 @@ pub(crate) struct TextLayout {
 /// alpha 0; traço sempre presente (o render pula width/alpha 0). Assim o texto herda
 /// Fill/Stroke/Width/Cap/Join do painel do vetor como qualquer forma.
 #[must_use]
-pub(crate) fn resolve_style(
-    style: &PenStyle,
-    px_to_world: f64,
-) -> (Option<Paint>, Option<StrokeSpec>) {
+pub fn resolve_style(style: &PenStyle, px_to_world: f64) -> (Option<Paint>, Option<StrokeSpec>) {
     let fill = (style.fill.a != 0).then(|| Paint::solid(style.fill));
     let stroke = Some(style.stroke_spec(style.stroke_w_px * px_to_world));
     (fill, stroke)
@@ -126,7 +123,7 @@ pub(crate) fn resolve_style(
 /// por isso que a 2ª linha de um texto em caminho corre paralela à 1ª, de graça — a
 /// entrelinha vira deslocamento pela NORMAL da curva sem que este laço saiba disso.
 #[must_use]
-pub(crate) fn text_to_vec_paths(
+pub fn text_to_vec_paths(
     font: &VariableFont,
     text: &str,
     layout: &TextLayout,
@@ -173,7 +170,7 @@ pub(crate) fn text_to_vec_paths(
 /// ser desenhável (espaço, contorno degenerado, âncora fora do caminho): essa é
 /// uma decisão de quem constrói a geometria, e ela **não pode encolher o texto** —
 /// daí o pen avançar aqui, antes de o consumidor opinar.
-pub(crate) fn walk_glyphs(
+pub fn walk_glyphs(
     font: &VariableFont,
     text: &str,
     layout: &TextLayout,
@@ -207,7 +204,7 @@ pub(crate) fn walk_glyphs(
 ///
 /// `None` pelas mesmas razões do [`glyph_frame`]: cursor fora do caminho, ou numa cúspide.
 #[must_use]
-pub(crate) fn caret_frame(placement: &TextPlacement<'_>, pen: [f64; 2]) -> Option<GlyphFrame> {
+pub fn caret_frame(placement: &TextPlacement<'_>, pen: [f64; 2]) -> Option<GlyphFrame> {
     glyph_frame(placement, pen, 0.0)
 }
 
@@ -216,7 +213,7 @@ pub(crate) fn caret_frame(placement: &TextPlacement<'_>, pen: [f64; 2]) -> Optio
 /// objeto, um pick, um gizmo. `None` se não houver glyph com área (string vazia/só
 /// espaços). Para "Convert to Curves", use [`text_to_vec_paths`] (um path por glyph).
 #[must_use]
-pub(crate) fn text_to_compound_path(
+pub fn text_to_compound_path(
     font: &VariableFont,
     text: &str,
     layout: &TextLayout,
@@ -251,7 +248,7 @@ pub(crate) fn text_to_compound_path(
 /// Centro da bbox (âncoras + alças) de um `VecPath` — o ponto que vira o pivô da
 /// forma viva (Live Shapes: a geometria nasce centrada no local 0). `[0,0]` se vazio.
 #[must_use]
-pub(crate) fn path_center(path: &VecPath) -> [f64; 2] {
+pub fn path_center(path: &VecPath) -> [f64; 2] {
     let mut lo = [f64::INFINITY; 2];
     let mut hi = [f64::NEG_INFINITY; 2];
     for v in path.verts_all() {
@@ -270,7 +267,7 @@ pub(crate) fn path_center(path: &VecPath) -> [f64; 2] {
 }
 
 /// Desloca toda a geometria de `path` (âncoras + alças, em todos os contornos) por `d`.
-pub(crate) fn offset_path(path: &mut VecPath, d: [f64; 2]) {
+pub fn offset_path(path: &mut VecPath, d: [f64; 2]) {
     path.for_each_vert_mut(|v| {
         v.anchor = [v.anchor[0] + d[0], v.anchor[1] + d[1]];
         v.in_handle = [v.in_handle[0] + d[0], v.in_handle[1] + d[1]];
@@ -302,7 +299,7 @@ pub(crate) fn offset_path(path: &mut VecPath, d: [f64; 2]) {
 /// glifos?*): o caminho já a responde, e as linhas que a caixa produzisse seriam depois mapeadas
 /// pela curva **uma por cima da outra**, separadas só pela normal. Enumerar os construtores de
 /// layout é como o 4º nasceria sem a regra; a porta recebe o `placement` e ninguém pode esquecer.
-pub(crate) fn wrapped_lines<'a>(
+pub fn wrapped_lines<'a>(
     font: &VariableFont,
     text: &'a str,
     layout: &TextLayout,
@@ -402,7 +399,7 @@ fn align_offset(align: TextAlign, width: f64) -> f64 {
 /// Deslocamento em x (a partir de `origin.x`) do CURSOR na ponta de `last_line`: o
 /// offset de alinhamento + a largura da linha (com tracking). Usado pelo caret.
 #[must_use]
-pub(crate) fn caret_x_offset(
+pub fn caret_x_offset(
     font: &VariableFont,
     last_line: &str,
     layout: &TextLayout,
@@ -416,10 +413,10 @@ pub(crate) fn caret_x_offset(
 
 /// O builder de glyph (contorno → `VecPath` compound) vive no módulo irmão —
 /// re-exportado para o layout acima (e a shell) seguirem chamando `vec_glyph::`.
-pub(crate) use crate::vec_glyph_build::glyph_to_vec_path;
+pub use crate::glyph_build::glyph_to_vec_path;
 
 #[cfg(test)]
-#[path = "vec_glyph_tests.rs"]
+#[path = "glyph_tests.rs"]
 mod tests;
 
 /// A largura que este texto ocupa **sem caixa** — a linha mais larga que o artista digitou.
@@ -431,7 +428,7 @@ mod tests;
 ///
 /// O `wrap_width` do `layout` é **ignorado de propósito**: a pergunta é *quanto este texto
 /// mede se ninguém o quebrar*.
-pub(crate) fn unwrapped_block_width(
+pub fn unwrapped_block_width(
     font: &VariableFont,
     text: &str,
     layout: &TextLayout,
@@ -445,5 +442,5 @@ pub(crate) fn unwrapped_block_width(
 }
 
 #[cfg(test)]
-#[path = "vec_glyph_wrap_tests.rs"]
+#[path = "glyph_wrap_tests.rs"]
 mod wrap_tests;

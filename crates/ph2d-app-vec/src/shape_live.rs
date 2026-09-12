@@ -4,7 +4,7 @@
 //! CENTRADA no local 0 (o pivô nasce no centro dela), o `Transform` recebe o centro do
 //! retângulo autorado, e a entidade ganha o componente `VecShape::Param` com o `kind` +
 //! os parâmetros. A partir daí a geometria é uma função pura deles — mudá-los re-cozinha
-//! a forma (é o que o painel faz, em [`crate::vec_shape_params`]).
+//! a forma (é o que o painel faz, em [`crate::shape_params`]).
 //!
 //! **"Convert to Curves"** de uma forma paramétrica é só **descartar o `VecShape`**: a
 //! geometria já assada na cena vira um path cru, editável com a caneta. (O texto é o
@@ -21,7 +21,7 @@ use ph2d_ecs::{Entity, MAX_SHAPE_VALUES, SimWorld, Transform, VecShape};
 use ph2d_vec_edit::ShapeTool;
 use ph2d_vec_scene::{MAX_SHAPE_FIELDS, ShapeKind, VecPath, VecPathId, VecScene};
 
-use crate::vec_entities::VecEntityMap;
+use crate::entity_map::VecEntityMap;
 
 /// O ECS guarda os valores num array primitivo próprio (ele não depende do vetor). Se os
 /// dois tetos divergissem, o `VecShape` truncaria parâmetros em silêncio.
@@ -29,10 +29,10 @@ const _: () = assert!(MAX_SHAPE_VALUES == MAX_SHAPE_FIELDS);
 
 /// A geometria (sem estilo) de uma forma viva, CENTRADA no local 0 — o pivô nasce no
 /// centro (ADR-0112) e o re-cook é idempotente (o `Transform` fica intacto). `None` para
-/// `Text` (que tem o cozimento dele, em [`crate::vec_glyph`]) e para um `kind`
+/// `Text` (que tem o cozimento dele, em [`crate::glyph`]) e para um `kind`
 /// desconhecido (save de uma versão futura: vira path cru, não pânico).
 #[must_use]
-pub(crate) fn recook_shape(shape: &VecShape) -> Option<VecPath> {
+pub fn recook_shape(shape: &VecShape) -> Option<VecPath> {
     let VecShape::Param {
         kind,
         w,
@@ -67,7 +67,7 @@ pub(crate) fn recook_shape(shape: &VecShape) -> Option<VecPath> {
 /// ⚠️ **O sinal é preservado**, e não é detalhe: a reta guarda a DIREÇÃO em `w`/`h`
 /// ([`recook_shape`]), então tomar o módulo aqui viraria uma reta ao contrário no primeiro
 /// re-cook.
-pub(crate) fn resize_recipe(sim: &mut SimWorld, entity: Entity, w: f64, h: f64) -> bool {
+pub fn resize_recipe(sim: &mut SimWorld, entity: Entity, w: f64, h: f64) -> bool {
     let Some(VecShape::Param {
         kind,
         w: w0,
@@ -92,7 +92,7 @@ pub(crate) fn resize_recipe(sim: &mut SimWorld, entity: Entity, w: f64, h: f64) 
 
 /// Substitui a GEOMETRIA do path `id` pela forma re-cozida (centrada), preservando id e
 /// estilo (fill/stroke). `true` se re-cozinhou.
-pub(crate) fn recook_into(scene: &mut VecScene, id: VecPathId, shape: &VecShape) -> bool {
+pub fn recook_into(scene: &mut VecScene, id: VecPathId, shape: &VecShape) -> bool {
     let Some(geom) = recook_shape(shape) else {
         return false;
     };
@@ -125,7 +125,7 @@ pub(crate) fn recook_into(scene: &mut VecScene, id: VecPathId, shape: &VecShape)
 /// exactamente igual — é um retângulo vivo — e ganha, além do `VecShape`, o `VecFrame`. Um
 /// parâmetro e não uma segunda função: a moldura NÃO é um segundo caminho de nascer, é o mesmo
 /// caminho com um componente a mais, e duas portas divergiriam no dia em que o nascimento mudasse.
-pub(crate) fn make_committed_shape_live(
+pub fn make_committed_shape_live(
     sim: &mut SimWorld,
     scene: &mut VecScene,
     map: &VecEntityMap,
@@ -179,11 +179,7 @@ pub(crate) fn make_committed_shape_live(
 
 /// "Convert to Curves" de formas paramétricas (NÃO-texto): descarta o `VecShape` — a
 /// geometria já assada vira um path cru, editável com a caneta. Devolve quantas converteu.
-pub(crate) fn drop_shape_params(
-    sim: &mut SimWorld,
-    map: &VecEntityMap,
-    selection: &[VecPathId],
-) -> usize {
+pub fn drop_shape_params(sim: &mut SimWorld, map: &VecEntityMap, selection: &[VecPathId]) -> usize {
     let mut n = 0;
     for id in selection {
         let Some(&bits) = map.get(id) else { continue };

@@ -8,8 +8,8 @@
 
 use crate::app_state::App;
 
-// ⭐ A caixa (pura) mora em `ph2d_app_vec::vec_snap_sprites` — W2/L4, A2.
-use ph2d_app_vec::vec_snap_sprites::sprite_box_points;
+// ⭐ A caixa (pura) mora em `ph2d_app_vec::snap_sprites` — W2/L4, A2.
+use ph2d_app_vec::snap_sprites::sprite_box_points;
 
 impl App {
     /// As entidades que este gesto está MOVENDO — a primária do gizmo mais os membros do grupo.

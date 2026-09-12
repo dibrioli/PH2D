@@ -311,7 +311,7 @@ pub(crate) mod ui_state_bridge;
 /// O NÚMERO do smart guide — a ficha de distância; veja os docs do módulo.
 // ⭐ W2/L4: foi para `crates/ph2d-app-vec`. Re-exportado para `render_loop::vec_snap_labels`
 // continuar a resolver nos chamadores deste módulo.
-use ph2d_app_vec::vec_snap_labels;
+use ph2d_app_vec::snap_labels as vec_snap_labels;
 pub(crate) mod vector_bridge;
 
 use crate::*;

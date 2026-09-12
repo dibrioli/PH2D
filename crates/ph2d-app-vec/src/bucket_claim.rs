@@ -39,9 +39,9 @@ use ph2d_ecs::FillAnchor;
 use ph2d_vec_fill::{Face, Rede};
 
 /// A receita de um preenchimento: as âncoras e o ponto do clique.
-pub(crate) struct Receita<'a> {
-    pub(crate) ancoras: &'a [FillAnchor],
-    pub(crate) semente: [f64; 2],
+pub struct Receita<'a> {
+    pub ancoras: &'a [FillAnchor],
+    pub semente: [f64; 2],
 }
 
 /// ⭐⭐⭐ **A RESOLUÇÃO**: por face, o índice do preenchimento dono — ou `None`.
@@ -56,7 +56,7 @@ pub(crate) struct Receita<'a> {
 ///
 /// ⚠️ **O empate desce ao índice do documento** — ao acaso, a cor piscaria entre duas enquanto a
 /// mão treme.
-pub(crate) fn donos(
+pub fn donos(
     rede: &Rede,
     faces: &[Face],
     tags: &[(u64, u16)],
@@ -101,7 +101,7 @@ pub(crate) fn donos(
 /// ⚠️ **A ordem é load-bearing**: a primeira face vira o contorno **primário** do caminho e as
 /// outras os `subpaths`. ⛔ Um preenchimento pode ganhar VÁRIAS faces, e é esse o ponto — é assim
 /// que uma região que se partiu fica com as duas metades.
-pub(crate) fn por_preenchimento(
+pub fn por_preenchimento(
     faces: &[Face],
     donos: &[Option<usize>],
     quantos: usize,
@@ -142,7 +142,7 @@ pub(crate) fn por_preenchimento(
 /// número de mundo: a escala do documento é do artista.
 const PASSOS_NA_REDE: f64 = 128.0;
 
-pub(crate) fn ancoras_da_face(rede: &Rede, tags: &[(u64, u16)], face: &Face) -> Vec<FillAnchor> {
+pub fn ancoras_da_face(rede: &Rede, tags: &[(u64, u16)], face: &Face) -> Vec<FillAnchor> {
     let passo = (0..rede.arcos.len())
         .map(|i| rede.comprimento(i))
         .sum::<f64>()
@@ -169,5 +169,5 @@ pub(crate) fn ancoras_da_face(rede: &Rede, tags: &[(u64, u16)], face: &Face) -> 
 }
 
 #[cfg(test)]
-#[path = "vec_bucket_claim_tests.rs"]
+#[path = "bucket_claim_tests.rs"]
 mod tests;

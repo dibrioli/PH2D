@@ -18,7 +18,7 @@ use ph2d_tool_vector::DrawMode;
 
 /// Quais overlays vetoriais este frame desenha, dado se a tool está ativa e o modo.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub(crate) struct VecOverlayPlan {
+pub struct VecOverlayPlan {
     /// Âncoras, handles, alças de gradiente e marquee — edição/seleção-de-forma,
     /// que não aparecem no Select (lá manda o gizmo, ADR-0112).
     pub edit: bool,
@@ -37,7 +37,7 @@ pub(crate) struct VecOverlayPlan {
     /// âncoras dos outros paths (Enio, smoke), e no Select o gizmo é inócuo sobre um texto
     /// vinculado (identidade) — então o Select não tem âncora nenhuma a poluir a tela. Este flag
     /// só diz que a alça *pode* aparecer; se há um texto vinculado na seleção é o
-    /// [`crate::vec_text_ride::handle::world`] que decide (devolve `None` quando não há).
+    /// [`crate::text_ride::handle::world`] que decide (devolve `None` quando não há).
     pub textpath_handle: bool,
     /// As **duas alças do Pattern on Path** (plano 23, W4) — Start e End do trecho, só no
     /// **Select**, pela MESMA razão da alça do texto (no Node se perderiam nas âncoras). Este flag
@@ -53,7 +53,7 @@ pub(crate) struct VecOverlayPlan {
 
 /// A política de visibilidade dos overlays vetoriais deste frame.
 #[must_use]
-pub(crate) fn vec_overlay_plan(vector_active: bool, mode: DrawMode) -> VecOverlayPlan {
+pub fn vec_overlay_plan(vector_active: bool, mode: DrawMode) -> VecOverlayPlan {
     VecOverlayPlan {
         // O **Build** também fica de fora, e pela mesma razão do Select: o que ele
         // manipula é a REGIÃO, não a âncora. Âncoras e handles por cima de um emaranhado

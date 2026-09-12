@@ -24,7 +24,7 @@ use ph2d_vec_scene::{
 /// id de runtime nasce de um índice, e perguntar «que índice é este?» a uma lista que muda de
 /// tamanho faria o mesmo clique resolver diferente conforme a forma seleccionada.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum StackVerb {
+pub enum StackVerb {
     AddFill,
     AddStroke,
     /// Liga/desliga o olho da camada `i`.
@@ -38,7 +38,7 @@ pub(crate) enum StackVerb {
 }
 
 /// Que verbo este id pede (`None` se ele não é da pilha).
-pub(crate) fn stack_verb_for_id(id: ph2d_editor::NodeId) -> Option<StackVerb> {
+pub fn stack_verb_for_id(id: ph2d_editor::NodeId) -> Option<StackVerb> {
     use ph2d_editor::ids;
     if id == ids::VECTOR_PAINT_ADD_FILL {
         return Some(StackVerb::AddFill);
@@ -68,7 +68,7 @@ pub(crate) fn stack_verb_for_id(id: ph2d_editor::NodeId) -> Option<StackVerb> {
 /// ⚠️ Os códigos são os da casa (`0` Miter · `1` Round · `2` Bevel), resolvidos pela MESMA porta
 /// (`vec_expand::join_of_code`) que o Contour e o Expand usam — uma segunda tabela divergiria na
 /// primeira quina nova.
-pub(crate) fn join_code_for_id(id: ph2d_editor::NodeId) -> Option<u8> {
+pub fn join_code_for_id(id: ph2d_editor::NodeId) -> Option<u8> {
     use ph2d_editor::ids;
     match id {
         _ if id == ids::VECTOR_PAINT_JOIN_MITER => Some(0),
@@ -81,9 +81,7 @@ pub(crate) fn join_code_for_id(id: ph2d_editor::NodeId) -> Option<u8> {
 /// **De que CAMADA é a swatch que o picker está a editar** (`None` se ele não está numa).
 ///
 /// ⚠️ Varre o espaço FIXO de ids, como o [`stack_verb_for_id`] — e pela mesma razão.
-pub(crate) fn layer_of_picker_target(
-    store: &ph2d_editor::interaction::WidgetStore,
-) -> Option<usize> {
+pub fn layer_of_picker_target(store: &ph2d_editor::interaction::WidgetStore) -> Option<usize> {
     let alvo = store.picker_target()?;
     (0..MAX_PAINT_LAYERS).find(|&i| ph2d_editor::ids::vector_paint_swatch_id(i) == alvo)
 }
@@ -92,7 +90,7 @@ pub(crate) fn layer_of_picker_target(
 ///
 /// ⚠️ **Um gesto que muda a PILHA fecha a camada aberta**: o índice guardado é da lista de ANTES, e
 /// sobreviver a ela faria o painel mostrar as propriedades de outra camada.
-pub(crate) fn apply(scene: &mut VecScene, sel: &[VecPathId], verb: StackVerb) -> bool {
+pub fn apply(scene: &mut VecScene, sel: &[VecPathId], verb: StackVerb) -> bool {
     match verb {
         StackVerb::AddFill => {
             ph2d_panel_vector::state::close_open_layer();
@@ -151,7 +149,7 @@ const NOVA: Rgba8 = Rgba8 {
 const LARGURA_NOVA: f64 = 1.0;
 
 /// **O que o painel mostra** — `None` sem forma na selecção.
-pub(crate) fn published(
+pub fn published(
     scene: &VecScene,
     sel: &[VecPathId],
 ) -> Option<ph2d_panel_vector::state::Appearance> {
@@ -184,7 +182,7 @@ pub(crate) fn published(
 ///
 /// ⛔ Uma forma no tecto ([`MAX_PAINT_LAYERS`]) é saltada — e o painel já esconde os botões nesse
 /// caso, então isto é a segunda metade da mesma recusa, do lado que de facto escreve.
-pub(crate) fn add(scene: &mut VecScene, sel: &[VecPathId], fill: bool) -> bool {
+pub fn add(scene: &mut VecScene, sel: &[VecPathId], fill: bool) -> bool {
     let mut mudou = false;
     for id in sel {
         if let Some(p) = scene.path_mut(*id)
@@ -202,7 +200,7 @@ pub(crate) fn add(scene: &mut VecScene, sel: &[VecPathId], fill: bool) -> bool {
 }
 
 /// **Apaga a camada `i`** de cada forma seleccionada que a tenha.
-pub(crate) fn remove(scene: &mut VecScene, sel: &[VecPathId], i: usize) -> bool {
+pub fn remove(scene: &mut VecScene, sel: &[VecPathId], i: usize) -> bool {
     edit(scene, sel, |p| {
         if i < p.paints.len() {
             p.paints.remove(i);
@@ -214,7 +212,7 @@ pub(crate) fn remove(scene: &mut VecScene, sel: &[VecPathId], i: usize) -> bool 
 }
 
 /// **Move a camada `i` uma posição** (`up` = para o topo da pilha, que é o fim do vector).
-pub(crate) fn shift(scene: &mut VecScene, sel: &[VecPathId], i: usize, up: bool) -> bool {
+pub fn shift(scene: &mut VecScene, sel: &[VecPathId], i: usize, up: bool) -> bool {
     edit(scene, sel, |p| {
         let n = p.paints.len();
         let j = if up {
@@ -233,7 +231,7 @@ pub(crate) fn shift(scene: &mut VecScene, sel: &[VecPathId], i: usize, up: bool)
 }
 
 /// **Liga/desliga o olho** da camada `i`.
-pub(crate) fn toggle(scene: &mut VecScene, sel: &[VecPathId], i: usize) -> bool {
+pub fn toggle(scene: &mut VecScene, sel: &[VecPathId], i: usize) -> bool {
     edit(scene, sel, |p| match p.paints.get_mut(i) {
         Some(e) => {
             e.enabled = !e.enabled;
@@ -244,7 +242,7 @@ pub(crate) fn toggle(scene: &mut VecScene, sel: &[VecPathId], i: usize) -> bool 
 }
 
 /// **A opacidade** da camada `i`.
-pub(crate) fn set_opacity(scene: &mut VecScene, sel: &[VecPathId], i: usize, v: f32) -> bool {
+pub fn set_opacity(scene: &mut VecScene, sel: &[VecPathId], i: usize, v: f32) -> bool {
     let novo = ph2d_vec_scene::Opacity::new(v);
     edit(scene, sel, |p| match p.paints.get_mut(i) {
         Some(e) if e.opacity != novo => {
@@ -256,7 +254,7 @@ pub(crate) fn set_opacity(scene: &mut VecScene, sel: &[VecPathId], i: usize, v: 
 }
 
 /// **O modo de mistura** da camada `i`. O que chega do painel é o CÓDIGO do modo.
-pub(crate) fn set_blend(scene: &mut VecScene, sel: &[VecPathId], i: usize, code: u8) -> bool {
+pub fn set_blend(scene: &mut VecScene, sel: &[VecPathId], i: usize, code: u8) -> bool {
     let novo = ph2d_vec_scene::BlendMode::from_u8(code);
     edit(scene, sel, |p| match p.paints.get_mut(i) {
         Some(e) if e.blend != novo => {
@@ -268,7 +266,7 @@ pub(crate) fn set_blend(scene: &mut VecScene, sel: &[VecPathId], i: usize, code:
 }
 
 /// **A largura** do contorno da camada `i`. No-op numa camada de preenchimento.
-pub(crate) fn set_width(scene: &mut VecScene, sel: &[VecPathId], i: usize, w: f64) -> bool {
+pub fn set_width(scene: &mut VecScene, sel: &[VecPathId], i: usize, w: f64) -> bool {
     let w = w.max(0.0);
     edit(scene, sel, |p| {
         match p.paints.get_mut(i).map(|e| &mut e.kind) {
@@ -284,7 +282,7 @@ pub(crate) fn set_width(scene: &mut VecScene, sel: &[VecPathId], i: usize, w: f6
 /// **ONDE a camada `i` desenha** (v21) — em unidades de mundo, relativo à forma.
 ///
 /// ⚠️ Vale nas DUAS espécies: a sombra dura de um PREENCHIMENTO é o caso que motivou isto.
-pub(crate) fn set_offset(scene: &mut VecScene, sel: &[VecPathId], i: usize, o: [f64; 2]) -> bool {
+pub fn set_offset(scene: &mut VecScene, sel: &[VecPathId], i: usize, o: [f64; 2]) -> bool {
     edit(scene, sel, |p| match p.paints.get_mut(i) {
         Some(e) if e.offset != o => {
             e.offset = o;
@@ -295,7 +293,7 @@ pub(crate) fn set_offset(scene: &mut VecScene, sel: &[VecPathId], i: usize, o: [
 }
 
 /// **O OFFSET DE CAD da camada `i`** (v22) — a silhueta cresce (`>0`) ou encolhe (`<0`).
-pub(crate) fn set_dilate(scene: &mut VecScene, sel: &[VecPathId], i: usize, d: f64) -> bool {
+pub fn set_dilate(scene: &mut VecScene, sel: &[VecPathId], i: usize, d: f64) -> bool {
     edit(scene, sel, |p| match p.paints.get_mut(i) {
         Some(e) if e.dilate != d => {
             e.dilate = d;
@@ -306,7 +304,7 @@ pub(crate) fn set_dilate(scene: &mut VecScene, sel: &[VecPathId], i: usize, d: f
 }
 
 /// **A QUINA desse offset** (`0` Miter · `1` Round · `2` Bevel).
-pub(crate) fn set_dilate_join(scene: &mut VecScene, sel: &[VecPathId], i: usize, j: u8) -> bool {
+pub fn set_dilate_join(scene: &mut VecScene, sel: &[VecPathId], i: usize, j: u8) -> bool {
     edit(scene, sel, |p| match p.paints.get_mut(i) {
         Some(e) if e.dilate_join != j => {
             e.dilate_join = j;
@@ -321,7 +319,7 @@ pub(crate) fn set_dilate_join(scene: &mut VecScene, sel: &[VecPathId], i: usize,
 /// ⛔ Numa camada cuja tinta é um gradiente ou um padrão, isto **substitui-a por uma cor sólida**:
 /// a swatch da linha mostra UMA cor, e escrever uma cor onde a swatch mostra uma cor é o que ela
 /// promete. Um gradiente numa camada edita-se onde os gradientes se editam.
-pub(crate) fn set_color(scene: &mut VecScene, sel: &[VecPathId], i: usize, c: Rgba8) -> bool {
+pub fn set_color(scene: &mut VecScene, sel: &[VecPathId], i: usize, c: Rgba8) -> bool {
     edit(scene, sel, |p| {
         match p.paints.get_mut(i).map(|e| &mut e.kind) {
             Some(PaintKind::Fill(f)) => {
@@ -353,5 +351,5 @@ fn edit(
 }
 
 #[cfg(test)]
-#[path = "vec_paint_stack_tests.rs"]
+#[path = "paint_stack_tests.rs"]
 mod tests;

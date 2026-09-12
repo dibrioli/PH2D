@@ -25,7 +25,7 @@
 use ph2d_ecs::{Entity, SimWorld, VecDrivenStyle, VecPathRef};
 use ph2d_vec_scene::{BoundStyle, VecPathId, VecViewState};
 
-use crate::vec_entities::VecEntityMap;
+use crate::entity_map::VecEntityMap;
 
 /// **A opacidade que um motor conduz nesta forma, neste quadro.** Vazio quando nada é conduzido —
 /// que é todo documento em que ninguém carregou no play, e é o que mantém o desenho deles
@@ -34,7 +34,7 @@ use crate::vec_entities::VecEntityMap;
 /// ⚠️ **Percorre o MAPA e não uma query**, pela mesma razão que os irmãos: o que interessa é o
 /// `VecPathId`, e é o mapa que o conhece. Uma entidade morta é saltada em vez de acusada — o
 /// ciclo de vida é do `vec_entities::sync`, não desta leitura.
-pub(crate) fn resolve(sim: &SimWorld, map: &VecEntityMap) -> Vec<(VecPathId, f32)> {
+pub fn resolve(sim: &SimWorld, map: &VecEntityMap) -> Vec<(VecPathId, f32)> {
     let w = sim.world();
     let mut out = Vec::new();
     for (&id, &bits) in map {
@@ -61,7 +61,7 @@ pub(crate) fn resolve(sim: &SimWorld, map: &VecEntityMap) -> Vec<(VecPathId, f32
 /// ⚠️ **A conversão para `u8` é `round`, não `as`.** Um `as u8` trunca, e `0.999 * 255 = 254,7`
 /// sairia `254`: o topo de um fade nunca fecharia em opaco, e a forma ficaria a um degrau de
 /// distância da arte que o artista desenhou — invisível numa cor chapada e visível numa borda.
-pub(crate) fn apply(driven: &[(VecPathId, f32)], view: &mut VecViewState) {
+pub fn apply(driven: &[(VecPathId, f32)], view: &mut VecViewState) {
     for &(id, a) in driven {
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         let alpha = (a.clamp(0.0, 1.0) * f32::from(u8::MAX)).round() as u8;
@@ -107,7 +107,7 @@ pub(crate) fn apply(driven: &[(VecPathId, f32)], view: &mut VecViewState) {
 /// `1,0` para ela — a tecla **K** sobre uma forma autorada a 40 % grava a 1.ª chave em `1,0`. As
 /// duas leitoras da crate (`read_prop_kind`, que semeia o `rest`) **não alcançam o documento
 /// vectorial**, e fechá-lo é passar a cena por três assinaturas.
-pub(crate) fn settle_to_authored(
+pub fn settle_to_authored(
     sim: &mut SimWorld,
     map: &VecEntityMap,
     scene: &ph2d_vec_scene::VecScene,
@@ -135,5 +135,5 @@ pub(crate) fn settle_to_authored(
 }
 
 #[cfg(test)]
-#[path = "vec_driven_style_tests.rs"]
+#[path = "driven_style_tests.rs"]
 mod tests;

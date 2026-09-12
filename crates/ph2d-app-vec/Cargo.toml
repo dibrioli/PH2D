@@ -27,6 +27,14 @@ authors.workspace = true
 # → registry`. Ver o doc-comment de `ph2d-app-host::family`.
 ph2d-app-host = { path = "../ph2d-app-host" }
 ph2d-ecs = { path = "../ph2d-ecs" }
+# ⚠️⚠️ **AS QUATRO QUE SÓ A CRATE REVELOU** (HOWTO §1.3: *«a lista de dependências da crate nova é o
+# CUSTO REAL do módulo, e ele só se lê aqui»*). Dentro da shell todas eram dependência do binário e
+# um ficheiro escrevia `ph2d_core::…` sem nada que o declarasse. O piloto achou quatro; esta família
+# achou exactamente quatro também.
+ph2d-core = { path = "../ph2d-core" }
+ph2d-tool-vector = { path = "../ph2d-tool-vector" }
+ph2d-vec-blend = { path = "../ph2d-vec-blend" }
+ph2d-vec-fill = { path = "../ph2d-vec-fill" }
 ph2d-editor = { path = "../ph2d-editor" }
 ph2d-text = { path = "../ph2d-text" }
 ph2d-tokens = { path = "../ph2d-tokens" }
@@ -35,7 +43,7 @@ ph2d-vec-render = { path = "../ph2d-vec-render" }
 ph2d-vec-scene = { path = "../ph2d-vec-scene" }
 ph2d-vector = { path = "../ph2d-vector" }
 ph2d-vector-font = { path = "../ph2d-vector-font" }
-ph2d-panel-vector = { path = "../ph2d-panel-vector", optional = true }
+ph2d-panel-vector = { path = "../ph2d-panel-vector" }
 fontique = "0.11.1"
 
 # ⚠️ **A feature ESPELHA a da shell, e isso não é zelo — é o que o `mod` dizia.** O
@@ -44,4 +52,11 @@ fontique = "0.11.1"
 # crate declarou a dependência como obrigatória por eu ter lido só o `use` do ficheiro e não o
 # `mod` que o declara: *a condição de compilação de um módulo não está escrita nele.*
 [features]
-panel-vector = ["dep:ph2d-panel-vector"]
+# ⚠️ **A feature deixou de LIGAR a dependência e passou a gatear só a PRESENÇA de um módulo**
+# (Fase B). O motivo é medido: o `paint_stack` usa `ph2d_panel_vector::state::*` em **9 sítios sem
+# `#[cfg]` nenhum**, o `mod vec_paint_stack;` do `main.rs` nunca foi gateado, e o `render_loop`
+# chama-o em 10 sítios também sem gate ⇒ a shell já exigia esta dependência sempre. Deixá-la
+# opcional aqui só deslocava a quebra de `--no-default-features` para outra mensagem.
+# ⛔ O `font_preview`, esse, ERA gateado no `main.rs` e continua a ser — a diferença entre os dois
+# é o que o `mod` dizia, e *a condição de compilação de um módulo não está escrita nele* (§2.4).
+panel-vector = []

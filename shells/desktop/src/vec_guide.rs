@@ -19,7 +19,7 @@ use ph2d_ecs::{Entity, SimWorld, Transform};
 use ph2d_vec_scene::VecScene;
 use ph2d_vec_scene::arc_path::ArcPath;
 
-use crate::vec_entities::VecEntityMap;
+use ph2d_app_vec::entity_map::VecEntityMap;
 
 /// O [`ArcPath`] do caminho-guia `guide_path_id`, **cozido e em MUNDO**.
 ///

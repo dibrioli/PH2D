@@ -15,12 +15,27 @@ fn src(name: &str) -> String {
     fs::read_to_string(format!("src/{name}")).unwrap_or_else(|e| panic!("{name}: {e}"))
 }
 
+/// ⚠️ O lado da FAMÍLIA — o `warp_overlay` mudou-se para `ph2d-app-motion` na Fase C
+/// (2026-09-12), porque o gizmo de quadrilátero é do `motion.bezier_warp`/`four_point_warp`.
+/// O `warp_gizmo_drag` FICOU: ele segura o estado do arrasto, que é da shell.
+fn fam(name: &str) -> String {
+    fs::read_to_string(format!("../../crates/ph2d-app-motion/src/{name}"))
+        .unwrap_or_else(|e| panic!("{name}: {e}"))
+}
+
 /// **O RETRATO é publicado, e é publicado com a modalidade da tool.**
 #[test]
 fn the_view_is_published_once_per_frame_gated_by_the_motion_tool() {
-    let s = src("render_loop/mod.rs");
+    // ⚠️ **ACHATADO desde a Fase C (2026-09-12):** a chamada passou a ser qualificada
+    // (`ph2d_app_motion::warp_gizmo::…`) e o `cargo fmt` partiu-a em quatro linhas. Uma agulha
+    // que casa uma linha inteira mede a FORMATAÇÃO junto com a lei; achatar mede só a lei.
+    let s = src("render_loop/mod.rs")
+        .replace('\n', " ")
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ");
     assert!(
-        s.contains("warp_gizmo::publish(warp_gizmo::resolve(motion, motion_tool_active))"),
+        s.contains("ph2d_app_motion::warp_gizmo::publish(ph2d_app_motion::warp_gizmo::resolve( motion, motion_tool_active, ))"),
         "o retrato tem de ser publicado no prólogo, e gateado pela tool Motion — sem a \
          modalidade, as alças de um nó apareceriam sobre o canvas de outra ferramenta"
     );
@@ -104,7 +119,7 @@ fn the_drag_writes_through_the_same_port_the_panel_uses() {
 /// reintroduzir um parâmetro de janela.
 #[test]
 fn paint_and_grab_project_through_the_same_door() {
-    let overlay = src("render_loop/warp_overlay.rs");
+    let overlay = fam("warp_overlay.rs");
     let drag = src("warp_gizmo_drag.rs");
     for (name, s) in [("overlay", &overlay), ("drag", &drag)] {
         assert!(

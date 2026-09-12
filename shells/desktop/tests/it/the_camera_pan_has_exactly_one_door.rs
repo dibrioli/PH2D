@@ -31,7 +31,12 @@ fn mentions(needle: &str) -> Vec<(String, usize)> {
         }
     }
     let mut files = Vec::new();
+    // ⚠️ **DOIS lados desde a Fase C (2026-09-12):** a porta (`field_gizmo::pan_scene_camera`)
+    // mudou-se para `ph2d-app-motion` e o chamador dela ficou na shell. Varrer só um deles
+    // devolve `0` chamadores e o gate reprova sobre trabalho correcto. *Uma lei sobre «quantos
+    // chamam» tem de varrer onde os chamadores PODEM estar, e uma fronteira nova muda isso.*
     walk(Path::new("src"), &mut files);
+    walk(Path::new("../../crates/ph2d-app-motion/src"), &mut files);
     files.sort();
     let mut hits = Vec::new();
     for f in files {

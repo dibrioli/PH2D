@@ -48,17 +48,27 @@ use ph2d_editor::screens::task_layout::TaskLayout;
 /// que torna essa fuga visível quando ela levar painéis com ela.
 const BRIDGE_DIR: &str = "src/render_loop";
 
+/// ⚠️ **O SEGUNDO sítio onde uma ponte pode viver, desde a Fase C (2026-09-12):** a
+/// `motion_bridge` mudou-se para `ph2d-app-motion`. Varrer só o `render_loop` deixaria o
+/// controlo positivo abaixo a acusar o `motion_graph` de não ter ponte — que é precisamente
+/// o que ele fez, e por isso ele existe.
+const BRIDGE_DIR_FAM: &str = "../../crates/ph2d-app-motion/src";
+
 /// Como é que a ponte escreve a visibilidade.
 const WRITE: &str = "panel_visibility.insert(";
 
 /// Um `insert` lido: o id do painel e o que lhe foi atribuído.
 fn writes() -> BTreeMap<String, Vec<String>> {
     let mut out: BTreeMap<String, Vec<String>> = BTreeMap::new();
-    let dir = Path::new(BRIDGE_DIR);
-    let mut files: Vec<_> = fs::read_dir(dir)
-        .unwrap_or_else(|_| panic!("{BRIDGE_DIR} existe"))
-        .filter_map(Result::ok)
-        .map(|e| e.path())
+    // ⚠️ DOIS sítios desde a Fase C (2026-09-12) — ver [`BRIDGE_DIR_FAM`].
+    let mut files: Vec<_> = [BRIDGE_DIR, BRIDGE_DIR_FAM]
+        .iter()
+        .flat_map(|d| {
+            fs::read_dir(d)
+                .unwrap_or_else(|_| panic!("{d} existe"))
+                .filter_map(Result::ok)
+                .map(|e| e.path())
+        })
         .filter(|p| p.extension().is_some_and(|e| e == "rs"))
         .collect();
     files.sort();
@@ -276,10 +286,16 @@ fn a_layout_names_the_inspector_exactly_when_its_canvas_owner_does_not_take_it_o
 /// ponte (`<tool>_bridge.rs`), que é a convenção deste directório.
 fn tools_that_take_over_the_inspector() -> Vec<String> {
     let mut out = Vec::new();
-    let mut files: Vec<_> = fs::read_dir(BRIDGE_DIR)
-        .expect("a pasta das pontes existe")
-        .filter_map(Result::ok)
-        .map(|e| e.path())
+    // ⚠️ As pontes vivem em DOIS sítios desde a Fase C: a `motion_bridge` saiu para a crate
+    // da família e as outras nove continuam no `render_loop`.
+    let mut files: Vec<_> = [BRIDGE_DIR, BRIDGE_DIR_FAM]
+        .iter()
+        .flat_map(|d| {
+            fs::read_dir(d)
+                .unwrap_or_else(|_| panic!("{d} existe"))
+                .filter_map(Result::ok)
+                .map(|e| e.path())
+        })
         .collect();
     files.sort();
     for f in files {

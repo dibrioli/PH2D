@@ -19,11 +19,15 @@ use std::fs;
 /// Toda cena de conferência constrói pelo menos um nó de saída.
 #[test]
 fn every_demo_scene_ends_in_an_output_node() {
-    // ⚠️ A família mudou-se para `src/motion/` na W2/L1 (2026-09-11) — e foi o CONTROLE
+    // ⚠️ A família mudou-se para `src/motion/` na W2/L1 (2026-09-11) e para
+    // `crates/ph2d-app-motion/` na Fase C (2026-09-12) — e das DUAS vezes foi o CONTROLE
     // POSITIVO lá em baixo que o disse, em voz alta, em vez de deixar esta varredura ficar
     // verde a medir zero cenas. *É a única razão pela qual um gate que varre por CAMINHO é
     // seguro.*
-    let dir = fs::read_dir("src/motion").expect("shells/desktop/src/motion");
+    //
+    // ⭐ **E o FILTRO por nome sobreviveu à mudança sem uma edição**, porque o corte manteve
+    // os nomes de ficheiro (HOWTO §1.3, desvio deliberado): é a §2.7 a NÃO acontecer.
+    let dir = fs::read_dir("../../crates/ph2d-app-motion/src").expect("crates/ph2d-app-motion/src");
 
     let mut scanned = Vec::new();
     let mut silent = Vec::new();

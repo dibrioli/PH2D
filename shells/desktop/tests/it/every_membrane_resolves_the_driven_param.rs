@@ -59,10 +59,56 @@ const MEMBRANES: &[&str] = &[
     "motion_lsystem_gen.rs",
 ];
 
+/// **Tira comentários antes de contar** — e sem isto este censo MENTE.
+///
+/// ⛔⛔ Medido na Fase C (2026-09-12), quando a varredura passou do `render_loop` para a crate
+/// da família: o `motion_object_smoke_times.rs` apareceu como **sétimo** chamador da escada e
+/// não chama nada — ele **cita** `motion_externals::resolved_params` num doc-comment que
+/// explica a cura de 2026-08-28. *Um censo que lê prosa como código conta a DOCUMENTAÇÃO da
+/// lei como uma violação dela* (HOWTO §2.12, e é a quarta vez que esta wave a paga).
+///
+/// ⭐ Dentro do `render_loop` isto nunca mordeu — nenhum ficheiro de lá citava a porta em
+/// prosa. *O defeito estava latente e foi a MUDANÇA que o revelou; o gate sai mais forte do
+/// que entrou.*
+fn sem_comentarios(src: &str) -> String {
+    let mut out = String::with_capacity(src.len());
+    let mut it = src.chars().peekable();
+    let mut em_string = false;
+    while let Some(c) = it.next() {
+        if em_string {
+            out.push(c);
+            if c == '\\' {
+                if let Some(n) = it.next() {
+                    out.push(n);
+                }
+            } else if c == '"' {
+                em_string = false;
+            }
+            continue;
+        }
+        match c {
+            '"' => {
+                em_string = true;
+                out.push(c);
+            }
+            '/' if it.peek() == Some(&'/') => {
+                for n in it.by_ref() {
+                    if n == '\n' {
+                        out.push('\n');
+                        break;
+                    }
+                }
+            }
+            _ => out.push(c),
+        }
+    }
+    out
+}
+
 /// Os arquivos de PRODUTO do `render_loop`.
 ///
 /// ⚠️ **O que fica de fora é o que só existe sob `cfg(test)`**, e a regra é decidida no
-/// [`mod.rs`](../src/render_loop/mod.rs), não por sufixo: um `#[cfg(test)] mod` é o registo
+/// [`lib.rs`](../../../crates/ph2d-app-motion/src/lib.rs), não por sufixo: um `#[cfg(test)] mod` é o registo
 /// autoritativo, e um arnês de teste pode chamar a porta das membranas sem ser uma (foi o que
 /// aconteceu em 2026-08-30, quando o `motion_lsystem_testkit.rs` nasceu de um corte de LOC e o
 /// censo passou a contar SETE ladders para seis membranas).
@@ -71,8 +117,12 @@ const MEMBRANES: &[&str] = &[
 /// um `_tests.rs`, e alargar a lista de sufixos deixaria a próxima peça test-only fora do radar
 /// outra vez. *A pergunta é «isto compila no binário?», e quem a responde é o `mod`.*
 fn product_files() -> Vec<(String, String)> {
-    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("src/render_loop");
-    let modrs = std::fs::read_to_string(dir.join("mod.rs")).expect("o mod.rs existe");
+    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../crates/ph2d-app-motion/src");
+    // ⚠️ **`lib.rs` e não `mod.rs` desde a Fase C (2026-09-12)**: a família saiu para
+    // `crates/ph2d-app-motion`, e o registo autoritativo de *«isto compila no binário?»* é o
+    // ficheiro de declarações da unidade — que numa crate se chama `lib.rs`. *A lei não mudou;
+    // mudou o nome do sítio onde ela está escrita.*
+    let modrs = std::fs::read_to_string(dir.join("lib.rs")).expect("o lib.rs existe");
     let test_only: Vec<String> = modrs
         .split("#[cfg(test)]")
         .skip(1)
@@ -111,7 +161,10 @@ fn product_files() -> Vec<(String, String)> {
         if !name.ends_with(".rs") || name.ends_with("_tests.rs") || test_only.contains(&name) {
             continue;
         }
-        out.push((name, std::fs::read_to_string(&p).expect("le")));
+        out.push((
+            name,
+            sem_comentarios(&std::fs::read_to_string(&p).expect("le")),
+        ));
     }
     out.sort_by(|a, b| a.0.cmp(&b.0));
     out

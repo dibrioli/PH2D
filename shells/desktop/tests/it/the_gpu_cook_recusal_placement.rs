@@ -26,7 +26,7 @@ use std::fs;
 
 #[test]
 fn the_recusals_run_in_the_right_place_relative_to_the_plan() {
-    let src = fs::read_to_string("../crates/ph2d-app-motion/src/motion_bridge_gpu.rs")
+    let src = fs::read_to_string("../../crates/ph2d-app-motion/src/motion_bridge_gpu.rs")
         .expect("motion_bridge_gpu.rs");
 
     // O corpo de `cook_gpu` (depois da sua assinatura — as DEFINIÇÕES dos

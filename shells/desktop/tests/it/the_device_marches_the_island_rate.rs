@@ -13,7 +13,7 @@ use std::fs;
 /// os relógios que este código sempre devolveu — um par por tique, playhead `t·dt`.
 #[test]
 fn a_rate_of_one_is_the_march_that_never_knew_about_substeps() {
-    let src = fs::read_to_string("../crates/ph2d-app-motion/src/motion_bridge_gpu.rs")
+    let src = fs::read_to_string("../../crates/ph2d-app-motion/src/motion_bridge_gpu.rs")
         .expect("motion_bridge_gpu.rs");
     // O helper e puro, entao o gate o re-deriva em vez de o importar (ele e privado do shell).
     let clocks = |ticks: &[u64], sub: u32, dt: f64, loops: bool| -> Vec<(f64, Option<u64>)> {
@@ -96,7 +96,7 @@ fn the_substeps_share_the_frames_tick_so_the_scrub_ring_is_untouched() {
 /// custaria o device a todo documento substepado.
 #[test]
 fn the_device_never_recuses_for_a_substep_and_asks_the_one_door() {
-    let src = fs::read_to_string("../crates/ph2d-app-motion/src/motion_bridge_gpu.rs")
+    let src = fs::read_to_string("../../crates/ph2d-app-motion/src/motion_bridge_gpu.rs")
         .expect("motion_bridge_gpu.rs");
     assert!(
         src.contains("cook::graph_substeps(&motion.doc.graph"),

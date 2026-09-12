@@ -30,9 +30,11 @@
    `crates/ph2d-editor-core/tests/it/architecture_the_shell_only_shrinks.rs`). É do **integrador**,
    sobre a árvore combinada, **depois** do `cargo fmt --all`. ⚠️ Ele **vai** ficar vermelho na sua
    worktree pela metade de obsolescência: **é esperado, diga-o no handoff e siga.**
-2. ⚠️⚠️ **Corra `cargo test -p ph2d-host-desktop --test it` À PARTE antes de dizer que fechou.** O
-   `nextest-impacted` filtra `shells/desktop/tests/it/`. Medido na Fase C: a `physics` tinha o
-   `check --all-targets` **verde** e **15** gates vermelhos ali. *É a diferença entre 0 e 15.*
+2. ⚠️ **Corra `cargo test -p ph2d-host-desktop --test it` À PARTE antes de dizer que fechou** — é
+   barato (~800 testes) e é cinto e suspensórios. ⛔⛔ **Mas a razão que esta regra dava estava
+   ERRADA** (medido pelo integrador em 12/09, ESTADO §4 lei 4): o `nextest-impacted` **alcança** a
+   suíte `it` da shell — `rdeps(<família>)` selecciona os 793. Os vermelhos que as linhas acharam ali
+   são reais; a atribuição ao script não era.
 3. ⛔ **Uma agulha de gate ancora na LEI, nunca na VISIBILIDADE.** Atravessar a fronteira obriga
    `pub(crate) fn` a virar `pub fn`. Já mordeu **quatro** vezes (HOWTO §2.13).
 4. ⛔⛔ **Um SEXTO método no `AppHost` = PARE e reporte.** As 5 portas serviram **sete** famílias em

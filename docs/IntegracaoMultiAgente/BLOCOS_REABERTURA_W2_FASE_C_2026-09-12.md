@@ -1,5 +1,10 @@
 # BLOCOS DE REABERTURA — W2 **FASE C** (3.ª rodada), 2026-09-12
 
+> ⛔ **CORRECÇÃO de 2026-09-12 (integrador):** a regra deste bloco que diz que o `nextest-impacted`
+> *«filtra»* / *«NÃO alcança»* `shells/desktop/tests/it/` está **refutada por medição** — ele alcança
+> (`rdeps(ph2d-app-vec)` → 793 testes). Ver [`ESTADO_W2_2026-09-12.md`](ESTADO_W2_2026-09-12.md) §4
+> lei 4. O bloco fica como registo do que se instruiu; não o siga nesse ponto.
+
 > Um bloco colável por linha. **O §1 é comum e vale para as três** — cada bloco cita-o em vez de o
 > repetir. Os números são os da árvore combinada ao fim da 2.ª volta (`main` = shell **373 937** /
 > 1 498 ficheiros), **medidos hoje**, não copiados de um handoff.

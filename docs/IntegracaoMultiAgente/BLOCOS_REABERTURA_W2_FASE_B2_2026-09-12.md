@@ -1,5 +1,10 @@
 # W2 — os três blocos de REABERTURA (motion · vec · flip), 2026-09-12
 
+> ⛔ **CORRECÇÃO de 2026-09-12 (integrador):** a regra deste bloco que diz que o `nextest-impacted`
+> *«filtra»* / *«NÃO alcança»* `shells/desktop/tests/it/` está **refutada por medição** — ele alcança
+> (`rdeps(ph2d-app-vec)` → 793 testes). Ver [`ESTADO_W2_2026-09-12.md`](ESTADO_W2_2026-09-12.md) §4
+> lei 4. O bloco fica como registo do que se instruiu; não o siga nesse ponto.
+
 > **O estado completo está em [`ESTADO_W2_2026-09-12.md`](ESTADO_W2_2026-09-12.md)** — os blocos
 > abaixo mandam lê-lo, e ele é a primeira coisa que uma janela nova tem de abrir.
 >

@@ -166,7 +166,8 @@ pub(crate) fn publish(motion: &mut MotionState, seconds: f64) {
         // [`crate::render_loop::motion_externals::resolved_params`], onde o mecanismo está escrito.
         // ⚠️ Ela era **copiada** aqui, e o censo de 2026-08-28 mediu o preço da cópia: das
         // quatro membranas que cunham uma chave de params, duas nunca a herdaram.
-        let resolved = crate::render_loop::motion_externals::resolved_params(motion, id, seconds, &MANIFEST);
+        let resolved =
+            crate::render_loop::motion_externals::resolved_params(motion, id, seconds, &MANIFEST);
         let get = |name: &str| resolved.get(name).copied().unwrap_or(0.0);
         let graph = &motion.doc.graph;
         let tov = graph.node_text_params().get(&id);

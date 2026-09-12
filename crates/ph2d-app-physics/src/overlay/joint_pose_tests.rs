@@ -147,13 +147,6 @@ fn the_ghost_draws_the_limit_pose_without_moving_the_body() {
 
     // Sem arrasto, sem fantasma.
     assert!(
-        crate::overlay::joint_ghost::limit_ghost(
-            &sim,
-            &views,
-            None,
-            &camera(),
-            window()
-        )
-        .is_none()
+        crate::overlay::joint_ghost::limit_ghost(&sim, &views, None, &camera(), window()).is_none()
     );
 }

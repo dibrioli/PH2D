@@ -1,17 +1,16 @@
-//! **O MODO deste personagem** — irmão de `inspector_player_tests` por teto de
-//! LOC, cortado por ASSUNTO: o pai responde *"como este corpo vira um player, e
-//! o que ele guarda"*; aqui só se pergunta **como ele é movido**, e o que essa
-//! escolha cala.
+//! **Os gates da §14 do inspector do player** — o sujeito é o painel, que vive na
+//! [`ph2d_app_physics::inspector::player`]; o que eles exercitam é a **PORTA DE
+//! PRODUÇÃO desta shell** (`component_attach::attach_by_name` sobre o registo do
+//! `init`), e é por isso que eles moram aqui.
+//!
+//! ⚠️ **Um `#[cfg(test)]` é invisível do outro lado da fronteira de crate** (HOWTO §2),
+//! e o `attach_player` — o helper que os 29 gates partilham — atravessa a porta real
+//! de propósito: *«um atalho de teste que constrói o componente por outro caminho é a
+//! segunda porta que diverge»*, diz o doc dele, que veio junto. ⛔ Por isso ele NÃO
+//! ficou na crate com um `insert` à mão.
 
 use super::*;
 
-/// **O gesto do MODO leva a algum lugar, e VOLTA** (W-KinMove).
-///
-/// ⚠️ **As duas metades, e a segunda é a que quase shipou quebrada:** o
-/// `build_player_info` recusava todo corpo que não fosse `Dynamic`, então clicar
-/// `Kinematic` fazia a §14 inteira **DESAPARECER** — o artista escolhia o modo e
-/// perdia o controle que o traria de volta. Um gate que só testasse a ida ficaria
-/// verde sobre isso.
 #[test]
 fn switching_the_mode_writes_both_halves_and_the_section_survives_the_trip() {
     use ph2d_physics_ecs::PlayerMode;

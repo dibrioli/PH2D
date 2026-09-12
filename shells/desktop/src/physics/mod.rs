@@ -48,3 +48,68 @@ pub(crate) mod physics_smoke_rigs;
 pub(crate) mod physics_state;
 pub(crate) mod physics_surface;
 pub(crate) mod player_input;
+
+// ─────────────────────────────────────────────────────────────────────────
+// **Os gates que ATRAVESSAM a fronteira.** O sujeito destes é uma cena da
+// `ph2d-app-physics` e o que eles exercitam é um gesto DESTA shell — e um
+// `#[cfg(test)]` não é visível do outro lado de uma crate (HOWTO §2). Por isso
+// eles são declarados aqui, e não pela cena: *o teste mora com o que EXERCITA.*
+// ⚠️ Os outros gates das mesmas cenas ficaram com o sujeito, na crate.
+// ─────────────────────────────────────────────────────────────────────────
+#[cfg(test)]
+#[path = "physics_smoke_part_tests.rs"]
+mod physics_smoke_part_tests;
+#[cfg(test)]
+#[path = "physics_smoke_pulley_comp_tests.rs"]
+mod physics_smoke_pulley_comp_tests;
+#[cfg(test)]
+#[path = "physics_smoke_pulley_diff_tests.rs"]
+mod physics_smoke_pulley_diff_tests;
+#[cfg(test)]
+#[path = "physics_smoke_pulley_tackle_tests.rs"]
+mod physics_smoke_pulley_tackle_tests;
+#[cfg(test)]
+#[path = "physics_smoke_rig_tests.rs"]
+mod physics_smoke_rig_tests;
+
+// Os gates da §14: o painel e' da crate, a PORTA que eles atravessam e' desta shell.
+#[cfg(test)]
+#[path = "inspector_player_tests.rs"]
+pub mod inspector_player_tests;
+#[cfg(test)]
+#[path = "overlay_joint_world_gizmo_tests.rs"]
+mod overlay_joint_world_gizmo_tests;
+
+// ─────────────────────────────────────────────────────────────────────────
+// **As declarações que o CORTE levou consigo.** Estes treze eram `mod X;` planos
+// no `render_loop/mod.rs`; o ficheiro mudou-se para cá e a LINHA que o declarava
+// ficou lá, e foi apagada com os vizinhos que de facto saíram.
+// ⛔ Um ficheiro de teste órfão não dá erro nenhum: ele simplesmente **deixa de
+// ser compilado**, e a suíte fica verde com menos gates do que tinha. É a perda
+// que o `nextest-list-diff` existe para apanhar — e o audit de órfãos, para
+// apanhar ANTES.
+// ─────────────────────────────────────────────────────────────────────────
+#[cfg(test)]
+mod bridge_tests;
+#[cfg(test)]
+mod joint_break_tests;
+#[cfg(test)]
+mod joint_kind_tests;
+#[cfg(test)]
+mod joint_motor_tests;
+#[cfg(test)]
+mod joint_pair_tests;
+#[cfg(test)]
+mod joint_paste_tests;
+#[cfg(test)]
+mod joint_tests;
+#[cfg(test)]
+mod joint_wheel_tests;
+mod joint_world_tests;
+#[cfg(test)]
+mod physics_gesture_surface_tests;
+#[cfg(test)]
+mod physics_gesture_tests;
+#[cfg(test)]
+mod physics_gesture_zone_tests;
+pub(crate) mod physics_tests;

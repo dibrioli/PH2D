@@ -5,15 +5,14 @@
 //! proves the selection is expanded to its jointed connected component first, so
 //! a bake of one link cannot leave its coupled neighbours frozen.
 
+use super::tests::{BAKE_SECONDS, DT, registry};
+use super::{BakeChannels, bake_selection};
 use ph2d_core::Vec2;
 use ph2d_ecs::scene::EditorCommandQueue;
 use ph2d_ecs::{Entity, Name, SimWorld, Transform, stable_name_id};
 use ph2d_physics_ecs::{
     BodyKind, Collider, ColliderShape, JointKind, PhysicsBridge, PhysicsJoint, RigidBody,
 };
-
-use super::tests::{BAKE_SECONDS, DT, registry};
-use super::{BakeChannels, bake_selection};
 
 /// A hook (static) with two dynamic links pinned in a line, and the L2 entity.
 /// The links start off-axis so the whole thing swings and both move — a channel

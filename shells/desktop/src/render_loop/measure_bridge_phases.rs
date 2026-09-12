@@ -96,7 +96,10 @@ fn measure_where_the_bridge_phases_spend_a_frame() {
             );
         });
         println!("CHROME draw_overlays TOTAL {whole:.4}");
-        for (i, name) in crate::render_loop::paint_perf::CHROME_LABELS.iter().enumerate() {
+        for (i, name) in crate::render_loop::paint_perf::CHROME_LABELS
+            .iter()
+            .enumerate()
+        {
             println!("  {name:<9} {:.4}", perf[i]);
         }
 

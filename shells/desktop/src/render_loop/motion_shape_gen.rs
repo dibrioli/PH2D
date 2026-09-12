@@ -404,7 +404,8 @@ pub(crate) fn publish(motion: &mut MotionState, seconds: f64) {
         // desde 2026-08-28 ela vem de UMA porta ([`crate::render_loop::motion_externals::resolved_params`]):
         // estava copiada aqui e no texto, e as outras duas membranas do grupo nunca a
         // herdaram — uma lei escrita duas vezes ainda não é uma lei.
-        let resolved = crate::render_loop::motion_externals::resolved_params(motion, id, seconds, &MANIFEST);
+        let resolved =
+            crate::render_loop::motion_externals::resolved_params(motion, id, seconds, &MANIFEST);
         let get = |name: &str| resolved.get(name).copied().unwrap_or(0.0);
         let (unit, scale) = ShapeParams::read_unit(get);
         jobs.push((shape_key(get), unit, scale));

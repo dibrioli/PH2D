@@ -2494,7 +2494,11 @@ impl App {
         // e o overlay lê o campo VIVO da ponte (`attract_marks`), sem cópia aqui.
         if self.physics.interaction.tool == ph2d_physics_ecs::InteractionTool::Explode {
             let radius = self.physics.interaction.clamped().blast_radius;
-            self.blast_flash = Some((world, radius, ph2d_app_physics::body_grab::BLAST_FLASH_TICKS));
+            self.blast_flash = Some((
+                world,
+                radius,
+                ph2d_app_physics::body_grab::BLAST_FLASH_TICKS,
+            ));
             if hit > 0
                 && let Some(gfx) = self.gfx.as_mut()
             {
@@ -2536,12 +2540,7 @@ impl App {
             .map(ph2d_ecs::Entity::from_bits);
         match target {
             Some(t) => {
-                if crate::physics::joint::set_joint_body(
-                    &mut gfx.sim,
-                    joint,
-                    slot_b,
-                    t,
-                ) {
+                if crate::physics::joint::set_joint_body(&mut gfx.sim, joint, slot_b, t) {
                     self.joint_body_pick = None; // religado — pronto
                 }
                 // senão: self-joint recusado, segue armado para outro clique
@@ -2660,11 +2659,7 @@ impl App {
             / window_size.height as f32;
         match gfx.physics.rope_at_world(world_pos, tol) {
             Some(rope) => {
-                if crate::physics::joint_wheel::set_wheel_rope(
-                    &mut gfx.sim,
-                    wheel,
-                    rope,
-                ) {
+                if crate::physics::joint_wheel::set_wheel_rope(&mut gfx.sim, wheel, rope) {
                     self.wheel_rope_pick = None;
                 }
                 // senão: o alvo não é uma polia, segue armado para outro clique

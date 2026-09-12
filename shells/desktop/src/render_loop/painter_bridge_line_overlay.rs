@@ -64,7 +64,9 @@ pub(super) fn draw_line_overlay(
             // Edit-in-tile (Enio 2026-07-11): draw the editable chrome (gizmo + segments + corner dots + CAD
             // handles + centre move) in EACH visible wrapped tile too (`overlay_tile_offsets`), so a Line is
             // grabbable there; the auxiliary VALUE labels (dimensions + fillet/chamfer amounts) stay on centre.
-            for (ox, oy) in crate::render_loop::painter_bridge_overlays::overlay_tile_offsets(painter, iw, ih) {
+            for (ox, oy) in
+                crate::render_loop::painter_bridge_overlays::overlay_tile_offsets(painter, iw, ih)
+            {
                 let affine = base_affine * Affine::translate((ox, oy));
                 let map = |p: [f32; 2]| affine * Point::new(f64::from(p[0]), f64::from(p[1]));
                 let is_centre = ox == 0.0 && oy == 0.0;

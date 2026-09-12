@@ -14,9 +14,9 @@
 //!   dois extremos da corda estão em cima do aro, e é o meio dela que entra.
 //!   Por isso a medida é a de SEGMENTO, não a de ponto.
 
-use super::crate::overlay::joint_glyphs::screen_of;
-use super::crate::overlay::pulley::pulley_marks;
-use crate::physics::joint_tests::{camera, view, window};
+use super::joint_tests::{camera, view, window};
+use crate::overlay::joint_glyphs::screen_of;
+use crate::overlay::pulley::pulley_marks;
 use ph2d_physics_ecs::JointKind;
 use ph2d_physics_ecs::rope_route::{self, RopeWheel};
 use ph2d_vector::{BezPath, PathEl, Point};
@@ -263,7 +263,7 @@ fn a_differential_drum_draws_both_of_its_circles() {
 /// ao âmbar e a 2ª metade fica VERMELHA (0 elementos na cor de ruptura).
 #[test]
 fn a_rope_that_cannot_route_wears_the_not_holding_colour() {
-    use super::crate::overlay::joints::{JOINT_BROKEN_RGBA, JOINT_RGBA};
+    use crate::overlay::joints::{JOINT_BROKEN_RGBA, JOINT_RGBA};
 
     // A MESMA montagem do elevador, com a 1a roldana ENGOLINDO a âncora A: a
     // tangente de um ponto DENTRO do círculo não existe, e a rota inteira cai.
@@ -298,12 +298,12 @@ fn a_rope_that_cannot_route_wears_the_not_holding_colour() {
     // ele crava a arena SADIA compartilhada, e a 1a versão deste gate nasceu
     // vermelha exactamente por isso — a metade que mede a cor estava pintando uma
     // corda que roteia. Fixture que não contém o fenômeno.
-    let painted = super::crate::overlay::joints::joint_marks(
+    let painted = crate::overlay::joints::joint_marks(
         true,
         std::slice::from_ref(&v),
         &wheels,
         &[0.0; 2],
-        crate::physics::joint_tests::G,
+        super::joint_tests::G,
         &cam,
         win,
     );
@@ -335,7 +335,7 @@ fn a_rope_that_cannot_route_wears_the_not_holding_colour() {
 /// Sem ele, colorir TODA polia de vermelho passaria no gate acima.
 #[test]
 fn a_rope_that_routes_stays_in_the_holding_colour() {
-    use super::crate::overlay::joints::{JOINT_BROKEN_RGBA, JOINT_RGBA};
+    use crate::overlay::joints::{JOINT_BROKEN_RGBA, JOINT_RGBA};
 
     let (v, wheels) = elevator();
     let mut segs = Vec::new();
@@ -344,12 +344,12 @@ fn a_rope_that_routes_stays_in_the_holding_colour() {
         "a fixture do controle não roteia"
     );
     // Pela MESMA porta e com a MESMA arena do irmão acima — só a geometria muda.
-    let painted = super::crate::overlay::joints::joint_marks(
+    let painted = crate::overlay::joints::joint_marks(
         true,
         std::slice::from_ref(&v),
         &wheels,
         &[0.0; 2],
-        crate::physics::joint_tests::G,
+        super::joint_tests::G,
         &camera(),
         window(),
     )
@@ -388,8 +388,8 @@ fn a_rope_that_routes_stays_in_the_holding_colour() {
 /// nas DUAS metades.
 #[test]
 fn the_readout_of_a_rope_that_cannot_route_says_so_instead_of_zero() {
-    use super::crate::overlay::joint_readout::joint_readouts;
-    use super::crate::overlay::joints::{JOINT_BROKEN_RGBA, joint_marks};
+    use crate::overlay::joint_readout::joint_readouts;
+    use crate::overlay::joints::{JOINT_BROKEN_RGBA, joint_marks};
 
     let (mut v, mut wheels) = elevator();
     wheels[0].centre = v.anchor_a;
@@ -405,7 +405,7 @@ fn the_readout_of_a_rope_that_cannot_route_says_so_instead_of_zero() {
         std::slice::from_ref(&v),
         &wheels,
         &[0.0; 2],
-        crate::physics::joint_tests::G,
+        super::joint_tests::G,
         &cam,
         win,
     )
@@ -435,8 +435,8 @@ fn the_readout_of_a_rope_that_cannot_route_says_so_instead_of_zero() {
 /// Sem ele, imprimir `"no route"` em toda polia passaria.
 #[test]
 fn the_readout_of_a_rope_that_routes_still_shows_the_load() {
-    use super::crate::overlay::joint_readout::joint_readouts;
-    use super::crate::overlay::joints::joint_marks;
+    use crate::overlay::joint_readout::joint_readouts;
+    use crate::overlay::joints::joint_marks;
 
     let (mut v, wheels) = elevator();
     v.break_force = 60.0;
@@ -448,7 +448,7 @@ fn the_readout_of_a_rope_that_routes_still_shows_the_load() {
         std::slice::from_ref(&v),
         &wheels,
         &[0.0; 2],
-        crate::physics::joint_tests::G,
+        super::joint_tests::G,
         &cam,
         win,
     )

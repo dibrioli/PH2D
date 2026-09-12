@@ -1038,13 +1038,28 @@ pub(super) fn publish(
     });
     let sel = &inspector_selection; // W3 §7/§9 snapshots (§7 sibling module)
     let inspector_ordering = hero.gizmo.selection.and_then(|b| {
-        crate::render_loop::inspector_ordering::build_ordering_info(sim.world(), b, sel, selected_count)
+        crate::render_loop::inspector_ordering::build_ordering_info(
+            sim.world(),
+            b,
+            sel,
+            selected_count,
+        )
     });
     let inspector_sampling = hero.gizmo.selection.and_then(|b| {
-        crate::render_loop::inspector_ordering::build_sampling_info(sim.world(), b, sel, selected_count)
+        crate::render_loop::inspector_ordering::build_sampling_info(
+            sim.world(),
+            b,
+            sel,
+            selected_count,
+        )
     });
     let inspector_blend = hero.gizmo.selection.and_then(|b| {
-        crate::render_loop::inspector_ordering::build_blend_info(sim.world(), b, sel, selected_count)
+        crate::render_loop::inspector_ordering::build_blend_info(
+            sim.world(),
+            b,
+            sel,
+            selected_count,
+        )
     });
     // §5 9-Slice. ⚠️ Publicado para TODA entidade digna de Inspector, com ou sem o componente:
     // é o snapshot que diz `present: false`, e é isso que faz a seção mostrar o «+ Add 9-Slice».
@@ -1216,30 +1231,26 @@ pub(super) fn publish(
             player_law,
         )
     });
-    let inspector_anim = hero
-        .gizmo
-        .selection
-        .and_then(|b| crate::render_loop::inspector_anim::build_anim_info(sim.world(), b, selected_count));
+    let inspector_anim = hero.gizmo.selection.and_then(|b| {
+        crate::render_loop::inspector_anim::build_anim_info(sim.world(), b, selected_count)
+    });
     // ⭐ A secção TIMERS — `None` para quem não tem o componente (ADR-0166).
-    let inspector_timer = hero
-        .gizmo
-        .selection
-        .and_then(|b| crate::render_loop::inspector_timer::build_timer_info(sim.world(), b, selected_count));
+    let inspector_timer = hero.gizmo.selection.and_then(|b| {
+        crate::render_loop::inspector_timer::build_timer_info(sim.world(), b, selected_count)
+    });
     // ⭐ A secção SIGNAL ACTIONS — `None` para quem não tem o componente (ADR-0166).
-    let inspector_action = hero
-        .gizmo
-        .selection
-        .and_then(|b| crate::render_loop::inspector_action::build_action_info(sim.world(), b, selected_count));
+    let inspector_action = hero.gizmo.selection.and_then(|b| {
+        crate::render_loop::inspector_action::build_action_info(sim.world(), b, selected_count)
+    });
     // ⭐ A secção AUDIO — `None` para quem não tem a fonte NEM as orelhas (ADR-0166).
     //
     // ⚠️ **Ela pede o mundo em MUTÁVEL**, e é a única da família: as três coisas que ela deriva —
     // quantas orelhas a cena tem, qual delas manda, e se alguma tabela de acções manda isto tocar —
     // são **queries**, e um `QueryState` do bevy precisa de `&mut World` para se preparar. *Não é
     // escrita: é o preço de perguntar à cena em vez de adivinhar a partir do componente.*
-    let inspector_audio = hero
-        .gizmo
-        .selection
-        .and_then(|b| crate::render_loop::inspector_audio::build_audio_info(sim.world_mut(), b, selected_count));
+    let inspector_audio = hero.gizmo.selection.and_then(|b| {
+        crate::render_loop::inspector_audio::build_audio_info(sim.world_mut(), b, selected_count)
+    });
     // ⭐ A secção CAMERA — `None` para quem não tem `GameCamera` (ADR-0166).
     //
     // ⚠️ **Ela pede a PROPORÇÃO da janela**, e é a única da família: o aviso *«a cerca é mais

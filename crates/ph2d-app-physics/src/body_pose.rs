@@ -51,9 +51,8 @@
 //! joint (W-JointAnchor), e é por isso que este arquivo não tem uma linha sobre
 //! undo.
 
-use ph2d_ecs::{Entity, Transform, parent_world_transform, SimWorld};
+use ph2d_ecs::{Entity, SimWorld, Transform, parent_world_transform};
 use ph2d_physics_ecs::PhysicsBridge;
-
 
 /// **A porta única do press.** `true` = a pose pegou, e o chamador NÃO deve
 /// abrir arrasto de gizmo nem mexer na seleção.
@@ -61,12 +60,7 @@ use ph2d_physics_ecs::PhysicsBridge;
 /// As condições 1 e 2 chegam como argumento (é o chamador que vê o relógio e a
 /// ferramenta), a 3 é da ponte. A divisão é a mesma do `body_grab::take_hold`,
 /// e pelo mesmo motivo: assim a decisão inteira é testável sem janela.
-pub fn take_pose(
-    physics: &mut PhysicsBridge,
-    is_ik: bool,
-    entity: Entity,
-    playing: bool,
-) -> bool {
+pub fn take_pose(physics: &mut PhysicsBridge, is_ik: bool, entity: Entity, playing: bool) -> bool {
     if playing || !is_ik {
         return false;
     }

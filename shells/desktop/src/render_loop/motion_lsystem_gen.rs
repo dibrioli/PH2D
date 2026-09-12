@@ -24,12 +24,12 @@ use ph2d_node_source_lsystem as ls;
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_vec_scene::{VecPath, VecVertex};
 
+use crate::motion::motion_state::MotionState;
 use crate::render_loop::motion_lsystem_leaves::{
     Anchor, Job, anchors_of, say_if_a_wire_drives_an_inert_param, say_if_the_letter_is_missing,
     say_if_the_level_hid_every_leaf,
 };
 use crate::render_loop::motion_lsystem_rows::plant_and_leaves;
-use crate::motion::motion_state::MotionState;
 
 // ⛔⛔ **O TECTO `MAX_RIBBONS = 4096` FOI REMOVIDO — ele não era de recurso nenhum.**
 //
@@ -395,7 +395,12 @@ pub(crate) fn publish(motion: &mut MotionState, seconds: f64) {
     // no cook (três campos disjuntos do `MotionState`).
     let mut jobs: Vec<Job> = Vec::new();
     for id in ids {
-        let resolved = crate::render_loop::motion_externals::resolved_params(motion, id, seconds, &ls::MANIFEST);
+        let resolved = crate::render_loop::motion_externals::resolved_params(
+            motion,
+            id,
+            seconds,
+            &ls::MANIFEST,
+        );
         let get = |name: &str| resolved.get(name).copied().unwrap_or(0.0);
         if get(ls::param::GEOMETRY).round() as i32 != ls::GEOMETRY_BRANCHES {
             continue;

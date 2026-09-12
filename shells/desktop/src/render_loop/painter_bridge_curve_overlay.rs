@@ -65,7 +65,9 @@ pub(super) fn draw_curve_overlay(
             // Transform gizmo — the Sprite-gizmo box + handles. Drawn FIRST (under the spine + dots)
             // so the editing geometry stays visually dominant. Corners flip to circles while rotating.
             if let Some(gz) = overlay.transform_gizmo.as_ref() {
-                crate::render_loop::painter_bridge_gizmo::draw_transform_gizmo(scene, gz, affine, &pal, cursor);
+                crate::render_loop::painter_bridge_gizmo::draw_transform_gizmo(
+                    scene, gz, affine, &pal, cursor,
+                );
             }
             // Spine guide — the auto-smoothed curve through the control points (themed frame colour).
             if overlay.spine.len() >= 2 {

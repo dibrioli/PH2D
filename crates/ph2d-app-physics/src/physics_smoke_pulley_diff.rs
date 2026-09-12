@@ -25,13 +25,13 @@ const LOAD_MASS: f32 = 3.0;
 /// **O contrapeso**, kg — e os dois rigs têm o mesmo.
 const COUNTER_MASS: f32 = 1.0;
 /// O raio por onde a corda ENTRA no tambor.
-const R_IN: f32 = 0.5;
+pub const R_IN: f32 = 0.5;
 /// O raio por onde ela SAI — só o rig da esquerda o tem.
 ///
 /// `R_IN / R_OUT` = **4**, então um contrapeso de 1 kg segura até 4 kg. A carga é
 /// 3 kg de propósito: acima do que a roldana comum segura (1 kg) e abaixo do que
 /// o tambor segura (4 kg), que é o que faz os dois rigs discordarem.
-const R_OUT: f32 = 0.125;
+pub const R_OUT: f32 = 0.125;
 /// Meia-distância entre os dois corpos pendurados.
 const SPAN: f32 = 1.2;
 /// Onde os dois corpos nascem.

@@ -284,7 +284,9 @@ impl crate::App {
             "69" => self.run_physics_scene(
                 ph2d_app_physics::physics_smoke_compound::physics_smoke_compound,
             ),
-            "70" => self.run_physics_scene(ph2d_app_physics::physics_smoke_part::physics_smoke_part),
+            "70" => {
+                self.run_physics_scene(ph2d_app_physics::physics_smoke_part::physics_smoke_part)
+            }
             "71" => {
                 self.run_physics_scene(ph2d_app_physics::physics_smoke_foot::physics_smoke_foot)
             }

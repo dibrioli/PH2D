@@ -53,7 +53,7 @@ use ph2d_app_physics::overlay::joint_glyphs::{length_handle_world, limit_end_scr
 /// artist is in the middle of fixing. Its B end has no body, so no anchor, so no
 /// handle.
 #[must_use]
-pub(super) fn joint_anchor_handles(
+pub(crate) fn joint_anchor_handles(
     sim: &SimWorld,
     physics: &PhysicsBridge,
     at_rest: bool,

@@ -234,5 +234,5 @@ pub fn waterline_marks(
 }
 
 #[cfg(test)]
-#[path = "physics_overlay_contacts_tests.rs"]
+#[path = "contacts_tests.rs"]
 mod tests;

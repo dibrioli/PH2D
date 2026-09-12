@@ -144,7 +144,11 @@ pub(super) fn draw_overlays(
         vector_scene,
     );
     mark(&mut perf[11], &mut t);
-    crate::render_loop::painter_bridge_fill_overlay::draw_fill_cursor(painter, vector_scene, cursor);
+    crate::render_loop::painter_bridge_fill_overlay::draw_fill_cursor(
+        painter,
+        vector_scene,
+        cursor,
+    );
     mark(&mut perf[12], &mut t);
 }
 
@@ -483,8 +487,12 @@ fn draw_polygon_overlay(
                 for (i, &h) in overlay.handles.iter().enumerate() {
                     let p = map(h);
                     match i {
-                        4 => crate::render_loop::painter_bridge_gizmo::circle_handle(scene, p, &pal), // rotate
-                        5 => crate::render_loop::painter_bridge_gizmo::diamond_handle(scene, p, &pal), // sides (distinct)
+                        4 => {
+                            crate::render_loop::painter_bridge_gizmo::circle_handle(scene, p, &pal)
+                        } // rotate
+                        5 => {
+                            crate::render_loop::painter_bridge_gizmo::diamond_handle(scene, p, &pal)
+                        } // sides (distinct)
                         6 if op_glyph.is_some() => {
                             // Centre-move square (index 6) DOUBLED with the Operation glyph.
                             crate::render_loop::painter_bridge_gizmo::center_glyph_handle(
@@ -494,7 +502,9 @@ fn draw_polygon_overlay(
                                 op_glyph.unwrap(),
                             );
                         }
-                        _ => crate::render_loop::painter_bridge_gizmo::square_handle(scene, p, &pal),
+                        _ => {
+                            crate::render_loop::painter_bridge_gizmo::square_handle(scene, p, &pal)
+                        }
                     }
                 }
             }

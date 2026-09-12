@@ -21,8 +21,8 @@
 //! layout) NÃO re-roda — só o render GPU com a câmera nova. `PH2D_FLIP_STATS=1`
 //! loga packs vs hits por frame.
 
-use crate::render_loop::flip_pass_cache::TessCache;
 use crate::flip::transform::art_to_world;
+use crate::render_loop::flip_pass_cache::TessCache;
 use ph2d_core::Playhead;
 use ph2d_flip::{FlipDoc, FlipDrawing, FlipObjectId, LayerId};
 use ph2d_flip_render::{CameraRaw, FlipCompose, FlipGpuData, FlipRenderer};
@@ -506,7 +506,9 @@ fn collect_layers<'a>(
                 // No quadro-FONTE (o do ciclo): os vizinhos do desenho que está NA
                 // TELA. No quadro cru, um Loop na 2ª volta não teria vizinho nenhum.
                 let src = layer.source_frame(frame);
-                for g in crate::render_loop::flip_pass_ghosts::collect(obj, layer, src, playhead, sources) {
+                for g in crate::render_loop::flip_pass_ghosts::collect(
+                    obj, layer, src, playhead, sources,
+                ) {
                     out.push(LayerRef {
                         key: ghost_key(obj.id.0, layer.id.0, g.delta),
                         blend: ph2d_flip::BlendMode::default().to_u8(),

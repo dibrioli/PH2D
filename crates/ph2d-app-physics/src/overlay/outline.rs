@@ -419,9 +419,7 @@ pub fn draw(
     // descrevem para onde o personagem olha, então têm de ficar por cima da arte
     // que atravessam — e por baixo das cruzes, que marcam um evento e são as
     // menores marcas da tela.
-    for (path, rgba) in
-        crate::overlay::probes::probe_marks(show, probes, sim, camera, window)
-    {
+    for (path, rgba) in crate::overlay::probes::probe_marks(show, probes, sim, camera, window) {
         vector_scene.inner_mut().stroke(
             &Stroke::new(crate::overlay::probes::PROBE_PX),
             Affine::IDENTITY,
@@ -487,31 +485,17 @@ pub fn draw(
     // Sem o gate de `show`, pela mesma razão da banda e da mão: são gesto. O
     // desenho mora em `physics_overlay_annotations` porque é isso que ele é — uma
     // anotação — e porque este arquivo tem cap de 600 LOC.
-    crate::overlay::annotations::draw_interaction(
-        aim,
-        pull,
-        blast,
-        camera,
-        window,
-        vector_scene,
-    );
+    crate::overlay::annotations::draw_interaction(aim, pull, blast, camera, window, vector_scene);
     // O FANTASMA primeiro: ele é o fundo do arco que o artista está arrastando,
     // e desenhá-lo por cima do glifo faria a silhueta apagar a agulha viva.
     if show
-        && let Some(ghost) = crate::overlay::joint_ghost::limit_ghost(
-            sim,
-            joint_views,
-            posed_limit,
-            camera,
-            window,
-        )
+        && let Some(ghost) =
+            crate::overlay::joint_ghost::limit_ghost(sim, joint_views, posed_limit, camera, window)
     {
         vector_scene.inner_mut().stroke(
             &Stroke::new(OUTLINE_PX),
             Affine::IDENTITY,
-            &Brush::Solid(Color::new(
-                crate::overlay::joint_ghost::JOINT_GHOST_RGBA,
-            )),
+            &Brush::Solid(Color::new(crate::overlay::joint_ghost::JOINT_GHOST_RGBA)),
             None,
             &ghost,
         );
@@ -579,19 +563,19 @@ const READOUT_BOX_H_PX: f32 = 14.0; // LITERAL-PX-OK: chrome de overlay
 // duas famílias de gate medir projeções diferentes, e o dia em que uma delas
 // mudasse a outra ficaria verde sobre outra premissa.
 #[cfg(test)]
-#[path = "physics_overlay_tests.rs"]
+#[path = "tests.rs"]
 pub mod tests;
 
 #[cfg(test)]
-#[path = "physics_overlay_scene_tests.rs"]
+#[path = "scene_tests.rs"]
 mod scene_tests;
 
 /// As ANOTAÇÕES sobre o contorno (setas + glifos) — o terceiro arquivo de gates do
 /// overlay, separado dos irmãos pelo cap de 600 LOC (W-AreaFrame).
 #[cfg(test)]
-#[path = "physics_overlay_annotation_tests.rs"]
+#[path = "annotation_tests.rs"]
 mod annotation_tests;
 
 #[cfg(test)]
-#[path = "physics_overlay_passable_tests.rs"]
+#[path = "passable_tests.rs"]
 mod passable_tests;

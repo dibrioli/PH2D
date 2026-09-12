@@ -1,24 +1,46 @@
-//! **A SEQUÊNCIA leva a algum lugar** (W5) — a quarta condição de UI que a
-//! política deste módulo exige, e a que as outras três não implicam.
+//! **Os gates da §14 do inspector do player** — o sujeito é o painel, que vive na
+//! [`ph2d_app_physics::inspector::player`]; o que eles exercitam é a **PORTA DE
+//! PRODUÇÃO desta shell** (`component_attach::attach_by_name` sobre o registo do
+//! `init`), e é por isso que eles moram aqui.
 //!
-//! O seam prova que o clique chega ao barramento; a paridade prova que o widget
-//! é registrado; o `every_physics_component_is_authorable` prova que alguém o
-//! escreve. **Nenhum dos três prova que o gesto INTEIRO produz um personagem que
-//! anda** — foi essa a categoria que pegou o passo *"converta para Capsule"* que
-//! quase entrou num roteiro de smoke: geometricamente correto, e destruía o
-//! tronco.
+//! ⚠️ **Um `#[cfg(test)]` é invisível do outro lado da fronteira de crate** (HOWTO §2),
+//! e o `attach_player` — o helper que os 29 gates partilham — atravessa a porta real
+//! de propósito: *«um atalho de teste que constrói o componente por outro caminho é a
+//! segunda porta que diverge»*, diz o doc dele, que veio junto. ⛔ Por isso ele NÃO
+//! ficou na crate com um `insert` à mão.
 
-use crate::inspector::player::{apply_player_edit, attach_player, build_player_info};
+use ph2d_app_physics::inspector::player::*;
+use ph2d_app_physics::inspector::player::{apply_player_edit, build_player_info};
 use ph2d_core::Vec2;
 use ph2d_ecs::{Name, SimWorld, Transform};
 use ph2d_editor::PlayerFieldEdit;
 use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, PlatformPlayer, RigidBody};
 
-/// **A premissa desta fixture, declarada uma vez** — todo corpo aqui é
-/// `Dynamic` e vira player pela porta do Inspector, então a lei corre nele com
-/// a perna ELÁSTICA. Passá-la a cada chamada seria repetir trinta vezes o que
-/// é um fato do arquivo; passá-la ERRADA deixaria verdes, pelo motivo errado,
-/// os gates que leem `reaction_is_live`/`push_is_live`/`spring_is_live`.
+/// **O gesto INTEIRO de anexar um player** — o ponto neutro do tipo, e depois o seed.
+///
+/// ⚠️ **`PlatformPlayer::default()`, nunca campo a campo.** A 1.ª versão montava o componente a
+/// partir do `PlayerConfig::STARTING_POINT` — uma SEGUNDA porta para a tradução que o `Default` já
+/// faz —, e ela apodreceu na 1.ª wave que acrescentou campos.
+///
+/// ⚠️ **Isto era o `PlayerFieldEdit::Add`, e ele MORREU na F3:** o botão «Make Platform Player»
+/// vivia dentro da §14, que hoje só se pinta **com** o componente lá — a porta ficaria fechada
+/// sobre a própria chave. Quem anexa é o `+` do cabeçalho.
+///
+/// ⚠️ **Ele atravessa a PORTA DE PRODUÇÃO** (`component_attach::attach_by_name`), e não um
+/// `insert` à mão: um atalho de teste que constrói o componente por outro caminho é a segunda porta
+/// que diverge — e o que os 27 gates da §14 têm de medir é o gesto que o artista faz. O que ele
+/// poupa é só o registo, que de outro modo cada um dos 27 montaria.
+pub fn attach_player(sim: &mut SimWorld, entity_bits: u64) {
+    let reg = crate::init::build_component_registry();
+    crate::component_attach::attach_by_name(
+        sim,
+        &reg,
+        entity_bits,
+        "ph2d::physics::PlatformPlayer",
+    )
+    .unwrap_or_else(|m| panic!("a porta de anexar recusou o player: {m}"));
+}
+
 const SPRUNG: ph2d_physics_ecs::PlayerLiveness = ph2d_physics_ecs::PlayerLiveness::SPRING;
 
 fn body(kind: BodyKind, shape: ColliderShape) -> (SimWorld, u64) {
@@ -396,3 +418,16 @@ fn removing_the_behaviour_gives_a_plain_dynamic_body_back() {
         "sem o componente a §14 tem de sumir"
     );
 }
+
+// Os irmãos de assunto, FILHOS deste como eram do `player.rs`: é o `super::*`
+// deles que carrega o vocabulário, e a `CAPSULE`/`body()` que os dois lados montam.
+#[path = "inspector_player_brake_tests.rs"]
+mod brake_tests;
+#[path = "inspector_player_brink_tests.rs"]
+mod brink_tests;
+#[path = "inspector_player_fall_tests.rs"]
+mod fall_tests;
+#[path = "inspector_player_leave_tests.rs"]
+mod leave_tests;
+#[path = "inspector_player_out_tests.rs"]
+mod out_tests;

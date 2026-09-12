@@ -8,7 +8,7 @@
 //! sobre o que aconteceu), e o **envelope acompanha** — o arco de limite de um
 //! joint apagado não pode ficar brilhando sozinho.
 
-use crate::physics::joint_tests::*;
+use super::joint_tests::*;
 use super::*;
 use crate::overlay::joints::{
     JOINT_BROKEN_RGBA, JOINT_DIM_RGBA, JOINT_OFF_DIM_RGBA, JOINT_OFF_RGBA, JOINT_RGBA,

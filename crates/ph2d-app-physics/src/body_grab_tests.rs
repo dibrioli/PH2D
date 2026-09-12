@@ -108,14 +108,7 @@ fn both_caller_conditions_are_required() {
     ] {
         let (_sim, mut bridge, e) = scene(BodyKind::Dynamic);
         assert_eq!(
-            crate::body_grab::take_hold(
-                &mut bridge,
-                &hand(),
-                e,
-                [0.0, 0.0],
-                playing,
-                simulating
-            ),
+            crate::body_grab::take_hold(&mut bridge, &hand(), e, [0.0, 0.0], playing, simulating),
             expect,
             "playing={playing} simulating={simulating}"
         );
@@ -238,8 +231,7 @@ fn the_two_tool_families_refuse_each_other() {
     assert!(!bridge.is_grabbing());
     // E a porta de ponto recusa quando a ferramenta é a mão.
     assert!(
-        crate::body_grab::poke_at(&mut bridge, &sim, &hand(), [0.0, 0.0], true, true)
-            .is_none(),
+        crate::body_grab::poke_at(&mut bridge, &sim, &hand(), [0.0, 0.0], true, true).is_none(),
         "a porta de ponto consumiu o press com a MÃO em mãos"
     );
     assert!(!bridge.is_poking());
@@ -259,39 +251,18 @@ fn the_point_tools_need_the_clock_and_the_toggle() {
         };
         let (sim, mut bridge, _e) = scene(BodyKind::Dynamic);
         assert!(
-            crate::body_grab::poke_at(
-                &mut bridge,
-                &sim,
-                &settings,
-                [0.0, 0.0],
-                false,
-                true
-            )
-            .is_none(),
+            crate::body_grab::poke_at(&mut bridge, &sim, &settings, [0.0, 0.0], false, true)
+                .is_none(),
             "{tool:?} disparou com o relógio parado"
         );
         assert!(
-            crate::body_grab::poke_at(
-                &mut bridge,
-                &sim,
-                &settings,
-                [0.0, 0.0],
-                true,
-                false
-            )
-            .is_none(),
+            crate::body_grab::poke_at(&mut bridge, &sim, &settings, [0.0, 0.0], true, false)
+                .is_none(),
             "{tool:?} disparou com a física desarmada"
         );
         assert!(
-            crate::body_grab::poke_at(
-                &mut bridge,
-                &sim,
-                &settings,
-                [0.0, 0.0],
-                true,
-                true
-            )
-            .is_some(),
+            crate::body_grab::poke_at(&mut bridge, &sim, &settings, [0.0, 0.0], true, true)
+                .is_some(),
             "{tool:?} não disparou com as duas condições satisfeitas"
         );
     }
@@ -305,8 +276,7 @@ fn the_point_tools_need_the_clock_and_the_toggle() {
 #[test]
 fn each_point_tool_does_its_own_thing() {
     let (sim, mut bridge, _e) = scene(BodyKind::Dynamic);
-    let hit =
-        crate::body_grab::poke_at(&mut bridge, &sim, &blast(), [0.0, 0.0], true, true);
+    let hit = crate::body_grab::poke_at(&mut bridge, &sim, &blast(), [0.0, 0.0], true, true);
     assert_eq!(hit, Some(1), "o estouro não contou o corpo sob ele");
     assert!(
         !bridge.is_poking(),
@@ -318,10 +288,7 @@ fn each_point_tool_does_its_own_thing() {
         tool: InteractionTool::Attract,
         ..InteractionSettings::default()
     };
-    assert!(
-        crate::body_grab::poke_at(&mut bridge, &sim, &pull, [0.0, 0.0], true, true)
-            .is_some()
-    );
+    assert!(crate::body_grab::poke_at(&mut bridge, &sim, &pull, [0.0, 0.0], true, true).is_some());
     assert!(
         bridge.attract_marks().is_some(),
         "a atração não armou campo nenhum"
@@ -333,11 +300,7 @@ fn each_point_tool_does_its_own_thing() {
 /// sempre, descrevendo um estouro de dez minutos atrás.
 #[test]
 fn the_blast_flash_ages_out() {
-    let mut flash = Some((
-        [1.0_f32, 2.0],
-        3.0_f32,
-        crate::body_grab::BLAST_FLASH_TICKS,
-    ));
+    let mut flash = Some(([1.0_f32, 2.0], 3.0_f32, crate::body_grab::BLAST_FLASH_TICKS));
     for _ in 0..crate::body_grab::BLAST_FLASH_TICKS - 1 {
         crate::body_grab::age_blast_flash(&mut flash);
         assert!(flash.is_some(), "o flash morreu cedo demais");

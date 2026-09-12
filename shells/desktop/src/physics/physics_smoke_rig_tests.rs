@@ -1,6 +1,6 @@
 //! A sonda da cena 67 + o gate que mantém a mensagem dela honesta (W-Rig).
 
-use super::*;
+use ph2d_app_physics::physics_smoke_rig::*;
 use ph2d_ecs::{Name, SimWorld};
 use ph2d_physics_ecs::{PhysicsBridge, PhysicsJoint, RigidBody};
 

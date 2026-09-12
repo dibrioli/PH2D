@@ -22,7 +22,8 @@ pub(crate) fn ordering(world: &World, bits: u64) -> bool {
 /// a lei da §7 precisa de afirmar **o que o campo diz**, não só que a seção existe. *Uma seção
 /// presente com um zero fabricado passaria a metade 1 e mentiria ao artista.*
 pub(crate) fn ordering_z_index(world: &World, bits: u64) -> Option<Option<i32>> {
-    crate::render_loop::inspector_ordering::build_ordering_info(world, bits, &[], 1).map(|i| i.z_index)
+    crate::render_loop::inspector_ordering::build_ordering_info(world, bits, &[], 1)
+        .map(|i| i.z_index)
 }
 
 pub(crate) fn sampling(world: &World, bits: u64) -> bool {
@@ -38,7 +39,8 @@ pub(crate) fn slice(world: &World, bits: u64) -> bool {
 }
 
 pub(crate) fn visibility_section(world: &World, bits: u64) -> bool {
-    crate::render_loop::inspector_visibility::build_visibility_section_info(world, bits, &[], 1).is_some()
+    crate::render_loop::inspector_visibility::build_visibility_section_info(world, bits, &[], 1)
+        .is_some()
 }
 
 pub(crate) fn anchors(world: &World, bits: u64) -> bool {

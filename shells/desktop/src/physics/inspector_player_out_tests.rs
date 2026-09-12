@@ -1,25 +1,21 @@
-//! **A SAÍDA do player, do lado da SHELL** (`W-PlayerOut`, A3) — irmão do
-//! `inspector_player_tests` pelo teto de LOC, cortado por ASSUNTO.
+//! **Os gates da §14 do inspector do player** — o sujeito é o painel, que vive na
+//! [`ph2d_app_physics::inspector::player`]; o que eles exercitam é a **PORTA DE
+//! PRODUÇÃO desta shell** (`component_attach::attach_by_name` sobre o registo do
+//! `init`), e é por isso que eles moram aqui.
 //!
-//! Lá mora *o que os verbos da §14 ESCREVEM no componente*; aqui, *o que o
-//! personagem PUBLICA e quem fica sabendo*. As duas famílias crescem por waves
-//! diferentes, e é isso que as torna dois arquivos e não um partido ao meio.
-//!
-//! ⚠️ **É o degrau do MEIO de uma volta com três:** o seam do painel prova que o
-//! clique chega ao barramento, o gate da ponte prova que o marcador vira SINAL,
-//! e sem este nada prova que o barramento e o marcador se encontram.
+//! ⚠️ **Um `#[cfg(test)]` é invisível do outro lado da fronteira de crate** (HOWTO §2),
+//! e o `attach_player` — o helper que os 29 gates partilham — atravessa a porta real
+//! de propósito: *«um atalho de teste que constrói o componente por outro caminho é a
+//! segunda porta que diverge»*, diz o doc dele, que veio junto. ⛔ Por isso ele NÃO
+//! ficou na crate com um `insert` à mão.
 
-use crate::inspector::player::{apply_player_edit, attach_player, build_player_info};
+use super::*;
+use ph2d_app_physics::inspector::player::{apply_player_edit, build_player_info};
 use ph2d_core::Vec2;
 use ph2d_ecs::{Name, SimWorld, Transform};
 use ph2d_editor::PlayerFieldEdit;
 use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, RigidBody};
 
-/// **A premissa desta fixture, declarada uma vez** — todo corpo aqui é
-/// `Dynamic` e vira player pela porta do Inspector, então a lei corre nele com
-/// a perna ELÁSTICA. Passá-la a cada chamada seria repetir trinta vezes o que
-/// é um fato do arquivo; passá-la ERRADA deixaria verdes, pelo motivo errado,
-/// os gates que leem `reaction_is_live`/`push_is_live`/`spring_is_live`.
 const SPRUNG: ph2d_physics_ecs::PlayerLiveness = ph2d_physics_ecs::PlayerLiveness::SPRING;
 
 const CAPSULE: ColliderShape = ColliderShape::Capsule {

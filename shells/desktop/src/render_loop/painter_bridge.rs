@@ -43,9 +43,9 @@
 //! texture in its place. So the composite (incl. base-layer opacity) IS the
 //! sprite, in-place, through the same sprite shader as Apply.
 
+use crate::app_state::{PainterPreview, PainterPreviewGpu};
 use crate::render_loop::painter_bridge_assets::{load_brush_shape_image, load_brush_texture_image};
 use crate::render_loop::painter_gpu_preview::{self, PainterGpuPreview};
-use crate::app_state::{PainterPreview, PainterPreviewGpu};
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_ecs::SimWorld;
 use ph2d_editor::HeroScreen;
@@ -763,33 +763,35 @@ pub(super) fn dispatch(
     {
         // Record this frame's dispatch info + sub-phase split; the frame timer (`run_render_frame`)
         // pairs it with the whole-frame time and the aggregator prints ONE summary per window.
-        crate::render_loop::paint_perf::record_dispatch(crate::render_loop::paint_perf::FrameInfo {
-            gpu: gpu_owns_preview,
-            dispatch_ms: t0.elapsed().as_secs_f64() as f32 * 1e3,
-            preview_ms: ph_preview,
-            panel_ms: ph_panel,
-            overlay_ms: ph_overlay,
-            ov_tol_ms: ph_ov_tol,
-            ov_selection_ms: ph_ov_selection,
-            ov_chrome_ms: ph_ov_chrome,
-            panel_sub: ph_panel_sub,
-            chrome_sub: ph_chrome_sub,
-            upload_ms: elapsed_ms(m_upload),
-            // ⚠️ Preenchidos pelo `record_dispatch` a partir do acumulador: o fold é anotado de DENTRO
-            // do `try_drive` (que roda na fase `preview` acima), onde a janela dele é resolvida — aqui
-            // não há como saber se ela foi um retângulo ou a tela.
-            fold_ms: 0.0,
-            fold_full: false,
-            w: dbg_dims.0,
-            h: dbg_dims.1,
-            gray: dbg_gray,
-            active_is_mask: dbg_active_is_mask,
-            lane_partial: painter_dirty_bbox.is_some(),
-            trivial: dbg_trivial,
-            branch: dbg_branch,
-            impasto: dbg_impasto,
-            mask_scratch: dbg_mask_scratch,
-        });
+        crate::render_loop::paint_perf::record_dispatch(
+            crate::render_loop::paint_perf::FrameInfo {
+                gpu: gpu_owns_preview,
+                dispatch_ms: t0.elapsed().as_secs_f64() as f32 * 1e3,
+                preview_ms: ph_preview,
+                panel_ms: ph_panel,
+                overlay_ms: ph_overlay,
+                ov_tol_ms: ph_ov_tol,
+                ov_selection_ms: ph_ov_selection,
+                ov_chrome_ms: ph_ov_chrome,
+                panel_sub: ph_panel_sub,
+                chrome_sub: ph_chrome_sub,
+                upload_ms: elapsed_ms(m_upload),
+                // ⚠️ Preenchidos pelo `record_dispatch` a partir do acumulador: o fold é anotado de DENTRO
+                // do `try_drive` (que roda na fase `preview` acima), onde a janela dele é resolvida — aqui
+                // não há como saber se ela foi um retângulo ou a tela.
+                fold_ms: 0.0,
+                fold_full: false,
+                w: dbg_dims.0,
+                h: dbg_dims.1,
+                gray: dbg_gray,
+                active_is_mask: dbg_active_is_mask,
+                lane_partial: painter_dirty_bbox.is_some(),
+                trivial: dbg_trivial,
+                branch: dbg_branch,
+                impasto: dbg_impasto,
+                mask_scratch: dbg_mask_scratch,
+            },
+        );
     }
     !apply_selection.is_empty()
 }

@@ -217,7 +217,12 @@ pub(crate) fn apply_wheel_edit(
                 &ph2d_physics_ecs::WestonAxle,
             );
         } else {
-            crate::render_loop::inspector_ordering::queue_remove(queue, registry, entity_bits, WESTON);
+            crate::render_loop::inspector_ordering::queue_remove(
+                queue,
+                registry,
+                entity_bits,
+                WESTON,
+            );
         }
         return true;
     }

@@ -493,7 +493,7 @@ fn gravity_on_screen(gravity: [f32; 2], camera: &Camera2d, window: WindowSize) -
 }
 
 #[cfg(test)]
-#[path = "physics_overlay_joints_tests.rs"]
+#[path = "joints_tests.rs"]
 mod joint_tests;
 
 /// Os gates do TRILHO (Slider) — a única figura cujo alcance é uma DISTÂNCIA e
@@ -504,31 +504,31 @@ mod joint_tests;
 /// algumas no pai e algumas aninhadas num arquivo de teste — o que também é o
 /// que devolve ao `joint_tests` a folga que ele tinha perdido para o cap.
 #[cfg(test)]
-#[path = "physics_overlay_joint_rail_tests.rs"]
+#[path = "joint_rail_tests.rs"]
 mod joint_rail_tests;
 
 /// Os gates do joint ROMPIDO (W-J7): tudo aqui descreve um joint que **não está
 /// segurando**.
 #[cfg(test)]
-#[path = "physics_overlay_joint_break_tests.rs"]
+#[path = "joint_break_tests.rs"]
 mod joint_break_tests;
 
 /// Os gates do joint DESLIGADO (W-J8) — o vizinho do anterior, e a distinção
 /// entre os dois é o assunto: um deixou de segurar, o outro foi desarmado.
 #[cfg(test)]
-#[path = "physics_overlay_joint_active_tests.rs"]
+#[path = "joint_active_tests.rs"]
 mod joint_active_tests;
 
 #[cfg(test)]
-#[path = "physics_overlay_joint_envelope_tests.rs"]
+#[path = "joint_envelope_tests.rs"]
 mod joint_envelope_tests;
 
 /// Os gates da POLIA — o corte é por assunto: a única figura cujo caminho tem
 /// quantos nós o artista quiser, e cada nó é um círculo que a corda abraça.
 #[cfg(test)]
-#[path = "physics_overlay_joint_world_tests.rs"]
+#[path = "joint_world_tests.rs"]
 mod joint_world_tests;
 
 #[cfg(test)]
-#[path = "physics_overlay_joint_pulley_tests.rs"]
+#[path = "joint_pulley_tests.rs"]
 mod joint_pulley_tests;

@@ -95,7 +95,8 @@ pub(crate) fn prewarm(
     // O slot do renderer é liberado no frame seguinte (a pilha ainda é trivial, então o produtor CPU
     // reassume) e isso está certo: o que precisava sobreviver são as texturas INTERNAS dos passes, que
     // moram no `session_slot` e que o `release_slot` não toca.
-    let Some((ops, adj_luts)) = crate::render_loop::painter_gpu_flatten::flatten_for_gpu(painter.layers())
+    let Some((ops, adj_luts)) =
+        crate::render_loop::painter_gpu_flatten::flatten_for_gpu(painter.layers())
     else {
         return;
     };

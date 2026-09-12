@@ -27,9 +27,9 @@
 //! cargo test -p ph2d-host-desktop --bins --release -- --ignored --nocapture why_the_warp_gizmo_is_not_there
 //! ```
 
+use crate::motion::motion_state::MotionState;
 use crate::render_loop::warp_gizmo;
 use crate::render_loop::warp_gizmo_fixtures as fx;
-use crate::motion::motion_state::MotionState;
 use ph2d_nodegraph::graph::NodeId;
 
 /// `motion.grid → <nó> → motion.output`, marchada na CPU — a rota que ESTA sonda escolhe.

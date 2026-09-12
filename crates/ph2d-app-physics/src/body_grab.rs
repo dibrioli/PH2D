@@ -67,7 +67,6 @@
 use ph2d_ecs::Entity;
 use ph2d_physics_ecs::{InteractionSettings, InteractionTool, PhysicsBridge};
 
-
 /// **Quantos ticks o flash de uma explosão vive.** Um estouro é instantâneo, então
 /// sem marca decaída o único vestígio visível são corpos que se moveram — a mesma
 /// razão (e a mesma ordem de grandeza) do flash de contato do W-TickContacts.
@@ -194,7 +193,6 @@ pub fn age_blast_flash(flash: &mut Option<([f32; 2], f32, u32)>) {
         }
     }
 }
-
 
 #[cfg(test)]
 #[path = "body_grab_tests.rs"]

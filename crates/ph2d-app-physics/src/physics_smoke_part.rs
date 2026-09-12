@@ -31,7 +31,7 @@ const HANDLE_HALF: [f32; 2] = [0.15, 0.5];
 /// editáveis **uma a uma**.
 const GUARD_HALF: [f32; 2] = [0.30, 0.10];
 /// O palhetão de cada chave — a ÚNICA diferença entre as duas faixas.
-const BIT_HALF_X: [f32; 2] = [0.62, 0.22];
+pub const BIT_HALF_X: [f32; 2] = [0.62, 0.22];
 const BIT_HALF_Y: f32 = 0.15;
 
 const DROP_Y: f32 = 4.2;

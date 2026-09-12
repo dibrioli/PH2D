@@ -335,5 +335,5 @@ fn sweep_ghost(
 }
 
 #[cfg(test)]
-#[path = "physics_overlay_probes_tests.rs"]
+#[path = "probes_tests.rs"]
 mod tests;

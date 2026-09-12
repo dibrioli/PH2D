@@ -235,7 +235,7 @@ fn a_body_reports_how_many_parts_hang_from_it() {
 #[test]
 fn the_add_shape_apply_still_overwrites_and_that_is_why_the_panel_refuses_it() {
     let (mut sim, _arm, leg) = ell();
-    super::inspector_physics_tests::apply(&mut sim, leg, ph2d_editor::PhysicsFieldEdit::AddShape);
+    crate::physics::physics_tests::apply(&mut sim, leg, ph2d_editor::PhysicsFieldEdit::AddShape);
     let col = sim.world().get::<Collider>(leg).copied().expect("collider");
     let ColliderShape::Cuboid { half_x, half_y } = col.shape else {
         panic!("a forma virou outra coisa");
@@ -259,7 +259,7 @@ fn the_add_shape_apply_still_overwrites_and_that_is_why_the_panel_refuses_it() {
 #[test]
 fn removing_a_part_leaves_a_plain_drawing() {
     let (mut sim, arm, leg) = ell();
-    super::inspector_physics_tests::apply(&mut sim, leg, ph2d_editor::PhysicsFieldEdit::Remove);
+    crate::physics::physics_tests::apply(&mut sim, leg, ph2d_editor::PhysicsFieldEdit::Remove);
     assert!(
         sim.world().get::<Collider>(leg).is_none(),
         "a forma continua lá — a peça era porta de mão única"
@@ -363,7 +363,7 @@ fn the_mass_seed_of_a_compound_body_counts_its_parts() {
         ));
     }
 
-    super::inspector_physics_tests::apply(
+    crate::physics::physics_tests::apply(
         &mut sim,
         body,
         ph2d_editor::PhysicsFieldEdit::MassMode(true),
@@ -410,7 +410,7 @@ fn the_mass_seed_of_a_plain_body_is_its_own_shape() {
             Transform::from_translation(Vec2::new(0.0, 0.0)),
         ))
         .id();
-    super::inspector_physics_tests::apply(
+    crate::physics::physics_tests::apply(
         &mut sim,
         body,
         ph2d_editor::PhysicsFieldEdit::MassMode(true),

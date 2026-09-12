@@ -205,5 +205,5 @@ pub fn joint_readouts(
 }
 
 #[cfg(test)]
-#[path = "physics_overlay_joint_readout_tests.rs"]
+#[path = "joint_readout_tests.rs"]
 mod tests;

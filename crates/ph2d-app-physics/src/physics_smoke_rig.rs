@@ -125,10 +125,6 @@ pub fn build_rig_doll(world: &mut World) -> Entity {
     torso
 }
 
-#[cfg(test)]
-#[path = "physics_smoke_rig_tests.rs"]
-mod tests;
-
 /// **Cena 67 (W-Rig).** Um boneco de sprites, sem física nenhuma — e um
 /// clique que o transforma num ragdoll.
 pub fn physics_smoke_rig(ctx: &mut crate::SceneCtx<'_>) {

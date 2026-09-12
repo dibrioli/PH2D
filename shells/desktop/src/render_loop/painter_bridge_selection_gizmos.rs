@@ -141,6 +141,11 @@ pub(super) fn draw_selection_gizmos(
             4 => "P", // a peca COLADA — nao e operacao de conjunto, e um `n` aqui diria que e
             _ => "n",
         };
-        crate::render_loop::painter_bridge_gizmo::center_glyph_handle(scene, map(g.center), &pal, op_glyph);
+        crate::render_loop::painter_bridge_gizmo::center_glyph_handle(
+            scene,
+            map(g.center),
+            &pal,
+            op_glyph,
+        );
     }
 }

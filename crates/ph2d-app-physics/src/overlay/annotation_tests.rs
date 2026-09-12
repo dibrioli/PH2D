@@ -14,9 +14,7 @@
 use super::outlines;
 use super::tests::{camera, points, window};
 use crate::overlay::annotations::BELT_RGBA;
-use crate::overlay::annotations::{
-    EFFECTOR_RGBA, FALLOFF_RGBA, FALLOFF_RING, TORQUE_RGBA,
-};
+use crate::overlay::annotations::{EFFECTOR_RGBA, FALLOFF_RGBA, FALLOFF_RING, TORQUE_RGBA};
 use ph2d_physics_ecs::{BodyKind, ColliderShape};
 
 /// **A force zone draws an arrow showing which way it blows — and keeps drawing it

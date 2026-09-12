@@ -40,7 +40,9 @@ use ph2d_ecs::World;
 use ph2d_editor::HeroScreen;
 use ph2d_timeline::{PoseSample, PropKind, TimelineState, autokey_props};
 
-use crate::render_loop::record_fit::{REC_SIMPLIFY_REL, REC_SMOOTH_PASSES, RecSpan, simplify_recorded};
+use crate::render_loop::record_fit::{
+    REC_SIMPLIFY_REL, REC_SMOOTH_PASSES, RecSpan, simplify_recorded,
+};
 use crate::render_loop::timeline_bridge::{default_interp, sample_prop_value};
 
 /// The shell-owned state of the auto-key / pose machinery (one per `App`).

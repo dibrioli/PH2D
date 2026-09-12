@@ -7,7 +7,6 @@ use ph2d_physics_ecs::{
     BodyKind, Collider, ColliderShape, JointKind, JointWorldAnchor, PhysicsBridge, PhysicsJoint,
     RigidBody,
 };
-
 fn one_body() -> (SimWorld, ph2d_ecs::Entity) {
     let mut sim = SimWorld::new();
     let e = sim
@@ -280,13 +279,9 @@ fn dragging_the_ring_moves_a_world_pins_nail_and_the_dot_moves_where_it_hangs() 
             Transform::from_translation(Vec2::new(0.0, 5.0)),
         ))
         .id();
-    let j2 = crate::physics::joint::create_joint(
-        &mut sim2,
-        a.to_bits(),
-        b.to_bits(),
-        JointKind::Pin,
-    )
-    .expect("joint");
+    let j2 =
+        crate::physics::joint::create_joint(&mut sim2, a.to_bits(), b.to_bits(), JointKind::Pin)
+            .expect("joint");
     let mut bridge2 = PhysicsBridge::new();
     bridge2.dispatch(&mut sim2, false, 0);
     let before2 = *sim2.world().get::<PhysicsJoint>(j2).expect("joint");

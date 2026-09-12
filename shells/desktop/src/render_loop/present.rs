@@ -200,8 +200,9 @@ impl crate::App {
                 // fundo (senão o borrão delas escapa por fora da silhueta, como um halo) e são
                 // desenhadas depois, do outro lado do vidro. `None` sem receita aberta, e aí toda
                 // linha abaixo é a de sempre.
-                let held = frosting
-                    .then(|| crate::render_loop::present_frost::lift(sim, present, &mut self.frost_instances));
+                let held = frosting.then(|| {
+                    crate::render_loop::present_frost::lift(sim, present, &mut self.frost_instances)
+                });
                 if banded {
                     crate::render_loop::present_bands::draw_lower_bands(
                         surface.gpu(),

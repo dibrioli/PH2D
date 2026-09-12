@@ -237,9 +237,11 @@ fn the_orphans_are_counted_and_the_gesture_touches_only_them() {
 fn the_card_lists_the_family_and_marks_the_current_one() {
     let (mut sim, r, base, variant) = family();
     let inst = instantiate(&mut sim, &r, base);
-    let info =
-        crate::render_loop::inspector_properties::build_properties_info(&mut sim, Some(inst.to_bits()))
-            .expect("o cartao de propriedades");
+    let info = crate::render_loop::inspector_properties::build_properties_info(
+        &mut sim,
+        Some(inst.to_bits()),
+    )
+    .expect("o cartao de propriedades");
     // ⚠️ **Um eixo agora, e no modo plano ele chama-se `Variant`** — a fileira é a mesma; o que
     // mudou é que ela passou a saber ter irmãs (a fatia dos eixos, 2026-08-30).
     // ⚠️ **E ela MUDOU-SE de cartão** (2026-08-31): as fileiras são do cartão de PROPRIEDADES, que
@@ -282,8 +284,10 @@ fn a_lonely_master_offers_no_variant_row() {
     ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
     ph2d_ecs::assign_master_pieces(sim.world_mut());
     let inst = instantiate(&mut sim, &r, master);
-    let info =
-        crate::render_loop::inspector_properties::build_properties_info(&mut sim, Some(inst.to_bits()));
+    let info = crate::render_loop::inspector_properties::build_properties_info(
+        &mut sim,
+        Some(inst.to_bits()),
+    );
     // ⚠️ **`None`, e não «uma lista vazia»**: `Solo` não declara propriedade nenhuma e não tem
     // família, então não há cartão — que é a lei da F3 (*o Inspector mostra o que o objeto TEM*).
     assert!(
@@ -308,9 +312,11 @@ fn an_unrelated_master_is_not_offered_as_a_variant() {
     ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
     ph2d_ecs::assign_master_pieces(sim.world_mut());
     let inst = instantiate(&mut sim, &r, base);
-    let info =
-        crate::render_loop::inspector_properties::build_properties_info(&mut sim, Some(inst.to_bits()))
-            .expect("o cartao de propriedades");
+    let info = crate::render_loop::inspector_properties::build_properties_info(
+        &mut sim,
+        Some(inst.to_bits()),
+    )
+    .expect("o cartao de propriedades");
     let other_id = sid(&sim, other);
     assert!(
         !info

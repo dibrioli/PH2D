@@ -18,8 +18,8 @@
 //! a from-scratch recompose of the document. Anything the protocol drops, misplaces or staleness
 //! leaks — vanished relief, displaced patch rects, missed settle frames — is a byte diff here.
 
-use crate::render_loop::painter_bridge::{UploadPlan, extract_region, plan_upload};
 use crate::app_state::{PainterPreview, PainterPreviewGpu};
+use crate::render_loop::painter_bridge::{UploadPlan, extract_region, plan_upload};
 use ph2d_editor::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool};
 use ph2d_render::premultiply_rgba8;
 use ph2d_tool_painter::PainterTool;

@@ -208,7 +208,7 @@ pub fn build_player_info(
 /// pelo `+` e **nada aparece**. *Um componente presente e invisível lê-se como defeito*, que é
 /// exatamente a doença que a F3 existe para curar. A física continua verdadeira; ela é assunto da
 /// §11, onde o tipo do corpo se muda.
-fn player_section_applies(_kind: BodyKind, has_player: bool) -> bool {
+pub fn player_section_applies(_kind: BodyKind, has_player: bool) -> bool {
     has_player
 }
 
@@ -216,7 +216,7 @@ fn player_section_applies(_kind: BodyKind, has_player: bool) -> bool {
 ///
 /// O mínimo mais uma folga de 20% — um valor exatamente no piso deixa a cápsula
 /// tangente, que é o defeito, e não a cura.
-fn fitted_float(shape: Option<ColliderShape>, max_slope_deg: f32) -> Option<f32> {
+pub fn fitted_float(shape: Option<ColliderShape>, max_slope_deg: f32) -> Option<f32> {
     let min = shape.and_then(|s| min_float_for(s, max_slope_deg))?;
     min.is_finite().then_some(min * 1.2)
 }
@@ -296,32 +296,6 @@ pub fn seed_attached_player(sim: &mut SimWorld, entity_bits: u64) {
     }
     p.float_height = fit;
     sim.world_mut().entity_mut(entity).insert(p);
-}
-
-/// **O gesto INTEIRO de anexar um player** — o ponto neutro do tipo, e depois o seed.
-///
-/// ⚠️ **`PlatformPlayer::default()`, nunca campo a campo.** A 1.ª versão montava o componente a
-/// partir do `PlayerConfig::STARTING_POINT` — uma SEGUNDA porta para a tradução que o `Default` já
-/// faz —, e ela apodreceu na 1.ª wave que acrescentou campos.
-///
-/// ⚠️ **Isto era o `PlayerFieldEdit::Add`, e ele MORREU na F3:** o botão «Make Platform Player»
-/// vivia dentro da §14, que hoje só se pinta **com** o componente lá — a porta ficaria fechada
-/// sobre a própria chave. Quem anexa é o `+` do cabeçalho.
-///
-/// ⚠️ **Ele atravessa a PORTA DE PRODUÇÃO** (`component_attach::attach_by_name`), e não um
-/// `insert` à mão: um atalho de teste que constrói o componente por outro caminho é a segunda porta
-/// que diverge — e o que os 27 gates da §14 têm de medir é o gesto que o artista faz. O que ele
-/// poupa é só o registo, que de outro modo cada um dos 27 montaria.
-#[cfg(test)]
-pub fn attach_player(sim: &mut SimWorld, entity_bits: u64) {
-    let reg = crate::init::build_component_registry();
-    crate::component_attach::attach_by_name(
-        sim,
-        &reg,
-        entity_bits,
-        "ph2d::physics::PlatformPlayer",
-    )
-    .unwrap_or_else(|m| panic!("a porta de anexar recusou o player: {m}"));
 }
 
 /// **Aplica uma edição da §14.** Sem fan-out — a seção descreve UM personagem.

@@ -159,12 +159,9 @@ pub(crate) fn apply(
         // **A = o PAI.** O filho pende do pai, e é o lado A que o pivô segue
         // (`sync_joint_pivots`, W-AnchorFollow) — invertido, o dot de um braço
         // seguiria a mão.
-        if let Some(j) = crate::physics::joint::create_joint(
-            sim,
-            parent.to_bits(),
-            child.to_bits(),
-            kind,
-        ) {
+        if let Some(j) =
+            crate::physics::joint::create_joint(sim, parent.to_bits(), child.to_bits(), kind)
+        {
             // **O rig nasce com BATENTES, e as outras duas rotas não.** Não é uma
             // propriedade do "Pin" — é uma propriedade de *isto é um RIG*: sem
             // batente o boneco dobra a cabeça 176° para dentro do peito (medido),

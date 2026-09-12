@@ -412,12 +412,7 @@ pub fn spring_zigzag(a: Point, b: Point) -> BezPath {
 /// da GRAVIDADE** — a mesma fonte que decide para onde é "para cima" no empuxo
 /// (W-Buoyancy); sem gravidade a corda desenha reta, degenerado que a física
 /// resolve sozinha.
-pub fn rope_span(
-    a: Point,
-    b: Point,
-    slack_ratio: f64,
-    gravity_screen: (f64, f64),
-) -> BezPath {
+pub fn rope_span(a: Point, b: Point, slack_ratio: f64, gravity_screen: (f64, f64)) -> BezPath {
     let (dx, dy) = (b.x - a.x, b.y - a.y);
     let d = dx.hypot(dy);
     let mut p = BezPath::new();

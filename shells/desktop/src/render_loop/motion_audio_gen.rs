@@ -188,7 +188,8 @@ pub(crate) fn publish(motion: &mut MotionState, seconds: f64) {
         // qualquer um dos oito params fazia as duas chaves DIVERGIREM: o nó pedia uma análise
         // que ninguém publicou, `levels` vinha vazio, e ele emitia **um campo de zeros**. Todas
         // as bandas planas, sem erro nenhum.
-        let p = crate::render_loop::motion_externals::resolved_params(motion, id, seconds, &MANIFEST);
+        let p =
+            crate::render_loop::motion_externals::resolved_params(motion, id, seconds, &MANIFEST);
         let spec = BandSpec::from_params(|name| p.get(name).copied().unwrap_or(0.0));
         let file = motion
             .doc

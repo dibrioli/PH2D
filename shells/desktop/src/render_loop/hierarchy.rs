@@ -388,7 +388,13 @@ pub(super) fn dispatch(
     // ⭐⭐ **O gesto de APAGAR vive no irmão** [`crate::render_loop::hierarchy_delete`] — corte por assunto,
     // imposto pelo tecto de 600 LOC quando a recusa de uma peça entrou (F5.10). Ali estão as TRÊS
     // respostas que um `Delete` pode ter nesta casa, e a voz que as distingue.
-    if crate::render_loop::hierarchy_delete::drain(delete_row, hero, hero_live.as_ref(), sim, toasts) {
+    if crate::render_loop::hierarchy_delete::drain(
+        delete_row,
+        hero,
+        hero_live.as_ref(),
+        sim,
+        toasts,
+    ) {
         title_dirty = true;
     }
     // M14.6 D: drain pending hierarchy-row click → sync

@@ -8,7 +8,6 @@ use ph2d_input::{
     ActionState, Event, Input, InputMap, InputState, Key, PLAYER_JUMP, PLAYER_MOVE_LEFT,
     PLAYER_MOVE_RIGHT,
 };
-
 const LEFT: Key = Key(0xF702);
 const RIGHT: Key = Key(0xF703);
 const Z: Key = Key(0x5A);

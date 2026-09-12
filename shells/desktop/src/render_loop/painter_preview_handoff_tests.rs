@@ -2,11 +2,11 @@
 //! CPU→GPU→CPU dance on real hardware. Split from `painter_preview_pipeline_tests.rs` (HR-18 file
 //! LOC cap); the harness (Screen, oracles, the smoke arming) lives there and is shared.
 
+use crate::app_state::{PainterPreview, PainterPreviewGpu};
 use crate::render_loop::painter_bridge::{UploadPlan, plan_upload};
 use crate::render_loop::painter_preview_pipeline_tests::{
     ENTITY, assert_screen_equals, cp, impasto_tool, screen_truth,
 };
-use crate::app_state::{PainterPreview, PainterPreviewGpu};
 use ph2d_editor::tool::{CanvasPaintTool, PointerPhase};
 use ph2d_painter_effects::adjustments::AdjustmentKind;
 use ph2d_tool_painter::PainterTool;

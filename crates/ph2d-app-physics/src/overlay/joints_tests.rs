@@ -9,8 +9,8 @@
 //! só é acusada onde a restrição não está sendo imposta**, e **cada ponta diz
 //! de quem é**.
 
-use super::crate::overlay::joint_glyphs::LIMIT_ARC_PX;
 use super::{JOINT_DIM_RGBA, JOINT_RGBA, JOINT_STRAIN_RGBA, joint_marks};
+use crate::overlay::joint_glyphs::LIMIT_ARC_PX;
 use ph2d_host::WindowSize;
 use ph2d_physics_ecs::{JointKind, JointView};
 use ph2d_render::Camera2d;
@@ -302,7 +302,7 @@ fn the_wheel_draws_a_hub_and_a_spring() {
         .copied()
         .filter(|(x, y)| {
             let r = (x - anchor.0).hypot(y - anchor.1);
-            (r - super::crate::overlay::joint_glyphs::PIN_RING_PX).abs() < 1.0
+            (r - crate::overlay::joint_glyphs::PIN_RING_PX).abs() < 1.0
         })
         .collect();
     let (mut left, mut right, mut up, mut down) = (false, false, false, false);
@@ -593,5 +593,5 @@ fn a_joint_whose_anchors_coincide_is_still_visible() {
     );
 }
 
-#[path = "physics_overlay_joint_pose_tests.rs"]
+#[path = "joint_pose_tests.rs"]
 mod pose_tests;

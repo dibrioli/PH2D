@@ -181,11 +181,8 @@ impl App {
             // ponto é qual é a porta pura `gesture_points` — a troca escrita
             // aqui nos dois braços nasceria invertida num terceiro.
             (Some(a), None) | (None, Some(a)) => {
-                let (on_body, anchor) = crate::physics::joint_world::gesture_points(
-                    d.body_a.is_some(),
-                    d.from,
-                    world,
-                );
+                let (on_body, anchor) =
+                    crate::physics::joint_world::gesture_points(d.body_a.is_some(), d.from, world);
                 crate::physics::joint_world::create_world_pin_at(
                     &mut gfx.sim,
                     a.to_bits(),
@@ -299,9 +296,7 @@ pub(crate) fn join_chain(
     let mut made = 0;
     let mut last = None;
     for pair in order.windows(2) {
-        if let Some(j) =
-            crate::physics::joint::create_joint(sim, pair[0], pair[1], kind)
-        {
+        if let Some(j) = crate::physics::joint::create_joint(sim, pair[0], pair[1], kind) {
             made += 1;
             last = Some(j);
         }

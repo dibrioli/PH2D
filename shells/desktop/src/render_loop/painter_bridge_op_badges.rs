@@ -67,7 +67,9 @@ pub(super) fn draw_op_badges(
     let scene = vector_scene.inner_mut();
     // Edit-in-tile (Enio 2026-07-11): draw every parked shape's badge in each visible wrapped tile too, so a
     // multi-shape set is selectable/re-editable from any tile — matching the active editor's tiled overlay.
-    for (ox, oy) in crate::render_loop::painter_bridge_overlays::overlay_tile_offsets(painter, iw, ih) {
+    for (ox, oy) in
+        crate::render_loop::painter_bridge_overlays::overlay_tile_offsets(painter, iw, ih)
+    {
         let affine = base_affine * Affine::translate((ox, oy));
         let map = |p: [f32; 2]| affine * Point::new(f64::from(p[0]), f64::from(p[1]));
         for b in &badges {
@@ -79,7 +81,12 @@ pub(super) fn draw_op_badges(
                     crate::render_loop::painter_bridge_gizmo::stroke_open(scene, &pts, &pal);
                 }
             }
-            crate::render_loop::painter_bridge_gizmo::center_glyph_handle(scene, map(b.center), &pal, b.glyph);
+            crate::render_loop::painter_bridge_gizmo::center_glyph_handle(
+                scene,
+                map(b.center),
+                &pal,
+                b.glyph,
+            );
         }
     }
 }

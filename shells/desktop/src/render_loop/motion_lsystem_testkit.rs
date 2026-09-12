@@ -42,7 +42,8 @@ pub(crate) fn published(state: &MotionState, key: &str) -> Option<usize> {
 
 /// A chave que a shell usa, lida pela MESMA porta que o `eval` usa.
 pub(crate) fn key_of(state: &mut MotionState, n: ph2d_nodegraph::graph::NodeId) -> String {
-    let resolved = crate::render_loop::motion_externals::resolved_params(state, n, 0.0, &ls::MANIFEST);
+    let resolved =
+        crate::render_loop::motion_externals::resolved_params(state, n, 0.0, &ls::MANIFEST);
     let texts = state.doc.graph.node_text_param_overrides(n);
     let text = |k: &str| texts.and_then(|m| m.get(k)).cloned().unwrap_or_default();
     ls::ribbon_key(
@@ -151,7 +152,11 @@ pub(crate) fn factory_plant_with_leaf(
 pub(crate) fn publish_vector_object(state: &mut MotionState, name: &str, geometry_id: u32) {
     state.pump.cook.set_external(
         name.to_string(),
-        crate::render_loop::motion_bridge::appearance_vector([2.0, 3.0], [1.0, 1.0, 1.0, 1.0], geometry_id),
+        crate::render_loop::motion_bridge::appearance_vector(
+            [2.0, 3.0],
+            [1.0, 1.0, 1.0, 1.0],
+            geometry_id,
+        ),
     );
 }
 

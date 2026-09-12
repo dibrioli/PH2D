@@ -183,7 +183,9 @@ pub(crate) fn dispatch(hero: &mut HeroScreen, toasts: &mut ToastQueue) -> bool {
             // [`crate::render_loop::tokens_bridge_dtcg`], porque um diálogo nativo não corre num teste e o que
             // decide (que modo recebe, o que se mantém, por que porta se escreve) tem de ser
             // dirigível sem tocar num arquivo.
-            TokensIntent::ExportDtcg => crate::render_loop::tokens_bridge_dtcg::export(theme, toasts),
+            TokensIntent::ExportDtcg => {
+                crate::render_loop::tokens_bridge_dtcg::export(theme, toasts)
+            }
             TokensIntent::ImportDtcg => {
                 changed |= crate::render_loop::tokens_bridge_dtcg::import(theme, toasts);
             }

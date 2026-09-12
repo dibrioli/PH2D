@@ -3047,7 +3047,8 @@ impl crate::App {
                 // Two numbers now — the loop's start is honoured (W-BakeRange),
                 // so a `[2s, 5s]` loop bakes `[2s, 5s]` and the button says so.
                 {
-                    let (bs, be) = crate::physics::bake::bake_range(&self.timeline.doc, &self.playhead);
+                    let (bs, be) =
+                        crate::physics::bake::bake_range(&self.timeline.doc, &self.playhead);
                     (bs as f32, be as f32)
                 },
                 // Which pose channels the Bake selector shows as chosen.
@@ -13192,7 +13193,8 @@ impl crate::App {
                     .iter()
                     .map(|&b| ph2d_ecs::Entity::from_bits(b))
                     .collect();
-                let (start, end) = crate::physics::bake::bake_range(&self.timeline.doc, &self.playhead);
+                let (start, end) =
+                    crate::physics::bake::bake_range(&self.timeline.doc, &self.playhead);
                 let outcome = crate::physics::bake::bake_selection(
                     &mut self.timeline,
                     physics,

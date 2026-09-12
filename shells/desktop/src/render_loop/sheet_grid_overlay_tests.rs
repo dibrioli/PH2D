@@ -148,21 +148,25 @@ fn the_lines_land_on_the_cells_the_ghosts_draw() {
             let want_cx = l.x0 + (f64::from(col) + 0.5) * l.cell_w;
             let want_cy = l.y0 - (f64::from(row) + 0.5) * l.cell_h;
             // Onde o fantasma a põe (deslocamento relativo à viva, espelho aplicado no `ghost`).
-            let got =
-                match crate::render_loop::sim_extract_sheet::cell(&s.0, s.1, [0.0, 0.0, 1.0, 1.0], i) {
-                    Some((_, off)) => {
-                        let (mut dx, mut dy) = (f64::from(off[0]), f64::from(off[1]));
-                        if s.0.flip_x {
-                            dx = -dx;
-                        }
-                        if s.0.flip_y {
-                            dy = -dy;
-                        }
-                        (l.live_cx + dx, l.live_cy + dy)
+            let got = match crate::render_loop::sim_extract_sheet::cell(
+                &s.0,
+                s.1,
+                [0.0, 0.0, 1.0, 1.0],
+                i,
+            ) {
+                Some((_, off)) => {
+                    let (mut dx, mut dy) = (f64::from(off[0]), f64::from(off[1]));
+                    if s.0.flip_x {
+                        dx = -dx;
                     }
-                    // A célula viva não tem fantasma — ela está no centro dela própria.
-                    None => (l.live_cx, l.live_cy),
-                };
+                    if s.0.flip_y {
+                        dy = -dy;
+                    }
+                    (l.live_cx + dx, l.live_cy + dy)
+                }
+                // A célula viva não tem fantasma — ela está no centro dela própria.
+                None => (l.live_cx, l.live_cy),
+            };
             assert!(
                 (got.0 - want_cx).abs() < 1.0e-9 && (got.1 - want_cy).abs() < 1.0e-9,
                 "grelha {hf}x{vf} viva {live}: a celula {i} esta' em {got:?} e a linha diz \

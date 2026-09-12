@@ -7,9 +7,9 @@
 //! §12 desenha a partir de NÚMEROS, e por isso as que erram quando um tipo novo
 //! chega e ninguém pergunta a porta dele.
 
-use super::crate::overlay::joint_glyphs::LIMIT_ARC_PX;
-use crate::physics::joint_tests::{angular_spread, marks, points_of, view};
+use super::joint_tests::{angular_spread, marks, points_of, view};
 use super::{JOINT_DIM_RGBA, JOINT_RGBA};
+use crate::overlay::joint_glyphs::LIMIT_ARC_PX;
 use ph2d_physics_ecs::{JointKind, JointView};
 
 /// **Um limite autorado é um limite DESENHADO** — e um pino livre não inventa

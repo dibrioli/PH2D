@@ -468,7 +468,7 @@ pub(crate) fn bake_selection(
 }
 
 #[cfg(test)]
-#[path = "physics_bake_curve_tests.rs"]
+#[path = "bake_curve_tests.rs"]
 mod curve_tests;
 #[cfg(test)]
 #[path = "physics_bake_joint_tests.rs"]

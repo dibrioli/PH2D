@@ -6,9 +6,9 @@
 //! tool stays the sole owner and its `stamp_dabs` writes in place instead of copying the whole plane
 //! per move. Shared harness (`ENTITY`, `cp`) lives in the pipeline module.
 
+use crate::app_state::PainterPreview;
 use crate::render_loop::painter_bridge::own_preview_buffer;
 use crate::render_loop::painter_preview_pipeline_tests::ENTITY;
-use crate::app_state::PainterPreview;
 use ph2d_editor::tool::{CanvasPaintTool, PointerPhase, RasterEditTool};
 use ph2d_tool_painter::PainterTool;
 use std::sync::Arc;

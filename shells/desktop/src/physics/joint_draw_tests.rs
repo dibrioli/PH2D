@@ -132,13 +132,9 @@ fn the_selection_route_still_seeds_its_anchors() {
     let mut sim = SimWorld::new();
     let a = body(&mut sim, "A", [0.0, 0.0]);
     let b = body(&mut sim, "B", [3.0, 0.0]);
-    let j = crate::physics::joint::create_joint(
-        &mut sim,
-        a.to_bits(),
-        b.to_bits(),
-        JointKind::Rope,
-    )
-    .expect("joint");
+    let j =
+        crate::physics::joint::create_joint(&mut sim, a.to_bits(), b.to_bits(), JointKind::Rope)
+            .expect("joint");
     assert!(
         !joint_of(&sim, j).anchored,
         "the selection route has no points to offer, so the SEED must still run"

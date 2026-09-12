@@ -13,8 +13,8 @@
 //! duas fixturas em paralelo trocam de nó seleccionado uma à outra. [`trava`] é a porta única —
 //! todo teste que monte uma destas cenas a toma antes.
 
-use crate::render_loop::warp_gizmo;
 use crate::motion::motion_state::MotionState;
+use crate::render_loop::warp_gizmo;
 use ph2d_nodegraph::graph::{Edge, NodeId};
 use std::sync::{Mutex, MutexGuard, OnceLock};
 

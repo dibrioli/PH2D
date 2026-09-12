@@ -388,7 +388,7 @@ impl crate::App {
             .as_deref()
             .and_then(|p| std::path::Path::new(p).file_stem()?.to_str())
             .map_or_else(|| "drawing.svg".to_string(), |s| format!("{s}.svg"));
-        let Some(path) = crate::modal::save_file(
+        let Some(path) = ph2d_app_host::modal::save_file(
             rfd::FileDialog::new()
                 .set_file_name(&sugerido)
                 .add_filter("SVG (.svg)", &["svg"]),

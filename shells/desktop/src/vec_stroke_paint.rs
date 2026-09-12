@@ -76,7 +76,7 @@ pub(crate) fn selected_stroke_paint_kind(
 /// do `apply_vec_set_fill_kind`, e por isso está escrita do mesmo jeito.
 ///
 /// ⚠️ **A fonte vem RESOLVIDA de fora** porque escolhê-la pode abrir um diálogo de ficheiro, que
-/// congela o laço — isso é da shell (`crate::modal`), nunca desta função de documento.
+/// congela o laço — isso é da shell (`ph2d_app_host::modal`), nunca desta função de documento.
 pub(crate) fn set_kind(
     scene: &mut VecScene,
     history: &mut History,

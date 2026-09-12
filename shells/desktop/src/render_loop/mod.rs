@@ -1198,14 +1198,14 @@ impl crate::App {
         // o toast escrito logo depois do diálogo era pintado UM quadro e morria no `tick` seguinte.
         //
         // ⚠️ **Não é um segundo relógio nem um teto mágico:** é a MESMA medição com a parte parada
-        // nomeada por quem a causou (`crate::modal`). O medidor de fps e o acumulador da sim
+        // nomeada por quem a causou (`ph2d_app_host::modal`). O medidor de fps e o acumulador da sim
         // continuam a ler o `wall_dt` inteiro, porque para eles o tempo passou mesmo.
-        let ui_dt = crate::modal::chrome_dt(wall_dt, crate::modal::take_stall());
+        let ui_dt = ph2d_app_host::modal::chrome_dt(wall_dt, ph2d_app_host::modal::take_stall());
 
         zen.tick();
         // ⚠️ **A poeira anda no relógio do CHROME** (`ui_dt`), e não no do quadro: um diálogo modal
         // congela o laço, e uma faísca não pode envelhecer enquanto nada é desenhado — a mesma lei
-        // que o `crate::modal` já impõe aos toasts.
+        // que o `ph2d_app_host::modal` já impõe aos toasts.
         #[allow(clippy::cast_possible_truncation)]
         self.ui_burst.tick(ui_dt as f32);
         // ⚠️ **A UI VIVA anda aqui, com o MESMO relógio dos toasts** — um segundo `Instant::now()`

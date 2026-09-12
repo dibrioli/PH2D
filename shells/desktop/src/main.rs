@@ -328,7 +328,13 @@ mod live_memo_probe;
 mod mask_smoke;
 /// `Merge to Layers` — instala no Painter o documento que a fusão produziu (plano Sprite 18 W10).
 mod merge_layers;
-mod modal;
+// ⛔ **O alias `modal` FOI APAGADO** (line/shell-folhas): a lei já vivia na
+// [`ph2d_app_host::modal`] desde a W2 e o alias existia só porque cinco linhas estavam a mover
+// ficheiros naquele dia. Elas integraram — o prazo que o próprio doc dele escrevia chegou —, e os
+// quatro chamadores passaram a escrever o endereço a sério.
+#[cfg(test)]
+#[path = "modal_tests.rs"]
+mod modal_tests;
 mod morph_fade_smoke;
 mod morph_live;
 mod morph_machine_drive;

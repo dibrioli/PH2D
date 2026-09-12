@@ -633,7 +633,7 @@ fn linear_span(lo: [f64; 2], hi: [f64; 2], degrees: f64) -> ([f64; 2], [f64; 2])
 /// undo step iff it changed.
 /// ⚠️ **`pattern` é a FONTE já resolvida** para o caso `Pattern`, e vem de fora de propósito: ela
 /// pode exigir um diálogo de ficheiro, que congela o laço e por isso pertence à shell (a porta
-/// `crate::modal`), não a esta função pura de documento.
+/// `ph2d_app_host::modal`), não a esta função pura de documento.
 ///
 /// ⚠️ **`None` com `kind == Pattern` é DESISTÊNCIA e não muda nada** — o artista fechou o diálogo,
 /// e apagar o gradiente dele por isso seria o pior dos dois mundos.

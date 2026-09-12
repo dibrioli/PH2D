@@ -18,7 +18,7 @@
 //! ## E o diálogo passa pela PORTA
 //!
 //! Um `rfd::FileDialog` aberto à mão congela o loop sem declarar, e a mensagem escrita a
-//! seguir vive um quadro ([`crate::modal`]). Aqui ele passa por `modal::pick_file`, que
+//! seguir vive um quadro ([`ph2d_app_host::modal`]). Aqui ele passa por `modal::pick_file`, que
 //! cronometra. Gate: `every_field3d_modal_goes_through_the_door` varre a árvore.
 
 use crate::motion::motion_state::MotionState;
@@ -89,7 +89,7 @@ pub(super) fn pick(
     {
         dialog = dialog.set_directory(dir);
     }
-    crate::modal::pick_file(dialog).map(|p| p.to_string_lossy().into_owned())
+    ph2d_app_host::modal::pick_file(dialog).map(|p| p.to_string_lossy().into_owned())
 }
 
 #[cfg(test)]

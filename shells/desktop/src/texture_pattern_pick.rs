@@ -88,7 +88,7 @@ pub(crate) fn pick_source(assets: &AssetDb) -> Option<PatternSource> {
     // ⚠️ Pela PORTA (`modal::pick_file`), nunca `dialog.pick_file()` direto: o diálogo congela o
     // laço, e quem congela **declara** — senão a mensagem escrita a seguir vive um quadro só e o
     // artista não a lê.
-    let path = crate::modal::pick_file(dialog)?;
+    let path = ph2d_app_host::modal::pick_file(dialog)?;
     let bytes = std::fs::read(&path)
         .map_err(|e| {
             eprintln!(

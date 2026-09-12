@@ -51,6 +51,20 @@ use ph2d_vec_entities::entities::VecEntityMap;
 #[path = "bool_live_verb_tests.rs"]
 mod verb_tests;
 
+/// ⛔⛔ **O ALCANCE — e este `mod` é a cura de um defeito MUDO que só a prova apanhou** (W2 Fase D).
+///
+/// Na shell ele era um `#[cfg(test)] mod` de TOPO, declarado no `main.rs`. Ao movê-lo eu apaguei a
+/// declaração de lá e **não escrevi nenhuma aqui** — e um ficheiro `.rs` que nenhum `mod` declara
+/// simplesmente **não é compilado**. ⇒ os três gates dele evaporaram-se com
+/// `cargo check --all-targets` **verde dos dois lados**, porque não há nada para verificar num
+/// ficheiro que não entra no build.
+///
+/// ⚠️ **Nenhum compilador, nenhum clippy e nenhuma suíte acusam isto.** O que o acusou foi o
+/// `ONLY-A` da prova de `nextest-list-diff` — *é literalmente para isto que aquele número existe*.
+#[cfg(test)]
+#[path = "bool_reach_tests.rs"]
+mod reach_tests;
+
 /// As SONDAS DE CUSTO — irmã dos gates por LOC (HR-18), e por natureza: uma sonda mede e imprime,
 /// um gate afirma e falha.
 #[cfg(test)]

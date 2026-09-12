@@ -69,6 +69,13 @@
 //! [HOWTO §1.2]: ../../../docs/IntegracaoMultiAgente/HOWTO_partir_uma_familia_da_shell.md
 
 pub mod align_live;
+// ⛔⛔ **O censo de ÓRFÃOS desta crate** — um ficheiro que nenhum `mod` declara não é compilado, e
+// nenhum `check`, `clippy` ou suíte o acusa. Ver o cabeçalho do módulo: ele nasceu de um defeito
+// real, apanhado só pelo `ONLY-A` da prova.
+#[cfg(test)]
+#[path = "no_orphan_module_tests.rs"]
+mod no_orphan_module_tests;
+
 pub mod appearance;
 pub mod bindings;
 pub mod blend;

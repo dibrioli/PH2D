@@ -161,8 +161,7 @@ fn the_verb_row_and_the_states_section_coexist_on_one_selection() {
         &mut live,
     );
 
-    let row =
-        crate::bool_shape::shape_row_of_selection(&sim, &map, &bl, &selection, Some(ops[1]));
+    let row = crate::bool_shape::shape_row_of_selection(&sim, &map, &bl, &selection, Some(ops[1]));
     assert!(
         row.is_some(),
         "a fileira do verbo por forma nao aparece sobre a selecao que o clique produz"

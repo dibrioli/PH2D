@@ -8,20 +8,21 @@
 //! do `main.rs`, os campos de `App`, e o `Cargo.toml` da shell. Seis diffs no mesmo `[dependencies]`
 //! é colisão textual garantida, e é o caso em que a DIRETRIZ §1.5.5 manda a linha **parar**.
 //!
-//! ⇒ A dependência de cada família entra **aqui**, num bloco **gerado de uma varredura** de
-//! `crates/ph2d-app-*`. A shell depende de *uma* crate — esta — e nunca de seis. Uma linha nova
-//! não edita ficheiro central nenhum: ela cria `crates/ph2d-app-<fam>/`, corre
-//! `cargo run -p ph2d-app-sync`, e o bloco regenera-se em ordem determinística.
+//! ⇒ **O que este registo É, medido** (auditoria de arquitectura 2026-09-12, A7): um **catálogo de
+//! declarações** — a `const FAMILY` de cada família num bloco **gerado de uma varredura** de
+//! `crates/ph2d-app-*` (`cargo run -p ph2d-app-sync`). Uma linha nova não edita ficheiro central
+//! nenhum aqui: cria `crates/ph2d-app-<fam>/`, corre o sync, e o bloco regenera-se em ordem
+//! determinística.
 //!
-//! ⚠️⚠️ **MEDIDO em 2026-09-12: a promessa acima NÃO se cumpre na árvore.** A shell depende das nove
-//! famílias **directamente** (`ph2d-app-field3d`, `-physics`, `-components`, `-painter`, `-motion`,
-//! `-vec`, `-flip`, `-sculpt3d`, `-skeleton`) e **não usa este registo** — o `cargo machete` do
-//! `ship.sh` acusou a dependência da shell nesta crate como morta, e ela foi removida. Por isso as
-//! integrações das Fases C e D resolveram conflitos exactamente no `[dependencies]` da shell, que é o
-//! que este registo existia para impedir.
-//! ⭐ **O que continua a valer** é o gate de colisão de roteadores abaixo: ele corre nos testes DESTA
-//! crate, sobre o bloco gerado, e não precisa de a shell o consumir. Religar a composição da shell a
-//! este registo é decisão de desenho, não de integração (`ESTADO_W2_2026-09-12.md` §6).
+//! ⛔ **Ele NÃO é o funil de dependências da shell, e não pode ser.** Este cabeçalho prometia *«a shell
+//! depende de UMA crate — esta — e nunca de seis»*; a promessa era impossível por desenho, porque o
+//! `render_loop` chama os corpos de cada família PELO NOME e em ordem (HOWTO §4), e o `cargo machete`
+//! acusou a dependência da shell neste registo como morta. A promessa saiu.
+//!
+//! ⭐ **A invariante que de facto importa tem gate:** a shell liga EXACTAMENTE as famílias que este
+//! registo regista (`tests/it/the_shell_links_exactly_the_registered_families.rs`). Uma família
+//! ligada e não registada escapa ao gate de colisão de roteadores abaixo; uma registada e não ligada
+//! é uma declaração morta.
 //!
 //! # ⚠️ O que este registo NÃO faz (e a razão é medida)
 //!

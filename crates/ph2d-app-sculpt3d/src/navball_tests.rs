@@ -313,7 +313,7 @@ fn as_tres_portas_do_gizmo_sao_chamadas_pelo_despacho_do_ponteiro() {
     // (`"\n    pub(crate) fn "`) nunca casaria depois de uma função livre, e a janela engoliria
     // o resto do ficheiro — um censo que mede DEMAIS lê-se tão aprovado como um que mede nada.
     for (porta, dentro) in [
-        ("nav_pointer_down", "fn sculpt3d_pointer_down"),
+        ("nav_pointer_down", "fn pointer_down"),
         ("nav_pointer_move", "fn pointer_move"),
         ("nav_pointer_up", "fn pointer_up"),
     ] {

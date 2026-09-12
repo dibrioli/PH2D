@@ -188,10 +188,13 @@ fn the_sculpt_pointer_refuses_an_empty_scene_before_it_indexes_one() {
     // ficheiro antigo — passou a procurar a guarda onde ela já não estava.
     // *Um censo que nomeia um FICHEIRO envelhece com o primeiro corte; ler a
     // família inteira é o que o mantém a medir a mesma coisa.*
-    // ⚠️ **O SUJEITO deste gate é a SHELL** (ele mede que o laço/despacho dela CHAMA esta
-    // família), logo a raiz da varredura é a da shell e não a desta crate.
-    let raiz = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../shells/desktop/src");
-    let src: String = ["sculpt3d/input_down.rs", "sculpt3d/input.rs"]
+    // ⚠️⚠️ **O SUJEITO é a ESCULTURA, e ela mudou de casa em 2026-09-11 (W2/L3-B)** — os dois
+    // ficheiros do gesto dela saíram de `shells/desktop/src/sculpt3d/` para a
+    // `ph2d-app-sculpt3d`. A raiz segue-os: *este gate mede o irmão, e um gate mora ao lado do
+    // que ele mede*. ⛔ A frase anterior dizia que o sujeito era a shell, e isso era verdade
+    // apenas enquanto o irmão vivia lá dentro.
+    let raiz = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../ph2d-app-sculpt3d/src");
+    let src: String = ["input_down.rs", "input.rs"]
         .iter()
         .map(|f| std::fs::read_to_string(raiz.join(f)).expect("o irmão da escultura existe"))
         .collect::<Vec<_>>()

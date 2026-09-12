@@ -46,6 +46,7 @@
 - ✅ [AUDITORIA de velocidade 10/09: W0 APLICADA (perfil `smoke` 161 s → 3 s, `jobs = 32`, tecto nextest) e W1 FEITA (1 446 → 127 binários de teste, `tests/it/`); W1b/W2 por abrir](project_dev_speed_audit_2026_09_10_w0_applied.md)
 - [Multi-máquina: GitHub fonte única](project_multi_machine_setup.md) · [fast mode: dia sem push](feedback_fast_mode_ship.md)
 - ⏳ [**`line/motion-value` espera a PRÓXIMA rodada** — 5 de 6 linhas entraram em 06/09 e esta ficou de fora; as 5 mitigações em vigor](project_motion_value_waits_for_the_next_integration_round.md)
+- ⛔ [A régua de uma linha é o MERGE-BASE, nunca o main a andar — `git diff main` mistura o trabalho dela com a deriva de quem integrou no meio](feedback_the_ruler_is_the_merge_base_not_a_moving_main.md)
 - [Integração multi-linha (12) — ordem se MEDE](reference_topic_integration_discipline.md)
 - [CI corre 26 de 313 membros — «suíte verde» ≠ «CI verde»](project_ci_runs_26_of_313_workspace_members.md)
 - [A suíte em DEBUG parece pendurada por UM teste: `field-eval` custa 55 min sozinho — corra-o à parte](reference_one_field_eval_test_costs_55_minutes_of_the_debug_suite.md)
@@ -88,6 +89,8 @@
 
 ## Padrões de código (gotchas silenciosos)
 - ⛔ [Medir um texto num peso e pintá-lo noutro faz o pintor CORTÁ-LO (`0....`, e ao afastar some) — a porta é `title_elided_width`, ao lado do pintor](feedback_measuring_a_text_at_one_weight_and_painting_it_at_another_elides_the_text.md)
+- ⛔ [Renomear um símbolo por NOME destrói a PROSA que o cita — num repo onde o porquê vive em doc-comments, a memória histórica é a vítima mais comum](feedback_a_rename_by_name_cannot_tell_an_address_from_a_memory.md)
+- ⛔⛔ [Apagar um item deixa o `#[cfg]` dele a gatear o VIZINHO — e com a feature ligada por omissão nenhuma build da CI o vê](feedback_an_orphaned_cfg_attaches_to_the_next_item_and_the_default_build_is_blind.md)
 - [Registro de painel (5 sites)](reference_topic_panel_registration.md)
 - [Gotchas de código (14)](reference_topic_code_gotchas.md)
 - 📚 [Padrões de código (gotchas silenciosos): mais 6 lições, uma linha cada, verbatim](reference_topic_code_pattern_gotchas.md)

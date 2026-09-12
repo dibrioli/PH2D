@@ -616,14 +616,20 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   agrupou-se em [`shells/desktop/src/physics/`](shells/desktop/src/physics/) — `impl App` de **88 para 13**
   blocos, 7 campos de `App` num `PhysicsState`, e a shell de **493 k para 471 k** linhas, com **zero**
   contador partilhado a mexer-se. ⭐⭐ **E a Fase B CORTOU** (11/09, [handoff](docs/Physics/handoffs/HANDOFF_INTEGRACAO_line_app-physics_FASE_B_2026-09-11.md)):
-  a shell de **465 105 para 453 755** linhas, prova `nextest-list-diff` **exacta nos dois sentidos**
-  (22 655 → 22 655, ONLY-A **0**, ONLY-B **0**, 121 `MOVED`), e a resposta que a **batedora** deve às
+  a shell de **465 105 para 451 079** linhas, prova `nextest-list-diff` **exacta nos dois sentidos**
+  (ONLY-A **0**, 130 `MOVED`, e os 4 `ONLY-B` são os gates novos do roteador), e a resposta que a **batedora** deve às
   outras quatro linhas — ⭐ **as 5 portas do `AppHost` CHEGARAM, zero sextos métodos**: o que bloqueia
   não é a `App`, são **três FOLHAS partilhadas da shell** (`inspector_ordering` · `preview_drive` ·
   `name_unique`, com 11/38/14 consumidores de famílias diferentes), que são alvo de uma linha própria.
-  ⛔ **O FIM DA LINHA NÃO foi alcançado e está NOMEADO** (§4): **101 dos 117** braços do roteador já são
-  cena pura da crate, os outros **16** não, e o bloqueador é a **timeline** — o mesmo item que o §6 da
-  Fase A já nomeava; `"physics"` continua em `FAMILIAS_COM_O_ROTEADOR_AINDA_NA_SHELL`, ⛔ não a apague.
+  ⭐⭐⭐ **E O FIM DA LINHA FOI ALCANÇADO**: o `match` de 117 níveis e o `PAUSED_SCENES` vivem em
+  [`ph2d_app_physics::smoke`](crates/ph2d-app-physics/src/smoke.rs), a env é lida lá, o `const FAMILY`
+  declara-a com `max_level: smoke::CENAS` (**contado** do `match`, com gate nas duas pontas e prova de
+  mutação) e **`"physics"` SAIU** de `FAMILIAS_COM_O_ROTEADOR_AINDA_NA_SHELL` — ⚠️ `motion`, `sculpt3d`
+  e `vec` **continuam lá**, e a catraca só encolhe. ⭐ **O que destravou foi uma DECISÃO, não um
+  refactor:** os três últimos braços autoram uma track de timeline, e a família passou a poder depender
+  da `ph2d-timeline` — *uma crate-motor irmã não é a shell* (ADR-0075). ⚠️ **O prólogo FICA na shell**
+  (rebobinar, armar o toggle, abrir a timeline, play/pause): *o que sai são os CORPOS; o que decide a
+  ordem do quadro fica.*
   ⚠️ E a §5 do handoff tem as **oito** armadilhas que esta fase pagou, entre elas que uma régua textual
   a varrer `\bApp\b` **lê o doc-comment que EXPLICA a cura** e acusa 93 ficheiros de 133, e que o
   ÓRFÃO e o DUPLICADO são as duas metades do MESMO audit (13 e 3 achados), os dois **mudos**. O

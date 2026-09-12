@@ -25,7 +25,7 @@
 use ph2d_core::Vec2;
 use ph2d_flip::{FlipStroke, Hold, KeyKind, Point, Rgba};
 use std::sync::OnceLock;
-use std::sync::atomic::AtomicU32;
+use std::sync::atomic::{AtomicU32, Ordering};
 
 pub static FRAME: AtomicU32 = AtomicU32::new(0);
 
@@ -66,4 +66,74 @@ pub fn stage(obj: &mut ph2d_flip::FlipObject) -> (f32, f32) {
         strokes.push(thick_stroke(x_air, true)); // DIREITA: airbrush (domo)
     }
     (x_std, x_air)
+}
+
+/// **Arma a cena deste smoke** (W2/L5 Fase B, 2026-09-11).
+///
+/// ⭐ Era um `impl crate::App` na shell, e o que ela de facto dava eram **três tipos de crates
+/// de módulo** — o documento, o registo de ferramentas e o relógio. A lição da batedora:
+/// *se a resposta é «coisas que a `App` segura», não é porta — é **assinatura***.
+///
+/// ⛔ Nenhum handle atravessa (`&App`/`&AppGfx`/`&HeroScreen`): isso desfaria a fronteira
+/// (HOWTO §1.5). O `gfx.is_none()` do guarda de antes vive no chamador, que é quem tem `gfx`.
+/// Roda no prólogo do frame (ao lado dos outros smokes). No-op sem a env.
+pub fn arm(
+    flip: &mut ph2d_flip::FlipDoc,
+    tools: &mut ph2d_editor::ToolRegistry,
+    playhead: &mut ph2d_core::Playhead,
+) {
+    if !enabled() {
+        return;
+    }
+    if FRAME.fetch_add(1, Ordering::Relaxed) != 3 {
+        return;
+    }
+    let tool_ok = tools.set_active(&ph2d_editor::ToolId::new("flip"));
+
+    let oid = flip.push_object("Airbrush Smoke");
+    let obj = flip.object_mut(oid).expect("objeto recem-criado");
+    let (x_std, x_air) = stage(obj);
+
+    playhead.seek(0.0);
+    playhead.pause();
+
+    eprintln!(
+        "\n[airbrush-smoke] cena montada: 2 tracos grossos a hardness 0.5 -- padrao em x={x_std}, \
+         airbrush em x={x_air}. Ferramenta flip ativa: {}.",
+        if tool_ok {
+            "sim"
+        } else {
+            "NAO (PARE: sem ela o traco nao e dirigido pela tool Flip)"
+        }
+    );
+    eprintln!(
+        "\n\
+         ============================================================\n\
+         ANTES DE TUDO: este terminal imprimiu, logo acima, a linha\n\
+         comecando com '[airbrush-smoke] cena montada'? Se NAO, PARE:\n\
+         o smoke nao rodou (arvore ou variavel de ambiente errada).\n\
+         ============================================================\n\
+         \n\
+         O que esta na tela: o MESMO traco grosso, a MESMA hardness\n\
+         (0.5), desenhado DUAS vezes:\n\
+           - ESQUERDA : Airbrush OFF -- o pincel padrao (a lei do\n\
+                        Painter): nucleo CHEIO ate a hardness, depois\n\
+                        cai ate zero na borda.\n\
+           - DIREITA  : Airbrush ON  -- um DOMO largo: a tinta cobre\n\
+                        quase toda a largura antes de rolar suave a\n\
+                        zero na borda (borda SEMPRE macia).\n\
+         \n\
+         ------------------------------------------------------------\n\
+         Medido (sonda headless, banda raio 10 a hardness 0.5):\n\
+             eixo (centro)     255 padrao  vs  252 airbrush\n\
+             aro  (dn ~0.8)     55 padrao  vs  231 airbrush\n\
+             aro  (dn ~0.9)      7 padrao  vs  192 airbrush\n\
+         ------------------------------------------------------------\n\
+         \n\
+         O AJUSTE: no painel Flip (modo DRAW), abaixo do toggle Self\n\
+         Overlap, ha o toggle 'Airbrush'. Ligado, o slider Hardness\n\
+         vira a DENSIDADE da nevoa (0 = tenue, 1 = domo quase solido\n\
+         de borda macia). Casa com o Self Overlap: a acumulacao de\n\
+         airbrush e o build-up fisico da tinta. Se algo destoar, diga.\n"
+    );
 }

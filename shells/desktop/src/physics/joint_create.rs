@@ -110,7 +110,7 @@ pub(crate) fn create_joint_at(
     // Hierarchy lets them edit it — and a label that rewrote itself would fight a
     // rename it cannot know was intentional. (What DOES follow a rename is the
     // BINDING, which travels by name hash and re-attaches by itself.)
-    let label = crate::name_unique::unique_name(sim, &format!("{name_a} : {name_b}"));
+    let label = ph2d_unique_name::unique_name(sim, &format!("{name_a} : {name_b}"));
     // The authored poses of the two bodies — what a body-local anchor is
     // measured against (the seed uses the same `rest`, and using the LIVE pose
     // would bake a swing into the local; W-AnchorFollow).
@@ -248,7 +248,7 @@ pub(crate) fn ensure_named(sim: &mut SimWorld, entity: Entity, base: &str) -> Op
     {
         return Some(n.as_str().to_string());
     }
-    let fresh = crate::name_unique::unique_name(sim, base);
+    let fresh = ph2d_unique_name::unique_name(sim, base);
     sim.world_mut()
         .get_entity_mut(entity)
         .ok()?

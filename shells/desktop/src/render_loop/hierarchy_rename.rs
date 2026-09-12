@@ -58,7 +58,7 @@ pub(super) fn drain(
         // Reject user-typed collisions with other entities. `_excluding`
         // ignores `entity`'s own current name so committing the same
         // name (no-op rename) doesn't auto-suffix into "(1)".
-        let final_name = crate::name_unique::unique_name_excluding(sim, &new_name, entity);
+        let final_name = ph2d_unique_name::unique_name_excluding(sim, &new_name, entity);
         let was_adjusted = final_name != new_name;
         let sim_w = sim.world_mut();
         if let Ok(mut entry) = sim_w.get_entity_mut(entity) {

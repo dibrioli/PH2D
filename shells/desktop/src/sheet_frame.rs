@@ -183,7 +183,7 @@ pub(crate) fn create_from_selection(
     // O centro da seleção — a folha nasce onde o artista estava a olhar.
     let center = selection_center(&pieces);
     let entity = spawn_rect(sim, scene, map, center, side_m)?;
-    let name = crate::name_unique::unique_name(sim, "Sprite Sheet");
+    let name = ph2d_unique_name::unique_name(sim, "Sprite Sheet");
     if let Ok(mut e) = sim.world_mut().get_entity_mut(entity) {
         e.insert(frame);
         e.insert(Name::new(name));

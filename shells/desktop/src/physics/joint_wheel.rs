@@ -68,7 +68,7 @@ pub(crate) fn add_pulley_wheel(sim: &mut SimWorld, physics: &PhysicsBridge, join
         .last()
         .map_or(ph2d_physics_ecs::PulleyWheel::DEFAULT_RADIUS, |w| w.radius);
     let order = u16::try_from(wheels.len()).unwrap_or(u16::MAX);
-    let label = crate::name_unique::unique_name(sim, &format!("{name} Wheel {}", order + 1));
+    let label = ph2d_unique_name::unique_name(sim, &format!("{name} Wheel {}", order + 1));
     sim.world_mut().spawn((
         Name::new(label),
         ph2d_physics_ecs::PulleyWheel {

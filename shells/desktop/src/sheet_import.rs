@@ -197,7 +197,7 @@ pub(crate) fn import_sheet(
         );
         // O nome do sprite é o nome que o ARTISTA deu à região, não `sheet_0`: é o que ele vê no
         // Aseprite, e é por ele que ele vai procurar na hierarquia.
-        let label = crate::name_unique::unique_name(sim, &region.name);
+        let label = ph2d_unique_name::unique_name(sim, &region.name);
         let mut sprite = Sprite::individual(texture_id, world_size, [1.0, 1.0, 1.0, 1.0]);
         // ⚠️ MEDIDO na folha, não assumido: um `.png` do Aseprite pode vir com as regiões
         // coladas (aí o recuo defende) ou com padding (aí ele só cortaria borda).

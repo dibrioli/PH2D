@@ -149,7 +149,7 @@ pub(crate) fn instantiate_master(
         }
     }
 
-    let unique = crate::name_unique::unique_name(sim, &base);
+    let unique = ph2d_unique_name::unique_name(sim, &base);
     let mut root = sim.world_mut().entity_mut(copy.root);
     // ⚠️ A instância NÃO é um mestre: com o marcador ela nasceria **inerte** (F4.1) — três
     // ragdolls no lugar certo, nenhum a cair.
@@ -271,7 +271,7 @@ pub(crate) fn duplicate_subtree(
         }
     }
 
-    let unique = crate::name_unique::unique_name(sim, &base);
+    let unique = ph2d_unique_name::unique_name(sim, &base);
     sim.world_mut()
         .entity_mut(copy.root)
         .insert(Name::new(unique));

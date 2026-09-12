@@ -151,7 +151,7 @@ pub(crate) fn import_svg(
 fn baptiza(sim: &mut SimWorld, desenho: &ph2d_vec_svg::Drawing, entidades: &[u64], ficheiro: &str) {
     for (s, bits) in desenho.shapes.iter().zip(entidades) {
         let base = if s.name.is_empty() { ficheiro } else { &s.name };
-        let nome = crate::name_unique::unique_name(sim, base);
+        let nome = ph2d_unique_name::unique_name(sim, base);
         if let Some(mut n) = sim
             .world_mut()
             .get_mut::<Name>(ph2d_ecs::Entity::from_bits(*bits))
@@ -191,7 +191,7 @@ fn agrupa(
                 .filter(|(i, sub)| sub.parent == Some(g) && feitos[*i].is_some())
                 .filter_map(|(i, _)| feitos[i]),
         );
-        let nome = crate::name_unique::unique_name(sim, &desenho.groups[g].name);
+        let nome = ph2d_unique_name::unique_name(sim, &desenho.groups[g].name);
         feitos[g] = crate::vec_entities::group_entities(sim, &membros, nome);
     }
     // O que ficou na raiz: as formas sem grupo e os grupos sem pai.
@@ -215,7 +215,7 @@ fn agrupa(
     }
     // ⚠️ **O ficheiro inteiro vira um objecto.** Sem isto um logótipo de 40 formas aterra como 40
     // raízes, e não há gesto que o mova inteiro sem o artista o seleccionar todo primeiro.
-    let nome = crate::name_unique::unique_name(sim, ficheiro);
+    let nome = ph2d_unique_name::unique_name(sim, ficheiro);
     crate::vec_entities::group_entities(sim, &topo, nome)
 }
 

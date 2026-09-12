@@ -244,7 +244,7 @@ pub fn stable_id_of(world: &World, entity: Entity) -> Option<StableId> {
 /// dono dava, e ela continua a significar *"não aponta para nada"*.
 ///
 /// ⚠️ **Nomes não são únicos pelo tipo** (o `Name` documenta-o; a unicidade é imposta pelo
-/// editor, em `name_unique.rs`). Com dois homónimos esta função devolve o de **menor
+/// editor, na crate `ph2d-unique-name`). Com dois homónimos esta função devolve o de **menor
 /// `StableId`** — o mais antigo —, que é determinístico e não *"o que o archetype listou
 /// primeiro"*. ⛔ Não é uma escolha boa, é uma escolha REPRODUTÍVEL: quem depende de a
 /// resolução acertar tem de garantir o nome único, e o editor garante.

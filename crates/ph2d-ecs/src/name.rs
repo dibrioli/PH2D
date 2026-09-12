@@ -60,7 +60,7 @@ impl Name {
 /// bits makes two logically identical states compare different, which is
 /// exactly the spurious-undo-step bug `canonicalize` exists to kill.
 ///
-/// The editor's answer is the **name**: unique (`shells/desktop/name_unique.rs`)
+/// The editor's answer is the **name**: unique (a crate `ph2d-unique-name`)
 /// and stable across sessions. The timeline binding has used this hash since
 /// W4.T6 to survive delete+undo and project load; a physics joint needs the same
 /// thing to name the two bodies it connects (W3). Two copies of this function

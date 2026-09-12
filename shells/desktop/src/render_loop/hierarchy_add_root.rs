@@ -20,7 +20,7 @@ use ph2d_ecs::{Name, SimWorld, Transform};
 /// classe de pergunta (identidade que sobrevive ao respawn), e por isso os dois andam em par —
 /// precedente: [`super::inspector_joint_create`].
 pub(super) fn spawn_empty_root(sim: &mut SimWorld) -> u64 {
-    let name = crate::name_unique::unique_name(sim, "Object");
+    let name = ph2d_unique_name::unique_name(sim, "Object");
     let bits = sim
         .world_mut()
         .spawn((Transform::IDENTITY, Name::new(name)))

@@ -225,7 +225,7 @@ pub(super) fn dispatch(
         && let Some(parent_bits) = live.bridge.entity_for(row)
     {
         let parent = ph2d_ecs::Entity::from_bits(parent_bits);
-        let child_name = crate::name_unique::unique_name(sim, "Child");
+        let child_name = ph2d_unique_name::unique_name(sim, "Child");
         sim.world_mut().spawn((
             Transform::IDENTITY,
             Name::new(child_name),

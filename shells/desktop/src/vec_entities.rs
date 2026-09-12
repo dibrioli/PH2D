@@ -95,7 +95,7 @@ pub(crate) fn sync(sim: &mut SimWorld, scene: &mut VecScene, map: &mut VecEntity
     // Flip e o envelope usam. Sem o shift, o custo deixou de ser O(raízes) por forma nova.
     let base = next_root_order(sim);
     for (k, id) in missing.iter().enumerate() {
-        // **O nome passa pela porta do nome ÚNICO** (`name_unique::unique_name`), a mesma que o
+        // **O nome passa pela porta do nome ÚNICO** (`ph2d_unique_name::unique_name`), a mesma que o
         // import e o rename usam. `initial_name` é único entre PATHS (o id é), mas não no MUNDO:
         // basta o artista ter renomeado um sprite para "Path 3" e a próxima forma com id 3 nasce
         // homônima dele.
@@ -103,7 +103,7 @@ pub(crate) fn sync(sim: &mut SimWorld, scene: &mut VecScene, map: &mut VecEntity
         // Nome duplicado não é cosmético desde o W4.T6: a animação reencontra o objeto **pelo
         // nome** (`wire_id` = hash do `Name`), então dois homônimos fazem duas tracks colarem no
         // MESMO objeto — e a outra fica sem dono, em silêncio. O nome é identidade agora.
-        let name = crate::name_unique::unique_name(sim, &initial_name(*id));
+        let name = ph2d_unique_name::unique_name(sim, &initial_name(*id));
         let order = base.saturating_add(u32::try_from(k).unwrap_or(0));
         let e = sim.world_mut().spawn((
             Transform::default(),

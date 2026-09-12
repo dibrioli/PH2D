@@ -67,7 +67,7 @@ pub(crate) fn create_world_pin_at(
     let name_a = ensure_named(sim, a, "Body")?;
     // **Um joint é nomeado pelo que ele junta** (W-J8) — e aqui a outra ponta é
     // o cenário, então ela se chama pelo que é.
-    let label = crate::name_unique::unique_name(sim, &format!("{name_a} : World"));
+    let label = ph2d_unique_name::unique_name(sim, &format!("{name_a} : World"));
     // ⚠️ A IDENTIDADE do corpo, pela entidade (ADR-0164 F1) — o nome continua a dar o rótulo,
     // mas não é ele que o joint guarda.
     ph2d_ecs::assign_missing_stable_ids(sim.world_mut());

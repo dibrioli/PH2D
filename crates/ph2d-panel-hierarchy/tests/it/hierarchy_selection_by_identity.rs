@@ -11,7 +11,7 @@
 //! of the same asset, hand-renames the user happened to type).
 //!
 //! Defense in depth lives elsewhere:
-//! - `shells/desktop/src/name_unique.rs` enforces uniqueness at
+//! - `crates/ph2d-unique-name` enforces uniqueness at
 //!   creation time (duplicate, add-child, import, rename) so the
 //!   panel never sees a collision in the first place.
 //! - `shells/desktop/src/render_loop/snapshots.rs::publish` pre-marks

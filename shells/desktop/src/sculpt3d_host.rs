@@ -213,7 +213,7 @@ impl App {
         ph2d_app_sculpt3d::entities::entities_sync(sim, scene, shell, hier_sel, &mut |sim| {
             // ⛔ **A folha do nome único NÃO é da família** — ela serve o Flip, o vetor, a
             // física e a Hierarquia, e é alvo de linha própria. Quem a possui passa-a.
-            crate::name_unique::unique_name(sim, "Sculpt")
+            ph2d_unique_name::unique_name(sim, "Sculpt")
         });
     }
 

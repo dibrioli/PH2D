@@ -5699,6 +5699,7 @@ dependencies = [
  "ph2d-ui-codegen",
  "ph2d-ui-state",
  "ph2d-ui-testkit",
+ "ph2d-unique-name",
  "ph2d-untangle",
  "ph2d-vec-blend",
  "ph2d-vec-boolean",
@@ -8340,6 +8341,13 @@ dependencies = [
  "ph2d-text",
  "ph2d-tokens",
  "ph2d-vector",
+]
+
+[[package]]
+name = "ph2d-unique-name"
+version = "0.0.0"
+dependencies = [
+ "ph2d-ecs",
 ]
 
 [[package]]

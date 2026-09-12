@@ -20,7 +20,7 @@
 //! - **recuperação**: a purga é UM passo do undo da timeline; Ctrl+Z global devolve o objeto
 //!   (Name literal do snapshot) e o Ctrl+Z da timeline devolve o documento, que o heal recola.
 
-use crate::name_unique::unique_name;
+use ph2d_unique_name::unique_name;
 use crate::timeline_persist::upkeep;
 use ph2d_anim::{AnimValue, Interp, RationalTime};
 use ph2d_ecs::{Name, SimWorld, Transform};

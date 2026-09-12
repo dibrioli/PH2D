@@ -488,7 +488,7 @@ pub(crate) fn drain_merge_sprites(
     // Uniqueness: a 2nd merge would otherwise produce another "Merged"
     // — collision risk per the 2026-05-27 same-name bug. Bump with the
     // shared scheme (` (1)`, ` (2)`, ...).
-    let merged_name = crate::name_unique::unique_name(sim, "Merged");
+    let merged_name = ph2d_unique_name::unique_name(sim, "Merged");
     let new_entity = match parent_opt {
         Some(parent) => sim
             .world_mut()

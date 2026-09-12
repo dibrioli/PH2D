@@ -159,7 +159,7 @@ pub(crate) fn spawn_sprite(
     world_size: [f32; 2],
     base: &str,
 ) -> (String, u64) {
-    let label = crate::name_unique::unique_name(sim, base);
+    let label = ph2d_unique_name::unique_name(sim, base);
     // ⚠️ A estratégia vem do PACK, não de um default: uma imagem de 16 bits foi para uma textura
     // própria e tem de nascer a apontar para ela (plano `docs/Sprite_projeto/18` W2.4). Construir
     // `Sprite::atlas` aqui faria a sprite mostrar a célula de outra pessoa.

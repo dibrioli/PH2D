@@ -57,7 +57,7 @@ const TRANSFORM: &[FieldDesc] = &[
 
 /// **`Name`** — ⚠️ `InstanceLocal`: o nome da raiz de uma instância é dela. Senão três
 /// instâncias do mesmo mestre partilhariam o nome, e a unicidade que o editor impõe
-/// (`name_unique.rs`) entraria em guerra com o sync todo o quadro.
+/// (a crate `ph2d-unique-name`) entraria em guerra com o sync todo o quadro.
 const NAME: &[FieldDesc] = &[FieldDesc {
     field_id: 1,
     name: "Name",

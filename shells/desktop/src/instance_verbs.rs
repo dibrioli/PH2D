@@ -168,10 +168,10 @@ pub(crate) fn make_master(
         // recusado duas vezes e está adiado para o fim do plano. *Foi pôr a declaração no nome que
         // obrigou todo gesto a reescrevê-lo, e custou seis reports.*
         let vname =
-            crate::name_unique::unique_name_excluding(sim, &format!("{base_name} Variant"), entity);
+            ph2d_unique_name::unique_name_excluding(sim, &format!("{base_name} Variant"), entity);
         sim.world_mut().entity_mut(entity).insert(Name::new(vname));
         if let Some(original) = original_name {
-            let cname = crate::name_unique::unique_name_excluding(sim, &original, instance);
+            let cname = ph2d_unique_name::unique_name_excluding(sim, &original, instance);
             sim.world_mut()
                 .entity_mut(instance)
                 .insert(Name::new(cname));

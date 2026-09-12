@@ -1,0 +1,16 @@
+[package]
+name = "ph2d-unique-name"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# ⛔ UMA dependência, e é o ponto: a unicidade de `Name` é uma pergunta ao MUNDO e nada mais.
+# Quatro famílias (`flip`, `physics`, `sculpt3d`, `vec`) chamavam-na através da shell — medido
+# 2026-09-12 —, e é por isso que ela é uma folha e não a casa de nenhuma delas (ADR-0075).
+[dependencies]
+ph2d-ecs = { path = "../ph2d-ecs" }

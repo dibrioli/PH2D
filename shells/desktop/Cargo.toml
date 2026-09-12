@@ -598,6 +598,12 @@ ph2d-node-fx-drop-shadow = { path = "../../crates/ph2d-node-fx-drop-shadow" }
 # segundo motor sobre o mesmo estado.
 ph2d-node-motion-bezier-warp = { path = "../../crates/ph2d-node-motion-bezier-warp" }
 
+# ═══ AS FOLHAS PARTILHADAS (line/shell-folhas, 12/09) ═══
+# ⛔ Cada uma saiu daqui porque MAIS DE UMA família a consumia, e uma peça partilhada por duas
+# famílias é uma FOLHA — nunca a casa de uma delas (ADR-0075, HOWTO §1.2). O bloco é
+# append-only de propósito: uma linha nova acrescenta ao fim e não colide com ninguém.
+ph2d-unique-name = { path = "../../crates/ph2d-unique-name" }
+
 [dev-dependencies]
 # W2 — os auxiliares de gate da família (`forget_*`, `sync_scene`, …) vivem atrás da feature
 # `test-support`: um `#[cfg(test)]` da família é invisível para um teste da shell.

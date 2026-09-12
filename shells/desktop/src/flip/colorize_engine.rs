@@ -77,7 +77,7 @@ pub(super) fn install_regions(
     let is_fill = |s: &FlipStroke| s.hide_stroke && s.fill.is_some();
     let mut produced = 0;
     for region in regions {
-        let color = crate::flip::draw::srgb8_to_linear(palette[region.label as usize]);
+        let color = ph2d_app_flip::draw::srgb8_to_linear(palette[region.label as usize]);
         let widths = ph2d_flip_fill::contour_widths(lines, &region.fill.outer);
         let stroke = fill_stroke(&region.fill.outer, region.fill.holes, color, 1.0, &widths);
         let at = drawing

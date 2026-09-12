@@ -24,10 +24,12 @@ pub mod airbrush_smoke;
 pub mod colorize_smoke;
 pub mod cursor;
 pub mod demo;
+pub mod draw;
 pub mod edit_smoke;
 pub mod fill_dilate;
 pub mod fill_smoke;
 pub mod gap_live;
+pub mod hardness_smoke;
 pub mod multiframe;
 pub mod multiplane_smoke;
 pub mod pass_cache;
@@ -35,6 +37,8 @@ pub mod pass_ghosts;
 pub mod pass_stage;
 pub mod peek;
 pub mod pose_smoke;
+pub mod pressure_smoke;
+pub mod resample_smoke;
 pub mod segment_smoke;
 pub mod selection_smoke;
 pub mod self_overlap_smoke;
@@ -47,6 +51,26 @@ pub mod tween_phase_smoke;
 pub mod tween_smoke;
 pub mod tween_torsion_smoke;
 
+/// **O que esta família declara à shell** (`ph2d-app-registry-init`).
+///
+/// ⭐ **A `flip` é a ÚNICA das cinco famílias da Fase A que possuía os próprios roteadores** — por
+/// isso ela nunca entrou na catraca `FAMILIAS_COM_O_ROTEADOR_AINDA_NA_SHELL` do registo.
+///
+/// ⚠️ **`max_level: 1` porque estes roteadores são INTERRUPTORES, não escadas** — cada um é um
+/// `env::var_os(..).is_some()`, sem `match` de nível (ao contrário do `PH2D_FIELD_SMOKE` do piloto,
+/// que responde por uma faixa). O maior nível que um interruptor responde é `1`, e escrever outra
+/// coisa seria prometer cenas que não existem. ⚠️ Os três que entraram na Fase B foram **contados
+/// no roteador**, não escritos de memória: os três são `var_os(..).is_some()`.
+///
+/// ✅ **A dívida dos três FECHOU na Fase B** (11/09): `PH2D_FLIP_HARDNESS_SMOKE` (o mestre),
+/// `PH2D_FLIP_PRESSURE_SMOKE` e `PH2D_FLIP_RESAMPLE_SMOKE` são lidos **aqui dentro**, e a lista
+/// passou de 15 para **18**. ⭐ O que os destravou não foi um refactor grande: os três precisavam de
+/// **UMA** função do `draw` (`stroke_from_samples`), e a única do `draw` presa atrás do
+/// `vec_transform` era o `bake_stroke` — separá-la libertou a lei inteira do traço.
+///
+/// ⛔ **`PH2D_FLIP_FILL_DEBUG` e `PH2D_FLIP_SELECT_DEBUG` NÃO entram, e a ausência é a decisão:**
+/// são **diagnóstico** (ligam um `eprintln!`), não roteadores de cena. Um registo que os aceitasse
+/// prometeria ao dono uma cena que não existe.
 pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
     key: "flip",
     routers: &[
@@ -54,8 +78,11 @@ pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
         r("PH2D_FLIP_COLORIZE_SMOKE"),
         r("PH2D_FLIP_EDIT_SMOKE"),
         r("PH2D_FLIP_FILL_SMOKE"),
+        r("PH2D_FLIP_HARDNESS_SMOKE"),
         r("PH2D_FLIP_MULTIPLANE_SMOKE"),
         r("PH2D_FLIP_POSE_SMOKE"),
+        r("PH2D_FLIP_PRESSURE_SMOKE"),
+        r("PH2D_FLIP_RESAMPLE_SMOKE"),
         r("PH2D_FLIP_SEGMENT_SMOKE"),
         r("PH2D_FLIP_SELF_OVERLAP_SMOKE"),
         r("PH2D_FLIP_STRIP_SMOKE"),

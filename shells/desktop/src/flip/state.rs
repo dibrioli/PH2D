@@ -43,7 +43,7 @@ pub(crate) struct FlipState {
     pub style: Option<ph2d_tool_flip::FlipStyleSnapshot>,
     /// ADR-0114 W2: o traço do Flip em curso (amostras mundo+pressão); assado no
     /// `FlipDoc` no pen-up. Vazio quando não há gesto.
-    pub draw: crate::flip::draw::FlipDraw,
+    pub draw: ph2d_app_flip::draw::FlipDraw,
     /// ADR-0114 C2 (Colorize): os rabiscos coloridos acumulados + o rabisco em curso
     /// (transientes — sementes do corte LazyBrush, não arte). Apply os transforma em
     /// regiões preenchidas; Clear os descarta. Ver `flip_colorize`.

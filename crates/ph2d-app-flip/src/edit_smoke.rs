@@ -51,7 +51,7 @@ pub fn wave(n: usize) -> FlipStroke {
 pub fn arm(
     flip: &mut ph2d_flip::FlipDoc,
     tools: &mut ph2d_editor::ToolRegistry,
-    mut hero: Option<&mut ph2d_editor::HeroScreen>,
+    hero: Option<&mut ph2d_editor::HeroScreen>,
     playhead: &mut ph2d_core::Playhead,
 ) -> bool {
     let mut armou = false;
@@ -96,7 +96,7 @@ pub fn arm(
         }
         // Entra no Edit + domínio Point pela porta REAL (os mesmos eventos dos pills).
         8 => {
-            if let Some(hero) = hero.as_deref_mut() {
+            if let Some(hero) = hero {
                 for id in [
                     ph2d_editor::ids::FLIP_MODE_EDIT,
                     ph2d_editor::ids::FLIP_EDIT_DOM_POINT,

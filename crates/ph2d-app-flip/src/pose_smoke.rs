@@ -57,7 +57,7 @@ pub fn square(a: Vec2, b: Vec2, color: Rgba) -> FlipStroke {
 pub fn arm(
     flip: &mut ph2d_flip::FlipDoc,
     tools: &mut ph2d_editor::ToolRegistry,
-    mut hero: Option<&mut ph2d_editor::HeroScreen>,
+    hero: Option<&mut ph2d_editor::HeroScreen>,
     playhead: &mut ph2d_core::Playhead,
 ) -> bool {
     let mut armou = false;
@@ -90,7 +90,7 @@ pub fn arm(
         8 => {
             playhead.pause();
             playhead.seek_frame(12, 12.0);
-            if let Some(hero) = hero.as_deref_mut() {
+            if let Some(hero) = hero {
                 // O MESMO evento que o pill Edit do painel emite — o modo troca
                 // pela porta real (`FlipTool::handle_panel_event`).
                 hero.bus

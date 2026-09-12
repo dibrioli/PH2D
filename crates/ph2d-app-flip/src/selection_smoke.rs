@@ -70,7 +70,7 @@ pub fn shape(verts: &[Vec2], color: Rgba, selected: bool) -> FlipStroke {
 pub fn arm(
     flip: &mut ph2d_flip::FlipDoc,
     tools: &mut ph2d_editor::ToolRegistry,
-    mut hero: Option<&mut ph2d_editor::HeroScreen>,
+    hero: Option<&mut ph2d_editor::HeroScreen>,
     playhead: &mut ph2d_core::Playhead,
 ) -> bool {
     let mut armou = false;
@@ -114,7 +114,7 @@ pub fn arm(
         // Entra no Edit pela porta REAL (o mesmo evento do pill do painel). O
         // domínio começa em Stroke; a seleção do retângulo já está armada.
         8 => {
-            if let Some(hero) = hero.as_deref_mut() {
+            if let Some(hero) = hero {
                 hero.bus
                     .push(ph2d_editor::action_bus::EditorAction::ToolPanelEvent(
                         ph2d_editor::tool::PanelEvent::Click(ph2d_editor::ids::FLIP_MODE_EDIT),

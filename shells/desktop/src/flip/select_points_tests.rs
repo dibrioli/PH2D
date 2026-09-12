@@ -128,7 +128,7 @@ fn a_partial_point_selection_narrows_the_per_point_style_writes() {
         ..prev
     };
     assert!(apply_style_delta(&mut d, &prev, &now));
-    let red = crate::flip::draw::srgb8_to_linear([255, 0, 0, 255]);
+    let red = ph2d_app_flip::draw::srgb8_to_linear([255, 0, 0, 255]);
     let colors = d.strokes[0].colors();
     assert_eq!(colors[1], red, "o ponto selecionado tem de ganhar a cor");
     assert_ne!(

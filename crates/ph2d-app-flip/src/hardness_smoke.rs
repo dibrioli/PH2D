@@ -135,8 +135,7 @@ fn one_stroke_star_sampled(cx: f32, hardness: f32, slow_hand: bool) -> FlipStrok
         ..Default::default()
     };
     let pressures = vec![1.0_f32; corners.len()];
-    let mut st =
-        crate::flip::draw::stroke_from_samples(&style, &corners, &pressures, &Xform::IDENTITY);
+    let mut st = crate::draw::stroke_from_samples(&style, &corners, &pressures, &Xform::IDENTITY);
     st.hardness = hardness;
     st
 }
@@ -152,7 +151,7 @@ fn min_step_in_radii(st: &FlipStroke) -> f32 {
 }
 
 /// **Monta a cena** — porta única (a mensagem encena por aqui). Devolve os x dos QUATRO grupos.
-pub(crate) fn stage(obj: &mut ph2d_flip::FlipObject) -> [f32; 4] {
+pub fn stage(obj: &mut ph2d_flip::FlipObject) -> [f32; 4] {
     obj.fps = 12.0;
     obj.onion.enabled = false; // um quadro só; o onion sujaria a leitura do perfil.
 
@@ -184,118 +183,124 @@ pub(crate) fn stage(obj: &mut ph2d_flip::FlipObject) -> [f32; 4] {
     xs
 }
 
-impl crate::App {
-    /// Roda no prólogo do frame (ao lado dos outros smokes). No-op sem a env.
-    pub(crate) fn flip_hardness_smoke(&mut self) {
-        if !enabled() || self.gfx.is_none() {
-            return;
-        }
-        if FRAME.fetch_add(1, Ordering::Relaxed) != 3 {
-            return;
-        }
-        let gfx = self.gfx.as_mut().expect("gfx");
-        let tool_ok = gfx.tools.set_active(&ph2d_editor::ToolId::new("flip"));
-
-        let oid = gfx.flip.push_object("Hardness Smoke");
-        let obj = gfx.flip.object_mut(oid).expect("objeto recem-criado");
-        let xs = stage(obj);
-
-        self.playhead.seek(0.0);
-        self.playhead.pause();
-
-        eprintln!(
-            "\n[hardness-smoke] cena montada: 2 cruzamentos + 2 ESTRELAS DE UM TRACO em \
-             x={:?}, hardness {:?}. Ferramenta flip ativa: {}.",
-            xs,
-            [HARDNESS[0], HARDNESS[2], HARDNESS[2], HARDNESS[2]],
-            if tool_ok {
-                "sim"
-            } else {
-                "NAO (PARE: sem ela o traco nao e dirigido pela tool Flip)"
-            }
-        );
-
-        let mut tabela = String::new();
-        for i in [0usize, 1, 2] {
-            tabela.push_str(&format!(
-                "                 {:>4.1}         {:>5.3}          {:>5.3}\n",
-                HARDNESS[i], HALF_INK_WAS[i], HALF_INK_NOW[i]
-            ));
-        }
-
-        eprintln!(
-            "\n\
-             ============================================================\n\
-             ANTES DE TUDO: este terminal imprimiu, logo acima, a linha\n\
-             comecando com '[hardness-smoke] cena montada'? Se NAO, PARE:\n\
-             o smoke nao rodou (arvore ou variavel de ambiente errada).\n\
-             ============================================================\n\
-             \n\
-             A CENA, da esquerda para a direita:\n\
-               1. X duro (hardness 1.0) -- o CONTROLE. As duas leis sao\n\
-                  byte-identicas aqui, e este e o default do Flip. Se ele\n\
-                  mudou, algo mais quebrou.\n\
-               2. X macio (hardness 0.4), DOIS tracos cruzados.\n\
-               3. ESTRELA de UM traco, MAO RAPIDA (hardness 0.4).\n\
-               4. ESTRELA de UM traco, MAO LENTA -- **A SUA FOTO**.\n\
-                  Mesma figura, amostrada densa com tremor, que e o que\n\
-                  acontece quando voce desenha devagar. Veja no terminal\n\
-                  acima o passo MINIMO de cada uma.\n\
-             \n\
-             O QUE OLHAR -- e e so isso:\n\
-               1. **AS DUAS ESTRELAS TEM DE SER A MESMA FIGURA.** Era\n\
-                  exatamente aqui que o defeito vivia: a da direita\n\
-                  (mao lenta) PERDIA tinta nas quinas e nos cruzamentos,\n\
-                  e o buraco lia como uma dobra 3D. Se as duas estao\n\
-                  iguais, a wave fez o que prometeu.\n\
-               2. Desenhe voce mesmo, DEVAGAR, cruzando o proprio traco\n\
-                  sem levantar a caneta -- o gesto do seu report.\n\
-               3. Abra o PAINTER, pincel digital normal, MESMA hardness, e\n\
-                  rabisque uma estrela sem levantar a caneta. O aspecto\n\
-                  tem de ser o MESMO -- e a razao desta wave existir.\n\
-               4. O X da esquerda nao pode ter mudado.\n\
-             \n\
-             ------------------------------------------------------------\n\
-             A CURA DESTA RODADA, numa frase: a lista de vizinhos que o\n\
-             fragment recebe era capeada por CONTAGEM (16 segmentos), mas\n\
-             o que ela precisa cobrir e um ALCANCE (3 x raio). Contagem =\n\
-             alcance / passo, entao desenhar DEVAGAR atravessava o teto,\n\
-             a lista truncava e a tinta SUMIA -- medido contra o deposito\n\
-             real do Painter: -184 de 255 com passo 0,10 x raio e -255\n\
-             (tinta NENHUMA) com 0,05. Agora a lista conta CAPSULAS, e\n\
-             uma capsula cobre um PEDACO DE CAMINHO: 1 numa reta, ~6 numa\n\
-             curva do tamanho do pincel -- em qualquer densidade. O\n\
-             desvio virou CONSTANTE (-3 de 255) de 0,80 ate 0,04 x raio.\n\
-             \n\
-             ------------------------------------------------------------\n\
-             A CURA DA RODADA ANTERIOR, numa frase: o Flip desenha um\n\
-             TRACO, entao o perfil\n\
-             dele e o perfil de TRACO do Painter (a fileira de dabs\n\
-             composta por `over`), nunca o de um DAB dele. As duas\n\
-             rodadas anteriores igualaram a lei do DAB, que e muito mais\n\
-             rala -- em hardness 0.4 e dn 0.70 um dab pesa 0.500 e o\n\
-             traco pesa 0.916.\n\
-             \n\
-             Medido: o dn onde a tinta cruza meia-tinta (= a metade\n\
-             VISIVEL da largura pedida).\n\
-             \n\
-             hardness      lei do DAB      lei do TRACO\n\
-             {tabela}\
-             ------------------------------------------------------------\n\
-             \n\
-             Contra o deposito REAL do Painter (sonda `painter_look.rs`,\n\
-             a mesma estrela): ZERO pixel com MENOS tinta que o Painter,\n\
-             em toda a faixa de hardness, e num traco RETO o Flip virou\n\
-             o deposito dele ao +-1 de 255.\n\
-             \n\
-             ⚠️ RESIDUO NOMEADO: na PONTA de uma quina muito afiada os\n\
-             dabs do Painter RECUAM em vez de correr paralelos, e o Flip\n\
-             pinta ali um pouco mais cheio (+122 de 255 no vertice de\n\
-             36 graus; some conforme a hardness sobe). E a direcao\n\
-             OPOSTA a queixa -- a ponta fica mais redonda, nao mordida.\n\
-             Se ISSO incomodar, reporte: e outra wave.\n"
-        );
+/// **Arma a cena deste smoke** (W2/L5 Fase B, 2026-09-11).
+///
+/// ⭐ Um dos TRÊS que fecham o `const FAMILY`: ele só precisava de UMA função do `draw`
+/// (`stroke_from_samples`), e foi separar o `bake_stroke` — a única do `draw` presa atrás do
+/// `vec_transform` — que o destravou.
+/// Roda no prólogo do frame (ao lado dos outros smokes). No-op sem a env.
+pub fn arm(
+    flip: &mut ph2d_flip::FlipDoc,
+    tools: &mut ph2d_editor::ToolRegistry,
+    playhead: &mut ph2d_core::Playhead,
+) {
+    if !enabled() {
+        return;
     }
+    if FRAME.fetch_add(1, Ordering::Relaxed) != 3 {
+        return;
+    }
+    let tool_ok = tools.set_active(&ph2d_editor::ToolId::new("flip"));
+
+    let oid = flip.push_object("Hardness Smoke");
+    let obj = flip.object_mut(oid).expect("objeto recem-criado");
+    let xs = stage(obj);
+
+    playhead.seek(0.0);
+    playhead.pause();
+
+    eprintln!(
+        "\n[hardness-smoke] cena montada: 2 cruzamentos + 2 ESTRELAS DE UM TRACO em \
+         x={:?}, hardness {:?}. Ferramenta flip ativa: {}.",
+        xs,
+        [HARDNESS[0], HARDNESS[2], HARDNESS[2], HARDNESS[2]],
+        if tool_ok {
+            "sim"
+        } else {
+            "NAO (PARE: sem ela o traco nao e dirigido pela tool Flip)"
+        }
+    );
+
+    let mut tabela = String::new();
+    for i in [0usize, 1, 2] {
+        tabela.push_str(&format!(
+            "                 {:>4.1}         {:>5.3}          {:>5.3}\n",
+            HARDNESS[i], HALF_INK_WAS[i], HALF_INK_NOW[i]
+        ));
+    }
+
+    eprintln!(
+        "\n\
+         ============================================================\n\
+         ANTES DE TUDO: este terminal imprimiu, logo acima, a linha\n\
+         comecando com '[hardness-smoke] cena montada'? Se NAO, PARE:\n\
+         o smoke nao rodou (arvore ou variavel de ambiente errada).\n\
+         ============================================================\n\
+         \n\
+         A CENA, da esquerda para a direita:\n\
+           1. X duro (hardness 1.0) -- o CONTROLE. As duas leis sao\n\
+              byte-identicas aqui, e este e o default do Flip. Se ele\n\
+              mudou, algo mais quebrou.\n\
+           2. X macio (hardness 0.4), DOIS tracos cruzados.\n\
+           3. ESTRELA de UM traco, MAO RAPIDA (hardness 0.4).\n\
+           4. ESTRELA de UM traco, MAO LENTA -- **A SUA FOTO**.\n\
+              Mesma figura, amostrada densa com tremor, que e o que\n\
+              acontece quando voce desenha devagar. Veja no terminal\n\
+              acima o passo MINIMO de cada uma.\n\
+         \n\
+         O QUE OLHAR -- e e so isso:\n\
+           1. **AS DUAS ESTRELAS TEM DE SER A MESMA FIGURA.** Era\n\
+              exatamente aqui que o defeito vivia: a da direita\n\
+              (mao lenta) PERDIA tinta nas quinas e nos cruzamentos,\n\
+              e o buraco lia como uma dobra 3D. Se as duas estao\n\
+              iguais, a wave fez o que prometeu.\n\
+           2. Desenhe voce mesmo, DEVAGAR, cruzando o proprio traco\n\
+              sem levantar a caneta -- o gesto do seu report.\n\
+           3. Abra o PAINTER, pincel digital normal, MESMA hardness, e\n\
+              rabisque uma estrela sem levantar a caneta. O aspecto\n\
+              tem de ser o MESMO -- e a razao desta wave existir.\n\
+           4. O X da esquerda nao pode ter mudado.\n\
+         \n\
+         ------------------------------------------------------------\n\
+         A CURA DESTA RODADA, numa frase: a lista de vizinhos que o\n\
+         fragment recebe era capeada por CONTAGEM (16 segmentos), mas\n\
+         o que ela precisa cobrir e um ALCANCE (3 x raio). Contagem =\n\
+         alcance / passo, entao desenhar DEVAGAR atravessava o teto,\n\
+         a lista truncava e a tinta SUMIA -- medido contra o deposito\n\
+         real do Painter: -184 de 255 com passo 0,10 x raio e -255\n\
+         (tinta NENHUMA) com 0,05. Agora a lista conta CAPSULAS, e\n\
+         uma capsula cobre um PEDACO DE CAMINHO: 1 numa reta, ~6 numa\n\
+         curva do tamanho do pincel -- em qualquer densidade. O\n\
+         desvio virou CONSTANTE (-3 de 255) de 0,80 ate 0,04 x raio.\n\
+         \n\
+         ------------------------------------------------------------\n\
+         A CURA DA RODADA ANTERIOR, numa frase: o Flip desenha um\n\
+         TRACO, entao o perfil\n\
+         dele e o perfil de TRACO do Painter (a fileira de dabs\n\
+         composta por `over`), nunca o de um DAB dele. As duas\n\
+         rodadas anteriores igualaram a lei do DAB, que e muito mais\n\
+         rala -- em hardness 0.4 e dn 0.70 um dab pesa 0.500 e o\n\
+         traco pesa 0.916.\n\
+         \n\
+         Medido: o dn onde a tinta cruza meia-tinta (= a metade\n\
+         VISIVEL da largura pedida).\n\
+         \n\
+         hardness      lei do DAB      lei do TRACO\n\
+         {tabela}\
+         ------------------------------------------------------------\n\
+         \n\
+         Contra o deposito REAL do Painter (sonda `painter_look.rs`,\n\
+         a mesma estrela): ZERO pixel com MENOS tinta que o Painter,\n\
+         em toda a faixa de hardness, e num traco RETO o Flip virou\n\
+         o deposito dele ao +-1 de 255.\n\
+         \n\
+         ⚠️ RESIDUO NOMEADO: na PONTA de uma quina muito afiada os\n\
+         dabs do Painter RECUAM em vez de correr paralelos, e o Flip\n\
+         pinta ali um pouco mais cheio (+122 de 255 no vertice de\n\
+         36 graus; some conforme a hardness sobe). E a direcao\n\
+         OPOSTA a queixa -- a ponta fica mais redonda, nao mordida.\n\
+         Se ISSO incomodar, reporte: e outra wave.\n"
+    );
 }
 
 #[cfg(test)]

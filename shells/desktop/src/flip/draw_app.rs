@@ -1,6 +1,6 @@
 //! **A metade que precisa da `App`** do traço do Flip (W2/L5, 2026-09-11).
 //!
-//! O módulo [`crate::flip::draw`] guarda a LEI do traço (amostragem, largura, a cor); aqui
+//! O módulo [`ph2d_app_flip::draw`] guarda a LEI do traço (amostragem, largura, a cor); aqui
 //! fica o que toca os agregados da shell — o `AppGfx` (o `FlipDoc` vivo), o relógio e a
 //! captura de undo. É a lista que o substrato da `ph2d-app-host` tem de cobrir (Fase B).
 //!
@@ -10,7 +10,7 @@
 //! no `FILE_OVERAGE_OK` (CLAUDE.md §5.0).
 
 #[allow(unused_imports)]
-use super::draw::*;
+use ph2d_app_flip::draw::*;
 use ph2d_core::Vec2;
 use ph2d_flip::FlipDrawing;
 use ph2d_flip_render::{FlipGpuData, pack_drawing};
@@ -182,7 +182,7 @@ impl crate::App {
             // painel continuavam reescrevendo o último traço até o usuário fazer outra
             // coisa. O Enio mandou parar com isso em 2026-07-18: um traço desenhado é um
             // FATO, não uma pré-visualização que os sliders continuam editando.)
-            bake_stroke(
+            super::bake::bake_stroke(
                 &mut gfx.flip,
                 &playhead,
                 &style,

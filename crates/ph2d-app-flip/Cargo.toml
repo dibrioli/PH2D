@@ -55,6 +55,9 @@ libm = "0.2"
 # O empacotamento do desenho para a GPU (`FlipGpuData`, `pack_drawing`, `CameraRaw`) — os
 # CORPOS do passe de render vivem aqui; o LAÇO que os chama em ordem fica na shell (HOWTO §4).
 ph2d-flip-render = { path = "../ph2d-flip-render" }
+# O `Xform` — a lei do traço recebe o afim mundo→local já pronto (ela não o DERIVA: derivar é o
+# que está preso no `vec_transform` da shell, §3 do handoff).
+ph2d-vec-scene = { path = "../ph2d-vec-scene" }
 # Só pela `VectorScene` que o cursor do Flip desenha em cima.
 ph2d-vector = { path = "../ph2d-vector" }
 # O modo de mistura das camadas do Flip.

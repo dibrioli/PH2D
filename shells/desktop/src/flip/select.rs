@@ -450,9 +450,9 @@ pub(crate) fn apply_style_delta(
     if prev == now {
         return false;
     }
-    let color = crate::flip::draw::srgb8_to_linear(now.stroke);
+    let color = ph2d_app_flip::draw::srgb8_to_linear(now.stroke);
     let mut changed = false;
-    let fill_color = crate::flip::draw::srgb8_to_linear(now.fill_color);
+    let fill_color = ph2d_app_flip::draw::srgb8_to_linear(now.fill_color);
     for s in drawing.strokes.iter_mut().filter(|s| s.selected) {
         // **Domínio Point com seleção PARCIAL: os atributos POR-PONTO miram só os pontos
         // selecionados** (cor, opacidade, largura — o GP faz o mesmo: atributo de ponto

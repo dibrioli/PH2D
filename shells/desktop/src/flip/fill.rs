@@ -224,7 +224,7 @@ pub(crate) fn fill_click(
         );
     }
 
-    let color = crate::flip::draw::srgb8_to_linear(style.fill_color);
+    let color = ph2d_app_flip::draw::srgb8_to_linear(style.fill_color);
 
     // **A forma fechada pinta A SI MESMA** (a lição do Suzanne — ver `filled_shape_target`).
     // Sem contorno vetorizado, sem dois conjuntos de vértices, sem dessincronização: a cor

@@ -25,9 +25,9 @@
 
 pub(crate) mod airbrush_smoke_app;
 pub(crate) mod autokey;
+pub(crate) mod bake;
 pub(crate) mod colorize;
 pub(crate) mod colorize_smoke_app;
-pub(crate) mod draw;
 pub(crate) mod draw_app;
 pub(crate) mod edit_gesture;
 pub(crate) mod edit_smoke_app;
@@ -38,13 +38,13 @@ pub(crate) mod fill_smoke_app;
 pub(crate) mod fill_target;
 pub(crate) mod gap_live_app;
 pub(crate) mod gizmo_view;
-pub(crate) mod hardness_smoke;
+pub(crate) mod hardness_smoke_app;
 pub(crate) mod layers;
 pub(crate) mod multiplane_smoke_app;
 pub(crate) mod pose_gizmo;
 pub(crate) mod pose_smoke_app;
-pub(crate) mod pressure_smoke;
-pub(crate) mod resample_smoke;
+pub(crate) mod pressure_smoke_app;
+pub(crate) mod resample_smoke_app;
 pub(crate) mod reshape;
 pub(crate) mod segment_smoke_app;
 pub(crate) mod select;

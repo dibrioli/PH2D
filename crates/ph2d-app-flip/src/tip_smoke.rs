@@ -56,53 +56,6 @@ pub fn stage(obj: &mut ph2d_flip::FlipObject) -> ph2d_flip::LayerId {
     l
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use ph2d_flip::{FlipDoc, FlipObjectId, LayerId};
-
-    /// A cena arma os extremos do *tip* (linha cheia + as duas contas) E — o ponto DESTE fix —
-    /// um traço GROSSO pontilhado: o report do Enio (2026-07-25) é que traços grossos não
-    /// mostravam o padrão, então a cena que o demonstra TEM de conter um. Sem o 4º traço, a
-    /// mensagem mandaria olhar um efeito que a cena não encena.
-    #[test]
-    fn the_tip_smoke_stages_a_dotted_a_continuous_and_a_thick_stroke() {
-        let mut doc = FlipDoc::default();
-        let oid: FlipObjectId = doc.push_object("T");
-        let obj = doc.object_mut(oid).expect("objeto");
-        let l: LayerId = stage(obj);
-        let d = obj
-            .layer(l)
-            .expect("camada")
-            .drawing_at(0)
-            .expect("desenho");
-        let strokes = &obj.drawing(d).expect("arte").strokes;
-        assert_eq!(
-            strokes[0].tip,
-            StrokeTip::Continuous,
-            "o de cima e' a linha cheia"
-        );
-        assert_eq!(strokes[1].tip, StrokeTip::Dots, "o 2o e' pontilhado");
-        assert_eq!(strokes[2].tip, StrokeTip::Squares, "o 3o e' quadrado");
-        assert!(strokes[1].dot_spacing > 0.0, "as contas tem espacamento");
-        // O 4o e' pontilhado E mais GROSSO que os finos (o caso do report), com a MESMA
-        // razao de espacamento — a prova de que a pitch escala com a espessura.
-        assert_eq!(
-            strokes[3].tip,
-            StrokeTip::Dots,
-            "o de baixo e' o grosso pontilhado"
-        );
-        assert!(
-            strokes[3].widths()[0] > strokes[1].widths()[0] * 2.0,
-            "o 4o traco e' bem mais grosso que os finos"
-        );
-        assert_eq!(
-            strokes[3].dot_spacing, strokes[1].dot_spacing,
-            "grosso e fino usam a MESMA razao de espacamento"
-        );
-    }
-}
-
 /// **Arma a cena deste smoke** (W2/L5 Fase B, 2026-09-11).
 ///
 /// ⭐ Era um `impl crate::App` na shell, e o que ela de facto dava eram **três tipos de crates
@@ -170,4 +123,51 @@ pub fn arm(
          Spacing controla o VAO como multiplo do diametro. Zoom in/out: contas mantem o\n\
          tamanho em DOCUMENTO (a espessura e o Size ja medem mundo).\n"
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ph2d_flip::{FlipDoc, FlipObjectId, LayerId};
+
+    /// A cena arma os extremos do *tip* (linha cheia + as duas contas) E — o ponto DESTE fix —
+    /// um traço GROSSO pontilhado: o report do Enio (2026-07-25) é que traços grossos não
+    /// mostravam o padrão, então a cena que o demonstra TEM de conter um. Sem o 4º traço, a
+    /// mensagem mandaria olhar um efeito que a cena não encena.
+    #[test]
+    fn the_tip_smoke_stages_a_dotted_a_continuous_and_a_thick_stroke() {
+        let mut doc = FlipDoc::default();
+        let oid: FlipObjectId = doc.push_object("T");
+        let obj = doc.object_mut(oid).expect("objeto");
+        let l: LayerId = stage(obj);
+        let d = obj
+            .layer(l)
+            .expect("camada")
+            .drawing_at(0)
+            .expect("desenho");
+        let strokes = &obj.drawing(d).expect("arte").strokes;
+        assert_eq!(
+            strokes[0].tip,
+            StrokeTip::Continuous,
+            "o de cima e' a linha cheia"
+        );
+        assert_eq!(strokes[1].tip, StrokeTip::Dots, "o 2o e' pontilhado");
+        assert_eq!(strokes[2].tip, StrokeTip::Squares, "o 3o e' quadrado");
+        assert!(strokes[1].dot_spacing > 0.0, "as contas tem espacamento");
+        // O 4o e' pontilhado E mais GROSSO que os finos (o caso do report), com a MESMA
+        // razao de espacamento — a prova de que a pitch escala com a espessura.
+        assert_eq!(
+            strokes[3].tip,
+            StrokeTip::Dots,
+            "o de baixo e' o grosso pontilhado"
+        );
+        assert!(
+            strokes[3].widths()[0] > strokes[1].widths()[0] * 2.0,
+            "o 4o traco e' bem mais grosso que os finos"
+        );
+        assert_eq!(
+            strokes[3].dot_spacing, strokes[1].dot_spacing,
+            "grosso e fino usam a MESMA razao de espacamento"
+        );
+    }
 }

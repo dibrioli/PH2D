@@ -256,7 +256,7 @@ impl crate::App {
             if pts.len() < 2 {
                 continue;
             }
-            let c = crate::flip::draw::srgb8_to_linear(color);
+            let c = ph2d_app_flip::draw::srgb8_to_linear(color);
             let mut s = FlipStroke::new();
             for p in pts {
                 let l = w2l.apply([f64::from(p.x), f64::from(p.y)]);

@@ -4815,6 +4815,7 @@ dependencies = [
  "ph2d-flip-reshape",
  "ph2d-painter-effects",
  "ph2d-tool-flip",
+ "ph2d-vec-scene",
  "ph2d-vector",
  "winit",
 ]

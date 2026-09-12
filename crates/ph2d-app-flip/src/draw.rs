@@ -11,13 +11,13 @@
 //! premium) é T2.7; RDP no pen-up é T2.8.
 
 use ph2d_core::Vec2;
-use ph2d_flip::{FlipDoc, FlipStroke, LayerId, Point, Rgba};
+use ph2d_flip::{FlipStroke, Point, Rgba};
 use ph2d_tool_flip::FlipStyleSnapshot;
 use ph2d_vec_scene::Xform;
 
 /// O traço do Flip em curso: amostras em MUNDO + pressão por amostra.
 #[derive(Default)]
-pub(crate) struct FlipDraw {
+pub struct FlipDraw {
     points: Vec<Vec2>,
     pressures: Vec<f32>,
     active: bool,
@@ -34,7 +34,7 @@ pub(crate) struct FlipDraw {
     /// O ajuste já decidido deste traço — estado DERIVADO, e por isso mora ao lado das amostras de
     /// que deriva. O preview roda o pipeline inteiro por quadro; sem isto ele re-decide, a cada
     /// quadro, um traço que a lei já garante que não muda.
-    fit: ph2d_app_flip::smooth::FitCache,
+    fit: crate::smooth::FitCache,
 }
 
 /// Distância mínima (px de tela) entre amostras — abaixo disso o move é
@@ -43,12 +43,12 @@ const MIN_SAMPLE_PX: f32 = 2.0;
 
 impl FlipDraw {
     #[must_use]
-    pub(crate) fn is_active(&self) -> bool {
+    pub fn is_active(&self) -> bool {
         self.active
     }
 
     /// Começa um traço com a 1ª amostra (mundo + pressão).
-    pub(crate) fn begin(&mut self, world: Vec2, pressure: f32) {
+    pub fn begin(&mut self, world: Vec2, pressure: f32) {
         self.points.clear();
         self.pressures.clear();
         self.pending = None;
@@ -60,7 +60,7 @@ impl FlipDraw {
 
     /// Adiciona uma amostra se andou ≥ `MIN_SAMPLE_PX` desde a última (medido em
     /// tela, via `px_per_world`). Devolve `true` se aceitou (pra o caller pintar).
-    pub(crate) fn extend(&mut self, world: Vec2, pressure: f32, px_per_world: f32) -> bool {
+    pub fn extend(&mut self, world: Vec2, pressure: f32, px_per_world: f32) -> bool {
         let Some(&last) = self.points.last() else {
             return false;
         };
@@ -79,15 +79,13 @@ impl FlipDraw {
 
     /// As amostras **e o cache do ajuste**, emprestados juntos — o preview precisa dos três de uma
     /// vez, e emprestar o `FlipDraw` inteiro travaria o cache contra as próprias amostras.
-    pub(crate) fn preview_parts(
-        &mut self,
-    ) -> (&[Vec2], &[f32], &mut ph2d_app_flip::smooth::FitCache) {
+    pub fn preview_parts(&mut self) -> (&[Vec2], &[f32], &mut crate::smooth::FitCache) {
         (&self.points, &self.pressures, &mut self.fit)
     }
 
     /// Encerra o traço e devolve as amostras (mundo, pressão), limpando o estado.
     /// `None` se não há amostras suficientes (< 2 pontos = um toque, sem traço).
-    pub(crate) fn take(&mut self) -> Option<(Vec<Vec2>, Vec<f32>)> {
+    pub fn take(&mut self) -> Option<(Vec<Vec2>, Vec<f32>)> {
         self.active = false;
         // ⭐ **O pen-up PROMOVE a amostra pendente** — o traço acaba onde a mão soltou, não onde
         // caiu a última amostra que passou do limiar.
@@ -109,7 +107,7 @@ impl FlipDraw {
 
 /// sRGB8 → `Rgba` linear straight-alpha (o `FlipDoc` guarda linear; o picker/tool
 /// dá sRGB). Transfer padrão; fora de qualquer caminho de sim (não é HR-5).
-pub(crate) fn srgb8_to_linear(c: [u8; 4]) -> Rgba {
+pub fn srgb8_to_linear(c: [u8; 4]) -> Rgba {
     fn ch(b: u8) -> f32 {
         let v = b as f32 / 255.0;
         if v <= 0.04045 {
@@ -119,53 +117,6 @@ pub(crate) fn srgb8_to_linear(c: [u8; 4]) -> Rgba {
         }
     }
     Rgba::new(ch(c[0]), ch(c[1]), ch(c[2]), c[3] as f32 / 255.0)
-}
-
-/// Assa `(points, pressures)` (mundo) num `FlipStroke` e o empurra no desenho
-/// ativo do 1º objeto na CAMADA ATIVA (fallback: topo) no quadro atual. Cria uma
-/// chave se o quadro ainda não tem desenho. `px_to_world` = mundo por pixel de
-/// tela (a largura do brush é em px → convertida pra mundo). Uma camada TRAVADA
-/// (`locked`) recusa o traço. Devolve `true` se assou.
-#[allow(clippy::too_many_arguments)] // doc+playhead+estilo+camada+amostras+afim são intrínsecos
-pub(crate) fn bake_stroke(
-    flip: &mut FlipDoc,
-    playhead: &ph2d_core::Playhead,
-    style: &FlipStyleSnapshot,
-    active_layer: Option<LayerId>,
-    strip: &mut crate::flip::strip::FlipStrip,
-    points: &[Vec2],
-    pressures: &[f32],
-    world_to_local: &Xform,
-) -> Option<(ph2d_flip::FlipObjectId, ph2d_flip::DrawingId, usize)> {
-    if points.len() < 2 {
-        return None;
-    }
-    // **O autokey por-tool (W3.T3.4)**: quem decide o desenho-alvo — e se uma chave
-    // nova nasce (em branco, ou como cópia sob *Additive*) — é o `flip_autokey`, o
-    // mesmo ponto que a borracha usa. A caneta nunca resolve isso na mão.
-    let (oid, _lid, did) = crate::flip::autokey::target_drawing(
-        flip,
-        playhead,
-        active_layer,
-        strip,
-        crate::flip::autokey::FlipEdit::Draw,
-    )?;
-    let drawing = flip.object_mut(oid)?.drawing_mut(did)?;
-
-    // Active smoothing (T2.7): assa EXATAMENTE o traço que o preview mostrou — o
-    // mesmo `active_smooth`, sem decimar. O RDP do 1º corte (0.75px) deixava o
-    // traço assado mais anguloso que o preview (Enio 2026-07-11: "o desenho em
-    // tempo real está mais suave que o traço cosido após mouse up"); mantê-los
-    // idênticos vale mais que "enxuto". As pressões seguem 1:1 (o smooth só move
-    // posições). Uma decimação visualmente-perdida-zero (RDP fininho) tira só
-    // pontos EXATAMENTE colineares, sem cortar curva.
-    drawing.strokes.push(stroke_from_samples(
-        style,
-        points,
-        pressures,
-        world_to_local,
-    ));
-    Some((oid, did, drawing.strokes.len() - 1))
 }
 
 /// **A tolerância da simplificação: uma FRAÇÃO da espessura do traço.**
@@ -239,7 +190,7 @@ fn simplify_tolerance(style: &FlipStyleSnapshot) -> f32 {
 /// É `pub(crate)` porque os testes o dirigem direto, sem passar pelo gesto do
 /// painel: mudar o Smoothing exige refazer *a partir das amostras*, não do traço assado
 /// (o smoothing filtra o insumo; um traço já filtrado não tem como "desfiltrar").
-pub(crate) fn stroke_from_samples(
+pub fn stroke_from_samples(
     style: &FlipStyleSnapshot,
     points: &[Vec2],
     pressures: &[f32],
@@ -250,7 +201,7 @@ pub(crate) fn stroke_from_samples(
         points,
         pressures,
         world_to_local,
-        &mut ph2d_app_flip::smooth::FitCache::default(),
+        &mut crate::smooth::FitCache::default(),
     )
 }
 
@@ -263,14 +214,14 @@ pub(crate) fn stroke_from_samples(
 /// ESTRUTURA. O que o cache muda é quanto trabalho é refeito, nunca o resultado: o
 /// [`FitCache::simplify`] devolve exatamente o que o `simplify_to_curve` devolveria, e há gate
 /// afirmando isso índice a índice, quadro a quadro, sobre o pipeline do produto.
-pub(crate) fn stroke_from_samples_cached(
+pub fn stroke_from_samples_cached(
     style: &FlipStyleSnapshot,
     points: &[Vec2],
     pressures: &[f32],
     world_to_local: &Xform,
-    fit: &mut ph2d_app_flip::smooth::FitCache,
+    fit: &mut crate::smooth::FitCache,
 ) -> FlipStroke {
-    let smoothed = ph2d_app_flip::smooth::active_smooth(points, style.smoothing);
+    let smoothed = crate::smooth::active_smooth(points, style.smoothing);
     // ⚠️ **Contra a CURVA que será desenhada, não contra a corda reta** (Enio 2026-07-30). O
     // `simplify_rdp` cobrava a tolerância contra a corda enquanto o `resample_smooth` desenha uma
     // Catmull-Rom pelos sobreviventes — num gancho a corda parecia boa e o traço ficava a 8,46 % da
@@ -284,12 +235,8 @@ pub(crate) fn stroke_from_samples_cached(
     // ficam. É a MESMA porta do preview e do bake, então os dois seguem idênticos.
     // ⚠️ A 4ª entrada é a tolerância do PRÓPRIO RDP acima: a reamostragem não re-adiciona
     // pontos num span que o simplificador acabou de declarar reto (ver `resample_smooth`).
-    let (pts, prs) = ph2d_app_flip::smooth::resample_smooth(
-        &pts,
-        &prs,
-        resample_step(style),
-        simplify_tolerance(style),
-    );
+    let (pts, prs) =
+        crate::smooth::resample_smooth(&pts, &prs, resample_step(style), simplify_tolerance(style));
     build_stroke(style, &pts, &prs, world_to_local)
 }
 

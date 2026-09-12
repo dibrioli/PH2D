@@ -151,138 +151,6 @@ pub fn stage(obj: &mut ph2d_flip::FlipObject) -> ph2d_flip::LayerId {
     l
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use ph2d_flip::FlipDoc;
-
-    fn ball_bbox(points: &[Vec2]) -> (f32, f32, f32) {
-        let (mut min_x, mut max_x) = (f32::MAX, f32::MIN);
-        let (mut min_y, mut max_y) = (f32::MAX, f32::MIN);
-        for p in points {
-            min_x = min_x.min(p.x);
-            max_x = max_x.max(p.x);
-            min_y = min_y.min(p.y);
-            max_y = max_y.max(p.y);
-        }
-        ((min_x + max_x) * 0.5, max_x - min_x, max_y - min_y)
-    }
-
-    /// 🔴 **A cena contém o que a mensagem promete.** Uma mensagem que descreve
-    /// outra cena manda o Enio procurar o que não existe — e ele julga o produto
-    /// pelo que leu. (As duas cenas anteriores caíram exatamente aí.)
-    #[test]
-    fn the_smoke_scene_shows_what_its_message_promises() {
-        let mut doc = FlipDoc::default();
-        let oid = doc.push_object("Strip Smoke");
-        let obj = doc.object_mut(oid).expect("objeto");
-        let l = stage(obj);
-        let layer = obj.layer(l).expect("camada");
-        assert_eq!(layer.name, "Bola", "o título da tira que o roteiro nomeia");
-        let cells = layer.cells();
-
-        let keys: Vec<i32> = cells.iter().map(|(k, _, _)| *k).collect();
-        assert_eq!(keys, vec![0, 4, 5, 11], "as 4 chaves da mensagem");
-        let exposures: Vec<u32> = cells.iter().map(|(_, _, e)| *e).collect();
-        assert_eq!(
-            exposures,
-            vec![4, 1, 6, 2],
-            "os números DENTRO das caixas — a largura da caixa É esse número"
-        );
-        // Desiguais: caixas do mesmo tamanho não mostram que a largura significa
-        // algo, e o gesto de esticar não teria contra o que ser julgado.
-        assert!(
-            exposures
-                .iter()
-                .collect::<std::collections::BTreeSet<_>>()
-                .len()
-                >= 3,
-            "as exposições precisam ser visivelmente diferentes"
-        );
-
-        // 🔴 **A cena tem de parecer UMA animação.** A bola VIAJA (x do centro
-        // estritamente crescente) e a pose do chão é ESMAGADA (mais larga que
-        // alta) — as duas propriedades que fazem "trocar de desenho" ser visível
-        // e o vulto fixado ser reconhecível de longe. As poses no ar são
-        // redondas (bbox ~quadrada), senão o squash não se destaca.
-        let boxes: Vec<(f32, f32, f32)> = cells
-            .iter()
-            .map(|(_, d, _)| ball_bbox(obj.drawing(*d).expect("arte").strokes[0].positions()))
-            .collect();
-        for pair in boxes.windows(2) {
-            assert!(
-                pair[1].0 > pair[0].0,
-                "a bola viaja para a direita a cada desenho ({:?})",
-                boxes.iter().map(|b| b.0).collect::<Vec<_>>()
-            );
-        }
-        let (_, sw, sh) = boxes[2];
-        assert!(
-            sw > 1.5 * sh,
-            "a pose do chão é ESMAGADA (largura {sw:.2} vs altura {sh:.2})"
-        );
-        for (i, &(_, w, h)) in boxes.iter().enumerate() {
-            if i != 2 {
-                assert!(
-                    (w - h).abs() < 0.05,
-                    "pose no ar {i} é redonda (bbox {w:.2}×{h:.2})"
-                );
-            }
-        }
-
-        // 🔴 **O vulto do Pin tem de ser VISÍVEL.** Com `fade = 1/Δ`, a chave 11
-        // fixada e vista da chave 0 sai a 0,5/11 → clampada no piso
-        // `GHOST_MIN_ALPHA` (0,1) — invisível sobre o fundo. O roteiro promete um
-        // vulto que aparece; a cena desliga o esmaecer para cumprir.
-        assert!(obj.onion.enabled, "fantasmas ligados desde o 1º frame");
-        assert_eq!(
-            (obj.onion.frames_before, obj.onion.frames_after),
-            (1, 1),
-            "alcance ±1: é o alcance curto que dá ao Pin algo a provar"
-        );
-        assert!(
-            !obj.onion.fade,
-            "sem fade por distância — o vulto fixado a Δ=11 seria invisível"
-        );
-        // A metade pedida no smoke de 2026-07-24 — e ainda acima do piso, senão o
-        // clamp comeria a redução e o Pin voltaria a sumir.
-        assert_eq!(obj.onion.opacity, 0.25, "o vulto é discreto por ordem");
-        assert!(
-            obj.onion.opacity > ph2d_flip::GHOST_MIN_ALPHA,
-            "a opacidade pedida tem de sobreviver ao clamp do piso"
-        );
-    }
-
-    /// 🔴 **A cena arma o caso que o Pin existe para resolver**: no quadro 0, com
-    /// alcance ±1, a ÚLTIMA chave está fora — então fixá-la muda o que se vê, e o
-    /// smoke tem um veredito. Com um alcance generoso a bola verde já apareceria
-    /// e o gesto não provaria nada (a fixture não conteria o fenômeno).
-    #[test]
-    fn the_last_key_is_out_of_ghost_range_so_pinning_it_changes_the_screen() {
-        let mut doc = FlipDoc::default();
-        let oid = doc.push_object("Strip Smoke");
-        let obj = doc.object_mut(oid).expect("objeto");
-        let l = stage(obj);
-        let obj = doc.object(oid).expect("objeto");
-        let layer = obj.layer(l).expect("camada");
-
-        let plain = ph2d_flip::ghosts(layer, 0, &obj.onion, &[], &[]);
-        assert!(
-            !plain.iter().any(|g| g.key == 11),
-            "sem pin a última chave está fora do alcance (é a premissa do roteiro)"
-        );
-        let pinned = ph2d_flip::ghosts(layer, 0, &obj.onion, &[], &[11]);
-        assert!(
-            pinned.iter().any(|g| g.key == 11),
-            "com pin ela aparece — é isso que o smoke manda olhar"
-        );
-        assert!(
-            pinned.iter().any(|g| g.key == 4),
-            "e a vizinha CONTINUA lá: um pin acompanha os vizinhos, não os substitui"
-        );
-    }
-}
-
 /// **Arma a cena deste smoke** (W2/L5 Fase B, 2026-09-11).
 ///
 /// ⭐ Era um `impl crate::App` na shell, e o que ela de facto dava eram **três tipos de crates
@@ -427,4 +295,136 @@ pub fn arm(
          ACONTECEU -- e' so isso que eu preciso.\n\
          ============================================================\n"
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ph2d_flip::FlipDoc;
+
+    fn ball_bbox(points: &[Vec2]) -> (f32, f32, f32) {
+        let (mut min_x, mut max_x) = (f32::MAX, f32::MIN);
+        let (mut min_y, mut max_y) = (f32::MAX, f32::MIN);
+        for p in points {
+            min_x = min_x.min(p.x);
+            max_x = max_x.max(p.x);
+            min_y = min_y.min(p.y);
+            max_y = max_y.max(p.y);
+        }
+        ((min_x + max_x) * 0.5, max_x - min_x, max_y - min_y)
+    }
+
+    /// 🔴 **A cena contém o que a mensagem promete.** Uma mensagem que descreve
+    /// outra cena manda o Enio procurar o que não existe — e ele julga o produto
+    /// pelo que leu. (As duas cenas anteriores caíram exatamente aí.)
+    #[test]
+    fn the_smoke_scene_shows_what_its_message_promises() {
+        let mut doc = FlipDoc::default();
+        let oid = doc.push_object("Strip Smoke");
+        let obj = doc.object_mut(oid).expect("objeto");
+        let l = stage(obj);
+        let layer = obj.layer(l).expect("camada");
+        assert_eq!(layer.name, "Bola", "o título da tira que o roteiro nomeia");
+        let cells = layer.cells();
+
+        let keys: Vec<i32> = cells.iter().map(|(k, _, _)| *k).collect();
+        assert_eq!(keys, vec![0, 4, 5, 11], "as 4 chaves da mensagem");
+        let exposures: Vec<u32> = cells.iter().map(|(_, _, e)| *e).collect();
+        assert_eq!(
+            exposures,
+            vec![4, 1, 6, 2],
+            "os números DENTRO das caixas — a largura da caixa É esse número"
+        );
+        // Desiguais: caixas do mesmo tamanho não mostram que a largura significa
+        // algo, e o gesto de esticar não teria contra o que ser julgado.
+        assert!(
+            exposures
+                .iter()
+                .collect::<std::collections::BTreeSet<_>>()
+                .len()
+                >= 3,
+            "as exposições precisam ser visivelmente diferentes"
+        );
+
+        // 🔴 **A cena tem de parecer UMA animação.** A bola VIAJA (x do centro
+        // estritamente crescente) e a pose do chão é ESMAGADA (mais larga que
+        // alta) — as duas propriedades que fazem "trocar de desenho" ser visível
+        // e o vulto fixado ser reconhecível de longe. As poses no ar são
+        // redondas (bbox ~quadrada), senão o squash não se destaca.
+        let boxes: Vec<(f32, f32, f32)> = cells
+            .iter()
+            .map(|(_, d, _)| ball_bbox(obj.drawing(*d).expect("arte").strokes[0].positions()))
+            .collect();
+        for pair in boxes.windows(2) {
+            assert!(
+                pair[1].0 > pair[0].0,
+                "a bola viaja para a direita a cada desenho ({:?})",
+                boxes.iter().map(|b| b.0).collect::<Vec<_>>()
+            );
+        }
+        let (_, sw, sh) = boxes[2];
+        assert!(
+            sw > 1.5 * sh,
+            "a pose do chão é ESMAGADA (largura {sw:.2} vs altura {sh:.2})"
+        );
+        for (i, &(_, w, h)) in boxes.iter().enumerate() {
+            if i != 2 {
+                assert!(
+                    (w - h).abs() < 0.05,
+                    "pose no ar {i} é redonda (bbox {w:.2}×{h:.2})"
+                );
+            }
+        }
+
+        // 🔴 **O vulto do Pin tem de ser VISÍVEL.** Com `fade = 1/Δ`, a chave 11
+        // fixada e vista da chave 0 sai a 0,5/11 → clampada no piso
+        // `GHOST_MIN_ALPHA` (0,1) — invisível sobre o fundo. O roteiro promete um
+        // vulto que aparece; a cena desliga o esmaecer para cumprir.
+        assert!(obj.onion.enabled, "fantasmas ligados desde o 1º frame");
+        assert_eq!(
+            (obj.onion.frames_before, obj.onion.frames_after),
+            (1, 1),
+            "alcance ±1: é o alcance curto que dá ao Pin algo a provar"
+        );
+        assert!(
+            !obj.onion.fade,
+            "sem fade por distância — o vulto fixado a Δ=11 seria invisível"
+        );
+        // A metade pedida no smoke de 2026-07-24 — e ainda acima do piso, senão o
+        // clamp comeria a redução e o Pin voltaria a sumir.
+        assert_eq!(obj.onion.opacity, 0.25, "o vulto é discreto por ordem");
+        assert!(
+            obj.onion.opacity > ph2d_flip::GHOST_MIN_ALPHA,
+            "a opacidade pedida tem de sobreviver ao clamp do piso"
+        );
+    }
+
+    /// 🔴 **A cena arma o caso que o Pin existe para resolver**: no quadro 0, com
+    /// alcance ±1, a ÚLTIMA chave está fora — então fixá-la muda o que se vê, e o
+    /// smoke tem um veredito. Com um alcance generoso a bola verde já apareceria
+    /// e o gesto não provaria nada (a fixture não conteria o fenômeno).
+    #[test]
+    fn the_last_key_is_out_of_ghost_range_so_pinning_it_changes_the_screen() {
+        let mut doc = FlipDoc::default();
+        let oid = doc.push_object("Strip Smoke");
+        let obj = doc.object_mut(oid).expect("objeto");
+        let l = stage(obj);
+        let obj = doc.object(oid).expect("objeto");
+        let layer = obj.layer(l).expect("camada");
+
+        let plain = ph2d_flip::ghosts(layer, 0, &obj.onion, &[], &[]);
+        assert!(
+            !plain.iter().any(|g| g.key == 11),
+            "sem pin a última chave está fora do alcance (é a premissa do roteiro)"
+        );
+        let pinned = ph2d_flip::ghosts(layer, 0, &obj.onion, &[], &[11]);
+        assert!(
+            pinned.iter().any(|g| g.key == 11),
+            "com pin ela aparece — é isso que o smoke manda olhar"
+        );
+        assert!(
+            pinned.iter().any(|g| g.key == 4),
+            "e a vizinha CONTINUA lá: um pin acompanha os vizinhos, não os substitui"
+        );
+    }
 }

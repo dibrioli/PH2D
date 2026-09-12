@@ -7,6 +7,7 @@ Feche a linha `$1`.
 1. Gate batched, 1× sobre o diff acumulado (nunca por task):
    - `bash scripts/nextest-impacted.sh`
    - clippy `--all-targets` + features
+   - `cargo machete` — ⚠️ **obrigatório se a linha MOVEU código**: mudar código de casa não muda a linha do `Cargo.toml`, nada disso falha a compilar, e o CI reprova. Medido na W2 (12/09): **79** dependências mortas deixadas pelas mudanças de casa, que nenhuma linha correu ao fechar (HOWTO §2.18)
    - `shells/desktop/tests/it/file_loc_caps.rs` (o gate da shell; o workspace_file_loc_cap
      cobre só crates/ — essa lacuna já deixou vermelho latente 2×)
    - `arch_safe_clamp_only` e os arch-gates de shell (só correm na varredura impactada)

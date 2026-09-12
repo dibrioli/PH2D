@@ -75,3 +75,16 @@ workspace a unificação de features liga-as, e é essa a que o CI corre.
 **How to apply:** para CONTAR avisos (e para dizer a alguém quantos faltam), só vale a linha do
 `ship.sh`: `cargo clippy --workspace --all-targets --features ph2d-spike/bevy_ecs -- -D warnings`.
 O `-p` derivado do diff, acima, serve para o inner loop — não para um veredito. (HOWTO §2.17.)
+
+## ⛔ E O MACHETE TAMBÉM É DO FECHO — mudar código de casa deixa a linha do `Cargo.toml` (2026-09-12)
+
+As mudanças de casa da W2 deixaram **79 dependências declaradas e não usadas** (62 na shell, 17 nas
+famílias), e **nenhuma** das linhas correu `cargo machete` ao fechar — quem as achou foi o `ship.sh` do
+integrador. A DIRETRIZ §1.5.9 já pedia *«deps novas p/ machete»* no handoff; o comando que as linhas
+de facto EXECUTAM ao fechar (`/pd-linha-fechar`) só corria testes e clippy. *Ponteiro não é adoção* —
+a lei do CLAUDE.md §2, outra vez.
+**How to apply:** o `/pd-linha-fechar` chama agora o `cargo machete` pelo nome. Ao triar, verifique
+antes de apagar: (1) a linha liga `features =` numa biblioteca partilhada? (apagar desliga-a em
+silêncio para o programa inteiro); (2) é só alvo de `dep:x` numa feature? (sai o elemento, a feature
+fica); (3) o comentário por cima vai junto — num `Cargo.toml` ele pertence à declaração de baixo e,
+deixado, passa a parecer explicar a seguinte. HOWTO §2.18.

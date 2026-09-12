@@ -314,6 +314,12 @@ fecha a linha ([`CLAUDE.md §0.7`](../../CLAUDE.md)). Conteúdo mínimo (curto, 
 4. **Contratos congelados encostados** (§4) — deve ser **nenhum**; se sim, exige ADR (pare e reporte).
 5. **O que só o `ship.sh` pega** (o gate de integração NÃO roda): fmt/typos pré-fork, deps novas
    p/ machete, clippy latente, RUSTSEC ([[project_integration_prefork_lines_ship_drift]]).
+   ⚠️ **O `cargo machete` corre-se AO FECHAR, não fica para o `ship.sh`** (medido 12/09): as mudanças
+   de casa da W2 deixaram **79** dependências declaradas e não usadas — a shell ficou com as linhas do
+   código que saiu, e as famílias copiaram a lista da shell em bloco. Nada disso falha a compilar;
+   o CI reprova. Esta alínea já pedia *«deps novas p/ machete»* no handoff, e nenhuma linha o correu,
+   porque o comando de fecho (`/pd-linha-fechar`) não o chamava pelo nome — hoje chama.
+   [`HOWTO_partir_uma_familia_da_shell.md`](HOWTO_partir_uma_familia_da_shell.md) §2.18.
 6. **Ordem/dependências** entre commits, se houver, e **o que smoke-testar** (o que NÃO foi smokado).
 7. ⚠️ **RECLAME o `incremental/` da sua worktree** — depois do gate batched e do handoff, antes de
    parar: `rm -rf "$(git rev-parse --show-toplevel)"/target/*/incremental`. São **25 GB por

@@ -483,6 +483,32 @@ antes de medir a configuração do envio.
 temporária o mesmo comando usou o `rustc 1.95` do sistema e reprovou com *«rustc 1.95.0 is not
 supported by the following packages»* — um vermelho que não diz nada sobre o código.
 
+### §2.18 — A dependência que fica para trás ⛔ muda para o compilador, VERMELHA no CI
+
+**Mudar código de casa não muda a linha do `Cargo.toml`.** Medido na integração da Fase D (12/09),
+pelo `cargo machete` do `ship.sh`: **79 dependências declaradas e não usadas** — 62 na shell e 17 nas
+crates de família. A origem é simétrica e as duas metades foram confirmadas no histórico:
+- **na SHELL** a dependência entrou em agosto, quando a shell a usava; o código mudou-se para a
+  família e **a linha ficou** (`ph2d-field-eval`, `ph2d-crossfield`, 23 `ph2d-node-*`, …);
+- **na FAMÍLIA** a dependência entrou no próprio dia da mudança, **copiada em bloco** com a lista da
+  shell (`ph2d-guides` na `physics`, `rayon` no piloto `field3d`, …).
+
+⛔ Nada disto falha a compilar, e o `cargo check` fica verde — quem acusa é o `cargo machete`, que
+**nenhuma linha da W2 correu ao fechar** e que o CI corre. ⚠️ E a triagem não é «apagar tudo»:
+- um **falso positivo** do machete é uma crate cujo `[lib] name` difere do pacote — ⚠️ mas verifique
+  antes de o presumir: as famílias pareciam não usar a `ph2d-editor-core` porque o código diz
+  `ph2d_editor`, e afinal declaravam **as duas** crates (`ph2d-editor` e `ph2d-editor-core`) e só usavam
+  a primeira;
+- uma dependência **só referida em `[features]`** (`dep:x`) não se apaga sozinha: sai o elemento da
+  feature, e a feature fica se reencaminhar para outra crate;
+- ⛔ uma linha que **liga uma opção** (`features = [...]`) numa biblioteca que outras crates usam é a
+  que falha **em silêncio** ao apagar — a unificação de features desliga a opção para o programa
+  inteiro, e ele compila. Das 79, **zero** ligavam opções (verificado antes de apagar);
+- e **o comentário por cima** vai junto: num `Cargo.toml` o comentário pertence à declaração de baixo,
+  e deixado lá passa a **parecer explicar a dependência seguinte**.
+
+⇒ **ao fechar uma linha que move código, corra `cargo machete`** (é rápido e não compila).
+
 ## §3 — A prova (as cinco, com os números do piloto)
 
 ```bash

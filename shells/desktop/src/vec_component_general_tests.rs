@@ -19,7 +19,7 @@ fn reg() -> ph2d_ecs::scene::ComponentRegistry {
 pub(super) fn scene() -> (
     SimWorld,
     ph2d_ecs::scene::ComponentRegistry,
-    crate::vec_entities::VecEntityMap,
+    ph2d_vec_entities::entities::VecEntityMap,
     VecPathId,
     Entity,
 ) {
@@ -31,7 +31,7 @@ pub(super) fn scene() -> (
         .id();
     ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
     let id: VecPathId = 1;
-    let mut map = crate::vec_entities::VecEntityMap::default();
+    let mut map = ph2d_vec_entities::entities::VecEntityMap::default();
     map.insert(id, e.to_bits());
     (sim, r, map, id, e)
 }
@@ -110,7 +110,7 @@ fn a_group_is_a_subject_even_though_it_is_not_a_path() {
         .world_mut()
         .spawn((Transform::IDENTITY, Name::new("Group 2")))
         .id();
-    let mut map = crate::vec_entities::VecEntityMap::default();
+    let mut map = ph2d_vec_entities::entities::VecEntityMap::default();
     for (i, id) in [(1u64, 10 as VecPathId), (2, 11)] {
         let child = sim
             .world_mut()

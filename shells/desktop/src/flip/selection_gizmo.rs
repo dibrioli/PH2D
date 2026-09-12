@@ -61,7 +61,7 @@ use ph2d_vec_scene::Xform;
 use crate::flip::entities::FlipEntityMap;
 use crate::flip::pose_gizmo::{pose_trs, trs_to_pose};
 use crate::flip::transform::key_xform;
-use crate::vec_transform::world_transform;
+use ph2d_vec_entities::transform::world_transform;
 
 /// Qual anel de um traço o ponto snapshotado pertence: a polilinha principal ou um
 /// dos buracos. Os buracos só entram no snapshot quando o traço INTEIRO está

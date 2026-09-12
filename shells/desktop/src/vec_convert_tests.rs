@@ -4,7 +4,7 @@
 //! motor e MORTA no produto.
 
 use super::*;
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 use ph2d_vec_edit::{History, PenTool};
 use ph2d_vec_scene::{VecPath, VecVertex, VecXforms};
 
@@ -42,7 +42,7 @@ fn scene_with_effect_path() -> (SimWorld, VecScene, VecEntityMap, VecPathId) {
         closed: true,
         ..VecPath::default()
     });
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     // Um Zig Zag levado ao máximo do 1º parâmetro — ativo, muda a geometria de facto.
     crate::fx_bridge::add(&mut scene, id, 1);
     crate::fx_bridge::set_param(&mut scene, id, 0, 0, 1.0);
@@ -92,7 +92,7 @@ fn square_entity() -> (SimWorld, VecScene, VecEntityMap, VecPathId) {
         closed: true,
         ..VecPath::default()
     });
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     (sim, scene, map, id)
 }
 
@@ -268,7 +268,7 @@ fn convert_to_curves_leaves_a_plain_path_alone() {
         closed: true,
         ..VecPath::default()
     });
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     let before = scene.path(id).unwrap().clone();
 
     let new_sel = convert(&mut sim, &mut scene, &mut map, &[id]);
@@ -362,7 +362,7 @@ fn a_frozen_shape_recipe_is_not_resurrected_and_keeps_its_corner_radii() {
     );
     tool.on_drag(&mut scene, [40.0, 40.0], ShapeConstraint::default());
     assert!(tool.on_release(&mut scene), "a forma foi commitada");
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
 
     // FRAME: ela nasce viva.
     crate::vec_shape_live::make_committed_shape_live(&mut sim, &mut scene, &map, &mut tool, false);

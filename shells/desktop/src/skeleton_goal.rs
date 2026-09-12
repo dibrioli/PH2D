@@ -235,8 +235,8 @@ pub(crate) fn anchors(sim: &SimWorld) -> Vec<ph2d_skeleton_render::Goal> {
                 .iter()
                 .copied()
                 .find(|(x, _, _)| *x == er.id().to_bits())?;
-            let a = crate::vec_transform::xform_of_transform(
-                crate::vec_transform::world_transform(sim, alvo),
+            let a = ph2d_vec_entities::transform::xform_of_transform(
+                ph2d_vec_entities::transform::world_transform(sim, alvo),
             )
             .apply([0.0, 0.0]);
             Some((er.id().to_bits(), a, o, ponta))
@@ -275,7 +275,7 @@ pub(crate) fn drag_anchor(sim: &mut SimWorld, bone: Entity, world: [f64; 2]) -> 
     // posição de mundo e o que se grava é a local.
     let pai = sim.world().get::<ChildOf>(alvo).map(ChildOf::parent);
     let pai_mundo = pai.map_or(ph2d_vec_scene::Xform::IDENTITY, |p| {
-        crate::vec_transform::xform_of_transform(crate::vec_transform::world_transform(sim, p))
+        ph2d_vec_entities::transform::xform_of_transform(ph2d_vec_entities::transform::world_transform(sim, p))
     });
     let Some(inv) = pai_mundo.inverse() else {
         return false;
@@ -420,7 +420,7 @@ pub(crate) fn solve(sim: &mut SimWorld, preview: &mut PreviewDrive) -> usize {
             }
             continue;
         }
-        let goal = crate::vec_transform::xform_of_transform(crate::vec_transform::world_transform(
+        let goal = ph2d_vec_entities::transform::xform_of_transform(ph2d_vec_entities::transform::world_transform(
             sim, alvo,
         ))
         .apply([0.0, 0.0]);

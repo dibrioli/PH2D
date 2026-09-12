@@ -1,7 +1,7 @@
 //! Os gates de *quem é nomeado, e onde*.
 
 use super::*;
-use crate::vec_entities::{VecEntityMap, sync};
+use ph2d_vec_entities::entities::{VecEntityMap, sync};
 use ph2d_ecs::{Entity, VecClipContent, VecFrame};
 use ph2d_vec_scene::rectangle;
 

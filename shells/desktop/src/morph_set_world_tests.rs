@@ -5,12 +5,12 @@
 //! ⚠️ Ele é submódulo do irmão de propósito: o harness (`world`) é **um só**, e duplicá-lo daria
 //! duas fixturas que divergiriam no primeiro campo novo.
 
-use super::super::{create, disconnect, dissolve, eligible, graph_of, upkeep};
+use ph2d_vec_entities::morph_set::{create, disconnect, dissolve, eligible, graph_of, upkeep};
 use super::world;
 use ph2d_ecs::{ChildOf, Entity, SimWorld, Transform, VecMorph, VecMorphMachine};
 use ph2d_vec_scene::{VecPathId, VecScene};
 
-use crate::vec_entities::{VecEntityMap, sync};
+use ph2d_vec_entities::entities::{VecEntityMap, sync};
 
 /// ⭐⭐ **A resposta que o CANVAS lê** — `view_state().hidden`, e não o componente guardado.
 ///
@@ -19,7 +19,7 @@ use crate::vec_entities::{VecEntityMap, sync};
 /// filho de um conjunto. *Contar o trabalho FEITO não é contar o trabalho ENTREGUE* — a sonda tem
 /// de estar no consumidor.
 fn hidden_on_canvas(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> bool {
-    crate::vec_entities::view_state(sim, map)
+    ph2d_vec_entities::entities::view_state(sim, map)
         .hidden
         .contains(&id)
 }
@@ -118,7 +118,7 @@ fn the_new_set_actually_draws_the_start_shape() {
     upkeep(&mut sim, &scene, &map, &mut pending);
 
     let host_id = scene.paths().last().unwrap().id;
-    let xf = crate::vec_transform::build(&sim, &map);
+    let xf = ph2d_vec_entities::transform::build(&sim, &map);
     let mut plans = crate::morph_live::MorphPlans::new();
     crate::morph_live::recook(&mut sim, &mut scene, &map, &xf, &mut plans);
 
@@ -175,7 +175,7 @@ fn every_state_is_centred_on_the_set_so_the_morph_never_travels() {
     upkeep(&mut sim, &scene, &map, &mut pending);
 
     let host = Entity::from_bits(map[&scene.paths().last().unwrap().id]);
-    let origin = crate::vec_transform::world_transform(&sim, host).translation;
+    let origin = ph2d_vec_entities::transform::world_transform(&sim, host).translation;
     for (i, c) in centres(&sim, &scene, &map, &ids).into_iter().enumerate() {
         assert!(
             (c[0] - f64::from(origin.x)).abs() < 1e-4 && (c[1] - f64::from(origin.y)).abs() < 1e-4,
@@ -263,7 +263,7 @@ fn dragging_the_set_carries_the_states_and_the_drawing() {
     let mut plans = crate::morph_live::MorphPlans::new();
     let cook =
         |sim: &mut SimWorld, scene: &mut VecScene, plans: &mut crate::morph_live::MorphPlans| {
-            let xf = crate::vec_transform::build(sim, &map);
+            let xf = ph2d_vec_entities::transform::build(sim, &map);
             crate::morph_live::recook(sim, scene, &map, &xf, plans);
         };
     cook(&mut sim, &mut scene, &mut plans);
@@ -275,7 +275,7 @@ fn dragging_the_set_carries_the_states_and_the_drawing() {
         .verts
         .clone();
     let kid0 =
-        crate::vec_transform::world_transform(&sim, Entity::from_bits(map[&ids[0]])).translation;
+        ph2d_vec_entities::transform::world_transform(&sim, Entity::from_bits(map[&ids[0]])).translation;
     assert!(
         !drawn0.is_empty(),
         "o CONTROLE: o conjunto desenha alguma coisa"
@@ -312,7 +312,7 @@ fn dragging_the_set_carries_the_states_and_the_drawing() {
     );
     // ⭐⭐ E os ESTADOS foram junto: o filho anda exactamente o delta.
     let kid1 =
-        crate::vec_transform::world_transform(&sim, Entity::from_bits(map[&ids[0]])).translation;
+        ph2d_vec_entities::transform::world_transform(&sim, Entity::from_bits(map[&ids[0]])).translation;
     assert!(
         (kid1.x - kid0.x - delta.x).abs() < 1e-4 && (kid1.y - kid0.y - delta.y).abs() < 1e-4,
         "o estado nao acompanhou o conjunto: andou ({}, {}) e o conjunto andou ({}, {})",
@@ -357,7 +357,7 @@ fn converting_the_set_to_curves_takes_the_machine_with_it() {
     // caminho próprio aqui provaria que o `remove` funciona, não que o produto o faz.
     let mut pen = ph2d_vec_edit::PenTool::default();
     let mut history = ph2d_vec_edit::History::default();
-    let xf = crate::vec_transform::build(&sim, &map);
+    let xf = ph2d_vec_entities::transform::build(&sim, &map);
     crate::vec_convert::to_curves(
         &mut sim,
         &mut scene,
@@ -463,8 +463,8 @@ fn centres(
     ids.iter()
         .map(|&id| {
             let e = Entity::from_bits(map[&id]);
-            let x = crate::vec_transform::xform_of_transform(
-                crate::vec_transform::world_transform(sim, e),
+            let x = ph2d_vec_entities::transform::xform_of_transform(
+                ph2d_vec_entities::transform::world_transform(sim, e),
             );
             let (bl, tr) = scene.path_curve_bbox(id).expect("a forma tem caixa");
             let (mut lo, mut hi) = ([f64::MAX; 2], [f64::MIN; 2]);
@@ -544,7 +544,7 @@ fn a_morph_child_never_becomes_a_state_of_the_outer_set() {
     sync(&mut sim, &mut scene, &mut map);
     upkeep(&mut sim, &scene, &map, &mut p2);
     let outer = Entity::from_bits(map[&scene.paths().last().unwrap().id]);
-    crate::vec_transform::reparent_keeping_world(&mut sim, inner, outer);
+    ph2d_vec_entities::transform::reparent_keeping_world(&mut sim, inner, outer);
 
     let shapes = graph_of(&sim, &map, outer).shapes();
     assert_eq!(

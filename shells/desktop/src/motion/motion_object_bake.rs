@@ -45,7 +45,7 @@ use ph2d_vec_scene::{VecPath, VecPathId, VecScene, VecXforms, xform_of};
 use ph2d_vector::{Affine, VectorScene};
 
 use crate::render_loop::motion_shape_gen::VecPathStore;
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 
 /// Bake resolution, pixels per world unit. Fixed (camera-INDEPENDENT) so zoom
 /// never re-bakes. 256 px/unit is crisp for a stamped tile at typical sizes;
@@ -308,7 +308,7 @@ impl ObjectBake {
                 renderer,
                 surface_format,
                 path,
-                &|id| crate::vec_entities::object_selection_for(sim, scene, map, id),
+                &|id| ph2d_vec_entities::entities::object_selection_for(sim, scene, map, id),
             );
             if let Some(b) = old {
                 renderer.individual_mut().release(b.texture_id);

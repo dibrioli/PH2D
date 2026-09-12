@@ -129,7 +129,7 @@ pub(super) fn publish(
     cook: &mut ph2d_nodegraph::cook::Cook,
     sim: &SimWorld,
     scene: &VecScene,
-    map: &crate::vec_entities::VecEntityMap,
+    map: &ph2d_vec_entities::entities::VecEntityMap,
     xforms: &VecXforms,
     selected: Option<u64>,
 ) -> FormaEscolhida {

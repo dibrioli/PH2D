@@ -30,13 +30,13 @@ fn the_frame_composes_the_bridge_and_the_cook() {
     let chip = scene.push_path(rectangle([-2.0, -2.0], [22.0, 22.0]));
     let outer = scene.push_path(rectangle([0.0, 0.0], [20.0, 20.0]));
     let inner = scene.push_path(rectangle([6.0, 6.0], [14.0, 14.0]));
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     let g = Entity::from_bits(
-        crate::vec_entities::group_entities(&mut sim, &[map[&outer], map[&inner]], "Bool".into())
+        ph2d_vec_entities::entities::group_entities(&mut sim, &[map[&outer], map[&inner]], "Bool".into())
             .unwrap(),
     );
     sim.world_mut().entity_mut(g).insert(VecBoolGroup { op: 0 });
-    crate::vec_transform::reparent_keeping_world(&mut sim, g, Entity::from_bits(map[&chip]));
+    ph2d_vec_entities::transform::reparent_keeping_world(&mut sim, g, Entity::from_bits(map[&chip]));
 
     // As duas poses, pela porta do PRODUTO — nunca escrevendo a tabela à mão.
     let mut states = StateSets::default();

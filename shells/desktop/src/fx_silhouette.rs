@@ -42,7 +42,7 @@ use ph2d_vec_scene::{
     Paint, Rgba8, StrokeSpec, VecPath, VecPathId, VecScene, VecXforms, bake_xform, xform_of,
 };
 
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 
 /// Uma entrada do memo: o que ENTROU (a geometria de mundo desenhada) e o que SAIU.
 struct Memo {

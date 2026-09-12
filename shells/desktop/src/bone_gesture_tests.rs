@@ -384,7 +384,7 @@ fn the_preview_arms_exactly_where_the_release_would_make_a_bone() {
 ///
 /// ⚠️⚠️ **A pose de MUNDO de `B` e de todos os filhos dele tem de ficar ONDE ESTAVA.** `B` é uma
 /// corrente que o artista já posicionou; um `ChildOf` cru somaria a pose do osso novo e o esqueleto
-/// inteiro saltaria — o defeito que o [`crate::vec_transform::reparent_keeping_world`] existe para
+/// inteiro saltaria — o defeito que o [`ph2d_vec_entities::transform::reparent_keeping_world`] existe para
 /// evitar, e cuja ausência se lê como *«juntei os ossos e o boneco explodiu»*.
 ///
 /// ⚠️ **O filho de `B` entra no gate de propósito**: ele é a prova de que a corrente viaja INTEIRA,

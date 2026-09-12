@@ -234,7 +234,7 @@ fn the_mirrored_half_is_pickable_because_it_is_drawn() {
         .id();
     map.insert(id, e.to_bits());
     crate::symmetry_live::arm(&mut sim, &map, &[id], Some(SymmetrySpec::default()));
-    let xf = crate::vec_transform::build(&sim, &map);
+    let xf = ph2d_vec_entities::transform::build(&sim, &map);
     let mut sym = crate::symmetry_live::SymmetryLive::default();
     sym.recook(&scene, &sim, &map, &xf, true);
 

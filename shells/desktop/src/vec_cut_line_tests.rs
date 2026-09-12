@@ -6,7 +6,7 @@
 //! selecionada?"*. Nenhum teste de unidade de crate alcança essa pergunta.
 
 use super::{apply_cut, cut_line, upkeep};
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 use ph2d_ecs::SimWorld;
 use ph2d_vec_scene::{Paint, Rgba8, StrokeSpec, VecPath, VecPathId, VecScene, VecVertex};
 
@@ -44,7 +44,7 @@ fn world_with_blade(
     let id = scene.push_path(blade);
     // Duas voltas: o `sync` dá entidade, e só então o `upkeep` tem onde pendurar o marcador —
     // exactamente a dança de um frame do produto.
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     let mut pending = Some(id);
     upkeep(&mut sim, &mut scene, &map, &mut pending);
     assert_eq!(cut_line(&sim, &map), Some(id), "a lâmina não foi adotada");

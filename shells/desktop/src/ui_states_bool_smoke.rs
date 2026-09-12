@@ -149,7 +149,7 @@ fn name_and_arm(app: &mut crate::App) {
             crate::bool_gesture::group_of_selection(&gfx.sim, &map, &operands),
             ents[chip],
         ) {
-            crate::vec_transform::reparent_keeping_world(&mut gfx.sim, g, c);
+            ph2d_vec_entities::transform::reparent_keeping_world(&mut gfx.sim, g, c);
         }
     }
 }

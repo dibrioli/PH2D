@@ -64,8 +64,8 @@ impl App {
         }
         let mut out = Vec::with_capacity(boxes.len() * 9);
         for (e, anchor, half) in boxes {
-            let xf = crate::vec_transform::xform_of_transform(
-                crate::vec_transform::world_transform(&gfx.sim, e),
+            let xf = ph2d_vec_entities::transform::xform_of_transform(
+                ph2d_vec_entities::transform::world_transform(&gfx.sim, e),
             );
             out.extend(sprite_box_points(anchor, half, &xf));
         }

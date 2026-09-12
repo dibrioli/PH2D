@@ -1,4 +1,4 @@
-//! O `Transform` dos objetos Flip (ADR-0111 parity, espelho de [`crate::vec_transform`]).
+//! O `Transform` dos objetos Flip (ADR-0111 parity, espelho de [`ph2d_vec_entities::transform`]).
 //!
 //! Desde o ADR-0114 cada objeto Flip é uma entidade ([`crate::flip::entities`]).
 //! Aqui ela ganha **pose**: a geometria dos traços passa a ser LOCAL, e o afim que
@@ -19,7 +19,7 @@ use ph2d_flip::{FlipDoc, FlipObjectId, Pose};
 use ph2d_vec_scene::Xform;
 
 use crate::flip::entities::FlipEntityMap;
-use crate::vec_transform::{world_transform, xform_of_transform};
+use ph2d_vec_entities::transform::{world_transform, xform_of_transform};
 
 /// O afim local→mundo do objeto de `entity` (a cadeia de pais inclusa). É o `model`
 /// que o render pré-multiplica no `world_to_clip` para rasterizar a geometria LOCAL

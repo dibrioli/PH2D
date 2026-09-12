@@ -7,10 +7,10 @@
 //!
 //! 1. **Um px é um px** — o mesmo divisor (`pixels_per_meter`) que dimensiona uma sprite
 //!    importada. Um `.svg` de 512 unidades entra do tamanho de um `.png` de 512 px.
-//! 2. **Um path ⟺ uma entidade** — quem as cria é o [`crate::vec_entities::sync`], e não este
+//! 2. **Um path ⟺ uma entidade** — quem as cria é o [`ph2d_vec_entities::entities::sync`], e não este
 //!    módulo: pôr aqui um segundo criador de entidades seria a segunda porta pela qual um path
 //!    órfão nasce.
-//! 3. **Agrupar é o verbo que já existe** ([`crate::vec_entities::group_entities`]) — ele
+//! 3. **Agrupar é o verbo que já existe** ([`ph2d_vec_entities::entities::group_entities`]) — ele
 //!    põe o grupo entre os filhos, compensa a pose de cada um e ordena a lista. ⚠️ Ele exige
 //!    **dois** membros, então um `<g>` com um filho só é achatado; é a mesma regra que o artista
 //!    lê no menu (*"Select at least 2 objects to group"*).
@@ -64,7 +64,7 @@ fn nome_do_ficheiro(path: &Path) -> String {
 pub(crate) fn import_svg(
     sim: &mut SimWorld,
     scene: &mut VecScene,
-    map: &mut crate::vec_entities::VecEntityMap,
+    map: &mut ph2d_vec_entities::entities::VecEntityMap,
     path: &Path,
     centro: [f32; 2],
     pixels_per_meter: f32,
@@ -125,13 +125,13 @@ pub(crate) fn import_svg(
     // ⚠️ **A porta ÚNICA path→entidade.** Chamá-la aqui (e não esperar pelo prólogo do frame
     // seguinte) é o que permite nomear e agrupar no MESMO gesto — e um gesto que só se completa no
     // frame seguinte é um gesto que o undo parte ao meio.
-    crate::vec_entities::sync(sim, scene, map);
+    ph2d_vec_entities::entities::sync(sim, scene, map);
     // ⚠️⚠️ **ANTES de agrupar, e a ordem é load-bearing.** O `settle_origins` só toca em formas
     // **sem pai** e na identidade; agrupar primeiro punha um `ChildOf` em cada uma e elas ficavam
     // para sempre com o pivô na origem do mundo — e o grupo, cuja pose é a média das poses dos
     // membros, nascia lá também, com o gizmo longe do desenho. É o mesmo defeito que o report do
     // Enio de 30/08 curou para o verbo *Group*, por outra porta.
-    crate::vec_transform::settle_origins(sim, scene, map, &[]);
+    ph2d_vec_entities::transform::settle_origins(sim, scene, map, &[]);
 
     let entidades: Vec<u64> = ids.iter().filter_map(|id| map.get(id).copied()).collect();
     baptiza(sim, &desenho, &entidades, &ficheiro);
@@ -192,7 +192,7 @@ fn agrupa(
                 .filter_map(|(i, _)| feitos[i]),
         );
         let nome = ph2d_unique_name::unique_name(sim, &desenho.groups[g].name);
-        feitos[g] = crate::vec_entities::group_entities(sim, &membros, nome);
+        feitos[g] = ph2d_vec_entities::entities::group_entities(sim, &membros, nome);
     }
     // O que ficou na raiz: as formas sem grupo e os grupos sem pai.
     let mut topo: Vec<u64> = desenho
@@ -216,7 +216,7 @@ fn agrupa(
     // ⚠️ **O ficheiro inteiro vira um objecto.** Sem isto um logótipo de 40 formas aterra como 40
     // raízes, e não há gesto que o mova inteiro sem o artista o seleccionar todo primeiro.
     let nome = ph2d_unique_name::unique_name(sim, ficheiro);
-    crate::vec_entities::group_entities(sim, &topo, nome)
+    ph2d_vec_entities::entities::group_entities(sim, &topo, nome)
 }
 
 #[cfg(test)]

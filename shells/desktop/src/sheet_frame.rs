@@ -35,7 +35,7 @@ use ph2d_render::Sprite;
 use ph2d_sprite_sheet::{Layout, LayoutItem, PackError, PackOptions};
 use ph2d_vec_scene::{ShapeKind, VecScene};
 
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 
 /// **As folhas que estão entre estes alvos.** Vazio ⇒ o gesto é de CRIAR.
 pub(crate) fn sheets_among(sim: &SimWorld, targets: &[u64]) -> Vec<u64> {
@@ -430,7 +430,7 @@ fn spawn_rect(
     let id = scene.push_path(path);
     // O sync é o que dá entidade a um path novo; sem ele o mapa não teria a chave e a folha
     // nasceria como geometria sem objeto — invisível para a hierarquia, o gizmo e o undo.
-    crate::vec_entities::sync(sim, scene, map);
+    ph2d_vec_entities::entities::sync(sim, scene, map);
     let bits = map.get(&id).copied().ok_or(SheetFrameError::ShapeFailed)?;
     let entity = Entity::from_bits(bits);
     if let Ok(mut e) = sim.world_mut().get_entity_mut(entity) {

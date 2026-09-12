@@ -36,7 +36,7 @@ pub(super) fn publish(
     pen: &PenTool,
     xforms: &ph2d_vec_scene::VecXforms,
     sim: &ph2d_ecs::SimWorld,
-    vec_entities: &crate::vec_entities::VecEntityMap,
+    vec_entities: &ph2d_vec_entities::entities::VecEntityMap,
     // A ferramenta Vector está em mãos? Fora dela o painel não pinta nada disto.
     vector_active: bool,
     // A alça de gradiente que ainda endereça uma cor no preenchimento corrente.
@@ -333,7 +333,7 @@ pub(super) fn publish(
                             // grupo resolve-se pela árvore. Perguntar aqui só pelo caminho daria
                             // "arte apagada" a toda estampa vestida por um grupo.
                             &|id| {
-                                crate::vec_entities::object_selection_for(
+                                ph2d_vec_entities::entities::object_selection_for(
                                     sim,
                                     scene,
                                     vec_entities,

@@ -30,7 +30,7 @@
 
 use ph2d_ecs::{Entity, SimWorld, VecShape};
 
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 
 /// Este path tem geometria **DERIVADA** — algum `*_live::recook` reescreve os `verts` dele
 /// por trás do artista?

@@ -24,7 +24,7 @@ fn frame_now(w: f64, n: usize) -> (SimWorld, VecScene, VecEntityMap, Entity, Vec
     let kids: Vec<VecPathId> = (0..n)
         .map(|_| scene.push_path(rectangle([0.0, 0.0], [10.0, 10.0])))
         .collect();
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     let frame = Entity::from_bits(map[&frame_id]);
     sim.world_mut().entity_mut(frame).insert(VecFrame);
     for k in &kids {
@@ -217,7 +217,7 @@ fn the_published_pose_takes_the_authored_geometry_to_what_is_drawn() {
     let outer_id = scene.push_path(rectangle([0.0, 0.0], [400.0, 200.0]));
     let inner_id = scene.push_path(rectangle([0.0, 0.0], [160.0, 40.0]));
     let kid_id = scene.push_path(rectangle([0.0, 0.0], [10.0, 10.0]));
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     let outer = Entity::from_bits(map[&outer_id]);
     let inner = Entity::from_bits(map[&inner_id]);
     let kid = Entity::from_bits(map[&kid_id]);
@@ -287,7 +287,7 @@ fn the_anchor_does_not_feed_back_into_the_flows_measurement() {
         let inner_id = scene.push_path(rectangle([0.0, 0.0], [160.0, 40.0]));
         // O filho encostado na aresta DIREITA da moldura interna.
         let kid_id = scene.push_path(rectangle([150.0, 0.0], [160.0, 10.0]));
-        crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+        ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
         let outer = Entity::from_bits(map[&outer_id]);
         let inner = Entity::from_bits(map[&inner_id]);
         let kid = Entity::from_bits(map[&kid_id]);

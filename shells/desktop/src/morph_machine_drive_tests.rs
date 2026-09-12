@@ -7,7 +7,7 @@ use ph2d_morph_machine::MorphKey;
 use ph2d_vec_scene::{VecPathId, VecScene};
 
 use ph2d_preview_drive::PreviewDrive;
-use crate::vec_entities::{VecEntityMap, sync};
+use ph2d_vec_entities::entities::{VecEntityMap, sync};
 
 const KEY_Z: u32 = 0x5A;
 
@@ -32,9 +32,9 @@ fn world(named: &[(usize, &str, f64)]) -> Bench {
         })
         .collect();
     sync(&mut sim, &mut scene, &mut map);
-    let mut pending = crate::morph_set::create(&sim, &mut scene, &map, &shapes, 9);
+    let mut pending = ph2d_vec_entities::morph_set::create(&sim, &mut scene, &map, &shapes, 9);
     sync(&mut sim, &mut scene, &mut map);
-    crate::morph_set::upkeep(&mut sim, &scene, &map, &mut pending);
+    ph2d_vec_entities::morph_set::upkeep(&mut sim, &scene, &map, &mut pending);
     let host_id = scene.paths().last().unwrap().id;
     let host = ph2d_ecs::Entity::from_bits(map[&host_id]);
 

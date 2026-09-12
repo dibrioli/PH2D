@@ -328,7 +328,7 @@ impl crate::App {
                 self.vec_pen.select_many(&ids);
                 self.vec_set_draw_mode(ph2d_tool_vector::DrawMode::Select);
                 let Some(gfx) = self.gfx.as_mut() else { return };
-                let xf = crate::vec_transform::build(&gfx.sim, &self.vec_entities);
+                let xf = ph2d_vec_entities::transform::build(&gfx.sim, &self.vec_entities);
                 crate::vec_blend::apply(
                     &mut gfx.vec_scene,
                     &mut self.vec_history,
@@ -365,7 +365,7 @@ impl crate::App {
                 self.vec_pen.select_many(&ids);
                 self.vec_set_draw_mode(ph2d_tool_vector::DrawMode::Select);
                 let Some(gfx) = self.gfx.as_mut() else { return };
-                let xf = crate::vec_transform::build(&gfx.sim, &self.vec_entities);
+                let xf = ph2d_vec_entities::transform::build(&gfx.sim, &self.vec_entities);
                 crate::vec_blend::apply(
                     &mut gfx.vec_scene,
                     &mut self.vec_history,
@@ -402,7 +402,7 @@ impl crate::App {
                 self.vec_pen.select_many(&ids);
                 self.vec_set_draw_mode(ph2d_tool_vector::DrawMode::Select);
                 let Some(gfx) = self.gfx.as_mut() else { return };
-                let xf = crate::vec_transform::build(&gfx.sim, &self.vec_entities);
+                let xf = ph2d_vec_entities::transform::build(&gfx.sim, &self.vec_entities);
                 crate::vec_blend::apply(
                     &mut gfx.vec_scene,
                     &mut self.vec_history,

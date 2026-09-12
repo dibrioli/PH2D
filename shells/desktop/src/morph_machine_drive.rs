@@ -72,7 +72,7 @@ pub(crate) type MorphMachines = BTreeMap<u64, MorphMachine>;
 pub(crate) fn tick(
     machines: &mut MorphMachines,
     sim: &mut SimWorld,
-    map_paths: &crate::vec_entities::VecEntityMap,
+    map_paths: &ph2d_vec_entities::entities::VecEntityMap,
     // ⚠️ **O par `InputMap` + `ActionState` viaja JUNTO**, e não como dois argumentos: eles só
     // existem para construir o `Input`, e separá-los deixaria um chamador livre para passar o
     // estado de um mapa com o mapa de outro. (Também é o que traz a assinatura de volta ao teto
@@ -104,7 +104,7 @@ pub(crate) fn tick(
         .map(|b| {
             (
                 b,
-                crate::morph_set::graph_of(sim, map_paths, Entity::from_bits(b)),
+                ph2d_vec_entities::morph_set::graph_of(sim, map_paths, Entity::from_bits(b)),
             )
         })
         .collect();
@@ -178,7 +178,7 @@ fn write_driven(sim: &mut SimWorld, e: Entity, drive: &mut PreviewDrive, after: 
 /// acabou de fazer (um hover), e a máquina de teclas é o estado de fundo.
 pub(crate) fn apply_ui_steps(
     sim: &mut SimWorld,
-    map: &crate::vec_entities::VecEntityMap,
+    map: &ph2d_vec_entities::entities::VecEntityMap,
     steps: &[ph2d_ui_state::MorphStep],
     drive: &mut PreviewDrive,
 ) -> usize {
@@ -202,7 +202,7 @@ pub(crate) fn apply_ui_steps(
         //
         // ⇒ um passo com uma ponta que não é estado é **ignorado**: o conjunto fica na forma em que
         // está. *Não morfar é uma resposta; morfar a partir de um estranho não é.*
-        let shapes = crate::morph_set::graph_of(sim, map, e).shapes();
+        let shapes = ph2d_vec_entities::morph_set::graph_of(sim, map, e).shapes();
         if !shapes.contains(&st.from) || !shapes.contains(&st.to) {
             continue;
         }
@@ -240,11 +240,11 @@ pub(crate) fn apply_ui_steps(
 pub(crate) fn play(
     machines: &mut MorphMachines,
     sim: &SimWorld,
-    map: &crate::vec_entities::VecEntityMap,
+    map: &ph2d_vec_entities::entities::VecEntityMap,
     host: Entity,
     row: usize,
 ) -> bool {
-    let graph = crate::morph_set::graph_of(sim, map, host);
+    let graph = ph2d_vec_entities::morph_set::graph_of(sim, map, host);
     open(machines, sim, host, &graph).travel(&graph, row)
 }
 
@@ -293,7 +293,7 @@ pub(crate) fn reconcile(
     machines: &mut MorphMachines,
     sim: &mut SimWorld,
     scene: &ph2d_vec_scene::VecScene,
-    map: &crate::vec_entities::VecEntityMap,
+    map: &ph2d_vec_entities::entities::VecEntityMap,
     states: &mut ph2d_ui_state::StateSets,
 ) -> usize {
     let hosts: Vec<u64> = sim
@@ -305,7 +305,7 @@ pub(crate) fn reconcile(
     let mut fixed = 0;
     for bits in hosts {
         let e = Entity::from_bits(bits);
-        let shapes = crate::morph_set::graph_of(sim, map, e).shapes();
+        let shapes = ph2d_vec_entities::morph_set::graph_of(sim, map, e).shapes();
         // ⭐⭐⭐ **AS POSES primeiro** (W11i) — elas são dado AUTORADO, e a repartição é a lei:
         // aqui arruma-se o que uma tabela de States diz sobre um conjunto que mudou por baixo
         // dela; abaixo, o par que a cena desenha.
@@ -391,12 +391,12 @@ pub(crate) fn log_on() -> bool {
 fn repair_states(
     sim: &SimWorld,
     scene: &ph2d_vec_scene::VecScene,
-    map: &crate::vec_entities::VecEntityMap,
+    map: &ph2d_vec_entities::entities::VecEntityMap,
     states: &mut ph2d_ui_state::StateSets,
     host: Entity,
     shapes: &[ph2d_vec_scene::VecPathId],
 ) -> bool {
-    let Some(h) = crate::morph_set::path_of(map, host) else {
+    let Some(h) = ph2d_vec_entities::morph_set::path_of(map, host) else {
         if log_on() {
             eprintln!("[morph] SAIU CEDO: o conjunto nao tem VecPathId no mapa");
         }

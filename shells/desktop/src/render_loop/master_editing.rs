@@ -16,7 +16,7 @@
 //!
 //! A pergunta *«esta entidade está na cena?»* é feita em dois sítios muito distantes — o extract
 //! de sprites ([`super::off_canvas`]) e a cadeia de visibilidade do vetor
-//! ([`crate::vec_entities`]) — e nenhum dos dois tem a selecção à mão. Enfiar um `Option<Entity>`
+//! ([`ph2d_vec_entities::entities`]) — e nenhum dos dois tem a selecção à mão. Enfiar um `Option<Entity>`
 //! nos dois caminhos seria a mesma resposta a viajar por duas estradas, e elas divergiriam.
 //!
 //! ⇒ um passe carimba [`ph2d_ecs::MasterEditing`] na sub-árvore da receita seleccionada e

@@ -29,7 +29,7 @@ use std::collections::BTreeMap;
 use ph2d_ecs::{Entity, Name, SimWorld, Transform, VecBlend};
 use ph2d_vec_scene::{VecPath, VecPathId, VecScene, VecVertex, VecXforms, bake_xform, xform_of};
 
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 
 /// As operações de edição/interação do blend (painel + canvas) — módulo irmão pelo teto de 600 LOC.
 #[path = "blend_live_edit.rs"]

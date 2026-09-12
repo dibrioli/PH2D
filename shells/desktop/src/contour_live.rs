@@ -48,7 +48,7 @@ use ph2d_vec_scene::{
     xform_of,
 };
 
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 
 /// A geometria de UM anel (rank `k`): uma lista de PEÇAS. Cada peça é `(distância assinada, os
 /// caminhos)` — a distância dá o z (para fora = atrás, para dentro = na frente) e a cor da rampa

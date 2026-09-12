@@ -50,7 +50,7 @@ use ph2d_vec_render::{LiveGeometry, WidgetSkins};
 use ph2d_vec_scene::{Paint, VecPathId, VecScene, VecXforms};
 use ph2d_vector::Affine;
 
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 use crate::widget_icon::icon_face;
 
 /// A pele autorada de `id`, se houver. **Porta única**: o cozimento e o painel perguntam AQUI.

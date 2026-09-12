@@ -22,7 +22,7 @@
 use ph2d_ecs::{Entity, SimWorld, VecCutPath};
 use ph2d_vec_scene::{VecPathId, VecScene};
 
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 
 /// Instala o `VecCutPath` na entidade da lâmina recém-desenhada e garante que ela é a ÚNICA.
 ///
@@ -156,13 +156,13 @@ pub(crate) fn apply_cut(
     if !selected.contains(&line_id) {
         return 0;
     }
-    let xforms = crate::vec_transform::build(sim, map);
+    let xforms = ph2d_vec_entities::transform::build(sim, map);
     let Some(line) = world_copy(scene, &xforms, line_id) else {
         return 0;
     };
     // Escondida ou TRAVADA não é cortada: as duas dizem *"não mexa nisto agora"*, e uma faca que
     // as ignorasse seria a única ferramenta do editor a fazê-lo.
-    let view = crate::vec_entities::view_state(sim, map);
+    let view = ph2d_vec_entities::entities::view_state(sim, map);
 
     let targets: Vec<VecPathId> = scene
         .paths()

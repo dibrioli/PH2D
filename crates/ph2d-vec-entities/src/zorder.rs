@@ -1,6 +1,6 @@
 //! **A ordem de z do vetor** — a projeção da árvore, e quem a reescreve.
 //!
-//! Módulo irmão do [`crate::vec_entities`] (teto de 600 LOC da shell). Os dois vivem juntos por
+//! Módulo irmão do [`crate::entities`] (teto de 600 LOC da shell). Os dois vivem juntos por
 //! assunto: a ponte doc↔árvore é quem sabe **onde cada forma está na pilha**, porque a pilha é uma
 //! **projeção da árvore** (ADR-0110) e não uma propriedade do documento.
 //!
@@ -43,7 +43,7 @@ use ph2d_vec_scene::VecPathId;
 ///
 /// O Blend precisa disto: os passos que ele cria só ganham entidade no `sync` do frame seguinte,
 /// e ele quer a sequência inteira (fontes inclusas) empilhada na ordem certa.
-pub(crate) fn restack(sim: &mut SimWorld, map: &VecEntityMap, run: &[VecPathId]) {
+pub fn restack(sim: &mut SimWorld, map: &VecEntityMap, run: &[VecPathId]) {
     let members: Vec<Entity> = run
         .iter()
         .filter_map(|id| map.get(id).copied())
@@ -95,14 +95,14 @@ pub(crate) fn restack(sim: &mut SimWorld, map: &VecEntityMap, run: &[VecPathId])
 /// efetivo (`ph2d_ecs::effective_z_index`, que soma a cascata dos pais como no Godot). Mostrar o
 /// efetivo num campo editável faria o artista escrever `5` e ler `8`.
 #[must_use]
-pub(crate) fn authored_z(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> Option<i32> {
+pub fn authored_z(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> Option<i32> {
     let e = Entity::from_bits(*map.get(&id)?);
     Some(sim.world().get::<ZIndexOverride>(e).map_or(0, |z| z.0))
 }
 
 /// Escreve o Z autorado de `id`. **Zero DESTACA o componente** — a mesma política de todo override
 /// deste repo: um arquivo não guarda o neutro.
-pub(crate) fn set_authored_z(
+pub fn set_authored_z(
     sim: &mut SimWorld,
     map: &VecEntityMap,
     id: VecPathId,
@@ -190,7 +190,7 @@ fn descendant_count(snap: &HierarchySnapshot, id: VecPathId) -> u32 {
 /// põe-na à frente das duas. Nesse regime o *Forward* passa mais de um lugar. A alternativa seria
 /// renumerar os vizinhos (mexer no número de um objeto que o artista não selecionou) ou mexer na
 /// árvore, que é precisamente o que esta lei proíbe.
-pub(crate) fn reorder(
+pub fn reorder(
     sim: &mut SimWorld,
     map: &VecEntityMap,
     id: VecPathId,
@@ -244,21 +244,11 @@ pub(crate) fn reorder(
     )
 }
 
-/// Os gates do ponto fixo (o conserto do "undo só faz uma etapa") — módulo irmão,
-/// pelo teto de 600 LOC por arquivo da shell (HR-18).
-#[cfg(test)]
-#[path = "vec_zorder_fixpoint_tests.rs"]
-mod zorder_fixpoint_tests;
 
-/// ⭐⭐⭐ **Os verbos TARDIOS da Hierarquia** (apagar · duplicar · *Remove from Sheet*) — irmão pelo
-/// mesmo teto, e por ASSUNTO: ali mede-se a projecção, aqui a rede que a segue.
-#[cfg(test)]
-#[path = "vec_zorder_late_writers_tests.rs"]
-mod late_writers_tests;
 
 /// Os gates do Z-index e dos botões Arrange — irmão pelo mesmo teto.
 #[cfg(test)]
-#[path = "vec_zorder_arrange_tests.rs"]
+#[path = "zorder_arrange_tests.rs"]
 mod arrange_tests;
 
 /// A ordem de z que a árvore dita: **fundo → topo**, pronta para
@@ -303,7 +293,7 @@ mod arrange_tests;
 /// painel, chamada num momento diferente (depois do `sync`). Um DFS próprio aqui
 /// seria uma segunda porta para a mesma pergunta, e duas portas divergem.
 #[must_use]
-pub(crate) fn z_order(world: &bevy_ecs::world::World, snap: &HierarchySnapshot) -> Vec<VecPathId> {
+pub fn z_order(world: &bevy_ecs::world::World, snap: &HierarchySnapshot) -> Vec<VecPathId> {
     keyed_stack(world, snap).into_iter().map(|r| r.id).collect()
 }
 

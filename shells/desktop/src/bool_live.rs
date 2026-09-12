@@ -44,7 +44,7 @@ use ph2d_ecs::{Entity, SimWorld, VecBoolGroup};
 use ph2d_vec_render::LiveGeometry;
 use ph2d_vec_scene::{VecPath, VecPathId, VecScene, VecXforms, bake_xform, xform_of};
 
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 
 /// Os gates do VERBO POR FORMA — irmão por LOC (HR-18), cortado por ASSUNTO, com fixture própria.
 #[cfg(test)]
@@ -130,7 +130,7 @@ impl BoolLive {
         self.plans.clear();
         self.morphed = 0;
         for (group, op) in groups_deepest_first(scene, sim, map) {
-            let ids = crate::vec_entities::subtree_paths(sim, scene, group);
+            let ids = ph2d_vec_entities::entities::subtree_paths(sim, scene, group);
             // Os operandos são as regiões FECHADAS, e só elas — a mesma triagem que a booleana
             // destrutiva faz (`selected_closed_z`). Um caminho ABERTO dentro do grupo não é
             // operando e **passa verbatim**: ele não é suprimido, porque suprimi-lo apagaria arte

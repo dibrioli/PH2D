@@ -9,7 +9,7 @@
 //! # ⚠️ A sonda mede pela PORTA do produto
 //!
 //! O `object_of` que o quadro passa é
-//! `crate::vec_entities::object_selection_for(sim, scene, map, id)` — a expansão REAL, sobre um
+//! `ph2d_vec_entities::entities::object_selection_for(sim, scene, map, id)` — a expansão REAL, sobre um
 //! `SimWorld` com grupos construídos pelo verbo do produto (`group_entities`). Medir `resolve` com
 //! um `object_of` sintético mediria metade da conta e chamaria o número de produto, que é o erro
 //! que esta casa já pagou três vezes. As duas metades saem SEPARADAS na tabela, para atribuição —
@@ -27,7 +27,7 @@
 //! cargo test -p ph2d-host-desktop --release --bins brush_live_cost -- --ignored --nocapture
 //! ```
 
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 use ph2d_ecs::SimWorld;
 use ph2d_vec_scene::{
     BrushStroke, Rgba8, StrokePaint, StrokeSpec, VecPath, VecPathId, VecScene, VecVertex,
@@ -155,13 +155,13 @@ fn cena_s(
         scene.push_path(poligono(5, k * 0.5, 90.0));
     }
 
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
 
     // Os grupos, pelo VERBO do produto — não por `ChildOf` à mão.
     if g > 1 {
         for ids in &membros {
             let bits: Vec<u64> = ids.iter().map(|id| map[id]).collect();
-            crate::vec_entities::group_entities(&mut sim, &bits, "ArtGroup".into());
+            ph2d_vec_entities::entities::group_entities(&mut sim, &bits, "ArtGroup".into());
         }
     }
     (scene, sim, map, grupos)
@@ -312,7 +312,7 @@ fn varre(vivo: bool) {
             let total = medir(|| {
                 std::hint::black_box(crate::brush_live::resolve(
                     &scene,
-                    &|id| crate::vec_entities::object_selection_for(&sim, &scene, &map, id),
+                    &|id| ph2d_vec_entities::entities::object_selection_for(&sim, &scene, &map, id),
                     &ph2d_vec_scene::VecXforms::new(),
                 ));
             });
@@ -320,7 +320,7 @@ fn varre(vivo: bool) {
             // ⛔ CONTROLO: a cena TEM de resolver P pincéis com G membros cada.
             let mapa = crate::brush_live::resolve(
                 &scene,
-                &|id| crate::vec_entities::object_selection_for(&sim, &scene, &map, id),
+                &|id| ph2d_vec_entities::entities::object_selection_for(&sim, &scene, &map, id),
                 &ph2d_vec_scene::VecXforms::new(),
             );
             assert_eq!(mapa.len(), p, "a cena nao resolveu os {p} pinceis");
@@ -343,7 +343,7 @@ fn varre(vivo: bool) {
                 .collect();
             let expansao = medir(|| {
                 for a in &alvos {
-                    std::hint::black_box(crate::vec_entities::object_selection_for(
+                    std::hint::black_box(ph2d_vec_entities::entities::object_selection_for(
                         &sim, &scene, &map, *a,
                     ));
                 }
@@ -355,7 +355,7 @@ fn varre(vivo: bool) {
                 .map(|a| {
                     (
                         *a,
-                        crate::vec_entities::object_selection_for(&sim, &scene, &map, *a),
+                        ph2d_vec_entities::entities::object_selection_for(&sim, &scene, &map, *a),
                     )
                 })
                 .collect();
@@ -420,7 +420,7 @@ fn brush_live_cost_m4_baseline() {
             let nova = medir(|| {
                 std::hint::black_box(crate::brush_live::resolve(
                     &scene,
-                    &|id| crate::vec_entities::object_selection_for(&sim, &scene, &map, id),
+                    &|id| ph2d_vec_entities::entities::object_selection_for(&sim, &scene, &map, id),
                     &ph2d_vec_scene::VecXforms::new(),
                 ));
             });
@@ -431,7 +431,7 @@ fn brush_live_cost_m4_baseline() {
             assert_eq!(
                 crate::brush_live::resolve(
                     &scene,
-                    &|id| { crate::vec_entities::object_selection_for(&sim, &scene, &map, id) },
+                    &|id| { ph2d_vec_entities::entities::object_selection_for(&sim, &scene, &map, id) },
                     &ph2d_vec_scene::VecXforms::new()
                 )
                 .len(),
@@ -484,7 +484,7 @@ fn brush_live_cost_m5_escala_com_a_cena() {
         let t = medir(|| {
             std::hint::black_box(crate::brush_live::resolve(
                 &scene,
-                &|id| crate::vec_entities::object_selection_for(&sim, &scene, &map, id),
+                &|id| ph2d_vec_entities::entities::object_selection_for(&sim, &scene, &map, id),
                 &ph2d_vec_scene::VecXforms::new(),
             ));
         });
@@ -502,7 +502,7 @@ fn brush_live_cost_m5_escala_com_a_cena() {
         assert_eq!(alvos.len(), 10, "a cena nao tem os 10 pinceis");
         let exp = medir(|| {
             for a in &alvos {
-                std::hint::black_box(crate::vec_entities::object_selection_for(
+                std::hint::black_box(ph2d_vec_entities::entities::object_selection_for(
                     &sim, &scene, &map, *a,
                 ));
             }

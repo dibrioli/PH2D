@@ -26,7 +26,7 @@
 use ph2d_ecs::{Entity, SimWorld, VecResizeBox};
 use ph2d_vec_scene::VecPathId;
 
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 
 /// O sujeito do checkbox: a ÚNICA forma selecionada.
 ///

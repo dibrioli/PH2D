@@ -342,13 +342,13 @@ mod tests {
     fn staged() -> (
         ph2d_ecs::SimWorld,
         ph2d_vec_scene::VecScene,
-        crate::vec_entities::VecEntityMap,
+        ph2d_vec_entities::entities::VecEntityMap,
         ph2d_ecs::Entity,
         Vec<ph2d_vec_scene::VecPathId>,
     ) {
         let mut sim = ph2d_ecs::SimWorld::default();
         let mut scene = ph2d_vec_scene::VecScene::new();
-        let mut map = crate::vec_entities::VecEntityMap::new();
+        let mut map = ph2d_vec_entities::entities::VecEntityMap::new();
         // A MESMA geometria da cena — a de cima apenas.
         let cy = FRAME_Y[0];
         let (left, bottom) = (-HALF[0], cy - HALF[1]);
@@ -363,7 +363,7 @@ mod tests {
             rectangle([-HALF[0], cy - HALF[1]], [HALF[0], cy + HALF[1]]),
             [48, 48, 56],
         ));
-        crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+        ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
         let frame = ph2d_ecs::Entity::from_bits(map[&frame_id]);
         sim.world_mut().entity_mut(frame).insert(ph2d_ecs::VecFrame);
         for id in &kids {

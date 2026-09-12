@@ -31,7 +31,7 @@ use ph2d_vec_render::LiveGeometry;
 use ph2d_vec_scene::pattern_path::{PatternSpec, pattern_along};
 use ph2d_vec_scene::{VecPathId, VecScene};
 
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 
 /// O cozimento vivo de todos os patterns da cena.
 #[derive(Default)]

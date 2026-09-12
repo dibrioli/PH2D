@@ -101,7 +101,7 @@ impl crate::App {
         // O `sync` é quem cria as entidades — sem ele não há a quem pendurar nome nem filtro.
         let (bits_plain, bits_fx) = {
             let gfx = self.gfx.as_mut().expect("gfx");
-            crate::vec_entities::sync(&mut gfx.sim, &mut gfx.vec_scene, &mut self.vec_entities);
+            ph2d_vec_entities::entities::sync(&mut gfx.sim, &mut gfx.vec_scene, &mut self.vec_entities);
             for (id, nome) in [(plain, "Fade"), (filtered, "Fade FX")] {
                 let bits = self.vec_entities[&id];
                 gfx.sim

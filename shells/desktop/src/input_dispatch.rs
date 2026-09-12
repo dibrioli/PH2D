@@ -1218,7 +1218,7 @@ pub(crate) fn vec_transform_field_for_id(id: ph2d_editor::NodeId) -> Option<VecT
 #[allow(clippy::too_many_arguments)] // a receita mora no ECS; a geometria, na cena
 pub(crate) fn apply_vec_transform(
     sim: &mut ph2d_ecs::SimWorld,
-    map: &crate::vec_entities::VecEntityMap,
+    map: &ph2d_vec_entities::entities::VecEntityMap,
     scene: &mut ph2d_vec_scene::VecScene,
     history: &mut ph2d_vec_edit::History,
     pen: &ph2d_vec_edit::PenTool,
@@ -1282,7 +1282,7 @@ pub(crate) fn apply_vec_transform(
 /// Escrita depois do `match`, ela seria uma linha que o próximo braço não sabe que existe.
 fn keep_recipe_in_step(
     sim: &mut ph2d_ecs::SimWorld,
-    map: &crate::vec_entities::VecEntityMap,
+    map: &ph2d_vec_entities::entities::VecEntityMap,
     id: ph2d_vec_scene::VecPathId,
     sx: f64,
     sy: f64,
@@ -1654,7 +1654,7 @@ impl App {
     /// chamável).
     fn vec_boolean(&mut self, op: ph2d_vec_boolean::PathfinderOp) {
         if let Some(gfx) = self.gfx.as_mut() {
-            let xf = crate::vec_transform::build(&gfx.sim, &self.vec_entities);
+            let xf = ph2d_vec_entities::transform::build(&gfx.sim, &self.vec_entities);
             apply_vec_boolean(
                 &mut gfx.vec_scene,
                 &mut self.vec_history,
@@ -1794,7 +1794,7 @@ impl App {
         let Some(gfx) = self.gfx.as_ref() else {
             return vec![path];
         };
-        crate::vec_entities::object_selection_for(
+        ph2d_vec_entities::entities::object_selection_for(
             &gfx.sim,
             &gfx.vec_scene,
             &self.vec_entities,
@@ -1823,12 +1823,12 @@ impl App {
         // um smoke desta linha mandou o dono agrupar um objecto só e ficar a olhar para o nada.
         if group {
             let name = format!("Group {}", sel.len());
-            if crate::vec_entities::group_entities(sim, &sel, name).is_none() {
+            if ph2d_vec_entities::entities::group_entities(sim, &sel, name).is_none() {
                 gfx.toasts.push(ph2d_editor::Toast::warning(
                     "Select two or more objects to group",
                 ));
             }
-        } else if crate::vec_entities::ungroup_entities(sim, &sel) == 0 {
+        } else if ph2d_vec_entities::entities::ungroup_entities(sim, &sel) == 0 {
             gfx.toasts.push(ph2d_editor::Toast::warning(
                 "That selection is not inside a group",
             ));
@@ -1890,7 +1890,7 @@ impl App {
         };
         let win = gfx.surface.size();
         let target = gfx.camera.screen_to_world((x, y), win);
-        let moved = crate::vec_transform::move_origin_to(
+        let moved = ph2d_vec_entities::transform::move_origin_to(
             &mut gfx.sim,
             &mut gfx.vec_scene,
             ph2d_ecs::Entity::from_bits(bits),
@@ -2395,7 +2395,7 @@ impl App {
                 // ⚠️ Pela porta que ASSA (`art_dims` -> `bake_dims`) e com a MESMA expansão de
                 // objecto, senão o ladrilho tem um aspecto e a colocação tem outro.
                 let fonte = ph2d_vec_scene::PatternSource::Shape(guide);
-                let xf = crate::vec_transform::build(&gfx.sim, &self.vec_entities);
+                let xf = ph2d_vec_entities::transform::build(&gfx.sim, &self.vec_entities);
                 let arte = crate::texture_pattern_pick::art_dims(
                     &gfx.asset_db,
                     &gfx.vec_scene,
@@ -2404,7 +2404,7 @@ impl App {
                     host,
                     &fonte,
                     &|id| {
-                        crate::vec_entities::object_selection_for(
+                        ph2d_vec_entities::entities::object_selection_for(
                             &gfx.sim,
                             &gfx.vec_scene,
                             &self.vec_entities,
@@ -2436,7 +2436,7 @@ impl App {
                 // ⚠️ A expansão é medida ANTES do empréstimo mutável — a porta só pergunta pelo
                 // `guide` (é ele a arte), e o `&mut scene` da escrita não coexiste com o `&scene`
                 // que a expansão lê.
-                let membros = crate::vec_entities::object_selection_for(
+                let membros = ph2d_vec_entities::entities::object_selection_for(
                     &gfx.sim,
                     &gfx.vec_scene,
                     &self.vec_entities,
@@ -2757,7 +2757,7 @@ impl App {
         let px = (((w1[0] - w0[0]).powi(2) + (w1[1] - w0[1]).powi(2)).sqrt()) as f64;
         // ADR-0111: a geometria do gradiente é LOCAL, como a do path. O cursor desce
         // pelo afim, e o raio de captura com ele (a forma pode estar escalada).
-        let x = crate::vec_transform::xform_of_transform(crate::vec_transform::world_transform(
+        let x = ph2d_vec_entities::transform::xform_of_transform(ph2d_vec_entities::transform::world_transform(
             &gfx.sim,
             ph2d_ecs::Entity::from_bits(*self.vec_entities.get(&sel)?),
         ));
@@ -2783,7 +2783,7 @@ impl App {
         let w = gfx.camera.screen_to_world((x, y), win);
         // O ponto do gradiente é guardado no espaço local do path (ADR-0111).
         let w = match self.vec_entities.get(&sel).and_then(|&b| {
-            crate::vec_transform::xform_of_transform(crate::vec_transform::world_transform(
+            ph2d_vec_entities::transform::xform_of_transform(ph2d_vec_entities::transform::world_transform(
                 &gfx.sim,
                 ph2d_ecs::Entity::from_bits(b),
             ))
@@ -5236,7 +5236,7 @@ impl App {
                                     let fill_on_close =
                                         (fill.a != 0).then(|| ph2d_vec_scene::Paint::solid(fill));
                                     let xforms =
-                                        crate::vec_transform::build(&gfx.sim, &self.vec_entities);
+                                        ph2d_vec_entities::transform::build(&gfx.sim, &self.vec_entities);
                                     let win = gfx.surface.size();
                                     let tol =
                                         crate::vec_gizmo_view::stroke_hit_r(&gfx.camera, win) * 1.5;
@@ -5606,7 +5606,7 @@ impl App {
                     let over_open_vec_stroke = {
                         let window_size = gfx.surface.size();
                         let world_pos = gfx.camera.screen_to_world((evt.x, evt.y), window_size);
-                        let vec_view = crate::vec_entities::view_state_for_pick(
+                        let vec_view = ph2d_vec_entities::entities::view_state_for_pick(
                             &gfx.sim,
                             &self.vec_entities,
                             &self.vec_view_derived,
@@ -6333,7 +6333,7 @@ impl App {
                                 gfx.camera.screen_to_world(rb.current_screen, window_size);
                             let rmin = [world_a[0].min(world_b[0]), world_a[1].min(world_b[1])];
                             let rmax = [world_a[0].max(world_b[0]), world_a[1].max(world_b[1])];
-                            let vec_view = crate::vec_entities::view_state_for_pick(
+                            let vec_view = ph2d_vec_entities::entities::view_state_for_pick(
                                 &gfx.sim,
                                 &self.vec_entities,
                                 &self.vec_view_derived,
@@ -6482,12 +6482,12 @@ impl App {
                                     continue; // fechada não funde
                                 }
                                 let xforms =
-                                    crate::vec_transform::build(&gfx.sim, &self.vec_entities);
+                                    ph2d_vec_entities::transform::build(&gfx.sim, &self.vec_entities);
                                 if let Some(rd) = gfx.vec_scene.rigid_snap_delta(id, &xforms, tol) {
                                     crate::vec_snap::slide_entity_world(&mut gfx.sim, bits, rd);
                                 }
                                 let xforms =
-                                    crate::vec_transform::build(&gfx.sim, &self.vec_entities);
+                                    ph2d_vec_entities::transform::build(&gfx.sim, &self.vec_entities);
                                 if gfx.vec_scene.weld_new_shape(
                                     id,
                                     &xforms,
@@ -6733,7 +6733,7 @@ mod tests {
         let id = scene.push_path(rectangle([0.0, 0.0], [10.0, 4.0]));
         // Um path CRU: sem receita a manter em passo (o `keep_recipe_in_step` sai calado).
         let mut sim = ph2d_ecs::SimWorld::default();
-        let map = crate::vec_entities::VecEntityMap::new();
+        let map = ph2d_vec_entities::entities::VecEntityMap::new();
         let mut hist = ph2d_vec_edit::History::new();
         let mut pen = ph2d_vec_edit::PenTool::new();
         pen.select(Some(id));

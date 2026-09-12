@@ -187,7 +187,7 @@ mod tests {
     #[test]
     fn every_piece_the_scene_builds_is_a_control() {
         let mut sim = ph2d_ecs::SimWorld::default();
-        let mut map = crate::vec_entities::VecEntityMap::new();
+        let mut map = ph2d_vec_entities::entities::VecEntityMap::new();
         let mut scene = ph2d_vec_scene::VecScene::new();
         let ids: Vec<_> = PIECES
             .iter()
@@ -204,7 +204,7 @@ mod tests {
                 .id();
             map.insert(*id, e.to_bits());
         }
-        let xf = crate::vec_transform::build(&sim, &map);
+        let xf = ph2d_vec_entities::transform::build(&sim, &map);
 
         // O modo LIGADO, o eixo semeado — e ninguém em gesto, que é o estado do passo 1.
         let mut live = crate::symmetry_live::SymmetryLive::default();

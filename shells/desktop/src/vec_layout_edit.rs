@@ -32,7 +32,7 @@ use ph2d_editor::ids;
 use ph2d_panel_vector::state::{LayoutFlow, LayoutItem};
 use ph2d_vec_scene::VecPathId;
 
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 
 /// A direção ⟷ o chip. `Off` não está aqui: ele é a AUSÊNCIA do componente, e por isso não tem
 /// variante a que corresponder.

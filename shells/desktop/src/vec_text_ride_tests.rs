@@ -67,7 +67,7 @@ fn fixture() -> Fix {
         ..Default::default()
     });
     let mut map = VecEntityMap::new();
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     let te = Entity::from_bits(map[&text]);
     sim.world_mut()
         .entity_mut(te)

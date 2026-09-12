@@ -96,7 +96,7 @@ fn adopt(app: &mut crate::App) {
     // `arm` corre, o `settle_origins` já pôs cada forma-raiz a carregar a própria translação, e
     // prender uma à outra as SOMAVA — a etiqueta saltava o centro da caixa (3,2 × 1,6 unidades num
     // botão de 3,6 × 1,2) e aterrava fora dela. Ver `vec_transform::reparent_keeping_world`.
-    crate::vec_transform::reparent_keeping_world(
+    ph2d_vec_entities::transform::reparent_keeping_world(
         &mut gfx.sim,
         Entity::from_bits(lb),
         Entity::from_bits(bb),

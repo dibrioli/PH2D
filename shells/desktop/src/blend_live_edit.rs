@@ -344,7 +344,7 @@ pub(crate) fn drag_spine_anchors_move_sources(
             let Some(&bits) = map.get(&src_id) else {
                 continue;
             };
-            if crate::vec_transform::translate_shape_world(sim, Entity::from_bits(bits), [dx, dy]) {
+            if ph2d_vec_entities::transform::translate_shape_world(sim, Entity::from_bits(bits), [dx, dy]) {
                 // A âncora agora É o centro da fonte: atualiza a memória do auto para que a detecção
                 // do `recook` não trate o movimento da forma como uma edição de curva. Move o vértice
                 // INTEIRO (âncora + alças) como o arrasto fez — só a âncora deixaria as alças

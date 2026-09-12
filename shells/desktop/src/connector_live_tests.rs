@@ -23,13 +23,13 @@ fn scene_with_connector() -> (SimWorld, VecScene, VecEntityMap, VecPathId, [VecP
     let a = scene.push_path(rectangle([0.0, 0.0], [2.0, 1.0]));
     let b = scene.push_path(rectangle([8.0, 0.0], [10.0, 1.0]));
     let c = scene.push_path(ph2d_vec_scene::line([0.0, 0.0], [0.0, 0.0]));
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     assert!(attach(&mut sim, &map, c, &VecConnector::between(a, b)));
     (sim, scene, map, c, [a, b])
 }
 
 fn xforms(sim: &SimWorld, map: &VecEntityMap) -> VecXforms {
-    crate::vec_transform::build(sim, map)
+    ph2d_vec_entities::transform::build(sim, map)
 }
 
 /// O ponto está NA borda do retângulo de mundo `lo..hi`?
@@ -161,7 +161,7 @@ fn deleting_a_shape_freezes_the_orphaned_end_and_the_line_stays() {
 
     // A Hierarquia apaga B ⇒ o `sync` leva o path junto.
     sim.world_mut().despawn(Entity::from_bits(map[&b]));
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     assert!(!scene.paths().iter().any(|p| p.id == b), "B sumiu");
 
     let xf = xforms(&sim, &map);
@@ -204,7 +204,7 @@ fn a_fresh_connector_never_enters_the_xform_map() {
     let mut map = VecEntityMap::new();
     let a = scene.push_path(rectangle([0.0, 0.0], [2.0, 1.0]));
     let b = scene.push_path(rectangle([8.0, 0.0], [10.0, 1.0]));
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
 
     // O gesto: empurra a linha (longe da origem, como qualquer rota) e deixa o
     // componente pendente para a entidade que ainda vai nascer.
@@ -213,10 +213,10 @@ fn a_fresh_connector_never_enters_the_xform_map() {
     let mut cache = SideCache::new();
 
     // ── o frame, na ordem do `render_loop` ──
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     upkeep(&mut sim, &scene, &map, None, &mut pending);
-    crate::vec_transform::settle_origins(&mut sim, &mut scene, &map, &[]);
-    let xf = crate::vec_transform::build(&sim, &map);
+    ph2d_vec_entities::transform::settle_origins(&mut sim, &mut scene, &map, &[]);
+    let xf = ph2d_vec_entities::transform::build(&sim, &map);
     recook(&mut sim, &mut scene, &map, &xf, &mut cache);
 
     assert!(pending.is_none(), "a entidade nasceu: a fila esvaziou");
@@ -314,7 +314,7 @@ fn a_shape_planted_between_two_boxes_pushes_the_line_around_it() {
 
     // Planta a parede e re-cozinha.
     scene.push_path(rectangle(lo, hi));
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     let xf = xforms(&sim, &map);
     recook(&mut sim, &mut scene, &map, &xf, &mut cache);
     let around = poly(&scene, conn);
@@ -360,7 +360,7 @@ fn two_connectors_between_the_same_pair_never_overlap() {
     let b = scene.push_path(rectangle([0.0, 4.0], [2.0, 5.0]));
     let c0 = scene.push_path(ph2d_vec_scene::line([0.0, 0.0], [0.0, 0.0]));
     let c1 = scene.push_path(ph2d_vec_scene::line([0.0, 0.0], [0.0, 0.0]));
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
 
     let first = VecConnector::between(a, b);
     let mut second = VecConnector::between(a, b);
@@ -431,7 +431,7 @@ fn the_corner_radius_reaches_the_cooked_line_but_never_the_two_ends() {
     let a = scene.push_path(rectangle([0.0, 0.0], [2.0, 1.0]));
     let b = scene.push_path(rectangle([8.0, 5.0], [10.0, 6.0]));
     let c = scene.push_path(ph2d_vec_scene::line([0.0, 0.0], [0.0, 0.0]));
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
 
     let mut cache = SideCache::new();
     let sharp = VecConnector::between(a, b);
@@ -518,7 +518,7 @@ fn a_curved_connector_still_goes_around_the_obstacle_the_router_avoided() {
     // A parede entre as duas caixas.
     let (lo, hi) = ([4.0, -2.0], [6.0, 3.0]);
     scene.push_path(rectangle(lo, hi));
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
 
     let mut c = VecConnector::between(scene.paths()[0].id, scene.paths()[1].id);
     c.route = ph2d_ecs::RouteKind::Curved;

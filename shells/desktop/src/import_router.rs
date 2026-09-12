@@ -108,7 +108,7 @@ pub(crate) fn images_anchor(anchor: [f32; 2], ase_row_height: f32) -> [f32; 2] {
 /// dois) e esta função já carrega oito argumentos — *dois nomes que nunca se separam são um nome*.
 pub(crate) struct VecTarget<'a> {
     pub(crate) scene: &'a mut ph2d_vec_scene::VecScene,
-    pub(crate) map: &'a mut crate::vec_entities::VecEntityMap,
+    pub(crate) map: &'a mut ph2d_vec_entities::entities::VecEntityMap,
 }
 
 /// **Importa uma leva**, seja ela largada na janela ou escolhida no diálogo.

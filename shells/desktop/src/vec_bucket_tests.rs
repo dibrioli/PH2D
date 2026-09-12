@@ -93,7 +93,7 @@ fn the_contours_come_out_in_world_space() {
 fn a_bucket_fill_is_not_a_wall() {
     use ph2d_ecs::{Name, SimWorld, Transform, VecBucketFill, VecPathRef};
     let mut sim = SimWorld::default();
-    let mut map = crate::vec_entities::VecEntityMap::new();
+    let mut map = ph2d_vec_entities::entities::VecEntityMap::new();
     let mut scene = VecScene::new();
     let parede = scene.push_path(VecPath {
         verts: vec![v(0.0, 0.0), v(10.0, 0.0)],
@@ -176,7 +176,7 @@ fn the_recooked_area_comes_down_to_the_paths_own_space() {
 fn a_bucket_fill_is_published_as_derived_and_is_not_pickable() {
     use ph2d_ecs::{Name, SimWorld, Transform, VecBucketFill, VecPathRef};
     let mut sim = SimWorld::default();
-    let mut map = crate::vec_entities::VecEntityMap::new();
+    let mut map = ph2d_vec_entities::entities::VecEntityMap::new();
     let (parede, area) = (7u64, 9u64);
     for (id, fill) in [(parede, false), (area, true)] {
         let mut e = sim
@@ -187,7 +187,7 @@ fn a_bucket_fill_is_published_as_derived_and_is_not_pickable() {
         }
         map.insert(id, e.id().to_bits());
     }
-    let view = crate::vec_entities::view_state(&sim, &map);
+    let view = ph2d_vec_entities::entities::view_state(&sim, &map);
     assert!(
         view.is_derived(area),
         "o preenchimento nao foi publicado como derivado"

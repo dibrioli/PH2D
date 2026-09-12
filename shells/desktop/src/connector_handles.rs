@@ -300,7 +300,7 @@ pub(crate) fn is_redundant(stations: &[[f64; 2]], i: usize, tol: f64) -> bool {
 /// selecionado — como as alças de ponta, eles são controles da seleção, não enfeite da tela.
 pub(crate) fn waypoint_view(
     sim: &ph2d_ecs::SimWorld,
-    map: &crate::vec_entities::VecEntityMap,
+    map: &ph2d_vec_entities::entities::VecEntityMap,
     selected: &[VecPathId],
 ) -> Vec<[f64; 2]> {
     let mut out = Vec::new();

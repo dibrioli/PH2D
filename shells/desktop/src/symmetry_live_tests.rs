@@ -25,7 +25,7 @@
 //! tem.
 
 use super::*;
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 use ph2d_vec_scene::VecVertex;
 use ph2d_vec_scene::symmetry::{SymmetryKind, SymmetryStyle};
 
@@ -45,7 +45,7 @@ fn half_profile_scene() -> (
     let mut scene = VecScene::new();
     let id = scene.push_path(half_profile());
     let e = spawn_for(&mut sim, &mut map, id, "Vase", [3.0, 1.0]);
-    let xf = crate::vec_transform::build(&sim, &map);
+    let xf = ph2d_vec_entities::transform::build(&sim, &map);
     (scene, sim, map, xf, id, e)
 }
 
@@ -113,7 +113,7 @@ fn nudge(
         t.translation.x += delta[0];
         t.translation.y += delta[1];
     }
-    crate::vec_transform::build(sim, map)
+    ph2d_vec_entities::transform::build(sim, map)
 }
 
 /// O eixo capturado por `id`, levado de volta ao MUNDO — o oráculo de *"capturou o eixo de sessão"*.
@@ -222,7 +222,7 @@ fn the_axis_stays_put_across_several_drawings() {
     spawn_for(&mut sim, &mut map, a, "A", [0.0, 0.0]);
     let b = scene.push_path(half_profile());
     spawn_for(&mut sim, &mut map, b, "B", [7.0, -3.0]);
-    let xf = crate::vec_transform::build(&sim, &map);
+    let xf = ph2d_vec_entities::transform::build(&sim, &map);
 
     let mut live = SymmetryLive::default();
     let origin = [2.0, 1.0];

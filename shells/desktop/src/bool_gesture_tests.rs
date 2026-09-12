@@ -12,7 +12,7 @@ fn setup() -> (SimWorld, VecScene, VecEntityMap, Vec<VecPathId>) {
     let mut map = VecEntityMap::new();
     let a = scene.push_path(rectangle([0.0, 0.0], [2.0, 2.0]));
     let b = scene.push_path(rectangle([1.0, 1.0], [3.0, 3.0]));
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     (sim, scene, map, vec![a, b])
 }
 
@@ -78,7 +78,7 @@ fn baking_puts_the_result_where_the_base_sat_and_kills_the_group() {
     // Uma terceira forma NA FRENTE, fora do grupo: ela prova que o resultado ocupa a fatia da
     // base em vez de saltar para o topo.
     let front = scene.push_path(rectangle([9.0, 9.0], [10.0, 10.0]));
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     assert!(arm(&mut sim, &scene, &map, &ids, 0));
     let g = group_of_selection(&sim, &map, &ids).unwrap();
 

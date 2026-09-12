@@ -6,7 +6,7 @@
 //! a AUSÊNCIA do componente, não um perfil de multiplicadores `1.0`.
 
 use super::*;
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 use ph2d_vec_scene::{Rgba8, StrokeSpec, VecVertex};
 
 /// Um traço ABERTO, posado fora da origem: a fixture tem de atravessar a fronteira local↔mundo
@@ -43,7 +43,7 @@ fn stroked_scene() -> (
         ))
         .id();
     map.insert(id, e.to_bits());
-    let xf = crate::vec_transform::build(&sim, &map);
+    let xf = ph2d_vec_entities::transform::build(&sim, &map);
     (scene, sim, map, xf, id)
 }
 
@@ -232,7 +232,7 @@ fn moving_the_shape_moves_the_ribbon() {
     let (scene, mut sim, map, _xf, id) = stroked_scene();
     arm(&mut sim, &map, &[id], &taper());
     let mut live = ProfileLive::default();
-    let xf0 = crate::vec_transform::build(&sim, &map);
+    let xf0 = ph2d_vec_entities::transform::build(&sim, &map);
     live.recook(&scene, &sim, &map, &xf0);
     let at_rest = drawn(&live, id);
 
@@ -240,7 +240,7 @@ fn moving_the_shape_moves_the_ribbon() {
     if let Some(mut t) = sim.world_mut().get_mut::<ph2d_ecs::Transform>(e) {
         t.translation.x += 5.0;
     }
-    let xf1 = crate::vec_transform::build(&sim, &map);
+    let xf1 = ph2d_vec_entities::transform::build(&sim, &map);
     live.recook(&scene, &sim, &map, &xf1);
     let moved = drawn(&live, id);
 
@@ -364,7 +364,7 @@ fn a_filled_and_stroked_shape_keeps_its_middle() {
         ))
         .id();
     map.insert(id, e.to_bits());
-    let xf = crate::vec_transform::build(&sim, &map);
+    let xf = ph2d_vec_entities::transform::build(&sim, &map);
 
     arm(&mut sim, &map, &[id], &taper());
     let mut live = ProfileLive::default();

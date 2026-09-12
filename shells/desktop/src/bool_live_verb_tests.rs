@@ -21,9 +21,9 @@ fn scene_with_three(op: u8) -> (SimWorld, VecScene, VecEntityMap, [VecPathId; 3]
     let a = scene.push_path(rectangle([0.0, 0.0], [20.0, 20.0]));
     let b = scene.push_path(rectangle([10.0, 0.0], [30.0, 20.0]));
     let c = scene.push_path(rectangle([15.0, 5.0], [25.0, 15.0]));
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     let g = Entity::from_bits(
-        crate::vec_entities::group_entities(&mut sim, &[map[&a], map[&b], map[&c]], "Bool".into())
+        ph2d_vec_entities::entities::group_entities(&mut sim, &[map[&a], map[&b], map[&c]], "Bool".into())
             .unwrap(),
     );
     sim.world_mut().entity_mut(g).insert(VecBoolGroup { op });
@@ -129,9 +129,9 @@ fn the_order_in_the_hierarchy_is_the_order_of_the_chain() {
     let a = scene2.push_path(rectangle([0.0, 0.0], [20.0, 20.0]));
     let c = scene2.push_path(rectangle([15.0, 5.0], [25.0, 15.0]));
     let b = scene2.push_path(rectangle([10.0, 0.0], [30.0, 20.0]));
-    crate::vec_entities::sync(&mut sim2, &mut scene2, &mut map2);
+    ph2d_vec_entities::entities::sync(&mut sim2, &mut scene2, &mut map2);
     let g2 = Entity::from_bits(
-        crate::vec_entities::group_entities(&mut sim2, &[map2[&a], map2[&c], map2[&b]], "B".into())
+        ph2d_vec_entities::entities::group_entities(&mut sim2, &[map2[&a], map2[&c], map2[&b]], "B".into())
             .unwrap(),
     );
     sim2.world_mut()

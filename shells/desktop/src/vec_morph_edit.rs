@@ -9,7 +9,7 @@ use ph2d_ecs::{Entity, Name, SimWorld, VecMorph, VecMorphMachine};
 use ph2d_panel_vector::state::{MorphShapeRow, MorphStatesState};
 use ph2d_vec_scene::{VecPathId, VecScene};
 
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 
 /// **O que um clique numa linha de seta PEDE.**
 ///
@@ -117,7 +117,7 @@ pub(crate) fn publish(
         // ⭐ **Sem Morph na seleção a seção AINDA existe, se houver formas que possam virar um**
         // (plano 32 W8): é ela que traz o botão que os cria. ⛔ Devolver `None` aqui faria a única
         // porta para a feature aparecer só depois de a feature existir.
-        let n = crate::morph_set::eligible(sim, map, sel).len();
+        let n = ph2d_vec_entities::morph_set::eligible(sim, map, sel).len();
         // ⛔ **`preview: false` aqui, e não o `preview` recebido.** Sem máquina não há modo a
         // anunciar — e o botão não é sequer pintado nesta face. Passar o valor real acenderia um
         // interruptor que não existe.
@@ -135,7 +135,7 @@ pub(crate) fn publish(
     let graph = sim
         .world()
         .get::<VecMorphMachine>(e)
-        .map(|_| crate::morph_set::graph_of(sim, map, e));
+        .map(|_| ph2d_vec_entities::morph_set::graph_of(sim, map, e));
     let live = sim
         .world()
         .get::<VecMorph>(e)
@@ -182,18 +182,18 @@ pub(crate) fn apply(
     match cmd {
         // ⚠️ **O `MakeSet` não vive aqui:** ele cria uma ENTIDADE, reparenta formas e escreve na
         // cena vetorial — nada disso cabe numa função que só tem o componente de um objecto que
-        // ainda não existe. Ele é servido pelo [`crate::morph_set`], e este braço é a prova de que
+        // ainda não existe. Ele é servido pelo [`ph2d_vec_entities::morph_set`], e este braço é a prova de que
         // a tabela é exaustiva.
         MorphCmd::MakeSet => false,
         // ⚠️ **Os três verbos de MUNDO também não vivem aqui** — eles reparentam, mostram e apagam
-        // entidades, e esta função só tem o componente. São servidos pelo [`crate::morph_set`] e
+        // entidades, e esta função só tem o componente. São servidos pelo [`ph2d_vec_entities::morph_set`] e
         // pelo motor; estes braços são a prova de que a tabela é exaustiva.
         MorphCmd::Play { .. } | MorphCmd::Disconnect { .. } | MorphCmd::Dissolve => false,
         MorphCmd::SetWhen { row, action } => {
             // ⭐⭐ **A linha resolve-se contra o grafo DERIVADO, e a escrita vai para a TABELA**
             // (W11): a lista de formas é dos FILHOS, e só a tecla é autorada. Resolver `row` contra
             // uma lista guardada seria ler uma resposta que a hierarquia pode já ter mudado.
-            let Some(shape) = crate::morph_set::graph_of(sim, map, morph)
+            let Some(shape) = ph2d_vec_entities::morph_set::graph_of(sim, map, morph)
                 .states
                 .get(row)
                 .map(|st| st.shape)

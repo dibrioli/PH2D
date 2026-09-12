@@ -45,7 +45,7 @@ pub(crate) fn create(
 ) -> Option<u64> {
     // O espaço do PAI. Sem pai, o mundo — e aí o inverso é a identidade.
     let pai_mundo = parent.map_or(Xform::IDENTITY, |p| {
-        crate::vec_transform::xform_of_transform(crate::vec_transform::world_transform(sim, p))
+        ph2d_vec_entities::transform::xform_of_transform(ph2d_vec_entities::transform::world_transform(sim, p))
     });
     let inv = pai_mundo.inverse()?;
     let a = inv.apply(origin);
@@ -89,7 +89,7 @@ pub(crate) fn create(
         None => {
             // ⛔ `RootOrder` EXPLÍCITO — sem ele a árvore desempata por bits de alocação, e o undo
             // vira um passo espúrio por quadro (BUGS #15).
-            let order = crate::vec_entities::next_root_order(sim);
+            let order = ph2d_vec_entities::entities::next_root_order(sim);
             sim.world_mut().entity_mut(e).insert(RootOrder(order));
         }
     }
@@ -215,7 +215,7 @@ pub(crate) fn press(
 pub(crate) fn aim_rotation(sim: &SimWorld, bone: Entity, world: [f64; 2]) -> Option<f64> {
     let pai = sim.world().get::<ChildOf>(bone).map(ChildOf::parent);
     let pai_mundo = pai.map_or(Xform::IDENTITY, |p| {
-        crate::vec_transform::xform_of_transform(crate::vec_transform::world_transform(sim, p))
+        ph2d_vec_entities::transform::xform_of_transform(ph2d_vec_entities::transform::world_transform(sim, p))
     });
     let inv = pai_mundo.inverse()?;
     let p = inv.apply(world);
@@ -430,7 +430,7 @@ fn adopting_would_cycle(sim: &SimWorld, alvo: u64, novo_pai: Option<u64>) -> boo
 ///
 /// ⚠️ **A pose de mundo do adoptado NÃO pode mudar.** Ele é uma corrente inteira que o artista já
 /// posicionou; um `ChildOf` cru somaria a pose do pai novo e o esqueleto todo saltaria. A porta que
-/// devolve a pose local certa já existe ([`crate::vec_transform::reparent_keeping_world`]) e é a
+/// devolve a pose local certa já existe ([`ph2d_vec_entities::transform::reparent_keeping_world`]) e é a
 /// mesma que a Hierarquia usa — ⛔ escrever a conta aqui seria a segunda resposta à mesma pergunta.
 ///
 /// ⚠️ **O `RootOrder` SAI**, e não é cosmética: ele é o desempate entre RAÍZES, e o adoptado deixou
@@ -443,7 +443,7 @@ pub(crate) fn connect(sim: &mut SimWorld, child: u64, parent: u64) -> bool {
     let (Some(c), Some(p)) = (Entity::try_from_bits(child), Entity::try_from_bits(parent)) else {
         return false;
     };
-    if !crate::vec_transform::reparent_keeping_world(sim, c, p) {
+    if !ph2d_vec_entities::transform::reparent_keeping_world(sim, c, p) {
         return false;
     }
     if let Ok(mut e) = sim.world_mut().get_entity_mut(c) {

@@ -16,7 +16,7 @@
 //! identidade com um resultado FRESCO da forma pristina, âncora a âncora.
 
 use super::*;
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 use ph2d_vec_scene::{Contour, VecVertex};
 
 /// A **rosquinha do smoke 17**, posada — a fixture tem de conter o fenômeno: é o compound com
@@ -52,7 +52,7 @@ fn donut_scene() -> (
         ))
         .id();
     map.insert(id, e.to_bits());
-    let xf = crate::vec_transform::build(&sim, &map);
+    let xf = ph2d_vec_entities::transform::build(&sim, &map);
     (scene, sim, map, xf, id)
 }
 
@@ -269,7 +269,7 @@ fn applying_the_offset_materialises_the_drawn_geometry() {
     }
     assert!(hist.undo(&scene).is_some(), "UM passo de undo para o gesto");
     // A forma-fonte saiu da cena, e com ela o componente (a entidade dela morre no `sync`).
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     assert!(
         scene
             .paths()
@@ -309,7 +309,7 @@ fn materialising_two_shapes_honours_each_ones_own_offset() {
         map.insert(id, e.to_bits());
         ids.push(id);
     }
-    let xf = crate::vec_transform::build(&sim, &map);
+    let xf = ph2d_vec_entities::transform::build(&sim, &map);
     // A com MITER, B com ROUND — o mesmo `d`, quinas diferentes.
     crate::offset_live::arm(&mut sim, &map, &ids[..1], 0.5, 0, 2);
     crate::offset_live::arm(&mut sim, &map, &ids[1..], 0.5, 1, 2);
@@ -443,7 +443,7 @@ fn the_cook_runs_the_effect_stack_before_the_pose_and_the_offset() {
         ))
         .id();
     map.insert(id, e.to_bits());
-    let xf = crate::vec_transform::build(&sim, &map);
+    let xf = ph2d_vec_entities::transform::build(&sim, &map);
     // Um Zig Zag ativo pelo MESMO caminho do produto.
     crate::fx_bridge::add(&mut scene, id, 1);
     crate::fx_bridge::set_param(&mut scene, id, 0, 0, 40.0);

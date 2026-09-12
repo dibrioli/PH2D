@@ -121,7 +121,7 @@ pub(crate) fn arc(
         .get::<ph2d_ecs::ChildOf>(bone)
         .map(ph2d_ecs::ChildOf::parent);
     let pai_mundo = pai.map_or(Xform::IDENTITY, |p| {
-        crate::vec_transform::xform_of_transform(crate::vec_transform::world_transform(sim, p))
+        ph2d_vec_entities::transform::xform_of_transform(ph2d_vec_entities::transform::world_transform(sim, p))
     });
     let ponto = |a: f64| pai_mundo.apply([o[0] + comp * a.cos(), o[1] + comp * a.sin()]);
     let (lo, hi) = (l.min.min(l.max), l.min.max(l.max));

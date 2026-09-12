@@ -33,16 +33,16 @@ fn an_end_bound_to_its_own_label_freezes_instead_of_chasing_it() {
     let (mut sim, mut scene, mut map, conn, [_, b]) = scene_with_connector();
     let mut cache = SideCache::new();
     let frame = |sim: &mut SimWorld, scene: &mut VecScene, map: &mut VecEntityMap, c: &mut _| {
-        crate::vec_entities::sync(sim, scene, map);
-        crate::vec_transform::settle_origins(sim, scene, map, &[]);
-        let xf = crate::vec_transform::build(sim, map);
+        ph2d_vec_entities::entities::sync(sim, scene, map);
+        ph2d_vec_entities::transform::settle_origins(sim, scene, map, &[]);
+        let xf = ph2d_vec_entities::transform::build(sim, map);
         recook(sim, scene, map, &xf, c);
     };
     frame(&mut sim, &mut scene, &mut map, &mut cache);
 
     // O rótulo do conector: um texto em cima da rota, vinculado a ela.
     let label = scene.push_path(rectangle([4.0, 0.2], [6.0, 0.8]));
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     let le = Entity::from_bits(map[&label]);
     sim.world_mut().entity_mut(le).insert((
         VecShape::Text(VecTextParams {
@@ -90,7 +90,7 @@ fn an_end_bound_to_its_own_label_freezes_instead_of_chasing_it() {
     // E a ponta congelou ONDE ESTAVA — encostada em B, não em cima do texto. A bbox tem de ser a
     // de MUNDO: toda forma assentada tem a bbox LOCAL centrada em 0 (ADR-0112), e comparar ali
     // diria que a ponta está fora de uma caixa que na verdade nem é a de B.
-    let xf = crate::vec_transform::build(&sim, &map);
+    let xf = ph2d_vec_entities::transform::build(&sim, &map);
     let (lo, hi) = scene.path_world_curve_bbox(&xf, b).expect("a bbox de B");
     let (_, end) = seen[0];
     assert!(
@@ -117,7 +117,7 @@ fn an_end_dropped_on_a_shapes_label_anchors_to_the_shape() {
 
     // O rótulo de B: um texto pequeno, centrado nela (é onde ele nasce).
     let label = scene.push_path(rectangle([8.6, 0.3], [9.4, 0.7]));
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     let le = Entity::from_bits(map[&label]);
     sim.world_mut().entity_mut(le).insert((
         VecShape::Text(VecTextParams {
@@ -143,9 +143,9 @@ fn an_end_dropped_on_a_shapes_label_anchors_to_the_shape() {
         };
     }
 
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
-    crate::vec_transform::settle_origins(&mut sim, &mut scene, &map, &[]);
-    let xf = crate::vec_transform::build(&sim, &map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::transform::settle_origins(&mut sim, &mut scene, &map, &[]);
+    let xf = ph2d_vec_entities::transform::build(&sim, &map);
     recook(&mut sim, &mut scene, &map, &xf, &mut cache);
 
     let (lo, hi) = scene.path_world_curve_bbox(&xf, b).expect("a bbox de B");

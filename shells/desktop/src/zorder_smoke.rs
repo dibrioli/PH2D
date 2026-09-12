@@ -95,7 +95,7 @@ fn adopt(app: &mut crate::App) {
     // ⚠️ Pela PORTA (`reparent_keeping_world`): o `settle_origins` já pôs cada forma-raiz a
     // carregar a própria translação, e um `ChildOf` cru SOMA as duas — o filho saltaria para fora
     // do pai e a cena deixaria de conter o fenômeno.
-    crate::vec_transform::reparent_keeping_world(
+    ph2d_vec_entities::transform::reparent_keeping_world(
         &mut gfx.sim,
         Entity::from_bits(cb),
         Entity::from_bits(pb),

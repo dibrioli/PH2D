@@ -4945,6 +4945,7 @@ dependencies = [
  "ph2d-tool-vector",
  "ph2d-vec-blend",
  "ph2d-vec-edit",
+ "ph2d-vec-entities",
  "ph2d-vec-fill",
  "ph2d-vec-render",
  "ph2d-vec-scene",
@@ -5717,6 +5718,7 @@ dependencies = [
  "ph2d-vec-boolean",
  "ph2d-vec-connect",
  "ph2d-vec-edit",
+ "ph2d-vec-entities",
  "ph2d-vec-envelope",
  "ph2d-vec-fill",
  "ph2d-vec-layout",
@@ -8428,6 +8430,22 @@ dependencies = [
  "ph2d-guides",
  "ph2d-vec-scene",
  "ph2d-vector-doc",
+]
+
+[[package]]
+name = "ph2d-vec-entities"
+version = "0.0.0"
+dependencies = [
+ "bevy_ecs",
+ "ph2d-core",
+ "ph2d-ecs",
+ "ph2d-entity-visibility",
+ "ph2d-morph-machine",
+ "ph2d-render",
+ "ph2d-skeleton-ecs",
+ "ph2d-unique-name",
+ "ph2d-vec-edit",
+ "ph2d-vec-scene",
 ]
 
 [[package]]

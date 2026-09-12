@@ -18,9 +18,9 @@ pub(super) fn scene_with_group(
     let mut map = VecEntityMap::new();
     let a = scene.push_path(rectangle([0.0, 0.0], [2.0, 2.0]));
     let b = scene.push_path(rectangle([1.0, 1.0], [3.0, 3.0]));
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     let g = Entity::from_bits(
-        crate::vec_entities::group_entities(&mut sim, &[map[&a], map[&b]], "Bool".into()).unwrap(),
+        ph2d_vec_entities::entities::group_entities(&mut sim, &[map[&a], map[&b]], "Bool".into()).unwrap(),
     );
     sim.world_mut().entity_mut(g).insert(VecBoolGroup { op });
     (sim, scene, map, vec![a, b], g)
@@ -138,7 +138,7 @@ fn an_open_path_inside_the_group_is_not_an_operand() {
         closed: false,
         ..VecPath::default()
     });
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     let e = Entity::from_bits(map[&open]);
     sim.world_mut()
         .entity_mut(e)
@@ -159,7 +159,7 @@ fn fewer_than_two_closed_operands_is_a_no_op() {
     let (mut sim, mut scene, mut map, ids, _g) = scene_with_group(0);
     // Abre um dos dois: sobra um operando só.
     scene.path_mut(ids[1]).unwrap().closed = false;
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     let mut live = LiveGeometry::new();
     run(&sim, &scene, &map, &mut live);
     assert!(live.is_empty(), "um operando não é uma booleana");
@@ -237,15 +237,15 @@ fn a_nested_boolean_cooks_from_the_inside_out() {
     let a = scene.push_path(rectangle([0.0, 0.0], [2.5, 1.0]));
     let b = scene.push_path(rectangle([1.5, 0.0], [4.0, 1.0]));
     let c = scene.push_path(rectangle([1.0, -1.0], [3.0, 2.0]));
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     let inner = Entity::from_bits(
-        crate::vec_entities::group_entities(&mut sim, &[map[&a], map[&b]], "In".into()).unwrap(),
+        ph2d_vec_entities::entities::group_entities(&mut sim, &[map[&a], map[&b]], "In".into()).unwrap(),
     );
     sim.world_mut()
         .entity_mut(inner)
         .insert(VecBoolGroup { op: 0 }); // Union
     let outer = Entity::from_bits(
-        crate::vec_entities::group_entities(&mut sim, &[inner.to_bits(), map[&c]], "Out".into())
+        ph2d_vec_entities::entities::group_entities(&mut sim, &[inner.to_bits(), map[&c]], "Out".into())
             .unwrap(),
     );
     sim.world_mut()
@@ -276,9 +276,9 @@ fn the_result_wears_the_style_the_engine_gives_it() {
     rb.fill = Some(Paint::Solid(Rgba8::new(200, 100, 50, 255)));
     let a = scene.push_path(ra);
     let b = scene.push_path(rb);
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     let g = Entity::from_bits(
-        crate::vec_entities::group_entities(&mut sim, &[map[&a], map[&b]], "Bool".into()).unwrap(),
+        ph2d_vec_entities::entities::group_entities(&mut sim, &[map[&a], map[&b]], "Bool".into()).unwrap(),
     );
     sim.world_mut().entity_mut(g).insert(VecBoolGroup { op: 0 });
 

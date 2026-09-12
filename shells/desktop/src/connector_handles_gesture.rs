@@ -241,7 +241,7 @@ impl App {
         let Some(gfx) = self.gfx.as_ref() else {
             return false;
         };
-        let xforms = crate::vec_transform::build(&gfx.sim, &self.vec_entities);
+        let xforms = ph2d_vec_entities::transform::build(&gfx.sim, &self.vec_entities);
         let mk = |id: VecPathId| -> Option<DropTarget> {
             let (lo, hi) = gfx.vec_scene.path_curve_bbox(id)?;
             Some(DropTarget {
@@ -306,7 +306,7 @@ impl App {
 pub(crate) fn view(
     sim: &ph2d_ecs::SimWorld,
     scene: &VecScene,
-    map: &crate::vec_entities::VecEntityMap,
+    map: &ph2d_vec_entities::entities::VecEntityMap,
     selected: &[VecPathId],
 ) -> Vec<([f64; 2], bool)> {
     let pinned = |e: &ConnectorEnd| {

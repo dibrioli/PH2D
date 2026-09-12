@@ -180,7 +180,7 @@ impl ProjectState {
         registry: &ComponentRegistry,
     ) -> (
         VecScene,
-        crate::vec_entities::VecEntityMap,
+        ph2d_vec_entities::entities::VecEntityMap,
         FlipDoc,
         crate::flip::entities::FlipEntityMap,
     ) {
@@ -198,7 +198,7 @@ impl ProjectState {
         let _ = snapshot_to_world(sim.world_mut(), &self.world, registry);
         // 3. Reconstrói as pontes a partir dos `VecPathRef`/`FlipObjectRef`
         //    restaurados.
-        let vec_map = crate::vec_entities::rebuild_map(sim);
+        let vec_map = ph2d_vec_entities::entities::rebuild_map(sim);
         let flip_map = crate::flip::entities::rebuild_map(sim);
         ((*self.vec).clone(), vec_map, (*self.flip).clone(), flip_map)
     }

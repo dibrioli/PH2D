@@ -10,11 +10,11 @@
 //! explícito e desfazível), e o **consumidor** ignora um passo cuja ponta não é estado — porque o ⊘
 //! não é a única rota para uma forma sair (arrastar na Hierarquia também tira).
 
-use super::super::super::{create, upkeep};
+use ph2d_vec_entities::morph_set::{create, upkeep};
 use super::super::world;
 use ph2d_ecs::{Entity, VecMorph};
 
-use crate::vec_entities::sync;
+use ph2d_vec_entities::entities::sync;
 
 /// **A cena do report, montada pela porta real**: `wide`/`tall`/`thin` num conjunto, com o
 /// `Default` no `wide` e o `Hover` numa forma à escolha.
@@ -23,7 +23,7 @@ fn bench(
 ) -> (
     ph2d_ecs::SimWorld,
     ph2d_vec_scene::VecScene,
-    crate::vec_entities::VecEntityMap,
+    ph2d_vec_entities::entities::VecEntityMap,
     Vec<ph2d_vec_scene::VecPathId>,
     ph2d_vec_scene::VecPathId,
     ph2d_ui_state::StateSets,
@@ -97,12 +97,12 @@ fn every_route_that_removes_a_shape_repairs_the_states_animation() {
 
         match route {
             "⊘ disconnect" => {
-                let row = crate::morph_set::graph_of(&sim, &map, host)
+                let row = ph2d_vec_entities::morph_set::graph_of(&sim, &map, host)
                     .shapes()
                     .iter()
                     .position(|s| *s == ids[2])
                     .expect("o thin esta' na lista");
-                crate::morph_set::disconnect_row(&mut sim, &map, host, row);
+                ph2d_vec_entities::morph_set::disconnect_row(&mut sim, &map, host, row);
             }
             "apagar a forma" => {
                 scene.remove_path(ids[2]);
@@ -119,7 +119,7 @@ fn every_route_that_removes_a_shape_repairs_the_states_animation() {
         let mut machines = crate::morph_machine_drive::MorphMachines::new();
         crate::morph_machine_drive::reconcile(&mut machines, &mut sim, &scene, &map, &mut states);
 
-        let members = crate::morph_set::graph_of(&sim, &map, host).shapes();
+        let members = ph2d_vec_entities::morph_set::graph_of(&sim, &map, host).shapes();
         let d = shape_of(&states, host_id, ph2d_ui_state::StateRole::Default);
         let h = shape_of(&states, host_id, ph2d_ui_state::StateRole::Hover);
         assert_eq!(
@@ -249,12 +249,12 @@ fn a_step_naming_a_non_member_is_ignored() {
 fn after_removing_thin_the_hover_still_morphs_to_tall() {
     let (mut sim, mut scene, map, ids, host_id, mut states) = bench(2);
     let host = Entity::from_bits(map[&host_id]);
-    let row = crate::morph_set::graph_of(&sim, &map, host)
+    let row = ph2d_vec_entities::morph_set::graph_of(&sim, &map, host)
         .shapes()
         .iter()
         .position(|s| *s == ids[2])
         .expect("o thin esta' na lista");
-    crate::morph_set::disconnect_row(&mut sim, &map, host, row);
+    ph2d_vec_entities::morph_set::disconnect_row(&mut sim, &map, host, row);
     let mut machines = crate::morph_machine_drive::MorphMachines::new();
     crate::morph_machine_drive::reconcile(&mut machines, &mut sim, &scene, &map, &mut states);
 
@@ -373,12 +373,12 @@ fn the_set_can_be_a_child_and_the_animation_lives_in_the_parent() {
     );
 
     // O ⊘ do `thin`, e o quadro a arrumar.
-    let row = crate::morph_set::graph_of(&sim, &map, set)
+    let row = ph2d_vec_entities::morph_set::graph_of(&sim, &map, set)
         .shapes()
         .iter()
         .position(|s| *s == ids[2])
         .expect("o thin esta' na lista");
-    crate::morph_set::disconnect_row(&mut sim, &map, set, row);
+    ph2d_vec_entities::morph_set::disconnect_row(&mut sim, &map, set, row);
     let mut machines = crate::morph_machine_drive::MorphMachines::new();
     crate::morph_machine_drive::reconcile(&mut machines, &mut sim, &scene, &map, &mut states);
 
@@ -446,7 +446,7 @@ fn the_repair_never_touches_a_table_that_does_not_govern_the_set() {
     );
 
     // Arrumar o CONJUNTO nao pode mexer no widget alheio.
-    crate::morph_set::disconnect_row(&mut sim, &map, set, 0);
+    ph2d_vec_entities::morph_set::disconnect_row(&mut sim, &map, set, 0);
     let mut machines = crate::morph_machine_drive::MorphMachines::new();
     crate::morph_machine_drive::reconcile(&mut machines, &mut sim, &scene, &map, &mut states);
 

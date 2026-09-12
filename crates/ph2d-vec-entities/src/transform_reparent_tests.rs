@@ -12,16 +12,16 @@ use ph2d_vec_scene::rectangle;
 fn rig() -> (
     SimWorld,
     ph2d_vec_scene::VecScene,
-    crate::vec_entities::VecEntityMap,
+    crate::entities::VecEntityMap,
     Entity,
     Entity,
 ) {
     let mut sim = SimWorld::default();
     let mut scene = ph2d_vec_scene::VecScene::new();
-    let mut map = crate::vec_entities::VecEntityMap::new();
+    let mut map = crate::entities::VecEntityMap::new();
     let body = scene.push_path(rectangle([-9.0, -3.0], [-1.0, 3.0]));
     let bar = scene.push_path(rectangle([-7.5, 0.5], [-2.5, 2.0]));
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    crate::entities::sync(&mut sim, &mut scene, &mut map);
     // ⚠️ O assentamento é a PREMISSA: é ele que dá a cada raiz uma translação própria, e é a
     // soma dessas duas que desloca um filho pendurado a cru.
     settle_origins(&mut sim, &mut scene, &map, &[]);
@@ -33,7 +33,7 @@ fn rig() -> (
 fn world_box(
     sim: &SimWorld,
     scene: &ph2d_vec_scene::VecScene,
-    map: &crate::vec_entities::VecEntityMap,
+    map: &crate::entities::VecEntityMap,
     e: Entity,
 ) -> ([f64; 2], [f64; 2]) {
     let id = *map.iter().find(|(_, b)| **b == e.to_bits()).unwrap().0;

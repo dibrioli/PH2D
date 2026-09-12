@@ -1,5 +1,5 @@
 //! A ponte entre o documento Flip e a árvore do editor (ADR-0114), espelhando
-//! [`crate::vec_entities`] (o vetor).
+//! [`ph2d_vec_entities::entities`] (o vetor).
 //!
 //! Cada [`ph2d_flip::FlipObject`] tem uma entidade ECS que o referencia
 //! (`FlipObjectRef`). O documento é dono das **camadas/frames/desenhos**; a

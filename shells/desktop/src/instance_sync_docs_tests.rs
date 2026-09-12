@@ -10,7 +10,7 @@ use ph2d_ecs::{ChildOf, Entity, MasterRoot, Name, SimWorld, Transform, VecPathRe
 use ph2d_physics_ecs::PhysicsBridge;
 use ph2d_vec_scene::{VecPathId, VecScene, rectangle};
 
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 
 fn reg() -> ph2d_ecs::scene::ComponentRegistry {
     crate::init::build_component_registry()

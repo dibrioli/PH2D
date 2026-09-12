@@ -29,10 +29,10 @@ fn measure_a_live_boolean_frame() {
                 let x = i as f64 * 0.7;
                 ids.push(scene.push_path(ph2d_vec_scene::ellipse([x, 0.0], 1.0, 1.0)));
             }
-            crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+            ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
             let members: Vec<u64> = ids.iter().map(|i| map[i]).collect();
             let g = Entity::from_bits(
-                crate::vec_entities::group_entities(&mut sim, &members, "B".into()).unwrap(),
+                ph2d_vec_entities::entities::group_entities(&mut sim, &members, "B".into()).unwrap(),
             );
             sim.world_mut().entity_mut(g).insert(VecBoolGroup { op });
 

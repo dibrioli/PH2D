@@ -1,0 +1,35 @@
+[package]
+name = "ph2d-vec-entities"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+ph2d-core = { path = "../ph2d-core" }
+ph2d-ecs = { path = "../ph2d-ecs" }
+ph2d-vec-scene = { path = "../ph2d-vec-scene" }
+# ⭐ As DUAS folhas de que a ponte precisa, e é por elas que ela não podia sair antes: o
+# `view_state` pergunta *«esta entidade desenha?»* e o nascimento de um path pergunta *«este nome
+# está livre?»*. A `line/app-vec` mediu-as e chamou-lhes, por escrito, os seus bloqueadores.
+ph2d-entity-visibility = { path = "../ph2d-entity-visibility" }
+ph2d-unique-name = { path = "../ph2d-unique-name" }
+# ⚠️ **As QUATRO que eram invisíveis dentro da shell** (HOWTO §1.3 — ali tudo já era dependência
+# do binário): o grafo do morph, o `World` cru que o z-order percorre, a `Sprite` que o
+# «é um objecto vazio?» pergunta, e as máquinas do Pen/Shape que o `gesture_paths` recebe.
+# ⭐ A `ph2d-vec-edit` é uma crate-MOTOR (ADR-0108 Fase 1, «puro, sem shell»), não a
+# `ph2d-app-vec`: uma motor irmã não é a família (o precedente é da `line/app-physics`).
+ph2d-morph-machine = { path = "../ph2d-morph-machine" }
+ph2d-render = { path = "../ph2d-render" }
+ph2d-vec-edit = { path = "../ph2d-vec-edit" }
+bevy_ecs = "0.19"
+# E a quinta: o `settle_origins` salta uma forma PRESA a um osso (o `SkinBind`).
+ph2d-skeleton-ecs = { path = "../ph2d-skeleton-ecs" }
+
+[features]
+# ⚠️ HOWTO §2.5 — o tamanho do que ATRAVESSA, medido pelo compilador (ver o fim desta linha).
+test-support = []

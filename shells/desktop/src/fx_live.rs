@@ -60,7 +60,7 @@ use ph2d_vec_scene::{VecPathId, VecScene, VecXforms};
 use ph2d_vector::{Affine, Color, ImageData, Rect, StableImage, VectorScene};
 
 use crate::fx_live_memo::{FxKey, Job, MAX_FX_SIDE, job_for};
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 
 /// Os recursos de GPU PERSISTENTES de uma forma filtrada: a textura de saída (o resultado da
 /// pilha) e o handle [`ImageData`] estável que a referencia no renderer principal. `tex` fica viva
@@ -176,7 +176,7 @@ impl FxLive {
             // mesma resposta N vezes.
             let brushes = crate::brush_live::resolve(
                 scene,
-                &|id| crate::vec_entities::object_selection_for(sim, scene, map, id),
+                &|id| ph2d_vec_entities::entities::object_selection_for(sim, scene, map, id),
                 xforms,
             );
             for batch in crate::fx_atlas::pack(&sizes, MAX_FX_SIDE) {

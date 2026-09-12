@@ -276,7 +276,7 @@ fn chave(contornos: &[(Vec<VecVertex>, bool)]) -> u64 {
 /// **Os preenchimentos do documento** — `(caminho, entidade, semente em MUNDO)`.
 fn preenchimentos(
     sim: &SimWorld,
-    map: &crate::vec_entities::VecEntityMap,
+    map: &ph2d_vec_entities::entities::VecEntityMap,
 ) -> Vec<(u64, Entity, VecBucketFill)> {
     let mut out = Vec::new();
     for (&id, &bits) in map {
@@ -302,7 +302,7 @@ fn preenchimentos(
 /// o olho vê é a segunda.*
 pub(crate) fn arm_new_fills(
     sim: &mut SimWorld,
-    map: &crate::vec_entities::VecEntityMap,
+    map: &ph2d_vec_entities::entities::VecEntityMap,
     pendentes: &mut Vec<(u64, [f32; 2], Vec<ph2d_ecs::FillAnchor>)>,
 ) {
     for (id, seed, ancoras) in pendentes.drain(..) {
@@ -315,7 +315,7 @@ pub(crate) fn arm_new_fills(
                 .entity_mut(e)
                 .insert(VecBucketFill::new(seed, ancoras));
         }
-        crate::vec_entities::zorder::reorder(sim, map, id, ph2d_vec_scene::ZOrder::ToBack);
+        ph2d_vec_entities::entities::zorder::reorder(sim, map, id, ph2d_vec_scene::ZOrder::ToBack);
     }
 }
 
@@ -339,8 +339,8 @@ impl crate::App {
             self.vec_bucket_face = None;
             return;
         }
-        let xf = crate::vec_transform::build(&gfx.sim, &self.vec_entities);
-        let vista = crate::vec_entities::view_state(&gfx.sim, &self.vec_entities);
+        let xf = ph2d_vec_entities::transform::build(&gfx.sim, &self.vec_entities);
+        let vista = ph2d_vec_entities::entities::view_state(&gfx.sim, &self.vec_entities);
         let so_fill: std::collections::BTreeSet<u64> = fills.iter().map(|(id, _, _)| *id).collect();
         let (contornos, tags) = contornos_mundo(&gfx.vec_scene, &xf, &|id| {
             fora_da_rede(vista.is_hidden(id), so_fill.contains(&id))
@@ -480,7 +480,7 @@ impl crate::App {
                     .map(|(id, _, _)| *id)
                     .collect();
             (
-                crate::vec_transform::build(&gfx.sim, &self.vec_entities),
+                ph2d_vec_entities::transform::build(&gfx.sim, &self.vec_entities),
                 e_fill,
             )
         };

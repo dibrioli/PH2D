@@ -13,7 +13,7 @@ use ph2d_ecs::{Entity, Name, SimWorld, VecFrame};
 use ph2d_editor::frame_label::FrameLabel;
 use ph2d_vec_scene::{VecPathId, VecScene, VecXforms};
 
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 
 /// As etiquetas de todas as molduras da cena, **em ordem de z**.
 ///

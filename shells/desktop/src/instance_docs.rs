@@ -18,7 +18,7 @@
 //!
 //! # ⚠️ O mapa `path ⟺ entidade` entra JUNTO, e não é asseio
 //!
-//! [`crate::vec_entities::sync`] mantém **uma** entidade por path, nas duas direções, e um path
+//! [`ph2d_vec_entities::entities::sync`] mantém **uma** entidade por path, nas duas direções, e um path
 //! que não esteja no mapa ganha uma entidade **nova** no quadro seguinte. Clonar o path sem
 //! registar o par daria à cópia uma entidade fantasma ao lado — a arte apareceria duas vezes na
 //! Hierarquia e uma delas seria inalcançável.
@@ -35,7 +35,7 @@
 use ph2d_ecs::{DeepCopy, SimWorld, VecPathRef};
 use ph2d_vec_scene::VecScene;
 
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 
 /// **O documento vetorial e o mapa dele** — o que uma cópia profunda precisa para clonar os paths.
 ///

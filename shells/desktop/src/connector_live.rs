@@ -32,7 +32,7 @@ use ph2d_vec_scene::{
     VecPathId, VecScene, VecXforms, boundary_hit, round_polyline, smooth_polyline, xform_of,
 };
 
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 
 /// **O que a linha enxerga** — paredes e alvos. Módulo FILHO (o arquivo está no teto de LOC), e
 /// o ponto onde as duas arestas do laço rótulo↔rota são cortadas. Ver [`walls`].

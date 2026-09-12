@@ -20,7 +20,7 @@ fn frame_with_children(n: usize) -> (SimWorld, VecScene, VecEntityMap, Entity, V
     let kids: Vec<VecPathId> = (0..n)
         .map(|_| scene.push_path(rectangle([0.0, 0.0], [10.0, 10.0])))
         .collect();
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     let frame = Entity::from_bits(map[&frame_id]);
     for k in &kids {
         let kid = Entity::from_bits(map[k]);
@@ -315,7 +315,7 @@ fn a_nested_frame_is_placed_by_the_outer_one_and_lays_its_own_children() {
     let inner_id = scene.push_path(rectangle([0.0, 0.0], [40.0, 20.0]));
     let g1 = scene.push_path(rectangle([0.0, 0.0], [5.0, 5.0]));
     let g2 = scene.push_path(rectangle([0.0, 0.0], [5.0, 5.0]));
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     let inner = Entity::from_bits(map[&inner_id]);
     sim.world_mut()
         .entity_mut(inner)

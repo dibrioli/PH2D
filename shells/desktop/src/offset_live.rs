@@ -48,7 +48,7 @@ use ph2d_ecs::{Entity, SimWorld, VecOffset};
 use ph2d_vec_render::LiveGeometry;
 use ph2d_vec_scene::{VecPath, VecPathId, VecScene, VecXforms, bake_xform, xform_of};
 
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 
 /// Uma entrada do memo: o que ENTROU (a geometria de mundo + os parâmetros) e o que SAIU.
 struct Memo {

@@ -37,7 +37,7 @@ use ph2d_vec_render::LiveGeometry;
 use ph2d_vec_scene::{VecPathId, VecScene, VecXforms, bake_xform, curve_bbox_in_frame};
 
 use super::LayoutLive;
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 
 /// **A caixa LOCAL de uma moldura** — `[x0, y0, x1, y1]`, Y-up, sem pose nenhuma.
 ///
@@ -166,7 +166,7 @@ impl LayoutLive {
         };
         let (now, s) = (m.now, m.scale);
         // A sub-árvore INTEIRA anda com ele: um grupo ancorado é uma coisa só.
-        let paths = crate::vec_entities::subtree_paths(sim, scene, kid);
+        let paths = ph2d_vec_entities::entities::subtree_paths(sim, scene, kid);
         if paths.is_empty() {
             return;
         }

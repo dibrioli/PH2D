@@ -35,7 +35,7 @@ fn scene_with(
     }
     let bits = e.id().to_bits();
     map.insert(id, bits);
-    let xf = crate::vec_transform::build(&sim, &map);
+    let xf = ph2d_vec_entities::transform::build(&sim, &map);
     (scene, sim, map, xf, id)
 }
 
@@ -147,7 +147,7 @@ fn the_frame_is_the_shape_screen_box() {
 fn the_frame_follows_the_pose() {
     let (scene, mut sim, map, _, id) = scene_with(Some(WidgetKind::Card.code()), Some("Card"));
     let here = {
-        let xf = crate::vec_transform::build(&sim, &map);
+        let xf = ph2d_vec_entities::transform::build(&sim, &map);
         build_for(&scene, &sim, &map, &xf)
     };
     // Move a entidade e re-coza: a pele tem de sair diferente.
@@ -157,7 +157,7 @@ fn the_frame_follows_the_pose() {
         .unwrap()
         .translation = ph2d_core::Vec2::new(3.0, 1.5);
     let there = {
-        let xf = crate::vec_transform::build(&sim, &map);
+        let xf = ph2d_vec_entities::transform::build(&sim, &map);
         build_for(&scene, &sim, &map, &xf)
     };
 

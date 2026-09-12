@@ -27,7 +27,7 @@ fn t(tx: f32, ty: f32, scale: f32) -> Transform {
 fn a_path_with_effects_is_a_fixed_point_of_settling() {
     use ph2d_vec_scene::effect::{FxEntry, PathEffect};
     let mut sim = SimWorld::default();
-    let mut map = crate::vec_entities::VecEntityMap::new();
+    let mut map = crate::entities::VecEntityMap::new();
     let mut scene = ph2d_vec_scene::VecScene::new();
     // Longe da origem: um caminho já centrado não exercita o assentamento.
     let mut path = ph2d_vec_scene::VecPath {
@@ -72,7 +72,7 @@ fn a_path_with_effects_is_a_fixed_point_of_settling() {
 #[test]
 fn an_untransformed_path_is_absent_from_the_map() {
     let mut sim = SimWorld::default();
-    let mut map = crate::vec_entities::VecEntityMap::new();
+    let mut map = crate::entities::VecEntityMap::new();
     let e = sim
         .world_mut()
         .spawn((Transform::IDENTITY, Name::new("P"), VecPathRef(7)))
@@ -90,7 +90,7 @@ fn an_untransformed_path_is_absent_from_the_map() {
 #[test]
 fn a_child_path_inherits_the_pose_of_its_parent() {
     let mut sim = SimWorld::default();
-    let mut map = crate::vec_entities::VecEntityMap::new();
+    let mut map = crate::entities::VecEntityMap::new();
     let parent = sim
         .world_mut()
         .spawn((t(10.0, 0.0, 2.0), Name::new("S")))
@@ -126,7 +126,7 @@ fn a_child_path_inherits_the_pose_of_its_parent() {
 fn settling_puts_the_origin_at_the_shape_center_without_moving_the_shape() {
     let mut sim = SimWorld::default();
     let mut scene = ph2d_vec_scene::VecScene::new();
-    let mut map = crate::vec_entities::VecEntityMap::new();
+    let mut map = crate::entities::VecEntityMap::new();
     // Quadrado de [10,20] a [30,40]: centro em (20, 30).
     let id = scene.push_path(ph2d_vec_scene::rectangle([10.0, 20.0], [30.0, 40.0]));
     let e = sim
@@ -170,7 +170,7 @@ fn settling_puts_the_origin_at_the_shape_center_without_moving_the_shape() {
 fn a_shape_still_being_dragged_is_never_settled() {
     let mut sim = SimWorld::default();
     let mut scene = ph2d_vec_scene::VecScene::new();
-    let mut map = crate::vec_entities::VecEntityMap::new();
+    let mut map = crate::entities::VecEntityMap::new();
     // O degenerado do Down: um quadrado minúsculo longe da origem.
     let id = scene.push_path(ph2d_vec_scene::rectangle([40.0, 40.0], [40.0, 40.0]));
     let e = sim
@@ -202,7 +202,7 @@ fn a_shape_still_being_dragged_is_never_settled() {
 fn a_connector_is_never_settled() {
     let mut sim = SimWorld::default();
     let mut scene = ph2d_vec_scene::VecScene::new();
-    let mut map = crate::vec_entities::VecEntityMap::new();
+    let mut map = crate::entities::VecEntityMap::new();
     // Uma "rota" longe da origem: assentada, ela ganharia translação (20, 30).
     let id = scene.push_path(ph2d_vec_scene::line([10.0, 20.0], [30.0, 40.0]));
     let e = sim
@@ -231,7 +231,7 @@ fn a_connector_is_never_settled() {
 fn the_path_being_drawn_is_left_alone() {
     let mut sim = SimWorld::default();
     let mut scene = ph2d_vec_scene::VecScene::new();
-    let mut map = crate::vec_entities::VecEntityMap::new();
+    let mut map = crate::entities::VecEntityMap::new();
     let id = scene.push_path(ph2d_vec_scene::rectangle([10.0, 20.0], [30.0, 40.0]));
     let e = sim
         .world_mut()
@@ -256,7 +256,7 @@ fn moving_the_origin_of_a_scaled_shape_does_not_move_the_shape() {
         .world_mut()
         .spawn((t(0.0, 0.0, 3.0), VecPathRef(id)))
         .id();
-    let mut map = crate::vec_entities::VecEntityMap::new();
+    let mut map = crate::entities::VecEntityMap::new();
     map.insert(id, e.to_bits());
 
     let x0 = ph2d_vec_scene::xform_of(&build(&sim, &map), id);
@@ -288,7 +288,7 @@ fn moving_the_origin_of_a_scaled_shape_does_not_move_the_shape() {
 #[test]
 fn a_dead_entity_contributes_nothing() {
     let mut sim = SimWorld::default();
-    let mut map = crate::vec_entities::VecEntityMap::new();
+    let mut map = crate::entities::VecEntityMap::new();
     let e = sim
         .world_mut()
         .spawn((t(5.0, 5.0, 1.0), VecPathRef(1)))

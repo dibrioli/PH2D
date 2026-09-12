@@ -97,7 +97,7 @@ fn the_rebuilt_bridge_makes_the_next_sync_a_noop() {
     let (mut rvec, mut map, _rflip, _fmap) = snap.restore(&mut sim, &reg);
 
     let entities_before = map.len();
-    crate::vec_entities::sync(&mut sim, &mut rvec, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut rvec, &mut map);
     assert_eq!(map.len(), entities_before, "sync não spawnou nada");
     // Uma entidade por path, e nenhuma órfã (a contagem de VecPathRef == paths).
     let vecref_count = {

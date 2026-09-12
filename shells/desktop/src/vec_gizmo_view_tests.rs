@@ -103,7 +103,7 @@ fn an_envelope_container_publishes_a_union_gizmo_box() {
     let mut map = VecEntityMap::new();
     let a = scene.push_path(rectangle([-4.0, -1.0], [-2.0, 1.0]));
     let b = scene.push_path(rectangle([2.0, -1.0], [4.0, 1.0]));
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     let container = crate::envelope_live::create(&mut sim, &mut scene, &map, &[a, b]).unwrap();
     let ce = Entity::from_bits(container);
     let cam = Camera2d::default();

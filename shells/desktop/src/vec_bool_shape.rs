@@ -20,7 +20,7 @@ use ph2d_ecs::{Entity, SimWorld, VecBoolGroup, VecBoolOp};
 use ph2d_vec_scene::VecPathId;
 
 use crate::bool_live::{BoolLive, op_of_code};
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 
 /// **O que esta forma É** dentro da booleana viva que a consome.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

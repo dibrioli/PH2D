@@ -7,16 +7,16 @@
 //!
 //! ⚠️ **Estes gates medem a resposta que o CANVAS lê** (`view_state().hidden`), nunca o componente
 //! guardado: desde a W11f a ocultação de um membro é **derivada** de ser filho de um conjunto
-//! ([`crate::morph_set::is_set_member`]), e um gate que olhasse o `Visibility` leria `None` sobre
+//! ([`ph2d_vec_entities::morph_set::is_set_member`]), e um gate que olhasse o `Visibility` leria `None` sobre
 //! uma forma que o canvas não desenha.
 
 use super::super::world;
 use super::hidden_on_canvas;
-use crate::morph_set::{create, disconnect, graph_of, upkeep};
+use ph2d_vec_entities::morph_set::{create, disconnect, graph_of, upkeep};
 use ph2d_ecs::{ChildOf, Entity, Visibility};
 use ph2d_vec_scene::VecPathId;
 
-use crate::vec_entities::sync;
+use ph2d_vec_entities::entities::sync;
 
 /// ⭐⭐⭐ **ARRASTAR NA HIERARQUIA MOVE AS DUAS METADES — a lista E o canvas** (plano 32 W11f).
 ///
@@ -134,7 +134,7 @@ fn disconnecting_the_last_but_one_dissolves_the_set() {
 
     // A primeira saida e' normal: tres formas, sobram duas.
     assert_eq!(
-        crate::morph_set::disconnect_row(&mut sim, &map, host, 0),
+        ph2d_vec_entities::morph_set::disconnect_row(&mut sim, &map, host, 0),
         None,
         "com tres formas o ⊘ nao pode dissolver nada"
     );
@@ -142,7 +142,7 @@ fn disconnecting_the_last_but_one_dissolves_the_set() {
 
     // ⭐ A segunda cruza a fronteira: o conjunto DISSOLVE-SE, e nomeia o path a remover.
     assert_eq!(
-        crate::morph_set::disconnect_row(&mut sim, &map, host, 0),
+        ph2d_vec_entities::morph_set::disconnect_row(&mut sim, &map, host, 0),
         Some(host_id),
         "⛔ ficou um conjunto com UMA forma -- ele desenha um fantasma da primeira"
     );
@@ -192,7 +192,7 @@ fn disconnecting_the_shown_shape_leaves_no_ghost() {
     // O CONTROLE: o conjunto nasce a mostrar a PRIMEIRA forma -- que e' a que vamos tirar.
     assert_eq!(showing(&sim), [ids[0], ids[0]]);
 
-    crate::morph_set::disconnect_row(&mut sim, &map, host, 0);
+    ph2d_vec_entities::morph_set::disconnect_row(&mut sim, &map, host, 0);
     assert_eq!(
         crate::morph_machine_drive::reconcile(&mut machines, &mut sim, &scene, &map, &mut states,),
         1,
@@ -244,7 +244,7 @@ fn the_reconcile_keeps_what_the_canvas_shows() {
         m.t = 1.0;
     }
     // O artista tira a 1a -- a ORIGEM, que nao se ve^.
-    crate::morph_set::disconnect_row(&mut sim, &map, host, 0);
+    ph2d_vec_entities::morph_set::disconnect_row(&mut sim, &map, host, 0);
     crate::morph_machine_drive::reconcile(&mut machines, &mut sim, &scene, &map, &mut states);
 
     assert_eq!(
@@ -291,7 +291,7 @@ fn the_ghost_does_not_come_back_on_the_next_tick() {
     );
     assert!(!machines.is_empty(), "a fixtura nao criou maquina nenhuma");
 
-    crate::morph_set::disconnect_row(&mut sim, &map, host, 0);
+    ph2d_vec_entities::morph_set::disconnect_row(&mut sim, &map, host, 0);
     crate::morph_machine_drive::reconcile(&mut machines, &mut sim, &scene, &map, &mut states);
     // ⭐ E agora o quadro SEGUINTE, ainda dentro do modo.
     crate::morph_machine_drive::tick(

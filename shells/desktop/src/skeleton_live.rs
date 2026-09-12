@@ -21,7 +21,7 @@ use ph2d_skeleton::{Skin, SkinBone, Xform};
 use ph2d_skeleton_ecs::{Bone, SkinBind, Tendon};
 use ph2d_vec_scene::{VecPath, VecPathId, VecScene};
 
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 
 /// O que sobra quando se solta uma forma do esqueleto — os dois verbos do envelope, pela mesma razão
 /// (o artista pode querer **o que vê** ou **o que desenhou**, e adivinhar é que não).
@@ -35,7 +35,7 @@ pub(crate) enum Keep {
 
 /// O afim local→mundo de uma entidade.
 fn world_of(sim: &SimWorld, e: Entity) -> Xform {
-    crate::vec_transform::xform_of_transform(crate::vec_transform::world_transform(sim, e))
+    ph2d_vec_entities::transform::xform_of_transform(ph2d_vec_entities::transform::world_transform(sim, e))
 }
 
 /// **Os ossos de um esqueleto, em MUNDO** — `(bits, origem, ponta)`, para o overlay desenhar e para

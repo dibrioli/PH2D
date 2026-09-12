@@ -1,7 +1,7 @@
 //! Os gates do resolvedor de tokens.
 
 use super::*;
-use crate::vec_entities::{VecEntityMap, sync};
+use ph2d_vec_entities::entities::{VecEntityMap, sync};
 use ph2d_vec_scene::{VecPathId, VecScene, rectangle};
 
 /// O modo pedido, com a régua de FÁBRICA — o que quase toda fixture quer.

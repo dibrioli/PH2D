@@ -45,7 +45,7 @@ pub(crate) fn spawn_if_enabled(
     renderer: &mut ph2d_render::SpriteRenderer,
     asset_db: &ph2d_asset::AssetDb,
     scene: &mut ph2d_vec_scene::VecScene,
-    map: &mut crate::vec_entities::VecEntityMap,
+    map: &mut ph2d_vec_entities::entities::VecEntityMap,
     next_cell: &mut u32,
     pixels_per_meter: f32,
     atlas_asset_map: &mut std::collections::BTreeMap<u32, ph2d_asset::AssetId>,

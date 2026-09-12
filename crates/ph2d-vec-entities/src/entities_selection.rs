@@ -13,7 +13,7 @@ use ph2d_vec_scene::{VecPathId, VecScene};
 
 /// O ancestral de topo de `entity` (ele mesmo, se já é raiz).
 #[must_use]
-pub(crate) fn top_ancestor(sim: &SimWorld, entity: Entity) -> Entity {
+pub fn top_ancestor(sim: &SimWorld, entity: Entity) -> Entity {
     let w = sim.world();
     let mut cur = entity;
     for _ in 0..MAX_DEPTH {
@@ -28,7 +28,7 @@ pub(crate) fn top_ancestor(sim: &SimWorld, entity: Entity) -> Entity {
 /// Todos os paths vetoriais na sub-árvore de `entity` (ele mesmo, se for um path),
 /// **na ordem de z do documento** — a seleção fica estável entre frames.
 #[must_use]
-pub(crate) fn subtree_paths(sim: &SimWorld, scene: &VecScene, entity: Entity) -> Vec<VecPathId> {
+pub fn subtree_paths(sim: &SimWorld, scene: &VecScene, entity: Entity) -> Vec<VecPathId> {
     let w = sim.world();
     let mut found: Vec<VecPathId> = Vec::new();
     let mut stack = vec![entity];
@@ -64,7 +64,7 @@ pub(crate) fn subtree_paths(sim: &SimWorld, scene: &VecScene, entity: Entity) ->
 /// — e continua certa para quem a faz (o recorte do layout, a booleana de grupo, e o
 /// `fully_selected_ancestors`, que quer saber se um ancestral está INTEIRAMENTE coberto).
 #[must_use]
-pub(crate) fn selection_paths(sim: &SimWorld, scene: &VecScene, entity: Entity) -> Vec<VecPathId> {
+pub fn selection_paths(sim: &SimWorld, scene: &VecScene, entity: Entity) -> Vec<VecPathId> {
     if let Some(vp) = sim.world().get::<VecPathRef>(entity) {
         let own = vp.0;
         // ⚠️ A entidade pode apontar para um path que o documento já não tem (o `sync` do frame
@@ -89,7 +89,7 @@ pub(crate) fn selection_paths(sim: &SimWorld, scene: &VecScene, entity: Entity) 
 /// `item_of_selection` pede exactamente UMA forma, **as linhas Grow/Shrink eram inalcançáveis
 /// pelo canvas**: um controlo que nunca aparecia, sem nada na tela a dizer porquê.
 #[must_use]
-pub(crate) fn selection_root(sim: &SimWorld, entity: Entity) -> Entity {
+pub fn selection_root(sim: &SimWorld, entity: Entity) -> Entity {
     let w = sim.world();
     let mut cur = entity;
     for _ in 0..MAX_DEPTH {
@@ -107,7 +107,7 @@ pub(crate) fn selection_root(sim: &SimWorld, entity: Entity) -> Entity {
 /// A seleção de objeto que tocar `path` produz: o que [`selection_root`] nomeia, lido pela lei
 /// de [`selection_paths`]. Fora de qualquer grupo isso é só ele — o comportamento de sempre.
 #[must_use]
-pub(crate) fn object_selection_for(
+pub fn object_selection_for(
     sim: &SimWorld,
     scene: &VecScene,
     map: &VecEntityMap,

@@ -14,7 +14,7 @@
 //! estrutural. NÃO foi medido se produzem o fantasma.»*
 //!
 //! **Foi medido, e produzem.** Os dois gates de [`crate::vec_zorder_late_writers_tests`] nasceram
-//! vermelhos, e o mecanismo é o do [`crate::vec_entities::sync`], que é bidireccional:
+//! vermelhos, e o mecanismo é o do [`ph2d_vec_entities::entities::sync`], que é bidireccional:
 //!
 //! | verbo tardio | o que ele escreve | o que o `sync` do quadro SEGUINTE faz sozinho |
 //! |---|---|---|
@@ -49,12 +49,12 @@ use crate::app_state::App;
 /// A sequência é a mesma do passe do desenho, e cada peça responde por um estado que um escritor
 /// tardio pode ter deixado por fechar:
 ///
-/// 1. [`crate::vec_entities::sync`] — entidade apagada leva o caminho, caminho novo ganha entidade;
+/// 1. [`ph2d_vec_entities::entities::sync`] — entidade apagada leva o caminho, caminho novo ganha entidade;
 /// 2. `assign_missing_root_order` / `_stable_ids` / `_sibling_order` — uma entidade cunhada agora
 ///    entraria no snapshot **sem identidade e sem ordem**, e o primeiro `Ctrl+Z` não teria o que
 ///    repor. ⚠️ As três são **idempotentes**: se reescrevessem por quadro, o diff veria o arquétipo
 ///    de toda entidade mudar e cada quadro com entrada viraria um passo espúrio;
-/// 3. a projecção — `build_hierarchy_snapshot` → [`crate::vec_entities::z_order`] → `reorder_to`.
+/// 3. a projecção — `build_hierarchy_snapshot` → [`ph2d_vec_entities::entities::z_order`] → `reorder_to`.
 ///
 /// ⚠️ **Sem `hero_live` ela não faz nada, e isso é correcto**: o `HierarchyWalkState` e o
 /// `HierarchySnapshot` vivem lá, e sem a tela da Hierarquia montada não há árvore lida neste
@@ -64,7 +64,7 @@ impl App {
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
-        crate::vec_entities::sync(&mut gfx.sim, &mut gfx.vec_scene, &mut self.vec_entities);
+        ph2d_vec_entities::entities::sync(&mut gfx.sim, &mut gfx.vec_scene, &mut self.vec_entities);
         // ⭐⭐ **A ponte do FLIP, ao lado da vectorial** (censo `every_document_to_tree_bridge_is_in_the_net`,
         // 2026-09-08). Ela é o irmão exacto — bidireccional, mesma latência — e estava fora da rede:
         // apagar um objecto Flip pela Hierarquia deixava o documento com ele até ao quadro seguinte.
@@ -76,14 +76,14 @@ impl App {
         // quadro seguinte assentava o pivô sozinho, e o `Transform` mudava sem entrada nenhuma.
         //
         // ⚠️ **A lista dos que estão EM GESTO sai da MESMA porta do passe do desenho**
-        // ([`crate::vec_transform::gesture_paths`]) — um `&[]` aqui assentaria a forma que a mão
+        // ([`ph2d_vec_entities::transform::gesture_paths`]) — um `&[]` aqui assentaria a forma que a mão
         // está a desenhar, e somar geometria + `Transform` desloca a arte de baixo do cursor.
-        let drawing = crate::vec_transform::gesture_paths(
+        let drawing = ph2d_vec_entities::transform::gesture_paths(
             &self.vec_pen,
             &self.vec_state.shape,
             &self.vec_state.pencil,
         );
-        crate::vec_transform::settle_origins(
+        ph2d_vec_entities::transform::settle_origins(
             &mut gfx.sim,
             &mut gfx.vec_scene,
             &self.vec_entities,
@@ -118,7 +118,7 @@ impl App {
             &mut live.z_walk_scratch,
             &mut live.z_snapshot,
         );
-        let order = crate::vec_entities::z_order(gfx.sim.world(), &live.z_snapshot);
+        let order = ph2d_vec_entities::entities::z_order(gfx.sim.world(), &live.z_snapshot);
         gfx.vec_scene.reorder_to(&order);
     }
 }

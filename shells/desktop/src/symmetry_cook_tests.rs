@@ -132,7 +132,7 @@ fn the_pose_is_baked_after_the_reflection_not_before() {
         t.rotation = 0.5;
         t.scale = ph2d_core::Vec2::new(2.0, 1.0);
     }
-    let xf = crate::vec_transform::build(&sim, &map);
+    let xf = ph2d_vec_entities::transform::build(&sim, &map);
     assert_eq!(arm(&mut sim, &map, &[id], Some(mirror_x())), 1);
 
     let mut live = SymmetryLive::default();
@@ -161,7 +161,7 @@ fn the_pose_is_baked_after_the_reflection_not_before() {
 #[test]
 fn radial_draws_one_shape_per_segment() {
     let (scene, mut sim, map, id, _e) = symmetric_square_scene();
-    let xf = crate::vec_transform::build(&sim, &map);
+    let xf = ph2d_vec_entities::transform::build(&sim, &map);
     let spec = SymmetrySpec {
         kind: SymmetryKind::Radial,
         center: [3.0, 0.0],
@@ -279,7 +279,7 @@ fn the_apply_reaches_every_armed_shape_not_just_the_selected_one() {
     // Uma terceira, NUNCA desenhada sob o modo: ela não pode ser tocada.
     let plain = scene.push_path(half_profile());
     spawn_for(&mut sim, &mut map, plain, "Plain", [-6.0, 0.0]);
-    let xf = crate::vec_transform::build(&sim, &map);
+    let xf = ph2d_vec_entities::transform::build(&sim, &map);
 
     arm(&mut sim, &map, &[a, b], Some(mirror_x()));
     let armed_ids = armed_paths(&sim, &map, &scene);

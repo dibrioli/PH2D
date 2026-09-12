@@ -27,9 +27,12 @@
 //!
 //! Cada gate morde uma causa distinta. Se você mexer aqui, refaça as duas mutações.
 
-use super::*;
+use ph2d_vec_entities::entities::zorder::*;
+use ph2d_ecs::{ChildOf, Entity, SimWorld};
+use ph2d_vec_scene::VecPathId;
+use ph2d_vec_entities::entity_map::VecEntityMap;
 use crate::undo::ProjectState;
-use crate::vec_entities::sync;
+use ph2d_vec_entities::entities::sync;
 use ph2d_ecs::scene::{
     ComponentRegistry, HierarchySnapshot, HierarchyWalkState, build_hierarchy_snapshot,
     register_ecs_components,
@@ -93,7 +96,7 @@ impl Frame {
         )>,
     ) {
         sync(sim, scene, map);
-        crate::vec_transform::settle_origins(sim, scene, map, &[]);
+        ph2d_vec_entities::transform::settle_origins(sim, scene, map, &[]);
         ph2d_ecs::assign_missing_root_order(sim.world_mut());
         if let Some((live, intent)) = drag {
             let mut toasts = ph2d_editor::ToastQueue::new();
@@ -150,7 +153,7 @@ impl Frame {
         // ⭐⭐ **O assentamento do pivô entra aqui, e foi o gate do *duplicar* que o disse**: sem
         // ele os dois controlos passavam e o ponto fixo continuava vermelho, porque a entidade
         // cunhada agora nasce com `Transform::default()` e o quadro seguinte assentava-a sozinho.
-        crate::vec_transform::settle_origins(sim, scene, map, &[]);
+        ph2d_vec_entities::transform::settle_origins(sim, scene, map, &[]);
         ph2d_ecs::assign_missing_root_order(sim.world_mut());
         ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
         ph2d_ecs::assign_missing_sibling_order(sim.world_mut());

@@ -78,7 +78,7 @@ pub(crate) struct PickWorld<'a> {
 
 pub(crate) fn pick_objects_at(
     w: &mut PickWorld,
-    vec_entities: &crate::vec_entities::VecEntityMap,
+    vec_entities: &ph2d_vec_entities::entities::VecEntityMap,
     vec_view_derived: &ph2d_vec_scene::VecViewState,
     vec_live_drawn: &ph2d_vec_render::LiveGeometry,
     flip_entities: &crate::flip::entities::FlipEntityMap,
@@ -87,7 +87,7 @@ pub(crate) fn pick_objects_at(
     let world = w.camera.screen_to_world(pointer, w.window_size);
     let stroke_r = crate::vec_gizmo_view::stroke_hit_r(w.camera, w.window_size);
     let flip_r = crate::flip::gizmo_view::stroke_hit_r(w.camera, w.window_size);
-    let view = crate::vec_entities::view_state_for_pick(w.sim, vec_entities, vec_view_derived);
+    let view = ph2d_vec_entities::entities::view_state_for_pick(w.sim, vec_entities, vec_view_derived);
     let mut hits = crate::vec_gizmo_view::pick_all_at_world(
         w.sim,
         w.vec_scene,
@@ -225,13 +225,13 @@ impl crate::App {
 pub(crate) fn hover_outline_world(
     sim: &ph2d_ecs::SimWorld,
     scene: &ph2d_vec_scene::VecScene,
-    map: &crate::vec_entities::VecEntityMap,
+    map: &ph2d_vec_entities::entities::VecEntityMap,
     live: &ph2d_vec_render::LiveGeometry,
     bits: u64,
 ) -> Vec<ph2d_vec_scene::VecPath> {
     use ph2d_vec_scene::{bake_xform, xform_of};
-    let ids = crate::vec_entities::subtree_paths(sim, scene, ph2d_ecs::Entity::from_bits(bits));
-    let xf = crate::vec_transform::build(sim, map);
+    let ids = ph2d_vec_entities::entities::subtree_paths(sim, scene, ph2d_ecs::Entity::from_bits(bits));
+    let xf = ph2d_vec_entities::transform::build(sim, map);
     let mut out = Vec::new();
     for id in ids {
         match live.get(&id) {

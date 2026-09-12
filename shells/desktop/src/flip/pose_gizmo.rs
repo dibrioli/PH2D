@@ -36,7 +36,7 @@ use ph2d_host::WindowSize;
 use ph2d_render::Camera2d;
 
 use crate::flip::entities::FlipEntityMap;
-use crate::vec_transform::world_transform;
+use ph2d_vec_entities::transform::world_transform;
 
 /// O arrasto de POSE em curso: o estado genérico do gizmo + o ALVO da escrita
 /// (que o `GizmoDragState` não tem como carregar) + o `c_local` da

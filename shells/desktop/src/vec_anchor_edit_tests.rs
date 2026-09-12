@@ -18,7 +18,7 @@ fn frame_with(n: usize) -> (SimWorld, VecScene, VecEntityMap, Vec<VecPathId>) {
     let kids: Vec<VecPathId> = (0..n)
         .map(|_| scene.push_path(rectangle([0.0, 0.0], [10.0, 10.0])))
         .collect();
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     let frame = Entity::from_bits(map[&frame_id]);
     sim.world_mut().entity_mut(frame).insert(VecFrame);
     for k in &kids {

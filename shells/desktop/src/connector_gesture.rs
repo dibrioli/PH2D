@@ -66,7 +66,7 @@ impl App {
     pub(crate) fn shape_under_cursor(&self, world: [f64; 2]) -> Option<VecPathId> {
         let gfx = self.gfx.as_ref()?;
         let window_size = gfx.surface.size();
-        let view = crate::vec_entities::view_state_for_pick(
+        let view = ph2d_vec_entities::entities::view_state_for_pick(
             &gfx.sim,
             &self.vec_entities,
             &self.vec_view_derived,

@@ -496,7 +496,7 @@ pub(crate) fn publish_objects(
 pub(crate) fn bake_objects(
     motion: &mut MotionState,
     scene: &ph2d_vec_scene::VecScene,
-    map: &crate::vec_entities::VecEntityMap,
+    map: &ph2d_vec_entities::entities::VecEntityMap,
     xforms: &ph2d_vec_scene::VecXforms,
     live: &ph2d_vec_render::LiveGeometry,
     gpu: &ph2d_gpu::GpuContext,

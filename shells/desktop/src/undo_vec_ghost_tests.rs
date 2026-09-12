@@ -29,13 +29,13 @@ fn reg() -> ph2d_ecs::scene::ComponentRegistry {
 fn scene_with_a_vector_child() -> (
     SimWorld,
     VecScene,
-    crate::vec_entities::VecEntityMap,
+    ph2d_vec_entities::entities::VecEntityMap,
     Entity,
     Entity,
 ) {
     let mut sim = SimWorld::new();
     let mut scene = VecScene::new();
-    let mut map = crate::vec_entities::VecEntityMap::new();
+    let mut map = ph2d_vec_entities::entities::VecEntityMap::new();
     let parent = sim
         .world_mut()
         .spawn((
@@ -116,7 +116,7 @@ fn a_deleted_vector_child_does_not_come_back_as_a_ghost_at_the_origin() {
         let (s2, m2, _f, _fm) = snap.restore(&mut sim, &r);
         scene = s2;
         map = m2;
-        crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+        ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
         assert!(
             parentless(&mut sim).iter().any(|n| n.starts_with("Path ")),
             "o controle nao produziu o fantasma — a fixtura nao contem o fenomeno, e o gate \
@@ -128,12 +128,12 @@ fn a_deleted_vector_child_does_not_come_back_as_a_ghost_at_the_origin() {
     let (mut sim, mut scene, mut map, _parent, piece) = scene_with_a_vector_child();
     sim.world_mut().despawn(piece);
     // É isto que o `App::capture_project` faz hoje, pela mesma porta.
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     let snap = take(&mut sim, &scene, &r);
     let (s2, m2, _f, _fm) = snap.restore(&mut sim, &r);
     scene = s2;
     map = m2;
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     assert_eq!(
         parentless(&mut sim),
         vec!["Group".to_string()],
@@ -151,13 +151,13 @@ fn a_deleted_vector_child_does_not_come_back_as_a_ghost_at_the_origin() {
 fn an_untouched_vector_child_survives_the_round_trip_with_its_parent() {
     let r = reg();
     let (mut sim, mut scene, mut map, _parent, piece) = scene_with_a_vector_child();
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     let snap = take(&mut sim, &scene, &r);
     let _ = piece;
     let (s2, m2, _f, _fm) = snap.restore(&mut sim, &r);
     scene = s2;
     map = m2;
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     assert_eq!(parentless(&mut sim), vec!["Group".to_string()]);
     let plate = {
         let mut q = sim.world_mut().query::<(Entity, &Name)>();

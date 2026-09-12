@@ -1258,7 +1258,7 @@ pub(crate) struct App {
     /// ⚠️ **Slot próprio e não um campo a mais no irmão acima:** o payload é outro — aquele leva um
     /// componente, este leva também a **lista de quem vai ser reparentado e escondido**. Fundi-los
     /// obrigaria o `morph_live::upkeep` a saber de reparentar, que não é o assunto dele.
-    pub(crate) vec_morph_set_pending: Option<crate::morph_set::MorphSetPending>,
+    pub(crate) vec_morph_set_pending: Option<ph2d_vec_entities::morph_set::MorphSetPending>,
     /// ⭐⭐ **A PRÉ-VISUALIZAÇÃO da máquina de Morph está ligada** (plano 32 W9) — o modo em que o
     /// **teclado** é da máquina e não do editor.
     ///
@@ -1708,7 +1708,7 @@ pub(crate) struct App {
     pub(crate) vec_shape_armed_target: Option<ph2d_vec_scene::VecPathId>,
     /// `VecPathId` → entidade ECS que o representa na Hierarquia (ADR-0110). O
     /// invariante "um path ⟺ uma entidade" é mantido por `vec_entities::sync`.
-    pub(crate) vec_entities: crate::vec_entities::VecEntityMap,
+    pub(crate) vec_entities: ph2d_vec_entities::entities::VecEntityMap,
     /// ⭐ **A arte, em CPU, dos quads que o Motion desenha na cena vectorial** — a memória da
     /// terceira média (ver [`ph2d_app_motion::motion_leaf_images`]). Vive aqui porque toda leitura PARA a
     /// GPU, e ela tem de sobreviver ao quadro.

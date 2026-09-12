@@ -57,7 +57,7 @@ fn an_authored_spine_flows_the_hole_with_the_step() {
     set_spine(&mut scene, spine, &[[0.0, 0.0], [2.0, 3.0], [4.0, 0.0]]);
 
     let mut out = Vec::new();
-    let xf = crate::vec_transform::build(&sim, &map);
+    let xf = ph2d_vec_entities::transform::build(&sim, &map);
     recook(
         &mut sim,
         &mut scene,
@@ -97,7 +97,7 @@ fn an_authored_bent_spine_flows_the_steps_onto_the_curve() {
     set_spine(&mut scene, spine, &[[0.0, 0.0], [2.0, 3.0], [4.0, 0.0]]); // pico no meio
 
     let mut out = Vec::new();
-    let xf = crate::vec_transform::build(&sim, &map);
+    let xf = ph2d_vec_entities::transform::build(&sim, &map);
     recook(
         &mut sim,
         &mut scene,
@@ -121,7 +121,7 @@ fn an_authored_bent_spine_flows_the_steps_onto_the_curve() {
 fn an_unedited_spine_leaves_the_steps_on_the_lerp() {
     let (mut sim, mut scene, map, _spine, _src) = scene_with_blend(2, 5);
     let mut out = Vec::new();
-    let xf = crate::vec_transform::build(&sim, &map);
+    let xf = ph2d_vec_entities::transform::build(&sim, &map);
     recook(
         &mut sim,
         &mut scene,
@@ -149,7 +149,7 @@ fn editing_the_spine_authors_it_and_stops_the_auto_regen() {
     let e = Entity::from_bits(map[&spine]);
     let mut spines = BlendSpines::new();
     let mut out = Vec::new();
-    let xf = crate::vec_transform::build(&sim, &map);
+    let xf = ph2d_vec_entities::transform::build(&sim, &map);
 
     // Frame 1: automático. O recook escreve o auto (2 vértices) e o memoriza.
     recook(&mut sim, &mut scene, &map, &xf, &mut spines, &mut out);
@@ -199,7 +199,7 @@ fn the_spine_endpoints_are_pinned_to_the_sources() {
     set_spine(&mut scene, spine, &[[0.0, 9.0], [2.0, 3.0], [4.0, 9.0]]); // pontas afastadas
 
     let mut out = Vec::new();
-    let xf = crate::vec_transform::build(&sim, &map);
+    let xf = ph2d_vec_entities::transform::build(&sim, &map);
     recook(
         &mut sim,
         &mut scene,
@@ -241,7 +241,7 @@ fn reset_spine_returns_to_the_automatic_straight_line_and_does_not_reauthor() {
     let e = Entity::from_bits(map[&spine]);
     let mut spines = BlendSpines::new();
     let mut out = Vec::new();
-    let xf = crate::vec_transform::build(&sim, &map);
+    let xf = ph2d_vec_entities::transform::build(&sim, &map);
 
     // Frame 1: automático — o recook memoriza a reta em `spines` (é o que o reset precisa apagar).
     recook(&mut sim, &mut scene, &map, &xf, &mut spines, &mut out);
@@ -304,7 +304,7 @@ fn a_pinned_spine_endpoint_follows_its_source() {
         .translation = ph2d_core::Vec2::new(0.0, 5.0);
 
     let mut out = Vec::new();
-    let xf = crate::vec_transform::build(&sim, &map);
+    let xf = ph2d_vec_entities::transform::build(&sim, &map);
     recook(
         &mut sim,
         &mut scene,
@@ -339,11 +339,11 @@ fn dragging_a_spine_endpoint_moves_its_source() {
     // Auto spine = [(0,0), (4,0)]. A mão arrasta a última ponta para (4,5).
     set_spine(&mut scene, spine, &[[0.0, 0.0], [4.0, 5.0]]);
     let mut spines = BlendSpines::new();
-    let xf = crate::vec_transform::build(&sim, &map);
+    let xf = ph2d_vec_entities::transform::build(&sim, &map);
     drag_spine_anchors_move_sources(&mut sim, &scene, &map, &xf, &mut spines);
 
     // A fonte 1 seguiu: seu centro é agora (4,5).
-    let xf = crate::vec_transform::build(&sim, &map);
+    let xf = ph2d_vec_entities::transform::build(&sim, &map);
     let c = center_of(&scene, &xf, src[1]).expect("centro");
     assert!(
         (c[0] - 4.0).abs() < 1e-6 && (c[1] - 5.0).abs() < 1e-6,
@@ -360,11 +360,11 @@ fn dragging_a_middle_anchor_moves_the_middle_source() {
     // Auto spine = [(0,0),(4,0),(8,0)]. Arrasta o vértice do MEIO para (4,5).
     set_spine(&mut scene, spine, &[[0.0, 0.0], [4.0, 5.0], [8.0, 0.0]]);
     let mut spines = BlendSpines::new();
-    let xf = crate::vec_transform::build(&sim, &map);
+    let xf = ph2d_vec_entities::transform::build(&sim, &map);
     drag_spine_anchors_move_sources(&mut sim, &scene, &map, &xf, &mut spines);
 
     // A fonte do MEIO (src[1]) seguiu; as das pontas (0 e 2) ficaram no lugar.
-    let xf = crate::vec_transform::build(&sim, &map);
+    let xf = ph2d_vec_entities::transform::build(&sim, &map);
     let mid = center_of(&scene, &xf, src[1]).expect("centro do meio");
     assert!(
         (mid[0] - 4.0).abs() < 1e-6 && (mid[1] - 5.0).abs() < 1e-6,
@@ -391,16 +391,16 @@ fn dragging_an_endpoint_moves_the_source_without_authoring_the_spine() {
     let mut out = Vec::new();
 
     // Frame 1: auto — memoriza o auto.
-    let xf = crate::vec_transform::build(&sim, &map);
+    let xf = ph2d_vec_entities::transform::build(&sim, &map);
     recook(&mut sim, &mut scene, &map, &xf, &mut spines, &mut out);
 
     // A mão arrasta a última ponta (modo Node): (4,0) → (4,5).
     set_spine(&mut scene, spine, &[[0.0, 0.0], [4.0, 5.0]]);
-    let xf = crate::vec_transform::build(&sim, &map);
+    let xf = ph2d_vec_entities::transform::build(&sim, &map);
     drag_spine_anchors_move_sources(&mut sim, &scene, &map, &xf, &mut spines);
 
     // Frame 2: a fonte seguiu, o spine segue AUTOMÁTICO, e a ponta ficou onde foi arrastada.
-    let xf = crate::vec_transform::build(&sim, &map);
+    let xf = ph2d_vec_entities::transform::build(&sim, &map);
     recook(&mut sim, &mut scene, &map, &xf, &mut spines, &mut out);
     let c = center_of(&scene, &xf, src[1]).expect("centro");
     assert!(
@@ -444,7 +444,7 @@ fn free_bend_after_moving(deltas: &[[f32; 2]]) -> [f64; 2] {
     // **Dois frames com a MESMA memória** — é o que o produto faz, e é o que dá ao 2º frame um
     // "antes" com que comparar os centros. Um frame só nunca vê movimento nenhum.
     let mut mem = BlendSpines::new();
-    let xf = crate::vec_transform::build(&sim, &map);
+    let xf = ph2d_vec_entities::transform::build(&sim, &map);
     recook(&mut sim, &mut scene, &map, &xf, &mut mem, &mut Vec::new());
     // O artista arrasta as formas.
     for (id, d) in src.iter().zip(deltas) {
@@ -455,7 +455,7 @@ fn free_bend_after_moving(deltas: &[[f32; 2]]) -> [f64; 2] {
         t.translation.x += d[0];
         t.translation.y += d[1];
     }
-    let xf = crate::vec_transform::build(&sim, &map);
+    let xf = ph2d_vec_entities::transform::build(&sim, &map);
     recook(&mut sim, &mut scene, &map, &xf, &mut mem, &mut Vec::new());
     scene
         .paths()

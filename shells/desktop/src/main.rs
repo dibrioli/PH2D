@@ -338,7 +338,11 @@ mod modal_tests;
 mod morph_fade_smoke;
 mod morph_live;
 mod morph_machine_drive;
-mod morph_set;
+// A LEI mudou-se para a folha `ph2d-vec-entities`; a CADEIA de gates dela fica, porque
+// atravessa o `morph_live`, o `vec_convert`, o `vec_ui_state_edit` e o `render_loop`.
+#[cfg(test)]
+#[path = "morph_set_tests.rs"]
+mod morph_set_tests;
 mod morph_states_smoke;
 /// ⭐ **A familia MOTION** — 269 ficheiros que viviam soltos em `src/`, agrupados em
 /// `src/motion/` pela W2/L1 (2026-09-11). As 27 raizes (e a `#[cfg(test)]` de oito
@@ -643,7 +647,17 @@ mod vec_cut_line;
 /// tempo abre para a opacidade de um caminho vetorial (`ph2d_ecs::VecDrivenStyle`).
 /// Irmão do `vec_widget_drive`: o corte é *quem produz o número*, nunca o que se faz com ele.
 pub(crate) use ph2d_app_vec::driven_style as vec_driven_style;
-mod vec_entities;
+// A ponte documento ⇄ árvore mudou-se para a folha `ph2d-vec-entities` (a `motion` e a `flip`
+// também a consomem). Ficam os gates que a medem A PARTIR DO GESTO.
+#[cfg(test)]
+#[path = "vec_entities_tests.rs"]
+mod vec_entities_tests;
+#[cfg(test)]
+#[path = "vec_zorder_fixpoint_tests.rs"]
+mod vec_zorder_fixpoint_tests;
+#[cfg(test)]
+#[path = "vec_zorder_late_writers_tests.rs"]
+mod vec_zorder_late_writers_tests;
 mod vec_expand;
 /// ⭐ A cena de smoke do **fade vetorial** (`PH2D_VEC_FADE_SMOKE=1`) — a linha do tempo a
 /// desvanecer um caminho, com e sem filtro raster.
@@ -691,7 +705,11 @@ mod vec_text;
 mod vec_text_object;
 mod vec_text_reopen;
 mod vec_text_ride;
-mod vec_transform;
+// A pose das formas vetoriais mudou-se para a folha; fica o gate do quadro do LÁPIS, que
+// atravessa o `profile_live`.
+#[cfg(test)]
+#[path = "vec_pencil_frame_tests.rs"]
+mod vec_pencil_frame_tests;
 /// ⭐⭐⭐ **A RECONCILIAÇÃO ANTES DA CAPTURA** — a rede que apanha todo escritor TARDIO da árvore
 /// (apagar · duplicar · *Remove from Sheet*), medida em 2026-09-08.
 mod vec_tree_settle;

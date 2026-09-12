@@ -4,7 +4,7 @@
 //! É a metade que só a shell pode fazer: o documento não conhece tema, e a crate de desenho não
 //! conhece o ECS onde os bindings moram.
 //!
-//! ⚠️ **Ele NÃO entra no [`crate::vec_entities::view_state`]**, e a razão é custo: aquela porta é
+//! ⚠️ **Ele NÃO entra no [`ph2d_vec_entities::entities::view_state`]**, e a razão é custo: aquela porta é
 //! chamada por todo caminho de HIT-TEST e gesto (o pick, o marquee, a linha de corte), e nenhum
 //! deles pergunta de que cor a forma é. Resolver token ali seria trabalho de desenho pago por quem
 //! só quer geometria. Quem publica é o passe de desenho, uma vez por frame.
@@ -13,7 +13,7 @@ use ph2d_ecs::{BoundProp, Entity, SimWorld, VecBindings};
 use ph2d_tokens::{ColorToken, NumToken, Theme};
 use ph2d_vec_scene::{BoundStyle, Rgba8};
 
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 
 /// A cor concreta de um token neste modo.
 ///

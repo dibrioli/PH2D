@@ -70,7 +70,7 @@ impl Doc {
         let c = self
             .scene
             .push_path(ph2d_vec_scene::line([0.0, 0.0], [0.0, 0.0]));
-        crate::vec_entities::sync(&mut self.sim, &mut self.scene, &mut self.map);
+        ph2d_vec_entities::entities::sync(&mut self.sim, &mut self.scene, &mut self.map);
         assert!(crate::connector_live::attach(
             &mut self.sim,
             &self.map,
@@ -85,7 +85,7 @@ impl Doc {
     /// glyph de verdade só a tornaria mais lenta de calcular.
     fn label(&mut self, lo: [f64; 2], hi: [f64; 2], host: VecPathId) -> VecPathId {
         let id = self.scene.push_path(rectangle(lo, hi));
-        crate::vec_entities::sync(&mut self.sim, &mut self.scene, &mut self.map);
+        ph2d_vec_entities::entities::sync(&mut self.sim, &mut self.scene, &mut self.map);
         let e = self.entity(id);
         if let Ok(mut ent) = self.sim.world_mut().get_entity_mut(e) {
             ent.insert(VecShape::Text(text_params()));
@@ -113,7 +113,7 @@ impl Doc {
         // A 1ª letra: o `vec_text_regen` empurra o path, e o `upsert_text_shape` do frame põe o
         // `VecShape::Text` (é ele, e não o vínculo, que chega a tempo de o `recook` enxergar).
         let id = self.scene.push_path(rectangle(lo, hi));
-        crate::vec_entities::sync(&mut self.sim, &mut self.scene, &mut self.map);
+        ph2d_vec_entities::entities::sync(&mut self.sim, &mut self.scene, &mut self.map);
         let e = self.entity(id);
         if let Ok(mut ent) = self.sim.world_mut().get_entity_mut(e) {
             ent.insert(VecShape::Text(text_params()));
@@ -147,10 +147,10 @@ impl Doc {
     /// label_live::upkeep
     /// ```
     fn frame(&mut self) {
-        crate::vec_entities::sync(&mut self.sim, &mut self.scene, &mut self.map);
+        ph2d_vec_entities::entities::sync(&mut self.sim, &mut self.scene, &mut self.map);
         crate::connector_live::upkeep(&mut self.sim, &self.scene, &self.map, None, &mut None);
-        crate::vec_transform::settle_origins(&mut self.sim, &mut self.scene, &self.map, &[]);
-        let mut xf = crate::vec_transform::build(&self.sim, &self.map);
+        ph2d_vec_entities::transform::settle_origins(&mut self.sim, &mut self.scene, &self.map, &[]);
+        let mut xf = ph2d_vec_entities::transform::build(&self.sim, &self.map);
         crate::connector_live::recook(
             &mut self.sim,
             &mut self.scene,
@@ -187,7 +187,7 @@ impl Doc {
 
     /// O centro da bbox de MUNDO de um path — o que o usuário vê.
     fn centre(&self, id: VecPathId) -> [f64; 2] {
-        let xf = crate::vec_transform::build(&self.sim, &self.map);
+        let xf = ph2d_vec_entities::transform::build(&self.sim, &self.map);
         let (lo, hi) = self
             .scene
             .path_world_curve_bbox(&xf, id)
@@ -197,7 +197,7 @@ impl Doc {
 
     /// A rota do conector `id`, achatada em mundo (o mesmo achatamento do passe).
     fn route(&self, id: VecPathId) -> Vec<[f64; 2]> {
-        let xf = crate::vec_transform::build(&self.sim, &self.map);
+        let xf = ph2d_vec_entities::transform::build(&self.sim, &self.map);
         polyline_world(&self.scene, &xf, id)
     }
 
@@ -472,7 +472,7 @@ fn a_label_is_never_settled() {
     let label = d.label([20.0, 20.0], [21.0, 20.4], host);
     let e = d.entity(label);
 
-    crate::vec_transform::settle_origins(&mut d.sim, &mut d.scene, &d.map, &[]);
+    ph2d_vec_entities::transform::settle_origins(&mut d.sim, &mut d.scene, &d.map, &[]);
 
     assert_eq!(
         d.sim.world().get::<Transform>(e).copied().unwrap(),
@@ -505,7 +505,7 @@ fn the_label_of_a_host_is_found_even_after_being_dragged_away() {
 fn the_pending_link_waits_for_the_first_letter_and_dies_with_the_session() {
     let mut d = Doc::new();
     let host = d.shape([0.0, 0.0], [4.0, 2.0]);
-    crate::vec_entities::sync(&mut d.sim, &mut d.scene, &mut d.map);
+    ph2d_vec_entities::entities::sync(&mut d.sim, &mut d.scene, &mut d.map);
 
     // Sessão aberta, texto ainda vazio: nada a pendurar, e o arm SOBREVIVE.
     let mut pending = Some(host);
@@ -514,7 +514,7 @@ fn the_pending_link_waits_for_the_first_letter_and_dies_with_the_session() {
 
     // A 1ª letra cria o path (e o sync, a entidade) ⇒ o vínculo é pendurado e o arm some.
     let text = d.scene.push_path(rectangle([0.0, 0.0], [1.0, 0.4]));
-    crate::vec_entities::sync(&mut d.sim, &mut d.scene, &mut d.map);
+    ph2d_vec_entities::entities::sync(&mut d.sim, &mut d.scene, &mut d.map);
     upkeep_pending(&mut d.sim, &d.map, &mut pending, Some(text), true);
     assert_eq!(pending, None, "pendurado: o arm desarma");
     let e = d.entity(text);

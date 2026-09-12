@@ -49,7 +49,7 @@ use ph2d_vec_render::LiveGeometry;
 use ph2d_vec_scene::{VecPath, VecPathId, VecScene, VecViewState, VecXforms};
 use ph2d_vector::Affine;
 
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 
 /// O maior lado de scratch/saída que pedimos à GPU — o `maxTextureDimension2D` baseline do WebGPU
 /// (8192). Limite de RECURSO (a dimensão de textura garantida), não de gosto.

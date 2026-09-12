@@ -39,9 +39,9 @@ fn donut(op: u8) -> (SimWorld, VecScene, VecEntityMap, Vec<VecPathId>, Entity) {
     let mut map = VecEntityMap::new();
     let outer = scene.push_path(rectangle([0.0, 0.0], [20.0, 20.0]));
     let inner = scene.push_path(rectangle([6.0, 6.0], [14.0, 14.0]));
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     let g = Entity::from_bits(
-        crate::vec_entities::group_entities(&mut sim, &[map[&outer], map[&inner]], "Bool".into())
+        ph2d_vec_entities::entities::group_entities(&mut sim, &[map[&outer], map[&inner]], "Bool".into())
             .unwrap(),
     );
     sim.world_mut().entity_mut(g).insert(VecBoolGroup { op });
@@ -353,18 +353,18 @@ fn a_morph_from_the_inner_group_does_not_command_the_outer_one() {
     let a = scene.push_path(rectangle([0.0, 0.0], [20.0, 20.0]));
     let b = scene.push_path(rectangle([6.0, 6.0], [14.0, 14.0]));
     let c = scene.push_path(rectangle([10.0, -4.0], [16.0, 24.0]));
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
 
     // O grupo de DENTRO: `a` e `b`. A base dele é `a`, que carrega o resultado.
     let inner = Entity::from_bits(
-        crate::vec_entities::group_entities(&mut sim, &[map[&a], map[&b]], "In".into()).unwrap(),
+        ph2d_vec_entities::entities::group_entities(&mut sim, &[map[&a], map[&b]], "In".into()).unwrap(),
     );
     sim.world_mut()
         .entity_mut(inner)
         .insert(VecBoolGroup { op: 0 });
     // O de FORA: o grupo de dentro e mais o `c`.
     let outer = Entity::from_bits(
-        crate::vec_entities::group_entities(&mut sim, &[inner.to_bits(), map[&c]], "Out".into())
+        ph2d_vec_entities::entities::group_entities(&mut sim, &[inner.to_bits(), map[&c]], "Out".into())
             .unwrap(),
     );
     sim.world_mut()

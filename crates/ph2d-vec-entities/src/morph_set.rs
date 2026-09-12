@@ -38,7 +38,7 @@ use ph2d_ecs::{ChildOf, Entity, Name, SimWorld, Transform, VecMorph, VecMorphMac
 use ph2d_morph_machine::{MorphGraph, MorphState};
 use ph2d_vec_scene::{VecPath, VecPathId, VecScene};
 
-use crate::vec_entities::VecEntityMap;
+use crate::entities::VecEntityMap;
 
 /// **O conjunto à espera da entidade dele nascer** — o `sync` do quadro seguinte é que cria a
 /// entidade do path novo, e só aí há onde pendurar os componentes.
@@ -46,13 +46,13 @@ use crate::vec_entities::VecEntityMap;
 /// ⚠️ **Espelho do `vec_morph_pending`**, e um slot PRÓPRIO porque o payload é outro: aquele leva
 /// um componente, este leva a máquina **e** a lista de quem vai ser reparentado.
 #[derive(Clone, Debug)]
-pub(crate) struct MorphSetPending {
+pub struct MorphSetPending {
     /// O path do objecto novo (a forma morfada, ainda vazia).
-    pub(crate) path: VecPathId,
+    pub path: VecPathId,
     /// O nome que a Hierarquia mostra.
-    pub(crate) name: String,
+    pub name: String,
     /// As formas-membro, na ordem de z — **a primeira é o estado inicial**.
-    pub(crate) members: Vec<VecPathId>,
+    pub members: Vec<VecPathId>,
 }
 
 /// ⭐ **O MÍNIMO de formas que fazem um conjunto.**
@@ -61,7 +61,7 @@ pub(crate) struct MorphSetPending {
 /// uma só não há entre nenhum. O número tem **dois** leitores — o [`create`], que recusa abaixo
 /// dele, e o [`disconnect_row`], que **dissolve** ao chegar a ele. ⛔ Escrito à mão nos dois, a
 /// fronteira dissolveria num sítio e recusaria noutro no dia em que alguém mudasse um.
-pub(crate) const MIN_STATES: usize = 2;
+pub const MIN_STATES: usize = 2;
 
 /// **AS FORMAS DA SELEÇÃO QUE PODEM VIRAR ESTADOS.**
 ///
@@ -80,7 +80,7 @@ pub(crate) const MIN_STATES: usize = 2;
 /// ⚠️ **A ordem é a da SELEÇÃO**, que é a de z — e ela é load-bearing: o primeiro membro é o
 /// `start` do grafo, e é a forma que o artista vê quando o conjunto nasce.
 #[must_use]
-pub(crate) fn eligible(sim: &SimWorld, map: &VecEntityMap, sel: &[VecPathId]) -> Vec<VecPathId> {
+pub fn eligible(sim: &SimWorld, map: &VecEntityMap, sel: &[VecPathId]) -> Vec<VecPathId> {
     let mut out: Vec<VecPathId> = Vec::new();
     for id in sel {
         let Some(&bits) = map.get(id) else { continue };
@@ -126,7 +126,7 @@ pub(crate) fn eligible(sim: &SimWorld, map: &VecEntityMap, sel: &[VecPathId]) ->
 /// ⛔ **Um filho que é ele próprio um Morph não entra** — a geometria dele é reescrita a cada
 /// quadro por baixo da máquina de fora.
 #[must_use]
-pub(crate) fn graph_of(sim: &SimWorld, map: &VecEntityMap, host: Entity) -> MorphGraph {
+pub fn graph_of(sim: &SimWorld, map: &VecEntityMap, host: Entity) -> MorphGraph {
     let w = sim.world();
     let Some(machine) = w.get::<VecMorphMachine>(host) else {
         return MorphGraph::default();
@@ -153,7 +153,7 @@ pub(crate) fn graph_of(sim: &SimWorld, map: &VecEntityMap, host: Entity) -> Morp
 ///
 /// ⚠️ **O path nasce VAZIO de propósito** — a geometria é DERIVADA pelo `morph_live::recook` de
 /// todo quadro, e inventá-la aqui seria uma 2ª porta para a mesma pergunta.
-pub(crate) fn create(
+pub fn create(
     sim: &SimWorld,
     scene: &mut VecScene,
     map: &VecEntityMap,
@@ -180,7 +180,7 @@ pub(crate) fn create(
 ///
 /// ⚠️ **Devolve `true` quando consumiu**, e o chamador limpa o slot. Se a forma sumiu entretanto
 /// (o artista apagou), consome à mesma: um pendente que nunca resolve ficaria a tentar para sempre.
-pub(crate) fn upkeep(
+pub fn upkeep(
     sim: &mut SimWorld,
     scene: &VecScene,
     map: &VecEntityMap,
@@ -297,8 +297,8 @@ fn align(
         let Some((bl, tr)) = scene.path_curve_bbox(id) else {
             continue;
         };
-        let world = crate::vec_transform::world_transform(sim, e);
-        let x = crate::vec_transform::xform_of_transform(world);
+        let world = crate::transform::world_transform(sim, e);
+        let x = crate::transform::xform_of_transform(world);
         let (mut cl, mut ch) = ([f64::MAX; 2], [f64::MIN; 2]);
         for corner in [
             [bl[0], bl[1]],
@@ -361,12 +361,12 @@ fn align(
 ///
 /// ⚠️ **A pose de MUNDO é preservada** (`reparent_keeping_world` ao contrário): ela sai onde
 /// estava, e não onde a aritmética do pai a deixaria.
-pub(crate) fn disconnect(sim: &mut SimWorld, map: &VecEntityMap, shape: VecPathId) -> bool {
+pub fn disconnect(sim: &mut SimWorld, map: &VecEntityMap, shape: VecPathId) -> bool {
     let Some(&bits) = map.get(&shape) else {
         return false;
     };
     let e = Entity::from_bits(bits);
-    let world = crate::vec_transform::world_transform(sim, e);
+    let world = crate::transform::world_transform(sim, e);
     let Ok(mut em) = sim.world_mut().get_entity_mut(e) else {
         return false;
     };
@@ -387,7 +387,7 @@ pub(crate) fn disconnect(sim: &mut SimWorld, map: &VecEntityMap, shape: VecPathI
 /// e o conjunto tem `VecPathRef`. Reutilizá-lo teria sido silenciosamente inerte.
 ///
 /// Devolve o path do objecto que deve ser removido da cena (o chamador tem-na à mão), ou `None`.
-pub(crate) fn dissolve(sim: &mut SimWorld, map: &VecEntityMap, host: Entity) -> Option<VecPathId> {
+pub fn dissolve(sim: &mut SimWorld, map: &VecEntityMap, host: Entity) -> Option<VecPathId> {
     let shapes = graph_of(sim, map, host).shapes();
     for id in shapes {
         disconnect(sim, map, id);
@@ -423,7 +423,7 @@ pub(crate) fn dissolve(sim: &mut SimWorld, map: &VecEntityMap, host: Entity) -> 
 ///
 /// Devolve o path do conjunto **se ele tiver de ser removido da cena** (o chamador tem-na à mão),
 /// tal como o [`dissolve`].
-pub(crate) fn disconnect_row(
+pub fn disconnect_row(
     sim: &mut SimWorld,
     map: &VecEntityMap,
     host: Entity,
@@ -467,7 +467,7 @@ pub(crate) fn disconnect_row(
 /// discordar da árvore. ⛔ O `Visibility` do artista (o olho da Hierarquia) fica **intacto**: esta
 /// função só ACRESCENTA uma razão para esconder, e sair do conjunto devolve a razão dele.
 #[must_use]
-pub(crate) fn is_set_member(w: &ph2d_ecs::World, e: Entity) -> bool {
+pub fn is_set_member(w: &ph2d_ecs::World, e: Entity) -> bool {
     w.get::<ChildOf>(e)
         .is_some_and(|c| w.get::<VecMorphMachine>(c.parent()).is_some())
 }
@@ -478,12 +478,13 @@ pub(crate) fn is_set_member(w: &ph2d_ecs::World, e: Entity) -> bool {
 /// arquivo e o despacho precisava do terceiro. *Uma lei escrita em dois sítios ainda não é uma lei —
 /// só uma PORTA é* (a lição do `stroke_uniform`, no mesmo módulo).
 #[must_use]
-pub(crate) fn path_of(map: &VecEntityMap, e: Entity) -> Option<VecPathId> {
+pub fn path_of(map: &VecEntityMap, e: Entity) -> Option<VecPathId> {
     map.iter()
         .find(|&(_, &b)| b == e.to_bits())
         .map(|(&k, _)| k)
 }
 
-#[cfg(test)]
-#[path = "morph_set_tests.rs"]
-mod tests;
+// ⚠️ **A CADEIA de gates deste módulo FICOU na shell** (HOWTO §1.2): o `morph_set_tests`
+// declara o `world_tests`, que declara o `membership_tests` e o `ui_state_tests`, que
+// declara o `repair_tests` — e os quatro de baixo atravessam o `morph_live`, o
+// `vec_convert`, o `vec_ui_state_edit` e o `render_loop`. Mover só o pai orfanaria a cadeia.

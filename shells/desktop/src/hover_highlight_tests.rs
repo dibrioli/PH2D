@@ -6,7 +6,7 @@
 //! FONTE sobre ela em `tests/the_highlight_has_one_source.rs`.
 
 use super::hover_outline_world;
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 use ph2d_ecs::{Entity, SimWorld, VecBoolGroup};
 use ph2d_vec_render::LiveGeometry;
 use ph2d_vec_scene::{VecPath, VecScene, VecXforms, rectangle};
@@ -18,9 +18,9 @@ fn cooked_donut(op: u8) -> (SimWorld, VecScene, VecEntityMap, LiveGeometry, [u64
     let mut map = VecEntityMap::new();
     let outer = scene.push_path(rectangle([0.0, 0.0], [20.0, 20.0]));
     let inner = scene.push_path(rectangle([6.0, 6.0], [14.0, 14.0]));
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     let g = Entity::from_bits(
-        crate::vec_entities::group_entities(&mut sim, &[map[&outer], map[&inner]], "Bool".into())
+        ph2d_vec_entities::entities::group_entities(&mut sim, &[map[&outer], map[&inner]], "Bool".into())
             .unwrap(),
     );
     sim.world_mut().entity_mut(g).insert(VecBoolGroup { op });

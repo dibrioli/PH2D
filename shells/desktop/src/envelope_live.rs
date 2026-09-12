@@ -62,7 +62,7 @@ pub(crate) fn art_samples(sim: &SimWorld, bits: u64) -> Vec<[f64; 2]> {
 }
 use ph2d_vec_scene::{VecPath, VecPathId, VecScene};
 
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 
 /// A bbox-**união** dos pontos de controle (âncoras + handles, todos os contornos) de várias fontes,
 /// como `(origem, tamanho)`. É a bbox de **controle**, não a da curva — ela CONTÉM a curva, que é o
@@ -137,8 +137,8 @@ pub(crate) fn create(
         };
         // A aparência COZIDA em LOCAL do filho (raio de quina resolvido), assada pela pose de MUNDO
         // do filho → geometria de MUNDO. Sem raio, `cooked()` empresta a fonte (custo zero).
-        let world_xf = crate::vec_transform::xform_of_transform(
-            crate::vec_transform::world_transform(sim, entity),
+        let world_xf = ph2d_vec_entities::transform::xform_of_transform(
+            ph2d_vec_entities::transform::world_transform(sim, entity),
         );
         let mut world_path = src.cooked().into_owned();
         ph2d_vec_scene::bake_xform(&mut world_path, &world_xf);
@@ -153,7 +153,7 @@ pub(crate) fn create(
 
     // 3. Container novo na identidade + `RootOrder` explícito (nunca `u32::MAX`, senão a árvore o
     //    desempataria por bits de alocação — BUGS #15). Nome como os grupos.
-    let order = crate::vec_entities::next_root_order(sim);
+    let order = ph2d_vec_entities::entities::next_root_order(sim);
     let container = sim
         .world_mut()
         .spawn((
@@ -431,8 +431,8 @@ pub(crate) fn dissolve(
             continue;
         };
         // A pose do container, a assar na geometria de cada filho.
-        let world_xf = crate::vec_transform::xform_of_transform(
-            crate::vec_transform::world_transform(sim, entity),
+        let world_xf = ph2d_vec_entities::transform::xform_of_transform(
+            ph2d_vec_entities::transform::world_transform(sim, entity),
         );
         for child in &env.children {
             // Expand fica com o que está no path (o deformado que o recook escreveu); Release
@@ -447,7 +447,7 @@ pub(crate) fn dissolve(
             // O filho volta a ser RAIZ: sem pai, com ordem própria, na identidade (a geometria já é
             // mundo). É o estado de uma forma recém-desenhada — o `settle` lhe dá o pivô depois.
             if let Some(&bits) = map.get(&child.path) {
-                let order = crate::vec_entities::next_root_order(sim);
+                let order = ph2d_vec_entities::entities::next_root_order(sim);
                 if let Ok(mut ce) = sim.world_mut().get_entity_mut(Entity::from_bits(bits)) {
                     ce.remove::<ph2d_ecs::ChildOf>();
                     ce.insert(RootOrder(order));

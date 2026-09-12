@@ -18,9 +18,9 @@ fn scene_with_group(op: u8) -> (SimWorld, VecScene, VecEntityMap, Vec<VecPathId>
     let mut map = VecEntityMap::new();
     let a = scene.push_path(rectangle([0.0, 0.0], [2.0, 2.0]));
     let b = scene.push_path(rectangle([1.0, 1.0], [3.0, 3.0]));
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     let g = Entity::from_bits(
-        crate::vec_entities::group_entities(&mut sim, &[map[&a], map[&b]], "Bool".into()).unwrap(),
+        ph2d_vec_entities::entities::group_entities(&mut sim, &[map[&a], map[&b]], "Bool".into()).unwrap(),
     );
     sim.world_mut().entity_mut(g).insert(VecBoolGroup { op });
     (sim, scene, map, vec![a, b], g)
@@ -142,7 +142,7 @@ fn a_pose_that_knows_no_group_never_destroys_one() {
 fn a_shape_outside_any_boolean_records_nothing() {
     let (mut sim, mut scene, mut map, _ids, _g) = scene_with_group(0);
     let lone = scene.push_path(rectangle([9.0, 9.0], [10.0, 10.0]));
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     let pose = capture(&sim, &scene, &map, lone);
     assert_eq!(pose.bool_op, None);
     assert_eq!(

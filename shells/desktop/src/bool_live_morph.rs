@@ -10,7 +10,7 @@ use ph2d_ecs::SimWorld;
 use ph2d_vec_scene::{VecPath, VecPathId};
 
 use super::{group_above, op_of_code, operand_verb};
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 
 /// **O VERBO DE CADA PATH DA ENTRADA**, de um dos dois lados.
 ///

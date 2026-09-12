@@ -10,7 +10,7 @@ use ph2d_editor::icons::IconId;
 use ph2d_editor::widget::WidgetKind;
 use ph2d_vec_scene::VecPathId;
 
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 
 /// O que um clique na seção WIDGET SKIN pede.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

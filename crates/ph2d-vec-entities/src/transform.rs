@@ -20,7 +20,7 @@ use ph2d_vec_scene::{VecXforms, Xform};
 /// Reusa `parent_world_transform` — o mesmo caminho que o drag do gizmo de sprite
 /// já percorre, então um path e um sprite irmãos concordam por construção.
 #[must_use]
-pub(crate) fn world_transform(sim: &SimWorld, entity: Entity) -> Transform {
+pub fn world_transform(sim: &SimWorld, entity: Entity) -> Transform {
     let local = sim
         .world()
         .get::<Transform>(entity)
@@ -33,7 +33,7 @@ pub(crate) fn world_transform(sim: &SimWorld, entity: Entity) -> Transform {
 /// matemática dos sprites — incluindo skew e o `libm::sincosf` que mantém o
 /// resultado bit-idêntico entre sistemas (HR-5).
 #[must_use]
-pub(crate) fn xform_of_transform(t: Transform) -> Xform {
+pub fn xform_of_transform(t: Transform) -> Xform {
     let a = GlobalTransform::from_transform(t).affine();
     Xform([
         f64::from(a[0]),
@@ -49,7 +49,7 @@ pub(crate) fn xform_of_transform(t: Transform) -> Xform {
 /// na identidade **não entra no mapa** — `xform_of` devolve identidade e o caminho
 /// comum não paga nem um lookup.
 #[must_use]
-pub(crate) fn build(sim: &SimWorld, map: &crate::vec_entities::VecEntityMap) -> VecXforms {
+pub fn build(sim: &SimWorld, map: &crate::entities::VecEntityMap) -> VecXforms {
     let mut out = VecXforms::new();
     for (&id, &bits) in map {
         let e = Entity::from_bits(bits);
@@ -75,7 +75,7 @@ pub(crate) fn build(sim: &SimWorld, map: &crate::vec_entities::VecEntityMap) -> 
 /// (`target` = centro da bbox) e no botão "Set Center" (`target` = o clique).
 ///
 /// `false` se a entidade sumiu, se o path sumiu, ou se o afim é degenerado.
-pub(crate) fn move_origin_to(
+pub fn move_origin_to(
     sim: &mut SimWorld,
     scene: &mut ph2d_vec_scene::VecScene,
     entity: Entity,
@@ -131,7 +131,7 @@ pub(crate) fn move_origin_to(
 /// É o que faz uma forma-fonte do blend SEGUIR a ponta do spine arrastada no modo Node (ADR-0128
 /// C2b): arrastar a ponta é o MESMO que mover a forma pelo gizmo. `false` se a entidade sumiu ou o
 /// afim do pai é degenerado.
-pub(crate) fn translate_shape_world(
+pub fn translate_shape_world(
     sim: &mut SimWorld,
     entity: Entity,
     delta_world: [f64; 2],
@@ -182,7 +182,7 @@ pub(crate) fn translate_shape_world(
 /// o resultado renascia com o mesmo id todo frame e precisava ser pulado, senão mundo ×
 /// centro dobrava a pose (o *"pula pro canto direito"*). Sem churn, não há o que pular.
 #[must_use]
-pub(crate) fn gesture_paths(
+pub fn gesture_paths(
     pen: &ph2d_vec_edit::PenTool,
     shape: &ph2d_vec_edit::ShapeTool,
     pencil: &ph2d_vec_edit::Pencil,
@@ -205,7 +205,7 @@ pub(crate) fn gesture_paths(
 /// exacta sob rotação, escala não-uniforme e cisalhamento). `false` quando alguma das entidades
 /// sumiu ou o afim do pai é degenerado — e aí **nada é escrito**, porque prender sem saber pôr de
 /// volta deixaria a forma num sítio que ninguém autorou.
-pub(crate) fn reparent_keeping_world(sim: &mut SimWorld, child: Entity, parent: Entity) -> bool {
+pub fn reparent_keeping_world(sim: &mut SimWorld, child: Entity, parent: Entity) -> bool {
     if sim.world().get_entity(child).is_err() || sim.world().get_entity(parent).is_err() {
         return false;
     }
@@ -236,10 +236,10 @@ pub(crate) fn reparent_keeping_world(sim: &mut SimWorld, child: Entity, parent: 
 /// escrevem geometria em coordenadas de MUNDO a cada frame; assentá-los no meio do
 /// gesto faria a geometria e o `Transform` somarem, e a forma sairia deslocada do
 /// cursor exatamente pelo ponto onde o arrasto começou.
-pub(crate) fn settle_origins(
+pub fn settle_origins(
     sim: &mut SimWorld,
     scene: &mut ph2d_vec_scene::VecScene,
-    map: &crate::vec_entities::VecEntityMap,
+    map: &crate::entities::VecEntityMap,
     drawing: &[ph2d_vec_scene::VecPathId],
 ) {
     let pending: Vec<(ph2d_vec_scene::VecPathId, Entity)> = map
@@ -309,16 +309,10 @@ pub(crate) fn settle_origins(
 }
 
 #[cfg(test)]
-#[path = "vec_transform_tests.rs"]
+#[path = "transform_tests.rs"]
 mod tests;
 
-/// O lápis contra a ordem REAL do frame — o gate do defeito de POSE (o "offset do mouse").
-/// Arquivo irmão porque este já hospeda a suíte do assentamento, e as duas medem coisas
-/// diferentes: aquela o pivô, esta a tinta sob o dedo.
-#[cfg(test)]
-#[path = "vec_pencil_frame_tests.rs"]
-mod pencil_frame_tests;
 
 #[cfg(test)]
-#[path = "vec_transform_reparent_tests.rs"]
+#[path = "transform_reparent_tests.rs"]
 mod reparent_tests;

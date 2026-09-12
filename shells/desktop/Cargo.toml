@@ -607,6 +607,7 @@ ph2d-entity-visibility = { path = "../../crates/ph2d-entity-visibility" }
 ph2d-preview-drive = { path = "../../crates/ph2d-preview-drive" }
 ph2d-inspector-ordering = { path = "../../crates/ph2d-inspector-ordering" }
 ph2d-transport = { path = "../../crates/ph2d-transport" }
+ph2d-vec-entities = { path = "../../crates/ph2d-vec-entities" }
 
 [dev-dependencies]
 # W2 — os auxiliares de gate da família (`forget_*`, `sync_scene`, …) vivem atrás da feature
@@ -619,6 +620,9 @@ ph2d-app-sculpt3d = { path = "../../crates/ph2d-app-sculpt3d", features = ["test
 # ficaram na shell porque medem a CAPTURA dela, e dois auxiliares `#[cfg(test)]` do memo
 # (`is_empty`, `drivers_of`) passaram a atravessar uma fronteira de crate.
 ph2d-preview-drive = { path = "../../crates/ph2d-preview-drive", features = ["test-support"] }
+# E a fixtura da ponte do vetor (`setup`/`bits`): o irmão da selecção usa-a de dentro da crate e
+# o ficheiro de gates que ficou na shell de fora — uma porta só para as duas.
+ph2d-vec-entities = { path = "../../crates/ph2d-vec-entities", features = ["test-support"] }
 # O harness headless de painel (`MockPanelHost`) — a shell precisa dele para medir a
 # GEOMETRIA que um painel de fato registra. O censo de linhas (doc 88 B3) mede quantas
 # linhas um nó produz; a metade que faltava é se elas CABEM na altura do dock, e a única

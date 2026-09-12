@@ -38,7 +38,7 @@ impl App {
                 .position(|p| p.id == *id)
                 .unwrap_or(usize::MAX)
         });
-        let xf = crate::vec_transform::build(&gfx.sim, &self.vec_entities);
+        let xf = ph2d_vec_entities::transform::build(&gfx.sim, &self.vec_entities);
         let key = source_key(&gfx.vec_scene, &xf, &sel);
         if self.vec_build.as_ref().is_some_and(|s| s.opened_for == key) {
             return; // mesma arte, mesma pose: o arranjo (e o memo) valem

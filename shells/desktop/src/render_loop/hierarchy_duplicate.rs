@@ -73,7 +73,7 @@ pub(super) fn drain(
     window_size: WindowSize,
     toasts: &mut ToastQueue,
     vec_scene: &mut ph2d_vec_scene::VecScene,
-    vec_entities: &mut crate::vec_entities::VecEntityMap,
+    vec_entities: &mut ph2d_vec_entities::entities::VecEntityMap,
     vec_history: &mut ph2d_vec_edit::History,
     vec_pen: &mut ph2d_vec_edit::PenTool,
     duplicate_made: &mut Option<(u64, u64)>,

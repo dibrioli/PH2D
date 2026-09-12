@@ -37,7 +37,7 @@ use ph2d_editor::ids;
 use ph2d_panel_vector::state::AnchorState;
 use ph2d_vec_scene::{VecPathId, VecScene};
 
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 
 /// Horizontal: `(chip, [min, max])` no eixo X. `0` = esquerda, `1` = direita.
 const H: &[(ph2d_editor::NodeId, [f64; 2])] = &[

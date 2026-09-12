@@ -15,7 +15,7 @@
 //!
 //! # O mecanismo, medido no produto (2026-09-08)
 //!
-//! O [`crate::vec_entities::sync`] é **bidireccional**, e é isso que fecha o ciclo:
+//! O [`ph2d_vec_entities::entities::sync`] é **bidireccional**, e é isso que fecha o ciclo:
 //!
 //! | verbo | o que o dreno escreve | o que o `sync` do quadro SEGUINTE faz sozinho |
 //! |---|---|---|
@@ -38,8 +38,9 @@
 //! fotografia. *Um controlo escrito contra o mundo doente reprova quando ele sara* — os de hoje
 //! afirmam que a reconciliação FEZ o trabalho, que é o que impede o ponto fixo de ser vácuo.
 
-use super::zorder_fixpoint_tests::{Frame, three_fresh_shapes, z};
-use super::*;
+use crate::vec_zorder_fixpoint_tests::{Frame, three_fresh_shapes, z};
+use ph2d_ecs::{Entity, SimWorld};
+use ph2d_vec_entities::entity_map::VecEntityMap;
 use ph2d_vec_scene::{VecScene, rectangle};
 
 /// ⭐⭐⭐ **APAGAR uma forma TARDE deixa a captura no ponto fixo.**
@@ -193,10 +194,10 @@ fn the_second_pass_costs_this_much_of_a_frame() {
         let mut col = [(); 5].map(|()| Vec::with_capacity(ITERS));
         for _ in 0..ITERS {
             let t = std::time::Instant::now();
-            crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+            ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
             col[0].push(t.elapsed().as_secs_f64() * 1000.0);
             let t = std::time::Instant::now();
-            crate::vec_transform::settle_origins(&mut sim, &mut scene, &map, &[]);
+            ph2d_vec_entities::transform::settle_origins(&mut sim, &mut scene, &map, &[]);
             col[1].push(t.elapsed().as_secs_f64() * 1000.0);
             let t = std::time::Instant::now();
             ph2d_ecs::assign_missing_root_order(sim.world_mut());

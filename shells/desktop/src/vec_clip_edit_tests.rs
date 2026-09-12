@@ -7,7 +7,7 @@
 //! ganha um rótulo flutuante com nome, alças de contêiner e presets de telefone.
 
 use super::*;
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 use ph2d_ecs::{Transform, VecFrame, VecPathRef};
 use ph2d_vec_scene::{VecScene, line, rectangle};
 
@@ -128,7 +128,7 @@ fn the_chip_writes_through_a_selection_that_carries_the_children() {
     let kids: Vec<VecPathId> = (0..2)
         .map(|k| scene.push_path(rectangle([k as f64, 0.0], [k as f64 + 0.5, 0.5])))
         .collect();
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
 
     let pe = ph2d_ecs::Entity::from_bits(map[&parent]);
     for id in &kids {

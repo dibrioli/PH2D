@@ -72,7 +72,7 @@ fn the_z_projection_reads_the_tree_after_the_sync() {
 /// publicada no prólogo do frame e chega tarde para a forma que acabou de nascer.
 #[test]
 fn the_z_projection_never_reads_the_panels_hierarchy_order() {
-    const VEC_ENTITIES: &str = include_str!("../../src/vec_entities.rs");
+    const VEC_ENTITIES: &str = include_str!("../../../../crates/ph2d-vec-entities/src/entities.rs");
     assert!(
         !VEC_ENTITIES.contains("hierarchy_order()"),
         "`vec_entities` voltou a projetar a pilha de z da lista do PAINEL. Ela é publicada no \

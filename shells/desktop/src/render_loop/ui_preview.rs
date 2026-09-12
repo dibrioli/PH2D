@@ -52,7 +52,7 @@ use ph2d_ecs::SimWorld;
 use ph2d_ui_state::{ObjectPose, StateRole, StateSets};
 use ph2d_vec_scene::{VecPathId, VecScene};
 
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 
 use super::ui_state_bridge::{UiMachines, request};
 

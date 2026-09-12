@@ -31,7 +31,7 @@ impl crate::App {
             return Vec::new();
         };
         let window_size = gfx.surface.size();
-        let view = crate::vec_entities::view_state_for_pick(
+        let view = ph2d_vec_entities::entities::view_state_for_pick(
             &gfx.sim,
             &self.vec_entities,
             &self.vec_view_derived,
@@ -114,7 +114,7 @@ impl crate::App {
 /// O `Name` da entidade de `host` — o nome com que ele grita.
 fn host_name(
     gfx: &crate::app_state::AppGfx,
-    map: &crate::vec_entities::VecEntityMap,
+    map: &ph2d_vec_entities::entities::VecEntityMap,
     host: VecPathId,
 ) -> Option<String> {
     let bits = *map.get(&host)?;

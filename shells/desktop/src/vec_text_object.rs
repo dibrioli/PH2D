@@ -14,7 +14,7 @@ use ph2d_tool_vector::TextAlign;
 use ph2d_vec_scene::{VecPathId, VecScene};
 use ph2d_vector_font::AxisTag;
 
-use crate::vec_entities::{VecEntityMap, group_entities};
+use ph2d_vec_entities::entities::{VecEntityMap, group_entities};
 use crate::vec_glyph::{TextLayout, TextPlacement, text_to_compound_path, text_to_vec_paths};
 use crate::vec_text::VecTextEdit;
 
@@ -339,7 +339,7 @@ pub(crate) fn convert_text_selection_to_curves(
             untouched.push(id);
             continue;
         }
-        let xf = crate::vec_transform::xform_of_transform(crate::vec_transform::world_transform(
+        let xf = ph2d_vec_entities::transform::xform_of_transform(ph2d_vec_entities::transform::world_transform(
             sim, entity,
         ));
         let mut new_ids = Vec::new();
@@ -359,8 +359,8 @@ pub(crate) fn convert_text_selection_to_curves(
     for (_, compound) in &converted {
         scene.remove_path(*compound);
     }
-    crate::vec_entities::sync(sim, scene, map);
-    crate::vec_transform::settle_origins(sim, scene, map, &[]);
+    ph2d_vec_entities::entities::sync(sim, scene, map);
+    ph2d_vec_entities::transform::settle_origins(sim, scene, map, &[]);
     let mut result = untouched;
     for (glyph_ids, _) in converted {
         let members: Vec<u64> = glyph_ids
@@ -428,7 +428,7 @@ mod tests {
         let mut map = VecEntityMap::new();
         let mut edit = session();
         regen_into(&mut scene, &mut edit);
-        crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+        ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
         upsert_text_shape(&mut sim, &map, &edit);
         let id = edit.id.expect("o compound do texto");
 
@@ -499,7 +499,7 @@ mod tests {
         });
         // Texto vivo: 1 compound + entidade + VecShape::Text.
         regen_into(&mut scene, edit.as_mut().unwrap());
-        crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+        ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
         upsert_text_shape(&mut sim, &map, edit.as_ref().unwrap());
         let compound = edit.unwrap().id.expect("o compound do texto");
         assert_eq!(scene.paths().len(), 1, "texto vivo = UM objeto");

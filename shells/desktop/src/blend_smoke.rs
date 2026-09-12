@@ -173,7 +173,7 @@ impl crate::App {
                     .collect();
                 self.vec_set_draw_mode(ph2d_tool_vector::DrawMode::Select);
                 let Some(gfx) = self.gfx.as_mut() else { return };
-                let xf = crate::vec_transform::build(&gfx.sim, &self.vec_entities);
+                let xf = ph2d_vec_entities::transform::build(&gfx.sim, &self.vec_entities);
                 let mut made = crate::blend_live::create(&mut gfx.vec_scene, &xf, &ids, 6);
                 if let Some((spine, blend)) = made.as_mut() {
                     blend.spine_authored = true; // o artista "editou" a curva
@@ -229,7 +229,7 @@ impl crate::App {
                     .collect();
                 self.vec_set_draw_mode(ph2d_tool_vector::DrawMode::Select);
                 let Some(gfx) = self.gfx.as_mut() else { return };
-                let xf = crate::vec_transform::build(&gfx.sim, &self.vec_entities);
+                let xf = ph2d_vec_entities::transform::build(&gfx.sim, &self.vec_entities);
                 let steps = if level == 1 { 5 } else { 4 };
                 let made = crate::blend_live::create(&mut gfx.vec_scene, &xf, &ids, steps);
                 // Seleciona o OBJETO blend (o spine) — assim o slider Steps do painel já mira nele

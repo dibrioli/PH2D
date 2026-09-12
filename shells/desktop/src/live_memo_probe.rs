@@ -22,7 +22,7 @@
 //!
 //! Rode: `cargo test -p ph2d-host-desktop --release live_memo -- --ignored --nocapture`
 
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 use ph2d_ecs::{Entity, Name, SimWorld, Transform, VecContour, VecOffset, VecPathRef};
 use ph2d_vec_scene::{VecPath, VecPathId, VecScene, VecVertex, VecXforms};
 
@@ -66,7 +66,7 @@ fn pose_at(sim: &mut SimWorld, map: &VecEntityMap, e: Entity, x: f32) -> VecXfor
     {
         t.translation = ph2d_core::Vec2::new(x, 0.0);
     }
-    crate::vec_transform::build(sim, map)
+    ph2d_vec_entities::transform::build(sim, map)
 }
 
 /// Roda `frames` quadros e devolve o custo MEDIANO por quadro, em ms.

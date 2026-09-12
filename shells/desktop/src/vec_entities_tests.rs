@@ -1,4 +1,4 @@
-//! **Os gates da ponte documento ↔ árvore** — módulo irmão de [`crate::vec_entities`], pelo
+//! **Os gates da ponte documento ↔ árvore** — módulo irmão de [`ph2d_vec_entities::entities`], pelo
 //! teto de 600 LOC por ficheiro da shell (HR-18).
 //!
 //! ⚠️ **O corte é por RESPONSABILIDADE, não por tamanho**: ali mora o passe que reconcilia,
@@ -6,14 +6,15 @@
 //! porque ela só existe para os gates — e uma fixtura partilhada com o produto seria um
 //! oráculo que usa a função sob teste.
 
-use super::*;
-pub(crate) fn setup() -> (SimWorld, VecScene, VecEntityMap) {
-    (SimWorld::default(), VecScene::new(), VecEntityMap::new())
-}
-
-pub(crate) fn bits(map: &VecEntityMap, id: VecPathId) -> Entity {
-    Entity::from_bits(map[&id])
-}
+use ph2d_vec_entities::entities::*;
+use ph2d_ecs::{ChildOf, Entity, Name, RootOrder, SimWorld, Transform, VecPathRef};
+use ph2d_vec_scene::VecViewState;
+use ph2d_vec_entities::entity_map::VecEntityMap;
+// ⭐ **A FIXTURA mudou-se para a crate** e chega por `test-support`: o irmão da SELECÇÃO usa-a
+// de dentro dela, este ficheiro de fora, e *duas fixturas para a mesma ponte seriam duas
+// respostas a «como nasce uma cena de teste?»* — a razão que esta secção já dava, agora a
+// atravessar uma fronteira (HOWTO §2.5).
+use ph2d_vec_entities::entities::{bits, initial_name, setup};
 
 mod tests {
     use super::*;

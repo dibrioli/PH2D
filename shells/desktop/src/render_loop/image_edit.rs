@@ -57,7 +57,7 @@ pub(super) fn dispatch(
     // deste app é **uma porta para o que ele importa** — e foi por haver duas que o `.ase` (e antes
     // dele o `.gif`, o `.psd` e o `.ora`) ficou invisível num dos lados.
     vec_scene: &mut ph2d_vec_scene::VecScene,
-    vec_entities: &mut crate::vec_entities::VecEntityMap,
+    vec_entities: &mut ph2d_vec_entities::entities::VecEntityMap,
 ) -> bool {
     let mut title_dirty = false;
 

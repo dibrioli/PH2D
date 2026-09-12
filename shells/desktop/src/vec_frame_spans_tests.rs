@@ -19,7 +19,7 @@ fn spans_and_z(sim: &mut SimWorld) -> (Vec<VecClipSpan>, Vec<u64>) {
     let mut scratch = Vec::new();
     let mut snap = HierarchySnapshot::default();
     build_hierarchy_snapshot(sim.world(), &mut state, &mut scratch, &mut snap);
-    let z = crate::vec_entities::z_order(sim.world(), &snap);
+    let z = ph2d_vec_entities::entities::z_order(sim.world(), &snap);
     let spans = clip_spans(sim, &snap, &z);
     (spans, z)
 }

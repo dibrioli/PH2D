@@ -19,11 +19,24 @@ use ph2d_vec_scene::{VecPathId, VecScene, VecViewState};
 /// órfão podem acontecer.
 // ⭐ **O alias mudou-se para a crate da família** (W2/L4 Fase B): 18 ficheiros precisavam só
 // dele e ficavam presos a este módulo, que está preso a três predicados de outras famílias.
-pub(crate) use ph2d_app_vec::entity_map::VecEntityMap;
+pub use crate::entity_map::VecEntityMap;
 
 /// Nome inicial de um path novo. O usuário renomeia pela Hierarquia como qualquer
 /// entidade; o id só garante unicidade no nascimento.
+// ⚠️ `pub` sob `test-support` (HOWTO §2.5): um gate da SHELL afirma que um path novo nasce com
+// este nome, e do outro lado de uma crate ele não via a função. ⛔ Escrever `format!("Path {id}")`
+// no gate seria a SEGUNDA resposta à mesma pergunta, e a que envelhece é sempre a do teste.
+#[cfg(not(any(test, feature = "test-support")))]
 fn initial_name(id: VecPathId) -> String {
+    initial_name_impl(id)
+}
+#[cfg(any(test, feature = "test-support"))]
+#[must_use]
+pub fn initial_name(id: VecPathId) -> String {
+    initial_name_impl(id)
+}
+
+fn initial_name_impl(id: VecPathId) -> String {
     format!("Path {id}")
 }
 
@@ -34,7 +47,7 @@ fn initial_name(id: VecPathId) -> String {
 /// 1. entidade sumiu (Delete na Hierarquia) ⇒ apaga o path;
 /// 2. path sumiu (Delete no canvas / booleana / cut) ⇒ despawna a entidade;
 /// 3. path novo ⇒ spawna a entidade, no topo da ordem de raiz.
-pub(crate) fn sync(sim: &mut SimWorld, scene: &mut VecScene, map: &mut VecEntityMap) {
+pub fn sync(sim: &mut SimWorld, scene: &mut VecScene, map: &mut VecEntityMap) {
     // 1. Entidades que a Hierarquia apagou levam o path junto.
     let vanished: Vec<VecPathId> = map
         .iter()
@@ -117,9 +130,9 @@ pub(crate) fn sync(sim: &mut SimWorld, scene: &mut VecScene, map: &mut VecEntity
 
 /// A ordem de **z** (a projeção da árvore) e quem a reescreve — módulo irmão, pelo teto de 600
 /// LOC da shell.
-#[path = "vec_zorder.rs"]
-pub(crate) mod zorder;
-pub(crate) use zorder::{restack, z_order};
+#[path = "zorder.rs"]
+pub mod zorder;
+pub use zorder::{restack, z_order};
 
 /// Reconstrói o mapa path↔entidade **a partir do mundo** — varre cada `VecPathRef`
 /// e devolve `VecPathId → Entity::to_bits()`.
@@ -130,7 +143,7 @@ pub(crate) use zorder::{restack, z_order};
 /// conjunto de entidades e deixando as restauradas órfãs. Com o rebuild, as três
 /// direções do `sync` viram no-op e a ponte fica consistente de graça.
 #[must_use]
-pub(crate) fn rebuild_map(sim: &mut SimWorld) -> VecEntityMap {
+pub fn rebuild_map(sim: &mut SimWorld) -> VecEntityMap {
     let mut map = VecEntityMap::new();
     let mut q = sim.world_mut().query::<(Entity, &VecPathRef)>();
     for (e, vp) in q.iter(sim.world()) {
@@ -141,7 +154,7 @@ pub(crate) fn rebuild_map(sim: &mut SimWorld) -> VecEntityMap {
 
 /// O próximo `RootOrder` livre (o maior em uso + 1). `RootOrder(u32::MAX)` é o
 /// "sem ordem" das raízes que nunca receberam uma, então não conta.
-pub(crate) fn next_root_order(sim: &mut SimWorld) -> u32 {
+pub fn next_root_order(sim: &mut SimWorld) -> u32 {
     let mut q = sim.world_mut().query::<&RootOrder>();
     let max = q
         .iter(sim.world())
@@ -166,7 +179,7 @@ pub(crate) fn next_root_order(sim: &mut SimWorld) -> u32 {
 /// a moldura ganha o clique dos próprios filhos, o hit-test procura cada forma colocada no
 /// lugar de onde ela saiu, e um operando absorvido fica inalcançável pelo canvas.
 #[must_use]
-pub(crate) fn view_state_for_pick(
+pub fn view_state_for_pick(
     sim: &SimWorld,
     map: &VecEntityMap,
     derived: &VecViewState,
@@ -184,7 +197,7 @@ pub(crate) fn view_state_for_pick(
 /// tocar no flag deles). Trava usa `is_locked_for_edit`, o mesmo predicado do gizmo
 /// de sprite: `Locked` no próprio, ou `GroupedChildren` em algum ancestral.
 #[must_use]
-pub(crate) fn view_state(sim: &SimWorld, map: &VecEntityMap) -> VecViewState {
+pub fn view_state(sim: &SimWorld, map: &VecEntityMap) -> VecViewState {
     let w = sim.world();
     let mut view = VecViewState::default();
     for (&id, &bits) in map {
@@ -219,7 +232,7 @@ pub(crate) fn view_state(sim: &SimWorld, map: &VecEntityMap) -> VecViewState {
 
 /// Teto de profundidade das caminhadas de ancestral (defesa, não limite de produto).
 /// Partilhado com o irmão [`selection`] — uma árvore corrompida tem UMA profundidade máxima.
-pub(crate) use ph2d_app_vec::entity_map::MAX_DEPTH;
+pub use crate::entity_map::MAX_DEPTH;
 
 /// `Visibility` do próprio E de cada ancestral.
 fn visible_chain(w: &ph2d_ecs::World, entity: Entity) -> bool {
@@ -248,22 +261,36 @@ fn visible_chain(w: &ph2d_ecs::World, entity: Entity) -> bool {
 
 /// **Agrupar e desagrupar** — módulo irmão pelo mesmo tecto e pelo mesmo critério: aqui em cima
 /// mora a ponte `path ⟺ entidade`; ali, o verbo que muda a ÁRVORE.
-#[path = "vec_entities_group.rs"]
+#[path = "entities_group.rs"]
 mod group;
 /// **A ancestralidade e o que uma SELEÇÃO significa** — módulo irmão, pelo teto de 600 LOC
 /// da shell. O corte é por assunto: aqui em cima mora o que a ponte MANTÉM (a identidade
 /// path ⟺ entidade, a ordem, o que a árvore esconde); ali, o que a árvore RESPONDE — *quem é
 /// o objeto que este clique nomeia, e o que selecioná-lo significa*.
-#[path = "vec_entities_selection.rs"]
+#[path = "entities_selection.rs"]
 mod selection;
-pub(crate) use group::{group_entities, top_members, ungroup_entities};
-pub(crate) use selection::{object_selection_for, selection_paths, subtree_paths, top_ancestor};
+pub use group::{group_entities, top_members, ungroup_entities};
+pub use selection::{object_selection_for, selection_paths, subtree_paths, top_ancestor};
 
-/// Os gates deste passe — módulo irmão, pelo teto de 600 LOC por ficheiro da shell (HR-18).
-#[cfg(test)]
-#[path = "vec_entities_tests.rs"]
-mod vec_entities_tests;
-/// A fixtura vive com os gates; o irmão da SELECÇÃO usa a mesma, de propósito — duas
-/// fixturas para a mesma ponte seriam duas respostas a *«como nasce uma cena de teste?»*.
-#[cfg(test)]
-pub(crate) use vec_entities_tests::{bits, setup};
+// ⚠️ **Os GATES deste passe ficaram na shell** (HOWTO §1.2): eles atravessam o `input_dispatch`
+// e o `render_loop::master_editing`, e medem a ponte a partir do GESTO — em qualquer outra crate
+// mediriam zero. Vivem em `shells/desktop/src/vec_entities_tests.rs`.
+//
+// ⭐ **A FIXTURA, essa, veio** — e tinha de vir: o irmão da SELECÇÃO usa-a de DENTRO da crate e
+// aquele ficheiro de fora, e *duas fixturas para a mesma ponte seriam duas respostas a «como
+// nasce uma cena de teste?»* (a razão que o doc dela já dava, agora a atravessar uma fronteira).
+// ⚠️ `test-support` porque um `#[cfg(test)]` é falso numa dependência (HOWTO §2.5).
+
+/// A cena de teste vazia: mundo, documento e o mapa que os ata.
+#[cfg(any(test, feature = "test-support"))]
+#[must_use]
+pub fn setup() -> (SimWorld, VecScene, VecEntityMap) {
+    (SimWorld::default(), VecScene::new(), VecEntityMap::new())
+}
+
+/// A entidade de um path, pelo mapa.
+#[cfg(any(test, feature = "test-support"))]
+#[must_use]
+pub fn bits(map: &VecEntityMap, id: VecPathId) -> Entity {
+    Entity::from_bits(map[&id])
+}

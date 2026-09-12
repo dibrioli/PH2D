@@ -8,7 +8,7 @@ use super::{DROPPED, OwnedDocs, clone_owned_documents};
 use ph2d_ecs::{ChildOf, Entity, MasterRoot, Name, SimWorld, Transform, VecPathRef};
 use ph2d_vec_scene::{VecPathId, VecScene, rectangle};
 
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 
 fn reg() -> ph2d_ecs::scene::ComponentRegistry {
     crate::init::build_component_registry()
@@ -127,7 +127,7 @@ fn the_clone_is_registered_so_the_sync_mints_no_ghost() {
     .expect("instanciou");
 
     let before = sim.world().entities().len();
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     assert_eq!(
         sim.world().entities().len(),
         before,

@@ -66,7 +66,7 @@ pub(crate) fn push_shape(scene: &mut ph2d_vec_scene::VecScene) {
 /// que renomear uma coisa a que você se referiu pelo nome significa.
 pub(crate) fn name_and_wire(
     sim: &mut ph2d_ecs::SimWorld,
-    map: &crate::vec_entities::VecEntityMap,
+    map: &ph2d_vec_entities::entities::VecEntityMap,
     graph: &mut Graph,
 ) -> Option<NodeId> {
     // A única forma da cena é a nossa.
@@ -188,7 +188,7 @@ pub(crate) fn push_spacing_shapes(scene: &mut ph2d_vec_scene::VecScene) {
 /// redonda seria o gate certo sobre a cena errada.
 fn name_and_wire_normal(
     sim: &mut ph2d_ecs::SimWorld,
-    map: &crate::vec_entities::VecEntityMap,
+    map: &ph2d_vec_entities::entities::VecEntityMap,
     graph: &mut Graph,
 ) -> Vec<NodeId> {
     let Some((_, &bits)) = map.iter().next() else {
@@ -270,7 +270,7 @@ pub(crate) const TRIM_PERP: f32 = 0.45;
 /// afastamento e não como mais uma fileira.
 fn name_and_wire_trim(
     sim: &mut ph2d_ecs::SimWorld,
-    map: &crate::vec_entities::VecEntityMap,
+    map: &ph2d_vec_entities::entities::VecEntityMap,
     graph: &mut Graph,
 ) -> Vec<NodeId> {
     let Some((_, &bits)) = map.iter().next() else {
@@ -352,7 +352,7 @@ fn name_and_wire_trim(
 
 fn name_and_wire_spacing(
     sim: &mut ph2d_ecs::SimWorld,
-    map: &crate::vec_entities::VecEntityMap,
+    map: &ph2d_vec_entities::entities::VecEntityMap,
     graph: &mut Graph,
 ) -> Vec<NodeId> {
     // O `VecEntityMap` é um `BTreeMap` por id de path, e o `push_path` os cunha em ordem ⇒ a

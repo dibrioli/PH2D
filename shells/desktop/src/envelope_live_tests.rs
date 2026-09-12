@@ -61,7 +61,7 @@ fn envelope_over(shapes: Vec<VecPath>) -> (SimWorld, VecScene, VecEntityMap, u64
     let mut scene = VecScene::new();
     let mut map = VecEntityMap::new();
     let ids: Vec<VecPathId> = shapes.into_iter().map(|s| scene.push_path(s)).collect();
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     let container = create(&mut sim, &mut scene, &map, &ids).expect("create");
     (sim, scene, map, container, ids)
 }
@@ -246,8 +246,8 @@ fn create_bakes_the_child_world_pose_into_the_source() {
     let mut map = VecEntityMap::new();
     // Elipse longe da origem: o settle lhe dá pose ≈(40,20) e geometria local centrada em 0.
     let id = scene.push_path(ellipse([40.0, 20.0], 2.0));
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
-    crate::vec_transform::settle_origins(&mut sim, &mut scene, &map, &[]);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::transform::settle_origins(&mut sim, &mut scene, &map, &[]);
     // A geometria local já está centrada perto da origem (o settle a moveu).
     let local_bbox = scene.path_curve_bbox(id).unwrap();
     assert!(
@@ -507,7 +507,7 @@ fn dissolving_bakes_the_container_pose_so_the_art_does_not_move() {
     }
     // Onde a arte está no MUNDO antes de dissolver (geometria local × pose do container).
     let xf =
-        crate::vec_transform::xform_of_transform(crate::vec_transform::world_transform(&sim, ce));
+        ph2d_vec_entities::transform::xform_of_transform(ph2d_vec_entities::transform::world_transform(&sim, ce));
     let (lo, hi) = scene.path_curve_bbox(ids[0]).unwrap();
     let (want_lo, want_hi) = (xf.apply(lo), xf.apply(hi));
 
@@ -540,7 +540,7 @@ fn dissolve_without_an_envelope_is_a_no_op() {
     let mut scene = VecScene::new();
     let mut map = VecEntityMap::new();
     let id = scene.push_path(ellipse([0.0, 0.0], 2.0));
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     let before = scene.paths().iter().find(|p| p.id == id).unwrap().clone();
 
     let mut pen = pen_with(&[id]);

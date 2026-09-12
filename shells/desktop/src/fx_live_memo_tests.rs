@@ -16,7 +16,7 @@
 //! construção; a razão fica escrita aqui para ninguém o re-escrever achando que prova algo.
 
 use super::job_for;
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 use ph2d_ecs::{FxOp, Name, SimWorld, Transform, VecFilter, VecPathRef};
 use ph2d_vec_render::LiveGeometry;
 use ph2d_vec_scene::{

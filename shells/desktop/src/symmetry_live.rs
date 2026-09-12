@@ -18,7 +18,7 @@
 //!    botão liga. É ele que aparece, com a cena vazia e nada seleccionado.
 //! 2. **Só o que for DESENHADO com o modo ligado espelha.** Logo armar **nunca** toca a selecção —
 //!    a adopção acontece no nascimento, e o oráculo de *"o artista está a desenhar isto agora"* é
-//!    o [`crate::vec_transform::gesture_paths`], a mesma porta que o `settle_origins` usa. Um
+//!    o [`ph2d_vec_entities::transform::gesture_paths`], a mesma porta que o `settle_origins` usa. Um
 //!    diff de ids apanharia colar, o restore do undo e o próprio *Apply*, e espelharia coisas que
 //!    o artista não desenhou.
 //! 3. **O eixo fica no lugar entre desenhos.** Logo ele não segue a câmera depois de semeado nem
@@ -30,7 +30,7 @@
 //!
 //! # A captura só sela quando o pivô assenta
 //!
-//! ⚠️ Enquanto a forma está em gesto o [`crate::vec_transform::settle_origins`] pula-a, e no frame
+//! ⚠️ Enquanto a forma está em gesto o [`ph2d_vec_entities::transform::settle_origins`] pula-a, e no frame
 //! em que o gesto acaba ele **translada a geometria e compensa no `Transform`** para pôr o pivô no
 //! centro. Um eixo capturado antes disso ficaria deslocado exactamente por essa translação — e em
 //! silêncio, porque nada falha. Por isso a re-derivação corre enquanto a forma está em gesto **e
@@ -76,7 +76,7 @@ use ph2d_vec_render::LiveGeometry;
 use ph2d_vec_scene::symmetry::{SymmetrySpec, symmetry_paths};
 use ph2d_vec_scene::{VecPath, VecPathId, VecScene, VecXforms, Xform, bake_xform, xform_of};
 
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 
 /// Uma entrada do memo: o que ENTROU (a geometria local + a pose + a spec) e o que SAIU.
 struct Memo {

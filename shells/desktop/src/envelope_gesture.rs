@@ -87,8 +87,8 @@ fn container_world_xform(sim: &SimWorld, bits: u64) -> Option<Xform> {
     if sim.world().get_entity(entity).is_err() {
         return None;
     }
-    Some(crate::vec_transform::xform_of_transform(
-        crate::vec_transform::world_transform(sim, entity),
+    Some(ph2d_vec_entities::transform::xform_of_transform(
+        ph2d_vec_entities::transform::world_transform(sim, entity),
     ))
 }
 

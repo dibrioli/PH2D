@@ -31,7 +31,7 @@ use std::collections::BTreeMap;
 use ph2d_ecs::{Entity, Name, SimWorld, Transform, VecConnector, VecLabel};
 use ph2d_vec_scene::{VecPathId, VecScene, VecXforms, xform_of};
 
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 
 /// A pose que ESTE passe escreveu no frame anterior, por rótulo. Runtime-only (não vai para o
 /// save nem para o undo): o pior que um cache perdido causa é um frame de absorção idempotente
@@ -226,7 +226,7 @@ pub(crate) fn upkeep(
             .copied()
             .unwrap_or(Transform::IDENTITY);
         cache.insert(id, after);
-        let x = crate::vec_transform::xform_of_transform(crate::vec_transform::world_transform(
+        let x = ph2d_vec_entities::transform::xform_of_transform(ph2d_vec_entities::transform::world_transform(
             sim, entity,
         ));
         if x.is_identity() {
@@ -254,7 +254,7 @@ pub(crate) fn upkeep(
 /// lá).
 fn translate_pose(sim: &mut SimWorld, entity: Entity, delta: [f64; 2]) {
     let parent = ph2d_ecs::parent_world_transform(sim.world(), entity);
-    let d = crate::vec_transform::xform_of_transform(parent)
+    let d = ph2d_vec_entities::transform::xform_of_transform(parent)
         .inverse()
         .map_or(delta, |inv| inv.apply_vec(delta));
     let Some(t) = sim.world().get::<Transform>(entity).copied() else {
@@ -401,7 +401,7 @@ impl crate::app_state::App {
                 );
                 LabelHit::Reopen(lid, Box::new(edit))
             } else {
-                let xf = crate::vec_transform::build(&gfx.sim, &self.vec_entities);
+                let xf = ph2d_vec_entities::transform::build(&gfx.sim, &self.vec_entities);
                 let Some(anchor) =
                     anchor_of(&gfx.sim, &gfx.vec_scene, &xf, &self.vec_entities, host)
                 else {

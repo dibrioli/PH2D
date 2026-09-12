@@ -5875,7 +5875,7 @@ impl crate::App {
             // `sync`/`upkeep`/`recook` do frame dão vida a ele. Seleciona o OBJETO (o spine) para
             // o slider Steps passar a mirar nele.
             if pending_create_blend {
-                let xf = crate::vec_transform::build(sim, &self.vec_entities);
+                let xf = ph2d_vec_entities::transform::build(sim, &self.vec_entities);
                 // Os passos vêm do slider do painel — a fonte da verdade é o widget, não uma
                 // cópia no shell (uma cópia driftaria do que o artista está VENDO).
                 let steps = hero
@@ -5963,7 +5963,7 @@ impl crate::App {
             // descarta o objeto vivo. A sequência de z que ele pede espera em `vec_restack`: as
             // entidades dos passos só nascem no `sync`, e quem manda no z é a ÁRVORE (ADR-0110).
             if pending_expand_blend {
-                let xf = crate::vec_transform::build(sim, &self.vec_entities);
+                let xf = ph2d_vec_entities::transform::build(sim, &self.vec_entities);
                 let runs = crate::blend_live::expand(
                     sim,
                     vec_scene,
@@ -6046,7 +6046,7 @@ impl crate::App {
                 let sel: Vec<ph2d_vec_scene::VecPathId> = self.vec_pen.selected_paths().to_vec();
                 match pending_contour {
                     Some(crate::contour_live::ContourCmd::Add) => {
-                        let xf = crate::vec_transform::build(sim, &self.vec_entities);
+                        let xf = ph2d_vec_entities::transform::build(sim, &self.vec_entities);
                         let scale = crate::vec_expand::offset_scale(vec_scene, &self.vec_pen, &xf);
                         let n = crate::contour_live::arm(sim, &self.vec_entities, &sel, scale);
                         eprintln!("[ph2d-vec] contour: armado em {n} forma(s)");
@@ -6056,7 +6056,7 @@ impl crate::App {
                         eprintln!("[ph2d-vec] contour: removido de {n} forma(s)");
                     }
                     Some(crate::contour_live::ContourCmd::Expand) => {
-                        let xf = crate::vec_transform::build(sim, &self.vec_entities);
+                        let xf = ph2d_vec_entities::transform::build(sim, &self.vec_entities);
                         let runs =
                             self.contour_live
                                 .expand(sim, vec_scene, &self.vec_entities, &xf, &sel);
@@ -6078,7 +6078,7 @@ impl crate::App {
                 }
                 if let Some(frac) = pending_contour_d {
                     // FRAÇÃO → MUNDO na fronteira, com a MESMA escala do `arm` e do Offset.
-                    let xf = crate::vec_transform::build(sim, &self.vec_entities);
+                    let xf = ph2d_vec_entities::transform::build(sim, &self.vec_entities);
                     let d = frac * crate::vec_expand::offset_scale(vec_scene, &self.vec_pen, &xf);
                     crate::contour_live::edit(sim, &self.vec_entities, &sel, |c| c.d = d);
                 }
@@ -6863,7 +6863,7 @@ impl crate::App {
                         crate::bool_live::code_of_op(op),
                     );
                 } else {
-                    let xf = crate::vec_transform::build(sim, &self.vec_entities);
+                    let xf = ph2d_vec_entities::transform::build(sim, &self.vec_entities);
                     crate::input_dispatch::apply_vec_boolean(
                         vec_scene,
                         &mut self.vec_history,
@@ -6901,7 +6901,7 @@ impl crate::App {
                             ph2d_panel_vector::set_expand_side(spec.side);
                             let scale =
                                 crate::vec_expand::offset_scale(vec_scene, &self.vec_pen, &{
-                                    crate::vec_transform::build(sim, &self.vec_entities)
+                                    ph2d_vec_entities::transform::build(sim, &self.vec_entities)
                                 });
                             hero.store.set_slider_value(
                                 ph2d_editor::ids::VECTOR_EXPAND_OFFSET,
@@ -6929,7 +6929,7 @@ impl crate::App {
                         ph2d_tool_vector::params::slider_to_offset_frac(v)
                     });
                 if offset_grabbed && !sel.is_empty() {
-                    let xf = crate::vec_transform::build(sim, &self.vec_entities);
+                    let xf = ph2d_vec_entities::transform::build(sim, &self.vec_entities);
                     let d = frac * crate::vec_expand::offset_scale(vec_scene, &self.vec_pen, &xf);
                     crate::offset_live::arm(sim, &self.vec_entities, &sel, d, knobs.0, knobs.1);
                     self.vec_offset_mirrored = (sel.len() == 1).then(|| sel[0]);
@@ -7319,7 +7319,7 @@ impl crate::App {
                 }
             }
             if let Some(cmd) = pending_vec_expand {
-                let xf = crate::vec_transform::build(sim, &self.vec_entities);
+                let xf = ph2d_vec_entities::transform::build(sim, &self.vec_entities);
                 // **Apply Offset MATERIALIZA o offset vivo** — é o único momento em que os
                 // vértices do offset passam a existir no documento (Enio, 2026-07-21). Cada
                 // forma é assada com o `VecOffset` DELA, e não com o slider: duas formas podem
@@ -7498,7 +7498,7 @@ impl crate::App {
             // ⚠️ O passo de undo mora dentro (`apply_vec_weld` faz `push_undo` só quando cortou):
             // um comando que não fez nada não pode gastar um Ctrl+Z.
             if pending_vec_weld {
-                let xf = crate::vec_transform::build(sim, &self.vec_entities);
+                let xf = ph2d_vec_entities::transform::build(sim, &self.vec_entities);
                 crate::vec_weld::apply_vec_weld(
                     vec_scene,
                     &mut self.vec_history,
@@ -7514,7 +7514,7 @@ impl crate::App {
             // cópias eram DESENHO; a partir daqui são geometria, e a simetria sai com a
             // forma-fonte (o `sync` do frame seguinte despawna a entidade dela).
             if pending_vec_symmetry_apply {
-                let xf = crate::vec_transform::build(sim, &self.vec_entities);
+                let xf = ph2d_vec_entities::transform::build(sim, &self.vec_entities);
                 // ⚠️ TODA forma armada, não a seleção: a simetria é um MODO, e *"consolidar a
                 // forma e desativar a simetria"* vale para o que o modo produziu. O porquê de
                 // consolidar só o selecionado ser destrutivo está na `armed_paths`.
@@ -7569,7 +7569,7 @@ impl crate::App {
             if let Some(order) = pending_vec_reorder
                 && let Some(sel) = self.vec_pen.selected()
             {
-                crate::vec_entities::zorder::reorder(sim, &self.vec_entities, sel, order);
+                ph2d_vec_entities::entities::zorder::reorder(sim, &self.vec_entities, sel, order);
             }
             if pending_vec_duplicate {
                 // Offset the clone by a fixed SCREEN distance (px → world) so it's
@@ -7606,7 +7606,7 @@ impl crate::App {
             // O afim de cada path, para as operações que falam MUNDO (align, distribute,
             // campos X/Y/W/H). O mapa é o do frame passado — os paths envolvidos já
             // existem, então basta.
-            let vec_xf_ops = crate::vec_transform::build(sim, &self.vec_entities);
+            let vec_xf_ops = ph2d_vec_entities::transform::build(sim, &self.vec_entities);
             // ⚠️ **A VOLTA da fronteira de display, e ela mora AQUI e não dentro do
             // `apply_vec_transform`.** O `target` é o número que o artista DIGITOU, logo está na
             // unidade dele; a operação fala mundo. Converter dentro dela quebraria o outro
@@ -8056,7 +8056,7 @@ impl crate::App {
                     // codificaria um facto sobre **outra** função (*"o `source_for` só devolve
                     // não-`None` quando o slot já era padrão"*), e é essa acoplagem que diverge em
                     // silêncio. O custo é **por clique**, não por quadro.
-                    let xf = crate::vec_transform::build(sim, &self.vec_entities);
+                    let xf = ph2d_vec_entities::transform::build(sim, &self.vec_entities);
                     let arte = crate::texture_pattern_pick::art_dims(
                         asset_db,
                         vec_scene,
@@ -8065,7 +8065,7 @@ impl crate::App {
                         sel,
                         &source,
                         &|id| {
-                            crate::vec_entities::object_selection_for(
+                            ph2d_vec_entities::entities::object_selection_for(
                                 sim,
                                 vec_scene,
                                 &self.vec_entities,
@@ -8128,7 +8128,7 @@ impl crate::App {
                     // codificaria um facto sobre **outra** função (*"o `source_for` só devolve
                     // não-`None` quando o slot já era padrão"*), e é essa acoplagem que diverge em
                     // silêncio. O custo é **por clique**, não por quadro.
-                    let xf = crate::vec_transform::build(sim, &self.vec_entities);
+                    let xf = ph2d_vec_entities::transform::build(sim, &self.vec_entities);
                     let arte = crate::texture_pattern_pick::art_dims(
                         asset_db,
                         vec_scene,
@@ -8137,7 +8137,7 @@ impl crate::App {
                         sel,
                         &source,
                         &|id| {
-                            crate::vec_entities::object_selection_for(
+                            ph2d_vec_entities::entities::object_selection_for(
                                 sim,
                                 vec_scene,
                                 &self.vec_entities,
@@ -8177,7 +8177,7 @@ impl crate::App {
                     // codificaria um facto sobre **outra** função (*"o `source_for` só devolve
                     // não-`None` quando o slot já era padrão"*), e é essa acoplagem que diverge em
                     // silêncio. O custo é **por clique**, não por quadro.
-                    let xf = crate::vec_transform::build(sim, &self.vec_entities);
+                    let xf = ph2d_vec_entities::transform::build(sim, &self.vec_entities);
                     let arte = crate::texture_pattern_pick::art_dims(
                         asset_db,
                         vec_scene,
@@ -8186,7 +8186,7 @@ impl crate::App {
                         sel,
                         &source,
                         &|id| {
-                            crate::vec_entities::object_selection_for(
+                            ph2d_vec_entities::entities::object_selection_for(
                                 sim,
                                 vec_scene,
                                 &self.vec_entities,
@@ -8382,7 +8382,7 @@ impl crate::App {
                             // Shape…"* sobre um traço que pinta a cor de recurso, sem mensagem.
                             has_art: b.art.is_some_and(|a| {
                                 !crate::texture_pattern_live::art_members(sel, a, &|id| {
-                                    crate::vec_entities::object_selection_for(
+                                    ph2d_vec_entities::entities::object_selection_for(
                                         sim,
                                         vec_scene,
                                         &self.vec_entities,
@@ -9163,7 +9163,7 @@ impl crate::App {
             // ADR-0110 — a árvore do editor é a Hierarquia. Reconcilia documento e
             // entidades (path novo ⇒ entidade; entidade apagada ⇒ path), projeta a
             // ordem de z da árvore na pilha, e lê visibilidade/trava herdadas.
-            crate::vec_entities::sync(sim, vec_scene, &mut self.vec_entities);
+            ph2d_vec_entities::entities::sync(sim, vec_scene, &mut self.vec_entities);
             // ⭐⭐⭐ **O BALDE** (plano 40): a entidade do preenchimento acabou de nascer — é agora
             // que a RECEITA (a semente) lhe é presa e que ele vai para o FUNDO. ⚠️ O
             // `insert_path(0, …)` NÃO é o fundo: quem manda no desenho é o `RootOrder` da entidade,
@@ -9199,7 +9199,7 @@ impl crate::App {
             // "Apply" da seção Effects. Re-seleciona o resultado.
             if pending_vec_convert {
                 let sel: Vec<ph2d_vec_scene::VecPathId> = self.vec_pen.selected_paths().to_vec();
-                let xf = crate::vec_transform::build(sim, &self.vec_entities);
+                let xf = ph2d_vec_entities::transform::build(sim, &self.vec_entities);
                 let new_sel = crate::vec_convert::to_curves(
                     sim,
                     vec_scene,
@@ -9499,7 +9499,7 @@ impl crate::App {
                 // é lido quando há efeito — e sem contour o `d_frac` publicado é `0.0` de
                 // qualquer maneira, sem passar pela escala.
                 let cont_scale = cont.map_or(0.0, |_| {
-                    let xf = crate::vec_transform::build(sim, &self.vec_entities);
+                    let xf = ph2d_vec_entities::transform::build(sim, &self.vec_entities);
                     crate::vec_expand::offset_scale(vec_scene, &self.vec_pen, &xf)
                 });
                 ph2d_panel_vector::set_current_contour(
@@ -9789,7 +9789,7 @@ impl crate::App {
             // ⭐⭐ **O CONJUNTO de estados** (plano 32 W8) — mesma posição e mesma razão do irmão
             // acima, e mais uma: é aqui que os membros são reparentados e escondidos, e as quatro
             // escritas têm de cair no MESMO quadro para o Ctrl+Z desfazer o conjunto inteiro.
-            crate::morph_set::upkeep(
+            ph2d_vec_entities::morph_set::upkeep(
                 sim,
                 vec_scene,
                 &self.vec_entities,
@@ -9802,12 +9802,12 @@ impl crate::App {
             // ADR-0112: a origem (o pivô) de um path nasce no centro do MUNDO. Assim
             // que a forma pára de crescer, ela vai para o centro dela. Quem está EM GESTO é
             // pulado, e a lista sai de UMA porta (`vec_gesture_paths`) — o porquê está lá.
-            let drawing = crate::vec_transform::gesture_paths(
+            let drawing = ph2d_vec_entities::transform::gesture_paths(
                 &self.vec_pen,
                 &self.vec_state.shape,
                 &self.vec_state.pencil,
             );
-            crate::vec_transform::settle_origins(sim, vec_scene, &self.vec_entities, &drawing);
+            ph2d_vec_entities::transform::settle_origins(sim, vec_scene, &self.vec_entities, &drawing);
             // ADR-0114/ADR-0111: idem para os objetos Flip — o pivô nasce no centro do
             // MUNDO; assim que a arte pára de crescer, ele vai para o centro dela (e a
             // geometria vira LOCAL). O objeto EM GESTO (desenho/borracha ativos) NÃO é
@@ -9854,7 +9854,7 @@ impl crate::App {
             // pode ser escrita na ÁRVORE — que é quem manda no z (ADR-0110). Escrever na ordem do
             // vetor da cena seria a porta errada: a projeção abaixo a reescreve todo frame.
             for order in std::mem::take(&mut self.vec_restack) {
-                crate::vec_entities::restack(sim, &self.vec_entities, &order);
+                ph2d_vec_entities::entities::restack(sim, &self.vec_entities, &order);
             }
             // ⭐⭐⭐ **O ARRASTO DA HIERARQUIA ESCREVE A ÁRVORE, LOGO ELE MORA AQUI** — ao lado do
             // `restack` e dos três `assign_missing_*`, e **antes** de a árvore ser lida.
@@ -9877,7 +9877,7 @@ impl crate::App {
             //     um passo que o próprio quadro volta a criar, e o passo REAL (o `["world"]`)
             //     nunca chega a ser alcançado.
             //
-            // ⚠️ **É a doença que o [`crate::vec_entities::z_order`] já documenta** — *«a captura
+            // ⚠️ **É a doença que o [`ph2d_vec_entities::entities::z_order`] já documenta** — *«a captura
             // deixava de ser ponto fixo dos sistemas»* — a voltar por outra porta: ali era a forma
             // recém-nascida contra a lista do painel, aqui é a árvore reordenada contra a projecção
             // do mesmo quadro. ⇒ a lei não é sobre QUEM escreve, é sobre QUANDO: **todo escritor da
@@ -9898,10 +9898,10 @@ impl crate::App {
                     &mut live.z_walk_scratch,
                     &mut live.z_snapshot,
                 );
-                let order = crate::vec_entities::z_order(sim.world(), &live.z_snapshot);
+                let order = ph2d_vec_entities::entities::z_order(sim.world(), &live.z_snapshot);
                 vec_scene.reorder_to(&order);
             }
-            let mut vec_view = crate::vec_entities::view_state(sim, &self.vec_entities);
+            let mut vec_view = ph2d_vec_entities::entities::view_state(sim, &self.vec_entities);
             // **As MOLDURAS** (plano UI/UX W0): que intervalo da pilha cada uma recorta. Sai do
             // MESMO snapshot que acabou de ditar a pilha de z — derivá-lo de outra fonte seria uma
             // segunda resposta a *"em que ordem estas formas estão?"* — e da pilha FINAL, porque o
@@ -9941,7 +9941,7 @@ impl crate::App {
             crate::vec_widget_drive::apply(&drives, &mut vec_view);
             // ADR-0111 — cada path tem `Transform`. A geometria dele é LOCAL; este é
             // o afim que a leva ao mundo (a cadeia de pais inclusa).
-            let mut vec_xf = crate::vec_transform::build(sim, &self.vec_entities);
+            let mut vec_xf = ph2d_vec_entities::transform::build(sim, &self.vec_entities);
             // **Conectores, 2ª metade:** a geometria é uma função pura da RELAÇÃO — re-cozida
             // aqui, todo frame, sobre os afins DESTE frame. É o que faz a linha SEGUIR a
             // forma que o gizmo acabou de mover.
@@ -10047,7 +10047,7 @@ impl crate::App {
                     &vec_xf,
                     &mut self.vec_blend_spines,
                 );
-                vec_xf = crate::vec_transform::build(sim, &self.vec_entities);
+                vec_xf = ph2d_vec_entities::transform::build(sim, &self.vec_entities);
             }
             // **Blend Objects, 2ª metade:** os passos são função pura das fontes — re-cozidos
             // aqui, todo frame, sobre os afins DESTE frame. É o que faz a transição SEGUIR a
@@ -10338,7 +10338,7 @@ impl crate::App {
                 if let Some(v) = pending_vec_z
                     && let Some(id) = sel.first()
                 {
-                    crate::vec_entities::zorder::set_authored_z(
+                    ph2d_vec_entities::entities::zorder::set_authored_z(
                         sim,
                         &self.vec_entities,
                         *id,
@@ -10453,7 +10453,7 @@ impl crate::App {
                 ph2d_panel_vector::state::set_z_index(
                     sel.first()
                         .and_then(|id| {
-                            crate::vec_entities::zorder::authored_z(sim, &self.vec_entities, *id)
+                            ph2d_vec_entities::entities::zorder::authored_z(sim, &self.vec_entities, *id)
                         })
                         .map(|z| z as f32),
                 );
@@ -10551,7 +10551,7 @@ impl crate::App {
                 // sobre o componente de um Morph que aqui ainda **não existe**, e é o `sync` do
                 // quadro seguinte que faz nascer a entidade — daí o pendente.
                 if pending_morph_arrow == Some(crate::vec_morph_edit::MorphCmd::MakeSet) {
-                    if let Some(p) = crate::morph_set::create(
+                    if let Some(p) = ph2d_vec_entities::morph_set::create(
                         sim,
                         vec_scene,
                         &self.vec_entities,
@@ -10627,9 +10627,9 @@ impl crate::App {
                                 eprintln!(
                                     "[morph] CLIQUE ⊘ row={row} conjunto={:?} \
                                      chaves-da-tabela={:?} formas={:?}",
-                                    crate::morph_set::path_of(&self.vec_entities, host),
+                                    ph2d_vec_entities::morph_set::path_of(&self.vec_entities, host),
                                     ui_states.hosts().collect::<Vec<_>>(),
-                                    crate::morph_set::graph_of(sim, &self.vec_entities, host)
+                                    ph2d_vec_entities::morph_set::graph_of(sim, &self.vec_entities, host)
                                         .shapes(),
                                 );
                                 // ⚠️ **O INVENTÁRIO da cena**, porque a linha acima disse que a
@@ -10637,7 +10637,7 @@ impl crate::App {
                                 // seguinte é *o que é aquele id*. Sem isto, a resposta era mais
                                 // uma corrida do Enio.
                                 for p in vec_scene.paths() {
-                                    let e = crate::morph_set::path_of(&self.vec_entities, host)
+                                    let e = ph2d_vec_entities::morph_set::path_of(&self.vec_entities, host)
                                         .filter(|h| *h == p.id);
                                     let ent = self
                                         .vec_entities
@@ -10653,7 +10653,7 @@ impl crate::App {
                                                     .map(|n| n.0.clone())
                                                     .unwrap_or_default(),
                                                 w.get::<ph2d_ecs::ChildOf>(en).and_then(|c| {
-                                                    crate::morph_set::path_of(
+                                                    ph2d_vec_entities::morph_set::path_of(
                                                         &self.vec_entities,
                                                         c.parent(),
                                                     )
@@ -10669,10 +10669,10 @@ impl crate::App {
                                     );
                                 }
                             }
-                            crate::morph_set::disconnect_row(sim, &self.vec_entities, host, row)
+                            ph2d_vec_entities::morph_set::disconnect_row(sim, &self.vec_entities, host, row)
                         }
                         crate::vec_morph_edit::MorphCmd::Dissolve => {
-                            crate::morph_set::dissolve(sim, &self.vec_entities, host)
+                            ph2d_vec_entities::morph_set::dissolve(sim, &self.vec_entities, host)
                         }
                         _ => None,
                     };
@@ -10800,7 +10800,7 @@ impl crate::App {
             // usa para decidir o que uma seleccao apanha — *"um grupo entra e sai da seleccao
             // INTEIRO"* —, e ela devolve os caminhos pela ordem do documento, que e' a de z.
             let object_of = |id| {
-                crate::vec_entities::object_selection_for(sim, vec_scene, &self.vec_entities, id)
+                ph2d_vec_entities::entities::object_selection_for(sim, vec_scene, &self.vec_entities, id)
             };
             let mut bake_shape = |id| {
                 crate::motion::motion_object_bake::bake_rgba_many(
@@ -11019,7 +11019,7 @@ impl crate::App {
             let brush_arts = self.brush_live.resolve(
                 vec_scene,
                 &|id| {
-                    crate::vec_entities::object_selection_for(
+                    ph2d_vec_entities::entities::object_selection_for(
                         sim,
                         vec_scene,
                         &self.vec_entities,

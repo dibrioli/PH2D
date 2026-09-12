@@ -13,7 +13,7 @@ use super::*;
 use ph2d_ecs::Transform;
 use ph2d_vec_scene::{ShapeKind, VecPath, VecScene, cook};
 
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 
 /// Uma gaiola retangular de cantos LOCAIS CONHECIDOS `[BL, BR, TR, TL]`.
 fn rect_corners() -> [[f64; 2]; 4] {
@@ -57,7 +57,7 @@ fn scene() -> (SimWorld, VecScene, VecEntityMap, u64) {
     let mut scene = VecScene::new();
     let mut map = VecEntityMap::new();
     let id = scene.push_path(ellipse());
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     let container =
         crate::envelope_live::create(&mut sim, &mut scene, &map, &[id]).expect("create");
     set_corners(&mut sim, container, rect_corners());
@@ -74,7 +74,7 @@ fn scene() -> (SimWorld, VecScene, VecEntityMap, u64) {
 /// Adiciona uma forma COMUM (sem `VecEnvelope`) e devolve os bits da ENTIDADE dela.
 fn add_plain(sim: &mut SimWorld, scene: &mut VecScene, map: &mut VecEntityMap) -> u64 {
     let id = scene.push_path(ellipse());
-    crate::vec_entities::sync(sim, scene, map);
+    ph2d_vec_entities::entities::sync(sim, scene, map);
     map[&id]
 }
 

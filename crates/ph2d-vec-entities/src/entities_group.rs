@@ -16,7 +16,7 @@ use super::{next_root_order, top_ancestor};
 /// quem lhe dá o NOME (`crate::hier_group`), que precisa de contar os membros antes de o chamar.
 /// *Dois caminhos do mesmo grupo são um membro só* — um `Group 2` sobre uma coisa só seria mentira
 /// no primeiro sítio que o artista lê, e contar os `members` crus daria exactamente isso.
-pub(crate) fn top_members(sim: &SimWorld, members: &[u64]) -> Vec<Entity> {
+pub fn top_members(sim: &SimWorld, members: &[u64]) -> Vec<Entity> {
     let mut tops: Vec<Entity> = Vec::new();
     for &bits in members {
         let e = Entity::from_bits(bits);
@@ -38,7 +38,7 @@ pub(crate) fn top_members(sim: &SimWorld, members: &[u64]) -> Vec<Entity> {
 ///
 /// Agrupar normaliza para os ancestrais de topo: pegar um filho traz o grupo dele
 /// junto (aninhamento), não o filho solto — a convenção de qualquer editor.
-pub(crate) fn group_entities(sim: &mut SimWorld, members: &[u64], name: String) -> Option<u64> {
+pub fn group_entities(sim: &mut SimWorld, members: &[u64], name: String) -> Option<u64> {
     let tops = top_members(sim, members);
     if tops.len() < 2 {
         return None;
@@ -113,7 +113,7 @@ fn centro_dos_membros(sim: &SimWorld, tops: &[Entity]) -> ph2d_core::Vec2 {
 /// árvore chama de grupo: uma entidade **sem geometria própria** (nem `VecPathRef`
 /// nem sprite) que tem filhos. Um sprite com filhos é um pai, não um grupo — e
 /// dissolvê-lo apagaria um objeto. Devolve quantos grupos sumiram.
-pub(crate) fn ungroup_entities(sim: &mut SimWorld, members: &[u64]) -> usize {
+pub fn ungroup_entities(sim: &mut SimWorld, members: &[u64]) -> usize {
     let mut tops: Vec<Entity> = Vec::new();
     for &bits in members {
         let e = Entity::from_bits(bits);
@@ -192,5 +192,5 @@ fn is_plain_group(sim: &SimWorld, e: Entity) -> bool {
 }
 
 #[cfg(test)]
-#[path = "vec_entities_group_tests.rs"]
+#[path = "entities_group_tests.rs"]
 mod tests;

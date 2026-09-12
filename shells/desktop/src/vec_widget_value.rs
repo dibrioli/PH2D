@@ -33,7 +33,7 @@ use ph2d_editor::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor::widget::{CheckboxValue, SliderOrientation, WidgetKind};
 use ph2d_vec_scene::VecPathId;
 
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 
 /// O que já foi propagado entre o store e o mundo, por forma.
 pub(crate) type Applied = BTreeMap<VecPathId, f32>;

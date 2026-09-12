@@ -34,7 +34,7 @@ use ph2d_vec_layout::{ItemStyle, Node, Solved};
 use ph2d_vec_render::LiveGeometry;
 use ph2d_vec_scene::{VecPath, VecPathId, VecScene, VecXforms, Xform, bake_xform, xform_of};
 
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 
 /// Teto da caminhada de ancestrais — defesa contra hierarquia ciclada, não limite de produto (o
 /// mesmo número, e pelo mesmo motivo, que o `vec_entities::MAX_DEPTH`).
@@ -339,7 +339,7 @@ impl LayoutLive {
                 let paths = if flows_here {
                     own_paths(sim, scene, kid).unwrap_or_default()
                 } else {
-                    crate::vec_entities::subtree_paths(sim, scene, kid)
+                    ph2d_vec_entities::entities::subtree_paths(sim, scene, kid)
                 };
                 if paths.is_empty() {
                     continue;

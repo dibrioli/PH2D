@@ -157,7 +157,7 @@ pub(super) fn dispatch(
     // O mundo ECS + a ponte path↔entidade: é neles que mora o `VecConnector` da linha
     // selecionada (a seção Connector do painel lê daqui).
     sim: &ph2d_ecs::SimWorld,
-    vec_entities: &crate::vec_entities::VecEntityMap,
+    vec_entities: &ph2d_vec_entities::entities::VecEntityMap,
     // "Set Center" armado (ADR-0112): só muda o rótulo do botão.
     pivot_edit: bool,
     // Whether the transform gizmo's "Set Center" pivot-edit mode is armed.

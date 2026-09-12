@@ -17,7 +17,7 @@ fn scene() -> (SimWorld, VecEntityMap, [VecPathId; 3]) {
     let frame_id = scene.push_path(rectangle([0.0, 0.0], [100.0, 40.0]));
     let kid_id = scene.push_path(rectangle([10.0, 10.0], [20.0, 20.0]));
     let loose_id = scene.push_path(rectangle([500.0, 0.0], [5.0, 5.0]));
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     let frame = Entity::from_bits(map[&frame_id]);
     sim.world_mut().entity_mut(frame).insert(VecFrame);
     let kid = Entity::from_bits(map[&kid_id]);

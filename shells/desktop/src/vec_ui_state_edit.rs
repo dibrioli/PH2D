@@ -6,7 +6,7 @@
 //! Um botão não é uma forma: é um retângulo, um rótulo e talvez um ícone. Gravar só o hospedeiro
 //! deixaria de fora justamente o que se move num hover. Então um estado captura o hospedeiro **e
 //! cada descendente que é uma forma**, que é o mesmo conjunto que a booleana, o gizmo e o z-order
-//! já chamam de *a sub-árvore* — [`crate::vec_entities::subtree_paths`], nunca uma travessia
+//! já chamam de *a sub-árvore* — [`ph2d_vec_entities::entities::subtree_paths`], nunca uma travessia
 //! própria.
 //!
 //! # O `Transform` LOCAL, nunca o de mundo
@@ -26,7 +26,7 @@ use ph2d_ui_state::{ObjectPose, StateRole, StateSets, UiState};
 use ph2d_vec_scene::WidthStops;
 use ph2d_vec_scene::{VecPathId, VecScene};
 
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 
 /// O que um clique na seção STATES pede.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -116,7 +116,7 @@ pub(crate) fn members(
     let Some(e) = entity_of(map, host) else {
         return Vec::new();
     };
-    let mut v = crate::vec_entities::subtree_paths(sim, scene, e);
+    let mut v = ph2d_vec_entities::entities::subtree_paths(sim, scene, e);
     // O hospedeiro pode ser um GRUPO puro, que não tem forma própria — nesse caso ele não aparece
     // na lista, e é isso que queremos: um grupo não tem tinta para gravar.
     if !v.contains(&host) && scene.paths().iter().any(|p| p.id == host) {

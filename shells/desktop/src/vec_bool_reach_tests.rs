@@ -12,7 +12,7 @@
 //!
 //! É a família do `ph2d_app_field3d` (os gates de alcance dela): o que se mede aqui é a SEQUÊNCIA.
 
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 use ph2d_ecs::{Entity, Name, SimWorld, Transform, VecBoolGroup};
 use ph2d_ui_state::StateSets;
 use ph2d_vec_scene::{VecPathId, VecScene, rectangle};
@@ -27,18 +27,18 @@ fn chip_with_a_live_boolean() -> (SimWorld, VecScene, VecEntityMap, VecPathId, [
     let chip = scene.push_path(rectangle([-2.0, -2.0], [22.0, 22.0]));
     let outer = scene.push_path(rectangle([0.0, 0.0], [20.0, 20.0]));
     let inner = scene.push_path(rectangle([6.0, 6.0], [14.0, 14.0]));
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     for (id, name) in [(chip, "Chip"), (outer, "Big"), (inner, "Hole")] {
         sim.world_mut()
             .entity_mut(Entity::from_bits(map[&id]))
             .insert(Name::new(name));
     }
     let g = Entity::from_bits(
-        crate::vec_entities::group_entities(&mut sim, &[map[&outer], map[&inner]], "Bool".into())
+        ph2d_vec_entities::entities::group_entities(&mut sim, &[map[&outer], map[&inner]], "Bool".into())
             .unwrap(),
     );
     sim.world_mut().entity_mut(g).insert(VecBoolGroup { op: 0 });
-    crate::vec_transform::reparent_keeping_world(&mut sim, g, Entity::from_bits(map[&chip]));
+    ph2d_vec_entities::transform::reparent_keeping_world(&mut sim, g, Entity::from_bits(map[&chip]));
     let _ = Transform::IDENTITY;
     (sim, scene, map, chip, [outer, inner])
 }
@@ -52,7 +52,7 @@ fn chip_with_a_live_boolean() -> (SimWorld, VecScene, VecEntityMap, VecPathId, [
 #[test]
 fn touching_a_live_boolean_reaches_the_states_section() {
     let (sim, scene, map, chip, ops) = chip_with_a_live_boolean();
-    let selection = crate::vec_entities::object_selection_for(&sim, &scene, &map, ops[1]);
+    let selection = ph2d_vec_entities::entities::object_selection_for(&sim, &scene, &map, ops[1]);
     assert!(
         selection.len() > 1,
         "a fixture não reproduz o clique: tocar um operando tem de acender o GRUPO, e acendeu {:?}",
@@ -90,7 +90,7 @@ fn touching_a_live_boolean_reaches_the_states_section() {
 #[test]
 fn recording_from_a_boolean_selection_captures_the_operands() {
     let (mut sim, mut scene, map, _chip, ops) = chip_with_a_live_boolean();
-    let selection = crate::vec_entities::object_selection_for(&sim, &scene, &map, ops[0]);
+    let selection = ph2d_vec_entities::entities::object_selection_for(&sim, &scene, &map, ops[0]);
     let mut states = StateSets::default();
     crate::vec_ui_state_edit::apply(
         &mut sim,
@@ -139,7 +139,7 @@ fn recording_from_a_boolean_selection_captures_the_operands() {
 #[test]
 fn the_verb_row_and_the_states_section_coexist_on_one_selection() {
     let (sim, scene, map, _chip, ops) = chip_with_a_live_boolean();
-    let selection = crate::vec_entities::object_selection_for(&sim, &scene, &map, ops[1]);
+    let selection = ph2d_vec_entities::entities::object_selection_for(&sim, &scene, &map, ops[1]);
 
     // O plano do quadro: é dele que o papel de cada forma sai.
     let mut live = ph2d_vec_render::LiveGeometry::new();

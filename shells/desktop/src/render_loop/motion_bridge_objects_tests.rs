@@ -450,7 +450,7 @@ fn one_named_path(
     name: &str,
 ) -> (
     ph2d_vec_scene::VecScene,
-    crate::vec_entities::VecEntityMap,
+    ph2d_vec_entities::entities::VecEntityMap,
     ph2d_vec_scene::VecXforms,
 ) {
     use ph2d_ecs::{Name, Transform, VecPathRef};
@@ -468,7 +468,7 @@ fn one_named_path(
         .world_mut()
         .spawn((Transform::default(), Name::new(name), VecPathRef(id)))
         .id();
-    let mut map = crate::vec_entities::VecEntityMap::default();
+    let mut map = ph2d_vec_entities::entities::VecEntityMap::default();
     map.insert(id, e.to_bits());
     (scene, map, ph2d_vec_scene::VecXforms::default())
 }

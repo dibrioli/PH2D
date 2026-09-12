@@ -26,7 +26,7 @@ pub(super) fn drain_card_verb(
     hero: &mut HeroScreen,
     toasts: &mut ph2d_editor::ToastQueue,
     vec_scene: &mut ph2d_vec_scene::VecScene,
-    vec_entities: &mut crate::vec_entities::VecEntityMap,
+    vec_entities: &mut ph2d_vec_entities::entities::VecEntityMap,
     camera: &ph2d_render::Camera2d,
     window_size: ph2d_host::WindowSize,
     // ⭐ `célula do átlas → AssetId` — o que separa *«o artista trouxe isto»* de *«o boot pôs

@@ -40,9 +40,9 @@ fn scene_with_morph(
     let mut map = VecEntityMap::new();
     let ia = scene.push_path(a);
     let ib = scene.push_path(b);
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     let (id, morph) = create(&mut scene, ia, ib);
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map); // dá entidade ao morph
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map); // dá entidade ao morph
     assert!(attach(&mut sim, &map, id, &morph));
     (sim, scene, map, id, [ia, ib])
 }
@@ -55,7 +55,7 @@ fn frame(
     plans: &mut MorphPlans,
     id: VecPathId,
 ) -> VecPath {
-    let xf = crate::vec_transform::build(sim, map);
+    let xf = ph2d_vec_entities::transform::build(sim, map);
     recook(sim, scene, map, &xf, plans);
     scene
         .paths()

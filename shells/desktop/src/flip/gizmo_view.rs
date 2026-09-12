@@ -24,7 +24,7 @@ use ph2d_render::Camera2d;
 
 use crate::flip::entities::FlipEntityMap;
 use crate::flip::transform::object_xform;
-use crate::vec_transform::world_transform;
+use ph2d_vec_entities::transform::world_transform;
 
 /// Raio de captura do traço, em pixels de tela — a arte Flip é pega por proximidade
 /// (uma nuvem de linhas não tem interior). Igual ao vetor.

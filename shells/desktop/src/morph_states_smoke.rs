@@ -78,7 +78,7 @@ fn name_shapes(app: &mut crate::App, ids: [VecPathId; 3]) {
     let Some(gfx) = app.gfx.as_mut() else {
         return;
     };
-    crate::vec_entities::sync(&mut gfx.sim, &mut gfx.vec_scene, &mut app.vec_entities);
+    ph2d_vec_entities::entities::sync(&mut gfx.sim, &mut gfx.vec_scene, &mut app.vec_entities);
     for (id, n) in ids.into_iter().zip(["Wide", "Tall", "Thin"]) {
         if let Some(&bits) = app.vec_entities.get(&id) {
             gfx.sim

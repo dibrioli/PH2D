@@ -13,7 +13,7 @@ use super::*;
 use ph2d_ecs::VecFrame;
 use ph2d_vec_scene::{VecXforms, rectangle};
 
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 
 /// Uma moldura de 100×40 na origem, com um filho de 10×10, já sincronizada.
 /// Devolve `(sim, scene, map, [moldura, filho])`.
@@ -23,7 +23,7 @@ fn frame_and_kid() -> (SimWorld, VecScene, VecEntityMap, [VecPathId; 2]) {
     let mut map = VecEntityMap::new();
     let frame_id = scene.push_path(rectangle([0.0, 0.0], [100.0, 40.0]));
     let kid_id = scene.push_path(rectangle([10.0, 10.0], [20.0, 20.0]));
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     let frame = Entity::from_bits(map[&frame_id]);
     sim.world_mut().entity_mut(frame).insert(VecFrame);
     let kid = Entity::from_bits(map[&kid_id]);
@@ -57,7 +57,7 @@ fn a_frame_and_its_child_resize_and_a_loose_object_scales() {
     // O controlo: a MESMA forma, agora fora da moldura.
     let (mut sim2, mut scene2, mut map2, _ids2) = frame_and_kid();
     let loose_id = scene2.push_path(rectangle([0.0, 0.0], [5.0, 5.0]));
-    crate::vec_entities::sync(&mut sim2, &mut scene2, &mut map2);
+    ph2d_vec_entities::entities::sync(&mut sim2, &mut scene2, &mut map2);
     let loose = Entity::from_bits(map2[&loose_id]);
     assert_eq!(
         resizable_frame(&sim2, loose),
@@ -86,7 +86,7 @@ fn the_checkbox_overrides_the_default_in_both_directions() {
     // E a outra direcção: uma forma solta MARCADA reescreve a caixa.
     let (mut sim2, mut scene2, mut map2, _ids2) = frame_and_kid();
     let loose_id = scene2.push_path(rectangle([0.0, 0.0], [5.0, 5.0]));
-    crate::vec_entities::sync(&mut sim2, &mut scene2, &mut map2);
+    ph2d_vec_entities::entities::sync(&mut sim2, &mut scene2, &mut map2);
     let loose = Entity::from_bits(map2[&loose_id]);
     sim2.world_mut()
         .entity_mut(loose)
@@ -281,12 +281,12 @@ fn the_border_the_gizmo_pinned_does_not_walk_across_drags() {
         let snap = snapshot_of(&sim, &map, id);
         // O pivô que o produto captura no pen-down.
         let pivot = ph2d_editor::anchor_pivot_world(kind, anchor, half, snap, false);
-        let xf = crate::vec_transform::build(&sim, &map);
+        let xf = ph2d_vec_entities::transform::build(&sim, &map);
         lefts.push(scene.path_world_curve_bbox(&xf, id).expect("mundo").0[0]);
         let st = begin(&scene, &xf, 1, id, None).expect("armou");
         apply(&mut sim, &mut scene, &st, pivot, 0.5, 1.0);
     }
-    let xf = crate::vec_transform::build(&sim, &map);
+    let xf = ph2d_vec_entities::transform::build(&sim, &map);
     lefts.push(scene.path_world_curve_bbox(&xf, id).expect("mundo").0[0]);
     for (i, l) in lefts.iter().enumerate() {
         assert!(
@@ -311,7 +311,7 @@ fn the_pinned_point_survives_a_rotated_frame() {
     // um NO-OP: a mutação sobrevivia a um gate que parecia cobri-la. Um redimensionamento em
     // Y antes de girar é o que põe o fenómeno dentro da fixture.
     {
-        let xf0 = crate::vec_transform::build(&sim, &map);
+        let xf0 = ph2d_vec_entities::transform::build(&sim, &map);
         let st = begin(&scene, &xf0, 1, id, None).expect("armou");
         apply(&mut sim, &mut scene, &st, [200.0, 80.0], 1.0, 0.5);
     }
@@ -346,7 +346,7 @@ fn live_frame() -> (SimWorld, VecScene, VecEntityMap, VecPathId) {
     let mut scene = VecScene::new();
     let mut map = VecEntityMap::new();
     let id = scene.push_path(rectangle([-50.0, -20.0], [50.0, 20.0]));
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     let e = Entity::from_bits(map[&id]);
     sim.world_mut().entity_mut(e).insert(VecFrame);
     if let Some(mut t) = sim.world_mut().get_mut::<ph2d_ecs::Transform>(e) {
@@ -398,7 +398,7 @@ fn resizing_a_live_shape_keeps_its_recipe_in_step() {
         values: Default::default(),
     };
     let id = scene.push_path(crate::vec_shape_live::recook_shape(&shape).expect("cozinha"));
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     let e = Entity::from_bits(map[&id]);
     sim.world_mut().entity_mut(e).insert(shape);
     sim.world_mut().entity_mut(e).insert(VecFrame);
@@ -453,7 +453,7 @@ fn the_panels_width_field_keeps_the_recipe_in_step_too() {
         values: Default::default(),
     };
     let id = scene.push_path(crate::vec_shape_live::recook_shape(&shape).expect("cozinha"));
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     sim.world_mut()
         .entity_mut(Entity::from_bits(map[&id]))
         .insert(shape);
@@ -498,7 +498,7 @@ fn the_panels_width_field_keeps_the_recipe_in_step_too() {
 #[test]
 fn the_frames_anchor_is_a_fact_of_the_frame_not_of_the_gesture() {
     let (mut sim, mut scene, map, id) = live_frame();
-    let xf = crate::vec_transform::build(&sim, &map);
+    let xf = ph2d_vec_entities::transform::build(&sim, &map);
     let (lo, hi) = scene.path_world_curve_bbox(&xf, id).expect("mundo");
     let centre = [
         ((lo[0] + hi[0]) * 0.5) as f32,
@@ -510,7 +510,7 @@ fn the_frames_anchor_is_a_fact_of_the_frame_not_of_the_gesture() {
 
     // Sem tecla: a borda ESQUERDA (o pivô) fica onde está.
     apply(&mut sim, &mut scene, &st, left, 0.5, 1.0);
-    let xf1 = crate::vec_transform::build(&sim, &map);
+    let xf1 = ph2d_vec_entities::transform::build(&sim, &map);
     let (l1, h1) = scene.path_world_curve_bbox(&xf1, id).expect("mundo");
     assert!(
         (l1[0] - lo[0]).abs() < 1e-6,
@@ -521,7 +521,7 @@ fn the_frames_anchor_is_a_fact_of_the_frame_not_of_the_gesture() {
 
     // Com tecla, MESMO instantâneo: o CENTRO fica onde está, e a esquerda anda.
     apply(&mut sim, &mut scene, &st, centre, 0.5, 1.0);
-    let xf2 = crate::vec_transform::build(&sim, &map);
+    let xf2 = ph2d_vec_entities::transform::build(&sim, &map);
     let (l2, h2) = scene.path_world_curve_bbox(&xf2, id).expect("mundo");
     let c2 = (l2[0] + h2[0]) * 0.5;
     assert!(

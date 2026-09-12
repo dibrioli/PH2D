@@ -32,7 +32,7 @@
 use ph2d_ecs::SimWorld;
 use ph2d_vec_scene::{VecPathId, VecScene, WidthStop, WidthStops, bake_xform, xform_of};
 
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 
 /// A parada agarrada por um arrasto.
 // Sem `Eq`: o `pos` é `f64`. `PartialEq` basta — ninguém usa isto como chave.
@@ -91,7 +91,7 @@ fn arc_of(
 ) -> Option<ph2d_vec_scene::arc_path::ArcPath> {
     let src = scene.path(id)?;
     let mut world = src.cooked().into_owned();
-    let xf = crate::vec_transform::build(sim, map);
+    let xf = ph2d_vec_entities::transform::build(sim, map);
     bake_xform(&mut world, &xform_of(&xf, id));
     ph2d_vec_scene::arc_path::ArcPath::from_contour(&world.verts, world.closed)
 }

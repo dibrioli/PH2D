@@ -1,11 +1,11 @@
 //! Os gates do CONJUNTO de estados (plano 32 W8) — a **lei** do grafo, e a **costura** que a
 //! aplica ao mundo.
 
-use super::{create, eligible, graph_of, upkeep};
+use ph2d_vec_entities::morph_set::{create, eligible, graph_of, upkeep};
 use ph2d_ecs::{ChildOf, Entity, Name, SimWorld, VecMorph, VecMorphMachine};
 use ph2d_vec_scene::{VecPath, VecPathId, VecScene};
 
-use crate::vec_entities::{VecEntityMap, sync};
+use ph2d_vec_entities::entities::{VecEntityMap, sync};
 
 /// Três formas soltas, com nome, já sincronizadas com o mundo.
 fn world(n: usize) -> (SimWorld, VecScene, VecEntityMap, Vec<VecPathId>) {
@@ -51,7 +51,7 @@ fn a_shape_dragged_into_the_set_joins_it_with_no_code_reacting() {
 
     // ⭐ O GESTO: a terceira forma vira filha. Nada mais.
     let third = Entity::from_bits(map[&ids[2]]);
-    crate::vec_transform::reparent_keeping_world(&mut sim, third, host);
+    ph2d_vec_entities::transform::reparent_keeping_world(&mut sim, third, host);
 
     assert_eq!(
         graph_of(&sim, &map, host).shapes(),
@@ -133,7 +133,7 @@ fn the_key_survives_leaving_and_coming_back() {
     sim.world_mut().entity_mut(kid).remove::<ChildOf>();
     assert_eq!(graph_of(&sim, &map, host).shapes(), vec![ids[0]]);
 
-    crate::vec_transform::reparent_keeping_world(&mut sim, kid, host);
+    ph2d_vec_entities::transform::reparent_keeping_world(&mut sim, kid, host);
     let g = graph_of(&sim, &map, host);
     assert_eq!(
         g.states.iter().find(|st| st.shape == ids[1]).unwrap().when,

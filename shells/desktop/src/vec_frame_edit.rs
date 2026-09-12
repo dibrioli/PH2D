@@ -34,7 +34,7 @@
 use ph2d_ecs::{ChildOf, Entity, SimWorld, VecFrame};
 use ph2d_vec_scene::VecPathId;
 
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 
 /// Teto de profundidade da caminhada de ancestral — defesa contra árvore corrompida, o mesmo
 /// número e pelo mesmo motivo do [`crate::vec_selection`].

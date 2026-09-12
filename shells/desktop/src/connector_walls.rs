@@ -19,7 +19,7 @@ use ph2d_ecs::{Entity, SimWorld, VecConnector, VecLabel, VecShape};
 use ph2d_vec_connect::Aabb;
 use ph2d_vec_scene::{VecPath, VecPathId, VecScene, VecXforms};
 
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 
 /// Quantos vínculos de rótulo seguir ao resolver um alvo. Um rótulo de um rótulo é absurdo, mas
 /// o `path_at` do duplo-clique pega o que está no TOPO — e o topo pode ser outro rótulo. O teto

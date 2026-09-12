@@ -37,7 +37,7 @@ fn the_draw_pass_publishes_the_resolved_paint() {
 /// desenho pago por quem só quer geometria — e o custo é silencioso, porque nada quebra.
 #[test]
 fn the_hit_test_path_does_not_pay_for_token_resolution() {
-    const VIEW_STATE: &str = include_str!("../../src/vec_entities.rs");
+    const VIEW_STATE: &str = include_str!("../../../../crates/ph2d-vec-entities/src/entities.rs");
     assert!(
         !VIEW_STATE.contains("vec_bindings::resolve"),
         "o `view_state` passou a resolver tokens — todo hit-test e todo gesto pagam agora por uma \

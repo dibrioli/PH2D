@@ -6,12 +6,12 @@
 //!
 //! ⚠️ Submódulo do irmão de propósito: o harness (`world`) é **um só**.
 
-use super::super::{create, upkeep};
+use ph2d_vec_entities::morph_set::{create, upkeep};
 use super::world;
 use ph2d_ecs::{Entity, SimWorld, VecMorph};
 use ph2d_vec_scene::{VecPath, VecScene};
 
-use crate::vec_entities::{VecEntityMap, sync};
+use ph2d_vec_entities::entities::{VecEntityMap, sync};
 
 /// ⭐⭐⭐ **UMA POSE DE UI GRAVA EM QUE FORMA O CONJUNTO ESTÁ** (plano 32 W11c).
 ///
@@ -284,7 +284,7 @@ fn a_set_pose_carries_no_geometry_and_costs_no_plan() {
         m.sources = [ids[0], ids[2]];
         m.t = 1.0;
     }
-    let xf = crate::vec_transform::build(&sim, &map);
+    let xf = ph2d_vec_entities::transform::build(&sim, &map);
     crate::morph_live::recook(
         &mut sim,
         &mut scene,

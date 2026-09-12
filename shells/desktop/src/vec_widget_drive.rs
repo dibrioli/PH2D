@@ -41,7 +41,7 @@ use ph2d_editor::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor::widget::{CheckboxValue, WidgetKind};
 use ph2d_vec_scene::{BoundStyle, VecPathId, VecViewState};
 
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 
 /// O que uma row faz com a forma que ela dirige.
 #[derive(Clone, Copy, Debug, PartialEq)]

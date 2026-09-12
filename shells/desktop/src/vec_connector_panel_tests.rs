@@ -29,7 +29,7 @@ fn scene_with_connectors(n: usize) -> (SimWorld, VecScene, VecEntityMap, Vec<Vec
     let conns: Vec<VecPathId> = (0..n)
         .map(|_| scene.push_path(ph2d_vec_scene::line([0.0, 0.0], [0.0, 0.0])))
         .collect();
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     for (i, &c) in conns.iter().enumerate() {
         let mut conn = VecConnector::between(a, b);
         #[expect(clippy::cast_possible_truncation, reason = "n <= 3 nos testes")]
@@ -46,7 +46,7 @@ fn scene_with_connectors(n: usize) -> (SimWorld, VecScene, VecEntityMap, Vec<Vec
 }
 
 fn xforms(sim: &SimWorld, map: &VecEntityMap) -> VecXforms {
-    crate::vec_transform::build(sim, map)
+    ph2d_vec_entities::transform::build(sim, map)
 }
 
 /// O jetty automático desta cena: `k · max(min-meia-extensão)` = `0.35 · max(0.5, 2.0)`.
@@ -267,7 +267,7 @@ fn the_value_the_panel_shows_is_the_value_the_cooked_line_actually_uses() {
         let b = scene.push_path(rectangle([10.0, 0.0], [12.0, 2.0]));
         let _wall = scene.push_path(rectangle([5.0, -3.0], [6.0, 3.0]));
         let c = scene.push_path(ph2d_vec_scene::line([0.0, 0.0], [0.0, 0.0]));
-        crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+        ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
         let mut conn = VecConnector::between(a, b);
         conn.parallel_index = 1;
         let e = Entity::from_bits(*map.get(&c).expect("o conector tem entidade"));
@@ -285,7 +285,7 @@ fn the_value_the_panel_shows_is_the_value_the_cooked_line_actually_uses() {
         map: &VecEntityMap,
         c: VecPathId,
     ) -> Vec<[f64; 2]> {
-        let xf = crate::vec_transform::build(sim, map);
+        let xf = ph2d_vec_entities::transform::build(sim, map);
         // Cache NOVO: a histerese do lado de saída é memória de FRAME, e as duas rotas têm de
         // partir do mesmo ponto (senão a 2a herdaria o lado da 1a e o teste mentiria).
         let mut cache = crate::connector_live::SideCache::new();

@@ -35,7 +35,7 @@ fn tick() -> ph2d_vec_edit::pencil_width::PenDynamics {
 use ph2d_ecs::SimWorld;
 use ph2d_vec_scene::VecScene;
 
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 
 /// Unidades de mundo por pixel de tela — a régua da câmera default (4 unidades em ~900 px).
 const PX_TO_WORLD: f64 = 0.0045;
@@ -66,10 +66,10 @@ fn frame(
 ) -> ph2d_vec_scene::VecXforms {
     let pen = ph2d_vec_edit::PenTool::default();
     let shape = ph2d_vec_edit::ShapeTool::default();
-    let drawing = crate::vec_transform::gesture_paths(&pen, &shape, pencil);
-    crate::vec_entities::sync(sim, scene, map);
-    crate::vec_transform::settle_origins(sim, scene, map, &drawing);
-    crate::vec_transform::build(sim, map)
+    let drawing = ph2d_vec_entities::transform::gesture_paths(&pen, &shape, pencil);
+    ph2d_vec_entities::entities::sync(sim, scene, map);
+    ph2d_vec_entities::transform::settle_origins(sim, scene, map, &drawing);
+    ph2d_vec_entities::transform::build(sim, map)
 }
 
 /// Onde o último ponto do traço é DESENHADO: geometria local ∘ afim da entidade.
@@ -176,20 +176,20 @@ fn the_gesture_door_announces_a_live_pencil_stroke() {
     let shape = ph2d_vec_edit::ShapeTool::default();
 
     assert!(
-        crate::vec_transform::gesture_paths(&pen, &shape, &pencil).is_empty(),
+        ph2d_vec_entities::transform::gesture_paths(&pen, &shape, &pencil).is_empty(),
         "sem gesto vivo a porta tem de estar vazia — anunciar um path ocioso proibiria o \
          assentamento dele para sempre"
     );
     let id = pencil.on_press(&mut scene, [1.5, 0.5], PX_TO_WORLD, tick());
     assert_eq!(
-        crate::vec_transform::gesture_paths(&pen, &shape, &pencil),
+        ph2d_vec_entities::transform::gesture_paths(&pen, &shape, &pencil),
         vec![id],
         "o traço VIVO do lápis não é anunciado — o `settle_origins` não o enxerga e assenta-o no \
          meio do gesto"
     );
     pencil.cancel(&mut scene);
     assert!(
-        crate::vec_transform::gesture_paths(&pen, &shape, &pencil).is_empty(),
+        ph2d_vec_entities::transform::gesture_paths(&pen, &shape, &pencil).is_empty(),
         "o gesto morreu e a porta continua a anunciá-lo"
     );
 }

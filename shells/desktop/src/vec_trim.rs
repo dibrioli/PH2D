@@ -187,7 +187,7 @@ impl crate::App {
         let achado = self.trim_hit_at(world, tol);
         self.vec_state.trim_piece = match (&achado, self.gfx.as_ref()) {
             (Some(h), Some(gfx)) => {
-                let xf = crate::vec_transform::build(&gfx.sim, &self.vec_entities);
+                let xf = ph2d_vec_entities::transform::build(&gfx.sim, &self.vec_entities);
                 piece_world(&gfx.vec_scene, &xf, h)
             }
             _ => Vec::new(),
@@ -210,7 +210,7 @@ impl crate::App {
     /// ajuste de tolerância, e o artista veria uma coisa e apagaria outra.
     pub(crate) fn trim_hit_at(&self, world: [f64; 2], tol: f64) -> Option<TrimHit> {
         let gfx = self.gfx.as_ref()?;
-        let xf = crate::vec_transform::build(&gfx.sim, &self.vec_entities);
+        let xf = ph2d_vec_entities::transform::build(&gfx.sim, &self.vec_entities);
         let alvo = self.vec_pen.path_at(&gfx.vec_scene, world, tol)?;
         let local = ph2d_vec_scene::xform_of(&xf, alvo)
             .inverse()

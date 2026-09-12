@@ -36,7 +36,7 @@ use ph2d_editor::GizmoView;
 use ph2d_host::WindowSize;
 use ph2d_render::Camera2d;
 
-use crate::vec_transform::world_transform;
+use ph2d_vec_entities::transform::world_transform;
 
 /// **Meia-extensão do marcador de um objeto VAZIO, em pixels de arte.**
 ///

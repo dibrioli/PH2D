@@ -73,7 +73,7 @@ impl App {
         let sprites = self.sprite_snap_points(&dragged);
         self.vec_snap_targets = match self.gfx.as_ref() {
             Some(gfx) => {
-                let xf = crate::vec_transform::build(&gfx.sim, &self.vec_entities);
+                let xf = ph2d_vec_entities::transform::build(&gfx.sim, &self.vec_entities);
                 let mut t = collect_targets(&gfx.vec_scene, &xf, skip_paths, skip_verts, curves);
                 t.points.extend(sprites);
                 // ⚠️ As guias entram INTEIRAS, sem filtro de gesto: elas não pertencem a forma
@@ -113,7 +113,7 @@ impl App {
         let Some(gfx) = self.gfx.as_ref() else {
             return Vec::new();
         };
-        let xf = crate::vec_transform::build(&gfx.sim, &self.vec_entities);
+        let xf = ph2d_vec_entities::transform::build(&gfx.sim, &self.vec_entities);
         let mut pts = Vec::new();
         let (mut lo, mut hi) = ([f64::INFINITY; 2], [f64::NEG_INFINITY; 2]);
         let mut any = false;

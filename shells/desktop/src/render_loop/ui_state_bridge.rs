@@ -30,7 +30,7 @@ use ph2d_vec_scene::{VecPathId, VecScene};
 
 use ph2d_ecs::SimWorld;
 
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 
 /// As máquinas VIVAS, por hospedeiro.
 ///

@@ -41,6 +41,12 @@
 //!
 //! Os três predicados são **puros sobre o ECS** e pertencem a outras famílias ⇒ tomá-los violaria o
 //! [HOWTO §1.2] (*duas famílias que partilham código partilham uma FOLHA, nunca uma delas à outra*).
+//!
+//! ⭐⭐⭐ **RESOLVIDO em 2026-09-12 pela `line/shell-folhas`, e exactamente como este diagrama
+//! prescrevia:** os três predicados viraram folhas ([`ph2d_unique_name`],
+//! [`ph2d_entity_visibility`]) e o `vec_entities` inteiro — com o `vec_transform` e o `morph_set`,
+//! que fazem ciclo com ele — mudou-se para a [`ph2d_vec_entities`]. ⚠️ **O diagrama acima fica
+//! como está de propósito:** ele é a medição que abriu aquela linha, e apagá-lo apagaria a razão.
 //! ⚠️ **O `name_unique` e o `preview_drive` são DOIS dos três que a `line/app-physics` nomeou** como
 //! folhas partilhadas de linha própria — esta família confirma-os **independentemente**.
 //!
@@ -68,7 +74,11 @@ pub mod bucket_claim;
 pub mod bucket_repro;
 pub mod component_edit;
 pub mod driven_style;
-pub mod entity_map;
+// ⭐ **O mapa mudou-se para a folha** (`line/shell-folhas`, 12/09): ele é a MESMA peça
+// partilhada um degrau acima — a `motion` e a `flip` consomem a ponte inteira, e uma peça que
+// três famílias usam não pode viver na crate de uma delas (ADR-0075). O re-export mantém os 18
+// ficheiros desta família a escrever `ph2d_app_vec::entity_map::…`, byte a byte como antes.
+pub use ph2d_vec_entities::entity_map;
 pub mod font;
 /// ⚠️ **Atrás da mesma feature que a guardava na shell** — a pré-visualização de fonte
 /// usa `ph2d_panel_vector::FontPreview`, logo ela não existe num build sem painel vectorial.

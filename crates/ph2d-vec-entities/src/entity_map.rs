@@ -3,7 +3,7 @@
 //!
 //! # Porque só o TIPO veio, e não o módulo
 //!
-//! Medido na Fase B: dos 30 ficheiros movidos que referiam `crate::vec_entities`, **20 usavam
+//! Medido na Fase B: dos 30 ficheiros movidos que referiam `crate::entities`, **20 usavam
 //! apenas o `VecEntityMap`** — um alias de UMA linha sobre tipos de crates — e os outros 10 usavam
 //! `sync`, que está preso a três predicados de **outras** famílias (`name_unique::unique_name`,
 //! `render_loop::off_canvas::is_off_canvas`, `morph_set::is_set_member`).

@@ -40,8 +40,8 @@ use ph2d_render::Camera2d;
 use ph2d_vec_render::LiveGeometry;
 use ph2d_vec_scene::{VecPathId, VecScene, VecViewState};
 
-use crate::vec_entities::VecEntityMap;
-use crate::vec_transform::{world_transform, xform_of_transform};
+use ph2d_vec_entities::entities::VecEntityMap;
+use ph2d_vec_entities::transform::{world_transform, xform_of_transform};
 
 /// Raio de captura do traço, em pixels de tela (× zoom → world). Formas abertas
 /// (linha, arco, pen não-fechado) são pegas por proximidade do traço.

@@ -5,7 +5,7 @@ use ph2d_ecs::{Entity, Name, SimWorld, VecMorph, VecMorphMachine};
 use ph2d_morph_machine::MorphKey;
 use ph2d_vec_scene::{VecPathId, VecScene};
 
-use crate::vec_entities::{VecEntityMap, sync};
+use ph2d_vec_entities::entities::{VecEntityMap, sync};
 
 fn actions() -> Vec<String> {
     vec!["jump".to_string(), "dash".to_string()]
@@ -27,9 +27,9 @@ fn world() -> (SimWorld, VecEntityMap, Entity, Vec<VecPathId>) {
         })
         .collect();
     sync(&mut sim, &mut scene, &mut map);
-    let mut pending = crate::morph_set::create(&sim, &mut scene, &map, &ids, 9);
+    let mut pending = ph2d_vec_entities::morph_set::create(&sim, &mut scene, &map, &ids, 9);
     sync(&mut sim, &mut scene, &mut map);
-    crate::morph_set::upkeep(&mut sim, &scene, &map, &mut pending);
+    ph2d_vec_entities::morph_set::upkeep(&mut sim, &scene, &map, &mut pending);
     let host = Entity::from_bits(map[&scene.paths().last().unwrap().id]);
     sim.world_mut()
         .get_mut::<VecMorphMachine>(host)
@@ -47,7 +47,7 @@ fn world() -> (SimWorld, VecEntityMap, Entity, Vec<VecPathId>) {
 
 /// A tecla da forma `row` deste conjunto.
 fn key_at(sim: &SimWorld, map: &VecEntityMap, host: Entity, row: usize) -> String {
-    crate::morph_set::graph_of(sim, map, host).states[row]
+    ph2d_vec_entities::morph_set::graph_of(sim, map, host).states[row]
         .when
         .clone()
 }
@@ -160,7 +160,7 @@ fn no_id_in_the_section_asks_to_destroy_a_state() {
         &actions()
     ));
     assert_eq!(
-        crate::morph_set::graph_of(&sim, &map, e).states.len(),
+        ph2d_vec_entities::morph_set::graph_of(&sim, &map, e).states.len(),
         2,
         "tirar a tecla NAO tira a forma da lista"
     );
@@ -175,7 +175,7 @@ fn the_morph_is_found_anywhere_in_the_selection() {
     let (mut sim, _map, e, _ids) = world();
     let other = sim.world_mut().spawn(Name("um grupo".to_string())).id();
     // O MAPA `forma -> entidade`, que é a porta pela qual a seleção do vetor se resolve.
-    let mut map = crate::vec_entities::VecEntityMap::default();
+    let mut map = ph2d_vec_entities::entities::VecEntityMap::default();
     map.insert(1, other.to_bits());
     map.insert(2, e.to_bits());
     assert_eq!(morph_of_selection(&sim, &map, &[1, 2]), Some(e));
@@ -205,7 +205,7 @@ fn the_morph_is_found_anywhere_in_the_selection() {
 #[test]
 fn a_shape_id_is_never_read_as_entity_bits() {
     let (sim, _map, _e, _ids) = world();
-    let empty = crate::vec_entities::VecEntityMap::default();
+    let empty = ph2d_vec_entities::entities::VecEntityMap::default();
     // ⭐ O `0` PRIMEIRO: e' o id da primeira forma de toda cena, e e' o que mata o processo.
     assert_eq!(morph_of_selection(&sim, &empty, &[0]), None);
     // E os pequenos, que nao matam -- eles achavam a entidade ERRADA, em silencio.
@@ -224,7 +224,7 @@ fn a_morph_without_a_machine_publishes_the_empty_face() {
     let mut sim = SimWorld::new();
     let e = sim.world_mut().spawn(VecMorph::new(10, 20)).id();
     let scene = ph2d_vec_scene::VecScene::new();
-    let mut map = crate::vec_entities::VecEntityMap::default();
+    let mut map = ph2d_vec_entities::entities::VecEntityMap::default();
     map.insert(7, e.to_bits());
     let s = publish(&sim, &scene, &map, &[7], false, actions())
         .expect("um Morph SEM maquina ainda publica");
@@ -282,11 +282,11 @@ fn the_arrow_click_reaches_the_world() {
             "reconhecer o pedido de FAZER o conjunto",
         ),
         (
-            "crate::morph_set::create(",
+            "ph2d_vec_entities::morph_set::create(",
             "CRIAR o conjunto (o path novo + o pendente)",
         ),
         (
-            "crate::morph_set::upkeep(",
+            "ph2d_vec_entities::morph_set::upkeep(",
             "DRENAR o pendente: pendurar a maquina, reparentar e esconder os membros",
         ),
         (
@@ -348,7 +348,7 @@ fn the_arrow_click_reaches_the_world() {
     // participar: o motor continuaria a percorrer uma lista que ninguém actualiza.
     assert!(
         include_str!("morph_machine_drive.rs")
-            .contains("crate::morph_set::graph_of(sim, map_paths, Entity::from_bits(b))"),
+            .contains("ph2d_vec_entities::morph_set::graph_of(sim, map_paths, Entity::from_bits(b))"),
         "o motor deixou de DERIVAR o grafo dos filhos -- arrastar para dentro deixa de entrar"
     );
     let modal = include_str!("input_dispatch/keyboard_modal.rs");
@@ -432,11 +432,11 @@ fn the_arrow_click_reaches_the_world() {
 fn a_plain_multi_selection_publishes_the_face_that_offers_the_button() {
     let mut sim = SimWorld::new();
     let mut scene = ph2d_vec_scene::VecScene::new();
-    let mut map = crate::vec_entities::VecEntityMap::default();
+    let mut map = ph2d_vec_entities::entities::VecEntityMap::default();
     let ids: Vec<u64> = (0..3)
         .map(|_| scene.push_path(ph2d_vec_scene::VecPath::default()))
         .collect();
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
 
     let s = publish(&sim, &scene, &map, &ids, false, actions())
         .expect("tres formas soltas TEM de publicar -- e' a unica porta para a feature");

@@ -5,9 +5,9 @@
 //! vetorial** dela — nunca reescreve o que é de outro tipo. Foi exatamente essa
 //! confusão que apagava a seleção dos sprites sozinha (Enio, 2026-07-09).
 //!
-//! A ponte de identidade (path ⟺ entidade) é o módulo irmão [`crate::vec_entities`].
+//! A ponte de identidade (path ⟺ entidade) é o módulo irmão [`ph2d_vec_entities::entities`].
 
-use crate::vec_entities::{VecEntityMap, selection_paths, subtree_paths};
+use ph2d_vec_entities::entities::{VecEntityMap, selection_paths, subtree_paths};
 use ph2d_ecs::{ChildOf, Entity, SimWorld, VecPathRef};
 use ph2d_editor::screens::hero::GizmoStateGroup;
 use ph2d_vec_scene::{VecPathId, VecScene};
@@ -213,7 +213,7 @@ fn fully_selected_ancestors(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::vec_entities::{VecEntityMap, group_entities, sync};
+    use ph2d_vec_entities::entities::{VecEntityMap, group_entities, sync};
     use ph2d_ecs::{Name, Transform};
     use ph2d_vec_scene::rectangle;
 
@@ -279,7 +279,7 @@ mod tests {
         for id in [parent, kids[0], kids[1]] {
             scene.path_mut(id).expect("path").stroke = Some(StrokeSpec::new(red, 1.0));
         }
-        crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+        ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
         let pe = Entity::from_bits(map[&parent]);
         for id in kids {
             sim.world_mut()

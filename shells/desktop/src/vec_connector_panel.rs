@@ -28,7 +28,7 @@ use ph2d_editor::NodeId;
 use ph2d_tool_vector::connector;
 use ph2d_vec_scene::{VecPathId, VecScene, VecXforms};
 
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 
 /// O conector em FOCO: o primeiro da seleção. Espelho de
 /// [`crate::vec_shape_params::panel_shape_target`] — a primeira da seleção manda (é dela

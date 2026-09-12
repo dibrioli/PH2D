@@ -4,7 +4,7 @@
 
 use crate::render_loop::ui_preview::UiPreview;
 use crate::render_loop::ui_state_bridge::UiMachines;
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 use ph2d_ecs::{Name, SimWorld, Transform};
 use ph2d_ui_state::{ObjectPose, StateRole, StateSets, UiState};
 use ph2d_vec_scene::{VecPath, VecPathId, VecScene, rectangle};
@@ -46,12 +46,12 @@ fn the_group_operation_comes_back_when_the_preview_leaves() {
         map.insert(id, e.to_bits());
     }
     let group = Entity::from_bits(
-        crate::vec_entities::group_entities(&mut sim, &[map[&2], map[&3]], "Bool".into()).unwrap(),
+        ph2d_vec_entities::entities::group_entities(&mut sim, &[map[&2], map[&3]], "Bool".into()).unwrap(),
     );
     sim.world_mut()
         .entity_mut(group)
         .insert(VecBoolGroup { op: 0 }); // o mundo está em Union
-    crate::vec_transform::reparent_keeping_world(&mut sim, group, Entity::from_bits(map[&HOST]));
+    ph2d_vec_entities::transform::reparent_keeping_world(&mut sim, group, Entity::from_bits(map[&HOST]));
 
     // O Hover autora o grupo em Subtract; o Default, em Union.
     let mut states = StateSets::default();

@@ -136,7 +136,7 @@ fn name_them(app: &mut crate::App) {
     }
     // O ponto é FILHO do Play: é isso que faz um estado do Play carregar os dois.
     if let (Some(play), Some(dot)) = (ents[PLAY], ents[DOT]) {
-        crate::vec_transform::reparent_keeping_world(&mut gfx.sim, dot, play);
+        ph2d_vec_entities::transform::reparent_keeping_world(&mut gfx.sim, dot, play);
     }
 }
 

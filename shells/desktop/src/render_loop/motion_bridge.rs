@@ -509,7 +509,7 @@ pub(super) fn publish_shapes(
     motion: &mut MotionState,
     sim: &ph2d_ecs::SimWorld,
     scene: &ph2d_vec_scene::VecScene,
-    map: &crate::vec_entities::VecEntityMap,
+    map: &ph2d_vec_entities::entities::VecEntityMap,
     xforms: &ph2d_vec_scene::VecXforms,
     selected: Option<u64>,
 ) {

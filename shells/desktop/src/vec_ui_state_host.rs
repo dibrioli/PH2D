@@ -63,7 +63,7 @@ fn covering_shape(
     selected: &[VecPathId],
 ) -> Option<VecPathId> {
     let mut cur = entity_of(map, *selected.first()?)?;
-    for _ in 0..crate::vec_entities::MAX_DEPTH {
+    for _ in 0..ph2d_vec_entities::entities::MAX_DEPTH {
         // ⚠️ **A própria forma é o primeiro candidato**, e não só os ancestrais dela: um botão com
         // um rótulo dentro tem o botão como hospedeiro, e uma varredura que começasse no PAI
         // pularia justamente o caso mais comum — a seleção do widget inteiro.

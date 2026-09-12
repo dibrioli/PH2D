@@ -7,7 +7,7 @@
 //! o memo re-cozer sem que nada tenha mudado (a união passaria a ser paga por FRAME).
 
 use super::FxSilhouette;
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 use ph2d_ecs::{Name, SimWorld, Transform, VecPathRef};
 use ph2d_vec_render::LiveGeometry;
 use ph2d_vec_scene::{

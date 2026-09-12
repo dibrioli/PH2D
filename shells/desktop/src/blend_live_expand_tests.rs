@@ -60,7 +60,7 @@ fn overlay_then_expand(
 
     // O overlay: `out` é [passos do elo0, fonte1]. Os passos são o prefixo.
     let mut out = Vec::new();
-    let xf = crate::vec_transform::build(&sim, &map);
+    let xf = ph2d_vec_entities::transform::build(&sim, &map);
     recook(
         &mut sim,
         &mut scene,
@@ -73,7 +73,7 @@ fn overlay_then_expand(
 
     let before: Vec<VecPathId> = scene.paths().iter().map(|p| p.id).collect();
     let mut pen = pen_with(&[spine]);
-    let xf = crate::vec_transform::build(&sim, &map);
+    let xf = ph2d_vec_entities::transform::build(&sim, &map);
     let runs = expand(&mut sim, &mut scene, &map, &xf, &mut pen);
     let made: Vec<VecPath> = scene
         .paths()
@@ -142,7 +142,7 @@ fn expand_returns_the_z_run_with_the_steps_between_the_sources() {
 #[test]
 fn expand_kills_the_blend_object_and_keeps_the_sources() {
     let (_, _, _, mut sim, mut scene, mut map, src) = overlay_then_expand(false);
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     assert_eq!(
         sim.world_mut()
             .query::<&VecBlend>()
@@ -184,7 +184,7 @@ fn release_drops_the_object_keeps_the_sources_and_makes_nothing() {
     assert_eq!(sel, want, "a seleção passa às fontes");
     // E o objeto morre de verdade no sync (o `VecBlend` vai junto com a entidade do spine).
     let mut map2 = map.clone();
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map2);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map2);
     assert_eq!(
         sim.world_mut()
             .query::<&VecBlend>()
@@ -206,7 +206,7 @@ fn expand_and_release_answer_to_a_selected_source_shape() {
 
     // Expand pela fonte.
     let (mut sim, mut scene, map, _spine, src) = scene_with_blend(2, 2);
-    let xf = crate::vec_transform::build(&sim, &map);
+    let xf = ph2d_vec_entities::transform::build(&sim, &map);
     let mut pen = pen_with(&[src[1]]);
     let runs = expand(&mut sim, &mut scene, &map, &xf, &mut pen);
     assert_eq!(runs.len(), 1, "uma forma do blend seleciona o blend");
@@ -220,7 +220,7 @@ fn a_selection_outside_any_blend_expands_and_releases_nothing() {
     let (mut sim, mut scene, map, _spine, _src) = scene_with_blend(2, 2);
     let outsider = scene.push_path(ph2d_vec_scene::rectangle([20.0, 20.0], [21.0, 21.0]));
     let n = scene.paths().len();
-    let xf = crate::vec_transform::build(&sim, &map);
+    let xf = ph2d_vec_entities::transform::build(&sim, &map);
     let mut pen = pen_with(&[outsider]);
     assert!(expand(&mut sim, &mut scene, &map, &xf, &mut pen).is_empty());
     assert!(!release(&sim, &mut scene, &map, &mut pen));

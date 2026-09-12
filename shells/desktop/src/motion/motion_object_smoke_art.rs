@@ -44,7 +44,7 @@ pub(super) fn star_shape() -> VecPath {
 /// cena é a nossa.
 pub(super) fn name_vector_entity(
     sim: &mut ph2d_ecs::SimWorld,
-    map: &crate::vec_entities::VecEntityMap,
+    map: &ph2d_vec_entities::entities::VecEntityMap,
 ) -> bool {
     name_vector_entity_as(sim, map, OBJECT)
 }
@@ -53,7 +53,7 @@ pub(super) fn name_vector_entity(
 /// Flip, então ela não pode chamar-se `Object`.
 pub(super) fn name_vector_entity_as(
     sim: &mut ph2d_ecs::SimWorld,
-    map: &crate::vec_entities::VecEntityMap,
+    map: &ph2d_vec_entities::entities::VecEntityMap,
     name: &str,
 ) -> bool {
     let Some((_, &bits)) = map.iter().next() else {

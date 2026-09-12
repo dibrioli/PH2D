@@ -108,7 +108,7 @@ fn the_full_right_of_the_track_doubles_the_shape_never_blows_past_it() {
 #[test]
 fn the_scale_is_half_the_selections_world_bbox() {
     let mut sim = ph2d_ecs::SimWorld::default();
-    let mut map = crate::vec_entities::VecEntityMap::new();
+    let mut map = ph2d_vec_entities::entities::VecEntityMap::new();
     let mut scene = VecScene::new();
     let id = scene.push_path(square(2.0));
     let e = sim
@@ -126,7 +126,7 @@ fn the_scale_is_half_the_selections_world_bbox() {
     map.insert(id, e.to_bits());
     let mut pen = PenTool::default();
     pen.select_many(&[id]);
-    let xf = crate::vec_transform::build(&sim, &map);
+    let xf = ph2d_vec_entities::transform::build(&sim, &map);
     assert!(
         (offset_scale(&scene, &pen, &xf) - 2.0).abs() < 1e-9,
         "a pose (scale 2×) tem de entrar na bbox de mundo"
@@ -147,7 +147,7 @@ fn the_scale_is_half_the_selections_world_bbox() {
         .id();
     map.insert(id2, e2.to_bits());
     pen.select_many(&[id, id2]);
-    let xf = crate::vec_transform::build(&sim, &map);
+    let xf = ph2d_vec_entities::transform::build(&sim, &map);
     assert!(
         (offset_scale(&scene, &pen, &xf) - 4.5).abs() < 1e-9,
         "multi-seleção usa a bbox da UNIÃO (x de 2 a 11 -> maxdim 9 -> 4.5)"
@@ -174,9 +174,9 @@ fn the_scale_is_a_fact_of_the_sources_which_the_preview_never_moves() {
     // O "frame de preview" do modelo novo: cozer e desenhar. A cena entra por `&VecScene` —
     // é o COMPILADOR que garante que ela não muda —, e a escala tem de sair idêntica.
     let mut sim = ph2d_ecs::SimWorld::default();
-    let mut map = crate::vec_entities::VecEntityMap::new();
+    let mut map = ph2d_vec_entities::entities::VecEntityMap::new();
     let mut scene = scene;
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     let ids: Vec<VecPathId> = scene.paths().iter().map(|p| p.id).collect();
     crate::offset_live::arm(&mut sim, &map, &ids, 0.8, 1, 2);
     let mut live = crate::offset_live::OffsetLive::default();

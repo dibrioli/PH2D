@@ -36,10 +36,10 @@ pub(super) fn scene_with_blend(
             scene.push_path(rectangle([x - 1.0, -1.0], [x + 1.0, 1.0]))
         })
         .collect();
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
-    let xf = crate::vec_transform::build(&sim, &map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
+    let xf = ph2d_vec_entities::transform::build(&sim, &map);
     let (spine_id, blend) = create(&mut scene, &xf, &sources, steps).expect("create");
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map); // dá entidade ao spine
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map); // dá entidade ao spine
     assert!(attach(&mut sim, &map, spine_id, &blend));
     (sim, scene, map, spine_id, sources)
 }
@@ -73,10 +73,10 @@ pub(super) fn blend_two(
     let mut map = VecEntityMap::new();
     let ia = scene.push_path(a);
     let ib = scene.push_path(b);
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
-    let xf = crate::vec_transform::build(&sim, &map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
+    let xf = ph2d_vec_entities::transform::build(&sim, &map);
     let (spine, blend) = create(&mut scene, &xf, &[ia, ib], steps).expect("create");
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     assert!(attach(&mut sim, &map, spine, &blend));
     (sim, scene, map, [ia, ib])
 }
@@ -96,7 +96,7 @@ fn overlay_of(
             .rotation = r;
     }
     let mut out = Vec::new();
-    let xf = crate::vec_transform::build(&sim, map);
+    let xf = ph2d_vec_entities::transform::build(&sim, map);
     recook(
         &mut sim,
         &mut scene,
@@ -121,7 +121,7 @@ fn overlay_with_rotation(rot_a: f32, rot_b: f32) -> Vec<[f64; 2]> {
         }
     }
     let mut out = Vec::new();
-    let xf = crate::vec_transform::build(&sim, &map);
+    let xf = ph2d_vec_entities::transform::build(&sim, &map);
     recook(
         &mut sim,
         &mut scene,
@@ -143,7 +143,7 @@ fn moving_a_source_reflows_the_blend() {
     let (mut sim, mut scene, map, _spine, sources) = scene_with_blend(2, 5);
     let mut out = Vec::new();
 
-    let xf = crate::vec_transform::build(&sim, &map);
+    let xf = ph2d_vec_entities::transform::build(&sim, &map);
     recook(
         &mut sim,
         &mut scene,
@@ -165,7 +165,7 @@ fn moving_a_source_reflows_the_blend() {
         .expect("Transform")
         .translation = ph2d_core::Vec2::new(d[0], d[1]);
 
-    let xf = crate::vec_transform::build(&sim, &map);
+    let xf = ph2d_vec_entities::transform::build(&sim, &map);
     recook(
         &mut sim,
         &mut scene,
@@ -240,7 +240,7 @@ fn rotating_a_smooth_noncircular_endpoint_reflows_the_blend() {
 fn the_last_source_is_drawn_on_top() {
     let (mut sim, mut scene, map, _spine, sources) = scene_with_blend(3, 3);
     let mut out = Vec::new();
-    let xf = crate::vec_transform::build(&sim, &map);
+    let xf = ph2d_vec_entities::transform::build(&sim, &map);
     recook(
         &mut sim,
         &mut scene,
@@ -271,7 +271,7 @@ fn chain_is_pairwise_across_sources() {
         let want = (n - 1) * (steps as usize + 1);
         let (mut sim, mut scene, map, _s, _src) = scene_with_blend(n, steps);
         let mut out = Vec::new();
-        let xf = crate::vec_transform::build(&sim, &map);
+        let xf = ph2d_vec_entities::transform::build(&sim, &map);
         recook(
             &mut sim,
             &mut scene,
@@ -302,7 +302,7 @@ fn the_blend_object_lives_at_identity() {
         .translation = ph2d_core::Vec2::new(5.0, 5.0);
 
     let mut out = Vec::new();
-    let xf = crate::vec_transform::build(&sim, &map);
+    let xf = ph2d_vec_entities::transform::build(&sim, &map);
     recook(
         &mut sim,
         &mut scene,
@@ -328,7 +328,7 @@ fn settle_skips_the_blend_object() {
     let es = Entity::from_bits(map[&spine]);
     let before = sim.world().get::<Transform>(es).copied();
 
-    crate::vec_transform::settle_origins(&mut sim, &mut scene, &map, &[]);
+    ph2d_vec_entities::transform::settle_origins(&mut sim, &mut scene, &map, &[]);
 
     assert_eq!(
         sim.world().get::<Transform>(es).copied(),
@@ -350,7 +350,7 @@ fn a_dead_source_is_skipped_and_below_two_the_blend_vanishes() {
 
     // Apaga a fonte do MEIO — restam 2, a cadeia vira 1 elo (4 passos + 1 fonte = 5 no overlay).
     scene.remove_path(sources[1]);
-    let xf = crate::vec_transform::build(&sim, &map);
+    let xf = ph2d_vec_entities::transform::build(&sim, &map);
     recook(
         &mut sim,
         &mut scene,
@@ -367,7 +367,7 @@ fn a_dead_source_is_skipped_and_below_two_the_blend_vanishes() {
 
     // Apaga mais uma — resta 1, não há transição.
     scene.remove_path(sources[0]);
-    let xf = crate::vec_transform::build(&sim, &map);
+    let xf = ph2d_vec_entities::transform::build(&sim, &map);
     recook(
         &mut sim,
         &mut scene,
@@ -465,7 +465,7 @@ fn set_selected_steps_retunes_the_blend_touched_by_the_selection() {
 fn in_node_mode_the_spine_is_lifted_onto_the_overlay_top_and_the_scene_stays_invisible() {
     let (mut sim, mut scene, map, spine, _src) = scene_with_blend(2, 3);
     let mut out = Vec::new();
-    let xf = crate::vec_transform::build(&sim, &map);
+    let xf = ph2d_vec_entities::transform::build(&sim, &map);
     recook(
         &mut sim,
         &mut scene,
@@ -531,7 +531,7 @@ fn the_spine_is_invisible_in_the_scene_in_select_mode() {
     let (mut sim, mut scene, map, spine, _src) = scene_with_blend(2, 3);
     let mut out = Vec::new();
     let mut spines = BlendSpines::new();
-    let xf = crate::vec_transform::build(&sim, &map);
+    let xf = ph2d_vec_entities::transform::build(&sim, &map);
 
     for _ in 0..3 {
         recook(&mut sim, &mut scene, &map, &xf, &mut spines, &mut out);
@@ -556,7 +556,7 @@ fn the_spine_is_invisible_in_the_scene_in_select_mode() {
 fn pick_preview_outlines_the_picks_and_threads_them_in_click_order() {
     let (sim, scene, map, _spine, src) = scene_with_blend(3, 3); // retângulos em x = 0, 4, 8
     let picks = vec![src[2], src[0], src[1]]; // ordem de CLIQUE: 8, 0, 4
-    let xf = crate::vec_transform::build(&sim, &map);
+    let xf = ph2d_vec_entities::transform::build(&sim, &map);
     let preview = crate::blend_live::pick_preview(&scene, &xf, &picks);
 
     assert_eq!(preview.len(), 4, "3 contornos + a polilinha");

@@ -20,7 +20,7 @@
 use ph2d_ecs::{Entity, SimWorld, VecBoolGroup};
 use ph2d_vec_scene::{VecPathId, VecScene};
 
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 
 /// O grupo booleano que contém a seleção, se houver.
 ///
@@ -75,7 +75,7 @@ pub(crate) fn arm(
         eprintln!("[ph2d-vec] boolean live: selecione >= 2 regioes FECHADAS");
         return false;
     }
-    let Some(bits) = crate::vec_entities::group_entities(sim, &closed, "Boolean".into()) else {
+    let Some(bits) = ph2d_vec_entities::entities::group_entities(sim, &closed, "Boolean".into()) else {
         return false;
     };
     sim.world_mut()

@@ -25,7 +25,7 @@ use ph2d_ecs::{Entity, Name, SimWorld, Transform, VecMorph, VecMorphMachine};
 use ph2d_vec_blend::Plan;
 use ph2d_vec_scene::{VecPath, VecPathId, VecScene, VecXforms, bake_xform, xform_of};
 
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 
 /// O [`Plan`] de cada morph, guardado enquanto a relação não muda.
 ///
@@ -101,7 +101,7 @@ fn world(scene: &VecScene, xforms: &VecXforms, id: u64) -> Option<VecPath> {
 /// conjunto de estados — é exactamente a pose relativa ao conjunto, porque o conjunto é o pai dele.
 ///
 /// ⛔ Um membro que não seja filho directo do conjunto daria uma pose relativa ao pai ERRADO. Não
-/// pode acontecer: quem os reparenta é o [`crate::morph_set::upkeep`], que os põe directamente
+/// pode acontecer: quem os reparenta é o [`ph2d_vec_entities::morph_set::upkeep`], que os põe directamente
 /// debaixo do conjunto — e há gate sobre isso.
 fn local(scene: &VecScene, sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> Option<VecPath> {
     let mut p = scene.paths().iter().find(|p| p.id == id)?.clone();
@@ -110,7 +110,7 @@ fn local(scene: &VecScene, sim: &SimWorld, map: &VecEntityMap, id: VecPathId) ->
         .map(|&bits| Entity::from_bits(bits))
         .and_then(|e| sim.world().get::<Transform>(e).copied())
         .unwrap_or(Transform::IDENTITY);
-    bake_xform(&mut p, &crate::vec_transform::xform_of_transform(t));
+    bake_xform(&mut p, &ph2d_vec_entities::transform::xform_of_transform(t));
     Some(p)
 }
 

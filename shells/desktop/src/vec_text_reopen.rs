@@ -15,7 +15,7 @@ use ph2d_ecs::{Entity, SimWorld, Transform, VecShape, VecTextParams};
 use ph2d_vec_scene::{VecPathId, VecScene};
 use ph2d_vector_font::AxisTag;
 
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 use crate::vec_glyph::text_to_compound_path;
 use crate::vec_text::VecTextEdit;
 use crate::vec_text_object::{align_from_u8, axes_of_params, layout_of_params};
@@ -249,7 +249,7 @@ mod tests {
             center: [0.0, 0.0],
         });
         regen_into(&mut scene, edit.as_mut().unwrap());
-        crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+        ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
         upsert_text_shape(&mut sim, &map, edit.as_ref().unwrap());
         let id = edit.unwrap().id.expect("o compound");
         let entity = Entity::from_bits(*map.get(&id).expect("a entidade"));

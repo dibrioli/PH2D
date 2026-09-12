@@ -3,7 +3,7 @@
 //! # O que faltava, e o que não faltava
 //!
 //! O modelo de grupo **já existia inteiro**: uma entidade sem geometria própria com filhos
-//! ([`crate::vec_entities`]), com selecção que entra e sai do grupo inteira, gizmo de canvas,
+//! ([`ph2d_vec_entities::entities`]), com selecção que entra e sai do grupo inteira, gizmo de canvas,
 //! árvore recolhível na Hierarquia e persistência. Até o gesto existia — `Ctrl+G` / `Ctrl+Shift+G`.
 //!
 //! ⛔ **O que não existia era ALCANCE.** Nenhum menu, botão, rótulo ou entrada de paleta em todo o
@@ -110,9 +110,9 @@ pub(crate) fn apply(sim: &mut ph2d_ecs::SimWorld, subject: &Subject, group: bool
         // ⚠️ O nome conta os MEMBROS de topo, não os sujeitos: dois caminhos do mesmo grupo são um
         // membro só, e um "Group 2" sobre uma coisa só seria mentira no primeiro sítio que o
         // artista lê.
-        let membros = crate::vec_entities::top_members(sim, subjects);
+        let membros = ph2d_vec_entities::entities::top_members(sim, subjects);
         let nome = format!("Group {}", membros.len());
-        crate::vec_entities::group_entities(sim, subjects, nome).map_or(
+        ph2d_vec_entities::entities::group_entities(sim, subjects, nome).map_or(
             Outcome::NeedsTwo,
             |group| Outcome::Grouped {
                 group,
@@ -120,7 +120,7 @@ pub(crate) fn apply(sim: &mut ph2d_ecs::SimWorld, subject: &Subject, group: bool
             },
         )
     } else {
-        match crate::vec_entities::ungroup_entities(sim, subjects) {
+        match ph2d_vec_entities::entities::ungroup_entities(sim, subjects) {
             0 => Outcome::NotGrouped,
             groups => Outcome::Ungrouped { groups },
         }

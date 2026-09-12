@@ -29,7 +29,7 @@ fn live_shape(
         values,
     };
     let id = scene.push_path(recook_shape(&shape).expect("forma paramétrica cozinha"));
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     let entity = Entity::from_bits(*map.get(&id).expect("a entidade do path"));
     if let Ok(mut e) = sim.world_mut().get_entity_mut(entity) {
         if let Some(mut t) = e.get_mut::<Transform>() {

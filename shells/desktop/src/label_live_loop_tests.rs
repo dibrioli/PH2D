@@ -110,7 +110,7 @@ fn a_loose_text_object_dropped_on_the_route_is_not_a_wall_either() {
 
     // Um TEXTO comum (sem vínculo nenhum) bem em cima da rota.
     let text = d.scene.push_path(rectangle([4.0, 0.2], [6.0, 0.8]));
-    crate::vec_entities::sync(&mut d.sim, &mut d.scene, &mut d.map);
+    ph2d_vec_entities::entities::sync(&mut d.sim, &mut d.scene, &mut d.map);
     let e = d.entity(text);
     if let Ok(mut ent) = d.sim.world_mut().get_entity_mut(e) {
         ent.insert(VecShape::Text(text_params()));

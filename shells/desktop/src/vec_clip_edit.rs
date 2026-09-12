@@ -28,7 +28,7 @@
 use ph2d_ecs::{Entity, SimWorld, VecClipContent};
 use ph2d_vec_scene::{VecPathId, VecScene};
 
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 use crate::vec_frame_edit::{entity_of, is_within};
 
 /// O caminho `id` é FECHADO? Um id sem caminho na cena descreve um mundo que já não existe, e ali

@@ -58,7 +58,7 @@
 use ph2d_ecs::{Entity, MasterRoot, SimWorld};
 use ph2d_vec_scene::VecPathId;
 
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 
 /// ⭐⭐⭐ **O OBJECTO sobre o qual a secção fala** — e ele não é forçosamente um traço.
 ///

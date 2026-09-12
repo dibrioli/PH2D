@@ -9,7 +9,7 @@ use super::{
     PatternHandle, PatternLive, detach, handle, link, link_candidate, rotation_of, set_rotation,
     spec_of,
 };
-use crate::vec_entities::VecEntityMap;
+use ph2d_vec_entities::entities::VecEntityMap;
 use ph2d_ecs::{Name, SimWorld, Transform, VecPathRef};
 use ph2d_vec_scene::{VecPath, VecPathId, VecScene, VecVertex};
 

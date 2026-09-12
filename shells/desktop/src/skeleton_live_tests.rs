@@ -16,7 +16,7 @@ fn palco() -> (SimWorld, VecScene, VecEntityMap, VecPathId, [Entity; 2]) {
     let mut scene = VecScene::new();
     let mut map = VecEntityMap::new();
     let id = scene.push_path(cook(ShapeKind::Rectangle, [0.0, 0.0], [40.0, 10.0], &[]));
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     let raiz = osso(&mut sim, "Root", [0.0, 5.0], 20.0, None);
     let ponta = osso(&mut sim, "Tip", [20.0, 0.0], 20.0, Some(raiz));
     (sim, scene, map, id, [raiz, ponta])
@@ -331,7 +331,7 @@ fn probe_the_smoke_sequence() {
         &[0.5],
         [230, 170, 90],
     ));
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     // A cadeia, como o smoke a faz: pela porta do GESTO, em coordenadas de MUNDO.
     let mut pai: Option<Entity> = None;
     let mut raiz = None;

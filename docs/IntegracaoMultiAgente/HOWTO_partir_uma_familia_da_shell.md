@@ -28,7 +28,7 @@ não se pode bissectar.
 
 | # | Passo | Porta |
 |---|---|---|
-| 1 | **Censo do acoplamento** (§1.1) — não mova nada antes | `grep`, e leia a §2.1 sobre o que ele não vê |
+| 1 | **FECHO do acoplamento** (§1.1) — não mova nada antes | ⭐ **`python3 scripts/fecho-da-familia.py <fam>`** (§1.1-bis) |
 | 2 | **Baseline** `cargo nextest list --workspace --cargo-profile ci-test > antes.txt` | tem de ser na base, **antes** de mover |
 | 3 | O que é **partilhado com outra família** sai para uma crate-folha | §1.2 |
 | 4 | Nasce `crates/ph2d-app-<fam>` + `git mv` dos ficheiros | §1.3 |
@@ -67,6 +67,31 @@ família toca, e **onde ela guarda o estado dela**.
 > que conseguiu sair de casa. **Se a sua família tem campos na `App`, o primeiro trabalho é tirá-los
 > de lá** (um recurso do ECS, ou um `<Fam>State` num campo só) — e isso é Fase A, não precisa do
 > substrato.
+
+### §1.1-bis — ⭐ A régua do FECHO tem INSTRUMENTO desde 12/09
+
+```bash
+python3 scripts/fecho-da-familia.py motion --extra 'warp_'     # a medição
+python3 scripts/fecho-da-familia.py --autoteste                # os 6 controlos positivos
+```
+
+Ela responde à pergunta desta wave — *«a partir dos ficheiros que quero mover, que raízes da SHELL
+continuam alcançáveis?»* — e **não** à pergunta que o `grep` responde. Imprime as **âncoras**, os
+**campos de `App`/`AppGfx` resolvidos ao TIPO**, e o **ponto fixo** (`--preso` / `--curavel`) com a
+**cadeia causal** de porque cada ficheiro caiu.
+
+⛔⛔ **Ela existe porque a mesma régua escrita à mão mentiu QUATRO vezes, e três delas A FAVOR**
+(o lado caro — uma régua que erra a favor não atrasa o trabalho, *autoriza-o*):
+
+| # | a mentira | o número |
+|---|---|---|
+| 1 | **branquear strings apaga o grafo de `#[path]`** | `motion_state.rs` tem **45** e a regex apanhou **0** ⇒ o ponto fixo correu com **zero** arestas duras. A `line/app-vec` pagou o mesmo (801 arestas) |
+| 2 | ler **prosa** como código | `\bApp\b` acusou **93 de 133** ficheiros, todos o doc-comment da cura (§2.12) |
+| 3 | ler **visibilidade** como dependência | `pub(in crate::render_loop)` deu **7** âncoras falsas para o laço da shell — a §2.13 noutra roupa |
+| 4 | o acoplamento que viaja por um **CAMPO** | `app.flip_state` (tipo `crate::flip::state::FlipState`) é uma âncora inteira que **nenhuma** varredura por `crate::` vê |
+
+⇒ **quem mede ARESTAS lê sem comentários mas COM as strings; quem conta CITAÇÕES lê sem as duas.**
+São dois strippers, e usar um pelo outro é o defeito nº1.
 
 ### §1.2 — Antes de mover: o que é partilhado com OUTRA família sai para uma folha
 

@@ -89,14 +89,14 @@
 - **Diagnóstico via LSP (maior alavanca):** `constrained` = `cargo-check-narrow.sh` on-demand (RA é RAM-blocked); `workstation` = **rust-analyzer full como oráculo**, não leia saída crua do cargo.
 - **Gate batched no fim do módulo:** `scripts/nextest-impacted.sh` + clippy `--all-targets` + auditoria ≥2 lentes, **1× sobre o diff acumulado**. ⚠️ O perfil `ci-test` tem **`incremental = false` no `Cargo.toml`** desde 10/09 (a regra do prefixo `CARGO_INCREMENTAL=0` vivia em dois scripts e **26 GB** de `target/ci-test/incremental` provaram que não chegava a quem corria o perfil à mão); o `cargo check -p` do inner loop fica em paz, de propósito. ⭐ **O que a auditoria de 10/09 mediu e as regras que ficam: DIRETRIZ §6.7** — o inner loop está bom (1,8–3,3 s), o custo mora nos TESTES e no `--release` (o smoke é `--profile smoke`, 161 s → 3 s). E ao FECHAR a linha, reclame o resto: `rm -rf target/*/incremental` (DIRETRIZ §1.5.9 item 7).
 - ⛔⛔ **CÓDIGO DE FAMÍLIA VIVE EM `crates/ph2d-app-<família>`; a shell é COMPOSIÇÃO.** A
-  `shells/desktop` é **UMA** unidade de compilação e a **última** de toda build grande (34–45 s
-  sozinha no portão de fecho) — é ela, não o linker nem o `check`, o tecto do relógio deste repo.
-  A W2 (11/09) tirou de lá **61 704 linhas** em seis linhas paralelas. ⚠️ **Todo tecto de LOC deste
+  `shells/desktop` é **UMA** unidade de compilação e a **última** de toda build grande (era 34–45 s
+  sozinha no portão de fecho; depois da W2, 5,9 s de `check` e 11,1 s de teste — ESTADO W2 §1) — é ela, não o linker nem o `check`, o tecto do relógio deste repo.
+  A W2 (11–12/09) tirou de lá **340 162 linhas** (526 809 → 186 647) em quatro rodadas de linhas paralelas. ⚠️ **Todo tecto de LOC deste
   repo é por FICHEIRO e nenhum via isto**: 465 k linhas em 1 801 ficheiros de ~258 passam em todos
   eles com folga — *o que soma agora é a CRATE*, e seis linhas a somar 200 cada não acordam gate
   nenhum. ⇒ a catraca é `the_shell_only_shrinks` (`ph2d-editor-core/tests/it/`), com as duas
   metades (cresceu / o tecto ficou para trás). **Quando ela reprovar, MOVA para a crate da família
-  — nunca suba o número.** Molde, as 5 portas do trait de host e as 17 armadilhas medidas:
+  — nunca suba o número.** Molde, as 5 portas do trait de host e as 20 armadilhas medidas:
   [`HOWTO_partir_uma_familia_da_shell.md`](docs/IntegracaoMultiAgente/HOWTO_partir_uma_familia_da_shell.md).
 - **Cargos simultâneos:** `constrained` ≤3 (RAM 8 GiB); `workstation` ~cores/6 (build) / ~cores/3 (check) — vide hw-profile.
 - **NÃO use:** Cranelift (ruim p/ check-loop + gaps macOS). Linker = `mold` no Linux (**nunca no `.cargo/config.toml` do repo** — global), `lld/ld-prime` no macOS (mold é ELF-only).
@@ -1265,8 +1265,8 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   **Deform** = transformação/deformação do Painter, com [tracker único](docs/Deform/00_README.md) e [índice](docs/Deform/README.md)
 - ⚠️ **As duas maiores crates do repo não eram nomeadas em lugar nenhum deste arquivo:**
   [`ph2d-tool-painter`](crates/ph2d-tool-painter/) (**136.093 LOC** — é onde o módulo Painter de facto
-  vive; o §5 nomeava só `ph2d-paint-gpu`) e [`ph2d-editor-core`](crates/ph2d-editor-core/) (**84.015** —
-  widgets, ids, interaction, e **53** gates de arquitetura em `tests/`). *Um módulo que o roteador não
+  vive; o §5 nomeava só `ph2d-paint-gpu`) e [`ph2d-editor-core`](crates/ph2d-editor-core/) (**107 585** em `src/`, medido 12/09 —
+  widgets, ids, interaction, e **26** gates `architecture_*` entre os **110** ficheiros de `tests/it/`). *Um módulo que o roteador não
   nomeia é procurado por `grep`, não alcançado por link.*
 - **Retirados (histórico — não reconstrua sem ler o porquê):** a simulação de **aquarela/fluid/wash**
   ([ADR-0096](docs/architecture/decisions/0096-remove-watercolor-fluid-pivot-mixer-brush.md), supersede ADR-0085..0095) ·

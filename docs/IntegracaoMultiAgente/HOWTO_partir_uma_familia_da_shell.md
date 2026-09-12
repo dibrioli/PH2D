@@ -519,6 +519,37 @@ crates de família. A origem é simétrica e as duas metades foram confirmadas n
 
 ⇒ **ao fechar uma linha que move código, corra `cargo machete`** (é rápido e não compila).
 
+### §2.19 — Um atributo de crate NÃO viaja com o código ⛔⛔ mudo
+
+Medido na auditoria de arquitectura de 12/09 (A2): a shell tem `#![forbid(unsafe_code)]`, e **sete**
+famílias que saíram dela nasceram SEM o atributo — 277 644 linhas perderam a garantia sem uma linha a
+acusar, e nasceram lá duas sondas `unsafe { std::env::set_var(..) }` que dentro da shell não
+compilariam. É a §2.4 (a feature) com outro nome.
+
+⇒ **a crate nova herda os lints da workspace** (`[lints]` · `workspace = true` no `Cargo.toml`; a raiz
+proíbe `unsafe` em TODOS os alvos, `tests/` incluído) e o gate
+`architecture_every_member_inherits_the_workspace_lints` reprova quem não herda. Para testar a
+leitura de uma variável de ambiente sem `unsafe`: a porta INJECTÁVEL (`armed_scene_in(|k| …)`), nunca
+o `set_var`.
+
+### §2.20 — Uma família NÃO chama outra — e o atalho é sempre uma de TRÊS coisas ⛔ mudo para o compilador
+
+Medido na mesma auditoria (A1): `app-motion → app-vec`, `app-motion → app-flip`,
+`app-components → app-physics`, e três folhas a depender de uma família ou de um painel. O compilador
+aceita as seis; o ADR-0075 não. O que atravessava era sempre de uma de três espécies, e cada uma tem
+a sua cura:
+
+| o que atravessa | a cura | o caso |
+|---|---|---|
+| um **TIPO** de domínio nascido num painel ou numa família | desce para a folha do domínio | `PatternArt` → `ph2d-vec-pattern` · `FlipEntityMap` → `ph2d-flip-entities` |
+| uma **LEI** que duas famílias usam | desce para o motor que a executa | a câmera do Flip → `ph2d-flip-render` · o layout do texto → `ph2d-vec-text` · abrir áudio → `ph2d-audio-decode` |
+| uma **TABELA** que a outra família conhece | a família dona publica-a e a COMPOSIÇÃO injecta-a | as sementes de anexar → `COMPONENT_SEEDS` entregue pelo `render_loop` |
+
+⛔ **Nunca um re-export**: uma fachada é a mesma aresta com outro nome. O gate
+`architecture_no_dependency_climbs_a_layer` reprova as espécies de aresta que sobem, e as dependências
+de uma folha nova DERIVAM-se dos caminhos que o código escreve — a 1.ª redacção escrita à mão
+esqueceu uma, e foi o próprio guião que parou.
+
 ## §3 — A prova (as cinco, com os números do piloto)
 
 ```bash

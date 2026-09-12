@@ -639,6 +639,23 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   ⚠️ e o §9 as **nove** armadilhas medidas, entre elas que apagar um `mod` re-liga o `#[cfg(test)]` dele ao
   **vizinho**, em silêncio, e que o censo de cenas do briefing apagaria **28 cenas VIVAS** (elas são citadas
   pelo atalho `` `=N` ``, não pela env).
+  ⭐⭐⭐ **E a FASE C FECHOU O CORTE (12/09):** os 48 ficheiros que sobravam em `shells/desktop/src/physics/`
+  vivem em [`ph2d-app-physics`](crates/ph2d-app-physics/) — mais o `render_loop/point_gizmo{,_tests}.rs`,
+  que era **física com nome genérico** (ele já importava `ph2d_app_physics::overlay::joint_glyphs`) —, e a
+  shell desce de **373 937 para 360 599** linhas com `ONLY-A = 0`, `ONLY-B = 0` e 169 `MOVED`.
+  ⭐ **As 15 625 linhas estavam presas por SEIS SÍMBOLOS**, e cinco só eram tocados por testes: duas
+  curaram-se (o `GroupDragSnapshot` foi para o `ph2d-editor-core`, onde o `TransformSnapshot` dele já vivia)
+  e **quatro ficam por DESENHO** — o `build_component_registry` regista os componentes de cinco crates
+  irmãs, logo é **composição**, e os gates que atravessam essa porta moram com o que exercitam (HOWTO §2.6).
+  ⛔ **Zero sextos métodos no `AppHost`**: escritos em tipos, os quatro `impl App` pediam coisas que a `App`
+  por acaso segurava, e ⭐⭐ **o `std::mem::take` do `resolve_player_input` DESAPARECEU** — *o truque não era
+  lei do domínio, era o preço de a função estar na struct errada*. ⚠️⚠️ **E o `cargo check --all-targets`
+  estava VERDE com 15 gates VERMELHOS**: eles vivem em `shells/desktop/tests/it/`, que o `nextest-impacted`
+  **filtra** — entre eles o gémeo mudo do §2.6 que **sobreviveu dentro da crate** (curado com
+  `include_str!`, que falha a compilar) e a **quarta** agulha deste repo a nomear a **visibilidade** em vez
+  da lei. [Handoff da Fase C](docs/Physics/handoffs/HANDOFF_INTEGRACAO_line_app-physics_FASE_C_2026-09-12.md)
+  (⚠️ o §5 tem as **oito** armadilhas e o §6 as **quatro** premissas minhas que a medição derrubou — entre
+  elas uma acusação de cegueira à régua do fecho que **era falsa**).
   **Smokes:** `PH2D_PHYSICS_SMOKE=<n>` (⚠️ **`=84` não existe, de propósito**; ⚠️ **a `=15` tem as
   paredes CINEMÁTICAS desde 30/08 e isso é load-bearing** — com paredes estáticas as duas bolas
   param no mesmo sítio desde a `rapier` 0.35, e a cena passa a ensinar o contrário do que diz).

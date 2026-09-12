@@ -8,7 +8,7 @@
 > um handoff descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**28 handoffs** · **10** citados pelo CLAUDE.md §5 (marcados **◆** — são os que a
+**36 handoffs** · **10** citados pelo CLAUDE.md §5 (marcados **◆** — são os que a
 §5 aponta como o detalhe de mecanismo de uma integração).
 
 | Data | | Arquivo | Papel | Assunto |
@@ -41,7 +41,24 @@
 | 2026-08-05 |  | [HANDOFF_INTEGRACAO_line_physics_W11b_2026-08-05.md](HANDOFF_INTEGRACAO_line_physics_W11b_2026-08-05.md) | integração | line/physics → main (2026-08-05) · W11b, o ajuste diferido |
 | 2026-08-08 | ◆ | [HANDOFF_INTEGRACAO_line_physics_MESTRE_2026-08-08.md](HANDOFF_INTEGRACAO_line_physics_MESTRE_2026-08-08.md) | integração | HANDOFF MESTRE — line/physics → main (2026-08-08) |
 | 2026-08-09 | ◆ | [HANDOFF_INTEGRACAO_line_physics_kin_2026-08-09.md](HANDOFF_INTEGRACAO_line_physics_kin_2026-08-09.md) | integração | Handoff de integração — line/physics (2026-08-09) |
+| 2026-08-10 |  | [HANDOFF_INTEGRACAO_line_physics_bobbing_2026-08-10.md](HANDOFF_INTEGRACAO_line_physics_bobbing_2026-08-10.md) | integração | HANDOFF DE INTEGRAÇÃO — `line/physics` · a água, medida (2026-08-10) |
+| 2026-08-10 |  | [HANDOFF_REABERTURA_line_physics_2026-08-10.md](HANDOFF_REABERTURA_line_physics_2026-08-10.md) | reabertura | HANDOFF — REABERTURA da `line/physics` (2026-08-10) |
+| 2026-08-11 |  | [HANDOFF_INTEGRACAO_line_physics_sensores_2026-08-11.md](HANDOFF_INTEGRACAO_line_physics_sensores_2026-08-11.md) | integração | Handoff de integração — `line/physics` (2026-08-11) |
+| 2026-08-12 |  | [HANDOFF_INTEGRACAO_line_physics_MESTRE_2026-08-12.md](HANDOFF_INTEGRACAO_line_physics_MESTRE_2026-08-12.md) | integração | Handoff de integração MESTRE — `line/physics` (2026-08-12) |
+| 2026-08-15 |  | [HANDOFF_INTEGRACAO_line_physics_MESTRE_2026-08-15.md](HANDOFF_INTEGRACAO_line_physics_MESTRE_2026-08-15.md) | integração | Handoff de integração MESTRE — `line/physics` (2026-08-15) |
+| 2026-09-11 | ◆ | [HANDOFF_INTEGRACAO_line_app-physics_FASE_A_2026-09-11.md](HANDOFF_INTEGRACAO_line_app-physics_FASE_A_2026-09-11.md) | integração | HANDOFF DE INTEGRAÇÃO — `line/app-physics` (W2/L2, **Fase A**, 2026-09-11) |
+| 2026-09-11 | ◆ | [HANDOFF_INTEGRACAO_line_app-physics_FASE_B_2026-09-11.md](HANDOFF_INTEGRACAO_line_app-physics_FASE_B_2026-09-11.md) | integração | HANDOFF DE INTEGRAÇÃO — `line/app-physics`, **FASE B** (o corte) — 2026-09-11 |
+| 2026-09-12 | ◆ | [HANDOFF_INTEGRACAO_line_app-physics_FASE_C_2026-09-12.md](HANDOFF_INTEGRACAO_line_app-physics_FASE_C_2026-09-12.md) | integração | HANDOFF de INTEGRAÇÃO — `line/app-physics`, **FASE C** (o corte final) — 2026-09-12 |
 
 ---
-*Índice gerado na arrumação de 2026-08-10 (DIRETRIZ §1.5.9). Handoff novo entra aqui, não na
-raiz de `docs/`.*
+*Índice arrumado em 2026-08-10 (DIRETRIZ §1.5.9) e **re-sincronizado em 2026-09-12**. Handoff novo
+entra aqui, não na raiz de `docs/`.*
+
+⚠️⚠️ **ESTE ÍNDICE É ESCRITO À MÃO, e em 2026-09-12 ele estava a mentir por OITO** — dizia `28`
+sobre uma pasta de `36`, e os cinco handoffs de 10–15/08 mais as duas Fases da W2 eram
+**inalcançáveis a partir do roteador**. É a lei do `CLAUDE.md` §5.0 (*«índice de diretório se GERA,
+não se escreve»*) a cobrar-se: o `scripts/doc-index.sh` cobre `docs/Physics/` e **não** esta
+subpasta — ele só a **cita como FORMA a imitar** (linha 17 do script).
+⇒ ⏳ **Dívida nomeada para quem tocar no `doc-index.sh`:** ou esta pasta entra na lista dele, ou a
+próxima linha volta a deixar o índice para trás — *uma contagem escrita à mão envelhece sozinha, e
+o modo de falha é silencioso: nada reprova.*

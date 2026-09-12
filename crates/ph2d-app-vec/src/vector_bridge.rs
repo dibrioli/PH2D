@@ -12,8 +12,9 @@
 //! 3. **Style sync** — copy the tool's stroke / fill / width into the Pen so
 //!    newly drawn paths honour the Style.
 //! 4. **Recolour selected** — when a colour changed (`take_apply_to_selected`),
-//!    recolour the selected path. ONE undo step per gesture: a picker drag
-//!    commits on close; a discrete pick (Fill "None") commits the same frame.
+//!    recolour the selected path. (The undo step is the GLOBAL queue's, by state
+//!    diff; the per-gesture `RECOLOR_PRE` snapshot died with the vector `History`
+//!    on 2026-09-12 — it fed a stack nobody undid.)
 //! 5. **Publish** — sync the swatches' `widget_color` to the live colour (seeds
 //!    the picker on open) + publish the Style snapshot the panel paints.
 //!
@@ -23,7 +24,7 @@
 
 use ph2d_editor_core::{HeroScreen, ToolId, ToolRegistry};
 use ph2d_tool_vector::VectorDrawConfig;
-use ph2d_vec_edit::{History, PenStyle, PenTool, ShapeTool};
+use ph2d_vec_edit::{PenStyle, PenTool, ShapeTool};
 use ph2d_vec_render::GradHandle;
 use ph2d_vec_scene::VecScene;
 
@@ -32,13 +33,13 @@ use ph2d_vec_scene::VecScene;
 /// separam.
 #[path = "vector_bridge_style.rs"]
 mod style;
-use style::{
-    RECOLOR_PRE, apply_fill_colour, rgba, seed_style_from_selection, selected_grad_color,
-    set_selected_grad_color,
-};
 /// ⚠️ `StrokeStyle` sai junto porque o gate de CONSEQUÊNCIA do [`crate::vec_selection`]
 /// **restiliza de verdade** em vez de contar caminhos — o artista vê cores, não listas.
 pub use style::{StrokeStyle, restyle_selected_strokes};
+use style::{
+    apply_fill_colour, rgba, seed_style_from_selection, selected_grad_color,
+    set_selected_grad_color,
+};
 
 /// Troca o modo de desenho da tool Vector (a tool é a dona; o shell só espelha). O
 /// downcast fica confinado a este bridge (allowlist da gate
@@ -144,7 +145,6 @@ pub fn dispatch(
     // traço de mão livre nasce com o mesmo traço/preenchimento que a caneta e a forma: uma 2ª
     // fonte de estilo faria o mesmo pincel desenhar diferente em modos vizinhos.
     pencil: &mut ph2d_vec_edit::Pencil,
-    history: &mut History,
     // World units per screen pixel (from the camera) — converts the tool's px
     // stroke width into the path's world-space width when restyling.
     px_to_world: f64,
@@ -296,26 +296,21 @@ pub fn dispatch(
     // na ENTRADA, por movimento de ponteiro, e viaja no `VectorDrawConfig` que o `input_dispatch` lê.
     pencil.set_fidelity_px(tool.pencil_fidelity_px());
 
-    // ── 4. Restyle the selected path — colour + width (undoable, one step per
-    //    gesture). A width-slider DRAG is a gesture like a picker drag, so scope
-    //    its undo the same way (one step per drag).
+    // ── 4. Restyle the selected path — colour + width.
     //
     // ⚠️ **Duas perguntas diferentes, e elas dividiam uma resposta.** *"Há um gesto em curso?"*
-    // (para AGRUPAR o undo) é sobre um arrasto, e o estado do slider responde certo. *"A largura
+    // (para AGRUPAR o undo) era sobre um arrasto, e o estado do slider respondia certo. *"A largura
     // foi autorada?"* (para ESCREVÊ-LA na seleção) não é sobre arrasto nenhum — a caixa numérica
     // ao lado autora pelo mesmo `SetValue(VECTOR_WIDTH)` e nunca põe o slider em `Dragging`, então
     // enquanto as duas partilhavam `width_dragging` digitar um número mudava o tool e **não mudava
     // a forma selecionada** (Enio 2026-08-01). Quem sabe a segunda é o TOOL, que recebeu o evento.
-    let width_dragging = matches!(
-        hero.store.slider(ph2d_editor_core::ids::VECTOR_WIDTH),
-        Some((ph2d_editor_core::widget::SliderState::Dragging, _))
-    );
+    // ⛔ A PRIMEIRA pergunta morreu em 2026-09-12 com a `History` do vetor, o único leitor dela: o
+    // passo de undo é o da fila GLOBAL, que regista por diff de estado.
     let width_authored = tool.take_width_authored();
     // **Digitar uma espessura SOLTA o token dela** (W4c.4) — a mesma lei da cor, pelo mesmo canal.
     if width_authored {
         crate::bindings::note_authored(ph2d_ecs::BoundProp::StrokeWidth);
     }
-    let session = stroke_open || fill_open || width_dragging;
     // The selected gradient handle, kept only if it still addresses a colour on the
     // current fill (a stale handle after a kind switch resolves to `None` and falls
     // through to the solid-fill path). The picker recolours THIS slot.
@@ -383,11 +378,6 @@ pub fn dispatch(
                 .is_some_and(&differs)
         });
         if will_change {
-            RECOLOR_PRE.with(|c| {
-                if c.borrow().is_none() {
-                    *c.borrow_mut() = Some(scene.clone());
-                }
-            });
             // O TRAÇO de todos os selecionados, de uma vez (a largura só acompanha quando FOI
             // autorada — arrastando o slider ou digitando na caixa; uma escolha de cor nunca pode
             // reengrossar a linha, e é o `None` daqui que a impede).
@@ -414,16 +404,6 @@ pub fn dispatch(
             }
         }
     }
-    // Commit the gesture's undo when it ends (no picker / width-drag session):
-    // a discrete pick (None) commits immediately; a drag commits on release.
-    if !session {
-        RECOLOR_PRE.with(|c| {
-            if let Some(pre) = c.borrow_mut().take() {
-                history.push_undo(pre);
-            }
-        });
-    }
-
     // ── 5. **Publicar** — o que o painel mostra sobre a cena e a seleção.
     //
     // ⚠️ Esta primeira publicação fica AQUI porque é a única que lê a TOOL (`ui_snapshot`),

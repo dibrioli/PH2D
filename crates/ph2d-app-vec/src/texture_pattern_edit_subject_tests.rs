@@ -48,10 +48,8 @@ fn cena_alvos(no_fill: bool, no_traco: bool) -> (VecScene, ph2d_vec_edit::PenToo
 #[test]
 fn each_section_writes_only_its_own_paint() {
     let (mut scene, pen, id) = cena_alvos(true, true);
-    let mut h = ph2d_vec_edit::History::default();
     apply(
         &mut scene,
-        &mut h,
         &pen,
         PatternSlot::Stroke,
         TexPatCmd::Angle(30.0),
@@ -73,13 +71,7 @@ fn each_section_writes_only_its_own_paint() {
         "escrever no traco mexeu tambem no PREENCHIMENTO"
     );
     // E o simétrico, com o outro alvo aceso.
-    apply(
-        &mut scene,
-        &mut h,
-        &pen,
-        PatternSlot::Fill,
-        TexPatCmd::Angle(45.0),
-    );
+    apply(&mut scene, &pen, PatternSlot::Fill, TexPatCmd::Angle(45.0));
     assert!(
         (pattern_at(&scene, id, PatternSlot::Stroke)
             .expect("o traco tem padrao")
@@ -96,10 +88,8 @@ fn each_section_writes_only_its_own_paint() {
 #[test]
 fn changing_the_art_honours_the_subject_too() {
     let (mut scene, _, id) = cena_alvos(true, true);
-    let mut h = ph2d_vec_edit::History::default();
     assert!(set_source(
         &mut scene,
-        &mut h,
         id,
         PatternSlot::Stroke,
         PatternSource::Shape(77),

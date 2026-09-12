@@ -155,7 +155,6 @@ pub fn mode_index(m: PatternMode) -> u8 {
 /// forma errada — exactamente o *"escolhendo a si mesmo"* que o Picker foi criado para eliminar.
 pub fn set_source(
     scene: &mut VecScene,
-    history: &mut ph2d_vec_edit::History,
     host: ph2d_vec_scene::VecPathId,
     slot: PatternSlot,
     source: PatternSource,
@@ -176,19 +175,13 @@ pub fn set_source(
         next.size = size;
     }
     next.source = source;
-    let pre = scene.clone();
-    if write_pattern(scene, host, slot, next) {
-        history.push_undo(pre);
-        return true;
-    }
-    false
+    write_pattern(scene, host, slot, next)
 }
 
 /// Aplica `cmd` ao padrão da forma selecionada. No-op silencioso quando não há forma, quando ela
 /// não tem padrão, ou quando o valor já era esse.
 pub fn apply(
     scene: &mut VecScene,
-    history: &mut ph2d_vec_edit::History,
     pen: &ph2d_vec_edit::PenTool,
     slot: PatternSlot,
     cmd: TexPatCmd,
@@ -249,10 +242,7 @@ pub fn apply(
     if pattern_at(scene, sel, slot) == Some(&next) {
         return;
     }
-    let pre = scene.clone();
-    if write_pattern(scene, sel, slot, next) {
-        history.push_undo(pre);
-    }
+    write_pattern(scene, sel, slot, next);
 }
 
 /// ⭐⭐⭐ **O ÂNGULO COMO O PAINEL O MOSTRA** — em graus, dentro de `0..360` (auditoria 2026-08-30).

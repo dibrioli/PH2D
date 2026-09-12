@@ -121,7 +121,6 @@ fn selected_closed_z(scene: &ph2d_vec_scene::VecScene, pen: &ph2d_vec_edit::PenT
 /// regions / empty result.
 pub(crate) fn apply_vec_boolean(
     scene: &mut ph2d_vec_scene::VecScene,
-    history: &mut ph2d_vec_edit::History,
     pen: &mut ph2d_vec_edit::PenTool,
     xforms: &ph2d_vec_scene::VecXforms,
     op: ph2d_vec_boolean::PathfinderOp,
@@ -157,7 +156,6 @@ pub(crate) fn apply_vec_boolean(
             return;
         }
     };
-    let pre = scene.clone(); // undo da booleana
     // A base é a de trás: o resultado ocupa a fatia de z dela (não salta pro topo).
     // Os operandos removidos estão todos em z >= `at`, então o índice segue válido.
     let at = zs[0];
@@ -169,7 +167,6 @@ pub(crate) fn apply_vec_boolean(
         .enumerate()
         .map(|(k, r)| scene.insert_path(at + k, r))
         .collect();
-    history.push_undo(pre);
     pen.select_many(&new_ids);
     eprintln!(
         "[ph2d-vec] pathfinder {op:?}: ok ({} path[s])",
@@ -184,11 +181,9 @@ pub(crate) fn apply_vec_boolean(
 /// [`apply_vec_boolean`].
 pub(crate) fn apply_vec_compound(
     scene: &mut ph2d_vec_scene::VecScene,
-    history: &mut ph2d_vec_edit::History,
     pen: &mut ph2d_vec_edit::PenTool,
     make: bool,
 ) {
-    let pre = scene.clone();
     if make {
         let ids: Vec<u64> = selected_closed_z(scene, pen)
             .iter()
@@ -198,7 +193,6 @@ pub(crate) fn apply_vec_compound(
             eprintln!("[ph2d-vec] compound: selecione >= 2 regioes FECHADAS");
             return;
         };
-        history.push_undo(pre);
         pen.select(Some(base));
         return;
     }
@@ -215,7 +209,6 @@ pub(crate) fn apply_vec_compound(
         eprintln!("[ph2d-vec] release: a selecao nao tem compound path");
         return;
     }
-    history.push_undo(pre);
     pen.select_many(&all);
 }
 
@@ -223,7 +216,6 @@ pub(crate) fn apply_vec_compound(
 /// row, shown only for compound paths). One undo step; no-op if unchanged.
 pub(crate) fn apply_vec_fill_rule(
     scene: &mut ph2d_vec_scene::VecScene,
-    history: &mut ph2d_vec_edit::History,
     pen: &ph2d_vec_edit::PenTool,
     even_odd: bool,
 ) {
@@ -232,7 +224,6 @@ pub(crate) fn apply_vec_fill_rule(
     } else {
         ph2d_vec_scene::FillRule::NonZero
     };
-    let pre = scene.clone();
     let Some(path) = pen.selected().and_then(|id| scene.path_mut(id)) else {
         return;
     };
@@ -240,7 +231,6 @@ pub(crate) fn apply_vec_fill_rule(
         return;
     }
     path.fill_rule = rule;
-    history.push_undo(pre);
 }
 
 /// Map a Vector-panel Boolean button `NodeId` to its op (`None` for any other
@@ -273,14 +263,10 @@ pub(crate) fn vec_bool_op_for_id(
 /// render_loop drain can call it with the destructured shell refs.
 pub(crate) fn apply_vec_vertex_kind(
     scene: &mut ph2d_vec_scene::VecScene,
-    history: &mut ph2d_vec_edit::History,
     pen: &mut ph2d_vec_edit::PenTool,
     kind: ph2d_vec_scene::VertexKind,
 ) {
-    let pre = scene.clone();
-    if pen.set_selected_vertex_kind(scene, kind) {
-        history.push_undo(pre);
-    }
+    pen.set_selected_vertex_kind(scene, kind);
 }
 
 // NOTA: `apply_vec_corner_chamfer` (o toggle Chamfer da seção Vertex) foi REMOVIDO — o estilo de
@@ -294,12 +280,9 @@ pub(crate) fn apply_vec_vertex_kind(
 /// refs. Returns whether anything was deleted.
 pub(crate) fn apply_vec_delete_vertex(
     scene: &mut ph2d_vec_scene::VecScene,
-    history: &mut ph2d_vec_edit::History,
     pen: &mut ph2d_vec_edit::PenTool,
 ) -> bool {
-    let pre = scene.clone();
     if pen.delete_selected_vertex(scene) {
-        history.push_undo(pre);
         true
     } else {
         false
@@ -347,7 +330,6 @@ pub(crate) fn screen_offset_world(
 /// the render_loop drain can call it with the destructured shell refs.
 pub(crate) fn apply_vec_duplicate(
     scene: &mut ph2d_vec_scene::VecScene,
-    history: &mut ph2d_vec_edit::History,
     pen: &mut ph2d_vec_edit::PenTool,
     dx: f64,
     dy: f64,
@@ -357,7 +339,7 @@ pub(crate) fn apply_vec_duplicate(
         eprintln!("[ph2d-vec] duplicate: nenhum path selecionado");
         return;
     }
-    duplicate_vec_paths(scene, history, pen, &sel, dx, dy);
+    duplicate_vec_paths(scene, pen, &sel, dx, dy);
 }
 
 /// **A porta de DUPLICAR uma forma** — ela recebe *quais* paths, e quem pergunta responde isso de
@@ -372,7 +354,6 @@ pub(crate) fn apply_vec_duplicate(
 /// Grava **UM** passo de undo sse alguma cópia nasceu, e devolve se nasceu.
 pub(crate) fn duplicate_vec_paths(
     scene: &mut ph2d_vec_scene::VecScene,
-    history: &mut ph2d_vec_edit::History,
     pen: &mut ph2d_vec_edit::PenTool,
     ids: &[ph2d_vec_scene::VecPathId],
     dx: f64,
@@ -382,12 +363,10 @@ pub(crate) fn duplicate_vec_paths(
         return false;
     }
     let clip = scene.copy_paths(ids);
-    let pre = scene.clone();
     let new_ids = scene.paste_clip(&clip, dx, dy);
     if new_ids.is_empty() {
         return false;
     }
-    history.push_undo(pre);
     pen.select_many(&new_ids);
     eprintln!("[ph2d-vec] duplicate: {} path(s)", new_ids.len());
     true
@@ -415,7 +394,6 @@ pub(crate) fn vec_reorder_for_id(id: ph2d_editor_core::NodeId) -> Option<ph2d_ve
 /// iff it flipped. Free fn (mirror of [`apply_vec_boolean`]).
 pub(crate) fn apply_vec_flip(
     scene: &mut ph2d_vec_scene::VecScene,
-    history: &mut ph2d_vec_edit::History,
     pen: &ph2d_vec_edit::PenTool,
     axis: ph2d_vec_scene::FlipAxis,
 ) {
@@ -423,10 +401,7 @@ pub(crate) fn apply_vec_flip(
         eprintln!("[ph2d-vec] flip: nenhum path selecionado");
         return;
     };
-    let pre = scene.clone();
-    if scene.flip_path(sel, axis) {
-        history.push_undo(pre);
-    }
+    scene.flip_path(sel, axis);
 }
 
 /// Map a Vector-panel Arrange Flip button `NodeId` to its [`ph2d_vec_scene::FlipAxis`]
@@ -446,7 +421,6 @@ pub(crate) fn vec_flip_for_id(id: ph2d_editor_core::NodeId) -> Option<ph2d_vec_s
 /// step iff it rotated. Free fn (mirror of [`apply_vec_boolean`]).
 pub(crate) fn apply_vec_rotate(
     scene: &mut ph2d_vec_scene::VecScene,
-    history: &mut ph2d_vec_edit::History,
     pen: &ph2d_vec_edit::PenTool,
     dir: ph2d_vec_scene::Rotate90,
 ) {
@@ -454,10 +428,7 @@ pub(crate) fn apply_vec_rotate(
         eprintln!("[ph2d-vec] rotate: nenhum path selecionado");
         return;
     };
-    let pre = scene.clone();
-    if scene.rotate_path(sel, dir) {
-        history.push_undo(pre);
-    }
+    scene.rotate_path(sel, dir);
 }
 
 /// Map a Vector-panel Arrange Rotate button `NodeId` to its [`ph2d_vec_scene::Rotate90`]
@@ -478,7 +449,6 @@ pub(crate) fn vec_rotate_for_id(id: ph2d_editor_core::NodeId) -> Option<ph2d_vec
 /// [`apply_vec_flip`]).
 pub(crate) fn apply_vec_toggle_closed(
     scene: &mut ph2d_vec_scene::VecScene,
-    history: &mut ph2d_vec_edit::History,
     pen: &mut ph2d_vec_edit::PenTool,
 ) {
     let Some(sel) = pen.selected() else {
@@ -488,7 +458,6 @@ pub(crate) fn apply_vec_toggle_closed(
     let Some(cur) = scene.paths().iter().find(|p| p.id == sel).map(|p| p.closed) else {
         return;
     };
-    let pre = scene.clone();
     // ⚠️ **Fechar passa pela porta que SOLDA** (`close_path`, W4): antes isto era um
     // `set_path_closed(true)` cru, então fechar um laço cujas pontas o artista tinha acabado de
     // encostar deixava DOIS vértices sobrepostos no mesmo lugar — invisível no desenho e presente
@@ -512,7 +481,6 @@ pub(crate) fn apply_vec_toggle_closed(
         // A costura mudou de sítio (e, num fecho soldado, um vértice inteiro sumiu), então todo
         // índice plano guardado descreve outro nó — ou nó nenhum.
         pen.select(Some(sel));
-        history.push_undo(pre);
     }
 }
 
@@ -639,7 +607,6 @@ fn linear_span(lo: [f64; 2], hi: [f64; 2], degrees: f64) -> ([f64; 2], [f64; 2])
 /// e apagar o gradiente dele por isso seria o pior dos dois mundos.
 pub(crate) fn apply_vec_set_fill_kind(
     scene: &mut ph2d_vec_scene::VecScene,
-    history: &mut ph2d_vec_edit::History,
     pen: &ph2d_vec_edit::PenTool,
     kind: VecFillKind,
     pattern: Option<(ph2d_vec_scene::PatternSource, [f64; 2], [f64; 2])>,
@@ -713,10 +680,8 @@ pub(crate) fn apply_vec_set_fill_kind(
     if cur.as_ref() == Some(&new_fill) {
         return;
     }
-    let pre = scene.clone();
     if let Some(path) = scene.path_mut(sel) {
         path.fill = Some(new_fill);
-        history.push_undo(pre);
     }
 }
 
@@ -725,7 +690,6 @@ pub(crate) fn apply_vec_set_fill_kind(
 /// No-op unless the fill is Linear. One undo step iff it changed.
 pub(crate) fn apply_vec_set_grad_angle(
     scene: &mut ph2d_vec_scene::VecScene,
-    history: &mut ph2d_vec_edit::History,
     pen: &ph2d_vec_edit::PenTool,
     degrees: f64,
 ) {
@@ -743,7 +707,6 @@ pub(crate) fn apply_vec_set_grad_angle(
     }
     let (lo, hi) = scene.path_bbox(sel).unwrap_or(([0.0, 0.0], [1.0, 1.0]));
     let (start, end) = linear_span(lo, hi, degrees);
-    let pre = scene.clone();
     if let Some(Paint::Linear {
         start: s, end: e, ..
     }) = scene.path_mut(sel).and_then(|p| p.fill.as_mut())
@@ -753,7 +716,6 @@ pub(crate) fn apply_vec_set_grad_angle(
         }
         *s = start;
         *e = end;
-        history.push_undo(pre);
     }
 }
 
@@ -761,7 +723,6 @@ pub(crate) fn apply_vec_set_grad_angle(
 /// the first existing point). No-op unless the fill is MultiPoint. One undo step.
 pub(crate) fn apply_vec_grad_add_point(
     scene: &mut ph2d_vec_scene::VecScene,
-    history: &mut ph2d_vec_edit::History,
     pen: &ph2d_vec_edit::PenTool,
 ) {
     use ph2d_vec_scene::{GradientPoint, Paint};
@@ -772,13 +733,11 @@ pub(crate) fn apply_vec_grad_add_point(
         return;
     };
     let center = [(lo[0] + hi[0]) * 0.5, (lo[1] + hi[1]) * 0.5];
-    let pre = scene.clone();
     if let Some(Paint::MultiPoint { points }) = scene.path_mut(sel).and_then(|p| p.fill.as_mut()) {
         let col = points
             .first()
             .map_or(ph2d_vec_scene::Rgba8::new(255, 255, 255, 255), |p| p.color);
         points.push(GradientPoint::new(center, col, 1.0));
-        history.push_undo(pre);
     }
 }
 
@@ -786,7 +745,6 @@ pub(crate) fn apply_vec_grad_add_point(
 /// least one. Returns the new selection (`None`). One undo step iff it removed.
 pub(crate) fn apply_vec_grad_remove_point(
     scene: &mut ph2d_vec_scene::VecScene,
-    history: &mut ph2d_vec_edit::History,
     pen: &ph2d_vec_edit::PenTool,
     selected: Option<usize>,
 ) -> Option<usize> {
@@ -794,7 +752,6 @@ pub(crate) fn apply_vec_grad_remove_point(
     let Some(sel) = pen.selected() else {
         return selected;
     };
-    let pre = scene.clone();
     if let Some(Paint::MultiPoint { points }) = scene.path_mut(sel).and_then(|p| p.fill.as_mut())
         && points.len() > 1
     {
@@ -802,7 +759,6 @@ pub(crate) fn apply_vec_grad_remove_point(
             .filter(|&i| i < points.len())
             .unwrap_or(points.len() - 1);
         points.remove(idx);
-        history.push_undo(pre);
         return None;
     }
     selected
@@ -813,7 +769,6 @@ pub(crate) fn apply_vec_grad_remove_point(
 /// is valid. One undo step iff it changed.
 pub(crate) fn apply_vec_grad_influence(
     scene: &mut ph2d_vec_scene::VecScene,
-    history: &mut ph2d_vec_edit::History,
     pen: &ph2d_vec_edit::PenTool,
     point: Option<usize>,
     value: f64,
@@ -825,13 +780,11 @@ pub(crate) fn apply_vec_grad_influence(
     let Some(i) = point else {
         return;
     };
-    let pre = scene.clone();
     if let Some(Paint::MultiPoint { points }) = scene.path_mut(sel).and_then(|p| p.fill.as_mut())
         && let Some(gp) = points.get_mut(i)
         && (gp.influence - value).abs() > 1e-9
     {
         gp.influence = value;
-        history.push_undo(pre);
     }
 }
 
@@ -840,7 +793,6 @@ pub(crate) fn apply_vec_grad_influence(
 /// One undo step iff it changed.
 pub(crate) fn apply_vec_grad_jitter(
     scene: &mut ph2d_vec_scene::VecScene,
-    history: &mut ph2d_vec_edit::History,
     pen: &ph2d_vec_edit::PenTool,
     point: Option<usize>,
     value: f64,
@@ -852,13 +804,11 @@ pub(crate) fn apply_vec_grad_jitter(
     let Some(i) = point else {
         return;
     };
-    let pre = scene.clone();
     if let Some(Paint::MultiPoint { points }) = scene.path_mut(sel).and_then(|p| p.fill.as_mut())
         && let Some(gp) = points.get_mut(i)
         && (gp.jitter - value).abs() > 1e-9
     {
         gp.jitter = value;
-        history.push_undo(pre);
     }
 }
 
@@ -886,7 +836,6 @@ fn selected_ramp_stops<'a>(
 /// select), or `None` if the fill isn't a ramp. One undo step.
 pub(crate) fn apply_vec_grad_add_stop(
     scene: &mut ph2d_vec_scene::VecScene,
-    history: &mut ph2d_vec_edit::History,
     pen: &ph2d_vec_edit::PenTool,
 ) -> Option<usize> {
     use ph2d_vec_scene::{GradientStop, Paint};
@@ -910,7 +859,6 @@ pub(crate) fn apply_vec_grad_add_stop(
     let k = best.0;
     let off = (sorted[k].0 + sorted[k + 1].0) * 0.5;
     let col = lerp_color(sorted[k].1, sorted[k + 1].1, 0.5);
-    let pre = scene.clone();
     if let Some(Paint::Linear { stops, .. }) | Some(Paint::Radial { stops, .. }) =
         scene.path_mut(sel).and_then(|p| p.fill.as_mut())
     {
@@ -918,7 +866,6 @@ pub(crate) fn apply_vec_grad_add_stop(
         // stay at index 0 / last; return its index to select it.
         let idx = stops.len() - 1;
         stops.insert(idx, GradientStop::new(off, col));
-        history.push_undo(pre);
         return Some(idx);
     }
     None
@@ -929,7 +876,6 @@ pub(crate) fn apply_vec_grad_add_stop(
 /// (`None`). One undo step iff it removed.
 pub(crate) fn apply_vec_grad_remove_stop(
     scene: &mut ph2d_vec_scene::VecScene,
-    history: &mut ph2d_vec_edit::History,
     pen: &ph2d_vec_edit::PenTool,
     selected: Option<usize>,
 ) -> Option<usize> {
@@ -937,7 +883,6 @@ pub(crate) fn apply_vec_grad_remove_stop(
     let Some(sel) = pen.selected() else {
         return selected;
     };
-    let pre = scene.clone();
     if let Some(Paint::Linear { stops, .. }) | Some(Paint::Radial { stops, .. }) =
         scene.path_mut(sel).and_then(|p| p.fill.as_mut())
         && let Some(i) = selected
@@ -945,7 +890,6 @@ pub(crate) fn apply_vec_grad_remove_stop(
         && i + 1 < stops.len()
     {
         stops.remove(i);
-        history.push_undo(pre);
         return None;
     }
     selected
@@ -999,7 +943,6 @@ pub(crate) fn vec_distribute_for_id(id: ph2d_editor_core::NodeId) -> Option<VecD
 /// (needs ≥2 selected). One undo step iff anything moved.
 pub(crate) fn apply_vec_align(
     scene: &mut ph2d_vec_scene::VecScene,
-    history: &mut ph2d_vec_edit::History,
     pen: &ph2d_vec_edit::PenTool,
     xforms: &ph2d_vec_scene::VecXforms,
     kind: VecAlign,
@@ -1030,8 +973,6 @@ pub(crate) fn apply_vec_align(
         uhi[0] = uhi[0].max(hi[0]);
         uhi[1] = uhi[1].max(hi[1]);
     }
-    let pre = scene.clone();
-    let mut moved = false;
     for (id, lo, hi) in boxes {
         let (mut dx, mut dy) = (0.0, 0.0);
         match kind {
@@ -1045,11 +986,8 @@ pub(crate) fn apply_vec_align(
             VecAlign::VCenter => dy = (ulo[1] + uhi[1]) * 0.5 - (lo[1] + hi[1]) * 0.5,
         }
         if dx.abs() > 1e-9 || dy.abs() > 1e-9 {
-            moved |= scene.translate_path_world(xforms, id, dx, dy);
+            scene.translate_path_world(xforms, id, dx, dy);
         }
-    }
-    if moved {
-        history.push_undo(pre);
     }
 }
 
@@ -1057,7 +995,6 @@ pub(crate) fn apply_vec_align(
 /// extremes fixed (needs ≥3 selected). One undo step iff anything moved.
 pub(crate) fn apply_vec_distribute(
     scene: &mut ph2d_vec_scene::VecScene,
-    history: &mut ph2d_vec_edit::History,
     pen: &ph2d_vec_edit::PenTool,
     xforms: &ph2d_vec_scene::VecXforms,
     axis: VecDistribute,
@@ -1083,8 +1020,6 @@ pub(crate) fn apply_vec_distribute(
     let n = items.len();
     let (first, last) = (items[0].1, items[n - 1].1);
     let step = (last - first) / (n - 1) as f64;
-    let pre = scene.clone();
-    let mut moved = false;
     for (k, &(id, c)) in items.iter().enumerate().take(n - 1).skip(1) {
         let target = first + step * k as f64;
         let d = target - c;
@@ -1093,11 +1028,8 @@ pub(crate) fn apply_vec_distribute(
                 VecDistribute::Horizontal => (d, 0.0),
                 VecDistribute::Vertical => (0.0, d),
             };
-            moved |= scene.translate_path(id, dx, dy);
+            scene.translate_path(id, dx, dy);
         }
-    }
-    if moved {
-        history.push_undo(pre);
     }
 }
 
@@ -1106,7 +1038,6 @@ pub(crate) fn apply_vec_distribute(
 /// A zero delta is a no-op (no undo). Free fn (mirror of [`apply_vec_rotate`]).
 pub(crate) fn apply_vec_rotate_by(
     scene: &mut ph2d_vec_scene::VecScene,
-    history: &mut ph2d_vec_edit::History,
     pen: &ph2d_vec_edit::PenTool,
     degrees: f64,
 ) {
@@ -1121,10 +1052,7 @@ pub(crate) fn apply_vec_rotate_by(
         return;
     };
     let pivot = [(lo[0] + hi[0]) * 0.5, (lo[1] + hi[1]) * 0.5];
-    let pre = scene.clone();
-    if scene.rotate_path_by(sel, degrees.to_radians(), pivot) {
-        history.push_undo(pre);
-    }
+    scene.rotate_path_by(sel, degrees.to_radians(), pivot);
 }
 
 /// Whole-path reshape op (panel "Smooth" / "Sharpen" / "Simplify" buttons).
@@ -1141,7 +1069,6 @@ pub(crate) enum VecPathShapeOp {
 /// [`apply_vec_flip`]).
 pub(crate) fn apply_vec_path_shape(
     scene: &mut ph2d_vec_scene::VecScene,
-    history: &mut ph2d_vec_edit::History,
     pen: &ph2d_vec_edit::PenTool,
     op: VecPathShapeOp,
 ) {
@@ -1149,16 +1076,12 @@ pub(crate) fn apply_vec_path_shape(
         eprintln!("[ph2d-vec] path-shape: nenhum path selecionado");
         return;
     };
-    let pre = scene.clone();
-    let changed = match op {
+    match op {
         VecPathShapeOp::Smooth => scene.smooth_path(sel),
         VecPathShapeOp::Sharpen => scene.sharpen_path(sel),
         VecPathShapeOp::Simplify => scene.simplify_path(sel),
         VecPathShapeOp::Subdivide => scene.subdivide_path(sel),
     };
-    if changed {
-        history.push_undo(pre);
-    }
 }
 
 /// Map a Vector-panel Path button `NodeId` to its [`VecPathShapeOp`] (`None`
@@ -1222,7 +1145,6 @@ pub(crate) fn apply_vec_transform(
     sim: &mut ph2d_ecs::SimWorld,
     map: &ph2d_vec_entities::entities::VecEntityMap,
     scene: &mut ph2d_vec_scene::VecScene,
-    history: &mut ph2d_vec_edit::History,
     pen: &ph2d_vec_edit::PenTool,
     xforms: &ph2d_vec_scene::VecXforms,
     field: VecTransformField,
@@ -1238,8 +1160,7 @@ pub(crate) fn apply_vec_transform(
     // O escalonamento acontece na geometria local, em torno do canto local que
     // corresponde ao `lo` de mundo — a razão de escala é a mesma nos dois espaços.
     let local_lo = scene.path_curve_bbox(sel).map_or([0.0, 0.0], |(l, _)| l);
-    let pre = scene.clone();
-    let changed = match field {
+    match field {
         VecTransformField::X => {
             let dx = target - lo[0];
             dx.abs() > 1e-9 && scene.translate_path_world(xforms, sel, dx, 0.0)
@@ -1271,9 +1192,6 @@ pub(crate) fn apply_vec_transform(
             }
         }
     };
-    if changed {
-        history.push_undo(pre);
-    }
 }
 
 /// A receita da forma VIVA de `id` passa a medir a caixa escalada por `(sx, sy)`. Devolve
@@ -1660,21 +1578,16 @@ impl App {
     fn vec_boolean(&mut self, op: ph2d_vec_boolean::PathfinderOp) {
         if let Some(gfx) = self.gfx.as_mut() {
             let xf = ph2d_vec_entities::transform::build(&gfx.sim, &self.vec_entities);
-            apply_vec_boolean(
-                &mut gfx.vec_scene,
-                &mut self.vec_history,
-                &mut self.vec_pen,
-                &xf,
-                op,
-            );
+            apply_vec_boolean(&mut gfx.vec_scene, &mut self.vec_pen, &xf, op);
         }
     }
 
     /// Arrow-key nudge: move the selection by a SCREEN delta (px), converted to
-    /// world (honours zoom + orientation). `record_undo` pushes ONE undo step —
-    /// the caller passes `!repeat`, so a held arrow coalesces into a single step
-    /// (auto-repeats move but don't each record). Returns whether anything moved.
-    pub(crate) fn vec_nudge_selected(&mut self, dx_px: f64, dy_px: f64, record_undo: bool) -> bool {
+    /// world (honours zoom + orientation). Returns whether anything moved.
+    ///
+    /// (Até 2026-09-12 levava `record_undo`, que agrupava as auto-repetições da seta num passo da
+    /// `History` do vetor. A pilha morreu sem leitor; o Ctrl+Z é o da fila global.)
+    pub(crate) fn vec_nudge_selected(&mut self, dx_px: f64, dy_px: f64) -> bool {
         let Some(gfx) = self.gfx.as_mut() else {
             return false;
         };
@@ -1684,15 +1597,7 @@ impl App {
             .camera
             .screen_to_world((dx_px as f32, dy_px as f32), win);
         let (dx, dy) = ((moved[0] - base[0]) as f64, (moved[1] - base[1]) as f64);
-        let pre = record_undo.then(|| gfx.vec_scene.clone());
-        if self.vec_pen.nudge(&mut gfx.vec_scene, dx, dy) {
-            if let Some(pre) = pre {
-                self.vec_history.push_undo(pre);
-            }
-            true
-        } else {
-            false
-        }
+        self.vec_pen.nudge(&mut gfx.vec_scene, dx, dy)
     }
 
     /// ADR-0108 Fase 1: Delete/Backspace no modo vetorial — prioriza apagar o
@@ -1701,7 +1606,7 @@ impl App {
     pub(crate) fn vec_delete_selected_vertex_or_path(&mut self) -> bool {
         if self.vec_pen.selected_vert().is_some()
             && let Some(gfx) = self.gfx.as_mut()
-            && apply_vec_delete_vertex(&mut gfx.vec_scene, &mut self.vec_history, &mut self.vec_pen)
+            && apply_vec_delete_vertex(&mut gfx.vec_scene, &mut self.vec_pen)
         {
             eprintln!("[ph2d-vec] vértice apagado");
             return true;
@@ -1784,12 +1689,10 @@ impl App {
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
-        let pre = gfx.vec_scene.clone();
         let new_ids = gfx.vec_scene.paste_clip(&clip, dx, dy);
         if new_ids.is_empty() {
             return;
         }
-        self.vec_history.push_undo(pre);
         self.vec_pen.select_many(&new_ids);
     }
 
@@ -1845,13 +1748,7 @@ impl App {
     fn vec_duplicate_shortcut(&mut self) {
         let (dx, dy) = self.vec_screen_offset(PASTE_OFFSET_PX);
         if let Some(gfx) = self.gfx.as_mut() {
-            apply_vec_duplicate(
-                &mut gfx.vec_scene,
-                &mut self.vec_history,
-                &mut self.vec_pen,
-                dx,
-                dy,
-            );
+            apply_vec_duplicate(&mut gfx.vec_scene, &mut self.vec_pen, dx, dy);
         }
     }
 
@@ -1865,7 +1762,6 @@ impl App {
         let Some(gfx) = self.gfx.as_mut() else {
             return false;
         };
-        let pre = gfx.vec_scene.clone();
         let mut any = false;
         for id in &sel {
             any |= gfx.vec_scene.remove_path(*id);
@@ -1873,7 +1769,6 @@ impl App {
         if !any {
             return false;
         }
-        self.vec_history.push_undo(pre);
         self.vec_pen.clear();
         eprintln!("[ph2d-vec] {} path(s) apagado(s)", sel.len());
         true
@@ -2419,14 +2314,7 @@ impl App {
                 );
                 let (size, _) =
                     crate::texture_pattern_pick::default_placement(&gfx.vec_scene, host, arte);
-                crate::texture_pattern_edit::set_source(
-                    &mut gfx.vec_scene,
-                    &mut self.vec_history,
-                    host,
-                    slot,
-                    fonte,
-                    size,
-                )
+                crate::texture_pattern_edit::set_source(&mut gfx.vec_scene, host, slot, fonte, size)
             }
             // ⭐⭐⭐ **A ARTE de um PINCEL** (plano 36, W4): a fonte é a forma COM o pincel, o clicado
             // é a forma que passa a ser o motivo repetido ao longo do contorno dela.
@@ -2447,13 +2335,9 @@ impl App {
                     &self.vec_entities,
                     guide,
                 );
-                crate::vec_stroke_paint::set_art(
-                    &mut gfx.vec_scene,
-                    &mut self.vec_history,
-                    host,
-                    guide,
-                    &|_| membros.clone(),
-                )
+                crate::vec_stroke_paint::set_art(&mut gfx.vec_scene, host, guide, &|_| {
+                    membros.clone()
+                })
             }
             // **O vínculo da row** (W8b.3): a fonte é o WIDGET, o clicado é a forma dirigida.
             crate::vec_pick::PathPick::WidgetBind(widget) => {
@@ -4482,9 +4366,6 @@ impl App {
                     if let Some(i) = self.vec_grad_hit(self.last_pointer) {
                         self.vec_state.grad_selected = Some(i);
                         self.vec_state.grad_drag = Some(i);
-                        if let Some(gfx) = self.gfx.as_ref() {
-                            self.vec_history.begin(&gfx.vec_scene);
-                        }
                         return;
                     }
                     // Modo Text: o clique põe/reposiciona o cursor de texto no ponto
@@ -4520,9 +4401,6 @@ impl App {
                         if let Some(w) = self.vec_world_at(self.last_pointer)
                             && let Some(gfx) = self.gfx.as_mut()
                         {
-                            // UM passo de undo por traço: begin aqui, commit no release (o
-                            // mesmo par que a ferramenta de forma usa).
-                            self.vec_history.begin(&gfx.vec_scene);
                             self.vec_state.pencil.on_press(
                                 &mut gfx.vec_scene,
                                 w,
@@ -4580,8 +4458,6 @@ impl App {
                             if let Some(pid) = self.vec_pen.selected()
                                 && let Some(gfx) = self.gfx.as_mut()
                             {
-                                // UM passo de undo por gesto (o mesmo par do lápis e da quina).
-                                self.vec_history.begin(&gfx.vec_scene);
                                 let scene = &gfx.vec_scene;
                                 self.vec_width_grab = crate::width_handles::press(
                                     &mut gfx.sim,
@@ -4617,7 +4493,6 @@ impl App {
                         if let Some(hit) = self.vec_trim_hit
                             && let Some(gfx) = self.gfx.as_mut()
                         {
-                            self.vec_history.begin(&gfx.vec_scene);
                             crate::vec_convert::freeze_shape_recipe(
                                 &mut gfx.sim,
                                 &self.vec_entities,
@@ -4628,9 +4503,6 @@ impl App {
                                 if gfx.vec_scene.path(hit.path).is_none() {
                                     self.vec_pen.select(None);
                                 }
-                                self.vec_history.commit_if_changed(&gfx.vec_scene);
-                            } else {
-                                self.vec_history.cancel();
                             }
                             self.vec_trim_hit = None;
                             self.vec_state.trim_piece.clear();
@@ -4646,15 +4518,11 @@ impl App {
                     // ⛔ Consome o press SEMPRE, pela razão do Trim: um clique no vazio não pode
                     // cair na cadeia de baixo e começar a desenhar uma forma.
                     if self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Bucket {
-                        let antes = self
-                            .vec_bucket_face
-                            .is_some()
-                            .then(|| self.gfx.as_ref().map(|g| g.vec_scene.clone()))
-                            .flatten();
-                        if let Some(antes) = antes
-                            && self.apply_bucket()
-                        {
-                            self.vec_history.push_undo(antes);
+                        // ⚠️ A guarda de fora é a de sempre: o `apply_bucket` pergunta a tinta ANTES das guardas
+                        // dele (e avisa se ela for transparente), então chamá-lo sem face nem `gfx` imprimiria um
+                        // aviso que este clique nunca imprimiu.
+                        if self.vec_bucket_face.is_some() && self.gfx.is_some() {
+                            self.apply_bucket();
                         }
                         return;
                     }
@@ -4742,9 +4610,6 @@ impl App {
                             if let Some(pid) = self.vec_pen.path_at(&gfx.vec_scene, world, hit_r) {
                                 self.vec_pen.select(Some(pid));
                             }
-                            // Um passo de undo: begin aqui, commit no release do pen (o mesmo
-                            // `commit_if_changed` do `shape_kind_for_mode().is_none()`).
-                            self.vec_history.begin(&gfx.vec_scene);
                             // **A forma VIVA congela a receita AQUI** (Enio: *"fillet e chanfer
                             // nao funciona diretamente nos vertex das shapes"*). Um raio
                             // por-vértice não sobrevive ao `recook_into`, então antes a
@@ -4834,9 +4699,6 @@ impl App {
                         // `hero_screen` abaixo. `press` devolve `false` se não for um `VecEnvelope`.
                         let env_container =
                             gfx.hero_screen.as_ref().and_then(|h| h.gizmo.selection);
-                        // Fase 2: snapshot pré-interação (vira passo de undo no Up
-                        // só se a cena mudar de fato).
-                        self.vec_history.begin(&gfx.vec_scene);
                         // `hero_screen` e `vec_scene` são campos IRMÃOS de `AppGfx`: a
                         // grade pode ser consultada enquanto o Pen muta a cena.
                         let mut hero = gfx.hero_screen.as_mut();
@@ -5077,11 +4939,8 @@ impl App {
                         }
                         return;
                     }
-                    // Gradient group 3b: end a gradient-handle drag (commit iff moved).
+                    // Gradient group 3b: end a gradient-handle drag.
                     if self.vec_state.grad_drag.take().is_some() {
-                        if let Some(gfx) = self.gfx.as_ref() {
-                            self.vec_history.commit_if_changed(&gfx.vec_scene);
-                        }
                         return;
                     }
                     // ADR-0129 Fatia 1: fim de um arrasto de canto da gaiola. O
@@ -5154,7 +5013,6 @@ impl App {
                                 &self.vec_entities,
                                 grab,
                             );
-                            self.vec_history.commit_if_changed(&gfx.vec_scene);
                         }
                         return;
                     }
@@ -5177,13 +5035,7 @@ impl App {
                     // `shape_up_consumes` documenta ao lado).
                     if self.vec_state.pencil.is_active() {
                         let committed = if let Some(gfx) = self.gfx.as_mut() {
-                            let c = self.vec_state.pencil.on_release(&mut gfx.vec_scene);
-                            if c {
-                                self.vec_history.commit_if_changed(&gfx.vec_scene);
-                            } else {
-                                self.vec_history.cancel();
-                            }
-                            c
+                            self.vec_state.pencil.on_release(&mut gfx.vec_scene)
                         } else {
                             false
                         };
@@ -5196,9 +5048,6 @@ impl App {
                     if shape_kind_for_mode(&self.vec_draw_config).is_none() {
                         // Pen: the release ends a handle drag / grab.
                         let consumed = self.vec_pen.on_release();
-                        if let Some(gfx) = self.gfx.as_mut() {
-                            self.vec_history.commit_if_changed(&gfx.vec_scene);
-                        }
                         // DIAGNÓSTICO (`PH2D_CORNER_LOG=1`): os raios LOGO APÓS o gesto. Com o
                         // log do press, parte o report em dois — se aqui os raios anteriores já
                         // sumiram, foi o GESTO; se estão inteiros e somem até o press seguinte,
@@ -5265,9 +5114,6 @@ impl App {
                                         fill_on_close,
                                     );
                                 }
-                                self.vec_history.commit_if_changed(&gfx.vec_scene);
-                            } else {
-                                self.vec_history.cancel();
                             }
                             c
                         } else {
@@ -5306,16 +5152,15 @@ impl App {
                     // remoção da ferramenta, não um cancelamento (não há gesto em curso a
                     // abortar; um clique é um clique). Abaixo de duas paradas o perfil inteiro
                     // sai e o traço volta ao uniforme, que é o neutro-é-ausência das outras
-                    // rotas. Um passo de undo, pelo par begin/commit de sempre.
+                    // rotas. O passo de undo é o da fila global, por diff.
                     if self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Width
                         && let Some(pid) = self.vec_pen.selected()
                         && let Some(world) = self.vec_world_at(self.last_pointer)
                     {
                         let hit_r = HANDLE_HIT_PX * self.vec_px_to_world();
                         if let Some(gfx) = self.gfx.as_mut() {
-                            self.vec_history.begin(&gfx.vec_scene);
                             let scene = &gfx.vec_scene;
-                            let removed = crate::width_handles::remove(
+                            crate::width_handles::remove(
                                 &mut gfx.sim,
                                 scene,
                                 &self.vec_entities,
@@ -5323,9 +5168,6 @@ impl App {
                                 world,
                                 hit_r,
                             );
-                            if !removed {
-                                self.vec_history.cancel();
-                            }
                         }
                         return;
                     }
@@ -5335,7 +5177,6 @@ impl App {
                         if let Some(gfx) = self.gfx.as_mut() {
                             self.vec_state.pencil.cancel(&mut gfx.vec_scene);
                         }
-                        self.vec_history.cancel();
                         return;
                     }
                     if shape_kind_for_mode(&self.vec_draw_config).is_none() {
@@ -5344,7 +5185,6 @@ impl App {
                         if let Some(gfx) = self.gfx.as_mut() {
                             self.vec_state.shape.cancel(&mut gfx.vec_scene);
                         }
-                        self.vec_history.cancel();
                     }
                     return;
                 }
@@ -6507,7 +6347,6 @@ impl App {
                             // arraste. No release resta só a FUSÃO das formas abertas:
                             // encaixa a ponta num endpoint vizinho (RÍGIDO, sem
                             // distorcer) e solda.
-                            let mut welded = false;
                             for id in moved_ids {
                                 if !gfx.vec_scene.paths().iter().any(|p| p.id == id) {
                                     continue;
@@ -6529,18 +6368,12 @@ impl App {
                                     &gfx.sim,
                                     &self.vec_entities,
                                 );
-                                if gfx.vec_scene.weld_new_shape(
+                                gfx.vec_scene.weld_new_shape(
                                     id,
                                     &xforms,
                                     tol,
                                     fill_on_close.clone(),
-                                ) > 0
-                                {
-                                    welded = true;
-                                }
-                            }
-                            if welded {
-                                self.vec_history.commit_if_changed(&gfx.vec_scene);
+                                );
                             }
                         }
                         // Fim do gesto: apaga as guias de alinhamento.
@@ -6775,7 +6608,6 @@ mod tests {
         // Um path CRU: sem receita a manter em passo (o `keep_recipe_in_step` sai calado).
         let mut sim = ph2d_ecs::SimWorld::default();
         let map = ph2d_vec_entities::entities::VecEntityMap::new();
-        let mut hist = ph2d_vec_edit::History::new();
         let mut pen = ph2d_vec_edit::PenTool::new();
         pen.select(Some(id));
 
@@ -6784,7 +6616,6 @@ mod tests {
             &mut sim,
             &map,
             &mut scene,
-            &mut hist,
             &pen,
             &ph2d_vec_scene::VecXforms::new(),
             VecTransformField::X,
@@ -6795,7 +6626,6 @@ mod tests {
             &mut sim,
             &map,
             &mut scene,
-            &mut hist,
             &pen,
             &ph2d_vec_scene::VecXforms::new(),
             VecTransformField::W,
@@ -6832,11 +6662,10 @@ mod tests {
 
         let mut scene = ph2d_vec_scene::VecScene::new();
         let id = scene.push_path(regular_polygon([0.0, 0.0], 5.0, 5.0, 5));
-        let mut hist = ph2d_vec_edit::History::new();
         let mut pen = ph2d_vec_edit::PenTool::new();
         pen.select(Some(id));
 
-        apply_vec_path_shape(&mut scene, &mut hist, &pen, VecPathShapeOp::Smooth);
+        apply_vec_path_shape(&mut scene, &pen, VecPathShapeOp::Smooth);
         assert!(
             scene.paths()[0]
                 .verts
@@ -6844,7 +6673,7 @@ mod tests {
                 .all(|v| v.kind == VertexKind::Smooth),
             "smooth button curves every vertex"
         );
-        apply_vec_path_shape(&mut scene, &mut hist, &pen, VecPathShapeOp::Sharpen);
+        apply_vec_path_shape(&mut scene, &pen, VecPathShapeOp::Sharpen);
         assert!(
             scene.paths()[0]
                 .verts
@@ -6873,7 +6702,7 @@ mod tests {
             .unwrap()
             .verts
             .len();
-        apply_vec_path_shape(&mut scene, &mut hist, &pen, VecPathShapeOp::Simplify);
+        apply_vec_path_shape(&mut scene, &pen, VecPathShapeOp::Simplify);
         let after = scene
             .paths()
             .iter()
@@ -6891,7 +6720,7 @@ mod tests {
             .unwrap()
             .verts
             .len();
-        apply_vec_path_shape(&mut scene, &mut hist, &pen, VecPathShapeOp::Subdivide);
+        apply_vec_path_shape(&mut scene, &pen, VecPathShapeOp::Subdivide);
         let n2 = scene
             .paths()
             .iter()
@@ -6903,13 +6732,13 @@ mod tests {
 
         // Close/Open toggle flips the selected path's `closed` flag each click.
         let was = scene.paths().iter().find(|p| p.id == sq).unwrap().closed;
-        super::apply_vec_toggle_closed(&mut scene, &mut hist, &mut pen);
+        super::apply_vec_toggle_closed(&mut scene, &mut pen);
         assert_eq!(
             scene.paths().iter().find(|p| p.id == sq).unwrap().closed,
             !was,
             "toggle flips closed"
         );
-        super::apply_vec_toggle_closed(&mut scene, &mut hist, &mut pen);
+        super::apply_vec_toggle_closed(&mut scene, &mut pen);
         assert_eq!(
             scene.paths().iter().find(|p| p.id == sq).unwrap().closed,
             was,
@@ -7040,11 +6869,9 @@ mod tests {
         // Um terceiro path, NÃO selecionado, bem longe: a booleana antiga o teria
         // agarrado (é uma das duas últimas fechadas); a nova tem de ignorá-lo.
         let bystander = scene.push_path(ph2d_vec_scene::rectangle([90.0, 90.0], [95.0, 95.0]));
-        let mut history = ph2d_vec_edit::History::default();
 
         super::apply_vec_boolean(
             &mut scene,
-            &mut history,
             &mut pen,
             &ph2d_vec_scene::VecXforms::new(),
             ph2d_vec_boolean::PathfinderOp::Subtract,
@@ -7069,10 +6896,8 @@ mod tests {
     fn boolean_needs_two_selected_closed_regions() {
         let (mut scene, mut pen, ids) = nested_selection();
         pen.select(Some(ids[0])); // só um selecionado
-        let mut history = ph2d_vec_edit::History::default();
         super::apply_vec_boolean(
             &mut scene,
-            &mut history,
             &mut pen,
             &ph2d_vec_scene::VecXforms::new(),
             ph2d_vec_boolean::PathfinderOp::Union,
@@ -7084,9 +6909,8 @@ mod tests {
     #[test]
     fn make_and_release_compound_from_the_selection() {
         let (mut scene, mut pen, ids) = nested_selection();
-        let mut history = ph2d_vec_edit::History::default();
 
-        super::apply_vec_compound(&mut scene, &mut history, &mut pen, true);
+        super::apply_vec_compound(&mut scene, &mut pen, true);
         assert_eq!(scene.paths().len(), 1);
         assert!(
             !scene.path_contains_point(ids[0], [5.0, 5.0]),
@@ -7094,7 +6918,7 @@ mod tests {
         );
         assert_eq!(pen.selected(), Some(ids[0]));
 
-        super::apply_vec_compound(&mut scene, &mut history, &mut pen, false);
+        super::apply_vec_compound(&mut scene, &mut pen, false);
         assert_eq!(scene.paths().len(), 2);
         assert!(
             scene.path_contains_point(ids[0], [5.0, 5.0]),
@@ -7107,16 +6931,15 @@ mod tests {
     #[test]
     fn fill_rule_toggle_vacates_or_fills_the_hole() {
         let (mut scene, mut pen, ids) = nested_selection();
-        let mut history = ph2d_vec_edit::History::default();
-        super::apply_vec_compound(&mut scene, &mut history, &mut pen, true);
+        super::apply_vec_compound(&mut scene, &mut pen, true);
         assert!(!scene.path_contains_point(ids[0], [5.0, 5.0]));
 
-        super::apply_vec_fill_rule(&mut scene, &mut history, &pen, false); // Non-Zero
+        super::apply_vec_fill_rule(&mut scene, &pen, false); // Non-Zero
         assert!(
             scene.path_contains_point(ids[0], [5.0, 5.0]),
             "NonZero preenche"
         );
-        super::apply_vec_fill_rule(&mut scene, &mut history, &pen, true); // Even-Odd
+        super::apply_vec_fill_rule(&mut scene, &pen, true); // Even-Odd
         assert!(
             !scene.path_contains_point(ids[0], [5.0, 5.0]),
             "EvenOdd vaza"

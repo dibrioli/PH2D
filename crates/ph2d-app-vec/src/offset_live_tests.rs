@@ -239,12 +239,10 @@ fn applying_the_offset_materialises_the_drawn_geometry() {
 
     let mut pen = ph2d_vec_edit::PenTool::default();
     pen.select_many(&[id]);
-    let mut hist = ph2d_vec_edit::History::default();
     assert!(crate::offset_live::materialise(
         &mut scene,
         &sim,
         &mut pen,
-        &mut hist,
         &map,
         &xf,
         &[id]
@@ -267,7 +265,6 @@ fn applying_the_offset_materialises_the_drawn_geometry() {
             "âncora materializada {g:?} ≠ a desenhada {w:?}"
         );
     }
-    assert!(hist.undo(&scene).is_some(), "UM passo de undo para o gesto");
     // A forma-fonte saiu da cena, e com ela o componente (a entidade dela morre no `sync`).
     ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     assert!(
@@ -326,9 +323,8 @@ fn materialising_two_shapes_honours_each_ones_own_offset() {
 
     let mut pen = ph2d_vec_edit::PenTool::default();
     pen.select_many(&ids);
-    let mut hist = ph2d_vec_edit::History::default();
     assert!(crate::offset_live::materialise(
-        &mut scene, &sim, &mut pen, &mut hist, &map, &xf, &ids
+        &mut scene, &sim, &mut pen, &map, &xf, &ids
     ));
 
     // Cada forma materializada fica com a contagem da quina DELA. A ordem na cena é a de z,
@@ -355,12 +351,10 @@ fn materialising_without_a_live_offset_refuses() {
     let (mut scene, sim, map, xf, id) = donut_scene();
     let mut pen = ph2d_vec_edit::PenTool::default();
     pen.select_many(&[id]);
-    let mut hist = ph2d_vec_edit::History::default();
     assert!(!crate::offset_live::materialise(
         &mut scene,
         &sim,
         &mut pen,
-        &mut hist,
         &map,
         &xf,
         &[id]

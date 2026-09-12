@@ -63,11 +63,10 @@ impl BlendSession {
 /// passou a usar o Blend Object VIVO ([`crate::blend_live`]).
 ///
 /// Exige exatamente DUAS fechadas (três não têm um "entre" definido, e adivinhar seria pior que
-/// recusar). Um passo de undo por chamada. `steps`/`stack_up` vêm do chamador.
+/// recusar). `steps`/`stack_up` vêm do chamador; o passo de undo é o da fila global, por diff.
 #[allow(clippy::too_many_arguments)] // o shell destruturado passa cada ref separada
 pub fn apply(
     scene: &mut VecScene,
-    history: &mut ph2d_vec_edit::History,
     pen: &mut ph2d_vec_edit::PenTool,
     xforms: &VecXforms,
     session: &mut Option<BlendSession>,
@@ -109,7 +108,6 @@ pub fn apply(
         return;
     }
 
-    let pre = scene.clone(); // UM passo de undo por ação — inclusive o re-rodar
     for id in &next.produced {
         scene.remove_path(*id);
     }
@@ -125,7 +123,6 @@ pub fn apply(
         .enumerate()
         .map(|(k, p)| scene.insert_path(at + k, p))
         .collect();
-    history.push_undo(pre);
     if std::env::var_os("PH2D_BLEND_LOG").is_some() {
         for id in &next.produced {
             let Some(pth) = scene.paths().iter().find(|p| p.id == *id) else {

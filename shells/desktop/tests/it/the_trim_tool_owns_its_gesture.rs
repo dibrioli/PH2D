@@ -110,31 +110,10 @@ fn a_live_shape_freezes_its_recipe_before_the_cut() {
     );
 }
 
-/// **UM passo de undo**, e ele é CANCELADO quando nada mudou — um clique que erra não pode deixar
-/// um passo vazio na fila.
-#[test]
-fn the_cut_is_one_undo_step_and_a_miss_cancels_it() {
-    let arm = at(
-        DISPATCH,
-        "self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Trim",
-        "o dispatch",
-    );
-    let corner = at(
-        DISPATCH,
-        "if self.vec_draw_config.mode.is_corner_tool() {",
-        "o dispatch",
-    );
-    let bloco = &DISPATCH[arm..corner];
-    assert!(bloco.contains("self.vec_history.begin("), "falta o begin");
-    assert!(
-        bloco.contains("commit_if_changed("),
-        "falta o commit — o corte nao entra na fila de undo"
-    );
-    assert!(
-        bloco.contains("self.vec_history.cancel();"),
-        "um clique que nao corta tem de CANCELAR o passo"
-    );
-}
+// ⛔ `the_cut_is_one_undo_step_and_a_miss_cancels_it` MORREU em 2026-09-12 (`line/render-loop`,
+// A9): ele exigia o par `begin`/`commit_if_changed`/`cancel` da `History` do vetor no braço do Trim —
+// uma pilha que o Ctrl+Z NUNCA leu. O passo de undo do corte é o da fila global, por diff do quadro,
+// e um clique que erra não muda a cena, logo não deixa passo nenhum.
 
 /// ⚠️ **O realce é LIMPO fora do modo** — um vermelho a arder promete um corte que nenhum clique
 /// faria.

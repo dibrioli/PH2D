@@ -20,9 +20,11 @@
 //! 2. é ele que decide a largura entregue ao `restyle_selected_strokes`;
 //! 3. é ele, também, que faz o **detector** contar a diferença de largura — sem isso o
 //!    `will_change` dá falso num traço em que só a largura mudou, e o restyle nem roda;
-//! 4. o `width_dragging` **continua** a decidir o agrupamento do undo. Ele não era a resposta
-//!    errada: era a resposta *de outra pergunta* (*há um gesto em curso?*). Tirá-lo daqui faria um
-//!    arrasto de slider virar um passo de undo por quadro.
+//! 4. ~~o `width_dragging` **continua** a decidir o agrupamento do undo~~ — ⛔ MORREU em 2026-09-12
+//!    (`line/render-loop`, A9): o único leitor desse agrupamento era a `History` do vetor, uma pilha
+//!    que o Ctrl+Z nunca leu. O passo de undo é o da fila global, por diff do quadro, e o
+//!    `width_dragging` saiu do bridge com ela. As duas AUSÊNCIAS acima continuam a guardar a
+//!    regressão (a largura e o detector não podem voltar a perguntar pelo arrasto).
 
 const SRC: &str = include_str!("../../../../crates/ph2d-app-vec/src/vector_bridge.rs");
 
@@ -59,15 +61,5 @@ fn the_change_detector_counts_a_width_that_was_authored() {
     );
 }
 
-/// ⚠️ A outra metade, e ela é uma pergunta DIFERENTE: *"há um gesto em curso?"* — que é sobre
-/// arrasto, e para a qual o estado do slider é a resposta certa.
-#[test]
-fn the_undo_session_still_asks_whether_a_drag_is_in_flight() {
-    let i = at("let session =");
-    let line = SRC[i..].lines().next().unwrap_or_default();
-    assert!(
-        line.contains("width_dragging"),
-        "o agrupamento do undo deixou de consultar o arrasto (`{line}`) — um arrasto de slider \
-         passaria a gravar um passo de undo por QUADRO"
-    );
-}
+// ⛔ `the_undo_session_still_asks_whether_a_drag_is_in_flight` MORREU em 2026-09-12 (ver o item 4 do
+// cabeçalho): o `session` que ele lia só agrupava passos da `History` do vetor, que nenhum Ctrl+Z lia.

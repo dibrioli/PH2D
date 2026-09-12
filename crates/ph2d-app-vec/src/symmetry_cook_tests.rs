@@ -228,16 +228,7 @@ fn the_apply_lands_exactly_what_was_on_screen() {
     assert!(!on_screen.is_empty());
 
     let mut pen = ph2d_vec_edit::PenTool::default();
-    let mut history = ph2d_vec_edit::History::default();
-    assert!(materialise(
-        &mut scene,
-        &sim,
-        &mut pen,
-        &mut history,
-        &map,
-        &xf,
-        &[id]
-    ));
+    assert!(materialise(&mut scene, &sim, &mut pen, &map, &xf, &[id]));
 
     let in_doc: Vec<[f64; 2]> = scene
         .paths()
@@ -286,15 +277,8 @@ fn the_apply_reaches_every_armed_shape_not_just_the_selected_one() {
     assert_eq!(armed_ids, vec![a, b], "as duas armadas, e só elas");
 
     let mut pen = ph2d_vec_edit::PenTool::default();
-    let mut history = ph2d_vec_edit::History::default();
     assert!(materialise(
-        &mut scene,
-        &sim,
-        &mut pen,
-        &mut history,
-        &map,
-        &xf,
-        &armed_ids
+        &mut scene, &sim, &mut pen, &map, &xf, &armed_ids
     ));
     assert!(scene.path(a).is_none() && scene.path(b).is_none());
     assert!(
@@ -309,9 +293,8 @@ fn the_apply_is_a_no_op_without_a_live_symmetry() {
     let (mut scene, sim, map, xf, id, _e) = half_profile_scene();
     let before = scene.clone();
     let mut pen = ph2d_vec_edit::PenTool::default();
-    let mut history = ph2d_vec_edit::History::default();
     assert!(
-        !materialise(&mut scene, &sim, &mut pen, &mut history, &map, &xf, &[id]),
+        !materialise(&mut scene, &sim, &mut pen, &map, &xf, &[id]),
         "sem componente não há o que consolidar"
     );
     assert_eq!(

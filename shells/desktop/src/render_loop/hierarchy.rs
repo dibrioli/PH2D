@@ -93,7 +93,6 @@ pub(super) fn dispatch(
     // ⭐ O mapa `path ⟺ entidade` (F4.6) — uma cópia profunda que clona um `VecPath` tem de
     // registar o par, senão o `vec_entities::sync` cunha uma segunda entidade para o clone.
     vec_entities: &mut ph2d_vec_entities::entities::VecEntityMap,
-    vec_history: &mut ph2d_vec_edit::History,
     vec_pen: &mut ph2d_vec_edit::PenTool,
     // Out: `(source_bits, new_bits)` of a sprite duplicate so the caller (which holds the painter +
     // renderer) can bake the source's live paint and give the copy an independent texture.
@@ -218,7 +217,6 @@ pub(super) fn dispatch(
             toasts,
             vec_scene,
             vec_entities,
-            vec_history,
             vec_pen,
             duplicate_made,
             registry,

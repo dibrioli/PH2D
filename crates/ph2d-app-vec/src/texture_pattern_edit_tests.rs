@@ -41,10 +41,8 @@ pub(super) fn pattern_of(scene: &VecScene, id: VecPathId) -> PatternFill {
 #[test]
 fn with_the_lock_an_axis_keeps_the_ratio() {
     let (mut scene, pen, id) = scene_with(fill()); // size [8, 2] — 4:1
-    let mut h = ph2d_vec_edit::History::default();
     apply(
         &mut scene,
-        &mut h,
         &pen,
         PatternSlot::Fill,
         TexPatCmd::Axis(0, 4.0, true),
@@ -57,64 +55,44 @@ fn with_the_lock_an_axis_keeps_the_ratio() {
 #[test]
 fn without_the_lock_the_art_squashes_on_purpose() {
     let (mut scene, pen, id) = scene_with(fill()); // [8, 2]
-    let mut h = ph2d_vec_edit::History::default();
     apply(
         &mut scene,
-        &mut h,
         &pen,
         PatternSlot::Fill,
         TexPatCmd::Axis(1, 8.0, false),
     );
     let p = pattern_of(&scene, id);
     assert_eq!(p.size, [8.0, 8.0], "o outro eixo mexeu-se, ou este nao");
-    assert_eq!(h.undo_len(), 1, "achatar e' UM passo de undo");
-    // ⚠️ E o MESMO valor não grava passo — o slider re-publica a cada quadro em que está agarrado.
+    // ⚠️ E o MESMO valor não muda o documento — o slider re-publica a cada quadro em que está
+    // agarrado, e o undo global (por diff) gravaria um passo espúrio a cada um.
+    let antes = scene.clone();
     apply(
         &mut scene,
-        &mut h,
         &pen,
         PatternSlot::Fill,
         TexPatCmd::Axis(1, 8.0, false),
     );
-    assert_eq!(h.undo_len(), 1, "o mesmo valor gravou um passo espurio");
+    assert!(scene == antes, "o mesmo valor mudou o documento");
 }
 
-/// **Cada mudança é UM passo de undo, e um valor repetido NÃO é passo nenhum.**
+/// **Um valor repetido NÃO muda o documento, e um valor novo muda.**
 ///
 /// ⚠️ Sem a comparação, o slider a re-publicar o mesmo número faria todo quadro virar um passo — o
-/// defeito que o `canonicalize` do editor curou para o mundo inteiro.
+/// defeito que o `canonicalize` do editor curou para o mundo inteiro. O passo é o do undo GLOBAL,
+/// que regista por diff; até 2026-09-12 este gate contava-o na `History` do vetor, que nenhum
+/// Ctrl+Z lia.
 #[test]
 fn a_repeated_value_records_no_undo_step() {
     let (mut scene, pen, _) = scene_with(fill());
-    let mut h = ph2d_vec_edit::History::default();
-    apply(
-        &mut scene,
-        &mut h,
-        &pen,
-        PatternSlot::Fill,
-        TexPatCmd::Angle(30.0),
+    apply(&mut scene, &pen, PatternSlot::Fill, TexPatCmd::Angle(30.0));
+    let after_first = scene.clone();
+    apply(&mut scene, &pen, PatternSlot::Fill, TexPatCmd::Angle(30.0));
+    assert!(scene == after_first, "o mesmo valor mudou o documento");
+    apply(&mut scene, &pen, PatternSlot::Fill, TexPatCmd::Angle(31.0));
+    assert!(
+        scene != after_first,
+        "um valor NOVO tem de mudar o documento"
     );
-    let after_first = h.undo_len();
-    apply(
-        &mut scene,
-        &mut h,
-        &pen,
-        PatternSlot::Fill,
-        TexPatCmd::Angle(30.0),
-    );
-    assert_eq!(
-        h.undo_len(),
-        after_first,
-        "o mesmo valor gravou um passo espurio"
-    );
-    apply(
-        &mut scene,
-        &mut h,
-        &pen,
-        PatternSlot::Fill,
-        TexPatCmd::Angle(31.0),
-    );
-    assert_eq!(h.undo_len(), after_first + 1, "um valor NOVO tem de gravar");
 }
 
 /// **Os índices do painel e os enums do documento são a MESMA lista, nos dois sentidos.**
@@ -130,10 +108,8 @@ fn the_panel_indices_round_trip_through_the_document_enums() {
         TileKind::Hex,
     ] {
         let (mut scene, pen, id) = scene_with(fill());
-        let mut h = ph2d_vec_edit::History::default();
         apply(
             &mut scene,
-            &mut h,
             &pen,
             PatternSlot::Fill,
             TexPatCmd::Tile(tile_index(k)),
@@ -146,10 +122,8 @@ fn the_panel_indices_round_trip_through_the_document_enums() {
     }
     for m in [PatternMode::Tile, PatternMode::Mirror, PatternMode::Clamp] {
         let (mut scene, pen, id) = scene_with(fill());
-        let mut h = ph2d_vec_edit::History::default();
         apply(
             &mut scene,
-            &mut h,
             &pen,
             PatternSlot::Fill,
             TexPatCmd::Mode(mode_index(m)),
@@ -167,10 +141,8 @@ fn the_panel_indices_round_trip_through_the_document_enums() {
 #[test]
 fn the_offset_denominator_is_a_whole_number_and_never_zero() {
     let (mut scene, pen, id) = scene_with(fill());
-    let mut h = ph2d_vec_edit::History::default();
     apply(
         &mut scene,
-        &mut h,
         &pen,
         PatternSlot::Fill,
         TexPatCmd::OffsetDenom(2.7),
@@ -178,7 +150,6 @@ fn the_offset_denominator_is_a_whole_number_and_never_zero() {
     assert_eq!(pattern_of(&scene, id).offset_denom, 3);
     apply(
         &mut scene,
-        &mut h,
         &pen,
         PatternSlot::Fill,
         TexPatCmd::OffsetDenom(-5.0),
@@ -190,14 +161,7 @@ fn the_offset_denominator_is_a_whole_number_and_never_zero() {
 #[test]
 fn the_angle_crosses_from_degrees_to_radians_in_one_door() {
     let (mut scene, pen, id) = scene_with(fill());
-    let mut h = ph2d_vec_edit::History::default();
-    apply(
-        &mut scene,
-        &mut h,
-        &pen,
-        PatternSlot::Fill,
-        TexPatCmd::Angle(90.0),
-    );
+    apply(&mut scene, &pen, PatternSlot::Fill, TexPatCmd::Angle(90.0));
     assert!(
         (pattern_of(&scene, id).angle - std::f64::consts::FRAC_PI_2).abs() < 1e-12,
         "90 graus nao viraram pi/2"
@@ -220,15 +184,14 @@ fn a_shape_without_a_pattern_is_left_alone() {
     });
     let mut pen = ph2d_vec_edit::PenTool::default();
     pen.select_many(&[id]);
-    let mut h = ph2d_vec_edit::History::default();
+    let antes = scene.clone();
     apply(
         &mut scene,
-        &mut h,
         &pen,
         PatternSlot::Fill,
         TexPatCmd::Axis(0, 4.0, true),
     );
-    assert_eq!(h.undo_len(), 0, "gravou um passo sobre uma forma solida");
+    assert!(scene == antes, "mexeu no documento de uma forma solida");
     assert!(matches!(
         scene.path(id).and_then(|p| p.fill.as_ref()),
         Some(Paint::Solid(_))
@@ -245,16 +208,9 @@ fn a_shape_without_a_pattern_is_left_alone() {
 #[test]
 fn switching_modes_never_touches_the_authored_law() {
     let (mut scene, pen, id) = scene_with(fill());
-    let mut h = ph2d_vec_edit::History::default();
     let antes = pattern_of(&scene, id);
     for m in [2u8, 0, 1, 2, 0] {
-        apply(
-            &mut scene,
-            &mut h,
-            &pen,
-            PatternSlot::Fill,
-            TexPatCmd::Mode(m),
-        );
+        apply(&mut scene, &pen, PatternSlot::Fill, TexPatCmd::Mode(m));
     }
     let depois = pattern_of(&scene, id);
     assert_eq!(depois.size, antes.size, "trocar de modo mexeu no tamanho");
@@ -296,10 +252,8 @@ fn the_by_id_door_writes_the_captured_shape_and_nothing_else() {
         fill: Some(Paint::solid(Rgba8::new(9, 9, 9, 255))),
         ..VecPath::default()
     });
-    let mut h = ph2d_vec_edit::History::default();
     assert!(set_source(
         &mut scene,
-        &mut h,
         alvo,
         PatternSlot::Fill,
         PatternSource::Shape(outra),
@@ -308,13 +262,12 @@ fn the_by_id_door_writes_the_captured_shape_and_nothing_else() {
         [77.0, 77.0],
     ));
     assert_eq!(pattern_of(&scene, alvo).source, PatternSource::Shape(outra));
-    assert_eq!(h.undo_len(), 1, "escrever a fonte e' UM passo de undo");
 
-    // ⚠️ O MESMO valor não grava passo — senão re-armar o picker e escolher a mesma forma encheria
-    // a pilha de undo com passos que não mudam nada.
+    // ⚠️ O MESMO valor não muda o documento — senão re-armar o picker e escolher a mesma forma
+    // encheria a pilha do undo global (por diff) com passos que não mudam nada.
+    let cena_antes = scene.clone();
     assert!(!set_source(
         &mut scene,
-        &mut h,
         alvo,
         PatternSlot::Fill,
         PatternSource::Shape(outra),
@@ -322,18 +275,17 @@ fn the_by_id_door_writes_the_captured_shape_and_nothing_else() {
         // metade "trocar a arte preserva o do artista".
         [77.0, 77.0],
     ));
-    assert_eq!(h.undo_len(), 1, "o mesmo valor gravou um passo espurio");
+    assert!(scene == cena_antes, "o mesmo valor mudou o documento");
 
     // ⚠️ E uma forma SEM padrão não é tocada: o picker escreve numa forma que TEM um.
     assert!(!set_source(
         &mut scene,
-        &mut h,
         outra,
         PatternSlot::Fill,
         PatternSource::Shape(alvo),
         [77.0, 77.0],
     ));
-    assert_eq!(h.undo_len(), 1);
+    assert!(scene == cena_antes, "uma forma sem padrao foi tocada");
     assert!(matches!(
         scene.path(outra).and_then(|p| p.fill.as_ref()),
         Some(Paint::Solid(_))
@@ -348,10 +300,8 @@ fn the_by_id_door_writes_the_captured_shape_and_nothing_else() {
 fn the_shift_command_moves_the_pattern_by_a_fraction_of_one_repeat() {
     // A forma é o quadrado `[0,0]..[10,10]`; a arte mede `[8, 2]` sem vão ⇒ período `[8, 2]`.
     let (mut scene, pen, id) = scene_with(fill());
-    let mut h = ph2d_vec_edit::History::default();
     apply(
         &mut scene,
-        &mut h,
         &pen,
         PatternSlot::Fill,
         TexPatCmd::Shift(0, 25.0),
@@ -367,11 +317,9 @@ fn the_shift_command_moves_the_pattern_by_a_fraction_of_one_repeat() {
         "o eixo Y mexeu-se: {:?}",
         p.origin
     );
-    assert_eq!(h.undo_len(), 1);
 
     apply(
         &mut scene,
-        &mut h,
         &pen,
         PatternSlot::Fill,
         TexPatCmd::Shift(1, 50.0),
@@ -382,25 +330,23 @@ fn the_shift_command_moves_the_pattern_by_a_fraction_of_one_repeat() {
         "50% de um periodo de 2 e' 1 unidade: {:?}",
         p.origin
     );
-    assert_eq!(h.undo_len(), 2);
 
-    // ⚠️ **O MESMO valor não grava passo.** O slider re-publica a cada quadro em que está agarrado;
-    // sem isto, arrastar uma vez encheria a pilha de undo.
+    // ⚠️ **O MESMO valor não muda o documento.** O slider re-publica a cada quadro em que está
+    // agarrado; sem isto, arrastar uma vez encheria a pilha do undo global (por diff).
+    let antes = scene.clone();
     apply(
         &mut scene,
-        &mut h,
         &pen,
         PatternSlot::Fill,
         TexPatCmd::Shift(0, 25.0),
     );
     apply(
         &mut scene,
-        &mut h,
         &pen,
         PatternSlot::Fill,
         TexPatCmd::Shift(1, 50.0),
     );
-    assert_eq!(h.undo_len(), 2, "o mesmo valor gravou um passo espurio");
+    assert!(scene == antes, "o mesmo valor mudou o documento");
 }
 
 // ── O ALVO da secção (plano 35, wave D) ────────────────────────────────────────
@@ -485,13 +431,7 @@ fn what_the_panel_shows_writes_back_to_the_same_angle() {
 fn the_gap_has_two_axes_and_the_link_is_the_old_behaviour_exactly() {
     let (mut scene, pen, id) = scene_with(fill());
     let aplica = |scene: &mut VecScene, cmd| {
-        apply(
-            scene,
-            &mut ph2d_vec_edit::History::default(),
-            &pen,
-            PatternSlot::Fill,
-            cmd,
-        );
+        apply(scene, &pen, PatternSlot::Fill, cmd);
     };
     // ⭐ LIGADO: mexer num eixo leva o outro ao MESMO número — o controlo único de sempre.
     aplica(&mut scene, TexPatCmd::Gap(1, 7.0, true));
@@ -538,7 +478,6 @@ fn opening_the_hex_rows_no_longer_opens_its_columns() {
     let abre = 10.0 * (1.0 / ph2d_vec_pattern::HEX_ROW_RATIO - 1.0);
     apply(
         &mut scene,
-        &mut ph2d_vec_edit::History::default(),
         &pen,
         PatternSlot::Fill,
         TexPatCmd::Gap(1, abre, false),

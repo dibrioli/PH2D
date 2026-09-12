@@ -14,7 +14,7 @@
 use ph2d_vec_edit::PenTool;
 use ph2d_vec_render::GradHandle;
 use ph2d_vec_scene::{LineCap, LineJoin, Paint, Rgba8, StrokeAlign, StrokeSpec, VecScene};
-use std::cell::{Cell, RefCell};
+use std::cell::Cell;
 
 pub fn rgba(c: [u8; 4]) -> Rgba8 {
     Rgba8::new(c[0], c[1], c[2], c[3])
@@ -333,11 +333,6 @@ pub fn sync_opacity_slider(
 }
 
 thread_local! {
-    /// Pre-image of the scene captured at the START of a recolour gesture (the
-    /// first frame the colour actually changes the selected path). Committed to
-    /// `History` as ONE undo step when the gesture ends (the picker closes /
-    /// the discrete pick's frame finishes). `None` between gestures.
-    pub static RECOLOR_PRE: RefCell<Option<VecScene>> = const { RefCell::new(None) };
     /// O caminho cujas PONTAS a tool adotou por último — o "alvo" dos dois seletores de
     /// marker, no mesmo modelo do alvo dos campos de forma (`vec_shape_params`). Só a
     /// MUDANÇA de alvo semeia; semear todo frame brigaria com a escolha que o usuário

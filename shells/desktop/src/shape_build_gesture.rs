@@ -100,7 +100,8 @@ impl App {
     ///
     /// O undo é o GLOBAL, por diff (`App::post_frame_undo`): a `VecScene` está na captura,
     /// e o `held_button` já foi limpo quando o Up chega aqui. Não há passo a empurrar à mão
-    /// — o `vec_history` é uma fila morta (ADR-0110+, "populado mas não lido").
+    /// — o `vec_history` era uma fila morta (ADR-0110+, "populado mas não lido"), e foi apagado em
+    /// 2026-09-12 (`line/render-loop`, A9).
     pub(crate) fn build_up(&mut self) {
         let Some(session) = self.vec_build.as_mut() else {
             return;

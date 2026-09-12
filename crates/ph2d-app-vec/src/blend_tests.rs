@@ -45,10 +45,8 @@ fn run(
     xf: &VecXforms,
     session: &mut Option<BlendSession>,
     steps: u32,
-) -> ph2d_vec_edit::History {
-    let mut history = ph2d_vec_edit::History::default();
-    apply(scene, &mut history, pen, xf, session, steps, true);
-    history
+) {
+    apply(scene, pen, xf, session, steps, true);
 }
 
 /// **As fontes sobrevivem, e os passos nascem ENTRE elas.**
@@ -91,35 +89,10 @@ fn the_sources_survive_and_the_steps_are_born_between_them() {
 // correspondência é 100% automática; o ajuste, no modelo vivo, é editar as formas-fonte. O gate do
 // winding oposto vive no motor: `ph2d_vec_blend::tests::opposite_winding_does_not_collapse_the_middle`.)
 
-/// **Uma ação = UM passo de undo** (inclusive o re-rodar).
-///
-/// Um Ctrl+Z depois do Blend devolve a cena **como ela estava**: as duas formas, e mais nada. Se
-/// a ação tivesse empurrado dois passos, o artista precisaria de dois Ctrl+Z para desfazer um
-/// clique — que é exatamente a queixa que abriu esta linha.
-#[test]
-fn every_action_is_exactly_one_undo_step() {
-    let (mut scene, xf, mut pen, ..) = two_shapes();
-    let mut session = None;
-    let mut history = ph2d_vec_edit::History::default();
-
-    apply(
-        &mut scene,
-        &mut history,
-        &mut pen,
-        &xf,
-        &mut session,
-        3,
-        true,
-    );
-    assert_eq!(scene.paths().len(), 5);
-
-    let back = history.undo(&scene).expect("UM passo de undo");
-    assert_eq!(back.paths().len(), 2, "um Ctrl+Z devolve a cena de antes");
-    assert!(
-        !history.can_undo(),
-        "o Blend empurrou MAIS de um passo — um clique exigiria dois Ctrl+Z"
-    );
-}
+// ⛔ `every_action_is_exactly_one_undo_step` MORREU em 2026-09-12 com a `History` do vetor
+// (`line/render-loop`, A9): ele contava passos numa pilha que nenhum Ctrl+Z lia. O «uma ação = UM
+// passo» é hoje ESTRUTURAL — o passo é o da fila global, que regista o quadro por diff, e o Blend
+// escreve a ação inteira numa chamada.
 
 /// Sem exatamente **duas** formas fechadas, o botão não faz nada — e não corrompe a cena.
 ///

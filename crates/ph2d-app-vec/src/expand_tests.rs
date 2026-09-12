@@ -2,7 +2,8 @@
 //!
 //! O motor está gateado na `ph2d-vec-boolean`. O que se prova AQUI é o que só existe na
 //! shell: quais paths o comando pega, em que z o resultado fica, o que sobra da original, e
-//! que o gesto inteiro custa **UM** Ctrl+Z.
+//! que um gesto que não converte nada deixa o documento IGUAL (o Ctrl+Z é o da fila global, que
+//! regista por diff — até 2026-09-12 contava-se aqui a `History` do vetor, que ninguém lia).
 
 use super::*;
 use ph2d_vec_scene::{Paint, Rgba8, StrokeSpec, VecPath, VecVertex, WidthProfile};
@@ -19,12 +20,12 @@ fn square(s: f64) -> VecPath {
 
 /// Cena com os `paths` dados, todos selecionados. Sem poses (`VecXforms` vazio): a fronteira
 /// de pose já é exercida pela booleana irmã, e aqui o que se mede é o efeito no DOCUMENTO.
-fn scene_with(paths: Vec<VecPath>) -> (VecScene, History, PenTool, VecXforms) {
+fn scene_with(paths: Vec<VecPath>) -> (VecScene, PenTool, VecXforms) {
     let mut scene = VecScene::new();
     let ids: Vec<VecPathId> = paths.into_iter().map(|p| scene.push_path(p)).collect();
     let mut pen = PenTool::default();
     pen.select_many(&ids);
-    (scene, History::default(), pen, VecXforms::default())
+    (scene, pen, VecXforms::default())
 }
 
 fn stroked(mut p: VecPath) -> VecPath {
@@ -65,8 +66,8 @@ fn the_button_ids_map_to_their_commands() {
 /// seleção devolveria UMA forma, e o artista perderia duas.
 #[test]
 fn offsetting_three_shapes_offsets_all_three() {
-    let (mut scene, mut hist, mut pen, xf) = scene_with(vec![square(10.0); 3]);
-    apply_vec_expand(&mut scene, &mut hist, &mut pen, &xf, MITER, 1.0);
+    let (mut scene, mut pen, xf) = scene_with(vec![square(10.0); 3]);
+    apply_vec_expand(&mut scene, &mut pen, &xf, MITER, 1.0);
     assert_eq!(scene.paths().len(), 3, "as tres continuam existindo");
     for p in scene.paths() {
         let a = ph2d_vec_boolean::area(p);
@@ -75,39 +76,18 @@ fn offsetting_three_shapes_offsets_all_three() {
     assert_eq!(pen.selected_paths().len(), 3, "as tres ficam selecionadas");
 }
 
-/// **UM passo de undo para o gesto inteiro**, mesmo mexendo em três formas. Um passo por
-/// forma faria "desfazer o Expand" custar tantos Ctrl+Z quantos objetos — e nada pareceria
-/// errado.
-#[test]
-fn the_whole_gesture_is_one_undo_step() {
-    let (mut scene, mut hist, mut pen, xf) = scene_with(vec![square(10.0); 3]);
-    apply_vec_expand(&mut scene, &mut hist, &mut pen, &xf, MITER, 1.0);
-    let restored = hist.undo(&scene).expect("ha um passo a desfazer");
-    assert_eq!(restored.paths().len(), 3);
-    for p in restored.paths() {
-        let a = ph2d_vec_boolean::area(p);
-        assert!((a - 100.0).abs() < 1e-6, "voltou ao original? area {a}");
-    }
-    assert!(
-        hist.undo(&restored).is_none(),
-        "havia um SEGUNDO passo — o gesto gravou mais de um"
-    );
-}
+// ⛔ `the_whole_gesture_is_one_undo_step` MORREU em 2026-09-12 com a `History` do vetor
+// (`line/render-loop`, A9): ele contava passos numa pilha que nenhum Ctrl+Z lia. O «UM passo para o
+// gesto inteiro» é hoje ESTRUTURAL — o passo é o da fila global, que regista o quadro por diff, e
+// o Expand escreve as três formas numa chamada.
 
 /// **Outline Stroke numa forma com preenchimento deixa DOIS objetos**: o miolo (agora sem
 /// traço) e o contorno assado por cima. Fundir os dois num só perderia uma das duas cores —
 /// e elas são diferentes justamente por serem coisas diferentes.
 #[test]
 fn outlining_a_filled_shape_keeps_the_fill_as_its_own_object() {
-    let (mut scene, mut hist, mut pen, xf) = scene_with(vec![filled(stroked(square(10.0)))]);
-    apply_vec_expand(
-        &mut scene,
-        &mut hist,
-        &mut pen,
-        &xf,
-        Expand::OutlineStroke,
-        0.0,
-    );
+    let (mut scene, mut pen, xf) = scene_with(vec![filled(stroked(square(10.0)))]);
+    apply_vec_expand(&mut scene, &mut pen, &xf, Expand::OutlineStroke, 0.0);
     assert_eq!(scene.paths().len(), 2, "o miolo + o contorno");
     let base = &scene.paths()[0];
     assert!(base.fill.is_some(), "o miolo manteve o preenchimento");
@@ -128,15 +108,8 @@ fn outlining_a_filled_shape_keeps_the_fill_as_its_own_object() {
 /// caçar na Hierarquia.
 #[test]
 fn outlining_a_stroke_only_shape_consumes_the_original() {
-    let (mut scene, mut hist, mut pen, xf) = scene_with(vec![stroked(square(10.0))]);
-    apply_vec_expand(
-        &mut scene,
-        &mut hist,
-        &mut pen,
-        &xf,
-        Expand::OutlineStroke,
-        0.0,
-    );
+    let (mut scene, mut pen, xf) = scene_with(vec![stroked(square(10.0))]);
+    apply_vec_expand(&mut scene, &mut pen, &xf, Expand::OutlineStroke, 0.0);
     assert_eq!(scene.paths().len(), 1, "só o contorno assado");
     assert_eq!(scene.paths()[0].stroke, None);
 }
@@ -146,20 +119,15 @@ fn outlining_a_stroke_only_shape_consumes_the_original() {
 /// seguinte desfaria uma edição ANTERIOR que ele não pediu para desfazer.
 #[test]
 fn a_gesture_that_changes_nothing_records_nothing() {
-    let (mut scene, mut hist, mut pen, xf) = scene_with(vec![square(10.0), square(4.0)]);
+    let (mut scene, mut pen, xf) = scene_with(vec![square(10.0), square(4.0)]);
     let before = scene.paths().len();
-    apply_vec_expand(
-        &mut scene,
-        &mut hist,
-        &mut pen,
-        &xf,
-        Expand::OutlineStroke,
-        0.0,
-    );
+    let antes = scene.clone();
+    apply_vec_expand(&mut scene, &mut pen, &xf, Expand::OutlineStroke, 0.0);
     assert_eq!(scene.paths().len(), before);
+    // O undo é o global, por diff: «não gravar» é o documento ficar IGUAL.
     assert!(
-        hist.undo(&scene).is_none(),
-        "gravou um passo de undo para uma edição que não aconteceu"
+        scene == antes,
+        "o documento mudou por uma edição que não aconteceu"
     );
 }
 
@@ -173,15 +141,7 @@ fn the_result_keeps_the_z_of_the_shape_it_replaced() {
     let front = scene.push_path(square(4.0)); // z=2, NÃO selecionada
     let mut pen = PenTool::default();
     pen.select_many(&[mid]);
-    let mut hist = History::default();
-    apply_vec_expand(
-        &mut scene,
-        &mut hist,
-        &mut pen,
-        &VecXforms::default(),
-        MITER,
-        1.0,
-    );
+    apply_vec_expand(&mut scene, &mut pen, &VecXforms::default(), MITER, 1.0);
     assert_eq!(scene.paths().len(), 3);
     assert_eq!(scene.paths()[0].id, back, "o de trás não se mexeu");
     assert_eq!(scene.paths()[2].id, front, "o da frente não se mexeu");
@@ -203,7 +163,7 @@ fn the_power_stroke_command_bakes_the_selection() {
         end: 0.25,
         position: 0.5,
     };
-    let (mut scene, mut hist, mut pen, xf) = scene_with(vec![stroked(VecPath {
+    let (mut scene, mut pen, xf) = scene_with(vec![stroked(VecPath {
         verts: vec![
             VecVertex::corner([0.0, 0.0]),
             VecVertex::corner([20.0, 0.0]),
@@ -213,7 +173,6 @@ fn the_power_stroke_command_bakes_the_selection() {
     })]);
     apply_vec_expand(
         &mut scene,
-        &mut hist,
         &mut pen,
         &xf,
         Expand::PowerStroke {
@@ -223,20 +182,16 @@ fn the_power_stroke_command_bakes_the_selection() {
     );
     assert_eq!(scene.paths().len(), 1, "o traço virou UMA forma");
     assert_eq!(scene.paths()[0].stroke, None, "…e ela É o traço");
-    assert!(
-        hist.undo(&scene).is_some(),
-        "o gesto tem de custar um passo de undo"
-    );
 }
 
 /// **Um perfil UNIFORME não gasta um passo de undo** — o motor recusa (é o Outline Stroke), e
 /// o comando não pode registar uma edição que não aconteceu.
 #[test]
 fn a_uniform_power_stroke_records_nothing() {
-    let (mut scene, mut hist, mut pen, xf) = scene_with(vec![stroked(square(10.0))]);
+    let (mut scene, mut pen, xf) = scene_with(vec![stroked(square(10.0))]);
+    let antes = scene.clone();
     apply_vec_expand(
         &mut scene,
-        &mut hist,
         &mut pen,
         &xf,
         Expand::PowerStroke {
@@ -244,7 +199,8 @@ fn a_uniform_power_stroke_records_nothing() {
         },
         0.0,
     );
-    assert!(hist.undo(&scene).is_none());
+    // O undo é o global, por diff: «não registar» é o documento ficar IGUAL.
+    assert!(scene == antes, "um perfil uniforme mudou o documento");
 }
 
 // ───────────────── O que o Offset ao vivo deixou para trás ─────────────────
@@ -265,7 +221,7 @@ fn a_uniform_power_stroke_records_nothing() {
 /// forma). Com `scale (3,1)` a mutação sangra. [[feedback_layered_defenses_need_per_layer_gates]]
 #[test]
 fn the_command_offsets_the_cooked_shape_not_the_raw_one() {
-    let (mut scene, mut hist, mut pen, _) = scene_with(vec![square(10.0)]);
+    let (mut scene, mut pen, _) = scene_with(vec![square(10.0)]);
     let id = scene.paths()[0].id;
     // Uma pose com escala NÃO-UNIFORME: é ela que separa cozer-e-assar de assar-e-cozer.
     let mut xf = VecXforms::default();
@@ -293,7 +249,7 @@ fn the_command_offsets_the_cooked_shape_not_the_raw_one() {
     .collect();
     assert!(!want.is_empty(), "pré-condição: o oráculo produz geometria");
 
-    apply_vec_expand(&mut scene, &mut hist, &mut pen, &xf, MITER, 1.0);
+    apply_vec_expand(&mut scene, &mut pen, &xf, MITER, 1.0);
     let got: Vec<[f64; 2]> = scene
         .paths()
         .iter()

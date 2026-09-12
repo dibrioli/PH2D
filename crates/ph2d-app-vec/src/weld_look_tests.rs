@@ -43,12 +43,8 @@ fn pontas(scene: &VecScene) -> Vec<[f64; 2]> {
     out
 }
 
-fn cena() -> (VecScene, ph2d_vec_edit::History, ph2d_vec_edit::PenTool) {
-    (
-        VecScene::new(),
-        ph2d_vec_edit::History::default(),
-        ph2d_vec_edit::PenTool::default(),
-    )
+fn cena() -> (VecScene, ph2d_vec_edit::PenTool) {
+    (VecScene::new(), ph2d_vec_edit::PenTool::default())
 }
 
 /// ⭐⭐⭐ **A MARCA e o ARRASTO respondem à MESMA pergunta** — nos DOIS sentidos.
@@ -61,11 +57,11 @@ fn cena() -> (VecScene, ph2d_vec_edit::History, ph2d_vec_edit::PenTool) {
 /// ⛔ Um sentido só não chega: *"todo nó marcado tem juntas"* passa com uma lista vazia.
 #[test]
 fn the_mark_and_the_drag_answer_the_same_question() {
-    let (mut scene, mut hist, mut pen) = cena();
+    let (mut scene, mut pen) = cena();
     let a = scene.push_path(ph2d_vec_scene::ellipse([0.0, 0.0], 100.0, 100.0));
     let b = scene.push_path(ph2d_vec_scene::ellipse([120.0, 0.0], 100.0, 100.0));
     pen.select_many(&[a, b]);
-    apply_vec_weld(&mut scene, &mut hist, &mut pen, &VecXforms::new(), 0.0);
+    apply_vec_weld(&mut scene, &mut pen, &VecXforms::new(), 0.0);
 
     let nos = pen.welded_nodes(&scene);
     assert_eq!(
@@ -104,7 +100,7 @@ fn the_mark_and_the_drag_answer_the_same_question() {
 /// ⚠️ **Sem solda não há marca** — o anel é a leitura de um FACTO, não decoração de selecção.
 #[test]
 fn nothing_is_marked_before_the_weld() {
-    let (mut scene, mut hist, mut pen) = cena();
+    let (mut scene, mut pen) = cena();
     let a = reta(&mut scene, [-100.0, 0.0], [0.0, 0.0]);
     let b = reta(&mut scene, [0.3, -0.2], [100.0, 0.0]);
     assert!(
@@ -112,7 +108,7 @@ fn nothing_is_marked_before_the_weld() {
         "duas pontas PERTO nao sao um no' — so' duas pontas no mesmo sitio sao"
     );
     pen.select_many(&[a, b]);
-    apply_vec_weld(&mut scene, &mut hist, &mut pen, &VecXforms::new(), 2.0);
+    apply_vec_weld(&mut scene, &mut pen, &VecXforms::new(), 2.0);
     assert_eq!(
         pen.welded_nodes(&scene).len(),
         1,
@@ -131,11 +127,11 @@ fn nothing_is_marked_before_the_weld() {
 /// nova se muda.
 #[test]
 fn a_new_line_welds_onto_the_end_of_an_existing_network() {
-    let (mut scene, mut hist, mut pen) = cena();
+    let (mut scene, mut pen) = cena();
     let h = reta(&mut scene, [-10.0, 0.0], [10.0, 0.0]);
     let vt = reta(&mut scene, [0.0, -10.0], [0.0, 10.0]);
     pen.select_many(&[h, vt]);
-    apply_vec_weld(&mut scene, &mut hist, &mut pen, &VecXforms::new(), 0.0);
+    apply_vec_weld(&mut scene, &mut pen, &VecXforms::new(), 0.0);
     let rede = scene.paths()[0].id;
     assert!(
         scene.path(rede).is_some_and(|p| p.contour_count() == 4),
@@ -145,7 +141,7 @@ fn a_new_line_welds_onto_the_end_of_an_existing_network() {
     // Uma linha que nasce a 0,42 da ponta direita da rede (10, 0) e vai para longe.
     let nova = reta(&mut scene, [10.3, 0.3], [40.0, 30.0]);
     pen.select_many(&[rede, nova]);
-    apply_vec_weld(&mut scene, &mut hist, &mut pen, &VecXforms::new(), 1.0);
+    apply_vec_weld(&mut scene, &mut pen, &VecXforms::new(), 1.0);
 
     assert_eq!(
         scene.paths().len(),
@@ -183,7 +179,7 @@ fn a_new_line_welds_onto_the_end_of_an_existing_network() {
 /// disco inteiro, e portanto a cunha, para **qualquer** ângulo.
 #[test]
 fn the_welded_network_is_stroked_with_round_caps() {
-    let (mut scene, mut hist, mut pen) = cena();
+    let (mut scene, mut pen) = cena();
     let h = reta(&mut scene, [-10.0, 0.0], [10.0, 0.0]);
     let vt = reta(&mut scene, [0.0, -10.0], [0.0, 10.0]);
     assert_eq!(
@@ -193,7 +189,7 @@ fn the_welded_network_is_stroked_with_round_caps() {
     );
     pen.select_many(&[h, vt]);
 
-    apply_vec_weld(&mut scene, &mut hist, &mut pen, &VecXforms::new(), 0.0);
+    apply_vec_weld(&mut scene, &mut pen, &VecXforms::new(), 0.0);
 
     let rede = &scene.paths()[0];
     assert!(rede.contour_count() > 1, "a fixtura tem de dar uma REDE");

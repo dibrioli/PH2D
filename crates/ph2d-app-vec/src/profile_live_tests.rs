@@ -87,16 +87,7 @@ fn the_preview_is_exactly_what_apply_bakes() {
     assert!(!preview.is_empty(), "o preview não desenhou nada");
 
     let mut pen = ph2d_vec_edit::PenTool::default();
-    let mut history = ph2d_vec_edit::History::default();
-    assert!(materialise(
-        &mut scene,
-        &sim,
-        &mut pen,
-        &mut history,
-        &map,
-        &xf,
-        &[id]
-    ));
+    assert!(materialise(&mut scene, &sim, &mut pen, &map, &xf, &[id]));
     let baked: Vec<[f64; 2]> = scene
         .paths()
         .iter()

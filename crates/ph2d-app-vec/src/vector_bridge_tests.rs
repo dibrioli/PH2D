@@ -8,7 +8,8 @@
 //!    seleção seria uma UI que promete e não cumpre.
 //! 2. **Quem DETECTA a mudança e quem a GRAVA falam da mesma ficha.** `differs_from` é o
 //!    portão do `will_change`: um campo ausente dele faz o painel mexer no número e **nada**
-//!    mudar na tela (nem `RECOLOR_PRE`, logo nem undo) — e o compilador fica calado.
+//!    mudar na tela (e, sem mudança no documento, o undo global não vê passo nenhum) — e o
+//!    compilador fica calado.
 
 use super::{StrokeStyle, restyle_selected_strokes};
 use ph2d_vec_scene::{

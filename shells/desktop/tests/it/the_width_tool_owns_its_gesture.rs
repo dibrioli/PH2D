@@ -73,12 +73,9 @@ fn the_width_release_is_its_own_arm_before_the_mode_chain() {
         "o release do Width nao esta' ANTES de nenhuma cadeia de modo — se ele veio parar depois, \
          a alca fica agarrada ao dedo"
     );
-    // E o que ele faz é largar + fechar o passo de undo, não abortar um gesto.
-    let arm = &SRC[release..chain.unwrap_or(SRC.len())];
-    assert!(
-        arm.contains("commit_if_changed"),
-        "o release do Width nao fecha o passo de undo — o gesto inteiro ficaria sem Ctrl+Z"
-    );
+    // ⛔ A metade «e ele fecha o passo de undo» (`commit_if_changed` no braço) MORREU em 2026-09-12
+    // (`line/render-loop`, A9): media a `History` do vetor, que o Ctrl+Z nunca leu. O passo do
+    // arrasto é o da fila global, por diff do quadro.
 }
 
 /// **O move é despachado, e depois do lápis** (a ordem entre os dois é livre; o que importa é que

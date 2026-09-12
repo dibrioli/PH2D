@@ -33,7 +33,6 @@ fn the_first_art_brings_its_size_and_a_swap_keeps_the_authored_one() {
     // 1. A PRIMEIRA arte traz o tamanho dela.
     apply(
         &mut scene,
-        &mut ph2d_vec_edit::History::default(),
         &pen,
         PatternSlot::Fill,
         TexPatCmd::Source(PatternSource::Shape(VecPathId::default()), [8.0, 2.0]),
@@ -47,7 +46,6 @@ fn the_first_art_brings_its_size_and_a_swap_keeps_the_authored_one() {
     // 2. ⚠️ Agora o tamanho E' autorado. O artista ajusta-o…
     apply(
         &mut scene,
-        &mut ph2d_vec_edit::History::default(),
         &pen,
         PatternSlot::Fill,
         TexPatCmd::Axis(0, 5.0, false),
@@ -58,7 +56,6 @@ fn the_first_art_brings_its_size_and_a_swap_keeps_the_authored_one() {
     // 3. …e TROCAR a arte preserva-o, mesmo com outro tamanho a ser oferecido.
     apply(
         &mut scene,
-        &mut ph2d_vec_edit::History::default(),
         &pen,
         PatternSlot::Fill,
         TexPatCmd::Source(
@@ -91,12 +88,10 @@ fn the_two_handed_pick_adopts_the_art_size_only_when_there_was_no_art() {
     nascida.source = PatternSource::None;
     nascida.size = [4.0, 4.0]; // o quadrado do nascimento
     let (mut scene, _, id) = scene_with(nascida);
-    let mut h = ph2d_vec_edit::History::default();
 
     // 1. A primeira arte, escolhida no canvas, traz a proporção dela.
     assert!(set_source(
         &mut scene,
-        &mut h,
         id,
         PatternSlot::Fill,
         PatternSource::Shape(ph2d_vec_scene::VecPathId::default()),
@@ -112,7 +107,6 @@ fn the_two_handed_pick_adopts_the_art_size_only_when_there_was_no_art() {
     // 2. ⚠️ Agora o tamanho É autorado, e trocar a arte preserva-o.
     assert!(set_source(
         &mut scene,
-        &mut h,
         id,
         PatternSlot::Fill,
         PatternSource::Image(ph2d_asset::AssetId::from_bytes(b"outra")),

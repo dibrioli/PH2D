@@ -439,33 +439,6 @@ fn plain_click_stays_a_corner() {
 }
 
 #[test]
-fn history_undo_redo_cycle() {
-    let mut h = History::new();
-    let mut scene = VecScene::new();
-    h.begin(&scene);
-    scene = VecScene::demo(); // muta (vazio → 2 paths)
-    h.commit_if_changed(&scene);
-    assert!(h.can_undo());
-    let changed = scene.clone();
-
-    scene = h.undo(&scene).unwrap();
-    assert!(scene.is_empty());
-    assert!(h.can_redo());
-
-    scene = h.redo(&scene).unwrap();
-    assert_eq!(scene, changed);
-}
-
-#[test]
-fn commit_without_change_is_noop() {
-    let mut h = History::new();
-    let scene = VecScene::new();
-    h.begin(&scene);
-    h.commit_if_changed(&scene); // nada mudou entre begin e commit
-    assert!(!h.can_undo());
-}
-
-#[test]
 fn set_style_colors_new_paths_and_survives_clear() {
     let mut scene = VecScene::new();
     let mut pen = PenTool::new();

@@ -55,12 +55,8 @@ fn contornos(scene: &VecScene) -> usize {
     scene.paths().iter().map(VecPath::contour_count).sum()
 }
 
-fn cena() -> (VecScene, ph2d_vec_edit::History, ph2d_vec_edit::PenTool) {
-    (
-        VecScene::new(),
-        ph2d_vec_edit::History::default(),
-        ph2d_vec_edit::PenTool::default(),
-    )
+fn cena() -> (VecScene, ph2d_vec_edit::PenTool) {
+    (VecScene::new(), ph2d_vec_edit::PenTool::default())
 }
 
 /// ⭐⭐⭐ **A IDEIA DO ENIO:** duas linhas cruzadas viram quatro arcos, e as quatro pontas do meio
@@ -72,12 +68,12 @@ fn cena() -> (VecScene, ph2d_vec_edit::History, ph2d_vec_edit::PenTool) {
 /// quatro de cada, e mover um **rasgava** a rede que soldar promete manter inteira.
 #[test]
 fn two_crossing_lines_become_four_arcs_that_meet_at_one_point() {
-    let (mut scene, mut hist, mut pen) = cena();
+    let (mut scene, mut pen) = cena();
     let h = reta(&mut scene, [-10.0, 0.0], [10.0, 0.0]);
     let vt = reta(&mut scene, [0.0, -10.0], [0.0, 10.0]);
     pen.select_many(&[h, vt]);
 
-    apply_vec_weld(&mut scene, &mut hist, &mut pen, &VecXforms::new(), 0.0);
+    apply_vec_weld(&mut scene, &mut pen, &VecXforms::new(), 0.0);
 
     assert_eq!(scene.paths().len(), 1, "a rede soldada e' UM objecto");
     assert_eq!(
@@ -111,12 +107,12 @@ fn two_crossing_lines_become_four_arcs_that_meet_at_one_point() {
 /// ⛔ **E os outros participantes somem** — é o preço declarado de *"soldar consome os traços"*.
 #[test]
 fn the_network_is_written_in_place_of_the_bottom_most_line() {
-    let (mut scene, mut hist, mut pen) = cena();
+    let (mut scene, mut pen) = cena();
     let fundo = reta(&mut scene, [-10.0, 0.0], [10.0, 0.0]);
     let topo = reta(&mut scene, [0.0, -10.0], [0.0, 10.0]);
     pen.select_many(&[fundo, topo]);
 
-    apply_vec_weld(&mut scene, &mut hist, &mut pen, &VecXforms::new(), 0.0);
+    apply_vec_weld(&mut scene, &mut pen, &VecXforms::new(), 0.0);
 
     assert!(
         scene.path(fundo).is_some(),
@@ -135,13 +131,13 @@ fn the_network_is_written_in_place_of_the_bottom_most_line() {
 /// dois objectos num asterisco.
 #[test]
 fn three_lines_through_one_point_are_still_one_object() {
-    let (mut scene, mut hist, mut pen) = cena();
+    let (mut scene, mut pen) = cena();
     let a = reta(&mut scene, [-10.0, 0.0], [10.0, 0.0]);
     let b = reta(&mut scene, [0.0, -10.0], [0.0, 10.0]);
     let c = reta(&mut scene, [-7.0, -7.0], [7.0, 7.0]);
     pen.select_many(&[a, b, c]);
 
-    apply_vec_weld(&mut scene, &mut hist, &mut pen, &VecXforms::new(), 0.0);
+    apply_vec_weld(&mut scene, &mut pen, &VecXforms::new(), 0.0);
 
     assert_eq!(scene.paths().len(), 1, "um asterisco e' UM objecto");
     assert_eq!(
@@ -160,13 +156,13 @@ fn three_lines_through_one_point_are_still_one_object() {
 /// soldar uma selecção grande dissolveria tudo o que estava só a passar por lá.
 #[test]
 fn a_path_that_meets_nobody_keeps_its_identity() {
-    let (mut scene, mut hist, mut pen) = cena();
+    let (mut scene, mut pen) = cena();
     let h = reta(&mut scene, [-10.0, 0.0], [10.0, 0.0]);
     let vt = reta(&mut scene, [0.0, -10.0], [0.0, 10.0]);
     let longe = reta(&mut scene, [100.0, 100.0], [120.0, 100.0]);
     pen.select_many(&[h, vt, longe]);
 
-    apply_vec_weld(&mut scene, &mut hist, &mut pen, &VecXforms::new(), 0.0);
+    apply_vec_weld(&mut scene, &mut pen, &VecXforms::new(), 0.0);
 
     assert!(
         scene.path(longe).is_some(),
@@ -184,7 +180,7 @@ fn a_path_that_meets_nobody_keeps_its_identity() {
 /// pôr no lugar; medir na geometria local diria que elas não se encontram.
 #[test]
 fn the_crossing_is_found_in_world_space_not_in_local() {
-    let (mut scene, mut hist, mut pen) = cena();
+    let (mut scene, mut pen) = cena();
     let h = reta(&mut scene, [-10.0, 0.0], [10.0, 0.0]);
     // Esta nasce longe e é TRAZIDA para cima da outra pela pose.
     let vt = reta(&mut scene, [500.0, -10.0], [500.0, 10.0]);
@@ -192,7 +188,7 @@ fn the_crossing_is_found_in_world_space_not_in_local() {
     xf.insert(vt, Xform([1.0, 0.0, 0.0, 1.0, -500.0, 0.0]));
     pen.select_many(&[h, vt]);
 
-    apply_vec_weld(&mut scene, &mut hist, &mut pen, &xf, 0.0);
+    apply_vec_weld(&mut scene, &mut pen, &xf, 0.0);
     assert_eq!(
         contornos(&scene),
         4,
@@ -212,13 +208,13 @@ fn the_crossing_is_found_in_world_space_not_in_local() {
 /// gastar um Ctrl+Z.
 #[test]
 fn a_selection_that_crosses_nothing_is_a_no_op() {
-    let (mut scene, mut hist, mut pen) = cena();
+    let (mut scene, mut pen) = cena();
     let a = reta(&mut scene, [-10.0, 0.0], [10.0, 0.0]);
     let b = reta(&mut scene, [-10.0, 50.0], [10.0, 50.0]);
     pen.select_many(&[a, b]);
     let antes = scene.paths().len();
 
-    apply_vec_weld(&mut scene, &mut hist, &mut pen, &VecXforms::new(), 0.0);
+    apply_vec_weld(&mut scene, &mut pen, &VecXforms::new(), 0.0);
 
     assert_eq!(scene.paths().len(), antes);
     assert!(scene.path(a).is_some() && scene.path(b).is_some());
@@ -228,7 +224,7 @@ fn a_selection_that_crosses_nothing_is_a_no_op() {
 /// é cercada por arcos que se encontram nas pontas — o substrato que o balde vai usar.
 #[test]
 fn a_cross_inside_a_square_becomes_a_network_of_arcs() {
-    let (mut scene, mut hist, mut pen) = cena();
+    let (mut scene, mut pen) = cena();
     let quadrado = scene.push_path(VecPath {
         id: 0,
         verts: vec![
@@ -248,7 +244,7 @@ fn a_cross_inside_a_square_becomes_a_network_of_arcs() {
     let diagonal = reta(&mut scene, [-20.0, 0.0], [20.0, 0.0]);
     pen.select_many(&[quadrado, diagonal]);
 
-    apply_vec_weld(&mut scene, &mut hist, &mut pen, &VecXforms::new(), 0.0);
+    apply_vec_weld(&mut scene, &mut pen, &VecXforms::new(), 0.0);
 
     // O quadrado é cortado nos dois lados e a linha nos dois cruzamentos.
     assert_eq!(scene.paths().len(), 1, "a rede e' UM objecto");
@@ -275,11 +271,11 @@ fn a_cross_inside_a_square_becomes_a_network_of_arcs() {
 /// outras** — que é literalmente o teste que ele fez.
 #[test]
 fn the_welded_node_is_one_point_and_dragging_it_moves_every_arc() {
-    let (mut scene, mut hist, mut pen) = cena();
+    let (mut scene, mut pen) = cena();
     let a = scene.push_path(ph2d_vec_scene::ellipse([0.0, 0.0], 100.0, 100.0));
     let b = scene.push_path(ph2d_vec_scene::ellipse([120.0, 0.0], 100.0, 100.0));
     pen.select_many(&[a, b]);
-    apply_vec_weld(&mut scene, &mut hist, &mut pen, &VecXforms::new(), 0.0);
+    apply_vec_weld(&mut scene, &mut pen, &VecXforms::new(), 0.0);
     assert_eq!(scene.paths().len(), 1, "a rede e' UM objecto");
     assert_eq!(
         contornos(&scene),
@@ -326,7 +322,7 @@ fn the_welded_node_is_one_point_and_dragging_it_moves_every_arc() {
 /// `welded_with` que devolvesse tudo o que está perto.
 #[test]
 fn a_lone_endpoint_is_not_a_joint() {
-    let (mut scene, _h, pen) = cena();
+    let (mut scene, pen) = cena();
     let a = reta(&mut scene, [0.0, 0.0], [10.0, 0.0]);
     let _b = reta(&mut scene, [0.0, 50.0], [10.0, 50.0]);
     assert!(pen.welded_with(&scene, a, 0).is_empty());
@@ -345,12 +341,12 @@ fn a_lone_endpoint_is_not_a_joint() {
 /// cobrar o preço do corte por uma ligação.*
 #[test]
 fn two_curves_that_meet_at_their_ends_become_one_node() {
-    let (mut scene, mut hist, mut pen) = cena();
+    let (mut scene, mut pen) = cena();
     let a = reta(&mut scene, [-100.0, 0.0], [0.0, 0.0]);
     let b = reta(&mut scene, [0.3, -0.2], [100.0, 0.0]);
     pen.select_many(&[a, b]);
 
-    apply_vec_weld(&mut scene, &mut hist, &mut pen, &VecXforms::new(), 2.0);
+    apply_vec_weld(&mut scene, &mut pen, &VecXforms::new(), 2.0);
 
     assert_eq!(scene.paths().len(), 2, "ligar nao dissolve: nada se cruzou");
     assert!(
@@ -385,7 +381,7 @@ fn two_curves_that_meet_at_their_ends_become_one_node() {
 /// e soldar duas curvas nos dois cantos da tela arrastaria as pontas uma para a outra.
 #[test]
 fn ends_farther_than_the_magnet_are_left_where_they_are() {
-    let (mut scene, mut hist, mut pen) = cena();
+    let (mut scene, mut pen) = cena();
     let a = reta(&mut scene, [-100.0, 0.0], [0.0, 0.0]);
     let b = reta(&mut scene, [0.3, -0.2], [100.0, 0.0]);
     pen.select_many(&[a, b]);
@@ -394,7 +390,7 @@ fn ends_farther_than_the_magnet_are_left_where_they_are() {
         scene.path(b).unwrap().clone(),
     );
 
-    apply_vec_weld(&mut scene, &mut hist, &mut pen, &VecXforms::new(), 0.1);
+    apply_vec_weld(&mut scene, &mut pen, &VecXforms::new(), 0.1);
 
     assert_eq!(scene.path(a).unwrap().verts, antes.0.verts);
     assert_eq!(scene.path(b).unwrap().verts, antes.1.verts);
@@ -405,14 +401,14 @@ fn ends_farther_than_the_magnet_are_left_where_they_are() {
 /// dela, senão o objecto salta para o mundo.
 #[test]
 fn the_meeting_is_found_in_world_space_and_written_in_local() {
-    let (mut scene, mut hist, mut pen) = cena();
+    let (mut scene, mut pen) = cena();
     let a = reta(&mut scene, [-100.0, 0.0], [0.0, 0.0]);
     let b = reta(&mut scene, [500.3, -0.2], [600.0, 0.0]);
     let mut xf = VecXforms::new();
     xf.insert(b, Xform([1.0, 0.0, 0.0, 1.0, -500.0, 0.0]));
     pen.select_many(&[a, b]);
 
-    apply_vec_weld(&mut scene, &mut hist, &mut pen, &xf, 2.0);
+    apply_vec_weld(&mut scene, &mut pen, &xf, 2.0);
 
     let fim_a = scene.path(a).unwrap().verts.last().unwrap().anchor;
     let ini_b_local = scene.path(b).unwrap().verts[0].anchor;
@@ -433,7 +429,7 @@ fn the_meeting_is_found_in_world_space_and_written_in_local() {
 #[test]
 fn a_path_with_effects_does_not_lend_its_endpoint() {
     use ph2d_vec_scene::effect::{FxEntry, PathEffect};
-    let (mut scene, mut hist, mut pen) = cena();
+    let (mut scene, mut pen) = cena();
     let a = reta(&mut scene, [-100.0, 0.0], [0.0, 0.0]);
     let b = reta(&mut scene, [0.3, -0.2], [100.0, 0.0]);
     scene.path_mut(b).unwrap().effects = vec![FxEntry::new(PathEffect::Trim(
@@ -446,7 +442,7 @@ fn a_path_with_effects_does_not_lend_its_endpoint() {
     let antes = scene.path(b).unwrap().verts.clone();
     pen.select_many(&[a, b]);
 
-    apply_vec_weld(&mut scene, &mut hist, &mut pen, &VecXforms::new(), 2.0);
+    apply_vec_weld(&mut scene, &mut pen, &VecXforms::new(), 2.0);
 
     assert_eq!(
         scene.path(b).unwrap().verts,

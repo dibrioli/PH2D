@@ -120,9 +120,6 @@ impl App {
         let Some(gfx) = self.gfx.as_mut() else {
             return false;
         };
-        // Snapshot pré-gesto (o undo global também cobre, mas o histórico vetorial é o que o
-        // resto do módulo usa — mantém a simetria com pen/shape).
-        self.vec_history.begin(&gfx.vec_scene);
         let mut path = ph2d_vec_scene::line(world, world);
         path.stroke = Some(ph2d_vec_scene::StrokeSpec {
             paint: ph2d_vec_scene::StrokePaint::Solid(style.stroke),
@@ -200,17 +197,15 @@ impl App {
             if let Some(gfx) = self.gfx.as_mut() {
                 gfx.vec_scene.remove_path(drag.path);
             }
-            self.vec_history.cancel();
             return true;
         }
         // Dois conectores no MESMO par de formas não podem se sobrepor — o segundo sumiria
         // por baixo do primeiro, e o usuário juraria que ele não foi criado.
         drag.conn.parallel_index = self.next_parallel_index(&drag.conn, drag.path);
-        if let Some(gfx) = self.gfx.as_mut() {
+        if self.gfx.is_some() {
             // O componente é (re)escrito no frame do render, quando a entidade já existe.
             // Aqui só resta selecionar a linha nova — como a shape-tool faz.
             self.vec_pen.select(Some(drag.path));
-            self.vec_history.commit_if_changed(&gfx.vec_scene);
         }
         self.vec_connect_pending = Some((drag.path, drag.conn));
         true
@@ -224,7 +219,6 @@ impl App {
         if let Some(gfx) = self.gfx.as_mut() {
             gfx.vec_scene.remove_path(drag.path);
         }
-        self.vec_history.cancel();
         true
     }
 

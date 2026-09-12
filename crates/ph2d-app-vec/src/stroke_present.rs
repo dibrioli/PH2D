@@ -17,7 +17,7 @@
 //!
 //! ⇒ **a criação é um GESTO explícito**, nunca um efeito colateral de um espelhamento.
 
-use ph2d_vec_edit::{History, PenTool};
+use ph2d_vec_edit::PenTool;
 use ph2d_vec_scene::VecScene;
 
 /// **A forma selecionada tem traço?** `None` quando não há uma resposta — nada selecionado, ou
@@ -46,12 +46,7 @@ pub fn selected_stroke_present(scene: &VecScene, pen: &PenTool) -> Option<bool> 
 /// voltar a marcar devolve o que se está a ver. ⛔ Guardar a ficha removida **no documento** seria
 /// estado invisível a envenenar o undo; guardá-la na shell seria estado de sessão que o save não
 /// leva.
-pub fn toggle(
-    scene: &mut VecScene,
-    history: &mut History,
-    pen: &PenTool,
-    px_to_world: f64,
-) -> bool {
+pub fn toggle(scene: &mut VecScene, pen: &PenTool, px_to_world: f64) -> bool {
     let [id] = pen.selected_paths() else {
         return false;
     };
@@ -61,12 +56,10 @@ pub fn toggle(
     };
     let style = pen.style();
     let novo = (!tem).then(|| style.stroke_spec(style.stroke_w_px * px_to_world));
-    let pre = scene.clone();
     let Some(path) = scene.path_mut(id) else {
         return false;
     };
     path.stroke = novo;
-    history.push_undo(pre);
     true
 }
 

@@ -36,7 +36,7 @@
 //! uma 2ª porta para elas.
 
 use ph2d_ecs::{Entity, SimWorld, VecConnector, VecMorph, VecShape};
-use ph2d_vec_edit::{History, PenTool};
+use ph2d_vec_edit::PenTool;
 use ph2d_vec_entities::entities::VecEntityMap;
 use ph2d_vec_scene::{VecPath, VecPathId, VecScene, VecXforms};
 
@@ -103,7 +103,6 @@ pub(crate) fn to_curves(
     scene: &mut VecScene,
     map: &mut VecEntityMap,
     pen: &mut PenTool,
-    history: &mut History,
     xforms: &VecXforms,
     selection: &[VecPathId],
 ) -> Vec<VecPathId> {
@@ -113,12 +112,11 @@ pub(crate) fn to_curves(
     // O Offset vivo materializa ANTES do bake: ele CONSOME o caminho (remove+insere), então
     // assar o cozido de um path que vai deixar de existir seria trabalho jogado fora — e a
     // seleção que sai daqui tem de ser a que o `expand_selection` produziu.
-    let new_sel =
-        if crate::offset_live::materialise(scene, sim, pen, history, map, xforms, &new_sel) {
-            pen.selected_paths().to_vec()
-        } else {
-            new_sel
-        };
+    let new_sel = if crate::offset_live::materialise(scene, sim, pen, map, xforms, &new_sel) {
+        pen.selected_paths().to_vec()
+    } else {
+        new_sel
+    };
     for id in &new_sel {
         scene.bake_cooked(*id);
     }

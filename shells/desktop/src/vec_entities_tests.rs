@@ -106,21 +106,9 @@ mod tests {
             "o CONTROLE falhou: o sync nao cunhou a origem"
         );
 
-        let mut history = ph2d_vec_edit::History::default();
         let mut pen = ph2d_vec_edit::PenTool::default();
         assert!(
-            !history.can_undo(),
-            "o CONTROLE falhou: o historico ja nascia sujo"
-        );
-        assert!(
-            crate::input_dispatch::duplicate_vec_paths(
-                &mut scene,
-                &mut history,
-                &mut pen,
-                &[a],
-                5.0,
-                5.0
-            ),
+            crate::input_dispatch::duplicate_vec_paths(&mut scene, &mut pen, &[a], 5.0, 5.0),
             "a porta recusou duplicar um path que existe"
         );
         sync(&mut sim, &mut scene, &mut map);
@@ -148,19 +136,10 @@ mod tests {
             .expect("copia sem ref");
         assert_ne!(ra.0, rc.0, "as duas entidades apontam para o MESMO path");
 
-        // ⚠️ **UM Ctrl+Z desfaz a cópia inteira.** O oráculo é o GESTO, não o comprimento da
-        // pilha: sem esta metade, tirar o `push_undo` da porta passava na suíte INTEIRA (medido)
-        // — duplicar ficava fora do Ctrl+Z, e o artista descobria isso com a forma já na tela.
-        assert!(
-            history.can_undo(),
-            "duplicar nao gravou passo de undo nenhum"
-        );
-        let back = history.undo(&scene).expect("o passo de undo existe");
-        assert_eq!(
-            back.paths().len(),
-            1,
-            "um Ctrl+Z nao devolveu o documento ao estado de antes da copia"
-        );
+        // ⛔ A metade «UM Ctrl+Z desfaz a cópia inteira» MORREU em 2026-09-12 com a `History` do
+        // vetor (`line/render-loop`, A9). Ela lia o `push_undo` desta porta — e o Ctrl+Z do produto
+        // NUNCA leu aquela pilha: é a fila global, que regista o quadro por diff, e a cópia entra
+        // nela por ser uma mudança do documento. O que a metade dizia medir já não tinha leitor.
     }
 
     /// O invariante da ponte: um path ⟺ uma entidade. Nas duas direções, e o

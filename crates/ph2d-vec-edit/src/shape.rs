@@ -23,8 +23,10 @@ use crate::shape_constraint::constrained_rect;
 /// tamanho zero.
 const MIN_DRAG_PX: f64 = 3.0;
 
-/// Desenho de forma por arrasto. Só máquina de estados — o documento (`VecScene`) e o
-/// undo (`History`) vivem na shell, exatamente como no [`PenTool`](crate::PenTool).
+/// Desenho de forma por arrasto. Só máquina de estados — o documento (`VecScene`) vive na shell
+/// e o undo é a fila GLOBAL dela (por diff de estado), exatamente como no
+/// [`PenTool`](crate::PenTool). (Até 2026-09-12 dizia-se aqui *«e o undo (`History`)»*: essa pilha
+/// morreu sem nunca ter tido leitor.)
 #[derive(Default)]
 pub struct ShapeTool {
     /// Estilo da forma sendo desenhada (a shell o sincroniza da tool a cada frame).

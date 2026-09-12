@@ -17,7 +17,7 @@
 //! traço for pedido, o `StrokePaint` ganha uma variante e esta lista ganha um chip.
 
 use ph2d_panel_vector::StrokePaintKind;
-use ph2d_vec_edit::{History, PenTool};
+use ph2d_vec_edit::PenTool;
 use ph2d_vec_scene::{PatternFill, PatternSource, StrokePaint, VecScene};
 
 /// O chip de tinta de traço que este `NodeId` nomeia (`None` se não é um deles).
@@ -76,7 +76,6 @@ pub fn selected_stroke_paint_kind(scene: &VecScene, pen: &PenTool) -> Option<Str
 /// congela o laço — isso é da shell (`ph2d_app_host::modal`), nunca desta função de documento.
 pub fn set_kind(
     scene: &mut VecScene,
-    history: &mut History,
     pen: &PenTool,
     kind: StrokePaintKind,
     pattern: Option<(PatternSource, [f64; 2], [f64; 2])>,
@@ -128,7 +127,6 @@ pub fn set_kind(
             StrokePaint::Pattern(Box::new(f))
         }
     };
-    let pre = scene.clone();
     let Some(path) = scene.path_mut(id) else {
         return false;
     };
@@ -136,7 +134,6 @@ pub fn set_kind(
         return false;
     };
     s.paint = novo;
-    history.push_undo(pre);
     true
 }
 
@@ -162,7 +159,6 @@ pub fn set_kind(
 /// `true` se o documento mudou (um passo de undo).
 pub fn set_art(
     scene: &mut VecScene,
-    history: &mut History,
     host: ph2d_vec_scene::VecPathId,
     art: ph2d_vec_scene::VecPathId,
     object_of: &dyn Fn(ph2d_vec_scene::VecPathId) -> Vec<ph2d_vec_scene::VecPathId>,
@@ -182,12 +178,10 @@ pub fn set_art(
     }
     let mut next = cur.clone();
     next.art = Some(art);
-    let pre = scene.clone();
     let Some(s) = scene.path_mut(host).and_then(|p| p.stroke.as_mut()) else {
         return false;
     };
     s.paint = StrokePaint::Brush(Box::new(next));
-    history.push_undo(pre);
     true
 }
 
@@ -211,7 +205,7 @@ pub enum BrushCmd {
 ///
 /// ⚠️ **O `if` de igualdade no fim é o que impede um passo espúrio** quando o slider re-publica o
 /// valor que já lá estava — a mesma disciplina da porta do padrão.
-pub fn apply(scene: &mut VecScene, history: &mut History, pen: &PenTool, cmd: BrushCmd) -> bool {
+pub fn apply(scene: &mut VecScene, pen: &PenTool, cmd: BrushCmd) -> bool {
     let Some(sel) = pen.selected() else {
         return false;
     };
@@ -233,12 +227,10 @@ pub fn apply(scene: &mut VecScene, history: &mut History, pen: &PenTool, cmd: Br
     if &next == cur {
         return false;
     }
-    let pre = scene.clone();
     let Some(s) = scene.path_mut(sel).and_then(|p| p.stroke.as_mut()) else {
         return false;
     };
     s.paint = StrokePaint::Brush(Box::new(next));
-    history.push_undo(pre);
     true
 }
 
@@ -335,11 +327,10 @@ mod brush_kind_gates {
     fn clicking_the_brush_chip_leaves_a_brush_paint_carrying_the_colour_it_had() {
         let cor = Rgba8::new(11, 22, 33, 128);
         let (mut scene, pen, id) = forma_com_traco_solido(cor);
-        let mut h = History::default();
         let kind = kind_for_id(ph2d_editor_core::ids::VECTOR_STROKE_KIND_BRUSH)
             .expect("o chip tem de mapear — vide o gate irmao");
         assert!(
-            set_kind(&mut scene, &mut h, &pen, kind, None),
+            set_kind(&mut scene, &pen, kind, None),
             "o chip Brush nao muda o documento — a seccao Brush fica inalcancavel para sempre"
         );
         let s = scene
@@ -359,15 +350,8 @@ mod brush_kind_gates {
             b.art, None,
             "a arte nasce por escolher — o chip ARMA o gesto de duas maos, nao abre um dialogo"
         );
-        assert_eq!(h.undo_len(), 1, "trocar a tinta e' UM passo de undo");
         // ⚠️ **Ir e VOLTAR não pisca**: a cor do artista sobrevive à ida ao pincel.
-        assert!(set_kind(
-            &mut scene,
-            &mut h,
-            &pen,
-            StrokePaintKind::Solid,
-            None
-        ));
+        assert!(set_kind(&mut scene, &pen, StrokePaintKind::Solid, None));
         assert_eq!(
             scene
                 .path(id)
@@ -403,10 +387,8 @@ mod brush_kind_gates {
                 .is_none(),
             "a seccao Brush ja' subia num traco solido"
         );
-        let mut h = History::default();
         assert!(set_kind(
             &mut scene,
-            &mut h,
             &pen,
             kind_for_id(ph2d_editor_core::ids::VECTOR_STROKE_KIND_BRUSH).expect("o chip mapeia"),
             None,
@@ -428,7 +410,7 @@ mod brush_kind_gates {
              construidos e inalcancaveis, que e' o defeito CIRCULAR desta wave"
         );
         // ⚠️ E os knobs dela já escrevem: a secção não nasce decorativa.
-        assert!(apply(&mut scene, &mut h, &pen, BrushCmd::Scale(3.0)));
+        assert!(apply(&mut scene, &pen, BrushCmd::Scale(3.0)));
     }
 
     /// ⚠️ **Pedir o pincel que já lá está é um no-op** — senão cada clique reconstruiria o pincel e
@@ -436,19 +418,12 @@ mod brush_kind_gates {
     #[test]
     fn asking_for_the_brush_it_already_has_preserves_the_whole_law() {
         let (mut scene, pen, id) = forma_com_traco_solido(Rgba8::new(7, 8, 9, 255));
-        let mut h = History::default();
-        assert!(set_kind(
-            &mut scene,
-            &mut h,
-            &pen,
-            StrokePaintKind::Brush,
-            None
-        ));
-        assert!(apply(&mut scene, &mut h, &pen, BrushCmd::Rotation(45.0)));
+        assert!(set_kind(&mut scene, &pen, StrokePaintKind::Brush, None));
+        assert!(apply(&mut scene, &pen, BrushCmd::Rotation(45.0)));
         let antes = scene.path(id).and_then(|p| p.stroke.as_ref()).cloned();
-        let passos = h.undo_len();
+        let cena_antes = scene.clone();
         assert!(
-            !set_kind(&mut scene, &mut h, &pen, StrokePaintKind::Brush, None),
+            !set_kind(&mut scene, &pen, StrokePaintKind::Brush, None),
             "pedir o pincel que ja' la' esta' gravou um passo"
         );
         assert_eq!(
@@ -456,7 +431,10 @@ mod brush_kind_gates {
             antes,
             "o pincel foi reconstruido — os knobs saltam para o default a cada clique no chip"
         );
-        assert_eq!(h.undo_len(), passos);
+        assert!(
+            scene == cena_antes,
+            "pedir o pincel que ja' la' esta' mudou o documento"
+        );
     }
 }
 

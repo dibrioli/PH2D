@@ -180,12 +180,12 @@ pub fn arm(sim: &mut SimWorld, map: &VecEntityMap, ids: &[VecPathId], stops: &Wi
 /// [`crate::expand::expand_selection`] — a mesma por onde entra o caminho numérico.
 ///
 /// `false` = não havia perfil vivo nenhum na seleção (e quem chamou segue pelo caminho de
-/// sempre, lendo os sliders). **UM passo de undo** para o gesto inteiro.
+/// sempre, lendo os sliders). O gesto inteiro é UMA chamada, e por isso UM passo da fila global de
+/// undo (que regista o quadro por diff).
 pub fn materialise(
     scene: &mut VecScene,
     sim: &SimWorld,
     pen: &mut ph2d_vec_edit::PenTool,
-    history: &mut ph2d_vec_edit::History,
     map: &VecEntityMap,
     xforms: &VecXforms,
     ids: &[VecPathId],
@@ -197,8 +197,7 @@ pub fn materialise(
     if live.is_empty() {
         return false;
     }
-    let pre = scene.clone();
-    let touched = crate::expand::materialise_selection(scene, pen, xforms, ids, |id, local, xf| {
+    crate::expand::materialise_selection(scene, pen, xforms, ids, |id, local, xf| {
         let Some((_, stops)) = live.iter().find(|(i, _)| *i == id) else {
             return Vec::new(); // fora do comando: fica onde está, e segue selecionado
         };
@@ -213,9 +212,6 @@ pub fn materialise(
             0.0,
         )
     });
-    if touched {
-        history.push_undo(pre);
-    }
     eprintln!(
         "[ph2d-vec] power stroke materializado: {} forma(s)",
         live.len()

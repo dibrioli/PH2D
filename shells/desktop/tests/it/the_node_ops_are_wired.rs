@@ -68,44 +68,19 @@ fn the_three_node_ops_are_drained_by_the_shell() {
     }
 }
 
-/// **Cada uma abre UM passo de undo, e só se mudou alguma coisa.** Sem o `begin`, desfazer um Join
-/// devolve o estado de antes de outro gesto; sem o guard, um clique que não muda nada põe uma
-/// linha na fila que o Ctrl+Z não tem o que desfazer.
-#[test]
-fn each_node_op_opens_exactly_one_undo_step_and_only_when_it_changed_something() {
-    let block = at(LOOP_SRC, "// **As três da W4.**");
-    let end = at(
-        &LOOP_SRC[block..],
-        "if let Some(order) = pending_vec_reorder",
-    ) + block;
-    let window = &LOOP_SRC[block..end];
-    assert!(
-        window.contains("self.vec_history.begin("),
-        "nenhuma das tres abre passo de undo -- o Ctrl+Z saltaria por cima delas"
-    );
-    assert!(
-        window.contains("if changed {") && window.contains("commit_if_changed("),
-        "o commit nao e' gateado no resultado -- um clique inerte poria um passo vazio na fila"
-    );
-    // As três correm no MESMO bloco: uma quarta operação entra na tabela e nasce com undo.
-    for call in [
-        "join_selection(",
-        "reverse_selected_paths(",
-        "average_selected_verts(",
-    ] {
-        assert!(
-            window.contains(call),
-            "o `{call}` saiu do bloco que da' undo -- ele passou a mudar o documento sem passo"
-        );
-    }
-}
+// ⛔ `each_node_op_opens_exactly_one_undo_step_and_only_when_it_changed_something` MORREU em
+// 2026-09-12 (`line/render-loop`, A9): ele exigia o par `begin`/`commit_if_changed` da `History`
+// do vetor — uma pilha que o Ctrl+Z NUNCA leu. O passo de undo das três é o da fila global, por
+// diff do quadro; e «as três são drenadas e chamam a sua porta» é o gate de cima.
 
 /// **Fechar passa pela porta que SOLDA.** É a metade que o `Close Path` não tinha: ele virava o
 /// flag e deixava as duas pontas coincidentes como dois vértices distintos.
 #[test]
 fn the_close_button_goes_through_the_welding_door() {
     let f = at(DISPATCH, "pub(crate) fn apply_vec_toggle_closed(");
-    let end = at(&DISPATCH[f..], "history.push_undo(pre);") + f;
+    // A janela é o CORPO da função: o `}` em coluna zero que a fecha. (Até 2026-09-12 fechava no
+    // `history.push_undo(pre)`, que morreu com a `History` do vetor.)
+    let end = at(&DISPATCH[f..], "\n}\n") + f;
     let window = &DISPATCH[f..end];
     assert!(
         window.contains("scene.close_path("),
@@ -174,10 +149,11 @@ fn the_cut_line_is_adopted_between_the_sync_and_the_settle() {
     );
 }
 
-/// **Os dois botões do corte são drenados, com UM passo de undo cada.**
+/// **Os dois botões do corte são drenados.**
 ///
-/// Um `Cut` sem `begin`/`commit_if_changed` é um corte que o Ctrl+Z salta por cima; e sem o
-/// `select(None)` a seleção continuaria a apontar formas que as peças substituíram.
+/// Sem o `select(None)` a seleção continuaria a apontar formas que as peças substituíram. (Até
+/// 2026-09-12 este gate exigia também o par `begin`/`commit_if_changed` da `History` do vetor — uma
+/// pilha que o Ctrl+Z nunca leu; o passo de undo do corte é o da fila global, por diff.)
 #[test]
 fn the_two_cut_buttons_are_drained_by_the_shell() {
     let apply = at(LOOP_SRC, "if pending_vec_cut {");
@@ -189,8 +165,6 @@ fn the_two_cut_buttons_are_drained_by_the_shell() {
             "vec_cut_line::apply_cut(",
             "o botao Cut nao chama a porta que corta",
         ),
-        ("self.vec_history.begin(", "sem passo de undo"),
-        ("commit_if_changed(", "sem commit do passo"),
         (
             "self.vec_pen.select(None)",
             "a selecao sobrevive as formas que ela apontava",

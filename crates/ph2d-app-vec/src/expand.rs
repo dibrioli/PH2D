@@ -7,7 +7,7 @@
 //! cada uma na sua. Uma operação N-ária aqui seria "funda tudo e offsete o resultado", que
 //! é outra coisa e que o artista consegue pedindo Union antes.
 
-use ph2d_vec_edit::{History, PenTool};
+use ph2d_vec_edit::PenTool;
 use ph2d_vec_scene::{
     LineJoin, OffsetSide, VecPath, VecPathId, VecScene, VecXforms, WidthStops, Xform, bake_xform,
     xform_of,
@@ -84,19 +84,19 @@ pub fn offset_side() -> OffsetSide {
 }
 
 /// Aplica `cmd` a cada path SELECIONADO. `d` é a distância do offset (ignorada pelo
-/// Outline Stroke). Um passo de undo para o gesto inteiro; re-seleciona o que saiu.
+/// Outline Stroke). Re-seleciona o que saiu.
 ///
 /// ⚠️ **Um passo de undo, não um por forma** — desfazer "o Expand" tem de custar um Ctrl+Z,
-/// não tantos quantos objetos estavam selecionados (a lição que o bake da física pagou).
+/// não tantos quantos objetos estavam selecionados (a lição que o bake da física pagou). Desde
+/// 2026-09-12 isto é ESTRUTURAL: o passo é o da fila global, que regista o quadro por diff, e esta
+/// função escreve o gesto inteiro numa chamada só.
 pub fn apply_vec_expand(
     scene: &mut VecScene,
-    history: &mut History,
     pen: &mut PenTool,
     xforms: &VecXforms,
     cmd: Expand,
     d: f64,
 ) {
-    let pre = scene.clone(); // UM passo de undo para o gesto inteiro
     let ids = pen.selected_paths().to_vec();
     if materialise_selection(scene, pen, xforms, &ids, |_, local, xf| {
         // ADR-0111: a pose vive no `Transform` da entidade e o resultado nasce world-space,
@@ -105,7 +105,6 @@ pub fn apply_vec_expand(
         bake_xform(&mut world, xf);
         expand_layers(&world, cmd.clone(), d)
     }) {
-        history.push_undo(pre);
         eprintln!("[ph2d-vec] expand {cmd:?}: ok");
     } else {
         eprintln!("[ph2d-vec] expand {cmd:?}: nada a converter na seleção");

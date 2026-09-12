@@ -347,7 +347,6 @@ impl crate::App {
                 let xf = ph2d_vec_entities::transform::build(&gfx.sim, &self.vec_entities);
                 crate::vec_blend::apply(
                     &mut gfx.vec_scene,
-                    &mut self.vec_history,
                     &mut self.vec_pen,
                     &xf,
                     &mut self.vec_blend,
@@ -384,7 +383,6 @@ impl crate::App {
                 let xf = ph2d_vec_entities::transform::build(&gfx.sim, &self.vec_entities);
                 crate::vec_blend::apply(
                     &mut gfx.vec_scene,
-                    &mut self.vec_history,
                     &mut self.vec_pen,
                     &xf,
                     &mut self.vec_blend,
@@ -421,7 +419,6 @@ impl crate::App {
                 let xf = ph2d_vec_entities::transform::build(&gfx.sim, &self.vec_entities);
                 crate::vec_blend::apply(
                     &mut gfx.vec_scene,
-                    &mut self.vec_history,
                     &mut self.vec_pen,
                     &xf,
                     &mut self.vec_blend,

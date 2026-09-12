@@ -127,19 +127,9 @@ fn the_pencil_move_is_dispatched() {
     );
 }
 
-/// **O release comita o passo de undo**, e as duas metades (commit / cancel) existem.
-#[test]
-fn the_pencil_release_commits_one_undo_step() {
-    let release = call("self.vec_state.pencil", "on_release");
-    assert!(
-        SRC[release..].contains("commit_if_changed"),
-        "o release do lapis nao comita passo de undo nenhum"
-    );
-    assert!(
-        SRC[release..].contains("self.vec_history.cancel()"),
-        "o release do lapis nao cancela o passo pendente num clique perdido"
-    );
-}
+// ⛔ `the_pencil_release_commits_one_undo_step` MORREU em 2026-09-12 (`line/render-loop`, A9): ele
+// exigia o par `commit_if_changed`/`cancel` da `History` do vetor no release do lápis — uma pilha
+// que o Ctrl+Z NUNCA leu. O passo de undo do traço é o da fila global, por diff do quadro.
 
 /// **O Up do lápis é um braço PRÓPRIO, antes da cadeia de modo** — e é isto que o torna
 /// ALCANÇÁVEL.

@@ -6370,12 +6370,7 @@ impl crate::App {
             // `can_pick` já garantiu um só, ainda solto). O clique seguinte no canvas escolhe o guia.
             // ⭐⭐⭐ O PINCEL (plano 36, W4): a lei primeiro, o arm depois — a mesma ordem do padrão.
             if let Some(cmd) = pending_brush {
-                crate::vec_stroke_paint::apply(
-                    vec_scene,
-                    &mut self.vec_history,
-                    &self.vec_pen,
-                    cmd,
-                );
+                crate::vec_stroke_paint::apply(vec_scene, &self.vec_pen, cmd);
             }
             if pending_brush_pick && let Some(host) = self.vec_pen.selected() {
                 self.vec_path_pick = Some(crate::vec_pick::PathPick::BrushArt(host));
@@ -6816,13 +6811,7 @@ impl crate::App {
                     );
                 } else {
                     let xf = ph2d_vec_entities::transform::build(sim, &self.vec_entities);
-                    crate::input_dispatch::apply_vec_boolean(
-                        vec_scene,
-                        &mut self.vec_history,
-                        &mut self.vec_pen,
-                        &xf,
-                        op,
-                    );
+                    crate::input_dispatch::apply_vec_boolean(vec_scene, &mut self.vec_pen, &xf, op);
                 }
             }
             // ── Offset AO VIVO ───────────────────────────────────────────────────
@@ -7288,7 +7277,6 @@ impl crate::App {
                         vec_scene,
                         sim,
                         &mut self.vec_pen,
-                        &mut self.vec_history,
                         &self.vec_entities,
                         &xf,
                         &sel_now,
@@ -7310,7 +7298,6 @@ impl crate::App {
                         vec_scene,
                         sim,
                         &mut self.vec_pen,
-                        &mut self.vec_history,
                         &self.vec_entities,
                         &xf,
                         &ids,
@@ -7349,7 +7336,6 @@ impl crate::App {
                     };
                     crate::vec_expand::apply_vec_expand(
                         vec_scene,
-                        &mut self.vec_history,
                         &mut self.vec_pen,
                         &xf,
                         cmd.clone(),
@@ -7366,20 +7352,10 @@ impl crate::App {
                 }
             }
             if let Some(make) = pending_vec_compound {
-                crate::input_dispatch::apply_vec_compound(
-                    vec_scene,
-                    &mut self.vec_history,
-                    &mut self.vec_pen,
-                    make,
-                );
+                crate::input_dispatch::apply_vec_compound(vec_scene, &mut self.vec_pen, make);
             }
             if let Some(even_odd) = pending_vec_fill_rule {
-                crate::input_dispatch::apply_vec_fill_rule(
-                    vec_scene,
-                    &mut self.vec_history,
-                    &self.vec_pen,
-                    even_odd,
-                );
+                crate::input_dispatch::apply_vec_fill_rule(vec_scene, &self.vec_pen, even_odd);
             }
             // Snap settings are TOOL state, not document state — no undo step.
             if let Some(on) = pending_vec_snap_on {
@@ -7401,31 +7377,21 @@ impl crate::App {
                 hero.view.rulers_visible = on;
             }
             if let Some(kind) = pending_vec_vertex_kind {
-                crate::input_dispatch::apply_vec_vertex_kind(
-                    vec_scene,
-                    &mut self.vec_history,
-                    &mut self.vec_pen,
-                    kind,
-                );
+                crate::input_dispatch::apply_vec_vertex_kind(vec_scene, &mut self.vec_pen, kind);
             }
             if pending_vec_delete_vertex {
-                crate::input_dispatch::apply_vec_delete_vertex(
-                    vec_scene,
-                    &mut self.vec_history,
-                    &mut self.vec_pen,
-                );
+                crate::input_dispatch::apply_vec_delete_vertex(vec_scene, &mut self.vec_pen);
             }
-            // ⚠️ **Sem `vec_history.begin`**: os dois só mudam QUEM está selecionado, e a seleção
-            // não é estado de documento — abrir um passo de undo por eles poria uma linha na fila
-            // que o Ctrl+Z não teria o que desfazer.
+            // ⚠️ Os dois só mudam QUEM está selecionado, e a seleção não é estado de documento — o
+            // undo global (por diff) não vê passo nenhum neles.
             if pending_vec_select_subpath {
                 self.vec_pen.select_subpath_verts(vec_scene);
             }
             if pending_vec_select_same {
                 self.vec_pen.select_verts_of_same_kind(vec_scene);
             }
-            // **As três da W4.** Um passo de undo por gesto, e só se algo de fato mudou — o
-            // `begin`/`commit_if_changed` é o mesmo par do lápis e das ferramentas de quina.
+            // **As três da W4.** O passo de undo é o da fila global (por diff do quadro): ele só
+            // nasce se algo de fato mudou.
             for (armed, op) in [
                 (pending_vec_join, 0u8),
                 (pending_vec_reverse, 1),
@@ -7434,34 +7400,29 @@ impl crate::App {
                 if !armed {
                     continue;
                 }
-                self.vec_history.begin(vec_scene);
-                let changed = match op {
+                match op {
                     0 => self.vec_pen.join_selection(vec_scene),
                     1 => self.vec_pen.reverse_selected_paths(vec_scene),
                     _ => self.vec_pen.average_selected_verts(vec_scene),
                 };
-                if changed {
-                    self.vec_history.commit_if_changed(vec_scene);
-                }
             }
             // ⭐⭐⭐ **SOLDAR** (plano 39) — ao lado das três acima, e **fora** do laço delas porque
             // ela precisa das POSES: dois traços só se cruzam depois de o `Transform` os pôr no
             // lugar, e medir na geometria local diria que eles não se encontram.
-            // ⚠️ O passo de undo mora dentro (`apply_vec_weld` faz `push_undo` só quando cortou):
-            // um comando que não fez nada não pode gastar um Ctrl+Z.
+            // ⚠️ Um comando que não cortou nada não muda a cena, e por isso não gasta um Ctrl+Z (o
+            // undo global regista por diff).
             if pending_vec_weld {
                 let xf = ph2d_vec_entities::transform::build(sim, &self.vec_entities);
                 crate::vec_weld::apply_vec_weld(
                     vec_scene,
-                    &mut self.vec_history,
                     &mut self.vec_pen,
                     &xf,
                     crate::vec_snap::vec_weld_tolerance(vec_px_to_world),
                 );
             }
-            // **O CORTE e o DESCARTE da lâmina.** Mesmo par `begin`/`commit_if_changed` das três
-            // acima: um passo de undo por gesto, e só se algo de fato mudou (uma lâmina que não
-            // atravessa nada não pode deixar uma linha na fila do Ctrl+Z).
+            // **O CORTE e o DESCARTE da lâmina.** Como as três acima: o passo é o do undo global, e
+            // só nasce se algo de fato mudou (uma lâmina que não atravessa nada não deixa linha na
+            // fila do Ctrl+Z).
             // **Apply Symmetry** — o único gesto desta seção que toca o documento. Até aqui as
             // cópias eram DESENHO; a partir daqui são geometria, e a simetria sai com a
             // forma-fonte (o `sync` do frame seguinte despawna a entidade dela).
@@ -7475,14 +7436,12 @@ impl crate::App {
                     vec_scene,
                     sim,
                     &mut self.vec_pen,
-                    &mut self.vec_history,
                     &self.vec_entities,
                     &xf,
                     &ids,
                 );
             }
             if pending_vec_cut {
-                self.vec_history.begin(vec_scene);
                 // A seleção que o corte exige é a da LÂMINA, e ela pode chegar por qualquer das
                 // duas listas do pen (a de objeto e a de caminho) — perguntar só a uma delas faria
                 // o botão recusar um gesto legítimo.
@@ -7503,21 +7462,17 @@ impl crate::App {
                 {
                     // A seleção descreve formas que já não existem — as peças as substituíram.
                     self.vec_pen.select(None);
-                    self.vec_history.commit_if_changed(vec_scene);
                 }
             }
             if pending_vec_cut_discard {
-                self.vec_history.begin(vec_scene);
-                if crate::vec_cut_line::discard(sim, vec_scene, &self.vec_entities) {
-                    self.vec_history.commit_if_changed(vec_scene);
-                }
+                crate::vec_cut_line::discard(sim, vec_scene, &self.vec_entities);
             }
             // **Os botões Arrange escrevem na ÁRVORE** (Enio, 2026-08-04). Eles chamavam o
             // `VecScene::reorder_path`, que mexe na ordem do VETOR da cena — e essa é reescrita a
             // cada frame pela projeção da árvore (ADR-0110), então os quatro estavam MORTOS:
             // acendiam, mexiam, e o frame seguinte desfazia. O undo é o GLOBAL por diff (a árvore
-            // é `ProjectState`), e não a fila do vetor: `vec_history` guarda a CENA, que aqui não
-            // é onde a verdade está.
+            // é `ProjectState`). (Até 2026-09-12 esta nota contrastava-o com a `vec_history`, a
+            // pilha do vetor que guardava a CENA — ela morreu sem nunca ter tido leitor.)
             if let Some(order) = pending_vec_reorder
                 && let Some(sel) = self.vec_pen.selected()
             {
@@ -7531,29 +7486,13 @@ impl crate::App {
                 // `PASTE_OFFSET_PX`, que é o mesmo número pela mesma razão — exatamente a
                 // divergência contra a qual o doc de `screen_offset_world` avisa.
                 let off = crate::input_dispatch::PASTE_OFFSET_PX * vec_px_to_world;
-                crate::input_dispatch::apply_vec_duplicate(
-                    vec_scene,
-                    &mut self.vec_history,
-                    &mut self.vec_pen,
-                    off,
-                    off,
-                );
+                crate::input_dispatch::apply_vec_duplicate(vec_scene, &mut self.vec_pen, off, off);
             }
             if let Some(axis) = pending_vec_flip {
-                crate::input_dispatch::apply_vec_flip(
-                    vec_scene,
-                    &mut self.vec_history,
-                    &self.vec_pen,
-                    axis,
-                );
+                crate::input_dispatch::apply_vec_flip(vec_scene, &self.vec_pen, axis);
             }
             if let Some(dir) = pending_vec_rotate {
-                crate::input_dispatch::apply_vec_rotate(
-                    vec_scene,
-                    &mut self.vec_history,
-                    &self.vec_pen,
-                    dir,
-                );
+                crate::input_dispatch::apply_vec_rotate(vec_scene, &self.vec_pen, dir);
             }
             // O afim de cada path, para as operações que falam MUNDO (align, distribute,
             // campos X/Y/W/H). O mapa é o do frame passado — os paths envolvidos já
@@ -7651,7 +7590,6 @@ impl crate::App {
                     sim,
                     &self.vec_entities,
                     vec_scene,
-                    &mut self.vec_history,
                     &self.vec_pen,
                     &vec_xf_ops,
                     field,
@@ -7693,7 +7631,6 @@ impl crate::App {
                         sim,
                         &self.vec_entities,
                         vec_scene,
-                        &mut self.vec_history,
                         &self.vec_pen,
                         &vec_xf_ops,
                         field,
@@ -7702,12 +7639,7 @@ impl crate::App {
                 }
             }
             if let Some(deg) = pending_vec_rotate_by {
-                crate::input_dispatch::apply_vec_rotate_by(
-                    vec_scene,
-                    &mut self.vec_history,
-                    &self.vec_pen,
-                    deg,
-                );
+                crate::input_dispatch::apply_vec_rotate_by(vec_scene, &self.vec_pen, deg);
             }
             // Configs de texto: aplicam na SESSÃO viva; sem sessão, no objeto de TEXTO
             // SELECIONADO (o texto segue editável no Select até virar curva). O
@@ -7963,19 +7895,10 @@ impl crate::App {
                 let _ = imported;
             }
             if let Some(op) = pending_vec_path_shape {
-                crate::input_dispatch::apply_vec_path_shape(
-                    vec_scene,
-                    &mut self.vec_history,
-                    &self.vec_pen,
-                    op,
-                );
+                crate::input_dispatch::apply_vec_path_shape(vec_scene, &self.vec_pen, op);
             }
             if pending_vec_toggle_closed {
-                crate::input_dispatch::apply_vec_toggle_closed(
-                    vec_scene,
-                    &mut self.vec_history,
-                    &mut self.vec_pen,
-                );
+                crate::input_dispatch::apply_vec_toggle_closed(vec_scene, &mut self.vec_pen);
             }
             if let Some(kind) = pending_vec_fill_kind {
                 crate::texture_pattern_edit::log_shape(
@@ -8031,7 +7954,6 @@ impl crate::App {
                 }
                 crate::input_dispatch::apply_vec_set_fill_kind(
                     vec_scene,
-                    &mut self.vec_history,
                     &self.vec_pen,
                     kind,
                     pattern,
@@ -8101,13 +8023,7 @@ impl crate::App {
                         crate::texture_pattern_pick::default_placement(vec_scene, sel, arte);
                     pattern = Some((source, size, origin));
                 }
-                crate::vec_stroke_paint::set_kind(
-                    vec_scene,
-                    &mut self.vec_history,
-                    &self.vec_pen,
-                    kind,
-                    pattern,
-                );
+                crate::vec_stroke_paint::set_kind(vec_scene, &self.vec_pen, kind, pattern);
             }
             // ⭐ **A secção PATTERN** (plano 33 W5) — a arte primeiro (ela abre um diálogo, que
             // congela o laço), depois a lei. As duas desaguam na MESMA porta.
@@ -8157,33 +8073,17 @@ impl crate::App {
             // ⭐⭐ **O SUJEITO VEIO NO ID DO CONTROLO** (plano 35, wave F): cada secção tem os seus,
             // então não há preferência a coagir nem alvo a resolver — *o gesto diz em quem escreve*.
             if let Some((slot, cmd)) = pending_texpat {
-                crate::texture_pattern_edit::apply(
-                    vec_scene,
-                    &mut self.vec_history,
-                    &self.vec_pen,
-                    slot,
-                    cmd,
-                );
+                crate::texture_pattern_edit::apply(vec_scene, &self.vec_pen, slot, cmd);
             }
             if let Some(deg) = pending_vec_grad_angle {
-                crate::input_dispatch::apply_vec_set_grad_angle(
-                    vec_scene,
-                    &mut self.vec_history,
-                    &self.vec_pen,
-                    deg,
-                );
+                crate::input_dispatch::apply_vec_set_grad_angle(vec_scene, &self.vec_pen, deg);
             }
             if pending_vec_grad_add {
-                crate::input_dispatch::apply_vec_grad_add_point(
-                    vec_scene,
-                    &mut self.vec_history,
-                    &self.vec_pen,
-                );
+                crate::input_dispatch::apply_vec_grad_add_point(vec_scene, &self.vec_pen);
             }
             if pending_vec_grad_remove {
                 self.vec_state.grad_selected = crate::input_dispatch::apply_vec_grad_remove_point(
                     vec_scene,
-                    &mut self.vec_history,
                     &self.vec_pen,
                     self.vec_state
                         .grad_selected
@@ -8194,7 +8094,6 @@ impl crate::App {
             if let Some(v) = pending_vec_grad_influence {
                 crate::input_dispatch::apply_vec_grad_influence(
                     vec_scene,
-                    &mut self.vec_history,
                     &self.vec_pen,
                     self.vec_state
                         .grad_selected
@@ -8205,7 +8104,6 @@ impl crate::App {
             if let Some(v) = pending_vec_grad_jitter {
                 crate::input_dispatch::apply_vec_grad_jitter(
                     vec_scene,
-                    &mut self.vec_history,
                     &self.vec_pen,
                     self.vec_state
                         .grad_selected
@@ -8214,27 +8112,17 @@ impl crate::App {
                 );
             }
             if pending_vec_grad_add_stop {
-                self.vec_state.grad_selected = crate::input_dispatch::apply_vec_grad_add_stop(
-                    vec_scene,
-                    &mut self.vec_history,
-                    &self.vec_pen,
-                )
-                .map(ph2d_vec_render::GradHandle::Stop)
-                .or(self.vec_state.grad_selected);
+                self.vec_state.grad_selected =
+                    crate::input_dispatch::apply_vec_grad_add_stop(vec_scene, &self.vec_pen)
+                        .map(ph2d_vec_render::GradHandle::Stop)
+                        .or(self.vec_state.grad_selected);
             }
             if let Some(a) = pending_vec_align {
-                crate::input_dispatch::apply_vec_align(
-                    vec_scene,
-                    &mut self.vec_history,
-                    &self.vec_pen,
-                    &vec_xf_ops,
-                    a,
-                );
+                crate::input_dispatch::apply_vec_align(vec_scene, &self.vec_pen, &vec_xf_ops, a);
             }
             if let Some(d) = pending_vec_distribute {
                 crate::input_dispatch::apply_vec_distribute(
                     vec_scene,
-                    &mut self.vec_history,
                     &self.vec_pen,
                     &vec_xf_ops,
                     d,
@@ -8250,7 +8138,6 @@ impl crate::App {
                 // current selection (endpoint handles aren't removable stops).
                 self.vec_state.grad_selected = crate::input_dispatch::apply_vec_grad_remove_stop(
                     vec_scene,
-                    &mut self.vec_history,
                     &self.vec_pen,
                     Some(si),
                 )
@@ -8276,7 +8163,6 @@ impl crate::App {
                 &mut self.vec_pen,
                 &mut self.vec_state.shape,
                 &mut self.vec_state.pencil,
-                &mut self.vec_history,
                 vec_px_to_world,
                 self.vec_state.grad_selected,
                 &vec_xf_ops,
@@ -8296,12 +8182,7 @@ impl crate::App {
             // `dispatch` acabou de sincronizar com a ferramenta (`pen.set_style`). Um sítio mais
             // tarde leria a ficha do quadro anterior.
             if pending_stroke_present {
-                crate::vec_stroke_present::toggle(
-                    vec_scene,
-                    &mut self.vec_history,
-                    &self.vec_pen,
-                    vec_px_to_world,
-                );
+                crate::vec_stroke_present::toggle(vec_scene, &self.vec_pen, vec_px_to_world);
             }
             ph2d_panel_vector::state::set_stroke_present(
                 crate::vec_stroke_present::selected_stroke_present(vec_scene, &self.vec_pen),
@@ -9159,7 +9040,6 @@ impl crate::App {
                     vec_scene,
                     &mut self.vec_entities,
                     &mut self.vec_pen,
-                    &mut self.vec_history,
                     &xf,
                     &sel,
                 );
@@ -12483,7 +12363,6 @@ impl crate::App {
                 window_size,
                 vec_scene,
                 &mut self.vec_entities,
-                &mut self.vec_history,
                 &mut self.vec_pen,
                 &mut duplicate_made,
                 component_registry,

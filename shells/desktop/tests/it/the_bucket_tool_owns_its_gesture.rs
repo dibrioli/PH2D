@@ -76,17 +76,25 @@ fn the_press_is_consumed_so_it_never_falls_into_drawing() {
     // ⚠️ **E ele está FORA da guarda do estado.** Um `return` lá dentro deixaria um clique **sem
     // região acesa** cair na cadeia de baixo e começar a desenhar uma forma.
     //
-    // A régua é a INDENTAÇÃO: o `return;` tem de estar ao mesmo nível do `let antes` (o corpo do
-    // bloco do modo), e não mais fundo. ⛔ Contar chavetas foi a 1.ª redacção e reprovou sobre
+    // A régua é a INDENTAÇÃO: o `return;` tem de estar ao mesmo nível da GUARDA do estado (o corpo
+    // do bloco do modo), e não mais fundo. ⛔ Contar chavetas foi a 1.ª redacção e reprovou sobre
     // produto correcto — *uma heurística de chavetas não sabe ler Rust*.
+    //
+    // ⚠️ A âncora do nível era o `let antes = self`, a cópia da cena que alimentava a `History` do
+    // vetor; ela morreu com a pilha em 2026-09-12 (`line/render-loop`, A9), e a guarda que ficou no
+    // lugar dela é a linha do mesmo nível.
     let indent = |i: usize| {
         let linha = DISPATCH[..i].rfind('\n').map_or(0, |n| n + 1);
         i - linha
     };
-    let antes = at(DISPATCH, "let antes = self", "o dispatch");
+    let guarda = at(
+        DISPATCH,
+        "if self.vec_bucket_face.is_some() && self.gfx.is_some() {",
+        "o dispatch",
+    );
     assert_eq!(
         indent(ret),
-        indent(antes),
+        indent(guarda),
         "o `return` do Balde esta' mais fundo que o corpo do bloco — ele parece estar DENTRO da \
          guarda do estado, e um clique sem regiao acesa cairia na cadeia de baixo"
     );

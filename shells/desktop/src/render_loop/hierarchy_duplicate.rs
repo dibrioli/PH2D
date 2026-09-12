@@ -74,7 +74,6 @@ pub(super) fn drain(
     toasts: &mut ToastQueue,
     vec_scene: &mut ph2d_vec_scene::VecScene,
     vec_entities: &mut ph2d_vec_entities::entities::VecEntityMap,
-    vec_history: &mut ph2d_vec_edit::History,
     vec_pen: &mut ph2d_vec_edit::PenTool,
     duplicate_made: &mut Option<(u64, u64)>,
     registry: &ph2d_ecs::scene::ComponentRegistry,
@@ -108,14 +107,7 @@ pub(super) fn drain(
         crate::input_dispatch::PASTE_OFFSET_PX,
     );
     if let Some(vp) = sim.world().get::<ph2d_ecs::VecPathRef>(src).copied() {
-        if crate::input_dispatch::duplicate_vec_paths(
-            vec_scene,
-            vec_history,
-            vec_pen,
-            &[vp.0],
-            dx,
-            dy,
-        ) {
+        if crate::input_dispatch::duplicate_vec_paths(vec_scene, vec_pen, &[vp.0], dx, dy) {
             toasts.push(Toast::success("Duplicated shape"));
             return true;
         }

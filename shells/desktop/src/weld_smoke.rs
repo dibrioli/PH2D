@@ -153,12 +153,11 @@ mod tests {
         // ⚠️ **A MESMA porta que a cena usa** — a fixtura não tem uma segunda cópia.
         let [p1, p2] = super::pares()[par].clone();
         let mut scene = VecScene::new();
-        let mut hist = ph2d_vec_edit::History::default();
         let mut pen = ph2d_vec_edit::PenTool::default();
         let a = scene.push_path(super::curva(p1));
         let b = scene.push_path(super::curva(p2));
         pen.select_many(&[a, b]);
-        crate::vec_weld::apply_vec_weld(&mut scene, &mut hist, &mut pen, &VecXforms::new(), ima);
+        crate::vec_weld::apply_vec_weld(&mut scene, &mut pen, &VecXforms::new(), ima);
         (scene, pen)
     }
 

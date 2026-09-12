@@ -34,7 +34,7 @@ const FILE_OVERAGE_OK: &[(&str, usize, &str)] = &[
     ),
     (
         "input_dispatch.rs",
-        7290,
+        7113,
         "Onda 2C multi-select dispatch + hit_map routing +",
     ),
     (
@@ -49,7 +49,7 @@ const FILE_OVERAGE_OK: &[(&str, usize, &str)] = &[
     ),
     (
         "render_loop/mod.rs",
-        14038,
+        13917,
         "frame orchestrator — heavy phases already extracted to",
     ),
     (

@@ -4,7 +4,7 @@
 //! motor e MORTA no produto.
 
 use super::*;
-use ph2d_vec_edit::{History, PenTool};
+use ph2d_vec_edit::PenTool;
 use ph2d_vec_entities::entities::VecEntityMap;
 use ph2d_vec_scene::{VecPath, VecVertex, VecXforms};
 
@@ -17,16 +17,7 @@ fn convert(
     ids: &[VecPathId],
 ) -> Vec<VecPathId> {
     let mut pen = PenTool::new();
-    let mut history = History::new();
-    crate::vec_convert::to_curves(
-        sim,
-        scene,
-        map,
-        &mut pen,
-        &mut history,
-        &VecXforms::default(),
-        ids,
-    )
+    crate::vec_convert::to_curves(sim, scene, map, &mut pen, &VecXforms::default(), ids)
 }
 
 /// Um quadrado sincronizado numa entidade, com um Zig Zag ATIVO adicionado pelo MESMO caminho

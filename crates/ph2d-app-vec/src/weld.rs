@@ -35,7 +35,6 @@ fn contornos_mundo(scene: &VecScene, xforms: &VecXforms, id: u64) -> Vec<Contour
 /// *"consome os originais"*.
 pub fn apply_vec_weld(
     scene: &mut VecScene,
-    history: &mut ph2d_vec_edit::History,
     pen: &mut ph2d_vec_edit::PenTool,
     xforms: &VecXforms,
     ligacao: f64,
@@ -150,7 +149,6 @@ pub fn apply_vec_weld(
         return;
     }
 
-    let pre = scene.clone();
     // As pontas dos ARCOS mudam-se no mundo; as dos caminhos INTACTOS descem à pose deles, que é o
     // que lhes preserva o id, o estilo e a pilha de efeitos.
     for (k, &n) in de_quem.iter().enumerate() {
@@ -273,7 +271,6 @@ pub fn apply_vec_weld(
             }
         }
     }
-    history.push_undo(pre);
     // ⚠️ **A selecção final é a rede**: o objecto novo MAIS os traços que sobreviveram inteiros.
     // Limpá-la para a rede só faria o artista perder de vista as curvas que ele acabou de ligar.
     let fica: Vec<u64> = sel

@@ -28,7 +28,7 @@ pub use pencil::Pencil;
 
 /// Pen STYLE + edit HISTORY (sibling module, HR-18 file-LOC cap).
 mod pen_support;
-pub use pen_support::{History, PenStyle};
+pub use pen_support::PenStyle;
 
 mod selection;
 /// Selection + the document ops that act on it (sibling module, LOC cap).

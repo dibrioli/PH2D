@@ -1501,11 +1501,6 @@ pub(crate) struct App {
     /// O caminho de REFERÊNCIA da cena de smoke do Width Tool, à espera de ganhar o perfil no
     /// frame seguinte (o componente precisa de uma entidade, e ela nasce no `sync`).
     pub(crate) vec_width_ref: Option<ph2d_vec_scene::VecPathId>,
-    /// ADR-0108: undo/redo by snapshot of `vec_scene` (Ctrl+Z / Ctrl+Shift+Z).
-    /// Subsumido pela fila GLOBAL (`undo`, abaixo): ainda é populado pelas ops
-    /// vetoriais, mas o Ctrl+Z já não o lê — a fila global cobre a geometria via
-    /// diff de estado. Remoção é limpeza posterior.
-    pub(crate) vec_history: ph2d_vec_edit::History,
     /// Undo/redo GLOBAL do editor (objetos + hierarquia + canvas) — uma fila só,
     /// snapshot-based. Ver [`crate::undo`].
     pub(crate) undo: crate::undo::ProjectUndo,

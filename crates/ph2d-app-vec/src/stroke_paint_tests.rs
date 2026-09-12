@@ -53,14 +53,12 @@ fn tinta(scene: &VecScene, id: VecPathId) -> Option<StrokePaint> {
 #[test]
 fn a_solid_stroke_can_become_a_patterned_one() {
     let (mut scene, pen, id) = cena(Some(false));
-    let mut h = History::default();
     assert!(
         matches!(tinta(&scene, id), Some(StrokePaint::Solid(_))),
         "a fixtura tem de comecar solida"
     );
     assert!(set_kind(
         &mut scene,
-        &mut h,
         &pen,
         StrokePaintKind::Pattern,
         Some((arte(), [3.0, 4.0], [1.0, 2.0])),
@@ -74,7 +72,6 @@ fn a_solid_stroke_can_become_a_patterned_one() {
         [1.0, 2.0],
         "⛔ o canto e' o da FORMA, nunca a origem do mundo - e' o report do `Clamp` em branco"
     );
-    assert_eq!(h.undo_len(), 1, "trocar a tinta e' UM passo de undo");
 }
 
 /// ⭐ **Voltar a `Solid` devolve a COR DE RECURSO do padrão, e não uma cor arbitrária.**
@@ -83,14 +80,7 @@ fn a_solid_stroke_can_become_a_patterned_one() {
 #[test]
 fn going_back_to_solid_keeps_the_colour_the_line_was_already_showing() {
     let (mut scene, pen, id) = cena(Some(true));
-    let mut h = History::default();
-    assert!(set_kind(
-        &mut scene,
-        &mut h,
-        &pen,
-        StrokePaintKind::Solid,
-        None
-    ));
+    assert!(set_kind(&mut scene, &pen, StrokePaintKind::Solid, None));
     assert_eq!(
         tinta(&scene, id),
         Some(StrokePaint::Solid(Rgba8::new(11, 22, 33, 255))),
@@ -103,10 +93,10 @@ fn going_back_to_solid_keeps_the_colour_the_line_was_already_showing() {
 #[test]
 fn giving_up_on_the_art_dialog_leaves_the_stroke_alone() {
     let (mut scene, pen, id) = cena(Some(false));
-    let mut h = History::default();
     let antes = tinta(&scene, id);
+    let cena_antes = scene.clone();
     assert!(
-        !set_kind(&mut scene, &mut h, &pen, StrokePaintKind::Pattern, None),
+        !set_kind(&mut scene, &pen, StrokePaintKind::Pattern, None),
         "sem arte, `set_kind` tem de recusar"
     );
     assert_eq!(
@@ -114,7 +104,7 @@ fn giving_up_on_the_art_dialog_leaves_the_stroke_alone() {
         antes,
         "a tinta mudou apesar da desistencia"
     );
-    assert_eq!(h.undo_len(), 0, "uma desistencia nao e' um passo de undo");
+    assert!(scene == cena_antes, "uma desistencia mudou o documento");
 }
 
 /// ⭐ **Pedir a tinta que já lá está é um no-op** — e o que isso compra é a LEI inteira do padrão a
@@ -126,11 +116,10 @@ fn giving_up_on_the_art_dialog_leaves_the_stroke_alone() {
 #[test]
 fn asking_for_the_kind_it_already_has_preserves_the_whole_law() {
     let (mut scene, pen, id) = cena(Some(true));
-    let mut h = History::default();
     let antes = tinta(&scene, id);
+    let cena_antes = scene.clone();
     assert!(!set_kind(
         &mut scene,
-        &mut h,
         &pen,
         StrokePaintKind::Pattern,
         Some((
@@ -144,7 +133,7 @@ fn asking_for_the_kind_it_already_has_preserves_the_whole_law() {
         antes,
         "a lei do padrao foi reconstruida - trocar de chip e voltar perde a arte"
     );
-    assert_eq!(h.undo_len(), 0);
+    assert!(scene == cena_antes, "o no-op mudou o documento");
 }
 
 /// ⚠️⚠️ **Sem traço não há tinta de traço** — a fileira NÃO é pintada, e é isso que a distingue da
@@ -186,10 +175,8 @@ fn a_multiple_selection_has_no_answer() {
     pen.select_many(&[id, outro]);
     assert_eq!(selected_stroke_paint_kind(&scene, &pen), None);
     // E nada se escreve com duas formas em mãos.
-    let mut h = History::default();
     assert!(!set_kind(
         &mut scene,
-        &mut h,
         &pen,
         StrokePaintKind::Pattern,
         Some((arte(), [1.0, 1.0], [0.0, 0.0])),
@@ -231,10 +218,8 @@ fn the_opacity_survives_the_paint_switch_in_both_directions() {
     if let Some(s) = scene.path_mut(id).and_then(|p| p.stroke.as_mut()) {
         s.paint = StrokePaint::Solid(Rgba8::new(11, 22, 33, 128));
     }
-    let mut h = History::default();
     assert!(set_kind(
         &mut scene,
-        &mut h,
         &pen,
         StrokePaintKind::Pattern,
         Some((arte(), [1.0, 1.0], [0.0, 0.0])),
@@ -248,13 +233,7 @@ fn the_opacity_survives_the_paint_switch_in_both_directions() {
         p.alpha
     );
     // E a volta devolve a mesma alfa, pela `fallback`.
-    assert!(set_kind(
-        &mut scene,
-        &mut h,
-        &pen,
-        StrokePaintKind::Solid,
-        None
-    ));
+    assert!(set_kind(&mut scene, &pen, StrokePaintKind::Solid, None));
     assert_eq!(
         tinta(&scene, id),
         Some(StrokePaint::Solid(Rgba8::new(11, 22, 33, 128))),
@@ -309,13 +288,13 @@ fn pincel_de(scene: &VecScene, id: VecPathId) -> ph2d_vec_scene::BrushStroke {
 #[test]
 fn the_two_handed_gesture_sets_the_brush_art_by_id() {
     let (mut scene, _pen, id, arte) = cena_pincel(false);
-    let mut h = History::default();
-    assert!(set_art(&mut scene, &mut h, id, arte, &|id| vec![id]));
+    assert!(set_art(&mut scene, id, arte, &|id| vec![id]));
     assert_eq!(pincel_de(&scene, id).art, Some(arte));
-    assert_eq!(h.undo_len(), 1, "por a arte e' UM passo de undo");
-    // ⚠️ O MESMO valor não grava passo — re-armar e escolher a mesma forma encheria a pilha.
-    assert!(!set_art(&mut scene, &mut h, id, arte, &|id| vec![id]));
-    assert_eq!(h.undo_len(), 1);
+    // ⚠️ O MESMO valor não muda o documento — re-armar e escolher a mesma forma encheria a pilha do
+    // undo global (por diff).
+    let cena_antes = scene.clone();
+    assert!(!set_art(&mut scene, id, arte, &|id| vec![id]));
+    assert!(scene == cena_antes, "o mesmo valor mudou o documento");
 }
 
 /// ⛔⛔ **UMA FORMA NÃO PODE SER O PRÓPRIO PINCEL** — a recusa é a primeira linha da porta.
@@ -325,9 +304,9 @@ fn the_two_handed_gesture_sets_the_brush_art_by_id() {
 #[test]
 fn a_shape_can_never_author_itself_as_its_own_brush() {
     let (mut scene, _pen, id, _) = cena_pincel(false);
-    let mut h = History::default();
-    assert!(!set_art(&mut scene, &mut h, id, id, &|id| vec![id]));
-    assert_eq!(h.undo_len(), 0);
+    let cena_antes = scene.clone();
+    assert!(!set_art(&mut scene, id, id, &|id| vec![id]));
+    assert!(scene == cena_antes, "a recusa mudou o documento");
     assert_ne!(pincel_de(&scene, id).art, Some(id));
 }
 
@@ -363,8 +342,7 @@ fn every_brush_knob_writes_its_own_field_and_only_its_own() {
             }));
         }
         let antes = pincel_de(&scene, id);
-        let mut h = History::default();
-        assert!(apply(&mut scene, &mut h, &pen, cmd), "{nome} nao escreveu");
+        assert!(apply(&mut scene, &pen, cmd), "{nome} nao escreveu");
         let depois = pincel_de(&scene, id);
         assert!(
             (ler(&depois) - ler(&antes)).abs() > 1e-9,
@@ -380,10 +358,13 @@ fn every_brush_knob_writes_its_own_field_and_only_its_own() {
             BrushCmd::Flip => esperado.flip = !esperado.flip,
         }
         assert_eq!(depois, esperado, "{nome} mexeu num campo que nao e' o dele");
-        assert_eq!(h.undo_len(), 1, "{nome}: UM passo de undo");
-        // ⚠️ E o MESMO valor não grava passo — o defeito que fazia todo quadro virar undo.
-        assert!(!apply(&mut scene, &mut h, &pen, cmd));
-        assert_eq!(h.undo_len(), 1);
+        // ⚠️ E o MESMO valor não muda o documento — o defeito que fazia todo quadro virar undo.
+        let cena_antes = scene.clone();
+        assert!(!apply(&mut scene, &pen, cmd));
+        assert!(
+            scene == cena_antes,
+            "{nome}: o mesmo valor mudou o documento"
+        );
     }
 }
 
@@ -449,17 +430,16 @@ fn setting_a_brush_art_refuses_a_group_that_contains_its_own_host() {
             vec![id]
         }
     };
-    let mut h = History::default();
+    let cena_antes = scene.clone();
     assert!(
-        !set_art(&mut scene, &mut h, host, irmao, &grupo),
+        !set_art(&mut scene, host, irmao, &grupo),
         "a porta aceitou um grupo que CONTEM o anfitriao - ela escreve o documento e empurra undo, \
          o botao passa a dizer `Change Shape...`, e o traco pinta a cor de recurso sem uma palavra"
     );
-    assert_eq!(h.undo_len(), 0, "a recusa gravou um passo de undo");
+    assert!(scene == cena_antes, "a recusa mudou o documento");
     // ⚠️ CONTROLO: uma forma de FORA do grupo do anfitrião é aceite.
     assert!(
-        set_art(&mut scene, &mut h, host, de_fora, &grupo),
+        set_art(&mut scene, host, de_fora, &grupo),
         "a porta recusou uma arte legitima - a feature fica inalcancavel"
     );
-    assert_eq!(h.undo_len(), 1);
 }

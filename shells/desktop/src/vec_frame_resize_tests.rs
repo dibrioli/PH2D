@@ -457,14 +457,12 @@ fn the_panels_width_field_keeps_the_recipe_in_step_too() {
     sim.world_mut()
         .entity_mut(Entity::from_bits(map[&id]))
         .insert(shape);
-    let mut hist = ph2d_vec_edit::History::new();
     let mut pen = ph2d_vec_edit::PenTool::new();
     pen.select(Some(id));
     crate::input_dispatch::apply_vec_transform(
         &mut sim,
         &map,
         &mut scene,
-        &mut hist,
         &pen,
         &VecXforms::default(),
         crate::input_dispatch::VecTransformField::W,

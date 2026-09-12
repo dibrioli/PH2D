@@ -973,7 +973,6 @@ impl App {
             vec_offset_mirrored: None,
             vec_width_grab: None,
             vec_width_ref: None,
-            vec_history: ph2d_vec_edit::History::new(),
             undo: crate::undo::ProjectUndo::default(),
             undo_baseline: None,
             undo_baseline_selection: crate::undo::SelectionMark::default(),

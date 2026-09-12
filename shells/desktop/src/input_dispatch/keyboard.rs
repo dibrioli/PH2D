@@ -348,8 +348,9 @@ impl App {
 
         // Arrow keys nudge the selection (nodes if any, else the whole path).
         // Allows Shift (coarse 10px, unlike the boolean block above); blocked by
-        // Ctrl/Alt/Super and while drawing. Auto-repeat keeps moving but a held
-        // arrow coalesces into ONE undo step (records only on the first press).
+        // Ctrl/Alt/Super and while drawing. Auto-repeat keeps moving. (Until 2026-09-12 a
+        // held arrow recorded ONE step in the vector `History`, on the first press; that
+        // stack died unread — the Ctrl+Z is the global queue's.)
         if self.vector_keys_live()
             && state == ElementState::Pressed
             && !self.vec_pen.is_drawing()
@@ -371,7 +372,7 @@ impl App {
                 _ => None,
             };
             if let Some((dx, dy)) = delta
-                && self.vec_nudge_selected(dx, dy, !repeat)
+                && self.vec_nudge_selected(dx, dy)
             {
                 return;
             }

@@ -328,12 +328,12 @@ pub fn arm(
 /// não produziu nada fica — e fica COM a simetria, porque apagar a arte do artista num clique de
 /// *Apply* seria a pior resposta possível a *"não há nada aqui"*.
 ///
-/// `false` = não havia simetria viva na seleção. **UM passo de undo** para o gesto inteiro.
+/// `false` = não havia simetria viva na seleção. O gesto inteiro é UMA chamada, e por isso UM passo
+/// da fila global de undo (que regista o quadro por diff).
 pub fn materialise(
     scene: &mut VecScene,
     sim: &SimWorld,
     pen: &mut ph2d_vec_edit::PenTool,
-    history: &mut ph2d_vec_edit::History,
     map: &VecEntityMap,
     xforms: &VecXforms,
     ids: &[VecPathId],
@@ -345,8 +345,7 @@ pub fn materialise(
     if live.is_empty() {
         return false;
     }
-    let pre = scene.clone();
-    let touched = crate::expand::materialise_selection(scene, pen, xforms, ids, |id, local, xf| {
+    crate::expand::materialise_selection(scene, pen, xforms, ids, |id, local, xf| {
         let Some((_, spec)) = live.iter().find(|(i, _)| *i == id) else {
             return Vec::new();
         };
@@ -357,9 +356,6 @@ pub fn materialise(
         }
         out
     });
-    if touched {
-        history.push_undo(pre);
-    }
     eprintln!("[ph2d-vec] simetria materializada: {} forma(s)", live.len());
     true
 }

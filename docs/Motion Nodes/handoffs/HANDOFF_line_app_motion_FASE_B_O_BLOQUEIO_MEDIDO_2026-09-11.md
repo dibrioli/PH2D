@@ -141,5 +141,15 @@ e a `vec`**: as três partilham `vec_entities`, `field_gizmo` e `thumbnail`.
 | `TETO_LOC` do `the_shell_only_shrinks` | **não tocado** (regra 1) |
 | 6.º método no `AppHost` | **nenhum pedido** (regra 2) |
 
+**O binário do smoke fica COMPILADO** (regra I):
+
+```
+$ cargo build -p ph2d-host-desktop --profile smoke     # 1.ª
+    Finished `smoke` profile [optimized] target(s) in 23.89s
+$ cargo build -p ph2d-host-desktop --profile smoke     # 2.ª — A PROVA
+    Finished `smoke` profile [optimized] target(s) in 0.18s
+    (linhas "Compiling": 0)
+```
+
 ⚠️ **A prova do `nextest-list-diff` não se aplica**: ela compara duas listas à volta de um
 movimento, e não houve movimento. A baseline fica capturada para quem retomar.

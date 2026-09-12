@@ -391,6 +391,11 @@ mod ui_motion_smoke;
 #[cfg(test)]
 #[path = "preview_drive_tests.rs"]
 mod preview_drive_tests;
+// **As setas do Morph** — a LEI saiu para `ph2d_app_vec::morph_edit` (W2 Fase C) e o gate da
+// COSTURA ficou: ele lê `render_loop/mod.rs` e os dois do teclado, que não se mudaram.
+#[cfg(test)]
+#[path = "morph_arrow_seam_tests.rs"]
+mod morph_arrow_seam_tests;
 /// **A sonda da §4.3 do plano da UI viva** — o cursor pode ser PRESO nesta máquina? Só de teste:
 /// ela abre janela e precisa de uma mão mexendo o rato, então nunca entra num build de produto.
 #[cfg(test)]
@@ -648,7 +653,7 @@ pub(crate) use ph2d_app_vec::guide as vec_guide;
 /// A CÓPIA segue a âncora do mestre — o corolário da âncora viva, do lado do componente.
 mod vec_layout_edit;
 pub(crate) use ph2d_app_vec::marquee as vec_marquee;
-mod vec_morph_edit;
+pub(crate) use ph2d_app_vec::morph_edit as vec_morph_edit;
 pub(crate) use ph2d_app_vec::overlay as vec_overlay;
 pub(crate) use ph2d_app_vec::overlay_diag as vec_overlay_diag;
 /// O offset de CAD de uma camada da pilha (v22) — o memo do cozimento.
@@ -690,9 +695,9 @@ mod vec_ui_state_edit;
 /// entrou por baixo dele e **herdou-o**, deixando este ficheiro — o que a F4.6c vai apagar — sem a
 /// única linha que dizia o que ele é. *Um comentário separado do seu item muda de dono.*
 pub(crate) use ph2d_app_vec::weld as vec_weld;
-mod vec_widget_drive;
-mod vec_widget_edit;
-mod vec_widget_value;
+pub(crate) use ph2d_app_vec::widget_drive as vec_widget_drive;
+pub(crate) use ph2d_app_vec::widget_edit as vec_widget_edit;
+pub(crate) use ph2d_app_vec::widget_value as vec_widget_value;
 /// A costura do gizmo dos deformadores de quadrilátero com o ponteiro.
 mod warp_gizmo_drag;
 mod warp_smoke;

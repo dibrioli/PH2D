@@ -16,7 +16,7 @@ use ph2d_vec_entities::entities::VecEntityMap;
 /// ⚠️ Uma tabela e não uma cadeia de `if`: o verbo seguinte entra numa linha, e quem esquecer a
 /// linha vê o botão morto **no gate de costura** — em vez de o ver a cair no `None` em silêncio.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum MorphCmd {
+pub enum MorphCmd {
     /// **Fazer o conjunto** com as formas da seleção (plano 32 W8).
     MakeSet,
     /// ⭐ **PLAY na forma `row`** — viaja até ela para o artista a VER.
@@ -35,7 +35,7 @@ pub(crate) enum MorphCmd {
 
 /// **O comando que um `NodeId` pede**, ou `None` se ele não é de uma seta.
 #[must_use]
-pub(crate) fn morph_cmd_for_id(id: ph2d_editor::NodeId) -> Option<MorphCmd> {
+pub fn morph_cmd_for_id(id: ph2d_editor::NodeId) -> Option<MorphCmd> {
     use ph2d_editor::ids as i;
     if id == i::VECTOR_MORPH_STATES_MAKE {
         return Some(MorphCmd::MakeSet);
@@ -78,7 +78,7 @@ pub(crate) fn morph_cmd_for_id(id: ph2d_editor::NodeId) -> Option<MorphCmd> {
 /// dois significados partilham um tipo primitivo, o nome do parâmetro é a única barreira que
 /// resta* — e eu escrevi `sel: &[u64]`.
 #[must_use]
-pub(crate) fn morph_of_selection(
+pub fn morph_of_selection(
     sim: &SimWorld,
     map: &VecEntityMap,
     selected: &[VecPathId],
@@ -105,7 +105,7 @@ fn shape_name(sim: &SimWorld, map: &VecEntityMap, scene: &VecScene, id: VecPathI
 
 /// **Publica as setas da seleção** (shell → painel). `None` = a seleção não é um Morph.
 #[must_use]
-pub(crate) fn publish(
+pub fn publish(
     sim: &SimWorld,
     scene: &VecScene,
     map: &VecEntityMap,
@@ -172,7 +172,7 @@ pub(crate) fn publish(
 /// ⚠️ **`actions` é a MESMA lista que o menu mostrou**, passada de fora: resolvê-la aqui a partir
 /// do mapa seria uma segunda leitura, e as duas divergiriam no quadro em que o artista criasse uma
 /// acção — o índice escolhido apontaria para outro nome.
-pub(crate) fn apply(
+pub fn apply(
     sim: &mut SimWorld,
     map: &VecEntityMap,
     morph: Entity,
@@ -227,5 +227,5 @@ pub(crate) fn apply(
 }
 
 #[cfg(test)]
-#[path = "vec_morph_edit_tests.rs"]
+#[path = "morph_edit_tests.rs"]
 mod tests;

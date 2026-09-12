@@ -59,6 +59,13 @@ ph2d-vec-svg = { path = "../ph2d-vec-svg" }
 # seu bloqueador no handoff da Fase B.
 ph2d-unique-name = { path = "../ph2d-unique-name" }
 ph2d-vec-boolean = { path = "../ph2d-vec-boolean" }
+# ⚠️ **MAIS DUAS na FASE C, e sao a OITAVA e a NONA invisiveis desta familia** (HOWTO §1.3): o
+# editor de widget autorado traduz o rotulo de cada `WidgetKind` (`ph2d_i18n::tr`) e a costura das
+# setas fala a chave da maquina de estados. Dentro da shell as duas eram dependencia do binario e
+# nada nos ficheiros as declarava -- *a lista de dependencias e' o custo real do modulo, e ele so'
+# se le' do lado de ca' da fronteira*.
+ph2d-i18n = { path = "../ph2d-i18n" }
+ph2d-morph-machine = { path = "../ph2d-morph-machine" }
 # ⭐ A cena `PH2D_VEC_FADE_SMOKE` autora uma track de opacidade. ⚠️ **Uma crate-motor IRMÃ não é a
 # shell** (ADR-0075) — é o mesmo precedente que destravou o fim da linha da `line/app-physics`,
 # cujos três últimos braços de cena também autoram timeline.

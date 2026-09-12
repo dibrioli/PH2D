@@ -1,4 +1,4 @@
-//! **Os verbos da PELE por-widget** (plano UI/UX W6.2) — irmão do [`crate::vec_component_edit`],
+//! **Os verbos da PELE por-widget** (plano UI/UX W6.2) — irmão do [`crate::component_edit`],
 //! mesma divisão: o painel PEDE, a shell FAZ, e o que muda é o ECS.
 //!
 //! ⚠️ **Três verbos e só eles**, porque o modelo tem um campo só: vestir, trocar de tipo,
@@ -14,7 +14,7 @@ use ph2d_vec_entities::entities::VecEntityMap;
 
 /// O que um clique na seção WIDGET SKIN pede.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum WidgetEdit {
+pub enum WidgetEdit {
     /// **Wear a Widget** — a forma passa a vestir (nasce Button, o tipo mais comum).
     Wear,
     /// **Back to Drawing** — a forma volta a ser vetor.
@@ -44,7 +44,7 @@ pub(crate) enum WidgetEdit {
 /// regista. As duas pontas leem a MESMA constante: um teto que o roteador conhecesse e o registro
 /// não deixaria os últimos chips mortos sob o rato.
 #[must_use]
-pub(crate) fn widget_edit_for_id(id: ph2d_editor::NodeId) -> Option<WidgetEdit> {
+pub fn widget_edit_for_id(id: ph2d_editor::NodeId) -> Option<WidgetEdit> {
     match id {
         _ if id == ph2d_editor::ids::VECTOR_WIDGET_WEAR => Some(WidgetEdit::Wear),
         _ if id == ph2d_editor::ids::VECTOR_WIDGET_REMOVE => Some(WidgetEdit::Remove),
@@ -70,7 +70,7 @@ fn subject(sim: &SimWorld, map: &VecEntityMap, selected: &[VecPathId]) -> Option
 }
 
 /// Aplica o verbo. Sem seleção única, não faz nada — a seção nem é oferecida nesse caso.
-pub(crate) fn apply(
+pub fn apply(
     sim: &mut SimWorld,
     map: &VecEntityMap,
     selected: &[VecPathId],
@@ -138,7 +138,7 @@ pub(crate) fn apply(
 /// modelo não tem (quem lê o valor é a projeção da CENA, não outra row), e aceitá-la em silêncio
 /// daria um vínculo que não faz nada. Recusar mantém o conta-gotas armado, que é o que diz ao
 /// artista *"este não"* sem nenhuma mensagem.
-pub(crate) fn bind(
+pub fn bind(
     sim: &mut SimWorld,
     map: &VecEntityMap,
     widget: VecPathId,
@@ -157,7 +157,7 @@ pub(crate) fn bind(
         .world()
         .get::<VecWidget>(e)
         .and_then(|w| WidgetKind::from_code(w.kind))
-        .is_some_and(crate::vec_widget_drive::bindable);
+        .is_some_and(crate::widget_drive::bindable);
     if !drives {
         return false;
     }
@@ -180,7 +180,7 @@ pub(crate) fn bind(
 /// onde já há pele tornaria a feature alcançável apenas onde ela já foi usada, ou seja em lugar
 /// nenhum. É a mesma lei da seção de física, cuja face VAZIA é a importante.
 #[must_use]
-pub(crate) fn publish(
+pub fn publish(
     sim: &SimWorld,
     map: &VecEntityMap,
     selected: &[VecPathId],
@@ -199,7 +199,7 @@ pub(crate) fn publish(
     // fio a apontar para o vazio — dizer isso em palavras é o que evita o artista procurar uma
     // forma que ele mesmo apagou.
     let drives = known
-        .filter(|&k| crate::vec_widget_drive::bindable(k))
+        .filter(|&k| crate::widget_drive::bindable(k))
         .map(|_| {
             sim.world()
                 .get::<ph2d_ecs::VecWidgetBind>(e)
@@ -233,5 +233,5 @@ pub(crate) fn publish(
 }
 
 #[cfg(test)]
-#[path = "vec_widget_edit_tests.rs"]
+#[path = "widget_edit_tests.rs"]
 mod tests;

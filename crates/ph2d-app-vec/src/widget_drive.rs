@@ -45,7 +45,7 @@ use ph2d_vec_entities::entities::VecEntityMap;
 
 /// O que uma row faz com a forma que ela dirige.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub(crate) enum Drive {
+pub enum Drive {
     /// A forma aparece, ou não.
     Visible(bool),
     /// A forma desvanece: `255` = como o artista a pintou.
@@ -58,7 +58,7 @@ pub(crate) enum Drive {
 /// Duas metades da mesma pergunta: oferecida sem ser honrada dá um controle que não faz nada;
 /// honrada sem ser oferecida dá uma capacidade que ninguém alcança.
 #[must_use]
-pub(crate) fn bindable(kind: WidgetKind) -> bool {
+pub fn bindable(kind: WidgetKind) -> bool {
     matches!(
         kind,
         WidgetKind::Slider | WidgetKind::Toggle | WidgetKind::Checkbox
@@ -71,7 +71,7 @@ pub(crate) fn bindable(kind: WidgetKind) -> bool {
 /// e uma forma não tem partes — colapsá-lo em desligado faria a forma sumir num estado que o
 /// artista lê como *"meio marcado"*.
 #[must_use]
-pub(crate) fn drive_of(st: &InteractiveState) -> Option<Drive> {
+pub fn drive_of(st: &InteractiveState) -> Option<Drive> {
     match st {
         InteractiveState::Toggle { on, .. } => Some(Drive::Visible(*on)),
         InteractiveState::Checkbox { value, .. } => {
@@ -97,7 +97,7 @@ pub(crate) fn drive_of(st: &InteractiveState) -> Option<Drive> {
 /// procura por um id que ninguém registou, e o sintoma seria *"o slider não faz nada"* sem erro
 /// nenhum.
 #[must_use]
-pub(crate) fn resolve(
+pub fn resolve(
     sim: &SimWorld,
     map: &VecEntityMap,
     store: &WidgetStore,
@@ -135,7 +135,7 @@ pub(crate) fn resolve(
 /// o consumidor lê **uma** entrada por forma (`bound_style(id)` devolve a primeira), então uma
 /// segunda entrada para a mesma forma seria silenciosamente descartada — e qual das duas some
 /// dependeria da ordem de iteração de um mapa.
-pub(crate) fn apply(drives: &[(VecPathId, Drive)], view: &mut VecViewState) {
+pub fn apply(drives: &[(VecPathId, Drive)], view: &mut VecViewState) {
     for &(id, drive) in drives {
         match drive {
             Drive::Visible(true) => {}
@@ -160,5 +160,5 @@ pub(crate) fn apply(drives: &[(VecPathId, Drive)], view: &mut VecViewState) {
 }
 
 #[cfg(test)]
-#[path = "vec_widget_drive_tests.rs"]
+#[path = "widget_drive_tests.rs"]
 mod tests;

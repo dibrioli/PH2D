@@ -1,6 +1,6 @@
 //! **A POSIÇÃO de um controle autorado sobrevive ao arquivo** (plano UI/UX W8b.4).
 //!
-//! Irmão do [`crate::vec_widget_drive`], e o corte entre os dois é por PERGUNTA: ali mora *o que
+//! Irmão do [`crate::widget_drive`], e o corte entre os dois é por PERGUNTA: ali mora *o que
 //! este controle DIZ à forma*, aqui *que posição este controle GUARDA*. Não são a mesma coisa e
 //! não se derivam uma da outra — um slider que o artista ainda não prendeu a forma nenhuma tem
 //! posição, e a opacidade é quantizada em 255 degraus que não descrevem um slider contínuo.
@@ -36,7 +36,7 @@ use ph2d_vec_scene::VecPathId;
 use ph2d_vec_entities::entities::VecEntityMap;
 
 /// O que já foi propagado entre o store e o mundo, por forma.
-pub(crate) type Applied = BTreeMap<VecPathId, f32>;
+pub type Applied = BTreeMap<VecPathId, f32>;
 
 /// **Que posição este controle carrega?** `None` = o estado não guarda posição nenhuma.
 ///
@@ -45,7 +45,7 @@ pub(crate) type Applied = BTreeMap<VecPathId, f32>;
 /// conta como ligado), e o preço está NOMEADO: reabrir devolve `Checked`, porque um controle
 /// autorado não tem filhos para estar em parte.
 #[must_use]
-pub(crate) fn value_of(st: &InteractiveState) -> Option<f32> {
+pub fn value_of(st: &InteractiveState) -> Option<f32> {
     match st {
         InteractiveState::Slider { value, .. } => Some(value.clamp(0.0, 1.0)),
         InteractiveState::Toggle { on, .. } => Some(f32::from(u8::from(*on))),
@@ -61,7 +61,7 @@ pub(crate) fn value_of(st: &InteractiveState) -> Option<f32> {
 /// ⚠️ As duas TÊM de fazer round-trip, e há gate: uma tradução que não volta é um controle que
 /// muda de posição sozinho ao reabrir o arquivo — e mudaria a ARTE junto, porque a row a dirige.
 #[must_use]
-pub(crate) fn seed_state(kind: WidgetKind, value: f32) -> Option<InteractiveState> {
+pub fn seed_state(kind: WidgetKind, value: f32) -> Option<InteractiveState> {
     let on = value >= 0.5;
     match kind {
         WidgetKind::Slider => Some(InteractiveState::Slider {
@@ -88,7 +88,7 @@ pub(crate) fn seed_state(kind: WidgetKind, value: f32) -> Option<InteractiveStat
 /// **Mantém o store e o mundo de acordo, nas duas direções.**
 ///
 /// Devolve `true` quando o MUNDO foi escrito — o chamador usa isso para saber que houve edição.
-pub(crate) fn reconcile(
+pub fn reconcile(
     sim: &mut SimWorld,
     map: &VecEntityMap,
     store: &mut WidgetStore,
@@ -164,5 +164,5 @@ pub(crate) fn reconcile(
 }
 
 #[cfg(test)]
-#[path = "vec_widget_value_tests.rs"]
+#[path = "widget_value_tests.rs"]
 mod tests;

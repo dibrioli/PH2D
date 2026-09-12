@@ -79,8 +79,9 @@ pub fn effective(scene: &VecScene, xforms: &VecXforms, conn: &VecConnector) -> (
 /// (quina afiada) já é a resposta certa do fluxograma clássico, e não existe raio automático
 /// que faça sentido.
 ///
-/// Devolve uma tupla crua (e não o tipo do painel) porque o painel é opcional na build
-/// (`feature = "panel-vector"`): o `vector_bridge` faz a conversão dentro do `cfg`.
+/// Devolve uma tupla crua (e não o tipo do painel): até 12/09 o painel era opcional na build desta
+/// crate. A feature morreu (auditoria de arquitectura, HOWTO §2.4) — o painel é dependência
+/// obrigatória e 60 usos já o tratavam assim.
 #[must_use]
 pub fn selection_snapshot(
     sim: &SimWorld,
@@ -120,7 +121,6 @@ pub fn publish(
     selection: &[VecPathId],
     vector_active: bool,
 ) {
-    #[cfg(feature = "panel-vector")]
     ph2d_panel_vector::set_current_connector(
         vector_active
             .then(|| selection_snapshot(sim, map, scene, xforms, selection))
@@ -135,9 +135,6 @@ pub fn publish(
                 },
             ),
     );
-    // Sem o painel na build não há a quem publicar (mas o módulo compila igual).
-    #[cfg(not(feature = "panel-vector"))]
-    let _ = (sim, map, scene, xforms, selection, vector_active);
 }
 
 /// `true` se `id` é um dos campos do conector (o que a shell captura no dreno). Um campo

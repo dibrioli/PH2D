@@ -90,7 +90,6 @@ pub fn publish(
     );
     // Publish the selected vertex's type so the panel shows the Vertex section
     // (Corner/Smooth/Symmetric) + highlights the active one. `None` hides it.
-    #[cfg(feature = "panel-vector")]
     ph2d_panel_vector::set_selected_vertex_type(if vector_active {
         pen.selected_vertex_kind(scene).map(vertex_sel_of)
     } else {
@@ -101,7 +100,6 @@ pub fn publish(
     // ⚠️ A conversão mundo→display é a MESMA porta da bbox do Transform, três linhas acima: os
     // dois readouts descrevem o mesmo canvas, e um deles em metros enquanto o outro está em
     // pixels seria a quinta superfície a discordar.
-    #[cfg(feature = "panel-vector")]
     ph2d_panel_vector::set_current_vertex_pos(if vector_active {
         let d = ph2d_editor_core::LengthDisplay::of(&hero.project);
         pen.selected_anchor_world(scene)
@@ -117,13 +115,11 @@ pub fn publish(
     // ⚠️ **A cor de cada camada NÃO é semeada aqui**, ao contrário das duas swatches de base acima:
     // ela viaja no `PaintRow` até ao painel, então quem a põe no `widget_color` é o passe de
     // sementes do painel — que é o único sítio onde ela existe uma vez só.
-    #[cfg(feature = "panel-vector")]
     ph2d_panel_vector::state::set_current_appearance(if vector_active {
         crate::paint_stack::published(scene, pen.selected_paths())
     } else {
         None
     });
-    #[cfg(feature = "panel-vector")]
     ph2d_panel_vector::set_current_vertex_count(if vector_active {
         pen.selected_verts().len()
     } else {
@@ -131,7 +127,6 @@ pub fn publish(
     });
     // **Existe LÂMINA?** — o fato que decide se os dois botões do corte são oferecidos. A verdade
     // mora no ECS (`VecCutPath`); isto é a projeção, como toda a fronteira deste painel.
-    #[cfg(feature = "panel-vector")]
     ph2d_panel_vector::set_cut_line_exists(
         vector_active && crate::cut_line::cut_line(sim, vec_entities).is_some(),
     );
@@ -148,7 +143,6 @@ pub fn publish(
     //
     // Posição e tamanho atravessam pela MESMA porta porque a conversão é uma escala pura (sem
     // deslocamento) — `x` e `w` não precisam de leis diferentes.
-    #[cfg(feature = "panel-vector")]
     {
         let display = ph2d_editor_core::LengthDisplay::of(&hero.project);
         ph2d_panel_vector::set_length_suffix(display.suffix());
@@ -183,19 +177,15 @@ pub fn publish(
 
     // Publish the object-selection path count so the panel shows Align (≥2) /
     // Distribute (≥3).
-    #[cfg(feature = "panel-vector")]
     ph2d_panel_vector::set_current_selection_count(if vector_active {
         pen.selected_paths().len()
     } else {
         0
     });
     // Publish the pivot-edit ("Set Center") armed state for the button label.
-    #[cfg(feature = "panel-vector")]
     ph2d_panel_vector::set_current_pivot_edit(vector_active && pivot_edit);
     // Publish shape-snapping so the Snap section reflects (and drives) it.
-    #[cfg(feature = "panel-vector")]
     ph2d_panel_vector::set_current_snap(snap.on);
-    #[cfg(feature = "panel-vector")]
     ph2d_panel_vector::set_current_snap_position(snap.path, snap.crossings);
     // ⚠️ A régua vem do HERO, não do `snap`: ela é chrome de canvas (aparece com qualquer
     // ferramenta) e o seu dono é a vista, não a ferramenta vetorial. O painel só a alcança.
@@ -204,7 +194,6 @@ pub fn publish(
     // Publish the selected path's fill rule — `Some` ONLY when it is a compound
     // path, since with a single contour both rules paint identically and the row
     // would be a no-op control.
-    #[cfg(feature = "panel-vector")]
     ph2d_panel_vector::set_current_fill_rule(
         vector_active
             .then(|| pen.selected())
@@ -219,7 +208,6 @@ pub fn publish(
 
     // Publish the selected path's closed flag so the panel labels the toggle
     // "Close Path" / "Open Path" correctly.
-    #[cfg(feature = "panel-vector")]
     ph2d_panel_vector::set_current_path_closed(if vector_active {
         pen.selected()
             .and_then(|sel| scene.paths().iter().find(|p| p.id == sel))
@@ -230,7 +218,6 @@ pub fn publish(
 
     // Publish the selected path's fill kind (+ linear angle) so the Fill-type
     // selector reflects + drives it.
-    #[cfg(feature = "panel-vector")]
     {
         use ph2d_panel_vector::FillKind;
         use ph2d_vec_scene::Paint;

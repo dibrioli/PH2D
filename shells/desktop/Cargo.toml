@@ -581,7 +581,7 @@ panel-motion-params  = ["ph2d-panel-registry-init/panel-motion-params"]
 # Vector Style panel + its render_loop bridge (`vector_bridge` publishes the
 # snapshot via `ph2d_panel_vector::set_current_vector_style` + reads the OKLCH
 # picker back into the tool), so the shell needs the direct dep too.
-panel-vector         = ["ph2d-panel-registry-init/panel-vector", "dep:ph2d-panel-vector", "ph2d-app-vec/panel-vector"]
+panel-vector         = ["ph2d-panel-registry-init/panel-vector", "dep:ph2d-panel-vector"]
 # ⭐⭐⭐ O painel do ESQUELETO — a shell publica-lhe o osso em foco, a âncora, o limite e o controlo
 # por quadro (`ph2d_panel_skeleton::set_current_*`), e decide se ele é visto: ele só tem sujeito
 # numa cena que tem ossos.

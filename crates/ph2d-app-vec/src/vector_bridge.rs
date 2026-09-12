@@ -207,7 +207,6 @@ pub fn dispatch(
         t.as_any_mut()
             .downcast_mut::<ph2d_tool_vector::VectorTool>()
     }) else {
-        #[cfg(feature = "panel-vector")]
         ph2d_panel_vector::set_current_vector_style(None);
         return VectorDrawConfig::default();
     };
@@ -429,7 +428,6 @@ pub fn dispatch(
     //
     // ⚠️ Esta primeira publicação fica AQUI porque é a única que lê a TOOL (`ui_snapshot`),
     // que é um empréstimo mútuo do registry; o resto do passo 5 mora no módulo irmão.
-    #[cfg(feature = "panel-vector")]
     ph2d_panel_vector::set_current_vector_style(if vector_active {
         Some(tool.ui_snapshot())
     } else {

@@ -123,14 +123,10 @@ ph2d-system-fonts = { path = "../ph2d-system-fonts" }
 ph2d-host = { path = "../ph2d-host" }
 
 [features]
-# ⚠️ **A feature deixou de LIGAR a dependência e passou a gatear só a PRESENÇA de um módulo**
-# (Fase B). O motivo é medido: o `paint_stack` usa `ph2d_panel_vector::state::*` em **9 sítios sem
-# `#[cfg]` nenhum**, o `mod vec_paint_stack;` do `main.rs` nunca foi gateado, e o `render_loop`
-# chama-o em 10 sítios também sem gate ⇒ a shell já exigia esta dependência sempre. Deixá-la
-# opcional aqui só deslocava a quebra de `--no-default-features` para outra mensagem.
-# ⛔ O `font_preview`, esse, ERA gateado no `main.rs` e continua a ser — a diferença entre os dois
-# é o que o `mod` dizia, e *a condição de compilação de um módulo não está escrita nele* (§2.4).
-panel-vector = []
+# ⛔ **A feature `panel-vector` MORREU** (auditoria de arquitectura, 12/09): o painel é dependência
+# OBRIGATÓRIA desta crate (60 usos sem `cfg`), e as 17 condições que a feature ainda gateava eram
+# precisão falsa — sem ela ligada a crate compilava com parâmetros órfãos e um `let _ = (...)` a
+# calar o compilador. Uma configuração que ninguém constrói não se declara.
 
 # ⚠️ **`test-support` tem o tamanho do que ATRAVESSA a fronteira, e nada mais** (HOWTO §2.5): um
 # `#[cfg(test)]` da família é FALSO quando ela é dependência, e o gate da shell deixa de ver uma

@@ -24,8 +24,6 @@ pub(crate) mod bake;
 pub(crate) mod bridge;
 pub(crate) mod joint;
 pub(crate) mod joint_anchor_drag;
-pub(crate) mod joint_anchor_drag_stop;
-pub(crate) mod joint_anchor_drag_wheel;
 pub(crate) mod joint_create;
 pub(crate) mod joint_draw;
 pub(crate) mod joint_rig;

@@ -12,4 +12,3 @@ pub mod outline;
 pub mod probes;
 pub mod pulley;
 pub mod shapes;
-pub mod tests;

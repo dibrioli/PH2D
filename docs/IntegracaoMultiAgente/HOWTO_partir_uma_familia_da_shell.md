@@ -401,6 +401,88 @@ exactamente o que uma fronteira nova muda por construção.*
 ⚠️ E ela **falha alto**, o que é a metade boa: reprova a correr. A irmã perigosa é a §2.6 — a mesma
 agulha dentro de um `read_to_string` de caminho fixo, que só falha **se o teste correr**.
 
+### §2.14 — O ficheiro que muda de casa SEM a declaração ⛔⛔⛔ mudo, e TODO instrumento fica verde
+
+Um `.rs` que nenhum `mod` declara **não é compilado** — fica no disco, no git e no diff, e fora do
+build. Medido na W2 Fase D (12/09): a `line/app-vec` mudou o `bool_reach_tests.rs` para a crate,
+apagou o `#[cfg(test)] mod` do `main.rs` e **não o escreveu do lado de lá** ⇒ três gates
+evaporaram-se, com `cargo check` das duas crates **verde**, `clippy` **verde**, as duas suítes
+**verdes** e `--test it` **verde**. Só o `ONLY-A` do `nextest-list-diff` o acusou.
+
+⭐⭐ **E o censo da integração achou DOIS que ninguém tinha visto:**
+- `ph2d-vec-art-live/src/brush_cost_probe.rs` — **583 linhas**, a sonda de custo do pincel; mudou de
+  casa na Fase C (na shell era `brush_live_cost_probe`, declarada no `main.rs`) e a declaração ficou;
+- `ph2d-vec-scene/src/arrows_tests.rs` — **os oito testes das setas**, fora do build desde
+  `ea2817b73` («remove a seta circular»): o commit apagou a declaração do FICHEIRO em vez da única
+  entrada que referia a seta removida. *As setas continuaram no produto; os testes delas não.*
+
+⇒ **o gate é `architecture_no_orphan_source_file`** (em `ph2d-editor-core/tests/it/`): varre a
+workspace inteira e resolve declarações como o `rustc` — `mod x;` a partir de raízes e de
+`lib.rs`/`main.rs`/`mod.rs`, `#[path]`, `include!("x.rs")`, e os `path =` dos manifestos.
+
+⚠️⚠️ **E ele responde às DUAS metades da mesma pergunta — *quantos pais tem este ficheiro?*** Zero é
+o órfão (deixa de correr). **Dois** é o DUPLICADO: o mesmo ficheiro declarado por dois `mod` na
+**mesma** crate compila como dois módulos, os testes dele correm a dobrar e a contagem sobe sem
+ninguém ter escrito um teste. Na W2/L2 Fase B (11/09) nasceram **13 órfãos e 3 duplicados** ao mesmo
+tempo, e *uma contagem total não os vê, porque se cancelam*. ⚠️ O duplicado mede-se **por raiz** — a
+`lib` e cada ficheiro de `tests/` são crates distintas, e alcançar o mesmo ficheiro por duas delas é
+partilha, não duplicado. No `nextest-list-diff` o duplicado aparece ao mesmo tempo em `MOVED` e em
+`ONLY-B`.
+
+⚠️⚠️ **As duas réguas, e porque são precisas as duas.** O oráculo é o próprio compilador: os `.d`
+(dep-info) que ele escreve listam todo ficheiro que construiu. Mas eles são **cegos ao gémeo
+desligado** — o `shells/desktop/src/sculpt3d_absent.rs` está declarado e nunca é construído com a
+feature por omissão ligada. A régua TEXTUAL vê declarações, e **errou na primeira corrida numa
+regra**: *um ficheiro carregado por `#[path]` resolve os filhos na PRÓPRIA pasta* (como um `mod.rs`);
+tratado como ficheiro normal, o `measure_preview_drain.rs` do Painter lia-se órfão. Foi o oráculo que
+o apanhou. ⇒ *valide a régua textual contra os `.d` antes de a promover, e prove-a por mutação.*
+
+### §2.15 — O PREFIXO não é a família ⛔ mudo
+
+Medido ao escrever o bloco da Fase D (12/09): `layout_*` junta **dois assuntos**. Treze ficheiros são
+o **auto layout do Vetor** (ADR-0153: `layout_live*`, `layout_reorder*`, `layout_scroll_gesture*`,
+`layout_smoke`) e **dois** — `layout_persist.rs` e `layout_persist_tests.rs` — são **a arrumação dos
+painéis do artista** (`~/.ph2d/layout.txt`), que é da shell e não sai.
+
+⛔ Um censo por prefixo levava a segunda para dentro do Vetor, e a falha seria **muda**: o app
+deixava de lembrar onde o artista pôs os painéis, sem um vermelho. É a outra face da §2.7 (lá o
+prefixo varre de menos; aqui varre de mais), e a `vec` já a tinha pago noutra roupa na Fase B2 — o
+`PH2D_VEC_SVG_SMOKE` vivia num ficheiro **sem** o prefixo `vec_`. ⇒ **a unidade da posse é o ASSUNTO;
+abra o cabeçalho de cada ficheiro antes de o mover.**
+
+### §2.16 — Duas LISTAS com o mesmo aspecto e significados opostos ⛔⛔ o conflito NÃO se resolve escolhendo lado
+
+- **Fase C:** a `motion` era a última família na catraca `FAMILIAS_COM_O_ROTEADOR_AINDA_NA_SHELL` e
+  **apagou-a** ao sair (uma lista de dívida vazia que sobrevive vira licença); no mesmo dia a `vec`
+  criou `FAMILIAS_CUJA_CENA_VIVE_NUMA_CRATE_IRMA` para o Esqueleto. As duas certas. A resposta do merge
+  foi a intenção dos dois lados e o **texto de nenhum** — e a `vec` tinha previsto a colisão num
+  comentário ao lado da variável.
+- **Fase D:** a `vec` e a `painter` acrescentaram **cada uma** o seu directório ao array do censo das
+  pontes ⇒ a resposta eram **quatro** directórios, não três. ⛔⛔ **E o SEGUNDO censo do mesmo ficheiro
+  — o que deriva o nome da ferramenta de `<tool>_bridge.rs` — não conflitou, e perdia o Painter em
+  silêncio** (`named >= 3` continuava verde com os outros três). Só apareceu porque o integrador estava
+  a resolver o vizinho.
+
+⇒ **depois de resolver uma lista, procure no MESMO ficheiro todo OUTRO uso dela** — e releia a prosa em
+volta: a fusão da Fase C deixou três frases falsas (*«as seis famílias»*, *«nenhuma excepção»*, a lista
+morta no presente) que nenhum gate apanha.
+
+### §2.17 — `cargo clippy -p <crate>` mede um programa que ninguém constrói ⚠️ e dá números errados nos dois sentidos
+
+Medido na integração da Fase D (12/09): correr o clippy numa crate isolada **desliga as features que a
+shell liga** ⇒ **inventa** avisos (7 na `ph2d-app-vec`, todos parâmetros dentro de
+`#[cfg(feature = "panel-vector")]`) — e **não vê** os das outras crates (escondeu **19** na
+`ph2d-app-motion`). O integrador deu ao dono dois números errados seguidos (*«sobra 1»*, *«são 25»*)
+antes de medir a configuração do envio.
+
+⇒ **a única contagem que vale é a linha do `ship.sh`:**
+`cargo clippy --workspace --all-targets --features ph2d-spike/bevy_ecs -- -D warnings`.
+
+⚠️ **E corra o `cargo` DE DENTRO do repositório.** O `rustup` escolhe o toolchain pelo
+`rust-toolchain.toml` da **pasta corrente**, não pelo `--manifest-path`: a partir de uma pasta
+temporária o mesmo comando usou o `rustc 1.95` do sistema e reprovou com *«rustc 1.95.0 is not
+supported by the following packages»* — um vermelho que não diz nada sobre o código.
+
 ## §3 — A prova (as cinco, com os números do piloto)
 
 ```bash

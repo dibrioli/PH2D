@@ -96,7 +96,7 @@
   eles com folga — *o que soma agora é a CRATE*, e seis linhas a somar 200 cada não acordam gate
   nenhum. ⇒ a catraca é `the_shell_only_shrinks` (`ph2d-editor-core/tests/it/`), com as duas
   metades (cresceu / o tecto ficou para trás). **Quando ela reprovar, MOVA para a crate da família
-  — nunca suba o número.** Molde, as 5 portas do trait de host e as 15 armadilhas medidas:
+  — nunca suba o número.** Molde, as 5 portas do trait de host e as 17 armadilhas medidas:
   [`HOWTO_partir_uma_familia_da_shell.md`](docs/IntegracaoMultiAgente/HOWTO_partir_uma_familia_da_shell.md).
 - **Cargos simultâneos:** `constrained` ≤3 (RAM 8 GiB); `workstation` ~cores/6 (build) / ~cores/3 (check) — vide hw-profile.
 - **NÃO use:** Cranelift (ruim p/ check-loop + gaps macOS). Linker = `mold` no Linux (**nunca no `.cargo/config.toml` do repo** — global), `lld/ld-prime` no macOS (mold é ELF-only).

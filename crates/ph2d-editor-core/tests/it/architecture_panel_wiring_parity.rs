@@ -55,10 +55,6 @@ const HIT_PARITY_ALLOW: &[(&str, &str)] = &[
     // the user adds colours, never statically in `populate.rs`. Dispatched by
     // the colour-picker hit path in `interaction/dispatch/pointer.rs`.
     ("ph2d-panel-bgremoval", "BGR_SWATCHES"),
-    (
-        "ph2d-panel-vector-inspector",
-        "VECTOR_INSPECTOR_FILL_SWATCH",
-    ),
     // Vector tool Style panel (ADR-0108): the Stroke + Fill swatches are picker
     // swatches — hit-indexed in paint via `register_picker_swatch`, never in
     // `populate.rs`. Dispatched by the colour-picker hit path in `pointer.rs`.

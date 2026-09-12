@@ -4,11 +4,9 @@
 //! per frame by [`sync_from_hierarchy`](super::sync_from_hierarchy)
 //! to merge the host's live entity ids in.
 //!
-//! Hierarchy drag/resize handles (`HIER_DRAG_HANDLE`,
-//! `HIER_RESIZE_HANDLE`) remain in `ph2d_editor_core::screens::hero::
-//! pre_populate` because they consume the panel rect (which the
-//! editor-core still owns) and the dispatcher's BlenderHit table
-//! reaches them at chrome-dispatch time.
+//! ⚠️ The Hierarchy drag/resize handles are GONE — the side columns are anchored (gate
+//! `the_side_columns_are_anchored`), and their two orphan ids (`HIER_DRAG_HANDLE`,
+//! `HIER_RESIZE_HANDLE`) left `ph2d-editor-core` on 2026-09-12.
 
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};

@@ -407,23 +407,12 @@ pub const TIMELINE_SUMMARY_LOCK: NodeId = hash_node_id("timeline.summary_lock");
 /// open at a time — the panel tracks which marker index).
 pub const TIMELINE_MARKER_RENAME_INPUT: NodeId = hash_node_id("timeline.marker_rename_input");
 
-// ── Resize grippers (4 edges + 4 corners) ────────────────────────────────────
-/// Left edge.
-pub const TIMELINE_RESIZE_L: NodeId = hash_node_id("timeline.resize.l");
-/// Right edge.
-pub const TIMELINE_RESIZE_R: NodeId = hash_node_id("timeline.resize.r");
+// ── Resize gripper (top edge) ─────────────────────────────────────────────────
+// ⚠️ Eram OITO (4 bordas + 4 cantos); os outros sete eram órfãos — declarados e re-exportados,
+// nunca pintados nem registados — e saíram em 2026-09-12 (`scripts/censo-ids.py`). O dock da
+// timeline só cresce pela borda de cima.
 /// Top edge (drag up to grow the dock taller).
 pub const TIMELINE_RESIZE_T: NodeId = hash_node_id("timeline.resize.t");
-/// Bottom edge.
-pub const TIMELINE_RESIZE_B: NodeId = hash_node_id("timeline.resize.b");
-/// Top-left corner.
-pub const TIMELINE_RESIZE_TL: NodeId = hash_node_id("timeline.resize.tl");
-/// Top-right corner.
-pub const TIMELINE_RESIZE_TR: NodeId = hash_node_id("timeline.resize.tr");
-/// Bottom-left corner.
-pub const TIMELINE_RESIZE_BL: NodeId = hash_node_id("timeline.resize.bl");
-/// Bottom-right corner.
-pub const TIMELINE_RESIZE_BR: NodeId = hash_node_id("timeline.resize.br");
 
 /// A stable `NodeId` for one key-diamond hit target, keyed by the track's
 /// `AnimTarget` and the key's `KeyId` (both raw u64s). Stable across frames so a

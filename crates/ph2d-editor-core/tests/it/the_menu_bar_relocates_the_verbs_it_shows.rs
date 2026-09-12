@@ -463,12 +463,6 @@ const NO_DOOR_PENDING: &[(&str, &str)] = &[
     ("TOPBAR_RIGHT_BACKDROP", "idem — fundo de agrupador."),
     ("TOPBAR_IMAGE_TOOLS_BACKDROP", "idem — fundo de agrupador."),
     (
-        "TOPBAR_PLAY_TOGGLE",
-        "id ORFAO, PRE-EXISTENTE: nunca e' pintado nem registado em lado nenhum (a auditoria de \
-         2026-08-30 varreu o repo). Nao e' um verbo que perdeu a porta — e' lixo a apagar, e \
-         apaga-lo e' de quem lhe mexer.",
-    ),
-    (
         "TOPBAR_RIGHT_LAYERS",
         "MORTO PRE-EXISTENTE: pintado, registado e com tooltip (\"Layers\"), e SEM consumidor \
          nenhum no repo inteiro — ja' o era antes desta linha existir.",

@@ -10,23 +10,6 @@ use ph2d_tool_registry::hash_node_id_runtime;
 
 /// Painter sidebar panel container (`ph2d-panel-painter-sidebar` outer rect; right-docked, painter-only).
 pub const PAINTER_SIDEBAR_PANEL: NodeId = hash_node_id("painter_sidebar_panel");
-/// Size slider (size_px) no Painter sidebar (normalizado 0..1).
-pub const PAINTER_SIDEBAR_SIZE_SLIDER: NodeId = hash_node_id("painter_sidebar.size_slider");
-/// Chip numeric do size_slider (link via store.link_slider_number).
-pub const PAINTER_SIDEBAR_SIZE_CHIP: NodeId = hash_node_id("painter_sidebar.size_chip");
-/// Opacity slider no Painter sidebar (normalizado 0..1).
-pub const PAINTER_SIDEBAR_OPACITY_SLIDER: NodeId = hash_node_id("painter_sidebar.opacity_slider");
-/// Chip numeric do opacity_slider.
-pub const PAINTER_SIDEBAR_OPACITY_CHIP: NodeId = hash_node_id("painter_sidebar.opacity_chip");
-/// Botão Undo (sidebar). 2-finger gesture também dispara.
-pub const PAINTER_SIDEBAR_UNDO_BUTTON: NodeId = hash_node_id("painter_sidebar.undo_button");
-/// Botão Redo (sidebar). 3-finger gesture também dispara.
-pub const PAINTER_SIDEBAR_REDO_BUTTON: NodeId = hash_node_id("painter_sidebar.redo_button");
-/// Modifier square (centro da sidebar) — W2 default eyedropper-while-held.
-pub const PAINTER_SIDEBAR_MODIFIER_SQUARE: NodeId = hash_node_id("painter_sidebar.modifier_square");
-/// Close (X) button do Painter sidebar — routes pra `CancelActiveTool`
-/// (canon BgRemoval/Padding). Deactivates Painter tool quando clicado.
-pub const PAINTER_SIDEBAR_CLOSE: NodeId = hash_node_id("painter_sidebar.close");
 /// Floating color thumb painted in the canvas top-right while the
 /// Painter tool is active (W2.T2.3). Clicking it opens the shared
 /// `INSP_BLENDER_PICKER` seeded with the Painter's active color; the

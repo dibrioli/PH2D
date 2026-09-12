@@ -81,8 +81,6 @@ pub const PHYSICS_SLEEP_SPEED: NodeId = hash_node_id("physics.sleep_speed");
 pub const PHYSICS_SLEEP_SPEED_NUM: NodeId = hash_node_id("physics.sleep_speed_num");
 /// Spin below which a body may sleep.
 pub const PHYSICS_SLEEP_SPIN: NodeId = hash_node_id("physics.sleep_spin");
-/// Chip linked to [`PHYSICS_SLEEP_SPIN`].
-pub const PHYSICS_SLEEP_SPIN_NUM: NodeId = hash_node_id("physics.sleep_spin_num");
 /// Seconds under both thresholds before a body sleeps.
 pub const PHYSICS_SLEEP_DELAY: NodeId = hash_node_id("physics.sleep_delay");
 /// Chip linked to [`PHYSICS_SLEEP_DELAY`].

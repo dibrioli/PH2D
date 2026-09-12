@@ -5,10 +5,6 @@ use super::{NodeId, hash_node_id};
 /// outer rect. Right-docked (same geometry slot as the Inspector) and
 /// only visible while the `bgremoval` tool is active.
 pub const BGR_PANEL: NodeId = hash_node_id("bgr_panel");
-/// Mode segmented control — "Chroma" half.
-pub const BGR_MODE_CHROMA: NodeId = hash_node_id("bgr_mode_chroma");
-/// Mode segmented control — "Smart Cut" half.
-pub const BGR_MODE_GRABCUT: NodeId = hash_node_id("bgr_mode_grabcut");
 /// Tolerance slider (0..1 → ΔE 0..0.30 Oklab).
 pub const BGR_TOLERANCE: NodeId = hash_node_id("bgr_tolerance");
 /// Feather slider (0..1 → soft-band 0..0.20 Oklab).

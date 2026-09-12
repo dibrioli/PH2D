@@ -9,24 +9,6 @@ pub const VGRAPH_PANEL: NodeId = hash_node_id("vgraph.panel");
 /// Vector Inspector panel (W2 T2.4) — minimal right-docked panel hosting the
 /// fill swatch (+ future vertex/node params). Outer-rect id for `z_order`.
 pub const VECTOR_INSPECTOR_PANEL: NodeId = hash_node_id("vector_inspector.panel");
-/// Vector Inspector close (X) button.
-pub const VECTOR_INSPECTOR_CLOSE: NodeId = hash_node_id("vector_inspector.close");
-/// Vector Inspector fill-color swatch — a picker swatch (opens the Blender
-/// picker on Down via `is_picker_swatch`); the shell read-back applies the
-/// picked color to the selected regions.
-pub const VECTOR_INSPECTOR_FILL_SWATCH: NodeId = hash_node_id("vector_inspector.fill_swatch");
-/// Vector Inspector Shape-kind picker (W2 §4.2) — the on-screen replacement for
-/// the interim hotkeys 1-5. A vertical 5-option segmented control shown only
-/// while the `vector_shape` tool is active. `_KIND` is the group/label id; the
-/// five `_SHAPE_*` ids are the per-option Button hit-targets (the generic
-/// RadioGroup dispatch is not wired yet, so each option is a Button — its
-/// `Click` routes through the shell bridge to `VectorShapeTool::set_kind`).
-pub const VECTOR_INSPECTOR_SHAPE_KIND: NodeId = hash_node_id("vector_inspector.shape_kind");
-pub const VECTOR_INSPECTOR_SHAPE_RECT: NodeId = hash_node_id("vector_inspector.shape.rect");
-pub const VECTOR_INSPECTOR_SHAPE_ELLIPSE: NodeId = hash_node_id("vector_inspector.shape.ellipse");
-pub const VECTOR_INSPECTOR_SHAPE_POLYGON: NodeId = hash_node_id("vector_inspector.shape.polygon");
-pub const VECTOR_INSPECTOR_SHAPE_STAR: NodeId = hash_node_id("vector_inspector.shape.star");
-pub const VECTOR_INSPECTOR_SHAPE_SPIRAL: NodeId = hash_node_id("vector_inspector.shape.spiral");
 
 // ── Vector tool Style panel (ADR-0108 cutover — docked `ph2d-panel-vector`) ──
 // The `vector` tool's Style controls live in a right-docked `Panel<State>` (the
@@ -452,10 +434,6 @@ pub const VECTOR_BLEND_RUN: NodeId = hash_node_id("vector.blend.run");
 /// **Steps** — quantas formas nascem no meio do caminho.
 pub const VECTOR_BLEND_STEPS: NodeId = hash_node_id("vector.blend.steps");
 pub const VECTOR_BLEND_STEPS_NUM: NodeId = hash_node_id("vector.blend.steps_num");
-/// **Stack Up** — cada passo nasce ACIMA do anterior (ou abaixo). A ordem de z de uma
-/// sequência é parte do resultado: um blend cuja 1ª intermediária fica DEBAIXO da forma
-/// que a originou não lê como transição.
-pub const VECTOR_BLEND_STACK_UP: NodeId = hash_node_id("vector.blend.stack_up");
 /// **Reset Spine** — volta o spine do blend selecionado ao AUTOMÁTICO (a reta pelos centros das
 /// fontes), desfazendo a edição do modo Node (ADR-0128 C2b). Sem ele, a única saída da edição do
 /// spine é o undo global.

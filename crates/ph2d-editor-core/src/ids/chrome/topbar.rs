@@ -4,7 +4,6 @@ use super::{NodeId, hash_node_id};
 pub const TOPBAR_THEME: NodeId = hash_node_id("topbar_theme");
 pub const TOPBAR_SAVE: NodeId = hash_node_id("topbar_save");
 pub const TOPBAR_PROJECT: NodeId = hash_node_id("topbar_project");
-pub const TOPBAR_PLAY_TOGGLE: NodeId = hash_node_id("topbar_play_toggle");
 pub const TOPBAR_PLAY_BUTTON: NodeId = hash_node_id("topbar_play_button");
 pub const TOPBAR_RIGHT_LAYERS: NodeId = hash_node_id("topbar_right_layers");
 pub const TOPBAR_RIGHT_ASSETS: NodeId = hash_node_id("topbar_right_assets");

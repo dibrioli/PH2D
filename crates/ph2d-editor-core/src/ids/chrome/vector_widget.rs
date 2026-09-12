@@ -31,7 +31,8 @@ pub const VECTOR_WIDGET_UNBIND: NodeId = hash_node_id("vector.widget.unbind");
 
 /// Quantos chips de tipo a seção endereça.
 ///
-/// ⚠️ **Teto de TABELA DE IDS, e ele diz de que recurso é** — o mesmo que o `MAX_VARIANT_VALUES`:
+/// ⚠️ **Teto de TABELA DE IDS, e ele diz de que recurso é** — o mesmo que o antigo `MAX_VARIANT_VALUES`
+/// das variants vectoriais (órfão desde a F4.6c, apagado em 2026-09-12):
 /// o `populate` regista os chips num laço e o roteador varre o mesmo intervalo. ⚠️ E aqui ele
 /// **não pode** ficar abaixo do catálogo, ao contrário do irmão: os tipos que passassem daqui
 /// ficariam **inalcançáveis** (não há um conta-gotas por trás como o Swap Main tem) — por isso o

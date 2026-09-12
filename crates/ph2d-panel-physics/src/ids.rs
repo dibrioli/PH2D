@@ -24,6 +24,6 @@ pub use ph2d_editor_core::ids::{
 
 // ⚠️ **`PHYSICS_SLEEP_SPIN_NUM` saiu desta lista em 2026-08-30** e a ausência é a nota: ele era o
 // chip numérico do slider *Spin*, e o slider virou um interruptor (`paint::body`), que não tem
-// chip. O `NodeId` continua declarado em `ph2d-editor-core` — **crate que esta linha não possui**
-// —, onde ele é agora um const órfão: ninguém o regista, ninguém o pinta, ninguém lhe pergunta
-// nada. Apagá-lo de lá (e da tabela do `node_id_collisions`) é o remate desta cura.
+// chip. ✅ O remate que esta nota pedia aconteceu em 2026-09-12: o const órfão saiu da
+// `ph2d-editor-core`, e a tabela à mão do `node_id_collisions` que o mantinha «lido» morreu com o
+// censo derivado.

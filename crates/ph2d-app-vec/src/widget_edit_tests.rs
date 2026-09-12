@@ -65,7 +65,7 @@ fn every_painted_id_becomes_a_verb() {
 
 /// **A tabela de ids cobre o catálogo INTEIRO.**
 ///
-/// ⚠️ Diferente do irmão `MAX_VARIANT_VALUES`, aqui um teto curto não é uma lista truncada com
+/// ⚠️ Diferente do antigo irmão `MAX_VARIANT_VALUES`, aqui um teto curto não é uma lista truncada com
 /// escape: os tipos além dele ficam **inalcançáveis pelo mouse**, sem conta-gotas por trás.
 #[test]
 fn the_id_table_covers_the_whole_catalogue() {

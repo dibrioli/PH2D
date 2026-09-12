@@ -23,7 +23,6 @@
 
 use ph2d_a11y::NodeId;
 
-use ph2d_tool_registry::hash_node_id_runtime;
 use crate::ids::hash_node_id;
 
 /// O cabeçalho da seção **Component**.
@@ -69,46 +68,3 @@ pub const VECTOR_COMPONENT_UPDATE_MAIN: NodeId = hash_node_id("vector.component.
 /// resposta a *"qual é o mestre?"* — e teria de listar por NOME, que é justamente o endereço que a
 /// W5a recusou.
 pub const VECTOR_COMPONENT_SWAP: NodeId = hash_node_id("vector.component.swap");
-
-/// Quantas peças do mestre a lista endereça.
-///
-/// ⚠️ **Isto é um teto de TABELA DE IDS, e ele diz de que recurso é:** o `populate` regista os
-/// ids por-linha num laço e o roteador varre o mesmo intervalo para resolver um clique — as duas
-/// pontas precisam de um número finito. Não é um teto do MESTRE: um componente pode ter as peças
-/// que quiser, e as que passam daqui continuam a desenhar, a herdar e a ser editáveis **no
-/// mestre**.
-///
-/// ⚠️ E o excedente **não é silencioso** — o painel escreve quantas peças ficaram de fora (a lei
-/// dos caps que não mentem). O número é o mesmo, e pela mesma razão, que o `MAX_CONTAINERS` da
-/// timeline: uma tabela fixa varrida por clique.
-pub const MAX_INSTANCE_PIECES: usize = 16;
-
-/// O interruptor de visibilidade da peça `row` **nesta instância** (`OverrideSlot::Hidden`).
-#[must_use]
-pub fn vector_instance_piece_show_id(row: usize) -> NodeId {
-    hash_node_id_runtime(&format!("vector.instance.piece.show.{row}"))
-}
-
-/// Quantos VALORES por eixo a seção endereça (plano UI/UX W5c).
-pub const MAX_VARIANT_VALUES: usize = 8;
-
-/// O chip do valor `value` do eixo `axis` da instância selecionada.
-///
-/// ⚠️ **Um chip por VALOR, e não um dropdown**, porque um eixo de variant tem tipicamente dois a
-/// quatro valores — e a fileira segmentada mostra-os todos ao mesmo tempo, que é o que deixa o
-/// artista ver o catálogo em vez de o abrir. É o widget que este painel já usa para *"qual
-/// destes?"* com poucos candidatos, e ele quebra em linhas sozinho quando não cabem.
-#[must_use]
-pub fn vector_variant_option_id(axis: usize, value: usize) -> NodeId {
-    hash_node_id_runtime(&format!("vector.variant.{axis}.{value}"))
-}
-
-/// A swatch de cor da peça `row` **nesta instância** (`OverrideSlot::Fill`).
-///
-/// ⚠️ Ela é alvo de PICKER (`register_picker_swatch`), como a swatch de Fill da forma: o clique
-/// ABRE o picker e a cor é lida do alvo dele no frame seguinte. Registá-la como botão faria o
-/// picker nunca abrir.
-#[must_use]
-pub fn vector_instance_piece_colour_id(row: usize) -> NodeId {
-    hash_node_id_runtime(&format!("vector.instance.piece.colour.{row}"))
-}

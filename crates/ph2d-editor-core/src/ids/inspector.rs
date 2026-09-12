@@ -611,10 +611,6 @@ pub const GAL_RESIZE_HANDLE_BL: NodeId = hash_node_id("gal_resize_handle_bl");
 /// Close (X) button at the top-right of the Widget Gallery — alternate
 /// way to dismiss the panel beyond clicking the TopBar palette pill.
 pub const GAL_CLOSE: NodeId = hash_node_id("gal_close");
-/// Drag handle at the top of the Hierarchy.
-pub const HIER_DRAG_HANDLE: NodeId = hash_node_id("hier_drag_handle");
-/// Resize gripper at the Hierarchy's bottom-right corner.
-pub const HIER_RESIZE_HANDLE: NodeId = hash_node_id("hier_resize_handle");
 
 // ---------------------------------------------------------------------------
 // §12 Physics Joint (W3). A joint is an ENTITY, so this section describes the

@@ -53,7 +53,7 @@ use ph2d_physics_ecs::{
 };
 use ph2d_render::{Sprite, WHITE_TILE_KEY};
 
-use ph2d_app_physics::common::slab;
+use crate::common::slab;
 
 /// A altura de flutuação — a mesma das outras cenas de player.
 const FLOAT: f32 = 0.9;
@@ -163,53 +163,50 @@ pub(crate) fn build(world: &mut World) -> u64 {
     player.to_bits()
 }
 
-impl crate::App {
-    pub(crate) fn physics_smoke_out(&mut self) {
-        let gfx = self.gfx.as_mut().expect("gfx");
-        let bits = build(gfx.sim.world_mut());
-        // ⚠️ **Quem sabe QUAL entidade é o sujeito é a cena** — ver o campo.
-        self.physics.player_readout_log = Some(bits);
+pub fn physics_smoke_out(ctx: &mut crate::SceneCtx<'_>) {
+    let bits = build(ctx.world);
+    // ⚠️ **Quem sabe QUAL entidade é o sujeito é a cena** — ver o campo.
+    ctx.want.player_readout_log = Some(bits);
 
-        eprintln!(
-            "[physics-smoke 113] A SAIDA DO PLAYER (W-PlayerOut). O corredor\n\
-             VERDE publica o que faz: a §14 mostra, e cada transicao vira um\n\
-             sinal.\n\
-             \n\
-             ⚠️ Se a linha acima nao aparecer, pare: a cena nao montou.\n\
-             ⚠️ E rode com PH2D_SIGNAL_LOG=1 -- e' o consumidor de\n\
-             DIAGNOSTICO, com cursor proprio, e e' ele que mostra a ORDEM.\n\
-             \n\
-             0) ARME o Physics na barra de transporte (ele nasce desmarcado) e\n\
-                de' Play. A cada meio segundo o log imprime uma linha\n\
-                '[player] Ground facing +1 vel (...)'. ⚠️ SE ELA NAO APARECER,\n\
-                PARE: sem ela nada abaixo diz nada. Com o Physics DESARMADO ela\n\
-                diz '(a fisica esta' desarmada)' -- a ausencia e' o outro\n\
-                readout, e e' ela que ensina o toggle.\n\
-             \n\
-             1) SELECIONE o Runner e olhe 'Platform Player': as tres primeiras\n\
-                linhas sao POSTURE / FACING / SPEED, e elas MEXEM enquanto ele\n\
-                anda. Ande para a esquerda: Facing vira 'left'.\n\
-             \n\
-             2) ANDE PARA A DIREITA (seta ->) e PULE (espaco) sobre o vao\n\
-                (x = 5..7). No log: 'player.jumped.ground' e, ao aterrar,\n\
-                'player.landed'. Sao DOIS nomes, nao um com um campo.\n\
-             \n\
-             3) A PAREDE esta' um metro depois do degrau: continue a andar para\n\
-                a direita e SAIA do degrau -- ele cai rente a' face dela e se\n\
-                agarra. Pule ali: sai\n\
-                'player.jumped.wall' -- um nome PROPRIO. E' o caso que um\n\
-                palpite de fora erra: 'ele estava no chao?' responde NAO para o\n\
-                pulo do ar E para o de parede, e nao os distingue.\n\
-             \n\
-             4) O DEGRAU (x = 16): corra ate' ele e encoste na altura do topo.\n\
-                Sai 'player.ledge_grabbed'. E com Shift, em qualquer lugar:\n\
-                'player.dashed'.\n\
-             \n\
-             5) DESLIGUE 'Emit Signals' na §14 e repita o passo 2: ele salta e\n\
-                aterra em SILENCIO, e o readout continua a mexer. Sao dois\n\
-                canais -- um diz o que ELE E', o outro o que ACONTECEU."
-        );
-    }
+    eprintln!(
+        "[physics-smoke 113] A SAIDA DO PLAYER (W-PlayerOut). O corredor\n\
+         VERDE publica o que faz: a §14 mostra, e cada transicao vira um\n\
+         sinal.\n\
+         \n\
+         ⚠️ Se a linha acima nao aparecer, pare: a cena nao montou.\n\
+         ⚠️ E rode com PH2D_SIGNAL_LOG=1 -- e' o consumidor de\n\
+         DIAGNOSTICO, com cursor proprio, e e' ele que mostra a ORDEM.\n\
+         \n\
+         0) ARME o Physics na barra de transporte (ele nasce desmarcado) e\n\
+            de' Play. A cada meio segundo o log imprime uma linha\n\
+            '[player] Ground facing +1 vel (...)'. ⚠️ SE ELA NAO APARECER,\n\
+            PARE: sem ela nada abaixo diz nada. Com o Physics DESARMADO ela\n\
+            diz '(a fisica esta' desarmada)' -- a ausencia e' o outro\n\
+            readout, e e' ela que ensina o toggle.\n\
+         \n\
+         1) SELECIONE o Runner e olhe 'Platform Player': as tres primeiras\n\
+            linhas sao POSTURE / FACING / SPEED, e elas MEXEM enquanto ele\n\
+            anda. Ande para a esquerda: Facing vira 'left'.\n\
+         \n\
+         2) ANDE PARA A DIREITA (seta ->) e PULE (espaco) sobre o vao\n\
+            (x = 5..7). No log: 'player.jumped.ground' e, ao aterrar,\n\
+            'player.landed'. Sao DOIS nomes, nao um com um campo.\n\
+         \n\
+         3) A PAREDE esta' um metro depois do degrau: continue a andar para\n\
+            a direita e SAIA do degrau -- ele cai rente a' face dela e se\n\
+            agarra. Pule ali: sai\n\
+            'player.jumped.wall' -- um nome PROPRIO. E' o caso que um\n\
+            palpite de fora erra: 'ele estava no chao?' responde NAO para o\n\
+            pulo do ar E para o de parede, e nao os distingue.\n\
+         \n\
+         4) O DEGRAU (x = 16): corra ate' ele e encoste na altura do topo.\n\
+            Sai 'player.ledge_grabbed'. E com Shift, em qualquer lugar:\n\
+            'player.dashed'.\n\
+         \n\
+         5) DESLIGUE 'Emit Signals' na §14 e repita o passo 2: ele salta e\n\
+            aterra em SILENCIO, e o readout continua a mexer. Sao dois\n\
+            canais -- um diz o que ELE E', o outro o que ACONTECEU."
+    );
 }
 
 #[cfg(test)]

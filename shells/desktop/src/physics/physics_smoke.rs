@@ -125,18 +125,30 @@ impl crate::App {
         self.physics.smoke_done = true;
 
         match which.trim() {
-            "2" => self.physics_smoke_pile(),
-            "3" => self.physics_smoke_author(),
-            "4" => self.physics_smoke_world(),
-            "5" => self.physics_smoke_layers(),
-            "6" => self.physics_smoke_joints(),
-            "7" => self.physics_smoke_bake(),
-            "8" => self.physics_smoke_parented(),
+            "2" => self.run_physics_scene(ph2d_app_physics::physics_smoke_base::physics_smoke_pile),
+            "3" => {
+                self.run_physics_scene(ph2d_app_physics::physics_smoke_base::physics_smoke_author)
+            }
+            "4" => {
+                self.run_physics_scene(ph2d_app_physics::physics_smoke_base::physics_smoke_world)
+            }
+            "5" => {
+                self.run_physics_scene(ph2d_app_physics::physics_smoke_base::physics_smoke_layers)
+            }
+            "6" => {
+                self.run_physics_scene(ph2d_app_physics::physics_smoke_rigs::physics_smoke_joints)
+            }
+            "7" => self.run_physics_scene(ph2d_app_physics::physics_smoke_rigs::physics_smoke_bake),
+            "8" => {
+                self.run_physics_scene(ph2d_app_physics::physics_smoke_rigs::physics_smoke_parented)
+            }
             "9" => self
                 .run_physics_scene(ph2d_app_physics::physics_smoke_collider::physics_smoke_scale),
             "10" => self
                 .run_physics_scene(ph2d_app_physics::physics_smoke_collider::physics_smoke_sensor),
-            "11" => self.physics_smoke_weld(),
+            "11" => {
+                self.run_physics_scene(ph2d_app_physics::physics_smoke_rigs::physics_smoke_weld)
+            }
             "12" => {
                 self.run_physics_scene(ph2d_app_physics::physics_smoke_props::physics_smoke_gravity)
             }
@@ -208,7 +220,8 @@ impl crate::App {
             "36" => {
                 self.run_physics_scene(ph2d_app_physics::physics_smoke_zones::physics_smoke_mirror)
             }
-            "37" => self.physics_smoke_bake_range(),
+            "37" => self
+                .run_physics_scene(ph2d_app_physics::physics_smoke_rigs::physics_smoke_bake_range),
             "38" => self.run_physics_scene(
                 ph2d_app_physics::physics_smoke_authoring::physics_smoke_joint_anchor,
             ),
@@ -321,15 +334,26 @@ impl crate::App {
             "77" => self.run_physics_scene(
                 ph2d_app_physics::physics_smoke_rail_rope::physics_smoke_rail_rope,
             ),
-            "78" => self.physics_smoke_joint_anim(),
+            "78" => self.run_physics_scene(
+                ph2d_app_physics::physics_smoke_joint_anim::physics_smoke_joint_anim,
+            ),
             "79" => self.run_physics_scene(
                 ph2d_app_physics::physics_smoke_joint_custom::physics_smoke_joint_custom,
             ),
-            "80" => self.physics_smoke_float(),
-            "81" => self.physics_smoke_walk(),
-            "82" => self.physics_smoke_author_player(),
-            "83" => self.physics_smoke_jump(),
-            "85" => self.physics_smoke_reaction(),
+            "80" => {
+                self.run_physics_scene(ph2d_app_physics::physics_smoke_player::physics_smoke_float)
+            }
+            "81" => {
+                self.run_physics_scene(ph2d_app_physics::physics_smoke_player::physics_smoke_walk)
+            }
+            "82" => self.run_physics_scene(
+                ph2d_app_physics::physics_smoke_player::physics_smoke_author_player,
+            ),
+            "83" => {
+                self.run_physics_scene(ph2d_app_physics::physics_smoke_player::physics_smoke_jump)
+            }
+            "85" => self
+                .run_physics_scene(ph2d_app_physics::physics_smoke_player::physics_smoke_reaction),
             "86" => self
                 .run_physics_scene(ph2d_app_physics::physics_smoke_player_tape::physics_smoke_tape),
             "87" => self.run_physics_scene(
@@ -412,7 +436,7 @@ impl crate::App {
             "112" => {
                 self.run_physics_scene(ph2d_app_physics::physics_smoke_glide::physics_smoke_glide)
             }
-            "113" => self.physics_smoke_out(),
+            "113" => self.run_physics_scene(ph2d_app_physics::physics_smoke_out::physics_smoke_out),
             "114" => {
                 self.run_physics_scene(ph2d_app_physics::physics_smoke_brake::physics_smoke_brake)
             }
@@ -437,7 +461,7 @@ impl crate::App {
             "119" => {
                 self.run_physics_scene(ph2d_app_physics::physics_smoke_brink::physics_smoke_brink)
             }
-            _ => self.physics_smoke_drop(),
+            _ => self.run_physics_scene(ph2d_app_physics::physics_smoke_base::physics_smoke_drop),
         }
         // ⭐ **A resolução NOME → IDENTIDADE, uma vez, para TODA cena** (ADR-0164 F1).
         //

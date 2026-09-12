@@ -18,8 +18,8 @@
 //! Os números abaixo saíram da sonda `probe_smoke_78`, rodada ANTES desta
 //! mensagem ser escrita.
 
+use crate::common::spawn_floor;
 use ph2d_anim::{AnimValue, Interp, RationalTime};
-use ph2d_app_physics::common::spawn_floor;
 use ph2d_core::Vec2;
 use ph2d_ecs::{Entity, Name, Transform, World, stable_name_id};
 use ph2d_physics_ecs::{
@@ -73,7 +73,7 @@ fn joint(world: &mut World, name: &str, a: &str, b: &str, at: [f32; 2], j: Physi
 
 /// Monta as quatro bancadas. Devolve as entidades-joint que a cena vai animar,
 /// na ordem `[servo, guincho, músculo, giro]`.
-pub(crate) fn build_joint_anim_scene(world: &mut World) -> [Entity; 4] {
+pub fn build_joint_anim_scene(world: &mut World) -> [Entity; 4] {
     spawn_floor(world);
     let peg = ColliderShape::Ball { radius: 0.08 };
     let arm = ColliderShape::Cuboid {
@@ -275,7 +275,7 @@ fn key(doc: &mut TimelineDoc, e: Entity, prop: PropKind, t: f64, v: f32) {
 }
 
 /// **As quatro tracks** — a autoria que esta cena existe para demonstrar.
-pub(crate) fn author_joint_anim_tracks(doc: &mut TimelineDoc, j: [Entity; 4]) {
+pub fn author_joint_anim_tracks(doc: &mut TimelineDoc, j: [Entity; 4]) {
     // O servo varre: centro → baixo → cima.
     key(doc, j[0], PropKind::JointMotorTarget, 0.0, 0.0);
     key(doc, j[0], PropKind::JointMotorTarget, 1.2, -1.15);
@@ -297,45 +297,42 @@ pub(crate) fn author_joint_anim_tracks(doc: &mut TimelineDoc, j: [Entity; 4]) {
 #[path = "physics_smoke_joint_anim_tests.rs"]
 mod tests;
 
-impl crate::App {
-    /// **Cena 78 (W-JointAnim).** Quatro máquinas dirigidas por keyframes.
-    pub(crate) fn physics_smoke_joint_anim(&mut self) {
-        let gfx = self.gfx.as_mut().expect("gfx");
-        let joints = build_joint_anim_scene(gfx.sim.world_mut());
-        gfx.camera.center = [-0.4, 0.0];
-        gfx.camera.height_world = 15.0;
-        author_joint_anim_tracks(&mut self.timeline.doc, joints);
+/// **Cena 78 (W-JointAnim).** Quatro máquinas dirigidas por keyframes.
+pub fn physics_smoke_joint_anim(ctx: &mut crate::SceneCtx<'_>) {
+    let joints = build_joint_anim_scene(ctx.world);
+    ctx.want.camera_center = Some([-0.4, 0.0]);
+    ctx.want.camera_height_world = Some(15.0);
+    author_joint_anim_tracks(&mut *ctx.timeline, joints);
 
-        eprintln!(
-            "[physics-smoke 78] A MAQUINA ANIMADA -- os parametros de um joint sao\n  \
-               canais de timeline.\n\n  \
-               Ate' aqui um param de joint era um numero que a cena segurava para\n  \
-               sempre: o servo apontava para um lugar, o guincho tinha um comprimento.\n  \
-               Animar a maquina exigia animar os CORPOS -- assar o resultado em vez de\n  \
-               dirigir a causa. Agora os quatro numeros que fazem uma maquina se mexer\n  \
-               tem track.\n\n  \
-               Quatro bancadas, uma por canal. **Aperte Espaco** e assista:\n     \
-                  - EM CIMA, o SERVO (laranja): 'Motor Target' keyframado. O braco\n       \
-                    varre centro -> baixo -> cima -> centro; medido, ele passa por\n       \
-                    -0,90 rad em 1 s e +0,64 rad em 3 s. Ao lado dele, em CINZA, o\n       \
-                    MESMO braco sem track: medido, ele nao sai de -0,005 rad. Esse\n       \
-                    e' o controle, e sem ele a cena nao distingue *o alvo foi\n       \
-                    animado* de *tudo se mexe sozinho*.\n     \
-                  - O GUINCHO (azul): 'Max Length' keyframado de 2,4 m para 0,5 m. A\n       \
-                    carga SOBE 1,90 m, recolhida pela corda.\n     \
-                  - O MUSCULO (laranja): 'Rest Length' keyframado. A mola contrai\n       \
-                    1,00 m e SOLTA -- e a rigidez dela nunca foi tocada.\n     \
-                  - EMBAIXO, o GIRO (azul): 'Motor Speed' keyframado de 0 a 11 rad/s.\n       \
-                    A pa' acelera.\n\n  \
-               (!) A PERGUNTA DA WAVE E' A REGUA. Deixe tocar ate' o fim, depois\n      \
-                   **arraste a regua para tras** e solte no meio. A cena tem de mostrar\n      \
-                   a pose daquele instante, nao a do fim -- e tem de faze-lo de novo,\n      \
-                   igual, quantas vezes voce arrastar. Um param que so' chega ao solver\n      \
-                   uma vez por quadro sobrevive ao play e MORRE aqui.\n\n  \
-               (!) E AUTORE UMA: selecione o objeto 'Servo' na Hierarquia, abra o\n      \
-                   '+ Track' da timeline e escolha **Motor Target**. A lista tem os\n      \
-                   quatro canais novos no fim. Com a track criada, mova o playhead,\n      \
-                   mude o alvo na secao Physics Joint e aperte **K**.\n"
-        );
-    }
+    eprintln!(
+        "[physics-smoke 78] A MAQUINA ANIMADA -- os parametros de um joint sao\n  \
+           canais de timeline.\n\n  \
+           Ate' aqui um param de joint era um numero que a cena segurava para\n  \
+           sempre: o servo apontava para um lugar, o guincho tinha um comprimento.\n  \
+           Animar a maquina exigia animar os CORPOS -- assar o resultado em vez de\n  \
+           dirigir a causa. Agora os quatro numeros que fazem uma maquina se mexer\n  \
+           tem track.\n\n  \
+           Quatro bancadas, uma por canal. **Aperte Espaco** e assista:\n     \
+              - EM CIMA, o SERVO (laranja): 'Motor Target' keyframado. O braco\n       \
+                varre centro -> baixo -> cima -> centro; medido, ele passa por\n       \
+                -0,90 rad em 1 s e +0,64 rad em 3 s. Ao lado dele, em CINZA, o\n       \
+                MESMO braco sem track: medido, ele nao sai de -0,005 rad. Esse\n       \
+                e' o controle, e sem ele a cena nao distingue *o alvo foi\n       \
+                animado* de *tudo se mexe sozinho*.\n     \
+              - O GUINCHO (azul): 'Max Length' keyframado de 2,4 m para 0,5 m. A\n       \
+                carga SOBE 1,90 m, recolhida pela corda.\n     \
+              - O MUSCULO (laranja): 'Rest Length' keyframado. A mola contrai\n       \
+                1,00 m e SOLTA -- e a rigidez dela nunca foi tocada.\n     \
+              - EMBAIXO, o GIRO (azul): 'Motor Speed' keyframado de 0 a 11 rad/s.\n       \
+                A pa' acelera.\n\n  \
+           (!) A PERGUNTA DA WAVE E' A REGUA. Deixe tocar ate' o fim, depois\n      \
+               **arraste a regua para tras** e solte no meio. A cena tem de mostrar\n      \
+               a pose daquele instante, nao a do fim -- e tem de faze-lo de novo,\n      \
+               igual, quantas vezes voce arrastar. Um param que so' chega ao solver\n      \
+               uma vez por quadro sobrevive ao play e MORRE aqui.\n\n  \
+           (!) E AUTORE UMA: selecione o objeto 'Servo' na Hierarquia, abra o\n      \
+               '+ Track' da timeline e escolha **Motor Target**. A lista tem os\n      \
+               quatro canais novos no fim. Com a track criada, mova o playhead,\n      \
+               mude o alvo na secao Physics Joint e aperte **K**.\n"
+    );
 }

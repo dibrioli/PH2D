@@ -233,3 +233,8 @@ pub mod run_stash;
 pub mod bridge;
 pub mod inspector;
 pub mod overlay;
+pub mod physics_smoke_base;
+pub mod physics_smoke_joint_anim;
+pub mod physics_smoke_out;
+pub mod physics_smoke_player;
+pub mod physics_smoke_rigs;

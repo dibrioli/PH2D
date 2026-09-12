@@ -1,14 +1,29 @@
-//! A sonda da cena 78 + os gates que mantêm a mensagem dela honesta
-//! (W-JointAnim).
+//! **A metade da FRONTEIRA** dos gates da cena `physics_smoke_joint_anim`: os que exercitam o
+//! **assador desta shell** (o `TimelineScene` do `physics/bake.rs`) sobre uma cena que vive na
+//! [`ph2d_app_physics::physics_smoke_joint_anim`].
+//!
+//! ⚠️ Um `#[cfg(test)]` é invisível do outro lado da fronteira de crate (HOWTO §2),
+//! e o corte é **por quem o teste EXERCITA, não por quem ele nomeia** — os outros
+//! gates da mesma cena ficaram com o sujeito, na crate.
 
-use super::*;
 use crate::physics::bake::TimelineScene;
+use ph2d_app_physics::physics_smoke_joint_anim::*;
+use ph2d_ecs::{Entity, Name, Transform};
+use ph2d_timeline::TimelineDoc;
+
+/// O passo fixo do assador — o mesmo que o `physics/bake.rs` usa.
+const DT: f64 = 1.0 / 60.0;
 use ph2d_ecs::SimWorld;
 use ph2d_physics_ecs::PhysicsBridge;
 
-const DT: f64 = 1.0 / 60.0;
+fn named(sim: &mut SimWorld, name: &str) -> Entity {
+    let mut q = sim.world_mut().query::<(Entity, &Name)>();
+    q.iter(sim.world())
+        .find(|(_, n)| n.as_str() == name)
+        .map(|(e, _)| e)
+        .expect("corpo vivo")
+}
 
-/// Monta a cena E as tracks, e devolve o par que o produto usa.
 fn staged() -> (SimWorld, TimelineDoc, [Entity; 4], PhysicsBridge) {
     let mut sim = SimWorld::new();
     let joints = build_joint_anim_scene(sim.world_mut());
@@ -19,22 +34,12 @@ fn staged() -> (SimWorld, TimelineDoc, [Entity; 4], PhysicsBridge) {
     (sim, doc, joints, PhysicsBridge::new())
 }
 
-fn named(sim: &mut SimWorld, name: &str) -> Entity {
-    let mut q = sim.world_mut().query::<(Entity, &Name)>();
-    q.iter(sim.world())
-        .find(|(_, n)| n.as_str() == name)
-        .map(|(e, _)| e)
-        .unwrap_or_else(|| panic!("a cena 78 nao montou '{name}'"))
-}
-
 fn pose(sim: &mut SimWorld, name: &str) -> [f32; 3] {
     let e = named(sim, name);
     let t = sim.world().get::<Transform>(e).expect("transform");
     [t.translation.x, t.translation.y, t.rotation]
 }
 
-/// Toca até `tick`, um tick por dispatch — o relógio real —, gravando a pose de
-/// `watch` em cada um.
 fn play(
     sim: &mut SimWorld,
     doc: &mut TimelineDoc,
@@ -49,6 +54,34 @@ fn play(
         out.push(pose(sim, watch));
     }
     out
+}
+
+/// **A régua é o que esta wave existe para provar:** um scrub mostra a pose
+/// daquele tick, não a do fim.
+///
+/// ⚠️ É o gate de produto do roteiro. Ele passa pela shell inteira — o mesmo
+/// `TimelineScene` que o `render_loop` usa —, então cobre a costura que os
+/// gates da `ph2d-physics-ecs` não alcançam: as tracks de verdade, o
+/// `apply_from_doc` de verdade, os quatro canais de verdade.
+#[test]
+fn scrubbing_the_ruler_shows_the_pose_of_that_tick() {
+    let (mut sim, mut doc, _, mut bridge) = staged();
+    let played = play(&mut sim, &mut doc, &mut bridge, "ServoArm", 240);
+
+    for &t in &[173u64, 111, 67] {
+        let mut scene = TimelineScene {
+            doc: &mut doc,
+            fixed_dt: DT,
+        };
+        bridge.dispatch_with_scene(&mut sim, false, t, &mut scene);
+        let got = pose(&mut sim, "ServoArm");
+        let want = played[t as usize];
+        let d = (got[2] - want[2]).abs();
+        assert!(
+            d < 1e-3,
+            "scrub para o tick {t} tem de mostrar a pose do play: {want:?} contra {got:?} (delta {d})"
+        );
+    }
 }
 
 /// **A sonda.** `cargo test -p ph2d-host-desktop --release probe_smoke_78 --
@@ -79,46 +112,6 @@ fn probe_smoke_78() {
         };
         let vals: Vec<String> = idx.iter().map(|&i| format!("{:.3}", p[i][col])).collect();
         println!("  {label:<22} t=0,1,2,3,4s -> [{}]", vals.join(", "));
-    }
-}
-
-/// **A cena monta as cinco máquinas que a mensagem nomeia.**
-#[test]
-fn the_scene_builds_the_machines_it_names() {
-    let (mut sim, _, joints, _) = staged();
-    for n in [
-        "ServoArm",
-        "CtrlArm",
-        "WinchLoad",
-        "MuscleWeight",
-        "SpinBlade",
-    ] {
-        let _ = named(&mut sim, n);
-    }
-    assert_eq!(joints.len(), 4);
-}
-
-/// **Cada canal novo tem uma track**, e é a track que a mensagem promete.
-///
-/// ⚠️ Sem isto a cena poderia montar quatro máquinas paradas e a mensagem
-/// continuaria dizendo que elas são animadas.
-#[test]
-fn every_new_channel_is_actually_keyed_in_this_scene() {
-    let (_, doc, joints, _) = staged();
-    for (i, prop) in [
-        PropKind::JointMotorTarget,
-        PropKind::JointMaxLength,
-        PropKind::JointRestLength,
-        PropKind::JointMotorSpeed,
-    ]
-    .into_iter()
-    .enumerate()
-    {
-        let bound = doc
-            .bindings()
-            .iter()
-            .any(|b| b.entity == joints[i].to_bits() && b.prop == prop);
-        assert!(bound, "{prop:?} tem de estar bound na cena 78");
     }
 }
 
@@ -159,32 +152,4 @@ fn the_winch_reels_the_load_in() {
         climb > 1.2,
         "a carga tem de subir com o teto da corda encurtando: {climb:.3} m"
     );
-}
-
-/// **A régua é o que esta wave existe para provar:** um scrub mostra a pose
-/// daquele tick, não a do fim.
-///
-/// ⚠️ É o gate de produto do roteiro. Ele passa pela shell inteira — o mesmo
-/// `TimelineScene` que o `render_loop` usa —, então cobre a costura que os
-/// gates da `ph2d-physics-ecs` não alcançam: as tracks de verdade, o
-/// `apply_from_doc` de verdade, os quatro canais de verdade.
-#[test]
-fn scrubbing_the_ruler_shows_the_pose_of_that_tick() {
-    let (mut sim, mut doc, _, mut bridge) = staged();
-    let played = play(&mut sim, &mut doc, &mut bridge, "ServoArm", 240);
-
-    for &t in &[173u64, 111, 67] {
-        let mut scene = TimelineScene {
-            doc: &mut doc,
-            fixed_dt: DT,
-        };
-        bridge.dispatch_with_scene(&mut sim, false, t, &mut scene);
-        let got = pose(&mut sim, "ServoArm");
-        let want = played[t as usize];
-        let d = (got[2] - want[2]).abs();
-        assert!(
-            d < 1e-3,
-            "scrub para o tick {t} tem de mostrar a pose do play: {want:?} contra {got:?} (delta {d})"
-        );
-    }
 }

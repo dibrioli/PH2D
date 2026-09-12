@@ -39,11 +39,6 @@ pub(crate) mod physics_area;
 pub(crate) mod physics_markers;
 pub(crate) mod physics_seed;
 pub(crate) mod physics_smoke;
-pub(crate) mod physics_smoke_base;
-pub(crate) mod physics_smoke_joint_anim;
-pub(crate) mod physics_smoke_out;
-pub(crate) mod physics_smoke_player;
-pub(crate) mod physics_smoke_rigs;
 pub(crate) mod physics_state;
 pub(crate) mod physics_surface;
 pub(crate) mod player_input;
@@ -118,3 +113,11 @@ mod physics_gesture_zone_tests;
 // simulação. Uma segunda cópia da fiação lá seria uma segunda resposta a *"o
 // que este edit faz"*.
 pub(crate) mod physics_tests;
+
+// As metades de fronteira das cenas que se mudaram para a crate nesta fatia.
+#[cfg(test)]
+#[path = "physics_smoke_joint_anim_tests.rs"]
+mod physics_smoke_joint_anim_bake_tests;
+#[cfg(test)]
+#[path = "physics_smoke_reaction_tests.rs"]
+mod physics_smoke_reaction_panel_tests;

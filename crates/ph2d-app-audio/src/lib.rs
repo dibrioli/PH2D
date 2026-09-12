@@ -552,6 +552,13 @@ impl AudioSystem {
     }
 }
 
+/// ⭐ **O que a família do ÁUDIO declara à shell** — os roteadores de smoke, lidos DENTRO desta crate
+/// ([`smoke::ROUTERS`]), como nas outras famílias (auditoria de arquitectura A1, 2026-09-12).
+pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
+    key: "audio",
+    routers: smoke::ROUTERS,
+};
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -571,10 +578,3 @@ mod tests {
         assert!(s.iter().any(|&x| x.abs() > 0.2), "tone has real amplitude");
     }
 }
-
-/// ⭐ **O que a família do ÁUDIO declara à shell** — os roteadores de smoke, lidos DENTRO desta crate
-/// ([`smoke::ROUTERS`]), como nas outras famílias (auditoria de arquitectura A1, 2026-09-12).
-pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
-    key: "audio",
-    routers: smoke::ROUTERS,
-};

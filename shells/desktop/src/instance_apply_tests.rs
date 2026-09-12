@@ -21,7 +21,7 @@ use ph2d_ecs::{Entity, InstanceOf, ObjectInstance, SimWorld};
 use ph2d_physics_ecs::PhysicsBridge;
 
 fn reg() -> ph2d_ecs::scene::ComponentRegistry {
-    crate::init::build_component_registry()
+    crate::component_registry_for_tests::registo()
 }
 
 /// O *Apply to Master*, com o par de documentos vazio.

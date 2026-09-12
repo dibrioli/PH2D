@@ -73,11 +73,12 @@ mod clock_forward;
 /// precisa de perguntar aos oito builders pela mesma porta. Ver [`crate::inspector_presence_tests`].
 #[cfg(test)]
 pub(crate) mod inspector_presence_probe;
-pub(crate) use ph2d_app_physics::inspector::player::seed_attached_player;
-/// ⭐ **Os DOIS seeds da paleta de componentes** (ADR-0166 / F3) — ver [`crate::component_seed`].
-/// Eles vivem nos módulos DONOS das leis (a caixa que casa com o desenho · a altura que paira), e
-/// esta linha é só o endereço por onde a tabela de seeds lhes chega.
-pub(crate) use ph2d_app_physics::physics_seed::seed_attached_collider;
+// ⛔ **Duas re-exportações de `ph2d_app_physics` viviam aqui** (`seed_attached_player` ·
+// `seed_attached_collider`) e o comentário delas dizia-o: *«esta linha é só o ENDEREÇO por onde a
+// tabela de seeds lhes chega»*. O único consumidor era a tabela `SEEDS` do `component_seed`, que
+// em 2026-09-12 passou a nomear as duas na crate irmã. ⇒ o `render_loop` era, neste ponto, uma
+// FACHADA — *um módulo da shell que só re-exporta uma crate é uma CRATE a usar o nome da shell*
+// (o achado da Fase C da `line/app-vec`), e a régua do fecho conta-a como shell.
 mod inspector_visibility;
 /// MEASUREMENT scaffold: onde as fases PANEL e CHROME do `painter_bridge::dispatch` gastam um frame.
 #[cfg(test)]

@@ -297,7 +297,7 @@ const WHITE: [f32; 4] = [1.0; 4];
 const TRUCK_BODY_X: f32 = 5.0;
 
 fn reg() -> ph2d_ecs::scene::ComponentRegistry {
-    crate::init::build_component_registry()
+    crate::component_registry_for_tests::registo()
 }
 
 /// A FORMA e depois o VALOR, duas vezes — a mesma ordem do quadro, e duas voltas porque uma peça

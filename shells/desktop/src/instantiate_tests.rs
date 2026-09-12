@@ -70,7 +70,7 @@ fn duplicate(
 }
 
 fn reg() -> ph2d_ecs::scene::ComponentRegistry {
-    crate::init::build_component_registry()
+    crate::component_registry_for_tests::registo()
 }
 
 /// A pose de mundo de uma entidade — o que o artista vê, e não o local.

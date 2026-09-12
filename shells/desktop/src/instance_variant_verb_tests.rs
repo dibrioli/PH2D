@@ -23,7 +23,7 @@ use crate::instance_verbs::VerbRefusal;
 #[test]
 fn the_root_of_a_copy_becomes_a_variant_and_a_piece_still_cannot() {
     let mut sim = SimWorld::new();
-    let r = crate::init::build_component_registry();
+    let r = crate::component_registry_for_tests::registo();
     let master = spawn_master(&mut sim);
     ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
     ph2d_ecs::assign_master_pieces(sim.world_mut());
@@ -77,7 +77,7 @@ fn the_root_of_a_copy_becomes_a_variant_and_a_piece_still_cannot() {
 #[test]
 fn a_copy_of_a_variant_is_born_with_no_overrides() {
     let mut sim = SimWorld::new();
-    let r = crate::init::build_component_registry();
+    let r = crate::component_registry_for_tests::registo();
     let master = spawn_master(&mut sim);
     ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
     ph2d_ecs::assign_master_pieces(sim.world_mut());
@@ -142,7 +142,7 @@ fn a_copy_of_a_variant_is_born_with_no_overrides() {
 #[test]
 fn making_a_variant_names_the_library_and_leaves_the_canvas_name_alone() {
     let mut sim = SimWorld::new();
-    let r = crate::init::build_component_registry();
+    let r = crate::component_registry_for_tests::registo();
     let g = spawn_master(&mut sim);
     // ⚠️ O `spawn_master` já devolve uma receita; a variante nasce da CÓPIA dela.
     ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
@@ -186,7 +186,7 @@ fn making_a_variant_names_the_library_and_leaves_the_canvas_name_alone() {
 #[test]
 fn a_plain_make_component_keeps_the_old_naming() {
     let mut sim = SimWorld::new();
-    let r = crate::init::build_component_registry();
+    let r = crate::component_registry_for_tests::registo();
     let g = sim
         .world_mut()
         .spawn((ph2d_ecs::Transform::IDENTITY, ph2d_ecs::Name::new("Badge")))

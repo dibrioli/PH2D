@@ -23,10 +23,13 @@
 //! surface unchanged; `hero_intents::drain_X` paths still resolve
 //! via the re-exports below.
 
-/// ⚠️ **`pub(crate)` e não privado**: a porta `refuses_reparent` é chamada pelos gates pelo
-/// caminho do módulo. Um `pub(crate) use` dela avisaria de import não usado no build normal —
-/// *o alcance do teste não é um consumidor do produto.*
-pub(crate) mod hierarchy;
+// ⚠️ Era `pub(crate) mod`, e a razão escrita aqui era *«a porta `refuses_reparent` é chamada pelos
+// gates pelo caminho do módulo»*. Em 2026-09-12 essa porta mudou-se para o
+// `instance_verbs_walk`, junto da lei que ela compõe (`is_a_recipe_given_piece`), e o módulo
+// ficou sem nenhum consumidor de fora — medido, zero. ⛔ Rust **não avisa** de visibilidade a
+// mais, logo isto apodreceria calado: *a razão de uma peça ser pública envelhece mais depressa
+// que a peça* (ESTADO §3).
+mod hierarchy;
 mod image_edit;
 mod sprite_merge;
 pub(crate) mod texture_edit;

@@ -10,7 +10,7 @@ use crate::instance_smoke::spawn_master;
 use ph2d_ecs::{Entity, InstanceOf, MasterRoot, SimWorld, StableId};
 
 fn reg() -> ph2d_ecs::scene::ComponentRegistry {
-    crate::init::build_component_registry()
+    crate::component_registry_for_tests::registo()
 }
 
 /// Uma receita com `n` cópias na cena.

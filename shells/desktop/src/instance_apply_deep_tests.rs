@@ -17,7 +17,7 @@ use ph2d_physics_ecs::PhysicsBridge;
 use ph2d_render::{Sprite, WHITE_TILE_KEY};
 
 pub(super) fn reg() -> ph2d_ecs::scene::ComponentRegistry {
-    crate::init::build_component_registry()
+    crate::component_registry_for_tests::registo()
 }
 
 /// Um passe de sync, com o par de documentos vazio.

@@ -10,7 +10,7 @@ use ph2d_ecs::{Children, Entity, MasterRoot, Name, SimWorld, Transform};
 use ph2d_physics_ecs::PhysicsBridge;
 
 fn reg() -> ph2d_ecs::scene::ComponentRegistry {
-    crate::init::build_component_registry()
+    crate::component_registry_for_tests::registo()
 }
 
 /// ⚠️ **Sem documentos vetoriais** — ver `crate::instance_sync_docs` para os que têm.

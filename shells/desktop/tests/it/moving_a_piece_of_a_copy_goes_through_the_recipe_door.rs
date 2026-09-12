@@ -71,12 +71,21 @@ fn the_drag_asks_the_door_before_changing_the_parent() {
 /// delas é sobre a forma.*
 ///
 /// **Mutação que deve sangrar:** tirar o `!same_parent` da condição.
+///
+/// ⚠️⚠️ **É a SEGUNDA vez que esta lei muda de casa e parte este ficheiro** — a primeira está
+/// contada no `the_drag_asks_the_door_before_changing_the_parent` acima (o censo ficou *vácuo*).
+/// Em 2026-09-12 a porta saiu do `hero_intents/hierarchy.rs` para o `instance_verbs_walk.rs`, ao
+/// lado da lei que ela compõe (`is_a_recipe_given_piece`), porque o `hero_intents` é chrome da
+/// shell e a lei é da família das instâncias. ⭐ Desta vez o censo **falhou alto** em vez de
+/// emudecer, e a diferença é a âncora: `find(...).expect(...)` sobre um ficheiro que
+/// `code_of` **entra em pânico** se não existir. *A metade que salva não é a agulha — é ela ser
+/// obrigatória.*
 #[test]
 fn reordering_between_siblings_is_still_allowed() {
-    let file = code_of("hero_intents/hierarchy.rs");
+    let file = code_of("instance_verbs_walk.rs");
     let at = file
         .find("pub(crate) fn refuses_reparent(")
-        .expect("a porta da recusa mudou de nome — reancore este censo");
+        .expect("a porta da recusa mudou de nome ou de ficheiro — reancore este censo");
     let end = file[at..]
         .find("\npub(crate) fn ")
         .map_or(file.len(), |n| at + n);

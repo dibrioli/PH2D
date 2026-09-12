@@ -25,7 +25,7 @@ use crate::instance_sync::MasterEcho;
 use ph2d_ecs::{Entity, SimWorld, Transform};
 
 fn reg() -> ph2d_ecs::scene::ComponentRegistry {
-    crate::init::build_component_registry()
+    crate::component_registry_for_tests::registo()
 }
 
 /// ⚠️ **Sem documentos vetoriais** — ver `crate::instance_docs`.

@@ -11,7 +11,7 @@ use ph2d_ecs::{Children, Entity, InstanceOf, MasterRoot, Name, SimWorld, Transfo
 use ph2d_physics_ecs::PhysicsBridge;
 
 fn reg() -> ph2d_ecs::scene::ComponentRegistry {
-    crate::init::build_component_registry()
+    crate::component_registry_for_tests::registo()
 }
 
 /// ⚠️ **Sem documentos vetoriais** — estes gates são de sprites/física. Os do documento vivem em

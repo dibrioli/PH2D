@@ -11,7 +11,7 @@ use ph2d_vec_scene::{VecPathId, VecScene, rectangle};
 use ph2d_vec_entities::entities::VecEntityMap;
 
 fn reg() -> ph2d_ecs::scene::ComponentRegistry {
-    crate::init::build_component_registry()
+    crate::component_registry_for_tests::registo()
 }
 
 /// Uma receita cuja peça é uma FORMA VETORIAL: raiz + um filho com `VecPathRef`.

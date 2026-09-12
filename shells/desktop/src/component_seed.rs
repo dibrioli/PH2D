@@ -43,11 +43,11 @@ type Seed = fn(&mut SimWorld, u64);
 pub(crate) const SEEDS: &[(&str, Seed)] = &[
     (
         "ph2d::physics::Collider",
-        crate::render_loop::seed_attached_collider,
+        ph2d_app_physics::physics_seed::seed_attached_collider,
     ),
     (
         "ph2d::physics::PlatformPlayer",
-        crate::render_loop::seed_attached_player,
+        ph2d_app_physics::inspector::player::seed_attached_player,
     ),
 ];
 
@@ -71,7 +71,32 @@ mod tests {
     use ph2d_ecs::{SimWorld, Transform};
 
     fn registry() -> ph2d_ecs::scene::ComponentRegistry {
-        crate::init::build_component_registry()
+        crate::component_registry_for_tests::registo()
+    }
+
+    /// **A §14 do Inspector aparece para esta entidade?**
+    ///
+    /// ⚠️ Era `crate::render_loop::inspector_presence_probe::player`, e a troca é de ENDEREÇO, não
+    /// de lei: aquele wrapper já chamava esta mesma função pública da `ph2d-app-physics` (o
+    /// ficheiro dele tem os dois estados lado a lado — o `slice` ainda aponta para um builder
+    /// privado do `render_loop`, e o `physics`/`player` já apontam para a crate). A sonda fica na
+    /// shell porque `render_loop/inspector*` é chrome PARTILHADO e sai numa wave com dono próprio;
+    /// esta família não pode depender dela porque **uma crate nunca pode chamar o `bin`**.
+    ///
+    /// ⛔ **O helper existe em vez de o `build_player_info` ser soletrado no sítio da asserção** —
+    /// é a razão que o doc-comment da sonda dá para ela própria existir (*«cada um tem a sua lista
+    /// de argumentos … sem esta camada a lei teria de ser escrita como oito testes soltos, cada um
+    /// a soletrar os defaults do vizinho»*), e ela continua a valer deste lado da fronteira.
+    fn secao_player_aparece(sim: &SimWorld, bits: u64) -> bool {
+        ph2d_app_physics::inspector::player::build_player_info(
+            sim,
+            bits,
+            0.0,
+            0.0,
+            None,
+            ph2d_physics_ecs::PlayerLiveness::SPRING,
+        )
+        .is_some()
     }
 
     /// ⭐ **Anexar é INERTE — para tudo o que não semeia.**
@@ -272,7 +297,7 @@ mod tests {
         );
         // ⭐ E a §14 aparece — que e' a razao de tudo isto existir.
         assert!(
-            crate::render_loop::inspector_presence_probe::player(&sim, e.to_bits()),
+            secao_player_aparece(&sim, e.to_bits()),
             "o artista anexou o player e a seccao nao apareceu"
         );
     }

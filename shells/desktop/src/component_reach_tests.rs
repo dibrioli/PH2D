@@ -8,14 +8,22 @@
 //! | todo `Authored` chega à paleta de ALGUM tipo de objeto | um componente que existe, tem descritor, e **nenhuma porta o anexa** |
 //! | nada além de `Authored` chega | o `+` ofereceria o que o artista não escolhe (um marcador de sistema, uma ponte) |
 //!
-//! ⚠️ **Ele pergunta ao registo do PRODUTO** ([`crate::init::build_component_registry`]) — um
-//! `ComponentRegistry::new()` montado à mão aqui seria uma segunda lista, e o gate ficaria verde
-//! sobre um registo que ninguém executa.
+//! ⚠️ **Ele pergunta a um registo montado como o do PRODUTO** — um `ComponentRegistry::new()`
+//! montado à mão aqui seria uma segunda lista, e o gate ficaria verde sobre um registo que
+//! ninguém executa.
+//!
+//! ⭐ Até 2026-09-12 isso queria dizer *chamar o `build_component_registry` da shell*, e era essa
+//! chamada — `33` usos em `29` ficheiros, **todos testes** — que prendia esta família dentro do
+//! `shells/desktop` (`91 %` do fecho dela). Hoje o registo é
+//! [`crate::component_registry_for_tests::registo`], que faz **as mesmas cinco chamadas na mesma
+//! ordem**, e a preocupação que esta nota levanta deixou de ser uma promessa e passou a ter
+//! instrumento: `o_registo_das_fixturas_e_o_do_produto` lê o `init.rs` e exige **igualdade
+//! exacta** do conjunto, sem isenções.
 
 use ph2d_component_desc::{Attach, ObjectKind};
 
 fn buildable_in_the_product(name: &str) -> bool {
-    let reg = crate::init::build_component_registry();
+    let reg = crate::component_registry_for_tests::registo();
     reg.get_by_id(ph2d_ecs::scene::stable_type_id(name))
         .is_some_and(|e| e.insert_default.is_some())
 }
@@ -23,7 +31,7 @@ fn buildable_in_the_product(name: &str) -> bool {
 /// Os nomes canónicos que a paleta oferece a `kind`, com *Show all* LIGADO (isto é: tudo o que ela
 /// consegue mostrar, aplicável ou não).
 fn offered_to(kind: ObjectKind) -> Vec<&'static str> {
-    let reg = crate::init::build_component_registry();
+    let reg = crate::component_registry_for_tests::registo();
     let can_build = |n: &str| {
         reg.get_by_id(ph2d_ecs::scene::stable_type_id(n))
             .is_some_and(|e| e.insert_default.is_some())

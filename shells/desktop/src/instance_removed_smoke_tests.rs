@@ -17,7 +17,7 @@ fn build() -> (
     Vec<Entity>,
 ) {
     let mut sim = SimWorld::new();
-    let r = crate::init::build_component_registry();
+    let r = crate::component_registry_for_tests::registo();
     let (mut sc, mut mp) = crate::instance_docs::empty_docs();
     let (master, copies) = spawn_robot_scene(
         &mut sim,

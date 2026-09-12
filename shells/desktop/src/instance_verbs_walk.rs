@@ -135,3 +135,27 @@ pub(crate) fn master_subject(sim: &mut SimWorld, clicked: Entity) -> Entity {
     };
     entity_for_stable_id(sim, master_id).map_or(clicked, Entity::from_bits)
 }
+
+/// ⭐⭐⭐ **ESTE ARRASTO É RECUSADO?** — a guarda do lugar de uma peça de cópia (F5.12).
+///
+/// ⚠️ **Porta separada, e não uma condição dentro do gesto:** o `drain_reparent` (o dreno do
+/// arrasto, que fica na shell) recebe o
+/// `HeroLive` (a ponte nó ↔ entidade), que um teste não monta sem uma janela. Enquanto a lei vivia
+/// lá dentro, **qual dos gestos ela apanha** não era mensurável — e foi exactamente isso que o
+/// report de 2026-09-06 expôs.
+///
+/// ⚠️ **Só quando o PAI muda.** Reordenar entre irmãos continua a valer: a ordem viaja no
+/// `SiblingOrder`, que **é** componente registado e por isso vira excepção da cópia como qualquer
+/// outro valor (há gate: `reordering_a_piece_inside_a_copy_sticks_as_an_override`). *Duas perguntas
+/// diferentes sobre o mesmo arrasto, e só uma delas é sobre a forma.*
+pub(crate) fn refuses_reparent(
+    sim: &mut SimWorld,
+    dragged: ph2d_ecs::Entity,
+    new_parent: Option<ph2d_ecs::Entity>,
+) -> bool {
+    let same_parent = sim.world().get::<ph2d_ecs::ChildOf>(dragged).map(|c| c.0) == new_parent;
+    // ⚠️ A lei é a deste mesmo ficheiro — o `instance_verbs` só a RE-EXPORTA (linha 563). Quando
+    // isto vivia no `hero_intents`, o caminho pelo re-export era o único que existia; daqui, citá-lo
+    // seria dar a volta ao quarteirão para bater à porta ao lado.
+    !same_parent && is_a_recipe_given_piece(sim, dragged)
+}

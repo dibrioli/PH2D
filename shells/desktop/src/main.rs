@@ -152,6 +152,11 @@ mod component_attach;
 mod component_palette;
 /// **Contour** (pesquisa `20_*` #9) — o cozimento vivo do `VecContour`: N anéis concêntricos
 /// com rampa de cor, irmão do `offset_live` de que é a generalização.
+/// ⭐ **O catálogo de componentes que as fixturas da família das INSTÂNCIAS montam** — e o gate que
+/// o obriga a ser o mesmo que o produto monta. `#[cfg(test)]` porque **todos** os `33` chamadores
+/// dele são testes: não há uma linha de produto nesta família a construir um registo.
+#[cfg(test)]
+mod component_registry_for_tests;
 mod component_seed;
 mod component_smoke;
 /// O gesto que cria um conector (Down numa forma, Up noutra).

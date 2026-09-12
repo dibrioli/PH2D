@@ -18,7 +18,7 @@ const VIEWPORT: Rect = Rect {
 };
 
 fn model(kind: ObjectKind, show_all: bool) -> ph2d_editor::widget::command_palette::PaletteModel {
-    let reg = crate::init::build_component_registry();
+    let reg = crate::component_registry_for_tests::registo();
     let can_build = |n: &str| {
         reg.get_by_id(ph2d_ecs::scene::stable_type_id(n))
             .is_some_and(|e| e.insert_default.is_some())

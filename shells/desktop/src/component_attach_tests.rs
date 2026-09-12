@@ -11,7 +11,7 @@ use ph2d_ecs::{SimWorld, Transform};
 use ph2d_editor::{HeroScreen, NodeId};
 
 fn registry() -> ph2d_ecs::scene::ComponentRegistry {
-    crate::init::build_component_registry()
+    crate::component_registry_for_tests::registo()
 }
 
 /// Uma sprite selecionável.

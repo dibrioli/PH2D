@@ -214,7 +214,7 @@ fn reverting_the_copy_puts_every_refused_piece_back() {
 #[test]
 fn putting_one_piece_back_leaves_the_others_refused() {
     let mut sim = SimWorld::new();
-    let r = crate::init::build_component_registry();
+    let r = crate::component_registry_for_tests::registo();
     let master = sim
         .world_mut()
         .spawn((

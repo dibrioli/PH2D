@@ -17,7 +17,7 @@ fn build() -> (
     Vec<Entity>,
 ) {
     let mut sim = SimWorld::new();
-    let r = crate::init::build_component_registry();
+    let r = crate::component_registry_for_tests::registo();
     let (mut sc, mut mp) = crate::instance_docs::empty_docs();
     let (master, copies) = spawn_move_scene(
         &mut sim,
@@ -238,11 +238,11 @@ fn the_step_that_shows_the_refusal_asks_for_a_gesture_the_guard_catches() {
         "a fixtura tem de partir do estado que o PASSO 1 deixa"
     );
     assert!(
-        crate::hero_intents::hierarchy::refuses_reparent(&mut sim, arm, Some(body)),
+        crate::instance_verbs_walk::refuses_reparent(&mut sim, arm, Some(body)),
         "o gesto que o PASSO 2 pede nao e' recusado — o smoke promete uma mensagem que nao vem"
     );
     assert!(
-        !crate::hero_intents::hierarchy::refuses_reparent(&mut sim, arm, Some(head)),
+        !crate::instance_verbs_walk::refuses_reparent(&mut sim, arm, Some(head)),
         "o gesto que o PASSO 2 PEDIA antes seria recusado — entao o report do dono nao teria \
          causa, e este gate esta' a medir outra coisa"
     );

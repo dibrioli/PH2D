@@ -13,7 +13,7 @@ use ph2d_vec_scene::{VecPathId, VecScene, rectangle};
 use ph2d_vec_entities::entities::VecEntityMap;
 
 fn reg() -> ph2d_ecs::scene::ComponentRegistry {
-    crate::init::build_component_registry()
+    crate::component_registry_for_tests::registo()
 }
 
 /// A cena de trabalho: uma receita com UMA peça vetorial, e uma instância dela.

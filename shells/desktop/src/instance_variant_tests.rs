@@ -13,7 +13,7 @@ use crate::instance_swap_match::WhenUnrelated;
 use super::{SwapRefusal, piece_map, swap};
 
 fn reg() -> ph2d_ecs::scene::ComponentRegistry {
-    crate::init::build_component_registry()
+    crate::component_registry_for_tests::registo()
 }
 
 fn pass(sim: &mut SimWorld, r: &ph2d_ecs::scene::ComponentRegistry, echo: &mut MasterEcho) {

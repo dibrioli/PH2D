@@ -11,7 +11,7 @@ use crate::instance_sync::MasterEcho;
 use ph2d_ecs::{Children, Entity, InstanceOf, Name, SimWorld, Transform};
 
 fn reg() -> ph2d_ecs::scene::ComponentRegistry {
-    crate::init::build_component_registry()
+    crate::component_registry_for_tests::registo()
 }
 
 /// O dreno de um verbo, com o par de documentos vazio (estes gates não têm arte vetorial).

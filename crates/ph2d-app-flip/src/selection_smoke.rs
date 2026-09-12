@@ -29,9 +29,9 @@
 //!   qualquer zoom (é chrome, px de tela).
 
 use ph2d_core::Vec2;
-use ph2d_flip::{FlipStroke, Point, Rgba};
+use ph2d_flip::{FlipStroke, Hold, KeyKind, Point, Rgba};
 use std::sync::OnceLock;
-use std::sync::atomic::AtomicU32;
+use std::sync::atomic::{AtomicU32, Ordering};
 
 pub static FRAME: AtomicU32 = AtomicU32::new(0);
 
@@ -54,4 +54,89 @@ pub fn shape(verts: &[Vec2], color: Rgba, selected: bool) -> FlipStroke {
     s.closed = true;
     s.selected = selected;
     s
+}
+
+/// **Arma a cena deste smoke** (W2/L5 Fase B, 2026-09-11).
+///
+/// ⭐ Era um `impl crate::App`, e o que a `App` de facto dava eram **quatro tipos de crates de
+/// módulo**. ⚠️ O `HeroScreen` entra por PARÂMETRO e isso tem precedente no próprio substrato
+/// ([`ph2d_app_host::canvas_area::visible`]): o que o HOWTO §1.5 proíbe é um **método do trait
+/// DEVOLVER** um handle — o que deixaria a família alcançar tudo, a qualquer hora. Um parâmetro
+/// é a shell a escolher o que entrega, num sítio que ela controla.
+///
+/// Devolve **se armou input autorado** — o `any_input_this_frame` é da shell, e um `&mut bool`
+/// atravessaria a fronteira por um campo em vez de por um valor.
+/// Roda no prólogo do frame (ao lado dos outros smokes). No-op sem a env.
+pub fn arm(
+    flip: &mut ph2d_flip::FlipDoc,
+    tools: &mut ph2d_editor::ToolRegistry,
+    mut hero: Option<&mut ph2d_editor::HeroScreen>,
+    playhead: &mut ph2d_core::Playhead,
+) -> bool {
+    let mut armou = false;
+    if !enabled() {
+        return false;
+    }
+    match FRAME.fetch_add(1, Ordering::Relaxed) {
+        3 => {
+            let _ = tools.set_active(&ph2d_editor::ToolId::new("flip"));
+            let oid = flip.push_object("Xform Smoke");
+            let obj = flip.object_mut(oid).expect("objeto recém-criado");
+            obj.fps = 12.0;
+            let l = obj.add_layer("L");
+            if let Some(d) = obj.insert_frame(l, 0, Hold::Implicit, KeyKind::Keyframe) {
+                let dr = obj.drawing_mut(d).expect("desenho");
+                // Retângulo SELECIONADO (o alvo do gizmo) à esquerda.
+                dr.strokes.push(shape(
+                    &[
+                        Vec2::new(-3.0, -1.0),
+                        Vec2::new(-1.0, -1.0),
+                        Vec2::new(-1.0, 1.0),
+                        Vec2::new(-3.0, 1.0),
+                    ],
+                    Rgba::new(0.85, 0.2, 0.7, 1.0),
+                    true,
+                ));
+                // Triângulo NÃO selecionado à direita — a testemunha de que o resto
+                // do desenho fica parado.
+                dr.strokes.push(shape(
+                    &[
+                        Vec2::new(1.5, -1.0),
+                        Vec2::new(3.0, -1.0),
+                        Vec2::new(2.25, 1.2),
+                    ],
+                    Rgba::new(0.2, 0.7, 0.9, 1.0),
+                    false,
+                ));
+            }
+            playhead.pause();
+        }
+        // Entra no Edit pela porta REAL (o mesmo evento do pill do painel). O
+        // domínio começa em Stroke; a seleção do retângulo já está armada.
+        8 => {
+            if let Some(hero) = hero.as_deref_mut() {
+                hero.bus
+                    .push(ph2d_editor::action_bus::EditorAction::ToolPanelEvent(
+                        ph2d_editor::tool::PanelEvent::Click(ph2d_editor::ids::FLIP_MODE_EDIT),
+                    ));
+            }
+            eprintln!(
+                "[xform-smoke] retangulo VAZADO e SELECIONADO (roxo) + triangulo (azul); \
+                 modo Edit, dominio Stroke. O gizmo da SELECAO enquadra o retangulo: quina \
+                 = rotate(anel)/scale, borda = scale-1-eixo. AREA do gizmo: arrastar do \
+                 MEIO do retangulo (sem tinta ali) AGARRA a selecao. Confira: o triangulo \
+                 NAO se mexe; Ctrl+Z desfaz o gesto inteiro; clicar no vazio FORA da caixa \
+                 desmarca e o gizmo some; as 3 linhas do triangulo e as 4 do retangulo sao \
+                 todas clicaveis (a costura, BUGS #18). O toggle Select:Point SOME com o \
+                 gizmo na hora porque comeca DESSELECIONADO; UMA ancora = sem gizmo (so o \
+                 realce, e ela arrasta), DUAS ou mais = gizmo enquadrando SO elas -- com \
+                 FOLGA: os handles ficam FORA das ancoras e nunca se sobrepoem, nem com \
+                 duas na mesma horizontal. Voltar a Stroke promove por any() e o gizmo \
+                 volta ao traco inteiro."
+            );
+        }
+        9 => armou = true, // arma o baseline do undo
+        _ => {}
+    }
+    armou
 }

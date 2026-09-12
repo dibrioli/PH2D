@@ -135,8 +135,7 @@ fn the_artists_piece_through_the_button() {
         // espelhavam — e a cópia envelheceu no dia em que a fase zero ganhou a **calota** dos
         // bicos: a sonda media a malha de trabalho de um programa que já não existia. *Uma lei
         // escrita em dois sítios ainda não é uma lei — só uma PORTA é.*
-        let mut work =
-            crate::history::retopo_extract::target::phase_zero(&reference, target);
+        let mut work = crate::history::retopo_extract::target::phase_zero(&reference, target);
         work.triangulate();
         eprintln!(
             "   CENA: {} verts {} faces | aresta media {:.5} | alvo do slider {:.5}",

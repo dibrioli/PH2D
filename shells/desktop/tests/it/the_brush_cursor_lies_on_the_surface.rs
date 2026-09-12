@@ -37,7 +37,8 @@ fn achatado(src: &str) -> String {
 
 #[test]
 fn the_brush_cursor_asks_the_surface_for_its_orientation() {
-    let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../crates/ph2d-app-sculpt3d/src/cursor.rs");
+    let path =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../crates/ph2d-app-sculpt3d/src/cursor.rs");
     let bruto = std::fs::read_to_string(&path)
         .unwrap_or_else(|e| panic!("o dono do cursor mudou-se: {} ({e})", path.display()));
     let src = achatado(&bruto);

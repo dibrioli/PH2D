@@ -50,16 +50,8 @@ fn how_many_patches_are_uncombable() {
             "sphere_uv_96x144",
             ph2d_mesh::shapes::uv_sphere(96, 144, 1.0),
         ),
-        (
-            "ORELHA",
-            "sculpt_eared",
-            crate::fixtures::eared_sphere(),
-        ),
-        (
-            "GANCHO",
-            "sculpt_hooked",
-            crate::fixtures::hooked_sphere(),
-        ),
+        ("ORELHA", "sculpt_eared", crate::fixtures::eared_sphere()),
+        ("GANCHO", "sculpt_hooked", crate::fixtures::hooked_sphere()),
         (
             "ENRUGADA",
             "sculpt_wrinkled",

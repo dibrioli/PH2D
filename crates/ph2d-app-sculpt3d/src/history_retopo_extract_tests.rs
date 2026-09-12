@@ -453,15 +453,14 @@ fn a_linha_do_artista_nomeia_as_pontas_amputadas() {
         "⛔ sem ponta cortada a linha tem de ser CALADA, senao a palavra perde o peso: {calada}"
     );
 
-    let acusa = crate::history::retopo_global::retopo_line(
-        &crate::history::remesh::QuadRemeshReport {
+    let acusa =
+        crate::history::retopo_global::retopo_line(&crate::history::remesh::QuadRemeshReport {
             tips_cut: 2,
             // ⚠️ Valor SEM ambiguidade de arredondamento: a linha imprime com `{:.0}`, e
             // `−21,5` sai `−22` — a 1.ª versão deste gate procurava `−21` e reprovou.
             tips_worst_pct: -21.0,
             ..base
-        },
-    );
+        });
     assert!(
         acusa.contains("AMPUTADA"),
         "⛔ com 2 pontas cortadas a linha tem de o DIZER: {acusa}"

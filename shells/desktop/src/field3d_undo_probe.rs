@@ -248,7 +248,9 @@ impl crate::App {
         let setas = ph2d_app_field3d::smoke::with_smoke(|s| {
             ph2d_app_field3d::input::handles(s)
                 .iter()
-                .filter(|h| h.live && matches!(h.shape, ph2d_viewport3d::gizmo::Shape::Arrow { .. }))
+                .filter(|h| {
+                    h.live && matches!(h.shape, ph2d_viewport3d::gizmo::Shape::Arrow { .. })
+                })
                 .count()
         })
         .unwrap_or(0);

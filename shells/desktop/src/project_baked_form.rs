@@ -211,7 +211,9 @@ mod tests {
             width: 2,
             height: 1,
             base: vec![10, 20, 30, 255, 40, 50, 60, 128],
-            form: ph2d_form_donation::baked_form::form_to_rgba8(&[0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.5]),
+            form: ph2d_form_donation::baked_form::form_to_rgba8(&[
+                0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.5,
+            ]),
             rig: authored,
         };
         let bytes = postcard::to_allocvec(&doc).expect("serializa");

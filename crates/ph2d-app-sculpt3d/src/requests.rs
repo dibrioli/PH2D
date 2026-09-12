@@ -86,7 +86,6 @@ mod tests {
             "um pedido lido sem ser desarmado cumpre-se a cada quadro"
         );
     }
-
 }
 
 /// **O que esta família declara à shell** (`ph2d-app-registry-init`).

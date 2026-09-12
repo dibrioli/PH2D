@@ -94,8 +94,8 @@ fn a_shading_scene_owns_its_whole_cast() {
 fn the_primary_mesh_door_is_actually_asked_before_the_fallback() {
     // ⚠️ **A `smoke_mesh` mudou de ficheiro em 2026-09-07** (corte de LOC do
     // roteador de cenas) — ver o irmão no `sculpt3d/scenes_tests.rs`.
-    let src =
-        fs::read_to_string("../../crates/ph2d-app-sculpt3d/src/scenes_mesh.rs").expect("o escolhedor de malha existe");
+    let src = fs::read_to_string("../../crates/ph2d-app-sculpt3d/src/scenes_mesh.rs")
+        .expect("o escolhedor de malha existe");
     let at = src
         .find("pub(crate) fn smoke_mesh(")
         .expect("controle: a porta da peca primaria existe");

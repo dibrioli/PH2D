@@ -71,8 +71,16 @@ const SCENE_PORTS: [(&str, &str, &str); 4] = [
     // *Um gate que nomeia um FICHEIRO envelhece com o primeiro corte* — e o modo de falha aqui é
     // o pior: o `function_body` entra em pânico com «controlo positivo», que se lê como o gate
     // partido em vez de como a lista desactualizada.
-    ("../../crates/ph2d-app-sculpt3d/src/input_down.rs", "pointer_down", PARAM_DOOR),
-    ("../../crates/ph2d-app-sculpt3d/src/input.rs", "wheel", PARAM_DOOR),
+    (
+        "../../crates/ph2d-app-sculpt3d/src/input_down.rs",
+        "pointer_down",
+        PARAM_DOOR,
+    ),
+    (
+        "../../crates/ph2d-app-sculpt3d/src/input.rs",
+        "wheel",
+        PARAM_DOOR,
+    ),
 ];
 
 const SCENE_FILES: [&str; 3] = [
@@ -173,7 +181,11 @@ fn a_drag_already_running_is_never_dropped_by_crossing_the_frame() {
     // desactualizada, que é o que de facto estava.
     for (path, nome, door) in [
         (FAMILY_INPUT, "field3d_pointer_up", HOST_DOOR),
-        ("../../crates/ph2d-app-sculpt3d/src/input.rs", "pointer_up", PARAM_DOOR),
+        (
+            "../../crates/ph2d-app-sculpt3d/src/input.rs",
+            "pointer_up",
+            PARAM_DOOR,
+        ),
     ] {
         let body = function_body(&src(path), nome);
         assert!(

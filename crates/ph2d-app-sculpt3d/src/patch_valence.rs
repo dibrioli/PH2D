@@ -137,16 +137,8 @@ fn euler(hist: &BTreeMap<usize, usize>, corners: usize) -> Option<(usize, i64)> 
 #[ignore = "sonda -- le a bancada GPL-isolada fora da arvore"]
 fn how_many_sides_do_the_patches_have() {
     for (name, piece, reference) in [
-        (
-            "ORELHA",
-            "sculpt_eared",
-            crate::fixtures::eared_sphere(),
-        ),
-        (
-            "GANCHO",
-            "sculpt_hooked",
-            crate::fixtures::hooked_sphere(),
-        ),
+        ("ORELHA", "sculpt_eared", crate::fixtures::eared_sphere()),
+        ("GANCHO", "sculpt_hooked", crate::fixtures::hooked_sphere()),
         (
             "ENRUGADA",
             "sculpt_wrinkled",

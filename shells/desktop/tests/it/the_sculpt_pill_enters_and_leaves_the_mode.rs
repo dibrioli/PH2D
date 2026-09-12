@@ -143,11 +143,14 @@ fn the_scene_never_takes_a_click_that_belongs_to_the_chrome() {
     // tecto de LOC, e a varredura de um ficheiro só passou a ler o vazio.
     // *Um gate que nomeia um FICHEIRO envelhece com o primeiro corte* — e este
     // sabia-o, porque a mensagem do controlo positivo já o dizia.
-    let src: String = ["../../crates/ph2d-app-sculpt3d/src/input_down.rs", "../../crates/ph2d-app-sculpt3d/src/input.rs"]
-        .iter()
-        .map(|f| fs::read_to_string(f).expect("o módulo do gesto existe"))
-        .collect::<Vec<_>>()
-        .join("\n");
+    let src: String = [
+        "../../crates/ph2d-app-sculpt3d/src/input_down.rs",
+        "../../crates/ph2d-app-sculpt3d/src/input.rs",
+    ]
+    .iter()
+    .map(|f| fs::read_to_string(f).expect("o módulo do gesto existe"))
+    .collect::<Vec<_>>()
+    .join("\n");
     assert!(
         src.contains("fn pointer_down"),
         "controle positivo: o dono do gesto mudou de arquivo e este gate varreria o vazio"

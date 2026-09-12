@@ -36,9 +36,9 @@
 //! envelhecesse agarraria ao lado do que diz mover.*
 
 use super::Sculpt3dScene;
-use ph2d_viewport3d::gizmo::{Anchor, GizmoCamera, Handle, Mode, Projected};
 use ph2d_mesh_render::Camera3d;
 use ph2d_sculpt3d::{Gesture, TransformKind};
+use ph2d_viewport3d::gizmo::{Anchor, GizmoCamera, Handle, Mode, Projected};
 
 /// A câmera desta cena no vocabulário do gizmo, **em coordenadas de JANELA**.
 ///

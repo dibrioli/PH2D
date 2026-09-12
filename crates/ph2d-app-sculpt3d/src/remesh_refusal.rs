@@ -112,7 +112,7 @@ impl RemeshRefusal {
     /// um `None` só, o chamador elegia a mensagem da pilha de multires — e um
     /// campo que vazava mandava o artista *"reverter os níveis"* que ele não tem.
     #[must_use]
-    pub(in crate) fn explain(&self) -> String {
+    pub(crate) fn explain(&self) -> String {
         match self {
             Self::MultiresStack => String::from(
                 "nao' reconstroi com a pilha montada: o remesh troca a TOPOLOGIA, e todo nivel \
@@ -189,7 +189,7 @@ impl RemeshRefusal {
     /// decidir **aqui** se ela alcança aquele gesto — e um `false` errado grita no
     /// sítio onde acontece em vez de virar uma mensagem estranha na consola.
     #[must_use]
-    pub(in crate) fn reaches_voxel_remesh(&self) -> bool {
+    pub(crate) fn reaches_voxel_remesh(&self) -> bool {
         match self {
             Self::MultiresStack | Self::EmptyScene | Self::Engine(_) => true,
             // As cinco da família da retopologia — as duas do porte local e as

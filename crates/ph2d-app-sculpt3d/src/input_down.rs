@@ -11,7 +11,7 @@
 //! por dois sítios poria metade da arbitragem a correr depois da outra metade
 //! ter já respondido.
 
-use super::{Drag, Verb, Sculpt3dScene};
+use super::{Drag, Sculpt3dScene, Verb};
 
 /// O botão apertou. Devolve `true` se a cena 3D tomou o gesto.
 pub fn pointer_down(

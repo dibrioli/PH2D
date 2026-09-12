@@ -72,11 +72,8 @@ fn the_relight_is_not_behind_the_sculpt_feature() {
 /// **Mutação que deve sangrar:** pôr `optional = true` na linha do manifesto.
 #[test]
 fn the_crate_that_holds_the_channels_is_unconditional() {
-    let manifesto = std::fs::read_to_string(format!(
-        "{}/Cargo.toml",
-        env!("CARGO_MANIFEST_DIR")
-    ))
-    .expect("o `Cargo.toml` da shell existe");
+    let manifesto = std::fs::read_to_string(format!("{}/Cargo.toml", env!("CARGO_MANIFEST_DIR")))
+        .expect("o `Cargo.toml` da shell existe");
 
     let linha = manifesto
         .lines()

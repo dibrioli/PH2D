@@ -279,11 +279,7 @@ fn every_point_of_the_detail_slider_returns_a_piece() {
         //    (Enio, 2026-08-19). Um gate sobre a lisa fica verde sobre
         //    exatamente o defeito que o artista vê. *A fixtura só prova o que
         //    ela contém.*
-        let mut s = Sculpt3dScene::new(
-            &gpu.device,
-            crate::fixtures::wrinkled_sphere(),
-            1.0,
-        );
+        let mut s = Sculpt3dScene::new(&gpu.device, crate::fixtures::wrinkled_sphere(), 1.0);
         s.note_canvas(ph2d_editor::zones::Rect::new(0.0, 0.0, 900.0, 700.0));
         let r = s.quad_remesh(detail, adapt).unwrap_or_else(|e| {
             panic!("detail={detail:.2} adapt={adapt:.2}: a retopologia recusou ({e:?})")
@@ -405,11 +401,7 @@ fn every_point_of_the_detail_slider_returns_a_piece() {
 fn two_clicks_without_undo_still_return_a_piece() {
     use std::collections::BTreeMap;
     let gpu = gpu_or_skip!();
-    let mut s = Sculpt3dScene::new(
-        &gpu.device,
-        crate::fixtures::wrinkled_sphere(),
-        1.0,
-    );
+    let mut s = Sculpt3dScene::new(&gpu.device, crate::fixtures::wrinkled_sphere(), 1.0);
     s.note_canvas(ph2d_editor::zones::Rect::new(0.0, 0.0, 900.0, 700.0));
 
     for click in 1..=3u32 {

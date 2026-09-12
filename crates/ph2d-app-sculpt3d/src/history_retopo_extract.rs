@@ -38,7 +38,7 @@ use super::{RemeshRefusal, Sculpt3dScene, SculptStroke, StrokeUndo};
 /// RESPONSABILIDADE: ver [`target`].
 /// ⚠️ **Visível ao módulo** desde 03/09: a sonda da porta tinha uma CÓPIA da fase zero, que envelheceu.
 #[path = "retopo_target.rs"]
-pub(in crate) mod target;
+pub(crate) mod target;
 
 /// **AS RÉGUAS da tentativa** — irmão pela mesma razão: ver [`rulers`].
 #[path = "retopo_rulers.rs"]
@@ -66,7 +66,7 @@ use rulers::{boundary_edges, edges, irregular, span, still_broken};
 impl Sculpt3dScene {
     /// **A RETOPOLOGIA POR MAPA DE GRADE INTEIRA.** Devolve o mesmo
     /// [`QuadRemeshReport`] das outras duas — é o mesmo botão.
-    pub(in crate) fn quad_remesh_extract(
+    pub(crate) fn quad_remesh_extract(
         &mut self,
         detail: f32,
         adaptive: f32,
@@ -558,7 +558,7 @@ impl Sculpt3dScene {
 
 /// **O CAMINHO NOVO É O DE OMISSÃO** — `PH2D_RETOPO_EXTRACT=0` volta ao de sempre.
 #[must_use]
-pub(in crate) fn extract_requested() -> bool {
+pub(crate) fn extract_requested() -> bool {
     extract_from(std::env::var("PH2D_RETOPO_EXTRACT").ok().as_deref())
 }
 
@@ -570,7 +570,7 @@ pub(in crate) fn extract_requested() -> bool {
 /// para `6` e o enviesamento entra na barra do oráculo, ⛔ e as faces com canto pior que
 /// `60°` vão de `4` para `12`. *Uma troca com dois sinais é decisão do dono do produto, e
 /// ele decide vendo — não lendo uma tabela.*
-pub(in crate) fn features_requested() -> bool {
+pub(crate) fn features_requested() -> bool {
     std::env::var("PH2D_FEATURE_EDGES").as_deref() == Ok("1")
 }
 
@@ -591,7 +591,7 @@ pub(in crate) fn features_requested() -> bool {
 /// `"off"`) — a mesma lei do `PH2D_GPU_COOK`, do `PH2D_FLIP_NEW_ENGINE` e do
 /// `PH2D_GRIDMAP_WELD`. *Uma variável com dois vocabulários é duas variáveis.*
 #[must_use]
-pub(in crate) fn extract_from(value: Option<&str>) -> bool {
+pub(crate) fn extract_from(value: Option<&str>) -> bool {
     value != Some("0")
 }
 

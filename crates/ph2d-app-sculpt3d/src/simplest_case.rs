@@ -48,16 +48,8 @@ fn measure(mesh: &Mesh) -> Shown {
 fn at_the_same_density_as_the_oracle() {
     const BENCH: &str = "/home/enio/Documentos/Projetos/ph2d-quadbench/ref";
     for (name, piece, reference) in [
-        (
-            "ORELHA",
-            "sculpt_eared",
-            crate::fixtures::eared_sphere(),
-        ),
-        (
-            "GANCHO",
-            "sculpt_hooked",
-            crate::fixtures::hooked_sphere(),
-        ),
+        ("ORELHA", "sculpt_eared", crate::fixtures::eared_sphere()),
+        ("GANCHO", "sculpt_hooked", crate::fixtures::hooked_sphere()),
         (
             "ENRUGADA",
             "sculpt_wrinkled",

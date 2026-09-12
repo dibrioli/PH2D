@@ -78,12 +78,15 @@ pub fn export(scene: Option<&Sculpt3dScene>, toasts: &mut ph2d_editor::ToastQueu
         .and_then(|e| e.to_str())
         .and_then(MeshFormat::from_extension)
     else {
-        crate::import::toast(toasts, format!(
-            "Unknown extension: use {}",
-            MeshFormat::ALL
-                .map(|f| format!(".{}", f.extension()))
-                .join(", ")
-        ));
+        crate::import::toast(
+            toasts,
+            format!(
+                "Unknown extension: use {}",
+                MeshFormat::ALL
+                    .map(|f| format!(".{}", f.extension()))
+                    .join(", ")
+            ),
+        );
         return;
     };
 

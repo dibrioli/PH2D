@@ -437,8 +437,7 @@ fn the_stroke_anchor_is_armed_at_pen_down() {
     // traço ANTERIOR — no outro canto da tela, o que carimba uma fileira de
     // dabs atravessando o modelo.
     assert!(
-        function_body(&sculpt_src(), "pointer_down")
-            .contains("stroke_anchor = [pos.0, pos.1]"),
+        function_body(&sculpt_src(), "pointer_down").contains("stroke_anchor = [pos.0, pos.1]"),
         "o pen-down tem de armar a âncora do espaçamento"
     );
 }

@@ -77,11 +77,7 @@ pub(super) fn open_edges(mesh: &ph2d_mesh::Mesh) -> usize {
 #[ignore = "requires a GPU adapter (no GPU on CI); run with --ignored on a dev machine"]
 fn the_button_delivers_the_global_chain() {
     let gpu = gpu_or_skip!();
-    let mut s = Sculpt3dScene::new(
-        &gpu.device,
-        crate::fixtures::wrinkled_sphere(),
-        1.0,
-    );
+    let mut s = Sculpt3dScene::new(&gpu.device, crate::fixtures::wrinkled_sphere(), 1.0);
     s.note_canvas(ph2d_editor::zones::Rect::new(0.0, 0.0, 900.0, 700.0));
     let before: Vec<[f32; 3]> = s.mesh().positions().to_vec();
 

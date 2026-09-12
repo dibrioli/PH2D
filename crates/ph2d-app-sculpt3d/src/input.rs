@@ -15,7 +15,10 @@
 use super::{Dab, Drag, Grip, ORBIT_RAD_PER_PX, Sculpt3dScene};
 use std::sync::atomic::{AtomicBool, Ordering};
 
-pub fn smoke(slot: &mut Option<Sculpt3dScene>, gpu: Option<(&std::sync::Arc<wgpu::Device>, (u32, u32))>) {
+pub fn smoke(
+    slot: &mut Option<Sculpt3dScene>,
+    gpu: Option<(&std::sync::Arc<wgpu::Device>, (u32, u32))>,
+) {
     // Guard estático, o mesmo idioma dos outros smokes do shell — evita um
     // campo em `App` que só existe para dizer "já rodei".
     static ARMED: AtomicBool = AtomicBool::new(false);
@@ -82,7 +85,6 @@ pub fn wheel(host: &impl ph2d_app_host::AppHost, scene: &mut Sculpt3dScene, step
     scene.camera.dolly(steps);
     true
 }
-
 
 impl Sculpt3dScene {
     /// Aplica um dab onde o cursor aponta. Devolve `false` se o raio errou a

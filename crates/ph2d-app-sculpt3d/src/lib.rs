@@ -34,8 +34,8 @@ pub mod rulers;
 pub use rulers::*;
 
 mod requests;
-pub use requests::Sculpt3dRequests;
 pub use requests::FAMILY;
+pub use requests::Sculpt3dRequests;
 
 // A costura do módulo 3D com o shell — **a cena, o gesto e o passe**.
 //
@@ -148,7 +148,6 @@ use history::{Entry, StrokeUndo, legacy_requested, retopo_line};
 
 use donation::FormRole;
 use donation::FormStamp;
-
 
 /// **AS CENAS DO SMOKE** — a fixture de cada uma. Filho pelo motivo
 /// dos outros três: o corte é de responsabilidade, e a lista de cenas cresce uma

@@ -55,7 +55,10 @@ fn bake_one(
     // ler um sprite; o que ESTA função precisa são os **pixels**, não a capacidade de os ir
     // buscar. ⭐ E foi só por causa dela que o `AssetDb` e o mapa de atlas estavam nesta
     // assinatura: nenhuma outra linha deste ficheiro os lê, e os dois saíram com ela.
-    ler_fonte: &mut dyn FnMut(&mut SimWorld, &mut SpriteRenderer) -> Option<ph2d_render::SpriteImage>,
+    ler_fonte: &mut dyn FnMut(
+        &mut SimWorld,
+        &mut SpriteRenderer,
+    ) -> Option<ph2d_render::SpriteImage>,
 ) -> Result<(u32, u32), String> {
     let entity = Entity::from_bits(entity_bits);
     // ⚠️ **RE-ASSAR NÃO LÊ A TELA DE VOLTA.** Depois do primeiro bake os pixels do sprite são
@@ -155,7 +158,10 @@ pub fn drain(
     // `hero_intents::texture_edit::holds_sixteen_bit`, da shell.
     lost_precision: bool,
     // Ver `bake_one`.
-    ler_fonte: &mut dyn FnMut(&mut SimWorld, &mut SpriteRenderer) -> Option<ph2d_render::SpriteImage>,
+    ler_fonte: &mut dyn FnMut(
+        &mut SimWorld,
+        &mut SpriteRenderer,
+    ) -> Option<ph2d_render::SpriteImage>,
 ) -> Option<String> {
     if !want_bake {
         return None;
@@ -176,15 +182,7 @@ pub fn drain(
     };
     Some(match selected {
         Some(bits) => match bake_one(
-            scene,
-            forms,
-            pass,
-            next_id,
-            gpu,
-            bits,
-            sim,
-            renderer,
-            ler_fonte,
+            scene, forms, pass, next_id, gpu, bits, sim, renderer, ler_fonte,
         ) {
             Ok((w, h)) => format!(
                 "[sculpt3d] ASSADO no sprite ({w}x{h}){note} -- mova a lampada (Q/E/R/F) e ele \

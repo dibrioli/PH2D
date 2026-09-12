@@ -10,8 +10,8 @@
 //! ```
 
 use super::{aim_of, named_view};
-use ph2d_viewport3d::views::Standard;
 use ph2d_mesh_render::Camera3d;
+use ph2d_viewport3d::views::Standard;
 
 fn dot(a: [f32; 3], b: [f32; 3]) -> f32 {
     a[0].mul_add(b[0], a[1].mul_add(b[1], a[2] * b[2]))

@@ -386,7 +386,7 @@ fn tip_caps(reference: &Mesh, target: f32) -> Vec<ph2d_remesh_iso::Cap> {
 /// variável de ambiente — uma bandeira global é uma corrida escrita à mão».*
 ///
 /// ⚠️ `PH2D_ISO_ADAPT=0` volta ao remalhador uniforme, para bissecar.
-pub(in crate) fn phase_zero(reference: &Mesh, target: f32) -> Mesh {
+pub(crate) fn phase_zero(reference: &Mesh, target: f32) -> Mesh {
     if f1_follows_target() {
         return ph2d_quadchain::phase_zero(reference, target);
     }

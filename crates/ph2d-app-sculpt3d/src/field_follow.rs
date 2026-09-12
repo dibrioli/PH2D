@@ -171,16 +171,8 @@ fn deviation(
 #[ignore = "sonda -- compara a saida com o campo que a produziu"]
 fn does_the_output_follow_the_field() {
     for (name, piece, reference) in [
-        (
-            "ORELHA",
-            "sculpt_eared",
-            crate::fixtures::eared_sphere(),
-        ),
-        (
-            "GANCHO",
-            "sculpt_hooked",
-            crate::fixtures::hooked_sphere(),
-        ),
+        ("ORELHA", "sculpt_eared", crate::fixtures::eared_sphere()),
+        ("GANCHO", "sculpt_hooked", crate::fixtures::hooked_sphere()),
         (
             "ENRUGADA",
             "sculpt_wrinkled",

@@ -555,11 +555,8 @@ fn a_newborn_scene_does_not_re_author_the_light_of_what_is_already_baked() {
         eprintln!("no GPU adapter on this machine — nothing to assert");
         return;
     };
-    let mut scene = crate::Sculpt3dScene::new(
-        &gpu.device,
-        ph2d_mesh::shapes::uv_sphere(12, 24, 1.0),
-        1.0,
-    );
+    let mut scene =
+        crate::Sculpt3dScene::new(&gpu.device, ph2d_mesh::shapes::uv_sphere(12, 24, 1.0), 1.0);
     assert!(
         !scene.take_rig_edge(),
         "a cena recém-criada anuncia um gesto de lâmpada: todo objeto assado do documento é \

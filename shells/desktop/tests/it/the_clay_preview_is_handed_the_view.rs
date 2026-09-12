@@ -85,7 +85,8 @@ fn the_clay_preview_is_handed_the_view() {
 /// corresponde ao que realmente está sendo esculpido*.
 #[test]
 fn the_dab_asks_the_view_the_same_way_the_preview_does() {
-    let src = fs::read_to_string("../../crates/ph2d-app-sculpt3d/src/space.rs").expect("o dono do espaço da cena existe");
+    let src = fs::read_to_string("../../crates/ph2d-app-sculpt3d/src/space.rs")
+        .expect("o dono do espaço da cena existe");
     // O controle positivo: se o `armed_brush` se mudar de arquivo, isto falha
     // ALTO em vez de varrer o vazio e passar.
     assert!(

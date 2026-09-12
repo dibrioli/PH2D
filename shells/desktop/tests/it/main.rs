@@ -10,8 +10,6 @@
 mod sculpt_source;
 
 mod a_baked_object_outlives_the_3d_module;
-mod o_quadro_publica_o_que_o_pintor_mediu;
-mod the_sculpture_bytes_cross_a_build_that_never_reads_them;
 mod a_frames_handle_resizes_it_and_does_not_scale_it;
 mod a_layout_never_commands_a_panel_a_bridge_owns;
 mod a_placed_instance_lands_a_screen_step_from_its_main;
@@ -63,6 +61,7 @@ mod no_open_panel_leaves_its_column_blank;
 mod no_two_object_smoke_modes_claim_the_same_number;
 mod no_two_sculpt3d_scenes_claim_the_same_level;
 mod no_two_smoke_scenes_claim_the_same_level;
+mod o_quadro_publica_o_que_o_pintor_mediu;
 mod one_door_authors_an_expression;
 mod one_word_for_the_reusable_thing;
 mod painter_selection_shortcuts;
@@ -201,6 +200,7 @@ mod the_sculpt_keyboard_yields_to_the_module_in_use;
 mod the_sculpt_mesh_edits_are_wired;
 mod the_sculpt_pen_down_arms_what_the_drag_needs;
 mod the_sculpt_pill_enters_and_leaves_the_mode;
+mod the_sculpture_bytes_cross_a_build_that_never_reads_them;
 mod the_shape_art_picker_is_wired;
 mod the_shape_fields_are_seeded_by_the_pair;
 mod the_shape_handles_follow_the_editing_phase;

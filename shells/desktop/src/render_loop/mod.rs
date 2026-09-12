@@ -1523,7 +1523,12 @@ impl crate::App {
         // rota A (`docs/3D/02.2`) verificável em vez de prosa: um objeto assado que voltou de um
         // arquivo acende **sem o módulo 3D no build**. Quase sempre não faz nada — com o rig parado
         // custa um carimbo por objeto, sem tocar a GPU, e num projeto sem nada assado o mapa é vazio.
-        ph2d_form_donation::baked_form::relight_stale(baked_forms, surface.gpu(), renderer, baked_light);
+        ph2d_form_donation::baked_form::relight_stale(
+            baked_forms,
+            surface.gpu(),
+            renderer,
+            baked_light,
+        );
 
         // Mask smoke (`PH2D_MASK_SMOKE=1`): the same dance for the mask coverage law (doc 25 §13.9).
         // Nothing but the canvas is staged — the artist picks the rail chip, so the scene shows the
@@ -12165,7 +12170,9 @@ impl crate::App {
             // só quando há o que trazer (a lei da W34). Sem a feature, fica sempre falso.
             #[cfg(feature = "sculpt3d")]
             {
-                let live = sculpt3d.as_ref().map(ph2d_app_sculpt3d::Sculpt3dScene::mesh);
+                let live = sculpt3d
+                    .as_ref()
+                    .map(ph2d_app_sculpt3d::Sculpt3dScene::mesh);
                 ph2d_app_field3d::smoke::note_live_sculpt(live.is_some());
                 if ph2d_app_field3d::smoke::take_scene_sculpt_request() {
                     let msg = live.map_or_else(

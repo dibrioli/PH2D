@@ -432,6 +432,10 @@ mod project_tokens;
 mod radial_input;
 mod render_loop;
 mod scroll_smoke;
+/// ⭐ **O gémeo NEUTRO do acima** — as três respostas que o resto do app espera quando a família
+/// não foi compilada. Ver o cabeçalho dele: gatear os chamadores era a cura errada.
+#[cfg(not(feature = "sculpt3d"))]
+mod sculpt3d_absent;
 /// A família 3D inteira — **uma pasta, um `mod`** (W2/L3, 2026-09-11). Os 111 ficheiros
 /// `sculpt3d_*.rs` que viviam soltos aqui no `src/` passaram a `src/sculpt3d/`, e o
 /// `sculpt3d_keys_view` — que era o único irmão declarado à parte — é hoje
@@ -444,10 +448,6 @@ mod scroll_smoke;
 mod sculpt3d_bake_gesture_tests;
 #[cfg(feature = "sculpt3d")]
 mod sculpt3d_host;
-/// ⭐ **O gémeo NEUTRO do acima** — as três respostas que o resto do app espera quando a família
-/// não foi compilada. Ver o cabeçalho dele: gatear os chamadores era a cura errada.
-#[cfg(not(feature = "sculpt3d"))]
-mod sculpt3d_absent;
 mod shape_build;
 mod shape_build_gesture;
 /// O BAKE da folha — as peças passam a ser N janelas para UMA textura (plano §7.3, W5.2).

@@ -68,7 +68,9 @@ impl App {
 
     /// A roda aproxima. **Empresta a cena** — ver o cabeçalho.
     pub(crate) fn sculpt3d_wheel(&mut self, steps: f32) -> bool {
-        self.com_a_cena_emprestada(|host, scene| ph2d_app_sculpt3d::input::wheel(host, scene, steps))
+        self.com_a_cena_emprestada(|host, scene| {
+            ph2d_app_sculpt3d::input::wheel(host, scene, steps)
+        })
     }
 
     /// O botão apertou. **Empresta a cena** — ver o cabeçalho.
@@ -273,6 +275,10 @@ impl App {
         let AppGfx {
             sculpt3d, toasts, ..
         } = gfx;
-        ph2d_app_sculpt3d::import::pick_and_import(sculpt3d, (&device, (size.width, size.height)), toasts);
+        ph2d_app_sculpt3d::import::pick_and_import(
+            sculpt3d,
+            (&device, (size.width, size.height)),
+            toasts,
+        );
     }
 }

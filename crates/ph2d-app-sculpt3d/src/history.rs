@@ -248,7 +248,7 @@ mod retopo_global;
 /// a **segunda** resposta à pergunta que a [`retopo_extract::extract_from`] já decide,
 /// e a que o artista lê é sempre a que envelhece.
 #[path = "history_retopo_extract.rs"]
-pub(in crate) mod retopo_extract;
+pub(crate) mod retopo_extract;
 
 /// **POR QUE UM REMESH RECUSOU** — ver [`refusal`]. Irmão do [`remesh`], e o corte
 /// é o que a HR-18 forçou: o tipo mais a explicação dele em prosa saíam a 616 LOC

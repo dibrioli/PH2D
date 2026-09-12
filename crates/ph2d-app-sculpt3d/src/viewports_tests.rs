@@ -7,9 +7,9 @@
 //! cargo test -p ph2d-host-desktop --bins sculpt3d::viewports
 //! ```
 
-use ph2d_viewport3d::views::Standard;
 use ph2d_editor::zones::Rect;
 use ph2d_mesh::shapes::uv_sphere;
+use ph2d_viewport3d::views::Standard;
 
 const W: f32 = 960.0;
 const H: f32 = 640.0;

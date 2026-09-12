@@ -8,7 +8,7 @@
 //! ⚠️ A porta é a mesma de sempre: sem cena armada ela devolve `false` no primeiro `if`, e o
 //! teclado do app segue para o `store` como se este módulo não existisse.
 
-use super::{LIGHT_STEP_DEG, MaskOp, RADIUS_STEP, Verb, Sculpt3dScene};
+use super::{LIGHT_STEP_DEG, MaskOp, RADIUS_STEP, Sculpt3dScene, Verb};
 
 /// ⭐ **Os verbos da LISTA** — o que o `Shift` arma, cortado daqui na integração de 2026-09-10,
 /// quando este ficheiro ficou vermelho no teto de LOC por ACUMULAÇÃO de duas linhas.

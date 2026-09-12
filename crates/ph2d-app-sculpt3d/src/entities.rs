@@ -240,9 +240,7 @@ pub fn entities_sync(
     if sel != shell.sel {
         shell.sel = sel;
         if let Some(bits) = sel
-            && let Some(piece) = sim
-                .world()
-                .get::<Sculpt3dPieceRef>(Entity::from_bits(bits))
+            && let Some(piece) = sim.world().get::<Sculpt3dPieceRef>(Entity::from_bits(bits))
             && let Some(i) = scene.index_of(ObjectId(piece.0))
         {
             scene.active = i;

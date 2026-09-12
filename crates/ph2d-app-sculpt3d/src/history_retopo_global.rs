@@ -63,7 +63,7 @@ impl Sculpt3dScene {
     /// ⚠️ **A mesma recusa de PILHA dos irmãos**, e pelo mesmo motivo: a saída é
     /// uma malha com outra contagem de vértices, e um nível de multires é uma
     /// subdivisão da base.
-    pub(in crate) fn quad_remesh_global(
+    pub(crate) fn quad_remesh_global(
         &mut self,
         detail: f32,
         adaptive: f32,
@@ -345,7 +345,7 @@ fn span(mesh: &ph2d_mesh::Mesh) -> f32 {
 /// só se atribui à cadeia global depois de se ver o que o porte local faz com a
 /// mesma peça — e sem esta porta a comparação exigiria recompilar.
 #[must_use]
-pub(in crate) fn legacy_requested() -> bool {
+pub(crate) fn legacy_requested() -> bool {
     legacy_from(std::env::var("PH2D_RETOPO_LEGACY").ok().as_deref())
 }
 
@@ -370,7 +370,7 @@ fn legacy_from(value: Option<&str>) -> bool {
 /// ⚠️ **`NAN` não é `0`, e a diferença importa.** O porte local não mede as
 /// arestas da saída; escrever `0,0×` ali leria como uma grade perfeita, que é o
 /// oposto do que ele entrega.
-pub(in crate) fn ratio(v: f32) -> String {
+pub(crate) fn ratio(v: f32) -> String {
     if v.is_finite() {
         format!("{v:.2}x")
     } else {
@@ -397,7 +397,7 @@ pub(in crate) fn ratio(v: f32) -> String {
 /// ⚠️ **Ela mora aqui e não no painel** por causa do teto de 600 LOC por arquivo da
 /// shell (HR-18) — e o corte calhou no sítio certo: quem sabe o que cada coluna
 /// significa é o módulo que a mediu.
-pub(in crate) fn retopo_line(r: &QuadRemeshReport) -> String {
+pub(crate) fn retopo_line(r: &QuadRemeshReport) -> String {
     format!(
         "[sculpt3d] retopologia: {} vertices, {} quads e {} nao-quads ({:.1}% quads), \
          {} irregulares, aresta mediana {} do alvo e a mais longa {}, com quad de {:.4} \

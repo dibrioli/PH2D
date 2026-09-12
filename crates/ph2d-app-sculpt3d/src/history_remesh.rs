@@ -31,7 +31,7 @@ use super::{RemeshRefusal, Sculpt3dScene, SculptStroke, StrokeUndo};
 /// sessão de smoke nem num bug daqui a um mês. *Um número que só existe dentro
 /// da função não é comparável entre duas corridas.*
 #[derive(Clone, Copy, Debug)]
-pub(in crate) struct QuadRemeshReport {
+pub(crate) struct QuadRemeshReport {
     /// Quantos vértices a malha nova tem.
     pub verts: usize,
     /// Quantas faces saíram com quatro lados.
@@ -199,7 +199,7 @@ impl Sculpt3dScene {
     /// para todas — escolheu a da pilha, então um campo que vazou mandava o
     /// artista *"reverter os níveis"* que ele não tem. Uma recusa que nomeia a
     /// causa errada é pior que uma recusa muda: ela dirige o conserto para o
-    pub(in crate) fn remesh(
+    pub(crate) fn remesh(
         &mut self,
         resolution: u32,
     ) -> Result<ph2d_sdf::RemeshReport, RemeshRefusal> {
@@ -234,7 +234,7 @@ impl Sculpt3dScene {
     /// que carrega a malha inteira de antes). Não há representação mais barata: um
     /// remesh não partilha estrutura nenhuma com o que estava lá, nem a contagem
     /// de vértices nem a correspondência entre eles.
-    pub(in crate) fn quad_remesh(
+    pub(crate) fn quad_remesh(
         &mut self,
         detail: f32,
         adaptive: f32,

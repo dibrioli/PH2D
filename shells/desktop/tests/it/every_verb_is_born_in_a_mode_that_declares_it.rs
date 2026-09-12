@@ -24,7 +24,8 @@ use std::path::Path;
 
 #[test]
 fn every_verb_is_born_in_a_mode_that_declares_it() {
-    let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../crates/ph2d-app-sculpt3d/src/birth.rs");
+    let path =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../crates/ph2d-app-sculpt3d/src/birth.rs");
     let src = std::fs::read_to_string(&path)
         .unwrap_or_else(|e| panic!("o dono do nascimento mudou-se: {} ({e})", path.display()));
 

@@ -31,16 +31,16 @@ fn the_pass_through_field_carries_no_feature_gate() {
     // ⚠️ A fonte CRUA, e não a `sculpt_source::source` — aquela descarta comentários, e um
     // `#[cfg(...)]` não é um comentário mas a linha `/// doc` acima dele é: sem a prosa, a
     // janela de três linhas mediria outro sítio do ficheiro.
-    let src = std::fs::read_to_string(format!(
-        "{}/src/app_state.rs",
-        env!("CARGO_MANIFEST_DIR")
-    ))
-    .expect("o `app_state.rs` da shell existe");
+    let src = std::fs::read_to_string(format!("{}/src/app_state.rs", env!("CARGO_MANIFEST_DIR")))
+        .expect("o `app_state.rs` da shell existe");
 
     let linhas: Vec<&str> = src.lines().collect();
     let at = linhas
         .iter()
-        .position(|l| l.trim_start().starts_with("pub(crate) sculpt_doc: Vec<u8>,"))
+        .position(|l| {
+            l.trim_start()
+                .starts_with("pub(crate) sculpt_doc: Vec<u8>,")
+        })
         .expect(
             "controlo positivo: o campo `App::sculpt_doc` sumiu — ou foi renomeado, e este gate \
              passaria a medir o vazio",

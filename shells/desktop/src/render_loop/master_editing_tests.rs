@@ -121,7 +121,7 @@ fn a_recipe_selected_as_an_extra_lights_up_too() {
 #[test]
 fn the_smoke_scene_shows_its_recipe_only_after_the_row_is_clicked() {
     let mut sim = SimWorld::new();
-    let r = crate::init::build_component_registry();
+    let r = crate::component_registry_for_tests::registo();
     let (mut sc, mut mp) = crate::instance_docs::empty_docs();
     let (master, _roots) = crate::instance_smoke::spawn_ragdoll_scene(
         &mut sim,

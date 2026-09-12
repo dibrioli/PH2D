@@ -6,14 +6,6 @@ use super::{NodeId, hash_node_id};
 /// `vector.source` node + drives its 8 params (sliders) and renders the cooked
 /// `VectorNetwork` live. Outer-rect id for `z_order`; the 8 param sliders below.
 pub const VGRAPH_PANEL: NodeId = hash_node_id("vgraph.panel");
-pub const VGRAPH_KIND: NodeId = hash_node_id("vgraph.kind");
-pub const VGRAPH_WIDTH: NodeId = hash_node_id("vgraph.width");
-pub const VGRAPH_HEIGHT: NodeId = hash_node_id("vgraph.height");
-pub const VGRAPH_SIDES: NodeId = hash_node_id("vgraph.sides");
-pub const VGRAPH_INNER_RATIO: NodeId = hash_node_id("vgraph.inner_ratio");
-pub const VGRAPH_TURNS: NodeId = hash_node_id("vgraph.turns");
-pub const VGRAPH_SAMPLES_PER_TURN: NodeId = hash_node_id("vgraph.samples_per_turn");
-pub const VGRAPH_ROTATION: NodeId = hash_node_id("vgraph.rotation");
 /// Vector Inspector panel (W2 T2.4) — minimal right-docked panel hosting the
 /// fill swatch (+ future vertex/node params). Outer-rect id for `z_order`.
 pub const VECTOR_INSPECTOR_PANEL: NodeId = hash_node_id("vector_inspector.panel");
@@ -226,10 +218,6 @@ pub fn vector_shape_choice_id(index: usize) -> NodeId {
 
 /// Teto de campos de forma que o painel registra (espelha `MAX_SHAPE_FIELDS`).
 pub const MAX_SHAPE_FIELD_SLOTS: usize = 8;
-/// Teto de botões de forma que o painel registra (o catálogo pode crescer até aqui).
-pub const MAX_SHAPE_SLOTS: usize = 64;
-/// Teto de abas de família.
-pub const MAX_SHAPE_GROUP_SLOTS: usize = 12;
 
 // ── Expand: Outline Stroke + Offset Path ─────────────────────────────────────
 // Os dois são COMANDOS destrutivos sobre a seleção, irmãos das booleanas acima e

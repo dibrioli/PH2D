@@ -89,17 +89,6 @@ pub fn vector_instance_piece_show_id(row: usize) -> NodeId {
     fnv_node_id_runtime(&format!("vector.instance.piece.show.{row}"))
 }
 
-/// Quantos EIXOS de variant a seção endereça (plano UI/UX W5c).
-///
-/// ⚠️ **Teto de TABELA DE IDS, e ele diz de que recurso é** — o mesmo que o
-/// [`MAX_INSTANCE_PIECES`]: o `populate` regista `AXES × VALUES` chips num laço e o roteador varre
-/// o mesmo intervalo. Não é teto do catálogo: um conjunto pode ter as versões que quiser, e as que
-/// passam daqui continuam a existir, a desenhar, e a ser alcançáveis pelo **Swap Main** — que é um
-/// conta-gotas e não tem lista nenhuma.
-///
-/// ⚠️ E o excedente **é escrito** no painel, nunca truncado em silêncio.
-pub const MAX_VARIANT_AXES: usize = 4;
-
 /// Quantos VALORES por eixo a seção endereça (plano UI/UX W5c).
 pub const MAX_VARIANT_VALUES: usize = 8;
 

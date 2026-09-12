@@ -288,16 +288,6 @@ pub const BLENDER_CLOSE: NodeId = hash_node_id("blender_close");
 /// Hierarchy panel container — wheel-scroll key.
 pub const HIER_PANEL: NodeId = hash_node_id("hier_panel");
 pub const HIER_PLAYER: NodeId = NodeId(400);
-pub const HIER_SPRITE_IDLE: NodeId = NodeId(401);
-pub const HIER_COLLIDER_BOX: NodeId = NodeId(402);
-pub const HIER_SCRIPT_PLAYER: NodeId = NodeId(403);
-pub const HIER_RIGIDBODY: NodeId = NodeId(404);
-pub const HIER_TILEMAP_GROUND: NodeId = NodeId(405);
-pub const HIER_TILEMAP_DECOR: NodeId = NodeId(406);
-pub const HIER_SLIME_01: NodeId = NodeId(407);
-pub const HIER_SLIME_02: NodeId = NodeId(408);
-pub const HIER_TRIGGER_ZONE_A: NodeId = NodeId(409);
-pub const HIER_AMBIENT_LIGHT: NodeId = NodeId(410);
 pub const HIER_MAIN_CAMERA: NodeId = NodeId(411);
 
 /// M14.6 E: search/filter TextInput in the Hierarchy header. Empty

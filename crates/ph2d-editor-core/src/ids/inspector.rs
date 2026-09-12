@@ -615,9 +615,6 @@ pub const GAL_CLOSE: NodeId = hash_node_id("gal_close");
 pub const HIER_DRAG_HANDLE: NodeId = hash_node_id("hier_drag_handle");
 /// Resize gripper at the Hierarchy's bottom-right corner.
 pub const HIER_RESIZE_HANDLE: NodeId = hash_node_id("hier_resize_handle");
-/// Resize gripper at the Hierarchy's bottom-LEFT corner. Mirror of
-/// [`HIER_RESIZE_HANDLE`].
-pub const HIER_RESIZE_HANDLE_BL: NodeId = hash_node_id("hier_resize_handle_bl");
 
 // ---------------------------------------------------------------------------
 // §12 Physics Joint (W3). A joint is an ENTITY, so this section describes the

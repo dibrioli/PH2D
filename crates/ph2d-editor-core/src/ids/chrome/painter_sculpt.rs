@@ -12,8 +12,6 @@
 use super::{NodeId, hash_node_id};
 
 // ── Sub-mode picker (segmented): Smooth · Sharpen · Flatten · Scrape · Fill ─────────────────────────
-/// The sub-mode segmented group (a11y RadioGroup).
-pub const PAINTER_SCULPT_MODE: NodeId = hash_node_id("painter_sculpt.mode");
 /// **Smooth** — pull the relief toward its own local average. The whole reason this wave exists.
 pub const PAINTER_SCULPT_MODE_SMOOTH: NodeId = hash_node_id("painter_sculpt.mode_smooth");
 /// **Sharpen** — the same kernel with the sign flipped (`h + k·(h − blur h)`, unsharp mask on a height
@@ -97,9 +95,6 @@ pub const PAINTER_SCULPT_ANGLE_CHIP: NodeId = hash_node_id("painter_sculpt.angle
 pub const PAINTER_SCULPT_SMOOTH_SLIDER: NodeId = hash_node_id("painter_sculpt.smooth_slider");
 pub const PAINTER_SCULPT_SMOOTH_CHIP: NodeId = hash_node_id("painter_sculpt.smooth_chip");
 
-/// The Sculpt card's a11y group id (a visual surface; not hit-indexed).
-pub const PAINTER_SCULPT_CARD: NodeId = hash_node_id("painter_sculpt.card");
-
 /// The Chisel's **Rake** toggle — *does the V follow the direction of the stroke?* `Click` →
 /// `toggle_sculpt_rake`.
 ///
@@ -141,15 +136,4 @@ pub const PAINTER_SCULPT_CLICKS: [NodeId; 11] = [
     PAINTER_SCULPT_RAKE,
     PAINTER_SCULPT_FILTER,
     PAINTER_SCULPT_FILTER_STROKE,
-];
-
-/// Every Sculpt slider (the `SetValue` half of the same sweep). All four are here even though the card only
-/// ever shows the ones the active verb USES — the sweep gates the wiring, and wiring that is reachable in
-/// only one mode is still wiring that can be dead.
-pub const PAINTER_SCULPT_FIELDS: [NodeId; 5] = [
-    PAINTER_SCULPT_RADIUS_SLIDER,
-    PAINTER_SCULPT_OFFSET_SLIDER,
-    PAINTER_SCULPT_DEPTH_SLIDER,
-    PAINTER_SCULPT_ANGLE_SLIDER,
-    PAINTER_SCULPT_SMOOTH_SLIDER,
 ];

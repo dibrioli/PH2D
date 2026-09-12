@@ -134,6 +134,3 @@ pub fn morph_shape_key_button_id(row: usize) -> NodeId {
 pub fn morph_shape_key_option_id(row: usize, action: usize) -> NodeId {
     fnv_node_id_runtime(&format!("vector.morph.arrow.when.{row}.{action}"))
 }
-
-/// O cabeçalho da sub-lista das setas, dentro da seção.
-pub const VECTOR_MORPH_SHAPES_LABEL: NodeId = hash_node_id("vector.morph.arrows.label");

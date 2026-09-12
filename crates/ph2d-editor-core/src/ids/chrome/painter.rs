@@ -19,21 +19,6 @@ pub const PAINTER_SIDEBAR_UNDO_BUTTON: NodeId = hash_node_id("painter_sidebar.un
 pub const PAINTER_SIDEBAR_REDO_BUTTON: NodeId = hash_node_id("painter_sidebar.redo_button");
 /// Modifier square (centro da sidebar) — W2 default eyedropper-while-held.
 pub const PAINTER_SIDEBAR_MODIFIER_SQUARE: NodeId = hash_node_id("painter_sidebar.modifier_square");
-/// Pigment toggle (W5) — flips the active brush Linear ↔ Subtractive (pigment).
-pub const PAINTER_SIDEBAR_PIGMENT_TOGGLE: NodeId = hash_node_id("painter_sidebar.pigment_toggle");
-/// Accumulate toggle (W5) — flips the active brush wash ↔ build-up (orthogonal
-/// to pigment).
-pub const PAINTER_SIDEBAR_ACCUMULATE_TOGGLE: NodeId =
-    hash_node_id("painter_sidebar.accumulate_toggle");
-/// Grain toggle (W5) — flips the active brush GrainSource None ↔ Procedural
-/// (Simplex paper grain).
-pub const PAINTER_SIDEBAR_GRAIN_TOGGLE: NodeId = hash_node_id("painter_sidebar.grain_toggle");
-/// Grain depth slider + chip (W5) — procedural grain intensity (0..100%). Shown
-/// only while grain is active.
-pub const PAINTER_SIDEBAR_GRAIN_DEPTH_SLIDER: NodeId =
-    hash_node_id("painter_sidebar.grain_depth_slider");
-pub const PAINTER_SIDEBAR_GRAIN_DEPTH_CHIP: NodeId =
-    hash_node_id("painter_sidebar.grain_depth_chip");
 /// Close (X) button do Painter sidebar — routes pra `CancelActiveTool`
 /// (canon BgRemoval/Padding). Deactivates Painter tool quando clicado.
 pub const PAINTER_SIDEBAR_CLOSE: NodeId = hash_node_id("painter_sidebar.close");
@@ -117,12 +102,6 @@ pub const PAINTER_BRUSH_FALLOFF: NodeId = hash_node_id("painter_brush.falloff");
 /// Brush "Eraser" mode toggle — overrides the blend to Erase Alpha while on.
 /// `Click` → `PainterTool::toggle_brush_eraser`.
 pub const PAINTER_BRUSH_ERASER: NodeId = hash_node_id("painter_brush.eraser");
-/// Brush colour Red channel slider (`0..1`). `SetValue` → channel 0.
-pub const PAINTER_BRUSH_COLOR_R: NodeId = hash_node_id("painter_brush.color_r");
-/// Brush colour Green channel slider (`0..1`). `SetValue` → channel 1.
-pub const PAINTER_BRUSH_COLOR_G: NodeId = hash_node_id("painter_brush.color_g");
-/// Brush colour Blue channel slider (`0..1`). `SetValue` → channel 2.
-pub const PAINTER_BRUSH_COLOR_B: NodeId = hash_node_id("painter_brush.color_b");
 /// "Randomize Color" subsection enable toggle (Blender Color → Randomize). `Click` →
 /// `toggle_brush_color_jitter_enabled`.
 pub const PAINTER_BRUSH_COLOR_JITTER_ENABLE: NodeId =
@@ -261,10 +240,6 @@ pub const PAINTER_BRUSH_DASH_LENGTH: NodeId = hash_node_id("painter_brush.dash_l
 pub const PAINTER_BRUSH_INPUT_SAMPLES: NodeId = hash_node_id("painter_brush.input_samples");
 /// "Stabilize Stroke" (smooth-stroke) toggle. `Click` → `set_brush_smooth_stroke` (toggles).
 pub const PAINTER_BRUSH_STABILIZE: NodeId = hash_node_id("painter_brush.stabilize");
-/// Stabilizer "Radius" slider (`0..1` track → 0..200 px dead-zone). `SetValue` → `set_brush_smooth_radius_norm`.
-pub const PAINTER_BRUSH_STABILIZE_RADIUS: NodeId = hash_node_id("painter_brush.stabilize_radius");
-/// Stabilizer "Factor" slider (`0..1` lag). `SetValue` → `set_brush_smooth_factor`.
-pub const PAINTER_BRUSH_STABILIZE_FACTOR: NodeId = hash_node_id("painter_brush.stabilize_factor");
 
 /// Derive the stable [`NodeId`] for stroke-method option `m` (the [`StrokeMethod`] wire
 /// discriminant) in the open Stroke Method dropdown popover. Mirror of the blend option factory.

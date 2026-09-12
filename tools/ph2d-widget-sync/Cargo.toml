@@ -20,3 +20,6 @@ path = "src/main.rs"
 # (per-widget export shapes vary).
 
 [dependencies]
+
+[lints]
+workspace = true

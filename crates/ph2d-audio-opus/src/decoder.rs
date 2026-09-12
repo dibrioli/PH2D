@@ -26,6 +26,11 @@
 //! - **The final granule position.** It is where the audio actually ends; the last packet is
 //!   zero-padded out to a whole frame, and the padding must not survive the trip.
 
+// ⚠️ Este módulo toca a ABI C e é por isso que autoriza `unsafe` POR ESCRITO — a crate declara
+// `unsafe_code = "deny"` e o gate `architecture_every_member_inherits_the_workspace_lints` confere
+// que só os módulos nomeados o fazem.
+#![allow(unsafe_code)]
+
 use ogg::PacketReader;
 use unsafe_libopus::{OpusDecoder, opus_decode, opus_decoder_create, opus_decoder_destroy};
 

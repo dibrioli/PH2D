@@ -16,3 +16,6 @@ authors.workspace = true
 # da `ph2d-vec-blend` — e a `ph2d-vec-scene` continua pura (só `serde` + `postcard`).
 ph2d-vec-scene = { path = "../ph2d-vec-scene" }
 kurbo = "0.13"
+
+[lints]
+workspace = true

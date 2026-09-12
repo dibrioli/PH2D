@@ -136,3 +136,6 @@ ph2d-node-value-switch = { path = "../ph2d-node-value-switch" }
 ph2d-node-value-instance-field = { path = "../ph2d-node-value-instance-field" }
 # The `id` stream the D3 refusal exists for (plan_simulation).
 ph2d-node-motion-emitter = { path = "../ph2d-node-motion-emitter" }
+
+[lints]
+workspace = true

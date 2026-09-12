@@ -13,3 +13,6 @@ authors.workspace = true
 ph2d-nodegraph = { path = "../ph2d-nodegraph" }
 ph2d-node-registry = { path = "../ph2d-node-registry" }
 ph2d-color = { path = "../ph2d-color" }
+
+[lints]
+workspace = true

@@ -36,3 +36,6 @@ serde = { version = "1", features = ["derive"] }
 # postcard SÓ no gate de ida-e-volta do componente — o `src/` não o toca
 # (machete-safe), e é o mesmo formato que a `ph2d-field` usa para pinar a forma.
 postcard = { version = "1", features = ["alloc"] }
+
+[lints]
+workspace = true

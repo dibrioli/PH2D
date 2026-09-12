@@ -16,3 +16,6 @@ authors.workspace = true
 [[bin]]
 name = "ph2d-imageio-sync"
 path = "src/main.rs"
+
+[lints]
+workspace = true

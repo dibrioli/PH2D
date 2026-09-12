@@ -18,3 +18,6 @@ authors.workspace = true
 # miniz_oxide é folha de compressão e nenhum tipo dele atravessa a nossa API.
 # (O veredito de "duas cópias" é por crate: em wgpu/vello/glam seria defeito.)
 miniz_oxide = "0.8"
+
+[lints]
+workspace = true

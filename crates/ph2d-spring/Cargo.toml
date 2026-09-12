@@ -20,3 +20,6 @@ authors.workspace = true
 # ela precisar de mais alguma coisa, essa coisa está no sítio errado.
 [dependencies]
 serde = { version = "1", features = ["derive"] }
+
+[lints]
+workspace = true

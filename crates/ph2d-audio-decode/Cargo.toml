@@ -27,3 +27,6 @@ symphonia = { version = "0.6", default-features = false, features = [
     "mp3",
 ] }
 thiserror = "2"
+
+[lints]
+workspace = true

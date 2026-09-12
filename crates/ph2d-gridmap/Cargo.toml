@@ -43,3 +43,6 @@ ph2d-remesh-iso = { path = "../ph2d-remesh-iso" }
 ph2d-quadfill = { path = "../ph2d-quadfill" }
 ph2d-quantize = { path = "../ph2d-quantize" }
 ph2d-quadflow = { path = "../ph2d-quadflow" }
+
+[lints]
+workspace = true

@@ -31,6 +31,7 @@ mod architecture_curve_drag_asks_whose_gesture;
 mod architecture_cycle_prevention;
 mod architecture_docs_paths_and_smokes_resolve;
 mod architecture_docs_reference_live_gates;
+mod architecture_every_member_inherits_the_workspace_lints;
 mod architecture_every_panel_is_painted;
 mod architecture_interactive_crate_has_behavioral_test;
 mod architecture_motion_chrome_never_wraps_a_row_label;

@@ -48,3 +48,6 @@ ph2d-flip-colorize = { path = "../ph2d-flip-colorize" }
 # o `src/` do flip-render não a toca (machete-safe), como as crates-nó do gate de paridade
 # CPU×GPU da `line/gpu-nodes`.
 ph2d-painter-brush = { path = "../ph2d-painter-brush" }
+
+[lints]
+workspace = true

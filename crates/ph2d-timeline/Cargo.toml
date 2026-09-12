@@ -76,3 +76,6 @@ serde_json = "1"
 # HR-3 zero-alloc gate for the apply pass (tests/no_alloc_bridge.rs), mirroring
 # ph2d-anim's sampling gate.
 dhat = "0.3"
+
+[lints]
+workspace = true

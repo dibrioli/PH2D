@@ -36,3 +36,6 @@ ph2d-host = { path = "../ph2d-host" }
 bumpalo   = "3"
 # Arnês headless de costura — dev-dep só, o `architecture_cycle_prevention` lê `[dependencies]`.
 ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
+
+[lints]
+workspace = true

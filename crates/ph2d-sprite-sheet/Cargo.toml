@@ -33,3 +33,6 @@ rect_packer = "0.2"
 # podem trazer aspas e barras — montar o JSON com `format!` produziria um arquivo inválido no
 # ficheiro de outra pessoa. Mesma major que o `ph2d-asset` usa para o LEITOR do mesmo formato.
 serde_json = "1"
+
+[lints]
+workspace = true

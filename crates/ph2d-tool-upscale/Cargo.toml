@@ -41,3 +41,6 @@ bytemuck = { version = "1", features = ["extern_crate_alloc"] }
 # `imageops::resize`. The 3 production kernels (Lanczos3 / Nearest /
 # xBR) live in `algorithm.rs` and operate on raw `&[u8]` slices, no
 # external image deps.
+
+[lints]
+workspace = true

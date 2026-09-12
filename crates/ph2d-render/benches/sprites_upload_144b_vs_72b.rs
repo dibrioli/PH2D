@@ -53,7 +53,7 @@ const N: usize = 10_000;
 /// `size_of` is 72; it is never uploaded — just built + cast like the
 /// v4 path so the two measurements are apples-to-apples.
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 struct RenderInstanceV3Baseline {
     world_pos: [f32; 2],
     size: [f32; 2],
@@ -66,11 +66,8 @@ struct RenderInstanceV3Baseline {
     z_order: u32,
 }
 
-// SAFETY: `#[repr(C)]`, all fields are `f32`/`u32` (Pod), no padding
-// (every field 4-byte-grained, 72 % 4 == 0). Local to the bench; only
-// used for a byte-slice cast of an owned Vec.
-unsafe impl bytemuck::Zeroable for RenderInstanceV3Baseline {}
-unsafe impl bytemuck::Pod for RenderInstanceV3Baseline {}
+// `Pod`/`Zeroable` por DERIVE: a macro verifica em compilação o que o `unsafe impl` afirmava à mão
+// (`#[repr(C)]`, campos `Pod`, sem padding) — e a workspace proíbe `unsafe` (auditoria A2).
 
 fn build_v4(n: usize) -> Vec<RenderInstance> {
     (0..n)

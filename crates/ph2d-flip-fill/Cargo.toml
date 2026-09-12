@@ -23,3 +23,6 @@ authors.workspace = true
 [dependencies]
 # Vec2 — a única dependência de verdade.
 ph2d-core = { path = "../ph2d-core" }
+
+[lints]
+workspace = true

@@ -49,3 +49,6 @@ ph2d-imageio-webp = { path = "../ph2d-imageio-webp" }
 # Used by the staleness gate to re-render and compare against the
 # checked-in body.
 ph2d-imageio-sync = { path = "../../tools/ph2d-imageio-sync" }
+
+[lints]
+workspace = true

@@ -108,3 +108,6 @@ ph2d-tokens = { path = "../ph2d-tokens" }
 ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
 bytemuck = { version = "1", features = ["extern_crate_alloc"] }
 ph2d-panel-timeline = { path = "../ph2d-panel-timeline" }
+
+[lints]
+workspace = true

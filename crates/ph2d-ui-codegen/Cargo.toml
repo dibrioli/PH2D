@@ -20,3 +20,6 @@ authors.workspace = true
 # `ph2d-painter-brush`: um arch-gate sobre este `Cargo.toml`, e não disciplina.
 #
 # Zero dependência, nem interna nem externa. O que entra é dado simples; o que sai é texto.
+
+[lints]
+workspace = true

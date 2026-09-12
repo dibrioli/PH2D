@@ -29,3 +29,6 @@ authors.workspace = true
 # `OklchColor` (canonical Painter internal). Single source of truth for
 # colour types crossing the imageio boundary; ADR-0054 §2.3.
 ph2d-color = { path = "../ph2d-color" }
+
+[lints]
+workspace = true

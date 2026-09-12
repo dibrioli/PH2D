@@ -25,3 +25,6 @@ ph2d-audio-spectral = { path = "../ph2d-audio-spectral" }
 # The memory the editor actually holds is a MEASUREMENT, not a declaration — dhat is how the
 # ceiling gate observes it (ADR-0117). Same tool the HR-3 zero-alloc gates already use.
 dhat = "0.3"
+
+[lints]
+workspace = true

@@ -34,3 +34,6 @@ ph2d-anim = { path = "../ph2d-anim" }
 # ⚠️ Só o gate de ida-e-volta. `dev-dependencies` NÃO alcança consumidor nenhum, e é por isso
 # que a allowlist da folha a ignora de propósito.
 serde_json = "1"
+
+[lints]
+workspace = true

@@ -27,3 +27,6 @@ ph2d-a11y = { path = "../ph2d-a11y" }
 # ph2d-vector — BezPath, re-exported from vello's bundled kurbo
 # (avoids version skew per SKILL §5).
 ph2d-vector = { path = "../ph2d-vector" }
+
+[lints]
+workspace = true

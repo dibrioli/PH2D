@@ -20,3 +20,6 @@ ph2d-audio = { path = "../ph2d-audio" }
 # Real-input FFT: a thin shell over `rustfft` that halves the work and the memory
 # of a complex FFT on a real signal. Audio is real. (ADR-0115 §3.)
 realfft = "3.5"
+
+[lints]
+workspace = true

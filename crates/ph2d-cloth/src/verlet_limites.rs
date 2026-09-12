@@ -125,10 +125,7 @@ impl Verlet {
             return;
         }
         let k = k.clamp(0.0, 1.0);
-        let voltas: u32 = std::env::var("PH2D_DOBRA_N")
-            .ok()
-            .and_then(|v| v.parse().ok())
-            .unwrap_or(1);
+        let voltas = crate::passagens_de_dobra::passagens();
         for _ in 0..voltas {
             let n = self.x.len();
             if self.dx.len() != n {

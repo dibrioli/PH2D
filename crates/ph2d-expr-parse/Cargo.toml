@@ -16,3 +16,6 @@ authors.workspace = true
 # node's `motion.expression` parse through this ONE door, so the two never drift.
 [dependencies]
 ph2d-expr = { path = "../ph2d-expr" }
+
+[lints]
+workspace = true

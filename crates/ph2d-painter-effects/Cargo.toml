@@ -35,3 +35,6 @@ ph2d-color = { path = "../ph2d-color" }
 [dev-dependencies]
 # Round-trip serialization tests for AdjustmentLayer/AdjustmentParams.
 postcard = { version = "1", features = ["use-std"] }
+
+[lints]
+workspace = true

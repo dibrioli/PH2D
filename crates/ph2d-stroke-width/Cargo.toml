@@ -19,3 +19,6 @@ authors.workspace = true
 # serde: as paradas viajam no save (`VecStrokeProfile`). Sem `postcard`: só o tipo é serializado,
 # quem escreve o wire é o consumidor.
 serde = { version = "1", features = ["derive"] }
+
+[lints]
+workspace = true

@@ -33,3 +33,6 @@ wgpu = "29.0.4"
 # `baked_form` faz round-trip do documento por `postcard`, e lá ele era dependência do binário.
 [dev-dependencies]
 postcard = { version = "1", features = ["alloc"] }
+
+[lints]
+workspace = true

@@ -87,3 +87,6 @@ ph2d-editor-core = { path = "../ph2d-editor-core" }
 # and compares each entry field-by-field against the matching
 # registered `ToolManifest`. Dev-only — no runtime dep on serde.
 toml = "1"
+
+[lints]
+workspace = true

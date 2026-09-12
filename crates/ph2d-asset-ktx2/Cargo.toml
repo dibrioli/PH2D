@@ -20,3 +20,6 @@ publish.workspace = true
 [dependencies]
 ktx2 = "0.5"
 thiserror = "2"
+
+[lints]
+workspace = true

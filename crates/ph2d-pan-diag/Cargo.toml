@@ -16,3 +16,6 @@ ph2d-render = { path = "../ph2d-render" }
 # Flip. Pô-la em `ph2d-app-motion` faria a família `motion` depender da família `flip` — o que o
 # HOWTO §1.2 proíbe por escrito. Uma folha pode depender das duas; uma família não.
 ph2d-app-flip = { path = "../ph2d-app-flip" }
+
+[lints]
+workspace = true

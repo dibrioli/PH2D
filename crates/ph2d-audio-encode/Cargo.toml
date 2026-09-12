@@ -26,3 +26,6 @@ vorbis_rs = "0.5.5"
 [dev-dependencies]
 # Round-trip the encoded bytes back through the real decoder in tests.
 ph2d-audio-decode = { path = "../ph2d-audio-decode" }
+
+[lints]
+workspace = true

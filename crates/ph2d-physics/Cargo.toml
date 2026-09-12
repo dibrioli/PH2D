@@ -51,3 +51,6 @@ libm = { version = "=0.2.16", default-features = false }
 # declares a budget owns a gate that MEASURES it. `measure_checkpoint` is that
 # gate — it decides the checkpoint ring's stride from real heap bytes.
 dhat = "0.3"
+
+[lints]
+workspace = true

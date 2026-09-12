@@ -112,3 +112,6 @@ ph2d-vector = { path = "../ph2d-vector" }
 # O gate do gesto de arrastar uma aba encena um ponteiro REAL pelo dispatch.
 ph2d-host = { path = "../ph2d-host" }
 bumpalo = { version = "3", features = ["collections"] }
+
+[lints]
+workspace = true

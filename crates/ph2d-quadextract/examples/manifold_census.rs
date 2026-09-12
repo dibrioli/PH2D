@@ -144,11 +144,22 @@ fn main() {
     // ⭐⭐⭐ **`f1` mede a malha DEPOIS do remalhe** — a pergunta *«quem cria o defeito, o
     // ficheiro ou nós?»*. ⚠️ Sem este modo a sonda só sabe acusar o ficheiro.
     let after_f1 = args.next().is_some_and(|a| a == "f1");
+    // ⛔ O modo `f1` mede o remalhe com a cura das folhas duplas DESLIGADA. Escrever no próprio
+    // ambiente é `unsafe` na edição 2024 e a workspace proíbe-o em todo alvo (auditoria A2), então a
+    // sonda relança-se A SI MESMA com a env posta — o filho encontra-a e segue.
+    if after_f1 && std::env::var("PH2D_DOUBLED_REPAIR").as_deref() != Ok("0") {
+        let exe = std::env::current_exe().expect("o próprio binário da sonda");
+        let estado = std::process::Command::new(exe)
+            .args(std::env::args().skip(1))
+            .env("PH2D_DOUBLED_REPAIR", "0")
+            .status()
+            .expect("relançar a sonda com a cura desligada");
+        std::process::exit(estado.code().unwrap_or(1));
+    }
     let mut mesh = load(&name);
     if after_f1 {
-        // ⛔ Com a cura DESLIGADA, senão a sonda mede a cura em vez do remalhe.
-        // SAFETY-ish: é um exemplo, e a variável só governa este processo.
-        unsafe { std::env::set_var("PH2D_DOUBLED_REPAIR", "0") };
+        // ⛔ Com a cura DESLIGADA (a env chegou pelo relançamento acima), senão a sonda mede a
+        // cura em vez do remalhe.
         ph2d_remesh_iso::remesh_isotropic(&mut mesh, ph2d_remesh_iso::ALPHA);
         mesh.triangulate();
         println!("[depois do F1]");

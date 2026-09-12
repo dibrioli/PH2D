@@ -30,3 +30,6 @@ ph2d-guides = { path = "../ph2d-guides" }
 # 1, registrada no doc-comment delas); migrá-las muda a aparência do que já existe, e isso
 # é decisão do Enio.
 ph2d-tokens = { path = "../ph2d-tokens" }
+
+[lints]
+workspace = true

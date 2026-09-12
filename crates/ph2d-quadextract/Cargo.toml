@@ -46,3 +46,6 @@ ph2d-gridmap = { path = "../ph2d-gridmap" }
 # ⚠️ SO' PARA A SONDA: o F4 nao esta' na rota que shipa (`ACHADO` §23.13), e este
 # instrumento existe para medir QUANTO o mapa livre discorda do que ele exigiria.
 ph2d-quantize = { path = "../ph2d-quantize" }
+
+[lints]
+workspace = true

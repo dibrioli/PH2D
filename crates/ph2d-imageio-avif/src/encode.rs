@@ -12,6 +12,11 @@
 //! transfer) is written from the source [`ColorProfile`] so HDR /
 //! wide-gamut content round-trips.
 
+// ⚠️ Este módulo toca a ABI C e é por isso que autoriza `unsafe` POR ESCRITO — a crate declara
+// `unsafe_code = "deny"` e o gate `architecture_every_member_inherits_the_workspace_lints` confere
+// que só os módulos nomeados o fazem.
+#![allow(unsafe_code)]
+
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::slice;
 

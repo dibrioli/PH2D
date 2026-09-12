@@ -26,3 +26,6 @@ ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
 # O gesto REAL do seam (Down+Up) precisa do tipo de evento de ponteiro. Um
 # `WidgetEvent::Click` sintético prova a allowlist e PULA a focabilidade no store.
 ph2d-host = { path = "../ph2d-host" }
+
+[lints]
+workspace = true

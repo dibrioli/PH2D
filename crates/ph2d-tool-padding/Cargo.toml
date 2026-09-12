@@ -36,3 +36,6 @@ ph2d-core = { path = "../ph2d-core" }
 # add_padding entry takes a typed `&[SrgbRgba]` instead of `&[u8]` so
 # the IO boundary is explicit.
 ph2d-color = { path = "../ph2d-color" }
+
+[lints]
+workspace = true

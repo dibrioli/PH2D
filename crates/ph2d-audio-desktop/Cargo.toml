@@ -39,3 +39,6 @@ audio-ml = ["panel-audio-editor", "dep:ph2d-audio-ml"]
 # `render_loop` lê. Dentro da shell ele não precisava de feature; do outro lado de uma crate um
 # `cfg(test)` é falso. O tamanho da feature é o que ATRAVESSA, contado pelo compilador.
 test-support = []
+
+[lints]
+workspace = true

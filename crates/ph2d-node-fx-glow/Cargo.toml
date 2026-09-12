@@ -16,3 +16,6 @@ ph2d-node-registry = { path = "../ph2d-node-registry" }
 # de tela consome. A semantica da rampa (interp, espaco de cor, caminho do matiz) fica com a
 # biblioteca; o shader so' interpola entre amostras vizinhas.
 ph2d-color = { path = "../ph2d-color" }
+
+[lints]
+workspace = true

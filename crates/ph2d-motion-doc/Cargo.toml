@@ -16,3 +16,6 @@ authors.workspace = true
 # nodegraph + seção `[backdrop]` irmã de `[layout]`. Sem UI/render aqui — modelo
 # puro, consumido pelo shell (`MotionState` em `app_state.rs`) e pelo painel.
 ph2d-nodegraph = { path = "../ph2d-nodegraph" }
+
+[lints]
+workspace = true

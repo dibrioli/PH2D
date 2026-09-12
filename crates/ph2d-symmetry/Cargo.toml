@@ -23,3 +23,6 @@ authors.workspace = true
 # serde: a simetria viaja no save (`VecSymmetry`). Sem `postcard`: só o tipo é serializado, quem
 # escreve o wire é o consumidor.
 serde = { version = "1", features = ["derive"] }
+
+[lints]
+workspace = true

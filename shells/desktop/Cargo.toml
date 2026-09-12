@@ -654,3 +654,6 @@ panel-audio-editor   = ["ph2d-panel-registry-init/panel-audio-editor", "dep:ph2d
 # DeepFilterNet stack (`ph2d-audio-ml` → `tract`) and lights the "AI Denoise" button in the audio
 # editor. It implies `panel-audio-editor`, which is where the button and its bridge live.
 audio-ml             = ["panel-audio-editor", "ph2d-audio-desktop/audio-ml"]
+
+[lints]
+workspace = true

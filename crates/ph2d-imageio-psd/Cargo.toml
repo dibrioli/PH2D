@@ -25,3 +25,6 @@ ph2d-color   = { path = "../ph2d-color" }
 # silently make all blend modes fall through to `Normal`. Re-validate
 # the hack before unpinning.
 psd          = { version = "=0.3.5" }
+
+[lints]
+workspace = true

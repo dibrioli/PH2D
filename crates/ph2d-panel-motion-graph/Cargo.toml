@@ -41,3 +41,6 @@ ph2d-nodegraph = { path = "../ph2d-nodegraph" }
 # way to test the add-menu the way the artist meets it: the search field is registered
 # by the paint, and the click that picks a row is resolved against what the paint drew.
 ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
+
+[lints]
+workspace = true

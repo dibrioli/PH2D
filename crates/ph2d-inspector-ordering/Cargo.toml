@@ -22,3 +22,6 @@ ph2d-editor-core = { path = "../ph2d-editor-core" }
 # `EditorCommand::SetComponent`.
 serde = { version = "1" }
 postcard = { version = "1", features = ["alloc"] }
+
+[lints]
+workspace = true

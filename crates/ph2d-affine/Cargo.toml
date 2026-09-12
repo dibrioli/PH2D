@@ -13,3 +13,6 @@ authors.workspace = true
 # alcançável só através da `ph2d-vec-scene`, e um esqueleto que serve raster, 3D e Flip
 # não pode puxar a cena vectorial para multiplicar duas matrizes.
 [dependencies]
+
+[lints]
+workspace = true

@@ -79,3 +79,6 @@ test-support = []
 postcard = { version = "1", features = ["use-std"] }
 # Só a medição `#[ignore]` do `mesh_quality_tests` o usa.
 ph2d-sdf = { path = "../ph2d-sdf" }
+
+[lints]
+workspace = true

@@ -25,3 +25,6 @@ authors.workspace = true
 # que os usam muda uma linha**.
 blake3 = "1"
 serde = { version = "1", features = ["derive"] }
+
+[lints]
+workspace = true

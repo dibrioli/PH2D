@@ -32,3 +32,6 @@ ph2d-a11y = { path = "../ph2d-a11y" }
 ph2d-core = { path = "../ph2d-core" }
 # Typed color wrapper (SrgbRgba) — Wave 11 color-space migration.
 ph2d-color = { path = "../ph2d-color" }
+
+[lints]
+workspace = true

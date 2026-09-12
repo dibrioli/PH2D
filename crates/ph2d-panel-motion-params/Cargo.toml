@@ -40,3 +40,6 @@ ph2d-vector = { path = "../ph2d-vector" }
 # through `apply_event` and assert the param intent that comes out — the only
 # way to prove the soft/hard limit split actually reaches the document.
 ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
+
+[lints]
+workspace = true

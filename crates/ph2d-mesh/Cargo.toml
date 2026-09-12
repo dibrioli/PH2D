@@ -60,3 +60,6 @@ dhat = "0.3"
 # vermelho-latente tres vezes. O alarme de forma tem de tocar na crate onde a
 # forma muda.
 postcard = { version = "1", features = ["alloc"] }
+
+[lints]
+workspace = true

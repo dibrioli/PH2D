@@ -129,6 +129,9 @@ authors.workspace = true
 
 [lib]
 
+[lints]
+workspace = true
+
 [dependencies]
 ph2d-nodegraph = { path = "../ph2d-nodegraph" }
 ph2d-node-registry = { path = "../ph2d-node-registry" }
@@ -361,6 +364,9 @@ license.workspace = true
 authors.workspace = true
 
 [lib]
+
+[lints]
+workspace = true
 
 [dependencies]
 ph2d-a11y           = { path = "../ph2d-a11y" }

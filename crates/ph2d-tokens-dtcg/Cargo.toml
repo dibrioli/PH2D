@@ -42,3 +42,6 @@ serde_json = "1"
 # CRIAR a fórmula que ele quer ver voltar. O host é instalado pela shell, no boot; aqui ele é
 # instalado pelo gate, pela MESMA porta.
 ph2d-token-math = { path = "../ph2d-token-math" }
+
+[lints]
+workspace = true

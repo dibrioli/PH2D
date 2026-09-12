@@ -89,3 +89,6 @@ ph2d-widget-sync = { path = "../../tools/ph2d-widget-sync" }
 # Phase D (cycle-free integration tests). A dev-dep here would
 # duplicate `ph2d-editor-core` in the test build graph (cargo
 # treats dev-dep cycles as distinct crate instances).
+
+[lints]
+workspace = true

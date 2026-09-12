@@ -36,3 +36,6 @@ ph2d-field-eval = { path = "../ph2d-field-eval" }
 # Escrever um segundo seria a segunda resposta a "o que e' a distancia desta
 # malha", e a primeira ja tem as tabelas de custo ao lado.
 ph2d-sdf = { path = "../ph2d-sdf" }
+
+[lints]
+workspace = true

@@ -31,3 +31,6 @@ ph2d-tokens      = { path = "../ph2d-tokens" }
 # TextSystem::without_system_fonts() não varre o SO (é o que mantém o gate rápido).
 ph2d-vector      = { path = "../ph2d-vector" }
 ph2d-text        = { path = "../ph2d-text" }
+
+[lints]
+workspace = true

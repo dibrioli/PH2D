@@ -17,3 +17,6 @@ ph2d-node-registry = { path = "../ph2d-node-registry" }
 # The tests cook a real chain through the REAL registry (a pass-through that is only
 # proven against a stub registry is a pass-through that was never in a graph).
 ph2d-node-registry-init = { path = "../ph2d-node-registry-init" }
+
+[lints]
+workspace = true

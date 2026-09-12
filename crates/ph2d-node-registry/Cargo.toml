@@ -11,3 +11,6 @@ authors.workspace = true
 
 [dependencies]
 ph2d-nodegraph = { path = "../ph2d-nodegraph" }
+
+[lints]
+workspace = true

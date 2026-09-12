@@ -106,3 +106,6 @@ dhat = "0.3"
 # cooker — those layer up, not the other way around.
 ph2d-render = { path = "../ph2d-render" }
 ph2d-asset-cooker = { path = "../../tools/asset-cooker" }
+
+[lints]
+workspace = true

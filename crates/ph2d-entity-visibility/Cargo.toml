@@ -18,3 +18,6 @@ ph2d-ecs = { path = "../ph2d-ecs" }
 # O `Vec2` só aparece a montar as fixturas de pose.
 [dev-dependencies]
 ph2d-core = { path = "../ph2d-core" }
+
+[lints]
+workspace = true

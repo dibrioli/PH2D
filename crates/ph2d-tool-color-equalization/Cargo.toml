@@ -67,3 +67,6 @@ pollster = { version = "0.4", optional = true }
 # pipeline; machete can't see the feature-gated callsite. Ignore so
 # the workspace lint stays green while the GPU stack lands.
 ignored = ["pollster"]
+
+[lints]
+workspace = true

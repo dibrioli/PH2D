@@ -30,3 +30,6 @@ authors.workspace = true
 [dev-dependencies]
 ph2d-mesh = { path = "../ph2d-mesh" }
 miniz_oxide = "0.8"
+
+[lints]
+workspace = true

@@ -26,3 +26,6 @@ authors.workspace = true
 ph2d-core = { path = "../ph2d-core" }
 # O modelo: os pincéis escrevem direto no `FlipStroke` (SoA por-ponto).
 ph2d-flip = { path = "../ph2d-flip" }
+
+[lints]
+workspace = true

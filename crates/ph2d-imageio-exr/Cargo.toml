@@ -22,3 +22,6 @@ authors.workspace = true
 ph2d-imageio = { path = "../ph2d-imageio" }
 ph2d-color   = { path = "../ph2d-color" }
 exr = { version = "1", default-features = false }
+
+[lints]
+workspace = true

@@ -59,3 +59,10 @@ libavif-sys = { version = "0.17.0", default-features = false, features = [
     "codec-dav1d",
     "codec-rav1e",
 ] }
+
+[lints.rust]
+# ⚠️ Esta crate NÃO herda `[lints] workspace = true`: é uma das DUAS excepções nomeadas do gate
+# `architecture_every_member_inherits_the_workspace_lints`, e existe para ISOLAR a FFI da `libavif`.
+# `deny` e não o `forbid` da workspace, para que SÓ os módulos que tocam a ABI o autorizem por
+# escrito (`#![allow(unsafe_code)]`) — o resto da crate continua proibido, e o gate confere a lista.
+unsafe_code = "deny"

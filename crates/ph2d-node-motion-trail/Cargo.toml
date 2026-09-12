@@ -17,3 +17,6 @@ ph2d-node-registry = { path = "../ph2d-node-registry" }
 # e a matiz de um eco e ARTE. Roda UMA vez por tick (a matriz), nunca por linha. MESMO pin
 # `=0.2.16` de ph2d-ecs / physics / wet-paint / platformer: uma aresta, nao um pacote novo.
 libm = { version = "=0.2.16", default-features = false }
+
+[lints]
+workspace = true

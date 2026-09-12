@@ -39,3 +39,6 @@ ph2d-vector              = { path = "../ph2d-vector" }
 # the `architecture_cycle_prevention` gate reads `[dependencies]` only,
 # so this builds no runtime cycle. See `tests/seam.rs`.
 ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
+
+[lints]
+workspace = true

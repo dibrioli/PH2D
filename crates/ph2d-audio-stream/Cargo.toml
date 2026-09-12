@@ -25,3 +25,6 @@ thiserror = "2"
 [dev-dependencies]
 # The end-to-end gate writes real files and streams them back — the encoders are how it makes one.
 ph2d-audio-encode = { path = "../ph2d-audio-encode" }
+
+[lints]
+workspace = true

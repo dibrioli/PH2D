@@ -17,3 +17,6 @@ authors.workspace = true
 [dependencies]
 ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-a11y = { path = "../ph2d-a11y" }
+
+[lints]
+workspace = true

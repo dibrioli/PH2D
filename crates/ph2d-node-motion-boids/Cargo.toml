@@ -16,3 +16,6 @@ authors.workspace = true
 libm = "=0.2.16"
 ph2d-nodegraph = { path = "../ph2d-nodegraph" }
 ph2d-node-registry = { path = "../ph2d-node-registry" }
+
+[lints]
+workspace = true

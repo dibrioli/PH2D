@@ -67,3 +67,6 @@ ignored = ["blake3", "ph2d-vector-traits"]
 
 [dev-dependencies]
 walkdir = "2"
+
+[lints]
+workspace = true

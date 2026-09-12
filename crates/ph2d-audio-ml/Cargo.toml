@@ -50,3 +50,6 @@ ndarray = "0.15"
 # `use df::tract::*` — machete's name-match heuristic cannot connect the package
 # name to it and reports a false positive. It is used; see `src/lib.rs`.
 ignored = ["deep_filter"]
+
+[lints]
+workspace = true

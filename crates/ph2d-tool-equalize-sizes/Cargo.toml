@@ -41,3 +41,6 @@ ph2d-core = { path = "../ph2d-core" }
 # Typed color wrapper (SrgbRgba) — Wave 11 migration (ADR-0042 §6 #2).
 ph2d-color = { path = "../ph2d-color" }
 bytemuck = "1"
+
+[lints]
+workspace = true

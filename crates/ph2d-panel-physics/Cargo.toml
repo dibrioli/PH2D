@@ -26,3 +26,6 @@ ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
 # `event.rs` must ship a test that drives a REAL WidgetEvent and asserts the
 # observable effect. The debt list is empty; there is no exemption.
 ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
+
+[lints]
+workspace = true

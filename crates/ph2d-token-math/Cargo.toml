@@ -23,3 +23,6 @@ authors.workspace = true
 ph2d-tokens = { path = "../ph2d-tokens" }
 ph2d-expr = { path = "../ph2d-expr" }
 ph2d-expr-parse = { path = "../ph2d-expr-parse" }
+
+[lints]
+workspace = true

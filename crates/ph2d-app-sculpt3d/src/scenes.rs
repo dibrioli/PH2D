@@ -53,12 +53,27 @@ pub const CENAS: u32 = 39;
 /// não a ler seria o registo a afirmar um alcance que a família não tem — e o gate do registo
 /// conta ROTEADORES, não leituras.
 pub fn armed_scene() -> Option<String> {
-    std::env::var("PH2D_SCULPT3D_SMOKE").ok()
+    armed_scene_in(|k| std::env::var(k).ok())
+}
+
+/// O nome da env deste roteador — o MESMO literal que o [`crate::FAMILY`] declara (há gate).
+pub const ENV: &str = "PH2D_SCULPT3D_SMOKE";
+
+/// **A mesma leitura, com o ambiente INJECTADO** — o gate mede-a sem `std::env::set_var`, que é
+/// `unsafe` na edição 2024 e a workspace proíbe (auditoria de arquitectura 2026-09-12, A2).
+pub fn armed_scene_in(env: impl Fn(&str) -> Option<String>) -> Option<String> {
+    env(ENV)
 }
 
 pub(crate) fn smoke_armed() -> bool {
-    std::env::var("PH2D_SCULPT3D_SMOKE")
-        .ok()
+    arms(std::env::var(ENV).ok().as_deref())
+}
+
+/// **Armar é PERGUNTAR se o artista pediu uma cena** — um parse do valor da env, nunca uma lista de
+/// níveis. Pura e pública para que o gate da shell a interrogue nível a nível sem escrever no
+/// ambiente (antes ele mantinha uma CÓPIA dela, porque esta lia o ambiente e era `pub(crate)`).
+pub fn arms(value: Option<&str>) -> bool {
+    value
         .and_then(|v| v.trim().parse::<u32>().ok())
         .is_some_and(|n| n >= 1)
 }

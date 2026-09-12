@@ -56,3 +56,6 @@ libm = { version = "=0.2.16", default-features = false }
 # `ph2d-quadfill`: já está na árvore.
 [dev-dependencies]
 miniz_oxide = "0.8"
+
+[lints]
+workspace = true

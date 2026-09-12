@@ -14,3 +14,6 @@ authors.workspace = true
 # crate depends on the (leaf) substrate. Acyclic: nodegraph does not depend back.
 [dependencies]
 ph2d-nodegraph = { path = "../ph2d-nodegraph" }
+
+[lints]
+workspace = true

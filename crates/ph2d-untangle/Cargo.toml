@@ -21,3 +21,6 @@ authors.workspace = true
 # fonte de alvo restrito -- ver docs/3D/quad-remesh/PLANO_desdobrar_o_mapa.md.
 
 [dependencies]
+
+[lints]
+workspace = true

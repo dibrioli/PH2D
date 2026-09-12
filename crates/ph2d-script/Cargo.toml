@@ -43,3 +43,6 @@ proptest = "1.11.0"
 # bevy_ecs is reached only through `#[derive(Component)]` expansion,
 # which machete can't see. See dep comment above.
 ignored = ["bevy_ecs"]
+
+[lints]
+workspace = true

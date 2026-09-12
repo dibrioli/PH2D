@@ -18,3 +18,6 @@ ph2d-node-registry = { path = "../ph2d-node-registry" }
 # porque a porta de saída 1 é do MOTOR e um espelho da lei não a exercitaria. Só o
 # `[dev-]`: o `src/` desta folha continua sem alcançar o registry ⇒ machete-safe.
 ph2d-node-registry-init = { path = "../ph2d-node-registry-init" }
+
+[lints]
+workspace = true

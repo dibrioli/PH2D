@@ -15,3 +15,6 @@ ph2d-node-registry = { path = "../ph2d-node-registry" }
 
 [dev-dependencies]
 ph2d-node-registry-init = { path = "../ph2d-node-registry-init" }
+
+[lints]
+workspace = true

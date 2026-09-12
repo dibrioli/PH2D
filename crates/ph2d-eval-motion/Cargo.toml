@@ -39,3 +39,6 @@ dhat = "0.3"
 ph2d-node-sim-zone = { path = "../ph2d-node-sim-zone" }
 ph2d-node-sim-step = { path = "../ph2d-node-sim-step" }
 ph2d-node-force-wind = { path = "../ph2d-node-force-wind" }
+
+[lints]
+workspace = true

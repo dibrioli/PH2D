@@ -10,3 +10,6 @@ authors.workspace = true
 [lib]
 
 [dependencies]
+
+[lints]
+workspace = true

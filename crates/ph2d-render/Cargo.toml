@@ -102,3 +102,6 @@ ph2d-painter-effects = { path = "../ph2d-painter-effects" }
 [[bench]]
 name = "sprites_upload_144b_vs_72b"
 harness = false
+
+[lints]
+workspace = true

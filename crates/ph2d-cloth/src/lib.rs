@@ -46,6 +46,7 @@ mod bending;
 mod membrane;
 /// ⭐ A partição em células e a ORDEM DE VISITA da malha — ver [`particao`].
 pub mod particao;
+pub mod passagens_de_dobra;
 mod topology;
 mod vbd;
 pub mod verlet;

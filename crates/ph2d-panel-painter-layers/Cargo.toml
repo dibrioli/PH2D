@@ -50,3 +50,6 @@ ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
 ph2d-panel-inspector = { path = "../ph2d-panel-inspector" }
 ph2d-panel-hierarchy = { path = "../ph2d-panel-hierarchy" }
 ph2d-panel-widget-gallery = { path = "../ph2d-panel-widget-gallery" }
+
+[lints]
+workspace = true

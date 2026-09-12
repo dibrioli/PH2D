@@ -20,3 +20,6 @@ ph2d-color   = { path = "../ph2d-color" }
 # `default-features = false` + features = ["jpeg"] keeps the wasm
 # surface tight.
 image = { version = "0.25", default-features = false, features = ["jpeg"] }
+
+[lints]
+workspace = true

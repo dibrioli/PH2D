@@ -96,3 +96,6 @@ toml = "1"
 # ADR-0055-v4; mantém no machete-ignored até T1.1.
 [package.metadata.cargo-machete]
 ignored = ["ctt"]
+
+[lints]
+workspace = true

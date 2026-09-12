@@ -32,3 +32,6 @@ postcard = { version = "1", features = ["use-std"] }
 # shell, onde ela viveu até 12/09, estas duas já eram dependência do binário sem ninguém as declarar.
 ph2d-ecs = { path = "../ph2d-ecs" }
 ph2d-vec-entities = { path = "../ph2d-vec-entities" }
+
+[lints]
+workspace = true

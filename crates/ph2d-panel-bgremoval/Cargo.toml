@@ -39,3 +39,6 @@ bumpalo   = "3"
 # `[dependencies]`, so this edge builds no runtime cycle. ph2d-tool-bgremoval
 # is already a regular dep above (the seam test asserts against it directly).
 ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
+
+[lints]
+workspace = true

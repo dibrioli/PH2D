@@ -35,3 +35,6 @@ ph2d-painter-brush = { path = "../ph2d-painter-brush" }
 # `dev`, entao o `src/` segue sem alcanca-lo e a seta continua apontando so' para um lado.
 ph2d-tool-painter = { path = "../ph2d-tool-painter" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }
+
+[lints]
+workspace = true

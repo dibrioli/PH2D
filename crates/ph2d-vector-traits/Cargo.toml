@@ -26,3 +26,6 @@ glam = "0.30"
 # OklchColor for AnimValue::Color — hue-stable color animation per
 # ADR-0056 §2.5. Path dep matches workspace convention (e.g. ph2d-painter-stroke).
 ph2d-color = { path = "../ph2d-color" }
+
+[lints]
+workspace = true

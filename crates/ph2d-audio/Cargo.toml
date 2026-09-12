@@ -19,3 +19,6 @@ authors.workspace = true
 crossbeam-queue = "0.3"
 ph2d-core = { path = "../ph2d-core" }
 thiserror = "2"
+
+[lints]
+workspace = true

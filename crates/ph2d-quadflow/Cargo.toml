@@ -23,3 +23,6 @@ authors.workspace = true
 # ph2d-mesh: a entrada e a saida sao `Mesh`. Um campo cruzado nao e' um formato
 # proprio — ele nasce de uma malha e morre virando outra.
 ph2d-mesh = { path = "../ph2d-mesh" }
+
+[lints]
+workspace = true

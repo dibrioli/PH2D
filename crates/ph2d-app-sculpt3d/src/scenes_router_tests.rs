@@ -123,14 +123,28 @@ fn nenhum_nivel_e_reclamado_duas_vezes() {
 /// **Mutação que deve sangrar:** devolver `None` sempre.
 #[test]
 fn a_env_do_roteador_e_lida_aqui() {
-    // SAFETY: teste de processo único (nextest) sobre uma env que só este roteador lê.
-    unsafe { std::env::set_var("PH2D_SCULPT3D_SMOKE", "36") };
-    assert_eq!(crate::scenes::armed_scene().as_deref(), Some("36"));
-    unsafe { std::env::remove_var("PH2D_SCULPT3D_SMOKE") };
+    use crate::scenes::{ENV, armed_scene_in};
+    let pedido = armed_scene_in(|k| (k == "PH2D_SCULPT3D_SMOKE").then(|| "36".to_owned()));
+    assert_eq!(pedido.as_deref(), Some("36"));
     assert_eq!(
-        crate::scenes::armed_scene(),
+        armed_scene_in(|_| None),
         None,
         "sem a env, o roteador não arma nada"
+    );
+    assert!(
+        crate::FAMILY.routers.iter().any(|r| r.env == ENV),
+        "a env que o roteador lê é a que o registo declara"
+    );
+    // ⚠️ E as duas portas do PRODUTO passam o ambiente real — `include_str!` falha a COMPILAR se o
+    // ficheiro mudar de nome (HOWTO §2.6).
+    let fonte = include_str!("scenes.rs");
+    assert!(
+        fonte.contains("armed_scene_in(|k| std::env::var(k).ok())"),
+        "o `armed_scene` do produto tem de ler o ambiente do processo pela porta injectável"
+    );
+    assert!(
+        fonte.contains("arms(std::env::var(ENV).ok().as_deref())"),
+        "o `smoke_armed` do produto pergunta à MESMA lei pura que o gate da shell interroga"
     );
 }
 

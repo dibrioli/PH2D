@@ -17,3 +17,6 @@ ph2d-node-registry = { path = "../ph2d-node-registry" }
 # deste nó (o `hash2` daqui continua sendo o daqui). É o quarto consumidor,
 # depois do `motion.noise`, do `force.curl` e do `force.wind`.
 ph2d-fbm = { path = "../ph2d-fbm" }
+
+[lints]
+workspace = true

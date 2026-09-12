@@ -46,3 +46,6 @@ wgpu = { version = "29.0.4", optional = true }
 bytemuck = { version = "1", features = ["derive"], optional = true }
 
 [dev-dependencies]
+
+[lints]
+workspace = true

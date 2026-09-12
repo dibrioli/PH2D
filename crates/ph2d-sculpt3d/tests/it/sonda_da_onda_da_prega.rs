@@ -111,10 +111,10 @@ fn onda(m: &Mesh, n: usize) -> (f64, f64, usize) {
 
 /// Uma corrida de gravidade até ao fim, com a rigidez e as passagens pedidas.
 fn corre(n: usize, bend: f32, passagens: u32) -> (f64, f64, f64, usize) {
-    // ⚠️ Único sítio onde a sonda escreve no ambiente. É seguro aqui porque o
-    // teste é de thread única e a variável é lida no mesmo passo, mas ⛔ nenhuma
-    // outra sonda deste ficheiro pode correr em paralelo com esta.
-    unsafe { std::env::set_var("PH2D_DOBRA_N", passagens.to_string()) };
+    // ⚠️ Único sítio onde a sonda mexe nas passagens — por PROCESSO, e ⛔ nenhuma outra sonda deste
+    // ficheiro pode correr em paralelo com esta. (Era `unsafe { set_var }`; a workspace proíbe
+    // `unsafe` em todo alvo desde a auditoria de arquitectura A2.)
+    ph2d_cloth::passagens_de_dobra::fixar(passagens);
     let mut m = cortina(n);
     let mut st = SculptStroke::default();
     let props = ClothFilterProps {

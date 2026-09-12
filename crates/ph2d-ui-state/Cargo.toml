@@ -44,3 +44,6 @@ serde = { version = "1", features = ["derive"] }
 # Só o gate de round-trip + o de ORDEM DETERMINISTA: o wire real e escrito pela shell (o
 # `ProjectFile`), e estes testes conferem que o TIPO atravessa o mesmo formato que ela usa.
 postcard = { version = "1", features = ["alloc"] }
+
+[lints]
+workspace = true

@@ -39,3 +39,6 @@ ph2d-blend-mode = { path = "../ph2d-blend-mode" }
 # ⚠️ **`svgz` NÃO é opcional:** sem ela um `.svg` que por dentro é gzip recebe
 # `Err("...enable svgz cargo feature...")` — o `flate2` já está no grafo por 7 consumidores.
 usvg = { version = "0.48", default-features = false, features = ["svgz"] }
+
+[lints]
+workspace = true

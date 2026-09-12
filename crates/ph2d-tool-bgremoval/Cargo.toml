@@ -34,3 +34,6 @@ bytemuck = { version = "1", features = ["extern_crate_alloc"] }
 # stripped — operates on already-decoded RGBA (ph2d-asset is the decode
 # boundary).
 image = { version = "0.25", default-features = false }
+
+[lints]
+workspace = true

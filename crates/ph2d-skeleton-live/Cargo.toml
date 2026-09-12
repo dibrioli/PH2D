@@ -39,3 +39,6 @@ postcard = { version = "1", features = ["use-std"] }
 [features]
 # ⚠️ HOWTO §2.5 — do tamanho do que ATRAVESSA a fronteira, e nada mais.
 test-support = []
+
+[lints]
+workspace = true

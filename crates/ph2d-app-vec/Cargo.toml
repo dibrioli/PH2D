@@ -135,3 +135,6 @@ panel-vector = []
 # `TokenCtx::factory`, que quatro ficheiros da shell constroem. ⛔ Abrir mais do que atravessa
 # paga `dead_code` do lado de cá — o piloto abriu 16 de uma vez e o compilador acusou.
 test-support = []
+
+[lints]
+workspace = true

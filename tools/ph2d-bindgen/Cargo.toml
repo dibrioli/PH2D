@@ -17,3 +17,6 @@ path = "src/main.rs"
 # both runtime/luau and runtime/mcp artifacts (CI enforces parity).
 ph2d-mcp = { path = "../../crates/ph2d-mcp" }
 serde_json = "1"
+
+[lints]
+workspace = true

@@ -7,6 +7,11 @@
 //! that trips an `assert!` inside the parser returns `Error::Decode`
 //! rather than aborting the process (audit-15 D11 class).
 
+// ⚠️ Este módulo toca a ABI C e é por isso que autoriza `unsafe` POR ESCRITO — a crate declara
+// `unsafe_code = "deny"` e o gate `architecture_every_member_inherits_the_workspace_lints` confere
+// que só os módulos nomeados o fazem.
+#![allow(unsafe_code)]
+
 use std::ffi::CStr;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 

@@ -55,3 +55,6 @@ ph2d-crossfield = { path = "../ph2d-crossfield" }
 ph2d-trace = { path = "../ph2d-trace" }
 ph2d-quantize = { path = "../ph2d-quantize" }
 ph2d-quadchain = { path = "../ph2d-quadchain" }
+
+[lints]
+workspace = true

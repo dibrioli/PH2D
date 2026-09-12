@@ -26,3 +26,6 @@ ph2d-guides = { path = "../ph2d-guides" }
 # no dev-dep da `ph2d-gpu-cook`, que existem só para o gate de paridade CPU×GPU.
 ph2d-vector-doc = { path = "../ph2d-vector-doc" }
 glam = "0.30"
+
+[lints]
+workspace = true

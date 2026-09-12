@@ -34,3 +34,6 @@ libm = { version = "=0.2.16", default-features = false }
 # unificação de features da workspace (a shell já a liga) partiria `cargo test -p ph2d-flip`.
 serde = { version = "1", features = ["derive", "rc"] }
 postcard = { version = "1", features = ["alloc"] }
+
+[lints]
+workspace = true

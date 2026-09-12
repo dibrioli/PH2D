@@ -17,3 +17,6 @@ ph2d-node-registry = { path = "../ph2d-node-registry" }
 # concordar: uma cópia local seria um segundo matiz, divergindo no grafo que desloca
 # o matiz e o lê de volta.
 ph2d-color = { path = "../ph2d-color" }
+
+[lints]
+workspace = true

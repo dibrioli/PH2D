@@ -38,3 +38,6 @@ ph2d-editor-core      = { path = "../ph2d-editor-core" }
 ph2d-ecs              = { path = "../ph2d-ecs" }
 
 [dev-dependencies]
+
+[lints]
+workspace = true

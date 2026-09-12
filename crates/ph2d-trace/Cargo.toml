@@ -24,3 +24,6 @@ ph2d-quantize = { path = "../ph2d-quantize" }
 
 [dev-dependencies]
 ph2d-remesh-iso = { path = "../ph2d-remesh-iso" }
+
+[lints]
+workspace = true

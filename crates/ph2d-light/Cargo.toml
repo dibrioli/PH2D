@@ -26,3 +26,6 @@ ph2d-painter-brush = { path = "../ph2d-painter-brush" }
 # `docs/3D/02.2`). Como ele vira bytes e' pergunta do DONO: uma lista de campos re-escrita a mao no
 # shell seria a segunda representacao do mesmo rig, e as duas divergiriam na primeira lampada nova.
 serde = { version = "1", features = ["derive"] }
+
+[lints]
+workspace = true

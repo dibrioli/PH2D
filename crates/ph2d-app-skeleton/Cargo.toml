@@ -62,3 +62,6 @@ ph2d-preview-drive = { path = "../ph2d-preview-drive", features = ["test-support
 # se o gizmo de grupo reclama uma âncora de osso. A irmã `test_chain` fica em `cfg(test)`.
 [features]
 test-support = []
+
+[lints]
+workspace = true

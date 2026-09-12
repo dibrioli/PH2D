@@ -12,3 +12,6 @@ authors.workspace = true
 # ⭐ ZERO dependências — e é isso que a torna a folha mais barata do repo: a lei é aritmética
 # sobre um `&[u8]`. Ela já dizia de si mesma «uma lei, três consumidores».
 [dependencies]
+
+[lints]
+workspace = true

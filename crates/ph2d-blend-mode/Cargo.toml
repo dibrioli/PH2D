@@ -32,3 +32,6 @@ authors.workspace = true
 # Postcard binary serialization derives — o modo viaja no save do documento (a camada do Painter,
 # a forma do vector) e o discriminante é o valor de wire.
 serde = { version = "1", features = ["derive"] }
+
+[lints]
+workspace = true

@@ -27,3 +27,6 @@ ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
 # uma crate, e não era do outro lado de nada.
 [features]
 test-support = []
+
+[lints]
+workspace = true

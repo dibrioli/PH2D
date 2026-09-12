@@ -20,3 +20,6 @@ libm = { version = "=0.2.16", default-features = false }
 
 [dev-dependencies]
 ph2d-node-registry-init = { path = "../ph2d-node-registry-init" }
+
+[lints]
+workspace = true

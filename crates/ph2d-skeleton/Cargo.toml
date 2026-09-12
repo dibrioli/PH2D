@@ -30,3 +30,6 @@ ph2d-affine = { path = "../ph2d-affine" }
 # `ph2d-skeleton-ecs` com uma conversão no meio, que é exactamente a *segunda porta* que o cabeçalho
 # do `skeleton_goal` proíbe por escrito: duas definições do mesmo conceito divergem em silêncio.
 serde = { version = "1", features = ["derive"], default-features = false }
+
+[lints]
+workspace = true

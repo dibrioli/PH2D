@@ -13,3 +13,6 @@ authors.workspace = true
 ph2d-arc-length = { path = "../ph2d-arc-length" }
 ph2d-nodegraph = { path = "../ph2d-nodegraph" }
 ph2d-node-registry = { path = "../ph2d-node-registry" }
+
+[lints]
+workspace = true

@@ -58,3 +58,6 @@ blake3 = "1"
 # them POSITIONALLY. The gate that pins their order has to speak postcard to
 # make that claim about the bytes rather than about the source.
 postcard = { version = "1", features = ["use-std"] }
+
+[lints]
+workspace = true

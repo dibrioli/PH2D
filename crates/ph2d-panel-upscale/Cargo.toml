@@ -32,3 +32,6 @@ ph2d-tool-registry = { path = "../ph2d-tool-registry" }
 # `tests/seam.rs` drives the full populate → apply_event → bus →
 # handle_panel_event path the desktop shell runs.
 ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
+
+[lints]
+workspace = true

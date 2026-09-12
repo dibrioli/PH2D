@@ -22,3 +22,6 @@ libm = { version = "=0.2.16", default-features = false }
 # `value.curve` e do contour Curve do `field.remap`). Uma segunda resposta a "como
 # esta curva e' amostrada?" divergiria do editor que a desenha. Folha dep-free.
 ph2d-curve = { path = "../ph2d-curve" }
+
+[lints]
+workspace = true

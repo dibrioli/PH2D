@@ -22,3 +22,6 @@ authors.workspace = true
 
 [dependencies]
 ph2d-mesh = { path = "../ph2d-mesh" }
+
+[lints]
+workspace = true

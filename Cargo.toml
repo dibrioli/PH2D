@@ -41,6 +41,15 @@ publish = false
 license = "LicenseRef-Proprietary"
 authors = ["Enio Oliveira Dias Brito <dibrioli@gmail.com>"]
 
+[workspace.lints.rust]
+# ⛔ `unsafe` é PROIBIDO em toda crate da workspace — e em TODOS os alvos (lib, bin, `tests/`,
+# `benches/`, `examples/`, `build.rs`), coisa que o `#![forbid(unsafe_code)]` no `lib.rs` nunca
+# cobriu. Cada membro herda por `[lints] workspace = true`; o gate
+# `crates/ph2d-editor-core/tests/it/architecture_every_member_inherits_the_workspace_lints.rs`
+# afirma-o, com as DUAS excepções nomeadas (FFI). Auditoria de arquitectura 2026-09-12, A2: o
+# atributo não viajou com o código quando as famílias saíram da shell.
+unsafe_code = "forbid"
+
 [profile.dev]
 opt-level = 0
 # `line-tables-only` (era `true` = DWARF completo) — medido 2026-09-10 (auditoria de

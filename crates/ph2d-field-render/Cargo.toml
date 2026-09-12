@@ -37,3 +37,6 @@ rayon = "1"
 # `wgpu`, e um traçador de CPU não tem por que arrastar um renderizador de GPU.
 # Quem tem o matcap PASSA os texels (`Matcap` abaixo). A lei de amostragem — a
 # normal em espaço de VISTA — mora aqui, junto de quem produz a normal.
+
+[lints]
+workspace = true

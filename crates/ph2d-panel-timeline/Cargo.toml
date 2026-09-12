@@ -46,3 +46,6 @@ ph2d-text = { path = "../ph2d-text" }
 # `Playhead` — the seam tests drive `apply_intent`/`rebuild` to build a real
 # document + snapshot (the same objects the shell publishes).
 ph2d-core = { path = "../ph2d-core" }
+
+[lints]
+workspace = true

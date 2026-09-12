@@ -190,33 +190,23 @@ fn every_scene_level_that_exists_arms_the_module() {
         "o scanner tem de achar as cenas; achou {levels:?}"
     );
     for n in levels {
-        // SAFETY-free: o teste roda numa thread só e a var é lida logo abaixo.
-        unsafe { std::env::set_var("PH2D_SCULPT3D_SMOKE", n.to_string()) };
+        // ⭐ A pergunta do PRODUTO, e não uma cópia dela: `arms` é pura e pública desde a auditoria
+        // de arquitectura A2 (2026-09-12). A cópia existia porque `smoke_armed` lia o ambiente e era
+        // `pub(crate)` — e escrever no ambiente é `unsafe` na edição 2024.
         assert!(
-            ph2d_host_desktop_smoke_armed(),
+            ph2d_app_sculpt3d::scenes::arms(Some(&n.to_string())),
             "a cena =`{n}` existe e o módulo NÃO arma nela — o canvas abre em branco"
         );
     }
-    unsafe { std::env::remove_var("PH2D_SCULPT3D_SMOKE") };
 }
 
-/// A cópia da pergunta que o produto faz. ⚠️ Ela é uma CÓPIA porque
-/// `smoke_armed` é `pub(crate)` e um teste de integração não a alcança — e é
-/// por isso que o gate irmão abaixo afirma que as duas dizem a mesma coisa.
-fn ph2d_host_desktop_smoke_armed() -> bool {
-    std::env::var("PH2D_SCULPT3D_SMOKE")
-        .ok()
-        .and_then(|v| v.trim().parse::<u32>().ok())
-        .is_some_and(|n| n >= 1)
-}
-
-/// **E a cópia acima não pode divergir do produto.**
+/// **E a lei que o gate acima interroga é um PARSE, nunca uma lista.**
 ///
-/// ⚠️ Sem esta metade o gate anterior mede a si mesmo: ele ficaria verde com o
-/// produto de volta na enumeração, porque a cópia responderia `true` sozinha.
+/// ⚠️ O gate acima chama o produto (`arms`), então uma enumeração que cobrisse os níveis de HOJE
+/// passava nele — e apodrecia na cena N+1. Esta metade proíbe a forma, não o resultado.
 #[test]
 fn the_arming_question_is_a_parse_and_not_a_list() {
-    let body = squeezed(&function_body(&sculpt_src(), "smoke_armed"));
+    let body = squeezed(&function_body(&sculpt_src(), "arms"));
     assert!(
         body.contains("parse::<u32>()"),
         "armar é PERGUNTAR se o artista pediu uma cena"

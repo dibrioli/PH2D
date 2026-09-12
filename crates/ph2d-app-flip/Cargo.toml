@@ -97,3 +97,6 @@ ph2d-unique-name = { path = "../ph2d-unique-name" }
 # ter aqui a feature que os acende, e a shell tem de a repassar.
 panel-flip = ["dep:ph2d-panel-flip"]
 panel-flip-frames = ["dep:ph2d-panel-flip-frames"]
+
+[lints]
+workspace = true

@@ -31,3 +31,6 @@ ph2d-host = { path = "../ph2d-host" }
 # Blindagem Fase 1.2: seam headless (populate → apply_event → barramento). Dev-dep
 # só — o gate anti-ciclo lê `[dependencies]`, então isto não cria ciclo em runtime.
 ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
+
+[lints]
+workspace = true

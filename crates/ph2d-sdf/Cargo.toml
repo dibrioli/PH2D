@@ -33,3 +33,6 @@ ph2d-mesh = { path = "../ph2d-mesh" }
 # metade continua a exigir ADR proprio; o eixo honesto seria a fatia em Z, com
 # a fronteira entre fatias resolvida, e ela vem com o numero ao lado.
 rayon = "1"
+
+[lints]
+workspace = true

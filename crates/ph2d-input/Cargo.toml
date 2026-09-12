@@ -34,3 +34,6 @@ criterion = { version = "0.8", default-features = false }
 [[bench]]
 name = "input_throughput"
 harness = false
+
+[lints]
+workspace = true

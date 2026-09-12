@@ -24,3 +24,6 @@ authors.workspace = true
 # ⚠️ Sem `serde` PORQUE nada disto vai a disco: o descritor é conhecimento do BINÁRIO sobre
 # os seus próprios tipos, não dado do documento. O que vai a disco é o `field_id` (um `u16`
 # que o override carrega), e quem o serializa é o consumidor.
+
+[lints]
+workspace = true

@@ -40,3 +40,6 @@ kurbo = "0.13"
 # `-eval`. Ele depende do `ph2d-field`, nunca desta crate, então não há ciclo.
 ph2d-field-eval = { path = "../ph2d-field-eval" }
 fidget = { version = "0.5", default-features = false, features = ["jit"] }
+
+[lints]
+workspace = true

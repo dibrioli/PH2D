@@ -13,3 +13,6 @@ authors.workspace = true
 # honraria seria controlo morto. Sem `content_size`: uma folha entra com o tamanho
 # que ela JÁ tem (a bbox da geometria cozida), então não há measure function.
 taffy = { version = "0.14", default-features = false, features = ["std", "taffy_tree", "flexbox", "grid"] }
+
+[lints]
+workspace = true

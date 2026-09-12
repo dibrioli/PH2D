@@ -57,3 +57,6 @@ app-vec = ["dep:ph2d-app-vec"]
 
 [dev-dependencies]
 ph2d-app-sync = { path = "../../tools/ph2d-app-sync" }
+
+[lints]
+workspace = true

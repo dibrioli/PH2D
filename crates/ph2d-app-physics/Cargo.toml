@@ -68,3 +68,6 @@ serde = { version = "1", features = ["rc"] }
 # ⚠️ Ligada pela shell nas **dev-dependencies**: no `cargo build` do produto ela
 # fica desligada, e no `cargo test` fica ligada.
 test-support = []
+
+[lints]
+workspace = true

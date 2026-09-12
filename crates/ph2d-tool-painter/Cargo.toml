@@ -85,3 +85,6 @@ postcard = { version = "1", features = ["alloc"] }
 wgpu = { version = "29.0.4", features = ["wgsl"] }
 bytemuck = { version = "1", features = ["derive"] }
 ph2d-gpu = { path = "../ph2d-gpu" }
+
+[lints]
+workspace = true

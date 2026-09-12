@@ -31,3 +31,6 @@ authors.workspace = true
 # comece no meio de uma aresta recomputa `x` e sai um `f32` diferente. Todo uso novo desta dep exige
 # ADR novo (a cerca de contenção do ADR-0109).
 rayon = "1"
+
+[lints]
+workspace = true

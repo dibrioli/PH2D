@@ -39,3 +39,6 @@ ph2d-host = { path = "../ph2d-host" }
 # pode alcançá-lo — o gerador é quem escreve este código, não quem ele consome. Em
 # `[dependencies]` seria a aresta que deixa o painel compilado depender do gerador que o produziu.
 ph2d-ui-codegen = { path = "../ph2d-ui-codegen" }
+
+[lints]
+workspace = true

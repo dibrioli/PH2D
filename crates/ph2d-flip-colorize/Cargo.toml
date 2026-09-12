@@ -25,3 +25,6 @@ ph2d-core = { path = "../ph2d-core" }
 # O BACK-END do balde, intocado: Grid + stroke/ink capsule + expand_under_ink +
 # trace_contours + simplify_ring. A borda de uma cor e a de um balde saem do MESMO código.
 ph2d-flip-fill = { path = "../ph2d-flip-fill" }
+
+[lints]
+workspace = true

@@ -17,3 +17,6 @@ ph2d-host = { path = "../ph2d-host" }
 ph2d-render = { path = "../ph2d-render" }
 # `Affine` — o tipo que esta folha devolve.
 ph2d-vector = { path = "../ph2d-vector" }
+
+[lints]
+workspace = true

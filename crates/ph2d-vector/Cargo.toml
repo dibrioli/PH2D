@@ -59,3 +59,6 @@ glam = "0.30"
 #    ESTADO se o handle mudou fica verde quando alguém acrescenta um desenho pela porta crua ao
 #    lado. A pergunta tem de ser feita à CENA, e a cena vive na lib.
 vello_encoding = "0.10.0"
+
+[lints]
+workspace = true

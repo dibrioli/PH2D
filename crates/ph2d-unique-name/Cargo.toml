@@ -14,3 +14,6 @@ authors.workspace = true
 # 2026-09-12 —, e é por isso que ela é uma folha e não a casa de nenhuma delas (ADR-0075).
 [dependencies]
 ph2d-ecs = { path = "../ph2d-ecs" }
+
+[lints]
+workspace = true

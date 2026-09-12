@@ -78,3 +78,6 @@ ph2d-sculpt3d = { path = "../ph2d-sculpt3d" }
 # seria a segunda resposta -- a que fica velha na primeira afinacao do bake. O
 # `src/` nao a toca => machete-safe.
 ph2d-sdf = { path = "../ph2d-sdf" }
+
+[lints]
+workspace = true

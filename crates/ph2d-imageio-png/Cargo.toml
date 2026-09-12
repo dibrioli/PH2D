@@ -28,3 +28,6 @@ image = { version = "0.25", default-features = false, features = ["png"] }
 [dev-dependencies]
 # W3 pre-gate (HR-9 cross-platform determinism).
 blake3 = { version = "1", default-features = false }
+
+[lints]
+workspace = true

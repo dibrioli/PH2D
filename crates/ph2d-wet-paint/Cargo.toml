@@ -49,3 +49,6 @@ libm = { version = "=0.2.16", default-features = false }
 # REFERENCIA (o porque de cada um esta em `src/par.rs`). Qualquer uso novo de
 # rayon nesta crate exige ADR novo.
 rayon = "1"
+
+[lints]
+workspace = true

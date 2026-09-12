@@ -65,3 +65,6 @@ winit = "0.30"
 # `#[cfg(test)]` é invisível do outro lado de uma crate, e abrir os itens todos «por segurança»
 # entrega `dead_code` no que ninguém lê. A shell liga-a nas **dev-dependencies**.
 test-support = []
+
+[lints]
+workspace = true

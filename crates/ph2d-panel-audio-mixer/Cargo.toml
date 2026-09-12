@@ -25,3 +25,6 @@ ph2d-tool-registry = { path = "../ph2d-tool-registry" }
 # Behavioral seam test (DIRETIVA §5 DoD): drives the real Click events
 # through apply_event and asserts the observable visibility / mute effect.
 ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
+
+[lints]
+workspace = true

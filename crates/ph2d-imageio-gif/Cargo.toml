@@ -18,3 +18,6 @@ authors.workspace = true
 ph2d-imageio = { path = "../ph2d-imageio" }
 ph2d-color   = { path = "../ph2d-color" }
 image = { version = "0.25", default-features = false, features = ["gif"] }
+
+[lints]
+workspace = true

@@ -16,3 +16,6 @@ ph2d-ecs = { path = "../ph2d-ecs" }
 ph2d-render = { path = "../ph2d-render" }
 # ⭐ A folha do nome único — uma imagem importada é baptizada ao nascer.
 ph2d-unique-name = { path = "../ph2d-unique-name" }
+
+[lints]
+workspace = true

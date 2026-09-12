@@ -16,3 +16,6 @@ ph2d-node-registry = { path = "../ph2d-node-registry" }
 # is animated; the nearest-point search parallelises across cores (deterministic —
 # the accumulation stays ordered). Already a workspace dep (ph2d-tool-painter).
 rayon = "1"
+
+[lints]
+workspace = true

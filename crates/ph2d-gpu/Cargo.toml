@@ -17,3 +17,6 @@ wgpu = "29.0.4"
 # dois `block_on` distintos a competir pelo mesmo executor. Reconfira com
 # `bash scripts/stack-audit.sh --tetos` (medido 2026-08-29).
 pollster = "0.4.0"
+
+[lints]
+workspace = true

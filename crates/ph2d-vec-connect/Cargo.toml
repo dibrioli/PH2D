@@ -15,3 +15,6 @@ authors.workspace = true
 # direções + uma lista de caixas), sai uma polilinha. É uma função total, e é
 # testável sem montar um mundo.
 serde = { version = "1", features = ["derive"] }
+
+[lints]
+workspace = true

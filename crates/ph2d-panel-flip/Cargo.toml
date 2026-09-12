@@ -40,3 +40,6 @@ ph2d-painter-effects = { path = "../ph2d-painter-effects" }
 # bus → handle_panel_event). Dev-dep only — the cycle-prevention gate reads
 # `[dependencies]` only, so this builds no runtime cycle.
 ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
+
+[lints]
+workspace = true

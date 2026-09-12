@@ -22,3 +22,6 @@ path = "src/main.rs"
 # registry-init central file (the staleness gate fails CI if forgot).
 
 [dependencies]
+
+[lints]
+workspace = true

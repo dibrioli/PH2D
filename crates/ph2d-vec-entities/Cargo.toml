@@ -33,3 +33,6 @@ ph2d-skeleton-ecs = { path = "../ph2d-skeleton-ecs" }
 [features]
 # ⚠️ HOWTO §2.5 — o tamanho do que ATRAVESSA, medido pelo compilador (ver o fim desta linha).
 test-support = []
+
+[lints]
+workspace = true

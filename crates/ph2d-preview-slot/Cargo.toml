@@ -13,3 +13,6 @@ authors.workspace = true
 # (`u32`×3 · `usize` · `u64`). Nenhum tipo de render, de ECS ou de ferramenta
 # atravessa esta fronteira.
 [dependencies]
+
+[lints]
+workspace = true

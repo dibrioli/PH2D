@@ -17,3 +17,6 @@ ph2d-node-registry = { path = "../ph2d-node-registry" }
 # Uma cópia local seria um segundo matiz, divergindo exatamente no grafo que
 # rampeia em HSV e lê o canal de volta.
 ph2d-color = { path = "../ph2d-color" }
+
+[lints]
+workspace = true

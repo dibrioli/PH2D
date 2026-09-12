@@ -20,3 +20,6 @@ blake3 = "1.8.5"
 
 [dev-dependencies]
 insta = { version = "1.47.2", features = ["yaml"] }
+
+[lints]
+workspace = true

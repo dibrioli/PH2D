@@ -30,3 +30,6 @@ ph2d-i18n          = { path = "../ph2d-i18n" }
 ph2d-tool-registry = { path = "../ph2d-tool-registry" }
 ph2d-text          = { path = "../ph2d-text" }
 winit = "0.30"
+
+[lints]
+workspace = true

@@ -17,3 +17,6 @@ authors.workspace = true
 # that carries the baked table, so it ships with a consumer and a parity test
 # rather than as an unproven primitive.
 [dependencies]
+
+[lints]
+workspace = true

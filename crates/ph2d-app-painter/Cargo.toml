@@ -60,3 +60,6 @@ ph2d-panel-painter-layers = { path = "../ph2d-panel-painter-layers", optional = 
 
 [features]
 panel-painter-layers = ["dep:ph2d-panel-painter-layers"]
+
+[lints]
+workspace = true

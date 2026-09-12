@@ -70,3 +70,6 @@ ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
 # `paint` encheu. Sintetizar `WidgetEvent::Click` pularia justamente o registro do widget, que é
 # metade do que o gate existe para provar. Dev-dep pelo mesmo motivo acima (sem ciclo em runtime).
 ph2d-host = { path = "../ph2d-host" }
+
+[lints]
+workspace = true

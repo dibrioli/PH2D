@@ -17,3 +17,6 @@ authors.workspace = true
 # `ph2d-vec-render` de onde este ficheiro veio.
 ph2d-vector = { path = "../ph2d-vector" }
 ph2d-tokens = { path = "../ph2d-tokens" }
+
+[lints]
+workspace = true

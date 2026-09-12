@@ -38,3 +38,6 @@ kurbo = "0.13"
 # (área igual a 1,1e-14, caixa idêntica). Quem editar os pontos de uma tinta assada vê outra
 # coisa; nenhum golden do repo conta vértices de tinta.
 linesweeper = "0.4"
+
+[lints]
+workspace = true

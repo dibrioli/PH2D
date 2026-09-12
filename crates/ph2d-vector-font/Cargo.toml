@@ -26,3 +26,6 @@ skrifa = "0.44.0"
 glam = "0.30"
 # SmallVec — axes inline ≤ 8 per glyph (ADR-0066 §2.7 cap).
 smallvec = { version = "1", features = ["union"] }
+
+[lints]
+workspace = true

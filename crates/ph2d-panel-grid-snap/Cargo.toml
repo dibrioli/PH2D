@@ -21,3 +21,6 @@ ph2d-grid        = { path = "../ph2d-grid" }
 ph2d-host       = { path = "../ph2d-host" }
 ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
 bumpalo         = "3"
+
+[lints]
+workspace = true

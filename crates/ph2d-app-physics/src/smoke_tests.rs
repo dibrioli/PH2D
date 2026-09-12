@@ -92,11 +92,24 @@ fn nenhum_nivel_e_reclamado_duas_vezes() {
 /// **Mutação que deve sangrar:** devolver `None` sempre.
 #[test]
 fn a_env_do_roteador_e_lida_aqui() {
-    // SAFETY: teste de processo único sobre uma env que só este roteador lê.
-    unsafe { std::env::set_var("PH2D_PHYSICS_SMOKE", "63") };
-    assert_eq!(armed_scene().as_deref(), Some("63"));
-    unsafe { std::env::remove_var("PH2D_PHYSICS_SMOKE") };
-    assert_eq!(armed_scene(), None, "sem a env, o roteador não arma nada");
+    let pedido = armed_scene_in(|k| (k == "PH2D_PHYSICS_SMOKE").then(|| "63".to_owned()));
+    assert_eq!(pedido.as_deref(), Some("63"));
+    assert_eq!(
+        armed_scene_in(|_| None),
+        None,
+        "sem a env, o roteador não arma nada"
+    );
+    assert!(
+        crate::FAMILY.routers.iter().any(|r| r.env == ENV),
+        "a env que o roteador lê é a que o registo declara"
+    );
+    // ⚠️ E a porta do PRODUTO passa o ambiente real: um `armed_scene` que devolvesse `None` deixaria
+    // as três asserções acima verdes. `include_str!` falha a COMPILAR se o ficheiro mudar de nome
+    // (HOWTO §2.6), em vez de ficar verde a ler nada.
+    assert!(
+        include_str!("smoke.rs").contains("armed_scene_in(|k| std::env::var(k).ok())"),
+        "o `armed_scene` do produto tem de ler o ambiente do processo pela porta injectável"
+    );
 }
 
 /// **O que o registo declara é o que o roteador tem** — as duas pontas atadas.

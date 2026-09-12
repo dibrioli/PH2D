@@ -18,3 +18,6 @@ parley = "0.11.1"
 # Rendering Phase 0). Used by `layout_for_rendering` to bump nominal
 # FontWeight at small sizes when the rendering strategy is Crisp.
 ph2d-tokens = { path = "../ph2d-tokens" }
+
+[lints]
+workspace = true

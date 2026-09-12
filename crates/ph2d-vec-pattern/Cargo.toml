@@ -21,3 +21,6 @@ authors.workspace = true
 # tipo é serializado; quem escreve o wire é o consumidor (a mesma linha da
 # `ph2d-warp-style`).
 serde = { version = "1", features = ["derive"] }
+
+[lints]
+workspace = true

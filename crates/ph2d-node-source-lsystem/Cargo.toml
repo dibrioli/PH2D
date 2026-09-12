@@ -18,3 +18,6 @@ ph2d-node-registry = { path = "../ph2d-node-registry" }
 # desvantagem extra de o artista ter de aprender duas linguagens no mesmo app.
 ph2d-expr = { path = "../ph2d-expr" }
 ph2d-expr-parse = { path = "../ph2d-expr-parse" }
+
+[lints]
+workspace = true

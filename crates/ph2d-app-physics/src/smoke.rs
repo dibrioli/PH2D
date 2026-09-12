@@ -63,7 +63,17 @@ pub const CENAS: u32 = 119;
 /// `PH2D_PHYSICS_SMOKE`, e quem o lê é a crate que o declara. Enquanto a leitura vivia na
 /// shell, o registo dizia que a família respondia por uma env que ela não via.
 pub fn armed_scene() -> Option<String> {
-    std::env::var("PH2D_PHYSICS_SMOKE").ok()
+    armed_scene_in(|k| std::env::var(k).ok())
+}
+
+/// O nome da env deste roteador — o MESMO literal que o [`crate::FAMILY`] declara (há gate).
+pub const ENV: &str = "PH2D_PHYSICS_SMOKE";
+
+/// **A mesma leitura, com o ambiente INJECTADO.** É por aqui que o gate a mede sem escrever no
+/// ambiente do processo: `std::env::set_var` é `unsafe` na edição 2024, e a workspace proíbe `unsafe`
+/// em todo alvo (auditoria de arquitectura 2026-09-12, A2).
+pub fn armed_scene_in(env: impl Fn(&str) -> Option<String>) -> Option<String> {
+    env(ENV)
 }
 
 /// **A tabela `n → cena`.** Cada braço povoa o `ctx` e declara o que quer da shell.

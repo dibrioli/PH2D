@@ -21,3 +21,6 @@ ph2d-trace = { path = "../ph2d-trace" }
 ph2d-gridmap = { path = "../ph2d-gridmap" }
 ph2d-quadextract = { path = "../ph2d-quadextract" }
 ph2d-quadfill = { path = "../ph2d-quadfill" }
+
+[lints]
+workspace = true

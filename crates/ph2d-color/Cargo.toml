@@ -23,3 +23,6 @@ bytemuck = { version = "1", features = ["derive"] }
 # would otherwise silently break v1 savefiles.
 # See `docs/HANDOFF_ph2d_color_oklch_serde.md` (Painter T1.6 R9 audit).
 serde = { version = "1", features = ["derive"] }
+
+[lints]
+workspace = true

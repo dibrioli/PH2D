@@ -28,3 +28,6 @@ ph2d-core = { path = "../ph2d-core" }
 ph2d-flip = { path = "../ph2d-flip" }
 # kurbo BezPath for the pill icon glyph (same source the Vector tool uses).
 ph2d-vector = { path = "../ph2d-vector" }
+
+[lints]
+workspace = true

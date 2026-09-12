@@ -14,3 +14,6 @@ authors.workspace = true
 # **nada** da cena, da pose, do painel ou do ponteiro. O balde é uma lei geométrica; quem sabe o
 # que está visível e onde o dedo caiu é a shell.
 ph2d-vec-scene = { path = "../ph2d-vec-scene" }
+
+[lints]
+workspace = true

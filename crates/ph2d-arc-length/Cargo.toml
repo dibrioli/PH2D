@@ -15,3 +15,6 @@ authors.workspace = true
 # mesma curva desenhada (`motion.path` a percorre, `motion.spline_wrap` embrulha
 # nela), e duas cópias de "onde fica a fração de arco s" divergem em silêncio.
 [dependencies]
+
+[lints]
+workspace = true

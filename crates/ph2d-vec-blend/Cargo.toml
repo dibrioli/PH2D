@@ -25,3 +25,6 @@ kurbo = "0.13"
 # ideia de compound path, não a que a booleana de fato produz (contagem de vértices, ordem dos
 # contornos, regra de preenchimento). O motor não depende da booleana; o gate depende.
 ph2d-vec-boolean = { path = "../ph2d-vec-boolean" }
+
+[lints]
+workspace = true

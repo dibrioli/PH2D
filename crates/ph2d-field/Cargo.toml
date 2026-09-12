@@ -36,3 +36,6 @@ ph2d-i18n = { path = "../ph2d-i18n" }
 # na crate onde a forma muda, senão ele só corre na varredura impactada e o
 # vermelho fica latente — este repositório já pagou isso três vezes.
 postcard = { version = "1", features = ["alloc"] }
+
+[lints]
+workspace = true

@@ -487,7 +487,9 @@ O QUE VOCÊ FAZ (só dentro da sua pasta):
    workspace usa glob `crates/*`, TODAS as outras sessões paralelas
    ficam bloqueadas com `can't find library X` até esse arquivo existir.
    Regra: lib.rs primeiro, depois Cargo.toml, depois módulos auxiliares.
-1. Cargo.toml: deps mínimas.
+1. Cargo.toml: deps mínimas **+ `[lints]` `workspace = true` no fim** (o `unsafe` é proibido pela
+   workspace em todo alvo; o gate `architecture_every_member_inherits_the_workspace_lints` reprova
+   quem não herda).
    [node]  ph2d-nodegraph, ph2d-node-registry, ph2d-expr se usar math
            por-elemento.
    [tool]  ph2d-tool-registry, ph2d-editor-core (Tool / FloatingPanel

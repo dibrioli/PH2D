@@ -20,3 +20,6 @@ authors.workspace = true
 # saida sao INTEIROS. E' isso que a torna testavel contra forca bruta.
 
 [dependencies]
+
+[lints]
+workspace = true

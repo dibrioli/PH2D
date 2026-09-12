@@ -26,3 +26,6 @@ authors.workspace = true
 # ⚠️ É também por isso que a origem de um contato carrega `u64` cru em vez de
 # `ph2d_ecs::Entity` — ver `EntityBits`, que nomeia o preço.
 [dependencies]
+
+[lints]
+workspace = true

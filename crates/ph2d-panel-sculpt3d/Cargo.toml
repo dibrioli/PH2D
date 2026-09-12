@@ -40,3 +40,6 @@ ph2d-light = { path = "../ph2d-light" }
 # `architecture_interactive_crate_has_behavioral_test`: um painel com `event.rs`
 # tem de dirigir um `WidgetEvent` REAL e afirmar o efeito observável.
 ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
+
+[lints]
+workspace = true

@@ -30,3 +30,6 @@ ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
 # pede um `PointerEvent`, e um `WidgetEvent::Click` sintético **pula a checagem de
 # focabilidade** — que é exactamente onde um chip pintado e hit-registado morre sob o dedo.
 ph2d-host = { path = "../ph2d-host" }
+
+[lints]
+workspace = true

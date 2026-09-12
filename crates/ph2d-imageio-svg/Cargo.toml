@@ -46,3 +46,6 @@ usvg = { version = "0.48", default-features = false, features = ["svgz"] }
 # passar a depender do modelo do documento VECTORIAL — isso inverteria a camada por causa de uma
 # constante.
 ph2d-vec-svg = { path = "../ph2d-vec-svg" }
+
+[lints]
+workspace = true

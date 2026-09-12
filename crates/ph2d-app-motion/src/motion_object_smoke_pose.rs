@@ -88,7 +88,7 @@ pub(super) fn place_stamp_row(graph: &mut Graph, out: NodeId, side: u8, pose: bo
 
 /// A cena do modo `=8`, montada de uma vez no frame 3.
 pub(super) fn run(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>) {
-    spawn_posed_sprite(&mut cx.sim);
+    spawn_posed_sprite(cx.sim);
     for (k, pose) in [(0u8, false), (1, true)] {
         let out = build_stamp_graph(&mut cx.motion.doc.graph, OBJECT);
         // A grelha deste par vai para o seu lado da tela.

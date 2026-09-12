@@ -463,9 +463,9 @@ pub fn motion_node_path_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'
     match FRAME.fetch_add(1, Ordering::Relaxed) {
         3 => {
             if mode == 2 {
-                push_spacing_shapes(&mut cx.vec_scene);
+                push_spacing_shapes(cx.vec_scene);
             } else {
-                push_shape(&mut cx.vec_scene);
+                push_shape(cx.vec_scene);
             }
         }
         6 => {
@@ -473,15 +473,15 @@ pub fn motion_node_path_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'
             // cena e o grafo vivem no `AppGfx`.
             let map = cx.vec_entities.clone();
             if mode == 2 {
-                let outs = name_and_wire_spacing(&mut cx.sim, &map, &mut cx.motion.doc.graph);
+                let outs = name_and_wire_spacing(cx.sim, &map, &mut cx.motion.doc.graph);
                 cx.motion.sinks.extend(outs);
             } else if mode == 3 {
-                let outs = name_and_wire_normal(&mut cx.sim, &map, &mut cx.motion.doc.graph);
+                let outs = name_and_wire_normal(cx.sim, &map, &mut cx.motion.doc.graph);
                 cx.motion.sinks.extend(outs);
             } else if mode == 4 {
-                let outs = name_and_wire_trim(&mut cx.sim, &map, &mut cx.motion.doc.graph);
+                let outs = name_and_wire_trim(cx.sim, &map, &mut cx.motion.doc.graph);
                 cx.motion.sinks.extend(outs);
-            } else if let Some(out) = name_and_wire(&mut cx.sim, &map, &mut cx.motion.doc.graph) {
+            } else if let Some(out) = name_and_wire(cx.sim, &map, &mut cx.motion.doc.graph) {
                 cx.motion.sinks.push(out);
             }
             let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));

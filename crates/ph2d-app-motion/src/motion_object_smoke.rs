@@ -149,7 +149,7 @@ pub fn motion_object_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>)
     match mode {
         // A1 — sprite: entidade direta, tudo num frame.
         1 if f == 3 => {
-            spawn_sprite(&mut cx.sim);
+            spawn_sprite(cx.sim);
             let out = build_stamp_graph(&mut cx.motion.doc.graph, OBJECT);
             cx.motion.sinks.push(out);
             let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
@@ -188,29 +188,29 @@ pub fn motion_object_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>)
         // `front > 0` passa a ser um quad no passe do vector.
         // Ver [`super::motion_object_smoke_leaf`].
         12 if f == 3 => {
-            leaf::spawn_leaf_sprite(&mut cx.sim);
+            leaf::spawn_leaf_sprite(cx.sim);
             leaf::run(cx);
         }
         11 if f == 3 => {
-            holds::spawn_art(&mut cx.flip);
+            holds::spawn_art(cx.flip);
         }
         11 if f == 6 => holds::run(cx),
         9 if f == 3 => {
-            sink::spawn_flip_art(&mut cx.flip);
-            sink::spawn_chip(&mut cx.sim);
+            sink::spawn_flip_art(cx.flip);
+            sink::spawn_chip(cx.sim);
             // ⚠️ E a ESTRELA VECTORIAL — a fileira do pivô desenha-se por ela, que é a
             // prova de que o pivô alcança um objecto que NUNCA vira textura.
             cx.vec_scene.push_path(star_shape());
         }
         9 if f == 6 => {
             let map = cx.vec_entities.clone();
-            if name_vector_entity_as(&mut cx.sim, &map, sink::STAR) {
+            if name_vector_entity_as(cx.sim, &map, sink::STAR) {
                 sink::run(cx);
             }
         }
         2 if f == 6 => {
             let map = cx.vec_entities.clone();
-            if name_vector_entity(&mut cx.sim, &map) {
+            if name_vector_entity(cx.sim, &map) {
                 let out = build_stamp_graph(&mut cx.motion.doc.graph, OBJECT);
                 cx.motion.sinks.push(out);
             }
@@ -233,7 +233,7 @@ pub fn motion_object_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>)
         // "Object") e criada pelo `flip_entities::sync`, entao o grafo o acha pelo
         // nome no frame 6 (sem nomear a mao — o sync copia o nome do objeto).
         3 if f == 3 => {
-            spawn_flip_object(&mut cx.flip);
+            spawn_flip_object(cx.flip);
         }
         3 if f == 6 => {
             let out = build_stamp_graph(&mut cx.motion.doc.graph, OBJECT);
@@ -269,12 +269,12 @@ pub fn motion_object_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>)
             // O vetor + o flip entram agora; suas ENTIDADES nascem no sync dos
             // frames seguintes, quando serao nomeadas e parenteadas ao grupo.
             cx.vec_scene.push_path(star_shape());
-            spawn_flip_object_named(&mut cx.flip, "GFlip");
+            spawn_flip_object_named(cx.flip, "GFlip");
         }
         4 if f == 6 => {
             let vec_map = cx.vec_entities.clone();
             let flip_map = cx.flip_state.entities.clone();
-            if let Some(group) = find_group(&mut cx.sim, OBJECT) {
+            if let Some(group) = find_group(cx.sim, OBJECT) {
                 // O vetor (a unica forma da cena) vira filho SEM NOME no centro — o
                 // caso do item 3 (doc 86 §9.6): um filho vetor/flip de grupo sem Name
                 // continua carimbado, resolvido pelo seu DRAWING id (`VecPathRef`), nao
@@ -311,7 +311,7 @@ pub fn motion_object_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>)
             );
         }
         7 if f == 3 => {
-            spawn_flip_walk_named(&mut cx.flip, OBJECT);
+            spawn_flip_walk_named(cx.flip, OBJECT);
         }
         7 if f == 6 => {
             let outs = build_two_times_graph(&mut cx.motion.doc.graph, OBJECT);

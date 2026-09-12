@@ -339,82 +339,82 @@ pub fn upkeep(
     cache: &mut Option<BucketCache>,
     face: &mut Option<BucketHit>,
 ) {
-                let fills = preenchimentos(sim, map);
-        if fills.is_empty() && !armado {
-            *cache = None;
-            *face = None;
-            return;
-        }
-        let xf = ph2d_vec_entities::transform::build(sim, map);
-        let vista = ph2d_vec_entities::entities::view_state(sim, map);
-        let so_fill: std::collections::BTreeSet<u64> = fills.iter().map(|(id, _, _)| *id).collect();
-        let (contornos, tags) = contornos_mundo(scene, &xf, &|id| {
-            fora_da_rede(vista.is_hidden(id), so_fill.contains(&id))
-        });
-        let k = chave(&contornos);
-        if cache.as_ref().is_some_and(|c| c.chave == k) {
-            return; // nada mudou: nem rede nova, nem re-cozedura
-        }
-        let rede = ph2d_vec_fill::rede(&contornos);
-        // ⛔⛔ **Acima do tecto de amostragem a rede RECUSA**, e o artista tem de saber porquê: sem
-        // isto ele vê o balde parar de acender e conclui que a ferramenta se partiu. ⚠️ A linha sai
-        // uma vez por reconstrução (a rede é guardada), não por quadro.
-        if rede.recusada {
-            eprintln!(
-                "[ph2d-vec] balde: o desenho tem linhas de mais para achar as regioes ({} \
+    let fills = preenchimentos(sim, map);
+    if fills.is_empty() && !armado {
+        *cache = None;
+        *face = None;
+        return;
+    }
+    let xf = ph2d_vec_entities::transform::build(sim, map);
+    let vista = ph2d_vec_entities::entities::view_state(sim, map);
+    let so_fill: std::collections::BTreeSet<u64> = fills.iter().map(|(id, _, _)| *id).collect();
+    let (contornos, tags) = contornos_mundo(scene, &xf, &|id| {
+        fora_da_rede(vista.is_hidden(id), so_fill.contains(&id))
+    });
+    let k = chave(&contornos);
+    if cache.as_ref().is_some_and(|c| c.chave == k) {
+        return; // nada mudou: nem rede nova, nem re-cozedura
+    }
+    let rede = ph2d_vec_fill::rede(&contornos);
+    // ⛔⛔ **Acima do tecto de amostragem a rede RECUSA**, e o artista tem de saber porquê: sem
+    // isto ele vê o balde parar de acender e conclui que a ferramenta se partiu. ⚠️ A linha sai
+    // uma vez por reconstrução (a rede é guardada), não por quadro.
+    if rede.recusada {
+        eprintln!(
+            "[ph2d-vec] balde: o desenho tem linhas de mais para achar as regioes ({} \
                  contornos) — os preenchimentos ficam como estao",
-                contornos.len()
-            );
-        }
-        // ⭐⭐⭐ **RE-COZER os preenchimentos**: cada um reencontra as faces dele pelas ÂNCORAS —
-        // os pedaços de linha que o cercavam quando o artista clicou ([`crate::bucket_claim`]).
-        //
-        // ⚠️⚠️ **É STATELESS, e essa é a mudança.** Até 2026-09-02 a receita era *a região do quadro
-        // anterior*, e o dono saía de uma votação por área contra ela — o que **deriva**: um único
-        // quadro de topologia confusa reatribuía a tinta para sempre. Agora cada quadro resolve-se
-        // do documento sozinho, e *o mesmo desenho dá sempre as mesmas cores*.
-        //
-        // ⚠️ **Um preenchimento que não reencontra face nenhuma CONGELA a forma onde ela está**, em
-        // vez de sumir — a mesma escolha do conector e do morph. ⭐ E com âncoras ele **volta**
-        // sozinho: elas não se reescrevem, então quando a região reaparece elas reencontram-na.
-        let faces: Vec<ph2d_vec_fill::Face> =
-            rede.faces().into_iter().filter(|f| f.area > 0.0).collect();
-        let receitas: Vec<crate::bucket_claim::Receita> = fills
-            .iter()
-            .map(|(_, _, f)| crate::bucket_claim::Receita {
-                ancoras: &f.ancoras,
-                semente: [f64::from(f.seed[0]), f64::from(f.seed[1])],
-            })
-            .collect();
-        let donos = crate::bucket_claim::donos(&rede, &faces, &tags, &receitas);
-        let minhas = crate::bucket_claim::por_preenchimento(&faces, &donos, fills.len());
-        let novos: Vec<(u64, Forma)> = fills
-            .iter()
-            .enumerate()
-            .filter_map(|(k, (id, _, _))| {
-                let meus = &minhas[k];
-                let xfp = ph2d_vec_scene::xform_of(&xf, *id);
-                Some((*id, geometria_local(&rede, &faces, meus, &xfp)?))
-            })
-            .collect();
-        {
-            for (id, (primeiro, subs)) in novos {
-                if let Some(p) = scene.path_mut(id) {
-                    if p.verts != primeiro {
-                        p.verts = primeiro;
-                    }
-                    if p.subpaths != subs {
-                        p.subpaths = subs;
-                    }
+            contornos.len()
+        );
+    }
+    // ⭐⭐⭐ **RE-COZER os preenchimentos**: cada um reencontra as faces dele pelas ÂNCORAS —
+    // os pedaços de linha que o cercavam quando o artista clicou ([`crate::bucket_claim`]).
+    //
+    // ⚠️⚠️ **É STATELESS, e essa é a mudança.** Até 2026-09-02 a receita era *a região do quadro
+    // anterior*, e o dono saía de uma votação por área contra ela — o que **deriva**: um único
+    // quadro de topologia confusa reatribuía a tinta para sempre. Agora cada quadro resolve-se
+    // do documento sozinho, e *o mesmo desenho dá sempre as mesmas cores*.
+    //
+    // ⚠️ **Um preenchimento que não reencontra face nenhuma CONGELA a forma onde ela está**, em
+    // vez de sumir — a mesma escolha do conector e do morph. ⭐ E com âncoras ele **volta**
+    // sozinho: elas não se reescrevem, então quando a região reaparece elas reencontram-na.
+    let faces: Vec<ph2d_vec_fill::Face> =
+        rede.faces().into_iter().filter(|f| f.area > 0.0).collect();
+    let receitas: Vec<crate::bucket_claim::Receita> = fills
+        .iter()
+        .map(|(_, _, f)| crate::bucket_claim::Receita {
+            ancoras: &f.ancoras,
+            semente: [f64::from(f.seed[0]), f64::from(f.seed[1])],
+        })
+        .collect();
+    let donos = crate::bucket_claim::donos(&rede, &faces, &tags, &receitas);
+    let minhas = crate::bucket_claim::por_preenchimento(&faces, &donos, fills.len());
+    let novos: Vec<(u64, Forma)> = fills
+        .iter()
+        .enumerate()
+        .filter_map(|(k, (id, _, _))| {
+            let meus = &minhas[k];
+            let xfp = ph2d_vec_scene::xform_of(&xf, *id);
+            Some((*id, geometria_local(&rede, &faces, meus, &xfp)?))
+        })
+        .collect();
+    {
+        for (id, (primeiro, subs)) in novos {
+            if let Some(p) = scene.path_mut(id) {
+                if p.verts != primeiro {
+                    p.verts = primeiro;
+                }
+                if p.subpaths != subs {
+                    p.subpaths = subs;
                 }
             }
         }
-        *cache = Some(BucketCache {
-            chave: k,
-            rede,
-            tags,
-        });
     }
+    *cache = Some(BucketCache {
+        chave: k,
+        rede,
+        tags,
+    });
+}
 
 /// **A região sob o cursor**, sobre a rede JÁ guardada.
 ///
@@ -422,19 +422,19 @@ pub fn upkeep(
 #[must_use]
 pub fn hover(cache: &BucketCache, world: [f64; 2]) -> Option<BucketHit> {
     cache.rede.face_em(world).and_then(|f| {
-            let verts = cache.rede.geometria(&f);
-            (verts.len() >= 2).then(|| BucketHit {
-                face: VecPath {
-                    verts,
-                    closed: true,
-                    ..VecPath::default()
-                },
-                seed: world,
-                // ⭐ As âncoras saem da MESMA face que o realce acende — o que o artista vê é o que
-                // a receita grava.
-                ancoras: crate::bucket_claim::ancoras_da_face(&cache.rede, &cache.tags, &f),
-            })
+        let verts = cache.rede.geometria(&f);
+        (verts.len() >= 2).then(|| BucketHit {
+            face: VecPath {
+                verts,
+                closed: true,
+                ..VecPath::default()
+            },
+            seed: world,
+            // ⭐ As âncoras saem da MESMA face que o realce acende — o que o artista vê é o que
+            // a receita grava.
+            ancoras: crate::bucket_claim::ancoras_da_face(&cache.rede, &cache.tags, &f),
         })
+    })
 }
 
 /// ⭐⭐⭐ **DEPOSITA a região acesa** e devolve o id do caminho que nasceu.
@@ -447,33 +447,26 @@ pub fn deposit(
     hit: &BucketHit,
     tinta: ph2d_vec_scene::Rgba8,
 ) -> u64 {
-// As poses e a lista de preenchimentos, lidas antes de a cena passar a mutável.
-        let (xf, e_fill) = {
-            let e_fill: std::collections::BTreeSet<u64> =
-                preenchimentos(sim, map)
-                    .iter()
-                    .map(|(id, _, _)| *id)
-                    .collect();
-            (ph2d_vec_entities::transform::build(sim, map), e_fill)
-        };
-        // ⭐⭐⭐ **A TINTA QUE JÁ ESTÁ AQUI SAI ANTES** — ver [`apagar_tinta_sob`].
-        apagar_tinta_sob(
-            scene,
-            &xf,
-            &|id| e_fill.contains(&id),
-            hit.seed,
-        );
-        // ⚠️ **Clona a face**, porque a ponte fica com o `hit` para gravar a receita (a semente e
-        // as âncoras) depois. É UMA clonagem por CLIQUE, não por quadro — o `upkeep` é que corre a
-        // 60 Hz, e ele não passa por aqui.
-        let nova = VecPath {
-            fill: Some(ph2d_vec_scene::Paint::solid(tinta)),
-            ..hit.face.clone()
-        };
-        let id = scene.insert_path(0, nova);
+    // As poses e a lista de preenchimentos, lidas antes de a cena passar a mutável.
+    let (xf, e_fill) = {
+        let e_fill: std::collections::BTreeSet<u64> = preenchimentos(sim, map)
+            .iter()
+            .map(|(id, _, _)| *id)
+            .collect();
+        (ph2d_vec_entities::transform::build(sim, map), e_fill)
+    };
+    // ⭐⭐⭐ **A TINTA QUE JÁ ESTÁ AQUI SAI ANTES** — ver [`apagar_tinta_sob`].
+    apagar_tinta_sob(scene, &xf, &|id| e_fill.contains(&id), hit.seed);
+    // ⚠️ **Clona a face**, porque a ponte fica com o `hit` para gravar a receita (a semente e
+    // as âncoras) depois. É UMA clonagem por CLIQUE, não por quadro — o `upkeep` é que corre a
+    // 60 Hz, e ele não passa por aqui.
+    let nova = VecPath {
+        fill: Some(ph2d_vec_scene::Paint::solid(tinta)),
+        ..hit.face.clone()
+    };
+    let id = scene.insert_path(0, nova);
 
-        id
-    
+    id
 }
 
 #[cfg(test)]

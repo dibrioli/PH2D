@@ -70,11 +70,7 @@ pub fn tip_at(sim: &SimWorld, world: [f64; 2], px_to_world: f64) -> Option<(u64,
 /// o resto do módulo já assume.
 ///
 /// ⚠️ Raio e desempate iguais aos do [`tip_at`]: a bolinha DESENHADA, e ganha a mais perto.
-pub fn free_root_at(
-    sim: &SimWorld,
-    world: [f64; 2],
-    px_to_world: f64,
-) -> Option<(u64, [f64; 2])> {
+pub fn free_root_at(sim: &SimWorld, world: [f64; 2], px_to_world: f64) -> Option<(u64, [f64; 2])> {
     let mut melhor: Option<(f64, u64, [f64; 2])> = None;
     for (bits, a, b) in ph2d_skeleton_live::skin_live::bone_segments(sim) {
         if !is_a_free_chain_root(sim, bits) {
@@ -240,20 +236,18 @@ pub fn hover(
     // em cima da junta do osso seguinte — dois alvos concêntricos com verbos diferentes. A regra é
     // a que ele propôs: **por fora da bolinha pega a ÂNCORA, por dentro pega o osso**, e é o furo
     // no meio deste teste que deixa o clique de dentro chegar ao [`hit`] lá abaixo.
-    if let Some((b, ..)) =
-        crate::goal::anchors(sim)
-            .into_iter()
-            .find(|&(bits, a, o, p)| {
-                let d =
-                    (a[0] - world[0]).hypot(a[1] - world[1]) / px_to_world.max(f64::MIN_POSITIVE);
-                let comp = (p[0] - o[0]).hypot(p[1] - o[1]) / px_to_world.max(f64::MIN_POSITIVE);
-                // ⚠️ O miolo só se descarta se houver mesmo um osso lá dentro: com a âncora longe de
-                // tudo, o disco inteiro é dela — senão o centro do losango seria um buraco morto.
-                let miolo = ph2d_skeleton_render::joint_radius_px(comp);
-                let tapado = hit(sim, world, px_to_world).is_some_and(|h| h != bits)
-                    || grabbed_the_joint(Some(sim), bits, world, px_to_world);
-                d <= ph2d_skeleton_render::goal_radius_px(comp) && !(tapado && d <= miolo)
-            })
+    if let Some((b, ..)) = crate::goal::anchors(sim)
+        .into_iter()
+        .find(|&(bits, a, o, p)| {
+            let d = (a[0] - world[0]).hypot(a[1] - world[1]) / px_to_world.max(f64::MIN_POSITIVE);
+            let comp = (p[0] - o[0]).hypot(p[1] - o[1]) / px_to_world.max(f64::MIN_POSITIVE);
+            // ⚠️ O miolo só se descarta se houver mesmo um osso lá dentro: com a âncora longe de
+            // tudo, o disco inteiro é dela — senão o centro do losango seria um buraco morto.
+            let miolo = ph2d_skeleton_render::joint_radius_px(comp);
+            let tapado = hit(sim, world, px_to_world).is_some_and(|h| h != bits)
+                || grabbed_the_joint(Some(sim), bits, world, px_to_world);
+            d <= ph2d_skeleton_render::goal_radius_px(comp) && !(tapado && d <= miolo)
+        })
     {
         return Some(BoneHover {
             bone: b,

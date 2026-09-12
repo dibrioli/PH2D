@@ -145,12 +145,7 @@ pub fn spec_of(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> Option<Widt
 ///
 /// Um perfil UNIFORME **REMOVE** o componente em vez de guardar um perfil inerte — ver o
 /// cabeçalho. Devolve quantas entidades mudaram.
-pub fn arm(
-    sim: &mut SimWorld,
-    map: &VecEntityMap,
-    ids: &[VecPathId],
-    stops: &WidthStops,
-) -> usize {
+pub fn arm(sim: &mut SimWorld, map: &VecEntityMap, ids: &[VecPathId], stops: &WidthStops) -> usize {
     let want = (!stops.is_uniform()).then(|| VecStrokeProfile {
         stops: stops.clone(),
     });
@@ -203,22 +198,21 @@ pub fn materialise(
         return false;
     }
     let pre = scene.clone();
-    let touched =
-        crate::expand::materialise_selection(scene, pen, xforms, ids, |id, local, xf| {
-            let Some((_, stops)) = live.iter().find(|(i, _)| *i == id) else {
-                return Vec::new(); // fora do comando: fica onde está, e segue selecionado
-            };
-            // A fita de largura nasce em MUNDO, então a pose entra ANTES do motor.
-            let mut world = local;
-            ph2d_vec_scene::bake_xform(&mut world, xf);
-            crate::expand::expand_layers(
-                &world,
-                crate::expand::Expand::PowerStroke {
-                    stops: stops.clone(),
-                },
-                0.0,
-            )
-        });
+    let touched = crate::expand::materialise_selection(scene, pen, xforms, ids, |id, local, xf| {
+        let Some((_, stops)) = live.iter().find(|(i, _)| *i == id) else {
+            return Vec::new(); // fora do comando: fica onde está, e segue selecionado
+        };
+        // A fita de largura nasce em MUNDO, então a pose entra ANTES do motor.
+        let mut world = local;
+        ph2d_vec_scene::bake_xform(&mut world, xf);
+        crate::expand::expand_layers(
+            &world,
+            crate::expand::Expand::PowerStroke {
+                stops: stops.clone(),
+            },
+            0.0,
+        )
+    });
     if touched {
         history.push_undo(pre);
     }

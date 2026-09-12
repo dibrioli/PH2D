@@ -12,7 +12,6 @@
 //! de nenhuma das duas. Levá-lo para a crate do esqueleto obrigaria essa crate a depender do
 //! gizmo de grupo da shell — a seta ao contrário (HOWTO §4).
 
-
 // ⚠️ **Os dois gates viviam DENTRO da crate e liam `use super::*`.** Do lado de cá a família é uma
 // dependência, logo cada nome é nomeado pelo sítio onde ele de facto vive — e a fixtura `braco`
 // atravessa pela feature `test-support` (HOWTO §2.5).

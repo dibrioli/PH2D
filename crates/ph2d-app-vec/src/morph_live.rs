@@ -220,12 +220,7 @@ fn write_shape(scene: &mut VecScene, id: VecPathId, cooked: VecPath) {
 
 /// Pendura (ou atualiza) o [`VecMorph`] na entidade do path `id` — espelho de
 /// `blend_live::attach`. Idempotente.
-pub fn attach(
-    sim: &mut SimWorld,
-    map: &VecEntityMap,
-    id: VecPathId,
-    morph: &VecMorph,
-) -> bool {
+pub fn attach(sim: &mut SimWorld, map: &VecEntityMap, id: VecPathId, morph: &VecMorph) -> bool {
     let Some(&bits) = map.get(&id) else {
         return false;
     };

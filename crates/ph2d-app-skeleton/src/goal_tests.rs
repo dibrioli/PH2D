@@ -11,7 +11,6 @@ use crate::goal::braco;
 use ph2d_ecs::{ChildOf, Name, RootOrder};
 use ph2d_skeleton_ecs::Bone;
 
-
 /// Onde a ponta da corrente está, em mundo.
 fn ponta(sim: &SimWorld, e: Entity) -> [f64; 2] {
     crate::bone_pick::tip_of(sim, e.to_bits()).expect("o osso existe")

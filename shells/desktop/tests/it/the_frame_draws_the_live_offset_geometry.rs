@@ -112,8 +112,7 @@ fn the_cook_takes_the_scene_by_shared_reference() {
     // `pub(crate) fn` a virar `pub fn`, e uma agulha ancorada no modificador reprovaria **sem que a
     // lei mudasse uma linha** — *ela mediria visibilidade, e visibilidade é exactamente o que uma
     // fronteira nova muda por construção*. `fn recook(` sobrevive ao próximo movimento.
-    const COOK: &str =
-        include_str!("../../../../crates/ph2d-app-vec/src/offset_live.rs");
+    const COOK: &str = include_str!("../../../../crates/ph2d-app-vec/src/offset_live.rs");
     let sig = COOK
         .find("fn recook(")
         .expect("o `recook` sumiu do offset_live");

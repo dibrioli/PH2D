@@ -28,11 +28,7 @@ fn pick_stroke() -> ph2d_vec_scene::StrokeSpec {
 ///
 /// É o que torna a escolha VISÍVEL: o artista clica as formas e vê a cadeia se formar (a linha
 /// cresce do 1º clique), então sabe a ordem que o Blend vai usar sem um número na tela.
-pub fn pick_preview(
-    scene: &VecScene,
-    xforms: &VecXforms,
-    picks: &[VecPathId],
-) -> Vec<VecPath> {
+pub fn pick_preview(scene: &VecScene, xforms: &VecXforms, picks: &[VecPathId]) -> Vec<VecPath> {
     let mut out = Vec::new();
     // O contorno de cada forma escolhida (sem fill — só o realce da silhueta).
     for &id in picks {
@@ -61,10 +57,7 @@ pub fn pick_preview(
 /// As formas FECHADAS selecionadas, na ordem de **z** (a de `paths()`), capadas em
 /// [`super::MAX_BLEND_SOURCES`]. É o que o botão "Blend" liga — a ordem da cadeia é a de z, como o
 /// "Make" do Illustrator (formas abertas não têm interior para interpolar, então são descartadas).
-pub fn selected_closed_in_z(
-    scene: &VecScene,
-    pen: &ph2d_vec_edit::PenTool,
-) -> Vec<VecPathId> {
+pub fn selected_closed_in_z(scene: &VecScene, pen: &ph2d_vec_edit::PenTool) -> Vec<VecPathId> {
     let mut zs: Vec<(usize, VecPathId)> = pen
         .selected_paths()
         .iter()

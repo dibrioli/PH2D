@@ -346,18 +346,17 @@ pub fn materialise(
         return false;
     }
     let pre = scene.clone();
-    let touched =
-        crate::expand::materialise_selection(scene, pen, xforms, ids, |id, local, xf| {
-            let Some((_, spec)) = live.iter().find(|(i, _)| *i == id) else {
-                return Vec::new();
-            };
-            // A MESMA ordem do cozimento: reflectir no espaço da forma, e só então assar a pose.
-            let mut out = symmetry_paths(&local, spec);
-            for p in &mut out {
-                bake_xform(p, xf);
-            }
-            out
-        });
+    let touched = crate::expand::materialise_selection(scene, pen, xforms, ids, |id, local, xf| {
+        let Some((_, spec)) = live.iter().find(|(i, _)| *i == id) else {
+            return Vec::new();
+        };
+        // A MESMA ordem do cozimento: reflectir no espaço da forma, e só então assar a pose.
+        let mut out = symmetry_paths(&local, spec);
+        for p in &mut out {
+            bake_xform(p, xf);
+        }
+        out
+    });
     if touched {
         history.push_undo(pre);
     }

@@ -242,7 +242,6 @@ fn a_morph_without_a_machine_publishes_the_empty_face() {
     );
 }
 
-
 /// ⭐⭐ **UMA SELEÇÃO DE FORMAS SOLTAS PUBLICA A FACE QUE TRAZ O BOTÃO** (plano 32 W8).
 ///
 /// ⚠️ **É a costura que torna a feature alcançável de todo.** Os gates do painel provam que o botão

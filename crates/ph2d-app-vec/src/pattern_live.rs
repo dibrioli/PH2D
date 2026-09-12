@@ -126,12 +126,7 @@ pub fn rotation_of(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> f32 {
 ///
 /// Exige o vínculo: girar um motivo que não cavalga nada não quer dizer nada, e deixaria um
 /// componente órfão que ressuscitaria no próximo `link`.
-pub fn set_rotation(
-    sim: &mut SimWorld,
-    map: &VecEntityMap,
-    motif: VecPathId,
-    deg: f32,
-) -> bool {
+pub fn set_rotation(sim: &mut SimWorld, map: &VecEntityMap, motif: VecPathId, deg: f32) -> bool {
     let Some(&bits) = map.get(&motif) else {
         return false;
     };
@@ -164,12 +159,7 @@ pub fn spec_of(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> Option<VecP
 /// Recusa prender uma forma a ela mesma (um motivo que cavalga a si próprio não quer dizer nada) e
 /// exige que o motivo exista no mapa. A disambiguação *"qual dos selecionados é o motivo, qual é o
 /// guia?"* é decisão de UX do painel (W3) — esta porta recebe os dois já resolvidos.
-pub fn link(
-    sim: &mut SimWorld,
-    map: &VecEntityMap,
-    motif: VecPathId,
-    guide: VecPathId,
-) -> bool {
+pub fn link(sim: &mut SimWorld, map: &VecEntityMap, motif: VecPathId, guide: VecPathId) -> bool {
     if motif == guide {
         return false;
     }
@@ -202,10 +192,7 @@ pub fn link(
 /// (Comprimento de ARCO seria pior: uma forma FECHADA tem perímetro que passa fácil de uma reta
 /// mais longa — um quadrado de lado 40 tem perímetro 160 contra os 100 da reta.)
 #[must_use]
-pub fn link_candidate(
-    scene: &VecScene,
-    selection: &[VecPathId],
-) -> Option<(VecPathId, VecPathId)> {
+pub fn link_candidate(scene: &VecScene, selection: &[VecPathId]) -> Option<(VecPathId, VecPathId)> {
     if selection.len() != 2 || selection[0] == selection[1] {
         return None;
     }

@@ -108,11 +108,7 @@ pub const DRIVERS: [Driver; 4] = [
 /// ⚠️ **Declara só quem de facto MUDOU** — a mesma regra do solver. Um objeto keyado cuja curva
 /// está plana naquele instante não está a ser conduzido, e mantê-lo no ledger deixaria a `settle`
 /// sem nada para esquecer: a reprodução nunca acabaria aos olhos do undo.
-pub fn declare_timeline_writes(
-    world: &World,
-    before: &[BoundBefore],
-    drive: &mut PreviewDrive,
-) {
+pub fn declare_timeline_writes(world: &World, before: &[BoundBefore], drive: &mut PreviewDrive) {
     for b in before {
         let e = b.entity;
         // ⚠️ **Uma linha por facto, e o `zip` de `Option`s é o guarda**: um facto que a entidade

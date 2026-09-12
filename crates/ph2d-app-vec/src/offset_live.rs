@@ -236,23 +236,22 @@ pub fn materialise(
         return false;
     }
     let pre = scene.clone();
-    let touched =
-        crate::expand::materialise_selection(scene, pen, xforms, ids, |id, local, xf| {
-            let Some((_, spec)) = live.iter().find(|(i, _)| *i == id) else {
-                return Vec::new(); // fora do comando: fica onde está, e segue selecionado
-            };
-            // A distância do offset é de MUNDO, então a pose entra ANTES do motor.
-            let mut world = local;
-            ph2d_vec_scene::bake_xform(&mut world, xf);
-            crate::expand::expand_layers(
-                &world,
-                crate::expand::Expand::Offset {
-                    join: crate::expand::join_of_code(spec.join),
-                    side: crate::expand::side_of_code(spec.side),
-                },
-                spec.d,
-            )
-        });
+    let touched = crate::expand::materialise_selection(scene, pen, xforms, ids, |id, local, xf| {
+        let Some((_, spec)) = live.iter().find(|(i, _)| *i == id) else {
+            return Vec::new(); // fora do comando: fica onde está, e segue selecionado
+        };
+        // A distância do offset é de MUNDO, então a pose entra ANTES do motor.
+        let mut world = local;
+        ph2d_vec_scene::bake_xform(&mut world, xf);
+        crate::expand::expand_layers(
+            &world,
+            crate::expand::Expand::Offset {
+                join: crate::expand::join_of_code(spec.join),
+                side: crate::expand::side_of_code(spec.side),
+            },
+            spec.d,
+        )
+    });
     if touched {
         history.push_undo(pre);
     }

@@ -171,10 +171,7 @@ pub fn aim_rotation(sim: &SimWorld, bone: Entity, world: [f64; 2]) -> Option<f64
 /// no modo Select sem uma linha de código própria, e o pai do próximo osso ser exactamente o que
 /// está aceso na Hierarquia. *Um segundo estado de selecção divergiria do primeiro no primeiro
 /// clique.*
-pub fn selected_bone(
-    sim: &SimWorld,
-    selection: impl IntoIterator<Item = u64>,
-) -> Option<u64> {
+pub fn selected_bone(sim: &SimWorld, selection: impl IntoIterator<Item = u64>) -> Option<u64> {
     // ⚠️ **A selecção INTEIRA, e não só o primário**: prender uma forma a UM esqueleto entre vários
     // faz-se escolhendo os dois (a forma e um osso dele) na Hierarquia, e o primário é a forma. Ler
     // só o primário tornaria essa desambiguação inexprimível.

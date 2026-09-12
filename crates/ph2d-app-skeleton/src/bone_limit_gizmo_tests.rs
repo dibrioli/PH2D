@@ -379,7 +379,9 @@ fn the_bone_overlays_are_drawn_for_the_bone_the_finger_uses() {
     // ⚠️ **Aponta para FORA de propósito** (HOWTO §2.6): o sujeito deste gate é *«a SHELL chama a
     // lei no sítio certo do quadro»*, e o laço não se mudou. ⭐ Um `include_str!` falha em tempo de
     // COMPILAÇÃO se o caminho morrer — é a metade boa, ao contrário do gémeo em runtime.
-    let src = code_only(include_str!("../../../shells/desktop/src/render_loop/mod.rs"));
+    let src = code_only(include_str!(
+        "../../../shells/desktop/src/render_loop/mod.rs"
+    ));
     for verbo in ["draw_influence(", "draw_limit("] {
         let i = src
             .find(verbo)

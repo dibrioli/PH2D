@@ -70,12 +70,7 @@ fn subject(sim: &SimWorld, map: &VecEntityMap, selected: &[VecPathId]) -> Option
 }
 
 /// Aplica o verbo. Sem seleção única, não faz nada — a seção nem é oferecida nesse caso.
-pub fn apply(
-    sim: &mut SimWorld,
-    map: &VecEntityMap,
-    selected: &[VecPathId],
-    verb: WidgetEdit,
-) {
+pub fn apply(sim: &mut SimWorld, map: &VecEntityMap, selected: &[VecPathId], verb: WidgetEdit) {
     let Some(e) = subject(sim, map, selected) else {
         return;
     };
@@ -138,12 +133,7 @@ pub fn apply(
 /// modelo não tem (quem lê o valor é a projeção da CENA, não outra row), e aceitá-la em silêncio
 /// daria um vínculo que não faz nada. Recusar mantém o conta-gotas armado, que é o que diz ao
 /// artista *"este não"* sem nenhuma mensagem.
-pub fn bind(
-    sim: &mut SimWorld,
-    map: &VecEntityMap,
-    widget: VecPathId,
-    target: VecPathId,
-) -> bool {
+pub fn bind(sim: &mut SimWorld, map: &VecEntityMap, widget: VecPathId, target: VecPathId) -> bool {
     let Some(&bits) = map.get(&widget) else {
         return false;
     };

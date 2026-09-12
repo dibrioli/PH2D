@@ -48,10 +48,7 @@ impl crate::App {
     ///
     /// ⚠️ **A MESMA porta do realce** ([`ph2d_app_skeleton::bone_pick::hover`]) — o que o artista vê aceso é, por construção, o
     /// que ele vai pegar. Uma segunda varredura seria a segunda resposta à mesma pergunta.
-    pub fn bone_handle_at(
-        &self,
-        pointer: (f32, f32),
-    ) -> Option<ph2d_skeleton_render::BoneHover> {
+    pub fn bone_handle_at(&self, pointer: (f32, f32)) -> Option<ph2d_skeleton_render::BoneHover> {
         let world = self.vec_world_at(pointer)?;
         let px = self.vec_px_to_world();
         let foco = self.selected_bone_bits();

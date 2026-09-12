@@ -302,7 +302,10 @@ fn only_the_bone_that_closes_a_chain_offers_the_end_effector() {
         Some(BonePart::Tip),
         "a ponta da corrente tem de oferecer o end effector"
     );
-    assert_eq!(ph2d_skeleton_live::skin_live::chain_ends(&sim), vec![ossos[2]]);
+    assert_eq!(
+        ph2d_skeleton_live::skin_live::chain_ends(&sim),
+        vec![ossos[2]]
+    );
 }
 
 /// ⭐⭐⭐ **QUE ALÇAS PEGAM FORA DO MODO OSSO — a linha é o VERBO, não a alça.**

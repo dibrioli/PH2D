@@ -68,49 +68,49 @@
 //!
 //! [HOWTO §1.2]: ../../../docs/IntegracaoMultiAgente/HOWTO_partir_uma_familia_da_shell.md
 
-pub mod appearance;
 pub mod align_live;
+pub mod appearance;
+pub mod bindings;
+pub mod blend;
 pub mod blend_live;
+pub mod bucket;
+pub mod bucket_claim;
+pub mod bucket_repro;
+pub mod component_edit;
 pub mod connector_live;
 pub mod connector_panel;
 pub mod contour_live;
+pub mod cut_line;
+pub mod driven_style;
 pub mod expand;
+pub mod frame_labels;
+pub mod frame_spans;
 pub mod fx_atlas;
 pub mod fx_bridge;
 pub mod fx_bridge_dispatch;
 pub mod fx_dump;
 pub mod fx_live_hit;
 pub mod fx_live_resolve;
+pub mod guide;
+pub mod marquee;
+pub mod morph_edit;
 pub mod morph_live;
 pub mod offset_live;
 pub mod paint_dilate;
 pub mod pattern_live;
-pub mod profile_live;
-pub mod symmetry_live;
-pub mod widget_live;
-pub mod bindings;
-pub mod blend;
-pub mod bucket;
-pub mod bucket_claim;
-pub mod bucket_repro;
-pub mod component_edit;
-pub mod cut_line;
-pub mod driven_style;
-pub mod frame_labels;
-pub mod frame_spans;
-pub mod guide;
-pub mod marquee;
-pub mod morph_edit;
 pub mod pencil_input;
-pub mod texture_pattern_edit;
+pub mod profile_live;
 pub mod resize_box_edit;
 pub mod shape_params;
 pub mod svg_export;
 pub mod svg_import;
+pub mod symmetry_live;
+pub mod texture_pattern_edit;
 pub mod ui_panel_spec;
 pub mod widget_drive;
 pub mod widget_edit;
 pub mod widget_icon;
+pub mod widget_live;
 pub mod widget_value;
 // ⭐ **O mapa mudou-se para a folha** (`line/shell-folhas`, 12/09): ele é a MESMA peça
 // partilhada um degrau acima — a `motion` e a `flip` consomem a ponte inteira, e uma peça que

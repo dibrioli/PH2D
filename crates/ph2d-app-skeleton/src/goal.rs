@@ -501,7 +501,13 @@ pub fn braco() -> (SimWorld, [Entity; 2]) {
 /// O construtor de um osso da fixtura. ⚠️ **Atravessa com ela**: o gate do gizmo de grupo, na
 /// shell, constrói um braço de TRÊS ossos — *uma fixtura sem o construtor dela não é uma fixtura*.
 #[cfg(any(test, feature = "test-support"))]
-pub fn osso(sim: &mut SimWorld, nome: &str, pos: [f32; 2], len: f64, pai: Option<Entity>) -> Entity {
+pub fn osso(
+    sim: &mut SimWorld,
+    nome: &str,
+    pos: [f32; 2],
+    len: f64,
+    pai: Option<Entity>,
+) -> Entity {
     let e = sim
         .world_mut()
         .spawn((
@@ -522,4 +528,3 @@ pub fn osso(sim: &mut SimWorld, nome: &str, pos: [f32; 2], len: f64, pai: Option
     }
     e
 }
-

@@ -481,12 +481,7 @@ pub fn recook(
 /// escreve (senão o change-tick da ECS marcaria a entidade suja a cada frame do arrasto).
 ///
 /// `true` se a entidade existia e o componente está lá.
-pub fn attach(
-    sim: &mut SimWorld,
-    map: &VecEntityMap,
-    id: VecPathId,
-    conn: &VecConnector,
-) -> bool {
+pub fn attach(sim: &mut SimWorld, map: &VecEntityMap, id: VecPathId, conn: &VecConnector) -> bool {
     let Some(&bits) = map.get(&id) else {
         return false;
     };

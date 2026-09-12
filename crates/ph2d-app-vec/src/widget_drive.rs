@@ -97,11 +97,7 @@ pub fn drive_of(st: &InteractiveState) -> Option<Drive> {
 /// procura por um id que ninguém registou, e o sintoma seria *"o slider não faz nada"* sem erro
 /// nenhum.
 #[must_use]
-pub fn resolve(
-    sim: &SimWorld,
-    map: &VecEntityMap,
-    store: &WidgetStore,
-) -> Vec<(VecPathId, Drive)> {
+pub fn resolve(sim: &SimWorld, map: &VecEntityMap, store: &WidgetStore) -> Vec<(VecPathId, Drive)> {
     let w = sim.world();
     let mut out = Vec::new();
     for &bits in map.values() {

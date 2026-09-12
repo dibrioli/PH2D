@@ -179,8 +179,7 @@ fn the_upkeep_runs_in_every_tool_not_only_in_the_bucket() {
          mudanca de topologia"
     );
     assert!(
-        LEI[l..lfim].contains("p.verts = primeiro;")
-            && LEI[l..lfim].contains("p.subpaths = subs;"),
+        LEI[l..lfim].contains("p.verts = primeiro;") && LEI[l..lfim].contains("p.subpaths = subs;"),
         "o upkeep calcula a area nova e nao a ESCREVE inteira — uma regiao que partiu perderia \
          metade"
     );

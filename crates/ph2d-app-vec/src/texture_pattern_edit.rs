@@ -20,11 +20,7 @@ use ph2d_vec_scene::{Paint, PatternFill, PatternSource, StrokePaint, VecPathId, 
 /// defeito clássico desta wave: publicar a lei do traço e escrever no preenchimento. Duas escadas
 /// de `match` divergem no dia em que uma ganhar uma variante.
 #[must_use]
-pub fn pattern_at(
-    scene: &VecScene,
-    id: VecPathId,
-    slot: PatternSlot,
-) -> Option<&PatternFill> {
+pub fn pattern_at(scene: &VecScene, id: VecPathId, slot: PatternSlot) -> Option<&PatternFill> {
     let path = scene.path(id)?;
     match slot {
         PatternSlot::Fill => match path.fill.as_ref() {

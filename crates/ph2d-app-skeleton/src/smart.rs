@@ -122,12 +122,7 @@ pub fn actions_for(world: &World, doc: &TimelineDoc, sb: &SmartBone) -> Vec<Stri
 /// indexa é a MESMA porta que constrói ([`actions_for`]) — não uma segunda leitura que concorde por
 /// acidente enquanto ninguém filtrar.
 #[must_use]
-pub fn action_at(
-    world: &World,
-    doc: &TimelineDoc,
-    sb: &SmartBone,
-    i: usize,
-) -> Option<String> {
+pub fn action_at(world: &World, doc: &TimelineDoc, sb: &SmartBone, i: usize) -> Option<String> {
     actions_for(world, doc, sb).into_iter().nth(i)
 }
 

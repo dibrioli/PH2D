@@ -510,12 +510,7 @@ pub fn elevate_spines(
 /// `connector_live::attach`. Idempotente (não marca a entidade suja se o componente já é igual).
 ///
 /// `true` se a entidade existia e o componente está lá.
-pub fn attach(
-    sim: &mut SimWorld,
-    map: &VecEntityMap,
-    id: VecPathId,
-    blend: &VecBlend,
-) -> bool {
+pub fn attach(sim: &mut SimWorld, map: &VecEntityMap, id: VecPathId, blend: &VecBlend) -> bool {
     let Some(&bits) = map.get(&id) else {
         return false;
     };

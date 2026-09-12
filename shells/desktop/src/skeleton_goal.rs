@@ -275,7 +275,9 @@ pub(crate) fn drag_anchor(sim: &mut SimWorld, bone: Entity, world: [f64; 2]) -> 
     // posição de mundo e o que se grava é a local.
     let pai = sim.world().get::<ChildOf>(alvo).map(ChildOf::parent);
     let pai_mundo = pai.map_or(ph2d_vec_scene::Xform::IDENTITY, |p| {
-        ph2d_vec_entities::transform::xform_of_transform(ph2d_vec_entities::transform::world_transform(sim, p))
+        ph2d_vec_entities::transform::xform_of_transform(
+            ph2d_vec_entities::transform::world_transform(sim, p),
+        )
     });
     let Some(inv) = pai_mundo.inverse() else {
         return false;
@@ -420,9 +422,9 @@ pub(crate) fn solve(sim: &mut SimWorld, preview: &mut PreviewDrive) -> usize {
             }
             continue;
         }
-        let goal = ph2d_vec_entities::transform::xform_of_transform(ph2d_vec_entities::transform::world_transform(
-            sim, alvo,
-        ))
+        let goal = ph2d_vec_entities::transform::xform_of_transform(
+            ph2d_vec_entities::transform::world_transform(sim, alvo),
+        )
         .apply([0.0, 0.0]);
         if solve_one(sim, preview, &corrente, goal, g) {
             feitas += 1;

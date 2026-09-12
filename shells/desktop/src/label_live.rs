@@ -226,9 +226,9 @@ pub(crate) fn upkeep(
             .copied()
             .unwrap_or(Transform::IDENTITY);
         cache.insert(id, after);
-        let x = ph2d_vec_entities::transform::xform_of_transform(ph2d_vec_entities::transform::world_transform(
-            sim, entity,
-        ));
+        let x = ph2d_vec_entities::transform::xform_of_transform(
+            ph2d_vec_entities::transform::world_transform(sim, entity),
+        );
         if x.is_identity() {
             xforms.remove(&id);
         } else {

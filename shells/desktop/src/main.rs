@@ -654,16 +654,16 @@ pub(crate) use ph2d_app_vec::driven_style as vec_driven_style;
 #[cfg(test)]
 #[path = "vec_entities_tests.rs"]
 mod vec_entities_tests;
+mod vec_expand;
+/// ⭐ A cena de smoke do **fade vetorial** (`PH2D_VEC_FADE_SMOKE=1`) — a linha do tempo a
+/// desvanecer um caminho, com e sem filtro raster.
+mod vec_fade_smoke;
 #[cfg(test)]
 #[path = "vec_zorder_fixpoint_tests.rs"]
 mod vec_zorder_fixpoint_tests;
 #[cfg(test)]
 #[path = "vec_zorder_late_writers_tests.rs"]
 mod vec_zorder_late_writers_tests;
-mod vec_expand;
-/// ⭐ A cena de smoke do **fade vetorial** (`PH2D_VEC_FADE_SMOKE=1`) — a linha do tempo a
-/// desvanecer um caminho, com e sem filtro raster.
-mod vec_fade_smoke;
 // ⭐ W2/L4: a família `vec` começou a sair para `crates/ph2d-app-vec`. A re-exportação mantém
 // `crate::vec_font::…` a resolver em todo o resto da shell — mover 8 ficheiros custou ZERO
 // alterações nos ~60 sítios que os chamam, e é o molde para a Fase B.

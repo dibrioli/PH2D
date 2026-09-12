@@ -56,7 +56,11 @@ impl crate::App {
         //
         // ⚠️ **Empréstimos DISJUNTOS de `self`** — `gfx` e `vec_entities` são campos diferentes.
         if let Some(gfx) = self.gfx.as_mut() {
-            ph2d_vec_entities::entities::sync(&mut gfx.sim, &mut gfx.vec_scene, &mut self.vec_entities);
+            ph2d_vec_entities::entities::sync(
+                &mut gfx.sim,
+                &mut gfx.vec_scene,
+                &mut self.vec_entities,
+            );
         }
         // ⚠️ Empréstimos DISJUNTOS de `self` — o ledger e o `gfx` são campos diferentes, e é por
         // isso que os dois podem estar vivos ao mesmo tempo.

@@ -124,7 +124,7 @@ fn body_poses(sim: &SimWorld) -> Vec<(Entity, ph2d_ecs::Transform)> {
     q.iter(sim.world()).map(|(e, t, _)| (e, *t)).collect()
 }
 
-/// **O que o solver mexeu é pré-visualização, não autoria** (`crate::preview_drive`).
+/// **O que o solver mexeu é pré-visualização, não autoria** (a folha `ph2d-preview-drive`).
 ///
 /// Sem isto, um clique dado enquanto o mundo corre empilhava um passo de undo cujo conteúdo era só
 /// a pose de uma bola a cair — e o Ctrl+Z do artista gastava-se a desfazer nada. Com isto a corrida

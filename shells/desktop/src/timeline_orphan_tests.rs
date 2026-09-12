@@ -20,11 +20,11 @@
 //! - **recuperação**: a purga é UM passo do undo da timeline; Ctrl+Z global devolve o objeto
 //!   (Name literal do snapshot) e o Ctrl+Z da timeline devolve o documento, que o heal recola.
 
-use ph2d_unique_name::unique_name;
 use crate::timeline_persist::upkeep;
 use ph2d_anim::{AnimValue, Interp, RationalTime};
 use ph2d_ecs::{Name, SimWorld, Transform};
 use ph2d_timeline::{PropKind, TimelineState, apply_from_doc, apply_intent};
+use ph2d_unique_name::unique_name;
 
 /// **Um frame, na ordem do `timeline_bridge::run`**: apply (que marca as bindings órfãs) e
 /// depois upkeep (heal, depois purga). Devolve o que o upkeep devolve: *o documento resetou?*

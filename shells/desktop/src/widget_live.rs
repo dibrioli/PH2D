@@ -50,8 +50,8 @@ use ph2d_vec_render::{LiveGeometry, WidgetSkins};
 use ph2d_vec_scene::{Paint, VecPathId, VecScene, VecXforms};
 use ph2d_vector::Affine;
 
-use ph2d_vec_entities::entities::VecEntityMap;
 use crate::widget_icon::icon_face;
+use ph2d_vec_entities::entities::VecEntityMap;
 
 /// A pele autorada de `id`, se houver. **Porta única**: o cozimento e o painel perguntam AQUI.
 pub(crate) fn spec_of(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> Option<VecWidget> {

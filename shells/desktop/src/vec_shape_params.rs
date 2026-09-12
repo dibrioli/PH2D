@@ -29,8 +29,8 @@ use ph2d_tool_vector::params::DrawMode;
 use ph2d_tool_vector::shapes;
 use ph2d_vec_scene::{MAX_SHAPE_FIELDS, ShapeKind, ShapeValues, VecPathId, VecScene};
 
-use ph2d_vec_entities::entities::VecEntityMap;
 use crate::vec_shape_live::recook_into;
+use ph2d_vec_entities::entities::VecEntityMap;
 
 /// A forma VIVA paramétrica (não-texto) na seleção — o ALVO dos campos de forma do
 /// painel. Espelho de [`crate::vec_text_object::panel_text_target`]: a primeira da

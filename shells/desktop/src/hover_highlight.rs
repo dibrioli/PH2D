@@ -87,7 +87,8 @@ pub(crate) fn pick_objects_at(
     let world = w.camera.screen_to_world(pointer, w.window_size);
     let stroke_r = crate::vec_gizmo_view::stroke_hit_r(w.camera, w.window_size);
     let flip_r = crate::flip::gizmo_view::stroke_hit_r(w.camera, w.window_size);
-    let view = ph2d_vec_entities::entities::view_state_for_pick(w.sim, vec_entities, vec_view_derived);
+    let view =
+        ph2d_vec_entities::entities::view_state_for_pick(w.sim, vec_entities, vec_view_derived);
     let mut hits = crate::vec_gizmo_view::pick_all_at_world(
         w.sim,
         w.vec_scene,
@@ -230,7 +231,8 @@ pub(crate) fn hover_outline_world(
     bits: u64,
 ) -> Vec<ph2d_vec_scene::VecPath> {
     use ph2d_vec_scene::{bake_xform, xform_of};
-    let ids = ph2d_vec_entities::entities::subtree_paths(sim, scene, ph2d_ecs::Entity::from_bits(bits));
+    let ids =
+        ph2d_vec_entities::entities::subtree_paths(sim, scene, ph2d_ecs::Entity::from_bits(bits));
     let xf = ph2d_vec_entities::transform::build(sim, map);
     let mut out = Vec::new();
     for id in ids {

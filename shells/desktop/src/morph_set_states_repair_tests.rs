@@ -10,9 +10,9 @@
 //! explícito e desfazível), e o **consumidor** ignora um passo cuja ponta não é estado — porque o ⊘
 //! não é a única rota para uma forma sair (arrastar na Hierarquia também tira).
 
-use ph2d_vec_entities::morph_set::{create, upkeep};
 use super::super::world;
 use ph2d_ecs::{Entity, VecMorph};
+use ph2d_vec_entities::morph_set::{create, upkeep};
 
 use ph2d_vec_entities::entities::sync;
 

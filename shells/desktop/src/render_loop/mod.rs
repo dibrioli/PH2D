@@ -9807,7 +9807,12 @@ impl crate::App {
                 &self.vec_state.shape,
                 &self.vec_state.pencil,
             );
-            ph2d_vec_entities::transform::settle_origins(sim, vec_scene, &self.vec_entities, &drawing);
+            ph2d_vec_entities::transform::settle_origins(
+                sim,
+                vec_scene,
+                &self.vec_entities,
+                &drawing,
+            );
             // ADR-0114/ADR-0111: idem para os objetos Flip — o pivô nasce no centro do
             // MUNDO; assim que a arte pára de crescer, ele vai para o centro dela (e a
             // geometria vira LOCAL). O objeto EM GESTO (desenho/borracha ativos) NÃO é
@@ -10453,7 +10458,11 @@ impl crate::App {
                 ph2d_panel_vector::state::set_z_index(
                     sel.first()
                         .and_then(|id| {
-                            ph2d_vec_entities::entities::zorder::authored_z(sim, &self.vec_entities, *id)
+                            ph2d_vec_entities::entities::zorder::authored_z(
+                                sim,
+                                &self.vec_entities,
+                                *id,
+                            )
                         })
                         .map(|z| z as f32),
                 );
@@ -10629,16 +10638,23 @@ impl crate::App {
                                      chaves-da-tabela={:?} formas={:?}",
                                     ph2d_vec_entities::morph_set::path_of(&self.vec_entities, host),
                                     ui_states.hosts().collect::<Vec<_>>(),
-                                    ph2d_vec_entities::morph_set::graph_of(sim, &self.vec_entities, host)
-                                        .shapes(),
+                                    ph2d_vec_entities::morph_set::graph_of(
+                                        sim,
+                                        &self.vec_entities,
+                                        host
+                                    )
+                                    .shapes(),
                                 );
                                 // ⚠️ **O INVENTÁRIO da cena**, porque a linha acima disse que a
                                 // tabela está sob um id que não é o do conjunto — e a pergunta
                                 // seguinte é *o que é aquele id*. Sem isto, a resposta era mais
                                 // uma corrida do Enio.
                                 for p in vec_scene.paths() {
-                                    let e = ph2d_vec_entities::morph_set::path_of(&self.vec_entities, host)
-                                        .filter(|h| *h == p.id);
+                                    let e = ph2d_vec_entities::morph_set::path_of(
+                                        &self.vec_entities,
+                                        host,
+                                    )
+                                    .filter(|h| *h == p.id);
                                     let ent = self
                                         .vec_entities
                                         .get(&p.id)
@@ -10669,7 +10685,12 @@ impl crate::App {
                                     );
                                 }
                             }
-                            ph2d_vec_entities::morph_set::disconnect_row(sim, &self.vec_entities, host, row)
+                            ph2d_vec_entities::morph_set::disconnect_row(
+                                sim,
+                                &self.vec_entities,
+                                host,
+                                row,
+                            )
                         }
                         crate::vec_morph_edit::MorphCmd::Dissolve => {
                             ph2d_vec_entities::morph_set::dissolve(sim, &self.vec_entities, host)
@@ -10800,7 +10821,12 @@ impl crate::App {
             // usa para decidir o que uma seleccao apanha — *"um grupo entra e sai da seleccao
             // INTEIRO"* —, e ela devolve os caminhos pela ordem do documento, que e' a de z.
             let object_of = |id| {
-                ph2d_vec_entities::entities::object_selection_for(sim, vec_scene, &self.vec_entities, id)
+                ph2d_vec_entities::entities::object_selection_for(
+                    sim,
+                    vec_scene,
+                    &self.vec_entities,
+                    id,
+                )
             };
             let mut bake_shape = |id| {
                 crate::motion::motion_object_bake::bake_rgba_many(

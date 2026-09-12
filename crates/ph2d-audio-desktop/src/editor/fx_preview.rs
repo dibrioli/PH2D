@@ -84,11 +84,7 @@ impl PreviewScratch {
     /// that only exists behind it is smoke-only. The alternation with the mixer is the part most
     /// worth proving — an optimisation that silently never fires is worse than no optimisation,
     /// because it looks done.
-    pub fn step(
-        &mut self,
-        head: &EditClip,
-        fx: ph2d_audio_edit::Effect,
-    ) -> Option<EditClip> {
+    pub fn step(&mut self, head: &EditClip, fx: ph2d_audio_edit::Effect) -> Option<EditClip> {
         let hd = head.data();
         let selection = head.selection().map(|r| (r.start, r.end));
         let key = (hd.version(), selection);

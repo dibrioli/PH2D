@@ -160,7 +160,9 @@ fn no_id_in_the_section_asks_to_destroy_a_state() {
         &actions()
     ));
     assert_eq!(
-        ph2d_vec_entities::morph_set::graph_of(&sim, &map, e).states.len(),
+        ph2d_vec_entities::morph_set::graph_of(&sim, &map, e)
+            .states
+            .len(),
         2,
         "tirar a tecla NAO tira a forma da lista"
     );
@@ -347,8 +349,9 @@ fn the_arrow_click_reaches_the_world() {
     // Sem esta linha, arrastar uma forma para dentro do conjunto na Hierarquia não a faria
     // participar: o motor continuaria a percorrer uma lista que ninguém actualiza.
     assert!(
-        include_str!("morph_machine_drive.rs")
-            .contains("ph2d_vec_entities::morph_set::graph_of(sim, map_paths, Entity::from_bits(b))"),
+        include_str!("morph_machine_drive.rs").contains(
+            "ph2d_vec_entities::morph_set::graph_of(sim, map_paths, Entity::from_bits(b))"
+        ),
         "o motor deixou de DERIVAR o grafo dos filhos -- arrastar para dentro deixa de entrar"
     );
     let modal = include_str!("input_dispatch/keyboard_modal.rs");

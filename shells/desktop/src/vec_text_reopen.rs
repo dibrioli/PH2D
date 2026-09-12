@@ -15,10 +15,10 @@ use ph2d_ecs::{Entity, SimWorld, Transform, VecShape, VecTextParams};
 use ph2d_vec_scene::{VecPathId, VecScene};
 use ph2d_vector_font::AxisTag;
 
-use ph2d_vec_entities::entities::VecEntityMap;
 use crate::vec_glyph::text_to_compound_path;
 use crate::vec_text::VecTextEdit;
 use crate::vec_text_object::{align_from_u8, axes_of_params, layout_of_params};
+use ph2d_vec_entities::entities::VecEntityMap;
 
 /// REABRE um objeto de texto já finalizado como SESSÃO de digitação — é o que torna a
 /// string editável depois do commit (antes, só as propriedades eram; um typo era

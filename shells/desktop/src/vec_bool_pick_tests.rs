@@ -44,7 +44,8 @@ fn boolean_group(op: u8) -> Fixture {
     let b = scene.push_path(rectangle([10.0, 10.0], [30.0, 30.0]));
     ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     let g = Entity::from_bits(
-        ph2d_vec_entities::entities::group_entities(&mut sim, &[map[&a], map[&b]], "Bool".into()).unwrap(),
+        ph2d_vec_entities::entities::group_entities(&mut sim, &[map[&a], map[&b]], "Bool".into())
+            .unwrap(),
     );
     sim.world_mut().entity_mut(g).insert(VecBoolGroup { op });
     let mut live = LiveGeometry::new();
@@ -277,14 +278,19 @@ fn a_nested_operand_is_reached_through_the_ink_that_is_actually_drawn() {
     let b = scene.push_path(rectangle([15.0, 15.0], [25.0, 25.0]));
     ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     let inner = Entity::from_bits(
-        ph2d_vec_entities::entities::group_entities(&mut sim, &[map[&a], map[&b]], "In".into()).unwrap(),
+        ph2d_vec_entities::entities::group_entities(&mut sim, &[map[&a], map[&b]], "In".into())
+            .unwrap(),
     );
     sim.world_mut()
         .entity_mut(inner)
         .insert(VecBoolGroup { op: 0 }); // Union
     let outer = Entity::from_bits(
-        ph2d_vec_entities::entities::group_entities(&mut sim, &[map[&c], inner.to_bits()], "Out".into())
-            .unwrap(),
+        ph2d_vec_entities::entities::group_entities(
+            &mut sim,
+            &[map[&c], inner.to_bits()],
+            "Out".into(),
+        )
+        .unwrap(),
     );
     sim.world_mut()
         .entity_mut(outer)

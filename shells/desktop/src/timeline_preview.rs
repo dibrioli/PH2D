@@ -39,8 +39,8 @@
 //! ⚠️ O `PhysicsJoint` vai **inteiro**, e ali isso é correcto: nenhum outro motor o conduz por
 //! campo, e a curva pode keyar qualquer um dos parâmetros dele.
 
-use ph2d_preview_drive::{Driven, Driver, PreviewDrive};
 use ph2d_ecs::{Entity, Transform, World};
+use ph2d_preview_drive::{Driven, Driver, PreviewDrive};
 use ph2d_timeline::TimelineDoc;
 
 /// O que uma entidade keyada tinha **antes** do `apply` — os quatro factos que as curvas escrevem.

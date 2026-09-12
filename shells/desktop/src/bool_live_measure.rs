@@ -32,7 +32,8 @@ fn measure_a_live_boolean_frame() {
             ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
             let members: Vec<u64> = ids.iter().map(|i| map[i]).collect();
             let g = Entity::from_bits(
-                ph2d_vec_entities::entities::group_entities(&mut sim, &members, "B".into()).unwrap(),
+                ph2d_vec_entities::entities::group_entities(&mut sim, &members, "B".into())
+                    .unwrap(),
             );
             sim.world_mut().entity_mut(g).insert(VecBoolGroup { op });
 

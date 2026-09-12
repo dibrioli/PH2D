@@ -1,8 +1,8 @@
 //! Os gates do CONJUNTO de estados (plano 32 W8) — a **lei** do grafo, e a **costura** que a
 //! aplica ao mundo.
 
-use ph2d_vec_entities::morph_set::{create, eligible, graph_of, upkeep};
 use ph2d_ecs::{ChildOf, Entity, Name, SimWorld, VecMorph, VecMorphMachine};
+use ph2d_vec_entities::morph_set::{create, eligible, graph_of, upkeep};
 use ph2d_vec_scene::{VecPath, VecPathId, VecScene};
 
 use ph2d_vec_entities::entities::{VecEntityMap, sync};

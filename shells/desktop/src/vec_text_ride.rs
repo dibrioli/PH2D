@@ -27,8 +27,8 @@ use ph2d_ecs::{Entity, SimWorld, VecTextPath};
 use ph2d_vec_scene::VecScene;
 use ph2d_vec_scene::arc_path::ArcPath;
 
-use ph2d_vec_entities::entities::VecEntityMap;
 use crate::vec_glyph::TextPlacement;
+use ph2d_vec_entities::entities::VecEntityMap;
 
 /// O raio da bolinha da alça, em px de tela — o mesmo alcance para o desenho e o hit-test, pela
 /// conversão `× px_to_world` na fronteira. **Maior** que as alças de nó (`ENVELOPE_HANDLE_R_PX`

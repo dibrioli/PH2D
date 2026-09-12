@@ -22,8 +22,12 @@ fn cooked(op: u8) -> (SimWorld, VecEntityMap, BoolLive, [VecPathId; 3]) {
     let c = scene.push_path(rectangle([15.0, 5.0], [25.0, 15.0]));
     ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     let g = Entity::from_bits(
-        ph2d_vec_entities::entities::group_entities(&mut sim, &[map[&a], map[&b], map[&c]], "B".into())
-            .unwrap(),
+        ph2d_vec_entities::entities::group_entities(
+            &mut sim,
+            &[map[&a], map[&b], map[&c]],
+            "B".into(),
+        )
+        .unwrap(),
     );
     sim.world_mut().entity_mut(g).insert(VecBoolGroup { op });
     let mut live = LiveGeometry::new();
@@ -281,7 +285,8 @@ fn the_badge_names_the_document_not_the_frame() {
     let b = scene.push_path(rectangle([10.0, 0.0], [30.0, 20.0]));
     ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     let g = Entity::from_bits(
-        ph2d_vec_entities::entities::group_entities(&mut sim, &[map[&a], map[&b]], "B".into()).unwrap(),
+        ph2d_vec_entities::entities::group_entities(&mut sim, &[map[&a], map[&b]], "B".into())
+            .unwrap(),
     );
     sim.world_mut().entity_mut(g).insert(VecBoolGroup { op: 0 }); // Union
     sim.world_mut()

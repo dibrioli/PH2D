@@ -35,7 +35,9 @@ pub(crate) enum Keep {
 
 /// O afim local→mundo de uma entidade.
 fn world_of(sim: &SimWorld, e: Entity) -> Xform {
-    ph2d_vec_entities::transform::xform_of_transform(ph2d_vec_entities::transform::world_transform(sim, e))
+    ph2d_vec_entities::transform::xform_of_transform(ph2d_vec_entities::transform::world_transform(
+        sim, e,
+    ))
 }
 
 /// **Os ossos de um esqueleto, em MUNDO** — `(bits, origem, ponta)`, para o overlay desenhar e para

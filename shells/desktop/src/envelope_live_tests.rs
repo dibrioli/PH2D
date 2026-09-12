@@ -506,8 +506,9 @@ fn dissolving_bakes_the_container_pose_so_the_art_does_not_move() {
         t.scale = ph2d_core::Vec2::new(2.0, 2.0);
     }
     // Onde a arte está no MUNDO antes de dissolver (geometria local × pose do container).
-    let xf =
-        ph2d_vec_entities::transform::xform_of_transform(ph2d_vec_entities::transform::world_transform(&sim, ce));
+    let xf = ph2d_vec_entities::transform::xform_of_transform(
+        ph2d_vec_entities::transform::world_transform(&sim, ce),
+    );
     let (lo, hi) = scene.path_curve_bbox(ids[0]).unwrap();
     let (want_lo, want_hi) = (xf.apply(lo), xf.apply(hi));
 

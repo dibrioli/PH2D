@@ -6,8 +6,8 @@
 //! não chegar ao alvo, e o memo re-cozer o prefixo quando só a contagem muda.
 
 use super::{ContourLive, spec_of};
-use ph2d_vec_entities::entities::VecEntityMap;
 use ph2d_ecs::{Name, SimWorld, Transform, VecContour, VecPathRef};
+use ph2d_vec_entities::entities::VecEntityMap;
 use ph2d_vec_scene::{Paint, Rgba8, VecPath, VecPathId, VecScene, VecVertex, VecXforms};
 
 /// Um quadrado de lado 1 com preenchimento PRETO — a cor de partida da rampa, escolhida para o

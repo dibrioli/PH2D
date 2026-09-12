@@ -2757,10 +2757,12 @@ impl App {
         let px = (((w1[0] - w0[0]).powi(2) + (w1[1] - w0[1]).powi(2)).sqrt()) as f64;
         // ADR-0111: a geometria do gradiente é LOCAL, como a do path. O cursor desce
         // pelo afim, e o raio de captura com ele (a forma pode estar escalada).
-        let x = ph2d_vec_entities::transform::xform_of_transform(ph2d_vec_entities::transform::world_transform(
-            &gfx.sim,
-            ph2d_ecs::Entity::from_bits(*self.vec_entities.get(&sel)?),
-        ));
+        let x = ph2d_vec_entities::transform::xform_of_transform(
+            ph2d_vec_entities::transform::world_transform(
+                &gfx.sim,
+                ph2d_ecs::Entity::from_bits(*self.vec_entities.get(&sel)?),
+            ),
+        );
         let inv = x.inverse()?;
         let l = inv.apply([wx, wy]);
         ph2d_vec_render::hit_gradient_handle(path, l[0], l[1], 9.0 * px / x.mean_scale())
@@ -2783,10 +2785,12 @@ impl App {
         let w = gfx.camera.screen_to_world((x, y), win);
         // O ponto do gradiente é guardado no espaço local do path (ADR-0111).
         let w = match self.vec_entities.get(&sel).and_then(|&b| {
-            ph2d_vec_entities::transform::xform_of_transform(ph2d_vec_entities::transform::world_transform(
-                &gfx.sim,
-                ph2d_ecs::Entity::from_bits(b),
-            ))
+            ph2d_vec_entities::transform::xform_of_transform(
+                ph2d_vec_entities::transform::world_transform(
+                    &gfx.sim,
+                    ph2d_ecs::Entity::from_bits(b),
+                ),
+            )
             .inverse()
         }) {
             Some(inv) => {
@@ -2928,8 +2932,12 @@ impl App {
         let view = ph2d_audio_desktop::wave_view()?;
         self.audio.as_ref()?.editor_clip()?;
         let r = view.rect;
-        (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h)
-            .then(|| (ph2d_audio_desktop::frame_at_x(&view, x), freq_at_y(&view, y)))
+        (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h).then(|| {
+            (
+                ph2d_audio_desktop::frame_at_x(&view, x),
+                freq_at_y(&view, y),
+            )
+        })
     }
 
     /// Extend the active selection to the cursor. Returns `true` if a selection drag is
@@ -5235,8 +5243,10 @@ impl App {
                                     let fill = self.vec_pen.style().fill;
                                     let fill_on_close =
                                         (fill.a != 0).then(|| ph2d_vec_scene::Paint::solid(fill));
-                                    let xforms =
-                                        ph2d_vec_entities::transform::build(&gfx.sim, &self.vec_entities);
+                                    let xforms = ph2d_vec_entities::transform::build(
+                                        &gfx.sim,
+                                        &self.vec_entities,
+                                    );
                                     let win = gfx.surface.size();
                                     let tol =
                                         crate::vec_gizmo_view::stroke_hit_r(&gfx.camera, win) * 1.5;
@@ -6481,13 +6491,17 @@ impl App {
                                 if gfx.vec_scene.paths().iter().any(|p| p.id == id && p.closed) {
                                     continue; // fechada não funde
                                 }
-                                let xforms =
-                                    ph2d_vec_entities::transform::build(&gfx.sim, &self.vec_entities);
+                                let xforms = ph2d_vec_entities::transform::build(
+                                    &gfx.sim,
+                                    &self.vec_entities,
+                                );
                                 if let Some(rd) = gfx.vec_scene.rigid_snap_delta(id, &xforms, tol) {
                                     crate::vec_snap::slide_entity_world(&mut gfx.sim, bits, rd);
                                 }
-                                let xforms =
-                                    ph2d_vec_entities::transform::build(&gfx.sim, &self.vec_entities);
+                                let xforms = ph2d_vec_entities::transform::build(
+                                    &gfx.sim,
+                                    &self.vec_entities,
+                                );
                                 if gfx.vec_scene.weld_new_shape(
                                     id,
                                     &xforms,

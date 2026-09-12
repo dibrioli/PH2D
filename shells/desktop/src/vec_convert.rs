@@ -35,9 +35,9 @@
 //! não é um path da seleção. São operações com undo e seleção próprios; chamá-las daqui seria
 //! uma 2ª porta para elas.
 
-use ph2d_vec_entities::entities::VecEntityMap;
 use ph2d_ecs::{Entity, SimWorld, VecConnector, VecMorph, VecShape};
 use ph2d_vec_edit::{History, PenTool};
+use ph2d_vec_entities::entities::VecEntityMap;
 use ph2d_vec_scene::{VecPath, VecPathId, VecScene, VecXforms};
 
 /// Um **HOST VIVO** reescreve o `verts` deste path por trás do artista (a receita da forma, a

@@ -13,9 +13,9 @@
 //! elas correm em ramos diferentes do `drain_reparent`. Um gate sobre uma só deixa a outra sem
 //! régua, que é como a classe BUGS #15 nasceu.
 
-use ph2d_preview_drive::PreviewDrive;
 use crate::undo::ProjectState;
 use ph2d_ecs::{Name, SimWorld, Transform};
+use ph2d_preview_drive::PreviewDrive;
 
 fn reg2() -> ph2d_ecs::scene::ComponentRegistry {
     crate::init::build_component_registry()

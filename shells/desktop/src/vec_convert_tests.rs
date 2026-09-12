@@ -4,8 +4,8 @@
 //! motor e MORTA no produto.
 
 use super::*;
-use ph2d_vec_entities::entities::VecEntityMap;
 use ph2d_vec_edit::{History, PenTool};
+use ph2d_vec_entities::entities::VecEntityMap;
 use ph2d_vec_scene::{VecPath, VecVertex, VecXforms};
 
 /// O `to_curves` do produto com os canais que só o Offset vivo usa (pen/history/poses) — os

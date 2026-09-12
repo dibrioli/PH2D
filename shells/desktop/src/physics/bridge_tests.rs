@@ -270,7 +270,7 @@ fn the_tape_records_a_run_not_the_clock() {
 /// ⚠️ **O passo de undo nasce por CLIQUE, não por quadro** (o `any_input_this_frame` não é
 /// levantado por mover o cursor). Enquanto o solver escrevia o `Transform`, cada clique dado
 /// durante uma corrida empilhava um passo cujo conteúdo era só a pose de uma bola a cair — e o
-/// Ctrl+Z do artista gastava-se a desfazer nada. A cura é o [`crate::preview_drive`]: a pose que o
+/// Ctrl+Z do artista gastava-se a desfazer nada. A cura é a folha [`ph2d_preview_drive`]: a pose que o
 /// solver escreve é **pré-visualização**, e a captura fotografa o documento.
 ///
 /// ⚠️ **As duas metades juntas, de propósito.** «Não muda durante a corrida» sozinho fica verde

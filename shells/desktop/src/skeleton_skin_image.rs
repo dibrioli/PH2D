@@ -107,8 +107,10 @@ pub(crate) fn joints_in_image(
     };
     let (Some(p2l), Some(mundo)) = (
         pixel_to_local(sprite, size_px),
-        ph2d_vec_entities::transform::xform_of_transform(ph2d_vec_entities::transform::world_transform(sim, e))
-            .inverse(),
+        ph2d_vec_entities::transform::xform_of_transform(
+            ph2d_vec_entities::transform::world_transform(sim, e),
+        )
+        .inverse(),
     ) else {
         return Vec::new();
     };
@@ -236,8 +238,9 @@ pub(crate) fn draw_skinned_images(
             continue;
         };
         // `local → ecrã`: a pose de mundo da sprite, depois a câmara.
-        let mundo =
-            ph2d_vec_entities::transform::xform_of_transform(ph2d_vec_entities::transform::world_transform(sim, e));
+        let mundo = ph2d_vec_entities::transform::xform_of_transform(
+            ph2d_vec_entities::transform::world_transform(sim, e),
+        );
         let to_screen = cam * affine_of(mundo);
         // ⭐⭐⭐ **A ALTERNATIVA `Smooth`** (report do dono, 2026-09-10).
         //

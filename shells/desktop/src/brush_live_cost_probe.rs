@@ -27,8 +27,8 @@
 //! cargo test -p ph2d-host-desktop --release --bins brush_live_cost -- --ignored --nocapture
 //! ```
 
-use ph2d_vec_entities::entities::VecEntityMap;
 use ph2d_ecs::SimWorld;
+use ph2d_vec_entities::entities::VecEntityMap;
 use ph2d_vec_scene::{
     BrushStroke, Rgba8, StrokePaint, StrokeSpec, VecPath, VecPathId, VecScene, VecVertex,
 };
@@ -431,7 +431,9 @@ fn brush_live_cost_m4_baseline() {
             assert_eq!(
                 crate::brush_live::resolve(
                     &scene,
-                    &|id| { ph2d_vec_entities::entities::object_selection_for(&sim, &scene, &map, id) },
+                    &|id| {
+                        ph2d_vec_entities::entities::object_selection_for(&sim, &scene, &map, id)
+                    },
                     &ph2d_vec_scene::VecXforms::new()
                 )
                 .len(),

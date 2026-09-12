@@ -14,9 +14,9 @@ use ph2d_tool_vector::TextAlign;
 use ph2d_vec_scene::{VecPathId, VecScene};
 use ph2d_vector_font::AxisTag;
 
-use ph2d_vec_entities::entities::{VecEntityMap, group_entities};
 use crate::vec_glyph::{TextLayout, TextPlacement, text_to_compound_path, text_to_vec_paths};
 use crate::vec_text::VecTextEdit;
+use ph2d_vec_entities::entities::{VecEntityMap, group_entities};
 
 /// A porta `sessão → componente`, exposta aos gates do módulo irmão: o round-trip da caixa
 /// de refluxo é uma propriedade das DUAS metades, e afirmá-la só de um lado é afirmar metade.
@@ -339,9 +339,9 @@ pub(crate) fn convert_text_selection_to_curves(
             untouched.push(id);
             continue;
         }
-        let xf = ph2d_vec_entities::transform::xform_of_transform(ph2d_vec_entities::transform::world_transform(
-            sim, entity,
-        ));
+        let xf = ph2d_vec_entities::transform::xform_of_transform(
+            ph2d_vec_entities::transform::world_transform(sim, entity),
+        );
         let mut new_ids = Vec::new();
         for mut g in glyphs {
             crate::vec_glyph::offset_path(&mut g, [-center[0], -center[1]]);

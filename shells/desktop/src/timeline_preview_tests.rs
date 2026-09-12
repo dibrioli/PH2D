@@ -11,11 +11,11 @@
 //! (`doc.bindings()`), então o censo é `O(bindings)` — a dúzia de objetos que o artista keyou — e
 //! não `O(mundo)`. *Uma ausência afirmada sem olhar a API é um palpite com cara de medição.*
 
-use ph2d_preview_drive::PreviewDrive;
 use crate::undo::ProjectState;
 use ph2d_anim::{AnimValue, Interp, RationalTime};
 use ph2d_ecs::scene::{ComponentRegistry, register_ecs_components};
 use ph2d_ecs::{Name, SimWorld, Transform};
+use ph2d_preview_drive::PreviewDrive;
 use ph2d_timeline::{PropKind, TimelineDoc};
 
 fn registry() -> ComponentRegistry {

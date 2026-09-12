@@ -131,11 +131,7 @@ pub fn move_origin_to(
 /// É o que faz uma forma-fonte do blend SEGUIR a ponta do spine arrastada no modo Node (ADR-0128
 /// C2b): arrastar a ponta é o MESMO que mover a forma pelo gizmo. `false` se a entidade sumiu ou o
 /// afim do pai é degenerado.
-pub fn translate_shape_world(
-    sim: &mut SimWorld,
-    entity: Entity,
-    delta_world: [f64; 2],
-) -> bool {
+pub fn translate_shape_world(sim: &mut SimWorld, entity: Entity, delta_world: [f64; 2]) -> bool {
     if sim.world().get_entity(entity).is_err() {
         return false;
     }
@@ -311,7 +307,6 @@ pub fn settle_origins(
 #[cfg(test)]
 #[path = "transform_tests.rs"]
 mod tests;
-
 
 #[cfg(test)]
 #[path = "transform_reparent_tests.rs"]

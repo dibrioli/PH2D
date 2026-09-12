@@ -115,9 +115,17 @@ impl crate::App {
         // disjunto de campos, então o `gfx` é re-pegado a cada passo em vez de segurado.
         let morph_bits = {
             let gfx = self.gfx.as_mut().expect("gfx");
-            ph2d_vec_entities::entities::sync(&mut gfx.sim, &mut gfx.vec_scene, &mut self.vec_entities);
+            ph2d_vec_entities::entities::sync(
+                &mut gfx.sim,
+                &mut gfx.vec_scene,
+                &mut self.vec_entities,
+            );
             let (id, mut morph) = crate::morph_live::create(&mut gfx.vec_scene, ia, ib);
-            ph2d_vec_entities::entities::sync(&mut gfx.sim, &mut gfx.vec_scene, &mut self.vec_entities);
+            ph2d_vec_entities::entities::sync(
+                &mut gfx.sim,
+                &mut gfx.vec_scene,
+                &mut self.vec_entities,
+            );
             morph.t = AUTHORED_T; // a POSE AUTORADA — o que o `rest` tem de capturar
             let attached = crate::morph_live::attach(&mut gfx.sim, &self.vec_entities, id, &morph);
             assert!(attached, "[morph-fade-smoke] o morph nao pendurou");

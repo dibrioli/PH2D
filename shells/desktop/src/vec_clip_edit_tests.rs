@@ -7,8 +7,8 @@
 //! ganha um rótulo flutuante com nome, alças de contêiner e presets de telefone.
 
 use super::*;
-use ph2d_vec_entities::entities::VecEntityMap;
 use ph2d_ecs::{Transform, VecFrame, VecPathRef};
+use ph2d_vec_entities::entities::VecEntityMap;
 use ph2d_vec_scene::{VecScene, line, rectangle};
 
 /// Um mundo com UMA forma — fechada (retângulo) ou aberta (reta) — e o mapa `VecPathId → entidade`.

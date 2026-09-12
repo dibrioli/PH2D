@@ -6,10 +6,10 @@
 //! porque ela só existe para os gates — e uma fixtura partilhada com o produto seria um
 //! oráculo que usa a função sob teste.
 
-use ph2d_vec_entities::entities::*;
 use ph2d_ecs::{ChildOf, Entity, Name, RootOrder, SimWorld, Transform, VecPathRef};
-use ph2d_vec_scene::VecViewState;
+use ph2d_vec_entities::entities::*;
 use ph2d_vec_entities::entity_map::VecEntityMap;
+use ph2d_vec_scene::VecViewState;
 // ⭐ **A FIXTURA mudou-se para a crate** e chega por `test-support`: o irmão da SELECÇÃO usa-a
 // de dentro dela, este ficheiro de fora, e *duas fixturas para a mesma ponte seriam duas
 // respostas a «como nasce uma cena de teste?»* — a razão que esta secção já dava, agora a

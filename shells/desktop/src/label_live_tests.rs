@@ -149,7 +149,12 @@ impl Doc {
     fn frame(&mut self) {
         ph2d_vec_entities::entities::sync(&mut self.sim, &mut self.scene, &mut self.map);
         crate::connector_live::upkeep(&mut self.sim, &self.scene, &self.map, None, &mut None);
-        ph2d_vec_entities::transform::settle_origins(&mut self.sim, &mut self.scene, &self.map, &[]);
+        ph2d_vec_entities::transform::settle_origins(
+            &mut self.sim,
+            &mut self.scene,
+            &self.map,
+            &[],
+        );
         let mut xf = ph2d_vec_entities::transform::build(&self.sim, &self.map);
         crate::connector_live::recook(
             &mut self.sim,

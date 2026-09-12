@@ -6,8 +6,8 @@
 //! selecionada?"*. Nenhum teste de unidade de crate alcança essa pergunta.
 
 use super::{apply_cut, cut_line, upkeep};
-use ph2d_vec_entities::entities::VecEntityMap;
 use ph2d_ecs::SimWorld;
+use ph2d_vec_entities::entities::VecEntityMap;
 use ph2d_vec_scene::{Paint, Rgba8, StrokeSpec, VecPath, VecPathId, VecScene, VecVertex};
 
 /// Um losango fechado de arestas retas, centrado em `c`.

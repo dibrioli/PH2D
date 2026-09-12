@@ -9,8 +9,8 @@ use super::{
     PatternHandle, PatternLive, detach, handle, link, link_candidate, rotation_of, set_rotation,
     spec_of,
 };
-use ph2d_vec_entities::entities::VecEntityMap;
 use ph2d_ecs::{Name, SimWorld, Transform, VecPathRef};
+use ph2d_vec_entities::entities::VecEntityMap;
 use ph2d_vec_scene::{VecPath, VecPathId, VecScene, VecVertex};
 
 /// Um motivo (quadrado de 40) + um guia (reta de 100), cada um uma entidade na identidade.

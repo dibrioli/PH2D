@@ -45,7 +45,9 @@ pub(crate) fn create(
 ) -> Option<u64> {
     // O espaço do PAI. Sem pai, o mundo — e aí o inverso é a identidade.
     let pai_mundo = parent.map_or(Xform::IDENTITY, |p| {
-        ph2d_vec_entities::transform::xform_of_transform(ph2d_vec_entities::transform::world_transform(sim, p))
+        ph2d_vec_entities::transform::xform_of_transform(
+            ph2d_vec_entities::transform::world_transform(sim, p),
+        )
     });
     let inv = pai_mundo.inverse()?;
     let a = inv.apply(origin);
@@ -215,7 +217,9 @@ pub(crate) fn press(
 pub(crate) fn aim_rotation(sim: &SimWorld, bone: Entity, world: [f64; 2]) -> Option<f64> {
     let pai = sim.world().get::<ChildOf>(bone).map(ChildOf::parent);
     let pai_mundo = pai.map_or(Xform::IDENTITY, |p| {
-        ph2d_vec_entities::transform::xform_of_transform(ph2d_vec_entities::transform::world_transform(sim, p))
+        ph2d_vec_entities::transform::xform_of_transform(
+            ph2d_vec_entities::transform::world_transform(sim, p),
+        )
     });
     let inv = pai_mundo.inverse()?;
     let p = inv.apply(world);

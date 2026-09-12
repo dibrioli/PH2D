@@ -20,7 +20,8 @@ fn scene_with_group(op: u8) -> (SimWorld, VecScene, VecEntityMap, Vec<VecPathId>
     let b = scene.push_path(rectangle([1.0, 1.0], [3.0, 3.0]));
     ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     let g = Entity::from_bits(
-        ph2d_vec_entities::entities::group_entities(&mut sim, &[map[&a], map[&b]], "Bool".into()).unwrap(),
+        ph2d_vec_entities::entities::group_entities(&mut sim, &[map[&a], map[&b]], "Bool".into())
+            .unwrap(),
     );
     sim.world_mut().entity_mut(g).insert(VecBoolGroup { op });
     (sim, scene, map, vec![a, b], g)

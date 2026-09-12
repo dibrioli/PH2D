@@ -6,9 +6,9 @@
 //!
 //! ⚠️ Submódulo do irmão de propósito: o harness (`world`) é **um só**.
 
-use ph2d_vec_entities::morph_set::{create, upkeep};
 use super::world;
 use ph2d_ecs::{Entity, SimWorld, VecMorph};
+use ph2d_vec_entities::morph_set::{create, upkeep};
 use ph2d_vec_scene::{VecPath, VecScene};
 
 use ph2d_vec_entities::entities::{VecEntityMap, sync};

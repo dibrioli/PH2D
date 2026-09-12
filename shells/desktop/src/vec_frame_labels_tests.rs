@@ -1,8 +1,8 @@
 //! Os gates de *quem é nomeado, e onde*.
 
 use super::*;
-use ph2d_vec_entities::entities::{VecEntityMap, sync};
 use ph2d_ecs::{Entity, VecClipContent, VecFrame};
+use ph2d_vec_entities::entities::{VecEntityMap, sync};
 use ph2d_vec_scene::rectangle;
 
 /// Uma cena com uma moldura, uma forma comum, e o mapa.

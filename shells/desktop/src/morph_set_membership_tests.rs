@@ -12,8 +12,8 @@
 
 use super::super::world;
 use super::hidden_on_canvas;
-use ph2d_vec_entities::morph_set::{create, disconnect, graph_of, upkeep};
 use ph2d_ecs::{ChildOf, Entity, Visibility};
+use ph2d_vec_entities::morph_set::{create, disconnect, graph_of, upkeep};
 use ph2d_vec_scene::VecPathId;
 
 use ph2d_vec_entities::entities::sync;

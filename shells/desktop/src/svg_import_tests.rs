@@ -17,7 +17,11 @@ fn ficheiro(nome: &str, texto: &str) -> PathBuf {
     p
 }
 
-fn cena() -> (SimWorld, VecScene, ph2d_vec_entities::entities::VecEntityMap) {
+fn cena() -> (
+    SimWorld,
+    VecScene,
+    ph2d_vec_entities::entities::VecEntityMap,
+) {
     (
         SimWorld::default(),
         VecScene::new(),

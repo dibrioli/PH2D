@@ -31,12 +31,7 @@ use ph2d_ecs::{Entity, VisibilityLayer, World};
 ///
 /// `world_pos` é a pose de mundo que o extract já tem em mãos (o `GlobalTransform` do quadro).
 #[must_use]
-pub fn draws_this_frame(
-    sim: &World,
-    entity: Entity,
-    cull_mask: u32,
-    world_pos: [f32; 2],
-) -> bool {
+pub fn draws_this_frame(sim: &World, entity: Entity, cull_mask: u32, world_pos: [f32; 2]) -> bool {
     !is_off_canvas(sim, entity)
         && layer_visible(sim, entity, cull_mask)
         && !crate::on_screen_gate::hides(sim, entity, world_pos)

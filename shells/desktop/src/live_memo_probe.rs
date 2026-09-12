@@ -22,8 +22,8 @@
 //!
 //! Rode: `cargo test -p ph2d-host-desktop --release live_memo -- --ignored --nocapture`
 
-use ph2d_vec_entities::entities::VecEntityMap;
 use ph2d_ecs::{Entity, Name, SimWorld, Transform, VecContour, VecOffset, VecPathRef};
+use ph2d_vec_entities::entities::VecEntityMap;
 use ph2d_vec_scene::{VecPath, VecPathId, VecScene, VecVertex, VecXforms};
 
 /// Quantos quadros cada coluna mede. Sessenta é um segundo de animação a 60 Hz.

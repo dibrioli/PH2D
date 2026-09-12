@@ -27,18 +27,18 @@
 //!
 //! Cada gate morde uma causa distinta. Se você mexer aqui, refaça as duas mutações.
 
-use ph2d_vec_entities::entities::zorder::*;
-use ph2d_ecs::{ChildOf, Entity, SimWorld};
-use ph2d_vec_scene::VecPathId;
-use ph2d_vec_entities::entity_map::VecEntityMap;
 use crate::undo::ProjectState;
-use ph2d_vec_entities::entities::sync;
 use ph2d_ecs::scene::{
     ComponentRegistry, HierarchySnapshot, HierarchyWalkState, build_hierarchy_snapshot,
     register_ecs_components,
 };
+use ph2d_ecs::{ChildOf, Entity, SimWorld};
 use ph2d_ecs::{Name, Transform};
 use ph2d_flip::FlipDoc;
+use ph2d_vec_entities::entities::sync;
+use ph2d_vec_entities::entities::zorder::*;
+use ph2d_vec_entities::entity_map::VecEntityMap;
+use ph2d_vec_scene::VecPathId;
 use ph2d_vec_scene::{VecScene, rectangle};
 
 /// O pedaço do frame que **muta o estado que o undo fotografa** — a mesma sequência, na mesma

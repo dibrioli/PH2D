@@ -45,7 +45,10 @@ pub(crate) fn guide_arc(
         .map_or_else(Transform::default, |e| {
             ph2d_vec_entities::transform::world_transform(sim, e)
         });
-    ph2d_vec_scene::bake_xform(&mut world, &ph2d_vec_entities::transform::xform_of_transform(pose));
+    ph2d_vec_scene::bake_xform(
+        &mut world,
+        &ph2d_vec_entities::transform::xform_of_transform(pose),
+    );
     let arc = ArcPath::from_contour(&world.verts, world.closed)?;
     (arc.total() > 0.0).then_some(arc)
 }

@@ -12,9 +12,9 @@
 //!
 //! É a família do `ph2d_app_field3d` (os gates de alcance dela): o que se mede aqui é a SEQUÊNCIA.
 
-use ph2d_vec_entities::entities::VecEntityMap;
 use ph2d_ecs::{Entity, Name, SimWorld, Transform, VecBoolGroup};
 use ph2d_ui_state::StateSets;
+use ph2d_vec_entities::entities::VecEntityMap;
 use ph2d_vec_scene::{VecPathId, VecScene, rectangle};
 
 /// A disposição que a cena `=74` monta: um CHIP com uma booleana viva pendurada nele.
@@ -34,11 +34,19 @@ fn chip_with_a_live_boolean() -> (SimWorld, VecScene, VecEntityMap, VecPathId, [
             .insert(Name::new(name));
     }
     let g = Entity::from_bits(
-        ph2d_vec_entities::entities::group_entities(&mut sim, &[map[&outer], map[&inner]], "Bool".into())
-            .unwrap(),
+        ph2d_vec_entities::entities::group_entities(
+            &mut sim,
+            &[map[&outer], map[&inner]],
+            "Bool".into(),
+        )
+        .unwrap(),
     );
     sim.world_mut().entity_mut(g).insert(VecBoolGroup { op: 0 });
-    ph2d_vec_entities::transform::reparent_keeping_world(&mut sim, g, Entity::from_bits(map[&chip]));
+    ph2d_vec_entities::transform::reparent_keeping_world(
+        &mut sim,
+        g,
+        Entity::from_bits(map[&chip]),
+    );
     let _ = Transform::IDENTITY;
     (sim, scene, map, chip, [outer, inner])
 }

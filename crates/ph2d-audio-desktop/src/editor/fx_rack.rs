@@ -66,8 +66,7 @@ fn stage_sig(stage: &FxStage) -> StageSig {
 /// neutral point. A chain of fresh stages is silent work — skip it.
 pub fn is_audible(stage: &FxStage) -> bool {
     stage.enabled
-        && crate::fx_params::build(stage.kind, &stage.norms)
-            .is_some_and(|cmd| !cmd.is_bypass())
+        && crate::fx_params::build(stage.kind, &stage.norms).is_some_and(|cmd| !cmd.is_bypass())
 }
 
 /// Render one stage over `base`, carrying the target range forward so every stage

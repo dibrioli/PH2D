@@ -38,14 +38,14 @@ use editor::AudioEditorRuntime;
 mod device;
 /// ⭐⭐⭐ **O SOM DA CENA** (TOP-20 #4) — o livro das vozes que os objectos tem a soar.
 pub mod scene;
-/// A taxonomia do som de UI — o que aconteceu, e a voz de cada um.
-pub mod ui_sound;
 /// Os geradores de tom — ⚠️ `pub(crate)` porque o smoke do SOM DE CENA escreve o `.wav` que
 /// vai tocar a partir deles: *um smoke que precisa de um ficheiro que o dono tenha de
 /// arranjar e um smoke que nao corre.*
 pub mod signals;
 /// AS DUAS CENAS DE SMOKE DO DISPOSITIVO — irmao por assunto e pelo teto de 600 LOC.
 mod smoke;
+/// A taxonomia do som de UI — o que aconteceu, e a voz de cada um.
+pub mod ui_sound;
 /// A VOZ DO SOM DE UI (D1) — irmão por assunto e pelo teto de 600 LOC.
 mod ui_voice;
 use device::{build_stream, pick_writable_config, supported_by_us};

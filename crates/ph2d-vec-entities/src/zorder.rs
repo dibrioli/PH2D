@@ -102,12 +102,7 @@ pub fn authored_z(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> Option<i
 
 /// Escreve o Z autorado de `id`. **Zero DESTACA o componente** — a mesma política de todo override
 /// deste repo: um arquivo não guarda o neutro.
-pub fn set_authored_z(
-    sim: &mut SimWorld,
-    map: &VecEntityMap,
-    id: VecPathId,
-    z: i32,
-) -> bool {
+pub fn set_authored_z(sim: &mut SimWorld, map: &VecEntityMap, id: VecPathId, z: i32) -> bool {
     let Some(&bits) = map.get(&id) else {
         return false;
     };
@@ -243,8 +238,6 @@ pub fn reorder(
         own.saturating_add(target.saturating_sub(me.z)),
     )
 }
-
-
 
 /// Os gates do Z-index e dos botões Arrange — irmão pelo mesmo teto.
 #[cfg(test)]

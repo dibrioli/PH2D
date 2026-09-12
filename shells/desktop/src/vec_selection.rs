@@ -7,9 +7,9 @@
 //!
 //! A ponte de identidade (path ⟺ entidade) é o módulo irmão [`ph2d_vec_entities::entities`].
 
-use ph2d_vec_entities::entities::{VecEntityMap, selection_paths, subtree_paths};
 use ph2d_ecs::{ChildOf, Entity, SimWorld, VecPathRef};
 use ph2d_editor::screens::hero::GizmoStateGroup;
+use ph2d_vec_entities::entities::{VecEntityMap, selection_paths, subtree_paths};
 use ph2d_vec_scene::{VecPathId, VecScene};
 
 /// Teto de nós visitados numa varredura de sub-árvore (defesa contra save
@@ -213,8 +213,8 @@ fn fully_selected_ancestors(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ph2d_vec_entities::entities::{VecEntityMap, group_entities, sync};
     use ph2d_ecs::{Name, Transform};
+    use ph2d_vec_entities::entities::{VecEntityMap, group_entities, sync};
     use ph2d_vec_scene::rectangle;
 
     /// **APAGAR UMA de duas formas selecionadas PODA o pen — não re-deriva dele.**

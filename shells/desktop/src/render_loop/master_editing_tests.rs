@@ -5,8 +5,8 @@
 //! de 26/08.
 
 use super::mark;
-use ph2d_entity_visibility::off_canvas::is_off_canvas;
 use ph2d_ecs::{ChildOf, Entity, MasterRoot, Name, SimWorld, Transform, Visibility};
+use ph2d_entity_visibility::off_canvas::is_off_canvas;
 
 /// Uma receita de duas peças, e uma entidade solta que nunca participa.
 fn scene() -> (SimWorld, Entity, Entity, Entity) {

@@ -75,7 +75,8 @@ pub(crate) fn arm(
         eprintln!("[ph2d-vec] boolean live: selecione >= 2 regioes FECHADAS");
         return false;
     }
-    let Some(bits) = ph2d_vec_entities::entities::group_entities(sim, &closed, "Boolean".into()) else {
+    let Some(bits) = ph2d_vec_entities::entities::group_entities(sim, &closed, "Boolean".into())
+    else {
         return false;
     };
     sim.world_mut()

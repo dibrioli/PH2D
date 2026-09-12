@@ -20,7 +20,8 @@ pub(super) fn scene_with_group(
     let b = scene.push_path(rectangle([1.0, 1.0], [3.0, 3.0]));
     ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     let g = Entity::from_bits(
-        ph2d_vec_entities::entities::group_entities(&mut sim, &[map[&a], map[&b]], "Bool".into()).unwrap(),
+        ph2d_vec_entities::entities::group_entities(&mut sim, &[map[&a], map[&b]], "Bool".into())
+            .unwrap(),
     );
     sim.world_mut().entity_mut(g).insert(VecBoolGroup { op });
     (sim, scene, map, vec![a, b], g)
@@ -239,14 +240,19 @@ fn a_nested_boolean_cooks_from_the_inside_out() {
     let c = scene.push_path(rectangle([1.0, -1.0], [3.0, 2.0]));
     ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     let inner = Entity::from_bits(
-        ph2d_vec_entities::entities::group_entities(&mut sim, &[map[&a], map[&b]], "In".into()).unwrap(),
+        ph2d_vec_entities::entities::group_entities(&mut sim, &[map[&a], map[&b]], "In".into())
+            .unwrap(),
     );
     sim.world_mut()
         .entity_mut(inner)
         .insert(VecBoolGroup { op: 0 }); // Union
     let outer = Entity::from_bits(
-        ph2d_vec_entities::entities::group_entities(&mut sim, &[inner.to_bits(), map[&c]], "Out".into())
-            .unwrap(),
+        ph2d_vec_entities::entities::group_entities(
+            &mut sim,
+            &[inner.to_bits(), map[&c]],
+            "Out".into(),
+        )
+        .unwrap(),
     );
     sim.world_mut()
         .entity_mut(outer)
@@ -278,7 +284,8 @@ fn the_result_wears_the_style_the_engine_gives_it() {
     let b = scene.push_path(rb);
     ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     let g = Entity::from_bits(
-        ph2d_vec_entities::entities::group_entities(&mut sim, &[map[&a], map[&b]], "Bool".into()).unwrap(),
+        ph2d_vec_entities::entities::group_entities(&mut sim, &[map[&a], map[&b]], "Bool".into())
+            .unwrap(),
     );
     sim.world_mut().entity_mut(g).insert(VecBoolGroup { op: 0 });
 

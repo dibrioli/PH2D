@@ -41,8 +41,12 @@ fn donut(op: u8) -> (SimWorld, VecScene, VecEntityMap, Vec<VecPathId>, Entity) {
     let inner = scene.push_path(rectangle([6.0, 6.0], [14.0, 14.0]));
     ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     let g = Entity::from_bits(
-        ph2d_vec_entities::entities::group_entities(&mut sim, &[map[&outer], map[&inner]], "Bool".into())
-            .unwrap(),
+        ph2d_vec_entities::entities::group_entities(
+            &mut sim,
+            &[map[&outer], map[&inner]],
+            "Bool".into(),
+        )
+        .unwrap(),
     );
     sim.world_mut().entity_mut(g).insert(VecBoolGroup { op });
     (sim, scene, map, vec![outer, inner], g)
@@ -357,15 +361,20 @@ fn a_morph_from_the_inner_group_does_not_command_the_outer_one() {
 
     // O grupo de DENTRO: `a` e `b`. A base dele é `a`, que carrega o resultado.
     let inner = Entity::from_bits(
-        ph2d_vec_entities::entities::group_entities(&mut sim, &[map[&a], map[&b]], "In".into()).unwrap(),
+        ph2d_vec_entities::entities::group_entities(&mut sim, &[map[&a], map[&b]], "In".into())
+            .unwrap(),
     );
     sim.world_mut()
         .entity_mut(inner)
         .insert(VecBoolGroup { op: 0 });
     // O de FORA: o grupo de dentro e mais o `c`.
     let outer = Entity::from_bits(
-        ph2d_vec_entities::entities::group_entities(&mut sim, &[inner.to_bits(), map[&c]], "Out".into())
-            .unwrap(),
+        ph2d_vec_entities::entities::group_entities(
+            &mut sim,
+            &[inner.to_bits(), map[&c]],
+            "Out".into(),
+        )
+        .unwrap(),
     );
     sim.world_mut()
         .entity_mut(outer)

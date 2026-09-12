@@ -5,9 +5,9 @@
 //! ⚠️ Ele é submódulo do irmão de propósito: o harness (`world`) é **um só**, e duplicá-lo daria
 //! duas fixturas que divergiriam no primeiro campo novo.
 
-use ph2d_vec_entities::morph_set::{create, disconnect, dissolve, eligible, graph_of, upkeep};
 use super::world;
 use ph2d_ecs::{ChildOf, Entity, SimWorld, Transform, VecMorph, VecMorphMachine};
+use ph2d_vec_entities::morph_set::{create, disconnect, dissolve, eligible, graph_of, upkeep};
 use ph2d_vec_scene::{VecPathId, VecScene};
 
 use ph2d_vec_entities::entities::{VecEntityMap, sync};
@@ -274,8 +274,8 @@ fn dragging_the_set_carries_the_states_and_the_drawing() {
         .unwrap()
         .verts
         .clone();
-    let kid0 =
-        ph2d_vec_entities::transform::world_transform(&sim, Entity::from_bits(map[&ids[0]])).translation;
+    let kid0 = ph2d_vec_entities::transform::world_transform(&sim, Entity::from_bits(map[&ids[0]]))
+        .translation;
     assert!(
         !drawn0.is_empty(),
         "o CONTROLE: o conjunto desenha alguma coisa"
@@ -311,8 +311,8 @@ fn dragging_the_set_carries_the_states_and_the_drawing() {
         "a geometria guardada mudou com o arrasto -- ela devia ser LOCAL ao conjunto"
     );
     // ⭐⭐ E os ESTADOS foram junto: o filho anda exactamente o delta.
-    let kid1 =
-        ph2d_vec_entities::transform::world_transform(&sim, Entity::from_bits(map[&ids[0]])).translation;
+    let kid1 = ph2d_vec_entities::transform::world_transform(&sim, Entity::from_bits(map[&ids[0]]))
+        .translation;
     assert!(
         (kid1.x - kid0.x - delta.x).abs() < 1e-4 && (kid1.y - kid0.y - delta.y).abs() < 1e-4,
         "o estado nao acompanhou o conjunto: andou ({}, {}) e o conjunto andou ({}, {})",

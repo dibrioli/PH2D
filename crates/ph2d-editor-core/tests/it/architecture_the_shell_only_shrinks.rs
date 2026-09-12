@@ -51,16 +51,16 @@ use std::path::{Path, PathBuf};
 /// licença. Histórico: **465 105** / 1 801 ficheiros (11/09, fim da Fase A da W2) → **451 084** /
 /// 1 757 (11/09, Fase B da `physics`) → **411 246** / 1 616 (12/09, Fase B da `sculpt3d`, da `vec`
 /// e da `flip`, integradas na ordem do churn de costura; medido **depois** do `cargo fmt --all`,
-/// porque reformatar 46 ficheiros move a contagem — `411 214` antes, `411 246` depois). O tecto
-/// é o medido mais a
-/// [`FOLGA_DE_COMPOSICAO`].
+/// porque reformatar 46 ficheiros move a contagem) → **398 037** / 1 561 (12/09, a
+/// `line/shell-folhas`: as folhas partilhadas que prendiam TRÊS famílias saíram para sete crates
+/// nomeadas por assunto). O tecto é o medido mais a [`FOLGA_DE_COMPOSICAO`].
 ///
-/// ⭐ **Em dois dias a shell caiu de 526 809 para 411 246 — `−115 563`, `−21,9 %`.**
+/// ⭐ **Em dois dias a shell caiu de 526 809 para 398 037 — `−128 772`, `−24,4 %`.**
 ///
 /// ⛔ **Nenhuma LINHA lhe toca** — é um número que soma entre linhas, logo CONTA-SE, nunca se
 /// escolhe (`CLAUDE.md` §5.0): com cinco linhas a escrevê-lo o merge fica com um deles e nenhum
 /// está certo, em silêncio. Quem o reconta é o integrador, sobre a árvore combinada.
-const TETO_LOC: usize = 415_246;
+const TETO_LOC: usize = 402_037;
 
 /// Quanto a shell pode crescer acima do medido antes de o gate reprovar — a margem da raiz de
 /// composição, **não** espaço para um módulo.

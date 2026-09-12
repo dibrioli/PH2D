@@ -60,10 +60,17 @@ use std::path::{Path, PathBuf};
 /// maior família da wave, e com ela a catraca das famílias sem roteador MORREU — ver
 /// `ph2d-app-registry-init`) → **238 732** / 966 (12/09, **Fase C da `vec`**: as 16 leis VIVAS, a
 /// edição da estampa, o balde, o exportador de SVG — e o **Esqueleto saiu como família própria**,
-/// `ph2d-app-skeleton`). O tecto é o medido mais a [`FOLGA_DE_COMPOSICAO`].
+/// `ph2d-app-skeleton`) → **225 394** / 917 (12/09, **Fase C da `physics`**: as juntas, o inspector
+/// e o bake — 48 ficheiros, e o `impl App` era **assinatura**, zero portas novas). O tecto é o
+/// medido mais a [`FOLGA_DE_COMPOSICAO`].
 ///
-/// ⭐⭐⭐ **Em dois dias a shell caiu de 526 809 para 238 732 — `−288 077`, `−54,7 %`.** Mais de
-/// metade da unidade de compilação que era o tecto do relógio deste repo deixou de existir ali.
+/// ⭐⭐⭐ **Em dois dias a shell caiu de 526 809 para 225 394 — `−301 415`, `−57,2 %`**, e de 2 023
+/// ficheiros para 917. Mais de metade da unidade de compilação que era o tecto do relógio deste
+/// repo deixou de existir ali.
+///
+/// ⭐ **E a conta paga-se no relógio, medida na própria integração:** o portão de testes impactados
+/// desta rodada correu em **26–27 s**, contra **51 s** na rodada anterior sobre a mesma máquina e o
+/// mesmo perfil. *A grandeza que este gate protege não é estética — é o tempo de todos os dias.*
 ///
 /// ⚠️ **A `motion` sozinha vale mais do que as duas primeiras rodadas juntas** (`−111 397` contra
 /// `−61 704` da Fase A) — e ela esteve BLOQUEADA duas voltas seguidas por `632` linhas de outra
@@ -77,7 +84,7 @@ use std::path::{Path, PathBuf};
 /// ⛔ **Nenhuma LINHA lhe toca** — é um número que soma entre linhas, logo CONTA-SE, nunca se
 /// escolhe (`CLAUDE.md` §5.0): com cinco linhas a escrevê-lo o merge fica com um deles e nenhum
 /// está certo, em silêncio. Quem o reconta é o integrador, sobre a árvore combinada.
-const TETO_LOC: usize = 242_732;
+const TETO_LOC: usize = 229_394;
 
 /// Quanto a shell pode crescer acima do medido antes de o gate reprovar — a margem da raiz de
 /// composição, **não** espaço para um módulo.

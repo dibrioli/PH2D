@@ -105,7 +105,7 @@ fn publishes_its_own_handles(sim: &SimWorld, e: Entity) -> bool {
 /// não respondia ao clique **nem com a linha dela selecionada**: mover a receita inteira era
 /// inalcançável por gesto de canvas, no único estado em que ela está na tela. Os três consumidores
 /// morriam juntos ([`empty_objects`], [`pick_empty_at_world`] e [`view`]), porque a pergunta é uma
-/// só. Hoje ela chama a porta ([`crate::render_loop::off_canvas::is_unedited_recipe`]).
+/// só. Hoje ela chama a porta ([`ph2d_entity_visibility::off_canvas::is_unedited_recipe`]).
 pub(crate) fn is_empty_object(sim: &SimWorld, e: Entity) -> bool {
     let w = sim.world();
     w.get::<Transform>(e).is_some()
@@ -113,7 +113,7 @@ pub(crate) fn is_empty_object(sim: &SimWorld, e: Entity) -> bool {
         && w.get::<ph2d_ecs::VecPathRef>(e).is_none()
         && w.get::<ph2d_ecs::FlipObjectRef>(e).is_none()
         && w.get::<ph2d_ecs::VecEnvelope>(e).is_none()
-        && !crate::render_loop::off_canvas::is_unedited_recipe(w, e)
+        && !ph2d_entity_visibility::off_canvas::is_unedited_recipe(w, e)
         && !publishes_its_own_handles(sim, e)
 }
 

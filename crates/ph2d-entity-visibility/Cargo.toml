@@ -1,0 +1,20 @@
+[package]
+name = "ph2d-entity-visibility"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# ⛔ UMA dependência de produto: as três razões pelas quais uma entidade não desenha são todas
+# perguntas ao MUNDO. Nenhuma delas sabe o que é um renderer — e era isso que as prendia dentro
+# de um closure do `sim_extract` até 2026-08-30.
+[dependencies]
+ph2d-ecs = { path = "../ph2d-ecs" }
+
+# O `Vec2` só aparece a montar as fixturas de pose.
+[dev-dependencies]
+ph2d-core = { path = "../ph2d-core" }

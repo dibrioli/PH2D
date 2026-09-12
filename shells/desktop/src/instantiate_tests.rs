@@ -415,7 +415,7 @@ fn duplicating_a_master_gives_a_plain_object_that_is_on_the_canvas() {
     crate::render_loop::master_editing::mark(&mut sim, None::<u64>, &mut None);
     for (what, e) in [("a copia", copy), ("a peca dela", piece(&sim, copy, "Arm"))] {
         assert!(
-            !crate::render_loop::off_canvas::is_off_canvas(sim.world(), e),
+            !ph2d_entity_visibility::off_canvas::is_off_canvas(sim.world(), e),
             "{what} nasceu fora da tela — o artista duplica e o objeto desaparece assim que \
              ele clica noutro sitio"
         );
@@ -427,7 +427,7 @@ fn duplicating_a_master_gives_a_plain_object_that_is_on_the_canvas() {
     // ⚠️ **Controlo POSITIVO: a receita ORIGINAL continua fora da tela.** Sem ele, um
     // `is_off_canvas` que devolvesse sempre `false` passaria nas duas asserções acima.
     assert!(
-        crate::render_loop::off_canvas::is_off_canvas(sim.world(), master),
+        ph2d_entity_visibility::off_canvas::is_off_canvas(sim.world(), master),
         "a receita original tambem esta' na tela — a regua nao mede nada"
     );
 }

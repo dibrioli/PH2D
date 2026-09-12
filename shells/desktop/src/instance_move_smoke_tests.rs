@@ -159,7 +159,7 @@ fn the_printed_steps_have_no_stray_backslash() {
 ///
 /// O passo 1 manda arrastar duas linhas **da receita** na Hierarquia. Mas uma receita não é uma
 /// linha da cena: desde 2026-08-30 o `snapshots.rs` **retira** da lista tudo o que o
-/// [`crate::render_loop::off_canvas::is_unedited_recipe`] acusa — e o `MasterRoot` também é
+/// [`ph2d_entity_visibility::off_canvas::is_unedited_recipe`] acusa — e o `MasterRoot` também é
 /// `MasterPiece`, logo a receita INTEIRA sai. ⇒ sem alguém a escolher, o passo nomeia linhas que
 /// não existem, e o report que volta é *«não achei»* — indistinguível de um defeito real.
 ///
@@ -182,7 +182,7 @@ fn every_row_the_step_names_is_actually_in_the_list() {
     crate::render_loop::master_editing::mark(&mut sim, std::iter::empty(), &mut None);
     for (i, &e) in rows.iter().enumerate() {
         assert!(
-            crate::render_loop::off_canvas::is_unedited_recipe(sim.world(), e),
+            ph2d_entity_visibility::off_canvas::is_unedited_recipe(sim.world(), e),
             "a linha {i} ja' estaria na lista sem ninguem escolher a receita — este gate mediria \
              nada"
         );
@@ -196,7 +196,7 @@ fn every_row_the_step_names_is_actually_in_the_list() {
     );
     for (i, &e) in rows.iter().enumerate() {
         assert!(
-            !crate::render_loop::off_canvas::is_unedited_recipe(sim.world(), e),
+            !ph2d_entity_visibility::off_canvas::is_unedited_recipe(sim.world(), e),
             "a linha {i} que o PASSO 1 manda arrastar NAO esta' na Hierarquia"
         );
     }

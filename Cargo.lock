@@ -5221,6 +5221,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-entity-visibility"
+version = "0.0.0"
+dependencies = [
+ "ph2d-core",
+ "ph2d-ecs",
+]
+
+[[package]]
 name = "ph2d-eval-motion"
 version = "0.0.0"
 dependencies = [
@@ -5569,6 +5577,7 @@ dependencies = [
  "ph2d-curve",
  "ph2d-ecs",
  "ph2d-editor",
+ "ph2d-entity-visibility",
  "ph2d-eval-motion",
  "ph2d-field",
  "ph2d-field-ecs",

@@ -42,7 +42,7 @@
 use ph2d_ecs::{ChildOf, EnableMode, Entity, OnScreenEnabler, World};
 
 /// Teto de profundidade da caminhada de ancestrais — defesa contra um save corrompido, não limite
-/// de produto. O mesmo número do [`crate::vec_entities::MAX_DEPTH`], pela mesma razão.
+/// de produto. O mesmo número do `MAX_DEPTH` da ponte do vetor, pela mesma razão.
 const MAX_DEPTH: usize = 64;
 
 /// **A pergunta atómica:** o enabler DESTA entidade recusa-a agora?
@@ -77,7 +77,7 @@ fn refuses_here(world: &World, entity: Entity) -> Option<EnableMode> {
 /// *«Make the node (and subtree) invisible off-screen»*. Só esse modo esconde — um modo de pausa
 /// que também escondesse tornaria os três indistinguíveis para quem olha a tela.
 #[must_use]
-pub(crate) fn hides(world: &World, entity: Entity, own_pos: [f32; 2]) -> bool {
+pub fn hides(world: &World, entity: Entity, own_pos: [f32; 2]) -> bool {
     if refuses(world, entity, own_pos) == Some(EnableMode::HideVisible) {
         return true;
     }
@@ -94,7 +94,7 @@ pub(crate) fn hides(world: &World, entity: Entity, own_pos: [f32; 2]) -> bool {
 
 /// ⭐ **«O processamento desta entidade está pausado por um enabler?»** — a metade de CORRER.
 ///
-/// Hoje o consumidor é o tique da animação de sprite ([`super::sprite_anim_tick`]), que é o único
+/// Hoje o consumidor é o tique da animação de sprite (o `render_loop::sprite_anim_tick` da shell), que é o único
 /// comportamento por-entidade e por-quadro que o artista autora nesta shell. ⚠️ **A física NÃO
 /// entra**: o solver é global e vive noutra crate (`ph2d-physics-ecs`); pausá-la por-corpo é outra
 /// decisão, com outro dono.
@@ -103,7 +103,7 @@ pub(crate) fn hides(world: &World, entity: Entity, own_pos: [f32; 2]) -> bool {
 /// - o de um ANCESTRAL pausa só em `InheritPause` — é isso que *«inherit»* quer dizer, e é a única
 ///   coisa que separa os dois modos de pausa um do outro.
 #[must_use]
-pub(crate) fn processing_paused(world: &World, entity: Entity) -> bool {
+pub fn processing_paused(world: &World, entity: Entity) -> bool {
     if matches!(
         refuses_here(world, entity),
         Some(EnableMode::InheritPause | EnableMode::PauseProcessing)

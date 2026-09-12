@@ -240,9 +240,7 @@ pub(crate) mod motion_shape_gen;
 pub(crate) mod motion_table_gen;
 pub(crate) mod motion_text_gen;
 /// A pergunta *«esta entidade está na cena?»* que o extract faz — ver o módulo.
-pub(crate) mod off_canvas;
 /// O `OnScreenEnabler` a decidir alguma coisa: *«só corre/aparece quando está no ecrã»*.
-pub(crate) mod on_screen_gate;
 /// The Deform Transform gizmo (whole-region bounding box), split from `painter_bridge_overlays` (Wave 2).
 pub(crate) mod painter_bridge_deform_gizmo;
 pub(crate) mod painter_bridge_queries;

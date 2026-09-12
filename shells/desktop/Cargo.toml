@@ -603,6 +603,7 @@ ph2d-node-motion-bezier-warp = { path = "../../crates/ph2d-node-motion-bezier-wa
 # famílias é uma FOLHA — nunca a casa de uma delas (ADR-0075, HOWTO §1.2). O bloco é
 # append-only de propósito: uma linha nova acrescenta ao fim e não colide com ninguém.
 ph2d-unique-name = { path = "../../crates/ph2d-unique-name" }
+ph2d-entity-visibility = { path = "../../crates/ph2d-entity-visibility" }
 
 [dev-dependencies]
 # W2 — os auxiliares de gate da família (`forget_*`, `sync_scene`, …) vivem atrás da feature

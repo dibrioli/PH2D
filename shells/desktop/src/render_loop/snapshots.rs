@@ -266,7 +266,7 @@ pub(super) fn publish(
         // lá destruía o asset. ⇒ ela sai da lista: o sítio dela é a biblioteca.
         //
         // ⭐ **E a lei é a MESMA do canvas**, não uma segunda: o
-        // [`super::off_canvas::is_unedited_recipe`] já responde *«esta entidade é peça de uma
+        // [`ph2d_entity_visibility::off_canvas::is_unedited_recipe`] já responde *«esta entidade é peça de uma
         // receita que ninguém está a editar agora?»*, e é o que o extract usa para não a desenhar.
         // Uma cópia dessa regra aqui divergiria no dia em que a edição de receita mudasse.
         //
@@ -277,7 +277,7 @@ pub(super) fn publish(
             .copied()
             .filter(|id| {
                 live.bridge.entity_for(*id).is_some_and(|bits| {
-                    super::off_canvas::is_unedited_recipe(
+                    ph2d_entity_visibility::off_canvas::is_unedited_recipe(
                         sim.world(),
                         ph2d_ecs::Entity::from_bits(bits),
                     )

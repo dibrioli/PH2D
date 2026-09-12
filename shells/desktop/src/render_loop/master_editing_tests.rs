@@ -5,7 +5,7 @@
 //! de 26/08.
 
 use super::mark;
-use crate::render_loop::off_canvas::is_off_canvas;
+use ph2d_entity_visibility::off_canvas::is_off_canvas;
 use ph2d_ecs::{ChildOf, Entity, MasterRoot, Name, SimWorld, Transform, Visibility};
 
 /// Uma receita de duas peças, e uma entidade solta que nunca participa.

@@ -1,13 +1,13 @@
 //! ⭐⭐ **O que NÃO está na cena** — a pergunta que o extract faz a cada entidade.
 //!
 //! ⚠️⚠️ **E ela tem DOIS leitores, de propósito** (F4.6): o extract de sprites e a cadeia de
-//! visibilidade do vetor ([`crate::vec_entities`]). Enquanto era só o primeiro, a regra tinha duas
+//! visibilidade do vetor (o `vec_entities`). Enquanto era só o primeiro, a regra tinha duas
 //! respostas — a arte vetorial de um mestre continuava a desenhar **por baixo da cópia** que o
 //! *Criar componente* deixa no lugar, e o artista não distinguia uma da outra. Foi isso que fez a
 //! propagação parecer morta estando viva (o §14 do handoff): a cena 2 do smoke, com a receita
 //! LONGE das cópias, propaga.
 //!
-//! ⚠️ **Irmão de [`super::sim_extract`] por ASSUNTO** (e porque aquele ficheiro já vive sob uma
+//! ⚠️ **Irmão do `render_loop::sim_extract` da shell por ASSUNTO** (e porque aquele ficheiro já vive sob uma
 //! excepção de LOC): lá mora *como* uma sprite vira `RenderInstance`; aqui mora *se* ela vira.
 //! A decisão precisa de nome próprio — ela vive dentro de um closure que pede um renderer, e uma
 //! mutação que a desligasse compilaria e passaria a suíte inteira.
@@ -18,7 +18,7 @@ use ph2d_ecs::{Entity, VisibilityLayer, World};
 /// pelas quais ela pode não desenhar.
 ///
 /// ⚠️ **A terceira nasceu em 2026-08-30** (o `OnScreenEnabler`) e as duas primeiras já existiam
-/// soltas dentro do closure do [`super::sim_extract`]. Juntá-las aqui não é arrumação: enquanto a
+/// soltas dentro do closure do `render_loop::sim_extract`. Juntá-las aqui não é arrumação: enquanto a
 /// decisão morava no fio, **nenhuma mutação a matava de forma observável** — é exactamente a razão
 /// que o doc do [`is_off_canvas`] já dava para o primeiro par, e a chegada de um terceiro motivo é
 /// o momento em que ela deixa de ser opinião.
@@ -27,11 +27,11 @@ use ph2d_ecs::{Entity, VisibilityLayer, World};
 /// |---|---|---|
 /// | [`is_off_canvas`] | o olho da Hierarquia · a peça de uma receita | o artista · o ADR-0164 |
 /// | [`layer_visible`] | a máscara de camadas cruza a da câmara? | as 32 caixas da §8 |
-/// | [`super::on_screen_gate::hides`] | ela saiu do rect que ela declara? | os 5 campos da §8 |
+/// | [`crate::on_screen_gate::hides`] | ela saiu do rect que ela declara? | os 5 campos da §8 |
 ///
 /// `world_pos` é a pose de mundo que o extract já tem em mãos (o `GlobalTransform` do quadro).
 #[must_use]
-pub(crate) fn draws_this_frame(
+pub fn draws_this_frame(
     sim: &World,
     entity: Entity,
     cull_mask: u32,
@@ -39,7 +39,7 @@ pub(crate) fn draws_this_frame(
 ) -> bool {
     !is_off_canvas(sim, entity)
         && layer_visible(sim, entity, cull_mask)
-        && !super::on_screen_gate::hides(sim, entity, world_pos)
+        && !crate::on_screen_gate::hides(sim, entity, world_pos)
 }
 
 /// ⭐ **A metade das CAMADAS** (W3.T3.12) — *«a máscara desta entidade cruza a da câmara?»*.
@@ -56,7 +56,7 @@ pub(crate) fn draws_this_frame(
 /// desta linha. O gate `two_different_cull_masks_give_two_different_scenes` prende este lado para
 /// que a wave do autor encontre a metade dela já provada.
 #[must_use]
-pub(crate) fn layer_visible(sim: &World, entity: Entity, cull_mask: u32) -> bool {
+pub fn layer_visible(sim: &World, entity: Entity, cull_mask: u32) -> bool {
     sim.get::<VisibilityLayer>(entity)
         .is_none_or(|vl| vl.visible_to(cull_mask))
 }
@@ -82,7 +82,7 @@ pub(crate) fn layer_visible(sim: &World, entity: Entity, cull_mask: u32) -> bool
 ///
 /// ⚠️ **Função com NOME e não uma linha no fio**: a decisão vive dentro de um closure que pede um
 /// renderer, e a mutação que a desligasse compilaria e passaria a suíte inteira.
-pub(crate) fn is_off_canvas(sim: &World, entity: Entity) -> bool {
+pub fn is_off_canvas(sim: &World, entity: Entity) -> bool {
     is_unedited_recipe(sim, entity)
         || sim
             .get::<ph2d_ecs::Visibility>(entity)
@@ -94,7 +94,7 @@ pub(crate) fn is_off_canvas(sim: &World, entity: Entity) -> bool {
 ///
 /// ⚠️⚠️ **Ela tem nome próprio porque existe um TERCEIRO leitor**, e a auditoria de 2026-08-27
 /// (§1.5) apanhou-o com **metade da lei**: o anel do objeto vazio
-/// ([`crate::group_gizmo_view::is_empty_object`]) perguntava só *«é `MasterPiece`?»* e não conhecia
+/// (o `group_gizmo_view::is_empty_object` da shell) perguntava só *«é `MasterPiece`?»* e não conhecia
 /// o `MasterEditing`. Consequência medida: a raiz de uma receita que seja um GRUPO ou um rig — que
 /// é a forma de **toda** receita nascida de *Make Component* sobre um grupo — ficava sem anel, sem
 /// caixa e **impegável mesmo enquanto era editada**, que é precisamente o estado que o modo de
@@ -108,8 +108,8 @@ pub(crate) fn is_off_canvas(sim: &World, entity: Entity) -> bool {
 /// ⚠️ **Não é o mesmo que [`is_off_canvas`], e a diferença é o olho:** um objeto que o artista
 /// escondeu continua a ser um objeto da cena com gizmo — esconder não é deixar de existir. Foi por
 /// isso que a cura não foi simplesmente apontar o anel ao `is_off_canvas`.
-pub(crate) fn is_unedited_recipe(sim: &World, entity: Entity) -> bool {
-    // ⭐⭐ **A receita volta enquanto está a ser EDITADA** (ver `super::master_editing`): esconder
+pub fn is_unedited_recipe(sim: &World, entity: Entity) -> bool {
+    // ⭐⭐ **A receita volta enquanto está a ser EDITADA** (ver o `render_loop::master_editing` da shell): esconder
     // sempre tornaria a forma do mestre impossível de mudar, e desenhar sempre põe dois objetos
     // empilhados. A marca é derivada da selecção, e por isso as três famílias leem a MESMA
     // resposta sem ninguém lhes passar a selecção.

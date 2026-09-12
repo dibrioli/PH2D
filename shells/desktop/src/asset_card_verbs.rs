@@ -77,7 +77,7 @@ pub(crate) fn users_of(
     // mesma que o extract e a lista da Hierarquia consomem. ⛔ Escrever aqui um segundo predicado
     // seria a lei em dois sítios — e o segundo envelheceria no dia em que o modo de edição de
     // mestre mudasse.
-    .filter(|&e| !crate::render_loop::off_canvas::is_unedited_recipe(sim.world(), e))
+    .filter(|&e| !ph2d_entity_visibility::off_canvas::is_unedited_recipe(sim.world(), e))
     // A ordem é do `StableId` e não da consulta: a primeira da lista vira a selecção primária, e a
     // ordem de arquétipo do `bevy_ecs` faria o gizmo aterrar noutro objecto entre corridas.
     // ⚠️ **`map_or(u64::MAX, …)` e não `&StableId` na consulta:** uma entidade nascida no mesmo

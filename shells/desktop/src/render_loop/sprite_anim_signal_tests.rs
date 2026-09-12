@@ -155,7 +155,7 @@ fn the_same_animation_playing_for_real_does_speak() {
 /// ⛔⛔ Até 2026-08-30 o [`ph2d_ecs::OnScreenEnabler::contains`] tinha **zero chamadores de
 /// produção**: os cinco campos da §8 do Inspector gravavam no `.ph2dproj` e não decidiam coisa
 /// nenhuma. Este gate é a metade de *«só CORRE quando está no ecrã»* (a de *«só APARECE»* mora no
-/// [`crate::render_loop::off_canvas::draws_this_frame`]).
+/// [`ph2d_entity_visibility::off_canvas::draws_this_frame`]).
 ///
 /// ⚠️ **Ele carrega no tique REAL e mede o FRAME**, não um `bool` auxiliar: a única entrada é a
 /// geometria do rect, e a única saída é a célula em que a sprite ficou. Um gate que escrevesse

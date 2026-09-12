@@ -230,7 +230,7 @@ fn visible_chain(w: &ph2d_ecs::World, entity: Entity) -> bool {
         let Some(e) = cur else { return true };
         // ⭐⭐ **A MESMA porta que o extract de sprites usa** — o olho do artista **e** *«uma receita
         // não está na cena»*. O porquê vive lá (F4.6).
-        if crate::render_loop::off_canvas::is_off_canvas(w, e) {
+        if ph2d_entity_visibility::off_canvas::is_off_canvas(w, e) {
             return false;
         }
         // ⭐⭐ **Ser MEMBRO de um conjunto de Morph States esconde, e isso é DERIVADO** (plano 32

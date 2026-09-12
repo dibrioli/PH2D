@@ -173,3 +173,23 @@ pub enum PatternMode {
     /// Estica a borda (`Extend::Pad`): uma cópia só, e o resto é a orla dela.
     Clamp,
 }
+
+// ⭐ Desceu do `ph2d-panel-vector` na auditoria de arquitectura de 2026-09-12 (A1): o
+// `ph2d-vec-art-live` DECIDE este estado e o painel só o MOSTRA — um tipo de domínio nascido num
+// painel obrigava uma folha a depender de um painel.
+/// **Em que pé está a ARTE de um padrão** — e são TRÊS estados, não dois.
+///
+/// ⛔⛔ Isto era um `bool` (`art_missing`), e o report do Enio de 2026-08-30 mostrou que ele juntava
+/// duas coisas que pedem frases OPOSTAS: *"nunca foi escolhida"* e *"foi apagada"*. É a mesma
+/// família de *"«pausado» e «terminado» leem-se igual no `playing == false`"*: um bit que responde a
+/// duas perguntas responde mal a uma delas.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum PatternArt {
+    /// Há arte e ela resolve — o caminho comum, e o único em que a secção não avisa nada.
+    Ready,
+    /// ⭐ **O padrão acabou de nascer e o artista ainda não disse qual é a arte** — o estado que faz
+    /// o painel ser o ESCOLHEDOR, com *Source…* e *Use Shape…* lado a lado.
+    NotChosen,
+    /// A forma que servia de arte foi apagada (W11). Recuperável por undo enquanto a sessão durar.
+    Deleted,
+}

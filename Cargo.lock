@@ -7866,6 +7866,7 @@ dependencies = [
  "ph2d-tool-vector",
  "ph2d-ui-testkit",
  "ph2d-vec-edit",
+ "ph2d-vec-pattern",
  "ph2d-vec-render",
  "ph2d-vec-scene",
  "ph2d-vector",
@@ -8590,7 +8591,6 @@ version = "0.0.0"
 dependencies = [
  "ph2d-asset",
  "ph2d-ecs",
- "ph2d-panel-vector",
  "ph2d-vec-entities",
  "ph2d-vec-pattern",
  "ph2d-vec-render",

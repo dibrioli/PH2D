@@ -335,13 +335,13 @@ impl BodyCtx<'_> {
         y
     }
 
-    fn missing_art_hint(&mut self, art: crate::state::PatternArt, y: f32) -> f32 {
+    fn missing_art_hint(&mut self, art: ph2d_vec_pattern::PatternArt, y: f32) -> f32 {
         match art {
-            crate::state::PatternArt::Ready => y,
-            crate::state::PatternArt::NotChosen => {
+            ph2d_vec_pattern::PatternArt::Ready => y,
+            ph2d_vec_pattern::PatternArt::NotChosen => {
                 self.hint_line(tr("panel.vector.texpat.art_not_chosen.hint"), y)
             }
-            crate::state::PatternArt::Deleted => {
+            ph2d_vec_pattern::PatternArt::Deleted => {
                 self.hint_line(tr("panel.vector.texpat.art_missing.hint"), y)
             }
         }

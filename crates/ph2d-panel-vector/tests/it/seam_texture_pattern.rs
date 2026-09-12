@@ -170,7 +170,7 @@ fn row(kind: u8) -> ph2d_panel_vector::TexturePatternRow {
         // A referência é um ladrilho que FECHA — a dica de costura tem gate próprio.
         wrap_seam_visible: false,
         // E cuja arte EXISTE — o aviso de arte apagada tem gate próprio.
-        art: ph2d_panel_vector::PatternArt::Ready,
+        art: ph2d_vec_pattern::PatternArt::Ready,
     }
 }
 
@@ -463,9 +463,9 @@ fn the_missing_art_hint_names_the_dead_link() {
         state::set_current_fill(Some(FillKind::Pattern), None);
         let mut r = row(0);
         r.art = if sumiu {
-            ph2d_panel_vector::PatternArt::Deleted
+            ph2d_vec_pattern::PatternArt::Deleted
         } else {
-            ph2d_panel_vector::PatternArt::Ready
+            ph2d_vec_pattern::PatternArt::Ready
         };
         state::set_current_texture_pattern(0, Some(r));
         let mut host = MockPanelHost::with_panel::<VectorPanel>();
@@ -498,9 +498,9 @@ fn the_missing_art_hint_sits_above_the_buttons_that_fix_it() {
         state::set_current_fill(Some(FillKind::Pattern), None);
         let mut r = row(0);
         r.art = if sumiu {
-            ph2d_panel_vector::PatternArt::Deleted
+            ph2d_vec_pattern::PatternArt::Deleted
         } else {
-            ph2d_panel_vector::PatternArt::Ready
+            ph2d_vec_pattern::PatternArt::Ready
         };
         state::set_current_texture_pattern(0, Some(r));
         let mut host = MockPanelHost::with_panel::<VectorPanel>();
@@ -548,9 +548,9 @@ fn the_hint_pushes_what_follows_it_through_every_line_it_wraps_to() {
         state::set_current_fill(Some(FillKind::Pattern), None);
         let mut r = row(0);
         r.art = if sumiu {
-            ph2d_panel_vector::PatternArt::Deleted
+            ph2d_vec_pattern::PatternArt::Deleted
         } else {
-            ph2d_panel_vector::PatternArt::Ready
+            ph2d_vec_pattern::PatternArt::Ready
         };
         state::set_current_texture_pattern(0, Some(r));
         let mut host = MockPanelHost::with_panel::<VectorPanel>();
@@ -593,9 +593,9 @@ fn measure_where_the_hint_wraps() {
             state::set_current_fill(Some(FillKind::Pattern), None);
             let mut r = row(0);
             r.art = if sumiu {
-                ph2d_panel_vector::PatternArt::Deleted
+                ph2d_vec_pattern::PatternArt::Deleted
             } else {
-                ph2d_panel_vector::PatternArt::Ready
+                ph2d_vec_pattern::PatternArt::Ready
             };
             state::set_current_texture_pattern(0, Some(r));
             let mut host = MockPanelHost::with_panel::<VectorPanel>();
@@ -638,7 +638,7 @@ fn measure_where_the_hint_wraps() {
 /// primeiras afirmações.
 #[test]
 fn a_pattern_with_no_art_yet_offers_both_doors_and_says_a_different_sentence() {
-    let botoes = |art: ph2d_panel_vector::PatternArt| -> (Option<f32>, Option<f32>) {
+    let botoes = |art: ph2d_vec_pattern::PatternArt| -> (Option<f32>, Option<f32>) {
         state::set_current_fill(Some(FillKind::Pattern), None);
         let mut r = row(0);
         r.art = art;
@@ -667,7 +667,7 @@ fn a_pattern_with_no_art_yet_offers_both_doors_and_says_a_different_sentence() {
         )
     };
     // 1. Acabou de nascer: as DUAS portas estão na tela.
-    let (img, forma) = botoes(ph2d_panel_vector::PatternArt::NotChosen);
+    let (img, forma) = botoes(ph2d_vec_pattern::PatternArt::NotChosen);
     let img = img.expect(
         "um padrao sem arte escolhida nao pinta `Source...` - o caminho da imagem fica inalcancavel",
     );
@@ -677,7 +677,7 @@ fn a_pattern_with_no_art_yet_offers_both_doors_and_says_a_different_sentence() {
     );
     assert!(forma > img, "as duas portas colapsaram numa posicao so'");
     // 2. E o aviso empurra-as para baixo — ele existe, e vem ANTES delas.
-    let (pronto, _) = botoes(ph2d_panel_vector::PatternArt::Ready);
+    let (pronto, _) = botoes(ph2d_vec_pattern::PatternArt::Ready);
     let pronto = pronto.expect("o botao da arte e' sempre pintado");
     assert!(
         img > pronto + 1.0,

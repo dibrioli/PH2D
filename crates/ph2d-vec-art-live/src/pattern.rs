@@ -195,8 +195,8 @@ pub fn art_state(
     host: VecPathId,
     source: &PatternSource,
     object_of: &dyn Fn(VecPathId) -> Vec<VecPathId>,
-) -> ph2d_panel_vector::PatternArt {
-    use ph2d_panel_vector::PatternArt;
+) -> ph2d_vec_pattern::PatternArt {
+    use ph2d_vec_pattern::PatternArt;
     match source {
         PatternSource::None => PatternArt::NotChosen,
         PatternSource::Shape(_) if source_shape(scene, host, source, object_of).is_empty() => {

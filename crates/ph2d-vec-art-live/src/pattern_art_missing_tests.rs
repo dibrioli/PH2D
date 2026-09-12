@@ -18,7 +18,7 @@ use ph2d_vec_scene::{PatternFill, Rgba8, VecPath, VecVertex};
 /// gates continuam a perguntar o bit que lhes interessa — *não está pronta* —, e o terceiro estado
 /// tem gate próprio ([`a_pattern_born_without_art_says_so_and_it_is_not_the_deleted_state`]).
 fn art_is_missing_solo(scene: &VecScene, host: VecPathId, source: &PatternSource) -> bool {
-    art_state(scene, host, source, &|id| vec![id]) != ph2d_panel_vector::PatternArt::Ready
+    art_state(scene, host, source, &|id| vec![id]) != ph2d_vec_pattern::PatternArt::Ready
 }
 
 /// ⭐⭐⭐ **APAGAR A FORMA-FONTE deixa a estampa sem arte, e o app tem de o saber** (plano 33, W11).
@@ -203,7 +203,7 @@ fn a_shape_inside_the_group_it_wears_is_refused() {
     );
     assert!(
         art_state(&scene, host, &PatternSource::Shape(a), &grupo)
-            != ph2d_panel_vector::PatternArt::Ready,
+            != ph2d_vec_pattern::PatternArt::Ready,
         "e o painel tem de o DIZER: para o artista, uma estampa que nao pode resolver a arte e' \
          uma estampa sem arte"
     );
@@ -255,7 +255,7 @@ fn editing_any_member_of_the_group_changes_what_the_memo_sees() {
 /// devolvesse `NotChosen` para tudo passaria as duas primeiras afirmações.
 #[test]
 fn a_pattern_born_without_art_says_so_and_it_is_not_the_deleted_state() {
-    use ph2d_panel_vector::PatternArt;
+    use ph2d_vec_pattern::PatternArt;
     let mut scene = VecScene::default();
     let host = scene.push_path(VecPath {
         verts: [[0.0, 0.0], [4.0, 0.0], [4.0, 4.0]]

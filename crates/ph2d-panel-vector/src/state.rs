@@ -153,8 +153,8 @@ pub(crate) use morph_states_state::{
 mod fill_state;
 pub use fill_state::set_current_grad_jitter;
 pub use fill_state::{
-    PatternArt, TexturePatternRow, set_current_fill, set_current_fill_rule,
-    set_current_grad_influence, set_current_texture_pattern,
+    TexturePatternRow, set_current_fill, set_current_fill_rule, set_current_grad_influence,
+    set_current_texture_pattern,
 };
 pub(crate) use fill_state::{
     current_fill_kind, current_fill_rule, current_grad_angle, current_grad_influence,

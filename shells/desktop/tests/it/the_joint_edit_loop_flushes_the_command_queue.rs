@@ -67,7 +67,7 @@ fn the_joint_edit_loop_flushes_the_command_queue() {
     // lives in inspector_commits.rs), so its presence INSIDE this body IS the
     // joint-loop flush.
     let apply = body
-        .find("crate::physics::joint::apply_joint_edit(")
+        .find("ph2d_app_physics::joint::apply_joint_edit(")
         .unwrap_or_else(|| {
             panic!(
                 "`apply_joint_edit` is no longer called inside the joint-edit loop — \
@@ -131,11 +131,14 @@ fn the_structural_joint_verbs_are_dispatched_before_the_field_edits() {
     let (open, close) = joint_loop_body();
     let body = &SRC[open..close];
     let apply = body
-        .find("crate::physics::joint::apply_joint_edit(")
+        .find("ph2d_app_physics::joint::apply_joint_edit(")
         .expect("o braço de edição de campo");
     for (verb, call) in [
         ("Remove", "despawn("),
-        ("AddWheel", "crate::physics::joint_wheel::add_pulley_wheel("),
+        (
+            "AddWheel",
+            "ph2d_app_physics::joint_wheel::add_pulley_wheel(",
+        ),
     ] {
         let arm = body
             .find(&format!("JointFieldEdit::{verb}"))

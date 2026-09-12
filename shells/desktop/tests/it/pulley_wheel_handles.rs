@@ -2,7 +2,7 @@
 //! sobre as costuras window-gated que um unit test não dirige.
 //!
 //! O que É testável por comportamento já está: `ph2d_editor::gizmo::point` prova
-//! que as três alças desenham e registram hit, `render_loop::point_gizmo` prova a
+//! que as três alças desenham e registram hit, `ph2d_app_physics::overlay::point_gizmo` prova a
 //! regra de publicação (o aro de saída só existe quando há um segundo raio), e
 //! `ph2d-physics-ecs::pulley_mount` prova o que uma re-colocação de eixo FAZ. O
 //! que nenhum deles alcança é a GLUE — o `advance_joint_anchor_drag` precisa de um
@@ -62,6 +62,11 @@ fn committing_a_wheel_position_reseats_the_same_axle() {
 
 /// **As duas alças de raio perguntam a MESMA porta** — no agarre e na escrita.
 ///
+/// ⚠️ **As agulhas foram re-ancoradas em 2026-09-12 (W2/L2 Fase C):** o `impl App` deste ficheiro
+/// dissolveu-se numa função livre sobre um `CanvasCtx`, logo `&mut gfx.sim` passou a `ctx.sim`. O
+/// FATO medido é o mesmo — as duas rotas atravessam a mesma metade-roldana —, e o que mudou foi o
+/// nome de quem segura o mundo.
+///
 /// O modo de falha que isto barra não é um crash: é agarrar o aro de SAÍDA,
 /// medir o deslocamento contra o raio de ENTRADA e escrever o resultado no de
 /// saída — a alça salta ao pegar e o número sai errado por uma diferença de
@@ -74,7 +79,7 @@ fn both_radius_handles_ask_one_door() {
     let wheel = wheel_module();
     assert!(
         parent.contains("wheel::open_grab(sim, joint, kind, cursor)")
-            && parent.contains("wheel::resize_wheel(&mut gfx.sim, entity, drag.kind, cursor, off)"),
+            && parent.contains("wheel::resize_wheel(ctx.sim, entity, drag.kind, cursor, off)"),
         "o agarre e o apply do raio têm de ir para a MESMA metade-roldana"
     );
     assert!(
@@ -198,12 +203,12 @@ fn the_mounted_axle_snaps_and_the_snapped_point_is_what_lands() {
          ela este gate está lendo o lugar errado"
     );
     assert!(
-        arm.contains("wheel_snap_targets(&gfx.sim, entity, &mut cands)"),
+        arm.contains("wheel_snap_targets(&*ctx.sim, entity, &mut cands)"),
         "uma roldana MONTADA tem nove pontos a que colar (o W3 lhe deu um corpo); \
          o braço do mundo tem de perguntar a porta DELA"
     );
     assert!(
-        arm.contains("wheel::move_wheel(&mut gfx.sim, entity, target)"),
+        arm.contains("wheel::move_wheel(ctx.sim, entity, target)"),
         "o apply da roldana tem de receber o ponto COLADO (`target`); escrever \
          `free` acende a marca do encaixe e pousa a roda fora dele"
     );
@@ -278,7 +283,7 @@ fn the_rope_eyedropper_arms_a_modal_pick_against_the_route() {
     }
     // E a tolerância é a MESMA do resto do editor, lida do único lugar onde ela mora.
     assert!(
-        src.contains("crate::physics::joint_anchor_drag::SNAP_PX"),
+        src.contains("ph2d_app_physics::joint_anchor_drag::SNAP_PX"),
         "a tolerância tem de vir do `SNAP_PX` compartilhado; um segundo número faria \
          dois alvos de canvas responderem a distâncias diferentes"
     );

@@ -3,7 +3,7 @@
 //!
 //! The gizmo itself is behavioural-gated where it can be: `ph2d_editor`'s
 //! `gizmo::point` proves both dots are drawn AND register hits at their anchors,
-//! the shell's `render_loop::point_gizmo` proves the publish rule (a joint at
+//! the crate's `ph2d_app_physics::overlay::point_gizmo` proves the publish rule (a joint at
 //! rest, and nothing else, gets handles), and `ph2d-physics-ecs`'s
 //! `joint_anchor_authoring` proves what a write to either end does. What those
 //! cannot reach is the GLUE — the paint pass that draws the published view, and

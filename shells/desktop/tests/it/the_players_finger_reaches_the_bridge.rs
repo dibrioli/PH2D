@@ -1,6 +1,6 @@
 //! **ARCH-GATE do fio da entrada do player** (W3).
 //!
-//! A política de teclas é pura e tem gates próprios (`crate::physics::player_input`), e a
+//! A política de teclas é pura e tem gates próprios (`ph2d_app_physics::player_input`), e a
 //! lei tem os dela na `ph2d-platformer`. O que **nenhum dos dois alcança** é o
 //! FIO: um `winit::KeyEvent` não pode ser construído fora do winit (a parede que
 //! fez o corpo do `on_keyboard_input` virar `key_input`), e o `render_loop` exige
@@ -97,10 +97,15 @@ fn observation_block(src: &str) -> (usize, usize) {
 #[test]
 fn the_whole_finger_is_handed_to_the_physics_dispatch() {
     let src = read("src/render_loop/mod.rs");
-    // ⚠️ **RE-ANCORADO (W5):** a porta única passou a ser `App::resolve_player_input`, que
-    // resolve o `InputMap` do projecto. A propriedade é a mesma — o dedo vai INTEIRO, num valor só.
+    // ⚠️ **RE-ANCORADO DUAS vezes.** (W5) a porta passou a ser `App::resolve_player_input`;
+    // (W2/L2 Fase C, 2026-09-12) ela deixou de ser um método e passou a ser
+    // `ph2d_app_physics::player_input::resolve_player_input`, uma função livre sobre os três tipos
+    // que a `App` por acaso segurava. ⭐ **A agulha nova é MELHOR**, e é a §2.13 do HOWTO a
+    // funcionar: ela nomeia a PORTA e a propriedade — *um binding, um valor, no topo do quadro* —
+    // em vez de nomear quem a chama. Um `self.` na agulha mede o receptor, e o receptor é
+    // exactamente o que uma fronteira nova muda por construção.
     assert!(
-        src.contains("let player_input = self.resolve_player_input();"),
+        src.contains("let player_input = ph2d_app_physics::player_input::resolve_player_input("),
         "o `render_loop` tem de RESOLVER o dedo do jogador a partir do Input Map, no topo do quadro"
     );
 }
@@ -151,7 +156,9 @@ fn the_input_is_handed_over_before_the_hold_early_out() {
 #[test]
 fn the_files_the_gate_reads_are_the_ones_that_carry_the_wire() {
     assert!(read("src/input_dispatch/keyboard.rs").contains("winit_to_input_keycode"));
-    assert!(read("src/render_loop/mod.rs").contains("crate::physics::bridge::dispatch("));
+    assert!(
+        read("src/render_loop/mod.rs").contains("ph2d_app_physics::bridge::dispatch::dispatch(")
+    );
     assert!(
         read("../../crates/ph2d-app-physics/src/bridge/dispatch.rs")
             .contains("fn hand_input_to_players")

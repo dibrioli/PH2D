@@ -44,7 +44,7 @@ fn source() -> String {
 fn seed_calls(src: &str) -> Vec<String> {
     let mut out = Vec::new();
     let mut rest = src;
-    while let Some(i) = rest.find("crate::physics::joint_rig_drag::seed_group_drag_starts(") {
+    while let Some(i) = rest.find("ph2d_app_physics::joint_rig_drag::seed_group_drag_starts(") {
         let after = &rest[i..];
         let end = after
             .find(");")

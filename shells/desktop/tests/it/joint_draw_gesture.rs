@@ -92,7 +92,7 @@ fn the_gesture_is_modal_and_precedes_the_generic_picking() {
 fn the_band_is_drawn_even_with_the_outline_off() {
     let call = fs::read_to_string("src/render_loop/mod.rs").expect("render_loop/mod.rs");
     assert!(
-        call.contains("crate::physics::joint_draw::band(self.physics.joint_draw)"),
+        call.contains("ph2d_app_physics::joint_draw::band(self.physics.joint_draw)"),
         "o `physics_overlay::draw` não recebe mais a banda do gesto"
     );
     let overlay = fs::read_to_string("../../crates/ph2d-app-physics/src/overlay/outline.rs")
@@ -181,11 +181,15 @@ fn the_release_hands_the_two_points_to_the_creation_door() {
 fn a_completed_gesture_disarms_and_a_refusal_does_not() {
     let src = fs::read_to_string("../../crates/ph2d-app-physics/src/joint_draw.rs")
         .expect("joint_draw.rs");
-    let release = &src[src
-        .find("pub(crate) fn joint_draw_release")
-        .expect("o release sumiu")..];
+    // ⚠️ **A agulha ancora na LEI, nunca na VISIBILIDADE** (HOWTO §2.13, paga aqui pela QUARTA
+    // vez neste repo): ela dizia `pub(crate) fn joint_draw_release`, e publicar a API da crate
+    // obrigou o modificador a mudar — a lei não moveu uma linha e o gate reprovava na mesma.
+    // `fn joint_draw_release` sobrevive ao próximo movimento; `pub(crate) fn …` mede outra coisa.
+    let release = &src[src.find("fn joint_draw_release").expect("o release sumiu")..];
+    // ⚠️ O estado deixou de chegar por `self`: o `impl App` dissolveu-se numa função livre sobre
+    // `&mut PhysicsState` (W2/L2 Fase C). O FATO medido é o mesmo — quem desarma é esta linha.
     let disarm = release
-        .find("self.physics.joint_draw_armed = false")
+        .find("st.joint_draw_armed = false")
         .expect("um gesto completo não desarma — o próximo press criaria outro joint");
     let refusal = release
         .find("return; // segue armado")
@@ -289,7 +293,7 @@ fn the_draw_button_toggles_through_the_single_door() {
         .expect("the JoinDraw arm vanished from the render loop");
     let block = &src[arm..arm + 400];
     assert!(
-        block.contains("crate::physics::joint_draw::toggle("),
+        block.contains("ph2d_app_physics::joint_draw::toggle("),
         "o aperto do botão tem de passar por `joint_draw::toggle` (que desarma E \
          derruba a banda), nunca escrever `joint_draw_armed` direto: {block}"
     );

@@ -30,6 +30,7 @@
 
 pub mod algorithm;
 pub mod icon;
+pub mod ids;
 pub mod manifest;
 pub mod params;
 pub mod tool;

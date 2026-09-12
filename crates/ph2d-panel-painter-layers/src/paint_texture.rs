@@ -12,14 +12,14 @@
 use crate::paint_brush_rows::paint_dropdown_row;
 use crate::paint_stroke::section_header;
 use crate::state;
-use ph2d_editor_core::ids::{
-    self as core_ids, painter_brush_texture_kind_option_id, painter_brush_texture_mapping_option_id,
-};
 use ph2d_editor_core::paint::resolve;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{DropdownOption, SectionFold};
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, Radius};
+use ph2d_tool_painter::ids::{
+    painter_brush_texture_kind_option_id, painter_brush_texture_mapping_option_id,
+};
 use ph2d_tool_painter::{
     BrushSettings, ImageMask, RampAlphaMode, TEX_ANGLE_MAX_DEG, TEX_OFFSET_MAX, TEX_OFFSET_MIN,
     TEX_SIZE_MAX, TEX_SIZE_MIN, TextureKind, TextureLayer, TextureMapping, linear_to_srgb_byte,
@@ -57,9 +57,9 @@ pub(crate) fn paint_texture_section(
             content_w,
             y,
             "Grain",
-            core_ids::PAINTER_BRUSH_TEXTURE_SECTION,
-            core_ids::PAINTER_BRUSH_TEXTURE_SECTION_COLOR,
-            core_ids::PAINTER_BRUSH_TEXTURE_RESET,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_SECTION,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_SECTION_COLOR,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RESET,
         )
     };
     if !compact && fold.is_none() {
@@ -86,7 +86,7 @@ pub(crate) fn paint_texture_section(
         content_w,
         y,
         "Grain",
-        core_ids::PAINTER_BRUSH_TEXTURE_KIND,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_KIND,
         brush.texture_kind,
         kind.name(),
     );
@@ -122,7 +122,7 @@ pub(crate) fn paint_texture_section(
             content_w,
             y,
             "Mapping",
-            core_ids::PAINTER_BRUSH_TEXTURE_MAPPING,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_MAPPING,
             brush.texture_mapping,
             TextureMapping::from_u8(brush.texture_mapping).name(),
         );
@@ -153,7 +153,7 @@ pub(crate) fn paint_texture_section(
                 x,
                 content_w,
                 y,
-                core_ids::PAINTER_BRUSH_TEXTURE_RAKE,
+                ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAKE,
                 "Rake",
                 brush.texture_rake,
             );
@@ -167,7 +167,7 @@ pub(crate) fn paint_texture_section(
             content_w,
             y,
             "Angle",
-            core_ids::PAINTER_BRUSH_TEXTURE_ANGLE,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_ANGLE,
             f32::from(brush.texture_angle_deg),
             0.0,
             f32::from(TEX_ANGLE_MAX_DEG),
@@ -185,9 +185,9 @@ pub(crate) fn paint_texture_section(
         content_w,
         y,
         "Offset",
-        core_ids::PAINTER_BRUSH_TEXTURE_OFFSET_X,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_OFFSET_X,
         brush.texture_offset[0],
-        core_ids::PAINTER_BRUSH_TEXTURE_OFFSET_Y,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_OFFSET_Y,
         brush.texture_offset[1],
         TEX_OFFSET_MIN,
         TEX_OFFSET_MAX,
@@ -201,9 +201,9 @@ pub(crate) fn paint_texture_section(
         content_w,
         y,
         "Size",
-        core_ids::PAINTER_BRUSH_TEXTURE_SIZE_X,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_SIZE_X,
         brush.texture_size[0],
-        core_ids::PAINTER_BRUSH_TEXTURE_SIZE_Y,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_SIZE_Y,
         brush.texture_size[1],
         TEX_SIZE_MIN,
         TEX_SIZE_MAX,
@@ -220,7 +220,7 @@ pub(crate) fn paint_texture_section(
             content_w,
             y,
             "Depth",
-            core_ids::PAINTER_BRUSH_GRAIN_DEPTH,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_GRAIN_DEPTH,
             brush.grain_depth.clamp(0.0, 1.0),
             0.0,
             1.0,
@@ -257,7 +257,7 @@ fn paint_texture_params_and_ramp(
         .map(|(i, s)| {
             (
                 s.label,
-                core_ids::PAINTER_BRUSH_TEXTURE_PARAMS[i],
+                ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_PARAMS[i],
                 brush.texture_params[i],
             )
         })
@@ -503,7 +503,7 @@ pub(crate) fn paint_texture_popovers(ctx: &mut PaintCtx, theme: ph2d_tokens::The
         crate::paint_brush::paint_dropdown_popover(
             ctx,
             theme,
-            core_ids::PAINTER_BRUSH_TEXTURE_KIND,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_KIND,
             texture_kind_options(),
             chip_rect,
             cur,
@@ -513,7 +513,7 @@ pub(crate) fn paint_texture_popovers(ctx: &mut PaintCtx, theme: ph2d_tokens::The
         crate::paint_brush::paint_dropdown_popover(
             ctx,
             theme,
-            core_ids::PAINTER_BRUSH_TEXTURE_MAPPING,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_MAPPING,
             texture_mapping_options(),
             chip_rect,
             cur,

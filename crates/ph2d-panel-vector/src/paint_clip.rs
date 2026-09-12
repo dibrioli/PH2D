@@ -27,8 +27,11 @@ impl BodyCtx<'_> {
         let Some(clip) = state::frame_clip() else {
             return y;
         };
-        let (y, collapsed) =
-            self.section_header(ids::VECTOR_SECTION_CLIP, tr("panel.vector.section.clip"), y);
+        let (y, collapsed) = self.section_header(
+            ph2d_tool_vector::ids::VECTOR_SECTION_CLIP,
+            tr("panel.vector.section.clip"),
+            y,
+        );
         if collapsed {
             return y;
         }

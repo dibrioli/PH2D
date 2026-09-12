@@ -17,7 +17,7 @@ impl BodyCtx<'_> {
     /// mesmo motor. O `Join` aqui é o do OFFSET (a quina que ele produz), nunca o do traço.
     pub(crate) fn expand_section(&mut self, y: f32) -> f32 {
         let (mut y, collapsed) = self.section_header(
-            ids::VECTOR_SECTION_EXPAND,
+            ph2d_tool_vector::ids::VECTOR_SECTION_EXPAND,
             tr("panel.vector.section.expand"),
             y,
         );
@@ -37,7 +37,7 @@ impl BodyCtx<'_> {
         y = self.slider_row(
             "Offset",
             ids::VECTOR_EXPAND_OFFSET,
-            ids::VECTOR_EXPAND_OFFSET_NUM,
+            ph2d_tool_vector::ids::VECTOR_EXPAND_OFFSET_NUM,
             track,
             pct,
             &format!("{pct:.0}"),
@@ -50,9 +50,21 @@ impl BodyCtx<'_> {
         y = self.segmented3(
             "Side",
             [
-                (ids::VECTOR_EXPAND_SIDE_OUTER, "Outer", side == 0),
-                (ids::VECTOR_EXPAND_SIDE_INNER, "Inner", side == 1),
-                (ids::VECTOR_EXPAND_SIDE_BOTH, "Both", side == 2),
+                (
+                    ph2d_tool_vector::ids::VECTOR_EXPAND_SIDE_OUTER,
+                    "Outer",
+                    side == 0,
+                ),
+                (
+                    ph2d_tool_vector::ids::VECTOR_EXPAND_SIDE_INNER,
+                    "Inner",
+                    side == 1,
+                ),
+                (
+                    ph2d_tool_vector::ids::VECTOR_EXPAND_SIDE_BOTH,
+                    "Both",
+                    side == 2,
+                ),
             ],
             y,
         );
@@ -65,17 +77,37 @@ impl BodyCtx<'_> {
         y = self.segmented3(
             "Corner",
             [
-                (ids::VECTOR_EXPAND_JOIN_MITER, "Miter", join == 0),
-                (ids::VECTOR_EXPAND_JOIN_ROUND, "Round", join == 1),
-                (ids::VECTOR_EXPAND_JOIN_BEVEL, "Bevel", join == 2),
+                (
+                    ph2d_tool_vector::ids::VECTOR_EXPAND_JOIN_MITER,
+                    "Miter",
+                    join == 0,
+                ),
+                (
+                    ph2d_tool_vector::ids::VECTOR_EXPAND_JOIN_ROUND,
+                    "Round",
+                    join == 1,
+                ),
+                (
+                    ph2d_tool_vector::ids::VECTOR_EXPAND_JOIN_BEVEL,
+                    "Bevel",
+                    join == 2,
+                ),
             ],
             y,
         );
         // "Apply Offset", não "Offset Path" (Enio 2026-07-21): os chips de Corner/Side
         // são PREVIEW do offset recém-solto — quem consolida a curva é ESTE botão (ou
         // Convert to Curves, ou qualquer edição seguinte). O nome do botão é a promessa.
-        y = self.action_button(ids::VECTOR_EXPAND_OFFSET_PATH, "Apply Offset", y);
-        y = self.action_button(ids::VECTOR_EXPAND_OUTLINE_STROKE, "Outline Stroke", y);
+        y = self.action_button(
+            ph2d_tool_vector::ids::VECTOR_EXPAND_OFFSET_PATH,
+            "Apply Offset",
+            y,
+        );
+        y = self.action_button(
+            ph2d_tool_vector::ids::VECTOR_EXPAND_OUTLINE_STROKE,
+            "Outline Stroke",
+            y,
+        );
         self.power_stroke_rows(y)
     }
 
@@ -98,22 +130,22 @@ impl BodyCtx<'_> {
             (
                 "W Start",
                 ids::VECTOR_EXPAND_W_START,
-                ids::VECTOR_EXPAND_W_START_NUM,
+                ph2d_tool_vector::ids::VECTOR_EXPAND_W_START_NUM,
             ),
             (
                 "W Mid",
                 ids::VECTOR_EXPAND_W_MID,
-                ids::VECTOR_EXPAND_W_MID_NUM,
+                ph2d_tool_vector::ids::VECTOR_EXPAND_W_MID_NUM,
             ),
             (
                 "W End",
                 ids::VECTOR_EXPAND_W_END,
-                ids::VECTOR_EXPAND_W_END_NUM,
+                ph2d_tool_vector::ids::VECTOR_EXPAND_W_END_NUM,
             ),
             (
                 "W Pos",
                 ids::VECTOR_EXPAND_W_POS,
-                ids::VECTOR_EXPAND_W_POS_NUM,
+                ph2d_tool_vector::ids::VECTOR_EXPAND_W_POS_NUM,
             ),
         ];
         // **Os quatro trilhos que estão na TELA**, lidos UMA vez: o store quando o artista já
@@ -148,7 +180,11 @@ impl BodyCtx<'_> {
         // que os quatro sliders autoram um perfil VIVO, arrastá-los já mostra a fita na tela —
         // quem consolida a curva é ESTE botão. O nome do botão é a promessa, e um "Power Stroke"
         // solto prometeria que nada acontece antes de clicá-lo.
-        self.action_button(ids::VECTOR_EXPAND_POWER_STROKE, "Apply Power Stroke", y)
+        self.action_button(
+            ph2d_tool_vector::ids::VECTOR_EXPAND_POWER_STROKE,
+            "Apply Power Stroke",
+            y,
+        )
     }
 
     /// **O catálogo de perfis** (W2b) — as formas que se escolhem por NOME, acima dos quatro

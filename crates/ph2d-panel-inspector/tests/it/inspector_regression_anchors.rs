@@ -8,7 +8,6 @@
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::screens::hero::{AnchorFieldEdit, InspectorAnchorInfo, InspectorAnchorRow};
 use ph2d_editor_core::widget::{CheckboxState, CheckboxValue};
@@ -92,7 +91,7 @@ fn selecting_a_row_changes_the_open_card_without_touching_the_bus() {
     let (mut host, mut state) = fresh(0);
     let outcome = host.apply_panel_event::<InspectorPanel>(
         &mut state,
-        WidgetEvent::Click(ids::INSP_ANCHOR_ROW[2]),
+        WidgetEvent::Click(ph2d_panel_inspector::ids::INSP_ANCHOR_ROW[2]),
     );
     assert!(
         matches!(
@@ -119,7 +118,7 @@ fn a_row_past_the_end_of_the_list_selects_nothing() {
     let (mut host, mut state) = fresh(1);
     host.apply_panel_event::<InspectorPanel>(
         &mut state,
-        WidgetEvent::Click(ids::INSP_ANCHOR_ROW[40]),
+        WidgetEvent::Click(ph2d_panel_inspector::ids::INSP_ANCHOR_ROW[40]),
     );
     assert_eq!(state.anchor_selected, 1, "abriu uma ficha inexistente");
     assert!(edits(&mut host).is_empty());
@@ -132,26 +131,26 @@ fn every_field_edits_the_open_anchor_and_only_its_own_axis() {
     let cases: Vec<(&str, NodeId, WidgetEvent, AnchorFieldEdit)> = vec![
         (
             "Pos Y",
-            ids::INSP_ANCHOR_POS[1],
-            WidgetEvent::ValueChanged(ids::INSP_ANCHOR_POS[1]),
+            ph2d_panel_inspector::ids::INSP_ANCHOR_POS[1],
+            WidgetEvent::ValueChanged(ph2d_panel_inspector::ids::INSP_ANCHOR_POS[1]),
             AnchorFieldEdit::Pos(1, 1, 33.0),
         ),
         (
             "Rot",
-            ids::INSP_ANCHOR_ROT,
-            WidgetEvent::ValueChanged(ids::INSP_ANCHOR_ROT),
+            ph2d_panel_inspector::ids::INSP_ANCHOR_ROT,
+            WidgetEvent::ValueChanged(ph2d_panel_inspector::ids::INSP_ANCHOR_ROT),
             AnchorFieldEdit::Rot(1, 33.0),
         ),
         (
             "Bounds W (indice 2)",
-            ids::INSP_ANCHOR_BOUNDS[2],
-            WidgetEvent::ValueChanged(ids::INSP_ANCHOR_BOUNDS[2]),
+            ph2d_panel_inspector::ids::INSP_ANCHOR_BOUNDS[2],
+            WidgetEvent::ValueChanged(ph2d_panel_inspector::ids::INSP_ANCHOR_BOUNDS[2]),
             AnchorFieldEdit::Bounds(1, 2, 33.0),
         ),
         (
             "Center H (indice 3)",
-            ids::INSP_ANCHOR_CENTER[3],
-            WidgetEvent::ValueChanged(ids::INSP_ANCHOR_CENTER[3]),
+            ph2d_panel_inspector::ids::INSP_ANCHOR_CENTER[3],
+            WidgetEvent::ValueChanged(ph2d_panel_inspector::ids::INSP_ANCHOR_CENTER[3]),
             AnchorFieldEdit::Center(1, 3, 33.0),
         ),
     ];
@@ -170,25 +169,25 @@ fn the_toggles_and_the_buttons_reach_the_bus() {
     for (what, ev, prep_on, expect) in [
         (
             "Bounds on",
-            WidgetEvent::Toggled(ids::INSP_ANCHOR_BOUNDS_ON),
-            Some((ids::INSP_ANCHOR_BOUNDS_ON, true)),
+            WidgetEvent::Toggled(ph2d_panel_inspector::ids::INSP_ANCHOR_BOUNDS_ON),
+            Some((ph2d_panel_inspector::ids::INSP_ANCHOR_BOUNDS_ON, true)),
             AnchorFieldEdit::BoundsOn(1, true),
         ),
         (
             "Center off",
-            WidgetEvent::Toggled(ids::INSP_ANCHOR_CENTER_ON),
-            Some((ids::INSP_ANCHOR_CENTER_ON, false)),
+            WidgetEvent::Toggled(ph2d_panel_inspector::ids::INSP_ANCHOR_CENTER_ON),
+            Some((ph2d_panel_inspector::ids::INSP_ANCHOR_CENTER_ON, false)),
             AnchorFieldEdit::CenterOn(1, false),
         ),
         (
             "Add",
-            WidgetEvent::Click(ids::INSP_ANCHOR_ADD),
+            WidgetEvent::Click(ph2d_panel_inspector::ids::INSP_ANCHOR_ADD),
             None,
             AnchorFieldEdit::Add,
         ),
         (
             "Remove",
-            WidgetEvent::Click(ids::INSP_ANCHOR_REMOVE),
+            WidgetEvent::Click(ph2d_panel_inspector::ids::INSP_ANCHOR_REMOVE),
             None,
             AnchorFieldEdit::Remove(1),
         ),
@@ -215,10 +214,10 @@ fn the_toggles_and_the_buttons_reach_the_bus() {
 fn typing_a_name_carries_the_current_text() {
     set_current_inspector_anchor(Some(info()));
     let (mut host, mut state) = fresh(2);
-    host.set_text(ids::INSP_ANCHOR_NAME, "left_foot");
+    host.set_text(ph2d_panel_inspector::ids::INSP_ANCHOR_NAME, "left_foot");
     host.apply_panel_event::<InspectorPanel>(
         &mut state,
-        WidgetEvent::TextChanged(ids::INSP_ANCHOR_NAME),
+        WidgetEvent::TextChanged(ph2d_panel_inspector::ids::INSP_ANCHOR_NAME),
     );
     assert_eq!(
         edits(&mut host),
@@ -230,11 +229,26 @@ fn typing_a_name_carries_the_current_text() {
 #[test]
 fn no_anchor_control_acts_without_its_snapshot() {
     for (what, ev) in [
-        ("Add", WidgetEvent::Click(ids::INSP_ANCHOR_ADD)),
-        ("Remove", WidgetEvent::Click(ids::INSP_ANCHOR_REMOVE)),
-        ("row", WidgetEvent::Click(ids::INSP_ANCHOR_ROW[0])),
-        ("Pos X", WidgetEvent::ValueChanged(ids::INSP_ANCHOR_POS[0])),
-        ("name", WidgetEvent::TextChanged(ids::INSP_ANCHOR_NAME)),
+        (
+            "Add",
+            WidgetEvent::Click(ph2d_panel_inspector::ids::INSP_ANCHOR_ADD),
+        ),
+        (
+            "Remove",
+            WidgetEvent::Click(ph2d_panel_inspector::ids::INSP_ANCHOR_REMOVE),
+        ),
+        (
+            "row",
+            WidgetEvent::Click(ph2d_panel_inspector::ids::INSP_ANCHOR_ROW[0]),
+        ),
+        (
+            "Pos X",
+            WidgetEvent::ValueChanged(ph2d_panel_inspector::ids::INSP_ANCHOR_POS[0]),
+        ),
+        (
+            "name",
+            WidgetEvent::TextChanged(ph2d_panel_inspector::ids::INSP_ANCHOR_NAME),
+        ),
     ] {
         set_current_inspector_anchor(None);
         let mut host = MockPanelHost::with_panel::<InspectorPanel>();
@@ -263,7 +277,7 @@ fn on_an_empty_list_only_add_acts() {
     let (mut host, mut state) = fresh(0);
     host.apply_panel_event::<InspectorPanel>(
         &mut state,
-        WidgetEvent::ValueChanged(ids::INSP_ANCHOR_POS[0]),
+        WidgetEvent::ValueChanged(ph2d_panel_inspector::ids::INSP_ANCHOR_POS[0]),
     );
     assert!(
         edits(&mut host).is_empty(),
@@ -272,7 +286,10 @@ fn on_an_empty_list_only_add_acts() {
 
     set_current_inspector_anchor(Some(empty));
     let (mut host, mut state) = fresh(0);
-    host.apply_panel_event::<InspectorPanel>(&mut state, WidgetEvent::Click(ids::INSP_ANCHOR_ADD));
+    host.apply_panel_event::<InspectorPanel>(
+        &mut state,
+        WidgetEvent::Click(ph2d_panel_inspector::ids::INSP_ANCHOR_ADD),
+    );
     assert_eq!(edits(&mut host), vec![AnchorFieldEdit::Add]);
 }
 
@@ -288,15 +305,18 @@ fn the_editor_paints_only_the_fields_the_shape_has() {
     host.settle_section_folds();
     let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
     let painted = |id: NodeId| rects.iter().any(|(pid, _)| *pid == id);
-    assert!(painted(ids::INSP_ANCHOR_POS[0]), "um Socket tem posicao");
     assert!(
-        painted(ids::INSP_ANCHOR_BOUNDS_ON),
+        painted(ph2d_panel_inspector::ids::INSP_ANCHOR_POS[0]),
+        "um Socket tem posicao"
+    );
+    assert!(
+        painted(ph2d_panel_inspector::ids::INSP_ANCHOR_BOUNDS_ON),
         "e a caixa que lhe da' area"
     );
-    for id in ids::INSP_ANCHOR_BOUNDS {
+    for id in ph2d_panel_inspector::ids::INSP_ANCHOR_BOUNDS {
         assert!(!painted(id), "um Socket nao tem campos de area");
     }
-    for id in ids::INSP_ANCHOR_CENTER {
+    for id in ph2d_panel_inspector::ids::INSP_ANCHOR_CENTER {
         assert!(!painted(id), "um Socket nao tem campos de miolo");
     }
     // Ficha 1 = `face_box`, uma Region: tem tudo.
@@ -306,9 +326,9 @@ fn the_editor_paints_only_the_fields_the_shape_has() {
     };
     let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
     let painted = |id: NodeId| rects.iter().any(|(pid, _)| *pid == id);
-    for id in ids::INSP_ANCHOR_BOUNDS
+    for id in ph2d_panel_inspector::ids::INSP_ANCHOR_BOUNDS
         .iter()
-        .chain(ids::INSP_ANCHOR_CENTER.iter())
+        .chain(ph2d_panel_inspector::ids::INSP_ANCHOR_CENTER.iter())
     {
         assert!(painted(*id), "uma Region tem os oito campos");
     }
@@ -351,7 +371,7 @@ fn picking_a_parent_anchor_publishes_the_name() {
     let (mut host, mut state) = fresh(0);
     host.apply_panel_event::<InspectorPanel>(
         &mut state,
-        WidgetEvent::Click(ids::INSP_MOUNT_OPT[1]),
+        WidgetEvent::Click(ph2d_panel_inspector::ids::INSP_MOUNT_OPT[1]),
     );
     assert_eq!(
         edits(&mut host),
@@ -375,7 +395,7 @@ fn the_dash_option_always_clears_the_mount_even_with_no_parent_anchors() {
     let (mut host, mut state) = fresh(0);
     host.apply_panel_event::<InspectorPanel>(
         &mut state,
-        WidgetEvent::Click(ids::INSP_MOUNT_NONE_OPT),
+        WidgetEvent::Click(ph2d_panel_inspector::ids::INSP_MOUNT_NONE_OPT),
     );
     assert_eq!(edits(&mut host), vec![AnchorFieldEdit::Mount(None)]);
 }
@@ -390,7 +410,7 @@ fn a_mount_option_past_the_parents_list_picks_nothing() {
     let (mut host, mut state) = fresh(0);
     host.apply_panel_event::<InspectorPanel>(
         &mut state,
-        WidgetEvent::Click(ids::INSP_MOUNT_OPT[40]),
+        WidgetEvent::Click(ph2d_panel_inspector::ids::INSP_MOUNT_OPT[40]),
     );
     assert!(
         edits(&mut host).is_empty(),
@@ -410,7 +430,9 @@ fn the_mount_picker_appears_exactly_when_it_is_useful() {
         let mut state = InspectorState::default();
         host.settle_section_folds();
         let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
-        rects.iter().any(|(id, _)| *id == ids::INSP_MOUNT_PICK)
+        rects
+            .iter()
+            .any(|(id, _)| *id == ph2d_panel_inspector::ids::INSP_MOUNT_PICK)
     };
 
     assert!(
@@ -454,10 +476,14 @@ fn switching_rows_reseeds_the_editor_without_stomping_a_fresh_click() {
     host.settle_section_folds();
     host.paint::<InspectorPanel>(&mut state, VIEWPORT);
     // Linha 0 = `muzzle`, um Socket sem área.
-    assert_eq!(host.store().text(ids::INSP_ANCHOR_NAME), Some("muzzle"));
     assert_eq!(
         host.store()
-            .checkbox(ids::INSP_ANCHOR_BOUNDS_ON)
+            .text(ph2d_panel_inspector::ids::INSP_ANCHOR_NAME),
+        Some("muzzle")
+    );
+    assert_eq!(
+        host.store()
+            .checkbox(ph2d_panel_inspector::ids::INSP_ANCHOR_BOUNDS_ON)
             .map(|(_, v)| v),
         Some(CheckboxValue::Unchecked)
     );
@@ -465,17 +491,18 @@ fn switching_rows_reseeds_the_editor_without_stomping_a_fresh_click() {
     // Linha 1 = `face_box`, uma Region — nome e caixas TÊM de acompanhar.
     host.apply_panel_event::<InspectorPanel>(
         &mut state,
-        WidgetEvent::Click(ids::INSP_ANCHOR_ROW[1]),
+        WidgetEvent::Click(ph2d_panel_inspector::ids::INSP_ANCHOR_ROW[1]),
     );
     host.paint::<InspectorPanel>(&mut state, VIEWPORT);
     assert_eq!(
-        host.store().text(ids::INSP_ANCHOR_NAME),
+        host.store()
+            .text(ph2d_panel_inspector::ids::INSP_ANCHOR_NAME),
         Some("face_box"),
         "o nome ficou na ancora anterior"
     );
     assert_eq!(
         host.store()
-            .checkbox(ids::INSP_ANCHOR_BOUNDS_ON)
+            .checkbox(ph2d_panel_inspector::ids::INSP_ANCHOR_BOUNDS_ON)
             .map(|(_, v)| v),
         Some(CheckboxValue::Checked),
         "a caixa de area ficou na ancora anterior"
@@ -483,11 +510,14 @@ fn switching_rows_reseeds_the_editor_without_stomping_a_fresh_click() {
 
     // ⚠️ A OUTRA metade: sem trocar de linha, o que o artista acabou de clicar **fica**. O commit
     // da shell demora um quadro, e uma reescrita por quadro desfá-lo-ia antes de ele chegar.
-    host.set_checkbox_value(ids::INSP_ANCHOR_BOUNDS_ON, CheckboxValue::Unchecked);
+    host.set_checkbox_value(
+        ph2d_panel_inspector::ids::INSP_ANCHOR_BOUNDS_ON,
+        CheckboxValue::Unchecked,
+    );
     host.paint::<InspectorPanel>(&mut state, VIEWPORT);
     assert_eq!(
         host.store()
-            .checkbox(ids::INSP_ANCHOR_BOUNDS_ON)
+            .checkbox(ph2d_panel_inspector::ids::INSP_ANCHOR_BOUNDS_ON)
             .map(|(_, v)| v),
         Some(CheckboxValue::Unchecked),
         "o sync pisou o clique antes de o commit chegar"
@@ -508,7 +538,10 @@ fn the_reset_button_only_fires_when_the_object_is_off_anchor() {
     };
     set_current_inspector_anchor(Some(off));
     let (mut host, mut state) = fresh(0);
-    host.apply_panel_event::<InspectorPanel>(&mut state, WidgetEvent::Click(ids::INSP_MOUNT_SNAP));
+    host.apply_panel_event::<InspectorPanel>(
+        &mut state,
+        WidgetEvent::Click(ph2d_panel_inspector::ids::INSP_MOUNT_SNAP),
+    );
     assert_eq!(edits(&mut host), vec![AnchorFieldEdit::SnapToAnchor]);
 
     // Já em cima da âncora: o botão não é pintado, e o clique sintético não escreve nada.
@@ -519,7 +552,10 @@ fn the_reset_button_only_fires_when_the_object_is_off_anchor() {
     };
     set_current_inspector_anchor(Some(on));
     let (mut host, mut state) = fresh(0);
-    host.apply_panel_event::<InspectorPanel>(&mut state, WidgetEvent::Click(ids::INSP_MOUNT_SNAP));
+    host.apply_panel_event::<InspectorPanel>(
+        &mut state,
+        WidgetEvent::Click(ph2d_panel_inspector::ids::INSP_MOUNT_SNAP),
+    );
     assert!(
         edits(&mut host).is_empty(),
         "o botao disparou sobre um objeto que ja' esta' na ancora"
@@ -542,7 +578,7 @@ fn the_live_visibility_box_reaches_the_bus_as_itself() {
         set_current_inspector_anchor(Some(info()));
         let (mut host, mut state) = fresh(0);
         host.set_checkbox_value(
-            ids::INSP_ANCHOR_VIS_EDITOR,
+            ph2d_panel_inspector::ids::INSP_ANCHOR_VIS_EDITOR,
             if on {
                 CheckboxValue::Checked
             } else {
@@ -551,7 +587,7 @@ fn the_live_visibility_box_reaches_the_bus_as_itself() {
         );
         host.apply_panel_event::<InspectorPanel>(
             &mut state,
-            WidgetEvent::Toggled(ids::INSP_ANCHOR_VIS_EDITOR),
+            WidgetEvent::Toggled(ph2d_panel_inspector::ids::INSP_ANCHOR_VIS_EDITOR),
         );
         assert_eq!(edits(&mut host), vec![expect]);
     }
@@ -582,13 +618,13 @@ fn the_runtime_box_is_parked_until_a_game_runtime_exists() {
     assert!(
         painted
             .iter()
-            .any(|(id, _)| *id == ids::INSP_ANCHOR_VIS_RUNTIME),
+            .any(|(id, _)| *id == ph2d_panel_inspector::ids::INSP_ANCHOR_VIS_RUNTIME),
         "a caixa parada deixou de ser pintada — retirá-la da tela em silêncio é a outra metade do \
          mesmo defeito: ninguém fica a saber que a capacidade existe e está bloqueada"
     );
     assert_eq!(
         host.store()
-            .checkbox(ids::INSP_ANCHOR_VIS_RUNTIME)
+            .checkbox(ph2d_panel_inspector::ids::INSP_ANCHOR_VIS_RUNTIME)
             .map(|(s, _)| s),
         Some(CheckboxState::Disabled),
         "a caixa parada esta' registada como alcancavel: o `is_focusable` deixa o dedo alterna-la \
@@ -597,10 +633,13 @@ fn the_runtime_box_is_parked_until_a_game_runtime_exists() {
 
     set_current_inspector_anchor(Some(info()));
     let (mut host, mut state) = fresh(0);
-    host.set_checkbox_value(ids::INSP_ANCHOR_VIS_RUNTIME, CheckboxValue::Checked);
+    host.set_checkbox_value(
+        ph2d_panel_inspector::ids::INSP_ANCHOR_VIS_RUNTIME,
+        CheckboxValue::Checked,
+    );
     host.apply_panel_event::<InspectorPanel>(
         &mut state,
-        WidgetEvent::Toggled(ids::INSP_ANCHOR_VIS_RUNTIME),
+        WidgetEvent::Toggled(ph2d_panel_inspector::ids::INSP_ANCHOR_VIS_RUNTIME),
     );
     assert!(
         edits(&mut host).is_empty(),
@@ -610,10 +649,13 @@ fn the_runtime_box_is_parked_until_a_game_runtime_exists() {
 
     set_current_inspector_anchor(Some(info()));
     let (mut host, mut state) = fresh(0);
-    host.set_checkbox_value(ids::INSP_ANCHOR_VIS_EDITOR, CheckboxValue::Checked);
+    host.set_checkbox_value(
+        ph2d_panel_inspector::ids::INSP_ANCHOR_VIS_EDITOR,
+        CheckboxValue::Checked,
+    );
     host.apply_panel_event::<InspectorPanel>(
         &mut state,
-        WidgetEvent::Toggled(ids::INSP_ANCHOR_VIS_EDITOR),
+        WidgetEvent::Toggled(ph2d_panel_inspector::ids::INSP_ANCHOR_VIS_EDITOR),
     );
     assert_eq!(
         edits(&mut host),
@@ -667,9 +709,12 @@ fn the_new_controls_appear_only_where_they_belong() {
         mount_offset: [12.0, -4.0],
         ..info()
     };
-    assert!(painted(off.clone(), ids::INSP_MOUNT_SNAP), "deslocado");
     assert!(
-        !painted(info(), ids::INSP_MOUNT_SNAP),
+        painted(off.clone(), ph2d_panel_inspector::ids::INSP_MOUNT_SNAP),
+        "deslocado"
+    );
+    assert!(
+        !painted(info(), ph2d_panel_inspector::ids::INSP_MOUNT_SNAP),
         "sem montagem nao ha' o que repor"
     );
     assert!(
@@ -678,18 +723,24 @@ fn the_new_controls_appear_only_where_they_belong() {
                 mount_offset: [0.0, 0.0],
                 ..off
             },
-            ids::INSP_MOUNT_SNAP
+            ph2d_panel_inspector::ids::INSP_MOUNT_SNAP
         ),
         "em cima da ancora o botao nao tem o que fazer"
     );
     // ⛔ As caixas são do DONO das âncoras: sem âncoras, não há o que manter visível.
-    assert!(painted(info(), ids::INSP_ANCHOR_VIS_EDITOR));
-    assert!(painted(info(), ids::INSP_ANCHOR_VIS_RUNTIME));
+    assert!(painted(
+        info(),
+        ph2d_panel_inspector::ids::INSP_ANCHOR_VIS_EDITOR
+    ));
+    assert!(painted(
+        info(),
+        ph2d_panel_inspector::ids::INSP_ANCHOR_VIS_RUNTIME
+    ));
     assert!(!painted(
         InspectorAnchorInfo {
             rows: Vec::new(),
             ..info()
         },
-        ids::INSP_ANCHOR_VIS_EDITOR
+        ph2d_panel_inspector::ids::INSP_ANCHOR_VIS_EDITOR
     ));
 }

@@ -14,7 +14,6 @@
 //! `docs/Sprite_projeto/20` §3.2).
 
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::screens::hero::SpriteFieldEdit;
@@ -29,14 +28,17 @@ pub(crate) fn apply_sprite_geometry_event(
 ) -> bool {
     // W2 Region (spec §3.3) — enable / filter-clip toggles.
     if let WidgetEvent::Toggled(id) = ev
-        && matches!(id, ids::INSP_REGION_ENABLED | ids::INSP_REGION_FILTER_CLIP)
+        && matches!(
+            id,
+            crate::ids::INSP_REGION_ENABLED | crate::ids::INSP_REGION_FILTER_CLIP
+        )
         && let Some(info) = state::current_inspector_sprite()
     {
         let checked = matches!(
             host.store().checkbox(id).map(|(_, v)| v),
             Some(CheckboxValue::Checked)
         );
-        if id == ids::INSP_REGION_FILTER_CLIP {
+        if id == crate::ids::INSP_REGION_FILTER_CLIP {
             host.bus_mut().push(EditorAction::InspectorSpriteEdit {
                 entity_bits: info.entity_bits,
                 edit: SpriteFieldEdit::RegionFilterClip(checked),
@@ -72,10 +74,10 @@ pub(crate) fn apply_sprite_geometry_event(
     // the commit boundary.
     if let WidgetEvent::ValueChanged(id) = ev
         && let Some(axis) = match id {
-            ids::INSP_REGION_X => Some(0usize),
-            ids::INSP_REGION_Y => Some(1),
-            ids::INSP_REGION_W => Some(2),
-            ids::INSP_REGION_H => Some(3),
+            crate::ids::INSP_REGION_X => Some(0usize),
+            crate::ids::INSP_REGION_Y => Some(1),
+            crate::ids::INSP_REGION_W => Some(2),
+            crate::ids::INSP_REGION_H => Some(3),
             _ => None,
         }
         && let Some(info) = state::current_inspector_sprite()
@@ -98,7 +100,7 @@ pub(crate) fn apply_sprite_geometry_event(
     }
     // W2 origin (spec §3.4) — Centered toggle.
     if let WidgetEvent::Toggled(id) = ev
-        && id == ids::INSP_SPRITE_CENTERED
+        && id == crate::ids::INSP_SPRITE_CENTERED
         && let Some(info) = state::current_inspector_sprite()
     {
         let checked = matches!(
@@ -115,10 +117,13 @@ pub(crate) fn apply_sprite_geometry_event(
     // whole Offset vector) so editing one axis can't stomp a diverging
     // sibling on a multi-selection (audit D-1).
     if let WidgetEvent::ValueChanged(id) = ev
-        && matches!(id, ids::INSP_SPRITE_OFFSET_X | ids::INSP_SPRITE_OFFSET_Y)
+        && matches!(
+            id,
+            crate::ids::INSP_SPRITE_OFFSET_X | crate::ids::INSP_SPRITE_OFFSET_Y
+        )
         && let Some(info) = state::current_inspector_sprite()
     {
-        let is_x = id == ids::INSP_SPRITE_OFFSET_X;
+        let is_x = id == crate::ids::INSP_SPRITE_OFFSET_X;
         let fallback = if is_x { info.offset[0] } else { info.offset[1] };
         let v = host.store().number_value(id).unwrap_or(fallback as f64) as f32;
         let edit = if is_x {

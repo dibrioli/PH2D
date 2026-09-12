@@ -15,8 +15,8 @@ use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::zones::Rect;
 use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
+use ph2d_panel_vector::VectorPanel;
 use ph2d_panel_vector::state::{VectorPanelState, set_current_vector_style};
-use ph2d_panel_vector::{VectorPanel, ids};
 use ph2d_tool_vector::VectorStyleSnapshot;
 use ph2d_tool_vector::params::{DrawMode, MarqueeShape};
 use ph2d_ui_testkit::MockPanelHost;
@@ -56,7 +56,10 @@ fn arm(mode: DrawMode, marquee: MarqueeShape) {
 /// nada acontece — com o log a dizer `[hero] unhandled event`).
 #[test]
 fn both_marquee_chips_are_reachable_by_a_pointer_and_reach_the_bus() {
-    for id in [ids::VECTOR_MARQUEE_BOX, ids::VECTOR_MARQUEE_LASSO] {
+    for id in [
+        ph2d_tool_vector::ids::VECTOR_MARQUEE_BOX,
+        ph2d_tool_vector::ids::VECTOR_MARQUEE_LASSO,
+    ] {
         let mut host = MockPanelHost::with_panel::<VectorPanel>();
         let mut panel_state = VectorPanelState;
         arm(DrawMode::Node, MarqueeShape::Box);
@@ -103,7 +106,10 @@ fn the_marquee_chips_do_not_exist_outside_the_node_mode() {
         let mut host = MockPanelHost::with_panel::<VectorPanel>();
         let mut panel_state = VectorPanelState;
         arm(mode, MarqueeShape::Lasso);
-        for id in [ids::VECTOR_MARQUEE_BOX, ids::VECTOR_MARQUEE_LASSO] {
+        for id in [
+            ph2d_tool_vector::ids::VECTOR_MARQUEE_BOX,
+            ph2d_tool_vector::ids::VECTOR_MARQUEE_LASSO,
+        ] {
             assert!(
                 host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
                     .is_none(),
@@ -124,7 +130,10 @@ fn both_chips_exist_whichever_one_is_live() {
         let mut host = MockPanelHost::with_panel::<VectorPanel>();
         let mut panel_state = VectorPanelState;
         arm(DrawMode::Node, m);
-        for id in [ids::VECTOR_MARQUEE_BOX, ids::VECTOR_MARQUEE_LASSO] {
+        for id in [
+            ph2d_tool_vector::ids::VECTOR_MARQUEE_BOX,
+            ph2d_tool_vector::ids::VECTOR_MARQUEE_LASSO,
+        ] {
             assert!(
                 host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
                     .is_some(),

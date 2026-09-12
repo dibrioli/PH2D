@@ -91,8 +91,14 @@ fn limpa() {
 fn both_stroke_paint_chips_are_reachable_and_reach_the_bus() {
     for k in [StrokePaintKind::Solid, StrokePaintKind::Pattern] {
         state::set_stroke_paint_kind(Some(k));
-        click_reaches_bus(ids::VECTOR_STROKE_KIND_SOLID, "o chip Solid do traco");
-        click_reaches_bus(ids::VECTOR_STROKE_KIND_PATTERN, "o chip Pattern do traco");
+        click_reaches_bus(
+            ph2d_tool_vector::ids::VECTOR_STROKE_KIND_SOLID,
+            "o chip Solid do traco",
+        );
+        click_reaches_bus(
+            ph2d_tool_vector::ids::VECTOR_STROKE_KIND_PATTERN,
+            "o chip Pattern do traco",
+        );
     }
     limpa();
 }
@@ -105,8 +111,8 @@ fn both_stroke_paint_chips_are_reachable_and_reach_the_bus() {
 fn the_stroke_type_row_is_absent_without_a_stroke() {
     limpa();
     for id in [
-        ids::VECTOR_STROKE_KIND_SOLID,
-        ids::VECTOR_STROKE_KIND_PATTERN,
+        ph2d_tool_vector::ids::VECTOR_STROKE_KIND_SOLID,
+        ph2d_tool_vector::ids::VECTOR_STROKE_KIND_PATTERN,
     ] {
         assert!(
             rect(id).is_none(),
@@ -221,5 +227,8 @@ fn no_control_is_shared_between_the_two_sections() {
     // CONTROLO: um id de FORA não é reclamado por esta família — senão o resolvedor engoliria o
     // clique do vizinho e a secção passaria a consumir gestos que não são dela.
     assert_eq!(texpat_knob_of(ids::VECTOR_STROKE_PRESENT), None);
-    assert_eq!(texpat_knob_of(ids::VECTOR_STROKE_KIND_PATTERN), None);
+    assert_eq!(
+        texpat_knob_of(ph2d_tool_vector::ids::VECTOR_STROKE_KIND_PATTERN),
+        None
+    );
 }

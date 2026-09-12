@@ -7,9 +7,9 @@
 //! the active-layer pointer. Runtime ids are decoded via the shared
 //! `flip_layer_widget_id` (the same twin the panel paints with).
 
-use ph2d_editor_core::ids::{self, FlipLayerWidget};
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_flip::{BlendMode, FlipDoc, LayerId};
+use ph2d_panel_flip::ids::FlipLayerWidget;
 
 /// Decode a runtime per-row id → `(LayerId, kind)` via the active object's
 /// layers (brute-force over rows × kinds — a handful of layers).
@@ -20,7 +20,7 @@ fn decode_widget(
     let obj = flip.objects().first()?;
     for l in obj.layers() {
         for kind in FlipLayerWidget::ALL {
-            if ids::flip_layer_widget_id(u64::from(l.id.0), kind) == id {
+            if ph2d_panel_flip::ids::flip_layer_widget_id(u64::from(l.id.0), kind) == id {
                 return Some((l.id, kind));
             }
         }
@@ -53,9 +53,9 @@ pub fn apply_panel_event(
         // Todas operam no desenho VISÍVEL (`flip_select::visible_drawing`, que recebe o
         // doc imutável): selecionar/desmarcar/apagar nunca materializa uma chave nova.
         PanelEvent::Click(id)
-            if *id == ids::FLIP_EDIT_SELECT_ALL
-                || *id == ids::FLIP_EDIT_DESELECT
-                || *id == ids::FLIP_EDIT_DELETE =>
+            if *id == ph2d_panel_flip::ids::FLIP_EDIT_SELECT_ALL
+                || *id == ph2d_panel_flip::ids::FLIP_EDIT_DESELECT
+                || *id == ph2d_panel_flip::ids::FLIP_EDIT_DELETE =>
         {
             let Some((_oid, _lid, did)) =
                 crate::select::visible_drawing(flip, playhead, *active_layer)
@@ -65,7 +65,7 @@ pub fn apply_panel_event(
             let Some(drawing) = flip.object_mut(oid).and_then(|o| o.drawing_mut(did)) else {
                 return false;
             };
-            if *id == ids::FLIP_EDIT_SELECT_ALL {
+            if *id == ph2d_panel_flip::ids::FLIP_EDIT_SELECT_ALL {
                 if point_domain {
                     drawing.select_all_points()
                 } else {
@@ -75,7 +75,7 @@ pub fn apply_panel_event(
                     }
                     changed
                 }
-            } else if *id == ids::FLIP_EDIT_DESELECT {
+            } else if *id == ph2d_panel_flip::ids::FLIP_EDIT_DESELECT {
                 drawing.clear_selection()
             } else if point_domain {
                 // Delete no domínio Point: dissolve as âncoras (o traço fica).
@@ -84,7 +84,7 @@ pub fn apply_panel_event(
                 drawing.delete_selected() > 0
             }
         }
-        PanelEvent::Click(id) if *id == ids::FLIP_LAYER_ADD => {
+        PanelEvent::Click(id) if *id == ph2d_tool_flip::ids::FLIP_LAYER_ADD => {
             if let Some(obj) = flip.object_mut(oid) {
                 let name = format!("Layer {}", obj.layers().len() + 1);
                 let new = obj.add_layer(name);
@@ -103,7 +103,7 @@ pub fn apply_panel_event(
             }
             false
         }
-        PanelEvent::Click(id) if *id == ids::FLIP_LAYER_DUPLICATE => {
+        PanelEvent::Click(id) if *id == ph2d_panel_flip::ids::FLIP_LAYER_DUPLICATE => {
             // Duplica a camada ATIVA (§4.C) — uma cópia independente, acima da original,
             // que vira a ativa (o Illustrator/PS). Sem camada ativa: no-op (o botão já
             // nasce desabilitado, mas a recusa mora aqui também, não só na pintura).
@@ -118,7 +118,7 @@ pub fn apply_panel_event(
             }
             false
         }
-        PanelEvent::Click(id) if *id == ids::FLIP_LAYER_DELETE => {
+        PanelEvent::Click(id) if *id == ph2d_panel_flip::ids::FLIP_LAYER_DELETE => {
             let Some(target) = active_layer.or_else(|| {
                 flip.object(oid)
                     .and_then(|o| o.layers().last().map(|l| l.id))
@@ -236,7 +236,7 @@ mod tests {
     }
 
     fn wid(layer: LayerId, kind: FlipLayerWidget) -> ph2d_editor_core::NodeId {
-        ids::flip_layer_widget_id(u64::from(layer.0), kind)
+        ph2d_panel_flip::ids::flip_layer_widget_id(u64::from(layer.0), kind)
     }
 
     #[test]
@@ -245,7 +245,7 @@ mod tests {
         let oid = doc.objects().first().unwrap().id;
         let mut active = None;
         assert!(apply_panel_event(
-            &PanelEvent::Click(ids::FLIP_LAYER_ADD),
+            &PanelEvent::Click(ph2d_tool_flip::ids::FLIP_LAYER_ADD),
             &mut doc,
             &mut active,
             &ph2d_core::Playhead::default(),
@@ -255,7 +255,7 @@ mod tests {
         assert!(active.is_some(), "new layer becomes active");
         // Delete the active layer.
         assert!(apply_panel_event(
-            &PanelEvent::Click(ids::FLIP_LAYER_DELETE),
+            &PanelEvent::Click(ph2d_panel_flip::ids::FLIP_LAYER_DELETE),
             &mut doc,
             &mut active,
             &ph2d_core::Playhead::default(),
@@ -292,7 +292,7 @@ mod tests {
 
         let mut active = Some(b);
         assert!(apply_panel_event(
-            &PanelEvent::Click(ids::FLIP_LAYER_DUPLICATE),
+            &PanelEvent::Click(ph2d_panel_flip::ids::FLIP_LAYER_DUPLICATE),
             &mut doc,
             &mut active,
             &ph2d_core::Playhead::default(),
@@ -317,7 +317,7 @@ mod tests {
         let before = doc.object(oid).unwrap().layers().len();
         let mut active = None;
         assert!(!apply_panel_event(
-            &PanelEvent::Click(ids::FLIP_LAYER_DUPLICATE),
+            &PanelEvent::Click(ph2d_panel_flip::ids::FLIP_LAYER_DUPLICATE),
             &mut doc,
             &mut active,
             &ph2d_core::Playhead::default(),

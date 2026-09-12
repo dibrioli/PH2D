@@ -4,7 +4,6 @@
 //! a linha Painter cresceu a seção de Tiling e estourou até a dispensa de 215 LOC que a
 //! função tinha. Mesmo contrato de todo helper de seção: recebe o `y` corrente, devolve o novo.
 
-use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::DropdownOption;
 use ph2d_editor_core::widget::section_cards::close_section;
@@ -30,7 +29,7 @@ fn paint_media_row(
         content_w,
         y,
         "Paint Mode",
-        core_ids::PAINTER_BRUSH_MEDIA,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_MEDIA,
         cur,
         PaintMedia::from_u8(cur).name(),
     );
@@ -46,7 +45,7 @@ pub(crate) fn media_options() -> Vec<DropdownOption<u8>> {
     (0..PaintMedia::COUNT)
         .map(|i| {
             DropdownOption::new(
-                core_ids::painter_brush_media_option_id(i),
+                ph2d_tool_painter::ids::painter_brush_media_option_id(i),
                 i,
                 PaintMedia::from_u8(i).name(),
             )

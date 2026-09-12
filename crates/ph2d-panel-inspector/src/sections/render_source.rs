@@ -144,7 +144,7 @@ pub(crate) fn paint_render_source_section(
 
     let reimport_h = 30.0_f32; // LITERAL-PX-OK: Reimport button height
     let btn_rect = Rect::new(x, cur_y, w, reimport_h);
-    let id = ids::INSP_RENDER_SOURCE_REIMPORT;
+    let id = crate::ids::INSP_RENDER_SOURCE_REIMPORT;
     let state = if !info.can_reimport {
         (ButtonState::Disabled, ph2d_editor_core::motion::SETTLED)
     } else {
@@ -399,7 +399,7 @@ fn paint_provenance(
     // cursor»*, e é ela que dá de graça o recorte do corpo e a oclusão por um painel de cima.
     // ⛔ Sem `populate`: quem consome este id é o caminho da QUEDA, não o de clique — a mesma
     // classe das *swatches* do picker, e o `HIT_PARITY_ALLOW` nomeia-a.
-    hit_index.register(ids::INSP_RENDER_TEXTURE_SLOT, slot);
+    hit_index.register(crate::ids::INSP_RENDER_TEXTURE_SLOT, slot);
     let mut cur_y = slot.y + slot.h + row_gap;
     // ⚠️ **O TAMANHO de origem fica ao lado da ranhura**, e não numa função irmã: as duas são a
     // mesma pergunta — *de onde vêm estes pixels, e que tamanho tinham* —, e separá-las custou ao
@@ -459,13 +459,13 @@ fn paint_region_rows(
     if !matches!(info.source_kind, InspectorSpriteSource::HandPacked { .. }) {
         let cb_h = 18.0_f32; // LITERAL-PX-OK: Checkbox visual height
         let re_value = store
-            .checkbox(ids::INSP_REGION_ENABLED)
+            .checkbox(crate::ids::INSP_REGION_ENABLED)
             .map_or(CheckboxValue::Unchecked, |(_, v)| v);
         let re_rect = Rect::new(x, cur_y, w, cb_h);
-        hit_index.register(ids::INSP_REGION_ENABLED, re_rect);
+        hit_index.register(crate::ids::INSP_REGION_ENABLED, re_rect);
         paint_checkbox(
-            &Checkbox::new(ids::INSP_REGION_ENABLED, "Region")
-                .visual(store.checkbox_visual(ids::INSP_REGION_ENABLED))
+            &Checkbox::new(crate::ids::INSP_REGION_ENABLED, "Region")
+                .visual(store.checkbox_visual(crate::ids::INSP_REGION_ENABLED))
                 .value(re_value),
             re_rect,
             scene,
@@ -487,7 +487,7 @@ fn paint_region_rows(
                 store,
                 Rect::new(x, cur_y, cell_w, field_h),
                 "X",
-                ids::INSP_REGION_X,
+                crate::ids::INSP_REGION_X,
                 label_font,
                 theme,
             );
@@ -498,7 +498,7 @@ fn paint_region_rows(
                 store,
                 Rect::new(x + cell_w + cell_gap, cur_y, cell_w, field_h),
                 "Y",
-                ids::INSP_REGION_Y,
+                crate::ids::INSP_REGION_Y,
                 label_font,
                 theme,
             );
@@ -511,7 +511,7 @@ fn paint_region_rows(
                 store,
                 Rect::new(x, cur_y, cell_w, field_h),
                 "W",
-                ids::INSP_REGION_W,
+                crate::ids::INSP_REGION_W,
                 label_font,
                 theme,
             );
@@ -522,20 +522,20 @@ fn paint_region_rows(
                 store,
                 Rect::new(x + cell_w + cell_gap, cur_y, cell_w, field_h),
                 "H",
-                ids::INSP_REGION_H,
+                crate::ids::INSP_REGION_H,
                 label_font,
                 theme,
             );
             cur_y += field_h + row_gap;
 
             let fc_value = store
-                .checkbox(ids::INSP_REGION_FILTER_CLIP)
+                .checkbox(crate::ids::INSP_REGION_FILTER_CLIP)
                 .map_or(CheckboxValue::Checked, |(_, v)| v);
             let fc_rect = Rect::new(x, cur_y, w, cb_h);
-            hit_index.register(ids::INSP_REGION_FILTER_CLIP, fc_rect);
+            hit_index.register(crate::ids::INSP_REGION_FILTER_CLIP, fc_rect);
             paint_checkbox(
-                &Checkbox::new(ids::INSP_REGION_FILTER_CLIP, "Filter Clip")
-                    .visual(store.checkbox_visual(ids::INSP_REGION_FILTER_CLIP))
+                &Checkbox::new(crate::ids::INSP_REGION_FILTER_CLIP, "Filter Clip")
+                    .visual(store.checkbox_visual(crate::ids::INSP_REGION_FILTER_CLIP))
                     .value(fc_value),
                 fc_rect,
                 scene,

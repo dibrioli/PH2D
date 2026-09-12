@@ -38,6 +38,7 @@ mod event_timer;
 mod event_transform;
 mod event_value;
 mod event_wheel;
+pub mod ids;
 mod paint;
 /// ⭐ A MOLDURA do corpo — irmã do `paint_frame` pelo tecto de 600 LOC.
 mod paint_body;
@@ -147,7 +148,6 @@ pub use state::{
 pub use state::{probe_current_instance, probe_current_properties, texture_slot_pick};
 
 use ph2d_a11y::NodeId;
-use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};
 use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal};
 
@@ -158,7 +158,7 @@ impl Panel for InspectorPanel {
     type State = InspectorState;
 
     const ID: &'static str = "inspector";
-    const NODE_ID: NodeId = ids::INSP_PANEL;
+    const NODE_ID: NodeId = ph2d_editor_core::ids::INSP_PANEL;
     const DEFAULT_VISIBLE: bool = true;
     const TITLE: &'static str = "Inspector";
     const ICON: ph2d_editor_core::icons::IconId = ph2d_editor_core::icons::IconId::Inspector;

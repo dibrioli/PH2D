@@ -36,8 +36,8 @@ pub(crate) fn precision_click(host: &mut dyn PanelHostInternal, ev: WidgetEvent)
         return false;
     };
     let Some(requested) = (match id {
-        ids::INSP_RENDER_FORMAT_RGBA8 => Some(ph2d_editor_core::Precision::Rgba8),
-        ids::INSP_RENDER_FORMAT_RGBA16 => Some(ph2d_editor_core::Precision::Rgba16),
+        crate::ids::INSP_RENDER_FORMAT_RGBA8 => Some(ph2d_editor_core::Precision::Rgba8),
+        crate::ids::INSP_RENDER_FORMAT_RGBA16 => Some(ph2d_editor_core::Precision::Rgba16),
         _ => None,
     }) else {
         return false;

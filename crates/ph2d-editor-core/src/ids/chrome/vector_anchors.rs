@@ -25,9 +25,6 @@ use ph2d_a11y::NodeId;
 
 use crate::ids::hash_node_id;
 
-/// O cabeçalho da seção **Constraints** (só com um filho de moldura que NÃO flui selecionado).
-pub const VECTOR_SECTION_ANCHORS: NodeId = hash_node_id("vector.section.anchors");
-
 /// Horizontal — segue a aresta ESQUERDA (a mínima em X).
 pub const VECTOR_ANCHOR_H_START: NodeId = hash_node_id("vector.anchor.h.start");
 /// Horizontal — fica no meio.

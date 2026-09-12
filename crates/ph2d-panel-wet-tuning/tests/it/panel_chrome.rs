@@ -150,7 +150,7 @@ fn the_heading_shields_a_slider_scrolled_behind_it() {
     let probe = (cx, rect.y + 10.0);
     assert_eq!(
         host.hit_at(probe.0, probe.1),
-        Some(core_ids::WET_TUNING_DRAG_HANDLE),
+        Some(ph2d_tool_painter::ids::WET_TUNING_DRAG_HANDLE),
         "the heading must outrank the scrolled slider's hit rect"
     );
     let events = host.dispatch_pointer_event(pointer(PointerKind::Down, probe.0, probe.1, 1_000));

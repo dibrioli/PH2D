@@ -12,10 +12,7 @@
 use crate::paint::register_button;
 use crate::state;
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::ids::{
-    self as core_ids, painter_brush_blend_option_id, painter_brush_falloff_option_id,
-    painter_brush_preset_option_id,
-};
+use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::paint::{fill_rounded_rect, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::tool::PanelEvent;
@@ -24,6 +21,9 @@ use ph2d_editor_core::widget::panel_chrome::PANEL_HEAD_PAD;
 use ph2d_editor_core::widget::section_cards::close_section;
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken};
+use ph2d_tool_painter::ids::{
+    painter_brush_blend_option_id, painter_brush_falloff_option_id, painter_brush_preset_option_id,
+};
 use ph2d_tool_painter::{BrushBlend, BrushSettings, Falloff, MAX_BRUSH_BLEND_MODES, MAX_FALLOFF};
 
 use crate::paint_brush_rows::LABEL_W;
@@ -91,7 +91,7 @@ pub(crate) fn paint_brush_body(
         x,
         content_w,
         y,
-        core_ids::PAINTER_BRUSH_SYNC,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_SYNC,
         "Sync with other tools",
         brush.link_shared,
     );
@@ -144,7 +144,7 @@ fn paint_top_basics(
                 content_w,
                 y,
                 "Blend",
-                core_ids::PAINTER_BRUSH_BLEND,
+                ph2d_tool_painter::ids::PAINTER_BRUSH_BLEND,
                 brush.blend,
                 BrushBlend::from_u8(brush.blend).name(),
             );
@@ -164,8 +164,8 @@ fn paint_top_basics(
         content_w,
         y,
         "Size",
-        core_ids::PAINTER_BRUSH_SIZE_SLIDER,
-        core_ids::PAINTER_BRUSH_SIZE_CHIP,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_SIZE_SLIDER,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_SIZE_CHIP,
         brush.size_norm,
     );
     // Strength — the single opacity slider. Hidden when the Composite Brush is on: its per-layer
@@ -204,8 +204,8 @@ fn paint_top_basics(
             content_w,
             y,
             "Strength",
-            core_ids::PAINTER_BRUSH_STRENGTH_SLIDER,
-            core_ids::PAINTER_BRUSH_STRENGTH_CHIP,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_STRENGTH_SLIDER,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_STRENGTH_CHIP,
             brush.strength,
         );
     }
@@ -274,7 +274,7 @@ fn paint_top_basics(
             x,
             content_w,
             y,
-            core_ids::PAINTER_BRUSH_ACCUMULATE,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_ACCUMULATE,
             "Accumulate",
             brush.accumulate,
         );
@@ -292,7 +292,7 @@ pub(crate) fn paint_brush_popovers(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme
         paint_dropdown_popover(
             ctx,
             theme,
-            core_ids::PAINTER_BRUSH_PRESET,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_PRESET,
             preset_options(),
             chip_rect,
             cur,
@@ -302,7 +302,7 @@ pub(crate) fn paint_brush_popovers(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme
         paint_dropdown_popover(
             ctx,
             theme,
-            core_ids::PAINTER_BRUSH_MEDIA,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_MEDIA,
             crate::paint_brush_sections::media_options(),
             chip_rect,
             cur,
@@ -312,7 +312,7 @@ pub(crate) fn paint_brush_popovers(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme
         paint_dropdown_popover(
             ctx,
             theme,
-            core_ids::PAINTER_LINE_TYPE,
+            ph2d_tool_painter::ids::PAINTER_LINE_TYPE,
             crate::paint_line::line_type_options(),
             chip_rect,
             cur,
@@ -322,7 +322,7 @@ pub(crate) fn paint_brush_popovers(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme
         paint_dropdown_popover(
             ctx,
             theme,
-            core_ids::PAINTER_BRUSH_BLEND,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_BLEND,
             brush_blend_options(),
             chip_rect,
             cur,
@@ -332,7 +332,7 @@ pub(crate) fn paint_brush_popovers(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme
         paint_dropdown_popover(
             ctx,
             theme,
-            core_ids::PAINTER_BRUSH_FALLOFF,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_FALLOFF,
             falloff_options(),
             chip_rect,
             cur,
@@ -343,7 +343,7 @@ pub(crate) fn paint_brush_popovers(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme
         paint_dropdown_popover(
             ctx,
             theme,
-            core_ids::PAINTER_SHAPE_KIND,
+            ph2d_tool_painter::ids::PAINTER_SHAPE_KIND,
             crate::paint_shape::shape_kind_options(),
             chip_rect,
             cur,
@@ -354,7 +354,7 @@ pub(crate) fn paint_brush_popovers(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme
         paint_dropdown_popover(
             ctx,
             theme,
-            core_ids::PAINTER_SHAPE_FOLLOW,
+            ph2d_tool_painter::ids::PAINTER_SHAPE_FOLLOW,
             crate::paint_shape::shape_follow_options(),
             chip_rect,
             cur,
@@ -468,7 +468,7 @@ fn paint_preset_row(
         content_w,
         y,
         "Preset",
-        core_ids::PAINTER_BRUSH_PRESET,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_PRESET,
         preset_idx,
         preset_name(preset_idx),
     );
@@ -488,7 +488,7 @@ fn preset_name(idx: u8) -> &'static str {
 
 /// The brush presets as `Dropdown` options (value = preset idx, label = display name).
 fn preset_options() -> Vec<DropdownOption<u8>> {
-    (0..core_ids::PAINTER_BRUSH_PRESET_COUNT)
+    (0..ph2d_tool_painter::ids::PAINTER_BRUSH_PRESET_COUNT)
         .map(|i| DropdownOption::new(painter_brush_preset_option_id(i), i, preset_name(i)))
         .collect()
 }

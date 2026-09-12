@@ -244,7 +244,7 @@ fn clear_then_repaint_makes_a_fresh_protection() {
     t.on_canvas_pointer(cp([12.0, 12.0], PointerPhase::Up));
     assert!(t.mask_scratch_active());
     // Clear the mask.
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_MASK_OP[5]));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_MASK_OP[5]));
     // Paint a NEW protection.
     t.on_canvas_pointer(cp([12.0, 12.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([12.0, 12.0], PointerPhase::Up));
@@ -283,7 +283,7 @@ fn apply_mask_is_one_undo_step_and_redoable() {
     ));
     t.on_canvas_pointer(cp([8.0, 8.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([8.0, 8.0], PointerPhase::Up));
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_MASK_APPLY));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_MASK_APPLY));
     assert!(t.layers.get(target).and_then(|l| l.mask).is_some());
     assert_eq!(t.layers.all_ids().count(), n_before + 1);
     // Undo → the mask layer is gone and the parent is unmasked again.
@@ -331,7 +331,7 @@ fn apply_copies_the_scratch_into_the_mask_faithfully() {
     let idx_corner = (16 + 1) as usize; // (1,1)
     let sc_c = crate::compositor::mask_value(&t.paint.mask_scratch_rgba[..], idx_c);
     let sc_corner = crate::compositor::mask_value(&t.paint.mask_scratch_rgba[..], idx_corner);
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_MASK_APPLY));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_MASK_APPLY));
     let mask = t.layers.get(target).and_then(|l| l.mask).unwrap();
     let img = t.images.get(&mask).expect("the mask pixels live in images");
     assert!(
@@ -360,13 +360,13 @@ fn apply_twice_merges_into_the_existing_mask() {
     // First Apply: protect + apply at spot A.
     t.on_canvas_pointer(cp([6.0, 6.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([6.0, 6.0], PointerPhase::Up));
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_MASK_APPLY));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_MASK_APPLY));
     let mask = t.layers.get(target).and_then(|l| l.mask).unwrap();
     assert_eq!(t.layers.all_ids().count(), n0 + 1);
     // Second protection at spot B + Apply again → merge in place (no new layer, same mask id).
     t.on_canvas_pointer(cp([18.0, 18.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([18.0, 18.0], PointerPhase::Up));
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_MASK_APPLY));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_MASK_APPLY));
     assert_eq!(
         t.layers.all_ids().count(),
         n0 + 1,
@@ -490,7 +490,7 @@ fn mask_apply_creates_a_layer_mask_from_the_scratch() {
     t.on_canvas_pointer(cp([8.0, 8.0], PointerPhase::Up));
     assert!(t.mask_scratch_active());
     // Apply → a real layer mask is created from the scratch.
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_MASK_APPLY));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_MASK_APPLY));
     assert!(!t.mask_scratch_active(), "Apply cleared the scratch");
     assert_eq!(
         t.layers.all_ids().count(),
@@ -580,7 +580,7 @@ fn mask_canvas_op_clear_then_invert() {
         core_ids::PAINTER_PAINT_MODE,
         "mask".to_string(),
     ));
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_MASK_OP[5])); // Clear → scratch white
+    t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_MASK_OP[5])); // Clear → scratch white
     assert_eq!(
         t.layers.all_ids().count(),
         n_before,
@@ -597,7 +597,7 @@ fn mask_canvas_op_clear_then_invert() {
         [255, 255, 255, 255],
         "Clear → nothing protected → pristine (no overlay tint)"
     );
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_MASK_OP[4])); // Invert → scratch black
+    t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_MASK_OP[4])); // Invert → scratch black
     let (buf, w, _h) = t.take_preview_arc().expect("a composite preview");
     let i = ((8 * w + 8) * 4) as usize;
     assert!(
@@ -653,9 +653,9 @@ fn mask_overlay_tints_the_protected_composite() {
         core_ids::PAINTER_PAINT_MODE,
         "mask".to_string(),
     ));
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_MASK_COLOR[1])); // fluorescent yellow
+    t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_MASK_COLOR[1])); // fluorescent yellow
     assert_eq!(t.mask_overlay_color(), 1);
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_MASK_OP[5])); // Clear → white (unprotected)
+    t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_MASK_OP[5])); // Clear → white (unprotected)
     // An all-unprotected mask must NOT tint (no flood).
     let (buf, w, _h) = t.take_preview_arc().expect("a composite preview");
     let i = ((8 * w + 8) * 4) as usize;
@@ -664,7 +664,7 @@ fn mask_overlay_tints_the_protected_composite() {
         [255, 255, 255],
         "an all-unprotected mask shows NO overlay flood"
     );
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_MASK_OP[4])); // Invert → black (protected)
+    t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_MASK_OP[4])); // Invert → black (protected)
     let (buf, w, _h) = t.take_preview_arc().expect("a composite preview");
     let i = ((8 * w + 8) * 4) as usize;
     let (r, g, b) = (buf[i], buf[i + 1], buf[i + 2]);

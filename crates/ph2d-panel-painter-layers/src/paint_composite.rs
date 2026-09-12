@@ -7,7 +7,6 @@
 //! fixed-id widgets are registered in `crate::populate` (so the panel-wiring-parity gate sees them).
 
 use ph2d_editor_core::IconId;
-use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{Checkbox, CheckboxValue, Slider, paint_checkbox, paint_slider};
@@ -84,22 +83,26 @@ pub(crate) fn paint_composite_card(
     let mut iy = y + pad;
 
     // The enable checkbox (forwards a plain Click → the tool's `toggle_composite`).
-    let cb = Checkbox::new(core_ids::PAINTER_BRUSH_COMPOSITE_ENABLE, "Composite Brush")
-        .visual(
-            ctx.host
-                .store()
-                .checkbox_visual(core_ids::PAINTER_BRUSH_COMPOSITE_ENABLE),
-        )
-        .value(if checked {
-            CheckboxValue::Checked
-        } else {
-            CheckboxValue::Unchecked
-        });
+    let cb = Checkbox::new(
+        ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_ENABLE,
+        "Composite Brush",
+    )
+    .visual(
+        ctx.host
+            .store()
+            .checkbox_visual(ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_ENABLE),
+    )
+    .value(if checked {
+        CheckboxValue::Checked
+    } else {
+        CheckboxValue::Unchecked
+    });
     let cb_rect = Rect::new(ix, iy, iw, ROW_H_PX);
     paint_checkbox(&cb, cb_rect, ctx.scene, ctx.text_system, theme);
-    ctx.host
-        .hit_index_mut()
-        .register(core_ids::PAINTER_BRUSH_COMPOSITE_ENABLE, cb_rect);
+    ctx.host.hit_index_mut().register(
+        ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_ENABLE,
+        cb_rect,
+    );
     iy += ROW_H_PX;
 
     if checked {
@@ -145,7 +148,7 @@ fn paint_layer_row(
     );
 
     // Bare Strength slider (value from the snapshot; state from the store) + plain readout.
-    let sid = core_ids::PAINTER_BRUSH_COMPOSITE_STRENGTH[pos];
+    let sid = ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_STRENGTH[pos];
     let val = brush.composite_strength[pos].clamp(0.0, 1.0);
     let mut slider = Slider::new(sid, "")
         .accent(true)
@@ -169,7 +172,7 @@ fn paint_layer_row(
     crate::paint_rows::paint_reorder_btn(
         ctx,
         theme,
-        core_ids::PAINTER_BRUSH_COMPOSITE_UP[pos],
+        ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_UP[pos],
         Rect::new(up_x, y, ARROW_W, ROW_H_PX),
         pos > 0,
         IconId::ChevronUp,
@@ -177,7 +180,7 @@ fn paint_layer_row(
     crate::paint_rows::paint_reorder_btn(
         ctx,
         theme,
-        core_ids::PAINTER_BRUSH_COMPOSITE_DOWN[pos],
+        ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_DOWN[pos],
         Rect::new(down_x, y, ARROW_W, ROW_H_PX),
         pos < 2,
         IconId::ChevronDown,

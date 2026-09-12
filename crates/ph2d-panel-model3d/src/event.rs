@@ -14,9 +14,9 @@ use crate::{Model3dPanel, populate::MAX_ROWS};
 /// hash não se inverte. O laço é sobre [`MAX_ROWS`] e corre uma vez por evento, não por quadro.
 fn slot_of(id: ph2d_a11y::NodeId) -> Option<(usize, bool)> {
     (0..MAX_ROWS as u32).find_map(|n| {
-        if id == ids::model3d_radius_slider(n) {
+        if id == crate::ids::model3d_radius_slider(n) {
             Some((n as usize, false))
-        } else if id == ids::model3d_radius_chip(n) {
+        } else if id == crate::ids::model3d_radius_chip(n) {
             Some((n as usize, true))
         } else {
             None
@@ -31,7 +31,7 @@ fn slot_of(id: ph2d_a11y::NodeId) -> Option<(usize, bool)> {
 fn choice_of(id: ph2d_a11y::NodeId) -> Option<(usize, u32)> {
     (0..MAX_ROWS as u32).find_map(|linha| {
         (0..crate::populate::MAX_CHOICES)
-            .find(|&cell| id == ids::model3d_choice_button(linha, cell))
+            .find(|&cell| id == crate::ids::model3d_choice_button(linha, cell))
             .map(|cell| (linha as usize, cell))
     })
 }
@@ -161,8 +161,8 @@ pub(crate) fn apply_event(
                 true
             }
         }
-        WidgetEvent::Click(id) if slot_in(id, ids::model3d_select_button).is_some() => {
-            let slot = slot_in(id, ids::model3d_select_button).unwrap_or(0);
+        WidgetEvent::Click(id) if slot_in(id, crate::ids::model3d_select_button).is_some() => {
+            let slot = slot_in(id, crate::ids::model3d_select_button).unwrap_or(0);
             slot < state::current().selects.len() && {
                 state::push_intent(ModelIntent::SetLassoMode { slot });
                 true
@@ -173,70 +173,70 @@ pub(crate) fn apply_event(
         // ⚠️ O `slot` continua a ser conferido contra a fileira publicada, e não é cerimónia: a
         // família de ids tem `MAX_MODES` slots registados sempre, então um clique num id que o
         // retrato deste quadro não pintou é alcançável — e sem a guarda ele viraria um pedido.
-        WidgetEvent::Click(id) if slot_in(id, ids::model3d_add_button).is_some() => {
-            let slot = slot_in(id, ids::model3d_add_button).unwrap_or(0);
+        WidgetEvent::Click(id) if slot_in(id, crate::ids::model3d_add_button).is_some() => {
+            let slot = slot_in(id, crate::ids::model3d_add_button).unwrap_or(0);
             slot < state::current().adds.len() && {
                 state::push_intent(ModelIntent::OpenShapes);
                 true
             }
         }
-        WidgetEvent::Click(id) if slot_in(id, ids::model3d_op_button).is_some() => {
-            let slot = slot_in(id, ids::model3d_op_button).unwrap_or(0);
+        WidgetEvent::Click(id) if slot_in(id, crate::ids::model3d_op_button).is_some() => {
+            let slot = slot_in(id, crate::ids::model3d_op_button).unwrap_or(0);
             slot < state::current().ops.len() && {
                 state::push_intent(ModelIntent::ApplyOp { slot });
                 true
             }
         }
-        WidgetEvent::Click(id) if slot_in(id, ids::model3d_verb_button).is_some() => {
-            let slot = slot_in(id, ids::model3d_verb_button).unwrap_or(0);
+        WidgetEvent::Click(id) if slot_in(id, crate::ids::model3d_verb_button).is_some() => {
+            let slot = slot_in(id, crate::ids::model3d_verb_button).unwrap_or(0);
             slot < state::current().verbs.len() && {
                 state::push_intent(ModelIntent::SetVerb { slot });
                 true
             }
         }
-        WidgetEvent::Click(id) if slot_in(id, ids::model3d_character_button).is_some() => {
-            let slot = slot_in(id, ids::model3d_character_button).unwrap_or(0);
+        WidgetEvent::Click(id) if slot_in(id, crate::ids::model3d_character_button).is_some() => {
+            let slot = slot_in(id, crate::ids::model3d_character_button).unwrap_or(0);
             slot < state::current().characters.len() && {
                 state::push_intent(ModelIntent::SetCharacter { slot });
                 true
             }
         }
-        WidgetEvent::Click(id) if slot_in(id, ids::model3d_mod_button).is_some() => {
-            let slot = slot_in(id, ids::model3d_mod_button).unwrap_or(0);
+        WidgetEvent::Click(id) if slot_in(id, crate::ids::model3d_mod_button).is_some() => {
+            let slot = slot_in(id, crate::ids::model3d_mod_button).unwrap_or(0);
             slot < state::current().mods.len() && {
                 state::push_intent(ModelIntent::ToggleMod { slot });
                 true
             }
         }
-        WidgetEvent::Click(id) if slot_in(id, ids::model3d_export_button).is_some() => {
-            let slot = slot_in(id, ids::model3d_export_button).unwrap_or(0);
+        WidgetEvent::Click(id) if slot_in(id, crate::ids::model3d_export_button).is_some() => {
+            let slot = slot_in(id, crate::ids::model3d_export_button).unwrap_or(0);
             slot < state::current().exports.len() && {
                 state::push_intent(ModelIntent::Export { slot });
                 true
             }
         }
-        WidgetEvent::Click(id) if slot_in(id, ids::model3d_act_button).is_some() => {
-            let slot = slot_in(id, ids::model3d_act_button).unwrap_or(0);
+        WidgetEvent::Click(id) if slot_in(id, crate::ids::model3d_act_button).is_some() => {
+            let slot = slot_in(id, crate::ids::model3d_act_button).unwrap_or(0);
             slot < state::current().acts.len() && {
                 state::push_intent(ModelIntent::Act { slot });
                 true
             }
         }
-        WidgetEvent::Click(id) if slot_in(id, ids::model3d_view_button).is_some() => {
-            let slot = slot_in(id, ids::model3d_view_button).unwrap_or(0);
+        WidgetEvent::Click(id) if slot_in(id, crate::ids::model3d_view_button).is_some() => {
+            let slot = slot_in(id, crate::ids::model3d_view_button).unwrap_or(0);
             slot < state::current().views.len() && {
                 state::push_intent(ModelIntent::SetView { slot });
                 true
             }
         }
-        WidgetEvent::Click(id) if slot_in(id, ids::model3d_camera_button).is_some() => {
-            let slot = slot_in(id, ids::model3d_camera_button).unwrap_or(0);
+        WidgetEvent::Click(id) if slot_in(id, crate::ids::model3d_camera_button).is_some() => {
+            let slot = slot_in(id, crate::ids::model3d_camera_button).unwrap_or(0);
             slot < state::current().camera.len() && {
                 state::push_intent(ModelIntent::Camera { slot });
                 true
             }
         }
-        WidgetEvent::Click(id) if id == ids::MODEL3D_CLOSE => {
+        WidgetEvent::Click(id) if id == crate::ids::MODEL3D_CLOSE => {
             host.set_panel_visible(Model3dPanel::ID, false);
             true
         }

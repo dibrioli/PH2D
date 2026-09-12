@@ -72,7 +72,7 @@ fn click_reaches_bus(id: ph2d_a11y::NodeId, what: &str) {
 /// inteira fica inalcançável.
 #[test]
 fn the_frame_pill_is_reachable_and_reaches_the_bus() {
-    click_reaches_bus(ids::VECTOR_MODE_FRAME, "o pill Frame");
+    click_reaches_bus(ph2d_tool_vector::ids::VECTOR_MODE_FRAME, "o pill Frame");
 }
 
 /// **Os dois chips de recorte e os quatro presets**, com uma moldura selecionada.

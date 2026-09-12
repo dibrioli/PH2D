@@ -9,7 +9,6 @@
 
 use crate::rows::{Place, Row};
 use crate::state::UiLevel;
-use ph2d_editor_core::ids;
 
 /// **A TOPOLOGIA** — hoje uma row só, a resolução do remesh.
 ///
@@ -34,8 +33,8 @@ use ph2d_editor_core::ids;
 pub static TOPOLOGY: &[Row] = &[
     Row {
         label: "panel.sculpt3d.remesh_res",
-        slider: ids::SCULPT3D_REMESH_RES,
-        chip: ids::SCULPT3D_REMESH_RES_NUM,
+        slider: crate::ids::SCULPT3D_REMESH_RES,
+        chip: crate::ids::SCULPT3D_REMESH_RES_NUM,
         min: 16.0,  // LITERAL-PX-OK: resolucao de voxel, nao metrica de layout
         max: 512.0, // LITERAL-PX-OK: idem -- o teto medido, ver a tabela acima
         step: 1.0,
@@ -67,8 +66,8 @@ pub static TOPOLOGY: &[Row] = &[
     // afirma.
     Row {
         label: "panel.sculpt3d.quad_detail",
-        slider: ids::SCULPT3D_QUAD_DETAIL,
-        chip: ids::SCULPT3D_QUAD_DETAIL_NUM,
+        slider: crate::ids::SCULPT3D_QUAD_DETAIL,
+        chip: crate::ids::SCULPT3D_QUAD_DETAIL_NUM,
         min: 0.0,
         max: 1.0,
         step: 0.05, // LITERAL-PX-OK: fracao do curso, nao metrica de layout
@@ -81,8 +80,8 @@ pub static TOPOLOGY: &[Row] = &[
     },
     Row {
         label: "panel.sculpt3d.quad_adapt",
-        slider: ids::SCULPT3D_QUAD_ADAPT,
-        chip: ids::SCULPT3D_QUAD_ADAPT_NUM,
+        slider: crate::ids::SCULPT3D_QUAD_ADAPT,
+        chip: crate::ids::SCULPT3D_QUAD_ADAPT_NUM,
         min: 0.0,
         max: 1.0,
         step: 0.05, // LITERAL-PX-OK: fracao de adaptacao, nao metrica de layout

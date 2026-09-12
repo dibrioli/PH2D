@@ -901,18 +901,15 @@ fn syncing_shares_settings_and_seeds_from_the_checked_panel() {
 
 #[test]
 fn sync_checkbox_click_routes_to_the_link_toggle() {
-    // Guards the panel→tool wiring: a Click on PAINTER_BRUSH_SYNC reaches toggle_link_shared_settings
-    // through route_brush_dab_event.
-    use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::{PanelEvent, Tool};
     let mut t = white_canvas(16, 4.0);
     assert!(!t.link_shared_settings());
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_SYNC));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_BRUSH_SYNC));
     assert!(
         t.link_shared_settings(),
         "the Sync checkbox click toggled the link on"
     );
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_SYNC));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_BRUSH_SYNC));
     assert!(!t.link_shared_settings(), "clicking again toggled it off");
 }
 

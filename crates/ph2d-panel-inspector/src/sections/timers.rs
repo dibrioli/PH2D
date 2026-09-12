@@ -171,11 +171,11 @@ fn buttons(
     if can_add {
         let (rect, group) = seg[cell];
         cell += 1;
-        hit_index.register(ids::INSP_TIMER_ADD, rect);
+        hit_index.register(crate::ids::INSP_TIMER_ADD, rect);
         paint_button(
-            &Button::new(ids::INSP_TIMER_ADD, "+ Add Timer")
+            &Button::new(crate::ids::INSP_TIMER_ADD, "+ Add Timer")
                 .kind(ButtonKind::Default)
-                .visual(store.button_visual(ids::INSP_TIMER_ADD))
+                .visual(store.button_visual(crate::ids::INSP_TIMER_ADD))
                 .in_group(group),
             rect,
             scene,
@@ -185,11 +185,11 @@ fn buttons(
     }
     if can_remove {
         let (rect, group) = seg[cell];
-        hit_index.register(ids::INSP_TIMER_REMOVE, rect);
+        hit_index.register(crate::ids::INSP_TIMER_REMOVE, rect);
         paint_button(
-            &Button::new(ids::INSP_TIMER_REMOVE, "x Remove Timer")
+            &Button::new(crate::ids::INSP_TIMER_REMOVE, "x Remove Timer")
                 .kind(ButtonKind::Default)
-                .visual(store.button_visual(ids::INSP_TIMER_REMOVE))
+                .visual(store.button_visual(crate::ids::INSP_TIMER_REMOVE))
                 .in_group(group),
             rect,
             scene,
@@ -222,8 +222,8 @@ fn editor(
         x,
         w,
         y,
-        ids::INSP_TIMER_NAME,
-        TextInput::new(ids::INSP_TIMER_NAME, "").placeholder("timer_name\u{2026}"),
+        crate::ids::INSP_TIMER_NAME,
+        TextInput::new(crate::ids::INSP_TIMER_NAME, "").placeholder("timer_name\u{2026}"),
     );
 
     // ⚠️ **SEGUNDOS, e o passo é 0,1** — a unidade do artista. O componente guarda microssegundos
@@ -239,14 +239,14 @@ fn editor(
         w,
         cur_y,
         "Duration (seconds)",
-        &[ids::INSP_TIMER_DURATION],
+        &[crate::ids::INSP_TIMER_DURATION],
         0.1, // LITERAL-PX-OK: passo de scrub em SEGUNDOS, não em pixels
     );
 
     let half = (w - Spacing::Sm.px()) * 0.5;
     for (i, (id, label, on)) in [
-        (ids::INSP_TIMER_REPEAT, "Repeat", row.repeat),
-        (ids::INSP_TIMER_AUTOSTART, "Autostart", row.autostart),
+        (crate::ids::INSP_TIMER_REPEAT, "Repeat", row.repeat),
+        (crate::ids::INSP_TIMER_AUTOSTART, "Autostart", row.autostart),
     ]
     .into_iter()
     .enumerate()
@@ -285,8 +285,8 @@ fn editor(
         x,
         w,
         cur_y,
-        ids::INSP_TIMER_SIGNAL,
-        TextInput::new(ids::INSP_TIMER_SIGNAL, "").placeholder("signal_name (empty = mute)"),
+        crate::ids::INSP_TIMER_SIGNAL,
+        TextInput::new(crate::ids::INSP_TIMER_SIGNAL, "").placeholder("signal_name (empty = mute)"),
     );
 
     // ⚠️⚠️ **A LINHA QUE RESPONDE AO «nada acontece».** As três causas autoráveis do silêncio são

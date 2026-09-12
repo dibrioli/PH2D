@@ -115,10 +115,10 @@ fn the_row_is_not_painted_without_an_answer_to_show() {
 fn the_stroke_rows_stay_visible_without_a_stroke() {
     state::set_stroke_present(Some(false));
     for (id, what) in [
-        (ids::VECTOR_WIDTH, "a largura"),
-        (ids::VECTOR_STROKE_SWATCH, "a cor"),
-        (ids::VECTOR_CAP_BUTT, "a ponta"),
-        (ids::VECTOR_JOIN_MITER, "a junta"),
+        (ph2d_tool_vector::ids::VECTOR_WIDTH, "a largura"),
+        (ph2d_tool_vector::ids::VECTOR_STROKE_SWATCH, "a cor"),
+        (ph2d_tool_vector::ids::VECTOR_CAP_BUTT, "a ponta"),
+        (ph2d_tool_vector::ids::VECTOR_JOIN_MITER, "a junta"),
     ] {
         assert!(
             rect(id).is_some(),

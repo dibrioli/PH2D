@@ -11,10 +11,10 @@
 //! widgets need `register_if_absent`, interleaved with reads + hit registration).
 
 use crate::ids;
+use crate::ids::FlipLayerWidget;
 use crate::paint_sections::LABEL_COL_W;
 use crate::state::{FlipLayerRow, FlipLayersSnapshot, FlipPanelState, LayerRename};
 use ph2d_editor_core::IconId;
-use ph2d_editor_core::ids::FlipLayerWidget;
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_icon, paint_text, resolve};
 use ph2d_editor_core::panel::PaintCtx;
@@ -147,7 +147,7 @@ pub(crate) fn layers_section(
     let gap = Spacing::Xs.px();
     let needs_active = snap.active.is_some();
     let buttons = [
-        (ids::FLIP_LAYER_ADD, "Add", true),
+        (ph2d_tool_flip::ids::FLIP_LAYER_ADD, "Add", true),
         (ids::FLIP_LAYER_DUPLICATE, "Duplicate", needs_active),
         (ids::FLIP_LAYER_DELETE, "Delete", needs_active),
     ];

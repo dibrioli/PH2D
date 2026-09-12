@@ -8,12 +8,12 @@
 use crate::paint_brush_rows::paint_dropdown_row;
 use crate::paint_brush_top::paint_slider_chip_row;
 use crate::state;
-use ph2d_editor_core::ids::{self as core_ids, painter_brush_jitter_unit_option_id};
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::DropdownOption;
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken};
+use ph2d_tool_painter::ids::painter_brush_jitter_unit_option_id;
 use ph2d_tool_painter::{BRUSH_JITTER_ABS_MAX_PX, BrushSettings, JitterUnit, SPRAY_COUNT_MAX};
 
 /// Paint the **Jitter** group inside a decorative rounded-rect card: a titled panel holding the
@@ -89,8 +89,8 @@ pub(super) fn paint_jitter_card(
         inner_w,
         iy,
         "Count",
-        core_ids::PAINTER_BRUSH_SPRAY_COUNT,
-        core_ids::PAINTER_BRUSH_SPRAY_COUNT_CHIP,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_SPRAY_COUNT,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_SPRAY_COUNT_CHIP,
         spray_count_track(brush.spray_count),
     );
     // Position: the main per-dab position scatter. The slider track is `0..1` in BOTH units (View maps
@@ -107,8 +107,8 @@ pub(super) fn paint_jitter_card(
         inner_w,
         iy,
         "Position",
-        core_ids::PAINTER_BRUSH_JITTER,
-        core_ids::PAINTER_BRUSH_JITTER_CHIP,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER_CHIP,
         jval,
     );
     // Unit (Brush / View) for the Position scatter.
@@ -119,7 +119,7 @@ pub(super) fn paint_jitter_card(
         inner_w,
         iy,
         "Unit",
-        core_ids::PAINTER_BRUSH_JITTER_UNIT,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER_UNIT,
         brush.jitter_unit,
         jitter_unit_name(brush.jitter_unit),
     );
@@ -135,8 +135,8 @@ pub(super) fn paint_jitter_card(
         inner_w,
         iy,
         "Scale",
-        core_ids::PAINTER_BRUSH_JITTER_SCALE,
-        core_ids::PAINTER_BRUSH_JITTER_SCALE_CHIP,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER_SCALE,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER_SCALE_CHIP,
         brush.jitter_scale,
     );
     // Spacing: per-gap scatter of the dab spacing (always relevant — placement, not appearance).
@@ -147,8 +147,8 @@ pub(super) fn paint_jitter_card(
         inner_w,
         iy,
         "Spacing",
-        core_ids::PAINTER_BRUSH_JITTER_SPACING,
-        core_ids::PAINTER_BRUSH_JITTER_SPACING_CHIP,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER_SPACING,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER_SPACING_CHIP,
         brush.jitter_spacing,
     );
     // Rotation: per-dab stamp-rotation scatter (Shape + Grain) — always shown (Enio 2026-06-28). The last
@@ -160,8 +160,8 @@ pub(super) fn paint_jitter_card(
         inner_w,
         iy,
         "Rotation",
-        core_ids::PAINTER_BRUSH_JITTER_ROTATE,
-        core_ids::PAINTER_BRUSH_JITTER_ROTATE_CHIP,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER_ROTATE,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER_ROTATE_CHIP,
         brush.jitter_rotate,
     );
     let _ = iy;

@@ -7,7 +7,6 @@ use crate::paint_brush_rows::paint_dropdown_row;
 use crate::paint_brush_top::paint_checkbox_row;
 use crate::{number_field, state};
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::paint::{fill_rounded_rect, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::tool::PanelEvent;
@@ -63,12 +62,12 @@ fn paint_substrate_rows(
     for (label, id, value) in [
         (
             "Relief",
-            core_ids::PAINTER_SUBSTRATE_RELIEF,
+            ph2d_tool_painter::ids::PAINTER_SUBSTRATE_RELIEF,
             brush.substrate_relief,
         ),
         (
             "Roughness",
-            core_ids::PAINTER_SUBSTRATE_ROUGHNESS,
+            ph2d_tool_painter::ids::PAINTER_SUBSTRATE_ROUGHNESS,
             brush.substrate_roughness,
         ),
     ] {
@@ -123,9 +122,9 @@ pub(crate) fn paint_paper_section(
         content_w,
         y,
         "Paper",
-        core_ids::PAINTER_WATERCOLOR_PAPER_SECTION,
-        core_ids::PAINTER_WATERCOLOR_PAPER_SECTION_COLOR,
-        core_ids::PAINTER_WATERCOLOR_PAPER_RESET,
+        ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_SECTION,
+        ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_SECTION_COLOR,
+        ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_RESET,
     );
     let Some(fold) = fold else {
         return y;
@@ -135,11 +134,12 @@ pub(crate) fn paint_paper_section(
     //    Painted before the Kind gate: the ground matters even with no paper texture set. ──
     if wash {
         paper_color_readback(ctx, brush);
-        if ctx.host.store().picker_target() != Some(core_ids::PAINTER_WATERCOLOR_PAPER_COLOR_THUMB)
+        if ctx.host.store().picker_target()
+            != Some(ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_COLOR_THUMB)
         {
             let c = encode_rgb3(brush.paper_color);
             ctx.host.store_mut().set_widget_color(
-                core_ids::PAINTER_WATERCOLOR_PAPER_COLOR_THUMB,
+                ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_COLOR_THUMB,
                 [c[0], c[1], c[2], 255],
             );
         }
@@ -154,7 +154,7 @@ pub(crate) fn paint_paper_section(
         content_w,
         y,
         "Paper",
-        core_ids::PAINTER_WATERCOLOR_PAPER_KIND,
+        ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_KIND,
         brush.paper_kind,
         kind.name(),
     );
@@ -188,7 +188,7 @@ pub(crate) fn paint_paper_section(
             content_w,
             y,
             "Mapping",
-            core_ids::PAINTER_WATERCOLOR_PAPER_MAPPING,
+            ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_MAPPING,
             brush.paper_mapping,
             mapping.name(),
         );
@@ -204,7 +204,7 @@ pub(crate) fn paint_paper_section(
         content_w,
         y,
         "Angle",
-        core_ids::PAINTER_WATERCOLOR_PAPER_ANGLE,
+        ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_ANGLE,
         f32::from(brush.paper_angle),
         0.0,
         ANGLE_MAX,
@@ -219,9 +219,9 @@ pub(crate) fn paint_paper_section(
         content_w,
         y,
         "Offset",
-        core_ids::PAINTER_WATERCOLOR_PAPER_OFFSET_X,
+        ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_OFFSET_X,
         brush.paper_offset[0],
-        core_ids::PAINTER_WATERCOLOR_PAPER_OFFSET_Y,
+        ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_OFFSET_Y,
         brush.paper_offset[1],
         TEX_OFFSET_MIN,
         TEX_OFFSET_MAX,
@@ -235,9 +235,9 @@ pub(crate) fn paint_paper_section(
         content_w,
         y,
         "Size",
-        core_ids::PAINTER_WATERCOLOR_PAPER_SIZE_X,
+        ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_SIZE_X,
         brush.paper_size[0],
-        core_ids::PAINTER_WATERCOLOR_PAPER_SIZE_Y,
+        ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_SIZE_Y,
         brush.paper_size[1],
         TEX_SIZE_MIN,
         TEX_SIZE_MAX,
@@ -253,7 +253,7 @@ pub(crate) fn paint_paper_section(
             content_w,
             y,
             "Tooth",
-            core_ids::PAINTER_WATERCOLOR_PAPER_DEPTH,
+            ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_DEPTH,
             brush.paper_depth.clamp(0.0, 1.0),
             0.0,
             1.0,
@@ -268,7 +268,7 @@ pub(crate) fn paint_paper_section(
         .map(|(i, s)| {
             (
                 s.label,
-                core_ids::PAINTER_WATERCOLOR_PAPER_PARAMS[i],
+                ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_PARAMS[i],
                 brush.paper_params[i],
             )
         })
@@ -289,7 +289,7 @@ fn encode_rgb3(c: [f32; 3]) -> [u8; 3] {
 /// When the shared Blender picker targets the paper-colour swatch, forward its live value to the
 /// tool as `SelectOption(id, "r,g,b")` — the exact `brush_color_readback` protocol, for the ground.
 fn paper_color_readback(ctx: &mut PaintCtx, brush: BrushSettings) {
-    let id = core_ids::PAINTER_WATERCOLOR_PAPER_COLOR_THUMB;
+    let id = ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_COLOR_THUMB;
     if ctx.host.store().picker_target() != Some(id) {
         return;
     }
@@ -320,7 +320,7 @@ fn paint_paper_color_row(
     brush: BrushSettings,
 ) -> f32 {
     const LABEL_W: f32 = 60.0; // LITERAL-PX-OK: row label column (mirrors paint_brush::LABEL_W)
-    let id = core_ids::PAINTER_WATERCOLOR_PAPER_COLOR_THUMB;
+    let id = ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_COLOR_THUMB;
     crate::paint_brush_rows::label(ctx, theme, "Color", x, y, TypeToken::Sm.px());
     let sx = x + LABEL_W + Spacing::Sm.px();
     let sw = (content_w - LABEL_W - Spacing::Sm.px()).max(0.0);
@@ -371,7 +371,7 @@ pub(crate) fn paint_grain_watercolor_extras(
         x,
         content_w,
         y,
-        core_ids::PAINTER_WATERCOLOR_GRAN_SAME,
+        ph2d_tool_painter::ids::PAINTER_WATERCOLOR_GRAN_SAME,
         "Same as Paper",
         brush.granulation_use_paper,
     );
@@ -382,7 +382,7 @@ pub(crate) fn paint_grain_watercolor_extras(
         content_w,
         y,
         "Amount",
-        core_ids::PAINTER_WATERCOLOR_GRANULATION,
+        ph2d_tool_painter::ids::PAINTER_WATERCOLOR_GRANULATION,
         brush.granulation,
         0.0,
         1.0,
@@ -398,7 +398,7 @@ pub(crate) fn paint_watercolor_popovers(ctx: &mut PaintCtx, theme: ph2d_tokens::
         let options: Vec<DropdownOption<u8>> = (0..TextureKind::COUNT)
             .map(|k| {
                 DropdownOption::new(
-                    core_ids::painter_paper_kind_option_id(k),
+                    ph2d_tool_painter::ids::painter_paper_kind_option_id(k),
                     k,
                     TextureKind::from_u8(k).name(),
                 )
@@ -407,7 +407,7 @@ pub(crate) fn paint_watercolor_popovers(ctx: &mut PaintCtx, theme: ph2d_tokens::
         crate::paint_brush::paint_dropdown_popover(
             ctx,
             theme,
-            core_ids::PAINTER_WATERCOLOR_PAPER_KIND,
+            ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_KIND,
             options,
             chip_rect,
             cur,
@@ -417,7 +417,7 @@ pub(crate) fn paint_watercolor_popovers(ctx: &mut PaintCtx, theme: ph2d_tokens::
         let options: Vec<DropdownOption<u8>> = (0..TextureMapping::COUNT)
             .map(|m| {
                 DropdownOption::new(
-                    core_ids::painter_paper_mapping_option_id(m),
+                    ph2d_tool_painter::ids::painter_paper_mapping_option_id(m),
                     m,
                     TextureMapping::from_u8(m).name(),
                 )
@@ -426,7 +426,7 @@ pub(crate) fn paint_watercolor_popovers(ctx: &mut PaintCtx, theme: ph2d_tokens::
         crate::paint_brush::paint_dropdown_popover(
             ctx,
             theme,
-            core_ids::PAINTER_WATERCOLOR_PAPER_MAPPING,
+            ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_MAPPING,
             options,
             chip_rect,
             cur,

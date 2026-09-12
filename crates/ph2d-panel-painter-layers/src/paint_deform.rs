@@ -9,7 +9,6 @@
 //! `populate` and forwarded by `event.rs` over the frozen `PanelEvent` channel to `route_deform_event`.
 
 use ph2d_a11y::NodeId;
-use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::section_cards::close_section;
 use ph2d_editor_core::widget::{
@@ -57,11 +56,17 @@ pub(crate) fn paint_deform_section(
         x,
         content_w,
         y,
-        core_ids::PAINTER_DEFORM_TEMPERAMENT,
+        ph2d_tool_painter::ids::PAINTER_DEFORM_TEMPERAMENT,
         "Warp tool",
         &[
-            (core_ids::PAINTER_DEFORM_TEMPERAMENT_RESHAPE, "Liquify"),
-            (core_ids::PAINTER_DEFORM_TEMPERAMENT_TRANSFORM, "Transform"),
+            (
+                ph2d_tool_painter::ids::PAINTER_DEFORM_TEMPERAMENT_RESHAPE,
+                "Liquify",
+            ),
+            (
+                ph2d_tool_painter::ids::PAINTER_DEFORM_TEMPERAMENT_TRANSFORM,
+                "Transform",
+            ),
         ],
         selected,
     );
@@ -104,13 +109,25 @@ fn paint_transform_body(
         x,
         content_w,
         y,
-        core_ids::PAINTER_DEFORM_TRANSFORM_MODE,
+        ph2d_tool_painter::ids::PAINTER_DEFORM_TRANSFORM_MODE,
         "Transform mode",
         &[
-            (core_ids::PAINTER_DEFORM_TRANSFORM_MODE_UNIFORM, "Uniform"),
-            (core_ids::PAINTER_DEFORM_TRANSFORM_MODE_FREE, "Free"),
-            (core_ids::PAINTER_DEFORM_TRANSFORM_MODE_DISTORT, "Distort"),
-            (core_ids::PAINTER_DEFORM_TRANSFORM_MODE_WARP, "Warp"),
+            (
+                ph2d_tool_painter::ids::PAINTER_DEFORM_TRANSFORM_MODE_UNIFORM,
+                "Uniform",
+            ),
+            (
+                ph2d_tool_painter::ids::PAINTER_DEFORM_TRANSFORM_MODE_FREE,
+                "Free",
+            ),
+            (
+                ph2d_tool_painter::ids::PAINTER_DEFORM_TRANSFORM_MODE_DISTORT,
+                "Distort",
+            ),
+            (
+                ph2d_tool_painter::ids::PAINTER_DEFORM_TRANSFORM_MODE_WARP,
+                "Warp",
+            ),
         ],
         selected,
     )
@@ -137,8 +154,8 @@ fn paint_reshape_body(
         content_w,
         y,
         "Size",
-        core_ids::PAINTER_DEFORM_SIZE_SLIDER,
-        core_ids::PAINTER_DEFORM_SIZE_CHIP,
+        ph2d_tool_painter::ids::PAINTER_DEFORM_SIZE_SLIDER,
+        ph2d_tool_painter::ids::PAINTER_DEFORM_SIZE_CHIP,
         brush.deform_size_norm,
     );
     y = paint_slider_chip_row(
@@ -148,8 +165,8 @@ fn paint_reshape_body(
         content_w,
         y,
         "Pressure",
-        core_ids::PAINTER_DEFORM_PRESSURE_SLIDER,
-        core_ids::PAINTER_DEFORM_PRESSURE_CHIP,
+        ph2d_tool_painter::ids::PAINTER_DEFORM_PRESSURE_SLIDER,
+        ph2d_tool_painter::ids::PAINTER_DEFORM_PRESSURE_CHIP,
         brush.deform_pressure,
     );
     // Distortion + Momentum shape the field; Reconstruct only resamples, so they're hidden there (never a
@@ -162,8 +179,8 @@ fn paint_reshape_body(
             content_w,
             y,
             "Distortion",
-            core_ids::PAINTER_DEFORM_DISTORTION_SLIDER,
-            core_ids::PAINTER_DEFORM_DISTORTION_CHIP,
+            ph2d_tool_painter::ids::PAINTER_DEFORM_DISTORTION_SLIDER,
+            ph2d_tool_painter::ids::PAINTER_DEFORM_DISTORTION_CHIP,
             brush.deform_distortion,
         );
         y = paint_slider_chip_row(
@@ -173,8 +190,8 @@ fn paint_reshape_body(
             content_w,
             y,
             "Momentum",
-            core_ids::PAINTER_DEFORM_MOMENTUM_SLIDER,
-            core_ids::PAINTER_DEFORM_MOMENTUM_CHIP,
+            ph2d_tool_painter::ids::PAINTER_DEFORM_MOMENTUM_SLIDER,
+            ph2d_tool_painter::ids::PAINTER_DEFORM_MOMENTUM_CHIP,
             brush.deform_momentum,
         );
         // Strength — bipolar (0.5 = neutral; Pinch −suck / +bulge, Twist CW/CCW). Neutral in Reconstruct.
@@ -185,8 +202,8 @@ fn paint_reshape_body(
             content_w,
             y,
             "Strength",
-            core_ids::PAINTER_DEFORM_STRENGTH_SLIDER,
-            core_ids::PAINTER_DEFORM_STRENGTH_CHIP,
+            ph2d_tool_painter::ids::PAINTER_DEFORM_STRENGTH_SLIDER,
+            ph2d_tool_painter::ids::PAINTER_DEFORM_STRENGTH_CHIP,
             brush.deform_strength,
         );
     }
@@ -200,7 +217,7 @@ fn paint_reshape_body(
             x,
             content_w,
             y,
-            core_ids::PAINTER_DEFORM_RELIEF,
+            ph2d_tool_painter::ids::PAINTER_DEFORM_RELIEF,
             "Affect Relief",
             brush.deform_affect_relief,
         );
@@ -228,9 +245,12 @@ fn paint_actions(
         NodeId(0),
         "Deform actions",
         &[
-            (core_ids::PAINTER_DEFORM_RESET, "Reset"),
-            (core_ids::PAINTER_DEFORM_APPLY, "Apply"),
-            (core_ids::PAINTER_DEFORM_APPLY_KEEP, "Apply & Keep"),
+            (ph2d_tool_painter::ids::PAINTER_DEFORM_RESET, "Reset"),
+            (ph2d_tool_painter::ids::PAINTER_DEFORM_APPLY, "Apply"),
+            (
+                ph2d_tool_painter::ids::PAINTER_DEFORM_APPLY_KEEP,
+                "Apply & Keep",
+            ),
         ],
         usize::MAX,
     )
@@ -248,17 +268,23 @@ fn mode_card(
 ) -> f32 {
     let header_h = Spacing::Xl3.px();
     let pad = Spacing::Lg.px();
-    let card = Card::new(core_ids::PAINTER_DEFORM_MODE_CARD).title("MODE");
+    let card = Card::new(ph2d_tool_painter::ids::PAINTER_DEFORM_MODE_CARD).title("MODE");
     let seg = SegmentedAdaptive::new(
-        core_ids::PAINTER_DEFORM_MODE,
+        ph2d_tool_painter::ids::PAINTER_DEFORM_MODE,
         "Deform mode",
         vec![
-            SegmentedOption::new(core_ids::PAINTER_DEFORM_MODE_PUSH, "Push"),
-            SegmentedOption::new(core_ids::PAINTER_DEFORM_MODE_TWIST, "Twist"),
-            SegmentedOption::new(core_ids::PAINTER_DEFORM_MODE_PINCH, "Pinch"),
-            SegmentedOption::new(core_ids::PAINTER_DEFORM_MODE_WRINKLE, "Wrinkle"),
-            SegmentedOption::new(core_ids::PAINTER_DEFORM_MODE_FOLD, "Fold"),
-            SegmentedOption::new(core_ids::PAINTER_DEFORM_MODE_RECONSTRUCT, "Reconstruct"),
+            SegmentedOption::new(ph2d_tool_painter::ids::PAINTER_DEFORM_MODE_PUSH, "Push"),
+            SegmentedOption::new(ph2d_tool_painter::ids::PAINTER_DEFORM_MODE_TWIST, "Twist"),
+            SegmentedOption::new(ph2d_tool_painter::ids::PAINTER_DEFORM_MODE_PINCH, "Pinch"),
+            SegmentedOption::new(
+                ph2d_tool_painter::ids::PAINTER_DEFORM_MODE_WRINKLE,
+                "Wrinkle",
+            ),
+            SegmentedOption::new(ph2d_tool_painter::ids::PAINTER_DEFORM_MODE_FOLD, "Fold"),
+            SegmentedOption::new(
+                ph2d_tool_painter::ids::PAINTER_DEFORM_MODE_RECONSTRUCT,
+                "Reconstruct",
+            ),
         ],
     )
     .selected(selected);
@@ -328,7 +354,6 @@ fn seg_group(
 #[cfg(test)]
 mod tests {
     use ph2d_a11y::NodeId;
-    use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::panel::{PaintCtx, PanelHostInternal};
     use ph2d_editor_core::screens::HeroLayout;
     use ph2d_editor_core::zones::Rect;
@@ -380,14 +405,14 @@ mod tests {
     #[test]
     fn deform_mode_paints_only_deform_controls() {
         let ids = body_hit_ids(deform_brush());
-        for did in core_ids::PAINTER_DEFORM_MODE_IDS
+        for did in ph2d_tool_painter::ids::PAINTER_DEFORM_MODE_IDS
             .iter()
-            .chain(core_ids::PAINTER_DEFORM_ACTION_IDS.iter())
+            .chain(ph2d_tool_painter::ids::PAINTER_DEFORM_ACTION_IDS.iter())
             .chain(
                 [
-                    core_ids::PAINTER_DEFORM_SIZE_SLIDER,
-                    core_ids::PAINTER_DEFORM_PRESSURE_SLIDER,
-                    core_ids::PAINTER_DEFORM_STRENGTH_SLIDER,
+                    ph2d_tool_painter::ids::PAINTER_DEFORM_SIZE_SLIDER,
+                    ph2d_tool_painter::ids::PAINTER_DEFORM_PRESSURE_SLIDER,
+                    ph2d_tool_painter::ids::PAINTER_DEFORM_STRENGTH_SLIDER,
                 ]
                 .iter(),
             )
@@ -399,9 +424,9 @@ mod tests {
         }
         // Mode-exclusive: no shared brush control leaks in.
         for bid in [
-            core_ids::PAINTER_BRUSH_SIZE_SLIDER,
-            core_ids::PAINTER_BRUSH_STRENGTH_SLIDER,
-            core_ids::PAINTER_BRUSH_SYNC,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_SIZE_SLIDER,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_STRENGTH_SLIDER,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_SYNC,
         ] {
             assert!(
                 !ids.contains(&bid),
@@ -415,22 +440,22 @@ mod tests {
         // Push (default mode 0) shows Distortion + Momentum; Reconstruct (mode 5) hides them (they don't
         // apply → never a silent no-op).
         let push = body_hit_ids(deform_brush());
-        assert!(push.contains(&core_ids::PAINTER_DEFORM_DISTORTION_SLIDER));
-        assert!(push.contains(&core_ids::PAINTER_DEFORM_MOMENTUM_SLIDER));
+        assert!(push.contains(&ph2d_tool_painter::ids::PAINTER_DEFORM_DISTORTION_SLIDER));
+        assert!(push.contains(&ph2d_tool_painter::ids::PAINTER_DEFORM_MOMENTUM_SLIDER));
         let reconstruct = ph2d_tool_painter::BrushSettings {
             deform_mode: 5,
             ..deform_brush()
         };
         let ids = body_hit_ids(reconstruct);
-        assert!(!ids.contains(&core_ids::PAINTER_DEFORM_DISTORTION_SLIDER));
-        assert!(!ids.contains(&core_ids::PAINTER_DEFORM_MOMENTUM_SLIDER));
+        assert!(!ids.contains(&ph2d_tool_painter::ids::PAINTER_DEFORM_DISTORTION_SLIDER));
+        assert!(!ids.contains(&ph2d_tool_painter::ids::PAINTER_DEFORM_MOMENTUM_SLIDER));
     }
 
     #[test]
     fn temperament_toggle_is_always_painted() {
         // Both temperament segments (Reshape / Transform) are hit-registered in either temperament, so the
         // artist can always switch back.
-        for id in core_ids::PAINTER_DEFORM_TEMPERAMENT_IDS {
+        for id in ph2d_tool_painter::ids::PAINTER_DEFORM_TEMPERAMENT_IDS {
             assert!(
                 body_hit_ids(deform_brush()).contains(&id),
                 "temperament segment {id:?} not painted in Reshape"
@@ -440,7 +465,7 @@ mod tests {
             deform_temperament: ph2d_tool_painter::DEFORM_TEMPERAMENT_TRANSFORM,
             ..deform_brush()
         };
-        for id in core_ids::PAINTER_DEFORM_TEMPERAMENT_IDS {
+        for id in ph2d_tool_painter::ids::PAINTER_DEFORM_TEMPERAMENT_IDS {
             assert!(
                 body_hit_ids(transform).contains(&id),
                 "temperament segment {id:?} not painted in Transform"
@@ -457,7 +482,7 @@ mod tests {
             ..deform_brush()
         };
         let ids = body_hit_ids(transform);
-        for id in core_ids::PAINTER_DEFORM_TRANSFORM_MODE_IDS {
+        for id in ph2d_tool_painter::ids::PAINTER_DEFORM_TRANSFORM_MODE_IDS {
             assert!(
                 ids.contains(&id),
                 "transform sub-mode {id:?} shown in Transform"
@@ -465,19 +490,19 @@ mod tests {
         }
         // The Reshape bodies are gone.
         assert!(
-            !ids.contains(&core_ids::PAINTER_DEFORM_MODE_PUSH),
+            !ids.contains(&ph2d_tool_painter::ids::PAINTER_DEFORM_MODE_PUSH),
             "Reshape mode card hidden in Transform"
         );
         assert!(
-            !ids.contains(&core_ids::PAINTER_DEFORM_SIZE_SLIDER),
+            !ids.contains(&ph2d_tool_painter::ids::PAINTER_DEFORM_SIZE_SLIDER),
             "Reshape brush sliders hidden in Transform"
         );
         // But the shared session actions survive.
-        assert!(ids.contains(&core_ids::PAINTER_DEFORM_APPLY));
+        assert!(ids.contains(&ph2d_tool_painter::ids::PAINTER_DEFORM_APPLY));
         // And Reshape keeps the transform sub-mode hidden.
         let reshape = body_hit_ids(deform_brush());
         assert!(
-            !reshape.contains(&core_ids::PAINTER_DEFORM_TRANSFORM_MODE_UNIFORM),
+            !reshape.contains(&ph2d_tool_painter::ids::PAINTER_DEFORM_TRANSFORM_MODE_UNIFORM),
             "transform sub-mode hidden in Reshape"
         );
     }

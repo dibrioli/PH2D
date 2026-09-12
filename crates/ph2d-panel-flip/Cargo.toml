@@ -18,6 +18,7 @@ authors.workspace = true
 # snapshots each frame via `set_current_flip_*` (flip_bridge).
 
 [dependencies]
+ph2d-tool-registry = { path = "../ph2d-tool-registry" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }
 # The Flip Style vocabulary (`FlipStyleSnapshot` + slider mappings) lives in the
 # tool crate (mirror of `ph2d-tool-vector::params`): the panel reads the snapshot

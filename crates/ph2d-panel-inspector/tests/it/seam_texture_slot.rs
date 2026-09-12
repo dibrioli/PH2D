@@ -86,7 +86,7 @@ fn the_texture_slot_is_painted_and_hit_indexed() {
     let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
     let rect = rects
         .iter()
-        .find(|(n, _)| *n == ids::INSP_RENDER_TEXTURE_SLOT)
+        .find(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_RENDER_TEXTURE_SLOT)
         .map(|(_, r)| *r)
         .expect("a ranhura nunca foi pintada nem registada");
     assert!(rect.w > 0.0 && rect.h > 0.0, "a ranhura tem area zero");
@@ -94,7 +94,7 @@ fn the_texture_slot_is_painted_and_hit_indexed() {
     // pergunta que a queda faz.
     assert_eq!(
         host.hit_at(rect.x + rect.w * 0.5, rect.y + rect.h * 0.5),
-        Some(ids::INSP_RENDER_TEXTURE_SLOT)
+        Some(ph2d_panel_inspector::ids::INSP_RENDER_TEXTURE_SLOT)
     );
     clear();
 }
@@ -109,7 +109,7 @@ fn the_texture_slot_is_painted_and_hit_indexed() {
 fn the_panel_translates_the_slot_id_back_to_its_sprite() {
     let (_host, _state) = host();
     assert_eq!(
-        texture_slot_pick(ids::INSP_RENDER_TEXTURE_SLOT),
+        texture_slot_pick(ph2d_panel_inspector::ids::INSP_RENDER_TEXTURE_SLOT),
         Some(ENTITY)
     );
     // ⛔ E um id qualquer não é a ranhura.
@@ -131,10 +131,13 @@ fn with_no_sprite_there_is_no_slot() {
     assert!(
         !rects
             .iter()
-            .any(|(n, _)| *n == ids::INSP_RENDER_TEXTURE_SLOT),
+            .any(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_RENDER_TEXTURE_SLOT),
         "a ranhura foi pintada sem sprite nenhuma"
     );
-    assert_eq!(texture_slot_pick(ids::INSP_RENDER_TEXTURE_SLOT), None);
+    assert_eq!(
+        texture_slot_pick(ph2d_panel_inspector::ids::INSP_RENDER_TEXTURE_SLOT),
+        None
+    );
 }
 
 /// ⭐⭐⭐ **Carregar na ranhura ABRE A BIBLIOTECA** — *«o que é que eu posso pôr aqui?»*.
@@ -152,7 +155,7 @@ fn clicking_the_texture_slot_opens_the_library() {
     let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
     let rect = rects
         .iter()
-        .find(|(n, _)| *n == ids::INSP_RENDER_TEXTURE_SLOT)
+        .find(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_RENDER_TEXTURE_SLOT)
         .map(|(_, r)| *r)
         .expect("a ranhura nunca foi pintada");
     for ev in host.click_at(rect.x + rect.w * 0.5, rect.y + rect.h * 0.5) {

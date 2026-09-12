@@ -39,20 +39,20 @@ fn button(store: &mut WidgetStore, id: ph2d_a11y::NodeId) {
 }
 
 pub fn populate(store: &mut WidgetStore) {
-    button(store, ids::TOKENS_CLOSE);
-    button(store, ids::TOKENS_RESET_ALL);
+    button(store, crate::ids::TOKENS_CLOSE);
+    button(store, crate::ids::TOKENS_RESET_ALL);
     // O interop DTCG (plano UI/UX W9). ⚠️ Registados SEMPRE, como todos os outros: o registro é
     // sobre *este id pode receber foco*, e o `paint` também os oferece sempre — ver o `ids`.
-    button(store, ids::TOKENS_DTCG_EXPORT);
-    button(store, ids::TOKENS_DTCG_IMPORT);
+    button(store, crate::ids::TOKENS_DTCG_EXPORT);
+    button(store, crate::ids::TOKENS_DTCG_IMPORT);
     for row in 0..ColorToken::ALL.len() {
         // ⚠️ A swatch é alvo de PICKER, não botão: registá-la como botão faria o clique acender o
         // widget e **nunca abrir o picker** — a cor ficaria ineditável com todos os gates verdes.
         store.register_picker_swatch(ids::tokens_swatch_id(row));
-        button(store, ids::tokens_reset_id(row));
+        button(store, crate::ids::tokens_reset_id(row));
         // O elo: um botao por linha, vivo em TODAS elas (qualquer token pode seguir qualquer
         // outro). Sem o registro ele seria pintado, hit-registrado e MORTO sob o rato.
-        button(store, ids::tokens_link_id(row));
+        button(store, crate::ids::tokens_link_id(row));
     }
 
     // A família NUMÉRICA (plano UI/UX W4c.1) — a SEGUNDA lista, registada pelo mesmo laço e pelo
@@ -62,7 +62,7 @@ pub fn populate(store: &mut WidgetStore) {
         // widget e **nunca abrir o campo** — o número ficaria inedidável com todos os gates verdes,
         // que é exactamente a cicatriz que a swatch de cor já pagou.
         store.register(
-            ids::tokens_num_chip_id(row),
+            crate::ids::tokens_num_chip_id(row),
             InteractiveState::NumberInput {
                 state: TextInputState::Normal,
                 value: 0.0,
@@ -72,17 +72,22 @@ pub fn populate(store: &mut WidgetStore) {
                 selection_anchor: None,
             },
         );
-        store.set_number_range(ids::tokens_num_chip_id(row), 0.0, PX_DRAG_MAX, PX_STEP);
-        button(store, ids::tokens_num_reset_id(row));
-        button(store, ids::tokens_num_link_id(row));
+        store.set_number_range(
+            crate::ids::tokens_num_chip_id(row),
+            0.0,
+            PX_DRAG_MAX,
+            PX_STEP,
+        );
+        button(store, crate::ids::tokens_num_reset_id(row));
+        button(store, crate::ids::tokens_num_link_id(row));
         // O `f(x)` (W4c.3). ⚠️ Registado em TODAS as linhas mesmo que o `paint` só o ofereça a
         // algumas: o registro é sobre *este id pode receber foco*, e condicioná-lo ao estado do
         // documento faria o botão nascer morto na linha em que ele acabou de aparecer.
-        button(store, ids::tokens_num_fx_id(row));
+        button(store, crate::ids::tokens_num_fx_id(row));
         // ⚠️ E o CAMPO é um `TextInput`, nunca um botão — a mesma cicatriz que a swatch e o chip
         // já pagaram: como botão, o clique acenderia o widget e nunca abriria o cursor.
         store.register(
-            ids::tokens_num_formula_id(row),
+            crate::ids::tokens_num_formula_id(row),
             InteractiveState::TextInput {
                 state: TextInputState::Normal,
                 text: String::new(),

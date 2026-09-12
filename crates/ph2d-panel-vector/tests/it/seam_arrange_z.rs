@@ -33,9 +33,13 @@ fn to_back_y(z: Option<f32>) -> f32 {
     state::set_z_index(z);
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let mut st = VectorPanelState;
-    host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::VECTOR_ARRANGE_TO_BACK)
-        .expect("o botao To Back tem de ser pintado sempre")
-        .y
+    host.painted_rect::<VectorPanel>(
+        &mut st,
+        VIEWPORT,
+        ph2d_tool_vector::ids::VECTOR_ARRANGE_TO_BACK,
+    )
+    .expect("o botao To Back tem de ser pintado sempre")
+    .y
 }
 
 /// **Publicar o Z acrescenta uma linha** — o campo ocupa espaço, logo existe.
@@ -80,8 +84,12 @@ fn no_selection_paints_no_z_row() {
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let mut st = VectorPanelState;
     assert!(
-        host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::VECTOR_ARRANGE_TO_BACK)
-            .is_none(),
+        host.painted_rect::<VectorPanel>(
+            &mut st,
+            VIEWPORT,
+            ph2d_tool_vector::ids::VECTOR_ARRANGE_TO_BACK
+        )
+        .is_none(),
         "a secao Arrange subiu com a selecao vazia — todos os nove botoes dela so' sabem recusar"
     );
     state::set_current_selection_count(1);

@@ -137,12 +137,12 @@ pub(crate) fn paint_transform_section(
         hit_index,
         cur_y,
         pos_label,
-        ids::INSP_TRANSFORM_POS_X,
+        crate::ids::INSP_TRANSFORM_POS_X,
         "X",
         ColorToken::Danger,
         pos_step,
         Some((
-            ids::INSP_TRANSFORM_POS_Y,
+            crate::ids::INSP_TRANSFORM_POS_Y,
             "Y",
             ColorToken::Success,
             pos_step,
@@ -155,7 +155,7 @@ pub(crate) fn paint_transform_section(
         hit_index,
         cur_y,
         rot_label,
-        ids::INSP_TRANSFORM_ROT,
+        crate::ids::INSP_TRANSFORM_ROT,
         "",
         ColorToken::Text3,
         angle_step,
@@ -168,11 +168,16 @@ pub(crate) fn paint_transform_section(
         hit_index,
         cur_y,
         "Scale",
-        ids::INSP_TRANSFORM_SCALE_X,
+        crate::ids::INSP_TRANSFORM_SCALE_X,
         "X",
         ColorToken::Danger,
         0.1, // LITERAL-PX-OK: scale NumberInput step
-        Some((ids::INSP_TRANSFORM_SCALE_Y, "Y", ColorToken::Success, 0.1)), // LITERAL-PX-OK: scale NumberInput step
+        Some((
+            crate::ids::INSP_TRANSFORM_SCALE_Y,
+            "Y",
+            ColorToken::Success,
+            0.1,
+        )), // LITERAL-PX-OK: scale NumberInput step
     );
     cur_y += h_scale + row_gap;
     // Skew X/Y in degrees (ADR-0025-amendment-1). Authoring range is
@@ -184,12 +189,12 @@ pub(crate) fn paint_transform_section(
         hit_index,
         cur_y,
         skew_label,
-        ids::INSP_TRANSFORM_SKEW_X,
+        crate::ids::INSP_TRANSFORM_SKEW_X,
         "X",
         ColorToken::Danger,
         angle_step,
         Some((
-            ids::INSP_TRANSFORM_SKEW_Y,
+            crate::ids::INSP_TRANSFORM_SKEW_Y,
             "Y",
             ColorToken::Success,
             angle_step,
@@ -291,8 +296,8 @@ fn paint_header_and_begin_fold(
         hit_index.register(color_id, circle_rect);
     }
     let reset_rect = Rect::new(x + w - color_slot_w - reset_size, y, reset_size, reset_size);
-    let reset_state = store.button_visual(ids::INSP_TRANSFORM_RESET);
-    hit_index.register(ids::INSP_TRANSFORM_RESET, reset_rect);
+    let reset_state = store.button_visual(crate::ids::INSP_TRANSFORM_RESET);
+    hit_index.register(crate::ids::INSP_TRANSFORM_RESET, reset_rect);
     paint_icon_button(
         reset_rect,
         IconGlyph::Builtin(IconId::Reset),

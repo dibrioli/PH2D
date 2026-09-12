@@ -50,10 +50,10 @@ fn width_slider_drag_reaches_tool_style() {
 
     // A drag writes the slider's stored value, then the dispatch emits
     // ValueChanged. Simulate both.
-    host.set_slider_value(ids::VECTOR_WIDTH, 1.0);
+    host.set_slider_value(ph2d_tool_vector::ids::VECTOR_WIDTH, 1.0);
     let outcome = host.apply_panel_event::<VectorPanel>(
         &mut panel_state,
-        WidgetEvent::ValueChanged(ids::VECTOR_WIDTH),
+        WidgetEvent::ValueChanged(ph2d_tool_vector::ids::VECTOR_WIDTH),
     );
     assert_eq!(
         outcome,
@@ -83,10 +83,10 @@ fn fill_opacity_slider_sets_alpha_through_seam() {
     let mut tool = VectorTool::default();
     assert_ne!(tool.fill_rgba()[3], 0, "precondition: default fill opaque");
 
-    host.set_slider_value(ids::VECTOR_FILL_OPACITY, 0.0);
+    host.set_slider_value(ph2d_tool_vector::ids::VECTOR_FILL_OPACITY, 0.0);
     let outcome = host.apply_panel_event::<VectorPanel>(
         &mut panel_state,
-        WidgetEvent::ValueChanged(ids::VECTOR_FILL_OPACITY),
+        WidgetEvent::ValueChanged(ph2d_tool_vector::ids::VECTOR_FILL_OPACITY),
     );
     assert_eq!(
         outcome,
@@ -124,28 +124,37 @@ fn mode_button_click_switches_tool_mode_through_seam() {
     // que falhou (Enio 2026-07-09): pintados + registrados, mas ausentes da
     // allowlist de `event.rs` → o clique nunca virava `ToolPanelEvent`.
     for (id, want) in [
-        (ids::VECTOR_MODE_PEN, DrawMode::Pen),
+        (ph2d_tool_vector::ids::VECTOR_MODE_PEN, DrawMode::Pen),
         // O 11º modo: o **LÁPIS** (mão livre). Mesmo caminho, mesma armadilha.
-        (ids::VECTOR_MODE_PENCIL, DrawMode::Pencil),
-        (ids::VECTOR_MODE_TEXT, DrawMode::Text),
-        (ids::VECTOR_MODE_NODE, DrawMode::Node),
+        (ph2d_tool_vector::ids::VECTOR_MODE_PENCIL, DrawMode::Pencil),
+        (ph2d_tool_vector::ids::VECTOR_MODE_TEXT, DrawMode::Text),
+        (ph2d_tool_vector::ids::VECTOR_MODE_NODE, DrawMode::Node),
         // O 5º pill (reforma da UI): `DrawMode::Shape` não tinha botão nenhum, então a
         // fileira de modos ficava TODA apagada justamente enquanto se desenhava uma
         // forma. O botão novo é inútil se não chegar ao tool — este arm é o gate.
-        (ids::VECTOR_MODE_SHAPE, DrawMode::Shape),
+        (ph2d_tool_vector::ids::VECTOR_MODE_SHAPE, DrawMode::Shape),
         // O 6º pill: o CONECTOR.
-        (ids::VECTOR_MODE_CONNECT, DrawMode::Connect),
+        (
+            ph2d_tool_vector::ids::VECTOR_MODE_CONNECT,
+            DrawMode::Connect,
+        ),
         // **Pick Shapes** (Blend) — coleta formas na ordem de clique. O botão dele mora na seção
         // BLEND (não nesta fileira), mas o id/seam é o mesmo.
-        (ids::VECTOR_MODE_PICKBLEND, DrawMode::PickBlend),
+        (
+            ph2d_tool_vector::ids::VECTOR_MODE_PICKBLEND,
+            DrawMode::PickBlend,
+        ),
         // O 9º e 10º pills: **Fillet / Chamfer** (arredondar / chanfrar quina). Pintados +
         // registrados, mas mortos se ausentes da allowlist de `event.rs` ou do switch da tool.
-        (ids::VECTOR_MODE_FILLET, DrawMode::Fillet),
-        (ids::VECTOR_MODE_CHAMFER, DrawMode::Chamfer),
+        (ph2d_tool_vector::ids::VECTOR_MODE_FILLET, DrawMode::Fillet),
+        (
+            ph2d_tool_vector::ids::VECTOR_MODE_CHAMFER,
+            DrawMode::Chamfer,
+        ),
         // O 14º pill: a **MOLDURA** (plano UI/UX W0). O clique tem de TROCAR o modo — pintado e
         // registado, mas ausente da allowlist, ele acende sob o mouse e não faz nada (foi
         // exactamente o que este gate pegou quando a wave foi escrita).
-        (ids::VECTOR_MODE_FRAME, DrawMode::Frame),
+        (ph2d_tool_vector::ids::VECTOR_MODE_FRAME, DrawMode::Frame),
     ] {
         let outcome =
             host.apply_panel_event::<VectorPanel>(&mut panel_state, WidgetEvent::Click(id));
@@ -183,7 +192,7 @@ fn clicking_connect_pill_reaches_the_tool() {
 
     let outcome = host.apply_panel_event::<VectorPanel>(
         &mut panel_state,
-        WidgetEvent::Click(ids::VECTOR_MODE_CONNECT),
+        WidgetEvent::Click(ph2d_tool_vector::ids::VECTOR_MODE_CONNECT),
     );
     assert_eq!(
         outcome,
@@ -223,9 +232,18 @@ fn the_three_align_chips_are_clickable_and_reach_the_tool() {
     assert_eq!(tool.stroke_align(), StrokeAlign::Centre);
 
     for (id, want) in [
-        (ids::VECTOR_ALIGN_INNER, StrokeAlign::Inner),
-        (ids::VECTOR_ALIGN_OUTER, StrokeAlign::Outer),
-        (ids::VECTOR_ALIGN_CENTRE, StrokeAlign::Centre),
+        (
+            ph2d_tool_vector::ids::VECTOR_ALIGN_INNER,
+            StrokeAlign::Inner,
+        ),
+        (
+            ph2d_tool_vector::ids::VECTOR_ALIGN_OUTER,
+            StrokeAlign::Outer,
+        ),
+        (
+            ph2d_tool_vector::ids::VECTOR_ALIGN_CENTRE,
+            StrokeAlign::Centre,
+        ),
     ] {
         let mut host = MockPanelHost::with_panel::<VectorPanel>();
         let mut panel_state = VectorPanelState;
@@ -263,25 +281,25 @@ fn stroke_cap_dash_and_gap_reach_the_tool() {
 
     let c = host.apply_panel_event::<VectorPanel>(
         &mut panel_state,
-        WidgetEvent::Click(ids::VECTOR_CAP_ROUND),
+        WidgetEvent::Click(ph2d_tool_vector::ids::VECTOR_CAP_ROUND),
     );
     assert_eq!(c, EventOutcome::Consumed, "Cap button not wired");
     drain_into_tool(&mut host, &mut tool);
     assert_eq!(tool.cap(), StrokeCap::Round);
 
-    host.set_slider_value(ids::VECTOR_DASH, 1.0);
+    host.set_slider_value(ph2d_tool_vector::ids::VECTOR_DASH, 1.0);
     let d = host.apply_panel_event::<VectorPanel>(
         &mut panel_state,
-        WidgetEvent::ValueChanged(ids::VECTOR_DASH),
+        WidgetEvent::ValueChanged(ph2d_tool_vector::ids::VECTOR_DASH),
     );
     assert_eq!(d, EventOutcome::Consumed, "Dash slider not wired");
     drain_into_tool(&mut host, &mut tool);
     assert!((tool.dash() - DASH_MAX).abs() < 1e-6);
 
-    host.set_slider_value(ids::VECTOR_GAP, 1.0);
+    host.set_slider_value(ph2d_tool_vector::ids::VECTOR_GAP, 1.0);
     let g = host.apply_panel_event::<VectorPanel>(
         &mut panel_state,
-        WidgetEvent::ValueChanged(ids::VECTOR_GAP),
+        WidgetEvent::ValueChanged(ph2d_tool_vector::ids::VECTOR_GAP),
     );
     assert_eq!(g, EventOutcome::Consumed, "Gap slider not wired");
     drain_into_tool(&mut host, &mut tool);
@@ -306,7 +324,7 @@ fn every_shape_and_every_field_in_the_catalog_reaches_the_tool() {
     for (i, d) in shapes::SHAPES.iter().enumerate() {
         let outcome = host.apply_panel_event::<VectorPanel>(
             &mut panel_state,
-            WidgetEvent::Click(ids::vector_shape_id(i)),
+            WidgetEvent::Click(ph2d_tool_vector::ids::vector_shape_id(i)),
         );
         assert_eq!(
             outcome,
@@ -334,7 +352,7 @@ fn every_shape_and_every_field_in_the_catalog_reaches_the_tool() {
 
         // E cada campo declarado chega ao tool com o VALOR (nao um track 0..1).
         for (fi, f) in d.fields.iter().enumerate() {
-            let id = ids::vector_shape_field_id(fi);
+            let id = ph2d_tool_vector::ids::vector_shape_field_id(fi);
             host.set_number_value(id, f.max);
             let outcome = host
                 .apply_panel_event::<VectorPanel>(&mut panel_state, WidgetEvent::ValueChanged(id));
@@ -387,8 +405,8 @@ fn every_marker_option_reaches_the_tool_and_closes_its_chip() {
     );
 
     for (slot, dd) in [
-        (0_usize, ids::VECTOR_MARKER_START_DD),
-        (1_usize, ids::VECTOR_MARKER_END_DD),
+        (0_usize, ph2d_tool_vector::ids::VECTOR_MARKER_START_DD),
+        (1_usize, ph2d_tool_vector::ids::VECTOR_MARKER_END_DD),
     ] {
         for (i, &want) in ALL_MARKERS.iter().enumerate() {
             // Abre o chip (o que o dispatch genérico faz num clique nele).
@@ -399,7 +417,7 @@ fn every_marker_option_reaches_the_tool_and_closes_its_chip() {
 
             let outcome = host.apply_panel_event::<VectorPanel>(
                 &mut panel_state,
-                WidgetEvent::Click(ids::vector_marker_option_id(slot, i)),
+                WidgetEvent::Click(ph2d_tool_vector::ids::vector_marker_option_id(slot, i)),
             );
             assert_eq!(
                 outcome,
@@ -445,13 +463,16 @@ fn every_marker_option_reaches_the_tool_and_closes_its_chip() {
     // Os dois seletores são INDEPENDENTES: o último loop deixou End na última ponta, e o
     // Start na mesma — mas escolher no Start não pode mexer no End.
     let end_before = tool.marker_end();
-    match host.store_mut().get_mut(ids::VECTOR_MARKER_START_DD) {
+    match host
+        .store_mut()
+        .get_mut(ph2d_tool_vector::ids::VECTOR_MARKER_START_DD)
+    {
         Some(InteractiveState::Dropdown { open, .. }) => *open = true,
         _ => unreachable!(),
     }
     host.apply_panel_event::<VectorPanel>(
         &mut panel_state,
-        WidgetEvent::Click(ids::vector_marker_option_id(0, 1)), // Triangle
+        WidgetEvent::Click(ph2d_tool_vector::ids::vector_marker_option_id(0, 1)), // Triangle
     );
     drain_into_tool(&mut host, &mut tool);
     assert_eq!(tool.marker_start(), Marker::Triangle);
@@ -500,14 +521,14 @@ fn boolean_button_click_forwards_to_the_bus_for_the_shell() {
 fn arrange_buttons_forward_to_the_bus_for_the_shell() {
     for id in [
         ids::VECTOR_ARRANGE_DUPLICATE,
-        ids::VECTOR_ARRANGE_TO_BACK,
-        ids::VECTOR_ARRANGE_BACKWARD,
-        ids::VECTOR_ARRANGE_FORWARD,
-        ids::VECTOR_ARRANGE_TO_FRONT,
-        ids::VECTOR_ARRANGE_FLIP_H,
-        ids::VECTOR_ARRANGE_FLIP_V,
-        ids::VECTOR_ARRANGE_ROTATE_CW,
-        ids::VECTOR_ARRANGE_ROTATE_CCW,
+        ph2d_tool_vector::ids::VECTOR_ARRANGE_TO_BACK,
+        ph2d_tool_vector::ids::VECTOR_ARRANGE_BACKWARD,
+        ph2d_tool_vector::ids::VECTOR_ARRANGE_FORWARD,
+        ph2d_tool_vector::ids::VECTOR_ARRANGE_TO_FRONT,
+        ph2d_tool_vector::ids::VECTOR_ARRANGE_FLIP_H,
+        ph2d_tool_vector::ids::VECTOR_ARRANGE_FLIP_V,
+        ph2d_tool_vector::ids::VECTOR_ARRANGE_ROTATE_CW,
+        ph2d_tool_vector::ids::VECTOR_ARRANGE_ROTATE_CCW,
     ] {
         let mut host = MockPanelHost::with_panel::<VectorPanel>();
         let mut panel_state = VectorPanelState;
@@ -543,7 +564,7 @@ fn vertex_type_button_click_forwards_to_the_bus_for_the_shell() {
 
     let outcome = host.apply_panel_event::<VectorPanel>(
         &mut panel_state,
-        WidgetEvent::Click(ids::VECTOR_VERT_SMOOTH),
+        WidgetEvent::Click(ph2d_tool_vector::ids::VECTOR_VERT_SMOOTH),
     );
     assert_eq!(
         outcome,
@@ -554,7 +575,7 @@ fn vertex_type_button_click_forwards_to_the_bus_for_the_shell() {
     let forwarded = host.drained_actions().iter().any(|a| {
         matches!(
             a,
-            EditorAction::ToolPanelEvent(PanelEvent::Click(id)) if *id == ids::VECTOR_VERT_SMOOTH
+            EditorAction::ToolPanelEvent(PanelEvent::Click(id)) if *id == ph2d_tool_vector::ids::VECTOR_VERT_SMOOTH
         )
     });
     assert!(
@@ -689,8 +710,9 @@ fn picking_a_category_closes_the_dropdown_chip() {
 
     for (i, _g) in shapes::ALL_GROUPS.iter().enumerate() {
         // Abre o chip (o que o dispatch genérico faz num clique nele).
-        if let Some(InteractiveState::Dropdown { open, .. }) =
-            host.store_mut().get_mut(ids::VECTOR_SHAPE_GROUP_DD)
+        if let Some(InteractiveState::Dropdown { open, .. }) = host
+            .store_mut()
+            .get_mut(ph2d_tool_vector::ids::VECTOR_SHAPE_GROUP_DD)
         {
             *open = true;
         } else {
@@ -699,7 +721,7 @@ fn picking_a_category_closes_the_dropdown_chip() {
 
         let outcome = host.apply_panel_event::<VectorPanel>(
             &mut panel_state,
-            WidgetEvent::Click(ids::vector_shape_group_id(i)),
+            WidgetEvent::Click(ph2d_tool_vector::ids::vector_shape_group_id(i)),
         );
         assert_eq!(
             outcome,
@@ -707,7 +729,10 @@ fn picking_a_category_closes_the_dropdown_chip() {
             "opcao de categoria {i} ignorada pelo painel"
         );
 
-        match host.store().get(ids::VECTOR_SHAPE_GROUP_DD) {
+        match host
+            .store()
+            .get(ph2d_tool_vector::ids::VECTOR_SHAPE_GROUP_DD)
+        {
             Some(InteractiveState::Dropdown {
                 open,
                 selected_index,
@@ -752,10 +777,10 @@ fn connector_fields_reach_the_bus_for_the_shell() {
 
     // Jetty + Spread: caixas numéricas — o valor sai como está (não é um track 0..1).
     for (id, v) in [
-        (ids::VECTOR_CONNECTOR_JETTY, 0.75),
-        (ids::VECTOR_CONNECTOR_SPREAD, -0.5),
+        (ph2d_tool_vector::ids::VECTOR_CONNECTOR_JETTY, 0.75),
+        (ph2d_tool_vector::ids::VECTOR_CONNECTOR_SPREAD, -0.5),
         // A quina do PERCURSO: mesmo caminho de volta (SetValue no id do proprio campo).
-        (ids::VECTOR_CONNECTOR_CORNER, 0.25),
+        (ph2d_tool_vector::ids::VECTOR_CONNECTOR_CORNER, 0.25),
     ] {
         host.set_number_value(id, v);
         let outcome =
@@ -781,7 +806,7 @@ fn connector_fields_reach_the_bus_for_the_shell() {
     // Route: o clique CICLA (Orthogonal = 1 → Straight = 0).
     let outcome = host.apply_panel_event::<VectorPanel>(
         &mut panel_state,
-        WidgetEvent::Click(ids::VECTOR_CONNECTOR_ROUTE),
+        WidgetEvent::Click(ph2d_tool_vector::ids::VECTOR_CONNECTOR_ROUTE),
     );
     assert_eq!(
         outcome,
@@ -792,7 +817,7 @@ fn connector_fields_reach_the_bus_for_the_shell() {
         matches!(
             a,
             EditorAction::ToolPanelEvent(PanelEvent::SetValue(fid, fv))
-                if *fid == ids::VECTOR_CONNECTOR_ROUTE && (*fv - 2.0).abs() < 1e-9
+                if *fid == ph2d_tool_vector::ids::VECTOR_CONNECTOR_ROUTE && (*fv - 2.0).abs() < 1e-9
         )
     });
     assert!(
@@ -816,7 +841,7 @@ fn the_route_button_refuses_to_fire_without_a_connector_in_focus() {
 
     let outcome = host.apply_panel_event::<VectorPanel>(
         &mut panel_state,
-        WidgetEvent::Click(ids::VECTOR_CONNECTOR_ROUTE),
+        WidgetEvent::Click(ph2d_tool_vector::ids::VECTOR_CONNECTOR_ROUTE),
     );
     assert_eq!(
         outcome,
@@ -878,8 +903,8 @@ fn the_marker_head_controls_reach_the_tool() {
 
     // 1. As duas CAIXAS (Head Size / Head Round): o valor sai como está (não é um track 0..1).
     for (id, v) in [
-        (ids::VECTOR_MARKER_SCALE, 2.5),
-        (ids::VECTOR_MARKER_ROUND, 0.75),
+        (ph2d_tool_vector::ids::VECTOR_MARKER_SCALE, 2.5),
+        (ph2d_tool_vector::ids::VECTOR_MARKER_ROUND, 0.75),
     ] {
         host.set_number_value(id, v);
         let outcome =
@@ -908,7 +933,7 @@ fn the_marker_head_controls_reach_the_tool() {
     assert!(!tool.both_ends(), "precondicao: a linha nasce de via unica");
     let outcome = host.apply_panel_event::<VectorPanel>(
         &mut panel_state,
-        WidgetEvent::Click(ids::VECTOR_MARKER_BOTH),
+        WidgetEvent::Click(ph2d_tool_vector::ids::VECTOR_MARKER_BOTH),
     );
     assert_eq!(
         outcome,
@@ -929,7 +954,7 @@ fn the_marker_head_controls_reach_the_tool() {
     // 3. E o clique de volta desliga (o estado é derivado das pontas, nos dois sentidos).
     host.apply_panel_event::<VectorPanel>(
         &mut panel_state,
-        WidgetEvent::Click(ids::VECTOR_MARKER_BOTH),
+        WidgetEvent::Click(ph2d_tool_vector::ids::VECTOR_MARKER_BOTH),
     );
     drain_into_tool(&mut host, &mut tool);
     assert!(!tool.both_ends(), "o segundo clique tinha de desligar");
@@ -952,7 +977,7 @@ fn clicking_build_pill_reaches_the_tool() {
 
     let outcome = host.apply_panel_event::<VectorPanel>(
         &mut panel_state,
-        WidgetEvent::Click(ids::VECTOR_MODE_BUILD),
+        WidgetEvent::Click(ph2d_tool_vector::ids::VECTOR_MODE_BUILD),
     );
     assert_eq!(
         outcome,
@@ -987,7 +1012,7 @@ fn clicking_pick_button_reaches_the_tool() {
 
     let outcome = host.apply_panel_event::<VectorPanel>(
         &mut panel_state,
-        WidgetEvent::Click(ids::VECTOR_MODE_PICKBLEND),
+        WidgetEvent::Click(ph2d_tool_vector::ids::VECTOR_MODE_PICKBLEND),
     );
     assert_eq!(
         outcome,
@@ -1401,17 +1426,35 @@ fn every_effect_stack_button_reaches_the_bus_when_clicked() {
 
     let mut targets: Vec<(ph2d_a11y::NodeId, String)> = Vec::new();
     for (k, name) in KINDS.iter().enumerate() {
-        targets.push((ids::vector_fx_add_id(k), format!("Add {name}")));
+        targets.push((
+            ph2d_tool_vector::ids::vector_fx_add_id(k),
+            format!("Add {name}"),
+        ));
     }
-    targets.push((ids::vector_fx_remove_id(0), "rótulo/remove linha 0".into()));
-    targets.push((ids::vector_fx_down_id(0), "Down linha 0".into()));
-    targets.push((ids::vector_fx_up_id(1), "Up linha 1".into()));
-    targets.push((ids::vector_fx_hide_id(0), "olho linha 0".into()));
+    targets.push((
+        ph2d_tool_vector::ids::vector_fx_remove_id(0),
+        "rótulo/remove linha 0".into(),
+    ));
+    targets.push((
+        ph2d_tool_vector::ids::vector_fx_down_id(0),
+        "Down linha 0".into(),
+    ));
+    targets.push((
+        ph2d_tool_vector::ids::vector_fx_up_id(1),
+        "Up linha 1".into(),
+    ));
+    targets.push((
+        ph2d_tool_vector::ids::vector_fx_hide_id(0),
+        "olho linha 0".into(),
+    ));
     // O botão de SEÇÃO "Apply" — só é pintado com a pilha não-vazia (que a fixture publica).
-    targets.push((ids::VECTOR_FX_APPLY, "Apply Effects".into()));
+    targets.push((
+        ph2d_tool_vector::ids::VECTOR_FX_APPLY,
+        "Apply Effects".into(),
+    ));
     // A CAIXINHA: e' um botao, e tem de emitir Click como qualquer outro.
     targets.push((
-        ids::vector_fx_toggle_id(0, 1),
+        ph2d_tool_vector::ids::vector_fx_toggle_id(0, 1),
         "caixinha Smooth linha 0".into(),
     ));
 
@@ -1460,8 +1503,12 @@ fn the_effect_section_offers_nothing_without_a_single_target() {
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let mut st = VectorPanelState;
     assert!(
-        host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::vector_fx_add_id(0))
-            .is_none(),
+        host.painted_rect::<VectorPanel>(
+            &mut st,
+            VIEWPORT,
+            ph2d_tool_vector::ids::vector_fx_add_id(0)
+        )
+        .is_none(),
         "o Add foi pintado sem caminho unico selecionado"
     );
 
@@ -1471,8 +1518,12 @@ fn the_effect_section_offers_nothing_without_a_single_target() {
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let mut st = VectorPanelState;
     assert!(
-        host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::vector_fx_add_id(0))
-            .is_some(),
+        host.painted_rect::<VectorPanel>(
+            &mut st,
+            VIEWPORT,
+            ph2d_tool_vector::ids::vector_fx_add_id(0)
+        )
+        .is_some(),
         "com alvo, o Add TEM de ser oferecido"
     );
     ph2d_panel_vector::set_current_effects(false, &[], Vec::new());
@@ -1532,14 +1583,18 @@ fn the_effect_chip_carries_the_documents_range_not_the_normalised_track() {
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let mut st = VectorPanelState;
     // Pintar é o que republica — o `populate` corre uma vez e não sabe que efeito caiu na linha.
-    let _ = host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::vector_fx_param_num_id(0, 0));
+    let _ = host.painted_rect::<VectorPanel>(
+        &mut st,
+        VIEWPORT,
+        ph2d_tool_vector::ids::vector_fx_param_num_id(0, 0),
+    );
 
     let store = host.store();
     for (param, name, min, max) in [
         (0usize, "Size", 0.0_f64, 100.0_f64),
         (1, "Ridges", 1.0, 128.0),
     ] {
-        let chip = ids::vector_fx_param_num_id(0, param);
+        let chip = ph2d_tool_vector::ids::vector_fx_param_num_id(0, param);
         let (scale, offset) = store.linked_slider_mapping(chip);
         assert!(
             (f64::from(scale) - (max - min)).abs() < 1e-3 && (f64::from(offset) - min).abs() < 1e-3,
@@ -1586,15 +1641,51 @@ fn every_expand_control_reaches_its_destination_when_clicked() {
     };
     const SEC: u128 = 1_000_000_000;
     for (id, name, forwards) in [
-        (ids::VECTOR_EXPAND_OFFSET_PATH, "Offset Path", true),
-        (ids::VECTOR_EXPAND_OUTLINE_STROKE, "Outline Stroke", true),
-        (ids::VECTOR_EXPAND_POWER_STROKE, "Power Stroke", true),
-        (ids::VECTOR_EXPAND_SIDE_OUTER, "Side Outer", false),
-        (ids::VECTOR_EXPAND_SIDE_INNER, "Side Inner", false),
-        (ids::VECTOR_EXPAND_SIDE_BOTH, "Side Both", false),
-        (ids::VECTOR_EXPAND_JOIN_MITER, "Join Miter", false),
-        (ids::VECTOR_EXPAND_JOIN_ROUND, "Join Round", false),
-        (ids::VECTOR_EXPAND_JOIN_BEVEL, "Join Bevel", false),
+        (
+            ph2d_tool_vector::ids::VECTOR_EXPAND_OFFSET_PATH,
+            "Offset Path",
+            true,
+        ),
+        (
+            ph2d_tool_vector::ids::VECTOR_EXPAND_OUTLINE_STROKE,
+            "Outline Stroke",
+            true,
+        ),
+        (
+            ph2d_tool_vector::ids::VECTOR_EXPAND_POWER_STROKE,
+            "Power Stroke",
+            true,
+        ),
+        (
+            ph2d_tool_vector::ids::VECTOR_EXPAND_SIDE_OUTER,
+            "Side Outer",
+            false,
+        ),
+        (
+            ph2d_tool_vector::ids::VECTOR_EXPAND_SIDE_INNER,
+            "Side Inner",
+            false,
+        ),
+        (
+            ph2d_tool_vector::ids::VECTOR_EXPAND_SIDE_BOTH,
+            "Side Both",
+            false,
+        ),
+        (
+            ph2d_tool_vector::ids::VECTOR_EXPAND_JOIN_MITER,
+            "Join Miter",
+            false,
+        ),
+        (
+            ph2d_tool_vector::ids::VECTOR_EXPAND_JOIN_ROUND,
+            "Join Round",
+            false,
+        ),
+        (
+            ph2d_tool_vector::ids::VECTOR_EXPAND_JOIN_BEVEL,
+            "Join Bevel",
+            false,
+        ),
         // Os perfis nomeados (W2b) — os quatro FORWARDAM: o clique escreve os sliders e arma o
         // perfil na seleção, e as duas metades são da shell. Panel-local deixaria a linha acesa
         // sobre uma forma que não mudou.
@@ -1661,9 +1752,13 @@ fn clicking_a_join_chip_records_that_join() {
     };
     const SEC: u128 = 1_000_000_000;
     for (id, want, name) in [
-        (ids::VECTOR_EXPAND_JOIN_ROUND, 1_u8, "Round"),
-        (ids::VECTOR_EXPAND_JOIN_BEVEL, 2, "Bevel"),
-        (ids::VECTOR_EXPAND_JOIN_MITER, 0, "Miter"),
+        (
+            ph2d_tool_vector::ids::VECTOR_EXPAND_JOIN_ROUND,
+            1_u8,
+            "Round",
+        ),
+        (ph2d_tool_vector::ids::VECTOR_EXPAND_JOIN_BEVEL, 2, "Bevel"),
+        (ph2d_tool_vector::ids::VECTOR_EXPAND_JOIN_MITER, 0, "Miter"),
     ] {
         let mut host = MockPanelHost::with_panel::<VectorPanel>();
         let mut panel_state = VectorPanelState;
@@ -1702,9 +1797,13 @@ fn clicking_a_side_chip_records_that_side() {
     };
     const SEC: u128 = 1_000_000_000;
     for (id, want, name) in [
-        (ids::VECTOR_EXPAND_SIDE_OUTER, 0_u8, "Outer"),
-        (ids::VECTOR_EXPAND_SIDE_INNER, 1, "Inner"),
-        (ids::VECTOR_EXPAND_SIDE_BOTH, 2, "Both"),
+        (
+            ph2d_tool_vector::ids::VECTOR_EXPAND_SIDE_OUTER,
+            0_u8,
+            "Outer",
+        ),
+        (ph2d_tool_vector::ids::VECTOR_EXPAND_SIDE_INNER, 1, "Inner"),
+        (ph2d_tool_vector::ids::VECTOR_EXPAND_SIDE_BOTH, 2, "Both"),
     ] {
         let mut host = MockPanelHost::with_panel::<VectorPanel>();
         let mut panel_state = VectorPanelState;
@@ -2276,7 +2375,7 @@ fn clicking_the_cut_pill_reaches_the_tool() {
 
     let outcome = host.apply_panel_event::<VectorPanel>(
         &mut panel_state,
-        WidgetEvent::Click(ids::VECTOR_MODE_CUT),
+        WidgetEvent::Click(ph2d_tool_vector::ids::VECTOR_MODE_CUT),
     );
     assert_eq!(
         outcome,
@@ -2316,18 +2415,18 @@ fn every_tool_row_pill_answers_a_real_pointer() {
     };
     const SEC: u128 = 1_000_000_000;
     let pills: [(ph2d_a11y::NodeId, &str); 12] = [
-        (ids::VECTOR_MODE_SELECT, "Select"),
-        (ids::VECTOR_MODE_NODE, "Node"),
-        (ids::VECTOR_MODE_PEN, "Pen"),
-        (ids::VECTOR_MODE_PENCIL, "Pencil"),
-        (ids::VECTOR_MODE_SHAPE, "Shape"),
-        (ids::VECTOR_MODE_TEXT, "Text"),
-        (ids::VECTOR_MODE_CONNECT, "Connect"),
-        (ids::VECTOR_MODE_BUILD, "Build"),
-        (ids::VECTOR_MODE_FILLET, "Fillet"),
-        (ids::VECTOR_MODE_CHAMFER, "Chamfer"),
-        (ids::VECTOR_MODE_WIDTH, "Width"),
-        (ids::VECTOR_MODE_CUT, "Cut"),
+        (ph2d_tool_vector::ids::VECTOR_MODE_SELECT, "Select"),
+        (ph2d_tool_vector::ids::VECTOR_MODE_NODE, "Node"),
+        (ph2d_tool_vector::ids::VECTOR_MODE_PEN, "Pen"),
+        (ph2d_tool_vector::ids::VECTOR_MODE_PENCIL, "Pencil"),
+        (ph2d_tool_vector::ids::VECTOR_MODE_SHAPE, "Shape"),
+        (ph2d_tool_vector::ids::VECTOR_MODE_TEXT, "Text"),
+        (ph2d_tool_vector::ids::VECTOR_MODE_CONNECT, "Connect"),
+        (ph2d_tool_vector::ids::VECTOR_MODE_BUILD, "Build"),
+        (ph2d_tool_vector::ids::VECTOR_MODE_FILLET, "Fillet"),
+        (ph2d_tool_vector::ids::VECTOR_MODE_CHAMFER, "Chamfer"),
+        (ph2d_tool_vector::ids::VECTOR_MODE_WIDTH, "Width"),
+        (ph2d_tool_vector::ids::VECTOR_MODE_CUT, "Cut"),
     ];
     let mut dead = Vec::new();
     for (id, name) in pills {
@@ -2469,10 +2568,10 @@ fn every_pathfinder_button_answers_a_real_pointer() {
         (ids::VECTOR_BOOL_SUBTRACT, "Subtract"),
         (ids::VECTOR_BOOL_INTERSECT, "Intersect"),
         (ids::VECTOR_BOOL_EXCLUDE, "Exclude"),
-        (ids::VECTOR_BOOL_MINUS_BACK, "Minus Back"),
-        (ids::VECTOR_BOOL_TRIM, "Trim"),
-        (ids::VECTOR_BOOL_CROP, "Crop"),
-        (ids::VECTOR_BOOL_MERGE, "Merge"),
+        (ph2d_tool_vector::ids::VECTOR_BOOL_MINUS_BACK, "Minus Back"),
+        (ph2d_tool_vector::ids::VECTOR_BOOL_TRIM, "Trim"),
+        (ph2d_tool_vector::ids::VECTOR_BOOL_CROP, "Crop"),
+        (ph2d_tool_vector::ids::VECTOR_BOOL_MERGE, "Merge"),
     ];
     let mut dead = Vec::new();
     for (id, name) in ops {
@@ -2584,10 +2683,10 @@ fn the_enable_pair_and_the_apply_reach_the_bus() {
     ph2d_panel_vector::state_symmetry::set_symmetry_live_count(1);
     let _ = symmetry_rects(&mut host, ph2d_symmetry::SymmetryKind::MirrorX);
     for (id, name) in [
-        (ids::VECTOR_SYM_ON, "On"),
-        (ids::VECTOR_SYM_OFF, "Off"),
-        (ids::VECTOR_SYM_FUSE_ON, "Fuse On"),
-        (ids::VECTOR_SYM_FUSE_OFF, "Fuse Off"),
+        (ph2d_tool_vector::ids::VECTOR_SYM_ON, "On"),
+        (ph2d_tool_vector::ids::VECTOR_SYM_OFF, "Off"),
+        (ph2d_tool_vector::ids::VECTOR_SYM_FUSE_ON, "Fuse On"),
+        (ph2d_tool_vector::ids::VECTOR_SYM_FUSE_OFF, "Fuse Off"),
         (ids::VECTOR_SYM_APPLY, "Apply"),
     ] {
         let mut st = VectorPanelState;
@@ -2624,7 +2723,8 @@ fn the_enable_pair_gates_the_whole_symmetry_section() {
     let off = host.paint::<VectorPanel>(&mut st, VIEWPORT);
     // Desarmada: o par Enable existe (é como se arma) e mais nada da seção.
     assert!(
-        off.iter().any(|(n, _)| *n == ids::VECTOR_SYM_ON),
+        off.iter()
+            .any(|(n, _)| *n == ph2d_tool_vector::ids::VECTOR_SYM_ON),
         "o par Enable tem de existir desarmado — senão não há como armar"
     );
     for k in ph2d_symmetry::SymmetryKind::ALL {
@@ -2636,7 +2736,8 @@ fn the_enable_pair_gates_the_whole_symmetry_section() {
     }
     let on = symmetry_rects(&mut host, ph2d_symmetry::SymmetryKind::MirrorX);
     assert!(
-        on.iter().any(|(n, _)| *n == ids::VECTOR_SYM_KIND_RADIAL),
+        on.iter()
+            .any(|(n, _)| *n == ph2d_tool_vector::ids::VECTOR_SYM_KIND_RADIAL),
         "armada, os tipos aparecem"
     );
     ph2d_panel_vector::set_current_vector_style(None);
@@ -2650,20 +2751,28 @@ fn segments_belongs_to_radial_and_fuse_to_the_mirrors() {
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let radial = symmetry_rects(&mut host, ph2d_symmetry::SymmetryKind::Radial);
     assert!(
-        radial.iter().any(|(n, _)| *n == ids::VECTOR_SYM_SEGMENTS),
+        radial
+            .iter()
+            .any(|(n, _)| *n == ph2d_tool_vector::ids::VECTOR_SYM_SEGMENTS),
         "Radial mostra Segments"
     );
     assert!(
-        !radial.iter().any(|(n, _)| *n == ids::VECTOR_SYM_FUSE_ON),
+        !radial
+            .iter()
+            .any(|(n, _)| *n == ph2d_tool_vector::ids::VECTOR_SYM_FUSE_ON),
         "Radial NÃO mostra Fuse — não há costura a fechar"
     );
     let mirror = symmetry_rects(&mut host, ph2d_symmetry::SymmetryKind::MirrorY);
     assert!(
-        mirror.iter().any(|(n, _)| *n == ids::VECTOR_SYM_FUSE_ON),
+        mirror
+            .iter()
+            .any(|(n, _)| *n == ph2d_tool_vector::ids::VECTOR_SYM_FUSE_ON),
         "um espelho mostra Fuse"
     );
     assert!(
-        !mirror.iter().any(|(n, _)| *n == ids::VECTOR_SYM_SEGMENTS),
+        !mirror
+            .iter()
+            .any(|(n, _)| *n == ph2d_tool_vector::ids::VECTOR_SYM_SEGMENTS),
         "um espelho NÃO mostra Segments — a contagem é dois por definição"
     );
     ph2d_panel_vector::set_current_vector_style(None);

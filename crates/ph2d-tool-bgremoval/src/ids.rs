@@ -37,3 +37,6 @@ pub const BGR_MIN_ISLAND_PX_NUM: NodeId = hash_node_id("bgr_min_island_px_num");
 /// fixing the case where the bg colour also appears inside the
 /// subject (e.g. beige skin against beige bg).
 pub const BGR_AUTO_PROTECT_SUBJECT: NodeId = hash_node_id("bgr_auto_protect_subject");
+
+mod bgremoval;
+pub use bgremoval::*;

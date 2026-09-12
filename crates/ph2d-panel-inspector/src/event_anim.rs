@@ -10,7 +10,6 @@
 //! [`crate::sections::anim`] — separar as duas pediria um seletor que duplicaria a lista.
 
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::screens::hero::AnimFieldEdit;
@@ -32,7 +31,7 @@ pub(crate) fn apply_anim_event(
 
     if let WidgetEvent::Click(id) = ev {
         // Uma linha da lista: abre a ficha **e** escolhe o que toca.
-        if let Some(i) = ids::INSP_ANIM_ROW.iter().position(|&o| o == id)
+        if let Some(i) = crate::ids::INSP_ANIM_ROW.iter().position(|&o| o == id)
             && let Some(row) = info.rows.get(i)
         {
             panel.anim_selected = i;
@@ -44,29 +43,29 @@ pub(crate) fn apply_anim_event(
             demote(host, id);
             return true;
         }
-        if id == ids::INSP_ANIM_ADD_PLAYER && !info.player_present {
+        if id == crate::ids::INSP_ANIM_ADD_PLAYER && !info.player_present {
             push(host, info.entity_bits, AnimFieldEdit::AddPlayer);
             demote(host, id);
             return true;
         }
-        if id == ids::INSP_ANIM_ADD {
+        if id == crate::ids::INSP_ANIM_ADD {
             push(host, info.entity_bits, AnimFieldEdit::Add);
             demote(host, id);
             return true;
         }
-        if id == ids::INSP_ANIM_REMOVE && !info.rows.is_empty() {
+        if id == crate::ids::INSP_ANIM_REMOVE && !info.rows.is_empty() {
             push(host, info.entity_bits, AnimFieldEdit::Remove(sel_u8));
             demote(host, id);
             return true;
         }
-        if id == ids::INSP_ANIM_REWIND {
+        if id == crate::ids::INSP_ANIM_REWIND {
             push(host, info.entity_bits, AnimFieldEdit::Rewind);
             demote(host, id);
             return true;
         }
         // Os três segmentados. ⚠️ A POSIÇÃO no array é a tag — reordenar o array faria um clique
         // escrever outra direção, e compila.
-        if let Some(i) = ids::INSP_ANIM_DIR.iter().position(|&o| o == id)
+        if let Some(i) = crate::ids::INSP_ANIM_DIR.iter().position(|&o| o == id)
             && !info.rows.is_empty()
         {
             push(
@@ -77,7 +76,10 @@ pub(crate) fn apply_anim_event(
             demote(host, id);
             return true;
         }
-        if let Some(i) = ids::INSP_ANIM_DIR_OVERRIDE.iter().position(|&o| o == id) {
+        if let Some(i) = crate::ids::INSP_ANIM_DIR_OVERRIDE
+            .iter()
+            .position(|&o| o == id)
+        {
             push(
                 host,
                 info.entity_bits,
@@ -86,7 +88,10 @@ pub(crate) fn apply_anim_event(
             demote(host, id);
             return true;
         }
-        if let Some(i) = ids::INSP_ANIM_LOOP_OVERRIDE.iter().position(|&o| o == id) {
+        if let Some(i) = crate::ids::INSP_ANIM_LOOP_OVERRIDE
+            .iter()
+            .position(|&o| o == id)
+        {
             push(host, info.entity_bits, AnimFieldEdit::LoopOverride(i as u8));
             demote(host, id);
             return true;
@@ -108,9 +113,12 @@ pub(crate) fn apply_anim_event(
     // ⇒ O clique afirma **o contrário do que estava no ecrã**, que é o que um toggle promete.
     // Gate: `seam_anim::the_playing_box_asks_the_scene_not_its_own_memory`.
     if let WidgetEvent::Toggled(id) = ev
-        && matches!(id, ids::INSP_ANIM_PLAYING | ids::INSP_ANIM_AUTOPLAY)
+        && matches!(
+            id,
+            crate::ids::INSP_ANIM_PLAYING | crate::ids::INSP_ANIM_AUTOPLAY
+        )
     {
-        let edit = if id == ids::INSP_ANIM_PLAYING {
+        let edit = if id == crate::ids::INSP_ANIM_PLAYING {
             AnimFieldEdit::Playing(!info.playing)
         } else {
             AnimFieldEdit::Autoplay(!info.autoplay)
@@ -126,11 +134,11 @@ pub(crate) fn apply_anim_event(
         // ⚠️ **Os três campos de texto por uma porta só.** Um `if` por campo é como o terceiro
         // acaba a chamar o `Rename` do primeiro — e renomear uma animação por escrever um nome de
         // sinal é o defeito que não se vê até o projeto reabrir.
-        let edit = if id == ids::INSP_ANIM_NAME {
+        let edit = if id == crate::ids::INSP_ANIM_NAME {
             AnimFieldEdit::Rename(sel_u8, text)
-        } else if id == ids::INSP_ANIM_SIGNAL_FINISH {
+        } else if id == crate::ids::INSP_ANIM_SIGNAL_FINISH {
             AnimFieldEdit::SignalOnFinish(sel_u8, text)
-        } else if id == ids::INSP_ANIM_SIGNAL_LOOP {
+        } else if id == crate::ids::INSP_ANIM_SIGNAL_LOOP {
             AnimFieldEdit::SignalOnLoop(sel_u8, text)
         } else {
             return false;
@@ -146,7 +154,7 @@ pub(crate) fn apply_anim_event(
     // a do pintor **sobreviveu** à suíte inteira, porque nenhum gate ligava o que se desenha ao que
     // o clique produz. Hoje é uma função só, com gate de ida-e-volta no modelo.
     if let WidgetEvent::ValueChanged(id) = ev
-        && id == ids::INSP_ANIM_FRAME_SCRUB
+        && id == crate::ids::INSP_ANIM_FRAME_SCRUB
     {
         let v = host.store().slider(id).map_or(0.0, |(_, v)| v);
         if let Some(cell) = info.scrub_cell(v) {
@@ -159,7 +167,7 @@ pub(crate) fn apply_anim_event(
     // ALVO não é a linha selecionada nem a sprite, mas a **célula** — e o índice sai da mesma lei
     // que a barra usa (`this_frame_index`), e não de uma segunda conta.
     if let WidgetEvent::ValueChanged(id) = ev
-        && id == ids::INSP_ANIM_FRAME_MS_THIS
+        && id == crate::ids::INSP_ANIM_FRAME_MS_THIS
         // ⚠️ **A linha vem daqui, e NÃO do `sel_u8`** — este campo é da zona do TOCADOR, e edita a
         // animação que a barra mostra. Usar a linha selecionada escrevia numa animação e lia de
         // outra, e o campo **revertia sozinho** (report do Enio: *«o tempo volta a 0 no enter»*).
@@ -179,7 +187,7 @@ pub(crate) fn apply_anim_event(
     if let WidgetEvent::ValueChanged(id) = ev {
         let v = host.store().number_value(id).unwrap_or(0.0);
         // A velocidade é do TOCADOR e não da linha — ela não precisa da biblioteca.
-        if id == ids::INSP_ANIM_SPEED {
+        if id == crate::ids::INSP_ANIM_SPEED {
             #[allow(clippy::cast_possible_truncation)]
             push(host, info.entity_bits, AnimFieldEdit::Speed(v as f32));
             return true;
@@ -192,12 +200,12 @@ pub(crate) fn apply_anim_event(
         #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
         let n = v.max(0.0) as u32;
         let edit = match id {
-            _ if id == ids::INSP_ANIM_FROM => Some(AnimFieldEdit::From(sel_u8, n)),
-            _ if id == ids::INSP_ANIM_TO => Some(AnimFieldEdit::To(sel_u8, n)),
-            _ if id == ids::INSP_ANIM_FRAME_MS => Some(AnimFieldEdit::FrameMs(sel_u8, n)),
-            _ if id == ids::INSP_ANIM_HOLD_MS => Some(AnimFieldEdit::HoldMs(sel_u8, n)),
-            _ if id == ids::INSP_ANIM_DELAY_MS => Some(AnimFieldEdit::DelayMs(sel_u8, n)),
-            _ if id == ids::INSP_ANIM_REPEAT => Some(AnimFieldEdit::Repeat(sel_u8, n)),
+            _ if id == crate::ids::INSP_ANIM_FROM => Some(AnimFieldEdit::From(sel_u8, n)),
+            _ if id == crate::ids::INSP_ANIM_TO => Some(AnimFieldEdit::To(sel_u8, n)),
+            _ if id == crate::ids::INSP_ANIM_FRAME_MS => Some(AnimFieldEdit::FrameMs(sel_u8, n)),
+            _ if id == crate::ids::INSP_ANIM_HOLD_MS => Some(AnimFieldEdit::HoldMs(sel_u8, n)),
+            _ if id == crate::ids::INSP_ANIM_DELAY_MS => Some(AnimFieldEdit::DelayMs(sel_u8, n)),
+            _ if id == crate::ids::INSP_ANIM_REPEAT => Some(AnimFieldEdit::Repeat(sel_u8, n)),
             _ => None,
         };
         if let Some(edit) = edit {

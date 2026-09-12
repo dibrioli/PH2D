@@ -13,7 +13,6 @@
 
 use ph2d_editor_core::HeroScreen;
 use ph2d_editor_core::NodeId;
-use ph2d_editor_core::ids;
 use ph2d_editor_core::panel::{ErasedPanel, Panel, PanelRegistry};
 use ph2d_editor_core::screens::hero::{HERO_VIEWPORT_H, HERO_VIEWPORT_W};
 use ph2d_editor_core::screens::paint_hero_screen;
@@ -79,7 +78,7 @@ fn the_shape_catalog_belongs_to_the_shape_tool_and_to_no_other() {
     for &m in TODAS {
         paint_in(&mut hero, snap_of(m));
         assert_eq!(
-            painted(&hero, ids::VECTOR_SECTION_SHAPE),
+            painted(&hero, ph2d_tool_vector::ids::VECTOR_SECTION_SHAPE),
             m == DrawMode::Shape,
             "a grade de formas na ferramenta {m:?}"
         );
@@ -94,7 +93,7 @@ fn the_pencil_knobs_belong_to_the_pencil() {
     for &m in TODAS {
         paint_in(&mut hero, snap_of(m));
         assert_eq!(
-            painted(&hero, ids::VECTOR_SECTION_PENCIL),
+            painted(&hero, ph2d_tool_vector::ids::VECTOR_SECTION_PENCIL),
             m == DrawMode::Pencil,
             "os knobs do lapis na ferramenta {m:?}"
         );
@@ -120,7 +119,7 @@ fn the_symmetry_hides_outside_drawing_but_never_while_it_is_on() {
     for &m in TODAS {
         paint_in(&mut hero, snap_of(m));
         assert_eq!(
-            painted(&hero, ids::VECTOR_SECTION_SYMMETRY),
+            painted(&hero, ph2d_tool_vector::ids::VECTOR_SECTION_SYMMETRY),
             autoram.contains(&m),
             "a simetria DESLIGADA na ferramenta {m:?}"
         );
@@ -131,7 +130,7 @@ fn the_symmetry_hides_outside_drawing_but_never_while_it_is_on() {
         snap.symmetry.on = true;
         paint_in(&mut hero, snap);
         assert!(
-            painted(&hero, ids::VECTOR_SECTION_SYMMETRY),
+            painted(&hero, ph2d_tool_vector::ids::VECTOR_SECTION_SYMMETRY),
             "a simetria LIGADA sumiu na ferramenta {m:?} — e e' o unico interruptor que a desliga"
         );
     }
@@ -145,7 +144,7 @@ fn the_tool_row_survives_every_scope() {
     for &m in TODAS {
         paint_in(&mut hero, snap_of(m));
         assert!(
-            painted(&hero, ids::VECTOR_SECTION_TOOL),
+            painted(&hero, ph2d_tool_vector::ids::VECTOR_SECTION_TOOL),
             "a fileira TOOL sumiu na ferramenta {m:?}"
         );
     }
@@ -210,14 +209,17 @@ fn a_section_header_never_promises_a_body_that_is_not_there() {
     ph2d_panel_vector::set_current_effects(false, &["Blur"], Vec::new());
     paint_in(&mut hero, snap_of(DrawMode::Select));
     assert!(
-        !painted(&hero, ids::VECTOR_SECTION_EFFECTS),
+        !painted(&hero, ph2d_tool_vector::ids::VECTOR_SECTION_EFFECTS),
         "sem caminho selecionado, o titulo EFFECTS sobe sozinho — cabecalho sem corpo"
     );
 
     // Controle: COM alvo ela aparece — senão este gate passaria por a seção estar morta.
     ph2d_panel_vector::set_current_effects(true, &["Blur"], Vec::new());
     paint_in(&mut hero, snap_of(DrawMode::Select));
-    assert!(painted(&hero, ids::VECTOR_SECTION_EFFECTS));
+    assert!(painted(
+        &hero,
+        ph2d_tool_vector::ids::VECTOR_SECTION_EFFECTS
+    ));
     ph2d_panel_vector::set_current_effects(false, &[], Vec::new());
 }
 
@@ -232,11 +234,11 @@ fn a_section_header_never_promises_a_body_that_is_not_there() {
 fn the_selection_commands_vanish_when_there_is_nothing_to_command() {
     let mut hero = hero_with_vector_panel();
     let comandos = [
-        ("Boolean", ids::VECTOR_SECTION_BOOLEAN),
-        ("Expand", ids::VECTOR_SECTION_EXPAND),
-        ("Envelope", ids::VECTOR_SECTION_ENVELOPE),
-        ("Arrange", ids::VECTOR_SECTION_ARRANGE),
-        ("Path", ids::VECTOR_SECTION_PATH),
+        ("Boolean", ph2d_tool_vector::ids::VECTOR_SECTION_BOOLEAN),
+        ("Expand", ph2d_tool_vector::ids::VECTOR_SECTION_EXPAND),
+        ("Envelope", ph2d_tool_vector::ids::VECTOR_SECTION_ENVELOPE),
+        ("Arrange", ph2d_tool_vector::ids::VECTOR_SECTION_ARRANGE),
+        ("Path", ph2d_tool_vector::ids::VECTOR_SECTION_PATH),
     ];
     ph2d_panel_vector::set_current_selection_count(0);
     paint_in(&mut hero, snap_of(DrawMode::Select));
@@ -274,15 +276,15 @@ fn the_blend_and_morph_survive_an_empty_selection_because_picks_are_a_second_sel
     ph2d_panel_vector::set_current_selection_count(0);
     paint_in(&mut hero, snap_of(DrawMode::PickBlend));
     assert!(
-        painted(&hero, ids::VECTOR_SECTION_BLEND),
+        painted(&hero, ph2d_tool_vector::ids::VECTOR_SECTION_BLEND),
         "o Blend sumiu — e com ele o Pick Shapes, que e' como se escolhem as formas"
     );
-    assert!(painted(&hero, ids::VECTOR_SECTION_MORPH));
+    assert!(painted(&hero, ph2d_tool_vector::ids::VECTOR_SECTION_MORPH));
     // E também na ferramenta comum: o modo Pick entra POR ali, então esconder a seção trancaria
     // a porta de entrada dela.
     paint_in(&mut hero, snap_of(DrawMode::Select));
-    assert!(painted(&hero, ids::VECTOR_SECTION_BLEND));
-    assert!(painted(&hero, ids::VECTOR_SECTION_MORPH));
+    assert!(painted(&hero, ph2d_tool_vector::ids::VECTOR_SECTION_BLEND));
+    assert!(painted(&hero, ph2d_tool_vector::ids::VECTOR_SECTION_MORPH));
 }
 
 /// ⭐⭐ **OS TRÊS BOTÕES DE ARTE FALAM UMA PALAVRA SÓ, e ela não é "Shape".**

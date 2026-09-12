@@ -92,7 +92,7 @@ fn the_list_paints_its_verbs_and_no_strip() {
         tab: Tab::Containers,
         ..TimelinePanelState::default()
     };
-    let strip = ph2d_editor_core::ids::timeline_strip_hit_id(0, 1, 2);
+    let strip = ph2d_panel_timeline::ids::timeline_strip_hit_id(0, 1, 2);
 
     let regs = paint(&mut host, &mut state, snapshot_with_container());
     assert!(

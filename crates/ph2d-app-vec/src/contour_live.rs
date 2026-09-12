@@ -435,9 +435,9 @@ pub enum ContourCmd {
 #[must_use]
 pub fn join_code_of_id(id: ph2d_editor_core::ids::NodeId) -> Option<u8> {
     match id {
-        i if i == ph2d_editor_core::ids::VECTOR_CONTOUR_JOIN_MITER => Some(0),
-        i if i == ph2d_editor_core::ids::VECTOR_CONTOUR_JOIN_ROUND => Some(1),
-        i if i == ph2d_editor_core::ids::VECTOR_CONTOUR_JOIN_BEVEL => Some(2),
+        i if i == ph2d_panel_vector::ids::VECTOR_CONTOUR_JOIN_MITER => Some(0),
+        i if i == ph2d_panel_vector::ids::VECTOR_CONTOUR_JOIN_ROUND => Some(1),
+        i if i == ph2d_panel_vector::ids::VECTOR_CONTOUR_JOIN_BEVEL => Some(2),
         _ => None,
     }
 }
@@ -447,9 +447,9 @@ pub fn join_code_of_id(id: ph2d_editor_core::ids::NodeId) -> Option<u8> {
 #[must_use]
 pub fn side_code_of_id(id: ph2d_editor_core::ids::NodeId) -> Option<u8> {
     match id {
-        i if i == ph2d_editor_core::ids::VECTOR_CONTOUR_SIDE_OUTER => Some(0),
-        i if i == ph2d_editor_core::ids::VECTOR_CONTOUR_SIDE_INNER => Some(1),
-        i if i == ph2d_editor_core::ids::VECTOR_CONTOUR_SIDE_BOTH => Some(2),
+        i if i == ph2d_panel_vector::ids::VECTOR_CONTOUR_SIDE_OUTER => Some(0),
+        i if i == ph2d_panel_vector::ids::VECTOR_CONTOUR_SIDE_INNER => Some(1),
+        i if i == ph2d_panel_vector::ids::VECTOR_CONTOUR_SIDE_BOTH => Some(2),
         _ => None,
     }
 }

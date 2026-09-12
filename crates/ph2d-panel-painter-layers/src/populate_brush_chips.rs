@@ -11,7 +11,6 @@ use ph2d_editor_core::widget::TextInputState;
 /// (0, 1, step)` makes the chip DRAG span the slider's `0..1` track proportionally — coherent with its
 /// limits, like the texture number boxes. Split out of [`crate::populate`] for the 200-LOC fn cap.
 pub(crate) fn register_brush_slider_chips(store: &mut WidgetStore) {
-    use ph2d_editor_core::ids as core_ids;
     // Counts (Dash Length / Input Samples) step by one whole sample on the `0..1` track.
     let count_step = 1.0 / f64::from(ph2d_tool_painter::BRUSH_COUNT_SLIDER_MAX - 1);
     // The default chip stepper / drag increment on the `0..1` track (a behaviour value, not a layout
@@ -19,83 +18,83 @@ pub(crate) fn register_brush_slider_chips(store: &mut WidgetStore) {
     const STEP: f64 = 0.01; // LITERAL-PX-OK: chip 0..1 track step (non-design behaviour value)
     let slider_chips = [
         (
-            core_ids::PAINTER_BRUSH_SIZE_SLIDER,
-            core_ids::PAINTER_BRUSH_SIZE_CHIP,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_SIZE_SLIDER,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_SIZE_CHIP,
             STEP,
         ),
         (
-            core_ids::PAINTER_BRUSH_STRENGTH_SLIDER,
-            core_ids::PAINTER_BRUSH_STRENGTH_CHIP,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_STRENGTH_SLIDER,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_STRENGTH_CHIP,
             STEP,
         ),
         (
-            core_ids::PAINTER_BRUSH_COLOR_JITTER_HUE,
-            core_ids::PAINTER_BRUSH_COLOR_JITTER_HUE_CHIP,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_COLOR_JITTER_HUE,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_COLOR_JITTER_HUE_CHIP,
             STEP,
         ),
         (
-            core_ids::PAINTER_BRUSH_COLOR_JITTER_SAT,
-            core_ids::PAINTER_BRUSH_COLOR_JITTER_SAT_CHIP,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_COLOR_JITTER_SAT,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_COLOR_JITTER_SAT_CHIP,
             STEP,
         ),
         (
-            core_ids::PAINTER_BRUSH_COLOR_JITTER_VAL,
-            core_ids::PAINTER_BRUSH_COLOR_JITTER_VAL_CHIP,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_COLOR_JITTER_VAL,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_COLOR_JITTER_VAL_CHIP,
             STEP,
         ),
         (
-            core_ids::PAINTER_BRUSH_RATE,
-            core_ids::PAINTER_BRUSH_RATE_CHIP,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_RATE,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_RATE_CHIP,
             STEP,
         ),
         (
-            core_ids::PAINTER_BRUSH_SPACING,
-            core_ids::PAINTER_BRUSH_SPACING_CHIP,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_SPACING,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_SPACING_CHIP,
             STEP,
         ),
         (
-            core_ids::PAINTER_BRUSH_OFFSET,
-            core_ids::PAINTER_BRUSH_OFFSET_CHIP,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_OFFSET,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_OFFSET_CHIP,
             STEP,
         ),
         (
-            core_ids::PAINTER_BRUSH_DASH_RATIO,
-            core_ids::PAINTER_BRUSH_DASH_RATIO_CHIP,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_DASH_RATIO,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_DASH_RATIO_CHIP,
             STEP,
         ),
         (
-            core_ids::PAINTER_BRUSH_DASH_LENGTH,
-            core_ids::PAINTER_BRUSH_DASH_LENGTH_CHIP,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_DASH_LENGTH,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_DASH_LENGTH_CHIP,
             count_step,
         ),
         (
-            core_ids::PAINTER_BRUSH_INPUT_SAMPLES,
-            core_ids::PAINTER_BRUSH_INPUT_SAMPLES_CHIP,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_INPUT_SAMPLES,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_INPUT_SAMPLES_CHIP,
             count_step,
         ),
         (
-            core_ids::PAINTER_BRUSH_STABILIZE,
-            core_ids::PAINTER_BRUSH_STABILIZE_CHIP,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_STABILIZE,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_STABILIZE_CHIP,
             STEP,
         ),
         (
-            core_ids::PAINTER_BRUSH_JITTER,
-            core_ids::PAINTER_BRUSH_JITTER_CHIP,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER_CHIP,
             STEP,
         ),
         (
-            core_ids::PAINTER_BRUSH_JITTER_SCALE,
-            core_ids::PAINTER_BRUSH_JITTER_SCALE_CHIP,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER_SCALE,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER_SCALE_CHIP,
             STEP,
         ),
         (
-            core_ids::PAINTER_BRUSH_JITTER_ROTATE,
-            core_ids::PAINTER_BRUSH_JITTER_ROTATE_CHIP,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER_ROTATE,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER_ROTATE_CHIP,
             STEP,
         ),
         (
-            core_ids::PAINTER_BRUSH_JITTER_SPACING,
-            core_ids::PAINTER_BRUSH_JITTER_SPACING_CHIP,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER_SPACING,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER_SPACING_CHIP,
             STEP,
         ),
     ];
@@ -118,7 +117,7 @@ pub(crate) fn register_brush_slider_chips(store: &mut WidgetStore) {
     // The mapped-integer link projects the slider's `0..1` track onto `3..12` (`display = track*9 + 3`)
     // and snaps to an integer; `set_number_range` makes its drag/stepper span 3..12 by ones.
     store.register(
-        core_ids::PAINTER_BRUSH_SYMMETRY_SEGMENTS_CHIP,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_SYMMETRY_SEGMENTS_CHIP,
         InteractiveState::NumberInput {
             state: TextInputState::Normal,
             value: 6.0, // LITERAL-PX-OK: default symmetry segment count
@@ -129,13 +128,13 @@ pub(crate) fn register_brush_slider_chips(store: &mut WidgetStore) {
         },
     );
     store.link_slider_number_mapped_integer(
-        core_ids::PAINTER_BRUSH_SYMMETRY_SEGMENTS,
-        core_ids::PAINTER_BRUSH_SYMMETRY_SEGMENTS_CHIP,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_SYMMETRY_SEGMENTS,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_SYMMETRY_SEGMENTS_CHIP,
         9.0, // LITERAL-PX-OK: scale — 0..1 track → a span of 9 segments (3 → 12)
         3.0, // LITERAL-PX-OK: offset — the track's 0 maps to 3 segments
     );
     store.set_number_range(
-        core_ids::PAINTER_BRUSH_SYMMETRY_SEGMENTS_CHIP,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_SYMMETRY_SEGMENTS_CHIP,
         3.0,  // LITERAL-PX-OK: min symmetry segment count
         12.0, // LITERAL-PX-OK: max symmetry segment count
         1.0,
@@ -145,8 +144,8 @@ pub(crate) fn register_brush_slider_chips(store: &mut WidgetStore) {
     // 300` %. `(slider, chip, scale, offset, min, max, step, default)`.
     for (slider, chip, scale, offset, min, max, step, default) in [
         (
-            core_ids::PAINTER_INPAINT_PATCH_SLIDER,
-            core_ids::PAINTER_INPAINT_PATCH_CHIP,
+            ph2d_tool_painter::ids::PAINTER_INPAINT_PATCH_SLIDER,
+            ph2d_tool_painter::ids::PAINTER_INPAINT_PATCH_CHIP,
             4.0, // LITERAL-PX-OK: scale — 0..1 track → span of 4 (2 → 6 patch radius)
             2.0, // LITERAL-PX-OK: offset — the track's 0 maps to 2
             2.0, // LITERAL-PX-OK: min patch radius
@@ -155,8 +154,8 @@ pub(crate) fn register_brush_slider_chips(store: &mut WidgetStore) {
             3.0, // LITERAL-PX-OK: default patch radius (norm 0.25)
         ),
         (
-            core_ids::PAINTER_INPAINT_QUALITY_SLIDER,
-            core_ids::PAINTER_INPAINT_QUALITY_CHIP,
+            ph2d_tool_painter::ids::PAINTER_INPAINT_QUALITY_SLIDER,
+            ph2d_tool_painter::ids::PAINTER_INPAINT_QUALITY_CHIP,
             9.0,  // LITERAL-PX-OK: scale — 0..1 track → span of 9 (3 → 12 EM iterations)
             3.0,  // LITERAL-PX-OK: offset — the track's 0 maps to 3
             3.0,  // LITERAL-PX-OK: min EM iterations
@@ -165,8 +164,8 @@ pub(crate) fn register_brush_slider_chips(store: &mut WidgetStore) {
             6.0,  // LITERAL-PX-OK: default EM iterations (norm 0.3333)
         ),
         (
-            core_ids::PAINTER_INPAINT_SEARCH_SLIDER,
-            core_ids::PAINTER_INPAINT_SEARCH_CHIP,
+            ph2d_tool_painter::ids::PAINTER_INPAINT_SEARCH_SLIDER,
+            ph2d_tool_painter::ids::PAINTER_INPAINT_SEARCH_CHIP,
             250.0, // LITERAL-PX-OK: scale — 0..1 track → span of 250 (50 → 300 %)
             50.0,  // LITERAL-PX-OK: offset — the track's 0 maps to 50 %
             50.0,  // LITERAL-PX-OK: min search %
@@ -199,11 +198,10 @@ pub(crate) fn register_brush_slider_chips(store: &mut WidgetStore) {
 /// (`SPRAY_COUNT_MAX`), e uma cópia nesta casa passaria a mentir no dia em que a medição o movesse —
 /// com o polegar do slider a pousar num número e o chip a escrever outro.
 fn register_spray_count_chip(store: &mut WidgetStore) {
-    use ph2d_editor_core::ids as core_ids;
     const SPRAY_MIN: f32 = 1.0; // LITERAL-PX-OK: uma marca por ponto do caminho = o traço de sempre
     let spray_max = ph2d_tool_painter::SPRAY_COUNT_MAX as f32;
     store.register(
-        core_ids::PAINTER_BRUSH_SPRAY_COUNT_CHIP,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_SPRAY_COUNT_CHIP,
         InteractiveState::NumberInput {
             state: TextInputState::Normal,
             value: f64::from(SPRAY_MIN),
@@ -214,13 +212,13 @@ fn register_spray_count_chip(store: &mut WidgetStore) {
         },
     );
     store.link_slider_number_mapped_integer(
-        core_ids::PAINTER_BRUSH_SPRAY_COUNT,
-        core_ids::PAINTER_BRUSH_SPRAY_COUNT_CHIP,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_SPRAY_COUNT,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_SPRAY_COUNT_CHIP,
         spray_max - SPRAY_MIN,
         SPRAY_MIN,
     );
     store.set_number_range(
-        core_ids::PAINTER_BRUSH_SPRAY_COUNT_CHIP,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_SPRAY_COUNT_CHIP,
         f64::from(SPRAY_MIN),
         f64::from(spray_max),
         1.0, // step by whole mark

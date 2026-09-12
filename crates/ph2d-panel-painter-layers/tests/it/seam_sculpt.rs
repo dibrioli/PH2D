@@ -177,7 +177,9 @@ fn clicking_the_sharpen_chip_selects_sharpen() {
     let painted = host.paint::<PainterLayersPanel>(&mut st, viewport());
     let Some((_, rect)) = painted
         .iter()
-        .find(|(w, r)| *w == core_ids::PAINTER_SCULPT_MODE_SHARPEN && r.w > 0.0 && r.h > 0.0)
+        .find(|(w, r)| {
+            *w == ph2d_tool_painter::ids::PAINTER_SCULPT_MODE_SHARPEN && r.w > 0.0 && r.h > 0.0
+        })
         .copied()
     else {
         panic!(
@@ -190,7 +192,7 @@ fn clicking_the_sharpen_chip_selects_sharpen() {
     // sized by a FIXED row count under content that reflows is how a chip quietly loses its own pixel.
     assert_eq!(
         host.hit_at(x, y),
-        Some(core_ids::PAINTER_SCULPT_MODE_SHARPEN),
+        Some(ph2d_tool_painter::ids::PAINTER_SCULPT_MODE_SHARPEN),
         "the pixel at the centre of the Sharpen chip does not resolve to it — something painted AFTER \
          it covers its rect"
     );
@@ -220,7 +222,7 @@ fn clicking_the_sharpen_chip_selects_sharpen() {
 /// which would be a second copy of the panel's rules and would drift from them.
 #[test]
 fn every_sculpt_click_widget_is_reachable_by_a_pointer() {
-    for clicked in core_ids::PAINTER_SCULPT_CLICKS {
+    for clicked in ph2d_tool_painter::ids::PAINTER_SCULPT_CLICKS {
         let mut reached = false;
         for verb in 0..8u8 {
             // A tool that has PAINTED: some widgets (Filter Stroke) are offered only once there is a last
@@ -274,7 +276,9 @@ fn the_radius_slider_is_wired_to_the_tool() {
     let painted = host.paint::<PainterLayersPanel>(&mut st, viewport());
     let Some((_, rect)) = painted
         .iter()
-        .find(|(w, r)| *w == core_ids::PAINTER_SCULPT_RADIUS_SLIDER && r.w > 0.0 && r.h > 0.0)
+        .find(|(w, r)| {
+            *w == ph2d_tool_painter::ids::PAINTER_SCULPT_RADIUS_SLIDER && r.w > 0.0 && r.h > 0.0
+        })
         .copied()
     else {
         panic!("the Radius slider is not painted with a clickable rect");
@@ -282,7 +286,7 @@ fn the_radius_slider_is_wired_to_the_tool() {
     let (x, y) = centre(rect);
     assert_eq!(
         host.hit_at(x, y),
-        Some(core_ids::PAINTER_SCULPT_RADIUS_SLIDER),
+        Some(ph2d_tool_painter::ids::PAINTER_SCULPT_RADIUS_SLIDER),
         "the Radius slider's own pixel does not resolve to it"
     );
 
@@ -290,14 +294,14 @@ fn the_radius_slider_is_wired_to_the_tool() {
     // `SetValue(id, _)` on the bus. Missing from `event_brush_forward`'s list ⇒ the drag dies here.
     host.apply_panel_event::<PainterLayersPanel>(
         &mut st,
-        WidgetEvent::ValueChanged(core_ids::PAINTER_SCULPT_RADIUS_SLIDER),
+        WidgetEvent::ValueChanged(ph2d_tool_painter::ids::PAINTER_SCULPT_RADIUS_SLIDER),
     );
     let actions = host.drained_actions();
     assert!(
         actions.iter().any(|a| matches!(
             a,
             EditorAction::ToolPanelEvent(PanelEvent::SetValue(i, _))
-                if *i == core_ids::PAINTER_SCULPT_RADIUS_SLIDER
+                if *i == ph2d_tool_painter::ids::PAINTER_SCULPT_RADIUS_SLIDER
         )),
         "a Radius drag was never forwarded as SetValue — the id is missing from \
          `event_brush_forward`'s slider list, so the panel swallows it. drained = {actions:?}"
@@ -307,7 +311,7 @@ fn the_radius_slider_is_wired_to_the_tool() {
     // the kernel uses (one function, so the chip cannot drift from the blur).
     let before = tool.sculpt_radius_px();
     tool.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_SCULPT_RADIUS_SLIDER,
+        ph2d_tool_painter::ids::PAINTER_SCULPT_RADIUS_SLIDER,
         1.0,
     ));
     assert_eq!(
@@ -341,7 +345,9 @@ fn the_offset_slider_is_wired_to_the_tool() {
     let painted = host.paint::<PainterLayersPanel>(&mut st, viewport());
     let Some((_, rect)) = painted
         .iter()
-        .find(|(w, r)| *w == core_ids::PAINTER_SCULPT_OFFSET_SLIDER && r.w > 0.0 && r.h > 0.0)
+        .find(|(w, r)| {
+            *w == ph2d_tool_painter::ids::PAINTER_SCULPT_OFFSET_SLIDER && r.w > 0.0 && r.h > 0.0
+        })
         .copied()
     else {
         panic!("the Offset slider is not painted with a clickable rect in Scrape");
@@ -349,21 +355,21 @@ fn the_offset_slider_is_wired_to_the_tool() {
     let (x, y) = centre(rect);
     assert_eq!(
         host.hit_at(x, y),
-        Some(core_ids::PAINTER_SCULPT_OFFSET_SLIDER),
+        Some(ph2d_tool_painter::ids::PAINTER_SCULPT_OFFSET_SLIDER),
         "the Offset slider's own pixel does not resolve to it"
     );
 
     // Leg 1 — panel → bus.
     host.apply_panel_event::<PainterLayersPanel>(
         &mut st,
-        WidgetEvent::ValueChanged(core_ids::PAINTER_SCULPT_OFFSET_SLIDER),
+        WidgetEvent::ValueChanged(ph2d_tool_painter::ids::PAINTER_SCULPT_OFFSET_SLIDER),
     );
     let actions = host.drained_actions();
     assert!(
         actions.iter().any(|a| matches!(
             a,
             EditorAction::ToolPanelEvent(PanelEvent::SetValue(i, _))
-                if *i == core_ids::PAINTER_SCULPT_OFFSET_SLIDER
+                if *i == ph2d_tool_painter::ids::PAINTER_SCULPT_OFFSET_SLIDER
         )),
         "an Offset drag was never forwarded as SetValue — the id is missing from \
          `event_brush_forward`'s slider list, so the panel swallows it. drained = {actions:?}"
@@ -372,7 +378,7 @@ fn the_offset_slider_is_wired_to_the_tool() {
     // Leg 2 — bus → tool, in the unit the chip shows. Dead centre must be exactly ZERO (the plane sits ON
     // the fitted surface): an off-by-a-half here would give the spatula a permanent bite nobody asked for.
     tool.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_SCULPT_OFFSET_SLIDER,
+        ph2d_tool_painter::ids::PAINTER_SCULPT_OFFSET_SLIDER,
         0.5,
     ));
     assert!(
@@ -382,7 +388,7 @@ fn the_offset_slider_is_wired_to_the_tool() {
         tool.sculpt_plane_offset()
     );
     tool.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_SCULPT_OFFSET_SLIDER,
+        ph2d_tool_painter::ids::PAINTER_SCULPT_OFFSET_SLIDER,
         0.0,
     ));
     assert!(
@@ -431,7 +437,7 @@ fn the_radius_chip_shows_the_pixels_the_kernel_uses() {
     let _ = host.paint::<PainterLayersPanel>(&mut st, viewport());
     let (scale, offset) = host
         .store()
-        .linked_slider_mapping(core_ids::PAINTER_SCULPT_RADIUS_CHIP);
+        .linked_slider_mapping(ph2d_tool_painter::ids::PAINTER_SCULPT_RADIUS_CHIP);
     for track in [0.0f32, 0.25, 0.5, 0.75, 1.0] {
         tool.set_sculpt_radius(track);
         let chip_says = (track * scale + offset).round() as u32;
@@ -474,13 +480,13 @@ fn sculpt_keeps_the_brush_controls_and_drops_the_colour_ones() {
     // `every_sculpt_click_widget_is_reachable_by_a_pointer`; demanding them all on one card asserted that
     // some verb shows everything, which stopped being true when W5b gave `Smooth` a button the Chisel
     // cannot have.)
-    for id in core_ids::PAINTER_SCULPT_MODE_IDS {
+    for id in ph2d_tool_painter::ids::PAINTER_SCULPT_MODE_IDS {
         assert!(ids.contains(&id), "sculpt verb chip {id:?} is not painted");
     }
     // …AND the brush is still there. This is the assertion that separates Sculpt from Deform, and the
     // one that would fail if someone "fixed" the panel to be mode-exclusive like its neighbour.
     assert!(
-        ids.contains(&core_ids::PAINTER_BRUSH_SIZE_SLIDER),
+        ids.contains(&ph2d_tool_painter::ids::PAINTER_BRUSH_SIZE_SLIDER),
         "the brush Size slider is gone in Sculpt mode. The sculpt rides the brush's dab list — Size IS \
          the spatula's width, and without it the tool cannot be aimed (doc 18 §10.1)."
     );
@@ -503,7 +509,7 @@ fn sculpt_keeps_the_brush_controls_and_drops_the_colour_ones() {
 /// `sculpt_is_chisel` branch, which leaves the Chisel with an Offset and no Angle.
 #[test]
 fn every_verb_paints_exactly_the_knobs_it_uses() {
-    use core_ids::{
+    use ph2d_tool_painter::ids::{
         PAINTER_SCULPT_ANGLE_SLIDER as ANGLE, PAINTER_SCULPT_DEPTH_SLIDER as DEPTH,
         PAINTER_SCULPT_OFFSET_SLIDER as OFFSET, PAINTER_SCULPT_RADIUS_SLIDER as RADIUS,
         PAINTER_SCULPT_SMOOTH_SLIDER as SMOOTH,
@@ -572,7 +578,9 @@ fn the_depth_and_angle_sliders_are_wired_to_the_tool() {
     let painted = host.paint::<PainterLayersPanel>(&mut st, viewport());
     let Some((_, rect)) = painted
         .iter()
-        .find(|(w, r)| *w == core_ids::PAINTER_SCULPT_DEPTH_SLIDER && r.w > 0.0 && r.h > 0.0)
+        .find(|(w, r)| {
+            *w == ph2d_tool_painter::ids::PAINTER_SCULPT_DEPTH_SLIDER && r.w > 0.0 && r.h > 0.0
+        })
         .copied()
     else {
         panic!("the Depth slider is not painted with a clickable rect in Layer");
@@ -580,25 +588,25 @@ fn the_depth_and_angle_sliders_are_wired_to_the_tool() {
     let (x, y) = centre(rect);
     assert_eq!(
         host.hit_at(x, y),
-        Some(core_ids::PAINTER_SCULPT_DEPTH_SLIDER),
+        Some(ph2d_tool_painter::ids::PAINTER_SCULPT_DEPTH_SLIDER),
         "the Depth slider's own pixel does not resolve to it"
     );
     host.apply_panel_event::<PainterLayersPanel>(
         &mut st,
-        WidgetEvent::ValueChanged(core_ids::PAINTER_SCULPT_DEPTH_SLIDER),
+        WidgetEvent::ValueChanged(ph2d_tool_painter::ids::PAINTER_SCULPT_DEPTH_SLIDER),
     );
     let actions = host.drained_actions();
     assert!(
         actions.iter().any(|a| matches!(
             a,
             EditorAction::ToolPanelEvent(PanelEvent::SetValue(i, _))
-                if *i == core_ids::PAINTER_SCULPT_DEPTH_SLIDER
+                if *i == ph2d_tool_painter::ids::PAINTER_SCULPT_DEPTH_SLIDER
         )),
         "a Depth drag was never forwarded as SetValue — the id is missing from `event_brush_forward`'s \
          slider list. drained = {actions:?}"
     );
     tool.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_SCULPT_DEPTH_SLIDER,
+        ph2d_tool_painter::ids::PAINTER_SCULPT_DEPTH_SLIDER,
         1.0,
     ));
     assert!(
@@ -617,7 +625,9 @@ fn the_depth_and_angle_sliders_are_wired_to_the_tool() {
     let painted = host.paint::<PainterLayersPanel>(&mut st, viewport());
     let Some((_, rect)) = painted
         .iter()
-        .find(|(w, r)| *w == core_ids::PAINTER_SCULPT_ANGLE_SLIDER && r.w > 0.0 && r.h > 0.0)
+        .find(|(w, r)| {
+            *w == ph2d_tool_painter::ids::PAINTER_SCULPT_ANGLE_SLIDER && r.w > 0.0 && r.h > 0.0
+        })
         .copied()
     else {
         panic!("the Angle slider is not painted with a clickable rect in Chisel");
@@ -625,25 +635,25 @@ fn the_depth_and_angle_sliders_are_wired_to_the_tool() {
     let (x, y) = centre(rect);
     assert_eq!(
         host.hit_at(x, y),
-        Some(core_ids::PAINTER_SCULPT_ANGLE_SLIDER),
+        Some(ph2d_tool_painter::ids::PAINTER_SCULPT_ANGLE_SLIDER),
         "the Angle slider's own pixel does not resolve to it"
     );
     host.apply_panel_event::<PainterLayersPanel>(
         &mut st,
-        WidgetEvent::ValueChanged(core_ids::PAINTER_SCULPT_ANGLE_SLIDER),
+        WidgetEvent::ValueChanged(ph2d_tool_painter::ids::PAINTER_SCULPT_ANGLE_SLIDER),
     );
     let actions = host.drained_actions();
     assert!(
         actions.iter().any(|a| matches!(
             a,
             EditorAction::ToolPanelEvent(PanelEvent::SetValue(i, _))
-                if *i == core_ids::PAINTER_SCULPT_ANGLE_SLIDER
+                if *i == ph2d_tool_painter::ids::PAINTER_SCULPT_ANGLE_SLIDER
         )),
         "an Angle drag was never forwarded as SetValue — the id is missing from `event_brush_forward`'s \
          slider list. drained = {actions:?}"
     );
     tool.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_SCULPT_ANGLE_SLIDER,
+        ph2d_tool_painter::ids::PAINTER_SCULPT_ANGLE_SLIDER,
         0.0,
     ));
     assert!(
@@ -653,7 +663,7 @@ fn the_depth_and_angle_sliders_are_wired_to_the_tool() {
         tool.sculpt_chisel_angle_deg()
     );
     tool.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_SCULPT_ANGLE_SLIDER,
+        ph2d_tool_painter::ids::PAINTER_SCULPT_ANGLE_SLIDER,
         1.0,
     ));
     assert!(
@@ -685,7 +695,9 @@ fn the_smoothness_slider_is_wired_to_the_tool() {
     let painted = host.paint::<PainterLayersPanel>(&mut st, viewport());
     let Some((_, rect)) = painted
         .iter()
-        .find(|(w, r)| *w == core_ids::PAINTER_SCULPT_SMOOTH_SLIDER && r.w > 0.0 && r.h > 0.0)
+        .find(|(w, r)| {
+            *w == ph2d_tool_painter::ids::PAINTER_SCULPT_SMOOTH_SLIDER && r.w > 0.0 && r.h > 0.0
+        })
         .copied()
     else {
         panic!("the Smoothness slider is not painted with a clickable rect in Inflate");
@@ -693,25 +705,25 @@ fn the_smoothness_slider_is_wired_to_the_tool() {
     let (x, y) = centre(rect);
     assert_eq!(
         host.hit_at(x, y),
-        Some(core_ids::PAINTER_SCULPT_SMOOTH_SLIDER),
+        Some(ph2d_tool_painter::ids::PAINTER_SCULPT_SMOOTH_SLIDER),
         "the Smoothness slider's own pixel does not resolve to it"
     );
     host.apply_panel_event::<PainterLayersPanel>(
         &mut st,
-        WidgetEvent::ValueChanged(core_ids::PAINTER_SCULPT_SMOOTH_SLIDER),
+        WidgetEvent::ValueChanged(ph2d_tool_painter::ids::PAINTER_SCULPT_SMOOTH_SLIDER),
     );
     let actions = host.drained_actions();
     assert!(
         actions.iter().any(|a| matches!(
             a,
             EditorAction::ToolPanelEvent(PanelEvent::SetValue(i, _))
-                if *i == core_ids::PAINTER_SCULPT_SMOOTH_SLIDER
+                if *i == ph2d_tool_painter::ids::PAINTER_SCULPT_SMOOTH_SLIDER
         )),
         "a Smoothness drag was never forwarded as SetValue — the id is missing from \
          `event_brush_forward`'s slider list. drained = {actions:?}"
     );
     tool.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_SCULPT_SMOOTH_SLIDER,
+        ph2d_tool_painter::ids::PAINTER_SCULPT_SMOOTH_SLIDER,
         1.0,
     ));
     assert_eq!(
@@ -776,7 +788,9 @@ fn clicking_filter_layer_filters_the_whole_layer() {
     let painted = host.paint::<PainterLayersPanel>(&mut st, viewport());
     let (_, rect) = painted
         .iter()
-        .find(|(w, r)| *w == core_ids::PAINTER_SCULPT_FILTER && r.w > 0.0 && r.h > 0.0)
+        .find(|(w, r)| {
+            *w == ph2d_tool_painter::ids::PAINTER_SCULPT_FILTER && r.w > 0.0 && r.h > 0.0
+        })
         .copied()
         .expect("the Filter Layer button is not painted with a clickable rect on the Smooth card");
     let (x, y) = centre(rect);
@@ -818,7 +832,9 @@ fn the_filter_button_is_not_offered_for_a_footprint_fitted_verb() {
     assert!(
         !painted
             .iter()
-            .any(|(w, r)| *w == core_ids::PAINTER_SCULPT_FILTER && r.w > 0.0 && r.h > 0.0),
+            .any(|(w, r)| *w == ph2d_tool_painter::ids::PAINTER_SCULPT_FILTER
+                && r.w > 0.0
+                && r.h > 0.0),
         "the Filter Layer button is painted on the Chisel card — a verb it cannot filter"
     );
 }
@@ -880,7 +896,9 @@ fn clicking_filter_stroke_filters_only_the_last_stroke() {
     let painted = host.paint::<PainterLayersPanel>(&mut st, viewport());
     let (_, rect) = painted
         .iter()
-        .find(|(w, r)| *w == core_ids::PAINTER_SCULPT_FILTER_STROKE && r.w > 0.0 && r.h > 0.0)
+        .find(|(w, r)| {
+            *w == ph2d_tool_painter::ids::PAINTER_SCULPT_FILTER_STROKE && r.w > 0.0 && r.h > 0.0
+        })
         .copied()
         .expect("the Filter Stroke button is not painted with a clickable rect");
     let (x, y) = centre(rect);
@@ -929,13 +947,17 @@ fn the_filter_stroke_button_waits_for_a_stroke_to_exist() {
     assert!(
         painted
             .iter()
-            .any(|(w, r)| *w == core_ids::PAINTER_SCULPT_FILTER && r.w > 0.0 && r.h > 0.0),
+            .any(|(w, r)| *w == ph2d_tool_painter::ids::PAINTER_SCULPT_FILTER
+                && r.w > 0.0
+                && r.h > 0.0),
         "fixture: the Layer button IS offered on Smooth — else this gate is vacuous"
     );
     assert!(
-        !painted
-            .iter()
-            .any(|(w, r)| *w == core_ids::PAINTER_SCULPT_FILTER_STROKE && r.w > 0.0 && r.h > 0.0),
+        !painted.iter().any(
+            |(w, r)| *w == ph2d_tool_painter::ids::PAINTER_SCULPT_FILTER_STROKE
+                && r.w > 0.0
+                && r.h > 0.0
+        ),
         "the Filter Stroke button is painted with no stroke to filter — it can only refuse"
     );
 }

@@ -4,7 +4,6 @@
 use super::measure_shape_system::{cp, tool};
 use crate::tool::paint::media::PaintMedia;
 use ph2d_editor_core::Tool;
-use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::tool::{CanvasPaintTool, PointerPhase};
 
@@ -58,7 +57,7 @@ fn a_thin_loop_in_solid_paints_the_region_it_encircles() {
     let as_line = loop_gesture(&mut line, 128.0, 60.0);
 
     let mut solid = tool(side, PaintMedia::Digital, 4.0);
-    solid.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_LINE_SOLID));
+    solid.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_LINE_SOLID));
     let as_solid = loop_gesture(&mut solid, 128.0, 60.0);
 
     // A área cercada é 120×120 = 14 400; o rastro de um pincel de raio 4 sobre o perímetro é ~4 000.
@@ -84,11 +83,11 @@ fn a_thin_loop_in_solid_paints_the_region_it_encircles() {
 fn in_solid_the_brush_paints_the_rim_and_the_region_stays_filled() {
     let side = 256u32;
     let mut a = tool(side, PaintMedia::Digital, 3.0);
-    a.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_LINE_SOLID));
+    a.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_LINE_SOLID));
     let thin = loop_gesture(&mut a, 128.0, 60.0);
 
     let mut b = tool(side, PaintMedia::Digital, 24.0);
-    b.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_LINE_SOLID));
+    b.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_LINE_SOLID));
     let thick = loop_gesture(&mut b, 128.0, 60.0);
     assert!(
         thick > thin + 5_000,
@@ -121,7 +120,7 @@ fn in_solid_a_diagonal_gesture_still_lays_the_brush() {
     let stroke = |solid: bool| {
         let mut t = tool(side, PaintMedia::Digital, 6.0);
         if solid {
-            t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_LINE_SOLID));
+            t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_LINE_SOLID));
         }
         t.on_canvas_pointer(cp([40.0, 40.0], PointerPhase::Down));
         for k in 1..=16 {
@@ -151,8 +150,8 @@ fn the_unticked_checkbox_leaves_the_canvas_byte_identical() {
 
     // Ligar e DESLIGAR devolve o estado — o toggle não pode deixar resíduo.
     let mut b = tool(side, PaintMedia::Digital, 6.0);
-    b.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_LINE_SOLID));
-    b.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_LINE_SOLID));
+    b.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_LINE_SOLID));
+    b.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_LINE_SOLID));
     let _ = loop_gesture(&mut b, 64.0, 30.0);
     assert_eq!(
         before, *b.canvas_rgba,
@@ -187,7 +186,7 @@ fn an_ellipse_shape_in_solid_is_a_disc_not_a_ring() {
     let as_ring = ellipse_gesture(&mut line, 128.0, 70.0);
 
     let mut solid = tool(side, PaintMedia::Digital, 4.0);
-    solid.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_LINE_SOLID));
+    solid.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_LINE_SOLID));
     let as_disc = ellipse_gesture(&mut solid, 128.0, 70.0);
 
     assert!(
@@ -211,11 +210,11 @@ fn an_ellipse_shape_in_solid_is_a_disc_not_a_ring() {
 fn in_solid_a_shape_wears_the_brush_too() {
     let side = 256u32;
     let mut a = tool(side, PaintMedia::Digital, 3.0);
-    a.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_LINE_SOLID));
+    a.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_LINE_SOLID));
     let thin = ellipse_gesture(&mut a, 128.0, 70.0);
 
     let mut b = tool(side, PaintMedia::Digital, 24.0);
-    b.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_LINE_SOLID));
+    b.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_LINE_SOLID));
     let thick = ellipse_gesture(&mut b, 128.0, 70.0);
     assert!(
         thick > thin + 3_000,
@@ -241,7 +240,7 @@ fn in_solid_a_shape_wears_the_brush_too() {
 fn a_remove_shape_punches_a_hole_in_the_solid() {
     let side = 256u32;
     let mut t = tool(side, PaintMedia::Digital, 4.0);
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_LINE_SOLID));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_LINE_SOLID));
     let disc = |c: f32, r: f32, op| super::stroke_multi::StrokeShape {
         state: crate::undo::ShapeEditState::Ellipse(crate::undo::EllipseState {
             center: [c, c],
@@ -287,7 +286,7 @@ fn every_sewing_type_still_owns_its_gesture_under_solid() {
         LineKind::Rough,
     ] {
         let mut t = tool(128, PaintMedia::Digital, 6.0);
-        t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_LINE_SOLID));
+        t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_LINE_SOLID));
         t.paint.brush.line_kind = kind;
         if !t.paint.brush.sews_threads() {
             continue; // este tipo não costura fio nenhum — nada a exigir
@@ -309,7 +308,7 @@ fn every_sewing_type_still_owns_its_gesture_under_solid() {
 fn the_solid_fill_is_mirrored_by_symmetry() {
     let side = 256u32;
     let mut t = tool(side, PaintMedia::Digital, 4.0);
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_LINE_SOLID));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_LINE_SOLID));
     t.toggle_symmetry_enabled(); // eixo X pelo centro do canvas (128), o default do bind
     let _ = loop_gesture(&mut t, 70.0, 30.0); // um quadrado 40..100, bem à esquerda do eixo
 
@@ -329,7 +328,7 @@ fn the_solid_fill_is_mirrored_by_symmetry() {
 fn the_solid_fill_wraps_across_the_tiled_seam() {
     let side = 128u32;
     let mut t = tool(side, PaintMedia::Digital, 3.0);
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_LINE_SOLID));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_LINE_SOLID));
     t.toggle_brush_tiling(0); // só o eixo X
     // Um quadrado centrado em x=118: metade dele cai FORA da borda direita (128).
     let _ = loop_gesture(&mut t, 118.0, 20.0);
@@ -349,12 +348,12 @@ fn the_solid_fill_wraps_across_the_tiled_seam() {
 fn the_panel_click_reaches_the_tool_and_every_relief_slot() {
     let mut t = tool(64, PaintMedia::Digital, 8.0);
     assert!(!t.brush_settings().style_solid, "o default tem de ser Line");
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_LINE_SOLID));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_LINE_SOLID));
     assert!(
         t.brush_settings().style_solid,
         "o clique nao chegou ao tool"
     );
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_LINE_SOLID));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_LINE_SOLID));
     assert!(!t.brush_settings().style_solid, "o clique nao volta");
 }
 
@@ -428,7 +427,7 @@ fn the_solid_fill_follows_the_ink_not_the_pointer() {
         let ink = ink_mask(&a);
         // A região que o MESMO gesto preenche, perguntada à porta que a produz.
         let mut b = tool(N, PaintMedia::Digital, 5.0);
-        b.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_LINE_SOLID));
+        b.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_LINE_SOLID));
         b.paint.brush.line_kind = kind;
         loop_gesture_ticked(&mut b, 96.0, 34.0, 6);
         let cov = ph2d_painter_brush::solid::fill_coverage(&b.solid_fill_loops(), n, n, [0.0, 0.0]);
@@ -480,7 +479,7 @@ fn the_closing_chord_wears_the_brush_like_the_rest_of_the_rim() {
     let n = N as usize;
     let (c, s) = (80.0f32, 40.0f32);
     let mut t = tool(N, PaintMedia::Digital, 7.0);
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_LINE_SOLID));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_LINE_SOLID));
     // Um "C": três arestas desenhadas, a quarta (a ESQUERDA) é a corda que o fecho inventa.
     let pts = [
         [c - s, c - s],

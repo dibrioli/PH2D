@@ -15,13 +15,13 @@
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::ids::{self as core_ids, painter_taper_handle_id};
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::tool::Tool;
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_painter_layers::PainterLayersPanel;
 use ph2d_panel_painter_layers::state::{PainterLayersPanelState, set_current_brush};
+use ph2d_tool_painter::ids::painter_taper_handle_id;
 use ph2d_tool_painter::{MAX_TAPER_DIAMETERS, PainterTool};
 use ph2d_ui_testkit::MockPanelHost;
 
@@ -65,8 +65,8 @@ fn every_taper_control_is_painted_and_alive() {
     let tool = PainterTool::default();
     let (host, _st, rects) = painted(&tool);
     for (id, name) in [
-        (core_ids::PAINTER_TAPER_TIP_START, "Tip"),
-        (core_ids::PAINTER_TAPER_OPACITY, "Opacity"),
+        (ph2d_tool_painter::ids::PAINTER_TAPER_TIP_START, "Tip"),
+        (ph2d_tool_painter::ids::PAINTER_TAPER_OPACITY, "Opacity"),
         (painter_taper_handle_id(0), "head handle"),
     ] {
         assert!(
@@ -162,13 +162,13 @@ fn dragging_the_handle_authors_the_head_length() {
 fn every_taper_number_row_lands_on_the_tool() {
     for (id, name, set, read) in [
         (
-            core_ids::PAINTER_TAPER_TIP_START,
+            ph2d_tool_painter::ids::PAINTER_TAPER_TIP_START,
             "Tip",
             0.62_f64,
             (|t: &PainterTool| t.brush_settings().taper.tip_start) as fn(&PainterTool) -> f32,
         ),
         (
-            core_ids::PAINTER_TAPER_OPACITY,
+            ph2d_tool_painter::ids::PAINTER_TAPER_OPACITY,
             "Opacity",
             0.81,
             (|t: &PainterTool| t.brush_settings().taper.opacity) as fn(&PainterTool) -> f32,

@@ -3,7 +3,6 @@
 //! Sibling of `paint.rs` because the panel LOC cap is 600 and the two halves
 //! grow for different reasons (chrome vs. content).
 
-use ph2d_editor_core::ids;
 use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{
@@ -54,10 +53,10 @@ fn table_sections(
             // o do slider morto (*"Spin"*), que era a única opção que MENTIA: o sinal não fala de
             // rotação nenhuma, fala de dormir. (A chave nasceu em 2026-08-30, no mesmo dia que
             // este interruptor; a linha anterior aqui dizia que ela não existia.)
-            if section.id == ids::PHYSICS_SEC_SLEEP {
+            if section.id == crate::ids::PHYSICS_SEC_SLEEP {
                 inner = toggle(
                     ctx,
-                    ids::PHYSICS_SLEEP_SPIN,
+                    crate::ids::PHYSICS_SLEEP_SPIN,
                     tr("panel.physics.sleep_enabled"),
                     snapshot.settings.sleep_enabled(),
                     x,
@@ -93,7 +92,7 @@ pub(super) fn paint_sections(
     // is RUNNING, so it should not sit under a 36-cell grid.
     let (fold, next_y) = header(
         ctx,
-        ids::PHYSICS_SEC_INTERACT,
+        crate::ids::PHYSICS_SEC_INTERACT,
         tr("panel.physics.section.interact"),
         x,
         w,
@@ -112,7 +111,7 @@ pub(super) fn paint_sections(
     // past a 36-cell grid.
     let (fold, next_y) = header(
         ctx,
-        ids::PHYSICS_SEC_JOINT,
+        crate::ids::PHYSICS_SEC_JOINT,
         tr("panel.physics.section.joint"),
         x,
         w,
@@ -129,7 +128,7 @@ pub(super) fn paint_sections(
     // of control from the sliders above — and because it is tall.
     let (fold, next_y) = header(
         ctx,
-        ids::PHYSICS_SEC_LAYERS,
+        crate::ids::PHYSICS_SEC_LAYERS,
         tr("panel.physics.section.layers"),
         x,
         w,
@@ -149,7 +148,7 @@ pub(super) fn paint_sections(
 
     let (fold, next_y) = header(
         ctx,
-        ids::PHYSICS_SEC_DEBUG,
+        crate::ids::PHYSICS_SEC_DEBUG,
         tr("panel.physics.section.debug"),
         x,
         w,
@@ -165,7 +164,7 @@ pub(super) fn paint_sections(
     // toggle, so the key and this control can never disagree.
     y = toggle(
         ctx,
-        ids::PHYSICS_SHOW_COLLIDERS,
+        crate::ids::PHYSICS_SHOW_COLLIDERS,
         tr("panel.physics.show_colliders"),
         snapshot.show_colliders,
         x,
@@ -221,7 +220,7 @@ pub(super) fn paint_sections(
     if snapshot.recorded_run_seconds > 0.0 {
         y = command(
             ctx,
-            ids::PHYSICS_CLEAR_RUN,
+            crate::ids::PHYSICS_CLEAR_RUN,
             &format!(
                 "{} ({:.1} s)",
                 tr("panel.physics.clear_run"),
@@ -235,7 +234,7 @@ pub(super) fn paint_sections(
     } else if snapshot.discarded_run_seconds > 0.0 {
         y = command(
             ctx,
-            ids::PHYSICS_RESTORE_RUN,
+            crate::ids::PHYSICS_RESTORE_RUN,
             &format!(
                 "{} ({:.1} s)",
                 tr("panel.physics.restore_run"),
@@ -252,7 +251,7 @@ pub(super) fn paint_sections(
     // command should not be on the path a hand takes to the first slider.
     y = command(
         ctx,
-        ids::PHYSICS_RESET_DEFAULTS,
+        crate::ids::PHYSICS_RESET_DEFAULTS,
         tr("panel.physics.reset_defaults"),
         x,
         w,

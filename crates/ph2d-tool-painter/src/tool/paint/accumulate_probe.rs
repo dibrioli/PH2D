@@ -12,7 +12,6 @@
 //! Rodar: `cargo test -p ph2d-tool-painter --release accumulate_probe -- --ignored --nocapture`
 
 use crate::tool::PainterTool;
-use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::tool::{
     CanvasPaintTool, CanvasPointer, PanelEvent, PointerPhase, RasterEditTool, Tool,
 };
@@ -47,7 +46,7 @@ pub(in crate::tool::paint) fn soft_tool(strength: f32, accumulate: bool) -> Pain
     t.paint.brush_by_mode.fill(seed);
     t.set_brush_strength(strength);
     if accumulate {
-        t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_ACCUMULATE));
+        t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_BRUSH_ACCUMULATE));
     }
     t
 }
@@ -145,10 +144,10 @@ fn measure_accumulate_spacing_dependence() {
             for &sp in &[0.05f32, 0.10, 0.20, 0.40] {
                 let mut t = soft_tool(0.5, acc);
                 if atten {
-                    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_SPACE_ATTEN));
+                    t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_BRUSH_SPACE_ATTEN));
                 }
                 t.handle_panel_event(PanelEvent::SetValue(
-                    core_ids::PAINTER_BRUSH_SPACING,
+                    crate::ids::PAINTER_BRUSH_SPACING,
                     f64::from(sp),
                 ));
                 one_stroke(&mut t, 1);
@@ -274,7 +273,7 @@ fn measure_relief_accumulates_along_the_arc() {
         for &sp in &[0.05f32, 0.10, 0.20] {
             let mut t = impasto_tool(acc);
             t.handle_panel_event(PanelEvent::SetValue(
-                core_ids::PAINTER_BRUSH_SPACING,
+                crate::ids::PAINTER_BRUSH_SPACING,
                 f64::from(sp),
             ));
             one_stroke(&mut t, 1);

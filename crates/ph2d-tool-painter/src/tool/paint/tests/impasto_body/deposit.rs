@@ -564,56 +564,55 @@ fn impasto_hides_itself_in_every_mode_it_does_not_apply_to() {
 
 #[test]
 fn impasto_panel_events_reach_the_brush() {
-    // The seam test in the panel proves the widget forwards the event; this proves the TOOL consumes it
-    // and the value lands in the spec. Both halves are needed: either one alone leaves a knob that looks
-    // wired and is not (`feedback_tool_unit_green_integration_dead`).
-    use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::{PanelEvent, Tool};
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; 32 * 32 * 4], 32, 32);
 
     // The medium is picked from the Paint Mode dropdown (2026-07-22), not a section checkbox.
     t.handle_panel_event(PanelEvent::SelectOption(
-        core_ids::PAINTER_BRUSH_MEDIA,
+        crate::ids::PAINTER_BRUSH_MEDIA,
         "2".into(),
     ));
     assert!(t.paint.brush.impasto, "picking Impasto reached the brush");
 
-    t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_IMPASTO_DEPTH, -0.4));
+    t.handle_panel_event(PanelEvent::SetValue(
+        crate::ids::PAINTER_IMPASTO_DEPTH,
+        -0.4,
+    ));
     assert!(
         (t.paint.brush.impasto_depth + 0.4).abs() < 1e-6,
         "Depth, negative (carving) and all"
     );
 
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_IMPASTO_SOURCE_GRAIN));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_IMPASTO_SOURCE_GRAIN));
     assert_eq!(t.paint.brush.impasto_source, DepthSource::Grain);
 
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_IMPASTO_DRAW_DEPTH));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_IMPASTO_DRAW_DEPTH));
     assert_eq!(t.paint.brush.impasto_draw_to, DrawTo::Depth);
 
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_IMPASTO_SMOOTHING,
+        crate::ids::PAINTER_IMPASTO_SMOOTHING,
         0.9,
     ));
     assert!((t.paint.brush.impasto_smoothing - 0.9).abs() < 1e-6);
 
     // The canvas half.
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_IMPASTO_SHOW));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_IMPASTO_SHOW));
     assert!(!t.paint.impasto_show, "Show Impasto toggled off");
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_IMPASTO_LIGHT_ANGLE,
+        crate::ids::PAINTER_IMPASTO_LIGHT_ANGLE,
         200.0,
     ));
     assert_eq!(t.paint.impasto_rig.lights[0].angle_deg, 200);
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_IMPASTO_LIGHT_ELEV,
+        crate::ids::PAINTER_IMPASTO_LIGHT_ELEV,
         1.0,
     ));
     assert_eq!(
         t.paint.impasto_rig.lights[0].elev_deg, 5,
         "elevation floors at 5° — a grazing light divides by ~0"
     );
-    t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_IMPASTO_SHINE, 0.7));
+    t.handle_panel_event(PanelEvent::SetValue(crate::ids::PAINTER_IMPASTO_SHINE, 0.7));
     assert!((t.paint.brush.impasto_shine - 0.7).abs() < 1e-6);
 
     // Reset restores the settings — and must NOT delete relief the artist already sculpted.
@@ -625,7 +624,7 @@ fn impasto_panel_events_reach_the_brush() {
         sculpted.iter().any(|&v| v != 0.0),
         "there is relief on the canvas"
     );
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_IMPASTO_RESET));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_IMPASTO_RESET));
     assert!(!t.paint.brush.impasto, "Reset restored the defaults");
     assert_eq!(
         relief(&t),

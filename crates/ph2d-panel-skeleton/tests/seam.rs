@@ -186,7 +186,7 @@ fn estado_de(id: ph2d_a11y::NodeId) {
     // ⚠️ O osso inteligente tem a MESMA forma de exclusão: *Add* só sem acção, *Remove*, o selector
     // e os dois ângulos só com ela.
     let precisa_de_accao = id == ids::VECTOR_BONE_SMART_REMOVE
-        || id == ids::VECTOR_BONE_SMART_CLIP
+        || id == ph2d_panel_skeleton::ids::VECTOR_BONE_SMART_CLIP
         || id == ids::VECTOR_BONE_SMART_PICK
         || id == ids::VECTOR_BONE_SMART_FROM
         || id == ids::VECTOR_BONE_SMART_TO
@@ -219,11 +219,15 @@ fn estado_de(id: ph2d_a11y::NodeId) {
 /// morto sob o ponteiro, que é a cicatriz dos quatro chips da booleana.
 #[test]
 fn the_action_picker_lists_the_document_and_the_choice_reaches_the_bus() {
-    estado_de(ids::VECTOR_BONE_SMART_CLIP);
+    estado_de(ph2d_panel_skeleton::ids::VECTOR_BONE_SMART_CLIP);
     let mut host = MockPanelHost::with_panel::<SkeletonPanel>();
     let mut st = SkeletonPanelState;
     let chip = host
-        .painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, ids::VECTOR_BONE_SMART_CLIP)
+        .painted_rect::<SkeletonPanel>(
+            &mut st,
+            VIEWPORT,
+            ph2d_panel_skeleton::ids::VECTOR_BONE_SMART_CLIP,
+        )
         .expect("o chip da acção não foi PINTADO — o osso inteligente volta a não ter sujeito");
     // Abrir a lista.
     host.dispatch_pointer_event(pointer(PointerKind::Down, chip.x + 2.0, chip.y + 2.0, SEC));
@@ -275,11 +279,15 @@ fn the_action_picker_lists_the_document_and_the_choice_reaches_the_bus() {
 /// despercebido sobre o índice `0`, que é o mesmo em quase toda ordenação errada.
 #[test]
 fn the_option_you_press_is_the_one_you_see() {
-    estado_de(ids::VECTOR_BONE_SMART_CLIP);
+    estado_de(ph2d_panel_skeleton::ids::VECTOR_BONE_SMART_CLIP);
     let mut host = MockPanelHost::with_panel::<SkeletonPanel>();
     let mut st = SkeletonPanelState;
     let chip = host
-        .painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, ids::VECTOR_BONE_SMART_CLIP)
+        .painted_rect::<SkeletonPanel>(
+            &mut st,
+            VIEWPORT,
+            ph2d_panel_skeleton::ids::VECTOR_BONE_SMART_CLIP,
+        )
         .expect("o chip da acção");
     host.dispatch_pointer_event(pointer(PointerKind::Down, chip.x + 2.0, chip.y + 2.0, SEC));
     let evs = host.dispatch_pointer_event(pointer(
@@ -329,8 +337,12 @@ fn a_bone_without_an_action_is_offered_no_picker() {
     let mut host = MockPanelHost::with_panel::<SkeletonPanel>();
     let mut st = SkeletonPanelState;
     assert!(
-        host.painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, ids::VECTOR_BONE_SMART_CLIP)
-            .is_none(),
+        host.painted_rect::<SkeletonPanel>(
+            &mut st,
+            VIEWPORT,
+            ph2d_panel_skeleton::ids::VECTOR_BONE_SMART_CLIP
+        )
+        .is_none(),
         "o selector de acção foi pintado num osso sem acção — ele só saberia escrever num \
          componente ausente"
     );

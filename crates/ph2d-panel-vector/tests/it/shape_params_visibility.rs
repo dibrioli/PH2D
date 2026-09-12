@@ -14,7 +14,6 @@
 
 use ph2d_editor_core::HeroScreen;
 use ph2d_editor_core::NodeId;
-use ph2d_editor_core::ids;
 use ph2d_editor_core::panel::{ErasedPanel, Panel, PanelRegistry};
 use ph2d_editor_core::screens::hero::{HERO_VIEWPORT_H, HERO_VIEWPORT_W};
 use ph2d_editor_core::screens::paint_hero_screen;
@@ -72,7 +71,7 @@ fn publish(live: Option<ShapeKind>, selected: usize, mode: DrawMode, active: Sha
 /// inclusive o separador, pelo `step` do orquestrador).
 fn shape_params_painted(hero: &HeroScreen) -> bool {
     hero.hit_index
-        .rect_for(ids::VECTOR_SECTION_SHAPE_PARAMS)
+        .rect_for(ph2d_tool_vector::ids::VECTOR_SECTION_SHAPE_PARAMS)
         .is_some()
 }
 
@@ -80,7 +79,7 @@ fn shape_params_painted(hero: &HeroScreen) -> bool {
 /// o slot 0 existe quando ela está em foco.) Prova que não é só o cabeçalho que some.
 fn first_shape_field_painted(hero: &HeroScreen) -> bool {
     hero.hit_index
-        .rect_for(ids::vector_shape_field_id(0))
+        .rect_for(ph2d_tool_vector::ids::vector_shape_field_id(0))
         .is_some()
 }
 
@@ -233,10 +232,10 @@ fn a_selected_live_shape_still_shows_its_own_fields() {
 /// Quantos slots de campo esta seção pintou? (Um `rect_for` por índice — é o que separa
 /// *"a seção existe"* de *"a seção é DAQUELA forma"*.)
 fn shape_fields_painted(hero: &HeroScreen) -> usize {
-    (0..ph2d_panel_vector::ids::MAX_SHAPE_FIELD_SLOTS)
+    (0..ph2d_tool_vector::ids::MAX_SHAPE_FIELD_SLOTS)
         .filter(|&i| {
             hero.hit_index
-                .rect_for(ids::vector_shape_field_id(i))
+                .rect_for(ph2d_tool_vector::ids::vector_shape_field_id(i))
                 .is_some()
         })
         .count()

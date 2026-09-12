@@ -108,8 +108,8 @@ impl crate::App {
             8 => {
                 if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
                     for id in [
-                        ph2d_editor_core::ids::FLIP_MODE_EDIT,
-                        ph2d_editor_core::ids::FLIP_EDIT_DOM_SEGMENT,
+                        ph2d_tool_flip::ids::FLIP_MODE_EDIT,
+                        ph2d_tool_flip::ids::FLIP_EDIT_DOM_SEGMENT,
                     ] {
                         hero.bus
                             .push(ph2d_editor_core::action_bus::EditorAction::ToolPanelEvent(

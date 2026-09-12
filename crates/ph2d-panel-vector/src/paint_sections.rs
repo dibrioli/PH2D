@@ -438,8 +438,11 @@ impl BodyCtx<'_> {
 
     /// Fill swatch + Fill opacity (0 % = none).
     pub(crate) fn fill_style(&mut self, snap: &VectorStyleSnapshot, y: f32) -> f32 {
-        let (mut y, collapsed) =
-            self.section_header(ids::VECTOR_SECTION_FILL, tr("panel.vector.section.fill"), y);
+        let (mut y, collapsed) = self.section_header(
+            ph2d_tool_vector::ids::VECTOR_SECTION_FILL,
+            tr("panel.vector.section.fill"),
+            y,
+        );
         if collapsed {
             return y;
         }
@@ -460,11 +463,15 @@ impl BodyCtx<'_> {
             swatch_w,
             self.row_h,
         );
-        let fill_swatch =
-            ColorSwatch::new(ids::VECTOR_FILL_SWATCH, "Fill color", snap.fill).size(SwatchSize::Md);
+        let fill_swatch = ColorSwatch::new(
+            ph2d_tool_vector::ids::VECTOR_FILL_SWATCH,
+            "Fill color",
+            snap.fill,
+        )
+        .size(SwatchSize::Md);
         paint_color_swatch(&fill_swatch, fill_swatch_rect, self.scene, self.theme);
         self.hit_index
-            .register(ids::VECTOR_FILL_SWATCH, fill_swatch_rect);
+            .register(ph2d_tool_vector::ids::VECTOR_FILL_SWATCH, fill_swatch_rect);
         // ⚠️ **A RACHURA**: com um token a cobrir, a cor que a swatch mostra NÃO é a que a arte
         // desenha — e uma swatch que afirma um valor que ninguém usa é a pior UI possível.
         let bindings = crate::state::token_bindings();
@@ -480,14 +487,14 @@ impl BodyCtx<'_> {
 
         let track = self
             .store
-            .slider(ids::VECTOR_FILL_OPACITY)
+            .slider(ph2d_tool_vector::ids::VECTOR_FILL_OPACITY)
             .map(|(_, v)| v)
             .unwrap_or_else(|| opacity_to_slider(snap.fill[3]));
         let pct = f64::from(track) * 100.0; // LITERAL-PX-OK: fraction→percent for the opacity chip
         self.slider_row(
             "Opacity",
-            ids::VECTOR_FILL_OPACITY,
-            ids::VECTOR_FILL_OPACITY_NUM,
+            ph2d_tool_vector::ids::VECTOR_FILL_OPACITY,
+            ph2d_tool_vector::ids::VECTOR_FILL_OPACITY_NUM,
             track,
             pct,
             &format!("{}", pct.round() as i64),

@@ -19,7 +19,6 @@
 //! função (`paint_frame_shared::paint_open_popover`); este ficheiro escolhe a lista que produz o
 //! fenómeno, e o que ele defende vale para os quatro.
 
-use ph2d_editor_core::ids;
 use ph2d_editor_core::screens::HeroLayout;
 use ph2d_editor_core::screens::hero::InspectorAnchorInfo;
 use ph2d_editor_core::widget::DROPDOWN_SCROLLBAR_ID;
@@ -43,7 +42,7 @@ fn anchor_info() -> InspectorAnchorInfo {
         present: true,
         selected_count: 1,
         mixed: false,
-        parent_anchors: (0..ids::INSP_MOUNT_OPT.len())
+        parent_anchors: (0..ph2d_panel_inspector::ids::INSP_MOUNT_OPT.len())
             .map(|i| format!("anchor_{i:02}"))
             .collect(),
         mount: None,
@@ -59,7 +58,7 @@ fn painted() -> (MockPanelHost, Vec<(ph2d_a11y::NodeId, Rect)>) {
     let mut st = InspectorState::default();
     set_current_inspector_anchor(Some(anchor_info()));
     let _ = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
-    h.set_dropdown_open(ids::INSP_MOUNT_PICK, true);
+    h.set_dropdown_open(ph2d_panel_inspector::ids::INSP_MOUNT_PICK, true);
     let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
     set_current_inspector_anchor(None);
     (h, rects)
@@ -83,24 +82,24 @@ fn a_long_list_is_clamped_to_the_region_and_publishes_its_scroll_extents() {
         .expect("o rect do popover nao foi publicado");
     assert_eq!(
         dono,
-        ids::INSP_MOUNT_PICK,
+        ph2d_panel_inspector::ids::INSP_MOUNT_PICK,
         "o popover publicado e' de outro seletor"
     );
 
     let content_h = h
         .store()
-        .panel_content_h(ids::INSP_MOUNT_PICK)
+        .panel_content_h(ph2d_panel_inspector::ids::INSP_MOUNT_PICK)
         .expect("a altura do CONTEUDO nao foi publicada — a roda nao teria ate' onde rolar");
     let visible_h = h
         .store()
-        .panel_visible_h(ids::INSP_MOUNT_PICK)
+        .panel_visible_h(ph2d_panel_inspector::ids::INSP_MOUNT_PICK)
         .expect("a altura VISIVEL nao foi publicada");
 
     assert!(
         content_h > visible_h,
         "a fixtura NAO produz o fenomeno: {} entradas cabem no painel (conteudo {content_h:.1}, \
          visivel {visible_h:.1}) — este gate estaria a passar por caber, nao por rolar",
-        ids::INSP_MOUNT_OPT.len() + 1
+        ph2d_panel_inspector::ids::INSP_MOUNT_OPT.len() + 1
     );
     assert!(
         painel.y >= regiao.y && painel.y + painel.h <= regiao.y + regiao.h,
@@ -137,7 +136,7 @@ fn nothing_is_registered_outside_the_panel_and_the_scrollbar_is_there() {
     assert!(barra.h > 0.0, "a barra de rolagem tem area zero: {barra:?}");
 
     let mut vistas = 0usize;
-    for &id in ids::INSP_MOUNT_OPT.iter() {
+    for &id in ph2d_panel_inspector::ids::INSP_MOUNT_OPT.iter() {
         let Some((_, r)) = rects.iter().find(|(n, _)| *n == id).copied() else {
             continue; // rolada para fora — e é exactamente isso que se espera de uma lista longa
         };
@@ -148,9 +147,9 @@ fn nothing_is_registered_outside_the_panel_and_the_scrollbar_is_there() {
         );
     }
     assert!(
-        vistas > 0 && vistas < ids::INSP_MOUNT_OPT.len(),
+        vistas > 0 && vistas < ph2d_panel_inspector::ids::INSP_MOUNT_OPT.len(),
         "esperava-se uma FATIA da lista registada (viu {vistas} de {}) — todas registadas quer \
          dizer que se registou o que esta' fora do painel; nenhuma, que o popover nao pintou",
-        ids::INSP_MOUNT_OPT.len()
+        ph2d_panel_inspector::ids::INSP_MOUNT_OPT.len()
     );
 }

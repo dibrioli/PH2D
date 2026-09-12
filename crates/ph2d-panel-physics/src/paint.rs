@@ -65,7 +65,7 @@ pub(crate) fn paint(_state: &mut PhysicsPanelState, ctx: &mut PaintCtx) {
     );
     paint_panel_close_button(
         rect,
-        ids::PHYSICS_CLOSE,
+        crate::ids::PHYSICS_CLOSE,
         ctx.host.hit_index_mut(),
         ctx.scene,
         theme,

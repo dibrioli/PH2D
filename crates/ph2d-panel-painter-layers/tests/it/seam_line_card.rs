@@ -8,7 +8,6 @@
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::tool::Tool;
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_painter_layers::PainterLayersPanel;
@@ -69,7 +68,7 @@ fn a_pointer_can_pick_every_line_type() {
         // Começa de um tipo que NÃO é o alvo, para *"já estava escolhido"* não passar este gate.
         tool.set_line_kind(if want == 0 { 1 } else { 0 });
         let (mut host, mut st, rects) = painted(&tool);
-        let chip = rect_of(&rects, core_ids::PAINTER_LINE_TYPE)
+        let chip = rect_of(&rects, ph2d_tool_painter::ids::PAINTER_LINE_TYPE)
             .expect("o chip Type do card Line não é pintado");
         let (cx, cy) = centre(chip);
         click_through(&mut host, &mut st, &mut tool, cx, cy);
@@ -77,10 +76,13 @@ fn a_pointer_can_pick_every_line_type() {
         // Re-pinta com o chip ABERTO: é este passe que põe as opções na tela.
         set_current_brush(Some(tool.brush_settings()));
         let rects = host.paint::<PainterLayersPanel>(&mut st, viewport());
-        let opt =
-            rect_of(&rects, core_ids::painter_line_type_option_id(want)).unwrap_or_else(|| {
-                panic!("clicar o chip Type não o abriu — a opção {want} nunca chegou à tela")
-            });
+        let opt = rect_of(
+            &rects,
+            ph2d_tool_painter::ids::painter_line_type_option_id(want),
+        )
+        .unwrap_or_else(|| {
+            panic!("clicar o chip Type não o abriu — a opção {want} nunca chegou à tela")
+        });
         let (ox, oy) = centre(opt);
         click_through(&mut host, &mut st, &mut tool, ox, oy);
 
@@ -107,21 +109,30 @@ fn the_speed_type_has_nothing_left_to_tune() {
     assert!(rows > 0, "controle: o card Line tem de pintar alguma coisa");
     // O chip do tipo é o ÚNICO widget que o `Speed` acrescenta ao card.
     assert!(
-        rect_of(&rects, core_ids::PAINTER_LINE_TYPE).is_some(),
+        rect_of(&rects, ph2d_tool_painter::ids::PAINTER_LINE_TYPE).is_some(),
         "o chip Type sumiu do card"
     );
     assert!(
-        rect_of(&rects, core_ids::PAINTER_LINE_SOLID).is_some(),
+        rect_of(&rects, ph2d_tool_painter::ids::PAINTER_LINE_SOLID).is_some(),
         "o checkbox Solid sumiu do card"
     );
 }
 
 /// Os cinco controles que o `Sketchy` acrescenta ao card, e o que cada um autora no tool.
 const SKETCHY_SLIDERS: [(NodeId, &str); 4] = [
-    (core_ids::PAINTER_LINE_SKETCHY_REACH, "Reach"),
-    (core_ids::PAINTER_LINE_SKETCHY_DENSITY, "Density"),
-    (core_ids::PAINTER_LINE_SKETCHY_WIDTH, "Line Width"),
-    (core_ids::PAINTER_LINE_SKETCHY_OPACITY, "Opacity"),
+    (ph2d_tool_painter::ids::PAINTER_LINE_SKETCHY_REACH, "Reach"),
+    (
+        ph2d_tool_painter::ids::PAINTER_LINE_SKETCHY_DENSITY,
+        "Density",
+    ),
+    (
+        ph2d_tool_painter::ids::PAINTER_LINE_SKETCHY_WIDTH,
+        "Line Width",
+    ),
+    (
+        ph2d_tool_painter::ids::PAINTER_LINE_SKETCHY_OPACITY,
+        "Opacity",
+    ),
 ];
 
 /// **AS ROWS DO `Sketchy` SÓ EXISTEM COM ELE ESCOLHIDO** — presença E ausência, que é o par que
@@ -138,7 +149,7 @@ fn the_sketchy_rows_exist_only_under_the_sketchy_type() {
         );
     }
     assert!(
-        rect_of(&on, core_ids::PAINTER_LINE_SKETCHY_MAGNETIFY).is_some(),
+        rect_of(&on, ph2d_tool_painter::ids::PAINTER_LINE_SKETCHY_MAGNETIFY).is_some(),
         "o checkbox Magnetify não é pintado"
     );
 
@@ -151,7 +162,7 @@ fn the_sketchy_rows_exist_only_under_the_sketchy_type() {
         );
     }
     assert!(
-        rect_of(&off, core_ids::PAINTER_LINE_SKETCHY_MAGNETIFY).is_none(),
+        rect_of(&off, ph2d_tool_painter::ids::PAINTER_LINE_SKETCHY_MAGNETIFY).is_none(),
         "o Magnetify sobrevive ao tipo None"
     );
 }
@@ -197,8 +208,11 @@ fn the_magnetify_checkbox_toggles_under_a_real_click() {
     tool.set_line_kind(2);
     let start = tool.brush_settings().sketchy_magnetify;
     let (mut host, mut st, rects) = painted(&tool);
-    let r = rect_of(&rects, core_ids::PAINTER_LINE_SKETCHY_MAGNETIFY)
-        .expect("o Magnetify não é pintado");
+    let r = rect_of(
+        &rects,
+        ph2d_tool_painter::ids::PAINTER_LINE_SKETCHY_MAGNETIFY,
+    )
+    .expect("o Magnetify não é pintado");
     let (cx, cy) = centre(r);
     click_through(&mut host, &mut st, &mut tool, cx, cy);
     assert_eq!(
@@ -207,7 +221,11 @@ fn the_magnetify_checkbox_toggles_under_a_real_click() {
         "o clique não alternou o Magnetify"
     );
     let (mut host, mut st, rects) = painted(&tool);
-    let r = rect_of(&rects, core_ids::PAINTER_LINE_SKETCHY_MAGNETIFY).expect("sumiu ao alternar");
+    let r = rect_of(
+        &rects,
+        ph2d_tool_painter::ids::PAINTER_LINE_SKETCHY_MAGNETIFY,
+    )
+    .expect("sumiu ao alternar");
     let (cx, cy) = centre(r);
     click_through(&mut host, &mut st, &mut tool, cx, cy);
     assert_eq!(
@@ -219,9 +237,15 @@ fn the_magnetify_checkbox_toggles_under_a_real_click() {
 
 /// Os controles que o `Wire` acrescenta ao card (plano 38 W4).
 const WIRE_SLIDERS: [(NodeId, &str); 3] = [
-    (core_ids::PAINTER_LINE_WIRE_HISTORY, "History"),
-    (core_ids::PAINTER_LINE_SKETCHY_WIDTH, "Line Width"),
-    (core_ids::PAINTER_LINE_SKETCHY_OPACITY, "Opacity"),
+    (ph2d_tool_painter::ids::PAINTER_LINE_WIRE_HISTORY, "History"),
+    (
+        ph2d_tool_painter::ids::PAINTER_LINE_SKETCHY_WIDTH,
+        "Line Width",
+    ),
+    (
+        ph2d_tool_painter::ids::PAINTER_LINE_SKETCHY_OPACITY,
+        "Opacity",
+    ),
 ];
 
 /// **AS ROWS DO `Wire` SÓ EXISTEM COM ELE ESCOLHIDO — e as DUAS compartilhadas ficam no LUGAR.**
@@ -241,27 +265,27 @@ fn the_wire_rows_exist_only_under_the_wire_type_and_share_the_ink_rows() {
         );
     }
     assert!(
-        rect_of(&on, core_ids::PAINTER_LINE_WIRE_CONNECTION).is_some(),
+        rect_of(&on, ph2d_tool_painter::ids::PAINTER_LINE_WIRE_CONNECTION).is_some(),
         "o checkbox Connection Line não é pintado"
     );
     // O que é do OUTRO tipo não vaza para este.
     assert!(
-        rect_of(&on, core_ids::PAINTER_LINE_SKETCHY_REACH).is_none(),
+        rect_of(&on, ph2d_tool_painter::ids::PAINTER_LINE_SKETCHY_REACH).is_none(),
         "o Reach do Sketchy sobrevive no Wire — é um controle que não faz nada"
     );
     assert!(
-        rect_of(&on, core_ids::PAINTER_LINE_SKETCHY_MAGNETIFY).is_none(),
+        rect_of(&on, ph2d_tool_painter::ids::PAINTER_LINE_SKETCHY_MAGNETIFY).is_none(),
         "o Magnetify sobrevive no Wire"
     );
 
     tool.set_line_kind(0); // None
     let (_, _, off) = painted(&tool);
     assert!(
-        rect_of(&off, core_ids::PAINTER_LINE_WIRE_HISTORY).is_none(),
+        rect_of(&off, ph2d_tool_painter::ids::PAINTER_LINE_WIRE_HISTORY).is_none(),
         "o History sobrevive ao tipo None"
     );
     assert!(
-        rect_of(&off, core_ids::PAINTER_LINE_WIRE_CONNECTION).is_none(),
+        rect_of(&off, ph2d_tool_painter::ids::PAINTER_LINE_WIRE_CONNECTION).is_none(),
         "o Connection Line sobrevive ao tipo None"
     );
 }
@@ -273,7 +297,8 @@ fn the_wire_history_slider_is_alive_under_the_pointer() {
     tool.set_line_kind(3);
     let before = tool.brush_settings().wire_history;
     let (mut host, mut st, rects) = painted(&tool);
-    let r = rect_of(&rects, core_ids::PAINTER_LINE_WIRE_HISTORY).expect("o History não é pintado");
+    let r = rect_of(&rects, ph2d_tool_painter::ids::PAINTER_LINE_WIRE_HISTORY)
+        .expect("o History não é pintado");
     let (x, y) = (r.x + r.w - 1.0, r.y + r.h * 0.5);
     for ev in host.drag_at(r.x + r.w * 0.5, y, x, y) {
         host.apply_panel_event::<PainterLayersPanel>(&mut st, ev);
@@ -296,12 +321,24 @@ fn the_wire_history_slider_is_alive_under_the_pointer() {
 /// `thread_opacity` decidem como a fita aparece. Elas shiparam alcançáveis só no Sketchy e no Wire
 /// — um controle que governa o que se vê e vive noutro modo é um controle que o artista não tem.
 const RIBBON_SLIDERS: [(NodeId, &str); 6] = [
-    (core_ids::PAINTER_LINE_RIBBON_WEIGHT, "Weight"),
-    (core_ids::PAINTER_LINE_RIBBON_FRICTION, "Friction"),
-    (core_ids::PAINTER_LINE_RIBBON_GRAVITY, "Gravity"),
-    (core_ids::PAINTER_LINE_RIBBON_RUNGS, "Rungs"),
-    (core_ids::PAINTER_LINE_SKETCHY_WIDTH, "Line Width"),
-    (core_ids::PAINTER_LINE_SKETCHY_OPACITY, "Opacity"),
+    (ph2d_tool_painter::ids::PAINTER_LINE_RIBBON_WEIGHT, "Weight"),
+    (
+        ph2d_tool_painter::ids::PAINTER_LINE_RIBBON_FRICTION,
+        "Friction",
+    ),
+    (
+        ph2d_tool_painter::ids::PAINTER_LINE_RIBBON_GRAVITY,
+        "Gravity",
+    ),
+    (ph2d_tool_painter::ids::PAINTER_LINE_RIBBON_RUNGS, "Rungs"),
+    (
+        ph2d_tool_painter::ids::PAINTER_LINE_SKETCHY_WIDTH,
+        "Line Width",
+    ),
+    (
+        ph2d_tool_painter::ids::PAINTER_LINE_SKETCHY_OPACITY,
+        "Opacity",
+    ),
 ];
 
 /// **AS ROWS DA `Ribbon` SÓ EXISTEM COM ELA ESCOLHIDA — e a tinta de FIO está entre elas.**
@@ -324,11 +361,11 @@ fn the_ribbon_rows_exist_only_under_the_ribbon_type_and_carry_the_thread_ink() {
     }
     // O que é de OUTRO tipo não vaza para este.
     assert!(
-        rect_of(&on, core_ids::PAINTER_LINE_SKETCHY_REACH).is_none(),
+        rect_of(&on, ph2d_tool_painter::ids::PAINTER_LINE_SKETCHY_REACH).is_none(),
         "o Reach do Sketchy sobrevive na Ribbon — é um controle que não faz nada"
     );
     assert!(
-        rect_of(&on, core_ids::PAINTER_LINE_WIRE_HISTORY).is_none(),
+        rect_of(&on, ph2d_tool_painter::ids::PAINTER_LINE_WIRE_HISTORY).is_none(),
         "o History do Wire sobrevive na Ribbon"
     );
 
@@ -386,9 +423,12 @@ fn every_ribbon_slider_is_alive_under_the_pointer() {
 
 /// Os TRÊS controles que o `Rough` acrescenta ao card (plano 38 W6).
 const ROUGH_SLIDERS: [(NodeId, &str); 3] = [
-    (core_ids::PAINTER_LINE_ROUGH_AMOUNT, "Roughness"),
-    (core_ids::PAINTER_LINE_ROUGH_BOWING, "Bowing"),
-    (core_ids::PAINTER_LINE_ROUGH_PASSES, "Passes"),
+    (
+        ph2d_tool_painter::ids::PAINTER_LINE_ROUGH_AMOUNT,
+        "Roughness",
+    ),
+    (ph2d_tool_painter::ids::PAINTER_LINE_ROUGH_BOWING, "Bowing"),
+    (ph2d_tool_painter::ids::PAINTER_LINE_ROUGH_PASSES, "Passes"),
 ];
 
 /// **AS ROWS DO `Rough` SÓ EXISTEM COM ELE ESCOLHIDO — e ele NÃO carrega a tinta de fio.**
@@ -409,11 +449,11 @@ fn the_rough_rows_exist_only_under_the_rough_type_and_carry_no_thread_ink() {
         );
     }
     assert!(
-        rect_of(&on, core_ids::PAINTER_LINE_SKETCHY_WIDTH).is_none(),
+        rect_of(&on, ph2d_tool_painter::ids::PAINTER_LINE_SKETCHY_WIDTH).is_none(),
         "o Rough pinta Line Width -- ele nao costura fio nenhum, e' uma row que nao faz nada"
     );
     assert!(
-        rect_of(&on, core_ids::PAINTER_LINE_RIBBON_WEIGHT).is_none(),
+        rect_of(&on, ph2d_tool_painter::ids::PAINTER_LINE_RIBBON_WEIGHT).is_none(),
         "o Weight da fita sobrevive no Rough"
     );
 
@@ -462,7 +502,7 @@ fn the_connection_line_checkbox_toggles_under_a_real_click() {
     tool.set_line_kind(3);
     let start = tool.brush_settings().wire_connection_line;
     let (mut host, mut st, rects) = painted(&tool);
-    let r = rect_of(&rects, core_ids::PAINTER_LINE_WIRE_CONNECTION)
+    let r = rect_of(&rects, ph2d_tool_painter::ids::PAINTER_LINE_WIRE_CONNECTION)
         .expect("o Connection Line não é pintado");
     let (cx, cy) = centre(r);
     click_through(&mut host, &mut st, &mut tool, cx, cy);
@@ -472,7 +512,8 @@ fn the_connection_line_checkbox_toggles_under_a_real_click() {
         "o clique não alternou o Connection Line"
     );
     let (mut host, mut st, rects) = painted(&tool);
-    let r = rect_of(&rects, core_ids::PAINTER_LINE_WIRE_CONNECTION).expect("sumiu ao alternar");
+    let r = rect_of(&rects, ph2d_tool_painter::ids::PAINTER_LINE_WIRE_CONNECTION)
+        .expect("sumiu ao alternar");
     let (cx, cy) = centre(r);
     click_through(&mut host, &mut st, &mut tool, cx, cy);
     assert_eq!(

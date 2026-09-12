@@ -41,7 +41,7 @@ fn chip_click(host: &mut dyn PanelHostInternal, id: ids::NodeId) -> bool {
     // ⚠️ **A leitura inversa vem da PORTA** (`ids::instance_axis_option`), e ela vem ANTES do
     // estado: este braço corre em TODO clique do Inspector, e o `current_inspector_properties()`
     // **clona** o cartão inteiro. Perguntar primeiro o que custa 3 ns é a ordem certa das duas.
-    let Some((a, v)) = ids::instance_axis_option(id) else {
+    let Some((a, v)) = crate::ids::instance_axis_option(id) else {
         return false;
     };
     let Some(info) = crate::state::current_inspector_properties() else {

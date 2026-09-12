@@ -24,8 +24,8 @@ use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::EventOutcome;
 use ph2d_editor_core::tool::Tool; // brings `handle_panel_event` into scope
+use ph2d_panel_bgremoval::BgRemovalPanel;
 use ph2d_panel_bgremoval::state::BgRemovalPanelState;
-use ph2d_panel_bgremoval::{BgRemovalPanel, ids};
 use ph2d_tool_bgremoval::BgRemovalTool;
 use ph2d_ui_testkit::MockPanelHost;
 
@@ -56,10 +56,10 @@ fn tolerance_slider_drag_reaches_tool_snapshot() {
     // A pointer drag writes the slider's stored value, then dispatch emits
     // ValueChanged. Simulate both — `event.rs` reads the stored value back
     // off the store when it forwards.
-    host.set_slider_value(ids::BGR_TOLERANCE, TARGET);
+    host.set_slider_value(ph2d_tool_bgremoval::ids::BGR_TOLERANCE, TARGET);
     let outcome = host.apply_panel_event::<BgRemovalPanel>(
         &mut panel_state,
-        WidgetEvent::ValueChanged(ids::BGR_TOLERANCE),
+        WidgetEvent::ValueChanged(ph2d_tool_bgremoval::ids::BGR_TOLERANCE),
     );
     assert_eq!(
         outcome,
@@ -110,8 +110,10 @@ fn apply_button_arms_the_bake() {
         "test setup invalid: bake latch already armed before the click"
     );
 
-    let outcome = host
-        .apply_panel_event::<BgRemovalPanel>(&mut panel_state, WidgetEvent::Click(ids::BGR_APPLY));
+    let outcome = host.apply_panel_event::<BgRemovalPanel>(
+        &mut panel_state,
+        WidgetEvent::Click(ph2d_tool_bgremoval::ids::BGR_APPLY),
+    );
     assert_eq!(
         outcome,
         EventOutcome::Consumed,

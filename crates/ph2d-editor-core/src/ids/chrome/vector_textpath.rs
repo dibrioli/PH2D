@@ -12,13 +12,6 @@ use ph2d_a11y::NodeId;
 
 use super::super::hash_node_id;
 
-// ── Text on Path: o texto CAVALGA uma curva (plano 22) ──────────────────────────
-// O vínculo é o componente `ph2d_ecs::VecTextPath` na entidade do texto; presença = cavalga,
-// ausência = texto reto. Estes ids são a única porta do PRODUTO para ele — sem eles a feature
-// existiria no motor, gateada e smokada, e não existiria para o artista (a mesma frase que o
-// envelope teve de escrever sobre si).
-/// Seção **TEXT ON PATH** — o texto corre ao longo de uma curva, com os glyphs rígidos.
-pub const VECTOR_SECTION_TEXTPATH: NodeId = hash_node_id("vector.section.textpath");
 /// **Text on Path** — prende o texto selecionado à outra forma selecionada. Só é oferecido com a
 /// seleção que o gesto exige (um texto + um caminho), fato que só a shell enxerga.
 pub const VECTOR_TEXTPATH_LINK: NodeId = hash_node_id("vector.textpath.link");
@@ -37,5 +30,3 @@ pub const VECTOR_TEXTPATH_FLIP: NodeId = hash_node_id("vector.textpath.flip");
 pub const VECTOR_TEXTPATH_FLIP_OFF: NodeId = hash_node_id("vector.textpath.flip.off");
 /// **Offset** — onde a 1ª linha começa, em FRAÇÃO do comprimento do caminho (`startOffset` do SVG).
 pub const VECTOR_TEXTPATH_OFFSET: NodeId = hash_node_id("vector.textpath.offset");
-/// O campo numérico gêmeo do [`VECTOR_TEXTPATH_OFFSET`].
-pub const VECTOR_TEXTPATH_OFFSET_NUM: NodeId = hash_node_id("vector.textpath.offset.num");

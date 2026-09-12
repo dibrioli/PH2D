@@ -52,7 +52,7 @@ fn anchors(scene: &VecScene, id: VecPathId) -> Vec<[f64; 2]> {
 }
 
 fn field(i: usize) -> NodeId {
-    ph2d_editor_core::ids::vector_shape_field_id(i)
+    ph2d_tool_vector::ids::vector_shape_field_id(i)
 }
 
 /// O CORAÇÃO do ciclo paramétrico: mexer num campo de um polígono VIVO selecionado
@@ -235,7 +235,7 @@ fn switching_the_catalog_shape_reseeds_the_fields() {
     // (ou passar) por um motivo que não tem nada a ver com a semente.
     let mut store = WidgetStore::default();
     <ph2d_panel_vector::VectorPanel as ph2d_editor_core::panel::Panel>::populate(&mut store);
-    let id0 = ph2d_editor_core::ids::vector_shape_field_id(0);
+    let id0 = ph2d_tool_vector::ids::vector_shape_field_id(0);
 
     // A forma A é semeada e o artista mexe no 1º campo.
     let a = ShapeKind::Star;

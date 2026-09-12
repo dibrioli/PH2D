@@ -18,6 +18,7 @@
 #![forbid(unsafe_code)]
 
 mod event;
+pub mod ids;
 mod paint;
 mod populate;
 mod row;
@@ -30,7 +31,6 @@ pub use state::{
 };
 
 use ph2d_a11y::NodeId;
-use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};
 use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal};
 use ph2d_editor_core::screens::hero::fixture;
@@ -42,7 +42,7 @@ impl Panel for HierarchyPanel {
     type State = HierarchyState;
 
     const ID: &'static str = "hierarchy";
-    const NODE_ID: NodeId = ids::HIER_PANEL;
+    const NODE_ID: NodeId = ph2d_editor_core::ids::HIER_PANEL;
     const DEFAULT_VISIBLE: bool = true;
     const TITLE: &'static str = "Hierarchy";
     const ICON: ph2d_editor_core::icons::IconId = ph2d_editor_core::icons::IconId::Hierarchy;

@@ -28,12 +28,12 @@ fn the_panel_and_the_engine_agree_on_the_ceilings() {
         "o teto de LINHAS do painel tem de bater com o `VecFilter::MAX_OPS`"
     );
     assert_eq!(
-        ph2d_editor_core::ids::MAX_FILTER_KINDS,
+        ph2d_panel_vector::ids::MAX_FILTER_KINDS,
         FxOp::KINDS,
         "o teto de TIPOS do painel tem de bater com o `FxOp::KINDS`"
     );
     assert_eq!(
-        ph2d_editor_core::ids::MAX_FILTER_BLENDS,
+        ph2d_panel_vector::ids::MAX_FILTER_BLENDS,
         usize::from(FxOp::BLEND_KINDS),
         "o teto de LEIS DE MISTURA do painel tem de bater com o `FxOp::BLEND_KINDS` — um teto \
          menor deixa as ultimas leis sem opcao no popover, em silencio"
@@ -52,17 +52,17 @@ fn the_panel_and_the_engine_agree_on_the_ceilings() {
     // nomeia o porquê — um teto menor deixa os últimos stops sem punho (autorados e inalcançáveis),
     // um maior faz o painel pintar punhos que o uniform não carrega.
     assert_eq!(
-        ph2d_editor_core::ids::MAX_FILTER_STOPS,
+        ph2d_panel_vector::ids::MAX_FILTER_STOPS,
         FxOp::MAX_GRADIENT_STOPS,
         "os tetos de STOPS divergiram — e como os arrays sao tipados por eles, isto so e alcancavel \
          se o snapshot deixou de ser um array de tamanho fixo"
     );
     let widest = FxOp::SPECS.iter().map(|s| s.modes.len()).max().unwrap_or(0);
     assert!(
-        widest <= ph2d_editor_core::ids::MAX_FILTER_MODES,
+        widest <= ph2d_panel_vector::ids::MAX_FILTER_MODES,
         "o teto de MODOS do painel ({}) nao cobre o tipo mais largo ({widest}) — os ultimos \
          modos ficariam sem chip, em silencio",
-        ph2d_editor_core::ids::MAX_FILTER_MODES
+        ph2d_panel_vector::ids::MAX_FILTER_MODES
     );
 }
 
@@ -303,41 +303,70 @@ fn the_shadow_offset_crosses_the_camera_and_lands_on_whole_pixels() {
 /// linha 2 editaria a linha 0 e nada pareceria quebrado.
 #[test]
 fn hit_of_decodes_every_row_control_and_nothing_else() {
-    use ph2d_editor_core::ids as vid;
     for k in 0..FxOp::KINDS {
         #[allow(clippy::cast_possible_truncation)]
         let want = FilterHit::Add(k as u8);
-        assert_eq!(hit_of(vid::filter_add_id(k)), Some(want));
+        assert_eq!(hit_of(ph2d_panel_vector::ids::filter_add_id(k)), Some(want));
     }
     for r in 0..VecFilter::MAX_OPS {
-        for m in 0..vid::MAX_FILTER_MODES {
+        for m in 0..ph2d_panel_vector::ids::MAX_FILTER_MODES {
             #[allow(clippy::cast_possible_truncation)]
             let want = FilterHit::Mode(r, m as u8);
-            assert_eq!(hit_of(vid::filter_mode_id(r, m)), Some(want));
+            assert_eq!(
+                hit_of(ph2d_panel_vector::ids::filter_mode_id(r, m)),
+                Some(want)
+            );
         }
-        assert_eq!(hit_of(vid::filter_remove_id(r)), Some(FilterHit::Remove(r)));
-        assert_eq!(hit_of(vid::filter_up_id(r)), Some(FilterHit::Up(r)));
-        assert_eq!(hit_of(vid::filter_down_id(r)), Some(FilterHit::Down(r)));
-        assert_eq!(hit_of(vid::filter_hide_id(r)), Some(FilterHit::Hide(r)));
-        assert_eq!(hit_of(vid::filter_color_id(r)), Some(FilterHit::Color(r)));
         assert_eq!(
-            hit_of(vid::filter_color_b_id(r)),
+            hit_of(ph2d_panel_vector::ids::filter_remove_id(r)),
+            Some(FilterHit::Remove(r))
+        );
+        assert_eq!(
+            hit_of(ph2d_panel_vector::ids::filter_up_id(r)),
+            Some(FilterHit::Up(r))
+        );
+        assert_eq!(
+            hit_of(ph2d_panel_vector::ids::filter_down_id(r)),
+            Some(FilterHit::Down(r))
+        );
+        assert_eq!(
+            hit_of(ph2d_panel_vector::ids::filter_hide_id(r)),
+            Some(FilterHit::Hide(r))
+        );
+        assert_eq!(
+            hit_of(ph2d_panel_vector::ids::filter_color_id(r)),
+            Some(FilterHit::Color(r))
+        );
+        assert_eq!(
+            hit_of(ph2d_panel_vector::ids::filter_color_b_id(r)),
             Some(FilterHit::ColorB(r))
         );
-        assert_eq!(hit_of(vid::filter_radius_id(r)), Some(FilterHit::Radius(r)));
-        assert_eq!(hit_of(vid::filter_offx_id(r)), Some(FilterHit::OffX(r)));
-        assert_eq!(hit_of(vid::filter_offy_id(r)), Some(FilterHit::OffY(r)));
         assert_eq!(
-            hit_of(vid::filter_opacity_id(r)),
+            hit_of(ph2d_panel_vector::ids::filter_radius_id(r)),
+            Some(FilterHit::Radius(r))
+        );
+        assert_eq!(
+            hit_of(ph2d_panel_vector::ids::filter_offx_id(r)),
+            Some(FilterHit::OffX(r))
+        );
+        assert_eq!(
+            hit_of(ph2d_panel_vector::ids::filter_offy_id(r)),
+            Some(FilterHit::OffY(r))
+        );
+        assert_eq!(
+            hit_of(ph2d_panel_vector::ids::filter_opacity_id(r)),
             Some(FilterHit::Opacity(r))
         );
     }
     // E um id de OUTRA seção não é da pilha — senão a ponte roubaria eventos alheios.
-    assert_eq!(hit_of(vid::VECTOR_SECTION_FILTERS), None);
-    assert_eq!(hit_of(vid::VECTOR_STROKE_SWATCH), None);
+    assert_eq!(hit_of(ph2d_panel_vector::ids::VECTOR_SECTION_FILTERS), None);
+    assert_eq!(hit_of(ph2d_tool_vector::ids::VECTOR_STROKE_SWATCH), None);
     // Nem o campo NUMÉRICO gêmeo (ele viaja por outro canal, e confundi-lo com o slider faria a
     // ponte editar duas vezes o mesmo valor).
-    assert_eq!(hit_of(vid::filter_radius_num_id(0)), None);
+    assert_eq!(
+        hit_of(ph2d_panel_vector::ids::filter_radius_num_id(0)),
+        None
+    );
 }
 
 /// **As duas pontas da rampa são alvos de picker DISTINTOS, e a porta única as separa.**
@@ -348,14 +377,13 @@ fn hit_of_decodes_every_row_control_and_nothing_else() {
 #[test]
 fn the_three_colour_swatches_are_distinct_picker_targets() {
     use crate::fx_live_hit::ColourSlot;
-    use ph2d_editor_core::ids as vid;
     for r in 0..VecFilter::MAX_OPS {
         assert_eq!(
-            crate::fx_live::colour_target(vid::filter_color_id(r)),
+            crate::fx_live::colour_target(ph2d_panel_vector::ids::filter_color_id(r)),
             Some((r, ColourSlot::First))
         );
         assert_eq!(
-            crate::fx_live::colour_target(vid::filter_color_b_id(r)),
+            crate::fx_live::colour_target(ph2d_panel_vector::ids::filter_color_b_id(r)),
             Some((r, ColourSlot::Second))
         );
         // ⚠️ **A TERCEIRA, e é a que o comentário do readback já previa:** *"derivar a ponta do
@@ -363,17 +391,17 @@ fn the_three_colour_swatches_are_distinct_picker_targets() {
         // depois"*. Ela existe agora, e o slot é o que a distingue — um `bool` dobraria o stop na
         // ponta escura em silêncio.
         assert_eq!(
-            crate::fx_live::colour_target(vid::filter_stop_color_id(r)),
+            crate::fx_live::colour_target(ph2d_panel_vector::ids::filter_stop_color_id(r)),
             Some((r, ColourSlot::SelectedStop))
         );
     }
     // Um controle que NÃO é cor não é alvo de picker — senão arrastar um slider abriria o OKLCH.
     assert_eq!(
-        crate::fx_live::colour_target(vid::filter_radius_id(0)),
+        crate::fx_live::colour_target(ph2d_panel_vector::ids::filter_radius_id(0)),
         None
     );
     assert_eq!(
-        crate::fx_live::colour_target(vid::VECTOR_STROKE_SWATCH),
+        crate::fx_live::colour_target(ph2d_tool_vector::ids::VECTOR_STROKE_SWATCH),
         None
     );
 }
@@ -435,8 +463,8 @@ fn the_law_reaches_the_pass_only_for_a_kind_that_takes_one() {
 fn hit_of_decodes_every_blend_option() {
     use crate::fx_live::{FilterHit, hit_of};
     for r in 0..ph2d_editor_core::ids::MAX_FILTER_ROWS {
-        for m in 0..ph2d_editor_core::ids::MAX_FILTER_BLENDS {
-            let id = ph2d_editor_core::ids::filter_blend_option_id(r, m);
+        for m in 0..ph2d_panel_vector::ids::MAX_FILTER_BLENDS {
+            let id = ph2d_panel_vector::ids::filter_blend_option_id(r, m);
             assert_eq!(
                 hit_of(id),
                 Some(FilterHit::Blend(r, m as u8)),
@@ -446,7 +474,7 @@ fn hit_of_decodes_every_blend_option() {
         // ⚠️ O CHIP nao e uma opcao — ele e um `Dropdown`, e abrir/fechar e do dispatch generico.
         // Decodifica-lo aqui faria o clique de ABRIR virar uma edicao da pilha.
         assert_eq!(
-            hit_of(ph2d_editor_core::ids::filter_blend_id(r)),
+            hit_of(ph2d_panel_vector::ids::filter_blend_id(r)),
             None,
             "o CHIP de mistura da linha {r} nao pode decodificar como edicao"
         );
@@ -488,14 +516,17 @@ fn hit_of_decodes_the_three_noise_knobs() {
     for r in 0..ph2d_editor_core::ids::MAX_FILTER_ROWS {
         for (id, want) in [
             (
-                ph2d_editor_core::ids::filter_scale_id(r),
+                ph2d_panel_vector::ids::filter_scale_id(r),
                 FilterHit::Scale(r),
             ),
             (
-                ph2d_editor_core::ids::filter_detail_id(r),
+                ph2d_panel_vector::ids::filter_detail_id(r),
                 FilterHit::Detail(r),
             ),
-            (ph2d_editor_core::ids::filter_seed_id(r), FilterHit::Seed(r)),
+            (
+                ph2d_panel_vector::ids::filter_seed_id(r),
+                FilterHit::Seed(r),
+            ),
         ] {
             assert_eq!(
                 hit_of(id),
@@ -561,15 +592,15 @@ fn hit_of_decodes_the_grow_knob() {
     use crate::fx_live::{FilterHit, hit_of};
     for r in 0..ph2d_editor_core::ids::MAX_FILTER_ROWS {
         assert_eq!(
-            hit_of(ph2d_editor_core::ids::filter_grow_id(r)),
+            hit_of(ph2d_panel_vector::ids::filter_grow_id(r)),
             Some(FilterHit::Grow(r)),
             "o Amount da linha {r} nao e' decodificado"
         );
         for (id, want) in [
-            (ph2d_editor_core::ids::filter_hue_id(r), FilterHit::Hue(r)),
-            (ph2d_editor_core::ids::filter_sat_id(r), FilterHit::Sat(r)),
+            (ph2d_panel_vector::ids::filter_hue_id(r), FilterHit::Hue(r)),
+            (ph2d_panel_vector::ids::filter_sat_id(r), FilterHit::Sat(r)),
             (
-                ph2d_editor_core::ids::filter_bright_id(r),
+                ph2d_panel_vector::ids::filter_bright_id(r),
                 FilterHit::Bright(r),
             ),
         ] {

@@ -11,35 +11,35 @@ use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState};
 
 pub(crate) fn populate(store: &mut WidgetStore) {
     store.register(
-        ids::LAB_DRAG_HANDLE,
+        crate::ids::LAB_DRAG_HANDLE,
         InteractiveState::BlenderHit {
             parent: ids::LAB_PANEL,
             kind: BlenderHitKind::DragHandle,
         },
     );
     store.register(
-        ids::LAB_RESIZE_HANDLE,
+        crate::ids::LAB_RESIZE_HANDLE,
         InteractiveState::BlenderHit {
             parent: ids::LAB_PANEL,
             kind: BlenderHitKind::ResizeHandle,
         },
     );
     store.register(
-        ids::LAB_RESIZE_HANDLE_BL,
+        crate::ids::LAB_RESIZE_HANDLE_BL,
         InteractiveState::BlenderHit {
             parent: ids::LAB_PANEL,
             kind: BlenderHitKind::ResizeHandleBl,
         },
     );
     for id in [
-        ids::LAB_CLOSE,
-        ids::LAB_VARIANT_NEXT,
-        ids::LAB_VARIANT_PREV,
-        ids::LAB_ACCENT_CYCLE,
-        ids::LAB_DENSITY_CYCLE,
-        ids::LAB_DECORATOR_TOGGLE,
-        ids::LAB_COMPARE_TOGGLE,
-        ids::LAB_RADIUS_CYCLE,
+        crate::ids::LAB_CLOSE,
+        crate::ids::LAB_VARIANT_NEXT,
+        crate::ids::LAB_VARIANT_PREV,
+        crate::ids::LAB_ACCENT_CYCLE,
+        crate::ids::LAB_DENSITY_CYCLE,
+        crate::ids::LAB_DECORATOR_TOGGLE,
+        crate::ids::LAB_COMPARE_TOGGLE,
+        crate::ids::LAB_RADIUS_CYCLE,
     ] {
         store.register(
             id,
@@ -49,7 +49,7 @@ pub(crate) fn populate(store: &mut WidgetStore) {
         );
     }
     store.register(
-        ids::LAB_LIVE_BOX,
+        crate::ids::LAB_LIVE_BOX,
         InteractiveState::Slider {
             state: SliderState::Normal,
             value: crate::study::SAMPLE_T,

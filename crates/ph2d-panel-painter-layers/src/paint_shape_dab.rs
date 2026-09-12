@@ -6,7 +6,6 @@
 //! decodes the drag in [`crate::event::dab_gizmo`] and forwards the flatten / angle to the tool. The
 //! deform is brush-wide — it flattens the falloff, the Shape silhouette and the View-Grain together.
 
-use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::paint::{fill_circle, paint_text, resolve, stroke_polyline};
 use ph2d_editor_core::panel::PaintCtx;
@@ -93,9 +92,9 @@ pub(crate) fn paint_shape_dab_gizmo(
         let store = ctx.host.store_mut();
         for (ch, _) in [(0u8, flat_h), (1u8, rot_h)] {
             store.register(
-                core_ids::painter_brush_dab_handle_id(ch),
+                ph2d_tool_painter::ids::painter_brush_dab_handle_id(ch),
                 InteractiveState::CurvePoint {
-                    parent: core_ids::PAINTER_BRUSH_DAB_GIZMO,
+                    parent: ph2d_tool_painter::ids::PAINTER_BRUSH_DAB_GIZMO,
                     channel: ch,
                     index: 0,
                     canvas,
@@ -105,7 +104,7 @@ pub(crate) fn paint_shape_dab_gizmo(
     }
     for (ch, (hx, hy)) in [(0u8, flat_h), (1u8, rot_h)] {
         ctx.host.hit_index_mut().register(
-            core_ids::painter_brush_dab_handle_id(ch),
+            ph2d_tool_painter::ids::painter_brush_dab_handle_id(ch),
             Rect::new(hx - HANDLE_R, hy - HANDLE_R, HANDLE_R * 2.0, HANDLE_R * 2.0),
         );
     }

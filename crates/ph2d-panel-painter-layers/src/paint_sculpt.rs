@@ -13,7 +13,6 @@
 //! Strength is deliberately absent — the brush already has one, and a second one competing with it would
 //! be a design bug wearing the costume of a feature.
 
-use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{DEFAULT_CHIP_W, DEFAULT_LABEL_W};
 use ph2d_editor_core::widget::{
@@ -67,7 +66,7 @@ pub(crate) fn paint_sculpt_rows(
                     x,
                     content_w,
                     y,
-                    core_ids::PAINTER_SCULPT_RAKE,
+                    ph2d_tool_painter::ids::PAINTER_SCULPT_RAKE,
                     "Rake",
                     brush.sculpt_rake,
                 );
@@ -114,12 +113,12 @@ fn filter_row(
     can_filter_stroke: bool,
 ) -> f32 {
     let mut opts = vec![SegmentedOption::new(
-        core_ids::PAINTER_SCULPT_FILTER,
+        ph2d_tool_painter::ids::PAINTER_SCULPT_FILTER,
         "Filter Layer",
     )];
     if can_filter_stroke {
         opts.push(SegmentedOption::new(
-            core_ids::PAINTER_SCULPT_FILTER_STROKE,
+            ph2d_tool_painter::ids::PAINTER_SCULPT_FILTER_STROKE,
             "Filter Stroke",
         ));
     }
@@ -165,8 +164,8 @@ fn depth_row(
         brush.sculpt_depth,
         f64::from(loads),
         Some(&display),
-        core_ids::PAINTER_SCULPT_DEPTH_SLIDER,
-        core_ids::PAINTER_SCULPT_DEPTH_CHIP,
+        ph2d_tool_painter::ids::PAINTER_SCULPT_DEPTH_SLIDER,
+        ph2d_tool_painter::ids::PAINTER_SCULPT_DEPTH_CHIP,
         DEFAULT_LABEL_W,
         DEFAULT_CHIP_W,
         store,
@@ -199,8 +198,8 @@ fn angle_row(
         brush.sculpt_angle,
         f64::from(deg),
         Some(&display),
-        core_ids::PAINTER_SCULPT_ANGLE_SLIDER,
-        core_ids::PAINTER_SCULPT_ANGLE_CHIP,
+        ph2d_tool_painter::ids::PAINTER_SCULPT_ANGLE_SLIDER,
+        ph2d_tool_painter::ids::PAINTER_SCULPT_ANGLE_CHIP,
         DEFAULT_LABEL_W,
         DEFAULT_CHIP_W,
         store,
@@ -234,8 +233,8 @@ fn smooth_row(
         brush.sculpt_smooth,
         f64::from(px),
         Some(&display),
-        core_ids::PAINTER_SCULPT_SMOOTH_SLIDER,
-        core_ids::PAINTER_SCULPT_SMOOTH_CHIP,
+        ph2d_tool_painter::ids::PAINTER_SCULPT_SMOOTH_SLIDER,
+        ph2d_tool_painter::ids::PAINTER_SCULPT_SMOOTH_CHIP,
         DEFAULT_LABEL_W,
         DEFAULT_CHIP_W,
         store,
@@ -275,8 +274,8 @@ fn offset_row(
         brush.sculpt_offset,
         f64::from(loads),
         Some(&display),
-        core_ids::PAINTER_SCULPT_OFFSET_SLIDER,
-        core_ids::PAINTER_SCULPT_OFFSET_CHIP,
+        ph2d_tool_painter::ids::PAINTER_SCULPT_OFFSET_SLIDER,
+        ph2d_tool_painter::ids::PAINTER_SCULPT_OFFSET_CHIP,
         DEFAULT_LABEL_W,
         DEFAULT_CHIP_W,
         store,
@@ -311,8 +310,8 @@ fn radius_row(
         brush.sculpt_radius,
         f64::from(px),
         Some(&display),
-        core_ids::PAINTER_SCULPT_RADIUS_SLIDER,
-        core_ids::PAINTER_SCULPT_RADIUS_CHIP,
+        ph2d_tool_painter::ids::PAINTER_SCULPT_RADIUS_SLIDER,
+        ph2d_tool_painter::ids::PAINTER_SCULPT_RADIUS_CHIP,
         DEFAULT_LABEL_W,
         DEFAULT_CHIP_W,
         store,

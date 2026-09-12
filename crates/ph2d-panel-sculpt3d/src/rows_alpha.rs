@@ -21,8 +21,6 @@
 //! ph2d-panel-sculpt3d` não o alcança (a família estrutural que esta casa já
 //! registrou várias vezes).
 
-use ph2d_editor_core::ids;
-
 use super::types::{Place, Row};
 use crate::state::{Sculpt3dUi, UiLevel};
 
@@ -98,8 +96,8 @@ pub(super) const MAX_AXIS_ELEV_F32: f32 = ph2d_sculpt3d::MAX_AXIS_ELEV_DEG as f3
 
 pub(super) const ALPHA_SCALE: Row = Row {
     label: "panel.sculpt3d.alpha_scale",
-    slider: ids::SCULPT3D_ALPHA_SCALE,
-    chip: ids::SCULPT3D_ALPHA_SCALE_NUM,
+    slider: crate::ids::SCULPT3D_ALPHA_SCALE,
+    chip: crate::ids::SCULPT3D_ALPHA_SCALE_NUM,
     // ⚠️ Os dois extremos são do MOTOR, não escolhidos aqui: eles saem da lei
     // das dez arestas (`ph2d_sculpt3d::DEFAULT_ALPHA_SCALE`), e um literal
     // nesta tabela seria a segunda cópia deles.
@@ -125,8 +123,8 @@ pub(super) const ALPHA_SCALE: Row = Row {
 
 pub(super) const STAMP_SCALE: Row = Row {
     label: "panel.sculpt3d.stamp_scale",
-    slider: ids::SCULPT3D_STAMP_SCALE,
-    chip: ids::SCULPT3D_STAMP_SCALE_NUM,
+    slider: crate::ids::SCULPT3D_STAMP_SCALE,
+    chip: crate::ids::SCULPT3D_STAMP_SCALE_NUM,
     // ⚠️ **A faixa é em FRAÇÃO DA ALTURA DA TELA**, e por isso ela não fala
     // do modelo: `1,0` é um ladrilho ocupando a tela inteira e `0,02` são
     // cinquenta atravessando-a. Um estêncil não sabe o tamanho da peça — é
@@ -146,8 +144,8 @@ pub(super) const STAMP_SCALE: Row = Row {
 
 pub(super) const ALPHA_OFF_X: Row = Row {
     label: "panel.sculpt3d.alpha_off_x",
-    slider: ids::SCULPT3D_ALPHA_OFF_X,
-    chip: ids::SCULPT3D_ALPHA_OFF_X_NUM,
+    slider: crate::ids::SCULPT3D_ALPHA_OFF_X,
+    chip: crate::ids::SCULPT3D_ALPHA_OFF_X_NUM,
     // ⚠️ **A faixa é SIMÉTRICA e mede um LADO do modelo.** Uma primitiva
     // nasce cabendo na esfera unitária (span 2), então ±1 leva o carimbo de
     // uma ponta à outra; e o zero tem de cair no MEIO da pista, porque
@@ -165,8 +163,8 @@ pub(super) const ALPHA_OFF_X: Row = Row {
 
 pub(super) const ALPHA_OFF_Y: Row = Row {
     label: "panel.sculpt3d.alpha_off_y",
-    slider: ids::SCULPT3D_ALPHA_OFF_Y,
-    chip: ids::SCULPT3D_ALPHA_OFF_Y_NUM,
+    slider: crate::ids::SCULPT3D_ALPHA_OFF_Y,
+    chip: crate::ids::SCULPT3D_ALPHA_OFF_Y_NUM,
     min: -1.0,
     max: 1.0,
     step: 0.01, // LITERAL-PX-OK: passo em unidades de objeto, não métrica de layout
@@ -180,8 +178,8 @@ pub(super) const ALPHA_OFF_Y: Row = Row {
 
 pub(super) const ALPHA_AZ: Row = Row {
     label: "panel.sculpt3d.alpha_az",
-    slider: ids::SCULPT3D_ALPHA_AZ,
-    chip: ids::SCULPT3D_ALPHA_AZ_NUM,
+    slider: crate::ids::SCULPT3D_ALPHA_AZ,
+    chip: crate::ids::SCULPT3D_ALPHA_AZ_NUM,
     min: 0.0,
     // 359 e não 360 — os dois extremos seriam o MESMO azimute, e uma pista
     // cujas duas pontas significam a mesma coisa tem um degrau invisível. É
@@ -199,8 +197,8 @@ pub(super) const ALPHA_AZ: Row = Row {
 
 pub(super) const ALPHA_ELEV: Row = Row {
     label: "panel.sculpt3d.alpha_elev",
-    slider: ids::SCULPT3D_ALPHA_ELEV,
-    chip: ids::SCULPT3D_ALPHA_ELEV_NUM,
+    slider: crate::ids::SCULPT3D_ALPHA_ELEV,
+    chip: crate::ids::SCULPT3D_ALPHA_ELEV_NUM,
     // ⚠️ **Sem o piso que a LÂMPADA tem.** Lá o `MIN_ELEV_DEG` existe porque
     // uma luz rasante degenera a resposta plana; um EIXO não degenera em
     // lugar nenhum — o frame é ortonormal por identidade em qualquer

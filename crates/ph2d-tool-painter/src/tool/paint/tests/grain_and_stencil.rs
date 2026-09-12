@@ -320,11 +320,10 @@ fn jitter_rotate_is_the_grains_random_spin_now_that_per_slot_random_angle_is_gon
 
 #[test]
 fn jitter_rotate_panel_event_sets_the_field() {
-    use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::{PanelEvent, Tool};
     let mut t = white_canvas(48, 8.0);
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_BRUSH_JITTER_ROTATE,
+        crate::ids::PAINTER_BRUSH_JITTER_ROTATE,
         0.7,
     ));
     assert!(
@@ -545,13 +544,12 @@ fn stencil_corner_ring_drag_rotates_the_rect() {
 
 #[test]
 fn stencil_preview_shows_during_transform_and_fades_when_idle() {
-    use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::PanelEvent;
     let mut t = stencil_tool();
     assert!(t.stencil_preview().is_none(), "no preview when idle");
     // A panel param change (Stencil card) arms the transient in-gizmo preview.
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_BRUSH_STENCIL_ANGLE,
+        crate::ids::PAINTER_BRUSH_STENCIL_ANGLE,
         30.0,
     ));
     assert!(
@@ -663,7 +661,6 @@ fn stencil_down_away_from_handles_paints_not_edits() {
 
 #[test]
 fn stencil_card_panel_events_drive_the_stencil_frame_not_the_texture() {
-    use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::PanelEvent;
     use ph2d_painter_brush::{TEX_SIZE_MAX, TextureKind, TextureMapping, TextureSettings};
     let mut t = white_canvas(64, 10.0);
@@ -674,15 +671,15 @@ fn stencil_card_panel_events_drive_the_stencil_frame_not_the_texture() {
     };
     // The Stencil card's number boxes write the REAL value to the dedicated stencil_* fields.
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_BRUSH_STENCIL_SIZE_X,
+        crate::ids::PAINTER_BRUSH_STENCIL_SIZE_X,
         0.3,
     ));
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_BRUSH_STENCIL_OFFSET_Y,
+        crate::ids::PAINTER_BRUSH_STENCIL_OFFSET_Y,
         -0.5,
     ));
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_BRUSH_STENCIL_ANGLE,
+        crate::ids::PAINTER_BRUSH_STENCIL_ANGLE,
         90.0,
     ));
     let s = t.brush_settings();
@@ -703,7 +700,7 @@ fn stencil_card_panel_events_drive_the_stencil_frame_not_the_texture() {
     assert_eq!(s.texture_angle_deg, 0, "texture angle untouched");
     // Real-value clamp to the size bound (not a 0..1 remap).
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_BRUSH_STENCIL_SIZE_X,
+        crate::ids::PAINTER_BRUSH_STENCIL_SIZE_X,
         999.0,
     ));
     assert!((t.brush_settings().stencil_size[0] - TEX_SIZE_MAX).abs() < 1e-6);
@@ -716,36 +713,35 @@ fn stencil_card_panel_events_drive_the_stencil_frame_not_the_texture() {
 
 #[test]
 fn randomize_controls_reach_the_brush_and_snapshot() {
-    use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::PanelEvent;
 
     let mut t = PainterTool::default();
     // Enable toggle (Click) + the five 0..1 sliders (SetValue) — exactly what the panel emits.
     t.handle_panel_event(PanelEvent::Click(
-        core_ids::PAINTER_BRUSH_COLOR_JITTER_ENABLE,
+        crate::ids::PAINTER_BRUSH_COLOR_JITTER_ENABLE,
     ));
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_BRUSH_COLOR_JITTER_HUE,
+        crate::ids::PAINTER_BRUSH_COLOR_JITTER_HUE,
         0.3,
     ));
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_BRUSH_COLOR_JITTER_SAT,
+        crate::ids::PAINTER_BRUSH_COLOR_JITTER_SAT,
         0.2,
     ));
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_BRUSH_COLOR_JITTER_VAL,
+        crate::ids::PAINTER_BRUSH_COLOR_JITTER_VAL,
         0.1,
     ));
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_BRUSH_JITTER_SCALE,
+        crate::ids::PAINTER_BRUSH_JITTER_SCALE,
         0.7,
     ));
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_BRUSH_JITTER_ROTATE,
+        crate::ids::PAINTER_BRUSH_JITTER_ROTATE,
         0.4,
     ));
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_BRUSH_JITTER_SPACING,
+        crate::ids::PAINTER_BRUSH_JITTER_SPACING,
         0.6,
     ));
     // (a) the events reached the brush model (would all be 0/false if dropped).
@@ -771,14 +767,13 @@ fn randomize_controls_reach_the_brush_and_snapshot() {
     assert_eq!(s.jitter_spacing, 0.6);
     // A second enable Click toggles it back off.
     t.handle_panel_event(PanelEvent::Click(
-        core_ids::PAINTER_BRUSH_COLOR_JITTER_ENABLE,
+        crate::ids::PAINTER_BRUSH_COLOR_JITTER_ENABLE,
     ));
     assert!(!t.paint.brush.color_jitter_enabled, "enable toggle flips");
 }
 
 #[test]
 fn randomize_color_varies_the_painted_pixels_e2e() {
-    use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::PanelEvent;
 
     // Mid-grey base + hard disk so each dab fully replaces its footprint with its (jittered) colour.
@@ -786,10 +781,10 @@ fn randomize_color_varies_the_painted_pixels_e2e() {
     t.paint.brush.color = [0.5, 0.5, 0.5];
     // Drive Randomize Color ON with a strong Value amount via the PANEL events (the wiring proof).
     t.handle_panel_event(PanelEvent::Click(
-        core_ids::PAINTER_BRUSH_COLOR_JITTER_ENABLE,
+        crate::ids::PAINTER_BRUSH_COLOR_JITTER_ENABLE,
     ));
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_BRUSH_COLOR_JITTER_VAL,
+        crate::ids::PAINTER_BRUSH_COLOR_JITTER_VAL,
         1.0,
     ));
     // Paint a multi-dab horizontal stroke; per-dab Value jitter must yield >1 painted shade.

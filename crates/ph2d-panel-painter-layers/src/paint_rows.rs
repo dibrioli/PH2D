@@ -8,7 +8,6 @@
 use crate::paint::register_button;
 use crate::paint_rows_relief::paint_relief_line;
 use ph2d_editor_core::IconId;
-use ph2d_editor_core::ids::{PainterLayerWidget, painter_layer_widget_id};
 use ph2d_editor_core::interaction::{HierarchyDragState, InteractiveState, WidgetStore};
 use ph2d_editor_core::paint::{
     fill_rounded_rect, paint_icon, paint_text, resolve, stroke_rounded_rect,
@@ -19,6 +18,7 @@ use ph2d_editor_core::widget::{
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken};
+use ph2d_tool_painter::ids::{PainterLayerWidget, painter_layer_widget_id};
 use ph2d_tool_painter::{Layer, LayerId, LayerKind, LayerStack};
 use std::collections::BTreeSet;
 

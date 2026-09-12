@@ -60,7 +60,12 @@ pub(crate) fn paint_library(
         // ⚠️ `zip` com o array de ids: uma biblioteca com mais tags do que ids (impossível
         // enquanto o gate `the_anim_row_ids_cover_the_model_cap` viver) perde as excedentes em
         // vez de as pintar umas sobre as outras.
-        for (i, (row, &id)) in info.rows.iter().zip(ids::INSP_ANIM_ROW.iter()).enumerate() {
+        for (i, (row, &id)) in info
+            .rows
+            .iter()
+            .zip(crate::ids::INSP_ANIM_ROW.iter())
+            .enumerate()
+        {
             let rect = Rect::new(x, cur_y, w, ROW_H);
             hit_index.register(id, rect);
             // ⭐ A listra da linha ímpar — aqui o índice do laço É o visual (nada é saltado).
@@ -156,11 +161,11 @@ pub(crate) fn paint_library(
     }
 
     let add = Rect::new(x, cur_y, w, BTN_H);
-    hit_index.register(ids::INSP_ANIM_ADD, add);
+    hit_index.register(crate::ids::INSP_ANIM_ADD, add);
     paint_button(
-        &Button::new(ids::INSP_ANIM_ADD, "+ Add Animation")
+        &Button::new(crate::ids::INSP_ANIM_ADD, "+ Add Animation")
             .kind(ButtonKind::Default)
-            .visual(store.button_visual(ids::INSP_ANIM_ADD)),
+            .visual(store.button_visual(crate::ids::INSP_ANIM_ADD)),
         add,
         scene,
         text_system,
@@ -169,11 +174,11 @@ pub(crate) fn paint_library(
     cur_y += BTN_H + Spacing::Xs.px();
     if !info.rows.is_empty() {
         let rm = Rect::new(x, cur_y, w, BTN_H);
-        hit_index.register(ids::INSP_ANIM_REMOVE, rm);
+        hit_index.register(crate::ids::INSP_ANIM_REMOVE, rm);
         paint_button(
-            &Button::new(ids::INSP_ANIM_REMOVE, "x Remove Animation")
+            &Button::new(crate::ids::INSP_ANIM_REMOVE, "x Remove Animation")
                 .kind(ButtonKind::Default)
-                .visual(store.button_visual(ids::INSP_ANIM_REMOVE)),
+                .visual(store.button_visual(crate::ids::INSP_ANIM_REMOVE)),
             rm,
             scene,
             text_system,
@@ -218,8 +223,8 @@ fn editor(
         x,
         w,
         cur_y,
-        ids::INSP_ANIM_NAME,
-        TextInput::new(ids::INSP_ANIM_NAME, "").placeholder("animation_name\u{2026}"),
+        crate::ids::INSP_ANIM_NAME,
+        TextInput::new(crate::ids::INSP_ANIM_NAME, "").placeholder("animation_name\u{2026}"),
     );
 
     cur_y = super::anchors::field_row(
@@ -232,7 +237,7 @@ fn editor(
         w,
         cur_y,
         "From / To (cell)",
-        &[ids::INSP_ANIM_FROM, ids::INSP_ANIM_TO],
+        &[crate::ids::INSP_ANIM_FROM, crate::ids::INSP_ANIM_TO],
         1.0,
     );
     cur_y = super::anchors::field_row(
@@ -245,7 +250,7 @@ fn editor(
         w,
         cur_y,
         "Frame ms / Repeat (0 = forever)",
-        &[ids::INSP_ANIM_FRAME_MS, ids::INSP_ANIM_REPEAT],
+        &[crate::ids::INSP_ANIM_FRAME_MS, crate::ids::INSP_ANIM_REPEAT],
         1.0,
     );
     // ⚠️ **Uma animação com ritmo PRÓPRIO por célula (§8.12) tem de o DIZER.** Sem esta linha o
@@ -275,7 +280,10 @@ fn editor(
         w,
         cur_y,
         "Hold ms / Repeat delay ms",
-        &[ids::INSP_ANIM_HOLD_MS, ids::INSP_ANIM_DELAY_MS],
+        &[
+            crate::ids::INSP_ANIM_HOLD_MS,
+            crate::ids::INSP_ANIM_DELAY_MS,
+        ],
         10.0, // LITERAL-PX-OK: passo de scrub em MILISSEGUNDOS, não em pixels
     );
 
@@ -293,9 +301,9 @@ fn editor(
     );
     cur_y += font + Spacing::Xs.px();
     let gap = Spacing::Xs.px();
-    let n = ids::INSP_ANIM_DIR.len() as f32;
+    let n = crate::ids::INSP_ANIM_DIR.len() as f32;
     let cw = ((w - gap * (n - 1.0)) / n).max(0.0);
-    for (i, (&id, label)) in ids::INSP_ANIM_DIR
+    for (i, (&id, label)) in crate::ids::INSP_ANIM_DIR
         .iter()
         .zip(["Fwd", "Rev", "PP", "PP Rev"].iter())
         .enumerate()
@@ -344,8 +352,8 @@ fn editor(
         x,
         w,
         cur_y,
-        ids::INSP_ANIM_SIGNAL_FINISH,
-        TextInput::new(ids::INSP_ANIM_SIGNAL_FINISH, "").placeholder("on finish\u{2026}"),
+        crate::ids::INSP_ANIM_SIGNAL_FINISH,
+        TextInput::new(crate::ids::INSP_ANIM_SIGNAL_FINISH, "").placeholder("on finish\u{2026}"),
     );
     text_row(
         scene,
@@ -356,8 +364,8 @@ fn editor(
         x,
         w,
         cur_y,
-        ids::INSP_ANIM_SIGNAL_LOOP,
-        TextInput::new(ids::INSP_ANIM_SIGNAL_LOOP, "").placeholder("on loop\u{2026}"),
+        crate::ids::INSP_ANIM_SIGNAL_LOOP,
+        TextInput::new(crate::ids::INSP_ANIM_SIGNAL_LOOP, "").placeholder("on loop\u{2026}"),
     )
 }
 

@@ -174,10 +174,10 @@ fn a_display_only_row_is_not_registered() {
 fn the_panel_chrome_is_registered() {
     let store = populated();
     for (id, what) in [
-        (ids::AUTHORED_CLOSE, "close"),
-        (ids::AUTHORED_DRAG_HANDLE, "drag"),
-        (ids::AUTHORED_RESIZE_HANDLE, "resize"),
-        (ids::AUTHORED_RESIZE_HANDLE_BL, "resize_bl"),
+        (crate::ids::AUTHORED_CLOSE, "close"),
+        (crate::ids::AUTHORED_DRAG_HANDLE, "drag"),
+        (crate::ids::AUTHORED_RESIZE_HANDLE, "resize"),
+        (crate::ids::AUTHORED_RESIZE_HANDLE_BL, "resize_bl"),
     ] {
         assert!(
             store.get(id).is_some(),

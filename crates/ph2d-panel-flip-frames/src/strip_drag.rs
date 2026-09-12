@@ -357,9 +357,7 @@ pub(crate) fn process(
             ctx.host
                 .bus_mut()
                 .push(ph2d_editor_core::action_bus::EditorAction::ToolPanelEvent(
-                    ph2d_editor_core::tool::PanelEvent::Click(ph2d_editor_core::ids::flip_cell_id(
-                        index,
-                    )),
+                    ph2d_editor_core::tool::PanelEvent::Click(crate::ids::flip_cell_id(index)),
                 ));
         }
     }

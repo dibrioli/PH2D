@@ -37,7 +37,6 @@ fn free_hand_stabilizer_smooths_the_capture() {
 
 #[test]
 fn apply_buttons_route_through_panel_click() {
-    use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::{PanelEvent, Tool};
     use ph2d_painter_brush::StrokeMethod;
     // The panel's Apply / Apply & Keep buttons forward as PanelEvent::Click — this exercises the FULL
@@ -48,7 +47,9 @@ fn apply_buttons_route_through_panel_click() {
     t.on_canvas_pointer(cp([52.0, 32.0], PointerPhase::Move));
     t.on_canvas_pointer(cp([52.0, 32.0], PointerPhase::Up));
     assert!(t.curve_overlay().is_some(), "a curve editor is open");
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_STROKE_APPLY_KEEP));
+    t.handle_panel_event(PanelEvent::Click(
+        crate::ids::PAINTER_BRUSH_STROKE_APPLY_KEEP,
+    ));
     assert!(
         t.curve_overlay().is_some(),
         "Apply & Keep via Click bakes but keeps the curve"
@@ -57,7 +58,7 @@ fn apply_buttons_route_through_panel_click() {
         px(&t, 64, 32, 26)[0] < 200,
         "the stroke was baked by the Click (probe on the arc's apex — the Arc bows up)"
     );
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_STROKE_APPLY));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_BRUSH_STROKE_APPLY));
     assert!(
         t.curve_overlay().is_none(),
         "plain Apply via Click discards the curve"
@@ -66,7 +67,6 @@ fn apply_buttons_route_through_panel_click() {
 
 #[test]
 fn brush_param_change_refills_open_curve_in_real_time() {
-    use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::{PanelEvent, Tool};
     use ph2d_painter_brush::StrokeMethod;
     // While a Curve editor is open, changing a brush param (here Size) must re-fill the pending stroke
@@ -86,7 +86,7 @@ fn brush_param_change_refills_open_curve_in_real_time() {
     );
     // Grow the brush — routed in the match arm, which re-fills the open shape.
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_BRUSH_SIZE_SLIDER,
+        crate::ids::PAINTER_BRUSH_SIZE_SLIDER,
         0.6,
     ));
     assert_ne!(
@@ -98,7 +98,6 @@ fn brush_param_change_refills_open_curve_in_real_time() {
 
 #[test]
 fn reducing_strength_with_an_open_curve_does_not_erase_it() {
-    use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::{PanelEvent, Tool};
     use ph2d_painter_brush::StrokeMethod;
     // Regression (Enio 2026-06-27): with Accumulate off, Strength<1 caps each pixel via the per-stroke
@@ -119,7 +118,7 @@ fn reducing_strength_with_an_open_curve_does_not_erase_it() {
     // mask bug instead left it white (~255, "erased"). Assert it stays clearly painted.
     for v in [0.9_f64, 0.7] {
         t.handle_panel_event(PanelEvent::SetValue(
-            core_ids::PAINTER_BRUSH_STRENGTH_SLIDER,
+            crate::ids::PAINTER_BRUSH_STRENGTH_SLIDER,
             v,
         ));
     }
@@ -397,7 +396,6 @@ fn vector_handles_point_at_the_neighbours_after_a_move() {
 
 #[test]
 fn offset_slider_shifts_the_open_curve_in_real_time() {
-    use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::{PanelEvent, Tool};
     use ph2d_painter_brush::StrokeMethod;
     // The Offset slider shifts the whole curve perpendicular (control geometry); changing it must re-fill
@@ -417,7 +415,7 @@ fn offset_slider_shifts_the_open_curve_in_real_time() {
         [255, 255, 255, 255],
         "y=5 is white before offset"
     );
-    t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_BRUSH_OFFSET, 0.6)); // +20px perpendicular
+    t.handle_panel_event(PanelEvent::SetValue(crate::ids::PAINTER_BRUSH_OFFSET, 0.6)); // +20px perpendicular
     assert_eq!(
         px(&t, 64, 32, 25),
         [255, 255, 255, 255],
@@ -433,7 +431,6 @@ fn offset_slider_shifts_the_open_curve_in_real_time() {
 
 #[test]
 fn offset_apply_keep_absorbs_the_offset_keeping_the_drawing_put() {
-    use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::{PanelEvent, Tool};
     use ph2d_painter_brush::StrokeMethod;
     // Under DRAWING-ONLY offset (Enio 2026-07-05): the guide LINE stays on the pristine curve (y=32) while the
@@ -444,7 +441,7 @@ fn offset_apply_keep_absorbs_the_offset_keeping_the_drawing_put() {
     t.on_canvas_pointer(cp([8.0, 32.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([56.0, 32.0], PointerPhase::Move));
     t.on_canvas_pointer(cp([56.0, 32.0], PointerPhase::Up));
-    t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_BRUSH_OFFSET, 0.6)); // +20px up
+    t.handle_panel_event(PanelEvent::SetValue(crate::ids::PAINTER_BRUSH_OFFSET, 0.6)); // +20px up
     // The guide LINE stays on the pristine curve at y≈32; only the DRAWING moved up.
     let guide_y = t.curve_overlay().unwrap().spine[0][1];
     assert!(
@@ -456,7 +453,9 @@ fn offset_apply_keep_absorbs_the_offset_keeping_the_drawing_put() {
         "the painted drawing is offset up (apex ~y=5): {:?}",
         px(&t, 64, 32, 5)
     );
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_STROKE_APPLY_KEEP));
+    t.handle_panel_event(PanelEvent::Click(
+        crate::ids::PAINTER_BRUSH_STROKE_APPLY_KEEP,
+    ));
     assert!(
         (t.brush_settings().offset - 0.5).abs() < 1e-4,
         "the Offset slider reset to centre"
@@ -503,7 +502,6 @@ fn color_ramp_edits_change_the_appearance_signature() {
 
 #[test]
 fn edit_button_converts_circle_into_an_editable_curve() {
-    use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::{PanelEvent, Tool};
     use ph2d_painter_brush::StrokeMethod;
     // The Edit (E) button turns an open Ellipse into an editable Bézier curve: the circle editor closes, a
@@ -515,7 +513,7 @@ fn edit_button_converts_circle_into_an_editable_curve() {
     t.on_canvas_pointer(cp([52.0, 32.0], PointerPhase::Move)); // radius 20
     t.on_canvas_pointer(cp([52.0, 32.0], PointerPhase::Up));
     assert!(t.ellipse_overlay().is_some(), "a circle editor is open");
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_STROKE_EDIT));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_BRUSH_STROKE_EDIT));
     assert!(t.ellipse_overlay().is_none(), "the circle editor closed");
     let ov = t.curve_overlay().expect("a curve editor opened");
     assert_eq!(
@@ -549,7 +547,6 @@ fn edit_button_converts_circle_into_an_editable_curve() {
 
 #[test]
 fn edit_with_a_live_offset_converts_the_pristine_circle_keeping_the_offset() {
-    use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::{PanelEvent, Tool};
     use ph2d_painter_brush::StrokeMethod;
     // Drawing-only (Enio 2026-07-05): Edit (convert) with a live Offset produces the PRISTINE circle as a
@@ -561,8 +558,8 @@ fn edit_with_a_live_offset_converts_the_pristine_circle_keeping_the_offset() {
     t.on_canvas_pointer(cp([48.0, 48.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([68.0, 48.0], PointerPhase::Move)); // radius 20
     t.on_canvas_pointer(cp([68.0, 48.0], PointerPhase::Up));
-    t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_BRUSH_OFFSET, 0.6)); // +20px
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_STROKE_EDIT));
+    t.handle_panel_event(PanelEvent::SetValue(crate::ids::PAINTER_BRUSH_OFFSET, 0.6)); // +20px
+    t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_BRUSH_STROKE_EDIT));
     assert!(
         (t.brush_settings().offset - 0.6).abs() < 1e-4,
         "the offset PERSISTS through convert (drawing-only) — slider not reset: {}",
@@ -586,7 +583,6 @@ fn edit_with_a_live_offset_converts_the_pristine_circle_keeping_the_offset() {
 
 #[test]
 fn edit_button_converts_polygon_into_a_sharp_editable_curve() {
-    use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::{PanelEvent, Tool};
     use ph2d_painter_brush::StrokeMethod;
     let mut t = white_canvas(64, 3.0);
@@ -595,7 +591,7 @@ fn edit_button_converts_polygon_into_a_sharp_editable_curve() {
     t.on_canvas_pointer(cp([52.0, 32.0], PointerPhase::Move));
     t.on_canvas_pointer(cp([52.0, 32.0], PointerPhase::Up));
     assert!(t.polygon_overlay().is_some(), "a polygon editor is open");
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_STROKE_EDIT));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_BRUSH_STROKE_EDIT));
     assert!(t.polygon_overlay().is_none(), "the polygon editor closed");
     let ov = t.curve_overlay().expect("a curve editor opened");
     assert_ne!(
@@ -613,7 +609,6 @@ fn edit_button_converts_polygon_into_a_sharp_editable_curve() {
 
 #[test]
 fn delete_button_drops_the_open_shape_without_baking() {
-    use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::{PanelEvent, Tool};
     use ph2d_painter_brush::StrokeMethod;
     // The trash button cancels the open shape editor WITHOUT baking it — the canvas stays pristine.
@@ -623,7 +618,7 @@ fn delete_button_drops_the_open_shape_without_baking() {
     t.on_canvas_pointer(cp([52.0, 32.0], PointerPhase::Move));
     t.on_canvas_pointer(cp([52.0, 32.0], PointerPhase::Up));
     assert!(t.curve_overlay().is_some(), "a curve editor is open");
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_STROKE_DELETE));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_BRUSH_STROKE_DELETE));
     assert!(t.curve_overlay().is_none(), "Delete drops the editor");
     assert_eq!(
         px(&t, 64, 32, 32),

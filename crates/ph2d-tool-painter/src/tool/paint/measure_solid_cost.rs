@@ -19,7 +19,6 @@ use super::measure_shape_system::{cp, tool};
 use crate::tool::PainterTool;
 use crate::tool::paint::media::PaintMedia;
 use ph2d_editor_core::Tool;
-use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::tool::{CanvasPaintTool, PointerPhase};
 
@@ -92,7 +91,7 @@ pub(super) fn solid_arc(
 
 /// As configurações da tabela: o nome e o que armar no tool.
 pub(super) fn arm(t: &mut PainterTool, sym: &str, tiling: bool) {
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_LINE_SOLID));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_LINE_SOLID));
     match sym {
         "mirror" => t.toggle_symmetry_enabled(),
         "circ12" => {

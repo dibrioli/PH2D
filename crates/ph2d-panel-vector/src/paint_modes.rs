@@ -41,51 +41,54 @@ impl BodyCtx<'_> {
     /// Seção **TOOL** — os seis modos, numa grade de 3 colunas
     /// (`Select | Node | Pen` · `Shape | Text | Connect`).
     pub(crate) fn tool_section(&mut self, snap: &VectorStyleSnapshot, y: f32) -> f32 {
-        let (y, collapsed) =
-            self.section_header(ids::VECTOR_SECTION_TOOL, tr("panel.vector.section.tool"), y);
+        let (y, collapsed) = self.section_header(
+            ph2d_tool_vector::ids::VECTOR_SECTION_TOOL,
+            tr("panel.vector.section.tool"),
+            y,
+        );
         if collapsed {
             return y;
         }
         let modes = [
             (
-                ids::VECTOR_MODE_SELECT,
+                ph2d_tool_vector::ids::VECTOR_MODE_SELECT,
                 tr("panel.vector.mode.select"),
                 DrawMode::Select,
             ),
             (
-                ids::VECTOR_MODE_NODE,
+                ph2d_tool_vector::ids::VECTOR_MODE_NODE,
                 tr("panel.vector.mode.node"),
                 DrawMode::Node,
             ),
             (
-                ids::VECTOR_MODE_PEN,
+                ph2d_tool_vector::ids::VECTOR_MODE_PEN,
                 tr("panel.vector.mode.pen"),
                 DrawMode::Pen,
             ),
             // **Lápis** — ao lado da caneta de propósito: são os dois gestos de PRODUZIR
             // geometria à mão, e a vizinhança é o que faz o artista achar o novo.
             (
-                ids::VECTOR_MODE_PENCIL,
+                ph2d_tool_vector::ids::VECTOR_MODE_PENCIL,
                 tr("panel.vector.mode.pencil"),
                 DrawMode::Pencil,
             ),
             (
-                ids::VECTOR_MODE_SHAPE,
+                ph2d_tool_vector::ids::VECTOR_MODE_SHAPE,
                 tr("panel.vector.mode.shape"),
                 DrawMode::Shape,
             ),
             (
-                ids::VECTOR_MODE_TEXT,
+                ph2d_tool_vector::ids::VECTOR_MODE_TEXT,
                 tr("panel.vector.mode.text"),
                 DrawMode::Text,
             ),
             (
-                ids::VECTOR_MODE_CONNECT,
+                ph2d_tool_vector::ids::VECTOR_MODE_CONNECT,
                 tr("panel.vector.mode.connect"),
                 DrawMode::Connect,
             ),
             (
-                ids::VECTOR_MODE_BUILD,
+                ph2d_tool_vector::ids::VECTOR_MODE_BUILD,
                 tr("panel.vector.mode.build"),
                 DrawMode::Build,
             ),
@@ -93,19 +96,19 @@ impl BodyCtx<'_> {
             // clicar-e-arrastar. Consolidam a alça de raio (antes escondida no Node) e o toggle
             // Chamfer (antes na seção Vertex) numa dupla de ferramentas explícitas.
             (
-                ids::VECTOR_MODE_FILLET,
+                ph2d_tool_vector::ids::VECTOR_MODE_FILLET,
                 tr("panel.vector.mode.fillet"),
                 DrawMode::Fillet,
             ),
             (
-                ids::VECTOR_MODE_CHAMFER,
+                ph2d_tool_vector::ids::VECTOR_MODE_CHAMFER,
                 tr("panel.vector.mode.chamfer"),
                 DrawMode::Chamfer,
             ),
             // **Width** — ao lado dos pills de quina de propósito: os três editam um atributo
             // VIVO de uma forma que já existe, apontando-a no canvas.
             (
-                ids::VECTOR_MODE_WIDTH,
+                ph2d_tool_vector::ids::VECTOR_MODE_WIDTH,
                 tr("panel.vector.mode.width"),
                 DrawMode::Width,
             ),
@@ -117,7 +120,7 @@ impl BodyCtx<'_> {
             // e a lei do produto é que uma forma fechada cortada dá formas FECHADAS — então não
             // eram duas ferramentas, eram duas metades de uma que não existia ainda.
             (
-                ids::VECTOR_MODE_CUT,
+                ph2d_tool_vector::ids::VECTOR_MODE_CUT,
                 tr("panel.vector.mode.cut"),
                 DrawMode::Cut,
             ),
@@ -125,21 +128,21 @@ impl BodyCtx<'_> {
             // lado do outro é o que faz o artista perceber a diferença (o Corte pede uma lâmina
             // autorada; o Trim usa o que já está na tela).
             (
-                ids::VECTOR_MODE_TRIM,
+                ph2d_tool_vector::ids::VECTOR_MODE_TRIM,
                 tr("panel.vector.mode.trim"),
                 DrawMode::Trim,
             ),
             // **Balde** (plano 40) — o 16º pill, ao lado do Trim: os dois apontam uma REGIÃO que já
             // está na tela em vez de a autorar. Aquele remove o pedaço apontado, este preenche-o.
             (
-                ids::VECTOR_MODE_BUCKET,
+                ph2d_tool_vector::ids::VECTOR_MODE_BUCKET,
                 tr("panel.vector.mode.bucket"),
                 DrawMode::Bucket,
             ),
             // **Moldura** — o 14º pill, e fica no FIM porque é o único que produz um CONTÊINER:
             // os anteriores desenham ou editam uma forma, este cria o lugar onde as formas moram.
             (
-                ids::VECTOR_MODE_FRAME,
+                ph2d_tool_vector::ids::VECTOR_MODE_FRAME,
                 tr("panel.vector.mode.frame"),
                 DrawMode::Frame,
             ),
@@ -183,12 +186,12 @@ impl BodyCtx<'_> {
             tr("panel.vector.marquee"),
             &[
                 (
-                    ids::VECTOR_MARQUEE_BOX,
+                    ph2d_tool_vector::ids::VECTOR_MARQUEE_BOX,
                     tr("panel.vector.marquee.box"),
                     m == MarqueeShape::Box,
                 ),
                 (
-                    ids::VECTOR_MARQUEE_LASSO,
+                    ph2d_tool_vector::ids::VECTOR_MARQUEE_LASSO,
                     tr("panel.vector.marquee.lasso"),
                     m == MarqueeShape::Lasso,
                 ),
@@ -232,8 +235,11 @@ impl BodyCtx<'_> {
             return y;
         };
         let desc = shapes::desc(focus);
-        let (mut y, collapsed) =
-            self.section_header(ids::VECTOR_SECTION_SHAPE_PARAMS, desc.label, y);
+        let (mut y, collapsed) = self.section_header(
+            ph2d_tool_vector::ids::VECTOR_SECTION_SHAPE_PARAMS,
+            desc.label,
+            y,
+        );
         if collapsed {
             return y;
         }
@@ -251,7 +257,7 @@ impl BodyCtx<'_> {
             return y + self.row_h + self.row_gap;
         }
         for (i, f) in desc.fields.iter().enumerate() {
-            let id = ph2d_editor_core::ids::vector_shape_field_id(i);
+            let id = ph2d_tool_vector::ids::vector_shape_field_id(i);
             y = match f.unit {
                 // Uma ESCOLHA não é um número. Um campo mostrando "Viewed: 1" não diz nada;
                 // um botão dizendo "From below" diz tudo — e clicar nele cicla.
@@ -259,7 +265,7 @@ impl BodyCtx<'_> {
                     let cur = self.store.number_value(id).unwrap_or(0.0);
                     let text = shapes::choice_label(focus, i, cur).unwrap_or("");
                     // O HIT vai no gêmeo botão; o valor continua morando no slot numérico.
-                    let btn = ph2d_editor_core::ids::vector_shape_choice_id(i);
+                    let btn = ph2d_tool_vector::ids::vector_shape_choice_id(i);
                     self.labeled_choice_button(f.label, btn, text, y)
                 }
                 _ => self.labeled_number_field(f.label, id, f.step, y),

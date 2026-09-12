@@ -521,7 +521,7 @@ pub(crate) fn set_last_inspector_visible_h(h: f32) {
 /// daria duas respostas a *«de quem é este cartão?»*, e a que o artista vê é a que envelhece.
 #[must_use]
 pub fn texture_slot_pick(id: ph2d_a11y::NodeId) -> Option<u64> {
-    if id != ph2d_editor_core::ids::INSP_RENDER_TEXTURE_SLOT {
+    if id != crate::ids::INSP_RENDER_TEXTURE_SLOT {
         return None;
     }
     current_inspector_sprite().map(|s| s.entity_bits)

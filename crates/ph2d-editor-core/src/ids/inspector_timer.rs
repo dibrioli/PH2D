@@ -44,21 +44,3 @@ pub const INSP_TIMER_ROW: [NodeId; 16] = [
     hash_node_id("insp_timer_row_14"),
     hash_node_id("insp_timer_row_15"),
 ];
-
-/// `+ Add Timer`.
-pub const INSP_TIMER_ADD: NodeId = hash_node_id("insp_timer_add");
-/// `x Remove Timer` — apaga o que está aberto.
-pub const INSP_TIMER_REMOVE: NodeId = hash_node_id("insp_timer_remove");
-
-/// O nome do timer, para o artista o distinguir na lista. ⚠️ **Não é o nome do sinal.**
-pub const INSP_TIMER_NAME: NodeId = hash_node_id("insp_timer_name");
-/// A duração, **em segundos** — a unidade que o artista pensa. ⚠️ O modelo guarda microssegundos,
-/// e a conversão é do despacho: pôr segundos no componente perderia o passo fixo.
-pub const INSP_TIMER_DURATION: NodeId = hash_node_id("insp_timer_duration");
-/// Repete para sempre, ou dispara uma vez e pára.
-pub const INSP_TIMER_REPEAT: NodeId = hash_node_id("insp_timer_repeat");
-/// Começa a correr quando a cena abre. ⚠️ **É este o campo autorado** — o *«está a correr agora»*
-/// é estado vivo e nem sequer chega ao Inspector.
-pub const INSP_TIMER_AUTOSTART: NodeId = hash_node_id("insp_timer_autostart");
-/// O nome do sinal publicado a cada disparo. **Vazio = calado.**
-pub const INSP_TIMER_SIGNAL: NodeId = hash_node_id("insp_timer_signal");

@@ -40,7 +40,7 @@ fn lock_companion_click_emits_hier_toggle_lock() {
     // dispatcher synthesizes the companion hit id for a click on the row's
     // lock icon; build the same id here.
     let row = ids::HIER_PLAYER;
-    let lock_companion = ids::hier_lock_companion(row);
+    let lock_companion = ph2d_panel_hierarchy::ids::hier_lock_companion(row);
 
     let outcome = host
         .apply_panel_event::<HierarchyPanel>(&mut panel_state, WidgetEvent::Click(lock_companion));

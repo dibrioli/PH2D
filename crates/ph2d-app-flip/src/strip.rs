@@ -145,7 +145,6 @@ pub fn apply_panel_event(
     strip: &mut FlipStrip,
     add: bool,
 ) -> bool {
-    use ph2d_editor_core::ids;
     use ph2d_editor_core::tool::PanelEvent;
 
     let Some((oid, lid)) = target(flip, active_layer) else {
@@ -169,12 +168,15 @@ pub fn apply_panel_event(
 
     match ev {
         // ── Transporte ────────────────────────────────────────────────────────
-        PanelEvent::Click(id) if *id == ids::FLIP_PLAY => {
+        PanelEvent::Click(id) if *id == ph2d_panel_flip_frames::ids::FLIP_PLAY => {
             playhead.toggle_play();
             false
         }
-        PanelEvent::Click(id) if *id == ids::FLIP_PREV_DRAWING || *id == ids::FLIP_NEXT_DRAWING => {
-            let next = *id == ids::FLIP_NEXT_DRAWING;
+        PanelEvent::Click(id)
+            if *id == ph2d_panel_flip_frames::ids::FLIP_PREV_DRAWING
+                || *id == ph2d_panel_flip_frames::ids::FLIP_NEXT_DRAWING =>
+        {
+            let next = *id == ph2d_panel_flip_frames::ids::FLIP_NEXT_DRAWING;
             let Some(layer) = flip.object(oid).and_then(|o| o.layer(lid)) else {
                 return false;
             };
@@ -189,7 +191,7 @@ pub fn apply_panel_event(
             }
             false
         }
-        PanelEvent::SetValue(id, v) if *id == ids::FLIP_FPS_NUM => {
+        PanelEvent::SetValue(id, v) if *id == ph2d_panel_flip_frames::ids::FLIP_FPS_NUM => {
             if let Some(o) = flip.object_mut(oid) {
                 o.fps = (*v as f32).clamp(1.0, 120.0);
             }
@@ -200,24 +202,25 @@ pub fn apply_panel_event(
         // ponto INTEIRO da régua: mover o playhead entre os quadros marcados (p/ ver o
         // falloff, re-ancorar) sem desmontar o multiframe. Clicar numa CÉLULA é que
         // seleciona; a régua só scrubba (smoke do Enio, 2026-07-14). Transporte, não edição.
-        PanelEvent::SetValue(id, v) if *id == ids::FLIP_SCRUB => {
+        PanelEvent::SetValue(id, v) if *id == ph2d_panel_flip_frames::ids::FLIP_SCRUB => {
             seek(playhead, fps, *v as Frame);
             false
         }
 
         // ── Ghost Frames ──────────────────────────────────────────────────────
-        PanelEvent::Click(id) if *id == ids::FLIP_GHOST => {
+        PanelEvent::Click(id) if *id == ph2d_panel_flip_frames::ids::FLIP_GHOST => {
             if let Some(o) = flip.object_mut(oid) {
                 o.onion.enabled = !o.onion.enabled;
             }
             true
         }
         PanelEvent::SetValue(id, v)
-            if *id == ids::FLIP_GHOST_BEFORE_NUM || *id == ids::FLIP_GHOST_AFTER_NUM =>
+            if *id == ph2d_panel_flip_frames::ids::FLIP_GHOST_BEFORE_NUM
+                || *id == ph2d_panel_flip_frames::ids::FLIP_GHOST_AFTER_NUM =>
         {
             let n = (*v as i64).clamp(0, 8) as u32;
             if let Some(o) = flip.object_mut(oid) {
-                if *id == ids::FLIP_GHOST_BEFORE_NUM {
+                if *id == ph2d_panel_flip_frames::ids::FLIP_GHOST_BEFORE_NUM {
                     o.onion.frames_before = n;
                 } else {
                     o.onion.frames_after = n;
@@ -227,24 +230,24 @@ pub fn apply_panel_event(
         }
 
         // ── Autoria (flags do shell, não do documento) ────────────────────────
-        PanelEvent::Click(id) if *id == ids::FLIP_AUTOKEY => {
+        PanelEvent::Click(id) if *id == ph2d_panel_flip_frames::ids::FLIP_AUTOKEY => {
             strip.autokey = !strip.autokey;
             false
         }
-        PanelEvent::Click(id) if *id == ids::FLIP_FALLOFF => {
+        PanelEvent::Click(id) if *id == ph2d_panel_flip_frames::ids::FLIP_FALLOFF => {
             strip.falloff = !strip.falloff;
             false // política de autoria, não documento
         }
-        PanelEvent::Click(id) if *id == ids::FLIP_ADDITIVE => {
+        PanelEvent::Click(id) if *id == ph2d_panel_flip_frames::ids::FLIP_ADDITIVE => {
             strip.additive = !strip.additive;
             false
         }
 
         // ── Ops de chave ──────────────────────────────────────────────────────
         PanelEvent::Click(id)
-            if *id == ids::FLIP_KEY_ADD
-                || *id == ids::FLIP_KEY_DUP
-                || *id == ids::FLIP_KEY_INSTANCE =>
+            if *id == ph2d_panel_flip_frames::ids::FLIP_KEY_ADD
+                || *id == ph2d_panel_flip_frames::ids::FLIP_KEY_DUP
+                || *id == ph2d_panel_flip_frames::ids::FLIP_KEY_INSTANCE =>
         {
             // O que a chave nova carrega:
             //   `None`            → BRANCA (Key Add).
@@ -254,8 +257,10 @@ pub fn apply_panel_event(
             //                       arte — e é o que acende o pontinho na célula e faz o
             //                       multiframe deduplicar (`flip_multiframe::targets`).
             let mode = match id {
-                i if *i == ids::FLIP_KEY_DUP => Some(DupMode::Deep),
-                i if *i == ids::FLIP_KEY_INSTANCE => Some(DupMode::Instance),
+                i if *i == ph2d_panel_flip_frames::ids::FLIP_KEY_DUP => Some(DupMode::Deep),
+                i if *i == ph2d_panel_flip_frames::ids::FLIP_KEY_INSTANCE => {
+                    Some(DupMode::Instance)
+                }
                 _ => None,
             };
             // A chave nova entra DEPOIS da exposição da atual (o próximo quadro
@@ -307,13 +312,13 @@ pub fn apply_panel_event(
         // vira fantasma em qualquer modo e fora do alcance. Não é edição de documento
         // (nenhum pixel muda), então NÃO devolve `true`: é estado de sessão, como a
         // seleção — e um passo de undo por "eu quis ver aquele quadro" seria ruído na fila.
-        PanelEvent::Click(id) if *id == ids::FLIP_KEY_PIN => {
+        PanelEvent::Click(id) if *id == ph2d_panel_flip_frames::ids::FLIP_KEY_PIN => {
             if let Some(k) = key {
                 strip.toggle_pin(k);
             }
             false
         }
-        PanelEvent::Click(id) if *id == ids::FLIP_KEY_UNLINK => {
+        PanelEvent::Click(id) if *id == ph2d_panel_flip_frames::ids::FLIP_KEY_UNLINK => {
             let Some(k) = key else { return false };
             let ok = flip
                 .object_mut(oid)
@@ -329,7 +334,7 @@ pub fn apply_panel_event(
             }
             ok
         }
-        PanelEvent::Click(id) if *id == ids::FLIP_KEY_DELETE => {
+        PanelEvent::Click(id) if *id == ph2d_panel_flip_frames::ids::FLIP_KEY_DELETE => {
             let Some(k) = key else { return false };
             let Some(o) = flip.object_mut(oid) else {
                 return false;
@@ -341,9 +346,12 @@ pub fn apply_panel_event(
             strip.selection.clear();
             true
         }
-        PanelEvent::Click(id) if *id == ids::FLIP_KEY_LEFT || *id == ids::FLIP_KEY_RIGHT => {
+        PanelEvent::Click(id)
+            if *id == ph2d_panel_flip_frames::ids::FLIP_KEY_LEFT
+                || *id == ph2d_panel_flip_frames::ids::FLIP_KEY_RIGHT =>
+        {
             let Some(k) = key else { return false };
-            let to = if *id == ids::FLIP_KEY_LEFT {
+            let to = if *id == ph2d_panel_flip_frames::ids::FLIP_KEY_LEFT {
                 k - 1
             } else {
                 k + 1
@@ -360,7 +368,7 @@ pub fn apply_panel_event(
             }
             moved
         }
-        PanelEvent::SetValue(id, v) if *id == ids::FLIP_HOLD_NUM => {
+        PanelEvent::SetValue(id, v) if *id == ph2d_panel_flip_frames::ids::FLIP_HOLD_NUM => {
             let Some(k) = key else { return false };
             let n = (*v as i64).clamp(1, 999) as u32;
             // A mecânica (empurrar as seguintes / mover a sentinela) é do MODELO —
@@ -370,15 +378,17 @@ pub fn apply_panel_event(
         }
 
         // ── Tween ─────────────────────────────────────────────────────────────
-        PanelEvent::SetValue(id, v) if *id == ids::FLIP_TWEEN_NUM => {
+        PanelEvent::SetValue(id, v) if *id == ph2d_panel_flip_frames::ids::FLIP_TWEEN_NUM => {
             strip.tween_count = (*v as i64).clamp(1, 32) as u32;
             false
         }
-        PanelEvent::SelectOption(id, val) if *id == ids::FLIP_TWEEN_EASE_DD => {
+        PanelEvent::SelectOption(id, val)
+            if *id == ph2d_panel_flip_frames::ids::FLIP_TWEEN_EASE_DD =>
+        {
             strip.tween_ease = val.parse::<u8>().unwrap_or(0).min(3);
             false
         }
-        PanelEvent::Click(id) if *id == ids::FLIP_TWEEN_FADE => {
+        PanelEvent::Click(id) if *id == ph2d_panel_flip_frames::ids::FLIP_TWEEN_FADE => {
             strip.tween_fade = !strip.tween_fade;
             false
         }
@@ -386,7 +396,7 @@ pub fn apply_panel_event(
         // correspondência para o intervalo atual. Aberta, ela intercepta o clique do canvas
         // (re-parear) e o Add commita com o plano corrigido. Sem intervalo válido, não abre —
         // não há entre o quê interpolar, então não há par a corrigir.
-        PanelEvent::Click(id) if *id == ids::FLIP_TWEEN_PAIRS => {
+        PanelEvent::Click(id) if *id == ph2d_panel_flip_frames::ids::FLIP_TWEEN_PAIRS => {
             if strip.tween_correct.is_some() {
                 strip.tween_correct = None; // fecha
             } else {
@@ -394,7 +404,7 @@ pub fn apply_panel_event(
             }
             false // estado de autoria, não documento
         }
-        PanelEvent::Click(id) if *id == ids::FLIP_TWEEN_ADD => {
+        PanelEvent::Click(id) if *id == ph2d_panel_flip_frames::ids::FLIP_TWEEN_ADD => {
             // Os extremos do tween são **KEYFRAMES** — nunca os breakdowns que ele
             // mesmo gerou. Usar o "próximo desenho" fazia o 2º Add interpolar entre a
             // chave e o inbetween vizinho (lixo entre 0 e 2) em vez de REGENERAR o
@@ -428,7 +438,7 @@ pub fn apply_panel_event(
         }
 
         // ── Ciclo (pre/post behavior da camada) ───────────────────────────────
-        PanelEvent::SelectOption(id, val) if *id == ids::FLIP_CYCLE_DD => {
+        PanelEvent::SelectOption(id, val) if *id == ph2d_panel_flip_frames::ids::FLIP_CYCLE_DD => {
             let Ok(mode) = val.parse::<u8>() else {
                 return false;
             };
@@ -450,7 +460,7 @@ pub fn apply_panel_event(
         //
         // Mora AQUI (e não no render_loop) porque esta função já possui o `strip` — e é
         // testável sem janela. Exibição, não documento: devolve `false` (sem undo).
-        PanelEvent::Click(id) if *id == ids::FLIP_TRACE_RESET => {
+        PanelEvent::Click(id) if *id == ph2d_panel_flip::ids::FLIP_TRACE_RESET => {
             strip.trace.clear();
             false
         }
@@ -473,7 +483,7 @@ pub fn apply_panel_event(
                 .map(|l| l.cells())
                 .unwrap_or_default();
             for (i, (k, _, _)) in cells.iter().enumerate() {
-                if ph2d_editor_core::ids::flip_cell_id(i) == *id {
+                if ph2d_panel_flip_frames::ids::flip_cell_id(i) == *id {
                     if add {
                         toggle_key(&mut strip.selection, *k);
                     } else {

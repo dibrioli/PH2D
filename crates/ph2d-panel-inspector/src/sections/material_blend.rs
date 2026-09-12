@@ -85,7 +85,7 @@ pub(crate) fn paint_material_blend_section(
     let seg = SegmentedAdaptive::new(
         ids::INSP_LIVE_BLEND_SECTION,
         "Blend Mode",
-        ids::INSP_SAMPLE_BLEND
+        crate::ids::INSP_SAMPLE_BLEND
             .iter()
             .zip(BLEND_LABELS)
             .map(|(&id, label)| SegmentedOption::new(id, label))

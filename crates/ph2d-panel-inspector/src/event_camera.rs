@@ -20,7 +20,6 @@
 //! que dois escritores do mesmo campo nascem.
 
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::screens::hero::CameraFieldEdit;
@@ -37,15 +36,18 @@ pub(crate) fn apply_camera_event(host: &mut dyn PanelHostInternal, ev: WidgetEve
 
     if let WidgetEvent::Toggled(id) = ev {
         // ⭐ **A pré-visualização é a única que não escreve no documento** — ver o modelo.
-        if id == ids::INSP_CAMERA_PREVIEW {
+        if id == crate::ids::INSP_CAMERA_PREVIEW {
             push(host, bits, CameraFieldEdit::Preview(!info.preview_on));
             return true;
         }
-        if id == ids::INSP_CAMERA_ACTIVE {
+        if id == crate::ids::INSP_CAMERA_ACTIVE {
             push(host, bits, CameraFieldEdit::Active(!info.camera.active));
             return true;
         }
-        if let Some(bit) = ids::INSP_CAMERA_CULL_BIT.iter().position(|&b| b == id) {
+        if let Some(bit) = crate::ids::INSP_CAMERA_CULL_BIT
+            .iter()
+            .position(|&b| b == id)
+        {
             // ⚠️ **O estado vem do SNAPSHOT**, e a edição é o bit INVERTIDO dele.
             let ligado = info.camera.cull_mask & (1u32 << bit) != 0;
             push(
@@ -59,7 +61,7 @@ pub(crate) fn apply_camera_event(host: &mut dyn PanelHostInternal, ev: WidgetEve
     }
 
     if let WidgetEvent::TextChanged(id) = ev
-        && id == ids::INSP_CAMERA_TARGET
+        && id == crate::ids::INSP_CAMERA_TARGET
     {
         let text = host.store().text(id).unwrap_or("").to_string();
         push(host, bits, CameraFieldEdit::Target(text));
@@ -75,45 +77,45 @@ pub(crate) fn apply_camera_event(host: &mut dyn PanelHostInternal, ev: WidgetEve
         // ⚠️ **Um `if` por campo seria como o terceiro acaba a escrever no primeiro** — a mesma
         // razão que pôs os três campos de texto da tabela de acções numa porta só.
         let edit = match id {
-            ids::INSP_CAMERA_HEIGHT => CameraFieldEdit::Height(f),
+            crate::ids::INSP_CAMERA_HEIGHT => CameraFieldEdit::Height(f),
             #[allow(clippy::cast_possible_truncation)]
-            ids::INSP_CAMERA_PRIORITY => CameraFieldEdit::Priority(v as i32),
-            ids::INSP_CAMERA_OFFSET_X => CameraFieldEdit::Offset([f, info.camera.offset[1]]),
-            ids::INSP_CAMERA_OFFSET_Y => CameraFieldEdit::Offset([info.camera.offset[0], f]),
-            ids::INSP_CAMERA_DAMP_X => {
+            crate::ids::INSP_CAMERA_PRIORITY => CameraFieldEdit::Priority(v as i32),
+            crate::ids::INSP_CAMERA_OFFSET_X => CameraFieldEdit::Offset([f, info.camera.offset[1]]),
+            crate::ids::INSP_CAMERA_OFFSET_Y => CameraFieldEdit::Offset([info.camera.offset[0], f]),
+            crate::ids::INSP_CAMERA_DAMP_X => {
                 CameraFieldEdit::Damping([f, follow.map_or(0.0, |x| x.damping[1])])
             }
-            ids::INSP_CAMERA_DAMP_Y => {
+            crate::ids::INSP_CAMERA_DAMP_Y => {
                 CameraFieldEdit::Damping([follow.map_or(0.0, |x| x.damping[0]), f])
             }
-            ids::INSP_CAMERA_DEAD_X => {
+            crate::ids::INSP_CAMERA_DEAD_X => {
                 CameraFieldEdit::DeadZone([f, follow.map_or(0.0, |x| x.dead_zone[1])])
             }
-            ids::INSP_CAMERA_DEAD_Y => {
+            crate::ids::INSP_CAMERA_DEAD_Y => {
                 CameraFieldEdit::DeadZone([follow.map_or(0.0, |x| x.dead_zone[0]), f])
             }
-            ids::INSP_CAMERA_LOOK_X => {
+            crate::ids::INSP_CAMERA_LOOK_X => {
                 CameraFieldEdit::Lookahead([f, follow.map_or(0.0, |x| x.lookahead[1])])
             }
-            ids::INSP_CAMERA_LOOK_Y => {
+            crate::ids::INSP_CAMERA_LOOK_Y => {
                 CameraFieldEdit::Lookahead([follow.map_or(0.0, |x| x.lookahead[0]), f])
             }
-            ids::INSP_CAMERA_FOLLOW_OFF_X => {
+            crate::ids::INSP_CAMERA_FOLLOW_OFF_X => {
                 CameraFieldEdit::FollowOffset([f, follow.map_or(0.0, |x| x.offset[1])])
             }
-            ids::INSP_CAMERA_FOLLOW_OFF_Y => {
+            crate::ids::INSP_CAMERA_FOLLOW_OFF_Y => {
                 CameraFieldEdit::FollowOffset([follow.map_or(0.0, |x| x.offset[0]), f])
             }
-            ids::INSP_CAMERA_MIN_X => {
+            crate::ids::INSP_CAMERA_MIN_X => {
                 CameraFieldEdit::LimitMin([f, limits.map_or(0.0, |x| x.min[1])])
             }
-            ids::INSP_CAMERA_MIN_Y => {
+            crate::ids::INSP_CAMERA_MIN_Y => {
                 CameraFieldEdit::LimitMin([limits.map_or(0.0, |x| x.min[0]), f])
             }
-            ids::INSP_CAMERA_MAX_X => {
+            crate::ids::INSP_CAMERA_MAX_X => {
                 CameraFieldEdit::LimitMax([f, limits.map_or(0.0, |x| x.max[1])])
             }
-            ids::INSP_CAMERA_MAX_Y => {
+            crate::ids::INSP_CAMERA_MAX_Y => {
                 CameraFieldEdit::LimitMax([limits.map_or(0.0, |x| x.max[0]), f])
             }
             _ => return false,

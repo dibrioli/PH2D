@@ -13,21 +13,21 @@ use ph2d_tool_bgremoval::params::{BgRemovalUiSnapshot, MIN_ISLAND_PIXELS_FULL_SC
 
 pub fn populate(store: &mut WidgetStore) {
     for id in [
-        ids::BGR_APPLY,
-        ids::BGR_CANCEL,
-        ids::BGR_RESET,
+        ph2d_tool_bgremoval::ids::BGR_APPLY,
+        ph2d_tool_bgremoval::ids::BGR_CANCEL,
+        ph2d_tool_bgremoval::ids::BGR_RESET,
         // Eyedropper toggle. Swatches need NO store entry — they're
         // paint-time hit registrations from a fixed id pool.
-        ids::BGR_EYEDROPPER,
+        ph2d_tool_bgremoval::ids::BGR_EYEDROPPER,
         // Protection-brush toggle + its Clear button.
-        ids::BGR_PROTECT,
-        ids::BGR_PROTECT_CLEAR,
+        ph2d_tool_bgremoval::ids::BGR_PROTECT,
+        ph2d_tool_bgremoval::ids::BGR_PROTECT_CLEAR,
         // Show-mask toggle + the 4-way falloff segmented buttons.
-        ids::BGR_SHOW_MASK,
-        ids::BGR_FALLOFF_SMOOTH,
-        ids::BGR_FALLOFF_SPHERE,
-        ids::BGR_FALLOFF_SHARP,
-        ids::BGR_FALLOFF_CONSTANT,
+        ph2d_tool_bgremoval::ids::BGR_SHOW_MASK,
+        ph2d_tool_bgremoval::ids::BGR_FALLOFF_SMOOTH,
+        ph2d_tool_bgremoval::ids::BGR_FALLOFF_SPHERE,
+        ph2d_tool_bgremoval::ids::BGR_FALLOFF_SHARP,
+        ph2d_tool_bgremoval::ids::BGR_FALLOFF_CONSTANT,
         // "Separate Islands" toggle — legacy parity. When on, an Apply
         // pass also splits the result into one sprite per connected
         // component (see `ph2d_tool_bgremoval::algorithm::islands`).
@@ -44,8 +44,8 @@ pub fn populate(store: &mut WidgetStore) {
         // Detect Subject is on. Same dispatcher-register requirement
         // as every other clickable id (see BGR_AUTO_PROTECT_SUBJECT
         // comment above).
-        ids::BGR_ADD_AREA,
-        ids::BGR_ADD_AREA_CLEAR,
+        ph2d_tool_bgremoval::ids::BGR_ADD_AREA,
+        ph2d_tool_bgremoval::ids::BGR_ADD_AREA_CLEAR,
     ] {
         store.register(
             id,
@@ -69,10 +69,26 @@ pub fn populate(store: &mut WidgetStore) {
     // Identity-mapped chips (display = storage). Refine / Feather /
     // Tolerance / Brush Size all paint the raw 0..1 slider value.
     for (slider_id, chip_id, value) in [
-        (ids::BGR_TOLERANCE, ids::BGR_TOLERANCE_NUM, d.tolerance01),
-        (ids::BGR_FEATHER, ids::BGR_FEATHER_NUM, d.feather01),
-        (ids::BGR_REFINE, ids::BGR_REFINE_NUM, d.refine01),
-        (ids::BGR_BRUSH_SIZE, ids::BGR_BRUSH_SIZE_NUM, d.brush_size01),
+        (
+            ph2d_tool_bgremoval::ids::BGR_TOLERANCE,
+            ph2d_tool_bgremoval::ids::BGR_TOLERANCE_NUM,
+            d.tolerance01,
+        ),
+        (
+            ph2d_tool_bgremoval::ids::BGR_FEATHER,
+            ph2d_tool_bgremoval::ids::BGR_FEATHER_NUM,
+            d.feather01,
+        ),
+        (
+            ph2d_tool_bgremoval::ids::BGR_REFINE,
+            ph2d_tool_bgremoval::ids::BGR_REFINE_NUM,
+            d.refine01,
+        ),
+        (
+            ph2d_tool_bgremoval::ids::BGR_BRUSH_SIZE,
+            ph2d_tool_bgremoval::ids::BGR_BRUSH_SIZE_NUM,
+            d.brush_size01,
+        ),
     ] {
         register_slider_chip_pair(store, slider_id, chip_id, value, value as f64);
         store.link_slider_number(slider_id, chip_id);
@@ -83,12 +99,17 @@ pub fn populate(store: &mut WidgetStore) {
         let grow_display = (d.grow01 - 0.5) * 2.0;
         register_slider_chip_pair(
             store,
-            ids::BGR_GROW,
-            ids::BGR_GROW_NUM,
+            ph2d_tool_bgremoval::ids::BGR_GROW,
+            ph2d_tool_bgremoval::ids::BGR_GROW_NUM,
             d.grow01,
             grow_display as f64,
         );
-        store.link_slider_number_mapped(ids::BGR_GROW, ids::BGR_GROW_NUM, 2.0, -1.0);
+        store.link_slider_number_mapped(
+            ph2d_tool_bgremoval::ids::BGR_GROW,
+            ph2d_tool_bgremoval::ids::BGR_GROW_NUM,
+            2.0,
+            -1.0,
+        );
     }
     // Min island pixels — integer count `[1..FULL_SCALE]`:
     // `count = storage*(FULL_SCALE-1) + 1`, i.e. mapping
@@ -154,16 +175,20 @@ mod tests {
         let mut store = WidgetStore::with_capacity(8);
         populate(&mut store);
         // Buttons.
-        for id in [ids::BGR_APPLY, ids::BGR_CANCEL, ids::BGR_PROTECT] {
+        for id in [
+            ph2d_tool_bgremoval::ids::BGR_APPLY,
+            ph2d_tool_bgremoval::ids::BGR_CANCEL,
+            ph2d_tool_bgremoval::ids::BGR_PROTECT,
+        ] {
             assert!(store.button_state(id).is_some(), "button {id:?} missing");
         }
         // Sliders seeded from the default snapshot (tuned defaults:
         // tolerance 0.6, feather 0.9, refine 0.01).
         let d = BgRemovalUiSnapshot::default();
         for (id, expect) in [
-            (ids::BGR_TOLERANCE, d.tolerance01),
-            (ids::BGR_FEATHER, d.feather01),
-            (ids::BGR_REFINE, d.refine01),
+            (ph2d_tool_bgremoval::ids::BGR_TOLERANCE, d.tolerance01),
+            (ph2d_tool_bgremoval::ids::BGR_FEATHER, d.feather01),
+            (ph2d_tool_bgremoval::ids::BGR_REFINE, d.refine01),
         ] {
             let (_, v) = store.slider(id).expect("slider registered");
             assert!((v - expect).abs() < 1e-5, "slider {id:?}: {v} vs {expect}");

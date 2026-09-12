@@ -291,37 +291,36 @@ impl PainterTool {
     /// Route one W3/tilt `SetValue` to its clamped field. Knob ranges are
     /// the engine's own (`KNOB_DEFS`); the two engine sliders are `0..1`.
     fn set_wet_knob_value(&mut self, id: ph2d_a11y::NodeId, v: f64) -> bool {
-        use ph2d_editor_core::ids as core_ids;
         // ⚠️ A razão da grade vem ANTES do empréstimo dos knobs: ela não é um
         // knob do motor (o motor nem sabe que ela existe — ver
         // `wetpaint::grid_map`), e o setter dela ENCERRA a sessão, o que precisa
         // de `self` inteiro.
-        if id == core_ids::PAINTER_WETPAINT_GRID {
+        if id == crate::ids::PAINTER_WETPAINT_GRID {
             self.set_wet_grid_ratio(v);
             return true;
         }
-        if id == core_ids::PAINTER_WETPAINT_FLOW {
+        if id == crate::ids::PAINTER_WETPAINT_FLOW {
             self.set_wet_flow_ratio(v);
             return true;
         }
         let w = &mut self.paint.wetpaint;
         let k = &mut w.knobs;
         match id {
-            x if x == core_ids::PAINTER_WETPAINT_WATER => k.water = v.clamp(0.0, 1.0),
-            x if x == core_ids::PAINTER_WETPAINT_PIGMENT => k.set(Knob::PigmentPerDab, v),
-            x if x == core_ids::PAINTER_WETPAINT_PICKUP => k.set(Knob::Pickup, v),
-            x if x == core_ids::PAINTER_WETPAINT_DRY_SPEED => k.set(Knob::Evaporation, v),
-            x if x == core_ids::PAINTER_WETPAINT_EDGE => k.set(Knob::EdgeDarkening, v),
-            x if x == core_ids::PAINTER_WETPAINT_GRAVITY => k.set(Knob::Gravity, v),
-            x if x == core_ids::PAINTER_WETPAINT_ERASE => k.erase = v.clamp(0.0, 1.0),
+            x if x == crate::ids::PAINTER_WETPAINT_WATER => k.water = v.clamp(0.0, 1.0),
+            x if x == crate::ids::PAINTER_WETPAINT_PIGMENT => k.set(Knob::PigmentPerDab, v),
+            x if x == crate::ids::PAINTER_WETPAINT_PICKUP => k.set(Knob::Pickup, v),
+            x if x == crate::ids::PAINTER_WETPAINT_DRY_SPEED => k.set(Knob::Evaporation, v),
+            x if x == crate::ids::PAINTER_WETPAINT_EDGE => k.set(Knob::EdgeDarkening, v),
+            x if x == crate::ids::PAINTER_WETPAINT_GRAVITY => k.set(Knob::Gravity, v),
+            x if x == crate::ids::PAINTER_WETPAINT_ERASE => k.erase = v.clamp(0.0, 1.0),
             // The tilt dial's two carriers (the pad converts its 2D drag to
             // ring/spoke and forwards them here). Touching the dial turns
             // the tilt ON — the model's "dragging the knob implies on".
-            x if x == core_ids::PAINTER_WETPAINT_TILT_RING => {
+            x if x == crate::ids::PAINTER_WETPAINT_TILT_RING => {
                 w.tilt_ring = (v.round().clamp(0.0, 8.0)) as u8;
                 w.tilt_on = true;
             }
-            x if x == core_ids::PAINTER_WETPAINT_TILT_SPOKE => {
+            x if x == crate::ids::PAINTER_WETPAINT_TILT_SPOKE => {
                 w.tilt_spoke = (v.round().rem_euclid(12.0)) as u8;
                 w.tilt_on = true;
             }
@@ -338,47 +337,46 @@ impl PainterTool {
         &mut self,
         event: &ph2d_editor_core::tool::PanelEvent,
     ) -> bool {
-        use ph2d_editor_core::ids as core_ids;
         use ph2d_editor_core::tool::PanelEvent;
         match event {
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_WETPAINT_RESET => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_WETPAINT_RESET => {
                 self.reset_brush_wetpaint();
                 true
             }
-            PanelEvent::Click(id) if core_ids::PAINTER_WETPAINT_TOOL_IDS.contains(id) => {
-                let index = core_ids::PAINTER_WETPAINT_TOOL_IDS
+            PanelEvent::Click(id) if crate::ids::PAINTER_WETPAINT_TOOL_IDS.contains(id) => {
+                let index = crate::ids::PAINTER_WETPAINT_TOOL_IDS
                     .iter()
                     .position(|t| t == id)
                     .unwrap_or(0);
                 self.pick_wet_tool(index);
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_WETPAINT_TILT_TOGGLE => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_WETPAINT_TILT_TOGGLE => {
                 // Flips WITHOUT losing the dial's direction (the model).
                 self.paint.wetpaint.tilt_on = !self.paint.wetpaint.tilt_on;
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_WETPAINT_WETCANVAS => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_WETPAINT_WETCANVAS => {
                 self.wetpaint_wet_canvas();
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_WETPAINT_DRYCANVAS => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_WETPAINT_DRYCANVAS => {
                 self.wetpaint_dry_canvas();
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_WETPAINT_FASTDRY => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_WETPAINT_FASTDRY => {
                 self.wetpaint_fast_dry();
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_WETPAINT_SHOWWET => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_WETPAINT_SHOWWET => {
                 let on = !self.paint.wetpaint.show_wet;
                 self.paint.wetpaint.show_wet = on;
                 self.wet_recomposite_full();
                 true
             }
             PanelEvent::Click(id)
-                if *id == core_ids::PAINTER_WETPAINT_PAPER_VISUAL
-                    || *id == core_ids::WET_TUNING_PAPER_EYE =>
+                if *id == crate::ids::PAINTER_WETPAINT_PAPER_VISUAL
+                    || *id == crate::ids::WET_TUNING_PAPER_EYE =>
             {
                 // One fact, two views: the basic checkbox and the Tuning
                 // panel's PAPER eye.
@@ -386,17 +384,17 @@ impl PainterTool {
                 self.wet_recomposite_full();
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_WETPAINT_TUNING => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_WETPAINT_TUNING => {
                 self.paint.wetpaint.tuning_open = !self.paint.wetpaint.tuning_open;
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::WET_TUNING_KM_MIXING => {
+            PanelEvent::Click(id) if *id == crate::ids::WET_TUNING_KM_MIXING => {
                 // Sim-side: changes how FUTURE mixing happens; nothing on
                 // screen moves until paint does.
                 self.paint.wetpaint.km_mixing = !self.paint.wetpaint.km_mixing;
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::WET_TUNING_KM_GLAZE => {
+            PanelEvent::Click(id) if *id == crate::ids::WET_TUNING_KM_GLAZE => {
                 self.paint.wetpaint.km_glaze = !self.paint.wetpaint.km_glaze;
                 self.wet_recomposite_full();
                 true
@@ -412,8 +410,7 @@ impl PainterTool {
     /// The Tuning side panel's per-knob RESET / per-group RESET clicks
     /// (dynamic id family — resolved through [`wet_tuning_id_map`]).
     fn route_wet_tuning_click(&mut self, id: ph2d_a11y::NodeId) -> bool {
-        use ph2d_editor_core::ids as core_ids;
-        if let Some(gi) = core_ids::WET_TUNING_GROUP_RESETS
+        if let Some(gi) = crate::ids::WET_TUNING_GROUP_RESETS
             .iter()
             .position(|g| *g == id)
         {
@@ -463,7 +460,6 @@ enum TuneWidget {
 /// no table to drift.
 fn wet_tuning_id_map() -> &'static std::collections::BTreeMap<ph2d_a11y::NodeId, (usize, TuneWidget)>
 {
-    use ph2d_editor_core::ids as core_ids;
     static MAP: std::sync::OnceLock<
         std::collections::BTreeMap<ph2d_a11y::NodeId, (usize, TuneWidget)>,
     > = std::sync::OnceLock::new();
@@ -474,12 +470,15 @@ fn wet_tuning_id_map() -> &'static std::collections::BTreeMap<ph2d_a11y::NodeId,
                 continue;
             }
             m.insert(
-                core_ids::wet_tuning_slider_id(def.key),
+                crate::ids::wet_tuning_slider_id(def.key),
                 (i, TuneWidget::Slider),
             );
-            m.insert(core_ids::wet_tuning_chip_id(def.key), (i, TuneWidget::Chip));
             m.insert(
-                core_ids::wet_tuning_reset_id(def.key),
+                crate::ids::wet_tuning_chip_id(def.key),
+                (i, TuneWidget::Chip),
+            );
+            m.insert(
+                crate::ids::wet_tuning_reset_id(def.key),
                 (i, TuneWidget::Reset),
             );
         }

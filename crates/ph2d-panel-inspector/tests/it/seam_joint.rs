@@ -161,7 +161,10 @@ const KIND_CUSTOM: u8 = 8;
 /// **Every kind chip is clickable and picks its own kind.**
 #[test]
 fn the_kind_chips_each_pick_their_own_kind() {
-    for (i, &id) in ids::INSP_JOINT_KIND.iter().enumerate() {
+    for (i, &id) in ph2d_panel_inspector::ids::INSP_JOINT_KIND
+        .iter()
+        .enumerate()
+    {
         expect(
             &click_real(joint(0), id),
             JointFieldEdit::Kind(i as u8),
@@ -174,14 +177,20 @@ fn the_kind_chips_each_pick_their_own_kind() {
 /// `true`, and each is reached by clicking it.
 #[test]
 fn the_pin_switches_write_the_side_they_are_on() {
-    for (i, &id) in ids::INSP_JOINT_LIMITS.iter().enumerate() {
+    for (i, &id) in ph2d_panel_inspector::ids::INSP_JOINT_LIMITS
+        .iter()
+        .enumerate()
+    {
         expect(
             &click_real(joint(0), id),
             JointFieldEdit::LimitsEnabled(i == 1),
             &format!("limits switch {i}"),
         );
     }
-    for (i, &id) in ids::INSP_JOINT_MOTOR.iter().enumerate() {
+    for (i, &id) in ph2d_panel_inspector::ids::INSP_JOINT_MOTOR
+        .iter()
+        .enumerate()
+    {
         expect(
             &click_real(joint(0), id),
             JointFieldEdit::MotorEnabled(i == 1),
@@ -197,7 +206,10 @@ const KIND_WELD: u8 = 3;
 /// compartilham. Gêmea da const local do `each_kind_paints_only_the_rows_it_uses`
 /// — ela vive lá dentro, e duplicá-la aqui é mais honesto que hoistá-la, porque
 /// as duas afirmam coisas diferentes sobre os mesmos ids.
-const SPRING_ROWS: [ph2d_a11y::NodeId; 2] = [ids::INSP_JOINT_STIFFNESS, ids::INSP_JOINT_DAMPING];
+const SPRING_ROWS: [ph2d_a11y::NodeId; 2] = [
+    ph2d_panel_inspector::ids::INSP_JOINT_STIFFNESS,
+    ph2d_panel_inspector::ids::INSP_JOINT_DAMPING,
+];
 
 /// Tudo o que a §12 pinta para este joint.
 fn painted_ids(info: InspectorJointInfo) -> Vec<ph2d_a11y::NodeId> {
@@ -226,7 +238,10 @@ fn the_soft_switch_writes_the_side_it_is_on() {
         j.soft = soft;
         j
     };
-    for (i, &id) in ids::INSP_JOINT_SOFT.iter().enumerate() {
+    for (i, &id) in ph2d_panel_inspector::ids::INSP_JOINT_SOFT
+        .iter()
+        .enumerate()
+    {
         expect(
             &click_real(weld(true), id),
             JointFieldEdit::Soft(i == 1),
@@ -267,7 +282,7 @@ fn a_rigid_weld_has_no_spring_and_a_soft_one_does() {
 #[test]
 fn delete_joint_is_dispatched() {
     expect(
-        &click_real(joint(0), ids::INSP_JOINT_REMOVE),
+        &click_real(joint(0), ph2d_panel_inspector::ids::INSP_JOINT_REMOVE),
         JointFieldEdit::Remove,
         "Delete Joint",
     );
@@ -282,12 +297,12 @@ fn delete_joint_is_dispatched() {
 #[test]
 fn the_body_pickers_arm_their_own_slot() {
     expect(
-        &click_real(joint(0), ids::INSP_JOINT_PICK_A),
+        &click_real(joint(0), ph2d_panel_inspector::ids::INSP_JOINT_PICK_A),
         JointFieldEdit::PickBodyA,
         "pick Body A",
     );
     expect(
-        &click_real(joint(0), ids::INSP_JOINT_PICK_B),
+        &click_real(joint(0), ph2d_panel_inspector::ids::INSP_JOINT_PICK_B),
         JointFieldEdit::PickBodyB,
         "pick Body B",
     );
@@ -300,12 +315,12 @@ fn the_body_pickers_arm_their_own_slot() {
 #[test]
 fn the_anchor_b_chips_ask_for_the_side_they_name() {
     expect(
-        &click_real(joint(0), ids::INSP_JOINT_ANCHOR_B[1]),
+        &click_real(joint(0), ph2d_panel_inspector::ids::INSP_JOINT_ANCHOR_B[1]),
         JointFieldEdit::AnchorToWorld(true),
         "anchor B to the world",
     );
     expect(
-        &click_real(joint(0), ids::INSP_JOINT_ANCHOR_B[0]),
+        &click_real(joint(0), ph2d_panel_inspector::ids::INSP_JOINT_ANCHOR_B[0]),
         JointFieldEdit::AnchorToWorld(false),
         "anchor B back to an object",
     );
@@ -326,11 +341,15 @@ fn a_world_pin_withholds_the_b_picker_but_keeps_the_a_one() {
     let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
     set_current_inspector_joint(None);
     assert!(
-        rects.iter().any(|(n, _)| *n == ids::INSP_JOINT_PICK_A),
+        rects
+            .iter()
+            .any(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_JOINT_PICK_A),
         "o conta-gotas do lado A tinha de continuar lá — ele é o CONTROLE"
     );
     assert!(
-        !rects.iter().any(|(n, _)| *n == ids::INSP_JOINT_PICK_B),
+        !rects
+            .iter()
+            .any(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_JOINT_PICK_B),
         "o conta-gotas do lado B foi pintado num pino de MUNDO: não há corpo a \
          apontar, e ele armaria um pick que nenhum clique pode satisfazer"
     );
@@ -346,7 +365,10 @@ fn both_pickers_paint_for_every_kind() {
         set_current_inspector_joint(Some(joint(kind)));
         let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
         set_current_inspector_joint(None);
-        for id in [ids::INSP_JOINT_PICK_A, ids::INSP_JOINT_PICK_B] {
+        for id in [
+            ph2d_panel_inspector::ids::INSP_JOINT_PICK_A,
+            ph2d_panel_inspector::ids::INSP_JOINT_PICK_B,
+        ] {
             assert!(
                 rects.iter().any(|(n, _)| *n == id),
                 "kind {kind} did not paint the body picker {id:?}"
@@ -364,49 +386,49 @@ fn each_number_box_commits_to_its_own_field() {
     let cases: [(u8, ph2d_a11y::NodeId, f64, JointFieldEdit); 8] = [
         (
             0,
-            ids::INSP_JOINT_LIMIT_MIN,
+            ph2d_panel_inspector::ids::INSP_JOINT_LIMIT_MIN,
             -30.0,
             JointFieldEdit::LimitMin(-30.0),
         ),
         (
             0,
-            ids::INSP_JOINT_LIMIT_MAX,
+            ph2d_panel_inspector::ids::INSP_JOINT_LIMIT_MAX,
             60.0,
             JointFieldEdit::LimitMax(60.0),
         ),
         (
             0,
-            ids::INSP_JOINT_MOTOR_SPEED,
+            ph2d_panel_inspector::ids::INSP_JOINT_MOTOR_SPEED,
             90.0,
             JointFieldEdit::MotorSpeed(90.0),
         ),
         (
             0,
-            ids::INSP_JOINT_MOTOR_FORCE,
+            ph2d_panel_inspector::ids::INSP_JOINT_MOTOR_FORCE,
             7.5,
             JointFieldEdit::MotorMaxForce(7.5),
         ),
         (
             1,
-            ids::INSP_JOINT_REST_LENGTH,
+            ph2d_panel_inspector::ids::INSP_JOINT_REST_LENGTH,
             2.5,
             JointFieldEdit::RestLength(2.5),
         ),
         (
             1,
-            ids::INSP_JOINT_STIFFNESS,
+            ph2d_panel_inspector::ids::INSP_JOINT_STIFFNESS,
             42.0,
             JointFieldEdit::Stiffness(42.0),
         ),
         (
             1,
-            ids::INSP_JOINT_DAMPING,
+            ph2d_panel_inspector::ids::INSP_JOINT_DAMPING,
             3.25,
             JointFieldEdit::Damping(3.25),
         ),
         (
             2,
-            ids::INSP_JOINT_MAX_LENGTH,
+            ph2d_panel_inspector::ids::INSP_JOINT_MAX_LENGTH,
             4.75,
             JointFieldEdit::MaxLength(4.75),
         ),
@@ -431,26 +453,32 @@ fn each_kind_paints_only_the_rows_it_uses() {
     // chegou (W-J6, `has_motor`: um trilho e um guincho são dirigidos também).
     // Cada uma é afirmada com o próprio predicado — colapsá-las na do Pin é o que
     // deixaria um Slider sem curso ou uma Rope sem guincho, em silêncio.
-    const LIMIT_ROWS: [ph2d_a11y::NodeId; 2] =
-        [ids::INSP_JOINT_LIMIT_MIN, ids::INSP_JOINT_LIMIT_MAX];
-    const MOTOR_ROWS: [ph2d_a11y::NodeId; 2] =
-        [ids::INSP_JOINT_MOTOR_SPEED, ids::INSP_JOINT_MOTOR_FORCE];
+    const LIMIT_ROWS: [ph2d_a11y::NodeId; 2] = [
+        ph2d_panel_inspector::ids::INSP_JOINT_LIMIT_MIN,
+        ph2d_panel_inspector::ids::INSP_JOINT_LIMIT_MAX,
+    ];
+    const MOTOR_ROWS: [ph2d_a11y::NodeId; 2] = [
+        ph2d_panel_inspector::ids::INSP_JOINT_MOTOR_SPEED,
+        ph2d_panel_inspector::ids::INSP_JOINT_MOTOR_FORCE,
+    ];
     /// Só de uma Spring: uma roda tem mola mas não tem comprimento de repouso
     /// (a altura de marcha dela é ONDE o artista montou o carro).
-    const REST_ONLY: [ph2d_a11y::NodeId; 1] = [ids::INSP_JOINT_REST_LENGTH];
+    const REST_ONLY: [ph2d_a11y::NodeId; 1] = [ph2d_panel_inspector::ids::INSP_JOINT_REST_LENGTH];
     /// A MOLA — da Spring e da suspensão de um Wheel. Mesmos campos, mesmos
     /// ids, porque é a mesma coisa física.
-    const SPRING_ROWS: [ph2d_a11y::NodeId; 2] =
-        [ids::INSP_JOINT_STIFFNESS, ids::INSP_JOINT_DAMPING];
+    const SPRING_ROWS: [ph2d_a11y::NodeId; 2] = [
+        ph2d_panel_inspector::ids::INSP_JOINT_STIFFNESS,
+        ph2d_panel_inspector::ids::INSP_JOINT_DAMPING,
+    ];
     /// O comprimento — da Rope (um teto) e do Rod (uma igualdade).
-    const LENGTH_ROWS: [ph2d_a11y::NodeId; 1] = [ids::INSP_JOINT_MAX_LENGTH];
+    const LENGTH_ROWS: [ph2d_a11y::NodeId; 1] = [ph2d_panel_inspector::ids::INSP_JOINT_MAX_LENGTH];
 
     // ⚠️ **A faixa cobre TODOS os chips que o painel pinta, e por duas vezes ela
     // não cobriu.** Era `0..4` quando o Slider chegou (a metade `kind == 4` da
     // asserção de limite nunca rodou), virou `0..5` e ficou assim quando o Rod
     // (5) e o Wheel (6) chegaram. Agora ela é o COMPRIMENTO do array de chips —
     // um tipo novo entra na varredura sem ninguém lembrar.
-    for kind in 0u8..ids::INSP_JOINT_KIND.len() as u8 {
+    for kind in 0u8..ph2d_panel_inspector::ids::INSP_JOINT_KIND.len() as u8 {
         let mut host = MockPanelHost::with_panel::<InspectorPanel>();
         let mut state = InspectorState::default();
         set_current_inspector_joint(Some(joint(kind)));
@@ -525,7 +553,10 @@ fn each_kind_paints_only_the_rows_it_uses() {
         // The kind chips and Delete are painted for every kind — the control
         // group that is always there. Without this the assertions above would
         // be satisfied by a section that painted nothing at all.
-        for id in ids::INSP_JOINT_KIND.iter().chain(&[ids::INSP_JOINT_REMOVE]) {
+        for id in ph2d_panel_inspector::ids::INSP_JOINT_KIND
+            .iter()
+            .chain(&[ph2d_panel_inspector::ids::INSP_JOINT_REMOVE])
+        {
             assert!(painted(*id), "kind {kind} did not paint {id:?}");
         }
     }
@@ -548,10 +579,22 @@ fn the_pin_rows_follow_their_switches() {
         let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
         set_current_inspector_joint(None);
         let painted = |id: ph2d_a11y::NodeId| rects.iter().any(|(n, _)| *n == id);
-        assert_eq!(painted(ids::INSP_JOINT_LIMIT_MIN), limits);
-        assert_eq!(painted(ids::INSP_JOINT_LIMIT_MAX), limits);
-        assert_eq!(painted(ids::INSP_JOINT_MOTOR_SPEED), motor);
-        assert_eq!(painted(ids::INSP_JOINT_MOTOR_FORCE), motor);
+        assert_eq!(
+            painted(ph2d_panel_inspector::ids::INSP_JOINT_LIMIT_MIN),
+            limits
+        );
+        assert_eq!(
+            painted(ph2d_panel_inspector::ids::INSP_JOINT_LIMIT_MAX),
+            limits
+        );
+        assert_eq!(
+            painted(ph2d_panel_inspector::ids::INSP_JOINT_MOTOR_SPEED),
+            motor
+        );
+        assert_eq!(
+            painted(ph2d_panel_inspector::ids::INSP_JOINT_MOTOR_FORCE),
+            motor
+        );
     }
 }
 
@@ -566,10 +609,10 @@ fn the_joint_arms_are_silent_when_nothing_is_a_joint() {
     let mut state = InspectorState::default();
     set_current_inspector_joint(None);
     for id in [
-        ids::INSP_JOINT_KIND[1],
-        ids::INSP_JOINT_REMOVE,
-        ids::INSP_JOINT_LIMITS[1],
-        ids::INSP_JOINT_MOTOR[0],
+        ph2d_panel_inspector::ids::INSP_JOINT_KIND[1],
+        ph2d_panel_inspector::ids::INSP_JOINT_REMOVE,
+        ph2d_panel_inspector::ids::INSP_JOINT_LIMITS[1],
+        ph2d_panel_inspector::ids::INSP_JOINT_MOTOR[0],
     ] {
         let outcome = host.apply_panel_event::<InspectorPanel>(&mut state, WidgetEvent::Click(id));
         assert!(
@@ -590,7 +633,10 @@ fn the_joint_arms_are_silent_when_nothing_is_a_joint() {
 /// É o buraco que deixou os chips de kind do §11 nascerem mortos.
 #[test]
 fn the_motor_mode_chips_ask_for_the_mode_they_name() {
-    for (i, &id) in ids::INSP_JOINT_MOTOR_MODE.iter().enumerate() {
+    for (i, &id) in ph2d_panel_inspector::ids::INSP_JOINT_MOTOR_MODE
+        .iter()
+        .enumerate()
+    {
         let acts = click_real(joint(0), id);
         expect(
             &acts,
@@ -621,18 +667,18 @@ fn each_motor_mode_paints_only_its_own_number() {
         set_current_inspector_joint(None);
         let painted = |id: ph2d_a11y::NodeId| rects.iter().any(|(n, _)| *n == id);
         assert_eq!(
-            painted(ids::INSP_JOINT_MOTOR_SPEED),
+            painted(ph2d_panel_inspector::ids::INSP_JOINT_MOTOR_SPEED),
             mode == 0,
             "modo {mode}: Speed pertence ao Velocity"
         );
         assert_eq!(
-            painted(ids::INSP_JOINT_MOTOR_TARGET),
+            painted(ph2d_panel_inspector::ids::INSP_JOINT_MOTOR_TARGET),
             mode == 1,
             "modo {mode}: Target pertence ao Position"
         );
         // O controle: o card inteiro não sumiu.
         assert!(
-            painted(ids::INSP_JOINT_MOTOR_FORCE),
+            painted(ph2d_panel_inspector::ids::INSP_JOINT_MOTOR_FORCE),
             "modo {mode}: Max Force existe nos dois"
         );
     }
@@ -654,14 +700,17 @@ fn switching_the_motor_off_takes_its_instruction_off_the_screen() {
         let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
         set_current_inspector_joint(None);
         let painted = |id: ph2d_a11y::NodeId| rects.iter().any(|(n, _)| *n == id);
-        for id in ids::INSP_JOINT_MOTOR_MODE
+        for id in ph2d_panel_inspector::ids::INSP_JOINT_MOTOR_MODE
             .iter()
-            .chain(&[ids::INSP_JOINT_MOTOR_SPEED, ids::INSP_JOINT_MOTOR_FORCE])
+            .chain(&[
+                ph2d_panel_inspector::ids::INSP_JOINT_MOTOR_SPEED,
+                ph2d_panel_inspector::ids::INSP_JOINT_MOTOR_FORCE,
+            ])
         {
             assert_eq!(painted(*id), on, "motor {on}: {id:?}");
         }
         // O interruptor em si está sempre lá — senão não haveria como religar.
-        for id in &ids::INSP_JOINT_MOTOR {
+        for id in &ph2d_panel_inspector::ids::INSP_JOINT_MOTOR {
             assert!(painted(*id), "o switch Motor existe nos dois estados");
         }
     }
@@ -690,7 +739,7 @@ fn breaking_is_offered_to_every_kind_and_the_torque_row_follows_the_flag() {
     // 0,5125 N.m com tração). Quem tem a flag é gateado onde ela é COMPUTADA
     // (`ph2d_physics_ecs::JointKind::breaks_on_torque`, mais o gate de snapshot
     // na shell); aqui fica só a metade que é do painel.
-    for kind in 0u8..ids::INSP_JOINT_KIND.len() as u8 {
+    for kind in 0u8..ph2d_panel_inspector::ids::INSP_JOINT_KIND.len() as u8 {
         for torque in [false, true] {
             let mut host = MockPanelHost::with_panel::<InspectorPanel>();
             let mut state = InspectorState::default();
@@ -707,7 +756,7 @@ fn breaking_is_offered_to_every_kind_and_the_torque_row_follows_the_flag() {
             // (`λ/dt`), medida contra `m·g` com razão 0,9999. A frase *"todo
             // joint pode ser arrancado"* voltou a valer para todos.
             let breakable = true;
-            for &id in &ids::INSP_JOINT_BREAK {
+            for &id in &ph2d_panel_inspector::ids::INSP_JOINT_BREAK {
                 assert_eq!(
                     painted(id),
                     breakable,
@@ -716,12 +765,12 @@ fn breaking_is_offered_to_every_kind_and_the_torque_row_follows_the_flag() {
                 );
             }
             assert_eq!(
-                painted(ids::INSP_JOINT_BREAK_FORCE),
+                painted(ph2d_panel_inspector::ids::INSP_JOINT_BREAK_FORCE),
                 breakable,
                 "kind {kind}: e o limiar de força segue o switch"
             );
             assert_eq!(
-                painted(ids::INSP_JOINT_BREAK_TORQUE),
+                painted(ph2d_panel_inspector::ids::INSP_JOINT_BREAK_TORQUE),
                 torque && breakable,
                 "kind {kind}: a row de torque segue a flag que o motor mandou, e \
                  nada mais"
@@ -745,10 +794,13 @@ fn the_break_rows_follow_their_switch() {
         set_current_inspector_joint(None);
         let painted = |id: ph2d_a11y::NodeId| rects.iter().any(|(n, _)| *n == id);
         assert!(
-            painted(ids::INSP_JOINT_BREAK[0]),
+            painted(ph2d_panel_inspector::ids::INSP_JOINT_BREAK[0]),
             "the switch is always offered — it is how breaking is turned ON"
         );
-        for id in [ids::INSP_JOINT_BREAK_FORCE, ids::INSP_JOINT_BREAK_TORQUE] {
+        for id in [
+            ph2d_panel_inspector::ids::INSP_JOINT_BREAK_FORCE,
+            ph2d_panel_inspector::ids::INSP_JOINT_BREAK_TORQUE,
+        ] {
             assert_eq!(
                 painted(id),
                 on,
@@ -765,18 +817,26 @@ fn the_break_rows_follow_their_switch() {
 fn the_break_controls_are_wired() {
     for (i, want) in [(0usize, false), (1, true)] {
         expect(
-            &click_real(joint(0), ids::INSP_JOINT_BREAK[i]),
+            &click_real(joint(0), ph2d_panel_inspector::ids::INSP_JOINT_BREAK[i]),
             JointFieldEdit::BreakEnabled(want),
             "the Breakable switch",
         );
     }
     expect(
-        &commit(joint(0), ids::INSP_JOINT_BREAK_FORCE, 250.0),
+        &commit(
+            joint(0),
+            ph2d_panel_inspector::ids::INSP_JOINT_BREAK_FORCE,
+            250.0,
+        ),
         JointFieldEdit::BreakForce(250.0),
         "Break Force",
     );
     expect(
-        &commit(joint(0), ids::INSP_JOINT_BREAK_TORQUE, 12.0),
+        &commit(
+            joint(0),
+            ph2d_panel_inspector::ids::INSP_JOINT_BREAK_TORQUE,
+            12.0,
+        ),
         JointFieldEdit::BreakTorque(12.0),
         "Break Torque",
     );
@@ -822,14 +882,14 @@ fn selecting_a_joint_shows_the_thresholds_it_carries() {
         other => panic!("{id:?} nao e um NumberInput registrado: {other:?}"),
     };
     assert!(
-        (val(ids::INSP_JOINT_BREAK_FORCE) - 250.0).abs() < 1e-6,
+        (val(ph2d_panel_inspector::ids::INSP_JOINT_BREAK_FORCE) - 250.0).abs() < 1e-6,
         "Break Force mostra o autorado, mostra {}",
-        val(ids::INSP_JOINT_BREAK_FORCE)
+        val(ph2d_panel_inspector::ids::INSP_JOINT_BREAK_FORCE)
     );
     assert!(
-        (val(ids::INSP_JOINT_BREAK_TORQUE) - 12.0).abs() < 1e-6,
+        (val(ph2d_panel_inspector::ids::INSP_JOINT_BREAK_TORQUE) - 12.0).abs() < 1e-6,
         "Break Torque idem, mostra {}",
-        val(ids::INSP_JOINT_BREAK_TORQUE)
+        val(ph2d_panel_inspector::ids::INSP_JOINT_BREAK_TORQUE)
     );
 }
 
@@ -850,15 +910,21 @@ fn the_pair_controls_are_offered_on_every_kind() {
     // dois tipos seguintes (Rod, Wheel) nunca foram cobertos — o cluster do PAR
     // é pintado sem olhar o tipo, então ele funcionava, mas nada o dizia. É a
     // mesma rot das outras três listas escritas à mão desta seção.
-    for kind_tag in 0u8..ids::INSP_JOINT_KIND.len() as u8 {
-        for (i, &id) in ids::INSP_JOINT_ACTIVE.iter().enumerate() {
+    for kind_tag in 0u8..ph2d_panel_inspector::ids::INSP_JOINT_KIND.len() as u8 {
+        for (i, &id) in ph2d_panel_inspector::ids::INSP_JOINT_ACTIVE
+            .iter()
+            .enumerate()
+        {
             expect(
                 &click_real(joint(kind_tag), id),
                 JointFieldEdit::Active(i == 1),
                 &format!("kind {kind_tag}: active switch {i}"),
             );
         }
-        for (i, &id) in ids::INSP_JOINT_COLLIDE.iter().enumerate() {
+        for (i, &id) in ph2d_panel_inspector::ids::INSP_JOINT_COLLIDE
+            .iter()
+            .enumerate()
+        {
             expect(
                 &click_real(joint(kind_tag), id),
                 JointFieldEdit::CollideConnected(i == 1),
@@ -866,7 +932,7 @@ fn the_pair_controls_are_offered_on_every_kind() {
             );
         }
         expect(
-            &click_real(joint(kind_tag), ids::INSP_JOINT_SWAP),
+            &click_real(joint(kind_tag), ph2d_panel_inspector::ids::INSP_JOINT_SWAP),
             JointFieldEdit::Swap,
             &format!("kind {kind_tag}: Swap A/B"),
         );
@@ -887,7 +953,9 @@ fn only_a_pulley_offers_the_add_wheel_button_and_the_click_lands() {
         set_current_inspector_joint(Some(joint(kind_tag)));
         let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
         set_current_inspector_joint(None);
-        let painted = rects.iter().any(|(n, _)| *n == ids::INSP_JOINT_ADD_WHEEL);
+        let painted = rects
+            .iter()
+            .any(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_JOINT_ADD_WHEEL);
         assert_eq!(
             painted,
             kind_tag == KIND_PULLEY,
@@ -900,7 +968,10 @@ fn only_a_pulley_offers_the_add_wheel_button_and_the_click_lands() {
         );
     }
     expect(
-        &click_real(joint(KIND_PULLEY), ids::INSP_JOINT_ADD_WHEEL),
+        &click_real(
+            joint(KIND_PULLEY),
+            ph2d_panel_inspector::ids::INSP_JOINT_ADD_WHEEL,
+        ),
         JointFieldEdit::AddWheel,
         "Add Wheel",
     );
@@ -918,7 +989,7 @@ fn the_swap_survives_a_body_that_no_longer_resolves() {
     info.body_a_name = String::new();
     info.bound = false;
     expect(
-        &click_real(info, ids::INSP_JOINT_SWAP),
+        &click_real(info, ph2d_panel_inspector::ids::INSP_JOINT_SWAP),
         JointFieldEdit::Swap,
         "Swap with a missing Body A",
     );
@@ -963,53 +1034,53 @@ fn every_number_row_the_section_paints_is_seeded_synced_and_routed() {
     // botões e os ids de GRUPO que eles carregam.
     let mut not_a_number: Vec<ph2d_a11y::NodeId> = Vec::new();
     for group in [
-        &ids::INSP_JOINT_KIND[..],
-        &ids::INSP_JOINT_LIMITS[..],
-        &ids::INSP_JOINT_MOTOR[..],
-        &ids::INSP_JOINT_MOTOR_MODE[..],
-        &ids::INSP_JOINT_BREAK[..],
-        &ids::INSP_JOINT_ACTIVE[..],
-        &ids::INSP_JOINT_COLLIDE[..],
+        &ph2d_panel_inspector::ids::INSP_JOINT_KIND[..],
+        &ph2d_panel_inspector::ids::INSP_JOINT_LIMITS[..],
+        &ph2d_panel_inspector::ids::INSP_JOINT_MOTOR[..],
+        &ph2d_panel_inspector::ids::INSP_JOINT_MOTOR_MODE[..],
+        &ph2d_panel_inspector::ids::INSP_JOINT_BREAK[..],
+        &ph2d_panel_inspector::ids::INSP_JOINT_ACTIVE[..],
+        &ph2d_panel_inspector::ids::INSP_JOINT_COLLIDE[..],
         // W-JointWorld: o par Object|World do lado B.
-        &ids::INSP_JOINT_ANCHOR_B[..],
+        &ph2d_panel_inspector::ids::INSP_JOINT_ANCHOR_B[..],
         // W-SoftWeld: o par Rigid|Soft de uma solda.
-        &ids::INSP_JOINT_SOFT[..],
+        &ph2d_panel_inspector::ids::INSP_JOINT_SOFT[..],
         // W-JointCustom: os nove chips de modo de eixo e os três de eixo do
         // motor. Chips, não caixas de número.
-        &ids::INSP_JOINT_AXIS_MODE[0][..],
-        &ids::INSP_JOINT_AXIS_MODE[1][..],
-        &ids::INSP_JOINT_AXIS_MODE[2][..],
-        &ids::INSP_JOINT_MOTOR_AXIS[..],
+        &ph2d_panel_inspector::ids::INSP_JOINT_AXIS_MODE[0][..],
+        &ph2d_panel_inspector::ids::INSP_JOINT_AXIS_MODE[1][..],
+        &ph2d_panel_inspector::ids::INSP_JOINT_AXIS_MODE[2][..],
+        &ph2d_panel_inspector::ids::INSP_JOINT_MOTOR_AXIS[..],
     ] {
         not_a_number.extend_from_slice(group);
     }
     not_a_number.extend_from_slice(&[
-        ids::INSP_JOINT_KIND_GROUP,
-        ids::INSP_JOINT_LIMITS_GROUP,
-        ids::INSP_JOINT_MOTOR_GROUP,
-        ids::INSP_JOINT_MOTOR_MODE_GROUP,
-        ids::INSP_JOINT_BREAK_GROUP,
-        ids::INSP_JOINT_ACTIVE_GROUP,
-        ids::INSP_JOINT_COLLIDE_GROUP,
-        ids::INSP_JOINT_ANCHOR_B_GROUP,
-        ids::INSP_JOINT_SOFT_GROUP,
-        ids::INSP_JOINT_AXIS_GROUP[0],
-        ids::INSP_JOINT_AXIS_GROUP[1],
-        ids::INSP_JOINT_AXIS_GROUP[2],
-        ids::INSP_JOINT_MOTOR_AXIS_GROUP,
-        ids::INSP_JOINT_SWAP,
+        ph2d_panel_inspector::ids::INSP_JOINT_KIND_GROUP,
+        ph2d_panel_inspector::ids::INSP_JOINT_LIMITS_GROUP,
+        ph2d_panel_inspector::ids::INSP_JOINT_MOTOR_GROUP,
+        ph2d_panel_inspector::ids::INSP_JOINT_MOTOR_MODE_GROUP,
+        ph2d_panel_inspector::ids::INSP_JOINT_BREAK_GROUP,
+        ph2d_panel_inspector::ids::INSP_JOINT_ACTIVE_GROUP,
+        ph2d_panel_inspector::ids::INSP_JOINT_COLLIDE_GROUP,
+        ph2d_panel_inspector::ids::INSP_JOINT_ANCHOR_B_GROUP,
+        ph2d_panel_inspector::ids::INSP_JOINT_SOFT_GROUP,
+        ph2d_panel_inspector::ids::INSP_JOINT_AXIS_GROUP[0],
+        ph2d_panel_inspector::ids::INSP_JOINT_AXIS_GROUP[1],
+        ph2d_panel_inspector::ids::INSP_JOINT_AXIS_GROUP[2],
+        ph2d_panel_inspector::ids::INSP_JOINT_MOTOR_AXIS_GROUP,
+        ph2d_panel_inspector::ids::INSP_JOINT_SWAP,
         // O botão que acrescenta uma roldana (W-Pulley W1) — botão, não número.
-        ids::INSP_JOINT_ADD_WHEEL,
-        ids::INSP_JOINT_REMOVE,
-        ids::INSP_JOINT_PICK_A,
-        ids::INSP_JOINT_PICK_B,
+        ph2d_panel_inspector::ids::INSP_JOINT_ADD_WHEEL,
+        ph2d_panel_inspector::ids::INSP_JOINT_REMOVE,
+        ph2d_panel_inspector::ids::INSP_JOINT_PICK_A,
+        ph2d_panel_inspector::ids::INSP_JOINT_PICK_B,
         // W-JointCopy: os dois verbos da área de transferência — botões, não
         // números. (O Paste só é pintado com algo copiado, e a fixture desta
         // varredura não tem; ele entra na lista assim mesmo, porque o que ela
         // declara é *o que NÃO é uma caixa de número* e não *o que está na tela
         // hoje*.)
-        ids::INSP_JOINT_COPY,
-        ids::INSP_JOINT_PASTE,
+        ph2d_panel_inspector::ids::INSP_JOINT_COPY,
+        ph2d_panel_inspector::ids::INSP_JOINT_PASTE,
         ids::INSP_LIVE_JOINT_SECTION,
         ids::INSP_LIVE_JOINT_COLOR,
         // ⚠️ A BARRA DE ROLAGEM do Inspector, e ela não é da §12: a seção só a
@@ -1060,7 +1131,7 @@ fn every_number_row_the_section_paints_is_seeded_synced_and_routed() {
         }));
     };
 
-    for kind in 0u8..ids::INSP_JOINT_KIND.len() as u8 {
+    for kind in 0u8..ph2d_panel_inspector::ids::INSP_JOINT_KIND.len() as u8 {
         // O que o Inspector pinta SEM joint nenhuma — o controle que isola os
         // ids da §12 dos das outras seções.
         let mut host = MockPanelHost::with_panel::<InspectorPanel>();
@@ -1166,7 +1237,7 @@ fn a_pulleys_rope_length_follows_the_derived_number_unless_you_are_typing() {
     let _ = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
     let shown = host
         .store()
-        .number_value(ph2d_editor_core::ids::INSP_JOINT_MAX_LENGTH);
+        .number_value(ph2d_panel_inspector::ids::INSP_JOINT_MAX_LENGTH);
     assert!(
         matches!(shown, Some(v) if (v - 11.965).abs() < 1.0e-3),
         "a row mostrou {shown:?} sobre uma corda de 11,965 m — o número derivado \
@@ -1175,12 +1246,12 @@ fn a_pulleys_rope_length_follows_the_derived_number_unless_you_are_typing() {
 
     // E com a caixa FOCADA o sync não pode atropelar a edição em curso.
     host.store_mut()
-        .set_focus(Some(ph2d_editor_core::ids::INSP_JOINT_MAX_LENGTH));
-    host.set_number_value(ph2d_editor_core::ids::INSP_JOINT_MAX_LENGTH, 42.0);
+        .set_focus(Some(ph2d_panel_inspector::ids::INSP_JOINT_MAX_LENGTH));
+    host.set_number_value(ph2d_panel_inspector::ids::INSP_JOINT_MAX_LENGTH, 42.0);
     let _ = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
     let typed = host
         .store()
-        .number_value(ph2d_editor_core::ids::INSP_JOINT_MAX_LENGTH);
+        .number_value(ph2d_panel_inspector::ids::INSP_JOINT_MAX_LENGTH);
     assert!(
         matches!(typed, Some(v) if (v - 42.0).abs() < 1.0e-3),
         "a caixa focada foi sobrescrita ({typed:?} em vez de 42) — o sync apagou o \
@@ -1198,14 +1269,14 @@ fn a_pulleys_rope_length_follows_the_derived_number_unless_you_are_typing() {
 #[test]
 fn the_two_clipboard_verbs_are_alive_under_the_mouse() {
     expect(
-        &click_real(joint(0), ids::INSP_JOINT_COPY),
+        &click_real(joint(0), ph2d_panel_inspector::ids::INSP_JOINT_COPY),
         JointFieldEdit::CopyProperties,
         "Copy Properties",
     );
     let mut with_clip = joint(0);
     with_clip.paste_targets = 1;
     expect(
-        &click_real(with_clip, ids::INSP_JOINT_PASTE),
+        &click_real(with_clip, ph2d_panel_inspector::ids::INSP_JOINT_PASTE),
         JointFieldEdit::PasteProperties,
         "Paste Properties",
     );
@@ -1227,12 +1298,16 @@ fn the_paste_button_is_absent_until_something_is_copied() {
         let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
         set_current_inspector_joint(None);
         assert!(
-            rects.iter().any(|(n, _)| *n == ids::INSP_JOINT_COPY),
+            rects
+                .iter()
+                .any(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_JOINT_COPY),
             "o Copy tem de estar sempre lá — ele é o CONTROLE, e um joint \
              selecionado sempre tem propriedades a copiar (targets = {targets})"
         );
         assert_eq!(
-            rects.iter().any(|(n, _)| *n == ids::INSP_JOINT_PASTE),
+            rects
+                .iter()
+                .any(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_JOINT_PASTE),
             want_paste,
             "com {targets} alvo(s) o Paste devia estar {}: um Paste vazio nao \
              muda um pixel e le como 'o paste esta quebrado'",
@@ -1277,7 +1352,10 @@ fn the_paste_label_says_how_many_joints_it_will_touch() {
 /// grupo do `populate` deixa isto vermelho.
 #[test]
 fn every_axis_mode_chip_is_alive_and_names_its_own_axis() {
-    for (ax, group) in ids::INSP_JOINT_AXIS_MODE.iter().enumerate() {
+    for (ax, group) in ph2d_panel_inspector::ids::INSP_JOINT_AXIS_MODE
+        .iter()
+        .enumerate()
+    {
         for (mode, &id) in group.iter().enumerate() {
             let acts = click_real(joint(KIND_CUSTOM), id);
             assert_eq!(
@@ -1295,7 +1373,10 @@ fn every_axis_mode_chip_is_alive_and_names_its_own_axis() {
 /// **Os três chips de eixo do motor**, idem.
 #[test]
 fn every_motor_axis_chip_is_alive_and_names_its_own_axis() {
-    for (i, &id) in ids::INSP_JOINT_MOTOR_AXIS.iter().enumerate() {
+    for (i, &id) in ph2d_panel_inspector::ids::INSP_JOINT_MOTOR_AXIS
+        .iter()
+        .enumerate()
+    {
         let acts = click_real(joint(KIND_CUSTOM), id);
         assert_eq!(
             acts,
@@ -1325,12 +1406,15 @@ fn an_axis_shows_its_stops_only_while_it_is_limited() {
         let want = mode == 1;
         for i in 0..3 {
             assert_eq!(
-                painted(ids::INSP_JOINT_AXIS_MIN[i]),
+                painted(ph2d_panel_inspector::ids::INSP_JOINT_AXIS_MIN[i]),
                 want,
                 "eixo {i} no modo {mode}: o Min {} devia estar na tela",
                 if want { "SIM" } else { "NÃO" }
             );
-            assert_eq!(painted(ids::INSP_JOINT_AXIS_MAX[i]), want);
+            assert_eq!(
+                painted(ph2d_panel_inspector::ids::INSP_JOINT_AXIS_MAX[i]),
+                want
+            );
         }
     }
 }
@@ -1346,7 +1430,7 @@ fn only_a_custom_paints_the_axis_rows() {
         let mut state = InspectorState::default();
         set_current_inspector_joint(Some(joint(tag)));
         let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
-        for group in &ids::INSP_JOINT_AXIS_MODE {
+        for group in &ph2d_panel_inspector::ids::INSP_JOINT_AXIS_MODE {
             for &id in group {
                 assert!(
                     !rects.iter().any(|(n, _)| *n == id),

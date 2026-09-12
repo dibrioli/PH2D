@@ -8,7 +8,6 @@
 //! O resto do corpo do painel (pincel, espelho, topologia, sombreamento, cena,
 //! entrega) fica no `body.rs`.
 
-use ph2d_editor_core::ids;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_i18n::tr;
 use ph2d_sculpt3d::{
@@ -40,7 +39,7 @@ pub(super) fn paint_tool(
 ) -> f32 {
     let (fold, mut y) = header(
         ctx,
-        ids::SCULPT3D_SEC_TOOL,
+        crate::ids::SCULPT3D_SEC_TOOL,
         tr("panel.sculpt3d.section.tool"),
         x,
         w,
@@ -56,8 +55,8 @@ pub(super) fn paint_tool(
     let labels: Vec<&str> = Verb::ALL.iter().map(|v| v.label()).collect();
     y = seg(
         ctx,
-        ids::SCULPT3D_SEC_TOOL,
-        &ids::SCULPT3D_VERB,
+        crate::ids::SCULPT3D_SEC_TOOL,
+        &crate::ids::SCULPT3D_VERB,
         &labels,
         selected,
         x,
@@ -90,7 +89,7 @@ pub(super) fn paint_tool(
 fn paint_filter_row(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y: f32) -> f32 {
     let y = widgets::toggle(
         ctx,
-        ids::SCULPT3D_FILTER,
+        crate::ids::SCULPT3D_FILTER,
         tr("panel.sculpt3d.filter"),
         snap.filter_armed,
         x,
@@ -114,7 +113,7 @@ fn paint_filter_row(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32,
     let (kind_ids, labels): (Vec<_>, Vec<&str>) = FilterKind::ALL
         .iter()
         .enumerate()
-        .map(|(i, k)| (ids::SCULPT3D_FILTER_KIND[i], k.label()))
+        .map(|(i, k)| (crate::ids::SCULPT3D_FILTER_KIND[i], k.label()))
         .unzip();
     // ⚠️ **`None` quando a lei escolhida é de TECIDO** — e é assim que as duas
     // fileiras dizem a verdade ao mesmo tempo: só uma tem chip aceso. ⛔ Cair no
@@ -132,7 +131,7 @@ fn paint_filter_row(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32,
     let y = labelled_seg(
         ctx,
         tr("panel.sculpt3d.filter_kind"),
-        ids::SCULPT3D_SEC_TOOL,
+        crate::ids::SCULPT3D_SEC_TOOL,
         &kind_ids,
         &labels,
         selected,
@@ -149,7 +148,7 @@ fn paint_filter_row(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32,
     let (cloth_ids, cloth_labels): (Vec<_>, Vec<&str>) = ClothFilterKind::ALL
         .iter()
         .enumerate()
-        .map(|(i, k)| (ids::SCULPT3D_CLOTH_FILTER_KIND[i], k.label()))
+        .map(|(i, k)| (crate::ids::SCULPT3D_CLOTH_FILTER_KIND[i], k.label()))
         .unzip();
     let cloth_sel = snap
         .ui
@@ -160,7 +159,7 @@ fn paint_filter_row(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32,
     let y = labelled_seg(
         ctx,
         tr("panel.sculpt3d.cloth_filter_kind"),
-        ids::SCULPT3D_SEC_TOOL,
+        crate::ids::SCULPT3D_SEC_TOOL,
         &cloth_ids,
         &cloth_labels,
         cloth_sel,
@@ -182,7 +181,7 @@ fn paint_filter_row(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32,
     let (orient_ids, orient_labels): (Vec<_>, Vec<&str>) = oferecidos
         .iter()
         .enumerate()
-        .map(|(i, o)| (ids::SCULPT3D_CLOTH_FILTER_ORIENT[i], o.label()))
+        .map(|(i, o)| (crate::ids::SCULPT3D_CLOTH_FILTER_ORIENT[i], o.label()))
         .unzip();
     let orient_sel = oferecidos
         .iter()
@@ -191,7 +190,7 @@ fn paint_filter_row(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32,
     labelled_seg(
         ctx,
         tr("panel.sculpt3d.cloth_filter_orient"),
-        ids::SCULPT3D_SEC_TOOL,
+        crate::ids::SCULPT3D_SEC_TOOL,
         &orient_ids,
         &orient_labels,
         orient_sel,
@@ -223,7 +222,7 @@ fn paint_reference_row(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f
     }
     let mode_ids: Vec<_> = offered
         .iter()
-        .map(|m| ids::SCULPT3D_REF_MODE[*m as usize])
+        .map(|m| crate::ids::SCULPT3D_REF_MODE[*m as usize])
         .collect();
     let labels: Vec<&str> = offered.iter().map(|m| m.label()).collect();
     let selected = offered
@@ -233,7 +232,7 @@ fn paint_reference_row(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f
     let y = labelled_seg(
         ctx,
         tr("panel.sculpt3d.reference"),
-        ids::SCULPT3D_SEC_TOOL,
+        crate::ids::SCULPT3D_SEC_TOOL,
         &mode_ids,
         &labels,
         selected,
@@ -248,7 +247,7 @@ fn paint_reference_row(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f
     // colide.
     let y = toggle(
         ctx,
-        ids::SCULPT3D_CFILTER_COLLISIONS,
+        crate::ids::SCULPT3D_CFILTER_COLLISIONS,
         tr("panel.sculpt3d.cfilter_collisions"),
         snap.ui.cloth_filter.collisions,
         x,
@@ -276,7 +275,7 @@ fn paint_reference_row(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f
         for (i, eixo) in ["X", "Y", "Z"].iter().enumerate() {
             yy = toggle(
                 ctx,
-                ids::SCULPT3D_CFILTER_AXIS[i],
+                crate::ids::SCULPT3D_CFILTER_AXIS[i],
                 // ⚠️ O rótulo é composto porque a chave nomeia a FAMÍLIA e o eixo
                 // é o índice — três chaves de i18n para `X`/`Y`/`Z` seriam três
                 // traduções da mesma letra.
@@ -294,7 +293,7 @@ fn paint_reference_row(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f
 
     let y = command(
         ctx,
-        ids::SCULPT3D_REF_MODE_ALL,
+        crate::ids::SCULPT3D_REF_MODE_ALL,
         tr("panel.sculpt3d.reference_all"),
         x,
         w,
@@ -337,8 +336,8 @@ fn paint_elastic_scales_row(
     labelled_seg(
         ctx,
         tr("panel.sculpt3d.elastic_scales"),
-        ids::SCULPT3D_SEC_TOOL,
-        &ids::SCULPT3D_ELASTIC_SCALES,
+        crate::ids::SCULPT3D_SEC_TOOL,
+        &crate::ids::SCULPT3D_ELASTIC_SCALES,
         &labels,
         selected,
         x,

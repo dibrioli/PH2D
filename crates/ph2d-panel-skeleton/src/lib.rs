@@ -37,6 +37,7 @@
 
 #![forbid(unsafe_code)]
 
+pub mod ids;
 mod paint;
 mod seam;
 mod section;

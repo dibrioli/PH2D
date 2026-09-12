@@ -51,7 +51,8 @@ impl Tool for PainterTool {
     fn handle_panel_event(&mut self, event: ph2d_editor_core::tool::PanelEvent) {
         // The frozen generic channel (ADR-0040 TG-B): the layers panel emits PanelEvent::{Click,
         // SetValue, SelectOption}, each routed to the matching layer / adjustment edit.
-        use ph2d_editor_core::ids::{self as core_ids, PainterLayerWidget};
+        use crate::ids::PainterLayerWidget;
+        use ph2d_editor_core::ids as core_ids;
         use ph2d_editor_core::tool::PanelEvent;
         let appearance_before = self.appearance_sig(); // re-fill an open shape live on any appearance change
         if self.route_texture_layer_event(&event)
@@ -76,97 +77,97 @@ impl Tool for PainterTool {
         match event {
             // ⭐ Os DOIS segmentos do grupo *Brush | Layers* — cada um ESCOLHE o seu lado, e
             //   tocar no que já está escolhido não faz nada (ver `set_dock_shows_layers`).
-            PanelEvent::Click(id) if id == core_ids::PAINTER_LAYERS_TOGGLE_DOCK => {
+            PanelEvent::Click(id) if id == crate::ids::PAINTER_LAYERS_TOGGLE_DOCK => {
                 self.set_dock_shows_layers(true);
             }
-            PanelEvent::Click(id) if id == core_ids::PAINTER_SIDEBAR_TOGGLE_DOCK => {
+            PanelEvent::Click(id) if id == crate::ids::PAINTER_SIDEBAR_TOGGLE_DOCK => {
                 self.set_dock_shows_layers(false);
             }
             // ── Layers panel: "+ Layer" (create + activate a raster on top) ─
-            PanelEvent::Click(id) if id == core_ids::PAINTER_LAYERS_ADD => {
+            PanelEvent::Click(id) if id == crate::ids::PAINTER_LAYERS_ADD => {
                 let name = format!("Layer {}", self.layers.len() + 1);
                 self.add_raster_layer(name);
             }
             // ── Header actions: duplicate / delete / group the active layer ─
-            PanelEvent::Click(id) if id == core_ids::PAINTER_LAYERS_DUPLICATE => {
+            PanelEvent::Click(id) if id == crate::ids::PAINTER_LAYERS_DUPLICATE => {
                 if let Some(active) = self.layers.active() {
                     self.duplicate_layer(active);
                 }
             }
-            PanelEvent::Click(id) if id == core_ids::PAINTER_LAYERS_DELETE => {
+            PanelEvent::Click(id) if id == crate::ids::PAINTER_LAYERS_DELETE => {
                 if let Some(active) = self.layers.active() {
                     self.delete_layer(active);
                 }
             }
-            PanelEvent::Click(id) if id == core_ids::PAINTER_LAYERS_GROUP => {
+            PanelEvent::Click(id) if id == crate::ids::PAINTER_LAYERS_GROUP => {
                 self.group_selected();
             }
-            PanelEvent::Click(id) if id == core_ids::PAINTER_LAYERS_MASK => {
+            PanelEvent::Click(id) if id == crate::ids::PAINTER_LAYERS_MASK => {
                 self.add_mask_to_active();
             }
-            PanelEvent::Click(id) if id == core_ids::PAINTER_LAYERS_CLIP => {
+            PanelEvent::Click(id) if id == crate::ids::PAINTER_LAYERS_CLIP => {
                 if let Some(a) = self.layers.active() {
                     let now = self.layers.get(a).is_some_and(|l| l.clipping);
                     self.set_layer_clipping(a, !now);
                 }
             }
-            PanelEvent::Click(id) if id == core_ids::PAINTER_LAYERS_ALPHA_LOCK => {
+            PanelEvent::Click(id) if id == crate::ids::PAINTER_LAYERS_ALPHA_LOCK => {
                 if let Some(a) = self.layers.active() {
                     let now = self.layers.get(a).is_some_and(|l| l.alpha_locked);
                     self.set_layer_alpha_locked(a, !now);
                 }
             }
-            PanelEvent::Click(id) if id == core_ids::PAINTER_LAYERS_REFERENCE => {
+            PanelEvent::Click(id) if id == crate::ids::PAINTER_LAYERS_REFERENCE => {
                 if let Some(a) = self.layers.active() {
                     let now = self.layers.get(a).is_some_and(|l| l.is_reference);
                     self.set_layer_reference(a, !now);
                 }
             }
             // Apply CTA — commit the composite to the sprite next frame.
-            PanelEvent::Click(id) if id == core_ids::PAINTER_APPLY => {
+            PanelEvent::Click(id) if id == crate::ids::PAINTER_APPLY => {
                 self.request_commit();
             }
-            PanelEvent::Click(id) if id == core_ids::PAINTER_BRUSH_ERASER => {
+            PanelEvent::Click(id) if id == crate::ids::PAINTER_BRUSH_ERASER => {
                 self.toggle_brush_eraser();
             }
             // Stroke-section toggles.
-            PanelEvent::Click(id) if id == core_ids::PAINTER_BRUSH_SPACE_ATTEN => {
+            PanelEvent::Click(id) if id == crate::ids::PAINTER_BRUSH_SPACE_ATTEN => {
                 self.toggle_brush_space_attenuation();
             }
-            PanelEvent::Click(id) if id == core_ids::PAINTER_BRUSH_ACCUMULATE => {
+            PanelEvent::Click(id) if id == crate::ids::PAINTER_BRUSH_ACCUMULATE => {
                 self.toggle_brush_accumulate();
             }
-            PanelEvent::Click(id) if id == core_ids::PAINTER_LINE_SOLID => {
+            PanelEvent::Click(id) if id == crate::ids::PAINTER_LINE_SOLID => {
                 self.toggle_style_solid();
             }
-            PanelEvent::Click(id) if id == core_ids::PAINTER_LINE_WIRE_CONNECTION => {
+            PanelEvent::Click(id) if id == crate::ids::PAINTER_LINE_WIRE_CONNECTION => {
                 self.toggle_wire_connection_line();
             }
-            PanelEvent::Click(id) if id == core_ids::PAINTER_LINE_SKETCHY_MAGNETIFY => {
+            PanelEvent::Click(id) if id == crate::ids::PAINTER_LINE_SKETCHY_MAGNETIFY => {
                 self.toggle_sketchy_magnetify();
             }
-            PanelEvent::Click(id) if id == core_ids::PAINTER_BRUSH_GRID_SHOW => {
+            PanelEvent::Click(id) if id == crate::ids::PAINTER_BRUSH_GRID_SHOW => {
                 self.toggle_grid_show();
             }
-            PanelEvent::Click(id) if id == core_ids::PAINTER_BRUSH_EDGE_TO_EDGE => {
+            PanelEvent::Click(id) if id == crate::ids::PAINTER_BRUSH_EDGE_TO_EDGE => {
                 self.toggle_brush_edge_to_edge();
             }
-            PanelEvent::Click(id) if id == core_ids::PAINTER_BRUSH_TEXTURE_RAKE => {
+            PanelEvent::Click(id) if id == crate::ids::PAINTER_BRUSH_TEXTURE_RAKE => {
                 self.toggle_brush_texture_rake();
             }
-            PanelEvent::Click(id) if id == core_ids::PAINTER_BRUSH_TEXTURE_NEW => {
+            PanelEvent::Click(id) if id == crate::ids::PAINTER_BRUSH_TEXTURE_NEW => {
                 self.new_brush_texture();
             }
-            PanelEvent::Click(id) if id == core_ids::PAINTER_BRUSH_TEXTURE_RAMP_ENABLE => {
+            PanelEvent::Click(id) if id == crate::ids::PAINTER_BRUSH_TEXTURE_RAMP_ENABLE => {
                 self.toggle_texture_ramp_enabled();
             }
-            PanelEvent::Click(id) if id == core_ids::PAINTER_BRUSH_TEXTURE_RAMP_ADD => {
+            PanelEvent::Click(id) if id == crate::ids::PAINTER_BRUSH_TEXTURE_RAMP_ADD => {
                 self.ramp_add_stop();
             }
-            PanelEvent::Click(id) if id == core_ids::PAINTER_BRUSH_TEXTURE_RAMP_REMOVE => {
+            PanelEvent::Click(id) if id == crate::ids::PAINTER_BRUSH_TEXTURE_RAMP_REMOVE => {
                 self.ramp_remove_last_stop();
             }
-            PanelEvent::Click(id) if id == core_ids::PAINTER_BRUSH_FALLOFF_ADD => {
+            PanelEvent::Click(id) if id == crate::ids::PAINTER_BRUSH_FALLOFF_ADD => {
                 self.add_brush_falloff_point(); // Brush Custom-falloff "+" point button
             }
             // ── Layers panel: per-row click (row select / visibility eye) ──
@@ -218,75 +219,75 @@ impl Tool for PainterTool {
             }
             // ── Layers per-row sliders (opacity + adjustment params), stored 0..1 → mapped per id. ─
             PanelEvent::SetValue(id, v) => {
-                if id == core_ids::PAINTER_BRUSH_SIZE_SLIDER {
+                if id == crate::ids::PAINTER_BRUSH_SIZE_SLIDER {
                     self.set_brush_size_norm(v as f32);
-                } else if id == core_ids::PAINTER_BRUSH_STRENGTH_SLIDER {
+                } else if id == crate::ids::PAINTER_BRUSH_STRENGTH_SLIDER {
                     self.set_brush_strength(v as f32);
-                } else if id == core_ids::PAINTER_BRUSH_SPACING {
+                } else if id == crate::ids::PAINTER_BRUSH_SPACING {
                     self.set_brush_spacing(v as f32);
-                } else if id == core_ids::PAINTER_BRUSH_OFFSET {
+                } else if id == crate::ids::PAINTER_BRUSH_OFFSET {
                     self.set_brush_offset(v as f32);
-                } else if id == core_ids::PAINTER_LINE_SKETCHY_REACH {
+                } else if id == crate::ids::PAINTER_LINE_SKETCHY_REACH {
                     self.set_sketchy_reach_norm(v as f32);
-                } else if id == core_ids::PAINTER_LINE_SKETCHY_DENSITY {
+                } else if id == crate::ids::PAINTER_LINE_SKETCHY_DENSITY {
                     self.set_sketchy_density_norm(v as f32);
-                } else if id == core_ids::PAINTER_LINE_SKETCHY_WIDTH {
+                } else if id == crate::ids::PAINTER_LINE_SKETCHY_WIDTH {
                     self.set_thread_width_norm(v as f32);
-                } else if id == core_ids::PAINTER_LINE_SKETCHY_OPACITY {
+                } else if id == crate::ids::PAINTER_LINE_SKETCHY_OPACITY {
                     self.set_thread_opacity(v as f32);
-                } else if id == core_ids::PAINTER_LINE_WIRE_HISTORY {
+                } else if id == crate::ids::PAINTER_LINE_WIRE_HISTORY {
                     self.set_wire_history_norm(v as f32);
-                } else if id == core_ids::PAINTER_LINE_RIBBON_WEIGHT {
+                } else if id == crate::ids::PAINTER_LINE_RIBBON_WEIGHT {
                     self.set_ribbon_weight_norm(v as f32);
-                } else if id == core_ids::PAINTER_LINE_RIBBON_FRICTION {
+                } else if id == crate::ids::PAINTER_LINE_RIBBON_FRICTION {
                     self.set_ribbon_friction_norm(v as f32);
-                } else if id == core_ids::PAINTER_LINE_RIBBON_GRAVITY {
+                } else if id == crate::ids::PAINTER_LINE_RIBBON_GRAVITY {
                     self.set_ribbon_gravity_norm(v as f32);
-                } else if id == core_ids::PAINTER_LINE_RIBBON_RUNGS {
+                } else if id == crate::ids::PAINTER_LINE_RIBBON_RUNGS {
                     self.set_ribbon_rungs_norm(v as f32);
-                } else if id == core_ids::PAINTER_LINE_ROUGH_AMOUNT {
+                } else if id == crate::ids::PAINTER_LINE_ROUGH_AMOUNT {
                     self.set_rough_amount_norm(v as f32);
-                } else if id == core_ids::PAINTER_LINE_ROUGH_BOWING {
+                } else if id == crate::ids::PAINTER_LINE_ROUGH_BOWING {
                     self.set_rough_bowing_norm(v as f32);
-                } else if id == core_ids::PAINTER_LINE_ROUGH_PASSES {
+                } else if id == crate::ids::PAINTER_LINE_ROUGH_PASSES {
                     self.set_rough_passes_norm(v as f32);
-                } else if id == core_ids::PAINTER_BRUSH_JITTER {
+                } else if id == crate::ids::PAINTER_BRUSH_JITTER {
                     self.set_brush_jitter_norm(v as f32);
-                } else if id == core_ids::PAINTER_BRUSH_DASH_RATIO {
+                } else if id == crate::ids::PAINTER_BRUSH_DASH_RATIO {
                     self.set_brush_dash_ratio(v as f32);
-                } else if id == core_ids::PAINTER_BRUSH_DASH_LENGTH {
+                } else if id == crate::ids::PAINTER_BRUSH_DASH_LENGTH {
                     self.set_brush_dash_length_norm(v as f32);
-                } else if id == core_ids::PAINTER_BRUSH_INPUT_SAMPLES {
+                } else if id == crate::ids::PAINTER_BRUSH_INPUT_SAMPLES {
                     self.set_brush_input_samples_norm(v as f32);
-                } else if id == core_ids::PAINTER_BRUSH_STABILIZE {
+                } else if id == crate::ids::PAINTER_BRUSH_STABILIZE {
                     self.set_brush_stabilizer(v as f32);
-                } else if id == core_ids::PAINTER_BRUSH_RATE {
+                } else if id == crate::ids::PAINTER_BRUSH_RATE {
                     self.set_brush_airbrush_rate_norm(v as f32);
-                } else if let Some(axis) = core_ids::PAINTER_BRUSH_GRID_CELL
+                } else if let Some(axis) = crate::ids::PAINTER_BRUSH_GRID_CELL
                     .iter()
                     .position(|&p| p == id)
                     .and_then(crate::GridAxis::from_slot)
                 {
                     self.set_grid_cell_norm(axis, v as f32);
-                } else if let Some(axis) = core_ids::PAINTER_BRUSH_GRID_OFFSET
+                } else if let Some(axis) = crate::ids::PAINTER_BRUSH_GRID_OFFSET
                     .iter()
                     .position(|&p| p == id)
                     .and_then(crate::GridAxis::from_slot)
                 {
                     self.set_grid_offset_norm(axis, v as f32);
-                } else if id == core_ids::PAINTER_BRUSH_GRID_FIT {
+                } else if id == crate::ids::PAINTER_BRUSH_GRID_FIT {
                     self.set_grid_fit_norm(v as f32);
-                } else if id == core_ids::PAINTER_BRUSH_TEXTURE_ANGLE {
+                } else if id == crate::ids::PAINTER_BRUSH_TEXTURE_ANGLE {
                     self.set_brush_texture_angle(v as f32);
-                } else if id == core_ids::PAINTER_BRUSH_TEXTURE_OFFSET_X {
+                } else if id == crate::ids::PAINTER_BRUSH_TEXTURE_OFFSET_X {
                     self.set_brush_texture_offset(0, v as f32);
-                } else if id == core_ids::PAINTER_BRUSH_TEXTURE_OFFSET_Y {
+                } else if id == crate::ids::PAINTER_BRUSH_TEXTURE_OFFSET_Y {
                     self.set_brush_texture_offset(1, v as f32);
-                } else if id == core_ids::PAINTER_BRUSH_TEXTURE_SIZE_X {
+                } else if id == crate::ids::PAINTER_BRUSH_TEXTURE_SIZE_X {
                     self.set_brush_texture_size(0, v as f32);
-                } else if id == core_ids::PAINTER_BRUSH_TEXTURE_SIZE_Y {
+                } else if id == crate::ids::PAINTER_BRUSH_TEXTURE_SIZE_Y {
                     self.set_brush_texture_size(1, v as f32);
-                } else if let Some(slot) = core_ids::PAINTER_BRUSH_TEXTURE_PARAMS
+                } else if let Some(slot) = crate::ids::PAINTER_BRUSH_TEXTURE_PARAMS
                     .iter()
                     .position(|&p| p == id)
                 {
@@ -327,7 +328,7 @@ impl Tool for PainterTool {
             }
             // ── "+ Adjustment" kind pick: value = index into `AdjustmentKind::ALL`. ─
             PanelEvent::SelectOption(id, value)
-                if id == core_ids::PAINTER_LAYERS_ADD_ADJUSTMENT =>
+                if id == crate::ids::PAINTER_LAYERS_ADD_ADJUSTMENT =>
             {
                 if let Ok(idx) = value.parse::<usize>()
                     && let Some(&kind) =
@@ -337,7 +338,7 @@ impl Tool for PainterTool {
                 }
             }
             // ── Preset pick (top of panel): value = preset idx (0 = Digital, 1 = Watercolor). ──
-            PanelEvent::SelectOption(id, value) if id == core_ids::PAINTER_BRUSH_PRESET => {
+            PanelEvent::SelectOption(id, value) if id == crate::ids::PAINTER_BRUSH_PRESET => {
                 if let Ok(idx) = value.parse::<u8>() {
                     self.apply_brush_preset(idx);
                 }
@@ -345,24 +346,24 @@ impl Tool for PainterTool {
             // ── Paint Mode pick: value = the `PaintMedia` wire u8. The four media are exclusive, and
             //    `set_paint_media` is the only thing that knows it (2026-07-22). ────────────────────
             // ── Card Line: o TIPO de linha procedural (plano 38 W2). ──────────────────────────
-            PanelEvent::SelectOption(id, value) if id == core_ids::PAINTER_LINE_TYPE => {
+            PanelEvent::SelectOption(id, value) if id == crate::ids::PAINTER_LINE_TYPE => {
                 if let Ok(v) = value.parse::<u8>() {
                     self.set_line_kind(v);
                 }
             }
-            PanelEvent::SelectOption(id, value) if id == core_ids::PAINTER_BRUSH_MEDIA => {
+            PanelEvent::SelectOption(id, value) if id == crate::ids::PAINTER_BRUSH_MEDIA => {
                 if let Ok(v) = value.parse::<u8>() {
                     self.set_paint_media(crate::PaintMedia::from_u8(v));
                 }
             }
             // ── Brush section blend pick: value = `BrushBlend` wire u8. ──────
-            PanelEvent::SelectOption(id, value) if id == core_ids::PAINTER_BRUSH_BLEND => {
+            PanelEvent::SelectOption(id, value) if id == crate::ids::PAINTER_BRUSH_BLEND => {
                 if let Ok(mode) = value.parse::<u8>() {
                     self.set_brush_blend(mode);
                 }
             }
             // ── Falloff section preset pick: value = `Falloff` wire u8. ──────
-            PanelEvent::SelectOption(id, value) if id == core_ids::PAINTER_BRUSH_FALLOFF => {
+            PanelEvent::SelectOption(id, value) if id == crate::ids::PAINTER_BRUSH_FALLOFF => {
                 if let Ok(preset) = value.parse::<u8>() {
                     self.set_brush_falloff(preset);
                 }
@@ -372,34 +373,34 @@ impl Tool for PainterTool {
             PanelEvent::SelectOption(id, value) if id == core_ids::PAINTER_BRUSH_STROKE_METHOD => {
                 self.apply_stroke_method_command(&value);
             }
-            PanelEvent::SelectOption(id, value) if id == core_ids::PAINTER_BRUSH_JITTER_UNIT => {
+            PanelEvent::SelectOption(id, value) if id == crate::ids::PAINTER_BRUSH_JITTER_UNIT => {
                 if let Ok(u) = value.parse::<u8>() {
                     self.set_brush_jitter_unit(u);
                 }
             }
             // ── Texture section dropdowns: kind picker + mapping (value = wire u8). ─
-            PanelEvent::SelectOption(id, value) if id == core_ids::PAINTER_BRUSH_TEXTURE_KIND => {
+            PanelEvent::SelectOption(id, value) if id == crate::ids::PAINTER_BRUSH_TEXTURE_KIND => {
                 if let Ok(k) = value.parse::<u8>() {
                     self.set_brush_texture_kind(k);
                 }
             }
             // ── Watercolor Paper slot kind + mapping pickers (value = wire u8). ─
             PanelEvent::SelectOption(id, value)
-                if id == core_ids::PAINTER_WATERCOLOR_PAPER_KIND =>
+                if id == crate::ids::PAINTER_WATERCOLOR_PAPER_KIND =>
             {
                 if let Ok(k) = value.parse::<u8>() {
                     self.set_brush_paper_kind(k);
                 }
             }
             PanelEvent::SelectOption(id, value)
-                if id == core_ids::PAINTER_WATERCOLOR_PAPER_MAPPING =>
+                if id == crate::ids::PAINTER_WATERCOLOR_PAPER_MAPPING =>
             {
                 if let Ok(m) = value.parse::<u8>() {
                     self.set_brush_paper_mapping(m);
                 }
             }
             PanelEvent::SelectOption(id, value)
-                if id == core_ids::PAINTER_BRUSH_TEXTURE_MAPPING =>
+                if id == crate::ids::PAINTER_BRUSH_TEXTURE_MAPPING =>
             {
                 if let Ok(m) = value.parse::<u8>() {
                     self.set_brush_texture_mapping(m);
@@ -407,14 +408,14 @@ impl Tool for PainterTool {
             }
             // ── Color Ramp dropdowns: Mode + Interpolation (value = wire u8). ─
             PanelEvent::SelectOption(id, value)
-                if id == core_ids::PAINTER_BRUSH_TEXTURE_RAMP_MODE =>
+                if id == crate::ids::PAINTER_BRUSH_TEXTURE_RAMP_MODE =>
             {
                 if let Ok(m) = value.parse::<u8>() {
                     self.set_texture_ramp_mode(m);
                 }
             }
             PanelEvent::SelectOption(id, value)
-                if id == core_ids::PAINTER_BRUSH_TEXTURE_RAMP_INTERP =>
+                if id == crate::ids::PAINTER_BRUSH_TEXTURE_RAMP_INTERP =>
             {
                 if let Ok(i) = value.parse::<u8>() {
                     self.set_texture_ramp_interp(i);
@@ -422,7 +423,7 @@ impl Tool for PainterTool {
             }
             // Ramp alpha action: Off / → Strength / → Sprite (value = `RampAlphaMode` wire u8).
             PanelEvent::SelectOption(id, value)
-                if id == core_ids::PAINTER_BRUSH_TEXTURE_RAMP_ALPHA_MODE =>
+                if id == crate::ids::PAINTER_BRUSH_TEXTURE_RAMP_ALPHA_MODE =>
             {
                 if let Ok(m) = value.parse::<u8>() {
                     self.set_texture_ramp_alpha_mode(m);
@@ -430,7 +431,7 @@ impl Tool for PainterTool {
             }
             // Ramp stop colour from the picker: value = "stop,r,g,b,a" (sRGB bytes, straight alpha).
             PanelEvent::SelectOption(id, value)
-                if id == core_ids::PAINTER_BRUSH_TEXTURE_RAMP_SWATCH =>
+                if id == crate::ids::PAINTER_BRUSH_TEXTURE_RAMP_SWATCH =>
             {
                 let mut it = value.split(',').filter_map(|p| p.parse::<i32>().ok());
                 if let (Some(id), Some(r), Some(g), Some(b), Some(a)) =
@@ -441,7 +442,7 @@ impl Tool for PainterTool {
             }
             // Ramp stop drag on the bar: value = "id:x" (stable id, x = normalized position `0..1`).
             PanelEvent::SelectOption(id, value)
-                if id == core_ids::PAINTER_BRUSH_TEXTURE_RAMP_EDIT =>
+                if id == crate::ids::PAINTER_BRUSH_TEXTURE_RAMP_EDIT =>
             {
                 let mut it = value.split(':');
                 if let (Some(Ok(sid)), Some(Ok(x))) = (
@@ -452,7 +453,7 @@ impl Tool for PainterTool {
                 }
             }
             // Custom-falloff curve point 2-D drag: value = "id:x:y" (stable id keeps the grab across re-sort).
-            PanelEvent::SelectOption(id, value) if id == core_ids::PAINTER_BRUSH_FALLOFF_EDIT => {
+            PanelEvent::SelectOption(id, value) if id == crate::ids::PAINTER_BRUSH_FALLOFF_EDIT => {
                 let mut it = value.split(':');
                 if let (Some(i), Some(xs), Some(ys)) = (it.next(), it.next(), it.next())
                     && let (Ok(pid), Ok(x), Ok(y)) =
@@ -462,7 +463,9 @@ impl Tool for PainterTool {
                 }
             }
             // ── Custom-falloff "−" point button: value = stable point id. ───
-            PanelEvent::SelectOption(id, value) if id == core_ids::PAINTER_BRUSH_FALLOFF_REMOVE => {
+            PanelEvent::SelectOption(id, value)
+                if id == crate::ids::PAINTER_BRUSH_FALLOFF_REMOVE =>
+            {
                 if let Ok(pid) = value.parse::<u8>() {
                     self.remove_brush_falloff_point(pid);
                 }
@@ -483,7 +486,7 @@ impl Tool for PainterTool {
             // ── Watercolor PAPER colour from the shared picker: value = "r,g,b" (8-bit native),
             // forwarded by the panel's per-frame read-back — the document ground the optics see. ──
             PanelEvent::SelectOption(id, value)
-                if id == core_ids::PAINTER_WATERCOLOR_PAPER_COLOR_THUMB =>
+                if id == crate::ids::PAINTER_WATERCOLOR_PAPER_COLOR_THUMB =>
             {
                 let mut it = value.split(',');
                 if let (Some(r), Some(g), Some(b)) = (it.next(), it.next(), it.next())
@@ -494,7 +497,7 @@ impl Tool for PainterTool {
                 }
             }
             // ── Curves editor 2-D point drag: value = "layer:channel:index:x:y". ─
-            PanelEvent::SelectOption(id, value) if id == core_ids::PAINTER_CURVE_EDIT => {
+            PanelEvent::SelectOption(id, value) if id == crate::ids::PAINTER_CURVE_EDIT => {
                 let mut it = value.split(':');
                 if let (Some(l), Some(c), Some(i), Some(xs), Some(ys)) =
                     (it.next(), it.next(), it.next(), it.next(), it.next())
@@ -510,7 +513,7 @@ impl Tool for PainterTool {
                 }
             }
             // ── Channel Mixer weight edit: value = "layer:output:slot:value". ─
-            PanelEvent::SelectOption(id, value) if id == core_ids::PAINTER_MIXER_EDIT => {
+            PanelEvent::SelectOption(id, value) if id == crate::ids::PAINTER_MIXER_EDIT => {
                 let mut it = value.split(':');
                 if let (Some(l), Some(o), Some(s), Some(v)) =
                     (it.next(), it.next(), it.next(), it.next())
@@ -525,7 +528,7 @@ impl Tool for PainterTool {
                 }
             }
             // ── Gradient Map editor: stop drag / add / remove / selected color. ─
-            PanelEvent::SelectOption(id, value) if id == core_ids::PAINTER_GRADIENT_EDIT => {
+            PanelEvent::SelectOption(id, value) if id == crate::ids::PAINTER_GRADIENT_EDIT => {
                 let mut it = value.split(':');
                 if let (Some(l), Some(i), Some(o)) = (it.next(), it.next(), it.next())
                     && let (Ok(layer), Ok(idx), Ok(off)) =
@@ -534,12 +537,12 @@ impl Tool for PainterTool {
                     self.set_gradient_stop_offset(RtLayerId(layer), idx, off);
                 }
             }
-            PanelEvent::SelectOption(id, value) if id == core_ids::PAINTER_GRADIENT_ADD => {
+            PanelEvent::SelectOption(id, value) if id == crate::ids::PAINTER_GRADIENT_ADD => {
                 if let Ok(layer) = value.parse::<u64>() {
                     self.add_gradient_stop(RtLayerId(layer));
                 }
             }
-            PanelEvent::SelectOption(id, value) if id == core_ids::PAINTER_GRADIENT_REMOVE => {
+            PanelEvent::SelectOption(id, value) if id == crate::ids::PAINTER_GRADIENT_REMOVE => {
                 let mut it = value.split(':');
                 if let (Some(l), Some(i)) = (it.next(), it.next())
                     && let (Ok(layer), Ok(idx)) = (l.parse::<u64>(), i.parse::<usize>())
@@ -547,7 +550,7 @@ impl Tool for PainterTool {
                     self.remove_gradient_stop(RtLayerId(layer), idx);
                 }
             }
-            PanelEvent::SelectOption(id, value) if id == core_ids::PAINTER_GRADIENT_COLOR => {
+            PanelEvent::SelectOption(id, value) if id == crate::ids::PAINTER_GRADIENT_COLOR => {
                 let mut it = value.split(':');
                 if let (Some(l), Some(st), Some(s), Some(v)) =
                     (it.next(), it.next(), it.next(), it.next())
@@ -562,7 +565,7 @@ impl Tool for PainterTool {
                 }
             }
             // ── Selective Color CMYK edit: value = "layer:bucket:slot:value". ─
-            PanelEvent::SelectOption(id, value) if id == core_ids::PAINTER_SELCOLOR_EDIT => {
+            PanelEvent::SelectOption(id, value) if id == crate::ids::PAINTER_SELCOLOR_EDIT => {
                 let mut it = value.split(':');
                 if let (Some(l), Some(bk), Some(s), Some(v)) =
                     (it.next(), it.next(), it.next(), it.next())
@@ -577,7 +580,7 @@ impl Tool for PainterTool {
                 }
             }
             // ── Curves editor add a point: value = "layer:channel". ──────────
-            PanelEvent::SelectOption(id, value) if id == core_ids::PAINTER_CURVE_ADD => {
+            PanelEvent::SelectOption(id, value) if id == crate::ids::PAINTER_CURVE_ADD => {
                 let mut it = value.split(':');
                 if let (Some(l), Some(c)) = (it.next(), it.next())
                     && let (Ok(layer), Ok(ch)) = (l.parse::<u64>(), c.parse::<u8>())
@@ -586,7 +589,7 @@ impl Tool for PainterTool {
                 }
             }
             // ── Curves editor remove a point: value = "layer:channel:index". ─
-            PanelEvent::SelectOption(id, value) if id == core_ids::PAINTER_CURVE_REMOVE => {
+            PanelEvent::SelectOption(id, value) if id == crate::ids::PAINTER_CURVE_REMOVE => {
                 let mut it = value.split(':');
                 if let (Some(l), Some(c), Some(i)) = (it.next(), it.next(), it.next())
                     && let (Ok(layer), Ok(ch), Ok(idx)) =

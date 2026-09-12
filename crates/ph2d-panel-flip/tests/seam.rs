@@ -10,10 +10,10 @@
 //!   → assert the tool's state actually changed.
 
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::ids::FlipLayerWidget;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::EventOutcome;
 use ph2d_editor_core::tool::Tool; // brings `handle_panel_event` into scope
+use ph2d_panel_flip::ids::FlipLayerWidget;
 use ph2d_panel_flip::state::FlipPanelState;
 use ph2d_panel_flip::{FlipLayerRow, FlipLayersSnapshot, FlipPanel, LayerRename, ids};
 use ph2d_tool_flip::{DOT_SPACING_MAX, FlipMode, FlipTool, WIDTH_MAX_PX};
@@ -27,10 +27,10 @@ fn size_slider_drag_reaches_tool() {
     let mut panel_state = FlipPanelState::default();
     let mut tool = FlipTool::default();
 
-    host.set_slider_value(ids::FLIP_SIZE, 1.0);
+    host.set_slider_value(ph2d_tool_flip::ids::FLIP_SIZE, 1.0);
     let outcome = host.apply_panel_event::<FlipPanel>(
         &mut panel_state,
-        WidgetEvent::ValueChanged(ids::FLIP_SIZE),
+        WidgetEvent::ValueChanged(ph2d_tool_flip::ids::FLIP_SIZE),
     );
     assert_eq!(
         outcome,
@@ -65,10 +65,10 @@ fn colorize_bleed_slider_drag_reaches_tool() {
     let mut panel_state = FlipPanelState::default();
     let mut tool = FlipTool::default();
 
-    host.set_slider_value(ids::FLIP_COLORIZE_BLEED, 1.0);
+    host.set_slider_value(ph2d_tool_flip::ids::FLIP_COLORIZE_BLEED, 1.0);
     let outcome = host.apply_panel_event::<FlipPanel>(
         &mut panel_state,
-        WidgetEvent::ValueChanged(ids::FLIP_COLORIZE_BLEED),
+        WidgetEvent::ValueChanged(ph2d_tool_flip::ids::FLIP_COLORIZE_BLEED),
     );
     assert_eq!(
         outcome,
@@ -102,8 +102,8 @@ fn pressure_sliders_drag_reaches_tool() {
     let mut tool = FlipTool::default();
 
     for (slider, expect_min) in [
-        (ids::FLIP_PRESSURE_MIN, true),
-        (ids::FLIP_PRESSURE_RESPONSE, false),
+        (ph2d_tool_flip::ids::FLIP_PRESSURE_MIN, true),
+        (ph2d_tool_flip::ids::FLIP_PRESSURE_RESPONSE, false),
     ] {
         host.set_slider_value(slider, 1.0);
         let outcome = host
@@ -146,10 +146,10 @@ fn dot_spacing_slider_drag_reaches_tool() {
     let mut panel_state = FlipPanelState::default();
     let mut tool = FlipTool::default();
 
-    host.set_slider_value(ids::FLIP_DOT_SPACING, 1.0);
+    host.set_slider_value(ph2d_tool_flip::ids::FLIP_DOT_SPACING, 1.0);
     let outcome = host.apply_panel_event::<FlipPanel>(
         &mut panel_state,
-        WidgetEvent::ValueChanged(ids::FLIP_DOT_SPACING),
+        WidgetEvent::ValueChanged(ph2d_tool_flip::ids::FLIP_DOT_SPACING),
     );
     assert_eq!(
         outcome,
@@ -182,8 +182,10 @@ fn draw_mode_button_switches_the_tool_mode() {
     let mut tool = FlipTool::default();
     assert_eq!(tool.mode(), FlipMode::Select, "fresh tool starts in Select");
 
-    let outcome = host
-        .apply_panel_event::<FlipPanel>(&mut panel_state, WidgetEvent::Click(ids::FLIP_MODE_DRAW));
+    let outcome = host.apply_panel_event::<FlipPanel>(
+        &mut panel_state,
+        WidgetEvent::Click(ph2d_tool_flip::ids::FLIP_MODE_DRAW),
+    );
     assert_eq!(
         outcome,
         EventOutcome::Consumed,
@@ -218,7 +220,10 @@ fn the_self_overlap_toggle_is_draw_only_and_forwards_to_the_tool() {
         ..Default::default()
     }));
     let painted = host.paint::<FlipPanel>(&mut st, viewport());
-    let Some((_, r)) = painted.iter().find(|(w, _)| *w == ids::FLIP_SELF_OVERLAP) else {
+    let Some((_, r)) = painted
+        .iter()
+        .find(|(w, _)| *w == ph2d_tool_flip::ids::FLIP_SELF_OVERLAP)
+    else {
         panic!("o toggle Self Overlap NAO e pintado no Draw: nao existe na tela");
     };
     assert!(
@@ -233,7 +238,9 @@ fn the_self_overlap_toggle_is_draw_only_and_forwards_to_the_tool() {
     }));
     let painted = host.paint::<FlipPanel>(&mut st, viewport());
     assert!(
-        !painted.iter().any(|(w, _)| *w == ids::FLIP_SELF_OVERLAP),
+        !painted
+            .iter()
+            .any(|(w, _)| *w == ph2d_tool_flip::ids::FLIP_SELF_OVERLAP),
         "o toggle Self Overlap nao pode aparecer fora do Draw (controle invisivel-e-clicavel)"
     );
 
@@ -243,7 +250,7 @@ fn the_self_overlap_toggle_is_draw_only_and_forwards_to_the_tool() {
     assert!(!tool.self_overlap(), "nasce OFF");
     let outcome = host.apply_panel_event::<FlipPanel>(
         &mut panel_state,
-        WidgetEvent::Click(ids::FLIP_SELF_OVERLAP),
+        WidgetEvent::Click(ph2d_tool_flip::ids::FLIP_SELF_OVERLAP),
     );
     assert_eq!(
         outcome,
@@ -281,7 +288,10 @@ fn the_cap_selector_is_draw_only_and_forwards_to_the_tool() {
         ..Default::default()
     }));
     let painted = host.paint::<FlipPanel>(&mut st, viewport());
-    for (id, nome) in [(ids::FLIP_CAP_ROUND, "Round"), (ids::FLIP_CAP_FLAT, "Flat")] {
+    for (id, nome) in [
+        (ph2d_tool_flip::ids::FLIP_CAP_ROUND, "Round"),
+        (ph2d_tool_flip::ids::FLIP_CAP_FLAT, "Flat"),
+    ] {
         let Some((_, r)) = painted.iter().find(|(w, _)| *w == id) else {
             panic!("a opcao Cap {nome} NAO e pintada no Draw: nao existe na tela");
         };
@@ -298,9 +308,11 @@ fn the_cap_selector_is_draw_only_and_forwards_to_the_tool() {
     }));
     let painted = host.paint::<FlipPanel>(&mut st, viewport());
     assert!(
-        !painted.iter().any(|(w, _)| *w == ids::FLIP_CAP_ROUND
-            || *w == ids::FLIP_CAP_FLAT
-            || *w == ids::FLIP_CAP_SQUARE),
+        !painted
+            .iter()
+            .any(|(w, _)| *w == ph2d_tool_flip::ids::FLIP_CAP_ROUND
+                || *w == ph2d_tool_flip::ids::FLIP_CAP_FLAT
+                || *w == ph2d_tool_flip::ids::FLIP_CAP_SQUARE),
         "o seletor Cap nao pode aparecer fora do Draw (controle invisivel-e-clicavel)"
     );
 
@@ -310,9 +322,18 @@ fn the_cap_selector_is_draw_only_and_forwards_to_the_tool() {
     let mut tool = FlipTool::default();
     assert_eq!(tool.cap(), ph2d_tool_flip::Cap::Round, "nasce redonda");
     for (id, esperado) in [
-        (ids::FLIP_CAP_FLAT, ph2d_tool_flip::Cap::Flat),
-        (ids::FLIP_CAP_SQUARE, ph2d_tool_flip::Cap::Square),
-        (ids::FLIP_CAP_ROUND, ph2d_tool_flip::Cap::Round),
+        (
+            ph2d_tool_flip::ids::FLIP_CAP_FLAT,
+            ph2d_tool_flip::Cap::Flat,
+        ),
+        (
+            ph2d_tool_flip::ids::FLIP_CAP_SQUARE,
+            ph2d_tool_flip::Cap::Square,
+        ),
+        (
+            ph2d_tool_flip::ids::FLIP_CAP_ROUND,
+            ph2d_tool_flip::Cap::Round,
+        ),
     ] {
         let outcome = host.apply_panel_event::<FlipPanel>(&mut panel_state, WidgetEvent::Click(id));
         assert_eq!(
@@ -347,7 +368,10 @@ fn the_airbrush_toggle_is_draw_only_and_forwards_to_the_tool() {
         ..Default::default()
     }));
     let painted = host.paint::<FlipPanel>(&mut st, viewport());
-    let Some((_, r)) = painted.iter().find(|(w, _)| *w == ids::FLIP_AIRBRUSH) else {
+    let Some((_, r)) = painted
+        .iter()
+        .find(|(w, _)| *w == ph2d_tool_flip::ids::FLIP_AIRBRUSH)
+    else {
         panic!("o toggle Airbrush NAO e pintado no Draw: nao existe na tela");
     };
     assert!(
@@ -362,7 +386,9 @@ fn the_airbrush_toggle_is_draw_only_and_forwards_to_the_tool() {
     }));
     let painted = host.paint::<FlipPanel>(&mut st, viewport());
     assert!(
-        !painted.iter().any(|(w, _)| *w == ids::FLIP_AIRBRUSH),
+        !painted
+            .iter()
+            .any(|(w, _)| *w == ph2d_tool_flip::ids::FLIP_AIRBRUSH),
         "o toggle Airbrush nao pode aparecer fora do Draw (controle invisivel-e-clicavel)"
     );
 
@@ -370,8 +396,10 @@ fn the_airbrush_toggle_is_draw_only_and_forwards_to_the_tool() {
     let mut panel_state = FlipPanelState::default();
     let mut tool = FlipTool::default();
     assert!(!tool.airbrush(), "nasce OFF");
-    let outcome = host
-        .apply_panel_event::<FlipPanel>(&mut panel_state, WidgetEvent::Click(ids::FLIP_AIRBRUSH));
+    let outcome = host.apply_panel_event::<FlipPanel>(
+        &mut panel_state,
+        WidgetEvent::Click(ph2d_tool_flip::ids::FLIP_AIRBRUSH),
+    );
     assert_eq!(
         outcome,
         EventOutcome::Consumed,
@@ -417,12 +445,12 @@ fn every_mode_button_is_painted_and_clickable() {
     let painted = host.paint::<FlipPanel>(&mut st, viewport());
 
     for (id, name) in [
-        (ids::FLIP_MODE_SELECT, "Select"),
-        (ids::FLIP_MODE_DRAW, "Draw"),
-        (ids::FLIP_MODE_ERASE, "Erase"),
-        (ids::FLIP_MODE_FILL, "Fill"),
-        (ids::FLIP_MODE_RESHAPE, "Sculpt"),
-        (ids::FLIP_MODE_EDIT, "Edit"),
+        (ph2d_tool_flip::ids::FLIP_MODE_SELECT, "Select"),
+        (ph2d_tool_flip::ids::FLIP_MODE_DRAW, "Draw"),
+        (ph2d_tool_flip::ids::FLIP_MODE_ERASE, "Erase"),
+        (ph2d_tool_flip::ids::FLIP_MODE_FILL, "Fill"),
+        (ph2d_tool_flip::ids::FLIP_MODE_RESHAPE, "Sculpt"),
+        (ph2d_tool_flip::ids::FLIP_MODE_EDIT, "Edit"),
     ] {
         let hit = painted.iter().find(|(w, _)| *w == id);
         let Some((_, r)) = hit else {
@@ -449,13 +477,13 @@ fn the_bucket_widgets_appear_only_in_fill_mode() {
     // atributos, e fundi-las num controle só foi o defeito que o smoke derrubou. O que é
     // exclusivo do balde são os MODOS dele e os três knobs.
     let bucket = [
-        ids::FLIP_FILL_PAINT,
-        ids::FLIP_FILL_BEHIND,
-        ids::FLIP_FILL_UNPAINT,
-        ids::FLIP_GAP,
-        ids::FLIP_GROW,
-        ids::FLIP_TRAP,
-        ids::FLIP_PRECISION,
+        ph2d_tool_flip::ids::FLIP_FILL_PAINT,
+        ph2d_tool_flip::ids::FLIP_FILL_BEHIND,
+        ph2d_tool_flip::ids::FLIP_FILL_UNPAINT,
+        ph2d_tool_flip::ids::FLIP_GAP,
+        ph2d_tool_flip::ids::FLIP_GROW,
+        ph2d_tool_flip::ids::FLIP_TRAP,
+        ph2d_tool_flip::ids::FLIP_PRECISION,
     ];
 
     // Modo Draw: o balde não existe na tela.
@@ -582,35 +610,35 @@ fn every_number_box_has_a_registered_range() {
 #[test]
 fn each_mode_shows_only_its_own_attributes() {
     let stroke_only = [
-        ("Hardness", ids::FLIP_HARDNESS),
-        ("Smoothing", ids::FLIP_SMOOTHING),
+        ("Hardness", ph2d_tool_flip::ids::FLIP_HARDNESS),
+        ("Smoothing", ph2d_tool_flip::ids::FLIP_SMOOTHING),
         ("Stroke color", ids::FLIP_STROKE_SWATCH),
     ];
     let eraser_only = [
-        ("Erase soft", ids::FLIP_ERASE_SOFT),
-        ("Erase hard", ids::FLIP_ERASE_HARD),
-        ("Erase stroke", ids::FLIP_ERASE_STROKE),
+        ("Erase soft", ph2d_tool_flip::ids::FLIP_ERASE_SOFT),
+        ("Erase hard", ph2d_tool_flip::ids::FLIP_ERASE_HARD),
+        ("Erase stroke", ph2d_tool_flip::ids::FLIP_ERASE_STROKE),
     ];
     // Os knobs do balde — exclusivos DELE. (O swatch de Fill saiu daqui: ele é
     // compartilhado com o Edit, ver `fill_swatch`. E o **Trap** saiu daqui no 6º smoke: ele
     // é a trapped-ball, que o Colorize também usa — ver `trap_shared`. A premissa "Trap é do
     // balde" apodreceu quando o Colorize passou a expô-lo, `feedback_the_fullest_card_premise_rots`.)
     let bucket_only = [
-        ("Gap", ids::FLIP_GAP),
-        ("Grow", ids::FLIP_GROW),
-        ("Precision", ids::FLIP_PRECISION),
+        ("Gap", ph2d_tool_flip::ids::FLIP_GAP),
+        ("Grow", ph2d_tool_flip::ids::FLIP_GROW),
+        ("Precision", ph2d_tool_flip::ids::FLIP_PRECISION),
     ];
     // **Trap** é compartilhado Fill + Colorize (os dois usam a bola que sela um vão): TEM de
     // aparecer nos dois e NÃO pode vazar para os demais modos.
-    let trap_shared = [("Trap", ids::FLIP_TRAP)];
+    let trap_shared = [("Trap", ph2d_tool_flip::ids::FLIP_TRAP)];
     // A cor do MIOLO: do balde (que a deposita) e do Edit (que a reescreve na seleção).
     let fill_swatch = [("Fill color", ids::FLIP_FILL_SWATCH)];
     let bucket_expected = [
         ("Fill color", ids::FLIP_FILL_SWATCH),
-        ("Gap", ids::FLIP_GAP),
-        ("Trap", ids::FLIP_TRAP),
-        ("Grow", ids::FLIP_GROW),
-        ("Precision", ids::FLIP_PRECISION),
+        ("Gap", ph2d_tool_flip::ids::FLIP_GAP),
+        ("Trap", ph2d_tool_flip::ids::FLIP_TRAP),
+        ("Grow", ph2d_tool_flip::ids::FLIP_GROW),
+        ("Precision", ph2d_tool_flip::ids::FLIP_PRECISION),
     ];
     // W6 — o Edit Mode. As ops de seleção são SÓ dele; e o Smoothing é o único
     // atributo do Brush que o Edit NÃO pode mostrar (é uma op de GEOMETRIA sobre as
@@ -621,11 +649,11 @@ fn each_mode_shows_only_its_own_attributes() {
         ("Deselect", ids::FLIP_EDIT_DESELECT),
         ("Delete selection", ids::FLIP_EDIT_DELETE),
     ];
-    let smoothing_only = [("Smoothing", ids::FLIP_SMOOTHING)];
+    let smoothing_only = [("Smoothing", ph2d_tool_flip::ids::FLIP_SMOOTHING)];
     // O que o Edit mostra ALÉM das ops: os atributos do traço que ele reescreve na
     // seleção (a cor e a dureza; o Size e a Opacity são compartilhados com outros modos).
     let edit_expected = [
-        ("Hardness", ids::FLIP_HARDNESS),
+        ("Hardness", ph2d_tool_flip::ids::FLIP_HARDNESS),
         ("Stroke color", ids::FLIP_STROKE_SWATCH),
         // A cor do MIOLO do traço selecionado — atributo À PARTE da cor da linha (o smoke
         // do Enio derrubou o 1º corte, em que o swatch do traço recoloria os dois).
@@ -636,14 +664,14 @@ fn each_mode_shows_only_its_own_attributes() {
     ];
     // Os oito pincéis de escultura (W5) — atributo SÓ do modo Sculpt.
     let sculpt_only = [
-        ("Smooth", ids::FLIP_RS_SMOOTH),
-        ("Push", ids::FLIP_RS_PUSH),
-        ("Grab", ids::FLIP_RS_GRAB),
-        ("Pinch", ids::FLIP_RS_PINCH),
-        ("Twist", ids::FLIP_RS_TWIST),
-        ("Thickness", ids::FLIP_RS_THICKNESS),
-        ("Strength", ids::FLIP_RS_STRENGTH),
-        ("Randomize", ids::FLIP_RS_RANDOMIZE),
+        ("Smooth", ph2d_tool_flip::ids::FLIP_RS_SMOOTH),
+        ("Push", ph2d_tool_flip::ids::FLIP_RS_PUSH),
+        ("Grab", ph2d_tool_flip::ids::FLIP_RS_GRAB),
+        ("Pinch", ph2d_tool_flip::ids::FLIP_RS_PINCH),
+        ("Twist", ph2d_tool_flip::ids::FLIP_RS_TWIST),
+        ("Thickness", ph2d_tool_flip::ids::FLIP_RS_THICKNESS),
+        ("Strength", ph2d_tool_flip::ids::FLIP_RS_STRENGTH),
+        ("Randomize", ph2d_tool_flip::ids::FLIP_RS_RANDOMIZE),
     ];
     // Colorize (C2): a cor do rabisco + as ações do gesto + o **Bleed** (6º smoke) —
     // atributos SÓ do modo Colorize. (O Trap NÃO entra aqui: é compartilhado, `trap_shared`,
@@ -652,15 +680,15 @@ fn each_mode_shows_only_its_own_attributes() {
         ("Colorize color", ids::FLIP_COLORIZE_SWATCH),
         ("Colorize apply", ids::FLIP_COLORIZE_APPLY),
         ("Colorize clear", ids::FLIP_COLORIZE_CLEAR),
-        ("Colorize bleed", ids::FLIP_COLORIZE_BLEED),
+        ("Colorize bleed", ph2d_tool_flip::ids::FLIP_COLORIZE_BLEED),
     ];
     // O que o modo Colorize TEM de mostrar: os seus próprios + o Trap compartilhado.
     let colorize_expected = [
         ("Colorize color", ids::FLIP_COLORIZE_SWATCH),
         ("Colorize apply", ids::FLIP_COLORIZE_APPLY),
         ("Colorize clear", ids::FLIP_COLORIZE_CLEAR),
-        ("Colorize bleed", ids::FLIP_COLORIZE_BLEED),
-        ("Trap", ids::FLIP_TRAP),
+        ("Colorize bleed", ph2d_tool_flip::ids::FLIP_COLORIZE_BLEED),
+        ("Trap", ph2d_tool_flip::ids::FLIP_TRAP),
     ];
     // Trace (Shift & Trace): só o Reset — o modo desloca fantasmas, não pinta nada.
     let trace_only = [("Trace reset", ids::FLIP_TRACE_RESET)];
@@ -875,7 +903,7 @@ fn size_is_shared_by_brush_eraser_and_sculpt_and_absent_elsewhere() {
         let painted = host.paint::<FlipPanel>(&mut st, viewport());
         let shown = painted
             .iter()
-            .any(|(w, r)| *w == ids::FLIP_SIZE && r.w > 0.0);
+            .any(|(w, r)| *w == ph2d_tool_flip::ids::FLIP_SIZE && r.w > 0.0);
         assert_eq!(shown, want, "modo {mode:?}: Size deveria aparecer? {want}");
     }
 }
@@ -893,7 +921,10 @@ fn size_is_shared_by_brush_eraser_and_sculpt_and_absent_elsewhere() {
 fn every_sculpt_brush_button_selects_its_own_brush() {
     use ph2d_tool_flip::ReshapeKind;
 
-    for (id, kind) in ids::FLIP_RESHAPE_KIND_IDS.iter().zip(ReshapeKind::ALL) {
+    for (id, kind) in ph2d_tool_flip::ids::FLIP_RESHAPE_KIND_IDS
+        .iter()
+        .zip(ReshapeKind::ALL)
+    {
         let mut host = MockPanelHost::with_panel::<FlipPanel>();
         let mut panel_state = FlipPanelState::default();
         let mut tool = FlipTool::default();
@@ -930,7 +961,7 @@ fn the_eight_sculpt_brushes_are_painted_in_reshape_mode() {
     }));
     let painted = host.paint::<FlipPanel>(&mut st, viewport());
 
-    for (id, kind) in ids::FLIP_RESHAPE_KIND_IDS
+    for (id, kind) in ph2d_tool_flip::ids::FLIP_RESHAPE_KIND_IDS
         .iter()
         .zip(ph2d_tool_flip::ReshapeKind::ALL)
     {
@@ -944,7 +975,7 @@ fn the_eight_sculpt_brushes_are_painted_in_reshape_mode() {
         );
     }
     // E as duas fileiras não se sobrepõem (4 + 4, não 8 em cima de 4).
-    let ys: Vec<f32> = ids::FLIP_RESHAPE_KIND_IDS
+    let ys: Vec<f32> = ph2d_tool_flip::ids::FLIP_RESHAPE_KIND_IDS
         .iter()
         .filter_map(|id| painted.iter().find(|(w, _)| w == id).map(|(_, r)| r.y))
         .collect();
@@ -967,8 +998,10 @@ fn the_shape_row_toggles_the_filled_stroke_and_lives_only_in_draw_mode() {
     let mut tool = FlipTool::default();
     assert!(!tool.draw_filled(), "o default e a linha simples");
 
-    let outcome =
-        host.apply_panel_event::<FlipPanel>(&mut st, WidgetEvent::Click(ids::FLIP_SHAPE_FILLED));
+    let outcome = host.apply_panel_event::<FlipPanel>(
+        &mut st,
+        WidgetEvent::Click(ph2d_tool_flip::ids::FLIP_SHAPE_FILLED),
+    );
     assert_eq!(outcome, EventOutcome::Consumed, "o clique foi IGNORADO");
     for action in host.drained_actions() {
         if let EditorAction::ToolPanelEvent(pe) = action {
@@ -977,7 +1010,10 @@ fn the_shape_row_toggles_the_filled_stroke_and_lives_only_in_draw_mode() {
     }
     assert!(tool.draw_filled(), "o Filled nao chegou na tool");
 
-    host.apply_panel_event::<FlipPanel>(&mut st, WidgetEvent::Click(ids::FLIP_SHAPE_LINE));
+    host.apply_panel_event::<FlipPanel>(
+        &mut st,
+        WidgetEvent::Click(ph2d_tool_flip::ids::FLIP_SHAPE_LINE),
+    );
     for action in host.drained_actions() {
         if let EditorAction::ToolPanelEvent(pe) = action {
             tool.handle_panel_event(pe);
@@ -1002,7 +1038,7 @@ fn the_shape_row_toggles_the_filled_stroke_and_lives_only_in_draw_mode() {
         let painted = host.paint::<FlipPanel>(&mut st, viewport());
         let shown = painted
             .iter()
-            .any(|(w, r)| *w == ids::FLIP_SHAPE_FILLED && r.w > 0.0);
+            .any(|(w, r)| *w == ph2d_tool_flip::ids::FLIP_SHAPE_FILLED && r.w > 0.0);
         assert_eq!(
             shown, want,
             "modo {mode:?}: a linha Shape deveria aparecer? {want}"
@@ -1025,9 +1061,15 @@ fn the_domain_toggles_reach_the_tool_and_live_only_in_edit_mode() {
     use ph2d_tool_flip::EditDomain;
 
     let cases = [
-        (ids::FLIP_EDIT_DOM_POINT, EditDomain::Point),
-        (ids::FLIP_EDIT_DOM_SEGMENT, EditDomain::Segment),
-        (ids::FLIP_EDIT_DOM_STROKE, EditDomain::Stroke),
+        (ph2d_tool_flip::ids::FLIP_EDIT_DOM_POINT, EditDomain::Point),
+        (
+            ph2d_tool_flip::ids::FLIP_EDIT_DOM_SEGMENT,
+            EditDomain::Segment,
+        ),
+        (
+            ph2d_tool_flip::ids::FLIP_EDIT_DOM_STROKE,
+            EditDomain::Stroke,
+        ),
     ];
     assert_eq!(
         cases.len(),
@@ -1343,8 +1385,8 @@ fn erase_snap(link_size: bool, link_strength: bool) -> ph2d_tool_flip::FlipStyle
 #[test]
 fn the_link_toggles_reach_the_tool() {
     for (id, name) in [
-        (ids::FLIP_LINK_SIZE, "Size"),
-        (ids::FLIP_LINK_STRENGTH, "Strength"),
+        (ph2d_tool_flip::ids::FLIP_LINK_SIZE, "Size"),
+        (ph2d_tool_flip::ids::FLIP_LINK_STRENGTH, "Strength"),
     ] {
         let mut host = MockPanelHost::with_panel::<FlipPanel>();
         let mut st = FlipPanelState::default();
@@ -1366,7 +1408,7 @@ fn the_link_toggles_reach_the_tool() {
             }
         }
         let (size, strength) = (tool.link_size(), tool.link_strength());
-        if id == ids::FLIP_LINK_SIZE {
+        if id == ph2d_tool_flip::ids::FLIP_LINK_SIZE {
             assert!(!size && strength, "o toggle de Size mexeu no flag errado");
         } else {
             assert!(
@@ -1387,12 +1429,14 @@ fn the_unlinked_eraser_slider_reaches_the_tool() {
     let mut st = FlipPanelState::default();
     let mut tool = FlipTool::default();
     tool.handle_panel_event(ph2d_editor_core::tool::PanelEvent::Click(
-        ids::FLIP_LINK_SIZE,
+        ph2d_tool_flip::ids::FLIP_LINK_SIZE,
     )); // deslinka
 
-    host.set_slider_value(ids::FLIP_ERASE_SIZE, 1.0);
-    let outcome = host
-        .apply_panel_event::<FlipPanel>(&mut st, WidgetEvent::ValueChanged(ids::FLIP_ERASE_SIZE));
+    host.set_slider_value(ph2d_tool_flip::ids::FLIP_ERASE_SIZE, 1.0);
+    let outcome = host.apply_panel_event::<FlipPanel>(
+        &mut st,
+        WidgetEvent::ValueChanged(ph2d_tool_flip::ids::FLIP_ERASE_SIZE),
+    );
     assert_eq!(
         outcome,
         EventOutcome::Consumed,
@@ -1432,13 +1476,17 @@ fn an_unlinked_eraser_paints_its_own_slider_and_a_linked_one_paints_the_brushs()
     let painted = host.paint::<FlipPanel>(&mut st, viewport());
     let on = |p: &Vec<(ph2d_a11y::NodeId, ph2d_editor_core::zones::Rect)>,
               id: ph2d_a11y::NodeId| p.iter().any(|(w, r)| *w == id && r.w > 0.0);
-    assert!(on(&painted, ids::FLIP_SIZE), "linkado: o Size do pincel");
     assert!(
-        on(&painted, ids::FLIP_OPACITY),
+        on(&painted, ph2d_tool_flip::ids::FLIP_SIZE),
+        "linkado: o Size do pincel"
+    );
+    assert!(
+        on(&painted, ph2d_tool_flip::ids::FLIP_OPACITY),
         "linkado: a Strength do pincel"
     );
     assert!(
-        !on(&painted, ids::FLIP_ERASE_SIZE) && !on(&painted, ids::FLIP_ERASE_STRENGTH),
+        !on(&painted, ph2d_tool_flip::ids::FLIP_ERASE_SIZE)
+            && !on(&painted, ph2d_tool_flip::ids::FLIP_ERASE_STRENGTH),
         "linkado NAO pode pintar os sliders proprios da borracha"
     );
 
@@ -1446,11 +1494,13 @@ fn an_unlinked_eraser_paints_its_own_slider_and_a_linked_one_paints_the_brushs()
     ph2d_panel_flip::set_current_flip_style(Some(erase_snap(false, false)));
     let painted = host.paint::<FlipPanel>(&mut st, viewport());
     assert!(
-        on(&painted, ids::FLIP_ERASE_SIZE) && on(&painted, ids::FLIP_ERASE_STRENGTH),
+        on(&painted, ph2d_tool_flip::ids::FLIP_ERASE_SIZE)
+            && on(&painted, ph2d_tool_flip::ids::FLIP_ERASE_STRENGTH),
         "deslinkado: os sliders PROPRIOS da borracha"
     );
     assert!(
-        !on(&painted, ids::FLIP_SIZE) && !on(&painted, ids::FLIP_OPACITY),
+        !on(&painted, ph2d_tool_flip::ids::FLIP_SIZE)
+            && !on(&painted, ph2d_tool_flip::ids::FLIP_OPACITY),
         "deslinkado, o slider do PINCEL nao pode continuar na tela (ele escreveria no \
          pincel enquanto a borracha le outro numero)"
     );
@@ -1460,7 +1510,8 @@ fn an_unlinked_eraser_paints_its_own_slider_and_a_linked_one_paints_the_brushs()
         ph2d_panel_flip::set_current_flip_style(Some(erase_snap(linked, linked)));
         let painted = host.paint::<FlipPanel>(&mut st, viewport());
         assert!(
-            on(&painted, ids::FLIP_LINK_SIZE) && on(&painted, ids::FLIP_LINK_STRENGTH),
+            on(&painted, ph2d_tool_flip::ids::FLIP_LINK_SIZE)
+                && on(&painted, ph2d_tool_flip::ids::FLIP_LINK_STRENGTH),
             "os toggles de link somem com link={linked} — nao da pra desfazer"
         );
     }
@@ -1482,8 +1533,8 @@ fn the_link_toggles_live_only_in_erase_mode() {
         }));
         let painted = host.paint::<FlipPanel>(&mut st, viewport());
         for (id, name) in [
-            (ids::FLIP_LINK_SIZE, "link Size"),
-            (ids::FLIP_LINK_STRENGTH, "link Strength"),
+            (ph2d_tool_flip::ids::FLIP_LINK_SIZE, "link Size"),
+            (ph2d_tool_flip::ids::FLIP_LINK_STRENGTH, "link Strength"),
         ] {
             let shown = painted.iter().any(|(w, r)| *w == id && r.w > 0.0);
             assert_eq!(
@@ -1527,20 +1578,23 @@ fn the_strength_row_lives_only_in_the_soft_eraser() {
         let on = |id: ph2d_a11y::NodeId| painted.iter().any(|(w, r)| *w == id && r.w > 0.0);
 
         assert_eq!(
-            on(ids::FLIP_OPACITY),
+            on(ph2d_tool_flip::ids::FLIP_OPACITY),
             want,
             "borracha {erase:?}: a Strength deveria aparecer? {want} \
              (Hard/Stroke sao binarias — o slider ali nao faz NADA)"
         );
         assert_eq!(
-            on(ids::FLIP_LINK_STRENGTH),
+            on(ph2d_tool_flip::ids::FLIP_LINK_STRENGTH),
             want,
             "borracha {erase:?}: o link da Strength segue a propria Strength"
         );
         // O Size (e o link dele) existem nos TRÊS: raio toda borracha tem.
-        assert!(on(ids::FLIP_SIZE), "borracha {erase:?}: o Size sumiu");
         assert!(
-            on(ids::FLIP_LINK_SIZE),
+            on(ph2d_tool_flip::ids::FLIP_SIZE),
+            "borracha {erase:?}: o Size sumiu"
+        );
+        assert!(
+            on(ph2d_tool_flip::ids::FLIP_LINK_SIZE),
             "borracha {erase:?}: o link do Size sumiu"
         );
     }
@@ -1569,10 +1623,10 @@ fn the_trap_slider_reaches_the_tool() {
          diferente de 0 reescreveria o balde que o Enio ja aprovou"
     );
 
-    host.set_slider_value(ids::FLIP_TRAP, 1.0);
+    host.set_slider_value(ph2d_tool_flip::ids::FLIP_TRAP, 1.0);
     let outcome = host.apply_panel_event::<FlipPanel>(
         &mut panel_state,
-        WidgetEvent::ValueChanged(ids::FLIP_TRAP),
+        WidgetEvent::ValueChanged(ph2d_tool_flip::ids::FLIP_TRAP),
     );
     assert_eq!(
         outcome,

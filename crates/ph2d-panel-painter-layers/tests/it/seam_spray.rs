@@ -11,7 +11,6 @@
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::tool::Tool;
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_painter_layers::PainterLayersPanel;
@@ -64,9 +63,9 @@ fn forward(
 fn the_jitter_card_paints_the_count_row_first() {
     let tool = PainterTool::default();
     let (_host, _st, rects) = painted(&tool);
-    let count = rect_of(&rects, core_ids::PAINTER_BRUSH_SPRAY_COUNT)
+    let count = rect_of(&rects, ph2d_tool_painter::ids::PAINTER_BRUSH_SPRAY_COUNT)
         .expect("a row Count não foi pintada — o card Jitter não a oferece");
-    let position = rect_of(&rects, core_ids::PAINTER_BRUSH_JITTER)
+    let position = rect_of(&rects, ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER)
         .expect("controle: a row Position tem de estar pintada no mesmo card");
     assert!(
         count.y < position.y,
@@ -76,7 +75,11 @@ fn the_jitter_card_paints_the_count_row_first() {
     );
     // …e o chip numérico ao lado, que é onde o artista LÊ a contagem.
     assert!(
-        rect_of(&rects, core_ids::PAINTER_BRUSH_SPRAY_COUNT_CHIP).is_some(),
+        rect_of(
+            &rects,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_SPRAY_COUNT_CHIP
+        )
+        .is_some(),
         "o chip do Count não foi pintado — o número fica ilegível"
     );
 }
@@ -92,7 +95,8 @@ fn dragging_the_count_slider_reaches_the_brush() {
         "controle: o pincel nasce com uma marca por ponto do caminho"
     );
     let (mut host, mut st, rects) = painted(&tool);
-    let r = rect_of(&rects, core_ids::PAINTER_BRUSH_SPRAY_COUNT).expect("a row Count não pintou");
+    let r = rect_of(&rects, ph2d_tool_painter::ids::PAINTER_BRUSH_SPRAY_COUNT)
+        .expect("a row Count não pintou");
     let y = r.y + r.h * 0.5;
     let events = host.drag_at(r.x + 1.0, y, r.x + r.w - 1.0, y);
     assert!(
@@ -116,11 +120,14 @@ fn dragging_the_count_slider_reaches_the_brush() {
 fn the_chip_reads_the_count_the_brush_holds() {
     let mut tool = PainterTool::default();
     let (mut host, mut st, rects) = painted(&tool);
-    let r = rect_of(&rects, core_ids::PAINTER_BRUSH_SPRAY_COUNT).expect("a row Count não pintou");
+    let r = rect_of(&rects, ph2d_tool_painter::ids::PAINTER_BRUSH_SPRAY_COUNT)
+        .expect("a row Count não pintou");
     let y = r.y + r.h * 0.5;
     let events = host.drag_at(r.x + 1.0, y, r.x + r.w - 1.0, y);
     forward(&mut host, &mut st, &mut tool, events);
-    let chip = host.store().get(core_ids::PAINTER_BRUSH_SPRAY_COUNT_CHIP);
+    let chip = host
+        .store()
+        .get(ph2d_tool_painter::ids::PAINTER_BRUSH_SPRAY_COUNT_CHIP);
     let shown = match chip {
         Some(ph2d_editor_core::interaction::InteractiveState::NumberInput { value, .. }) => *value,
         other => panic!("o chip do Count não é um NumberInput no store: {other:?}"),

@@ -118,7 +118,7 @@ pub fn arm(
                 hero.bus
                     .push(ph2d_editor_core::action_bus::EditorAction::ToolPanelEvent(
                         ph2d_editor_core::tool::PanelEvent::Click(
-                            ph2d_editor_core::ids::FLIP_MODE_EDIT,
+                            ph2d_tool_flip::ids::FLIP_MODE_EDIT,
                         ),
                     ));
             }

@@ -81,7 +81,7 @@ pub(crate) fn paint_wheel_section(
         w,
         yy,
         "Radius (m)",
-        ids::INSP_WHEEL_RADIUS,
+        crate::ids::INSP_WHEEL_RADIUS,
     );
     // **Out Radius** — o SEGUNDO diâmetro do eixo (W4). `0` é uma roldana comum;
     // qualquer outro valor faz dela um TAMBOR DIFERENCIAL, e a corda ganha
@@ -100,7 +100,7 @@ pub(crate) fn paint_wheel_section(
         w,
         yy,
         "Out Radius (m)",
-        ids::INSP_WHEEL_RADIUS_OUT,
+        crate::ids::INSP_WHEEL_RADIUS_OUT,
     );
     // **Differential** — o eixo de dois diâmetros é um TAMBOR ou uma talha de
     // WESTON (W-Weston), e a diferença é onde o segundo contato fica: no mesmo nó
@@ -129,8 +129,8 @@ pub(crate) fn paint_wheel_section(
                 w,
                 yy,
                 "Differential",
-                ids::INSP_WHEEL_DIFF_GROUP,
-                &ids::INSP_WHEEL_DIFF,
+                crate::ids::INSP_WHEEL_DIFF_GROUP,
+                &crate::ids::INSP_WHEEL_DIFF,
                 &DIFF_LABELS,
                 u8::from(info.weston),
             );
@@ -155,7 +155,7 @@ pub(crate) fn paint_wheel_section(
         w,
         yy,
         "Order",
-        ids::INSP_WHEEL_ORDER,
+        crate::ids::INSP_WHEEL_ORDER,
     );
     // **Motor** — esta roldana é um TAMBOR. Graus por segundo porque a grandeza é
     // ANGULAR, e é isso que faz o diâmetro ser o câmbio: a corda anda `ω·r`,
@@ -171,7 +171,7 @@ pub(crate) fn paint_wheel_section(
         w,
         yy,
         "Motor (\u{00b0}/s)",
-        ids::INSP_WHEEL_MOTOR,
+        crate::ids::INSP_WHEEL_MOTOR,
     );
     yy = seg_row(
         scene,
@@ -183,8 +183,8 @@ pub(crate) fn paint_wheel_section(
         w,
         yy,
         "Wrap",
-        ids::INSP_WHEEL_WRAP_GROUP,
-        &ids::INSP_WHEEL_WRAP,
+        crate::ids::INSP_WHEEL_WRAP_GROUP,
+        &crate::ids::INSP_WHEEL_WRAP,
         &WRAP_LABELS,
         info.wrap_tag,
     );
@@ -226,8 +226,8 @@ fn paint_break_rows(
         w,
         y,
         "Axle Breaks",
-        ids::INSP_WHEEL_BREAK_GROUP,
-        &ids::INSP_WHEEL_BREAK,
+        crate::ids::INSP_WHEEL_BREAK_GROUP,
+        &crate::ids::INSP_WHEEL_BREAK,
         &["Off", "On"],
         u8::from(info.break_enabled),
     );
@@ -244,7 +244,7 @@ fn paint_break_rows(
         w,
         yy,
         "Break Force (N)",
-        ids::INSP_WHEEL_BREAK_FORCE,
+        crate::ids::INSP_WHEEL_BREAK_FORCE,
     )
 }
 
@@ -323,11 +323,11 @@ fn paint_mount_row(
             brect,
             IconGlyph::Builtin(IconId::Trash),
             IconButtonStyle::Compact,
-            store.button_visual(ids::INSP_WHEEL_UNMOUNT),
+            store.button_visual(crate::ids::INSP_WHEEL_UNMOUNT),
             scene,
             theme,
         );
-        hit_index.register(ids::INSP_WHEEL_UNMOUNT, brect);
+        hit_index.register(crate::ids::INSP_WHEEL_UNMOUNT, brect);
         bx -= icon_w + gap;
     }
     let brect = Rect::new(bx, y + (h - icon_w) * 0.5, icon_w, icon_w);
@@ -338,12 +338,12 @@ fn paint_mount_row(
         if info.mount_pick_armed {
             (ButtonState::Pressed, ph2d_editor_core::motion::SETTLED)
         } else {
-            store.button_visual(ids::INSP_WHEEL_MOUNT_PICK)
+            store.button_visual(crate::ids::INSP_WHEEL_MOUNT_PICK)
         },
         scene,
         theme,
     );
-    hit_index.register(ids::INSP_WHEEL_MOUNT_PICK, brect);
+    hit_index.register(crate::ids::INSP_WHEEL_MOUNT_PICK, brect);
     y + h
 }
 
@@ -464,11 +464,11 @@ fn paint_rope_row(
         if info.rope_pick_armed {
             (ButtonState::Pressed, ph2d_editor_core::motion::SETTLED)
         } else {
-            store.button_visual(ids::INSP_WHEEL_ROPE_PICK)
+            store.button_visual(crate::ids::INSP_WHEEL_ROPE_PICK)
         },
         scene,
         theme,
     );
-    hit_index.register(ids::INSP_WHEEL_ROPE_PICK, brect);
+    hit_index.register(crate::ids::INSP_WHEEL_ROPE_PICK, brect);
     y + h
 }

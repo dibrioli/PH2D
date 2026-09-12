@@ -1,7 +1,6 @@
 //! The Stroke section's multi-shape **OPERATION** card (Overlay / Add / Remove). Split from
 //! [`super`](../paint_stroke.rs) for the panel-file LOC cap; mirrors the Selection OPERATION card.
 
-use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{
     Card, SegmentedAdaptive, SegmentedOption, measure_segmented_adaptive, paint_card,
@@ -23,14 +22,14 @@ pub(super) fn operation_card(
 ) -> f32 {
     let header_h = Spacing::Xl3.px();
     let pad = Spacing::Lg.px();
-    let card = Card::new(core_ids::PAINTER_STROKE_OP_CARD).title("OPERATION");
+    let card = Card::new(ph2d_tool_painter::ids::PAINTER_STROKE_OP_CARD).title("OPERATION");
     let seg = SegmentedAdaptive::new(
-        core_ids::PAINTER_STROKE_OP,
+        ph2d_tool_painter::ids::PAINTER_STROKE_OP,
         "Shape operation",
         vec![
-            SegmentedOption::new(core_ids::PAINTER_STROKE_OP_OVERLAY, "Overlay"),
-            SegmentedOption::new(core_ids::PAINTER_STROKE_OP_ADD, "Add"),
-            SegmentedOption::new(core_ids::PAINTER_STROKE_OP_REMOVE, "Remove"),
+            SegmentedOption::new(ph2d_tool_painter::ids::PAINTER_STROKE_OP_OVERLAY, "Overlay"),
+            SegmentedOption::new(ph2d_tool_painter::ids::PAINTER_STROKE_OP_ADD, "Add"),
+            SegmentedOption::new(ph2d_tool_painter::ids::PAINTER_STROKE_OP_REMOVE, "Remove"),
         ],
     )
     .selected(selected);

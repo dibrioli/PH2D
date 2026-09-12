@@ -139,12 +139,11 @@ fn clicking_a_parked_shape_reactivates_it() {
 /// The Stroke OPERATION mode (multi-shape) round-trips + a NEW shape adopts it as its op (Enio 2026-07-04).
 #[test]
 fn stroke_operation_mode_sets_the_new_shapes_op() {
-    use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::{PanelEvent, Tool};
     let mut t = white_canvas(64, 2.0);
     t.paint.brush.stroke_method = StrokeMethod::Ellipse;
     // Panel selects "Add" (wire 1).
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_STROKE_OP_ADD));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_STROKE_OP_ADD));
     assert_eq!(t.stroke_op_mode(), 1, "Operation mode set to Add");
     // Draw a shape → it is created with the Add op.
     t.on_canvas_pointer(cp([20.0, 20.0], PointerPhase::Down));
@@ -602,7 +601,6 @@ fn simplify_refits_a_polygon_to_exactly_its_free_corners() {
 /// o desenho sofresse o offset").
 #[test]
 fn offset_moves_only_the_painted_drawing_not_the_editor() {
-    use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::{PanelEvent, Tool};
     let mut t = white_canvas(128, 2.0);
     t.paint.brush.stroke_method = StrokeMethod::Ellipse;
@@ -634,7 +632,7 @@ fn offset_moves_only_the_painted_drawing_not_the_editor() {
     };
     let base_top = top_black(&t);
     // Big inward offset — via the panel event, so the preview re-fills like the real app.
-    t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_BRUSH_OFFSET, 0.35)); // −30px
+    t.handle_panel_event(PanelEvent::SetValue(crate::ids::PAINTER_BRUSH_OFFSET, 0.35)); // −30px
     let ov = t.curve_overlay().expect("curve still open");
     // The EDITOR is untouched: control points AND the guide line both stay on the pristine curve.
     assert_eq!(

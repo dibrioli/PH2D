@@ -1,7 +1,6 @@
 //! Painel → shell. Todo braço de knob é derivado de [`crate::rows`], então uma
 //! row que existe é uma row que despacha.
 
-use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal, seam_reset_button};
 use ph2d_sculpt3d::{
@@ -27,30 +26,42 @@ fn index_of(group: &[ph2d_a11y::NodeId], id: ph2d_a11y::NodeId) -> Option<usize>
 /// cascata de `if id == …`, porque o `event` e o `populate` têm de concordar sobre
 /// a LISTA e uma cascata é o formato que apodrece calado.
 pub(crate) const COMMANDS: &[(ph2d_a11y::NodeId, Sculpt3dIntent)] = &[
-    (ids::SCULPT3D_DYNTOPO, Sculpt3dIntent::ToggleDyntopo),
+    (crate::ids::SCULPT3D_DYNTOPO, Sculpt3dIntent::ToggleDyntopo),
     // ⚠️ **O filtro cabe AQUI e o transform não**, e a diferença não é arbitrária:
     // um comando desta tabela é `id → intent` sem operando, e o transform manda
     // QUAL das três espécies armar. Pôr o filtro numa cascata própria seria a
     // segunda lista que o `populate` teria de conhecer.
-    (ids::SCULPT3D_FILTER, Sculpt3dIntent::ArmFilter),
-    (ids::SCULPT3D_LEVEL_DOWN, Sculpt3dIntent::ChangeLevel(false)),
-    (ids::SCULPT3D_LEVEL_UP, Sculpt3dIntent::ChangeLevel(true)),
-    (ids::SCULPT3D_SUBDIVIDE, Sculpt3dIntent::Subdivide),
-    (ids::SCULPT3D_REVERSE, Sculpt3dIntent::ReverseLevel),
-    (ids::SCULPT3D_FLATTEN, Sculpt3dIntent::Flatten),
-    (ids::SCULPT3D_REMESH, Sculpt3dIntent::Remesh),
-    (ids::SCULPT3D_QUAD_REMESH, Sculpt3dIntent::QuadRemesh),
-    (ids::SCULPT3D_CLOSE_HOLES, Sculpt3dIntent::CloseHoles),
-    (ids::SCULPT3D_BAKE_AO, Sculpt3dIntent::BakeAo),
-    (ids::SCULPT3D_BAKE_SPRITE, Sculpt3dIntent::BakeToSprite),
-    (ids::SCULPT3D_ALPHA_SPRITE, Sculpt3dIntent::AlphaFromSprite),
-    (ids::SCULPT3D_DUPLICATE, Sculpt3dIntent::Duplicate),
-    (ids::SCULPT3D_DELETE, Sculpt3dIntent::Delete),
-    (ids::SCULPT3D_ISOLATE, Sculpt3dIntent::ToggleIsolate),
-    (ids::SCULPT3D_MERGE, Sculpt3dIntent::Merge),
-    (ids::SCULPT3D_EXTRACT, Sculpt3dIntent::Extract),
+    (crate::ids::SCULPT3D_FILTER, Sculpt3dIntent::ArmFilter),
     (
-        ids::SCULPT3D_CLOTH_SET_BASE,
+        crate::ids::SCULPT3D_LEVEL_DOWN,
+        Sculpt3dIntent::ChangeLevel(false),
+    ),
+    (
+        crate::ids::SCULPT3D_LEVEL_UP,
+        Sculpt3dIntent::ChangeLevel(true),
+    ),
+    (crate::ids::SCULPT3D_SUBDIVIDE, Sculpt3dIntent::Subdivide),
+    (crate::ids::SCULPT3D_REVERSE, Sculpt3dIntent::ReverseLevel),
+    (crate::ids::SCULPT3D_FLATTEN, Sculpt3dIntent::Flatten),
+    (crate::ids::SCULPT3D_REMESH, Sculpt3dIntent::Remesh),
+    (crate::ids::SCULPT3D_QUAD_REMESH, Sculpt3dIntent::QuadRemesh),
+    (crate::ids::SCULPT3D_CLOSE_HOLES, Sculpt3dIntent::CloseHoles),
+    (crate::ids::SCULPT3D_BAKE_AO, Sculpt3dIntent::BakeAo),
+    (
+        crate::ids::SCULPT3D_BAKE_SPRITE,
+        Sculpt3dIntent::BakeToSprite,
+    ),
+    (
+        crate::ids::SCULPT3D_ALPHA_SPRITE,
+        Sculpt3dIntent::AlphaFromSprite,
+    ),
+    (crate::ids::SCULPT3D_DUPLICATE, Sculpt3dIntent::Duplicate),
+    (crate::ids::SCULPT3D_DELETE, Sculpt3dIntent::Delete),
+    (crate::ids::SCULPT3D_ISOLATE, Sculpt3dIntent::ToggleIsolate),
+    (crate::ids::SCULPT3D_MERGE, Sculpt3dIntent::Merge),
+    (crate::ids::SCULPT3D_EXTRACT, Sculpt3dIntent::Extract),
+    (
+        crate::ids::SCULPT3D_CLOTH_SET_BASE,
         Sculpt3dIntent::SetClothPersistentBase,
     ),
 ];
@@ -65,17 +76,17 @@ pub(crate) const COMMANDS: &[(ph2d_a11y::NodeId, Sculpt3dIntent)] = &[
 /// [`Sculpt3dUi`] a partir do retrato vivo. Enfiá-los nesta tabela obrigaria a
 /// porta a receber o estado inteiro, e aí ela deixaria de ser uma tabela.
 fn table_intent(id: ph2d_a11y::NodeId) -> Option<Sculpt3dIntent> {
-    if let Some(i) = index_of(&ids::SCULPT3D_ADD, id) {
+    if let Some(i) = index_of(&crate::ids::SCULPT3D_ADD, id) {
         return Some(ADD_INTENTS[i].clone());
     }
-    if let Some(i) = index_of(&ids::SCULPT3D_TRANSFORM, id) {
+    if let Some(i) = index_of(&crate::ids::SCULPT3D_TRANSFORM, id) {
         // ⚠️ **Ele ARMA, e o painel não decide o que "clicar o aceso" faz.** A
         // cena é quem sabe o que já está armado (`arm_transform`), então mandar
         // o TIPO — e não um `Option` — é o que impede o painel de guardar uma
         // segunda cópia do arm para calcular o desligamento.
         return Some(Sculpt3dIntent::ArmTransform(TransformKind::ALL[i]));
     }
-    index_of(&ids::SCULPT3D_MASK_OP, id).map(|i| MASK_INTENTS[i].clone())
+    index_of(&crate::ids::SCULPT3D_MASK_OP, id).map(|i| MASK_INTENTS[i].clone())
 }
 
 static ADD_INTENTS: [Sculpt3dIntent; 4] = [
@@ -137,7 +148,7 @@ pub(crate) fn apply_event(
         // ⚠️ E onde ele não alcança, ele **PRESERVA** em vez de repor um
         // default: o artista carimbou uma escolha, não pediu um reset das que
         // não cabem.
-        WidgetEvent::Click(id) if id == ids::SCULPT3D_REF_MODE_ALL => {
+        WidgetEvent::Click(id) if id == crate::ids::SCULPT3D_REF_MODE_ALL => {
             seam_reset_button(host, id);
             let mut ui = snapshot.ui;
             let stamp = ui.brush.mode;
@@ -153,9 +164,9 @@ pub(crate) fn apply_event(
         // padrões, a mesma aritmética do matcap logo abaixo. `checked_sub` e não
         // `- 1` pelo mesmo motivo: a opção zero não é o padrão `-1`, é a
         // AUSÊNCIA de padrão.
-        WidgetEvent::Click(id) if index_of(&ids::SCULPT3D_ALPHA, id).is_some() => {
+        WidgetEvent::Click(id) if index_of(&crate::ids::SCULPT3D_ALPHA, id).is_some() => {
             seam_reset_button(host, id);
-            let i = index_of(&ids::SCULPT3D_ALPHA, id).expect("guard casou");
+            let i = index_of(&crate::ids::SCULPT3D_ALPHA, id).expect("guard casou");
             arm_alpha_chip(&snapshot, i);
             true
         }
@@ -176,15 +187,15 @@ pub(crate) fn apply_event(
         // segmented é *um de N* por construção, e o ZBrush espelha em dois eixos
         // ao mesmo tempo.
         WidgetEvent::Click(id)
-            if id == ids::SCULPT3D_SYM_X
-                || id == ids::SCULPT3D_SYM_Y
-                || id == ids::SCULPT3D_SYM_Z =>
+            if id == crate::ids::SCULPT3D_SYM_X
+                || id == crate::ids::SCULPT3D_SYM_Y
+                || id == crate::ids::SCULPT3D_SYM_Z =>
         {
             seam_reset_button(host, id);
             let mut ui = snapshot.ui;
-            let axis = if id == ids::SCULPT3D_SYM_X {
+            let axis = if id == crate::ids::SCULPT3D_SYM_X {
                 &mut ui.symmetry.x
-            } else if id == ids::SCULPT3D_SYM_Y {
+            } else if id == crate::ids::SCULPT3D_SYM_Y {
                 &mut ui.symmetry.y
             } else {
                 &mut ui.symmetry.z
@@ -236,7 +247,7 @@ pub(crate) fn apply_event(
             host.store_mut().toggle_collapsed(id);
             true
         }
-        WidgetEvent::Click(id) if id == ids::SCULPT3D_CLOSE => {
+        WidgetEvent::Click(id) if id == crate::ids::SCULPT3D_CLOSE => {
             seam_reset_button(host, id);
             host.set_panel_visible(crate::Sculpt3dPanel::ID, false);
             true
@@ -312,69 +323,69 @@ fn group_chip_ui(
     id: ph2d_a11y::NodeId,
 ) -> Option<crate::state::Sculpt3dUi> {
     let mut ui = snapshot.ui.clone();
-    if let Some(i) = index_of(&ids::SCULPT3D_VERB, id) {
+    if let Some(i) = index_of(&crate::ids::SCULPT3D_VERB, id) {
         // ⚠️ **TROCAR DE FERRAMENTA é guardar e carregar, e nada mais** — o
         // pincel vivo vai para o slot do verbo que sai e o do verbo que entra
         // toma o lugar dele. Nenhum knob é re-armado, porque a força que o
         // artista afinou no Smooth **não é** a força do Clay.
         crate::state::switch_verb(&mut ui, Verb::ALL[i]);
-    } else if let Some(i) = index_of(&ids::SCULPT3D_REF_MODE, id) {
+    } else if let Some(i) = index_of(&crate::ids::SCULPT3D_REF_MODE, id) {
         // ⚠️ **A REFERÊNCIA não é a ferramenta:** ela muda a LEI do kernel
         // dentro do verbo que já está em mãos, então quem re-resolve é a porta
         // do MODO — e ela só toca o que depende dele (a curva), preservando
         // toda escolha deliberada.
         crate::state::arm_mode_defaults(&mut ui, RefMode::ALL[i]);
-    } else if let Some(i) = index_of(&ids::SCULPT3D_FILTER_KIND, id) {
+    } else if let Some(i) = index_of(&crate::ids::SCULPT3D_FILTER_KIND, id) {
         // ⚠️ **Sem tocar no verbo, e é a wave inteira numa linha:** a lei do
         // filtro deixou de ser derivada da ferramenta em mãos, então escolher
         // uma não muda o que o pincel faz sob o cursor. Re-armar o verbo aqui
         // trocaria a ferramenta do artista por um clique que ele deu noutra
         // pergunta.
         ui.filter_law = FilterLaw::Mesh(FilterKind::ALL[i]);
-    } else if let Some(i) = index_of(&ids::SCULPT3D_CLOTH_FILTER_KIND, id) {
+    } else if let Some(i) = index_of(&crate::ids::SCULPT3D_CLOTH_FILTER_KIND, id) {
         // ⚠️ **A MESMA pergunta, a outra familia** (espec §7): as duas fileiras
         // escrevem o MESMO campo, e e' isso que impede o app de ter duas leis
         // escolhidas ao mesmo tempo com so' uma a correr.
         ui.filter_law = FilterLaw::Cloth(ClothFilterKind::ALL[i]);
-    } else if let Some(i) = index_of(&ids::SCULPT3D_CLOTH_FILTER_ORIENT, id) {
+    } else if let Some(i) = index_of(&crate::ids::SCULPT3D_CLOTH_FILTER_ORIENT, id) {
         // ⚠️ **O indice e' a posicao em `offered()`, nao em `ALL`** — a fileira
         // pinta os oferecidos, e indexar o `ALL` aqui poria o `View` a escrever
         // `World`, com o chip aceso e a mentir.
         ui.cloth_filter_orientation = ClothFilterOrientation::offered()[i];
-    } else if let Some(i) = index_of(&ids::SCULPT3D_ELASTIC_SCALES, id) {
+    } else if let Some(i) = index_of(&crate::ids::SCULPT3D_ELASTIC_SCALES, id) {
         // ⚠️ **Sem re-armar nada, e a razão é a do vizinho de baixo:** a largura
         // do campo é uma escolha DO ARTISTA sobre o modo que ele já escolheu,
         // não a escolha de uma ferramenta. Re-resolver aqui devolveria a família
         // que a medição elegeu, apagando o gesto no instante em que ele acontece.
         ui.brush.elastic_scales = ph2d_sculpt3d::kelvinlet::Scales::ALL[i];
-    } else if let Some(i) = index_of(&ids::SCULPT3D_RETOPO_MODE, id) {
+    } else if let Some(i) = index_of(&crate::ids::SCULPT3D_RETOPO_MODE, id) {
         // ⚠️ **Sem re-armar nada:** escolher o motor de retopologia é uma escolha
         // sobre o BOTÃO, não sobre a ferramenta em mãos. O `detail` e o `adapt`
         // que o artista afinou continuam onde estavam.
         ui.retopo_mode = state::RetopoMode::ALL[i];
-    } else if let Some(i) = index_of(&ids::SCULPT3D_UI_LEVEL, id) {
+    } else if let Some(i) = index_of(&crate::ids::SCULPT3D_UI_LEVEL, id) {
         // ⚠️ **Sem trocar de slot:** mudar o nível não é escolher uma
         // ferramenta, é escolher quanto dela ver — passar pela porta de troca
         // aqui recarregaria o pincel no gesto que o artista fez só para OLHAR.
         ui.ui_level = state::UiLevel::ALL[i];
-    } else if let Some(i) = index_of(&ids::SCULPT3D_FALLOFF, id) {
+    } else if let Some(i) = index_of(&crate::ids::SCULPT3D_FALLOFF, id) {
         ui.brush.falloff = Falloff::ALL[i];
-    } else if let Some(i) = index_of(&ids::SCULPT3D_CLOTH_MODE, id) {
+    } else if let Some(i) = index_of(&crate::ids::SCULPT3D_CLOTH_MODE, id) {
         // ⚠️ **Sem re-armar nada:** escolher COMO o tecido deforma é uma escolha
         // sobre o pincel que já está na mão, não a troca dele — a mesma razão do
         // falloff logo acima.
         ui.brush.cloth_mode = ph2d_sculpt3d::ClothMode::ALL[i];
-    } else if let Some(i) = index_of(&ids::SCULPT3D_CLOTH_AREA, id) {
+    } else if let Some(i) = index_of(&crate::ids::SCULPT3D_CLOTH_AREA, id) {
         ui.brush.cloth_area = ph2d_sculpt3d::ClothArea::ALL[i];
-    } else if let Some(i) = index_of(&ids::SCULPT3D_CLOTH_FORCE_FALLOFF, id) {
+    } else if let Some(i) = index_of(&crate::ids::SCULPT3D_CLOTH_FORCE_FALLOFF, id) {
         ui.brush.cloth_force_falloff = ph2d_sculpt3d::ClothForceFalloff::ALL[i];
-    } else if let Some(i) = index_of(&ids::SCULPT3D_MATCAP, id) {
+    } else if let Some(i) = index_of(&crate::ids::SCULPT3D_MATCAP, id) {
         // A opção `0` é o rig do artista e as seguintes são os matcaps, o mesmo
         // deslocamento que o pintor usa. `checked_sub` e não `- 1`: a opção zero
         // não é o material `-1`, é a AUSÊNCIA de matcap.
         ui.matcap = i.checked_sub(1).map(|k| u8::try_from(k).unwrap_or(u8::MAX));
     } else {
-        let i = index_of(&ids::SCULPT3D_DETAIL, id)?;
+        let i = index_of(&crate::ids::SCULPT3D_DETAIL, id)?;
         ui.detail = u8::try_from(i).unwrap_or(0);
     }
     Some(ui)

@@ -9,7 +9,6 @@
 //! `line/anim` aplicou ao menu de fade: *uma tabela por escopo, e um escopo sem parâmetro não pinta
 //! parâmetro*.
 
-use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::paint::paint_text;
 use ph2d_editor_core::paint::{fill_rounded_rect, resolve};
 use ph2d_editor_core::panel::PaintCtx;
@@ -59,7 +58,11 @@ pub(crate) fn line_type_options() -> Vec<DropdownOption<u8>> {
         .iter()
         .map(|k| {
             let w = k.to_wire();
-            DropdownOption::new(core_ids::painter_line_type_option_id(w), w, kind_name(*k))
+            DropdownOption::new(
+                ph2d_tool_painter::ids::painter_line_type_option_id(w),
+                w,
+                kind_name(*k),
+            )
         })
         .collect()
 }
@@ -113,16 +116,18 @@ pub(crate) fn paint_line_card(
     let iw = content_w - 2.0 * pad;
     let mut iy = y + pad;
 
-    let cb = Checkbox::new(core_ids::PAINTER_LINE_SOLID, "Solid").value(if brush.style_solid {
-        CheckboxValue::Checked
-    } else {
-        CheckboxValue::Unchecked
-    });
+    let cb = Checkbox::new(ph2d_tool_painter::ids::PAINTER_LINE_SOLID, "Solid").value(
+        if brush.style_solid {
+            CheckboxValue::Checked
+        } else {
+            CheckboxValue::Unchecked
+        },
+    );
     let cb_rect = Rect::new(ix, iy, iw, ROW_H_PX);
     paint_checkbox(&cb, cb_rect, ctx.scene, ctx.text_system, theme);
     ctx.host
         .hit_index_mut()
-        .register(core_ids::PAINTER_LINE_SOLID, cb_rect);
+        .register(ph2d_tool_painter::ids::PAINTER_LINE_SOLID, cb_rect);
     iy += ph2d_tokens::row_pitch_px();
 
     let (ny, open) = crate::paint_brush_rows::paint_dropdown_row(
@@ -132,7 +137,7 @@ pub(crate) fn paint_line_card(
         iw,
         iy,
         "Type",
-        core_ids::PAINTER_LINE_TYPE,
+        ph2d_tool_painter::ids::PAINTER_LINE_TYPE,
         brush.line_kind,
         kind_name(kind),
     );
@@ -171,33 +176,45 @@ type ParamSlider = (
 /// o card, e é isso que torna a troca uma decisão sobre a LEI e não sobre onde os controles foram
 /// parar.
 const THREAD_INK_ROWS: [ParamSlider; 2] = [
-    (core_ids::PAINTER_LINE_SKETCHY_WIDTH, "Line Width", |b| {
-        (b.thread_width_px / THREAD_WIDTH_MAX_PX, b.thread_width_px)
-    }),
-    (core_ids::PAINTER_LINE_SKETCHY_OPACITY, "Opacity", |b| {
-        (b.thread_opacity, b.thread_opacity)
-    }),
+    (
+        ph2d_tool_painter::ids::PAINTER_LINE_SKETCHY_WIDTH,
+        "Line Width",
+        |b| (b.thread_width_px / THREAD_WIDTH_MAX_PX, b.thread_width_px),
+    ),
+    (
+        ph2d_tool_painter::ids::PAINTER_LINE_SKETCHY_OPACITY,
+        "Opacity",
+        |b| (b.thread_opacity, b.thread_opacity),
+    ),
 ];
 
 const SKETCHY_SLIDERS: [ParamSlider; 4] = [
-    (core_ids::PAINTER_LINE_SKETCHY_REACH, "Reach", |b| {
-        (b.sketchy_reach / SKETCHY_REACH_MAX, b.sketchy_reach)
-    }),
-    (core_ids::PAINTER_LINE_SKETCHY_DENSITY, "Density", |b| {
-        const PCT: f32 = 100.0; // LITERAL-PX-OK: a Density é lida em PORCENTAGEM na face do artista
-        (
-            b.sketchy_density / SKETCHY_DENSITY_MAX,
-            b.sketchy_density * PCT,
-        )
-    }),
+    (
+        ph2d_tool_painter::ids::PAINTER_LINE_SKETCHY_REACH,
+        "Reach",
+        |b| (b.sketchy_reach / SKETCHY_REACH_MAX, b.sketchy_reach),
+    ),
+    (
+        ph2d_tool_painter::ids::PAINTER_LINE_SKETCHY_DENSITY,
+        "Density",
+        |b| {
+            const PCT: f32 = 100.0; // LITERAL-PX-OK: a Density é lida em PORCENTAGEM na face do artista
+            (
+                b.sketchy_density / SKETCHY_DENSITY_MAX,
+                b.sketchy_density * PCT,
+            )
+        },
+    ),
     THREAD_INK_ROWS[0],
     THREAD_INK_ROWS[1],
 ];
 
 const WIRE_SLIDERS: [ParamSlider; 3] = [
-    (core_ids::PAINTER_LINE_WIRE_HISTORY, "History", |b| {
-        (b.wire_history / WIRE_HISTORY_MAX, b.wire_history)
-    }),
+    (
+        ph2d_tool_painter::ids::PAINTER_LINE_WIRE_HISTORY,
+        "History",
+        |b| (b.wire_history / WIRE_HISTORY_MAX, b.wire_history),
+    ),
     THREAD_INK_ROWS[0],
     THREAD_INK_ROWS[1],
 ];
@@ -216,18 +233,26 @@ const WIRE_SLIDERS: [ParamSlider; 3] = [
 /// eram alcançáveis trocando para outro tipo, mexendo, e voltando. *Um controle que governa o que
 /// se vê e vive noutro modo é um controle que o artista não tem.*
 const RIBBON_SLIDERS: [ParamSlider; 6] = [
-    (core_ids::PAINTER_LINE_RIBBON_WEIGHT, "Weight", |b| {
-        (b.ribbon_weight, b.ribbon_weight)
-    }),
-    (core_ids::PAINTER_LINE_RIBBON_FRICTION, "Friction", |b| {
-        (b.ribbon_friction, b.ribbon_friction)
-    }),
-    (core_ids::PAINTER_LINE_RIBBON_GRAVITY, "Gravity", |b| {
-        (b.ribbon_gravity, b.ribbon_gravity)
-    }),
-    (core_ids::PAINTER_LINE_RIBBON_RUNGS, "Rungs", |b| {
-        (b.ribbon_rungs, b.ribbon_rungs)
-    }),
+    (
+        ph2d_tool_painter::ids::PAINTER_LINE_RIBBON_WEIGHT,
+        "Weight",
+        |b| (b.ribbon_weight, b.ribbon_weight),
+    ),
+    (
+        ph2d_tool_painter::ids::PAINTER_LINE_RIBBON_FRICTION,
+        "Friction",
+        |b| (b.ribbon_friction, b.ribbon_friction),
+    ),
+    (
+        ph2d_tool_painter::ids::PAINTER_LINE_RIBBON_GRAVITY,
+        "Gravity",
+        |b| (b.ribbon_gravity, b.ribbon_gravity),
+    ),
+    (
+        ph2d_tool_painter::ids::PAINTER_LINE_RIBBON_RUNGS,
+        "Rungs",
+        |b| (b.ribbon_rungs, b.ribbon_rungs),
+    ),
     THREAD_INK_ROWS[0],
     THREAD_INK_ROWS[1],
 ];
@@ -261,23 +286,35 @@ type ParamCheckbox = (
 /// costura nada — ele desenha o TRAÇO outra vez, com os dabs do próprio pincel. Oferecer
 /// `Line Width` sob ele seriam duas rows que não fazem nada.
 const ROUGH_SLIDERS: [ParamSlider; 3] = [
-    (core_ids::PAINTER_LINE_ROUGH_AMOUNT, "Roughness", |b| {
-        (
-            b.rough_amount / ROUGH_AMOUNT_MAX_D,
-            b.rough_amount * ROUGH_READOUT_D,
-        )
-    }),
-    (core_ids::PAINTER_LINE_ROUGH_BOWING, "Bowing", |b| {
-        (
-            b.rough_bowing / ROUGH_AMOUNT_MAX_D,
-            b.rough_bowing * ROUGH_READOUT_D,
-        )
-    }),
-    (core_ids::PAINTER_LINE_ROUGH_PASSES, "Passes", |b| {
-        #[allow(clippy::cast_precision_loss)]
-        let n = b.rough_passes as f32;
-        (n / ROUGH_PASSES_MAX as f32, n)
-    }),
+    (
+        ph2d_tool_painter::ids::PAINTER_LINE_ROUGH_AMOUNT,
+        "Roughness",
+        |b| {
+            (
+                b.rough_amount / ROUGH_AMOUNT_MAX_D,
+                b.rough_amount * ROUGH_READOUT_D,
+            )
+        },
+    ),
+    (
+        ph2d_tool_painter::ids::PAINTER_LINE_ROUGH_BOWING,
+        "Bowing",
+        |b| {
+            (
+                b.rough_bowing / ROUGH_AMOUNT_MAX_D,
+                b.rough_bowing * ROUGH_READOUT_D,
+            )
+        },
+    ),
+    (
+        ph2d_tool_painter::ids::PAINTER_LINE_ROUGH_PASSES,
+        "Passes",
+        |b| {
+            #[allow(clippy::cast_precision_loss)]
+            let n = b.rough_passes as f32;
+            (n / ROUGH_PASSES_MAX as f32, n)
+        },
+    ),
 ];
 
 /// O readout das amplitudes é em **décimos de diâmetro**, para a pista `0..1` não mostrar sempre
@@ -288,12 +325,12 @@ const ROUGH_READOUT_D: f32 = 10.0; // LITERAL-PX-OK: fator de leitura, não medi
 fn checkbox_of(kind: LineKind) -> Option<ParamCheckbox> {
     match kind {
         LineKind::Sketchy => Some((
-            core_ids::PAINTER_LINE_SKETCHY_MAGNETIFY,
+            ph2d_tool_painter::ids::PAINTER_LINE_SKETCHY_MAGNETIFY,
             "Magnetify",
             |b: BrushSettings| b.sketchy_magnetify,
         )),
         LineKind::Wire => Some((
-            core_ids::PAINTER_LINE_WIRE_CONNECTION,
+            ph2d_tool_painter::ids::PAINTER_LINE_WIRE_CONNECTION,
             "Connection Line",
             |b: BrushSettings| b.wire_connection_line,
         )),

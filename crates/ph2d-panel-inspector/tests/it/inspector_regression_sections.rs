@@ -169,42 +169,42 @@ fn sampling_cases() -> Vec<Case<SamplingFieldEdit>> {
         Case {
             what: "Filter (segmento 5)",
             variant: "Filter",
-            id: ids::INSP_SAMPLE_FILTER[5],
+            id: ph2d_panel_inspector::ids::INSP_SAMPLE_FILTER[5],
             stim: Stimulus::Click,
             expect: SamplingFieldEdit::Filter(5),
         },
         Case {
             what: "Repeat (segmento 2)",
             variant: "Repeat",
-            id: ids::INSP_SAMPLE_REPEAT[2],
+            id: ph2d_panel_inspector::ids::INSP_SAMPLE_REPEAT[2],
             stim: Stimulus::Click,
             expect: SamplingFieldEdit::Repeat(2),
         },
         Case {
             what: "UV Scale X",
             variant: "UvScaleX",
-            id: ids::INSP_SAMPLE_UV_SCALE_X,
+            id: ph2d_panel_inspector::ids::INSP_SAMPLE_UV_SCALE_X,
             stim: Stimulus::Number(2.5),
             expect: SamplingFieldEdit::UvScaleX(2.5),
         },
         Case {
             what: "UV Scale Y",
             variant: "UvScaleY",
-            id: ids::INSP_SAMPLE_UV_SCALE_Y,
+            id: ph2d_panel_inspector::ids::INSP_SAMPLE_UV_SCALE_Y,
             stim: Stimulus::Number(3.5),
             expect: SamplingFieldEdit::UvScaleY(3.5),
         },
         Case {
             what: "UV Offset X",
             variant: "UvOffsetX",
-            id: ids::INSP_SAMPLE_UV_OFFSET_X,
+            id: ph2d_panel_inspector::ids::INSP_SAMPLE_UV_OFFSET_X,
             stim: Stimulus::Number(-0.25),
             expect: SamplingFieldEdit::UvOffsetX(-0.25),
         },
         Case {
             what: "UV Offset Y",
             variant: "UvOffsetY",
-            id: ids::INSP_SAMPLE_UV_OFFSET_Y,
+            id: ph2d_panel_inspector::ids::INSP_SAMPLE_UV_OFFSET_Y,
             stim: Stimulus::Number(0.75),
             expect: SamplingFieldEdit::UvOffsetY(0.75),
         },
@@ -237,7 +237,10 @@ fn every_sampling_control_emits_exactly_its_own_edit() {
 /// modo do vizinho — silenciosamente, porque ambos são `u8` válidos.
 #[test]
 fn in_every_segmented_row_the_position_is_the_tag() {
-    for (i, &id) in ids::INSP_SAMPLE_FILTER.iter().enumerate() {
+    for (i, &id) in ph2d_panel_inspector::ids::INSP_SAMPLE_FILTER
+        .iter()
+        .enumerate()
+    {
         clear_snapshots();
         set_current_inspector_sampling(Some(sampling_info()));
         let (mut host, mut state) = fresh();
@@ -248,7 +251,10 @@ fn in_every_segmented_row_the_position_is_the_tag() {
             "o segmento {i} de Filter nao escreveu a tag {i}"
         );
     }
-    for (i, &id) in ids::INSP_SAMPLE_REPEAT.iter().enumerate() {
+    for (i, &id) in ph2d_panel_inspector::ids::INSP_SAMPLE_REPEAT
+        .iter()
+        .enumerate()
+    {
         clear_snapshots();
         set_current_inspector_sampling(Some(sampling_info()));
         let (mut host, mut state) = fresh();
@@ -267,7 +273,10 @@ fn in_every_segmented_row_the_position_is_the_tag() {
 /// varrer todos, e não só um, é o que separa "o botão responde" de "o botão certo responde".
 #[test]
 fn every_blend_segment_writes_its_own_tag() {
-    for (i, &id) in ids::INSP_SAMPLE_BLEND.iter().enumerate() {
+    for (i, &id) in ph2d_panel_inspector::ids::INSP_SAMPLE_BLEND
+        .iter()
+        .enumerate()
+    {
         clear_snapshots();
         set_current_inspector_blend(Some(InspectorBlendInfo {
             entity_bits: ENTITY,
@@ -335,70 +344,70 @@ fn vis_cases() -> Vec<Case<VisibilityFieldEdit>> {
             // Bit 3, não bit 0: um braço que perdesse o índice ficaria verde no bit 0.
             what: "Layer bit 3 (mascara a 0 -> liga)",
             variant: "LayerBit",
-            id: ids::INSP_VIS_LAYER_BIT[3],
+            id: ph2d_panel_inspector::ids::INSP_VIS_LAYER_BIT[3],
             stim: Stimulus::Click,
             expect: VisibilityFieldEdit::LayerBit(3, true),
         },
         Case {
             what: "Clip (segmento 1)",
             variant: "ClipMode",
-            id: ids::INSP_VIS_CLIP[1],
+            id: ph2d_panel_inspector::ids::INSP_VIS_CLIP[1],
             stim: Stimulus::Click,
             expect: VisibilityFieldEdit::ClipMode(1),
         },
         Case {
             what: "Mask (segmento 2)",
             variant: "MaskMode",
-            id: ids::INSP_VIS_MASK[2],
+            id: ph2d_panel_inspector::ids::INSP_VIS_MASK[2],
             stim: Stimulus::Click,
             expect: VisibilityFieldEdit::MaskMode(2),
         },
         Case {
             what: "Mask Source",
             variant: "MaskSource",
-            id: ids::INSP_VIS_MASK_SOURCE,
+            id: ph2d_panel_inspector::ids::INSP_VIS_MASK_SOURCE,
             stim: Stimulus::Click,
             expect: VisibilityFieldEdit::MaskSource(true),
         },
         Case {
             what: "On Screen",
             variant: "OnScreen",
-            id: ids::INSP_VIS_ON_SCREEN,
+            id: ph2d_panel_inspector::ids::INSP_VIS_ON_SCREEN,
             stim: Stimulus::Click,
             expect: VisibilityFieldEdit::OnScreen(true),
         },
         Case {
             what: "Alpha Cutoff",
             variant: "AlphaCutoff",
-            id: ids::INSP_VIS_ALPHA_CUTOFF,
+            id: ph2d_panel_inspector::ids::INSP_VIS_ALPHA_CUTOFF,
             stim: Stimulus::Number(0.25),
             expect: VisibilityFieldEdit::AlphaCutoff(0.25),
         },
         Case {
             what: "Rect X",
             variant: "RectX",
-            id: ids::INSP_VIS_RECT_X,
+            id: ph2d_panel_inspector::ids::INSP_VIS_RECT_X,
             stim: Stimulus::Number(11.0),
             expect: VisibilityFieldEdit::RectX(11.0),
         },
         Case {
             what: "Rect Y",
             variant: "RectY",
-            id: ids::INSP_VIS_RECT_Y,
+            id: ph2d_panel_inspector::ids::INSP_VIS_RECT_Y,
             stim: Stimulus::Number(22.0),
             expect: VisibilityFieldEdit::RectY(22.0),
         },
         Case {
             what: "Rect W",
             variant: "RectW",
-            id: ids::INSP_VIS_RECT_W,
+            id: ph2d_panel_inspector::ids::INSP_VIS_RECT_W,
             stim: Stimulus::Number(33.0),
             expect: VisibilityFieldEdit::RectW(33.0),
         },
         Case {
             what: "Rect H",
             variant: "RectH",
-            id: ids::INSP_VIS_RECT_H,
+            id: ph2d_panel_inspector::ids::INSP_VIS_RECT_H,
             stim: Stimulus::Number(44.0),
             expect: VisibilityFieldEdit::RectH(44.0),
         },
@@ -438,7 +447,7 @@ fn a_layer_bit_toggles_against_the_snapshot() {
     drive(
         &mut host,
         &mut state,
-        ids::INSP_VIS_LAYER_BIT[3],
+        ph2d_panel_inspector::ids::INSP_VIS_LAYER_BIT[3],
         Stimulus::Click,
     );
     assert_eq!(
@@ -467,7 +476,7 @@ fn the_visibility_checkbox_publishes_the_decision() {
         drive(
             &mut host,
             &mut state,
-            ids::INSP_VISIBILITY_CHECK,
+            ph2d_panel_inspector::ids::INSP_VISIBILITY_CHECK,
             Stimulus::Check(on),
         );
         let got = host
@@ -515,7 +524,7 @@ fn a_transform_field_commit_publishes_the_whole_pose() {
     drive(
         &mut host,
         &mut state,
-        ids::INSP_TRANSFORM_ROT,
+        ph2d_panel_inspector::ids::INSP_TRANSFORM_ROT,
         Stimulus::Number(90.0),
     );
     let got = host
@@ -554,7 +563,7 @@ fn the_reset_button_publishes_identity() {
     drive(
         &mut host,
         &mut state,
-        ids::INSP_TRANSFORM_RESET,
+        ph2d_panel_inspector::ids::INSP_TRANSFORM_RESET,
         Stimulus::Click,
     );
     let got = host
@@ -622,22 +631,22 @@ fn no_section_control_acts_without_its_snapshot() {
         .chain([
             (
                 "Visibility check",
-                ids::INSP_VISIBILITY_CHECK,
+                ph2d_panel_inspector::ids::INSP_VISIBILITY_CHECK,
                 Stimulus::Check(true),
             ),
             (
                 "Blend (segmento 3)",
-                ids::INSP_SAMPLE_BLEND[3],
+                ph2d_panel_inspector::ids::INSP_SAMPLE_BLEND[3],
                 Stimulus::Click,
             ),
             (
                 "Transform Rot",
-                ids::INSP_TRANSFORM_ROT,
+                ph2d_panel_inspector::ids::INSP_TRANSFORM_ROT,
                 Stimulus::Number(90.0),
             ),
             (
                 "Transform Reset",
-                ids::INSP_TRANSFORM_RESET,
+                ph2d_panel_inspector::ids::INSP_TRANSFORM_RESET,
                 Stimulus::Click,
             ),
             ("Entity Name", ids::INSP_ENTITY_NAME, Stimulus::Text("Hero")),
@@ -783,7 +792,7 @@ fn a_position_authored_in_pixels_commits_in_meters() {
     // (a) semear: 1,5 m tem de aparecer na caixa como 150 px (com ppm = 100).
     let shown = host
         .store()
-        .number_value(ids::INSP_TRANSFORM_POS_X)
+        .number_value(ph2d_panel_inspector::ids::INSP_TRANSFORM_POS_X)
         .expect("Position X tem de ser semeada pelo sync");
     assert!(
         (shown as f32 - 1.5 * ppm).abs() < 1e-3,
@@ -795,7 +804,7 @@ fn a_position_authored_in_pixels_commits_in_meters() {
     drive(
         &mut host,
         &mut state,
-        ids::INSP_TRANSFORM_POS_X,
+        ph2d_panel_inspector::ids::INSP_TRANSFORM_POS_X,
         Stimulus::Number(200.0),
     );
     let got = host
@@ -841,7 +850,7 @@ fn in_meters_mode_the_position_round_trip_is_the_identity() {
 
     let shown = host
         .store()
-        .number_value(ids::INSP_TRANSFORM_POS_X)
+        .number_value(ph2d_panel_inspector::ids::INSP_TRANSFORM_POS_X)
         .expect("Position X tem de ser semeada pelo sync");
     assert!(
         (shown - 1.5).abs() < 1e-3,
@@ -851,7 +860,7 @@ fn in_meters_mode_the_position_round_trip_is_the_identity() {
     drive(
         &mut host,
         &mut state,
-        ids::INSP_TRANSFORM_POS_X,
+        ph2d_panel_inspector::ids::INSP_TRANSFORM_POS_X,
         Stimulus::Number(2.0),
     );
     let got = host

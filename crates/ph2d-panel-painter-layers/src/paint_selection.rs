@@ -8,7 +8,6 @@
 //! `populate` and forwarded by `event.rs` over the frozen `PanelEvent` channel to `route_selection_event`.
 
 use ph2d_a11y::NodeId;
-use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::section_cards::close_section;
 use ph2d_editor_core::widget::{
@@ -40,14 +39,14 @@ pub(crate) fn paint_selection_section(
         x,
         content_w,
         y,
-        core_ids::PAINTER_SEL_MODE,
+        ph2d_tool_painter::ids::PAINTER_SEL_MODE,
         "Selection mode",
         &[
-            (core_ids::PAINTER_SEL_MODE_AUTO, "Auto"),
-            (core_ids::PAINTER_SEL_MODE_FREEHAND, "Free"),
-            (core_ids::PAINTER_SEL_MODE_RECT, "Rect"),
-            (core_ids::PAINTER_SEL_MODE_ELLIPSE, "Ellipse"),
-            (core_ids::PAINTER_SEL_MODE_PEN, "Pen"),
+            (ph2d_tool_painter::ids::PAINTER_SEL_MODE_AUTO, "Auto"),
+            (ph2d_tool_painter::ids::PAINTER_SEL_MODE_FREEHAND, "Free"),
+            (ph2d_tool_painter::ids::PAINTER_SEL_MODE_RECT, "Rect"),
+            (ph2d_tool_painter::ids::PAINTER_SEL_MODE_ELLIPSE, "Ellipse"),
+            (ph2d_tool_painter::ids::PAINTER_SEL_MODE_PEN, "Pen"),
         ],
         brush.selection_mode as usize,
     );
@@ -61,8 +60,8 @@ pub(crate) fn paint_selection_section(
             content_w,
             y,
             "Threshold",
-            core_ids::PAINTER_SEL_THRESHOLD_SLIDER,
-            core_ids::PAINTER_SEL_THRESHOLD_CHIP,
+            ph2d_tool_painter::ids::PAINTER_SEL_THRESHOLD_SLIDER,
+            ph2d_tool_painter::ids::PAINTER_SEL_THRESHOLD_CHIP,
             brush.selection_threshold,
         );
     }
@@ -76,8 +75,8 @@ pub(crate) fn paint_selection_section(
             content_w,
             y,
             "Stabilization",
-            core_ids::PAINTER_SEL_STABILIZE_SLIDER,
-            core_ids::PAINTER_SEL_STABILIZE_CHIP,
+            ph2d_tool_painter::ids::PAINTER_SEL_STABILIZE_SLIDER,
+            ph2d_tool_painter::ids::PAINTER_SEL_STABILIZE_CHIP,
             brush.selection_stabilizer,
         );
     }
@@ -90,8 +89,8 @@ pub(crate) fn paint_selection_section(
         content_w,
         y,
         "Feather",
-        core_ids::PAINTER_SEL_FEATHER_SLIDER,
-        core_ids::PAINTER_SEL_FEATHER_CHIP,
+        ph2d_tool_painter::ids::PAINTER_SEL_FEATHER_SLIDER,
+        ph2d_tool_painter::ids::PAINTER_SEL_FEATHER_CHIP,
         brush.selection_feather,
     );
 
@@ -103,8 +102,8 @@ pub(crate) fn paint_selection_section(
         content_w,
         y,
         "Overlay",
-        core_ids::PAINTER_SEL_OPACITY_SLIDER,
-        core_ids::PAINTER_SEL_OPACITY_CHIP,
+        ph2d_tool_painter::ids::PAINTER_SEL_OPACITY_SLIDER,
+        ph2d_tool_painter::ids::PAINTER_SEL_OPACITY_CHIP,
         brush.selection_overlay_opacity,
     );
 
@@ -123,7 +122,7 @@ pub(crate) fn paint_selection_section(
         x,
         content_w,
         y,
-        core_ids::PAINTER_SEL_EDIT,
+        ph2d_tool_painter::ids::PAINTER_SEL_EDIT,
         "Edit Gizmos",
         brush.selection_edit,
     );
@@ -139,9 +138,15 @@ pub(crate) fn paint_selection_section(
             NodeId(0),
             "Convert / merge / simplify selection curve",
             &[
-                (core_ids::PAINTER_SEL_CONVERT, "Convert to Curve"),
-                (core_ids::PAINTER_SEL_MERGE, "Merge Curves"),
-                (core_ids::PAINTER_SEL_SIMPLIFY, "Simplify Curve"),
+                (
+                    ph2d_tool_painter::ids::PAINTER_SEL_CONVERT,
+                    "Convert to Curve",
+                ),
+                (ph2d_tool_painter::ids::PAINTER_SEL_MERGE, "Merge Curves"),
+                (
+                    ph2d_tool_painter::ids::PAINTER_SEL_SIMPLIFY,
+                    "Simplify Curve",
+                ),
             ],
             usize::MAX,
         );
@@ -168,9 +173,9 @@ fn action_rows(
         NodeId(0), // group a11y id unused for a momentary action row
         "Selection actions",
         &[
-            (core_ids::PAINTER_SEL_ALL, "All"),
-            (core_ids::PAINTER_SEL_INVERT, "Invert"),
-            (core_ids::PAINTER_SEL_CLEAR, "Clear"),
+            (ph2d_tool_painter::ids::PAINTER_SEL_ALL, "All"),
+            (ph2d_tool_painter::ids::PAINTER_SEL_INVERT, "Invert"),
+            (ph2d_tool_painter::ids::PAINTER_SEL_CLEAR, "Clear"),
         ],
         usize::MAX, // none selected — these are actions, not a radio
     );
@@ -183,11 +188,11 @@ fn action_rows(
         NodeId(0),
         "Selection content actions",
         &[
-            (core_ids::PAINTER_SEL_LAYER_CONTENTS, "Layer"),
-            (core_ids::PAINTER_SEL_FILL, "Fill"),
-            (core_ids::PAINTER_SEL_CUT, "Cut"),
-            (core_ids::PAINTER_SEL_COPY, "Copy"),
-            (core_ids::PAINTER_SEL_PASTE, "Paste"),
+            (ph2d_tool_painter::ids::PAINTER_SEL_LAYER_CONTENTS, "Layer"),
+            (ph2d_tool_painter::ids::PAINTER_SEL_FILL, "Fill"),
+            (ph2d_tool_painter::ids::PAINTER_SEL_CUT, "Cut"),
+            (ph2d_tool_painter::ids::PAINTER_SEL_COPY, "Copy"),
+            (ph2d_tool_painter::ids::PAINTER_SEL_PASTE, "Paste"),
         ],
         usize::MAX,
     )
@@ -205,15 +210,18 @@ fn operation_card(
 ) -> f32 {
     let header_h = Spacing::Xl3.px();
     let pad = Spacing::Lg.px();
-    let card = Card::new(core_ids::PAINTER_SEL_OP_CARD).title("OPERATION");
+    let card = Card::new(ph2d_tool_painter::ids::PAINTER_SEL_OP_CARD).title("OPERATION");
     let seg = SegmentedAdaptive::new(
-        core_ids::PAINTER_SEL_OP,
+        ph2d_tool_painter::ids::PAINTER_SEL_OP,
         "Boolean operation",
         vec![
-            SegmentedOption::new(core_ids::PAINTER_SEL_OP_NEW, "New"),
-            SegmentedOption::new(core_ids::PAINTER_SEL_OP_ADD, "Add"),
-            SegmentedOption::new(core_ids::PAINTER_SEL_OP_REMOVE, "Remove"),
-            SegmentedOption::new(core_ids::PAINTER_SEL_OP_INTERSECT, "Intersect"),
+            SegmentedOption::new(ph2d_tool_painter::ids::PAINTER_SEL_OP_NEW, "New"),
+            SegmentedOption::new(ph2d_tool_painter::ids::PAINTER_SEL_OP_ADD, "Add"),
+            SegmentedOption::new(ph2d_tool_painter::ids::PAINTER_SEL_OP_REMOVE, "Remove"),
+            SegmentedOption::new(
+                ph2d_tool_painter::ids::PAINTER_SEL_OP_INTERSECT,
+                "Intersect",
+            ),
         ],
     )
     .selected(selected);
@@ -261,14 +269,18 @@ fn offset_card(
     let header_h = Spacing::Xl3.px();
     let pad = Spacing::Lg.px();
     let gap = Spacing::Xs.px(); // matches the slider row's trailing gap
-    let card = Card::new(core_ids::PAINTER_SEL_OFFSET_CARD).title("EXPAND / CONTRACT");
+    let card =
+        Card::new(ph2d_tool_painter::ids::PAINTER_SEL_OFFSET_CARD).title("EXPAND / CONTRACT");
     // Momentary buttons — nothing selected (usize::MAX), like the old inline group.
     let seg = SegmentedAdaptive::new(
         NodeId(0),
         "Selection offset commit",
         vec![
-            SegmentedOption::new(core_ids::PAINTER_SEL_OFFSET_APPLY, "Apply"),
-            SegmentedOption::new(core_ids::PAINTER_SEL_OFFSET_APPLY_KEEP, "Apply & Keep"),
+            SegmentedOption::new(ph2d_tool_painter::ids::PAINTER_SEL_OFFSET_APPLY, "Apply"),
+            SegmentedOption::new(
+                ph2d_tool_painter::ids::PAINTER_SEL_OFFSET_APPLY_KEEP,
+                "Apply & Keep",
+            ),
         ],
     )
     .selected(usize::MAX);
@@ -294,8 +306,8 @@ fn offset_card(
         body.w,
         body.y,
         "Offset",
-        core_ids::PAINTER_SEL_OFFSET_SLIDER,
-        core_ids::PAINTER_SEL_OFFSET_CHIP,
+        ph2d_tool_painter::ids::PAINTER_SEL_OFFSET_SLIDER,
+        ph2d_tool_painter::ids::PAINTER_SEL_OFFSET_CHIP,
         offset,
     );
     {
@@ -352,7 +364,6 @@ fn seg_group(
 #[cfg(test)]
 mod tests {
     use ph2d_a11y::NodeId;
-    use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::panel::{PaintCtx, PanelHostInternal};
     use ph2d_editor_core::screens::HeroLayout;
     use ph2d_editor_core::zones::Rect;
@@ -401,17 +412,17 @@ mod tests {
     #[test]
     fn selection_mode_paints_only_selection_controls() {
         let ids = body_hit_ids(selection_brush());
-        for sid in core_ids::PAINTER_SEL_MODE_IDS
+        for sid in ph2d_tool_painter::ids::PAINTER_SEL_MODE_IDS
             .iter()
-            .chain(core_ids::PAINTER_SEL_OP_IDS.iter())
-            .chain(core_ids::PAINTER_SEL_ACTION_IDS.iter())
+            .chain(ph2d_tool_painter::ids::PAINTER_SEL_OP_IDS.iter())
+            .chain(ph2d_tool_painter::ids::PAINTER_SEL_ACTION_IDS.iter())
             // ⚠️ As acoes de CONTEUDO entram aqui: Cut nasceu nesta lista, e sem ela um botao novo
             // seria pintado sem ninguem exigir que ele esteja vivo sob o mouse.
-            .chain(core_ids::PAINTER_SEL_WAVE5_IDS.iter())
+            .chain(ph2d_tool_painter::ids::PAINTER_SEL_WAVE5_IDS.iter())
             .chain(
                 [
-                    core_ids::PAINTER_SEL_FEATHER_SLIDER,
-                    core_ids::PAINTER_SEL_EDIT,
+                    ph2d_tool_painter::ids::PAINTER_SEL_FEATHER_SLIDER,
+                    ph2d_tool_painter::ids::PAINTER_SEL_EDIT,
                 ]
                 .iter(),
             )
@@ -423,9 +434,9 @@ mod tests {
         }
         // Mode-exclusive: no shared brush control leaks in.
         for bid in [
-            core_ids::PAINTER_BRUSH_SIZE_SLIDER,
-            core_ids::PAINTER_BRUSH_STRENGTH_SLIDER,
-            core_ids::PAINTER_BRUSH_SYNC,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_SIZE_SLIDER,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_STRENGTH_SLIDER,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_SYNC,
         ] {
             assert!(
                 !ids.contains(&bid),
@@ -437,7 +448,8 @@ mod tests {
     #[test]
     fn threshold_shows_in_automatic_and_hides_in_rectangle() {
         assert!(
-            body_hit_ids(selection_brush()).contains(&core_ids::PAINTER_SEL_THRESHOLD_SLIDER),
+            body_hit_ids(selection_brush())
+                .contains(&ph2d_tool_painter::ids::PAINTER_SEL_THRESHOLD_SLIDER),
             "Threshold shows in Automatic (default mode 0)"
         );
         let rect_mode = ph2d_tool_painter::BrushSettings {
@@ -445,7 +457,8 @@ mod tests {
             ..selection_brush()
         };
         assert!(
-            !body_hit_ids(rect_mode).contains(&core_ids::PAINTER_SEL_THRESHOLD_SLIDER),
+            !body_hit_ids(rect_mode)
+                .contains(&ph2d_tool_painter::ids::PAINTER_SEL_THRESHOLD_SLIDER),
             "Threshold is hidden outside Automatic"
         );
     }
@@ -454,9 +467,9 @@ mod tests {
     fn offset_slider_and_commit_buttons_paint_in_selection_mode() {
         let ids = body_hit_ids(selection_brush());
         for oid in [
-            core_ids::PAINTER_SEL_OFFSET_SLIDER,
-            core_ids::PAINTER_SEL_OFFSET_APPLY,
-            core_ids::PAINTER_SEL_OFFSET_APPLY_KEEP,
+            ph2d_tool_painter::ids::PAINTER_SEL_OFFSET_SLIDER,
+            ph2d_tool_painter::ids::PAINTER_SEL_OFFSET_APPLY,
+            ph2d_tool_painter::ids::PAINTER_SEL_OFFSET_APPLY_KEEP,
         ] {
             assert!(
                 ids.contains(&oid),
@@ -472,11 +485,12 @@ mod tests {
             ..selection_brush()
         };
         assert!(
-            body_hit_ids(free).contains(&core_ids::PAINTER_SEL_STABILIZE_SLIDER),
+            body_hit_ids(free).contains(&ph2d_tool_painter::ids::PAINTER_SEL_STABILIZE_SLIDER),
             "Stabilization shows in Freehand mode"
         );
         assert!(
-            !body_hit_ids(selection_brush()).contains(&core_ids::PAINTER_SEL_STABILIZE_SLIDER),
+            !body_hit_ids(selection_brush())
+                .contains(&ph2d_tool_painter::ids::PAINTER_SEL_STABILIZE_SLIDER),
             "Stabilization is hidden outside Freehand (default mode 0 = Automatic)"
         );
     }

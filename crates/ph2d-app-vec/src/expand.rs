@@ -35,14 +35,14 @@ pub enum Expand {
 /// A junção vem do PAINEL (`ph2d_panel_vector::expand_join`) e não de uma cópia daqui: uma
 /// segunda tabela divergiria no dia em que aparecesse um 4º estilo de quina.
 pub fn expand_for_id(id: ph2d_editor_core::NodeId) -> Option<Expand> {
-    if id == ph2d_editor_core::ids::VECTOR_EXPAND_OFFSET_PATH {
+    if id == ph2d_tool_vector::ids::VECTOR_EXPAND_OFFSET_PATH {
         Some(Expand::Offset {
             join: offset_join(),
             side: offset_side(),
         })
-    } else if id == ph2d_editor_core::ids::VECTOR_EXPAND_OUTLINE_STROKE {
+    } else if id == ph2d_tool_vector::ids::VECTOR_EXPAND_OUTLINE_STROKE {
         Some(Expand::OutlineStroke)
-    } else if id == ph2d_editor_core::ids::VECTOR_EXPAND_POWER_STROKE {
+    } else if id == ph2d_tool_vector::ids::VECTOR_EXPAND_POWER_STROKE {
         // O perfil vem dos sliders, e quem os lê é a `render_loop` (é ela que tem o store).
         // Aqui só se diz QUAL comando é; o `profile` é preenchido lá, como o `d` do offset.
         Some(Expand::PowerStroke {

@@ -129,10 +129,12 @@ fn clicking_a_tab_switches_the_view() {
     }
 
     // Click Arrange — through the real dispatcher, and then through the real router.
-    let arrange = rect_of(&regs, ids::TIMELINE_TAB_ARRANGE).expect("Arrange");
+    let arrange = rect_of(&regs, ph2d_panel_timeline::ids::TIMELINE_TAB_ARRANGE).expect("Arrange");
     let evs = host.click_at(arrange.x + arrange.w * 0.5, arrange.y + arrange.h * 0.5);
     assert!(
-        evs.contains(&WidgetEvent::Click(ids::TIMELINE_TAB_ARRANGE)),
+        evs.contains(&WidgetEvent::Click(
+            ph2d_panel_timeline::ids::TIMELINE_TAB_ARRANGE
+        )),
         "the pointer landed on {:?}, not on the Arrange tab — got {evs:?}",
         host.hit_at(arrange.x + arrange.w * 0.5, arrange.y + arrange.h * 0.5)
     );
@@ -147,7 +149,7 @@ fn clicking_a_tab_switches_the_view() {
 
     // And back — a tab that only goes one way is a trapdoor.
     let regs = paint(&mut host, &mut state, keys_and_a_stack(Some(1.0), 3.0));
-    let keys = rect_of(&regs, ids::TIMELINE_TAB_KEYS).expect("Keys");
+    let keys = rect_of(&regs, ph2d_panel_timeline::ids::TIMELINE_TAB_KEYS).expect("Keys");
     for ev in host.click_at(keys.x + keys.w * 0.5, keys.y + keys.h * 0.5) {
         host.apply_panel_event::<TimelinePanel>(&mut state, ev);
     }
@@ -161,8 +163,8 @@ fn each_tab_registers_only_its_own_half() {
     let mut host = MockPanelHost::with_panel::<TimelinePanel>();
     let mut state = TimelinePanelState::default();
 
-    let strip = ids::timeline_strip_hit_id(0, 1, 2);
-    let row = ids::timeline_row_id(7);
+    let strip = ph2d_panel_timeline::ids::timeline_strip_hit_id(0, 1, 2);
+    let row = ph2d_panel_timeline::ids::timeline_row_id(7);
 
     let regs = paint(&mut host, &mut state, keys_and_a_stack(Some(1.0), 3.0));
     assert!(
@@ -174,11 +176,11 @@ fn each_tab_registers_only_its_own_half() {
         "the Keys tab registered a STRIP: the two halves are back on one ruler"
     );
     assert!(
-        rect_of(&regs, ids::TIMELINE_ADD_TRACK).is_some(),
+        rect_of(&regs, ph2d_panel_timeline::ids::TIMELINE_ADD_TRACK).is_some(),
         "the Keys tab offers +Track"
     );
     assert!(
-        rect_of(&regs, ids::TIMELINE_ADD_LANE).is_none(),
+        rect_of(&regs, ph2d_panel_timeline::ids::TIMELINE_ADD_LANE).is_none(),
         "…and never +Lane, which would add a lane this tab cannot show"
     );
 
@@ -192,8 +194,8 @@ fn each_tab_registers_only_its_own_half() {
         rect_of(&regs, row).is_none(),
         "the Arrange tab registered a track ROW"
     );
-    assert!(rect_of(&regs, ids::TIMELINE_ADD_LANE).is_some());
-    assert!(rect_of(&regs, ids::TIMELINE_ADD_TRACK).is_none());
+    assert!(rect_of(&regs, ph2d_panel_timeline::ids::TIMELINE_ADD_LANE).is_some());
+    assert!(rect_of(&regs, ph2d_panel_timeline::ids::TIMELINE_ADD_TRACK).is_none());
 }
 
 /// **Under a stack the Keys ruler SCRUBS the clip clock AND draws its OWN loop — only the
@@ -215,11 +217,11 @@ fn the_clip_ruler_under_a_stack_scrubs_and_draws_its_own_loop_but_no_timeline_ma
         "the Keys ruler under a stack must scrub the clip clock — that is how you author keys"
     );
     assert!(
-        rect_of(&regs, ids::timeline_loop_brace_id(0)).is_some(),
+        rect_of(&regs, ph2d_panel_timeline::ids::timeline_loop_brace_id(0)).is_some(),
         "the Keys view draws its OWN clip loop — independent of Arrange (Enio, 2026-07-16)"
     );
     assert!(
-        rect_of(&regs, ids::timeline_marker_hit_id(0)).is_none(),
+        rect_of(&regs, ph2d_panel_timeline::ids::timeline_marker_hit_id(0)).is_none(),
         "the timeline's marker was drawn on the clip's ruler — at the wrong second"
     );
 
@@ -230,8 +232,8 @@ fn the_clip_ruler_under_a_stack_scrubs_and_draws_its_own_loop_but_no_timeline_ma
         rect_of(&regs, ids::TIMELINE_RULER).is_some(),
         "Arrange scrubs"
     );
-    assert!(rect_of(&regs, ids::timeline_loop_brace_id(0)).is_some());
-    assert!(rect_of(&regs, ids::timeline_marker_hit_id(0)).is_some());
+    assert!(rect_of(&regs, ph2d_panel_timeline::ids::timeline_loop_brace_id(0)).is_some());
+    assert!(rect_of(&regs, ph2d_panel_timeline::ids::timeline_marker_hit_id(0)).is_some());
 }
 
 /// **Nothing changes for a document with no stack** — the case every animator is in almost
@@ -251,9 +253,9 @@ fn without_a_stack_the_keys_tab_is_the_panel_it_has_always_been() {
         rect_of(&regs, ids::TIMELINE_RULER).is_some(),
         "a timeline that never touched the stack lost its scrub"
     );
-    assert!(rect_of(&regs, ids::timeline_loop_brace_id(0)).is_some());
-    assert!(rect_of(&regs, ids::timeline_marker_hit_id(0)).is_some());
-    assert!(rect_of(&regs, ids::timeline_row_id(7)).is_some());
+    assert!(rect_of(&regs, ph2d_panel_timeline::ids::timeline_loop_brace_id(0)).is_some());
+    assert!(rect_of(&regs, ph2d_panel_timeline::ids::timeline_marker_hit_id(0)).is_some());
+    assert!(rect_of(&regs, ph2d_panel_timeline::ids::timeline_row_id(7)).is_some());
 }
 
 /// **The clip buttons Enio asked for exist on screen and CLICK** (2026-07-16).
@@ -265,8 +267,11 @@ fn without_a_stack_the_keys_tab_is_the_panel_it_has_always_been() {
 #[test]
 fn the_duplicate_and_reverse_buttons_are_painted_and_click() {
     for (id, what) in [
-        (ids::TIMELINE_DUP_CLIP, "Duplicate"),
-        (ids::TIMELINE_REVERSE_CLIP, "I (reverse)"),
+        (ph2d_panel_timeline::ids::TIMELINE_DUP_CLIP, "Duplicate"),
+        (
+            ph2d_panel_timeline::ids::TIMELINE_REVERSE_CLIP,
+            "I (reverse)",
+        ),
     ] {
         let mut host = MockPanelHost::with_panel::<TimelinePanel>();
         let mut state = TimelinePanelState::default();
@@ -298,11 +303,11 @@ fn the_clip_buttons_raise_the_intents_their_glyphs_promise() {
     use ph2d_timeline::TimelineIntent;
     for (id, want) in [
         (
-            ids::TIMELINE_DUP_CLIP,
+            ph2d_panel_timeline::ids::TIMELINE_DUP_CLIP,
             TimelineIntent::DuplicateClip { index: 1 },
         ),
         (
-            ids::TIMELINE_REVERSE_CLIP,
+            ph2d_panel_timeline::ids::TIMELINE_REVERSE_CLIP,
             TimelineIntent::ReverseClip { index: 1 },
         ),
     ] {
@@ -327,14 +332,15 @@ fn the_clip_rename_field_opens_over_the_dropdown_it_renames() {
     let mut host = MockPanelHost::with_panel::<TimelinePanel>();
     let mut state = TimelinePanelState::default();
     let regs = paint(&mut host, &mut state, keys_and_a_stack(Some(1.0), 3.0));
-    let chip = rect_of(&regs, ids::TIMELINE_CLIP_DD).expect("the clip chip");
+    let chip = rect_of(&regs, ph2d_panel_timeline::ids::TIMELINE_CLIP_DD).expect("the clip chip");
 
     host.apply_panel_event::<TimelinePanel>(
         &mut state,
-        WidgetEvent::Click(ids::TIMELINE_RENAME_CLIP),
+        WidgetEvent::Click(ph2d_panel_timeline::ids::TIMELINE_RENAME_CLIP),
     );
     let regs = paint(&mut host, &mut state, keys_and_a_stack(Some(1.0), 3.0));
-    let field = rect_of(&regs, ids::TIMELINE_CLIP_RENAME_INPUT).expect("the rename field");
+    let field = rect_of(&regs, ph2d_panel_timeline::ids::TIMELINE_CLIP_RENAME_INPUT)
+        .expect("the rename field");
 
     assert_eq!(field.x, chip.x, "same left edge as the chip");
     assert_eq!(field.y, chip.y, "same row as the chip");

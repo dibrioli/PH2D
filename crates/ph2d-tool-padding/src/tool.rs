@@ -17,7 +17,6 @@
 //! (the make_square precedent).
 
 use ph2d_editor_core::floating_panel::{FloatingPanel, PanelAnchor, ToolId};
-use ph2d_editor_core::ids;
 use ph2d_editor_core::tool::{PanelEvent, Tool};
 
 use super::params::{PaddingUiEdit, PaddingUiSnapshot, slider_to_px};
@@ -181,40 +180,40 @@ impl Tool for PaddingTool {
         // store) — the tool only owns the SPEC, never the widget visuals.
         match event {
             // Sliders (bipolar 0..1 → signed px via slider_to_px).
-            PanelEvent::SetValue(id, v) if id == ids::PAD_TOP => {
+            PanelEvent::SetValue(id, v) if id == crate::ids::PAD_TOP => {
                 self.apply_ui_edit(PaddingUiEdit::Top(slider_to_px(v as f32)));
             }
-            PanelEvent::SetValue(id, v) if id == ids::PAD_RIGHT => {
+            PanelEvent::SetValue(id, v) if id == crate::ids::PAD_RIGHT => {
                 self.apply_ui_edit(PaddingUiEdit::Right(slider_to_px(v as f32)));
             }
-            PanelEvent::SetValue(id, v) if id == ids::PAD_BOTTOM => {
+            PanelEvent::SetValue(id, v) if id == crate::ids::PAD_BOTTOM => {
                 self.apply_ui_edit(PaddingUiEdit::Bottom(slider_to_px(v as f32)));
             }
-            PanelEvent::SetValue(id, v) if id == ids::PAD_LEFT => {
+            PanelEvent::SetValue(id, v) if id == crate::ids::PAD_LEFT => {
                 self.apply_ui_edit(PaddingUiEdit::Left(slider_to_px(v as f32)));
             }
             // Number chips (raw signed px, rounded — the chip already
             // commits an integer value but `PanelEvent::SetValue` is f64).
-            PanelEvent::SetValue(id, v) if id == ids::PAD_TOP_NUM => {
+            PanelEvent::SetValue(id, v) if id == crate::ids::PAD_TOP_NUM => {
                 self.apply_ui_edit(PaddingUiEdit::Top(v.round() as i32));
             }
-            PanelEvent::SetValue(id, v) if id == ids::PAD_RIGHT_NUM => {
+            PanelEvent::SetValue(id, v) if id == crate::ids::PAD_RIGHT_NUM => {
                 self.apply_ui_edit(PaddingUiEdit::Right(v.round() as i32));
             }
-            PanelEvent::SetValue(id, v) if id == ids::PAD_BOTTOM_NUM => {
+            PanelEvent::SetValue(id, v) if id == crate::ids::PAD_BOTTOM_NUM => {
                 self.apply_ui_edit(PaddingUiEdit::Bottom(v.round() as i32));
             }
-            PanelEvent::SetValue(id, v) if id == ids::PAD_LEFT_NUM => {
+            PanelEvent::SetValue(id, v) if id == crate::ids::PAD_LEFT_NUM => {
                 self.apply_ui_edit(PaddingUiEdit::Left(v.round() as i32));
             }
             // Buttons.
-            PanelEvent::Click(id) if id == ids::PAD_PIVOT_RECENTER => {
+            PanelEvent::Click(id) if id == crate::ids::PAD_PIVOT_RECENTER => {
                 self.apply_ui_edit(PaddingUiEdit::TogglePivotRecenter);
             }
-            PanelEvent::Click(id) if id == ids::PAD_APPLY => {
+            PanelEvent::Click(id) if id == crate::ids::PAD_APPLY => {
                 self.apply_ui_edit(PaddingUiEdit::Apply);
             }
-            PanelEvent::Click(id) if id == ids::PAD_RESET => {
+            PanelEvent::Click(id) if id == crate::ids::PAD_RESET => {
                 self.apply_ui_edit(PaddingUiEdit::ResetAll);
             }
             _ => {}

@@ -334,20 +334,20 @@ fn paint_hierarchy_body(
         (rect.w - body_pad * 2.0).max(0.0),
         search_h,
     );
-    hit_index.register(ids::HIER_SEARCH, search_rect);
-    let (search_state, search_text, search_caret, search_anchor) = match store.get(ids::HIER_SEARCH)
-    {
-        Some(InteractiveState::TextInput {
-            state,
-            text,
-            caret,
-            selection_anchor,
-        }) => (*state, text.clone(), *caret, *selection_anchor),
-        _ => (TextInputState::Normal, String::new(), 0, None),
-    };
-    let search_input = TextInput::new(ids::HIER_SEARCH, "")
+    hit_index.register(crate::ids::HIER_SEARCH, search_rect);
+    let (search_state, search_text, search_caret, search_anchor) =
+        match store.get(crate::ids::HIER_SEARCH) {
+            Some(InteractiveState::TextInput {
+                state,
+                text,
+                caret,
+                selection_anchor,
+            }) => (*state, text.clone(), *caret, *selection_anchor),
+            _ => (TextInputState::Normal, String::new(), 0, None),
+        };
+    let search_input = TextInput::new(crate::ids::HIER_SEARCH, "")
         .placeholder("Search\u{2026}")
-        .visual((search_state, store.hover_live(ids::HIER_SEARCH)));
+        .visual((search_state, store.hover_live(crate::ids::HIER_SEARCH)));
     paint_text_input_with_buffer(
         &search_input,
         Some(search_text.as_str()),
@@ -382,7 +382,7 @@ fn paint_hierarchy_body(
         } else {
             fixture::hierarchy()
                 .into_iter()
-                .filter_map(|e| ids::hierarchy_id(&e.name).map(|id| (id, e)))
+                .filter_map(|e| crate::ids::hierarchy_id(&e.name).map(|id| (id, e)))
                 .collect()
         };
     let order: Vec<ph2d_a11y::NodeId> = store.hierarchy_order().to_vec();

@@ -1,0 +1,574 @@
+//! Painter sidebar + layers chrome NodeIds and per-row id helpers (PAINTER_SIDEBAR_*,
+//! PAINTER_LAYERS_*, PAINTER_CURVE_*, PAINTER_GRADIENT_*, PAINTER_MIXER_*, PAINTER_SELCOLOR_*).
+//!
+//! ⚠️ **O hash de runtime que estes ids derivam é a PORTA** (`ph2d_tool_registry::hash_node_id_runtime`).
+//! Até 2026-09-12 este ficheiro guardava uma CÓPIA à mão da lei FNV-1a (`fnv_node_id_runtime`),
+//! partilhada por 21 ficheiros irmãos: era a última das três cópias que a porta veio substituir, e
+//! prendia na fundação todo id derivado em runtime (um privado só se vê no módulo que o declara).
+//!
+//! ⚠️ **Desceu de `ph2d-editor-core/src/ids/chrome/painter.rs` em 2026-09-12** (auditoria de arquitectura
+//! A5b): quem LÊ estes ids mora nesta crate, e a fundação que 43 crates recompilam deixou de os
+//! carregar.
+
+use ph2d_a11y::NodeId;
+use ph2d_tool_registry::{hash_node_id, hash_node_id_runtime};
+
+/// Close (X) button do Painter layers panel — routes pra `CancelActiveTool`
+/// (canon BgRemoval/Painter sidebar). Deactivates Painter tool quando clicado.
+pub const PAINTER_LAYERS_CLOSE: NodeId = hash_node_id("painter_layers.close");
+
+/// "+ Layer" button no rodapé do body do Painter layers panel. Click →
+/// `PainterTool::add_raster_layer` (cria + ativa uma raster transparente no
+/// topo). W3.T3.4 UI-plumbing.
+pub const PAINTER_LAYERS_ADD: NodeId = hash_node_id("painter_layers.add");
+
+/// Header "Duplicate" icon-button — Click → `PainterTool::duplicate_layer`
+/// (clones the active raster + its pixels above itself). W3.T3.5 header batch.
+pub const PAINTER_LAYERS_DUPLICATE: NodeId = hash_node_id("painter_layers.duplicate");
+
+/// Header "Delete" icon-button — Click → `PainterTool::delete_layer` (removes
+/// the active layer + its subtree/mask; the base sprite is not removable).
+pub const PAINTER_LAYERS_DELETE: NodeId = hash_node_id("painter_layers.delete");
+
+/// Header "Group" icon-button — Click → `PainterTool::add_group` (empty group
+/// at the top; the user nests layers into it). W3.T3.7.
+pub const PAINTER_LAYERS_GROUP: NodeId = hash_node_id("painter_layers.group");
+
+/// Modifier toolbar "Mask" — Click → `PainterTool::add_mask_to_active` (creates
+/// a grayscale mask on the active raster + makes it the edit target). W3.T3.5.
+pub const PAINTER_LAYERS_MASK: NodeId = hash_node_id("painter_layers.mask");
+
+/// Modifier toolbar "Clip" toggle — flips the active layer's clipping-mask
+/// modifier (§2.8). W3.T3.6.
+pub const PAINTER_LAYERS_CLIP: NodeId = hash_node_id("painter_layers.clip");
+
+/// Modifier toolbar "Lock" toggle — flips the active layer's alpha-lock
+/// modifier (§2.10). W3.T3.7.
+pub const PAINTER_LAYERS_ALPHA_LOCK: NodeId = hash_node_id("painter_layers.alpha_lock");
+
+/// Modifier toolbar "Ref" toggle — flips the active layer's reference modifier
+/// (§2.9, exclusive). W3.T3.7.
+pub const PAINTER_LAYERS_REFERENCE: NodeId = hash_node_id("painter_layers.reference");
+
+/// Action toolbar "+ Adj" — creates a non-destructive adjustment layer (W4
+/// T4.3; HSB for the Day-4 smoke, full 24-kind menu lands with T4.15).
+pub const PAINTER_LAYERS_ADD_ADJUSTMENT: NodeId = hash_node_id("painter_layers.add_adjustment");
+
+/// Action toolbar "+ Texture" — creates a Texture layer (a procedural brush-texture fill recoloured by
+/// a Color Ramp, covering the sprite). Click → `PainterTool::add_texture_layer`. Sits next to "+ Adj".
+pub const PAINTER_LAYERS_ADD_TEXTURE: NodeId = hash_node_id("painter_layers.add_texture");
+
+/// Dock-mode toggle no header do Painter **layers** panel — alterna o slot
+/// docado de volta pra brush-settings (mostra "Brush"). Enio escolheu o modo
+/// C = toggle (um slot, dois painéis). Estado vive no `PainterTool`
+/// (`dock_shows_layers`); o bridge lê e computa a visibilidade.
+pub const PAINTER_LAYERS_TOGGLE_DOCK: NodeId = hash_node_id("painter_layers.toggle_dock");
+
+/// Dock-mode toggle no header do Painter **sidebar** (brush) panel — alterna o
+/// slot docado pra layers (mostra "Layers"). Mirror simétrico de
+/// [`PAINTER_LAYERS_TOGGLE_DOCK`].
+pub const PAINTER_SIDEBAR_TOGGLE_DOCK: NodeId = hash_node_id("painter_sidebar.toggle_dock");
+
+/// "Apply" CTA (shared by both painter panels) — commits the live layer
+/// composite into the active sprite. Routes `PanelEvent::Click` →
+/// `PainterTool::request_commit` (the bridge bakes via `run_full` next frame).
+/// Without it the only way to commit was the invisible Cmd/Ctrl+Enter shortcut.
+pub const PAINTER_APPLY: NodeId = hash_node_id("painter.apply");
+
+/// Brush "Size" slider (stores the size slider's `0..1` track; the tool maps it
+/// to a pixel radius). `SetValue` → `PainterTool::set_brush_size_norm`.
+pub const PAINTER_BRUSH_SIZE_SLIDER: NodeId = hash_node_id("painter_brush.size_slider");
+
+/// Brush "Strength" slider (`0..1`, overall opacity). `SetValue` → `set_brush_strength`.
+pub const PAINTER_BRUSH_STRENGTH_SLIDER: NodeId = hash_node_id("painter_brush.strength_slider");
+
+/// Brush "Falloff" dropdown chip — the dab distance-falloff preset (Blender's
+/// "Falloff Curve Preset"). Mirror of the per-row blend chip but with a fixed id.
+pub const PAINTER_BRUSH_FALLOFF: NodeId = hash_node_id("painter_brush.falloff");
+
+/// Brush "Eraser" mode toggle — overrides the blend to Erase Alpha while on.
+/// `Click` → `PainterTool::toggle_brush_eraser`.
+pub const PAINTER_BRUSH_ERASER: NodeId = hash_node_id("painter_brush.eraser");
+
+/// "Randomize Color" subsection enable toggle (Blender Color → Randomize). `Click` →
+/// `toggle_brush_color_jitter_enabled`.
+pub const PAINTER_BRUSH_COLOR_JITTER_ENABLE: NodeId =
+    hash_node_id("painter_brush.color_jitter_enable");
+
+/// Randomize-Color **Hue** amount slider (`0..1`). `SetValue` → `set_brush_color_jitter(0, _)`.
+pub const PAINTER_BRUSH_COLOR_JITTER_HUE: NodeId = hash_node_id("painter_brush.color_jitter_hue");
+
+/// Randomize-Color **Saturation** amount slider (`0..1`). `SetValue` → `set_brush_color_jitter(1, _)`.
+pub const PAINTER_BRUSH_COLOR_JITTER_SAT: NodeId = hash_node_id("painter_brush.color_jitter_sat");
+
+/// Randomize-Color **Value** amount slider (`0..1`). `SetValue` → `set_brush_color_jitter(2, _)`.
+pub const PAINTER_BRUSH_COLOR_JITTER_VAL: NodeId = hash_node_id("painter_brush.color_jitter_val");
+
+/// Brush blend-mode dropdown chip (opens the brush-blend popover; mirror of the
+/// per-row blend chip but with a fixed id + the 24 `BrushBlend` modes).
+pub const PAINTER_BRUSH_BLEND: NodeId = hash_node_id("painter_brush.blend");
+
+/// Derive the stable [`NodeId`] for brush blend-mode option `mode` (the
+/// `BrushBlend` wire discriminant, `0..MAX_BRUSH_BLEND_MODES`) in the open brush
+/// blend dropdown popover. Mirror of [`painter_layer_blend_option_id`] but fixed
+/// (the brush is tool-global). Only the single open popover's options are
+/// hit-registered, so the `format!` is bounded.
+#[must_use]
+pub fn painter_brush_blend_option_id(mode: u8) -> NodeId {
+    hash_node_id_runtime(&format!("painter_brush.blendopt.{mode}"))
+}
+
+/// The **Paint Mode** dropdown chip at the head of the appearance half — the paint's MEDIUM
+/// (`0` Digital · `1` Watercolor · `2` Impasto · `3` Wet Paint). `SelectOption` →
+/// `PainterTool::set_paint_media`.
+///
+/// It replaced the three independent **Enable** checkboxes (2026-07-22, Enio: *"no lugar dos checkbox
+/// coloque um dropdown para o modo de pintura com os 4 modos"*): the media are mutually exclusive, and
+/// three booleans express eight states of which only four mean anything. Not to be confused with
+/// [`PAINTER_BRUSH_PRESET`] one row above, which SEEDS a whole `BrushSpec` — a starting point, where
+/// this one is the switch.
+pub const PAINTER_BRUSH_MEDIA: NodeId = hash_node_id("painter_brush.media");
+
+/// Derive the stable [`NodeId`] for Paint-Mode option `idx` (`0..PaintMedia::COUNT`) in the open
+/// [`PAINTER_BRUSH_MEDIA`] popover. Mirror of [`painter_brush_blend_option_id`].
+#[must_use]
+pub fn painter_brush_media_option_id(idx: u8) -> NodeId {
+    hash_node_id_runtime(&format!("painter_brush.mediaopt.{idx}"))
+}
+
+/// Brush **Preset** dropdown chip at the very top of the Painter panel: one-click
+/// media presets (`0` = Digital Basic = the plain brush, `1` = Watercolor Basic =
+/// the optical wash configured to `docs/Painter/wet_edges_paint.html`). `SelectOption`
+/// → `PainterTool::apply_brush_preset`. See `docs/Painter/10_aquarela_render_path_preset_papers.md` §3.
+pub const PAINTER_BRUSH_PRESET: NodeId = hash_node_id("painter_brush.preset");
+
+/// Number of brush presets in the [`PAINTER_BRUSH_PRESET`] dropdown (Digital / Watercolor).
+pub const PAINTER_BRUSH_PRESET_COUNT: u8 = 2;
+
+/// Derive the stable [`NodeId`] for brush-preset option `idx` (`0..PAINTER_BRUSH_PRESET_COUNT`) in the
+/// open Preset dropdown popover. Mirror of [`painter_brush_blend_option_id`].
+#[must_use]
+pub fn painter_brush_preset_option_id(idx: u8) -> NodeId {
+    hash_node_id_runtime(&format!("painter_brush.presetopt.{idx}"))
+}
+
+/// Derive the stable [`NodeId`] for falloff preset option `preset` in the open
+/// brush Falloff dropdown popover. Mirror of [`painter_brush_blend_option_id`].
+#[must_use]
+pub fn painter_brush_falloff_option_id(preset: u8) -> NodeId {
+    hash_node_id_runtime(&format!("painter_brush.falloffopt.{preset}"))
+}
+
+/// "Apply": bake the stroke + DISCARD the curve. `Click` → `commit_open_shape`.
+pub const PAINTER_BRUSH_STROKE_APPLY: NodeId = hash_node_id("painter_brush.stroke_apply");
+
+/// "Apply & Keep": bake but KEEP the editable curve. `Click` → `commit_open_shape_keep`.
+pub const PAINTER_BRUSH_STROKE_APPLY_KEEP: NodeId = hash_node_id("painter_brush.stroke_apply_keep");
+
+/// "Delete" (✕): drop the open shape WITHOUT baking. `Click` → `cancel_open_shape`.
+pub const PAINTER_BRUSH_STROKE_DELETE: NodeId = hash_node_id("painter_brush.stroke_delete");
+
+/// "Edit" (E): convert the open Circle/Polygon to an editable curve. `Click` → `convert_open_shape_to_curve`.
+pub const PAINTER_BRUSH_STROKE_EDIT: NodeId = hash_node_id("painter_brush.stroke_edit");
+
+// (Multi-shape Stroke **Operation** ids — `PAINTER_STROKE_OP*` — live in `painter_stroke_op.rs`.)
+/// Brush "Rate" slider — airbrush timer period (`0..1` → `[0.01,1.0]`s, Airbrush only). `SetValue`.
+pub const PAINTER_BRUSH_RATE: NodeId = hash_node_id("painter_brush.rate");
+
+/// "Edge to Edge" toggle (Blender `BRUSH_EDGE_TO_EDGE`) — Anchored only. `Click` → `set_brush_edge_to_edge`.
+pub const PAINTER_BRUSH_EDGE_TO_EDGE: NodeId = hash_node_id("painter_brush.edge_to_edge");
+
+/// Brush "Spacing" slider (`0..1` track = fraction of diameter, shown as %). `SetValue` → `set_brush_spacing`.
+pub const PAINTER_BRUSH_SPACING: NodeId = hash_node_id("painter_brush.spacing");
+
+/// "Adjust Strength for Spacing" toggle (Blender `BRUSH_SPACE_ATTEN`). `Click` → `set_brush_space_attenuation`.
+pub const PAINTER_BRUSH_SPACE_ATTEN: NodeId = hash_node_id("painter_brush.space_atten");
+
+/// "Accumulate" toggle (Blender `BRUSH_ACCUMULATE`): off caps a stroke at Strength. `Click` → toggle.
+pub const PAINTER_BRUSH_ACCUMULATE: NodeId = hash_node_id("painter_brush.accumulate");
+
+/// Id de uma OPÇÃO do popover do [`PAINTER_LINE_TYPE`]. Espelho do
+/// [`painter_brush_media_option_id`].
+#[must_use]
+pub fn painter_line_type_option_id(idx: u8) -> NodeId {
+    hash_node_id_runtime(&format!("painter_line.typeopt.{idx}"))
+}
+
+/// "Sync with other tools" checkbox at the top of the brush panel: off (default) = each paint tool keeps
+/// its own settings; on = all tools share these. `Click` → `toggle_link_shared_settings`.
+pub const PAINTER_BRUSH_SYNC: NodeId = hash_node_id("painter_brush.sync");
+
+/// "Dimensions" checkbox below the Stroke Method dropdown (Line method only): show the live dx/dy +
+/// corner angles while drawing a Line. `Click` → `toggle_line_show_dimensions`.
+pub const PAINTER_BRUSH_LINE_DIMENSIONS: NodeId = hash_node_id("painter_brush.line_dimensions");
+
+/// Brush "Jitter" slider (`0..1`; relative-to-diameter under Brush unit, px under View). `SetValue` → `set_brush_jitter_norm`.
+pub const PAINTER_BRUSH_JITTER: NodeId = hash_node_id("painter_brush.jitter");
+
+/// Brush "Jitter Unit" dropdown chip (Brush = relative / View = absolute px). `SelectOption` → `set_brush_jitter_unit`.
+pub const PAINTER_BRUSH_JITTER_UNIT: NodeId = hash_node_id("painter_brush.jitter_unit");
+
+/// Brush "Jitter Scale" slider (`0..1`; per-dab radius scatter, PH2D extra). `SetValue` → `set_brush_jitter_scale`.
+pub const PAINTER_BRUSH_JITTER_SCALE: NodeId = hash_node_id("painter_brush.jitter_scale");
+
+/// Brush "Jitter Rotate" slider (`0..1`; per-dab texture-rotation scatter; texture only). `SetValue` → `set_brush_jitter_rotate`.
+pub const PAINTER_BRUSH_JITTER_ROTATE: NodeId = hash_node_id("painter_brush.jitter_rotate");
+
+/// Brush "Jitter Spacing" slider (`0..1`; per-gap dab-spacing scatter, PH2D extra). `SetValue` → `set_brush_jitter_spacing`.
+pub const PAINTER_BRUSH_JITTER_SPACING: NodeId = hash_node_id("painter_brush.jitter_spacing");
+
+/// Brush "Count" slider — o SPRAY (a pista `0..1` mapeia no vão inteiro `1..=SPRAY_COUNT_MAX`):
+/// quantas marcas cada ponto do caminho deixa. `SetValue` → `set_brush_spray_count_norm`.
+pub const PAINTER_BRUSH_SPRAY_COUNT: NodeId = hash_node_id("painter_brush.spray_count");
+
+/// O chip numérico do Count (a contagem, escrita).
+pub const PAINTER_BRUSH_SPRAY_COUNT_CHIP: NodeId = hash_node_id("painter_brush.spray_count_chip");
+
+/// The per-dab randomize **slider** ids (Randomize-Color Hue/Sat/Value + Jitter Scale/Rotate/Spacing).
+/// Lets the panel dispatch forward them all with one `.contains` check (mirror of
+/// `PAINTER_BRUSH_TEXTURE_PARAMS`); the enable toggle is a separate `Click`.
+pub const PAINTER_BRUSH_RANDOMIZE_SLIDERS: [NodeId; 6] = [
+    PAINTER_BRUSH_COLOR_JITTER_HUE,
+    PAINTER_BRUSH_COLOR_JITTER_SAT,
+    PAINTER_BRUSH_COLOR_JITTER_VAL,
+    PAINTER_BRUSH_JITTER_SCALE,
+    PAINTER_BRUSH_JITTER_ROTATE,
+    PAINTER_BRUSH_JITTER_SPACING,
+];
+
+/// Brush "Dash Ratio" slider (`0..1` on-fraction of the dash period). `SetValue` → `set_brush_dash_ratio`.
+pub const PAINTER_BRUSH_DASH_RATIO: NodeId = hash_node_id("painter_brush.dash_ratio");
+
+/// Brush "Dash Length" slider (`0..1` track → 1..64 dab-slots). `SetValue` → `set_brush_dash_length_norm`.
+pub const PAINTER_BRUSH_DASH_LENGTH: NodeId = hash_node_id("painter_brush.dash_length");
+
+/// Brush "Input Samples" slider (`0..1` track → 1..64 averaged samples).
+/// `SetValue` → `set_brush_input_samples_norm`.
+pub const PAINTER_BRUSH_INPUT_SAMPLES: NodeId = hash_node_id("painter_brush.input_samples");
+
+/// "Stabilize Stroke" (smooth-stroke) toggle. `Click` → `set_brush_smooth_stroke` (toggles).
+pub const PAINTER_BRUSH_STABILIZE: NodeId = hash_node_id("painter_brush.stabilize");
+
+/// Derive the stable [`NodeId`] for stroke-method option `m` (the [`StrokeMethod`] wire
+/// discriminant) in the open Stroke Method dropdown popover. Mirror of the blend option factory.
+#[must_use]
+pub fn painter_brush_stroke_method_option_id(m: u8) -> NodeId {
+    hash_node_id_runtime(&format!("painter_brush.strokeopt.{m}"))
+}
+
+/// Derive the stable [`NodeId`] for jitter-unit option `u` (`0` = Brush, `1` = View) in the open
+/// Jitter Unit dropdown popover.
+#[must_use]
+pub fn painter_brush_jitter_unit_option_id(u: u8) -> NodeId {
+    hash_node_id_runtime(&format!("painter_brush.jituopt.{u}"))
+}
+
+/// Fixed `parent`/routing id for the brush Falloff curve editor. Each draggable
+/// control point registers an
+/// [`InteractiveState::CurvePoint`](crate::interaction::InteractiveState) with
+/// THIS parent; the panel drains the drag on `ValueChanged(PAINTER_BRUSH_FALLOFF_EDIT)`
+/// and forwards `SelectOption(PAINTER_BRUSH_FALLOFF_EDIT, "index:x:y")`, which the
+/// tool parses into a `set_brush_falloff_point` call. Tool-global (not per-layer),
+/// so the payload carries only the point index.
+pub const PAINTER_BRUSH_FALLOFF_EDIT: NodeId = hash_node_id("painter_brush.falloff_edit");
+
+/// Fixed routing id — panel → tool "add a Falloff control point". Click; no payload.
+pub const PAINTER_BRUSH_FALLOFF_ADD: NodeId = hash_node_id("painter_brush.falloff_add");
+
+/// Fixed routing id — panel → tool "remove a Falloff control point". Payload
+/// `"index"`; the tool calls `remove_brush_falloff_point`.
+pub const PAINTER_BRUSH_FALLOFF_REMOVE: NodeId = hash_node_id("painter_brush.falloff_remove");
+
+/// Derive the stable [`NodeId`] for control point `index` of the brush Falloff
+/// curve editor. Registered as an
+/// [`InteractiveState::CurvePoint`](crate::interaction::InteractiveState) with a
+/// small grab rect; the 2-D drag normalizes against the editor's canvas.
+#[must_use]
+pub fn painter_brush_falloff_point_id(index: u8) -> NodeId {
+    hash_node_id_runtime(&format!("painter_brush.falloff_pt.{index}"))
+}
+
+/// Per-layer-row interactive widget kind, used to derive a stable, collision-
+/// safe [`NodeId`] for each control painted on a Painter layers-panel row via
+/// [`painter_layer_widget_id`]. The id is hash-derived (FNV) from the layer's
+/// runtime id + the kind tag, so the panel (paint/event) and the tool
+/// (`handle_panel_event`) agree on the id without sharing any per-row id table
+/// — the decoder simply iterates `layers × kinds`, recomputes the id, and
+/// matches. Mirror in spirit of the `hier_*_companion` per-row ids, but
+/// hash-based (no companion-bit dispatcher allowlist needed, since the panel
+/// registers these in the `WidgetStore` itself during `paint`).
+///
+/// `layer_id` is passed as a raw `u64` (the `LayerId`/`RtLayerId` newtype's
+/// inner value) so this stays in `ph2d-editor-core` without a dependency edge
+/// to `ph2d-tool-painter` (which would be a cycle).
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub enum PainterLayerWidget {
+    /// The row body — click selects (activates) the layer.
+    Row,
+    /// The eye toggle — click flips the layer's visibility.
+    Visibility,
+    /// The opacity slider (stores `0..1`).
+    Opacity,
+    /// The opacity numeric chip paired with [`Self::Opacity`].
+    OpacityChip,
+    /// The blend-mode dropdown chip (opens the blend popover).
+    Blend,
+    /// (Relief-bearing rows only) the **Impasto depth** slider (stores `-1..1`) — the layer's relief as
+    /// a composite parameter, sibling of [`Self::Opacity`]. Painted only where there is relief to act
+    /// on (`Layer::has_relief`), so a document nobody has sculpted shows none of this.
+    ImpastoDepth,
+    /// (Relief-bearing rows only) the **Level** toggle — flips the layer's relief composite between
+    /// `Add` (paint piles up) and `Level` (this layer's paint buries the texture under it).
+    ImpastoLevel,
+    /// The move-up (↑) reorder button — moves the layer toward the front/top.
+    MoveUp,
+    /// The move-down (↓) reorder button — moves the layer toward the back.
+    MoveDown,
+    /// (Mask rows only) the Invert toggle — flips the mask's `inverted` flag
+    /// (§2.7); the compositor already honors it (`1 - value`).
+    MaskInvert,
+    /// (Mask rows only) the Apply button — destructively bakes the mask into
+    /// the parent layer's alpha and removes the mask (§2.7).
+    MaskApply,
+    /// (Mask rows only) the grayscale-VIEW eye — flips the canvas between the mask's grayscale (open) and the effect (closed, default).
+    MaskView,
+    /// (Adjustment rows only) generic slider for the adjustment's Nth slider param (W4 T4.3+); the kind
+    /// decides each slot (`adjustments::adjustment_slider_params`). Indexed, so a new kind needs no new id.
+    AdjParam0,
+    AdjParam1,
+    AdjParam2,
+    AdjParam3,
+    AdjParam4,
+    AdjParam5,
+    /// Slots 6/7 cover slider-heavier kinds (Black & White: 6 hue weights + the
+    /// Tint Hue/amount sliders).
+    AdjParam6,
+    AdjParam7,
+    /// (Adjustment rows only) generic boolean toggle for the adjustment's Nth
+    /// toggle param (W4 BATCH-1, e.g. Photo Filter's "Preserve Luminosity"). The
+    /// kind decides what each slot means
+    /// (`ph2d_painter_brush::adjustments::adjustment_toggle_params`); a click
+    /// flips it tool-side (like [`Self::MaskInvert`]), source of truth = the
+    /// params. 2 slots cover the toggle-bearing kinds.
+    AdjToggle0,
+    AdjToggle1,
+    /// (Adjustment rows only) the Nth segment of the adjustment's single
+    /// segmented (1-of-N, N ≤ 3) param (W4 BATCH-1, e.g. Color Balance's tonal
+    /// range Shadows/Midtones/Highlights). A click selects that option tool-side
+    /// (the Curves channel-tab pattern); source of truth = the params.
+    AdjSegment0,
+    AdjSegment1,
+    AdjSegment2,
+}
+
+impl PainterLayerWidget {
+    /// Stable tag woven into the hashed id string. Changing a tag changes
+    /// every derived id for that kind — keep stable.
+    #[must_use]
+    pub const fn tag(self) -> &'static str {
+        match self {
+            Self::Row => "row",
+            Self::Visibility => "vis",
+            Self::Opacity => "opacity",
+            Self::OpacityChip => "opacity_chip",
+            Self::Blend => "blend",
+            Self::ImpastoDepth => "impasto_depth",
+            Self::ImpastoLevel => "impasto_level",
+            Self::MoveUp => "move_up",
+            Self::MoveDown => "move_down",
+            Self::MaskInvert => "mask_invert",
+            Self::MaskApply => "mask_apply",
+            Self::MaskView => "mask_view",
+            Self::AdjParam0 => "adj_param0",
+            Self::AdjParam1 => "adj_param1",
+            Self::AdjParam2 => "adj_param2",
+            Self::AdjParam3 => "adj_param3",
+            Self::AdjParam4 => "adj_param4",
+            Self::AdjParam5 => "adj_param5",
+            Self::AdjParam6 => "adj_param6",
+            Self::AdjParam7 => "adj_param7",
+            Self::AdjToggle0 => "adj_toggle0",
+            Self::AdjToggle1 => "adj_toggle1",
+            Self::AdjSegment0 => "adj_segment0",
+            Self::AdjSegment1 => "adj_segment1",
+            Self::AdjSegment2 => "adj_segment2",
+        }
+    }
+
+    /// All kinds, in a fixed order — the decoder iterates this.
+    pub const ALL: [PainterLayerWidget; 25] = [
+        Self::Row,
+        Self::Visibility,
+        Self::Opacity,
+        Self::OpacityChip,
+        Self::Blend,
+        Self::ImpastoDepth,
+        Self::ImpastoLevel,
+        Self::MoveUp,
+        Self::MoveDown,
+        Self::MaskInvert,
+        Self::MaskApply,
+        Self::MaskView,
+        Self::AdjParam0,
+        Self::AdjParam1,
+        Self::AdjParam2,
+        Self::AdjParam3,
+        Self::AdjParam4,
+        Self::AdjParam5,
+        Self::AdjParam6,
+        Self::AdjParam7,
+        Self::AdjToggle0,
+        Self::AdjToggle1,
+        Self::AdjSegment0,
+        Self::AdjSegment1,
+        Self::AdjSegment2,
+    ];
+}
+
+/// Derive the stable [`NodeId`] for the `kind` control on the Painter
+/// layers-panel row whose layer has runtime id `layer_id`. FNV-hashed from
+/// `"painter_layer.<kind>.<layer_id>"`. Runtime `format!` is acceptable here:
+/// the layers panel is not a hot path (≤8 layers, repainted per frame like the
+/// sidebar formats "NN px"). See [`PainterLayerWidget`].
+#[must_use]
+pub fn painter_layer_widget_id(layer_id: u64, kind: PainterLayerWidget) -> NodeId {
+    hash_node_id_runtime(&format!("painter_layer.{}.{}", kind.tag(), layer_id))
+}
+
+/// Derive the stable [`NodeId`] for blend-mode option `mode` (the
+/// [`BlendMode`](ph2d_painter_brush) wire discriminant, `0..MAX_BLEND_MODES`)
+/// in the open blend dropdown popover of the row whose layer has runtime id
+/// `layer_id`. Only the single open popover's options are ever hit-registered,
+/// so the `format!` cost is bounded.
+#[must_use]
+pub fn painter_layer_blend_option_id(layer_id: u64, mode: u8) -> NodeId {
+    hash_node_id_runtime(&format!("painter_layer.blendopt.{layer_id}.{mode}"))
+}
+
+/// Derive the stable [`NodeId`] for the `index`-th kind option in the open
+/// "+ Adjustment" kind-picker popover (W4 T4.15). The index is the position in
+/// `AdjustmentKind::ALL` (the wire value the panel forwards back to the tool's
+/// `add_adjustment_layer`). Fixed (not per-layer) like the toolbar buttons, but
+/// derived so the panel paint/event and the popover stay in sync without a table.
+/// Only the open popover's options are hit-registered, so the `format!` is bounded.
+#[must_use]
+pub fn painter_adjustment_kind_option_id(index: u8) -> NodeId {
+    hash_node_id_runtime(&format!("painter_layers.adjkind.{index}"))
+}
+
+/// Derive the stable [`NodeId`] of the bespoke Curves editor (the `parent` of its
+/// draggable control points, W4 §3). The 2-D drag dispatch stashes the result
+/// keyed by this parent; the panel drains it on `ValueChanged(<this id>)` and
+/// forwards to `PainterTool::set_curve_point`. Per Curves adjustment layer.
+#[must_use]
+pub fn painter_curve_editor_id(layer_id: u64) -> NodeId {
+    hash_node_id_runtime(&format!("painter_curve.editor.{layer_id}"))
+}
+
+/// Derive the stable [`NodeId`] for control point `index` of `channel`
+/// (0 = master, 1 = R, 2 = G, 3 = B) in the Curves editor of `layer_id` (W4 §3).
+/// Registered as an [`InteractiveState::CurvePoint`](crate::interaction::InteractiveState)
+/// with a small grab rect; the 2-D drag normalizes against the editor's canvas.
+#[must_use]
+pub fn painter_curve_point_id(layer_id: u64, channel: u8, index: u8) -> NodeId {
+    hash_node_id_runtime(&format!("painter_curve.pt.{layer_id}.{channel}.{index}"))
+}
+
+/// Fixed routing id for a Curves control-point edit forwarded from the panel to
+/// the tool (W4 §3). The panel drains the 2-D drag from the store and emits
+/// `SelectOption(PAINTER_CURVE_EDIT, "layer:channel:index:x:y")`; the tool's
+/// `handle_panel_event` parses it into a `set_curve_point` call. A fixed id (not
+/// per-layer) avoids a reverse hash — the payload carries the layer.
+pub const PAINTER_CURVE_EDIT: NodeId = hash_node_id("painter_curve_edit");
+
+/// Derive the [`NodeId`] of the `channel` tab (0 = RGB/master, 1 = R, 2 = G,
+/// 3 = B) of `layer_id`'s Curves editor (W4 §3). A click switches the canvas to
+/// that channel — pure panel view state, not forwarded to the tool.
+#[must_use]
+pub fn painter_curve_tab_id(layer_id: u64, channel: u8) -> NodeId {
+    hash_node_id_runtime(&format!("painter_curve.tab.{layer_id}.{channel}"))
+}
+
+/// Derive the [`NodeId`] of the "+ point" / "− point" button of `layer_id`'s
+/// Curves editor (W4 §3). Click → the panel forwards an add/remove on the active
+/// channel via [`PAINTER_CURVE_ADD`] / [`PAINTER_CURVE_REMOVE`].
+#[must_use]
+pub fn painter_curve_add_id(layer_id: u64) -> NodeId {
+    hash_node_id_runtime(&format!("painter_curve.add.{layer_id}"))
+}
+
+/// See [`painter_curve_add_id`].
+#[must_use]
+pub fn painter_curve_remove_id(layer_id: u64) -> NodeId {
+    hash_node_id_runtime(&format!("painter_curve.remove.{layer_id}"))
+}
+
+/// Fixed routing id — panel → tool "add a control point" (W4 §3). Payload
+/// `"layer:channel"`; the tool calls `add_curve_point`.
+pub const PAINTER_CURVE_ADD: NodeId = hash_node_id("painter_curve_add");
+
+/// Fixed routing id — panel → tool "remove a control point" (W4 §3). Payload
+/// `"layer:channel:index"`; the tool calls `remove_curve_point`.
+pub const PAINTER_CURVE_REMOVE: NodeId = hash_node_id("painter_curve_remove");
+
+/// Derive the [`NodeId`] of the `channel` output tab (0 = Red/Gray, 1 = Green,
+/// 2 = Blue) of `layer_id`'s bespoke Channel-Mixer editor (W4 BATCH-1). A click
+/// switches which output row the 4 weight sliders edit — pure panel view state,
+/// not forwarded to the tool.
+#[must_use]
+pub fn painter_mixer_tab_id(layer_id: u64, channel: u8) -> NodeId {
+    hash_node_id_runtime(&format!("painter_mixer.tab.{layer_id}.{channel}"))
+}
+
+/// Fixed routing id for a Channel-Mixer weight edit forwarded from the panel to
+/// the tool (W4 BATCH-1). The bespoke editor's 4 sliders emit
+/// `SelectOption(PAINTER_MIXER_EDIT, "layer:output:slot:value")` (the active
+/// output tab carries the channel the frozen `SetValue` can not); the tool's
+/// `handle_panel_event` parses it into a `set_channel_mixer_weight` call. A fixed
+/// id (not per-layer) — the payload carries the layer.
+pub const PAINTER_MIXER_EDIT: NodeId = hash_node_id("painter_mixer_edit");
+
+/// Derive the [`NodeId`] of the `bucket` color-group tab (0..9: Reds … Blacks) of
+/// `layer_id`'s bespoke Selective-Color editor (W4 BATCH-2). A click switches
+/// which group the 4 CMYK sliders edit — pure panel view state, not forwarded.
+#[must_use]
+pub fn painter_selcolor_bucket_id(layer_id: u64, bucket: u8) -> NodeId {
+    hash_node_id_runtime(&format!("painter_selcolor.bucket.{layer_id}.{bucket}"))
+}
+
+/// Fixed routing id for a Selective-Color CMYK edit forwarded from the panel to
+/// the tool (W4 BATCH-2). The bespoke editor's 4 sliders emit
+/// `SelectOption(PAINTER_SELCOLOR_EDIT, "layer:bucket:slot:value")` (the active
+/// bucket carries the group the frozen `SetValue` can not); the tool parses it
+/// into a `set_selective_color_value` call.
+pub const PAINTER_SELCOLOR_EDIT: NodeId = hash_node_id("painter_selcolor_edit");
+
+/// Derive the [`NodeId`] of the bespoke Gradient-Map editor (the `parent` of its
+/// draggable stop handles, W4 BATCH-2). The 1-D drag dispatch (a `CurvePoint`
+/// whose `x` is the stop offset) stashes the result keyed by this parent.
+#[must_use]
+pub fn painter_gradient_editor_id(layer_id: u64) -> NodeId {
+    hash_node_id_runtime(&format!("painter_gradient.editor.{layer_id}"))
+}
+
+/// Derive the [`NodeId`] of gradient stop `index`'s draggable handle on
+/// `layer_id`'s Gradient-Map editor (W4 BATCH-2). Registered as an
+/// [`InteractiveState::CurvePoint`](crate::interaction::InteractiveState) over the
+/// preview bar; the drag's `x` becomes the stop offset.
+#[must_use]
+pub fn painter_gradient_stop_id(layer_id: u64, index: u8) -> NodeId {
+    hash_node_id_runtime(&format!("painter_gradient.stop.{layer_id}.{index}"))
+}
+
+/// Derive the [`NodeId`] of the "+ stop" / "− stop" button of `layer_id`'s
+/// Gradient-Map editor (W4 BATCH-2). See [`PAINTER_GRADIENT_ADD`] / [`PAINTER_GRADIENT_REMOVE`].
+#[must_use]
+pub fn painter_gradient_add_id(layer_id: u64) -> NodeId {
+    hash_node_id_runtime(&format!("painter_gradient.add.{layer_id}"))
+}
+
+/// See [`painter_gradient_add_id`].
+#[must_use]
+pub fn painter_gradient_remove_id(layer_id: u64) -> NodeId {
+    hash_node_id_runtime(&format!("painter_gradient.remove.{layer_id}"))
+}

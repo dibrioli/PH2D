@@ -6,7 +6,6 @@
 
 use super::section_header;
 use crate::paint_brush_top::{paint_checkbox_row, paint_slider_chip_row};
-use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_tool_painter::BrushSettings;
 
@@ -34,8 +33,8 @@ pub(super) fn paint_grid_stamp_card(
             content_w,
             y,
             label,
-            core_ids::PAINTER_BRUSH_GRID_CELL[axis],
-            core_ids::PAINTER_BRUSH_GRID_CELL_CHIPS[axis],
+            ph2d_tool_painter::ids::PAINTER_BRUSH_GRID_CELL[axis],
+            ph2d_tool_painter::ids::PAINTER_BRUSH_GRID_CELL_CHIPS[axis],
             brush.grid_cell[axis],
         );
     }
@@ -47,8 +46,8 @@ pub(super) fn paint_grid_stamp_card(
             content_w,
             y,
             label,
-            core_ids::PAINTER_BRUSH_GRID_OFFSET[axis],
-            core_ids::PAINTER_BRUSH_GRID_OFFSET_CHIPS[axis],
+            ph2d_tool_painter::ids::PAINTER_BRUSH_GRID_OFFSET[axis],
+            ph2d_tool_painter::ids::PAINTER_BRUSH_GRID_OFFSET_CHIPS[axis],
             brush.grid_offset[axis],
         );
     }
@@ -61,8 +60,8 @@ pub(super) fn paint_grid_stamp_card(
         content_w,
         y,
         "Cell Fit",
-        core_ids::PAINTER_BRUSH_GRID_FIT,
-        core_ids::PAINTER_BRUSH_GRID_FIT_CHIP,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_GRID_FIT,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_GRID_FIT_CHIP,
         brush.grid_fit,
     );
     paint_checkbox_row(
@@ -71,7 +70,7 @@ pub(super) fn paint_grid_stamp_card(
         x,
         content_w,
         y,
-        core_ids::PAINTER_BRUSH_GRID_SHOW,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_GRID_SHOW,
         "Show Grid",
         brush.grid_show,
     )

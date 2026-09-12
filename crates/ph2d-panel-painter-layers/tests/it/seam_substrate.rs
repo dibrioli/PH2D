@@ -15,7 +15,6 @@
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::tool::Tool;
@@ -79,8 +78,11 @@ fn the_substrate_rows_are_alive_in_every_medium() {
         let tool = tool_in(media);
         let (host, _st, rects) = painted(&tool);
         for (id, name) in [
-            (core_ids::PAINTER_SUBSTRATE_RELIEF, "Relief"),
-            (core_ids::PAINTER_SUBSTRATE_ROUGHNESS, "Roughness"),
+            (ph2d_tool_painter::ids::PAINTER_SUBSTRATE_RELIEF, "Relief"),
+            (
+                ph2d_tool_painter::ids::PAINTER_SUBSTRATE_ROUGHNESS,
+                "Roughness",
+            ),
         ] {
             assert!(
                 rect_of(&rects, id).is_some(),
@@ -106,13 +108,13 @@ fn the_substrate_rows_are_alive_in_every_medium() {
 fn the_substrate_rows_land_on_the_tool() {
     for (id, name, set, read) in [
         (
-            core_ids::PAINTER_SUBSTRATE_RELIEF,
+            ph2d_tool_painter::ids::PAINTER_SUBSTRATE_RELIEF,
             "Relief",
             0.62_f64,
             (|t: &PainterTool| t.substrate_depth()) as fn(&PainterTool) -> f32,
         ),
         (
-            core_ids::PAINTER_SUBSTRATE_ROUGHNESS,
+            ph2d_tool_painter::ids::PAINTER_SUBSTRATE_ROUGHNESS,
             "Roughness",
             0.19,
             (|t: &PainterTool| t.substrate_roughness()) as fn(&PainterTool) -> f32,
@@ -153,7 +155,7 @@ fn raising_the_relief_from_the_row_arms_a_paper() {
         "fixture: o pincel tem de começar SEM papel, senão este gate não testa nada"
     );
     let (mut host, mut st, rects) = painted(&tool);
-    let id = core_ids::PAINTER_SUBSTRATE_RELIEF;
+    let id = ph2d_tool_painter::ids::PAINTER_SUBSTRATE_RELIEF;
     assert!(
         rect_of(&rects, id).is_some(),
         "a row Relief não é alcançável quando não há papel — é exatamente aí que ela precisa estar"
@@ -180,9 +182,18 @@ fn raising_the_relief_from_the_row_arms_a_paper() {
 #[test]
 fn the_wash_only_rows_do_not_leak_into_the_other_media() {
     let wash_only = [
-        (core_ids::PAINTER_WATERCOLOR_PAPER_COLOR_THUMB, "Color"),
-        (core_ids::PAINTER_WATERCOLOR_PAPER_DEPTH, "Tooth"),
-        (core_ids::PAINTER_WATERCOLOR_PAPER_MAPPING, "Mapping"),
+        (
+            ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_COLOR_THUMB,
+            "Color",
+        ),
+        (
+            ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_DEPTH,
+            "Tooth",
+        ),
+        (
+            ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_MAPPING,
+            "Mapping",
+        ),
     ];
     // O papel tem de estar ARMADO nos dois lados, senão o portão de `None` esconde as três por outro
     // motivo e a ausência no Digital seria verdadeira por acidente.
@@ -208,7 +219,7 @@ fn the_wash_only_rows_do_not_leak_into_the_other_media() {
     }
     // E o controle positivo do outro lado: o que é do SUBSTRATO continua lá no Digital.
     assert!(
-        rect_of(&digital, core_ids::PAINTER_SUBSTRATE_RELIEF).is_some(),
+        rect_of(&digital, ph2d_tool_painter::ids::PAINTER_SUBSTRATE_RELIEF).is_some(),
         "fixture: o painel do Digital não pintou a seção Paper, então as ausências acima são vácuo"
     );
 }

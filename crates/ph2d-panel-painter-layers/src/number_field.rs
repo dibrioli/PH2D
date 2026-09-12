@@ -34,22 +34,21 @@ pub(crate) const ANGLE_STEP: f64 = 1.0; // LITERAL-PX-OK: NumberInput step (whol
 /// param) — vs a main brush slider. Drives the panel's number-field `ValueChanged` route (`event.rs`),
 /// which forwards the committed/scrubbed REAL value (the tool's real-value setters clamp it).
 pub(crate) fn is_param_field(id: NodeId) -> bool {
-    use ph2d_editor_core::ids as c;
-    id == c::PAINTER_BRUSH_TEXTURE_ANGLE
-        || id == c::PAINTER_BRUSH_TEXTURE_OFFSET_X
-        || id == c::PAINTER_BRUSH_TEXTURE_OFFSET_Y
-        || id == c::PAINTER_BRUSH_TEXTURE_SIZE_X
-        || id == c::PAINTER_BRUSH_TEXTURE_SIZE_Y
-        || c::PAINTER_BRUSH_TEXTURE_PARAMS.contains(&id)
-        || c::PAINTER_BRUSH_STENCIL_FIELDS.contains(&id)
-        || c::PAINTER_SHAPE_SLIDERS.contains(&id)
-        || c::PAINTER_SHAPE_PARAMS.contains(&id)
-        || c::PAINTER_SHAPE_DEPOSIT_FIELDS.contains(&id)
-        || c::PAINTER_WATERCOLOR_FIELDS.contains(&id)
-        || c::PAINTER_WETPAINT_FIELDS.contains(&id)
-        || c::PAINTER_IMPASTO_FIELDS.contains(&id)
-        || c::PAINTER_SUBSTRATE_FIELDS.contains(&id)
-        || c::PAINTER_TAPER_FIELDS.contains(&id)
+    id == ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_ANGLE
+        || id == ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_OFFSET_X
+        || id == ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_OFFSET_Y
+        || id == ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_SIZE_X
+        || id == ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_SIZE_Y
+        || ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_PARAMS.contains(&id)
+        || ph2d_tool_painter::ids::PAINTER_BRUSH_STENCIL_FIELDS.contains(&id)
+        || ph2d_tool_painter::ids::PAINTER_SHAPE_SLIDERS.contains(&id)
+        || ph2d_tool_painter::ids::PAINTER_SHAPE_PARAMS.contains(&id)
+        || ph2d_tool_painter::ids::PAINTER_SHAPE_DEPOSIT_FIELDS.contains(&id)
+        || ph2d_tool_painter::ids::PAINTER_WATERCOLOR_FIELDS.contains(&id)
+        || ph2d_tool_painter::ids::PAINTER_WETPAINT_FIELDS.contains(&id)
+        || ph2d_tool_painter::ids::PAINTER_IMPASTO_FIELDS.contains(&id)
+        || ph2d_tool_painter::ids::PAINTER_SUBSTRATE_FIELDS.contains(&id)
+        || ph2d_tool_painter::ids::PAINTER_TAPER_FIELDS.contains(&id)
 }
 
 /// Format a param value: whole number when `decimals == 0` (Angle degrees), else fixed decimals (so the

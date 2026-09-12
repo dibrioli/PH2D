@@ -418,7 +418,7 @@ fn a_rails_stroke_grips_sit_on_the_rail_not_on_an_arc() {
 /// então o sétimo tipo nasce coberto.
 #[test]
 fn every_kind_with_a_length_offers_the_ring_to_grab() {
-    for tag in 0..u8::try_from(ph2d_editor_core::ids::INSP_JOINT_KIND.len()).expect("cabe") {
+    for tag in 0..u8::try_from(ph2d_panel_inspector::ids::INSP_JOINT_KIND.len()).expect("cabe") {
         let kind = crate::joint::kind_of(tag);
         if kind.length_field().is_none() {
             continue;

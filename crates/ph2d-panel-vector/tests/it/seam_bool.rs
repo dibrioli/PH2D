@@ -135,10 +135,10 @@ fn the_eight_ops_survive_the_live_mode() {
         (ids::VECTOR_BOOL_SUBTRACT, "Subtract"),
         (ids::VECTOR_BOOL_INTERSECT, "Intersect"),
         (ids::VECTOR_BOOL_EXCLUDE, "Exclude"),
-        (ids::VECTOR_BOOL_MINUS_BACK, "Minus Back"),
-        (ids::VECTOR_BOOL_TRIM, "Trim"),
-        (ids::VECTOR_BOOL_CROP, "Crop"),
-        (ids::VECTOR_BOOL_MERGE, "Merge"),
+        (ph2d_tool_vector::ids::VECTOR_BOOL_MINUS_BACK, "Minus Back"),
+        (ph2d_tool_vector::ids::VECTOR_BOOL_TRIM, "Trim"),
+        (ph2d_tool_vector::ids::VECTOR_BOOL_CROP, "Crop"),
+        (ph2d_tool_vector::ids::VECTOR_BOOL_MERGE, "Merge"),
     ] {
         assert!(
             host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)

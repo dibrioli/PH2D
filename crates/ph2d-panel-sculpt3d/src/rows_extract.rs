@@ -11,15 +11,13 @@
 //! as duas metades com fronteira própria — os cinco do tecido, num irmão, e
 //! estes dois, que nem sequer são do pincel.
 
-use ph2d_editor_core::ids;
-
 use super::{MAX_EXTRACT_SMOOTH, Place, Row};
 use crate::state::UiLevel;
 
 pub(super) const EXTRACT_THICKNESS: Row = Row {
     label: "panel.sculpt3d.extract_thickness",
-    slider: ids::SCULPT3D_EXTRACT_THICK,
-    chip: ids::SCULPT3D_EXTRACT_THICK_NUM,
+    slider: crate::ids::SCULPT3D_EXTRACT_THICK,
+    chip: crate::ids::SCULPT3D_EXTRACT_THICK_NUM,
     // ⚠️ **A faixa é sobre a ESCALA LOCAL da malha, e as primitivas desta
     // casa nascem com raio 1** — meia unidade é meia peça, e é a faixa
     // confortável do arrasto. O sinal escolhe o lado: para fora é armadura,
@@ -38,8 +36,8 @@ pub(super) const EXTRACT_THICKNESS: Row = Row {
 
 pub(super) const EXTRACT_SMOOTH: Row = Row {
     label: "panel.sculpt3d.extract_smooth",
-    slider: ids::SCULPT3D_EXTRACT_SMOOTH,
-    chip: ids::SCULPT3D_EXTRACT_SMOOTH_NUM,
+    slider: crate::ids::SCULPT3D_EXTRACT_SMOOTH,
+    chip: crate::ids::SCULPT3D_EXTRACT_SMOOTH_NUM,
     min: 0.0,
     max: MAX_EXTRACT_SMOOTH,
     step: 1.0, // LITERAL-PX-OK: uma passada e' inteira

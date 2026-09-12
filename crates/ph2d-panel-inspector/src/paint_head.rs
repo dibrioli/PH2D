@@ -66,11 +66,11 @@ pub(crate) fn paint_panel_head(
     // mesmo botão divergiriam no dia em que um fosse ajustado.
     if crate::state::current_inspector_transform().is_some() {
         let add_rect = ph2d_editor_core::widget::panel_chrome::panel_header_add_button_rect(rect);
-        hit_index.register(ids::INSP_ADD_COMPONENT, add_rect);
+        hit_index.register(crate::ids::INSP_ADD_COMPONENT, add_rect);
         let add_btn =
-            ph2d_editor_core::widget::Button::new(ids::INSP_ADD_COMPONENT, "Add Component")
+            ph2d_editor_core::widget::Button::new(crate::ids::INSP_ADD_COMPONENT, "Add Component")
                 .icon_only(ph2d_editor_core::icons::IconId::Add)
-                .visual(store.button_visual(ids::INSP_ADD_COMPONENT));
+                .visual(store.button_visual(crate::ids::INSP_ADD_COMPONENT));
         ph2d_editor_core::widget::paint_button(&add_btn, add_rect, scene, text_system, theme);
     }
 

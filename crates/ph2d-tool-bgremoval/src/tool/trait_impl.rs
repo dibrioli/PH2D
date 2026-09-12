@@ -10,7 +10,6 @@
 use ph2d_editor_core::floating_panel::{
     FloatingPanel, PanelAnchor, PanelControl, PanelTab, ToolId,
 };
-use ph2d_editor_core::ids;
 use ph2d_editor_core::tool::{PanelEvent, RasterEditTool, Tool};
 use ph2d_editor_core::widget::{Slider, Toggle};
 
@@ -71,94 +70,94 @@ impl Tool for BgRemovalTool {
         // semantic mapping that used to live in `panel-bgremoval/event.rs`.
         match event {
             // Sliders (normalized 0..1).
-            PanelEvent::SetValue(id, v) if id == ids::BGR_TOLERANCE => {
+            PanelEvent::SetValue(id, v) if id == crate::ids::BGR_TOLERANCE => {
                 self.apply_ui_edit(BgRemovalUiEdit::Tolerance(v as f32));
                 return;
             }
-            PanelEvent::SetValue(id, v) if id == ids::BGR_FEATHER => {
+            PanelEvent::SetValue(id, v) if id == crate::ids::BGR_FEATHER => {
                 self.apply_ui_edit(BgRemovalUiEdit::Feather(v as f32));
                 return;
             }
-            PanelEvent::SetValue(id, v) if id == ids::BGR_REFINE => {
+            PanelEvent::SetValue(id, v) if id == crate::ids::BGR_REFINE => {
                 self.apply_ui_edit(BgRemovalUiEdit::Refine(v as f32));
                 return;
             }
-            PanelEvent::SetValue(id, v) if id == ids::BGR_GROW => {
+            PanelEvent::SetValue(id, v) if id == crate::ids::BGR_GROW => {
                 self.apply_ui_edit(BgRemovalUiEdit::Grow(v as f32));
                 return;
             }
-            PanelEvent::SetValue(id, v) if id == ids::BGR_BRUSH_SIZE => {
+            PanelEvent::SetValue(id, v) if id == crate::ids::BGR_BRUSH_SIZE => {
                 self.apply_ui_edit(BgRemovalUiEdit::BrushSize(v as f32));
                 return;
             }
             // Number chips (same semantics as the matching slider).
-            PanelEvent::SetValue(id, v) if id == ids::BGR_TOLERANCE_NUM => {
+            PanelEvent::SetValue(id, v) if id == crate::ids::BGR_TOLERANCE_NUM => {
                 self.apply_ui_edit(BgRemovalUiEdit::Tolerance(v as f32));
                 return;
             }
-            PanelEvent::SetValue(id, v) if id == ids::BGR_FEATHER_NUM => {
+            PanelEvent::SetValue(id, v) if id == crate::ids::BGR_FEATHER_NUM => {
                 self.apply_ui_edit(BgRemovalUiEdit::Feather(v as f32));
                 return;
             }
-            PanelEvent::SetValue(id, v) if id == ids::BGR_REFINE_NUM => {
+            PanelEvent::SetValue(id, v) if id == crate::ids::BGR_REFINE_NUM => {
                 self.apply_ui_edit(BgRemovalUiEdit::Refine(v as f32));
                 return;
             }
-            PanelEvent::SetValue(id, v) if id == ids::BGR_GROW_NUM => {
+            PanelEvent::SetValue(id, v) if id == crate::ids::BGR_GROW_NUM => {
                 self.apply_ui_edit(BgRemovalUiEdit::Grow(v as f32));
                 return;
             }
-            PanelEvent::SetValue(id, v) if id == ids::BGR_BRUSH_SIZE_NUM => {
+            PanelEvent::SetValue(id, v) if id == crate::ids::BGR_BRUSH_SIZE_NUM => {
                 self.apply_ui_edit(BgRemovalUiEdit::BrushSize(v as f32));
                 return;
             }
             // 4-way falloff segmented.
-            PanelEvent::Click(id) if id == ids::BGR_FALLOFF_SMOOTH => {
+            PanelEvent::Click(id) if id == crate::ids::BGR_FALLOFF_SMOOTH => {
                 self.apply_ui_edit(BgRemovalUiEdit::SetFalloff(BrushFalloff::Smooth));
                 return;
             }
-            PanelEvent::Click(id) if id == ids::BGR_FALLOFF_SPHERE => {
+            PanelEvent::Click(id) if id == crate::ids::BGR_FALLOFF_SPHERE => {
                 self.apply_ui_edit(BgRemovalUiEdit::SetFalloff(BrushFalloff::Sphere));
                 return;
             }
-            PanelEvent::Click(id) if id == ids::BGR_FALLOFF_SHARP => {
+            PanelEvent::Click(id) if id == crate::ids::BGR_FALLOFF_SHARP => {
                 self.apply_ui_edit(BgRemovalUiEdit::SetFalloff(BrushFalloff::Sharp));
                 return;
             }
-            PanelEvent::Click(id) if id == ids::BGR_FALLOFF_CONSTANT => {
+            PanelEvent::Click(id) if id == crate::ids::BGR_FALLOFF_CONSTANT => {
                 self.apply_ui_edit(BgRemovalUiEdit::SetFalloff(BrushFalloff::Constant));
                 return;
             }
             // Buttons.
-            PanelEvent::Click(id) if id == ids::BGR_APPLY => {
+            PanelEvent::Click(id) if id == crate::ids::BGR_APPLY => {
                 self.apply_ui_edit(BgRemovalUiEdit::Apply);
                 return;
             }
-            PanelEvent::Click(id) if id == ids::BGR_RESET => {
+            PanelEvent::Click(id) if id == crate::ids::BGR_RESET => {
                 self.apply_ui_edit(BgRemovalUiEdit::ResetAll);
                 return;
             }
-            PanelEvent::Click(id) if id == ids::BGR_EYEDROPPER => {
+            PanelEvent::Click(id) if id == crate::ids::BGR_EYEDROPPER => {
                 self.apply_ui_edit(BgRemovalUiEdit::ToggleEyedropper);
                 return;
             }
-            PanelEvent::Click(id) if id == ids::BGR_PROTECT => {
+            PanelEvent::Click(id) if id == crate::ids::BGR_PROTECT => {
                 self.apply_ui_edit(BgRemovalUiEdit::ToggleProtectBrush);
                 return;
             }
-            PanelEvent::Click(id) if id == ids::BGR_PROTECT_CLEAR => {
+            PanelEvent::Click(id) if id == crate::ids::BGR_PROTECT_CLEAR => {
                 self.apply_ui_edit(BgRemovalUiEdit::ClearProtectMask);
                 return;
             }
-            PanelEvent::Click(id) if id == ids::BGR_ADD_AREA => {
+            PanelEvent::Click(id) if id == crate::ids::BGR_ADD_AREA => {
                 self.apply_ui_edit(BgRemovalUiEdit::ToggleAddArea);
                 return;
             }
-            PanelEvent::Click(id) if id == ids::BGR_ADD_AREA_CLEAR => {
+            PanelEvent::Click(id) if id == crate::ids::BGR_ADD_AREA_CLEAR => {
                 self.apply_ui_edit(BgRemovalUiEdit::ClearAddedAreas);
                 return;
             }
-            PanelEvent::Click(id) if id == ids::BGR_SHOW_MASK => {
+            PanelEvent::Click(id) if id == crate::ids::BGR_SHOW_MASK => {
                 self.apply_ui_edit(BgRemovalUiEdit::ToggleShowMask);
                 return;
             }

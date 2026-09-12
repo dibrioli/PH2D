@@ -14,7 +14,7 @@ use ph2d_editor_core::tool::PanelEvent;
 /// The Shape ramp colour box was clicked → toggle the shared picker targeting it, seeded with the
 /// selected stop's colour.
 pub(super) fn on_swatch_click(host: &mut dyn PanelHostInternal) {
-    let id = core_ids::PAINTER_SHAPE_RAMP_SWATCH;
+    let id = ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_SWATCH;
     let store = host.store_mut();
     if store.picker_target() == Some(id) {
         store.set_picker_target(None);
@@ -32,30 +32,30 @@ pub(super) fn on_swatch_click(host: &mut dyn PanelHostInternal) {
 /// Route a Shape-ramp `ValueChanged`: the bar-stop drag, or a commit on the editable index / position
 /// chip. (Called by `event.rs` for the three Shape-ramp value ids only.)
 pub(super) fn on_shape_ramp_value_changed(host: &mut dyn PanelHostInternal, id: NodeId) {
-    if id == core_ids::PAINTER_SHAPE_RAMP_EDIT {
+    if id == ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_EDIT {
         // Bar-stop drag: the `CurvePoint` stashed `(_, _, stop_id, x, _)` → select it + forward `id:x`.
         if let Some((_p, _c, stop_id, x, _y)) = host
             .store_mut()
-            .take_curve_point_drag_if(|p| p == core_ids::PAINTER_SHAPE_RAMP_EDIT)
+            .take_curve_point_drag_if(|p| p == ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_EDIT)
         {
             state::set_selected_shape_ramp_stop(stop_id);
             forward(
                 host,
-                core_ids::PAINTER_SHAPE_RAMP_EDIT,
+                ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_EDIT,
                 format!("{stop_id}:{x}"),
             );
         }
-    } else if id == core_ids::PAINTER_SHAPE_RAMP_STOP_INDEX {
+    } else if id == ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_STOP_INDEX {
         on_index_commit(host);
-    } else if id == core_ids::PAINTER_SHAPE_RAMP_STOP_POS
+    } else if id == ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_STOP_POS
         && let Some(v) = host
             .store()
-            .number_value(core_ids::PAINTER_SHAPE_RAMP_STOP_POS)
+            .number_value(ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_STOP_POS)
     {
         let sel = state::selected_shape_ramp_stop();
         forward(
             host,
-            core_ids::PAINTER_SHAPE_RAMP_EDIT,
+            ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_EDIT,
             format!("{sel}:{}", (v as f32).clamp(0.0, 1.0)),
         );
     }
@@ -65,7 +65,7 @@ pub(super) fn on_shape_ramp_value_changed(host: &mut dyn PanelHostInternal, id: 
 fn on_index_commit(host: &mut dyn PanelHostInternal) {
     let Some(v) = host
         .store()
-        .number_value(core_ids::PAINTER_SHAPE_RAMP_STOP_INDEX)
+        .number_value(ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_STOP_INDEX)
     else {
         return;
     };

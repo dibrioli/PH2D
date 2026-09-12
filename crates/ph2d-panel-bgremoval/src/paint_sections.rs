@@ -52,20 +52,20 @@ pub(crate) fn paint_slider_rows(
     for (label, id, chip_id, fallback) in [
         (
             "Tolerance",
-            ids::BGR_TOLERANCE,
-            ids::BGR_TOLERANCE_NUM,
+            ph2d_tool_bgremoval::ids::BGR_TOLERANCE,
+            ph2d_tool_bgremoval::ids::BGR_TOLERANCE_NUM,
             snapshot.tolerance01,
         ),
         (
             "Feather",
-            ids::BGR_FEATHER,
-            ids::BGR_FEATHER_NUM,
+            ph2d_tool_bgremoval::ids::BGR_FEATHER,
+            ph2d_tool_bgremoval::ids::BGR_FEATHER_NUM,
             snapshot.feather01,
         ),
         (
             "Refine",
-            ids::BGR_REFINE,
-            ids::BGR_REFINE_NUM,
+            ph2d_tool_bgremoval::ids::BGR_REFINE,
+            ph2d_tool_bgremoval::ids::BGR_REFINE_NUM,
             snapshot.refine01,
         ),
     ] {
@@ -109,7 +109,7 @@ pub(crate) fn paint_grow_shrink(
     mut y: f32,
 ) -> f32 {
     let grow_v = store
-        .slider(ids::BGR_GROW)
+        .slider(ph2d_tool_bgremoval::ids::BGR_GROW)
         .map(|(_, v)| v)
         .unwrap_or(snapshot.grow01);
     let signed = (grow_v - 0.5) * 2.0;
@@ -125,8 +125,8 @@ pub(crate) fn paint_grow_shrink(
         grow_v,
         signed as f64,
         Some(&grow_display),
-        ids::BGR_GROW,
-        ids::BGR_GROW_NUM,
+        ph2d_tool_bgremoval::ids::BGR_GROW,
+        ph2d_tool_bgremoval::ids::BGR_GROW_NUM,
         LABEL_COL_W,
         chip_w,
         store,
@@ -231,7 +231,7 @@ pub(crate) fn paint_eyedropper_swatches(
         let add_area_state = if snapshot.add_area_armed {
             (ButtonState::Pressed, ph2d_editor_core::motion::SETTLED)
         } else {
-            store.button_visual(ids::BGR_ADD_AREA)
+            store.button_visual(ph2d_tool_bgremoval::ids::BGR_ADD_AREA)
         };
         let add_area_kind = if snapshot.add_area_armed {
             ButtonKind::Accent
@@ -239,23 +239,26 @@ pub(crate) fn paint_eyedropper_swatches(
             ButtonKind::Default
         };
         let add_area_rect = Rect::new(inner_x, y, inner_w, row_h);
-        let add_area = Button::new(ids::BGR_ADD_AREA, "Add area")
+        let add_area = Button::new(ph2d_tool_bgremoval::ids::BGR_ADD_AREA, "Add area")
             .kind(add_area_kind)
             .visual(add_area_state);
         paint_button(&add_area, add_area_rect, scene, text_system, theme);
-        hit_index.register(ids::BGR_ADD_AREA, add_area_rect);
+        hit_index.register(ph2d_tool_bgremoval::ids::BGR_ADD_AREA, add_area_rect);
         y += row_h + row_gap;
 
         // Clear button — visible only when the user has filled any
         // force-remove pixels (mirror of `BGR_PROTECT_CLEAR`).
         if snapshot.has_force_remove_mask {
-            let clear_state = store.button_visual(ids::BGR_ADD_AREA_CLEAR);
+            let clear_state = store.button_visual(ph2d_tool_bgremoval::ids::BGR_ADD_AREA_CLEAR);
             let clear_rect = Rect::new(inner_x, y, inner_w, row_h);
-            let clear = Button::new(ids::BGR_ADD_AREA_CLEAR, "Clear added areas")
-                .kind(ButtonKind::Default)
-                .visual(clear_state);
+            let clear = Button::new(
+                ph2d_tool_bgremoval::ids::BGR_ADD_AREA_CLEAR,
+                "Clear added areas",
+            )
+            .kind(ButtonKind::Default)
+            .visual(clear_state);
             paint_button(&clear, clear_rect, scene, text_system, theme);
-            hit_index.register(ids::BGR_ADD_AREA_CLEAR, clear_rect);
+            hit_index.register(ph2d_tool_bgremoval::ids::BGR_ADD_AREA_CLEAR, clear_rect);
             y += row_h + row_gap;
         }
         return y;
@@ -264,7 +267,7 @@ pub(crate) fn paint_eyedropper_swatches(
     let eyedropper_state = if snapshot.eyedropper_armed {
         (ButtonState::Pressed, ph2d_editor_core::motion::SETTLED)
     } else {
-        store.button_visual(ids::BGR_EYEDROPPER)
+        store.button_visual(ph2d_tool_bgremoval::ids::BGR_EYEDROPPER)
     };
     let eyedropper_kind = if snapshot.eyedropper_armed {
         ButtonKind::Accent
@@ -272,11 +275,11 @@ pub(crate) fn paint_eyedropper_swatches(
         ButtonKind::Default
     };
     let eyedropper_rect = Rect::new(inner_x, y, inner_w, row_h);
-    let eyedropper = Button::new(ids::BGR_EYEDROPPER, "Pick colors")
+    let eyedropper = Button::new(ph2d_tool_bgremoval::ids::BGR_EYEDROPPER, "Pick colors")
         .kind(eyedropper_kind)
         .visual(eyedropper_state);
     paint_button(&eyedropper, eyedropper_rect, scene, text_system, theme);
-    hit_index.register(ids::BGR_EYEDROPPER, eyedropper_rect);
+    hit_index.register(ph2d_tool_bgremoval::ids::BGR_EYEDROPPER, eyedropper_rect);
     y += row_h + row_gap;
 
     let swatch_px = SwatchSize::Sm.px();
@@ -368,7 +371,7 @@ pub(crate) fn paint_protect_brush(
     let protect_state = if snapshot.protect_brush_armed {
         (ButtonState::Pressed, ph2d_editor_core::motion::SETTLED)
     } else {
-        store.button_visual(ids::BGR_PROTECT)
+        store.button_visual(ph2d_tool_bgremoval::ids::BGR_PROTECT)
     };
     let protect_kind = if snapshot.protect_brush_armed {
         ButtonKind::Accent
@@ -376,16 +379,16 @@ pub(crate) fn paint_protect_brush(
         ButtonKind::Default
     };
     let protect_rect = Rect::new(inner_x, y, inner_w, row_h);
-    let protect = Button::new(ids::BGR_PROTECT, "Protect")
+    let protect = Button::new(ph2d_tool_bgremoval::ids::BGR_PROTECT, "Protect")
         .kind(protect_kind)
         .visual(protect_state);
     paint_button(&protect, protect_rect, scene, text_system, theme);
-    hit_index.register(ids::BGR_PROTECT, protect_rect);
+    hit_index.register(ph2d_tool_bgremoval::ids::BGR_PROTECT, protect_rect);
     y += row_h + row_gap;
 
     if snapshot.protect_brush_armed {
         let size_v = store
-            .slider(ids::BGR_BRUSH_SIZE)
+            .slider(ph2d_tool_bgremoval::ids::BGR_BRUSH_SIZE)
             .map(|(_, v)| v)
             .unwrap_or(snapshot.brush_size01);
         let used = paint_slider_with_chip_layout_adaptive(
@@ -394,8 +397,8 @@ pub(crate) fn paint_protect_brush(
             size_v,
             size_v as f64,
             None,
-            ids::BGR_BRUSH_SIZE,
-            ids::BGR_BRUSH_SIZE_NUM,
+            ph2d_tool_bgremoval::ids::BGR_BRUSH_SIZE,
+            ph2d_tool_bgremoval::ids::BGR_BRUSH_SIZE_NUM,
             LABEL_COL_W,
             chip_w,
             store,
@@ -412,22 +415,22 @@ pub(crate) fn paint_protect_brush(
                 (
                     BrushFalloff::Smooth.label(),
                     snapshot.falloff == BrushFalloff::Smooth,
-                    ids::BGR_FALLOFF_SMOOTH,
+                    ph2d_tool_bgremoval::ids::BGR_FALLOFF_SMOOTH,
                 ),
                 (
                     BrushFalloff::Sphere.label(),
                     snapshot.falloff == BrushFalloff::Sphere,
-                    ids::BGR_FALLOFF_SPHERE,
+                    ph2d_tool_bgremoval::ids::BGR_FALLOFF_SPHERE,
                 ),
                 (
                     BrushFalloff::Sharp.label(),
                     snapshot.falloff == BrushFalloff::Sharp,
-                    ids::BGR_FALLOFF_SHARP,
+                    ph2d_tool_bgremoval::ids::BGR_FALLOFF_SHARP,
                 ),
                 (
                     BrushFalloff::Constant.label(),
                     snapshot.falloff == BrushFalloff::Constant,
-                    ids::BGR_FALLOFF_CONSTANT,
+                    ph2d_tool_bgremoval::ids::BGR_FALLOFF_CONSTANT,
                 ),
             ],
             scene,
@@ -451,7 +454,7 @@ pub(crate) fn paint_protect_brush(
         let show_state = if snapshot.show_mask {
             (ButtonState::Pressed, ph2d_editor_core::motion::SETTLED)
         } else {
-            store.button_visual(ids::BGR_SHOW_MASK)
+            store.button_visual(ph2d_tool_bgremoval::ids::BGR_SHOW_MASK)
         };
         let show_kind = if snapshot.show_mask {
             ButtonKind::Accent
@@ -459,22 +462,25 @@ pub(crate) fn paint_protect_brush(
             ButtonKind::Default
         };
         let show_rect = Rect::new(inner_x, y, inner_w, row_h);
-        let show = Button::new(ids::BGR_SHOW_MASK, "Show mask")
+        let show = Button::new(ph2d_tool_bgremoval::ids::BGR_SHOW_MASK, "Show mask")
             .kind(show_kind)
             .visual(show_state);
         paint_button(&show, show_rect, scene, text_system, theme);
-        hit_index.register(ids::BGR_SHOW_MASK, show_rect);
+        hit_index.register(ph2d_tool_bgremoval::ids::BGR_SHOW_MASK, show_rect);
         y += row_h + row_gap;
     }
 
     if snapshot.has_protect_mask {
         let clear_rect = Rect::new(inner_x, y, inner_w, row_h);
-        let clear_state = store.button_visual(ids::BGR_PROTECT_CLEAR);
-        let clear = Button::new(ids::BGR_PROTECT_CLEAR, "Clear protection")
-            .kind(ButtonKind::Default)
-            .visual(clear_state);
+        let clear_state = store.button_visual(ph2d_tool_bgremoval::ids::BGR_PROTECT_CLEAR);
+        let clear = Button::new(
+            ph2d_tool_bgremoval::ids::BGR_PROTECT_CLEAR,
+            "Clear protection",
+        )
+        .kind(ButtonKind::Default)
+        .visual(clear_state);
         paint_button(&clear, clear_rect, scene, text_system, theme);
-        hit_index.register(ids::BGR_PROTECT_CLEAR, clear_rect);
+        hit_index.register(ph2d_tool_bgremoval::ids::BGR_PROTECT_CLEAR, clear_rect);
         y += row_h + row_gap;
     }
     y
@@ -495,12 +501,12 @@ pub(crate) fn paint_apply_cta(
     mut y: f32,
 ) -> f32 {
     let reset_rect = Rect::new(inner_x, y, inner_w, row_h);
-    let reset_state = store.button_visual(ids::BGR_RESET);
-    let reset = Button::new(ids::BGR_RESET, "Reset to Defaults")
+    let reset_state = store.button_visual(ph2d_tool_bgremoval::ids::BGR_RESET);
+    let reset = Button::new(ph2d_tool_bgremoval::ids::BGR_RESET, "Reset to Defaults")
         .kind(ButtonKind::Default)
         .visual(reset_state);
     paint_button(&reset, reset_rect, scene, text_system, theme);
-    hit_index.register(ids::BGR_RESET, reset_rect);
+    hit_index.register(ph2d_tool_bgremoval::ids::BGR_RESET, reset_rect);
     y += row_h + row_gap;
 
     // ⭐⭐ **`Cancel | Apply` é UM par** (wave 20): a mesma pergunta — *o que fazer com a edição
@@ -508,20 +514,20 @@ pub(crate) fn paint_apply_cta(
     //    ferramentas de imagem desenhavam-nos separados, porque o `Button` não conhecia a lei do
     //    grupo e o chip segmentado conhecia. Hoje conhece.
     let seg = segment_rects(Rect::new(inner_x, y, inner_w, row_h), 2);
-    let cancel_state = store.button_visual(ids::BGR_CANCEL);
-    let cancel = Button::new(ids::BGR_CANCEL, "Cancel")
+    let cancel_state = store.button_visual(ph2d_tool_bgremoval::ids::BGR_CANCEL);
+    let cancel = Button::new(ph2d_tool_bgremoval::ids::BGR_CANCEL, "Cancel")
         .kind(ButtonKind::Default)
         .visual(cancel_state)
         .in_group(seg[0].1);
     paint_button(&cancel, seg[0].0, scene, text_system, theme);
-    hit_index.register(ids::BGR_CANCEL, seg[0].0);
-    let apply_state = store.button_visual(ids::BGR_APPLY);
-    let apply = Button::new(ids::BGR_APPLY, "Apply")
+    hit_index.register(ph2d_tool_bgremoval::ids::BGR_CANCEL, seg[0].0);
+    let apply_state = store.button_visual(ph2d_tool_bgremoval::ids::BGR_APPLY);
+    let apply = Button::new(ph2d_tool_bgremoval::ids::BGR_APPLY, "Apply")
         .kind(ButtonKind::Accent)
         .visual(apply_state)
         .in_group(seg[1].1);
     paint_button(&apply, seg[1].0, scene, text_system, theme);
-    hit_index.register(ids::BGR_APPLY, seg[1].0);
+    hit_index.register(ph2d_tool_bgremoval::ids::BGR_APPLY, seg[1].0);
     y += row_h;
     y
 }

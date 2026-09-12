@@ -266,21 +266,20 @@ impl PainterTool {
     /// it runs unconditionally before the brush-texture chain. Returns `true` iff the event was a
     /// stencil field (so the caller stops routing).
     pub(crate) fn route_brush_stencil_event(&mut self, event: &PanelEvent) -> bool {
-        use ph2d_editor_core::ids as core_ids;
         let PanelEvent::SetValue(id, v) = event else {
             return false;
         };
         let v = *v as f32;
         match *id {
-            x if x == core_ids::PAINTER_BRUSH_STENCIL_SIZE_X => self.set_brush_stencil_size(0, v),
-            x if x == core_ids::PAINTER_BRUSH_STENCIL_SIZE_Y => self.set_brush_stencil_size(1, v),
-            x if x == core_ids::PAINTER_BRUSH_STENCIL_OFFSET_X => {
+            x if x == crate::ids::PAINTER_BRUSH_STENCIL_SIZE_X => self.set_brush_stencil_size(0, v),
+            x if x == crate::ids::PAINTER_BRUSH_STENCIL_SIZE_Y => self.set_brush_stencil_size(1, v),
+            x if x == crate::ids::PAINTER_BRUSH_STENCIL_OFFSET_X => {
                 self.set_brush_stencil_offset(0, v)
             }
-            x if x == core_ids::PAINTER_BRUSH_STENCIL_OFFSET_Y => {
+            x if x == crate::ids::PAINTER_BRUSH_STENCIL_OFFSET_Y => {
                 self.set_brush_stencil_offset(1, v)
             }
-            x if x == core_ids::PAINTER_BRUSH_STENCIL_ANGLE => self.set_brush_stencil_angle(v),
+            x if x == crate::ids::PAINTER_BRUSH_STENCIL_ANGLE => self.set_brush_stencil_angle(v),
             _ => return false,
         }
         true
@@ -360,15 +359,15 @@ impl PainterTool {
             if self.route_stroke_shape_button(id) {
                 return true;
             }
-            if *id == core_ids::PAINTER_BRUSH_OFFSET_TRIM {
+            if *id == crate::ids::PAINTER_BRUSH_OFFSET_TRIM {
                 self.toggle_offset_trim();
                 return true;
             }
-            if *id == core_ids::PAINTER_BRUSH_SYNC {
+            if *id == crate::ids::PAINTER_BRUSH_SYNC {
                 self.toggle_link_shared_settings(); // "Sync with other tools" (see `tool_link`)
                 return true;
             }
-            if *id == core_ids::PAINTER_BRUSH_LINE_DIMENSIONS {
+            if *id == crate::ids::PAINTER_BRUSH_LINE_DIMENSIONS {
                 self.toggle_line_show_dimensions(); // Line CAD dimensions overlay (see `line_dim`)
                 return true;
             }
@@ -378,11 +377,11 @@ impl PainterTool {
         };
         let v = *v as f32;
         match *id {
-            x if x == core_ids::PAINTER_BRUSH_DAB_FLATTEN => self.set_brush_dab_flatten(v),
-            x if x == core_ids::PAINTER_BRUSH_DAB_ANGLE => self.set_brush_dab_angle(v),
-            x if x == core_ids::PAINTER_TAPER_START => self.set_brush_taper_start(v),
-            x if x == core_ids::PAINTER_TAPER_TIP_START => self.set_brush_taper_tip_start(v),
-            x if x == core_ids::PAINTER_TAPER_OPACITY => self.set_brush_taper_opacity(v),
+            x if x == crate::ids::PAINTER_BRUSH_DAB_FLATTEN => self.set_brush_dab_flatten(v),
+            x if x == crate::ids::PAINTER_BRUSH_DAB_ANGLE => self.set_brush_dab_angle(v),
+            x if x == crate::ids::PAINTER_TAPER_START => self.set_brush_taper_start(v),
+            x if x == crate::ids::PAINTER_TAPER_TIP_START => self.set_brush_taper_tip_start(v),
+            x if x == crate::ids::PAINTER_TAPER_OPACITY => self.set_brush_taper_opacity(v),
             _ => return false,
         }
         true

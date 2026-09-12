@@ -66,7 +66,7 @@ impl BodyCtx<'_> {
     /// **A seção SYMMETRY** — o modo de desenho simétrico.
     pub(crate) fn symmetry_section(&mut self, snap: &VectorStyleSnapshot, y: f32) -> f32 {
         let (mut y, collapsed) = self.section_header(
-            ids::VECTOR_SECTION_SYMMETRY,
+            ph2d_tool_vector::ids::VECTOR_SECTION_SYMMETRY,
             tr("panel.vector.section.symmetry"),
             y,
         );
@@ -78,11 +78,15 @@ impl BodyCtx<'_> {
             tr("panel.vector.symmetry.enable"),
             &[
                 (
-                    ids::VECTOR_SYM_OFF,
+                    ph2d_tool_vector::ids::VECTOR_SYM_OFF,
                     tr("panel.vector.symmetry.off"),
                     !sym.on,
                 ),
-                (ids::VECTOR_SYM_ON, tr("panel.vector.symmetry.on"), sym.on),
+                (
+                    ph2d_tool_vector::ids::VECTOR_SYM_ON,
+                    tr("panel.vector.symmetry.on"),
+                    sym.on,
+                ),
             ],
             y,
         );
@@ -101,16 +105,16 @@ impl BodyCtx<'_> {
         if sym.kind == SymmetryKind::Radial {
             let track = self
                 .store
-                .slider(ids::VECTOR_SYM_SEGMENTS)
+                .slider(ph2d_tool_vector::ids::VECTOR_SYM_SEGMENTS)
                 .map_or_else(|| segments_to_track(sym.segments), |(_, v)| v);
             let n = self
                 .store
-                .number_value(ids::VECTOR_SYM_SEGMENTS_NUM)
+                .number_value(ph2d_tool_vector::ids::VECTOR_SYM_SEGMENTS_NUM)
                 .unwrap_or(f64::from(sym.segments));
             y = self.slider_row(
                 tr("panel.vector.symmetry.segments"),
-                ids::VECTOR_SYM_SEGMENTS,
-                ids::VECTOR_SYM_SEGMENTS_NUM,
+                ph2d_tool_vector::ids::VECTOR_SYM_SEGMENTS,
+                ph2d_tool_vector::ids::VECTOR_SYM_SEGMENTS_NUM,
                 track,
                 n,
                 &format!("{n:.0}"),
@@ -121,12 +125,12 @@ impl BodyCtx<'_> {
                 tr("panel.vector.symmetry.fuse"),
                 &[
                     (
-                        ids::VECTOR_SYM_FUSE_OFF,
+                        ph2d_tool_vector::ids::VECTOR_SYM_FUSE_OFF,
                         tr("panel.vector.symmetry.off"),
                         !sym.fuse,
                     ),
                     (
-                        ids::VECTOR_SYM_FUSE_ON,
+                        ph2d_tool_vector::ids::VECTOR_SYM_FUSE_ON,
                         tr("panel.vector.symmetry.on"),
                         sym.fuse,
                     ),

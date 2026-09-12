@@ -98,7 +98,9 @@ fn clicking_affect_relief_flips_the_toggle() {
     let painted = host.paint::<PainterLayersPanel>(&mut st, viewport());
     let Some((_, rect)) = painted
         .iter()
-        .find(|(w, r)| *w == core_ids::PAINTER_DEFORM_RELIEF && r.w > 0.0 && r.h > 0.0)
+        .find(|(w, r)| {
+            *w == ph2d_tool_painter::ids::PAINTER_DEFORM_RELIEF && r.w > 0.0 && r.h > 0.0
+        })
         .copied()
     else {
         panic!(
@@ -110,7 +112,7 @@ fn clicking_affect_relief_flips_the_toggle() {
     let (x, y) = (rect.x + rect.w * 0.5, rect.y + rect.h * 0.5);
     assert_eq!(
         host.hit_at(x, y),
-        Some(core_ids::PAINTER_DEFORM_RELIEF),
+        Some(ph2d_tool_painter::ids::PAINTER_DEFORM_RELIEF),
         "the pixel at the centre of the Affect Relief row does not resolve to it — something painted \
          after it covers its rect"
     );
@@ -127,7 +129,9 @@ fn clicking_affect_relief_flips_the_toggle() {
     let painted = host.paint::<PainterLayersPanel>(&mut st, viewport());
     let (_, rect) = painted
         .iter()
-        .find(|(w, r)| *w == core_ids::PAINTER_DEFORM_RELIEF && r.w > 0.0 && r.h > 0.0)
+        .find(|(w, r)| {
+            *w == ph2d_tool_painter::ids::PAINTER_DEFORM_RELIEF && r.w > 0.0 && r.h > 0.0
+        })
         .copied()
         .expect("the row vanished after one click");
     let (x, y) = (rect.x + rect.w * 0.5, rect.y + rect.h * 0.5);
@@ -163,7 +167,9 @@ fn the_row_does_not_exist_on_a_layer_with_no_relief() {
     assert!(
         !painted
             .iter()
-            .any(|(w, r)| *w == core_ids::PAINTER_DEFORM_RELIEF && r.w > 0.0 && r.h > 0.0),
+            .any(|(w, r)| *w == ph2d_tool_painter::ids::PAINTER_DEFORM_RELIEF
+                && r.w > 0.0
+                && r.h > 0.0),
         "the Affect Relief row is painted on a layer with NO relief — a toggle over a plane that does \
          not exist, i.e. a control that silently does nothing"
     );

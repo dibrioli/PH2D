@@ -4,7 +4,6 @@
 //! resolves the dynamic id family on the other side.
 
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::{EventOutcome, PanelHostInternal, seam_reset_button};
 use ph2d_editor_core::tool::PanelEvent;
@@ -42,7 +41,7 @@ pub(crate) fn apply_event(
         // Section headers fold (panel-local view state, never forwarded).
         WidgetEvent::Click(id)
             if rows::SECTIONS.iter().any(|s| s.header == id)
-                || id == ids::WET_TUNING_GROUP_HEADERS[5] =>
+                || id == ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[5] =>
         {
             seam_reset_button(host, id);
             // ⚠️ A PORTA ÚNICA — este bloco era `set_collapsed(id, !is_collapsed(id))` escrito à
@@ -57,9 +56,9 @@ pub(crate) fn apply_event(
         WidgetEvent::Click(id)
             if rows::row_for(id).is_some_and(|r| r.reset == id)
                 || rows::SECTIONS.iter().any(|s| s.reset == id)
-                || id == ids::WET_TUNING_PAPER_EYE
-                || id == ids::WET_TUNING_KM_MIXING
-                || id == ids::WET_TUNING_KM_GLAZE =>
+                || id == ph2d_tool_painter::ids::WET_TUNING_PAPER_EYE
+                || id == ph2d_tool_painter::ids::WET_TUNING_KM_MIXING
+                || id == ph2d_tool_painter::ids::WET_TUNING_KM_GLAZE =>
         {
             seam_reset_button(host, id);
             forward(host, PanelEvent::Click(id));
@@ -68,9 +67,12 @@ pub(crate) fn apply_event(
         // Close = the SAME Tuning toggle the basic section owns (visibility
         // is the tool's authored fact; the bridge mirrors it every frame —
         // a panel-local hide would fight the bridge and lose).
-        WidgetEvent::Click(id) if id == ids::WET_TUNING_CLOSE => {
+        WidgetEvent::Click(id) if id == ph2d_tool_painter::ids::WET_TUNING_CLOSE => {
             seam_reset_button(host, id);
-            forward(host, PanelEvent::Click(ids::PAINTER_WETPAINT_TUNING));
+            forward(
+                host,
+                PanelEvent::Click(ph2d_tool_painter::ids::PAINTER_WETPAINT_TUNING),
+            );
             true
         }
         _ => false,

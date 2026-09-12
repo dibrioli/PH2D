@@ -252,7 +252,7 @@ fn paint_cell(
     // eles se sobrepõem. Numa célula estreita a régua não o oferece (`None`), e aí a
     // célula inteira segue sendo alvo de mover.
     if let Some(edge) = ruler.hold_edge_rect(i, snap) {
-        let eid = ph2d_editor_core::ids::flip_hold_edge_id(i);
+        let eid = crate::ids::flip_hold_edge_id(i);
         ctx.host.store_mut().register(
             eid,
             InteractiveState::FlipStripSurface {

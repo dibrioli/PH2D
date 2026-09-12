@@ -270,19 +270,18 @@ impl PainterTool {
         &mut self,
         event: &ph2d_editor_core::tool::PanelEvent,
     ) -> bool {
-        use ph2d_editor_core::ids as core_ids;
         use ph2d_editor_core::tool::PanelEvent;
         match event {
-            PanelEvent::Click(id) if core_ids::PAINTER_DEFORM_MODE_IDS.contains(id) => {
-                let idx = core_ids::PAINTER_DEFORM_MODE_IDS
+            PanelEvent::Click(id) if crate::ids::PAINTER_DEFORM_MODE_IDS.contains(id) => {
+                let idx = crate::ids::PAINTER_DEFORM_MODE_IDS
                     .iter()
                     .position(|x| x == id)
                     .unwrap_or(0) as u8;
                 self.set_deform_mode(idx);
                 true
             }
-            PanelEvent::Click(id) if core_ids::PAINTER_DEFORM_TEMPERAMENT_IDS.contains(id) => {
-                let idx = core_ids::PAINTER_DEFORM_TEMPERAMENT_IDS
+            PanelEvent::Click(id) if crate::ids::PAINTER_DEFORM_TEMPERAMENT_IDS.contains(id) => {
+                let idx = crate::ids::PAINTER_DEFORM_TEMPERAMENT_IDS
                     .iter()
                     .position(|x| x == id)
                     .unwrap_or(0);
@@ -294,47 +293,47 @@ impl PainterTool {
                 });
                 true
             }
-            PanelEvent::Click(id) if core_ids::PAINTER_DEFORM_TRANSFORM_MODE_IDS.contains(id) => {
-                let idx = core_ids::PAINTER_DEFORM_TRANSFORM_MODE_IDS
+            PanelEvent::Click(id) if crate::ids::PAINTER_DEFORM_TRANSFORM_MODE_IDS.contains(id) => {
+                let idx = crate::ids::PAINTER_DEFORM_TRANSFORM_MODE_IDS
                     .iter()
                     .position(|x| x == id)
                     .unwrap_or(0) as u8;
                 self.set_deform_transform_mode(idx);
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_DEFORM_RELIEF => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_DEFORM_RELIEF => {
                 self.toggle_deform_relief();
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_DEFORM_RESET => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_DEFORM_RESET => {
                 self.deform_reset();
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_DEFORM_APPLY => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_DEFORM_APPLY => {
                 self.deform_apply();
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_DEFORM_APPLY_KEEP => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_DEFORM_APPLY_KEEP => {
                 self.deform_apply_keep();
                 true
             }
-            PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_DEFORM_SIZE_SLIDER => {
+            PanelEvent::SetValue(id, v) if *id == crate::ids::PAINTER_DEFORM_SIZE_SLIDER => {
                 self.set_deform_size_norm(*v as f32);
                 true
             }
-            PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_DEFORM_PRESSURE_SLIDER => {
+            PanelEvent::SetValue(id, v) if *id == crate::ids::PAINTER_DEFORM_PRESSURE_SLIDER => {
                 self.set_deform_pressure(*v as f32);
                 true
             }
-            PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_DEFORM_DISTORTION_SLIDER => {
+            PanelEvent::SetValue(id, v) if *id == crate::ids::PAINTER_DEFORM_DISTORTION_SLIDER => {
                 self.set_deform_distortion(*v as f32);
                 true
             }
-            PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_DEFORM_MOMENTUM_SLIDER => {
+            PanelEvent::SetValue(id, v) if *id == crate::ids::PAINTER_DEFORM_MOMENTUM_SLIDER => {
                 self.set_deform_momentum(*v as f32);
                 true
             }
-            PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_DEFORM_STRENGTH_SLIDER => {
+            PanelEvent::SetValue(id, v) if *id == crate::ids::PAINTER_DEFORM_STRENGTH_SLIDER => {
                 self.set_deform_strength(*v as f32);
                 true
             }

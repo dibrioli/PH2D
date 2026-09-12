@@ -12,7 +12,6 @@
 //! twice in this repo ([[feedback_the_fullest_card_premise_rots]]).
 
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::{EventOutcome, Panel};
 use ph2d_editor_core::screens::hero::{
@@ -211,7 +210,7 @@ fn expect(actions: &[EditorAction], edit: PhysicsFieldEdit, what: &str) {
 #[test]
 fn add_physics_body_reaches_the_bus() {
     expect(
-        &click(without_body(), ids::INSP_PHYS_ADD),
+        &click(without_body(), ph2d_panel_inspector::ids::INSP_PHYS_ADD),
         PhysicsFieldEdit::Add,
         "Add Physics Body",
     );
@@ -220,7 +219,7 @@ fn add_physics_body_reaches_the_bus() {
 #[test]
 fn remove_physics_body_reaches_the_bus() {
     expect(
-        &click(with_body(), ids::INSP_PHYS_REMOVE),
+        &click(with_body(), ph2d_panel_inspector::ids::INSP_PHYS_REMOVE),
         PhysicsFieldEdit::Remove,
         "Remove Physics Body",
     );
@@ -230,14 +229,17 @@ fn remove_physics_body_reaches_the_bus() {
 /// side is wired is the classic half-dead widget.
 #[test]
 fn every_segmented_option_reaches_the_bus() {
-    for (i, &id) in ids::INSP_PHYS_KIND.iter().enumerate() {
+    for (i, &id) in ph2d_panel_inspector::ids::INSP_PHYS_KIND.iter().enumerate() {
         expect(
             &click(with_body(), id),
             PhysicsFieldEdit::Kind(i as u8),
             &format!("Body kind option {i}"),
         );
     }
-    for (i, &id) in ids::INSP_PHYS_SHAPE.iter().enumerate() {
+    for (i, &id) in ph2d_panel_inspector::ids::INSP_PHYS_SHAPE
+        .iter()
+        .enumerate()
+    {
         expect(
             &click(with_body(), id),
             PhysicsFieldEdit::Shape(i as u8),
@@ -247,7 +249,10 @@ fn every_segmented_option_reaches_the_bus() {
     // All EIGHT layer chips, each asserting its OWN index — a sweep that only
     // checked "some Layer edit came out" would pass with every chip wired to
     // layer 0, which is the copy-paste this loop shape invites.
-    for (i, &id) in ids::INSP_PHYS_LAYER.iter().enumerate() {
+    for (i, &id) in ph2d_panel_inspector::ids::INSP_PHYS_LAYER
+        .iter()
+        .enumerate()
+    {
         expect(
             &click(with_body(), id),
             PhysicsFieldEdit::Layer(i as u8),
@@ -257,7 +262,10 @@ fn every_segmented_option_reaches_the_bus() {
     // Solid | Sensor. Each side asserts its OWN boolean, so a wiring that sent
     // both to `Sensor(false)` (or both to true) would fail — the two-way half-
     // dead widget this whole test exists to catch.
-    for (i, &id) in ids::INSP_PHYS_SENSOR.iter().enumerate() {
+    for (i, &id) in ph2d_panel_inspector::ids::INSP_PHYS_SENSOR
+        .iter()
+        .enumerate()
+    {
         expect(
             &click(with_body(), id),
             PhysicsFieldEdit::Sensor(i == 1),
@@ -266,7 +274,10 @@ fn every_segmented_option_reaches_the_bus() {
     }
     // Bake channel selector (All / Position / Rotation) — a Dynamic body, since
     // the selector is offered only there. Each option asserts its own tag.
-    for (i, &id) in ids::INSP_PHYS_BAKE_CH.iter().enumerate() {
+    for (i, &id) in ph2d_panel_inspector::ids::INSP_PHYS_BAKE_CH
+        .iter()
+        .enumerate()
+    {
         expect(
             &click(with_body(), id),
             PhysicsFieldEdit::BakeChannels(i as u8),
@@ -276,7 +287,7 @@ fn every_segmented_option_reaches_the_bus() {
     // Discrete | Continuous (W-CCD) — a Dynamic body, since the toggle is offered
     // only there. Each side asserts its OWN boolean, so a wiring that sent both to
     // the same value would fail (the two-way half-dead widget this test catches).
-    for (i, &id) in ids::INSP_PHYS_CCD.iter().enumerate() {
+    for (i, &id) in ph2d_panel_inspector::ids::INSP_PHYS_CCD.iter().enumerate() {
         expect(
             &click(with_body(), id),
             PhysicsFieldEdit::Ccd(i == 1),
@@ -284,7 +295,10 @@ fn every_segmented_option_reaches_the_bus() {
         );
     }
     // Free | Locked (Freeze Rotation) — Dynamic-only, each side its own boolean.
-    for (i, &id) in ids::INSP_PHYS_LOCKROT.iter().enumerate() {
+    for (i, &id) in ph2d_panel_inspector::ids::INSP_PHYS_LOCKROT
+        .iter()
+        .enumerate()
+    {
         expect(
             &click(with_body(), id),
             PhysicsFieldEdit::LockRotation(i == 1),
@@ -292,7 +306,10 @@ fn every_segmented_option_reaches_the_bus() {
         );
     }
     // Free | Locked (Freeze Position X) — Dynamic-only, each side its own boolean.
-    for (i, &id) in ids::INSP_PHYS_LOCKX.iter().enumerate() {
+    for (i, &id) in ph2d_panel_inspector::ids::INSP_PHYS_LOCKX
+        .iter()
+        .enumerate()
+    {
         expect(
             &click(with_body(), id),
             PhysicsFieldEdit::LockPositionX(i == 1),
@@ -300,7 +317,10 @@ fn every_segmented_option_reaches_the_bus() {
         );
     }
     // Free | Locked (Freeze Position Y) — the vertical sibling.
-    for (i, &id) in ids::INSP_PHYS_LOCKY.iter().enumerate() {
+    for (i, &id) in ph2d_panel_inspector::ids::INSP_PHYS_LOCKY
+        .iter()
+        .enumerate()
+    {
         expect(
             &click(with_body(), id),
             PhysicsFieldEdit::LockPositionY(i == 1),
@@ -308,7 +328,10 @@ fn every_segmented_option_reaches_the_bus() {
         );
     }
     // Auto | Manual (Mass source) — each side its own boolean.
-    for (i, &id) in ids::INSP_PHYS_MASSMODE.iter().enumerate() {
+    for (i, &id) in ph2d_panel_inspector::ids::INSP_PHYS_MASSMODE
+        .iter()
+        .enumerate()
+    {
         expect(
             &click(with_body(), id),
             PhysicsFieldEdit::MassMode(i == 1),
@@ -325,7 +348,7 @@ fn every_segmented_option_reaches_the_bus() {
 /// dropped somewhere further along, where nobody is looking.
 #[test]
 fn a_layer_chip_without_a_body_is_refused() {
-    for &id in ids::INSP_PHYS_LAYER.iter() {
+    for &id in ph2d_panel_inspector::ids::INSP_PHYS_LAYER.iter() {
         let actions = click(without_body(), id);
         assert!(
             actions.is_empty(),
@@ -342,25 +365,25 @@ fn a_layer_chip_without_a_body_is_refused() {
 fn every_dimension_field_reaches_the_bus() {
     for (id, v, edit, what) in [
         (
-            ids::INSP_PHYS_RADIUS,
+            ph2d_panel_inspector::ids::INSP_PHYS_RADIUS,
             0.75,
             PhysicsFieldEdit::Radius(0.75),
             "Radius",
         ),
         (
-            ids::INSP_PHYS_HALF_X,
+            ph2d_panel_inspector::ids::INSP_PHYS_HALF_X,
             0.25,
             PhysicsFieldEdit::HalfX(0.25),
             "Half Width",
         ),
         (
-            ids::INSP_PHYS_HALF_Y,
+            ph2d_panel_inspector::ids::INSP_PHYS_HALF_Y,
             0.125,
             PhysicsFieldEdit::HalfY(0.125),
             "Half Height",
         ),
         (
-            ids::INSP_PHYS_DENSITY,
+            ph2d_panel_inspector::ids::INSP_PHYS_DENSITY,
             2.5,
             PhysicsFieldEdit::Density(2.5),
             "Density",
@@ -369,55 +392,55 @@ fn every_dimension_field_reaches_the_bus() {
         // seu braço: um `read-modify-write` que escrevesse o par derrubaria o
         // campo que a edição não nomeia.
         (
-            ids::INSP_PHYS_WALK_GRIP,
+            ph2d_panel_inspector::ids::INSP_PHYS_WALK_GRIP,
             0.15,
             PhysicsFieldEdit::WalkGrip(0.15),
             "Grip",
         ),
         (
-            ids::INSP_PHYS_WALK_BELT,
+            ph2d_panel_inspector::ids::INSP_PHYS_WALK_BELT,
             -3.0,
             PhysicsFieldEdit::WalkBelt(-3.0),
             "Belt",
         ),
         (
-            ids::INSP_PHYS_RESTITUTION,
+            ph2d_panel_inspector::ids::INSP_PHYS_RESTITUTION,
             0.875,
             PhysicsFieldEdit::Restitution(0.875),
             "Bounce",
         ),
         (
-            ids::INSP_PHYS_FRICTION,
+            ph2d_panel_inspector::ids::INSP_PHYS_FRICTION,
             1.5,
             PhysicsFieldEdit::Friction(1.5),
             "Friction",
         ),
         (
-            ids::INSP_PHYS_CAP_HALF_H,
+            ph2d_panel_inspector::ids::INSP_PHYS_CAP_HALF_H,
             0.625,
             PhysicsFieldEdit::CapHalfHeight(0.625),
             "Capsule Half Height",
         ),
         (
-            ids::INSP_PHYS_OFFSET_X,
+            ph2d_panel_inspector::ids::INSP_PHYS_OFFSET_X,
             0.375,
             PhysicsFieldEdit::OffsetX(0.375),
             "Collider Offset X",
         ),
         (
-            ids::INSP_PHYS_OFFSET_Y,
+            ph2d_panel_inspector::ids::INSP_PHYS_OFFSET_Y,
             -0.875,
             PhysicsFieldEdit::OffsetY(-0.875),
             "Collider Offset Y",
         ),
         (
-            ids::INSP_PHYS_LINVEL_X,
+            ph2d_panel_inspector::ids::INSP_PHYS_LINVEL_X,
             3.5,
             PhysicsFieldEdit::LinvelX(3.5),
             "Init Vel X",
         ),
         (
-            ids::INSP_PHYS_LINVEL_Y,
+            ph2d_panel_inspector::ids::INSP_PHYS_LINVEL_Y,
             -2.0,
             PhysicsFieldEdit::LinvelY(-2.0),
             "Init Vel Y",
@@ -464,10 +487,10 @@ fn each_shape_paints_only_its_own_dimension_rows() {
         set_current_inspector_physics(None);
         let painted = |id| rects.iter().any(|(n, _)| *n == id);
         let got = [
-            painted(ids::INSP_PHYS_RADIUS),
-            painted(ids::INSP_PHYS_HALF_X),
-            painted(ids::INSP_PHYS_HALF_Y),
-            painted(ids::INSP_PHYS_CAP_HALF_H),
+            painted(ph2d_panel_inspector::ids::INSP_PHYS_RADIUS),
+            painted(ph2d_panel_inspector::ids::INSP_PHYS_HALF_X),
+            painted(ph2d_panel_inspector::ids::INSP_PHYS_HALF_Y),
+            painted(ph2d_panel_inspector::ids::INSP_PHYS_CAP_HALF_H),
         ];
         assert_eq!(
             got, want,
@@ -485,12 +508,12 @@ fn each_shape_paints_only_its_own_dimension_rows() {
 #[test]
 fn the_wrong_half_of_add_remove_is_refused_at_the_event_layer() {
     assert!(
-        click(with_body(), ids::INSP_PHYS_ADD).is_empty(),
+        click(with_body(), ph2d_panel_inspector::ids::INSP_PHYS_ADD).is_empty(),
         "Add fired on an entity that ALREADY has a body — it would overwrite the artist's \
          collider with a fresh sprite-shaped one"
     );
     assert!(
-        click(without_body(), ids::INSP_PHYS_REMOVE).is_empty(),
+        click(without_body(), ph2d_panel_inspector::ids::INSP_PHYS_REMOVE).is_empty(),
         "Remove fired on an entity with no body"
     );
 }
@@ -500,7 +523,12 @@ fn the_wrong_half_of_add_remove_is_refused_at_the_event_layer() {
 #[test]
 fn a_dimension_commit_without_a_body_is_refused() {
     assert!(
-        commit(without_body(), ids::INSP_PHYS_DENSITY, 3.0).is_empty(),
+        commit(
+            without_body(),
+            ph2d_panel_inspector::ids::INSP_PHYS_DENSITY,
+            3.0
+        )
+        .is_empty(),
         "a density commit fired on an entity with no collider"
     );
 }
@@ -514,8 +542,10 @@ fn the_panel_consumes_the_add_click_so_the_section_is_reachable() {
     let mut host = MockPanelHost::with_panel::<InspectorPanel>();
     let mut state = InspectorState::default();
     set_current_inspector_physics(Some(without_body()));
-    let outcome = host
-        .apply_panel_event::<InspectorPanel>(&mut state, WidgetEvent::Click(ids::INSP_PHYS_ADD));
+    let outcome = host.apply_panel_event::<InspectorPanel>(
+        &mut state,
+        WidgetEvent::Click(ph2d_panel_inspector::ids::INSP_PHYS_ADD),
+    );
     set_current_inspector_physics(None);
     assert_eq!(
         outcome,
@@ -562,7 +592,9 @@ fn join_is_offered_and_dispatched_only_for_two_selected_bodies() {
         let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
         set_current_inspector_physics(None);
         assert_eq!(
-            rects.iter().any(|(n, _)| *n == ids::INSP_PHYS_JOIN),
+            rects
+                .iter()
+                .any(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_PHYS_JOIN),
             count >= 2,
             "a presença do botão Join tem de seguir a CONTAGEM (join_count={count})"
         );
@@ -572,12 +604,12 @@ fn join_is_offered_and_dispatched_only_for_two_selected_bodies() {
     // ([[feedback_disabled_button_still_dispatches]]): the id is in the store
     // all session, so the arm has to check for itself.
     expect(
-        &click(joinable, ids::INSP_PHYS_JOIN),
+        &click(joinable, ph2d_panel_inspector::ids::INSP_PHYS_JOIN),
         PhysicsFieldEdit::Join,
         "Join Selected Bodies",
     );
     assert!(
-        click(with_body(), ids::INSP_PHYS_JOIN).is_empty(),
+        click(with_body(), ph2d_panel_inspector::ids::INSP_PHYS_JOIN).is_empty(),
         "Join fired with join_count=0 — the refusal lives only in the paint \
          loop, which is not a refusal"
     );
@@ -614,7 +646,7 @@ fn join_kind_chips_pick_their_kind_only_when_joinable() {
         }));
         let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
         set_current_inspector_physics(None);
-        for &id in &ids::INSP_PHYS_JOIN_KIND {
+        for &id in &ph2d_panel_inspector::ids::INSP_PHYS_JOIN_KIND {
             assert!(
                 rects.iter().any(|(n, _)| *n == id),
                 "o chip de kind tem de ser oferecido com join_count={count} — ele \
@@ -627,7 +659,10 @@ fn join_kind_chips_pick_their_kind_only_when_joinable() {
     // no `zip`, e o resultado foi um tipo que a simulação tinha e o artista não
     // conseguia pedir (Enio: *"Slider não aparece no painel de joints"*). A
     // varredura acima passaria com o chip pintado e morto; esta metade não.
-    for (i, &id) in ids::INSP_PHYS_JOIN_KIND.iter().enumerate() {
+    for (i, &id) in ph2d_panel_inspector::ids::INSP_PHYS_JOIN_KIND
+        .iter()
+        .enumerate()
+    {
         let acts = click_real(with_body(), id);
         assert!(
             acts.iter().any(|a| matches!(
@@ -674,7 +709,7 @@ fn the_bake_button_is_painted_and_reaches_the_bus() {
     let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
     let rect = rects
         .iter()
-        .find(|(n, _)| *n == ids::INSP_PHYS_BAKE)
+        .find(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_PHYS_BAKE)
         .map(|(_, r)| *r)
         .expect("the Bake button was never painted, so nothing can be clicked");
 
@@ -684,13 +719,13 @@ fn the_bake_button_is_painted_and_reaches_the_bus() {
     assert!(
         events
             .iter()
-            .any(|e| matches!(e, WidgetEvent::Click(id) if *id == ids::INSP_PHYS_BAKE)),
+            .any(|e| matches!(e, WidgetEvent::Click(id) if *id == ph2d_panel_inspector::ids::INSP_PHYS_BAKE)),
         "a real click on the painted Bake rect produced no Click for it — the \
          id is not focusable in the store, so the button is dead under the mouse"
     );
 
     expect(
-        &click(with_body(), ids::INSP_PHYS_BAKE),
+        &click(with_body(), ph2d_panel_inspector::ids::INSP_PHYS_BAKE),
         PhysicsFieldEdit::Bake,
         "Bake to Timeline",
     );
@@ -716,7 +751,7 @@ fn the_bake_button_is_painted_and_reaches_the_bus() {
 
     // The empty face has no motion to bake, and offers nothing.
     assert!(
-        click(without_body(), ids::INSP_PHYS_BAKE).is_empty(),
+        click(without_body(), ph2d_panel_inspector::ids::INSP_PHYS_BAKE).is_empty(),
         "Bake fired on an entity with no body — there is no simulation to read"
     );
 }
@@ -755,11 +790,15 @@ fn gravity_scale_is_offered_and_committed_only_for_a_dynamic_body() {
         assert_eq!(
             rects
                 .iter()
-                .any(|(n, _)| *n == ids::INSP_PHYS_GRAVITY_SCALE),
+                .any(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_PHYS_GRAVITY_SCALE),
             offered,
             "kind_tag={tag}: the Gravity Scale row's presence is wrong"
         );
-        let actions = commit(info.clone(), ids::INSP_PHYS_GRAVITY_SCALE, 0.3);
+        let actions = commit(
+            info.clone(),
+            ph2d_panel_inspector::ids::INSP_PHYS_GRAVITY_SCALE,
+            0.3,
+        );
         assert_eq!(
             !actions.is_empty(),
             offered,
@@ -796,9 +835,9 @@ fn initial_velocity_is_offered_and_committed_only_for_a_dynamic_body() {
         h: 2400.0,
     };
     let rows = [
-        ids::INSP_PHYS_LINVEL_X,
-        ids::INSP_PHYS_LINVEL_Y,
-        ids::INSP_PHYS_ANGVEL,
+        ph2d_panel_inspector::ids::INSP_PHYS_LINVEL_X,
+        ph2d_panel_inspector::ids::INSP_PHYS_LINVEL_Y,
+        ph2d_panel_inspector::ids::INSP_PHYS_ANGVEL,
     ];
     // 0 Dynamic (offered) · 1 Static · 2 Kinematic.
     for (tag, offered) in [(0u8, true), (1, false), (2, false)] {
@@ -828,7 +867,11 @@ fn initial_velocity_is_offered_and_committed_only_for_a_dynamic_body() {
 
     // The angular commit converts: 90 deg/s in → Angvel(π/2) out.
     expect(
-        &commit(with_body(), ids::INSP_PHYS_ANGVEL, 90.0),
+        &commit(
+            with_body(),
+            ph2d_panel_inspector::ids::INSP_PHYS_ANGVEL,
+            90.0,
+        ),
         PhysicsFieldEdit::Angvel(90.0_f32.to_radians()),
         "Init Spin (deg/s → rad/s)",
     );
@@ -864,12 +907,19 @@ fn dominance_is_offered_and_committed_only_for_a_dynamic_body() {
         let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
         set_current_inspector_physics(None);
         assert_eq!(
-            rects.iter().any(|(n, _)| *n == ids::INSP_PHYS_DOMINANCE),
+            rects
+                .iter()
+                .any(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_PHYS_DOMINANCE),
             offered,
             "kind_tag={tag}: the Dominance row's presence is wrong"
         );
         assert_eq!(
-            !commit(info.clone(), ids::INSP_PHYS_DOMINANCE, 5.0).is_empty(),
+            !commit(
+                info.clone(),
+                ph2d_panel_inspector::ids::INSP_PHYS_DOMINANCE,
+                5.0
+            )
+            .is_empty(),
             offered,
             "kind_tag={tag}: the event handler disagrees with the painter about \
              whether Dominance is offered"
@@ -877,7 +927,11 @@ fn dominance_is_offered_and_committed_only_for_a_dynamic_body() {
     }
     // The commit rounds the float to the i8 priority: 5.0 in → Dominance(5) out.
     expect(
-        &commit(with_body(), ids::INSP_PHYS_DOMINANCE, 5.0),
+        &commit(
+            with_body(),
+            ph2d_panel_inspector::ids::INSP_PHYS_DOMINANCE,
+            5.0,
+        ),
         PhysicsFieldEdit::Dominance(5),
         "Dominance (float → i8)",
     );
@@ -914,7 +968,7 @@ fn ccd_is_offered_and_committed_only_for_a_dynamic_body() {
         set_current_inspector_physics(Some(info.clone()));
         let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
         set_current_inspector_physics(None);
-        for &id in ids::INSP_PHYS_CCD.iter() {
+        for &id in ph2d_panel_inspector::ids::INSP_PHYS_CCD.iter() {
             assert_eq!(
                 rects.iter().any(|(n, _)| *n == id),
                 offered,
@@ -960,7 +1014,7 @@ fn lock_rotation_is_offered_and_committed_only_for_a_dynamic_body() {
         set_current_inspector_physics(Some(info.clone()));
         let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
         set_current_inspector_physics(None);
-        for &id in ids::INSP_PHYS_LOCKROT.iter() {
+        for &id in ph2d_panel_inspector::ids::INSP_PHYS_LOCKROT.iter() {
             assert_eq!(
                 rects.iter().any(|(n, _)| *n == id),
                 offered,
@@ -1005,9 +1059,9 @@ fn mass_source_toggle_swaps_density_for_mass_and_follows_who_reads_it() {
         set_current_inspector_physics(None);
         let has = |id| rects.iter().any(|(n, _)| *n == id);
         (
-            has(ids::INSP_PHYS_MASSMODE[0]),
-            has(ids::INSP_PHYS_DENSITY),
-            has(ids::INSP_PHYS_MASS),
+            has(ph2d_panel_inspector::ids::INSP_PHYS_MASSMODE[0]),
+            has(ph2d_panel_inspector::ids::INSP_PHYS_DENSITY),
+            has(ph2d_panel_inspector::ids::INSP_PHYS_MASS),
         )
     };
 
@@ -1063,7 +1117,7 @@ fn mass_source_toggle_swaps_density_for_mass_and_follows_who_reads_it() {
             mass_is_read: read,
             ..with_body()
         };
-        for &id in ids::INSP_PHYS_MASSMODE.iter() {
+        for &id in ph2d_panel_inspector::ids::INSP_PHYS_MASSMODE.iter() {
             assert_eq!(
                 !click(info.clone(), id).is_empty(),
                 read,
@@ -1080,7 +1134,7 @@ fn mass_source_toggle_swaps_density_for_mass_and_follows_who_reads_it() {
                 mass_manual: true,
                 ..with_body()
             },
-            ids::INSP_PHYS_MASS,
+            ph2d_panel_inspector::ids::INSP_PHYS_MASS,
             12.5,
         ),
         PhysicsFieldEdit::Mass(12.5),
@@ -1119,9 +1173,9 @@ fn freeze_position_is_offered_and_committed_only_for_a_dynamic_body() {
         set_current_inspector_physics(Some(info.clone()));
         let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
         set_current_inspector_physics(None);
-        for &id in ids::INSP_PHYS_LOCKX
+        for &id in ph2d_panel_inspector::ids::INSP_PHYS_LOCKX
             .iter()
-            .chain(ids::INSP_PHYS_LOCKY.iter())
+            .chain(ph2d_panel_inspector::ids::INSP_PHYS_LOCKY.iter())
         {
             assert_eq!(
                 rects.iter().any(|(n, _)| *n == id),
@@ -1169,12 +1223,14 @@ fn bake_is_offered_only_for_a_body_the_solver_moves() {
         let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
         set_current_inspector_physics(None);
         assert_eq!(
-            rects.iter().any(|(n, _)| *n == ids::INSP_PHYS_BAKE),
+            rects
+                .iter()
+                .any(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_PHYS_BAKE),
             offered,
             "kind_tag={tag}: the Bake button's presence is wrong"
         );
         assert_eq!(
-            !click(info.clone(), ids::INSP_PHYS_BAKE).is_empty(),
+            !click(info.clone(), ph2d_panel_inspector::ids::INSP_PHYS_BAKE).is_empty(),
             offered,
             "kind_tag={tag}: the event handler disagrees with the painter about \
              whether this body can be baked"
@@ -1218,9 +1274,9 @@ fn combine_rules_are_offered_for_every_kind_and_each_option_reaches_the_bus() {
         set_current_inspector_physics(Some(info.clone()));
         let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
         set_current_inspector_physics(None);
-        for &id in ids::INSP_PHYS_REST_COMBINE
+        for &id in ph2d_panel_inspector::ids::INSP_PHYS_REST_COMBINE
             .iter()
-            .chain(ids::INSP_PHYS_FRIC_COMBINE.iter())
+            .chain(ph2d_panel_inspector::ids::INSP_PHYS_FRIC_COMBINE.iter())
         {
             assert!(
                 rects.iter().any(|(n, _)| *n == id),
@@ -1233,14 +1289,20 @@ fn combine_rules_are_offered_for_every_kind_and_each_option_reaches_the_bus() {
     // Each option on each group dispatches its OWN tag onto its OWN edit. Distinct
     // per index so a wiring that sent every chip to Average (or crossed the two
     // groups) would fail.
-    for (i, &id) in ids::INSP_PHYS_REST_COMBINE.iter().enumerate() {
+    for (i, &id) in ph2d_panel_inspector::ids::INSP_PHYS_REST_COMBINE
+        .iter()
+        .enumerate()
+    {
         expect(
             &click(with_body(), id),
             PhysicsFieldEdit::RestitutionCombine(i as u8),
             &format!("Bounce Combine option {i}"),
         );
     }
-    for (i, &id) in ids::INSP_PHYS_FRIC_COMBINE.iter().enumerate() {
+    for (i, &id) in ph2d_panel_inspector::ids::INSP_PHYS_FRIC_COMBINE
+        .iter()
+        .enumerate()
+    {
         expect(
             &click(with_body(), id),
             PhysicsFieldEdit::FrictionCombine(i as u8),
@@ -1250,9 +1312,9 @@ fn combine_rules_are_offered_for_every_kind_and_each_option_reaches_the_bus() {
 
     // A combine chip on a bodyless entity is refused at the event layer — there is
     // no collider to give a material to.
-    for &id in ids::INSP_PHYS_REST_COMBINE
+    for &id in ph2d_panel_inspector::ids::INSP_PHYS_REST_COMBINE
         .iter()
-        .chain(ids::INSP_PHYS_FRIC_COMBINE.iter())
+        .chain(ph2d_panel_inspector::ids::INSP_PHYS_FRIC_COMBINE.iter())
     {
         assert!(
             click(without_body(), id).is_empty(),
@@ -1293,10 +1355,10 @@ fn damping_rows_are_dynamic_only_and_each_reaches_the_bus() {
         set_current_inspector_physics(None);
         // The two number boxes AND both mode chips are painted only for a Dynamic body.
         for &id in [
-            ids::INSP_PHYS_LINEAR_DAMPING,
-            ids::INSP_PHYS_ANGULAR_DAMPING,
-            ids::INSP_PHYS_DAMPMODE[0],
-            ids::INSP_PHYS_DAMPMODE[1],
+            ph2d_panel_inspector::ids::INSP_PHYS_LINEAR_DAMPING,
+            ph2d_panel_inspector::ids::INSP_PHYS_ANGULAR_DAMPING,
+            ph2d_panel_inspector::ids::INSP_PHYS_DAMPMODE[0],
+            ph2d_panel_inspector::ids::INSP_PHYS_DAMPMODE[1],
         ]
         .iter()
         {
@@ -1307,7 +1369,7 @@ fn damping_rows_are_dynamic_only_and_each_reaches_the_bus() {
             );
         }
         // The mode chips honour the click only for a Dynamic body.
-        for &id in ids::INSP_PHYS_DAMPMODE.iter() {
+        for &id in ph2d_panel_inspector::ids::INSP_PHYS_DAMPMODE.iter() {
             assert_eq!(
                 !click(info.clone(), id).is_empty(),
                 offered,
@@ -1317,7 +1379,12 @@ fn damping_rows_are_dynamic_only_and_each_reaches_the_bus() {
         }
         // The value commits honour only for a Dynamic body.
         assert_eq!(
-            !commit(info.clone(), ids::INSP_PHYS_LINEAR_DAMPING, 3.0).is_empty(),
+            !commit(
+                info.clone(),
+                ph2d_panel_inspector::ids::INSP_PHYS_LINEAR_DAMPING,
+                3.0
+            )
+            .is_empty(),
             offered,
             "kind_tag={tag}: Linear Damping commit / painter disagree"
         );
@@ -1325,16 +1392,27 @@ fn damping_rows_are_dynamic_only_and_each_reaches_the_bus() {
 
     // Each value commits its OWN field with its OWN number; each mode chip its OWN bool.
     expect(
-        &commit(with_body(), ids::INSP_PHYS_LINEAR_DAMPING, 3.0),
+        &commit(
+            with_body(),
+            ph2d_panel_inspector::ids::INSP_PHYS_LINEAR_DAMPING,
+            3.0,
+        ),
         PhysicsFieldEdit::LinearDamping(3.0),
         "Linear Damping",
     );
     expect(
-        &commit(with_body(), ids::INSP_PHYS_ANGULAR_DAMPING, 1.25),
+        &commit(
+            with_body(),
+            ph2d_panel_inspector::ids::INSP_PHYS_ANGULAR_DAMPING,
+            1.25,
+        ),
         PhysicsFieldEdit::AngularDamping(1.25),
         "Angular Damping",
     );
-    for (i, &id) in ids::INSP_PHYS_DAMPMODE.iter().enumerate() {
+    for (i, &id) in ph2d_panel_inspector::ids::INSP_PHYS_DAMPMODE
+        .iter()
+        .enumerate()
+    {
         expect(
             &click(with_body(), id),
             PhysicsFieldEdit::DampMode(i as u8),
@@ -1374,7 +1452,7 @@ fn one_way_is_offered_for_every_kind_and_each_option_reaches_the_bus() {
         set_current_inspector_physics(Some(info.clone()));
         let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
         set_current_inspector_physics(None);
-        for &id in ids::INSP_PHYS_ONEWAY.iter() {
+        for &id in ph2d_panel_inspector::ids::INSP_PHYS_ONEWAY.iter() {
             assert!(
                 rects.iter().any(|(n, _)| *n == id),
                 "kind_tag={tag}: a One-Way chip was not painted — a jump-through platform is \
@@ -1384,7 +1462,10 @@ fn one_way_is_offered_for_every_kind_and_each_option_reaches_the_bus() {
     }
 
     // Each side its own boolean.
-    for (i, &id) in ids::INSP_PHYS_ONEWAY.iter().enumerate() {
+    for (i, &id) in ph2d_panel_inspector::ids::INSP_PHYS_ONEWAY
+        .iter()
+        .enumerate()
+    {
         expect(
             &click(with_body(), id),
             PhysicsFieldEdit::OneWay(i == 1),
@@ -1405,7 +1486,7 @@ fn one_way_is_offered_for_every_kind_and_each_option_reaches_the_bus() {
         set_current_inspector_physics(Some(sensor.clone()));
         let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
         set_current_inspector_physics(None);
-        for &id in ids::INSP_PHYS_ONEWAY.iter() {
+        for &id in ph2d_panel_inspector::ids::INSP_PHYS_ONEWAY.iter() {
             assert!(
                 !rects.iter().any(|(n, _)| *n == id),
                 "a One-Way chip was painted on a SENSOR, where it cannot do anything"
@@ -1418,7 +1499,7 @@ fn one_way_is_offered_for_every_kind_and_each_option_reaches_the_bus() {
     }
 
     // Refused on a bodyless entity — there is no collider to make one-way.
-    for &id in ids::INSP_PHYS_ONEWAY.iter() {
+    for &id in ph2d_panel_inspector::ids::INSP_PHYS_ONEWAY.iter() {
         assert!(
             click(without_body(), id).is_empty(),
             "a One-Way chip reached the bus on an entity with no body"
@@ -1448,13 +1529,13 @@ fn the_force_rows_are_sensor_only_and_each_axis_reaches_the_bus() {
     // knows about is the premise that rots: the next row added to the sensor block
     // must be in this list, and the seam is where its absence shows.
     const FORCE_IDS: [ph2d_a11y::NodeId; 7] = [
-        ids::INSP_PHYS_FORCE_X,
-        ids::INSP_PHYS_FORCE_Y,
-        ids::INSP_PHYS_AREA_TORQUE,
-        ids::INSP_PHYS_AREA_FALLOFF,
-        ids::INSP_PHYS_AREA_DRAG,
-        ids::INSP_PHYS_AREA_DENSITY,
-        ids::INSP_PHYS_AREA_FORM_DRAG,
+        ph2d_panel_inspector::ids::INSP_PHYS_FORCE_X,
+        ph2d_panel_inspector::ids::INSP_PHYS_FORCE_Y,
+        ph2d_panel_inspector::ids::INSP_PHYS_AREA_TORQUE,
+        ph2d_panel_inspector::ids::INSP_PHYS_AREA_FALLOFF,
+        ph2d_panel_inspector::ids::INSP_PHYS_AREA_DRAG,
+        ph2d_panel_inspector::ids::INSP_PHYS_AREA_DENSITY,
+        ph2d_panel_inspector::ids::INSP_PHYS_AREA_FORM_DRAG,
     ];
 
     for tag in [0u8, 1, 2] {
@@ -1469,7 +1550,10 @@ fn the_force_rows_are_sensor_only_and_each_axis_reaches_the_bus() {
             set_current_inspector_physics(Some(info.clone()));
             let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
             set_current_inspector_physics(None);
-            for &id in FORCE_IDS.iter().chain(ids::INSP_PHYS_FORCE_AXES.iter()) {
+            for &id in FORCE_IDS
+                .iter()
+                .chain(ph2d_panel_inspector::ids::INSP_PHYS_FORCE_AXES.iter())
+            {
                 assert_eq!(
                     rects.iter().any(|(n, _)| *n == id),
                     is_sensor,
@@ -1486,12 +1570,20 @@ fn the_force_rows_are_sensor_only_and_each_axis_reaches_the_bus() {
         ..with_body()
     };
     expect(
-        &commit(sensor.clone(), ids::INSP_PHYS_FORCE_X, 12.5),
+        &commit(
+            sensor.clone(),
+            ph2d_panel_inspector::ids::INSP_PHYS_FORCE_X,
+            12.5,
+        ),
         PhysicsFieldEdit::ForceX(12.5),
         "Force X",
     );
     expect(
-        &commit(sensor.clone(), ids::INSP_PHYS_FORCE_Y, -3.25),
+        &commit(
+            sensor.clone(),
+            ph2d_panel_inspector::ids::INSP_PHYS_FORCE_Y,
+            -3.25,
+        ),
         PhysicsFieldEdit::ForceY(-3.25),
         "Force Y",
     );
@@ -1501,7 +1593,10 @@ fn the_force_rows_are_sensor_only_and_each_axis_reaches_the_bus() {
     // painted through `seg_row`, so their hit registration happens in a loop and the
     // wiring-parity gate cannot see them. A mutation removing them from `populate.rs`
     // leaves every OTHER gate in this file green.
-    for (i, &id) in ids::INSP_PHYS_FORCE_AXES.iter().enumerate() {
+    for (i, &id) in ph2d_panel_inspector::ids::INSP_PHYS_FORCE_AXES
+        .iter()
+        .enumerate()
+    {
         expect(
             &click_real(sensor.clone(), id),
             PhysicsFieldEdit::ForceWorldAxes(i == 1),
@@ -1510,7 +1605,7 @@ fn the_force_rows_are_sensor_only_and_each_axis_reaches_the_bus() {
     }
     // ... and it is REFUSED on a solid collider and on a bodyless entity, the mirror of
     // the One-Way rule above. Dim is not a refusal, so the click is what is asked.
-    for &id in ids::INSP_PHYS_FORCE_AXES.iter() {
+    for &id in ph2d_panel_inspector::ids::INSP_PHYS_FORCE_AXES.iter() {
         assert!(
             click(with_body(), id).is_empty(),
             "a Force Axes chip reached the bus on a SOLID collider, where there is no \
@@ -1525,7 +1620,11 @@ fn the_force_rows_are_sensor_only_and_each_axis_reaches_the_bus() {
     // must survive the event layer intact — a clamp here (as the drag rows take) would
     // silently drop the clockwise half.
     expect(
-        &commit(sensor.clone(), ids::INSP_PHYS_AREA_TORQUE, -7.5),
+        &commit(
+            sensor.clone(),
+            ph2d_panel_inspector::ids::INSP_PHYS_AREA_TORQUE,
+            -7.5,
+        ),
         PhysicsFieldEdit::AreaTorque(-7.5),
         "Torque",
     );
@@ -1533,22 +1632,38 @@ fn the_force_rows_are_sensor_only_and_each_axis_reaches_the_bus() {
     // apply da shell, que é onde ela vira componente. Clampar aqui também seria a segunda
     // porta para a mesma regra.
     expect(
-        &commit(sensor.clone(), ids::INSP_PHYS_AREA_FALLOFF, 0.75),
+        &commit(
+            sensor.clone(),
+            ph2d_panel_inspector::ids::INSP_PHYS_AREA_FALLOFF,
+            0.75,
+        ),
         PhysicsFieldEdit::AreaFalloff(0.75),
         "Falloff",
     );
     expect(
-        &commit(sensor.clone(), ids::INSP_PHYS_AREA_DRAG, 4.0),
+        &commit(
+            sensor.clone(),
+            ph2d_panel_inspector::ids::INSP_PHYS_AREA_DRAG,
+            4.0,
+        ),
         PhysicsFieldEdit::AreaDrag(4.0),
         "Area Drag",
     );
     expect(
-        &commit(sensor.clone(), ids::INSP_PHYS_AREA_DENSITY, 6.0),
+        &commit(
+            sensor.clone(),
+            ph2d_panel_inspector::ids::INSP_PHYS_AREA_DENSITY,
+            6.0,
+        ),
         PhysicsFieldEdit::AreaDensity(6.0),
         "Fluid Density",
     );
     expect(
-        &commit(sensor.clone(), ids::INSP_PHYS_AREA_FORM_DRAG, 2.5),
+        &commit(
+            sensor.clone(),
+            ph2d_panel_inspector::ids::INSP_PHYS_AREA_FORM_DRAG,
+            2.5,
+        ),
         PhysicsFieldEdit::AreaFormDrag(2.5),
         "Shape Drag",
     );
@@ -1620,25 +1735,37 @@ fn selecting_a_zone_shows_its_authored_area_values() {
         other => panic!("{id:?} is not a registered NumberInput: {other:?}"),
     };
     assert_eq!(
-        val(ids::INSP_PHYS_AREA_TORQUE),
+        val(ph2d_panel_inspector::ids::INSP_PHYS_AREA_TORQUE),
         40.0,
         "the Torque row must SHOW the authored torque on selection, not 0"
     );
-    assert_eq!(val(ids::INSP_PHYS_FORCE_X), 12.5, "Force X did not sync");
-    assert_eq!(val(ids::INSP_PHYS_FORCE_Y), -3.25, "Force Y did not sync");
     assert_eq!(
-        val(ids::INSP_PHYS_AREA_FALLOFF),
+        val(ph2d_panel_inspector::ids::INSP_PHYS_FORCE_X),
+        12.5,
+        "Force X did not sync"
+    );
+    assert_eq!(
+        val(ph2d_panel_inspector::ids::INSP_PHYS_FORCE_Y),
+        -3.25,
+        "Force Y did not sync"
+    );
+    assert_eq!(
+        val(ph2d_panel_inspector::ids::INSP_PHYS_AREA_FALLOFF),
         0.75,
         "the Falloff row must SHOW the authored fraction on selection, not 0"
     );
-    assert_eq!(val(ids::INSP_PHYS_AREA_DRAG), 4.0, "Drag did not sync");
     assert_eq!(
-        val(ids::INSP_PHYS_AREA_DENSITY),
+        val(ph2d_panel_inspector::ids::INSP_PHYS_AREA_DRAG),
+        4.0,
+        "Drag did not sync"
+    );
+    assert_eq!(
+        val(ph2d_panel_inspector::ids::INSP_PHYS_AREA_DENSITY),
         6.0,
         "Fluid Density did not sync"
     );
     assert_eq!(
-        val(ids::INSP_PHYS_AREA_FORM_DRAG),
+        val(ph2d_panel_inspector::ids::INSP_PHYS_AREA_FORM_DRAG),
         2.5,
         "Shape Drag did not sync"
     );
@@ -1694,12 +1821,12 @@ fn selecting_a_surface_shows_its_authored_grip_and_belt() {
         other => panic!("{id:?} nao e' um NumberInput registrado: {other:?}"),
     };
     assert_eq!(
-        val(ids::INSP_PHYS_WALK_GRIP),
+        val(ph2d_panel_inspector::ids::INSP_PHYS_WALK_GRIP),
         0.25,
         "a row Grip tem de MOSTRAR a tracao autorada ao selecionar, nao o neutro"
     );
     assert_eq!(
-        val(ids::INSP_PHYS_WALK_BELT),
+        val(ph2d_panel_inspector::ids::INSP_PHYS_WALK_BELT),
         -3.25,
         "a row Belt tem de MOSTRAR a esteira autorada, com o SINAL"
     );
@@ -1742,7 +1869,7 @@ fn the_draw_joint_button_is_always_offered_and_reaches_the_bus() {
             },
         ),
     ] {
-        let acts = click_real(info.clone(), ids::INSP_PHYS_JOIN_DRAW);
+        let acts = click_real(info.clone(), ph2d_panel_inspector::ids::INSP_PHYS_JOIN_DRAW);
         assert!(
             acts.iter().any(|a| matches!(
                 a,
@@ -1776,11 +1903,15 @@ fn the_selection_button_is_absent_without_two_bodies() {
     }));
     let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
     assert!(
-        !rects.iter().any(|(n, _)| *n == ids::INSP_PHYS_JOIN),
+        !rects
+            .iter()
+            .any(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_PHYS_JOIN),
         "Join Selected foi pintado sem uma seleção que o justifique"
     );
     assert!(
-        rects.iter().any(|(n, _)| *n == ids::INSP_PHYS_JOIN_DRAW),
+        rects
+            .iter()
+            .any(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_PHYS_JOIN_DRAW),
         "…e Draw Joint tem de continuar lá"
     );
 }
@@ -1804,7 +1935,7 @@ fn the_rig_button_is_alive_under_the_mouse_on_both_faces() {
             rig_parts: 6,
             ..base
         };
-        let actions = click_real(info.clone(), ids::INSP_PHYS_RIG);
+        let actions = click_real(info.clone(), ph2d_panel_inspector::ids::INSP_PHYS_RIG);
         assert!(
             actions.iter().any(|a| matches!(
                 a,
@@ -1844,7 +1975,9 @@ fn the_rig_button_is_absent_when_there_is_nothing_to_rig() {
             let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
             set_current_inspector_physics(None);
             assert_eq!(
-                rects.iter().any(|(n, _)| *n == ids::INSP_PHYS_RIG),
+                rects
+                    .iter()
+                    .any(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_PHYS_RIG),
                 parts > 0,
                 "a presença do botão Rig tem de seguir a CONTAGEM \
                  (rig_parts={parts}, has_body={})",
@@ -1857,7 +1990,7 @@ fn the_rig_button_is_absent_when_there_is_nothing_to_rig() {
     // ([[feedback_disabled_button_still_dispatches]]): o id fica no store a
     // sessão inteira, então o braço confere por conta própria.
     assert!(
-        click(with_body(), ids::INSP_PHYS_RIG).is_empty(),
+        click(with_body(), ph2d_panel_inspector::ids::INSP_PHYS_RIG).is_empty(),
         "o Rig disparou com rig_parts=0"
     );
 }
@@ -1933,13 +2066,18 @@ fn the_add_shape_door_is_offered_only_with_an_owner_and_a_real_click_reaches_it(
     let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
     set_current_inspector_physics(None);
     assert!(
-        !rects.iter().any(|(n, _)| *n == ids::INSP_PHYS_ADD_SHAPE),
+        !rects
+            .iter()
+            .any(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_PHYS_ADD_SHAPE),
         "a porta foi oferecida a um objeto sem corpo ancestral — a peça não teria \
          a quem pertencer"
     );
 
     // PRESENÇA + o clique real.
-    let actions = click_real(child.clone(), ids::INSP_PHYS_ADD_SHAPE);
+    let actions = click_real(
+        child.clone(),
+        ph2d_panel_inspector::ids::INSP_PHYS_ADD_SHAPE,
+    );
     assert!(
         actions.iter().any(|a| matches!(
             a,
@@ -1960,7 +2098,9 @@ fn the_add_shape_door_is_offered_only_with_an_owner_and_a_real_click_reaches_it(
     let painted = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
     set_current_inspector_physics(None);
     assert!(
-        painted.iter().any(|(n, _)| *n == ids::INSP_PHYS_ADD_SHAPE),
+        painted
+            .iter()
+            .any(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_PHYS_ADD_SHAPE),
         "a porta não foi pintada para um filho de corpo"
     );
 }
@@ -1998,36 +2138,75 @@ fn the_part_face_paints_the_collider_rows_and_no_body_rows() {
     let painted = painted_ids(as_part());
     let has = |id| painted.contains(&id);
     for (id, what) in [
-        (ids::INSP_PHYS_SHAPE[0], "o seletor de forma"),
-        (ids::INSP_PHYS_HALF_X, "as dimensões"),
-        (ids::INSP_PHYS_OFFSET_X, "o offset"),
-        (ids::INSP_PHYS_DENSITY, "a densidade"),
-        (ids::INSP_PHYS_RESTITUTION, "o quique"),
-        (ids::INSP_PHYS_FRICTION, "o atrito"),
-        (ids::INSP_PHYS_REST_COMBINE[0], "o combine de quique"),
-        (ids::INSP_PHYS_LAYER[0], "a camada"),
-        (ids::INSP_PHYS_SENSOR[0], "o trigger"),
-        (ids::INSP_PHYS_ONEWAY[0], "o one-way"),
-        (ids::INSP_PHYS_WALK_GRIP, "a tração da superfície"),
-        (ids::INSP_PHYS_WALK_BELT, "a esteira"),
-        (ids::INSP_PHYS_ADD, "a promoção a corpo próprio"),
-        (ids::INSP_PHYS_REMOVE, "a remoção da forma"),
+        (
+            ph2d_panel_inspector::ids::INSP_PHYS_SHAPE[0],
+            "o seletor de forma",
+        ),
+        (ph2d_panel_inspector::ids::INSP_PHYS_HALF_X, "as dimensões"),
+        (ph2d_panel_inspector::ids::INSP_PHYS_OFFSET_X, "o offset"),
+        (ph2d_panel_inspector::ids::INSP_PHYS_DENSITY, "a densidade"),
+        (ph2d_panel_inspector::ids::INSP_PHYS_RESTITUTION, "o quique"),
+        (ph2d_panel_inspector::ids::INSP_PHYS_FRICTION, "o atrito"),
+        (
+            ph2d_panel_inspector::ids::INSP_PHYS_REST_COMBINE[0],
+            "o combine de quique",
+        ),
+        (ph2d_panel_inspector::ids::INSP_PHYS_LAYER[0], "a camada"),
+        (ph2d_panel_inspector::ids::INSP_PHYS_SENSOR[0], "o trigger"),
+        (ph2d_panel_inspector::ids::INSP_PHYS_ONEWAY[0], "o one-way"),
+        (
+            ph2d_panel_inspector::ids::INSP_PHYS_WALK_GRIP,
+            "a tração da superfície",
+        ),
+        (ph2d_panel_inspector::ids::INSP_PHYS_WALK_BELT, "a esteira"),
+        (
+            ph2d_panel_inspector::ids::INSP_PHYS_ADD,
+            "a promoção a corpo próprio",
+        ),
+        (
+            ph2d_panel_inspector::ids::INSP_PHYS_REMOVE,
+            "a remoção da forma",
+        ),
     ] {
         assert!(has(id), "a face de peça não pintou {what} ({id:?})");
     }
     for (id, what) in [
-        (ids::INSP_PHYS_KIND[0], "o tipo de corpo"),
-        (ids::INSP_PHYS_MASSMODE[0], "o modo de massa"),
-        (ids::INSP_PHYS_GRAVITY_SCALE, "a gravidade"),
-        (ids::INSP_PHYS_LINVEL_X, "a velocidade inicial"),
-        (ids::INSP_PHYS_CCD[0], "o CCD"),
-        (ids::INSP_PHYS_LOCKROT[0], "a trava de rotação"),
-        (ids::INSP_PHYS_DOMINANCE, "a dominância"),
-        (ids::INSP_PHYS_LINEAR_DAMPING, "o damping"),
-        (ids::INSP_PHYS_BAKE, "o bake"),
+        (
+            ph2d_panel_inspector::ids::INSP_PHYS_KIND[0],
+            "o tipo de corpo",
+        ),
+        (
+            ph2d_panel_inspector::ids::INSP_PHYS_MASSMODE[0],
+            "o modo de massa",
+        ),
+        (
+            ph2d_panel_inspector::ids::INSP_PHYS_GRAVITY_SCALE,
+            "a gravidade",
+        ),
+        (
+            ph2d_panel_inspector::ids::INSP_PHYS_LINVEL_X,
+            "a velocidade inicial",
+        ),
+        (ph2d_panel_inspector::ids::INSP_PHYS_CCD[0], "o CCD"),
+        (
+            ph2d_panel_inspector::ids::INSP_PHYS_LOCKROT[0],
+            "a trava de rotação",
+        ),
+        (
+            ph2d_panel_inspector::ids::INSP_PHYS_DOMINANCE,
+            "a dominância",
+        ),
+        (
+            ph2d_panel_inspector::ids::INSP_PHYS_LINEAR_DAMPING,
+            "o damping",
+        ),
+        (ph2d_panel_inspector::ids::INSP_PHYS_BAKE, "o bake"),
         // ⚠️ E a porta que a criou: re-oferecê-la reescreve o collider com os
         // defaults e apaga a forma autorada em silêncio.
-        (ids::INSP_PHYS_ADD_SHAPE, "a porta *Add Shape*"),
+        (
+            ph2d_panel_inspector::ids::INSP_PHYS_ADD_SHAPE,
+            "a porta *Add Shape*",
+        ),
     ] {
         assert!(
             !has(id),
@@ -2049,13 +2228,25 @@ fn a_sensor_part_paints_no_zone_rows() {
         ..as_part()
     });
     for (id, what) in [
-        (ids::INSP_PHYS_FORCE_X, "a força"),
-        (ids::INSP_PHYS_AREA_TORQUE, "o torque"),
-        (ids::INSP_PHYS_AREA_FALLOFF, "o falloff"),
-        (ids::INSP_PHYS_AREA_DRAG, "o arrasto"),
-        (ids::INSP_PHYS_AREA_DENSITY, "a densidade do fluido"),
-        (ids::INSP_PHYS_AREA_FORM_DRAG, "o shape drag"),
-        (ids::INSP_PHYS_FORCE_AXES[0], "os eixos da força"),
+        (ph2d_panel_inspector::ids::INSP_PHYS_FORCE_X, "a força"),
+        (ph2d_panel_inspector::ids::INSP_PHYS_AREA_TORQUE, "o torque"),
+        (
+            ph2d_panel_inspector::ids::INSP_PHYS_AREA_FALLOFF,
+            "o falloff",
+        ),
+        (ph2d_panel_inspector::ids::INSP_PHYS_AREA_DRAG, "o arrasto"),
+        (
+            ph2d_panel_inspector::ids::INSP_PHYS_AREA_DENSITY,
+            "a densidade do fluido",
+        ),
+        (
+            ph2d_panel_inspector::ids::INSP_PHYS_AREA_FORM_DRAG,
+            "o shape drag",
+        ),
+        (
+            ph2d_panel_inspector::ids::INSP_PHYS_FORCE_AXES[0],
+            "os eixos da força",
+        ),
     ] {
         assert!(
             !painted.contains(&id),
@@ -2069,7 +2260,8 @@ fn a_sensor_part_paints_no_zone_rows() {
         ..with_body()
     });
     assert!(
-        body.contains(&ids::INSP_PHYS_FORCE_X) && body.contains(&ids::INSP_PHYS_AREA_TORQUE),
+        body.contains(&ph2d_panel_inspector::ids::INSP_PHYS_FORCE_X)
+            && body.contains(&ph2d_panel_inspector::ids::INSP_PHYS_AREA_TORQUE),
         "o corpo-sensor perdeu o bloco de zona — o corte quebrou a face de corpo"
     );
 }
@@ -2083,52 +2275,59 @@ fn a_sensor_part_paints_no_zone_rows() {
 #[test]
 fn every_part_face_control_reaches_the_bus() {
     expect(
-        &click_real(as_part(), ids::INSP_PHYS_SHAPE[0]),
+        &click_real(as_part(), ph2d_panel_inspector::ids::INSP_PHYS_SHAPE[0]),
         PhysicsFieldEdit::Shape(0),
         "a forma de uma peça",
     );
     expect(
-        &click_real(as_part(), ids::INSP_PHYS_LAYER[2]),
+        &click_real(as_part(), ph2d_panel_inspector::ids::INSP_PHYS_LAYER[2]),
         PhysicsFieldEdit::Layer(2),
         "a camada de uma peça",
     );
     expect(
-        &click_real(as_part(), ids::INSP_PHYS_SENSOR[1]),
+        &click_real(as_part(), ph2d_panel_inspector::ids::INSP_PHYS_SENSOR[1]),
         PhysicsFieldEdit::Sensor(true),
         "o trigger de uma peça",
     );
     expect(
-        &click_real(as_part(), ids::INSP_PHYS_ONEWAY[1]),
+        &click_real(as_part(), ph2d_panel_inspector::ids::INSP_PHYS_ONEWAY[1]),
         PhysicsFieldEdit::OneWay(true),
         "o one-way de uma peça",
     );
     expect(
-        &click_real(as_part(), ids::INSP_PHYS_REST_COMBINE[3]),
+        &click_real(
+            as_part(),
+            ph2d_panel_inspector::ids::INSP_PHYS_REST_COMBINE[3],
+        ),
         PhysicsFieldEdit::RestitutionCombine(3),
         "o combine de quique de uma peça",
     );
     expect(
-        &commit(as_part(), ids::INSP_PHYS_HALF_X, 0.42),
+        &commit(as_part(), ph2d_panel_inspector::ids::INSP_PHYS_HALF_X, 0.42),
         PhysicsFieldEdit::HalfX(0.42),
         "a meia-largura de uma peça",
     );
     expect(
-        &commit(as_part(), ids::INSP_PHYS_OFFSET_Y, -0.3),
+        &commit(
+            as_part(),
+            ph2d_panel_inspector::ids::INSP_PHYS_OFFSET_Y,
+            -0.3,
+        ),
         PhysicsFieldEdit::OffsetY(-0.3),
         "o offset de uma peça",
     );
     expect(
-        &commit(as_part(), ids::INSP_PHYS_DENSITY, 7.5),
+        &commit(as_part(), ph2d_panel_inspector::ids::INSP_PHYS_DENSITY, 7.5),
         PhysicsFieldEdit::Density(7.5),
         "a densidade de uma peça",
     );
     expect(
-        &click_real(as_part(), ids::INSP_PHYS_REMOVE),
+        &click_real(as_part(), ph2d_panel_inspector::ids::INSP_PHYS_REMOVE),
         PhysicsFieldEdit::Remove,
         "*Remove Shape*",
     );
     expect(
-        &click_real(as_part(), ids::INSP_PHYS_ADD),
+        &click_real(as_part(), ph2d_panel_inspector::ids::INSP_PHYS_ADD),
         PhysicsFieldEdit::Add,
         "*Make Independent Body*",
     );
@@ -2146,7 +2345,7 @@ fn every_part_face_control_reaches_the_bus() {
 #[test]
 fn add_shape_is_refused_on_something_that_already_has_a_shape() {
     assert!(
-        click(as_part(), ids::INSP_PHYS_ADD_SHAPE).is_empty(),
+        click(as_part(), ph2d_panel_inspector::ids::INSP_PHYS_ADD_SHAPE).is_empty(),
         "*Add Shape* despachou sobre uma PEÇA — o clique reescreve a forma autorada"
     );
     let offered = InspectorPhysicsInfo {
@@ -2154,7 +2353,7 @@ fn add_shape_is_refused_on_something_that_already_has_a_shape() {
         ..without_body()
     };
     expect(
-        &click(offered, ids::INSP_PHYS_ADD_SHAPE),
+        &click(offered, ph2d_panel_inspector::ids::INSP_PHYS_ADD_SHAPE),
         PhysicsFieldEdit::AddShape,
         "*Add Shape* na face VAZIA, onde ela é a porta certa",
     );
@@ -2189,7 +2388,7 @@ fn a_compound_body_says_so_and_the_rows_below_make_room() {
         set_current_inspector_physics(None);
         rects
             .iter()
-            .find(|(n, _)| *n == ids::INSP_PHYS_OFFSET_X)
+            .find(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_PHYS_OFFSET_X)
             .map(|(_, r)| r.y)
             .expect("§11 nunca pintou a row de Offset X")
     };
@@ -2221,8 +2420,16 @@ fn a_compound_body_says_so_and_the_rows_below_make_room() {
 #[test]
 fn each_signal_row_dispatches_its_own_end() {
     for (id, want_hit, text) in [
-        (ids::INSP_PHYS_SIGNAL, true, "door_open"),
-        (ids::INSP_PHYS_SIGNAL_LEAVE, false, "door_close"),
+        (
+            ph2d_panel_inspector::ids::INSP_PHYS_SIGNAL,
+            true,
+            "door_open",
+        ),
+        (
+            ph2d_panel_inspector::ids::INSP_PHYS_SIGNAL_LEAVE,
+            false,
+            "door_close",
+        ),
     ] {
         let mut host = MockPanelHost::with_panel::<InspectorPanel>();
         let mut state = InspectorState::default();
@@ -2294,12 +2501,14 @@ fn selecting_an_entity_shows_the_signal_names_it_carries() {
     set_current_inspector_physics(None);
     set_current_inspector_transform(None);
     assert_eq!(
-        host.store().text(ids::INSP_PHYS_SIGNAL),
+        host.store()
+            .text(ph2d_panel_inspector::ids::INSP_PHYS_SIGNAL),
         Some("door_open"),
         "a row de CHEGADA não mostra o nome autorado — ela é write-only"
     );
     assert_eq!(
-        host.store().text(ids::INSP_PHYS_SIGNAL_LEAVE),
+        host.store()
+            .text(ph2d_panel_inspector::ids::INSP_PHYS_SIGNAL_LEAVE),
         Some("door_close"),
         "a row de SAÍDA não mostra o nome autorado — ela é write-only"
     );
@@ -2332,8 +2541,8 @@ fn the_walk_surface_rows_are_offered_for_every_collider_and_never_without_one() 
     ] {
         let painted = painted_ids(info);
         for (id, label) in [
-            (ids::INSP_PHYS_WALK_GRIP, "Grip"),
-            (ids::INSP_PHYS_WALK_BELT, "Belt"),
+            (ph2d_panel_inspector::ids::INSP_PHYS_WALK_GRIP, "Grip"),
+            (ph2d_panel_inspector::ids::INSP_PHYS_WALK_BELT, "Belt"),
         ] {
             assert!(
                 painted.contains(&id),
@@ -2343,8 +2552,8 @@ fn the_walk_surface_rows_are_offered_for_every_collider_and_never_without_one() 
     }
     let bare = painted_ids(without_body());
     for (id, label) in [
-        (ids::INSP_PHYS_WALK_GRIP, "Grip"),
-        (ids::INSP_PHYS_WALK_BELT, "Belt"),
+        (ph2d_panel_inspector::ids::INSP_PHYS_WALK_GRIP, "Grip"),
+        (ph2d_panel_inspector::ids::INSP_PHYS_WALK_BELT, "Belt"),
     ] {
         assert!(
             !bare.contains(&id),

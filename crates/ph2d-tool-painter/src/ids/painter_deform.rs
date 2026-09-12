@@ -1,0 +1,127 @@
+//! Deform-panel NodeIds (Deform Wave 1). The Painter's Deform mode owns a **mode-exclusive** panel
+//! section (like Selection / Inpaint): a sub-mode picker (segmented), the Brush knobs (Size / Pressure /
+//! Distortion / Momentum / Strength sliders), a Freeze toggle + Invert action, and the Reset / Apply /
+//! Apply & Keep session buttons. Fixed-id, tool-global widgets — registered in the painter-layers
+//! `populate` and forwarded to the tool over the frozen `PanelEvent` channel (`Click` / `SetValue`).
+//!
+//! ⚠️ **Desceu de `ph2d-editor-core/src/ids/chrome/painter_deform.rs` em 2026-09-12** (auditoria de arquitectura
+//! A5b): quem LÊ estes ids mora nesta crate, e a fundação que 43 crates recompilam deixou de os
+//! carregar.
+
+use ph2d_a11y::NodeId;
+use ph2d_tool_registry::hash_node_id;
+
+// ── Temperament (segmented): Reshape (brush) · Transform (gizmo) — Deform Wave 2 ─────────────────────
+pub const PAINTER_DEFORM_TEMPERAMENT: NodeId = hash_node_id("painter_deform.temperament");
+
+pub const PAINTER_DEFORM_TEMPERAMENT_RESHAPE: NodeId =
+    hash_node_id("painter_deform.temperament_reshape");
+
+pub const PAINTER_DEFORM_TEMPERAMENT_TRANSFORM: NodeId =
+    hash_node_id("painter_deform.temperament_transform");
+
+/// Temperament segments in order (`0` Reshape · `1` Transform).
+pub const PAINTER_DEFORM_TEMPERAMENT_IDS: [NodeId; 2] = [
+    PAINTER_DEFORM_TEMPERAMENT_RESHAPE,
+    PAINTER_DEFORM_TEMPERAMENT_TRANSFORM,
+];
+
+// ── Transform sub-mode (segmented): Uniform · Free (affine) · Distort (perspective) — Wave 2 ──────────
+pub const PAINTER_DEFORM_TRANSFORM_MODE: NodeId = hash_node_id("painter_deform.transform_mode");
+
+pub const PAINTER_DEFORM_TRANSFORM_MODE_UNIFORM: NodeId =
+    hash_node_id("painter_deform.transform_mode_uniform");
+
+pub const PAINTER_DEFORM_TRANSFORM_MODE_FREE: NodeId =
+    hash_node_id("painter_deform.transform_mode_free");
+
+pub const PAINTER_DEFORM_TRANSFORM_MODE_DISTORT: NodeId =
+    hash_node_id("painter_deform.transform_mode_distort");
+
+pub const PAINTER_DEFORM_TRANSFORM_MODE_WARP: NodeId =
+    hash_node_id("painter_deform.transform_mode_warp");
+
+/// Transform sub-mode segments in `DeformState::transform_mode` order (`0` Uniform · `1` Free · `2` Distort
+/// · `3` Warp).
+pub const PAINTER_DEFORM_TRANSFORM_MODE_IDS: [NodeId; 4] = [
+    PAINTER_DEFORM_TRANSFORM_MODE_UNIFORM,
+    PAINTER_DEFORM_TRANSFORM_MODE_FREE,
+    PAINTER_DEFORM_TRANSFORM_MODE_DISTORT,
+    PAINTER_DEFORM_TRANSFORM_MODE_WARP,
+];
+
+// ── Sub-mode picker (segmented): Push · Twist · Pinch · Wrinkle · Fold · Reconstruct ─────────────────
+pub const PAINTER_DEFORM_MODE: NodeId = hash_node_id("painter_deform.mode");
+
+pub const PAINTER_DEFORM_MODE_PUSH: NodeId = hash_node_id("painter_deform.mode_push");
+
+pub const PAINTER_DEFORM_MODE_TWIST: NodeId = hash_node_id("painter_deform.mode_twist");
+
+pub const PAINTER_DEFORM_MODE_PINCH: NodeId = hash_node_id("painter_deform.mode_pinch");
+
+pub const PAINTER_DEFORM_MODE_WRINKLE: NodeId = hash_node_id("painter_deform.mode_wrinkle");
+
+pub const PAINTER_DEFORM_MODE_FOLD: NodeId = hash_node_id("painter_deform.mode_fold");
+
+pub const PAINTER_DEFORM_MODE_RECONSTRUCT: NodeId = hash_node_id("painter_deform.mode_reconstruct");
+
+/// Mode segments in `DeformState::mode` discriminant order (`0` Push … `5` Reconstruct).
+pub const PAINTER_DEFORM_MODE_IDS: [NodeId; 6] = [
+    PAINTER_DEFORM_MODE_PUSH,
+    PAINTER_DEFORM_MODE_TWIST,
+    PAINTER_DEFORM_MODE_PINCH,
+    PAINTER_DEFORM_MODE_WRINKLE,
+    PAINTER_DEFORM_MODE_FOLD,
+    PAINTER_DEFORM_MODE_RECONSTRUCT,
+];
+
+// ── Brush sliders (0..1 track; the tool maps to its range) ───────────────────────────────────────────
+pub const PAINTER_DEFORM_SIZE_SLIDER: NodeId = hash_node_id("painter_deform.size_slider");
+
+pub const PAINTER_DEFORM_SIZE_CHIP: NodeId = hash_node_id("painter_deform.size_chip");
+
+pub const PAINTER_DEFORM_PRESSURE_SLIDER: NodeId = hash_node_id("painter_deform.pressure_slider");
+
+pub const PAINTER_DEFORM_PRESSURE_CHIP: NodeId = hash_node_id("painter_deform.pressure_chip");
+
+pub const PAINTER_DEFORM_DISTORTION_SLIDER: NodeId =
+    hash_node_id("painter_deform.distortion_slider");
+
+pub const PAINTER_DEFORM_DISTORTION_CHIP: NodeId = hash_node_id("painter_deform.distortion_chip");
+
+pub const PAINTER_DEFORM_MOMENTUM_SLIDER: NodeId = hash_node_id("painter_deform.momentum_slider");
+
+pub const PAINTER_DEFORM_MOMENTUM_CHIP: NodeId = hash_node_id("painter_deform.momentum_chip");
+
+/// **Strength** — bipolar (`0.5` = neutral; Pinch −suck / +bulge, Twist CW/CCW).
+pub const PAINTER_DEFORM_STRENGTH_SLIDER: NodeId = hash_node_id("painter_deform.strength_slider");
+
+pub const PAINTER_DEFORM_STRENGTH_CHIP: NodeId = hash_node_id("painter_deform.strength_chip");
+
+// ── Relief (W4 — the advective family) ──────────────────────────────────────────────────────────────
+/// **Affect Relief** — the warp carries the impasto planes (`heights` + `covers` + `mats`) along the SAME
+/// displacement as the pixels. Paint is a substance: what moves takes its body with it (doc 18 §5's
+/// exception, arrived in full). Off = warp the colour only. Painted only when the active layer carries
+/// relief — a toggle over a plane that does not exist would be a control that silently does nothing.
+pub const PAINTER_DEFORM_RELIEF: NodeId = hash_node_id("painter_deform.relief");
+
+// ── Session actions (Card D) ─────────────────────────────────────────────────────────────────────────
+/// **Reset** — discard the whole session's deformation (restore the pre-deform pixels).
+pub const PAINTER_DEFORM_RESET: NodeId = hash_node_id("painter_deform.reset");
+
+/// **Apply** — finalize the session (keep pixels, drop the reconstruct baseline).
+pub const PAINTER_DEFORM_APPLY: NodeId = hash_node_id("painter_deform.apply");
+
+/// **Apply & Keep** — bank the current pixels as the new baseline and keep deforming.
+pub const PAINTER_DEFORM_APPLY_KEEP: NodeId = hash_node_id("painter_deform.apply_keep");
+
+/// The three session-action buttons as a group.
+pub const PAINTER_DEFORM_ACTION_IDS: [NodeId; 3] = [
+    PAINTER_DEFORM_RESET,
+    PAINTER_DEFORM_APPLY,
+    PAINTER_DEFORM_APPLY_KEEP,
+];
+
+/// The Mode card's a11y group id (a visual surface; not hit-indexed). (Wave 1 paints the section flat with
+/// separators — collapsible section headers are a follow-up; the mode card is the one framed surface.)
+pub const PAINTER_DEFORM_MODE_CARD: NodeId = hash_node_id("painter_deform.mode_card");

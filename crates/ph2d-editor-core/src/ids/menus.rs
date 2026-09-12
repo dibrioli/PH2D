@@ -290,57 +290,10 @@ pub const HIER_PANEL: NodeId = hash_node_id("hier_panel");
 pub const HIER_PLAYER: NodeId = NodeId(400);
 pub const HIER_MAIN_CAMERA: NodeId = NodeId(411);
 
-/// M14.6 E: search/filter TextInput in the Hierarchy header. Empty
-/// query shows every row; non-empty case-insensitively filters by
-/// `name.contains(query)` with ancestor-path preservation (a parent
-/// stays visible if any descendant matches, so the user sees where
-/// the hit lives in the tree).
-pub const HIER_SEARCH: NodeId = hash_node_id("hier_search");
-
 /// M14.7 polish: inline rename TextInput on a hierarchy row.
 /// Painted only when `HeroScreen.hierarchy.rename_target_row` is `Some(id)`
 /// — replaces the matching row's name label with an editable input.
 pub const HIER_RENAME_INPUT: NodeId = hash_node_id("hier_rename_input");
-
-/// M14.5 inspector phase (6.4/§9): "Reimport at current px/m" button
-/// shown in the Render Source section when the selected sprite has a
-/// live atlas-backed source. Click → `HeroScreen.pending_reimport`
-/// gets set with the entity bits the host then drains to recompute
-/// `Sprite.size` against the current `ProjectSettings.pixels_per_meter`.
-pub const INSP_RENDER_SOURCE_REIMPORT: NodeId = hash_node_id("insp_render_source_reimport");
-
-/// W2 Sprite Inspector v2: logical Flip H / Flip V checkboxes in the
-/// Render Source section. Toggling dispatches an
-/// `EditorAction::InspectorSpriteEdit` with `SpriteFieldEdit::FlipX/FlipY`.
-pub const INSP_SPRITE_FLIP_X: NodeId = hash_node_id("insp_sprite_flip_x");
-/// Vertical flip checkbox — see [`INSP_SPRITE_FLIP_X`].
-pub const INSP_SPRITE_FLIP_Y: NodeId = hash_node_id("insp_sprite_flip_y");
-
-/// Map fixture entity name to canonical hierarchy `NodeId`. The
-/// placeholder fixture currently exposes only "Scene Root"; the
-/// other `HIER_*` ids are kept reserved for the pilot project's
-/// real entities.
-pub fn hierarchy_id(name: &str) -> Option<NodeId> {
-    Some(match name {
-        "Scene Root" => HIER_PLAYER,
-        _ => return None,
-    })
-}
-
-/// Map a hierarchy `NodeId` back to its fixture entity name. Inverse
-/// of [`hierarchy_id`].
-pub fn hierarchy_label_for_id(id: NodeId) -> Option<&'static str> {
-    Some(match id {
-        x if x == HIER_PLAYER => "Scene Root",
-        _ => return None,
-    })
-}
-
-/// Best-effort 3-letter "kind" badge for the selection tag.
-/// Placeholder fixture has a single Scene Root; pilot replaces.
-pub fn hierarchy_kind_for_label(_label: &str) -> &'static str {
-    "ENT"
-}
 
 /// M14.6A: high-bit offset for the eye-toggle companion NodeId on
 /// each hierarchy row. The row's primary NodeId is allocated by the
@@ -429,14 +382,6 @@ pub fn hier_expand_companion_to_row(id: NodeId) -> Option<NodeId> {
     None
 }
 
-/// 2026-05-26: lock-toggle companion (per hierarchy row). Mirrors
-/// `hier_eye_companion` — XORs `LOCK_TOGGLE_BIT` so dispatch can
-/// recognize a click on the row's lock icon.
-#[inline]
-pub fn hier_lock_companion(row_id: NodeId) -> NodeId {
-    NodeId(row_id.0 | LOCK_TOGGLE_BIT)
-}
-
 #[inline]
 pub fn hier_lock_companion_to_row(id: NodeId) -> Option<NodeId> {
     if id.0 & LOCK_TOGGLE_BIT != 0 {
@@ -448,12 +393,6 @@ pub fn hier_lock_companion_to_row(id: NodeId) -> Option<NodeId> {
     None
 }
 
-/// 2026-05-26: group-lock-toggle companion (per hierarchy row).
-#[inline]
-pub fn hier_group_companion(row_id: NodeId) -> NodeId {
-    NodeId(row_id.0 | GROUP_TOGGLE_BIT)
-}
-
 #[inline]
 pub fn hier_group_companion_to_row(id: NodeId) -> Option<NodeId> {
     if id.0 & GROUP_TOGGLE_BIT != 0 {
@@ -463,14 +402,6 @@ pub fn hier_group_companion_to_row(id: NodeId) -> Option<NodeId> {
         }
     }
     None
-}
-
-/// 2026-05-26: entity-icon companion (left glyph in a hierarchy row).
-/// Double-click here triggers focus (View → Selected); double-click
-/// on the row's name body triggers rename.
-#[inline]
-pub fn hier_icon_companion(row_id: NodeId) -> NodeId {
-    NodeId(row_id.0 | ICON_COMPANION_BIT)
 }
 
 #[inline]

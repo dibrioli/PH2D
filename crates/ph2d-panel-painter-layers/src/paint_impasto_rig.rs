@@ -17,7 +17,6 @@ use crate::card::card_row;
 use crate::number_field;
 use crate::paint::register_button;
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::widget::{ColorSwatch, SwatchSize, SwatchState, paint_color_swatch};
@@ -28,10 +27,10 @@ use ph2d_tool_painter::BrushSettings;
 /// The four lamp chips, in order. Their ids are flat constants (not a `light_id(i)` helper) because the
 /// a11y tree and the arch-gates both want to see every widget spelled out.
 const LAMP_IDS: [ph2d_a11y::NodeId; 4] = [
-    core_ids::PAINTER_IMPASTO_LIGHT_1,
-    core_ids::PAINTER_IMPASTO_LIGHT_2,
-    core_ids::PAINTER_IMPASTO_LIGHT_3,
-    core_ids::PAINTER_IMPASTO_LIGHT_4,
+    ph2d_tool_painter::ids::PAINTER_IMPASTO_LIGHT_1,
+    ph2d_tool_painter::ids::PAINTER_IMPASTO_LIGHT_2,
+    ph2d_tool_painter::ids::PAINTER_IMPASTO_LIGHT_3,
+    ph2d_tool_painter::ids::PAINTER_IMPASTO_LIGHT_4,
 ];
 
 /// Width of the colour swatch at the end of the Intensity row.
@@ -64,7 +63,7 @@ pub(crate) fn paint_light_rows(
         x,
         w,
         y,
-        core_ids::PAINTER_IMPASTO_LIGHT_1,
+        ph2d_tool_painter::ids::PAINTER_IMPASTO_LIGHT_1,
         "Light",
         &LAMP_IDS
             .iter()
@@ -94,7 +93,7 @@ pub(crate) fn paint_light_rows(
             x,
             w,
             ry,
-            core_ids::PAINTER_IMPASTO_LIGHT_ON,
+            ph2d_tool_painter::ids::PAINTER_IMPASTO_LIGHT_ON,
             "Enable",
             lamp.on,
         );
@@ -107,7 +106,7 @@ pub(crate) fn paint_light_rows(
         w,
         ry,
         "Angle",
-        core_ids::PAINTER_IMPASTO_LIGHT_ANGLE,
+        ph2d_tool_painter::ids::PAINTER_IMPASTO_LIGHT_ANGLE,
         f32::from(lamp.angle_deg),
         0.0,
         crate::paint_impasto::ANGLE_MAX_DEG,
@@ -121,7 +120,7 @@ pub(crate) fn paint_light_rows(
         w,
         ry,
         "Elevation",
-        core_ids::PAINTER_IMPASTO_LIGHT_ELEV,
+        ph2d_tool_painter::ids::PAINTER_IMPASTO_LIGHT_ELEV,
         f32::from(lamp.elev_deg),
         crate::paint_impasto::ELEV_MIN_DEG,
         crate::paint_impasto::ELEV_MAX_DEG,
@@ -139,14 +138,14 @@ pub(crate) fn paint_light_rows(
         box_w,
         ry,
         "Intensity",
-        core_ids::PAINTER_IMPASTO_LIGHT_POWER,
+        ph2d_tool_painter::ids::PAINTER_IMPASTO_LIGHT_POWER,
         lamp.intensity,
         0.0,
         crate::paint_impasto::LIGHT_POWER_MAX,
         number_field::FINE_STEP,
         2,
     );
-    let sw_id = core_ids::PAINTER_IMPASTO_LIGHT_COLOR;
+    let sw_id = ph2d_tool_painter::ids::PAINTER_IMPASTO_LIGHT_COLOR;
     let sr = Rect::new(x + box_w + Spacing::Xs.px(), ry, SWATCH_W, ROW_H_PX);
     let open = ctx.host.store().picker_target() == Some(sw_id);
     let enc = |v: f32| (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8; // LITERAL-PX-OK: sRGB 8-bit normalize

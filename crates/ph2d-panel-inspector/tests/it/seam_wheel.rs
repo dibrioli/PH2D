@@ -124,7 +124,10 @@ fn expect(actions: &[EditorAction], edit: WheelFieldEdit, what: &str) {
 /// **Cada chip de Wrap escolhe o próprio lado** — o escape manual do pedido (7).
 #[test]
 fn the_wrap_chips_each_pick_their_own_side() {
-    for (i, &id) in ids::INSP_WHEEL_WRAP.iter().enumerate() {
+    for (i, &id) in ph2d_panel_inspector::ids::INSP_WHEEL_WRAP
+        .iter()
+        .enumerate()
+    {
         expect(
             &click_real(wheel(), id),
             WheelFieldEdit::Wrap(i as u8),
@@ -151,7 +154,10 @@ fn differential() -> InspectorWheelInfo {
 /// `WidgetEvent` sintético não.
 #[test]
 fn the_differential_chips_arm_the_weston_marker() {
-    for (i, &id) in ids::INSP_WHEEL_DIFF.iter().enumerate() {
+    for (i, &id) in ph2d_panel_inspector::ids::INSP_WHEEL_DIFF
+        .iter()
+        .enumerate()
+    {
         expect(
             &click_real(differential(), id),
             WheelFieldEdit::Weston(i == 1),
@@ -178,7 +184,7 @@ fn the_differential_row_is_offered_only_when_it_qualifies_something() {
         set_current_inspector_wheel(Some(info));
         host.paint::<InspectorPanel>(&mut state, VIEWPORT)
             .iter()
-            .any(|(n, _)| *n == ids::INSP_WHEEL_DIFF[1])
+            .any(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_WHEEL_DIFF[1])
     };
     assert!(painted(differential()), "com R > r > 0 a row é oferecida");
     assert!(
@@ -205,7 +211,7 @@ fn the_differential_row_is_offered_only_when_it_qualifies_something() {
 #[test]
 fn typing_a_radius_reaches_the_bus() {
     expect(
-        &commit(wheel(), ids::INSP_WHEEL_RADIUS, 0.8),
+        &commit(wheel(), ph2d_panel_inspector::ids::INSP_WHEEL_RADIUS, 0.8),
         WheelFieldEdit::Radius(0.8),
         "Radius",
     );
@@ -219,12 +225,12 @@ fn typing_a_radius_reaches_the_bus() {
 #[test]
 fn the_order_row_is_a_one_based_ordinal() {
     expect(
-        &commit(wheel(), ids::INSP_WHEEL_ORDER, 3.4),
+        &commit(wheel(), ph2d_panel_inspector::ids::INSP_WHEEL_ORDER, 3.4),
         WheelFieldEdit::Order(3),
         "Order 3,4 arredondado",
     );
     expect(
-        &commit(wheel(), ids::INSP_WHEEL_ORDER, 0.0),
+        &commit(wheel(), ph2d_panel_inspector::ids::INSP_WHEEL_ORDER, 0.0),
         WheelFieldEdit::Order(1),
         "Order 0 pousando no piso",
     );
@@ -246,9 +252,9 @@ fn no_wheel_selected_paints_no_wheel_section() {
         .collect();
     for id in [
         ids::INSP_LIVE_WHEEL_SECTION,
-        ids::INSP_WHEEL_RADIUS,
-        ids::INSP_WHEEL_ORDER,
-        ids::INSP_WHEEL_WRAP[0],
+        ph2d_panel_inspector::ids::INSP_WHEEL_RADIUS,
+        ph2d_panel_inspector::ids::INSP_WHEEL_ORDER,
+        ph2d_panel_inspector::ids::INSP_WHEEL_WRAP[0],
     ] {
         assert!(
             !painted.contains(&id),
@@ -267,29 +273,30 @@ fn no_wheel_selected_paints_no_wheel_section() {
 /// pinta com uma roldana selecionada e sem nenhuma, menos os chips enumerados.
 #[test]
 fn every_number_row_the_wheel_section_paints_is_seeded_synced_and_routed() {
-    let mut not_a_number: Vec<ph2d_a11y::NodeId> = ids::INSP_WHEEL_WRAP.to_vec();
-    not_a_number.extend(ids::INSP_WHEEL_BREAK);
+    let mut not_a_number: Vec<ph2d_a11y::NodeId> =
+        ph2d_panel_inspector::ids::INSP_WHEEL_WRAP.to_vec();
+    not_a_number.extend(ph2d_panel_inspector::ids::INSP_WHEEL_BREAK);
     // W-Weston: os dois chips do eixo composto. Declarados e não silenciados — a
     // varredura os PEGOU no minuto em que nasceram (7 contra 5), que é exatamente o
     // que ela existe para fazer; o que ela cobra é que alguém diga o que eles são.
     //
     // ⚠️ O readout **Gear** não aparece aqui porque ele não tem id: um readout que se
     // registra é um readout que pode ser clicado, e *dimmed que despacha mente*.
-    not_a_number.extend(ids::INSP_WHEEL_DIFF);
+    not_a_number.extend(ph2d_panel_inspector::ids::INSP_WHEEL_DIFF);
     not_a_number.extend_from_slice(&[
-        ids::INSP_WHEEL_BREAK_GROUP,
-        ids::INSP_WHEEL_WRAP_GROUP,
-        ids::INSP_WHEEL_DIFF_GROUP,
+        ph2d_panel_inspector::ids::INSP_WHEEL_BREAK_GROUP,
+        ph2d_panel_inspector::ids::INSP_WHEEL_WRAP_GROUP,
+        ph2d_panel_inspector::ids::INSP_WHEEL_DIFF_GROUP,
         ids::INSP_LIVE_WHEEL_SECTION,
         ids::INSP_LIVE_WHEEL_COLOR,
         // W3: os dois botões de ícone da row de montagem. Declarados aqui, e não
         // silenciados — a varredura os PEGOU no minuto em que nasceram, que é
         // exatamente o que ela existe para fazer; o que ela cobra é que alguém
         // diga o que eles são, e um eyedropper não é uma caixa de número.
-        ids::INSP_WHEEL_MOUNT_PICK,
-        ids::INSP_WHEEL_UNMOUNT,
+        ph2d_panel_inspector::ids::INSP_WHEEL_MOUNT_PICK,
+        ph2d_panel_inspector::ids::INSP_WHEEL_UNMOUNT,
         // W1: o eyedropper da row Rope — a mesma declaração pela mesma razão.
-        ids::INSP_WHEEL_ROPE_PICK,
+        ph2d_panel_inspector::ids::INSP_WHEEL_ROPE_PICK,
         ph2d_editor_core::widget::INSPECTOR_SCROLLBAR_ID,
     ]);
 
@@ -408,7 +415,7 @@ fn every_number_row_the_wheel_section_paints_is_seeded_synced_and_routed() {
 fn the_motor_row_carries_degrees_per_second_with_a_sign() {
     for deg in [90.0_f64, -90.0, 0.0] {
         expect(
-            &commit(wheel(), ids::INSP_WHEEL_MOTOR, deg),
+            &commit(wheel(), ph2d_panel_inspector::ids::INSP_WHEEL_MOTOR, deg),
             WheelFieldEdit::MotorDegPerS(deg as f32),
             "Motor",
         );
@@ -422,7 +429,10 @@ fn the_motor_row_carries_degrees_per_second_with_a_sign() {
 /// estar em vigor.
 #[test]
 fn the_axle_break_switch_gates_its_own_threshold() {
-    for (i, &id) in ids::INSP_WHEEL_BREAK.iter().enumerate() {
+    for (i, &id) in ph2d_panel_inspector::ids::INSP_WHEEL_BREAK
+        .iter()
+        .enumerate()
+    {
         expect(
             &click_real(wheel(), id),
             WheelFieldEdit::BreakEnabled(i == 1),
@@ -430,7 +440,11 @@ fn the_axle_break_switch_gates_its_own_threshold() {
         );
     }
     expect(
-        &commit(wheel(), ids::INSP_WHEEL_BREAK_FORCE, 250.0),
+        &commit(
+            wheel(),
+            ph2d_panel_inspector::ids::INSP_WHEEL_BREAK_FORCE,
+            250.0,
+        ),
         WheelFieldEdit::BreakForce(250.0),
         "Break Force",
     );
@@ -449,11 +463,11 @@ fn the_axle_break_switch_gates_its_own_threshold() {
         .collect();
     set_current_inspector_wheel(None);
     assert!(
-        painted.contains(&ids::INSP_WHEEL_BREAK[0]),
+        painted.contains(&ph2d_panel_inspector::ids::INSP_WHEEL_BREAK[0]),
         "o switch tem de existir mesmo desarmado"
     );
     assert!(
-        !painted.contains(&ids::INSP_WHEEL_BREAK_FORCE),
+        !painted.contains(&ph2d_panel_inspector::ids::INSP_WHEEL_BREAK_FORCE),
         "o limiar não pode ser pintado com o switch desarmado"
     );
 }
@@ -475,7 +489,7 @@ fn the_axle_break_switch_gates_its_own_threshold() {
 #[test]
 fn the_rope_row_arms_a_pick_even_on_an_orphaned_wheel() {
     expect(
-        &click_real(wheel(), ids::INSP_WHEEL_ROPE_PICK),
+        &click_real(wheel(), ph2d_panel_inspector::ids::INSP_WHEEL_ROPE_PICK),
         WheelFieldEdit::PickRope,
         "o eyedropper de corda numa roldana ligada",
     );
@@ -483,7 +497,7 @@ fn the_rope_row_arms_a_pick_even_on_an_orphaned_wheel() {
     orphan.bound = false;
     orphan.rope_name = String::new();
     expect(
-        &click_real(orphan, ids::INSP_WHEEL_ROPE_PICK),
+        &click_real(orphan, ph2d_panel_inspector::ids::INSP_WHEEL_ROPE_PICK),
         WheelFieldEdit::PickRope,
         "o eyedropper de corda numa roldana ORFA -- e e aqui que ele serve",
     );
@@ -500,17 +514,17 @@ fn the_rope_row_arms_a_pick_even_on_an_orphaned_wheel() {
 #[test]
 fn the_mount_row_arms_a_pick_and_offers_unmount_only_when_mounted() {
     expect(
-        &click_real(wheel(), ids::INSP_WHEEL_MOUNT_PICK),
+        &click_real(wheel(), ph2d_panel_inspector::ids::INSP_WHEEL_MOUNT_PICK),
         WheelFieldEdit::PickMountBody,
         "o eyedropper de montagem numa roldana de cenário",
     );
     expect(
-        &click_real(mounted(), ids::INSP_WHEEL_MOUNT_PICK),
+        &click_real(mounted(), ph2d_panel_inspector::ids::INSP_WHEEL_MOUNT_PICK),
         WheelFieldEdit::PickMountBody,
         "o eyedropper de montagem numa roldana já montada",
     );
     expect(
-        &click_real(mounted(), ids::INSP_WHEEL_UNMOUNT),
+        &click_real(mounted(), ph2d_panel_inspector::ids::INSP_WHEEL_UNMOUNT),
         WheelFieldEdit::Unmount,
         "a lixeira de desmontar",
     );
@@ -526,11 +540,11 @@ fn the_mount_row_arms_a_pick_and_offers_unmount_only_when_mounted() {
         .collect();
     set_current_inspector_wheel(None);
     assert!(
-        painted.contains(&ids::INSP_WHEEL_MOUNT_PICK),
+        painted.contains(&ph2d_panel_inspector::ids::INSP_WHEEL_MOUNT_PICK),
         "o eyedropper tem de existir mesmo no cenário — é por ele que se monta"
     );
     assert!(
-        !painted.contains(&ids::INSP_WHEEL_UNMOUNT),
+        !painted.contains(&ph2d_panel_inspector::ids::INSP_WHEEL_UNMOUNT),
         "a lixeira não pode ser pintada quando não há montagem para desfazer"
     );
 }
@@ -545,7 +559,11 @@ fn the_mount_row_arms_a_pick_and_offers_unmount_only_when_mounted() {
 #[test]
 fn typing_an_out_radius_reaches_the_bus() {
     expect(
-        &commit(wheel(), ids::INSP_WHEEL_RADIUS_OUT, 0.125),
+        &commit(
+            wheel(),
+            ph2d_panel_inspector::ids::INSP_WHEEL_RADIUS_OUT,
+            0.125,
+        ),
         WheelFieldEdit::RadiusOut(0.125),
         "Out Radius",
     );

@@ -16,7 +16,6 @@
 //! mesma porta que o pintor percorre.
 
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::PanelHostInternal;
 
@@ -33,7 +32,7 @@ use ph2d_editor_core::panel::PanelHostInternal;
 /// geral do lado da shell. *Uma segunda resolução aqui seria a quarta resposta a «de que prefab
 /// isto é cópia?».*
 pub(crate) fn open_prefab_click(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
-    if ev != WidgetEvent::Click(ids::INSP_INSTANCE_OPEN_PREFAB) {
+    if ev != WidgetEvent::Click(crate::ids::INSP_INSTANCE_OPEN_PREFAB) {
         return false;
     }
     let Some(root_bits) = crate::state::current_inspector_instance().map(|i| i.root_bits) else {
@@ -45,7 +44,7 @@ pub(crate) fn open_prefab_click(host: &mut dyn PanelHostInternal, ev: WidgetEven
 }
 
 pub(crate) fn clear_orphans_click(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
-    if ev != WidgetEvent::Click(ids::INSP_INSTANCE_CLEAR_ORPHANS) {
+    if ev != WidgetEvent::Click(crate::ids::INSP_INSTANCE_CLEAR_ORPHANS) {
         return false;
     }
     let Some(root_bits) = crate::state::current_inspector_instance().map(|i| i.root_bits) else {
@@ -69,7 +68,7 @@ pub(crate) fn apply_level_click(host: &mut dyn PanelHostInternal, ev: WidgetEven
     let WidgetEvent::Click(id) = ev else {
         return false;
     };
-    let Some(level) = ids::instance_apply_level(id) else {
+    let Some(level) = crate::ids::instance_apply_level(id) else {
         return false;
     };
     let Some(info) = crate::state::current_inspector_instance() else {
@@ -101,7 +100,7 @@ pub(crate) fn drop_orphan_click(host: &mut dyn PanelHostInternal, ev: WidgetEven
     let WidgetEvent::Click(id) = ev else {
         return false;
     };
-    let Some(i) = ids::instance_drop_orphan(id) else {
+    let Some(i) = crate::ids::instance_drop_orphan(id) else {
         return false;
     };
     let Some(info) = crate::state::current_inspector_instance() else {
@@ -129,7 +128,7 @@ pub(crate) fn apply_added_click(host: &mut dyn PanelHostInternal, ev: WidgetEven
     let WidgetEvent::Click(id) = ev else {
         return false;
     };
-    let Some(i) = ids::instance_apply_added(id) else {
+    let Some(i) = crate::ids::instance_apply_added(id) else {
         return false;
     };
     let Some(info) = crate::state::current_inspector_instance() else {
@@ -152,7 +151,7 @@ pub(crate) fn restore_piece_click(host: &mut dyn PanelHostInternal, ev: WidgetEv
     let WidgetEvent::Click(id) = ev else {
         return false;
     };
-    let Some(i) = ids::instance_restore_piece(id) else {
+    let Some(i) = crate::ids::instance_restore_piece(id) else {
         return false;
     };
     let Some(info) = crate::state::current_inspector_instance() else {

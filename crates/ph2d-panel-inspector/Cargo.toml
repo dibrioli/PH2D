@@ -10,6 +10,7 @@ authors.workspace = true
 [lib]
 
 [dependencies]
+ph2d-tool-registry = { path = "../ph2d-tool-registry" }
 # ADR-0166 / plano F0: a §7 Ordering é a seção PILOTO — os rótulos das linhas dela vêm do
 # descritor, não de literais no pintor. ⚠️ Ligá-la revelou que as duas fontes já discordavam
 # ("Sort At Root" × "Sort at Root"), que é exatamente o defeito que uma fonte só apaga.

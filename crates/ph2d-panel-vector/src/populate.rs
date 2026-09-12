@@ -262,7 +262,7 @@ pub fn populate(store: &mut WidgetStore) {
 fn populate_connector(store: &mut WidgetStore) {
     // Route: um BOTÃO que CICLA (a rota corrente vem do snapshot que a shell publica, não do
     // store — a verdade é do documento, e o painel é stateless).
-    button(store, ids::VECTOR_CONNECTOR_ROUTE);
+    button(store, ph2d_tool_vector::ids::VECTOR_CONNECTOR_ROUTE);
     // Jetty / Spread / Corner: caixas numéricas de faixa FIXA (ao contrário dos campos de
     // forma, que mudam com a forma em foco). O valor é re-semeado com o EFETIVO a cada frame
     // (Fase B do paint) — aqui só nasce o slot.
@@ -292,7 +292,7 @@ fn populate_sections(store: &mut WidgetStore) {
 fn populate_shape(store: &mut WidgetStore) {
     // Width slider — seeded at the tool's default (`px_to_slider(3px)`).
     store.register(
-        ids::VECTOR_WIDTH,
+        ph2d_tool_vector::ids::VECTOR_WIDTH,
         InteractiveState::Slider {
             state: SliderState::Normal,
             value: px_to_slider(DEFAULT_STROKE_WIDTH_PX),
@@ -300,7 +300,7 @@ fn populate_shape(store: &mut WidgetStore) {
         },
     );
     store.register(
-        ids::VECTOR_WIDTH_NUM,
+        ph2d_tool_vector::ids::VECTOR_WIDTH_NUM,
         InteractiveState::NumberInput {
             state: TextInputState::Normal,
             value: DEFAULT_STROKE_WIDTH_PX,
@@ -311,8 +311,8 @@ fn populate_shape(store: &mut WidgetStore) {
         },
     );
     store.link_slider_number_mapped(
-        ids::VECTOR_WIDTH,
-        ids::VECTOR_WIDTH_NUM,
+        ph2d_tool_vector::ids::VECTOR_WIDTH,
+        ph2d_tool_vector::ids::VECTOR_WIDTH_NUM,
         WIDTH_SLIDER_SCALE,
         WIDTH_SLIDER_OFFSET,
     );
@@ -334,15 +334,15 @@ fn populate_shape(store: &mut WidgetStore) {
     // O CATÁLOGO: um botão por forma + uma opção de dropdown por família. Registrados por
     // ÍNDICE — uma forma nova entra na tabela e já nasce clicável, sem tocar aqui.
     for i in 0..shapes::SHAPES.len() {
-        button(store, ids::vector_shape_id(i));
+        button(store, ph2d_tool_vector::ids::vector_shape_id(i));
     }
     for i in 0..shapes::ALL_GROUPS.len() {
-        button(store, ids::vector_shape_group_id(i));
+        button(store, ph2d_tool_vector::ids::vector_shape_group_id(i));
     }
     // O chip de CATEGORIA (um `Dropdown`): abrir / fechar / roda vêm de graça do dispatch
     // genérico. As OPÇÕES do popover são os botões de família acima.
     store.register_if_absent(
-        ids::VECTOR_SHAPE_GROUP_DD,
+        ph2d_tool_vector::ids::VECTOR_SHAPE_GROUP_DD,
         InteractiveState::Dropdown {
             state: DropdownState::Normal,
             open: false,
@@ -353,9 +353,9 @@ fn populate_shape(store: &mut WidgetStore) {
     // Os campos de parâmetro (`MAX_SHAPE_FIELD_SLOTS`): caixas numéricas genéricas. A
     // FAIXA de cada uma depende da forma em foco, então a shell a re-registra quando o
     // foco muda (`set_number_range`) — aqui só existem os slots.
-    for i in 0..ids::MAX_SHAPE_FIELD_SLOTS {
+    for i in 0..ph2d_tool_vector::ids::MAX_SHAPE_FIELD_SLOTS {
         store.register(
-            ids::vector_shape_field_id(i),
+            ph2d_tool_vector::ids::vector_shape_field_id(i),
             InteractiveState::NumberInput {
                 state: TextInputState::Normal,
                 value: 0.0,
@@ -370,7 +370,7 @@ fn populate_shape(store: &mut WidgetStore) {
         // do valor. `populate` é estático (não sabe qual forma está em foco), então os dois
         // existem sempre e a PINTURA decide qual dos dois registra o hit.
         store.register(
-            ids::vector_shape_choice_id(i),
+            ph2d_tool_vector::ids::vector_shape_choice_id(i),
             InteractiveState::Button {
                 state: ButtonState::Normal,
             },
@@ -488,20 +488,20 @@ fn populate_arrange(store: &mut WidgetStore) {
             selection_anchor: None,
         },
     );
-    button(store, ids::VECTOR_ARRANGE_TO_BACK);
-    button(store, ids::VECTOR_ARRANGE_BACKWARD);
-    button(store, ids::VECTOR_ARRANGE_FORWARD);
-    button(store, ids::VECTOR_ARRANGE_TO_FRONT);
-    button(store, ids::VECTOR_ARRANGE_FLIP_H);
-    button(store, ids::VECTOR_ARRANGE_FLIP_V);
-    button(store, ids::VECTOR_ARRANGE_ROTATE_CW);
-    button(store, ids::VECTOR_ARRANGE_ROTATE_CCW);
+    button(store, ph2d_tool_vector::ids::VECTOR_ARRANGE_TO_BACK);
+    button(store, ph2d_tool_vector::ids::VECTOR_ARRANGE_BACKWARD);
+    button(store, ph2d_tool_vector::ids::VECTOR_ARRANGE_FORWARD);
+    button(store, ph2d_tool_vector::ids::VECTOR_ARRANGE_TO_FRONT);
+    button(store, ph2d_tool_vector::ids::VECTOR_ARRANGE_FLIP_H);
+    button(store, ph2d_tool_vector::ids::VECTOR_ARRANGE_FLIP_V);
+    button(store, ph2d_tool_vector::ids::VECTOR_ARRANGE_ROTATE_CW);
+    button(store, ph2d_tool_vector::ids::VECTOR_ARRANGE_ROTATE_CCW);
 
     // Path: Smooth / Sharpen / Simplify — reshape ALL vertices of the selected path.
-    button(store, ids::VECTOR_PATH_SMOOTH);
-    button(store, ids::VECTOR_PATH_SHARPEN);
-    button(store, ids::VECTOR_PATH_SIMPLIFY);
-    button(store, ids::VECTOR_PATH_SUBDIVIDE);
+    button(store, ph2d_tool_vector::ids::VECTOR_PATH_SMOOTH);
+    button(store, ph2d_tool_vector::ids::VECTOR_PATH_SHARPEN);
+    button(store, ph2d_tool_vector::ids::VECTOR_PATH_SIMPLIFY);
+    button(store, ph2d_tool_vector::ids::VECTOR_PATH_SUBDIVIDE);
     button(store, ids::VECTOR_PATH_CLOSE);
 
     // Close (X) button.
@@ -513,10 +513,10 @@ fn populate_arrange(store: &mut WidgetStore) {
 /// document command through the shell drain.
 fn populate_transform_fields(store: &mut WidgetStore) {
     for id in [
-        ids::VECTOR_TRANSFORM_X,
-        ids::VECTOR_TRANSFORM_Y,
-        ids::VECTOR_TRANSFORM_W,
-        ids::VECTOR_TRANSFORM_H,
+        ph2d_tool_vector::ids::VECTOR_TRANSFORM_X,
+        ph2d_tool_vector::ids::VECTOR_TRANSFORM_Y,
+        ph2d_tool_vector::ids::VECTOR_TRANSFORM_W,
+        ph2d_tool_vector::ids::VECTOR_TRANSFORM_H,
         ids::VECTOR_TRANSFORM_R,
         // As duas do NÓ: mesmo widget, mesma rota, mesma vida sob o mouse. Elas entram nesta
         // lista e não numa nova porque a pergunta é a mesma — *este id é um campo numérico que a

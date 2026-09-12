@@ -9,12 +9,12 @@
 //! This is the one live handle on everything ever laid down on the layer.
 
 use crate::paint::register_button;
-use ph2d_editor_core::ids::{PainterLayerWidget, painter_layer_widget_id};
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{Slider, paint_slider};
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, StrokeToken};
+use ph2d_tool_painter::ids::{PainterLayerWidget, painter_layer_widget_id};
 use ph2d_tool_painter::{Layer, ReliefComposite};
 
 /// The relief-composite chip column ("Add" / "Level").

@@ -98,7 +98,7 @@ pub(crate) fn paint(_state: &mut Model3dPanelState, ctx: &mut PaintCtx) {
     );
     paint_panel_close_button(
         rect,
-        ids::MODEL3D_CLOSE,
+        crate::ids::MODEL3D_CLOSE,
         ctx.host.hit_index_mut(),
         ctx.scene,
         theme,
@@ -155,11 +155,18 @@ pub(crate) fn paint(_state: &mut Model3dPanelState, ctx: &mut PaintCtx) {
     // «Subtract» sozinhos não dizem *a quê*: um chip sem sujeito lê-se ao contrário.
     if !snapshot.selects.is_empty() {
         y = paint_note(ctx, tr("panel.model3d.select.title"), x, w, y);
-        y = paint_chips(ctx, &snapshot.selects, ids::model3d_select_button, x, w, y);
+        y = paint_chips(
+            ctx,
+            &snapshot.selects,
+            crate::ids::model3d_select_button,
+            x,
+            w,
+            y,
+        );
     }
     // ⭐ **Criar e combinar** — sem estes dois, o módulo edita a cena que veio pronta e mais nada.
-    y = paint_chips(ctx, &snapshot.adds, ids::model3d_add_button, x, w, y);
-    y = paint_chips(ctx, &snapshot.ops, ids::model3d_op_button, x, w, y);
+    y = paint_chips(ctx, &snapshot.adds, crate::ids::model3d_add_button, x, w, y);
+    y = paint_chips(ctx, &snapshot.ops, crate::ids::model3d_op_button, x, w, y);
     // ⭐⭐⭐ **O VERBO DESTA FORMA**, logo abaixo da operação do grupo — porque é ela que ele
     // qualifica: *o grupo diz o padrão, a forma diz se o segue*.
     //
@@ -175,7 +182,14 @@ pub(crate) fn paint(_state: &mut Model3dPanelState, ctx: &mut PaintCtx) {
             w,
             y,
         );
-        y = paint_chips(ctx, &snapshot.verbs, ids::model3d_verb_button, x, w, y);
+        y = paint_chips(
+            ctx,
+            &snapshot.verbs,
+            crate::ids::model3d_verb_button,
+            x,
+            w,
+            y,
+        );
     }
     // ⭐⭐⭐ **O CARÁTER da mistura** (W99), logo abaixo — porque ele qualifica a junta que a fileira
     // de cima escolheu. ⚠️ Ela é **independente** do sujeito nomeado acima: uma OPERAÇÃO tem
@@ -183,15 +197,15 @@ pub(crate) fn paint(_state: &mut Model3dPanelState, ctx: &mut PaintCtx) {
     y = paint_chips(
         ctx,
         &snapshot.characters,
-        ids::model3d_character_button,
+        crate::ids::model3d_character_button,
         x,
         w,
         y,
     );
     // ⭐ **O que se faz À forma depois de ela existir** — a casca e o afastamento, os dois verbos em
     // que a tese do módulo mais aparece (ver `ph2d_field::mods`).
-    y = paint_chips(ctx, &snapshot.mods, ids::model3d_mod_button, x, w, y);
-    y = paint_chips(ctx, &snapshot.acts, ids::model3d_act_button, x, w, y);
+    y = paint_chips(ctx, &snapshot.mods, crate::ids::model3d_mod_button, x, w, y);
+    y = paint_chips(ctx, &snapshot.acts, crate::ids::model3d_act_button, x, w, y);
     // ⛔⛔ **A CÂMERA SAIU DAQUI em 2026-08-31** — as seis vistas nomeadas e os três gestos de
     // câmera pintam-se agora na **fila de ferramentas** (`crate::area_bar`), que é a região da
     // área e onde a altura já se paga.

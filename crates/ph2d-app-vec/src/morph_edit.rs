@@ -37,21 +37,21 @@ pub enum MorphCmd {
 #[must_use]
 pub fn morph_cmd_for_id(id: ph2d_editor_core::NodeId) -> Option<MorphCmd> {
     use ph2d_editor_core::ids as i;
-    if id == i::VECTOR_MORPH_STATES_MAKE {
+    if id == ph2d_panel_vector::ids::VECTOR_MORPH_STATES_MAKE {
         return Some(MorphCmd::MakeSet);
     }
-    if id == i::VECTOR_MORPH_DISSOLVE {
+    if id == ph2d_panel_vector::ids::VECTOR_MORPH_DISSOLVE {
         return Some(MorphCmd::Dissolve);
     }
     for row in 0..i::MAX_MORPH_STATES {
-        if id == i::morph_shape_play_id(row) {
+        if id == ph2d_panel_vector::ids::morph_shape_play_id(row) {
             return Some(MorphCmd::Play { row });
         }
-        if id == i::morph_shape_disconnect_id(row) {
+        if id == ph2d_panel_vector::ids::morph_shape_disconnect_id(row) {
             return Some(MorphCmd::Disconnect { row });
         }
-        for action in 0..i::MAX_MORPH_ACTIONS {
-            if id == i::morph_shape_key_option_id(row, action) {
+        for action in 0..ph2d_panel_vector::ids::MAX_MORPH_ACTIONS {
+            if id == ph2d_panel_vector::ids::morph_shape_key_option_id(row, action) {
                 return Some(MorphCmd::SetWhen { row, action });
             }
         }

@@ -14,7 +14,6 @@
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::tool::Tool;
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_painter_layers::PainterLayersPanel;
@@ -62,9 +61,9 @@ fn click_through(
 #[test]
 fn the_two_modes_are_a_segmented_row_under_the_header() {
     let (_h, _s, rects) = painted(true);
-    let brush = rect_of(&rects, core_ids::PAINTER_SIDEBAR_TOGGLE_DOCK)
+    let brush = rect_of(&rects, ph2d_tool_painter::ids::PAINTER_SIDEBAR_TOGGLE_DOCK)
         .expect("o segmento «Brush» tem de ser pintado e registado");
-    let layers = rect_of(&rects, core_ids::PAINTER_LAYERS_TOGGLE_DOCK)
+    let layers = rect_of(&rects, ph2d_tool_painter::ids::PAINTER_LAYERS_TOGGLE_DOCK)
         .expect("o segmento «Layers» tem de ser pintado e registado");
 
     assert!(
@@ -84,7 +83,8 @@ fn the_two_modes_are_a_segmented_row_under_the_header() {
     );
 
     // ⚠️ E o CLOSE continua no cabeçalho, ACIMA da fileira — a prova de que ela desceu.
-    let close = rect_of(&rects, core_ids::PAINTER_LAYERS_CLOSE).expect("o fecho é pintado");
+    let close =
+        rect_of(&rects, ph2d_tool_painter::ids::PAINTER_LAYERS_CLOSE).expect("o fecho é pintado");
     assert!(
         close.y + close.h <= brush.y + 0.5,
         "a fileira de modos tinha de ficar ABAIXO do cabeçalho: fecho {close:?}, segmento {brush:?}"
@@ -101,7 +101,8 @@ fn a_segment_chooses_its_side_and_never_toggles() {
 
     // Está em Layers; tocar em «Layers» outra vez tem de ser um no-op.
     let (mut host, mut st, rects) = painted(true);
-    let layers = rect_of(&rects, core_ids::PAINTER_LAYERS_TOGGLE_DOCK).expect("segmento Layers");
+    let layers = rect_of(&rects, ph2d_tool_painter::ids::PAINTER_LAYERS_TOGGLE_DOCK)
+        .expect("segmento Layers");
     tool.set_dock_shows_layers(true);
     click_through(
         &mut host,
@@ -116,7 +117,8 @@ fn a_segment_chooses_its_side_and_never_toggles() {
     );
 
     // E tocar no outro TROCA.
-    let brush = rect_of(&rects, core_ids::PAINTER_SIDEBAR_TOGGLE_DOCK).expect("segmento Brush");
+    let brush = rect_of(&rects, ph2d_tool_painter::ids::PAINTER_SIDEBAR_TOGGLE_DOCK)
+        .expect("segmento Brush");
     click_through(
         &mut host,
         &mut st,

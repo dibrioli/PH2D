@@ -78,9 +78,9 @@ fn info(source: Option<InspectorAudioSource>, is_listener: bool, n: usize) -> In
     };
     assert_eq!(
         i.bus_labels.len(),
-        ids::INSP_AUDIO_BUS_OPT.len(),
+        ph2d_panel_inspector::ids::INSP_AUDIO_BUS_OPT.len(),
         "a FIXTURA e' que esta' velha: o modelo tem {} barramentos e ela escreve {} rotulos",
-        ids::INSP_AUDIO_BUS_OPT.len(),
+        ph2d_panel_inspector::ids::INSP_AUDIO_BUS_OPT.len(),
         i.bus_labels.len()
     );
     i
@@ -103,20 +103,20 @@ fn every_field_of_the_source_is_painted() {
     let (mut h, mut st) = host(info(Some(fonte()), false, 1));
     let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
     for id in [
-        ids::INSP_AUDIO_SOUND,
-        ids::INSP_AUDIO_BROWSE,
-        ids::INSP_AUDIO_PREVIEW,
-        ids::INSP_AUDIO_STOP,
-        ids::INSP_AUDIO_VOLUME,
-        ids::INSP_AUDIO_PITCH,
-        ids::INSP_AUDIO_MAX_DIST,
-        ids::INSP_AUDIO_ATTENUATION,
-        ids::INSP_AUDIO_RADIUS,
-        ids::INSP_AUDIO_PANNING,
-        ids::INSP_AUDIO_POLYPHONY,
-        ids::INSP_AUDIO_BUS_PICK,
-        ids::INSP_AUDIO_LOOP,
-        ids::INSP_AUDIO_AUTOPLAY,
+        ph2d_panel_inspector::ids::INSP_AUDIO_SOUND,
+        ph2d_panel_inspector::ids::INSP_AUDIO_BROWSE,
+        ph2d_panel_inspector::ids::INSP_AUDIO_PREVIEW,
+        ph2d_panel_inspector::ids::INSP_AUDIO_STOP,
+        ph2d_panel_inspector::ids::INSP_AUDIO_VOLUME,
+        ph2d_panel_inspector::ids::INSP_AUDIO_PITCH,
+        ph2d_panel_inspector::ids::INSP_AUDIO_MAX_DIST,
+        ph2d_panel_inspector::ids::INSP_AUDIO_ATTENUATION,
+        ph2d_panel_inspector::ids::INSP_AUDIO_RADIUS,
+        ph2d_panel_inspector::ids::INSP_AUDIO_PANNING,
+        ph2d_panel_inspector::ids::INSP_AUDIO_POLYPHONY,
+        ph2d_panel_inspector::ids::INSP_AUDIO_BUS_PICK,
+        ph2d_panel_inspector::ids::INSP_AUDIO_LOOP,
+        ph2d_panel_inspector::ids::INSP_AUDIO_AUTOPLAY,
     ] {
         let r = rects
             .iter()
@@ -151,7 +151,9 @@ fn an_object_that_only_has_the_ears_still_has_a_section() {
     );
     // ⚠️ **E os campos da FONTE não aparecem** — ele não tem fonte nenhuma.
     assert!(
-        !rects.iter().any(|(n, _)| *n == ids::INSP_AUDIO_SOUND),
+        !rects
+            .iter()
+            .any(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_AUDIO_SOUND),
         "o campo do ficheiro foi pintado para um objecto SEM fonte de som"
     );
     set_current_inspector_audio(None);
@@ -170,7 +172,7 @@ fn pressing_preview_reaches_the_bus_with_a_real_pointer() {
     let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
     let (_, r) = rects
         .iter()
-        .find(|(n, _)| *n == ids::INSP_AUDIO_PREVIEW)
+        .find(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_AUDIO_PREVIEW)
         .copied()
         .expect("o botao Preview nao foi pintado");
     let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
@@ -208,16 +210,19 @@ fn pressing_preview_reaches_the_bus_with_a_real_pointer() {
 fn the_bus_picker_opens_and_picks() {
     let (mut h, mut st) = host(info(Some(fonte()), false, 1));
     let _ = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
-    h.set_dropdown_open(ids::INSP_AUDIO_BUS_PICK, true);
+    h.set_dropdown_open(ph2d_panel_inspector::ids::INSP_AUDIO_BUS_PICK, true);
     let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
-    for (i, &id) in ids::INSP_AUDIO_BUS_OPT.iter().enumerate() {
+    for (i, &id) in ph2d_panel_inspector::ids::INSP_AUDIO_BUS_OPT
+        .iter()
+        .enumerate()
+    {
         assert!(
             rects.iter().any(|(n, _)| *n == id),
             "a entrada {i} do seletor de barramento nao chegou ao indice de acerto"
         );
     }
     // Escolher `Music` (a posição 1) chega ao barramento e fecha a lista.
-    let alvo = ids::INSP_AUDIO_BUS_OPT[1];
+    let alvo = ph2d_panel_inspector::ids::INSP_AUDIO_BUS_OPT[1];
     let _ = h.drained_actions();
     h.apply_panel_event::<InspectorPanel>(
         &mut st,
@@ -235,7 +240,7 @@ fn the_bus_picker_opens_and_picks() {
         "escolher `Music` nao chegou ao barramento; o que chegou foi {acoes:?}"
     );
     assert_eq!(
-        h.dropdown_is_open(ids::INSP_AUDIO_BUS_PICK),
+        h.dropdown_is_open(ph2d_panel_inspector::ids::INSP_AUDIO_BUS_PICK),
         Some(false),
         "o seletor ficou ABERTO depois da escolha"
     );

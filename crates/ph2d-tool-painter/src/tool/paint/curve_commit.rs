@@ -113,20 +113,22 @@ impl PainterTool {
     /// Simplify) to its verb. `true` when `id` matched one — the caller returns early. Split from the panel
     /// dispatcher in [`super::stencil`] for that file's LOC cap; the shape verbs already live in this module.
     pub(crate) fn route_stroke_shape_button(&mut self, id: &ph2d_a11y::NodeId) -> bool {
-        use ph2d_editor_core::ids as core_ids;
-        if *id == core_ids::PAINTER_BRUSH_STROKE_APPLY {
+        if *id == crate::ids::PAINTER_BRUSH_STROKE_APPLY {
             self.commit_open_shape(); // Enter / Apply — bake the whole multi-shape set, one undo entry
-        } else if *id == core_ids::PAINTER_BRUSH_STROKE_APPLY_KEEP {
+        } else if *id == crate::ids::PAINTER_BRUSH_STROKE_APPLY_KEEP {
             self.commit_open_shape_keep(); // bake but keep every shape editable
-        } else if *id == core_ids::PAINTER_BRUSH_STROKE_DELETE {
+        } else if *id == crate::ids::PAINTER_BRUSH_STROKE_DELETE {
             self.cancel_open_shape(); // drop the open set without baking
-        } else if *id == core_ids::PAINTER_BRUSH_STROKE_EDIT {
+        } else if *id == crate::ids::PAINTER_BRUSH_STROKE_EDIT {
             self.convert_open_shape_to_curve(); // Ellipse/Polygon → editable Bézier curve
-        } else if let Some(i) = core_ids::PAINTER_STROKE_OP_IDS.iter().position(|x| x == id) {
+        } else if let Some(i) = crate::ids::PAINTER_STROKE_OP_IDS
+            .iter()
+            .position(|x| x == id)
+        {
             self.set_stroke_op_mode(i as u8); // multi-shape Operation for the NEXT shape
-        } else if *id == core_ids::PAINTER_BRUSH_STROKE_SIMPLIFY {
+        } else if *id == crate::ids::PAINTER_BRUSH_STROKE_SIMPLIFY {
             self.curve_simplify(); // re-fit the editable curve to a clean control polygon
-        } else if *id == core_ids::PAINTER_BRUSH_STROKE_MERGE {
+        } else if *id == crate::ids::PAINTER_BRUSH_STROKE_MERGE {
             self.merge_open_shapes_to_curves(); // fold all fillable shapes into one/few dense curves
         } else {
             return false;

@@ -6,7 +6,6 @@
 
 use crate::paint::register_button;
 use crate::paint_brush_top::{paint_checkbox_row, paint_slider_chip_row};
-use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::paint::{
     fill_rounded_rect, paint_icon, paint_text, paint_text_centered, resolve,
 };
@@ -39,7 +38,7 @@ pub(super) fn paint_apply_row(
             theme,
             Rect::new(x, y, content_w, ROW_H_PX),
             Some("Convert to Curve"),
-            core_ids::PAINTER_BRUSH_STROKE_EDIT,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_STROKE_EDIT,
         );
         y += ph2d_tokens::row_pitch_px();
     }
@@ -47,8 +46,8 @@ pub(super) fn paint_apply_row(
     let icons = sq;
     let min_text_btn_w = 84.0; // LITERAL-PX-OK: layout breakpoint — min readable text-button width before wrap
     let one_row = content_w >= min_text_btn_w * 2.0 + icons + gap * 2.0;
-    let apply = core_ids::PAINTER_BRUSH_STROKE_APPLY;
-    let keep = core_ids::PAINTER_BRUSH_STROKE_APPLY_KEEP;
+    let apply = ph2d_tool_painter::ids::PAINTER_BRUSH_STROKE_APPLY;
+    let keep = ph2d_tool_painter::ids::PAINTER_BRUSH_STROKE_APPLY_KEEP;
     if one_row {
         // Apply | Apply & Keep | E ✕ — three abutting clusters that exactly fill `content_w`. The icon
         // cluster sits AFTER Apply & Keep (a past bug placed both at the same x, so the Keep fill covered
@@ -109,7 +108,7 @@ pub(super) fn paint_simplify_row(
         theme,
         Rect::new(x, y, content_w, ROW_H_PX),
         Some("Simplify"),
-        core_ids::PAINTER_BRUSH_STROKE_SIMPLIFY,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_STROKE_SIMPLIFY,
     );
     y + ph2d_tokens::row_pitch_px()
 }
@@ -129,7 +128,7 @@ pub(super) fn paint_merge_row(
         theme,
         Rect::new(x, y, content_w, ROW_H_PX),
         Some("Merge Curves"),
-        core_ids::PAINTER_BRUSH_STROKE_MERGE,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_STROKE_MERGE,
     );
     y + ph2d_tokens::row_pitch_px()
 }
@@ -194,8 +193,8 @@ pub(super) fn paint_offset_card(
         inner_w,
         iy,
         "Distance",
-        core_ids::PAINTER_BRUSH_OFFSET,
-        core_ids::PAINTER_BRUSH_OFFSET_CHIP,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_OFFSET,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_OFFSET_CHIP,
         brush.offset,
     );
     paint_checkbox_row(
@@ -204,7 +203,7 @@ pub(super) fn paint_offset_card(
         inner_x,
         inner_w,
         iy,
-        core_ids::PAINTER_BRUSH_OFFSET_TRIM,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_OFFSET_TRIM,
         "Trim",
         brush.offset_trim,
     );
@@ -214,7 +213,7 @@ pub(super) fn paint_offset_card(
 /// Paint the trailing **✕** Delete square-icon at `ix` (the Convert-to-Curve button moved to its own
 /// full-width row above — Enio 2026-07-03).
 fn paint_icon_cluster(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme, ix: f32, iy: f32, sq: f32) {
-    let delete = core_ids::PAINTER_BRUSH_STROKE_DELETE;
+    let delete = ph2d_tool_painter::ids::PAINTER_BRUSH_STROKE_DELETE;
     button(ctx, theme, Rect::new(ix, iy, sq, ROW_H_PX), None, delete);
 }
 

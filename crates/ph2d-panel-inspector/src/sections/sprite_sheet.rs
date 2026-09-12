@@ -104,13 +104,13 @@ pub(crate) fn paint_sprite_sheet_section(
     // Sprite::resolve_anchor (no atlas-UV change — they move the quad).
     let cb_h = 18.0_f32; // LITERAL-PX-OK: Checkbox visual height
     let (_, ce_value) = store
-        .checkbox(ids::INSP_SPRITE_CENTERED)
+        .checkbox(crate::ids::INSP_SPRITE_CENTERED)
         .unwrap_or((CheckboxState::Normal, CheckboxValue::Checked));
     let ce_rect = Rect::new(x, cur_y, w, cb_h);
-    hit_index.register(ids::INSP_SPRITE_CENTERED, ce_rect);
+    hit_index.register(crate::ids::INSP_SPRITE_CENTERED, ce_rect);
     paint_checkbox(
-        &Checkbox::new(ids::INSP_SPRITE_CENTERED, "Centered")
-            .visual(store.checkbox_visual(ids::INSP_SPRITE_CENTERED))
+        &Checkbox::new(crate::ids::INSP_SPRITE_CENTERED, "Centered")
+            .visual(store.checkbox_visual(crate::ids::INSP_SPRITE_CENTERED))
             .value(ce_value),
         ce_rect,
         scene,
@@ -124,7 +124,7 @@ pub(crate) fn paint_sprite_sheet_section(
         hit_index,
         cur_y,
         "Offset X",
-        ids::INSP_SPRITE_OFFSET_X,
+        crate::ids::INSP_SPRITE_OFFSET_X,
     );
     cur_y += field_h + row_gap;
     number_row(
@@ -133,7 +133,7 @@ pub(crate) fn paint_sprite_sheet_section(
         hit_index,
         cur_y,
         "Offset Y",
-        ids::INSP_SPRITE_OFFSET_Y,
+        crate::ids::INSP_SPRITE_OFFSET_Y,
     );
     cur_y += field_h + row_gap;
     // Logical Flip H / Flip V (Sprite.flip_x/flip_y) — spec §3.4 orders
@@ -144,13 +144,13 @@ pub(crate) fn paint_sprite_sheet_section(
     let flip_gap = Spacing::Md.px();
     let flip_half = ((w - flip_gap) * 0.5).max(0.0);
     let (_, fx_value) = store
-        .checkbox(ids::INSP_SPRITE_FLIP_X)
+        .checkbox(crate::ids::INSP_SPRITE_FLIP_X)
         .unwrap_or((CheckboxState::Normal, CheckboxValue::Unchecked));
     let fx_rect = Rect::new(x, cur_y, flip_half, flip_row_h);
-    hit_index.register(ids::INSP_SPRITE_FLIP_X, fx_rect);
+    hit_index.register(crate::ids::INSP_SPRITE_FLIP_X, fx_rect);
     paint_checkbox(
-        &Checkbox::new(ids::INSP_SPRITE_FLIP_X, "Flip H")
-            .visual(store.checkbox_visual(ids::INSP_SPRITE_FLIP_X))
+        &Checkbox::new(crate::ids::INSP_SPRITE_FLIP_X, "Flip H")
+            .visual(store.checkbox_visual(crate::ids::INSP_SPRITE_FLIP_X))
             .value(fx_value),
         fx_rect,
         scene,
@@ -158,13 +158,13 @@ pub(crate) fn paint_sprite_sheet_section(
         theme,
     );
     let (_, fy_value) = store
-        .checkbox(ids::INSP_SPRITE_FLIP_Y)
+        .checkbox(crate::ids::INSP_SPRITE_FLIP_Y)
         .unwrap_or((CheckboxState::Normal, CheckboxValue::Unchecked));
     let fy_rect = Rect::new(x + flip_half + flip_gap, cur_y, flip_half, flip_row_h);
-    hit_index.register(ids::INSP_SPRITE_FLIP_Y, fy_rect);
+    hit_index.register(crate::ids::INSP_SPRITE_FLIP_Y, fy_rect);
     paint_checkbox(
-        &Checkbox::new(ids::INSP_SPRITE_FLIP_Y, "Flip V")
-            .visual(store.checkbox_visual(ids::INSP_SPRITE_FLIP_Y))
+        &Checkbox::new(crate::ids::INSP_SPRITE_FLIP_Y, "Flip V")
+            .visual(store.checkbox_visual(crate::ids::INSP_SPRITE_FLIP_Y))
             .value(fy_value),
         fy_rect,
         scene,
@@ -179,7 +179,7 @@ pub(crate) fn paint_sprite_sheet_section(
         hit_index,
         cur_y,
         "H Frames",
-        ids::INSP_SPRITE_HFRAMES,
+        crate::ids::INSP_SPRITE_HFRAMES,
     );
     cur_y += field_h + row_gap;
     number_row(
@@ -188,7 +188,7 @@ pub(crate) fn paint_sprite_sheet_section(
         hit_index,
         cur_y,
         "V Frames",
-        ids::INSP_SPRITE_VFRAMES,
+        crate::ids::INSP_SPRITE_VFRAMES,
     );
     cur_y += field_h + row_gap;
     number_row(
@@ -197,7 +197,7 @@ pub(crate) fn paint_sprite_sheet_section(
         hit_index,
         cur_y,
         "Frame",
-        ids::INSP_SPRITE_FRAME,
+        crate::ids::INSP_SPRITE_FRAME,
     );
     cur_y += field_h + row_gap;
 

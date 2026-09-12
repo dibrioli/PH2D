@@ -19,9 +19,21 @@ impl BodyCtx<'_> {
         y = self.segmented(
             "Tip",
             [
-                (ids::FLIP_TIP_LINE, "Line", is(StrokeTip::Continuous)),
-                (ids::FLIP_TIP_DOTS, "Dots", is(StrokeTip::Dots)),
-                (ids::FLIP_TIP_SQUARES, "Squares", is(StrokeTip::Squares)),
+                (
+                    ph2d_tool_flip::ids::FLIP_TIP_LINE,
+                    "Line",
+                    is(StrokeTip::Continuous),
+                ),
+                (
+                    ph2d_tool_flip::ids::FLIP_TIP_DOTS,
+                    "Dots",
+                    is(StrokeTip::Dots),
+                ),
+                (
+                    ph2d_tool_flip::ids::FLIP_TIP_SQUARES,
+                    "Squares",
+                    is(StrokeTip::Squares),
+                ),
             ],
             y,
         );
@@ -30,7 +42,7 @@ impl BodyCtx<'_> {
         if snap.tip != StrokeTip::Continuous {
             let track = self
                 .store
-                .slider(ids::FLIP_DOT_SPACING)
+                .slider(ph2d_tool_flip::ids::FLIP_DOT_SPACING)
                 .map(|(_, v)| v)
                 .unwrap_or((snap.dot_spacing / DOT_SPACING_MAX) as f32);
             let world = self
@@ -39,7 +51,7 @@ impl BodyCtx<'_> {
                 .unwrap_or(snap.dot_spacing);
             y = self.slider_row(
                 "Spacing",
-                ids::FLIP_DOT_SPACING,
+                ph2d_tool_flip::ids::FLIP_DOT_SPACING,
                 ids::FLIP_DOT_SPACING_NUM,
                 track,
                 world,
@@ -57,9 +69,21 @@ impl BodyCtx<'_> {
         y = self.segmented(
             "Cap",
             [
-                (ids::FLIP_CAP_ROUND, "Round", snap.cap == Cap::Round),
-                (ids::FLIP_CAP_FLAT, "Flat", snap.cap == Cap::Flat),
-                (ids::FLIP_CAP_SQUARE, "Square", snap.cap == Cap::Square),
+                (
+                    ph2d_tool_flip::ids::FLIP_CAP_ROUND,
+                    "Round",
+                    snap.cap == Cap::Round,
+                ),
+                (
+                    ph2d_tool_flip::ids::FLIP_CAP_FLAT,
+                    "Flat",
+                    snap.cap == Cap::Flat,
+                ),
+                (
+                    ph2d_tool_flip::ids::FLIP_CAP_SQUARE,
+                    "Square",
+                    snap.cap == Cap::Square,
+                ),
             ],
             y,
         );
@@ -75,8 +99,16 @@ impl BodyCtx<'_> {
         y = self.segmented_block(
             "",
             &[
-                (ids::FLIP_SELF_OVERLAP, "Self Overlap", snap.self_overlap),
-                (ids::FLIP_AIRBRUSH, "Airbrush", snap.airbrush),
+                (
+                    ph2d_tool_flip::ids::FLIP_SELF_OVERLAP,
+                    "Self Overlap",
+                    snap.self_overlap,
+                ),
+                (
+                    ph2d_tool_flip::ids::FLIP_AIRBRUSH,
+                    "Airbrush",
+                    snap.airbrush,
+                ),
             ],
             &[1, 1],
             y,

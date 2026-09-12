@@ -1,0 +1,444 @@
+//! **§14 Platform Player** — os ids da seção de COMPORTAMENTO (W5).
+//!
+//! ⚠️ **Seção própria, e sem SELETOR** (D9 do plano). Um seletor de um item é um
+//! controle morto: ele pede uma escolha onde não há escolha, e o custo dele é
+//! permanente (uma row para sempre) enquanto o benefício é hipotético. O ponto
+//! de extensão de *"que comportamentos este corpo tem?"* é o **componente** —
+//! um comportamento novo é uma seção nova, exatamente como um joint novo é um
+//! `JointKind` novo e não um dropdown dentro do Pin.
+//!
+//! ⚠️ **E ela é irmã da §11, não parte dela.** A §11 responde *"que corpo é
+//! este?"* (massa, forma, material) e a §14 responde *"que comportamento este
+//! corpo tem?"*. Colapsá-las daria a um estado de colapso dois assuntos, e o
+//! artista que fecha "Physics Body" para ver a lista de objetos perderia os
+//! controles do personagem junto.
+//!
+//! ⚠️ **Desceu de `ph2d-editor-core/src/ids/inspector_player.rs` em 2026-09-12** (auditoria de arquitectura
+//! A5b): quem LÊ estes ids mora nesta crate, e a fundação que 43 crates recompilam deixou de os
+//! carregar.
+
+use ph2d_a11y::NodeId;
+use ph2d_tool_registry::hash_node_id;
+
+/// **O gesto que CRIA um player** — o botão da face vazia.
+///
+/// ⚠️ A face vazia é a metade importante da seção, e é a lição que a §11 do W2a
+/// já tinha pago: sem ela o comportamento é alcançável só onde já existe, ou
+/// seja em lugar nenhum. Ele aparece para qualquer corpo **Dynamic** sem o
+/// componente.
+pub const INSP_PLAYER_ADD: NodeId = hash_node_id("insp_player_add");
+
+/// O gesto oposto — devolve o corpo a um corpo comum.
+pub const INSP_PLAYER_REMOVE: NodeId = hash_node_id("insp_player_remove");
+
+/// **Fit Crouch to Collider** (W18) — o espelho exato do [`INSP_PLAYER_FIT`], uma
+/// perna mais curta abaixo.
+///
+/// ⚠️ **O defeito que ele resolve foi MEDIDO e não é o que a nota da W15 dizia.**
+/// Ela previa *"o corpo enterrado"*; o corpo **não enterra — ele SATURA**. O
+/// solver segura a cápsula tangente com 1 mm de folga (o
+/// `normalized_allowed_linear_error`), a pose fica **perfeitamente estável**, e o
+/// que acontece de verdade é o slider ficar **MORTO**: numa rampa de 45° (piso
+/// `0,583`) autorar `0,50` dá folga `0,059` e autorar `0,30` dá `0,058` — duzentos
+/// milímetros de curso, **um milímetro** de resposta, e nada na tela a dizer por
+/// quê.
+///
+/// ⚠️ **Oferecido só com o agachar ARMADO** (`crouch_height > 0`): em zero a
+/// capacidade está desligada e não há defeito nenhum, e um botão que a ligasse
+/// pelas costas conflataria dois gestos.
+pub const INSP_PLAYER_FIT_CROUCH: NodeId = hash_node_id("insp_player_fit_crouch");
+
+/// **Descartar a CORRIDA GRAVADA** (W17) — a fita de entrada do jogador.
+///
+/// ⚠️ **Ele é a metade visível inteira da persistência, e a AUSÊNCIA dele é o
+/// outro readout:** o botão só é oferecido quando existe corrida, e o rótulo
+/// carrega quantos segundos ela tem. É o precedente do `Fit to Collider (needs >
+/// 0.50 m)`, escrito uma seção acima — *o aviso mora no rótulo do próprio
+/// controle que o resolve*; um readout separado seria uma segunda superfície
+/// dizendo o mesmo fato.
+///
+/// ⚠️ E ele é GLOBAL numa seção por-entidade, porque a fita é uma só — o mesmo
+/// desenho do `hand_input_to_players`, que entrega UM dedo a todos os players.
+/// Quando houver um segundo dedo, os dois se movem juntos.
+pub const INSP_PLAYER_CLEAR_RUN: NodeId = hash_node_id("insp_player_clear_run");
+
+/// **Devolve a corrida DESCARTADA** (W24) — o desfazer do botão acima.
+pub const INSP_PLAYER_RESTORE_RUN: NodeId = hash_node_id("insp.player.restore.run");
+
+/// **COMO ele é movido** — o chip `Dynamic | Kinematic` (W-KinMove).
+///
+/// ⚠️ **Um gesto, DOIS campos.** Clicar aqui escreve o `PlayerMode` **e** o
+/// `RigidBody.kind`, porque um player cinemático precisa de um corpo cinemático
+/// e pedir ao artista que ponha o corpo em Kinematic noutra seção seria a falha
+/// de duas-portas que este módulo já pagou. O `PlayerMode` continua a ser o
+/// discriminador (um player ASSADO também tem corpo cinemático, e a cena é dona
+/// da pose dele) — ver `ph2d_physics_ecs::PlayerMode`.
+///
+/// ⚠️ **Ele mora na §14 e não na §11**, e a distinção não é arrumação: a §11
+/// responde *"que corpo é este?"* para QUALQUER objeto; esta pergunta só existe
+/// para um personagem, e a resposta dela cresce (o *"puro sangue"* é o terceiro).
+pub const INSP_PLAYER_MODE: NodeId = hash_node_id("insp_player_mode");
+
+/// As opções do chip. ⚠️ **Uma fatia, nunca um par** — a `W-KinPure` trouxe a
+/// terceira, e ela custou exatamente uma linha nesta tabela, como prometido.
+pub const INSP_PLAYER_MODE_IDS: [NodeId; 3] = [
+    hash_node_id("insp_player_mode_dynamic"),
+    hash_node_id("insp_player_mode_kinematic"),
+    hash_node_id("insp_player_mode_pure"),
+];
+
+/// **O QUE A PLATAFORMA DA AO PULO QUANDO SE LARGA ELA** (`W-Leave`) — as tres
+/// politicas do `platform_on_leave` do Godot.
+///
+/// ⚠️ **A row fica FORA dos cards, e nao e' arrumacao:** os cards sao medidos
+/// pela CONTAGEM de rows (`card_frame(.., n)`) e todas as rows deles tem a
+/// altura de uma caixa numerica; um controle segmentado mede a PROPRIA altura e
+/// pode quebrar em duas linhas numa janela estreita, e ali a moldura passaria a
+/// nao caber no que emoldura. As duas rows segmentadas que ja existiam nesta
+/// secao (`INSP_PLAYER_MODE`, `INSP_PLAYER_EMIT`) vivem fora deles pelo mesmo
+/// motivo.
+///
+/// ⚠️ **Ela nao pertence ao card PERDAO** — onde o `Lift Momentum` mora e onde
+/// o assunto se le —, e isso e' um preco NOMEADO, nao um descuido.
+pub const INSP_PLAYER_LIFT_POLICY: NodeId = hash_node_id("insp_player_lift_policy");
+
+/// As opcoes do chip acima. ⚠️ **O indice E o `PlatformLift::tag`**, sem remap.
+pub const INSP_PLAYER_LIFT_POLICY_IDS: [NodeId; 3] = [
+    hash_node_id("insp_player_lift_policy_full"),
+    hash_node_id("insp_player_lift_policy_up"),
+    hash_node_id("insp_player_lift_policy_none"),
+];
+
+/// **Ele pode andar para fora de um patamar?** (`W-Brink`) — o
+/// `bCanWalkOffLedges` do Unreal.
+///
+/// ⚠️ **A row diz a CAPACIDADE, não a trava**, e o rótulo tem de casar com o
+/// campo: guardando *pode andar*, o `false` que todo arquivo antigo traz num
+/// campo novo significaria *trava armada*, e a capacidade nasceria ligada em
+/// toda arte já autorada. Ver o doc do campo no componente.
+///
+/// ⚠️ **Fora dos cards**, como a irmã acima: um segmentado mede a própria
+/// altura e a moldura de um card é medida pela CONTAGEM de rows.
+pub const INSP_PLAYER_WALK_OFF: NodeId = hash_node_id("insp_player_walk_off");
+
+/// As opções do chip acima — `0` = pode andar para fora (o mundo que já
+/// shipava), `1` = pára na beirada.
+pub const INSP_PLAYER_WALK_OFF_IDS: [NodeId; 2] = [
+    hash_node_id("insp_player_walk_off_yes"),
+    hash_node_id("insp_player_walk_off_stop"),
+];
+
+/// **E AGACHADO?** (`W-Brink`) — o `bCanWalkOffLedgesWhenCrouching` do Unreal.
+///
+/// ⚠️ **Só é pintada com o AGACHAR autorado**, porque sem ele a row é um
+/// controle que não pode agir: a [`ph2d_platformer::walk_for`] devolve a config
+/// de pé quando o agachar não está armado, e este número nunca é lido.
+pub const INSP_PLAYER_CROUCH_WALK_OFF: NodeId = hash_node_id("insp_player_crouch_walk_off");
+
+/// As opções do chip acima — a mesma leitura da irmã de pé.
+pub const INSP_PLAYER_CROUCH_WALK_OFF_IDS: [NodeId; 2] = [
+    hash_node_id("insp_player_crouch_walk_off_yes"),
+    hash_node_id("insp_player_crouch_walk_off_stop"),
+];
+
+/// **Este player publica os eventos dele como SINAIS?** (`W-PlayerOut`, A3).
+///
+/// ⚠️ **Nasce DESLIGADO**, e a razão é o custo de quem não pediu: sem isso toda
+/// cena de smoke com um personagem passaria a cuspir toasts. É o mesmo opt-in
+/// autorado do `SignalOnHit`, e o mesmo motivo pelo qual ele também é.
+///
+/// ⚠️ **A row fica no TOPO, junto do readout**, e é deliberado: ela é a outra
+/// metade da mesma pergunta — *o que este personagem está a fazer, e quem fica
+/// sabendo* —, e não pertence a nenhum dos nove cards, que são todos knobs de
+/// AFINAÇÃO.
+pub const INSP_PLAYER_EMIT: NodeId = hash_node_id("insp_player_emit");
+
+/// As opções do chip acima.
+pub const INSP_PLAYER_EMIT_IDS: [NodeId; 2] = [
+    hash_node_id("insp_player_emit_off"),
+    hash_node_id("insp_player_emit_on"),
+];
+
+/// **A altura a que o personagem PAIRA**, metros, medida do centro do corpo.
+pub const INSP_PLAYER_FLOAT: NodeId = hash_node_id("insp_player_float");
+
+/// **Fit to Collider** — semeia a altura de flutuação a partir da forma.
+///
+/// ⚠️ Existe porque o número tem um PISO GEOMÉTRICO que ninguém adivinha: o
+/// sensor mede na vertical e quem encosta na rampa é a cápsula ao longo da
+/// normal dela, então flutuar exige
+/// `float_height > half_height + radius / cos(max_slope)`
+/// (`ph2d_platformer::RideConfig::min_float_height`, com a tabela medida). Com o
+/// ponto de partida `0,5` e a cápsula canônica o personagem fica **TANGENTE** ao
+/// chão — ele não paira, e a primeira rampa o revela. O botão é o mesmo idioma
+/// do collider que nasce da caixa do sprite: o app sabe a resposta, então ele a
+/// oferece em vez de deixar o artista descobrir por acidente.
+pub const INSP_PLAYER_FIT: NodeId = hash_node_id("insp_player_fit");
+
+/// Quanto ACIMA da altura de repouso a mola ainda age — o que separa *"subi um
+/// degrau"* de *"pulei"*.
+pub const INSP_PLAYER_CLING: NodeId = hash_node_id("insp_player_cling");
+
+/// Rigidez da perna, em aceleração-por-metro.
+pub const INSP_PLAYER_STIFFNESS: NodeId = hash_node_id("insp_player_stiffness");
+
+/// Amortecimento da perna — fração da velocidade relativa removida por tick.
+///
+/// ⚠️ Tem TETO MEDIDO (`RideConfig::MAX_DAMPING`): acima dele o boost inverte a
+/// velocidade em vez de matá-la, e o personagem pipoca.
+pub const INSP_PLAYER_DAMPING: NodeId = hash_node_id("insp_player_damping");
+
+/// Velocidade de cruzeiro, m/s — **relativa ao chão**.
+pub const INSP_PLAYER_SPEED: NodeId = hash_node_id("insp_player_speed");
+
+/// Aceleração no chão, m/s².
+pub const INSP_PLAYER_ACCEL: NodeId = hash_node_id("insp_player_accel");
+
+/// Aceleração no ar — o controle aéreo. `0` conserva o arco do salto.
+pub const INSP_PLAYER_AIR_ACCEL: NodeId = hash_node_id("insp_player_air_accel");
+
+/// **Quanto do orçamento ele gasta a FREAR** (`W-Brake`) — a fração usada no
+/// chão com o eixo solto. `1` é o mundo de antes daquela wave, `0` é gelo.
+pub const INSP_PLAYER_BRAKE: NodeId = hash_node_id("insp_player_brake");
+
+/// A inclinação máxima em que o personagem fica de pé, em GRAUS.
+///
+/// Graus na fronteira, cosseno no motor — a convenção do ângulo de joint.
+pub const INSP_PLAYER_MAX_SLOPE: NodeId = hash_node_id("insp_player_max_slope");
+
+/// **O PULO** (W4) — sete números, e o único que o artista pensa é o primeiro.
+///
+/// ⚠️ Ids por HASH DE STRING, como os irmãos acima — um literal numérico neste
+/// arquivo seria a segunda convenção do mesmo bloco.
+///
+/// A altura de um pulo COMPLETO, metros acima da decolagem, com gravidade
+/// neutra.
+pub const INSP_PLAYER_JUMP_HEIGHT: NodeId = hash_node_id("insp_player_jump_height");
+
+/// Quanto do PESO volta para o chao (W6) -- ver `PlatformPlayer::reaction_support`.
+pub const INSP_PLAYER_REACT_SUPPORT: NodeId = hash_node_id("insp_player_react_support");
+
+/// Quanto da CAMINHADA volta para o chao (W6) -- o tapete, que nasce em zero.
+pub const INSP_PLAYER_REACT_MOVEMENT: NodeId = hash_node_id("insp_player_react_movement");
+
+/// Quanto de um bloqueio LATERAL volta (W-KinPush) -- o empurrao, so' sob Snap.
+pub const INSP_PLAYER_REACT_PUSH: NodeId = hash_node_id("insp_player_react_push");
+
+/// Multiplicador de gravidade na SAÍDA, acima de [`INSP_PLAYER_TAKEOFF_SPEED`].
+pub const INSP_PLAYER_TAKEOFF_G: NodeId = hash_node_id("insp_player_takeoff_g");
+
+/// A velocidade acima da qual a gravidade de saída age, m/s.
+pub const INSP_PLAYER_TAKEOFF_SPEED: NodeId = hash_node_id("insp_player_takeoff_speed");
+
+/// Multiplicador perto do ÁPICE — ⚠️ **abaixo de 1 ALONGA** (a decisão do
+/// módulo: o *forgiveness* do Celeste), acima de 1 encurta.
+pub const INSP_PLAYER_PEAK_G: NodeId = hash_node_id("insp_player_peak_g");
+
+/// A janela do ápice, m/s.
+pub const INSP_PLAYER_PEAK_SPEED: NodeId = hash_node_id("insp_player_peak_speed");
+
+/// Multiplicador na QUEDA — acima de 1 desce mais rápido do que sobe.
+pub const INSP_PLAYER_FALL_G: NodeId = hash_node_id("insp_player_fall_g");
+
+/// Multiplicador enquanto sobe com o botão SOLTO — a altura variável.
+///
+/// ⚠️ Este doc-comment estava **órfão** desde a W8: os dois ids do perdão foram
+/// inseridos entre ele e a const que ele descreve, então ele passou a documentar
+/// o *Coyote Time* (que não é multiplicador nenhum) e o `CUT_G` ficou sem doc.
+/// Corrigido na W9 — *um comentário que descreve outra coisa é pior que
+/// comentário nenhum*.
+pub const INSP_PLAYER_CUT_G: NodeId = hash_node_id("insp_player_cut_g");
+
+/// **Air Jumps** (`W-MultiJump`) — quantos pulos o personagem tem depois de
+/// sair do chão. `0` desliga a capacidade.
+pub const INSP_PLAYER_AIR_JUMPS: NodeId = hash_node_id("insp.player.air.jumps");
+
+/// **Air Jump Height** (`W-MultiJump`) — METROS, a mesma régua do primeiro pulo.
+pub const INSP_PLAYER_AIR_JUMP_H: NodeId = hash_node_id("insp.player.air.jump.h");
+
+/// **Coyote Time** (W8) — segundos de perdão depois de sair do chão.
+pub const INSP_PLAYER_COYOTE: NodeId = hash_node_id("insp.player.coyote");
+
+/// **Jump Buffer** (W8) — segundos que um aperto cedo demais sobrevive.
+pub const INSP_PLAYER_BUFFER: NodeId = hash_node_id("insp.player.buffer");
+
+/// **Corner Reach** (W10) — METROS de deslocamento lateral que a assistência de
+/// quina pode dar.
+///
+/// ⚠️ Mora no card do PERDÃO ao lado dos dois de cima, e a família é a mesma
+/// (*o jogo perdoa um erro do jogador*) — mas a grandeza não: os dois primeiros
+/// perdoam erros de **quando**, este perdoa um erro de **onde**. Daí a unidade
+/// no rótulo.
+pub const INSP_PLAYER_CORNER: NodeId = hash_node_id("insp.player.corner");
+
+/// **Lift Momentum** (W10) — segundos em que o controle aéreo continua medindo
+/// no referencial da plataforma que se deixou.
+pub const INSP_PLAYER_LIFT: NodeId = hash_node_id("insp.player.lift");
+
+/// AS PAREDES (W13) — o card próprio, ver `sections::player`.
+/// **Wall Slide (m/s)** (W13).
+pub const INSP_PLAYER_WALL_SLIDE: NodeId = hash_node_id("insp.player.wall.slide");
+
+/// **Wall Jump (m)** (W13).
+pub const INSP_PLAYER_WALL_JUMP: NodeId = hash_node_id("insp.player.wall.jump");
+
+/// **Wall Push (m/s)** (W13).
+pub const INSP_PLAYER_WALL_PUSH: NodeId = hash_node_id("insp.player.wall.push");
+
+/// **Wall Lockout (s)** (W13).
+pub const INSP_PLAYER_WALL_LOCK: NodeId = hash_node_id("insp.player.wall.lock");
+
+/// **Wall Reach (m)** (W13).
+pub const INSP_PLAYER_WALL_REACH: NodeId = hash_node_id("insp.player.wall.reach");
+
+/// **Quantos raios a PERNA casta** (`W-Probes2`). Ímpar; o do meio desempata.
+///
+/// ⚠️ O default é **3, não 1** — a perna de um raio só afunda 46% do
+/// `float_height` parado sobre uma fenda que o corpo atravessa (medido em
+/// `measure_what_a_single_ground_ray_costs_over_a_gap`).
+pub const INSP_PLAYER_FOOT_SAMPLES: NodeId = hash_node_id("insp.player.foot.samples");
+
+/// **Onde os pés de fora se sentam**, fração da meia-LARGURA do corpo.
+pub const INSP_PLAYER_FOOT_SPREAD: NodeId = hash_node_id("insp.player.foot.spread");
+
+/// **Quantos raios o flanco casta** (`W-Probes2`). Ímpar; o teto e o preço estão
+/// em `ph2d_platformer::MAX_WALL_SAMPLES` — 18 ns por raio, plano em N.
+pub const INSP_PLAYER_WALL_SAMPLES: NodeId = hash_node_id("insp.player.wall.samples");
+
+/// **Onde as amostras de fora do flanco se sentam**, fração da meia-altura.
+pub const INSP_PLAYER_WALL_SPREAD: NodeId = hash_node_id("insp.player.wall.spread");
+
+/// **Quantas amostras o perfil da quina varre** (`W-Probes2`). Ímpar.
+pub const INSP_PLAYER_CORNER_SAMPLES: NodeId = hash_node_id("insp.player.corner.samples");
+
+/// **Quantos tiques de antecedência o perfil da quina olha.**
+pub const INSP_PLAYER_CORNER_AHEAD: NodeId = hash_node_id("insp.player.corner.ahead");
+
+/// **WALL GRAB** (W23) — por quantos segundos ele segura a parede de vez.
+pub const INSP_PLAYER_WALL_GRAB: NodeId = hash_node_id("insp.player.wall.grab");
+
+/// **Os CARDS da §14** (W9) — os títulos que agrupam os dezenove números.
+///
+/// ⚠️ **Só moldura, nenhum estado.** Eles não são colapsáveis e não guardam
+/// nada: o estado de colapso é da SEÇÃO (`INSP_LIVE_PLAYER_SECTION`), e dar a
+/// cada card o seu seria oferecer cinco lugares onde um controle pode
+/// desaparecer sem que a seção diga por quê. O id existe porque `Card` pede um —
+/// e porque um dia a a11y vai querer nomear o grupo.
+///
+/// ⚠️ **Por que agrupar:** dezenove caixas numéricas em fila são uma lista que
+/// não se lê (Enio, 2026-08-04: *"esse tanto de parâmetros juntos não fica bem"*).
+/// Os cinco títulos são as cinco perguntas que a lei de fato responde — a perna,
+/// a caminhada, o pulo, o perdão e o que volta ao chão —, e cada uma é um módulo
+/// do `ph2d-platformer`. O agrupamento não é decoração: é o desenho do motor
+/// dito na tela.
+/// **O ARRANQUE** (W14) — a velocidade, a duração e a recuperação.
+///
+/// ⚠️ Os dois primeiros são o par que decide a **DISTÂNCIA**, que é o número
+/// que o artista de facto julga; o terceiro é o espaçamento entre dois
+/// arranques no chão. O que impede voar **não está aqui** — é a carga, reposta
+/// pelo pé no chão, e ela não é um knob de propósito.
+pub const INSP_PLAYER_DASH_SPEED: NodeId = hash_node_id("insp.player.dash.speed");
+
+/// Quanto tempo o arranque dura, segundos.
+pub const INSP_PLAYER_DASH_TIME: NodeId = hash_node_id("insp.player.dash.time");
+
+/// Quanto tempo depois do FIM até poder de novo, segundos.
+pub const INSP_PLAYER_DASH_COOL: NodeId = hash_node_id("insp.player.dash.cool");
+
+/// **O AGACHAR** (W15) — a altura agachado e a velocidade agachado.
+///
+/// ⚠️ Dois números com significados DIFERENTES para o zero: zero na altura
+/// desliga a capacidade; zero na velocidade é um agachar em que não se anda,
+/// que é uma escolha legítima. Ver [`INSP_PLAYER_CROUCH_SPEED`].
+pub const INSP_PLAYER_CROUCH_HEIGHT: NodeId = hash_node_id("insp.player.crouch.height");
+
+/// A velocidade de cruzeiro agachado, m/s. ⚠️ Zero aqui NÃO desliga nada.
+pub const INSP_PLAYER_CROUCH_SPEED: NodeId = hash_node_id("insp.player.crouch.speed");
+
+/// **O NADO** (W-Swim) — a velocidade, a autoridade e o LIMIAR de entrada.
+///
+/// ⚠️ **O terceiro não é uma altura**, e é a distinção que decide se o artista
+/// entende o card: ele conta **PESOS carregados pelo fluido**, então `1` diz *a
+/// água sozinha me sustenta* em qualquer poça — enquanto uma altura diria coisas
+/// diferentes em cada uma. Ver [`INSP_PLAYER_SWIM_ENTER`].
+pub const INSP_PLAYER_SWIM_SPEED: NodeId = hash_node_id("insp.player.swim.speed");
+
+/// Quão depressa se chega à velocidade de nado, m/s². ⚠️ É autoridade CONTRA o
+/// empuxo: pouca, e o corpo boia sozinho; muita, e ele treda água parado.
+pub const INSP_PLAYER_SWIM_ACCEL: NodeId = hash_node_id("insp.player.swim.accel");
+
+/// **Quantos pesos o fluido tem de carregar para ele começar a nadar.**
+///
+/// ⚠️ **Só a ENTRADA usa este número** — sair é uma trava (o chão, ou estar
+/// completamente fora da água), porque um limiar só faria o nadador oscilar em
+/// torno dele exatamente onde o jogador tenta emergir.
+pub const INSP_PLAYER_SWIM_ENTER: NodeId = hash_node_id("insp.player.swim.enter");
+
+/// **O ALCANCE do braço numa beirada**, metros — o **X** (`W-Ledge`). `0`
+/// desliga.
+///
+/// ⚠️ **A nota que estava aqui foi REFUTADA pela referência** (`W-LedgeSensor`):
+/// ela dizia *"um número para os DOIS eixos — até onde ele alcança é uma
+/// grandeza só"*, e os motores 2D que shipam separam-nos, com o motivo do Y
+/// nomeado (a ARTE). Ver [`ph2d_platformer::LedgeConfig::grab`].
+pub const INSP_PLAYER_LEDGE_GRAB: NodeId = hash_node_id("insp.player.ledge.grab");
+
+/// **A ALTURA da janela**, metros — o **Y** (`W-LedgeSensor`).
+///
+/// ⚠️ É ele que possui a **histerese** do pendurar (a janela é simétrica em
+/// torno do topo do corpo); ver [`ph2d_platformer::LedgeConfig::reach_y`].
+pub const INSP_PLAYER_LEDGE_REACH_Y: NodeId = hash_node_id("insp.player.ledge.reach_y");
+
+/// **A EXTENSÃO do sensor**, metros — o *scale* (`W-LedgeSensor`). `0` é o raio
+/// único de antes da wave, ao bit; ver [`ph2d_platformer::LedgeConfig::span`].
+pub const INSP_PLAYER_LEDGE_SPAN: NodeId = hash_node_id("insp.player.ledge.span");
+
+/// **O DESLOCAMENTO vertical do sensor**, metros (`W-LedgeSensor`).
+///
+/// ⚠️ Ele desliza a janela sem a REDIMENSIONAR — mexer no `reach_y` para
+/// alcançar um lábio mais alto alargaria a histerese junto; ver
+/// [`ph2d_platformer::LedgeConfig::offset_y`].
+pub const INSP_PLAYER_LEDGE_OFFSET_Y: NodeId = hash_node_id("insp.player.ledge.offset_y");
+
+/// **A velocidade com que ele se acomoda no pendurar e sobe no mantle**, m/s.
+///
+/// ⚠️ **Um número para os dois momentos**, e é deliberado: eles são o mesmo
+/// gesto de braço, e dois knobs seriam dois números que o artista teria de
+/// manter de acordo para o movimento não mudar de ritmo a meio.
+pub const INSP_PLAYER_LEDGE_SPEED: NodeId = hash_node_id("insp.player.ledge.speed");
+
+/// **O TETO da descida enquanto se plana**, m/s (`W-Glide`). `0` desliga.
+///
+/// ⚠️ **Um teto, não a velocidade do planeio** — ele só age sobre quem já cai
+/// mais depressa, então segurar o botão a subir ou no ápice não faz nada. As
+/// três formas candidatas e a medição que escolheu esta estão no topo do
+/// `ph2d_platformer::glide`.
+pub const INSP_PLAYER_GLIDE_FALL: NodeId = hash_node_id("insp.player.glide.fall");
+
+pub const INSP_PLAYER_CARD_GLIDE: NodeId = hash_node_id("insp_player_card_glide");
+
+/// **A velocidade TERMINAL**, m/s (`W-Fall`). `0` desliga.
+pub const INSP_PLAYER_MAX_FALL: NodeId = hash_node_id("insp.player.fall.max");
+
+/// O card do TETO DE QUEDA (`W-Fall`).
+pub const INSP_PLAYER_CARD_FALL: NodeId = hash_node_id("insp_player_card_fall");
+
+pub const INSP_PLAYER_CARD_LEDGE: NodeId = hash_node_id("insp_player_card_ledge");
+
+pub const INSP_PLAYER_CARD_LEG: NodeId = hash_node_id("insp_player_card_leg");
+
+pub const INSP_PLAYER_CARD_WALK: NodeId = hash_node_id("insp_player_card_walk");
+
+pub const INSP_PLAYER_CARD_JUMP: NodeId = hash_node_id("insp_player_card_jump");
+
+pub const INSP_PLAYER_CARD_FORGIVE: NodeId = hash_node_id("insp_player_card_forgive");
+
+pub const INSP_PLAYER_CARD_REACT: NodeId = hash_node_id("insp_player_card_react");
+
+pub const INSP_PLAYER_CARD_WALL: NodeId = hash_node_id("insp_player_card_wall");
+
+pub const INSP_PLAYER_CARD_DASH: NodeId = hash_node_id("insp_player_card_dash");
+
+pub const INSP_PLAYER_CARD_CROUCH: NodeId = hash_node_id("insp_player_card_crouch");
+
+pub const INSP_PLAYER_CARD_SWIM: NodeId = hash_node_id("insp_player_card_swim");

@@ -73,10 +73,10 @@ fn z_index_edit_reaches_the_bus() {
     // A drag/commit writes the NumberInput's value, THEN the dispatch
     // emits ValueChanged. Simulate both. 5 is non-zero so the arm yields
     // `ZIndex(Some(5))` (the override path), not `None` (the detach path).
-    host.set_number_value(ids::INSP_ORDER_Z_INDEX, 5.0);
+    host.set_number_value(ph2d_panel_inspector::ids::INSP_ORDER_Z_INDEX, 5.0);
     let outcome = host.apply_panel_event::<InspectorPanel>(
         &mut panel_state,
-        WidgetEvent::ValueChanged(ids::INSP_ORDER_Z_INDEX),
+        WidgetEvent::ValueChanged(ph2d_panel_inspector::ids::INSP_ORDER_Z_INDEX),
     );
     assert_eq!(
         outcome,

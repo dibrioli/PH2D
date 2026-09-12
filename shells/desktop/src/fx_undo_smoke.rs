@@ -208,10 +208,10 @@ pub(crate) fn frame(app: &mut crate::App, f: u32) {
         5 => app.any_input_this_frame = true,
         // A seção Effects pode nascer fora da vista: rola o painel até o botão entrar no
         // hit-index (o mesmo gesto do roteiro do Expand).
-        6..=11 => scroll_until_reachable(app, ph2d_editor_core::ids::vector_fx_add_id(0)),
+        6..=11 => scroll_until_reachable(app, ph2d_tool_vector::ids::vector_fx_add_id(0)),
         // Depois do 2º Add o card voltou e empurrou o Apply para fora — re-rola até ele.
-        82..=87 => scroll_until_reachable(app, ph2d_editor_core::ids::VECTOR_FX_APPLY),
-        ADD_DOWN => match app.smoke_find_widget(ph2d_editor_core::ids::vector_fx_add_id(0)) {
+        82..=87 => scroll_until_reachable(app, ph2d_tool_vector::ids::VECTOR_FX_APPLY),
+        ADD_DOWN => match app.smoke_find_widget(ph2d_tool_vector::ids::vector_fx_add_id(0)) {
             Some((x, y)) => {
                 eprintln!("[fx-undo] DOWN no botão Add (kind 0) em ({x}, {y})");
                 app.smoke_pointer_down(x, y);
@@ -227,7 +227,7 @@ pub(crate) fn frame(app: &mut crate::App, f: u32) {
         }
         // O ARRASTO do parâmetro: agarra o slider da linha 0 e leva-o para a direita.
         PARAM_DOWN => {
-            match app.smoke_find_widget(ph2d_editor_core::ids::vector_fx_param_id(0, 0)) {
+            match app.smoke_find_widget(ph2d_tool_vector::ids::vector_fx_param_id(0, 0)) {
                 Some((x, y)) => {
                     GRAB.with(|c| c.set((x, y)));
                     eprintln!("[fx-undo] DOWN no slider do parâmetro 0 em ({x}, {y})");
@@ -236,7 +236,7 @@ pub(crate) fn frame(app: &mut crate::App, f: u32) {
                 None => eprintln!("[fx-undo] ⚠️ slider do parâmetro fora do hit-index"),
             }
         }
-        PARAM2_DOWN => match app.smoke_find_widget(ph2d_editor_core::ids::vector_fx_param_id(0, 0))
+        PARAM2_DOWN => match app.smoke_find_widget(ph2d_tool_vector::ids::vector_fx_param_id(0, 0))
         {
             Some((x, y)) => {
                 GRAB.with(|c| c.set((x, y)));
@@ -262,10 +262,10 @@ pub(crate) fn frame(app: &mut crate::App, f: u32) {
             eprintln!("[fx-undo] UP do arrasto — UM passo para o gesto inteiro");
             app.smoke_pointer_up();
         }
-        HIDE_DOWN => click_row_icon(app, ph2d_editor_core::ids::vector_fx_hide_id(0), "HIDE"),
-        REMOVE_DOWN => click_row_icon(app, ph2d_editor_core::ids::vector_fx_remove_id(0), "REMOVE"),
-        ADD2_DOWN => click_row_icon(app, ph2d_editor_core::ids::vector_fx_add_id(0), "ADD (2o)"),
-        APPLY_DOWN => click_row_icon(app, ph2d_editor_core::ids::VECTOR_FX_APPLY, "APPLY"),
+        HIDE_DOWN => click_row_icon(app, ph2d_tool_vector::ids::vector_fx_hide_id(0), "HIDE"),
+        REMOVE_DOWN => click_row_icon(app, ph2d_tool_vector::ids::vector_fx_remove_id(0), "REMOVE"),
+        ADD2_DOWN => click_row_icon(app, ph2d_tool_vector::ids::vector_fx_add_id(0), "ADD (2o)"),
+        APPLY_DOWN => click_row_icon(app, ph2d_tool_vector::ids::VECTOR_FX_APPLY, "APPLY"),
         HIDE_UP | REMOVE_UP | ADD2_UP | APPLY_UP => app.smoke_pointer_up(),
         _ => {}
     }

@@ -140,7 +140,7 @@ pub(crate) fn paint_deferred_popovers(
             .copied()
             .unwrap_or("Default");
         let dd = Dropdown::new(
-            ids::INSP_ORDER_SORTING_LAYER,
+            crate::ids::INSP_ORDER_SORTING_LAYER,
             "",
             sections::ordering::layer_options(),
         )
@@ -166,7 +166,7 @@ pub(crate) fn paint_deferred_popovers(
         && let Some(info) = state::current_inspector_anchor()
     {
         let mut dd = Dropdown::new(
-            ids::INSP_MOUNT_PICK,
+            crate::ids::INSP_MOUNT_PICK,
             "",
             sections::anchor_mount_row::mount_options(&info),
         )
@@ -196,7 +196,7 @@ pub(crate) fn paint_deferred_popovers(
         && let Some(info) = state::current_inspector_action()
     {
         let mut dd = Dropdown::new(
-            ids::INSP_ACTION_VERB_PICK,
+            crate::ids::INSP_ACTION_VERB_PICK,
             "",
             sections::actions::verb_options(&info.verb_labels),
         )
@@ -219,7 +219,7 @@ pub(crate) fn paint_deferred_popovers(
         && let Some(info) = state::current_inspector_audio()
     {
         let mut dd = Dropdown::new(
-            ids::INSP_AUDIO_BUS_PICK,
+            crate::ids::INSP_AUDIO_BUS_PICK,
             "",
             sections::audio::bus_options(&info.bus_labels),
         )

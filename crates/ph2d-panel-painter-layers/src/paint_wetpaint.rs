@@ -9,7 +9,6 @@
 use crate::PaintCtx;
 use crate::card::card_row;
 use crate::number_field;
-use ph2d_editor_core::ids as core_ids;
 use ph2d_tool_painter::BrushSettings;
 
 // Knob ranges/steps: each mirrors the `set_wet_knob_value` clamp in the tool
@@ -49,9 +48,9 @@ pub(crate) fn paint_wetpaint_section(
         content_w,
         y,
         "Wet Paint",
-        core_ids::PAINTER_WETPAINT_SECTION,
-        core_ids::PAINTER_WETPAINT_SECTION_COLOR,
-        core_ids::PAINTER_WETPAINT_RESET,
+        ph2d_tool_painter::ids::PAINTER_WETPAINT_SECTION,
+        ph2d_tool_painter::ids::PAINTER_WETPAINT_SECTION_COLOR,
+        ph2d_tool_painter::ids::PAINTER_WETPAINT_RESET,
     );
     let Some(fold) = fold else {
         return y;
@@ -82,7 +81,7 @@ pub(crate) fn paint_wetpaint_section(
                 ph2d_tool_painter::WetTool::Blow => 6,
             }
         };
-        let t = core_ids::PAINTER_WETPAINT_TOOL_IDS;
+        let t = ph2d_tool_painter::ids::PAINTER_WETPAINT_TOOL_IDS;
         let tool_opts: [(ph2d_a11y::NodeId, String); 7] = [
             (t[0], "Paint".into()),
             (t[1], "Erase".into()),
@@ -98,7 +97,7 @@ pub(crate) fn paint_wetpaint_section(
             x,
             content_w,
             y,
-            core_ids::PAINTER_WETPAINT_TOOL_IDS[0],
+            ph2d_tool_painter::ids::PAINTER_WETPAINT_TOOL_IDS[0],
             "Wet paint tool",
             &tool_opts,
             selected,
@@ -109,7 +108,7 @@ pub(crate) fn paint_wetpaint_section(
         let rows: [(&str, ph2d_a11y::NodeId, f32, f32, f32, f64, usize); 7] = [
             (
                 "Water",
-                core_ids::PAINTER_WETPAINT_WATER,
+                ph2d_tool_painter::ids::PAINTER_WETPAINT_WATER,
                 k.water as f32,
                 0.0,
                 1.0,
@@ -118,7 +117,7 @@ pub(crate) fn paint_wetpaint_section(
             ),
             (
                 "Pigment",
-                core_ids::PAINTER_WETPAINT_PIGMENT,
+                ph2d_tool_painter::ids::PAINTER_WETPAINT_PIGMENT,
                 k.pigment() as f32,
                 0.0,
                 PIGMENT_MAX,
@@ -127,7 +126,7 @@ pub(crate) fn paint_wetpaint_section(
             ),
             (
                 "Pickup",
-                core_ids::PAINTER_WETPAINT_PICKUP,
+                ph2d_tool_painter::ids::PAINTER_WETPAINT_PICKUP,
                 k.pickup() as f32,
                 0.0,
                 PICKUP_MAX,
@@ -136,7 +135,7 @@ pub(crate) fn paint_wetpaint_section(
             ),
             (
                 "Dry Speed",
-                core_ids::PAINTER_WETPAINT_DRY_SPEED,
+                ph2d_tool_painter::ids::PAINTER_WETPAINT_DRY_SPEED,
                 k.dry_speed() as f32,
                 0.0,
                 DRY_SPEED_MAX,
@@ -145,7 +144,7 @@ pub(crate) fn paint_wetpaint_section(
             ),
             (
                 "Edge Darkening",
-                core_ids::PAINTER_WETPAINT_EDGE,
+                ph2d_tool_painter::ids::PAINTER_WETPAINT_EDGE,
                 k.edge_darkening() as f32,
                 0.0,
                 EDGE_MAX,
@@ -154,7 +153,7 @@ pub(crate) fn paint_wetpaint_section(
             ),
             (
                 "Gravity",
-                core_ids::PAINTER_WETPAINT_GRAVITY,
+                ph2d_tool_painter::ids::PAINTER_WETPAINT_GRAVITY,
                 k.gravity() as f32,
                 0.0,
                 GRAVITY_MAX,
@@ -163,7 +162,7 @@ pub(crate) fn paint_wetpaint_section(
             ),
             (
                 "Erase Strength",
-                core_ids::PAINTER_WETPAINT_ERASE,
+                ph2d_tool_painter::ids::PAINTER_WETPAINT_ERASE,
                 k.erase as f32,
                 0.0,
                 1.0,
@@ -185,12 +184,21 @@ pub(crate) fn paint_wetpaint_section(
             x,
             content_w,
             y,
-            core_ids::PAINTER_WETPAINT_WETCANVAS,
+            ph2d_tool_painter::ids::PAINTER_WETPAINT_WETCANVAS,
             "Wet canvas actions",
             &[
-                (core_ids::PAINTER_WETPAINT_WETCANVAS, "Wet canvas".into()),
-                (core_ids::PAINTER_WETPAINT_DRYCANVAS, "Dry canvas".into()),
-                (core_ids::PAINTER_WETPAINT_FASTDRY, "Fast dry".into()),
+                (
+                    ph2d_tool_painter::ids::PAINTER_WETPAINT_WETCANVAS,
+                    "Wet canvas".into(),
+                ),
+                (
+                    ph2d_tool_painter::ids::PAINTER_WETPAINT_DRYCANVAS,
+                    "Dry canvas".into(),
+                ),
+                (
+                    ph2d_tool_painter::ids::PAINTER_WETPAINT_FASTDRY,
+                    "Fast dry".into(),
+                ),
             ],
             usize::MAX,
         );
@@ -200,7 +208,7 @@ pub(crate) fn paint_wetpaint_section(
             x,
             content_w,
             y,
-            core_ids::PAINTER_WETPAINT_SHOWWET,
+            ph2d_tool_painter::ids::PAINTER_WETPAINT_SHOWWET,
             "Show Wet",
             brush.wet_show_wet,
         );
@@ -212,7 +220,7 @@ pub(crate) fn paint_wetpaint_section(
             x,
             content_w,
             y,
-            core_ids::PAINTER_WETPAINT_PAPER_VISUAL,
+            ph2d_tool_painter::ids::PAINTER_WETPAINT_PAPER_VISUAL,
             "Paper",
             brush.wet_paper_visual,
         );
@@ -223,7 +231,7 @@ pub(crate) fn paint_wetpaint_section(
             x,
             content_w,
             y,
-            core_ids::PAINTER_WETPAINT_TUNING,
+            ph2d_tool_painter::ids::PAINTER_WETPAINT_TUNING,
             "Tuning",
             brush.wet_tuning_open,
         );
@@ -260,7 +268,7 @@ fn paint_resolution_group(
         content_w,
         y,
         "Grid Size (px)",
-        core_ids::PAINTER_WETPAINT_GRID,
+        ph2d_tool_painter::ids::PAINTER_WETPAINT_GRID,
         f32::from(brush.wet_grid_ratio),
         GRID_MIN,
         GRID_MAX,
@@ -279,7 +287,7 @@ fn paint_resolution_group(
         content_w,
         y,
         "Flow Grid (x)",
-        core_ids::PAINTER_WETPAINT_FLOW,
+        ph2d_tool_painter::ids::PAINTER_WETPAINT_FLOW,
         f32::from(brush.wet_flow_ratio),
         FLOW_MIN,
         FLOW_MAX,

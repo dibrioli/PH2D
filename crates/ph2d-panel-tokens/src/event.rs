@@ -5,7 +5,6 @@
 //! escolhido é lido pela shell no frame seguinte. Um braço para ela aqui seria a segunda resposta
 //! a *"quem escreve a cor?"*.
 
-use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal};
 use ph2d_tokens::{ColorToken, NumToken};
@@ -19,22 +18,22 @@ pub(crate) fn apply_event(
     ev: WidgetEvent,
 ) -> EventOutcome {
     let consumed = match ev {
-        WidgetEvent::Click(id) if id == ids::TOKENS_CLOSE => {
+        WidgetEvent::Click(id) if id == crate::ids::TOKENS_CLOSE => {
             // Fechar o painel desiste de um elo em curso — um gesto não sobrevive à superfície
             // onde ele estava a ser feito.
             state.armed = None;
             host.set_panel_visible(TokensPanel::ID, false);
             true
         }
-        WidgetEvent::Click(id) if id == ids::TOKENS_RESET_ALL => {
+        WidgetEvent::Click(id) if id == crate::ids::TOKENS_RESET_ALL => {
             push_intent(TokensIntent::ResetAll);
             true
         }
-        WidgetEvent::Click(id) if id == ids::TOKENS_DTCG_EXPORT => {
+        WidgetEvent::Click(id) if id == crate::ids::TOKENS_DTCG_EXPORT => {
             push_intent(TokensIntent::ExportDtcg);
             true
         }
-        WidgetEvent::Click(id) if id == ids::TOKENS_DTCG_IMPORT => {
+        WidgetEvent::Click(id) if id == crate::ids::TOKENS_DTCG_IMPORT => {
             push_intent(TokensIntent::ImportDtcg);
             true
         }
@@ -42,7 +41,7 @@ pub(crate) fn apply_event(
         // que o artista digitou/arrastou como `ValueChanged`, e o valor vive no store do HOST — o
         // painel lê-o e enfileira; quem escreve a camada continua a ser a shell.
         WidgetEvent::ValueChanged(id) => {
-            if let Some(row) = num_row_of(id, ids::tokens_num_chip_id) {
+            if let Some(row) = num_row_of(id, crate::ids::tokens_num_chip_id) {
                 if let Some(px) = host.store().number_value(id) {
                     #[allow(clippy::cast_possible_truncation)]
                     push_intent(TokensIntent::NumSet { row, px: px as f32 });
@@ -57,19 +56,19 @@ pub(crate) fn apply_event(
             // regista. Um teto que o roteador conhecesse e o registro não deixaria as últimas
             // linhas mortas sob o rato.
             let n = ColorToken::ALL.len();
-            if let Some(row) = (0..n).find(|&r| ids::tokens_reset_id(r) == id) {
+            if let Some(row) = (0..n).find(|&r| crate::ids::tokens_reset_id(r) == id) {
                 push_intent(TokensIntent::Reset(row));
                 true
-            } else if let Some(row) = (0..n).find(|&r| ids::tokens_link_id(r) == id) {
+            } else if let Some(row) = (0..n).find(|&r| crate::ids::tokens_link_id(r) == id) {
                 apply_link_click(state, TokenFamily::Colour, row);
                 true
-            } else if let Some(row) = num_row_of(id, ids::tokens_num_reset_id) {
+            } else if let Some(row) = num_row_of(id, crate::ids::tokens_num_reset_id) {
                 push_intent(TokensIntent::NumReset(row));
                 true
-            } else if let Some(row) = num_row_of(id, ids::tokens_num_link_id) {
+            } else if let Some(row) = num_row_of(id, crate::ids::tokens_num_link_id) {
                 apply_link_click(state, TokenFamily::Num, row);
                 true
-            } else if let Some(row) = num_row_of(id, ids::tokens_num_fx_id) {
+            } else if let Some(row) = num_row_of(id, crate::ids::tokens_num_fx_id) {
                 // ⚠️ Abrir um campo NÃO é uma edição — é o painel a lembrar-se de onde o gesto
                 // começou —, então isto não atravessa a fila de intents. A mesma assimetria do
                 // ARMAR do elo, e pelo mesmo motivo: só o que ESCREVE atravessa.
@@ -87,7 +86,7 @@ pub(crate) fn apply_event(
         // portas que o dispatch global já emite. ⚠️ As duas, e não só o Enter: um campo abandonado
         // com o texto certo escrito dentro dele lê-se como *"eu autorei isto"*.
         WidgetEvent::Submit(id) | WidgetEvent::Blur(id) => {
-            if let Some(row) = num_row_of(id, ids::tokens_num_formula_id) {
+            if let Some(row) = num_row_of(id, crate::ids::tokens_num_formula_id) {
                 let src = host.store().text(id).unwrap_or_default().to_string();
                 // ⚠️ Fechar o campo é do PAINEL e acontece sempre; escrever é da shell e pode ser
                 // recusado. Deixá-lo aberto até a shell responder faria um Enter que não pegou

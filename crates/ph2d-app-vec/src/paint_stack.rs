@@ -39,23 +39,22 @@ pub enum StackVerb {
 
 /// Que verbo este id pede (`None` se ele não é da pilha).
 pub fn stack_verb_for_id(id: ph2d_editor_core::NodeId) -> Option<StackVerb> {
-    use ph2d_editor_core::ids;
-    if id == ids::VECTOR_PAINT_ADD_FILL {
+    if id == ph2d_panel_vector::ids::VECTOR_PAINT_ADD_FILL {
         return Some(StackVerb::AddFill);
     }
-    if id == ids::VECTOR_PAINT_ADD_STROKE {
+    if id == ph2d_panel_vector::ids::VECTOR_PAINT_ADD_STROKE {
         return Some(StackVerb::AddStroke);
     }
     (0..MAX_PAINT_LAYERS).find_map(|i| {
-        if id == ids::vector_paint_eye_id(i) {
+        if id == ph2d_panel_vector::ids::vector_paint_eye_id(i) {
             Some(StackVerb::Eye(i))
-        } else if id == ids::vector_paint_up_id(i) {
+        } else if id == ph2d_panel_vector::ids::vector_paint_up_id(i) {
             Some(StackVerb::Up(i))
-        } else if id == ids::vector_paint_down_id(i) {
+        } else if id == ph2d_panel_vector::ids::vector_paint_down_id(i) {
             Some(StackVerb::Down(i))
-        } else if id == ids::vector_paint_del_id(i) {
+        } else if id == ph2d_panel_vector::ids::vector_paint_del_id(i) {
             Some(StackVerb::Del(i))
-        } else if id == ids::vector_paint_row_id(i) {
+        } else if id == ph2d_panel_vector::ids::vector_paint_row_id(i) {
             Some(StackVerb::Open(i))
         } else {
             None
@@ -69,11 +68,10 @@ pub fn stack_verb_for_id(id: ph2d_editor_core::NodeId) -> Option<StackVerb> {
 /// (`vec_expand::join_of_code`) que o Contour e o Expand usam — uma segunda tabela divergiria na
 /// primeira quina nova.
 pub fn join_code_for_id(id: ph2d_editor_core::NodeId) -> Option<u8> {
-    use ph2d_editor_core::ids;
     match id {
-        _ if id == ids::VECTOR_PAINT_JOIN_MITER => Some(0),
-        _ if id == ids::VECTOR_PAINT_JOIN_ROUND => Some(1),
-        _ if id == ids::VECTOR_PAINT_JOIN_BEVEL => Some(2),
+        _ if id == ph2d_panel_vector::ids::VECTOR_PAINT_JOIN_MITER => Some(0),
+        _ if id == ph2d_panel_vector::ids::VECTOR_PAINT_JOIN_ROUND => Some(1),
+        _ if id == ph2d_panel_vector::ids::VECTOR_PAINT_JOIN_BEVEL => Some(2),
         _ => None,
     }
 }
@@ -83,7 +81,7 @@ pub fn join_code_for_id(id: ph2d_editor_core::NodeId) -> Option<u8> {
 /// ⚠️ Varre o espaço FIXO de ids, como o [`stack_verb_for_id`] — e pela mesma razão.
 pub fn layer_of_picker_target(store: &ph2d_editor_core::interaction::WidgetStore) -> Option<usize> {
     let alvo = store.picker_target()?;
-    (0..MAX_PAINT_LAYERS).find(|&i| ph2d_editor_core::ids::vector_paint_swatch_id(i) == alvo)
+    (0..MAX_PAINT_LAYERS).find(|&i| ph2d_panel_vector::ids::vector_paint_swatch_id(i) == alvo)
 }
 
 /// **Aplica o verbo.** Devolve se o DOCUMENTO mudou (a vista não conta — ela não entra no undo).

@@ -32,33 +32,45 @@ use ph2d_ui_testkit::MockPanelHost;
 /// numéricos avulsos do painel (Transform X/Y/W/H) não usam o sufixo, então a regra é mecânica e a
 /// lista não tem como escolher errado.
 const PAIRS: &[(&str, ph2d_a11y::NodeId, ph2d_a11y::NodeId)] = &[
-    ("Width", ids::VECTOR_WIDTH, ids::VECTOR_WIDTH_NUM),
-    ("Dash", ids::VECTOR_DASH, ids::VECTOR_DASH_NUM),
-    ("Gap", ids::VECTOR_GAP, ids::VECTOR_GAP_NUM),
+    (
+        "Width",
+        ph2d_tool_vector::ids::VECTOR_WIDTH,
+        ph2d_tool_vector::ids::VECTOR_WIDTH_NUM,
+    ),
+    (
+        "Dash",
+        ph2d_tool_vector::ids::VECTOR_DASH,
+        ph2d_tool_vector::ids::VECTOR_DASH_NUM,
+    ),
+    (
+        "Gap",
+        ph2d_tool_vector::ids::VECTOR_GAP,
+        ph2d_tool_vector::ids::VECTOR_GAP_NUM,
+    ),
     (
         "Stroke Opacity",
-        ids::VECTOR_STROKE_OPACITY,
-        ids::VECTOR_STROKE_OPACITY_NUM,
+        ph2d_tool_vector::ids::VECTOR_STROKE_OPACITY,
+        ph2d_tool_vector::ids::VECTOR_STROKE_OPACITY_NUM,
     ),
     (
         "Fill Opacity",
-        ids::VECTOR_FILL_OPACITY,
-        ids::VECTOR_FILL_OPACITY_NUM,
+        ph2d_tool_vector::ids::VECTOR_FILL_OPACITY,
+        ph2d_tool_vector::ids::VECTOR_FILL_OPACITY_NUM,
     ),
     (
         "Grad Angle",
         ids::VECTOR_GRAD_ANGLE,
-        ids::VECTOR_GRAD_ANGLE_NUM,
+        ph2d_tool_vector::ids::VECTOR_GRAD_ANGLE_NUM,
     ),
     (
         "Grad Influence",
         ids::VECTOR_GRAD_INFLUENCE,
-        ids::VECTOR_GRAD_INFLUENCE_NUM,
+        ph2d_tool_vector::ids::VECTOR_GRAD_INFLUENCE_NUM,
     ),
     (
         "Grad Jitter",
         ids::VECTOR_GRAD_JITTER,
-        ids::VECTOR_GRAD_JITTER_NUM,
+        ph2d_tool_vector::ids::VECTOR_GRAD_JITTER_NUM,
     ),
     (
         "Text Size",
@@ -83,9 +95,13 @@ const PAIRS: &[(&str, ph2d_a11y::NodeId, ph2d_a11y::NodeId)] = &[
     (
         "Blend Steps",
         ids::VECTOR_BLEND_STEPS,
-        ids::VECTOR_BLEND_STEPS_NUM,
+        ph2d_tool_vector::ids::VECTOR_BLEND_STEPS_NUM,
     ),
-    ("Morph t", ids::VECTOR_MORPH_T, ids::VECTOR_MORPH_T_NUM),
+    (
+        "Morph t",
+        ids::VECTOR_MORPH_T,
+        ph2d_tool_vector::ids::VECTOR_MORPH_T_NUM,
+    ),
 ];
 
 #[test]

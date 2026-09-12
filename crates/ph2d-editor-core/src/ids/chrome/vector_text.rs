@@ -11,13 +11,11 @@ use ph2d_tool_registry::hash_node_id_runtime;
 /// Text "Size" slider (world units) — shown only in Text mode; drives the glyph
 /// size of the active session + the size a new session starts at.
 pub const VECTOR_TEXT_SIZE: NodeId = hash_node_id("vector.text.size");
-/// Value chip paired with [`VECTOR_TEXT_SIZE`].
-pub const VECTOR_TEXT_SIZE_NUM: NodeId = hash_node_id("vector.text.size_num");
+
 /// Text "Weight" slider (`wght` axis 100..900) — shown only in Text mode; drives the
 /// variable-font weight of the active session + the weight a new session starts at.
 pub const VECTOR_TEXT_WEIGHT: NodeId = hash_node_id("vector.text.weight");
-/// Value chip paired with [`VECTOR_TEXT_WEIGHT`].
-pub const VECTOR_TEXT_WEIGHT_NUM: NodeId = hash_node_id("vector.text.weight_num");
+
 /// Text font-family picker prev / next buttons (`<` / `>`) — shown only in Text mode;
 /// cycle the chosen system font family (or the bundled default) of the text.
 pub const VECTOR_TEXT_FONT_PREV: NodeId = hash_node_id("vector.text.font_prev");
@@ -36,9 +34,9 @@ pub const VECTOR_TEXT_ALIGN_LEFT: NodeId = hash_node_id("vector.text.align_left"
 pub const VECTOR_TEXT_ALIGN_CENTER: NodeId = hash_node_id("vector.text.align_center");
 pub const VECTOR_TEXT_ALIGN_RIGHT: NodeId = hash_node_id("vector.text.align_right");
 pub const VECTOR_TEXT_LINE_HEIGHT: NodeId = hash_node_id("vector.text.line_height");
-pub const VECTOR_TEXT_LINE_HEIGHT_NUM: NodeId = hash_node_id("vector.text.line_height_num");
+
 pub const VECTOR_TEXT_TRACKING: NodeId = hash_node_id("vector.text.tracking");
-pub const VECTOR_TEXT_TRACKING_NUM: NodeId = hash_node_id("vector.text.tracking_num");
+
 /// **Width: Auto | Fixed** — o par que edita o `Option<f64>` do refluxo (`wrap_width`).
 ///
 /// ⚠️ Dois chips e um slider que só vive num deles, e não um slider com um zero mágico: a
@@ -48,17 +46,6 @@ pub const VECTOR_TEXT_TRACKING_NUM: NodeId = hash_node_id("vector.text.tracking_
 pub const VECTOR_TEXT_WRAP_AUTO: NodeId = hash_node_id("vector.text.wrap_auto");
 pub const VECTOR_TEXT_WRAP_FIXED: NodeId = hash_node_id("vector.text.wrap_fixed");
 pub const VECTOR_TEXT_WRAP_W: NodeId = hash_node_id("vector.text.wrap_w");
-pub const VECTOR_TEXT_WRAP_W_NUM: NodeId = hash_node_id("vector.text.wrap_w_num");
-
-/// Stable [`NodeId`] for the `index`-th family row in the open font dropdown
-/// (index into the shell's pickable list `[bundled] ++ imported ++ system`). Runtime
-/// `format!` (the family count is only known at runtime); the FNV twin keeps it in
-/// the same id space as the `hash_node_id` consts. Mirrors the Painter option-id
-/// fatories (`painter_brush_*_option_id`).
-#[must_use]
-pub fn vector_text_font_option_id(index: usize) -> NodeId {
-    hash_node_id_runtime(&format!("vector.text.fontopt.{index}"))
-}
 
 /// Max variation-axis number fields the Text panel shows (besides the dedicated
 /// Weight slider) — one per non-`wght` axis the current font exposes.

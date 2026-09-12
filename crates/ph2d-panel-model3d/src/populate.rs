@@ -69,16 +69,16 @@ pub const MAX_MODES: u32 = 16;
 /// pintar** e exige que cada um responda a um clique de verdade — ela apanha esta falha e as outras
 /// duas que o cabeçalho daquele arquivo já nomeava.
 const CHIP_FAMILIES: &[fn(u32) -> ph2d_a11y::NodeId] = &[
-    ids::model3d_select_button,
-    ids::model3d_add_button,
-    ids::model3d_op_button,
-    ids::model3d_verb_button,
-    ids::model3d_character_button,
-    ids::model3d_mod_button,
-    ids::model3d_export_button,
-    ids::model3d_act_button,
-    ids::model3d_view_button,
-    ids::model3d_camera_button,
+    crate::ids::model3d_select_button,
+    crate::ids::model3d_add_button,
+    crate::ids::model3d_op_button,
+    crate::ids::model3d_verb_button,
+    crate::ids::model3d_character_button,
+    crate::ids::model3d_mod_button,
+    crate::ids::model3d_export_button,
+    crate::ids::model3d_act_button,
+    crate::ids::model3d_view_button,
+    crate::ids::model3d_camera_button,
 ];
 
 /// ⭐⭐ **Quantas famílias de chip o painel regista** — derivado da lista, nunca escrito à mão.
@@ -101,8 +101,8 @@ pub fn populate(store: &mut WidgetStore) {
         }
     }
     for node in 0..MAX_ROWS as u32 {
-        let slider = ids::model3d_radius_slider(node);
-        let chip = ids::model3d_radius_chip(node);
+        let slider = crate::ids::model3d_radius_slider(node);
+        let chip = crate::ids::model3d_radius_chip(node);
         store.register(
             slider,
             InteractiveState::Slider {
@@ -131,7 +131,7 @@ pub fn populate(store: &mut WidgetStore) {
         // topo deste arquivo dá: o `populate` corre **antes** de a peça existir.
         for cell in 0..MAX_CHOICES {
             store.register(
-                ids::model3d_choice_button(node, cell),
+                crate::ids::model3d_choice_button(node, cell),
                 InteractiveState::Button {
                     state: ButtonState::Normal,
                 },
@@ -139,14 +139,14 @@ pub fn populate(store: &mut WidgetStore) {
         }
     }
     store.register(
-        ids::MODEL3D_CLOSE,
+        crate::ids::MODEL3D_CLOSE,
         InteractiveState::Button {
             state: ButtonState::Normal,
         },
     );
     // A moldura móvel/redimensionável, como todo painel encaixado deste shell.
     store.register(
-        ids::INSP_DRAG_HANDLE,
+        crate::ids::INSP_DRAG_HANDLE,
         InteractiveState::BlenderHit {
             parent: ids::MODEL3D_PANEL,
             kind: BlenderHitKind::DragHandle,

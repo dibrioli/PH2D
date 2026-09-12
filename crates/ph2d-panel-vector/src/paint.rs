@@ -93,8 +93,8 @@ fn seed_and_publish(
 ) {
     // Mark the two colour swatches so a Down opens the shared OKLCH picker
     // (generic `is_picker_swatch` dispatch). Idempotent — a set membership.
-    store.register_picker_swatch(ids::VECTOR_STROKE_SWATCH);
-    store.register_picker_swatch(ids::VECTOR_FILL_SWATCH);
+    store.register_picker_swatch(ph2d_tool_vector::ids::VECTOR_STROKE_SWATCH);
+    store.register_picker_swatch(ph2d_tool_vector::ids::VECTOR_FILL_SWATCH);
     // A cor-alvo do Contour é a TERCEIRA swatch do painel, e passa pela mesma porta: o Down abre
     // o picker OKLCH partilhado e a shell lê a escolha de volta (`vector_bridge`). Marcar aqui,
     // e não no `paint_contour`, porque este é o passe de sementes — e porque a marca é
@@ -214,10 +214,10 @@ fn seed_number_fields(store: &mut ph2d_editor_core::interaction::WidgetStore) {
     if let Some([tx, ty, tw, th]) = state::current_transform() {
         let focus = store.focus_id();
         for (id, v) in [
-            (ids::VECTOR_TRANSFORM_X, tx),
-            (ids::VECTOR_TRANSFORM_Y, ty),
-            (ids::VECTOR_TRANSFORM_W, tw),
-            (ids::VECTOR_TRANSFORM_H, th),
+            (ph2d_tool_vector::ids::VECTOR_TRANSFORM_X, tx),
+            (ph2d_tool_vector::ids::VECTOR_TRANSFORM_Y, ty),
+            (ph2d_tool_vector::ids::VECTOR_TRANSFORM_W, tw),
+            (ph2d_tool_vector::ids::VECTOR_TRANSFORM_H, th),
         ] {
             if focus != Some(id) {
                 store.set_number_value(id, v);

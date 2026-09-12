@@ -9,8 +9,6 @@ use ph2d_tool_vector::params::{
     fidelity_px_to_slider,
 };
 
-use crate::ids;
-
 /// **Fidelity + Stabilizer + a fonte da largura**, os controles da mão livre. Os dois primeiros
 /// são slider + chip ligados (o chip é onde se digita um número exato, o slider é onde se sente a
 /// faixa); o terceiro é uma fileira de três botões exclusivos.
@@ -18,9 +16,9 @@ pub(super) fn pencil_knobs(store: &mut WidgetStore) {
     // A FONTE da largura (W1d). Sem este registo os três chips ficariam pintados, com hit-rect,
     // e MORTOS sob o mouse — a checagem de focabilidade mora no store, e é ela que o seam prova.
     for id in [
-        ids::VECTOR_PENCIL_W_UNIFORM,
-        ids::VECTOR_PENCIL_W_SPEED,
-        ids::VECTOR_PENCIL_W_PRESSURE,
+        ph2d_tool_vector::ids::VECTOR_PENCIL_W_UNIFORM,
+        ph2d_tool_vector::ids::VECTOR_PENCIL_W_SPEED,
+        ph2d_tool_vector::ids::VECTOR_PENCIL_W_PRESSURE,
     ] {
         store.register(
             id,
@@ -31,8 +29,8 @@ pub(super) fn pencil_knobs(store: &mut WidgetStore) {
     }
     for (slider, chip, track, val, scale, offset) in [
         (
-            ids::VECTOR_PENCIL_FIDELITY,
-            ids::VECTOR_PENCIL_FIDELITY_NUM,
+            ph2d_tool_vector::ids::VECTOR_PENCIL_FIDELITY,
+            ph2d_tool_vector::ids::VECTOR_PENCIL_FIDELITY_NUM,
             fidelity_px_to_slider(PENCIL_FIDELITY_DEFAULT_PX),
             PENCIL_FIDELITY_DEFAULT_PX,
             PENCIL_FIDELITY_SLIDER_SCALE,
@@ -41,8 +39,8 @@ pub(super) fn pencil_knobs(store: &mut WidgetStore) {
         (
             // O track do estabilizador é `0..=1`; o CHIP mostra por cento (o idioma dos chips
             // de opacidade), então a conversão de unidade mora no mapeamento e não num readout.
-            ids::VECTOR_PENCIL_STABILIZER,
-            ids::VECTOR_PENCIL_STABILIZER_NUM,
+            ph2d_tool_vector::ids::VECTOR_PENCIL_STABILIZER,
+            ph2d_tool_vector::ids::VECTOR_PENCIL_STABILIZER_NUM,
             PENCIL_STABILIZER_DEFAULT,
             f64::from(PENCIL_STABILIZER_DEFAULT * PENCIL_STABILIZER_SLIDER_SCALE),
             PENCIL_STABILIZER_SLIDER_SCALE,

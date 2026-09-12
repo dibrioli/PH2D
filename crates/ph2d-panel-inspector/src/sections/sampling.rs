@@ -220,7 +220,7 @@ pub(crate) fn paint_sampling_section(
         // ⚠️ **`zip` com o array INTEIRO e depois `filter_map`** — o par `(id, rótulo)` tem de ser
         // formado ANTES de descartar o buraco, senão o rótulo `n+1` casa com o id `n` e o segmento
         // passa a escrever o modo do vizinho (vide o doc de `FILTER_LABELS`).
-        ids::INSP_SAMPLE_FILTER
+        crate::ids::INSP_SAMPLE_FILTER
             .iter()
             .zip(FILTER_LABELS)
             .filter_map(|(&id, label)| label.map(|l| SegmentedOption::new(id, l)))
@@ -259,7 +259,7 @@ pub(crate) fn paint_sampling_section(
     let repeat_seg = SegmentedAdaptive::new(
         ids::INSP_LIVE_SAMPLING_SECTION,
         "Texture Repeat",
-        ids::INSP_SAMPLE_REPEAT
+        crate::ids::INSP_SAMPLE_REPEAT
             .iter()
             .zip(REPEAT_LABELS)
             .map(|(&id, label)| SegmentedOption::new(id, label))
@@ -295,8 +295,8 @@ pub(crate) fn paint_sampling_section(
         w,
         yy,
         "UV Scale",
-        ids::INSP_SAMPLE_UV_SCALE_X,
-        ids::INSP_SAMPLE_UV_SCALE_Y,
+        crate::ids::INSP_SAMPLE_UV_SCALE_X,
+        crate::ids::INSP_SAMPLE_UV_SCALE_Y,
     );
     yy = uv_pair_row(
         scene,
@@ -308,8 +308,8 @@ pub(crate) fn paint_sampling_section(
         w,
         yy,
         "UV Offset",
-        ids::INSP_SAMPLE_UV_OFFSET_X,
-        ids::INSP_SAMPLE_UV_OFFSET_Y,
+        crate::ids::INSP_SAMPLE_UV_OFFSET_X,
+        crate::ids::INSP_SAMPLE_UV_OFFSET_Y,
     );
 
     // ⛔ **AQUI ficava «Anti-halo: enabled (atlas-level)», e não volta como literal.** O doc de

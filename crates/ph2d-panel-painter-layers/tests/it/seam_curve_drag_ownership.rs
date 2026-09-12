@@ -82,9 +82,9 @@ fn a_curve_drag_that_belongs_to_another_panel_is_left_alone() {
 /// este gate mediria o vazio (foi como ele nasceu — vermelho sobre produto correto).
 #[test]
 fn a_curve_drag_of_its_own_editor_is_still_drained() {
-    use ph2d_editor_core::ids::painter_curve_editor_id;
     use ph2d_panel_painter_layers::state::set_current_layers;
     use ph2d_tool_painter::LayerStack;
+    use ph2d_tool_painter::ids::painter_curve_editor_id;
 
     let mut stack = LayerStack::new();
     let layer = stack.add_raster("L", 8, 8).expect("a camada nasce");

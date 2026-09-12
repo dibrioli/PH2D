@@ -52,7 +52,7 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     // ⚠️ Cada fileira é registada **pela TABELA que o `paint` percorre** — é a regra que o gate
     // `table_driven_chips_are_registered_too` lê no fonte, e a que impede a próxima fileira de
     // nascer morta sob o dedo.
-    for id in ids::VECTOR_BONE_ACTION_IDS {
+    for id in crate::ids::VECTOR_BONE_ACTION_IDS {
         button(store, id);
     }
     for id in ids::VECTOR_BONE_VERBS {
@@ -64,14 +64,14 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     // ⭐ A alternativa do DESENHO da pele (report de 2026-09-10) — pela mesma tabela, e foi um gate
     // de costura que a apanhou pintada e **não registada**: morta sob o dedo, sem nada na tela que
     // o diga.
-    for id in ids::VECTOR_BONE_DEFORM_IDS {
+    for id in crate::ids::VECTOR_BONE_DEFORM_IDS {
         button(store, id);
     }
     // ⚠️ **`Dropdown` no store, botão na tela**: é o `InteractiveState::Dropdown` que faz o dispatch
     // genérico alternar o `open` (e fechar o dos outros). Registá-lo como `Button` faria o clique
     // acender e **nunca abrir lista nenhuma**.
     store.register(
-        ids::VECTOR_BONE_SMART_CLIP,
+        crate::ids::VECTOR_BONE_SMART_CLIP,
         InteractiveState::Dropdown {
             state: DropdownState::Normal,
             open: false,
@@ -92,9 +92,9 @@ fn meu(id: ph2d_a11y::NodeId) -> bool {
         || ids::VECTOR_BONE_FIELDS.contains(&id)
         || ids::VECTOR_BONE_BEND_IDS.contains(&id)
         || ids::VECTOR_BONE_SMART_CLIP_IDS.contains(&id)
-        || ids::VECTOR_BONE_ACTION_IDS.contains(&id)
-        || ids::VECTOR_BONE_DEFORM_IDS.contains(&id)
-        || id == ids::VECTOR_BONE_SMART_CLIP
+        || crate::ids::VECTOR_BONE_ACTION_IDS.contains(&id)
+        || crate::ids::VECTOR_BONE_DEFORM_IDS.contains(&id)
+        || id == crate::ids::VECTOR_BONE_SMART_CLIP
 }
 
 pub(crate) fn apply_event(

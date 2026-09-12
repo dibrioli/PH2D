@@ -32,22 +32,7 @@ mod model3d;
 mod motion;
 mod padding;
 mod painter;
-mod painter_brush_sections;
-mod painter_deform;
 mod painter_fill;
-mod painter_gradient;
-mod painter_impasto;
-mod painter_line;
-mod painter_sculpt;
-mod painter_selection;
-mod painter_shape;
-mod painter_stroke_op;
-mod painter_substrate;
-mod painter_symmetry;
-mod painter_texture;
-mod painter_tiling;
-mod painter_watercolor;
-mod painter_wetpaint;
 mod physics;
 /// **Os ids da BARRA DO MODO de edição de receita** — chrome do canvas, não de um painel.
 mod prefab;
@@ -69,7 +54,6 @@ mod vector_appearance;
 mod vector_bone;
 /// Os ids da seção **Contour** (pesquisa `20_*` #9) — irmão de `vector` pelo teto de 700 LOC.
 mod vector_bool;
-mod vector_components;
 mod vector_contour;
 /// **Os ids do CORTE** (plano 25 §7, W4) — a família que muda a TOPOLOGIA de um caminho.
 mod vector_cut;
@@ -80,10 +64,6 @@ mod vector_layout;
 mod vector_morph;
 /// Os ids da seção **Pattern on Path** (plano 23) — irmão de `vector` pelo teto de 700 LOC.
 mod vector_patternpath;
-/// Os ids da seção **Pencil** (a mão livre, plano 25) — irmão de `vector` pelo teto de 700 LOC.
-mod vector_pencil;
-/// A lista das seções colapsáveis do painel Vector — irmã de `vector` pelo teto de 700 LOC.
-mod vector_sections;
 mod vector_snap;
 mod vector_states;
 /// Os ids da seção **Symmetry** (a simetria de desenho, plano 25 §9 W6.3) — irmão de `vector`
@@ -94,8 +74,6 @@ mod vector_text;
 /// Os ids da seção **Text on Path** — irmão de `vector` pelo teto de 700 LOC.
 mod vector_textpath;
 mod vector_texture_pattern;
-mod vector_tokens;
-mod vector_widget;
 mod vector_width;
 mod wet_tuning;
 
@@ -110,22 +88,7 @@ pub use model3d::*;
 pub use motion::*;
 pub use padding::*;
 pub use painter::*;
-pub use painter_brush_sections::*;
-pub use painter_deform::*;
 pub use painter_fill::*;
-pub use painter_gradient::*;
-pub use painter_impasto::*;
-pub use painter_line::*;
-pub use painter_sculpt::*;
-pub use painter_selection::*;
-pub use painter_shape::*;
-pub use painter_stroke_op::*;
-pub use painter_substrate::*;
-pub use painter_symmetry::*;
-pub use painter_texture::*;
-pub use painter_tiling::*;
-pub use painter_watercolor::*;
-pub use painter_wetpaint::*;
 pub use physics::*;
 pub use prefab::*;
 pub use rail::*;
@@ -139,7 +102,6 @@ pub use vector_anchors::*;
 pub use vector_appearance::*;
 pub use vector_bone::*;
 pub use vector_bool::*;
-pub use vector_components::*;
 pub use vector_contour::*;
 pub use vector_cut::*;
 pub use vector_filters::*;
@@ -147,15 +109,11 @@ pub use vector_frame::*;
 pub use vector_layout::*;
 pub use vector_morph::*;
 pub use vector_patternpath::*;
-pub use vector_pencil::*;
-pub use vector_sections::*;
 pub use vector_snap::*;
 pub use vector_states::*;
 pub use vector_symmetry::*;
 pub use vector_text::*;
 pub use vector_textpath::*;
 pub use vector_texture_pattern::*;
-pub use vector_tokens::*;
-pub use vector_widget::*;
 pub use vector_width::*;
 pub use wet_tuning::*;

@@ -13,7 +13,6 @@
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::tool::Tool;
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_painter_layers::PainterLayersPanel;
@@ -32,12 +31,12 @@ fn viewport() -> Rect {
 /// a falar de uma lista menor que a que a tela desenha, e a row nova nasceria sem as duas.
 fn grid_rows() -> [NodeId; 6] {
     [
-        core_ids::PAINTER_BRUSH_GRID_CELL[0],
-        core_ids::PAINTER_BRUSH_GRID_CELL[1],
-        core_ids::PAINTER_BRUSH_GRID_OFFSET[0],
-        core_ids::PAINTER_BRUSH_GRID_OFFSET[1],
-        core_ids::PAINTER_BRUSH_GRID_FIT,
-        core_ids::PAINTER_BRUSH_GRID_SHOW,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_GRID_CELL[0],
+        ph2d_tool_painter::ids::PAINTER_BRUSH_GRID_CELL[1],
+        ph2d_tool_painter::ids::PAINTER_BRUSH_GRID_OFFSET[0],
+        ph2d_tool_painter::ids::PAINTER_BRUSH_GRID_OFFSET[1],
+        ph2d_tool_painter::ids::PAINTER_BRUSH_GRID_FIT,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_GRID_SHOW,
     ]
 }
 
@@ -146,7 +145,7 @@ fn no_other_method_paints_the_grid_rows() {
 fn clicking_show_grid_flips_the_lattice_and_leaves_the_brush_alone() {
     let mut tool = tool_with(StrokeMethod::GridStamp);
     let (mut host, mut st, rects) = painted(&tool);
-    let r = rect_of(&rects, core_ids::PAINTER_BRUSH_GRID_SHOW)
+    let r = rect_of(&rects, ph2d_tool_painter::ids::PAINTER_BRUSH_GRID_SHOW)
         .expect("Show Grid não foi pintado no Grid Stamp");
     let before = tool.brush_settings();
     let was = tool.grid_show();
@@ -176,11 +175,11 @@ fn clicking_show_grid_flips_the_lattice_and_leaves_the_brush_alone() {
 fn each_grid_slider_writes_only_its_own_number() {
     // (id, o que ele governa) — `None` = nenhum dos quatro, o que nenhum caso usa.
     let sliders = [
-        (core_ids::PAINTER_BRUSH_GRID_CELL[0], 0usize),
-        (core_ids::PAINTER_BRUSH_GRID_CELL[1], 1),
-        (core_ids::PAINTER_BRUSH_GRID_OFFSET[0], 2),
-        (core_ids::PAINTER_BRUSH_GRID_OFFSET[1], 3),
-        (core_ids::PAINTER_BRUSH_GRID_FIT, 4),
+        (ph2d_tool_painter::ids::PAINTER_BRUSH_GRID_CELL[0], 0usize),
+        (ph2d_tool_painter::ids::PAINTER_BRUSH_GRID_CELL[1], 1),
+        (ph2d_tool_painter::ids::PAINTER_BRUSH_GRID_OFFSET[0], 2),
+        (ph2d_tool_painter::ids::PAINTER_BRUSH_GRID_OFFSET[1], 3),
+        (ph2d_tool_painter::ids::PAINTER_BRUSH_GRID_FIT, 4),
     ];
     for (id, slot) in sliders {
         let mut tool = tool_with(StrokeMethod::GridStamp);

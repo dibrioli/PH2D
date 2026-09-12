@@ -26,11 +26,11 @@ use ph2d_vec_scene::{PatternFill, PatternSource, StrokePaint, VecScene};
 /// acrescentar uma variante ao `StrokePaint` acrescenta-a aqui e o despacho não muda uma linha.
 #[must_use]
 pub fn kind_for_id(id: ph2d_editor_core::NodeId) -> Option<StrokePaintKind> {
-    if id == ph2d_editor_core::ids::VECTOR_STROKE_KIND_SOLID {
+    if id == ph2d_tool_vector::ids::VECTOR_STROKE_KIND_SOLID {
         Some(StrokePaintKind::Solid)
-    } else if id == ph2d_editor_core::ids::VECTOR_STROKE_KIND_PATTERN {
+    } else if id == ph2d_tool_vector::ids::VECTOR_STROKE_KIND_PATTERN {
         Some(StrokePaintKind::Pattern)
-    } else if id == ph2d_editor_core::ids::VECTOR_STROKE_KIND_BRUSH {
+    } else if id == ph2d_tool_vector::ids::VECTOR_STROKE_KIND_BRUSH {
         // ⭐⭐⭐ **O terceiro chip** (plano 36, W4). ⚠️ **Faltar AQUI é pior que faltar no
         // `set_kind`:** sem este braço o clique nem chega à porta do documento — ele cai no
         // despacho e desaparece, e o único sintoma é um chip que não acende. *Um controlo nunca
@@ -237,21 +237,20 @@ pub fn apply(scene: &mut VecScene, pen: &PenTool, cmd: BrushCmd) -> bool {
 /// O comando que este `NodeId` nomeia (`None` se não é um clique da secção *Brush*).
 #[must_use]
 pub fn cmd_for_id(id: ph2d_editor_core::NodeId) -> Option<BrushCmd> {
-    (id == ph2d_editor_core::ids::VECTOR_BRUSH_FLIP).then_some(BrushCmd::Flip)
+    (id == ph2d_panel_vector::ids::VECTOR_BRUSH_FLIP).then_some(BrushCmd::Flip)
 }
 
 /// O comando de um SLIDER da secção *Brush* (`None` se não é dela). ⚠️ O `event.rs` do painel já
 /// converteu o track para o domínio do documento — aqui `v` é valor.
 #[must_use]
 pub fn slider_cmd_for_id(id: ph2d_editor_core::NodeId, v: f64) -> Option<BrushCmd> {
-    use ph2d_editor_core::ids as i;
-    if id == i::VECTOR_BRUSH_SCALE {
+    if id == ph2d_panel_vector::ids::VECTOR_BRUSH_SCALE {
         Some(BrushCmd::Scale(v))
-    } else if id == i::VECTOR_BRUSH_SPACING {
+    } else if id == ph2d_panel_vector::ids::VECTOR_BRUSH_SPACING {
         Some(BrushCmd::Spacing(v))
-    } else if id == i::VECTOR_BRUSH_OFFSET {
+    } else if id == ph2d_panel_vector::ids::VECTOR_BRUSH_OFFSET {
         Some(BrushCmd::Offset(v))
-    } else if id == i::VECTOR_BRUSH_ROTATION {
+    } else if id == ph2d_panel_vector::ids::VECTOR_BRUSH_ROTATION {
         Some(BrushCmd::Rotation(v))
     } else {
         None
@@ -304,17 +303,17 @@ mod brush_kind_gates {
     #[test]
     fn the_brush_chip_is_reachable_by_its_node_id() {
         assert_eq!(
-            kind_for_id(ph2d_editor_core::ids::VECTOR_STROKE_KIND_BRUSH),
+            kind_for_id(ph2d_tool_vector::ids::VECTOR_STROKE_KIND_BRUSH),
             Some(StrokePaintKind::Brush),
             "o chip Brush nao e' mapeado — o clique cai no despacho e desaparece, e o unico \
              sintoma e' um chip que nao acende"
         );
         // ⛔ E nenhum vizinho o reclama: seria a fileira do traço a comer o clique do outro.
         assert_eq!(
-            kind_for_id(ph2d_editor_core::ids::VECTOR_FILL_KIND_PATTERN),
+            kind_for_id(ph2d_tool_vector::ids::VECTOR_FILL_KIND_PATTERN),
             None
         );
-        assert_eq!(kind_for_id(ph2d_editor_core::ids::VECTOR_BRUSH_FLIP), None);
+        assert_eq!(kind_for_id(ph2d_panel_vector::ids::VECTOR_BRUSH_FLIP), None);
     }
 
     /// ⭐⭐ **O VALOR QUE CHEGA AO CONSUMIDOR: um pincel com a cor que a linha já tinha.**
@@ -327,7 +326,7 @@ mod brush_kind_gates {
     fn clicking_the_brush_chip_leaves_a_brush_paint_carrying_the_colour_it_had() {
         let cor = Rgba8::new(11, 22, 33, 128);
         let (mut scene, pen, id) = forma_com_traco_solido(cor);
-        let kind = kind_for_id(ph2d_editor_core::ids::VECTOR_STROKE_KIND_BRUSH)
+        let kind = kind_for_id(ph2d_tool_vector::ids::VECTOR_STROKE_KIND_BRUSH)
             .expect("o chip tem de mapear — vide o gate irmao");
         assert!(
             set_kind(&mut scene, &pen, kind, None),
@@ -390,7 +389,7 @@ mod brush_kind_gates {
         assert!(set_kind(
             &mut scene,
             &pen,
-            kind_for_id(ph2d_editor_core::ids::VECTOR_STROKE_KIND_BRUSH).expect("o chip mapeia"),
+            kind_for_id(ph2d_tool_vector::ids::VECTOR_STROKE_KIND_BRUSH).expect("o chip mapeia"),
             None,
         ));
         // ⇒ o chip acende no Brush …

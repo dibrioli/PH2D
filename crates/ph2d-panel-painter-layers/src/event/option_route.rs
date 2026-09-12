@@ -28,60 +28,81 @@ pub(super) fn route_brush_dropdown_option(
     id: ph2d_a11y::NodeId,
 ) -> Option<bool> {
     let routes: [OptionRoute; 19] = [
-        (decode_brush_preset_option, core_ids::PAINTER_BRUSH_PRESET),
-        (decode_brush_media_option, core_ids::PAINTER_BRUSH_MEDIA),
-        (decode_line_type_option, core_ids::PAINTER_LINE_TYPE),
+        (
+            decode_brush_preset_option,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_PRESET,
+        ),
+        (
+            decode_brush_media_option,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_MEDIA,
+        ),
+        (
+            decode_line_type_option,
+            ph2d_tool_painter::ids::PAINTER_LINE_TYPE,
+        ),
         (
             decode_paper_kind_option,
-            core_ids::PAINTER_WATERCOLOR_PAPER_KIND,
+            ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_KIND,
         ),
         (
             decode_paper_mapping_option,
-            core_ids::PAINTER_WATERCOLOR_PAPER_MAPPING,
+            ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_MAPPING,
         ),
-        (decode_brush_blend_option, core_ids::PAINTER_BRUSH_BLEND),
-        (decode_brush_falloff_option, core_ids::PAINTER_BRUSH_FALLOFF),
+        (
+            decode_brush_blend_option,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_BLEND,
+        ),
+        (
+            decode_brush_falloff_option,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_FALLOFF,
+        ),
         (
             decode_stroke_method_option,
             core_ids::PAINTER_BRUSH_STROKE_METHOD,
         ),
         (
             decode_jitter_unit_option,
-            core_ids::PAINTER_BRUSH_JITTER_UNIT,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER_UNIT,
         ),
-        (decode_shape_kind_option, core_ids::PAINTER_SHAPE_KIND),
-        (decode_shape_follow_option, core_ids::PAINTER_SHAPE_FOLLOW),
+        (
+            decode_shape_kind_option,
+            ph2d_tool_painter::ids::PAINTER_SHAPE_KIND,
+        ),
+        (
+            decode_shape_follow_option,
+            ph2d_tool_painter::ids::PAINTER_SHAPE_FOLLOW,
+        ),
         (
             decode_texture_kind_option,
-            core_ids::PAINTER_BRUSH_TEXTURE_KIND,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_KIND,
         ),
         (
             decode_texture_mapping_option,
-            core_ids::PAINTER_BRUSH_TEXTURE_MAPPING,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_MAPPING,
         ),
         (
             decode_texture_ramp_mode_option,
-            core_ids::PAINTER_BRUSH_TEXTURE_RAMP_MODE,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_MODE,
         ),
         (
             decode_texture_ramp_interp_option,
-            core_ids::PAINTER_BRUSH_TEXTURE_RAMP_INTERP,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_INTERP,
         ),
         (
             decode_texture_ramp_alpha_option,
-            core_ids::PAINTER_BRUSH_TEXTURE_RAMP_ALPHA_MODE,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_ALPHA_MODE,
         ),
         (
             decode_shape_ramp_mode_option,
-            core_ids::PAINTER_SHAPE_RAMP_MODE,
+            ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_MODE,
         ),
         (
             decode_shape_ramp_interp_option,
-            core_ids::PAINTER_SHAPE_RAMP_INTERP,
+            ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_INTERP,
         ),
         (
             decode_shape_ramp_alpha_option,
-            core_ids::PAINTER_SHAPE_RAMP_ALPHA_MODE,
+            ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_ALPHA_MODE,
         ),
     ];
     routes.iter().find_map(|&(decode, target)| {

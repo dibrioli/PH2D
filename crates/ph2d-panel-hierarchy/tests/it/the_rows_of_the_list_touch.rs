@@ -178,7 +178,7 @@ fn painted_geometry(names: &[&str], query: &str) -> (u32, u32) {
     ph2d_panel_hierarchy::state::set_live_entries(Some(entries));
     let mut host = MockPanelHost::with_panel::<HierarchyPanel>();
     host.set_hierarchy_rows(&ordered);
-    host.set_text(ids::HIER_SEARCH, query);
+    host.set_text(ph2d_panel_hierarchy::ids::HIER_SEARCH, query);
     let mut state = HierarchyState::default();
     let out = host.paint_and_count_geometry::<HierarchyPanel>(
         &mut state,

@@ -12,7 +12,6 @@
 //! paga (`a_layer_bit_toggles_against_the_snapshot`).
 
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::screens::hero::SliceFieldEdit;
@@ -72,7 +71,7 @@ pub(crate) fn apply_slice_event(host: &mut dyn PanelHostInternal, ev: WidgetEven
     // os dois seria **dois passos de undo para um clique**, e a variante `Attach` deixou de ter
     // produtor: foi retirada em vez de ficar como um braço que ninguém alcança.
     if let WidgetEvent::Toggled(id) = ev
-        && id == ids::INSP_SLICE_ENABLE
+        && id == crate::ids::INSP_SLICE_ENABLE
         && let Some(info) = state::current_inspector_slice()
     {
         let on = matches!(
@@ -90,7 +89,7 @@ pub(crate) fn apply_slice_event(host: &mut dyn PanelHostInternal, ev: WidgetEven
     if let WidgetEvent::Click(id) = ev
         && let Some(info) = state::current_inspector_slice()
     {
-        let edit = ids::INSP_SLICE_TILE_MODE
+        let edit = crate::ids::INSP_SLICE_TILE_MODE
             .iter()
             .position(|&o| o == id)
             .map(|i| SliceFieldEdit::TileMode(i as u8))
@@ -98,7 +97,7 @@ pub(crate) fn apply_slice_event(host: &mut dyn PanelHostInternal, ev: WidgetEven
                 // ⚠️ **O MIOLO cicla só três** — Stretch → Repeat → Mirror. `Blank` é o que o
                 // `Fill Center` já exprime, e oferecê-lo aqui daria duas portas para o mesmo
                 // estado.
-                (id == ids::INSP_SLICE_CENTRE).then(|| {
+                (id == crate::ids::INSP_SLICE_CENTRE).then(|| {
                     let next = (info.centre_tile_mode + 1) % CENTRE_MODE_COUNT;
                     SliceFieldEdit::CentreMode(next)
                 })
@@ -107,13 +106,15 @@ pub(crate) fn apply_slice_event(host: &mut dyn PanelHostInternal, ev: WidgetEven
             // seriam nove passos de undo para um gesto só, e o `Ctrl+Z` desfaria a grelha célula
             // a célula — a lei «um gesto, um passo».
             .or(match id {
-                ids::INSP_SLICE_ALL_TILE => Some(SliceFieldEdit::AllRegions(MODE_REPEAT)),
-                ids::INSP_SLICE_ALL_STRETCH => Some(SliceFieldEdit::AllRegions(MODE_STRETCH)),
+                crate::ids::INSP_SLICE_ALL_TILE => Some(SliceFieldEdit::AllRegions(MODE_REPEAT)),
+                crate::ids::INSP_SLICE_ALL_STRETCH => {
+                    Some(SliceFieldEdit::AllRegions(MODE_STRETCH))
+                }
                 _ => None,
             })
             .or_else(|| {
                 // A grelha 3×3: cicla o modo desta região a partir do que a ENTIDADE tem.
-                ids::INSP_SLICE_REGION
+                crate::ids::INSP_SLICE_REGION
                     .iter()
                     .position(|&o| o == id)
                     .map(|i| {
@@ -132,7 +133,7 @@ pub(crate) fn apply_slice_event(host: &mut dyn PanelHostInternal, ev: WidgetEven
 
     // Fill Center.
     if let WidgetEvent::Toggled(id) = ev
-        && id == ids::INSP_SLICE_FILL_CENTER
+        && id == crate::ids::INSP_SLICE_FILL_CENTER
         && let Some(info) = state::current_inspector_slice()
     {
         let checked = matches!(
@@ -153,7 +154,7 @@ pub(crate) fn apply_slice_event(host: &mut dyn PanelHostInternal, ev: WidgetEven
         // ⚠️ Cada borda despacha SÓ o seu índice. Mandar o array inteiro atropelaria, num
         // fan-out de seleção múltipla, as bordas divergentes de todas as outras sprites — a lei
         // que o `PerCornerTintAt` e o `RegionX/Y/W/H` já pagaram.
-        if let Some(i) = ids::INSP_SLICE_BORDER.iter().position(|&o| o == id) {
+        if let Some(i) = crate::ids::INSP_SLICE_BORDER.iter().position(|&o| o == id) {
             let v = host
                 .store()
                 .number_value(id)
@@ -164,7 +165,7 @@ pub(crate) fn apply_slice_event(host: &mut dyn PanelHostInternal, ev: WidgetEven
             });
             return true;
         }
-        if let Some(i) = ids::INSP_SLICE_SIZE.iter().position(|&o| o == id) {
+        if let Some(i) = crate::ids::INSP_SLICE_SIZE.iter().position(|&o| o == id) {
             let v = host
                 .store()
                 .number_value(id)

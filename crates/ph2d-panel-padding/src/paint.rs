@@ -160,15 +160,30 @@ fn paint_body_sections(
     // snapshot; chip shows the live stored px ?? snapshot px. Positive =
     // transparent expand, negative = crop.
     for (label, slider_id, chip_id, snap_px) in [
-        ("Top", ids::PAD_TOP, ids::PAD_TOP_NUM, snapshot.top),
-        ("Right", ids::PAD_RIGHT, ids::PAD_RIGHT_NUM, snapshot.right),
+        (
+            "Top",
+            ph2d_tool_padding::ids::PAD_TOP,
+            ph2d_tool_padding::ids::PAD_TOP_NUM,
+            snapshot.top,
+        ),
+        (
+            "Right",
+            ph2d_tool_padding::ids::PAD_RIGHT,
+            ph2d_tool_padding::ids::PAD_RIGHT_NUM,
+            snapshot.right,
+        ),
         (
             "Bottom",
-            ids::PAD_BOTTOM,
-            ids::PAD_BOTTOM_NUM,
+            ph2d_tool_padding::ids::PAD_BOTTOM,
+            ph2d_tool_padding::ids::PAD_BOTTOM_NUM,
             snapshot.bottom,
         ),
-        ("Left", ids::PAD_LEFT, ids::PAD_LEFT_NUM, snapshot.left),
+        (
+            "Left",
+            ph2d_tool_padding::ids::PAD_LEFT,
+            ph2d_tool_padding::ids::PAD_LEFT_NUM,
+            snapshot.left,
+        ),
     ] {
         let track = store
             .slider(slider_id)
@@ -210,7 +225,7 @@ fn paint_body_sections(
     let pivot_state = if pivot_on {
         (ButtonState::Pressed, ph2d_editor_core::motion::SETTLED)
     } else {
-        store.button_visual(ids::PAD_PIVOT_RECENTER)
+        store.button_visual(ph2d_tool_padding::ids::PAD_PIVOT_RECENTER)
     };
     let pivot_kind = if pivot_on {
         ButtonKind::Accent
@@ -223,23 +238,23 @@ fn paint_body_sections(
         "Pivot: Keep"
     };
     let pivot_rect = Rect::new(inner_x, y, inner_w, row_h);
-    let pivot = Button::new(ids::PAD_PIVOT_RECENTER, pivot_label)
+    let pivot = Button::new(ph2d_tool_padding::ids::PAD_PIVOT_RECENTER, pivot_label)
         .kind(pivot_kind)
         .visual(pivot_state);
     paint_button(&pivot, pivot_rect, scene, text_system, theme);
-    hit_index.register(ids::PAD_PIVOT_RECENTER, pivot_rect);
+    hit_index.register(ph2d_tool_padding::ids::PAD_PIVOT_RECENTER, pivot_rect);
     y += row_h + row_gap;
 
     y += row_gap;
 
     // ── Reset (ghost, full width) row ──────────────────────────────
     let reset_rect = Rect::new(inner_x, y, inner_w, row_h);
-    let reset_state = store.button_visual(ids::PAD_RESET);
-    let reset = Button::new(ids::PAD_RESET, "Reset to Defaults")
+    let reset_state = store.button_visual(ph2d_tool_padding::ids::PAD_RESET);
+    let reset = Button::new(ph2d_tool_padding::ids::PAD_RESET, "Reset to Defaults")
         .kind(ButtonKind::Default)
         .visual(reset_state);
     paint_button(&reset, reset_rect, scene, text_system, theme);
-    hit_index.register(ids::PAD_RESET, reset_rect);
+    hit_index.register(ph2d_tool_padding::ids::PAD_RESET, reset_rect);
     y += row_h + row_gap;
 
     // ── Cancel (ghost) + Apply (accent CTA) row ────────────────────
@@ -255,13 +270,13 @@ fn paint_body_sections(
         .in_group(seg[0].1);
     paint_button(&cancel, seg[0].0, scene, text_system, theme);
     hit_index.register(ids::PAD_CANCEL, seg[0].0);
-    let apply_state = store.button_visual(ids::PAD_APPLY);
-    let apply = Button::new(ids::PAD_APPLY, "Apply")
+    let apply_state = store.button_visual(ph2d_tool_padding::ids::PAD_APPLY);
+    let apply = Button::new(ph2d_tool_padding::ids::PAD_APPLY, "Apply")
         .kind(ButtonKind::Accent)
         .visual(apply_state)
         .in_group(seg[1].1);
     paint_button(&apply, seg[1].0, scene, text_system, theme);
-    hit_index.register(ids::PAD_APPLY, seg[1].0);
+    hit_index.register(ph2d_tool_padding::ids::PAD_APPLY, seg[1].0);
     y += row_h;
     y
 }

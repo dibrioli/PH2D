@@ -13,7 +13,6 @@
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::tool::Tool;
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_painter_layers::PainterLayersPanel;
@@ -97,12 +96,12 @@ fn the_light_switch_is_reachable_from_every_mode_that_shapes_relief() {
         let tool = tool_in(mode);
         let (_host, _st, rects) = painted(&tool);
         assert!(
-            rect_of(&rects, core_ids::PAINTER_IMPASTO_SHOW).is_some(),
+            rect_of(&rects, ph2d_tool_painter::ids::PAINTER_IMPASTO_SHOW).is_some(),
             "in mode {mode:?} the Lighting card's 'Show Impasto' is not on screen. Relief you cannot \
              light is relief you cannot see — which is what shaping it is FOR."
         );
         assert!(
-            rect_of(&rects, core_ids::PAINTER_IMPASTO_LIGHT_ANGLE).is_some(),
+            rect_of(&rects, ph2d_tool_painter::ids::PAINTER_IMPASTO_LIGHT_ANGLE).is_some(),
             "in mode {mode:?} the lamp's Angle is missing: the Lighting card is per-CANVAS, so it \
              belongs to every tool that touches the body of the paint, not just the depositing one"
         );
@@ -135,7 +134,7 @@ fn leaving_the_medium_hides_the_whole_section_but_leaves_the_way_back_on() {
     let (_host, _st, rects) = painted(&tool);
 
     assert!(
-        rect_of(&rects, core_ids::PAINTER_BRUSH_MEDIA).is_some(),
+        rect_of(&rects, ph2d_tool_painter::ids::PAINTER_BRUSH_MEDIA).is_some(),
         "the Paint Mode chip must be painted with Impasto off — it is the only way back on. \
          (Since 2026-07-22 the section's own Enable checkbox is gone: the medium is picked from the \
          one dropdown, so THAT is what has to survive leaving.)"
@@ -143,15 +142,30 @@ fn leaving_the_medium_hides_the_whole_section_but_leaves_the_way_back_on() {
     // Everything the master switch governs is gone — the Lighting card among it (Enio: the card is
     // Impasto's own, so it only appears when Impasto is active).
     for (id, what) in [
-        (core_ids::PAINTER_IMPASTO_TOOL_DEPOSIT, "the tool list"),
-        (core_ids::PAINTER_IMPASTO_LIVE_EDIT, "Adjust Last Stroke"),
-        (core_ids::PAINTER_IMPASTO_DEPTH, "the Body card"),
-        (core_ids::PAINTER_IMPASTO_SHINE, "the Material card"),
         (
-            core_ids::PAINTER_IMPASTO_SHOW,
+            ph2d_tool_painter::ids::PAINTER_IMPASTO_TOOL_DEPOSIT,
+            "the tool list",
+        ),
+        (
+            ph2d_tool_painter::ids::PAINTER_IMPASTO_LIVE_EDIT,
+            "Adjust Last Stroke",
+        ),
+        (
+            ph2d_tool_painter::ids::PAINTER_IMPASTO_DEPTH,
+            "the Body card",
+        ),
+        (
+            ph2d_tool_painter::ids::PAINTER_IMPASTO_SHINE,
+            "the Material card",
+        ),
+        (
+            ph2d_tool_painter::ids::PAINTER_IMPASTO_SHOW,
             "the Lighting card's Show toggle",
         ),
-        (core_ids::PAINTER_IMPASTO_LIGHT_ANGLE, "the lamp Angle"),
+        (
+            ph2d_tool_painter::ids::PAINTER_IMPASTO_LIGHT_ANGLE,
+            "the lamp Angle",
+        ),
     ] {
         assert!(
             rect_of(&rects, id).is_none(),
@@ -184,7 +198,7 @@ fn enabling_impasto_reaches_every_tool_not_just_the_one_in_hand() {
         // …and the panel proves the consequence: the list is still there to pick the NEXT tool from.
         let (_host, _st, rects) = painted(&tool);
         assert!(
-            rect_of(&rects, core_ids::PAINTER_IMPASTO_TOOL_DEPOSIT).is_some(),
+            rect_of(&rects, ph2d_tool_painter::ids::PAINTER_IMPASTO_TOOL_DEPOSIT).is_some(),
             "after picking {name} the tool list is gone from the panel"
         );
     }
@@ -244,7 +258,10 @@ fn the_knife_and_the_plain_smear_are_two_tools_with_two_plows() {
 /// meant to catch it. So it clicks: ten pointer presses, ten tools.
 #[test]
 fn every_impasto_tool_is_reachable_by_a_pointer() {
-    for (i, id) in core_ids::PAINTER_IMPASTO_TOOL_IDS.iter().enumerate() {
+    for (i, id) in ph2d_tool_painter::ids::PAINTER_IMPASTO_TOOL_IDS
+        .iter()
+        .enumerate()
+    {
         // Start each leg from the Deposit, so landing on tool `i` cannot be the tool already being there.
         let mut tool = tool_in("brush");
         let (mut host, mut st, rects) = painted(&tool);
@@ -275,8 +292,8 @@ fn picking_a_tool_puts_the_painter_in_that_mode() {
     // Deposit → Knife.
     let mut tool = tool_in("brush");
     let (mut host, mut st, rects) = painted(&tool);
-    let knife =
-        rect_of(&rects, core_ids::PAINTER_IMPASTO_TOOL_KNIFE).expect("the Knife chip is painted");
+    let knife = rect_of(&rects, ph2d_tool_painter::ids::PAINTER_IMPASTO_TOOL_KNIFE)
+        .expect("the Knife chip is painted");
     let (x, y) = centre(knife);
     click_through(&mut host, &mut st, &mut tool, x, y);
     assert!(
@@ -286,8 +303,8 @@ fn picking_a_tool_puts_the_painter_in_that_mode() {
 
     // Knife → a sculpt verb (Chisel, index 5 ⇒ tool 7).
     let (mut host, mut st, rects) = painted(&tool);
-    let chisel =
-        rect_of(&rects, core_ids::PAINTER_SCULPT_MODE_CHISEL).expect("the Chisel chip is painted");
+    let chisel = rect_of(&rects, ph2d_tool_painter::ids::PAINTER_SCULPT_MODE_CHISEL)
+        .expect("the Chisel chip is painted");
     let (x, y) = centre(chisel);
     click_through(&mut host, &mut st, &mut tool, x, y);
     let bs = tool.brush_settings();
@@ -304,7 +321,7 @@ fn picking_a_tool_puts_the_painter_in_that_mode() {
 
     // …and back to Deposit.
     let (mut host, mut st, rects) = painted(&tool);
-    let deposit = rect_of(&rects, core_ids::PAINTER_IMPASTO_TOOL_DEPOSIT)
+    let deposit = rect_of(&rects, ph2d_tool_painter::ids::PAINTER_IMPASTO_TOOL_DEPOSIT)
         .expect("the Deposit chip is painted");
     let (x, y) = centre(deposit);
     click_through(&mut host, &mut st, &mut tool, x, y);
@@ -331,9 +348,15 @@ fn picking_a_tool_puts_the_painter_in_that_mode() {
 #[test]
 fn every_card_is_painted_when_impasto_is_on_and_none_when_off() {
     let permanent: [(ph2d_a11y::NodeId, &str); 3] = [
-        (core_ids::PAINTER_IMPASTO_DEPTH, "Body/Depth"),
-        (core_ids::PAINTER_IMPASTO_SHINE, "Material/Shine"),
-        (core_ids::PAINTER_IMPASTO_SHOW, "Lighting/Show"),
+        (ph2d_tool_painter::ids::PAINTER_IMPASTO_DEPTH, "Body/Depth"),
+        (
+            ph2d_tool_painter::ids::PAINTER_IMPASTO_SHINE,
+            "Material/Shine",
+        ),
+        (
+            ph2d_tool_painter::ids::PAINTER_IMPASTO_SHOW,
+            "Lighting/Show",
+        ),
     ];
     for mode in RELIEF_MODES {
         let mut tool = tool_in(mode);
@@ -347,9 +370,9 @@ fn every_card_is_painted_when_impasto_is_on_and_none_when_off() {
             );
         }
         // The tool-specific pair follows its tools.
-        let plow = rect_of(&rects, core_ids::PAINTER_IMPASTO_PLOW);
-        let radius = rect_of(&rects, core_ids::PAINTER_SCULPT_RADIUS_SLIDER);
-        let filter = rect_of(&rects, core_ids::PAINTER_SCULPT_FILTER);
+        let plow = rect_of(&rects, ph2d_tool_painter::ids::PAINTER_IMPASTO_PLOW);
+        let radius = rect_of(&rects, ph2d_tool_painter::ids::PAINTER_SCULPT_RADIUS_SLIDER);
+        let filter = rect_of(&rects, ph2d_tool_painter::ids::PAINTER_SCULPT_FILTER);
         match mode {
             "knife" => {
                 assert!(plow.is_some(), "the Knife in hand must show its Plow card");
@@ -358,11 +381,11 @@ fn every_card_is_painted_when_impasto_is_on_and_none_when_off() {
             "sculpt" => {
                 assert!(plow.is_none(), "sculpt must not offer the Knife card");
                 // Order: the Sculpt card sits directly below TOOL, Body after it.
-                let tool_y = rect_of(&rects, core_ids::PAINTER_IMPASTO_TOOL_DEPOSIT)
+                let tool_y = rect_of(&rects, ph2d_tool_painter::ids::PAINTER_IMPASTO_TOOL_DEPOSIT)
                     .expect("TOOL chips painted")
                     .y;
                 let sculpt_y = radius.expect("a verb in hand must show its card").y;
-                let body_y = rect_of(&rects, core_ids::PAINTER_IMPASTO_DEPTH)
+                let body_y = rect_of(&rects, ph2d_tool_painter::ids::PAINTER_IMPASTO_DEPTH)
                     .expect("asserted above")
                     .y;
                 assert!(
@@ -389,7 +412,7 @@ fn every_card_is_painted_when_impasto_is_on_and_none_when_off() {
         set_current_brush(Some(tool.brush_settings()));
         let (_host, _st, rects) = painted(&tool);
         assert!(
-            rect_of(&rects, core_ids::PAINTER_SCULPT_FILTER).is_none(),
+            rect_of(&rects, ph2d_tool_painter::ids::PAINTER_SCULPT_FILTER).is_none(),
             "Flatten is offering Filter Layer in {mode:?} — the buttons follow the verbs that use them"
         );
         tool.set_sculpt_mode(0);
@@ -404,8 +427,11 @@ fn every_card_is_painted_when_impasto_is_on_and_none_when_off() {
             );
         }
         for (id, name) in [
-            (core_ids::PAINTER_IMPASTO_PLOW, "Knife"),
-            (core_ids::PAINTER_SCULPT_RADIUS_SLIDER, "Sculpt"),
+            (ph2d_tool_painter::ids::PAINTER_IMPASTO_PLOW, "Knife"),
+            (
+                ph2d_tool_painter::ids::PAINTER_SCULPT_RADIUS_SLIDER,
+                "Sculpt",
+            ),
         ] {
             assert!(
                 rect_of(&rects, id).is_none(),
@@ -427,7 +453,7 @@ fn a_material_edit_under_any_tool_reaches_the_deposit_slot() {
     for mode in ["knife", "sculpt"] {
         let mut tool = tool_in(mode);
         tool.handle_panel_event(ph2d_editor_core::tool::PanelEvent::SetValue(
-            core_ids::PAINTER_IMPASTO_SHINE,
+            ph2d_tool_painter::ids::PAINTER_IMPASTO_SHINE,
             0.91,
         ));
         // Switch back to the Deposit: ITS slot must carry the edit.
@@ -452,7 +478,7 @@ fn the_section_does_not_follow_modes_that_have_no_relief_verb() {
         let tool = tool_in(mode);
         let (_host, _st, rects) = painted(&tool);
         assert!(
-            rect_of(&rects, core_ids::PAINTER_IMPASTO_TOOL_DEPOSIT).is_none(),
+            rect_of(&rects, ph2d_tool_painter::ids::PAINTER_IMPASTO_TOOL_DEPOSIT).is_none(),
             "the Impasto tool list is painted in {mode:?}, which has no operation on the paint's body — \
              a section offered where it does not apply is the other half of the same dishonesty"
         );

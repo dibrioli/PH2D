@@ -5,7 +5,6 @@
 //! partes crescem por motivos diferentes, e esta tem uma forma que as outras não
 //! têm (dois rádios + knobs que aparecem por ferramenta).
 
-use ph2d_editor_core::ids;
 use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{SegmentedAdaptive, SegmentedOption, paint_segmented_adaptive};
@@ -35,8 +34,8 @@ pub(super) fn paint_interact(
         w,
         y,
         tr("panel.physics.tool"),
-        ids::PHYSICS_INTERACT_TOOL,
-        &ids::PHYSICS_INTERACT_TOOL_OPT,
+        crate::ids::PHYSICS_INTERACT_TOOL,
+        &crate::ids::PHYSICS_INTERACT_TOOL_OPT,
         &InteractionTool::ALL.map(tool_label),
         InteractionTool::ALL
             .iter()
@@ -54,8 +53,8 @@ pub(super) fn paint_interact(
             w,
             y,
             tr("panel.physics.hold"),
-            ids::PHYSICS_HOLD_MODE,
-            &ids::PHYSICS_HOLD_MODE_OPT,
+            crate::ids::PHYSICS_HOLD_MODE,
+            &crate::ids::PHYSICS_HOLD_MODE_OPT,
             &HoldMode::ALL.map(hold_label),
             HoldMode::ALL
                 .iter()

@@ -16,9 +16,6 @@ use ph2d_a11y::NodeId;
 
 use crate::ids::hash_node_id;
 
-/// O cabeçalho da seção **Layout** (só com uma moldura ou um filho de fluxo selecionado).
-pub const VECTOR_SECTION_LAYOUT: NodeId = hash_node_id("vector.section.layout");
-
 /// **Off** — a moldura deixa de empilhar; os filhos voltam a ficar onde o artista os pôs.
 ///
 /// ⚠️ Ele é o primeiro chip do MESMO rádio da direção, e não um interruptor à parte, porque
@@ -62,14 +59,6 @@ pub const VECTOR_LAYOUT_GAP_MAIN: NodeId = hash_node_id("vector.layout.gap.main"
 /// O vão no eixo TRANSVERSAL — só o `Wrap` o usa (entre uma linha e a seguinte).
 pub const VECTOR_LAYOUT_GAP_CROSS: NodeId = hash_node_id("vector.layout.gap.cross");
 
-/// **Padding: All** — um campo só, que escreve os quatro lados.
-///
-/// ⚠️ O par All/Each **troca os campos pintados** em vez de acender um cadeado sobre quatro que
-/// se movem juntos: quatro campos que espelham o mesmo número não dizem em qual se digita, e o
-/// artista descobre por tentativa. É a forma do Figma.
-pub const VECTOR_LAYOUT_PAD_ALL_MODE: NodeId = hash_node_id("vector.layout.pad.all_mode");
-/// Ver [`VECTOR_LAYOUT_PAD_ALL_MODE`] — os quatro lados, cada um por si.
-pub const VECTOR_LAYOUT_PAD_EACH_MODE: NodeId = hash_node_id("vector.layout.pad.each_mode");
 /// O campo único do modo *All*.
 pub const VECTOR_LAYOUT_PAD_ALL: NodeId = hash_node_id("vector.layout.pad.all");
 /// Recuo do TOPO (modo *Each*).

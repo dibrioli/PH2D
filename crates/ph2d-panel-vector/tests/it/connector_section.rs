@@ -15,7 +15,6 @@
 
 use ph2d_editor_core::HeroScreen;
 use ph2d_editor_core::NodeId;
-use ph2d_editor_core::ids;
 use ph2d_editor_core::panel::{ErasedPanel, Panel, PanelRegistry};
 use ph2d_editor_core::screens::hero::{HERO_VIEWPORT_H, HERO_VIEWPORT_W};
 use ph2d_editor_core::screens::paint_hero_screen;
@@ -55,10 +54,14 @@ fn paint_frame(hero: &mut HeroScreen) {
 /// `[Route, Jetty, Spread, Corner]`.
 fn connector_fields_painted(hero: &HeroScreen) -> [bool; 4] {
     [
-        hero.hit_index.rect_for(ids::VECTOR_CONNECTOR_ROUTE),
-        hero.hit_index.rect_for(ids::VECTOR_CONNECTOR_JETTY),
-        hero.hit_index.rect_for(ids::VECTOR_CONNECTOR_SPREAD),
-        hero.hit_index.rect_for(ids::VECTOR_CONNECTOR_CORNER),
+        hero.hit_index
+            .rect_for(ph2d_tool_vector::ids::VECTOR_CONNECTOR_ROUTE),
+        hero.hit_index
+            .rect_for(ph2d_tool_vector::ids::VECTOR_CONNECTOR_JETTY),
+        hero.hit_index
+            .rect_for(ph2d_tool_vector::ids::VECTOR_CONNECTOR_SPREAD),
+        hero.hit_index
+            .rect_for(ph2d_tool_vector::ids::VECTOR_CONNECTOR_CORNER),
     ]
     .map(|r| r.is_some())
 }
@@ -131,11 +134,11 @@ fn the_fields_are_born_showing_the_effective_value_not_zero() {
 
     let jetty = hero
         .store
-        .number_value(ids::VECTOR_CONNECTOR_JETTY)
+        .number_value(ph2d_tool_vector::ids::VECTOR_CONNECTOR_JETTY)
         .expect("o campo Jetty tem de estar registrado no populate");
     let spread = hero
         .store
-        .number_value(ids::VECTOR_CONNECTOR_SPREAD)
+        .number_value(ph2d_tool_vector::ids::VECTOR_CONNECTOR_SPREAD)
         .expect("o campo Spread tem de estar registrado no populate");
     assert!(
         (jetty - effective_jetty).abs() < 1e-9,
@@ -148,7 +151,7 @@ fn the_fields_are_born_showing_the_effective_value_not_zero() {
     );
     let corner = hero
         .store
-        .number_value(ids::VECTOR_CONNECTOR_CORNER)
+        .number_value(ph2d_tool_vector::ids::VECTOR_CONNECTOR_CORNER)
         .expect("o campo Corner tem de estar registrado no populate");
     assert!(
         (corner - effective_corner).abs() < 1e-9,
@@ -167,7 +170,7 @@ fn the_fields_are_born_showing_the_effective_value_not_zero() {
     paint_frame(&mut hero);
     let jetty = hero
         .store
-        .number_value(ids::VECTOR_CONNECTOR_JETTY)
+        .number_value(ph2d_tool_vector::ids::VECTOR_CONNECTOR_JETTY)
         .expect("registrado");
     assert!(
         (jetty - 0.9).abs() < 1e-9,

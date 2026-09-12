@@ -51,7 +51,7 @@ impl BodyCtx<'_> {
             return y;
         }
         let (mut y, collapsed) = self.section_header(
-            ids::VECTOR_SECTION_EFFECTS,
+            ph2d_tool_vector::ids::VECTOR_SECTION_EFFECTS,
             tr("panel.vector.section.effects"),
             y,
         );
@@ -59,14 +59,26 @@ impl BodyCtx<'_> {
             return y;
         }
         let stack = state::stack();
-        for (row, fx) in stack.iter().enumerate().take(ids::MAX_FX_ROWS) {
+        for (row, fx) in stack
+            .iter()
+            .enumerate()
+            .take(ph2d_tool_vector::ids::MAX_FX_ROWS)
+        {
             y = self.effect_card(row, fx, stack.len(), y);
         }
         // Os "Add": um por tipo PUBLICADO. A tabela vem do motor, então um efeito novo aparece
         // aqui sem este arquivo saber que ele existe.
-        if stack.len() < ids::MAX_FX_ROWS {
-            for (kind, name) in state::kinds().iter().enumerate().take(ids::MAX_FX_KINDS) {
-                y = self.action_button(ids::vector_fx_add_id(kind), &format!("Add {name}"), y);
+        if stack.len() < ph2d_tool_vector::ids::MAX_FX_ROWS {
+            for (kind, name) in state::kinds()
+                .iter()
+                .enumerate()
+                .take(ph2d_tool_vector::ids::MAX_FX_KINDS)
+            {
+                y = self.action_button(
+                    ph2d_tool_vector::ids::vector_fx_add_id(kind),
+                    &format!("Add {name}"),
+                    y,
+                );
             }
         }
         // **Apply**, no FIM da seção e em ACCENT: é a ação de *commit* (assa a pilha no cozido e a
@@ -75,7 +87,7 @@ impl BodyCtx<'_> {
         // um botão inerte ensina o artista a desconfiar dos que funcionam.
         if !stack.is_empty() {
             y = self.action_button_kind(
-                ids::VECTOR_FX_APPLY,
+                ph2d_tool_vector::ids::VECTOR_FX_APPLY,
                 "Apply Effects",
                 ButtonKind::Accent,
                 y,
@@ -88,7 +100,10 @@ impl BodyCtx<'_> {
     fn effect_card(&mut self, row: usize, fx: &state::FxRowView, total: usize, y: f32) -> f32 {
         let pad = Spacing::Sm.px();
         let head_h = self.row_h.max(ICON_PX);
-        let params = fx.params.len().min(ids::MAX_FX_ROW_PARAMS);
+        let params = fx
+            .params
+            .len()
+            .min(ph2d_tool_vector::ids::MAX_FX_ROW_PARAMS);
         #[allow(clippy::cast_precision_loss)]
         let body_h = params as f32 * (self.row_h + self.row_gap);
         // Um Falloff ganha uma LINHA de dica ("modula abaixo" / "adicione um deformador"): ele não
@@ -103,7 +118,7 @@ impl BodyCtx<'_> {
 
         // O card em si (moldura + fundo) — o mesmo primitivo que o painel do Painter usa, para
         // não haver duas respostas a "como é um card neste app".
-        let card = Card::new(ids::vector_fx_card_id(row));
+        let card = Card::new(ph2d_tool_vector::ids::vector_fx_card_id(row));
         paint_card(&card, card_rect, self.scene, self.text_system, self.theme);
 
         let inner_x = self.inner_x + pad;
@@ -136,7 +151,12 @@ impl BodyCtx<'_> {
         self.inner_x = inner_x;
         self.inner_w = inner_w;
         let mut py = y + pad + head_h + note_h;
-        for (param, p) in fx.params.iter().enumerate().take(ids::MAX_FX_ROW_PARAMS) {
+        for (param, p) in fx
+            .params
+            .iter()
+            .enumerate()
+            .take(ph2d_tool_vector::ids::MAX_FX_ROW_PARAMS)
+        {
             py = self.fx_param(row, param, p, py);
         }
         self.inner_x = keep_x;
@@ -171,9 +191,15 @@ impl BodyCtx<'_> {
         // Da DIREITA para a esquerda: ✕ · olho · ↓ · ↑. Assim o ✕ fica sempre no mesmo sítio,
         // e a ausência de uma seta nas bordas não desloca os outros.
         let slot = |i: usize| x + w - ICON_PX * (i as f32 + 1.0) - Spacing::Xs.px() * i as f32;
-        self.icon(ids::vector_fx_remove_id(row), IconId::Close, slot(0), y, h);
         self.icon(
-            ids::vector_fx_hide_id(row),
+            ph2d_tool_vector::ids::vector_fx_remove_id(row),
+            IconId::Close,
+            slot(0),
+            y,
+            h,
+        );
+        self.icon(
+            ph2d_tool_vector::ids::vector_fx_hide_id(row),
             if fx.enabled {
                 IconId::Eye
             } else {
@@ -185,7 +211,7 @@ impl BodyCtx<'_> {
         );
         if row + 1 < total {
             self.icon(
-                ids::vector_fx_down_id(row),
+                ph2d_tool_vector::ids::vector_fx_down_id(row),
                 IconId::ChevronDown,
                 slot(2),
                 y,
@@ -193,7 +219,13 @@ impl BodyCtx<'_> {
             );
         }
         if row > 0 {
-            self.icon(ids::vector_fx_up_id(row), IconId::ChevronUp, slot(3), y, h);
+            self.icon(
+                ph2d_tool_vector::ids::vector_fx_up_id(row),
+                IconId::ChevronUp,
+                slot(3),
+                y,
+                h,
+            );
         }
     }
 
@@ -215,15 +247,15 @@ impl BodyCtx<'_> {
     /// Um parâmetro: slider ou caixinha, conforme o efeito o DESCREVEU.
     fn fx_param(&mut self, row: usize, param: usize, p: &state::FxParamView, y: f32) -> f32 {
         let (slider, chip) = (
-            ids::vector_fx_param_id(row, param),
-            ids::vector_fx_param_num_id(row, param),
+            ph2d_tool_vector::ids::vector_fx_param_id(row, param),
+            ph2d_tool_vector::ids::vector_fx_param_num_id(row, param),
         );
         if p.toggle {
             // A caixinha é um botão cujo rótulo diz o ESTADO: um slider de dois valores seria
             // um controle contínuo a mentir sobre um fato binário.
             let on = p.value >= 0.5;
             return self.action_button(
-                ids::vector_fx_toggle_id(row, param),
+                ph2d_tool_vector::ids::vector_fx_toggle_id(row, param),
                 &format!("{}: {}", p.name, if on { "On" } else { "Off" }),
                 y,
             );

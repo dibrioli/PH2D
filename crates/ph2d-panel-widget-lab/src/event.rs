@@ -35,24 +35,24 @@ pub(crate) fn apply_event(
     let WidgetEvent::Click(id) = ev else {
         return EventOutcome::Ignored;
     };
-    if id == ids::TOPBAR_WIDGET_LAB || id == ids::LAB_CLOSE {
+    if id == ids::TOPBAR_WIDGET_LAB || id == crate::ids::LAB_CLOSE {
         let next = !host.panel_visible(WidgetLabPanel::ID);
         host.set_panel_visible(WidgetLabPanel::ID, next);
         return EventOutcome::Consumed;
     }
-    if id == ids::LAB_VARIANT_NEXT {
+    if id == crate::ids::LAB_VARIANT_NEXT {
         state.style.design = state.style.design.next();
-    } else if id == ids::LAB_VARIANT_PREV {
+    } else if id == crate::ids::LAB_VARIANT_PREV {
         state.style.design = state.style.design.prev();
-    } else if id == ids::LAB_RADIUS_CYCLE {
+    } else if id == crate::ids::LAB_RADIUS_CYCLE {
         state.style.radius = cycle(&SLIDER_RADII, state.style.radius);
-    } else if id == ids::LAB_DENSITY_CYCLE {
+    } else if id == crate::ids::LAB_DENSITY_CYCLE {
         state.style.density = cycle(&SLIDER_DENSITIES, state.style.density);
-    } else if id == ids::LAB_ACCENT_CYCLE {
+    } else if id == crate::ids::LAB_ACCENT_CYCLE {
         state.accent = (state.accent + 1) % ACCENTS.len();
-    } else if id == ids::LAB_DECORATOR_TOGGLE {
+    } else if id == crate::ids::LAB_DECORATOR_TOGGLE {
         state.decorator = !state.decorator;
-    } else if id == ids::LAB_COMPARE_TOGGLE {
+    } else if id == crate::ids::LAB_COMPARE_TOGGLE {
         state.compare = !state.compare;
     } else {
         return EventOutcome::Ignored;

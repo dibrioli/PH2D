@@ -10,7 +10,6 @@
 //! every cell is therefore not redundant with the arch gates — it is the only
 //! thing standing between this widget and being painted but dead.
 
-use ph2d_editor_core::ids;
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::zones::Rect;
@@ -91,7 +90,7 @@ pub(super) fn paint(ctx: &mut PaintCtx, matrix: LayerMatrix, x: f32, y_in: f32) 
                 );
             }
             ctx.host.hit_index_mut().register(
-                ids::PHYSICS_LAYER_CELL[ids::physics_layer_cell_index(i, j)],
+                crate::ids::PHYSICS_LAYER_CELL[crate::ids::physics_layer_cell_index(i, j)],
                 cell,
             );
         }

@@ -187,17 +187,17 @@ fn a_multiple_selection_has_no_answer() {
 #[test]
 fn the_two_chips_map_to_the_two_kinds_and_nothing_else_does() {
     assert_eq!(
-        kind_for_id(ph2d_editor_core::ids::VECTOR_STROKE_KIND_SOLID),
+        kind_for_id(ph2d_tool_vector::ids::VECTOR_STROKE_KIND_SOLID),
         Some(StrokePaintKind::Solid)
     );
     assert_eq!(
-        kind_for_id(ph2d_editor_core::ids::VECTOR_STROKE_KIND_PATTERN),
+        kind_for_id(ph2d_tool_vector::ids::VECTOR_STROKE_KIND_PATTERN),
         Some(StrokePaintKind::Pattern)
     );
     // ⛔ O chip do PREENCHIMENTO não pode cair aqui: seria a fileira do traço a consumir o clique
     // do vizinho, e o preenchimento deixaria de mudar sem uma mensagem sequer.
     assert_eq!(
-        kind_for_id(ph2d_editor_core::ids::VECTOR_FILL_KIND_PATTERN),
+        kind_for_id(ph2d_tool_vector::ids::VECTOR_FILL_KIND_PATTERN),
         None
     );
     assert_eq!(
@@ -371,20 +371,28 @@ fn every_brush_knob_writes_its_own_field_and_only_its_own() {
 /// **Os controlos da secção são alcançáveis pelo `NodeId`, e mais nenhum id os reclama.**
 #[test]
 fn the_brush_controls_map_to_their_commands_and_nothing_else_does() {
-    use ph2d_editor_core::ids as i;
-    assert_eq!(cmd_for_id(i::VECTOR_BRUSH_FLIP), Some(BrushCmd::Flip));
-    assert_eq!(cmd_for_id(i::VECTOR_STROKE_KIND_BRUSH), None);
     assert_eq!(
-        slider_cmd_for_id(i::VECTOR_BRUSH_SCALE, 2.0),
+        cmd_for_id(ph2d_panel_vector::ids::VECTOR_BRUSH_FLIP),
+        Some(BrushCmd::Flip)
+    );
+    assert_eq!(
+        cmd_for_id(ph2d_tool_vector::ids::VECTOR_STROKE_KIND_BRUSH),
+        None
+    );
+    assert_eq!(
+        slider_cmd_for_id(ph2d_panel_vector::ids::VECTOR_BRUSH_SCALE, 2.0),
         Some(BrushCmd::Scale(2.0))
     );
     assert_eq!(
-        slider_cmd_for_id(i::VECTOR_BRUSH_OFFSET, -1.0),
+        slider_cmd_for_id(ph2d_panel_vector::ids::VECTOR_BRUSH_OFFSET, -1.0),
         Some(BrushCmd::Offset(-1.0))
     );
     // ⛔ Um slider do PADRÃO não pode cair aqui: seria a secção do pincel a consumir o clique do
     // vizinho, e o padrão deixaria de responder sem uma mensagem sequer.
-    assert_eq!(slider_cmd_for_id(i::VECTOR_DASH, 1.0), None);
+    assert_eq!(
+        slider_cmd_for_id(ph2d_tool_vector::ids::VECTOR_DASH, 1.0),
+        None
+    );
 }
 
 /// ⛔⛔ **AS TRÊS PORTAS DO PINCEL LEEM A MESMA RECUSA** — achado da auditoria de 2026-08-30, e era

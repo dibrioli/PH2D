@@ -4,7 +4,6 @@
 //! forwarded by `crate::event`'s brush-slider whitelist. Split from `paint_brush` for the LOC cap.
 
 use crate::paint_brush_top::paint_slider_chip_row;
-use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_tokens::{ColorToken, ROW_H_PX, TypeToken};
@@ -40,8 +39,8 @@ pub(crate) fn paint_inpaint_card(
         content_w,
         y,
         "Patch Size",
-        core_ids::PAINTER_INPAINT_PATCH_SLIDER,
-        core_ids::PAINTER_INPAINT_PATCH_CHIP,
+        ph2d_tool_painter::ids::PAINTER_INPAINT_PATCH_SLIDER,
+        ph2d_tool_painter::ids::PAINTER_INPAINT_PATCH_CHIP,
         brush.inpaint_patch,
     );
     y = paint_slider_chip_row(
@@ -51,8 +50,8 @@ pub(crate) fn paint_inpaint_card(
         content_w,
         y,
         "Quality",
-        core_ids::PAINTER_INPAINT_QUALITY_SLIDER,
-        core_ids::PAINTER_INPAINT_QUALITY_CHIP,
+        ph2d_tool_painter::ids::PAINTER_INPAINT_QUALITY_SLIDER,
+        ph2d_tool_painter::ids::PAINTER_INPAINT_QUALITY_CHIP,
         brush.inpaint_quality,
     );
     y = paint_slider_chip_row(
@@ -62,8 +61,8 @@ pub(crate) fn paint_inpaint_card(
         content_w,
         y,
         "Search",
-        core_ids::PAINTER_INPAINT_SEARCH_SLIDER,
-        core_ids::PAINTER_INPAINT_SEARCH_CHIP,
+        ph2d_tool_painter::ids::PAINTER_INPAINT_SEARCH_SLIDER,
+        ph2d_tool_painter::ids::PAINTER_INPAINT_SEARCH_CHIP,
         brush.inpaint_search,
     );
     y
@@ -75,7 +74,6 @@ mod tests {
     //! sliders register hit rects only in Inpaint mode — a row that isn't painted registers no hit rect,
     //! so no real pointer click can reach it (the DIRETIVA §2 "no silent no-op" guarantee).
     use ph2d_a11y::NodeId;
-    use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::panel::{PaintCtx, PanelHostInternal};
     use ph2d_editor_core::screens::HeroLayout;
     use ph2d_editor_core::zones::Rect;
@@ -115,9 +113,9 @@ mod tests {
     }
 
     const INPAINT_SLIDERS: [NodeId; 3] = [
-        core_ids::PAINTER_INPAINT_PATCH_SLIDER,
-        core_ids::PAINTER_INPAINT_QUALITY_SLIDER,
-        core_ids::PAINTER_INPAINT_SEARCH_SLIDER,
+        ph2d_tool_painter::ids::PAINTER_INPAINT_PATCH_SLIDER,
+        ph2d_tool_painter::ids::PAINTER_INPAINT_QUALITY_SLIDER,
+        ph2d_tool_painter::ids::PAINTER_INPAINT_SEARCH_SLIDER,
     ];
 
     #[test]
@@ -154,8 +152,8 @@ mod tests {
         // section's Spacing). Each shows for a plain brush but must vanish in Inpaint mode — the heal
         // marks a hard-disc mask, so only Size + the Inpaint card remain.
         for id in [
-            core_ids::PAINTER_BRUSH_STRENGTH_SLIDER,
-            core_ids::PAINTER_BRUSH_SPACING,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_STRENGTH_SLIDER,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_SPACING,
         ] {
             assert!(
                 plain.contains(&id),
@@ -168,7 +166,7 @@ mod tests {
         }
         // Size stays — it is the mask-brush footprint.
         assert!(
-            inpaint.contains(&core_ids::PAINTER_BRUSH_SIZE_SLIDER),
+            inpaint.contains(&ph2d_tool_painter::ids::PAINTER_BRUSH_SIZE_SLIDER),
             "Size must stay visible in Inpaint mode"
         );
     }

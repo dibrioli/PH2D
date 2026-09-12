@@ -144,9 +144,9 @@ fn track_slider_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> Opti
 /// Lista e não `match` de propósito: ela é a resposta a *"este slider é encaminhado cru?"*, e um
 /// slider novo entra aqui em vez de num braço próprio com um corpo copiado.
 const FORWARDED_TRACK_SLIDERS: &[ph2d_a11y::NodeId] = &[
-    ids::VECTOR_WIDTH,
-    ids::VECTOR_PENCIL_FIDELITY,
-    ids::VECTOR_PENCIL_STABILIZER,
+    ph2d_tool_vector::ids::VECTOR_WIDTH,
+    ph2d_tool_vector::ids::VECTOR_PENCIL_FIDELITY,
+    ph2d_tool_vector::ids::VECTOR_PENCIL_STABILIZER,
     // A DURAÇÃO da transição de estado (W7): o track vai cru e a shell o multiplica pela régua
     // — a mesma que o painel usa para encher o trilho.
     ids::VECTOR_STATE_DURATION,
@@ -248,14 +248,14 @@ pub(crate) fn apply_event(
                 || id == ids::VECTOR_TEXT_LINE_HEIGHT
                 || id == ids::VECTOR_TEXT_TRACKING
                 || id == ids::VECTOR_TEXT_WRAP_W
-                || id == ids::VECTOR_STROKE_OPACITY
-                || id == ids::VECTOR_FILL_OPACITY
+                || id == ph2d_tool_vector::ids::VECTOR_STROKE_OPACITY
+                || id == ph2d_tool_vector::ids::VECTOR_FILL_OPACITY
                 // ⭐ A opacidade do OBJECTO (estudo 42 item 2) — mesmo formato de track `0..1`, e
                 // ⚠️ **outro sujeito**: as duas de cima são a tinta da ferramenta, esta é a forma
                 // selecionada. Elas convivem, e o id é o que as separa.
                 || id == ids::VECTOR_OBJ_OPACITY
-                || id == ids::VECTOR_DASH
-                || id == ids::VECTOR_GAP
+                || id == ph2d_tool_vector::ids::VECTOR_DASH
+                || id == ph2d_tool_vector::ids::VECTOR_GAP
                 || id == ids::VECTOR_GRAD_ANGLE
                 || id == ids::VECTOR_GRAD_INFLUENCE
                 || id == ids::VECTOR_GRAD_JITTER =>
@@ -271,20 +271,20 @@ pub(crate) fn apply_event(
         // Chip edits already mirrored to their slider (which fires its own
         // ValueChanged, handled above): swallow to avoid a double notify.
         WidgetEvent::ValueChanged(id)
-            if id == ids::VECTOR_WIDTH_NUM
+            if id == ph2d_tool_vector::ids::VECTOR_WIDTH_NUM
                 || id == ids::VECTOR_TEXT_SIZE_NUM
                 || id == ids::VECTOR_TEXT_WEIGHT_NUM
                 || id == ids::VECTOR_TEXT_LINE_HEIGHT_NUM
                 || id == ids::VECTOR_TEXT_TRACKING_NUM
                 || id == ids::VECTOR_TEXT_WRAP_W_NUM
-                || id == ids::VECTOR_STROKE_OPACITY_NUM
-                || id == ids::VECTOR_FILL_OPACITY_NUM
+                || id == ph2d_tool_vector::ids::VECTOR_STROKE_OPACITY_NUM
+                || id == ph2d_tool_vector::ids::VECTOR_FILL_OPACITY_NUM
                 || id == ids::VECTOR_OBJ_OPACITY_NUM
-                || id == ids::VECTOR_DASH_NUM
-                || id == ids::VECTOR_GAP_NUM
-                || id == ids::VECTOR_GRAD_ANGLE_NUM
-                || id == ids::VECTOR_GRAD_INFLUENCE_NUM
-                || id == ids::VECTOR_GRAD_JITTER_NUM =>
+                || id == ph2d_tool_vector::ids::VECTOR_DASH_NUM
+                || id == ph2d_tool_vector::ids::VECTOR_GAP_NUM
+                || id == ph2d_tool_vector::ids::VECTOR_GRAD_ANGLE_NUM
+                || id == ph2d_tool_vector::ids::VECTOR_GRAD_INFLUENCE_NUM
+                || id == ph2d_tool_vector::ids::VECTOR_GRAD_JITTER_NUM =>
         {
             true
         }
@@ -302,7 +302,9 @@ pub(crate) fn apply_event(
                 open,
                 selected_index,
                 ..
-            }) = host.store_mut().get_mut(ids::VECTOR_SHAPE_GROUP_DD)
+            }) = host
+                .store_mut()
+                .get_mut(ph2d_tool_vector::ids::VECTOR_SHAPE_GROUP_DD)
             {
                 *open = false;
                 *selected_index = index;
@@ -400,7 +402,7 @@ fn signal_name_row(id: ph2d_a11y::NodeId) -> Option<usize> {
 fn cycle_shape_choice(host: &mut dyn PanelHostInternal, id: ph2d_a11y::NodeId) -> bool {
     seam_reset_button(host, id);
     let i = state::shape_choice_index(id).unwrap_or(0);
-    let field = ids::vector_shape_field_id(i);
+    let field = ph2d_tool_vector::ids::vector_shape_field_id(i);
     let cur = host.store().number_value(field).unwrap_or(0.0);
     let Some(focus) = crate::shape_focus::resolved(&state::current_snapshot()) else {
         return false;
@@ -555,10 +557,10 @@ fn signal_name_commit(host: &mut dyn PanelHostInternal, id: ph2d_a11y::NodeId) -
 /// 2026-08-04: *"Z-index não funcionou"*). Um campo que aceita teclas e não fala com ninguém é a
 /// forma mais cara de um controlo nascer morto, porque parece vivo.
 fn is_shell_owned_number(id: ph2d_a11y::NodeId) -> bool {
-    id == ids::VECTOR_TRANSFORM_X
-        || id == ids::VECTOR_TRANSFORM_Y
-        || id == ids::VECTOR_TRANSFORM_W
-        || id == ids::VECTOR_TRANSFORM_H
+    id == ph2d_tool_vector::ids::VECTOR_TRANSFORM_X
+        || id == ph2d_tool_vector::ids::VECTOR_TRANSFORM_Y
+        || id == ph2d_tool_vector::ids::VECTOR_TRANSFORM_W
+        || id == ph2d_tool_vector::ids::VECTOR_TRANSFORM_H
         || id == ids::VECTOR_ARRANGE_Z
         || id == ids::VECTOR_VERT_X
         || id == ids::VECTOR_VERT_Y

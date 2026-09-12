@@ -30,12 +30,12 @@
 //! a taper of a third of the maximum — the artist reads the length off the geometry and never has to
 //! hold a unit in their head.
 
-use ph2d_editor_core::ids::{self as core_ids, painter_taper_handle_id};
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::paint::{fill_circle, paint_text, resolve, stroke_polyline};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, TypeToken};
+use ph2d_tool_painter::ids::painter_taper_handle_id;
 use ph2d_tool_painter::{BrushSettings, MAX_TAPER_DIAMETERS};
 
 const CANVAS_H: f32 = 56.0; // LITERAL-PX-OK: the taper widget's height
@@ -126,7 +126,7 @@ pub(crate) fn paint_taper_section(
     ctx.host.store_mut().register(
         painter_taper_handle_id(0),
         InteractiveState::CurvePoint {
-            parent: core_ids::PAINTER_TAPER_GIZMO,
+            parent: ph2d_tool_painter::ids::PAINTER_TAPER_GIZMO,
             channel: 0,
             index: 0,
             canvas,
@@ -155,7 +155,7 @@ pub(crate) fn paint_taper_section(
         content_w,
         y,
         "Tip",
-        core_ids::PAINTER_TAPER_TIP_START,
+        ph2d_tool_painter::ids::PAINTER_TAPER_TIP_START,
         taper.tip_start.clamp(0.0, 1.0),
         0.0,
         1.0,
@@ -169,7 +169,7 @@ pub(crate) fn paint_taper_section(
         content_w,
         y,
         "Opacity",
-        core_ids::PAINTER_TAPER_OPACITY,
+        ph2d_tool_painter::ids::PAINTER_TAPER_OPACITY,
         taper.opacity.clamp(0.0, 1.0),
         0.0,
         1.0,

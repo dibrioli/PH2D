@@ -90,12 +90,12 @@ fn apply_keep_does_not_overlap_the_edit_and_delete_icons() {
             .map(|(_, r)| *r)
             .unwrap_or_else(|| panic!("{id:?} registered no hit rect"))
     };
-    let keep = find(core_ids::PAINTER_BRUSH_STROKE_APPLY_KEEP);
+    let keep = find(ph2d_tool_painter::ids::PAINTER_BRUSH_STROKE_APPLY_KEEP);
     let overlaps =
         |a: Rect, b: Rect| a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
     for icon in [
-        core_ids::PAINTER_BRUSH_STROKE_EDIT,
-        core_ids::PAINTER_BRUSH_STROKE_DELETE,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_STROKE_EDIT,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_STROKE_DELETE,
     ] {
         let r = find(icon);
         assert!(
@@ -104,7 +104,7 @@ fn apply_keep_does_not_overlap_the_edit_and_delete_icons() {
         );
     }
     // And Apply must not overlap Apply & Keep either.
-    let apply = find(core_ids::PAINTER_BRUSH_STROKE_APPLY);
+    let apply = find(ph2d_tool_painter::ids::PAINTER_BRUSH_STROKE_APPLY);
     assert!(
         !overlaps(apply, keep),
         "Apply {apply:?} overlaps Apply & Keep {keep:?}"
@@ -117,11 +117,11 @@ fn apply_keep_does_not_overlap_the_edit_and_delete_icons() {
 fn dots_hides_spacing_and_dash_but_shows_jitter_samples_and_stabilizer() {
     let ids = painted_hit_ids(StrokeMethod::Dots);
     for hidden in [
-        core_ids::PAINTER_BRUSH_SPACING,
-        core_ids::PAINTER_BRUSH_SPACE_ATTEN,
-        core_ids::PAINTER_BRUSH_DASH_RATIO,
-        core_ids::PAINTER_BRUSH_DASH_LENGTH,
-        core_ids::PAINTER_BRUSH_RATE,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_SPACING,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_SPACE_ATTEN,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_DASH_RATIO,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_DASH_LENGTH,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_RATE,
     ] {
         assert!(
             !ids.contains(&hidden),
@@ -131,10 +131,10 @@ fn dots_hides_spacing_and_dash_but_shows_jitter_samples_and_stabilizer() {
     }
     for shown in [
         core_ids::PAINTER_BRUSH_STROKE_METHOD,
-        core_ids::PAINTER_BRUSH_JITTER,
-        core_ids::PAINTER_BRUSH_JITTER_UNIT,
-        core_ids::PAINTER_BRUSH_INPUT_SAMPLES,
-        core_ids::PAINTER_BRUSH_STABILIZE,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER_UNIT,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_INPUT_SAMPLES,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_STABILIZE,
     ] {
         assert!(
             ids.contains(&shown),
@@ -150,14 +150,14 @@ fn space_shows_spacing_dash_and_the_rest() {
     let ids = painted_hit_ids(StrokeMethod::Space);
     for shown in [
         core_ids::PAINTER_BRUSH_STROKE_METHOD,
-        core_ids::PAINTER_BRUSH_SPACING,
-        core_ids::PAINTER_BRUSH_SPACE_ATTEN,
-        core_ids::PAINTER_BRUSH_JITTER,
-        core_ids::PAINTER_BRUSH_JITTER_UNIT,
-        core_ids::PAINTER_BRUSH_DASH_RATIO,
-        core_ids::PAINTER_BRUSH_DASH_LENGTH,
-        core_ids::PAINTER_BRUSH_INPUT_SAMPLES,
-        core_ids::PAINTER_BRUSH_STABILIZE,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_SPACING,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_SPACE_ATTEN,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER_UNIT,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_DASH_RATIO,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_DASH_LENGTH,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_INPUT_SAMPLES,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_STABILIZE,
     ] {
         assert!(
             ids.contains(&shown),
@@ -176,11 +176,11 @@ fn airbrush_shows_rate_and_hides_spacing_dash() {
     let ids = painted_hit_ids(StrokeMethod::Airbrush);
     for shown in [
         core_ids::PAINTER_BRUSH_STROKE_METHOD,
-        core_ids::PAINTER_BRUSH_RATE,
-        core_ids::PAINTER_BRUSH_JITTER,
-        core_ids::PAINTER_BRUSH_JITTER_UNIT,
-        core_ids::PAINTER_BRUSH_INPUT_SAMPLES,
-        core_ids::PAINTER_BRUSH_STABILIZE,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_RATE,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER_UNIT,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_INPUT_SAMPLES,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_STABILIZE,
     ] {
         assert!(
             ids.contains(&shown),
@@ -188,10 +188,10 @@ fn airbrush_shows_rate_and_hides_spacing_dash() {
         );
     }
     for hidden in [
-        core_ids::PAINTER_BRUSH_SPACING,
-        core_ids::PAINTER_BRUSH_SPACE_ATTEN,
-        core_ids::PAINTER_BRUSH_DASH_RATIO,
-        core_ids::PAINTER_BRUSH_DASH_LENGTH,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_SPACING,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_SPACE_ATTEN,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_DASH_RATIO,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_DASH_LENGTH,
     ] {
         assert!(
             !ids.contains(&hidden),
@@ -209,8 +209,8 @@ fn anchored_shows_edge_to_edge_method_and_samples_hides_the_no_op_rows() {
     let ids = painted_hit_ids(StrokeMethod::Anchored);
     for shown in [
         core_ids::PAINTER_BRUSH_STROKE_METHOD,
-        core_ids::PAINTER_BRUSH_EDGE_TO_EDGE,
-        core_ids::PAINTER_BRUSH_INPUT_SAMPLES,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_EDGE_TO_EDGE,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_INPUT_SAMPLES,
     ] {
         assert!(
             ids.contains(&shown),
@@ -218,14 +218,14 @@ fn anchored_shows_edge_to_edge_method_and_samples_hides_the_no_op_rows() {
         );
     }
     for hidden in [
-        core_ids::PAINTER_BRUSH_SPACING,
-        core_ids::PAINTER_BRUSH_SPACE_ATTEN,
-        core_ids::PAINTER_BRUSH_DASH_RATIO,
-        core_ids::PAINTER_BRUSH_DASH_LENGTH,
-        core_ids::PAINTER_BRUSH_RATE,
-        core_ids::PAINTER_BRUSH_JITTER,
-        core_ids::PAINTER_BRUSH_JITTER_UNIT,
-        core_ids::PAINTER_BRUSH_STABILIZE,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_SPACING,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_SPACE_ATTEN,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_DASH_RATIO,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_DASH_LENGTH,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_RATE,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER_UNIT,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_STABILIZE,
     ] {
         assert!(
             !ids.contains(&hidden),
@@ -243,13 +243,13 @@ fn line_shows_spacing_dash_jitter_samples_hides_stabilize_rate_edge() {
     let ids = painted_hit_ids(StrokeMethod::Line);
     for shown in [
         core_ids::PAINTER_BRUSH_STROKE_METHOD,
-        core_ids::PAINTER_BRUSH_SPACING,
-        core_ids::PAINTER_BRUSH_SPACE_ATTEN,
-        core_ids::PAINTER_BRUSH_DASH_RATIO,
-        core_ids::PAINTER_BRUSH_DASH_LENGTH,
-        core_ids::PAINTER_BRUSH_JITTER,
-        core_ids::PAINTER_BRUSH_JITTER_UNIT,
-        core_ids::PAINTER_BRUSH_INPUT_SAMPLES,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_SPACING,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_SPACE_ATTEN,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_DASH_RATIO,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_DASH_LENGTH,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER_UNIT,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_INPUT_SAMPLES,
     ] {
         assert!(
             ids.contains(&shown),
@@ -257,9 +257,9 @@ fn line_shows_spacing_dash_jitter_samples_hides_stabilize_rate_edge() {
         );
     }
     for hidden in [
-        core_ids::PAINTER_BRUSH_STABILIZE,
-        core_ids::PAINTER_BRUSH_RATE,
-        core_ids::PAINTER_BRUSH_EDGE_TO_EDGE,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_STABILIZE,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_RATE,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_EDGE_TO_EDGE,
     ] {
         assert!(
             !ids.contains(&hidden),
@@ -276,13 +276,13 @@ fn curve_shows_spacing_dash_jitter_samples_hides_stabilize_rate_edge() {
     let ids = painted_hit_ids(StrokeMethod::Arc);
     for shown in [
         core_ids::PAINTER_BRUSH_STROKE_METHOD,
-        core_ids::PAINTER_BRUSH_SPACING,
-        core_ids::PAINTER_BRUSH_SPACE_ATTEN,
-        core_ids::PAINTER_BRUSH_DASH_RATIO,
-        core_ids::PAINTER_BRUSH_DASH_LENGTH,
-        core_ids::PAINTER_BRUSH_JITTER,
-        core_ids::PAINTER_BRUSH_JITTER_UNIT,
-        core_ids::PAINTER_BRUSH_INPUT_SAMPLES,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_SPACING,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_SPACE_ATTEN,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_DASH_RATIO,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_DASH_LENGTH,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER_UNIT,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_INPUT_SAMPLES,
     ] {
         assert!(
             ids.contains(&shown),
@@ -290,9 +290,9 @@ fn curve_shows_spacing_dash_jitter_samples_hides_stabilize_rate_edge() {
         );
     }
     for hidden in [
-        core_ids::PAINTER_BRUSH_STABILIZE,
-        core_ids::PAINTER_BRUSH_RATE,
-        core_ids::PAINTER_BRUSH_EDGE_TO_EDGE,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_STABILIZE,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_RATE,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_EDGE_TO_EDGE,
     ] {
         assert!(
             !ids.contains(&hidden),
@@ -310,13 +310,13 @@ fn circle_shows_spacing_dash_jitter_samples_hides_stabilize_rate_edge() {
     let ids = painted_hit_ids(StrokeMethod::Ellipse);
     for shown in [
         core_ids::PAINTER_BRUSH_STROKE_METHOD,
-        core_ids::PAINTER_BRUSH_SPACING,
-        core_ids::PAINTER_BRUSH_SPACE_ATTEN,
-        core_ids::PAINTER_BRUSH_DASH_RATIO,
-        core_ids::PAINTER_BRUSH_DASH_LENGTH,
-        core_ids::PAINTER_BRUSH_JITTER,
-        core_ids::PAINTER_BRUSH_JITTER_UNIT,
-        core_ids::PAINTER_BRUSH_INPUT_SAMPLES,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_SPACING,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_SPACE_ATTEN,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_DASH_RATIO,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_DASH_LENGTH,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER_UNIT,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_INPUT_SAMPLES,
     ] {
         assert!(
             ids.contains(&shown),
@@ -324,9 +324,9 @@ fn circle_shows_spacing_dash_jitter_samples_hides_stabilize_rate_edge() {
         );
     }
     for hidden in [
-        core_ids::PAINTER_BRUSH_STABILIZE,
-        core_ids::PAINTER_BRUSH_RATE,
-        core_ids::PAINTER_BRUSH_EDGE_TO_EDGE,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_STABILIZE,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_RATE,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_EDGE_TO_EDGE,
     ] {
         assert!(
             !ids.contains(&hidden),
@@ -343,13 +343,13 @@ fn polygon_shows_spacing_dash_jitter_samples_hides_stabilize_rate_edge() {
     let ids = painted_hit_ids(StrokeMethod::Polygon);
     for shown in [
         core_ids::PAINTER_BRUSH_STROKE_METHOD,
-        core_ids::PAINTER_BRUSH_SPACING,
-        core_ids::PAINTER_BRUSH_SPACE_ATTEN,
-        core_ids::PAINTER_BRUSH_DASH_RATIO,
-        core_ids::PAINTER_BRUSH_DASH_LENGTH,
-        core_ids::PAINTER_BRUSH_JITTER,
-        core_ids::PAINTER_BRUSH_JITTER_UNIT,
-        core_ids::PAINTER_BRUSH_INPUT_SAMPLES,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_SPACING,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_SPACE_ATTEN,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_DASH_RATIO,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_DASH_LENGTH,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER_UNIT,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_INPUT_SAMPLES,
     ] {
         assert!(
             ids.contains(&shown),
@@ -357,9 +357,9 @@ fn polygon_shows_spacing_dash_jitter_samples_hides_stabilize_rate_edge() {
         );
     }
     for hidden in [
-        core_ids::PAINTER_BRUSH_STABILIZE,
-        core_ids::PAINTER_BRUSH_RATE,
-        core_ids::PAINTER_BRUSH_EDGE_TO_EDGE,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_STABILIZE,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_RATE,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_EDGE_TO_EDGE,
     ] {
         assert!(
             !ids.contains(&hidden),
@@ -382,12 +382,13 @@ fn offset_slider_shows_only_for_the_shape_editor_methods() {
         StrokeMethod::Line,
     ] {
         assert!(
-            painted_hit_ids(m).contains(&core_ids::PAINTER_BRUSH_OFFSET),
+            painted_hit_ids(m).contains(&ph2d_tool_painter::ids::PAINTER_BRUSH_OFFSET),
             "{m:?} must paint the Offset slider"
         );
     }
     assert!(
-        !painted_hit_ids(StrokeMethod::Space).contains(&core_ids::PAINTER_BRUSH_OFFSET),
+        !painted_hit_ids(StrokeMethod::Space)
+            .contains(&ph2d_tool_painter::ids::PAINTER_BRUSH_OFFSET),
         "Space has no on-canvas shape to offset — Offset must be hidden"
     );
 }
@@ -407,9 +408,9 @@ fn apply_buttons_register_hit_rects_for_the_editor_methods_only() {
     ] {
         let ids = painted_hit_ids(m);
         for b in [
-            core_ids::PAINTER_BRUSH_STROKE_APPLY,
-            core_ids::PAINTER_BRUSH_STROKE_APPLY_KEEP,
-            core_ids::PAINTER_BRUSH_STROKE_DELETE,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_STROKE_APPLY,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_STROKE_APPLY_KEEP,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_STROKE_DELETE,
         ] {
             assert!(
                 ids.contains(&b),
@@ -420,7 +421,7 @@ fn apply_buttons_register_hit_rects_for_the_editor_methods_only() {
     // Space finalises on pen-up — no Apply row (Line now has the polyline editor, so it DOES get one).
     let ids = painted_hit_ids(StrokeMethod::Space);
     assert!(
-        !ids.contains(&core_ids::PAINTER_BRUSH_STROKE_APPLY),
+        !ids.contains(&ph2d_tool_painter::ids::PAINTER_BRUSH_STROKE_APPLY),
         "Space finalises on pen-up — no Apply button. painted = {ids:?}"
     );
 }
@@ -431,7 +432,7 @@ fn apply_buttons_register_hit_rects_for_the_editor_methods_only() {
 fn edit_button_registers_only_for_circle_and_polygon() {
     for m in [StrokeMethod::Ellipse, StrokeMethod::Polygon] {
         assert!(
-            painted_hit_ids(m).contains(&core_ids::PAINTER_BRUSH_STROKE_EDIT),
+            painted_hit_ids(m).contains(&ph2d_tool_painter::ids::PAINTER_BRUSH_STROKE_EDIT),
             "{m:?} must paint the Edit (E) button"
         );
     }
@@ -441,7 +442,7 @@ fn edit_button_registers_only_for_circle_and_polygon() {
         StrokeMethod::Line,
     ] {
         assert!(
-            !painted_hit_ids(m).contains(&core_ids::PAINTER_BRUSH_STROKE_EDIT),
+            !painted_hit_ids(m).contains(&ph2d_tool_painter::ids::PAINTER_BRUSH_STROKE_EDIT),
             "{m:?} must NOT paint the Edit button (not a convertible parametric shape)"
         );
     }
@@ -482,11 +483,11 @@ fn save_as_object_button_shows_only_when_a_curve_is_drawn() {
             .collect()
     };
     assert!(
-        painted(true).contains(&core_ids::PAINTER_BRUSH_STROKE_SAVE_OBJECT),
+        painted(true).contains(&ph2d_tool_painter::ids::PAINTER_BRUSH_STROKE_SAVE_OBJECT),
         "the Save As Object button shows when a curve with points is drawn"
     );
     assert!(
-        !painted(false).contains(&core_ids::PAINTER_BRUSH_STROKE_SAVE_OBJECT),
+        !painted(false).contains(&ph2d_tool_painter::ids::PAINTER_BRUSH_STROKE_SAVE_OBJECT),
         "the Save As Object button stays hidden when no curve is drawn"
     );
 }
@@ -497,13 +498,13 @@ fn save_as_object_button_shows_only_when_a_curve_is_drawn() {
 fn dragdot_shows_only_method_and_samples() {
     let ids = painted_hit_ids(StrokeMethod::DragDot);
     for hidden in [
-        core_ids::PAINTER_BRUSH_SPACING,
-        core_ids::PAINTER_BRUSH_SPACE_ATTEN,
-        core_ids::PAINTER_BRUSH_DASH_RATIO,
-        core_ids::PAINTER_BRUSH_DASH_LENGTH,
-        core_ids::PAINTER_BRUSH_JITTER,
-        core_ids::PAINTER_BRUSH_JITTER_UNIT,
-        core_ids::PAINTER_BRUSH_STABILIZE,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_SPACING,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_SPACE_ATTEN,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_DASH_RATIO,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_DASH_LENGTH,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER_UNIT,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_STABILIZE,
     ] {
         assert!(
             !ids.contains(&hidden),
@@ -513,7 +514,7 @@ fn dragdot_shows_only_method_and_samples() {
     }
     for shown in [
         core_ids::PAINTER_BRUSH_STROKE_METHOD,
-        core_ids::PAINTER_BRUSH_INPUT_SAMPLES,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_INPUT_SAMPLES,
     ] {
         assert!(
             ids.contains(&shown),
@@ -528,7 +529,7 @@ fn dragdot_shows_only_method_and_samples() {
 #[test]
 fn stroke_operation_segments_are_the_topmost_hit_at_their_centre() {
     let rects = painted_hit_rects(StrokeMethod::Ellipse, 320.0);
-    for &seg in &core_ids::PAINTER_STROKE_OP_IDS {
+    for &seg in &ph2d_tool_painter::ids::PAINTER_STROKE_OP_IDS {
         let rect = rects
             .iter()
             .rev()

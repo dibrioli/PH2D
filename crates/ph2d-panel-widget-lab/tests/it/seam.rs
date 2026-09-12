@@ -43,13 +43,34 @@ fn snapshot(s: &WidgetLabState) -> (String, usize, bool, bool) {
 #[test]
 fn every_lab_control_moves_the_study() {
     let controls = [
-        ("LAB_VARIANT_NEXT", ids::LAB_VARIANT_NEXT),
-        ("LAB_VARIANT_PREV", ids::LAB_VARIANT_PREV),
-        ("LAB_ACCENT_CYCLE", ids::LAB_ACCENT_CYCLE),
-        ("LAB_RADIUS_CYCLE", ids::LAB_RADIUS_CYCLE),
-        ("LAB_DENSITY_CYCLE", ids::LAB_DENSITY_CYCLE),
-        ("LAB_DECORATOR_TOGGLE", ids::LAB_DECORATOR_TOGGLE),
-        ("LAB_COMPARE_TOGGLE", ids::LAB_COMPARE_TOGGLE),
+        (
+            "LAB_VARIANT_NEXT",
+            ph2d_panel_widget_lab::ids::LAB_VARIANT_NEXT,
+        ),
+        (
+            "LAB_VARIANT_PREV",
+            ph2d_panel_widget_lab::ids::LAB_VARIANT_PREV,
+        ),
+        (
+            "LAB_ACCENT_CYCLE",
+            ph2d_panel_widget_lab::ids::LAB_ACCENT_CYCLE,
+        ),
+        (
+            "LAB_RADIUS_CYCLE",
+            ph2d_panel_widget_lab::ids::LAB_RADIUS_CYCLE,
+        ),
+        (
+            "LAB_DENSITY_CYCLE",
+            ph2d_panel_widget_lab::ids::LAB_DENSITY_CYCLE,
+        ),
+        (
+            "LAB_DECORATOR_TOGGLE",
+            ph2d_panel_widget_lab::ids::LAB_DECORATOR_TOGGLE,
+        ),
+        (
+            "LAB_COMPARE_TOGGLE",
+            ph2d_panel_widget_lab::ids::LAB_COMPARE_TOGGLE,
+        ),
     ];
     let mut dead = Vec::new();
     for (name, id) in controls {
@@ -117,8 +138,10 @@ fn lab_close_click_flips_visibility_off() {
     let mut host = MockPanelHost::with_panel::<WidgetLabPanel>();
     let mut state = WidgetLabState::default();
     host.set_panel_visible(WidgetLabPanel::ID, true);
-    let outcome =
-        host.apply_panel_event::<WidgetLabPanel>(&mut state, WidgetEvent::Click(ids::LAB_CLOSE));
+    let outcome = host.apply_panel_event::<WidgetLabPanel>(
+        &mut state,
+        WidgetEvent::Click(ph2d_panel_widget_lab::ids::LAB_CLOSE),
+    );
     assert_eq!(outcome, EventOutcome::Consumed);
     assert!(!host.panel_visible(WidgetLabPanel::ID));
 }
@@ -166,7 +189,10 @@ fn the_live_box_actually_drags() {
     <WidgetLabPanel as Panel>::populate(&mut store);
 
     let mut hits = HitIndex::new();
-    hits.register(ids::LAB_LIVE_BOX, Rect::new(0.0, 0.0, 100.0, 20.0));
+    hits.register(
+        ph2d_panel_widget_lab::ids::LAB_LIVE_BOX,
+        Rect::new(0.0, 0.0, 100.0, 20.0),
+    );
     let arena = Bump::new();
     let _ = dispatch_pointer(
         &mut store,
@@ -184,7 +210,7 @@ fn the_live_box_actually_drags() {
     );
 
     let (state, v) = store
-        .slider(ids::LAB_LIVE_BOX)
+        .slider(ph2d_panel_widget_lab::ids::LAB_LIVE_BOX)
         .expect("a caixa viva nao esta' registada como Slider — o `populate` do painel mudou");
     assert_eq!(
         state,

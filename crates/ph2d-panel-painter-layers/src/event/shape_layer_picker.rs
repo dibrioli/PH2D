@@ -25,10 +25,10 @@ pub(super) enum LayerWidget {
 /// classified by [`blend_option`]; the opacity box `ValueChanged` by [`opacity_index`].)
 pub(super) fn classify(id: NodeId) -> Option<LayerWidget> {
     for i in 0..MAX_SHAPE_LAYERS as u8 {
-        if id == core_ids::painter_shape_layer_color_check_id(i) {
+        if id == ph2d_tool_painter::ids::painter_shape_layer_color_check_id(i) {
             return Some(LayerWidget::Check);
         }
-        if id == core_ids::painter_shape_layer_color_swatch_id(i) {
+        if id == ph2d_tool_painter::ids::painter_shape_layer_color_swatch_id(i) {
             return Some(LayerWidget::Swatch(i));
         }
     }
@@ -40,7 +40,7 @@ pub(super) fn classify(id: NodeId) -> Option<LayerWidget> {
 pub(super) fn blend_option(id: NodeId) -> Option<(u8, u8)> {
     for i in 0..MAX_SHAPE_LAYERS as u8 {
         for m in 0..ph2d_tool_painter::MAX_BLEND_MODES {
-            if id == core_ids::painter_shape_layer_blend_option_id(i, m) {
+            if id == ph2d_tool_painter::ids::painter_shape_layer_blend_option_id(i, m) {
                 return Some((i, m));
             }
         }
@@ -54,7 +54,7 @@ pub(super) fn on_blend_option(host: &mut dyn PanelHostInternal, id: NodeId) {
     let Some((i, mode)) = blend_option(id) else {
         return;
     };
-    let chip_id = core_ids::painter_shape_layer_blend_id(i);
+    let chip_id = ph2d_tool_painter::ids::painter_shape_layer_blend_id(i);
     if let Some(InteractiveState::Dropdown {
         open,
         selected_index,
@@ -73,7 +73,8 @@ pub(super) fn on_blend_option(host: &mut dyn PanelHostInternal, id: NodeId) {
 
 /// Classify `id` as a Shape-layer **opacity** number box → its layer index, if it is one.
 pub(super) fn opacity_index(id: NodeId) -> Option<u8> {
-    (0..MAX_SHAPE_LAYERS as u8).find(|&i| id == core_ids::painter_shape_layer_opacity_id(i))
+    (0..MAX_SHAPE_LAYERS as u8)
+        .find(|&i| id == ph2d_tool_painter::ids::painter_shape_layer_opacity_id(i))
 }
 
 /// Forward the opacity box's scrubbed value as `SetValue` (the tool scales the layer's tip by it).

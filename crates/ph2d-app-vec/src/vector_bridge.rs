@@ -213,8 +213,8 @@ pub fn dispatch(
 
     // ── 2. Picker read-back: which swatch is the picker targeting? ────────
     let target = hero.store.picker_target();
-    let stroke_open = target == Some(ph2d_editor_core::ids::VECTOR_STROKE_SWATCH);
-    let fill_open = target == Some(ph2d_editor_core::ids::VECTOR_FILL_SWATCH);
+    let stroke_open = target == Some(ph2d_tool_vector::ids::VECTOR_STROKE_SWATCH);
+    let fill_open = target == Some(ph2d_tool_vector::ids::VECTOR_FILL_SWATCH);
     if (stroke_open || fill_open)
         && let Some((value, _, _, _)) = hero
             .store

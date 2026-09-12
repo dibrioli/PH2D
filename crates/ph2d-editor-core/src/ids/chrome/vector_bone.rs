@@ -62,10 +62,6 @@ pub const VECTOR_BONE_ACT_CREATE: NodeId = hash_node_id("vector.bone.action.crea
 /// ⛔ nunca cria.
 pub const VECTOR_BONE_ACT_TRANSFORM: NodeId = hash_node_id("vector.bone.action.transform");
 
-/// Os dois segmentos, **índice-alinhados** com [`ph2d_tool_vector::BoneAction::ALL`]. ⚠️ Alinhar
-/// por índice é o que impede a lista do painel e a do vocabulário de divergirem em silêncio.
-pub const VECTOR_BONE_ACTION_IDS: [NodeId; 2] = [VECTOR_BONE_ACT_CREATE, VECTOR_BONE_ACT_TRANSFORM];
-
 /// **Fast** — um afim por triângulo da malha guardada. É o desenho de sempre, **byte-idêntico**.
 pub const VECTOR_BONE_DEFORM_FAST: NodeId = hash_node_id("vector.bone.deform.fast");
 
@@ -75,10 +71,6 @@ pub const VECTOR_BONE_DEFORM_FAST: NodeId = hash_node_id("vector.bone.deform.fas
 /// aresta reta é o erro de aproximar um campo curvo por um afim. Medido: `9,84 px → 0,41 px` numa
 /// dobra de `150°`, pagando `216 → 3 456` triângulos.
 pub const VECTOR_BONE_DEFORM_SMOOTH: NodeId = hash_node_id("vector.bone.deform.smooth");
-
-/// Os dois segmentos, **índice-alinhados** com [`ph2d_tool_vector::SkinDeform::ALL`].
-pub const VECTOR_BONE_DEFORM_IDS: [NodeId; 2] =
-    [VECTOR_BONE_DEFORM_FAST, VECTOR_BONE_DEFORM_SMOOTH];
 
 /// ⭐⭐⭐ **Add IK** — dá a este osso uma ÂNCORA: um alvo que a corrente persegue a cada quadro.
 ///
@@ -173,17 +165,6 @@ pub const VECTOR_BONE_SMART_FROM: NodeId = hash_node_id("vector.bone.smart.from"
 
 /// **Action To** — ... e no fim. ⚠️ `To < From` percorre a acção ao contrário, e é legítimo.
 pub const VECTOR_BONE_SMART_TO: NodeId = hash_node_id("vector.bone.smart.to");
-
-/// ⭐⭐⭐ **Action** — QUAL acção este osso percorre. O chip que abre a lista das acções da timeline.
-///
-/// ⚠️ **É o READOUT e o gesto ao mesmo tempo** (o idioma da tecla de uma forma do Morph): o rótulo
-/// do chip é o nome da acção ligada, então *«qual é?»* responde-se sem abrir nada. Um rótulo fixo
-/// tipo *"Choose…"* obrigaria a abrir a lista para saber o que lá está — e foi precisamente a
-/// AUSÊNCIA desta linha que fez o dono ler o osso inteligente como avariado.
-///
-/// ⚠️ **Registado como `Dropdown`, pintado como botão** — abrir/fechar é do dispatch genérico, e
-/// registá-lo como `Button` faria o clique acender e nunca abrir lista nenhuma.
-pub const VECTOR_BONE_SMART_CLIP: NodeId = hash_node_id("vector.bone.smart.clip");
 
 /// ⭐ **Quantas acções o selector alcança** — o pool de ids é fixo porque o chrome **não cunha um
 /// id em tempo de execução**.

@@ -100,8 +100,11 @@ fn menus(snap: &state::ModelSnapshot) -> [MenuPlan<'_>; 1] {
         label: "panel.model3d.area.view",
         face: view_face(snap),
         rows: vec![
-            (&snap.views[..], ids::model3d_view_button as Family),
-            (&snap.camera[..], ids::model3d_camera_button as Family),
+            (&snap.views[..], crate::ids::model3d_view_button as Family),
+            (
+                &snap.camera[..],
+                crate::ids::model3d_camera_button as Family,
+            ),
         ],
     }]
 }
@@ -232,7 +235,10 @@ pub fn publish(store: &mut WidgetStore, armed: bool) {
     // destino diz *«barra global → Arquivo»* para as três).
     let file = vec![(
         ContextMenuKind::MenuBarFile,
-        entries(store, &[(&snap.exports[..], ids::model3d_export_button)]),
+        entries(
+            store,
+            &[(&snap.exports[..], crate::ids::model3d_export_button)],
+        ),
     )];
     store.set_area_commands(out, file);
 }

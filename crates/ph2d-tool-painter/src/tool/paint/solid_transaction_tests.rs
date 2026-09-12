@@ -9,7 +9,6 @@
 use super::measure_shape_system::{cp, tool};
 use crate::tool::paint::media::PaintMedia;
 use ph2d_editor_core::Tool;
-use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::tool::{CanvasPaintTool, PointerPhase};
 
@@ -57,7 +56,7 @@ fn the_web_survives_the_fill() {
         t.paint.brush.thread_opacity = 0.5;
         t.paint.brush.stroke_method = StrokeMethod::Space;
         if solid {
-            t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_LINE_SOLID));
+            t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_LINE_SOLID));
         }
         let c = 128.0f32;
         t.on_canvas_pointer(cp([c - 40.0, c], PointerPhase::Down));
@@ -125,7 +124,7 @@ fn the_fill_writes_nothing_outside_the_rect_it_saved() {
         let events = 40usize;
         let mut t = tool(side, PaintMedia::Digital, 5.0);
         if solid {
-            t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_LINE_SOLID));
+            t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_LINE_SOLID));
         }
         t.toggle_brush_tiling(0);
         t.on_canvas_pointer(cp(path(0, events), PointerPhase::Down));

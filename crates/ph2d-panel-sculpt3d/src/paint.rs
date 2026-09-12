@@ -64,7 +64,7 @@ pub(crate) fn paint(_state: &mut Sculpt3dPanelState, ctx: &mut PaintCtx) {
         paint_panel_empty(
             rect,
             tr("panel.sculpt3d.title"),
-            ids::SCULPT3D_CLOSE,
+            crate::ids::SCULPT3D_CLOSE,
             tr("panel.sculpt3d.empty"),
             ctx.scene,
             ctx.text_system,
@@ -99,7 +99,7 @@ pub(crate) fn paint(_state: &mut Sculpt3dPanelState, ctx: &mut PaintCtx) {
     );
     paint_panel_close_button(
         rect,
-        ids::SCULPT3D_CLOSE,
+        crate::ids::SCULPT3D_CLOSE,
         ctx.host.hit_index_mut(),
         ctx.scene,
         theme,

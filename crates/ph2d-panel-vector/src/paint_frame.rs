@@ -37,7 +37,7 @@ impl BodyCtx<'_> {
             return y;
         }
         let (mut y, collapsed) = self.section_header(
-            ids::VECTOR_SECTION_FRAME,
+            ph2d_tool_vector::ids::VECTOR_SECTION_FRAME,
             tr("panel.vector.section.frame"),
             y,
         );

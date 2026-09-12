@@ -19,11 +19,11 @@ const PAD_OFFSET: f32 = -(ph2d_tool_padding::params::PAD_SLIDER_FULL_SCALE as f3
 ph2d_editor_core::panel_seam! {
     state: PaddingPanelState,
     sliders: [
-        (ids::PAD_TOP, ids::PAD_TOP_NUM, PAD_SCALE, PAD_OFFSET),
-        (ids::PAD_RIGHT, ids::PAD_RIGHT_NUM, PAD_SCALE, PAD_OFFSET),
-        (ids::PAD_BOTTOM, ids::PAD_BOTTOM_NUM, PAD_SCALE, PAD_OFFSET),
-        (ids::PAD_LEFT, ids::PAD_LEFT_NUM, PAD_SCALE, PAD_OFFSET),
+        (ph2d_tool_padding::ids::PAD_TOP, ph2d_tool_padding::ids::PAD_TOP_NUM, PAD_SCALE, PAD_OFFSET),
+        (ph2d_tool_padding::ids::PAD_RIGHT, ph2d_tool_padding::ids::PAD_RIGHT_NUM, PAD_SCALE, PAD_OFFSET),
+        (ph2d_tool_padding::ids::PAD_BOTTOM, ph2d_tool_padding::ids::PAD_BOTTOM_NUM, PAD_SCALE, PAD_OFFSET),
+        (ph2d_tool_padding::ids::PAD_LEFT, ph2d_tool_padding::ids::PAD_LEFT_NUM, PAD_SCALE, PAD_OFFSET),
     ],
-    forward_buttons: [ids::PAD_APPLY, ids::PAD_RESET, ids::PAD_PIVOT_RECENTER],
+    forward_buttons: [ph2d_tool_padding::ids::PAD_APPLY, ph2d_tool_padding::ids::PAD_RESET, ph2d_tool_padding::ids::PAD_PIVOT_RECENTER],
     cancel_buttons: [ids::PAD_CANCEL],
 }

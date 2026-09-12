@@ -174,9 +174,7 @@ fn the_films_two_halves_agree_on_the_rim() {
 fn the_impasto_smooth_edges_click_flips_the_mode() {
     let mut t = imp_tool(16, 4.0);
     assert!(t.paint.brush.impasto_smooth_edges, "default is smooth");
-    let ev = ph2d_editor_core::tool::PanelEvent::Click(
-        ph2d_editor_core::ids::PAINTER_IMPASTO_SMOOTH_EDGES,
-    );
+    let ev = ph2d_editor_core::tool::PanelEvent::Click(crate::ids::PAINTER_IMPASTO_SMOOTH_EDGES);
     assert!(t.route_brush_impasto_event(&ev), "click must be consumed");
     assert!(
         !t.paint.brush.impasto_smooth_edges,

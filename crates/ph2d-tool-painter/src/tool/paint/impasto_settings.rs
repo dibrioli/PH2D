@@ -48,125 +48,124 @@ impl PainterTool {
     /// Route the Impasto section's controls from the panel's generic channel to the setters below.
     /// Returns `true` when it consumed the event. Called from `handle_panel_event`.
     pub(crate) fn route_brush_impasto_event(&mut self, event: &PanelEvent) -> bool {
-        use ph2d_editor_core::ids as core_ids;
         match event {
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_IMPASTO_TOOL_DEPOSIT => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_IMPASTO_TOOL_DEPOSIT => {
                 self.set_impasto_tool(super::impasto_tool::IMPASTO_TOOL_DEPOSIT);
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_IMPASTO_TOOL_KNIFE => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_IMPASTO_TOOL_KNIFE => {
                 self.set_impasto_tool(super::impasto_tool::IMPASTO_TOOL_KNIFE);
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_IMPASTO_SMOOTH_EDGES => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_IMPASTO_SMOOTH_EDGES => {
                 self.toggle_impasto_smooth_edges();
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_IMPASTO_RESET => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_IMPASTO_RESET => {
                 self.reset_brush_impasto();
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_IMPASTO_SOURCE_UNIFORM => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_IMPASTO_SOURCE_UNIFORM => {
                 self.set_brush_impasto_source(DepthSource::Uniform.to_u8());
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_IMPASTO_SOURCE_GRAIN => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_IMPASTO_SOURCE_GRAIN => {
                 self.set_brush_impasto_source(DepthSource::Grain.to_u8());
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_IMPASTO_DRAW_BOTH => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_IMPASTO_DRAW_BOTH => {
                 self.set_brush_impasto_draw_to(DrawTo::ColorAndDepth.to_u8());
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_IMPASTO_DRAW_COLOR => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_IMPASTO_DRAW_COLOR => {
                 self.set_brush_impasto_draw_to(DrawTo::Color.to_u8());
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_IMPASTO_DRAW_DEPTH => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_IMPASTO_DRAW_DEPTH => {
                 self.set_brush_impasto_draw_to(DrawTo::Depth.to_u8());
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_IMPASTO_SHOW => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_IMPASTO_SHOW => {
                 self.toggle_impasto_show();
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_IMPASTO_LIVE_EDIT => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_IMPASTO_LIVE_EDIT => {
                 self.toggle_impasto_live_edit();
                 true
             }
-            PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_IMPASTO_DEPTH => {
+            PanelEvent::SetValue(id, v) if *id == crate::ids::PAINTER_IMPASTO_DEPTH => {
                 self.set_brush_impasto_depth(*v as f32);
                 true
             }
-            PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_IMPASTO_SMOOTHING => {
+            PanelEvent::SetValue(id, v) if *id == crate::ids::PAINTER_IMPASTO_SMOOTHING => {
                 self.set_brush_impasto_smoothing(*v as f32);
                 true
             }
-            PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_IMPASTO_BODY => {
+            PanelEvent::SetValue(id, v) if *id == crate::ids::PAINTER_IMPASTO_BODY => {
                 self.set_brush_impasto_body(*v as f32);
                 true
             }
-            PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_IMPASTO_PUSH => {
+            PanelEvent::SetValue(id, v) if *id == crate::ids::PAINTER_IMPASTO_PUSH => {
                 self.set_brush_impasto_push(*v as f32);
                 true
             }
-            PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_IMPASTO_PLOW => {
+            PanelEvent::SetValue(id, v) if *id == crate::ids::PAINTER_IMPASTO_PLOW => {
                 self.set_brush_impasto_plow(*v as f32);
                 true
             }
-            PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_IMPASTO_LIGHT_ANGLE => {
+            PanelEvent::SetValue(id, v) if *id == crate::ids::PAINTER_IMPASTO_LIGHT_ANGLE => {
                 self.set_impasto_light_angle(*v as f32);
                 true
             }
-            PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_IMPASTO_LIGHT_ELEV => {
+            PanelEvent::SetValue(id, v) if *id == crate::ids::PAINTER_IMPASTO_LIGHT_ELEV => {
                 self.set_impasto_light_elevation(*v as f32);
                 true
             }
-            PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_IMPASTO_LIGHT_POWER => {
+            PanelEvent::SetValue(id, v) if *id == crate::ids::PAINTER_IMPASTO_LIGHT_POWER => {
                 self.set_impasto_light_intensity(*v as f32);
                 true
             }
-            PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_IMPASTO_SHINE => {
+            PanelEvent::SetValue(id, v) if *id == crate::ids::PAINTER_IMPASTO_SHINE => {
                 self.set_impasto_shine(*v as f32);
                 true
             }
-            PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_IMPASTO_ROUGHNESS => {
+            PanelEvent::SetValue(id, v) if *id == crate::ids::PAINTER_IMPASTO_ROUGHNESS => {
                 self.set_impasto_roughness(*v as f32);
                 true
             }
-            PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_IMPASTO_METALLIC => {
+            PanelEvent::SetValue(id, v) if *id == crate::ids::PAINTER_IMPASTO_METALLIC => {
                 self.set_impasto_metallic(*v as f32);
                 true
             }
-            PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_IMPASTO_WAX => {
+            PanelEvent::SetValue(id, v) if *id == crate::ids::PAINTER_IMPASTO_WAX => {
                 self.set_impasto_wax(*v as f32);
                 true
             }
             // The lamp SELECTOR — four chips, one router arm each. Spelled out rather than derived from
             // an index: the arch-gate that pairs a widget id with its handler reads THIS, and a loop over
             // ids it cannot see is how a chip that does nothing gets shipped.
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_IMPASTO_LIGHT_1 => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_IMPASTO_LIGHT_1 => {
                 self.select_impasto_light(0);
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_IMPASTO_LIGHT_2 => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_IMPASTO_LIGHT_2 => {
                 self.select_impasto_light(1);
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_IMPASTO_LIGHT_3 => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_IMPASTO_LIGHT_3 => {
                 self.select_impasto_light(2);
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_IMPASTO_LIGHT_4 => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_IMPASTO_LIGHT_4 => {
                 self.select_impasto_light(3);
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_IMPASTO_LIGHT_ON => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_IMPASTO_LIGHT_ON => {
                 self.toggle_impasto_light_on();
                 true
             }
             // The paint's WAX colour, read back from the shared OKLCH picker as "r,g,b" (sRGB bytes).
-            PanelEvent::SelectOption(id, v) if *id == core_ids::PAINTER_IMPASTO_WAX_COLOR => {
+            PanelEvent::SelectOption(id, v) if *id == crate::ids::PAINTER_IMPASTO_WAX_COLOR => {
                 let mut it = v.split(',').filter_map(|p| p.trim().parse::<u8>().ok());
                 if let (Some(r), Some(g), Some(b)) = (it.next(), it.next(), it.next()) {
                     self.set_impasto_wax_color([
@@ -178,7 +177,7 @@ impl PainterTool {
                 true
             }
             // The lamp's colour, read back from the shared OKLCH picker as "r,g,b" (sRGB bytes).
-            PanelEvent::SelectOption(id, v) if *id == core_ids::PAINTER_IMPASTO_LIGHT_COLOR => {
+            PanelEvent::SelectOption(id, v) if *id == crate::ids::PAINTER_IMPASTO_LIGHT_COLOR => {
                 let mut it = v.split(',').filter_map(|p| p.trim().parse::<u8>().ok());
                 if let (Some(r), Some(g), Some(b)) = (it.next(), it.next(), it.next()) {
                     self.set_impasto_light_color([

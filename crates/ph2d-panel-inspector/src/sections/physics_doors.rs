@@ -48,11 +48,11 @@ pub(super) fn paint_empty_face(
     );
     yy += h;
     let btn_rect = Rect::new(x, yy, w, h);
-    let btn = Button::new(ids::INSP_PHYS_ADD, "Add Physics Body")
+    let btn = Button::new(crate::ids::INSP_PHYS_ADD, "Add Physics Body")
         .kind(ButtonKind::Default)
-        .visual(store.button_visual(ids::INSP_PHYS_ADD));
+        .visual(store.button_visual(crate::ids::INSP_PHYS_ADD));
     paint_button(&btn, btn_rect, scene, text_system, theme);
-    hit_index.register(ids::INSP_PHYS_ADD, btn_rect);
+    hit_index.register(crate::ids::INSP_PHYS_ADD, btn_rect);
     yy += h;
     // **A TERCEIRA porta** (W-Compound): as duas acima fazem um CORPO; esta faz
     // desta forma mais uma peça do corpo que já existe acima na árvore. Só é
@@ -62,13 +62,13 @@ pub(super) fn paint_empty_face(
     if !info.part_owner.is_empty() {
         let rect = Rect::new(x, yy, w, h);
         let btn = Button::new(
-            ids::INSP_PHYS_ADD_SHAPE,
+            crate::ids::INSP_PHYS_ADD_SHAPE,
             format!("Add Shape to {}", info.part_owner),
         )
         .kind(ButtonKind::Default)
-        .visual(store.button_visual(ids::INSP_PHYS_ADD_SHAPE));
+        .visual(store.button_visual(crate::ids::INSP_PHYS_ADD_SHAPE));
         paint_button(&btn, rect, scene, text_system, theme);
-        hit_index.register(ids::INSP_PHYS_ADD_SHAPE, rect);
+        hit_index.register(crate::ids::INSP_PHYS_ADD_SHAPE, rect);
         yy += h;
     }
     // **E a segunda resposta à mesma pergunta** (W-Rig): a porta acima torna
@@ -83,13 +83,13 @@ pub(super) fn paint_empty_face(
     if info.rig_parts > 0 {
         let rect = Rect::new(x, yy, w, h);
         let btn = Button::new(
-            ids::INSP_PHYS_RIG,
+            crate::ids::INSP_PHYS_RIG,
             super::physics_join_rows::rig_button_label(info.rig_parts),
         )
         .kind(ButtonKind::Default)
-        .visual(store.button_visual(ids::INSP_PHYS_RIG));
+        .visual(store.button_visual(crate::ids::INSP_PHYS_RIG));
         paint_button(&btn, rect, scene, text_system, theme);
-        hit_index.register(ids::INSP_PHYS_RIG, rect);
+        hit_index.register(crate::ids::INSP_PHYS_RIG, rect);
         yy += h;
     }
     yy + SECTION_BOTTOM_PAD_PX
@@ -124,8 +124,8 @@ pub(super) fn paint_part_doors(
     let mut yy = y;
     let h = ROW_H_PX;
     for (id, label) in [
-        (ids::INSP_PHYS_ADD, "Make Independent Body"),
-        (ids::INSP_PHYS_REMOVE, "Remove Shape"),
+        (crate::ids::INSP_PHYS_ADD, "Make Independent Body"),
+        (crate::ids::INSP_PHYS_REMOVE, "Remove Shape"),
     ] {
         let rect = Rect::new(x, yy, w, h);
         let btn = Button::new(id, label)

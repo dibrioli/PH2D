@@ -12,7 +12,6 @@
 
 use crate::state;
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::screens::hero::JointFieldEdit;
@@ -23,15 +22,15 @@ pub(crate) fn apply_joint_event(host: &mut dyn PanelHostInternal, ev: WidgetEven
     };
     let edit = match ev {
         WidgetEvent::Click(id) => {
-            if id == ids::INSP_JOINT_REMOVE {
+            if id == crate::ids::INSP_JOINT_REMOVE {
                 Some(JointFieldEdit::Remove)
-            } else if id == ids::INSP_JOINT_ADD_WHEEL {
+            } else if id == crate::ids::INSP_JOINT_ADD_WHEEL {
                 Some(JointFieldEdit::AddWheel)
-            } else if id == ids::INSP_JOINT_SWAP {
+            } else if id == crate::ids::INSP_JOINT_SWAP {
                 Some(JointFieldEdit::Swap)
-            } else if id == ids::INSP_JOINT_COPY {
+            } else if id == crate::ids::INSP_JOINT_COPY {
                 Some(JointFieldEdit::CopyProperties)
-            } else if id == ids::INSP_JOINT_PASTE {
+            } else if id == crate::ids::INSP_JOINT_PASTE {
                 // ⚠️ Roteado sem perguntar se há o que colar: quem RECUSA é a
                 // shell, dona da área de transferência. O painel recusaria com
                 // uma cópia da mesma pergunta (`paste_targets > 0`), e duas
@@ -40,32 +39,38 @@ pub(crate) fn apply_joint_event(host: &mut dyn PanelHostInternal, ev: WidgetEven
                 // nesse caso, então esta rota só é alcançada por um clique real
                 // num botão que existe.
                 Some(JointFieldEdit::PasteProperties)
-            } else if id == ids::INSP_JOINT_PICK_A {
+            } else if id == crate::ids::INSP_JOINT_PICK_A {
                 Some(JointFieldEdit::PickBodyA)
-            } else if id == ids::INSP_JOINT_PICK_B {
+            } else if id == crate::ids::INSP_JOINT_PICK_B {
                 Some(JointFieldEdit::PickBodyB)
-            } else if let Some(i) = ids::INSP_JOINT_KIND.iter().position(|&o| o == id) {
+            } else if let Some(i) = crate::ids::INSP_JOINT_KIND.iter().position(|&o| o == id) {
                 Some(JointFieldEdit::Kind(i as u8))
-            } else if let Some(i) = ids::INSP_JOINT_LIMITS.iter().position(|&o| o == id) {
+            } else if let Some(i) = crate::ids::INSP_JOINT_LIMITS.iter().position(|&o| o == id) {
                 Some(JointFieldEdit::LimitsEnabled(i == 1))
-            } else if let Some(i) = ids::INSP_JOINT_MOTOR.iter().position(|&o| o == id) {
+            } else if let Some(i) = crate::ids::INSP_JOINT_MOTOR.iter().position(|&o| o == id) {
                 Some(JointFieldEdit::MotorEnabled(i == 1))
-            } else if let Some(i) = ids::INSP_JOINT_BREAK.iter().position(|&o| o == id) {
+            } else if let Some(i) = crate::ids::INSP_JOINT_BREAK.iter().position(|&o| o == id) {
                 Some(JointFieldEdit::BreakEnabled(i == 1))
-            } else if let Some(i) = ids::INSP_JOINT_ACTIVE.iter().position(|&o| o == id) {
+            } else if let Some(i) = crate::ids::INSP_JOINT_ACTIVE.iter().position(|&o| o == id) {
                 Some(JointFieldEdit::Active(i == 1))
-            } else if let Some(i) = ids::INSP_JOINT_COLLIDE.iter().position(|&o| o == id) {
+            } else if let Some(i) = crate::ids::INSP_JOINT_COLLIDE.iter().position(|&o| o == id) {
                 Some(JointFieldEdit::CollideConnected(i == 1))
-            } else if let Some(i) = ids::INSP_JOINT_ANCHOR_B.iter().position(|&o| o == id) {
+            } else if let Some(i) = crate::ids::INSP_JOINT_ANCHOR_B
+                .iter()
+                .position(|&o| o == id)
+            {
                 Some(JointFieldEdit::AnchorToWorld(i == 1))
-            } else if let Some(i) = ids::INSP_JOINT_SOFT.iter().position(|&o| o == id) {
+            } else if let Some(i) = crate::ids::INSP_JOINT_SOFT.iter().position(|&o| o == id) {
                 Some(JointFieldEdit::Soft(i == 1))
-            } else if let Some(i) = ids::INSP_JOINT_MOTOR_AXIS.iter().position(|&o| o == id) {
+            } else if let Some(i) = crate::ids::INSP_JOINT_MOTOR_AXIS
+                .iter()
+                .position(|&o| o == id)
+            {
                 Some(JointFieldEdit::MotorAxis(i as u8))
             } else if let Some(e) = axis_mode_edit(id) {
                 Some(e)
             } else {
-                ids::INSP_JOINT_MOTOR_MODE
+                crate::ids::INSP_JOINT_MOTOR_MODE
                     .iter()
                     .position(|&o| o == id)
                     .map(|i| JointFieldEdit::MotorMode(i as u8))
@@ -74,17 +79,17 @@ pub(crate) fn apply_joint_event(host: &mut dyn PanelHostInternal, ev: WidgetEven
         WidgetEvent::ValueChanged(id) => {
             let v = host.store().number_value(id).unwrap_or(0.0) as f32;
             match id {
-                ids::INSP_JOINT_LIMIT_MIN => Some(JointFieldEdit::LimitMin(v)),
-                ids::INSP_JOINT_LIMIT_MAX => Some(JointFieldEdit::LimitMax(v)),
-                ids::INSP_JOINT_MOTOR_SPEED => Some(JointFieldEdit::MotorSpeed(v)),
-                ids::INSP_JOINT_MOTOR_TARGET => Some(JointFieldEdit::MotorTarget(v)),
-                ids::INSP_JOINT_MOTOR_FORCE => Some(JointFieldEdit::MotorMaxForce(v)),
-                ids::INSP_JOINT_REST_LENGTH => Some(JointFieldEdit::RestLength(v)),
-                ids::INSP_JOINT_STIFFNESS => Some(JointFieldEdit::Stiffness(v)),
-                ids::INSP_JOINT_DAMPING => Some(JointFieldEdit::Damping(v)),
-                ids::INSP_JOINT_MAX_LENGTH => Some(JointFieldEdit::MaxLength(v)),
-                ids::INSP_JOINT_BREAK_FORCE => Some(JointFieldEdit::BreakForce(v)),
-                ids::INSP_JOINT_BREAK_TORQUE => Some(JointFieldEdit::BreakTorque(v)),
+                crate::ids::INSP_JOINT_LIMIT_MIN => Some(JointFieldEdit::LimitMin(v)),
+                crate::ids::INSP_JOINT_LIMIT_MAX => Some(JointFieldEdit::LimitMax(v)),
+                crate::ids::INSP_JOINT_MOTOR_SPEED => Some(JointFieldEdit::MotorSpeed(v)),
+                crate::ids::INSP_JOINT_MOTOR_TARGET => Some(JointFieldEdit::MotorTarget(v)),
+                crate::ids::INSP_JOINT_MOTOR_FORCE => Some(JointFieldEdit::MotorMaxForce(v)),
+                crate::ids::INSP_JOINT_REST_LENGTH => Some(JointFieldEdit::RestLength(v)),
+                crate::ids::INSP_JOINT_STIFFNESS => Some(JointFieldEdit::Stiffness(v)),
+                crate::ids::INSP_JOINT_DAMPING => Some(JointFieldEdit::Damping(v)),
+                crate::ids::INSP_JOINT_MAX_LENGTH => Some(JointFieldEdit::MaxLength(v)),
+                crate::ids::INSP_JOINT_BREAK_FORCE => Some(JointFieldEdit::BreakForce(v)),
+                crate::ids::INSP_JOINT_BREAK_TORQUE => Some(JointFieldEdit::BreakTorque(v)),
                 _ => axis_limit_edit(id, v),
             }
         }
@@ -107,7 +112,7 @@ pub(crate) fn apply_joint_event(host: &mut dyn PanelHostInternal, ev: WidgetEven
 /// modo pela posição, e uma segunda lista seria a que apodrece no dia em que um
 /// quarto modo chegar (a lição do `ADDPROP_BUTTONS`, um painel adiante).
 fn axis_mode_edit(id: ph2d_a11y::NodeId) -> Option<JointFieldEdit> {
-    for (ax, group) in ids::INSP_JOINT_AXIS_MODE.iter().enumerate() {
+    for (ax, group) in crate::ids::INSP_JOINT_AXIS_MODE.iter().enumerate() {
         if let Some(mode) = group.iter().position(|&o| o == id) {
             return Some(JointFieldEdit::AxisMode(ax as u8, mode as u8));
         }
@@ -117,10 +122,13 @@ fn axis_mode_edit(id: ph2d_a11y::NodeId) -> Option<JointFieldEdit> {
 
 /// O valor digitado num batente por eixo — `Min` e `Max`, pela mesma varredura.
 fn axis_limit_edit(id: ph2d_a11y::NodeId, v: f32) -> Option<JointFieldEdit> {
-    if let Some(ax) = ids::INSP_JOINT_AXIS_MIN.iter().position(|&o| o == id) {
+    if let Some(ax) = crate::ids::INSP_JOINT_AXIS_MIN
+        .iter()
+        .position(|&o| o == id)
+    {
         return Some(JointFieldEdit::AxisMin(ax as u8, v));
     }
-    ids::INSP_JOINT_AXIS_MAX
+    crate::ids::INSP_JOINT_AXIS_MAX
         .iter()
         .position(|&o| o == id)
         .map(|ax| JointFieldEdit::AxisMax(ax as u8, v))

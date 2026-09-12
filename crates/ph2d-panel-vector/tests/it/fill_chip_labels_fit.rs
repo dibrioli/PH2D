@@ -23,7 +23,7 @@
 
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_vector::state::{FillKind, VectorPanelState};
-use ph2d_panel_vector::{VectorPanel, ids, state};
+use ph2d_panel_vector::{VectorPanel, state};
 use ph2d_text::TextSystem;
 use ph2d_tokens::TypeToken;
 use ph2d_ui_testkit::MockPanelHost;
@@ -53,11 +53,11 @@ fn every_fill_kind_chip_label_fits_its_chip() {
     let mut text = TextSystem::without_system_fonts();
     let size = TypeToken::Sm.px();
     let chips = [
-        (ids::VECTOR_FILL_KIND_SOLID, "Solid"),
-        (ids::VECTOR_FILL_KIND_LINEAR, "Linear"),
-        (ids::VECTOR_FILL_KIND_RADIAL, "Radial"),
-        (ids::VECTOR_FILL_KIND_MULTI, "Multi"),
-        (ids::VECTOR_FILL_KIND_PATTERN, "Pattern"),
+        (ph2d_tool_vector::ids::VECTOR_FILL_KIND_SOLID, "Solid"),
+        (ph2d_tool_vector::ids::VECTOR_FILL_KIND_LINEAR, "Linear"),
+        (ph2d_tool_vector::ids::VECTOR_FILL_KIND_RADIAL, "Radial"),
+        (ph2d_tool_vector::ids::VECTOR_FILL_KIND_MULTI, "Multi"),
+        (ph2d_tool_vector::ids::VECTOR_FILL_KIND_PATTERN, "Pattern"),
     ];
     let mut tightest: Option<(&str, f32)> = None;
     let mut chip_w = 0.0f32;

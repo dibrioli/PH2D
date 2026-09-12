@@ -22,6 +22,7 @@
 
 pub mod compositor;
 pub mod icon;
+pub mod ids;
 pub mod layers;
 pub mod params;
 /// Copiar um plano canvas-shaped, em paralelo — o primitivo que a porta de fork e o motor de delta

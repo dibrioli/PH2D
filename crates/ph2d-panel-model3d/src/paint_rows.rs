@@ -10,7 +10,6 @@
 //! ⚠️ **Neste arquivo, como no irmão, toda função de pintura devolve o Y SEGUINTE** — e a razão
 //! está escrita no doc do [`paint_row`]: misturar as duas convenções foi um smoke reprovado.
 
-use ph2d_editor_core::ids;
 use ph2d_editor_core::paint::{paint_text_block, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::panel_chrome::paint_segmented_group_adaptive;
@@ -59,8 +58,8 @@ pub(crate) fn paint_row(
     // ⚠️ **O id vem da POSIÇÃO da linha, nunca da entidade.** O `populate` corre antes de a peça
     // existir e cunha a família às cegas (ver `MAX_ROWS`); os bits de uma entidade não cabem numa
     // família de 64. A entidade viaja no intent, que é onde ela importa.
-    let slider = ids::model3d_radius_slider(slot);
-    let chip = ids::model3d_radius_chip(slot);
+    let slider = crate::ids::model3d_radius_slider(slot);
+    let chip = crate::ids::model3d_radius_chip(slot);
     // ⚠️ **DUAS pontas, e o piso não é zero em toda linha.** Uma posição vai para os dois lados da
     // origem e um ângulo para os dois lados do zero; escrever `0.0` aqui — como esta função fazia —
     // era o que tornava um número negativo indigitável, em silêncio (ver `ParamRow::lo`).
@@ -211,7 +210,7 @@ fn paint_choice(ctx: &mut PaintCtx, row: &ParamRow, slot: u32, x: f32, w: f32, y
             (
                 tr(k),
                 i == escolhido,
-                ids::model3d_choice_button(slot, i as u32),
+                crate::ids::model3d_choice_button(slot, i as u32),
             )
         })
         .collect();

@@ -199,27 +199,25 @@ pub fn publish(
             .blender_picker(ph2d_editor_core::ids::INSP_BLENDER_PICKER)
             .map(|(value, _, _, _)| value.rgba);
         match (hero.store.picker_target(), picked) {
-            (Some(id), Some(rgba)) if id == ph2d_editor_core::ids::FLIP_STROKE_SWATCH => {
+            (Some(id), Some(rgba)) if id == ph2d_panel_flip::ids::FLIP_STROKE_SWATCH => {
                 tool.set_stroke_rgba(rgba);
             }
-            (Some(id), Some(rgba)) if id == ph2d_editor_core::ids::FLIP_FILL_SWATCH => {
+            (Some(id), Some(rgba)) if id == ph2d_panel_flip::ids::FLIP_FILL_SWATCH => {
                 tool.set_fill_rgba(rgba);
             }
             // C2: a cor do próximo rabisco do Colorize (paleta própria).
-            (Some(id), Some(rgba)) if id == ph2d_editor_core::ids::FLIP_COLORIZE_SWATCH => {
+            (Some(id), Some(rgba)) if id == ph2d_panel_flip::ids::FLIP_COLORIZE_SWATCH => {
                 tool.set_colorize_rgba(rgba);
             }
             _ => {}
         }
         // Seed the swatches' stored colour so the picker opens on the live colour.
-        hero.store.set_widget_color(
-            ph2d_editor_core::ids::FLIP_STROKE_SWATCH,
-            tool.stroke_rgba(),
-        );
         hero.store
-            .set_widget_color(ph2d_editor_core::ids::FLIP_FILL_SWATCH, tool.fill_rgba());
+            .set_widget_color(ph2d_panel_flip::ids::FLIP_STROKE_SWATCH, tool.stroke_rgba());
+        hero.store
+            .set_widget_color(ph2d_panel_flip::ids::FLIP_FILL_SWATCH, tool.fill_rgba());
         hero.store.set_widget_color(
-            ph2d_editor_core::ids::FLIP_COLORIZE_SWATCH,
+            ph2d_panel_flip::ids::FLIP_COLORIZE_SWATCH,
             tool.colorize_rgba(),
         );
         Some(tool.ui_snapshot())

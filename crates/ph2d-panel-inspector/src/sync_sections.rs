@@ -15,7 +15,6 @@
 //! escrito pelo **motor** (uma animação de uma volta pára-se sozinha) — e uma caixa presa a uma
 //! aresta de seleção não tem como saber disso. Detalhe no [`sync_anim_fields`].
 
-use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::widget::{CheckboxValue, SliderState};
@@ -123,22 +122,31 @@ fn sync_audio_fields(
     let focus = host.store().focus_id();
     let drag = host.store().number_input_drag().map(|d| d.id);
     for (id, v) in [
-        (ids::INSP_AUDIO_VOLUME, f64::from(src.volume_db)),
-        (ids::INSP_AUDIO_PITCH, f64::from(src.pitch)),
-        (ids::INSP_AUDIO_MAX_DIST, f64::from(src.max_distance)),
-        (ids::INSP_AUDIO_ATTENUATION, f64::from(src.attenuation)),
+        (crate::ids::INSP_AUDIO_VOLUME, f64::from(src.volume_db)),
+        (crate::ids::INSP_AUDIO_PITCH, f64::from(src.pitch)),
+        (crate::ids::INSP_AUDIO_MAX_DIST, f64::from(src.max_distance)),
         (
-            ids::INSP_AUDIO_RADIUS,
+            crate::ids::INSP_AUDIO_ATTENUATION,
+            f64::from(src.attenuation),
+        ),
+        (
+            crate::ids::INSP_AUDIO_RADIUS,
             f64::from(src.non_spatialized_radius),
         ),
-        (ids::INSP_AUDIO_PANNING, f64::from(src.panning_strength)),
-        (ids::INSP_AUDIO_POLYPHONY, f64::from(src.max_polyphony)),
+        (
+            crate::ids::INSP_AUDIO_PANNING,
+            f64::from(src.panning_strength),
+        ),
+        (
+            crate::ids::INSP_AUDIO_POLYPHONY,
+            f64::from(src.max_polyphony),
+        ),
     ] {
         if focus != Some(id) && drag != Some(id) {
             host.store_mut().set_number_value(id, v);
         }
     }
-    write_text(host, ids::INSP_AUDIO_SOUND, &src.sound);
+    write_text(host, crate::ids::INSP_AUDIO_SOUND, &src.sound);
 }
 
 /// Semeia os campos da secção CAMERA a partir do snapshot.
@@ -155,8 +163,8 @@ fn sync_camera_fields(
     seed: bool,
 ) {
     for (id, on) in [
-        (ids::INSP_CAMERA_ACTIVE, cam.camera.active),
-        (ids::INSP_CAMERA_PREVIEW, cam.preview_on),
+        (crate::ids::INSP_CAMERA_ACTIVE, cam.camera.active),
+        (crate::ids::INSP_CAMERA_PREVIEW, cam.preview_on),
     ] {
         if let Some(InteractiveState::Checkbox { value, .. }) = host.store_mut().get_mut(id) {
             *value = if on {
@@ -166,7 +174,7 @@ fn sync_camera_fields(
             };
         }
     }
-    for (bit, &id) in ids::INSP_CAMERA_CULL_BIT.iter().enumerate() {
+    for (bit, &id) in crate::ids::INSP_CAMERA_CULL_BIT.iter().enumerate() {
         let on = cam.camera.cull_mask & (1u32 << bit) != 0;
         if let Some(InteractiveState::Checkbox { value, .. }) = host.store_mut().get_mut(id) {
             *value = if on {
@@ -182,30 +190,42 @@ fn sync_camera_fields(
     let focus = host.store().focus_id();
     let drag = host.store().number_input_drag().map(|d| d.id);
     let mut numeros: Vec<(ph2d_a11y::NodeId, f64)> = vec![
-        (ids::INSP_CAMERA_HEIGHT, f64::from(cam.camera.height_world)),
-        (ids::INSP_CAMERA_OFFSET_X, f64::from(cam.camera.offset[0])),
-        (ids::INSP_CAMERA_OFFSET_Y, f64::from(cam.camera.offset[1])),
-        (ids::INSP_CAMERA_PRIORITY, f64::from(cam.camera.priority)),
+        (
+            crate::ids::INSP_CAMERA_HEIGHT,
+            f64::from(cam.camera.height_world),
+        ),
+        (
+            crate::ids::INSP_CAMERA_OFFSET_X,
+            f64::from(cam.camera.offset[0]),
+        ),
+        (
+            crate::ids::INSP_CAMERA_OFFSET_Y,
+            f64::from(cam.camera.offset[1]),
+        ),
+        (
+            crate::ids::INSP_CAMERA_PRIORITY,
+            f64::from(cam.camera.priority),
+        ),
     ];
     if let Some(f) = cam.follow.as_ref() {
         numeros.extend([
-            (ids::INSP_CAMERA_DAMP_X, f64::from(f.damping[0])),
-            (ids::INSP_CAMERA_DAMP_Y, f64::from(f.damping[1])),
-            (ids::INSP_CAMERA_DEAD_X, f64::from(f.dead_zone[0])),
-            (ids::INSP_CAMERA_DEAD_Y, f64::from(f.dead_zone[1])),
-            (ids::INSP_CAMERA_LOOK_X, f64::from(f.lookahead[0])),
-            (ids::INSP_CAMERA_LOOK_Y, f64::from(f.lookahead[1])),
-            (ids::INSP_CAMERA_FOLLOW_OFF_X, f64::from(f.offset[0])),
-            (ids::INSP_CAMERA_FOLLOW_OFF_Y, f64::from(f.offset[1])),
+            (crate::ids::INSP_CAMERA_DAMP_X, f64::from(f.damping[0])),
+            (crate::ids::INSP_CAMERA_DAMP_Y, f64::from(f.damping[1])),
+            (crate::ids::INSP_CAMERA_DEAD_X, f64::from(f.dead_zone[0])),
+            (crate::ids::INSP_CAMERA_DEAD_Y, f64::from(f.dead_zone[1])),
+            (crate::ids::INSP_CAMERA_LOOK_X, f64::from(f.lookahead[0])),
+            (crate::ids::INSP_CAMERA_LOOK_Y, f64::from(f.lookahead[1])),
+            (crate::ids::INSP_CAMERA_FOLLOW_OFF_X, f64::from(f.offset[0])),
+            (crate::ids::INSP_CAMERA_FOLLOW_OFF_Y, f64::from(f.offset[1])),
         ]);
-        write_text(host, ids::INSP_CAMERA_TARGET, &f.target);
+        write_text(host, crate::ids::INSP_CAMERA_TARGET, &f.target);
     }
     if let Some(l) = cam.limits.as_ref() {
         numeros.extend([
-            (ids::INSP_CAMERA_MIN_X, f64::from(l.min[0])),
-            (ids::INSP_CAMERA_MIN_Y, f64::from(l.min[1])),
-            (ids::INSP_CAMERA_MAX_X, f64::from(l.max[0])),
-            (ids::INSP_CAMERA_MAX_Y, f64::from(l.max[1])),
+            (crate::ids::INSP_CAMERA_MIN_X, f64::from(l.min[0])),
+            (crate::ids::INSP_CAMERA_MIN_Y, f64::from(l.min[1])),
+            (crate::ids::INSP_CAMERA_MAX_X, f64::from(l.max[0])),
+            (crate::ids::INSP_CAMERA_MAX_Y, f64::from(l.max[1])),
         ]);
     }
     for (id, v) in numeros {
@@ -235,8 +255,8 @@ fn sync_timer_fields(
         return;
     };
     for (id, on) in [
-        (ids::INSP_TIMER_REPEAT, row.repeat),
-        (ids::INSP_TIMER_AUTOSTART, row.autostart),
+        (crate::ids::INSP_TIMER_REPEAT, row.repeat),
+        (crate::ids::INSP_TIMER_AUTOSTART, row.autostart),
     ] {
         if let Some(InteractiveState::Checkbox { value, .. }) = host.store_mut().get_mut(id) {
             *value = if on {
@@ -249,15 +269,17 @@ fn sync_timer_fields(
     if !seed {
         return;
     }
-    if focus != Some(ids::INSP_TIMER_DURATION) && drag != Some(ids::INSP_TIMER_DURATION) {
+    if focus != Some(crate::ids::INSP_TIMER_DURATION)
+        && drag != Some(crate::ids::INSP_TIMER_DURATION)
+    {
         host.store_mut()
-            .set_number_value(ids::INSP_TIMER_DURATION, f64::from(row.duration_s));
+            .set_number_value(crate::ids::INSP_TIMER_DURATION, f64::from(row.duration_s));
     }
     // ⚠️ **Os DOIS campos de texto pelo mesmo laço** — o nome e o do sinal. Um deles espelhado à
     // mão ao lado do outro é como o segundo nasce sem `sync` e mostra o valor do timer ANTERIOR.
     for (id, value) in [
-        (ids::INSP_TIMER_NAME, &row.name),
-        (ids::INSP_TIMER_SIGNAL, &row.signal),
+        (crate::ids::INSP_TIMER_NAME, &row.name),
+        (crate::ids::INSP_TIMER_SIGNAL, &row.signal),
     ] {
         // O campo em FOCO é do dedo: reescrevê-lo enquanto se digita apagaria a letra.
         if focus == Some(id) {
@@ -297,7 +319,7 @@ fn sync_anim_fields(
             host.store_mut().set_number_value(id, v);
         }
     };
-    put(host, ids::INSP_ANIM_SPEED, f64::from(an.speed));
+    put(host, crate::ids::INSP_ANIM_SPEED, f64::from(an.speed));
     // ⚠️ **A barra de frames espelha o mundo — MENOS enquanto o dedo a segura.** Ela pinta-se do
     // snapshot, então o valor guardado no store só serve ao despachante (que compara com ele para
     // decidir se houve mudança) e à a11y. Deixá-lo parado faria um segundo clique no MESMO sítio
@@ -307,11 +329,11 @@ fn sync_anim_fields(
     // um quadro atrás, e o polegar recuaria sob o dedo a cada quadro.
     if let Some(pos) = an.scrub_position()
         && !matches!(
-            host.store().slider(ids::INSP_ANIM_FRAME_SCRUB),
+            host.store().slider(crate::ids::INSP_ANIM_FRAME_SCRUB),
             Some((SliderState::Dragging, _))
         )
         && let Some(InteractiveState::Slider { value, .. }) =
-            host.store_mut().get_mut(ids::INSP_ANIM_FRAME_SCRUB)
+            host.store_mut().get_mut(crate::ids::INSP_ANIM_FRAME_SCRUB)
     {
         *value = pos;
     }
@@ -326,8 +348,8 @@ fn sync_anim_fields(
     // MOTOR muda o facto (uma animação de uma volta pára-se sozinha). *Um valor que ninguém usa
     // para decidir tem de acompanhar quem decide, senão é só um segundo estado a envelhecer.*
     for (id, on) in [
-        (ids::INSP_ANIM_PLAYING, an.playing),
-        (ids::INSP_ANIM_AUTOPLAY, an.autoplay),
+        (crate::ids::INSP_ANIM_PLAYING, an.playing),
+        (crate::ids::INSP_ANIM_AUTOPLAY, an.autoplay),
     ] {
         if let Some(InteractiveState::Checkbox { value, .. }) = host.store_mut().get_mut(id) {
             *value = if on {
@@ -338,22 +360,26 @@ fn sync_anim_fields(
         }
     }
     if let Some(row) = an.rows.get(selected) {
-        put(host, ids::INSP_ANIM_FROM, f64::from(row.from));
-        put(host, ids::INSP_ANIM_TO, f64::from(row.to));
-        put(host, ids::INSP_ANIM_FRAME_MS, f64::from(row.frame_ms));
-        put(host, ids::INSP_ANIM_HOLD_MS, f64::from(row.hold_ms));
+        put(host, crate::ids::INSP_ANIM_FROM, f64::from(row.from));
+        put(host, crate::ids::INSP_ANIM_TO, f64::from(row.to));
         put(
             host,
-            ids::INSP_ANIM_DELAY_MS,
+            crate::ids::INSP_ANIM_FRAME_MS,
+            f64::from(row.frame_ms),
+        );
+        put(host, crate::ids::INSP_ANIM_HOLD_MS, f64::from(row.hold_ms));
+        put(
+            host,
+            crate::ids::INSP_ANIM_DELAY_MS,
             f64::from(row.repeat_delay_ms),
         );
-        put(host, ids::INSP_ANIM_REPEAT, f64::from(row.repeat));
+        put(host, crate::ids::INSP_ANIM_REPEAT, f64::from(row.repeat));
     }
     // ⚠️ **A duração DESTA célula não vem da linha, vem do FRAME que a barra mostra** — e por isso
     // ela é espelhada todo o quadro, e não só na semente: arrastar a barra muda a célula debaixo do
     // dedo, e um campo que só se actualizasse ao trocar de animação mostraria a duração da anterior.
     if let Some(ms) = an.this_frame_ms() {
-        put(host, ids::INSP_ANIM_FRAME_MS_THIS, f64::from(ms));
+        put(host, crate::ids::INSP_ANIM_FRAME_MS_THIS, f64::from(ms));
     }
     if !seed {
         return;
@@ -362,13 +388,16 @@ fn sync_anim_fields(
     // Um deles espelhado à mão ao lado dos outros é como o terceiro nasce sem `sync` e mostra o
     // valor da animação ANTERIOR ao trocar de linha.
     for (id, value) in [
-        (ids::INSP_ANIM_NAME, an.rows.get(selected).map(|r| &r.name)),
         (
-            ids::INSP_ANIM_SIGNAL_FINISH,
+            crate::ids::INSP_ANIM_NAME,
+            an.rows.get(selected).map(|r| &r.name),
+        ),
+        (
+            crate::ids::INSP_ANIM_SIGNAL_FINISH,
             an.rows.get(selected).map(|r| &r.signal_on_finish),
         ),
         (
-            ids::INSP_ANIM_SIGNAL_LOOP,
+            crate::ids::INSP_ANIM_SIGNAL_LOOP,
             an.rows.get(selected).map(|r| &r.signal_on_loop),
         ),
     ] {
@@ -405,12 +434,12 @@ fn sync_slice_fields(
     let focus = host.store().focus_id();
     let drag = host.store().number_input_drag().map(|d| d.id);
     for (id, value) in [
-        (ids::INSP_SLICE_BORDER[0], f64::from(sl.borders[0])),
-        (ids::INSP_SLICE_BORDER[1], f64::from(sl.borders[1])),
-        (ids::INSP_SLICE_BORDER[2], f64::from(sl.borders[2])),
-        (ids::INSP_SLICE_BORDER[3], f64::from(sl.borders[3])),
-        (ids::INSP_SLICE_SIZE[0], f64::from(sl.size[0])),
-        (ids::INSP_SLICE_SIZE[1], f64::from(sl.size[1])),
+        (crate::ids::INSP_SLICE_BORDER[0], f64::from(sl.borders[0])),
+        (crate::ids::INSP_SLICE_BORDER[1], f64::from(sl.borders[1])),
+        (crate::ids::INSP_SLICE_BORDER[2], f64::from(sl.borders[2])),
+        (crate::ids::INSP_SLICE_BORDER[3], f64::from(sl.borders[3])),
+        (crate::ids::INSP_SLICE_SIZE[0], f64::from(sl.size[0])),
+        (crate::ids::INSP_SLICE_SIZE[1], f64::from(sl.size[1])),
     ] {
         if focus != Some(id) && drag != Some(id) {
             host.store_mut().set_number_value(id, value);
@@ -430,7 +459,7 @@ fn sync_slice_fields(
             CheckboxValue::Unchecked
         };
         if let Some(InteractiveState::Checkbox { value: slot, .. }) =
-            host.store_mut().get_mut(ids::INSP_SLICE_ENABLE)
+            host.store_mut().get_mut(crate::ids::INSP_SLICE_ENABLE)
         {
             *slot = enable;
         }
@@ -442,7 +471,7 @@ fn sync_slice_fields(
             CheckboxValue::Unchecked
         };
         if let Some(InteractiveState::Checkbox { value: slot, .. }) =
-            host.store_mut().get_mut(ids::INSP_SLICE_FILL_CENTER)
+            host.store_mut().get_mut(crate::ids::INSP_SLICE_FILL_CENTER)
         {
             *slot = value;
         }
@@ -469,17 +498,17 @@ fn sync_anchor_fields(
     let b = row.bounds.unwrap_or([0.0; 4]);
     let c = row.center.unwrap_or([0.0; 4]);
     for (id, value) in [
-        (ids::INSP_ANCHOR_POS[0], f64::from(row.pos[0])),
-        (ids::INSP_ANCHOR_POS[1], f64::from(row.pos[1])),
-        (ids::INSP_ANCHOR_ROT, f64::from(row.rot_deg)),
-        (ids::INSP_ANCHOR_BOUNDS[0], f64::from(b[0])),
-        (ids::INSP_ANCHOR_BOUNDS[1], f64::from(b[1])),
-        (ids::INSP_ANCHOR_BOUNDS[2], f64::from(b[2])),
-        (ids::INSP_ANCHOR_BOUNDS[3], f64::from(b[3])),
-        (ids::INSP_ANCHOR_CENTER[0], f64::from(c[0])),
-        (ids::INSP_ANCHOR_CENTER[1], f64::from(c[1])),
-        (ids::INSP_ANCHOR_CENTER[2], f64::from(c[2])),
-        (ids::INSP_ANCHOR_CENTER[3], f64::from(c[3])),
+        (crate::ids::INSP_ANCHOR_POS[0], f64::from(row.pos[0])),
+        (crate::ids::INSP_ANCHOR_POS[1], f64::from(row.pos[1])),
+        (crate::ids::INSP_ANCHOR_ROT, f64::from(row.rot_deg)),
+        (crate::ids::INSP_ANCHOR_BOUNDS[0], f64::from(b[0])),
+        (crate::ids::INSP_ANCHOR_BOUNDS[1], f64::from(b[1])),
+        (crate::ids::INSP_ANCHOR_BOUNDS[2], f64::from(b[2])),
+        (crate::ids::INSP_ANCHOR_BOUNDS[3], f64::from(b[3])),
+        (crate::ids::INSP_ANCHOR_CENTER[0], f64::from(c[0])),
+        (crate::ids::INSP_ANCHOR_CENTER[1], f64::from(c[1])),
+        (crate::ids::INSP_ANCHOR_CENTER[2], f64::from(c[2])),
+        (crate::ids::INSP_ANCHOR_CENTER[3], f64::from(c[3])),
     ] {
         if focus != Some(id) && drag != Some(id) {
             host.store_mut().set_number_value(id, value);
@@ -488,13 +517,13 @@ fn sync_anchor_fields(
     // As duas caixas e o NOME semeiam na troca de entidade — reescrevê-los todo o quadro faria
     // um clique voltar atrás antes de o commit chegar, e apagaria o que se estivesse a escrever.
     if entity_changed
-        && focus != Some(ids::INSP_ANCHOR_NAME)
+        && focus != Some(crate::ids::INSP_ANCHOR_NAME)
         && let Some(InteractiveState::TextInput {
             text,
             caret,
             selection_anchor,
             ..
-        }) = host.store_mut().get_mut(ids::INSP_ANCHOR_NAME)
+        }) = host.store_mut().get_mut(crate::ids::INSP_ANCHOR_NAME)
     {
         text.clear();
         text.push_str(&row.name);
@@ -503,8 +532,8 @@ fn sync_anchor_fields(
     }
     if entity_changed {
         for (id, on) in [
-            (ids::INSP_ANCHOR_BOUNDS_ON, row.bounds.is_some()),
-            (ids::INSP_ANCHOR_CENTER_ON, row.center.is_some()),
+            (crate::ids::INSP_ANCHOR_BOUNDS_ON, row.bounds.is_some()),
+            (crate::ids::INSP_ANCHOR_CENTER_ON, row.center.is_some()),
         ] {
             if let Some(InteractiveState::Checkbox { value, .. }) = host.store_mut().get_mut(id) {
                 *value = if on {

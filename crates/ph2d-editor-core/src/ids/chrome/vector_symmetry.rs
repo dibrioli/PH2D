@@ -11,42 +11,6 @@ use ph2d_a11y::NodeId;
 
 use super::hash_node_id;
 
-/// **A seção SYMMETRY** — o cabeçalho colapsável.
-pub const VECTOR_SECTION_SYMMETRY: NodeId = hash_node_id("vector.section.symmetry");
-
-/// **Enable** — o par exclusivo que arma o modo (`Off` / `On`).
-///
-/// ⚠️ Ele fica no TOPO e **gateia toda a seção**, que é a lei que o Enio estabeleceu no painel do
-/// impasto (*"é quem habilita esse modo de pintura … esse card só aparece se enable estiver
-/// checado"*). Desarmado, os controles abaixo editariam o estilo de um espelho que não existe.
-pub const VECTOR_SYM_OFF: NodeId = hash_node_id("vector.sym.off");
-/// Ver [`VECTOR_SYM_OFF`].
-pub const VECTOR_SYM_ON: NodeId = hash_node_id("vector.sym.on");
-
-/// **Mirror X** — reflete esquerda↔direita numa linha vertical.
-pub const VECTOR_SYM_KIND_X: NodeId = hash_node_id("vector.sym.kind_x");
-/// **Mirror Y** — reflete cima↔baixo numa linha horizontal.
-pub const VECTOR_SYM_KIND_Y: NodeId = hash_node_id("vector.sym.kind_y");
-/// **Custom** — reflete na linha que o artista desenhou.
-pub const VECTOR_SYM_KIND_CUSTOM: NodeId = hash_node_id("vector.sym.kind_custom");
-/// **Radial** — `segments` cópias em rotação (a *circular* que o Enio pediu explicitamente).
-pub const VECTOR_SYM_KIND_RADIAL: NodeId = hash_node_id("vector.sym.kind_radial");
-
-/// **Segments** — quantas cópias a rosácea tem. Só no Radial: nos espelhos a contagem é dois por
-/// definição, e um slider preso em 2 é um controle morto.
-pub const VECTOR_SYM_SEGMENTS: NodeId = hash_node_id("vector.sym.segments");
-/// O chip numérico ligado ao [`VECTOR_SYM_SEGMENTS`].
-pub const VECTOR_SYM_SEGMENTS_NUM: NodeId = hash_node_id("vector.sym.segments.num");
-
-/// **Fuse** — solda as duas metades num contorno fechado quando as pontas pousam no eixo (o *Fuse
-/// paths* do Inkscape / o *Merge* do Blender). É ele que faz do meio-perfil um vaso.
-///
-/// ⚠️ Só nos ESPELHOS: no Radial não há costura a fechar, e o kernel o ignora — oferecê-lo ali
-/// seriam dois chips que não fazem nada.
-pub const VECTOR_SYM_FUSE_OFF: NodeId = hash_node_id("vector.sym.fuse_off");
-/// Ver [`VECTOR_SYM_FUSE_OFF`].
-pub const VECTOR_SYM_FUSE_ON: NodeId = hash_node_id("vector.sym.fuse_on");
-
 /// **Apply** — consolida as cópias em geometria de documento e desarma a simetria.
 ///
 /// ⚠️ Oferecido só quando há simetria VIVA na seleção: sem ela não há o que consolidar, e um botão

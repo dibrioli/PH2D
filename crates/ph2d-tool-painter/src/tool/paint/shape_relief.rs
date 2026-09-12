@@ -87,14 +87,13 @@ impl PainterTool {
         &mut self,
         event: &ph2d_editor_core::tool::PanelEvent,
     ) -> bool {
-        use ph2d_editor_core::ids as core_ids;
         use ph2d_editor_core::tool::PanelEvent;
         match event {
-            PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_SHAPE_RELIEF => {
+            PanelEvent::SetValue(id, v) if *id == crate::ids::PAINTER_SHAPE_RELIEF => {
                 self.set_shape_relief(*v as f32);
                 true
             }
-            PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_SHAPE_SHINE => {
+            PanelEvent::SetValue(id, v) if *id == crate::ids::PAINTER_SHAPE_SHINE => {
                 self.set_impasto_shine(*v as f32);
                 true
             }

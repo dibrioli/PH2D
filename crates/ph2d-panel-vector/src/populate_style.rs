@@ -20,7 +20,7 @@ pub(super) fn populate_style(store: &mut WidgetStore) {
     slider_chip(
         store,
         ids::VECTOR_GRAD_ANGLE,
-        ids::VECTOR_GRAD_ANGLE_NUM,
+        ph2d_tool_vector::ids::VECTOR_GRAD_ANGLE_NUM,
         0.0,
         0.0,
         GRAD_ANGLE_SLIDER_SCALE,
@@ -30,7 +30,7 @@ pub(super) fn populate_style(store: &mut WidgetStore) {
     slider_chip(
         store,
         ids::VECTOR_GRAD_INFLUENCE,
-        ids::VECTOR_GRAD_INFLUENCE_NUM,
+        ph2d_tool_vector::ids::VECTOR_GRAD_INFLUENCE_NUM,
         1.0 / GRAD_INFLUENCE_SLIDER_SCALE,
         1.0,
         GRAD_INFLUENCE_SLIDER_SCALE,
@@ -40,7 +40,7 @@ pub(super) fn populate_style(store: &mut WidgetStore) {
     slider_chip(
         store,
         ids::VECTOR_GRAD_JITTER,
-        ids::VECTOR_GRAD_JITTER_NUM,
+        ph2d_tool_vector::ids::VECTOR_GRAD_JITTER_NUM,
         0.0,
         0.0,
         GRAD_JITTER_SLIDER_SCALE,
@@ -51,8 +51,8 @@ pub(super) fn populate_style(store: &mut WidgetStore) {
     // the tool's default opaque stroke/fill.
     slider_chip(
         store,
-        ids::VECTOR_STROKE_OPACITY,
-        ids::VECTOR_STROKE_OPACITY_NUM,
+        ph2d_tool_vector::ids::VECTOR_STROKE_OPACITY,
+        ph2d_tool_vector::ids::VECTOR_STROKE_OPACITY_NUM,
         1.0,
         100.0, // LITERAL-PX-OK: initial opacity display = 100 %
         OPACITY_SLIDER_SCALE,
@@ -60,8 +60,8 @@ pub(super) fn populate_style(store: &mut WidgetStore) {
     );
     slider_chip(
         store,
-        ids::VECTOR_FILL_OPACITY,
-        ids::VECTOR_FILL_OPACITY_NUM,
+        ph2d_tool_vector::ids::VECTOR_FILL_OPACITY,
+        ph2d_tool_vector::ids::VECTOR_FILL_OPACITY_NUM,
         1.0,
         100.0, // LITERAL-PX-OK: initial opacity display = 100 %
         OPACITY_SLIDER_SCALE,
@@ -69,19 +69,19 @@ pub(super) fn populate_style(store: &mut WidgetStore) {
     );
 
     // Stroke Cap / Join segmented buttons + Dash length slider (0 px = solid).
-    button(store, ids::VECTOR_ALIGN_CENTRE);
-    button(store, ids::VECTOR_ALIGN_INNER);
-    button(store, ids::VECTOR_ALIGN_OUTER);
-    button(store, ids::VECTOR_CAP_BUTT);
-    button(store, ids::VECTOR_CAP_ROUND);
-    button(store, ids::VECTOR_CAP_SQUARE);
-    button(store, ids::VECTOR_JOIN_MITER);
-    button(store, ids::VECTOR_JOIN_ROUND);
-    button(store, ids::VECTOR_JOIN_BEVEL);
+    button(store, ph2d_tool_vector::ids::VECTOR_ALIGN_CENTRE);
+    button(store, ph2d_tool_vector::ids::VECTOR_ALIGN_INNER);
+    button(store, ph2d_tool_vector::ids::VECTOR_ALIGN_OUTER);
+    button(store, ph2d_tool_vector::ids::VECTOR_CAP_BUTT);
+    button(store, ph2d_tool_vector::ids::VECTOR_CAP_ROUND);
+    button(store, ph2d_tool_vector::ids::VECTOR_CAP_SQUARE);
+    button(store, ph2d_tool_vector::ids::VECTOR_JOIN_MITER);
+    button(store, ph2d_tool_vector::ids::VECTOR_JOIN_ROUND);
+    button(store, ph2d_tool_vector::ids::VECTOR_JOIN_BEVEL);
     slider_chip(
         store,
-        ids::VECTOR_DASH,
-        ids::VECTOR_DASH_NUM,
+        ph2d_tool_vector::ids::VECTOR_DASH,
+        ph2d_tool_vector::ids::VECTOR_DASH_NUM,
         0.0,
         0.0,
         DASH_SLIDER_SCALE,
@@ -89,8 +89,8 @@ pub(super) fn populate_style(store: &mut WidgetStore) {
     );
     slider_chip(
         store,
-        ids::VECTOR_GAP,
-        ids::VECTOR_GAP_NUM,
+        ph2d_tool_vector::ids::VECTOR_GAP,
+        ph2d_tool_vector::ids::VECTOR_GAP_NUM,
         gap_to_slider(GAP_DEFAULT),
         GAP_DEFAULT,
         GAP_SLIDER_SCALE,
@@ -106,7 +106,7 @@ pub(super) fn populate_style(store: &mut WidgetStore) {
 /// `ALL_MARKERS` e já nasce clicável, sem tocar aqui. Os slots existem sempre (o
 /// `populate` é estático); o PAINT decide quais registram hit.
 fn populate_markers(store: &mut WidgetStore) {
-    for slot in 0..ids::MARKER_SLOTS {
+    for slot in 0..ph2d_tool_vector::ids::MARKER_SLOTS {
         store.register_if_absent(
             crate::paint_markers::marker_dd_id(slot),
             InteractiveState::Dropdown {
@@ -115,16 +115,25 @@ fn populate_markers(store: &mut WidgetStore) {
                 selected_index: None,
             },
         );
-        for i in 0..ids::MAX_MARKER_OPTIONS {
-            button(store, ids::vector_marker_option_id(slot, i));
+        for i in 0..ph2d_tool_vector::ids::MAX_MARKER_OPTIONS {
+            button(
+                store,
+                ph2d_tool_vector::ids::vector_marker_option_id(slot, i),
+            );
         }
     }
     // **Tamanho / arredondamento** da ponta: caixas numéricas de faixa FIXA. O
     // `set_number_range` não é opcional — sem ele o arrasto escala errado (o gotcha da caixa
     // limitada). O valor é re-semeado com o efetivo da tool a cada frame (Fase B do paint).
     for (id, field) in [
-        (ids::VECTOR_MARKER_SCALE, &params::MARKER_SCALE),
-        (ids::VECTOR_MARKER_ROUND, &params::MARKER_ROUND),
+        (
+            ph2d_tool_vector::ids::VECTOR_MARKER_SCALE,
+            &params::MARKER_SCALE,
+        ),
+        (
+            ph2d_tool_vector::ids::VECTOR_MARKER_ROUND,
+            &params::MARKER_ROUND,
+        ),
     ] {
         number_field(store, id, field.min, field.max, field.step, field.min);
     }
@@ -132,5 +141,5 @@ fn populate_markers(store: &mut WidgetStore) {
     // hit-rect não basta (a gate `architecture_panel_wiring_parity` exige o registro DENTRO
     // do `populate.rs`, e ela tem razão — sem `InteractiveState` o widget nunca é focável e
     // Down/Up jamais disparam).
-    button(store, ids::VECTOR_MARKER_BOTH);
+    button(store, ph2d_tool_vector::ids::VECTOR_MARKER_BOTH);
 }

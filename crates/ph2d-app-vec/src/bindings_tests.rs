@@ -134,7 +134,7 @@ fn the_whole_chain_from_the_click_to_the_drawn_paint() {
         .iter()
         .position(|t| t.key() == "accent")
         .expect("o token accent existe na tabela");
-    let opt = ph2d_editor_core::ids::vector_token_option_id(0, row);
+    let opt = ph2d_panel_vector::ids::vector_token_option_id(0, row);
     let (prop, token) = token_choice(opt).expect("o id e' uma escolha do picker");
     assert_eq!(prop, BoundProp::Fill);
     assert_eq!(token, Some("accent"));
@@ -409,10 +409,10 @@ fn a_width_token_reaches_the_drawn_stroke_and_never_invents_one() {
 /// wave, porque o `token_choice` enumerava `[(Fill, 0), (StrokeColor, 1)]` à mão.
 #[test]
 fn every_token_slot_decodes_a_click_into_its_own_target() {
-    for slot in ph2d_editor_core::ids::TOKEN_SLOTS {
+    for slot in ph2d_panel_vector::ids::TOKEN_SLOTS {
         let prop = BoundProp::from_code(slot.code).expect("todo slot nomeia um alvo do modelo");
 
-        let unbind = ph2d_editor_core::ids::vector_token_option_id(slot.code, 0);
+        let unbind = ph2d_panel_vector::ids::vector_token_option_id(slot.code, 0);
         assert_eq!(
             token_choice(unbind),
             Some((prop, None)),
@@ -421,7 +421,7 @@ fn every_token_slot_decodes_a_click_into_its_own_target() {
 
         // A PRIMEIRA e a ÚLTIMA linha da tabela deste slot — as duas pontas do intervalo.
         for i in [0, slot.table.len() - 1] {
-            let id = ph2d_editor_core::ids::vector_token_option_id(slot.code, i + 1);
+            let id = ph2d_panel_vector::ids::vector_token_option_id(slot.code, i + 1);
             assert_eq!(
                 token_choice(id),
                 Some((prop, slot.table.key(i))),
@@ -440,17 +440,17 @@ fn every_token_slot_decodes_a_click_into_its_own_target() {
 #[test]
 fn every_token_slot_paints_its_own_table() {
     let tok = ctx(Theme::Forge);
-    for slot in ph2d_editor_core::ids::TOKEN_SLOTS {
-        let first = ph2d_editor_core::ids::vector_token_option_id(slot.code, 1);
+    for slot in ph2d_panel_vector::ids::TOKEN_SLOTS {
+        let first = ph2d_panel_vector::ids::vector_token_option_id(slot.code, 1);
         let (_, key) = token_choice(first).expect("a 1a linha e' uma escolha");
         let key = key.expect("e nao a de SOLTAR");
         match slot.table {
-            ph2d_editor_core::ids::TokenTable::Colour => assert!(
+            ph2d_panel_vector::ids::TokenTable::Colour => assert!(
                 token_color(key, Theme::Forge).is_some(),
                 "o slot {} lista cor, mas '{key}' nao resolve como cor",
                 slot.code
             ),
-            ph2d_editor_core::ids::TokenTable::Length => assert!(
+            ph2d_panel_vector::ids::TokenTable::Length => assert!(
                 token_world(key, tok).is_some(),
                 "o slot {} lista comprimento, mas '{key}' nao resolve como comprimento",
                 slot.code

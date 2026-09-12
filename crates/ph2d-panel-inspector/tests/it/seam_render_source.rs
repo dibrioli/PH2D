@@ -171,7 +171,11 @@ fn clicking_the_current_strategy_changes_nothing() {
 #[test]
 fn a_disabled_reimport_does_not_act() {
     let (mut host, mut state, _) = painted(atlas_sprite(false));
-    dispatch(&mut host, &mut state, ids::INSP_RENDER_SOURCE_REIMPORT);
+    dispatch(
+        &mut host,
+        &mut state,
+        ph2d_panel_inspector::ids::INSP_RENDER_SOURCE_REIMPORT,
+    );
     assert!(
         host.drained_actions().is_empty(),
         "o Reimport desativado levantou uma acao"
@@ -180,7 +184,11 @@ fn a_disabled_reimport_does_not_act() {
     // Controle positivo: com `can_reimport = true` ele TEM de agir — senão o teste acima passaria
     // por o botao estar morto para toda a gente.
     let (mut host, mut state, _) = painted(atlas_sprite(true));
-    dispatch(&mut host, &mut state, ids::INSP_RENDER_SOURCE_REIMPORT);
+    dispatch(
+        &mut host,
+        &mut state,
+        ph2d_panel_inspector::ids::INSP_RENDER_SOURCE_REIMPORT,
+    );
     assert_eq!(
         host.drained_actions(),
         vec![EditorAction::Reimport {

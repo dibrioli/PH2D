@@ -129,7 +129,11 @@ fn the_close_button_hides_the_panel() {
     let mut host = MockPanelHost::with_panel::<AuthoredPanel>();
     host.set_panel_visible(AuthoredPanel::ID, true);
     let mut st = AuthoredPanelState;
-    apply_event(&mut st, &mut host, WidgetEvent::Click(ids::AUTHORED_CLOSE));
+    apply_event(
+        &mut st,
+        &mut host,
+        WidgetEvent::Click(crate::ids::AUTHORED_CLOSE),
+    );
     assert!(
         !host.panel_visible(AuthoredPanel::ID),
         "o X nao fechou — o chip da secao Frame ficaria aceso sobre um painel escondido"

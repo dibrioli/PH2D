@@ -1,0 +1,242 @@
+//! Brush **Watercolor** section NodeIds (the wet-media look: edge darkening + granulation + pigment
+//! build-up; no fluid sim — see `docs/Painter/08_plano_aquarela_edge_grain_pigment.md`). Fixed-id,
+//! tool-global widgets forwarding over the frozen `PanelEvent` channel to `PainterTool` setters
+//! (`set_brush_edge_gain` / `set_brush_granulation` / `toggle_brush_pigment` / …). The two toggles
+//! forward as `PanelEvent::Click`; the four sliders are drag-scrub `NumberInput`s forwarding the real
+//! value as `SetValue` (routed via [`super::PAINTER_WATERCOLOR_FIELDS`] +
+//! `is_param_field`). Split into its own file like `painter_shape.rs` to keep the ids tidy.
+//!
+//! ⚠️ **Desceu de `ph2d-editor-core/src/ids/chrome/painter_watercolor.rs` em 2026-09-12** (auditoria de arquitectura
+//! A5b): quem LÊ estes ids mora nesta crate, e a fundação que 43 crates recompilam deixou de os
+//! carregar.
+
+use ph2d_a11y::NodeId;
+use ph2d_tool_registry::{hash_node_id, hash_node_id_runtime};
+
+/// Collapsible **Watercolor** section header (ALL-CAPS label + collapse chevron + assignable colour
+/// dot). `mark_collapsible_section`-registered in `crate::populate`.
+pub const PAINTER_WATERCOLOR_SECTION: NodeId = hash_node_id("painter_brush.watercolor_section");
+
+/// The Watercolor header's colour dot — a picker swatch (`register_picker_swatch`).
+pub const PAINTER_WATERCOLOR_SECTION_COLOR: NodeId =
+    hash_node_id("painter_brush.watercolor_section_color");
+
+/// Watercolor section **reset** icon button. `Click` → `reset_brush_watercolor`.
+pub const PAINTER_WATERCOLOR_RESET: NodeId = hash_node_id("painter_brush.watercolor_reset");
+
+// ⚠️ **There is no `*_ENABLE` id here any more** (2026-07-22): the three media checkboxes were
+// replaced by the single `PAINTER_BRUSH_MEDIA` dropdown (`ids/chrome/painter.rs`), so this section
+// is painted only while its medium is the selected one. Keeping the checkbox id "for the API" would
+// leave an id that is registered and routed but never painted — the same rot the Paper slot's
+// Rake/Random ids became before they were removed.
+/// **Pigment** subtractive-mixing gate field. No longer a standalone panel toggle — the panel drives it
+/// via the merged **Pigment** slider ([`PAINTER_WATERCOLOR_MIX`] → `set_brush_pigment_mixing`, `0` = off).
+/// The tool setter `toggle_brush_pigment` + this id stay for the tool API / back-compat.
+pub const PAINTER_WATERCOLOR_PIGMENT: NodeId = hash_node_id("painter_brush.watercolor_pigment");
+
+/// **Edge Darkening** gain (`0..8` track). `SetValue` → `set_brush_edge_gain`.
+pub const PAINTER_WATERCOLOR_EDGE: NodeId = hash_node_id("painter_brush.watercolor_edge");
+
+/// **Bleed** (edge/dissolve blur radius, canvas px, `1..48`). `SetValue` → `set_brush_edge_spread`.
+pub const PAINTER_WATERCOLOR_SPREAD: NodeId = hash_node_id("painter_brush.watercolor_spread");
+
+/// **Granulation** amount (`0..1`). `SetValue` → `set_brush_granulation`. (Painted in the Grain section
+/// — the Grain slot IS the granulation map — not the Watercolor section.)
+pub const PAINTER_WATERCOLOR_GRANULATION: NodeId =
+    hash_node_id("painter_brush.watercolor_granulation");
+
+/// **Pigment** — the merged subtractive-mixing slider (`0..1`, `0` = off; replaces the old Pigment
+/// toggle + Mix pair). `SetValue` → `set_brush_pigment_mixing` (flips the `pigment` gate + sets the amount).
+pub const PAINTER_WATERCOLOR_MIX: NodeId = hash_node_id("painter_brush.watercolor_mix");
+
+/// **Body** — wash interior density (`0..1`, render-path). `SetValue` → `set_brush_fill`.
+pub const PAINTER_WATERCOLOR_FILL: NodeId = hash_node_id("painter_brush.watercolor_fill");
+
+/// **Concentration** — Beer–Lambert optical-depth scale (pigment:water, render-path). `SetValue` →
+/// `set_brush_depth`.
+pub const PAINTER_WATERCOLOR_DEPTH: NodeId = hash_node_id("painter_brush.watercolor_depth");
+
+/// **Opacity** — pigment body / hiding power `0..1` (render-path): lays the pigment's own colour so
+/// light-valued pigments (yellow, light blue) deposit at their hue instead of near-invisible pure
+/// Beer–Lambert tinting (doc 13 #17). `SetValue` → `set_brush_opacity`. `0` = transparent (byte-identical).
+pub const PAINTER_WATERCOLOR_OPACITY: NodeId = hash_node_id("painter_brush.watercolor_opacity");
+
+/// **Ragged Edge** — organic-boundary displacement in canvas px (render-path). `SetValue` →
+/// `set_brush_warp`.
+pub const PAINTER_WATERCOLOR_WARP: NodeId = hash_node_id("painter_brush.watercolor_warp");
+
+/// **Smudge** — TRUE-smear strength `0..1` (drags the painted paint). `SetValue` → `set_brush_wet_smudge`.
+pub const PAINTER_WATERCOLOR_SMUDGE: NodeId = hash_node_id("painter_brush.watercolor_smudge");
+
+/// **Rewet** — wet-on-wet rewetting `0..1` (lift + dissolve + pool). `SetValue` → `set_brush_wet_rewet`.
+pub const PAINTER_WATERCOLOR_WET: NodeId = hash_node_id("painter_brush.watercolor_wet");
+
+/// **Charge** — Wet Mix fresh-paint reserve `0..1`. `SetValue` → `set_brush_wet_charge`.
+pub const PAINTER_WATERCOLOR_CHARGE: NodeId = hash_node_id("painter_brush.watercolor_charge");
+
+/// **Dilution** — Wet Mix water `0..1` (thins the deposit). `SetValue` → `set_brush_wet_dilution`.
+pub const PAINTER_WATERCOLOR_DILUTION: NodeId = hash_node_id("painter_brush.watercolor_dilution");
+
+/// **Pull** — Wet Mix colour-carry `0..1` (smudge length). `SetValue` → `set_brush_wet_pull`.
+pub const PAINTER_WATERCOLOR_PULL: NodeId = hash_node_id("painter_brush.watercolor_pull");
+
+// ── Wetness / canvas controls (session-level, NOT brush; the paper's moisture, doc 13 #9-#11) ──
+/// **Drying Time** — seconds for the wet paper to fully dry (`2..60 s`; the wet-session fusion
+/// window). CANVAS-level (not per-brush): `SetValue` → `set_dry_time_s`. Shown in the Wetness card.
+pub const PAINTER_WATERCOLOR_DRY_TIME: NodeId = hash_node_id("painter_brush.watercolor_dry_time");
+
+/// **Wetness Preview** strength (`0..1`, `0` = no preview) — the max veil alpha the shell paints over the
+/// wet paper (a discreet damp darkening). CANVAS-level display: `SetValue` → `set_wet_preview_intensity`.
+pub const PAINTER_WATERCOLOR_WET_PREVIEW: NodeId =
+    hash_node_id("painter_brush.watercolor_wet_preview");
+
+/// **Dry** button — end the wet session NOW (the bake becomes permanent; Rebelle "Dry the layer").
+/// `Click` → `dry_session_now`.
+pub const PAINTER_WATERCOLOR_DRY_NOW: NodeId = hash_node_id("painter_brush.watercolor_dry_now");
+
+/// **Wet** button — re-moisten the whole canvas WITHOUT depositing pigment, so strokes made now
+/// fuse (Rebelle "Wet the layer"). `Click` → `wet_canvas_now`.
+pub const PAINTER_WATERCOLOR_WET_NOW: NodeId = hash_node_id("painter_brush.watercolor_wet_now");
+
+// ── Paper section (canvas-anchored substrate; its own section above Grain; `docs/Painter/10…` §5) ──
+/// Collapsible **Paper** section header (ALL-CAPS + chevron + colour dot).
+pub const PAINTER_WATERCOLOR_PAPER_SECTION: NodeId =
+    hash_node_id("painter_brush.watercolor_paper_section");
+
+/// The Paper header's colour dot (assignable swatch).
+pub const PAINTER_WATERCOLOR_PAPER_SECTION_COLOR: NodeId =
+    hash_node_id("painter_brush.watercolor_paper_section_color");
+
+/// Paper section **reset** icon button.
+pub const PAINTER_WATERCOLOR_PAPER_RESET: NodeId =
+    hash_node_id("painter_brush.watercolor_paper_reset");
+
+/// **Paper colour** swatch — the document "ground" the watercolor optics see where nothing is painted
+/// below the active layer. Click toggles the shared Blender picker onto it (panel-side, like
+/// `PAINTER_COLOR_THUMB`); the picker read-back forwards `SelectOption(id, "r,g,b")` →
+/// `set_paper_color_rgb8`.
+pub const PAINTER_WATERCOLOR_PAPER_COLOR_THUMB: NodeId =
+    hash_node_id("painter_brush.watercolor_paper_color_thumb");
+
+/// **Paper** slot kind dropdown chip (None / Cold-Rough-Hot Press / other procedural / Image). `SelectOption`
+/// → `set_brush_paper_kind`. Options via [`painter_paper_kind_option_id`].
+pub const PAINTER_WATERCOLOR_PAPER_KIND: NodeId =
+    hash_node_id("painter_brush.watercolor_paper_kind");
+
+/// **Paper** Size X (`0.1..100`). `SetValue` → `set_brush_paper_size`(0).
+pub const PAINTER_WATERCOLOR_PAPER_SIZE_X: NodeId =
+    hash_node_id("painter_brush.watercolor_paper_size_x");
+
+/// **Paper** Size Y. `SetValue` → `set_brush_paper_size`(1).
+pub const PAINTER_WATERCOLOR_PAPER_SIZE_Y: NodeId =
+    hash_node_id("painter_brush.watercolor_paper_size_y");
+
+/// **Paper** Angle (degrees, fibre orientation). `SetValue` → `set_brush_paper_angle`.
+pub const PAINTER_WATERCOLOR_PAPER_ANGLE: NodeId =
+    hash_node_id("painter_brush.watercolor_paper_angle");
+
+/// **Paper** Mapping dropdown chip. `SelectOption` → `set_brush_paper_mapping`. Options via
+/// [`painter_paper_mapping_option_id`].
+pub const PAINTER_WATERCOLOR_PAPER_MAPPING: NodeId =
+    hash_node_id("painter_brush.watercolor_paper_mapping");
+
+/// **Paper** Offset X. `SetValue` → `set_brush_paper_offset`(0).
+pub const PAINTER_WATERCOLOR_PAPER_OFFSET_X: NodeId =
+    hash_node_id("painter_brush.watercolor_paper_offset_x");
+
+/// **Paper** Offset Y. `SetValue` → `set_brush_paper_offset`(1).
+pub const PAINTER_WATERCOLOR_PAPER_OFFSET_Y: NodeId =
+    hash_node_id("painter_brush.watercolor_paper_offset_y");
+
+/// **Paper** Depth (how strongly the paper tooth bites). `SetValue` → `set_brush_paper_depth`.
+pub const PAINTER_WATERCOLOR_PAPER_DEPTH: NodeId =
+    hash_node_id("painter_brush.watercolor_paper_depth");
+
+/// **Paper** per-pattern params (Contrast / Brightness / kind knobs). `SetValue` → `set_brush_paper_param`.
+pub const PAINTER_WATERCOLOR_PAPER_PARAMS: [NodeId; 6] = [
+    hash_node_id("painter_brush.watercolor_paper_param0"),
+    hash_node_id("painter_brush.watercolor_paper_param1"),
+    hash_node_id("painter_brush.watercolor_paper_param2"),
+    hash_node_id("painter_brush.watercolor_paper_param3"),
+    hash_node_id("painter_brush.watercolor_paper_param4"),
+    hash_node_id("painter_brush.watercolor_paper_param5"),
+];
+
+/// Derive the stable [`NodeId`] for **Paper** mapping option `m` in the open Paper mapping popover.
+#[must_use]
+pub fn painter_paper_mapping_option_id(m: u8) -> NodeId {
+    hash_node_id_runtime(&format!("painter_brush.papermapopt.{m}"))
+}
+
+/// **Granulation** "Same as Paper" toggle — shown in the **Grain** section in watercolor mode (the Grain
+/// slot IS the granulation map). `Click` → `toggle_granulation_use_paper`.
+pub const PAINTER_WATERCOLOR_GRAN_SAME: NodeId = hash_node_id("painter_brush.watercolor_gran_same");
+
+/// **Smooth Edges** toggle (Wash card): screen-space AA of the wash silhouette (BUGS #16). On by
+/// default; off restores the pre-AA hard/serrated edge as a deliberate style. `Click` →
+/// `toggle_smooth_edges`.
+pub const PAINTER_WATERCOLOR_SMOOTH_EDGES: NodeId =
+    hash_node_id("painter_brush.watercolor_smooth_edges");
+
+/// Derive the stable [`NodeId`] for **Paper** kind option `k` in the open Paper dropdown popover
+/// (its own id namespace so it never collides with the Grain kind picker). Mirror of
+/// `painter_brush_texture_kind_option_id`.
+#[must_use]
+pub fn painter_paper_kind_option_id(k: u8) -> NodeId {
+    hash_node_id_runtime(&format!("painter_brush.paperkindopt.{k}"))
+}
+
+/// The Watercolor **Click** widgets the panel actually paints (master enable + section reset +
+/// Granulation "Same as Paper" + the Paper section reset) — forwarded as a `PanelEvent::Click` by the
+/// panel's `event.rs` (a single membership check) and routed by `route_brush_watercolor_event`. The old
+/// Pigment toggle merged into the [`PAINTER_WATERCOLOR_MIX`] slider (redesign 2026-07-07); Paper
+/// The Paper slot has **no Rake / Random-Angle** — deliberately, and there is nothing left to wire. Rake
+/// means "the rotation follows the stroke" and Random means "a fresh angle per dab": both are **per-dab**
+/// concepts, and the paper is the canvas-anchored substrate UNDER the paint — it has no dab. The widgets
+/// were dropped when the section was written; the ids/setters/route arms were kept "for the API" and rotted
+/// into a trap (an audit read the leftover setters as live knobs). Removed 2026-07-12 — the per-dab
+/// rake/random live on the **Grain** slot, which is a stamp. `TextureSettings::rake` itself stays: it is
+/// shared with Shape/Grain, where it is real.
+pub const PAINTER_WATERCOLOR_CLICKS: [NodeId; 6] = [
+    PAINTER_WATERCOLOR_RESET,
+    PAINTER_WATERCOLOR_GRAN_SAME,
+    PAINTER_WATERCOLOR_SMOOTH_EDGES,
+    PAINTER_WATERCOLOR_PAPER_RESET,
+    PAINTER_WATERCOLOR_DRY_NOW,
+    PAINTER_WATERCOLOR_WET_NOW,
+];
+
+/// The Watercolor **SetValue** number-fields — one membership check for the panel's number-field forward
+/// (`is_param_field`) and register loop. UI cards (redesign 2026-07-07): **Wash** = Body(Fill) /
+/// Concentration(Depth) / Opacity / Edge Darkening(Edge) / Bleed(Spread) / Ragged Edge(Warp); **Brush** = Charge /
+/// Dilution / Pull; **Water** = Rewet(Wet) / Smudge / Pigment(Mix). Granulation lives in the Grain
+/// section; the full Paper slot (Size / Angle / Offset / Depth / params) in the Paper section.
+pub const PAINTER_WATERCOLOR_FIELDS: [NodeId; 27] = [
+    PAINTER_WATERCOLOR_DRY_TIME,
+    PAINTER_WATERCOLOR_WET_PREVIEW,
+    PAINTER_WATERCOLOR_EDGE,
+    PAINTER_WATERCOLOR_SPREAD,
+    PAINTER_WATERCOLOR_GRANULATION,
+    PAINTER_WATERCOLOR_MIX,
+    PAINTER_WATERCOLOR_FILL,
+    PAINTER_WATERCOLOR_DEPTH,
+    PAINTER_WATERCOLOR_OPACITY,
+    PAINTER_WATERCOLOR_WARP,
+    PAINTER_WATERCOLOR_SMUDGE,
+    PAINTER_WATERCOLOR_WET,
+    PAINTER_WATERCOLOR_CHARGE,
+    PAINTER_WATERCOLOR_DILUTION,
+    PAINTER_WATERCOLOR_PULL,
+    PAINTER_WATERCOLOR_PAPER_SIZE_X,
+    PAINTER_WATERCOLOR_PAPER_SIZE_Y,
+    PAINTER_WATERCOLOR_PAPER_ANGLE,
+    PAINTER_WATERCOLOR_PAPER_OFFSET_X,
+    PAINTER_WATERCOLOR_PAPER_OFFSET_Y,
+    PAINTER_WATERCOLOR_PAPER_DEPTH,
+    PAINTER_WATERCOLOR_PAPER_PARAMS[0],
+    PAINTER_WATERCOLOR_PAPER_PARAMS[1],
+    PAINTER_WATERCOLOR_PAPER_PARAMS[2],
+    PAINTER_WATERCOLOR_PAPER_PARAMS[3],
+    PAINTER_WATERCOLOR_PAPER_PARAMS[4],
+    PAINTER_WATERCOLOR_PAPER_PARAMS[5],
+];

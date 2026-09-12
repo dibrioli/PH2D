@@ -26,16 +26,15 @@ impl PainterTool {
     /// [`crate::tool::PainterTool::handle_panel_event`]. The setters below store the raw track (mapped to
     /// engine values in [`Self::heal_inpaint`]).
     pub(crate) fn route_inpaint_event(&mut self, event: &PanelEvent) -> bool {
-        use ph2d_editor_core::ids as core_ids;
         let PanelEvent::SetValue(id, v) = event else {
             return false;
         };
         let (id, v) = (*id, *v as f32);
-        if id == core_ids::PAINTER_INPAINT_PATCH_SLIDER {
+        if id == crate::ids::PAINTER_INPAINT_PATCH_SLIDER {
             self.set_inpaint_patch(v);
-        } else if id == core_ids::PAINTER_INPAINT_QUALITY_SLIDER {
+        } else if id == crate::ids::PAINTER_INPAINT_QUALITY_SLIDER {
             self.set_inpaint_quality(v);
-        } else if id == core_ids::PAINTER_INPAINT_SEARCH_SLIDER {
+        } else if id == crate::ids::PAINTER_INPAINT_SEARCH_SLIDER {
             self.set_inpaint_search(v);
         } else {
             return false;

@@ -843,9 +843,8 @@ fn disarming_the_checkbox_exits_and_bakes() {
 #[test]
 fn the_paint_mode_dropdown_drives_the_wet_arm() {
     use ph2d_editor_core::tool::{PanelEvent, Tool};
-    let wet = || PanelEvent::SelectOption(ph2d_editor_core::ids::PAINTER_BRUSH_MEDIA, "3".into());
-    let digital =
-        || PanelEvent::SelectOption(ph2d_editor_core::ids::PAINTER_BRUSH_MEDIA, "0".into());
+    let wet = || PanelEvent::SelectOption(crate::ids::PAINTER_BRUSH_MEDIA, "3".into());
+    let digital = || PanelEvent::SelectOption(crate::ids::PAINTER_BRUSH_MEDIA, "0".into());
     let mut t = tool_in_mode("brush");
     t.handle_panel_event(wet());
     assert!(
@@ -859,9 +858,7 @@ fn the_paint_mode_dropdown_drives_the_wet_arm() {
     );
     // Reset = restore defaults INCLUDING the arm.
     t.handle_panel_event(wet());
-    t.handle_panel_event(PanelEvent::Click(
-        ph2d_editor_core::ids::PAINTER_WETPAINT_RESET,
-    ));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_WETPAINT_RESET));
     assert!(
         !t.paint.wetpaint.armed && matches!(t.paint.paint_mode, PaintMode::Paint),
         "the section reset must disarm"
@@ -1125,20 +1122,19 @@ fn the_engine_boots_with_the_knob_defaults() {
 /// the tick's reconcile call dropped (tick half).
 #[test]
 fn a_turned_knob_reaches_the_live_engine() {
-    use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::PanelEvent;
     use ph2d_wet_paint::tuning::Knob;
     let mut t = tool_in_mode("wetpaint");
     stroke_across(&mut t);
     assert!(
         t.route_brush_wetpaint_event(&PanelEvent::SetValue(
-            core_ids::PAINTER_WETPAINT_PIGMENT,
+            crate::ids::PAINTER_WETPAINT_PIGMENT,
             1200.0
         )),
         "the Pigment SetValue was not consumed by the wet route"
     );
     assert!(t.route_brush_wetpaint_event(&PanelEvent::SetValue(
-        core_ids::PAINTER_WETPAINT_WATER,
+        crate::ids::PAINTER_WETPAINT_WATER,
         0.25
     )));
     // The stamp door: the next batch reconciles.
@@ -1152,7 +1148,7 @@ fn a_turned_knob_reaches_the_live_engine() {
     }
     // The tick door: no stroke — the knob still lands while the water sits.
     assert!(t.route_brush_wetpaint_event(&PanelEvent::SetValue(
-        core_ids::PAINTER_WETPAINT_DRY_SPEED,
+        crate::ids::PAINTER_WETPAINT_DRY_SPEED,
         4.0
     )));
     t.wetpaint_tick(0.05);
@@ -1172,13 +1168,12 @@ fn a_turned_knob_reaches_the_live_engine() {
 /// it: knobs stored on the session instead of `WetPaintState`.
 #[test]
 fn the_knobs_survive_the_session_and_the_tool_round_trip() {
-    use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::PanelEvent;
     use ph2d_wet_paint::tuning::Knob;
     let mut t = tool_in_mode("wetpaint");
     stroke_across(&mut t);
     assert!(t.route_brush_wetpaint_event(&PanelEvent::SetValue(
-        core_ids::PAINTER_WETPAINT_PIGMENT,
+        crate::ids::PAINTER_WETPAINT_PIGMENT,
         1500.0
     )));
     t.set_paint_tool_mode("smear"); // session dies (ending is the bake)
@@ -1198,15 +1193,14 @@ fn the_knobs_survive_the_session_and_the_tool_round_trip() {
 /// it: `reset_brush_wetpaint` losing the knobs line.
 #[test]
 fn the_wet_section_reset_restores_the_knob_defaults() {
-    use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::PanelEvent;
     let mut t = tool_in_mode("wetpaint");
     assert!(t.route_brush_wetpaint_event(&PanelEvent::SetValue(
-        core_ids::PAINTER_WETPAINT_GRAVITY,
+        crate::ids::PAINTER_WETPAINT_GRAVITY,
         0.03
     )));
     assert_ne!(t.wet_knobs(), WetKnobs::default());
-    assert!(t.route_brush_wetpaint_event(&PanelEvent::Click(core_ids::PAINTER_WETPAINT_RESET)));
+    assert!(t.route_brush_wetpaint_event(&PanelEvent::Click(crate::ids::PAINTER_WETPAINT_RESET)));
     assert_eq!(
         t.wet_knobs(),
         WetKnobs::default(),

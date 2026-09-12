@@ -24,7 +24,6 @@
 use crate::card::{card_frame, card_row};
 use crate::number_field;
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::widget::{
@@ -84,9 +83,9 @@ pub(crate) fn paint_impasto_section(
         content_w,
         y,
         "Impasto",
-        core_ids::PAINTER_IMPASTO_SECTION,
-        core_ids::PAINTER_IMPASTO_SECTION_COLOR,
-        core_ids::PAINTER_IMPASTO_RESET,
+        ph2d_tool_painter::ids::PAINTER_IMPASTO_SECTION,
+        ph2d_tool_painter::ids::PAINTER_IMPASTO_SECTION_COLOR,
+        ph2d_tool_painter::ids::PAINTER_IMPASTO_RESET,
     );
     let Some(fold) = fold else {
         return y;
@@ -119,7 +118,7 @@ pub(crate) fn paint_impasto_section(
         x,
         content_w,
         y,
-        core_ids::PAINTER_IMPASTO_LIVE_EDIT,
+        ph2d_tool_painter::ids::PAINTER_IMPASTO_LIVE_EDIT,
         "Adjust Last Stroke",
         brush.impasto_live_edit,
     );
@@ -202,7 +201,7 @@ fn paint_material_card(
         iw,
         ry,
         "Shine",
-        core_ids::PAINTER_IMPASTO_SHINE,
+        ph2d_tool_painter::ids::PAINTER_IMPASTO_SHINE,
         brush.impasto_shine,
         0.0,
         UNIT_MAX,
@@ -219,7 +218,7 @@ fn paint_material_card(
         iw,
         ry,
         "Roughness",
-        core_ids::PAINTER_IMPASTO_ROUGHNESS,
+        ph2d_tool_painter::ids::PAINTER_IMPASTO_ROUGHNESS,
         brush.impasto_roughness,
         0.0,
         UNIT_MAX,
@@ -233,7 +232,7 @@ fn paint_material_card(
         iw,
         ry,
         "Metallic",
-        core_ids::PAINTER_IMPASTO_METALLIC,
+        ph2d_tool_painter::ids::PAINTER_IMPASTO_METALLIC,
         brush.impasto_metallic,
         0.0,
         UNIT_MAX,
@@ -255,14 +254,14 @@ fn paint_material_card(
         box_w,
         ry,
         "Wax",
-        core_ids::PAINTER_IMPASTO_WAX,
+        ph2d_tool_painter::ids::PAINTER_IMPASTO_WAX,
         brush.impasto_wax,
         0.0,
         UNIT_MAX,
         number_field::FINE_STEP,
         2,
     );
-    let sw_id = core_ids::PAINTER_IMPASTO_WAX_COLOR;
+    let sw_id = ph2d_tool_painter::ids::PAINTER_IMPASTO_WAX_COLOR;
     let sr = Rect::new(ix + box_w + Spacing::Xs.px(), ry, SWATCH_W, ROW_H_PX);
     let open = ctx.host.store().picker_target() == Some(sw_id);
     let enc = |v: f32| (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8; // LITERAL-PX-OK: sRGB 8-bit normalize
@@ -319,7 +318,7 @@ pub(crate) fn paint_body_card(
         iw,
         ry,
         "Depth",
-        core_ids::PAINTER_IMPASTO_DEPTH,
+        ph2d_tool_painter::ids::PAINTER_IMPASTO_DEPTH,
         brush.impasto_depth,
         DEPTH_MIN,
         DEPTH_MAX,
@@ -335,7 +334,7 @@ pub(crate) fn paint_body_card(
         iw,
         ry,
         "Body",
-        core_ids::PAINTER_IMPASTO_BODY,
+        ph2d_tool_painter::ids::PAINTER_IMPASTO_BODY,
         brush.impasto_body,
         0.0,
         UNIT_MAX,
@@ -352,7 +351,7 @@ pub(crate) fn paint_body_card(
         iw,
         ry,
         "Push",
-        core_ids::PAINTER_IMPASTO_PUSH,
+        ph2d_tool_painter::ids::PAINTER_IMPASTO_PUSH,
         brush.impasto_push,
         0.0,
         UNIT_MAX,
@@ -366,7 +365,7 @@ pub(crate) fn paint_body_card(
         iw,
         ry,
         "Smoothing",
-        core_ids::PAINTER_IMPASTO_SMOOTHING,
+        ph2d_tool_painter::ids::PAINTER_IMPASTO_SMOOTHING,
         brush.impasto_smoothing,
         0.0,
         UNIT_MAX,
@@ -379,11 +378,17 @@ pub(crate) fn paint_body_card(
         ix,
         iw,
         ry,
-        core_ids::PAINTER_IMPASTO_SOURCE,
+        ph2d_tool_painter::ids::PAINTER_IMPASTO_SOURCE,
         "Depth source",
         &[
-            (core_ids::PAINTER_IMPASTO_SOURCE_UNIFORM, "Uniform"),
-            (core_ids::PAINTER_IMPASTO_SOURCE_GRAIN, "Grain"),
+            (
+                ph2d_tool_painter::ids::PAINTER_IMPASTO_SOURCE_UNIFORM,
+                "Uniform",
+            ),
+            (
+                ph2d_tool_painter::ids::PAINTER_IMPASTO_SOURCE_GRAIN,
+                "Grain",
+            ),
         ],
         brush.impasto_source as usize,
     );
@@ -393,12 +398,12 @@ pub(crate) fn paint_body_card(
         ix,
         iw,
         ry,
-        core_ids::PAINTER_IMPASTO_DRAW_TO,
+        ph2d_tool_painter::ids::PAINTER_IMPASTO_DRAW_TO,
         "What the brush writes",
         &[
-            (core_ids::PAINTER_IMPASTO_DRAW_BOTH, "Both"),
-            (core_ids::PAINTER_IMPASTO_DRAW_COLOR, "Color"),
-            (core_ids::PAINTER_IMPASTO_DRAW_DEPTH, "Depth"),
+            (ph2d_tool_painter::ids::PAINTER_IMPASTO_DRAW_BOTH, "Both"),
+            (ph2d_tool_painter::ids::PAINTER_IMPASTO_DRAW_COLOR, "Color"),
+            (ph2d_tool_painter::ids::PAINTER_IMPASTO_DRAW_DEPTH, "Depth"),
         ],
         brush.impasto_draw_to as usize,
     );
@@ -410,7 +415,7 @@ pub(crate) fn paint_body_card(
         ix,
         iw,
         ry,
-        core_ids::PAINTER_IMPASTO_SMOOTH_EDGES,
+        ph2d_tool_painter::ids::PAINTER_IMPASTO_SMOOTH_EDGES,
         "Smooth Edges",
         brush.impasto_smooth_edges,
     );
@@ -438,7 +443,7 @@ fn paint_lighting_card(
         ix,
         iw,
         ry,
-        core_ids::PAINTER_IMPASTO_SHOW,
+        ph2d_tool_painter::ids::PAINTER_IMPASTO_SHOW,
         "Show Impasto",
         brush.impasto_show,
     );
@@ -538,7 +543,7 @@ pub(crate) fn paint_knife_card(
         iw,
         ry,
         "Plow",
-        core_ids::PAINTER_IMPASTO_PLOW,
+        ph2d_tool_painter::ids::PAINTER_IMPASTO_PLOW,
         brush.impasto_plow,
         0.0,
         UNIT_MAX,

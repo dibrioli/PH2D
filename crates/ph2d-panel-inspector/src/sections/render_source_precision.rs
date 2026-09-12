@@ -56,12 +56,12 @@ pub(super) fn paint_precision_row(
             (
                 "RGBA8",
                 info.source_precision == Some(ph2d_editor_core::Precision::Rgba8),
-                ids::INSP_RENDER_FORMAT_RGBA8,
+                crate::ids::INSP_RENDER_FORMAT_RGBA8,
             ),
             (
                 "RGBA16",
                 info.source_precision == Some(ph2d_editor_core::Precision::Rgba16),
-                ids::INSP_RENDER_FORMAT_RGBA16,
+                crate::ids::INSP_RENDER_FORMAT_RGBA16,
             ),
         ],
         scene,

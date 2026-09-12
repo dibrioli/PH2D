@@ -243,7 +243,7 @@ fn report_library(_app: &mut crate::App) {
 /// sejam os outros assets da biblioteca.
 fn click_kind_chip(app: &mut crate::App) {
     // O chip `1` é o `AssetKind::ALL[0]` = Prefab (o `0` é o «All»).
-    let id = ph2d_editor_core::ids::ASSET_KIND[1];
+    let id = ph2d_panel_asset_browser::ids::ASSET_KIND[1];
     match app.smoke_find_widget(id) {
         Some((x, y)) => {
             app.smoke_pointer_down(x, y);
@@ -415,7 +415,7 @@ fn remove_the_unused_image(app: &mut crate::App) {
 
 /// Volta o filtro de família a `All` — ver a nota no roteador.
 fn click_all_chip(app: &mut crate::App) {
-    if let Some((x, y)) = app.smoke_find_widget(ph2d_editor_core::ids::ASSET_KIND[0]) {
+    if let Some((x, y)) = app.smoke_find_widget(ph2d_panel_asset_browser::ids::ASSET_KIND[0]) {
         app.smoke_pointer_down(x, y);
         app.smoke_pointer_up();
         eprintln!("[catalog] f=53 chip `All` apertado");
@@ -424,7 +424,7 @@ fn click_all_chip(app: &mut crate::App) {
 
 /// ⭐ Cria um catálogo pelo botão `+ Catalog` da coluna — pelo PONTEIRO.
 fn new_catalog(app: &mut crate::App) {
-    match app.smoke_find_widget(ph2d_editor_core::ids::ASSET_CATALOG_NEW) {
+    match app.smoke_find_widget(ph2d_panel_asset_browser::ids::ASSET_CATALOG_NEW) {
         Some((x, y)) => {
             app.smoke_pointer_down(x, y);
             app.smoke_pointer_up();
@@ -511,7 +511,7 @@ fn type_new_name(app: &mut crate::App) {
         .gfx
         .as_ref()
         .and_then(|g| g.hero_screen.as_ref())
-        .map(|h| h.store().focus_id() == Some(ph2d_editor_core::ids::ASSET_CATALOG_RENAME))
+        .map(|h| h.store().focus_id() == Some(ph2d_panel_asset_browser::ids::ASSET_CATALOG_RENAME))
         .unwrap_or(false);
     eprintln!("[catalog] f=79 o campo de renomear tem o foco: {focused}");
     // ⭐⭐ **E a costura de que o doc do id se gaba**: com um campo focado, o shell suprime os

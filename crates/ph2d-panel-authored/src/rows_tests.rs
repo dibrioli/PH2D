@@ -42,10 +42,13 @@ fn the_rows_are_the_generated_table_in_order() {
 fn the_row_ids_do_not_collide_with_each_other_nor_with_the_chrome() {
     let mut seen: Vec<(ph2d_a11y::NodeId, String)> = vec![
         (ids::AUTHORED_PANEL, "panel".to_string()),
-        (ids::AUTHORED_CLOSE, "close".to_string()),
-        (ids::AUTHORED_DRAG_HANDLE, "drag".to_string()),
-        (ids::AUTHORED_RESIZE_HANDLE, "resize".to_string()),
-        (ids::AUTHORED_RESIZE_HANDLE_BL, "resize_bl".to_string()),
+        (crate::ids::AUTHORED_CLOSE, "close".to_string()),
+        (crate::ids::AUTHORED_DRAG_HANDLE, "drag".to_string()),
+        (crate::ids::AUTHORED_RESIZE_HANDLE, "resize".to_string()),
+        (
+            crate::ids::AUTHORED_RESIZE_HANDLE_BL,
+            "resize_bl".to_string(),
+        ),
     ];
     for r in baked() {
         // ⚠️ Duas rows de mesmo RÓTULO têm a mesma chave de propósito (ver o doc de

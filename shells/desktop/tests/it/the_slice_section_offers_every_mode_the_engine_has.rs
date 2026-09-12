@@ -16,7 +16,6 @@
 //! A §5 nasce com o gate no mesmo commit da seção, e não dois meses depois.
 
 use ph2d_ecs::{SliceDrawMode, SliceRegion, SliceTileMode, TileRegionMode};
-use ph2d_editor_core::ids;
 
 /// **(1) Um botão por variante — nos três enums com escolha na UI.**
 ///
@@ -35,17 +34,17 @@ fn every_engine_variant_has_exactly_one_control() {
         SliceDrawMode::ALL.len()
     );
     assert_eq!(
-        ids::INSP_SLICE_TILE_MODE.len(),
+        ph2d_panel_inspector::ids::INSP_SLICE_TILE_MODE.len(),
         SliceTileMode::ALL.len(),
         "o Tile Mode tem {} botoes para {} variantes",
-        ids::INSP_SLICE_TILE_MODE.len(),
+        ph2d_panel_inspector::ids::INSP_SLICE_TILE_MODE.len(),
         SliceTileMode::ALL.len()
     );
     assert_eq!(
-        ids::INSP_SLICE_REGION.len(),
+        ph2d_panel_inspector::ids::INSP_SLICE_REGION.len(),
         SliceRegion::ALL.len(),
         "a grelha tem {} celulas para {} regioes",
-        ids::INSP_SLICE_REGION.len(),
+        ph2d_panel_inspector::ids::INSP_SLICE_REGION.len(),
         SliceRegion::ALL.len()
     );
 }

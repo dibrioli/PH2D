@@ -19,7 +19,6 @@
 //! coisa que alguém escreveu.
 
 use ph2d_a11y::NodeId;
-use ph2d_editor_core::ids;
 use ph2d_sculpt3d::{ClothFilterKind, Verb};
 
 use crate::state::Sculpt3dUi;
@@ -36,44 +35,44 @@ pub(super) type Toggle = (NodeId, fn(&Sculpt3dUi) -> bool, fn(&mut Sculpt3dUi));
 /// duas cópias divergiriam num interruptor que aparece e não muda um vértice.
 pub(super) const TOGGLES: [Toggle; 13] = [
     (
-        ids::SCULPT3D_ACCUMULATE,
+        crate::ids::SCULPT3D_ACCUMULATE,
         |u| u.brush.verb.accumulates(),
         |u| u.brush.accumulate = !u.brush.accumulate,
     ),
     (
-        ids::SCULPT3D_FRONT_FACES,
+        crate::ids::SCULPT3D_FRONT_FACES,
         |u| u.brush.offers_front_faces(),
         |u| u.brush.front_faces_only = !u.brush.front_faces_only,
     ),
     (
-        ids::SCULPT3D_SURFACE_ONLY,
+        crate::ids::SCULPT3D_SURFACE_ONLY,
         |u| u.brush.offers_surface_only(),
         |u| u.brush.surface_only = !u.brush.surface_only,
     ),
     (
-        ids::SCULPT3D_SCRAPE_DYNAMIC,
+        crate::ids::SCULPT3D_SCRAPE_DYNAMIC,
         |u| u.brush.verb == Verb::MultiplaneScrape,
         |u| u.brush.scrape_dynamic = !u.brush.scrape_dynamic,
     ),
     (
-        ids::SCULPT3D_CLOTH_PIN,
+        crate::ids::SCULPT3D_CLOTH_PIN,
         |u| u.brush.verb == Verb::Cloth && u.brush.cloth_area.offers_pin(),
         |u| u.brush.cloth_pin = !u.brush.cloth_pin,
     ),
     (
-        ids::SCULPT3D_CLOTH_PERSISTENT,
+        crate::ids::SCULPT3D_CLOTH_PERSISTENT,
         |u| u.brush.verb == Verb::Cloth,
         |u| u.brush.cloth_persistent = !u.brush.cloth_persistent,
     ),
     (
-        ids::SCULPT3D_CLOTH_COLLISIONS,
+        crate::ids::SCULPT3D_CLOTH_COLLISIONS,
         |u| u.brush.verb == Verb::Cloth,
         |u| u.brush.cloth_collisions = !u.brush.cloth_collisions,
     ),
     // ⭐⭐ **AS COLISÕES DO FILTRO** — a espec §7 diz que ele as tem («idem §5.6,
     // opção nasce desligada») e nós passávamos-lhe uma lista vazia.
     (
-        ids::SCULPT3D_CFILTER_COLLISIONS,
+        crate::ids::SCULPT3D_CFILTER_COLLISIONS,
         |u| u.filter_law.is_cloth(),
         |u| u.cloth_filter.collisions = !u.cloth_filter.collisions,
     ),
@@ -84,7 +83,7 @@ pub(super) const TOGGLES: [Toggle; 13] = [
     // exactamente o knob morto que esta casa varre a cada wave — o artista
     // clica, nada muda, e ele conclui que o app tem um defeito que não tem.
     (
-        ids::SCULPT3D_CFILTER_AXIS[0],
+        crate::ids::SCULPT3D_CFILTER_AXIS[0],
         |u| {
             u.filter_law
                 .cloth()
@@ -93,7 +92,7 @@ pub(super) const TOGGLES: [Toggle; 13] = [
         |u| u.cloth_filter_axes[0] = !u.cloth_filter_axes[0],
     ),
     (
-        ids::SCULPT3D_CFILTER_AXIS[1],
+        crate::ids::SCULPT3D_CFILTER_AXIS[1],
         |u| {
             u.filter_law
                 .cloth()
@@ -102,7 +101,7 @@ pub(super) const TOGGLES: [Toggle; 13] = [
         |u| u.cloth_filter_axes[1] = !u.cloth_filter_axes[1],
     ),
     (
-        ids::SCULPT3D_CFILTER_AXIS[2],
+        crate::ids::SCULPT3D_CFILTER_AXIS[2],
         |u| {
             u.filter_law
                 .cloth()
@@ -111,13 +110,13 @@ pub(super) const TOGGLES: [Toggle; 13] = [
         |u| u.cloth_filter_axes[2] = !u.cloth_filter_axes[2],
     ),
     (
-        ids::SCULPT3D_ALPHA_PREVIEW,
+        crate::ids::SCULPT3D_ALPHA_PREVIEW,
         |u| u.brush.alpha.is_some(),
         |u| u.alpha_preview = !u.alpha_preview,
     ),
     // ⚠️ O arame **não pergunta nada**: ele é da VISTA, e toda ferramenta o tem.
     (
-        ids::SCULPT3D_WIREFRAME,
+        crate::ids::SCULPT3D_WIREFRAME,
         |_| true,
         |u| u.wireframe = !u.wireframe,
     ),

@@ -21,10 +21,10 @@ pub(super) fn symmetry_controls(store: &mut WidgetStore) {
     // clique — um tipo novo nasce registado, pintado e vivo, sem passar por três listas.
     let kinds = SymmetryKind::ALL.iter().copied().map(symmetry_kind_id);
     for id in kinds.chain([
-        ids::VECTOR_SYM_OFF,
-        ids::VECTOR_SYM_ON,
-        ids::VECTOR_SYM_FUSE_OFF,
-        ids::VECTOR_SYM_FUSE_ON,
+        ph2d_tool_vector::ids::VECTOR_SYM_OFF,
+        ph2d_tool_vector::ids::VECTOR_SYM_ON,
+        ph2d_tool_vector::ids::VECTOR_SYM_FUSE_OFF,
+        ph2d_tool_vector::ids::VECTOR_SYM_FUSE_ON,
         ids::VECTOR_SYM_APPLY,
     ]) {
         store.register(
@@ -36,7 +36,7 @@ pub(super) fn symmetry_controls(store: &mut WidgetStore) {
     }
     let val = f64::from(d.segments);
     store.register(
-        ids::VECTOR_SYM_SEGMENTS,
+        ph2d_tool_vector::ids::VECTOR_SYM_SEGMENTS,
         InteractiveState::Slider {
             state: SliderState::Normal,
             value: segments_to_track(d.segments),
@@ -44,7 +44,7 @@ pub(super) fn symmetry_controls(store: &mut WidgetStore) {
         },
     );
     store.register(
-        ids::VECTOR_SYM_SEGMENTS_NUM,
+        ph2d_tool_vector::ids::VECTOR_SYM_SEGMENTS_NUM,
         InteractiveState::NumberInput {
             state: TextInputState::Normal,
             value: val,
@@ -59,8 +59,8 @@ pub(super) fn symmetry_controls(store: &mut WidgetStore) {
     // achado #3 da auditoria de 2026-05-28, que o chip de Segments do Painter já honra. A faixa é
     // a mesma que o `track_to_segments` inverte, que é o que faz a ida-e-volta fechar.
     store.link_slider_number_mapped_integer(
-        ids::VECTOR_SYM_SEGMENTS,
-        ids::VECTOR_SYM_SEGMENTS_NUM,
+        ph2d_tool_vector::ids::VECTOR_SYM_SEGMENTS,
+        ph2d_tool_vector::ids::VECTOR_SYM_SEGMENTS_NUM,
         SEGMENTS_SCALE,
         SEGMENTS_OFFSET,
     );

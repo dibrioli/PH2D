@@ -9,11 +9,11 @@
 //! (idx = position in [`AdjustmentKind::ALL`]); the tool maps it back to the kind
 //! and creates the layer. See `event.rs` / `tool.rs`.
 
-use ph2d_editor_core::ids::painter_adjustment_kind_option_id;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::DropdownOption;
 use ph2d_editor_core::zones::Rect;
 use ph2d_tool_painter::AdjustmentKind;
+use ph2d_tool_painter::ids::painter_adjustment_kind_option_id;
 
 /// All 24 adjustment kinds as `Dropdown` options (value = index into
 /// [`AdjustmentKind::ALL`] = the wire value forwarded to the tool, label =
@@ -48,7 +48,7 @@ pub(crate) fn paint_adjustment_menu_popover(
     crate::paint_brush::paint_dropdown_popover(
         ctx,
         theme,
-        ph2d_editor_core::ids::PAINTER_LAYERS_ADD_ADJUSTMENT,
+        ph2d_tool_painter::ids::PAINTER_LAYERS_ADD_ADJUSTMENT,
         kind_options(),
         menu_chip,
         usize::MAX,

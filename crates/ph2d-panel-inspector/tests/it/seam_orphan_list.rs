@@ -157,7 +157,7 @@ fn clear_button_y(rows: Vec<OrphanRow>) -> f32 {
     set_current_inspector_name(None);
     rects
         .iter()
-        .find(|(id, _)| *id == ph2d_editor_core::ids::INSP_INSTANCE_CLEAR_ORPHANS)
+        .find(|(id, _)| *id == ph2d_panel_inspector::ids::INSP_INSTANCE_CLEAR_ORPHANS)
         .map(|(_, r)| r.y)
         .expect("o botao dos orfaos tem de estar pintado")
 }
@@ -189,7 +189,7 @@ fn the_x_of_a_row_drops_that_rows_exception_by_key() {
     }));
     set_current_inspector_instance(Some(info(rows)));
     let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
-    let id = ph2d_editor_core::ids::INSP_INSTANCE_DROP_ORPHAN[1];
+    let id = ph2d_panel_inspector::ids::INSP_INSTANCE_DROP_ORPHAN[1];
     assert!(
         rects.iter().any(|(r, _)| *r == id),
         "o `x` da 2.a linha nao foi pintado nem hit-indexado"
@@ -230,7 +230,7 @@ fn the_x_of_a_row_drops_that_rows_exception_by_key() {
 /// **Mutação que deve sangrar:** não pintar a linha do `dropless`.
 #[test]
 fn the_rows_beyond_the_id_table_say_they_have_no_button() {
-    let cap = ph2d_editor_core::ids::MAX_INSTANCE_ORPHAN_ROWS;
+    let cap = ph2d_panel_inspector::ids::MAX_INSTANCE_ORPHAN_ROWS;
     let rows = |n: usize| -> Vec<OrphanRow> {
         (0..n).map(|i| orphan("Sprite", &format!("P{i}"))).collect()
     };
@@ -279,7 +279,7 @@ fn the_put_back_of_a_row_restores_that_piece_by_key() {
     i.removed_rows = rows;
     set_current_inspector_instance(Some(i));
     let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
-    let id = ph2d_editor_core::ids::INSP_INSTANCE_RESTORE_PIECE[1];
+    let id = ph2d_panel_inspector::ids::INSP_INSTANCE_RESTORE_PIECE[1];
     assert!(
         rects.iter().any(|(r, _)| *r == id),
         "o botao da 2.a linha nao foi pintado nem hit-indexado"
@@ -347,7 +347,7 @@ fn the_apply_of_an_added_row_promotes_that_piece_by_key() {
     i.added_rows = rows;
     set_current_inspector_instance(Some(i));
     let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
-    let id = ph2d_editor_core::ids::INSP_INSTANCE_APPLY_ADDED[1];
+    let id = ph2d_panel_inspector::ids::INSP_INSTANCE_APPLY_ADDED[1];
     assert!(
         rects.iter().any(|(r, _)| *r == id),
         "o botao da 2.a linha nao foi pintado nem hit-indexado"

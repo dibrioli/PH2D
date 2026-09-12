@@ -34,20 +34,20 @@ fn button(store: &mut WidgetStore, id: ph2d_a11y::NodeId) {
 /// `populate` under the cap without a comment shave.
 fn draw_style_buttons(store: &mut WidgetStore) {
     // Shape (Draw): o traço carrega o próprio preenchimento?
-    button(store, ids::FLIP_SHAPE_LINE);
-    button(store, ids::FLIP_SHAPE_FILLED);
+    button(store, ph2d_tool_flip::ids::FLIP_SHAPE_LINE);
+    button(store, ph2d_tool_flip::ids::FLIP_SHAPE_FILLED);
     // Tip (Draw, 03 §8): a ponta ao longo do traço — linha cheia / contas / quadrados.
-    button(store, ids::FLIP_TIP_LINE);
-    button(store, ids::FLIP_TIP_DOTS);
-    button(store, ids::FLIP_TIP_SQUARES);
+    button(store, ph2d_tool_flip::ids::FLIP_TIP_LINE);
+    button(store, ph2d_tool_flip::ids::FLIP_TIP_DOTS);
+    button(store, ph2d_tool_flip::ids::FLIP_TIP_SQUARES);
     // Cap (Draw): the stroke's TIP SHAPE — round disc or straight cut.
-    button(store, ids::FLIP_CAP_ROUND);
-    button(store, ids::FLIP_CAP_FLAT);
-    button(store, ids::FLIP_CAP_SQUARE);
+    button(store, ph2d_tool_flip::ids::FLIP_CAP_ROUND);
+    button(store, ph2d_tool_flip::ids::FLIP_CAP_FLAT);
+    button(store, ph2d_tool_flip::ids::FLIP_CAP_SQUARE);
     // Self Overlap (Draw, 03 §8): the accumulate toggle-chip.
-    button(store, ids::FLIP_SELF_OVERLAP);
+    button(store, ph2d_tool_flip::ids::FLIP_SELF_OVERLAP);
     // Airbrush (Draw, 03 §8): the analytic-airbrush toggle-chip.
-    button(store, ids::FLIP_AIRBRUSH);
+    button(store, ph2d_tool_flip::ids::FLIP_AIRBRUSH);
 }
 
 /// Register a slider + its linked value chip, seeded at `track` / `display`.
@@ -114,7 +114,7 @@ pub fn populate(store: &mut WidgetStore) {
     erase_and_sculpt(store);
 
     // Layers toolbar.
-    button(store, ids::FLIP_LAYER_ADD);
+    button(store, ph2d_tool_flip::ids::FLIP_LAYER_ADD);
     button(store, ids::FLIP_LAYER_DUPLICATE);
     button(store, ids::FLIP_LAYER_DELETE);
 
@@ -125,11 +125,11 @@ pub fn populate(store: &mut WidgetStore) {
 /// O rádio de MODO, a seção Edit e o grupo de estilo do Draw.
 fn modes_and_edit(store: &mut WidgetStore) {
     // Mode row (Select / Draw / Erase / Fill / Sculpt).
-    button(store, ids::FLIP_MODE_SELECT);
-    button(store, ids::FLIP_MODE_DRAW);
-    button(store, ids::FLIP_MODE_ERASE);
-    button(store, ids::FLIP_MODE_RESHAPE);
-    button(store, ids::FLIP_MODE_EDIT);
+    button(store, ph2d_tool_flip::ids::FLIP_MODE_SELECT);
+    button(store, ph2d_tool_flip::ids::FLIP_MODE_DRAW);
+    button(store, ph2d_tool_flip::ids::FLIP_MODE_ERASE);
+    button(store, ph2d_tool_flip::ids::FLIP_MODE_RESHAPE);
+    button(store, ph2d_tool_flip::ids::FLIP_MODE_EDIT);
     // Edit section (W6) — pintados só no modo Edit, registrados SEMPRE (mesma regra dos
     // botões de borracha logo abaixo: registrar é o que os torna focáveis, e o gate
     // `architecture_panel_wiring_parity` cobra a paridade paint↔register).
@@ -137,9 +137,9 @@ fn modes_and_edit(store: &mut WidgetStore) {
     button(store, ids::FLIP_EDIT_DESELECT);
     button(store, ids::FLIP_EDIT_DELETE);
     // O domínio da seleção (W8 + §4.B): traço, ponto ou pedaço-entre-cruzamentos.
-    button(store, ids::FLIP_EDIT_DOM_STROKE);
-    button(store, ids::FLIP_EDIT_DOM_POINT);
-    button(store, ids::FLIP_EDIT_DOM_SEGMENT);
+    button(store, ph2d_tool_flip::ids::FLIP_EDIT_DOM_STROKE);
+    button(store, ph2d_tool_flip::ids::FLIP_EDIT_DOM_POINT);
+    button(store, ph2d_tool_flip::ids::FLIP_EDIT_DOM_SEGMENT);
     // Shape · Tip · Self Overlap (Draw) — o grupo de estilo, no módulo-helper.
     draw_style_buttons(store);
 }
@@ -149,7 +149,7 @@ fn brush_sliders(store: &mut WidgetStore) {
     // Brush sliders — seeded at the tool defaults.
     slider_chip(
         store,
-        ids::FLIP_SIZE,
+        ph2d_tool_flip::ids::FLIP_SIZE,
         ids::FLIP_SIZE_NUM,
         px_to_slider(DEFAULT_WIDTH_PX),
         DEFAULT_WIDTH_PX,
@@ -159,7 +159,7 @@ fn brush_sliders(store: &mut WidgetStore) {
     );
     slider_chip(
         store,
-        ids::FLIP_HARDNESS,
+        ph2d_tool_flip::ids::FLIP_HARDNESS,
         ids::FLIP_HARDNESS_NUM,
         DEFAULT_HARDNESS,
         f64::from(DEFAULT_HARDNESS),
@@ -169,7 +169,7 @@ fn brush_sliders(store: &mut WidgetStore) {
     );
     slider_chip(
         store,
-        ids::FLIP_OPACITY,
+        ph2d_tool_flip::ids::FLIP_OPACITY,
         ids::FLIP_OPACITY_NUM,
         DEFAULT_OPACITY,
         f64::from(DEFAULT_OPACITY) * 100.0, // LITERAL-PX-OK: fraction→percent display
@@ -179,7 +179,7 @@ fn brush_sliders(store: &mut WidgetStore) {
     );
     slider_chip(
         store,
-        ids::FLIP_SMOOTHING,
+        ph2d_tool_flip::ids::FLIP_SMOOTHING,
         ids::FLIP_SMOOTHING_NUM,
         DEFAULT_SMOOTHING,
         f64::from(DEFAULT_SMOOTHING),
@@ -190,7 +190,7 @@ fn brush_sliders(store: &mut WidgetStore) {
     // Dinâmica de pressão (Draw): Min Width (piso, fração→%) + Response (macia⇔dura, 50 = linear).
     slider_chip(
         store,
-        ids::FLIP_PRESSURE_MIN,
+        ph2d_tool_flip::ids::FLIP_PRESSURE_MIN,
         ids::FLIP_PRESSURE_MIN_NUM,
         0.05,  // LITERAL-PX-OK: fracao default do pressure_min_width, nao metrica de design
         5.0,   // LITERAL-PX-OK: display inicial em % do dominio, nao metrica de design
@@ -200,7 +200,7 @@ fn brush_sliders(store: &mut WidgetStore) {
     );
     slider_chip(
         store,
-        ids::FLIP_PRESSURE_RESPONSE,
+        ph2d_tool_flip::ids::FLIP_PRESSURE_RESPONSE,
         ids::FLIP_PRESSURE_RESPONSE_NUM,
         0.5,   // track = `pressure_response` default (0.5 = linear)
         50.0,  // LITERAL-PX-OK: display inicial em % do dominio, nao metrica de design
@@ -214,24 +214,24 @@ fn brush_sliders(store: &mut WidgetStore) {
 fn fill_and_colorize(store: &mut WidgetStore) {
     // Fill (W4): modo, sub-modos do balde e os 3 sliders. Registrados sempre (só
     // PINTADOS no modo Fill) — um widget não-registrado não pode ser clicado.
-    button(store, ids::FLIP_MODE_FILL);
-    button(store, ids::FLIP_FILL_PAINT);
-    button(store, ids::FLIP_FILL_BEHIND);
-    button(store, ids::FLIP_FILL_UNPAINT);
+    button(store, ph2d_tool_flip::ids::FLIP_MODE_FILL);
+    button(store, ph2d_tool_flip::ids::FLIP_FILL_PAINT);
+    button(store, ph2d_tool_flip::ids::FLIP_FILL_BEHIND);
+    button(store, ph2d_tool_flip::ids::FLIP_FILL_UNPAINT);
     // Colorize (C2): modo + Apply/Clear. Registrados sempre, pintados só no modo
     // Colorize; a swatch usa o dispatch de picker (register_picker_swatch no paint).
-    button(store, ids::FLIP_MODE_COLORIZE);
+    button(store, ph2d_tool_flip::ids::FLIP_MODE_COLORIZE);
     button(store, ids::FLIP_COLORIZE_APPLY);
     button(store, ids::FLIP_COLORIZE_CLEAR);
     // Trace (Shift & Trace): modo + Reset. Registrados sempre, pintados só no modo Trace.
-    button(store, ids::FLIP_MODE_TRACE);
+    button(store, ph2d_tool_flip::ids::FLIP_MODE_TRACE);
     button(store, ids::FLIP_TRACE_RESET);
     // Bleed (6º smoke): quão fundo a cor entra pelo vão aberto (a lente). `0.5` = o pedágio
     // aprovado no 5º smoke. É o controle CONTÍNUO do vazamento; o Trap (reusado no Colorize)
     // é o selo BINÁRIO. Faixa 0..1 (fração), step contínuo.
     slider_chip(
         store,
-        ids::FLIP_COLORIZE_BLEED,
+        ph2d_tool_flip::ids::FLIP_COLORIZE_BLEED,
         ids::FLIP_COLORIZE_BLEED_NUM,
         0.5,   // track (= a fração `colorize_bleed`); meio = DEFAULT_SQUEEZE
         50.0,  // LITERAL-PX-OK: display inicial em % do dominio, nao metrica de design
@@ -241,7 +241,7 @@ fn fill_and_colorize(store: &mut WidgetStore) {
     );
     slider_chip(
         store,
-        ids::FLIP_GAP,
+        ph2d_tool_flip::ids::FLIP_GAP,
         ids::FLIP_GAP_NUM,
         0.0,
         0.0,
@@ -253,7 +253,7 @@ fn fill_and_colorize(store: &mut WidgetStore) {
     // (relativo à espessura). Semeado no default.
     slider_chip(
         store,
-        ids::FLIP_DOT_SPACING,
+        ph2d_tool_flip::ids::FLIP_DOT_SPACING,
         ids::FLIP_DOT_SPACING_NUM,
         (f64::from(DEFAULT_DOT_SPACING) / DOT_SPACING_MAX) as f32,
         f64::from(DEFAULT_DOT_SPACING),
@@ -263,7 +263,7 @@ fn fill_and_colorize(store: &mut WidgetStore) {
     );
     slider_chip(
         store,
-        ids::FLIP_GROW,
+        ph2d_tool_flip::ids::FLIP_GROW,
         ids::FLIP_GROW_NUM,
         // O default (0 px) na faixa [-8, +8]. Com a âncora no EIXO da linha (BUGS #14)
         // o zero já é exato em qualquer espessura e zoom — o Grow é só o ajuste
@@ -276,7 +276,7 @@ fn fill_and_colorize(store: &mut WidgetStore) {
     );
     slider_chip(
         store,
-        ids::FLIP_TRAP,
+        ph2d_tool_flip::ids::FLIP_TRAP,
         ids::FLIP_TRAP_NUM,
         0.0, // default 0 = desligado (a bola e opt-in)
         0.0,
@@ -286,7 +286,7 @@ fn fill_and_colorize(store: &mut WidgetStore) {
     );
     slider_chip(
         store,
-        ids::FLIP_PRECISION,
+        ph2d_tool_flip::ids::FLIP_PRECISION,
         ids::FLIP_PRECISION_NUM,
         ((DEFAULT_PRECISION - PRECISION_MIN) / (PRECISION_MAX - PRECISION_MIN)) as f32,
         DEFAULT_PRECISION,
@@ -300,9 +300,9 @@ fn fill_and_colorize(store: &mut WidgetStore) {
 /// escultura do W5.
 fn erase_and_sculpt(store: &mut WidgetStore) {
     // Erase sub-mode buttons (painted only in Erase mode, registered always).
-    button(store, ids::FLIP_ERASE_SOFT);
-    button(store, ids::FLIP_ERASE_HARD);
-    button(store, ids::FLIP_ERASE_STROKE);
+    button(store, ph2d_tool_flip::ids::FLIP_ERASE_SOFT);
+    button(store, ph2d_tool_flip::ids::FLIP_ERASE_HARD);
+    button(store, ph2d_tool_flip::ids::FLIP_ERASE_STROKE);
 
     // §4.C — os LINKS da borracha (Unified Paint Settings do Blender) + os sliders
     // PRÓPRIOS dela. Os toggles são pintados só no modo Erase; os sliders, só no modo
@@ -311,11 +311,11 @@ fn erase_and_sculpt(store: &mut WidgetStore) {
     //
     // Os próprios nascem nos MESMOS defaults do pincel: deslinkar não pode fazer o
     // número saltar na cara do artista da primeira vez.
-    button(store, ids::FLIP_LINK_SIZE);
-    button(store, ids::FLIP_LINK_STRENGTH);
+    button(store, ph2d_tool_flip::ids::FLIP_LINK_SIZE);
+    button(store, ph2d_tool_flip::ids::FLIP_LINK_STRENGTH);
     slider_chip(
         store,
-        ids::FLIP_ERASE_SIZE,
+        ph2d_tool_flip::ids::FLIP_ERASE_SIZE,
         ids::FLIP_ERASE_SIZE_NUM,
         px_to_slider(DEFAULT_WIDTH_PX),
         DEFAULT_WIDTH_PX,
@@ -325,7 +325,7 @@ fn erase_and_sculpt(store: &mut WidgetStore) {
     );
     slider_chip(
         store,
-        ids::FLIP_ERASE_STRENGTH,
+        ph2d_tool_flip::ids::FLIP_ERASE_STRENGTH,
         ids::FLIP_ERASE_STRENGTH_NUM,
         DEFAULT_OPACITY,
         f64::from(DEFAULT_OPACITY) * 100.0, // LITERAL-PX-OK: fraction→percent display
@@ -337,7 +337,7 @@ fn erase_and_sculpt(store: &mut WidgetStore) {
     // Os oito pincéis de escultura (W5; pintados só no modo Reshape, registrados
     // sempre — como os de cima). Um botão pintado e NÃO registrado aqui é focável
     // por ninguém e o clique dele é dropado em silêncio.
-    for id in ids::FLIP_RESHAPE_KIND_IDS {
+    for id in ph2d_tool_flip::ids::FLIP_RESHAPE_KIND_IDS {
         button(store, id);
     }
 }

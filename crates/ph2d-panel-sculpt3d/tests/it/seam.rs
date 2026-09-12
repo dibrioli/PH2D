@@ -693,9 +693,9 @@ fn cada_botao_responde_no_proprio_centro(
     let mut dragged: Vec<ph2d_a11y::NodeId> =
         rows::rows().flat_map(|r| [r.slider, r.chip]).collect();
     dragged.extend([
-        ph2d_editor_core::ids::INSP_DRAG_HANDLE,
-        ph2d_editor_core::ids::INSP_RESIZE_HANDLE,
-        ph2d_editor_core::ids::INSP_RESIZE_HANDLE_BL,
+        ph2d_panel_model3d::ids::INSP_DRAG_HANDLE,
+        ph2d_panel_sculpt3d::ids::INSP_RESIZE_HANDLE,
+        ph2d_panel_sculpt3d::ids::INSP_RESIZE_HANDLE_BL,
         ph2d_editor_core::widget::SCULPT3D_SCROLLBAR_ID,
     ]);
     let mut seen: Vec<ph2d_a11y::NodeId> = Vec::new();

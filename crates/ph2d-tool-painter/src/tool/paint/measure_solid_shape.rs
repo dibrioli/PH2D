@@ -10,7 +10,6 @@ use super::measure_solid_cost::{arm, solid_arc};
 use crate::tool::PainterTool;
 use crate::tool::paint::media::PaintMedia;
 use ph2d_editor_core::Tool;
-use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::tool::{CanvasPaintTool, PointerPhase};
 
@@ -53,7 +52,7 @@ fn measure_whether_the_web_survives_the_fill() {
         t.paint.brush.thread_opacity = 0.5;
         t.paint.brush.stroke_method = StrokeMethod::Space;
         if solid {
-            t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_LINE_SOLID));
+            t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_LINE_SOLID));
         }
         // Um zigue-zague: as pernas ficam longe o bastante para a teia atravessar o VÃO, que é onde
         // um fio é visível por cima do branco.
@@ -126,7 +125,7 @@ fn measure_whether_the_fill_depends_on_the_event_rate() {
     };
     let run = |events: usize, tiling: bool| -> Vec<u8> {
         let mut t = tool(side, PaintMedia::Digital, 5.0);
-        t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_LINE_SOLID));
+        t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_LINE_SOLID));
         if tiling {
             t.toggle_brush_tiling(0);
         }
@@ -174,7 +173,7 @@ fn measure_whether_the_fill_depends_on_the_event_rate() {
         let events = 40usize;
         let mut t = tool(side, PaintMedia::Digital, 5.0);
         if solid {
-            t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_LINE_SOLID));
+            t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_LINE_SOLID));
         }
         if tiling {
             t.toggle_brush_tiling(0);
@@ -275,7 +274,7 @@ fn measure_that_every_line_kind_does_something_under_solid() {
         t.paint.brush.rough_amount = 0.4;
         t.paint.brush.rough_bowing = 0.4;
         if solid {
-            t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_LINE_SOLID));
+            t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_LINE_SOLID));
         }
         // Um "C": ele cerca área (a mancha existe) e volta para perto de si (há vizinhos a costurar).
         let c = 128.0f32;

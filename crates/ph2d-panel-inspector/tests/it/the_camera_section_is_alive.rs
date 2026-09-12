@@ -12,7 +12,6 @@
 //! entregar — até este ficheiro existir, o único botão daquele motor era uma variável de ambiente.
 
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::ids;
 use ph2d_editor_core::screens::hero::{
     CameraFieldEdit, InspectorCameraFollow, InspectorCameraInfo, InspectorCameraLimits,
     InspectorGameCamera,
@@ -103,29 +102,29 @@ fn every_field_of_the_three_components_is_painted() {
     let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
     for id in [
         // A câmera.
-        ids::INSP_CAMERA_HEIGHT,
-        ids::INSP_CAMERA_OFFSET_X,
-        ids::INSP_CAMERA_OFFSET_Y,
-        ids::INSP_CAMERA_PRIORITY,
-        ids::INSP_CAMERA_ACTIVE,
-        ids::INSP_CAMERA_PREVIEW,
+        ph2d_panel_inspector::ids::INSP_CAMERA_HEIGHT,
+        ph2d_panel_inspector::ids::INSP_CAMERA_OFFSET_X,
+        ph2d_panel_inspector::ids::INSP_CAMERA_OFFSET_Y,
+        ph2d_panel_inspector::ids::INSP_CAMERA_PRIORITY,
+        ph2d_panel_inspector::ids::INSP_CAMERA_ACTIVE,
+        ph2d_panel_inspector::ids::INSP_CAMERA_PREVIEW,
         // Quem ela segue.
-        ids::INSP_CAMERA_TARGET,
-        ids::INSP_CAMERA_DAMP_X,
-        ids::INSP_CAMERA_DAMP_Y,
-        ids::INSP_CAMERA_DEAD_X,
-        ids::INSP_CAMERA_DEAD_Y,
-        ids::INSP_CAMERA_LOOK_X,
-        ids::INSP_CAMERA_LOOK_Y,
-        ids::INSP_CAMERA_FOLLOW_OFF_X,
-        ids::INSP_CAMERA_FOLLOW_OFF_Y,
+        ph2d_panel_inspector::ids::INSP_CAMERA_TARGET,
+        ph2d_panel_inspector::ids::INSP_CAMERA_DAMP_X,
+        ph2d_panel_inspector::ids::INSP_CAMERA_DAMP_Y,
+        ph2d_panel_inspector::ids::INSP_CAMERA_DEAD_X,
+        ph2d_panel_inspector::ids::INSP_CAMERA_DEAD_Y,
+        ph2d_panel_inspector::ids::INSP_CAMERA_LOOK_X,
+        ph2d_panel_inspector::ids::INSP_CAMERA_LOOK_Y,
+        ph2d_panel_inspector::ids::INSP_CAMERA_FOLLOW_OFF_X,
+        ph2d_panel_inspector::ids::INSP_CAMERA_FOLLOW_OFF_Y,
         // A cerca.
-        ids::INSP_CAMERA_MIN_X,
-        ids::INSP_CAMERA_MIN_Y,
-        ids::INSP_CAMERA_MAX_X,
-        ids::INSP_CAMERA_MAX_Y,
+        ph2d_panel_inspector::ids::INSP_CAMERA_MIN_X,
+        ph2d_panel_inspector::ids::INSP_CAMERA_MIN_Y,
+        ph2d_panel_inspector::ids::INSP_CAMERA_MAX_X,
+        ph2d_panel_inspector::ids::INSP_CAMERA_MAX_Y,
         // E a máscara — o cabeçalho dela, que nasce recolhido.
-        ids::INSP_CAMERA_CULL_HEADER,
+        ph2d_panel_inspector::ids::INSP_CAMERA_CULL_HEADER,
     ] {
         let r = rects
             .iter()
@@ -149,13 +148,15 @@ fn a_fixed_camera_does_not_show_the_follow_fields() {
     let (mut h, mut st) = host(info(None, None, false));
     let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
     assert!(
-        rects.iter().any(|(n, _)| *n == ids::INSP_CAMERA_HEIGHT),
+        rects
+            .iter()
+            .any(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_CAMERA_HEIGHT),
         "a camera em si tem de estar la'"
     );
     for ausente in [
-        ids::INSP_CAMERA_TARGET,
-        ids::INSP_CAMERA_DAMP_X,
-        ids::INSP_CAMERA_MIN_X,
+        ph2d_panel_inspector::ids::INSP_CAMERA_TARGET,
+        ph2d_panel_inspector::ids::INSP_CAMERA_DAMP_X,
+        ph2d_panel_inspector::ids::INSP_CAMERA_MIN_X,
     ] {
         assert!(
             !rects.iter().any(|(n, _)| *n == ausente),
@@ -177,7 +178,7 @@ fn pressing_look_through_reaches_the_bus_with_a_real_pointer() {
     let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
     let (_, r) = rects
         .iter()
-        .find(|(n, _)| *n == ids::INSP_CAMERA_PREVIEW)
+        .find(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_CAMERA_PREVIEW)
         .copied()
         .expect("o `Look Through` nao foi pintado");
     let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
@@ -219,7 +220,7 @@ fn the_toggle_reads_the_snapshot_not_the_store() {
     let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
     let (_, r) = rects
         .iter()
-        .find(|(n, _)| *n == ids::INSP_CAMERA_PREVIEW)
+        .find(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_CAMERA_PREVIEW)
         .copied()
         .expect("o `Look Through` nao foi pintado");
     let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
@@ -251,9 +252,12 @@ fn the_toggle_reads_the_snapshot_not_the_store() {
 fn the_cull_mask_grid_is_alive_once_opened() {
     let (mut h, mut st) = host(info(None, None, false));
     let _ = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
-    h.set_collapsed(ids::INSP_CAMERA_CULL_HEADER, false);
+    h.set_collapsed(ph2d_panel_inspector::ids::INSP_CAMERA_CULL_HEADER, false);
     let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
-    for (bit, &id) in ids::INSP_CAMERA_CULL_BIT.iter().enumerate() {
+    for (bit, &id) in ph2d_panel_inspector::ids::INSP_CAMERA_CULL_BIT
+        .iter()
+        .enumerate()
+    {
         assert!(
             rects.iter().any(|(n, _)| *n == id),
             "o bit {bit} da mascara nao chegou ao indice de acerto"

@@ -56,7 +56,7 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
         // Cancel — abandon the preview and deactivate the tool. Shell
         // switches back to the default tool via `CancelActiveTool`,
         // hiding this panel and restoring the Inspector.
-        WidgetEvent::Click(id) if id == ids::BGR_CANCEL => {
+        WidgetEvent::Click(id) if id == ph2d_tool_bgremoval::ids::BGR_CANCEL => {
             reset_button(host, id);
             host.bus_mut().push(EditorAction::CancelActiveTool);
             true
@@ -76,38 +76,38 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
 }
 
 fn is_bgr_slider(id: NodeId) -> bool {
-    id == ids::BGR_TOLERANCE
-        || id == ids::BGR_FEATHER
-        || id == ids::BGR_REFINE
-        || id == ids::BGR_GROW
-        || id == ids::BGR_BRUSH_SIZE
+    id == ph2d_tool_bgremoval::ids::BGR_TOLERANCE
+        || id == ph2d_tool_bgremoval::ids::BGR_FEATHER
+        || id == ph2d_tool_bgremoval::ids::BGR_REFINE
+        || id == ph2d_tool_bgremoval::ids::BGR_GROW
+        || id == ph2d_tool_bgremoval::ids::BGR_BRUSH_SIZE
         || id == ids::BGR_MIN_ISLAND_PX
 }
 
 fn is_bgr_number(id: NodeId) -> bool {
-    id == ids::BGR_TOLERANCE_NUM
-        || id == ids::BGR_FEATHER_NUM
-        || id == ids::BGR_REFINE_NUM
-        || id == ids::BGR_GROW_NUM
-        || id == ids::BGR_BRUSH_SIZE_NUM
+    id == ph2d_tool_bgremoval::ids::BGR_TOLERANCE_NUM
+        || id == ph2d_tool_bgremoval::ids::BGR_FEATHER_NUM
+        || id == ph2d_tool_bgremoval::ids::BGR_REFINE_NUM
+        || id == ph2d_tool_bgremoval::ids::BGR_GROW_NUM
+        || id == ph2d_tool_bgremoval::ids::BGR_BRUSH_SIZE_NUM
         || id == ids::BGR_MIN_ISLAND_PX_NUM
 }
 
 fn is_bgr_click(id: NodeId) -> bool {
-    id == ids::BGR_FALLOFF_SMOOTH
-        || id == ids::BGR_FALLOFF_SPHERE
-        || id == ids::BGR_FALLOFF_SHARP
-        || id == ids::BGR_FALLOFF_CONSTANT
-        || id == ids::BGR_APPLY
-        || id == ids::BGR_RESET
-        || id == ids::BGR_EYEDROPPER
-        || id == ids::BGR_PROTECT
-        || id == ids::BGR_PROTECT_CLEAR
-        || id == ids::BGR_SHOW_MASK
+    id == ph2d_tool_bgremoval::ids::BGR_FALLOFF_SMOOTH
+        || id == ph2d_tool_bgremoval::ids::BGR_FALLOFF_SPHERE
+        || id == ph2d_tool_bgremoval::ids::BGR_FALLOFF_SHARP
+        || id == ph2d_tool_bgremoval::ids::BGR_FALLOFF_CONSTANT
+        || id == ph2d_tool_bgremoval::ids::BGR_APPLY
+        || id == ph2d_tool_bgremoval::ids::BGR_RESET
+        || id == ph2d_tool_bgremoval::ids::BGR_EYEDROPPER
+        || id == ph2d_tool_bgremoval::ids::BGR_PROTECT
+        || id == ph2d_tool_bgremoval::ids::BGR_PROTECT_CLEAR
+        || id == ph2d_tool_bgremoval::ids::BGR_SHOW_MASK
         || id == ids::BGR_SEPARATE_ISLANDS
         || id == ids::BGR_AUTO_PROTECT_SUBJECT
-        || id == ids::BGR_ADD_AREA
-        || id == ids::BGR_ADD_AREA_CLEAR
+        || id == ph2d_tool_bgremoval::ids::BGR_ADD_AREA
+        || id == ph2d_tool_bgremoval::ids::BGR_ADD_AREA_CLEAR
 }
 
 fn reset_button(host: &mut dyn PanelHostInternal, id: NodeId) {

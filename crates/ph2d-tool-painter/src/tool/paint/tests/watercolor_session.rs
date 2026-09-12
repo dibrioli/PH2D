@@ -1112,7 +1112,6 @@ fn watercolor_diluted_wash_is_not_retroactively_rewetted_by_next_stroke() {
 /// com Charge intacto (2→3) manteve `sess=true`, isolando o slider como o gatilho.
 #[test]
 fn watercolor_wet_session_survives_charge_slider_change() {
-    use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::{PanelEvent, Tool};
     let size = 256u32;
     let mut t = PainterTool::default();
@@ -1136,7 +1135,7 @@ fn watercolor_wet_session_survives_charge_slider_change() {
     // O caminho REAL do painel (handle_panel_event → route_brush_watercolor_event →
     // set_brush_wet_charge), não o setter puro.
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_WATERCOLOR_CHARGE,
+        crate::ids::PAINTER_WATERCOLOR_CHARGE,
         0.4608,
     ));
     let n = (size as usize) * (size as usize);
@@ -1473,12 +1472,11 @@ fn watercolor_wet_button_moistens_the_canvas() {
 /// via `route_brush_watercolor_event` — o par do seam.rs do painel (que cobre o forward).
 #[test]
 fn watercolor_route_dispatches_wetness_controls() {
-    use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::PanelEvent;
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; 32 * 32 * 4], 32, 32);
     assert!(t.route_brush_watercolor_event(&PanelEvent::SetValue(
-        core_ids::PAINTER_WATERCOLOR_DRY_TIME,
+        crate::ids::PAINTER_WATERCOLOR_DRY_TIME,
         30.0
     )));
     assert!(
@@ -1486,11 +1484,11 @@ fn watercolor_route_dispatches_wetness_controls() {
         "DRY_TIME → set_dry_time_s"
     );
     assert!(
-        t.route_brush_watercolor_event(&PanelEvent::Click(core_ids::PAINTER_WATERCOLOR_WET_NOW))
+        t.route_brush_watercolor_event(&PanelEvent::Click(crate::ids::PAINTER_WATERCOLOR_WET_NOW))
     );
     assert!(!t.paint.canvas_wet.is_empty(), "WET_NOW → wet_canvas_now");
     assert!(
-        t.route_brush_watercolor_event(&PanelEvent::Click(core_ids::PAINTER_WATERCOLOR_DRY_NOW))
+        t.route_brush_watercolor_event(&PanelEvent::Click(crate::ids::PAINTER_WATERCOLOR_DRY_NOW))
     );
     assert!(t.paint.canvas_wet.is_empty(), "DRY_NOW → dry_session_now");
 }

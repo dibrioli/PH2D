@@ -51,12 +51,12 @@ fn default_shape_values() -> [ShapeValues; MAX_SHAPES] {
 
 /// O índice do parâmetro cujo id de campo é `id` (`None` se não for um).
 fn shape_field_index(id: ph2d_a11y::NodeId) -> Option<usize> {
-    (0..MAX_SHAPE_FIELDS).find(|&i| ids::vector_shape_field_id(i) == id)
+    (0..MAX_SHAPE_FIELDS).find(|&i| crate::ids::vector_shape_field_id(i) == id)
 }
 
 /// O índice da forma no catálogo cujo id de botão é `id` (`None` se não for um).
 fn shape_index(id: ph2d_a11y::NodeId) -> Option<usize> {
-    (0..crate::shapes::SHAPES.len()).find(|&i| ids::vector_shape_id(i) == id)
+    (0..crate::shapes::SHAPES.len()).find(|&i| crate::ids::vector_shape_id(i) == id)
 }
 
 /// O tipo de simetria cujo chip é `id` (`None` se não for um).

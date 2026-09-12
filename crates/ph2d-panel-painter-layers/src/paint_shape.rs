@@ -7,7 +7,6 @@
 use crate::paint_brush_rows::paint_dropdown_row;
 use crate::paint_brush_top::{end_fold, paint_checkbox_row, paint_collapsible_section};
 use crate::state;
-use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::paint::resolve;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::DropdownOption;
@@ -42,9 +41,9 @@ pub(crate) fn paint_shape_section(
         content_w,
         y,
         "Shape",
-        core_ids::PAINTER_SHAPE_SECTION,
-        core_ids::PAINTER_SHAPE_SECTION_COLOR,
-        core_ids::PAINTER_SHAPE_RESET,
+        ph2d_tool_painter::ids::PAINTER_SHAPE_SECTION,
+        ph2d_tool_painter::ids::PAINTER_SHAPE_SECTION_COLOR,
+        ph2d_tool_painter::ids::PAINTER_SHAPE_RESET,
     );
     let Some(fold) = fold else {
         return y;
@@ -60,7 +59,7 @@ pub(crate) fn paint_shape_section(
             x,
             content_w,
             y,
-            core_ids::PAINTER_SHAPE_WATERCOLOR_AUTO,
+            ph2d_tool_painter::ids::PAINTER_SHAPE_WATERCOLOR_AUTO,
             "Automatic",
             brush.watercolor_shape_auto,
         );
@@ -82,7 +81,7 @@ pub(crate) fn paint_shape_section(
             content_w,
             y,
             "Falloff",
-            core_ids::PAINTER_BRUSH_FALLOFF,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_FALLOFF,
             brush.falloff,
             Falloff::from_u8(brush.falloff).name(),
         );
@@ -115,7 +114,7 @@ pub(crate) fn paint_shape_section(
         content_w,
         y,
         "Texture",
-        core_ids::PAINTER_SHAPE_KIND,
+        ph2d_tool_painter::ids::PAINTER_SHAPE_KIND,
         brush.shape_kind,
         kind.name(),
     );
@@ -147,7 +146,7 @@ pub(crate) fn paint_shape_section(
                 .map(|(i, s)| {
                     (
                         s.label,
-                        core_ids::PAINTER_SHAPE_PARAMS[i],
+                        ph2d_tool_painter::ids::PAINTER_SHAPE_PARAMS[i],
                         brush.shape_params[i],
                     )
                 })
@@ -197,7 +196,7 @@ fn paint_shape_deposit_rows(
         content_w,
         y,
         "Relief",
-        core_ids::PAINTER_SHAPE_RELIEF,
+        ph2d_tool_painter::ids::PAINTER_SHAPE_RELIEF,
         brush.shape_relief,
         0.0,
         1.0,
@@ -212,7 +211,7 @@ fn paint_shape_deposit_rows(
             content_w,
             y,
             "Shine",
-            core_ids::PAINTER_SHAPE_SHINE,
+            ph2d_tool_painter::ids::PAINTER_SHAPE_SHINE,
             brush.impasto_shine,
             0.0,
             1.0,
@@ -237,7 +236,7 @@ fn paint_shape_transform_controls(
     // Follow (Off / Rake / Flow — how the silhouette relates to the stroke), then Angle BELOW it. Flow lays
     // the pattern in the stroke's arc-length frame so its lines stay parallel through curves (Enio
     // 2026-07-19); Rake rotates each stamp to the tangent; Off uses the fixed Angle.
-    let follow_name = core_ids::PAINTER_SHAPE_FOLLOW_MODES
+    let follow_name = ph2d_tool_painter::ids::PAINTER_SHAPE_FOLLOW_MODES
         .iter()
         .find(|(v, _)| *v == brush.shape_follow)
         .map_or("Off", |(_, n)| n);
@@ -248,7 +247,7 @@ fn paint_shape_transform_controls(
         content_w,
         y,
         "Follow",
-        core_ids::PAINTER_SHAPE_FOLLOW,
+        ph2d_tool_painter::ids::PAINTER_SHAPE_FOLLOW,
         brush.shape_follow,
         follow_name,
     );
@@ -263,7 +262,7 @@ fn paint_shape_transform_controls(
         content_w,
         y,
         "Angle",
-        core_ids::PAINTER_SHAPE_ANGLE,
+        ph2d_tool_painter::ids::PAINTER_SHAPE_ANGLE,
         f32::from(brush.shape_angle_deg),
         0.0,
         f32::from(TEX_ANGLE_MAX_DEG),
@@ -277,9 +276,9 @@ fn paint_shape_transform_controls(
         content_w,
         y,
         "Offset",
-        core_ids::PAINTER_SHAPE_OFFSET_X,
+        ph2d_tool_painter::ids::PAINTER_SHAPE_OFFSET_X,
         brush.shape_offset[0],
-        core_ids::PAINTER_SHAPE_OFFSET_Y,
+        ph2d_tool_painter::ids::PAINTER_SHAPE_OFFSET_Y,
         brush.shape_offset[1],
         TEX_OFFSET_MIN,
         TEX_OFFSET_MAX,
@@ -293,9 +292,9 @@ fn paint_shape_transform_controls(
         content_w,
         y,
         "Size",
-        core_ids::PAINTER_SHAPE_SIZE_X,
+        ph2d_tool_painter::ids::PAINTER_SHAPE_SIZE_X,
         brush.shape_size[0],
-        core_ids::PAINTER_SHAPE_SIZE_Y,
+        ph2d_tool_painter::ids::PAINTER_SHAPE_SIZE_Y,
         brush.shape_size[1],
         TEX_SIZE_MIN,
         TEX_SIZE_MAX,
@@ -311,7 +310,7 @@ pub(crate) fn shape_kind_options() -> Vec<DropdownOption<u8>> {
     (0..TextureKind::COUNT)
         .map(|k| {
             DropdownOption::new(
-                core_ids::painter_shape_kind_option_id(k),
+                ph2d_tool_painter::ids::painter_shape_kind_option_id(k),
                 k,
                 TextureKind::from_u8(k).name(),
             )
@@ -322,9 +321,15 @@ pub(crate) fn shape_kind_options() -> Vec<DropdownOption<u8>> {
 /// The Shape **Follow** options (Off / Rake / Flow) for the dropdown popover — the single source is
 /// [`core_ids::PAINTER_SHAPE_FOLLOW_MODES`], so the labels never drift from the wire values.
 pub(crate) fn shape_follow_options() -> Vec<DropdownOption<u8>> {
-    core_ids::PAINTER_SHAPE_FOLLOW_MODES
+    ph2d_tool_painter::ids::PAINTER_SHAPE_FOLLOW_MODES
         .iter()
-        .map(|&(v, name)| DropdownOption::new(core_ids::painter_shape_follow_option_id(v), v, name))
+        .map(|&(v, name)| {
+            DropdownOption::new(
+                ph2d_tool_painter::ids::painter_shape_follow_option_id(v),
+                v,
+                name,
+            )
+        })
         .collect()
 }
 

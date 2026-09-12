@@ -12,7 +12,7 @@ impl BodyCtx<'_> {
     /// Width + Stroke swatch + Stroke opacity + Cap / Join + Dash / Gap.
     pub(crate) fn stroke_style(&mut self, snap: &VectorStyleSnapshot, y: f32) -> f32 {
         let (mut y, collapsed) = self.section_header(
-            ids::VECTOR_SECTION_STROKE,
+            ph2d_tool_vector::ids::VECTOR_SECTION_STROKE,
             tr("panel.vector.section.stroke"),
             y,
         );
@@ -56,12 +56,12 @@ impl BodyCtx<'_> {
                 "Type",
                 &[
                     (
-                        ids::VECTOR_STROKE_KIND_SOLID,
+                        ph2d_tool_vector::ids::VECTOR_STROKE_KIND_SOLID,
                         "Solid",
                         k == state::StrokePaintKind::Solid,
                     ),
                     (
-                        ids::VECTOR_STROKE_KIND_PATTERN,
+                        ph2d_tool_vector::ids::VECTOR_STROKE_KIND_PATTERN,
                         "Pattern",
                         k == state::StrokePaintKind::Pattern,
                     ),
@@ -71,7 +71,7 @@ impl BodyCtx<'_> {
                     // pincel é uma FORMA do documento (o motor copia geometria), e o tipo
                     // (`BrushStroke::art: VecPathId`) torna a alternativa inexprimível.
                     (
-                        ids::VECTOR_STROKE_KIND_BRUSH,
+                        ph2d_tool_vector::ids::VECTOR_STROKE_KIND_BRUSH,
                         "Brush",
                         k == state::StrokePaintKind::Brush,
                     ),
@@ -87,12 +87,12 @@ impl BodyCtx<'_> {
         // Width slider + px chip.
         let track = self
             .store
-            .slider(ids::VECTOR_WIDTH)
+            .slider(ph2d_tool_vector::ids::VECTOR_WIDTH)
             .map(|(_, v)| v)
             .unwrap_or_else(|| px_to_slider(snap.stroke_width_px));
         let px = self
             .store
-            .number_value(ids::VECTOR_WIDTH_NUM)
+            .number_value(ph2d_tool_vector::ids::VECTOR_WIDTH_NUM)
             .unwrap_or(snap.stroke_width_px);
         // **O TOKEN da ESPESSURA** (W4c.4). ⚠️ A rachura vai sobre o CHIP da row de Width, e não
         // sobre a row inteira: é o número que mente — ele mostra a largura AUTORADA (em px de tela)
@@ -101,8 +101,8 @@ impl BodyCtx<'_> {
         let width_row = Rect::new(self.inner_x, y, self.inner_w, self.row_h);
         y = self.slider_row(
             "Width",
-            ids::VECTOR_WIDTH,
-            ids::VECTOR_WIDTH_NUM,
+            ph2d_tool_vector::ids::VECTOR_WIDTH,
+            ph2d_tool_vector::ids::VECTOR_WIDTH_NUM,
             track,
             px,
             &format!("{}", px.round() as i64),
@@ -140,12 +140,17 @@ impl BodyCtx<'_> {
             swatch_w,
             self.row_h,
         );
-        let stroke_swatch =
-            ColorSwatch::new(ids::VECTOR_STROKE_SWATCH, "Stroke color", snap.stroke)
-                .size(SwatchSize::Md);
+        let stroke_swatch = ColorSwatch::new(
+            ph2d_tool_vector::ids::VECTOR_STROKE_SWATCH,
+            "Stroke color",
+            snap.stroke,
+        )
+        .size(SwatchSize::Md);
         paint_color_swatch(&stroke_swatch, stroke_swatch_rect, self.scene, self.theme);
-        self.hit_index
-            .register(ids::VECTOR_STROKE_SWATCH, stroke_swatch_rect);
+        self.hit_index.register(
+            ph2d_tool_vector::ids::VECTOR_STROKE_SWATCH,
+            stroke_swatch_rect,
+        );
         // A rachura, pela mesma razão do preenchimento.
         let bindings = crate::state::token_bindings();
         if bindings.as_ref().is_some_and(|b| b.stroke.is_some()) {
@@ -162,14 +167,14 @@ impl BodyCtx<'_> {
         // Stroke Opacity slider (single source of the stroke alpha).
         let track = self
             .store
-            .slider(ids::VECTOR_STROKE_OPACITY)
+            .slider(ph2d_tool_vector::ids::VECTOR_STROKE_OPACITY)
             .map(|(_, v)| v)
             .unwrap_or_else(|| opacity_to_slider(snap.stroke[3]));
         let pct = f64::from(track) * 100.0; // LITERAL-PX-OK: fraction→percent for the opacity chip
         y = self.slider_row(
             "Opacity",
-            ids::VECTOR_STROKE_OPACITY,
-            ids::VECTOR_STROKE_OPACITY_NUM,
+            ph2d_tool_vector::ids::VECTOR_STROKE_OPACITY,
+            ph2d_tool_vector::ids::VECTOR_STROKE_OPACITY_NUM,
             track,
             pct,
             &format!("{}", pct.round() as i64),
@@ -194,10 +199,18 @@ impl BodyCtx<'_> {
         y = self.segmented3(
             "Cap",
             [
-                (ids::VECTOR_CAP_BUTT, "Butt", snap.cap == StrokeCap::Butt),
-                (ids::VECTOR_CAP_ROUND, "Round", snap.cap == StrokeCap::Round),
                 (
-                    ids::VECTOR_CAP_SQUARE,
+                    ph2d_tool_vector::ids::VECTOR_CAP_BUTT,
+                    "Butt",
+                    snap.cap == StrokeCap::Butt,
+                ),
+                (
+                    ph2d_tool_vector::ids::VECTOR_CAP_ROUND,
+                    "Round",
+                    snap.cap == StrokeCap::Round,
+                ),
+                (
+                    ph2d_tool_vector::ids::VECTOR_CAP_SQUARE,
                     "Square",
                     snap.cap == StrokeCap::Square,
                 ),
@@ -208,17 +221,17 @@ impl BodyCtx<'_> {
             "Join",
             [
                 (
-                    ids::VECTOR_JOIN_MITER,
+                    ph2d_tool_vector::ids::VECTOR_JOIN_MITER,
                     "Miter",
                     snap.join == StrokeJoin::Miter,
                 ),
                 (
-                    ids::VECTOR_JOIN_ROUND,
+                    ph2d_tool_vector::ids::VECTOR_JOIN_ROUND,
                     "Round",
                     snap.join == StrokeJoin::Round,
                 ),
                 (
-                    ids::VECTOR_JOIN_BEVEL,
+                    ph2d_tool_vector::ids::VECTOR_JOIN_BEVEL,
                     "Bevel",
                     snap.join == StrokeJoin::Bevel,
                 ),
@@ -232,17 +245,17 @@ impl BodyCtx<'_> {
             "Align",
             [
                 (
-                    ids::VECTOR_ALIGN_CENTRE,
+                    ph2d_tool_vector::ids::VECTOR_ALIGN_CENTRE,
                     "Centre",
                     snap.align == StrokeAlign::Centre,
                 ),
                 (
-                    ids::VECTOR_ALIGN_INNER,
+                    ph2d_tool_vector::ids::VECTOR_ALIGN_INNER,
                     "Inner",
                     snap.align == StrokeAlign::Inner,
                 ),
                 (
-                    ids::VECTOR_ALIGN_OUTER,
+                    ph2d_tool_vector::ids::VECTOR_ALIGN_OUTER,
                     "Outer",
                     snap.align == StrokeAlign::Outer,
                 ),
@@ -253,17 +266,17 @@ impl BodyCtx<'_> {
         // Dash length (multiple of width; 0 = solid).
         let track = self
             .store
-            .slider(ids::VECTOR_DASH)
+            .slider(ph2d_tool_vector::ids::VECTOR_DASH)
             .map(|(_, v)| v)
             .unwrap_or_else(|| dash_to_slider(snap.dash));
         let px = self
             .store
-            .number_value(ids::VECTOR_DASH_NUM)
+            .number_value(ph2d_tool_vector::ids::VECTOR_DASH_NUM)
             .unwrap_or(snap.dash);
         y = self.slider_row(
             "Dash",
-            ids::VECTOR_DASH,
-            ids::VECTOR_DASH_NUM,
+            ph2d_tool_vector::ids::VECTOR_DASH,
+            ph2d_tool_vector::ids::VECTOR_DASH_NUM,
             track,
             px,
             &format!("{}", px.round() as i64),
@@ -273,17 +286,17 @@ impl BodyCtx<'_> {
         // Gap length between dashes.
         let track = self
             .store
-            .slider(ids::VECTOR_GAP)
+            .slider(ph2d_tool_vector::ids::VECTOR_GAP)
             .map(|(_, v)| v)
             .unwrap_or_else(|| gap_to_slider(snap.gap));
         let px = self
             .store
-            .number_value(ids::VECTOR_GAP_NUM)
+            .number_value(ph2d_tool_vector::ids::VECTOR_GAP_NUM)
             .unwrap_or(snap.gap);
         y = self.slider_row(
             "Gap",
-            ids::VECTOR_GAP,
-            ids::VECTOR_GAP_NUM,
+            ph2d_tool_vector::ids::VECTOR_GAP,
+            ph2d_tool_vector::ids::VECTOR_GAP_NUM,
             track,
             px,
             &format!("{}", px.round() as i64),

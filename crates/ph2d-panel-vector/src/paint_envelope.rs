@@ -29,7 +29,7 @@ impl BodyCtx<'_> {
     /// **Expand**/**Release** operam sobre um envelope EXISTENTE — sem um, não são oferecidos.
     pub(crate) fn envelope_section(&mut self, y: f32) -> f32 {
         let (mut y, collapsed) = self.section_header(
-            ids::VECTOR_SECTION_ENVELOPE,
+            ph2d_tool_vector::ids::VECTOR_SECTION_ENVELOPE,
             tr("panel.vector.section.envelope"),
             y,
         );
@@ -116,7 +116,7 @@ impl BodyCtx<'_> {
             y = self.slider_row(
                 "Bend",
                 ids::VECTOR_ENVELOPE_BEND,
-                ids::VECTOR_ENVELOPE_BEND_NUM,
+                ph2d_tool_vector::ids::VECTOR_ENVELOPE_BEND_NUM,
                 track,
                 bend,
                 &format!("{bend:.2}"),

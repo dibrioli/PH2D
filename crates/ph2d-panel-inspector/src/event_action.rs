@@ -34,14 +34,14 @@ pub(crate) fn apply_action_event(
             demote(host, id);
             return true;
         }
-        if id == ids::INSP_ACTION_ADD {
+        if id == crate::ids::INSP_ACTION_ADD {
             push(host, info.entity_bits, ActionFieldEdit::Add);
             // ⚠️ **Abre o que acabou de nascer** — senão o `+` lê-se como se não fizesse nada.
             panel.action_selected = info.rows.len();
             demote(host, id);
             return true;
         }
-        if id == ids::INSP_ACTION_REMOVE && !info.rows.is_empty() {
+        if id == crate::ids::INSP_ACTION_REMOVE && !info.rows.is_empty() {
             push(host, info.entity_bits, ActionFieldEdit::Remove(sel_u8));
             panel.action_selected = sel.saturating_sub(1);
             demote(host, id);
@@ -66,11 +66,11 @@ pub(crate) fn apply_action_event(
         let text = host.store().text(id).unwrap_or("").to_string();
         // ⚠️ **Os três campos de texto por uma porta só** — um `if` por campo é como o terceiro
         // acaba a escrever no primeiro.
-        let edit = if id == ids::INSP_ACTION_ON {
+        let edit = if id == crate::ids::INSP_ACTION_ON {
             ActionFieldEdit::On(sel_u8, text)
-        } else if id == ids::INSP_ACTION_TARGET {
+        } else if id == crate::ids::INSP_ACTION_TARGET {
             ActionFieldEdit::Target(sel_u8, text)
-        } else if id == ids::INSP_ACTION_ARG {
+        } else if id == crate::ids::INSP_ACTION_ARG {
             ActionFieldEdit::Arg(sel_u8, text)
         } else {
             return false;
@@ -93,7 +93,7 @@ fn push(host: &mut dyn PanelHostInternal, entity_bits: u64, edit: ActionFieldEdi
 /// exactamente no caso em que a shell recusasse a edição. É a lei que a §12 já paga.
 fn close_verb_popover(host: &mut dyn PanelHostInternal) {
     if let Some(InteractiveState::Dropdown { open, .. }) =
-        host.store_mut().get_mut(ids::INSP_ACTION_VERB_PICK)
+        host.store_mut().get_mut(crate::ids::INSP_ACTION_VERB_PICK)
     {
         *open = false;
     }

@@ -8,12 +8,12 @@
 
 use crate::paint_rows::{paint_drop_indicator, paint_layer_subtree};
 use crate::state;
-use ph2d_editor_core::ids::{PainterLayerWidget, painter_layer_widget_id};
 use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::panel_chrome::PANEL_HEAD_PAD;
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, Spacing, TypeToken};
+use ph2d_tool_painter::ids::{PainterLayerWidget, painter_layer_widget_id};
 
 /// ⭐⭐ **A LISTA DE CAMADAS** — cortada do [`paint`] em 2026-09-09 pelo tecto de LOC (264/200), e o
 /// corte é por RESPONSABILIDADE: aquele responde *«que moldura é esta e onde começa o corpo?»* e

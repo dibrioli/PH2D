@@ -11,7 +11,4 @@
 //! via [`ph2d_editor_core::ids::painter_layer_widget_id`] — so they aren't
 //! re-exported here.
 
-pub use ph2d_editor_core::ids::{
-    PAINTER_LAYERS_ADD as ADD, PAINTER_LAYERS_CLOSE as CLOSE, PAINTER_LAYERS_PANEL as PANEL,
-    PAINTER_LAYERS_TOGGLE_DOCK as TOGGLE_DOCK,
-};
+pub use ph2d_editor_core::ids::PAINTER_LAYERS_PANEL as PANEL;

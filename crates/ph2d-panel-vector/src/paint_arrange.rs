@@ -25,7 +25,7 @@ impl BodyCtx<'_> {
     /// selecionado (comandos de documento pelo dreno da shell).
     pub(crate) fn arrange_section(&mut self, y: f32) -> f32 {
         let (mut y, collapsed) = self.section_header(
-            ids::VECTOR_SECTION_ARRANGE,
+            ph2d_tool_vector::ids::VECTOR_SECTION_ARRANGE,
             tr("panel.vector.section.arrange"),
             y,
         );
@@ -45,10 +45,10 @@ impl BodyCtx<'_> {
         }
         // Z-order: 2×2 grid — To Back | To Front · Backward | Forward.
         let zorder = [
-            (ids::VECTOR_ARRANGE_TO_BACK, "To Back"),
-            (ids::VECTOR_ARRANGE_TO_FRONT, "To Front"),
-            (ids::VECTOR_ARRANGE_BACKWARD, "Backward"),
-            (ids::VECTOR_ARRANGE_FORWARD, "Forward"),
+            (ph2d_tool_vector::ids::VECTOR_ARRANGE_TO_BACK, "To Back"),
+            (ph2d_tool_vector::ids::VECTOR_ARRANGE_TO_FRONT, "To Front"),
+            (ph2d_tool_vector::ids::VECTOR_ARRANGE_BACKWARD, "Backward"),
+            (ph2d_tool_vector::ids::VECTOR_ARRANGE_FORWARD, "Forward"),
         ];
         let z_cols = 2usize;
         let z_gap = Spacing::Sm.px();
@@ -73,8 +73,8 @@ impl BodyCtx<'_> {
             z_w,
             z_gap,
             [
-                (ids::VECTOR_ARRANGE_FLIP_H, "Flip H"),
-                (ids::VECTOR_ARRANGE_FLIP_V, "Flip V"),
+                (ph2d_tool_vector::ids::VECTOR_ARRANGE_FLIP_H, "Flip H"),
+                (ph2d_tool_vector::ids::VECTOR_ARRANGE_FLIP_V, "Flip V"),
             ],
             y,
         );
@@ -82,8 +82,11 @@ impl BodyCtx<'_> {
             z_w,
             z_gap,
             [
-                (ids::VECTOR_ARRANGE_ROTATE_CW, "Rotate CW"),
-                (ids::VECTOR_ARRANGE_ROTATE_CCW, "Rotate CCW"),
+                (ph2d_tool_vector::ids::VECTOR_ARRANGE_ROTATE_CW, "Rotate CW"),
+                (
+                    ph2d_tool_vector::ids::VECTOR_ARRANGE_ROTATE_CCW,
+                    "Rotate CCW",
+                ),
             ],
             y,
         )
@@ -128,8 +131,11 @@ impl BodyCtx<'_> {
         let cross = state::current_snap_crossings();
         let guides = state::current_snap_guides();
         let rulers = state::current_rulers();
-        let (y, collapsed) =
-            self.section_header(ids::VECTOR_SECTION_SNAP, tr("panel.vector.section.snap"), y);
+        let (y, collapsed) = self.section_header(
+            ph2d_tool_vector::ids::VECTOR_SECTION_SNAP,
+            tr("panel.vector.section.snap"),
+            y,
+        );
         if collapsed {
             return y;
         }
@@ -229,7 +235,7 @@ impl BodyCtx<'_> {
             return y;
         };
         let (mut y, collapsed) = self.section_header(
-            ids::VECTOR_SECTION_FILL_TYPE,
+            ph2d_tool_vector::ids::VECTOR_SECTION_FILL_TYPE,
             tr("panel.vector.section.fill_type"),
             y,
         );
@@ -238,11 +244,31 @@ impl BodyCtx<'_> {
         }
         y = self.fill_rule_row(y);
         let kinds = [
-            (ids::VECTOR_FILL_KIND_SOLID, "Solid", FillKind::Solid),
-            (ids::VECTOR_FILL_KIND_LINEAR, "Linear", FillKind::Linear),
-            (ids::VECTOR_FILL_KIND_RADIAL, "Radial", FillKind::Radial),
-            (ids::VECTOR_FILL_KIND_MULTI, "Multi", FillKind::MultiPoint),
-            (ids::VECTOR_FILL_KIND_PATTERN, "Pattern", FillKind::Pattern),
+            (
+                ph2d_tool_vector::ids::VECTOR_FILL_KIND_SOLID,
+                "Solid",
+                FillKind::Solid,
+            ),
+            (
+                ph2d_tool_vector::ids::VECTOR_FILL_KIND_LINEAR,
+                "Linear",
+                FillKind::Linear,
+            ),
+            (
+                ph2d_tool_vector::ids::VECTOR_FILL_KIND_RADIAL,
+                "Radial",
+                FillKind::Radial,
+            ),
+            (
+                ph2d_tool_vector::ids::VECTOR_FILL_KIND_MULTI,
+                "Multi",
+                FillKind::MultiPoint,
+            ),
+            (
+                ph2d_tool_vector::ids::VECTOR_FILL_KIND_PATTERN,
+                "Pattern",
+                FillKind::Pattern,
+            ),
         ];
         // ⭐⭐ **A fileira REFLUI, e deixou de reimplementar a aritmética de largura.**
         //
@@ -302,7 +328,7 @@ impl BodyCtx<'_> {
                 y = self.slider_row(
                     "Influence",
                     ids::VECTOR_GRAD_INFLUENCE,
-                    ids::VECTOR_GRAD_INFLUENCE_NUM,
+                    ph2d_tool_vector::ids::VECTOR_GRAD_INFLUENCE_NUM,
                     track,
                     val,
                     &format!("{val:.1}"),
@@ -320,7 +346,7 @@ impl BodyCtx<'_> {
                 y = self.slider_row(
                     "Jitter",
                     ids::VECTOR_GRAD_JITTER,
-                    ids::VECTOR_GRAD_JITTER_NUM,
+                    ph2d_tool_vector::ids::VECTOR_GRAD_JITTER_NUM,
                     track,
                     val,
                     &format!("{val:.2}"),
@@ -353,7 +379,7 @@ impl BodyCtx<'_> {
             y = self.slider_row(
                 "Angle",
                 ids::VECTOR_GRAD_ANGLE,
-                ids::VECTOR_GRAD_ANGLE_NUM,
+                ph2d_tool_vector::ids::VECTOR_GRAD_ANGLE_NUM,
                 track,
                 deg,
                 &format!("{}", deg.round() as i64),
@@ -371,7 +397,7 @@ impl BodyCtx<'_> {
             return y;
         }
         let (mut y, collapsed) = self.section_header(
-            ids::VECTOR_SECTION_ALIGN,
+            ph2d_tool_vector::ids::VECTOR_SECTION_ALIGN,
             tr("panel.vector.section.align"),
             y,
         );
@@ -383,14 +409,14 @@ impl BodyCtx<'_> {
         let cw = ((self.inner_w - gap * (cols as f32 - 1.0)) / cols as f32).max(1.0);
         let rows = [
             [
-                (ids::VECTOR_ALIGN_LEFT, "Left"),
-                (ids::VECTOR_ALIGN_HCENTER, "Center"),
-                (ids::VECTOR_ALIGN_RIGHT, "Right"),
+                (ph2d_tool_vector::ids::VECTOR_ALIGN_LEFT, "Left"),
+                (ph2d_tool_vector::ids::VECTOR_ALIGN_HCENTER, "Center"),
+                (ph2d_tool_vector::ids::VECTOR_ALIGN_RIGHT, "Right"),
             ],
             [
-                (ids::VECTOR_ALIGN_TOP, "Top"),
-                (ids::VECTOR_ALIGN_VCENTER, "Middle"),
-                (ids::VECTOR_ALIGN_BOTTOM, "Bottom"),
+                (ph2d_tool_vector::ids::VECTOR_ALIGN_TOP, "Top"),
+                (ph2d_tool_vector::ids::VECTOR_ALIGN_VCENTER, "Middle"),
+                (ph2d_tool_vector::ids::VECTOR_ALIGN_BOTTOM, "Bottom"),
             ],
         ];
         for row in rows {
@@ -413,8 +439,8 @@ impl BodyCtx<'_> {
                 two_col,
                 gap,
                 [
-                    (ids::VECTOR_DISTRIBUTE_H, "Dist H"),
-                    (ids::VECTOR_DISTRIBUTE_V, "Dist V"),
+                    (ph2d_tool_vector::ids::VECTOR_DISTRIBUTE_H, "Dist H"),
+                    (ph2d_tool_vector::ids::VECTOR_DISTRIBUTE_V, "Dist V"),
                 ],
                 y,
             );
@@ -428,8 +454,11 @@ impl BodyCtx<'_> {
     /// uma forma VIVA (paramétrica / texto), o **Convert to Curves** — que é justamente
     /// o que PRODUZ um path cru editável, e por isso mora aqui.
     pub(crate) fn path_section(&mut self, y: f32) -> f32 {
-        let (mut y, collapsed) =
-            self.section_header(ids::VECTOR_SECTION_PATH, tr("panel.vector.section.path"), y);
+        let (mut y, collapsed) = self.section_header(
+            ph2d_tool_vector::ids::VECTOR_SECTION_PATH,
+            tr("panel.vector.section.path"),
+            y,
+        );
         if collapsed {
             return y;
         }
@@ -442,8 +471,8 @@ impl BodyCtx<'_> {
             w,
             gap,
             [
-                (ids::VECTOR_PATH_SMOOTH, "Smooth"),
-                (ids::VECTOR_PATH_SHARPEN, "Sharpen"),
+                (ph2d_tool_vector::ids::VECTOR_PATH_SMOOTH, "Smooth"),
+                (ph2d_tool_vector::ids::VECTOR_PATH_SHARPEN, "Sharpen"),
             ],
             y,
         );
@@ -451,8 +480,8 @@ impl BodyCtx<'_> {
             w,
             gap,
             [
-                (ids::VECTOR_PATH_SIMPLIFY, "Simplify"),
-                (ids::VECTOR_PATH_SUBDIVIDE, "Subdivide"),
+                (ph2d_tool_vector::ids::VECTOR_PATH_SIMPLIFY, "Simplify"),
+                (ph2d_tool_vector::ids::VECTOR_PATH_SUBDIVIDE, "Subdivide"),
             ],
             y,
         );

@@ -36,8 +36,8 @@ impl PainterTool {
     pub(crate) fn decode_layer_widget(
         &self,
         id: ph2d_a11y::NodeId,
-    ) -> Option<(RtLayerId, ph2d_editor_core::ids::PainterLayerWidget)> {
-        use ph2d_editor_core::ids::{PainterLayerWidget, painter_layer_widget_id};
+    ) -> Option<(RtLayerId, crate::ids::PainterLayerWidget)> {
+        use crate::ids::{PainterLayerWidget, painter_layer_widget_id};
         for layer in self.layers.all_ids() {
             for kind in PainterLayerWidget::ALL {
                 if painter_layer_widget_id(layer.0, kind) == id {

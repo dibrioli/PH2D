@@ -21,7 +21,6 @@
 
 use crate::state;
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::screens::hero::SpriteFieldEdit;
@@ -32,12 +31,12 @@ pub(crate) fn apply_sprite_slider_event(host: &mut dyn PanelHostInternal, ev: Wi
     // both fire ValueChanged on the slider id). The slider stores the
     // raw 0..1 opacity.
     if let WidgetEvent::ValueChanged(id) = ev
-        && id == ids::INSP_SPRITE_OPACITY
+        && id == crate::ids::INSP_SPRITE_OPACITY
         && let Some(info) = state::current_inspector_sprite()
     {
         let opacity = host
             .store()
-            .slider(ids::INSP_SPRITE_OPACITY)
+            .slider(crate::ids::INSP_SPRITE_OPACITY)
             .map(|(_, v)| v)
             .unwrap_or(info.opacity);
         host.bus_mut().push(EditorAction::InspectorSpriteEdit {
@@ -54,12 +53,12 @@ pub(crate) fn apply_sprite_slider_event(host: &mut dyn PanelHostInternal, ev: Wi
     // curto-circuita em zero como o par `Format` faz. O que ele não pode é disparar sem sprite
     // selecionada.
     if let WidgetEvent::ValueChanged(id) = ev
-        && id == ids::INSP_SPRITE_EMISSIVE
+        && id == crate::ids::INSP_SPRITE_EMISSIVE
         && let Some(info) = state::current_inspector_sprite()
     {
         let normalized = host
             .store()
-            .slider(ids::INSP_SPRITE_EMISSIVE)
+            .slider(crate::ids::INSP_SPRITE_EMISSIVE)
             .map(|(_, v)| v)
             .unwrap_or(0.0);
         host.bus_mut()

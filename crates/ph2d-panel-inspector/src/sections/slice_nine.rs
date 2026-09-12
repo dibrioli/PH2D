@@ -123,7 +123,7 @@ fn tiled_rows(
     let tm = SegmentedAdaptive::new(
         ids::INSP_LIVE_SLICE_SECTION,
         "Tile Mode",
-        ids::INSP_SLICE_TILE_MODE
+        crate::ids::INSP_SLICE_TILE_MODE
             .iter()
             .zip(TILE_MODE_LABELS)
             .map(|(&id, label)| SegmentedOption::new(id, label))
@@ -239,10 +239,10 @@ pub(crate) fn paint_slice_section(
         CheckboxValue::Unchecked
     };
     let en_rect = Rect::new(x, cur_y, w, cb_h);
-    hit_index.register(ids::INSP_SLICE_ENABLE, en_rect);
+    hit_index.register(crate::ids::INSP_SLICE_ENABLE, en_rect);
     paint_checkbox(
-        &Checkbox::new(ids::INSP_SLICE_ENABLE, "Enable 9-slice")
-            .visual(store.checkbox_visual(ids::INSP_SLICE_ENABLE))
+        &Checkbox::new(crate::ids::INSP_SLICE_ENABLE, "Enable 9-slice")
+            .visual(store.checkbox_visual(crate::ids::INSP_SLICE_ENABLE))
             .value(en_value),
         en_rect,
         scene,
@@ -268,7 +268,10 @@ pub(crate) fn paint_slice_section(
         w,
         cur_y,
         "Borders L / T (px)",
-        [ids::INSP_SLICE_BORDER[0], ids::INSP_SLICE_BORDER[1]],
+        [
+            crate::ids::INSP_SLICE_BORDER[0],
+            crate::ids::INSP_SLICE_BORDER[1],
+        ],
         1.0,
     );
     cur_y = pair_row(
@@ -281,7 +284,10 @@ pub(crate) fn paint_slice_section(
         w,
         cur_y,
         "Borders R / B (px)",
-        [ids::INSP_SLICE_BORDER[2], ids::INSP_SLICE_BORDER[3]],
+        [
+            crate::ids::INSP_SLICE_BORDER[2],
+            crate::ids::INSP_SLICE_BORDER[3],
+        ],
         1.0,
     );
     cur_y = pair_row(
@@ -294,19 +300,22 @@ pub(crate) fn paint_slice_section(
         w,
         cur_y,
         "Size X / Y (m, 0 = sprite)",
-        [ids::INSP_SLICE_SIZE[0], ids::INSP_SLICE_SIZE[1]],
+        [
+            crate::ids::INSP_SLICE_SIZE[0],
+            crate::ids::INSP_SLICE_SIZE[1],
+        ],
         SIZE_STEP,
     );
 
     // Fill Center.
     let (_, fc_value) = store
-        .checkbox(ids::INSP_SLICE_FILL_CENTER)
+        .checkbox(crate::ids::INSP_SLICE_FILL_CENTER)
         .unwrap_or((CheckboxState::Normal, CheckboxValue::Checked));
     let fc_rect = Rect::new(x, cur_y, w, cb_h);
-    hit_index.register(ids::INSP_SLICE_FILL_CENTER, fc_rect);
+    hit_index.register(crate::ids::INSP_SLICE_FILL_CENTER, fc_rect);
     paint_checkbox(
-        &Checkbox::new(ids::INSP_SLICE_FILL_CENTER, "Fill Center")
-            .visual(store.checkbox_visual(ids::INSP_SLICE_FILL_CENTER))
+        &Checkbox::new(crate::ids::INSP_SLICE_FILL_CENTER, "Fill Center")
+            .visual(store.checkbox_visual(crate::ids::INSP_SLICE_FILL_CENTER))
             .value(fc_value),
         fc_rect,
         scene,
@@ -360,15 +369,18 @@ mod tests {
     /// `shells/desktop/tests/it/the_slice_section_offers_every_mode_the_engine_has.rs`.
     #[test]
     fn every_id_array_has_a_label_for_each_slot() {
-        assert_eq!(ids::INSP_SLICE_TILE_MODE.len(), TILE_MODE_LABELS.len());
+        assert_eq!(
+            crate::ids::INSP_SLICE_TILE_MODE.len(),
+            TILE_MODE_LABELS.len()
+        );
         // ⚠️ A contagem de regiões contra o MOTOR vive no gate da shell — aqui só a grelha.
         assert_eq!(
-            ids::INSP_SLICE_REGION.len(),
+            crate::ids::INSP_SLICE_REGION.len(),
             8,
             "a moldura 3x3 tem oito celulas"
         );
         assert_eq!(
-            ids::INSP_SLICE_BORDER.len(),
+            crate::ids::INSP_SLICE_BORDER.len(),
             4,
             "as bordas sao [l, t, r, b]"
         );

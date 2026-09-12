@@ -11,7 +11,6 @@
 //! `PanelEvent` Click channel (whitelisted in `event.rs`) to the tool's `route_mask_event`.
 
 use crate::paint::register_button;
-use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, paint_text_centered, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{
@@ -52,13 +51,13 @@ pub(crate) fn paint_mask_section(
     let collapsed = ctx
         .host
         .store()
-        .is_collapsed(core_ids::PAINTER_MASK_SECTION);
-    let header = SectionHeader::new(core_ids::PAINTER_MASK_SECTION, "Mask")
+        .is_collapsed(ph2d_tool_painter::ids::PAINTER_MASK_SECTION);
+    let header = SectionHeader::new(ph2d_tool_painter::ids::PAINTER_MASK_SECTION, "Mask")
         .collapsible(!collapsed)
         .open_t(
             ctx.host
                 .store()
-                .section_open_live(core_ids::PAINTER_MASK_SECTION),
+                .section_open_live(ph2d_tool_painter::ids::PAINTER_MASK_SECTION),
         );
     let header_rect = Rect::new(x, y, content_w, header_h);
     {
@@ -68,7 +67,7 @@ pub(crate) fn paint_mask_section(
     }
     ctx.host
         .hit_index_mut()
-        .register(core_ids::PAINTER_MASK_SECTION, header_rect);
+        .register(ph2d_tool_painter::ids::PAINTER_MASK_SECTION, header_rect);
     let mut y = y + header_h + Spacing::Xs.px();
     if collapsed {
         return y;
@@ -85,7 +84,7 @@ pub(crate) fn paint_mask_section(
         y,
         "Brushes",
         &brush_labels,
-        &core_ids::PAINTER_MASK_BRUSH,
+        &ph2d_tool_painter::ids::PAINTER_MASK_BRUSH,
         Some(brush.mask_brush as usize),
         true, // Paint solo on the top row
     );
@@ -100,7 +99,7 @@ pub(crate) fn paint_mask_section(
         y,
         "Modifiers",
         &op_labels,
-        &core_ids::PAINTER_MASK_OP,
+        &ph2d_tool_painter::ids::PAINTER_MASK_OP,
         None,
         false,
     );
@@ -116,7 +115,7 @@ pub(crate) fn paint_mask_section(
     );
 
     // ── Apply — bake the transient scratch mask into the current layer's alpha + clear it. ──
-    let apply_id = core_ids::PAINTER_MASK_APPLY;
+    let apply_id = ph2d_tool_painter::ids::PAINTER_MASK_APPLY;
     let apply_rect = Rect::new(x, y, content_w, ROW_H_PX);
     let apply_st = ctx.host.store().button_visual(apply_id);
     let apply_btn = Button::new(apply_id, "Apply Mask")
@@ -274,7 +273,7 @@ fn colors_card(
         card_frame(ctx, theme, x, content_w, y, "Overlay Color", body_h);
     let (rects, _) = flow_fixed(inner_x, body_top, inner_w, n, SWATCH_PX, SWATCH_PX, gap);
     for (i, rgba) in OVERLAY_COLORS.iter().enumerate() {
-        let id = core_ids::PAINTER_MASK_COLOR[i];
+        let id = ph2d_tool_painter::ids::PAINTER_MASK_COLOR[i];
         let state = swatch_state(ctx, id);
         let swatch = ColorSwatch::new(id, "", *rgba)
             .size(SwatchSize::Sm)
@@ -418,7 +417,6 @@ fn flow_fixed(
 #[cfg(test)]
 mod tests {
     use ph2d_a11y::NodeId;
-    use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::panel::{PaintCtx, PanelHostInternal};
     use ph2d_editor_core::screens::HeroLayout;
     use ph2d_editor_core::zones::Rect;
@@ -463,7 +461,7 @@ mod tests {
     #[test]
     fn mask_modifier_button_is_the_topmost_hit_at_its_centre() {
         let regs = mask_hit_regs();
-        for &btn in &core_ids::PAINTER_MASK_OP {
+        for &btn in &ph2d_tool_painter::ids::PAINTER_MASK_OP {
             let rect = regs
                 .iter()
                 .rev()

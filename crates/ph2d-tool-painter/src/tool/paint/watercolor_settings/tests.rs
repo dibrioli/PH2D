@@ -1,5 +1,4 @@
 use crate::tool::PainterTool;
-use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::tool::{PanelEvent, Tool};
 use ph2d_painter_brush::{TextureKind, TextureMapping};
 
@@ -13,27 +12,36 @@ fn panel_events_drive_watercolor_state() {
 
     // The medium is picked from the Paint Mode dropdown (2026-07-22), not a section checkbox.
     t.handle_panel_event(PanelEvent::SelectOption(
-        core_ids::PAINTER_BRUSH_MEDIA,
+        crate::ids::PAINTER_BRUSH_MEDIA,
         "1".into(),
     ));
     assert!(t.brush_settings().watercolor, "Wet edges toggled on");
 
-    t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_WATERCOLOR_EDGE, 3.0));
+    t.handle_panel_event(PanelEvent::SetValue(
+        crate::ids::PAINTER_WATERCOLOR_EDGE,
+        3.0,
+    ));
     assert_eq!(t.brush_settings().edge_gain, 3.0, "Edge slider set");
 
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_WATERCOLOR_GRANULATION,
+        crate::ids::PAINTER_WATERCOLOR_GRANULATION,
         0.5,
     ));
     assert_eq!(t.brush_settings().granulation, 0.5, "Granulation set");
 
     // Pigment: the merged slider (Mix id) drives BOTH the amount and the on/off gate.
-    t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_WATERCOLOR_MIX, 0.75));
+    t.handle_panel_event(PanelEvent::SetValue(
+        crate::ids::PAINTER_WATERCOLOR_MIX,
+        0.75,
+    ));
     let b = t.brush_settings();
     assert!(b.pigment, "Pigment slider > 0 enables the gate");
     assert_eq!(b.pigment_mix, 0.75, "Pigment amount set");
     // Sliding to 0 turns the gate off but REMEMBERS the amount (zero-loss merge).
-    t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_WATERCOLOR_MIX, 0.0));
+    t.handle_panel_event(PanelEvent::SetValue(
+        crate::ids::PAINTER_WATERCOLOR_MIX,
+        0.0,
+    ));
     let b = t.brush_settings();
     assert!(!b.pigment, "Pigment slider 0 disables the gate");
     assert_eq!(
@@ -41,7 +49,10 @@ fn panel_events_drive_watercolor_state() {
         "amount remembered while the gate is off"
     );
     // Re-enable for the rest of the sweep (so the reset assertion at the end has a gate to clear).
-    t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_WATERCOLOR_MIX, 0.75));
+    t.handle_panel_event(PanelEvent::SetValue(
+        crate::ids::PAINTER_WATERCOLOR_MIX,
+        0.75,
+    ));
 
     // Paper COLOUR from the shared picker's read-back (the document ground; "r,g,b" 8-bit).
     assert_eq!(
@@ -50,7 +61,7 @@ fn panel_events_drive_watercolor_state() {
         "paper defaults to white"
     );
     t.handle_panel_event(PanelEvent::SelectOption(
-        core_ids::PAINTER_WATERCOLOR_PAPER_COLOR_THUMB,
+        crate::ids::PAINTER_WATERCOLOR_PAPER_COLOR_THUMB,
         "239,233,220".into(),
     ));
     let pc = t.brush_settings().paper_color;
@@ -65,34 +76,40 @@ fn panel_events_drive_watercolor_state() {
     );
 
     // Render-path optics: Fill / Depth / Warp drive the same seam.
-    t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_WATERCOLOR_FILL, 0.4));
+    t.handle_panel_event(PanelEvent::SetValue(
+        crate::ids::PAINTER_WATERCOLOR_FILL,
+        0.4,
+    ));
     assert_eq!(t.brush_settings().fill, 0.4, "Fill set");
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_WATERCOLOR_DEPTH,
+        crate::ids::PAINTER_WATERCOLOR_DEPTH,
         2.0,
     ));
     assert_eq!(t.brush_settings().depth, 2.0, "Depth set");
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_WATERCOLOR_WARP,
+        crate::ids::PAINTER_WATERCOLOR_WARP,
         10.0,
     ));
     assert_eq!(t.brush_settings().warp, 10.0, "Warp set");
 
     // Wet Mix: the Smudge + Wet sliders drive the same seam (clamped 0..1).
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_WATERCOLOR_SMUDGE,
+        crate::ids::PAINTER_WATERCOLOR_SMUDGE,
         0.8,
     ));
     assert!(
         (t.brush_settings().wet_smudge - 0.8).abs() < 1e-6,
         "Smudge set"
     );
-    t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_WATERCOLOR_WET, 9.0));
+    t.handle_panel_event(PanelEvent::SetValue(
+        crate::ids::PAINTER_WATERCOLOR_WET,
+        9.0,
+    ));
     assert_eq!(t.brush_settings().wet_rewet, 1.0, "Wet clamped to 1");
 
     // Wet Mix mixer knobs: Charge / Dilution / Pull drive the same seam (clamped 0..1).
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_WATERCOLOR_CHARGE,
+        crate::ids::PAINTER_WATERCOLOR_CHARGE,
         0.3,
     ));
     assert!(
@@ -100,19 +117,22 @@ fn panel_events_drive_watercolor_state() {
         "Charge set"
     );
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_WATERCOLOR_DILUTION,
+        crate::ids::PAINTER_WATERCOLOR_DILUTION,
         0.6,
     ));
     assert!(
         (t.brush_settings().wet_dilution - 0.6).abs() < 1e-6,
         "Dilution set"
     );
-    t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_WATERCOLOR_PULL, 2.0));
+    t.handle_panel_event(PanelEvent::SetValue(
+        crate::ids::PAINTER_WATERCOLOR_PULL,
+        2.0,
+    ));
     assert_eq!(t.brush_settings().wet_pull, 1.0, "Pull clamped to 1");
 
     // Paper + Granulation slots: kind picker, Size, Angle, and the "Same as Paper" toggle.
     t.handle_panel_event(PanelEvent::SelectOption(
-        core_ids::PAINTER_WATERCOLOR_PAPER_KIND,
+        crate::ids::PAINTER_WATERCOLOR_PAPER_KIND,
         (TextureKind::PaperRough.to_u8()).to_string(),
     ));
     assert_eq!(
@@ -126,7 +146,7 @@ fn panel_events_drive_watercolor_state() {
         "paper forced canvas-anchored"
     );
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_WATERCOLOR_PAPER_SIZE_X,
+        crate::ids::PAINTER_WATERCOLOR_PAPER_SIZE_X,
         50.0,
     ));
     assert_eq!(
@@ -134,7 +154,7 @@ fn panel_events_drive_watercolor_state() {
         "Paper Size X set (0.1..100)"
     );
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_WATERCOLOR_PAPER_ANGLE,
+        crate::ids::PAINTER_WATERCOLOR_PAPER_ANGLE,
         45.0,
     ));
     assert_eq!(t.paint.brush.paper.angle_deg, 45, "Paper Angle set");
@@ -142,7 +162,7 @@ fn panel_events_drive_watercolor_state() {
         t.brush_settings().granulation_use_paper,
         "Same as Paper default on"
     );
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_WATERCOLOR_GRAN_SAME));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_WATERCOLOR_GRAN_SAME));
     assert!(
         !t.brush_settings().granulation_use_paper,
         "Same as Paper toggled off"
@@ -150,7 +170,7 @@ fn panel_events_drive_watercolor_state() {
 
     // Full Paper slot: Mapping / Rake / Random / Offset / Depth / param.
     t.handle_panel_event(PanelEvent::SelectOption(
-        core_ids::PAINTER_WATERCOLOR_PAPER_MAPPING,
+        crate::ids::PAINTER_WATERCOLOR_PAPER_MAPPING,
         (TextureMapping::Random.to_u8()).to_string(),
     ));
     assert_eq!(
@@ -167,7 +187,7 @@ fn panel_events_drive_watercolor_state() {
         "the Paper slot has no per-dab rotation, and nothing can turn it on"
     );
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_WATERCOLOR_PAPER_OFFSET_X,
+        crate::ids::PAINTER_WATERCOLOR_PAPER_OFFSET_X,
         0.3,
     ));
     assert!(
@@ -175,7 +195,7 @@ fn panel_events_drive_watercolor_state() {
         "Paper Offset X set"
     );
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_WATERCOLOR_PAPER_DEPTH,
+        crate::ids::PAINTER_WATERCOLOR_PAPER_DEPTH,
         0.7,
     ));
     assert!(
@@ -183,7 +203,7 @@ fn panel_events_drive_watercolor_state() {
         "Paper Depth set"
     );
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_WATERCOLOR_PAPER_PARAMS[2],
+        crate::ids::PAINTER_WATERCOLOR_PAPER_PARAMS[2],
         0.8,
     ));
     assert!(
@@ -191,7 +211,9 @@ fn panel_events_drive_watercolor_state() {
         "Paper param slot 2 set"
     );
     // Reset clears the Paper slot back to None.
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_WATERCOLOR_PAPER_RESET));
+    t.handle_panel_event(PanelEvent::Click(
+        crate::ids::PAINTER_WATERCOLOR_PAPER_RESET,
+    ));
     assert_eq!(
         t.paint.brush.paper.kind,
         TextureKind::None,
@@ -200,19 +222,19 @@ fn panel_events_drive_watercolor_state() {
 
     // Clamp: Edge caps at 8, Spread at 48.
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_WATERCOLOR_EDGE,
+        crate::ids::PAINTER_WATERCOLOR_EDGE,
         99.0,
     ));
     assert_eq!(t.brush_settings().edge_gain, 8.0, "Edge clamped to 8");
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_WATERCOLOR_SPREAD,
+        crate::ids::PAINTER_WATERCOLOR_SPREAD,
         99.0,
     ));
     assert_eq!(t.brush_settings().edge_spread, 48.0, "Spread clamped to 48");
 
     // Reset returns the whole section to defaults — the `watercolor`/`pigment` gates OFF (which is
     // what makes a brush neutral); the params go back to their sensible when-enabled defaults.
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_WATERCOLOR_RESET));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_WATERCOLOR_RESET));
     let b = t.brush_settings();
     assert!(
         !b.watercolor && !b.pigment,
@@ -233,7 +255,7 @@ fn preset_dropdown_reconfigures_the_brush() {
 
     // Watercolor Basic (idx 1): render-path on + wet_edges optics.
     t.handle_panel_event(PanelEvent::SelectOption(
-        core_ids::PAINTER_BRUSH_PRESET,
+        crate::ids::PAINTER_BRUSH_PRESET,
         "1".into(),
     ));
     let b = t.brush_settings();
@@ -264,7 +286,7 @@ fn preset_dropdown_reconfigures_the_brush() {
 
     // Digital Basic (idx 0): back to the plain brush, colour + size still preserved.
     t.handle_panel_event(PanelEvent::SelectOption(
-        core_ids::PAINTER_BRUSH_PRESET,
+        crate::ids::PAINTER_BRUSH_PRESET,
         "0".into(),
     ));
     let b = t.brush_settings();

@@ -57,7 +57,7 @@ impl BodyCtx<'_> {
         // rabisco SEMEIA pela cápsula, é o Size que decide se um toque curto pega a região.
         let track = self
             .store
-            .slider(ids::FLIP_SIZE)
+            .slider(ph2d_tool_flip::ids::FLIP_SIZE)
             .map(|(_, v)| v)
             .unwrap_or_else(|| px_to_slider(snap.width_px));
         let px = self
@@ -67,7 +67,7 @@ impl BodyCtx<'_> {
         let px_display = format!("{}", px.round() as i64);
         y = self.slider_row(
             "Size",
-            ids::FLIP_SIZE,
+            ph2d_tool_flip::ids::FLIP_SIZE,
             ids::FLIP_SIZE_NUM,
             track,
             px,
@@ -84,13 +84,13 @@ impl BodyCtx<'_> {
         // regular: os dois coexistem de propósito.
         let track = self
             .store
-            .slider(ids::FLIP_TRAP)
+            .slider(ph2d_tool_flip::ids::FLIP_TRAP)
             .map(|(_, v)| v)
             .unwrap_or((snap.trap / TRAP_MAX_PX) as f32);
         let trap = f64::from(track) * TRAP_MAX_PX;
         y = self.slider_row(
             "Trap",
-            ids::FLIP_TRAP,
+            ph2d_tool_flip::ids::FLIP_TRAP,
             ids::FLIP_TRAP_NUM,
             track,
             trap,
@@ -100,13 +100,13 @@ impl BodyCtx<'_> {
         // Bleed: o track (0..1) É a fração `colorize_bleed`; o chip mostra a %.
         let track = self
             .store
-            .slider(ids::FLIP_COLORIZE_BLEED)
+            .slider(ph2d_tool_flip::ids::FLIP_COLORIZE_BLEED)
             .map(|(_, v)| v)
             .unwrap_or(snap.colorize_bleed as f32);
         let pct = f64::from(track) * 100.0; // LITERAL-PX-OK: fracao 0..1 -> leitura em %
         y = self.slider_row(
             "Bleed",
-            ids::FLIP_COLORIZE_BLEED,
+            ph2d_tool_flip::ids::FLIP_COLORIZE_BLEED,
             ids::FLIP_COLORIZE_BLEED_NUM,
             track,
             pct,

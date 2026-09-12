@@ -242,20 +242,20 @@ fn a_primary_that_is_not_an_operand_offers_nothing() {
 fn the_click_seam_maps_each_chip_to_its_verb() {
     use ph2d_editor_core::ids as i;
     for (id, want) in [
-        (i::VECTOR_BOOL_SHAPE_UNION, 0u8),
-        (i::VECTOR_BOOL_SHAPE_SUBTRACT, 1),
-        (i::VECTOR_BOOL_SHAPE_INTERSECT, 2),
-        (i::VECTOR_BOOL_SHAPE_EXCLUDE, 3),
+        (ph2d_panel_vector::ids::VECTOR_BOOL_SHAPE_UNION, 0u8),
+        (ph2d_panel_vector::ids::VECTOR_BOOL_SHAPE_SUBTRACT, 1),
+        (ph2d_panel_vector::ids::VECTOR_BOOL_SHAPE_INTERSECT, 2),
+        (ph2d_panel_vector::ids::VECTOR_BOOL_SHAPE_EXCLUDE, 3),
     ] {
         assert_eq!(shape_op_for_id(id), Some(want));
     }
     // Os VIZINHOS — o verbo do grupo, o modo Live, o Apply — não são verbo de forma.
     for foreign in [
-        i::VECTOR_BOOL_UNION,
-        i::VECTOR_BOOL_SUBTRACT,
-        i::VECTOR_BOOL_INTERSECT,
-        i::VECTOR_BOOL_EXCLUDE,
-        i::VECTOR_BOOL_TRIM,
+        ph2d_panel_vector::ids::VECTOR_BOOL_UNION,
+        ph2d_panel_vector::ids::VECTOR_BOOL_SUBTRACT,
+        ph2d_panel_vector::ids::VECTOR_BOOL_INTERSECT,
+        ph2d_panel_vector::ids::VECTOR_BOOL_EXCLUDE,
+        ph2d_tool_vector::ids::VECTOR_BOOL_TRIM,
         i::VECTOR_BOOL_LIVE_ON,
         i::VECTOR_BOOL_APPLY,
     ] {

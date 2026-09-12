@@ -12,7 +12,6 @@
 
 use crate::state;
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::screens::hero::PlayerFieldEdit;
@@ -22,114 +21,120 @@ pub(crate) fn apply_player_event(host: &mut dyn PanelHostInternal, ev: WidgetEve
         return false;
     };
     let edit = match ev {
-        WidgetEvent::Click(id) if ids::INSP_PLAYER_MODE_IDS.contains(&id) => {
+        WidgetEvent::Click(id) if crate::ids::INSP_PLAYER_MODE_IDS.contains(&id) => {
             // ⚠️ O índice VIRA o tag pela porta única do `PlayerMode` — nunca um
             // `match` local, que é o que faz um chip selecionar outra coisa no
             // dia em que a terceira opção existir.
-            let i = ids::INSP_PLAYER_MODE_IDS
+            let i = crate::ids::INSP_PLAYER_MODE_IDS
                 .iter()
                 .position(|&o| o == id)
                 .unwrap_or(0);
             Some(PlayerFieldEdit::Mode(i as u8))
         }
-        WidgetEvent::Click(id) if ids::INSP_PLAYER_EMIT_IDS.contains(&id) => {
+        WidgetEvent::Click(id) if crate::ids::INSP_PLAYER_EMIT_IDS.contains(&id) => {
             // ⚠️ O índice É a resposta: `0` = Off, `1` = On. A tabela de rótulos
             // do pintor e esta posição são as duas metades da mesma escolha, e é
             // por isso que a lista vive nos `ids` e não em nenhuma das duas.
             Some(PlayerFieldEdit::EmitSignals(
-                id == ids::INSP_PLAYER_EMIT_IDS[1],
+                id == crate::ids::INSP_PLAYER_EMIT_IDS[1],
             ))
         }
-        WidgetEvent::Click(id) if ids::INSP_PLAYER_LIFT_POLICY_IDS.contains(&id) => {
+        WidgetEvent::Click(id) if crate::ids::INSP_PLAYER_LIFT_POLICY_IDS.contains(&id) => {
             // ⚠️ O índice É o `PlatformLift::tag`, sem remap — a tabela de
             // rótulos do pintor e esta posição são as duas metades da mesma
             // escolha, e é por isso que a lista vive nos `ids`.
-            let i = ids::INSP_PLAYER_LIFT_POLICY_IDS
+            let i = crate::ids::INSP_PLAYER_LIFT_POLICY_IDS
                 .iter()
                 .position(|&o| o == id)
                 .unwrap_or(0);
             Some(PlayerFieldEdit::PlatformLift(i as u8))
         }
-        WidgetEvent::Click(id) if ids::INSP_PLAYER_WALK_OFF_IDS.contains(&id) => {
+        WidgetEvent::Click(id) if crate::ids::INSP_PLAYER_WALK_OFF_IDS.contains(&id) => {
             // ⚠️ `0` = pode andar para fora (o mundo que já shipava), `1` = pára.
             // O índice É a resposta, como nos irmãos acima.
             Some(PlayerFieldEdit::WalkOffLedges(
-                id == ids::INSP_PLAYER_WALK_OFF_IDS[0],
+                id == crate::ids::INSP_PLAYER_WALK_OFF_IDS[0],
             ))
         }
-        WidgetEvent::Click(id) if ids::INSP_PLAYER_CROUCH_WALK_OFF_IDS.contains(&id) => Some(
-            PlayerFieldEdit::CrouchWalkOffLedges(id == ids::INSP_PLAYER_CROUCH_WALK_OFF_IDS[0]),
-        ),
-        WidgetEvent::Click(id) if id == ids::INSP_PLAYER_REMOVE => Some(PlayerFieldEdit::Remove),
-        WidgetEvent::Click(id) if id == ids::INSP_PLAYER_FIT => {
+        WidgetEvent::Click(id) if crate::ids::INSP_PLAYER_CROUCH_WALK_OFF_IDS.contains(&id) => {
+            Some(PlayerFieldEdit::CrouchWalkOffLedges(
+                id == crate::ids::INSP_PLAYER_CROUCH_WALK_OFF_IDS[0],
+            ))
+        }
+        WidgetEvent::Click(id) if id == crate::ids::INSP_PLAYER_REMOVE => {
+            Some(PlayerFieldEdit::Remove)
+        }
+        WidgetEvent::Click(id) if id == crate::ids::INSP_PLAYER_FIT => {
             Some(PlayerFieldEdit::FitFloatHeight)
         }
-        WidgetEvent::Click(id) if id == ids::INSP_PLAYER_CLEAR_RUN => {
+        WidgetEvent::Click(id) if id == crate::ids::INSP_PLAYER_CLEAR_RUN => {
             Some(PlayerFieldEdit::ClearRun)
         }
-        WidgetEvent::Click(id) if id == ids::INSP_PLAYER_RESTORE_RUN => {
+        WidgetEvent::Click(id) if id == crate::ids::INSP_PLAYER_RESTORE_RUN => {
             Some(PlayerFieldEdit::RestoreRun)
         }
-        WidgetEvent::Click(id) if id == ids::INSP_PLAYER_FIT_CROUCH => {
+        WidgetEvent::Click(id) if id == crate::ids::INSP_PLAYER_FIT_CROUCH => {
             Some(PlayerFieldEdit::FitCrouchHeight)
         }
         WidgetEvent::ValueChanged(id) => {
             let v = host.store().number_value(id).unwrap_or(0.0) as f32;
             match id {
-                ids::INSP_PLAYER_FLOAT => Some(PlayerFieldEdit::FloatHeight(v)),
-                ids::INSP_PLAYER_CLING => Some(PlayerFieldEdit::ClingDistance(v)),
-                ids::INSP_PLAYER_STIFFNESS => Some(PlayerFieldEdit::SpringStrength(v)),
-                ids::INSP_PLAYER_DAMPING => Some(PlayerFieldEdit::SpringDamping(v)),
-                ids::INSP_PLAYER_SPEED => Some(PlayerFieldEdit::Speed(v)),
-                ids::INSP_PLAYER_ACCEL => Some(PlayerFieldEdit::Acceleration(v)),
-                ids::INSP_PLAYER_AIR_ACCEL => Some(PlayerFieldEdit::AirAcceleration(v)),
-                ids::INSP_PLAYER_BRAKE => Some(PlayerFieldEdit::BrakeScale(v)),
-                ids::INSP_PLAYER_JUMP_HEIGHT => Some(PlayerFieldEdit::JumpHeight(v)),
-                ids::INSP_PLAYER_AIR_JUMPS => Some(PlayerFieldEdit::AirJumps(v)),
-                ids::INSP_PLAYER_AIR_JUMP_H => Some(PlayerFieldEdit::AirJumpHeight(v)),
-                ids::INSP_PLAYER_TAKEOFF_G => Some(PlayerFieldEdit::TakeoffGravity(v)),
-                ids::INSP_PLAYER_TAKEOFF_SPEED => Some(PlayerFieldEdit::TakeoffSpeed(v)),
-                ids::INSP_PLAYER_PEAK_G => Some(PlayerFieldEdit::PeakGravity(v)),
-                ids::INSP_PLAYER_PEAK_SPEED => Some(PlayerFieldEdit::PeakSpeed(v)),
-                ids::INSP_PLAYER_FALL_G => Some(PlayerFieldEdit::FallGravity(v)),
-                ids::INSP_PLAYER_CUT_G => Some(PlayerFieldEdit::CutGravity(v)),
-                ids::INSP_PLAYER_COYOTE => Some(PlayerFieldEdit::CoyoteTime(v)),
-                ids::INSP_PLAYER_BUFFER => Some(PlayerFieldEdit::JumpBuffer(v)),
-                ids::INSP_PLAYER_CORNER => Some(PlayerFieldEdit::CornerReach(v)),
-                ids::INSP_PLAYER_CORNER_SAMPLES => Some(PlayerFieldEdit::CornerSamples(v)),
-                ids::INSP_PLAYER_CORNER_AHEAD => Some(PlayerFieldEdit::CornerLookahead(v)),
-                ids::INSP_PLAYER_FOOT_SAMPLES => Some(PlayerFieldEdit::FootSamples(v)),
-                ids::INSP_PLAYER_FOOT_SPREAD => Some(PlayerFieldEdit::FootSpread(v)),
-                ids::INSP_PLAYER_WALL_SAMPLES => Some(PlayerFieldEdit::WallSamples(v)),
-                ids::INSP_PLAYER_WALL_SPREAD => Some(PlayerFieldEdit::WallSpread(v)),
-                ids::INSP_PLAYER_LIFT => Some(PlayerFieldEdit::LiftMomentum(v)),
-                ids::INSP_PLAYER_WALL_SLIDE => Some(PlayerFieldEdit::WallSlideSpeed(v)),
-                ids::INSP_PLAYER_WALL_JUMP => Some(PlayerFieldEdit::WallJumpHeight(v)),
-                ids::INSP_PLAYER_WALL_PUSH => Some(PlayerFieldEdit::WallJumpPush(v)),
-                ids::INSP_PLAYER_WALL_LOCK => Some(PlayerFieldEdit::WallJumpLockout(v)),
-                ids::INSP_PLAYER_WALL_REACH => Some(PlayerFieldEdit::WallReach(v)),
-                ids::INSP_PLAYER_WALL_GRAB => Some(PlayerFieldEdit::WallGrabStamina(v)),
-                ids::INSP_PLAYER_DASH_SPEED => Some(PlayerFieldEdit::DashSpeed(v)),
-                ids::INSP_PLAYER_DASH_TIME => Some(PlayerFieldEdit::DashTime(v)),
-                ids::INSP_PLAYER_DASH_COOL => Some(PlayerFieldEdit::DashCooldown(v)),
-                ids::INSP_PLAYER_CROUCH_HEIGHT => Some(PlayerFieldEdit::CrouchHeight(v)),
-                ids::INSP_PLAYER_CROUCH_SPEED => Some(PlayerFieldEdit::CrouchSpeed(v)),
-                ids::INSP_PLAYER_SWIM_SPEED => Some(PlayerFieldEdit::SwimSpeed(v)),
-                ids::INSP_PLAYER_SWIM_ACCEL => Some(PlayerFieldEdit::SwimAcceleration(v)),
-                ids::INSP_PLAYER_SWIM_ENTER => Some(PlayerFieldEdit::SwimEnter(v)),
-                ids::INSP_PLAYER_LEDGE_GRAB => Some(PlayerFieldEdit::LedgeGrab(v)),
-                ids::INSP_PLAYER_LEDGE_REACH_Y => Some(PlayerFieldEdit::LedgeReachY(v)),
-                ids::INSP_PLAYER_LEDGE_SPAN => Some(PlayerFieldEdit::LedgeSpan(v)),
-                ids::INSP_PLAYER_LEDGE_OFFSET_Y => Some(PlayerFieldEdit::LedgeOffsetY(v)),
-                ids::INSP_PLAYER_LEDGE_SPEED => Some(PlayerFieldEdit::LedgeSpeed(v)),
-                ids::INSP_PLAYER_GLIDE_FALL => Some(PlayerFieldEdit::GlideFallSpeed(v)),
-                ids::INSP_PLAYER_MAX_FALL => Some(PlayerFieldEdit::MaxFallSpeed(v)),
-                ids::INSP_PLAYER_REACT_SUPPORT => Some(PlayerFieldEdit::ReactionSupport(v)),
-                ids::INSP_PLAYER_REACT_MOVEMENT => Some(PlayerFieldEdit::ReactionMovement(v)),
-                ids::INSP_PLAYER_REACT_PUSH => Some(PlayerFieldEdit::ReactionPush(v)),
+                crate::ids::INSP_PLAYER_FLOAT => Some(PlayerFieldEdit::FloatHeight(v)),
+                crate::ids::INSP_PLAYER_CLING => Some(PlayerFieldEdit::ClingDistance(v)),
+                crate::ids::INSP_PLAYER_STIFFNESS => Some(PlayerFieldEdit::SpringStrength(v)),
+                crate::ids::INSP_PLAYER_DAMPING => Some(PlayerFieldEdit::SpringDamping(v)),
+                crate::ids::INSP_PLAYER_SPEED => Some(PlayerFieldEdit::Speed(v)),
+                crate::ids::INSP_PLAYER_ACCEL => Some(PlayerFieldEdit::Acceleration(v)),
+                crate::ids::INSP_PLAYER_AIR_ACCEL => Some(PlayerFieldEdit::AirAcceleration(v)),
+                crate::ids::INSP_PLAYER_BRAKE => Some(PlayerFieldEdit::BrakeScale(v)),
+                crate::ids::INSP_PLAYER_JUMP_HEIGHT => Some(PlayerFieldEdit::JumpHeight(v)),
+                crate::ids::INSP_PLAYER_AIR_JUMPS => Some(PlayerFieldEdit::AirJumps(v)),
+                crate::ids::INSP_PLAYER_AIR_JUMP_H => Some(PlayerFieldEdit::AirJumpHeight(v)),
+                crate::ids::INSP_PLAYER_TAKEOFF_G => Some(PlayerFieldEdit::TakeoffGravity(v)),
+                crate::ids::INSP_PLAYER_TAKEOFF_SPEED => Some(PlayerFieldEdit::TakeoffSpeed(v)),
+                crate::ids::INSP_PLAYER_PEAK_G => Some(PlayerFieldEdit::PeakGravity(v)),
+                crate::ids::INSP_PLAYER_PEAK_SPEED => Some(PlayerFieldEdit::PeakSpeed(v)),
+                crate::ids::INSP_PLAYER_FALL_G => Some(PlayerFieldEdit::FallGravity(v)),
+                crate::ids::INSP_PLAYER_CUT_G => Some(PlayerFieldEdit::CutGravity(v)),
+                crate::ids::INSP_PLAYER_COYOTE => Some(PlayerFieldEdit::CoyoteTime(v)),
+                crate::ids::INSP_PLAYER_BUFFER => Some(PlayerFieldEdit::JumpBuffer(v)),
+                crate::ids::INSP_PLAYER_CORNER => Some(PlayerFieldEdit::CornerReach(v)),
+                crate::ids::INSP_PLAYER_CORNER_SAMPLES => Some(PlayerFieldEdit::CornerSamples(v)),
+                crate::ids::INSP_PLAYER_CORNER_AHEAD => Some(PlayerFieldEdit::CornerLookahead(v)),
+                crate::ids::INSP_PLAYER_FOOT_SAMPLES => Some(PlayerFieldEdit::FootSamples(v)),
+                crate::ids::INSP_PLAYER_FOOT_SPREAD => Some(PlayerFieldEdit::FootSpread(v)),
+                crate::ids::INSP_PLAYER_WALL_SAMPLES => Some(PlayerFieldEdit::WallSamples(v)),
+                crate::ids::INSP_PLAYER_WALL_SPREAD => Some(PlayerFieldEdit::WallSpread(v)),
+                crate::ids::INSP_PLAYER_LIFT => Some(PlayerFieldEdit::LiftMomentum(v)),
+                crate::ids::INSP_PLAYER_WALL_SLIDE => Some(PlayerFieldEdit::WallSlideSpeed(v)),
+                crate::ids::INSP_PLAYER_WALL_JUMP => Some(PlayerFieldEdit::WallJumpHeight(v)),
+                crate::ids::INSP_PLAYER_WALL_PUSH => Some(PlayerFieldEdit::WallJumpPush(v)),
+                crate::ids::INSP_PLAYER_WALL_LOCK => Some(PlayerFieldEdit::WallJumpLockout(v)),
+                crate::ids::INSP_PLAYER_WALL_REACH => Some(PlayerFieldEdit::WallReach(v)),
+                crate::ids::INSP_PLAYER_WALL_GRAB => Some(PlayerFieldEdit::WallGrabStamina(v)),
+                crate::ids::INSP_PLAYER_DASH_SPEED => Some(PlayerFieldEdit::DashSpeed(v)),
+                crate::ids::INSP_PLAYER_DASH_TIME => Some(PlayerFieldEdit::DashTime(v)),
+                crate::ids::INSP_PLAYER_DASH_COOL => Some(PlayerFieldEdit::DashCooldown(v)),
+                crate::ids::INSP_PLAYER_CROUCH_HEIGHT => Some(PlayerFieldEdit::CrouchHeight(v)),
+                crate::ids::INSP_PLAYER_CROUCH_SPEED => Some(PlayerFieldEdit::CrouchSpeed(v)),
+                crate::ids::INSP_PLAYER_SWIM_SPEED => Some(PlayerFieldEdit::SwimSpeed(v)),
+                crate::ids::INSP_PLAYER_SWIM_ACCEL => Some(PlayerFieldEdit::SwimAcceleration(v)),
+                crate::ids::INSP_PLAYER_SWIM_ENTER => Some(PlayerFieldEdit::SwimEnter(v)),
+                crate::ids::INSP_PLAYER_LEDGE_GRAB => Some(PlayerFieldEdit::LedgeGrab(v)),
+                crate::ids::INSP_PLAYER_LEDGE_REACH_Y => Some(PlayerFieldEdit::LedgeReachY(v)),
+                crate::ids::INSP_PLAYER_LEDGE_SPAN => Some(PlayerFieldEdit::LedgeSpan(v)),
+                crate::ids::INSP_PLAYER_LEDGE_OFFSET_Y => Some(PlayerFieldEdit::LedgeOffsetY(v)),
+                crate::ids::INSP_PLAYER_LEDGE_SPEED => Some(PlayerFieldEdit::LedgeSpeed(v)),
+                crate::ids::INSP_PLAYER_GLIDE_FALL => Some(PlayerFieldEdit::GlideFallSpeed(v)),
+                crate::ids::INSP_PLAYER_MAX_FALL => Some(PlayerFieldEdit::MaxFallSpeed(v)),
+                crate::ids::INSP_PLAYER_REACT_SUPPORT => Some(PlayerFieldEdit::ReactionSupport(v)),
+                crate::ids::INSP_PLAYER_REACT_MOVEMENT => {
+                    Some(PlayerFieldEdit::ReactionMovement(v))
+                }
+                crate::ids::INSP_PLAYER_REACT_PUSH => Some(PlayerFieldEdit::ReactionPush(v)),
                 // Graus na row, cosseno no motor — a conversão acontece UMA vez,
                 // na `WalkConfig::max_slope_cos`.
-                ids::INSP_PLAYER_MAX_SLOPE => Some(PlayerFieldEdit::MaxSlopeDeg(v)),
+                crate::ids::INSP_PLAYER_MAX_SLOPE => Some(PlayerFieldEdit::MaxSlopeDeg(v)),
                 _ => None,
             }
         }

@@ -8,7 +8,6 @@
 //! [`drag_to_ring_spoke`] — paint and event share that ONE conversion.
 
 use crate::PaintCtx;
-use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::paint::{fill_circle, resolve, stroke_polyline};
 use ph2d_editor_core::zones::Rect;
@@ -54,7 +53,7 @@ pub(crate) fn paint_tilt_card(
         x,
         content_w,
         y,
-        core_ids::PAINTER_WETPAINT_TILT_TOGGLE,
+        ph2d_tool_painter::ids::PAINTER_WETPAINT_TILT_TOGGLE,
         "Tilt",
         brush.wet_tilt_on,
     );
@@ -100,9 +99,9 @@ pub(crate) fn paint_tilt_card(
     // canvas tracks panel resizes, and `populate.rs` registers the same id
     // (focusability — the wiring-parity law).
     ctx.host.store_mut().register(
-        core_ids::PAINTER_WETPAINT_TILT_PAD,
+        ph2d_tool_painter::ids::PAINTER_WETPAINT_TILT_PAD,
         InteractiveState::CurvePoint {
-            parent: core_ids::PAINTER_WETPAINT_TILT_PAD,
+            parent: ph2d_tool_painter::ids::PAINTER_WETPAINT_TILT_PAD,
             channel: 0,
             index: 0,
             canvas,
@@ -110,7 +109,7 @@ pub(crate) fn paint_tilt_card(
     );
     ctx.host
         .hit_index_mut()
-        .register(core_ids::PAINTER_WETPAINT_TILT_PAD, canvas);
+        .register(ph2d_tool_painter::ids::PAINTER_WETPAINT_TILT_PAD, canvas);
     canvas.y + side + Spacing::Xs.px()
 }
 
@@ -121,17 +120,17 @@ pub(crate) fn forward_tilt_pad_drag(host: &mut dyn ph2d_editor_core::panel::Pane
     use ph2d_editor_core::tool::PanelEvent;
     if let Some((_p, _ch, _idx, x, y)) = host
         .store_mut()
-        .take_curve_point_drag_if(|p| p == core_ids::PAINTER_WETPAINT_TILT_PAD)
+        .take_curve_point_drag_if(|p| p == ph2d_tool_painter::ids::PAINTER_WETPAINT_TILT_PAD)
     {
         let (ring, spoke) = drag_to_ring_spoke(x, y);
         host.bus_mut()
             .push(EditorAction::ToolPanelEvent(PanelEvent::SetValue(
-                core_ids::PAINTER_WETPAINT_TILT_RING,
+                ph2d_tool_painter::ids::PAINTER_WETPAINT_TILT_RING,
                 f64::from(ring),
             )));
         host.bus_mut()
             .push(EditorAction::ToolPanelEvent(PanelEvent::SetValue(
-                core_ids::PAINTER_WETPAINT_TILT_SPOKE,
+                ph2d_tool_painter::ids::PAINTER_WETPAINT_TILT_SPOKE,
                 f64::from(spoke),
             )));
     }

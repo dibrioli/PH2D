@@ -81,7 +81,7 @@ pub(crate) fn paint(_state: &mut BgRemovalPanelState, ctx: &mut PaintCtx) {
     // bottom Cancel button: pushes CancelActiveTool).
     paint_panel_close_button(
         rect,
-        ids::BGR_CANCEL,
+        ph2d_tool_bgremoval::ids::BGR_CANCEL,
         ctx.host.hit_index_mut(),
         ctx.scene,
         theme,
@@ -127,7 +127,7 @@ pub(crate) fn paint(_state: &mut BgRemovalPanelState, ctx: &mut PaintCtx) {
     // Re-register close at end-of-frame so scrolled body widgets behind
     // the title can't shadow it (canon — vide panel_chrome doc).
     ctx.host.hit_index_mut().register(
-        ids::BGR_CANCEL,
+        ph2d_tool_bgremoval::ids::BGR_CANCEL,
         ph2d_editor_core::widget::panel_chrome::panel_close_button_rect(rect),
     );
 }

@@ -16,7 +16,6 @@
 //! HONRAR.
 
 use ph2d_a11y::NodeId;
-use ph2d_editor_core::ids;
 use ph2d_physics_ecs::{
     HoldMode, IkOptions, InteractionSettings, InteractionTool, JointTool, MAX_ATTRACT_FORCE,
     MAX_BLAST_IMPULSE, MAX_HOLD_DAMPING_RATIO, MAX_HOLD_STIFFNESS, MIN_HOLD_STIFFNESS,
@@ -97,8 +96,8 @@ pub static IROWS: &[IRow] = &[
     // ── The Hand: the spring's two gains ────────────────────────────────────
     IRow {
         label: "panel.physics.hold_stiffness",
-        slider: ids::PHYSICS_HOLD_STIFFNESS,
-        chip: ids::PHYSICS_HOLD_STIFFNESS_NUM,
+        slider: crate::ids::PHYSICS_HOLD_STIFFNESS,
+        chip: crate::ids::PHYSICS_HOLD_STIFFNESS_NUM,
         min: MIN_HOLD_STIFFNESS,
         max: MAX_HOLD_STIFFNESS,
         step: 10.0, // LITERAL-PX-OK: drag step in acceleration-per-metre (physical unit)
@@ -110,8 +109,8 @@ pub static IROWS: &[IRow] = &[
     },
     IRow {
         label: "panel.physics.hold_damping",
-        slider: ids::PHYSICS_HOLD_DAMPING,
-        chip: ids::PHYSICS_HOLD_DAMPING_NUM,
+        slider: crate::ids::PHYSICS_HOLD_DAMPING,
+        chip: crate::ids::PHYSICS_HOLD_DAMPING_NUM,
         min: 0.0,
         max: MAX_HOLD_DAMPING_RATIO,
         step: 0.05, // LITERAL-PX-OK: drag step of a dimensionless ratio, not a design metric
@@ -123,8 +122,8 @@ pub static IROWS: &[IRow] = &[
     },
     IRow {
         label: "panel.physics.hold_slack",
-        slider: ids::PHYSICS_HOLD_SLACK,
-        chip: ids::PHYSICS_HOLD_SLACK_NUM,
+        slider: crate::ids::PHYSICS_HOLD_SLACK,
+        chip: crate::ids::PHYSICS_HOLD_SLACK_NUM,
         min: 0.0,
         max: WORLD_REACH_M,
         step: 0.1, // LITERAL-PX-OK: drag step in metres (physical unit)
@@ -137,8 +136,8 @@ pub static IROWS: &[IRow] = &[
     // ── The Blast ───────────────────────────────────────────────────────────
     IRow {
         label: "panel.physics.blast_radius",
-        slider: ids::PHYSICS_BLAST_RADIUS,
-        chip: ids::PHYSICS_BLAST_RADIUS_NUM,
+        slider: crate::ids::PHYSICS_BLAST_RADIUS,
+        chip: crate::ids::PHYSICS_BLAST_RADIUS_NUM,
         min: 0.0,
         max: WORLD_REACH_M,
         step: 0.1, // LITERAL-PX-OK: drag step in metres (physical unit)
@@ -150,8 +149,8 @@ pub static IROWS: &[IRow] = &[
     },
     IRow {
         label: "panel.physics.blast_force",
-        slider: ids::PHYSICS_BLAST_FORCE,
-        chip: ids::PHYSICS_BLAST_FORCE_NUM,
+        slider: crate::ids::PHYSICS_BLAST_FORCE,
+        chip: crate::ids::PHYSICS_BLAST_FORCE_NUM,
         min: 0.0,
         max: MAX_BLAST_IMPULSE,
         step: 0.5, // LITERAL-PX-OK: drag step in N*s (physical unit)
@@ -164,8 +163,8 @@ pub static IROWS: &[IRow] = &[
     // ── The Pull ────────────────────────────────────────────────────────────
     IRow {
         label: "panel.physics.pull_radius",
-        slider: ids::PHYSICS_PULL_RADIUS,
-        chip: ids::PHYSICS_PULL_RADIUS_NUM,
+        slider: crate::ids::PHYSICS_PULL_RADIUS,
+        chip: crate::ids::PHYSICS_PULL_RADIUS_NUM,
         min: 0.0,
         max: WORLD_REACH_M,
         step: 0.1, // LITERAL-PX-OK: drag step in metres (physical unit)
@@ -181,8 +180,8 @@ pub static IROWS: &[IRow] = &[
     // torque is a direction, not an invalid value).
     IRow {
         label: "panel.physics.pull_force",
-        slider: ids::PHYSICS_PULL_FORCE,
-        chip: ids::PHYSICS_PULL_FORCE_NUM,
+        slider: crate::ids::PHYSICS_PULL_FORCE,
+        chip: crate::ids::PHYSICS_PULL_FORCE_NUM,
         min: -MAX_ATTRACT_FORCE,
         max: MAX_ATTRACT_FORCE,
         step: 1.0,
@@ -202,8 +201,8 @@ pub static IROWS: &[IRow] = &[
     // A faixa vem do WRAPPER, não transcrita: `IkOptions` é onde a tabela mora.
     IRow {
         label: "panel.physics.ik_damping",
-        slider: ids::PHYSICS_IK_DAMPING,
-        chip: ids::PHYSICS_IK_DAMPING_NUM,
+        slider: crate::ids::PHYSICS_IK_DAMPING,
+        chip: crate::ids::PHYSICS_IK_DAMPING_NUM,
         min: IkOptions::MIN_DAMPING,
         max: IkOptions::MAX_DAMPING,
         step: 0.01, // LITERAL-PX-OK: drag step of a dimensionless factor, not a design metric
@@ -225,7 +224,7 @@ pub fn irow_for(id: NodeId) -> Option<&'static IRow> {
 /// Its own resolver, like every other radio here: one function answering for two
 /// arrays is how the third one is born reading the wrong one.
 pub fn joint_for(id: NodeId) -> Option<JointTool> {
-    ids::PHYSICS_JOINT_TOOL_OPT
+    crate::ids::PHYSICS_JOINT_TOOL_OPT
         .iter()
         .position(|&o| o == id)
         .map(|i| JointTool::ALL[i])
@@ -233,7 +232,7 @@ pub fn joint_for(id: NodeId) -> Option<JointTool> {
 
 /// The tool a segmented option id names, if any.
 pub fn tool_for(id: NodeId) -> Option<InteractionTool> {
-    ids::PHYSICS_INTERACT_TOOL_OPT
+    crate::ids::PHYSICS_INTERACT_TOOL_OPT
         .iter()
         .position(|&o| o == id)
         .map(|i| InteractionTool::ALL[i])
@@ -245,7 +244,7 @@ pub fn tool_for(id: NodeId) -> Option<InteractionTool> {
 /// radios name different facts, and one function answering for both is how the
 /// third one would be born reading the wrong array.
 pub fn ik_angle_for(id: NodeId) -> Option<bool> {
-    ids::PHYSICS_IK_ANGLE_OPT
+    crate::ids::PHYSICS_IK_ANGLE_OPT
         .iter()
         .position(|&o| o == id)
         .map(|i| i == 1)
@@ -253,7 +252,7 @@ pub fn ik_angle_for(id: NodeId) -> Option<bool> {
 
 /// The hold mode a segmented option id names, if any.
 pub fn hold_for(id: NodeId) -> Option<HoldMode> {
-    ids::PHYSICS_HOLD_MODE_OPT
+    crate::ids::PHYSICS_HOLD_MODE_OPT
         .iter()
         .position(|&o| o == id)
         .map(|i| HoldMode::ALL[i])

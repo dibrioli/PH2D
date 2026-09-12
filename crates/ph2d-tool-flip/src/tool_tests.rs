@@ -23,19 +23,19 @@ fn default_snapshot_matches_fresh_tool() {
 #[test]
 fn panel_events_drive_mode_and_brush() {
     let mut t = FlipTool::new();
-    t.handle_panel_event(PanelEvent::Click(ids::FLIP_MODE_DRAW));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::FLIP_MODE_DRAW));
     assert_eq!(t.mode(), FlipMode::Draw);
-    t.handle_panel_event(PanelEvent::Click(ids::FLIP_MODE_ERASE));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::FLIP_MODE_ERASE));
     assert_eq!(t.mode(), FlipMode::Erase);
-    t.handle_panel_event(PanelEvent::Click(ids::FLIP_ERASE_HARD));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::FLIP_ERASE_HARD));
     assert_eq!(t.erase_mode(), EraseMode::Hard);
     // Size slider at full track → WIDTH_MAX_PX.
-    t.handle_panel_event(PanelEvent::SetValue(ids::FLIP_SIZE, 1.0));
+    t.handle_panel_event(PanelEvent::SetValue(crate::ids::FLIP_SIZE, 1.0));
     assert_eq!(t.width_px(), crate::params::WIDTH_MAX_PX);
-    t.handle_panel_event(PanelEvent::SetValue(ids::FLIP_HARDNESS, 0.25));
+    t.handle_panel_event(PanelEvent::SetValue(crate::ids::FLIP_HARDNESS, 0.25));
     assert!((t.hardness() - 0.25).abs() < 1e-6);
     // A layer-op id (document edit) is ignored by the tool.
-    t.handle_panel_event(PanelEvent::Click(ids::FLIP_LAYER_ADD));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::FLIP_LAYER_ADD));
     assert_eq!(t.mode(), FlipMode::Erase, "layer op didn't touch the tool");
 }
 
@@ -49,10 +49,10 @@ fn the_self_overlap_toggle_reaches_the_tool_and_toggles() {
     let mut t = FlipTool::new();
     assert!(!t.self_overlap(), "nasce OFF (o traco de sempre)");
     assert!(!t.ui_snapshot().self_overlap, "e o snapshot concorda");
-    t.handle_panel_event(PanelEvent::Click(ids::FLIP_SELF_OVERLAP));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::FLIP_SELF_OVERLAP));
     assert!(t.self_overlap(), "um clique liga");
     assert!(t.ui_snapshot().self_overlap);
-    t.handle_panel_event(PanelEvent::Click(ids::FLIP_SELF_OVERLAP));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::FLIP_SELF_OVERLAP));
     assert!(!t.self_overlap(), "o segundo clique desliga (e um toggle)");
 }
 
@@ -74,13 +74,16 @@ fn the_pressure_sliders_reach_the_tool() {
         "snapshot concorda"
     );
 
-    t.handle_panel_event(PanelEvent::SetValue(ids::FLIP_PRESSURE_MIN, 0.4));
+    t.handle_panel_event(PanelEvent::SetValue(crate::ids::FLIP_PRESSURE_MIN, 0.4));
     assert!(
         (t.pressure_min_width() - 0.4).abs() < 1e-6,
         "min chegou: {}",
         t.pressure_min_width()
     );
-    t.handle_panel_event(PanelEvent::SetValue(ids::FLIP_PRESSURE_RESPONSE, 0.8));
+    t.handle_panel_event(PanelEvent::SetValue(
+        crate::ids::FLIP_PRESSURE_RESPONSE,
+        0.8,
+    ));
     assert!(
         (t.pressure_response() - 0.8).abs() < 1e-6,
         "response chegou"
@@ -99,10 +102,10 @@ fn the_airbrush_toggle_reaches_the_tool_and_toggles() {
     let mut t = FlipTool::new();
     assert!(!t.airbrush(), "nasce OFF (o pincel de sempre)");
     assert!(!t.ui_snapshot().airbrush, "e o snapshot concorda");
-    t.handle_panel_event(PanelEvent::Click(ids::FLIP_AIRBRUSH));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::FLIP_AIRBRUSH));
     assert!(t.airbrush(), "um clique liga");
     assert!(t.ui_snapshot().airbrush);
-    t.handle_panel_event(PanelEvent::Click(ids::FLIP_AIRBRUSH));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::FLIP_AIRBRUSH));
     assert!(!t.airbrush(), "o segundo clique desliga (e um toggle)");
 }
 
@@ -116,10 +119,10 @@ fn the_colorize_bleed_slider_reaches_the_tool() {
         (t.ui_snapshot().colorize_bleed - 0.5).abs() < 1e-9,
         "o Bleed nasce no meio (o pedágio DEFAULT do 5º smoke)"
     );
-    t.handle_panel_event(PanelEvent::SetValue(ids::FLIP_COLORIZE_BLEED, 0.8));
+    t.handle_panel_event(PanelEvent::SetValue(crate::ids::FLIP_COLORIZE_BLEED, 0.8));
     assert!((t.ui_snapshot().colorize_bleed - 0.8).abs() < 1e-9);
     // Fora de [0,1] é clampado (o slider nunca sai, mas a porta se defende).
-    t.handle_panel_event(PanelEvent::SetValue(ids::FLIP_COLORIZE_BLEED, 5.0));
+    t.handle_panel_event(PanelEvent::SetValue(crate::ids::FLIP_COLORIZE_BLEED, 5.0));
     assert!((t.ui_snapshot().colorize_bleed - 1.0).abs() < 1e-9);
     // O Trap é independente: mexer no Bleed não o move.
     assert_eq!(t.ui_snapshot().trap, 0.0, "o Bleed nao pode tocar o Trap");
@@ -130,7 +133,7 @@ fn the_colorize_bleed_slider_reaches_the_tool() {
 #[test]
 fn the_trap_slider_reaches_fifty_at_full_track() {
     let mut t = FlipTool::new();
-    t.handle_panel_event(PanelEvent::SetValue(ids::FLIP_TRAP, 1.0));
+    t.handle_panel_event(PanelEvent::SetValue(crate::ids::FLIP_TRAP, 1.0));
     assert!(
         (t.ui_snapshot().trap - crate::params::TRAP_MAX_PX).abs() < 1e-9,
         "o Trap no fim do slider tem de valer TRAP_MAX_PX"
@@ -152,19 +155,19 @@ fn the_trap_slider_reaches_fifty_at_full_track() {
 fn the_tip_toggle_and_spacing_slider_reach_the_tool() {
     let mut t = FlipTool::new();
     assert_eq!(t.tip(), StrokeTip::Continuous, "default = linha cheia");
-    t.handle_panel_event(PanelEvent::Click(ids::FLIP_TIP_DOTS));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::FLIP_TIP_DOTS));
     assert_eq!(t.tip(), StrokeTip::Dots);
     assert_eq!(
         t.ui_snapshot().tip,
         StrokeTip::Dots,
         "o snapshot leva o tip"
     );
-    t.handle_panel_event(PanelEvent::Click(ids::FLIP_TIP_SQUARES));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::FLIP_TIP_SQUARES));
     assert_eq!(t.tip(), StrokeTip::Squares);
-    t.handle_panel_event(PanelEvent::Click(ids::FLIP_TIP_LINE));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::FLIP_TIP_LINE));
     assert_eq!(t.tip(), StrokeTip::Continuous);
     // O slider: track `0..1` → múltiplo do diâmetro `0..DOT_SPACING_MAX`, e chega ao snapshot.
-    t.handle_panel_event(PanelEvent::SetValue(ids::FLIP_DOT_SPACING, 0.5));
+    t.handle_panel_event(PanelEvent::SetValue(crate::ids::FLIP_DOT_SPACING, 0.5));
     let want = 0.5 * crate::params::DOT_SPACING_MAX;
     assert!(
         (t.ui_snapshot().dot_spacing - want).abs() < 1e-6,
@@ -180,7 +183,7 @@ fn linked_by_default_the_eraser_follows_the_brush() {
     assert_eq!(t.eraser_size_px(), t.width_px());
     assert_eq!(t.eraser_strength(), t.opacity());
 
-    t.handle_panel_event(PanelEvent::SetValue(ids::FLIP_SIZE, 1.0));
+    t.handle_panel_event(PanelEvent::SetValue(crate::ids::FLIP_SIZE, 1.0));
     assert_eq!(
         t.eraser_size_px(),
         crate::params::WIDTH_MAX_PX,
@@ -199,8 +202,8 @@ fn linked_by_default_the_eraser_follows_the_brush() {
 fn unlinked_the_eraser_and_the_brush_keep_their_own_numbers() {
     let mut t = FlipTool::new();
     // O toggle na linha do Size desliga o link.
-    t.handle_panel_event(PanelEvent::Click(ids::FLIP_LINK_SIZE));
-    t.handle_panel_event(PanelEvent::Click(ids::FLIP_LINK_STRENGTH));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::FLIP_LINK_SIZE));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::FLIP_LINK_STRENGTH));
     assert!(!t.link_size() && !t.link_strength());
 
     // Deslinkar NÃO move número nenhum: os próprios nascem nos defaults do pincel,
@@ -209,8 +212,8 @@ fn unlinked_the_eraser_and_the_brush_keep_their_own_numbers() {
     assert_eq!(t.eraser_strength(), DEFAULT_OPACITY);
 
     // O slider PRÓPRIO da borracha move só ela.
-    t.handle_panel_event(PanelEvent::SetValue(ids::FLIP_ERASE_SIZE, 1.0));
-    t.handle_panel_event(PanelEvent::SetValue(ids::FLIP_ERASE_STRENGTH, 0.5));
+    t.handle_panel_event(PanelEvent::SetValue(crate::ids::FLIP_ERASE_SIZE, 1.0));
+    t.handle_panel_event(PanelEvent::SetValue(crate::ids::FLIP_ERASE_STRENGTH, 0.5));
     assert_eq!(t.eraser_size_px(), crate::params::WIDTH_MAX_PX);
     assert!((t.eraser_strength() - 0.5).abs() < 1e-6);
     assert_eq!(t.width_px(), DEFAULT_WIDTH_PX, "o PINCEL nao se mexeu");
@@ -221,7 +224,7 @@ fn unlinked_the_eraser_and_the_brush_keep_their_own_numbers() {
     );
 
     // E o inverso: mexer no pincel não toca a borracha deslinkada.
-    t.handle_panel_event(PanelEvent::SetValue(ids::FLIP_SIZE, 0.0));
+    t.handle_panel_event(PanelEvent::SetValue(crate::ids::FLIP_SIZE, 0.0));
     assert_eq!(t.width_px(), crate::params::WIDTH_MIN_PX);
     assert_eq!(
         t.eraser_size_px(),
@@ -236,14 +239,14 @@ fn unlinked_the_eraser_and_the_brush_keep_their_own_numbers() {
 #[test]
 fn relinking_returns_to_the_brush_and_the_own_value_survives() {
     let mut t = FlipTool::new();
-    t.handle_panel_event(PanelEvent::Click(ids::FLIP_LINK_SIZE));
-    t.handle_panel_event(PanelEvent::SetValue(ids::FLIP_ERASE_SIZE, 1.0));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::FLIP_LINK_SIZE));
+    t.handle_panel_event(PanelEvent::SetValue(crate::ids::FLIP_ERASE_SIZE, 1.0));
     assert_eq!(t.eraser_size_px(), crate::params::WIDTH_MAX_PX);
 
-    t.handle_panel_event(PanelEvent::Click(ids::FLIP_LINK_SIZE)); // re-linka
+    t.handle_panel_event(PanelEvent::Click(crate::ids::FLIP_LINK_SIZE)); // re-linka
     assert_eq!(t.eraser_size_px(), t.width_px(), "voltou a seguir o pincel");
 
-    t.handle_panel_event(PanelEvent::Click(ids::FLIP_LINK_SIZE)); // deslinka de novo
+    t.handle_panel_event(PanelEvent::Click(crate::ids::FLIP_LINK_SIZE)); // deslinka de novo
     assert_eq!(
         t.eraser_size_px(),
         crate::params::WIDTH_MAX_PX,
@@ -256,8 +259,8 @@ fn relinking_returns_to_the_brush_and_the_own_value_survives() {
 #[test]
 fn the_snapshot_publishes_effective_eraser_values() {
     let mut t = FlipTool::new();
-    t.handle_panel_event(PanelEvent::Click(ids::FLIP_LINK_SIZE));
-    t.handle_panel_event(PanelEvent::SetValue(ids::FLIP_ERASE_SIZE, 1.0));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::FLIP_LINK_SIZE));
+    t.handle_panel_event(PanelEvent::SetValue(crate::ids::FLIP_ERASE_SIZE, 1.0));
     let s = t.ui_snapshot();
     assert_eq!(
         s.erase_px,
@@ -270,7 +273,7 @@ fn the_snapshot_publishes_effective_eraser_values() {
         "o Size do pincel vai separado"
     );
     // Linkado, o efetivo volta a ser o do pincel.
-    t.handle_panel_event(PanelEvent::Click(ids::FLIP_LINK_SIZE));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::FLIP_LINK_SIZE));
     assert_eq!(t.ui_snapshot().erase_px, DEFAULT_WIDTH_PX);
 }
 

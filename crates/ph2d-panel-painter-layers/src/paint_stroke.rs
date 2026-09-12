@@ -12,12 +12,13 @@
 use crate::paint_brush_rows::paint_dropdown_row;
 use crate::paint_brush_top::{paint_checkbox_row, paint_slider_chip_row};
 use crate::state;
-use ph2d_editor_core::ids::{self as core_ids, painter_brush_stroke_method_option_id};
+use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::DropdownOption;
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, TypeToken};
+use ph2d_tool_painter::ids::painter_brush_stroke_method_option_id;
 use ph2d_tool_painter::{
     BRUSH_AIRBRUSH_RATE_MAX_S, BRUSH_AIRBRUSH_RATE_MIN_S, BRUSH_COUNT_SLIDER_MAX, BrushSettings,
     StrokeMethod,
@@ -40,9 +41,9 @@ pub(crate) fn paint_stroke_section(
         content_w,
         y,
         "Stroke",
-        core_ids::PAINTER_BRUSH_STROKE_SECTION,
-        core_ids::PAINTER_BRUSH_STROKE_SECTION_COLOR,
-        core_ids::PAINTER_BRUSH_STROKE_RESET,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_STROKE_SECTION,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_STROKE_SECTION_COLOR,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_STROKE_RESET,
     );
     let Some(fold) = fold else {
         return y;
@@ -72,7 +73,7 @@ pub(crate) fn paint_stroke_section(
             x,
             content_w,
             y,
-            core_ids::PAINTER_BRUSH_LINE_DIMENSIONS,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_LINE_DIMENSIONS,
             "Dimensions",
             brush.line_show_dimensions,
         );
@@ -109,7 +110,7 @@ pub(crate) fn paint_stroke_section(
             x,
             content_w,
             y,
-            core_ids::PAINTER_BRUSH_EDGE_TO_EDGE,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_EDGE_TO_EDGE,
             "Edge to Edge",
             brush.edge_to_edge,
         );
@@ -126,8 +127,8 @@ pub(crate) fn paint_stroke_section(
             content_w,
             y,
             "Rate",
-            core_ids::PAINTER_BRUSH_RATE,
-            core_ids::PAINTER_BRUSH_RATE_CHIP,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_RATE,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_RATE_CHIP,
             track,
         );
     }
@@ -141,8 +142,8 @@ pub(crate) fn paint_stroke_section(
             content_w,
             y,
             "Spacing",
-            core_ids::PAINTER_BRUSH_SPACING,
-            core_ids::PAINTER_BRUSH_SPACING_CHIP,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_SPACING,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_SPACING_CHIP,
             brush.spacing,
         );
         y = paint_checkbox_row(
@@ -151,7 +152,7 @@ pub(crate) fn paint_stroke_section(
             x,
             content_w,
             y,
-            core_ids::PAINTER_BRUSH_SPACE_ATTEN,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_SPACE_ATTEN,
             "Adjust Strength",
             brush.space_attenuation,
         );
@@ -173,8 +174,8 @@ pub(crate) fn paint_stroke_section(
             content_w,
             y,
             "Dash",
-            core_ids::PAINTER_BRUSH_DASH_RATIO,
-            core_ids::PAINTER_BRUSH_DASH_RATIO_CHIP,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_DASH_RATIO,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_DASH_RATIO_CHIP,
             brush.dash_ratio,
         );
         y = paint_slider_chip_row(
@@ -184,8 +185,8 @@ pub(crate) fn paint_stroke_section(
             content_w,
             y,
             "Length",
-            core_ids::PAINTER_BRUSH_DASH_LENGTH,
-            core_ids::PAINTER_BRUSH_DASH_LENGTH_CHIP,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_DASH_LENGTH,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_DASH_LENGTH_CHIP,
             count_to_norm(brush.dash_samples),
         );
     }
@@ -198,8 +199,8 @@ pub(crate) fn paint_stroke_section(
         content_w,
         y,
         "Samples",
-        core_ids::PAINTER_BRUSH_INPUT_SAMPLES,
-        core_ids::PAINTER_BRUSH_INPUT_SAMPLES_CHIP,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_INPUT_SAMPLES,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_INPUT_SAMPLES_CHIP,
         count_to_norm(brush.input_samples),
     );
 
@@ -213,8 +214,8 @@ pub(crate) fn paint_stroke_section(
             content_w,
             y,
             "Stabilize",
-            core_ids::PAINTER_BRUSH_STABILIZE,
-            core_ids::PAINTER_BRUSH_STABILIZE_CHIP,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_STABILIZE,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_STABILIZE_CHIP,
             brush.stabilizer,
         );
     }
@@ -241,9 +242,9 @@ pub(crate) fn paint_tiling_section(
         content_w,
         y,
         "Tiling",
-        core_ids::PAINTER_BRUSH_TILING_SECTION,
-        core_ids::PAINTER_BRUSH_TILING_SECTION_COLOR,
-        core_ids::PAINTER_BRUSH_TILING_RESET,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_TILING_SECTION,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_TILING_SECTION_COLOR,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_TILING_RESET,
     );
     let Some(fold) = fold else {
         return y;
@@ -254,7 +255,7 @@ pub(crate) fn paint_tiling_section(
         x,
         content_w,
         y,
-        core_ids::PAINTER_BRUSH_TILING_X,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_TILING_X,
         "Tiling X",
         brush.tiling[0],
     );
@@ -264,7 +265,7 @@ pub(crate) fn paint_tiling_section(
         x,
         content_w,
         y,
-        core_ids::PAINTER_BRUSH_TILING_Y,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_TILING_Y,
         "Tiling Y",
         brush.tiling[1],
     );
@@ -275,7 +276,7 @@ pub(crate) fn paint_tiling_section(
         x,
         content_w,
         y,
-        core_ids::PAINTER_BRUSH_REPEAT_IMAGE,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_REPEAT_IMAGE,
         "Repeat Image",
         brush.repeat_image,
     );
@@ -300,7 +301,7 @@ pub(crate) fn paint_stroke_popovers(ctx: &mut PaintCtx, theme: ph2d_tokens::Them
         crate::paint_brush::paint_dropdown_popover(
             ctx,
             theme,
-            core_ids::PAINTER_BRUSH_JITTER_UNIT,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER_UNIT,
             jitter_unit_options(),
             chip_rect,
             cur,
@@ -350,7 +351,7 @@ fn paint_method_row(
             theme,
             r,
             ph2d_editor_core::IconId::Save,
-            core_ids::PAINTER_BRUSH_STROKE_SAVE_OBJECT,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_STROKE_SAVE_OBJECT,
         );
     }
     if let Some(r) = open {

@@ -12,7 +12,6 @@
 //! edição.
 
 use crate::state;
-use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::widget::TextInputState;
@@ -26,30 +25,30 @@ pub(crate) fn sync_joint_fields(host: &mut dyn PanelHostInternal) {
         return;
     };
     for (id, v) in [
-        (ids::INSP_JOINT_LIMIT_MIN, info.limit_min_ui),
-        (ids::INSP_JOINT_LIMIT_MAX, info.limit_max_ui),
-        (ids::INSP_JOINT_MOTOR_SPEED, info.motor_speed_ui),
-        (ids::INSP_JOINT_MOTOR_TARGET, info.motor_target_ui),
-        (ids::INSP_JOINT_MOTOR_FORCE, info.motor_max_force),
-        (ids::INSP_JOINT_REST_LENGTH, info.rest_length),
-        (ids::INSP_JOINT_STIFFNESS, info.stiffness),
-        (ids::INSP_JOINT_DAMPING, info.damping),
-        (ids::INSP_JOINT_MAX_LENGTH, info.max_length),
+        (crate::ids::INSP_JOINT_LIMIT_MIN, info.limit_min_ui),
+        (crate::ids::INSP_JOINT_LIMIT_MAX, info.limit_max_ui),
+        (crate::ids::INSP_JOINT_MOTOR_SPEED, info.motor_speed_ui),
+        (crate::ids::INSP_JOINT_MOTOR_TARGET, info.motor_target_ui),
+        (crate::ids::INSP_JOINT_MOTOR_FORCE, info.motor_max_force),
+        (crate::ids::INSP_JOINT_REST_LENGTH, info.rest_length),
+        (crate::ids::INSP_JOINT_STIFFNESS, info.stiffness),
+        (crate::ids::INSP_JOINT_DAMPING, info.damping),
+        (crate::ids::INSP_JOINT_MAX_LENGTH, info.max_length),
         // W-J7. Without these two the rows would be WRITE-ONLY — the failure
         // the area rows shipped with (W-AreaTorque): typing works, and then
         // re-selecting the joint shows the seed instead of what was authored.
-        (ids::INSP_JOINT_BREAK_FORCE, info.break_force),
-        (ids::INSP_JOINT_BREAK_TORQUE, info.break_torque),
+        (crate::ids::INSP_JOINT_BREAK_FORCE, info.break_force),
+        (crate::ids::INSP_JOINT_BREAK_TORQUE, info.break_torque),
         // W-JointCustom, os seis batentes por eixo — **pelo mesmo motivo que os
         // dois acima**: sem eles as rows são WRITE-ONLY (digitar funciona, e
         // re-selecionar o joint mostra a semente em vez do que foi autorado), a
         // falha que a família de zonas de fato shipou.
-        (ids::INSP_JOINT_AXIS_MIN[0], info.axis_min_ui[0]),
-        (ids::INSP_JOINT_AXIS_MAX[0], info.axis_max_ui[0]),
-        (ids::INSP_JOINT_AXIS_MIN[1], info.axis_min_ui[1]),
-        (ids::INSP_JOINT_AXIS_MAX[1], info.axis_max_ui[1]),
-        (ids::INSP_JOINT_AXIS_MIN[2], info.axis_min_ui[2]),
-        (ids::INSP_JOINT_AXIS_MAX[2], info.axis_max_ui[2]),
+        (crate::ids::INSP_JOINT_AXIS_MIN[0], info.axis_min_ui[0]),
+        (crate::ids::INSP_JOINT_AXIS_MAX[0], info.axis_max_ui[0]),
+        (crate::ids::INSP_JOINT_AXIS_MIN[1], info.axis_min_ui[1]),
+        (crate::ids::INSP_JOINT_AXIS_MAX[1], info.axis_max_ui[1]),
+        (crate::ids::INSP_JOINT_AXIS_MIN[2], info.axis_min_ui[2]),
+        (crate::ids::INSP_JOINT_AXIS_MAX[2], info.axis_max_ui[2]),
     ] {
         host.store_mut().set_number_value(id, f64::from(v));
     }
@@ -71,40 +70,40 @@ pub(crate) fn sync_physics_fields(host: &mut dyn PanelHostInternal) {
         return;
     }
     for (id, v) in [
-        (ids::INSP_PHYS_RADIUS, info.radius),
-        (ids::INSP_PHYS_HALF_X, info.half_x),
-        (ids::INSP_PHYS_HALF_Y, info.half_y),
-        (ids::INSP_PHYS_CAP_HALF_H, info.cap_half_height),
-        (ids::INSP_PHYS_OFFSET_X, info.offset[0]),
+        (crate::ids::INSP_PHYS_RADIUS, info.radius),
+        (crate::ids::INSP_PHYS_HALF_X, info.half_x),
+        (crate::ids::INSP_PHYS_HALF_Y, info.half_y),
+        (crate::ids::INSP_PHYS_CAP_HALF_H, info.cap_half_height),
+        (crate::ids::INSP_PHYS_OFFSET_X, info.offset[0]),
         // ⚠️ Sem estas duas as rows seriam WRITE-ONLY — o defeito que a família
         // das zonas shipou inteira (W-AreaTorque) e que custou um report.
-        (ids::INSP_PHYS_WALK_GRIP, info.walk_grip),
-        (ids::INSP_PHYS_WALK_BELT, info.walk_belt),
-        (ids::INSP_PHYS_OFFSET_Y, info.offset[1]),
-        (ids::INSP_PHYS_DENSITY, info.density),
-        (ids::INSP_PHYS_MASS, info.mass),
-        (ids::INSP_PHYS_RESTITUTION, info.restitution),
-        (ids::INSP_PHYS_FRICTION, info.friction),
-        (ids::INSP_PHYS_GRAVITY_SCALE, info.gravity_scale),
-        (ids::INSP_PHYS_LINVEL_X, info.linvel[0]),
-        (ids::INSP_PHYS_LINVEL_Y, info.linvel[1]),
-        (ids::INSP_PHYS_ANGVEL, info.angvel.to_degrees()),
-        (ids::INSP_PHYS_DOMINANCE, f32::from(info.dominance)),
-        (ids::INSP_PHYS_LINEAR_DAMPING, info.linear_damping),
-        (ids::INSP_PHYS_ANGULAR_DAMPING, info.angular_damping),
+        (crate::ids::INSP_PHYS_WALK_GRIP, info.walk_grip),
+        (crate::ids::INSP_PHYS_WALK_BELT, info.walk_belt),
+        (crate::ids::INSP_PHYS_OFFSET_Y, info.offset[1]),
+        (crate::ids::INSP_PHYS_DENSITY, info.density),
+        (crate::ids::INSP_PHYS_MASS, info.mass),
+        (crate::ids::INSP_PHYS_RESTITUTION, info.restitution),
+        (crate::ids::INSP_PHYS_FRICTION, info.friction),
+        (crate::ids::INSP_PHYS_GRAVITY_SCALE, info.gravity_scale),
+        (crate::ids::INSP_PHYS_LINVEL_X, info.linvel[0]),
+        (crate::ids::INSP_PHYS_LINVEL_Y, info.linvel[1]),
+        (crate::ids::INSP_PHYS_ANGVEL, info.angvel.to_degrees()),
+        (crate::ids::INSP_PHYS_DOMINANCE, f32::from(info.dominance)),
+        (crate::ids::INSP_PHYS_LINEAR_DAMPING, info.linear_damping),
+        (crate::ids::INSP_PHYS_ANGULAR_DAMPING, info.angular_damping),
         // The area-zone rows (W-Area..W-AreaTorque). Without these the widgets were
         // WRITE-ONLY: authoring a Force/Torque/Drag worked, but re-selecting the zone
         // showed 0 (or the previous selection's stale value) instead of the number that
         // is actually on the collider — so the artist could not read back what they set.
         // Synced here like every other field; this runs once on selection change (not
         // per frame), so it never fights the value being typed.
-        (ids::INSP_PHYS_FORCE_X, info.force[0]),
-        (ids::INSP_PHYS_FORCE_Y, info.force[1]),
-        (ids::INSP_PHYS_AREA_TORQUE, info.area_torque),
-        (ids::INSP_PHYS_AREA_FALLOFF, info.area_falloff),
-        (ids::INSP_PHYS_AREA_DRAG, info.area_drag),
-        (ids::INSP_PHYS_AREA_DENSITY, info.area_density),
-        (ids::INSP_PHYS_AREA_FORM_DRAG, info.area_form_drag),
+        (crate::ids::INSP_PHYS_FORCE_X, info.force[0]),
+        (crate::ids::INSP_PHYS_FORCE_Y, info.force[1]),
+        (crate::ids::INSP_PHYS_AREA_TORQUE, info.area_torque),
+        (crate::ids::INSP_PHYS_AREA_FALLOFF, info.area_falloff),
+        (crate::ids::INSP_PHYS_AREA_DRAG, info.area_drag),
+        (crate::ids::INSP_PHYS_AREA_DENSITY, info.area_density),
+        (crate::ids::INSP_PHYS_AREA_FORM_DRAG, info.area_form_drag),
     ] {
         host.store_mut().set_number_value(id, f64::from(v));
     }
@@ -123,8 +122,11 @@ pub(crate) fn sync_physics_fields(host: &mut dyn PanelHostInternal) {
     // depois do fim do texto novo. Daí o laço próprio, e não mais duas linhas na
     // tabela acima.
     for (id, name) in [
-        (ids::INSP_PHYS_SIGNAL, info.signal.clone()),
-        (ids::INSP_PHYS_SIGNAL_LEAVE, info.signal_leave.clone()),
+        (crate::ids::INSP_PHYS_SIGNAL, info.signal.clone()),
+        (
+            crate::ids::INSP_PHYS_SIGNAL_LEAVE,
+            info.signal_leave.clone(),
+        ),
     ] {
         if let Some(InteractiveState::TextInput {
             state,
@@ -153,19 +155,25 @@ pub(crate) fn sync_wheel_fields(host: &mut dyn PanelHostInternal) {
         return;
     };
     host.store_mut()
-        .set_number_value(ids::INSP_WHEEL_RADIUS, f64::from(info.radius));
+        .set_number_value(crate::ids::INSP_WHEEL_RADIUS, f64::from(info.radius));
     // W4: o SEGUNDO diâmetro. Sem esta linha a row seria WRITE-ONLY — digitar
     // funcionaria e re-selecionar o tambor mostraria 0, dizendo *roldana comum*
     // sobre um diferencial. É o gap que a família de zonas já pagou uma vez, e
     // aqui foi o gate estrutural da §13 que o pegou no minuto em que nasceu.
+    host.store_mut().set_number_value(
+        crate::ids::INSP_WHEEL_RADIUS_OUT,
+        f64::from(info.radius_out),
+    );
     host.store_mut()
-        .set_number_value(ids::INSP_WHEEL_RADIUS_OUT, f64::from(info.radius_out));
-    host.store_mut()
-        .set_number_value(ids::INSP_WHEEL_ORDER, f64::from(info.order_ui));
-    host.store_mut()
-        .set_number_value(ids::INSP_WHEEL_MOTOR, f64::from(info.motor_deg_per_s));
-    host.store_mut()
-        .set_number_value(ids::INSP_WHEEL_BREAK_FORCE, f64::from(info.break_force));
+        .set_number_value(crate::ids::INSP_WHEEL_ORDER, f64::from(info.order_ui));
+    host.store_mut().set_number_value(
+        crate::ids::INSP_WHEEL_MOTOR,
+        f64::from(info.motor_deg_per_s),
+    );
+    host.store_mut().set_number_value(
+        crate::ids::INSP_WHEEL_BREAK_FORCE,
+        f64::from(info.break_force),
+    );
 }
 
 /// §14 Platform Player — o mesmo espelho, e pela mesma razão: sem ele as oito
@@ -177,58 +185,61 @@ pub(crate) fn sync_player_fields(host: &mut dyn PanelHostInternal) {
         return;
     };
     for (id, v) in [
-        (ids::INSP_PLAYER_FLOAT, info.float_height),
-        (ids::INSP_PLAYER_CLING, info.cling_distance),
-        (ids::INSP_PLAYER_STIFFNESS, info.spring_strength),
-        (ids::INSP_PLAYER_DAMPING, info.spring_damping),
-        (ids::INSP_PLAYER_SPEED, info.speed),
-        (ids::INSP_PLAYER_ACCEL, info.acceleration),
-        (ids::INSP_PLAYER_AIR_ACCEL, info.air_acceleration),
-        (ids::INSP_PLAYER_BRAKE, info.brake_scale),
-        (ids::INSP_PLAYER_MAX_SLOPE, info.max_slope_deg),
-        (ids::INSP_PLAYER_JUMP_HEIGHT, info.jump_height),
-        (ids::INSP_PLAYER_AIR_JUMPS, info.air_jumps),
-        (ids::INSP_PLAYER_AIR_JUMP_H, info.air_jump_height),
-        (ids::INSP_PLAYER_TAKEOFF_G, info.takeoff_gravity),
-        (ids::INSP_PLAYER_TAKEOFF_SPEED, info.takeoff_speed),
-        (ids::INSP_PLAYER_PEAK_G, info.peak_gravity),
-        (ids::INSP_PLAYER_PEAK_SPEED, info.peak_speed),
-        (ids::INSP_PLAYER_FALL_G, info.fall_gravity),
-        (ids::INSP_PLAYER_CUT_G, info.cut_gravity),
-        (ids::INSP_PLAYER_COYOTE, info.coyote_time),
-        (ids::INSP_PLAYER_BUFFER, info.jump_buffer),
-        (ids::INSP_PLAYER_CORNER, info.corner_reach),
-        (ids::INSP_PLAYER_CORNER_SAMPLES, info.corner_samples),
-        (ids::INSP_PLAYER_CORNER_AHEAD, info.corner_lookahead),
-        (ids::INSP_PLAYER_LIFT, info.lift_momentum),
-        (ids::INSP_PLAYER_WALL_SLIDE, info.wall_slide_speed),
-        (ids::INSP_PLAYER_WALL_JUMP, info.wall_jump_height),
-        (ids::INSP_PLAYER_WALL_PUSH, info.wall_jump_push),
-        (ids::INSP_PLAYER_WALL_LOCK, info.wall_jump_lockout),
-        (ids::INSP_PLAYER_WALL_REACH, info.wall_reach),
-        (ids::INSP_PLAYER_FOOT_SAMPLES, info.foot_samples),
-        (ids::INSP_PLAYER_FOOT_SPREAD, info.foot_spread),
-        (ids::INSP_PLAYER_WALL_SAMPLES, info.wall_samples),
-        (ids::INSP_PLAYER_WALL_SPREAD, info.wall_spread),
-        (ids::INSP_PLAYER_WALL_GRAB, info.wall_grab_stamina),
-        (ids::INSP_PLAYER_DASH_SPEED, info.dash_speed),
-        (ids::INSP_PLAYER_DASH_TIME, info.dash_time),
-        (ids::INSP_PLAYER_DASH_COOL, info.dash_cooldown),
-        (ids::INSP_PLAYER_CROUCH_HEIGHT, info.crouch_height),
-        (ids::INSP_PLAYER_CROUCH_SPEED, info.crouch_speed),
-        (ids::INSP_PLAYER_SWIM_SPEED, info.swim_speed),
-        (ids::INSP_PLAYER_SWIM_ACCEL, info.swim_acceleration),
-        (ids::INSP_PLAYER_SWIM_ENTER, info.swim_enter),
-        (ids::INSP_PLAYER_LEDGE_GRAB, info.ledge_grab),
-        (ids::INSP_PLAYER_LEDGE_REACH_Y, info.ledge_reach_y),
-        (ids::INSP_PLAYER_LEDGE_SPAN, info.ledge_span),
-        (ids::INSP_PLAYER_LEDGE_OFFSET_Y, info.ledge_offset_y),
-        (ids::INSP_PLAYER_LEDGE_SPEED, info.ledge_speed),
-        (ids::INSP_PLAYER_GLIDE_FALL, info.glide_fall_speed),
-        (ids::INSP_PLAYER_MAX_FALL, info.max_fall_speed),
-        (ids::INSP_PLAYER_REACT_SUPPORT, info.reaction_support),
-        (ids::INSP_PLAYER_REACT_MOVEMENT, info.reaction_movement),
-        (ids::INSP_PLAYER_REACT_PUSH, info.reaction_push),
+        (crate::ids::INSP_PLAYER_FLOAT, info.float_height),
+        (crate::ids::INSP_PLAYER_CLING, info.cling_distance),
+        (crate::ids::INSP_PLAYER_STIFFNESS, info.spring_strength),
+        (crate::ids::INSP_PLAYER_DAMPING, info.spring_damping),
+        (crate::ids::INSP_PLAYER_SPEED, info.speed),
+        (crate::ids::INSP_PLAYER_ACCEL, info.acceleration),
+        (crate::ids::INSP_PLAYER_AIR_ACCEL, info.air_acceleration),
+        (crate::ids::INSP_PLAYER_BRAKE, info.brake_scale),
+        (crate::ids::INSP_PLAYER_MAX_SLOPE, info.max_slope_deg),
+        (crate::ids::INSP_PLAYER_JUMP_HEIGHT, info.jump_height),
+        (crate::ids::INSP_PLAYER_AIR_JUMPS, info.air_jumps),
+        (crate::ids::INSP_PLAYER_AIR_JUMP_H, info.air_jump_height),
+        (crate::ids::INSP_PLAYER_TAKEOFF_G, info.takeoff_gravity),
+        (crate::ids::INSP_PLAYER_TAKEOFF_SPEED, info.takeoff_speed),
+        (crate::ids::INSP_PLAYER_PEAK_G, info.peak_gravity),
+        (crate::ids::INSP_PLAYER_PEAK_SPEED, info.peak_speed),
+        (crate::ids::INSP_PLAYER_FALL_G, info.fall_gravity),
+        (crate::ids::INSP_PLAYER_CUT_G, info.cut_gravity),
+        (crate::ids::INSP_PLAYER_COYOTE, info.coyote_time),
+        (crate::ids::INSP_PLAYER_BUFFER, info.jump_buffer),
+        (crate::ids::INSP_PLAYER_CORNER, info.corner_reach),
+        (crate::ids::INSP_PLAYER_CORNER_SAMPLES, info.corner_samples),
+        (crate::ids::INSP_PLAYER_CORNER_AHEAD, info.corner_lookahead),
+        (crate::ids::INSP_PLAYER_LIFT, info.lift_momentum),
+        (crate::ids::INSP_PLAYER_WALL_SLIDE, info.wall_slide_speed),
+        (crate::ids::INSP_PLAYER_WALL_JUMP, info.wall_jump_height),
+        (crate::ids::INSP_PLAYER_WALL_PUSH, info.wall_jump_push),
+        (crate::ids::INSP_PLAYER_WALL_LOCK, info.wall_jump_lockout),
+        (crate::ids::INSP_PLAYER_WALL_REACH, info.wall_reach),
+        (crate::ids::INSP_PLAYER_FOOT_SAMPLES, info.foot_samples),
+        (crate::ids::INSP_PLAYER_FOOT_SPREAD, info.foot_spread),
+        (crate::ids::INSP_PLAYER_WALL_SAMPLES, info.wall_samples),
+        (crate::ids::INSP_PLAYER_WALL_SPREAD, info.wall_spread),
+        (crate::ids::INSP_PLAYER_WALL_GRAB, info.wall_grab_stamina),
+        (crate::ids::INSP_PLAYER_DASH_SPEED, info.dash_speed),
+        (crate::ids::INSP_PLAYER_DASH_TIME, info.dash_time),
+        (crate::ids::INSP_PLAYER_DASH_COOL, info.dash_cooldown),
+        (crate::ids::INSP_PLAYER_CROUCH_HEIGHT, info.crouch_height),
+        (crate::ids::INSP_PLAYER_CROUCH_SPEED, info.crouch_speed),
+        (crate::ids::INSP_PLAYER_SWIM_SPEED, info.swim_speed),
+        (crate::ids::INSP_PLAYER_SWIM_ACCEL, info.swim_acceleration),
+        (crate::ids::INSP_PLAYER_SWIM_ENTER, info.swim_enter),
+        (crate::ids::INSP_PLAYER_LEDGE_GRAB, info.ledge_grab),
+        (crate::ids::INSP_PLAYER_LEDGE_REACH_Y, info.ledge_reach_y),
+        (crate::ids::INSP_PLAYER_LEDGE_SPAN, info.ledge_span),
+        (crate::ids::INSP_PLAYER_LEDGE_OFFSET_Y, info.ledge_offset_y),
+        (crate::ids::INSP_PLAYER_LEDGE_SPEED, info.ledge_speed),
+        (crate::ids::INSP_PLAYER_GLIDE_FALL, info.glide_fall_speed),
+        (crate::ids::INSP_PLAYER_MAX_FALL, info.max_fall_speed),
+        (crate::ids::INSP_PLAYER_REACT_SUPPORT, info.reaction_support),
+        (
+            crate::ids::INSP_PLAYER_REACT_MOVEMENT,
+            info.reaction_movement,
+        ),
+        (crate::ids::INSP_PLAYER_REACT_PUSH, info.reaction_push),
     ] {
         host.store_mut().set_number_value(id, f64::from(v));
     }
@@ -260,9 +271,11 @@ pub(crate) fn sync_derived_rope_length(host: &mut dyn PanelHostInternal) {
     if info.kind_tag != crate::sections::joint::KIND_PULLEY {
         return;
     }
-    if host.store().focus_id() == Some(ids::INSP_JOINT_MAX_LENGTH) {
+    if host.store().focus_id() == Some(crate::ids::INSP_JOINT_MAX_LENGTH) {
         return;
     }
-    host.store_mut()
-        .set_number_value(ids::INSP_JOINT_MAX_LENGTH, f64::from(info.max_length));
+    host.store_mut().set_number_value(
+        crate::ids::INSP_JOINT_MAX_LENGTH,
+        f64::from(info.max_length),
+    );
 }

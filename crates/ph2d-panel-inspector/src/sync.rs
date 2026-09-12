@@ -99,7 +99,7 @@ pub(crate) fn sync_inspector_from_snapshots(
     if !pending_visibility_edit
         && let Some(vis) = visibility
         && let Some(InteractiveState::Checkbox { value, .. }) =
-            host.store_mut().get_mut(ids::INSP_VISIBILITY_CHECK)
+            host.store_mut().get_mut(crate::ids::INSP_VISIBILITY_CHECK)
     {
         // ⚠️ **Indeterminate é o sinal de divergência** — o mesmo que os seis checkboxes de sprite
         // já usam (`sync.rs`, secção Mixed). Sem ele o fan-out novo esmagaria valores divergentes
@@ -125,10 +125,16 @@ pub(crate) fn sync_inspector_from_snapshots(
         let focus = host.store().focus_id();
         let drag = host.store().number_input_drag().map(|d| d.id);
         for (id, value) in [
-            (ids::INSP_SAMPLE_UV_SCALE_X, samp.uv_scale[0] as f64),
-            (ids::INSP_SAMPLE_UV_SCALE_Y, samp.uv_scale[1] as f64),
-            (ids::INSP_SAMPLE_UV_OFFSET_X, samp.uv_offset[0] as f64),
-            (ids::INSP_SAMPLE_UV_OFFSET_Y, samp.uv_offset[1] as f64),
+            (crate::ids::INSP_SAMPLE_UV_SCALE_X, samp.uv_scale[0] as f64),
+            (crate::ids::INSP_SAMPLE_UV_SCALE_Y, samp.uv_scale[1] as f64),
+            (
+                crate::ids::INSP_SAMPLE_UV_OFFSET_X,
+                samp.uv_offset[0] as f64,
+            ),
+            (
+                crate::ids::INSP_SAMPLE_UV_OFFSET_Y,
+                samp.uv_offset[1] as f64,
+            ),
         ] {
             if focus != Some(id) && drag != Some(id) {
                 host.store_mut().set_number_value(id, value);
@@ -143,11 +149,11 @@ pub(crate) fn sync_inspector_from_snapshots(
         let focus = host.store().focus_id();
         let drag = host.store().number_input_drag().map(|d| d.id);
         for (id, value) in [
-            (ids::INSP_VIS_ALPHA_CUTOFF, vis.alpha_cutoff as f64),
-            (ids::INSP_VIS_RECT_X, vis.rect[0] as f64),
-            (ids::INSP_VIS_RECT_Y, vis.rect[1] as f64),
-            (ids::INSP_VIS_RECT_W, vis.rect[2] as f64),
-            (ids::INSP_VIS_RECT_H, vis.rect[3] as f64),
+            (crate::ids::INSP_VIS_ALPHA_CUTOFF, vis.alpha_cutoff as f64),
+            (crate::ids::INSP_VIS_RECT_X, vis.rect[0] as f64),
+            (crate::ids::INSP_VIS_RECT_Y, vis.rect[1] as f64),
+            (crate::ids::INSP_VIS_RECT_W, vis.rect[2] as f64),
+            (crate::ids::INSP_VIS_RECT_H, vis.rect[3] as f64),
         ] {
             if focus != Some(id) && drag != Some(id) {
                 host.store_mut().set_number_value(id, value);
@@ -168,32 +174,32 @@ fn sync_ordering_fields(
     if entity_changed {
         for (id, on, mixed) in [
             (
-                ids::INSP_ORDER_Z_RELATIVE,
+                crate::ids::INSP_ORDER_Z_RELATIVE,
                 ord.z_as_relative,
                 ord.mixed.z_as_relative,
             ),
             (
-                ids::INSP_ORDER_SHOW_BEHIND,
+                crate::ids::INSP_ORDER_SHOW_BEHIND,
                 ord.show_behind_parent,
                 ord.mixed.show_behind_parent,
             ),
             (
-                ids::INSP_ORDER_YSORT_ENABLED,
+                crate::ids::INSP_ORDER_YSORT_ENABLED,
                 ord.y_sort_enabled,
                 ord.mixed.y_sort_enabled,
             ),
             (
-                ids::INSP_ORDER_SORTING_GROUP,
+                crate::ids::INSP_ORDER_SORTING_GROUP,
                 ord.sorting_group,
                 ord.mixed.sorting_group,
             ),
             (
-                ids::INSP_ORDER_SORT_AT_ROOT,
+                crate::ids::INSP_ORDER_SORT_AT_ROOT,
                 ord.sort_at_root,
                 ord.mixed.sort_at_root,
             ),
             (
-                ids::INSP_ORDER_TOP_LEVEL,
+                crate::ids::INSP_ORDER_TOP_LEVEL,
                 ord.top_level,
                 ord.mixed.top_level,
             ),
@@ -218,22 +224,22 @@ fn sync_ordering_fields(
     // dez (`sync_sprite_fields`).
     for (id, value, mixed) in [
         (
-            ids::INSP_ORDER_Z_INDEX,
+            crate::ids::INSP_ORDER_Z_INDEX,
             f64::from(ord.z_index.unwrap_or(0)),
             ord.mixed.z_index,
         ),
         (
-            ids::INSP_ORDER_ORDER_IN_LAYER,
+            crate::ids::INSP_ORDER_ORDER_IN_LAYER,
             f64::from(ord.order_in_layer),
             ord.mixed.order_in_layer,
         ),
         (
-            ids::INSP_ORDER_AXIS_X,
+            crate::ids::INSP_ORDER_AXIS_X,
             f64::from(ord.y_sort_axis[0]),
             ord.mixed.y_sort_axis,
         ),
         (
-            ids::INSP_ORDER_AXIS_Y,
+            crate::ids::INSP_ORDER_AXIS_Y,
             f64::from(ord.y_sort_axis[1]),
             ord.mixed.y_sort_axis,
         ),
@@ -249,8 +255,9 @@ fn sync_ordering_fields(
     // Sorting Layer dropdown selected index — seed on entity switch only
     // (the option click drives it between switches).
     if entity_changed
-        && let Some(InteractiveState::Dropdown { selected_index, .. }) =
-            host.store_mut().get_mut(ids::INSP_ORDER_SORTING_LAYER)
+        && let Some(InteractiveState::Dropdown { selected_index, .. }) = host
+            .store_mut()
+            .get_mut(crate::ids::INSP_ORDER_SORTING_LAYER)
     {
         *selected_index = Some(ord.sorting_layer as usize);
     }
@@ -284,20 +291,28 @@ fn sync_sprite_fields(
     inspector_state.last_selected_count = sp.selected_count;
     if selection_changed {
         for (id, on, mixed) in [
-            (ids::INSP_SPRITE_FLIP_X, sp.flip_x, sp.mixed.flip_x),
-            (ids::INSP_SPRITE_FLIP_Y, sp.flip_y, sp.mixed.flip_y),
-            (ids::INSP_SPRITE_TINT_FILL, sp.tint_fill, sp.mixed.tint_fill),
+            (crate::ids::INSP_SPRITE_FLIP_X, sp.flip_x, sp.mixed.flip_x),
+            (crate::ids::INSP_SPRITE_FLIP_Y, sp.flip_y, sp.mixed.flip_y),
             (
-                ids::INSP_REGION_ENABLED,
+                crate::ids::INSP_SPRITE_TINT_FILL,
+                sp.tint_fill,
+                sp.mixed.tint_fill,
+            ),
+            (
+                crate::ids::INSP_REGION_ENABLED,
                 sp.region_enabled,
                 sp.mixed.region_enabled,
             ),
             (
-                ids::INSP_REGION_FILTER_CLIP,
+                crate::ids::INSP_REGION_FILTER_CLIP,
                 sp.region_filter_clip,
                 sp.mixed.region_filter_clip,
             ),
-            (ids::INSP_SPRITE_CENTERED, sp.centered, sp.mixed.centered),
+            (
+                crate::ids::INSP_SPRITE_CENTERED,
+                sp.centered,
+                sp.mixed.centered,
+            ),
         ] {
             if let Some(InteractiveState::Checkbox { value, .. }) = host.store_mut().get_mut(id) {
                 *value = if mixed {
@@ -317,43 +332,47 @@ fn sync_sprite_fields(
     let drag = host.store().number_input_drag().map(|d| d.id);
     for (id, value, mixed) in [
         (
-            ids::INSP_SPRITE_HFRAMES,
+            crate::ids::INSP_SPRITE_HFRAMES,
             sp.hframes as f64,
             sp.mixed.hframes,
         ),
         (
-            ids::INSP_SPRITE_VFRAMES,
+            crate::ids::INSP_SPRITE_VFRAMES,
             sp.vframes as f64,
             sp.mixed.vframes,
         ),
-        (ids::INSP_SPRITE_FRAME, sp.frame as f64, sp.mixed.frame),
         (
-            ids::INSP_REGION_X,
+            crate::ids::INSP_SPRITE_FRAME,
+            sp.frame as f64,
+            sp.mixed.frame,
+        ),
+        (
+            crate::ids::INSP_REGION_X,
             sp.region_rect[0] as f64,
             sp.mixed.region_x,
         ),
         (
-            ids::INSP_REGION_Y,
+            crate::ids::INSP_REGION_Y,
             sp.region_rect[1] as f64,
             sp.mixed.region_y,
         ),
         (
-            ids::INSP_REGION_W,
+            crate::ids::INSP_REGION_W,
             sp.region_rect[2] as f64,
             sp.mixed.region_w,
         ),
         (
-            ids::INSP_REGION_H,
+            crate::ids::INSP_REGION_H,
             sp.region_rect[3] as f64,
             sp.mixed.region_h,
         ),
         (
-            ids::INSP_SPRITE_OFFSET_X,
+            crate::ids::INSP_SPRITE_OFFSET_X,
             sp.offset[0] as f64,
             sp.mixed.offset_x,
         ),
         (
-            ids::INSP_SPRITE_OFFSET_Y,
+            crate::ids::INSP_SPRITE_OFFSET_Y,
             sp.offset[1] as f64,
             sp.mixed.offset_y,
         ),
@@ -394,8 +413,8 @@ fn sync_sprite_fields(
     // swatches from the new sprite's committed channels.
     let picker_target = host.store().picker_target();
     for (swatch_id, chan) in [
-        (ids::INSP_SPRITE_TINT_SWATCH, sp.tint),
-        (ids::INSP_SPRITE_SELF_TINT_SWATCH, sp.self_tint),
+        (crate::ids::INSP_SPRITE_TINT_SWATCH, sp.tint),
+        (crate::ids::INSP_SPRITE_SELF_TINT_SWATCH, sp.self_tint),
     ] {
         let committed = state::tint_f32_to_u8(chan);
         if picker_target == Some(swatch_id) {
@@ -403,7 +422,7 @@ fn sync_sprite_fields(
                 && picked != committed
             {
                 let new_chan = state::tint_u8_to_f32(picked);
-                let edit = if swatch_id == ids::INSP_SPRITE_TINT_SWATCH {
+                let edit = if swatch_id == crate::ids::INSP_SPRITE_TINT_SWATCH {
                     SpriteFieldEdit::Tint(new_chan)
                 } else {
                     SpriteFieldEdit::SelfTint(new_chan)
@@ -425,10 +444,10 @@ fn sync_sprite_fields(
     // *A promessa e o verbo discordavam* (auditoria `docs/Sprite_projeto/20` §3.2). É a lei que já
     // tinha criado `OffsetX`/`OffsetY` e `RegionX/Y/W/H`; faltava aplicá-la aqui.
     let corner_ids = [
-        ids::INSP_SPRITE_CORNER_TL,
-        ids::INSP_SPRITE_CORNER_TR,
-        ids::INSP_SPRITE_CORNER_BL,
-        ids::INSP_SPRITE_CORNER_BR,
+        crate::ids::INSP_SPRITE_CORNER_TL,
+        crate::ids::INSP_SPRITE_CORNER_TR,
+        crate::ids::INSP_SPRITE_CORNER_BL,
+        crate::ids::INSP_SPRITE_CORNER_BR,
     ];
     for (i, &corner_id) in corner_ids.iter().enumerate() {
         let committed = state::tint_f32_to_u8(sp.per_corner_tint[i]);
@@ -457,12 +476,12 @@ fn sync_sprite_fields(
 fn is_sprite_color_swatch(id: ph2d_a11y::NodeId) -> bool {
     matches!(
         id,
-        ids::INSP_SPRITE_TINT_SWATCH
-            | ids::INSP_SPRITE_SELF_TINT_SWATCH
-            | ids::INSP_SPRITE_CORNER_TL
-            | ids::INSP_SPRITE_CORNER_TR
-            | ids::INSP_SPRITE_CORNER_BL
-            | ids::INSP_SPRITE_CORNER_BR
+        crate::ids::INSP_SPRITE_TINT_SWATCH
+            | crate::ids::INSP_SPRITE_SELF_TINT_SWATCH
+            | crate::ids::INSP_SPRITE_CORNER_TL
+            | crate::ids::INSP_SPRITE_CORNER_TR
+            | crate::ids::INSP_SPRITE_CORNER_BL
+            | crate::ids::INSP_SPRITE_CORNER_BR
     )
 }
 
@@ -548,22 +567,25 @@ fn write_transform_rows(
     let drag = host.store().number_input_drag().map(|d| d.id);
     for (id, value) in [
         (
-            ids::INSP_TRANSFORM_POS_X,
+            crate::ids::INSP_TRANSFORM_POS_X,
             pos_for_display(info.translation[0]),
         ),
         (
-            ids::INSP_TRANSFORM_POS_Y,
+            crate::ids::INSP_TRANSFORM_POS_Y,
             pos_for_display(info.translation[1]),
         ),
-        (ids::INSP_TRANSFORM_ROT, ang_for_display(info.rotation_rad)),
-        (ids::INSP_TRANSFORM_SCALE_X, info.scale[0] as f64),
-        (ids::INSP_TRANSFORM_SCALE_Y, info.scale[1] as f64),
         (
-            ids::INSP_TRANSFORM_SKEW_X,
+            crate::ids::INSP_TRANSFORM_ROT,
+            ang_for_display(info.rotation_rad),
+        ),
+        (crate::ids::INSP_TRANSFORM_SCALE_X, info.scale[0] as f64),
+        (crate::ids::INSP_TRANSFORM_SCALE_Y, info.scale[1] as f64),
+        (
+            crate::ids::INSP_TRANSFORM_SKEW_X,
             ang_for_display(info.skew_rad[0]),
         ),
         (
-            ids::INSP_TRANSFORM_SKEW_Y,
+            crate::ids::INSP_TRANSFORM_SKEW_Y,
             ang_for_display(info.skew_rad[1]),
         ),
     ] {

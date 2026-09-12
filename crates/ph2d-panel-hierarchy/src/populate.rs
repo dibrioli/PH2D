@@ -22,7 +22,7 @@ pub(crate) fn populate(store: &mut WidgetStore) {
         },
     );
     store.register(
-        ids::HIER_SEARCH,
+        crate::ids::HIER_SEARCH,
         InteractiveState::TextInput {
             state: TextInputState::Normal,
             text: String::new(),
@@ -57,7 +57,7 @@ pub fn repopulate(store: &mut WidgetStore, ids_: &[ph2d_a11y::NodeId]) {
         },
     );
     store.register_if_absent(
-        ids::HIER_SEARCH,
+        crate::ids::HIER_SEARCH,
         InteractiveState::TextInput {
             state: TextInputState::Normal,
             text: String::new(),

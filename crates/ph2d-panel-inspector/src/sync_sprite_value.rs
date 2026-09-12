@@ -19,7 +19,6 @@
 //! controlo ao valor de antes a cada quadro, e o arrasto tremeria.
 
 use ph2d_a11y::NodeId;
-use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::screens::hero::InspectorSpriteInfo;
@@ -36,27 +35,27 @@ pub(crate) fn sync_sprite_sliders(
     // the slider is being dragged or the chip is focused so we don't
     // fight the user's input.
     let dragging = matches!(
-        host.store().slider(ids::INSP_SPRITE_OPACITY),
+        host.store().slider(crate::ids::INSP_SPRITE_OPACITY),
         Some((SliderState::Dragging, _))
     );
     if !dragging
-        && focus != Some(ids::INSP_SPRITE_OPACITY_CHIP)
-        && drag != Some(ids::INSP_SPRITE_OPACITY_CHIP)
+        && focus != Some(crate::ids::INSP_SPRITE_OPACITY_CHIP)
+        && drag != Some(crate::ids::INSP_SPRITE_OPACITY_CHIP)
     {
         // The slider track can't show "Mixed", so it parks at the
         // primary's value; the blank percent chip is the Mixed signal.
         if let Some(InteractiveState::Slider { value, .. }) =
-            host.store_mut().get_mut(ids::INSP_SPRITE_OPACITY)
+            host.store_mut().get_mut(crate::ids::INSP_SPRITE_OPACITY)
         {
             *value = sp.opacity;
         }
         if sp.mixed.opacity {
             host.store_mut()
-                .blank_number_input(ids::INSP_SPRITE_OPACITY_CHIP);
+                .blank_number_input(crate::ids::INSP_SPRITE_OPACITY_CHIP);
         } else {
             // Chip lives in display space (percent) per the integer map.
             host.store_mut().set_number_value(
-                ids::INSP_SPRITE_OPACITY_CHIP,
+                crate::ids::INSP_SPRITE_OPACITY_CHIP,
                 (sp.opacity * 100.0) as f64, // LITERAL-PX-OK: opacity percent scale
             );
         }
@@ -65,17 +64,17 @@ pub(crate) fn sync_sprite_sliders(
     // Opacidade, e pela mesma razão: enquanto o artista arrasta, o vivo é o gesto dele, não o
     // snapshot — sincronizar por cima devolveria o slider ao valor de antes a cada quadro.
     let em_dragging = matches!(
-        host.store().slider(ids::INSP_SPRITE_EMISSIVE),
+        host.store().slider(crate::ids::INSP_SPRITE_EMISSIVE),
         Some((SliderState::Dragging, _))
     );
     if !em_dragging
-        && focus != Some(ids::INSP_SPRITE_EMISSIVE_CHIP)
-        && drag != Some(ids::INSP_SPRITE_EMISSIVE_CHIP)
+        && focus != Some(crate::ids::INSP_SPRITE_EMISSIVE_CHIP)
+        && drag != Some(crate::ids::INSP_SPRITE_EMISSIVE_CHIP)
     {
         // ⚠️ O slider guarda NORMALIZADO; o `emissive` do snapshot é a intensidade real.
         let normalized = (sp.emissive / ph2d_editor_core::EMISSIVE_MAX_UI).clamp(0.0, 1.0);
         if let Some(InteractiveState::Slider { value, .. }) =
-            host.store_mut().get_mut(ids::INSP_SPRITE_EMISSIVE)
+            host.store_mut().get_mut(crate::ids::INSP_SPRITE_EMISSIVE)
         {
             *value = normalized;
         }
@@ -85,10 +84,12 @@ pub(crate) fn sync_sprite_sliders(
         // primária a falar por toda a seleção (auditoria `docs/Sprite_projeto/20` §3.1).
         if sp.mixed.emissive {
             host.store_mut()
-                .blank_number_input(ids::INSP_SPRITE_EMISSIVE_CHIP);
+                .blank_number_input(crate::ids::INSP_SPRITE_EMISSIVE_CHIP);
         } else {
-            host.store_mut()
-                .set_number_value(ids::INSP_SPRITE_EMISSIVE_CHIP, f64::from(sp.emissive));
+            host.store_mut().set_number_value(
+                crate::ids::INSP_SPRITE_EMISSIVE_CHIP,
+                f64::from(sp.emissive),
+            );
         }
     }
 }

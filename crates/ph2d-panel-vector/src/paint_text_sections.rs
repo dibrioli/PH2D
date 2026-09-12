@@ -32,8 +32,11 @@ impl BodyCtx<'_> {
         if !state::text_visible() {
             return y;
         }
-        let (mut y, collapsed) =
-            self.section_header(ids::VECTOR_SECTION_TEXT, tr("panel.vector.section.text"), y);
+        let (mut y, collapsed) = self.section_header(
+            ph2d_tool_vector::ids::VECTOR_SECTION_TEXT,
+            tr("panel.vector.section.text"),
+            y,
+        );
         if collapsed {
             return y;
         }
@@ -119,8 +122,11 @@ impl BodyCtx<'_> {
         if !state::text_visible() {
             return y;
         }
-        let (mut y, collapsed) =
-            self.section_header(ids::VECTOR_SECTION_FONT, tr("panel.vector.section.font"), y);
+        let (mut y, collapsed) = self.section_header(
+            ph2d_tool_vector::ids::VECTOR_SECTION_FONT,
+            tr("panel.vector.section.font"),
+            y,
+        );
         if collapsed {
             return y;
         }
@@ -169,7 +175,7 @@ impl BodyCtx<'_> {
             return y;
         }
         let (mut y, collapsed) = self.section_header(
-            ids::VECTOR_SECTION_PARAGRAPH,
+            ph2d_tool_vector::ids::VECTOR_SECTION_PARAGRAPH,
             tr("panel.vector.section.paragraph"),
             y,
         );
@@ -299,8 +305,11 @@ impl BodyCtx<'_> {
         if names.is_empty() {
             return y;
         }
-        let (mut y, collapsed) =
-            self.section_header(ids::VECTOR_SECTION_AXES, tr("panel.vector.section.axes"), y);
+        let (mut y, collapsed) = self.section_header(
+            ph2d_tool_vector::ids::VECTOR_SECTION_AXES,
+            tr("panel.vector.section.axes"),
+            y,
+        );
         if collapsed {
             return y;
         }

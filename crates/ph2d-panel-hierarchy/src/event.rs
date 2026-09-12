@@ -291,10 +291,10 @@ pub(crate) fn apply_event(
             });
             return EventOutcome::Consumed;
         }
-        if let Some(label) = ids::hierarchy_label_for_id(id) {
+        if let Some(label) = crate::ids::hierarchy_label_for_id(id) {
             *host.selection_mut() = Some(HeroSelection {
                 label: label.into(),
-                kind: ids::hierarchy_kind_for_label(label).into(),
+                kind: crate::ids::hierarchy_kind_for_label(label).into(),
                 world_pos: (0.0, 0.0),
             });
             return EventOutcome::Consumed;

@@ -14,7 +14,6 @@
 //! faixas, o arrasto teria passo livre sobre um valor que o commit satura, e o artista veria o
 //! número a andar com o som parado. Há gate na shell a prender os dois lados.
 
-use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore, format_number};
 use ph2d_editor_core::widget::{CheckboxState, CheckboxValue, DropdownState, TextInputState};
 
@@ -26,29 +25,29 @@ use super::populate::register_button_ids;
 /// nasce a `0` lê-se como um campo partido, e é o mesmo argumento que pôs a duração do timer a um
 /// segundo em vez de zero.
 const NUMEROS: [(ph2d_a11y::NodeId, f64, f64, f64, f64); 7] = [
-    (ids::INSP_AUDIO_VOLUME, 0.0, -80.0, 24.0, 1.0), // LITERAL-PX-OK: decibéis, não pixels
-    (ids::INSP_AUDIO_PITCH, 1.0, 0.05, 8.0, 0.05),   // LITERAL-PX-OK: factor de tom, não pixels
-    (ids::INSP_AUDIO_MAX_DIST, 10.0, 0.0, 1000.0, 0.5), // LITERAL-PX-OK: metros, não pixels
-    (ids::INSP_AUDIO_ATTENUATION, 1.0, 0.0, 8.0, 0.1), // LITERAL-PX-OK: expoente, adimensional
-    (ids::INSP_AUDIO_RADIUS, 0.0, 0.0, 1000.0, 0.1), // LITERAL-PX-OK: metros, não pixels
-    (ids::INSP_AUDIO_PANNING, 1.0, 0.0, 1.0, 0.05),  // LITERAL-PX-OK: fracção, adimensional
-    (ids::INSP_AUDIO_POLYPHONY, 1.0, 1.0, 16.0, 1.0), // LITERAL-PX-OK: contagem de vozes
+    (crate::ids::INSP_AUDIO_VOLUME, 0.0, -80.0, 24.0, 1.0), // LITERAL-PX-OK: decibéis, não pixels
+    (crate::ids::INSP_AUDIO_PITCH, 1.0, 0.05, 8.0, 0.05), // LITERAL-PX-OK: factor de tom, não pixels
+    (crate::ids::INSP_AUDIO_MAX_DIST, 10.0, 0.0, 1000.0, 0.5), // LITERAL-PX-OK: metros, não pixels
+    (crate::ids::INSP_AUDIO_ATTENUATION, 1.0, 0.0, 8.0, 0.1), // LITERAL-PX-OK: expoente, adimensional
+    (crate::ids::INSP_AUDIO_RADIUS, 0.0, 0.0, 1000.0, 0.1),   // LITERAL-PX-OK: metros, não pixels
+    (crate::ids::INSP_AUDIO_PANNING, 1.0, 0.0, 1.0, 0.05), // LITERAL-PX-OK: fracção, adimensional
+    (crate::ids::INSP_AUDIO_POLYPHONY, 1.0, 1.0, 16.0, 1.0), // LITERAL-PX-OK: contagem de vozes
 ];
 
 pub(crate) fn populate_audio(store: &mut WidgetStore) {
     register_button_ids(
         store,
         &[
-            ids::INSP_AUDIO_BROWSE,
-            ids::INSP_AUDIO_PREVIEW,
-            ids::INSP_AUDIO_STOP,
+            crate::ids::INSP_AUDIO_BROWSE,
+            crate::ids::INSP_AUDIO_PREVIEW,
+            crate::ids::INSP_AUDIO_STOP,
         ],
     );
     // ⚠️ **As entradas do seletor continuam BOTÕES** — elas são as linhas do popover. Só o CHIP é
     // um `Dropdown`, e o que ele guarda é o `open`, nunca a escolha.
-    register_button_ids(store, &ids::INSP_AUDIO_BUS_OPT);
+    register_button_ids(store, &crate::ids::INSP_AUDIO_BUS_OPT);
     store.register(
-        ids::INSP_AUDIO_BUS_PICK,
+        crate::ids::INSP_AUDIO_BUS_PICK,
         InteractiveState::Dropdown {
             state: DropdownState::Normal,
             open: false,
@@ -56,7 +55,7 @@ pub(crate) fn populate_audio(store: &mut WidgetStore) {
         },
     );
     store.register(
-        ids::INSP_AUDIO_SOUND,
+        crate::ids::INSP_AUDIO_SOUND,
         InteractiveState::TextInput {
             state: TextInputState::Normal,
             text: String::new(),
@@ -64,7 +63,7 @@ pub(crate) fn populate_audio(store: &mut WidgetStore) {
             selection_anchor: None,
         },
     );
-    for id in [ids::INSP_AUDIO_LOOP, ids::INSP_AUDIO_AUTOPLAY] {
+    for id in [crate::ids::INSP_AUDIO_LOOP, crate::ids::INSP_AUDIO_AUTOPLAY] {
         store.register(
             id,
             InteractiveState::Checkbox {

@@ -80,13 +80,12 @@ impl PainterTool {
 
     /// Route the Clone-card panel events (Set Source, Aligned toggle). Returns `true` iff consumed.
     pub(crate) fn route_clone_event(&mut self, event: &PanelEvent) -> bool {
-        use ph2d_editor_core::ids as core_ids;
         if let PanelEvent::Click(id) = event {
-            if *id == core_ids::PAINTER_BRUSH_CLONE_SET_SOURCE {
+            if *id == crate::ids::PAINTER_BRUSH_CLONE_SET_SOURCE {
                 self.arm_clone_sample();
                 return true;
             }
-            if *id == core_ids::PAINTER_BRUSH_CLONE_ALIGNED {
+            if *id == crate::ids::PAINTER_BRUSH_CLONE_ALIGNED {
                 self.toggle_clone_aligned();
                 return true;
             }

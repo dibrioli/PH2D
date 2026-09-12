@@ -166,14 +166,14 @@ pub(super) fn paint_shape_dims(
     shape_tag: u8,
 ) -> f32 {
     let rows: &[(&str, ph2d_editor_core::NodeId)] = match shape_tag {
-        SHAPE_BALL => &[("Radius (m)", ids::INSP_PHYS_RADIUS)],
+        SHAPE_BALL => &[("Radius (m)", crate::ids::INSP_PHYS_RADIUS)],
         SHAPE_CAPSULE => &[
-            ("Radius (m)", ids::INSP_PHYS_RADIUS),
-            ("Half Height (m)", ids::INSP_PHYS_CAP_HALF_H),
+            ("Radius (m)", crate::ids::INSP_PHYS_RADIUS),
+            ("Half Height (m)", crate::ids::INSP_PHYS_CAP_HALF_H),
         ],
         _ => &[
-            ("Half Width (m)", ids::INSP_PHYS_HALF_X),
-            ("Half Height (m)", ids::INSP_PHYS_HALF_Y),
+            ("Half Width (m)", crate::ids::INSP_PHYS_HALF_X),
+            ("Half Height (m)", crate::ids::INSP_PHYS_HALF_Y),
         ],
     };
     let mut yy = y;

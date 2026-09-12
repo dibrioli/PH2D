@@ -27,8 +27,8 @@ use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::zones::Rect;
 use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
+use ph2d_panel_vector::VectorPanel;
 use ph2d_panel_vector::state::VectorPanelState;
-use ph2d_panel_vector::{VectorPanel, ids};
 use ph2d_symmetry::{MAX_SEGMENTS, MIN_SEGMENTS, SymmetryKind, SymmetryStyle};
 use ph2d_tool_vector::{VectorStyleSnapshot, VectorTool};
 use ph2d_ui_testkit::MockPanelHost;
@@ -107,7 +107,10 @@ fn dreno(host: &mut MockPanelHost, tool: &mut VectorTool) {
 fn tool_em_radial() -> VectorTool {
     use ph2d_editor_core::tool::{PanelEvent, Tool};
     let mut t = VectorTool::default();
-    Tool::handle_panel_event(&mut t, PanelEvent::Click(ids::VECTOR_SYM_ON));
+    Tool::handle_panel_event(
+        &mut t,
+        PanelEvent::Click(ph2d_tool_vector::ids::VECTOR_SYM_ON),
+    );
     Tool::handle_panel_event(
         &mut t,
         PanelEvent::Click(ph2d_tool_vector::params::symmetry_kind_id(
@@ -129,10 +132,10 @@ fn the_segments_slider_delivers_its_count_to_the_rosette() {
         let mut host = MockPanelHost::with_panel::<VectorPanel>();
         let mut st = VectorPanelState;
         let mut tool = tool_em_radial();
-        host.set_slider_value(ids::VECTOR_SYM_SEGMENTS, track);
+        host.set_slider_value(ph2d_tool_vector::ids::VECTOR_SYM_SEGMENTS, track);
         host.apply_panel_event::<VectorPanel>(
             &mut st,
-            WidgetEvent::ValueChanged(ids::VECTOR_SYM_SEGMENTS),
+            WidgetEvent::ValueChanged(ph2d_tool_vector::ids::VECTOR_SYM_SEGMENTS),
         );
         dreno(&mut host, &mut tool);
         assert_eq!(
@@ -162,7 +165,11 @@ fn the_chip_readout_and_the_drawn_copies_agree_after_a_real_drag() {
     let mut st = VectorPanelState;
     let mut tool = tool_em_radial();
     let r = host
-        .painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::VECTOR_SYM_SEGMENTS)
+        .painted_rect::<VectorPanel>(
+            &mut st,
+            VIEWPORT,
+            ph2d_tool_vector::ids::VECTOR_SYM_SEGMENTS,
+        )
         .expect("a barra de Segments tem de ser PINTADA com area clicavel no modo Radial");
     let cy = r.y + r.h * 0.5;
     host.dispatch_pointer_event(pointer(PointerKind::Down, r.x + r.w * 0.25, cy, SEC));
@@ -180,7 +187,7 @@ fn the_chip_readout_and_the_drawn_copies_agree_after_a_real_drag() {
     )));
     assert!(
         evs.iter()
-            .any(|e| matches!(e, WidgetEvent::ValueChanged(c) if *c == ids::VECTOR_SYM_SEGMENTS)),
+            .any(|e| matches!(e, WidgetEvent::ValueChanged(c) if *c == ph2d_tool_vector::ids::VECTOR_SYM_SEGMENTS)),
         "arrastar a barra nao produziu ValueChanged - ela esta' desenhada e nao existe para o \
          dispatcher (falta o `register` no populate)"
     );
@@ -191,7 +198,7 @@ fn the_chip_readout_and_the_drawn_copies_agree_after_a_real_drag() {
 
     let lido = host
         .store()
-        .number_value(ids::VECTOR_SYM_SEGMENTS_NUM)
+        .number_value(ph2d_tool_vector::ids::VECTOR_SYM_SEGMENTS_NUM)
         .expect("o chip de Segments tem de estar registado")
         .round() as usize;
     let desenhado = copias_desenhadas(&tool);
@@ -223,10 +230,13 @@ fn typing_a_count_into_the_chip_reaches_the_rosette() {
     let mut st = VectorPanelState;
     let mut tool = tool_em_radial();
     let alvo = MAX_SEGMENTS - 1;
-    let evs = host.type_into_number(ids::VECTOR_SYM_SEGMENTS_NUM, &alvo.to_string());
+    let evs = host.type_into_number(
+        ph2d_tool_vector::ids::VECTOR_SYM_SEGMENTS_NUM,
+        &alvo.to_string(),
+    );
     assert!(
         evs.iter().any(
-            |e| matches!(e, WidgetEvent::ValueChanged(c) if *c == ids::VECTOR_SYM_SEGMENTS_NUM)
+            |e| matches!(e, WidgetEvent::ValueChanged(c) if *c == ph2d_tool_vector::ids::VECTOR_SYM_SEGMENTS_NUM)
         ),
         "digitar no chip nao emitiu o ValueChanged dele - a fixtura deixou de exercitar o caminho"
     );

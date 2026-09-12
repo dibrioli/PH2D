@@ -174,7 +174,7 @@ fn the_view_pulldown_opens_serves_a_view_and_closes() {
     // saíram do painel e não que ganharam um segundo sítio.
     assert!(
         h.hit_index
-            .rect_for(ph2d_editor_core::ids::model3d_view_button(0))
+            .rect_for(ph2d_panel_model3d::ids::model3d_view_button(0))
             .is_none(),
         "a vista continua registada com o menu fechado — ela nao saiu do painel, ganhou um 2.o sitio"
     );
@@ -190,7 +190,7 @@ fn the_view_pulldown_opens_serves_a_view_and_closes() {
 
     let row = h
         .hit_index
-        .rect_for(ph2d_editor_core::ids::model3d_view_button(0))
+        .rect_for(ph2d_panel_model3d::ids::model3d_view_button(0))
         .expect("a 1.a vista nao foi pintada no menu aberto");
     click_at(&mut h, row);
 
@@ -384,7 +384,7 @@ fn the_file_menu_serves_an_export_and_the_module_owns_it() {
 
     let row = h
         .hit_index
-        .rect_for(ph2d_editor_core::ids::model3d_export_button(1))
+        .rect_for(ph2d_panel_model3d::ids::model3d_export_button(1))
         .expect("`Export Fine` nao foi pintado no menu `File`");
     click_at(&mut h, row);
     let intents = ph2d_panel_model3d::drain_intents();
@@ -447,7 +447,7 @@ fn closing_the_module_takes_the_commands_off_the_bar_and_off_the_file_menu() {
     );
     assert!(
         h.hit_index
-            .rect_for(ph2d_editor_core::ids::model3d_export_button(0))
+            .rect_for(ph2d_panel_model3d::ids::model3d_export_button(0))
             .is_none(),
         "`Export Draft` continua no menu `File` com o modulo 3D fechado"
     );

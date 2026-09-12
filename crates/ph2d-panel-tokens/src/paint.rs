@@ -66,7 +66,7 @@ pub(crate) fn paint(state: &mut TokensPanelState, ctx: &mut PaintCtx) {
     );
     paint_panel_close_button(
         rect,
-        ids::TOKENS_CLOSE,
+        crate::ids::TOKENS_CLOSE,
         ctx.host.hit_index_mut(),
         ctx.scene,
         theme,
@@ -129,7 +129,7 @@ fn paint_body(
     if n > 0 {
         y = command(
             ctx,
-            ids::TOKENS_RESET_ALL,
+            crate::ids::TOKENS_RESET_ALL,
             tr("panel.tokens.reset_all"),
             x,
             w,
@@ -146,8 +146,14 @@ fn paint_body(
     // que o artista autorou daria um arquivo vazio no caso mais comum.
     y = command_pair(
         ctx,
-        (ids::TOKENS_DTCG_EXPORT, tr("panel.tokens.dtcg.export")),
-        (ids::TOKENS_DTCG_IMPORT, tr("panel.tokens.dtcg.import")),
+        (
+            crate::ids::TOKENS_DTCG_EXPORT,
+            tr("panel.tokens.dtcg.export"),
+        ),
+        (
+            crate::ids::TOKENS_DTCG_IMPORT,
+            tr("panel.tokens.dtcg.import"),
+        ),
         x,
         w,
         y,
@@ -332,7 +338,7 @@ fn paint_token_row(
     if authored {
         command(
             ctx,
-            ids::tokens_reset_id(row),
+            crate::ids::tokens_reset_id(row),
             tr("panel.tokens.reset"),
             x + w - RESET_W,
             RESET_W,
@@ -344,7 +350,7 @@ fn paint_token_row(
 
 /// O botão de elo da linha — **Pressed enquanto armado**, para o artista ver de onde o gesto saiu.
 fn paint_link_button(ctx: &mut PaintCtx, theme: Theme, row: usize, x: f32, y: f32, armed: bool) {
-    let id = ids::tokens_link_id(row);
+    let id = crate::ids::tokens_link_id(row);
     let rect = Rect::new(x, y + (ROW_H_PX - LINK_W) * 0.5, LINK_W, LINK_W);
     let state = if armed {
         (ButtonState::Pressed, ph2d_editor_core::motion::SETTLED)

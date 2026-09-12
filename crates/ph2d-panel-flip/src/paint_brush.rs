@@ -64,12 +64,16 @@ impl BodyCtx<'_> {
         // `params.rs`): você escolheu linkar pintura↔borracha, não pincel↔escultura.
         let (size_id, size_num, size_val) = if eraser && !snap.link_size {
             (
-                ids::FLIP_ERASE_SIZE,
+                ph2d_tool_flip::ids::FLIP_ERASE_SIZE,
                 ids::FLIP_ERASE_SIZE_NUM,
                 snap.erase_px,
             )
         } else {
-            (ids::FLIP_SIZE, ids::FLIP_SIZE_NUM, snap.width_px)
+            (
+                ph2d_tool_flip::ids::FLIP_SIZE,
+                ids::FLIP_SIZE_NUM,
+                snap.width_px,
+            )
         };
         let track = self
             .store
@@ -86,7 +90,7 @@ impl BodyCtx<'_> {
                 track,
                 px,
                 &px_display,
-                ids::FLIP_LINK_SIZE,
+                ph2d_tool_flip::ids::FLIP_LINK_SIZE,
                 snap.link_size,
                 y,
             )
@@ -109,12 +113,16 @@ impl BodyCtx<'_> {
             // Mesma regra de link do Size, no outro eixo (§4.C).
             let (str_id, str_num, str_val) = if eraser && !snap.link_strength {
                 (
-                    ids::FLIP_ERASE_STRENGTH,
+                    ph2d_tool_flip::ids::FLIP_ERASE_STRENGTH,
                     ids::FLIP_ERASE_STRENGTH_NUM,
                     snap.erase_strength,
                 )
             } else {
-                (ids::FLIP_OPACITY, ids::FLIP_OPACITY_NUM, snap.opacity)
+                (
+                    ph2d_tool_flip::ids::FLIP_OPACITY,
+                    ids::FLIP_OPACITY_NUM,
+                    snap.opacity,
+                )
             };
             let track = self.store.slider(str_id).map(|(_, v)| v).unwrap_or(str_val);
             let pct = f64::from(track) * 100.0; // LITERAL-PX-OK: fraction→percent chip
@@ -128,7 +136,7 @@ impl BodyCtx<'_> {
                     track,
                     pct,
                     &pct_display,
-                    ids::FLIP_LINK_STRENGTH,
+                    ph2d_tool_flip::ids::FLIP_LINK_STRENGTH,
                     snap.link_strength,
                     y,
                 )
@@ -138,12 +146,12 @@ impl BodyCtx<'_> {
         }
         let track = self
             .store
-            .slider(ids::FLIP_HARDNESS)
+            .slider(ph2d_tool_flip::ids::FLIP_HARDNESS)
             .map(|(_, v)| v)
             .unwrap_or(snap.hardness);
         y = self.slider_row(
             "Hardness",
-            ids::FLIP_HARDNESS,
+            ph2d_tool_flip::ids::FLIP_HARDNESS,
             ids::FLIP_HARDNESS_NUM,
             track,
             f64::from(track),
@@ -153,13 +161,13 @@ impl BodyCtx<'_> {
         // Opacity (0..100 %).
         let track = self
             .store
-            .slider(ids::FLIP_OPACITY)
+            .slider(ph2d_tool_flip::ids::FLIP_OPACITY)
             .map(|(_, v)| v)
             .unwrap_or(snap.opacity);
         let pct = f64::from(track) * 100.0; // LITERAL-PX-OK: fraction→percent chip
         y = self.slider_row(
             "Opacity",
-            ids::FLIP_OPACITY,
+            ph2d_tool_flip::ids::FLIP_OPACITY,
             ids::FLIP_OPACITY_NUM,
             track,
             pct,
@@ -173,12 +181,12 @@ impl BodyCtx<'_> {
         }
         let track = self
             .store
-            .slider(ids::FLIP_SMOOTHING)
+            .slider(ph2d_tool_flip::ids::FLIP_SMOOTHING)
             .map(|(_, v)| v)
             .unwrap_or(snap.smoothing);
         y = self.slider_row(
             "Smoothing",
-            ids::FLIP_SMOOTHING,
+            ph2d_tool_flip::ids::FLIP_SMOOTHING,
             ids::FLIP_SMOOTHING_NUM,
             track,
             f64::from(track),
@@ -190,13 +198,13 @@ impl BodyCtx<'_> {
         // do traço). No mouse a pressão é 1 ⇒ largura cheia; no tablet, a caneta afina/engrossa.
         let track = self
             .store
-            .slider(ids::FLIP_PRESSURE_MIN)
+            .slider(ph2d_tool_flip::ids::FLIP_PRESSURE_MIN)
             .map(|(_, v)| v)
             .unwrap_or(snap.pressure_min_width);
         let pct = f64::from(track) * 100.0; // LITERAL-PX-OK: fraction→percent chip
         y = self.slider_row(
             "Min Width",
-            ids::FLIP_PRESSURE_MIN,
+            ph2d_tool_flip::ids::FLIP_PRESSURE_MIN,
             ids::FLIP_PRESSURE_MIN_NUM,
             track,
             pct,
@@ -205,13 +213,13 @@ impl BodyCtx<'_> {
         );
         let track = self
             .store
-            .slider(ids::FLIP_PRESSURE_RESPONSE)
+            .slider(ph2d_tool_flip::ids::FLIP_PRESSURE_RESPONSE)
             .map(|(_, v)| v)
             .unwrap_or(snap.pressure_response);
         let pct = f64::from(track) * 100.0; // LITERAL-PX-OK: fraction→percent chip
         y = self.slider_row(
             "Response",
-            ids::FLIP_PRESSURE_RESPONSE,
+            ph2d_tool_flip::ids::FLIP_PRESSURE_RESPONSE,
             ids::FLIP_PRESSURE_RESPONSE_NUM,
             track,
             pct,

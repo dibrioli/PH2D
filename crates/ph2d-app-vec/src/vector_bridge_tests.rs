@@ -344,7 +344,7 @@ fn selecting_a_path_reseeds_the_store_not_only_the_tool() {
         "a tool nao adotou a largura"
     );
     let track = store
-        .slider(ph2d_editor_core::ids::VECTOR_WIDTH)
+        .slider(ph2d_tool_vector::ids::VECTOR_WIDTH)
         .map(|(_, v)| v)
         .expect("o slider de Width existe no store");
     assert!(

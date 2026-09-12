@@ -1094,7 +1094,9 @@ fn every_non_literal_hash_is_named() {
 /// extended to the per-row painter id space.
 #[test]
 fn painter_dynamic_ids_dont_collide_with_chrome_or_each_other() {
-    use ids::PainterLayerWidget::{Blend, MoveDown, MoveUp, Opacity, OpacityChip, Row, Visibility};
+    use ph2d_tool_painter::ids::PainterLayerWidget::{
+        Blend, MoveDown, MoveUp, Opacity, OpacityChip, Row, Visibility,
+    };
 
     let chrome = produto_hashes();
     let mut seen: std::collections::BTreeSet<u64> = std::collections::BTreeSet::new();
@@ -1113,7 +1115,7 @@ fn painter_dynamic_ids_dont_collide_with_chrome_or_each_other() {
 
     for &lid in &layer_ids {
         for &kind in &kinds {
-            let id = ids::painter_layer_widget_id(lid, kind).0;
+            let id = ph2d_tool_painter::ids::painter_layer_widget_id(lid, kind).0;
             assert!(
                 !chrome.contains(&id),
                 "painter_layer_widget_id({lid}, {kind:?}) (id {id:#018x}) collides with a chrome const",
@@ -1125,7 +1127,7 @@ fn painter_dynamic_ids_dont_collide_with_chrome_or_each_other() {
         }
         // 22 W3C blend modes today; sample a margin past that.
         for mode in 0u8..28 {
-            let id = ids::painter_layer_blend_option_id(lid, mode).0;
+            let id = ph2d_tool_painter::ids::painter_layer_blend_option_id(lid, mode).0;
             assert!(
                 !chrome.contains(&id),
                 "painter_layer_blend_option_id({lid}, {mode}) (id {id:#018x}) collides with a chrome const",
@@ -1143,7 +1145,9 @@ fn painter_dynamic_ids_dont_collide_with_chrome_or_each_other() {
 /// guard the painter dynamic ids get, extended to the Flip per-row id space.
 #[test]
 fn flip_dynamic_ids_dont_collide_with_chrome_or_each_other() {
-    use ids::FlipLayerWidget::{Blend, Lock, MoveDown, MoveUp, Opacity, Row, Visibility};
+    use ph2d_panel_flip::ids::FlipLayerWidget::{
+        Blend, Lock, MoveDown, MoveUp, Opacity, Row, Visibility,
+    };
 
     let chrome = produto_hashes();
     let mut seen: std::collections::BTreeSet<u64> = std::collections::BTreeSet::new();
@@ -1153,7 +1157,7 @@ fn flip_dynamic_ids_dont_collide_with_chrome_or_each_other() {
 
     for &lid in &layer_ids {
         for &kind in &kinds {
-            let id = ids::flip_layer_widget_id(lid, kind).0;
+            let id = ph2d_panel_flip::ids::flip_layer_widget_id(lid, kind).0;
             assert!(
                 !chrome.contains(&id),
                 "flip_layer_widget_id({lid}, {kind:?}) (id {id:#018x}) collides with a chrome const",
@@ -1164,7 +1168,7 @@ fn flip_dynamic_ids_dont_collide_with_chrome_or_each_other() {
             );
         }
         for mode in 0u8..28 {
-            let id = ids::flip_layer_blend_option_id(lid, mode).0;
+            let id = ph2d_panel_flip::ids::flip_layer_blend_option_id(lid, mode).0;
             assert!(
                 !chrome.contains(&id),
                 "flip_layer_blend_option_id({lid}, {mode}) (id {id:#018x}) collides with a chrome const",
@@ -1205,29 +1209,29 @@ fn timeline_dynamic_ids_dont_collide_with_chrome_or_each_other() {
     for &target in &raw {
         check(
             format!("timeline_twirl_id({target})"),
-            ids::timeline_twirl_id(target),
+            ph2d_panel_timeline::ids::timeline_twirl_id(target),
         );
         check(
             format!("timeline_graph_resize_id({target})"),
-            ids::timeline_graph_resize_id(target),
+            ph2d_panel_timeline::ids::timeline_graph_resize_id(target),
         );
         check(
             format!("timeline_summary_hit_id({target})"),
-            ids::timeline_summary_hit_id(target),
+            ph2d_panel_timeline::ids::timeline_summary_hit_id(target),
         );
         for &key in &raw {
             check(
                 format!("timeline_key_hit_id({target}, {key})"),
-                ids::timeline_key_hit_id(target, key),
+                ph2d_panel_timeline::ids::timeline_key_hit_id(target, key),
             );
             check(
                 format!("timeline_anchor_hit_id({target}, {key})"),
-                ids::timeline_anchor_hit_id(target, key),
+                ph2d_panel_timeline::ids::timeline_anchor_hit_id(target, key),
             );
             for which in 0..2u8 {
                 check(
                     format!("timeline_handle_hit_id({target}, {key}, {which})"),
-                    ids::timeline_handle_hit_id(target, key, which),
+                    ph2d_panel_timeline::ids::timeline_handle_hit_id(target, key, which),
                 );
             }
         }
@@ -1236,14 +1240,14 @@ fn timeline_dynamic_ids_dont_collide_with_chrome_or_each_other() {
     for edge in 0..3u8 {
         check(
             format!("timeline_loop_brace_id({edge})"),
-            ids::timeline_loop_brace_id(edge),
+            ph2d_panel_timeline::ids::timeline_loop_brace_id(edge),
         );
     }
     // Marker pennants, keyed by storage index.
     for index in [0usize, 1, 2, 7, 42, 1000] {
         check(
             format!("timeline_marker_hit_id({index})"),
-            ids::timeline_marker_hit_id(index),
+            ph2d_panel_timeline::ids::timeline_marker_hit_id(index),
         );
     }
 }
@@ -1257,7 +1261,7 @@ fn vector_dynamic_ids_dont_collide_with_chrome_or_each_other() {
     let chrome = produto_hashes();
     let mut seen: std::collections::BTreeSet<u64> = std::collections::BTreeSet::new();
     for index in [0usize, 1, 2, 3, 7, 42, 255, 1000, 100_000] {
-        let id = ids::vector_text_font_option_id(index).0;
+        let id = ph2d_panel_vector::ids::vector_text_font_option_id(index).0;
         assert!(
             !chrome.contains(&id),
             "vector_text_font_option_id({index}) (id {id:#018x}) collides with a chrome const",
@@ -1293,81 +1297,102 @@ fn vector_dynamic_ids_dont_collide_with_chrome_or_each_other() {
             "{name} (id {id:#018x}) collides with another dynamic id",
         );
     };
-    for k in 0..ids::MAX_FX_KINDS {
-        check(format!("vector_fx_add_id({k})"), ids::vector_fx_add_id(k).0);
+    for k in 0..ph2d_tool_vector::ids::MAX_FX_KINDS {
+        check(
+            format!("vector_fx_add_id({k})"),
+            ph2d_tool_vector::ids::vector_fx_add_id(k).0,
+        );
     }
-    for r in 0..ids::MAX_FX_ROWS {
+    for r in 0..ph2d_tool_vector::ids::MAX_FX_ROWS {
         for (label, id) in [
-            ("remove", ids::vector_fx_remove_id(r)),
-            ("up", ids::vector_fx_up_id(r)),
-            ("down", ids::vector_fx_down_id(r)),
-            ("card", ids::vector_fx_card_id(r)),
-            ("hide", ids::vector_fx_hide_id(r)),
+            ("remove", ph2d_tool_vector::ids::vector_fx_remove_id(r)),
+            ("up", ph2d_tool_vector::ids::vector_fx_up_id(r)),
+            ("down", ph2d_tool_vector::ids::vector_fx_down_id(r)),
+            ("card", ph2d_tool_vector::ids::vector_fx_card_id(r)),
+            ("hide", ph2d_tool_vector::ids::vector_fx_hide_id(r)),
         ] {
             check(format!("vector_fx_{label}_id({r})"), id.0);
         }
-        for prm in 0..ids::MAX_FX_ROW_PARAMS {
+        for prm in 0..ph2d_tool_vector::ids::MAX_FX_ROW_PARAMS {
             for (label, id) in [
-                ("param", ids::vector_fx_param_id(r, prm)),
-                ("param_num", ids::vector_fx_param_num_id(r, prm)),
-                ("toggle", ids::vector_fx_toggle_id(r, prm)),
+                ("param", ph2d_tool_vector::ids::vector_fx_param_id(r, prm)),
+                (
+                    "param_num",
+                    ph2d_tool_vector::ids::vector_fx_param_num_id(r, prm),
+                ),
+                ("toggle", ph2d_tool_vector::ids::vector_fx_toggle_id(r, prm)),
             ] {
                 check(format!("vector_fx_{label}_id({r},{prm})"), id.0);
             }
         }
     }
-    for k in 0..ids::MAX_FILTER_KINDS {
-        check(format!("filter_add_id({k})"), ids::filter_add_id(k).0);
+    for k in 0..ph2d_panel_vector::ids::MAX_FILTER_KINDS {
+        check(
+            format!("filter_add_id({k})"),
+            ph2d_panel_vector::ids::filter_add_id(k).0,
+        );
     }
     for r in 0..ids::MAX_FILTER_ROWS {
         for (label, id) in [
-            ("card", ids::filter_card_id(r)),
-            ("remove", ids::filter_remove_id(r)),
-            ("up", ids::filter_up_id(r)),
-            ("down", ids::filter_down_id(r)),
-            ("hide", ids::filter_hide_id(r)),
-            ("color", ids::filter_color_id(r)),
+            ("card", ph2d_panel_vector::ids::filter_card_id(r)),
+            ("remove", ph2d_panel_vector::ids::filter_remove_id(r)),
+            ("up", ph2d_panel_vector::ids::filter_up_id(r)),
+            ("down", ph2d_panel_vector::ids::filter_down_id(r)),
+            ("hide", ph2d_panel_vector::ids::filter_hide_id(r)),
+            ("color", ph2d_panel_vector::ids::filter_color_id(r)),
             // ⚠️ **Esta lista tinha APODRECIDO, e a wave da segunda cor a encontrou assim:** as
             // waves da turbulência, da morfologia e do ajuste acrescentaram catorze ids de linha e
             // nenhuma entrou aqui, então o único gate que vigia colisões de id derivado estava
             // cego a metade da seção. Acrescentar só o `color_b` teria continuado a rotina.
-            ("color_b", ids::filter_color_b_id(r)),
-            ("radius", ids::filter_radius_id(r)),
-            ("radius_num", ids::filter_radius_num_id(r)),
-            ("offx", ids::filter_offx_id(r)),
-            ("offx_num", ids::filter_offx_num_id(r)),
-            ("offy", ids::filter_offy_id(r)),
-            ("offy_num", ids::filter_offy_num_id(r)),
-            ("opacity", ids::filter_opacity_id(r)),
-            ("opacity_num", ids::filter_opacity_num_id(r)),
-            ("blend", ids::filter_blend_id(r)),
-            ("scale", ids::filter_scale_id(r)),
-            ("scale_num", ids::filter_scale_num_id(r)),
-            ("detail", ids::filter_detail_id(r)),
-            ("detail_num", ids::filter_detail_num_id(r)),
-            ("seed", ids::filter_seed_id(r)),
-            ("seed_num", ids::filter_seed_num_id(r)),
-            ("grow", ids::filter_grow_id(r)),
-            ("grow_num", ids::filter_grow_num_id(r)),
-            ("hue", ids::filter_hue_id(r)),
-            ("hue_num", ids::filter_hue_num_id(r)),
-            ("sat", ids::filter_sat_id(r)),
-            ("sat_num", ids::filter_sat_num_id(r)),
-            ("bright", ids::filter_bright_id(r)),
-            ("bright_num", ids::filter_bright_num_id(r)),
+            ("color_b", ph2d_panel_vector::ids::filter_color_b_id(r)),
+            ("radius", ph2d_panel_vector::ids::filter_radius_id(r)),
+            (
+                "radius_num",
+                ph2d_panel_vector::ids::filter_radius_num_id(r),
+            ),
+            ("offx", ph2d_panel_vector::ids::filter_offx_id(r)),
+            ("offx_num", ph2d_panel_vector::ids::filter_offx_num_id(r)),
+            ("offy", ph2d_panel_vector::ids::filter_offy_id(r)),
+            ("offy_num", ph2d_panel_vector::ids::filter_offy_num_id(r)),
+            ("opacity", ph2d_panel_vector::ids::filter_opacity_id(r)),
+            (
+                "opacity_num",
+                ph2d_panel_vector::ids::filter_opacity_num_id(r),
+            ),
+            ("blend", ph2d_panel_vector::ids::filter_blend_id(r)),
+            ("scale", ph2d_panel_vector::ids::filter_scale_id(r)),
+            ("scale_num", ph2d_panel_vector::ids::filter_scale_num_id(r)),
+            ("detail", ph2d_panel_vector::ids::filter_detail_id(r)),
+            (
+                "detail_num",
+                ph2d_panel_vector::ids::filter_detail_num_id(r),
+            ),
+            ("seed", ph2d_panel_vector::ids::filter_seed_id(r)),
+            ("seed_num", ph2d_panel_vector::ids::filter_seed_num_id(r)),
+            ("grow", ph2d_panel_vector::ids::filter_grow_id(r)),
+            ("grow_num", ph2d_panel_vector::ids::filter_grow_num_id(r)),
+            ("hue", ph2d_panel_vector::ids::filter_hue_id(r)),
+            ("hue_num", ph2d_panel_vector::ids::filter_hue_num_id(r)),
+            ("sat", ph2d_panel_vector::ids::filter_sat_id(r)),
+            ("sat_num", ph2d_panel_vector::ids::filter_sat_num_id(r)),
+            ("bright", ph2d_panel_vector::ids::filter_bright_id(r)),
+            (
+                "bright_num",
+                ph2d_panel_vector::ids::filter_bright_num_id(r),
+            ),
         ] {
             check(format!("filter_{label}_id({r})"), id.0);
         }
-        for m in 0..ids::MAX_FILTER_MODES {
+        for m in 0..ph2d_panel_vector::ids::MAX_FILTER_MODES {
             check(
                 format!("filter_mode_id({r},{m})"),
-                ids::filter_mode_id(r, m).0,
+                ph2d_panel_vector::ids::filter_mode_id(r, m).0,
             );
         }
-        for m in 0..ids::MAX_FILTER_BLENDS {
+        for m in 0..ph2d_panel_vector::ids::MAX_FILTER_BLENDS {
             check(
                 format!("filter_blend_option_id({r},{m})"),
-                ids::filter_blend_option_id(r, m).0,
+                ph2d_panel_vector::ids::filter_blend_option_id(r, m).0,
             );
         }
     }

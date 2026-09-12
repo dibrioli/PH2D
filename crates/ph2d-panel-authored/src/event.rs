@@ -19,7 +19,7 @@ pub(crate) fn apply_event(
     ev: WidgetEvent,
 ) -> EventOutcome {
     if let WidgetEvent::Click(id) = ev
-        && id == ids::AUTHORED_CLOSE
+        && id == crate::ids::AUTHORED_CLOSE
     {
         // ⚠️ O X escreve a MESMA visibilidade que o interruptor da seção Frame lê. Um painel cujo
         // X e cujo abridor discordassem seria a falha de duas-portas na forma mais visível dela:

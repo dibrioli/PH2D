@@ -381,13 +381,15 @@ fn the_ratio_door_clamps_to_the_sliders_range() {
 /// evento não ser consumido e este gate nomeia o id.
 #[test]
 fn the_grid_slider_reaches_the_tool_over_the_panel_bus() {
-    use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::PanelEvent;
     let mut t = wet_tool(1);
     stroke(&mut t);
     assert!(t.paint.wetpaint.session.is_some());
     assert!(
-        t.route_brush_wetpaint_event(&PanelEvent::SetValue(core_ids::PAINTER_WETPAINT_GRID, 5.0)),
+        t.route_brush_wetpaint_event(&PanelEvent::SetValue(
+            crate::ids::PAINTER_WETPAINT_GRID,
+            5.0
+        )),
         "o SetValue da grade nao foi consumido pela rota do wet"
     );
     assert_eq!(t.paint.wetpaint.grid_ratio, 5);

@@ -30,17 +30,17 @@ fn viewport() -> Rect {
 const SECTIONS: [(PaintMedia, NodeId, &str); 3] = [
     (
         PaintMedia::Watercolor,
-        core_ids::PAINTER_WATERCOLOR_SECTION,
+        ph2d_tool_painter::ids::PAINTER_WATERCOLOR_SECTION,
         "Watercolor",
     ),
     (
         PaintMedia::Impasto,
-        core_ids::PAINTER_IMPASTO_SECTION,
+        ph2d_tool_painter::ids::PAINTER_IMPASTO_SECTION,
         "Impasto",
     ),
     (
         PaintMedia::WetPaint,
-        core_ids::PAINTER_WETPAINT_SECTION,
+        ph2d_tool_painter::ids::PAINTER_WETPAINT_SECTION,
         "Wet Paint",
     ),
 ];
@@ -107,7 +107,7 @@ fn a_pointer_can_pick_every_medium() {
             tool.set_paint_media(PaintMedia::Impasto);
         }
         let (mut host, mut st, rects) = painted(&tool);
-        let chip = rect_of(&rects, core_ids::PAINTER_BRUSH_MEDIA)
+        let chip = rect_of(&rects, ph2d_tool_painter::ids::PAINTER_BRUSH_MEDIA)
             .unwrap_or_else(|| panic!("the Paint Mode chip is not painted at all"));
         let (cx, cy) = centre(chip);
         click_through(&mut host, &mut st, &mut tool, cx, cy);
@@ -115,7 +115,7 @@ fn a_pointer_can_pick_every_medium() {
         // Re-paint with the chip OPEN: this is the pass that puts the options on screen.
         set_current_brush(Some(tool.brush_settings()));
         let rects = host.paint::<PainterLayersPanel>(&mut st, viewport());
-        let opt_id = core_ids::painter_brush_media_option_id(i);
+        let opt_id = ph2d_tool_painter::ids::painter_brush_media_option_id(i);
         let opt = rect_of(&rects, opt_id).unwrap_or_else(|| {
             panic!(
                 "clicking the Paint Mode chip did not open it — option {:?} ({}) never reached the \
@@ -157,7 +157,7 @@ fn exactly_one_medium_section_is_painted() {
         );
     }
     assert!(
-        rect_of(&rects, core_ids::PAINTER_BRUSH_MEDIA).is_some(),
+        rect_of(&rects, ph2d_tool_painter::ids::PAINTER_BRUSH_MEDIA).is_some(),
         "Digital paints no Paint Mode chip either — there would be no way to reach a medium at all"
     );
 
@@ -241,7 +241,7 @@ fn leaving_impasto_with_one_of_its_tools_in_hand_does_not_strand_you_there() {
             // assert the opposite of what that one does.
             if dest != PaintMedia::Watercolor {
                 assert!(
-                    rect_of(&rects, core_ids::PAINTER_BRUSH_BLEND).is_some(),
+                    rect_of(&rects, ph2d_tool_painter::ids::PAINTER_BRUSH_BLEND).is_some(),
                     "the Blend chip vanished after Impasto → {tool_wire} → {dest:?} (Enio's report)"
                 );
             }

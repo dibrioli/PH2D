@@ -20,7 +20,7 @@ impl BodyCtx<'_> {
     /// é a base, a da frente doa o estilo) + a linha Compound / Release.
     pub(crate) fn boolean_section(&mut self, y: f32) -> f32 {
         let (mut y, collapsed) = self.section_header(
-            ids::VECTOR_SECTION_BOOLEAN,
+            ph2d_tool_vector::ids::VECTOR_SECTION_BOOLEAN,
             tr("panel.vector.section.boolean"),
             y,
         );
@@ -118,12 +118,21 @@ impl BodyCtx<'_> {
             ),
             (ids::VECTOR_BOOL_EXCLUDE, tr("panel.vector.bool.exclude")),
             (
-                ids::VECTOR_BOOL_MINUS_BACK,
+                ph2d_tool_vector::ids::VECTOR_BOOL_MINUS_BACK,
                 tr("panel.vector.bool.minus_back"),
             ),
-            (ids::VECTOR_BOOL_TRIM, tr("panel.vector.bool.trim")),
-            (ids::VECTOR_BOOL_CROP, tr("panel.vector.bool.crop")),
-            (ids::VECTOR_BOOL_MERGE, tr("panel.vector.bool.merge")),
+            (
+                ph2d_tool_vector::ids::VECTOR_BOOL_TRIM,
+                tr("panel.vector.bool.trim"),
+            ),
+            (
+                ph2d_tool_vector::ids::VECTOR_BOOL_CROP,
+                tr("panel.vector.bool.crop"),
+            ),
+            (
+                ph2d_tool_vector::ids::VECTOR_BOOL_MERGE,
+                tr("panel.vector.bool.merge"),
+            ),
         ];
         let gap = Spacing::Xs.px();
         let w = ((self.inner_w - gap) / 2.0).max(1.0);

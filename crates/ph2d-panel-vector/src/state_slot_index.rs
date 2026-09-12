@@ -14,23 +14,26 @@ use ph2d_a11y::NodeId;
 
 /// Índice do parâmetro de forma cujo id de campo é `id` (`None` se não for um).
 pub(crate) fn shape_field_index(id: NodeId) -> Option<usize> {
-    (0..crate::ids::MAX_SHAPE_FIELD_SLOTS).find(|&i| crate::ids::vector_shape_field_id(i) == id)
+    (0..ph2d_tool_vector::ids::MAX_SHAPE_FIELD_SLOTS)
+        .find(|&i| ph2d_tool_vector::ids::vector_shape_field_id(i) == id)
 }
 
 /// Índice do parâmetro cujo **botão de escolha** é `id` (o gêmeo clicável do slot numérico).
 pub(crate) fn shape_choice_index(id: NodeId) -> Option<usize> {
-    (0..crate::ids::MAX_SHAPE_FIELD_SLOTS).find(|&i| crate::ids::vector_shape_choice_id(i) == id)
+    (0..ph2d_tool_vector::ids::MAX_SHAPE_FIELD_SLOTS)
+        .find(|&i| ph2d_tool_vector::ids::vector_shape_choice_id(i) == id)
 }
 
 /// Índice da forma no catálogo cujo id de botão é `id`.
 pub(crate) fn shape_index(id: NodeId) -> Option<usize> {
-    (0..ph2d_tool_vector::shapes::SHAPES.len()).find(|&i| crate::ids::vector_shape_id(i) == id)
+    (0..ph2d_tool_vector::shapes::SHAPES.len())
+        .find(|&i| ph2d_tool_vector::ids::vector_shape_id(i) == id)
 }
 
 /// Índice da família cujo id de aba é `id`.
 pub(crate) fn shape_group_index(id: NodeId) -> Option<usize> {
     (0..ph2d_tool_vector::shapes::ALL_GROUPS.len())
-        .find(|&i| crate::ids::vector_shape_group_id(i) == id)
+        .find(|&i| ph2d_tool_vector::ids::vector_shape_group_id(i) == id)
 }
 
 /// Índice do eixo de variação cujo id de campo é `id` (`None` se não for um). Casa
@@ -49,9 +52,9 @@ pub(crate) fn font_option_index(id: NodeId) -> Option<usize> {
 /// o espaço FIXO de slots, como as outras fábricas de id do painel — a resolução não
 /// depende de quantas pontas existem hoje.
 pub(crate) fn marker_option(id: NodeId) -> Option<(usize, usize)> {
-    (0..crate::ids::MARKER_SLOTS).find_map(|slot| {
-        (0..crate::ids::MAX_MARKER_OPTIONS)
-            .find(|&i| crate::ids::vector_marker_option_id(slot, i) == id)
+    (0..ph2d_tool_vector::ids::MARKER_SLOTS).find_map(|slot| {
+        (0..ph2d_tool_vector::ids::MAX_MARKER_OPTIONS)
+            .find(|&i| ph2d_tool_vector::ids::vector_marker_option_id(slot, i) == id)
             .map(|i| (slot, i))
     })
 }

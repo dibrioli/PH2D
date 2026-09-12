@@ -240,12 +240,12 @@ fn expect(actions: &[EditorAction], edit: PlayerFieldEdit, what: &str) {
 fn the_dead_empty_face_paints_nothing_at_all() {
     let rects = painted(empty());
     for id in [
-        ids::INSP_PLAYER_ADD,
-        ids::INSP_PLAYER_REMOVE,
-        ids::INSP_PLAYER_FIT,
-        ids::INSP_PLAYER_FLOAT,
-        ids::INSP_PLAYER_SPEED,
-        ids::INSP_PLAYER_MAX_SLOPE,
+        ph2d_panel_inspector::ids::INSP_PLAYER_ADD,
+        ph2d_panel_inspector::ids::INSP_PLAYER_REMOVE,
+        ph2d_panel_inspector::ids::INSP_PLAYER_FIT,
+        ph2d_panel_inspector::ids::INSP_PLAYER_FLOAT,
+        ph2d_panel_inspector::ids::INSP_PLAYER_SPEED,
+        ph2d_panel_inspector::ids::INSP_PLAYER_MAX_SLOPE,
     ] {
         assert!(
             !rects.iter().any(|(n, _)| *n == id),
@@ -272,11 +272,11 @@ fn the_dead_empty_face_paints_nothing_at_all() {
 fn the_dead_empty_face_leaves_no_registration_behind() {
     let host = MockPanelHost::with_panel_and_shared_chrome::<InspectorPanel>();
     for id in [
-        ids::INSP_PLAYER_REMOVE,
-        ids::INSP_PLAYER_FIT,
-        ids::INSP_PLAYER_CLEAR_RUN,
-        ids::INSP_PLAYER_RESTORE_RUN,
-        ids::INSP_PLAYER_FIT_CROUCH,
+        ph2d_panel_inspector::ids::INSP_PLAYER_REMOVE,
+        ph2d_panel_inspector::ids::INSP_PLAYER_FIT,
+        ph2d_panel_inspector::ids::INSP_PLAYER_CLEAR_RUN,
+        ph2d_panel_inspector::ids::INSP_PLAYER_RESTORE_RUN,
+        ph2d_panel_inspector::ids::INSP_PLAYER_FIT_CROUCH,
     ] {
         assert!(
             host.store().get(id).is_some(),
@@ -285,7 +285,9 @@ fn the_dead_empty_face_leaves_no_registration_behind() {
         );
     }
     assert!(
-        host.store().get(ids::INSP_PLAYER_ADD).is_none(),
+        host.store()
+            .get(ph2d_panel_inspector::ids::INSP_PLAYER_ADD)
+            .is_none(),
         "`INSP_PLAYER_ADD` continua registado. O botao que ele nomeia saiu do produto na F3 \
          (ADR-0166) com a face vazia que o continha: ninguem o pinta e ninguem lhe responde. \
          Um registo orfao e' lixo que faz toda sonda de controlos mortos apontar para um botao \
@@ -311,262 +313,266 @@ fn every_number_raises_its_own_edit() {
     let sweep = [
         // W-Probes2 — a GEOMETRIA das amostras dos sensores.
         (
-            ids::INSP_PLAYER_FOOT_SAMPLES,
+            ph2d_panel_inspector::ids::INSP_PLAYER_FOOT_SAMPLES,
             5.0,
             PlayerFieldEdit::FootSamples(5.0),
         ),
         (
-            ids::INSP_PLAYER_FOOT_SPREAD,
+            ph2d_panel_inspector::ids::INSP_PLAYER_FOOT_SPREAD,
             0.4,
             PlayerFieldEdit::FootSpread(0.4),
         ),
         (
-            ids::INSP_PLAYER_CORNER_SAMPLES,
+            ph2d_panel_inspector::ids::INSP_PLAYER_CORNER_SAMPLES,
             129.0,
             PlayerFieldEdit::CornerSamples(129.0),
         ),
         (
-            ids::INSP_PLAYER_CORNER_AHEAD,
+            ph2d_panel_inspector::ids::INSP_PLAYER_CORNER_AHEAD,
             3.5,
             PlayerFieldEdit::CornerLookahead(3.5),
         ),
         (
-            ids::INSP_PLAYER_WALL_SAMPLES,
+            ph2d_panel_inspector::ids::INSP_PLAYER_WALL_SAMPLES,
             9.0,
             PlayerFieldEdit::WallSamples(9.0),
         ),
         (
-            ids::INSP_PLAYER_WALL_SPREAD,
+            ph2d_panel_inspector::ids::INSP_PLAYER_WALL_SPREAD,
             0.6,
             PlayerFieldEdit::WallSpread(0.6),
         ),
         (
-            ids::INSP_PLAYER_FLOAT,
+            ph2d_panel_inspector::ids::INSP_PLAYER_FLOAT,
             1.25,
             PlayerFieldEdit::FloatHeight(1.25),
         ),
         (
-            ids::INSP_PLAYER_CLING,
+            ph2d_panel_inspector::ids::INSP_PLAYER_CLING,
             0.4,
             PlayerFieldEdit::ClingDistance(0.4),
         ),
         (
-            ids::INSP_PLAYER_STIFFNESS,
+            ph2d_panel_inspector::ids::INSP_PLAYER_STIFFNESS,
             250.0,
             PlayerFieldEdit::SpringStrength(250.0),
         ),
         (
-            ids::INSP_PLAYER_DAMPING,
+            ph2d_panel_inspector::ids::INSP_PLAYER_DAMPING,
             0.8,
             PlayerFieldEdit::SpringDamping(0.8),
         ),
-        (ids::INSP_PLAYER_SPEED, 9.0, PlayerFieldEdit::Speed(9.0)),
         (
-            ids::INSP_PLAYER_ACCEL,
+            ph2d_panel_inspector::ids::INSP_PLAYER_SPEED,
+            9.0,
+            PlayerFieldEdit::Speed(9.0),
+        ),
+        (
+            ph2d_panel_inspector::ids::INSP_PLAYER_ACCEL,
             80.0,
             PlayerFieldEdit::Acceleration(80.0),
         ),
         (
-            ids::INSP_PLAYER_AIR_ACCEL,
+            ph2d_panel_inspector::ids::INSP_PLAYER_AIR_ACCEL,
             15.0,
             PlayerFieldEdit::AirAcceleration(15.0),
         ),
         (
-            ids::INSP_PLAYER_BRAKE,
+            ph2d_panel_inspector::ids::INSP_PLAYER_BRAKE,
             0.25,
             PlayerFieldEdit::BrakeScale(0.25),
         ),
         (
-            ids::INSP_PLAYER_COYOTE,
+            ph2d_panel_inspector::ids::INSP_PLAYER_COYOTE,
             0.2,
             PlayerFieldEdit::CoyoteTime(0.2),
         ),
         (
-            ids::INSP_PLAYER_BUFFER,
+            ph2d_panel_inspector::ids::INSP_PLAYER_BUFFER,
             0.15,
             PlayerFieldEdit::JumpBuffer(0.15),
         ),
         (
-            ids::INSP_PLAYER_CORNER,
+            ph2d_panel_inspector::ids::INSP_PLAYER_CORNER,
             0.18,
             PlayerFieldEdit::CornerReach(0.18),
         ),
         (
-            ids::INSP_PLAYER_LIFT,
+            ph2d_panel_inspector::ids::INSP_PLAYER_LIFT,
             0.9,
             PlayerFieldEdit::LiftMomentum(0.9),
         ),
         (
-            ids::INSP_PLAYER_WALL_SLIDE,
+            ph2d_panel_inspector::ids::INSP_PLAYER_WALL_SLIDE,
             4.5,
             PlayerFieldEdit::WallSlideSpeed(4.5),
         ),
         (
-            ids::INSP_PLAYER_WALL_JUMP,
+            ph2d_panel_inspector::ids::INSP_PLAYER_WALL_JUMP,
             2.5,
             PlayerFieldEdit::WallJumpHeight(2.5),
         ),
         (
-            ids::INSP_PLAYER_WALL_PUSH,
+            ph2d_panel_inspector::ids::INSP_PLAYER_WALL_PUSH,
             7.5,
             PlayerFieldEdit::WallJumpPush(7.5),
         ),
         (
-            ids::INSP_PLAYER_WALL_LOCK,
+            ph2d_panel_inspector::ids::INSP_PLAYER_WALL_LOCK,
             0.3,
             PlayerFieldEdit::WallJumpLockout(0.3),
         ),
         (
-            ids::INSP_PLAYER_WALL_REACH,
+            ph2d_panel_inspector::ids::INSP_PLAYER_WALL_REACH,
             0.15,
             PlayerFieldEdit::WallReach(0.15),
         ),
         (
-            ids::INSP_PLAYER_WALL_GRAB,
+            ph2d_panel_inspector::ids::INSP_PLAYER_WALL_GRAB,
             1.5,
             PlayerFieldEdit::WallGrabStamina(1.5),
         ),
         (
-            ids::INSP_PLAYER_DASH_SPEED,
+            ph2d_panel_inspector::ids::INSP_PLAYER_DASH_SPEED,
             18.0,
             PlayerFieldEdit::DashSpeed(18.0),
         ),
         (
-            ids::INSP_PLAYER_DASH_TIME,
+            ph2d_panel_inspector::ids::INSP_PLAYER_DASH_TIME,
             0.18,
             PlayerFieldEdit::DashTime(0.18),
         ),
         (
-            ids::INSP_PLAYER_DASH_COOL,
+            ph2d_panel_inspector::ids::INSP_PLAYER_DASH_COOL,
             0.25,
             PlayerFieldEdit::DashCooldown(0.25),
         ),
         (
-            ids::INSP_PLAYER_CROUCH_HEIGHT,
+            ph2d_panel_inspector::ids::INSP_PLAYER_CROUCH_HEIGHT,
             0.6,
             PlayerFieldEdit::CrouchHeight(0.6),
         ),
         (
-            ids::INSP_PLAYER_CROUCH_SPEED,
+            ph2d_panel_inspector::ids::INSP_PLAYER_CROUCH_SPEED,
             2.5,
             PlayerFieldEdit::CrouchSpeed(2.5),
         ),
         (
-            ids::INSP_PLAYER_SWIM_SPEED,
+            ph2d_panel_inspector::ids::INSP_PLAYER_SWIM_SPEED,
             5.0,
             PlayerFieldEdit::SwimSpeed(5.0),
         ),
         (
-            ids::INSP_PLAYER_SWIM_ACCEL,
+            ph2d_panel_inspector::ids::INSP_PLAYER_SWIM_ACCEL,
             18.0,
             PlayerFieldEdit::SwimAcceleration(18.0),
         ),
         (
-            ids::INSP_PLAYER_SWIM_ENTER,
+            ph2d_panel_inspector::ids::INSP_PLAYER_SWIM_ENTER,
             0.6,
             PlayerFieldEdit::SwimEnter(0.6),
         ),
         // W-Ledge — a BEIRADA.
         (
-            ids::INSP_PLAYER_LEDGE_GRAB,
+            ph2d_panel_inspector::ids::INSP_PLAYER_LEDGE_GRAB,
             0.55,
             PlayerFieldEdit::LedgeGrab(0.55),
         ),
         // W-LedgeSensor — o SENSOR: posicao e extensao.
         (
-            ids::INSP_PLAYER_LEDGE_REACH_Y,
+            ph2d_panel_inspector::ids::INSP_PLAYER_LEDGE_REACH_Y,
             0.7,
             PlayerFieldEdit::LedgeReachY(0.7),
         ),
         (
-            ids::INSP_PLAYER_LEDGE_SPAN,
+            ph2d_panel_inspector::ids::INSP_PLAYER_LEDGE_SPAN,
             0.2,
             PlayerFieldEdit::LedgeSpan(0.2),
         ),
         (
-            ids::INSP_PLAYER_LEDGE_OFFSET_Y,
+            ph2d_panel_inspector::ids::INSP_PLAYER_LEDGE_OFFSET_Y,
             -0.3,
             PlayerFieldEdit::LedgeOffsetY(-0.3),
         ),
         (
-            ids::INSP_PLAYER_LEDGE_SPEED,
+            ph2d_panel_inspector::ids::INSP_PLAYER_LEDGE_SPEED,
             4.5,
             PlayerFieldEdit::LedgeSpeed(4.5),
         ),
         // W-Glide — o PLANEIO.
         (
-            ids::INSP_PLAYER_GLIDE_FALL,
+            ph2d_panel_inspector::ids::INSP_PLAYER_GLIDE_FALL,
             2.5,
             PlayerFieldEdit::GlideFallSpeed(2.5),
         ),
         // W-Fall — o TETO DE QUEDA (a velocidade terminal).
         (
-            ids::INSP_PLAYER_MAX_FALL,
+            ph2d_panel_inspector::ids::INSP_PLAYER_MAX_FALL,
             45.0,
             PlayerFieldEdit::MaxFallSpeed(45.0),
         ),
         (
-            ids::INSP_PLAYER_MAX_SLOPE,
+            ph2d_panel_inspector::ids::INSP_PLAYER_MAX_SLOPE,
             55.0,
             PlayerFieldEdit::MaxSlopeDeg(55.0),
         ),
         (
-            ids::INSP_PLAYER_JUMP_HEIGHT,
+            ph2d_panel_inspector::ids::INSP_PLAYER_JUMP_HEIGHT,
             3.5,
             PlayerFieldEdit::JumpHeight(3.5),
         ),
         (
-            ids::INSP_PLAYER_AIR_JUMPS,
+            ph2d_panel_inspector::ids::INSP_PLAYER_AIR_JUMPS,
             2.0,
             PlayerFieldEdit::AirJumps(2.0),
         ),
         (
-            ids::INSP_PLAYER_AIR_JUMP_H,
+            ph2d_panel_inspector::ids::INSP_PLAYER_AIR_JUMP_H,
             1.25,
             PlayerFieldEdit::AirJumpHeight(1.25),
         ),
         (
-            ids::INSP_PLAYER_TAKEOFF_G,
+            ph2d_panel_inspector::ids::INSP_PLAYER_TAKEOFF_G,
             1.4,
             PlayerFieldEdit::TakeoffGravity(1.4),
         ),
         (
-            ids::INSP_PLAYER_TAKEOFF_SPEED,
+            ph2d_panel_inspector::ids::INSP_PLAYER_TAKEOFF_SPEED,
             2.5,
             PlayerFieldEdit::TakeoffSpeed(2.5),
         ),
         (
-            ids::INSP_PLAYER_PEAK_G,
+            ph2d_panel_inspector::ids::INSP_PLAYER_PEAK_G,
             0.3,
             PlayerFieldEdit::PeakGravity(0.3),
         ),
         (
-            ids::INSP_PLAYER_PEAK_SPEED,
+            ph2d_panel_inspector::ids::INSP_PLAYER_PEAK_SPEED,
             2.0,
             PlayerFieldEdit::PeakSpeed(2.0),
         ),
         (
-            ids::INSP_PLAYER_FALL_G,
+            ph2d_panel_inspector::ids::INSP_PLAYER_FALL_G,
             2.5,
             PlayerFieldEdit::FallGravity(2.5),
         ),
         (
-            ids::INSP_PLAYER_REACT_SUPPORT,
+            ph2d_panel_inspector::ids::INSP_PLAYER_REACT_SUPPORT,
             0.6,
             PlayerFieldEdit::ReactionSupport(0.6),
         ),
         (
-            ids::INSP_PLAYER_REACT_MOVEMENT,
+            ph2d_panel_inspector::ids::INSP_PLAYER_REACT_MOVEMENT,
             0.35,
             PlayerFieldEdit::ReactionMovement(0.35),
         ),
         (
-            ids::INSP_PLAYER_REACT_PUSH,
+            ph2d_panel_inspector::ids::INSP_PLAYER_REACT_PUSH,
             0.45,
             PlayerFieldEdit::ReactionPush(0.45),
         ),
         (
-            ids::INSP_PLAYER_CUT_G,
+            ph2d_panel_inspector::ids::INSP_PLAYER_CUT_G,
             5.0,
             PlayerFieldEdit::CutGravity(5.0),
         ),
@@ -585,12 +591,12 @@ fn every_number_raises_its_own_edit() {
 #[test]
 fn the_fit_and_remove_buttons_reach_the_bus() {
     expect(
-        &click_real(player(), ids::INSP_PLAYER_FIT),
+        &click_real(player(), ph2d_panel_inspector::ids::INSP_PLAYER_FIT),
         PlayerFieldEdit::FitFloatHeight,
         "Fit to Collider",
     );
     expect(
-        &click_real(player(), ids::INSP_PLAYER_REMOVE),
+        &click_real(player(), ph2d_panel_inspector::ids::INSP_PLAYER_REMOVE),
         PlayerFieldEdit::Remove,
         "Remove Platform Player",
     );
@@ -613,11 +619,17 @@ fn a_shape_without_a_known_floor_gets_no_fit_button() {
     };
     let rects = painted(boxed);
     assert!(
-        !rects.iter().any(|(n, _)| *n == ids::INSP_PLAYER_FIT),
+        !rects
+            .iter()
+            .any(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_PLAYER_FIT),
         "sem mínimo computável não há para onde ajustar"
     );
     // E o resto da seção continua vivo — a ausência é do botão, não da seção.
-    assert!(rects.iter().any(|(n, _)| *n == ids::INSP_PLAYER_FLOAT));
+    assert!(
+        rects
+            .iter()
+            .any(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_PLAYER_FLOAT)
+    );
 }
 
 /// ⚠️ **As rows NÃO são write-only** — o espelho existe.
@@ -669,24 +681,24 @@ fn the_rows_show_what_was_authored_not_the_seed() {
     set_current_inspector_player(Some(info));
     let _ = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
     let got: Vec<f64> = [
-        ids::INSP_PLAYER_FLOAT,
-        ids::INSP_PLAYER_CLING,
-        ids::INSP_PLAYER_STIFFNESS,
-        ids::INSP_PLAYER_DAMPING,
-        ids::INSP_PLAYER_SPEED,
-        ids::INSP_PLAYER_ACCEL,
-        ids::INSP_PLAYER_AIR_ACCEL,
-        ids::INSP_PLAYER_BRAKE,
-        ids::INSP_PLAYER_MAX_SLOPE,
-        ids::INSP_PLAYER_JUMP_HEIGHT,
-        ids::INSP_PLAYER_AIR_JUMPS,
-        ids::INSP_PLAYER_AIR_JUMP_H,
-        ids::INSP_PLAYER_TAKEOFF_G,
-        ids::INSP_PLAYER_TAKEOFF_SPEED,
-        ids::INSP_PLAYER_PEAK_G,
-        ids::INSP_PLAYER_PEAK_SPEED,
-        ids::INSP_PLAYER_FALL_G,
-        ids::INSP_PLAYER_CUT_G,
+        ph2d_panel_inspector::ids::INSP_PLAYER_FLOAT,
+        ph2d_panel_inspector::ids::INSP_PLAYER_CLING,
+        ph2d_panel_inspector::ids::INSP_PLAYER_STIFFNESS,
+        ph2d_panel_inspector::ids::INSP_PLAYER_DAMPING,
+        ph2d_panel_inspector::ids::INSP_PLAYER_SPEED,
+        ph2d_panel_inspector::ids::INSP_PLAYER_ACCEL,
+        ph2d_panel_inspector::ids::INSP_PLAYER_AIR_ACCEL,
+        ph2d_panel_inspector::ids::INSP_PLAYER_BRAKE,
+        ph2d_panel_inspector::ids::INSP_PLAYER_MAX_SLOPE,
+        ph2d_panel_inspector::ids::INSP_PLAYER_JUMP_HEIGHT,
+        ph2d_panel_inspector::ids::INSP_PLAYER_AIR_JUMPS,
+        ph2d_panel_inspector::ids::INSP_PLAYER_AIR_JUMP_H,
+        ph2d_panel_inspector::ids::INSP_PLAYER_TAKEOFF_G,
+        ph2d_panel_inspector::ids::INSP_PLAYER_TAKEOFF_SPEED,
+        ph2d_panel_inspector::ids::INSP_PLAYER_PEAK_G,
+        ph2d_panel_inspector::ids::INSP_PLAYER_PEAK_SPEED,
+        ph2d_panel_inspector::ids::INSP_PLAYER_FALL_G,
+        ph2d_panel_inspector::ids::INSP_PLAYER_CUT_G,
     ]
     .iter()
     .map(|&id| host.store().number_value(id).unwrap_or(f64::NAN))
@@ -924,7 +936,9 @@ fn every_card_holds_its_own_rows_and_they_do_not_overlap() {
 fn the_clear_run_button_appears_only_when_a_run_exists() {
     let rects = painted(player());
     assert!(
-        !rects.iter().any(|(n, _)| *n == ids::INSP_PLAYER_CLEAR_RUN),
+        !rects
+            .iter()
+            .any(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_PLAYER_CLEAR_RUN),
         "sem corrida gravada, o botao de descartar foi pintado sobre nada"
     );
 
@@ -933,7 +947,7 @@ fn the_clear_run_button_appears_only_when_a_run_exists() {
         ..player()
     };
     expect(
-        &click_real(with_run, ids::INSP_PLAYER_CLEAR_RUN),
+        &click_real(with_run, ph2d_panel_inspector::ids::INSP_PLAYER_CLEAR_RUN),
         PlayerFieldEdit::ClearRun,
         "Clear Recorded Run",
     );
@@ -961,7 +975,7 @@ fn the_crouch_fit_button_appears_only_when_the_crouch_is_armed() {
     assert!(
         !painted(off)
             .iter()
-            .any(|(n, _)| *n == ids::INSP_PLAYER_FIT_CROUCH),
+            .any(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_PLAYER_FIT_CROUCH),
         "o agachar esta' DESLIGADO e o botao de ajuste foi pintado sobre nada"
     );
 
@@ -976,7 +990,7 @@ fn the_crouch_fit_button_appears_only_when_the_crouch_is_armed() {
         ..player()
     };
     expect(
-        &click_real(buried, ids::INSP_PLAYER_FIT_CROUCH),
+        &click_real(buried, ph2d_panel_inspector::ids::INSP_PLAYER_FIT_CROUCH),
         PlayerFieldEdit::FitCrouchHeight,
         "Fit Crouch to Collider",
     );
@@ -994,7 +1008,7 @@ fn the_crouch_fit_button_appears_only_when_the_crouch_is_armed() {
     assert!(
         painted(fine)
             .iter()
-            .any(|(n, _)| *n == ids::INSP_PLAYER_FIT_CROUCH),
+            .any(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_PLAYER_FIT_CROUCH),
         "com o agachar acima do piso o ajuste sumiu -- ele continua sendo o gesto \
          que responde *quao fundo este corpo consegue agachar*"
     );
@@ -1018,7 +1032,7 @@ fn a_shape_without_a_known_floor_gets_no_crouch_fit_either() {
     assert!(
         !painted(boxed)
             .iter()
-            .any(|(n, _)| *n == ids::INSP_PLAYER_FIT_CROUCH),
+            .any(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_PLAYER_FIT_CROUCH),
         "uma caixa recebeu um ajuste de agachar que nao sabe para onde ajustar"
     );
 }
@@ -1045,33 +1059,54 @@ fn discarding_a_run_can_be_undone_and_the_two_buttons_never_coexist() {
 
     // 1. Corrida VIVA: o botao e' o de descartar.
     assert!(
-        has(runs(4.0, 0.0), ids::INSP_PLAYER_CLEAR_RUN),
+        has(
+            runs(4.0, 0.0),
+            ph2d_panel_inspector::ids::INSP_PLAYER_CLEAR_RUN
+        ),
         "com corrida viva o botao de descartar tem de estar na tela"
     );
     assert!(
-        !has(runs(4.0, 0.0), ids::INSP_PLAYER_RESTORE_RUN),
+        !has(
+            runs(4.0, 0.0),
+            ph2d_panel_inspector::ids::INSP_PLAYER_RESTORE_RUN
+        ),
         "e o de devolver NAO"
     );
 
     // 2. Corrida DESCARTADA: o mesmo lugar oferece o caminho de volta, e o
     //    clique REAL levanta o verbo.
     assert!(
-        has(runs(0.0, 4.0), ids::INSP_PLAYER_RESTORE_RUN),
+        has(
+            runs(0.0, 4.0),
+            ph2d_panel_inspector::ids::INSP_PLAYER_RESTORE_RUN
+        ),
         "com corrida descartada o botao de devolver tem de estar na tela"
     );
     assert!(
-        !has(runs(0.0, 4.0), ids::INSP_PLAYER_CLEAR_RUN),
+        !has(
+            runs(0.0, 4.0),
+            ph2d_panel_inspector::ids::INSP_PLAYER_CLEAR_RUN
+        ),
         "e o de descartar NAO -- nao ha' o que descartar"
     );
     expect(
-        &click_real(runs(0.0, 4.0), ids::INSP_PLAYER_RESTORE_RUN),
+        &click_real(
+            runs(0.0, 4.0),
+            ph2d_panel_inspector::ids::INSP_PLAYER_RESTORE_RUN,
+        ),
         PlayerFieldEdit::RestoreRun,
         "devolver a corrida descartada",
     );
 
     // 3. Nenhuma das duas: nenhum botao. A ausencia e' o outro readout.
-    assert!(!has(runs(0.0, 0.0), ids::INSP_PLAYER_CLEAR_RUN));
-    assert!(!has(runs(0.0, 0.0), ids::INSP_PLAYER_RESTORE_RUN));
+    assert!(!has(
+        runs(0.0, 0.0),
+        ph2d_panel_inspector::ids::INSP_PLAYER_CLEAR_RUN
+    ));
+    assert!(!has(
+        runs(0.0, 0.0),
+        ph2d_panel_inspector::ids::INSP_PLAYER_RESTORE_RUN
+    ));
 
     // 4. ⚠️ **As DUAS cheias — o estado que a porta NAO produz** (W25).
     //
@@ -1085,11 +1120,17 @@ fn discarding_a_run_can_be_undone_and_the_two_buttons_never_coexist() {
     //    Quem vence e' a corrida VIVA: devolver por cima dela apagaria o que o
     //    artista acabou de gravar.
     assert!(
-        has(runs(4.0, 4.0), ids::INSP_PLAYER_CLEAR_RUN),
+        has(
+            runs(4.0, 4.0),
+            ph2d_panel_inspector::ids::INSP_PLAYER_CLEAR_RUN
+        ),
         "com as duas cheias quem vence e' a corrida VIVA"
     );
     assert!(
-        !has(runs(4.0, 4.0), ids::INSP_PLAYER_RESTORE_RUN),
+        !has(
+            runs(4.0, 4.0),
+            ph2d_panel_inspector::ids::INSP_PLAYER_RESTORE_RUN
+        ),
         "e devolver nao pode ser oferecido por cima de uma corrida viva"
     );
 }
@@ -1104,7 +1145,10 @@ fn discarding_a_run_can_be_undone_and_the_two_buttons_never_coexist() {
 /// suíte inteira verde — o buraco das 36 células do W2c.
 #[test]
 fn the_mode_chip_is_alive_and_each_option_raises_its_own_tag() {
-    for (i, &id) in ids::INSP_PLAYER_MODE_IDS.iter().enumerate() {
+    for (i, &id) in ph2d_panel_inspector::ids::INSP_PLAYER_MODE_IDS
+        .iter()
+        .enumerate()
+    {
         let acts = click_real(player(), id);
         assert!(
             acts.iter().any(|a| matches!(
@@ -1133,7 +1177,7 @@ fn the_mode_chip_is_painted_in_both_modes() {
         info.reaction_is_live = tag != 2;
         info.push_is_live = tag == 1;
         let rects = painted(info);
-        for &id in &ids::INSP_PLAYER_MODE_IDS {
+        for &id in &ph2d_panel_inspector::ids::INSP_PLAYER_MODE_IDS {
             assert!(
                 rects.iter().any(|(n, _)| *n == id),
                 "com mode_tag {tag} o chip {id:?} tem de estar na tela"
@@ -1151,9 +1195,9 @@ fn the_mode_chip_is_painted_in_both_modes() {
 #[test]
 fn the_reaction_card_follows_who_is_heard_by_the_world() {
     const REACT: [ph2d_a11y::NodeId; 3] = [
-        ids::INSP_PLAYER_REACT_SUPPORT,
-        ids::INSP_PLAYER_REACT_MOVEMENT,
-        ids::INSP_PLAYER_REACT_PUSH,
+        ph2d_panel_inspector::ids::INSP_PLAYER_REACT_SUPPORT,
+        ph2d_panel_inspector::ids::INSP_PLAYER_REACT_MOVEMENT,
+        ph2d_panel_inspector::ids::INSP_PLAYER_REACT_PUSH,
     ];
 
     let mut heard = player();
@@ -1180,7 +1224,9 @@ fn the_reaction_card_follows_who_is_heard_by_the_world() {
     // ⚠️ E o resto da seção continua lá — esconder UM card não é esconder a
     // ferramenta (sem esta linha, um `return` no topo do laço passaria).
     assert!(
-        rects.iter().any(|(n, _)| *n == ids::INSP_PLAYER_SPEED),
+        rects
+            .iter()
+            .any(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_PLAYER_SPEED),
         "os outros cards seguem pintados"
     );
 }
@@ -1201,9 +1247,9 @@ fn the_reaction_card_follows_who_is_heard_by_the_world() {
 #[test]
 fn the_spring_rows_follow_the_leg_that_is_a_spring() {
     const SPRING_ONLY: [ph2d_a11y::NodeId; 3] = [
-        ids::INSP_PLAYER_FLOAT,
-        ids::INSP_PLAYER_STIFFNESS,
-        ids::INSP_PLAYER_DAMPING,
+        ph2d_panel_inspector::ids::INSP_PLAYER_FLOAT,
+        ph2d_panel_inspector::ids::INSP_PLAYER_STIFFNESS,
+        ph2d_panel_inspector::ids::INSP_PLAYER_DAMPING,
     ];
 
     // A perna elástica: as três rows E o botão de ajuste na tela.
@@ -1217,7 +1263,9 @@ fn the_spring_rows_follow_the_leg_that_is_a_spring() {
         );
     }
     assert!(
-        rects.iter().any(|(n, _)| *n == ids::INSP_PLAYER_FIT),
+        rects
+            .iter()
+            .any(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_PLAYER_FIT),
         "e o botao que conserta a altura tambem"
     );
 
@@ -1233,18 +1281,24 @@ fn the_spring_rows_follow_the_leg_that_is_a_spring() {
         );
     }
     assert!(
-        !rects.iter().any(|(n, _)| *n == ids::INSP_PLAYER_FIT),
+        !rects
+            .iter()
+            .any(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_PLAYER_FIT),
         "e o botao escreveria um numero que a lei sobrescreve no mesmo tique"
     );
     assert!(
-        rects.iter().any(|(n, _)| *n == ids::INSP_PLAYER_CLING),
+        rects
+            .iter()
+            .any(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_PLAYER_CLING),
         "⚠️ a Cling Distance FICA -- sob Snap ela e' o snap_distance E o \
          step_height do controlador, e esconder o card levaria o unico \
          controle que ali funciona"
     );
     // E o resto da seção continua lá: esconder rows não é esconder a ferramenta.
     assert!(
-        rects.iter().any(|(n, _)| *n == ids::INSP_PLAYER_SPEED),
+        rects
+            .iter()
+            .any(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_PLAYER_SPEED),
         "os outros cards seguem pintados"
     );
 }
@@ -1269,13 +1323,15 @@ fn the_shove_is_offered_only_to_the_mode_that_reads_it() {
     dynamic.push_is_live = false;
     let rects = painted(dynamic);
     assert!(
-        !rects.iter().any(|(n, _)| *n == ids::INSP_PLAYER_REACT_PUSH),
+        !rects
+            .iter()
+            .any(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_PLAYER_REACT_PUSH),
         "em Dynamic o empurrao lateral nao e' lido por ninguem, e um slider \
          inerte ensina a desconfiar dos outros"
     );
     for live in [
-        ids::INSP_PLAYER_REACT_SUPPORT,
-        ids::INSP_PLAYER_REACT_MOVEMENT,
+        ph2d_panel_inspector::ids::INSP_PLAYER_REACT_SUPPORT,
+        ph2d_panel_inspector::ids::INSP_PLAYER_REACT_MOVEMENT,
     ] {
         assert!(
             rects.iter().any(|(n, _)| *n == live),
@@ -1288,7 +1344,9 @@ fn the_shove_is_offered_only_to_the_mode_that_reads_it() {
     kinematic.mode_tag = 1;
     let rects = painted(kinematic);
     assert!(
-        rects.iter().any(|(n, _)| *n == ids::INSP_PLAYER_REACT_PUSH),
+        rects
+            .iter()
+            .any(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_PLAYER_REACT_PUSH),
         "e no modo que o LE' ele tem de estar la'"
     );
 }
@@ -1302,12 +1360,15 @@ fn the_shove_is_offered_only_to_the_mode_that_reads_it() {
 #[test]
 fn the_emit_signals_chip_reaches_the_bus_in_both_directions() {
     expect(
-        &click_real(player(), ids::INSP_PLAYER_EMIT_IDS[1]),
+        &click_real(player(), ph2d_panel_inspector::ids::INSP_PLAYER_EMIT_IDS[1]),
         PlayerFieldEdit::EmitSignals(true),
         "ligar a saída de sinais",
     );
     expect(
-        &click_real(emitting(), ids::INSP_PLAYER_EMIT_IDS[0]),
+        &click_real(
+            emitting(),
+            ph2d_panel_inspector::ids::INSP_PLAYER_EMIT_IDS[0],
+        ),
         PlayerFieldEdit::EmitSignals(false),
         "desligar a saída de sinais",
     );
@@ -1327,7 +1388,10 @@ fn the_emit_signals_chip_reaches_the_bus_in_both_directions() {
 fn the_platform_lift_chip_reaches_the_bus_in_every_option() {
     for (i, tag) in [(0usize, "Full"), (1, "Up Only"), (2, "None")] {
         expect(
-            &click_real(player(), ids::INSP_PLAYER_LIFT_POLICY_IDS[i]),
+            &click_real(
+                player(),
+                ph2d_panel_inspector::ids::INSP_PLAYER_LIFT_POLICY_IDS[i],
+            ),
             PlayerFieldEdit::PlatformLift(i as u8),
             tag,
         );
@@ -1344,12 +1408,18 @@ fn the_platform_lift_chip_reaches_the_bus_in_every_option() {
 fn the_walk_off_ledges_chips_reach_the_bus_in_every_option() {
     for (i, allowed, tag) in [(0usize, true, "Yes"), (1, false, "Stop At Edge")] {
         expect(
-            &click_real(player(), ids::INSP_PLAYER_WALK_OFF_IDS[i]),
+            &click_real(
+                player(),
+                ph2d_panel_inspector::ids::INSP_PLAYER_WALK_OFF_IDS[i],
+            ),
             PlayerFieldEdit::WalkOffLedges(allowed),
             tag,
         );
         expect(
-            &click_real(player(), ids::INSP_PLAYER_CROUCH_WALK_OFF_IDS[i]),
+            &click_real(
+                player(),
+                ph2d_panel_inspector::ids::INSP_PLAYER_CROUCH_WALK_OFF_IDS[i],
+            ),
             PlayerFieldEdit::CrouchWalkOffLedges(allowed),
             tag,
         );
@@ -1372,7 +1442,7 @@ fn the_crouching_row_is_offered_only_where_crouching_is_authored() {
     let has = |rects: &[(ph2d_a11y::NodeId, Rect)]| {
         rects
             .iter()
-            .any(|(n, _)| *n == ids::INSP_PLAYER_CROUCH_WALK_OFF_IDS[0])
+            .any(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_PLAYER_CROUCH_WALK_OFF_IDS[0])
     };
     assert!(has(&armed), "com o agachar autorado a row e' pintada");
     assert!(
@@ -1383,7 +1453,7 @@ fn the_crouching_row_is_offered_only_where_crouching_is_authored() {
     let standing = |rects: &[(ph2d_a11y::NodeId, Rect)]| {
         rects
             .iter()
-            .any(|(n, _)| *n == ids::INSP_PLAYER_WALK_OFF_IDS[0])
+            .any(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_PLAYER_WALK_OFF_IDS[0])
     };
     assert!(standing(&armed) && standing(&no_crouch));
 }
@@ -1400,7 +1470,7 @@ fn the_live_readout_takes_room_only_where_there_is_a_player() {
     let mode_y = |rects: &[(ph2d_a11y::NodeId, Rect)]| {
         rects
             .iter()
-            .find(|(n, _)| *n == ids::INSP_PLAYER_MODE_IDS[0])
+            .find(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_PLAYER_MODE_IDS[0])
             .map(|(_, r)| r.y)
     };
     assert!(
@@ -1416,12 +1486,12 @@ fn the_live_readout_takes_room_only_where_there_is_a_player() {
     // a mesma pergunta, e nenhum deles é um knob de afinação.
     let emit_y = with
         .iter()
-        .find(|(n, _)| *n == ids::INSP_PLAYER_EMIT_IDS[0])
+        .find(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_PLAYER_EMIT_IDS[0])
         .map(|(_, r)| r.y)
         .expect("o chip da saída é pintado com o player vivo");
     let float_y = with
         .iter()
-        .find(|(n, _)| *n == ids::INSP_PLAYER_FLOAT)
+        .find(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_PLAYER_FLOAT)
         .map(|(_, r)| r.y)
         .expect("a primeira row de afinação é pintada");
     assert!(

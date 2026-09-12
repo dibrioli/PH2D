@@ -43,7 +43,7 @@ fn is_token_option(id: ph2d_a11y::NodeId) -> bool {
 }
 
 fn is_frame_widget(id: ph2d_a11y::NodeId) -> bool {
-    id == ids::VECTOR_MODE_FRAME
+    id == ph2d_tool_vector::ids::VECTOR_MODE_FRAME
         || id == ids::VECTOR_FRAME_CLIP_OFF
         || id == ids::VECTOR_FRAME_CLIP_ON
         || id == ids::VECTOR_FRAME_PANEL_OFF
@@ -89,21 +89,21 @@ fn is_anchor_widget(id: ph2d_a11y::NodeId) -> bool {
 fn is_mode_pill(id: ph2d_a11y::NodeId) -> bool {
     matches!(
         id,
-        x if x == ids::VECTOR_MODE_SELECT
-            || x == ids::VECTOR_MODE_NODE
-            || x == ids::VECTOR_MODE_PEN
-            || x == ids::VECTOR_MODE_PENCIL
-            || x == ids::VECTOR_MODE_SHAPE
-            || x == ids::VECTOR_MODE_TEXT
-            || x == ids::VECTOR_MODE_CONNECT
-            || x == ids::VECTOR_MODE_BUILD
-            || x == ids::VECTOR_MODE_PICKBLEND
-            || x == ids::VECTOR_MODE_FILLET
-            || x == ids::VECTOR_MODE_CHAMFER
-            || x == ids::VECTOR_MODE_WIDTH
-            || x == ids::VECTOR_MODE_CUT
-            || x == ids::VECTOR_MODE_TRIM
-            || x == ids::VECTOR_MODE_BUCKET
+        x if x == ph2d_tool_vector::ids::VECTOR_MODE_SELECT
+            || x == ph2d_tool_vector::ids::VECTOR_MODE_NODE
+            || x == ph2d_tool_vector::ids::VECTOR_MODE_PEN
+            || x == ph2d_tool_vector::ids::VECTOR_MODE_PENCIL
+            || x == ph2d_tool_vector::ids::VECTOR_MODE_SHAPE
+            || x == ph2d_tool_vector::ids::VECTOR_MODE_TEXT
+            || x == ph2d_tool_vector::ids::VECTOR_MODE_CONNECT
+            || x == ph2d_tool_vector::ids::VECTOR_MODE_BUILD
+            || x == ph2d_tool_vector::ids::VECTOR_MODE_PICKBLEND
+            || x == ph2d_tool_vector::ids::VECTOR_MODE_FILLET
+            || x == ph2d_tool_vector::ids::VECTOR_MODE_CHAMFER
+            || x == ph2d_tool_vector::ids::VECTOR_MODE_WIDTH
+            || x == ph2d_tool_vector::ids::VECTOR_MODE_CUT
+            || x == ph2d_tool_vector::ids::VECTOR_MODE_TRIM
+            || x == ph2d_tool_vector::ids::VECTOR_MODE_BUCKET
             // ⭐ O 17º pill: o OSSO (estudo 42 item 5). Fora daqui ele PINTA, ACENDE sob o rato e o
             // `Click` morre no painel — o modo nunca troca. É a metade do bug #29 que só o gesto
             // REAL apanha.
@@ -120,9 +120,9 @@ fn is_mode_pill(id: ph2d_a11y::NodeId) -> bool {
             || x == ids::VECTOR_PATH_WELD
             // A FONTE da largura do lápis (W1d) — três chips exclusivos, do mesmo assunto:
             // com que ferramenta, e como, o traço nasce.
-            || x == ids::VECTOR_PENCIL_W_UNIFORM
-            || x == ids::VECTOR_PENCIL_W_SPEED
-            || x == ids::VECTOR_PENCIL_W_PRESSURE
+            || x == ph2d_tool_vector::ids::VECTOR_PENCIL_W_UNIFORM
+            || x == ph2d_tool_vector::ids::VECTOR_PENCIL_W_SPEED
+            || x == ph2d_tool_vector::ids::VECTOR_PENCIL_W_PRESSURE
     )
 }
 
@@ -202,8 +202,8 @@ pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         || is_morph_states_control(id)
         // **A FORMA do marquee** (`Box | Lasso`) — a tool é a dona do valor pegajoso, então o
         // clique atravessa o barramento como o dos pills de modo.
-        || id == ids::VECTOR_MARQUEE_BOX
-        || id == ids::VECTOR_MARQUEE_LASSO
+        || id == ph2d_tool_vector::ids::VECTOR_MARQUEE_BOX
+        || id == ph2d_tool_vector::ids::VECTOR_MARQUEE_LASSO
         // **Resize Box** (W3b) — o override mora no COMPONENTE, então o clique atravessa o
         // barramento. Sem esta linha ele pintaria, acenderia sob o rato e o Click morreria aqui.
         || id == ids::VECTOR_TRANSFORM_RESIZE_BOX
@@ -217,10 +217,10 @@ pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         //
         // ⚠️ Os quatro tipos são percorridos pela MESMA porta que os pinta e que resolve o clique
         // (`SymmetryKind::ALL` → `symmetry_kind_id`): um tipo novo entra aqui sozinho.
-        || id == ids::VECTOR_SYM_OFF
-        || id == ids::VECTOR_SYM_ON
-        || id == ids::VECTOR_SYM_FUSE_OFF
-        || id == ids::VECTOR_SYM_FUSE_ON
+        || id == ph2d_tool_vector::ids::VECTOR_SYM_OFF
+        || id == ph2d_tool_vector::ids::VECTOR_SYM_ON
+        || id == ph2d_tool_vector::ids::VECTOR_SYM_FUSE_OFF
+        || id == ph2d_tool_vector::ids::VECTOR_SYM_FUSE_ON
         || id == ids::VECTOR_SYM_APPLY
         || ph2d_symmetry::SymmetryKind::ALL
             .iter()
@@ -237,18 +237,18 @@ pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         || id == ids::VECTOR_TEXT_ALIGN_LEFT
         || id == ids::VECTOR_TEXT_ALIGN_CENTER
         || id == ids::VECTOR_TEXT_ALIGN_RIGHT
-        || id == ids::VECTOR_ALIGN_CENTRE
-        || id == ids::VECTOR_ALIGN_INNER
-        || id == ids::VECTOR_ALIGN_OUTER
-        || id == ids::VECTOR_CAP_BUTT
-        || id == ids::VECTOR_CAP_ROUND
-        || id == ids::VECTOR_CAP_SQUARE
-        || id == ids::VECTOR_JOIN_MITER
-        || id == ids::VECTOR_JOIN_ROUND
-        || id == ids::VECTOR_JOIN_BEVEL
-        || id == ids::VECTOR_VERT_CORNER
-        || id == ids::VECTOR_VERT_SMOOTH
-        || id == ids::VECTOR_VERT_SYMMETRIC
+        || id == ph2d_tool_vector::ids::VECTOR_ALIGN_CENTRE
+        || id == ph2d_tool_vector::ids::VECTOR_ALIGN_INNER
+        || id == ph2d_tool_vector::ids::VECTOR_ALIGN_OUTER
+        || id == ph2d_tool_vector::ids::VECTOR_CAP_BUTT
+        || id == ph2d_tool_vector::ids::VECTOR_CAP_ROUND
+        || id == ph2d_tool_vector::ids::VECTOR_CAP_SQUARE
+        || id == ph2d_tool_vector::ids::VECTOR_JOIN_MITER
+        || id == ph2d_tool_vector::ids::VECTOR_JOIN_ROUND
+        || id == ph2d_tool_vector::ids::VECTOR_JOIN_BEVEL
+        || id == ph2d_tool_vector::ids::VECTOR_VERT_CORNER
+        || id == ph2d_tool_vector::ids::VECTOR_VERT_SMOOTH
+        || id == ph2d_tool_vector::ids::VECTOR_VERT_SYMMETRIC
         || id == ids::VECTOR_VERT_DELETE
         || id == ids::VECTOR_VERT_SEL_SUBPATH
         || id == ids::VECTOR_VERT_SEL_SAME
@@ -264,7 +264,7 @@ pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         || is_fx_button(id)
         // O botão de SEÇÃO "Apply" (assa a pilha de efeitos). Fora daqui pintaria e estaria
         // MORTO — a shell classifica-o via `fx_bridge_dispatch::classify_click`.
-        || id == ids::VECTOR_FX_APPLY
+        || id == ph2d_tool_vector::ids::VECTOR_FX_APPLY
         // ⭐⭐⭐ **Os verbos do ESQUELETO, pela TABELA** — eles mexem no MUNDO (um componente da
         // entidade), então o clique é da shell.
         //
@@ -294,9 +294,9 @@ pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         || is_token_option(id)
         || is_prefab_click(id)
         // Expand: os dois COMANDOS (a junção não vem aqui — é panel-local).
-        || id == ids::VECTOR_EXPAND_OFFSET_PATH
-        || id == ids::VECTOR_EXPAND_OUTLINE_STROKE
-        || id == ids::VECTOR_EXPAND_POWER_STROKE
+        || id == ph2d_tool_vector::ids::VECTOR_EXPAND_OFFSET_PATH
+        || id == ph2d_tool_vector::ids::VECTOR_EXPAND_OUTLINE_STROKE
+        || id == ph2d_tool_vector::ids::VECTOR_EXPAND_POWER_STROKE
         // Os perfis nomeados (W2b): o clique escreve os quatro sliders E arma o perfil vivo na
         // seleção, e as duas metades são da SHELL (é ela que tem store e cena). Panel-local, como
         // o Side/Corner, deixaria a forma sem perfil e o botão aceso.
@@ -314,29 +314,29 @@ pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         || id == ids::VECTOR_RULERS_OFF
         || id == ids::VECTOR_RULERS_ON
         || id == ids::VECTOR_ARRANGE_DUPLICATE
-        || id == ids::VECTOR_ARRANGE_TO_BACK
-        || id == ids::VECTOR_ARRANGE_BACKWARD
-        || id == ids::VECTOR_ARRANGE_FORWARD
-        || id == ids::VECTOR_ARRANGE_TO_FRONT
-        || id == ids::VECTOR_ARRANGE_FLIP_H
-        || id == ids::VECTOR_ARRANGE_FLIP_V
-        || id == ids::VECTOR_ARRANGE_ROTATE_CW
-        || id == ids::VECTOR_ARRANGE_ROTATE_CCW
-        || id == ids::VECTOR_PATH_SMOOTH
-        || id == ids::VECTOR_PATH_SHARPEN
-        || id == ids::VECTOR_PATH_SIMPLIFY
-        || id == ids::VECTOR_PATH_SUBDIVIDE
+        || id == ph2d_tool_vector::ids::VECTOR_ARRANGE_TO_BACK
+        || id == ph2d_tool_vector::ids::VECTOR_ARRANGE_BACKWARD
+        || id == ph2d_tool_vector::ids::VECTOR_ARRANGE_FORWARD
+        || id == ph2d_tool_vector::ids::VECTOR_ARRANGE_TO_FRONT
+        || id == ph2d_tool_vector::ids::VECTOR_ARRANGE_FLIP_H
+        || id == ph2d_tool_vector::ids::VECTOR_ARRANGE_FLIP_V
+        || id == ph2d_tool_vector::ids::VECTOR_ARRANGE_ROTATE_CW
+        || id == ph2d_tool_vector::ids::VECTOR_ARRANGE_ROTATE_CCW
+        || id == ph2d_tool_vector::ids::VECTOR_PATH_SMOOTH
+        || id == ph2d_tool_vector::ids::VECTOR_PATH_SHARPEN
+        || id == ph2d_tool_vector::ids::VECTOR_PATH_SIMPLIFY
+        || id == ph2d_tool_vector::ids::VECTOR_PATH_SUBDIVIDE
         || id == ids::VECTOR_PATH_CLOSE
-        || id == ids::VECTOR_FILL_KIND_SOLID
-        || id == ids::VECTOR_FILL_KIND_LINEAR
-        || id == ids::VECTOR_FILL_KIND_RADIAL
-        || id == ids::VECTOR_FILL_KIND_MULTI
-        || id == ids::VECTOR_FILL_KIND_PATTERN
+        || id == ph2d_tool_vector::ids::VECTOR_FILL_KIND_SOLID
+        || id == ph2d_tool_vector::ids::VECTOR_FILL_KIND_LINEAR
+        || id == ph2d_tool_vector::ids::VECTOR_FILL_KIND_RADIAL
+        || id == ph2d_tool_vector::ids::VECTOR_FILL_KIND_MULTI
+        || id == ph2d_tool_vector::ids::VECTOR_FILL_KIND_PATTERN
         // ⭐ **A TINTA DO TRAÇO** (plano 35, wave D) — ela mexe no DOCUMENTO (`path.stroke.paint`),
         // então o clique é da shell, como o da fileira do preenchimento logo acima.
-        || id == ids::VECTOR_STROKE_KIND_SOLID
-        || id == ids::VECTOR_STROKE_KIND_PATTERN
-        || id == ids::VECTOR_STROKE_KIND_BRUSH
+        || id == ph2d_tool_vector::ids::VECTOR_STROKE_KIND_SOLID
+        || id == ph2d_tool_vector::ids::VECTOR_STROKE_KIND_PATTERN
+        || id == ph2d_tool_vector::ids::VECTOR_STROKE_KIND_BRUSH
         // ⭐ A secção BRUSH (plano 36, W4): o picker da arte e o `Flip`.
         || id == ids::VECTOR_BRUSH_PICK_SHAPE
         || id == ids::VECTOR_BRUSH_FLIP
@@ -350,20 +350,20 @@ pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         || id == ids::VECTOR_GRAD_REMOVE_POINT
         || id == ids::VECTOR_GRAD_ADD_STOP
         || id == ids::VECTOR_GRAD_REMOVE_STOP
-        || id == ids::VECTOR_ALIGN_LEFT
-        || id == ids::VECTOR_ALIGN_HCENTER
-        || id == ids::VECTOR_ALIGN_RIGHT
-        || id == ids::VECTOR_ALIGN_TOP
-        || id == ids::VECTOR_ALIGN_VCENTER
-        || id == ids::VECTOR_ALIGN_BOTTOM
-        || id == ids::VECTOR_DISTRIBUTE_H
-        || id == ids::VECTOR_DISTRIBUTE_V
+        || id == ph2d_tool_vector::ids::VECTOR_ALIGN_LEFT
+        || id == ph2d_tool_vector::ids::VECTOR_ALIGN_HCENTER
+        || id == ph2d_tool_vector::ids::VECTOR_ALIGN_RIGHT
+        || id == ph2d_tool_vector::ids::VECTOR_ALIGN_TOP
+        || id == ph2d_tool_vector::ids::VECTOR_ALIGN_VCENTER
+        || id == ph2d_tool_vector::ids::VECTOR_ALIGN_BOTTOM
+        || id == ph2d_tool_vector::ids::VECTOR_DISTRIBUTE_H
+        || id == ph2d_tool_vector::ids::VECTOR_DISTRIBUTE_V
         || id == ids::VECTOR_PIVOT_EDIT
         || id == ids::VECTOR_CONVERT_TO_CURVES
         // **Both Ends** (a dupla via). Um `Click` puro — e não um `SetValue` com um booleano
         // — porque o estado é DERIVADO das duas pontas: quem o resolve é a tool, que as
         // possui. Fora daqui o botão pintaria e estaria MORTO.
-        || id == ids::VECTOR_MARKER_BOTH
+        || id == ph2d_tool_vector::ids::VECTOR_MARKER_BOTH
         // ⭐⭐⭐ A PILHA DE APARÊNCIA (estudo 42 item 4) — ver `event_paint_stack::is_button`.
         || super::stack::is_button(id)
 }
@@ -442,10 +442,10 @@ fn is_boolean_click(id: ph2d_a11y::NodeId) -> bool {
         || id == ids::VECTOR_BOOL_LIVE_OFF
         || id == ids::VECTOR_BOOL_LIVE_ON
         || id == ids::VECTOR_BOOL_APPLY
-        || id == ids::VECTOR_BOOL_MINUS_BACK
-        || id == ids::VECTOR_BOOL_TRIM
-        || id == ids::VECTOR_BOOL_CROP
-        || id == ids::VECTOR_BOOL_MERGE
+        || id == ph2d_tool_vector::ids::VECTOR_BOOL_MINUS_BACK
+        || id == ph2d_tool_vector::ids::VECTOR_BOOL_TRIM
+        || id == ph2d_tool_vector::ids::VECTOR_BOOL_CROP
+        || id == ph2d_tool_vector::ids::VECTOR_BOOL_MERGE
         || id == ids::VECTOR_BOOL_SUBTRACT
         || id == ids::VECTOR_BOOL_INTERSECT
         || id == ids::VECTOR_BOOL_EXCLUDE

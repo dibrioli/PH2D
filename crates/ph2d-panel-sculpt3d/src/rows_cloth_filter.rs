@@ -18,8 +18,6 @@
 //! simulação **sem nada na tela os mostrar**. *Vivo e inalcançável é o espelho
 //! do knob morto, e nenhuma sonda deste repo vê a segunda espécie.*
 
-use ph2d_editor_core::ids;
-
 use super::types::{Place, Row};
 use crate::state::{Sculpt3dUi, UiLevel};
 use ph2d_sculpt3d::{ClothFilterProps, Verb};
@@ -41,8 +39,8 @@ const PASSO_INTEIRO: f64 = 1.0; // LITERAL-PX-OK: uma varredura, não uma métri
 
 pub(super) const CLOTH_SWEEPS: Row = Row {
     label: "panel.sculpt3d.cloth_sweeps",
-    slider: ids::SCULPT3D_CLOTH_SWEEPS,
-    chip: ids::SCULPT3D_CLOTH_SWEEPS_NUM,
+    slider: crate::ids::SCULPT3D_CLOTH_SWEEPS,
+    chip: crate::ids::SCULPT3D_CLOTH_SWEEPS_NUM,
     min: ClothFilterProps::SWEEPS.0 as f32,
     max: ClothFilterProps::SWEEPS.1 as f32,
     step: PASSO_INTEIRO,
@@ -58,8 +56,8 @@ pub(super) const CLOTH_SWEEPS: Row = Row {
 
 pub(super) const CFILTER_MASS: Row = Row {
     label: "panel.sculpt3d.cfilter_mass",
-    slider: ids::SCULPT3D_CFILTER_MASS,
-    chip: ids::SCULPT3D_CFILTER_MASS_NUM,
+    slider: crate::ids::SCULPT3D_CFILTER_MASS,
+    chip: crate::ids::SCULPT3D_CFILTER_MASS_NUM,
     min: ClothFilterProps::MASS.0,
     max: ClothFilterProps::MASS.1,
     step: 0.05, // LITERAL-PX-OK: passo de um knob adimensional
@@ -73,8 +71,8 @@ pub(super) const CFILTER_MASS: Row = Row {
 
 pub(super) const CFILTER_DAMPING: Row = Row {
     label: "panel.sculpt3d.cfilter_damping",
-    slider: ids::SCULPT3D_CFILTER_DAMPING,
-    chip: ids::SCULPT3D_CFILTER_DAMPING_NUM,
+    slider: crate::ids::SCULPT3D_CFILTER_DAMPING,
+    chip: crate::ids::SCULPT3D_CFILTER_DAMPING_NUM,
     // ⚠️⚠️ **O piso é `0`, e é a metade do defeito que se vê num número:** a
     // faixa do PINCEL começa em `0,01`, e enquanto o filtro lia o campo dele o
     // valor de omissão do próprio filtro era inalcançável.
@@ -91,8 +89,8 @@ pub(super) const CFILTER_DAMPING: Row = Row {
 
 pub(super) const CFILTER_PLASTICITY: Row = Row {
     label: "panel.sculpt3d.cfilter_plasticity",
-    slider: ids::SCULPT3D_CFILTER_PLASTICITY,
-    chip: ids::SCULPT3D_CFILTER_PLASTICITY_NUM,
+    slider: crate::ids::SCULPT3D_CFILTER_PLASTICITY,
+    chip: crate::ids::SCULPT3D_CFILTER_PLASTICITY_NUM,
     min: ClothFilterProps::PLASTICITY.0,
     max: ClothFilterProps::PLASTICITY.1,
     step: 0.05, // LITERAL-PX-OK: passo de uma fracção
@@ -106,8 +104,8 @@ pub(super) const CFILTER_PLASTICITY: Row = Row {
 
 pub(super) const CFILTER_SWEEPS: Row = Row {
     label: "panel.sculpt3d.cfilter_sweeps",
-    slider: ids::SCULPT3D_CFILTER_SWEEPS,
-    chip: ids::SCULPT3D_CFILTER_SWEEPS_NUM,
+    slider: crate::ids::SCULPT3D_CFILTER_SWEEPS,
+    chip: crate::ids::SCULPT3D_CFILTER_SWEEPS_NUM,
     min: ClothFilterProps::SWEEPS.0 as f32,
     max: ClothFilterProps::SWEEPS.1 as f32,
     step: PASSO_INTEIRO,
@@ -127,8 +125,8 @@ pub(super) const CFILTER_SWEEPS: Row = Row {
 /// intervalo útil espremido nos primeiros por cento do cursor.
 pub(super) const CFILTER_STRETCH: Row = Row {
     label: "panel.sculpt3d.cfilter_stretch",
-    slider: ids::SCULPT3D_CFILTER_STRETCH,
-    chip: ids::SCULPT3D_CFILTER_STRETCH_NUM,
+    slider: crate::ids::SCULPT3D_CFILTER_STRETCH,
+    chip: crate::ids::SCULPT3D_CFILTER_STRETCH_NUM,
     min: ClothFilterProps::STRETCH.0,
     max: ClothFilterProps::STRETCH.1,
     step: 0.05, // LITERAL-PX-OK: passo de uma razão de comprimento
@@ -150,8 +148,8 @@ pub(super) const CFILTER_STRETCH: Row = Row {
 /// peça a `3 %` do volume e deixa `1 151` vincos; com ela, `95 %` e `119`.
 pub(super) const CFILTER_VOLUME: Row = Row {
     label: "panel.sculpt3d.cfilter_volume",
-    slider: ids::SCULPT3D_CFILTER_VOLUME,
-    chip: ids::SCULPT3D_CFILTER_VOLUME_NUM,
+    slider: crate::ids::SCULPT3D_CFILTER_VOLUME,
+    chip: crate::ids::SCULPT3D_CFILTER_VOLUME_NUM,
     min: ClothFilterProps::VOLUME.0,
     max: ClothFilterProps::VOLUME.1,
     step: 0.05, // LITERAL-PX-OK: passo de uma fracção
@@ -195,8 +193,8 @@ pub(super) const CFILTER_VOLUME: Row = Row {
 /// trás sem o dedo voltar. É a única faixa do painel do filtro com piso negativo.
 pub(super) const CFILTER_STRENGTH: Row = Row {
     label: "panel.sculpt3d.cfilter_strength",
-    slider: ids::SCULPT3D_CFILTER_STRENGTH,
-    chip: ids::SCULPT3D_CFILTER_STRENGTH_NUM,
+    slider: crate::ids::SCULPT3D_CFILTER_STRENGTH,
+    chip: crate::ids::SCULPT3D_CFILTER_STRENGTH_NUM,
     min: ClothFilterProps::STRENGTH.0,
     max: ClothFilterProps::STRENGTH.1,
     step: 0.5, // LITERAL-PX-OK: passo de um multiplicador
@@ -210,8 +208,8 @@ pub(super) const CFILTER_STRENGTH: Row = Row {
 
 pub(super) const CFILTER_BEND: Row = Row {
     label: "panel.sculpt3d.cfilter_bend",
-    slider: ids::SCULPT3D_CFILTER_BEND,
-    chip: ids::SCULPT3D_CFILTER_BEND_NUM,
+    slider: crate::ids::SCULPT3D_CFILTER_BEND,
+    chip: crate::ids::SCULPT3D_CFILTER_BEND_NUM,
     min: ClothFilterProps::BEND.0,
     max: ClothFilterProps::BEND.1,
     step: 0.05, // LITERAL-PX-OK: passo de uma fracção

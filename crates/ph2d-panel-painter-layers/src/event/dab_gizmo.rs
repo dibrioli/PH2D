@@ -5,7 +5,6 @@
 //! `set_brush_dab_flatten` / `set_brush_dab_angle`.
 
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_tool_painter::TEX_ANGLE_MAX_DEG;
@@ -16,7 +15,7 @@ use ph2d_tool_painter::TEX_ANGLE_MAX_DEG;
 pub(super) fn on_dab_gizmo_value_changed(host: &mut dyn PanelHostInternal) {
     let Some((_p, channel, _idx, x, y)) = host
         .store_mut()
-        .take_curve_point_drag_if(|p| p == core_ids::PAINTER_BRUSH_DAB_GIZMO)
+        .take_curve_point_drag_if(|p| p == ph2d_tool_painter::ids::PAINTER_BRUSH_DAB_GIZMO)
     else {
         return;
     };
@@ -25,12 +24,12 @@ pub(super) fn on_dab_gizmo_value_changed(host: &mut dyn PanelHostInternal) {
         // Rotation: screen angle (dispatch y is up-inverted, so screen-down = −dy), wrapped to [0,360).
         let full = f64::from(TEX_ANGLE_MAX_DEG);
         let deg = f64::from((-dy).atan2(dx)).to_degrees().rem_euclid(full);
-        (core_ids::PAINTER_BRUSH_DAB_ANGLE, deg)
+        (ph2d_tool_painter::ids::PAINTER_BRUSH_DAB_ANGLE, deg)
     } else {
         // Flatten: radial distance (0.5 = the rim) → 1 - dist, clamped.
         let dist = f64::from((dx * dx + dy * dy).sqrt()) / 0.5;
         (
-            core_ids::PAINTER_BRUSH_DAB_FLATTEN,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_DAB_FLATTEN,
             (1.0 - dist).clamp(0.0, 1.0),
         )
     };

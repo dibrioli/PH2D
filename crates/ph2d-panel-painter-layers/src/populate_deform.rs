@@ -8,11 +8,11 @@ use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState, Text
 
 pub(crate) fn register_deform_widgets(store: &mut WidgetStore) {
     for id in [
-        ph2d_editor_core::ids::PAINTER_DEFORM_SIZE_SLIDER,
-        ph2d_editor_core::ids::PAINTER_DEFORM_PRESSURE_SLIDER,
-        ph2d_editor_core::ids::PAINTER_DEFORM_DISTORTION_SLIDER,
-        ph2d_editor_core::ids::PAINTER_DEFORM_MOMENTUM_SLIDER,
-        ph2d_editor_core::ids::PAINTER_DEFORM_STRENGTH_SLIDER,
+        ph2d_tool_painter::ids::PAINTER_DEFORM_SIZE_SLIDER,
+        ph2d_tool_painter::ids::PAINTER_DEFORM_PRESSURE_SLIDER,
+        ph2d_tool_painter::ids::PAINTER_DEFORM_DISTORTION_SLIDER,
+        ph2d_tool_painter::ids::PAINTER_DEFORM_MOMENTUM_SLIDER,
+        ph2d_tool_painter::ids::PAINTER_DEFORM_STRENGTH_SLIDER,
     ] {
         store.register(
             id,
@@ -25,24 +25,24 @@ pub(crate) fn register_deform_widgets(store: &mut WidgetStore) {
     }
     for (slider, chip) in [
         (
-            ph2d_editor_core::ids::PAINTER_DEFORM_SIZE_SLIDER,
-            ph2d_editor_core::ids::PAINTER_DEFORM_SIZE_CHIP,
+            ph2d_tool_painter::ids::PAINTER_DEFORM_SIZE_SLIDER,
+            ph2d_tool_painter::ids::PAINTER_DEFORM_SIZE_CHIP,
         ),
         (
-            ph2d_editor_core::ids::PAINTER_DEFORM_PRESSURE_SLIDER,
-            ph2d_editor_core::ids::PAINTER_DEFORM_PRESSURE_CHIP,
+            ph2d_tool_painter::ids::PAINTER_DEFORM_PRESSURE_SLIDER,
+            ph2d_tool_painter::ids::PAINTER_DEFORM_PRESSURE_CHIP,
         ),
         (
-            ph2d_editor_core::ids::PAINTER_DEFORM_DISTORTION_SLIDER,
-            ph2d_editor_core::ids::PAINTER_DEFORM_DISTORTION_CHIP,
+            ph2d_tool_painter::ids::PAINTER_DEFORM_DISTORTION_SLIDER,
+            ph2d_tool_painter::ids::PAINTER_DEFORM_DISTORTION_CHIP,
         ),
         (
-            ph2d_editor_core::ids::PAINTER_DEFORM_MOMENTUM_SLIDER,
-            ph2d_editor_core::ids::PAINTER_DEFORM_MOMENTUM_CHIP,
+            ph2d_tool_painter::ids::PAINTER_DEFORM_MOMENTUM_SLIDER,
+            ph2d_tool_painter::ids::PAINTER_DEFORM_MOMENTUM_CHIP,
         ),
         (
-            ph2d_editor_core::ids::PAINTER_DEFORM_STRENGTH_SLIDER,
-            ph2d_editor_core::ids::PAINTER_DEFORM_STRENGTH_CHIP,
+            ph2d_tool_painter::ids::PAINTER_DEFORM_STRENGTH_SLIDER,
+            ph2d_tool_painter::ids::PAINTER_DEFORM_STRENGTH_CHIP,
         ),
     ] {
         store.register(
@@ -59,11 +59,11 @@ pub(crate) fn register_deform_widgets(store: &mut WidgetStore) {
         store.link_slider_number(slider, chip);
         store.set_number_range(chip, 0.0, 1.0, 0.01); // LITERAL-PX-OK: chip 0..1 track step (behaviour value)
     }
-    for id in ph2d_editor_core::ids::PAINTER_DEFORM_MODE_IDS
+    for id in ph2d_tool_painter::ids::PAINTER_DEFORM_MODE_IDS
         .iter()
-        .chain(ph2d_editor_core::ids::PAINTER_DEFORM_TEMPERAMENT_IDS.iter())
-        .chain(ph2d_editor_core::ids::PAINTER_DEFORM_TRANSFORM_MODE_IDS.iter())
-        .chain(ph2d_editor_core::ids::PAINTER_DEFORM_ACTION_IDS.iter())
+        .chain(ph2d_tool_painter::ids::PAINTER_DEFORM_TEMPERAMENT_IDS.iter())
+        .chain(ph2d_tool_painter::ids::PAINTER_DEFORM_TRANSFORM_MODE_IDS.iter())
+        .chain(ph2d_tool_painter::ids::PAINTER_DEFORM_ACTION_IDS.iter())
         .copied()
     {
         store.register(

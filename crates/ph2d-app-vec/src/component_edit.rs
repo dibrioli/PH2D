@@ -48,18 +48,18 @@ pub enum ComponentEdit {
 #[must_use]
 pub fn component_edit_for_id(id: ph2d_editor_core::NodeId) -> Option<ComponentEdit> {
     match id {
-        _ if id == ph2d_editor_core::ids::VECTOR_COMPONENT_CREATE => Some(ComponentEdit::Create),
-        _ if id == ph2d_editor_core::ids::VECTOR_COMPONENT_EDIT => Some(ComponentEdit::Edit),
-        _ if id == ph2d_editor_core::ids::VECTOR_COMPONENT_PLACE => Some(ComponentEdit::Place),
-        _ if id == ph2d_editor_core::ids::VECTOR_COMPONENT_PLACE_LINKED => {
+        _ if id == ph2d_panel_vector::ids::VECTOR_COMPONENT_CREATE => Some(ComponentEdit::Create),
+        _ if id == ph2d_panel_vector::ids::VECTOR_COMPONENT_EDIT => Some(ComponentEdit::Edit),
+        _ if id == ph2d_panel_vector::ids::VECTOR_COMPONENT_PLACE => Some(ComponentEdit::Place),
+        _ if id == ph2d_panel_vector::ids::VECTOR_COMPONENT_PLACE_LINKED => {
             Some(ComponentEdit::PlaceLinked)
         }
-        _ if id == ph2d_editor_core::ids::VECTOR_COMPONENT_DETACH => Some(ComponentEdit::Detach),
-        _ if id == ph2d_editor_core::ids::VECTOR_COMPONENT_RESET => Some(ComponentEdit::Reset),
-        _ if id == ph2d_editor_core::ids::VECTOR_COMPONENT_UPDATE_MAIN => {
+        _ if id == ph2d_panel_vector::ids::VECTOR_COMPONENT_DETACH => Some(ComponentEdit::Detach),
+        _ if id == ph2d_panel_vector::ids::VECTOR_COMPONENT_RESET => Some(ComponentEdit::Reset),
+        _ if id == ph2d_panel_vector::ids::VECTOR_COMPONENT_UPDATE_MAIN => {
             Some(ComponentEdit::UpdateMain)
         }
-        _ if id == ph2d_editor_core::ids::VECTOR_COMPONENT_SWAP => Some(ComponentEdit::Swap),
+        _ if id == ph2d_panel_vector::ids::VECTOR_COMPONENT_SWAP => Some(ComponentEdit::Swap),
         _ => None,
     }
 }

@@ -81,7 +81,7 @@ pub(crate) fn paint_properties_card(
     // ⛔ E as fileiras contam-se pelo que a TABELA DE IDS endereça, não pelo que o modelo traz: o
     // pintor salta o que passa do teto, e uma altura que contasse o vector inteiro deixaria um vão
     // vazio no fim do cartão.
-    let painted = info.rows.len().min(ids::MAX_INSTANCE_AXES);
+    let painted = info.rows.len().min(crate::ids::MAX_INSTANCE_AXES);
     let rows = painted + usize::from(info.beyond > 0);
     // ⛔⛔ **O TÍTULO é MEDIDO, não contado** (auditoria de 2026-08-31, achado A2). Ele carrega o
     // nome que o artista escreveu (`Properties of "…"`) e quebra quando não cabe — e a 1.ª fileira
@@ -119,7 +119,7 @@ pub(crate) fn paint_properties_card(
     ty += title_h;
 
     for (a, ax) in info.rows.iter().enumerate() {
-        let Some(row_ids) = ids::INSP_INSTANCE_AXIS_OPTION.get(a) else {
+        let Some(row_ids) = crate::ids::INSP_INSTANCE_AXIS_OPTION.get(a) else {
             break;
         };
         let label_w = (tw * AXIS_LABEL_FRACTION).min(AXIS_LABEL_MAX_PX);

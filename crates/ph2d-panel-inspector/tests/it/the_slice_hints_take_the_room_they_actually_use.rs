@@ -23,7 +23,6 @@
 //! isso a âncora de baixo é agora o primeiro segmento do Tile Mode, que a seção não pode perder
 //! sem perder a feature.
 
-use ph2d_editor_core::ids;
 use ph2d_editor_core::screens::hero::{InspectorSliceInfo, InspectorSliceMixed};
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_inspector::{InspectorPanel, InspectorState, set_current_inspector_slice};
@@ -113,14 +112,14 @@ fn hint_gap(width: f32) -> f32 {
     // A célula mais baixa da grelha (o canto BR) fecha o bloco de cima; o primeiro segmento do
     // Tile Mode abre o de baixo. Entre os dois só existe a LEGENDA, que é o que este gate mede —
     // e o topo é o MÍNIMO dos segmentos, porque o segmented adapta e pode quebrar em duas filas.
-    let grid_bottom = ids::INSP_SLICE_REGION
+    let grid_bottom = ph2d_panel_inspector::ids::INSP_SLICE_REGION
         .iter()
         .map(|&id| {
             let r = find(id);
             r.y + r.h
         })
         .fold(f32::MIN, f32::max);
-    let seg_top = ids::INSP_SLICE_TILE_MODE
+    let seg_top = ph2d_panel_inspector::ids::INSP_SLICE_TILE_MODE
         .iter()
         .map(|&id| find(id).y)
         .fold(f32::MAX, f32::min);

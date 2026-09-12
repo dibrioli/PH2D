@@ -13,7 +13,6 @@
 //! tinham aberto o caminho.
 
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::ids;
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::screens::hero::InspectorTransformInfo;
 
@@ -46,34 +45,34 @@ pub(crate) fn commit_transform_edit(
     let ang = host.project().display_angle;
     let x_disp = host
         .store()
-        .number_value(ids::INSP_TRANSFORM_POS_X)
+        .number_value(crate::ids::INSP_TRANSFORM_POS_X)
         .unwrap_or(unit.from_meters(info.translation[0], ppm) as f64) as f32;
     let y_disp = host
         .store()
-        .number_value(ids::INSP_TRANSFORM_POS_Y)
+        .number_value(crate::ids::INSP_TRANSFORM_POS_Y)
         .unwrap_or(unit.from_meters(info.translation[1], ppm) as f64) as f32;
     let rot_disp = host
         .store()
-        .number_value(ids::INSP_TRANSFORM_ROT)
+        .number_value(crate::ids::INSP_TRANSFORM_ROT)
         .unwrap_or(ang.from_radians_f64(f64::from(info.rotation_rad))) as f32;
     let sx = host
         .store()
-        .number_value(ids::INSP_TRANSFORM_SCALE_X)
+        .number_value(crate::ids::INSP_TRANSFORM_SCALE_X)
         .unwrap_or(info.scale[0] as f64) as f32;
     let sy = host
         .store()
-        .number_value(ids::INSP_TRANSFORM_SCALE_Y)
+        .number_value(crate::ids::INSP_TRANSFORM_SCALE_Y)
         .unwrap_or(info.scale[1] as f64) as f32;
     // Skew authored in the ACTIVE angle unit, for parity with Rotation; the
     // ECS-commit boundary converts to radians and clamps to
     // Transform::SKEW_LIMIT (ADR-0025-amendment-1 §2.5).
     let skew_x_disp = host
         .store()
-        .number_value(ids::INSP_TRANSFORM_SKEW_X)
+        .number_value(crate::ids::INSP_TRANSFORM_SKEW_X)
         .unwrap_or(ang.from_radians_f64(f64::from(info.skew_rad[0]))) as f32;
     let skew_y_disp = host
         .store()
-        .number_value(ids::INSP_TRANSFORM_SKEW_Y)
+        .number_value(crate::ids::INSP_TRANSFORM_SKEW_Y)
         .unwrap_or(ang.from_radians_f64(f64::from(info.skew_rad[1]))) as f32;
     host.bus_mut().push(EditorAction::InspectorTransformEdit(
         InspectorTransformInfo {

@@ -5,7 +5,6 @@
 //! The on-canvas handle drag and these boxes write the same fields via `route_brush_stencil_event`.
 
 use crate::number_field::{ANGLE_STEP, FINE_STEP, SIZE_STEP, paint_num_row, paint_num_xy};
-use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::zones::Rect;
@@ -74,9 +73,9 @@ pub(crate) fn paint_stencil_card(
         inner_w,
         iy,
         "Size",
-        core_ids::PAINTER_BRUSH_STENCIL_SIZE_X,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_STENCIL_SIZE_X,
         brush.stencil_size[0],
-        core_ids::PAINTER_BRUSH_STENCIL_SIZE_Y,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_STENCIL_SIZE_Y,
         brush.stencil_size[1],
         TEX_SIZE_MIN,
         TEX_SIZE_MAX,
@@ -91,9 +90,9 @@ pub(crate) fn paint_stencil_card(
         inner_w,
         iy,
         "Offset",
-        core_ids::PAINTER_BRUSH_STENCIL_OFFSET_X,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_STENCIL_OFFSET_X,
         brush.stencil_offset[0],
-        core_ids::PAINTER_BRUSH_STENCIL_OFFSET_Y,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_STENCIL_OFFSET_Y,
         brush.stencil_offset[1],
         TEX_OFFSET_MIN,
         TEX_OFFSET_MAX,
@@ -108,7 +107,7 @@ pub(crate) fn paint_stencil_card(
         inner_w,
         iy,
         "Rotation",
-        core_ids::PAINTER_BRUSH_STENCIL_ANGLE,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_STENCIL_ANGLE,
         f32::from(brush.stencil_angle_deg),
         0.0,
         f32::from(TEX_ANGLE_MAX_DEG),

@@ -7,8 +7,6 @@
 //! lâmpada e os dois AOs descrevem a LEITURA da escultura, não o pincel em mãos.
 //! Esconder um deles seria esconder um número que ninguém escolheu por você.
 
-use ph2d_editor_core::ids;
-
 use super::always;
 use super::types::{Place, Row};
 use crate::state::{Sculpt3dUi, UiLevel};
@@ -28,8 +26,8 @@ fn under_the_rig(u: &Sculpt3dUi) -> bool {
 pub(super) static SHADING: &[Row] = &[
     Row {
         label: "panel.sculpt3d.cavity",
-        slider: ids::SCULPT3D_CAVITY,
-        chip: ids::SCULPT3D_CAVITY_NUM,
+        slider: crate::ids::SCULPT3D_CAVITY,
+        chip: crate::ids::SCULPT3D_CAVITY_NUM,
         min: 0.0,
         max: 1.0,
         step: 0.05, // LITERAL-PX-OK: passo de um knob adimensional, não métrica de layout
@@ -42,8 +40,8 @@ pub(super) static SHADING: &[Row] = &[
     },
     Row {
         label: "panel.sculpt3d.light_az",
-        slider: ids::SCULPT3D_LIGHT_AZ,
-        chip: ids::SCULPT3D_LIGHT_AZ_NUM,
+        slider: crate::ids::SCULPT3D_LIGHT_AZ,
+        chip: crate::ids::SCULPT3D_LIGHT_AZ_NUM,
         min: 0.0,
         // 359 e não 360: os dois extremos seriam o MESMO azimute, e uma pista
         // cujas duas pontas significam a mesma coisa tem um degrau invisível.
@@ -58,8 +56,8 @@ pub(super) static SHADING: &[Row] = &[
     },
     Row {
         label: "panel.sculpt3d.light_elev",
-        slider: ids::SCULPT3D_LIGHT_ELEV,
-        chip: ids::SCULPT3D_LIGHT_ELEV_NUM,
+        slider: crate::ids::SCULPT3D_LIGHT_ELEV,
+        chip: crate::ids::SCULPT3D_LIGHT_ELEV_NUM,
         // ⚠️ O piso é o do RESOLVEDOR de luz, não um número escolhido aqui:
         // abaixo dele a resposta plana vai a zero e o modelo relativo dividiria
         // por ~0. Um literal aqui seria a segunda cópia dele.
@@ -75,8 +73,8 @@ pub(super) static SHADING: &[Row] = &[
     },
     Row {
         label: "panel.sculpt3d.env",
-        slider: ids::SCULPT3D_ENV,
-        chip: ids::SCULPT3D_ENV_NUM,
+        slider: crate::ids::SCULPT3D_ENV,
+        chip: crate::ids::SCULPT3D_ENV_NUM,
         min: 0.0,
         max: 1.0,
         step: 0.05, // LITERAL-PX-OK: passo de um knob adimensional, não métrica de layout
@@ -95,8 +93,8 @@ pub(super) static SHADING: &[Row] = &[
     },
     Row {
         label: "panel.sculpt3d.ao",
-        slider: ids::SCULPT3D_AO,
-        chip: ids::SCULPT3D_AO_NUM,
+        slider: crate::ids::SCULPT3D_AO,
+        chip: crate::ids::SCULPT3D_AO_NUM,
         min: 0.0,
         max: 1.0,
         step: 0.05, // LITERAL-PX-OK: passo de um knob adimensional, não métrica de layout
@@ -109,8 +107,8 @@ pub(super) static SHADING: &[Row] = &[
     },
     Row {
         label: "panel.sculpt3d.ssao",
-        slider: ids::SCULPT3D_SSAO,
-        chip: ids::SCULPT3D_SSAO_NUM,
+        slider: crate::ids::SCULPT3D_SSAO,
+        chip: crate::ids::SCULPT3D_SSAO_NUM,
         min: 0.0,
         max: 1.0,
         step: 0.05, // LITERAL-PX-OK: passo de um knob adimensional, não métrica de layout
@@ -123,8 +121,8 @@ pub(super) static SHADING: &[Row] = &[
     },
     Row {
         label: "panel.sculpt3d.sss",
-        slider: ids::SCULPT3D_SSS,
-        chip: ids::SCULPT3D_SSS_NUM,
+        slider: crate::ids::SCULPT3D_SSS,
+        chip: crate::ids::SCULPT3D_SSS_NUM,
         min: 0.0,
         max: 1.0,
         step: 0.05, // LITERAL-PX-OK: passo de um knob adimensional, não métrica de layout
@@ -148,8 +146,8 @@ pub(super) static SHADING: &[Row] = &[
     },
     Row {
         label: "panel.sculpt3d.sss_scatter",
-        slider: ids::SCULPT3D_SSS_SCATTER,
-        chip: ids::SCULPT3D_SSS_SCATTER_NUM,
+        slider: crate::ids::SCULPT3D_SSS_SCATTER,
+        chip: crate::ids::SCULPT3D_SSS_SCATTER_NUM,
         min: 0.0,
         // ⚠️ **O teto é 1,0 = "a luz atravessa a peça inteira"**, e ele não é um
         // limite de recurso: é onde a grandeza deixa de descrever um sólido. O

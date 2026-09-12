@@ -417,7 +417,7 @@ fn every_toolbar_control_is_actually_painted() {
     );
 
     // E a célula do quadro 0 tem de estar lá — é o alvo de clique do usuário.
-    let cell = ph2d_editor_core::ids::flip_cell_id(0);
+    let cell = ph2d_panel_flip_frames::ids::flip_cell_id(0);
     assert!(
         painted
             .iter()
@@ -482,7 +482,7 @@ fn the_scrub_lane_is_painted_with_a_hittable_rect() {
     // régua é um pega-mão fino, não a metade da tira).
     let cell0 = painted
         .iter()
-        .find(|(w, r)| *w == ph2d_editor_core::ids::flip_cell_id(0) && r.h > 0.0)
+        .find(|(w, r)| *w == ph2d_panel_flip_frames::ids::flip_cell_id(0) && r.h > 0.0)
         .map(|(_, r)| *r)
         .expect("a célula 0 não foi pintada");
     assert!(

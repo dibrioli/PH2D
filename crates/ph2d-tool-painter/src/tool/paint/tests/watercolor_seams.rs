@@ -863,7 +863,7 @@ fn watercolor_shape_automatic_continuity_and_image_silhouette() {
     let mut manual_t = white_canvas(size, 8.0);
     wet(&mut manual_t);
     manual_t.handle_panel_event(ph2d_editor_core::tool::PanelEvent::Click(
-        ph2d_editor_core::ids::PAINTER_SHAPE_WATERCOLOR_AUTO,
+        crate::ids::PAINTER_SHAPE_WATERCOLOR_AUTO,
     ));
     let b = manual_t.brush_settings();
     assert!(!b.watercolor_shape_auto, "toggle turned Automatic off");

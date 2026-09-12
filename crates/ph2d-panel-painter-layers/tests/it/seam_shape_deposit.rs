@@ -14,7 +14,6 @@
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::tool::Tool;
@@ -70,7 +69,7 @@ fn digital() -> PainterTool {
 /// disjunção. Os dois ausentes são o que impede esta wave de shipar dois controles mortos.
 #[test]
 fn the_deposit_rows_live_where_the_deposit_lays_body() {
-    let id = core_ids::PAINTER_SHAPE_RELIEF;
+    let id = ph2d_tool_painter::ids::PAINTER_SHAPE_RELIEF;
     for media in [PaintMedia::Digital, PaintMedia::Impasto] {
         let mut tool = PainterTool::default();
         tool.set_paint_media(media);
@@ -105,7 +104,7 @@ fn the_deposit_rows_live_where_the_deposit_lays_body() {
 #[test]
 fn the_deposit_relief_row_lands_on_the_tool() {
     let mut tool = digital();
-    let id = core_ids::PAINTER_SHAPE_RELIEF;
+    let id = ph2d_tool_painter::ids::PAINTER_SHAPE_RELIEF;
     let (mut host, mut st, rects) = painted(&tool);
     assert!(
         rect_of(&rects, id).is_some(),
@@ -131,7 +130,7 @@ fn the_deposit_relief_row_lands_on_the_tool() {
 /// **Mutação que tem de sangrar:** pintar o Shine incondicionalmente.
 #[test]
 fn the_shine_row_appears_with_the_relief_and_not_without_it() {
-    let shine = core_ids::PAINTER_SHAPE_SHINE;
+    let shine = ph2d_tool_painter::ids::PAINTER_SHAPE_SHINE;
 
     let bare = digital();
     let (_h, _s, rects) = painted(&bare);
@@ -165,7 +164,7 @@ fn the_shine_row_appears_with_the_relief_and_not_without_it() {
 fn the_shine_row_lands_on_the_paints_material() {
     let mut tool = digital();
     tool.set_shape_relief(0.5);
-    let id = core_ids::PAINTER_SHAPE_SHINE;
+    let id = ph2d_tool_painter::ids::PAINTER_SHAPE_SHINE;
     let (mut host, mut st, rects) = painted(&tool);
     assert!(
         rect_of(&rects, id).is_some(),

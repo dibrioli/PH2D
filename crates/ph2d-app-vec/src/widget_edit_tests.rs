@@ -32,16 +32,16 @@ fn worn_kind(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> Option<u16> {
 #[test]
 fn every_painted_id_becomes_a_verb() {
     assert_eq!(
-        widget_edit_for_id(ph2d_editor_core::ids::VECTOR_WIDGET_WEAR),
+        widget_edit_for_id(ph2d_panel_vector::ids::VECTOR_WIDGET_WEAR),
         Some(WidgetEdit::Wear)
     );
     assert_eq!(
-        widget_edit_for_id(ph2d_editor_core::ids::VECTOR_WIDGET_REMOVE),
+        widget_edit_for_id(ph2d_panel_vector::ids::VECTOR_WIDGET_REMOVE),
         Some(WidgetEdit::Remove)
     );
-    for i in 0..ph2d_editor_core::ids::MAX_WIDGET_KINDS {
+    for i in 0..ph2d_panel_vector::ids::MAX_WIDGET_KINDS {
         assert_eq!(
-            widget_edit_for_id(ph2d_editor_core::ids::vector_widget_kind_id(i)),
+            widget_edit_for_id(ph2d_panel_vector::ids::vector_widget_kind_id(i)),
             Some(WidgetEdit::Kind(i)),
             "o chip {i} chega ao barramento e vira NADA"
         );
@@ -51,14 +51,14 @@ fn every_painted_id_becomes_a_verb() {
     // literalmente a lição que o cabeçalho deste arquivo conta.
     for i in 0..=ph2d_editor_core::icons::IconId::all().len() {
         assert_eq!(
-            widget_edit_for_id(ph2d_editor_core::ids::vector_widget_icon_option_id(i)),
+            widget_edit_for_id(ph2d_panel_vector::ids::vector_widget_icon_option_id(i)),
             Some(WidgetEdit::Icon(i)),
             "a linha {i} do picker chega ao barramento e vira NADA"
         );
     }
     // E um id alheio não é sequestrado.
     assert_eq!(
-        widget_edit_for_id(ph2d_editor_core::ids::VECTOR_COMPONENT_SWAP),
+        widget_edit_for_id(ph2d_panel_vector::ids::VECTOR_COMPONENT_SWAP),
         None
     );
 }
@@ -70,10 +70,10 @@ fn every_painted_id_becomes_a_verb() {
 #[test]
 fn the_id_table_covers_the_whole_catalogue() {
     assert!(
-        ph2d_editor_core::ids::MAX_WIDGET_KINDS >= WidgetKind::ALL.len(),
+        ph2d_panel_vector::ids::MAX_WIDGET_KINDS >= WidgetKind::ALL.len(),
         "o catalogo tem {} tipos e a tabela de ids endereca {} — os do fim seriam inalcancaveis",
         WidgetKind::ALL.len(),
-        ph2d_editor_core::ids::MAX_WIDGET_KINDS
+        ph2d_panel_vector::ids::MAX_WIDGET_KINDS
     );
 }
 

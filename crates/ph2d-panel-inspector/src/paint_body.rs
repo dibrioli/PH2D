@@ -159,7 +159,7 @@ fn close_frame_hits(
     // registado sobre um botão que ninguém desenhou é a metade oposta do mesmo defeito.
     if crate::state::current_inspector_transform().is_some() {
         hit_index.register(
-            ids::INSP_ADD_COMPONENT,
+            crate::ids::INSP_ADD_COMPONENT,
             ph2d_editor_core::widget::panel_chrome::panel_header_add_button_rect(rect),
         );
     }

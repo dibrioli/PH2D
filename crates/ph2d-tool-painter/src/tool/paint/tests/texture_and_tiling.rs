@@ -78,7 +78,6 @@ fn buf_varies(b: &[u8]) -> bool {
 
 #[test]
 fn texture_layer_renders_composites_and_edits_live_via_panel_events() {
-    use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::PanelEvent;
     use ph2d_painter_brush::TextureKind;
 
@@ -114,7 +113,7 @@ fn texture_layer_renders_composites_and_edits_live_via_panel_events() {
     // texture layer, so the tool routes the texture widget to it (not the brush).
     let brush_kind_before = t.brush_settings().texture_kind;
     t.handle_panel_event(PanelEvent::SelectOption(
-        core_ids::PAINTER_BRUSH_TEXTURE_KIND,
+        crate::ids::PAINTER_BRUSH_TEXTURE_KIND,
         TextureKind::Checker.to_u8().to_string(),
     ));
     let buf_checker = t.canvas_rgba.as_ref().clone();
@@ -135,7 +134,7 @@ fn texture_layer_renders_composites_and_edits_live_via_panel_events() {
     // A per-pattern param edit also re-renders live (Checker defaults to hard Softness 0.0; push it
     // fully soft so the edge pixels change).
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_BRUSH_TEXTURE_PARAMS[2],
+        crate::ids::PAINTER_BRUSH_TEXTURE_PARAMS[2],
         1.0,
     ));
     let buf_soft = t.canvas_rgba.as_ref().clone();
@@ -162,12 +161,6 @@ fn texture_layer_renders_composites_and_edits_live_via_panel_events() {
 
 #[test]
 fn texture_layer_size_and_offset_panel_events_are_real_valued_and_clamp() {
-    // Regression (Enio 2026-06-25): the Layers texture-layer editor uses the SAME drag-scrub number
-    // fields as the Brush panel — which emit the REAL value — but routed Size/Offset through
-    // normalized (`0..1`) setters. So Size 1.0 mapped to TEX_SIZE_MAX (10.0) and any value < 1 to
-    // `0.1 + v*9.9` (e.g. 0.1 → 1.09). The layer must store the real value, clamped to the real range,
-    // exactly like the brush's `set_brush_texture_size` / `set_brush_texture_offset`.
-    use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::PanelEvent;
     use ph2d_painter_brush::{TEX_OFFSET_MAX, TEX_OFFSET_MIN, TEX_SIZE_MAX, TEX_SIZE_MIN};
 
@@ -187,7 +180,7 @@ fn texture_layer_size_and_offset_panel_events_are_real_valued_and_clamp() {
     // Size: the headline bug — 1.0 must stay 1.0 (used to jump to 10.0), and a sub-1 value stays
     // itself (used to become `0.1 + v*9.9`).
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_BRUSH_TEXTURE_SIZE_X,
+        crate::ids::PAINTER_BRUSH_TEXTURE_SIZE_X,
         1.0,
     ));
     assert!(
@@ -196,7 +189,7 @@ fn texture_layer_size_and_offset_panel_events_are_real_valued_and_clamp() {
         size(&t, 0)
     );
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_BRUSH_TEXTURE_SIZE_Y,
+        crate::ids::PAINTER_BRUSH_TEXTURE_SIZE_Y,
         0.5,
     ));
     assert!(
@@ -206,19 +199,19 @@ fn texture_layer_size_and_offset_panel_events_are_real_valued_and_clamp() {
     );
     // Size clamps to the real bounds (not the normalized track).
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_BRUSH_TEXTURE_SIZE_X,
+        crate::ids::PAINTER_BRUSH_TEXTURE_SIZE_X,
         999.0,
     ));
     assert!((size(&t, 0) - TEX_SIZE_MAX).abs() < 1e-6);
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_BRUSH_TEXTURE_SIZE_X,
+        crate::ids::PAINTER_BRUSH_TEXTURE_SIZE_X,
         -5.0,
     ));
     assert!((size(&t, 0) - TEX_SIZE_MIN).abs() < 1e-6);
 
     // Offset: real-valued + clamps to ±1 the same way.
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_BRUSH_TEXTURE_OFFSET_X,
+        crate::ids::PAINTER_BRUSH_TEXTURE_OFFSET_X,
         -0.5,
     ));
     assert!(
@@ -227,12 +220,12 @@ fn texture_layer_size_and_offset_panel_events_are_real_valued_and_clamp() {
         offset(&t, 0)
     );
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_BRUSH_TEXTURE_OFFSET_Y,
+        crate::ids::PAINTER_BRUSH_TEXTURE_OFFSET_Y,
         5.0,
     ));
     assert!((offset(&t, 1) - TEX_OFFSET_MAX).abs() < 1e-6);
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_BRUSH_TEXTURE_OFFSET_X,
+        crate::ids::PAINTER_BRUSH_TEXTURE_OFFSET_X,
         -5.0,
     ));
     assert!((offset(&t, 0) - TEX_OFFSET_MIN).abs() < 1e-6);
@@ -263,7 +256,6 @@ fn texture_layer_compatible_with_duplicate_and_mask() {
 
 #[test]
 fn brush_texture_section_not_hijacked_when_dock_shows_brush() {
-    use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::PanelEvent;
     use ph2d_painter_brush::TextureKind;
     let mut t = PainterTool::default();
@@ -276,7 +268,7 @@ fn brush_texture_section_not_hijacked_when_dock_shows_brush() {
         _ => panic!("expected a texture layer"),
     };
     t.handle_panel_event(PanelEvent::SelectOption(
-        core_ids::PAINTER_BRUSH_TEXTURE_KIND,
+        crate::ids::PAINTER_BRUSH_TEXTURE_KIND,
         TextureKind::Voronoi.to_u8().to_string(),
     ));
     assert_eq!(
@@ -297,12 +289,11 @@ fn brush_texture_section_not_hijacked_when_dock_shows_brush() {
 
 #[test]
 fn tiling_x_wraps_paint_across_the_sprite_edge_e2e() {
-    use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::PanelEvent;
 
     // Enable Tiling X via the panel (the wiring proof — a dropped Click would leave it off).
     let mut t = white_canvas(64, 6.0);
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_TILING_X));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_BRUSH_TILING_X));
     assert_eq!(
         t.brush_tiling(),
         [true, false],
@@ -342,18 +333,17 @@ fn tiling_x_wraps_paint_across_the_sprite_edge_e2e() {
 
 #[test]
 fn repeat_image_toggle_reaches_the_tool_e2e() {
-    use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::PanelEvent;
 
     let mut t = PainterTool::default();
     assert!(!t.repeat_image(), "off by default");
     // Toggle Repeat Image via the panel (wiring proof — a dropped Click would leave it off).
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_REPEAT_IMAGE));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_BRUSH_REPEAT_IMAGE));
     assert!(t.repeat_image(), "Repeat Image toggle reached the tool");
     assert!(
         t.brush_settings().repeat_image,
         "snapshot mirrors it for the panel"
     );
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_REPEAT_IMAGE));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_BRUSH_REPEAT_IMAGE));
     assert!(!t.repeat_image(), "toggles back off");
 }

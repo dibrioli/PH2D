@@ -19,7 +19,6 @@
 //! **latente**: aquele gate mora em `ph2d-editor-core/tests/`, então um
 //! fechamento por `cargo test -p ph2d-panel-sculpt3d` nunca o alcança.
 
-use ph2d_editor_core::ids;
 use ph2d_sculpt3d::Verb;
 
 use super::{Place, Row};
@@ -34,8 +33,8 @@ fn is_cloth(u: &Sculpt3dUi) -> bool {
 
 pub(super) const CLOTH_LIMIT: Row = Row {
     label: "panel.sculpt3d.cloth_limit",
-    slider: ids::SCULPT3D_CLOTH_LIMIT,
-    chip: ids::SCULPT3D_CLOTH_LIMIT_NUM,
+    slider: crate::ids::SCULPT3D_CLOTH_LIMIT,
+    chip: crate::ids::SCULPT3D_CLOTH_LIMIT_NUM,
     // A faixa é a do alvo (espec §8.1). O recurso que ela nomeia é TEMPO ×
     // ALCANCE: o limite é `R·(1+L)`, logo `10` simula uma esfera de `11·R`.
     min: 0.1,  // LITERAL-PX-OK: piso da faixa do alvo, em raios de pincel
@@ -51,8 +50,8 @@ pub(super) const CLOTH_LIMIT: Row = Row {
 
 pub(super) const CLOTH_FALLOFF: Row = Row {
     label: "panel.sculpt3d.cloth_falloff",
-    slider: ids::SCULPT3D_CLOTH_FALLOFF,
-    chip: ids::SCULPT3D_CLOTH_FALLOFF_NUM,
+    slider: crate::ids::SCULPT3D_CLOTH_FALLOFF,
+    chip: crate::ids::SCULPT3D_CLOTH_FALLOFF_NUM,
     min: 0.0,
     max: 1.0,
     step: 0.05, // LITERAL-PX-OK: knob adimensional
@@ -66,8 +65,8 @@ pub(super) const CLOTH_FALLOFF: Row = Row {
 
 pub(super) const CLOTH_MASS: Row = Row {
     label: "panel.sculpt3d.cloth_mass",
-    slider: ids::SCULPT3D_CLOTH_MASS,
-    chip: ids::SCULPT3D_CLOTH_MASS_NUM,
+    slider: crate::ids::SCULPT3D_CLOTH_MASS,
+    chip: crate::ids::SCULPT3D_CLOTH_MASS_NUM,
     // ⚠️ **O piso não é zero e não é escolha:** a massa é um ganho INVERSO
     // (espec §5.4), logo `0` é uma divisão por zero com o nome de knob.
     min: 0.01, // LITERAL-PX-OK: piso de um ganho INVERSO, nao metrica de design
@@ -83,8 +82,8 @@ pub(super) const CLOTH_MASS: Row = Row {
 
 pub(super) const CLOTH_DAMPING: Row = Row {
     label: "panel.sculpt3d.cloth_damping",
-    slider: ids::SCULPT3D_CLOTH_DAMPING,
-    chip: ids::SCULPT3D_CLOTH_DAMPING_NUM,
+    slider: crate::ids::SCULPT3D_CLOTH_DAMPING,
+    chip: crate::ids::SCULPT3D_CLOTH_DAMPING_NUM,
     // ⚠️ **O piso é `0,01`, que é a omissão** — a faixa do alvo abre onde ele
     // a põe, e é medido que a retenção de velocidade é o que faz o traço
     // ASSENTAR: a `1` o pano pára no instante em que a mão pára.
@@ -101,8 +100,8 @@ pub(super) const CLOTH_DAMPING: Row = Row {
 
 pub(super) const CLOTH_PLASTICITY: Row = Row {
     label: "panel.sculpt3d.cloth_plasticity",
-    slider: ids::SCULPT3D_CLOTH_PLASTICITY,
-    chip: ids::SCULPT3D_CLOTH_PLASTICITY_NUM,
+    slider: crate::ids::SCULPT3D_CLOTH_PLASTICITY,
+    chip: crate::ids::SCULPT3D_CLOTH_PLASTICITY_NUM,
     min: 0.0,
     max: 1.0,
     step: 0.05, // LITERAL-PX-OK: knob adimensional

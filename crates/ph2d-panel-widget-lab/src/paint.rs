@@ -59,7 +59,7 @@ pub(crate) fn paint(state: &mut WidgetLabState, ctx: &mut PaintCtx) {
     let resize = store_imm.panel_resize_delta(ids::LAB_PANEL);
     let (rect, c_off, c_resize) = clamp_panel_rect(base_rect, off, resize, viewport);
     let (live_t, live_drag) = {
-        let (s, v) = store_imm.slider_visual(ids::LAB_LIVE_BOX);
+        let (s, v) = store_imm.slider_visual(crate::ids::LAB_LIVE_BOX);
         (v, s == SliderState::Dragging)
     };
     let scroll = store_imm.panel_scroll(ids::LAB_PANEL);
@@ -126,12 +126,18 @@ pub(crate) fn paint(state: &mut WidgetLabState, ctx: &mut PaintCtx) {
         // ⚠️ **As alças ANTES do recorte.** Elas vivem no bordo da janela, e o recorte do corpo
         // começa abaixo do título — registá-las lá dentro deixaria a de cima fora da banda.
         hit_index.register(
-            ids::LAB_DRAG_HANDLE,
+            crate::ids::LAB_DRAG_HANDLE,
             panel_drag_handle_rect(rect, HEAD_H, PANEL_HEAD_PAD + close_size),
         );
-        hit_index.register(ids::LAB_RESIZE_HANDLE, panel_resize_handle_rect(rect));
-        hit_index.register(ids::LAB_RESIZE_HANDLE_BL, panel_resize_handle_rect_bl(rect));
-        hit_index.register(ids::LAB_CLOSE, close_rect);
+        hit_index.register(
+            crate::ids::LAB_RESIZE_HANDLE,
+            panel_resize_handle_rect(rect),
+        );
+        hit_index.register(
+            crate::ids::LAB_RESIZE_HANDLE_BL,
+            panel_resize_handle_rect_bl(rect),
+        );
+        hit_index.register(crate::ids::LAB_CLOSE, close_rect);
 
         hit_index.push_clip(body);
         ctx.scene.push_clip(&rect_to_vello(body));

@@ -16,7 +16,6 @@
 //! | 5 | o **widget antigo**, lado a lado | estamos mesmo a melhorar |
 
 use crate::state::WidgetLabState;
-use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::HitIndex;
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve};
 use ph2d_editor_core::widget::{PropertyBox, PropertyBoxState, paint_property_box, surface_rect};
@@ -271,8 +270,10 @@ pub(crate) fn paint_study(b: &mut Bench<'_>, st: &WidgetLabState, live: (f32, bo
     // estreita do que o rect, e registar a linha inteira punha a tinta a correr à frente do dedo
     // por `w/(w−14)`. Era o mesmo defeito da linha do produto, mais pequeno e do lado oposto: é
     // por isso que ele passou meses invisível aqui. Ver `property_box::surface_rect`.
-    b.hit
-        .register(ids::LAB_LIVE_BOX, surface_rect(live_rect, st.decorator));
+    b.hit.register(
+        crate::ids::LAB_LIVE_BOX,
+        surface_rect(live_rect, st.decorator),
+    );
     let value = format!("{:.0}%", live.0 * PERCENT);
     let state = if live.1 {
         PropertyBoxState::Dragging
@@ -397,26 +398,29 @@ fn paint_old_widget(b: &mut Bench<'_>, w: f32, row_h: f32) -> f32 {
 fn paint_controls(b: &mut Bench<'_>, st: &WidgetLabState) {
     let s = st.style;
     let chips: [(ph2d_a11y::NodeId, String); 7] = [
-        (ids::LAB_VARIANT_PREV, "\u{2039}".into()),
+        (crate::ids::LAB_VARIANT_PREV, "\u{2039}".into()),
         (
-            ids::LAB_VARIANT_NEXT,
+            crate::ids::LAB_VARIANT_NEXT,
             format!("{} \u{203a}", s.design.label()),
         ),
         (
-            ids::LAB_RADIUS_CYCLE,
+            crate::ids::LAB_RADIUS_CYCLE,
             format!("radius {:.0}", s.radius_px()),
         ),
-        (ids::LAB_DENSITY_CYCLE, format!("row {:.0}", s.row_h_px())),
         (
-            ids::LAB_ACCENT_CYCLE,
+            crate::ids::LAB_DENSITY_CYCLE,
+            format!("row {:.0}", s.row_h_px()),
+        ),
+        (
+            crate::ids::LAB_ACCENT_CYCLE,
             ACCENTS[st.accent % ACCENTS.len()].key().into(),
         ),
         (
-            ids::LAB_DECORATOR_TOGGLE,
+            crate::ids::LAB_DECORATOR_TOGGLE,
             format!("animate {}", if st.decorator { "ON" } else { "off" }),
         ),
         (
-            ids::LAB_COMPARE_TOGGLE,
+            crate::ids::LAB_COMPARE_TOGGLE,
             format!("old {}", if st.compare { "ON" } else { "off" }),
         ),
     ];

@@ -276,11 +276,10 @@ impl PainterTool {
         &mut self,
         event: &ph2d_editor_core::tool::PanelEvent,
     ) -> bool {
-        use ph2d_editor_core::ids as core_ids;
         use ph2d_editor_core::tool::PanelEvent;
         // "+ Texture" creates a layer regardless of the current selection / dock view.
         if let PanelEvent::Click(id) = event
-            && *id == core_ids::PAINTER_LAYERS_ADD_TEXTURE
+            && *id == crate::ids::PAINTER_LAYERS_ADD_TEXTURE
         {
             self.add_texture_layer();
             return true;
@@ -294,19 +293,19 @@ impl PainterTool {
         }
         match event {
             PanelEvent::Click(id) => match *id {
-                x if x == core_ids::PAINTER_BRUSH_TEXTURE_RAMP_ENABLE => {
+                x if x == crate::ids::PAINTER_BRUSH_TEXTURE_RAMP_ENABLE => {
                     self.toggle_texture_layer_ramp_enabled();
                     true
                 }
-                x if x == core_ids::PAINTER_BRUSH_TEXTURE_RAMP_ADD => {
+                x if x == crate::ids::PAINTER_BRUSH_TEXTURE_RAMP_ADD => {
                     self.texture_layer_ramp_add_stop();
                     true
                 }
-                x if x == core_ids::PAINTER_BRUSH_TEXTURE_RAMP_REMOVE => {
+                x if x == crate::ids::PAINTER_BRUSH_TEXTURE_RAMP_REMOVE => {
                     self.texture_layer_ramp_remove_last_stop();
                     true
                 }
-                x if x == core_ids::PAINTER_BRUSH_COLOR_RAMP_RESET => {
+                x if x == crate::ids::PAINTER_BRUSH_COLOR_RAMP_RESET => {
                     self.reset_texture_layer_ramp();
                     true
                 }
@@ -315,24 +314,24 @@ impl PainterTool {
             PanelEvent::SetValue(id, v) => {
                 let v = *v as f32;
                 match *id {
-                    x if x == core_ids::PAINTER_BRUSH_TEXTURE_SIZE_X => {
+                    x if x == crate::ids::PAINTER_BRUSH_TEXTURE_SIZE_X => {
                         self.set_texture_layer_size(0, v);
                         true
                     }
-                    x if x == core_ids::PAINTER_BRUSH_TEXTURE_SIZE_Y => {
+                    x if x == crate::ids::PAINTER_BRUSH_TEXTURE_SIZE_Y => {
                         self.set_texture_layer_size(1, v);
                         true
                     }
-                    x if x == core_ids::PAINTER_BRUSH_TEXTURE_OFFSET_X => {
+                    x if x == crate::ids::PAINTER_BRUSH_TEXTURE_OFFSET_X => {
                         self.set_texture_layer_offset(0, v);
                         true
                     }
-                    x if x == core_ids::PAINTER_BRUSH_TEXTURE_OFFSET_Y => {
+                    x if x == crate::ids::PAINTER_BRUSH_TEXTURE_OFFSET_Y => {
                         self.set_texture_layer_offset(1, v);
                         true
                     }
                     x => {
-                        if let Some(slot) = core_ids::PAINTER_BRUSH_TEXTURE_PARAMS
+                        if let Some(slot) = crate::ids::PAINTER_BRUSH_TEXTURE_PARAMS
                             .iter()
                             .position(|&p| p == x)
                         {
@@ -345,31 +344,31 @@ impl PainterTool {
                 }
             }
             PanelEvent::SelectOption(id, value) => match *id {
-                x if x == core_ids::PAINTER_BRUSH_TEXTURE_KIND => {
+                x if x == crate::ids::PAINTER_BRUSH_TEXTURE_KIND => {
                     if let Ok(k) = value.parse::<u8>() {
                         self.set_texture_layer_kind(k);
                     }
                     true
                 }
-                x if x == core_ids::PAINTER_BRUSH_TEXTURE_RAMP_MODE => {
+                x if x == crate::ids::PAINTER_BRUSH_TEXTURE_RAMP_MODE => {
                     if let Ok(m) = value.parse::<u8>() {
                         self.set_texture_layer_ramp_mode(m);
                     }
                     true
                 }
-                x if x == core_ids::PAINTER_BRUSH_TEXTURE_RAMP_INTERP => {
+                x if x == crate::ids::PAINTER_BRUSH_TEXTURE_RAMP_INTERP => {
                     if let Ok(i) = value.parse::<u8>() {
                         self.set_texture_layer_ramp_interp(i);
                     }
                     true
                 }
-                x if x == core_ids::PAINTER_BRUSH_TEXTURE_RAMP_ALPHA_MODE => {
+                x if x == crate::ids::PAINTER_BRUSH_TEXTURE_RAMP_ALPHA_MODE => {
                     if let Ok(m) = value.parse::<u8>() {
                         self.set_texture_layer_ramp_alpha_mode(m);
                     }
                     true
                 }
-                x if x == core_ids::PAINTER_BRUSH_TEXTURE_RAMP_SWATCH => {
+                x if x == crate::ids::PAINTER_BRUSH_TEXTURE_RAMP_SWATCH => {
                     let mut it = value.split(',').filter_map(|p| p.parse::<i32>().ok());
                     if let (Some(sid), Some(r), Some(g), Some(b), Some(a)) =
                         (it.next(), it.next(), it.next(), it.next(), it.next())
@@ -381,7 +380,7 @@ impl PainterTool {
                     }
                     true
                 }
-                x if x == core_ids::PAINTER_BRUSH_TEXTURE_RAMP_EDIT => {
+                x if x == crate::ids::PAINTER_BRUSH_TEXTURE_RAMP_EDIT => {
                     let mut it = value.split(':');
                     if let (Some(Ok(sid)), Some(Ok(pos))) = (
                         it.next().map(str::parse::<u8>),

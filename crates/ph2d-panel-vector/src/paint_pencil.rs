@@ -9,7 +9,6 @@ use ph2d_tool_vector::params::{
     fidelity_px_to_slider,
 };
 
-use crate::ids;
 use crate::paint_sections::BodyCtx;
 
 impl BodyCtx<'_> {
@@ -37,7 +36,7 @@ impl BodyCtx<'_> {
     /// extremos locais de propósito, e um tremor é um extremo local: nenhuma Fidelity o remove.
     pub(crate) fn pencil_section(&mut self, snap: &VectorStyleSnapshot, y: f32) -> f32 {
         let (mut y, collapsed) = self.section_header(
-            ids::VECTOR_SECTION_PENCIL,
+            ph2d_tool_vector::ids::VECTOR_SECTION_PENCIL,
             tr("panel.vector.section.pencil"),
             y,
         );
@@ -47,17 +46,17 @@ impl BodyCtx<'_> {
         // O store é a fonte da verdade do knob (o arrasto manda); o default do tool só o semeia.
         let fid_track = self
             .store
-            .slider(ids::VECTOR_PENCIL_FIDELITY)
+            .slider(ph2d_tool_vector::ids::VECTOR_PENCIL_FIDELITY)
             .map(|(_, v)| v)
             .unwrap_or_else(|| fidelity_px_to_slider(PENCIL_FIDELITY_DEFAULT_PX));
         let fid_px = self
             .store
-            .number_value(ids::VECTOR_PENCIL_FIDELITY_NUM)
+            .number_value(ph2d_tool_vector::ids::VECTOR_PENCIL_FIDELITY_NUM)
             .unwrap_or(PENCIL_FIDELITY_DEFAULT_PX);
         y = self.slider_row(
             "Fidelity",
-            ids::VECTOR_PENCIL_FIDELITY,
-            ids::VECTOR_PENCIL_FIDELITY_NUM,
+            ph2d_tool_vector::ids::VECTOR_PENCIL_FIDELITY,
+            ph2d_tool_vector::ids::VECTOR_PENCIL_FIDELITY_NUM,
             fid_track,
             fid_px,
             &format!("{fid_px:.1} px"),
@@ -65,20 +64,20 @@ impl BodyCtx<'_> {
         );
         let stab_track = self
             .store
-            .slider(ids::VECTOR_PENCIL_STABILIZER)
+            .slider(ph2d_tool_vector::ids::VECTOR_PENCIL_STABILIZER)
             .map(|(_, v)| v)
             .unwrap_or(PENCIL_STABILIZER_DEFAULT);
         // O chip já fala por cento (o mapeamento vive no `link_slider_number_mapped`).
         let stab_pct = self
             .store
-            .number_value(ids::VECTOR_PENCIL_STABILIZER_NUM)
+            .number_value(ph2d_tool_vector::ids::VECTOR_PENCIL_STABILIZER_NUM)
             .unwrap_or(f64::from(
                 PENCIL_STABILIZER_DEFAULT * PENCIL_STABILIZER_SLIDER_SCALE,
             ));
         y = self.slider_row(
             "Stabilizer",
-            ids::VECTOR_PENCIL_STABILIZER,
-            ids::VECTOR_PENCIL_STABILIZER_NUM,
+            ph2d_tool_vector::ids::VECTOR_PENCIL_STABILIZER,
+            ph2d_tool_vector::ids::VECTOR_PENCIL_STABILIZER_NUM,
             stab_track,
             stab_pct,
             &format!("{stab_pct:.0}%"),
@@ -97,17 +96,17 @@ impl BodyCtx<'_> {
         // `paint_expand`.
         let width_opts: [(ph2d_a11y::NodeId, &str, bool); 3] = [
             (
-                ids::VECTOR_PENCIL_W_UNIFORM,
+                ph2d_tool_vector::ids::VECTOR_PENCIL_W_UNIFORM,
                 tr("panel.vector.pencil.width.uniform"),
                 src == Ws::Uniform,
             ),
             (
-                ids::VECTOR_PENCIL_W_SPEED,
+                ph2d_tool_vector::ids::VECTOR_PENCIL_W_SPEED,
                 tr("panel.vector.pencil.width.speed"),
                 src == Ws::Speed,
             ),
             (
-                ids::VECTOR_PENCIL_W_PRESSURE,
+                ph2d_tool_vector::ids::VECTOR_PENCIL_W_PRESSURE,
                 tr("panel.vector.pencil.width.pressure"),
                 src == Ws::Pressure,
             ),

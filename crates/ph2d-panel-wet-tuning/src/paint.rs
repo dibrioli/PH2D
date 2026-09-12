@@ -86,7 +86,7 @@ pub(crate) fn paint(_state: &mut WetTuningPanelState, ctx: &mut PaintCtx) {
     // owns (visibility is the tool's authored fact; the bridge mirrors it).
     paint_panel_close_button(
         rect,
-        ids::WET_TUNING_CLOSE,
+        ph2d_tool_painter::ids::WET_TUNING_CLOSE,
         ctx.host.hit_index_mut(),
         ctx.scene,
         theme,
@@ -122,20 +122,23 @@ pub(crate) fn paint(_state: &mut WetTuningPanelState, ctx: &mut PaintCtx) {
     paint_panel_corner_dot_bl(rect, ctx.scene, theme);
     let hit_index = ctx.host.hit_index_mut();
     hit_index.register(
-        ids::WET_TUNING_RESIZE_HANDLE,
+        ph2d_tool_painter::ids::WET_TUNING_RESIZE_HANDLE,
         panel_resize_handle_rect(rect),
     );
     hit_index.register(
-        ids::WET_TUNING_RESIZE_HANDLE_BL,
+        ph2d_tool_painter::ids::WET_TUNING_RESIZE_HANDLE_BL,
         panel_resize_handle_rect_bl(rect),
     );
     hit_index.register(
-        ids::WET_TUNING_DRAG_HANDLE,
+        ph2d_tool_painter::ids::WET_TUNING_DRAG_HANDLE,
         panel_drag_handle_rect(rect, body_top - rect.y, PANEL_HEADER_CLOSE_RESERVE),
     );
     // The X lives in the reserve the band leaves clear — re-register its hit
     // rect here too, else a row scrolled under the reserve outranks it.
-    hit_index.register(ids::WET_TUNING_CLOSE, panel_close_button_rect(rect));
+    hit_index.register(
+        ph2d_tool_painter::ids::WET_TUNING_CLOSE,
+        panel_close_button_rect(rect),
+    );
 }
 
 fn paint_body(
@@ -165,8 +168,10 @@ fn paint_body(
                 // The PAPER header carries the eye — the paperVisibility
                 // master's on/off face (the same authored fact as the basic
                 // section's Paper checkbox).
-                matches!(section.group, ph2d_wet_paint::tuning::KnobGroup::Paper)
-                    .then_some((ids::WET_TUNING_PAPER_EYE, brush.wet_paper_visual))
+                matches!(section.group, ph2d_wet_paint::tuning::KnobGroup::Paper).then_some((
+                    ph2d_tool_painter::ids::WET_TUNING_PAPER_EYE,
+                    brush.wet_paper_visual,
+                ))
             },
             tr(section.label),
             fold,
@@ -194,27 +199,33 @@ fn paint_body(
         x,
         w,
         y,
-        ids::WET_TUNING_GROUP_HEADERS[5],
-        ids::WET_TUNING_GROUP_HEADERS[5], // no reset: the reset slot repeats the header (skipped)
+        ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[5],
+        ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[5], // no reset: the reset slot repeats the header (skipped)
         None,
         tr("panel.wet_tuning.group.experimental"),
         (
             !ctx.host
                 .store()
-                .is_collapsed(ids::WET_TUNING_GROUP_HEADERS[5]),
+                .is_collapsed(ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[5]),
             ctx.host
                 .store()
-                .section_open_live(ids::WET_TUNING_GROUP_HEADERS[5]),
+                .section_open_live(ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[5]),
         ),
     );
-    if let Some(scope) = open_fold(ctx, ids::WET_TUNING_GROUP_HEADERS[5], x, w, y) {
+    if let Some(scope) = open_fold(
+        ctx,
+        ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[5],
+        x,
+        w,
+        y,
+    ) {
         y = checkbox_row(
             ctx,
             theme,
             x,
             w,
             y,
-            ids::WET_TUNING_KM_MIXING,
+            ph2d_tool_painter::ids::WET_TUNING_KM_MIXING,
             tr("panel.wet_tuning.km_mixing"),
             brush.wet_km_mixing,
         );
@@ -224,7 +235,7 @@ fn paint_body(
             x,
             w,
             y,
-            ids::WET_TUNING_KM_GLAZE,
+            ph2d_tool_painter::ids::WET_TUNING_KM_GLAZE,
             tr("panel.wet_tuning.km_glaze"),
             brush.wet_km_glaze,
         );

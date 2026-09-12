@@ -44,8 +44,8 @@ pub(super) fn paint_damping_rows(
 ) -> f32 {
     let mut yy = y;
     for (label, id) in [
-        ("Linear Damping", ids::INSP_PHYS_LINEAR_DAMPING),
-        ("Angular Damping", ids::INSP_PHYS_ANGULAR_DAMPING),
+        ("Linear Damping", crate::ids::INSP_PHYS_LINEAR_DAMPING),
+        ("Angular Damping", crate::ids::INSP_PHYS_ANGULAR_DAMPING),
     ] {
         yy = num_row(
             scene,
@@ -70,8 +70,8 @@ pub(super) fn paint_damping_rows(
         w,
         yy,
         "Damp Mode",
-        ids::INSP_LIVE_PHYSICS_DAMPMODE,
-        &ids::INSP_PHYS_DAMPMODE,
+        crate::ids::INSP_LIVE_PHYSICS_DAMPMODE,
+        &crate::ids::INSP_PHYS_DAMPMODE,
         &DAMP_MODE_LABELS,
         damp_mode_tag,
     )
@@ -101,8 +101,8 @@ pub(super) fn paint_material_rows(
 ) -> f32 {
     let mut yy = y;
     for (label, id) in [
-        ("Bounce", ids::INSP_PHYS_RESTITUTION),
-        ("Friction", ids::INSP_PHYS_FRICTION),
+        ("Bounce", crate::ids::INSP_PHYS_RESTITUTION),
+        ("Friction", crate::ids::INSP_PHYS_FRICTION),
     ] {
         yy = num_row(
             scene,
@@ -122,14 +122,14 @@ pub(super) fn paint_material_rows(
     for (label, group, ids, tag) in [
         (
             "Bounce Combine",
-            ids::INSP_LIVE_PHYSICS_REST_COMBINE,
-            &ids::INSP_PHYS_REST_COMBINE,
+            crate::ids::INSP_LIVE_PHYSICS_REST_COMBINE,
+            &crate::ids::INSP_PHYS_REST_COMBINE,
             restitution_combine_tag,
         ),
         (
             "Friction Combine",
-            ids::INSP_LIVE_PHYSICS_FRIC_COMBINE,
-            &ids::INSP_PHYS_FRIC_COMBINE,
+            crate::ids::INSP_LIVE_PHYSICS_FRIC_COMBINE,
+            &crate::ids::INSP_PHYS_FRIC_COMBINE,
             friction_combine_tag,
         ),
     ] {
@@ -193,15 +193,15 @@ pub(super) fn paint_mass_source(
             w,
             yy,
             "Mass",
-            ids::INSP_LIVE_PHYSICS_MASSMODE,
-            &ids::INSP_PHYS_MASSMODE,
+            crate::ids::INSP_LIVE_PHYSICS_MASSMODE,
+            &crate::ids::INSP_PHYS_MASSMODE,
             &MASS_MODE_LABELS,
             u8::from(mass_manual),
         );
         let (label, id) = if mass_manual {
-            ("Mass (kg)", ids::INSP_PHYS_MASS)
+            ("Mass (kg)", crate::ids::INSP_PHYS_MASS)
         } else {
-            ("Density", ids::INSP_PHYS_DENSITY)
+            ("Density", crate::ids::INSP_PHYS_DENSITY)
         };
         yy = num_row(
             scene,
@@ -226,7 +226,7 @@ pub(super) fn paint_mass_source(
             w,
             yy,
             "Density",
-            ids::INSP_PHYS_DENSITY,
+            crate::ids::INSP_PHYS_DENSITY,
         );
     }
     yy
@@ -303,15 +303,15 @@ pub(super) fn paint_collision_rows(
     for (label, group, opts, labels, sel) in [
         (
             "Layer",
-            ids::INSP_LIVE_PHYSICS_LAYER,
-            &ids::INSP_PHYS_LAYER[..],
+            crate::ids::INSP_LIVE_PHYSICS_LAYER,
+            &crate::ids::INSP_PHYS_LAYER[..],
             &LAYER_LABELS[..],
             layer,
         ),
         (
             "Trigger",
-            ids::INSP_LIVE_PHYSICS_SENSOR,
-            &ids::INSP_PHYS_SENSOR[..],
+            crate::ids::INSP_LIVE_PHYSICS_SENSOR,
+            &crate::ids::INSP_PHYS_SENSOR[..],
             &SENSOR_LABELS[..],
             u8::from(is_sensor),
         ),
@@ -344,8 +344,8 @@ pub(super) fn paint_collision_rows(
             w,
             yy,
             "One-Way",
-            ids::INSP_LIVE_PHYSICS_ONEWAY,
-            &ids::INSP_PHYS_ONEWAY,
+            crate::ids::INSP_LIVE_PHYSICS_ONEWAY,
+            &crate::ids::INSP_PHYS_ONEWAY,
             &ONEWAY_LABELS,
             u8::from(one_way),
         );
@@ -372,14 +372,14 @@ pub(super) fn paint_collision_rows(
         w,
         yy,
         "Wall Cling",
-        ids::INSP_LIVE_PHYSICS_WALLMAT,
-        &ids::INSP_PHYS_WALLMAT,
+        crate::ids::INSP_LIVE_PHYSICS_WALLMAT,
+        &crate::ids::INSP_PHYS_WALLMAT,
         &WALLMAT_LABELS,
         u8::from(no_wall_cling),
     );
     for (label, id) in [
-        ("Grip", ids::INSP_PHYS_WALK_GRIP),
-        ("Belt (m/s)", ids::INSP_PHYS_WALK_BELT),
+        ("Grip", crate::ids::INSP_PHYS_WALK_GRIP),
+        ("Belt (m/s)", crate::ids::INSP_PHYS_WALK_BELT),
     ] {
         yy = num_row(
             scene,
@@ -412,8 +412,11 @@ pub(super) fn paint_collision_rows(
     // `door_close`), e um campo que trocasse de significado tornaria o caso de
     // uso inteiro inexprimível.
     for (id, placeholder) in [
-        (ids::INSP_PHYS_SIGNAL, "Signal on hit\u{2026}"),
-        (ids::INSP_PHYS_SIGNAL_LEAVE, "Signal on leave\u{2026}"),
+        (crate::ids::INSP_PHYS_SIGNAL, "Signal on hit\u{2026}"),
+        (
+            crate::ids::INSP_PHYS_SIGNAL_LEAVE,
+            "Signal on leave\u{2026}",
+        ),
     ] {
         yy = signal_row(
             scene,
@@ -505,8 +508,8 @@ pub(super) fn paint_area_rows(
         // Force is what the area PUSHES with; Drag is what it RESISTS with. Together
         // they are the difference between wind (push, no resistance) and water.
         for (label, id) in [
-            ("Force X (N)", ids::INSP_PHYS_FORCE_X),
-            ("Force Y (N)", ids::INSP_PHYS_FORCE_Y),
+            ("Force X (N)", crate::ids::INSP_PHYS_FORCE_X),
+            ("Force Y (N)", crate::ids::INSP_PHYS_FORCE_Y),
         ] {
             yy = num_row(
                 scene,
@@ -538,8 +541,8 @@ pub(super) fn paint_area_rows(
             w,
             yy,
             "Force Axes",
-            ids::INSP_LIVE_PHYSICS_FORCE_AXES,
-            &ids::INSP_PHYS_FORCE_AXES,
+            crate::ids::INSP_LIVE_PHYSICS_FORCE_AXES,
+            &crate::ids::INSP_PHYS_FORCE_AXES,
             &FORCE_AXES_LABELS,
             u8::from(force_world_axes),
         );
@@ -552,11 +555,11 @@ pub(super) fn paint_area_rows(
         // medium does not thin out near its own edge (the water at the side of the pool
         // is just as wet). Painted below them the row would read as governing all six.
         for (label, id) in [
-            ("Torque (N·m)", ids::INSP_PHYS_AREA_TORQUE),
-            ("Falloff", ids::INSP_PHYS_AREA_FALLOFF),
-            ("Drag", ids::INSP_PHYS_AREA_DRAG),
-            ("Fluid Density", ids::INSP_PHYS_AREA_DENSITY),
-            ("Shape Drag", ids::INSP_PHYS_AREA_FORM_DRAG),
+            ("Torque (N·m)", crate::ids::INSP_PHYS_AREA_TORQUE),
+            ("Falloff", crate::ids::INSP_PHYS_AREA_FALLOFF),
+            ("Drag", crate::ids::INSP_PHYS_AREA_DRAG),
+            ("Fluid Density", crate::ids::INSP_PHYS_AREA_DENSITY),
+            ("Shape Drag", crate::ids::INSP_PHYS_AREA_FORM_DRAG),
         ] {
             yy = num_row(
                 scene,

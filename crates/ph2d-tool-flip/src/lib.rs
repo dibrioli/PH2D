@@ -20,6 +20,7 @@
 //! desenho ativo → o painel edita cor/largura/dureza ao vivo.
 
 pub mod icon;
+pub mod ids;
 pub mod params;
 pub mod tool;
 

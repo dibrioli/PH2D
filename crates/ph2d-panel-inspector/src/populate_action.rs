@@ -14,13 +14,16 @@ use super::populate::register_button_ids;
 
 pub(crate) fn populate_action(store: &mut WidgetStore) {
     register_button_ids(store, &ids::INSP_ACTION_ROW);
-    register_button_ids(store, &[ids::INSP_ACTION_ADD, ids::INSP_ACTION_REMOVE]);
+    register_button_ids(
+        store,
+        &[crate::ids::INSP_ACTION_ADD, crate::ids::INSP_ACTION_REMOVE],
+    );
     // ⚠️ **As entradas do seletor do verbo continuam BOTÕES** — elas são as linhas do popover, e
     // o despachante decide pelo `is_focusable`: sem registo, o clique numa opção é engolido em
     // silêncio. Só o CHIP é um `Dropdown`, e o que ele guarda é o `open`, nunca a escolha.
     register_button_ids(store, &ids::INSP_ACTION_VERB);
     store.register(
-        ids::INSP_ACTION_VERB_PICK,
+        crate::ids::INSP_ACTION_VERB_PICK,
         InteractiveState::Dropdown {
             state: DropdownState::Normal,
             open: false,
@@ -28,9 +31,9 @@ pub(crate) fn populate_action(store: &mut WidgetStore) {
         },
     );
     for id in [
-        ids::INSP_ACTION_ON,
-        ids::INSP_ACTION_TARGET,
-        ids::INSP_ACTION_ARG,
+        crate::ids::INSP_ACTION_ON,
+        crate::ids::INSP_ACTION_TARGET,
+        crate::ids::INSP_ACTION_ARG,
     ] {
         store.register(
             id,

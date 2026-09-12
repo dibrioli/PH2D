@@ -20,12 +20,6 @@
 
 use crate::paint::register_button;
 use crate::state;
-use ph2d_editor_core::ids::{
-    PainterLayerWidget, painter_curve_add_id, painter_curve_editor_id, painter_curve_point_id,
-    painter_curve_remove_id, painter_curve_tab_id, painter_gradient_add_id,
-    painter_gradient_editor_id, painter_gradient_remove_id, painter_gradient_stop_id,
-    painter_layer_widget_id, painter_mixer_tab_id, painter_selcolor_bucket_id,
-};
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::paint::{
     fill_circle, fill_rounded_rect, paint_text, paint_text_centered, resolve, stroke_polyline,
@@ -36,6 +30,12 @@ use ph2d_editor_core::widget::{
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, TypeToken};
+use ph2d_tool_painter::ids::{
+    PainterLayerWidget, painter_curve_add_id, painter_curve_editor_id, painter_curve_point_id,
+    painter_curve_remove_id, painter_curve_tab_id, painter_gradient_add_id,
+    painter_gradient_editor_id, painter_gradient_remove_id, painter_gradient_stop_id,
+    painter_layer_widget_id, painter_mixer_tab_id, painter_selcolor_bucket_id,
+};
 use ph2d_tool_painter::{AdjustmentParams, CurvesParams};
 
 mod curve;

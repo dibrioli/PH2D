@@ -7,7 +7,6 @@
 //!
 //! [ADR-0072]: ../../../docs/architecture/decisions/0072-named-anchor-unification.md
 
-use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore, format_number};
 use ph2d_editor_core::widget::{CheckboxState, CheckboxValue, DropdownState, TextInputState};
 
@@ -24,17 +23,23 @@ pub(crate) fn populate_anchors(store: &mut WidgetStore) {
     // As 64 linhas da lista + os dois botões. ⚠️ TODAS as 64 se registam, mesmo que a maioria
     // dos sprites tenha 3 âncoras: um id só registado "quando aparece" nunca aparece, porque o
     // registo acontece uma vez, no arranque, e a lista cresce depois.
-    register_button_ids(store, &ids::INSP_ANCHOR_ROW);
-    register_button_ids(store, &[ids::INSP_ANCHOR_ADD, ids::INSP_ANCHOR_REMOVE]);
+    register_button_ids(store, &crate::ids::INSP_ANCHOR_ROW);
+    register_button_ids(
+        store,
+        &[crate::ids::INSP_ANCHOR_ADD, crate::ids::INSP_ANCHOR_REMOVE],
+    );
     // §12 «Rides Parent Anchor» (ADR-0072 §2.6) — o chip mais as opções do popover.
     // ⚠️ `selected_index: None` de propósito: **quem sabe o que está montado é o snapshot**, e o
     // store só guarda se o popover está aberto. Semear um índice aqui faria o chip mostrar a
     // montagem do objeto anterior até o primeiro sync — *o seed é dono do VALOR, o dispatch do
     // ESTADO*, e aqui o valor não é do seed.
-    register_button_ids(store, &ids::INSP_MOUNT_OPT);
-    register_button_ids(store, &[ids::INSP_MOUNT_NONE_OPT, ids::INSP_MOUNT_SNAP]);
+    register_button_ids(store, &crate::ids::INSP_MOUNT_OPT);
+    register_button_ids(
+        store,
+        &[crate::ids::INSP_MOUNT_NONE_OPT, crate::ids::INSP_MOUNT_SNAP],
+    );
     store.register(
-        ids::INSP_MOUNT_PICK,
+        crate::ids::INSP_MOUNT_PICK,
         InteractiveState::Dropdown {
             state: DropdownState::Normal,
             open: false,
@@ -42,7 +47,7 @@ pub(crate) fn populate_anchors(store: &mut WidgetStore) {
         },
     );
     store.register(
-        ids::INSP_ANCHOR_NAME,
+        crate::ids::INSP_ANCHOR_NAME,
         InteractiveState::TextInput {
             state: TextInputState::Normal,
             text: String::new(),
@@ -51,9 +56,9 @@ pub(crate) fn populate_anchors(store: &mut WidgetStore) {
         },
     );
     for id in [
-        ids::INSP_ANCHOR_BOUNDS_ON,
-        ids::INSP_ANCHOR_CENTER_ON,
-        ids::INSP_ANCHOR_VIS_EDITOR,
+        crate::ids::INSP_ANCHOR_BOUNDS_ON,
+        crate::ids::INSP_ANCHOR_CENTER_ON,
+        crate::ids::INSP_ANCHOR_VIS_EDITOR,
     ] {
         store.register(
             id,
@@ -74,22 +79,22 @@ pub(crate) fn populate_anchors(store: &mut WidgetStore) {
     // gate `every_painted_id_is_reachable` mede *«o que se pinta está registado»*, e um id pintado
     // sem registo é a família de defeito que ele existe para apanhar.
     store.register(
-        ids::INSP_ANCHOR_VIS_RUNTIME,
+        crate::ids::INSP_ANCHOR_VIS_RUNTIME,
         InteractiveState::Checkbox {
             state: CheckboxState::Disabled,
             value: CheckboxValue::Unchecked,
         },
     );
     store.set_tooltip(
-        ids::INSP_ANCHOR_VIS_RUNTIME,
+        crate::ids::INSP_ANCHOR_VIS_RUNTIME,
         "Parked: this app has no game runtime yet, so there is no runtime for anchors to show in. \
          The setting is kept in the file so saved projects still load.",
     );
-    for id in ids::INSP_ANCHOR_POS
+    for id in crate::ids::INSP_ANCHOR_POS
         .iter()
-        .chain(std::iter::once(&ids::INSP_ANCHOR_ROT))
-        .chain(ids::INSP_ANCHOR_BOUNDS.iter())
-        .chain(ids::INSP_ANCHOR_CENTER.iter())
+        .chain(std::iter::once(&crate::ids::INSP_ANCHOR_ROT))
+        .chain(crate::ids::INSP_ANCHOR_BOUNDS.iter())
+        .chain(crate::ids::INSP_ANCHOR_CENTER.iter())
         .copied()
     {
         store.register(

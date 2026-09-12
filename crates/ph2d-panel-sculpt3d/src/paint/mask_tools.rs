@@ -11,7 +11,6 @@
 //! ⚠️ E as seis moram na seção do PINCEL, não numa própria: um artista que
 //! acabou de pintar máscara procura o que fazer com ela **onde ele a pintou**.
 
-use ph2d_editor_core::ids;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_i18n::tr;
 use ph2d_sculpt3d::TransformKind;
@@ -37,8 +36,8 @@ pub(super) fn paint_mask_tools(
     let mut y = labelled_seg(
         ctx,
         tr("panel.sculpt3d.mask"),
-        ids::SCULPT3D_SEC_BRUSH,
-        &ids::SCULPT3D_MASK_OP,
+        crate::ids::SCULPT3D_SEC_BRUSH,
+        &crate::ids::SCULPT3D_MASK_OP,
         &mask,
         // ⚠️ Nenhum fica aceso, e `usize::MAX` é como se diz isso: as quatro são
         // GESTOS (executam e acabam), não um modo escolhido. Acender uma delas
@@ -57,7 +56,7 @@ pub(super) fn paint_mask_tools(
     // dele, e um argumento acima do verbo lê como um knob solto do pincel.
     y = command(
         ctx,
-        ids::SCULPT3D_EXTRACT,
+        crate::ids::SCULPT3D_EXTRACT,
         tr("panel.sculpt3d.extract"),
         x,
         w,
@@ -83,8 +82,8 @@ pub(super) fn paint_mask_tools(
     y = labelled_seg(
         ctx,
         tr("panel.sculpt3d.transform"),
-        ids::SCULPT3D_SEC_BRUSH,
-        &ids::SCULPT3D_TRANSFORM,
+        crate::ids::SCULPT3D_SEC_BRUSH,
+        &crate::ids::SCULPT3D_TRANSFORM,
         &labels,
         armed,
         x,

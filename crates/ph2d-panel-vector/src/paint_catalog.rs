@@ -27,7 +27,7 @@
 
 use crate::paint_sections::BodyCtx;
 use crate::state;
-use crate::{ids, state::group_i18n_key};
+use crate::state::group_i18n_key;
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::paint::{paint_text, paint_text_centered, resolve};
 use ph2d_editor_core::panel::PaintCtx;
@@ -184,7 +184,7 @@ impl BodyCtx<'_> {
     /// Seção **SHAPE** — a categoria (dropdown) + a grade de tipos (thumbnails).
     pub(crate) fn shape_catalog_section(&mut self, snap: &VectorStyleSnapshot, y: f32) -> f32 {
         let (mut y, collapsed) = self.section_header(
-            ids::VECTOR_SECTION_SHAPE,
+            ph2d_tool_vector::ids::VECTOR_SECTION_SHAPE,
             tr("panel.vector.section.shape"),
             y,
         );
@@ -215,15 +215,17 @@ impl BodyCtx<'_> {
         let chip_w = (self.inner_w - crate::paint_sections::LABEL_COL_W - gap).max(1.0);
         let chip = Rect::new(chip_x, y, chip_w, self.row_h);
         let open = matches!(
-            self.store.get(ids::VECTOR_SHAPE_GROUP_DD),
+            self.store.get(ph2d_tool_vector::ids::VECTOR_SHAPE_GROUP_DD),
             Some(InteractiveState::Dropdown { open: true, .. })
         );
-        let dd_visual = self.store.dropdown_visual(ids::VECTOR_SHAPE_GROUP_DD);
+        let dd_visual = self
+            .store
+            .dropdown_visual(ph2d_tool_vector::ids::VECTOR_SHAPE_GROUP_DD);
         let dd = Dropdown::new(
-            ids::VECTOR_SHAPE_GROUP_DD,
+            ph2d_tool_vector::ids::VECTOR_SHAPE_GROUP_DD,
             "",
             vec![DropdownOption::new(
-                ids::VECTOR_SHAPE_GROUP_DD,
+                ph2d_tool_vector::ids::VECTOR_SHAPE_GROUP_DD,
                 (),
                 tr(group_i18n_key(group)),
             )],
@@ -232,7 +234,8 @@ impl BodyCtx<'_> {
         .open(open)
         .visual(dd_visual);
         paint_dropdown_chip(&dd, chip, self.scene, self.text_system, self.theme);
-        self.hit_index.register(ids::VECTOR_SHAPE_GROUP_DD, chip);
+        self.hit_index
+            .register(ph2d_tool_vector::ids::VECTOR_SHAPE_GROUP_DD, chip);
         if open {
             // O popover pinta no passe DIFERIDO (fora do clip do scroll) — `paint.rs`.
             state::set_pending_group_dd(Some(chip));
@@ -262,7 +265,7 @@ impl BodyCtx<'_> {
             let cx = self.inner_x + (slot % GRID_COLS) as f32 * (cell_w + gap);
             let cy = y + (slot / GRID_COLS) as f32 * (cell_h + gap);
             let cell = Rect::new(cx, cy, cell_w, cell_h);
-            let id = ids::vector_shape_id(*cat_index);
+            let id = ph2d_tool_vector::ids::vector_shape_id(*cat_index);
             // Ativa = a forma DESTA célula é a do gesto armado. Fora do modo Shape nenhuma
             // acende (o usuário não está desenhando forma nenhuma).
             let active = snap.shape == d.kind && snap.mode == DrawMode::Shape;
@@ -320,14 +323,20 @@ impl BodyCtx<'_> {
 /// como Button no `populate` e já resolvidos no `event.rs` — o dropdown só trocou a
 /// APRESENTAÇÃO da escolha, não o caminho dela.
 pub(crate) fn paint_group_popover(ctx: &mut PaintCtx, chip: Rect, theme: Theme) {
-    let id = ids::VECTOR_SHAPE_GROUP_DD;
+    let id = ph2d_tool_vector::ids::VECTOR_SHAPE_GROUP_DD;
     let groups = shapes::ALL_GROUPS;
     let active = state::active_shape_group(state::current_snapshot().shape);
     let sel = groups.iter().position(|g| *g == active).unwrap_or(0);
     let options: Vec<DropdownOption<usize>> = groups
         .iter()
         .enumerate()
-        .map(|(i, g)| DropdownOption::new(ids::vector_shape_group_id(i), i, tr(group_i18n_key(*g))))
+        .map(|(i, g)| {
+            DropdownOption::new(
+                ph2d_tool_vector::ids::vector_shape_group_id(i),
+                i,
+                tr(group_i18n_key(*g)),
+            )
+        })
         .collect();
     let dd = Dropdown::new(id, "", options).selected(sel).open(true);
 
@@ -366,7 +375,7 @@ pub(crate) fn paint_group_popover(ctx: &mut PaintCtx, chip: Rect, theme: Theme) 
         let bot = (r.y + r.h).min(panel.y + panel.h);
         if bot - top >= 1.0 {
             hit_index.register(
-                ids::vector_shape_group_id(i),
+                ph2d_tool_vector::ids::vector_shape_group_id(i),
                 Rect::new(r.x, top, r.w, bot - top),
             );
         }

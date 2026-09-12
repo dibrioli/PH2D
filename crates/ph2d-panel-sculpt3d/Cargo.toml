@@ -10,6 +10,7 @@ authors.workspace = true
 [lib]
 
 [dependencies]
+ph2d-tool-registry = { path = "../ph2d-tool-registry" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }
 
 # ⚠️ **O `ImageQuality` e a porta de imagem da cena, e só eles.** O preview do
@@ -37,6 +38,7 @@ ph2d-mesh = { path = "../ph2d-mesh" }
 ph2d-light = { path = "../ph2d-light" }
 
 [dev-dependencies]
+ph2d-panel-model3d = { path = "../ph2d-panel-model3d" }
 # `architecture_interactive_crate_has_behavioral_test`: um painel com `event.rs`
 # tem de dirigir um `WidgetEvent` REAL e afirmar o efeito observável.
 ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }

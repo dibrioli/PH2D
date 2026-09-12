@@ -10,7 +10,6 @@
 //! SculptGL, e por um motivo que se verifica: quanto mais raro o gesto, mais
 //! fundo ele pode estar.
 
-use ph2d_editor_core::ids;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_i18n::tr;
 use ph2d_tokens::{ROW_H_PX, Spacing};
@@ -98,7 +97,7 @@ fn paint_symmetry(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y
     let gap = Spacing::Xs.px();
     let (fold, y) = header(
         ctx,
-        ids::SCULPT3D_SEC_SYMMETRY,
+        crate::ids::SCULPT3D_SEC_SYMMETRY,
         tr("panel.sculpt3d.section.symmetry"),
         x,
         w,
@@ -110,17 +109,17 @@ fn paint_symmetry(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y
     let third = (w - gap * 2.0) / 3.0; // LITERAL-PX-OK: sao TRES eixos de espelho, nao uma metrica
     for (i, (id, key, on)) in [
         (
-            ids::SCULPT3D_SYM_X,
+            crate::ids::SCULPT3D_SYM_X,
             "panel.sculpt3d.sym.x",
             snap.ui.symmetry.x,
         ),
         (
-            ids::SCULPT3D_SYM_Y,
+            crate::ids::SCULPT3D_SYM_Y,
             "panel.sculpt3d.sym.y",
             snap.ui.symmetry.y,
         ),
         (
-            ids::SCULPT3D_SYM_Z,
+            crate::ids::SCULPT3D_SYM_Z,
             "panel.sculpt3d.sym.z",
             snap.ui.symmetry.z,
         ),
@@ -145,7 +144,7 @@ fn paint_shading_tail(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f3
     // artista arrastar um controle inerte sem nada dizendo por quê.
     let mut y = command(
         ctx,
-        ids::SCULPT3D_BAKE_AO,
+        crate::ids::SCULPT3D_BAKE_AO,
         tr("panel.sculpt3d.bake_ao"),
         x,
         w,
@@ -167,15 +166,18 @@ fn paint_shading_tail(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f3
     // vizinho; um id sem material seria um chip anônimo que despacha. Cortar
     // pelo mínimo faz das duas listas uma só, e o gate do shell é quem exige
     // que elas tenham o mesmo tamanho de verdade.
-    let n = snap.matcaps.len().min(ids::SCULPT3D_MATCAP.len() - 1);
+    let n = snap
+        .matcaps
+        .len()
+        .min(crate::ids::SCULPT3D_MATCAP.len() - 1);
     let mut labels: Vec<&str> = vec![tr("panel.sculpt3d.matcap.rig")];
     labels.extend(&snap.matcaps[..n]);
-    let options = &ids::SCULPT3D_MATCAP[..=n];
+    let options = &crate::ids::SCULPT3D_MATCAP[..=n];
     let selected = snap.ui.matcap.map_or(0, |i| usize::from(i) + 1);
     let mut y = labelled_seg(
         ctx,
         tr("panel.sculpt3d.matcap"),
-        ids::SCULPT3D_SEC_SHADING,
+        crate::ids::SCULPT3D_SEC_SHADING,
         options,
         &labels,
         selected.min(n),
@@ -185,7 +187,7 @@ fn paint_shading_tail(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f3
     );
     y = toggle(
         ctx,
-        ids::SCULPT3D_WIREFRAME,
+        crate::ids::SCULPT3D_WIREFRAME,
         tr("panel.sculpt3d.wireframe"),
         snap.ui.wireframe,
         x,
@@ -200,7 +202,7 @@ fn paint_topology(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y
     let gap = Spacing::Xs.px();
     let (fold, mut y) = header(
         ctx,
-        ids::SCULPT3D_SEC_TOPOLOGY,
+        crate::ids::SCULPT3D_SEC_TOPOLOGY,
         tr("panel.sculpt3d.section.topology"),
         x,
         w,
@@ -211,7 +213,7 @@ fn paint_topology(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y
     };
     y = toggle(
         ctx,
-        ids::SCULPT3D_DYNTOPO,
+        crate::ids::SCULPT3D_DYNTOPO,
         tr("panel.sculpt3d.dyntopo"),
         snap.dyntopo,
         x,
@@ -222,8 +224,8 @@ fn paint_topology(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y
     y = labelled_seg(
         ctx,
         tr("panel.sculpt3d.detail"),
-        ids::SCULPT3D_SEC_TOPOLOGY,
-        &ids::SCULPT3D_DETAIL,
+        crate::ids::SCULPT3D_SEC_TOPOLOGY,
+        &crate::ids::SCULPT3D_DETAIL,
         &detail,
         snap.ui.detail as usize,
         x,
@@ -247,16 +249,19 @@ fn paint_topology(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y
     );
     y = row_of_two(
         ctx,
-        (ids::SCULPT3D_LEVEL_DOWN, "-"),
-        (ids::SCULPT3D_LEVEL_UP, "+"),
+        (crate::ids::SCULPT3D_LEVEL_DOWN, "-"),
+        (crate::ids::SCULPT3D_LEVEL_UP, "+"),
         x,
         w,
         y,
     ) + gap;
     y = row_of_two(
         ctx,
-        (ids::SCULPT3D_SUBDIVIDE, tr("panel.sculpt3d.subdivide")),
-        (ids::SCULPT3D_REVERSE, tr("panel.sculpt3d.reverse")),
+        (
+            crate::ids::SCULPT3D_SUBDIVIDE,
+            tr("panel.sculpt3d.subdivide"),
+        ),
+        (crate::ids::SCULPT3D_REVERSE, tr("panel.sculpt3d.reverse")),
         x,
         w,
         y,
@@ -268,7 +273,7 @@ fn paint_topology(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y
     if snap.level_count > 1 {
         y = command(
             ctx,
-            ids::SCULPT3D_FLATTEN,
+            crate::ids::SCULPT3D_FLATTEN,
             tr("panel.sculpt3d.flatten"),
             x,
             w,
@@ -277,8 +282,11 @@ fn paint_topology(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y
     }
     y = row_of_two(
         ctx,
-        (ids::SCULPT3D_REMESH, tr("panel.sculpt3d.remesh")),
-        (ids::SCULPT3D_CLOSE_HOLES, tr("panel.sculpt3d.close_holes")),
+        (crate::ids::SCULPT3D_REMESH, tr("panel.sculpt3d.remesh")),
+        (
+            crate::ids::SCULPT3D_CLOSE_HOLES,
+            tr("panel.sculpt3d.close_holes"),
+        ),
         x,
         w,
         y,
@@ -305,8 +313,8 @@ fn paint_topology(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y
         y = widgets::labelled_seg(
             ctx,
             tr("panel.sculpt3d.retopo_mode"),
-            ids::SCULPT3D_SEC_TOPOLOGY,
-            &ids::SCULPT3D_RETOPO_MODE,
+            crate::ids::SCULPT3D_SEC_TOPOLOGY,
+            &crate::ids::SCULPT3D_RETOPO_MODE,
             &labels,
             selected,
             x,
@@ -316,7 +324,7 @@ fn paint_topology(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y
     }
     y = command(
         ctx,
-        ids::SCULPT3D_QUAD_REMESH,
+        crate::ids::SCULPT3D_QUAD_REMESH,
         tr("panel.sculpt3d.quad_remesh"),
         x,
         w,
@@ -337,7 +345,7 @@ fn paint_scene(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y: f
     let gap = Spacing::Xs.px();
     let (fold, mut y) = header(
         ctx,
-        ids::SCULPT3D_SEC_SCENE,
+        crate::ids::SCULPT3D_SEC_SCENE,
         tr("panel.sculpt3d.section.scene"),
         x,
         w,
@@ -350,8 +358,8 @@ fn paint_scene(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y: f
     y = labelled_seg(
         ctx,
         tr("panel.sculpt3d.add"),
-        ids::SCULPT3D_SEC_SCENE,
-        &ids::SCULPT3D_ADD,
+        crate::ids::SCULPT3D_SEC_SCENE,
+        &crate::ids::SCULPT3D_ADD,
         &add,
         usize::MAX, // gestos, não um modo
         x,
@@ -360,8 +368,11 @@ fn paint_scene(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y: f
     );
     y = row_of_two(
         ctx,
-        (ids::SCULPT3D_DUPLICATE, tr("panel.sculpt3d.duplicate")),
-        (ids::SCULPT3D_DELETE, tr("panel.sculpt3d.delete")),
+        (
+            crate::ids::SCULPT3D_DUPLICATE,
+            tr("panel.sculpt3d.duplicate"),
+        ),
+        (crate::ids::SCULPT3D_DELETE, tr("panel.sculpt3d.delete")),
         x,
         w,
         y,
@@ -372,7 +383,7 @@ fn paint_scene(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y: f
     let half = (w - gap) * 0.5;
     toggle(
         ctx,
-        ids::SCULPT3D_ISOLATE,
+        crate::ids::SCULPT3D_ISOLATE,
         tr("panel.sculpt3d.isolate"),
         snap.isolated,
         x,
@@ -381,7 +392,7 @@ fn paint_scene(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y: f
     );
     y = command(
         ctx,
-        ids::SCULPT3D_MERGE,
+        crate::ids::SCULPT3D_MERGE,
         tr("panel.sculpt3d.merge"),
         x + half + gap,
         half,
@@ -479,7 +490,7 @@ pub(super) fn readout_for(ctx: &mut PaintCtx, text: &str, x: f32, w: f32, y: f32
 fn paint_bake(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y: f32) -> f32 {
     let (fold, mut y) = header(
         ctx,
-        ids::SCULPT3D_SEC_BAKE,
+        crate::ids::SCULPT3D_SEC_BAKE,
         tr("panel.sculpt3d.section.bake"),
         x,
         w,
@@ -490,7 +501,7 @@ fn paint_bake(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y: f3
     };
     y = command(
         ctx,
-        ids::SCULPT3D_BAKE_SPRITE,
+        crate::ids::SCULPT3D_BAKE_SPRITE,
         tr("panel.sculpt3d.bake_sprite"),
         x,
         w,

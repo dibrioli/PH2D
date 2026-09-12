@@ -141,13 +141,16 @@ fn camera_body(
     // *O gate do número mágico é que o disse — a primeira redacção partilhava `0,1` entre metros e
     // uma contagem.*
     for (label, ids3, step) in [
-        ("Height (m)", &[ids::INSP_CAMERA_HEIGHT][..], 0.5), // LITERAL-PX-OK: passo em metros
+        ("Height (m)", &[crate::ids::INSP_CAMERA_HEIGHT][..], 0.5), // LITERAL-PX-OK: passo em metros
         (
             "Offset (m)",
-            &[ids::INSP_CAMERA_OFFSET_X, ids::INSP_CAMERA_OFFSET_Y][..],
+            &[
+                crate::ids::INSP_CAMERA_OFFSET_X,
+                crate::ids::INSP_CAMERA_OFFSET_Y,
+            ][..],
             0.1, // LITERAL-PX-OK: passo em metros
         ),
-        ("Priority", &[ids::INSP_CAMERA_PRIORITY][..], 1.0), // LITERAL-PX-OK: uma prioridade de cada vez
+        ("Priority", &[crate::ids::INSP_CAMERA_PRIORITY][..], 1.0), // LITERAL-PX-OK: uma prioridade de cada vez
     ] {
         cur_y = super::anchors::field_row(
             scene,
@@ -172,7 +175,7 @@ fn camera_body(
         hit_index,
         store,
         Rect::new(x, cur_y, half, CHECK_H),
-        ids::INSP_CAMERA_ACTIVE,
+        crate::ids::INSP_CAMERA_ACTIVE,
         "Active",
         cam.active,
     );
@@ -184,7 +187,7 @@ fn camera_body(
         hit_index,
         store,
         Rect::new(x + half + Spacing::Sm.px(), cur_y, half, CHECK_H),
-        ids::INSP_CAMERA_PREVIEW,
+        crate::ids::INSP_CAMERA_PREVIEW,
         "Look Through",
         info.preview_on,
     );
@@ -213,8 +216,8 @@ fn follow_body(
         x,
         w,
         y,
-        ids::INSP_CAMERA_TARGET,
-        TextInput::new(ids::INSP_CAMERA_TARGET, "").placeholder("object name\u{2026}"),
+        crate::ids::INSP_CAMERA_TARGET,
+        TextInput::new(crate::ids::INSP_CAMERA_TARGET, "").placeholder("object name\u{2026}"),
     );
 
     if !f.target.trim().is_empty() && !f.target_found {
@@ -233,22 +236,34 @@ fn follow_body(
     for (label, ids2, step) in [
         (
             "Damping (1/s)",
-            [ids::INSP_CAMERA_DAMP_X, ids::INSP_CAMERA_DAMP_Y],
+            [
+                crate::ids::INSP_CAMERA_DAMP_X,
+                crate::ids::INSP_CAMERA_DAMP_Y,
+            ],
             0.5, // LITERAL-PX-OK: passo em 1/s
         ),
         (
             "Dead Zone",
-            [ids::INSP_CAMERA_DEAD_X, ids::INSP_CAMERA_DEAD_Y],
+            [
+                crate::ids::INSP_CAMERA_DEAD_X,
+                crate::ids::INSP_CAMERA_DEAD_Y,
+            ],
             0.05, // LITERAL-PX-OK: fracção da meia-janela
         ),
         (
             "Lookahead (s)",
-            [ids::INSP_CAMERA_LOOK_X, ids::INSP_CAMERA_LOOK_Y],
+            [
+                crate::ids::INSP_CAMERA_LOOK_X,
+                crate::ids::INSP_CAMERA_LOOK_Y,
+            ],
             0.05, // LITERAL-PX-OK: passo em segundos
         ),
         (
             "Follow Offset (m)",
-            [ids::INSP_CAMERA_FOLLOW_OFF_X, ids::INSP_CAMERA_FOLLOW_OFF_Y],
+            [
+                crate::ids::INSP_CAMERA_FOLLOW_OFF_X,
+                crate::ids::INSP_CAMERA_FOLLOW_OFF_Y,
+            ],
             0.1, // LITERAL-PX-OK: passo em metros
         ),
     ] {
@@ -296,8 +311,14 @@ fn limits_body(
         );
     }
     for (label, ids2) in [
-        ("Min (m)", [ids::INSP_CAMERA_MIN_X, ids::INSP_CAMERA_MIN_Y]),
-        ("Max (m)", [ids::INSP_CAMERA_MAX_X, ids::INSP_CAMERA_MAX_Y]),
+        (
+            "Min (m)",
+            [crate::ids::INSP_CAMERA_MIN_X, crate::ids::INSP_CAMERA_MIN_Y],
+        ),
+        (
+            "Max (m)",
+            [crate::ids::INSP_CAMERA_MAX_X, crate::ids::INSP_CAMERA_MAX_Y],
+        ),
     ] {
         cur_y = super::anchors::field_row(
             scene,
@@ -335,15 +356,15 @@ fn cull_mask(
     let row_gap = Spacing::Xs.px();
     let mut yy = close_section(scene, theme, x, w, y);
     let header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: banda do cabeçalho
-    let header = section_header(store, ids::INSP_CAMERA_CULL_HEADER, "Cull Mask")
-        .open_t(store.section_open_live(ids::INSP_CAMERA_CULL_HEADER));
+    let header = section_header(store, crate::ids::INSP_CAMERA_CULL_HEADER, "Cull Mask")
+        .open_t(store.section_open_live(crate::ids::INSP_CAMERA_CULL_HEADER));
     let header_rect = Rect::new(x, yy, w, header_h);
     paint_section_header(&header, header_rect, scene, text_system, theme);
-    hit_index.register(ids::INSP_CAMERA_CULL_HEADER, header_rect);
+    hit_index.register(crate::ids::INSP_CAMERA_CULL_HEADER, header_rect);
     yy += header_h;
     match SectionFold::begin(
         store,
-        ids::INSP_CAMERA_CULL_HEADER,
+        crate::ids::INSP_CAMERA_CULL_HEADER,
         x,
         w,
         yy,
@@ -355,10 +376,10 @@ fn cull_mask(
             let grid = BitmaskGrid32::new(
                 ids::INSP_LIVE_CAMERA_SECTION,
                 "Cull Mask",
-                ids::INSP_CAMERA_CULL_BIT,
+                crate::ids::INSP_CAMERA_CULL_BIT,
                 mask,
             );
-            for (bit, id) in ids::INSP_CAMERA_CULL_BIT.iter().enumerate() {
+            for (bit, id) in crate::ids::INSP_CAMERA_CULL_BIT.iter().enumerate() {
                 hit_index.register(*id, BitmaskGrid32::cell_rect(x, yy, w, h, bit));
             }
             paint_bitmask_grid32(&grid, x, yy, w, h, scene, text_system, theme);

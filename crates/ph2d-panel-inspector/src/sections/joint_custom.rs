@@ -51,8 +51,8 @@ pub(super) fn paint_axis_rows(
             w,
             yy,
             name,
-            ids::INSP_JOINT_AXIS_GROUP[i],
-            &ids::INSP_JOINT_AXIS_MODE[i],
+            crate::ids::INSP_JOINT_AXIS_GROUP[i],
+            &crate::ids::INSP_JOINT_AXIS_MODE[i],
             &AXIS_MODE_LABELS,
             info.axis_mode_tag[i],
         );
@@ -62,8 +62,14 @@ pub(super) fn paint_axis_rows(
         // knob que não pode fazer nada.
         if info.axis_mode_tag[i] == MODE_LIMITED {
             for (label, id) in [
-                (format!("  Min ({unit})"), ids::INSP_JOINT_AXIS_MIN[i]),
-                (format!("  Max ({unit})"), ids::INSP_JOINT_AXIS_MAX[i]),
+                (
+                    format!("  Min ({unit})"),
+                    crate::ids::INSP_JOINT_AXIS_MIN[i],
+                ),
+                (
+                    format!("  Max ({unit})"),
+                    crate::ids::INSP_JOINT_AXIS_MAX[i],
+                ),
             ] {
                 yy = num_row(
                     scene,
@@ -109,8 +115,8 @@ pub(super) fn paint_motor_axis_row(
         w,
         y,
         "Motor Axis",
-        ids::INSP_JOINT_MOTOR_AXIS_GROUP,
-        &ids::INSP_JOINT_MOTOR_AXIS,
+        crate::ids::INSP_JOINT_MOTOR_AXIS_GROUP,
+        &crate::ids::INSP_JOINT_MOTOR_AXIS,
         &AXIS_LABELS,
         info.motor_axis_tag,
     )

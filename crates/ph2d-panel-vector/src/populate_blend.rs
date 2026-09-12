@@ -35,14 +35,14 @@ pub(super) fn populate_blend(store: &mut WidgetStore) {
     slider_chip_int(
         store,
         ids::VECTOR_BLEND_STEPS,
-        ids::VECTOR_BLEND_STEPS_NUM,
+        ph2d_tool_vector::ids::VECTOR_BLEND_STEPS_NUM,
         blend_steps_to_track(BLEND_STEPS_DEFAULT),
         f64::from(BLEND_STEPS_DEFAULT),
         steps_scale,
         1.0,
     );
     store.set_number_range(
-        ids::VECTOR_BLEND_STEPS_NUM,
+        ph2d_tool_vector::ids::VECTOR_BLEND_STEPS_NUM,
         1.0,
         f64::from(MAX_BLEND_STEPS),
         1.0,
@@ -62,12 +62,17 @@ pub(super) fn populate_blend(store: &mut WidgetStore) {
     slider_chip(
         store,
         ids::VECTOR_MORPH_T,
-        ids::VECTOR_MORPH_T_NUM,
+        ph2d_tool_vector::ids::VECTOR_MORPH_T_NUM,
         MORPH_T_DEFAULT,
         f64::from(MORPH_T_DEFAULT),
         1.0,
         0.0,
     );
     // O range é o domínio inteiro do `t`; o motor clampa lá também (`Plan::at`).
-    store.set_number_range(ids::VECTOR_MORPH_T_NUM, 0.0, 1.0, MORPH_T_STEP);
+    store.set_number_range(
+        ph2d_tool_vector::ids::VECTOR_MORPH_T_NUM,
+        0.0,
+        1.0,
+        MORPH_T_STEP,
+    );
 }

@@ -15,8 +15,8 @@ use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::zones::Rect;
 use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
+use ph2d_panel_vector::VectorPanel;
 use ph2d_panel_vector::state::VectorPanelState;
-use ph2d_panel_vector::{VectorPanel, ids};
 use ph2d_ui_testkit::MockPanelHost;
 
 const VIEWPORT: Rect = Rect {
@@ -81,7 +81,10 @@ fn drag_slider(
 #[test]
 fn the_pencil_knobs_are_reachable_by_a_pointer_and_reach_the_bus() {
     publish_mode(ph2d_tool_vector::DrawMode::Pencil);
-    for id in [ids::VECTOR_PENCIL_FIDELITY, ids::VECTOR_PENCIL_STABILIZER] {
+    for id in [
+        ph2d_tool_vector::ids::VECTOR_PENCIL_FIDELITY,
+        ph2d_tool_vector::ids::VECTOR_PENCIL_STABILIZER,
+    ] {
         let mut host = MockPanelHost::with_panel::<VectorPanel>();
         let mut panel_state = VectorPanelState;
         let evs = drag_slider(&mut host, &mut panel_state, id);
@@ -115,7 +118,10 @@ fn the_pencil_section_is_absent_outside_pencil_mode() {
 
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let mut panel_state = VectorPanelState;
-    for id in [ids::VECTOR_PENCIL_FIDELITY, ids::VECTOR_PENCIL_STABILIZER] {
+    for id in [
+        ph2d_tool_vector::ids::VECTOR_PENCIL_FIDELITY,
+        ph2d_tool_vector::ids::VECTOR_PENCIL_STABILIZER,
+    ] {
         assert!(
             host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
                 .is_none(),
@@ -135,9 +141,9 @@ fn the_pencil_section_is_absent_outside_pencil_mode() {
 fn the_pencil_width_source_chips_reach_the_bus() {
     publish_mode(ph2d_tool_vector::DrawMode::Pencil);
     for id in [
-        ids::VECTOR_PENCIL_W_UNIFORM,
-        ids::VECTOR_PENCIL_W_SPEED,
-        ids::VECTOR_PENCIL_W_PRESSURE,
+        ph2d_tool_vector::ids::VECTOR_PENCIL_W_UNIFORM,
+        ph2d_tool_vector::ids::VECTOR_PENCIL_W_SPEED,
+        ph2d_tool_vector::ids::VECTOR_PENCIL_W_PRESSURE,
     ] {
         let mut host = MockPanelHost::with_panel::<VectorPanel>();
         let mut panel_state = VectorPanelState;
@@ -179,9 +185,9 @@ fn the_pencil_width_source_chips_are_absent_outside_pencil_mode() {
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let mut panel_state = VectorPanelState;
     for id in [
-        ids::VECTOR_PENCIL_W_UNIFORM,
-        ids::VECTOR_PENCIL_W_SPEED,
-        ids::VECTOR_PENCIL_W_PRESSURE,
+        ph2d_tool_vector::ids::VECTOR_PENCIL_W_UNIFORM,
+        ph2d_tool_vector::ids::VECTOR_PENCIL_W_SPEED,
+        ph2d_tool_vector::ids::VECTOR_PENCIL_W_PRESSURE,
     ] {
         assert!(
             host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)

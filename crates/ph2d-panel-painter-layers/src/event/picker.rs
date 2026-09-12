@@ -15,7 +15,7 @@ pub(crate) fn try_toggle_shared_picker(
 ) -> Option<bool> {
     let seed = if id == core_ids::PAINTER_COLOR_THUMB {
         brush_seed_rgba8()
-    } else if id == core_ids::PAINTER_WATERCOLOR_PAPER_COLOR_THUMB {
+    } else if id == ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_COLOR_THUMB {
         paper_seed_rgba8()
     } else {
         return None;

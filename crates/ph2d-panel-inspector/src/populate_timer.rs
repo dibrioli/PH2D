@@ -22,9 +22,15 @@ pub(crate) fn populate_timer(store: &mut WidgetStore) {
     // As linhas da lista e os dois botões — todos BOTÕES, porque é o `is_focusable` que decide se
     // o clique chega.
     register_button_ids(store, &ids::INSP_TIMER_ROW);
-    register_button_ids(store, &[ids::INSP_TIMER_ADD, ids::INSP_TIMER_REMOVE]);
+    register_button_ids(
+        store,
+        &[crate::ids::INSP_TIMER_ADD, crate::ids::INSP_TIMER_REMOVE],
+    );
 
-    for id in [ids::INSP_TIMER_REPEAT, ids::INSP_TIMER_AUTOSTART] {
+    for id in [
+        crate::ids::INSP_TIMER_REPEAT,
+        crate::ids::INSP_TIMER_AUTOSTART,
+    ] {
         store.register(
             id,
             InteractiveState::Checkbox {
@@ -33,7 +39,7 @@ pub(crate) fn populate_timer(store: &mut WidgetStore) {
             },
         );
     }
-    for id in [ids::INSP_TIMER_NAME, ids::INSP_TIMER_SIGNAL] {
+    for id in [crate::ids::INSP_TIMER_NAME, crate::ids::INSP_TIMER_SIGNAL] {
         store.register(
             id,
             InteractiveState::TextInput {
@@ -48,7 +54,7 @@ pub(crate) fn populate_timer(store: &mut WidgetStore) {
     // escrita lá: `0` é o valor que NÃO dispara, e um campo que nasce mudo lê-se como partido.
     let value = 1.0_f64;
     store.register(
-        ids::INSP_TIMER_DURATION,
+        crate::ids::INSP_TIMER_DURATION,
         InteractiveState::NumberInput {
             state: TextInputState::Normal,
             value,
@@ -66,5 +72,5 @@ pub(crate) fn populate_timer(store: &mut WidgetStore) {
     // `ph2d-ecs` (ADR-0029 — uma crate de painel fala com a shell por snapshot), e puxar a crate
     // do motor para cá por uma constante seria pagar a camada inteira por um `3600`. Há gate na
     // shell a prender os dois (`the_timer_duration_range_is_the_engines`).
-    store.set_number_range(ids::INSP_TIMER_DURATION, 0.0, 3600.0, 0.1); // LITERAL-PX-OK: faixa do motor, em segundos
+    store.set_number_range(crate::ids::INSP_TIMER_DURATION, 0.0, 3600.0, 0.1); // LITERAL-PX-OK: faixa do motor, em segundos
 }

@@ -13,18 +13,17 @@
 //! valor novo no `ALL` do motor sem id correspondente reprova, e um id a mais
 //! sem valor no motor também — o segundo é o chip que aponta para nada.
 
-use ph2d_editor_core::ids;
 use ph2d_sculpt3d::{ClothArea, ClothForceFalloff, ClothMode, Falloff};
 
 /// **GATE — o painel oferece TODA curva de falloff que o motor tem.**
 #[test]
 fn the_panel_offers_every_falloff_the_engine_has() {
     assert_eq!(
-        ids::SCULPT3D_FALLOFF.len(),
+        crate::ids::SCULPT3D_FALLOFF.len(),
         Falloff::ALL.len(),
         "o painel tem {} chips de falloff e o motor tem {} curvas -- uma curva sem \
          id nasce inalcancavel, e um id sem curva e' um chip que aponta para nada",
-        ids::SCULPT3D_FALLOFF.len(),
+        crate::ids::SCULPT3D_FALLOFF.len(),
         Falloff::ALL.len()
     );
 }
@@ -37,24 +36,24 @@ fn the_panel_offers_every_falloff_the_engine_has() {
 #[test]
 fn the_panel_offers_every_cloth_mode_the_engine_has() {
     assert_eq!(
-        ids::SCULPT3D_CLOTH_MODE.len(),
+        crate::ids::SCULPT3D_CLOTH_MODE.len(),
         ClothMode::ALL.len(),
         "o painel tem {} chips de deformacao e o motor tem {} modos",
-        ids::SCULPT3D_CLOTH_MODE.len(),
+        crate::ids::SCULPT3D_CLOTH_MODE.len(),
         ClothMode::ALL.len()
     );
     assert_eq!(
-        ids::SCULPT3D_CLOTH_AREA.len(),
+        crate::ids::SCULPT3D_CLOTH_AREA.len(),
         ClothArea::ALL.len(),
         "o painel tem {} chips de area e o motor tem {}",
-        ids::SCULPT3D_CLOTH_AREA.len(),
+        crate::ids::SCULPT3D_CLOTH_AREA.len(),
         ClothArea::ALL.len()
     );
     assert_eq!(
-        ids::SCULPT3D_CLOTH_FORCE_FALLOFF.len(),
+        crate::ids::SCULPT3D_CLOTH_FORCE_FALLOFF.len(),
         ClothForceFalloff::ALL.len(),
         "o painel tem {} chips de forma de queda e o motor tem {}",
-        ids::SCULPT3D_CLOTH_FORCE_FALLOFF.len(),
+        crate::ids::SCULPT3D_CLOTH_FORCE_FALLOFF.len(),
         ClothForceFalloff::ALL.len()
     );
 }

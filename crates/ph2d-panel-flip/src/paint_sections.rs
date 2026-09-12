@@ -56,25 +56,45 @@ impl BodyCtx<'_> {
             "Mode",
             &[
                 (
-                    ids::FLIP_MODE_SELECT,
+                    ph2d_tool_flip::ids::FLIP_MODE_SELECT,
                     "Select",
                     snap.mode == FlipMode::Select,
                 ),
-                (ids::FLIP_MODE_DRAW, "Draw", snap.mode == FlipMode::Draw),
-                (ids::FLIP_MODE_ERASE, "Erase", snap.mode == FlipMode::Erase),
-                (ids::FLIP_MODE_FILL, "Fill", snap.mode == FlipMode::Fill),
                 (
-                    ids::FLIP_MODE_RESHAPE,
+                    ph2d_tool_flip::ids::FLIP_MODE_DRAW,
+                    "Draw",
+                    snap.mode == FlipMode::Draw,
+                ),
+                (
+                    ph2d_tool_flip::ids::FLIP_MODE_ERASE,
+                    "Erase",
+                    snap.mode == FlipMode::Erase,
+                ),
+                (
+                    ph2d_tool_flip::ids::FLIP_MODE_FILL,
+                    "Fill",
+                    snap.mode == FlipMode::Fill,
+                ),
+                (
+                    ph2d_tool_flip::ids::FLIP_MODE_RESHAPE,
                     "Sculpt",
                     snap.mode == FlipMode::Reshape,
                 ),
-                (ids::FLIP_MODE_EDIT, "Edit", snap.mode == FlipMode::Edit),
                 (
-                    ids::FLIP_MODE_COLORIZE,
+                    ph2d_tool_flip::ids::FLIP_MODE_EDIT,
+                    "Edit",
+                    snap.mode == FlipMode::Edit,
+                ),
+                (
+                    ph2d_tool_flip::ids::FLIP_MODE_COLORIZE,
                     "Colorize",
                     snap.mode == FlipMode::Colorize,
                 ),
-                (ids::FLIP_MODE_TRACE, "Trace", snap.mode == FlipMode::Trace),
+                (
+                    ph2d_tool_flip::ids::FLIP_MODE_TRACE,
+                    "Trace",
+                    snap.mode == FlipMode::Trace,
+                ),
             ],
             &[3, 3, 2],
             y,
@@ -111,17 +131,17 @@ impl BodyCtx<'_> {
             "Select",
             [
                 (
-                    ids::FLIP_EDIT_DOM_STROKE,
+                    ph2d_tool_flip::ids::FLIP_EDIT_DOM_STROKE,
                     "Stroke",
                     snap.edit_domain == EditDomain::Stroke,
                 ),
                 (
-                    ids::FLIP_EDIT_DOM_POINT,
+                    ph2d_tool_flip::ids::FLIP_EDIT_DOM_POINT,
                     "Point",
                     snap.edit_domain == EditDomain::Point,
                 ),
                 (
-                    ids::FLIP_EDIT_DOM_SEGMENT,
+                    ph2d_tool_flip::ids::FLIP_EDIT_DOM_SEGMENT,
                     "Segment",
                     snap.edit_domain == EditDomain::Segment,
                 ),
@@ -153,8 +173,16 @@ impl BodyCtx<'_> {
         self.segmented(
             "Shape",
             [
-                (ids::FLIP_SHAPE_LINE, "Line", !snap.draw_filled),
-                (ids::FLIP_SHAPE_FILLED, "Filled", snap.draw_filled),
+                (
+                    ph2d_tool_flip::ids::FLIP_SHAPE_LINE,
+                    "Line",
+                    !snap.draw_filled,
+                ),
+                (
+                    ph2d_tool_flip::ids::FLIP_SHAPE_FILLED,
+                    "Filled",
+                    snap.draw_filled,
+                ),
             ],
             y,
         )
@@ -172,11 +200,11 @@ impl BodyCtx<'_> {
             return y;
         }
         let ids4 = |off: usize| -> [(ph2d_a11y::NodeId, &'static str, bool); 4] {
-            let mut out = [(ids::FLIP_RS_SMOOTH, "", false); 4];
+            let mut out = [(ph2d_tool_flip::ids::FLIP_RS_SMOOTH, "", false); 4];
             for (i, slot) in out.iter_mut().enumerate() {
                 let kind = ReshapeKind::ALL[off + i];
                 *slot = (
-                    ids::FLIP_RESHAPE_KIND_IDS[off + i],
+                    ph2d_tool_flip::ids::FLIP_RESHAPE_KIND_IDS[off + i],
                     kind.label(),
                     snap.reshape == kind,
                 );
@@ -297,17 +325,17 @@ impl BodyCtx<'_> {
             "Bucket",
             [
                 (
-                    ids::FLIP_FILL_PAINT,
+                    ph2d_tool_flip::ids::FLIP_FILL_PAINT,
                     "Paint",
                     snap.fill_mode == FillMode::Paint,
                 ),
                 (
-                    ids::FLIP_FILL_BEHIND,
+                    ph2d_tool_flip::ids::FLIP_FILL_BEHIND,
                     "Behind",
                     snap.fill_mode == FillMode::PaintBehind,
                 ),
                 (
-                    ids::FLIP_FILL_UNPAINT,
+                    ph2d_tool_flip::ids::FLIP_FILL_UNPAINT,
                     "Unpaint",
                     snap.fill_mode == FillMode::Unpaint,
                 ),
@@ -319,13 +347,13 @@ impl BodyCtx<'_> {
         // aberto. Mundo, não px de tela, para ser zoom-invariante como o Size.
         let track = self
             .store
-            .slider(ids::FLIP_GAP)
+            .slider(ph2d_tool_flip::ids::FLIP_GAP)
             .map(|(_, v)| v)
             .unwrap_or((snap.gap / GAP_MAX_WORLD) as f32);
         let gap = f64::from(track) * GAP_MAX_WORLD;
         y = self.slider_row(
             "Gap",
-            ids::FLIP_GAP,
+            ph2d_tool_flip::ids::FLIP_GAP,
             ids::FLIP_GAP_NUM,
             track,
             gap,
@@ -338,13 +366,13 @@ impl BodyCtx<'_> {
         // line-art aberto, por caminhos diferentes.
         let track = self
             .store
-            .slider(ids::FLIP_TRAP)
+            .slider(ph2d_tool_flip::ids::FLIP_TRAP)
             .map(|(_, v)| v)
             .unwrap_or((snap.trap / TRAP_MAX_PX) as f32);
         let trap = f64::from(track) * TRAP_MAX_PX;
         y = self.slider_row(
             "Trap",
-            ids::FLIP_TRAP,
+            ph2d_tool_flip::ids::FLIP_TRAP,
             ids::FLIP_TRAP_NUM,
             track,
             trap,
@@ -354,13 +382,13 @@ impl BodyCtx<'_> {
         // Grow/Shrink (px do buffer): positivo enfia a cor por baixo da linha.
         let track = self
             .store
-            .slider(ids::FLIP_GROW)
+            .slider(ph2d_tool_flip::ids::FLIP_GROW)
             .map(|(_, v)| v)
             .unwrap_or(((snap.grow - GROW_MIN) / (GROW_MAX - GROW_MIN)) as f32);
         let grow = GROW_MIN + f64::from(track) * (GROW_MAX - GROW_MIN);
         y = self.slider_row(
             "Grow",
-            ids::FLIP_GROW,
+            ph2d_tool_flip::ids::FLIP_GROW,
             ids::FLIP_GROW_NUM,
             track,
             grow,
@@ -370,13 +398,13 @@ impl BodyCtx<'_> {
         // Precision: resolução do buffer do balde.
         let track = self
             .store
-            .slider(ids::FLIP_PRECISION)
+            .slider(ph2d_tool_flip::ids::FLIP_PRECISION)
             .map(|(_, v)| v)
             .unwrap_or(((snap.precision - PRECISION_MIN) / (PRECISION_MAX - PRECISION_MIN)) as f32);
         let prec = PRECISION_MIN + f64::from(track) * (PRECISION_MAX - PRECISION_MIN);
         self.slider_row(
             "Precision",
-            ids::FLIP_PRECISION,
+            ph2d_tool_flip::ids::FLIP_PRECISION,
             ids::FLIP_PRECISION_NUM,
             track,
             prec,
@@ -393,10 +421,18 @@ impl BodyCtx<'_> {
         self.segmented(
             "Erase",
             [
-                (ids::FLIP_ERASE_SOFT, "Soft", snap.erase == EraseMode::Soft),
-                (ids::FLIP_ERASE_HARD, "Hard", snap.erase == EraseMode::Hard),
                 (
-                    ids::FLIP_ERASE_STROKE,
+                    ph2d_tool_flip::ids::FLIP_ERASE_SOFT,
+                    "Soft",
+                    snap.erase == EraseMode::Soft,
+                ),
+                (
+                    ph2d_tool_flip::ids::FLIP_ERASE_HARD,
+                    "Hard",
+                    snap.erase == EraseMode::Hard,
+                ),
+                (
+                    ph2d_tool_flip::ids::FLIP_ERASE_STROKE,
                     "Stroke",
                     snap.erase == EraseMode::Stroke,
                 ),

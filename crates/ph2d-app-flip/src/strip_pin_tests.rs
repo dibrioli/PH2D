@@ -26,7 +26,7 @@ fn the_pin_button_toggles_the_current_key_in_the_light_table() {
     );
 
     let changed = click(
-        ph2d_editor_core::ids::FLIP_KEY_PIN,
+        ph2d_panel_flip_frames::ids::FLIP_KEY_PIN,
         &mut doc,
         lid,
         &mut ph,
@@ -40,7 +40,7 @@ fn the_pin_button_toggles_the_current_key_in_the_light_table() {
     );
 
     click(
-        ph2d_editor_core::ids::FLIP_KEY_PIN,
+        ph2d_panel_flip_frames::ids::FLIP_KEY_PIN,
         &mut doc,
         lid,
         &mut ph,
@@ -142,7 +142,7 @@ fn the_reset_button_clears_every_traced_sheet() {
         ph2d_flip::Pose::from_translation(ph2d_core::Vec2::new(5.0, 5.0)),
     );
     let changed = click(
-        ph2d_editor_core::ids::FLIP_TRACE_RESET,
+        ph2d_panel_flip::ids::FLIP_TRACE_RESET,
         &mut doc,
         lid,
         &mut ph,

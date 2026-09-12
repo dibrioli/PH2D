@@ -6,7 +6,6 @@
 
 use super::measure_shape_system::{cp, tool};
 use crate::tool::paint::media::PaintMedia;
-use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::tool::{CanvasPaintTool, PanelEvent, PointerPhase, Tool};
 use ph2d_painter_brush::StrokeMethod;
 
@@ -231,7 +230,10 @@ fn no_editor_leaves_the_canvas_owing_at_rest() {
 /// gate que chamasse o setter mediria o silêncio — a tela ficaria com o carimbo anterior e passaria
 /// verde com a lei desligada.
 fn drag_the_size_slider(t: &mut crate::tool::PainterTool, v: f64) {
-    t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_BRUSH_SIZE_SLIDER, v));
+    t.handle_panel_event(PanelEvent::SetValue(
+        crate::ids::PAINTER_BRUSH_SIZE_SLIDER,
+        v,
+    ));
 }
 
 /// Uma figura em REPOUSO (criada e solta) — o estado em que um arrasto de knob começa.

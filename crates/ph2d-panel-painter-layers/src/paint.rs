@@ -88,7 +88,7 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
 
     paint_panel_close_button(
         rect,
-        core_ids::PAINTER_LAYERS_CLOSE,
+        ph2d_tool_painter::ids::PAINTER_LAYERS_CLOSE,
         ctx.host.hit_index_mut(),
         ctx.scene,
         theme,
@@ -325,9 +325,13 @@ fn paint_dock_modes(
         (
             "Brush",
             !shows_layers,
-            core_ids::PAINTER_SIDEBAR_TOGGLE_DOCK,
+            ph2d_tool_painter::ids::PAINTER_SIDEBAR_TOGGLE_DOCK,
         ),
-        ("Layers", shows_layers, core_ids::PAINTER_LAYERS_TOGGLE_DOCK),
+        (
+            "Layers",
+            shows_layers,
+            ph2d_tool_painter::ids::PAINTER_LAYERS_TOGGLE_DOCK,
+        ),
     ];
     let (store, hit) = ctx.host.store_and_hit_index_mut();
     ph2d_editor_core::widget::panel_chrome::paint_segmented_group(
@@ -353,7 +357,7 @@ fn register_header_chrome(ctx: &mut PaintCtx, rect: Rect) {
     //    o nada, que é a forma exacta do controlo morto sob o dedo.*
     ctx.host
         .hit_index_mut()
-        .register(core_ids::PAINTER_LAYERS_CLOSE, close);
+        .register(ph2d_tool_painter::ids::PAINTER_LAYERS_CLOSE, close);
 }
 
 /// Action toolbar (one row below the header): New layer · Group · Duplicate ·
@@ -365,15 +369,23 @@ fn paint_action_toolbar(ctx: &mut PaintCtx, toolbar_rect: Rect, theme: ph2d_toke
     // Vertically center the square icon within the toolbar strip.
     let y = toolbar_rect.y + ((toolbar_rect.h - HEADER_ICON_W) * 0.5).max(0.0);
     let specs = [
-        (core_ids::PAINTER_LAYERS_ADD, IconId::Add, "New layer"),
-        (core_ids::PAINTER_LAYERS_GROUP, IconId::Group, "New group"),
         (
-            core_ids::PAINTER_LAYERS_DUPLICATE,
+            ph2d_tool_painter::ids::PAINTER_LAYERS_ADD,
+            IconId::Add,
+            "New layer",
+        ),
+        (
+            ph2d_tool_painter::ids::PAINTER_LAYERS_GROUP,
+            IconId::Group,
+            "New group",
+        ),
+        (
+            ph2d_tool_painter::ids::PAINTER_LAYERS_DUPLICATE,
             IconId::Duplicate,
             "Duplicate layer",
         ),
         (
-            core_ids::PAINTER_LAYERS_DELETE,
+            ph2d_tool_painter::ids::PAINTER_LAYERS_DELETE,
             IconId::Trash,
             "Delete layer",
         ),
@@ -393,7 +405,7 @@ fn paint_action_toolbar(ctx: &mut PaintCtx, toolbar_rect: Rect, theme: ph2d_toke
     // chip at this toolbar row so the deferred popover drops straight down the
     // panel (every kind name fits one line — narrow right-align like the blend
     // chip would clip the long names).
-    let adj_id = core_ids::PAINTER_LAYERS_ADD_ADJUSTMENT;
+    let adj_id = ph2d_tool_painter::ids::PAINTER_LAYERS_ADD_ADJUSTMENT;
     let adj_rect = Rect::new(x, y, HEADER_ICON_W, HEADER_ICON_W);
     let open = matches!(
         ctx.host.store().get(adj_id),
@@ -417,7 +429,7 @@ fn paint_action_toolbar(ctx: &mut PaintCtx, toolbar_rect: Rect, theme: ph2d_toke
 
     // "+ Texture" — create a Texture layer (procedural fill + Color Ramp), next to "+ Adj".
     x += HEADER_ICON_W + Spacing::Xs.px();
-    let tex_id = core_ids::PAINTER_LAYERS_ADD_TEXTURE;
+    let tex_id = ph2d_tool_painter::ids::PAINTER_LAYERS_ADD_TEXTURE;
     let tex_rect = Rect::new(x, y, HEADER_ICON_W, HEADER_ICON_W);
     let tex_st = ctx.host.store().button_visual(tex_id);
     let tex_btn = Button::new(tex_id, "Add texture layer")
@@ -438,22 +450,22 @@ fn paint_modifier_toolbar(ctx: &mut PaintCtx, toolbar_rect: Rect, theme: ph2d_to
     let mut x = toolbar_rect.x + PANEL_HEAD_PAD;
     let specs = [
         (
-            core_ids::PAINTER_LAYERS_MASK,
+            ph2d_tool_painter::ids::PAINTER_LAYERS_MASK,
             "Mask",
             mods.is_some_and(|m| m.has_mask),
         ),
         (
-            core_ids::PAINTER_LAYERS_CLIP,
+            ph2d_tool_painter::ids::PAINTER_LAYERS_CLIP,
             "Clip",
             mods.is_some_and(|m| m.clipping),
         ),
         (
-            core_ids::PAINTER_LAYERS_ALPHA_LOCK,
+            ph2d_tool_painter::ids::PAINTER_LAYERS_ALPHA_LOCK,
             "Lock",
             mods.is_some_and(|m| m.alpha_locked),
         ),
         (
-            core_ids::PAINTER_LAYERS_REFERENCE,
+            ph2d_tool_painter::ids::PAINTER_LAYERS_REFERENCE,
             "Ref",
             mods.is_some_and(|m| m.is_reference),
         ),
@@ -461,7 +473,8 @@ fn paint_modifier_toolbar(ctx: &mut PaintCtx, toolbar_rect: Rect, theme: ph2d_to
     for (id, label, on) in specs {
         let eligible = raster
             || (tex
-                && (id == core_ids::PAINTER_LAYERS_MASK || id == core_ids::PAINTER_LAYERS_CLIP));
+                && (id == ph2d_tool_painter::ids::PAINTER_LAYERS_MASK
+                    || id == ph2d_tool_painter::ids::PAINTER_LAYERS_CLIP));
         let btn_rect = Rect::new(x, y, MOD_BTN_W, ROW_H_PX);
         let st = if eligible {
             ctx.host.store().button_visual(id)
@@ -483,14 +496,17 @@ fn paint_modifier_toolbar(ctx: &mut PaintCtx, toolbar_rect: Rect, theme: ph2d_to
 /// "Apply" footer CTA — commits the live layer composite into the sprite
 /// (routes to `PainterTool::request_commit`). Accent-filled for prominence.
 fn paint_apply_button(ctx: &mut PaintCtx, rect: Rect, theme: ph2d_tokens::Theme) {
-    let st = ctx.host.store().button_visual(core_ids::PAINTER_APPLY);
-    let btn = Button::new(core_ids::PAINTER_APPLY, "Apply")
+    let st = ctx
+        .host
+        .store()
+        .button_visual(ph2d_tool_painter::ids::PAINTER_APPLY);
+    let btn = Button::new(ph2d_tool_painter::ids::PAINTER_APPLY, "Apply")
         .accent()
         .visual(st);
     paint_button(&btn, rect, ctx.scene, ctx.text_system, theme);
     ctx.host
         .hit_index_mut()
-        .register(core_ids::PAINTER_APPLY, rect);
+        .register(ph2d_tool_painter::ids::PAINTER_APPLY, rect);
 }
 
 /// `register_if_absent` a per-row Button slot (dispatch needs the store entry

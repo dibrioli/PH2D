@@ -11,7 +11,6 @@
 //! hit-registrado e **morto sob o ponteiro**, com um teste verde ao lado.
 
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::ids;
 use ph2d_editor_core::screens::hero::{InspectorInstanceInfo, InspectorNameInfo};
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_inspector::{
@@ -66,7 +65,7 @@ fn the_card_opens_the_prefab_it_names() {
     let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
     let rect = rects
         .iter()
-        .find(|(n, _)| *n == ids::INSP_INSTANCE_OPEN_PREFAB)
+        .find(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_INSTANCE_OPEN_PREFAB)
         .map(|(_, r)| *r)
         .expect("o botao de abrir a receita nunca foi pintado nem registado");
     let events = host.click_at(rect.x + rect.w * 0.5, rect.y + rect.h * 0.5);

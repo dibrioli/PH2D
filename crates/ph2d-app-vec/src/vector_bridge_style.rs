@@ -412,27 +412,27 @@ fn reseed_style_sliders(
     };
     set(
         store,
-        ph2d_editor_core::ids::VECTOR_WIDTH,
+        ph2d_tool_vector::ids::VECTOR_WIDTH,
         params::px_to_slider(tool.stroke_width_px()),
     );
     set(
         store,
-        ph2d_editor_core::ids::VECTOR_DASH,
+        ph2d_tool_vector::ids::VECTOR_DASH,
         params::dash_to_slider(tool.dash()),
     );
     set(
         store,
-        ph2d_editor_core::ids::VECTOR_GAP,
+        ph2d_tool_vector::ids::VECTOR_GAP,
         params::gap_to_slider(tool.gap()),
     );
     sync_opacity_slider(
         store,
-        ph2d_editor_core::ids::VECTOR_STROKE_OPACITY,
+        ph2d_tool_vector::ids::VECTOR_STROKE_OPACITY,
         tool.stroke_rgba()[3],
     );
     sync_opacity_slider(
         store,
-        ph2d_editor_core::ids::VECTOR_FILL_OPACITY,
+        ph2d_tool_vector::ids::VECTOR_FILL_OPACITY,
         tool.fill_rgba()[3],
     );
 }

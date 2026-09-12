@@ -6,7 +6,6 @@
 //! analogue) to draw the custom line / pick the radial centre. Split from [`crate::paint_brush`] for
 //! the LOC cap; every control is `populate`-registered + dispatched in [`crate::event`].
 
-use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{
     Button, ButtonKind, DEFAULT_CHIP_W, DEFAULT_LABEL_W, RadioGroup, RadioOption, RadioOrientation,
@@ -41,9 +40,9 @@ pub(crate) fn paint_symmetry_section(
         content_w,
         y,
         "Symmetry",
-        core_ids::PAINTER_BRUSH_SYMMETRY_SECTION,
-        core_ids::PAINTER_BRUSH_SYMMETRY_SECTION_COLOR,
-        core_ids::PAINTER_BRUSH_SYMMETRY_RESET,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_SYMMETRY_SECTION,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_SYMMETRY_SECTION_COLOR,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_SYMMETRY_RESET,
     );
     let Some(fold) = fold else {
         return y;
@@ -54,7 +53,7 @@ pub(crate) fn paint_symmetry_section(
         x,
         content_w,
         y,
-        core_ids::PAINTER_BRUSH_SYMMETRY_USE,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_SYMMETRY_USE,
         "Use Symmetry",
         brush.symmetry_enabled,
     );
@@ -68,7 +67,7 @@ pub(crate) fn paint_symmetry_section(
         x,
         content_w,
         y,
-        core_ids::PAINTER_BRUSH_SYMMETRY_CIRCULAR,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_SYMMETRY_CIRCULAR,
         "Circular",
         brush.symmetry_circular,
     );
@@ -81,7 +80,7 @@ pub(crate) fn paint_symmetry_section(
             x,
             content_w,
             y,
-            core_ids::PAINTER_BRUSH_SYMMETRY_PICK_CENTER,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_SYMMETRY_PICK_CENTER,
             "Pick Center",
             brush.symmetry_pick_center,
         );
@@ -95,7 +94,7 @@ pub(crate) fn paint_symmetry_section(
                 x,
                 content_w,
                 y,
-                core_ids::PAINTER_BRUSH_SYMMETRY_DRAW_LINE,
+                ph2d_tool_painter::ids::PAINTER_BRUSH_SYMMETRY_DRAW_LINE,
                 "Draw Custom Line",
                 brush.symmetry_pick_line,
             );
@@ -124,10 +123,18 @@ fn paint_axis_segment(
         ph2d_a11y::NodeId(0),
         "Axis",
         vec![
-            RadioOption::new(core_ids::PAINTER_BRUSH_SYMMETRY_AXIS_X, "X", "X"),
-            RadioOption::new(core_ids::PAINTER_BRUSH_SYMMETRY_AXIS_Y, "Y", "Y"),
             RadioOption::new(
-                core_ids::PAINTER_BRUSH_SYMMETRY_AXIS_CUSTOM,
+                ph2d_tool_painter::ids::PAINTER_BRUSH_SYMMETRY_AXIS_X,
+                "X",
+                "X",
+            ),
+            RadioOption::new(
+                ph2d_tool_painter::ids::PAINTER_BRUSH_SYMMETRY_AXIS_Y,
+                "Y",
+                "Y",
+            ),
+            RadioOption::new(
+                ph2d_tool_painter::ids::PAINTER_BRUSH_SYMMETRY_AXIS_CUSTOM,
                 "Custom",
                 "Custom",
             ),
@@ -141,7 +148,10 @@ fn paint_axis_segment(
         let text_system = &mut *ctx.text_system;
         paint_radio_group_with_labels(&rg, rect, scene, text_system, theme);
     }
-    for (i, id) in core_ids::PAINTER_BRUSH_SYMMETRY_AXES.iter().enumerate() {
+    for (i, id) in ph2d_tool_painter::ids::PAINTER_BRUSH_SYMMETRY_AXES
+        .iter()
+        .enumerate()
+    {
         ctx.host
             .hit_index_mut()
             .register(*id, rg.option_rect(rect, i));
@@ -172,8 +182,8 @@ fn paint_segments_row(
         track,
         f64::from(seg),
         Some(&display),
-        core_ids::PAINTER_BRUSH_SYMMETRY_SEGMENTS,
-        core_ids::PAINTER_BRUSH_SYMMETRY_SEGMENTS_CHIP,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_SYMMETRY_SEGMENTS,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_SYMMETRY_SEGMENTS_CHIP,
         DEFAULT_LABEL_W,
         DEFAULT_CHIP_W,
         store,

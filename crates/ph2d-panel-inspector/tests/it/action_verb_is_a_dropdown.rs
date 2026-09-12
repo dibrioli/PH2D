@@ -121,11 +121,15 @@ fn host() -> (MockPanelHost, InspectorState) {
 fn the_verb_chip_is_painted_and_is_a_dropdown() {
     let (mut h, mut st) = host();
     let r = h
-        .painted_rect::<InspectorPanel>(&mut st, VIEWPORT, ids::INSP_ACTION_VERB_PICK)
+        .painted_rect::<InspectorPanel>(
+            &mut st,
+            VIEWPORT,
+            ph2d_panel_inspector::ids::INSP_ACTION_VERB_PICK,
+        )
         .expect("o chip do verbo nao foi PINTADO com area clicavel");
     assert!(r.w > 0.0 && r.h > 0.0, "chip sem area: {r:?}");
     assert_eq!(
-        h.dropdown_is_open(ids::INSP_ACTION_VERB_PICK),
+        h.dropdown_is_open(ph2d_panel_inspector::ids::INSP_ACTION_VERB_PICK),
         Some(false),
         "o chip nao esta' registado como Dropdown — o dispatcher nao o sabe abrir"
     );
@@ -144,7 +148,7 @@ fn the_verb_chip_is_painted_and_is_a_dropdown() {
 fn opening_it_makes_every_verb_reachable_and_publishes_the_popover() {
     let (mut h, mut st) = host();
     let _ = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
-    h.set_dropdown_open(ids::INSP_ACTION_VERB_PICK, true);
+    h.set_dropdown_open(ph2d_panel_inspector::ids::INSP_ACTION_VERB_PICK, true);
     let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
 
     let mut vistos: Vec<Rect> = Vec::new();
@@ -176,7 +180,7 @@ fn opening_it_makes_every_verb_reachable_and_publishes_the_popover() {
         .expect("o rect do popover nao foi publicado — clicar FORA nao fecharia o seletor");
     assert_eq!(
         dono,
-        ids::INSP_ACTION_VERB_PICK,
+        ph2d_panel_inspector::ids::INSP_ACTION_VERB_PICK,
         "o popover publicado e' de outro seletor"
     );
     for (i, r) in vistos.iter().enumerate() {
@@ -203,7 +207,7 @@ fn opening_it_makes_every_verb_reachable_and_publishes_the_popover() {
 fn picking_a_verb_reaches_the_bus_and_closes_the_list() {
     let (mut h, mut st) = host();
     let _ = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
-    h.set_dropdown_open(ids::INSP_ACTION_VERB_PICK, true);
+    h.set_dropdown_open(ph2d_panel_inspector::ids::INSP_ACTION_VERB_PICK, true);
     let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
     let alvo = ids::INSP_ACTION_VERB[TAG_SHOW as usize];
     let (_, r) = rects
@@ -242,7 +246,7 @@ fn picking_a_verb_reaches_the_bus_and_closes_the_list() {
         "escolher `Show` nao chegou ao barramento; o que chegou foi {acoes:?}"
     );
     assert_eq!(
-        h.dropdown_is_open(ids::INSP_ACTION_VERB_PICK),
+        h.dropdown_is_open(ph2d_panel_inspector::ids::INSP_ACTION_VERB_PICK),
         Some(false),
         "o seletor ficou ABERTO depois da escolha — a lista continuaria a tapar as seccoes de baixo"
     );
@@ -296,12 +300,12 @@ fn the_list_flips_above_when_below_would_leave_the_screen() {
     assert_fixture_covers_the_model(&info);
     set_current_inspector_action(Some(info));
     let _ = h.paint::<InspectorPanel>(&mut st, JANELA_TABLET);
-    h.set_dropdown_open(ids::INSP_ACTION_VERB_PICK, true);
+    h.set_dropdown_open(ph2d_panel_inspector::ids::INSP_ACTION_VERB_PICK, true);
     let rects = h.paint::<InspectorPanel>(&mut st, JANELA_TABLET);
 
     let (_, chip) = rects
         .iter()
-        .find(|(n, _)| *n == ids::INSP_ACTION_VERB_PICK)
+        .find(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_ACTION_VERB_PICK)
         .copied()
         .expect("o chip do verbo nao foi pintado");
 

@@ -1,7 +1,6 @@
 //! Panel → shell. Every arm is derived from [`crate::rows`], so a row that
 //! exists is a row that dispatches.
 
-use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal, seam_reset_button};
 use ph2d_physics_ecs::{InteractionSettings, PhysicsSettings};
@@ -126,9 +125,9 @@ pub(crate) fn apply_event(
         }
         // A matrix cell toggles ONE pair. `LayerMatrix::set` writes both halves,
         // so the asymmetric state the panel could otherwise author does not exist.
-        WidgetEvent::Click(id) if ids::PHYSICS_LAYER_CELL.contains(&id) => {
+        WidgetEvent::Click(id) if crate::ids::PHYSICS_LAYER_CELL.contains(&id) => {
             seam_reset_button(host, id);
-            let idx = ids::PHYSICS_LAYER_CELL
+            let idx = crate::ids::PHYSICS_LAYER_CELL
                 .iter()
                 .position(|&c| c == id)
                 .expect("guard matched");
@@ -146,14 +145,14 @@ pub(crate) fn apply_event(
         // `sleep_angular_threshold`, e a `rapier2d` 0.35 lê desse campo só o SINAL — o slider
         // mentia em todo o seu curso. A escrita vai pela porta `with_sleep_enabled`, nunca por uma
         // comparação com zero aqui: a lei do sinal mora num sítio (`ph2d-physics-ecs`).
-        WidgetEvent::Click(id) if id == ids::PHYSICS_SLEEP_SPIN => {
+        WidgetEvent::Click(id) if id == crate::ids::PHYSICS_SLEEP_SPIN => {
             seam_reset_button(host, id);
             let settings = state::current().settings;
             let on = settings.sleep_enabled();
             state::push_intent(PhysicsIntent::SetSettings(settings.with_sleep_enabled(!on)));
             true
         }
-        WidgetEvent::Click(id) if id == ids::PHYSICS_SHOW_COLLIDERS => {
+        WidgetEvent::Click(id) if id == crate::ids::PHYSICS_SHOW_COLLIDERS => {
             seam_reset_button(host, id);
             state::push_intent(PhysicsIntent::ToggleColliders);
             true
@@ -161,22 +160,22 @@ pub(crate) fn apply_event(
         // Os dois verbos de FITA (W25). Não tocam `PhysicsSettings`: a corrida
         // gravada mora na shell e viaja no seu próprio campo do `ProjectFile`,
         // então enfiá-la nas settings de mundo seriam duas cópias dela.
-        WidgetEvent::Click(id) if id == ids::PHYSICS_CLEAR_RUN => {
+        WidgetEvent::Click(id) if id == crate::ids::PHYSICS_CLEAR_RUN => {
             seam_reset_button(host, id);
             state::push_intent(PhysicsIntent::ClearRun);
             true
         }
-        WidgetEvent::Click(id) if id == ids::PHYSICS_RESTORE_RUN => {
+        WidgetEvent::Click(id) if id == crate::ids::PHYSICS_RESTORE_RUN => {
             seam_reset_button(host, id);
             state::push_intent(PhysicsIntent::RestoreRun);
             true
         }
-        WidgetEvent::Click(id) if id == ids::PHYSICS_RESET_DEFAULTS => {
+        WidgetEvent::Click(id) if id == crate::ids::PHYSICS_RESET_DEFAULTS => {
             seam_reset_button(host, id);
             state::push_intent(PhysicsIntent::SetSettings(PhysicsSettings::default()));
             true
         }
-        WidgetEvent::Click(id) if id == ids::PHYSICS_CLOSE => {
+        WidgetEvent::Click(id) if id == crate::ids::PHYSICS_CLOSE => {
             seam_reset_button(host, id);
             host.set_panel_visible(crate::PhysicsPanel::ID, false);
             true

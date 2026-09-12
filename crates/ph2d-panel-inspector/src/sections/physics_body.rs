@@ -68,7 +68,7 @@ pub(super) fn paint_body_face(
         yy,
         "Body",
         ids::INSP_LIVE_PHYSICS_SECTION,
-        &ids::INSP_PHYS_KIND,
+        &crate::ids::INSP_PHYS_KIND,
         &KIND_LABELS,
         info.kind_tag,
     );
@@ -83,7 +83,7 @@ pub(super) fn paint_body_face(
         yy,
         "Collider",
         ids::INSP_LIVE_PHYSICS_COLOR,
-        &ids::INSP_PHYS_SHAPE,
+        &crate::ids::INSP_PHYS_SHAPE,
         &SHAPE_LABELS,
         info.shape_tag,
     );
@@ -134,8 +134,8 @@ pub(super) fn paint_body_face(
     // Dynamic-only), so it sits with the shape dimensions rather than the dynamics
     // block. The overlay draws the outline here so the offset is visible.
     for (label, id) in [
-        ("Offset X (m)", ids::INSP_PHYS_OFFSET_X),
-        ("Offset Y (m)", ids::INSP_PHYS_OFFSET_Y),
+        ("Offset X (m)", crate::ids::INSP_PHYS_OFFSET_X),
+        ("Offset Y (m)", crate::ids::INSP_PHYS_OFFSET_Y),
     ] {
         yy = num_row(
             scene,
@@ -248,13 +248,13 @@ fn paint_dynamics_rows(
 ) -> f32 {
     let mut yy = y;
     for (label, id) in [
-        ("Gravity Scale", ids::INSP_PHYS_GRAVITY_SCALE),
-        ("Init Vel X (m/s)", ids::INSP_PHYS_LINVEL_X),
-        ("Init Vel Y (m/s)", ids::INSP_PHYS_LINVEL_Y),
-        ("Init Spin (deg/s)", ids::INSP_PHYS_ANGVEL),
+        ("Gravity Scale", crate::ids::INSP_PHYS_GRAVITY_SCALE),
+        ("Init Vel X (m/s)", crate::ids::INSP_PHYS_LINVEL_X),
+        ("Init Vel Y (m/s)", crate::ids::INSP_PHYS_LINVEL_Y),
+        ("Init Spin (deg/s)", crate::ids::INSP_PHYS_ANGVEL),
         // Dominance (collision priority): a higher value bulldozes lower ones.
         // Dynamic-only like the rest — a non-dynamic body is already at the max.
-        ("Dominance", ids::INSP_PHYS_DOMINANCE),
+        ("Dominance", crate::ids::INSP_PHYS_DOMINANCE),
     ] {
         yy = num_row(
             scene,
@@ -318,8 +318,8 @@ fn paint_body_actions(
             w,
             yy,
             "Collision",
-            ids::INSP_LIVE_PHYSICS_CCD,
-            &ids::INSP_PHYS_CCD,
+            crate::ids::INSP_LIVE_PHYSICS_CCD,
+            &crate::ids::INSP_PHYS_CCD,
             &CCD_LABELS,
             u8::from(info.ccd),
         );
@@ -336,8 +336,8 @@ fn paint_body_actions(
             w,
             yy,
             "Rotation",
-            ids::INSP_LIVE_PHYSICS_LOCKROT,
-            &ids::INSP_PHYS_LOCKROT,
+            crate::ids::INSP_LIVE_PHYSICS_LOCKROT,
+            &crate::ids::INSP_PHYS_LOCKROT,
             &LOCKROT_LABELS,
             u8::from(info.lock_rotation),
         );
@@ -354,8 +354,8 @@ fn paint_body_actions(
             w,
             yy,
             "Freeze X",
-            ids::INSP_LIVE_PHYSICS_LOCKX,
-            &ids::INSP_PHYS_LOCKX,
+            crate::ids::INSP_LIVE_PHYSICS_LOCKX,
+            &crate::ids::INSP_PHYS_LOCKX,
             &FREEZE_POS_LABELS,
             u8::from(info.lock_x),
         );
@@ -369,8 +369,8 @@ fn paint_body_actions(
             w,
             yy,
             "Freeze Y",
-            ids::INSP_LIVE_PHYSICS_LOCKY,
-            &ids::INSP_PHYS_LOCKY,
+            crate::ids::INSP_LIVE_PHYSICS_LOCKY,
+            &crate::ids::INSP_PHYS_LOCKY,
             &FREEZE_POS_LABELS,
             u8::from(info.lock_y),
         );
@@ -398,8 +398,8 @@ fn paint_body_actions(
             w,
             yy,
             "Bake",
-            ids::INSP_PHYS_BAKE_CH_GROUP,
-            &ids::INSP_PHYS_BAKE_CH,
+            crate::ids::INSP_PHYS_BAKE_CH_GROUP,
+            &crate::ids::INSP_PHYS_BAKE_CH,
             &BAKE_CH_LABELS,
             info.bake_channels_tag,
         );
@@ -470,14 +470,14 @@ fn paint_body_actions(
     // not a refusal.
     if info.kind_tag == KIND_DYNAMIC {
         let r = paint_at(
-            ids::INSP_PHYS_BAKE,
+            crate::ids::INSP_PHYS_BAKE,
             &bake_label(info.bake_start_seconds, info.bake_seconds),
             &mut yy,
         );
-        hit_index.register(ids::INSP_PHYS_BAKE, r);
+        hit_index.register(crate::ids::INSP_PHYS_BAKE, r);
     }
 
-    let r = paint_at(ids::INSP_PHYS_REMOVE, "Remove Physics Body", &mut yy);
-    hit_index.register(ids::INSP_PHYS_REMOVE, r);
+    let r = paint_at(crate::ids::INSP_PHYS_REMOVE, "Remove Physics Body", &mut yy);
+    hit_index.register(crate::ids::INSP_PHYS_REMOVE, r);
     yy - Spacing::Sm.px() + SECTION_BOTTOM_PAD_PX
 }

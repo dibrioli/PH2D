@@ -14,7 +14,6 @@
 //! a regra que esta casa já pagou em quatro painéis.
 
 use ph2d_a11y::NodeId;
-use ph2d_editor_core::ids;
 
 use super::{BRUSH, Row, Section, shading, topology};
 
@@ -35,17 +34,17 @@ use super::{BRUSH, Row, Section, shading, topology};
 /// wave.
 pub static SECTIONS: &[Section] = &[
     Section {
-        id: ids::SCULPT3D_SEC_BRUSH,
+        id: crate::ids::SCULPT3D_SEC_BRUSH,
         title: "panel.sculpt3d.section.brush",
         rows: BRUSH,
     },
     Section {
-        id: ids::SCULPT3D_SEC_SHADING,
+        id: crate::ids::SCULPT3D_SEC_SHADING,
         title: "panel.sculpt3d.section.shading",
         rows: shading::SHADING,
     },
     Section {
-        id: ids::SCULPT3D_SEC_TOPOLOGY,
+        id: crate::ids::SCULPT3D_SEC_TOPOLOGY,
         title: "panel.sculpt3d.section.topology",
         rows: topology::TOPOLOGY,
     },
@@ -67,10 +66,10 @@ pub static SECTIONS: &[Section] = &[
 /// envelhece*. Derivando, um cabeçalho novo nasce registrado E dobrável pelo
 /// mesmo commit que o faz existir.
 pub static BUTTON_SECTIONS: &[NodeId] = &[
-    ids::SCULPT3D_SEC_TOOL,
-    ids::SCULPT3D_SEC_SYMMETRY,
-    ids::SCULPT3D_SEC_SCENE,
-    ids::SCULPT3D_SEC_BAKE,
+    crate::ids::SCULPT3D_SEC_TOOL,
+    crate::ids::SCULPT3D_SEC_SYMMETRY,
+    crate::ids::SCULPT3D_SEC_SCENE,
+    crate::ids::SCULPT3D_SEC_BAKE,
 ];
 
 /// **TODO cabeçalho dobrável deste painel** — a porta ÚNICA que o `populate`

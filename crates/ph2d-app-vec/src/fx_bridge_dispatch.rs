@@ -41,33 +41,32 @@ pub enum FxClick {
 /// inverta. Barato, e é o padrão que os presets do Envelope já usam.
 #[must_use]
 pub fn classify_click(id: ph2d_editor_core::ids::NodeId) -> Option<FxClick> {
-    use ph2d_editor_core::ids as i;
-    if id == i::VECTOR_FX_APPLY {
+    if id == ph2d_tool_vector::ids::VECTOR_FX_APPLY {
         return Some(FxClick::Apply);
     }
-    for k in 0..i::MAX_FX_KINDS {
-        if id == i::vector_fx_add_id(k) {
+    for k in 0..ph2d_tool_vector::ids::MAX_FX_KINDS {
+        if id == ph2d_tool_vector::ids::vector_fx_add_id(k) {
             return Some(FxClick::Add(k));
         }
     }
-    for r in 0..i::MAX_FX_ROWS {
-        if id == i::vector_fx_remove_id(r) {
+    for r in 0..ph2d_tool_vector::ids::MAX_FX_ROWS {
+        if id == ph2d_tool_vector::ids::vector_fx_remove_id(r) {
             return Some(FxClick::Row(r, FxRowAction::Remove));
         }
-        if id == i::vector_fx_up_id(r) {
+        if id == ph2d_tool_vector::ids::vector_fx_up_id(r) {
             return Some(FxClick::Row(r, FxRowAction::Up));
         }
-        if id == i::vector_fx_down_id(r) {
+        if id == ph2d_tool_vector::ids::vector_fx_down_id(r) {
             return Some(FxClick::Row(r, FxRowAction::Down));
         }
-        if id == i::vector_fx_hide_id(r) {
+        if id == ph2d_tool_vector::ids::vector_fx_hide_id(r) {
             return Some(FxClick::Row(r, FxRowAction::Hide));
         }
         // Uma caixinha é pintada como BOTÃO e tem id PRÓPRIO. Reusar o id do slider punha dois
         // tipos de widget num id só: o store registava um `Slider`, e um slider NÃO emite Click
         // no Up — este ramo nunca corria (Enio, 2026-07-18).
-        for p in 0..i::MAX_FX_ROW_PARAMS {
-            if id == i::vector_fx_toggle_id(r, p) {
+        for p in 0..ph2d_tool_vector::ids::MAX_FX_ROW_PARAMS {
+            if id == ph2d_tool_vector::ids::vector_fx_toggle_id(r, p) {
                 return Some(FxClick::Row(r, FxRowAction::Toggle(p)));
             }
         }
@@ -78,10 +77,9 @@ pub fn classify_click(id: ph2d_editor_core::ids::NodeId) -> Option<FxClick> {
 /// A `(linha, parâmetro)` de um slider da pilha, ou `None`.
 #[must_use]
 pub fn classify_param(id: ph2d_editor_core::ids::NodeId) -> Option<(usize, usize)> {
-    use ph2d_editor_core::ids as i;
-    (0..i::MAX_FX_ROWS).find_map(|r| {
-        (0..i::MAX_FX_ROW_PARAMS)
-            .find(|&p| id == i::vector_fx_param_id(r, p))
+    (0..ph2d_tool_vector::ids::MAX_FX_ROWS).find_map(|r| {
+        (0..ph2d_tool_vector::ids::MAX_FX_ROW_PARAMS)
+            .find(|&p| id == ph2d_tool_vector::ids::vector_fx_param_id(r, p))
             .map(|p| (r, p))
     })
 }

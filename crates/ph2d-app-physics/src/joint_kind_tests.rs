@@ -308,7 +308,7 @@ fn changing_the_limit_unit_re_seeds_the_range_and_nothing_else_does() {
 /// sétimo tipo chegasse. É essa amarração que faz o gate crescer sozinho.
 #[test]
 fn every_kind_chip_the_panel_offers_round_trips_to_a_distinct_kind() {
-    let chips = ph2d_editor_core::ids::INSP_JOINT_KIND.len();
+    let chips = ph2d_panel_inspector::ids::INSP_JOINT_KIND.len();
     let mut seen: Vec<JointKind> = Vec::new();
     for tag in 0..chips {
         let tag = u8::try_from(tag).expect("a lista de chips cabe num u8");

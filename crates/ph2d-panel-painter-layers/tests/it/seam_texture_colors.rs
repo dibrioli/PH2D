@@ -14,7 +14,6 @@
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::tool::Tool;
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_painter_layers::PainterLayersPanel;
@@ -84,8 +83,11 @@ fn click_through(
 fn a_single_layer_shape_offers_the_texture_colours_and_the_click_lands() {
     let mut tool = tool_with_shape_layers(1);
     let (mut host, mut st, rects) = painted(&tool);
-    let r = rect_of(&rects, core_ids::PAINTER_SHAPE_PER_LAYER_COLOR)
-        .expect("uma camada tambem tem cor — o checkbox tem de ser pintado");
+    let r = rect_of(
+        &rects,
+        ph2d_tool_painter::ids::PAINTER_SHAPE_PER_LAYER_COLOR,
+    )
+    .expect("uma camada tambem tem cor — o checkbox tem de ser pintado");
     assert!(
         !tool.brush_settings().shape_per_layer_color,
         "controle: o modo nasce DESLIGADO, senao o clique abaixo nao prova nada"
@@ -108,7 +110,11 @@ fn a_single_layer_shape_does_not_offer_a_per_layer_row() {
     tool.toggle_brush_shape_per_layer_color();
     let (_host, _st, rects) = painted(&tool);
     assert!(
-        rect_of(&rects, core_ids::painter_shape_layer_color_check_id(0)).is_none(),
+        rect_of(
+            &rects,
+            ph2d_tool_painter::ids::painter_shape_layer_color_check_id(0)
+        )
+        .is_none(),
         "a row 'Layer 1 Color' foi pintada — ela duplica a cor do pincel numa camada so"
     );
 }
@@ -122,14 +128,22 @@ fn two_layers_still_get_the_per_layer_rows() {
     let tool = tool_with_shape_layers(2);
     let (_host, _st, rects) = painted(&tool);
     assert!(
-        rect_of(&rects, core_ids::PAINTER_SHAPE_PER_LAYER_COLOR).is_some(),
+        rect_of(
+            &rects,
+            ph2d_tool_painter::ids::PAINTER_SHAPE_PER_LAYER_COLOR
+        )
+        .is_some(),
         "o checkbox sumiu do caso multi-camada"
     );
     let mut on = tool;
     on.toggle_brush_shape_per_layer_color();
     let (_host, _st, rects) = painted(&on);
     assert!(
-        rect_of(&rects, core_ids::painter_shape_layer_color_check_id(0)).is_some(),
+        rect_of(
+            &rects,
+            ph2d_tool_painter::ids::painter_shape_layer_color_check_id(0)
+        )
+        .is_some(),
         "as rows por-camada sumiram — o modo multi-camada perdeu os controles dele"
     );
 }
@@ -140,7 +154,11 @@ fn no_shape_no_texture_colour_checkbox() {
     let tool = PainterTool::default();
     let (_host, _st, rects) = painted(&tool);
     assert!(
-        rect_of(&rects, core_ids::PAINTER_SHAPE_PER_LAYER_COLOR).is_none(),
+        rect_of(
+            &rects,
+            ph2d_tool_painter::ids::PAINTER_SHAPE_PER_LAYER_COLOR
+        )
+        .is_none(),
         "sem Shape capturada nao ha cor de textura para ligar, e o checkbox nao pode existir"
     );
 }
@@ -156,14 +174,21 @@ fn the_alpha_source_checkbox_is_offered_with_a_choice_and_the_click_lands() {
     bare.set_brush_shape_layers(vec![(vec![200u8; 16], 4, 4)]);
     let (_h, _s, rects) = painted(&bare);
     assert!(
-        rect_of(&rects, core_ids::PAINTER_SHAPE_ALPHA_FROM_IMAGE).is_none(),
+        rect_of(
+            &rects,
+            ph2d_tool_painter::ids::PAINTER_SHAPE_ALPHA_FROM_IMAGE
+        )
+        .is_none(),
         "sem RGB capturado a luminância não existe — o checkbox seria um controle morto"
     );
 
     let mut tool = tool_with_shape_layers(1);
     let (mut host, mut st, rects) = painted(&tool);
-    let r = rect_of(&rects, core_ids::PAINTER_SHAPE_ALPHA_FROM_IMAGE)
-        .expect("com cor capturada há duas leis — o checkbox tem de ser pintado");
+    let r = rect_of(
+        &rects,
+        ph2d_tool_painter::ids::PAINTER_SHAPE_ALPHA_FROM_IMAGE,
+    )
+    .expect("com cor capturada há duas leis — o checkbox tem de ser pintado");
     let before = tool.brush_shape_alpha_from_image();
     click_through(&mut host, &mut st, &mut tool, r);
     assert_eq!(
@@ -179,8 +204,16 @@ fn the_alpha_source_checkbox_is_offered_with_a_choice_and_the_click_lands() {
 fn the_alpha_source_sits_above_the_texture_colour_checkbox() {
     let tool = tool_with_shape_layers(1);
     let (_h, _s, rects) = painted(&tool);
-    let alpha = rect_of(&rects, core_ids::PAINTER_SHAPE_ALPHA_FROM_IMAGE).expect("alpha");
-    let colour = rect_of(&rects, core_ids::PAINTER_SHAPE_PER_LAYER_COLOR).expect("cor");
+    let alpha = rect_of(
+        &rects,
+        ph2d_tool_painter::ids::PAINTER_SHAPE_ALPHA_FROM_IMAGE,
+    )
+    .expect("alpha");
+    let colour = rect_of(
+        &rects,
+        ph2d_tool_painter::ids::PAINTER_SHAPE_PER_LAYER_COLOR,
+    )
+    .expect("cor");
     assert!(
         alpha.y < colour.y,
         "o checkbox da silhueta ({}) tem de vir antes do de cor ({})",

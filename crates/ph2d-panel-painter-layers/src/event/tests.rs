@@ -12,8 +12,8 @@ use super::decode::{
     decode_brush_preset_option, decode_shape_follow_option, decode_stroke_method_option,
     decode_texture_kind_option, decode_texture_mapping_option, decode_texture_ramp_alpha_option,
 };
-use super::*;
-use ph2d_editor_core::ids::{
+use ph2d_editor_core::ids as core_ids;
+use ph2d_tool_painter::ids::{
     PAINTER_SHAPE_FOLLOW_MODES, painter_brush_preset_option_id,
     painter_brush_stroke_method_option_id, painter_brush_texture_kind_option_id,
     painter_brush_texture_mapping_option_id, painter_brush_texture_ramp_alpha_option_id,
@@ -24,7 +24,7 @@ use ph2d_tool_painter::{RampAlphaMode, StrokeMethod, TextureKind, TextureMapping
 #[test]
 fn paper_kind_option_ids_round_trip_and_dont_collide_with_grain() {
     use super::decode::decode_paper_kind_option;
-    use ph2d_editor_core::ids::painter_paper_kind_option_id;
+    use ph2d_tool_painter::ids::painter_paper_kind_option_id;
     for k in 0..TextureKind::COUNT {
         assert_eq!(
             decode_paper_kind_option(painter_paper_kind_option_id(k)),
@@ -32,7 +32,10 @@ fn paper_kind_option_ids_round_trip_and_dont_collide_with_grain() {
         );
         // The Paper slot + the Grain slot share the TextureKind enum but must NOT collide on ids.
         assert!(
-            decode_paper_kind_option(core_ids::painter_brush_texture_kind_option_id(k)).is_none()
+            decode_paper_kind_option(
+                ph2d_tool_painter::ids::painter_brush_texture_kind_option_id(k)
+            )
+            .is_none()
         );
     }
 }
@@ -40,7 +43,7 @@ fn paper_kind_option_ids_round_trip_and_dont_collide_with_grain() {
 #[test]
 fn every_preset_option_id_round_trips() {
     // Both presets (Digital = 0, Watercolor = 1) must decode back to themselves.
-    for i in 0u8..core_ids::PAINTER_BRUSH_PRESET_COUNT {
+    for i in 0u8..ph2d_tool_painter::ids::PAINTER_BRUSH_PRESET_COUNT {
         assert_eq!(
             decode_brush_preset_option(painter_brush_preset_option_id(i)),
             Some(i),
@@ -48,7 +51,7 @@ fn every_preset_option_id_round_trips() {
         );
     }
     assert_eq!(
-        decode_brush_preset_option(core_ids::PAINTER_BRUSH_PRESET),
+        decode_brush_preset_option(ph2d_tool_painter::ids::PAINTER_BRUSH_PRESET),
         None,
         "the chip id is not an option id"
     );
@@ -130,7 +133,7 @@ fn every_texture_kind_option_id_round_trips() {
         );
     }
     assert_eq!(
-        decode_texture_kind_option(core_ids::PAINTER_BRUSH_TEXTURE_KIND),
+        decode_texture_kind_option(ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_KIND),
         None,
         "the chip id is not an option id"
     );
@@ -147,7 +150,7 @@ fn every_texture_mapping_option_id_round_trips() {
         );
     }
     assert_eq!(
-        decode_texture_mapping_option(core_ids::PAINTER_BRUSH_TEXTURE_MAPPING),
+        decode_texture_mapping_option(ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_MAPPING),
         None,
         "the chip id is not an option id"
     );
@@ -165,13 +168,13 @@ fn every_shape_follow_option_id_round_trips() {
         );
     }
     assert_eq!(
-        decode_shape_follow_option(core_ids::PAINTER_SHAPE_FOLLOW),
+        decode_shape_follow_option(ph2d_tool_painter::ids::PAINTER_SHAPE_FOLLOW),
         None,
         "the chip id is not an option id"
     );
     // Disjoint from the sibling Shape Kind option-id space (both live in the Shape section).
     assert_eq!(
-        decode_shape_follow_option(core_ids::painter_shape_kind_option_id(2)),
+        decode_shape_follow_option(ph2d_tool_painter::ids::painter_shape_kind_option_id(2)),
         None,
         "a Shape Kind option id must not decode as a Follow option"
     );
@@ -189,7 +192,9 @@ fn every_ramp_alpha_option_id_round_trips() {
         );
     }
     assert_eq!(
-        decode_texture_ramp_alpha_option(core_ids::PAINTER_BRUSH_TEXTURE_RAMP_ALPHA_MODE),
+        decode_texture_ramp_alpha_option(
+            ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_ALPHA_MODE
+        ),
         None,
         "the chip id is not an option id"
     );

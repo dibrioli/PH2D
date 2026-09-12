@@ -56,7 +56,7 @@ fn panel_events_drive_brush_size_colour_blend() {
     let mut t = PainterTool::default();
     // Size slider drag (0..1 track).
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_BRUSH_SIZE_SLIDER,
+        crate::ids::PAINTER_BRUSH_SIZE_SLIDER,
         0.5,
     ));
     assert!((t.brush_settings().size_px - 128.75).abs() < 0.01);
@@ -69,7 +69,7 @@ fn panel_events_drive_brush_size_colour_blend() {
     assert!((c[0] - 1.0).abs() < 1e-6 && (c[1] - 64.0 / 255.0).abs() < 1e-6 && c[2] == 0.0);
     // Blend dropdown pick (wire u8 → Multiply == 3).
     t.handle_panel_event(PanelEvent::SelectOption(
-        core_ids::PAINTER_BRUSH_BLEND,
+        crate::ids::PAINTER_BRUSH_BLEND,
         "3".to_string(),
     ));
     assert_eq!(t.brush_settings().blend, 3);
@@ -93,19 +93,18 @@ fn panel_events_drive_brush_size_colour_blend() {
 
 #[test]
 fn panel_events_drive_strength_falloff_and_eraser() {
-    use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::{PanelEvent, Tool};
     use ph2d_painter_brush::Falloff;
 
     let mut t = PainterTool::default();
     // Strength slider.
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_BRUSH_STRENGTH_SLIDER,
+        crate::ids::PAINTER_BRUSH_STRENGTH_SLIDER,
         0.75,
     ));
     // Falloff preset pick (wire u8 → Constant == 8 = hard disk).
     t.handle_panel_event(PanelEvent::SelectOption(
-        core_ids::PAINTER_BRUSH_FALLOFF,
+        crate::ids::PAINTER_BRUSH_FALLOFF,
         Falloff::Constant.to_u8().to_string(),
     ));
     let s = t.brush_settings();
@@ -117,21 +116,20 @@ fn panel_events_drive_strength_falloff_and_eraser() {
     );
     assert!(!s.eraser);
     // Eraser toggle via the panel button.
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_ERASER));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_BRUSH_ERASER));
     assert!(t.brush_settings().eraser, "eraser toggled on");
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_ERASER));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_BRUSH_ERASER));
     assert!(!t.brush_settings().eraser, "eraser toggled off");
 }
 
 #[test]
 fn panel_events_drive_shape_and_grain_depth() {
-    use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::{PanelEvent, Tool};
 
     let mut t = PainterTool::default();
     // Grain Depth slider (Grain section).
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_BRUSH_GRAIN_DEPTH,
+        crate::ids::PAINTER_BRUSH_GRAIN_DEPTH,
         0.4,
     ));
     assert!(
@@ -141,14 +139,14 @@ fn panel_events_drive_shape_and_grain_depth() {
 
     // Shape rotation controls (tracked on the spec even before an image is assigned). The number field
     // forwards the REAL degrees now (not a 0..1 track), Enio 2026-06-25.
-    t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_SHAPE_ANGLE, 180.0));
+    t.handle_panel_event(PanelEvent::SetValue(crate::ids::PAINTER_SHAPE_ANGLE, 180.0));
     assert_eq!(t.brush_settings().shape_angle_deg, 180, "shape angle set");
     t.handle_panel_event(PanelEvent::SelectOption(
-        core_ids::PAINTER_SHAPE_FOLLOW,
+        crate::ids::PAINTER_SHAPE_FOLLOW,
         "1".to_string(), // Rake
     ));
     assert_eq!(t.brush_settings().shape_follow, 1, "shape follow → Rake");
-    t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_SHAPE_SIZE_X, 0.0)); // → TEX_SIZE_MIN
+    t.handle_panel_event(PanelEvent::SetValue(crate::ids::PAINTER_SHAPE_SIZE_X, 0.0)); // → TEX_SIZE_MIN
     assert!(
         (t.brush_settings().shape_size[0] - 0.1).abs() < 1e-4,
         "shape size X → min"
@@ -159,11 +157,11 @@ fn panel_events_drive_shape_and_grain_depth() {
 
     // Dab flatten/rotate gizmo (Shape section): non-default before reset.
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_BRUSH_DAB_FLATTEN,
+        crate::ids::PAINTER_BRUSH_DAB_FLATTEN,
         0.5,
     ));
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_BRUSH_DAB_ANGLE,
+        crate::ids::PAINTER_BRUSH_DAB_ANGLE,
         90.0,
     ));
     assert!(
@@ -176,7 +174,7 @@ fn panel_events_drive_shape_and_grain_depth() {
     // + the dab flatten/rotate gizmo.
     t.set_brush_shape_image(vec![255u8; 16], 4, 4);
     assert!(t.brush_settings().shape_has_image, "shape image assigned");
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_SHAPE_RESET));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_SHAPE_RESET));
     let s = t.brush_settings();
     assert!(!s.shape_has_image, "reset cleared the shape image");
     assert_eq!(s.shape_angle_deg, 0, "reset cleared the shape angle");
@@ -187,25 +185,24 @@ fn panel_events_drive_shape_and_grain_depth() {
 
 #[test]
 fn texture_and_shape_number_fields_set_real_values_via_panel_events() {
-    use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::PanelEvent;
     // The Grain/Shape param fields are NumberInputs forwarding the REAL value (degrees / tile-fraction /
     // scale), not a 0..1 track — the tool's real-value setters clamp it (Enio 2026-06-25).
     let mut t = PainterTool::default();
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_BRUSH_TEXTURE_SIZE_X,
+        crate::ids::PAINTER_BRUSH_TEXTURE_SIZE_X,
         5.0,
     ));
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_BRUSH_TEXTURE_OFFSET_X,
+        crate::ids::PAINTER_BRUSH_TEXTURE_OFFSET_X,
         -0.5,
     ));
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_BRUSH_TEXTURE_ANGLE,
+        crate::ids::PAINTER_BRUSH_TEXTURE_ANGLE,
         90.0,
     ));
-    t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_SHAPE_SIZE_X, 3.0));
-    t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_SHAPE_ANGLE, 45.0));
+    t.handle_panel_event(PanelEvent::SetValue(crate::ids::PAINTER_SHAPE_SIZE_X, 3.0));
+    t.handle_panel_event(PanelEvent::SetValue(crate::ids::PAINTER_SHAPE_ANGLE, 45.0));
     let b = t.brush_settings();
     assert!(
         (b.texture_size[0] - 5.0).abs() < 1e-4,
@@ -229,7 +226,6 @@ fn texture_and_shape_number_fields_set_real_values_via_panel_events() {
 #[test]
 fn accumulate_off_caps_the_stroke_even_with_a_colour_ramp() {
     use ph2d_color::{ColorRamp, RampColorMode, RampInterp, RampStop};
-    use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::{PanelEvent, Tool};
 
     // Color ramp ON (so the ramped stamp path is taken) + Strength 0.5: Accumulate OFF must CAP the
@@ -239,7 +235,7 @@ fn accumulate_off_caps_the_stroke_even_with_a_colour_ramp() {
         let mut t = white_canvas(64, 10.0);
         t.set_brush_strength(0.5);
         if accumulate {
-            t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_ACCUMULATE));
+            t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_BRUSH_ACCUMULATE));
         }
         t.set_shape_color_ramp(ColorRamp::new(
             vec![
@@ -273,13 +269,12 @@ fn accumulate_off_caps_the_stroke_even_with_a_colour_ramp() {
 
 #[test]
 fn panel_events_drive_custom_falloff_curve() {
-    use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::{PanelEvent, Tool};
 
     let mut t = PainterTool::default();
     // Pick the editable Custom preset (wire u8 = 9).
     t.handle_panel_event(PanelEvent::SelectOption(
-        core_ids::PAINTER_BRUSH_FALLOFF,
+        crate::ids::PAINTER_BRUSH_FALLOFF,
         Falloff::Custom.to_u8().to_string(),
     ));
     let s = t.brush_settings();
@@ -287,7 +282,7 @@ fn panel_events_drive_custom_falloff_curve() {
     assert_eq!(s.falloff_len, 2, "default Custom curve = 2 endpoints");
 
     // "+" button → a third control point (profile unchanged until dragged).
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_FALLOFF_ADD));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_BRUSH_FALLOFF_ADD));
     let s = t.brush_settings();
     assert_eq!(s.falloff_len, 3, "added a control point");
     // The new middle point (x≈0.5) — drive it by its STABLE id, not a position.
@@ -299,7 +294,7 @@ fn panel_events_drive_custom_falloff_curve() {
 
     // 2-D drag of the middle point (by id) to (distance 0.5, strength 0.9).
     t.handle_panel_event(PanelEvent::SelectOption(
-        core_ids::PAINTER_BRUSH_FALLOFF_EDIT,
+        crate::ids::PAINTER_BRUSH_FALLOFF_EDIT,
         format!("{mid}:0.5:0.9"),
     ));
     let s = t.brush_settings();
@@ -313,7 +308,7 @@ fn panel_events_drive_custom_falloff_curve() {
 
     // "−" button (payload = the stable id) drops the point; back to 2 endpoints.
     t.handle_panel_event(PanelEvent::SelectOption(
-        core_ids::PAINTER_BRUSH_FALLOFF_REMOVE,
+        crate::ids::PAINTER_BRUSH_FALLOFF_REMOVE,
         mid.to_string(),
     ));
     assert_eq!(
@@ -399,7 +394,6 @@ fn vector_handle_on_dragged_off_line_point_makes_a_corner() {
 
 #[test]
 fn custom_falloff_curve_changes_the_dab() {
-    use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::{PanelEvent, Tool};
 
     // Two identical hard-ish brushes, one Custom-lifted in the mid-band, paint a
@@ -410,20 +404,20 @@ fn custom_falloff_curve_changes_the_dab() {
         t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
         t.set_brush_size_px(14.0);
         t.handle_panel_event(PanelEvent::SelectOption(
-            core_ids::PAINTER_BRUSH_FALLOFF,
+            crate::ids::PAINTER_BRUSH_FALLOFF,
             Falloff::Custom.to_u8().to_string(),
         ));
         if custom {
             // Lift the whole interior toward full strength (steep shoulder): add a
             // point and drag it (by its stable id) up near the rim.
-            t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_FALLOFF_ADD));
+            t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_BRUSH_FALLOFF_ADD));
             let mid = t.brush_settings().falloff_points[..3]
                 .iter()
                 .find(|p| (p.x - 0.5).abs() < 0.05)
                 .expect("middle point")
                 .id;
             t.handle_panel_event(PanelEvent::SelectOption(
-                core_ids::PAINTER_BRUSH_FALLOFF_EDIT,
+                crate::ids::PAINTER_BRUSH_FALLOFF_EDIT,
                 format!("{mid}:0.8:0.95"),
             ));
         }
@@ -440,23 +434,23 @@ fn custom_falloff_curve_changes_the_dab() {
 
 #[test]
 fn section_reset_buttons_restore_section_defaults() {
-    // Each section's reset icon (forwarded as a Click) restores that section's brush fields to
-    // defaults while leaving the OTHER sections untouched (Enio 2026-06-24).
-    use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::{PanelEvent, Tool};
     let mut t = PainterTool::default();
 
     // Dirty several sections.
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_BRUSH_COLOR_JITTER_HUE,
+        crate::ids::PAINTER_BRUSH_COLOR_JITTER_HUE,
         0.5,
     ));
-    t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_BRUSH_SPACING, 0.42));
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_SPACE_ATTEN)); // Adjust Strength → on
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_TILING_X)); // Tiling X → on
+    t.handle_panel_event(PanelEvent::SetValue(
+        crate::ids::PAINTER_BRUSH_SPACING,
+        0.42,
+    ));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_BRUSH_SPACE_ATTEN)); // Adjust Strength → on
+    t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_BRUSH_TILING_X)); // Tiling X → on
     t.new_brush_texture(); // assign a procedural texture (Noise)
     t.handle_panel_event(PanelEvent::Click(
-        core_ids::PAINTER_BRUSH_TEXTURE_RAMP_ENABLE,
+        crate::ids::PAINTER_BRUSH_TEXTURE_RAMP_ENABLE,
     )); // ramp → on
 
     let s = t.brush_settings();
@@ -466,7 +460,7 @@ fn section_reset_buttons_restore_section_defaults() {
     assert!(s.texture_ramp_enabled);
 
     // Randomize reset → hue back to 0; nothing else touched.
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_RANDOMIZE_RESET));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_BRUSH_RANDOMIZE_RESET));
     assert_eq!(t.brush_settings().color_jitter[0], 0.0);
     assert!(
         t.brush_settings().tiling[0],
@@ -474,14 +468,16 @@ fn section_reset_buttons_restore_section_defaults() {
     );
 
     // Stroke reset → spacing + Adjust-Strength back to defaults; tiling untouched.
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_STROKE_RESET));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_BRUSH_STROKE_RESET));
     let s = t.brush_settings();
     assert!((s.spacing - 0.10).abs() < 1e-6);
     assert!(!s.space_attenuation);
     assert!(s.tiling[0], "stroke reset must not touch tiling");
 
     // Color Ramp reset → ramp off, but the texture stays assigned (finer than the Texture reset).
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_COLOR_RAMP_RESET));
+    t.handle_panel_event(PanelEvent::Click(
+        crate::ids::PAINTER_BRUSH_COLOR_RAMP_RESET,
+    ));
     assert!(!t.brush_settings().texture_ramp_enabled);
     assert_ne!(
         t.brush_settings().texture_kind,
@@ -490,11 +486,11 @@ fn section_reset_buttons_restore_section_defaults() {
     );
 
     // Texture reset → texture cleared to None.
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_TEXTURE_RESET));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_BRUSH_TEXTURE_RESET));
     assert_eq!(t.brush_settings().texture_kind, 0);
 
     // Tiling reset → tiling off.
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_TILING_RESET));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_BRUSH_TILING_RESET));
     assert!(!t.brush_settings().tiling[0]);
 }
 
@@ -515,58 +511,64 @@ fn stroke_section_panel_events_route_to_brush_settings() {
     assert_eq!(t.brush_settings().stroke_method, 4);
 
     // Spacing slider (fraction-of-diameter track).
-    t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_BRUSH_SPACING, 0.25));
+    t.handle_panel_event(PanelEvent::SetValue(
+        crate::ids::PAINTER_BRUSH_SPACING,
+        0.25,
+    ));
     assert!((t.brush_settings().spacing - 0.25).abs() < 1e-6);
 
     // "Adjust Strength for Spacing" toggles from the default OFF (Enio 2026-06-24).
     assert!(!t.brush_settings().space_attenuation);
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_SPACE_ATTEN));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_BRUSH_SPACE_ATTEN));
     assert!(t.brush_settings().space_attenuation);
 
     // "Accumulate" toggles from the default OFF (Blender default; off caps a stroke at Strength).
     assert!(!t.brush_settings().accumulate);
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_ACCUMULATE));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_BRUSH_ACCUMULATE));
     assert!(t.brush_settings().accumulate);
 
     // Input samples: track 1.0 → max window; 0.0 → 1.
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_BRUSH_INPUT_SAMPLES,
+        crate::ids::PAINTER_BRUSH_INPUT_SAMPLES,
         1.0,
     ));
     assert_eq!(t.brush_settings().input_samples, BRUSH_COUNT_SLIDER_MAX);
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_BRUSH_INPUT_SAMPLES,
+        crate::ids::PAINTER_BRUSH_INPUT_SAMPLES,
         0.0,
     ));
     assert_eq!(t.brush_settings().input_samples, 1);
 
     // Stabilizer intensity slider: the 0..1 track lands verbatim on `stabilizer`.
-    t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_BRUSH_STABILIZE, 0.8));
+    t.handle_panel_event(PanelEvent::SetValue(
+        crate::ids::PAINTER_BRUSH_STABILIZE,
+        0.8,
+    ));
     assert!((t.brush_settings().stabilizer - 0.8).abs() < 1e-6);
 
     // Rate slider: 0..1 track maps linearly onto [MIN, MAX] s; 0 → MIN, 1 → MAX.
-    t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_BRUSH_RATE, 0.0));
+    t.handle_panel_event(PanelEvent::SetValue(crate::ids::PAINTER_BRUSH_RATE, 0.0));
     assert!((t.brush_settings().airbrush_rate_s - BRUSH_AIRBRUSH_RATE_MIN_S).abs() < 1e-6);
-    t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_BRUSH_RATE, 1.0));
+    t.handle_panel_event(PanelEvent::SetValue(crate::ids::PAINTER_BRUSH_RATE, 1.0));
     assert!((t.brush_settings().airbrush_rate_s - BRUSH_AIRBRUSH_RATE_MAX_S).abs() < 1e-6);
 
     // Edge to Edge toggles from the default OFF (Anchored only, but routing is method-agnostic).
     assert!(!t.brush_settings().edge_to_edge);
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_EDGE_TO_EDGE));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_BRUSH_EDGE_TO_EDGE));
     assert!(t.brush_settings().edge_to_edge);
 
     // Jitter unit routing: View → the Jitter slider drives absolute px; Brush → relative 0..1.
     t.handle_panel_event(PanelEvent::SelectOption(
-        core_ids::PAINTER_BRUSH_JITTER_UNIT,
+        crate::ids::PAINTER_BRUSH_JITTER_UNIT,
         "1".into(),
     ));
-    t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_BRUSH_JITTER, 1.0));
+    t.handle_panel_event(PanelEvent::SetValue(crate::ids::PAINTER_BRUSH_JITTER, 1.0));
     assert!((t.brush_settings().jitter_absolute_px - BRUSH_JITTER_ABS_MAX_PX).abs() < 1e-3);
     t.handle_panel_event(PanelEvent::SelectOption(
-        core_ids::PAINTER_BRUSH_JITTER_UNIT,
+        crate::ids::PAINTER_BRUSH_JITTER_UNIT,
         "0".into(),
     ));
-    t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_BRUSH_JITTER, 0.3));
+    t.handle_panel_event(PanelEvent::SetValue(crate::ids::PAINTER_BRUSH_JITTER, 0.3));
     assert!((t.brush_settings().jitter - 0.3).abs() < 1e-6);
 }
 
@@ -815,7 +817,6 @@ fn ramp_set_stop_color_applies_alpha() {
 /// painting does not change" — proves the tool+engine path so a UI-side break is isolated.
 #[test]
 fn ramp_alpha_mode_dispatch_changes_the_painted_result() {
-    use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::{PanelEvent, Tool};
     use ph2d_painter_brush::RampAlphaMode;
     use ph2d_painter_brush::texture::{TextureKind, TextureMapping};
@@ -828,12 +829,12 @@ fn ramp_alpha_mode_dispatch_changes_the_painted_result() {
         t.set_texture_ramp_enabled(true);
         // Make the s=1 stop (id 1) fully transparent via the real swatch dispatch ("id,r,g,b,a").
         t.handle_panel_event(PanelEvent::SelectOption(
-            core_ids::PAINTER_BRUSH_TEXTURE_RAMP_SWATCH,
+            crate::ids::PAINTER_BRUSH_TEXTURE_RAMP_SWATCH,
             "1,255,255,255,0".into(),
         ));
         // Select the alpha action through the dropdown dispatch.
         t.handle_panel_event(PanelEvent::SelectOption(
-            core_ids::PAINTER_BRUSH_TEXTURE_RAMP_ALPHA_MODE,
+            crate::ids::PAINTER_BRUSH_TEXTURE_RAMP_ALPHA_MODE,
             mode.into(),
         ));
         // Paint one stroke across the middle.

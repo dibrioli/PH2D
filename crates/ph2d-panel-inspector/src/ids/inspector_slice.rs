@@ -1,0 +1,101 @@
+//! **Os ids da §5 9-Slice do Inspector** (spec
+//! [`03_inspector_secoes.md`](../../../../docs/Sprite_projeto/03_inspector_secoes.md) §3.5).
+//!
+//! ⚠️ **Irmão de [`super::inspector`] por CAP de LOC** — mesmo padrão de
+//! [`super::inspector_sampling`], [`super::inspector_joint`] e [`super::inspector_player`].
+//!
+//! A seção declarada em 2026-05 e construída em **2026-08-21**: até essa data
+//! `git grep -c SliceNine` dava **0** em todo o repositório, e a auditoria
+//! ([`20_auditoria_do_inspector`](../../../../docs/Sprite_projeto/20_auditoria_do_inspector_2026-08-21.md) §6)
+//! mediu-a como uma das três seções da spec que nunca nasceram.
+//!
+//! **A POSIÇÃO NO ARRAY É A TAG** — a mesma lei da §9: o despacho deriva a tag de
+//! `position(|&o| o == id)` e a shell fecha com `from_tag`. ⛔ Nunca reordene nenhum destes
+//! arrays; a ordem **é** o contrato, e há gate a prendê-la.
+//!
+//! ⚠️ **Desceu de `ph2d-editor-core/src/ids/inspector_slice.rs` em 2026-09-12** (auditoria de arquitectura
+//! A5b): quem LÊ estes ids mora nesta crate, e a fundação que 43 crates recompilam deixou de os
+//! carregar.
+
+use ph2d_a11y::NodeId;
+use ph2d_tool_registry::hash_node_id;
+
+/// **A CAIXA que liga o 9-slice** — e a única porta para esse estado.
+///
+/// ⚠️ **Ela substituiu DUAS coisas que diziam o mesmo** (Enio, 2026-08-22): um segmentado de dois
+/// segmentos (`Simple` / `9-Slice`) e um botão `+ Add 9-Slice`. Um controlo de dois estados
+/// disfarçado de escolha entre modos é a mesma afordância a mentir que os cantos da grelha
+/// tinham; e ter *também* um botão de anexar dava **duas portas para «o 9-slice está ligado?»**,
+/// que é como duas portas divergem.
+///
+/// Ligá-la numa sprite sem componente **anexa-o** — e continua a ser inerte, porque as bordas
+/// nascem a zero e bordas a zero colapsam no sprite de sempre (gate
+/// `zero_borders_collapse_to_the_plain_sprite`). Desligá-la **guarda** os valores: uma caixa que
+/// perdesse dados ao desmarcar não seria uma caixa.
+pub const INSP_SLICE_ENABLE: NodeId = hash_node_id("insp_slice_enable");
+
+/// **«Tile all»** — escreve `Repeat` nas nove células de uma vez.
+///
+/// ⚠️ É um ATALHO, não um modo: ele faz uma edição que a grelha depois mostra. A diferença com o
+/// antigo `Tiled` é toda: aquele reinterpretava o que a grelha dizia e não se via na grelha; este
+/// escreve lá, e desfazê-lo é um `Ctrl+Z`. Os cantos ficam fixos na mesma (o saneamento
+/// normaliza-os) — um canto nunca ladrilha.
+pub const INSP_SLICE_ALL_TILE: NodeId = hash_node_id("insp_slice_all_tile");
+
+/// **«Stretch all»** — o irmão: escreve `Stretch` nas nove. É a volta atrás do de cima, e é a
+/// capacidade que o antigo `Tiled` **não tinha** (lá dentro, esticar era inexprimível).
+pub const INSP_SLICE_ALL_STRETCH: NodeId = hash_node_id("insp_slice_all_stretch");
+
+/// **Tile Mode** global — `Continuous` / `Whole`, tags `0..=1`.
+///
+/// ⛔ Houve aqui um terceiro, `Adaptive`, com um slider `Stretch Value` — retirado em 2026-08-22
+/// porque o mecanismo não podia funcionar (o motivo, medido, está em `ph2d_ecs::SliceTileMode`).
+pub const INSP_SLICE_TILE_MODE: [NodeId; 2] = [
+    hash_node_id("insp_slice_tile_continuous"),
+    hash_node_id("insp_slice_tile_whole"),
+];
+
+/// As quatro bordas, em pixels da fonte: **`[left, top, right, bottom]`**.
+///
+/// ⚠️ A ordem é a do campo `SliceNine::borders`, e o despacho indexa por `position`. Trocar dois
+/// destes ids faria o artista arrastar «esquerda» e ver a borda de cima mexer — e compila.
+pub const INSP_SLICE_BORDER: [NodeId; 4] = [
+    hash_node_id("insp_slice_border_l"),
+    hash_node_id("insp_slice_border_t"),
+    hash_node_id("insp_slice_border_r"),
+    hash_node_id("insp_slice_border_b"),
+];
+
+/// Tamanho alvo em metros, `[x, y]`. `0` = herda o tamanho do sprite.
+pub const INSP_SLICE_SIZE: [NodeId; 2] = [
+    hash_node_id("insp_slice_size_x"),
+    hash_node_id("insp_slice_size_y"),
+];
+
+/// **A grelha 3×3 dos modos por-região** — oito células, na ordem de `SliceRegion::ALL`
+/// (TL · T · TR · L · R · BL · B · BR).
+///
+/// ⚠️ **É um CYCLER, não um segmented, e a escolha é de desenho.** A spec pedia «8 × Dropdown»;
+/// oito dropdowns de quatro opções são 32 alvos e ~8 linhas num painel estreito. Uma grelha 3×3
+/// em que cada célula mostra a inicial do seu modo e cicla ao clique ocupa três linhas, tem oito
+/// alvos — e **parece a coisa que edita**. O miolo da grelha não é clicável: ele obedece a
+/// `Fill Center`, que é uma lei própria.
+pub const INSP_SLICE_REGION: [NodeId; 8] = [
+    hash_node_id("insp_slice_region_tl"),
+    hash_node_id("insp_slice_region_t"),
+    hash_node_id("insp_slice_region_tr"),
+    hash_node_id("insp_slice_region_l"),
+    hash_node_id("insp_slice_region_r"),
+    hash_node_id("insp_slice_region_bl"),
+    hash_node_id("insp_slice_region_b"),
+    hash_node_id("insp_slice_region_br"),
+];
+
+/// **A célula do MIOLO na grelha 3×3** — a nona, que não é uma das oito da moldura.
+///
+/// ⚠️ Ela cicla só **Stretch → Repeat → Mirror**: apagar o miolo é o [`INSP_SLICE_FILL_CENTER`],
+/// e duas portas para o mesmo estado divergem.
+pub const INSP_SLICE_CENTRE: NodeId = hash_node_id("insp_slice_centre");
+
+/// `Fill Center` — o miolo desenha-se, ou a moldura fica oca.
+pub const INSP_SLICE_FILL_CENTER: NodeId = hash_node_id("insp_slice_fill_center");

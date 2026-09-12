@@ -23,7 +23,6 @@
 //! `push_clip` do scroll o cortaria na borda da seção. O chip só guarda o rect (+ o SLOT,
 //! porque são dois seletores e o passe é um só).
 
-use crate::ids;
 use crate::paint_sections::{BodyCtx, LABEL_COL_W};
 use crate::state;
 use ph2d_editor_core::action_bus::EditorAction;
@@ -45,9 +44,9 @@ use ph2d_vec_scene::{ALL_MARKERS, Marker};
 #[must_use]
 pub(crate) fn marker_dd_id(slot: usize) -> ph2d_a11y::NodeId {
     if slot == ph2d_tool_vector::params::MARKER_SLOT_END {
-        ids::VECTOR_MARKER_END_DD
+        ph2d_tool_vector::ids::VECTOR_MARKER_END_DD
     } else {
-        ids::VECTOR_MARKER_START_DD
+        ph2d_tool_vector::ids::VECTOR_MARKER_START_DD
     }
 }
 
@@ -86,12 +85,12 @@ pub(crate) fn seed(store: &mut ph2d_editor_core::interaction::WidgetStore) {
     let focus = store.focus_id();
     for (id, field, value) in [
         (
-            ids::VECTOR_MARKER_SCALE,
+            ph2d_tool_vector::ids::VECTOR_MARKER_SCALE,
             &params::MARKER_SCALE,
             snap.marker_scale,
         ),
         (
-            ids::VECTOR_MARKER_ROUND,
+            ph2d_tool_vector::ids::VECTOR_MARKER_ROUND,
             &params::MARKER_ROUND,
             snap.marker_round,
         ),
@@ -114,9 +113,9 @@ pub(crate) fn apply_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> 
     let WidgetEvent::ValueChanged(id) = ev else {
         return false;
     };
-    let field = if id == ids::VECTOR_MARKER_SCALE {
+    let field = if id == ph2d_tool_vector::ids::VECTOR_MARKER_SCALE {
         &params::MARKER_SCALE
-    } else if id == ids::VECTOR_MARKER_ROUND {
+    } else if id == ph2d_tool_vector::ids::VECTOR_MARKER_ROUND {
         &params::MARKER_ROUND
     } else {
         return false;
@@ -132,7 +131,7 @@ impl BodyCtx<'_> {
     /// **tamanho** da cabeça, o **arredondamento** das quinas dela e a **dupla via**.
     /// Devolve o `y` avançado.
     pub(crate) fn marker_rows(&mut self, snap: &VectorStyleSnapshot, mut y: f32) -> f32 {
-        for slot in 0..ids::MARKER_SLOTS {
+        for slot in 0..ph2d_tool_vector::ids::MARKER_SLOTS {
             y = self.marker_row(snap, slot, y);
         }
         // As caixas leem o valor do STORE (semeado com o efetivo na Fase B do paint), como
@@ -140,13 +139,13 @@ impl BodyCtx<'_> {
         // sobrescrito pelo snapshot do frame.
         y = self.labeled_number_field(
             params::MARKER_SCALE.label,
-            ids::VECTOR_MARKER_SCALE,
+            ph2d_tool_vector::ids::VECTOR_MARKER_SCALE,
             params::MARKER_SCALE.step,
             y,
         );
         y = self.labeled_number_field(
             params::MARKER_ROUND.label,
-            ids::VECTOR_MARKER_ROUND,
+            ph2d_tool_vector::ids::VECTOR_MARKER_ROUND,
             params::MARKER_ROUND.step,
             y,
         );
@@ -155,7 +154,7 @@ impl BodyCtx<'_> {
         // rótulos + botão que alterna ao clique), então a linha é irmã das de cima.
         self.labeled_choice_button(
             params::BOTH_ENDS.label,
-            ids::VECTOR_MARKER_BOTH,
+            ph2d_tool_vector::ids::VECTOR_MARKER_BOTH,
             params::both_ends_label(snap.both_ends()),
             y,
         )
@@ -215,7 +214,13 @@ pub(crate) fn paint_marker_popover(ctx: &mut PaintCtx, slot: usize, chip: Rect, 
     let options: Vec<DropdownOption<usize>> = ALL_MARKERS
         .iter()
         .enumerate()
-        .map(|(i, m)| DropdownOption::new(ids::vector_marker_option_id(slot, i), i, m.label()))
+        .map(|(i, m)| {
+            DropdownOption::new(
+                ph2d_tool_vector::ids::vector_marker_option_id(slot, i),
+                i,
+                m.label(),
+            )
+        })
         .collect();
     let dd = Dropdown::new(id, "", options).selected(sel).open(true);
 
@@ -254,7 +259,7 @@ pub(crate) fn paint_marker_popover(ctx: &mut PaintCtx, slot: usize, chip: Rect, 
         let bot = (r.y + r.h).min(panel.y + panel.h);
         if bot - top >= 1.0 {
             hit_index.register(
-                ids::vector_marker_option_id(slot, i),
+                ph2d_tool_vector::ids::vector_marker_option_id(slot, i),
                 Rect::new(r.x, top, r.w, bot - top),
             );
         }
@@ -275,7 +280,7 @@ mod tests {
     #[test]
     fn every_marker_has_an_option_slot() {
         assert!(
-            ALL_MARKERS.len() <= ids::MAX_MARKER_OPTIONS,
+            ALL_MARKERS.len() <= ph2d_tool_vector::ids::MAX_MARKER_OPTIONS,
             "ALL_MARKERS cresceu além de MAX_MARKER_OPTIONS — as últimas pontas não teriam id"
         );
     }
@@ -287,8 +292,8 @@ mod tests {
         assert_ne!(marker_dd_id(0), marker_dd_id(1));
         for i in 0..ALL_MARKERS.len() {
             assert_ne!(
-                ids::vector_marker_option_id(0, i),
-                ids::vector_marker_option_id(1, i),
+                ph2d_tool_vector::ids::vector_marker_option_id(0, i),
+                ph2d_tool_vector::ids::vector_marker_option_id(1, i),
                 "opcao {i}: comeco e fim colidiram"
             );
         }

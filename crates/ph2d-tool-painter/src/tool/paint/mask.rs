@@ -510,23 +510,22 @@ impl PainterTool {
     /// Route the Mask-section panel Clicks: sub-brush segments, canvas-op buttons, overlay-colour
     /// swatches, and Apply. Returns `true` iff consumed. Called from `route_brush_dab_event`.
     pub(crate) fn route_mask_event(&mut self, event: &PanelEvent) -> bool {
-        use ph2d_editor_core::ids as core_ids;
         let PanelEvent::Click(id) = event else {
             return false;
         };
-        if *id == core_ids::PAINTER_MASK_APPLY {
+        if *id == crate::ids::PAINTER_MASK_APPLY {
             self.apply_mask_scratch();
             return true;
         }
-        if let Some(i) = core_ids::PAINTER_MASK_BRUSH.iter().position(|x| x == id) {
+        if let Some(i) = crate::ids::PAINTER_MASK_BRUSH.iter().position(|x| x == id) {
             self.set_mask_brush(i as u8);
             return true;
         }
-        if let Some(i) = core_ids::PAINTER_MASK_OP.iter().position(|x| x == id) {
+        if let Some(i) = crate::ids::PAINTER_MASK_OP.iter().position(|x| x == id) {
             self.mask_canvas_op(i as u8);
             return true;
         }
-        if let Some(i) = core_ids::PAINTER_MASK_COLOR.iter().position(|x| x == id) {
+        if let Some(i) = crate::ids::PAINTER_MASK_COLOR.iter().position(|x| x == id) {
             self.set_mask_overlay_color(i as u8);
             return true;
         }

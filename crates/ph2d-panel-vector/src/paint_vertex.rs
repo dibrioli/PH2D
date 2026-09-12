@@ -17,7 +17,7 @@ impl BodyCtx<'_> {
         };
         let active = active_chip(sel);
         let (mut y, collapsed) = self.section_header(
-            ids::VECTOR_SECTION_VERTEX,
+            ph2d_tool_vector::ids::VECTOR_SECTION_VERTEX,
             tr("panel.vector.section.vertex"),
             y,
         );
@@ -25,9 +25,21 @@ impl BodyCtx<'_> {
             return y;
         }
         let verts = [
-            (ids::VECTOR_VERT_CORNER, "Corner", VertexType::Corner),
-            (ids::VECTOR_VERT_SMOOTH, "Smooth", VertexType::Smooth),
-            (ids::VECTOR_VERT_SYMMETRIC, "Symm", VertexType::Symmetric),
+            (
+                ph2d_tool_vector::ids::VECTOR_VERT_CORNER,
+                "Corner",
+                VertexType::Corner,
+            ),
+            (
+                ph2d_tool_vector::ids::VECTOR_VERT_SMOOTH,
+                "Smooth",
+                VertexType::Smooth,
+            ),
+            (
+                ph2d_tool_vector::ids::VECTOR_VERT_SYMMETRIC,
+                "Symm",
+                VertexType::Symmetric,
+            ),
         ];
         let vseg_gap = Spacing::Sm.px();
         let vseg_w =

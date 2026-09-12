@@ -23,7 +23,6 @@
 
 use std::cell::Cell;
 
-use crate::ids;
 use crate::paint_sections::BodyCtx;
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};
@@ -75,10 +74,22 @@ pub(crate) const CURVED: u8 = 2;
 /// um lugar deixa de ser possível: quem registra e quem desenha iteram a MESMA lista, e o gate
 /// exige que ela esteja inteira no store.
 pub(crate) const NUMBER_FIELDS: &[(ph2d_a11y::NodeId, &FieldDesc)] = &[
-    (ids::VECTOR_CONNECTOR_JETTY, &connector::JETTY),
-    (ids::VECTOR_CONNECTOR_SPREAD, &connector::SPREAD),
-    (ids::VECTOR_CONNECTOR_CORNER, &connector::CORNER),
-    (ids::VECTOR_CONNECTOR_CURVE, &connector::CURVE),
+    (
+        ph2d_tool_vector::ids::VECTOR_CONNECTOR_JETTY,
+        &connector::JETTY,
+    ),
+    (
+        ph2d_tool_vector::ids::VECTOR_CONNECTOR_SPREAD,
+        &connector::SPREAD,
+    ),
+    (
+        ph2d_tool_vector::ids::VECTOR_CONNECTOR_CORNER,
+        &connector::CORNER,
+    ),
+    (
+        ph2d_tool_vector::ids::VECTOR_CONNECTOR_CURVE,
+        &connector::CURVE,
+    ),
 ];
 
 /// **Os campos que ESTA rota mostra.** Um parâmetro que não faz nada na rota corrente não
@@ -93,25 +104,37 @@ pub(crate) const NUMBER_FIELDS: &[(ph2d_a11y::NodeId, &FieldDesc)] = &[
 pub(crate) fn visible_fields(route: u8) -> Vec<(ph2d_a11y::NodeId, &'static FieldDesc)> {
     let mut v: Vec<(ph2d_a11y::NodeId, &'static FieldDesc)> = Vec::with_capacity(3);
     if route != STRAIGHT {
-        v.push((ids::VECTOR_CONNECTOR_JETTY, &connector::JETTY));
+        v.push((
+            ph2d_tool_vector::ids::VECTOR_CONNECTOR_JETTY,
+            &connector::JETTY,
+        ));
     }
-    v.push((ids::VECTOR_CONNECTOR_SPREAD, &connector::SPREAD));
+    v.push((
+        ph2d_tool_vector::ids::VECTOR_CONNECTOR_SPREAD,
+        &connector::SPREAD,
+    ));
     if route == ORTHOGONAL {
-        v.push((ids::VECTOR_CONNECTOR_CORNER, &connector::CORNER));
+        v.push((
+            ph2d_tool_vector::ids::VECTOR_CONNECTOR_CORNER,
+            &connector::CORNER,
+        ));
     }
     if route == CURVED {
-        v.push((ids::VECTOR_CONNECTOR_CURVE, &connector::CURVE));
+        v.push((
+            ph2d_tool_vector::ids::VECTOR_CONNECTOR_CURVE,
+            &connector::CURVE,
+        ));
     }
     v
 }
 
 /// O valor efetivo de um campo, no snapshot.
 pub(crate) fn value_of(snap: &ConnectorSnapshot, id: ph2d_a11y::NodeId) -> f64 {
-    if id == ids::VECTOR_CONNECTOR_JETTY {
+    if id == ph2d_tool_vector::ids::VECTOR_CONNECTOR_JETTY {
         snap.jetty
-    } else if id == ids::VECTOR_CONNECTOR_SPREAD {
+    } else if id == ph2d_tool_vector::ids::VECTOR_CONNECTOR_SPREAD {
         snap.spread
-    } else if id == ids::VECTOR_CONNECTOR_CORNER {
+    } else if id == ph2d_tool_vector::ids::VECTOR_CONNECTOR_CORNER {
         snap.corner
     } else {
         snap.curve
@@ -180,7 +203,7 @@ pub(crate) fn apply_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> 
                 .push(EditorAction::ToolPanelEvent(PanelEvent::SetValue(id, v)));
             true
         }
-        WidgetEvent::Click(id) if id == ids::VECTOR_CONNECTOR_ROUTE => {
+        WidgetEvent::Click(id) if id == ph2d_tool_vector::ids::VECTOR_CONNECTOR_ROUTE => {
             seam_reset_button(host, id);
             // Sem conector em foco o botão nem foi pintado — mas o caminho recusa por
             // construção em vez de adivinhar uma rota.
@@ -209,7 +232,7 @@ impl BodyCtx<'_> {
             return y;
         };
         let (mut y, collapsed) = self.section_header(
-            ids::VECTOR_SECTION_CONNECTOR,
+            ph2d_tool_vector::ids::VECTOR_SECTION_CONNECTOR,
             tr("panel.vector.section.connector"),
             y,
         );
@@ -218,7 +241,7 @@ impl BodyCtx<'_> {
         }
         y = self.labeled_choice_button(
             connector::ROUTE.label,
-            ids::VECTOR_CONNECTOR_ROUTE,
+            ph2d_tool_vector::ids::VECTOR_CONNECTOR_ROUTE,
             connector::route_label(f64::from(snap.route)),
             y,
         );
@@ -288,20 +311,20 @@ mod tests {
         };
         // Reta: nem jetty (nao ha dobra), nem corner (nao ha quina), nem curve.
         let straight = ids_of(STRAIGHT);
-        assert!(!straight.contains(&ids::VECTOR_CONNECTOR_CORNER));
-        assert!(!straight.contains(&ids::VECTOR_CONNECTOR_JETTY));
-        assert!(!straight.contains(&ids::VECTOR_CONNECTOR_CURVE));
+        assert!(!straight.contains(&ph2d_tool_vector::ids::VECTOR_CONNECTOR_CORNER));
+        assert!(!straight.contains(&ph2d_tool_vector::ids::VECTOR_CONNECTOR_JETTY));
+        assert!(!straight.contains(&ph2d_tool_vector::ids::VECTOR_CONNECTOR_CURVE));
         // Ortogonal: corner SIM, curve NAO.
         let ortho = ids_of(ORTHOGONAL);
-        assert!(ortho.contains(&ids::VECTOR_CONNECTOR_CORNER));
-        assert!(!ortho.contains(&ids::VECTOR_CONNECTOR_CURVE));
+        assert!(ortho.contains(&ph2d_tool_vector::ids::VECTOR_CONNECTOR_CORNER));
+        assert!(!ortho.contains(&ph2d_tool_vector::ids::VECTOR_CONNECTOR_CURVE));
         // Curva: curve SIM, corner NAO (o spline nao tem quina).
         let curved = ids_of(CURVED);
-        assert!(curved.contains(&ids::VECTOR_CONNECTOR_CURVE));
-        assert!(!curved.contains(&ids::VECTOR_CONNECTOR_CORNER));
+        assert!(curved.contains(&ph2d_tool_vector::ids::VECTOR_CONNECTOR_CURVE));
+        assert!(!curved.contains(&ph2d_tool_vector::ids::VECTOR_CONNECTOR_CORNER));
         // Spread vale em TODAS: dois conectores paralelos se separam no ponto de saida.
         for r in [STRAIGHT, ORTHOGONAL, CURVED] {
-            assert!(ids_of(r).contains(&ids::VECTOR_CONNECTOR_SPREAD));
+            assert!(ids_of(r).contains(&ph2d_tool_vector::ids::VECTOR_CONNECTOR_SPREAD));
         }
     }
 

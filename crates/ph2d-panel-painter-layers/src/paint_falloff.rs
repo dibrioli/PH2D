@@ -17,7 +17,6 @@
 //! it and forwards `PAINTER_BRUSH_FALLOFF_EDIT` to the tool.
 
 use crate::paint::register_button;
-use ph2d_editor_core::ids::{self as core_ids, painter_brush_falloff_point_id};
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::paint::{
     fill_circle, fill_rounded_rect, paint_text_centered, resolve, stroke_polyline,
@@ -25,6 +24,7 @@ use ph2d_editor_core::paint::{
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, TypeToken};
+use ph2d_tool_painter::ids::painter_brush_falloff_point_id;
 use ph2d_tool_painter::{BrushSettings, Falloff, HandleType, brush_falloff_weight_at};
 use ph2d_vector::Color;
 
@@ -58,8 +58,16 @@ pub(crate) fn paint_falloff_section(
         let add_rect = Rect::new(x + content_w - BTN_W * 2.0 - gap, y, BTN_W, ROW_H_PX);
         let rem_rect = Rect::new(x + content_w - BTN_W, y, BTN_W, ROW_H_PX);
         for (brect, label, id) in [
-            (add_rect, "+", core_ids::PAINTER_BRUSH_FALLOFF_ADD),
-            (rem_rect, "−", core_ids::PAINTER_BRUSH_FALLOFF_REMOVE),
+            (
+                add_rect,
+                "+",
+                ph2d_tool_painter::ids::PAINTER_BRUSH_FALLOFF_ADD,
+            ),
+            (
+                rem_rect,
+                "−",
+                ph2d_tool_painter::ids::PAINTER_BRUSH_FALLOFF_REMOVE,
+            ),
         ] {
             fill_rounded_rect(
                 ctx.scene,
@@ -160,7 +168,7 @@ pub(crate) fn paint_falloff_section(
             ctx.host.store_mut().register(
                 id,
                 InteractiveState::CurvePoint {
-                    parent: core_ids::PAINTER_BRUSH_FALLOFF_EDIT,
+                    parent: ph2d_tool_painter::ids::PAINTER_BRUSH_FALLOFF_EDIT,
                     channel: 0,
                     index: pid,
                     canvas,

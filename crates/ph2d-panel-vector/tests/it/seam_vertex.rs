@@ -50,9 +50,9 @@ fn every_vertex_chip_reaches_the_bus_in_both_faces() {
         (VertexSel::Mixed, "MISTA"),
     ] {
         for (id, name) in [
-            (ids::VECTOR_VERT_CORNER, "Corner"),
-            (ids::VECTOR_VERT_SMOOTH, "Smooth"),
-            (ids::VECTOR_VERT_SYMMETRIC, "Symm"),
+            (ph2d_tool_vector::ids::VECTOR_VERT_CORNER, "Corner"),
+            (ph2d_tool_vector::ids::VECTOR_VERT_SMOOTH, "Smooth"),
+            (ph2d_tool_vector::ids::VECTOR_VERT_SYMMETRIC, "Symm"),
             (ids::VECTOR_VERT_DELETE, "Delete Node"),
         ] {
             ph2d_panel_vector::set_selected_vertex_type(Some(sel));
@@ -98,7 +98,7 @@ fn no_selected_vertex_hides_the_whole_section() {
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let mut panel_state = VectorPanelState;
     for (id, name) in [
-        (ids::VECTOR_VERT_CORNER, "Corner"),
+        (ph2d_tool_vector::ids::VECTOR_VERT_CORNER, "Corner"),
         (ids::VECTOR_VERT_DELETE, "Delete Node"),
     ] {
         assert!(

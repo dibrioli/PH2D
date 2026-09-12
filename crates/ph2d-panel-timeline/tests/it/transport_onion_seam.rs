@@ -71,7 +71,10 @@ fn click_onion(id: ph2d_editor_core::NodeId, snap: TimelineViewSnapshot) -> Onio
 #[test]
 fn the_onion_toggle_paints_clicks_and_pushes_set_onion() {
     // Off no snapshot ⇒ o clique empurra SetOnion com enabled = true.
-    let out = click_onion(ids::TIMELINE_ONION, transport(OnionSettings::default()));
+    let out = click_onion(
+        ph2d_panel_timeline::ids::TIMELINE_ONION,
+        transport(OnionSettings::default()),
+    );
     assert!(out.enabled, "clicar Onion (off) tem de armar o onion");
 
     // On no snapshot ⇒ o clique o desliga.
@@ -79,7 +82,7 @@ fn the_onion_toggle_paints_clicks_and_pushes_set_onion() {
         enabled: true,
         ..OnionSettings::default()
     };
-    let out = click_onion(ids::TIMELINE_ONION, transport(on));
+    let out = click_onion(ph2d_panel_timeline::ids::TIMELINE_ONION, transport(on));
     assert!(!out.enabled, "clicar Onion (on) tem de desligar");
 }
 
@@ -89,14 +92,20 @@ fn the_onion_mode_toggle_flips_keys_and_frames() {
         mode: OnionMode::Keys,
         ..OnionSettings::default()
     };
-    let out = click_onion(ids::TIMELINE_ONION_MODE, transport(keys));
+    let out = click_onion(
+        ph2d_panel_timeline::ids::TIMELINE_ONION_MODE,
+        transport(keys),
+    );
     assert_eq!(out.mode, OnionMode::Frames, "Keys -> Frames");
 
     let frames = OnionSettings {
         mode: OnionMode::Frames,
         ..OnionSettings::default()
     };
-    let out = click_onion(ids::TIMELINE_ONION_MODE, transport(frames));
+    let out = click_onion(
+        ph2d_panel_timeline::ids::TIMELINE_ONION_MODE,
+        transport(frames),
+    );
     assert_eq!(out.mode, OnionMode::Keys, "Frames -> Keys");
 }
 
@@ -155,13 +164,13 @@ fn the_painted_onion_switches_show_the_snapshot() {
 
             let (_, on) = host
                 .store()
-                .toggle(ids::TIMELINE_ONION)
+                .toggle(ph2d_panel_timeline::ids::TIMELINE_ONION)
                 .expect("o toggle Onion não está registrado — veja populate.rs");
             assert_eq!(on, enabled, "o switch Onion discorda do snapshot");
 
             let (_, keys_on) = host
                 .store()
-                .toggle(ids::TIMELINE_ONION_MODE)
+                .toggle(ph2d_panel_timeline::ids::TIMELINE_ONION_MODE)
                 .expect("o toggle Onion Keys não está registrado — veja populate.rs");
             assert_eq!(
                 keys_on,

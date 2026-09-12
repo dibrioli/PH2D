@@ -58,64 +58,64 @@ pub enum FilterHit {
 /// Decodifica um id de painel para o controle da pilha que ele endereça.
 pub fn hit_of(id: ph2d_editor_core::NodeId) -> Option<FilterHit> {
     use ph2d_editor_core::ids as vid;
-    for k in 0..vid::MAX_FILTER_KINDS {
-        if id == vid::filter_add_id(k) {
+    for k in 0..ph2d_panel_vector::ids::MAX_FILTER_KINDS {
+        if id == ph2d_panel_vector::ids::filter_add_id(k) {
             #[allow(clippy::cast_possible_truncation)]
             return Some(FilterHit::Add(k as u8));
         }
     }
     for r in 0..vid::MAX_FILTER_ROWS {
-        for m in 0..vid::MAX_FILTER_MODES {
-            if id == vid::filter_mode_id(r, m) {
+        for m in 0..ph2d_panel_vector::ids::MAX_FILTER_MODES {
+            if id == ph2d_panel_vector::ids::filter_mode_id(r, m) {
                 #[allow(clippy::cast_possible_truncation)]
                 return Some(FilterHit::Mode(r, m as u8));
             }
         }
-        for m in 0..vid::MAX_FILTER_BLENDS {
-            if id == vid::filter_blend_option_id(r, m) {
+        for m in 0..ph2d_panel_vector::ids::MAX_FILTER_BLENDS {
+            if id == ph2d_panel_vector::ids::filter_blend_option_id(r, m) {
                 #[allow(clippy::cast_possible_truncation)]
                 return Some(FilterHit::Blend(r, m as u8));
             }
         }
-        let hit = if id == vid::filter_remove_id(r) {
+        let hit = if id == ph2d_panel_vector::ids::filter_remove_id(r) {
             FilterHit::Remove(r)
-        } else if id == vid::filter_up_id(r) {
+        } else if id == ph2d_panel_vector::ids::filter_up_id(r) {
             FilterHit::Up(r)
-        } else if id == vid::filter_down_id(r) {
+        } else if id == ph2d_panel_vector::ids::filter_down_id(r) {
             FilterHit::Down(r)
-        } else if id == vid::filter_hide_id(r) {
+        } else if id == ph2d_panel_vector::ids::filter_hide_id(r) {
             FilterHit::Hide(r)
-        } else if id == vid::filter_stop_add_id(r) {
+        } else if id == ph2d_panel_vector::ids::filter_stop_add_id(r) {
             FilterHit::StopAdd(r)
-        } else if id == vid::filter_stop_remove_id(r) {
+        } else if id == ph2d_panel_vector::ids::filter_stop_remove_id(r) {
             FilterHit::StopRemove(r)
-        } else if id == vid::filter_stop_color_id(r) {
+        } else if id == ph2d_panel_vector::ids::filter_stop_color_id(r) {
             FilterHit::StopColor(r)
-        } else if id == vid::filter_color_id(r) {
+        } else if id == ph2d_panel_vector::ids::filter_color_id(r) {
             FilterHit::Color(r)
-        } else if id == vid::filter_color_b_id(r) {
+        } else if id == ph2d_panel_vector::ids::filter_color_b_id(r) {
             FilterHit::ColorB(r)
-        } else if id == vid::filter_radius_id(r) {
+        } else if id == ph2d_panel_vector::ids::filter_radius_id(r) {
             FilterHit::Radius(r)
-        } else if id == vid::filter_offx_id(r) {
+        } else if id == ph2d_panel_vector::ids::filter_offx_id(r) {
             FilterHit::OffX(r)
-        } else if id == vid::filter_offy_id(r) {
+        } else if id == ph2d_panel_vector::ids::filter_offy_id(r) {
             FilterHit::OffY(r)
-        } else if id == vid::filter_opacity_id(r) {
+        } else if id == ph2d_panel_vector::ids::filter_opacity_id(r) {
             FilterHit::Opacity(r)
-        } else if id == vid::filter_scale_id(r) {
+        } else if id == ph2d_panel_vector::ids::filter_scale_id(r) {
             FilterHit::Scale(r)
-        } else if id == vid::filter_detail_id(r) {
+        } else if id == ph2d_panel_vector::ids::filter_detail_id(r) {
             FilterHit::Detail(r)
-        } else if id == vid::filter_seed_id(r) {
+        } else if id == ph2d_panel_vector::ids::filter_seed_id(r) {
             FilterHit::Seed(r)
-        } else if id == vid::filter_grow_id(r) {
+        } else if id == ph2d_panel_vector::ids::filter_grow_id(r) {
             FilterHit::Grow(r)
-        } else if id == vid::filter_hue_id(r) {
+        } else if id == ph2d_panel_vector::ids::filter_hue_id(r) {
             FilterHit::Hue(r)
-        } else if id == vid::filter_sat_id(r) {
+        } else if id == ph2d_panel_vector::ids::filter_sat_id(r) {
             FilterHit::Sat(r)
-        } else if id == vid::filter_bright_id(r) {
+        } else if id == ph2d_panel_vector::ids::filter_bright_id(r) {
             FilterHit::Bright(r)
         } else {
             continue;

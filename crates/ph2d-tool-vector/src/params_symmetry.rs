@@ -11,10 +11,10 @@
 pub fn symmetry_kind_id(k: ph2d_symmetry::SymmetryKind) -> ph2d_a11y::NodeId {
     use ph2d_symmetry::SymmetryKind as K;
     match k {
-        K::MirrorX => ph2d_editor_core::ids::VECTOR_SYM_KIND_X,
-        K::MirrorY => ph2d_editor_core::ids::VECTOR_SYM_KIND_Y,
-        K::Custom => ph2d_editor_core::ids::VECTOR_SYM_KIND_CUSTOM,
-        K::Radial => ph2d_editor_core::ids::VECTOR_SYM_KIND_RADIAL,
+        K::MirrorX => crate::ids::VECTOR_SYM_KIND_X,
+        K::MirrorY => crate::ids::VECTOR_SYM_KIND_Y,
+        K::Custom => crate::ids::VECTOR_SYM_KIND_CUSTOM,
+        K::Radial => crate::ids::VECTOR_SYM_KIND_RADIAL,
     }
 }
 

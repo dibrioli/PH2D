@@ -7,7 +7,7 @@
 //! convenience re-export so the panel's internal modules can write
 //! `crate::ids::PAD_*`.
 
-pub use ph2d_editor_core::ids::{
-    PAD_APPLY, PAD_BOTTOM, PAD_BOTTOM_NUM, PAD_CANCEL, PAD_LEFT, PAD_LEFT_NUM, PAD_PANEL,
-    PAD_PIVOT_RECENTER, PAD_RESET, PAD_RIGHT, PAD_RIGHT_NUM, PAD_TOP, PAD_TOP_NUM,
-};
+pub use ph2d_editor_core::ids::PAD_PANEL;
+
+mod padding;
+pub use padding::*;

@@ -140,7 +140,7 @@ fn anchor_list(
     for (i, (row, &id)) in info
         .rows
         .iter()
-        .zip(ids::INSP_ANCHOR_ROW.iter())
+        .zip(crate::ids::INSP_ANCHOR_ROW.iter())
         .enumerate()
     {
         let rect = Rect::new(x, cur_y, w, ROW_H);
@@ -229,8 +229,8 @@ fn anchor_editor(
     // Nome.
     let (control_w, name_dot) = ph2d_editor_core::widget::form_row_columns(x, w, cur_y, ROW_H_PX);
     let host = Rect::new(x, cur_y, control_w, ROW_H_PX);
-    hit_index.register(ids::INSP_ANCHOR_NAME, host);
-    let (state, text, caret, sel_anchor) = match store.get(ids::INSP_ANCHOR_NAME) {
+    hit_index.register(crate::ids::INSP_ANCHOR_NAME, host);
+    let (state, text, caret, sel_anchor) = match store.get(crate::ids::INSP_ANCHOR_NAME) {
         Some(InteractiveState::TextInput {
             state,
             text,
@@ -239,9 +239,9 @@ fn anchor_editor(
         }) => (*state, Some(text.as_str()), *caret, *selection_anchor),
         _ => (TextInputState::Normal, None, 0, None),
     };
-    let input = TextInput::new(ids::INSP_ANCHOR_NAME, "")
+    let input = TextInput::new(crate::ids::INSP_ANCHOR_NAME, "")
         .placeholder("anchor_name\u{2026}")
-        .visual((state, store.hover_live(ids::INSP_ANCHOR_NAME)));
+        .visual((state, store.hover_live(crate::ids::INSP_ANCHOR_NAME)));
     paint_text_input_with_buffer(
         &input,
         text,
@@ -265,7 +265,7 @@ fn anchor_editor(
         w,
         cur_y,
         "Position X / Y (px)",
-        &ids::INSP_ANCHOR_POS,
+        &crate::ids::INSP_ANCHOR_POS,
         PX_STEP,
     );
     cur_y = field_row(
@@ -278,7 +278,7 @@ fn anchor_editor(
         w,
         cur_y,
         "Rotation (deg)",
-        &[ids::INSP_ANCHOR_ROT],
+        &[crate::ids::INSP_ANCHOR_ROT],
         DEG_STEP,
     );
     cur_y = check_row(
@@ -291,7 +291,7 @@ fn anchor_editor(
         w,
         cur_y,
         "Bounds (makes it a Slice)",
-        ids::INSP_ANCHOR_BOUNDS_ON,
+        crate::ids::INSP_ANCHOR_BOUNDS_ON,
     );
     // ⚠️ Os campos da área só existem quando ela existe. Pintá-los sobre um Socket seria
     // oferecer quatro números que não vão a lado nenhum.
@@ -306,7 +306,7 @@ fn anchor_editor(
             w,
             cur_y,
             "Bounds X / Y / W / H (px)",
-            &ids::INSP_ANCHOR_BOUNDS,
+            &crate::ids::INSP_ANCHOR_BOUNDS,
             PX_STEP,
         );
         cur_y = check_row(
@@ -319,7 +319,7 @@ fn anchor_editor(
             w,
             cur_y,
             "Center (makes it a 9-slice Region)",
-            ids::INSP_ANCHOR_CENTER_ON,
+            crate::ids::INSP_ANCHOR_CENTER_ON,
         );
         if row.center.is_some() {
             cur_y = field_row(
@@ -332,17 +332,17 @@ fn anchor_editor(
                 w,
                 cur_y,
                 "Center X / Y / W / H (px)",
-                &ids::INSP_ANCHOR_CENTER,
+                &crate::ids::INSP_ANCHOR_CENTER,
                 PX_STEP,
             );
         }
     }
     let rm = Rect::new(x, cur_y, w, BTN_H);
-    hit_index.register(ids::INSP_ANCHOR_REMOVE, rm);
+    hit_index.register(crate::ids::INSP_ANCHOR_REMOVE, rm);
     paint_button(
-        &Button::new(ids::INSP_ANCHOR_REMOVE, "x Remove Anchor")
+        &Button::new(crate::ids::INSP_ANCHOR_REMOVE, "x Remove Anchor")
             .kind(ButtonKind::Default)
-            .visual(store.button_visual(ids::INSP_ANCHOR_REMOVE)),
+            .visual(store.button_visual(crate::ids::INSP_ANCHOR_REMOVE)),
         rm,
         scene,
         text_system,
@@ -466,11 +466,11 @@ pub(crate) fn paint_anchors_section(
     );
 
     let add = Rect::new(x, cur_y, w, BTN_H);
-    hit_index.register(ids::INSP_ANCHOR_ADD, add);
+    hit_index.register(crate::ids::INSP_ANCHOR_ADD, add);
     paint_button(
-        &Button::new(ids::INSP_ANCHOR_ADD, "+ Add Anchor")
+        &Button::new(crate::ids::INSP_ANCHOR_ADD, "+ Add Anchor")
             .kind(ButtonKind::Default)
-            .visual(store.button_visual(ids::INSP_ANCHOR_ADD)),
+            .visual(store.button_visual(crate::ids::INSP_ANCHOR_ADD)),
         add,
         scene,
         text_system,

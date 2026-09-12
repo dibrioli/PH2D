@@ -15,12 +15,6 @@ use ph2d_a11y::NodeId;
 
 use super::super::hash_node_id;
 
-// ── Contour: N anéis concêntricos, do original até uma cor-alvo ─────────────────
-// O efeito é o componente `ph2d_ecs::VecContour` na entidade da forma; presença = tem contour,
-// ausência = forma nua. Estes ids são a única porta do PRODUTO para ele — sem eles o motor
-// existiria, gateado e smokado, e não existiria para o artista.
-/// Seção **CONTOUR** — a forma ganha N anéis concêntricos com uma rampa de cor.
-pub const VECTOR_SECTION_CONTOUR: NodeId = hash_node_id("vector.section.contour");
 /// **Add Contour** — arma o efeito na seleção. É a porta EXPLÍCITA, e é ela que resolve o
 /// problema do swatch morto: sem contour armado não há para onde uma cor-alvo escrever, então
 /// os controles (incluindo a swatch) só existem depois deste botão.
@@ -48,17 +42,3 @@ pub const VECTOR_CONTOUR_ACCEL_NUM: NodeId = hash_node_id("vector.contour.accel.
 /// **To** — a cor do ÚLTIMO anel. A swatch abre o picker OKLCH partilhado; o primeiro anel parte
 /// da cor da FONTE, então a rampa tem os dois extremos sem o artista autorar o de partida.
 pub const VECTOR_CONTOUR_TO: NodeId = hash_node_id("vector.contour.to");
-/// **Corner: Miter** — a quina que o offset dos anéis produz. Mesmos códigos do Expand, resolvidos
-/// pela MESMA porta (`vec_expand::join_of_code`).
-pub const VECTOR_CONTOUR_JOIN_MITER: NodeId = hash_node_id("vector.contour.join.miter");
-/// **Corner: Round** — ver [`VECTOR_CONTOUR_JOIN_MITER`]. É o default: a quina que faz um contour
-/// parecer um contour.
-pub const VECTOR_CONTOUR_JOIN_ROUND: NodeId = hash_node_id("vector.contour.join.round");
-/// **Corner: Bevel** — ver [`VECTOR_CONTOUR_JOIN_MITER`].
-pub const VECTOR_CONTOUR_JOIN_BEVEL: NodeId = hash_node_id("vector.contour.join.bevel");
-/// **Side: Outer** — que contorno anda num compound (forma com furos). Mesmos códigos do Expand.
-pub const VECTOR_CONTOUR_SIDE_OUTER: NodeId = hash_node_id("vector.contour.side.outer");
-/// **Side: Inner** — ver [`VECTOR_CONTOUR_SIDE_OUTER`].
-pub const VECTOR_CONTOUR_SIDE_INNER: NodeId = hash_node_id("vector.contour.side.inner");
-/// **Side: Both** — ver [`VECTOR_CONTOUR_SIDE_OUTER`].
-pub const VECTOR_CONTOUR_SIDE_BOTH: NodeId = hash_node_id("vector.contour.side.both");

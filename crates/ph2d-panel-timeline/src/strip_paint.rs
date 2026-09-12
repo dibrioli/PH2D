@@ -10,7 +10,6 @@
 
 use std::borrow::Cow;
 
-use ph2d_editor_core::ids;
 use ph2d_editor_core::paint::{fill_rounded_rect, rect_to_vello, resolve, stroke_rounded_rect};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::text_elide::paint_text_elided;
@@ -127,7 +126,7 @@ pub(crate) fn paint_strip(
     // highlight cannot disagree with what actually gets grabbed.
     let hot = ctx.host.store().hot_id();
     let is_hot = |edge: u8| -> bool {
-        !dim && hot == Some(ids::timeline_strip_hit_id(lane as u64, s.id.0, edge))
+        !dim && hot == Some(crate::ids::timeline_strip_hit_id(lane as u64, s.id.0, edge))
     };
     fill_rounded_rect(
         ctx.scene,

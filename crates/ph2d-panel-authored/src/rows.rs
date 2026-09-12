@@ -360,7 +360,7 @@ pub fn option_for(id: NodeId) -> Option<(String, usize)> {
             .filter(|r| r.kind.takes_options())
             .find_map(|r| {
                 (0..r.options.len())
-                    .find(|i| ids::authored_option_id(&r.key, *i) == id)
+                    .find(|i| crate::ids::authored_option_id(&r.key, *i) == id)
                     .map(|i| (r.key.clone(), i))
             })
     })

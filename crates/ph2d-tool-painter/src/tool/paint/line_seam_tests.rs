@@ -17,7 +17,6 @@
 
 use super::media::PaintMedia;
 use crate::tool::PainterTool;
-use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::tool::{PanelEvent, Tool};
 use ph2d_painter_brush::line_kind::LineKind;
 
@@ -36,28 +35,28 @@ fn tool() -> PainterTool {
 fn every_line_card_slider_reaches_the_brush_through_the_bus() {
     #[allow(clippy::type_complexity)]
     let rows: [(&str, ph2d_editor_core::NodeId, fn(&PainterTool) -> f32); 8] = [
-        ("Reach", core_ids::PAINTER_LINE_SKETCHY_REACH, |t| {
+        ("Reach", crate::ids::PAINTER_LINE_SKETCHY_REACH, |t| {
             t.paint.brush.sketchy_reach
         }),
-        ("Density", core_ids::PAINTER_LINE_SKETCHY_DENSITY, |t| {
+        ("Density", crate::ids::PAINTER_LINE_SKETCHY_DENSITY, |t| {
             t.paint.brush.sketchy_density
         }),
-        ("Width", core_ids::PAINTER_LINE_SKETCHY_WIDTH, |t| {
+        ("Width", crate::ids::PAINTER_LINE_SKETCHY_WIDTH, |t| {
             t.paint.brush.thread_width_px
         }),
-        ("Opacity", core_ids::PAINTER_LINE_SKETCHY_OPACITY, |t| {
+        ("Opacity", crate::ids::PAINTER_LINE_SKETCHY_OPACITY, |t| {
             t.paint.brush.thread_opacity
         }),
-        ("History", core_ids::PAINTER_LINE_WIRE_HISTORY, |t| {
+        ("History", crate::ids::PAINTER_LINE_WIRE_HISTORY, |t| {
             t.paint.brush.wire_history
         }),
-        ("Weight", core_ids::PAINTER_LINE_RIBBON_WEIGHT, |t| {
+        ("Weight", crate::ids::PAINTER_LINE_RIBBON_WEIGHT, |t| {
             t.paint.brush.ribbon_weight
         }),
-        ("Friction", core_ids::PAINTER_LINE_RIBBON_FRICTION, |t| {
+        ("Friction", crate::ids::PAINTER_LINE_RIBBON_FRICTION, |t| {
             t.paint.brush.ribbon_friction
         }),
-        ("Rungs", core_ids::PAINTER_LINE_RIBBON_RUNGS, |t| {
+        ("Rungs", crate::ids::PAINTER_LINE_RIBBON_RUNGS, |t| {
             t.paint.brush.ribbon_rungs
         }),
     ];
@@ -91,7 +90,7 @@ fn the_ribbon_gravity_slider_lands_on_gravity_and_nothing_else() {
         t.paint.brush.ribbon_rungs,
     );
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_LINE_RIBBON_GRAVITY,
+        crate::ids::PAINTER_LINE_RIBBON_GRAVITY,
         0.5,
     ));
     assert!(
@@ -123,7 +122,7 @@ fn arming_the_ribbon_and_dragging_rungs_turns_the_band_on() {
     let mut t = tool();
     t.paint.brush.line_kind = LineKind::Ribbon;
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_LINE_RIBBON_RUNGS,
+        crate::ids::PAINTER_LINE_RIBBON_RUNGS,
         0.0,
     ));
     assert!(
@@ -131,7 +130,7 @@ fn arming_the_ribbon_and_dragging_rungs_turns_the_band_on() {
         "com Rungs 0 a faixa tem de estar desligada (é a linha atrasada sozinha)"
     );
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_LINE_RIBBON_RUNGS,
+        crate::ids::PAINTER_LINE_RIBBON_RUNGS,
         0.6,
     ));
     assert!(

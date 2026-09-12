@@ -5,7 +5,6 @@
 //! second copy of a range, step, default or key to drift.
 
 use ph2d_a11y::NodeId;
-use ph2d_editor_core::ids;
 use ph2d_wet_paint::tuning::{KNOB_DEFS, KnobGroup};
 use std::sync::OnceLock;
 
@@ -75,9 +74,9 @@ pub fn rows() -> &'static [TuneRow] {
                 knob: i,
                 group: d.group,
                 label: format!("panel.wet_tuning.knob.{}", d.key),
-                slider: ids::wet_tuning_slider_id(d.key),
-                chip: ids::wet_tuning_chip_id(d.key),
-                reset: ids::wet_tuning_reset_id(d.key),
+                slider: ph2d_tool_painter::ids::wet_tuning_slider_id(d.key),
+                chip: ph2d_tool_painter::ids::wet_tuning_chip_id(d.key),
+                reset: ph2d_tool_painter::ids::wet_tuning_reset_id(d.key),
                 min: d.min,
                 max: d.max,
                 step: d.step,
@@ -110,32 +109,32 @@ pub struct Section {
 pub const SECTIONS: [Section; 5] = [
     Section {
         group: KnobGroup::Paint,
-        header: ids::WET_TUNING_GROUP_HEADERS[0],
-        reset: ids::WET_TUNING_GROUP_RESETS[0],
+        header: ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[0],
+        reset: ph2d_tool_painter::ids::WET_TUNING_GROUP_RESETS[0],
         label: "panel.wet_tuning.group.paint",
     },
     Section {
         group: KnobGroup::Water,
-        header: ids::WET_TUNING_GROUP_HEADERS[1],
-        reset: ids::WET_TUNING_GROUP_RESETS[1],
+        header: ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[1],
+        reset: ph2d_tool_painter::ids::WET_TUNING_GROUP_RESETS[1],
         label: "panel.wet_tuning.group.water",
     },
     Section {
         group: KnobGroup::Physics,
-        header: ids::WET_TUNING_GROUP_HEADERS[2],
-        reset: ids::WET_TUNING_GROUP_RESETS[2],
+        header: ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[2],
+        reset: ph2d_tool_painter::ids::WET_TUNING_GROUP_RESETS[2],
         label: "panel.wet_tuning.group.physics",
     },
     Section {
         group: KnobGroup::Tools,
-        header: ids::WET_TUNING_GROUP_HEADERS[3],
-        reset: ids::WET_TUNING_GROUP_RESETS[3],
+        header: ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[3],
+        reset: ph2d_tool_painter::ids::WET_TUNING_GROUP_RESETS[3],
         label: "panel.wet_tuning.group.tools",
     },
     Section {
         group: KnobGroup::Paper,
-        header: ids::WET_TUNING_GROUP_HEADERS[4],
-        reset: ids::WET_TUNING_GROUP_RESETS[4],
+        header: ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[4],
+        reset: ph2d_tool_painter::ids::WET_TUNING_GROUP_RESETS[4],
         label: "panel.wet_tuning.group.paper",
     },
 ];
@@ -149,6 +148,7 @@ pub fn is_engine_paper_physical(key: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ph2d_editor_core::ids;
     use std::collections::BTreeSet;
 
     /// The dynamic id family cannot collide — across faces, across knobs,
@@ -172,14 +172,14 @@ mod tests {
         }
         for id in [
             ids::WET_TUNING_PANEL,
-            ids::WET_TUNING_GROUP_HEADERS[5],
-            ids::WET_TUNING_PAPER_EYE,
-            ids::WET_TUNING_KM_MIXING,
-            ids::WET_TUNING_KM_GLAZE,
-            ids::WET_TUNING_DRAG_HANDLE,
-            ids::WET_TUNING_RESIZE_HANDLE,
-            ids::WET_TUNING_RESIZE_HANDLE_BL,
-            ids::PAINTER_WETPAINT_TUNING,
+            ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[5],
+            ph2d_tool_painter::ids::WET_TUNING_PAPER_EYE,
+            ph2d_tool_painter::ids::WET_TUNING_KM_MIXING,
+            ph2d_tool_painter::ids::WET_TUNING_KM_GLAZE,
+            ph2d_tool_painter::ids::WET_TUNING_DRAG_HANDLE,
+            ph2d_tool_painter::ids::WET_TUNING_RESIZE_HANDLE,
+            ph2d_tool_painter::ids::WET_TUNING_RESIZE_HANDLE_BL,
+            ph2d_tool_painter::ids::PAINTER_WETPAINT_TUNING,
         ] {
             put(id, "static chrome");
         }

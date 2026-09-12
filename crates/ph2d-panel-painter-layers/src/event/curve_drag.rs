@@ -42,7 +42,7 @@ pub(super) fn drain_own_curve_drag(host: &mut dyn PanelHostInternal) -> bool {
                 state::set_selected_curve_point(Some((layer.0, ch, usize::from(idx))));
                 host.bus_mut()
                     .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
-                        core_ids::PAINTER_CURVE_EDIT,
+                        ph2d_tool_painter::ids::PAINTER_CURVE_EDIT,
                         format!("{}:{ch}:{idx}:{x}:{y}", layer.0),
                     )));
             } else if let Some(layer) = stack
@@ -54,7 +54,7 @@ pub(super) fn drain_own_curve_drag(host: &mut dyn PanelHostInternal) -> bool {
                 state::set_selected_gradient_stop(layer.0, usize::from(idx));
                 host.bus_mut()
                     .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
-                        core_ids::PAINTER_GRADIENT_EDIT,
+                        ph2d_tool_painter::ids::PAINTER_GRADIENT_EDIT,
                         format!("{}:{idx}:{x}", layer.0),
                     )));
             }

@@ -52,8 +52,10 @@ fn painted_hit_ids(kind: u8) -> Vec<NodeId> {
 /// so the "Use Color Ramp" checkbox + (when enabled) the ramp editor controls actually paint.
 fn painted_hit_ids_ramp_open(brush: BrushSettings) -> Vec<NodeId> {
     let mut host = MockPanelHost::with_panel::<crate::PainterLayersPanel>();
-    host.store_mut()
-        .set_collapsed(core_ids::PAINTER_BRUSH_COLOR_RAMP_SECTION, false);
+    host.store_mut().set_collapsed(
+        ph2d_tool_painter::ids::PAINTER_BRUSH_COLOR_RAMP_SECTION,
+        false,
+    );
     let mut scene = VectorScene::new();
     let mut text = TextSystem::without_system_fonts();
     let viewport = Rect::new(0.0, 0.0, 360.0, 4000.0);
@@ -78,17 +80,17 @@ fn painted_hit_ids_ramp_open(brush: BrushSettings) -> Vec<NodeId> {
 }
 
 /// The always-shown control (the Kind picker) regardless of whether a texture is assigned.
-const ALWAYS: [NodeId; 1] = [core_ids::PAINTER_BRUSH_TEXTURE_KIND];
+const ALWAYS: [NodeId; 1] = [ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_KIND];
 
 /// The gated controls — only painted once a texture kind is assigned.
 const GATED: [NodeId; 7] = [
-    core_ids::PAINTER_BRUSH_TEXTURE_MAPPING,
-    core_ids::PAINTER_BRUSH_TEXTURE_ANGLE,
-    core_ids::PAINTER_BRUSH_TEXTURE_RAKE,
-    core_ids::PAINTER_BRUSH_TEXTURE_OFFSET_X,
-    core_ids::PAINTER_BRUSH_TEXTURE_OFFSET_Y,
-    core_ids::PAINTER_BRUSH_TEXTURE_SIZE_X,
-    core_ids::PAINTER_BRUSH_TEXTURE_SIZE_Y,
+    ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_MAPPING,
+    ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_ANGLE,
+    ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAKE,
+    ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_OFFSET_X,
+    ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_OFFSET_Y,
+    ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_SIZE_X,
+    ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_SIZE_Y,
 ];
 
 #[test]
@@ -131,23 +133,23 @@ fn stencil_mapping_adds_the_card_and_keeps_the_texture_transform() {
         ..crate::paint_brush::FALLBACK_BRUSH
     });
     assert!(
-        !ids.contains(&core_ids::PAINTER_BRUSH_TEXTURE_RAKE),
+        !ids.contains(&ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAKE),
         "Stencil must hide the per-dab Rake. painted = {ids:?}"
     );
     for shown in [
-        core_ids::PAINTER_BRUSH_TEXTURE_MAPPING,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_MAPPING,
         // The Stencil card (the gizmo placement).
-        core_ids::PAINTER_BRUSH_STENCIL_SIZE_X,
-        core_ids::PAINTER_BRUSH_STENCIL_SIZE_Y,
-        core_ids::PAINTER_BRUSH_STENCIL_OFFSET_X,
-        core_ids::PAINTER_BRUSH_STENCIL_OFFSET_Y,
-        core_ids::PAINTER_BRUSH_STENCIL_ANGLE,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_STENCIL_SIZE_X,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_STENCIL_SIZE_Y,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_STENCIL_OFFSET_X,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_STENCIL_OFFSET_Y,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_STENCIL_ANGLE,
         // The texture's OWN transform (the pattern inside the rect) — still present + independent.
-        core_ids::PAINTER_BRUSH_TEXTURE_ANGLE,
-        core_ids::PAINTER_BRUSH_TEXTURE_OFFSET_X,
-        core_ids::PAINTER_BRUSH_TEXTURE_OFFSET_Y,
-        core_ids::PAINTER_BRUSH_TEXTURE_SIZE_X,
-        core_ids::PAINTER_BRUSH_TEXTURE_SIZE_Y,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_ANGLE,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_OFFSET_X,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_OFFSET_Y,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_SIZE_X,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_SIZE_Y,
     ] {
         assert!(
             ids.contains(&shown),
@@ -171,13 +173,13 @@ fn param_sliders_register_exactly_the_kind_s_specs() {
         let n = param_specs(kind).len();
         for i in 0..n {
             assert!(
-                ids.contains(&core_ids::PAINTER_BRUSH_TEXTURE_PARAMS[i]),
+                ids.contains(&ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_PARAMS[i]),
                 "{kind:?} param slot {i} must register a hit rect. painted = {ids:?}"
             );
         }
         if n < MAX_TEX_PARAMS {
             assert!(
-                !ids.contains(&core_ids::PAINTER_BRUSH_TEXTURE_PARAMS[n]),
+                !ids.contains(&ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_PARAMS[n]),
                 "{kind:?} uses {n} slots — slot {n} must not register. painted = {ids:?}"
             );
         }
@@ -193,14 +195,14 @@ fn color_ramp_controls_gate_on_the_enable_toggle() {
         ..crate::paint_brush::FALLBACK_BRUSH
     });
     assert!(
-        off.contains(&core_ids::PAINTER_BRUSH_TEXTURE_RAMP_ENABLE),
+        off.contains(&ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_ENABLE),
         "the 'Use Color Ramp' enable checkbox shows when the section is expanded. painted = {off:?}"
     );
     for hidden in [
-        core_ids::PAINTER_BRUSH_TEXTURE_RAMP_MODE,
-        core_ids::PAINTER_BRUSH_TEXTURE_RAMP_INTERP,
-        core_ids::PAINTER_BRUSH_TEXTURE_RAMP_ADD,
-        core_ids::PAINTER_BRUSH_TEXTURE_RAMP_REMOVE,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_MODE,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_INTERP,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_ADD,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_REMOVE,
     ] {
         assert!(
             !off.contains(&hidden),
@@ -219,11 +221,11 @@ fn color_ramp_controls_gate_on_the_enable_toggle() {
         ..crate::paint_brush::FALLBACK_BRUSH
     });
     for shown in [
-        core_ids::PAINTER_BRUSH_TEXTURE_RAMP_ENABLE,
-        core_ids::PAINTER_BRUSH_TEXTURE_RAMP_MODE,
-        core_ids::PAINTER_BRUSH_TEXTURE_RAMP_INTERP,
-        core_ids::PAINTER_BRUSH_TEXTURE_RAMP_ADD,
-        core_ids::PAINTER_BRUSH_TEXTURE_RAMP_REMOVE,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_ENABLE,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_MODE,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_INTERP,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_ADD,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_REMOVE,
     ] {
         assert!(
             on.contains(&shown),
@@ -232,34 +234,34 @@ fn color_ramp_controls_gate_on_the_enable_toggle() {
     }
     // Each of the 2 stops gets a draggable bar handle (position); the 3rd does not.
     assert!(
-        on.contains(&core_ids::painter_brush_texture_ramp_handle_id(0)),
+        on.contains(&ph2d_tool_painter::ids::painter_brush_texture_ramp_handle_id(0)),
         "stop 0 drag handle"
     );
     assert!(
-        on.contains(&core_ids::painter_brush_texture_ramp_handle_id(1)),
+        on.contains(&ph2d_tool_painter::ids::painter_brush_texture_ramp_handle_id(1)),
         "stop 1 drag handle"
     );
     assert!(
-        !on.contains(&core_ids::painter_brush_texture_ramp_handle_id(2)),
+        !on.contains(&ph2d_tool_painter::ids::painter_brush_texture_ramp_handle_id(2)),
         "only 2 stops -> no 3rd handle"
     );
     // The bottom colour box (edits the selected stop) registers a hit rect.
     assert!(
-        on.contains(&core_ids::PAINTER_BRUSH_TEXTURE_RAMP_SWATCH),
+        on.contains(&ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_SWATCH),
         "the colour box must register a hit rect. painted = {on:?}"
     );
     // The editable index + position chips register so a click can focus + type into them.
     assert!(
-        on.contains(&core_ids::PAINTER_BRUSH_TEXTURE_RAMP_STOP_INDEX),
+        on.contains(&ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_STOP_INDEX),
         "the stop-index selector chip must register a hit rect. painted = {on:?}"
     );
     assert!(
-        on.contains(&core_ids::PAINTER_BRUSH_TEXTURE_RAMP_STOP_POS),
+        on.contains(&ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_STOP_POS),
         "the stop-position chip must register a hit rect. painted = {on:?}"
     );
     // The Alpha-action dropdown below the ramp registers a hit rect.
     assert!(
-        on.contains(&core_ids::PAINTER_BRUSH_TEXTURE_RAMP_ALPHA_MODE),
+        on.contains(&ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_ALPHA_MODE),
         "the ramp alpha-action dropdown must register a hit rect. painted = {on:?}"
     );
 }

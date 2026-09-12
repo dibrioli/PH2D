@@ -180,7 +180,7 @@ pub(crate) fn paint_instance_card(
     for (i, choice) in ladder.iter().enumerate() {
         // ⚠️ A tabela de ids tem tecto, e o `get` é o que impede um índice fora dela — o que sobra
         // é CONTADO na linha seguinte, nunca truncado em silêncio.
-        let Some(&id) = ids::INSP_INSTANCE_APPLY_LEVEL.get(i) else {
+        let Some(&id) = crate::ids::INSP_INSTANCE_APPLY_LEVEL.get(i) else {
             break;
         };
         let host = Rect::new(tx, ty, tw, line);
@@ -274,10 +274,13 @@ fn paint_head(
     // única superfície a dizer de que prefab a cópia nasceu, e o nome era **texto** — *um app que
     // nomeia um sítio inalcançável ensina que a feature está partida*.
     let host = Rect::new(tx, ty, tw, line);
-    hit_index.register(ids::INSP_INSTANCE_OPEN_PREFAB, host);
-    let button = Button::new(ids::INSP_INSTANCE_OPEN_PREFAB, "Edit Prefab".to_string())
-        .kind(ButtonKind::Default)
-        .visual(store.button_visual(ids::INSP_INSTANCE_OPEN_PREFAB));
+    hit_index.register(crate::ids::INSP_INSTANCE_OPEN_PREFAB, host);
+    let button = Button::new(
+        crate::ids::INSP_INSTANCE_OPEN_PREFAB,
+        "Edit Prefab".to_string(),
+    )
+    .kind(ButtonKind::Default)
+    .visual(store.button_visual(crate::ids::INSP_INSTANCE_OPEN_PREFAB));
     paint_button(&button, host, scene, text_system, theme);
     ty + line
 }

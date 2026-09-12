@@ -11,15 +11,18 @@ item que DESCE para a crate dona; mata as re-exportações dos painéis; reescre
 1. **Definições** — os itens de um ficheiro de `ph2d-editor-core/src/ids/` que descem para `O`
    viram `crates/O/src/ids/<assunto>.rs`, com o texto **verbatim** (o valor de um id é o slug, e o
    slug não se toca) e os imports GERADOS dos tokens de código. Os caminhos `super::`/`crate::`
-   DENTRO do texto movido são reescritos para o sítio novo.
+   DENTRO do texto movido são reescritos para o sítio novo. Um import que só um `#[cfg(test)] mod`
+   usa vai para DENTRO dele.
 2. **Fachadas** (`--fachadas`) — um `pub use <outro módulo de ids>::…` no `ids.rs` de um painel sai
    (⛔ zero fachadas, auditoria A5b); e uma fachada de um nome que MUDOU de casa sai sempre (uma
-   fachada não se redirecciona: redireccioná-la seria a mesma aresta com outro nome — e na
-   fundação seria uma aresta que sobe).
-3. **Leitores** — em todo `.rs`, as ligações `use … ids` resolvem-se POR FICHEIRO (`use
-   ph2d_editor_core::ids;`, `as core_ids`, `use crate::ids;`, grupos `{…}`) e cada
-   `<módulo>::NOME` cujo módulo deixou de exportar o nome passa a `<módulo dono>::NOME`. Só em
-   CÓDIGO: comentários e strings não se tocam (HOWTO §2.12).
+   fachada não se redirecciona: seria a mesma aresta com outro nome — e na fundação, uma que sobe).
+3. **Leitores** — em todo `.rs`, as ligações `use … ids` resolvem-se POR FICHEIRO, **herdando** as do
+   módulo pai quando o ficheiro abre com `use super::*;` (o prelúdio `pub(crate) use …::ids;` do
+   `sections/mod.rs` do Inspector serve 40 ficheiros assim), e cada `<módulo>::NOME` cujo módulo
+   deixou de exportar o nome passa a `<módulo dono>::NOME`. `crate::ids` tem um ANTES e um DEPOIS
+   numa crate que ganha o seu próprio módulo de ids. Só em CÓDIGO: comentários e strings não se
+   tocam (HOWTO §2.12). Em `tests/`, `benches/` e `examples/` a `crate` é o binário de teste: o
+   caminho é sempre o externo.
 4. **Cargo** — acrescenta a dependência que o caminho novo exige (normal no produto, dev num
    teste), e só se a lei de camadas a permite; senão ABORTA **antes de escrever um byte**.
 
@@ -52,6 +55,12 @@ IDENT = r"[A-Za-z_][A-Za-z0-9_]*"
 
 def snake(c: str) -> str:
     return c.replace("-", "_")
+
+
+def externo(f: str) -> bool:
+    """Em `tests/`, `benches/`, `examples/` e `build.rs` a `crate` NÃO é a biblioteca."""
+    # ⚠️ `src/tool/paint/tests/*.rs` do Painter é módulo da BIBLIOTECA: só conta o `tests/` fora de `src/`
+    return ("/src/" not in f and bool(re.search(r"(^|/)(tests|benches|examples)/", f))) or f.endswith("/build.rs")
 
 
 # ────────────────────────────────────────────────────────────── escrita TRANSACCIONAL
@@ -107,23 +116,28 @@ class Mundo:
             for k, v in cj.items()
             if v["classe"] in ("DESCE", "TESTE-VAI") and v["dono"] and (not donos or v["dono"] in donos)
         }
-        # módulos: mid → (crate, caminho externo, ficheiro raiz)
+        self.donos_novos = set(self.move.values())
+        # crates cuja RAIZ liga `ids` à fundação (`use ph2d_editor_core::ids;` no lib.rs): nelas,
+        # `crate::ids` é a fundação ANTES e a própria crate DEPOIS.
+        self.raiz_ec = set()
         self.mods = {"EC": (EC, "ph2d_editor_core::ids", None), "EC_GS": (EC, "ph2d_editor_core::grid_snap::ids", GS)}
         for c, v in pk.items():
             if c.startswith("ph2d-panel-") or c.startswith("ph2d-tool-"):
                 raiz = os.path.join(v["dir"], "src/ids.rs")
-                if palco.existe(raiz) or c in self.move.values():
+                if palco.existe(raiz) or c in self.donos_novos:
                     self.mods[c] = (c, f"{snake(c)}::ids", raiz)
+                lib = palco.le(os.path.join(v["dir"], "src/lib.rs")) or ""
+                if not palco.existe(raiz) and c in self.donos_novos and re.search(r"(?m)^use ph2d_editor_core::ids;\s*$", lib):
+                    self.raiz_ec.add(c)
         self.mods["UPS_TOOL"] = ("ph2d-tool-upscale", "ph2d_tool_upscale::tool::ids", None)
-        # onde cada nome VIVE antes: os itens do censo na EC; as definições próprias dos outros
         self.antes = {}
         self.ec_nomes = set()
         for k, v in cj.items():
             if v["pub"] and v["kind"] not in ("impl", "mod") and not v["cfg_test"]:
                 self.antes[v["name"]] = "EC"
                 self.ec_nomes.add(v["name"])
-        self.reexp = collections.defaultdict(dict)  # mid → {nome: mid fonte}
-        self.glob = collections.defaultdict(list)  # mid → [mid fonte]
+        self.reexp = collections.defaultdict(dict)
+        self.glob = collections.defaultdict(list)
         for mid, (crate, _, raiz) in self.mods.items():
             if raiz and palco.existe(raiz):
                 self._le_raiz(mid, crate, raiz)
@@ -133,7 +147,6 @@ class Mundo:
         if i >= 0:
             for m in re.finditer(r"\bpub\s+const\s+(" + IDENT + ")", censo.blank(s)[i:]):
                 self.antes.setdefault(m.group(1), "UPS_TOOL")
-        # DEPOIS
         self.depois = dict(self.antes)
         for k, dono in self.move.items():
             v = cj[k]
@@ -141,15 +154,14 @@ class Mundo:
                 self.depois[v["name"]] = dono
 
     def _le_raiz(self, mid, crate, raiz):
-        s = self.p.le(raiz)
-        b = censo.blank(s)
+        b = censo.blank(self.p.le(raiz))
         for m in re.finditer(r"\bpub\s+(?:const|static|fn|enum|struct|type)\s+(" + IDENT + ")", b):
             self.antes.setdefault(m.group(1), mid)
         for m in RE_USE.finditer(b):
             if not m.group(1) or (m.group(2) or "").strip():
-                continue  # só `pub use` nu é re-exportação para fora
+                continue
             for mp, nome, al in parse_use(m.group(3)):
-                fonte = self.mid(mp, crate)
+                fonte = self.mid(mp, crate, antes=True)
                 if not fonte:
                     continue
                 if nome == "*":
@@ -157,20 +169,42 @@ class Mundo:
                 else:
                     self.reexp[mid][al or nome] = fonte
 
-    def mid(self, caminho: str, de_crate: str):
+    def mid(self, caminho: str, de_crate: str, antes: bool, f: str = ""):
         caminho = caminho.strip()
-        if de_crate == EC and caminho in ("crate::ids", "crate::screens::hero::ids", "super::super::ids"):
+        if f and caminho in ("super::ids", "super::super::ids"):
+            pai = ficheiro_pai(self.p, f)
+            if pai and caminho.startswith("super::super::"):
+                pai = ficheiro_pai(self.p, pai)
+            return self.ids_de(pai, de_crate, antes) if pai else None
+        if f and externo(f) and caminho.startswith("crate::"):
+            return None
+        if de_crate == EC and caminho in ("crate::ids", "crate::screens::hero::ids"):
             return "EC"
         if de_crate == EC and caminho == "crate::grid_snap::ids":
             return "EC_GS"
-        if caminho in ("crate::ids", "super::ids") and de_crate in self.mods:
-            return de_crate
+        if caminho == "crate::ids" and de_crate in self.mods:
+            return "EC" if (antes and de_crate in self.raiz_ec) else de_crate
         if caminho == "ph2d_editor_core::screens::hero::ids":
             return "EC"
         for m, (_, ext, _) in self.mods.items():
             if caminho == ext:
                 return m
         return None
+
+    def ids_de(self, pai, de_crate, antes):
+        """O que `ids` nomeia DENTRO do ficheiro-módulo `pai`: o `mod ids;` declarado ali, ou uma ligação."""
+        if re.search(r"(?m)^\s*(?:pub(?:\([^)]*\))?\s+)?mod\s+ids\s*;", censo.blank(self.p.le(pai) or "")):
+            base = os.path.dirname(pai) if os.path.basename(pai) in ("mod.rs", "lib.rs", "main.rs") else pai[:-3]
+            alvo = os.path.join(base, "ids.rs")
+            if alvo == GS:
+                return "EC_GS"
+            if os.path.join(base, "ids") + "/" == IDS:
+                return "EC"
+            for m, (_, _, raiz) in self.mods.items():
+                if raiz == alvo:
+                    return m
+            return None
+        return ligacoes(self, self.p, pai, de_crate, antes).get("ids")
 
     def conhecido(self, nome):
         return nome in self.antes
@@ -186,14 +220,15 @@ class Mundo:
             return True
         return any(self.exporta(g, nome, depois) for g in self.glob.get(mid, ()))
 
-    def caminho(self, mid, de_crate):
+    def caminho(self, mid, de_crate, f=""):
         crate, ext, _ = self.mods[mid]
-        if mid == de_crate or (mid == "EC" and de_crate == EC):
-            return "crate::ids"
-        if mid == "EC_GS" and de_crate == EC:
-            return "crate::grid_snap::ids"
-        if mid == "UPS_TOOL" and de_crate == crate:
-            return "crate::tool::ids"
+        if not (f and externo(f)):
+            if mid == de_crate or (mid == "EC" and de_crate == EC):
+                return "crate::ids"
+            if mid == "EC_GS" and de_crate == EC:
+                return "crate::grid_snap::ids"
+            if mid == "UPS_TOOL" and de_crate == crate:
+                return "crate::tool::ids"
         return ext
 
 
@@ -252,51 +287,146 @@ def aplica(s, edits):
     return "".join(out)
 
 
-# ────────────────────────────────────────────────────────────── a reescrita de UM leitor
-def reescreve_leitor(mundo: Mundo, f, cf, s, precisa):
+def profundidade_zero(cod, pos):
+    return cod[:pos].count("{") == cod[:pos].count("}")
+
+
+def bloco_de(cod, a, e):
+    """O `{…}` mais interior que contém `[a, e)` — ou o ficheiro inteiro."""
+    depth, pilha = 0, []
+    for i, ch in enumerate(cod[:a]):
+        if ch == "{":
+            pilha.append(i)
+        elif ch == "}" and pilha:
+            pilha.pop()
+    if not pilha:
+        return 0, len(cod)
+    ini = pilha[-1]
+    d = 0
+    for j in range(ini, len(cod)):
+        if cod[j] == "{":
+            d += 1
+        elif cod[j] == "}":
+            d -= 1
+            if d == 0:
+                return ini, j + 1
+    return ini, len(cod)
+
+
+def ficheiro_pai(palco: Palco, f: str):
+    """Quem declara `f` como módulo: `mod <nome>;` no `mod.rs`/`lib.rs`/`main.rs` do directório que o
+    contém (ou no `<dir>.rs` ao lado dele), ou um IRMÃO com `#[path = "f.rs"]`. `None` numa raiz."""
+    d, base = os.path.dirname(f), os.path.basename(f)
+    stem = base[:-3]
+    if stem in ("lib", "main", "build"):
+        return None
+    nome, onde = (os.path.basename(d), os.path.dirname(d)) if stem == "mod" else (stem, d)
+    decl = re.compile(r"(?m)^\s*(?:#\[[^\n]*?\]\s*)*(?:pub(?:\([^)]*\))?\s+)?mod\s+" + re.escape(nome) + r"\s*;")
+    for c in [os.path.join(onde, x) for x in ("mod.rs", "lib.rs", "main.rs")] + [onde + ".rs"]:
+        s = palco.le(c) if c != f else None
+        if s is not None and decl.search(censo.blank(s)):
+            return c
+    por_path = re.compile(r'#\[path\s*=\s*"' + re.escape(base) + r'"\]')
+    try:
+        irmaos = sorted(os.listdir(os.path.join(palco.root, d)))
+    except OSError:
+        irmaos = []
+    for x in irmaos:
+        c = os.path.join(d, x)
+        s = palco.le(c) if (c != f and x.endswith(".rs")) else None
+        if s is not None and por_path.search(censo.blank(s, keep_strings=True)):
+            return c
+    return None
+
+
+def ligacoes(mundo: Mundo, palco: Palco, f, cf, antes: bool, prof=4):
+    """alias → mod-id das ligações de TOPO de `f` — e, se `f` abre com `use super::*;`, as do pai."""
+    s = palco.le(f) or ""
     cod = censo.blank(s)
-    usos = []
     liga = {}
+    herda = False
     for m in RE_USE.finditer(cod):
-        vis_arg = (m.group(2) or "").strip()
-        vis = "" if not m.group(1) else (f"pub({vis_arg}) " if vis_arg else "pub ")
-        itens = parse_use(m.group(3))
-        usos.append((m.start(), m.end(), vis, itens))
-        for mp, nome, al in itens:
-            mid = mundo.mid(f"{mp}::{nome}" if mp else nome, cf)
+        if not profundidade_zero(cod, m.start()):
+            continue
+        for mp, nome, al in parse_use(m.group(3)):
+            if mp == "super" and nome == "*":
+                herda = True
+                continue
+            mid = mundo.mid(f"{mp}::{nome}" if mp else nome, cf, antes, f)
             if mid:
                 liga[al or nome] = mid
-    raiz_de_cf = mundo.mods.get(cf, (None, None, None))[2]
+    if herda and prof > 0:
+        pai = ficheiro_pai(palco, f)
+        if pai:
+            for al, mid in ligacoes(mundo, palco, pai, cf, antes, prof - 1).items():
+                liga.setdefault(al, mid)
+    # a raiz de uma crate que ganha `pub mod ids;`: o alias `ids` do lib.rs é a fundação antes e a crate depois
+    if cf in mundo.raiz_ec and f.endswith("/src/lib.rs"):
+        liga["ids"] = "EC" if antes else cf
+    return liga
+
+
+# ────────────────────────────────────────────────────────────── a reescrita de UM leitor
+def reescreve_leitor(mundo: Mundo, palco: Palco, f, cf, s, precisa):
+    cod = censo.blank(s)
+    liga_antes = ligacoes(mundo, palco, f, cf, True)
+    liga_depois = ligacoes(mundo, palco, f, cf, False)
+    usos = [(m.start(), m.end(), m) for m in RE_USE.finditer(cod)]
     edits, n = [], 0
 
-    prefixos = {ext: mid for mid, (_, ext, _) in mundo.mods.items()}
-    prefixos["ph2d_editor_core::screens::hero::ids"] = "EC"
-    if cf in mundo.mods:
-        prefixos["crate::ids"] = cf
-        prefixos["super::ids"] = cf
-    if cf == EC:
-        prefixos.update({"crate::ids": "EC", "crate::screens::hero::ids": "EC", "crate::grid_snap::ids": "EC_GS"})
-    for al, mid in liga.items():
-        prefixos.setdefault(al, mid)
+    prefixos = {}
+    for mid, (_, ext, _) in mundo.mods.items():
+        prefixos[ext] = (mid, mid)
+    prefixos["ph2d_editor_core::screens::hero::ids"] = ("EC", "EC")
+    if not externo(f):
+        if cf == EC:
+            prefixos.update({"crate::ids": ("EC", "EC"), "crate::screens::hero::ids": ("EC", "EC"), "crate::grid_snap::ids": ("EC_GS", "EC_GS")})
+        elif cf in mundo.mods:
+            prefixos["crate::ids"] = (mundo.mid("crate::ids", cf, True, f), mundo.mid("crate::ids", cf, False, f))
+    for al in set(liga_antes) | set(liga_depois):
+        if al in liga_antes:
+            prefixos.setdefault(al, (liga_antes[al], liga_depois.get(al, liga_antes[al])))
+    for p in ("super::ids", "super::super::ids"):
+        pa = mundo.mid(p, cf, True, f)
+        if pa:
+            prefixos.setdefault(p, (pa, mundo.mid(p, cf, False, f) or pa))
+    # os `use … as core_ids;` DENTRO de uma fn (o `stencil.rs` do Painter tem dois): o de topo ganha
+    for m in RE_USE.finditer(cod):
+        if profundidade_zero(cod, m.start()):
+            continue
+        for mp, nome, al in parse_use(m.group(3)):
+            cam = f"{mp}::{nome}" if mp else nome
+            pa = mundo.mid(cam, cf, True, f)
+            if pa:
+                prefixos.setdefault(al or nome, (pa, mundo.mid(cam, cf, False, f) or pa))
     pat = re.compile(r"(?<![A-Za-z0-9_:])(" + "|".join(re.escape(p) for p in sorted(prefixos, key=len, reverse=True)) + r")::(" + IDENT + r")\b")
-    dentro = [(a, e) for a, e, _, _ in usos]
+    dentro = [(a, e) for a, e, _ in usos]
     for m in pat.finditer(cod):
         if any(a <= m.start() < e for a, e in dentro):
             continue
-        mid, nome = prefixos[m.group(1)], m.group(2)
-        if not mundo.conhecido(nome) or not mundo.exporta(mid, nome, False) or mundo.exporta(mid, nome, True):
+        antes, depois = prefixos[m.group(1)]
+        nome = m.group(2)
+        if not mundo.conhecido(nome) or not mundo.exporta(antes, nome, False) or mundo.exporta(depois, nome, True):
             continue
         dest = mundo.depois[nome]
-        edits.append((m.start(), m.end(), mundo.caminho(dest, cf) + "::" + nome))
+        edits.append((m.start(), m.end(), mundo.caminho(dest, cf, f) + "::" + nome))
         precisa(mundo.mods[dest][0])
         n += 1
 
-    for a, e, vis, itens in usos:
+    raiz_de_cf = mundo.mods.get(cf, (None, None, None))[2]
+    for a, e, m in usos:
+        vis_arg = (m.group(2) or "").strip()
+        vis = "" if not m.group(1) else (f"pub({vis_arg}) " if vis_arg else "pub ")
+        itens = parse_use(m.group(3))
         manter, novos, mudou = [], [], False
         resto = cod[:a] + cod[e:]
         for mp, nome, al in itens:
-            mid = mundo.mid(mp, cf) if mp else None
-            if not (mid and nome != "*" and mundo.conhecido(nome) and mundo.exporta(mid, nome, False) and not mundo.exporta(mid, nome, True)):
+            mid_a = mundo.mid(mp, cf, True, f) if mp else None
+            mid_d = mundo.mid(mp, cf, False, f) if mp else None
+            if mp and not mid_a and mp in prefixos:
+                # `use core_ids::{A, B};` — o caminho começa num ALIAS, não num módulo
+                mid_a, mid_d = prefixos[mp]
+            if not (mid_a and nome != "*" and mundo.conhecido(nome) and mundo.exporta(mid_a, nome, False) and not mundo.exporta(mid_d, nome, True)):
                 manter.append((mp, nome, al))
                 continue
             mudou = True
@@ -304,7 +434,6 @@ def reescreve_leitor(mundo: Mundo, f, cf, s, precisa):
             dest = mundo.depois[nome]
             usado_nu = re.search(r"(?<![A-Za-z0-9_:])" + re.escape(al or nome) + r"\b", resto)
             if vis == "pub ":
-                # ⛔ uma fachada nunca se redirecciona — ela morre; se o nome é usado nu aqui, entra um `use` privado
                 if usado_nu and not (f == raiz_de_cf and dest == cf):
                     novos.append((dest, nome, al, ""))
                     precisa(mundo.mods[dest][0])
@@ -320,50 +449,73 @@ def reescreve_leitor(mundo: Mundo, f, cf, s, precisa):
         linhas = render_use(manter, vis) if manter else []
         grupos = collections.OrderedDict()
         for dest, nome, al, v in novos:
-            grupos.setdefault((mundo.caminho(dest, cf), v), []).append((nome, al))
+            grupos.setdefault((mundo.caminho(dest, cf, f), v), []).append((nome, al))
         for (cam, v), ns in grupos.items():
             linhas += render_use([(cam, x, al) for x, al in ns], v)
-        if linhas:
-            edits.append((a, e, ("\n" + ind).join(linhas)))
-        else:
-            edits.append(span_da_linha_com_comentario(s, a, e))
+        edits.append((a, e, ("\n" + ind).join(linhas)) if linhas else span_da_linha_com_comentario(s, a, e))
 
-    out = aplica(s, edits)
-    return limpa_aliases(mundo, out, cf), n
+    return aplica(s, edits), n
 
 
-def limpa_aliases(mundo, s, cf):
-    """Um `use` PRIVADO de módulo de ids que ficou sem `alias::` no ficheiro sai.
+def filhos(palco: Palco, f: str):
+    """Os ficheiros que `f` declara com `mod x;` — com `#[path]` relativo ao directório de `f`."""
+    cod = censo.blank(palco.le(f) or "", keep_strings=True)
+    d = os.path.dirname(f)
+    sob = d if os.path.basename(f) in ("mod.rs", "lib.rs", "main.rs") else f[:-3]
+    out = []
+    for m in re.finditer(r"(?m)^[ \t]*((?:#\[[^\n]*?\]\s*)*)(?:pub(?:\([^)]*\))?\s+)?mod\s+(" + IDENT + r")\s*;", cod):
+        p = re.search(r'#\[path\s*=\s*"([^"]+)"\]', m.group(1))
+        cands = [os.path.normpath(os.path.join(d, p.group(1)))] if p else [os.path.join(sob, m.group(2) + ".rs"), os.path.join(sob, m.group(2), "mod.rs")]
+        out += [c for c in cands if palco.existe(c)][:1]
+    return out
 
-    ⛔ Nunca um `pub(crate) use` / `pub(super) use`: esse existe para OUTROS ficheiros (medido: o
-    `ph2d-panel-inspector/src/sections/mod.rs` liga `ids` para os irmãos, e um dia apagá-lo por não
-    ter uso no próprio ficheiro partiu 40 sítios). Se ele ficar mesmo sem uso, o `rustc` avisa."""
+
+def herdeiros(palco: Palco, f: str, prof=3):
+    """O código dos descendentes que abrem com `use super::*;` — eles vêem os `use` privados de `f`."""
+    out = []
+    for c in filhos(palco, f) if prof > 0 else ():
+        cc = censo.blank(palco.le(c) or "")
+        if re.search(r"\buse\s+super::\*\s*;", cc):
+            out.append(cc)
+            out += herdeiros(palco, c, prof - 1)
+    return out
+
+
+def limpa_aliases(mundo, palco, s, cf, f):
+    """Um `use` PRIVADO de módulo de ids que ficou sem `alias::` no seu ESCOPO sai.
+
+    ⛔ Nunca um `pub(…) use` (existe para os irmãos). O ESCOPO de um `use` de TOPO inclui os filhos
+    que o herdam por `use super::*;` (o `tool.rs` da ferramenta vectorial liga `ids` para o
+    `tool_panel_event.rs`), e por isso isto corre DEPOIS de todos os leitores reescritos."""
     cod = censo.blank(s)
+    herd = None
     edits = []
     for m in RE_USE.finditer(cod):
         if m.group(1):
             continue
+        ini, fim = bloco_de(cod, m.start(), m.end())
+        escopo = cod[ini: m.start()] + cod[m.end(): fim]
+        if profundidade_zero(cod, m.start()):
+            if herd is None:
+                herd = "\n".join(herdeiros(palco, f))
+            escopo += "\n" + herd
         itens = parse_use(m.group(3))
         vivos = []
         for mp, nome, al in itens:
-            mid = mundo.mid(f"{mp}::{nome}" if mp else nome, cf)
-            if mid and not re.search(r"(?<![A-Za-z0-9_:])" + re.escape(al or nome) + r"::", cod[: m.start()] + cod[m.end():]):
+            mid = mundo.mid(f"{mp}::{nome}" if mp else nome, cf, False, f)
+            if mid and not re.search(r"(?<![A-Za-z0-9_:])(?:super::)*" + re.escape(al or nome) + r"::", escopo):
                 continue
             vivos.append((mp, nome, al))
         if len(vivos) != len(itens):
             linha_ini = s.rfind("\n", 0, m.start()) + 1
             ind = s[linha_ini:m.start()] if s[linha_ini:m.start()].strip() == "" else ""
-            if vivos:
-                edits.append((m.start(), m.end(), ("\n" + ind).join(render_use(vivos, ""))))
-            else:
-                edits.append(span_da_linha_com_comentario(s, m.start(), m.end()))
+            edits.append((m.start(), m.end(), ("\n" + ind).join(render_use(vivos, ""))) if vivos else span_da_linha_com_comentario(s, m.start(), m.end()))
     return aplica(s, edits)
 
 
 def span_da_linha_com_comentario(s, a, e):
     """O `use` apagado leva a LINHA inteira e o comentário `//` colado por cima dele — senão a nota que
-    explicava a fachada fica a explicar a linha seguinte (é a armadilha do comentário de `Cargo.toml`
-    do HOWTO §2.18, um nível abaixo)."""
+    explicava a fachada fica a explicar a linha seguinte (a armadilha do HOWTO §2.18, um nível abaixo)."""
     ini = s.rfind("\n", 0, a) + 1
     if s[ini:a].strip():
         return (a, e, "")
@@ -396,7 +548,7 @@ def uses_de_topo(s):
     out = []
     cod = censo.blank(s)
     for m in RE_USE.finditer(cod):
-        if cod[: m.start()].count("{") != cod[: m.start()].count("}"):
+        if not profundidade_zero(cod, m.start()):
             continue
         corpo = re.sub(r"\s+", " ", s[m.start(3): m.end(3)])
         if re.match(r"(super|crate::ids|crate::screens)", corpo) or "ph2d_tool_registry" in corpo or corpo.startswith("ph2d_a11y::NodeId"):
@@ -407,7 +559,9 @@ def uses_de_topo(s):
     return out
 
 
-def reescreve_movido(mundo: Mundo, corpo, dono, irmaos):
+def reescreve_movido(mundo: Mundo, corpo, dono, irmaos, proprios=frozenset(), teste=False):
+    """⚠️ Num `#[cfg(test)] mod` o `super` é o ficheiro de destino e não a raiz de ids: um irmão que não
+    mora no mesmo ficheiro nomeia-se por `crate::ids::`."""
     cod = censo.blank(corpo)
     edits = []
     pat = re.compile(r"(?<![A-Za-z0-9_:])((?:super::)+(?:[a-z_][a-z0-9_]*::)?|crate::ids::|crate::screens::hero::ids::|crate::)(" + IDENT + r")\b")
@@ -418,7 +572,7 @@ def reescreve_movido(mundo: Mundo, corpo, dono, irmaos):
                 edits.append((m.start(), m.start() + len(pref), "ph2d_editor_core::"))
             continue
         if nome in irmaos:
-            edits.append((m.start(), m.end(), f"super::{nome}"))
+            edits.append((m.start(), m.end(), f"crate::ids::{nome}" if (teste and nome not in proprios) else f"super::{nome}"))
         elif nome in mundo.depois:
             edits.append((m.start(), m.end(), f"{mundo.caminho(mundo.depois[nome], dono)}::{nome}"))
         elif nome in ("hash_node_id", "hash_node_id_runtime"):
@@ -428,9 +582,11 @@ def reescreve_movido(mundo: Mundo, corpo, dono, irmaos):
     return aplica(corpo, edits)
 
 
-def imports(mundo: Mundo, corpo, dono, irmaos, proprios, topo):
-    cod = censo.blank(corpo)
-    toks = set(re.findall(r"(?<![A-Za-z0-9_:])" + IDENT + r"\b", cod))
+def tokens(corpo):
+    return set(re.findall(r"(?<![A-Za-z0-9_:])" + IDENT + r"\b", censo.blank(corpo)))
+
+
+def linhas_import(mundo: Mundo, toks, dono, irmaos, proprios, topo, sup="super"):
     out = []
     if "NodeId" in toks:
         out.append("use ph2d_a11y::NodeId;")
@@ -439,17 +595,15 @@ def imports(mundo: Mundo, corpo, dono, irmaos, proprios, topo):
     grupos = collections.defaultdict(list)
     for t in sorted(toks - proprios):
         if t in irmaos:
-            grupos["super"].append(t)
-        elif t in mundo.depois and t in mundo.ec_nomes:
-            d = mundo.depois[t]
-            if d != dono:
-                grupos[mundo.caminho(d, dono)].append(t)
+            grupos[sup].append(t)
+        elif t in mundo.depois and t in mundo.ec_nomes and mundo.depois[t] != dono:
+            grupos[mundo.caminho(mundo.depois[t], dono)].append(t)
     for cam in sorted(grupos):
         out += render_use([(cam, t, None) for t in grupos[cam]], "")
     for corpo_use, nomes in topo:
         if any(x in toks for x in nomes):
             out.append(f"use {corpo_use};")
-    return "\n".join(out) + ("\n" if out else "")
+    return out
 
 
 def move_definicoes(mundo: Mundo, palco: Palco, pk, precisa_do_dono, rel):
@@ -466,6 +620,7 @@ def move_definicoes(mundo: Mundo, palco: Palco, pk, precisa_do_dono, rel):
         s = palco.le(src)
         vivos = {(kind, name): (a, e) for kind, name, _, a, e, _ in censo.items(s)}
         spans = []
+        topo = uses_de_topo(s)
         for dono, ks in sorted(por_src[src].items()):
             for k in ks:
                 v = c[k]
@@ -476,10 +631,25 @@ def move_definicoes(mundo: Mundo, palco: Palco, pk, precisa_do_dono, rel):
             if stem in stems[dono]:
                 stem = relsrc[:-3].replace("/", "_")
             stems[dono].append(stem)
-            corpo = "\n".join(s[c[k]["start"]: c[k]["end"]].strip("\n") + "\n" for k in ks)
-            corpo = reescreve_movido(mundo, corpo, dono, irmaos_de[dono])
             proprios = {c[k]["name"] for k in ks}
-            imp = imports(mundo, corpo, dono, irmaos_de[dono], proprios, uses_de_topo(s))
+            prod = [reescreve_movido(mundo, s[c[k]["start"]: c[k]["end"]].strip("\n"), dono, irmaos_de[dono]) for k in ks if not c[k]["cfg_test"]]
+            teste = [reescreve_movido(mundo, s[c[k]["start"]: c[k]["end"]].strip("\n"), dono, irmaos_de[dono], proprios, True) for k in ks if c[k]["cfg_test"]]
+            toks_prod = set().union(*(tokens(x) for x in prod)) if prod else set()
+            imp = linhas_import(mundo, toks_prod, dono, irmaos_de[dono], proprios, topo)
+            # ⚠️ o que só o módulo de teste usa entra DENTRO dele (no topo seria `unused` num build normal)
+            teste2 = []
+            for t in teste:
+                falta = linhas_import(mundo, tokens(t) - toks_prod, dono, irmaos_de[dono], proprios, topo, sup="crate::ids")
+                if falta:
+                    mm = re.search(r"use super::\*;\n", t)
+                    if mm:
+                        pad = re.match(r"[ \t]*", t[t.rfind("\n", 0, mm.start()) + 1:]).group(0)
+                        t = t[: mm.end()] + "".join(f"{pad}{x}\n" for x in falta) + t[mm.end():]
+                    else:
+                        i = t.find("{") + 1
+                        t = t[:i] + "\n" + "".join(f"    {x}\n" for x in falta) + t[i:]
+                teste2.append(t)
+            corpo = "\n\n".join(prod + teste2) + "\n"
             head = cabecalho(s).rstrip("\n")
             head += ("\n//!\n" if head else "") + (
                 f"//! ⚠️ **Desceu de `ph2d-editor-core/src/ids/{relsrc}` em {DATA}** (auditoria de arquitectura\n"
@@ -488,7 +658,7 @@ def move_definicoes(mundo: Mundo, palco: Palco, pk, precisa_do_dono, rel):
             )
             destino = os.path.join(pk[dono]["dir"], "src/ids", stem + ".rs")
             assert not palco.existe(destino), f"{destino} já existe"
-            texto = head + "\n" + imp + "\n" + corpo
+            texto = head + "\n" + ("\n".join(imp) + "\n\n" if imp else "") + corpo
             palco.escreve(destino, texto)
             for ext in set(re.findall(r"(?<![A-Za-z0-9_:])(ph2d_[a-z0-9_]+)::", censo.blank(texto))):
                 if ext.replace("_", "-") in pk:
@@ -496,32 +666,79 @@ def move_definicoes(mundo: Mundo, palco: Palco, pk, precisa_do_dono, rel):
             spans += [(c[k]["start"], c[k]["end"], "") for k in ks]
             rel.append(f"{src} → {destino} ({len(ks)} itens)")
         s2 = aplica(s, spans)
-        if not [x for x in censo.items(s2) if x[0] != "use"]:
+        if not [x for x in censo.items(s2) if x[0] not in ("use", "mod")]:
             palco.apaga(src)
-            pai = os.path.join(os.path.dirname(src), "mod.rs")
-            ps = palco.le(pai)
-            st = os.path.basename(src)[:-3]
-            ps2 = re.sub(r"(?m)^(?:[ \t]*///[^\n]*\n)*(?:pub(?:\([^)]*\))? )?mod " + re.escape(st) + r";\n", "", ps)
-            ps2 = re.sub(r"(?m)^pub use " + re.escape(st) + r"::\*;\n", "", ps2)
-            assert ps2 != ps, f"não achei a declaração de {st} em {pai}"
-            palco.escreve(pai, ps2)
+            apaga_declaracao(palco, src)
         else:
             palco.escreve(src, limpa_imports_mortos(s2))
     return stems
 
 
+def apaga_declaracao(palco: Palco, src: str):
+    """Tira a declaração de um ficheiro que ficou vazio — `mod x;` no `mod.rs`, ou `#[path = "x.rs"]
+    mod alias;` num IRMÃO (o `chrome/sculpt3d.rs` declara assim o `sculpt3d_cloth.rs`), com o
+    `pub use alias::*;` dele. A doc `///` por cima vai junto."""
+    d, base = os.path.dirname(src), os.path.basename(src)
+    stem = base[:-3]
+    doc = r"(?:[ \t]*///[^\n]*\n)*"
+    vis = r"(?:pub(?:\([^)]*\))? )?"
+    for nome in sorted(os.listdir(os.path.join(palco.root, d))):
+        f = os.path.join(d, nome)
+        if f == src or not nome.endswith(".rs"):
+            continue
+        s = palco.le(f)
+        if s is None:
+            continue
+        m = re.search(r"(?m)^" + doc + r'[ \t]*#\[path\s*=\s*"' + re.escape(base) + r'"\]\s*\n[ \t]*' + vis + r"mod ([a-z_0-9]+);\n", s)
+        if m:
+            alias = m.group(1)
+            s2 = s[: m.start()] + s[m.end():]
+            s2 = re.sub(r"(?m)^[ \t]*pub use " + re.escape(alias) + r"::\*;\n", "", s2)
+            palco.escreve(f, s2)
+            return
+        if nome == "mod.rs":
+            s2 = re.sub(r"(?m)^" + doc + vis + r"mod " + re.escape(stem) + r";\n", "", s)
+            if s2 != s:
+                s2 = re.sub(r"(?m)^pub use " + re.escape(stem) + r"::\*;\n", "", s2)
+                palco.escreve(f, s2)
+                return
+    raise AssertionError(f"não achei quem declara {src}")
+
+
 def limpa_imports_mortos(s):
+    """No que FICA na fundação: um `use` de topo sem leitor sai; um cujo único leitor é o módulo de
+    teste muda-se para dentro dele."""
     cod = censo.blank(s)
-    edits = []
+    regs = censo.regioes_teste(cod)
+    prod = list(cod)
+    for a, e in regs:
+        for i in range(a, e):
+            if prod[i] != "\n":
+                prod[i] = " "
+    prod = "".join(prod)
+    edits, para_teste = [], []
     for m in RE_USE.finditer(cod):
-        if (m.group(1) and not (m.group(2) or "").strip()) or cod[: m.start()].count("{") != cod[: m.start()].count("}"):
+        if (m.group(1) and not (m.group(2) or "").strip()) or not profundidade_zero(cod, m.start()):
             continue
         itens = parse_use(m.group(3))
-        resto = cod[: m.start()] + cod[m.end():]
-        vivos = [(mp, n, al) for mp, n, al in itens if n == "*" or re.search(r"(?<![A-Za-z0-9_])" + re.escape(al or n) + r"\b", resto)]
+        resto_prod = prod[: m.start()] + prod[m.end():]
+        vivos, so_teste = [], []
+        for mp, n, al in itens:
+            nome = al or n
+            if n == "*" or re.search(r"(?<![A-Za-z0-9_])" + re.escape(nome) + r"\b", resto_prod):
+                vivos.append((mp, n, al))
+            elif regs and re.search(r"(?<![A-Za-z0-9_])" + re.escape(nome) + r"\b", cod[regs[0][0]: regs[0][1]]):
+                so_teste.append((mp, n, al))
         if len(vivos) != len(itens):
             vis = "" if not m.group(1) else f"pub({m.group(2).strip()}) "
-            edits.append((m.start(), m.end(), "\n".join(render_use(vivos, vis)) if vivos else ""))
+            edits.append((m.start(), m.end(), "\n".join(render_use(vivos, vis))) if vivos else span_da_linha_com_comentario(s, m.start(), m.end()))
+            para_teste += so_teste
+    if para_teste and regs:
+        a, e = regs[0]
+        mm = re.search(r"use super::\*;\n", s[a:e])
+        pos = a + mm.end() if mm else a + s[a:e].find("{") + 1
+        pad = "    "
+        edits.append((pos, pos, ("" if mm else "\n") + "".join(f"{pad}{x}\n" for x in render_use(para_teste, ""))))
     return aplica(s, edits)
 
 
@@ -537,6 +754,10 @@ def raizes(mundo: Mundo, palco: Palco, pk, stems):
         palco.escreve(raiz, DOC_RAIZ.format(data=DATA, dono=snake(dono)) + "\n" + bloco)
         lib = os.path.join(d, "src/lib.rs")
         ls = palco.le(lib)
+        if dono in mundo.raiz_ec:
+            # o alias `use ph2d_editor_core::ids;` da raiz colide com o módulo novo — sai; as leituras
+            # do lib.rs por ele reescrevem-se com o ANTES/DEPOIS de `ligacoes`
+            ls = re.sub(r"(?m)^use ph2d_editor_core::ids;\s*\n", "", ls, count=1)
         m = re.search(r"(?m)^(pub(?:\([a-z]+\))? )?mod [a-z_0-9]+;", ls)
         assert m, f"{lib}: onde declarar `pub mod ids;`?"
         palco.escreve(lib, ls[: m.start()] + "pub mod ids;\n" + ls[m.start():])
@@ -575,10 +796,9 @@ def mata_fachadas(mundo: Mundo, palco: Palco):
             if not m.group(1) or (m.group(2) or "").strip():
                 continue
             itens = parse_use(m.group(3))
-            if not any(mundo.mid(mp, crate) for mp, _, _ in itens):
+            if not any(mundo.mid(mp, crate, True) for mp, _, _ in itens):
                 continue
             a = m.start()
-            # a doc (`///`) imediatamente acima vai junto
             ini = s.rfind("\n", 0, a) + 1
             while True:
                 prev_fim = ini - 1
@@ -588,7 +808,7 @@ def mata_fachadas(mundo: Mundo, palco: Palco):
                 else:
                     break
             fim = m.end() + (1 if m.end() < len(s) and s[m.end()] == "\n" else 0)
-            vivos = [(mp, n, al) for mp, n, al in itens if not mundo.mid(mp, crate)]
+            vivos = [(mp, n, al) for mp, n, al in itens if not mundo.mid(mp, crate, True)]
             edits.append((ini, fim, "\n".join(render_use(vivos, "pub ")) + "\n" if vivos else ""))
         if not edits:
             continue
@@ -643,20 +863,20 @@ def main():
     if a.plano:
         for d, n in collections.Counter(mundo.move.values()).most_common():
             print(f"  {d:<30}{n:>5}")
-        print(f"itens a mover: {len(mundo.move)} · módulos: {len(mundo.mods)} · re-exportações lidas: "
-              f"{sum(len(v) for v in mundo.reexp.values())} + {sum(len(v) for v in mundo.glob.values())} globs")
+        print(f"itens a mover: {len(mundo.move)} · módulos: {len(mundo.mods)} · raiz liga ids à fundação: {sorted(mundo.raiz_ec)}")
         return 0
     if not a.aplicar:
         return 0
     rel, deps_rel = [], []
+    files = sorted(set(censo.git_rs_files(root)))
     stems = move_definicoes(mundo, palco, pk, lambda de, para: acrescenta_dep(palco, pk, de, para, False, deps_rel), rel)
-    raizes(mundo, palco, pk, stems)
     fach = mata_fachadas(mundo, palco) if a.fachadas else []
-    files = set(censo.git_rs_files(root)) | set(palco.novo)
-    decl = censo.ficheiros_teste_declarados(root, sorted(files))
+    decl = censo.ficheiros_teste_declarados(root, files)
     novos_ids = {f for f in palco.novo if "/src/ids/" in f and not f.startswith(IDS)}
+    # ⚠️ os leitores lêem-se ANTES de a raiz ganhar `pub mod ids;` (o alias da raiz ainda está no lib.rs)
     total = 0
-    for f in sorted(files):
+    reescritos = {}
+    for f in files:
         if f.startswith(IDS) or f in novos_ids or f in palco.apagar:
             continue
         s = palco.le(f)
@@ -666,10 +886,18 @@ def main():
         if cf is None:
             continue
         teste = censo.contexto_teste(f) or f in decl
-        novo, n = reescreve_leitor(mundo, f, cf, s, lambda crate, cf=cf, teste=teste: acrescenta_dep(palco, pk, cf, crate, teste, deps_rel))
+        novo, n = reescreve_leitor(mundo, palco, f, cf, s, lambda crate, cf=cf, teste=teste: acrescenta_dep(palco, pk, cf, crate, teste, deps_rel))
         if novo != s:
-            palco.escreve(f, novo)
+            reescritos[f] = novo
             total += n
+    for f, s in reescritos.items():
+        palco.escreve(f, s)
+    for f in reescritos:
+        s = palco.le(f)
+        s2 = limpa_aliases(mundo, palco, s, censo.crate_of(f, dirs), f)
+        if s2 != s:
+            palco.escreve(f, s2)
+    raizes(mundo, palco, pk, stems)
     palco.grava()
     print(f"ficheiros escritos: {len(palco.novo)} · apagados: {len(palco.apagar)} · fachadas: {len(fach)} · reescritas: {total}")
     print("arestas novas:", *deps_rel, sep="\n  ")

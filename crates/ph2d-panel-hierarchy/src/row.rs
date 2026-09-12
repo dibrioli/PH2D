@@ -203,7 +203,7 @@ pub(crate) fn paint_hierarchy_row(
     // the chev_pad gap (2 px) and onto the chevron itself, since
     // companion ids registered later in HitIndex win.
     if let (Some(row_id), Some(idx)) = (row_id, hit_index.as_mut()) {
-        idx.register(ids::hier_icon_companion(row_id), icon_rect);
+        idx.register(crate::ids::hier_icon_companion(row_id), icon_rect);
     }
 
     // Right-side icon cluster — eye colada na borda direita (pad 0)
@@ -276,7 +276,7 @@ pub(crate) fn paint_hierarchy_row(
     if let (Some(row_id), Some(idx)) = (row_id, hit_index.as_mut()) {
         let hit_pad = Spacing::Xs.px();
         let hit_rect = row_tall(rect, group_rect.x - hit_pad, group_rect.w + hit_pad * 2.0);
-        idx.register(ids::hier_group_companion(row_id), hit_rect);
+        idx.register(crate::ids::hier_group_companion(row_id), hit_rect);
     }
     right_x -= icon_btn + icon_cluster_gap;
     // ── Lock individual (cadeado) — Enio: "Cadeado trava apenas o
@@ -309,7 +309,7 @@ pub(crate) fn paint_hierarchy_row(
     if let (Some(row_id), Some(idx)) = (row_id, hit_index.as_mut()) {
         let hit_pad = Spacing::Xs.px();
         let hit_rect = row_tall(rect, lock_rect.x - hit_pad, lock_rect.w + hit_pad * 2.0);
-        idx.register(ids::hier_lock_companion(row_id), hit_rect);
+        idx.register(crate::ids::hier_lock_companion(row_id), hit_rect);
     }
     right_x -= icon_btn + icon_cluster_gap;
     if let Some(swatch) = entity.swatch {

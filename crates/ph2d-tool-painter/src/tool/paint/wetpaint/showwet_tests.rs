@@ -18,7 +18,6 @@
 
 use super::*;
 use crate::tool::PainterTool;
-use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PanelEvent, PointerPhase};
 use ph2d_painter_brush::Falloff;
 
@@ -90,21 +89,21 @@ impl Media {
 fn painted(media: Media, veil_first: bool) -> Vec<u8> {
     let mut t = fixture();
     if veil_first {
-        click(&mut t, core_ids::PAINTER_WETPAINT_SHOWWET);
+        click(&mut t, crate::ids::PAINTER_WETPAINT_SHOWWET);
     }
     match media {
         Media::PaintNoPigment => {
             assert!(t.route_brush_wetpaint_event(&PanelEvent::SetValue(
-                core_ids::PAINTER_WETPAINT_PIGMENT,
+                crate::ids::PAINTER_WETPAINT_PIGMENT,
                 0.0
             )));
         }
-        Media::WetTool => click(&mut t, core_ids::PAINTER_WETPAINT_TOOL_IDS[4]),
+        Media::WetTool => click(&mut t, crate::ids::PAINTER_WETPAINT_TOOL_IDS[4]),
         Media::Paint => {}
     }
     stroke(&mut t);
     if !veil_first {
-        click(&mut t, core_ids::PAINTER_WETPAINT_SHOWWET);
+        click(&mut t, crate::ids::PAINTER_WETPAINT_SHOWWET);
     }
     t.canvas_rgba.to_vec()
 }
@@ -149,12 +148,12 @@ fn the_veil_is_not_vacuously_equal_it_actually_draws() {
         let mut t = fixture();
         if let Media::PaintNoPigment = media {
             assert!(t.route_brush_wetpaint_event(&PanelEvent::SetValue(
-                core_ids::PAINTER_WETPAINT_PIGMENT,
+                crate::ids::PAINTER_WETPAINT_PIGMENT,
                 0.0
             )));
         }
         if let Media::WetTool = media {
-            click(&mut t, core_ids::PAINTER_WETPAINT_TOOL_IDS[4]);
+            click(&mut t, crate::ids::PAINTER_WETPAINT_TOOL_IDS[4]);
         }
         stroke(&mut t);
         let bare = t.canvas_rgba.to_vec();

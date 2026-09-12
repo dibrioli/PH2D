@@ -105,11 +105,10 @@ impl PainterTool {
         &mut self,
         event: &ph2d_editor_core::tool::PanelEvent,
     ) -> bool {
-        use ph2d_editor_core::ids as core_ids;
         use ph2d_editor_core::tool::PanelEvent;
         match event {
-            PanelEvent::Click(id) if core_ids::PAINTER_SCULPT_MODE_IDS.contains(id) => {
-                let idx = core_ids::PAINTER_SCULPT_MODE_IDS
+            PanelEvent::Click(id) if crate::ids::PAINTER_SCULPT_MODE_IDS.contains(id) => {
+                let idx = crate::ids::PAINTER_SCULPT_MODE_IDS
                     .iter()
                     .position(|x| x == id)
                     .unwrap_or(0) as u8;
@@ -120,35 +119,35 @@ impl PainterTool {
                 self.set_impasto_tool(super::impasto_tool::IMPASTO_TOOL_SCULPT_BASE + idx);
                 true
             }
-            PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_SCULPT_RADIUS_SLIDER => {
+            PanelEvent::SetValue(id, v) if *id == crate::ids::PAINTER_SCULPT_RADIUS_SLIDER => {
                 self.set_sculpt_radius(*v as f32);
                 true
             }
-            PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_SCULPT_OFFSET_SLIDER => {
+            PanelEvent::SetValue(id, v) if *id == crate::ids::PAINTER_SCULPT_OFFSET_SLIDER => {
                 self.set_sculpt_offset(*v as f32);
                 true
             }
-            PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_SCULPT_DEPTH_SLIDER => {
+            PanelEvent::SetValue(id, v) if *id == crate::ids::PAINTER_SCULPT_DEPTH_SLIDER => {
                 self.set_sculpt_depth(*v as f32);
                 true
             }
-            PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_SCULPT_ANGLE_SLIDER => {
+            PanelEvent::SetValue(id, v) if *id == crate::ids::PAINTER_SCULPT_ANGLE_SLIDER => {
                 self.set_sculpt_angle(*v as f32);
                 true
             }
-            PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_SCULPT_SMOOTH_SLIDER => {
+            PanelEvent::SetValue(id, v) if *id == crate::ids::PAINTER_SCULPT_SMOOTH_SLIDER => {
                 self.set_sculpt_smooth(*v as f32);
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_SCULPT_RAKE => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_SCULPT_RAKE => {
                 self.toggle_sculpt_rake();
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_SCULPT_FILTER => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_SCULPT_FILTER => {
                 self.filter_sculpt_layer(super::sculpt_filter::FilterScope::Layer);
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_SCULPT_FILTER_STROKE => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_SCULPT_FILTER_STROKE => {
                 self.filter_sculpt_layer(super::sculpt_filter::FilterScope::LastStroke);
                 true
             }

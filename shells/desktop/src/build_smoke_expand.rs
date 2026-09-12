@@ -285,7 +285,7 @@ impl crate::App {
             // arrasto — o preview vivo já sai arredondando.
             10 | 13 => {
                 if f == 10 {
-                    match self.smoke_find_widget(ph2d_editor_core::ids::VECTOR_EXPAND_JOIN_ROUND) {
+                    match self.smoke_find_widget(ph2d_tool_vector::ids::VECTOR_EXPAND_JOIN_ROUND) {
                         Some((x, y)) => {
                             eprintln!("[retune-smoke] DOWN ROUND (pré-arrasto) em ({x}, {y})");
                             self.smoke_pointer_down(x, y);
@@ -329,9 +329,9 @@ impl crate::App {
             // Os retunes do report: Round→BEVEL e Bevel→MITER — os dois que "não mudavam".
             170 | 290 => {
                 let (id, name) = if f == 170 {
-                    (ph2d_editor_core::ids::VECTOR_EXPAND_JOIN_BEVEL, "BEVEL")
+                    (ph2d_tool_vector::ids::VECTOR_EXPAND_JOIN_BEVEL, "BEVEL")
                 } else {
-                    (ph2d_editor_core::ids::VECTOR_EXPAND_JOIN_MITER, "MITER")
+                    (ph2d_tool_vector::ids::VECTOR_EXPAND_JOIN_MITER, "MITER")
                 };
                 match self.smoke_find_widget(id) {
                     Some((x, y)) => {
@@ -353,7 +353,7 @@ impl crate::App {
             // desta rosquinha tem 8 âncoras — exatamente as 8 que a fonte já tinha —, então
             // `src` NÃO se moveria no Apply e o roteiro seria verde sem provar nada. Com
             // ROUND o desenho tem ~220: materializar tem de SALTAR o `src`.
-            320 => match self.smoke_find_widget(ph2d_editor_core::ids::VECTOR_EXPAND_JOIN_ROUND) {
+            320 => match self.smoke_find_widget(ph2d_tool_vector::ids::VECTOR_EXPAND_JOIN_ROUND) {
                 Some((x, y)) => {
                     eprintln!("[retune-smoke] DOWN ROUND (pré-Apply) em ({x}, {y})");
                     self.smoke_pointer_down(x, y);
@@ -365,7 +365,7 @@ impl crate::App {
             // `smoke_find_widget` devolve None e a fase inteira vira um no-op silencioso.
             332..=336
                 if self
-                    .smoke_find_widget(ph2d_editor_core::ids::VECTOR_EXPAND_OFFSET_PATH)
+                    .smoke_find_widget(ph2d_tool_vector::ids::VECTOR_EXPAND_OFFSET_PATH)
                     .is_none() =>
             {
                 let win = self.gfx.as_ref().map(|g| g.surface.size());
@@ -375,7 +375,7 @@ impl crate::App {
                     self.on_mouse_wheel(winit::event::MouseScrollDelta::LineDelta(0.0, -12.0));
                 }
             }
-            340 => match self.smoke_find_widget(ph2d_editor_core::ids::VECTOR_EXPAND_OFFSET_PATH) {
+            340 => match self.smoke_find_widget(ph2d_tool_vector::ids::VECTOR_EXPAND_OFFSET_PATH) {
                 Some((x, y)) => {
                     eprintln!("[retune-smoke] DOWN APPLY OFFSET em ({x}, {y})");
                     self.smoke_pointer_down(x, y);
@@ -472,9 +472,9 @@ impl crate::App {
             // frame — um passo que registre um frame "tarde" a mataria em silêncio.
             170 | 290 | 410 => {
                 let (id, name) = match f {
-                    170 => (ph2d_editor_core::ids::VECTOR_EXPAND_JOIN_ROUND, "ROUND"),
-                    290 => (ph2d_editor_core::ids::VECTOR_EXPAND_JOIN_BEVEL, "BEVEL"),
-                    _ => (ph2d_editor_core::ids::VECTOR_EXPAND_JOIN_MITER, "MITER"),
+                    170 => (ph2d_tool_vector::ids::VECTOR_EXPAND_JOIN_ROUND, "ROUND"),
+                    290 => (ph2d_tool_vector::ids::VECTOR_EXPAND_JOIN_BEVEL, "BEVEL"),
+                    _ => (ph2d_tool_vector::ids::VECTOR_EXPAND_JOIN_MITER, "MITER"),
                 };
                 match self.smoke_find_widget(id) {
                     Some((x, y)) => {

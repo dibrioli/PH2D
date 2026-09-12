@@ -8,7 +8,6 @@
 //! O Enio achou isso no smoke: os pontinhos rosa apareciam nas pontas do clipe e **não
 //! arrastavam**. Pintado ≠ populado, mais uma vez ([[feedback_painted_is_not_populated_paint_gate]]).
 
-use ph2d_editor_core::ids;
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_timeline::TimelinePanel;
 use ph2d_panel_timeline::state::{TimelinePanelState, set_current_timeline};
@@ -83,7 +82,7 @@ fn the_fade_grips_of_a_lone_strip_are_painted_and_clickable() {
     let regs = host.paint::<TimelinePanel>(&mut state, Rect::new(0.0, 0.0, 1600.0, 900.0));
 
     for edge in [3_u8, 4] {
-        let id = ids::timeline_strip_hit_id(0, 1, edge);
+        let id = ph2d_panel_timeline::ids::timeline_strip_hit_id(0, 1, edge);
         let r = regs
             .iter()
             .find(|(w, _)| *w == id)
@@ -127,7 +126,7 @@ fn the_fade_grip_is_as_grabbable_as_the_trim_grip() {
     let regs = host.paint::<TimelinePanel>(&mut state, Rect::new(0.0, 0.0, 1600.0, 900.0));
 
     let rect_of = |edge: u8| {
-        let id = ids::timeline_strip_hit_id(0, 1, edge);
+        let id = ph2d_panel_timeline::ids::timeline_strip_hit_id(0, 1, edge);
         regs.iter()
             .find(|(w, _)| *w == id)
             .map(|(_, r)| *r)

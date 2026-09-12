@@ -36,9 +36,8 @@ pub(super) fn segments_slider_event(
     host: &mut dyn PanelHostInternal,
     id: ph2d_a11y::NodeId,
 ) -> Option<bool> {
-    use crate::ids;
     use crate::paint_symmetry::{segments_to_track, track_to_segments};
-    if id == ids::VECTOR_SYM_SEGMENTS {
+    if id == ph2d_tool_vector::ids::VECTOR_SYM_SEGMENTS {
         // O default é o do vocabulário, e não um literal: ele só é lido se o slider não estiver
         // registado, e um número escrito à mão aqui seria a segunda resposta a *"quantas cópias
         // uma rosácea faz por omissão?"*.
@@ -47,5 +46,5 @@ pub(super) fn segments_slider_event(
             f64::from(track_to_segments(t as f32))
         }));
     }
-    (id == ids::VECTOR_SYM_SEGMENTS_NUM).then_some(true)
+    (id == ph2d_tool_vector::ids::VECTOR_SYM_SEGMENTS_NUM).then_some(true)
 }

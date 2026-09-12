@@ -9,7 +9,6 @@
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::screens::hero::{InspectorSliceInfo, InspectorSliceMixed, SliceFieldEdit};
 use ph2d_editor_core::widget::CheckboxValue;
@@ -68,28 +67,28 @@ fn cases() -> Vec<Case> {
         Case {
             what: "Tile Mode: Whole",
             variant: "TileMode",
-            id: ids::INSP_SLICE_TILE_MODE[1],
+            id: ph2d_panel_inspector::ids::INSP_SLICE_TILE_MODE[1],
             stim: Stim::Click,
             expect: SliceFieldEdit::TileMode(1),
         },
         Case {
             what: "Border R (indice 2)",
             variant: "Border",
-            id: ids::INSP_SLICE_BORDER[2],
+            id: ph2d_panel_inspector::ids::INSP_SLICE_BORDER[2],
             stim: Stim::Number(33.0),
             expect: SliceFieldEdit::Border(2, 33.0),
         },
         Case {
             what: "Size X",
             variant: "SizeX",
-            id: ids::INSP_SLICE_SIZE[0],
+            id: ph2d_panel_inspector::ids::INSP_SLICE_SIZE[0],
             stim: Stim::Number(2.5),
             expect: SliceFieldEdit::SizeX(2.5),
         },
         Case {
             what: "Size Y",
             variant: "SizeY",
-            id: ids::INSP_SLICE_SIZE[1],
+            id: ph2d_panel_inspector::ids::INSP_SLICE_SIZE[1],
             stim: Stim::Number(4.25),
             expect: SliceFieldEdit::SizeY(4.25),
         },
@@ -98,7 +97,7 @@ fn cases() -> Vec<Case> {
             // verde contra a primeira célula.
             what: "Celula Right (indice 4) cicla 0 -> 1",
             variant: "RegionMode",
-            id: ids::INSP_SLICE_REGION[4],
+            id: ph2d_panel_inspector::ids::INSP_SLICE_REGION[4],
             stim: Stim::Click,
             expect: SliceFieldEdit::RegionMode(4, 1),
         },
@@ -106,7 +105,7 @@ fn cases() -> Vec<Case> {
             // O miolo cicla só três (sem Blank): de Stretch(0) vai para Repeat(1).
             what: "Celula do MIOLO cicla 0 -> 1",
             variant: "CentreMode",
-            id: ids::INSP_SLICE_CENTRE,
+            id: ph2d_panel_inspector::ids::INSP_SLICE_CENTRE,
             stim: Stim::Click,
             expect: SliceFieldEdit::CentreMode(1),
         },
@@ -115,14 +114,14 @@ fn cases() -> Vec<Case> {
             // de undo para um gesto só.
             what: "Tile all",
             variant: "AllRegions",
-            id: ids::INSP_SLICE_ALL_TILE,
+            id: ph2d_panel_inspector::ids::INSP_SLICE_ALL_TILE,
             stim: Stim::Click,
             expect: SliceFieldEdit::AllRegions(1),
         },
         Case {
             what: "Stretch all",
             variant: "AllRegions",
-            id: ids::INSP_SLICE_ALL_STRETCH,
+            id: ph2d_panel_inspector::ids::INSP_SLICE_ALL_STRETCH,
             stim: Stim::Click,
             expect: SliceFieldEdit::AllRegions(0),
         },
@@ -132,21 +131,21 @@ fn cases() -> Vec<Case> {
             // do componente vem de borda no commit — não de um `Attach` antes.
             what: "Enable 9-slice (ligar)",
             variant: "DrawMode",
-            id: ids::INSP_SLICE_ENABLE,
+            id: ph2d_panel_inspector::ids::INSP_SLICE_ENABLE,
             stim: Stim::Check(true),
             expect: SliceFieldEdit::DrawMode(1),
         },
         Case {
             what: "Enable 9-slice (desligar)",
             variant: "DrawMode",
-            id: ids::INSP_SLICE_ENABLE,
+            id: ph2d_panel_inspector::ids::INSP_SLICE_ENABLE,
             stim: Stim::Check(false),
             expect: SliceFieldEdit::DrawMode(0),
         },
         Case {
             what: "Fill Center",
             variant: "FillCenter",
-            id: ids::INSP_SLICE_FILL_CENTER,
+            id: ph2d_panel_inspector::ids::INSP_SLICE_FILL_CENTER,
             stim: Stim::Check(false),
             expect: SliceFieldEdit::FillCenter(false),
         },
@@ -228,7 +227,7 @@ fn a_region_cell_cycles_against_the_snapshot_and_wraps() {
         let case = Case {
             what: "ciclo",
             variant: "RegionMode",
-            id: ids::INSP_SLICE_REGION[4],
+            id: ph2d_panel_inspector::ids::INSP_SLICE_REGION[4],
             stim: Stim::Click,
             expect: SliceFieldEdit::RegionMode(4, to),
         };
@@ -267,7 +266,7 @@ fn a_corner_cell_only_has_the_two_states_a_corner_actually_has() {
             let case = Case {
                 what: "canto",
                 variant: "RegionMode",
-                id: ids::INSP_SLICE_REGION[cell],
+                id: ph2d_panel_inspector::ids::INSP_SLICE_REGION[cell],
                 stim: Stim::Click,
                 expect: SliceFieldEdit::RegionMode(cell as u8, to),
             };
@@ -378,13 +377,15 @@ fn the_enable_checkbox_is_reachable_on_a_sprite_without_the_component() {
     let mut state = InspectorState::default();
     host.settle_section_folds();
     let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
-    let hit = rects.iter().find(|(id, _)| *id == ids::INSP_SLICE_ENABLE);
+    let hit = rects
+        .iter()
+        .find(|(id, _)| *id == ph2d_panel_inspector::ids::INSP_SLICE_ENABLE);
     let Some((_, r)) = hit else {
         panic!("a caixa 'Enable 9-slice' nao foi pintada num sprite sem o componente");
     };
     assert!(r.w > 0.0 && r.h > 0.0, "area zero: inalcancavel na pratica");
     // E os controlos de edição NÃO estão lá: não há valores para mostrar.
-    for id in ids::INSP_SLICE_BORDER {
+    for id in ph2d_panel_inspector::ids::INSP_SLICE_BORDER {
         assert!(
             !rects.iter().any(|(pid, _)| *pid == id),
             "uma borda foi pintada sobre um sprite sem autoria de 9-slice — ausencia nao e' zero"
@@ -409,18 +410,21 @@ fn switched_off_the_section_shows_only_the_box() {
     host.settle_section_folds();
     let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
     let painted = |id| rects.iter().any(|(pid, _)| *pid == id);
-    assert!(painted(ids::INSP_SLICE_ENABLE), "a caixa sumiu");
-    for id in ids::INSP_SLICE_BORDER {
+    assert!(
+        painted(ph2d_panel_inspector::ids::INSP_SLICE_ENABLE),
+        "a caixa sumiu"
+    );
+    for id in ph2d_panel_inspector::ids::INSP_SLICE_BORDER {
         assert!(
             !painted(id),
             "uma borda foi pintada com o 9-slice desligado"
         );
     }
-    for id in ids::INSP_SLICE_REGION {
+    for id in ph2d_panel_inspector::ids::INSP_SLICE_REGION {
         assert!(!painted(id), "a grelha foi pintada com o 9-slice desligado");
     }
     assert!(
-        !painted(ids::INSP_SLICE_ALL_TILE),
+        !painted(ph2d_panel_inspector::ids::INSP_SLICE_ALL_TILE),
         "um atalho da grelha foi pintado com o 9-slice desligado"
     );
 }

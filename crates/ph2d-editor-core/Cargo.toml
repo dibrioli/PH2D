@@ -59,6 +59,11 @@ smallvec              = "1"
 bumpalo               = { version = "3", features = ["collections"] }
 
 [dev-dependencies]
+ph2d-tool-vector = { path = "../ph2d-tool-vector" }
+ph2d-panel-vector = { path = "../ph2d-panel-vector" }
+ph2d-panel-timeline = { path = "../ph2d-panel-timeline" }
+ph2d-panel-flip = { path = "../ph2d-panel-flip" }
+ph2d-tool-painter = { path = "../ph2d-tool-painter" }
 # O gate `every_registered_panel_is_reachable_by_the_z_order_walk` compara o REGISTRO real
 # com a lista de z-order. Ele precisa do registro que o app monta, e nao de uma copia.
 #

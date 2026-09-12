@@ -10,7 +10,6 @@
 //! ⚠️ Cada um tem **duas** funções e não uma: o `apply_event` consulta o índice para saber se
 //! ATENDE o clique, e o `pick_*` para saber o QUE gravar. Duas perguntas, uma tabela.
 
-use crate::ids;
 use crate::state;
 use ph2d_editor_core::panel::{PanelHostInternal, seam_reset_button};
 
@@ -29,9 +28,9 @@ pub(super) fn pick_expand_join(host: &mut dyn PanelHostInternal, id: ph2d_a11y::
 /// duas perguntas, uma tabela.
 pub(super) fn expand_join_index(id: ph2d_a11y::NodeId) -> Option<u8> {
     match id {
-        _ if id == ids::VECTOR_EXPAND_JOIN_MITER => Some(0),
-        _ if id == ids::VECTOR_EXPAND_JOIN_ROUND => Some(1),
-        _ if id == ids::VECTOR_EXPAND_JOIN_BEVEL => Some(2),
+        _ if id == ph2d_tool_vector::ids::VECTOR_EXPAND_JOIN_MITER => Some(0),
+        _ if id == ph2d_tool_vector::ids::VECTOR_EXPAND_JOIN_ROUND => Some(1),
+        _ if id == ph2d_tool_vector::ids::VECTOR_EXPAND_JOIN_BEVEL => Some(2),
         _ => None,
     }
 }
@@ -49,9 +48,9 @@ pub(super) fn pick_expand_side(host: &mut dyn PanelHostInternal, id: ph2d_a11y::
 /// como a da junção.
 pub(super) fn expand_side_index(id: ph2d_a11y::NodeId) -> Option<u8> {
     match id {
-        _ if id == ids::VECTOR_EXPAND_SIDE_OUTER => Some(0),
-        _ if id == ids::VECTOR_EXPAND_SIDE_INNER => Some(1),
-        _ if id == ids::VECTOR_EXPAND_SIDE_BOTH => Some(2),
+        _ if id == ph2d_tool_vector::ids::VECTOR_EXPAND_SIDE_OUTER => Some(0),
+        _ if id == ph2d_tool_vector::ids::VECTOR_EXPAND_SIDE_INNER => Some(1),
+        _ if id == ph2d_tool_vector::ids::VECTOR_EXPAND_SIDE_BOTH => Some(2),
         _ => None,
     }
 }

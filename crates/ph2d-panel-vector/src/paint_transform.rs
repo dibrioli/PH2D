@@ -30,22 +30,23 @@ impl BodyCtx<'_> {
             return y;
         }
         let head = transform_header(state::length_suffix());
-        let (mut y, collapsed) = self.section_header(ids::VECTOR_SECTION_TRANSFORM, &head, y);
+        let (mut y, collapsed) =
+            self.section_header(ph2d_tool_vector::ids::VECTOR_SECTION_TRANSFORM, &head, y);
         if collapsed {
             return y;
         }
         y = self.number_row(
             "X",
-            ids::VECTOR_TRANSFORM_X,
+            ph2d_tool_vector::ids::VECTOR_TRANSFORM_X,
             "Y",
-            ids::VECTOR_TRANSFORM_Y,
+            ph2d_tool_vector::ids::VECTOR_TRANSFORM_Y,
             y,
         );
         y = self.number_row(
             "W",
-            ids::VECTOR_TRANSFORM_W,
+            ph2d_tool_vector::ids::VECTOR_TRANSFORM_W,
             "H",
-            ids::VECTOR_TRANSFORM_H,
+            ph2d_tool_vector::ids::VECTOR_TRANSFORM_H,
             y,
         );
         // Rotation — a full-width relative scrub (° per gesture about the bbox

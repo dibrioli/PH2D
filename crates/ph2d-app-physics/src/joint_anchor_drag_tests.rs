@@ -216,7 +216,7 @@ fn the_length_ring_writes_rest_for_a_spring_and_max_for_a_rope() {
 /// nascer com o defeito que este gate acabou de pegar.
 #[test]
 fn every_kind_that_offers_a_length_ring_can_have_it_dragged() {
-    for tag in 0..u8::try_from(ph2d_editor_core::ids::INSP_JOINT_KIND.len()).expect("cabe") {
+    for tag in 0..u8::try_from(ph2d_panel_inspector::ids::INSP_JOINT_KIND.len()).expect("cabe") {
         let kind = crate::joint::kind_of(tag);
         let Some(field) = kind.length_field() else {
             continue;

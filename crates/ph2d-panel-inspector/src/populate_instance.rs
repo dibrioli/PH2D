@@ -14,7 +14,6 @@
 //! *Salvar Variação…* também (apanhado pelo `seam_properties`, na primeira corrida).
 //! *Pintado e hit-indexado não é vivo.*
 
-use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::widget::ButtonState;
 
@@ -32,34 +31,34 @@ fn button(store: &mut WidgetStore, id: ph2d_a11y::NodeId) {
 pub(crate) fn populate_instance_card(store: &mut WidgetStore) {
     // ⭐ **Limpar as excepções SEM ALVO** (F5.3) — o gesto existe porque elas **nunca** se apagam
     // sozinhas (a lei do *«unused overrides»* do Unity).
-    button(store, ids::INSP_INSTANCE_CLEAR_ORPHANS);
-    button(store, ids::INSP_INSTANCE_OPEN_PREFAB);
+    button(store, crate::ids::INSP_INSTANCE_CLEAR_ORPHANS);
+    button(store, crate::ids::INSP_INSTANCE_OPEN_PREFAB);
     // ⭐⭐⭐ **Os botões da ESCADA do *Aplicar*** (F5 critério 4).
     //
     // ⚠️ **Registados os OITO, e não só os que a cena de hoje pinta:** o `WidgetStore` é o estado
     // de focalização e não uma vista, e um degrau que aparecesse depois de uma receita ser
     // aninhada nasceria morto sob o dedo. *A tabela é a população; o cartão é a vista.*
-    for &id in &ids::INSP_INSTANCE_APPLY_LEVEL {
+    for &id in &crate::ids::INSP_INSTANCE_APPLY_LEVEL {
         button(store, id);
     }
     // ⭐⭐⭐ **O `✕` de cada excepção sem alvo** (F5.3-ter) — os DEZASSEIS, pela mesma razão da
     // escada: o `WidgetStore` é a população, o cartão é a vista, e um `✕` que aparecesse depois de
     // uma sexta peça morrer nasceria morto sob o dedo.
-    for &id in &ids::INSP_INSTANCE_DROP_ORPHAN {
+    for &id in &crate::ids::INSP_INSTANCE_DROP_ORPHAN {
         button(store, id);
     }
     // ⭐⭐⭐ **O *Put back* de cada peça recusada** (F5.10) — os DEZASSEIS, pela mesma razão da
     // escada e do `✕` dos órfãos: o `WidgetStore` é a população e o cartão é a vista.
-    for &id in &ids::INSP_INSTANCE_RESTORE_PIECE {
+    for &id in &crate::ids::INSP_INSTANCE_RESTORE_PIECE {
         button(store, id);
     }
     // ⭐⭐⭐ **O *Add … to …* de cada peça acrescentada** (F5.11) — os DEZASSEIS, pela mesma razão.
-    for &id in &ids::INSP_INSTANCE_APPLY_ADDED {
+    for &id in &crate::ids::INSP_INSTANCE_APPLY_ADDED {
         button(store, id);
     }
     // ⭐ **Os chips da fileira de VERSÕES** — a outra superfície do cartão desde que o mecanismo de
     // propriedades foi adiado (2026-09-01).
-    for &id in ids::INSP_INSTANCE_AXIS_OPTION.iter().flatten() {
+    for &id in crate::ids::INSP_INSTANCE_AXIS_OPTION.iter().flatten() {
         button(store, id);
     }
 }

@@ -71,7 +71,7 @@ fn dragging_a_radius_slider_reaches_the_document_intent() {
     let mut host = MockPanelHost::with_panel::<Model3dPanel>();
     let mut panel_state = Model3dPanelState;
     // O id vem da POSIÇÃO da linha (0), não da entidade (77).
-    let slider = ids::model3d_radius_slider(0);
+    let slider = ph2d_panel_model3d::ids::model3d_radius_slider(0);
 
     host.set_slider_value(slider, 0.5);
     let outcome =
@@ -108,7 +108,7 @@ fn the_number_field_does_not_emit_a_second_time() {
 
     let mut host = MockPanelHost::with_panel::<Model3dPanel>();
     let mut panel_state = Model3dPanelState;
-    let chip = ids::model3d_radius_chip(3);
+    let chip = ph2d_panel_model3d::ids::model3d_radius_chip(3);
 
     let outcome =
         host.apply_panel_event::<Model3dPanel>(&mut panel_state, WidgetEvent::ValueChanged(chip));
@@ -132,7 +132,7 @@ fn the_close_button_hides_the_panel() {
 
     let outcome = host.apply_panel_event::<Model3dPanel>(
         &mut panel_state,
-        WidgetEvent::Click(ids::MODEL3D_CLOSE),
+        WidgetEvent::Click(ph2d_panel_model3d::ids::MODEL3D_CLOSE),
     );
     assert_eq!(outcome, EventOutcome::Consumed);
     assert!(
@@ -154,7 +154,7 @@ fn an_id_from_another_panel_is_ignored_not_swallowed() {
     let mut panel_state = Model3dPanelState;
     let outcome = host.apply_panel_event::<Model3dPanel>(
         &mut panel_state,
-        WidgetEvent::ValueChanged(ids::INSP_DRAG_HANDLE),
+        WidgetEvent::ValueChanged(ph2d_panel_model3d::ids::INSP_DRAG_HANDLE),
     );
     assert_eq!(outcome, EventOutcome::Ignored);
     assert!(drain_intents().is_empty());
@@ -174,7 +174,7 @@ fn a_family_id_without_a_row_does_not_invent_a_node() {
 
     let mut host = MockPanelHost::with_panel::<Model3dPanel>();
     let mut panel_state = Model3dPanelState;
-    let slider = ids::model3d_radius_slider(7);
+    let slider = ph2d_panel_model3d::ids::model3d_radius_slider(7);
     host.set_slider_value(slider, 0.9);
     let outcome =
         host.apply_panel_event::<Model3dPanel>(&mut panel_state, WidgetEvent::ValueChanged(slider));
@@ -249,7 +249,7 @@ fn every_row_gets_its_own_band_none_stacked_on_another() {
 
     let mut tops: Vec<f32> = Vec::new();
     for n in 0..4u32 {
-        let id = ids::model3d_radius_slider(n);
+        let id = ph2d_panel_model3d::ids::model3d_radius_slider(n);
         let r = rects
             .iter()
             .find(|(rid, _)| *rid == id)
@@ -527,11 +527,26 @@ fn the_selectors_never_answer_for_each_other() {
     let mut panel_state = Model3dPanelState;
     let mut click =
         |id| host.apply_panel_event::<Model3dPanel>(&mut panel_state, WidgetEvent::Click(id));
-    assert_eq!(click(ids::model3d_add_button(1)), EventOutcome::Consumed);
-    assert_eq!(click(ids::model3d_op_button(1)), EventOutcome::Consumed);
-    assert_eq!(click(ids::model3d_mod_button(1)), EventOutcome::Consumed);
-    assert_eq!(click(ids::model3d_export_button(1)), EventOutcome::Consumed);
-    assert_eq!(click(ids::model3d_act_button(1)), EventOutcome::Consumed);
+    assert_eq!(
+        click(ph2d_panel_model3d::ids::model3d_add_button(1)),
+        EventOutcome::Consumed
+    );
+    assert_eq!(
+        click(ph2d_panel_model3d::ids::model3d_op_button(1)),
+        EventOutcome::Consumed
+    );
+    assert_eq!(
+        click(ph2d_panel_model3d::ids::model3d_mod_button(1)),
+        EventOutcome::Consumed
+    );
+    assert_eq!(
+        click(ph2d_panel_model3d::ids::model3d_export_button(1)),
+        EventOutcome::Consumed
+    );
+    assert_eq!(
+        click(ph2d_panel_model3d::ids::model3d_act_button(1)),
+        EventOutcome::Consumed
+    );
 
     assert_eq!(
         drain_intents(),
@@ -562,7 +577,7 @@ fn an_empty_operation_row_dispatches_nothing() {
     let mut panel_state = Model3dPanelState;
     let outcome = host.apply_panel_event::<Model3dPanel>(
         &mut panel_state,
-        WidgetEvent::Click(ids::model3d_op_button(0)),
+        WidgetEvent::Click(ph2d_panel_model3d::ids::model3d_op_button(0)),
     );
     assert_eq!(outcome, EventOutcome::Ignored);
     assert!(drain_intents().is_empty());
@@ -630,7 +645,7 @@ fn a_row_whose_floor_is_negative_can_reach_it() {
 
     let mut host = MockPanelHost::with_panel::<Model3dPanel>();
     let mut panel_state = Model3dPanelState;
-    let slider = ids::model3d_radius_slider(0);
+    let slider = ph2d_panel_model3d::ids::model3d_radius_slider(0);
 
     host.set_slider_value(slider, 0.0);
     host.apply_panel_event::<Model3dPanel>(&mut panel_state, WidgetEvent::ValueChanged(slider));
@@ -657,8 +672,8 @@ fn the_dispatched_value_is_the_one_the_painted_mapping_promises() {
     let mut host = MockPanelHost::with_panel::<Model3dPanel>();
     host.set_panel_visible(Model3dPanel::ID, true);
     let mut panel_state = Model3dPanelState;
-    let slider = ids::model3d_radius_slider(0);
-    let chip = ids::model3d_radius_chip(0);
+    let slider = ph2d_panel_model3d::ids::model3d_radius_slider(0);
+    let chip = ph2d_panel_model3d::ids::model3d_radius_chip(0);
     let viewport = ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1280.0, 800.0);
 
     for track in [0.0f32, 0.25, 0.5, 1.0] {
@@ -716,7 +731,7 @@ fn the_first_drag_of_a_number_starts_from_the_document() {
     let viewport = ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1280.0, 800.0);
     let _ = host.paint::<Model3dPanel>(&mut panel_state, viewport);
 
-    let chip = ids::model3d_radius_chip(0);
+    let chip = ph2d_panel_model3d::ids::model3d_radius_chip(0);
     let store_value = match host.store().get(chip) {
         Some(ph2d_editor_core::interaction::InteractiveState::NumberInput { value, .. }) => *value,
         outro => panic!("o chip tinha de ser um campo numérico: {outro:?}"),
@@ -754,7 +769,7 @@ fn a_wall_clamps_what_is_typed_and_a_suggestion_does_not() {
     let viewport = ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1280.0, 800.0);
     let _ = host.paint::<Model3dPanel>(&mut panel_state, viewport);
 
-    let chip = ids::model3d_radius_chip(0);
+    let chip = ph2d_panel_model3d::ids::model3d_radius_chip(0);
     let (min, max, step) = host
         .store()
         .number_range(chip)
@@ -815,7 +830,8 @@ fn an_inert_row_registers_nothing_to_click() {
         });
         let rects = host.paint::<Model3dPanel>(state, viewport);
         rects.iter().any(|(id, _)| {
-            *id == ids::model3d_radius_slider(0) || *id == ids::model3d_radius_chip(0)
+            *id == ph2d_panel_model3d::ids::model3d_radius_slider(0)
+                || *id == ph2d_panel_model3d::ids::model3d_radius_chip(0)
         })
     };
 
@@ -859,7 +875,7 @@ fn an_inert_row_does_not_dispatch_even_if_an_event_arrives() {
     });
     let mut host = MockPanelHost::with_panel::<Model3dPanel>();
     let mut panel_state = Model3dPanelState;
-    let slider = ids::model3d_radius_slider(0);
+    let slider = ph2d_panel_model3d::ids::model3d_radius_slider(0);
     host.set_slider_value(slider, 0.9);
     let outcome =
         host.apply_panel_event::<Model3dPanel>(&mut panel_state, WidgetEvent::ValueChanged(slider));
@@ -1032,7 +1048,7 @@ fn a_click_on_a_camera_chip_dispatches_that_exact_slot() {
         let _ = drain_intents();
         host.apply_panel_event::<Model3dPanel>(
             &mut panel_state,
-            WidgetEvent::Click(ids::model3d_view_button(slot as u32)),
+            WidgetEvent::Click(ph2d_panel_model3d::ids::model3d_view_button(slot as u32)),
         );
         assert_eq!(
             drain_intents(),
@@ -1044,7 +1060,7 @@ fn a_click_on_a_camera_chip_dispatches_that_exact_slot() {
         let _ = drain_intents();
         host.apply_panel_event::<Model3dPanel>(
             &mut panel_state,
-            WidgetEvent::Click(ids::model3d_camera_button(slot as u32)),
+            WidgetEvent::Click(ph2d_panel_model3d::ids::model3d_camera_button(slot as u32)),
         );
         assert_eq!(
             drain_intents(),
@@ -1059,7 +1075,7 @@ fn a_click_on_a_camera_chip_dispatches_that_exact_slot() {
     let _ = drain_intents();
     host.apply_panel_event::<Model3dPanel>(
         &mut panel_state,
-        WidgetEvent::Click(ids::model3d_view_button(7)),
+        WidgetEvent::Click(ph2d_panel_model3d::ids::model3d_view_button(7)),
     );
     assert!(
         drain_intents().is_empty(),
@@ -1114,7 +1130,7 @@ fn a_click_on_a_verb_chip_dispatches_that_slot_and_never_the_group_op() {
         let _ = drain_intents();
         host.apply_panel_event::<Model3dPanel>(
             &mut panel_state,
-            WidgetEvent::Click(ids::model3d_verb_button(slot as u32)),
+            WidgetEvent::Click(ph2d_panel_model3d::ids::model3d_verb_button(slot as u32)),
         );
         assert_eq!(
             drain_intents(),
@@ -1128,7 +1144,7 @@ fn a_click_on_a_verb_chip_dispatches_that_slot_and_never_the_group_op() {
     let _ = drain_intents();
     host.apply_panel_event::<Model3dPanel>(
         &mut panel_state,
-        WidgetEvent::Click(ids::model3d_op_button(0)),
+        WidgetEvent::Click(ph2d_panel_model3d::ids::model3d_op_button(0)),
     );
     assert_eq!(
         drain_intents(),
@@ -1141,7 +1157,7 @@ fn a_click_on_a_verb_chip_dispatches_that_slot_and_never_the_group_op() {
     let _ = drain_intents();
     host.apply_panel_event::<Model3dPanel>(
         &mut panel_state,
-        WidgetEvent::Click(ids::model3d_verb_button(5)),
+        WidgetEvent::Click(ph2d_panel_model3d::ids::model3d_verb_button(5)),
     );
     assert!(
         drain_intents().is_empty(),
@@ -1192,7 +1208,9 @@ fn a_click_on_a_character_chip_dispatches_that_slot_and_never_the_verb() {
         let _ = drain_intents();
         host.apply_panel_event::<Model3dPanel>(
             &mut panel_state,
-            WidgetEvent::Click(ids::model3d_character_button(slot as u32)),
+            WidgetEvent::Click(ph2d_panel_model3d::ids::model3d_character_button(
+                slot as u32,
+            )),
         );
         assert_eq!(
             drain_intents(),
@@ -1205,7 +1223,7 @@ fn a_click_on_a_character_chip_dispatches_that_slot_and_never_the_verb() {
     let _ = drain_intents();
     host.apply_panel_event::<Model3dPanel>(
         &mut panel_state,
-        WidgetEvent::Click(ids::model3d_verb_button(1)),
+        WidgetEvent::Click(ph2d_panel_model3d::ids::model3d_verb_button(1)),
     );
     assert_eq!(
         drain_intents(),
@@ -1217,7 +1235,7 @@ fn a_click_on_a_character_chip_dispatches_that_slot_and_never_the_verb() {
     let _ = drain_intents();
     host.apply_panel_event::<Model3dPanel>(
         &mut panel_state,
-        WidgetEvent::Click(ids::model3d_character_button(4)),
+        WidgetEvent::Click(ph2d_panel_model3d::ids::model3d_character_button(4)),
     );
     assert!(
         drain_intents().is_empty(),
@@ -1285,7 +1303,7 @@ fn a_click_on_an_axis_button_reaches_the_document() {
     let _ = host.paint::<Model3dPanel>(&mut panel_state, viewport);
     let _ = drain_intents();
 
-    let botao = ids::model3d_choice_button(0, 1);
+    let botao = ph2d_panel_model3d::ids::model3d_choice_button(0, 1);
     // ⛔ **O CONTROLE**: um botão que a pintura não registou não é alcançável por dedo nenhum, e o
     // clique abaixo passaria por um caminho que o artista não tem.
     assert!(
@@ -1324,7 +1342,10 @@ fn a_choice_row_paints_no_slider_to_grab() {
     let mut panel_state = Model3dPanelState;
     let viewport = ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1280.0, 800.0);
     let _ = host.paint::<Model3dPanel>(&mut panel_state, viewport);
-    for id in [ids::model3d_radius_slider(0), ids::model3d_radius_chip(0)] {
+    for id in [
+        ph2d_panel_model3d::ids::model3d_radius_slider(0),
+        ph2d_panel_model3d::ids::model3d_radius_chip(0),
+    ] {
         assert!(
             host.hit_index_mut().rect_for(id).is_none(),
             "uma linha de escolha registou o controlo de número da linha — há dois controlos para \
@@ -1395,37 +1416,67 @@ fn every_chip_family_dispatches_its_own_intent() {
         // ⚠️ **A costura que este gate defende continua defendida, no braco novo do `event.rs`** --
         // o que deixou de existir e' a familia de ids do PAINEL. ⛔ Manter as duas listas daria
         // duas portas para o mesmo verbo, que e' exactamente o que aquela wave foi apagar.
-        ("selects", ids::model3d_select_button, 2, |slot| {
-            ModelIntent::SetLassoMode { slot }
-        }),
+        (
+            "selects",
+            ph2d_panel_model3d::ids::model3d_select_button,
+            2,
+            |slot| ModelIntent::SetLassoMode { slot },
+        ),
         // ⚠️ O único que ignora o slot: ele ABRE a paleta, e a forma vem pelo canal dela.
-        ("adds", ids::model3d_add_button, 1, |_| {
-            ModelIntent::OpenShapes
-        }),
-        ("ops", ids::model3d_op_button, 3, |slot| {
-            ModelIntent::ApplyOp { slot }
-        }),
-        ("verbs", ids::model3d_verb_button, 4, |slot| {
-            ModelIntent::SetVerb { slot }
-        }),
-        ("characters", ids::model3d_character_button, 3, |slot| {
-            ModelIntent::SetCharacter { slot }
-        }),
-        ("mods", ids::model3d_mod_button, 2, |slot| {
-            ModelIntent::ToggleMod { slot }
-        }),
-        ("exports", ids::model3d_export_button, 2, |slot| {
-            ModelIntent::Export { slot }
-        }),
-        ("acts", ids::model3d_act_button, 2, |slot| {
-            ModelIntent::Act { slot }
-        }),
-        ("views", ids::model3d_view_button, 6, |slot| {
-            ModelIntent::SetView { slot }
-        }),
-        ("camera", ids::model3d_camera_button, 2, |slot| {
-            ModelIntent::Camera { slot }
-        }),
+        (
+            "adds",
+            ph2d_panel_model3d::ids::model3d_add_button,
+            1,
+            |_| ModelIntent::OpenShapes,
+        ),
+        (
+            "ops",
+            ph2d_panel_model3d::ids::model3d_op_button,
+            3,
+            |slot| ModelIntent::ApplyOp { slot },
+        ),
+        (
+            "verbs",
+            ph2d_panel_model3d::ids::model3d_verb_button,
+            4,
+            |slot| ModelIntent::SetVerb { slot },
+        ),
+        (
+            "characters",
+            ph2d_panel_model3d::ids::model3d_character_button,
+            3,
+            |slot| ModelIntent::SetCharacter { slot },
+        ),
+        (
+            "mods",
+            ph2d_panel_model3d::ids::model3d_mod_button,
+            2,
+            |slot| ModelIntent::ToggleMod { slot },
+        ),
+        (
+            "exports",
+            ph2d_panel_model3d::ids::model3d_export_button,
+            2,
+            |slot| ModelIntent::Export { slot },
+        ),
+        (
+            "acts",
+            ph2d_panel_model3d::ids::model3d_act_button,
+            2,
+            |slot| ModelIntent::Act { slot },
+        ),
+        (
+            "views",
+            ph2d_panel_model3d::ids::model3d_view_button,
+            6,
+            |slot| ModelIntent::SetView { slot },
+        ),
+        (
+            "camera",
+            ph2d_panel_model3d::ids::model3d_camera_button,
+            2,
+            |slot| ModelIntent::Camera { slot },
+        ),
     ];
     assert_eq!(
         familias.len(),

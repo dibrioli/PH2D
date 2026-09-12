@@ -7,7 +7,6 @@
 //! acusaram exactamente esse defeito noutra superfície deste mesmo cartão.
 
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::ids;
 use ph2d_editor_core::screens::hero::{ApplyChoice, InspectorInstanceInfo, InspectorNameInfo};
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_inspector::{
@@ -74,7 +73,7 @@ fn click_rung(
     state: &mut InspectorState,
     level: usize,
 ) -> Vec<EditorAction> {
-    let id = ids::INSP_INSTANCE_APPLY_LEVEL[level];
+    let id = ph2d_panel_inspector::ids::INSP_INSTANCE_APPLY_LEVEL[level];
     let rects = host.paint::<InspectorPanel>(state, VIEWPORT);
     let rect = rects
         .iter()
@@ -143,7 +142,7 @@ fn a_single_rung_is_never_painted_as_a_button() {
     assert!(
         !rects
             .iter()
-            .any(|(n, _)| *n == ids::INSP_INSTANCE_APPLY_LEVEL[0]),
+            .any(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_INSTANCE_APPLY_LEVEL[0]),
         "uma escada de um degrau foi registada como botao — um clique que nao escolhe nada"
     );
     clear();
@@ -164,7 +163,7 @@ fn with_nothing_overridden_the_ladder_is_not_painted() {
     assert!(
         !rects
             .iter()
-            .any(|(n, _)| *n == ids::INSP_INSTANCE_APPLY_LEVEL[0]),
+            .any(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_INSTANCE_APPLY_LEVEL[0]),
         "a escada foi pintada sobre uma peca que nao tem excepcao nenhuma"
     );
     clear();

@@ -6,7 +6,6 @@
 //! dead under the mouse.
 
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal};
 use ph2d_editor_core::tool::PanelEvent;
@@ -90,7 +89,7 @@ fn a_chip_commit_forwards_its_number() {
 /// authored fact; a panel-local hide would fight the bridge).
 #[test]
 fn commands_forward_and_close_is_the_tuning_toggle() {
-    for id in core_ids::WET_TUNING_GROUP_RESETS {
+    for id in ph2d_tool_painter::ids::WET_TUNING_GROUP_RESETS {
         let (mut host, mut st) = host();
         assert_eq!(
             host.apply_panel_event::<WetTuningPanel>(&mut st, WidgetEvent::Click(id)),
@@ -99,9 +98,9 @@ fn commands_forward_and_close_is_the_tuning_toggle() {
         assert!(drained_click(&host.drained_actions(), id));
     }
     for id in [
-        core_ids::WET_TUNING_PAPER_EYE,
-        core_ids::WET_TUNING_KM_MIXING,
-        core_ids::WET_TUNING_KM_GLAZE,
+        ph2d_tool_painter::ids::WET_TUNING_PAPER_EYE,
+        ph2d_tool_painter::ids::WET_TUNING_KM_MIXING,
+        ph2d_tool_painter::ids::WET_TUNING_KM_GLAZE,
     ] {
         let (mut host, mut st) = host();
         assert_eq!(
@@ -114,12 +113,15 @@ fn commands_forward_and_close_is_the_tuning_toggle() {
     assert_eq!(
         host.apply_panel_event::<WetTuningPanel>(
             &mut st,
-            WidgetEvent::Click(core_ids::WET_TUNING_CLOSE)
+            WidgetEvent::Click(ph2d_tool_painter::ids::WET_TUNING_CLOSE)
         ),
         EventOutcome::Consumed
     );
     assert!(
-        drained_click(&host.drained_actions(), core_ids::PAINTER_WETPAINT_TUNING),
+        drained_click(
+            &host.drained_actions(),
+            ph2d_tool_painter::ids::PAINTER_WETPAINT_TUNING
+        ),
         "close must forward the basic section's Tuning toggle"
     );
 }
@@ -171,11 +173,11 @@ fn paint_offers_the_table_and_hides_engine_paper_knobs_under_artist_paper() {
         assert!(has(&plain, s.reset), "group reset missing");
     }
     for id in [
-        core_ids::WET_TUNING_GROUP_HEADERS[5],
-        core_ids::WET_TUNING_PAPER_EYE,
-        core_ids::WET_TUNING_KM_MIXING,
-        core_ids::WET_TUNING_KM_GLAZE,
-        core_ids::WET_TUNING_CLOSE,
+        ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[5],
+        ph2d_tool_painter::ids::WET_TUNING_PAPER_EYE,
+        ph2d_tool_painter::ids::WET_TUNING_KM_MIXING,
+        ph2d_tool_painter::ids::WET_TUNING_KM_GLAZE,
+        ph2d_tool_painter::ids::WET_TUNING_CLOSE,
     ] {
         assert!(has(&plain, id), "static widget {id:?} missing");
     }

@@ -10,7 +10,6 @@
 //! vem antes* e *o que vem depois* em arquivos diferentes — a próxima pessoa a
 //! mexer na ordem teria de descobrir isso.
 
-use ph2d_editor_core::ids;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_i18n::tr;
 use ph2d_sculpt3d::{Alpha, ClothArea, ClothForceFalloff, ClothMode, Falloff, Verb};
@@ -51,8 +50,8 @@ pub(super) fn paint_level_row(
     labelled_seg(
         ctx,
         tr("panel.sculpt3d.ui_level"),
-        ids::SCULPT3D_SEC_BRUSH,
-        &ids::SCULPT3D_UI_LEVEL,
+        crate::ids::SCULPT3D_SEC_BRUSH,
+        &crate::ids::SCULPT3D_UI_LEVEL,
         &labels,
         selected,
         x,
@@ -149,8 +148,8 @@ pub(super) fn paint_brush_tail(
     let y = labelled_seg(
         ctx,
         tr("panel.sculpt3d.falloff"),
-        ids::SCULPT3D_SEC_BRUSH,
-        &ids::SCULPT3D_FALLOFF,
+        crate::ids::SCULPT3D_SEC_BRUSH,
+        &crate::ids::SCULPT3D_FALLOFF,
         &labels,
         selected,
         x,
@@ -185,8 +184,8 @@ pub(super) fn paint_brush_tail(
     let mut y = labelled_seg(
         ctx,
         tr("panel.sculpt3d.alpha"),
-        ids::SCULPT3D_SEC_BRUSH,
-        &ids::SCULPT3D_ALPHA,
+        crate::ids::SCULPT3D_SEC_BRUSH,
+        &crate::ids::SCULPT3D_ALPHA,
         &labels,
         selected,
         x,
@@ -205,7 +204,7 @@ pub(super) fn paint_brush_tail(
     if snap.has_bake_target {
         y = command(
             ctx,
-            ids::SCULPT3D_ALPHA_SPRITE,
+            crate::ids::SCULPT3D_ALPHA_SPRITE,
             tr("panel.sculpt3d.alpha_sprite"),
             x,
             w,
@@ -231,7 +230,7 @@ pub(super) fn paint_brush_tail(
     if snap.ui.brush.alpha.is_some() {
         y = toggle(
             ctx,
-            ids::SCULPT3D_ALPHA_PREVIEW,
+            crate::ids::SCULPT3D_ALPHA_PREVIEW,
             tr("panel.sculpt3d.alpha_preview"),
             snap.ui.alpha_preview,
             x,
@@ -269,7 +268,7 @@ fn paint_per_verb_switches(
     let y = if snap.ui.brush.verb.accumulates() {
         toggle(
             ctx,
-            ids::SCULPT3D_ACCUMULATE,
+            crate::ids::SCULPT3D_ACCUMULATE,
             tr("panel.sculpt3d.accumulate"),
             snap.ui.brush.accumulate,
             x,
@@ -291,7 +290,7 @@ fn paint_per_verb_switches(
     let y = if snap.ui.brush.offers_front_faces() {
         toggle(
             ctx,
-            ids::SCULPT3D_FRONT_FACES,
+            crate::ids::SCULPT3D_FRONT_FACES,
             tr("panel.sculpt3d.front_faces"),
             snap.ui.brush.front_faces_only,
             x,
@@ -313,7 +312,7 @@ fn paint_per_verb_switches(
     let y = if snap.ui.brush.offers_surface_only() {
         toggle(
             ctx,
-            ids::SCULPT3D_SURFACE_ONLY,
+            crate::ids::SCULPT3D_SURFACE_ONLY,
             tr("panel.sculpt3d.surface_only"),
             snap.ui.brush.surface_only,
             x,
@@ -330,7 +329,7 @@ fn paint_per_verb_switches(
     let y = if snap.ui.brush.verb == Verb::MultiplaneScrape {
         toggle(
             ctx,
-            ids::SCULPT3D_SCRAPE_DYNAMIC,
+            crate::ids::SCULPT3D_SCRAPE_DYNAMIC,
             tr("panel.sculpt3d.scrape_dynamic"),
             snap.ui.brush.scrape_dynamic,
             x,
@@ -367,8 +366,8 @@ fn paint_cloth_rows(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32,
     let y = labelled_seg(
         ctx,
         tr("panel.sculpt3d.cloth_mode"),
-        ids::SCULPT3D_SEC_BRUSH,
-        &ids::SCULPT3D_CLOTH_MODE,
+        crate::ids::SCULPT3D_SEC_BRUSH,
+        &crate::ids::SCULPT3D_CLOTH_MODE,
         &labels,
         selected,
         x,
@@ -383,8 +382,8 @@ fn paint_cloth_rows(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32,
     let y = labelled_seg(
         ctx,
         tr("panel.sculpt3d.cloth_area"),
-        ids::SCULPT3D_SEC_BRUSH,
-        &ids::SCULPT3D_CLOTH_AREA,
+        crate::ids::SCULPT3D_SEC_BRUSH,
+        &crate::ids::SCULPT3D_CLOTH_AREA,
         &labels,
         selected,
         x,
@@ -399,8 +398,8 @@ fn paint_cloth_rows(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32,
     let y = labelled_seg(
         ctx,
         tr("panel.sculpt3d.cloth_force_falloff"),
-        ids::SCULPT3D_SEC_BRUSH,
-        &ids::SCULPT3D_CLOTH_FORCE_FALLOFF,
+        crate::ids::SCULPT3D_SEC_BRUSH,
+        &crate::ids::SCULPT3D_CLOTH_FORCE_FALLOFF,
         &labels,
         selected,
         x,
@@ -415,7 +414,7 @@ fn paint_cloth_rows(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32,
     // botão que o artista carrega e não vê acontecer nada.*
     let y = toggle(
         ctx,
-        ids::SCULPT3D_CLOTH_PERSISTENT,
+        crate::ids::SCULPT3D_CLOTH_PERSISTENT,
         tr("panel.sculpt3d.cloth_persistent"),
         snap.ui.brush.cloth_persistent,
         x,
@@ -424,7 +423,7 @@ fn paint_cloth_rows(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32,
     );
     let y = command(
         ctx,
-        ids::SCULPT3D_CLOTH_SET_BASE,
+        crate::ids::SCULPT3D_CLOTH_SET_BASE,
         tr("panel.sculpt3d.cloth_set_base"),
         x,
         w,
@@ -437,7 +436,7 @@ fn paint_cloth_rows(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32,
     // paga. *Um controlo caro escondido é um controlo que ninguém sabe que tem.*
     let y = toggle(
         ctx,
-        ids::SCULPT3D_CLOTH_COLLISIONS,
+        crate::ids::SCULPT3D_CLOTH_COLLISIONS,
         tr("panel.sculpt3d.cloth_collisions"),
         snap.ui.brush.cloth_collisions,
         x,
@@ -454,7 +453,7 @@ fn paint_cloth_rows(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32,
     }
     toggle(
         ctx,
-        ids::SCULPT3D_CLOTH_PIN,
+        crate::ids::SCULPT3D_CLOTH_PIN,
         tr("panel.sculpt3d.cloth_pin"),
         snap.ui.brush.cloth_pin,
         x,

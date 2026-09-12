@@ -51,7 +51,6 @@
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::screens::hero::{
@@ -181,7 +180,7 @@ fn cases() -> Vec<Case> {
         Case {
             what: "Flip H",
             variant: "FlipX",
-            id: ids::INSP_SPRITE_FLIP_X,
+            id: ph2d_panel_inspector::ids::INSP_SPRITE_FLIP_X,
             prep: noop,
             stim: Stimulus::Check(true),
             expect: vec![SpriteFieldEdit::FlipX(true)],
@@ -189,7 +188,7 @@ fn cases() -> Vec<Case> {
         Case {
             what: "Flip V",
             variant: "FlipY",
-            id: ids::INSP_SPRITE_FLIP_Y,
+            id: ph2d_panel_inspector::ids::INSP_SPRITE_FLIP_Y,
             prep: noop,
             stim: Stimulus::Check(true),
             expect: vec![SpriteFieldEdit::FlipY(true)],
@@ -197,7 +196,7 @@ fn cases() -> Vec<Case> {
         Case {
             what: "H Frames",
             variant: "Hframes",
-            id: ids::INSP_SPRITE_HFRAMES,
+            id: ph2d_panel_inspector::ids::INSP_SPRITE_HFRAMES,
             prep: noop,
             stim: Stimulus::Number(4.0),
             expect: vec![SpriteFieldEdit::Hframes(4)],
@@ -205,7 +204,7 @@ fn cases() -> Vec<Case> {
         Case {
             what: "V Frames",
             variant: "Vframes",
-            id: ids::INSP_SPRITE_VFRAMES,
+            id: ph2d_panel_inspector::ids::INSP_SPRITE_VFRAMES,
             prep: noop,
             stim: Stimulus::Number(3.0),
             expect: vec![SpriteFieldEdit::Vframes(3)],
@@ -213,7 +212,7 @@ fn cases() -> Vec<Case> {
         Case {
             what: "Frame",
             variant: "Frame",
-            id: ids::INSP_SPRITE_FRAME,
+            id: ph2d_panel_inspector::ids::INSP_SPRITE_FRAME,
             prep: noop,
             stim: Stimulus::Number(2.0),
             expect: vec![SpriteFieldEdit::Frame(2)],
@@ -222,7 +221,7 @@ fn cases() -> Vec<Case> {
         Case {
             what: "Region enabled (rect ja util)",
             variant: "RegionEnabled",
-            id: ids::INSP_REGION_ENABLED,
+            id: ph2d_panel_inspector::ids::INSP_REGION_ENABLED,
             prep: noop,
             stim: Stimulus::Check(true),
             expect: vec![SpriteFieldEdit::RegionEnabled(true)],
@@ -232,7 +231,7 @@ fn cases() -> Vec<Case> {
             // DESAPARECER (UV de área nula), por isso o braço semeia a fonte inteira.
             what: "Region enabled (rect zerado -> semeia a fonte)",
             variant: "RegionRect",
-            id: ids::INSP_REGION_ENABLED,
+            id: ph2d_panel_inspector::ids::INSP_REGION_ENABLED,
             prep: |sp| sp.region_rect = [0.0; 4],
             stim: Stimulus::Check(true),
             expect: vec![
@@ -243,7 +242,7 @@ fn cases() -> Vec<Case> {
         Case {
             what: "Region filter clip",
             variant: "RegionFilterClip",
-            id: ids::INSP_REGION_FILTER_CLIP,
+            id: ph2d_panel_inspector::ids::INSP_REGION_FILTER_CLIP,
             prep: noop,
             stim: Stimulus::Check(false),
             expect: vec![SpriteFieldEdit::RegionFilterClip(false)],
@@ -251,7 +250,7 @@ fn cases() -> Vec<Case> {
         Case {
             what: "Region X",
             variant: "RegionX",
-            id: ids::INSP_REGION_X,
+            id: ph2d_panel_inspector::ids::INSP_REGION_X,
             prep: noop,
             stim: Stimulus::Number(11.0),
             expect: vec![SpriteFieldEdit::RegionX(11.0)],
@@ -259,7 +258,7 @@ fn cases() -> Vec<Case> {
         Case {
             what: "Region Y",
             variant: "RegionY",
-            id: ids::INSP_REGION_Y,
+            id: ph2d_panel_inspector::ids::INSP_REGION_Y,
             prep: noop,
             stim: Stimulus::Number(22.0),
             expect: vec![SpriteFieldEdit::RegionY(22.0)],
@@ -267,7 +266,7 @@ fn cases() -> Vec<Case> {
         Case {
             what: "Region W",
             variant: "RegionW",
-            id: ids::INSP_REGION_W,
+            id: ph2d_panel_inspector::ids::INSP_REGION_W,
             prep: noop,
             stim: Stimulus::Number(33.0),
             expect: vec![SpriteFieldEdit::RegionW(33.0)],
@@ -275,7 +274,7 @@ fn cases() -> Vec<Case> {
         Case {
             what: "Region H",
             variant: "RegionH",
-            id: ids::INSP_REGION_H,
+            id: ph2d_panel_inspector::ids::INSP_REGION_H,
             prep: noop,
             stim: Stimulus::Number(44.0),
             expect: vec![SpriteFieldEdit::RegionH(44.0)],
@@ -284,7 +283,7 @@ fn cases() -> Vec<Case> {
         Case {
             what: "Centered",
             variant: "Centered",
-            id: ids::INSP_SPRITE_CENTERED,
+            id: ph2d_panel_inspector::ids::INSP_SPRITE_CENTERED,
             prep: noop,
             stim: Stimulus::Check(false),
             expect: vec![SpriteFieldEdit::Centered(false)],
@@ -292,7 +291,7 @@ fn cases() -> Vec<Case> {
         Case {
             what: "Offset X",
             variant: "OffsetX",
-            id: ids::INSP_SPRITE_OFFSET_X,
+            id: ph2d_panel_inspector::ids::INSP_SPRITE_OFFSET_X,
             prep: noop,
             stim: Stimulus::Number(7.5),
             expect: vec![SpriteFieldEdit::OffsetX(7.5)],
@@ -300,7 +299,7 @@ fn cases() -> Vec<Case> {
         Case {
             what: "Offset Y",
             variant: "OffsetY",
-            id: ids::INSP_SPRITE_OFFSET_Y,
+            id: ph2d_panel_inspector::ids::INSP_SPRITE_OFFSET_Y,
             prep: noop,
             stim: Stimulus::Number(-3.25),
             expect: vec![SpriteFieldEdit::OffsetY(-3.25)],
@@ -309,7 +308,7 @@ fn cases() -> Vec<Case> {
         Case {
             what: "Tint Fill (silhueta)",
             variant: "TintFill",
-            id: ids::INSP_SPRITE_TINT_FILL,
+            id: ph2d_panel_inspector::ids::INSP_SPRITE_TINT_FILL,
             prep: noop,
             stim: Stimulus::Check(true),
             expect: vec![SpriteFieldEdit::TintFill(true)],
@@ -317,7 +316,7 @@ fn cases() -> Vec<Case> {
         Case {
             what: "Opacidade",
             variant: "Opacity",
-            id: ids::INSP_SPRITE_OPACITY,
+            id: ph2d_panel_inspector::ids::INSP_SPRITE_OPACITY,
             prep: noop,
             stim: Stimulus::Slider(0.25),
             expect: vec![SpriteFieldEdit::Opacity(0.25)],
@@ -325,7 +324,7 @@ fn cases() -> Vec<Case> {
         Case {
             what: "Tint (swatch -> picker -> sync)",
             variant: "Tint",
-            id: ids::INSP_SPRITE_TINT_SWATCH,
+            id: ph2d_panel_inspector::ids::INSP_SPRITE_TINT_SWATCH,
             prep: noop,
             stim: Stimulus::Picked(PICKED),
             expect: vec![SpriteFieldEdit::Tint(u8n(PICKED))],
@@ -333,7 +332,7 @@ fn cases() -> Vec<Case> {
         Case {
             what: "Self Tint (swatch -> picker -> sync)",
             variant: "SelfTint",
-            id: ids::INSP_SPRITE_SELF_TINT_SWATCH,
+            id: ph2d_panel_inspector::ids::INSP_SPRITE_SELF_TINT_SWATCH,
             prep: noop,
             stim: Stimulus::Picked(PICKED),
             expect: vec![SpriteFieldEdit::SelfTint(u8n(PICKED))],
@@ -343,7 +342,7 @@ fn cases() -> Vec<Case> {
             // perdesse o índice e mandasse sempre `0` ficaria verde contra o canto TL.
             what: "Canto TR (picker -> sync)",
             variant: "PerCornerTintAt",
-            id: ids::INSP_SPRITE_CORNER_TR,
+            id: ph2d_panel_inspector::ids::INSP_SPRITE_CORNER_TR,
             prep: noop,
             stim: Stimulus::Picked(PICKED),
             expect: vec![SpriteFieldEdit::PerCornerTintAt(1, u8n(PICKED))],
@@ -351,7 +350,7 @@ fn cases() -> Vec<Case> {
         Case {
             what: "Equalizar cantos",
             variant: "EqualizeCorners",
-            id: ids::INSP_SPRITE_CORNER_EQUALIZE,
+            id: ph2d_panel_inspector::ids::INSP_SPRITE_CORNER_EQUALIZE,
             prep: noop,
             stim: Stimulus::Click,
             expect: vec![SpriteFieldEdit::EqualizeCorners],
@@ -571,10 +570,10 @@ fn the_emissive_slider_speaks_intensity_not_slider_travel() {
     host.paint::<InspectorPanel>(&mut state, VIEWPORT);
     let _ = host.drained_actions();
 
-    host.set_slider_value(ids::INSP_SPRITE_EMISSIVE, 0.25);
+    host.set_slider_value(ph2d_panel_inspector::ids::INSP_SPRITE_EMISSIVE, 0.25);
     host.apply_panel_event::<InspectorPanel>(
         &mut state,
-        WidgetEvent::ValueChanged(ids::INSP_SPRITE_EMISSIVE),
+        WidgetEvent::ValueChanged(ph2d_panel_inspector::ids::INSP_SPRITE_EMISSIVE),
     );
 
     let got = host
@@ -612,10 +611,10 @@ fn zeroing_emissive_is_an_edit_not_a_no_op() {
     host.paint::<InspectorPanel>(&mut state, VIEWPORT);
     let _ = host.drained_actions();
 
-    host.set_slider_value(ids::INSP_SPRITE_EMISSIVE, 0.0);
+    host.set_slider_value(ph2d_panel_inspector::ids::INSP_SPRITE_EMISSIVE, 0.0);
     host.apply_panel_event::<InspectorPanel>(
         &mut state,
-        WidgetEvent::ValueChanged(ids::INSP_SPRITE_EMISSIVE),
+        WidgetEvent::ValueChanged(ph2d_panel_inspector::ids::INSP_SPRITE_EMISSIVE),
     );
 
     let got = host.drained_actions().into_iter().find_map(|a| match a {

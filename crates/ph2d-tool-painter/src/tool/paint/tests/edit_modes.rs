@@ -286,15 +286,15 @@ fn inpaint_param_sliders_route_into_the_heal() {
     assert_eq!(t.paint.inpaint_search_norm, 0.2);
     // Each slider's `SetValue` lands on the matching norm (clamped `0..1`).
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_INPAINT_PATCH_SLIDER,
+        crate::ids::PAINTER_INPAINT_PATCH_SLIDER,
         1.0,
     ));
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_INPAINT_QUALITY_SLIDER,
+        crate::ids::PAINTER_INPAINT_QUALITY_SLIDER,
         0.75,
     ));
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_INPAINT_SEARCH_SLIDER,
+        crate::ids::PAINTER_INPAINT_SEARCH_SLIDER,
         0.5,
     ));
     assert_eq!(t.paint.inpaint_patch_norm, 1.0);
@@ -545,11 +545,6 @@ fn fill_shrinking_repaints_the_vacated_overflow() {
 
 #[test]
 fn composite_brush_runs_an_isolated_layer_and_reorders() {
-    // Composite is a Brush-tool upgrade wired over the frozen PanelEvent channel. Prove: (1) the enable
-    // checkbox toggles it, (2) a layer isolated by Strength actually runs inside the stack (Blur softens
-    // a hard edge; the Brush/Smear layers are zeroed so no colour is painted), (3) the reorder buttons
-    // move the tool between the fixed positions.
-    use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::{PanelEvent, Tool};
     let size = 48u32;
     let mut t = PainterTool::default();
@@ -571,19 +566,21 @@ fn composite_brush_runs_an_isolated_layer_and_reorders() {
         ..Default::default()
     };
     // Enable the Composite Brush.
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_COMPOSITE_ENABLE));
+    t.handle_panel_event(PanelEvent::Click(
+        crate::ids::PAINTER_BRUSH_COMPOSITE_ENABLE,
+    ));
     assert!(t.composite_enabled(), "checkbox enabled composite");
     // Isolate the Blur layer (default positions: 0 Brush · 1 Smear · 2 Blur) by zeroing Brush + Smear.
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_BRUSH_COMPOSITE_STRENGTH[0],
+        crate::ids::PAINTER_BRUSH_COMPOSITE_STRENGTH[0],
         0.0,
     ));
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_BRUSH_COMPOSITE_STRENGTH[1],
+        crate::ids::PAINTER_BRUSH_COMPOSITE_STRENGTH[1],
         0.0,
     ));
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_BRUSH_COMPOSITE_STRENGTH[2],
+        crate::ids::PAINTER_BRUSH_COMPOSITE_STRENGTH[2],
         1.0,
     ));
     let boundary = size / 2; // x = 24, first white column
@@ -602,8 +599,8 @@ fn composite_brush_runs_an_isolated_layer_and_reorders() {
         "grey (no colour) — the zeroed Brush layer painted nothing: {seam:?}"
     );
     // Reorder: move the Blur layer (position 2) up to position 0.
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_COMPOSITE_UP[2]));
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_COMPOSITE_UP[1]));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_BRUSH_COMPOSITE_UP[2]));
+    t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_BRUSH_COMPOSITE_UP[1]));
     assert_eq!(
         t.paint.composite[0].op,
         crate::tool::paint::CompositeOp::Blur,
@@ -613,11 +610,6 @@ fn composite_brush_runs_an_isolated_layer_and_reorders() {
 
 #[test]
 fn composite_runs_layers_under_the_interactive_preview_methods() {
-    // The interactive-preview methods (Drag Dot / Anchored / Line) restore + re-stamp each frame; they
-    // must run the WHOLE composite stack, not just the Brush layer. Prove it with a Drag Dot + a
-    // Blur-only composite: a single click must soften the hard edge under the dab (the Blur layer ran
-    // through the preview path), with no colour painted (Brush + Smear layers zeroed).
-    use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::{PanelEvent, Tool};
     let size = 48u32;
     let mut t = PainterTool::default();
@@ -639,18 +631,20 @@ fn composite_runs_layers_under_the_interactive_preview_methods() {
         space_attenuation: false,
         ..Default::default()
     };
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_COMPOSITE_ENABLE));
+    t.handle_panel_event(PanelEvent::Click(
+        crate::ids::PAINTER_BRUSH_COMPOSITE_ENABLE,
+    ));
     // Blur-only: Brush(0) + Smear(1) off, Blur(2) on.
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_BRUSH_COMPOSITE_STRENGTH[0],
+        crate::ids::PAINTER_BRUSH_COMPOSITE_STRENGTH[0],
         0.0,
     ));
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_BRUSH_COMPOSITE_STRENGTH[1],
+        crate::ids::PAINTER_BRUSH_COMPOSITE_STRENGTH[1],
         0.0,
     ));
     t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_BRUSH_COMPOSITE_STRENGTH[2],
+        crate::ids::PAINTER_BRUSH_COMPOSITE_STRENGTH[2],
         1.0,
     ));
     let boundary = size / 2; // x = 24
@@ -706,7 +700,9 @@ fn clone_mode_copies_from_the_sampled_source() {
     assert!(t.is_clone_mode());
     let mid = (size / 2) as f32;
     // Arm the pick, then click a RED source point (x=8). The click samples the source, not paints.
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_CLONE_SET_SOURCE));
+    t.handle_panel_event(PanelEvent::Click(
+        crate::ids::PAINTER_BRUSH_CLONE_SET_SOURCE,
+    ));
     assert!(t.clone_sample_armed());
     t.on_canvas_pointer(cp([8.0, mid], PointerPhase::Down));
     t.on_canvas_pointer(cp([8.0, mid], PointerPhase::Up));

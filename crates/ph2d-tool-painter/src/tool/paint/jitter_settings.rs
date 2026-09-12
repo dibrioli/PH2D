@@ -15,160 +15,160 @@ impl PainterTool {
     /// called from `handle_panel_event` before the main match. These ids are `PAINTER_BRUSH_COLOR_*` /
     /// `PAINTER_BRUSH_JITTER_*` / `PAINTER_BRUSH_TILING_*`, which the texture-layer router does not claim.
     pub(crate) fn route_brush_jitter_event(&mut self, event: &PanelEvent) -> bool {
-        use ph2d_editor_core::ids as core_ids;
         match event {
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_BRUSH_COLOR_JITTER_ENABLE => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_BRUSH_COLOR_JITTER_ENABLE => {
                 self.toggle_brush_color_jitter_enabled();
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_BRUSH_TILING_X => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_BRUSH_TILING_X => {
                 self.toggle_brush_tiling(0);
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_BRUSH_TILING_Y => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_BRUSH_TILING_Y => {
                 self.toggle_brush_tiling(1);
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_BRUSH_REPEAT_IMAGE => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_BRUSH_REPEAT_IMAGE => {
                 self.toggle_repeat_image();
                 true
             }
             // Per-section reset icon buttons (Inspector-Transform pattern) → restore that section's
             // brush fields to defaults.
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_BRUSH_RANDOMIZE_RESET => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_BRUSH_RANDOMIZE_RESET => {
                 self.reset_brush_randomize();
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_BRUSH_TEXTURE_RESET => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_BRUSH_TEXTURE_RESET => {
                 self.reset_brush_texture();
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_SHAPE_RESET => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_SHAPE_RESET => {
                 self.reset_brush_shape();
                 true
             }
             // ── Shape **Follow** dropdown (Off / Rake / Flow — how the silhouette relates to the stroke).
             //    A random per-dab spin is the Stroke Jitter Rotate (whole stamp), not a per-slot toggle
             //    (Enio 2026-07-19). ─
-            PanelEvent::SelectOption(id, value) if *id == core_ids::PAINTER_SHAPE_FOLLOW => {
+            PanelEvent::SelectOption(id, value) if *id == crate::ids::PAINTER_SHAPE_FOLLOW => {
                 if let Ok(m) = value.parse::<u8>() {
                     self.set_brush_shape_follow(m);
                 }
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_BRUSH_COLOR_RAMP_RESET => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_BRUSH_COLOR_RAMP_RESET => {
                 self.reset_brush_color_ramp();
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_BRUSH_STROKE_RESET => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_BRUSH_STROKE_RESET => {
                 self.reset_brush_stroke();
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_BRUSH_TILING_RESET => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_BRUSH_TILING_RESET => {
                 self.reset_brush_tiling();
                 true
             }
             // ── Symmetry section: master / circular toggles, the X/Y/Custom axis segments, the two
             //    canvas pick-mode buttons, and the section reset. Plain paint state (no undo). ─
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_BRUSH_SYMMETRY_USE => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_BRUSH_SYMMETRY_USE => {
                 self.toggle_symmetry_enabled();
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_BRUSH_SYMMETRY_CIRCULAR => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_BRUSH_SYMMETRY_CIRCULAR => {
                 self.toggle_symmetry_circular();
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_BRUSH_SYMMETRY_AXIS_X => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_BRUSH_SYMMETRY_AXIS_X => {
                 self.set_symmetry_axis(MirrorAxis::X);
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_BRUSH_SYMMETRY_AXIS_Y => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_BRUSH_SYMMETRY_AXIS_Y => {
                 self.set_symmetry_axis(MirrorAxis::Y);
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_BRUSH_SYMMETRY_AXIS_CUSTOM => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_BRUSH_SYMMETRY_AXIS_CUSTOM => {
                 self.set_symmetry_axis(MirrorAxis::Custom);
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_BRUSH_SYMMETRY_DRAW_LINE => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_BRUSH_SYMMETRY_DRAW_LINE => {
                 self.begin_symmetry_pick_line();
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_BRUSH_SYMMETRY_PICK_CENTER => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_BRUSH_SYMMETRY_PICK_CENTER => {
                 self.begin_symmetry_pick_center();
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_BRUSH_SYMMETRY_RESET => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_BRUSH_SYMMETRY_RESET => {
                 self.reset_symmetry();
                 true
             }
             PanelEvent::SetValue(id, v) => {
                 let v = *v as f32;
                 match *id {
-                    x if x == core_ids::PAINTER_BRUSH_COLOR_JITTER_HUE => {
+                    x if x == crate::ids::PAINTER_BRUSH_COLOR_JITTER_HUE => {
                         self.set_brush_color_jitter(0, v);
                         true
                     }
-                    x if x == core_ids::PAINTER_BRUSH_COLOR_JITTER_SAT => {
+                    x if x == crate::ids::PAINTER_BRUSH_COLOR_JITTER_SAT => {
                         self.set_brush_color_jitter(1, v);
                         true
                     }
-                    x if x == core_ids::PAINTER_BRUSH_COLOR_JITTER_VAL => {
+                    x if x == crate::ids::PAINTER_BRUSH_COLOR_JITTER_VAL => {
                         self.set_brush_color_jitter(2, v);
                         true
                     }
-                    x if x == core_ids::PAINTER_BRUSH_JITTER_SCALE => {
+                    x if x == crate::ids::PAINTER_BRUSH_JITTER_SCALE => {
                         self.set_brush_jitter_scale(v);
                         true
                     }
-                    x if x == core_ids::PAINTER_BRUSH_JITTER_ROTATE => {
+                    x if x == crate::ids::PAINTER_BRUSH_JITTER_ROTATE => {
                         self.set_brush_jitter_rotate(v);
                         true
                     }
-                    x if x == core_ids::PAINTER_BRUSH_JITTER_SPACING => {
+                    x if x == crate::ids::PAINTER_BRUSH_JITTER_SPACING => {
                         self.set_brush_jitter_spacing(v);
                         true
                     }
                     // Grain Depth + Shape geometry sliders (the Shape/Grain sections).
-                    x if x == core_ids::PAINTER_BRUSH_GRAIN_DEPTH => {
+                    x if x == crate::ids::PAINTER_BRUSH_GRAIN_DEPTH => {
                         self.set_brush_grain_depth(v);
                         true
                     }
-                    x if x == core_ids::PAINTER_SHAPE_ANGLE => {
+                    x if x == crate::ids::PAINTER_SHAPE_ANGLE => {
                         self.set_brush_shape_angle(v);
                         true
                     }
-                    x if x == core_ids::PAINTER_SHAPE_OFFSET_X => {
+                    x if x == crate::ids::PAINTER_SHAPE_OFFSET_X => {
                         self.set_brush_shape_offset(0, v);
                         true
                     }
-                    x if x == core_ids::PAINTER_SHAPE_OFFSET_Y => {
+                    x if x == crate::ids::PAINTER_SHAPE_OFFSET_Y => {
                         self.set_brush_shape_offset(1, v);
                         true
                     }
-                    x if x == core_ids::PAINTER_SHAPE_SIZE_X => {
+                    x if x == crate::ids::PAINTER_SHAPE_SIZE_X => {
                         self.set_brush_shape_size(0, v);
                         true
                     }
-                    x if x == core_ids::PAINTER_SHAPE_SIZE_Y => {
+                    x if x == crate::ids::PAINTER_SHAPE_SIZE_Y => {
                         self.set_brush_shape_size(1, v);
                         true
                     }
-                    x if core_ids::PAINTER_SHAPE_PARAMS.contains(&x) => {
-                        if let Some(slot) =
-                            core_ids::PAINTER_SHAPE_PARAMS.iter().position(|&p| p == x)
+                    x if crate::ids::PAINTER_SHAPE_PARAMS.contains(&x) => {
+                        if let Some(slot) = crate::ids::PAINTER_SHAPE_PARAMS
+                            .iter()
+                            .position(|&p| p == x)
                         {
                             self.set_brush_shape_param_norm(slot, v);
                         }
                         true
                     }
                     // Symmetry segment count: the `0..1` track maps onto the integer span 3..12.
-                    x if x == core_ids::PAINTER_BRUSH_SYMMETRY_SEGMENTS => {
+                    x if x == crate::ids::PAINTER_BRUSH_SYMMETRY_SEGMENTS => {
                         self.set_symmetry_segments((3.0 + v * 9.0).round() as u32);
                         true
                     }
                     // Spray Count: a pista `0..1` mapeia no vão inteiro `1..=SPRAY_COUNT_MAX`.
-                    x if x == core_ids::PAINTER_BRUSH_SPRAY_COUNT => {
+                    x if x == crate::ids::PAINTER_BRUSH_SPRAY_COUNT => {
                         self.set_brush_spray_count_norm(v);
                         true
                     }
@@ -176,7 +176,7 @@ impl PainterTool {
                     x => {
                         let mut hit = false;
                         for i in 0..super::shape_layers::MAX_SHAPE_LAYERS as u8 {
-                            if x == core_ids::painter_shape_layer_opacity_id(i) {
+                            if x == crate::ids::painter_shape_layer_opacity_id(i) {
                                 self.set_brush_shape_layer_opacity(i as usize, v / 100.0);
                                 hit = true;
                                 break;
@@ -189,7 +189,7 @@ impl PainterTool {
             // ── Shape **source** picker (None / Image) — sibling of the Shape Click/SetValue routes
             //    above; lives here (not the main `handle_panel_event` match) to keep that file under the
             //    workspace LOC cap. `Image` requests a file pick; anything else clears the image. ─
-            PanelEvent::SelectOption(id, value) if *id == core_ids::PAINTER_SHAPE_KIND => {
+            PanelEvent::SelectOption(id, value) if *id == crate::ids::PAINTER_SHAPE_KIND => {
                 if let Ok(k) = value.parse::<u8>() {
                     self.set_brush_shape_kind(k);
                 }
@@ -205,61 +205,60 @@ impl PainterTool {
     /// split from [`Self::route_brush_jitter_event`] for the per-fn LOC cap. Returns `true` when
     /// consumed. The Shape ramp is the colour twin of the Grain ramp (mode/interp/alpha/swatch/move).
     fn route_brush_ramp_event(&mut self, event: &PanelEvent) -> bool {
-        use ph2d_editor_core::ids as core_ids;
         match event {
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_BRUSH_TEXTURE_RAMP_INVERT => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_BRUSH_TEXTURE_RAMP_INVERT => {
                 self.ramp_invert();
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_BRUSH_TEXTURE_RAMP_BW => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_BRUSH_TEXTURE_RAMP_BW => {
                 self.toggle_texture_ramp_bw();
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_SHAPE_RAMP_ENABLE => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_SHAPE_RAMP_ENABLE => {
                 self.toggle_shape_ramp_enabled();
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_SHAPE_RAMP_ADD => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_SHAPE_RAMP_ADD => {
                 self.shape_ramp_add_stop();
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_SHAPE_RAMP_REMOVE => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_SHAPE_RAMP_REMOVE => {
                 self.shape_ramp_remove_last_stop();
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_SHAPE_RAMP_INVERT => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_SHAPE_RAMP_INVERT => {
                 self.shape_ramp_invert();
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_SHAPE_RAMP_BW => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_SHAPE_RAMP_BW => {
                 self.toggle_shape_ramp_bw();
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_SHAPE_RAMP_RESET => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_SHAPE_RAMP_RESET => {
                 self.reset_shape_ramp();
                 true
             }
-            PanelEvent::SelectOption(id, value) if *id == core_ids::PAINTER_SHAPE_RAMP_MODE => {
+            PanelEvent::SelectOption(id, value) if *id == crate::ids::PAINTER_SHAPE_RAMP_MODE => {
                 if let Ok(m) = value.parse::<u8>() {
                     self.set_shape_ramp_mode(m);
                 }
                 true
             }
-            PanelEvent::SelectOption(id, value) if *id == core_ids::PAINTER_SHAPE_RAMP_INTERP => {
+            PanelEvent::SelectOption(id, value) if *id == crate::ids::PAINTER_SHAPE_RAMP_INTERP => {
                 if let Ok(i) = value.parse::<u8>() {
                     self.set_shape_ramp_interp(i);
                 }
                 true
             }
             PanelEvent::SelectOption(id, value)
-                if *id == core_ids::PAINTER_SHAPE_RAMP_ALPHA_MODE =>
+                if *id == crate::ids::PAINTER_SHAPE_RAMP_ALPHA_MODE =>
             {
                 if let Ok(m) = value.parse::<u8>() {
                     self.set_shape_ramp_alpha_mode(m);
                 }
                 true
             }
-            PanelEvent::SelectOption(id, value) if *id == core_ids::PAINTER_SHAPE_RAMP_SWATCH => {
+            PanelEvent::SelectOption(id, value) if *id == crate::ids::PAINTER_SHAPE_RAMP_SWATCH => {
                 let mut it = value.split(',').filter_map(|p| p.parse::<i32>().ok());
                 if let (Some(sid), Some(r), Some(g), Some(b), Some(a)) =
                     (it.next(), it.next(), it.next(), it.next(), it.next())
@@ -268,7 +267,7 @@ impl PainterTool {
                 }
                 true
             }
-            PanelEvent::SelectOption(id, value) if *id == core_ids::PAINTER_SHAPE_RAMP_EDIT => {
+            PanelEvent::SelectOption(id, value) if *id == crate::ids::PAINTER_SHAPE_RAMP_EDIT => {
                 if let Some((sid, x)) = parse_id_f32(value) {
                     self.shape_ramp_move_stop(sid, x);
                 }
@@ -281,23 +280,22 @@ impl PainterTool {
     /// Per-Layer Color (multi-layer Shape): the mode toggle, a layer's colour checkbox, or a layer's
     /// colour-swatch pick (`"i,r,g,b"`, u8). Factory ids are matched by a bounded scan over the cap.
     fn route_shape_layer_event(&mut self, event: &PanelEvent) -> bool {
-        use ph2d_editor_core::ids as core_ids;
         match event {
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_SHAPE_USE_LAYERS => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_SHAPE_USE_LAYERS => {
                 self.capture_layers_as_brush_shape();
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_SHAPE_PER_LAYER_COLOR => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_SHAPE_PER_LAYER_COLOR => {
                 self.toggle_brush_shape_per_layer_color();
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_SHAPE_ALPHA_FROM_IMAGE => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_SHAPE_ALPHA_FROM_IMAGE => {
                 self.toggle_brush_shape_alpha_from_image();
                 true
             }
             PanelEvent::Click(id) => {
                 for i in 0..super::shape_layers::MAX_SHAPE_LAYERS as u8 {
-                    if *id == core_ids::painter_shape_layer_color_check_id(i) {
+                    if *id == crate::ids::painter_shape_layer_color_check_id(i) {
                         self.toggle_brush_shape_layer_color(i as usize);
                         return true;
                     }
@@ -306,7 +304,7 @@ impl PainterTool {
             }
             PanelEvent::SelectOption(id, value) => {
                 for i in 0..super::shape_layers::MAX_SHAPE_LAYERS as u8 {
-                    if *id == core_ids::painter_shape_layer_color_swatch_id(i) {
+                    if *id == crate::ids::painter_shape_layer_color_swatch_id(i) {
                         let mut it = value.split(',').filter_map(|p| p.parse::<i32>().ok());
                         // `"i,r,g,b"` (the leading `i` is redundant with the matched id).
                         if let (Some(_li), Some(r), Some(g), Some(b)) =
@@ -317,7 +315,7 @@ impl PainterTool {
                         }
                         return true;
                     }
-                    if *id == core_ids::painter_shape_layer_blend_id(i) {
+                    if *id == crate::ids::painter_shape_layer_blend_id(i) {
                         if let Ok(mode) = value.parse::<u8>() {
                             self.set_brush_shape_layer_blend(i as usize, mode);
                         }

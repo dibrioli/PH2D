@@ -16,8 +16,8 @@ use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::EventOutcome;
 use ph2d_editor_core::tool::Tool; // brings `handle_panel_event` into scope
+use ph2d_panel_padding::PaddingPanel;
 use ph2d_panel_padding::state::PaddingPanelState;
-use ph2d_panel_padding::{PaddingPanel, ids};
 use ph2d_tool_padding::PaddingTool;
 use ph2d_tool_padding::params::slider_to_px;
 use ph2d_ui_testkit::MockPanelHost;
@@ -32,10 +32,10 @@ fn top_slider_drag_reaches_tool_spec() {
 
     // A drag writes the slider's stored value, then the dispatch emits
     // ValueChanged. Simulate both.
-    host.set_slider_value(ids::PAD_TOP, 1.0);
+    host.set_slider_value(ph2d_tool_padding::ids::PAD_TOP, 1.0);
     let outcome = host.apply_panel_event::<PaddingPanel>(
         &mut panel_state,
-        WidgetEvent::ValueChanged(ids::PAD_TOP),
+        WidgetEvent::ValueChanged(ph2d_tool_padding::ids::PAD_TOP),
     );
 
     assert_eq!(
@@ -83,8 +83,10 @@ fn apply_button_arms_the_bake() {
     let mut panel_state = PaddingPanelState;
     let mut tool = PaddingTool::default();
 
-    let outcome = host
-        .apply_panel_event::<PaddingPanel>(&mut panel_state, WidgetEvent::Click(ids::PAD_APPLY));
+    let outcome = host.apply_panel_event::<PaddingPanel>(
+        &mut panel_state,
+        WidgetEvent::Click(ph2d_tool_padding::ids::PAD_APPLY),
+    );
     assert_eq!(
         outcome,
         EventOutcome::Consumed,

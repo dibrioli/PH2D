@@ -16,6 +16,7 @@ authors.workspace = true
 # resized canvas shell-side.
 
 [dependencies]
+ph2d-tool-registry = { path = "../ph2d-tool-registry" }
 ph2d-editor-core  = { path = "../ph2d-editor-core" }
 # ADR-0040 TG-C: the padding UI vocabulary (`PaddingUiSnapshot` +
 # `slider_to_px` / `px_to_slider`) moved into the tool crate when the

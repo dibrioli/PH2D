@@ -285,7 +285,7 @@ fn smart_object_row(r: &mut RowCtx, sb: &SmartBoneView, y: f32) -> f32 {
 
 fn smart_action_row(r: &mut RowCtx, sb: &SmartBoneView, y: f32) -> f32 {
     let gap = Spacing::Xs.px();
-    let id = ids::VECTOR_BONE_SMART_CLIP;
+    let id = crate::ids::VECTOR_BONE_SMART_CLIP;
     paint_text(
         r.text_system,
         r.scene,
@@ -412,7 +412,7 @@ const CHAIN_STEP: f64 = 1.0; // LITERAL-PX-OK: passo no domínio do documento, n
 /// aqui: o chrome não cunha um id em tempo de execução, e uma opção sem id nasceria **morta sob o
 /// dedo**. O gate da shell mantém o pool do tamanho do tecto do documento.
 pub(crate) fn paint_action_popover(ctx: &mut PaintCtx, chip: Rect, theme: Theme) {
-    let id = ids::VECTOR_BONE_SMART_CLIP;
+    let id = crate::ids::VECTOR_BONE_SMART_CLIP;
     let nomes = state::bone_actions();
     let n = nomes.len().min(ids::VECTOR_BONE_SMART_CLIP_IDS.len());
     if n == 0 {

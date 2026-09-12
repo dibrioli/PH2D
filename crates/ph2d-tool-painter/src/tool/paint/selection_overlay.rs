@@ -118,98 +118,97 @@ impl PainterTool {
         &mut self,
         event: &ph2d_editor_core::tool::PanelEvent,
     ) -> bool {
-        use ph2d_editor_core::ids as core_ids;
         use ph2d_editor_core::tool::PanelEvent;
         match event {
-            PanelEvent::Click(id) if core_ids::PAINTER_SEL_MODE_IDS.contains(id) => {
-                let idx = core_ids::PAINTER_SEL_MODE_IDS
+            PanelEvent::Click(id) if crate::ids::PAINTER_SEL_MODE_IDS.contains(id) => {
+                let idx = crate::ids::PAINTER_SEL_MODE_IDS
                     .iter()
                     .position(|x| x == id)
                     .unwrap_or(0) as u8;
                 self.set_selection_mode(idx);
                 true
             }
-            PanelEvent::Click(id) if core_ids::PAINTER_SEL_OP_IDS.contains(id) => {
-                let idx = core_ids::PAINTER_SEL_OP_IDS
+            PanelEvent::Click(id) if crate::ids::PAINTER_SEL_OP_IDS.contains(id) => {
+                let idx = crate::ids::PAINTER_SEL_OP_IDS
                     .iter()
                     .position(|x| x == id)
                     .unwrap_or(0) as u8;
                 self.set_selection_bool_op(idx);
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_SEL_EDIT => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_SEL_EDIT => {
                 self.toggle_selection_edit();
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_SEL_CONVERT => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_SEL_CONVERT => {
                 self.selection_convert_to_curve();
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_SEL_SIMPLIFY => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_SEL_SIMPLIFY => {
                 self.selection_simplify_curve();
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_SEL_MERGE => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_SEL_MERGE => {
                 self.selection_merge_curves();
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_SEL_OFFSET_APPLY => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_SEL_OFFSET_APPLY => {
                 self.selection_offset_apply();
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_SEL_OFFSET_APPLY_KEEP => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_SEL_OFFSET_APPLY_KEEP => {
                 self.selection_offset_apply_keep();
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_SEL_INVERT => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_SEL_INVERT => {
                 self.invert_selection();
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_SEL_CLEAR => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_SEL_CLEAR => {
                 self.clear_selection();
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_SEL_LAYER_CONTENTS => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_SEL_LAYER_CONTENTS => {
                 self.selection_from_layer_contents();
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_SEL_FILL => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_SEL_FILL => {
                 self.selection_color_fill();
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_SEL_ALL => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_SEL_ALL => {
                 self.selection_select_all();
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_SEL_CUT => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_SEL_CUT => {
                 self.selection_cut();
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_SEL_COPY => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_SEL_COPY => {
                 self.selection_copy();
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_SEL_PASTE => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_SEL_PASTE => {
                 self.selection_paste();
                 true
             }
-            PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_SEL_FEATHER_SLIDER => {
+            PanelEvent::SetValue(id, v) if *id == crate::ids::PAINTER_SEL_FEATHER_SLIDER => {
                 self.set_selection_feather(*v as f32);
                 true
             }
-            PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_SEL_THRESHOLD_SLIDER => {
+            PanelEvent::SetValue(id, v) if *id == crate::ids::PAINTER_SEL_THRESHOLD_SLIDER => {
                 self.set_selection_threshold(*v as f32);
                 true
             }
-            PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_SEL_STABILIZE_SLIDER => {
+            PanelEvent::SetValue(id, v) if *id == crate::ids::PAINTER_SEL_STABILIZE_SLIDER => {
                 self.set_selection_stabilizer(*v as f32);
                 true
             }
-            PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_SEL_OPACITY_SLIDER => {
+            PanelEvent::SetValue(id, v) if *id == crate::ids::PAINTER_SEL_OPACITY_SLIDER => {
                 self.set_selection_overlay_opacity(*v as f32);
                 true
             }
-            PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_SEL_OFFSET_SLIDER => {
+            PanelEvent::SetValue(id, v) if *id == crate::ids::PAINTER_SEL_OFFSET_SLIDER => {
                 self.set_selection_offset(*v as f32);
                 true
             }

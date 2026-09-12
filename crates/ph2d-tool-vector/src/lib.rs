@@ -22,14 +22,15 @@
 //! path → the panel's Width slider + Stroke / Fill colour swatches (OKLCH
 //! picker) restyle new (and the selected) paths.
 
-/// O catálogo de apresentação do **CONECTOR** (Route / Jetty / Spread) + a derivação
-/// AUTOMÁTICA do jetty e do spread — a mesma função que o cozimento usa e que o painel
-/// exibe (semente = amostra; ver o doc do módulo).
 pub mod connector;
 /// Os presets de dispositivo da **MOLDURA** (plano UI/UX W0): uma tabela, dois leitores — o
 /// painel pinta por ela, a shell resolve por ela.
 pub mod frames;
 pub mod icon;
+/// O catálogo de apresentação do **CONECTOR** (Route / Jetty / Spread) + a derivação
+/// AUTOMÁTICA do jetty e do spread — a mesma função que o cozimento usa e que o painel
+/// exibe (semente = amostra; ver o doc do módulo).
+pub mod ids;
 pub mod params;
 /// A projeção por-frame do estilo — irmão de [`params`] pelo teto de 700 LOC.
 mod params_snapshot;

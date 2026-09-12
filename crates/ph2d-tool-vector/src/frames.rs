@@ -23,7 +23,6 @@
 //! dizê-lo — e não quatro literais espalhados.
 
 use ph2d_a11y::NodeId;
-use ph2d_editor_core::ids;
 
 /// O lado maior de qualquer preset, em unidades de documento. **Medido contra a câmera**, não
 /// escolhido: `Camera2d` abre em `height_world = 10.0` e não afasta além de
@@ -67,27 +66,27 @@ impl DevicePreset {
 /// esta lista não é um teto — é o atalho para as quatro proporções que se desenham todo dia.
 pub const DEVICE_PRESETS: &[DevicePreset] = &[
     DevicePreset {
-        id: ids::VECTOR_FRAME_PRESET_PHONE,
+        id: crate::ids::VECTOR_FRAME_PRESET_PHONE,
         label: "Phone",
         // iPhone 14/15/16.
         pts_w: 390.0,
         pts_h: 844.0,
     },
     DevicePreset {
-        id: ids::VECTOR_FRAME_PRESET_TABLET,
+        id: crate::ids::VECTOR_FRAME_PRESET_TABLET,
         label: "Tablet",
         // iPad Pro 12,9" em retrato.
         pts_w: 1024.0,
         pts_h: 1366.0,
     },
     DevicePreset {
-        id: ids::VECTOR_FRAME_PRESET_DESKTOP,
+        id: crate::ids::VECTOR_FRAME_PRESET_DESKTOP,
         label: "Desktop",
         pts_w: 1920.0,
         pts_h: 1080.0,
     },
     DevicePreset {
-        id: ids::VECTOR_FRAME_PRESET_SQUARE,
+        id: crate::ids::VECTOR_FRAME_PRESET_SQUARE,
         label: "Square",
         pts_w: 1080.0,
         pts_h: 1080.0,
@@ -121,7 +120,7 @@ mod tests {
         for p in DEVICE_PRESETS {
             assert_eq!(device_preset(p.id), Some(*p));
         }
-        assert_eq!(device_preset(ids::VECTOR_MODE_FRAME), None);
+        assert_eq!(device_preset(crate::ids::VECTOR_MODE_FRAME), None);
     }
 
     /// **O ASPECTO é exato** — é a propriedade que o preset entrega, e a única que sobrevive à

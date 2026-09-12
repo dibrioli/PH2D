@@ -17,7 +17,7 @@ use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::zones::Rect;
 use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
 use ph2d_panel_vector::state::{FillKind, VectorPanelState};
-use ph2d_panel_vector::{VectorPanel, ids, state};
+use ph2d_panel_vector::{VectorPanel, state};
 use ph2d_ui_testkit::MockPanelHost;
 
 const VIEWPORT: Rect = Rect {
@@ -72,7 +72,10 @@ fn click_reaches_bus(id: ph2d_a11y::NodeId, what: &str) {
 #[test]
 fn the_pattern_chip_is_reachable_and_reaches_the_bus() {
     state::set_current_fill(Some(FillKind::Solid), None);
-    click_reaches_bus(ids::VECTOR_FILL_KIND_PATTERN, "o chip Tile");
+    click_reaches_bus(
+        ph2d_tool_vector::ids::VECTOR_FILL_KIND_PATTERN,
+        "o chip Tile",
+    );
 }
 
 /// ⚠️ **A fileira inteira continua viva** — acrescentar o 5.º chip encolheu TODOS os outros (de
@@ -82,10 +85,22 @@ fn the_pattern_chip_is_reachable_and_reaches_the_bus() {
 fn adding_the_fifth_chip_left_the_other_four_alive() {
     state::set_current_fill(Some(FillKind::Solid), None);
     for (id, what) in [
-        (ids::VECTOR_FILL_KIND_SOLID, "o chip Solid"),
-        (ids::VECTOR_FILL_KIND_LINEAR, "o chip Linear"),
-        (ids::VECTOR_FILL_KIND_RADIAL, "o chip Radial"),
-        (ids::VECTOR_FILL_KIND_MULTI, "o chip Multi"),
+        (
+            ph2d_tool_vector::ids::VECTOR_FILL_KIND_SOLID,
+            "o chip Solid",
+        ),
+        (
+            ph2d_tool_vector::ids::VECTOR_FILL_KIND_LINEAR,
+            "o chip Linear",
+        ),
+        (
+            ph2d_tool_vector::ids::VECTOR_FILL_KIND_RADIAL,
+            "o chip Radial",
+        ),
+        (
+            ph2d_tool_vector::ids::VECTOR_FILL_KIND_MULTI,
+            "o chip Multi",
+        ),
     ] {
         click_reaches_bus(id, what);
     }
@@ -105,11 +120,11 @@ fn the_five_chips_do_not_overlap() {
     let mut st = VectorPanelState;
     let mut rects: Vec<(&str, Rect)> = Vec::new();
     for (id, name) in [
-        (ids::VECTOR_FILL_KIND_SOLID, "Solid"),
-        (ids::VECTOR_FILL_KIND_LINEAR, "Linear"),
-        (ids::VECTOR_FILL_KIND_RADIAL, "Radial"),
-        (ids::VECTOR_FILL_KIND_MULTI, "Multi"),
-        (ids::VECTOR_FILL_KIND_PATTERN, "Tile"),
+        (ph2d_tool_vector::ids::VECTOR_FILL_KIND_SOLID, "Solid"),
+        (ph2d_tool_vector::ids::VECTOR_FILL_KIND_LINEAR, "Linear"),
+        (ph2d_tool_vector::ids::VECTOR_FILL_KIND_RADIAL, "Radial"),
+        (ph2d_tool_vector::ids::VECTOR_FILL_KIND_MULTI, "Multi"),
+        (ph2d_tool_vector::ids::VECTOR_FILL_KIND_PATTERN, "Tile"),
     ] {
         let r = host
             .painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
@@ -139,11 +154,11 @@ fn measure_the_fill_kind_row_layout() {
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let mut st = VectorPanelState;
     for (id, name) in [
-        (ids::VECTOR_FILL_KIND_SOLID, "Solid"),
-        (ids::VECTOR_FILL_KIND_LINEAR, "Linear"),
-        (ids::VECTOR_FILL_KIND_RADIAL, "Radial"),
-        (ids::VECTOR_FILL_KIND_MULTI, "Multi"),
-        (ids::VECTOR_FILL_KIND_PATTERN, "Tile"),
+        (ph2d_tool_vector::ids::VECTOR_FILL_KIND_SOLID, "Solid"),
+        (ph2d_tool_vector::ids::VECTOR_FILL_KIND_LINEAR, "Linear"),
+        (ph2d_tool_vector::ids::VECTOR_FILL_KIND_RADIAL, "Radial"),
+        (ph2d_tool_vector::ids::VECTOR_FILL_KIND_MULTI, "Multi"),
+        (ph2d_tool_vector::ids::VECTOR_FILL_KIND_PATTERN, "Tile"),
     ] {
         let r = host
             .painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)

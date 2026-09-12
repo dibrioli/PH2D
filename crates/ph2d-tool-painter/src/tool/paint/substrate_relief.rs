@@ -353,14 +353,13 @@ impl crate::tool::PainterTool {
         &mut self,
         event: &ph2d_editor_core::tool::PanelEvent,
     ) -> bool {
-        use ph2d_editor_core::ids as core_ids;
         use ph2d_editor_core::tool::PanelEvent;
         match event {
-            PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_SUBSTRATE_RELIEF => {
+            PanelEvent::SetValue(id, v) if *id == crate::ids::PAINTER_SUBSTRATE_RELIEF => {
                 self.set_substrate_depth(*v as f32);
                 true
             }
-            PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_SUBSTRATE_ROUGHNESS => {
+            PanelEvent::SetValue(id, v) if *id == crate::ids::PAINTER_SUBSTRATE_ROUGHNESS => {
                 self.set_substrate_roughness(*v as f32);
                 true
             }

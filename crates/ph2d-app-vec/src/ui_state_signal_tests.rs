@@ -17,24 +17,24 @@ fn every_table_id_addresses_its_own_gesture() {
     use crate::ui_state_edit::{SignalEdit, signal_edit_for_id, signal_name_row};
 
     assert_eq!(
-        signal_edit_for_id(ph2d_editor_core::ids::VECTOR_STATE_SIGNAL_ADD),
+        signal_edit_for_id(ph2d_panel_vector::ids::VECTOR_STATE_SIGNAL_ADD),
         Some(SignalEdit::Add)
     );
-    for i in 0..ph2d_editor_core::ids::MAX_SIGNAL_BINDINGS {
+    for i in 0..ph2d_panel_vector::ids::MAX_SIGNAL_BINDINGS {
         assert_eq!(
-            signal_edit_for_id(ph2d_editor_core::ids::vector_state_signal_remove_id(i)),
+            signal_edit_for_id(ph2d_panel_vector::ids::vector_state_signal_remove_id(i)),
             Some(SignalEdit::Remove(i)),
             "a lixeira da linha {i} nao endereca a propria linha"
         );
         for (r, role) in StateRole::ALL.iter().enumerate() {
             assert_eq!(
-                signal_edit_for_id(ph2d_editor_core::ids::vector_state_signal_role_id(i, r)),
+                signal_edit_for_id(ph2d_panel_vector::ids::vector_state_signal_role_id(i, r)),
                 Some(SignalEdit::Role(i, *role)),
                 "o chip ({i}, {r}) nao endereca o proprio papel"
             );
         }
         assert_eq!(
-            signal_name_row(ph2d_editor_core::ids::vector_state_signal_name_id(i)),
+            signal_name_row(ph2d_panel_vector::ids::vector_state_signal_name_id(i)),
             Some(i)
         );
     }
@@ -88,7 +88,7 @@ fn the_three_gestures_write_the_table_and_add_stops_at_the_pool() {
         vec![(host, StateRole::Pressed)]
     );
 
-    while states.bindings(host).len() < ph2d_editor_core::ids::MAX_SIGNAL_BINDINGS {
+    while states.bindings(host).len() < ph2d_panel_vector::ids::MAX_SIGNAL_BINDINGS {
         assert!(apply_signal_edit(
             &sim,
             &scene,
@@ -104,7 +104,7 @@ fn the_three_gestures_write_the_table_and_add_stops_at_the_pool() {
     );
     assert_eq!(
         states.bindings(host).len(),
-        ph2d_editor_core::ids::MAX_SIGNAL_BINDINGS
+        ph2d_panel_vector::ids::MAX_SIGNAL_BINDINGS
     );
 
     apply_signal_edit(&sim, &scene, &map, &mut states, &sel, SignalEdit::Remove(0));

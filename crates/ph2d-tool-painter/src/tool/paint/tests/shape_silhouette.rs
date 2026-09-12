@@ -6,17 +6,11 @@ use super::*;
 
 #[test]
 fn shape_follow_dropdown_selects_off_rake_flow_mutually_exclusively() {
-    // The Follow dropdown (Off/Rake/Flow) drives the two engine flags `shape.rake`/`shape.flow` from a
-    // SINGLE control: exactly one (or neither) is on. Picking Flow must set flow and CLEAR rake; picking
-    // Rake must set rake and CLEAR flow; picking Off clears both. Drives the real panel `SelectOption`,
-    // and reads the engine flags directly (not just the snapshot) so the wiring can't be green while the
-    // engine sees the wrong state.
-    use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::{PanelEvent, Tool};
     let mut t = PainterTool::default();
     let pick = |t: &mut PainterTool, mode: &str| {
         t.handle_panel_event(PanelEvent::SelectOption(
-            core_ids::PAINTER_SHAPE_FOLLOW,
+            crate::ids::PAINTER_SHAPE_FOLLOW,
             mode.to_string(),
         ));
     };
@@ -41,7 +35,6 @@ fn shape_follow_dropdown_selects_off_rake_flow_mutually_exclusively() {
 
 #[test]
 fn shape_source_dropdown_requests_image_and_clears_via_panel_events() {
-    use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::{PanelEvent, Tool};
     use ph2d_painter_brush::TextureKind;
 
@@ -49,7 +42,7 @@ fn shape_source_dropdown_requests_image_and_clears_via_panel_events() {
     // Picking "Image" in the Shape source dropdown requests a file load (the shell polls it); the engine
     // does no I/O, so the silhouette stays the falloff until pixels arrive. Mirrors the Grain Kind flow.
     t.handle_panel_event(PanelEvent::SelectOption(
-        core_ids::PAINTER_SHAPE_KIND,
+        crate::ids::PAINTER_SHAPE_KIND,
         TextureKind::Image.to_u8().to_string(),
     ));
     assert!(
@@ -71,7 +64,7 @@ fn shape_source_dropdown_requests_image_and_clears_via_panel_events() {
 
     // Picking "None" clears the image (→ falloff), the same as the section reset.
     t.handle_panel_event(PanelEvent::SelectOption(
-        core_ids::PAINTER_SHAPE_KIND,
+        crate::ids::PAINTER_SHAPE_KIND,
         TextureKind::None.to_u8().to_string(),
     ));
     assert!(
@@ -81,7 +74,7 @@ fn shape_source_dropdown_requests_image_and_clears_via_panel_events() {
 
     // Picking a PROCEDURAL kind installs that pattern (no pixels) — the panel's "Texture" picker.
     t.handle_panel_event(PanelEvent::SelectOption(
-        core_ids::PAINTER_SHAPE_KIND,
+        crate::ids::PAINTER_SHAPE_KIND,
         TextureKind::Checker.to_u8().to_string(),
     ));
     assert_eq!(
@@ -96,7 +89,10 @@ fn shape_source_dropdown_requests_image_and_clears_via_panel_events() {
 
     // The procedural Shape exposes the kind's per-pattern params (like the Grain): a SetValue on a
     // PAINTER_SHAPE_PARAMS slider tunes only the Shape pattern.
-    t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_SHAPE_PARAMS[0], 0.9));
+    t.handle_panel_event(PanelEvent::SetValue(
+        crate::ids::PAINTER_SHAPE_PARAMS[0],
+        0.9,
+    ));
     assert!(
         (t.brush_settings().shape_params[0] - 0.9).abs() < 1e-6,
         "Shape per-pattern param routed to the Shape slot"
@@ -105,7 +101,6 @@ fn shape_source_dropdown_requests_image_and_clears_via_panel_events() {
 
 #[test]
 fn procedural_shape_is_masked_by_the_falloff_via_panel_events() {
-    use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::{PanelEvent, Tool};
     use ph2d_painter_brush::TextureKind;
 
@@ -118,7 +113,7 @@ fn procedural_shape_is_masked_by_the_falloff_via_panel_events() {
     let mut b = white_canvas(64, 24.0);
     b.paint.brush.falloff = Falloff::Smooth;
     b.handle_panel_event(PanelEvent::SelectOption(
-        core_ids::PAINTER_SHAPE_KIND,
+        crate::ids::PAINTER_SHAPE_KIND,
         TextureKind::Checker.to_u8().to_string(),
     ));
     let _ = b.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down));
@@ -146,7 +141,6 @@ fn procedural_shape_is_masked_by_the_falloff_via_panel_events() {
 
 #[test]
 fn shape_value_ramp_remaps_the_silhouette_via_panel_events() {
-    use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::{PanelEvent, Tool};
     use ph2d_painter_brush::TextureKind;
 
@@ -166,7 +160,7 @@ fn shape_value_ramp_remaps_the_silhouette_via_panel_events() {
     let mut t2 = white_canvas(64, 12.0);
     t2.set_brush_shape_image(vec![255u8; 16], 4, 4);
     t2.set_brush_texture_kind(TextureKind::Noise.to_u8());
-    t2.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_SHAPE_RAMP_ENABLE));
+    t2.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_SHAPE_RAMP_ENABLE));
     t2.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down));
     let ink_identity = ink(&t2);
     assert!(
@@ -179,8 +173,8 @@ fn shape_value_ramp_remaps_the_silhouette_via_panel_events() {
     let mut t3 = white_canvas(64, 12.0);
     t3.set_brush_shape_image(vec![255u8; 16], 4, 4);
     t3.set_brush_texture_kind(TextureKind::Noise.to_u8());
-    t3.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_SHAPE_RAMP_ENABLE));
-    t3.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_SHAPE_RAMP_INVERT));
+    t3.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_SHAPE_RAMP_ENABLE));
+    t3.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_SHAPE_RAMP_INVERT));
     t3.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down));
     assert_eq!(
         px(&t3, 64, 32, 32),
@@ -497,14 +491,13 @@ fn manual_blend_and_opacity_reflect_in_the_snapshot_and_paint() {
 
 #[test]
 fn shape_ramp_swatch_select_option_sets_the_stop_colour() {
-    use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::PanelEvent;
     // The Shape ramp swatch picker forwards `"id,r,g,b,a"` (sRGB bytes) to PAINTER_SHAPE_RAMP_SWATCH;
     // the tool sets THAT stop's colour. Stop id 0 defaults to black → drive it to pure red.
     let mut t = PainterTool::default();
     let id0 = t.shape_color_ramp().stops()[0].id;
     t.handle_panel_event(PanelEvent::SelectOption(
-        core_ids::PAINTER_SHAPE_RAMP_SWATCH,
+        crate::ids::PAINTER_SHAPE_RAMP_SWATCH,
         format!("{id0},255,0,0,255"),
     ));
     let s0 = *t

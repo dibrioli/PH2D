@@ -23,7 +23,6 @@
 
 use ph2d_editor_core::Precision;
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::{EventOutcome, Panel};
 use ph2d_editor_core::screens::hero::{
@@ -99,8 +98,11 @@ fn dispatch(host: &mut MockPanelHost, state: &mut InspectorState, id: ph2d_a11y:
 fn both_precision_buttons_are_painted_and_hit_registered() {
     let (_host, _state, rects) = painted(eight_bit());
     for (label, id) in [
-        ("RGBA8", ids::INSP_RENDER_FORMAT_RGBA8),
-        ("RGBA16", ids::INSP_RENDER_FORMAT_RGBA16),
+        ("RGBA8", ph2d_panel_inspector::ids::INSP_RENDER_FORMAT_RGBA8),
+        (
+            "RGBA16",
+            ph2d_panel_inspector::ids::INSP_RENDER_FORMAT_RGBA16,
+        ),
     ] {
         let Some((_, r)) = rects.iter().find(|(rid, _)| *rid == id) else {
             panic!(
@@ -124,8 +126,11 @@ fn both_precision_buttons_are_painted_and_hit_registered() {
 fn both_precision_buttons_are_registered_and_therefore_focusable() {
     let (host, _state, _) = painted(eight_bit());
     for (label, id) in [
-        ("RGBA8", ids::INSP_RENDER_FORMAT_RGBA8),
-        ("RGBA16", ids::INSP_RENDER_FORMAT_RGBA16),
+        ("RGBA8", ph2d_panel_inspector::ids::INSP_RENDER_FORMAT_RGBA8),
+        (
+            "RGBA16",
+            ph2d_panel_inspector::ids::INSP_RENDER_FORMAT_RGBA16,
+        ),
     ] {
         assert!(
             host.store().get(id).is_some(),
@@ -142,7 +147,7 @@ fn clicking_the_other_precision_raises_the_conversion() {
     assert!(dispatch(
         &mut host,
         &mut state,
-        ids::INSP_RENDER_FORMAT_RGBA16
+        ph2d_panel_inspector::ids::INSP_RENDER_FORMAT_RGBA16
     ));
     assert_eq!(
         host.drained_actions(),
@@ -162,7 +167,11 @@ fn clicking_the_other_precision_raises_the_conversion() {
 fn clicking_the_current_precision_changes_nothing() {
     let (mut host, mut state, _) = painted(eight_bit());
     assert!(
-        dispatch(&mut host, &mut state, ids::INSP_RENDER_FORMAT_RGBA8),
+        dispatch(
+            &mut host,
+            &mut state,
+            ph2d_panel_inspector::ids::INSP_RENDER_FORMAT_RGBA8
+        ),
         "o clique e' consumido (o botao existe), mesmo nao havendo edicao"
     );
     assert!(
@@ -179,8 +188,8 @@ fn clicking_the_current_precision_changes_nothing() {
 fn a_cooked_texture_offers_no_choice_at_all() {
     let (mut host, mut state, rects) = painted(sprite(InspectorSpriteSource::CookedTexture, None));
     for id in [
-        ids::INSP_RENDER_FORMAT_RGBA8,
-        ids::INSP_RENDER_FORMAT_RGBA16,
+        ph2d_panel_inspector::ids::INSP_RENDER_FORMAT_RGBA8,
+        ph2d_panel_inspector::ids::INSP_RENDER_FORMAT_RGBA16,
     ] {
         assert!(
             !rects.iter().any(|(rid, _)| *rid == id),
@@ -188,7 +197,11 @@ fn a_cooked_texture_offers_no_choice_at_all() {
         );
     }
     // E mesmo que alguém a alcance fora-de-banda, ela não age.
-    dispatch(&mut host, &mut state, ids::INSP_RENDER_FORMAT_RGBA16);
+    dispatch(
+        &mut host,
+        &mut state,
+        ph2d_panel_inspector::ids::INSP_RENDER_FORMAT_RGBA16,
+    );
     assert!(
         host.drained_actions().is_empty(),
         "uma textura cozida levantou uma conversao"
@@ -207,14 +220,22 @@ fn the_lit_button_follows_the_measured_precision() {
         Some(Precision::Rgba16),
     );
     let (mut host, mut state, _) = painted(sixteen.clone());
-    dispatch(&mut host, &mut state, ids::INSP_RENDER_FORMAT_RGBA16);
+    dispatch(
+        &mut host,
+        &mut state,
+        ph2d_panel_inspector::ids::INSP_RENDER_FORMAT_RGBA16,
+    );
     assert!(
         host.drained_actions().is_empty(),
         "com 16 bits medidos, RGBA16 e' o estado ATUAL e nao pode ser uma edicao"
     );
 
     let (mut host, mut state, _) = painted(sixteen);
-    dispatch(&mut host, &mut state, ids::INSP_RENDER_FORMAT_RGBA8);
+    dispatch(
+        &mut host,
+        &mut state,
+        ph2d_panel_inspector::ids::INSP_RENDER_FORMAT_RGBA8,
+    );
     assert_eq!(
         host.drained_actions(),
         vec![EditorAction::InspectorSpritePrecisionChange {

@@ -8,7 +8,6 @@
 //! the same table `paint` walks is how that stops being a thing anyone can
 //! forget.
 
-use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState, TextInputState};
 
@@ -91,10 +90,10 @@ pub fn populate(store: &mut WidgetStore) {
     // quarto nasce fora da regra e o modo de falha é *pintado e morto*, que
     // nenhum gate de compilação vê.
     for group in [
-        &ids::PHYSICS_INTERACT_TOOL_OPT[..],
-        &ids::PHYSICS_HOLD_MODE_OPT[..],
-        &ids::PHYSICS_IK_ANGLE_OPT[..],
-        &ids::PHYSICS_JOINT_TOOL_OPT[..],
+        &crate::ids::PHYSICS_INTERACT_TOOL_OPT[..],
+        &crate::ids::PHYSICS_HOLD_MODE_OPT[..],
+        &crate::ids::PHYSICS_IK_ANGLE_OPT[..],
+        &crate::ids::PHYSICS_JOINT_TOOL_OPT[..],
     ] {
         for &id in group {
             button(store, id);
@@ -113,7 +112,7 @@ pub fn populate(store: &mut WidgetStore) {
     // The 36 matrix cells. Registered in a loop, which is exactly why the seam
     // test clicks every one of them: `architecture_panel_wiring_parity` cannot
     // see loop registrations, so nothing else would notice these going dead.
-    for &cell in ids::PHYSICS_LAYER_CELL.iter() {
+    for &cell in crate::ids::PHYSICS_LAYER_CELL.iter() {
         button(store, cell);
     }
 
@@ -121,19 +120,19 @@ pub fn populate(store: &mut WidgetStore) {
     // like a checkbox and is not one: a `Checkbox` emits `Toggled`, which this
     // panel's `event.rs` does not forward, so it would be registered and dead
     // (the painter-layers sculpt segments carry the same warning).
-    button(store, ids::PHYSICS_SHOW_COLLIDERS);
+    button(store, crate::ids::PHYSICS_SHOW_COLLIDERS);
     // ⭐ **O interruptor de adormecer** (2026-08-30) — registado como Button, e não pelo laço das
     // `rows`, porque ele deixou de ser um slider: a `rapier2d` 0.35 lê do
     // `sleep_angular_threshold` apenas o SINAL. Mesma família do «Show Colliders» acima, e ⛔ pela
     // mesma razão não é um `Checkbox`: este painel não encaminha `Toggled`.
-    button(store, ids::PHYSICS_SLEEP_SPIN);
+    button(store, crate::ids::PHYSICS_SLEEP_SPIN);
     // Os dois verbos de FITA (W25). Registrados sempre, pintados só quando há o
     // que descartar ou o que devolver: registrar é barato e a alternativa —
     // registrar condicionalmente — faria o botão nascer morto sob o mouse no
     // primeiro frame em que ele aparece, que é o defeito que este `populate`
     // existe para não ter.
-    button(store, ids::PHYSICS_CLEAR_RUN);
-    button(store, ids::PHYSICS_RESTORE_RUN);
-    button(store, ids::PHYSICS_RESET_DEFAULTS);
-    button(store, ids::PHYSICS_CLOSE);
+    button(store, crate::ids::PHYSICS_CLEAR_RUN);
+    button(store, crate::ids::PHYSICS_RESTORE_RUN);
+    button(store, crate::ids::PHYSICS_RESET_DEFAULTS);
+    button(store, crate::ids::PHYSICS_CLOSE);
 }

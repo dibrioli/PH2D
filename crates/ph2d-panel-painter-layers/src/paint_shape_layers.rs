@@ -11,7 +11,6 @@ use crate::paint_brush_top::paint_checkbox_row;
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::IconId;
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_icon, paint_text, resolve};
 use ph2d_editor_core::panel::PaintCtx;
@@ -44,7 +43,7 @@ pub(crate) fn paint_use_layers_button(
     content_w: f32,
     y: f32,
 ) -> f32 {
-    let id = core_ids::PAINTER_SHAPE_USE_LAYERS;
+    let id = ph2d_tool_painter::ids::PAINTER_SHAPE_USE_LAYERS;
     let btn = Button::new(id, "Use Document Layers");
     let rect = Rect::new(x, y, content_w, ROW_H_PX);
     paint_button(&btn, rect, ctx.scene, ctx.text_system, theme);
@@ -85,7 +84,7 @@ pub(crate) fn paint_shape_per_layer_color(
             x,
             content_w,
             y,
-            core_ids::PAINTER_SHAPE_ALPHA_FROM_IMAGE,
+            ph2d_tool_painter::ids::PAINTER_SHAPE_ALPHA_FROM_IMAGE,
             "Alpha From Image",
             brush.shape_alpha_from_image,
         );
@@ -97,7 +96,7 @@ pub(crate) fn paint_shape_per_layer_color(
         x,
         content_w,
         y,
-        core_ids::PAINTER_SHAPE_PER_LAYER_COLOR,
+        ph2d_tool_painter::ids::PAINTER_SHAPE_PER_LAYER_COLOR,
         if single {
             "Use Texture Colors"
         } else {
@@ -115,7 +114,7 @@ pub(crate) fn paint_shape_per_layer_color(
     let gap = Spacing::Xs.px();
     for i in 0..n {
         let iu = i as u8;
-        let check_id = core_ids::painter_shape_layer_color_check_id(iu);
+        let check_id = ph2d_tool_painter::ids::painter_shape_layer_color_check_id(iu);
         // Texture Color is the DEFAULT (`color_on` off ⇒ the layer paints its own captured colours); the
         // "Layer N Color" checkbox turns on a CUSTOM colour, which reveals the colour box.
         let color_on = brush.shape_layer_color_on[i];
@@ -140,7 +139,7 @@ pub(crate) fn paint_shape_per_layer_color(
         register_button(ctx.host.store_mut(), check_id);
         ctx.host.hit_index_mut().register(check_id, cb_rect);
         if let Some(sr) = box_rect {
-            let sw_id = core_ids::painter_shape_layer_color_swatch_id(iu);
+            let sw_id = ph2d_tool_painter::ids::painter_shape_layer_color_swatch_id(iu);
             let c = brush.shape_layer_color[i];
             let open = ctx.host.store().picker_target() == Some(sw_id);
             paint_color_swatch(
@@ -195,7 +194,7 @@ pub(crate) fn paint_shape_per_layer_color(
             ctx,
             theme,
             op_rect,
-            core_ids::painter_shape_layer_opacity_id(iu),
+            ph2d_tool_painter::ids::painter_shape_layer_opacity_id(iu),
             brush.shape_layer_opacity[i] * OPACITY_PCT,
             0.0,
             OPACITY_PCT,
@@ -212,7 +211,7 @@ fn shape_blend_options(i: u8) -> Vec<DropdownOption<u8>> {
     (0..MAX_BLEND_MODES)
         .map(|m| {
             DropdownOption::new(
-                core_ids::painter_shape_layer_blend_option_id(i, m),
+                ph2d_tool_painter::ids::painter_shape_layer_blend_option_id(i, m),
                 m,
                 BlendMode::from_u8(m).name(),
             )
@@ -229,7 +228,7 @@ fn paint_shape_blend_chip(
     cur_mode: u8,
     rect: Rect,
 ) {
-    let id = core_ids::painter_shape_layer_blend_id(i);
+    let id = ph2d_tool_painter::ids::painter_shape_layer_blend_id(i);
     let store = ctx.host.store_mut();
     store.register_if_absent(
         id,
@@ -337,7 +336,7 @@ pub(crate) fn paint_shape_blend_popover(
     crate::paint_brush::paint_dropdown_popover(
         ctx,
         theme,
-        core_ids::painter_shape_layer_blend_id(i),
+        ph2d_tool_painter::ids::painter_shape_layer_blend_id(i),
         shape_blend_options(i),
         pop_chip,
         cur_mode,

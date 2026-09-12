@@ -23,6 +23,7 @@
 //!
 //! [ADR-0161]: ../../../docs/architecture/decisions/0161-3d-modeling-is-an-implicit-field-tree-and-what-the-artist-sees-is-the-traced-field.md
 
+pub mod ids;
 pub mod state;
 
 mod area_bar;

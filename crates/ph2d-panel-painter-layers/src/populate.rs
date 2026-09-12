@@ -22,29 +22,29 @@ pub fn populate(store: &mut WidgetStore) {
 /// Header / toolbar / modifier chrome buttons + the "+ Adj" dropdown.
 fn register_chrome_buttons(store: &mut WidgetStore) {
     let buttons = [
-        ph2d_editor_core::ids::PAINTER_LAYERS_CLOSE,
+        ph2d_tool_painter::ids::PAINTER_LAYERS_CLOSE,
         // Action toolbar (below the header): New layer / Group / Duplicate /
         // Delete. MUST be registered here or the dispatcher drops the click
         // (paint + hit_index alone is not enough — feedback-panel-populate-register).
-        ph2d_editor_core::ids::PAINTER_LAYERS_ADD,
-        ph2d_editor_core::ids::PAINTER_LAYERS_GROUP,
-        ph2d_editor_core::ids::PAINTER_LAYERS_DUPLICATE,
-        ph2d_editor_core::ids::PAINTER_LAYERS_DELETE,
+        ph2d_tool_painter::ids::PAINTER_LAYERS_ADD,
+        ph2d_tool_painter::ids::PAINTER_LAYERS_GROUP,
+        ph2d_tool_painter::ids::PAINTER_LAYERS_DUPLICATE,
+        ph2d_tool_painter::ids::PAINTER_LAYERS_DELETE,
         // "+ Texture" — creates a Texture layer (plain Button, not a Dropdown).
-        ph2d_editor_core::ids::PAINTER_LAYERS_ADD_TEXTURE,
+        ph2d_tool_painter::ids::PAINTER_LAYERS_ADD_TEXTURE,
         // Modifier toolbar (acts on the active layer): Mask / Clip / Lock / Ref.
-        ph2d_editor_core::ids::PAINTER_LAYERS_MASK,
-        ph2d_editor_core::ids::PAINTER_LAYERS_CLIP,
-        ph2d_editor_core::ids::PAINTER_LAYERS_ALPHA_LOCK,
-        ph2d_editor_core::ids::PAINTER_LAYERS_REFERENCE,
+        ph2d_tool_painter::ids::PAINTER_LAYERS_MASK,
+        ph2d_tool_painter::ids::PAINTER_LAYERS_CLIP,
+        ph2d_tool_painter::ids::PAINTER_LAYERS_ALPHA_LOCK,
+        ph2d_tool_painter::ids::PAINTER_LAYERS_REFERENCE,
         // ⭐ Os DOIS segmentos do grupo de modo (*Brush | Layers*). ⚠️ **Sem `InteractiveState` um
         //   segmento é pintado e nasce MORTO**: não é focável, o Down não arma o `active` e o Up
         //   nunca emite `Click`. É o defeito que matou o pill `[SHEET]` e os quatro do vetor.
-        ph2d_editor_core::ids::PAINTER_LAYERS_TOGGLE_DOCK,
-        ph2d_editor_core::ids::PAINTER_SIDEBAR_TOGGLE_DOCK,
+        ph2d_tool_painter::ids::PAINTER_LAYERS_TOGGLE_DOCK,
+        ph2d_tool_painter::ids::PAINTER_SIDEBAR_TOGGLE_DOCK,
         // "Apply" CTA — commits the composite to the sprite (shared id with the
         // sidebar panel).
-        ph2d_editor_core::ids::PAINTER_APPLY,
+        ph2d_tool_painter::ids::PAINTER_APPLY,
     ];
     for id in buttons {
         store.register(
@@ -60,7 +60,7 @@ fn register_chrome_buttons(store: &mut WidgetStore) {
     // like the per-row blend chip. Painted as an icon button; the open popover
     // is a deferred pass in `paint`.
     store.register(
-        ph2d_editor_core::ids::PAINTER_LAYERS_ADD_ADJUSTMENT,
+        ph2d_tool_painter::ids::PAINTER_LAYERS_ADD_ADJUSTMENT,
         InteractiveState::Dropdown {
             state: DropdownState::Normal,
             open: false,
@@ -76,51 +76,51 @@ fn register_brush_inputs(store: &mut WidgetStore) {
     // published `BrushSettings` snapshot; the values here are placeholders
     // overwritten by the drag / the snapshot each frame.
     let brush_sliders = [
-        ph2d_editor_core::ids::PAINTER_BRUSH_SIZE_SLIDER,
-        ph2d_editor_core::ids::PAINTER_BRUSH_STRENGTH_SLIDER,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_SIZE_SLIDER,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_STRENGTH_SLIDER,
         // Randomize Color amounts (painted only when the subsection is enabled).
-        ph2d_editor_core::ids::PAINTER_BRUSH_COLOR_JITTER_HUE,
-        ph2d_editor_core::ids::PAINTER_BRUSH_COLOR_JITTER_SAT,
-        ph2d_editor_core::ids::PAINTER_BRUSH_COLOR_JITTER_VAL,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_COLOR_JITTER_HUE,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_COLOR_JITTER_SAT,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_COLOR_JITTER_VAL,
         // Stroke section sliders (all `0..1` track; the tool maps each to its range).
-        ph2d_editor_core::ids::PAINTER_BRUSH_RATE,
-        ph2d_editor_core::ids::PAINTER_BRUSH_SPACING,
-        ph2d_editor_core::ids::PAINTER_BRUSH_OFFSET,
-        ph2d_editor_core::ids::PAINTER_BRUSH_JITTER,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_RATE,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_SPACING,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_OFFSET,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER,
         // Card Line / Sketchy: os quatro sliders do tipo (plano 38 W3).
-        ph2d_editor_core::ids::PAINTER_LINE_SKETCHY_REACH,
-        ph2d_editor_core::ids::PAINTER_LINE_SKETCHY_DENSITY,
-        ph2d_editor_core::ids::PAINTER_LINE_SKETCHY_WIDTH,
-        ph2d_editor_core::ids::PAINTER_LINE_SKETCHY_OPACITY,
+        ph2d_tool_painter::ids::PAINTER_LINE_SKETCHY_REACH,
+        ph2d_tool_painter::ids::PAINTER_LINE_SKETCHY_DENSITY,
+        ph2d_tool_painter::ids::PAINTER_LINE_SKETCHY_WIDTH,
+        ph2d_tool_painter::ids::PAINTER_LINE_SKETCHY_OPACITY,
         // Card Line / Wire: a janela (plano 38 W4).
-        ph2d_editor_core::ids::PAINTER_LINE_WIRE_HISTORY,
+        ph2d_tool_painter::ids::PAINTER_LINE_WIRE_HISTORY,
         // Card Line / Ribbon: os tres knobs da mola (plano 38 W6).
-        ph2d_editor_core::ids::PAINTER_LINE_RIBBON_WEIGHT,
-        ph2d_editor_core::ids::PAINTER_LINE_RIBBON_FRICTION,
-        ph2d_editor_core::ids::PAINTER_LINE_RIBBON_GRAVITY,
-        ph2d_editor_core::ids::PAINTER_LINE_RIBBON_RUNGS,
+        ph2d_tool_painter::ids::PAINTER_LINE_RIBBON_WEIGHT,
+        ph2d_tool_painter::ids::PAINTER_LINE_RIBBON_FRICTION,
+        ph2d_tool_painter::ids::PAINTER_LINE_RIBBON_GRAVITY,
+        ph2d_tool_painter::ids::PAINTER_LINE_RIBBON_RUNGS,
         // Card Line / Rough: as duas amplitudes e a contagem de passadas (plano 38 W6).
-        ph2d_editor_core::ids::PAINTER_LINE_ROUGH_AMOUNT,
-        ph2d_editor_core::ids::PAINTER_LINE_ROUGH_BOWING,
-        ph2d_editor_core::ids::PAINTER_LINE_ROUGH_PASSES,
+        ph2d_tool_painter::ids::PAINTER_LINE_ROUGH_AMOUNT,
+        ph2d_tool_painter::ids::PAINTER_LINE_ROUGH_BOWING,
+        ph2d_tool_painter::ids::PAINTER_LINE_ROUGH_PASSES,
         // Per-dab Jitter Scale / Rotate / Spacing (next to the position Jitter).
-        ph2d_editor_core::ids::PAINTER_BRUSH_JITTER_SCALE,
-        ph2d_editor_core::ids::PAINTER_BRUSH_JITTER_ROTATE,
-        ph2d_editor_core::ids::PAINTER_BRUSH_JITTER_SPACING,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER_SCALE,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER_ROTATE,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER_SPACING,
         // Spray Count (`1..=SPRAY_COUNT_MAX`; o chip dele usa o link mapped-integer abaixo).
-        ph2d_editor_core::ids::PAINTER_BRUSH_SPRAY_COUNT,
-        ph2d_editor_core::ids::PAINTER_BRUSH_DASH_RATIO,
-        ph2d_editor_core::ids::PAINTER_BRUSH_DASH_LENGTH,
-        ph2d_editor_core::ids::PAINTER_BRUSH_INPUT_SAMPLES,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_SPRAY_COUNT,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_DASH_RATIO,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_DASH_LENGTH,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_INPUT_SAMPLES,
         // Stabilizer intensity — the single "how regular" knob (reuses the STABILIZE id, now a
         // slider instead of the removed toggle).
-        ph2d_editor_core::ids::PAINTER_BRUSH_STABILIZE,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_STABILIZE,
         // Symmetry radial segment-count slider (`3..=12`; its chip uses the mapped-integer link below).
-        ph2d_editor_core::ids::PAINTER_BRUSH_SYMMETRY_SEGMENTS,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_SYMMETRY_SEGMENTS,
         // Inpaint heal-reconstruction sliders (`0..1` track; their chips use the mapped-integer link below).
-        ph2d_editor_core::ids::PAINTER_INPAINT_PATCH_SLIDER,
-        ph2d_editor_core::ids::PAINTER_INPAINT_QUALITY_SLIDER,
-        ph2d_editor_core::ids::PAINTER_INPAINT_SEARCH_SLIDER,
+        ph2d_tool_painter::ids::PAINTER_INPAINT_PATCH_SLIDER,
+        ph2d_tool_painter::ids::PAINTER_INPAINT_QUALITY_SLIDER,
+        ph2d_tool_painter::ids::PAINTER_INPAINT_SEARCH_SLIDER,
     ];
     for id in brush_sliders {
         store.register(
@@ -136,20 +136,20 @@ fn register_brush_inputs(store: &mut WidgetStore) {
     // Size X-Y / Depth + the per-pattern params. Paint mirrors the live value via `paint_ramp_chip`;
     // this seed sets the TYPE so the dispatch scrubs (vertical/horizontal) instead of sliding.
     for id in [
-        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_ANGLE,
-        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_OFFSET_X,
-        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_OFFSET_Y,
-        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_SIZE_X,
-        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_SIZE_Y,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_ANGLE,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_OFFSET_X,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_OFFSET_Y,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_SIZE_X,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_SIZE_Y,
     ]
     .into_iter()
-    .chain(ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_PARAMS)
-    .chain(ph2d_editor_core::ids::PAINTER_BRUSH_STENCIL_FIELDS)
-    .chain(ph2d_editor_core::ids::PAINTER_SHAPE_SLIDERS)
-    .chain(ph2d_editor_core::ids::PAINTER_SHAPE_PARAMS)
-    .chain(ph2d_editor_core::ids::PAINTER_WATERCOLOR_FIELDS)
-    .chain(ph2d_editor_core::ids::PAINTER_WETPAINT_FIELDS)
-    .chain(ph2d_editor_core::ids::PAINTER_IMPASTO_FIELDS)
+    .chain(ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_PARAMS)
+    .chain(ph2d_tool_painter::ids::PAINTER_BRUSH_STENCIL_FIELDS)
+    .chain(ph2d_tool_painter::ids::PAINTER_SHAPE_SLIDERS)
+    .chain(ph2d_tool_painter::ids::PAINTER_SHAPE_PARAMS)
+    .chain(ph2d_tool_painter::ids::PAINTER_WATERCOLOR_FIELDS)
+    .chain(ph2d_tool_painter::ids::PAINTER_WETPAINT_FIELDS)
+    .chain(ph2d_tool_painter::ids::PAINTER_IMPASTO_FIELDS)
     {
         store.register(
             id,
@@ -166,7 +166,7 @@ fn register_brush_inputs(store: &mut WidgetStore) {
     crate::populate_brush_chips::register_brush_slider_chips(store);
     // Composite Brush card: 3 bare per-layer Strength sliders + the enable checkbox + the 6 reorder
     // buttons. Registered here (not in `paint_composite`) so the panel-wiring-parity gate sees the ids.
-    for sid in ph2d_editor_core::ids::PAINTER_BRUSH_COMPOSITE_STRENGTH {
+    for sid in ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_STRENGTH {
         store.register(
             sid,
             InteractiveState::Slider {
@@ -176,9 +176,9 @@ fn register_brush_inputs(store: &mut WidgetStore) {
             },
         );
     }
-    for id in std::iter::once(ph2d_editor_core::ids::PAINTER_BRUSH_COMPOSITE_ENABLE)
-        .chain(ph2d_editor_core::ids::PAINTER_BRUSH_COMPOSITE_UP)
-        .chain(ph2d_editor_core::ids::PAINTER_BRUSH_COMPOSITE_DOWN)
+    for id in std::iter::once(ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_ENABLE)
+        .chain(ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_UP)
+        .chain(ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_DOWN)
     {
         store.register(
             id,
@@ -194,11 +194,11 @@ fn register_mask_and_selection(store: &mut WidgetStore) {
     // Mask section: the sub-brush segments + the whole-canvas op buttons + the overlay-colour swatches
     // are all Buttons (Click channel). Registered here (not in `paint_mask`) so panel-wiring-parity + the
     // dispatch see them. The header is a plain collapsible section (no colour dot).
-    for id in ph2d_editor_core::ids::PAINTER_MASK_BRUSH
+    for id in ph2d_tool_painter::ids::PAINTER_MASK_BRUSH
         .iter()
-        .chain(ph2d_editor_core::ids::PAINTER_MASK_OP.iter())
-        .chain(ph2d_editor_core::ids::PAINTER_MASK_COLOR.iter())
-        .chain(std::iter::once(&ph2d_editor_core::ids::PAINTER_MASK_APPLY))
+        .chain(ph2d_tool_painter::ids::PAINTER_MASK_OP.iter())
+        .chain(ph2d_tool_painter::ids::PAINTER_MASK_COLOR.iter())
+        .chain(std::iter::once(&ph2d_tool_painter::ids::PAINTER_MASK_APPLY))
         .copied()
     {
         store.register(
@@ -208,17 +208,17 @@ fn register_mask_and_selection(store: &mut WidgetStore) {
             },
         );
     }
-    store.mark_collapsible_section(ph2d_editor_core::ids::PAINTER_MASK_SECTION);
+    store.mark_collapsible_section(ph2d_tool_painter::ids::PAINTER_MASK_SECTION);
     crate::populate_sections::register_collapsible_sections(store);
     // Selection section (ADR-0103): the Feather + Automatic-threshold sliders (with linked editable chips)
     // and the mode / boolean-op / action segments + the Edit-Selection toggle (all Buttons). Registered
     // here (not in `paint_selection`) so panel-wiring-parity + the dispatch see them.
     for id in [
-        ph2d_editor_core::ids::PAINTER_SEL_FEATHER_SLIDER,
-        ph2d_editor_core::ids::PAINTER_SEL_THRESHOLD_SLIDER,
-        ph2d_editor_core::ids::PAINTER_SEL_STABILIZE_SLIDER,
-        ph2d_editor_core::ids::PAINTER_SEL_OPACITY_SLIDER,
-        ph2d_editor_core::ids::PAINTER_SEL_OFFSET_SLIDER,
+        ph2d_tool_painter::ids::PAINTER_SEL_FEATHER_SLIDER,
+        ph2d_tool_painter::ids::PAINTER_SEL_THRESHOLD_SLIDER,
+        ph2d_tool_painter::ids::PAINTER_SEL_STABILIZE_SLIDER,
+        ph2d_tool_painter::ids::PAINTER_SEL_OPACITY_SLIDER,
+        ph2d_tool_painter::ids::PAINTER_SEL_OFFSET_SLIDER,
     ] {
         store.register(
             id,
@@ -231,24 +231,24 @@ fn register_mask_and_selection(store: &mut WidgetStore) {
     }
     for (slider, chip) in [
         (
-            ph2d_editor_core::ids::PAINTER_SEL_FEATHER_SLIDER,
-            ph2d_editor_core::ids::PAINTER_SEL_FEATHER_CHIP,
+            ph2d_tool_painter::ids::PAINTER_SEL_FEATHER_SLIDER,
+            ph2d_tool_painter::ids::PAINTER_SEL_FEATHER_CHIP,
         ),
         (
-            ph2d_editor_core::ids::PAINTER_SEL_THRESHOLD_SLIDER,
-            ph2d_editor_core::ids::PAINTER_SEL_THRESHOLD_CHIP,
+            ph2d_tool_painter::ids::PAINTER_SEL_THRESHOLD_SLIDER,
+            ph2d_tool_painter::ids::PAINTER_SEL_THRESHOLD_CHIP,
         ),
         (
-            ph2d_editor_core::ids::PAINTER_SEL_STABILIZE_SLIDER,
-            ph2d_editor_core::ids::PAINTER_SEL_STABILIZE_CHIP,
+            ph2d_tool_painter::ids::PAINTER_SEL_STABILIZE_SLIDER,
+            ph2d_tool_painter::ids::PAINTER_SEL_STABILIZE_CHIP,
         ),
         (
-            ph2d_editor_core::ids::PAINTER_SEL_OPACITY_SLIDER,
-            ph2d_editor_core::ids::PAINTER_SEL_OPACITY_CHIP,
+            ph2d_tool_painter::ids::PAINTER_SEL_OPACITY_SLIDER,
+            ph2d_tool_painter::ids::PAINTER_SEL_OPACITY_CHIP,
         ),
         (
-            ph2d_editor_core::ids::PAINTER_SEL_OFFSET_SLIDER,
-            ph2d_editor_core::ids::PAINTER_SEL_OFFSET_CHIP,
+            ph2d_tool_painter::ids::PAINTER_SEL_OFFSET_SLIDER,
+            ph2d_tool_painter::ids::PAINTER_SEL_OFFSET_CHIP,
         ),
     ] {
         store.register(
@@ -265,17 +265,19 @@ fn register_mask_and_selection(store: &mut WidgetStore) {
         store.link_slider_number(slider, chip);
         store.set_number_range(chip, 0.0, 1.0, 0.01); // LITERAL-PX-OK: chip 0..1 track step (behaviour value)
     }
-    for id in ph2d_editor_core::ids::PAINTER_SEL_MODE_IDS
+    for id in ph2d_tool_painter::ids::PAINTER_SEL_MODE_IDS
         .iter()
-        .chain(ph2d_editor_core::ids::PAINTER_SEL_OP_IDS.iter())
-        .chain(ph2d_editor_core::ids::PAINTER_SEL_ACTION_IDS.iter())
-        .chain(ph2d_editor_core::ids::PAINTER_SEL_WAVE5_IDS.iter())
-        .chain(ph2d_editor_core::ids::PAINTER_SEL_OFFSET_APPLY_IDS.iter())
-        .chain(std::iter::once(&ph2d_editor_core::ids::PAINTER_SEL_EDIT))
-        .chain(std::iter::once(&ph2d_editor_core::ids::PAINTER_SEL_CONVERT))
-        .chain(std::iter::once(&ph2d_editor_core::ids::PAINTER_SEL_MERGE))
+        .chain(ph2d_tool_painter::ids::PAINTER_SEL_OP_IDS.iter())
+        .chain(ph2d_tool_painter::ids::PAINTER_SEL_ACTION_IDS.iter())
+        .chain(ph2d_tool_painter::ids::PAINTER_SEL_WAVE5_IDS.iter())
+        .chain(ph2d_tool_painter::ids::PAINTER_SEL_OFFSET_APPLY_IDS.iter())
+        .chain(std::iter::once(&ph2d_tool_painter::ids::PAINTER_SEL_EDIT))
         .chain(std::iter::once(
-            &ph2d_editor_core::ids::PAINTER_SEL_SIMPLIFY,
+            &ph2d_tool_painter::ids::PAINTER_SEL_CONVERT,
+        ))
+        .chain(std::iter::once(&ph2d_tool_painter::ids::PAINTER_SEL_MERGE))
+        .chain(std::iter::once(
+            &ph2d_tool_painter::ids::PAINTER_SEL_SIMPLIFY,
         ))
         .copied()
     {
@@ -305,20 +307,20 @@ fn register_mask_and_selection(store: &mut WidgetStore) {
 fn register_ramp_buttons(store: &mut WidgetStore) {
     for id in [
         // Grain Colors ramp: enable + add / remove / invert / B&W + colour-box buttons.
-        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAMP_ENABLE,
-        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAMP_ADD,
-        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAMP_REMOVE,
-        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAMP_INVERT,
-        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAMP_BW,
-        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAMP_SWATCH,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_ENABLE,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_ADD,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_REMOVE,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_INVERT,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_BW,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_SWATCH,
         // Shape Color ramp: enable + add / remove / invert / B&W + colour-box + section reset.
-        ph2d_editor_core::ids::PAINTER_SHAPE_RAMP_ENABLE,
-        ph2d_editor_core::ids::PAINTER_SHAPE_RAMP_ADD,
-        ph2d_editor_core::ids::PAINTER_SHAPE_RAMP_REMOVE,
-        ph2d_editor_core::ids::PAINTER_SHAPE_RAMP_INVERT,
-        ph2d_editor_core::ids::PAINTER_SHAPE_RAMP_BW,
-        ph2d_editor_core::ids::PAINTER_SHAPE_RAMP_SWATCH,
-        ph2d_editor_core::ids::PAINTER_SHAPE_RAMP_RESET,
+        ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_ENABLE,
+        ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_ADD,
+        ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_REMOVE,
+        ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_INVERT,
+        ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_BW,
+        ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_SWATCH,
+        ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_RESET,
     ] {
         store.register(
             id,
@@ -337,90 +339,90 @@ fn register_toggles_and_dropdowns(store: &mut WidgetStore) {
     for id in [
         ph2d_editor_core::ids::PAINTER_COLOR_THUMB,
         // Watercolor Paper-colour swatch (the document ground; opens the shared picker).
-        ph2d_editor_core::ids::PAINTER_WATERCOLOR_PAPER_COLOR_THUMB,
-        ph2d_editor_core::ids::PAINTER_BRUSH_ERASER,
+        ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_COLOR_THUMB,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_ERASER,
         // "Randomize Color" subsection enable (Color section header checkbox).
-        ph2d_editor_core::ids::PAINTER_BRUSH_COLOR_JITTER_ENABLE,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_COLOR_JITTER_ENABLE,
         // Seamless Tiling (wrap-around painting) toggles, X / Y + the Repeat-Image tile preview.
-        ph2d_editor_core::ids::PAINTER_BRUSH_TILING_X,
-        ph2d_editor_core::ids::PAINTER_BRUSH_TILING_Y,
-        ph2d_editor_core::ids::PAINTER_BRUSH_REPEAT_IMAGE,
-        ph2d_editor_core::ids::PAINTER_BRUSH_SPACE_ATTEN,
-        ph2d_editor_core::ids::PAINTER_BRUSH_ACCUMULATE,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_TILING_X,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_TILING_Y,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_REPEAT_IMAGE,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_SPACE_ATTEN,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_ACCUMULATE,
         // Card Line: o checkbox Solid (sem ele o widget pinta, registra hit e fica MORTO sob o mouse).
-        ph2d_editor_core::ids::PAINTER_LINE_SOLID,
+        ph2d_tool_painter::ids::PAINTER_LINE_SOLID,
         // Card Line / Sketchy: o checkbox Magnetify.
-        ph2d_editor_core::ids::PAINTER_LINE_SKETCHY_MAGNETIFY,
+        ph2d_tool_painter::ids::PAINTER_LINE_SKETCHY_MAGNETIFY,
         // Card Line / Wire: o checkbox Connection Line.
-        ph2d_editor_core::ids::PAINTER_LINE_WIRE_CONNECTION,
+        ph2d_tool_painter::ids::PAINTER_LINE_WIRE_CONNECTION,
         // "Sync with other tools" checkbox at the top of the brush panel (independent settings by default).
-        ph2d_editor_core::ids::PAINTER_BRUSH_SYNC,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_SYNC,
         // "Dimensions" checkbox below the Method dropdown (Line only) — dx/dy + corner angles while drawing.
-        ph2d_editor_core::ids::PAINTER_BRUSH_LINE_DIMENSIONS,
-        ph2d_editor_core::ids::PAINTER_BRUSH_EDGE_TO_EDGE,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_LINE_DIMENSIONS,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_EDGE_TO_EDGE,
         // Clone card: "Set Source" (arms the sample pick) + "Aligned" toggle.
-        ph2d_editor_core::ids::PAINTER_BRUSH_CLONE_SET_SOURCE,
-        ph2d_editor_core::ids::PAINTER_BRUSH_CLONE_ALIGNED,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_CLONE_SET_SOURCE,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_CLONE_ALIGNED,
         // Texture section: Rake checkbox (the click still forwards as a Button Click; only the VISUAL is
         // a checkbox). The per-slot "Random Angle" was retired 2026-07-19 — the Stroke Jitter Rotate covers it.
-        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAKE,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAKE,
         // Sculpt card: the Chisel's Rake toggle (does the V follow the stroke?). Painting it and
         // hit-indexing it is NOT enough — without an `InteractiveState` from here, `is_focusable` answers
         // `None => false`, the Down never activates it and the Click never happens. That is exactly how the
         // Impasto light rig shipped inert, on this same line, four days ago.
-        ph2d_editor_core::ids::PAINTER_SCULPT_RAKE,
+        ph2d_tool_painter::ids::PAINTER_SCULPT_RAKE,
         // Sculpt card: the Filter Layer action button (W5b — the verb applied to the whole layer).
-        ph2d_editor_core::ids::PAINTER_SCULPT_FILTER,
-        ph2d_editor_core::ids::PAINTER_SCULPT_FILTER_STROKE,
+        ph2d_tool_painter::ids::PAINTER_SCULPT_FILTER,
+        ph2d_tool_painter::ids::PAINTER_SCULPT_FILTER_STROKE,
         // Deform card: the Affect Relief toggle (W4 — the warp advects the impasto planes). Same trap as
         // the Rake above: painted + hit-indexed is still inert without an InteractiveState from here.
-        ph2d_editor_core::ids::PAINTER_DEFORM_RELIEF,
+        ph2d_tool_painter::ids::PAINTER_DEFORM_RELIEF,
         // Shape section: the section reset (clears the image → falloff). The Follow control (Off/Rake/Flow)
         // is a Dropdown, registered above — not a Button here (Enio 2026-07-19). (Per-slot "Random Angle"
         // retired 2026-07-19 — the Stroke Jitter Rotate covers a random per-dab spin.)
-        ph2d_editor_core::ids::PAINTER_SHAPE_RESET,
+        ph2d_tool_painter::ids::PAINTER_SHAPE_RESET,
         // "Use Document Layers" capture button + the Per-Layer Color mode toggle (the per-layer
         // checkboxes + swatches are factory ids, registered at paint time). Forward as a Button Click.
-        ph2d_editor_core::ids::PAINTER_SHAPE_USE_LAYERS,
-        ph2d_editor_core::ids::PAINTER_SHAPE_PER_LAYER_COLOR,
-        ph2d_editor_core::ids::PAINTER_SHAPE_ALPHA_FROM_IMAGE,
+        ph2d_tool_painter::ids::PAINTER_SHAPE_USE_LAYERS,
+        ph2d_tool_painter::ids::PAINTER_SHAPE_PER_LAYER_COLOR,
+        ph2d_tool_painter::ids::PAINTER_SHAPE_ALPHA_FROM_IMAGE,
         // Per-section reset icon buttons (Inspector-Transform pattern).
-        ph2d_editor_core::ids::PAINTER_BRUSH_RANDOMIZE_RESET,
-        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RESET,
-        ph2d_editor_core::ids::PAINTER_BRUSH_COLOR_RAMP_RESET,
-        ph2d_editor_core::ids::PAINTER_BRUSH_STROKE_RESET,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_RANDOMIZE_RESET,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RESET,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_COLOR_RAMP_RESET,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_STROKE_RESET,
         // Apply / Apply & Keep — bake the open on-canvas shape (Curve/Free Hand/Ellipse/Polygon); Keep
         // retains the editor for re-apply. Routed in the tool's `route_brush_dab_event`.
-        ph2d_editor_core::ids::PAINTER_BRUSH_STROKE_APPLY,
-        ph2d_editor_core::ids::PAINTER_BRUSH_STROKE_APPLY_KEEP,
-        ph2d_editor_core::ids::PAINTER_BRUSH_STROKE_DELETE,
-        ph2d_editor_core::ids::PAINTER_BRUSH_STROKE_EDIT,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_STROKE_APPLY,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_STROKE_APPLY_KEEP,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_STROKE_DELETE,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_STROKE_EDIT,
         // Simplify (re-fit the curve) + Merge (fold every shape into one/few curves) + Offset-card Trim.
-        ph2d_editor_core::ids::PAINTER_BRUSH_STROKE_SIMPLIFY,
-        ph2d_editor_core::ids::PAINTER_BRUSH_STROKE_MERGE,
-        ph2d_editor_core::ids::PAINTER_BRUSH_OFFSET_TRIM,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_STROKE_SIMPLIFY,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_STROKE_MERGE,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_OFFSET_TRIM,
         // Multi-shape OPERATION segments (Overlay / Add / Remove) — the boolean mode the next shape uses.
-        ph2d_editor_core::ids::PAINTER_STROKE_OP_OVERLAY,
-        ph2d_editor_core::ids::PAINTER_STROKE_OP_ADD,
-        ph2d_editor_core::ids::PAINTER_STROKE_OP_REMOVE,
+        ph2d_tool_painter::ids::PAINTER_STROKE_OP_OVERLAY,
+        ph2d_tool_painter::ids::PAINTER_STROKE_OP_ADD,
+        ph2d_tool_painter::ids::PAINTER_STROKE_OP_REMOVE,
         // Save As Object (floppy) — shown beside the Method dropdown only while a curve is drawn. The
         // action is not wired yet (clicking is a deliberate no-op); registering the slot gives it hover /
         // press feedback + a tooltip now, and lets the future route deliver the Click without a re-register.
-        ph2d_editor_core::ids::PAINTER_BRUSH_STROKE_SAVE_OBJECT,
-        ph2d_editor_core::ids::PAINTER_BRUSH_TILING_RESET,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_STROKE_SAVE_OBJECT,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_TILING_RESET,
         // Watercolor section: the section reset + the Grain-section "Same as Paper" toggle + the Paper
         // section reset. (Pigment merged into the Mix slider; Paper Rake/Random dropped from the UI —
         // redesign 2026-07-07; the Enable master became the Paint Mode dropdown — 2026-07-22.)
         // Shape section's watercolor "Automatic" toggle (doc 13 #1).
-        ph2d_editor_core::ids::PAINTER_SHAPE_WATERCOLOR_AUTO,
-        ph2d_editor_core::ids::PAINTER_WATERCOLOR_RESET,
-        ph2d_editor_core::ids::PAINTER_WATERCOLOR_GRAN_SAME,
+        ph2d_tool_painter::ids::PAINTER_SHAPE_WATERCOLOR_AUTO,
+        ph2d_tool_painter::ids::PAINTER_WATERCOLOR_RESET,
+        ph2d_tool_painter::ids::PAINTER_WATERCOLOR_GRAN_SAME,
         // Wash card's "Smooth Edges" toggle (BUGS #16 — screen-space AA of the silhouette).
-        ph2d_editor_core::ids::PAINTER_WATERCOLOR_SMOOTH_EDGES,
-        ph2d_editor_core::ids::PAINTER_WATERCOLOR_PAPER_RESET,
+        ph2d_tool_painter::ids::PAINTER_WATERCOLOR_SMOOTH_EDGES,
+        ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_RESET,
         // Wetness card (doc 13 #9/#10): Dry (end the wet session) / Wet (re-moisten the canvas).
-        ph2d_editor_core::ids::PAINTER_WATERCOLOR_DRY_NOW,
-        ph2d_editor_core::ids::PAINTER_WATERCOLOR_WET_NOW,
+        ph2d_tool_painter::ids::PAINTER_WATERCOLOR_DRY_NOW,
+        ph2d_tool_painter::ids::PAINTER_WATERCOLOR_WET_NOW,
     ] {
         store.register(
             id,
@@ -431,7 +433,7 @@ fn register_toggles_and_dropdowns(store: &mut WidgetStore) {
     }
     // Symmetry section: "Use" / "Circular" checkboxes, the X/Y/Custom axis segments, the two
     // canvas pick buttons (Draw Line / Pick Center), and the section reset — all forward a plain Click.
-    for id in ph2d_editor_core::ids::PAINTER_BRUSH_SYMMETRY_CLICKABLE {
+    for id in ph2d_tool_painter::ids::PAINTER_BRUSH_SYMMETRY_CLICKABLE {
         store.register(
             id,
             InteractiveState::Button {
@@ -449,7 +451,7 @@ fn register_toggles_and_dropdowns(store: &mut WidgetStore) {
     // this is the only place the wire can be closed. Buttons, not Checkboxes: the check state lives
     // in the TOOL (the paint mirrors `brush.impasto*`), and a Checkbox would emit `Toggled`, which
     // `event.rs` does not forward — registered, and still dead. Gate: `tests/seam_impasto_rig.rs`.
-    for id in ph2d_editor_core::ids::PAINTER_IMPASTO_CLICKS {
+    for id in ph2d_tool_painter::ids::PAINTER_IMPASTO_CLICKS {
         store.register(
             id,
             InteractiveState::Button {
@@ -460,7 +462,7 @@ fn register_toggles_and_dropdowns(store: &mut WidgetStore) {
     // Wet Paint section (doc 22): Enable + reset + the 7 tool buttons + the
     // tilt toggle + the canvas actions + Show Wet + Paper + Tuning — ONE
     // membership list shared with the paint and the click forward.
-    for id in ph2d_editor_core::ids::PAINTER_WETPAINT_CLICKS {
+    for id in ph2d_tool_painter::ids::PAINTER_WETPAINT_CLICKS {
         store.register(
             id,
             InteractiveState::Button {
@@ -473,9 +475,9 @@ fn register_toggles_and_dropdowns(store: &mut WidgetStore) {
     // half (the wiring-parity law: painted + hit-indexed but absent here =
     // dead under the mouse).
     store.register(
-        ph2d_editor_core::ids::PAINTER_WETPAINT_TILT_PAD,
+        ph2d_tool_painter::ids::PAINTER_WETPAINT_TILT_PAD,
         InteractiveState::CurvePoint {
-            parent: ph2d_editor_core::ids::PAINTER_WETPAINT_TILT_PAD,
+            parent: ph2d_tool_painter::ids::PAINTER_WETPAINT_TILT_PAD,
             channel: 0,
             index: 0,
             canvas: ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1.0, 1.0),
@@ -483,34 +485,34 @@ fn register_toggles_and_dropdowns(store: &mut WidgetStore) {
     );
     // Mouse-over hint for the (not-yet-wired) Save As Object button.
     store.set_tooltip(
-        ph2d_editor_core::ids::PAINTER_BRUSH_STROKE_SAVE_OBJECT,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_STROKE_SAVE_OBJECT,
         "Save As Object",
     );
     // Blend + Falloff + Stroke-Method + Jitter-Unit chips are Dropdowns (generic
     // open/close dispatch); their options are popover buttons.
     for id in [
         // The Paint Mode (medium) chip at the head of the appearance half.
-        ph2d_editor_core::ids::PAINTER_BRUSH_MEDIA,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_MEDIA,
         // Card Line: o chip `Type` dos tipos de traço procedural (plano 38 W2).
-        ph2d_editor_core::ids::PAINTER_LINE_TYPE,
-        ph2d_editor_core::ids::PAINTER_BRUSH_BLEND,
-        ph2d_editor_core::ids::PAINTER_BRUSH_FALLOFF,
+        ph2d_tool_painter::ids::PAINTER_LINE_TYPE,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_BLEND,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_FALLOFF,
         ph2d_editor_core::ids::PAINTER_BRUSH_STROKE_METHOD,
-        ph2d_editor_core::ids::PAINTER_BRUSH_JITTER_UNIT,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER_UNIT,
         // Shape section: source picker (None/Image) + the Follow dropdown (Off/Rake/Flow).
-        ph2d_editor_core::ids::PAINTER_SHAPE_KIND,
-        ph2d_editor_core::ids::PAINTER_SHAPE_FOLLOW,
+        ph2d_tool_painter::ids::PAINTER_SHAPE_KIND,
+        ph2d_tool_painter::ids::PAINTER_SHAPE_FOLLOW,
         // Texture section: Kind picker + Mapping chips.
-        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_KIND,
-        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_MAPPING,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_KIND,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_MAPPING,
         // Grain Color Ramp: Mode + Interpolation + Alpha-action chips.
-        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAMP_MODE,
-        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAMP_INTERP,
-        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAMP_ALPHA_MODE,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_MODE,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_INTERP,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_ALPHA_MODE,
         // Shape Color Ramp: Mode + Interpolation + Alpha-action chips.
-        ph2d_editor_core::ids::PAINTER_SHAPE_RAMP_MODE,
-        ph2d_editor_core::ids::PAINTER_SHAPE_RAMP_INTERP,
-        ph2d_editor_core::ids::PAINTER_SHAPE_RAMP_ALPHA_MODE,
+        ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_MODE,
+        ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_INTERP,
+        ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_ALPHA_MODE,
     ] {
         store.register(
             id,

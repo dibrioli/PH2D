@@ -15,7 +15,6 @@
 //! representative section, it asks every row in the table.
 
 use ph2d_a11y::NodeId;
-use ph2d_editor_core::ids;
 use ph2d_physics_ecs::{
     GRAVITY_LIMIT, MAX_AIR_DRAG, MAX_CONTACT_HZ, MAX_DAMPING, MAX_SLEEP_THRESHOLD,
     MAX_SOLVER_ITERATIONS, MAX_SUBSTEPS, MAX_TIME_UNTIL_SLEEP, MIN_CONTACT_HZ, PhysicsSettings,
@@ -91,8 +90,8 @@ pub struct Section {
 static WORLD: &[Row] = &[
     Row {
         label: "panel.physics.gravity_x",
-        slider: ids::PHYSICS_GRAVITY_X,
-        chip: ids::PHYSICS_GRAVITY_X_NUM,
+        slider: crate::ids::PHYSICS_GRAVITY_X,
+        chip: crate::ids::PHYSICS_GRAVITY_X_NUM,
         min: -GRAVITY_LIMIT,
         max: GRAVITY_LIMIT,
         step: 0.1, // LITERAL-PX-OK: drag step in m/s^2 (physical unit, not a design metric)
@@ -102,8 +101,8 @@ static WORLD: &[Row] = &[
     },
     Row {
         label: "panel.physics.gravity_y",
-        slider: ids::PHYSICS_GRAVITY_Y,
-        chip: ids::PHYSICS_GRAVITY_Y_NUM,
+        slider: crate::ids::PHYSICS_GRAVITY_Y,
+        chip: crate::ids::PHYSICS_GRAVITY_Y_NUM,
         min: -GRAVITY_LIMIT,
         max: GRAVITY_LIMIT,
         step: 0.1, // LITERAL-PX-OK: drag step in m/s^2 (physical unit, not a design metric)
@@ -118,8 +117,8 @@ static WORLD: &[Row] = &[
 static SOLVER: &[Row] = &[
     Row {
         label: "panel.physics.substeps",
-        slider: ids::PHYSICS_SUBSTEPS,
-        chip: ids::PHYSICS_SUBSTEPS_NUM,
+        slider: crate::ids::PHYSICS_SUBSTEPS,
+        chip: crate::ids::PHYSICS_SUBSTEPS_NUM,
         min: 1.0,
         max: MAX_SUBSTEPS as f32,
         step: 1.0,
@@ -129,8 +128,8 @@ static SOLVER: &[Row] = &[
     },
     Row {
         label: "panel.physics.iterations",
-        slider: ids::PHYSICS_ITERATIONS,
-        chip: ids::PHYSICS_ITERATIONS_NUM,
+        slider: crate::ids::PHYSICS_ITERATIONS,
+        chip: crate::ids::PHYSICS_ITERATIONS_NUM,
         min: 1.0,
         max: MAX_SOLVER_ITERATIONS as f32,
         step: 1.0,
@@ -140,8 +139,8 @@ static SOLVER: &[Row] = &[
     },
     Row {
         label: "panel.physics.contact_hz",
-        slider: ids::PHYSICS_CONTACT_HZ,
-        chip: ids::PHYSICS_CONTACT_HZ_NUM,
+        slider: crate::ids::PHYSICS_CONTACT_HZ,
+        chip: crate::ids::PHYSICS_CONTACT_HZ_NUM,
         min: MIN_CONTACT_HZ,
         max: MAX_CONTACT_HZ,
         step: 1.0,
@@ -154,8 +153,8 @@ static SOLVER: &[Row] = &[
 /// Air drag — the SIZE-AWARE model (`F = k·L·|v|·v`, so `a ∝ v²/s`).
 static AIR: &[Row] = &[Row {
     label: "panel.physics.air_drag",
-    slider: ids::PHYSICS_AIR_DRAG,
-    chip: ids::PHYSICS_AIR_DRAG_NUM,
+    slider: crate::ids::PHYSICS_AIR_DRAG,
+    chip: crate::ids::PHYSICS_AIR_DRAG_NUM,
     min: 0.0,
     max: MAX_AIR_DRAG,
     step: 0.05, // LITERAL-PX-OK: drag step of a dimensionless physical knob, not a design metric
@@ -169,8 +168,8 @@ static AIR: &[Row] = &[Row {
 static DAMPING: &[Row] = &[
     Row {
         label: "panel.physics.linear_damping",
-        slider: ids::PHYSICS_LINEAR_DAMPING,
-        chip: ids::PHYSICS_LINEAR_DAMPING_NUM,
+        slider: crate::ids::PHYSICS_LINEAR_DAMPING,
+        chip: crate::ids::PHYSICS_LINEAR_DAMPING_NUM,
         min: 0.0,
         max: MAX_DAMPING,
         step: 0.05, // LITERAL-PX-OK: drag step of a dimensionless physical knob, not a design metric
@@ -180,8 +179,8 @@ static DAMPING: &[Row] = &[
     },
     Row {
         label: "panel.physics.angular_damping",
-        slider: ids::PHYSICS_ANGULAR_DAMPING,
-        chip: ids::PHYSICS_ANGULAR_DAMPING_NUM,
+        slider: crate::ids::PHYSICS_ANGULAR_DAMPING,
+        chip: crate::ids::PHYSICS_ANGULAR_DAMPING_NUM,
         min: 0.0,
         max: MAX_DAMPING,
         step: 0.05, // LITERAL-PX-OK: drag step of a dimensionless physical knob, not a design metric
@@ -195,8 +194,8 @@ static DAMPING: &[Row] = &[
 static SLEEP: &[Row] = &[
     Row {
         label: "panel.physics.sleep_speed",
-        slider: ids::PHYSICS_SLEEP_SPEED,
-        chip: ids::PHYSICS_SLEEP_SPEED_NUM,
+        slider: crate::ids::PHYSICS_SLEEP_SPEED,
+        chip: crate::ids::PHYSICS_SLEEP_SPEED_NUM,
         min: 0.0,
         max: MAX_SLEEP_THRESHOLD,
         step: 0.05, // LITERAL-PX-OK: drag step of a dimensionless physical knob, not a design metric
@@ -216,8 +215,8 @@ static SLEEP: &[Row] = &[
     // postcard é posicional (ver o doc dele). O que morreu foi a promessa de que ele era contínuo.
     Row {
         label: "panel.physics.sleep_delay",
-        slider: ids::PHYSICS_SLEEP_DELAY,
-        chip: ids::PHYSICS_SLEEP_DELAY_NUM,
+        slider: crate::ids::PHYSICS_SLEEP_DELAY,
+        chip: crate::ids::PHYSICS_SLEEP_DELAY_NUM,
         min: 0.0,
         max: MAX_TIME_UNTIL_SLEEP,
         step: 0.1, // LITERAL-PX-OK: drag step in seconds (physical unit, not a design metric)
@@ -230,27 +229,27 @@ static SLEEP: &[Row] = &[
 /// Every section, in paint order.
 pub static SECTIONS: &[Section] = &[
     Section {
-        id: ids::PHYSICS_SEC_WORLD,
+        id: crate::ids::PHYSICS_SEC_WORLD,
         title: "panel.physics.section.world",
         rows: WORLD,
     },
     Section {
-        id: ids::PHYSICS_SEC_SOLVER,
+        id: crate::ids::PHYSICS_SEC_SOLVER,
         title: "panel.physics.section.solver",
         rows: SOLVER,
     },
     Section {
-        id: ids::PHYSICS_SEC_AIR,
+        id: crate::ids::PHYSICS_SEC_AIR,
         title: "panel.physics.section.air",
         rows: AIR,
     },
     Section {
-        id: ids::PHYSICS_SEC_DAMPING,
+        id: crate::ids::PHYSICS_SEC_DAMPING,
         title: "panel.physics.section.damping",
         rows: DAMPING,
     },
     Section {
-        id: ids::PHYSICS_SEC_SLEEP,
+        id: crate::ids::PHYSICS_SEC_SLEEP,
         title: "panel.physics.section.sleep",
         rows: SLEEP,
     },
@@ -272,10 +271,10 @@ pub static SECTIONS: &[Section] = &[
 /// ⚠️ A ORDEM aqui é a ordem de pintura de [`super::paint::body::paint_sections`], e é a que o
 /// censo do seam usa para dizer qual cabeçalho falhou.
 pub static HAND_PAINTED_SECTIONS: &[NodeId] = &[
-    ids::PHYSICS_SEC_INTERACT,
-    ids::PHYSICS_SEC_JOINT,
-    ids::PHYSICS_SEC_LAYERS,
-    ids::PHYSICS_SEC_DEBUG,
+    crate::ids::PHYSICS_SEC_INTERACT,
+    crate::ids::PHYSICS_SEC_JOINT,
+    crate::ids::PHYSICS_SEC_LAYERS,
+    crate::ids::PHYSICS_SEC_DEBUG,
 ];
 
 /// **Todo cabeçalho de secção deste painel, na ordem em que ele é pintado** — as [`SECTIONS`]

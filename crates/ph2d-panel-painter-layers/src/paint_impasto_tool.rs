@@ -13,7 +13,6 @@
 //! moment that tool is picked — and Material writes the three relief slots on the tool side, so no
 //! card is a knob editing a slot nothing reads. The radio still says which tool the BRUSH is.
 
-use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{
     Card, SegmentedAdaptive, SegmentedOption, measure_segmented_adaptive, paint_card,
@@ -36,18 +35,18 @@ pub(crate) fn paint_tool_card(
     y: f32,
     brush: &BrushSettings,
 ) -> f32 {
-    let card = Card::new(core_ids::PAINTER_IMPASTO_TOOL).title("TOOL");
+    let card = Card::new(ph2d_tool_painter::ids::PAINTER_IMPASTO_TOOL).title("TOOL");
     let labels = [
         "Deposit", "Knife", "Smooth", "Sharpen", "Flatten", "Scrape", "Fill", "Chisel", "Layer",
         "Inflate",
     ];
-    let opts: Vec<SegmentedOption> = core_ids::PAINTER_IMPASTO_TOOL_IDS
+    let opts: Vec<SegmentedOption> = ph2d_tool_painter::ids::PAINTER_IMPASTO_TOOL_IDS
         .iter()
         .zip(labels)
         .map(|(id, label)| SegmentedOption::new(*id, label))
         .collect();
     let seg = SegmentedAdaptive::new(
-        core_ids::PAINTER_IMPASTO_TOOL,
+        ph2d_tool_painter::ids::PAINTER_IMPASTO_TOOL,
         "Which operation acts on the paint's body",
         opts,
     )

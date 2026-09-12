@@ -15,7 +15,6 @@
 //! ensinaram. Uma lista de listas e não um laço por array: o quinto grupo nasce
 //! fora da regra se cada um tiver o seu.
 
-use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState, TextInputState};
 
@@ -61,16 +60,16 @@ pub fn populate(store: &mut WidgetStore) {
     }
 
     for group in [
-        &ids::SCULPT3D_VERB[..],
+        &crate::ids::SCULPT3D_VERB[..],
         // ⚠️ **Os TRÊS entram, e o painel pinta só os oferecidos** — registrar
         // só os pintados faria o registro depender do verbo corrente, e um chip
         // que nasce vivo num verbo e morto noutro é a forma mais cara deste bug.
-        &ids::SCULPT3D_REF_MODE[..],
+        &crate::ids::SCULPT3D_REF_MODE[..],
         // ⚠️ **Os SETE entram, e o painel pinta a fileira só com o filtro
         // ARMADO** — a mesma lei dos vizinhos: registrar só os pintados faria
         // o registro depender de um estado que muda com um clique, e um chip
         // que nasce vivo armado e morto desarmado é o bug caro desta família.
-        &ids::SCULPT3D_FILTER_KIND[..],
+        &crate::ids::SCULPT3D_FILTER_KIND[..],
         // ⛔⛔ **AS DUAS FILEIRAS DO FILTRO DE TECIDO, e elas caíram no MESMO
         // buraco na hora em que nasceram** (07/09): pintadas, hit-indexadas e
         // **mortas sob o ponteiro**. Quem as apanhou foi o
@@ -82,17 +81,17 @@ pub fn populate(store: &mut WidgetStore) {
         // painel só pinte a fileira do referencial com uma lei de tecido
         // escolhida: registar só os pintados faria o registo depender de um
         // estado que muda com um clique.
-        &ids::SCULPT3D_CLOTH_FILTER_KIND[..],
-        &ids::SCULPT3D_CLOTH_FILTER_ORIENT[..],
+        &crate::ids::SCULPT3D_CLOTH_FILTER_KIND[..],
+        &crate::ids::SCULPT3D_CLOTH_FILTER_ORIENT[..],
         // ⚠️ Mesma lei do vizinho de cima: os três entram, e o painel pinta
         // a fileira só onde o verbo declara campo E o nível é Pro.
-        &ids::SCULPT3D_ELASTIC_SCALES[..],
-        &ids::SCULPT3D_UI_LEVEL[..],
+        &crate::ids::SCULPT3D_ELASTIC_SCALES[..],
+        &crate::ids::SCULPT3D_UI_LEVEL[..],
         // ⚠️ Os DOIS entram sempre: registrar só o motor corrente faria o chip do
         // outro nascer morto — e um chip pintado que ninguém registrou é uma
         // affordance que não faz nada.
-        &ids::SCULPT3D_RETOPO_MODE[..],
-        &ids::SCULPT3D_FALLOFF[..],
+        &crate::ids::SCULPT3D_RETOPO_MODE[..],
+        &crate::ids::SCULPT3D_FALLOFF[..],
         // ⛔⛔ **AS TRÊS FILEIRAS DO TECIDO FALTAVAM AQUI desde 06/09** — os oito
         // modos e as três áreas nasceram pintados, hit-indexados e **mortos sob
         // o ponteiro**, que é literalmente o defeito que o cabeçalho deste
@@ -102,15 +101,15 @@ pub fn populate(store: &mut WidgetStore) {
         // fixtura tem de conter o fenómeno* — a SEXTA vez que este módulo o
         // escreve, e a primeira em que a frase custou uma wave inteira de
         // controlos.
-        &ids::SCULPT3D_CLOTH_MODE[..],
-        &ids::SCULPT3D_CLOTH_AREA[..],
-        &ids::SCULPT3D_CLOTH_FORCE_FALLOFF[..],
-        &ids::SCULPT3D_ALPHA[..],
-        &ids::SCULPT3D_DETAIL[..],
-        &ids::SCULPT3D_ADD[..],
-        &ids::SCULPT3D_MASK_OP[..],
-        &ids::SCULPT3D_TRANSFORM[..],
-        &ids::SCULPT3D_MATCAP[..],
+        &crate::ids::SCULPT3D_CLOTH_MODE[..],
+        &crate::ids::SCULPT3D_CLOTH_AREA[..],
+        &crate::ids::SCULPT3D_CLOTH_FORCE_FALLOFF[..],
+        &crate::ids::SCULPT3D_ALPHA[..],
+        &crate::ids::SCULPT3D_DETAIL[..],
+        &crate::ids::SCULPT3D_ADD[..],
+        &crate::ids::SCULPT3D_MASK_OP[..],
+        &crate::ids::SCULPT3D_TRANSFORM[..],
+        &crate::ids::SCULPT3D_MATCAP[..],
     ] {
         for &id in group {
             button(store, id);
@@ -147,29 +146,29 @@ pub fn populate(store: &mut WidgetStore) {
     // um grupo), os dois toggles que o `event` resolve por outra rota, e o fechar
     // do painel.
     for id in [
-        ids::SCULPT3D_REF_MODE_ALL,
-        ids::SCULPT3D_SYM_X,
-        ids::SCULPT3D_SYM_Y,
-        ids::SCULPT3D_SYM_Z,
-        ids::SCULPT3D_ALPHA_PREVIEW,
-        ids::SCULPT3D_WIREFRAME,
-        ids::SCULPT3D_ACCUMULATE,
-        ids::SCULPT3D_FRONT_FACES,
-        ids::SCULPT3D_SURFACE_ONLY,
-        ids::SCULPT3D_SCRAPE_DYNAMIC,
-        ids::SCULPT3D_CLOTH_PIN,
-        ids::SCULPT3D_CLOTH_PERSISTENT,
-        ids::SCULPT3D_CLOTH_COLLISIONS,
+        crate::ids::SCULPT3D_REF_MODE_ALL,
+        crate::ids::SCULPT3D_SYM_X,
+        crate::ids::SCULPT3D_SYM_Y,
+        crate::ids::SCULPT3D_SYM_Z,
+        crate::ids::SCULPT3D_ALPHA_PREVIEW,
+        crate::ids::SCULPT3D_WIREFRAME,
+        crate::ids::SCULPT3D_ACCUMULATE,
+        crate::ids::SCULPT3D_FRONT_FACES,
+        crate::ids::SCULPT3D_SURFACE_ONLY,
+        crate::ids::SCULPT3D_SCRAPE_DYNAMIC,
+        crate::ids::SCULPT3D_CLOTH_PIN,
+        crate::ids::SCULPT3D_CLOTH_PERSISTENT,
+        crate::ids::SCULPT3D_CLOTH_COLLISIONS,
         // ⭐⭐ **OS CONTROLOS DO FILTRO DE TECIDO** (2026-09-08). ⚠️ **Um `const`
         // pintado e não registado é um controlo MORTO sob o dedo** — o gate
         // `every_painted_control_is_clickable_where_it_is_drawn` apanhou os
         // quatro na primeira corrida, e a mensagem dele nomeia o mecanismo: *um
         // id ausente do store não é focável*.
-        ids::SCULPT3D_CFILTER_COLLISIONS,
-        ids::SCULPT3D_CFILTER_AXIS[0],
-        ids::SCULPT3D_CFILTER_AXIS[1],
-        ids::SCULPT3D_CFILTER_AXIS[2],
-        ids::SCULPT3D_CLOSE,
+        crate::ids::SCULPT3D_CFILTER_COLLISIONS,
+        crate::ids::SCULPT3D_CFILTER_AXIS[0],
+        crate::ids::SCULPT3D_CFILTER_AXIS[1],
+        crate::ids::SCULPT3D_CFILTER_AXIS[2],
+        crate::ids::SCULPT3D_CLOSE,
     ] {
         button(store, id);
     }

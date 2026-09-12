@@ -10,7 +10,6 @@
 //! [`ROWS`]; acrescentar um knob é acrescentar uma linha, e ele nasce pintado,
 //! registrado, vivo e varrido.
 
-use ph2d_editor_core::ids;
 use ph2d_sculpt3d::Verb;
 
 use crate::state::{Sculpt3dUi, UiLevel};
@@ -115,8 +114,8 @@ pub(super) fn shapes_the_distance(u: &Sculpt3dUi) -> bool {
 static BRUSH: &[Row] = &[
     Row {
         label: "panel.sculpt3d.radius",
-        slider: ids::SCULPT3D_RADIUS,
-        chip: ids::SCULPT3D_RADIUS_NUM,
+        slider: crate::ids::SCULPT3D_RADIUS,
+        chip: crate::ids::SCULPT3D_RADIUS_NUM,
         min: 1.0,
         max: RADIUS_TRACK_MAX_PX,
         step: 1.0,
@@ -129,8 +128,8 @@ static BRUSH: &[Row] = &[
     },
     Row {
         label: "panel.sculpt3d.strength",
-        slider: ids::SCULPT3D_STRENGTH,
-        chip: ids::SCULPT3D_STRENGTH_NUM,
+        slider: crate::ids::SCULPT3D_STRENGTH,
+        chip: crate::ids::SCULPT3D_STRENGTH_NUM,
         min: 0.0,
         max: 1.0,
         step: 0.05, // LITERAL-PX-OK: passo de um knob adimensional, não métrica de layout
@@ -154,8 +153,8 @@ static BRUSH: &[Row] = &[
     // controle.
     Row {
         label: "panel.sculpt3d.hardness",
-        slider: ids::SCULPT3D_HARDNESS,
-        chip: ids::SCULPT3D_HARDNESS_NUM,
+        slider: crate::ids::SCULPT3D_HARDNESS,
+        chip: crate::ids::SCULPT3D_HARDNESS_NUM,
         min: 0.0,
         // ⚠️ **UM é o disco duro, e ele é alcançável de propósito** — o
         // `shaped_distance` tem braço próprio para ele justamente porque a
@@ -192,8 +191,8 @@ static BRUSH: &[Row] = &[
     // num knob que aparece e não muda um vértice.
     Row {
         label: "panel.sculpt3d.auto_smooth",
-        slider: ids::SCULPT3D_AUTO_SMOOTH,
-        chip: ids::SCULPT3D_AUTO_SMOOTH_NUM,
+        slider: crate::ids::SCULPT3D_AUTO_SMOOTH,
+        chip: crate::ids::SCULPT3D_AUTO_SMOOTH_NUM,
         min: 0.0,
         max: 1.0,
         step: 0.05, // LITERAL-PX-OK: passo de um knob adimensional, não métrica de layout
@@ -218,8 +217,8 @@ static BRUSH: &[Row] = &[
     },
     Row {
         label: "panel.sculpt3d.plane_offset",
-        slider: ids::SCULPT3D_PLANE_OFFSET,
-        chip: ids::SCULPT3D_PLANE_OFFSET_NUM,
+        slider: crate::ids::SCULPT3D_PLANE_OFFSET,
+        chip: crate::ids::SCULPT3D_PLANE_OFFSET_NUM,
         // Com SINAL, e é o que separa Flatten de Clay sem inventar um verbo:
         // positivo adiciona matéria, negativo raspa.
         min: -1.0,
@@ -240,8 +239,8 @@ static BRUSH: &[Row] = &[
     },
     Row {
         label: "panel.sculpt3d.pinch",
-        slider: ids::SCULPT3D_PINCH,
-        chip: ids::SCULPT3D_PINCH_NUM,
+        slider: crate::ids::SCULPT3D_PINCH,
+        chip: crate::ids::SCULPT3D_PINCH_NUM,
         min: 0.0,
         max: 1.0,
         step: 0.05, // LITERAL-PX-OK: passo de um knob adimensional, não métrica de layout
@@ -263,8 +262,8 @@ static BRUSH: &[Row] = &[
     // vértice, que é exactamente o knob morto que este arquivo evita.
     Row {
         label: "panel.sculpt3d.hc_shape",
-        slider: ids::SCULPT3D_HC_SHAPE,
-        chip: ids::SCULPT3D_HC_SHAPE_NUM,
+        slider: crate::ids::SCULPT3D_HC_SHAPE,
+        chip: crate::ids::SCULPT3D_HC_SHAPE_NUM,
         min: 0.0,
         max: 1.0,
         step: 0.05, // LITERAL-PX-OK: passo de um knob adimensional, não métrica de layout
@@ -282,8 +281,8 @@ static BRUSH: &[Row] = &[
     },
     Row {
         label: "panel.sculpt3d.hc_vertex",
-        slider: ids::SCULPT3D_HC_VERTEX,
-        chip: ids::SCULPT3D_HC_VERTEX_NUM,
+        slider: crate::ids::SCULPT3D_HC_VERTEX,
+        chip: crate::ids::SCULPT3D_HC_VERTEX_NUM,
         // ⚠️ **O piso é `0,5` e ele NÃO é gosto:** abaixo dele o operador
         // AMPLIFICA em vez de contrair, e a faixa do Blender (`[0, 1]`) alcança
         // o disfuncional. A forma fechada e a tabela medida vivem em
@@ -311,8 +310,8 @@ static BRUSH: &[Row] = &[
     // ganhasse um segundo consumidor.
     Row {
         label: "panel.sculpt3d.tip_roundness",
-        slider: ids::SCULPT3D_TIP_ROUNDNESS,
-        chip: ids::SCULPT3D_TIP_ROUNDNESS_NUM,
+        slider: crate::ids::SCULPT3D_TIP_ROUNDNESS,
+        chip: crate::ids::SCULPT3D_TIP_ROUNDNESS_NUM,
         min: 0.0,
         // ⚠️ **UM é o disco, e é alcançável de propósito** — a caixa totalmente
         // arredondada É a distância euclidiana, então o teto do knob é a
@@ -330,8 +329,8 @@ static BRUSH: &[Row] = &[
     },
     Row {
         label: "panel.sculpt3d.strip_length",
-        slider: ids::SCULPT3D_STRIP_LENGTH,
-        chip: ids::SCULPT3D_STRIP_LENGTH_NUM,
+        slider: crate::ids::SCULPT3D_STRIP_LENGTH,
+        chip: crate::ids::SCULPT3D_STRIP_LENGTH_NUM,
         // ⚠️ **O piso é `1`, e não `0`:** o número é *quantos raios a faixa mede
         // ao longo do caminho*, então abaixo de um a pegada seria mais CURTA que
         // larga — uma faixa atravessada, que é o oposto do que o nome diz. O
@@ -354,8 +353,8 @@ static BRUSH: &[Row] = &[
     // **A ABERTURA DO V**, o único knob que faz da lâmina uma lâmina.
     Row {
         label: "panel.sculpt3d.scrape_angle",
-        slider: ids::SCULPT3D_SCRAPE_ANGLE,
-        chip: ids::SCULPT3D_SCRAPE_ANGLE_NUM,
+        slider: crate::ids::SCULPT3D_SCRAPE_ANGLE,
+        chip: crate::ids::SCULPT3D_SCRAPE_ANGLE_NUM,
         // ⚠️ **ZERO é alcançável e ali a ferramenta fica INERTE** — os dois
         // meios-planos coincidem com o plano TANGENTE, e num convexo não há nada
         // acima dele (medido: zero vértices movidos). Um piso acima de zero
@@ -382,8 +381,8 @@ static BRUSH: &[Row] = &[
     // onde o default e as duas faixas têm a fonte e a medição ao lado.
     Row {
         label: "panel.sculpt3d.layer_height",
-        slider: ids::SCULPT3D_LAYER_HEIGHT,
-        chip: ids::SCULPT3D_LAYER_HEIGHT_NUM,
+        slider: crate::ids::SCULPT3D_LAYER_HEIGHT,
+        chip: crate::ids::SCULPT3D_LAYER_HEIGHT_NUM,
         // ⚠️ **ZERO é alcançável e ali a demão é INERTE** — uma camada de
         // espessura nenhuma não move um vértice —, e é a faixa da referência
         // (`RNA_def_property_range(prop, 0, 1.0f)`). Um piso acima de zero
@@ -414,8 +413,8 @@ static BRUSH: &[Row] = &[
     // seletor discreto ao lado governa outra pergunta.
     Row {
         label: "panel.sculpt3d.mask_hardness",
-        slider: ids::SCULPT3D_MASK_HARDNESS,
-        chip: ids::SCULPT3D_MASK_HARDNESS_NUM,
+        slider: crate::ids::SCULPT3D_MASK_HARDNESS,
+        chip: crate::ids::SCULPT3D_MASK_HARDNESS_NUM,
         min: 0.0,
         // ⚠️ O teto sai do MOTOR (`ph2d_sculpt3d::MAX_MASK_HARDNESS`), onde a
         // lei que o torna um disco duro está escrita; um literal aqui seria a

@@ -6,13 +6,13 @@
 
 use crate::paint::register_button;
 use ph2d_editor_core::IconId;
-use ph2d_editor_core::ids::{PainterLayerWidget, painter_layer_widget_id};
 use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{Button, ButtonKind, paint_button};
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken};
 use ph2d_tool_painter::LayerId;
+use ph2d_tool_painter::ids::{PainterLayerWidget, painter_layer_widget_id};
 
 const MASK_INV_W: f32 = 34.0; // LITERAL-PX-OK: mask-row "Inv" toggle button width
 const MASK_APPLY_W: f32 = 48.0; // LITERAL-PX-OK: mask-row "Apply" button width

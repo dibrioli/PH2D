@@ -33,13 +33,18 @@ pub(super) fn populate_envelope(store: &mut WidgetStore) {
     slider_chip(
         store,
         ids::VECTOR_ENVELOPE_BEND,
-        ids::VECTOR_ENVELOPE_BEND_NUM,
+        ph2d_tool_vector::ids::VECTOR_ENVELOPE_BEND_NUM,
         BEND_DEFAULT_TRACK,
         f64::from(ph2d_ecs_default_bend()),
         2.0,
         -1.0,
     );
-    store.set_number_range(ids::VECTOR_ENVELOPE_BEND_NUM, -1.0, 1.0, BEND_STEP);
+    store.set_number_range(
+        ph2d_tool_vector::ids::VECTOR_ENVELOPE_BEND_NUM,
+        -1.0,
+        1.0,
+        BEND_STEP,
+    );
 }
 
 /// O `bend` com que um envelope nasce, no domínio do documento (`-1..1`).

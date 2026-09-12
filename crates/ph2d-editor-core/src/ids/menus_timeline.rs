@@ -102,13 +102,6 @@ pub const CTX_MENU_TL_EXTRAP_PRE: NodeId = hash_node_id("ctx_menu_tl_extrap_pre"
 /// Cascade row: what the track does AFTER the last key (loopOut).
 pub const CTX_MENU_TL_EXTRAP_POST: NodeId = hash_node_id("ctx_menu_tl_extrap_post");
 
-/// Wire encoding of the extrapolation SIDE, carried in
-/// `ContextMenuKind::TimelineExtrap` from the cascade row that opened the submenu.
-/// Opaque to editor-core; the panel decodes it into an `ExtrapSide`.
-pub const TL_EXTRAP_SIDE_PRE: u8 = 0;
-/// After the last key — see [`TL_EXTRAP_SIDE_PRE`].
-pub const TL_EXTRAP_SIDE_POST: u8 = 1;
-
 /// Submenu leaf: flat-clamp (hold the boundary value — the default).
 pub const CTX_MENU_TL_EXTRAP_HOLD: NodeId = hash_node_id("ctx_menu_tl_extrap_hold");
 /// Submenu leaf: cycle the range end-to-end.

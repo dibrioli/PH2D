@@ -119,10 +119,13 @@ fn button(store: &mut WidgetStore, id: ph2d_a11y::NodeId) {
 /// possuir a alocação de NodeId"* — esta possui, então esta o faz.
 fn chrome(store: &mut WidgetStore) {
     for (id, kind) in [
-        (ids::AUTHORED_DRAG_HANDLE, BlenderHitKind::DragHandle),
-        (ids::AUTHORED_RESIZE_HANDLE, BlenderHitKind::ResizeHandle),
+        (crate::ids::AUTHORED_DRAG_HANDLE, BlenderHitKind::DragHandle),
         (
-            ids::AUTHORED_RESIZE_HANDLE_BL,
+            crate::ids::AUTHORED_RESIZE_HANDLE,
+            BlenderHitKind::ResizeHandle,
+        ),
+        (
+            crate::ids::AUTHORED_RESIZE_HANDLE_BL,
             BlenderHitKind::ResizeHandleBl,
         ),
     ] {
@@ -168,7 +171,7 @@ pub(crate) fn retire_vanished(store: &mut WidgetStore) {
             live.insert(row.id);
             if row.kind.takes_options() {
                 for i in 0..row.options.len() {
-                    live.insert(ids::authored_option_id(&row.key, i));
+                    live.insert(crate::ids::authored_option_id(&row.key, i));
                 }
             }
         }
@@ -185,7 +188,7 @@ pub(crate) fn retire_vanished(store: &mut WidgetStore) {
 }
 
 pub fn populate(store: &mut WidgetStore) {
-    button(store, ids::AUTHORED_CLOSE);
+    button(store, crate::ids::AUTHORED_CLOSE);
     chrome(store);
     with_rows(|table| {
         for row in table {
@@ -303,7 +306,7 @@ fn options(store: &mut WidgetStore, row: &Row) {
         crate::rows::clamp_selection_to(live, row.options.len());
     }
     for i in 0..row.options.len() {
-        button(store, ids::authored_option_id(&row.key, i));
+        button(store, crate::ids::authored_option_id(&row.key, i));
     }
 }
 

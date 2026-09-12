@@ -23,7 +23,6 @@
 //! **A widget is not done when it PAINTS. It is done when a test CLICKS it.**
 
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::tool::{PanelEvent, Tool};
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_painter_layers::PainterLayersPanel;
@@ -43,7 +42,7 @@ fn viewport() -> Rect {
 fn tool_with_impasto_on() -> PainterTool {
     let mut tool = PainterTool::default();
     tool.handle_panel_event(PanelEvent::SelectOption(
-        core_ids::PAINTER_BRUSH_MEDIA,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_MEDIA,
         "2".into(),
     ));
     let bs = tool.brush_settings();
@@ -100,7 +99,9 @@ fn clicking_a_lamp_chip_selects_that_lamp() {
     let painted = host.paint::<PainterLayersPanel>(&mut st, viewport());
     let Some((_, rect)) = painted
         .iter()
-        .find(|(w, r)| *w == core_ids::PAINTER_IMPASTO_LIGHT_2 && r.w > 0.0 && r.h > 0.0)
+        .find(|(w, r)| {
+            *w == ph2d_tool_painter::ids::PAINTER_IMPASTO_LIGHT_2 && r.w > 0.0 && r.h > 0.0
+        })
         .copied()
     else {
         panic!("lamp chip 2 is not painted with a clickable rect — the card never drew it");
@@ -112,7 +113,7 @@ fn clicking_a_lamp_chip_selects_that_lamp() {
     // that happens, so say so rather than making the reader guess.
     assert_eq!(
         host.hit_at(x, y),
-        Some(core_ids::PAINTER_IMPASTO_LIGHT_2),
+        Some(ph2d_tool_painter::ids::PAINTER_IMPASTO_LIGHT_2),
         "the pixel at the centre of lamp chip 2 does not resolve to the chip — a widget painted \
          AFTER it covers that rect (hit() is last-registered-wins)"
     );
@@ -134,10 +135,10 @@ fn clicking_a_lamp_chip_selects_that_lamp() {
 #[test]
 fn every_lamp_chip_selects_its_lamp() {
     for (i, chip) in [
-        core_ids::PAINTER_IMPASTO_LIGHT_1,
-        core_ids::PAINTER_IMPASTO_LIGHT_2,
-        core_ids::PAINTER_IMPASTO_LIGHT_3,
-        core_ids::PAINTER_IMPASTO_LIGHT_4,
+        ph2d_tool_painter::ids::PAINTER_IMPASTO_LIGHT_1,
+        ph2d_tool_painter::ids::PAINTER_IMPASTO_LIGHT_2,
+        ph2d_tool_painter::ids::PAINTER_IMPASTO_LIGHT_3,
+        ph2d_tool_painter::ids::PAINTER_IMPASTO_LIGHT_4,
     ]
     .into_iter()
     .enumerate()
@@ -193,7 +194,9 @@ fn the_enable_checkbox_switches_the_selected_lamp_on() {
     let painted = host.paint::<PainterLayersPanel>(&mut st, viewport());
     let Some((_, rect)) = painted
         .iter()
-        .find(|(w, r)| *w == core_ids::PAINTER_IMPASTO_LIGHT_ON && r.w > 0.0 && r.h > 0.0)
+        .find(|(w, r)| {
+            *w == ph2d_tool_painter::ids::PAINTER_IMPASTO_LIGHT_ON && r.w > 0.0 && r.h > 0.0
+        })
         .copied()
     else {
         panic!(
@@ -219,7 +222,7 @@ fn the_enable_checkbox_switches_the_selected_lamp_on() {
 /// knob cannot ship inert.
 #[test]
 fn every_impasto_click_widget_is_reachable_by_a_pointer() {
-    for clicked in core_ids::PAINTER_IMPASTO_CLICKS {
+    for clicked in ph2d_tool_painter::ids::PAINTER_IMPASTO_CLICKS {
         let mut tool = tool_with_impasto_on();
         // The Enable row only exists for lamps 2-4; select one so the sweep can reach it.
         tool.select_impasto_light(1);
@@ -273,28 +276,32 @@ fn the_section_header_collapses_and_its_colour_dot_opens_the_picker() {
     };
 
     // The chevron: a click must actually FLIP the collapsed state, not merely be delivered.
-    let header = rect_of(core_ids::PAINTER_IMPASTO_SECTION).expect("the section header is painted");
+    let header = rect_of(ph2d_tool_painter::ids::PAINTER_IMPASTO_SECTION)
+        .expect("the section header is painted");
     assert!(
-        !host.store().is_collapsed(core_ids::PAINTER_IMPASTO_SECTION),
+        !host
+            .store()
+            .is_collapsed(ph2d_tool_painter::ids::PAINTER_IMPASTO_SECTION),
         "fixture: the section starts expanded"
     );
     let (hx, hy) = centre(header);
     let _ = host.click_at(hx, hy);
     assert!(
-        host.store().is_collapsed(core_ids::PAINTER_IMPASTO_SECTION),
+        host.store()
+            .is_collapsed(ph2d_tool_painter::ids::PAINTER_IMPASTO_SECTION),
         "clicking the Impasto section header did not collapse it — the id was never \
          `mark_collapsible_section`'d, so `apply_click`'s collapse branch never sees it and the \
          chevron is decoration"
     );
 
     // The colour dot: Down on a picker swatch targets the shared picker (its own dispatch path).
-    let dot = rect_of(core_ids::PAINTER_IMPASTO_SECTION_COLOR)
+    let dot = rect_of(ph2d_tool_painter::ids::PAINTER_IMPASTO_SECTION_COLOR)
         .expect("the section colour dot is painted");
     let (dx, dy) = centre(dot);
     let _ = host.click_at(dx, dy);
     assert_eq!(
         host.store().picker_target(),
-        Some(core_ids::PAINTER_IMPASTO_SECTION_COLOR),
+        Some(ph2d_tool_painter::ids::PAINTER_IMPASTO_SECTION_COLOR),
         "clicking the Impasto colour dot did not open the shared picker — the id was never \
          `register_picker_swatch`'d, so Down falls through to the focus path and does nothing"
     );
@@ -320,9 +327,9 @@ fn no_impasto_widget_loses_its_hit_to_the_section_below() {
     let mut st = PainterLayersPanelState;
     let painted = host.paint::<PainterLayersPanel>(&mut st, viewport());
 
-    for id in core_ids::PAINTER_IMPASTO_CLICKS
+    for id in ph2d_tool_painter::ids::PAINTER_IMPASTO_CLICKS
         .into_iter()
-        .chain(core_ids::PAINTER_IMPASTO_FIELDS)
+        .chain(ph2d_tool_painter::ids::PAINTER_IMPASTO_FIELDS)
     {
         let Some((_, rect)) = painted
             .iter()
@@ -363,7 +370,9 @@ fn the_wax_colour_swatch_opens_the_picker() {
     let painted = host.paint::<PainterLayersPanel>(&mut st, viewport());
     let Some((_, rect)) = painted
         .iter()
-        .find(|(w, r)| *w == core_ids::PAINTER_IMPASTO_WAX_COLOR && r.w > 0.0 && r.h > 0.0)
+        .find(|(w, r)| {
+            *w == ph2d_tool_painter::ids::PAINTER_IMPASTO_WAX_COLOR && r.w > 0.0 && r.h > 0.0
+        })
         .copied()
     else {
         panic!(
@@ -374,7 +383,7 @@ fn the_wax_colour_swatch_opens_the_picker() {
     let (x, y) = centre(rect);
     assert_eq!(
         host.hit_at(x, y),
-        Some(core_ids::PAINTER_IMPASTO_WAX_COLOR),
+        Some(ph2d_tool_painter::ids::PAINTER_IMPASTO_WAX_COLOR),
         "the swatch's own pixel does not resolve to it — the Wax slider beside it is overlapping the square"
     );
     for ev in host.click_at(x, y) {
@@ -382,7 +391,7 @@ fn the_wax_colour_swatch_opens_the_picker() {
     }
     assert_eq!(
         host.store().picker_target(),
-        Some(core_ids::PAINTER_IMPASTO_WAX_COLOR),
+        Some(ph2d_tool_painter::ids::PAINTER_IMPASTO_WAX_COLOR),
         "clicking the Wax-colour swatch did not open the shared picker targeting it — the swatch is \
          painted, hit-registered and stone dead under the mouse"
     );

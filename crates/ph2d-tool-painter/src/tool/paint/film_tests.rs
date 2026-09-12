@@ -277,12 +277,11 @@ fn the_coverage_saturates_inside_a_stroke_and_this_is_its_number() {
 /// vivo, sem o fan-out) — o segundo braço deste gate morre.
 #[test]
 fn the_deposits_shine_is_the_paints_own_shine() {
-    use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::PanelEvent;
     let mut t = bristle(20.0);
     // A porta do PRODUTO (o que o painel chama), não o roteador interno: se ninguém consumir o evento,
     // o campo não se move e o primeiro braço sangra.
-    t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_SHAPE_SHINE, 0.31));
+    t.handle_panel_event(PanelEvent::SetValue(crate::ids::PAINTER_SHAPE_SHINE, 0.31));
     assert!(
         (t.brush_settings().impasto_shine - 0.31).abs() < 1e-4,
         "a row da Shape tem de escrever o MESMO campo que o card Material; leu {}",

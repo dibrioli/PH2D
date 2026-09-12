@@ -33,24 +33,24 @@ fn cena() -> (VecScene, Vec<u64>) {
 fn a_click_on_a_runtime_id_resolves_to_the_right_verb_and_index() {
     use ph2d_editor_core::ids;
     assert_eq!(
-        stack_verb_for_id(ids::VECTOR_PAINT_ADD_FILL),
+        stack_verb_for_id(ph2d_panel_vector::ids::VECTOR_PAINT_ADD_FILL),
         Some(StackVerb::AddFill)
     );
     assert_eq!(
-        stack_verb_for_id(ids::VECTOR_PAINT_ADD_STROKE),
+        stack_verb_for_id(ph2d_panel_vector::ids::VECTOR_PAINT_ADD_STROKE),
         Some(StackVerb::AddStroke)
     );
     for i in [0usize, 1, MAX_PAINT_LAYERS - 1] {
         assert_eq!(
-            stack_verb_for_id(ids::vector_paint_eye_id(i)),
+            stack_verb_for_id(ph2d_panel_vector::ids::vector_paint_eye_id(i)),
             Some(StackVerb::Eye(i))
         );
         assert_eq!(
-            stack_verb_for_id(ids::vector_paint_up_id(i)),
+            stack_verb_for_id(ph2d_panel_vector::ids::vector_paint_up_id(i)),
             Some(StackVerb::Up(i))
         );
         assert_eq!(
-            stack_verb_for_id(ids::vector_paint_del_id(i)),
+            stack_verb_for_id(ph2d_panel_vector::ids::vector_paint_del_id(i)),
             Some(StackVerb::Del(i))
         );
     }

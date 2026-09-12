@@ -15,7 +15,6 @@
 //! O X (`INSP_CLOSE`) sobrevive à alça porque é **re-registado depois dela** — e a nota que o diz
 //! está no `paint.rs` desde 2026-05-24. O `+` nasceu sem esse re-registo.
 
-use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::HitIndex;
 use ph2d_editor_core::screens::hero::InspectorTransformInfo;
 use ph2d_editor_core::zones::Rect;
@@ -50,10 +49,12 @@ fn winner_at_the_plus(sel: Option<InspectorTransformInfo>) -> (Option<ph2d_a11y:
     let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
     set_current_inspector_transform(None);
 
-    let registered = rects.iter().any(|(n, _)| *n == ids::INSP_ADD_COMPONENT);
+    let registered = rects
+        .iter()
+        .any(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_ADD_COMPONENT);
     let Some((_, r)) = rects
         .iter()
-        .find(|(n, _)| *n == ids::INSP_ADD_COMPONENT)
+        .find(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_ADD_COMPONENT)
         .copied()
     else {
         return (None, registered);
@@ -78,7 +79,7 @@ fn the_plus_wins_the_click_over_the_drag_handle() {
     );
     assert_eq!(
         winner,
-        Some(ids::INSP_ADD_COMPONENT),
+        Some(ph2d_panel_inspector::ids::INSP_ADD_COMPONENT),
         "o + esta' pintado e MORTO sob o dedo: quem ganha o clique no centro dele e' {winner:?} \
          (a alca de arrasto do painel regista-se no fim do quadro e cobre a banda do titulo — o X \
          sobrevive porque e' RE-REGISTADO depois dela, e o + tem de o ser tambem)"
@@ -95,5 +96,5 @@ fn without_a_selection_the_plus_does_not_exist_at_all() {
         !registered,
         "sem selecao o + foi registado no indice: um alvo clicavel sobre um botao que ninguem pintou"
     );
-    assert_ne!(winner, Some(ids::INSP_ADD_COMPONENT));
+    assert_ne!(winner, Some(ph2d_panel_inspector::ids::INSP_ADD_COMPONENT));
 }

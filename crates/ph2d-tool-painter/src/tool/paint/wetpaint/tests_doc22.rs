@@ -4,7 +4,6 @@
 
 use super::*;
 use crate::tool::PainterTool;
-use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PanelEvent, PointerPhase};
 use ph2d_painter_brush::Falloff;
 use ph2d_wet_paint::tuning::{KNOB_COUNT, KNOB_DEFS, Knob, KnobGroup};
@@ -191,24 +190,24 @@ fn wet_paint_opens_at_the_dense_default_spacing() {
 fn a_tuning_knob_setvalue_reaches_the_live_engine() {
     let mut t = wet_tool_fixture();
     stroke(&mut t, 60.0);
-    set(&mut t, core_ids::wet_tuning_slider_id("leveling"), 1.7);
+    set(&mut t, crate::ids::wet_tuning_slider_id("leveling"), 1.7);
     t.wetpaint_tick(0.05);
     t.wet_bring_home();
     let sess = t.paint.wetpaint.session.as_ref().expect("session");
     assert_eq!(sess.engine.tuning.get(Knob::Leveling), 1.7);
-    set(&mut t, core_ids::wet_tuning_chip_id("brake"), 3.25);
+    set(&mut t, crate::ids::wet_tuning_chip_id("brake"), 3.25);
     t.wetpaint_tick(0.05);
     t.wet_bring_home();
     let sess = t.paint.wetpaint.session.as_ref().expect("session");
     assert_eq!(sess.engine.tuning.get(Knob::Brake), 3.25);
-    set(&mut t, core_ids::wet_tuning_chip_id("brake"), f64::NAN);
+    set(&mut t, crate::ids::wet_tuning_chip_id("brake"), f64::NAN);
     assert_eq!(
         t.paint.wetpaint.knobs.get(Knob::Brake),
         KNOB_DEFS[Knob::Brake as usize].default,
         "NaN must fall back to the default (the model's law)"
     );
     // Out-of-range clamps to the def's own bounds.
-    set(&mut t, core_ids::wet_tuning_slider_id("waterCap"), 999.0);
+    set(&mut t, crate::ids::wet_tuning_slider_id("waterCap"), 999.0);
     assert_eq!(
         t.paint.wetpaint.knobs.get(Knob::WaterCap),
         KNOB_DEFS[Knob::WaterCap as usize].max
@@ -220,17 +219,17 @@ fn a_tuning_knob_setvalue_reaches_the_live_engine() {
 #[test]
 fn tuning_resets_restore_their_own_scope_only() {
     let mut t = wet_tool_fixture();
-    set(&mut t, core_ids::wet_tuning_slider_id("leveling"), 1.9);
-    set(&mut t, core_ids::wet_tuning_slider_id("drag"), 0.9);
-    click(&mut t, core_ids::wet_tuning_reset_id("leveling"));
+    set(&mut t, crate::ids::wet_tuning_slider_id("leveling"), 1.9);
+    set(&mut t, crate::ids::wet_tuning_slider_id("drag"), 0.9);
+    click(&mut t, crate::ids::wet_tuning_reset_id("leveling"));
     assert_eq!(
         t.paint.wetpaint.knobs.get(Knob::Leveling),
         KNOB_DEFS[Knob::Leveling as usize].default
     );
     assert_eq!(t.paint.wetpaint.knobs.get(Knob::Drag), 0.9, "wrong scope");
     // Group reset: PHYSICS resets leveling's group, never PAINT's drag.
-    set(&mut t, core_ids::wet_tuning_slider_id("leveling"), 1.9);
-    click(&mut t, core_ids::WET_TUNING_GROUP_RESETS[2]);
+    set(&mut t, crate::ids::wet_tuning_slider_id("leveling"), 1.9);
+    click(&mut t, crate::ids::WET_TUNING_GROUP_RESETS[2]);
     assert_eq!(
         t.paint.wetpaint.knobs.get(Knob::Leveling),
         KNOB_DEFS[Knob::Leveling as usize].default
@@ -246,8 +245,8 @@ fn tuning_resets_restore_their_own_scope_only() {
 fn the_tilt_dial_drives_the_sim_vector() {
     let mut t = wet_tool_fixture();
     stroke(&mut t, 60.0);
-    set(&mut t, core_ids::PAINTER_WETPAINT_TILT_RING, 8.0);
-    set(&mut t, core_ids::PAINTER_WETPAINT_TILT_SPOKE, 0.0);
+    set(&mut t, crate::ids::PAINTER_WETPAINT_TILT_RING, 8.0);
+    set(&mut t, crate::ids::PAINTER_WETPAINT_TILT_SPOKE, 0.0);
     t.wetpaint_tick(0.05);
     t.wet_bring_home();
     {
@@ -257,7 +256,7 @@ fn the_tilt_dial_drives_the_sim_vector() {
         assert_eq!(sess.engine.sim.tilt_dir_y.to_bits(), 0.0f64.to_bits());
         assert!(sess.engine.sim.tilt_on);
     }
-    click(&mut t, core_ids::PAINTER_WETPAINT_TILT_TOGGLE);
+    click(&mut t, crate::ids::PAINTER_WETPAINT_TILT_TOGGLE);
     t.wetpaint_tick(0.05);
     t.wet_bring_home();
     {
@@ -278,7 +277,7 @@ fn the_tilt_dial_drives_the_sim_vector() {
 #[test]
 fn the_wet_tool_lays_water_without_pigment() {
     let mut t = wet_tool_fixture();
-    click(&mut t, core_ids::PAINTER_WETPAINT_TOOL_IDS[4]);
+    click(&mut t, crate::ids::PAINTER_WETPAINT_TOOL_IDS[4]);
     assert_eq!(t.paint.wetpaint.tool, WetTool::Wet);
     stroke(&mut t, 60.0);
     let (film, susp, sett, _) = grid_totals(&t);
@@ -292,11 +291,11 @@ fn the_wet_tool_lays_water_without_pigment() {
 #[test]
 fn the_dry_tool_shrinks_the_film_and_seals() {
     let mut t = wet_tool_fixture();
-    click(&mut t, core_ids::PAINTER_WETPAINT_TOOL_IDS[4]); // wet first
+    click(&mut t, crate::ids::PAINTER_WETPAINT_TOOL_IDS[4]); // wet first
     stroke(&mut t, 60.0);
     let (film_before, ..) = grid_totals(&t);
     assert!(film_before > 0.0);
-    click(&mut t, core_ids::PAINTER_WETPAINT_TOOL_IDS[5]); // dry
+    click(&mut t, crate::ids::PAINTER_WETPAINT_TOOL_IDS[5]); // dry
     stroke(&mut t, 60.0);
     let (film_after, ..) = grid_totals(&t);
     // The dry stamp bites through the sparse bristle TIPS (the felt floor is
@@ -319,7 +318,7 @@ fn the_blow_tool_pushes_the_film() {
     let mut t = wet_tool_fixture();
     stroke(&mut t, 60.0); // paint lays film + pigment
     let (_, _, _, vel_before) = grid_totals(&t);
-    click(&mut t, core_ids::PAINTER_WETPAINT_TOOL_IDS[6]); // blow
+    click(&mut t, crate::ids::PAINTER_WETPAINT_TOOL_IDS[6]); // blow
     stroke(&mut t, 60.0);
     let (_, _, _, vel_after) = grid_totals(&t);
     assert!(
@@ -354,7 +353,7 @@ fn the_smear_tool_drags_pigment_without_adding_any() {
     };
     let (mass_before, com_before) = com_x(&t);
     assert!(mass_before > 0.0, "fixture: the patch must hold pigment");
-    click(&mut t, core_ids::PAINTER_WETPAINT_TOOL_IDS[2]); // smear
+    click(&mut t, crate::ids::PAINTER_WETPAINT_TOOL_IDS[2]); // smear
     // Drag from inside the patch rightward, past its edge.
     t.on_canvas_pointer(cp([50.0, 60.0], PointerPhase::Down));
     for k in 1..=15 {
@@ -412,7 +411,7 @@ fn the_blend_tool_remixes_without_depositing() {
         t.on_canvas_pointer(cp([80.0 + 4.0 * k as f32, 60.0], PointerPhase::Move));
     }
     t.on_canvas_pointer(cp([112.0, 60.0], PointerPhase::Up));
-    click(&mut t, core_ids::PAINTER_WETPAINT_DRYCANVAS); // settle it
+    click(&mut t, crate::ids::PAINTER_WETPAINT_DRYCANVAS); // settle it
     let (_, susp0, sett0, _) = grid_totals(&t);
     assert!(sett0 > 0.0, "fixture: dried paint to remix");
     // Mass-weighted BLUE of the red half — remixing across the boundary
@@ -432,7 +431,7 @@ fn the_blend_tool_remixes_without_depositing() {
         if m > 0.0 { acc / m } else { 0.0 }
     };
     let probe_before = sett_probe(&t);
-    click(&mut t, core_ids::PAINTER_WETPAINT_TOOL_IDS[3]); // blend
+    click(&mut t, crate::ids::PAINTER_WETPAINT_TOOL_IDS[3]); // blend
     stroke(&mut t, 60.0);
     let (_, susp1, sett1, _) = grid_totals(&t);
     let total0 = susp0 + sett0;
@@ -452,13 +451,13 @@ fn the_blend_tool_remixes_without_depositing() {
 #[test]
 fn erase_pick_is_the_rail_erasers_other_view() {
     let mut t = wet_tool_fixture();
-    click(&mut t, core_ids::PAINTER_WETPAINT_TOOL_IDS[1]);
+    click(&mut t, crate::ids::PAINTER_WETPAINT_TOOL_IDS[1]);
     assert!(t.paint.eraser, "Erase pick must land on the eraser wire");
     assert!(
         t.paint.wetpaint.armed,
         "the ARM survives the tool view swap"
     );
-    click(&mut t, core_ids::PAINTER_WETPAINT_TOOL_IDS[0]);
+    click(&mut t, crate::ids::PAINTER_WETPAINT_TOOL_IDS[0]);
     assert!(!t.paint.eraser);
     assert!(
         matches!(t.paint.paint_mode, PaintMode::WetPaint),
@@ -473,7 +472,7 @@ fn wet_canvas_wets_the_sheet_without_painting() {
     let mut t = wet_tool_fixture();
     let before = Arc::clone(&t.canvas_rgba);
     assert!(t.paint.wetpaint.session.is_none());
-    click(&mut t, core_ids::PAINTER_WETPAINT_WETCANVAS);
+    click(&mut t, crate::ids::PAINTER_WETPAINT_WETCANVAS);
     let sess = t.paint.wetpaint.session.as_ref().expect("session born");
     let g = &sess.engine.layers[0].grid;
     let far = 150 + 1 + (30 + 1) * g.s; // far from anything
@@ -493,7 +492,7 @@ fn dry_canvas_settles_and_fast_dry_drains() {
     stroke(&mut t, 60.0);
     let (_, susp0, ..) = grid_totals(&t);
     assert!(susp0 > 0.0);
-    click(&mut t, core_ids::PAINTER_WETPAINT_DRYCANVAS);
+    click(&mut t, crate::ids::PAINTER_WETPAINT_DRYCANVAS);
     let (film1, susp1, sett1, _) = grid_totals(&t);
     assert_eq!(susp1, 0.0, "dry canvas must settle ALL suspension");
     assert!(sett1 > 0.0);
@@ -503,7 +502,7 @@ fn dry_canvas_settles_and_fast_dry_drains() {
     stroke(&mut t, 60.0);
     let (film0, ..) = grid_totals(&t);
     assert!(film0 > 0.0);
-    click(&mut t, core_ids::PAINTER_WETPAINT_FASTDRY);
+    click(&mut t, crate::ids::PAINTER_WETPAINT_FASTDRY);
     let (film1, ..) = grid_totals(&t);
     assert!(
         film1 < film0 * 0.05,
@@ -517,9 +516,9 @@ fn dry_canvas_settles_and_fast_dry_drains() {
 #[test]
 fn the_show_wet_veil_shows_and_never_bakes() {
     let mut t = wet_tool_fixture();
-    click(&mut t, core_ids::PAINTER_WETPAINT_WETCANVAS);
+    click(&mut t, crate::ids::PAINTER_WETPAINT_WETCANVAS);
     let clean = t.canvas_rgba.as_ref().clone();
-    click(&mut t, core_ids::PAINTER_WETPAINT_SHOWWET);
+    click(&mut t, crate::ids::PAINTER_WETPAINT_SHOWWET);
     assert!(t.paint.wetpaint.show_wet);
     assert_ne!(
         clean, *t.canvas_rgba,
@@ -539,7 +538,7 @@ fn paper_visual_prints_grain_into_the_paint_and_bakes() {
     let mut t = wet_tool_fixture();
     stroke(&mut t, 60.0);
     let plain = t.canvas_rgba.as_ref().clone();
-    click(&mut t, core_ids::PAINTER_WETPAINT_PAPER_VISUAL);
+    click(&mut t, crate::ids::PAINTER_WETPAINT_PAPER_VISUAL);
     assert!(t.paint.wetpaint.paper_visual);
     let grained = t.canvas_rgba.as_ref().clone();
     assert_ne!(plain, grained, "the tooth must print into the pigment");
@@ -556,7 +555,7 @@ fn paper_visual_prints_grain_into_the_paint_and_bakes() {
 fn km_flags_reach_the_sim_and_the_composite() {
     let mut t = wet_tool_fixture();
     stroke(&mut t, 60.0);
-    click(&mut t, core_ids::WET_TUNING_KM_MIXING);
+    click(&mut t, crate::ids::WET_TUNING_KM_MIXING);
     t.wetpaint_tick(0.05);
     t.wet_bring_home();
     {
@@ -564,10 +563,10 @@ fn km_flags_reach_the_sim_and_the_composite() {
         assert!(sess.engine.sim.km_mixing, "mixing must reach the sim");
     }
     // Glaze: dried paint + a fresh wash over it, then flip the flag.
-    click(&mut t, core_ids::PAINTER_WETPAINT_DRYCANVAS);
+    click(&mut t, crate::ids::PAINTER_WETPAINT_DRYCANVAS);
     stroke(&mut t, 60.0);
     let plain = t.canvas_rgba.as_ref().clone();
-    click(&mut t, core_ids::WET_TUNING_KM_GLAZE);
+    click(&mut t, crate::ids::WET_TUNING_KM_GLAZE);
     assert_ne!(
         plain, *t.canvas_rgba,
         "glaze must change the film-over-dried stacking"
@@ -579,7 +578,7 @@ fn km_flags_reach_the_sim_and_the_composite() {
 fn the_tuning_checkbox_flips_the_snapshot() {
     let mut t = wet_tool_fixture();
     assert!(!t.brush_settings().wet_tuning_open);
-    click(&mut t, core_ids::PAINTER_WETPAINT_TUNING);
+    click(&mut t, crate::ids::PAINTER_WETPAINT_TUNING);
     assert!(t.brush_settings().wet_tuning_open);
 }
 
@@ -588,13 +587,13 @@ fn the_tuning_checkbox_flips_the_snapshot() {
 #[test]
 fn the_section_reset_restores_the_whole_section() {
     let mut t = wet_tool_fixture();
-    set(&mut t, core_ids::wet_tuning_slider_id("leveling"), 1.9);
-    click(&mut t, core_ids::PAINTER_WETPAINT_TOOL_IDS[6]);
-    set(&mut t, core_ids::PAINTER_WETPAINT_TILT_RING, 8.0);
-    click(&mut t, core_ids::PAINTER_WETPAINT_SHOWWET);
-    click(&mut t, core_ids::PAINTER_WETPAINT_TUNING);
-    click(&mut t, core_ids::WET_TUNING_KM_MIXING);
-    click(&mut t, core_ids::PAINTER_WETPAINT_RESET);
+    set(&mut t, crate::ids::wet_tuning_slider_id("leveling"), 1.9);
+    click(&mut t, crate::ids::PAINTER_WETPAINT_TOOL_IDS[6]);
+    set(&mut t, crate::ids::PAINTER_WETPAINT_TILT_RING, 8.0);
+    click(&mut t, crate::ids::PAINTER_WETPAINT_SHOWWET);
+    click(&mut t, crate::ids::PAINTER_WETPAINT_TUNING);
+    click(&mut t, crate::ids::WET_TUNING_KM_MIXING);
+    click(&mut t, crate::ids::PAINTER_WETPAINT_RESET);
     let w = &t.paint.wetpaint;
     assert!(!w.armed);
     assert_eq!(w.knobs, WetKnobs::DEFAULT);

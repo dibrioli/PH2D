@@ -14,8 +14,8 @@ use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::zones::Rect;
 use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
+use ph2d_panel_vector::VectorPanel;
 use ph2d_panel_vector::state::VectorPanelState;
-use ph2d_panel_vector::{VectorPanel, ids};
 use ph2d_ui_testkit::MockPanelHost;
 
 const VIEWPORT: Rect = Rect {
@@ -44,14 +44,18 @@ fn the_pencil_chip_is_reachable_by_a_pointer_and_reaches_the_bus() {
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let mut panel_state = VectorPanelState;
     let r = host
-        .painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, ids::VECTOR_MODE_PENCIL)
+        .painted_rect::<VectorPanel>(
+            &mut panel_state,
+            VIEWPORT,
+            ph2d_tool_vector::ids::VECTOR_MODE_PENCIL,
+        )
         .expect("o chip Pencil nao foi PINTADO com area clicavel na fileira TOOL");
     let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
     host.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, SEC));
     let evs = host.dispatch_pointer_event(pointer(PointerKind::Up, cx, cy, SEC + SEC / 100));
     assert!(
         evs.iter()
-            .any(|e| matches!(e, WidgetEvent::Click(c) if *c == ids::VECTOR_MODE_PENCIL)),
+            .any(|e| matches!(e, WidgetEvent::Click(c) if *c == ph2d_tool_vector::ids::VECTOR_MODE_PENCIL)),
         "o ponteiro sobre o chip Pencil nao virou Click — ele esta' desenhado e nao existe para o \
          dispatcher (falta o `register` no populate_modes)"
     );
@@ -61,7 +65,7 @@ fn the_pencil_chip_is_reachable_by_a_pointer_and_reaches_the_bus() {
     assert!(
         host.drained_actions().into_iter().any(|a| matches!(
             a,
-            EditorAction::ToolPanelEvent(PanelEvent::Click(c)) if c == ids::VECTOR_MODE_PENCIL
+            EditorAction::ToolPanelEvent(PanelEvent::Click(c)) if c == ph2d_tool_vector::ids::VECTOR_MODE_PENCIL
         )),
         "o Click do Pencil nao chegou ao bus — o chip acende sob o mouse e nao faz nada (falta a \
          linha na allowlist do event_clicks)"

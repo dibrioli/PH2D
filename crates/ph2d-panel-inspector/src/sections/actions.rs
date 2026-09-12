@@ -138,11 +138,11 @@ fn buttons(
     if can_add {
         let (rect, group) = seg[cell];
         cell += 1;
-        hit_index.register(ids::INSP_ACTION_ADD, rect);
+        hit_index.register(crate::ids::INSP_ACTION_ADD, rect);
         paint_button(
-            &Button::new(ids::INSP_ACTION_ADD, "+ Add Action")
+            &Button::new(crate::ids::INSP_ACTION_ADD, "+ Add Action")
                 .kind(ButtonKind::Default)
-                .visual(store.button_visual(ids::INSP_ACTION_ADD))
+                .visual(store.button_visual(crate::ids::INSP_ACTION_ADD))
                 .in_group(group),
             rect,
             scene,
@@ -152,11 +152,11 @@ fn buttons(
     }
     if can_remove {
         let (rect, group) = seg[cell];
-        hit_index.register(ids::INSP_ACTION_REMOVE, rect);
+        hit_index.register(crate::ids::INSP_ACTION_REMOVE, rect);
         paint_button(
-            &Button::new(ids::INSP_ACTION_REMOVE, "x Remove Action")
+            &Button::new(crate::ids::INSP_ACTION_REMOVE, "x Remove Action")
                 .kind(ButtonKind::Default)
-                .visual(store.button_visual(ids::INSP_ACTION_REMOVE))
+                .visual(store.button_visual(crate::ids::INSP_ACTION_REMOVE))
                 .in_group(group),
             rect,
             scene,
@@ -208,14 +208,14 @@ fn verb_row(
 ) -> f32 {
     let (control_w, dot) = ph2d_editor_core::widget::form_row_columns(x, w, y, ROW_H_PX);
     let rect = Rect::new(x, y, control_w, ROW_H_PX);
-    hit_index.register(ids::INSP_ACTION_VERB_PICK, rect);
+    hit_index.register(crate::ids::INSP_ACTION_VERB_PICK, rect);
     let open = matches!(
-        store.get(ids::INSP_ACTION_VERB_PICK),
+        store.get(crate::ids::INSP_ACTION_VERB_PICK),
         Some(InteractiveState::Dropdown { open: true, .. })
     );
-    let mut dd = Dropdown::new(ids::INSP_ACTION_VERB_PICK, "", verb_options(labels))
+    let mut dd = Dropdown::new(crate::ids::INSP_ACTION_VERB_PICK, "", verb_options(labels))
         .open(open)
-        .visual(store.dropdown_visual(ids::INSP_ACTION_VERB_PICK));
+        .visual(store.dropdown_visual(crate::ids::INSP_ACTION_VERB_PICK));
     dd.select(sel);
     paint_dropdown_chip(&dd, rect, scene, text_system, theme);
     // ⚠️ **O popover NÃO se pinta aqui** — ele sairia debaixo da secção seguinte. O rect vai ao
@@ -250,8 +250,8 @@ fn editor(
         x,
         w,
         y,
-        ids::INSP_ACTION_ON,
-        TextInput::new(ids::INSP_ACTION_ON, "").placeholder("on signal\u{2026}"),
+        crate::ids::INSP_ACTION_ON,
+        TextInput::new(crate::ids::INSP_ACTION_ON, "").placeholder("on signal\u{2026}"),
     );
     cur_y = super::anim_rows::text_row(
         scene,
@@ -262,8 +262,9 @@ fn editor(
         x,
         w,
         cur_y,
-        ids::INSP_ACTION_TARGET,
-        TextInput::new(ids::INSP_ACTION_TARGET, "").placeholder("target (empty = this object)"),
+        crate::ids::INSP_ACTION_TARGET,
+        TextInput::new(crate::ids::INSP_ACTION_TARGET, "")
+            .placeholder("target (empty = this object)"),
     );
     cur_y = verb_row(
         scene,
@@ -289,8 +290,8 @@ fn editor(
             x,
             w,
             cur_y,
-            ids::INSP_ACTION_ARG,
-            TextInput::new(ids::INSP_ACTION_ARG, "").placeholder("timer name (empty = all)"),
+            crate::ids::INSP_ACTION_ARG,
+            TextInput::new(crate::ids::INSP_ACTION_ARG, "").placeholder("timer name (empty = all)"),
         );
     }
     // ⚠️⚠️ **A LINHA QUE RESPONDE AO «não acontece nada».**

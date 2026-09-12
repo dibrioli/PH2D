@@ -12,17 +12,16 @@
 //! auditoria de 2026-08-21 mediu como a forma mais cara de dívida.
 
 use ph2d_ecs::{ANCHORS_MAX, AnchorKind, NamedAnchor, NamedAnchorList};
-use ph2d_editor_core::ids;
 
 /// **(1) Há uma linha clicável por âncora que o modelo aceita.**
 #[test]
 fn the_row_ids_cover_the_model_cap() {
     assert_eq!(
-        ids::INSP_ANCHOR_ROW.len(),
+        ph2d_panel_inspector::ids::INSP_ANCHOR_ROW.len(),
         ANCHORS_MAX,
         "o painel tem {} linhas para um cap de {ANCHORS_MAX} ancoras — as do fim ficariam \
          inalcancaveis por gesto nenhum",
-        ids::INSP_ANCHOR_ROW.len()
+        ph2d_panel_inspector::ids::INSP_ANCHOR_ROW.len()
     );
 }
 
@@ -33,12 +32,12 @@ fn the_row_ids_cover_the_model_cap() {
 /// silêncio.
 #[test]
 fn every_row_id_is_distinct() {
-    let mut seen: Vec<_> = ids::INSP_ANCHOR_ROW.to_vec();
+    let mut seen: Vec<_> = ph2d_panel_inspector::ids::INSP_ANCHOR_ROW.to_vec();
     seen.sort_unstable_by_key(|n| n.0);
     seen.dedup_by_key(|n| n.0);
     assert_eq!(
         seen.len(),
-        ids::INSP_ANCHOR_ROW.len(),
+        ph2d_panel_inspector::ids::INSP_ANCHOR_ROW.len(),
         "duas linhas partilham o mesmo id: clicar numa abriria a outra"
     );
 }
@@ -103,7 +102,7 @@ fn the_model_stops_exactly_where_the_panel_runs_out_of_rows() {
         let n = l.next_free_name();
         l.insert(NamedAnchor::socket(n)).expect("dentro do cap");
     }
-    assert_eq!(l.len(), ids::INSP_ANCHOR_ROW.len());
+    assert_eq!(l.len(), ph2d_panel_inspector::ids::INSP_ANCHOR_ROW.len());
     assert!(
         l.insert(NamedAnchor::socket("one_too_many")).is_err(),
         "o modelo aceitou uma ancora que o painel nao consegue mostrar"
@@ -118,10 +117,10 @@ fn the_model_stops_exactly_where_the_panel_runs_out_of_rows() {
 #[test]
 fn the_mount_option_ids_cover_the_model_cap() {
     assert_eq!(
-        ids::INSP_MOUNT_OPT.len(),
+        ph2d_panel_inspector::ids::INSP_MOUNT_OPT.len(),
         ANCHORS_MAX,
         "o seletor oferece {} opcoes para um pai que pode ter {ANCHORS_MAX} ancoras",
-        ids::INSP_MOUNT_OPT.len()
+        ph2d_panel_inspector::ids::INSP_MOUNT_OPT.len()
     );
 }
 
@@ -133,11 +132,13 @@ fn the_mount_option_ids_cover_the_model_cap() {
 /// produz exatamente isso, **em silêncio**.
 #[test]
 fn no_mount_option_id_collides_with_anything_in_the_section() {
-    let mut all: Vec<_> = ids::INSP_MOUNT_OPT
+    let mut all: Vec<_> = ph2d_panel_inspector::ids::INSP_MOUNT_OPT
         .iter()
-        .chain(ids::INSP_ANCHOR_ROW.iter())
-        .chain(std::iter::once(&ids::INSP_MOUNT_NONE_OPT))
-        .chain(std::iter::once(&ids::INSP_MOUNT_PICK))
+        .chain(ph2d_panel_inspector::ids::INSP_ANCHOR_ROW.iter())
+        .chain(std::iter::once(
+            &ph2d_panel_inspector::ids::INSP_MOUNT_NONE_OPT,
+        ))
+        .chain(std::iter::once(&ph2d_panel_inspector::ids::INSP_MOUNT_PICK))
         .copied()
         .collect();
     let n = all.len();
@@ -226,13 +227,13 @@ fn the_panel_reads_the_same_mount_state_the_engine_does() {
 #[test]
 fn the_anim_row_ids_cover_the_model_cap() {
     assert_eq!(
-        ids::INSP_ANIM_ROW.len(),
+        ph2d_panel_inspector::ids::INSP_ANIM_ROW.len(),
         ph2d_ecs::ANIM_TAGS_MAX,
         "a lista tem {} linhas para um cap de {} animacoes",
-        ids::INSP_ANIM_ROW.len(),
+        ph2d_panel_inspector::ids::INSP_ANIM_ROW.len(),
         ph2d_ecs::ANIM_TAGS_MAX
     );
-    let mut all: Vec<_> = ids::INSP_ANIM_ROW.to_vec();
+    let mut all: Vec<_> = ph2d_panel_inspector::ids::INSP_ANIM_ROW.to_vec();
     let n = all.len();
     all.sort_unstable_by_key(|i| i.0);
     all.dedup_by_key(|i| i.0);
@@ -248,7 +249,7 @@ fn the_anim_model_stops_where_the_panel_runs_out_of_rows() {
         lib.insert(ph2d_ecs::AnimationTag::new(n, 0, 1))
             .expect("dentro do cap");
     }
-    assert_eq!(lib.len(), ids::INSP_ANIM_ROW.len());
+    assert_eq!(lib.len(), ph2d_panel_inspector::ids::INSP_ANIM_ROW.len());
     assert!(
         lib.insert(ph2d_ecs::AnimationTag::new("one_too_many", 0, 1))
             .is_err(),
@@ -298,29 +299,29 @@ fn the_panel_names_the_directions_the_engine_names() {
 /// **(11) Nenhum id da §11 colide com os da §12** — as duas são pintadas no mesmo quadro.
 #[test]
 fn no_anim_id_collides_with_the_anchor_section() {
-    let mut all: Vec<_> = ids::INSP_ANIM_ROW
+    let mut all: Vec<_> = ph2d_panel_inspector::ids::INSP_ANIM_ROW
         .iter()
-        .chain(ids::INSP_ANCHOR_ROW.iter())
-        .chain(ids::INSP_MOUNT_OPT.iter())
-        .chain(ids::INSP_ANIM_DIR.iter())
-        .chain(ids::INSP_ANIM_DIR_OVERRIDE.iter())
-        .chain(ids::INSP_ANIM_LOOP_OVERRIDE.iter())
+        .chain(ph2d_panel_inspector::ids::INSP_ANCHOR_ROW.iter())
+        .chain(ph2d_panel_inspector::ids::INSP_MOUNT_OPT.iter())
+        .chain(ph2d_panel_inspector::ids::INSP_ANIM_DIR.iter())
+        .chain(ph2d_panel_inspector::ids::INSP_ANIM_DIR_OVERRIDE.iter())
+        .chain(ph2d_panel_inspector::ids::INSP_ANIM_LOOP_OVERRIDE.iter())
         .chain(
             [
-                ids::INSP_ANIM_ADD,
-                ids::INSP_ANIM_REMOVE,
-                ids::INSP_ANIM_NAME,
-                ids::INSP_ANIM_FROM,
-                ids::INSP_ANIM_TO,
-                ids::INSP_ANIM_FRAME_MS,
-                ids::INSP_ANIM_HOLD_MS,
-                ids::INSP_ANIM_DELAY_MS,
-                ids::INSP_ANIM_REPEAT,
-                ids::INSP_ANIM_SPEED,
-                ids::INSP_ANIM_REWIND,
-                ids::INSP_ANIM_PLAYING,
-                ids::INSP_ANIM_AUTOPLAY,
-                ids::INSP_ANIM_ADD_PLAYER,
+                ph2d_panel_inspector::ids::INSP_ANIM_ADD,
+                ph2d_panel_inspector::ids::INSP_ANIM_REMOVE,
+                ph2d_panel_inspector::ids::INSP_ANIM_NAME,
+                ph2d_panel_inspector::ids::INSP_ANIM_FROM,
+                ph2d_panel_inspector::ids::INSP_ANIM_TO,
+                ph2d_panel_inspector::ids::INSP_ANIM_FRAME_MS,
+                ph2d_panel_inspector::ids::INSP_ANIM_HOLD_MS,
+                ph2d_panel_inspector::ids::INSP_ANIM_DELAY_MS,
+                ph2d_panel_inspector::ids::INSP_ANIM_REPEAT,
+                ph2d_panel_inspector::ids::INSP_ANIM_SPEED,
+                ph2d_panel_inspector::ids::INSP_ANIM_REWIND,
+                ph2d_panel_inspector::ids::INSP_ANIM_PLAYING,
+                ph2d_panel_inspector::ids::INSP_ANIM_AUTOPLAY,
+                ph2d_panel_inspector::ids::INSP_ANIM_ADD_PLAYER,
             ]
             .iter(),
         )

@@ -3,7 +3,7 @@
 //! ⚠️ Uma segunda definição do mesmo id (mesmo com o mesmo hash) seria a segunda resposta a *"qual
 //! é o id desta row?"*, e o `node_id_collisions` só vê a que mora na foundational.
 
-pub use ph2d_editor_core::ids::{
-    AUTHORED_CLOSE, AUTHORED_DRAG_HANDLE, AUTHORED_PANEL, AUTHORED_RESIZE_HANDLE,
-    AUTHORED_RESIZE_HANDLE_BL, authored_option_id, authored_row_id,
-};
+pub use ph2d_editor_core::ids::{AUTHORED_PANEL, authored_row_id};
+
+mod authored;
+pub use authored::*;

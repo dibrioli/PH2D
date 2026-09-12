@@ -11,7 +11,6 @@
 //! converte pra `Rgba` linear ao assar o traço no `FlipDoc`.
 
 use ph2d_editor_core::floating_panel::{FloatingPanel, PanelAnchor, ToolId};
-use ph2d_editor_core::ids;
 use ph2d_editor_core::tool::{PanelEvent, Tool};
 use ph2d_flip::{Cap, DEFAULT_DOT_SPACING, StrokeTip};
 
@@ -413,52 +412,62 @@ impl Tool for FlipTool {
         match event {
             // Linha de modos Select/Draw/Erase (gizmo só no Select — o shell lê
             // `mode()` pra rotear input + publicar o `GizmoView`).
-            PanelEvent::Click(id) if id == ids::FLIP_MODE_SELECT => self.mode = FlipMode::Select,
-            PanelEvent::Click(id) if id == ids::FLIP_MODE_DRAW => self.mode = FlipMode::Draw,
-            PanelEvent::Click(id) if id == ids::FLIP_MODE_ERASE => self.mode = FlipMode::Erase,
-            PanelEvent::Click(id) if id == ids::FLIP_MODE_FILL => self.mode = FlipMode::Fill,
-            PanelEvent::Click(id) if id == ids::FLIP_MODE_RESHAPE => self.mode = FlipMode::Reshape,
-            PanelEvent::Click(id) if id == ids::FLIP_MODE_EDIT => self.mode = FlipMode::Edit,
-            PanelEvent::Click(id) if id == ids::FLIP_MODE_COLORIZE => {
+            PanelEvent::Click(id) if id == crate::ids::FLIP_MODE_SELECT => {
+                self.mode = FlipMode::Select
+            }
+            PanelEvent::Click(id) if id == crate::ids::FLIP_MODE_DRAW => self.mode = FlipMode::Draw,
+            PanelEvent::Click(id) if id == crate::ids::FLIP_MODE_ERASE => {
+                self.mode = FlipMode::Erase
+            }
+            PanelEvent::Click(id) if id == crate::ids::FLIP_MODE_FILL => self.mode = FlipMode::Fill,
+            PanelEvent::Click(id) if id == crate::ids::FLIP_MODE_RESHAPE => {
+                self.mode = FlipMode::Reshape
+            }
+            PanelEvent::Click(id) if id == crate::ids::FLIP_MODE_EDIT => self.mode = FlipMode::Edit,
+            PanelEvent::Click(id) if id == crate::ids::FLIP_MODE_COLORIZE => {
                 self.mode = FlipMode::Colorize;
             }
-            PanelEvent::Click(id) if id == ids::FLIP_MODE_TRACE => {
+            PanelEvent::Click(id) if id == crate::ids::FLIP_MODE_TRACE => {
                 self.mode = FlipMode::Trace;
             }
             // Shape (modo Draw): o traço carrega o próprio preenchimento?
-            PanelEvent::Click(id) if id == ids::FLIP_SHAPE_LINE => self.draw_filled = false,
-            PanelEvent::Click(id) if id == ids::FLIP_SHAPE_FILLED => self.draw_filled = true,
+            PanelEvent::Click(id) if id == crate::ids::FLIP_SHAPE_LINE => self.draw_filled = false,
+            PanelEvent::Click(id) if id == crate::ids::FLIP_SHAPE_FILLED => self.draw_filled = true,
             // Tip (Draw, 03 §8): a ponta ao longo do traço.
-            PanelEvent::Click(id) if id == ids::FLIP_TIP_LINE => self.tip = StrokeTip::Continuous,
-            PanelEvent::Click(id) if id == ids::FLIP_TIP_DOTS => self.tip = StrokeTip::Dots,
-            PanelEvent::Click(id) if id == ids::FLIP_TIP_SQUARES => self.tip = StrokeTip::Squares,
+            PanelEvent::Click(id) if id == crate::ids::FLIP_TIP_LINE => {
+                self.tip = StrokeTip::Continuous
+            }
+            PanelEvent::Click(id) if id == crate::ids::FLIP_TIP_DOTS => self.tip = StrokeTip::Dots,
+            PanelEvent::Click(id) if id == crate::ids::FLIP_TIP_SQUARES => {
+                self.tip = StrokeTip::Squares
+            }
             // Cap (Draw): a ponta do traço. O motor já a honrava ponta a ponta; faltava a porta.
-            PanelEvent::Click(id) if id == ids::FLIP_CAP_ROUND => self.cap = Cap::Round,
-            PanelEvent::Click(id) if id == ids::FLIP_CAP_FLAT => self.cap = Cap::Flat,
-            PanelEvent::Click(id) if id == ids::FLIP_CAP_SQUARE => self.cap = Cap::Square,
+            PanelEvent::Click(id) if id == crate::ids::FLIP_CAP_ROUND => self.cap = Cap::Round,
+            PanelEvent::Click(id) if id == crate::ids::FLIP_CAP_FLAT => self.cap = Cap::Flat,
+            PanelEvent::Click(id) if id == crate::ids::FLIP_CAP_SQUARE => self.cap = Cap::Square,
             // Self Overlap (Draw, 03 §8): o toggle de auto-sobreposição com acúmulo.
-            PanelEvent::Click(id) if id == ids::FLIP_SELF_OVERLAP => {
+            PanelEvent::Click(id) if id == crate::ids::FLIP_SELF_OVERLAP => {
                 self.self_overlap = !self.self_overlap;
             }
             // Airbrush (Draw, 03 §8): o toggle do pincel airbrush analítico.
-            PanelEvent::Click(id) if id == ids::FLIP_AIRBRUSH => {
+            PanelEvent::Click(id) if id == crate::ids::FLIP_AIRBRUSH => {
                 self.airbrush = !self.airbrush;
             }
             // O domínio da seleção (modo Edit, W8 + §4.B): traço inteiro, ponto ou pedaço.
-            PanelEvent::Click(id) if id == ids::FLIP_EDIT_DOM_STROKE => {
+            PanelEvent::Click(id) if id == crate::ids::FLIP_EDIT_DOM_STROKE => {
                 self.edit_domain = EditDomain::Stroke;
             }
-            PanelEvent::Click(id) if id == ids::FLIP_EDIT_DOM_POINT => {
+            PanelEvent::Click(id) if id == crate::ids::FLIP_EDIT_DOM_POINT => {
                 self.edit_domain = EditDomain::Point;
             }
-            PanelEvent::Click(id) if id == ids::FLIP_EDIT_DOM_SEGMENT => {
+            PanelEvent::Click(id) if id == crate::ids::FLIP_EDIT_DOM_SEGMENT => {
                 self.edit_domain = EditDomain::Segment;
             }
             // Os oito pincéis de escultura (W5). A tabela `FLIP_RESHAPE_KIND_IDS` está
             // na MESMA ordem que `ReshapeKind::ALL` — o zip é o decodificador, e o
             // seam test dirige os oito ids para provar que as duas listas não derivam.
-            PanelEvent::Click(id) if ids::FLIP_RESHAPE_KIND_IDS.contains(&id) => {
-                if let Some((_, kind)) = ids::FLIP_RESHAPE_KIND_IDS
+            PanelEvent::Click(id) if crate::ids::FLIP_RESHAPE_KIND_IDS.contains(&id) => {
+                if let Some((_, kind)) = crate::ids::FLIP_RESHAPE_KIND_IDS
                     .iter()
                     .zip(ReshapeKind::ALL)
                     .find(|(kid, _)| **kid == id)
@@ -467,76 +476,84 @@ impl Tool for FlipTool {
                 }
             }
             // Modo do balde (Paint / Paint-Behind / Unpaint).
-            PanelEvent::Click(id) if id == ids::FLIP_FILL_PAINT => self.fill_mode = FillMode::Paint,
-            PanelEvent::Click(id) if id == ids::FLIP_FILL_BEHIND => {
+            PanelEvent::Click(id) if id == crate::ids::FLIP_FILL_PAINT => {
+                self.fill_mode = FillMode::Paint
+            }
+            PanelEvent::Click(id) if id == crate::ids::FLIP_FILL_BEHIND => {
                 self.fill_mode = FillMode::PaintBehind;
             }
-            PanelEvent::Click(id) if id == ids::FLIP_FILL_UNPAINT => {
+            PanelEvent::Click(id) if id == crate::ids::FLIP_FILL_UNPAINT => {
                 self.fill_mode = FillMode::Unpaint;
             }
             // Sliders do balde. Cada um é um mapa afim `track → valor` — o mesmo que o
             // painel usa no `link_slider_number_mapped`, senão o knob e o valor
             // divergem no 1º arrasto.
-            PanelEvent::SetValue(id, v) if id == ids::FLIP_GAP => {
+            PanelEvent::SetValue(id, v) if id == crate::ids::FLIP_GAP => {
                 self.gap = v.clamp(0.0, 1.0) * GAP_MAX_WORLD;
             }
             // Spacing do *tip* pontilhado: track `0..1` → múltiplo do diâmetro `0..DOT_SPACING_MAX`.
-            PanelEvent::SetValue(id, v) if id == ids::FLIP_DOT_SPACING => {
+            PanelEvent::SetValue(id, v) if id == crate::ids::FLIP_DOT_SPACING => {
                 self.set_dot_spacing((v.clamp(0.0, 1.0) * crate::params::DOT_SPACING_MAX) as f32);
             }
-            PanelEvent::SetValue(id, v) if id == ids::FLIP_GROW => {
+            PanelEvent::SetValue(id, v) if id == crate::ids::FLIP_GROW => {
                 self.grow = GROW_MIN + v.clamp(0.0, 1.0) * (GROW_MAX - GROW_MIN);
             }
-            PanelEvent::SetValue(id, v) if id == ids::FLIP_PRECISION => {
+            PanelEvent::SetValue(id, v) if id == crate::ids::FLIP_PRECISION => {
                 self.precision =
                     PRECISION_MIN + v.clamp(0.0, 1.0) * (PRECISION_MAX - PRECISION_MIN);
             }
-            PanelEvent::SetValue(id, v) if id == ids::FLIP_TRAP => {
+            PanelEvent::SetValue(id, v) if id == crate::ids::FLIP_TRAP => {
                 self.trap = v.clamp(0.0, 1.0) * TRAP_MAX_PX;
             }
-            PanelEvent::SetValue(id, v) if id == ids::FLIP_COLORIZE_BLEED => {
+            PanelEvent::SetValue(id, v) if id == crate::ids::FLIP_COLORIZE_BLEED => {
                 // O track (0..1) É a fração `colorize_bleed` — o shell a mapeia para o
                 // pedágio de aperto do motor (`squeeze_from_bleed`).
                 self.colorize_bleed = v.clamp(0.0, 1.0);
             }
             // Sub-modo da borracha.
-            PanelEvent::Click(id) if id == ids::FLIP_ERASE_SOFT => self.erase = EraseMode::Soft,
-            PanelEvent::Click(id) if id == ids::FLIP_ERASE_HARD => self.erase = EraseMode::Hard,
-            PanelEvent::Click(id) if id == ids::FLIP_ERASE_STROKE => self.erase = EraseMode::Stroke,
+            PanelEvent::Click(id) if id == crate::ids::FLIP_ERASE_SOFT => {
+                self.erase = EraseMode::Soft
+            }
+            PanelEvent::Click(id) if id == crate::ids::FLIP_ERASE_HARD => {
+                self.erase = EraseMode::Hard
+            }
+            PanelEvent::Click(id) if id == crate::ids::FLIP_ERASE_STROKE => {
+                self.erase = EraseMode::Stroke
+            }
             // Links da borracha (§4.C): o toggle na LINHA da propriedade. Deslinkar não
             // move número nenhum — só troca QUAL valor a borracha lê (os próprios já
             // nascem iguais aos do pincel, então o 1º deslink não pula).
-            PanelEvent::Click(id) if id == ids::FLIP_LINK_SIZE => {
+            PanelEvent::Click(id) if id == crate::ids::FLIP_LINK_SIZE => {
                 self.link_size = !self.link_size;
             }
-            PanelEvent::Click(id) if id == ids::FLIP_LINK_STRENGTH => {
+            PanelEvent::Click(id) if id == crate::ids::FLIP_LINK_STRENGTH => {
                 self.link_strength = !self.link_strength;
             }
             // Sliders PRÓPRIOS da borracha (só existem na tela com o link desligado).
-            PanelEvent::SetValue(id, v) if id == ids::FLIP_ERASE_SIZE => {
+            PanelEvent::SetValue(id, v) if id == crate::ids::FLIP_ERASE_SIZE => {
                 self.erase_px = slider_to_px(v as f32);
             }
-            PanelEvent::SetValue(id, v) if id == ids::FLIP_ERASE_STRENGTH => {
+            PanelEvent::SetValue(id, v) if id == crate::ids::FLIP_ERASE_STRENGTH => {
                 self.erase_strength = slider_to_unit(v as f32);
             }
             // Sliders de brush (track `0..1` → valor; o mapa afim é o mesmo do painel).
-            PanelEvent::SetValue(id, v) if id == ids::FLIP_SIZE => {
+            PanelEvent::SetValue(id, v) if id == crate::ids::FLIP_SIZE => {
                 self.width_px = slider_to_px(v as f32);
             }
-            PanelEvent::SetValue(id, v) if id == ids::FLIP_HARDNESS => {
+            PanelEvent::SetValue(id, v) if id == crate::ids::FLIP_HARDNESS => {
                 self.hardness = slider_to_unit(v as f32);
             }
-            PanelEvent::SetValue(id, v) if id == ids::FLIP_OPACITY => {
+            PanelEvent::SetValue(id, v) if id == crate::ids::FLIP_OPACITY => {
                 self.opacity = slider_to_unit(v as f32);
             }
-            PanelEvent::SetValue(id, v) if id == ids::FLIP_SMOOTHING => {
+            PanelEvent::SetValue(id, v) if id == crate::ids::FLIP_SMOOTHING => {
                 self.smoothing = slider_to_unit(v as f32);
             }
             // Dinâmica de pressão (Draw): a largura mínima e a curva de resposta.
-            PanelEvent::SetValue(id, v) if id == ids::FLIP_PRESSURE_MIN => {
+            PanelEvent::SetValue(id, v) if id == crate::ids::FLIP_PRESSURE_MIN => {
                 self.pressure_min_width = slider_to_unit(v as f32);
             }
-            PanelEvent::SetValue(id, v) if id == ids::FLIP_PRESSURE_RESPONSE => {
+            PanelEvent::SetValue(id, v) if id == crate::ids::FLIP_PRESSURE_RESPONSE => {
                 self.pressure_response = slider_to_unit(v as f32);
             }
             _ => {}

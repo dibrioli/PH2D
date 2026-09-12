@@ -39,7 +39,7 @@ pub(crate) fn apply_timer_event(
             demote(host, id);
             return true;
         }
-        if id == ids::INSP_TIMER_ADD {
+        if id == crate::ids::INSP_TIMER_ADD {
             push(host, info.entity_bits, TimerFieldEdit::Add);
             // ⚠️ **Abre o que acabou de nascer.** Sem isto o artista carrega em `+`, a lista
             // cresce, e o editor continua a mostrar o timer anterior — que se lê como o botão
@@ -48,7 +48,7 @@ pub(crate) fn apply_timer_event(
             demote(host, id);
             return true;
         }
-        if id == ids::INSP_TIMER_REMOVE && !info.rows.is_empty() {
+        if id == crate::ids::INSP_TIMER_REMOVE && !info.rows.is_empty() {
             push(host, info.entity_bits, TimerFieldEdit::Remove(sel_u8));
             // ⚠️ **Recua um** — senão o índice aberto passa a apontar para além do fim, e o editor
             // desaparece sem o artista ter pedido nada.
@@ -64,9 +64,12 @@ pub(crate) fn apply_timer_event(
     // anterior.
     if let WidgetEvent::Toggled(id) = ev
         && !info.rows.is_empty()
-        && matches!(id, ids::INSP_TIMER_REPEAT | ids::INSP_TIMER_AUTOSTART)
+        && matches!(
+            id,
+            crate::ids::INSP_TIMER_REPEAT | crate::ids::INSP_TIMER_AUTOSTART
+        )
     {
-        let edit = if id == ids::INSP_TIMER_REPEAT {
+        let edit = if id == crate::ids::INSP_TIMER_REPEAT {
             TimerFieldEdit::Repeat(sel_u8, !info.rows[sel].repeat)
         } else {
             TimerFieldEdit::Autostart(sel_u8, !info.rows[sel].autostart)
@@ -82,9 +85,9 @@ pub(crate) fn apply_timer_event(
         // ⚠️ **Os dois campos de texto por uma porta só.** Um `if` por campo é como o segundo
         // acaba a chamar o `Rename` do primeiro — e renomear um timer por escrever um nome de
         // sinal é o defeito que não se vê até o projeto reabrir.
-        let edit = if id == ids::INSP_TIMER_NAME {
+        let edit = if id == crate::ids::INSP_TIMER_NAME {
             TimerFieldEdit::Rename(sel_u8, text)
-        } else if id == ids::INSP_TIMER_SIGNAL {
+        } else if id == crate::ids::INSP_TIMER_SIGNAL {
             TimerFieldEdit::Signal(sel_u8, text)
         } else {
             return false;
@@ -94,7 +97,7 @@ pub(crate) fn apply_timer_event(
     }
 
     if let WidgetEvent::ValueChanged(id) = ev
-        && id == ids::INSP_TIMER_DURATION
+        && id == crate::ids::INSP_TIMER_DURATION
         && !info.rows.is_empty()
     {
         let v = host.store().number_value(id).unwrap_or(0.0);

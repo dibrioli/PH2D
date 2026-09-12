@@ -5,7 +5,6 @@
 //! O estudo com os números e o mecanismo é [`docs/Painter/35_accumulate_vs_blender.md`].
 
 use super::accumulate_probe::{alpha, one_stroke, soft_tool};
-use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::tool::{PanelEvent, Tool};
 
 /// A razão entre o espaçamento mais denso e o mais esparso, num mesmo CAMINHO.
@@ -14,10 +13,10 @@ fn spacing_ratio(accumulate: bool, atten: bool) -> f32 {
     for &sp in &[0.05f32, 0.10, 0.20, 0.40] {
         let mut t = soft_tool(0.5, accumulate);
         if atten {
-            t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_SPACE_ATTEN));
+            t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_BRUSH_SPACE_ATTEN));
         }
         t.handle_panel_event(PanelEvent::SetValue(
-            core_ids::PAINTER_BRUSH_SPACING,
+            crate::ids::PAINTER_BRUSH_SPACING,
             f64::from(sp),
         ));
         one_stroke(&mut t, 1);

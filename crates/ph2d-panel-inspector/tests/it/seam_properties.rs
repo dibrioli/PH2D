@@ -16,7 +16,6 @@
 //! identidade com o tamanho da família. Nenhum gate unitário via qualquer um dos dois.
 
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::ids;
 use ph2d_editor_core::screens::hero::{
     InspectorNameInfo, InspectorPropertiesInfo, VariantChoice, variant_axes::VariantAxis,
 };
@@ -83,7 +82,7 @@ fn clear() {
 #[test]
 fn a_chip_of_another_version_reaches_the_swap() {
     let (mut host, mut state) = host_with(info());
-    let id = ids::INSP_INSTANCE_AXIS_OPTION[0][1];
+    let id = ph2d_panel_inspector::ids::INSP_INSTANCE_AXIS_OPTION[0][1];
     let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
     let rect = rects
         .iter()
@@ -130,7 +129,7 @@ fn a_single_version_is_text_and_never_a_dead_button() {
     assert!(
         !rects
             .iter()
-            .any(|(n, _)| *n == ids::INSP_INSTANCE_AXIS_OPTION[0][0]),
+            .any(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_INSTANCE_AXIS_OPTION[0][0]),
         "uma versao unica foi registada como botao — um clique que nao faz nada"
     );
     clear();
@@ -141,7 +140,7 @@ fn a_single_version_is_text_and_never_a_dead_button() {
 #[test]
 fn clicking_the_current_version_publishes_nothing() {
     let (mut host, mut state) = host_with(info());
-    let id = ids::INSP_INSTANCE_AXIS_OPTION[0][0];
+    let id = ph2d_panel_inspector::ids::INSP_INSTANCE_AXIS_OPTION[0][0];
     let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
     let rect = rects
         .iter()

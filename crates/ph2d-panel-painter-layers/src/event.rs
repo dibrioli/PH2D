@@ -7,15 +7,15 @@
 
 use crate::state::{self, PainterLayersPanelState};
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::ids::{
-    self as core_ids, PainterLayerWidget, painter_curve_add_id, painter_curve_editor_id,
-    painter_curve_remove_id, painter_curve_tab_id, painter_gradient_add_id,
-    painter_gradient_editor_id, painter_gradient_remove_id, painter_layer_blend_option_id,
-    painter_layer_widget_id, painter_mixer_tab_id, painter_selcolor_bucket_id,
-};
 use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
 use ph2d_editor_core::panel::{EventOutcome, PanelHostInternal};
 use ph2d_editor_core::tool::PanelEvent;
+use ph2d_tool_painter::ids::{
+    PainterLayerWidget, painter_curve_add_id, painter_curve_editor_id, painter_curve_remove_id,
+    painter_curve_tab_id, painter_gradient_add_id, painter_gradient_editor_id,
+    painter_gradient_remove_id, painter_layer_blend_option_id, painter_layer_widget_id,
+    painter_mixer_tab_id, painter_selcolor_bucket_id,
+};
 use ph2d_tool_painter::{AdjustmentParams, LayerId, LayerKind, LayerStack, MAX_BLEND_MODES};
 
 mod curve_drag;
@@ -46,24 +46,24 @@ pub(crate) fn apply_event(
 fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
     match ev {
         // Close (X) → CancelActiveTool (canon BgRemoval/Painter sidebar).
-        WidgetEvent::Click(id) if id == core_ids::PAINTER_LAYERS_CLOSE => {
+        WidgetEvent::Click(id) if id == ph2d_tool_painter::ids::PAINTER_LAYERS_CLOSE => {
             host.bus_mut().push(EditorAction::CancelActiveTool);
             true
         }
         // Fixed chrome buttons ("+ Layer" / dock toggle / Apply CTA / …) → forward as Click.
         WidgetEvent::Click(id)
-            if id == core_ids::PAINTER_LAYERS_ADD
-                || id == core_ids::PAINTER_LAYERS_TOGGLE_DOCK
-                || id == core_ids::PAINTER_SIDEBAR_TOGGLE_DOCK
-                || id == core_ids::PAINTER_APPLY
-                || id == core_ids::PAINTER_LAYERS_DUPLICATE
-                || id == core_ids::PAINTER_LAYERS_DELETE
-                || id == core_ids::PAINTER_LAYERS_GROUP
-                || id == core_ids::PAINTER_LAYERS_ADD_TEXTURE
-                || id == core_ids::PAINTER_LAYERS_MASK
-                || id == core_ids::PAINTER_LAYERS_CLIP
-                || id == core_ids::PAINTER_LAYERS_ALPHA_LOCK
-                || id == core_ids::PAINTER_LAYERS_REFERENCE =>
+            if id == ph2d_tool_painter::ids::PAINTER_LAYERS_ADD
+                || id == ph2d_tool_painter::ids::PAINTER_LAYERS_TOGGLE_DOCK
+                || id == ph2d_tool_painter::ids::PAINTER_SIDEBAR_TOGGLE_DOCK
+                || id == ph2d_tool_painter::ids::PAINTER_APPLY
+                || id == ph2d_tool_painter::ids::PAINTER_LAYERS_DUPLICATE
+                || id == ph2d_tool_painter::ids::PAINTER_LAYERS_DELETE
+                || id == ph2d_tool_painter::ids::PAINTER_LAYERS_GROUP
+                || id == ph2d_tool_painter::ids::PAINTER_LAYERS_ADD_TEXTURE
+                || id == ph2d_tool_painter::ids::PAINTER_LAYERS_MASK
+                || id == ph2d_tool_painter::ids::PAINTER_LAYERS_CLIP
+                || id == ph2d_tool_painter::ids::PAINTER_LAYERS_ALPHA_LOCK
+                || id == ph2d_tool_painter::ids::PAINTER_LAYERS_REFERENCE =>
         {
             host.bus_mut()
                 .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));
@@ -75,13 +75,13 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
             let idx = decode_adjustment_kind_option(id).unwrap();
             if let Some(InteractiveState::Dropdown { open, .. }) = host
                 .store_mut()
-                .get_mut(core_ids::PAINTER_LAYERS_ADD_ADJUSTMENT)
+                .get_mut(ph2d_tool_painter::ids::PAINTER_LAYERS_ADD_ADJUSTMENT)
             {
                 *open = false;
             }
             host.bus_mut()
                 .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
-                    core_ids::PAINTER_LAYERS_ADD_ADJUSTMENT,
+                    ph2d_tool_painter::ids::PAINTER_LAYERS_ADD_ADJUSTMENT,
                     idx.to_string(),
                 )));
             true
@@ -120,7 +120,7 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
                     let ch = state::active_curve_channel(lid);
                     host.bus_mut()
                         .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
-                            core_ids::PAINTER_CURVE_ADD,
+                            ph2d_tool_painter::ids::PAINTER_CURVE_ADD,
                             format!("{lid}:{ch}"),
                         )));
                     return true;
@@ -132,7 +132,7 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
                     };
                     host.bus_mut()
                         .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
-                            core_ids::PAINTER_CURVE_REMOVE,
+                            ph2d_tool_painter::ids::PAINTER_CURVE_REMOVE,
                             format!("{lid}:{ch}:{idx}"),
                         )));
                     return true;
@@ -142,7 +142,7 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
                 if painter_gradient_add_id(lid) == id {
                     host.bus_mut()
                         .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
-                            core_ids::PAINTER_GRADIENT_ADD,
+                            ph2d_tool_painter::ids::PAINTER_GRADIENT_ADD,
                             lid.to_string(),
                         )));
                     return true;
@@ -151,7 +151,7 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
                     let idx = state::selected_gradient_stop(lid);
                     host.bus_mut()
                         .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
-                            core_ids::PAINTER_GRADIENT_REMOVE,
+                            ph2d_tool_painter::ids::PAINTER_GRADIENT_REMOVE,
                             format!("{lid}:{idx}"),
                         )));
                     return true;
@@ -248,7 +248,7 @@ fn route_value_changed(host: &mut dyn PanelHostInternal, id: ph2d_a11y::NodeId) 
             let out = state::active_mixer_channel(layer.0).min(2);
             host.bus_mut()
                 .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
-                    core_ids::PAINTER_MIXER_EDIT,
+                    ph2d_tool_painter::ids::PAINTER_MIXER_EDIT,
                     format!("{}:{out}:{slot}:{v}", layer.0),
                 )));
             return true;
@@ -262,7 +262,7 @@ fn route_value_changed(host: &mut dyn PanelHostInternal, id: ph2d_a11y::NodeId) 
             let bucket = state::active_selective_bucket(layer.0).min(8);
             host.bus_mut()
                 .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
-                    core_ids::PAINTER_SELCOLOR_EDIT,
+                    ph2d_tool_painter::ids::PAINTER_SELCOLOR_EDIT,
                     format!("{}:{bucket}:{slot}:{v}", layer.0),
                 )));
             return true;
@@ -277,7 +277,7 @@ fn route_value_changed(host: &mut dyn PanelHostInternal, id: ph2d_a11y::NodeId) 
             let stop = state::selected_gradient_stop(layer.0);
             host.bus_mut()
                 .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
-                    core_ids::PAINTER_GRADIENT_COLOR,
+                    ph2d_tool_painter::ids::PAINTER_GRADIENT_COLOR,
                     format!("{}:{stop}:{slot}:{v}", layer.0),
                 )));
             return true;
@@ -368,7 +368,7 @@ fn layer_is_gradient_map(stack: &LayerStack, layer: LayerId) -> bool {
 /// the 24 stable ids. `None` for any other widget.
 fn decode_adjustment_kind_option(id: ph2d_a11y::NodeId) -> Option<usize> {
     (0..ph2d_tool_painter::AdjustmentKind::ALL.len() as u8)
-        .find(|&i| core_ids::painter_adjustment_kind_option_id(i) == id)
+        .find(|&i| ph2d_tool_painter::ids::painter_adjustment_kind_option_id(i) == id)
         .map(usize::from)
 }
 
@@ -387,59 +387,59 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
     match ev {
         // Toggles + momentary buttons → forward as a Click (the tool flips the matching bool / acts).
         WidgetEvent::Click(id)
-            if id == core_ids::PAINTER_BRUSH_ERASER
-                || id == core_ids::PAINTER_BRUSH_COLOR_JITTER_ENABLE
-                || core_ids::PAINTER_BRUSH_TILING.contains(&id)
-                || id == core_ids::PAINTER_BRUSH_REPEAT_IMAGE
-                || id == core_ids::PAINTER_BRUSH_SPACE_ATTEN
-                || id == core_ids::PAINTER_BRUSH_ACCUMULATE
-                || id == core_ids::PAINTER_LINE_SOLID
-                || id == core_ids::PAINTER_LINE_SKETCHY_MAGNETIFY
-                || id == core_ids::PAINTER_LINE_WIRE_CONNECTION
-                || id == core_ids::PAINTER_BRUSH_SYNC
-                || id == core_ids::PAINTER_BRUSH_LINE_DIMENSIONS
-                || id == core_ids::PAINTER_BRUSH_EDGE_TO_EDGE
-                || id == core_ids::PAINTER_BRUSH_GRID_SHOW
-                || id == core_ids::PAINTER_BRUSH_TEXTURE_RAKE
-                || id == core_ids::PAINTER_SHAPE_WATERCOLOR_AUTO
-                || id == core_ids::PAINTER_SHAPE_RESET
-                || id == core_ids::PAINTER_SHAPE_USE_LAYERS
-                || id == core_ids::PAINTER_SHAPE_PER_LAYER_COLOR
-                || id == core_ids::PAINTER_SHAPE_ALPHA_FROM_IMAGE
-                || core_ids::PAINTER_BRUSH_TEXTURE_RAMP_BUTTONS.contains(&id)
-                || core_ids::PAINTER_SHAPE_RAMP_BUTTONS.contains(&id)
-                || id == core_ids::PAINTER_BRUSH_FALLOFF_ADD // Custom-falloff "+" point button
+            if id == ph2d_tool_painter::ids::PAINTER_BRUSH_ERASER
+                || id == ph2d_tool_painter::ids::PAINTER_BRUSH_COLOR_JITTER_ENABLE
+                || ph2d_tool_painter::ids::PAINTER_BRUSH_TILING.contains(&id)
+                || id == ph2d_tool_painter::ids::PAINTER_BRUSH_REPEAT_IMAGE
+                || id == ph2d_tool_painter::ids::PAINTER_BRUSH_SPACE_ATTEN
+                || id == ph2d_tool_painter::ids::PAINTER_BRUSH_ACCUMULATE
+                || id == ph2d_tool_painter::ids::PAINTER_LINE_SOLID
+                || id == ph2d_tool_painter::ids::PAINTER_LINE_SKETCHY_MAGNETIFY
+                || id == ph2d_tool_painter::ids::PAINTER_LINE_WIRE_CONNECTION
+                || id == ph2d_tool_painter::ids::PAINTER_BRUSH_SYNC
+                || id == ph2d_tool_painter::ids::PAINTER_BRUSH_LINE_DIMENSIONS
+                || id == ph2d_tool_painter::ids::PAINTER_BRUSH_EDGE_TO_EDGE
+                || id == ph2d_tool_painter::ids::PAINTER_BRUSH_GRID_SHOW
+                || id == ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAKE
+                || id == ph2d_tool_painter::ids::PAINTER_SHAPE_WATERCOLOR_AUTO
+                || id == ph2d_tool_painter::ids::PAINTER_SHAPE_RESET
+                || id == ph2d_tool_painter::ids::PAINTER_SHAPE_USE_LAYERS
+                || id == ph2d_tool_painter::ids::PAINTER_SHAPE_PER_LAYER_COLOR
+                || id == ph2d_tool_painter::ids::PAINTER_SHAPE_ALPHA_FROM_IMAGE
+                || ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_BUTTONS.contains(&id)
+                || ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_BUTTONS.contains(&id)
+                || id == ph2d_tool_painter::ids::PAINTER_BRUSH_FALLOFF_ADD // Custom-falloff "+" point button
                 // Stroke shape-editor buttons (Apply/Apply&Keep/Delete/Convert/Simplify/Merge) — MUST be
                 // forwarded or the Click is dropped. Plus the Offset-card Trim + the Operation segments.
-                || core_ids::PAINTER_BRUSH_STROKE_BUTTONS.contains(&id)
-                || id == core_ids::PAINTER_BRUSH_OFFSET_TRIM
-                || core_ids::PAINTER_STROKE_OP_IDS.contains(&id)
+                || ph2d_tool_painter::ids::PAINTER_BRUSH_STROKE_BUTTONS.contains(&id)
+                || id == ph2d_tool_painter::ids::PAINTER_BRUSH_OFFSET_TRIM
+                || ph2d_tool_painter::ids::PAINTER_STROKE_OP_IDS.contains(&id)
                 // Symmetry: Use/Circular checkboxes, X/Y/Custom axis segments, Draw-Line/Pick-Center, reset.
-                || core_ids::PAINTER_BRUSH_SYMMETRY_CLICKABLE.contains(&id)
-                || core_ids::PAINTER_BRUSH_SECTION_RESETS.contains(&id)
+                || ph2d_tool_painter::ids::PAINTER_BRUSH_SYMMETRY_CLICKABLE.contains(&id)
+                || ph2d_tool_painter::ids::PAINTER_BRUSH_SECTION_RESETS.contains(&id)
                 // Wet Paint (see PAINTER_WETPAINT_CLICKS: absent here = dead under the mouse).
-                || core_ids::PAINTER_WETPAINT_CLICKS.contains(&id)
+                || ph2d_tool_painter::ids::PAINTER_WETPAINT_CLICKS.contains(&id)
                 // Watercolor section: Wet-edges + Pigment toggles + the section reset.
-                || core_ids::PAINTER_WATERCOLOR_CLICKS.contains(&id)
+                || ph2d_tool_painter::ids::PAINTER_WATERCOLOR_CLICKS.contains(&id)
                 // Impasto: Enable + the section reset + Depth-Source / Draw-To segments + Show Impasto.
-                || core_ids::PAINTER_IMPASTO_CLICKS.contains(&id)
-                || core_ids::PAINTER_BRUSH_COMPOSITE_BUTTONS.contains(&id)
-                || id == core_ids::PAINTER_BRUSH_CLONE_SET_SOURCE
-                || id == core_ids::PAINTER_BRUSH_CLONE_ALIGNED
+                || ph2d_tool_painter::ids::PAINTER_IMPASTO_CLICKS.contains(&id)
+                || ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_BUTTONS.contains(&id)
+                || id == ph2d_tool_painter::ids::PAINTER_BRUSH_CLONE_SET_SOURCE
+                || id == ph2d_tool_painter::ids::PAINTER_BRUSH_CLONE_ALIGNED
                 // Mask: sub-brush segments, canvas op buttons, overlay-colour swatches, Apply.
-                || core_ids::PAINTER_MASK_BRUSH.contains(&id)
-                || core_ids::PAINTER_MASK_OP.contains(&id)
-                || core_ids::PAINTER_MASK_COLOR.contains(&id)
-                || id == core_ids::PAINTER_MASK_APPLY
+                || ph2d_tool_painter::ids::PAINTER_MASK_BRUSH.contains(&id)
+                || ph2d_tool_painter::ids::PAINTER_MASK_OP.contains(&id)
+                || ph2d_tool_painter::ids::PAINTER_MASK_COLOR.contains(&id)
+                || id == ph2d_tool_painter::ids::PAINTER_MASK_APPLY
                 // Selection (ADR-0103): mode/op/action segments + Edit/Convert + Wave-5 content actions.
-                || core_ids::PAINTER_SEL_MODE_IDS.contains(&id)
-                || core_ids::PAINTER_SEL_OP_IDS.contains(&id)
-                || core_ids::PAINTER_SEL_ACTION_IDS.contains(&id)
-                || core_ids::PAINTER_SEL_WAVE5_IDS.contains(&id)
-                || id == core_ids::PAINTER_SEL_EDIT
-                || id == core_ids::PAINTER_SEL_CONVERT || id == core_ids::PAINTER_SEL_SIMPLIFY
-                || id == core_ids::PAINTER_SEL_MERGE
-                || core_ids::PAINTER_SEL_OFFSET_APPLY_IDS.contains(&id)
+                || ph2d_tool_painter::ids::PAINTER_SEL_MODE_IDS.contains(&id)
+                || ph2d_tool_painter::ids::PAINTER_SEL_OP_IDS.contains(&id)
+                || ph2d_tool_painter::ids::PAINTER_SEL_ACTION_IDS.contains(&id)
+                || ph2d_tool_painter::ids::PAINTER_SEL_WAVE5_IDS.contains(&id)
+                || id == ph2d_tool_painter::ids::PAINTER_SEL_EDIT
+                || id == ph2d_tool_painter::ids::PAINTER_SEL_CONVERT || id == ph2d_tool_painter::ids::PAINTER_SEL_SIMPLIFY
+                || id == ph2d_tool_painter::ids::PAINTER_SEL_MERGE
+                || ph2d_tool_painter::ids::PAINTER_SEL_OFFSET_APPLY_IDS.contains(&id)
                 || crate::event_brush_forward::is_deform_click(id)
                 // Sculpt (`docs/Painter/18…`): the Smooth / Sharpen sub-mode segments.
                 || crate::event_brush_forward::is_sculpt_click(id) =>
@@ -449,24 +449,26 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
             Some(true)
         }
         // Custom-falloff "−" → drop the selected point (else the first non-endpoint by stable id).
-        WidgetEvent::Click(id) if id == core_ids::PAINTER_BRUSH_FALLOFF_REMOVE => {
+        WidgetEvent::Click(id) if id == ph2d_tool_painter::ids::PAINTER_BRUSH_FALLOFF_REMOVE => {
             let Some(target) = state::selected_falloff_point().or_else(default_falloff_remove_id)
             else {
                 return Some(true); // nothing to remove (only the 2 endpoints)
             };
             host.bus_mut()
                 .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
-                    core_ids::PAINTER_BRUSH_FALLOFF_REMOVE,
+                    ph2d_tool_painter::ids::PAINTER_BRUSH_FALLOFF_REMOVE,
                     target.to_string(),
                 )));
             Some(true)
         }
         // Grain / Shape Color Ramp colour box → toggle the shared picker targeting the selected stop.
-        WidgetEvent::Click(id) if id == core_ids::PAINTER_BRUSH_TEXTURE_RAMP_SWATCH => {
+        WidgetEvent::Click(id)
+            if id == ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_SWATCH =>
+        {
             ramp_picker::on_swatch_click(host);
             Some(true)
         }
-        WidgetEvent::Click(id) if id == core_ids::PAINTER_SHAPE_RAMP_SWATCH => {
+        WidgetEvent::Click(id) if id == ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_SWATCH => {
             shape_ramp_picker::on_swatch_click(host);
             Some(true)
         }
@@ -499,16 +501,19 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
         // A dropdown popover option was picked → close the chip + apply (table-driven, see `option_route`).
         WidgetEvent::Click(id) => option_route::route_brush_dropdown_option(host, id),
         // Custom-falloff 2-D drag: `CurvePoint` stashed `(parent, ch, idx, x, y)` → forward `idx:x:y`.
-        WidgetEvent::ValueChanged(id) if id == core_ids::PAINTER_BRUSH_FALLOFF_EDIT => {
-            if let Some((_parent, _ch, idx, x, y)) = host
-                .store_mut()
-                .take_curve_point_drag_if(|p| p == core_ids::PAINTER_BRUSH_FALLOFF_EDIT)
+        WidgetEvent::ValueChanged(id)
+            if id == ph2d_tool_painter::ids::PAINTER_BRUSH_FALLOFF_EDIT =>
+        {
+            if let Some((_parent, _ch, idx, x, y)) =
+                host.store_mut().take_curve_point_drag_if(|p| {
+                    p == ph2d_tool_painter::ids::PAINTER_BRUSH_FALLOFF_EDIT
+                })
             {
                 // `idx` is the point's STABLE id (panel-registered), valid across a drag-past re-sort.
                 state::set_selected_falloff_point(Some(idx));
                 host.bus_mut()
                     .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
-                        core_ids::PAINTER_BRUSH_FALLOFF_EDIT,
+                        ph2d_tool_painter::ids::PAINTER_BRUSH_FALLOFF_EDIT,
                         format!("{idx}:{x}:{y}"),
                     )));
             }

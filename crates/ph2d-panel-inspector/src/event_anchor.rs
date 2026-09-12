@@ -12,7 +12,6 @@
 //! [ADR-0072]: ../../../docs/architecture/decisions/0072-named-anchor-unification.md
 
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::screens::hero::AnchorFieldEdit;
@@ -34,19 +33,19 @@ pub(crate) fn apply_anchor_event(
 
     if let WidgetEvent::Click(id) = ev {
         // Uma linha da lista: só muda a ficha aberta.
-        if let Some(i) = ids::INSP_ANCHOR_ROW.iter().position(|&o| o == id)
+        if let Some(i) = crate::ids::INSP_ANCHOR_ROW.iter().position(|&o| o == id)
             && i < info.rows.len()
         {
             panel.anchor_selected = i;
             demote_button(host, id);
             return true;
         }
-        if id == ids::INSP_ANCHOR_ADD {
+        if id == crate::ids::INSP_ANCHOR_ADD {
             push(host, info.entity_bits, AnchorFieldEdit::Add);
             demote_button(host, id);
             return true;
         }
-        if id == ids::INSP_ANCHOR_REMOVE && !info.rows.is_empty() {
+        if id == crate::ids::INSP_ANCHOR_REMOVE && !info.rows.is_empty() {
             push(host, info.entity_bits, AnchorFieldEdit::Remove(sel_u8));
             demote_button(host, id);
             return true;
@@ -64,7 +63,7 @@ pub(crate) fn apply_anchor_event(
         // ⚠️ **A guarda `is_off_anchor` está aqui também, e não só na pintura.** O botão é
         // registado no arranque e um clique sintético alcança-o mesmo quando não é pintado;
         // sem esta linha, o gesto escreveria uma pose zerada sobre um objeto que não monta.
-        if id == ids::INSP_MOUNT_SNAP && info.is_off_anchor() {
+        if id == crate::ids::INSP_MOUNT_SNAP && info.is_off_anchor() {
             push(host, info.entity_bits, AnchorFieldEdit::SnapToAnchor);
             demote_button(host, id);
             return true;
@@ -94,7 +93,7 @@ pub(crate) fn apply_anchor_event(
     //
     // ⚠️ **A IRMÃ fica** — «Always show anchors» tem consumidor vivo (`anchor_overlay`).
     if let WidgetEvent::Toggled(id) = ev
-        && id == ids::INSP_ANCHOR_VIS_EDITOR
+        && id == crate::ids::INSP_ANCHOR_VIS_EDITOR
     {
         let on = matches!(
             host.store().checkbox(id).map(|(_, v)| v),
@@ -109,7 +108,7 @@ pub(crate) fn apply_anchor_event(
     }
 
     if let WidgetEvent::TextChanged(id) = ev
-        && id == ids::INSP_ANCHOR_NAME
+        && id == crate::ids::INSP_ANCHOR_NAME
     {
         let text = host.store().text(id).unwrap_or("").to_string();
         push(
@@ -121,13 +120,16 @@ pub(crate) fn apply_anchor_event(
     }
 
     if let WidgetEvent::Toggled(id) = ev
-        && matches!(id, ids::INSP_ANCHOR_BOUNDS_ON | ids::INSP_ANCHOR_CENTER_ON)
+        && matches!(
+            id,
+            crate::ids::INSP_ANCHOR_BOUNDS_ON | crate::ids::INSP_ANCHOR_CENTER_ON
+        )
     {
         let on = matches!(
             host.store().checkbox(id).map(|(_, v)| v),
             Some(CheckboxValue::Checked)
         );
-        let edit = if id == ids::INSP_ANCHOR_BOUNDS_ON {
+        let edit = if id == crate::ids::INSP_ANCHOR_BOUNDS_ON {
             AnchorFieldEdit::BoundsOn(sel_u8, on)
         } else {
             AnchorFieldEdit::CenterOn(sel_u8, on)
@@ -139,19 +141,21 @@ pub(crate) fn apply_anchor_event(
     if let WidgetEvent::ValueChanged(id) = ev {
         let v = host.store().number_value(id).unwrap_or(0.0) as f32;
         // ⚠️ Cada campo despacha SÓ o seu eixo — a lei do `PerCornerTintAt`.
-        let edit = ids::INSP_ANCHOR_POS
+        let edit = crate::ids::INSP_ANCHOR_POS
             .iter()
             .position(|&o| o == id)
             .map(|i| AnchorFieldEdit::Pos(sel_u8, i as u8, v))
-            .or_else(|| (id == ids::INSP_ANCHOR_ROT).then_some(AnchorFieldEdit::Rot(sel_u8, v)))
             .or_else(|| {
-                ids::INSP_ANCHOR_BOUNDS
+                (id == crate::ids::INSP_ANCHOR_ROT).then_some(AnchorFieldEdit::Rot(sel_u8, v))
+            })
+            .or_else(|| {
+                crate::ids::INSP_ANCHOR_BOUNDS
                     .iter()
                     .position(|&o| o == id)
                     .map(|i| AnchorFieldEdit::Bounds(sel_u8, i as u8, v))
             })
             .or_else(|| {
-                ids::INSP_ANCHOR_CENTER
+                crate::ids::INSP_ANCHOR_CENTER
                     .iter()
                     .position(|&o| o == id)
                     .map(|i| AnchorFieldEdit::Center(sel_u8, i as u8, v))
@@ -180,10 +184,10 @@ fn mount_choice(
     info: &ph2d_editor_core::screens::hero::InspectorAnchorInfo,
     id: ph2d_a11y::NodeId,
 ) -> Option<Option<String>> {
-    if id == ids::INSP_MOUNT_NONE_OPT {
+    if id == crate::ids::INSP_MOUNT_NONE_OPT {
         return Some(None);
     }
-    let i = ids::INSP_MOUNT_OPT.iter().position(|&o| o == id)?;
+    let i = crate::ids::INSP_MOUNT_OPT.iter().position(|&o| o == id)?;
     // ⚠️ O array tem 64 ids sempre pintados-ou-não; só os que a lista do pai alcança valem.
     // Sem esta guarda, um id registado e nunca pintado escolheria uma âncora inexistente.
     info.parent_anchors.get(i).cloned().map(Some)
@@ -196,7 +200,7 @@ fn mount_choice(
 /// ela mentiria exatamente quando a shell recusasse a edição.
 fn close_mount_popover(host: &mut dyn PanelHostInternal) {
     if let Some(InteractiveState::Dropdown { open, .. }) =
-        host.store_mut().get_mut(ids::INSP_MOUNT_PICK)
+        host.store_mut().get_mut(crate::ids::INSP_MOUNT_PICK)
     {
         *open = false;
     }

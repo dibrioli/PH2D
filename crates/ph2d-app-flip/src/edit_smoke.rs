@@ -98,8 +98,8 @@ pub fn arm(
         8 => {
             if let Some(hero) = hero {
                 for id in [
-                    ph2d_editor_core::ids::FLIP_MODE_EDIT,
-                    ph2d_editor_core::ids::FLIP_EDIT_DOM_POINT,
+                    ph2d_tool_flip::ids::FLIP_MODE_EDIT,
+                    ph2d_tool_flip::ids::FLIP_EDIT_DOM_POINT,
                 ] {
                     hero.bus
                         .push(ph2d_editor_core::action_bus::EditorAction::ToolPanelEvent(

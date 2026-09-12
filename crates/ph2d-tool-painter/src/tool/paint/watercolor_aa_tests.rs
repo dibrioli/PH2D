@@ -75,9 +75,7 @@ fn wc_stroke_hard(size: u32, radius: f32, warp: f32, pts: &[[f32; 2]]) -> Vec<u8
 fn the_smooth_edges_click_flips_the_mode() {
     let mut t = wc_tool(16, 4.0, true, 0.0);
     assert!(t.paint.brush.smooth_edges, "default is smooth");
-    let ev = ph2d_editor_core::tool::PanelEvent::Click(
-        ph2d_editor_core::ids::PAINTER_WATERCOLOR_SMOOTH_EDGES,
-    );
+    let ev = ph2d_editor_core::tool::PanelEvent::Click(crate::ids::PAINTER_WATERCOLOR_SMOOTH_EDGES);
     assert!(
         t.route_brush_watercolor_event(&ev),
         "click must be consumed"

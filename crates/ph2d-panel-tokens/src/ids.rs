@@ -3,8 +3,7 @@
 //! ⚠️ Uma segunda definição do mesmo id (mesmo com o mesmo hash) seria a segunda resposta a *"qual
 //! é o id desta swatch?"*, e o `node_id_collisions` só vê a que mora na foundational.
 
-pub use ph2d_editor_core::ids::{
-    TOKENS_CLOSE, TOKENS_DTCG_EXPORT, TOKENS_DTCG_IMPORT, TOKENS_PANEL, TOKENS_RESET_ALL,
-    tokens_link_id, tokens_num_chip_id, tokens_num_formula_id, tokens_num_fx_id,
-    tokens_num_link_id, tokens_num_reset_id, tokens_reset_id, tokens_swatch_id,
-};
+pub use ph2d_editor_core::ids::{TOKENS_PANEL, tokens_swatch_id};
+
+mod tokens;
+pub use tokens::*;

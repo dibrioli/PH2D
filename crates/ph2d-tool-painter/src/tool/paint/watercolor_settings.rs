@@ -43,129 +43,128 @@ impl PainterTool {
     /// setters below. Returns `true` when it consumed the event. Mirrors
     /// [`Self::route_brush_jitter_event`]; called from `handle_panel_event` before the main match.
     pub(crate) fn route_brush_watercolor_event(&mut self, event: &PanelEvent) -> bool {
-        use ph2d_editor_core::ids as core_ids;
         match event {
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_SHAPE_WATERCOLOR_AUTO => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_SHAPE_WATERCOLOR_AUTO => {
                 self.toggle_brush_watercolor_shape_auto();
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_WATERCOLOR_PIGMENT => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_WATERCOLOR_PIGMENT => {
                 self.toggle_brush_pigment();
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_WATERCOLOR_RESET => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_WATERCOLOR_RESET => {
                 self.reset_brush_watercolor();
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_WATERCOLOR_GRAN_SAME => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_WATERCOLOR_GRAN_SAME => {
                 self.toggle_granulation_use_paper();
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_WATERCOLOR_SMOOTH_EDGES => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_WATERCOLOR_SMOOTH_EDGES => {
                 self.toggle_smooth_edges();
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_WATERCOLOR_PAPER_RESET => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_WATERCOLOR_PAPER_RESET => {
                 self.reset_brush_paper();
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_WATERCOLOR_DRY_NOW => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_WATERCOLOR_DRY_NOW => {
                 self.dry_session_now();
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_WATERCOLOR_WET_NOW => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_WATERCOLOR_WET_NOW => {
                 self.wet_canvas_now();
                 true
             }
             PanelEvent::SetValue(id, v) => {
                 let v = *v as f32;
                 match *id {
-                    x if x == core_ids::PAINTER_WATERCOLOR_EDGE => {
+                    x if x == crate::ids::PAINTER_WATERCOLOR_EDGE => {
                         self.set_brush_edge_gain(v);
                         true
                     }
-                    x if x == core_ids::PAINTER_WATERCOLOR_SPREAD => {
+                    x if x == crate::ids::PAINTER_WATERCOLOR_SPREAD => {
                         self.set_brush_edge_spread(v);
                         true
                     }
-                    x if x == core_ids::PAINTER_WATERCOLOR_GRANULATION => {
+                    x if x == crate::ids::PAINTER_WATERCOLOR_GRANULATION => {
                         self.set_brush_granulation(v);
                         true
                     }
-                    x if x == core_ids::PAINTER_WATERCOLOR_MIX => {
+                    x if x == crate::ids::PAINTER_WATERCOLOR_MIX => {
                         self.set_brush_pigment_mixing(v);
                         true
                     }
-                    x if x == core_ids::PAINTER_WATERCOLOR_FILL => {
+                    x if x == crate::ids::PAINTER_WATERCOLOR_FILL => {
                         self.set_brush_fill(v);
                         true
                     }
-                    x if x == core_ids::PAINTER_WATERCOLOR_DEPTH => {
+                    x if x == crate::ids::PAINTER_WATERCOLOR_DEPTH => {
                         self.set_brush_depth(v);
                         true
                     }
-                    x if x == core_ids::PAINTER_WATERCOLOR_OPACITY => {
+                    x if x == crate::ids::PAINTER_WATERCOLOR_OPACITY => {
                         self.set_brush_opacity(v);
                         true
                     }
-                    x if x == core_ids::PAINTER_WATERCOLOR_WARP => {
+                    x if x == crate::ids::PAINTER_WATERCOLOR_WARP => {
                         self.set_brush_warp(v);
                         true
                     }
-                    x if x == core_ids::PAINTER_WATERCOLOR_SMUDGE => {
+                    x if x == crate::ids::PAINTER_WATERCOLOR_SMUDGE => {
                         self.set_brush_wet_smudge(v);
                         true
                     }
-                    x if x == core_ids::PAINTER_WATERCOLOR_WET => {
+                    x if x == crate::ids::PAINTER_WATERCOLOR_WET => {
                         self.set_brush_wet_rewet(v);
                         true
                     }
-                    x if x == core_ids::PAINTER_WATERCOLOR_CHARGE => {
+                    x if x == crate::ids::PAINTER_WATERCOLOR_CHARGE => {
                         self.set_brush_wet_charge(v);
                         true
                     }
-                    x if x == core_ids::PAINTER_WATERCOLOR_DILUTION => {
+                    x if x == crate::ids::PAINTER_WATERCOLOR_DILUTION => {
                         self.set_brush_wet_dilution(v);
                         true
                     }
-                    x if x == core_ids::PAINTER_WATERCOLOR_DRY_TIME => {
+                    x if x == crate::ids::PAINTER_WATERCOLOR_DRY_TIME => {
                         self.set_dry_time_s(v);
                         true
                     }
-                    x if x == core_ids::PAINTER_WATERCOLOR_WET_PREVIEW => {
+                    x if x == crate::ids::PAINTER_WATERCOLOR_WET_PREVIEW => {
                         self.set_wet_preview_intensity(v);
                         true
                     }
-                    x if x == core_ids::PAINTER_WATERCOLOR_PULL => {
+                    x if x == crate::ids::PAINTER_WATERCOLOR_PULL => {
                         self.set_brush_wet_pull(v);
                         true
                     }
-                    x if x == core_ids::PAINTER_WATERCOLOR_PAPER_SIZE_X => {
+                    x if x == crate::ids::PAINTER_WATERCOLOR_PAPER_SIZE_X => {
                         self.set_brush_paper_size(0, v);
                         true
                     }
-                    x if x == core_ids::PAINTER_WATERCOLOR_PAPER_SIZE_Y => {
+                    x if x == crate::ids::PAINTER_WATERCOLOR_PAPER_SIZE_Y => {
                         self.set_brush_paper_size(1, v);
                         true
                     }
-                    x if x == core_ids::PAINTER_WATERCOLOR_PAPER_ANGLE => {
+                    x if x == crate::ids::PAINTER_WATERCOLOR_PAPER_ANGLE => {
                         self.set_brush_paper_angle(v);
                         true
                     }
-                    x if x == core_ids::PAINTER_WATERCOLOR_PAPER_OFFSET_X => {
+                    x if x == crate::ids::PAINTER_WATERCOLOR_PAPER_OFFSET_X => {
                         self.set_brush_paper_offset(0, v);
                         true
                     }
-                    x if x == core_ids::PAINTER_WATERCOLOR_PAPER_OFFSET_Y => {
+                    x if x == crate::ids::PAINTER_WATERCOLOR_PAPER_OFFSET_Y => {
                         self.set_brush_paper_offset(1, v);
                         true
                     }
-                    x if x == core_ids::PAINTER_WATERCOLOR_PAPER_DEPTH => {
+                    x if x == crate::ids::PAINTER_WATERCOLOR_PAPER_DEPTH => {
                         self.set_brush_paper_depth(v);
                         true
                     }
-                    x if core_ids::PAINTER_WATERCOLOR_PAPER_PARAMS.contains(&x) => {
-                        let slot = core_ids::PAINTER_WATERCOLOR_PAPER_PARAMS
+                    x if crate::ids::PAINTER_WATERCOLOR_PAPER_PARAMS.contains(&x) => {
+                        let slot = crate::ids::PAINTER_WATERCOLOR_PAPER_PARAMS
                             .iter()
                             .position(|&p| p == x)
                             .unwrap_or(0);

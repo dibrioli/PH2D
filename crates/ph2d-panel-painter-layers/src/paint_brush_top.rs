@@ -4,7 +4,6 @@
 //! a collapse chevron + assignable colour dot). Split from [`crate::paint_brush`] for the LOC cap.
 
 use ph2d_editor_core::IconId;
-use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{
     Checkbox, CheckboxValue, IconButtonStyle, IconGlyph, SectionFold, SectionHeader,
@@ -190,9 +189,9 @@ pub(crate) fn paint_randomize_section(
         content_w,
         y,
         "Randomize Color",
-        core_ids::PAINTER_BRUSH_RANDOMIZE_SECTION,
-        core_ids::PAINTER_BRUSH_RANDOMIZE_SECTION_COLOR,
-        core_ids::PAINTER_BRUSH_RANDOMIZE_RESET,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_RANDOMIZE_SECTION,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_RANDOMIZE_SECTION_COLOR,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_RANDOMIZE_RESET,
     );
     let Some(fold) = fold else {
         return y;
@@ -205,8 +204,8 @@ pub(crate) fn paint_randomize_section(
             content_w,
             y,
             label,
-            core_ids::PAINTER_BRUSH_RANDOMIZE_SLIDERS[slot],
-            core_ids::PAINTER_BRUSH_RANDOMIZE_CHIPS[slot],
+            ph2d_tool_painter::ids::PAINTER_BRUSH_RANDOMIZE_SLIDERS[slot],
+            ph2d_tool_painter::ids::PAINTER_BRUSH_RANDOMIZE_CHIPS[slot],
             brush.color_jitter[slot],
         );
     }

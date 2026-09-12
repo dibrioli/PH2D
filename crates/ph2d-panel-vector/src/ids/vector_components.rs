@@ -1,0 +1,77 @@
+//! **Os ids dos COMPONENTES** (plano UI/UX W5) — irmão de [`super::vector_anchors`] pelo teto de
+//! LOC, e o corte é o assunto: aqui mora o prefab (mestre, instância, override).
+//!
+//! # Quatro verbos, e cada um aparece onde faz sentido
+//!
+//! *Create Component* só com uma forma comum selecionada · *Place Instance* só com um mestre ·
+//! *Detach* e *Reset Overrides* só com uma instância. ⚠️ A alternativa — quatro botões sempre
+//! pintados, três deles inertes — é o botão-morto que este repo persegue: um botão que não faz
+//! nada é pior que um botão que falta, porque ensina o artista a duvidar dos outros.
+//!
+//! # A W5b acrescentou a metade que faltava: as DIFERENÇAS
+//!
+//! A W5a shipou o modelo do override (`OverrideSlot::Fill` / `Hidden`) com gates — e **nenhuma
+//! porta que o produzisse**. O *Reset Overrides* era, literalmente, um botão que nunca podia ser
+//! preciso: a única coisa capaz de criar um override era um teste. É a forma exata de
+//! [[feedback_a_capability_without_a_door_passes_every_gate]], e a W5b é a porta.
+//!
+//! A porta é uma **LISTA de peças** — uma linha por peça do mestre, com um interruptor de
+//! visibilidade e uma swatch de cor. ⚠️ E a lista é a **sub-árvore INTEIRA** do mestre, nunca as
+//! peças visíveis: esconder uma peça tirar-lhe-ia a própria linha, e o gesto não teria volta.
+//!
+//! *Update Main* e *Swap* fecham o resto da lista do plano.
+//!
+//! ⚠️ **Desceu de `ph2d-editor-core/src/ids/chrome/vector_components.rs` em 2026-09-12** (auditoria de arquitectura
+//! A5b): quem LÊ estes ids mora nesta crate, e a fundação que 43 crates recompilam deixou de os
+//! carregar.
+
+use ph2d_a11y::NodeId;
+use ph2d_tool_registry::hash_node_id;
+
+/// O cabeçalho da seção **Component**.
+pub const VECTOR_SECTION_COMPONENT: NodeId = hash_node_id("vector.section.component");
+
+/// **Create Component** — a forma selecionada (e a sub-árvore dela) vira um mestre.
+pub const VECTOR_COMPONENT_CREATE: NodeId = hash_node_id("vector.component.create");
+
+/// **Place Instance** — põe uma cópia derivada do mestre selecionado.
+pub const VECTOR_COMPONENT_PLACE: NodeId = hash_node_id("vector.component.place");
+
+/// ⭐⭐ **Instantiate Linked** (2026-09-07) — o irmão do de cima: a cópia **divide a ARTE** da
+/// receita, então editar a tinta ou o desenho dela sobe e chega a todas (o `Alt+D` do Blender).
+///
+/// ⚠️ **Ele estava no menu da Hierarquia e não aqui** — e *um verbo cujo irmão está noutro sítio do
+/// app não se usa*, porque o artista não sabe que a escolha existe. A diferença entre os dois só se
+/// vê no gesto SEGUINTE (pintar, mover um nó), e por isso os dois toasts a nomeiam.
+pub const VECTOR_COMPONENT_PLACE_LINKED: NodeId = hash_node_id("vector.component.place_linked");
+
+/// ⭐⭐⭐ **Edit Prefab** — abre a RECEITA desta cópia (2026-09-07).
+///
+/// ⚠️ **A receita não está no canvas**: no modelo geral ela é escondida da cena e da Hierarquia
+/// enquanto ninguém a edita, e o único caminho até ela era o cartão do navegador de assets — que
+/// exige saber o nome dela e ter aquele painel aberto. *Três recusas deste app já mandavam o
+/// artista «editar no prefab» sem lhe dar um gesto para lá chegar.*
+pub const VECTOR_COMPONENT_EDIT: NodeId = hash_node_id("vector.component.edit");
+
+/// **Detach** — a instância deixa de derivar: o que estava na tela vira geometria dela.
+pub const VECTOR_COMPONENT_DETACH: NodeId = hash_node_id("vector.component.detach");
+
+/// **Reset Overrides** — a instância volta a ser exactamente o mestre.
+pub const VECTOR_COMPONENT_RESET: NodeId = hash_node_id("vector.component.reset");
+
+/// **Update Main** — as diferenças desta instância passam a ser o MESTRE, e as irmãs herdam.
+///
+/// ⚠️ Ele **absorve o que o mestre sabe guardar**, que hoje é a COR. O `Hidden` não sobe: um
+/// mestre não tem *"peça escondida"*, e a única maneira de a esconder lá seria apagá-la — e apagar
+/// arte não é o que *"atualizar o mestre"* significa para ninguém. A recusa é por espécie, dentro
+/// da porta, e não uma condição no botão: um botão que some quando a instância tem um `Hidden`
+/// esconderia também as cores que ele PODE absorver.
+pub const VECTOR_COMPONENT_UPDATE_MAIN: NodeId = hash_node_id("vector.component.update_main");
+
+/// **Swap Main** — arma o conta-gotas: o próximo clique num MESTRE religa esta instância a ele.
+///
+/// O idioma de pick modal desta linha (o *Pick Path* do pattern/texto, o conta-gotas de corpo do
+/// joint): arma, e o clique seguinte no canvas resolve. Um dropdown de componentes seria a segunda
+/// resposta a *"qual é o mestre?"* — e teria de listar por NOME, que é justamente o endereço que a
+/// W5a recusou.
+pub const VECTOR_COMPONENT_SWAP: NodeId = hash_node_id("vector.component.swap");

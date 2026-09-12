@@ -18,7 +18,6 @@
 //! *Uma caixa que se lembra do que mostrou mente no dia em que outra pessoa muda o facto.*
 
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::screens::hero::{
     AnimFieldEdit, InspectorAnimInfo, InspectorAnimRow, InspectorNameInfo,
@@ -186,14 +185,20 @@ fn expect(actions: &[EditorAction], edit: AnimFieldEdit, what: &str) {
 fn the_playing_box_asks_the_scene_not_its_own_memory() {
     // 1. A cena TOCA e o artista desmarca: `Playing(false)`.
     expect(
-        &click_fresh(anim(true, false), ids::INSP_ANIM_PLAYING),
+        &click_fresh(
+            anim(true, false),
+            ph2d_panel_inspector::ids::INSP_ANIM_PLAYING,
+        ),
         AnimFieldEdit::Playing(false),
         "desmarcar sobre uma cena que toca",
     );
 
     // 2. A cena está PARADA e o artista marca: `Playing(true)`.
     expect(
-        &click_fresh(anim(false, false), ids::INSP_ANIM_PLAYING),
+        &click_fresh(
+            anim(false, false),
+            ph2d_panel_inspector::ids::INSP_ANIM_PLAYING,
+        ),
         AnimFieldEdit::Playing(true),
         "marcar sobre uma cena parada",
     );
@@ -201,7 +206,11 @@ fn the_playing_box_asks_the_scene_not_its_own_memory() {
     // 3. ⚠️ **O DEFEITO:** a cena tocava, e parou-se **sozinha** — mesma entidade, mesma linha.
     let (mut host, mut state) = host_with(anim(true, false));
     set_current_inspector_anim(Some(anim(false, false)));
-    let out = click(&mut host, &mut state, ids::INSP_ANIM_PLAYING);
+    let out = click(
+        &mut host,
+        &mut state,
+        ph2d_panel_inspector::ids::INSP_ANIM_PLAYING,
+    );
     clear();
     expect(
         &out,
@@ -220,13 +229,20 @@ fn the_playing_box_asks_the_scene_not_its_own_memory() {
 #[test]
 fn the_autoplay_box_asks_the_scene_not_its_own_memory() {
     expect(
-        &click_fresh(anim(false, true), ids::INSP_ANIM_AUTOPLAY),
+        &click_fresh(
+            anim(false, true),
+            ph2d_panel_inspector::ids::INSP_ANIM_AUTOPLAY,
+        ),
         AnimFieldEdit::Autoplay(false),
         "desmarcar o autoplay",
     );
     let (mut host, mut state) = host_with(anim(false, true));
     set_current_inspector_anim(Some(anim(false, false)));
-    let out = click(&mut host, &mut state, ids::INSP_ANIM_AUTOPLAY);
+    let out = click(
+        &mut host,
+        &mut state,
+        ph2d_panel_inspector::ids::INSP_ANIM_AUTOPLAY,
+    );
     clear();
     expect(
         &out,
@@ -241,25 +257,38 @@ fn the_autoplay_box_asks_the_scene_not_its_own_memory() {
 #[test]
 fn every_player_control_reaches_the_bus() {
     expect(
-        &click_fresh(anim(true, false), ids::INSP_ANIM_REWIND),
+        &click_fresh(
+            anim(true, false),
+            ph2d_panel_inspector::ids::INSP_ANIM_REWIND,
+        ),
         AnimFieldEdit::Rewind,
         "Rewind",
     );
     expect(
-        &commit(anim(true, false), ids::INSP_ANIM_SPEED, -1.5),
+        &commit(
+            anim(true, false),
+            ph2d_panel_inspector::ids::INSP_ANIM_SPEED,
+            -1.5,
+        ),
         AnimFieldEdit::Speed(-1.5),
         "Speed",
     );
     // ⚠️ **A POSIÇÃO no array é a tag** — o despacho deriva-a de `position()`. Um array reordenado
     // faria cada botão escrever a direção do vizinho, e compila.
-    for (i, &id) in ids::INSP_ANIM_DIR_OVERRIDE.iter().enumerate() {
+    for (i, &id) in ph2d_panel_inspector::ids::INSP_ANIM_DIR_OVERRIDE
+        .iter()
+        .enumerate()
+    {
         expect(
             &click_fresh(anim(true, false), id),
             AnimFieldEdit::DirectionOverride(i as u8),
             &format!("Direction override [{i}]"),
         );
     }
-    for (i, &id) in ids::INSP_ANIM_LOOP_OVERRIDE.iter().enumerate() {
+    for (i, &id) in ph2d_panel_inspector::ids::INSP_ANIM_LOOP_OVERRIDE
+        .iter()
+        .enumerate()
+    {
         expect(
             &click_fresh(anim(true, false), id),
             AnimFieldEdit::LoopOverride(i as u8),
@@ -272,26 +301,53 @@ fn every_player_control_reaches_the_bus() {
 #[test]
 fn every_library_control_reaches_the_bus() {
     expect(
-        &click_fresh(anim(true, false), ids::INSP_ANIM_ADD),
+        &click_fresh(anim(true, false), ph2d_panel_inspector::ids::INSP_ANIM_ADD),
         AnimFieldEdit::Add,
         "+ Add Animation",
     );
     expect(
-        &click_fresh(anim(true, false), ids::INSP_ANIM_REMOVE),
+        &click_fresh(
+            anim(true, false),
+            ph2d_panel_inspector::ids::INSP_ANIM_REMOVE,
+        ),
         AnimFieldEdit::Remove(0),
         "× Remove Animation",
     );
     for (id, v, edit) in [
-        (ids::INSP_ANIM_FROM, 2.0, AnimFieldEdit::From(0, 2)),
-        (ids::INSP_ANIM_TO, 6.0, AnimFieldEdit::To(0, 6)),
-        (ids::INSP_ANIM_FRAME_MS, 33.0, AnimFieldEdit::FrameMs(0, 33)),
-        (ids::INSP_ANIM_HOLD_MS, 120.0, AnimFieldEdit::HoldMs(0, 120)),
-        (ids::INSP_ANIM_DELAY_MS, 75.0, AnimFieldEdit::DelayMs(0, 75)),
-        (ids::INSP_ANIM_REPEAT, 3.0, AnimFieldEdit::Repeat(0, 3)),
+        (
+            ph2d_panel_inspector::ids::INSP_ANIM_FROM,
+            2.0,
+            AnimFieldEdit::From(0, 2),
+        ),
+        (
+            ph2d_panel_inspector::ids::INSP_ANIM_TO,
+            6.0,
+            AnimFieldEdit::To(0, 6),
+        ),
+        (
+            ph2d_panel_inspector::ids::INSP_ANIM_FRAME_MS,
+            33.0,
+            AnimFieldEdit::FrameMs(0, 33),
+        ),
+        (
+            ph2d_panel_inspector::ids::INSP_ANIM_HOLD_MS,
+            120.0,
+            AnimFieldEdit::HoldMs(0, 120),
+        ),
+        (
+            ph2d_panel_inspector::ids::INSP_ANIM_DELAY_MS,
+            75.0,
+            AnimFieldEdit::DelayMs(0, 75),
+        ),
+        (
+            ph2d_panel_inspector::ids::INSP_ANIM_REPEAT,
+            3.0,
+            AnimFieldEdit::Repeat(0, 3),
+        ),
     ] {
         expect(&commit(anim(true, false), id, v), edit, &format!("{id:?}"));
     }
-    for (i, &id) in ids::INSP_ANIM_DIR.iter().enumerate() {
+    for (i, &id) in ph2d_panel_inspector::ids::INSP_ANIM_DIR.iter().enumerate() {
         expect(
             &click_fresh(anim(true, false), id),
             AnimFieldEdit::Direction(0, i as u8),
@@ -308,17 +364,21 @@ fn every_library_control_reaches_the_bus() {
 #[test]
 fn clicking_a_row_picks_what_plays_and_moves_the_editor_with_it() {
     let (mut host, mut state) = host_with(anim(true, false));
-    let out = click(&mut host, &mut state, ids::INSP_ANIM_ROW[1]);
+    let out = click(
+        &mut host,
+        &mut state,
+        ph2d_panel_inspector::ids::INSP_ANIM_ROW[1],
+    );
     expect(
         &out,
         AnimFieldEdit::SetCurrent("attack".into()),
         "clicar na segunda linha",
     );
     // E agora o editor edita a SEGUNDA.
-    host.set_number_value(ids::INSP_ANIM_FRAME_MS, 42.0);
+    host.set_number_value(ph2d_panel_inspector::ids::INSP_ANIM_FRAME_MS, 42.0);
     let _ = host.apply_panel_event::<InspectorPanel>(
         &mut state,
-        WidgetEvent::ValueChanged(ids::INSP_ANIM_FRAME_MS),
+        WidgetEvent::ValueChanged(ph2d_panel_inspector::ids::INSP_ANIM_FRAME_MS),
     );
     let out = host.drained_actions();
     clear();
@@ -336,7 +396,7 @@ fn clicking_a_row_picks_what_plays_and_moves_the_editor_with_it() {
 #[test]
 fn the_empty_face_offers_only_the_gesture_that_creates_the_player() {
     expect(
-        &click_fresh(no_player(), ids::INSP_ANIM_ADD_PLAYER),
+        &click_fresh(no_player(), ph2d_panel_inspector::ids::INSP_ANIM_ADD_PLAYER),
         AnimFieldEdit::AddPlayer,
         "+ Add Animator",
     );
@@ -346,12 +406,12 @@ fn the_empty_face_offers_only_the_gesture_that_creates_the_player() {
     let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
     clear();
     for id in [
-        ids::INSP_ANIM_PLAYING,
-        ids::INSP_ANIM_AUTOPLAY,
-        ids::INSP_ANIM_SPEED,
-        ids::INSP_ANIM_REWIND,
-        ids::INSP_ANIM_ADD,
-        ids::INSP_ANIM_ROW[0],
+        ph2d_panel_inspector::ids::INSP_ANIM_PLAYING,
+        ph2d_panel_inspector::ids::INSP_ANIM_AUTOPLAY,
+        ph2d_panel_inspector::ids::INSP_ANIM_SPEED,
+        ph2d_panel_inspector::ids::INSP_ANIM_REWIND,
+        ph2d_panel_inspector::ids::INSP_ANIM_ADD,
+        ph2d_panel_inspector::ids::INSP_ANIM_ROW[0],
     ] {
         assert!(
             !rects.iter().any(|(n, _)| *n == id),
@@ -368,13 +428,13 @@ fn the_empty_face_offers_only_the_gesture_that_creates_the_player() {
 fn the_library_fields_show_what_was_authored_not_the_seed() {
     let (host, _state) = host_with(anim(true, false));
     let got: Vec<f64> = [
-        ids::INSP_ANIM_FROM,
-        ids::INSP_ANIM_TO,
-        ids::INSP_ANIM_FRAME_MS,
-        ids::INSP_ANIM_HOLD_MS,
-        ids::INSP_ANIM_DELAY_MS,
-        ids::INSP_ANIM_REPEAT,
-        ids::INSP_ANIM_SPEED,
+        ph2d_panel_inspector::ids::INSP_ANIM_FROM,
+        ph2d_panel_inspector::ids::INSP_ANIM_TO,
+        ph2d_panel_inspector::ids::INSP_ANIM_FRAME_MS,
+        ph2d_panel_inspector::ids::INSP_ANIM_HOLD_MS,
+        ph2d_panel_inspector::ids::INSP_ANIM_DELAY_MS,
+        ph2d_panel_inspector::ids::INSP_ANIM_REPEAT,
+        ph2d_panel_inspector::ids::INSP_ANIM_SPEED,
     ]
     .iter()
     .map(|&id| host.store().number_value(id).unwrap_or(f64::NAN))
@@ -474,30 +534,33 @@ fn every_edit_the_model_declares_is_reachable_by_a_gesture() {
         }
     };
     for id in [
-        ids::INSP_ANIM_ADD,
-        ids::INSP_ANIM_REMOVE,
-        ids::INSP_ANIM_REWIND,
-        ids::INSP_ANIM_PLAYING,
-        ids::INSP_ANIM_AUTOPLAY,
-        ids::INSP_ANIM_ROW[1],
-        ids::INSP_ANIM_DIR[1],
-        ids::INSP_ANIM_DIR_OVERRIDE[2],
-        ids::INSP_ANIM_LOOP_OVERRIDE[1],
+        ph2d_panel_inspector::ids::INSP_ANIM_ADD,
+        ph2d_panel_inspector::ids::INSP_ANIM_REMOVE,
+        ph2d_panel_inspector::ids::INSP_ANIM_REWIND,
+        ph2d_panel_inspector::ids::INSP_ANIM_PLAYING,
+        ph2d_panel_inspector::ids::INSP_ANIM_AUTOPLAY,
+        ph2d_panel_inspector::ids::INSP_ANIM_ROW[1],
+        ph2d_panel_inspector::ids::INSP_ANIM_DIR[1],
+        ph2d_panel_inspector::ids::INSP_ANIM_DIR_OVERRIDE[2],
+        ph2d_panel_inspector::ids::INSP_ANIM_LOOP_OVERRIDE[1],
     ] {
         note(click_fresh(anim(true, false), id));
     }
-    note(click_fresh(no_player(), ids::INSP_ANIM_ADD_PLAYER));
+    note(click_fresh(
+        no_player(),
+        ph2d_panel_inspector::ids::INSP_ANIM_ADD_PLAYER,
+    ));
     note(drag_frame_bar(anim(true, false), 0.9));
     for (id, v) in [
-        (ids::INSP_ANIM_FROM, 1.0),
-        (ids::INSP_ANIM_TO, 2.0),
-        (ids::INSP_ANIM_FRAME_MS, 33.0),
-        (ids::INSP_ANIM_HOLD_MS, 10.0),
-        (ids::INSP_ANIM_DELAY_MS, 20.0),
-        (ids::INSP_ANIM_REPEAT, 2.0),
-        (ids::INSP_ANIM_SPEED, 0.5),
+        (ph2d_panel_inspector::ids::INSP_ANIM_FROM, 1.0),
+        (ph2d_panel_inspector::ids::INSP_ANIM_TO, 2.0),
+        (ph2d_panel_inspector::ids::INSP_ANIM_FRAME_MS, 33.0),
+        (ph2d_panel_inspector::ids::INSP_ANIM_HOLD_MS, 10.0),
+        (ph2d_panel_inspector::ids::INSP_ANIM_DELAY_MS, 20.0),
+        (ph2d_panel_inspector::ids::INSP_ANIM_REPEAT, 2.0),
+        (ph2d_panel_inspector::ids::INSP_ANIM_SPEED, 0.5),
         // A duração da célula que a barra mostra (§8.12) — o alvo é a CÉLULA, não a linha.
-        (ids::INSP_ANIM_FRAME_MS_THIS, 250.0),
+        (ph2d_panel_inspector::ids::INSP_ANIM_FRAME_MS_THIS, 250.0),
     ] {
         note(commit(anim(true, false), id, v));
     }
@@ -507,9 +570,12 @@ fn every_edit_the_model_declares_is_reachable_by_a_gesture() {
     // um `if` por campo faria o terceiro chamar o `Rename` do primeiro. O gate percorre-os para que
     // essa troca não possa passar.
     for (id, text) in [
-        (ids::INSP_ANIM_NAME, "sprint"),
-        (ids::INSP_ANIM_SIGNAL_FINISH, "attack_done"),
-        (ids::INSP_ANIM_SIGNAL_LOOP, "footstep"),
+        (ph2d_panel_inspector::ids::INSP_ANIM_NAME, "sprint"),
+        (
+            ph2d_panel_inspector::ids::INSP_ANIM_SIGNAL_FINISH,
+            "attack_done",
+        ),
+        (ph2d_panel_inspector::ids::INSP_ANIM_SIGNAL_LOOP, "footstep"),
     ] {
         let (mut h, mut s) = host_with(anim(true, false));
         h.set_text(id, text);
@@ -517,10 +583,10 @@ fn every_edit_the_model_declares_is_reachable_by_a_gesture() {
         note(h.drained_actions());
     }
     let (mut host, mut state) = host_with(anim(true, false));
-    host.set_text(ids::INSP_ANIM_NAME, "sprint");
+    host.set_text(ph2d_panel_inspector::ids::INSP_ANIM_NAME, "sprint");
     let _ = host.apply_panel_event::<InspectorPanel>(
         &mut state,
-        WidgetEvent::TextChanged(ids::INSP_ANIM_NAME),
+        WidgetEvent::TextChanged(ph2d_panel_inspector::ids::INSP_ANIM_NAME),
     );
     let out = host.drained_actions();
     clear();
@@ -557,7 +623,7 @@ fn a_multiple_selection_says_so_before_offering_any_control() {
         clear();
         rects
             .iter()
-            .find(|(n, _)| *n == ids::INSP_ANIM_PLAYING)
+            .find(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_ANIM_PLAYING)
             .map(|(_, r)| r.y)
             .expect("a caixa Playing é pintada nos dois casos")
     };
@@ -586,14 +652,14 @@ fn drag_frame_bar(info: InspectorAnimInfo, frac: f32) -> Vec<EditorAction> {
     let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
     let rect = rects
         .iter()
-        .find(|(n, _)| *n == ids::INSP_ANIM_FRAME_SCRUB)
+        .find(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_ANIM_FRAME_SCRUB)
         .map(|(_, r)| *r)
         .expect("a §11 nunca pintou a barra de frames");
     let events = host.click_at(rect.x + rect.w * frac, rect.y + rect.h * 0.5);
     assert!(
         events
             .iter()
-            .any(|e| matches!(e, WidgetEvent::ValueChanged(v) if *v == ids::INSP_ANIM_FRAME_SCRUB)),
+            .any(|e| matches!(e, WidgetEvent::ValueChanged(v) if *v == ph2d_panel_inspector::ids::INSP_ANIM_FRAME_SCRUB)),
         "carregar na barra produziu {events:?} — ela é pintada e hit-registada, mas o store não a \
          tem como Slider: está MORTA sob o rato"
     );
@@ -663,7 +729,11 @@ fn the_duration_field_edits_the_animation_the_bar_shows() {
         "a lei tem de apontar para a LINHA que toca e a celula certa"
     );
 
-    let acts = commit(info, ids::INSP_ANIM_FRAME_MS_THIS, 250.0);
+    let acts = commit(
+        info,
+        ph2d_panel_inspector::ids::INSP_ANIM_FRAME_MS_THIS,
+        250.0,
+    );
     expect(
         &acts,
         AnimFieldEdit::FrameMsAt(1, 1, 250),
@@ -679,7 +749,12 @@ fn with_nothing_playing_the_duration_field_has_no_target() {
     info.current = String::new();
     assert_eq!(info.this_frame_target(), None);
     assert!(
-        commit(info, ids::INSP_ANIM_FRAME_MS_THIS, 250.0).is_empty(),
+        commit(
+            info,
+            ph2d_panel_inspector::ids::INSP_ANIM_FRAME_MS_THIS,
+            250.0
+        )
+        .is_empty(),
         "sem alvo, o campo nao pode inventar um"
     );
 }

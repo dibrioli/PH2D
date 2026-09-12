@@ -12,7 +12,6 @@
 
 use crate::state;
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::screens::hero::WheelFieldEdit;
@@ -25,19 +24,23 @@ pub(crate) fn apply_wheel_event(host: &mut dyn PanelHostInternal, ev: WidgetEven
         // W3: o eyedropper ARMA o pick (o alvo vem do clique no canvas) e a
         // lixeira DESMONTA — dois botões porque são dois gestos: montar noutro
         // corpo não é o mesmo que voltar ao cenário.
-        WidgetEvent::Click(id) if id == ids::INSP_WHEEL_MOUNT_PICK => {
+        WidgetEvent::Click(id) if id == crate::ids::INSP_WHEEL_MOUNT_PICK => {
             Some(WheelFieldEdit::PickMountBody)
         }
-        WidgetEvent::Click(id) if id == ids::INSP_WHEEL_UNMOUNT => Some(WheelFieldEdit::Unmount),
+        WidgetEvent::Click(id) if id == crate::ids::INSP_WHEEL_UNMOUNT => {
+            Some(WheelFieldEdit::Unmount)
+        }
         // W1: o eyedropper da row Rope ARMA o pick da corda. O alvo é a ROTA
         // desenhada — uma corda não tem sprite, então o gesto do corpo não serve.
-        WidgetEvent::Click(id) if id == ids::INSP_WHEEL_ROPE_PICK => Some(WheelFieldEdit::PickRope),
-        WidgetEvent::Click(id) => ids::INSP_WHEEL_WRAP
+        WidgetEvent::Click(id) if id == crate::ids::INSP_WHEEL_ROPE_PICK => {
+            Some(WheelFieldEdit::PickRope)
+        }
+        WidgetEvent::Click(id) => crate::ids::INSP_WHEEL_WRAP
             .iter()
             .position(|&o| o == id)
             .map(|i| WheelFieldEdit::Wrap(i as u8))
             .or_else(|| {
-                ids::INSP_WHEEL_BREAK
+                crate::ids::INSP_WHEEL_BREAK
                     .iter()
                     .position(|&o| o == id)
                     .map(|i| WheelFieldEdit::BreakEnabled(i == 1))
@@ -45,7 +48,7 @@ pub(crate) fn apply_wheel_event(host: &mut dyn PanelHostInternal, ev: WidgetEven
             // W-Weston: Drum | Weston. O tag é o índice, então a ordem dos chips É a
             // do booleano — e a shell o roteia para o MARCADOR, não para um campo.
             .or_else(|| {
-                ids::INSP_WHEEL_DIFF
+                crate::ids::INSP_WHEEL_DIFF
                     .iter()
                     .position(|&o| o == id)
                     .map(|i| WheelFieldEdit::Weston(i == 1))
@@ -53,16 +56,18 @@ pub(crate) fn apply_wheel_event(host: &mut dyn PanelHostInternal, ev: WidgetEven
         WidgetEvent::ValueChanged(id) => {
             let v = host.store().number_value(id).unwrap_or(0.0);
             match id {
-                ids::INSP_WHEEL_RADIUS => Some(WheelFieldEdit::Radius(v as f32)),
-                ids::INSP_WHEEL_RADIUS_OUT => Some(WheelFieldEdit::RadiusOut(v as f32)),
+                crate::ids::INSP_WHEEL_RADIUS => Some(WheelFieldEdit::Radius(v as f32)),
+                crate::ids::INSP_WHEEL_RADIUS_OUT => Some(WheelFieldEdit::RadiusOut(v as f32)),
                 // ⚠️ A caixa fala `f64` e a ordem é um ORDINAL: o arredondamento
                 // mora aqui, na fronteira, como o `i8` da Dominance. E o piso é
                 // 1 porque a row é 1-based — `0` chegaria à shell como "o nó
                 // anterior ao primeiro", que não existe.
-                ids::INSP_WHEEL_ORDER => Some(WheelFieldEdit::Order(v.round().max(1.0) as u32)),
+                crate::ids::INSP_WHEEL_ORDER => {
+                    Some(WheelFieldEdit::Order(v.round().max(1.0) as u32))
+                }
                 // Graus na row, radianos no componente — a shell converte.
-                ids::INSP_WHEEL_MOTOR => Some(WheelFieldEdit::MotorDegPerS(v as f32)),
-                ids::INSP_WHEEL_BREAK_FORCE => Some(WheelFieldEdit::BreakForce(v as f32)),
+                crate::ids::INSP_WHEEL_MOTOR => Some(WheelFieldEdit::MotorDegPerS(v as f32)),
+                crate::ids::INSP_WHEEL_BREAK_FORCE => Some(WheelFieldEdit::BreakForce(v as f32)),
                 _ => None,
             }
         }

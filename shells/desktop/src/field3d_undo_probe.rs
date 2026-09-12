@@ -81,7 +81,7 @@ impl crate::App {
             // C — arrastar o slider da linha 0 do painel (Position X), pelo ponteiro real.
             55 => self.probe_grab_widget(
                 f,
-                ph2d_editor_core::ids::model3d_radius_slider(0),
+                ph2d_panel_model3d::ids::model3d_radius_slider(0),
                 "slider[0]",
             ),
             56..=60 => {
@@ -94,9 +94,11 @@ impl crate::App {
                 self.smoke_pointer_up();
             }
             // D — clicar no campo numérico da linha 1 (Position Y), digitar e Enter.
-            70 => {
-                self.probe_grab_widget(f, ph2d_editor_core::ids::model3d_radius_chip(1), "chip[1]")
-            }
+            70 => self.probe_grab_widget(
+                f,
+                ph2d_panel_model3d::ids::model3d_radius_chip(1),
+                "chip[1]",
+            ),
             71 => self.smoke_pointer_up(),
             72 => {
                 eprintln!("[probe-undo] f={f} D: digito 0.5 no chip[1]");
@@ -303,7 +305,7 @@ impl crate::App {
             .and_then(|g| g.hero_screen.as_ref())
             .and_then(|h| {
                 h.store
-                    .slider(ph2d_editor_core::ids::model3d_radius_slider(n))
+                    .slider(ph2d_panel_model3d::ids::model3d_radius_slider(n))
             })
             .map_or(f32::NAN, |(_, v)| v)
     }

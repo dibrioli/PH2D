@@ -239,19 +239,18 @@ pub(crate) fn apply_vec_fill_rule(
 pub(crate) fn vec_bool_op_for_id(
     id: ph2d_editor_core::NodeId,
 ) -> Option<ph2d_vec_boolean::PathfinderOp> {
-    use ph2d_editor_core::ids as i;
     use ph2d_vec_boolean::PathfinderOp as P;
     // Uma TABELA, e não uma cadeia de `else if`: o 9º comando entra numa linha, e quem esquecer a
     // linha vê o botão morto no gate de seam — em vez de o ver a cair no `None` em silêncio.
     [
-        (i::VECTOR_BOOL_UNION, P::Union),
-        (i::VECTOR_BOOL_SUBTRACT, P::Subtract),
-        (i::VECTOR_BOOL_INTERSECT, P::Intersect),
-        (i::VECTOR_BOOL_EXCLUDE, P::Exclude),
-        (i::VECTOR_BOOL_MINUS_BACK, P::MinusBack),
-        (i::VECTOR_BOOL_TRIM, P::Trim),
-        (i::VECTOR_BOOL_CROP, P::Crop),
-        (i::VECTOR_BOOL_MERGE, P::Merge),
+        (ph2d_panel_vector::ids::VECTOR_BOOL_UNION, P::Union),
+        (ph2d_panel_vector::ids::VECTOR_BOOL_SUBTRACT, P::Subtract),
+        (ph2d_panel_vector::ids::VECTOR_BOOL_INTERSECT, P::Intersect),
+        (ph2d_panel_vector::ids::VECTOR_BOOL_EXCLUDE, P::Exclude),
+        (ph2d_tool_vector::ids::VECTOR_BOOL_MINUS_BACK, P::MinusBack),
+        (ph2d_tool_vector::ids::VECTOR_BOOL_TRIM, P::Trim),
+        (ph2d_tool_vector::ids::VECTOR_BOOL_CROP, P::Crop),
+        (ph2d_tool_vector::ids::VECTOR_BOOL_MERGE, P::Merge),
     ]
     .into_iter()
     .find(|(k, _)| *k == id)
@@ -292,11 +291,11 @@ pub(crate) fn vec_vertex_kind_for_id(
     id: ph2d_editor_core::NodeId,
 ) -> Option<ph2d_vec_scene::VertexKind> {
     use ph2d_vec_scene::VertexKind;
-    if id == ph2d_editor_core::ids::VECTOR_VERT_CORNER {
+    if id == ph2d_tool_vector::ids::VECTOR_VERT_CORNER {
         Some(VertexKind::Corner)
-    } else if id == ph2d_editor_core::ids::VECTOR_VERT_SMOOTH {
+    } else if id == ph2d_tool_vector::ids::VECTOR_VERT_SMOOTH {
         Some(VertexKind::Smooth)
-    } else if id == ph2d_editor_core::ids::VECTOR_VERT_SYMMETRIC {
+    } else if id == ph2d_tool_vector::ids::VECTOR_VERT_SYMMETRIC {
         Some(VertexKind::Symmetric)
     } else {
         None
@@ -374,13 +373,13 @@ pub(crate) fn duplicate_vec_paths(
 /// the render_loop drain.
 pub(crate) fn vec_reorder_for_id(id: ph2d_editor_core::NodeId) -> Option<ph2d_vec_scene::ZOrder> {
     use ph2d_vec_scene::ZOrder;
-    if id == ph2d_editor_core::ids::VECTOR_ARRANGE_TO_BACK {
+    if id == ph2d_tool_vector::ids::VECTOR_ARRANGE_TO_BACK {
         Some(ZOrder::ToBack)
-    } else if id == ph2d_editor_core::ids::VECTOR_ARRANGE_BACKWARD {
+    } else if id == ph2d_tool_vector::ids::VECTOR_ARRANGE_BACKWARD {
         Some(ZOrder::Lower)
-    } else if id == ph2d_editor_core::ids::VECTOR_ARRANGE_FORWARD {
+    } else if id == ph2d_tool_vector::ids::VECTOR_ARRANGE_FORWARD {
         Some(ZOrder::Raise)
-    } else if id == ph2d_editor_core::ids::VECTOR_ARRANGE_TO_FRONT {
+    } else if id == ph2d_tool_vector::ids::VECTOR_ARRANGE_TO_FRONT {
         Some(ZOrder::ToFront)
     } else {
         None
@@ -405,9 +404,9 @@ pub(crate) fn apply_vec_flip(
 /// (`None` for any other id). Pure — unit-tested; called from the render_loop drain.
 pub(crate) fn vec_flip_for_id(id: ph2d_editor_core::NodeId) -> Option<ph2d_vec_scene::FlipAxis> {
     use ph2d_vec_scene::FlipAxis;
-    if id == ph2d_editor_core::ids::VECTOR_ARRANGE_FLIP_H {
+    if id == ph2d_tool_vector::ids::VECTOR_ARRANGE_FLIP_H {
         Some(FlipAxis::Horizontal)
-    } else if id == ph2d_editor_core::ids::VECTOR_ARRANGE_FLIP_V {
+    } else if id == ph2d_tool_vector::ids::VECTOR_ARRANGE_FLIP_V {
         Some(FlipAxis::Vertical)
     } else {
         None
@@ -432,9 +431,9 @@ pub(crate) fn apply_vec_rotate(
 /// (`None` for any other id). Pure — unit-tested; called from the render_loop drain.
 pub(crate) fn vec_rotate_for_id(id: ph2d_editor_core::NodeId) -> Option<ph2d_vec_scene::Rotate90> {
     use ph2d_vec_scene::Rotate90;
-    if id == ph2d_editor_core::ids::VECTOR_ARRANGE_ROTATE_CW {
+    if id == ph2d_tool_vector::ids::VECTOR_ARRANGE_ROTATE_CW {
         Some(Rotate90::Cw)
-    } else if id == ph2d_editor_core::ids::VECTOR_ARRANGE_ROTATE_CCW {
+    } else if id == ph2d_tool_vector::ids::VECTOR_ARRANGE_ROTATE_CCW {
         Some(Rotate90::Ccw)
     } else {
         None
@@ -494,15 +493,15 @@ pub(crate) enum VecFillKind {
 
 /// Map a Fill-type button `NodeId` to its [`VecFillKind`] (`None` otherwise).
 pub(crate) fn vec_fill_kind_for_id(id: ph2d_editor_core::NodeId) -> Option<VecFillKind> {
-    if id == ph2d_editor_core::ids::VECTOR_FILL_KIND_SOLID {
+    if id == ph2d_tool_vector::ids::VECTOR_FILL_KIND_SOLID {
         Some(VecFillKind::Solid)
-    } else if id == ph2d_editor_core::ids::VECTOR_FILL_KIND_LINEAR {
+    } else if id == ph2d_tool_vector::ids::VECTOR_FILL_KIND_LINEAR {
         Some(VecFillKind::Linear)
-    } else if id == ph2d_editor_core::ids::VECTOR_FILL_KIND_RADIAL {
+    } else if id == ph2d_tool_vector::ids::VECTOR_FILL_KIND_RADIAL {
         Some(VecFillKind::Radial)
-    } else if id == ph2d_editor_core::ids::VECTOR_FILL_KIND_MULTI {
+    } else if id == ph2d_tool_vector::ids::VECTOR_FILL_KIND_MULTI {
         Some(VecFillKind::MultiPoint)
-    } else if id == ph2d_editor_core::ids::VECTOR_FILL_KIND_PATTERN {
+    } else if id == ph2d_tool_vector::ids::VECTOR_FILL_KIND_PATTERN {
         Some(VecFillKind::Pattern)
     } else {
         None
@@ -906,14 +905,13 @@ pub(crate) enum VecAlign {
 
 /// Map an Align button `NodeId` to its [`VecAlign`] (`None` otherwise).
 pub(crate) fn vec_align_for_id(id: ph2d_editor_core::NodeId) -> Option<VecAlign> {
-    use ph2d_editor_core::ids as i;
     Some(match id {
-        x if x == i::VECTOR_ALIGN_LEFT => VecAlign::Left,
-        x if x == i::VECTOR_ALIGN_HCENTER => VecAlign::HCenter,
-        x if x == i::VECTOR_ALIGN_RIGHT => VecAlign::Right,
-        x if x == i::VECTOR_ALIGN_TOP => VecAlign::Top,
-        x if x == i::VECTOR_ALIGN_VCENTER => VecAlign::VCenter,
-        x if x == i::VECTOR_ALIGN_BOTTOM => VecAlign::Bottom,
+        x if x == ph2d_tool_vector::ids::VECTOR_ALIGN_LEFT => VecAlign::Left,
+        x if x == ph2d_tool_vector::ids::VECTOR_ALIGN_HCENTER => VecAlign::HCenter,
+        x if x == ph2d_tool_vector::ids::VECTOR_ALIGN_RIGHT => VecAlign::Right,
+        x if x == ph2d_tool_vector::ids::VECTOR_ALIGN_TOP => VecAlign::Top,
+        x if x == ph2d_tool_vector::ids::VECTOR_ALIGN_VCENTER => VecAlign::VCenter,
+        x if x == ph2d_tool_vector::ids::VECTOR_ALIGN_BOTTOM => VecAlign::Bottom,
         _ => return None,
     })
 }
@@ -927,9 +925,9 @@ pub(crate) enum VecDistribute {
 
 /// Map a Distribute button `NodeId` to its [`VecDistribute`] (`None` otherwise).
 pub(crate) fn vec_distribute_for_id(id: ph2d_editor_core::NodeId) -> Option<VecDistribute> {
-    if id == ph2d_editor_core::ids::VECTOR_DISTRIBUTE_H {
+    if id == ph2d_tool_vector::ids::VECTOR_DISTRIBUTE_H {
         Some(VecDistribute::Horizontal)
-    } else if id == ph2d_editor_core::ids::VECTOR_DISTRIBUTE_V {
+    } else if id == ph2d_tool_vector::ids::VECTOR_DISTRIBUTE_V {
         Some(VecDistribute::Vertical)
     } else {
         None
@@ -1084,13 +1082,13 @@ pub(crate) fn apply_vec_path_shape(
 /// Map a Vector-panel Path button `NodeId` to its [`VecPathShapeOp`] (`None`
 /// otherwise). Pure — unit-tested; called from the render_loop drain.
 pub(crate) fn vec_path_shape_for_id(id: ph2d_editor_core::NodeId) -> Option<VecPathShapeOp> {
-    if id == ph2d_editor_core::ids::VECTOR_PATH_SMOOTH {
+    if id == ph2d_tool_vector::ids::VECTOR_PATH_SMOOTH {
         Some(VecPathShapeOp::Smooth)
-    } else if id == ph2d_editor_core::ids::VECTOR_PATH_SHARPEN {
+    } else if id == ph2d_tool_vector::ids::VECTOR_PATH_SHARPEN {
         Some(VecPathShapeOp::Sharpen)
-    } else if id == ph2d_editor_core::ids::VECTOR_PATH_SIMPLIFY {
+    } else if id == ph2d_tool_vector::ids::VECTOR_PATH_SIMPLIFY {
         Some(VecPathShapeOp::Simplify)
-    } else if id == ph2d_editor_core::ids::VECTOR_PATH_SUBDIVIDE {
+    } else if id == ph2d_tool_vector::ids::VECTOR_PATH_SUBDIVIDE {
         Some(VecPathShapeOp::Subdivide)
     } else {
         None
@@ -1112,13 +1110,13 @@ pub(crate) enum VecTransformField {
 pub(crate) fn vec_transform_field_for_id(
     id: ph2d_editor_core::NodeId,
 ) -> Option<VecTransformField> {
-    if id == ph2d_editor_core::ids::VECTOR_TRANSFORM_X {
+    if id == ph2d_tool_vector::ids::VECTOR_TRANSFORM_X {
         Some(VecTransformField::X)
-    } else if id == ph2d_editor_core::ids::VECTOR_TRANSFORM_Y {
+    } else if id == ph2d_tool_vector::ids::VECTOR_TRANSFORM_Y {
         Some(VecTransformField::Y)
-    } else if id == ph2d_editor_core::ids::VECTOR_TRANSFORM_W {
+    } else if id == ph2d_tool_vector::ids::VECTOR_TRANSFORM_W {
         Some(VecTransformField::W)
-    } else if id == ph2d_editor_core::ids::VECTOR_TRANSFORM_H {
+    } else if id == ph2d_tool_vector::ids::VECTOR_TRANSFORM_H {
         Some(VecTransformField::H)
     } else {
         None
@@ -3338,11 +3336,11 @@ impl App {
                 // artista vê — sem isto ele pinta o valor velho por cima do novo) e o
                 // `SetValue` pro tool (o valor autorado, clampado pelo MESMO braço).
                 hero.store
-                    .set_slider_value(ph2d_editor_core::ids::FLIP_GAP, track as f32);
+                    .set_slider_value(ph2d_tool_flip::ids::FLIP_GAP, track as f32);
                 hero.bus
                     .push(ph2d_editor_core::action_bus::EditorAction::ToolPanelEvent(
                         ph2d_editor_core::tool::PanelEvent::SetValue(
-                            ph2d_editor_core::ids::FLIP_GAP,
+                            ph2d_tool_flip::ids::FLIP_GAP,
                             track,
                         ),
                     ));
@@ -6504,19 +6502,19 @@ mod tests {
     #[test]
     fn vertex_button_ids_map_to_their_kinds() {
         assert_eq!(
-            vec_vertex_kind_for_id(ph2d_editor_core::ids::VECTOR_VERT_CORNER),
+            vec_vertex_kind_for_id(ph2d_tool_vector::ids::VECTOR_VERT_CORNER),
             Some(VertexKind::Corner)
         );
         assert_eq!(
-            vec_vertex_kind_for_id(ph2d_editor_core::ids::VECTOR_VERT_SMOOTH),
+            vec_vertex_kind_for_id(ph2d_tool_vector::ids::VECTOR_VERT_SMOOTH),
             Some(VertexKind::Smooth)
         );
         assert_eq!(
-            vec_vertex_kind_for_id(ph2d_editor_core::ids::VECTOR_VERT_SYMMETRIC),
+            vec_vertex_kind_for_id(ph2d_tool_vector::ids::VECTOR_VERT_SYMMETRIC),
             Some(VertexKind::Symmetric)
         );
         assert_eq!(
-            vec_vertex_kind_for_id(ph2d_editor_core::ids::VECTOR_BOOL_UNION),
+            vec_vertex_kind_for_id(ph2d_panel_vector::ids::VECTOR_BOOL_UNION),
             None
         );
     }
@@ -6524,19 +6522,19 @@ mod tests {
     #[test]
     fn arrange_button_ids_map_to_their_zorder() {
         assert_eq!(
-            vec_reorder_for_id(ph2d_editor_core::ids::VECTOR_ARRANGE_TO_BACK),
+            vec_reorder_for_id(ph2d_tool_vector::ids::VECTOR_ARRANGE_TO_BACK),
             Some(ZOrder::ToBack)
         );
         assert_eq!(
-            vec_reorder_for_id(ph2d_editor_core::ids::VECTOR_ARRANGE_BACKWARD),
+            vec_reorder_for_id(ph2d_tool_vector::ids::VECTOR_ARRANGE_BACKWARD),
             Some(ZOrder::Lower)
         );
         assert_eq!(
-            vec_reorder_for_id(ph2d_editor_core::ids::VECTOR_ARRANGE_FORWARD),
+            vec_reorder_for_id(ph2d_tool_vector::ids::VECTOR_ARRANGE_FORWARD),
             Some(ZOrder::Raise)
         );
         assert_eq!(
-            vec_reorder_for_id(ph2d_editor_core::ids::VECTOR_ARRANGE_TO_FRONT),
+            vec_reorder_for_id(ph2d_tool_vector::ids::VECTOR_ARRANGE_TO_FRONT),
             Some(ZOrder::ToFront)
         );
         // Duplicate is NOT a reorder (handled separately), nor any non-Arrange id.
@@ -6545,7 +6543,7 @@ mod tests {
             None
         );
         assert_eq!(
-            vec_reorder_for_id(ph2d_editor_core::ids::VECTOR_BOOL_UNION),
+            vec_reorder_for_id(ph2d_panel_vector::ids::VECTOR_BOOL_UNION),
             None
         );
     }
@@ -6553,20 +6551,20 @@ mod tests {
     #[test]
     fn flip_button_ids_map_to_their_axis() {
         assert_eq!(
-            vec_flip_for_id(ph2d_editor_core::ids::VECTOR_ARRANGE_FLIP_H),
+            vec_flip_for_id(ph2d_tool_vector::ids::VECTOR_ARRANGE_FLIP_H),
             Some(FlipAxis::Horizontal)
         );
         assert_eq!(
-            vec_flip_for_id(ph2d_editor_core::ids::VECTOR_ARRANGE_FLIP_V),
+            vec_flip_for_id(ph2d_tool_vector::ids::VECTOR_ARRANGE_FLIP_V),
             Some(FlipAxis::Vertical)
         );
         // Flip is NOT a reorder and vice-versa.
         assert_eq!(
-            vec_flip_for_id(ph2d_editor_core::ids::VECTOR_ARRANGE_TO_BACK),
+            vec_flip_for_id(ph2d_tool_vector::ids::VECTOR_ARRANGE_TO_BACK),
             None
         );
         assert_eq!(
-            vec_reorder_for_id(ph2d_editor_core::ids::VECTOR_ARRANGE_FLIP_H),
+            vec_reorder_for_id(ph2d_tool_vector::ids::VECTOR_ARRANGE_FLIP_H),
             None
         );
     }
@@ -6574,19 +6572,19 @@ mod tests {
     #[test]
     fn rotate_button_ids_map_to_their_direction() {
         assert_eq!(
-            vec_rotate_for_id(ph2d_editor_core::ids::VECTOR_ARRANGE_ROTATE_CW),
+            vec_rotate_for_id(ph2d_tool_vector::ids::VECTOR_ARRANGE_ROTATE_CW),
             Some(Rotate90::Cw)
         );
         assert_eq!(
-            vec_rotate_for_id(ph2d_editor_core::ids::VECTOR_ARRANGE_ROTATE_CCW),
+            vec_rotate_for_id(ph2d_tool_vector::ids::VECTOR_ARRANGE_ROTATE_CCW),
             Some(Rotate90::Ccw)
         );
         assert_eq!(
-            vec_rotate_for_id(ph2d_editor_core::ids::VECTOR_ARRANGE_FLIP_H),
+            vec_rotate_for_id(ph2d_tool_vector::ids::VECTOR_ARRANGE_FLIP_H),
             None
         );
         assert_eq!(
-            vec_flip_for_id(ph2d_editor_core::ids::VECTOR_ARRANGE_ROTATE_CW),
+            vec_flip_for_id(ph2d_tool_vector::ids::VECTOR_ARRANGE_ROTATE_CW),
             None
         );
     }
@@ -6595,15 +6593,15 @@ mod tests {
     fn transform_fields_map_and_apply_translates_and_scales() {
         use ph2d_vec_scene::{VecScene, rectangle};
         assert_eq!(
-            vec_transform_field_for_id(ph2d_editor_core::ids::VECTOR_TRANSFORM_X),
+            vec_transform_field_for_id(ph2d_tool_vector::ids::VECTOR_TRANSFORM_X),
             Some(VecTransformField::X)
         );
         assert_eq!(
-            vec_transform_field_for_id(ph2d_editor_core::ids::VECTOR_TRANSFORM_H),
+            vec_transform_field_for_id(ph2d_tool_vector::ids::VECTOR_TRANSFORM_H),
             Some(VecTransformField::H)
         );
         assert_eq!(
-            vec_transform_field_for_id(ph2d_editor_core::ids::VECTOR_ARRANGE_FLIP_H),
+            vec_transform_field_for_id(ph2d_tool_vector::ids::VECTOR_ARRANGE_FLIP_H),
             None
         );
 
@@ -6644,23 +6642,23 @@ mod tests {
     fn path_shape_ids_map_and_apply_smooths_then_sharpens() {
         use ph2d_vec_scene::{VertexKind, regular_polygon};
         assert_eq!(
-            vec_path_shape_for_id(ph2d_editor_core::ids::VECTOR_PATH_SMOOTH),
+            vec_path_shape_for_id(ph2d_tool_vector::ids::VECTOR_PATH_SMOOTH),
             Some(VecPathShapeOp::Smooth)
         );
         assert_eq!(
-            vec_path_shape_for_id(ph2d_editor_core::ids::VECTOR_PATH_SHARPEN),
+            vec_path_shape_for_id(ph2d_tool_vector::ids::VECTOR_PATH_SHARPEN),
             Some(VecPathShapeOp::Sharpen)
         );
         assert_eq!(
-            vec_path_shape_for_id(ph2d_editor_core::ids::VECTOR_PATH_SIMPLIFY),
+            vec_path_shape_for_id(ph2d_tool_vector::ids::VECTOR_PATH_SIMPLIFY),
             Some(VecPathShapeOp::Simplify)
         );
         assert_eq!(
-            vec_path_shape_for_id(ph2d_editor_core::ids::VECTOR_PATH_SUBDIVIDE),
+            vec_path_shape_for_id(ph2d_tool_vector::ids::VECTOR_PATH_SUBDIVIDE),
             Some(VecPathShapeOp::Subdivide)
         );
         assert_eq!(
-            vec_path_shape_for_id(ph2d_editor_core::ids::VECTOR_ARRANGE_FLIP_H),
+            vec_path_shape_for_id(ph2d_tool_vector::ids::VECTOR_ARRANGE_FLIP_H),
             None
         );
 
@@ -6787,20 +6785,20 @@ mod tests {
     fn pathfinder_button_ids_map_to_their_ops() {
         use ph2d_vec_boolean::PathfinderOp as P;
         for (id, want) in [
-            (ph2d_editor_core::ids::VECTOR_BOOL_UNION, P::Union),
-            (ph2d_editor_core::ids::VECTOR_BOOL_SUBTRACT, P::Subtract),
-            (ph2d_editor_core::ids::VECTOR_BOOL_INTERSECT, P::Intersect),
-            (ph2d_editor_core::ids::VECTOR_BOOL_EXCLUDE, P::Exclude),
-            (ph2d_editor_core::ids::VECTOR_BOOL_MINUS_BACK, P::MinusBack),
-            (ph2d_editor_core::ids::VECTOR_BOOL_TRIM, P::Trim),
-            (ph2d_editor_core::ids::VECTOR_BOOL_CROP, P::Crop),
-            (ph2d_editor_core::ids::VECTOR_BOOL_MERGE, P::Merge),
+            (ph2d_panel_vector::ids::VECTOR_BOOL_UNION, P::Union),
+            (ph2d_panel_vector::ids::VECTOR_BOOL_SUBTRACT, P::Subtract),
+            (ph2d_panel_vector::ids::VECTOR_BOOL_INTERSECT, P::Intersect),
+            (ph2d_panel_vector::ids::VECTOR_BOOL_EXCLUDE, P::Exclude),
+            (ph2d_tool_vector::ids::VECTOR_BOOL_MINUS_BACK, P::MinusBack),
+            (ph2d_tool_vector::ids::VECTOR_BOOL_TRIM, P::Trim),
+            (ph2d_tool_vector::ids::VECTOR_BOOL_CROP, P::Crop),
+            (ph2d_tool_vector::ids::VECTOR_BOOL_MERGE, P::Merge),
         ] {
             assert_eq!(vec_bool_op_for_id(id), Some(want), "{want:?}");
         }
         // A non-boolean id (a mode button) is not a boolean op.
         assert_eq!(
-            vec_bool_op_for_id(ph2d_editor_core::ids::VECTOR_MODE_PEN),
+            vec_bool_op_for_id(ph2d_tool_vector::ids::VECTOR_MODE_PEN),
             None
         );
     }

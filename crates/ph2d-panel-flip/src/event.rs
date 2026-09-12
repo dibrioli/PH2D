@@ -14,9 +14,9 @@
 //! - Close (X) → `CancelActiveTool`.
 
 use crate::ids;
+use crate::ids::FlipLayerWidget;
 use crate::state::{FlipPanelState, LayerRename, current_layers};
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::ids::FlipLayerWidget;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
 use ph2d_editor_core::panel::{EventOutcome, PanelHostInternal, seam_reset_button};
 use ph2d_editor_core::tool::PanelEvent;
@@ -27,42 +27,42 @@ use ph2d_painter_effects::MAX_BLEND_MODES;
 /// `apply_event` match guard (that fn sits at the 200-LOC cap) — a pure predicate,
 /// so a seam test can drive each id without the whole router.
 fn is_style_forward_click(id: ph2d_a11y::NodeId) -> bool {
-    id == ids::FLIP_MODE_SELECT
-        || id == ids::FLIP_MODE_DRAW
-        || id == ids::FLIP_MODE_ERASE
-        || id == ids::FLIP_MODE_FILL
-        || id == ids::FLIP_MODE_RESHAPE
-        || id == ids::FLIP_MODE_EDIT
-        || id == ids::FLIP_MODE_COLORIZE
-        || id == ids::FLIP_MODE_TRACE
-        || id == ids::FLIP_EDIT_DOM_STROKE
-        || id == ids::FLIP_EDIT_DOM_POINT
-        || id == ids::FLIP_EDIT_DOM_SEGMENT
-        || id == ids::FLIP_SHAPE_LINE
-        || id == ids::FLIP_SHAPE_FILLED
+    id == ph2d_tool_flip::ids::FLIP_MODE_SELECT
+        || id == ph2d_tool_flip::ids::FLIP_MODE_DRAW
+        || id == ph2d_tool_flip::ids::FLIP_MODE_ERASE
+        || id == ph2d_tool_flip::ids::FLIP_MODE_FILL
+        || id == ph2d_tool_flip::ids::FLIP_MODE_RESHAPE
+        || id == ph2d_tool_flip::ids::FLIP_MODE_EDIT
+        || id == ph2d_tool_flip::ids::FLIP_MODE_COLORIZE
+        || id == ph2d_tool_flip::ids::FLIP_MODE_TRACE
+        || id == ph2d_tool_flip::ids::FLIP_EDIT_DOM_STROKE
+        || id == ph2d_tool_flip::ids::FLIP_EDIT_DOM_POINT
+        || id == ph2d_tool_flip::ids::FLIP_EDIT_DOM_SEGMENT
+        || id == ph2d_tool_flip::ids::FLIP_SHAPE_LINE
+        || id == ph2d_tool_flip::ids::FLIP_SHAPE_FILLED
         // Tip (Draw, 03 §8): linha cheia / contas / quadrados.
-        || id == ids::FLIP_TIP_LINE
-        || id == ids::FLIP_TIP_DOTS
-        || id == ids::FLIP_TIP_SQUARES
+        || id == ph2d_tool_flip::ids::FLIP_TIP_LINE
+        || id == ph2d_tool_flip::ids::FLIP_TIP_DOTS
+        || id == ph2d_tool_flip::ids::FLIP_TIP_SQUARES
         // Cap (Draw): a PONTA do traço — disco redondo ou corte reto.
-        || id == ids::FLIP_CAP_ROUND
-        || id == ids::FLIP_CAP_FLAT
-        || id == ids::FLIP_CAP_SQUARE
+        || id == ph2d_tool_flip::ids::FLIP_CAP_ROUND
+        || id == ph2d_tool_flip::ids::FLIP_CAP_FLAT
+        || id == ph2d_tool_flip::ids::FLIP_CAP_SQUARE
         // Self Overlap (Draw, 03 §8): o toggle de auto-sobreposição — a tool inverte.
-        || id == ids::FLIP_SELF_OVERLAP
+        || id == ph2d_tool_flip::ids::FLIP_SELF_OVERLAP
         // Airbrush (Draw, 03 §8): o toggle do pincel airbrush — a tool inverte.
-        || id == ids::FLIP_AIRBRUSH
-        || id == ids::FLIP_ERASE_SOFT
-        || id == ids::FLIP_ERASE_HARD
-        || id == ids::FLIP_ERASE_STROKE
+        || id == ph2d_tool_flip::ids::FLIP_AIRBRUSH
+        || id == ph2d_tool_flip::ids::FLIP_ERASE_SOFT
+        || id == ph2d_tool_flip::ids::FLIP_ERASE_HARD
+        || id == ph2d_tool_flip::ids::FLIP_ERASE_STROKE
         // Os toggles de LINK da borracha (§4.C) — a tool inverte o flag.
-        || id == ids::FLIP_LINK_SIZE
-        || id == ids::FLIP_LINK_STRENGTH
-        || id == ids::FLIP_FILL_PAINT
-        || id == ids::FLIP_FILL_BEHIND
-        || id == ids::FLIP_FILL_UNPAINT
+        || id == ph2d_tool_flip::ids::FLIP_LINK_SIZE
+        || id == ph2d_tool_flip::ids::FLIP_LINK_STRENGTH
+        || id == ph2d_tool_flip::ids::FLIP_FILL_PAINT
+        || id == ph2d_tool_flip::ids::FLIP_FILL_BEHIND
+        || id == ph2d_tool_flip::ids::FLIP_FILL_UNPAINT
         // Os oito pincéis de escultura (W5) — a tabela é a ordem do painel.
-        || ids::FLIP_RESHAPE_KIND_IDS.contains(&id)
+        || ph2d_tool_flip::ids::FLIP_RESHAPE_KIND_IDS.contains(&id)
 }
 
 /// Decode a runtime per-row widget id → `(layer_u64, kind)` via the published
@@ -122,25 +122,25 @@ pub(crate) fn apply_event(
         }
         // ── Brush sliders (track 0..1 → the tool projects the value). ──
         WidgetEvent::ValueChanged(id)
-            if id == ids::FLIP_SIZE
-                || id == ids::FLIP_HARDNESS
-                || id == ids::FLIP_OPACITY
-                || id == ids::FLIP_SMOOTHING
-                || id == ids::FLIP_GAP
-                || id == ids::FLIP_GROW
-                || id == ids::FLIP_TRAP
-                || id == ids::FLIP_COLORIZE_BLEED
-                || id == ids::FLIP_PRECISION
+            if id == ph2d_tool_flip::ids::FLIP_SIZE
+                || id == ph2d_tool_flip::ids::FLIP_HARDNESS
+                || id == ph2d_tool_flip::ids::FLIP_OPACITY
+                || id == ph2d_tool_flip::ids::FLIP_SMOOTHING
+                || id == ph2d_tool_flip::ids::FLIP_GAP
+                || id == ph2d_tool_flip::ids::FLIP_GROW
+                || id == ph2d_tool_flip::ids::FLIP_TRAP
+                || id == ph2d_tool_flip::ids::FLIP_COLORIZE_BLEED
+                || id == ph2d_tool_flip::ids::FLIP_PRECISION
                 // O Spacing do *tip* pontilhado (03 §8) — sem este arm o arrasto do slider
                 // era dropado em silêncio (o slider mexia na tela e nunca chegava ao tool).
-                || id == ids::FLIP_DOT_SPACING
+                || id == ph2d_tool_flip::ids::FLIP_DOT_SPACING
                 // A dinâmica de pressão (Draw): Min Width + Response.
-                || id == ids::FLIP_PRESSURE_MIN
-                || id == ids::FLIP_PRESSURE_RESPONSE
+                || id == ph2d_tool_flip::ids::FLIP_PRESSURE_MIN
+                || id == ph2d_tool_flip::ids::FLIP_PRESSURE_RESPONSE
                 // Os sliders PRÓPRIOS da borracha (§4.C) — só existem na tela com o
                 // link desligado, mas o arm vale sempre (o painel não gateia evento).
-                || id == ids::FLIP_ERASE_SIZE
-                || id == ids::FLIP_ERASE_STRENGTH =>
+                || id == ph2d_tool_flip::ids::FLIP_ERASE_SIZE
+                || id == ph2d_tool_flip::ids::FLIP_ERASE_STRENGTH =>
         {
             let track = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.5);
             host.bus_mut()
@@ -199,7 +199,7 @@ pub(crate) fn apply_event(
         }
         // ── Layers toolbar (Add/Duplicate/Delete) → the shell drain applies to the doc. ──
         WidgetEvent::Click(id)
-            if id == ids::FLIP_LAYER_ADD
+            if id == ph2d_tool_flip::ids::FLIP_LAYER_ADD
                 || id == ids::FLIP_LAYER_DUPLICATE
                 || id == ids::FLIP_LAYER_DELETE =>
         {

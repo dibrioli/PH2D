@@ -8,7 +8,6 @@
 //! length just because the head is the only length left.
 
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_tool_painter::MAX_TAPER_DIAMETERS;
@@ -20,7 +19,7 @@ use ph2d_tool_painter::MAX_TAPER_DIAMETERS;
 pub(super) fn on_taper_gizmo_value_changed(host: &mut dyn PanelHostInternal) {
     let Some((_p, channel, _idx, x, _y)) = host
         .store_mut()
-        .take_curve_point_drag_if(|p| p == core_ids::PAINTER_TAPER_GIZMO)
+        .take_curve_point_drag_if(|p| p == ph2d_tool_painter::ids::PAINTER_TAPER_GIZMO)
     else {
         return;
     };
@@ -30,7 +29,7 @@ pub(super) fn on_taper_gizmo_value_changed(host: &mut dyn PanelHostInternal) {
     let value = f64::from(x.clamp(0.0, 1.0) * MAX_TAPER_DIAMETERS);
     host.bus_mut()
         .push(EditorAction::ToolPanelEvent(PanelEvent::SetValue(
-            core_ids::PAINTER_TAPER_START,
+            ph2d_tool_painter::ids::PAINTER_TAPER_START,
             value,
         )));
 }

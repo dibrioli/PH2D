@@ -13,27 +13,26 @@ use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState, Text
 const STEP: f64 = 0.01; // LITERAL-PX-OK: chip 0..1 track step (non-design behaviour value)
 
 pub(crate) fn register_grid_stamp(store: &mut WidgetStore) {
-    use ph2d_editor_core::ids as core_ids;
     let pairs = [
         (
-            core_ids::PAINTER_BRUSH_GRID_CELL[0],
-            core_ids::PAINTER_BRUSH_GRID_CELL_CHIPS[0],
+            ph2d_tool_painter::ids::PAINTER_BRUSH_GRID_CELL[0],
+            ph2d_tool_painter::ids::PAINTER_BRUSH_GRID_CELL_CHIPS[0],
         ),
         (
-            core_ids::PAINTER_BRUSH_GRID_CELL[1],
-            core_ids::PAINTER_BRUSH_GRID_CELL_CHIPS[1],
+            ph2d_tool_painter::ids::PAINTER_BRUSH_GRID_CELL[1],
+            ph2d_tool_painter::ids::PAINTER_BRUSH_GRID_CELL_CHIPS[1],
         ),
         (
-            core_ids::PAINTER_BRUSH_GRID_OFFSET[0],
-            core_ids::PAINTER_BRUSH_GRID_OFFSET_CHIPS[0],
+            ph2d_tool_painter::ids::PAINTER_BRUSH_GRID_OFFSET[0],
+            ph2d_tool_painter::ids::PAINTER_BRUSH_GRID_OFFSET_CHIPS[0],
         ),
         (
-            core_ids::PAINTER_BRUSH_GRID_OFFSET[1],
-            core_ids::PAINTER_BRUSH_GRID_OFFSET_CHIPS[1],
+            ph2d_tool_painter::ids::PAINTER_BRUSH_GRID_OFFSET[1],
+            ph2d_tool_painter::ids::PAINTER_BRUSH_GRID_OFFSET_CHIPS[1],
         ),
         (
-            core_ids::PAINTER_BRUSH_GRID_FIT,
-            core_ids::PAINTER_BRUSH_GRID_FIT_CHIP,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_GRID_FIT,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_GRID_FIT_CHIP,
         ),
     ];
     for (slider, chip) in pairs {
@@ -61,7 +60,7 @@ pub(crate) fn register_grid_stamp(store: &mut WidgetStore) {
     }
     // `Show Grid` — desenho, nunca um parametro do carimbo (ver `toggle_grid_show`).
     store.register(
-        core_ids::PAINTER_BRUSH_GRID_SHOW,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_GRID_SHOW,
         InteractiveState::Button {
             state: ButtonState::Normal,
         },

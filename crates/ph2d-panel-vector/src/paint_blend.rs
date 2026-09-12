@@ -30,7 +30,7 @@ impl BodyCtx<'_> {
     /// quando o modo Pick está ativo (`snap.mode`).
     pub(crate) fn blend_section(&mut self, snap: &VectorStyleSnapshot, y: f32) -> f32 {
         let (mut y, collapsed) = self.section_header(
-            ids::VECTOR_SECTION_BLEND,
+            ph2d_tool_vector::ids::VECTOR_SECTION_BLEND,
             tr("panel.vector.section.blend"),
             y,
         );
@@ -41,7 +41,11 @@ impl BodyCtx<'_> {
         // ativo). É um botão segmentado (não `action_button`) para poder realçar o estado do modo.
         let picking = snap.mode == DrawMode::PickBlend;
         y = self.button_grid(y, 1, 1, |_| {
-            (ids::VECTOR_MODE_PICKBLEND, "Pick Shapes", picking)
+            (
+                ph2d_tool_vector::ids::VECTOR_MODE_PICKBLEND,
+                "Pick Shapes",
+                picking,
+            )
         });
         let track = self
             .store
@@ -51,7 +55,7 @@ impl BodyCtx<'_> {
         y = self.slider_row(
             "Steps",
             ids::VECTOR_BLEND_STEPS,
-            ids::VECTOR_BLEND_STEPS_NUM,
+            ph2d_tool_vector::ids::VECTOR_BLEND_STEPS_NUM,
             track,
             f64::from(steps),
             &format!("{steps}"),
@@ -93,7 +97,7 @@ impl BodyCtx<'_> {
     /// números às cegas numa track vazia.
     pub(crate) fn morph_section(&mut self, y: f32) -> f32 {
         let (y, collapsed) = self.section_header(
-            ids::VECTOR_SECTION_MORPH,
+            ph2d_tool_vector::ids::VECTOR_SECTION_MORPH,
             tr("panel.vector.section.morph"),
             y,
         );
@@ -108,7 +112,7 @@ impl BodyCtx<'_> {
         y = self.slider_row(
             "Morph t",
             ids::VECTOR_MORPH_T,
-            ids::VECTOR_MORPH_T_NUM,
+            ph2d_tool_vector::ids::VECTOR_MORPH_T_NUM,
             t,
             f64::from(t),
             &format!("{t:.2}"),

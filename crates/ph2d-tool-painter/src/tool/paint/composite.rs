@@ -109,21 +109,20 @@ impl PainterTool {
     /// Route the Composite-card panel events (enable checkbox, per-position reorder buttons, per-position
     /// Strength sliders). Returns `true` iff consumed — chained ahead of the big `handle_panel_event` match.
     pub(crate) fn route_composite_event(&mut self, event: &PanelEvent) -> bool {
-        use ph2d_editor_core::ids as core_ids;
         match event {
             PanelEvent::Click(id) => {
-                if *id == core_ids::PAINTER_BRUSH_COMPOSITE_ENABLE {
+                if *id == crate::ids::PAINTER_BRUSH_COMPOSITE_ENABLE {
                     self.toggle_composite();
                     return true;
                 }
-                if let Some(p) = core_ids::PAINTER_BRUSH_COMPOSITE_UP
+                if let Some(p) = crate::ids::PAINTER_BRUSH_COMPOSITE_UP
                     .iter()
                     .position(|x| x == id)
                 {
                     self.move_composite_layer_up(p);
                     return true;
                 }
-                if let Some(p) = core_ids::PAINTER_BRUSH_COMPOSITE_DOWN
+                if let Some(p) = crate::ids::PAINTER_BRUSH_COMPOSITE_DOWN
                     .iter()
                     .position(|x| x == id)
                 {
@@ -133,7 +132,7 @@ impl PainterTool {
                 false
             }
             PanelEvent::SetValue(id, v) => {
-                if let Some(p) = core_ids::PAINTER_BRUSH_COMPOSITE_STRENGTH
+                if let Some(p) = crate::ids::PAINTER_BRUSH_COMPOSITE_STRENGTH
                     .iter()
                     .position(|x| x == id)
                 {

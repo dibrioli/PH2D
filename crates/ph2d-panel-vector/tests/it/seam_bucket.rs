@@ -11,8 +11,8 @@ use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::zones::Rect;
 use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
+use ph2d_panel_vector::VectorPanel;
 use ph2d_panel_vector::state::VectorPanelState;
-use ph2d_panel_vector::{VectorPanel, ids};
 use ph2d_ui_testkit::MockPanelHost;
 
 const VIEWPORT: Rect = Rect {
@@ -45,14 +45,14 @@ fn the_bucket_pill_is_alive_and_reaches_the_bus() {
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let mut st = VectorPanelState;
     let r = host
-        .painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::VECTOR_MODE_BUCKET)
+        .painted_rect::<VectorPanel>(&mut st, VIEWPORT, ph2d_tool_vector::ids::VECTOR_MODE_BUCKET)
         .expect("o pill Bucket nao foi PINTADO com area clicavel");
     let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
     host.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, SEC));
     let evs = host.dispatch_pointer_event(pointer(PointerKind::Up, cx, cy, SEC + SEC / 100));
     assert!(
         evs.iter()
-            .any(|e| matches!(e, WidgetEvent::Click(c) if *c == ids::VECTOR_MODE_BUCKET)),
+            .any(|e| matches!(e, WidgetEvent::Click(c) if *c == ph2d_tool_vector::ids::VECTOR_MODE_BUCKET)),
         "o ponteiro sobre o Bucket nao virou Click — falta o `register` no populate_modes"
     );
     for ev in evs {
@@ -61,7 +61,7 @@ fn the_bucket_pill_is_alive_and_reaches_the_bus() {
     assert!(
         host.drained_actions().into_iter().any(|a| matches!(
             a,
-            EditorAction::ToolPanelEvent(PanelEvent::Click(c)) if c == ids::VECTOR_MODE_BUCKET
+            EditorAction::ToolPanelEvent(PanelEvent::Click(c)) if c == ph2d_tool_vector::ids::VECTOR_MODE_BUCKET
         )),
         "o Click do Bucket nao chegou ao bus — falta a linha na allowlist do event_clicks"
     );
@@ -76,7 +76,7 @@ fn the_bucket_pill_is_alive_and_reaches_the_bus() {
 fn clicking_the_pill_arms_the_bucket_mode() {
     use ph2d_editor_core::tool::Tool;
     let mut tool = ph2d_tool_vector::VectorTool::default();
-    tool.handle_panel_event(PanelEvent::Click(ids::VECTOR_MODE_BUCKET));
+    tool.handle_panel_event(PanelEvent::Click(ph2d_tool_vector::ids::VECTOR_MODE_BUCKET));
     assert_eq!(
         tool.draw_config().mode,
         ph2d_tool_vector::DrawMode::Bucket,

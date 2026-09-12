@@ -369,10 +369,10 @@ impl crate::App {
             (ph2d_editor_core::ids::VECTOR_BONE_IK_ADD, "Add IK"),
             (ph2d_editor_core::ids::VECTOR_MODE_BONE, "o pill Bone"),
             (
-                ph2d_editor_core::ids::VECTOR_SECTION_STROKE,
+                ph2d_tool_vector::ids::VECTOR_SECTION_STROKE,
                 "a seccao STROKE",
             ),
-            (ph2d_editor_core::ids::VECTOR_SECTION_FILL, "a seccao FILL"),
+            (ph2d_tool_vector::ids::VECTOR_SECTION_FILL, "a seccao FILL"),
         ] {
             eprintln!(
                 "[probe-ik-undo] alcancavel? {nome}: {:?}",

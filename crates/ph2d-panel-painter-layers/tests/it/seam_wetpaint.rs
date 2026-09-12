@@ -8,7 +8,6 @@
 //! reads no substrate — Enio: "deve ser assim mesmo").
 
 use ph2d_a11y::NodeId;
-use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::tool::RasterEditTool;
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_painter_layers::PainterLayersPanel;
@@ -42,13 +41,16 @@ fn has(rects: &[(NodeId, Rect)], id: NodeId) -> bool {
 fn the_paint_mode_chip_is_offered_to_arm_and_to_disarm() {
     let plain = PainterTool::default();
     assert!(
-        has(&painted(&plain), core_ids::PAINTER_BRUSH_MEDIA),
+        has(
+            &painted(&plain),
+            ph2d_tool_painter::ids::PAINTER_BRUSH_MEDIA
+        ),
         "the plain brush has no Paint Mode chip — no way to reach Wet Paint at all"
     );
     let mut wet = PainterTool::default();
     wet.set_wetpaint_armed(true);
     assert!(
-        has(&painted(&wet), core_ids::PAINTER_BRUSH_MEDIA),
+        has(&painted(&wet), ph2d_tool_painter::ids::PAINTER_BRUSH_MEDIA),
         "the wet mode has no Paint Mode chip — the artist cannot leave"
     );
 }
@@ -69,13 +71,19 @@ fn the_paint_mode_chip_is_offered_to_arm_and_to_disarm() {
 fn the_paper_section_is_offered_in_wet_mode_and_in_the_plain_brush_too() {
     let plain = PainterTool::default();
     assert!(
-        has(&painted(&plain), core_ids::PAINTER_WATERCOLOR_PAPER_SECTION),
+        has(
+            &painted(&plain),
+            ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_SECTION
+        ),
         "o pincel comum não oferece Paper — o relevo do substrato fica inalcançável no meio que o pediu"
     );
     let mut wet = PainterTool::default();
     wet.set_wetpaint_armed(true);
     assert!(
-        has(&painted(&wet), core_ids::PAINTER_WATERCOLOR_PAPER_SECTION),
+        has(
+            &painted(&wet),
+            ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_SECTION
+        ),
         "wet mode offers no Paper section — the W2.7 seam is unreachable by hand"
     );
 }
@@ -91,7 +99,7 @@ fn the_knob_rows_are_offered_only_while_armed() {
     let mut wet = PainterTool::default();
     wet.set_wetpaint_armed(true);
     let armed = painted(&wet);
-    for id in core_ids::PAINTER_WETPAINT_FIELDS {
+    for id in ph2d_tool_painter::ids::PAINTER_WETPAINT_FIELDS {
         assert!(
             has(&armed, id),
             "armed wet mode is missing a curated knob row ({id:?})"
@@ -118,13 +126,19 @@ fn the_watercolor_section_hides_while_wet_is_armed() {
     let mut wc = PainterTool::default();
     wc.set_paint_media(ph2d_tool_painter::PaintMedia::Watercolor);
     assert!(
-        has(&painted(&wc), core_ids::PAINTER_WATERCOLOR_SECTION),
+        has(
+            &painted(&wc),
+            ph2d_tool_painter::ids::PAINTER_WATERCOLOR_SECTION
+        ),
         "positive control: selecting Watercolor must offer the Watercolor section"
     );
     let mut wet = PainterTool::default();
     wet.set_wetpaint_armed(true);
     assert!(
-        !has(&painted(&wet), core_ids::PAINTER_WATERCOLOR_SECTION),
+        !has(
+            &painted(&wet),
+            ph2d_tool_painter::ids::PAINTER_WATERCOLOR_SECTION
+        ),
         "wet mode still offers the Watercolor section — two wet-media switches over one brush"
     );
 }
@@ -146,7 +160,7 @@ fn a_wet_knob_edit_forwards_through_the_panel() {
     let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
     let mut st = PainterLayersPanelState;
     let _ = host.paint::<PainterLayersPanel>(&mut st, viewport()); // registers the number chips
-    let id = core_ids::PAINTER_WETPAINT_WATER;
+    let id = ph2d_tool_painter::ids::PAINTER_WETPAINT_WATER;
     let outcome =
         host.apply_panel_event::<PainterLayersPanel>(&mut st, WidgetEvent::ValueChanged(id));
     assert_eq!(
@@ -216,16 +230,16 @@ fn every_doc22_wet_widget_is_offered_only_while_armed() {
     wet.set_wetpaint_armed(true);
     let on = painted(&wet);
     let off = painted(&PainterTool::default());
-    let mut ids: Vec<NodeId> = core_ids::PAINTER_WETPAINT_TOOL_IDS.to_vec();
+    let mut ids: Vec<NodeId> = ph2d_tool_painter::ids::PAINTER_WETPAINT_TOOL_IDS.to_vec();
     ids.extend([
-        core_ids::PAINTER_WETPAINT_TILT_TOGGLE,
-        core_ids::PAINTER_WETPAINT_TILT_PAD,
-        core_ids::PAINTER_WETPAINT_WETCANVAS,
-        core_ids::PAINTER_WETPAINT_DRYCANVAS,
-        core_ids::PAINTER_WETPAINT_FASTDRY,
-        core_ids::PAINTER_WETPAINT_SHOWWET,
-        core_ids::PAINTER_WETPAINT_PAPER_VISUAL,
-        core_ids::PAINTER_WETPAINT_TUNING,
+        ph2d_tool_painter::ids::PAINTER_WETPAINT_TILT_TOGGLE,
+        ph2d_tool_painter::ids::PAINTER_WETPAINT_TILT_PAD,
+        ph2d_tool_painter::ids::PAINTER_WETPAINT_WETCANVAS,
+        ph2d_tool_painter::ids::PAINTER_WETPAINT_DRYCANVAS,
+        ph2d_tool_painter::ids::PAINTER_WETPAINT_FASTDRY,
+        ph2d_tool_painter::ids::PAINTER_WETPAINT_SHOWWET,
+        ph2d_tool_painter::ids::PAINTER_WETPAINT_PAPER_VISUAL,
+        ph2d_tool_painter::ids::PAINTER_WETPAINT_TUNING,
     ]);
     for id in ids {
         assert!(has(&on, id), "armed wet section is missing {id:?}");
@@ -243,7 +257,7 @@ fn every_doc22_wet_click_forwards_through_the_panel() {
     use ph2d_editor_core::interaction::WidgetEvent;
     use ph2d_editor_core::panel::EventOutcome;
     use ph2d_editor_core::tool::PanelEvent;
-    for clicked in core_ids::PAINTER_WETPAINT_CLICKS {
+    for clicked in ph2d_tool_painter::ids::PAINTER_WETPAINT_CLICKS {
         let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
         let mut st = PainterLayersPanelState;
         let outcome =
@@ -277,7 +291,7 @@ fn the_tilt_pad_drag_forwards_ring_and_spoke() {
     let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
     let mut st = PainterLayersPanelState;
     host.store_mut().set_curve_point_drag(
-        core_ids::PAINTER_WETPAINT_TILT_PAD,
+        ph2d_tool_painter::ids::PAINTER_WETPAINT_TILT_PAD,
         0,
         0,
         1.0, // right edge
@@ -285,7 +299,7 @@ fn the_tilt_pad_drag_forwards_ring_and_spoke() {
     );
     let outcome = host.apply_panel_event::<PainterLayersPanel>(
         &mut st,
-        WidgetEvent::ValueChanged(core_ids::PAINTER_WETPAINT_TILT_PAD),
+        WidgetEvent::ValueChanged(ph2d_tool_painter::ids::PAINTER_WETPAINT_TILT_PAD),
     );
     assert_eq!(
         outcome,
@@ -300,12 +314,12 @@ fn the_tilt_pad_drag_forwards_ring_and_spoke() {
         })
     };
     assert_eq!(
-        val(core_ids::PAINTER_WETPAINT_TILT_RING),
+        val(ph2d_tool_painter::ids::PAINTER_WETPAINT_TILT_RING),
         Some(8.0),
         "a drag to the rim must snap to the outer ring"
     );
     assert_eq!(
-        val(core_ids::PAINTER_WETPAINT_TILT_SPOKE),
+        val(ph2d_tool_painter::ids::PAINTER_WETPAINT_TILT_SPOKE),
         Some(0.0),
         "a drag straight right is spoke 0"
     );
@@ -332,10 +346,15 @@ fn the_fluid_grid_row_is_the_first_widget_of_the_wet_section() {
     let rects = painted(&wet);
     let grid = rects
         .iter()
-        .find(|(w, r)| *w == core_ids::PAINTER_WETPAINT_GRID && r.w > 0.0 && r.h > 0.0)
+        .find(|(w, r)| {
+            *w == ph2d_tool_painter::ids::PAINTER_WETPAINT_GRID && r.w > 0.0 && r.h > 0.0
+        })
         .map(|(_, r)| *r)
         .expect("a row da grade nao e pintada — o slider nao existe na tela");
-    for (i, id) in core_ids::PAINTER_WETPAINT_TOOL_IDS.iter().enumerate() {
+    for (i, id) in ph2d_tool_painter::ids::PAINTER_WETPAINT_TOOL_IDS
+        .iter()
+        .enumerate()
+    {
         let tool = rects
             .iter()
             .find(|(w, r)| w == id && r.w > 0.0 && r.h > 0.0)
@@ -366,7 +385,7 @@ fn the_fluid_grid_row_is_alive_under_the_mouse() {
     let rects = host.paint::<PainterLayersPanel>(&mut st, viewport());
     let r = rects
         .iter()
-        .find(|(w, _)| *w == core_ids::PAINTER_WETPAINT_GRID)
+        .find(|(w, _)| *w == ph2d_tool_painter::ids::PAINTER_WETPAINT_GRID)
         .map(|(_, r)| *r)
         .expect("a row da grade nao e pintada");
     let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
@@ -375,7 +394,7 @@ fn the_fluid_grid_row_is_alive_under_the_mouse() {
     // silencio — o modo de falha que este arquivo existe para pegar.
     assert_eq!(
         host.hit_at(cx, cy),
-        Some(core_ids::PAINTER_WETPAINT_GRID),
+        Some(ph2d_tool_painter::ids::PAINTER_WETPAINT_GRID),
         "o retangulo da grade nao responde ao ponteiro — pintado mas morto"
     );
     let evs = host.click_at(cx, cy);
@@ -405,8 +424,9 @@ fn the_flow_grid_row_sits_right_under_the_fluid_grid_row() {
             .find(|(w, r)| *w == id && r.w > 0.0 && r.h > 0.0)
             .map(|(_, r)| *r)
     };
-    let grid = find(core_ids::PAINTER_WETPAINT_GRID).expect("a row do Grid Size nao e pintada");
-    let flow = find(core_ids::PAINTER_WETPAINT_FLOW)
+    let grid = find(ph2d_tool_painter::ids::PAINTER_WETPAINT_GRID)
+        .expect("a row do Grid Size nao e pintada");
+    let flow = find(ph2d_tool_painter::ids::PAINTER_WETPAINT_FLOW)
         .expect("a row do Flow Grid nao e pintada — o slider nao existe na tela");
     assert!(
         grid.y < flow.y,
@@ -414,7 +434,10 @@ fn the_flow_grid_row_sits_right_under_the_fluid_grid_row() {
         flow.y,
         grid.y
     );
-    for (i, id) in core_ids::PAINTER_WETPAINT_TOOL_IDS.iter().enumerate() {
+    for (i, id) in ph2d_tool_painter::ids::PAINTER_WETPAINT_TOOL_IDS
+        .iter()
+        .enumerate()
+    {
         let tool = find(*id).unwrap_or_else(|| panic!("o chip de tool {i} nao e pintado"));
         assert!(
             flow.y < tool.y,
@@ -439,13 +462,13 @@ fn the_flow_grid_row_is_alive_under_the_mouse() {
     let rects = host.paint::<PainterLayersPanel>(&mut st, viewport());
     let r = rects
         .iter()
-        .find(|(w, _)| *w == core_ids::PAINTER_WETPAINT_FLOW)
+        .find(|(w, _)| *w == ph2d_tool_painter::ids::PAINTER_WETPAINT_FLOW)
         .map(|(_, r)| *r)
         .expect("a row do Flow Grid nao e pintada");
     let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
     assert_eq!(
         host.hit_at(cx, cy),
-        Some(core_ids::PAINTER_WETPAINT_FLOW),
+        Some(ph2d_tool_painter::ids::PAINTER_WETPAINT_FLOW),
         "o retangulo do Flow Grid nao responde ao ponteiro — pintado mas morto"
     );
     assert!(
@@ -516,7 +539,7 @@ fn the_flow_grid_edit_forwards_through_the_panel() {
     let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
     let mut st = PainterLayersPanelState;
     let _ = host.paint::<PainterLayersPanel>(&mut st, viewport());
-    let id = core_ids::PAINTER_WETPAINT_FLOW;
+    let id = ph2d_tool_painter::ids::PAINTER_WETPAINT_FLOW;
     assert_eq!(
         host.apply_panel_event::<PainterLayersPanel>(&mut st, WidgetEvent::ValueChanged(id)),
         EventOutcome::Consumed,

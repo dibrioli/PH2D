@@ -37,25 +37,6 @@ pub const INSP_ACTION_ROW: [NodeId; 16] = [
     hash_node_id("insp_action_row_15"),
 ];
 
-/// `+ Add Action`.
-pub const INSP_ACTION_ADD: NodeId = hash_node_id("insp_action_add");
-/// `x Remove Action` — apaga a que está aberta.
-pub const INSP_ACTION_REMOVE: NodeId = hash_node_id("insp_action_remove");
-
-/// O nome do sinal que dispara esta linha. **Vazio = nunca.**
-pub const INSP_ACTION_ON: NodeId = hash_node_id("insp_action_on");
-/// O NOME do objecto que sofre a acção. **Vazio = este objecto.**
-pub const INSP_ACTION_TARGET: NodeId = hash_node_id("insp_action_target");
-/// O parâmetro do verbo — hoje, o nome do timer. **Vazio = todos.**
-pub const INSP_ACTION_ARG: NodeId = hash_node_id("insp_action_arg");
-
-/// **O verbo — o CHIP do seletor.** As entradas dele são [`INSP_ACTION_VERB`].
-///
-/// ⚠️ **Ele é o único id desta família registado como `Dropdown`**: o `open` do popover é o
-/// estado dele, e a ESCOLHA nunca vive aqui — ela é do snapshot, relida a cada quadro. *O seed é
-/// dono do valor, o dispatch é dono do estado* (a lei que a §12 já paga).
-pub const INSP_ACTION_VERB_PICK: NodeId = hash_node_id("insp_action_verb_pick");
-
 /// **O verbo**, uma OPÇÃO do seletor por entrada de `SignalVerb::ALL`.
 ///
 /// ⚠️ **A posição é a tag** — ver o doc do módulo. ⚠️ Estes ids eram uma fileira de cinco botões

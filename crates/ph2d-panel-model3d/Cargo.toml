@@ -20,6 +20,7 @@ authors.workspace = true
 # intents que o shell drena. Inventar uma tool para o pipe existente encaixar
 # seria uma tool que não é uma tool — e o `Tool=12` está congelado (CLAUDE.md §6).
 [dependencies]
+ph2d-tool-registry = { path = "../ph2d-tool-registry" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-a11y = { path = "../ph2d-a11y" }
 ph2d-tokens = { path = "../ph2d-tokens" }

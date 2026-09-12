@@ -26,6 +26,7 @@
 #![forbid(unsafe_code)]
 
 mod event;
+pub mod ids;
 mod paint;
 mod populate;
 pub mod state;
@@ -35,7 +36,6 @@ pub use paint::default_rect;
 pub use state::WidgetLabState;
 
 use ph2d_a11y::NodeId;
-use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};
 use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal};
 
@@ -46,7 +46,7 @@ impl Panel for WidgetLabPanel {
     type State = WidgetLabState;
 
     const ID: &'static str = "widget_lab";
-    const NODE_ID: NodeId = ids::LAB_PANEL;
+    const NODE_ID: NodeId = ph2d_editor_core::ids::LAB_PANEL;
     const DEFAULT_VISIBLE: bool = false;
     const TITLE: &'static str = "Widget Lab";
     const ICON: ph2d_editor_core::icons::IconId = ph2d_editor_core::icons::IconId::Probe;

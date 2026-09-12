@@ -13,7 +13,6 @@
 
 use ph2d_editor_core::HeroScreen;
 use ph2d_editor_core::NodeId;
-use ph2d_editor_core::ids;
 use ph2d_editor_core::panel::{ErasedPanel, Panel, PanelRegistry};
 use ph2d_editor_core::screens::hero::{HERO_VIEWPORT_H, HERO_VIEWPORT_W};
 use ph2d_editor_core::screens::paint_hero_screen;
@@ -69,9 +68,9 @@ fn head_size_head_round_and_both_ends_are_painted_and_clickable() {
     paint_frame(&mut hero);
 
     for (id, what) in [
-        (ids::VECTOR_MARKER_SCALE, "Head Size"),
-        (ids::VECTOR_MARKER_ROUND, "Head Round"),
-        (ids::VECTOR_MARKER_BOTH, "Both Ends"),
+        (ph2d_tool_vector::ids::VECTOR_MARKER_SCALE, "Head Size"),
+        (ph2d_tool_vector::ids::VECTOR_MARKER_ROUND, "Head Round"),
+        (ph2d_tool_vector::ids::VECTOR_MARKER_BOTH, "Both Ends"),
     ] {
         assert!(
             hero.hit_index.rect_for(id).is_some(),
@@ -90,11 +89,11 @@ fn the_head_boxes_are_born_showing_the_effective_value_not_zero() {
 
     let scale = hero
         .store
-        .number_value(ids::VECTOR_MARKER_SCALE)
+        .number_value(ph2d_tool_vector::ids::VECTOR_MARKER_SCALE)
         .expect("Head Size tem de estar registrado no populate");
     let round = hero
         .store
-        .number_value(ids::VECTOR_MARKER_ROUND)
+        .number_value(ph2d_tool_vector::ids::VECTOR_MARKER_ROUND)
         .expect("Head Round tem de estar registrado no populate");
     assert!(
         (scale - 2.5).abs() < 1e-9,
@@ -109,7 +108,7 @@ fn the_head_boxes_are_born_showing_the_effective_value_not_zero() {
     paint_frame(&mut hero);
     let scale = hero
         .store
-        .number_value(ids::VECTOR_MARKER_SCALE)
+        .number_value(ph2d_tool_vector::ids::VECTOR_MARKER_SCALE)
         .expect("registrado");
     assert!(
         (scale - 0.75).abs() < 1e-9,
@@ -127,11 +126,11 @@ fn the_head_boxes_declare_their_range() {
     paint_frame(&mut hero);
     let scale = hero
         .store
-        .number_value(ids::VECTOR_MARKER_SCALE)
+        .number_value(ph2d_tool_vector::ids::VECTOR_MARKER_SCALE)
         .expect("registrado");
     let round = hero
         .store
-        .number_value(ids::VECTOR_MARKER_ROUND)
+        .number_value(ph2d_tool_vector::ids::VECTOR_MARKER_ROUND)
         .expect("registrado");
     assert!(
         (scale - MARKER_SCALE.max).abs() < 1e-9,

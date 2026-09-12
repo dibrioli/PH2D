@@ -172,7 +172,6 @@ impl PainterTool {
 #[cfg(test)]
 mod tests {
     use crate::tool::PainterTool;
-    use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::{
         CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool, Tool,
     };
@@ -195,29 +194,31 @@ mod tests {
         let mut t = PainterTool::default();
         assert!(!t.symmetry().enabled, "default off");
 
-        t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_SYMMETRY_USE));
+        t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_BRUSH_SYMMETRY_USE));
         assert!(t.symmetry().enabled, "Use toggled symmetry on");
 
-        t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_SYMMETRY_CIRCULAR));
+        t.handle_panel_event(PanelEvent::Click(
+            crate::ids::PAINTER_BRUSH_SYMMETRY_CIRCULAR,
+        ));
         assert!(t.symmetry().circular, "Circular toggled on");
 
-        t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_SYMMETRY_AXIS_Y));
+        t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_BRUSH_SYMMETRY_AXIS_Y));
         assert_eq!(t.symmetry().axis, MirrorAxis::Y, "axis set to Y");
 
         // The segment slider's 0..1 track maps onto 3..12.
         t.handle_panel_event(PanelEvent::SetValue(
-            core_ids::PAINTER_BRUSH_SYMMETRY_SEGMENTS,
+            crate::ids::PAINTER_BRUSH_SYMMETRY_SEGMENTS,
             1.0,
         ));
         assert_eq!(t.symmetry().radial_segments, 12, "track 1.0 → 12 segments");
         t.handle_panel_event(PanelEvent::SetValue(
-            core_ids::PAINTER_BRUSH_SYMMETRY_SEGMENTS,
+            crate::ids::PAINTER_BRUSH_SYMMETRY_SEGMENTS,
             0.0,
         ));
         assert_eq!(t.symmetry().radial_segments, 3, "track 0.0 → 3 segments");
 
         // Reset returns the whole section to defaults.
-        t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_SYMMETRY_RESET));
+        t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_BRUSH_SYMMETRY_RESET));
         assert!(!t.symmetry().enabled && !t.symmetry().circular);
         assert_eq!(t.symmetry().axis, MirrorAxis::X);
     }
@@ -229,7 +230,7 @@ mod tests {
         use ph2d_editor_core::tool::PanelEvent;
         let mut t = PainterTool::default();
         t.handle_panel_event(PanelEvent::Click(
-            core_ids::PAINTER_BRUSH_SYMMETRY_DRAW_LINE,
+            crate::ids::PAINTER_BRUSH_SYMMETRY_DRAW_LINE,
         ));
         assert!(t.symmetry_pick_active(), "Draw-Line armed a pick mode");
         assert_eq!(
@@ -261,7 +262,7 @@ mod tests {
         use ph2d_editor_core::tool::PanelEvent;
         let mut t = PainterTool::default();
         t.handle_panel_event(PanelEvent::Click(
-            core_ids::PAINTER_BRUSH_SYMMETRY_PICK_CENTER,
+            crate::ids::PAINTER_BRUSH_SYMMETRY_PICK_CENTER,
         ));
         assert!(t.symmetry_pick_active());
         assert!(t.on_canvas_pointer(cp(5.0, 7.0, PointerPhase::Down)));

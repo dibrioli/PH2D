@@ -10,6 +10,7 @@ authors.workspace = true
 [lib]
 
 [dependencies]
+ph2d-tool-registry = { path = "../ph2d-tool-registry" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-a11y = { path = "../ph2d-a11y" }
 # A tabela: `ColorToken::ALL`, `resolve`, e a camada de override que este painel

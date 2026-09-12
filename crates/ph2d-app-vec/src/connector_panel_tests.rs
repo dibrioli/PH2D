@@ -133,7 +133,7 @@ fn a_pristine_connector_publishes_the_automatic_values_not_zero() {
 fn editing_jetty_reaches_every_selected_connector_not_just_the_first() {
     let (mut sim, scene, map, conns) = scene_with_connectors(3);
     let xf = xforms(&sim, &map);
-    let id = ph2d_editor_core::ids::VECTOR_CONNECTOR_JETTY;
+    let id = ph2d_tool_vector::ids::VECTOR_CONNECTOR_JETTY;
 
     let changed = edit_selected_connectors(&mut sim, &map, &conns, id, 0.9);
     assert_eq!(changed, 3, "a edicao tem de atingir os TRES selecionados");
@@ -157,7 +157,7 @@ fn editing_jetty_reaches_every_selected_connector_not_just_the_first() {
         &mut sim,
         &map,
         &conns,
-        ph2d_editor_core::ids::VECTOR_CONNECTOR_SPREAD,
+        ph2d_tool_vector::ids::VECTOR_CONNECTOR_SPREAD,
         -0.4,
     );
     assert_eq!(n, 3);
@@ -165,7 +165,7 @@ fn editing_jetty_reaches_every_selected_connector_not_just_the_first() {
         &mut sim,
         &map,
         &conns,
-        ph2d_editor_core::ids::VECTOR_CONNECTOR_ROUTE,
+        ph2d_tool_vector::ids::VECTOR_CONNECTOR_ROUTE,
         0.0,
     );
     assert_eq!(n, 3);
@@ -196,7 +196,7 @@ fn a_pinned_value_stops_following_the_automatic_one() {
             &mut sim,
             &map,
             &conns,
-            ph2d_editor_core::ids::VECTOR_CONNECTOR_JETTY,
+            ph2d_tool_vector::ids::VECTOR_CONNECTOR_JETTY,
             0.5,
         ),
         1
@@ -391,7 +391,7 @@ fn a_free_end_still_publishes_a_usable_jetty() {
 fn editing_the_corner_reaches_every_selected_connector_and_clamps() {
     let (mut sim, scene, map, conns) = scene_with_connectors(3);
     let xf = xforms(&sim, &map);
-    let id = ph2d_editor_core::ids::VECTOR_CONNECTOR_CORNER;
+    let id = ph2d_tool_vector::ids::VECTOR_CONNECTOR_CORNER;
 
     let changed = edit_selected_connectors(&mut sim, &map, &conns, id, 0.4);
     assert_eq!(changed, 3, "a edicao tem de atingir os TRES selecionados");
@@ -434,10 +434,10 @@ fn editing_the_corner_reaches_every_selected_connector_and_clamps() {
 #[test]
 fn the_corner_is_recognized_as_a_connector_field_by_the_drain() {
     for id in [
-        ph2d_editor_core::ids::VECTOR_CONNECTOR_ROUTE,
-        ph2d_editor_core::ids::VECTOR_CONNECTOR_JETTY,
-        ph2d_editor_core::ids::VECTOR_CONNECTOR_SPREAD,
-        ph2d_editor_core::ids::VECTOR_CONNECTOR_CORNER,
+        ph2d_tool_vector::ids::VECTOR_CONNECTOR_ROUTE,
+        ph2d_tool_vector::ids::VECTOR_CONNECTOR_JETTY,
+        ph2d_tool_vector::ids::VECTOR_CONNECTOR_SPREAD,
+        ph2d_tool_vector::ids::VECTOR_CONNECTOR_CORNER,
     ] {
         assert!(
             is_connector_field_id(id),
@@ -446,7 +446,7 @@ fn the_corner_is_recognized_as_a_connector_field_by_the_drain() {
     }
     // E não sequestra ids alheios (o Head Round da SETA não é a quina do PERCURSO).
     assert!(!is_connector_field_id(
-        ph2d_editor_core::ids::VECTOR_MARKER_ROUND
+        ph2d_tool_vector::ids::VECTOR_MARKER_ROUND
     ));
-    assert!(!is_connector_field_id(ph2d_editor_core::ids::VECTOR_WIDTH));
+    assert!(!is_connector_field_id(ph2d_tool_vector::ids::VECTOR_WIDTH));
 }

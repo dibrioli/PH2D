@@ -435,16 +435,6 @@ fn deform_transform_redo_recreates_the_gizmo() {
 
 #[test]
 fn deform_transform_relifts_when_repicked_after_leaving_the_panel() {
-    // Leaving Deform bakes the transform; re-entering and picking Transform re-lifts a FRESH gizmo
-    // (Enio 2026-07-04: the gizmo used to not reappear). That guarantee is what this gate protects.
-    //
-    // ⚠️ **The MECHANISM under it changed on 2026-08-08 and this gate was asserting the mechanism.** It
-    // used to read "re-entering opens the temperament UNSELECTED", which was true because the only wire
-    // into the mode was `"deform"` — a lobby. Now each half has its own chip and its own wire, so the
-    // entry itself names a half: coming in by `"liquify"` lands in the brush half (no gizmo, asserted
-    // below) and picking Transform in the panel lifts one. The rail's own door is gated next door, in
-    // `warp/rail_tests::entering_transform_from_another_tool_lifts_a_fresh_gizmo`.
-    use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::PanelEvent;
     let mut t = deform_square_canvas(64, 20, 20, 44, 44);
     t.set_deform_transform_on(true);
@@ -460,7 +450,7 @@ fn deform_transform_relifts_when_repicked_after_leaving_the_panel() {
          the bake left one floating"
     );
     assert!(t.route_deform_event(&PanelEvent::Click(
-        core_ids::PAINTER_DEFORM_TEMPERAMENT_TRANSFORM
+        crate::ids::PAINTER_DEFORM_TEMPERAMENT_TRANSFORM
     )));
     assert!(
         t.deform_gizmo().is_some(),
@@ -603,15 +593,14 @@ fn deform_reset_restores_the_session_pre_pixels() {
 
 #[test]
 fn deform_panel_seam_mode_slider_and_temperament_drive_the_state() {
-    use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::PanelEvent;
     let mut t = deform_ramp(32);
     // Segmented mode pick: Click on the Twist option id → mode 1.
-    assert!(t.route_deform_event(&PanelEvent::Click(core_ids::PAINTER_DEFORM_MODE_TWIST)));
+    assert!(t.route_deform_event(&PanelEvent::Click(crate::ids::PAINTER_DEFORM_MODE_TWIST)));
     assert_eq!(t.paint.deform.mode, 1, "the Twist segment set mode = Twist");
     // Slider: SetValue on the Strength slider → clamped strength.
     assert!(t.route_deform_event(&PanelEvent::SetValue(
-        core_ids::PAINTER_DEFORM_STRENGTH_SLIDER,
+        crate::ids::PAINTER_DEFORM_STRENGTH_SLIDER,
         0.9
     )));
     assert!(
@@ -620,14 +609,14 @@ fn deform_panel_seam_mode_slider_and_temperament_drive_the_state() {
     );
     // Temperament segments drive the 3-state temperament (2 = Transform, 1 = Reshape).
     assert!(t.route_deform_event(&PanelEvent::Click(
-        core_ids::PAINTER_DEFORM_TEMPERAMENT_TRANSFORM
+        crate::ids::PAINTER_DEFORM_TEMPERAMENT_TRANSFORM
     )));
     assert_eq!(
         t.paint.deform.temperament, 2,
         "the Transform segment set temperament = Transform"
     );
     assert!(t.route_deform_event(&PanelEvent::Click(
-        core_ids::PAINTER_DEFORM_TEMPERAMENT_RESHAPE
+        crate::ids::PAINTER_DEFORM_TEMPERAMENT_RESHAPE
     )));
     assert_eq!(
         t.paint.deform.temperament, 1,

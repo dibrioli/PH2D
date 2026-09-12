@@ -511,7 +511,6 @@ fn line_grid_snap_places_points_on_the_forwarded_grid_position() {
 
 #[test]
 fn line_offset_slider_shifts_the_open_line_in_real_time() {
-    use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::{PanelEvent, Tool};
     use ph2d_painter_brush::StrokeMethod;
     // The Offset slider shifts the whole Line perpendicular (parallel polyline); changing it must re-fill
@@ -533,7 +532,7 @@ fn line_offset_slider_shifts_the_open_line_in_real_time() {
         [255, 255, 255, 255],
         "y=12 is white before offset"
     );
-    t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_BRUSH_OFFSET, 0.6));
+    t.handle_panel_event(PanelEvent::SetValue(crate::ids::PAINTER_BRUSH_OFFSET, 0.6));
     assert_eq!(
         px(&t, 64, 32, 32),
         [255, 255, 255, 255],

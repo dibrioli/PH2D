@@ -23,9 +23,9 @@ pub(super) fn populate_ops(store: &mut WidgetStore) {
     // Vertex-type buttons (retype the selected vertex; shown only when a vertex
     // is selected, but registered unconditionally — the store is mode-agnostic)
     // + the Delete-node button.
-    button(store, ids::VECTOR_VERT_CORNER);
-    button(store, ids::VECTOR_VERT_SMOOTH);
-    button(store, ids::VECTOR_VERT_SYMMETRIC);
+    button(store, ph2d_tool_vector::ids::VECTOR_VERT_CORNER);
+    button(store, ph2d_tool_vector::ids::VECTOR_VERT_SMOOTH);
+    button(store, ph2d_tool_vector::ids::VECTOR_VERT_SYMMETRIC);
     button(store, ids::VECTOR_VERT_DELETE);
     // As três da W4 (Join · Reverse · Average).
     button(store, ids::VECTOR_VERT_AVERAGE);
@@ -88,10 +88,10 @@ pub(super) fn populate_ops(store: &mut WidgetStore) {
     button(store, ids::VECTOR_BOOL_LIVE_ON);
     button(store, ids::VECTOR_BOOL_APPLY);
     // As quatro da W5 — sem estas linhas os botoes pintam e ficam MORTOS sob o mouse.
-    button(store, ids::VECTOR_BOOL_MINUS_BACK);
-    button(store, ids::VECTOR_BOOL_TRIM);
-    button(store, ids::VECTOR_BOOL_CROP);
-    button(store, ids::VECTOR_BOOL_MERGE);
+    button(store, ph2d_tool_vector::ids::VECTOR_BOOL_MINUS_BACK);
+    button(store, ph2d_tool_vector::ids::VECTOR_BOOL_TRIM);
+    button(store, ph2d_tool_vector::ids::VECTOR_BOOL_CROP);
+    button(store, ph2d_tool_vector::ids::VECTOR_BOOL_MERGE);
     button(store, ids::VECTOR_BOOL_SUBTRACT);
     button(store, ids::VECTOR_BOOL_INTERSECT);
     button(store, ids::VECTOR_BOOL_EXCLUDE);
@@ -108,15 +108,15 @@ pub(super) fn populate_ops(store: &mut WidgetStore) {
     button(store, ids::VECTOR_COMPOUND_MAKE);
     button(store, ids::VECTOR_COMPOUND_RELEASE);
     // Expand — Outline Stroke + Offset Path (a seção irmã da Boolean).
-    button(store, ids::VECTOR_EXPAND_SIDE_OUTER);
-    button(store, ids::VECTOR_EXPAND_SIDE_INNER);
-    button(store, ids::VECTOR_EXPAND_SIDE_BOTH);
-    button(store, ids::VECTOR_EXPAND_JOIN_MITER);
-    button(store, ids::VECTOR_EXPAND_JOIN_ROUND);
-    button(store, ids::VECTOR_EXPAND_JOIN_BEVEL);
-    button(store, ids::VECTOR_EXPAND_OFFSET_PATH);
-    button(store, ids::VECTOR_EXPAND_OUTLINE_STROKE);
-    button(store, ids::VECTOR_EXPAND_POWER_STROKE);
+    button(store, ph2d_tool_vector::ids::VECTOR_EXPAND_SIDE_OUTER);
+    button(store, ph2d_tool_vector::ids::VECTOR_EXPAND_SIDE_INNER);
+    button(store, ph2d_tool_vector::ids::VECTOR_EXPAND_SIDE_BOTH);
+    button(store, ph2d_tool_vector::ids::VECTOR_EXPAND_JOIN_MITER);
+    button(store, ph2d_tool_vector::ids::VECTOR_EXPAND_JOIN_ROUND);
+    button(store, ph2d_tool_vector::ids::VECTOR_EXPAND_JOIN_BEVEL);
+    button(store, ph2d_tool_vector::ids::VECTOR_EXPAND_OFFSET_PATH);
+    button(store, ph2d_tool_vector::ids::VECTOR_EXPAND_OUTLINE_STROKE);
+    button(store, ph2d_tool_vector::ids::VECTOR_EXPAND_POWER_STROKE);
     // Os perfis nomeados (W2b): o TETO de botões, sempre. O `paint` desenha só os que a tabela
     // publica, então registrar de menos deixaria um perfil novo clicável-e-MORTO sob o mouse, e
     // registrar de mais é inerte. Espelho do laço dos presets de gaiola.
@@ -126,17 +126,17 @@ pub(super) fn populate_ops(store: &mut WidgetStore) {
     for (slider, chip, default) in [
         (
             ids::VECTOR_EXPAND_W_START,
-            ids::VECTOR_EXPAND_W_START_NUM,
+            ph2d_tool_vector::ids::VECTOR_EXPAND_W_START_NUM,
             WPROFILE_DEFAULT_START,
         ),
         (
             ids::VECTOR_EXPAND_W_MID,
-            ids::VECTOR_EXPAND_W_MID_NUM,
+            ph2d_tool_vector::ids::VECTOR_EXPAND_W_MID_NUM,
             WPROFILE_DEFAULT_MID,
         ),
         (
             ids::VECTOR_EXPAND_W_END,
-            ids::VECTOR_EXPAND_W_END_NUM,
+            ph2d_tool_vector::ids::VECTOR_EXPAND_W_END_NUM,
             WPROFILE_DEFAULT_END,
         ),
     ] {
@@ -154,7 +154,7 @@ pub(super) fn populate_ops(store: &mut WidgetStore) {
     slider_chip(
         store,
         ids::VECTOR_EXPAND_W_POS,
-        ids::VECTOR_EXPAND_W_POS_NUM,
+        ph2d_tool_vector::ids::VECTOR_EXPAND_W_POS_NUM,
         WPROFILE_DEFAULT_POS as f32,
         WPROFILE_DEFAULT_POS,
         1.0,
@@ -165,7 +165,7 @@ pub(super) fn populate_ops(store: &mut WidgetStore) {
     slider_chip(
         store,
         ids::VECTOR_EXPAND_OFFSET,
-        ids::VECTOR_EXPAND_OFFSET_NUM,
+        ph2d_tool_vector::ids::VECTOR_EXPAND_OFFSET_NUM,
         offset_frac_to_slider(OFFSET_DEFAULT_FRAC),
         OFFSET_DEFAULT_FRAC * 100.0, // LITERAL-PX-OK: unit conversion (fraction -> percent readout), not a design measure.
         OFFSET_SLIDER_SCALE,
@@ -188,16 +188,16 @@ pub(super) fn populate_ops(store: &mut WidgetStore) {
     button(store, ids::VECTOR_RULERS_ON);
 
     // Fill-type selector (Solid / Linear / Radial) — act on the selected path.
-    button(store, ids::VECTOR_FILL_KIND_SOLID);
-    button(store, ids::VECTOR_FILL_KIND_LINEAR);
-    button(store, ids::VECTOR_FILL_KIND_RADIAL);
-    button(store, ids::VECTOR_FILL_KIND_MULTI);
-    button(store, ids::VECTOR_FILL_KIND_PATTERN);
+    button(store, ph2d_tool_vector::ids::VECTOR_FILL_KIND_SOLID);
+    button(store, ph2d_tool_vector::ids::VECTOR_FILL_KIND_LINEAR);
+    button(store, ph2d_tool_vector::ids::VECTOR_FILL_KIND_RADIAL);
+    button(store, ph2d_tool_vector::ids::VECTOR_FILL_KIND_MULTI);
+    button(store, ph2d_tool_vector::ids::VECTOR_FILL_KIND_PATTERN);
     // ⭐ A TINTA DO TRAÇO (plano 35, wave D) — irmã da fileira acima, com duas variantes em vez de
     // cinco. Sem este registo os dois chips pintam, ACENDEM sob o rato e o `Click` morre no painel.
-    button(store, ids::VECTOR_STROKE_KIND_SOLID);
-    button(store, ids::VECTOR_STROKE_KIND_PATTERN);
-    button(store, ids::VECTOR_STROKE_KIND_BRUSH);
+    button(store, ph2d_tool_vector::ids::VECTOR_STROKE_KIND_SOLID);
+    button(store, ph2d_tool_vector::ids::VECTOR_STROKE_KIND_PATTERN);
+    button(store, ph2d_tool_vector::ids::VECTOR_STROKE_KIND_BRUSH);
     // ⭐ A secção BRUSH (plano 36, W4). Sem o registo eles pintam, ACENDEM sob o rato e o Click
     // morre no painel — o defeito que esta casa ja' pagou com 36 celulas de fisica.
     button(store, ids::VECTOR_BRUSH_PICK_SHAPE);
@@ -208,12 +208,12 @@ pub(super) fn populate_ops(store: &mut WidgetStore) {
     button(store, ids::VECTOR_GRAD_REMOVE_STOP);
     // Align + Distribute (multi-path object selection).
     button(store, ids::VECTOR_PIVOT_EDIT);
-    button(store, ids::VECTOR_ALIGN_LEFT);
-    button(store, ids::VECTOR_ALIGN_HCENTER);
-    button(store, ids::VECTOR_ALIGN_RIGHT);
-    button(store, ids::VECTOR_ALIGN_TOP);
-    button(store, ids::VECTOR_ALIGN_VCENTER);
-    button(store, ids::VECTOR_ALIGN_BOTTOM);
-    button(store, ids::VECTOR_DISTRIBUTE_H);
-    button(store, ids::VECTOR_DISTRIBUTE_V);
+    button(store, ph2d_tool_vector::ids::VECTOR_ALIGN_LEFT);
+    button(store, ph2d_tool_vector::ids::VECTOR_ALIGN_HCENTER);
+    button(store, ph2d_tool_vector::ids::VECTOR_ALIGN_RIGHT);
+    button(store, ph2d_tool_vector::ids::VECTOR_ALIGN_TOP);
+    button(store, ph2d_tool_vector::ids::VECTOR_ALIGN_VCENTER);
+    button(store, ph2d_tool_vector::ids::VECTOR_ALIGN_BOTTOM);
+    button(store, ph2d_tool_vector::ids::VECTOR_DISTRIBUTE_H);
+    button(store, ph2d_tool_vector::ids::VECTOR_DISTRIBUTE_V);
 }

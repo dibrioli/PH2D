@@ -33,11 +33,11 @@ fn scene_with_square() -> (VecScene, VecPathId) {
 #[test]
 fn the_panel_ceiling_reaches_every_kind_the_engine_publishes() {
     assert!(
-        PathEffect::KINDS.len() <= i::MAX_FX_KINDS,
+        PathEffect::KINDS.len() <= ph2d_tool_vector::ids::MAX_FX_KINDS,
         "o motor publica {} tipos e o menu Add regista {} — os últimos ficam pintados em \
          lugar nenhum",
         PathEffect::KINDS.len(),
-        i::MAX_FX_KINDS
+        ph2d_tool_vector::ids::MAX_FX_KINDS
     );
     // E o último tipo é de facto construível pelo índice que o painel oferece: um teto que
     // alcança um `from_kind` que devolve `None` seria um botão que não faz nada.
@@ -54,37 +54,37 @@ fn the_panel_ceiling_reaches_every_kind_the_engine_publishes() {
 #[test]
 fn every_id_the_panel_can_paint_is_classified() {
     assert_eq!(
-        classify_click(i::VECTOR_FX_APPLY),
+        classify_click(ph2d_tool_vector::ids::VECTOR_FX_APPLY),
         Some(FxClick::Apply),
         "o botão Apply não é classificado — ficaria pintado e inerte"
     );
-    for k in 0..i::MAX_FX_KINDS {
+    for k in 0..ph2d_tool_vector::ids::MAX_FX_KINDS {
         assert_eq!(
-            classify_click(i::vector_fx_add_id(k)),
+            classify_click(ph2d_tool_vector::ids::vector_fx_add_id(k)),
             Some(FxClick::Add(k)),
             "o Add do tipo {k} não é classificado"
         );
     }
-    for r in 0..i::MAX_FX_ROWS {
+    for r in 0..ph2d_tool_vector::ids::MAX_FX_ROWS {
         assert_eq!(
-            classify_click(i::vector_fx_remove_id(r)),
+            classify_click(ph2d_tool_vector::ids::vector_fx_remove_id(r)),
             Some(FxClick::Row(r, FxRowAction::Remove))
         );
         assert_eq!(
-            classify_click(i::vector_fx_up_id(r)),
+            classify_click(ph2d_tool_vector::ids::vector_fx_up_id(r)),
             Some(FxClick::Row(r, FxRowAction::Up))
         );
         assert_eq!(
-            classify_click(i::vector_fx_down_id(r)),
+            classify_click(ph2d_tool_vector::ids::vector_fx_down_id(r)),
             Some(FxClick::Row(r, FxRowAction::Down))
         );
         assert_eq!(
-            classify_click(i::vector_fx_hide_id(r)),
+            classify_click(ph2d_tool_vector::ids::vector_fx_hide_id(r)),
             Some(FxClick::Row(r, FxRowAction::Hide))
         );
-        for p in 0..i::MAX_FX_ROW_PARAMS {
+        for p in 0..ph2d_tool_vector::ids::MAX_FX_ROW_PARAMS {
             assert_eq!(
-                classify_param(i::vector_fx_param_id(r, p)),
+                classify_param(ph2d_tool_vector::ids::vector_fx_param_id(r, p)),
                 Some((r, p)),
                 "o parâmetro ({r}, {p}) não é classificado"
             );
@@ -105,18 +105,24 @@ fn rows_and_kinds_do_not_collide() {
     // `BTreeSet` e não `HashSet`: o projeto proíbe o segundo (ordem de iteração não
     // determinística vira teste que flaka em CI e passa localmente).
     let mut seen = std::collections::BTreeSet::new();
-    for k in 0..i::MAX_FX_KINDS {
-        assert!(seen.insert(i::vector_fx_add_id(k)), "Add {k} colide");
+    for k in 0..ph2d_tool_vector::ids::MAX_FX_KINDS {
+        assert!(
+            seen.insert(ph2d_tool_vector::ids::vector_fx_add_id(k)),
+            "Add {k} colide"
+        );
     }
-    for r in 0..i::MAX_FX_ROWS {
-        assert!(seen.insert(i::vector_fx_remove_id(r)));
-        assert!(seen.insert(i::vector_fx_up_id(r)));
-        assert!(seen.insert(i::vector_fx_down_id(r)));
-        assert!(seen.insert(i::vector_fx_hide_id(r)));
-        assert!(seen.insert(i::vector_fx_card_id(r)));
-        for p in 0..i::MAX_FX_ROW_PARAMS {
-            assert!(seen.insert(i::vector_fx_param_id(r, p)), "param ({r},{p})");
-            assert!(seen.insert(i::vector_fx_param_num_id(r, p)));
+    for r in 0..ph2d_tool_vector::ids::MAX_FX_ROWS {
+        assert!(seen.insert(ph2d_tool_vector::ids::vector_fx_remove_id(r)));
+        assert!(seen.insert(ph2d_tool_vector::ids::vector_fx_up_id(r)));
+        assert!(seen.insert(ph2d_tool_vector::ids::vector_fx_down_id(r)));
+        assert!(seen.insert(ph2d_tool_vector::ids::vector_fx_hide_id(r)));
+        assert!(seen.insert(ph2d_tool_vector::ids::vector_fx_card_id(r)));
+        for p in 0..ph2d_tool_vector::ids::MAX_FX_ROW_PARAMS {
+            assert!(
+                seen.insert(ph2d_tool_vector::ids::vector_fx_param_id(r, p)),
+                "param ({r},{p})"
+            );
+            assert!(seen.insert(ph2d_tool_vector::ids::vector_fx_param_num_id(r, p)));
         }
     }
 }

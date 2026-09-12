@@ -26,7 +26,6 @@
 //! mesma promessa do chip (*mostrar o valor EFETIVO*) sem a mentira de parecer editável.
 
 use ph2d_editor_core::icons::IconId;
-use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{InteractiveState, format_number};
 use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::panel::PaintCtx;
@@ -131,7 +130,13 @@ fn paint_num_row(
             resolve(ColorToken::Text2, theme),
         );
     } else {
-        paint_px_chip(ctx, theme, chip_rect, ids::tokens_num_chip_id(row), value);
+        paint_px_chip(
+            ctx,
+            theme,
+            chip_rect,
+            crate::ids::tokens_num_chip_id(row),
+            value,
+        );
     }
 
     let label_x = x + CHIP_W + Spacing::Sm.px();
@@ -166,7 +171,7 @@ fn paint_num_row(
     paint_icon_row_button(
         ctx,
         theme,
-        ids::tokens_num_link_id(row),
+        crate::ids::tokens_num_link_id(row),
         IconId::Link,
         link_x,
         y,
@@ -176,7 +181,7 @@ fn paint_num_row(
         paint_icon_row_button(
             ctx,
             theme,
-            ids::tokens_num_fx_id(row),
+            crate::ids::tokens_num_fx_id(row),
             // ⚠️ `Script` e não um glifo novo: ele já significa *uma regra escrita que computa* —
             // é o mesmo que o componente de script usa — e é uma FIGURA distinta do elo ao lado
             // (o gate de ícone compara geometria, nunca o identificador: o par `Layer`/`Layers` da
@@ -192,7 +197,7 @@ fn paint_num_row(
     if authored {
         command(
             ctx,
-            ids::tokens_num_reset_id(row),
+            crate::ids::tokens_num_reset_id(row),
             tr("panel.tokens.reset"),
             x + w - RESET_W,
             RESET_W,
@@ -208,7 +213,7 @@ fn paint_num_row(
         y = paint_formula_field(
             ctx,
             theme,
-            ids::tokens_num_formula_id(row),
+            crate::ids::tokens_num_formula_id(row),
             Rect::new(x, y, w, ROW_H_PX),
             formula.as_deref().unwrap_or_default(),
         );

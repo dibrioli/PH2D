@@ -154,15 +154,15 @@ pub fn resolve(sim: &SimWorld, map: &VecEntityMap, tok: TokenCtx) -> Vec<BoundSt
 /// clique — não num frame.
 #[must_use]
 pub fn token_choice(id: ph2d_editor_core::NodeId) -> Option<(BoundProp, Option<&'static str>)> {
-    for slot in ph2d_editor_core::ids::TOKEN_SLOTS {
+    for slot in ph2d_panel_vector::ids::TOKEN_SLOTS {
         // ⚠️ O alvo vem do CÓDIGO da tabela pela porta do modelo, e não de um `match` escrito aqui:
         // um slot novo nasce ligado, em vez de virar uma linha de picker que não faz nada.
         let prop = BoundProp::from_code(slot.code)?;
-        if id == ph2d_editor_core::ids::vector_token_option_id(slot.code, 0) {
+        if id == ph2d_panel_vector::ids::vector_token_option_id(slot.code, 0) {
             return Some((prop, None));
         }
         for i in 0..slot.table.len() {
-            if id == ph2d_editor_core::ids::vector_token_option_id(slot.code, i + 1) {
+            if id == ph2d_panel_vector::ids::vector_token_option_id(slot.code, i + 1) {
                 return Some((prop, slot.table.key(i)));
             }
         }

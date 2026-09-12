@@ -6,33 +6,32 @@
 use crate::paint_brush::paint_dropdown_popover;
 use crate::paint_ramp_widget::{RampIds, RampView, paint_color_ramp_section};
 use crate::state;
-use ph2d_editor_core::ids::{
-    self as core_ids, painter_brush_texture_ramp_alpha_option_id,
-    painter_brush_texture_ramp_handle_id, painter_brush_texture_ramp_interp_option_id,
-    painter_brush_texture_ramp_mode_option_id,
-};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::DropdownOption;
+use ph2d_tool_painter::ids::{
+    painter_brush_texture_ramp_alpha_option_id, painter_brush_texture_ramp_handle_id,
+    painter_brush_texture_ramp_interp_option_id, painter_brush_texture_ramp_mode_option_id,
+};
 use ph2d_tool_painter::{BrushSettings, RampAlphaMode, RampColorMode, RampInterp};
 
 /// The Grain ramp's fixed widget ids + state hooks (collapsible under "Grain Colors" / "Shape Color").
 fn grain_ramp_ids() -> RampIds {
     RampIds {
-        section: core_ids::PAINTER_BRUSH_COLOR_RAMP_SECTION,
-        section_color: core_ids::PAINTER_BRUSH_COLOR_RAMP_SECTION_COLOR,
-        reset: core_ids::PAINTER_BRUSH_COLOR_RAMP_RESET,
-        enable: core_ids::PAINTER_BRUSH_TEXTURE_RAMP_ENABLE,
-        mode: core_ids::PAINTER_BRUSH_TEXTURE_RAMP_MODE,
-        interp: core_ids::PAINTER_BRUSH_TEXTURE_RAMP_INTERP,
-        alpha_mode: core_ids::PAINTER_BRUSH_TEXTURE_RAMP_ALPHA_MODE,
-        bw: core_ids::PAINTER_BRUSH_TEXTURE_RAMP_BW,
-        add: core_ids::PAINTER_BRUSH_TEXTURE_RAMP_ADD,
-        remove: core_ids::PAINTER_BRUSH_TEXTURE_RAMP_REMOVE,
-        invert: core_ids::PAINTER_BRUSH_TEXTURE_RAMP_INVERT,
-        edit: core_ids::PAINTER_BRUSH_TEXTURE_RAMP_EDIT,
-        swatch: core_ids::PAINTER_BRUSH_TEXTURE_RAMP_SWATCH,
-        stop_index: core_ids::PAINTER_BRUSH_TEXTURE_RAMP_STOP_INDEX,
-        stop_pos: core_ids::PAINTER_BRUSH_TEXTURE_RAMP_STOP_POS,
+        section: ph2d_tool_painter::ids::PAINTER_BRUSH_COLOR_RAMP_SECTION,
+        section_color: ph2d_tool_painter::ids::PAINTER_BRUSH_COLOR_RAMP_SECTION_COLOR,
+        reset: ph2d_tool_painter::ids::PAINTER_BRUSH_COLOR_RAMP_RESET,
+        enable: ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_ENABLE,
+        mode: ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_MODE,
+        interp: ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_INTERP,
+        alpha_mode: ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_ALPHA_MODE,
+        bw: ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_BW,
+        add: ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_ADD,
+        remove: ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_REMOVE,
+        invert: ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_INVERT,
+        edit: ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_EDIT,
+        swatch: ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_SWATCH,
+        stop_index: ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_STOP_INDEX,
+        stop_pos: ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_STOP_POS,
         handle: painter_brush_texture_ramp_handle_id,
         set_pending_mode: state::set_pending_ramp_mode_dd,
         set_pending_interp: state::set_pending_ramp_interp_dd,
@@ -74,7 +73,7 @@ pub(crate) fn paint_texture_ramp_popovers(ctx: &mut PaintCtx, theme: ph2d_tokens
         paint_dropdown_popover(
             ctx,
             theme,
-            core_ids::PAINTER_BRUSH_TEXTURE_RAMP_MODE,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_MODE,
             ramp_mode_options(),
             chip,
             cur,
@@ -84,7 +83,7 @@ pub(crate) fn paint_texture_ramp_popovers(ctx: &mut PaintCtx, theme: ph2d_tokens
         paint_dropdown_popover(
             ctx,
             theme,
-            core_ids::PAINTER_BRUSH_TEXTURE_RAMP_INTERP,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_INTERP,
             ramp_interp_options(),
             chip,
             cur,
@@ -94,7 +93,7 @@ pub(crate) fn paint_texture_ramp_popovers(ctx: &mut PaintCtx, theme: ph2d_tokens
         paint_dropdown_popover(
             ctx,
             theme,
-            core_ids::PAINTER_BRUSH_TEXTURE_RAMP_ALPHA_MODE,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_ALPHA_MODE,
             ramp_alpha_options(),
             chip,
             cur,

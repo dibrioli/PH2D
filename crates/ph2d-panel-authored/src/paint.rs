@@ -92,7 +92,7 @@ pub(crate) fn paint(_state: &mut AuthoredPanelState, ctx: &mut PaintCtx) {
     );
     paint_panel_close_button(
         rect,
-        ids::AUTHORED_CLOSE,
+        crate::ids::AUTHORED_CLOSE,
         ctx.host.hit_index_mut(),
         ctx.scene,
         theme,
@@ -124,19 +124,22 @@ pub(crate) fn paint(_state: &mut AuthoredPanelState, ctx: &mut PaintCtx) {
     // último-registado-ganha), a faixa GANHAVA: 43% de uma row de 28 px arrastava o painel em vez
     // de operar o controle. Medido, e o irmão `ph2d-panel-wet-tuning` já faz esta conta.
     hit_index.register(
-        ids::AUTHORED_DRAG_HANDLE,
+        crate::ids::AUTHORED_DRAG_HANDLE,
         panel_drag_handle_rect(rect, body_top - rect.y, PANEL_HEADER_CLOSE_RESERVE),
     );
-    hit_index.register(ids::AUTHORED_RESIZE_HANDLE, panel_resize_handle_rect(rect));
     hit_index.register(
-        ids::AUTHORED_RESIZE_HANDLE_BL,
+        crate::ids::AUTHORED_RESIZE_HANDLE,
+        panel_resize_handle_rect(rect),
+    );
+    hit_index.register(
+        crate::ids::AUTHORED_RESIZE_HANDLE_BL,
         panel_resize_handle_rect_bl(rect),
     );
     // ⚠️ **O X é re-registado AQUI**, e não é redundante: ele foi registado pelo
     // `paint_panel_title`, ou seja **antes** do corpo — e a faixa deixa a reserva dele livre de
     // propósito, então uma row rolada para debaixo dessa reserva o SUPERAVA no
     // último-registado-ganha. O irmão `wet-tuning` traz a mesma linha com o mesmo motivo.
-    hit_index.register(ids::AUTHORED_CLOSE, panel_close_button_rect(rect));
+    hit_index.register(crate::ids::AUTHORED_CLOSE, panel_close_button_rect(rect));
 
     // ⚠️ **O passe DIFERIDO, e ele é o ÚLTIMO de propósito** — as três coisas que a ordem decide:
     //
@@ -185,7 +188,9 @@ fn paint_open_list(ctx: &mut PaintCtx, open: &OpenList, theme: Theme) {
         .options
         .iter()
         .enumerate()
-        .map(|(i, o)| DropdownOption::new(ids::authored_option_id(&open.key, i), i, o.clone()))
+        .map(|(i, o)| {
+            DropdownOption::new(crate::ids::authored_option_id(&open.key, i), i, o.clone())
+        })
         .collect();
     // O rótulo vai VAZIO: o chip já o mostra, e o pintor da lista não o desenha.
     let mut dd = Dropdown::new(id, "", opts).open(true);
@@ -307,7 +312,7 @@ fn paint_body(
             // responder noutro.
             for i in 0..row.options.len() {
                 if let Some(or) = inline_option_rect(row.kind, r, i, row.options.len()) {
-                    hit_index.register(ids::authored_option_id(&row.key, i), or);
+                    hit_index.register(crate::ids::authored_option_id(&row.key, i), or);
                 }
             }
             // ⚠️ **A pergunta é ao TIPO e ao STORE, nesta ordem, e as duas metades são precisas:**

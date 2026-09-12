@@ -20,7 +20,7 @@ pub fn populate(store: &mut WidgetStore) {
     // ⚠️ Sem esta linha o botão PINTA e não recebe estado: ele fica morto sob o ponteiro, que é
     // o defeito que a costura da booleana do vetor pagou duas vezes ([27 §8] do Vector Module).
     store.register(
-        ids::INSP_ADD_COMPONENT,
+        crate::ids::INSP_ADD_COMPONENT,
         ph2d_editor_core::interaction::InteractiveState::Button {
             state: ph2d_editor_core::widget::ButtonState::Normal,
         },
@@ -35,7 +35,7 @@ pub fn populate(store: &mut WidgetStore) {
     // zona que só recebe quedas não é uma coisa que ele tenha. ⇒ ela virou um, e o clique abre a
     // biblioteca.
     store.register(
-        ids::INSP_RENDER_TEXTURE_SLOT,
+        crate::ids::INSP_RENDER_TEXTURE_SLOT,
         ph2d_editor_core::interaction::InteractiveState::Plain,
     );
     super::populate_instance::populate_instance_card(store);
@@ -69,16 +69,22 @@ pub fn populate(store: &mut WidgetStore) {
 /// values come from the snapshot; defaults match the optional-component
 /// "absent" state (cutoff 0.5, rect zero).
 fn populate_visibility_section(store: &mut WidgetStore) {
-    register_button_ids(store, &ids::INSP_VIS_CLIP);
-    register_button_ids(store, &ids::INSP_VIS_MASK);
-    register_button_ids(store, &ids::INSP_VIS_LAYER_BIT);
-    register_button_ids(store, &[ids::INSP_VIS_MASK_SOURCE, ids::INSP_VIS_ON_SCREEN]);
+    register_button_ids(store, &crate::ids::INSP_VIS_CLIP);
+    register_button_ids(store, &crate::ids::INSP_VIS_MASK);
+    register_button_ids(store, &crate::ids::INSP_VIS_LAYER_BIT);
+    register_button_ids(
+        store,
+        &[
+            crate::ids::INSP_VIS_MASK_SOURCE,
+            crate::ids::INSP_VIS_ON_SCREEN,
+        ],
+    );
     for (id, value) in [
-        (ids::INSP_VIS_ALPHA_CUTOFF, 0.5_f64),
-        (ids::INSP_VIS_RECT_X, 0.0_f64),
-        (ids::INSP_VIS_RECT_Y, 0.0_f64),
-        (ids::INSP_VIS_RECT_W, 0.0_f64),
-        (ids::INSP_VIS_RECT_H, 0.0_f64),
+        (crate::ids::INSP_VIS_ALPHA_CUTOFF, 0.5_f64),
+        (crate::ids::INSP_VIS_RECT_X, 0.0_f64),
+        (crate::ids::INSP_VIS_RECT_Y, 0.0_f64),
+        (crate::ids::INSP_VIS_RECT_W, 0.0_f64),
+        (crate::ids::INSP_VIS_RECT_H, 0.0_f64),
     ] {
         store.register(
             id,
@@ -95,7 +101,7 @@ fn populate_visibility_section(store: &mut WidgetStore) {
     // Alpha Cutoff is a hard `0..1` mask threshold — drag-scrub spans the whole range (coherent with
     // its limits, like the texture number boxes; Enio 2026-06-26). The Rect fields are pixel extents
     // with no natural ceiling, so they keep the unbounded step-rate (no artificial clamp).
-    store.set_number_range(ids::INSP_VIS_ALPHA_CUTOFF, 0.0, 1.0, 0.01); // LITERAL-PX-OK: alpha-cutoff chip 0..1 track step (non-design behaviour value)
+    store.set_number_range(crate::ids::INSP_VIS_ALPHA_CUTOFF, 0.0, 1.0, 0.01); // LITERAL-PX-OK: alpha-cutoff chip 0..1 track step (non-design behaviour value)
 }
 
 /// Register the W3 segmented-tab + dropdown-option ids as `Button`s so
@@ -118,40 +124,43 @@ pub(crate) fn register_button_ids(store: &mut WidgetStore, ids: &[ph2d_a11y::Nod
 /// §10 Material & Blend: register the 6 blend-mode segmented ids as
 /// `Button`s (is_focusable → clicks route). Selection is snapshot-driven.
 fn populate_blend(store: &mut WidgetStore) {
-    register_button_ids(store, &ids::INSP_SAMPLE_BLEND);
+    register_button_ids(store, &crate::ids::INSP_SAMPLE_BLEND);
 }
 
 fn populate_slice(store: &mut WidgetStore) {
-    register_button_ids(store, &ids::INSP_SLICE_TILE_MODE);
+    register_button_ids(store, &crate::ids::INSP_SLICE_TILE_MODE);
     // As oito células da grelha 3×3 são BOTÕES que ciclam — não segmentos.
-    register_button_ids(store, &ids::INSP_SLICE_REGION);
+    register_button_ids(store, &crate::ids::INSP_SLICE_REGION);
     // A nona célula: o miolo. Ele cicla o próprio modo desde 2026-08-22.
-    register_button_ids(store, &[ids::INSP_SLICE_CENTRE]);
+    register_button_ids(store, &[crate::ids::INSP_SLICE_CENTRE]);
     // Os dois atalhos que substituíram o modo `Tiled`: eles ESCREVEM na grelha.
     register_button_ids(
         store,
-        &[ids::INSP_SLICE_ALL_TILE, ids::INSP_SLICE_ALL_STRETCH],
+        &[
+            crate::ids::INSP_SLICE_ALL_TILE,
+            crate::ids::INSP_SLICE_ALL_STRETCH,
+        ],
     );
     // ⚠️ **A caixa que liga o 9-slice** — ela substituiu o segmentado `Simple`/`9-Slice` E o
     // botão `+ Add`: duas portas para o mesmo estado (Enio, 2026-08-22).
     store.register(
-        ids::INSP_SLICE_ENABLE,
+        crate::ids::INSP_SLICE_ENABLE,
         InteractiveState::Checkbox {
             state: CheckboxState::Normal,
             value: CheckboxValue::Unchecked,
         },
     );
     store.register(
-        ids::INSP_SLICE_FILL_CENTER,
+        crate::ids::INSP_SLICE_FILL_CENTER,
         InteractiveState::Checkbox {
             state: CheckboxState::Normal,
             value: CheckboxValue::Checked,
         },
     );
     // Bordas (px da fonte) e tamanho alvo (m). O `0.0` de partida é o do componente inerte.
-    for id in ids::INSP_SLICE_BORDER
+    for id in crate::ids::INSP_SLICE_BORDER
         .iter()
-        .chain(ids::INSP_SLICE_SIZE.iter())
+        .chain(crate::ids::INSP_SLICE_SIZE.iter())
         .copied()
     {
         store.register(
@@ -169,23 +178,23 @@ fn populate_slice(store: &mut WidgetStore) {
 }
 
 fn populate_sampling(store: &mut WidgetStore) {
-    register_button_ids(store, &ids::INSP_SAMPLE_FILTER);
-    register_button_ids(store, &ids::INSP_SAMPLE_REPEAT);
+    register_button_ids(store, &crate::ids::INSP_SAMPLE_FILTER);
+    register_button_ids(store, &crate::ids::INSP_SAMPLE_REPEAT);
     register_button_ids(
         store,
         &[
-            ids::INSP_ORDER_SP_CENTER,
-            ids::INSP_ORDER_SP_PIVOT,
-            ids::INSP_ORDER_SP_CUSTOM,
+            crate::ids::INSP_ORDER_SP_CENTER,
+            crate::ids::INSP_ORDER_SP_PIVOT,
+            crate::ids::INSP_ORDER_SP_CUSTOM,
         ],
     );
-    register_button_ids(store, &ids::INSP_ORDER_LAYER_OPT);
+    register_button_ids(store, &crate::ids::INSP_ORDER_LAYER_OPT);
     // UV tiling/scroll NumberInputs (scale default 1.0, offset 0.0).
     for (id, value) in [
-        (ids::INSP_SAMPLE_UV_SCALE_X, 1.0_f64),
-        (ids::INSP_SAMPLE_UV_SCALE_Y, 1.0_f64),
-        (ids::INSP_SAMPLE_UV_OFFSET_X, 0.0_f64),
-        (ids::INSP_SAMPLE_UV_OFFSET_Y, 0.0_f64),
+        (crate::ids::INSP_SAMPLE_UV_SCALE_X, 1.0_f64),
+        (crate::ids::INSP_SAMPLE_UV_SCALE_Y, 1.0_f64),
+        (crate::ids::INSP_SAMPLE_UV_OFFSET_X, 0.0_f64),
+        (crate::ids::INSP_SAMPLE_UV_OFFSET_Y, 0.0_f64),
     ] {
         store.register(
             id,
@@ -207,12 +216,12 @@ fn populate_sampling(store: &mut WidgetStore) {
 /// the snapshot.
 fn populate_ordering(store: &mut WidgetStore) {
     for (id, on) in [
-        (ids::INSP_ORDER_Z_RELATIVE, true),
-        (ids::INSP_ORDER_SHOW_BEHIND, false),
-        (ids::INSP_ORDER_YSORT_ENABLED, false),
-        (ids::INSP_ORDER_SORTING_GROUP, false),
-        (ids::INSP_ORDER_SORT_AT_ROOT, false),
-        (ids::INSP_ORDER_TOP_LEVEL, false),
+        (crate::ids::INSP_ORDER_Z_RELATIVE, true),
+        (crate::ids::INSP_ORDER_SHOW_BEHIND, false),
+        (crate::ids::INSP_ORDER_YSORT_ENABLED, false),
+        (crate::ids::INSP_ORDER_SORTING_GROUP, false),
+        (crate::ids::INSP_ORDER_SORT_AT_ROOT, false),
+        (crate::ids::INSP_ORDER_TOP_LEVEL, false),
     ] {
         store.register(
             id,
@@ -227,10 +236,10 @@ fn populate_ordering(store: &mut WidgetStore) {
         );
     }
     for id in [
-        ids::INSP_ORDER_Z_INDEX,
-        ids::INSP_ORDER_ORDER_IN_LAYER,
-        ids::INSP_ORDER_AXIS_X,
-        ids::INSP_ORDER_AXIS_Y,
+        crate::ids::INSP_ORDER_Z_INDEX,
+        crate::ids::INSP_ORDER_ORDER_IN_LAYER,
+        crate::ids::INSP_ORDER_AXIS_X,
+        crate::ids::INSP_ORDER_AXIS_Y,
     ] {
         store.register(
             id,
@@ -246,7 +255,7 @@ fn populate_ordering(store: &mut WidgetStore) {
     }
     // Sorting Layer dropdown (default = "Default" layer index 2).
     store.register(
-        ids::INSP_ORDER_SORTING_LAYER,
+        crate::ids::INSP_ORDER_SORTING_LAYER,
         InteractiveState::Dropdown {
             state: DropdownState::Normal,
             open: false,
@@ -260,13 +269,16 @@ fn populate_ordering(store: &mut WidgetStore) {
 /// (default 0). Live values sync from the snapshot.
 fn populate_sprite_sheet(store: &mut WidgetStore) {
     store.register(
-        ids::INSP_SPRITE_CENTERED,
+        crate::ids::INSP_SPRITE_CENTERED,
         InteractiveState::Checkbox {
             state: CheckboxState::Normal,
             value: CheckboxValue::Checked,
         },
     );
-    for id in [ids::INSP_SPRITE_OFFSET_X, ids::INSP_SPRITE_OFFSET_Y] {
+    for id in [
+        crate::ids::INSP_SPRITE_OFFSET_X,
+        crate::ids::INSP_SPRITE_OFFSET_Y,
+    ] {
         store.register(
             id,
             InteractiveState::NumberInput {
@@ -280,9 +292,9 @@ fn populate_sprite_sheet(store: &mut WidgetStore) {
         );
     }
     for (id, value) in [
-        (ids::INSP_SPRITE_HFRAMES, 1.0_f64),
-        (ids::INSP_SPRITE_VFRAMES, 1.0_f64),
-        (ids::INSP_SPRITE_FRAME, 0.0_f64),
+        (crate::ids::INSP_SPRITE_HFRAMES, 1.0_f64),
+        (crate::ids::INSP_SPRITE_VFRAMES, 1.0_f64),
+        (crate::ids::INSP_SPRITE_FRAME, 0.0_f64),
     ] {
         store.register(
             id,
@@ -317,7 +329,7 @@ fn populate_sprite_sheet(store: &mut WidgetStore) {
 fn populate_color_tint(store: &mut WidgetStore) {
     // Opacity Slider 0..1 + linked chip showing 0..100 % (spec §3.6).
     store.register(
-        ids::INSP_SPRITE_OPACITY,
+        crate::ids::INSP_SPRITE_OPACITY,
         InteractiveState::Slider {
             state: SliderState::Normal,
             value: 1.0,
@@ -325,7 +337,7 @@ fn populate_color_tint(store: &mut WidgetStore) {
         },
     );
     store.register(
-        ids::INSP_SPRITE_OPACITY_CHIP,
+        crate::ids::INSP_SPRITE_OPACITY_CHIP,
         InteractiveState::NumberInput {
             state: TextInputState::Normal,
             value: 100.0, // LITERAL-PX-OK: opacity percent scale (1.0 → 100 %), not a design token
@@ -338,14 +350,14 @@ fn populate_color_tint(store: &mut WidgetStore) {
     // chip_display = slider_storage * 100 (+0); integer-snapped so the
     // chip is whole percents while the slider track stays continuous.
     store.link_slider_number_mapped_integer(
-        ids::INSP_SPRITE_OPACITY,
-        ids::INSP_SPRITE_OPACITY_CHIP,
+        crate::ids::INSP_SPRITE_OPACITY,
+        crate::ids::INSP_SPRITE_OPACITY_CHIP,
         100.0, // LITERAL-PX-OK: opacity percent scale (slider 0..1 → chip 0..100)
         0.0,
     );
     // Opacity is a hard `0..100 %` — drag-scrub on the chip spans the whole range proportionally
     // (coherent with its limits, like the texture number boxes; Enio 2026-06-26).
-    store.set_number_range(ids::INSP_SPRITE_OPACITY_CHIP, 0.0, 100.0, 1.0); // LITERAL-PX-OK: opacity percent scale
+    store.set_number_range(crate::ids::INSP_SPRITE_OPACITY_CHIP, 0.0, 100.0, 1.0); // LITERAL-PX-OK: opacity percent scale
 
     // **EMISSIVE** — a sprite como fonte de luz (plano `docs/Sprite_projeto/18` W8).
     //
@@ -354,7 +366,7 @@ fn populate_color_tint(store: &mut WidgetStore) {
     // artista 63/64 do percurso para valores que ele nunca usa. O mapeamento vive AQUI, num sítio só
     // — se ele se duplicasse, o número que o artista lê e o que o motor aplica divergiriam.
     store.register(
-        ids::INSP_SPRITE_EMISSIVE,
+        crate::ids::INSP_SPRITE_EMISSIVE,
         InteractiveState::Slider {
             state: SliderState::Normal,
             value: 0.0,
@@ -362,7 +374,7 @@ fn populate_color_tint(store: &mut WidgetStore) {
         },
     );
     store.register(
-        ids::INSP_SPRITE_EMISSIVE_CHIP,
+        crate::ids::INSP_SPRITE_EMISSIVE_CHIP,
         InteractiveState::NumberInput {
             state: TextInputState::Normal,
             value: 0.0,
@@ -376,19 +388,19 @@ fn populate_color_tint(store: &mut WidgetStore) {
     // REPRESENTAÇÃO (o meio-float do `GameRt`), documentado ao lado da constante; escrevê-lo aqui
     // outra vez faria a UI e o motor discordarem no dia em que alguém remedisse o tecto.
     store.link_slider_number_mapped(
-        ids::INSP_SPRITE_EMISSIVE,
-        ids::INSP_SPRITE_EMISSIVE_CHIP,
+        crate::ids::INSP_SPRITE_EMISSIVE,
+        crate::ids::INSP_SPRITE_EMISSIVE_CHIP,
         ph2d_editor_core::EMISSIVE_MAX_UI,
         0.0,
     );
     store.set_number_range(
-        ids::INSP_SPRITE_EMISSIVE_CHIP,
+        crate::ids::INSP_SPRITE_EMISSIVE_CHIP,
         0.0,
         f64::from(ph2d_editor_core::EMISSIVE_MAX_UI),
         0.1, // LITERAL-PX-OK: passo de scrub da intensidade, não um token de desenho
     );
     store.register(
-        ids::INSP_SPRITE_TINT_FILL,
+        crate::ids::INSP_SPRITE_TINT_FILL,
         InteractiveState::Checkbox {
             state: CheckboxState::Normal,
             value: CheckboxValue::Unchecked,
@@ -402,18 +414,18 @@ fn populate_color_tint(store: &mut WidgetStore) {
     // swatch carries no value of its own — its color lives in the
     // `widget_colors` side-table).
     for id in [
-        ids::INSP_SPRITE_TINT_SWATCH,
-        ids::INSP_SPRITE_SELF_TINT_SWATCH,
-        ids::INSP_SPRITE_CORNER_TL,
-        ids::INSP_SPRITE_CORNER_TR,
-        ids::INSP_SPRITE_CORNER_BL,
-        ids::INSP_SPRITE_CORNER_BR,
+        crate::ids::INSP_SPRITE_TINT_SWATCH,
+        crate::ids::INSP_SPRITE_SELF_TINT_SWATCH,
+        crate::ids::INSP_SPRITE_CORNER_TL,
+        crate::ids::INSP_SPRITE_CORNER_TR,
+        crate::ids::INSP_SPRITE_CORNER_BL,
+        crate::ids::INSP_SPRITE_CORNER_BR,
     ] {
         store.register(id, InteractiveState::Plain);
     }
     // "Equalize corners" button (copies TL → the other three).
     store.register(
-        ids::INSP_SPRITE_CORNER_EQUALIZE,
+        crate::ids::INSP_SPRITE_CORNER_EQUALIZE,
         InteractiveState::Button {
             state: ButtonState::Normal,
         },
@@ -426,7 +438,10 @@ fn populate_color_tint(store: &mut WidgetStore) {
 /// Unchecked (the Sprite default `flip_x = flip_y = false`); the live
 /// value is synced from the snapshot each frame in `sync.rs`.
 fn populate_sprite_flip(store: &mut WidgetStore) {
-    for id in [ids::INSP_SPRITE_FLIP_X, ids::INSP_SPRITE_FLIP_Y] {
+    for id in [
+        crate::ids::INSP_SPRITE_FLIP_X,
+        crate::ids::INSP_SPRITE_FLIP_Y,
+    ] {
         store.register(
             id,
             InteractiveState::Checkbox {
@@ -443,17 +458,17 @@ fn populate_sprite_flip(store: &mut WidgetStore) {
 /// default). Live values sync from the snapshot.
 fn populate_region(store: &mut WidgetStore) {
     store.register(
-        ids::INSP_REGION_ENABLED,
+        crate::ids::INSP_REGION_ENABLED,
         InteractiveState::Checkbox {
             state: CheckboxState::Normal,
             value: CheckboxValue::Unchecked,
         },
     );
     for id in [
-        ids::INSP_REGION_X,
-        ids::INSP_REGION_Y,
-        ids::INSP_REGION_W,
-        ids::INSP_REGION_H,
+        crate::ids::INSP_REGION_X,
+        crate::ids::INSP_REGION_Y,
+        crate::ids::INSP_REGION_W,
+        crate::ids::INSP_REGION_H,
     ] {
         store.register(
             id,
@@ -468,7 +483,7 @@ fn populate_region(store: &mut WidgetStore) {
         );
     }
     store.register(
-        ids::INSP_REGION_FILTER_CLIP,
+        crate::ids::INSP_REGION_FILTER_CLIP,
         InteractiveState::Checkbox {
             state: CheckboxState::Normal,
             value: CheckboxValue::Checked,
@@ -513,8 +528,8 @@ fn populate_render_strategy(store: &mut WidgetStore) {
     // arma, o Up nunca emite `Click`. Pintado, hit-registered e morto sob o rato — a mesma falha
     // que apagou oito pills da barra em 2026-08-19.
     for id in [
-        ids::INSP_RENDER_FORMAT_RGBA8,
-        ids::INSP_RENDER_FORMAT_RGBA16,
+        crate::ids::INSP_RENDER_FORMAT_RGBA8,
+        crate::ids::INSP_RENDER_FORMAT_RGBA16,
     ] {
         store.register(
             id,
@@ -524,7 +539,7 @@ fn populate_render_strategy(store: &mut WidgetStore) {
         );
     }
     store.register(
-        ids::INSP_RENDER_SOURCE_REIMPORT,
+        crate::ids::INSP_RENDER_SOURCE_REIMPORT,
         InteractiveState::Button {
             state: ButtonState::Normal,
         },
@@ -533,7 +548,7 @@ fn populate_render_strategy(store: &mut WidgetStore) {
 
 fn populate_visibility_editor(store: &mut WidgetStore) {
     store.register(
-        ids::INSP_VISIBILITY_CHECK,
+        crate::ids::INSP_VISIBILITY_CHECK,
         InteractiveState::Checkbox {
             state: CheckboxState::Normal,
             value: CheckboxValue::Checked,
@@ -543,13 +558,13 @@ fn populate_visibility_editor(store: &mut WidgetStore) {
 
 fn populate_transform_editor(store: &mut WidgetStore) {
     let identity_pairs = [
-        (ids::INSP_TRANSFORM_POS_X, 0.0_f64),
-        (ids::INSP_TRANSFORM_POS_Y, 0.0_f64),
-        (ids::INSP_TRANSFORM_ROT, 0.0_f64),
-        (ids::INSP_TRANSFORM_SCALE_X, 1.0_f64),
-        (ids::INSP_TRANSFORM_SCALE_Y, 1.0_f64),
-        (ids::INSP_TRANSFORM_SKEW_X, 0.0_f64),
-        (ids::INSP_TRANSFORM_SKEW_Y, 0.0_f64),
+        (crate::ids::INSP_TRANSFORM_POS_X, 0.0_f64),
+        (crate::ids::INSP_TRANSFORM_POS_Y, 0.0_f64),
+        (crate::ids::INSP_TRANSFORM_ROT, 0.0_f64),
+        (crate::ids::INSP_TRANSFORM_SCALE_X, 1.0_f64),
+        (crate::ids::INSP_TRANSFORM_SCALE_Y, 1.0_f64),
+        (crate::ids::INSP_TRANSFORM_SKEW_X, 0.0_f64),
+        (crate::ids::INSP_TRANSFORM_SKEW_Y, 0.0_f64),
     ];
     for (id, value) in identity_pairs {
         let buffer = format!("{value}");
@@ -566,7 +581,7 @@ fn populate_transform_editor(store: &mut WidgetStore) {
         );
     }
     store.register(
-        ids::INSP_TRANSFORM_RESET,
+        crate::ids::INSP_TRANSFORM_RESET,
         InteractiveState::Button {
             state: ButtonState::Normal,
         },

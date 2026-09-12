@@ -13,7 +13,7 @@
 //! possível é a PINTURA (sem hit-rect não há Click). É o padrão dos presets do Envelope.
 
 use super::{button, slider_chip};
-use crate::{ids, state};
+use crate::state;
 use ph2d_editor_core::interaction::WidgetStore;
 
 /// O passo dos campos numéricos. As faixas variam (fração, contagem), então o passo é uma
@@ -34,22 +34,25 @@ const IDENTITY_OFFSET: f32 = 0.0;
 pub(super) fn populate_effects(store: &mut WidgetStore) {
     // O botão de SEÇÃO "Apply" (assa a pilha). Registado sempre; a PINTURA decide se o oferece
     // (só há hit-rect quando a pilha não está vazia), como o resto da seção.
-    button(store, ids::VECTOR_FX_APPLY);
-    for kind in 0..ids::MAX_FX_KINDS {
-        button(store, ids::vector_fx_add_id(kind));
+    button(store, ph2d_tool_vector::ids::VECTOR_FX_APPLY);
+    for kind in 0..ph2d_tool_vector::ids::MAX_FX_KINDS {
+        button(store, ph2d_tool_vector::ids::vector_fx_add_id(kind));
     }
-    for row in 0..ids::MAX_FX_ROWS {
-        button(store, ids::vector_fx_remove_id(row));
-        button(store, ids::vector_fx_up_id(row));
-        button(store, ids::vector_fx_down_id(row));
-        button(store, ids::vector_fx_hide_id(row));
-        for param in 0..ids::MAX_FX_ROW_PARAMS {
+    for row in 0..ph2d_tool_vector::ids::MAX_FX_ROWS {
+        button(store, ph2d_tool_vector::ids::vector_fx_remove_id(row));
+        button(store, ph2d_tool_vector::ids::vector_fx_up_id(row));
+        button(store, ph2d_tool_vector::ids::vector_fx_down_id(row));
+        button(store, ph2d_tool_vector::ids::vector_fx_hide_id(row));
+        for param in 0..ph2d_tool_vector::ids::MAX_FX_ROW_PARAMS {
             // A caixinha tem id PRÓPRIO e é registada como BOTÃO — um id só pode ter um tipo de
             // widget, e um slider não emite `Click` no Up.
-            button(store, ids::vector_fx_toggle_id(row, param));
+            button(
+                store,
+                ph2d_tool_vector::ids::vector_fx_toggle_id(row, param),
+            );
             let (slider, num) = (
-                ids::vector_fx_param_id(row, param),
-                ids::vector_fx_param_num_id(row, param),
+                ph2d_tool_vector::ids::vector_fx_param_id(row, param),
+                ph2d_tool_vector::ids::vector_fx_param_num_id(row, param),
             );
             slider_chip(
                 store,
@@ -91,11 +94,20 @@ pub(super) fn populate_effects(store: &mut WidgetStore) {
 /// cópias dela — a do motor e a dele. Divergiam no primeiro efeito com faixa diferente, que é
 /// exatamente o que o Zig Zag trouxe (`Size` vai a 100, `Ridges` a 128).
 pub(crate) fn seed_effect_ranges(store: &mut WidgetStore) {
-    for (row, fx) in state::stack().iter().enumerate().take(ids::MAX_FX_ROWS) {
-        for (param, p) in fx.params.iter().enumerate().take(ids::MAX_FX_ROW_PARAMS) {
+    for (row, fx) in state::stack()
+        .iter()
+        .enumerate()
+        .take(ph2d_tool_vector::ids::MAX_FX_ROWS)
+    {
+        for (param, p) in fx
+            .params
+            .iter()
+            .enumerate()
+            .take(ph2d_tool_vector::ids::MAX_FX_ROW_PARAMS)
+        {
             let (slider, num) = (
-                ids::vector_fx_param_id(row, param),
-                ids::vector_fx_param_num_id(row, param),
+                ph2d_tool_vector::ids::vector_fx_param_id(row, param),
+                ph2d_tool_vector::ids::vector_fx_param_num_id(row, param),
             );
             // Uma caixinha é pintada como BOTÃO — não tem chip para mapear, e mapeá-la
             // registaria uma projeção para um widget que ninguém desenha.

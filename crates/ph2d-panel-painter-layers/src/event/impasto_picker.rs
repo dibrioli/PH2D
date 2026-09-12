@@ -15,7 +15,8 @@ use ph2d_editor_core::panel::PanelHostInternal;
 
 /// Whether `id` is one of the Impasto swatches this module owns.
 pub(super) fn is_impasto_swatch(id: NodeId) -> bool {
-    id == core_ids::PAINTER_IMPASTO_LIGHT_COLOR || id == core_ids::PAINTER_IMPASTO_WAX_COLOR
+    id == ph2d_tool_painter::ids::PAINTER_IMPASTO_LIGHT_COLOR
+        || id == ph2d_tool_painter::ids::PAINTER_IMPASTO_WAX_COLOR
 }
 
 /// A swatch was clicked → toggle the shared picker targeting it, seeded with the colour it shows.
@@ -30,7 +31,7 @@ pub(super) fn on_swatch_click(host: &mut dyn PanelHostInternal, id: NodeId) {
     // the paint's own colour, which is the physics and is what the pass does with no filter at all.
     let rgba = state::current_brush()
         .map(|b| {
-            let c = if id == core_ids::PAINTER_IMPASTO_WAX_COLOR {
+            let c = if id == ph2d_tool_painter::ids::PAINTER_IMPASTO_WAX_COLOR {
                 b.impasto_wax_color
             } else {
                 b.impasto_rig.current().color

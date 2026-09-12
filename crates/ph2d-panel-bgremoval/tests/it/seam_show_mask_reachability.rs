@@ -28,7 +28,7 @@
 
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_bgremoval::state::BgRemovalPanelState;
-use ph2d_panel_bgremoval::{BgRemovalPanel, ids, set_current_bgremoval_snapshot};
+use ph2d_panel_bgremoval::{BgRemovalPanel, set_current_bgremoval_snapshot};
 use ph2d_tool_bgremoval::params::{
     BgRemovalUiSnapshot, mask_overlay_renders, mask_overlay_toggle_is_reachable,
 };
@@ -50,7 +50,9 @@ fn row_is_reachable(snapshot: BgRemovalUiSnapshot) -> bool {
     let mut state = BgRemovalPanelState;
     set_current_bgremoval_snapshot(Some(snapshot));
     let hits = host.paint::<BgRemovalPanel>(&mut state, VIEWPORT);
-    let found = hits.iter().any(|(id, _)| *id == ids::BGR_SHOW_MASK);
+    let found = hits
+        .iter()
+        .any(|(id, _)| *id == ph2d_tool_bgremoval::ids::BGR_SHOW_MASK);
     set_current_bgremoval_snapshot(None);
     found
 }

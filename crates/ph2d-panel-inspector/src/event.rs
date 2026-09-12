@@ -91,7 +91,7 @@ pub(crate) fn apply_event(
 /// hit-indexado que não despacha é um controlo morto, e dois censos deste repo o dizem. O clique é
 /// o que torna a queda **descoberta** — o artista abre, vê as imagens, e arrasta uma.
 fn texture_slot_click(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
-    if ev != WidgetEvent::Click(ids::INSP_RENDER_TEXTURE_SLOT) {
+    if ev != WidgetEvent::Click(crate::ids::INSP_RENDER_TEXTURE_SLOT) {
         return false;
     }
     host.bus_mut().push(EditorAction::OpenAssetBrowser);
@@ -99,7 +99,7 @@ fn texture_slot_click(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool
 }
 
 fn add_component_click(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
-    if ev != WidgetEvent::Click(ids::INSP_ADD_COMPONENT) {
+    if ev != WidgetEvent::Click(crate::ids::INSP_ADD_COMPONENT) {
         return false;
     }
     let Some(bits) = crate::state::current_inspector_transform().map(|t| t.entity_bits) else {
@@ -124,15 +124,17 @@ fn sheet_grid_changed(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool
     if let WidgetEvent::ValueChanged(id) = ev
         && matches!(
             id,
-            ids::INSP_SPRITE_HFRAMES | ids::INSP_SPRITE_VFRAMES | ids::INSP_SPRITE_FRAME
+            crate::ids::INSP_SPRITE_HFRAMES
+                | crate::ids::INSP_SPRITE_VFRAMES
+                | crate::ids::INSP_SPRITE_FRAME
         )
         && let Some(info) = state::current_inspector_sprite()
     {
         let raw = host.store().number_value(id).unwrap_or(0.0);
         let n = raw.round().max(0.0) as u32;
-        let edit = if id == ids::INSP_SPRITE_HFRAMES {
+        let edit = if id == crate::ids::INSP_SPRITE_HFRAMES {
             SpriteFieldEdit::Hframes(n)
-        } else if id == ids::INSP_SPRITE_VFRAMES {
+        } else if id == crate::ids::INSP_SPRITE_VFRAMES {
             SpriteFieldEdit::Vframes(n)
         } else {
             SpriteFieldEdit::Frame(n)
@@ -181,11 +183,11 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
     if let WidgetEvent::Click(id) = ev
         && matches!(
             id,
-            ids::INSP_SPRITE_TINT_SWATCH | ids::INSP_SPRITE_SELF_TINT_SWATCH
+            crate::ids::INSP_SPRITE_TINT_SWATCH | crate::ids::INSP_SPRITE_SELF_TINT_SWATCH
         )
         && let Some(info) = state::current_inspector_sprite()
     {
-        let chan = if id == ids::INSP_SPRITE_TINT_SWATCH {
+        let chan = if id == crate::ids::INSP_SPRITE_TINT_SWATCH {
             info.tint
         } else {
             info.self_tint
@@ -209,10 +211,10 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
     // dispatches the whole `SpriteFieldEdit::PerCornerTint`.
     if let WidgetEvent::Click(id) = ev
         && let Some(corner) = match id {
-            ids::INSP_SPRITE_CORNER_TL => Some(0usize),
-            ids::INSP_SPRITE_CORNER_TR => Some(1),
-            ids::INSP_SPRITE_CORNER_BL => Some(2),
-            ids::INSP_SPRITE_CORNER_BR => Some(3),
+            crate::ids::INSP_SPRITE_CORNER_TL => Some(0usize),
+            crate::ids::INSP_SPRITE_CORNER_TR => Some(1),
+            crate::ids::INSP_SPRITE_CORNER_BL => Some(2),
+            crate::ids::INSP_SPRITE_CORNER_BR => Some(3),
             _ => None,
         }
         && let Some(info) = state::current_inspector_sprite()
@@ -230,7 +232,7 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
     // W2 Color & Tint — "Equalize Corners" copies the top-left corner to
     // the other three (spec §3.6), dispatched as one PerCornerTint edit.
     if let WidgetEvent::Click(id) = ev
-        && id == ids::INSP_SPRITE_CORNER_EQUALIZE
+        && id == crate::ids::INSP_SPRITE_CORNER_EQUALIZE
         && let Some(info) = state::current_inspector_sprite()
     {
         host.bus_mut().push(EditorAction::InspectorSpriteEdit {
@@ -271,7 +273,7 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
     }
     // M14.5 inspector phase (6.4) — Reimport button.
     if let WidgetEvent::Click(id) = ev
-        && id == ids::INSP_RENDER_SOURCE_REIMPORT
+        && id == crate::ids::INSP_RENDER_SOURCE_REIMPORT
         && let Some(info) = state::current_inspector_sprite()
         && info.can_reimport
     {
@@ -284,13 +286,13 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
     if let WidgetEvent::ValueChanged(id) = ev
         && matches!(
             id,
-            ids::INSP_TRANSFORM_POS_X
-                | ids::INSP_TRANSFORM_POS_Y
-                | ids::INSP_TRANSFORM_ROT
-                | ids::INSP_TRANSFORM_SCALE_X
-                | ids::INSP_TRANSFORM_SCALE_Y
-                | ids::INSP_TRANSFORM_SKEW_X
-                | ids::INSP_TRANSFORM_SKEW_Y,
+            crate::ids::INSP_TRANSFORM_POS_X
+                | crate::ids::INSP_TRANSFORM_POS_Y
+                | crate::ids::INSP_TRANSFORM_ROT
+                | crate::ids::INSP_TRANSFORM_SCALE_X
+                | crate::ids::INSP_TRANSFORM_SCALE_Y
+                | crate::ids::INSP_TRANSFORM_SKEW_X
+                | crate::ids::INSP_TRANSFORM_SKEW_Y,
         )
         && let Some(info) = state::current_inspector_transform()
     {
@@ -298,7 +300,7 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
         return true;
     }
     if let WidgetEvent::Click(id) = ev
-        && id == ids::INSP_TRANSFORM_RESET
+        && id == crate::ids::INSP_TRANSFORM_RESET
         && let Some(info) = state::current_inspector_transform()
     {
         host.bus_mut().push(EditorAction::InspectorTransformEdit(
@@ -317,14 +319,17 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
     }
     // W2 Sprite Inspector v2 — logical Flip H / Flip V toggled.
     if let WidgetEvent::Toggled(id) = ev
-        && matches!(id, ids::INSP_SPRITE_FLIP_X | ids::INSP_SPRITE_FLIP_Y)
+        && matches!(
+            id,
+            crate::ids::INSP_SPRITE_FLIP_X | crate::ids::INSP_SPRITE_FLIP_Y
+        )
         && let Some(info) = state::current_inspector_sprite()
     {
         let checked = matches!(
             host.store().checkbox(id).map(|(_, v)| v),
             Some(CheckboxValue::Checked)
         );
-        let edit = if id == ids::INSP_SPRITE_FLIP_X {
+        let edit = if id == crate::ids::INSP_SPRITE_FLIP_X {
             SpriteFieldEdit::FlipX(checked)
         } else {
             SpriteFieldEdit::FlipY(checked)
@@ -337,7 +342,7 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
     }
     // W2 Color & Tint — Tint Fill (silhouette) toggled.
     if let WidgetEvent::Toggled(id) = ev
-        && id == ids::INSP_SPRITE_TINT_FILL
+        && id == crate::ids::INSP_SPRITE_TINT_FILL
         && let Some(info) = state::current_inspector_sprite()
     {
         let checked = matches!(
@@ -434,7 +439,7 @@ fn section_text_changed(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bo
     // CHEGA nele e quando algo SAI. Duas rows, dois contratos, duas ações: um
     // `leave` enfiado na mesma ação com um bool tornaria impossível ler o
     // barramento sem perguntar duas coisas para saber uma.
-    if id == ids::INSP_PHYS_SIGNAL
+    if id == crate::ids::INSP_PHYS_SIGNAL
         && let Some(info) = state::current_inspector_physics()
     {
         let text = host.store().text(id).unwrap_or("").to_string();
@@ -445,7 +450,7 @@ fn section_text_changed(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bo
             }));
         return true;
     }
-    if id == ids::INSP_PHYS_SIGNAL_LEAVE
+    if id == crate::ids::INSP_PHYS_SIGNAL_LEAVE
         && let Some(info) = state::current_inspector_physics()
     {
         let text = host.store().text(id).unwrap_or("").to_string();
@@ -477,7 +482,7 @@ fn section_text_changed(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bo
 /// sub-aplicar silencioso por um esmagamento silencioso*.
 fn visibility_toggle(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
     if let WidgetEvent::Toggled(id) = ev
-        && id == ids::INSP_VISIBILITY_CHECK
+        && id == crate::ids::INSP_VISIBILITY_CHECK
         && let Some(info) = state::current_inspector_visibility()
     {
         let visible = matches!(

@@ -11,7 +11,6 @@
 //! Cinco modos, e a lista inteira é [`JointTool::ALL`] — a ordem dos chips e a
 //! ordem do modelo não podem divergir porque são a mesma.
 
-use ph2d_editor_core::ids;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_i18n::tr;
 use ph2d_physics_ecs::{InteractionSettings, JointTool};
@@ -34,8 +33,8 @@ pub(super) fn paint_joint(
         w,
         y_in,
         tr("panel.physics.joint_tool"),
-        ids::PHYSICS_JOINT_TOOL,
-        &ids::PHYSICS_JOINT_TOOL_OPT,
+        crate::ids::PHYSICS_JOINT_TOOL,
+        &crate::ids::PHYSICS_JOINT_TOOL_OPT,
         &JointTool::ALL.map(label),
         JointTool::ALL
             .iter()
@@ -52,8 +51,8 @@ pub(super) fn paint_joint(
             w,
             y,
             tr("panel.physics.ik_angle"),
-            ids::PHYSICS_IK_ANGLE,
-            &ids::PHYSICS_IK_ANGLE_OPT,
+            crate::ids::PHYSICS_IK_ANGLE,
+            &crate::ids::PHYSICS_IK_ANGLE_OPT,
             &[
                 tr("panel.physics.ik_angle.free"),
                 tr("panel.physics.ik_angle.match"),

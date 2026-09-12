@@ -1,5 +1,5 @@
 //! **§12 Sockets / Named Anchors** ([ADR-0072]) — o snapshot que a seção lê e o commit que ela
-//! escreve. Irmão do [`crate::render_loop::inspector_ordering`], pela mesma razão dele.
+//! escreve. Irmão do [`super::inspector_ordering`], pela mesma razão dele.
 //!
 //! # A conversão de unidades mora AQUI, num sítio só
 //!
@@ -19,7 +19,7 @@ use ph2d_ecs::scene::{ComponentRegistry, EditorCommandQueue};
 use ph2d_ecs::{Entity, NamedAnchor, NamedAnchorList, SimWorld, World};
 use ph2d_editor::{AnchorFieldEdit, InspectorAnchorInfo, InspectorAnchorRow, Toast};
 
-use crate::render_loop::inspector_ordering::queue_set;
+use super::inspector_ordering::queue_set;
 
 const NAMED_ANCHOR_LIST: &str = "ph2d::ecs::NamedAnchorList";
 const ANCHOR_MOUNT: &str = "ph2d::ecs::AnchorMount";
@@ -37,7 +37,7 @@ pub(super) fn build_anchor_info(
     let entity = Entity::from_bits(entity_bits);
     world.get::<ph2d_ecs::Transform>(entity)?;
     // ⭐ **A §12 aparece com UM DOS SEUS DOIS componentes** (ADR-0166 / F3) — ver a nota gémea na
-    // [`crate::render_loop::inspector_slice::build_slice_info`]. O «+ Add Anchor» era a única rota; hoje é o `+`
+    // [`super::inspector_slice::build_slice_info`]. O «+ Add Anchor» era a única rota; hoje é o `+`
     // do cabeçalho.
     //
     // ⚠️ **O `AnchorMount` conta, e um gate foi quem o disse.** A seção tem DUAS metades e elas

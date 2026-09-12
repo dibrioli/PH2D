@@ -1,4 +1,4 @@
-//! ⭐⭐⭐ **O construtor do CARTÃO DE PROPRIEDADES** — irmão do [`crate::render_loop::inspector_instance`], com a
+//! ⭐⭐⭐ **O construtor do CARTÃO DE PROPRIEDADES** — irmão do [`super::inspector_instance`], com a
 //! mesma divisão de donos: a verdade mora no ECS, isto lê-a, e o painel só mostra.
 //!
 //! # ⚠️ Quem DECLARA não é quem está selecionado
@@ -31,7 +31,7 @@ pub(super) fn build_properties_info(
     let subject =
         root_master.or_else(|| sim.world().get::<ph2d_ecs::StableId>(entity).map(|s| s.0));
     let members = subject.map_or_else(Vec::new, |id| {
-        crate::render_loop::inspector_instance::family_members(sim, id)
+        super::inspector_instance::family_members(sim, id)
     });
     let (rows, beyond) = ph2d_editor::screens::hero::variant_axes::axes_for(
         &members,

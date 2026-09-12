@@ -11,7 +11,7 @@
 //! A célula precificava *"resolver as TRÊS fontes (`Atlas` / `Individual` / `CookedTexture`)
 //! até ao passe de tela"* e avisava que cobrir só a primeira daria *"uma feature que funciona
 //! com umas imagens e falha em silêncio com outras"*. O aviso continua certo; o preço não:
-//! [`sprite_appearance`](crate::render_loop::motion_bridge_objects_appearance) já responde às três por uma
+//! [`sprite_appearance`](super::motion_bridge_objects_appearance) já responde às três por uma
 //! porta só, com gate, desde que a folha 14 dissolveu a mesma cerca do outro lado. O que faltava
 //! era o passo a jusante — um `texture_id` é o que o passe de SPRITES consome, e um passe de
 //! TELA quer a view —, e ele é hoje
@@ -25,7 +25,7 @@
 use ph2d_ecs::{Name, SimWorld};
 use ph2d_render::{DirtMask, Sprite, SpriteRenderer};
 
-use crate::render_loop::motion_bridge::{Appearance, sprite_appearance};
+use super::motion_bridge::{Appearance, sprite_appearance};
 
 /// O que a shell consegue dizer sobre a máscara **sem** o renderer emprestado — o par que a
 /// resolução por NOME produz, e a entrada do passo que precisa de uma view.
@@ -150,7 +150,7 @@ fn key_of(r: Resolved) -> u64 {
 /// ⚠️ **Não é erro, e é por isso que ele precisa de voz.** Escrever o nome antes de criar a
 /// sprite é legítimo (uma referência para a frente, como o `motion.path`), então a resposta certa
 /// é *nada acontece* — que é indistinguível a olho de *escolhi a imagem errada*, de *a
-/// intensidade está a zero* e das cinco causas que o irmão [`crate::render_loop::motion_glow_layer::diag`] já
+/// intensidade está a zero* e das cinco causas que o irmão [`super::motion_glow_layer::diag`] já
 /// enumera. Uma linha de texto separa-as.
 ///
 /// ⚠️ **Só imprime na MUDANÇA do nome**, pela mesma razão que o irmão: um diagnóstico por quadro

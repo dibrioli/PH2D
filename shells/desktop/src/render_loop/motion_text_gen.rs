@@ -2,7 +2,7 @@
 //! bloco de texto, interna **um `VecPath` por glifo** e publica um stream de **uma
 //! instância por caractere** no canal externo que o nó lê.
 //!
-//! Irmão exacto do [`motion_shape_gen`](crate::render_loop::motion_shape_gen), e de propósito:
+//! Irmão exacto do [`motion_shape_gen`](super::motion_shape_gen), e de propósito:
 //! um nó recebe params, entradas e o playhead — nada mais —, então quem alcança a
 //! fonte e a biblioteca de vetor é o shell. O que muda em relação à forma é a
 //! CONTAGEM: uma forma publica UMA linha, um texto publica uma por letra, e é isso
@@ -86,7 +86,7 @@ fn glyph_path(
 /// artista não escreveu. O pen avança na porta de layout, antes desta decisão, e é
 /// por isso que tirar o espaço da CONTAGEM não o tira do ESPAÇAMENTO.
 pub(crate) fn build_stream(
-    store: &mut crate::render_loop::motion_shape_gen::VecPathStore,
+    store: &mut super::motion_shape_gen::VecPathStore,
     p: &TextParams,
     font_name: &str,
     text: &str,
@@ -163,11 +163,10 @@ pub(crate) fn publish(motion: &mut MotionState, seconds: f64) {
     for id in ids {
         // ⚠️ **A mesma escada da irmã das formas — conduzido → override → default.** Um
         // `size`/`weight` conduzido por fio fazia o texto DESAPARECER: ver
-        // [`crate::render_loop::motion_externals::resolved_params`], onde o mecanismo está escrito.
+        // [`super::motion_externals::resolved_params`], onde o mecanismo está escrito.
         // ⚠️ Ela era **copiada** aqui, e o censo de 2026-08-28 mediu o preço da cópia: das
         // quatro membranas que cunham uma chave de params, duas nunca a herdaram.
-        let resolved =
-            crate::render_loop::motion_externals::resolved_params(motion, id, seconds, &MANIFEST);
+        let resolved = super::motion_externals::resolved_params(motion, id, seconds, &MANIFEST);
         let get = |name: &str| resolved.get(name).copied().unwrap_or(0.0);
         let graph = &motion.doc.graph;
         let tov = graph.node_text_params().get(&id);

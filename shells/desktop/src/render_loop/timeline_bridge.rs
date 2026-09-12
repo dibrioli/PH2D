@@ -18,11 +18,11 @@ use ph2d_timeline::{
     PropKind, TimelineIntent, TimelineSignal, TimelineState, apply_intent, apply_scene,
 };
 
-/// ⚠️ **A AUTORIA de chaves mudou-se para o irmão** ([`crate::render_loop::timeline_bridge_keys`]) quando este
+/// ⚠️ **A AUTORIA de chaves mudou-se para o irmão** ([`super::timeline_bridge_keys`]) quando este
 /// ficheiro bateu no teto de LOC — e é re-exportada daqui para que nenhum chamador tenha de mudar
 /// de `use`. *Um corte que obriga vinte ficheiros a mudar de endereço é um corte que ninguém
 /// repete.*
-pub(crate) use crate::render_loop::timeline_bridge_keys::*;
+pub(crate) use super::timeline_bridge_keys::*;
 
 /// The timeline's signal outbox (ADR-0143). When forward SCENE play crosses a marker
 /// that carries a signal, an event lands in `out`; the shell drains it after the apply
@@ -60,7 +60,7 @@ impl SignalEmitter {
     fn emit(&mut self, doc: &ph2d_timeline::TimelineDoc, playhead: &Playhead, jumped: bool) {
         self.out.clear();
         let now = playhead.time();
-        if crate::render_loop::clock_forward::clock_is_playing_forward(playhead, jumped) {
+        if super::clock_forward::clock_is_playing_forward(playhead, jumped) {
             for name in ph2d_timeline::signals_crossed(
                 doc.markers(),
                 self.last_time,
@@ -98,7 +98,7 @@ pub(crate) fn run(
     playhead: &mut Playhead,
     intents: &mut Vec<TimelineIntent>,
     live_entity: Option<u64>,
-    ak: &mut crate::render_loop::autokey_pass::AutokeyState,
+    ak: &mut super::autokey_pass::AutokeyState,
     solo: bool,
     container: Option<usize>,
     signals: &mut SignalEmitter,

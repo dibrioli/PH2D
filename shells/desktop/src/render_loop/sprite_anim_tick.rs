@@ -92,7 +92,7 @@ pub(crate) fn tick_sprite_animations(
             let ids: Vec<ph2d_ecs::Entity> = animated.iter(w).map(|(e, _)| e).collect();
             let read: &ph2d_ecs::World = w;
             ids.into_iter()
-                .filter(|e| crate::render_loop::on_screen_gate::processing_paused(read, *e))
+                .filter(|e| super::on_screen_gate::processing_paused(read, *e))
                 .collect()
         }
     };

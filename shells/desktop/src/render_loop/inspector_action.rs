@@ -1,5 +1,5 @@
 //! ⭐⭐⭐ **A secção SIGNAL ACTIONS** (TOP-20 #5, W3) — o snapshot que a secção lê e o commit que ela
-//! escreve. Irmão do [`crate::render_loop::inspector_timer`], pela mesma razão dele.
+//! escreve. Irmão do [`super::inspector_timer`], pela mesma razão dele.
 //!
 //! # ⚠️ O VERBO atravessa a fronteira como TAG, e o RÓTULO viaja com ele
 //!
@@ -22,7 +22,7 @@ use ph2d_ecs::{
 };
 use ph2d_editor::{ActionFieldEdit, InspectorActionInfo, InspectorActionRow, Toast};
 
-use crate::render_loop::inspector_ordering::queue_set;
+use super::inspector_ordering::queue_set;
 
 const ACTIONS: &str = "ph2d::ecs::SignalActions";
 

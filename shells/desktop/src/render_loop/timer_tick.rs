@@ -9,7 +9,7 @@
 //!
 //! # ⚠️ As três leis que este ficheiro honra, e onde cada uma foi paga
 //!
-//! - **`ticks × dt` numa chamada só.** É a lição do irmão [`crate::render_loop::sprite_anim_tick`], onde ela foi
+//! - **`ticks × dt` numa chamada só.** É a lição do irmão [`super::sprite_anim_tick`], onde ela foi
 //!   uma MEDIÇÃO: a primeira versão dele corria um laço de `ticks` chamadas *«porque um passo
 //!   grande atravessaria o fim de um ciclo sem o fechar»* — e **era falso**, porque a lei pura tem
 //!   o próprio laço de recuperação. A [`ph2d_ecs::timer_advance`] tem-no também.
@@ -51,7 +51,7 @@ pub(crate) fn tick_timers(sim: &mut SimWorld, ticks: u32, fixed_dt: f64) -> Vec<
     if ticks == 0 {
         return out;
     }
-    let dt = crate::render_loop::sprite_anim_tick::step_ticks(fixed_dt) * u64::from(ticks);
+    let dt = super::sprite_anim_tick::step_ticks(fixed_dt) * u64::from(ticks);
     if dt == 0 {
         return out;
     }
@@ -90,7 +90,7 @@ pub(crate) fn tick_timers(sim: &mut SimWorld, ticks: u32, fixed_dt: f64) -> Vec<
 ///
 /// ⚠️⚠️ **E os gates estavam VERDES sobre isso**, porque cada um chamava esta função à mão antes de
 /// tiquear — *uma fixtura que arma o que o produto não arma mede a minha intenção, não o produto*.
-/// O gate que faltava é o que **não** a chama: [`crate::render_loop::timer_tick_tests`].
+/// O gate que faltava é o que **não** a chama: [`super::timer_tick_tests`].
 ///
 /// ⇒ ela passa a correr por quadro, e a aresta muda de sítio: não é *«não está a correr»* (que um
 /// *one-shot* terminado satisfaz, e que a faria disparar para sempre), é **o nascimento do slot**.

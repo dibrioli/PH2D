@@ -2,7 +2,7 @@
 //! que não é geometria de ramo.
 //!
 //! ⚠️ **Este arquivo existe por um TETO DE LOC** (HR-18, 600 para `shells/`), e o corte é por
-//! RESPONSABILIDADE: o irmão [`crate::render_loop::motion_lsystem_gen`] responde *como um ramo vira uma
+//! RESPONSABILIDADE: o irmão [`super::motion_lsystem_gen`] responde *como um ramo vira uma
 //! forma*, e este responde *onde um objecto nasce, virado para onde, de que tamanho e com que
 //! alfa*.
 //!
@@ -12,7 +12,7 @@
 //! causas distintas, e o doc de cada função abaixo tem a sua
 //! ([doc 95 §6](../../../../docs/Motion%20Nodes/95_estudo_ramificacao_continua_e_instancias.md)).
 
-use crate::render_loop::motion_lsystem_gen::{v1, v2};
+use super::motion_lsystem_gen::{v1, v2};
 use ph2d_node_source_lsystem as ls;
 use ph2d_nodegraph::attr::{Column, Stream};
 
@@ -110,7 +110,7 @@ pub(crate) type Job = (
     [String; 3],
     // O 1.º nível com folha, e o resto do aspecto delas.
     f32,
-    crate::render_loop::motion_lsystem_rows::LeafLook,
+    super::motion_lsystem_rows::LeafLook,
 );
 
 /// A aparência que um objecto NOMEADO publicou — `(size, tint, uv_rect, texture_id, premul)`.
@@ -295,7 +295,7 @@ pub(crate) fn say_if_the_level_hid_every_leaf(
             && !mine.is_empty()
             && !mine
                 .iter()
-                .any(|a| a.grow > crate::render_loop::motion_lsystem_rows::GROW_FLOOR);
+                .any(|a| a.grow > super::motion_lsystem_rows::GROW_FLOOR);
         if on_rising_edge(format!("{} level {slot}", id.0), bad) {
             eprintln!(
                 "[lsystem] «{name}» tem {} marca(s) na gramatica e NENHUMA se desenha: o «First \

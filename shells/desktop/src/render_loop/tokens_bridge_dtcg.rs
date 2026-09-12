@@ -1,4 +1,4 @@
-//! **O interop DTCG do painel de Tokens** (plano UI/UX W9) — irmão do [`crate::render_loop::tokens_bridge`], e
+//! **O interop DTCG do painel de Tokens** (plano UI/UX W9) — irmão do [`super::tokens_bridge`], e
 //! o corte é por assunto: aqui mora *como a tabela sai para um arquivo e volta dele*.
 //!
 //! # A metade que DECIDE e a metade que faz I/O são funções diferentes

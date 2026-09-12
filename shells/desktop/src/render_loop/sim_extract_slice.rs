@@ -1,4 +1,4 @@
-//! **A emissão do 9-slice** — irmão do [`crate::render_loop::sim_extract`], que está no tecto de LOC.
+//! **A emissão do 9-slice** — irmão do [`super::sim_extract`], que está no tecto de LOC.
 //!
 //! O extract emite UMA `RenderInstance` por sprite. Um sprite com 9-slice emite até **nove**, e
 //! este módulo é a costura entre a geometria pura ([`ph2d_render::nine_slice`]) e a instância

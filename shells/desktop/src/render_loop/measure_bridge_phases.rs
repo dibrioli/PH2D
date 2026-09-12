@@ -78,10 +78,10 @@ fn measure_where_the_bridge_phases_spend_a_frame() {
         let mut text = ph2d_text::TextSystem::without_system_fonts();
         // Cursor over the canvas centre — NOT over a panel, so the brush ring takes its drawing path.
         let cursor = (960.0f32, 540.0f32);
-        let mut perf = [0f32; crate::render_loop::paint_perf::CHROME_SUB];
+        let mut perf = [0f32; super::paint_perf::CHROME_SUB];
 
         // Warm: first call builds whatever is lazy.
-        crate::render_loop::painter_bridge_overlays::draw_overlays(
+        super::painter_bridge_overlays::draw_overlays(
             &painter, &hero, &sim, &camera, window, &mut scene, &mut text, cursor, &mut perf, true,
         );
 
@@ -90,16 +90,13 @@ fn measure_where_the_bridge_phases_spend_a_frame() {
         // ── CHROME: the REAL draw_overlays, whole and split by call ──────────
         let whole = med(200, || {
             scene = VectorScene::new();
-            crate::render_loop::painter_bridge_overlays::draw_overlays(
+            super::painter_bridge_overlays::draw_overlays(
                 &painter, &hero, &sim, &camera, window, &mut scene, &mut text, cursor, &mut perf,
                 true,
             );
         });
         println!("CHROME draw_overlays TOTAL {whole:.4}");
-        for (i, name) in crate::render_loop::paint_perf::CHROME_LABELS
-            .iter()
-            .enumerate()
-        {
+        for (i, name) in super::paint_perf::CHROME_LABELS.iter().enumerate() {
             println!("  {name:<9} {:.4}", perf[i]);
         }
 

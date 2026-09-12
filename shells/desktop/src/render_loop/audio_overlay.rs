@@ -131,12 +131,12 @@ pub(super) fn draw_audio_overlay(
     // The spectrogram needs the image cache, so it borrows `audio` mutably — after the
     // read-only draws above have let go of the clip.
     if spectral {
-        crate::render_loop::audio_spectrogram::draw_spectrogram(scene, audio, wave, theme);
+        super::audio_spectrogram::draw_spectrogram(scene, audio, wave, theme);
     }
     // The selection. In the waveform it is a full-height band (it can only say WHEN); in
     // the spectrogram it is a box (when AND what), and only the box can be repaired.
     if spectral {
-        crate::render_loop::audio_spectrogram::draw_band(scene, audio, wave, frames as u64, theme);
+        super::audio_spectrogram::draw_band(scene, audio, wave, frames as u64, theme);
     } else if let Some((s, e)) = audio.editor_selection() {
         draw_selection(scene, wave, frames as u64, s, e, theme);
     }
@@ -148,8 +148,8 @@ pub(super) fn draw_audio_overlay(
     // The cuts, and the drag in flight. Painted AFTER the bands (they are structure — a break in
     // the material — and must stay legible over a translucent selection) and BEFORE the markers,
     // which carry labels and should win the very top.
-    crate::render_loop::audio_pieces::draw_cuts(scene, audio, wave, ruler, frames as u64);
-    crate::render_loop::audio_pieces::draw_piece_drag(scene, audio, wave, frames as u64, theme);
+    super::audio_pieces::draw_cuts(scene, audio, wave, ruler, frames as u64);
+    super::audio_pieces::draw_piece_drag(scene, audio, wave, frames as u64, theme);
     // Cue markers (W6) — named points written to the `cue`+`adtl` chunks. Purple
     // flags in the ruler with a thin line down the wave, distinct from every band.
     draw_markers(

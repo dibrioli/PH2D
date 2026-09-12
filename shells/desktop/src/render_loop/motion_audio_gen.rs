@@ -2,8 +2,8 @@
 //! decodifica o arquivo, corre a transformada, dobra os compartimentos em bandas e
 //! publica o nível de cada uma no canal externo que o nó lê.
 //!
-//! Irmão exacto do [`motion_text_gen`](crate::render_loop::motion_text_gen) e do
-//! [`motion_shape_gen`](crate::render_loop::motion_shape_gen), e pelo mesmo motivo: um nó
+//! Irmão exacto do [`motion_text_gen`](super::motion_text_gen) e do
+//! [`motion_shape_gen`](super::motion_shape_gen), e pelo mesmo motivo: um nó
 //! recebe params, entradas e o playhead — nada mais —, então quem alcança um
 //! arquivo, um decodificador e uma FFT é o shell.
 //!
@@ -188,8 +188,7 @@ pub(crate) fn publish(motion: &mut MotionState, seconds: f64) {
         // qualquer um dos oito params fazia as duas chaves DIVERGIREM: o nó pedia uma análise
         // que ninguém publicou, `levels` vinha vazio, e ele emitia **um campo de zeros**. Todas
         // as bandas planas, sem erro nenhum.
-        let p =
-            crate::render_loop::motion_externals::resolved_params(motion, id, seconds, &MANIFEST);
+        let p = super::motion_externals::resolved_params(motion, id, seconds, &MANIFEST);
         let spec = BandSpec::from_params(|name| p.get(name).copied().unwrap_or(0.0));
         let file = motion
             .doc

@@ -1,5 +1,5 @@
 //! ⭐⭐⭐ **A secção CAMERA** (TOP-20 #7, W3) — o snapshot que a secção lê e o commit que ela
-//! escreve. Irmão do [`crate::render_loop::inspector_audio`], pela mesma razão dele.
+//! escreve. Irmão do [`super::inspector_audio`], pela mesma razão dele.
 //!
 //! # ⚠️ O snapshot só existe para quem TEM a câmera
 //!
@@ -35,7 +35,7 @@ use ph2d_editor::{
     InspectorGameCamera,
 };
 
-use crate::render_loop::inspector_ordering::queue_set;
+use super::inspector_ordering::queue_set;
 
 const CAMERA: &str = "ph2d::ecs::GameCamera";
 const FOLLOW: &str = "ph2d::ecs::CameraFollow";

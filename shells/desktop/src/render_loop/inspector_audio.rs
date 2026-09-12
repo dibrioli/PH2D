@@ -1,5 +1,5 @@
 //! ⭐⭐⭐ **A secção AUDIO** (TOP-20 #4, W3) — o snapshot que a secção lê e o commit que ela
-//! escreve. Irmão do [`crate::render_loop::inspector_timer`], pela mesma razão dele.
+//! escreve. Irmão do [`super::inspector_timer`], pela mesma razão dele.
 //!
 //! # ⚠️ O snapshot só existe para quem TEM a fonte, as orelhas, ou as duas
 //!
@@ -28,7 +28,7 @@ use ph2d_ecs::{
 };
 use ph2d_editor::{AudioFieldEdit, InspectorAudioInfo, InspectorAudioSource, Toast};
 
-use crate::render_loop::inspector_ordering::queue_set;
+use super::inspector_ordering::queue_set;
 
 const SOURCE: &str = "ph2d::ecs::AudioSource2D";
 

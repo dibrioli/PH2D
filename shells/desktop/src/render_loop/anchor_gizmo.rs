@@ -4,14 +4,14 @@
 //!
 //! O Enio pediu-o no primeiro smoke da seção: *«se selecionar a âncora ou slot no painel aparece
 //! o gizmo de edição no canvas similar ao gizmo da sprite mas com cores variadas»*. Até aqui o
-//! [`crate::render_loop::anchor_overlay`] desenhava a cruz e os retângulos, e **nada disso sabia que existia
+//! [`super::anchor_overlay`] desenhava a cruz e os retângulos, e **nada disso sabia que existia
 //! um ponteiro**: a marca era decoração.
 //!
 //! # Este módulo é PURO, e é essa a razão de ele existir separado
 //!
 //! Ele não vê o `World`, a janela, nem o renderer: recebe a pose do sprite e uma âncora, e
 //! devolve **onde estão as alças** e **que edição um arrasto produz**. É a mesma escolha do
-//! [`crate::render_loop::sim_extract_slice::instances`] e pela mesma razão — a costura de um gizmo é
+//! [`super::sim_extract_slice::instances`] e pela mesma razão — a costura de um gizmo é
 //! inalcançável por teste quando ela vive dentro do laço de eventos, e é exatamente aí que os
 //! erros de gizmo moram (a alça que agarra o vizinho, o arrasto que anda ao contrário, o canto
 //! que arrasta o canto oposto).
@@ -34,7 +34,7 @@ use ph2d_core::Vec2;
 use ph2d_ecs::{NamedAnchor, Transform};
 use ph2d_editor::AnchorFieldEdit;
 
-use crate::render_loop::anchor_overlay::anchor_world_point;
+use super::anchor_overlay::anchor_world_point;
 
 /// Quantas alças uma âncora pode oferecer: o centro, a rotação, e os quatro cantos de cada um
 /// dos dois retângulos.

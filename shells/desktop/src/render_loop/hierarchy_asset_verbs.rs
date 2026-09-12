@@ -1,5 +1,5 @@
 //! ⭐⭐ **O menu de um CARTÃO da biblioteca, e a poda que ele obrigou** — irmão por ASSUNTO do
-//! [`crate::render_loop::hierarchy`], e pelo tecto de 600 LOC do shell (HR-18).
+//! [`super::hierarchy`], e pelo tecto de 600 LOC do shell (HR-18).
 //!
 //! ⚠️ **Este corte foi imposto por um gate que esteve VERMELHO sem ninguém ver**
 //! (`shell_files_respect_hr18_loc_cap`): ele vive em `shells/desktop/tests/` e o portão de fecho
@@ -71,7 +71,7 @@ pub(super) fn drain_card_verb(
 //
 // Ela dizia: *«o `HierDelete` cura o caso dele à mão, linha a linha, e por isso a cura não estava
 // disponível para mais ninguém»*. A auditoria de 2026-08-30 mostrou o contrário — a lei **já tem
-// porta**, [`crate::render_loop::gizmo_prune::prune_dead`], chamada uma vez por quadro de dentro do
+// porta**, [`super::gizmo_prune::prune_dead`], chamada uma vez por quadro de dentro do
 // `snapshots::publish`.
 //
 // ⚠️ E o bloco novo era **inerte para o fim que declarava**: o `publish` corre ANTES do

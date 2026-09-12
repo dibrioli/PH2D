@@ -204,7 +204,7 @@ pub(super) fn dispatch(
     {
         // ⭐ **O que duplicar QUER DIZER mora no irmão** (`hierarchy_duplicate`), pelo tecto de
         // 600 LOC — o corte é por assunto: aqui o dreno das intenções, lá a lei da cópia.
-        title_dirty |= crate::render_loop::hierarchy_duplicate::drain(
+        title_dirty |= super::hierarchy_duplicate::drain(
             ph2d_ecs::Entity::from_bits(entity_bits),
             entity_bits,
             hero,
@@ -349,7 +349,7 @@ pub(super) fn dispatch(
     }
     // ⭐⭐ **O menu de um cartão da biblioteca** (etapa C) — o corpo mudou-se para o irmão
     // `hierarchy_asset_verbs` quando este ficheiro bateu no tecto de 600 LOC do shell.
-    let card_select = crate::render_loop::hierarchy_asset_verbs::drain_card_verb(
+    let card_select = super::hierarchy_asset_verbs::drain_card_verb(
         asset_card_verb,
         sim,
         registry,
@@ -369,7 +369,7 @@ pub(super) fn dispatch(
         hero.gizmo.replace_selection(Some(bits));
     }
     if add_root {
-        let bits = crate::render_loop::hierarchy_add_root::spawn_empty_root(sim);
+        let bits = super::hierarchy_add_root::spawn_empty_root(sim);
         hero.gizmo.replace_selection(Some(bits));
         toasts.push(Toast::success("Added empty object"));
         title_dirty = true;
@@ -385,16 +385,10 @@ pub(super) fn dispatch(
             title_dirty = true;
         }
     }
-    // ⭐⭐ **O gesto de APAGAR vive no irmão** [`crate::render_loop::hierarchy_delete`] — corte por assunto,
+    // ⭐⭐ **O gesto de APAGAR vive no irmão** [`super::hierarchy_delete`] — corte por assunto,
     // imposto pelo tecto de 600 LOC quando a recusa de uma peça entrou (F5.10). Ali estão as TRÊS
     // respostas que um `Delete` pode ter nesta casa, e a voz que as distingue.
-    if crate::render_loop::hierarchy_delete::drain(
-        delete_row,
-        hero,
-        hero_live.as_ref(),
-        sim,
-        toasts,
-    ) {
+    if super::hierarchy_delete::drain(delete_row, hero, hero_live.as_ref(), sim, toasts) {
         title_dirty = true;
     }
     // M14.6 D: drain pending hierarchy-row click → sync
@@ -498,13 +492,13 @@ pub(super) fn dispatch(
     // (right-click Rename / long-press) and drained here exactly once
     // — so subsequent Backspace edits that empty the buffer don't get
     // clobbered back to the original name on the next frame.
-    // ⭐⭐ **O RENOMEAR mudou-se para o irmão** ([`crate::render_loop::hierarchy_rename`]) quando este ficheiro
+    // ⭐⭐ **O RENOMEAR mudou-se para o irmão** ([`super::hierarchy_rename`]) quando este ficheiro
     // bateu no teto de 600 LOC do shell (HR-18) — pago por CORTE, nunca por excepção.
     //
     // ⚠️ **É um corte por RESPONSABILIDADE, não pelo fim do ficheiro:** semear o campo, gravar o
     // nome, limpar o buffer e honrar as chaves que o nome declara são **uma** coisa — *renomear uma
     // linha* —, e ela não tem nada a ver com os verbos de instância que este ficheiro dreno.
-    title_dirty |= crate::render_loop::hierarchy_rename::drain(
+    title_dirty |= super::hierarchy_rename::drain(
         rename_seed_row,
         rename_commit,
         hero,

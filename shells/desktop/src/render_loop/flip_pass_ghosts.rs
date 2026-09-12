@@ -4,7 +4,7 @@
 //! headless nos 3 modos). Este módulo só aplica os **gates** e traduz o resultado
 //! para o que o compositor precisa.
 //!
-//! O *como* é do [`crate::render_loop::flip_pass`]: cada fantasma vira uma **fatia da pilha de
+//! O *como* é do [`super::flip_pass`]: cada fantasma vira uma **fatia da pilha de
 //! camadas**, inserida logo ABAIXO da camada a que pertence. Isso importa — a
 //! primeira versão desenhava todos os fantasmas num passe por baixo de TUDO, e
 //! bastava uma camada de fundo opaca (o retângulo amarelo do demo) para engolir o

@@ -1,5 +1,5 @@
 //! ⭐⭐⭐ **O construtor da seção COMPONENT** (ADR-0164 / F5) — irmão do
-//! [`crate::render_loop::inspector_anchor`], com a mesma divisão de donos: a verdade mora no ECS, isto lê-a, e
+//! [`super::inspector_anchor`], com a mesma divisão de donos: a verdade mora no ECS, isto lê-a, e
 //! o painel só mostra.
 //!
 //! # ⚠️ Ele NÃO tem lei nenhuma própria

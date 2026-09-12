@@ -1,5 +1,5 @@
 //! ⭐⭐ **RENOMEAR uma linha da Hierarquia** — irmão por RESPONSABILIDADE do
-//! [`crate::render_loop::hierarchy`], de onde saiu quando aquele bateu no teto de 600 LOC do shell (HR-18).
+//! [`super::hierarchy`], de onde saiu quando aquele bateu no teto de 600 LOC do shell (HR-18).
 //!
 //! Semear o campo com o nome actual, gravar o que o `Enter` deixou, limpar o buffer e **honrar as
 //! chaves que o nome declara** são uma coisa só; os verbos de instância que o irmão dreno são

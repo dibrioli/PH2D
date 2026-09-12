@@ -12,7 +12,7 @@
 //! **DIFF do mundo**, então uma pose escrita por hover viraria passo de undo a cada passagem do
 //! rato.
 //!
-//! ⇒ quem liga o rato é o **MODO DE PREVIEW** ([`crate::render_loop::ui_preview`], W7r): ele resolve as duas
+//! ⇒ quem liga o rato é o **MODO DE PREVIEW** ([`super::ui_preview`], W7r): ele resolve as duas
 //! de uma vez — enquanto corre, o gesto de edição não existe e o undo não regista, e ao sair o
 //! mundo volta exactamente ao que era. Ele PEDE por esta mesma porta ([`request`]), então não há
 //! um segundo caminho para *"pôr a cena nesta pose"*.

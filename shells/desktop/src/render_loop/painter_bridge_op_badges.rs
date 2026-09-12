@@ -46,7 +46,7 @@ pub(super) fn draw_op_badges(
     // A grelha desta sprite (ADR-0164 F1 passo 6) — ausente = uma célula, e aí o quad do
     // afim é o de sempre, byte-idêntico.
     let sprite_grid = sim.world().get::<ph2d_ecs::SpriteGrid>(entity).copied();
-    let base_affine = crate::render_loop::bgremoval_preview::sprite_image_to_screen_affine(
+    let base_affine = super::bgremoval_preview::sprite_image_to_screen_affine(
         iw,
         ih,
         tr,
@@ -60,33 +60,26 @@ pub(super) fn draw_op_badges(
     // + the SAME doubled centre square + op glyph the active gizmo draws (`center_glyph_handle`).
     // Mesmo acento do gizmo ativo: toda figura na tela lê como igualmente presente, e o que distingue a
     // que está sendo editada são as ALÇAS, que só ela tem.
-    let pal = crate::render_loop::painter_bridge_gizmo::palette_accent(
+    let pal = super::painter_bridge_gizmo::palette_accent(
         hero.theme,
-        crate::render_loop::painter_bridge_gizmo::GIZMO_ACCENTS[0],
+        super::painter_bridge_gizmo::GIZMO_ACCENTS[0],
     );
     let scene = vector_scene.inner_mut();
     // Edit-in-tile (Enio 2026-07-11): draw every parked shape's badge in each visible wrapped tile too, so a
     // multi-shape set is selectable/re-editable from any tile — matching the active editor's tiled overlay.
-    for (ox, oy) in
-        crate::render_loop::painter_bridge_overlays::overlay_tile_offsets(painter, iw, ih)
-    {
+    for (ox, oy) in super::painter_bridge_overlays::overlay_tile_offsets(painter, iw, ih) {
         let affine = base_affine * Affine::translate((ox, oy));
         let map = |p: [f32; 2]| affine * Point::new(f64::from(p[0]), f64::from(p[1]));
         for b in &badges {
             if b.outline.len() >= 2 {
                 let pts: Vec<Point> = b.outline.iter().map(|&p| map(p)).collect();
                 if b.closed {
-                    crate::render_loop::painter_bridge_gizmo::stroke_box(scene, &pts, &pal);
+                    super::painter_bridge_gizmo::stroke_box(scene, &pts, &pal);
                 } else {
-                    crate::render_loop::painter_bridge_gizmo::stroke_open(scene, &pts, &pal);
+                    super::painter_bridge_gizmo::stroke_open(scene, &pts, &pal);
                 }
             }
-            crate::render_loop::painter_bridge_gizmo::center_glyph_handle(
-                scene,
-                map(b.center),
-                &pal,
-                b.glyph,
-            );
+            super::painter_bridge_gizmo::center_glyph_handle(scene, map(b.center), &pal, b.glyph);
         }
     }
 }

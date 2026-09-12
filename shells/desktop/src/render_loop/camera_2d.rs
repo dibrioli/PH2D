@@ -18,7 +18,7 @@
 //! ⛔ **Ele não escreve componente registado nenhum.** O único estado que ele muta é o
 //! [`ph2d_ecs::CameraRuntime`], que **não** deriva `Serialize` e por isso o undo não o fotografa —
 //! logo **não há passo espúrio a declarar** e o `preview_drive` não entra na assinatura. É a mesma
-//! conta que o [`crate::render_loop::timer_tick`] faz, escrita pela mesma razão.
+//! conta que o [`super::timer_tick`] faz, escrita pela mesma razão.
 //!
 //! # ⚠️ «Assentar» é uma ARESTA, e é o NASCIMENTO
 //!

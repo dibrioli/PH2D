@@ -21,7 +21,7 @@
 //! **param conduzido**, que é um fio para um PARAM e não precisa de porta nenhuma.
 //! Com `trim_end` conduzido o cook devolvia contagem **0** e a forma desaparecia em
 //! silêncio. O mecanismo e a cura estão em
-//! [`crate::render_loop::motion_externals::driven_params`].
+//! [`super::motion_externals::driven_params`].
 
 use ph2d_eval_motion::VectorInstance;
 use ph2d_node_motion_shape::{MANIFEST, ShapeKind, ShapeParams, shape_key};
@@ -401,11 +401,10 @@ pub(crate) fn publish(motion: &mut MotionState, seconds: f64) {
         // NORMALIZAÇÃO (`unit_value`), então a chave nomeia a geometria em raio 1
         // que o `build_shape_path` de facto constrói.
         // ⚠️ **A escada é a MESMA do `EvalCtx::param`: conduzido → override → default**, e
-        // desde 2026-08-28 ela vem de UMA porta ([`crate::render_loop::motion_externals::resolved_params`]):
+        // desde 2026-08-28 ela vem de UMA porta ([`super::motion_externals::resolved_params`]):
         // estava copiada aqui e no texto, e as outras duas membranas do grupo nunca a
         // herdaram — uma lei escrita duas vezes ainda não é uma lei.
-        let resolved =
-            crate::render_loop::motion_externals::resolved_params(motion, id, seconds, &MANIFEST);
+        let resolved = super::motion_externals::resolved_params(motion, id, seconds, &MANIFEST);
         let get = |name: &str| resolved.get(name).copied().unwrap_or(0.0);
         let (unit, scale) = ShapeParams::read_unit(get);
         jobs.push((shape_key(get), unit, scale));

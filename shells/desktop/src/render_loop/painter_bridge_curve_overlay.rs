@@ -45,7 +45,7 @@ pub(super) fn draw_curve_overlay(
             // "Beyond the sprite" only holds while the Repeat Image tiles draw BEFORE this chrome in
             // `painter_bridge::dispatch` — the tiles are opaque full-canvas blits (z-order gate:
             // `repeat_image_tiles_draw_under_the_editing_chrome`).
-            let affine = crate::render_loop::bgremoval_preview::sprite_image_to_screen_affine(
+            let affine = super::bgremoval_preview::sprite_image_to_screen_affine(
                 iw,
                 ih,
                 tr,
@@ -57,22 +57,20 @@ pub(super) fn draw_curve_overlay(
             use ph2d_vector::{Affine, BezPath, Brush, Circle, Color, Fill, Point, Stroke};
             let map = |p: [f32; 2]| affine * Point::new(f64::from(p[0]), f64::from(p[1]));
             // Curve stroke gizmo = fluorescent GREEN (each stroke shape type gets a distinct accent).
-            let pal = crate::render_loop::painter_bridge_gizmo::palette_accent(
+            let pal = super::painter_bridge_gizmo::palette_accent(
                 hero.theme,
-                crate::render_loop::painter_bridge_gizmo::GIZMO_ACCENTS[2],
+                super::painter_bridge_gizmo::GIZMO_ACCENTS[2],
             );
             let scene = vector_scene.inner_mut();
             // Transform gizmo — the Sprite-gizmo box + handles. Drawn FIRST (under the spine + dots)
             // so the editing geometry stays visually dominant. Corners flip to circles while rotating.
             if let Some(gz) = overlay.transform_gizmo.as_ref() {
-                crate::render_loop::painter_bridge_gizmo::draw_transform_gizmo(
-                    scene, gz, affine, &pal, cursor,
-                );
+                super::painter_bridge_gizmo::draw_transform_gizmo(scene, gz, affine, &pal, cursor);
             }
             // Spine guide — the auto-smoothed curve through the control points (themed frame colour).
             if overlay.spine.len() >= 2 {
                 let pts: Vec<ph2d_vector::Point> = overlay.spine.iter().map(|&p| map(p)).collect();
-                crate::render_loop::painter_bridge_gizmo::stroke_open(scene, &pts, &pal);
+                super::painter_bridge_gizmo::stroke_open(scene, &pts, &pal);
             }
             // Tangent handles of the selected anchor — thin teal stems with grabbable dots (orange when
             // dragged). Drawn UNDER the control dots so the anchor stays the visually dominant grab.
@@ -110,15 +108,15 @@ pub(super) fn draw_curve_overlay(
             for (i, &p) in overlay.points.iter().enumerate() {
                 let sp = map(p);
                 if overlay.selected == Some(i) {
-                    crate::render_loop::painter_bridge_gizmo::circle_handle(scene, sp, &pal);
+                    super::painter_bridge_gizmo::circle_handle(scene, sp, &pal);
                 } else {
-                    crate::render_loop::painter_bridge_gizmo::square_handle(scene, sp, &pal);
+                    super::painter_bridge_gizmo::square_handle(scene, sp, &pal);
                 }
             }
             // Centre MOVE handle LAST — on top of the spine + all control points so it stays grabbable
             // (Enio 2026-07-04: the move rectangle must have the highest z-index).
             if let Some(gz) = overlay.transform_gizmo.as_ref() {
-                crate::render_loop::painter_bridge_gizmo::draw_transform_center(
+                super::painter_bridge_gizmo::draw_transform_center(
                     scene,
                     gz,
                     affine,

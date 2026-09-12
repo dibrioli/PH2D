@@ -64,7 +64,7 @@ pub(super) fn draw_selection_overlay(
     };
     let rgba = std::sync::Arc::new(rgba);
     // image-px → screen via the FULL sprite affine, so the overlay rides scale / aspect / rotation.
-    let affine = crate::render_loop::bgremoval_preview::sprite_image_to_screen_affine(
+    let affine = super::bgremoval_preview::sprite_image_to_screen_affine(
         iw,
         ih,
         tr,

@@ -85,7 +85,7 @@ impl crate::App {
             frame_order,
             // ⭐⭐⭐ **O VIDRO JATEADO do *Edit Prefab*** (2026-09-07) — o passe, as duas cenas que
             // ele separa (o mundo sem a receita · a receita sozinha) e o interruptor do quadro,
-            // que a codificação lá em cima escreveu. Ver [`crate::render_loop::present_frost`].
+            // que a codificação lá em cima escreveu. Ver [`super::present_frost`].
             frost,
             frost_doc_scene,
             frost_front_scene,
@@ -194,21 +194,20 @@ impl crate::App {
                 // porquê de a ÚLTIMA faixa de sprites não se ter movido vivem no cabeçalho do
                 // irmão `present_bands`. Sem intercalação nada disto corre e o quadro é
                 // **byte-idêntico** ao de sempre.
-                let plan = crate::render_loop::present_bands::plan_frame(frame_order);
+                let plan = super::present_bands::plan_frame(frame_order);
                 let banded = plan.banded;
                 // ⭐⭐⭐ **QUEM SOBE PARA CIMA DO VIDRO** — as peças da receita aberta saem do
                 // fundo (senão o borrão delas escapa por fora da silhueta, como um halo) e são
                 // desenhadas depois, do outro lado do vidro. `None` sem receita aberta, e aí toda
                 // linha abaixo é a de sempre.
-                let held = frosting.then(|| {
-                    crate::render_loop::present_frost::lift(sim, present, &mut self.frost_instances)
-                });
+                let held = frosting
+                    .then(|| super::present_frost::lift(sim, present, &mut self.frost_instances));
                 if banded {
-                    crate::render_loop::present_bands::draw_lower_bands(
+                    super::present_bands::draw_lower_bands(
                         surface.gpu(),
                         &plan,
                         wgpu::Color { r, g, b, a: 1.0 },
-                        crate::render_loop::present_bands::BandGear {
+                        super::present_bands::BandGear {
                             world_rt,
                             renderer,
                             game_rt,
@@ -268,13 +267,13 @@ impl crate::App {
                     None
                 };
                 let ghost_selection = (self.flip_state.active && peek.is_none()).then(|| {
-                    crate::render_loop::flip_pass_ghosts::GhostSources {
+                    super::flip_pass_ghosts::GhostSources {
                         selected: self.flip_state.strip.selected_keys(),
                         pinned: self.flip_state.strip.pinned_keys(),
                         trace: Some(&self.flip_state.strip.trace),
                     }
                 });
-                crate::render_loop::flip_pass::render(
+                super::flip_pass::render(
                     flip,
                     flip_render,
                     flip_compose,
@@ -313,12 +312,12 @@ impl crate::App {
                     );
                 }
                 // Passes 1b-bis e 1c: **OS PASSES DE LUZ** — a sprite emissiva e o glow do
-                // Motion. Cortados para o irmão [`crate::render_loop::present_fx`] pelo tecto de LOC, e o
+                // Motion. Cortados para o irmão [`super::present_fx`] pelo tecto de LOC, e o
                 // corte é por RESPONSABILIDADE: os dois somam luz sobre o `game_rt` antes do
                 // tonemap, partilham o RT do `motion_fx` e a ordem entre eles é load-bearing.
-                crate::render_loop::present_fx::run(
+                super::present_fx::run(
                     surface.gpu(),
-                    crate::render_loop::present_fx::FxGear {
+                    super::present_fx::FxGear {
                         renderer,
                         motion_fx,
                         game_rt,
@@ -364,10 +363,10 @@ impl crate::App {
                 };
                 // ⭐ A metade de CIMA das faixas — ver o cabeçalho do `present_bands`.
                 if banded {
-                    crate::render_loop::present_bands::draw_upper_bands(
+                    super::present_bands::draw_upper_bands(
                         surface.gpu(),
                         &plan,
-                        crate::render_loop::present_bands::UpperGear {
+                        super::present_bands::UpperGear {
                             world_rt,
                             window_size,
                             tonemap,
@@ -379,11 +378,11 @@ impl crate::App {
                 }
                 // ⭐⭐⭐ **O VIDRO** — entre o mundo e a receita, e ANTES da cena de chrome de
                 // propósito: os painéis entram pelo compositor, acima de tudo, e é isso que os
-                // deixa nítidos sem uma máscara os nomear. Ver [`crate::render_loop::present_frost`].
+                // deixa nítidos sem uma máscara os nomear. Ver [`super::present_frost`].
                 if frosting {
-                    crate::render_loop::present_frost::glass(
+                    super::present_frost::glass(
                         surface.gpu(),
-                        crate::render_loop::present_frost::Gear {
+                        super::present_frost::Gear {
                             world_rt,
                             band_blit,
                             vello_pass,
@@ -420,7 +419,7 @@ impl crate::App {
                 // ⚠️ **O compositor troca de FONTE, e só na mudança de modo.** Ele guarda o
                 // `game_view` num bind group construído uma vez; re-ligá-lo por quadro seria uma
                 // alocação por quadro para um valor que quase nunca muda.
-                crate::render_loop::present_bands::rebind_compositor_if_mode_changed(
+                super::present_bands::rebind_compositor_if_mode_changed(
                     surface.gpu(),
                     // ⚠️ **O vidro também põe o compositor a ler o acumulador**: com ele, o mundo
                     // inteiro (fundo, sprites, documento e a receita por cima do borrão) já está

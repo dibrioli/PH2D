@@ -1,14 +1,14 @@
 //! **AS LINHAS QUE UMA PLANTA PUBLICA** — a planta, as folhas, e em que MÉDIA cada uma desenha.
 //!
 //! ⚠️ **Este arquivo existe por um TETO DE LOC** (HR-18, 600 para `shells/`), e o corte é por
-//! responsabilidade: o irmão [`crate::render_loop::motion_lsystem_leaves`] responde *onde uma folha nasce e o
+//! responsabilidade: o irmão [`super::motion_lsystem_leaves`] responde *onde uma folha nasce e o
 //! que o app diz quando ela não nasce*, e este *que linhas saem, com que cara, e em que ordem*.
 //!
 //! ⭐⭐⭐ **A TERCEIRA MÉDIA vive aqui** (2026-08-30): com o `Leaves In Front` acima de `0`, a
 //! copa inteira deixa de ser desenhada no passe das sprites e passa à cena VECTORIAL, como quads
 //! texturados — a mesma camada em que a planta vive, e é ali que a ordem das linhas manda.
 
-use crate::render_loop::motion_lsystem_leaves::{Anchor, named_appearance};
+use super::motion_lsystem_leaves::{Anchor, named_appearance};
 use ph2d_nodegraph::attr::{Column, Stream};
 
 /// **A planta MAIS as folhas, num stream só.**

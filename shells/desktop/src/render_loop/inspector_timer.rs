@@ -1,5 +1,5 @@
 //! ⭐⭐⭐ **A secção TIMERS** (TOP-20 #2, W3) — o snapshot que a secção lê e o commit que ela
-//! escreve. Irmão do [`crate::render_loop::inspector_anim`], pela mesma razão dele.
+//! escreve. Irmão do [`super::inspector_anim`], pela mesma razão dele.
 //!
 //! # ⚠️ A conversão da DURAÇÃO mora aqui, nas duas pontas
 //!
@@ -26,7 +26,7 @@ use ph2d_ecs::scene::{ComponentRegistry, EditorCommandQueue};
 use ph2d_ecs::{Entity, SimWorld, TIMER_MAX_US, TIMERS_MAX, Timer, Timers, World};
 use ph2d_editor::{InspectorTimerInfo, InspectorTimerRow, TimerFieldEdit, Toast};
 
-use crate::render_loop::inspector_ordering::queue_set;
+use super::inspector_ordering::queue_set;
 
 const TIMERS: &str = "ph2d::ecs::Timers";
 

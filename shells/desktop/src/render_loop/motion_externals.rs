@@ -34,18 +34,18 @@ mod soak_tests;
 /// texto porque um param conduzido por fio só tem valor num INSTANTE ([`driven_params`]).
 pub(crate) fn publish_all(motion: &mut MotionState, seconds: f64) {
     // ADR-0154: a forma vetorial VIVA.
-    crate::render_loop::motion_shape_gen::publish(motion, seconds);
+    super::motion_shape_gen::publish(motion, seconds);
     // O texto, uma instância por GLIFO.
-    crate::render_loop::motion_text_gen::publish(motion, seconds);
+    super::motion_text_gen::publish(motion, seconds);
     // As bandas de áudio — função do ARQUIVO e do PLAYHEAD (doc 63 §6), e a única
     // das três que muda com o relógio.
-    crate::render_loop::motion_audio_gen::publish(motion, seconds);
+    super::motion_audio_gen::publish(motion, seconds);
     // A TABELA — função do FICHEIRO e de mais nada, então não recebe o relógio (doc 63 §6).
-    crate::render_loop::motion_table_gen::publish(motion);
+    super::motion_table_gen::publish(motion);
     // ⭐ As FITAS do L-System (doc 95) — recebe o relógio pela mesma razão que a forma e o
     // texto: um param conduzido por fio só tem valor num INSTANTE, e a chave de conteúdo é
     // cunhada dos params.
-    crate::render_loop::motion_lsystem_gen::publish(motion, seconds);
+    super::motion_lsystem_gen::publish(motion, seconds);
     // ⚠️ **E VARRE o que ninguém pediu neste quadro** — depois das três, nunca no meio:
     // a forma e o texto internam no MESMO store, e varrer entre elas apagaria as
     // geometrias que a seguinte ainda ia pedir. Um param de forma conduzido por um

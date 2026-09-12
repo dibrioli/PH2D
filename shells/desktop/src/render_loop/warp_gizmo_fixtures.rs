@@ -1,20 +1,20 @@
 //! **AS FIXTURAS DO GIZMO DE WARP — montadas, e NÃO marchadas.**
 //!
 //! ⛔⛔ **A separação é o achado de 2026-09-08, e ela é load-bearing:** a sonda
-//! [`crate::render_loop::warp_gizmo_probe`] montava a cena **e marchava a bomba na CPU** na mesma função, e
+//! [`super::warp_gizmo_probe`] montava a cena **e marchava a bomba na CPU** na mesma função, e
 //! por isso deu `resolve = Some` na cena exacta do report enquanto o app dava `None`. A marcha
 //! da CPU cozinha as tomadas de passagem — logo qualquer fixtura que marche **esconde** o
 //! defeito da rota totalmente-na-GPU, que é precisamente não haver marcha nenhuma.
 //!
 //! ⇒ aqui monta-se e arma-se a tomada, e **quem chama escolhe a rota**: a sonda marcha na CPU,
-//! o portão [`crate::render_loop::motion_bridge_gpu_taps_tests`] entrega o quadro ao device.
+//! o portão [`super::motion_bridge_gpu_taps_tests`] entrega o quadro ao device.
 //!
 //! ⚠️ **A selecção do grafo é GLOBAL** (`ph2d_panel_motion_graph::set_graph_selection`), então
 //! duas fixturas em paralelo trocam de nó seleccionado uma à outra. [`trava`] é a porta única —
 //! todo teste que monte uma destas cenas a toma antes.
 
+use super::warp_gizmo;
 use crate::motion::motion_state::MotionState;
-use crate::render_loop::warp_gizmo;
 use ph2d_nodegraph::graph::{Edge, NodeId};
 use std::sync::{Mutex, MutexGuard, OnceLock};
 

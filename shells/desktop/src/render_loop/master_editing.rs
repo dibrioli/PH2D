@@ -15,7 +15,7 @@
 //! # ⚠️ Porque é uma MARCA DERIVADA, e não um argumento
 //!
 //! A pergunta *«esta entidade está na cena?»* é feita em dois sítios muito distantes — o extract
-//! de sprites ([`crate::render_loop::off_canvas`]) e a cadeia de visibilidade do vetor
+//! de sprites ([`super::off_canvas`]) e a cadeia de visibilidade do vetor
 //! ([`crate::vec_entities`]) — e nenhum dos dois tem a selecção à mão. Enfiar um `Option<Entity>`
 //! nos dois caminhos seria a mesma resposta a viajar por duas estradas, e elas divergiriam.
 //!

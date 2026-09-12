@@ -34,7 +34,6 @@ pub use state::{UpscalePanelState, last_content_h, last_visible_h, set_current_u
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};
 use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal};
-use ph2d_tool_registry::hash_node_id;
 
 /// Zero-size marker implementing the typed Upscale panel contract.
 pub struct UpscalePanel;
@@ -42,7 +41,7 @@ pub struct UpscalePanel;
 impl Panel for UpscalePanel {
     type State = UpscalePanelState;
     const ID: &'static str = "upscale";
-    const NODE_ID: NodeId = hash_node_id("panel.upscale");
+    const NODE_ID: NodeId = ids::UPS_PANEL;
     const DEFAULT_VISIBLE: bool = false;
     const TITLE: &'static str = "Upscale";
     const ICON: ph2d_editor_core::icons::IconId = ph2d_editor_core::icons::IconId::Upscale;

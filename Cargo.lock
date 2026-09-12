@@ -7604,7 +7604,6 @@ dependencies = [
  "ph2d-text",
  "ph2d-tokens",
  "ph2d-tool-equalize-sizes",
- "ph2d-tool-registry",
  "ph2d-ui-testkit",
  "ph2d-vector",
 ]

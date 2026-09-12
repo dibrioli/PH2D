@@ -1,1047 +1,1045 @@
-//! Regression: every chrome `NodeId` declared in
-//! [`ph2d_editor_core::screens::hero::ids`] (Wave 2 PR 11.3) must be unique.
+//! ⭐⭐ **O CENSO DE COLISÕES é DERIVADO da workspace** — nenhum id se lista à mão.
 //!
-//! The ids are derived from FNV-1a-hashed slug strings via
-//! `hash_node_id`. The function is collision-resistant in principle
-//! (64-bit output, ~200-id chrome surface = < 2e-15 birthday prob),
-//! but a typo that gives two consts the same slug would silently
-//! short-circuit hit-test routing in production. This test enumerates
-//! every public chrome const and asserts pairwise uniqueness so any
-//! future regression — slug typo, copy-paste mistake, accidental
-//! string-table merge — is caught at `cargo test` time.
+//! # A pergunta, e porque ela existe
 //!
-//! Pre-PR-11.3 the file allocated ids by hand and six numeric
-//! collisions had already slipped in (380, 381, 382, 853, 854, 855).
-//! Those are the reason this test exists.
+//! Os `NodeId` de widget são HASH de slug (FNV-1a, [`ph2d_tool_registry::hash_node_id`]) desde a
+//! Wave 2 PR 11.3 — antes eram alocados à mão por faixas, e seis colisões numéricas já tinham
+//! passado (380, 381, 382, 853, 854, 855). O hash acaba com a alocação; o que ele NÃO acaba é o
+//! erro de copiar-colar: **o mesmo slug escrito em dois sítios** dá o mesmo id a dois widgets, e o
+//! hit-test encaminha o clique de um para o outro em silêncio.
+//!
+//! # O que este ficheiro era, e porque morreu
+//!
+//! Até 2026-09-12 ele trazia `CHROME_IDS`, uma tabela **à mão** de **619** consts contra **3 453**
+//! literais `hash_node_id("…")` na workspace. A própria tabela confessava o apodrecimento em cinco
+//! comentários (*«a lista é mantida à mão, então um id novo só participa da checagem quando alguém
+//! lembra de o trazer»*) — e fazia pior do que esquecer: **mantinha vivos ids que o produto já não
+//! usava** (o `INSP_TRANSFORM_SECTION` de 2026-08-21; 33 órfãos medidos pelo `scripts/censo-ids.py`
+//! quando ela saiu). E prendia a DEFINIÇÃO de cada id na `ph2d-editor-core`, porque nomeava
+//! `ids::X` — a obra A5b (os ids descem para o painel ou a ferramenta dona) não cabia ao lado dela.
+//! *Duas respostas à mesma pergunta divergem no dia seguinte.*
+//!
+//! # O que ele lê — as QUATRO formas de um id nascer
+//!
+//! 1. **o literal** `hash_node_id("slug")` — lido em TODO `.rs` de `crates/`, `shells/`, `tools/` e
+//!    `tests/`, sem comentários, e hasheado com a porta de runtime (cuja concordância com a `const
+//!    fn` é gateada na `ph2d-tool-registry` e nos três testes irmãos das famílias);
+//! 2. **o molde** `hash_node_id_runtime(&format!("prefixo.{i}"))` — o id derivado em runtime; o
+//!    que se verifica é que nenhum literal SOLETRA um molde e que dois moldes não soletram o mesmo;
+//! 3. **o hash de uma expressão** (`hash_node_id(m.id)`, `hash_node_id_runtime(s)`) — nomes de
+//!    registo (ferramentas, nós, componentes) e sementes; estes **listam-se um a um** em
+//!    [`FORMAS_NAO_LITERAIS`], cada um com quem o cobre, e a tabela tem a metade «já não descreve
+//!    nada»;
+//! 4. **a FNV à mão** que devolve `NodeId` — idem, na mesma tabela.
+//!
+//! E o `NodeId(<inteiro>)` de um `const` (as linhas-fixture da hierarquia, 400..411, que ficam
+//! numéricas de propósito pela conta dos bits de companheiro) entra nas réguas de raiz e de
+//! colisão.
+//!
+//! ⚠️ **Os pisos de população estão no próprio varrimento** (HOWTO §2.7): um walker que perdesse um
+//! directório varreria menos e ficaria verde.
+
+use std::collections::{BTreeMap, BTreeSet};
+use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::screens::hero::ids;
+use ph2d_tool_registry::hash_node_id_runtime;
 
-/// Every chrome [`NodeId`] const exported by [`ids`], paired with its
-/// const identifier for error reporting. Hand-maintained — extending
-/// chrome means adding a row here so the new id participates in the
-/// uniqueness check.
-const CHROME_IDS: &[(&str, NodeId)] = &[
-    // TopBar
-    ("TOPBAR_THEME", ids::TOPBAR_THEME),
-    ("TOPBAR_SAVE", ids::TOPBAR_SAVE),
-    ("TOPBAR_PROJECT", ids::TOPBAR_PROJECT),
-    ("TOPBAR_PLAY_TOGGLE", ids::TOPBAR_PLAY_TOGGLE),
-    ("TOPBAR_PLAY_BUTTON", ids::TOPBAR_PLAY_BUTTON),
-    ("TOPBAR_RIGHT_LAYERS", ids::TOPBAR_RIGHT_LAYERS),
-    ("TOPBAR_RIGHT_ASSETS", ids::TOPBAR_RIGHT_ASSETS),
-    ("TOPBAR_RIGHT_SCRIPT", ids::TOPBAR_RIGHT_SCRIPT),
-    ("TOPBAR_PAUSE", ids::TOPBAR_PAUSE),
-    ("TOPBAR_RESET", ids::TOPBAR_RESET),
-    ("TOPBAR_SAVE_AS", ids::TOPBAR_SAVE_AS),
-    ("TOPBAR_OPEN", ids::TOPBAR_OPEN),
-    ("TOPBAR_SETTINGS", ids::TOPBAR_SETTINGS),
-    ("TOPBAR_IMAGE_TOOLS", ids::TOPBAR_IMAGE_TOOLS),
-    ("TOPBAR_WIDGET_GALLERY", ids::TOPBAR_WIDGET_GALLERY),
-    ("TOPBAR_WIDGET_LAB", ids::TOPBAR_WIDGET_LAB),
-    ("TOPBAR_GRID_SETTINGS", ids::TOPBAR_GRID_SETTINGS),
-    // Widget Lab — a bancada. Ids em `ids/lab.rs`.
-    ("LAB_PANEL", ids::LAB_PANEL),
-    ("LAB_DRAG_HANDLE", ids::LAB_DRAG_HANDLE),
-    ("LAB_RESIZE_HANDLE", ids::LAB_RESIZE_HANDLE),
-    ("LAB_RESIZE_HANDLE_BL", ids::LAB_RESIZE_HANDLE_BL),
-    ("LAB_CLOSE", ids::LAB_CLOSE),
-    ("LAB_VARIANT_NEXT", ids::LAB_VARIANT_NEXT),
-    ("LAB_VARIANT_PREV", ids::LAB_VARIANT_PREV),
-    ("LAB_ACCENT_CYCLE", ids::LAB_ACCENT_CYCLE),
-    ("LAB_DENSITY_CYCLE", ids::LAB_DENSITY_CYCLE),
-    ("LAB_DECORATOR_TOGGLE", ids::LAB_DECORATOR_TOGGLE),
-    ("LAB_COMPARE_TOGGLE", ids::LAB_COMPARE_TOGGLE),
-    ("LAB_RADIUS_CYCLE", ids::LAB_RADIUS_CYCLE),
-    ("LAB_LIVE_BOX", ids::LAB_LIVE_BOX),
-    ("IMAGE_ACTION_TRIM", ids::IMAGE_ACTION_TRIM),
-    ("IMAGE_ACTION_MAKE_SQUARE", ids::IMAGE_ACTION_MAKE_SQUARE),
-    ("IMAGE_ACTION_BGREMOVAL", ids::IMAGE_ACTION_BGREMOVAL),
-    ("IMAGE_ACTION_REAL_SIZE", ids::IMAGE_ACTION_REAL_SIZE),
-    ("IMAGE_ACTION_PADDING", ids::IMAGE_ACTION_PADDING),
-    ("PAD_PANEL", ids::PAD_PANEL),
-    ("PAD_TOP", ids::PAD_TOP),
-    ("PAD_RIGHT", ids::PAD_RIGHT),
-    ("PAD_BOTTOM", ids::PAD_BOTTOM),
-    ("PAD_LEFT", ids::PAD_LEFT),
-    ("PAD_APPLY", ids::PAD_APPLY),
-    ("PAD_CANCEL", ids::PAD_CANCEL),
-    ("HIERARCHY_ADD", ids::HIERARCHY_ADD),
-    // LeftRail
-    ("TOOL_TRANSLATE", ids::TOOL_TRANSLATE),
-    ("TOOL_ROTATE", ids::TOOL_ROTATE),
-    ("TOOL_SCALE", ids::TOOL_SCALE),
-    ("TOOL_PIVOT", ids::TOOL_PIVOT),
-    ("TOOL_SPACE", ids::TOOL_SPACE),
-    ("TOOL_PROJECTION", ids::TOOL_PROJECTION),
-    ("TOOL_HOME", ids::TOOL_HOME),
-    ("TOOL_UNDO", ids::TOOL_UNDO),
-    ("TOOL_REDO", ids::TOOL_REDO),
-    ("RAIL_SHOW_INSPECTOR", ids::RAIL_SHOW_INSPECTOR),
-    ("RAIL_SHOW_HIERARCHY", ids::RAIL_SHOW_HIERARCHY),
-    // Inspector chrome
-    ("INSP_PANEL", ids::INSP_PANEL),
-    ("INSP_DRAG_HANDLE", ids::INSP_DRAG_HANDLE),
-    ("INSP_RESIZE_HANDLE", ids::INSP_RESIZE_HANDLE),
-    // ⛔ `INSP_TRANSFORM_SECTION` saiu daqui em 2026-08-21 porque foi APAGADO: ele era um id
-    // **órfão** — nunca pintado, nunca registado, nunca despachado — e a sua única referência em
-    // todo o workspace era esta linha. *Um gate de unicidade de hash fica verde para sempre sobre
-    // um cadáver, e foi o que o manteve vivo.* O cabeçalho real da secção é
-    // `INSP_LIVE_TRANSFORM_SECTION` (auditoria `docs/Sprite_projeto/20` §8).
-    ("INSP_TRANSFORM_POS_X", ids::INSP_TRANSFORM_POS_X),
-    ("INSP_TRANSFORM_POS_Y", ids::INSP_TRANSFORM_POS_Y),
-    ("INSP_TRANSFORM_ROT", ids::INSP_TRANSFORM_ROT),
-    ("INSP_TRANSFORM_SCALE_X", ids::INSP_TRANSFORM_SCALE_X),
-    ("INSP_TRANSFORM_SCALE_Y", ids::INSP_TRANSFORM_SCALE_Y),
-    ("INSP_TRANSFORM_RESET", ids::INSP_TRANSFORM_RESET),
-    ("INSP_VISIBILITY_CHECK", ids::INSP_VISIBILITY_CHECK),
+use crate::cfg_test_modules::is_declared_under_cfg_test;
+
+// ────────────────────────────────────────────────────────────────────────────────────────────────
+// As tabelas NOMEADAS (as duas só encolhem, e cada uma tem a metade «já não descreve nada»)
+// ────────────────────────────────────────────────────────────────────────────────────────────────
+
+/// ⛔ **O mesmo slug em DOIS sítios de produto** — a catraca, com o número de sítios medido.
+///
+/// As três entradas são o MESMO id de painel declarado na fundação (que o lê no despacho de rolagem
+/// e no filtro de menus) **e** na crate da ferramenta/painel. A cura é UMA definição — a da fundação —
+/// e os outros sítios a nomeá-la. ⛔ **Bloqueada nesta rodada pela cerca da `line/render-loop`**: os
+/// `shells/desktop/src/render_loop/{color_equalization,equalize_sizes,upscale}_bridge.rs` nomeiam a
+/// CÓPIA (`ph2d_tool_color_equalization::ids::CEQ_PANEL`, `ph2d_tool_equalize_sizes::ids::EQS_PANEL`,
+/// `ph2d_panel_upscale::ids::UPS_PANEL`), e apagá-la sem editar esses ficheiros pediria uma fachada.
+/// ⇒ o integrador troca os três caminhos por `ph2d_editor_core::ids::…` depois das duas fusões,
+/// apaga as cópias, e apaga estas linhas.
+const SLUGS_REPETIDOS_TOLERADOS: &[(&str, usize, &str)] = &[
     (
-        "INSP_RENDER_STRATEGY_ATLAS",
-        ids::INSP_RENDER_STRATEGY_ATLAS,
+        "panel.color_equalization",
+        2,
+        "CEQ_PANEL na fundação e em ph2d-tool-color-equalization/src/ids.rs — cerca: render_loop/color_equalization_bridge.rs nomeia a cópia",
     ),
     (
-        "INSP_RENDER_STRATEGY_INDIVIDUAL",
-        ids::INSP_RENDER_STRATEGY_INDIVIDUAL,
+        "panel.equalize_sizes",
+        2,
+        "EQS_PANEL na fundação e em ph2d-tool-equalize-sizes/src/ids.rs — cerca: render_loop/equalize_sizes_bridge.rs nomeia a cópia",
     ),
     (
-        "INSP_RENDER_STRATEGY_HANDPACKED",
-        ids::INSP_RENDER_STRATEGY_HANDPACKED,
+        "panel.upscale",
+        2,
+        "UPS_PANEL na fundação e em ph2d-panel-upscale/src/ids.rs — cerca: render_loop/upscale_bridge.rs nomeia a cópia",
     ),
-    ("INSP_ENTITY_NAME", ids::INSP_ENTITY_NAME),
-    (
-        "INSP_RENDER_SOURCE_REIMPORT",
-        ids::INSP_RENDER_SOURCE_REIMPORT,
-    ),
-    // Inspector sample widgets
-    ("INSP_SAMPLE_TEXT", ids::INSP_SAMPLE_TEXT),
-    ("INSP_SAMPLE_TEXTAREA", ids::INSP_SAMPLE_TEXTAREA),
-    ("INSP_SAMPLE_COMBO", ids::INSP_SAMPLE_COMBO),
-    ("INSP_SAMPLE_COMBO_OPT_A", ids::INSP_SAMPLE_COMBO_OPT_A),
-    ("INSP_SAMPLE_COMBO_OPT_B", ids::INSP_SAMPLE_COMBO_OPT_B),
-    ("INSP_SAMPLE_COMBO_OPT_C", ids::INSP_SAMPLE_COMBO_OPT_C),
-    ("INSP_SAMPLE_NUMBER", ids::INSP_SAMPLE_NUMBER),
-    ("INSP_SAMPLE_SLIDER", ids::INSP_SAMPLE_SLIDER),
-    ("INSP_SAMPLE_SLIDER_CHIP", ids::INSP_SAMPLE_SLIDER_CHIP),
-    ("INSP_SAMPLE_CHECKBOX", ids::INSP_SAMPLE_CHECKBOX),
-    ("INSP_SAMPLE_TOGGLE", ids::INSP_SAMPLE_TOGGLE),
-    ("INSP_SAMPLE_RADIO_A", ids::INSP_SAMPLE_RADIO_A),
-    ("INSP_SAMPLE_RADIO_B", ids::INSP_SAMPLE_RADIO_B),
-    ("INSP_SAMPLE_RADIO_C", ids::INSP_SAMPLE_RADIO_C),
-    ("INSP_SAMPLE_DROPDOWN", ids::INSP_SAMPLE_DROPDOWN),
-    ("INSP_SAMPLE_DD_OPT_A", ids::INSP_SAMPLE_DD_OPT_A),
-    ("INSP_SAMPLE_DD_OPT_B", ids::INSP_SAMPLE_DD_OPT_B),
-    ("INSP_SAMPLE_DD_OPT_C", ids::INSP_SAMPLE_DD_OPT_C),
-    ("INSP_SAMPLE_TAB_A", ids::INSP_SAMPLE_TAB_A),
-    ("INSP_SAMPLE_TAB_B", ids::INSP_SAMPLE_TAB_B),
-    ("INSP_SAMPLE_TAB_C", ids::INSP_SAMPLE_TAB_C),
-    ("INSP_SAMPLE_TREE_ROOT", ids::INSP_SAMPLE_TREE_ROOT),
-    ("INSP_SAMPLE_TREE_LEAF_A", ids::INSP_SAMPLE_TREE_LEAF_A),
-    ("INSP_SAMPLE_TREE_LEAF_B", ids::INSP_SAMPLE_TREE_LEAF_B),
-    ("INSP_SAMPLE_V3_X", ids::INSP_SAMPLE_V3_X),
-    ("INSP_SAMPLE_V3_Y", ids::INSP_SAMPLE_V3_Y),
-    ("INSP_SAMPLE_V3_Z", ids::INSP_SAMPLE_V3_Z),
-    ("INSP_SAMPLE_SWATCH", ids::INSP_SAMPLE_SWATCH),
-    ("INSP_SAMPLE_BTN_PRIMARY", ids::INSP_SAMPLE_BTN_PRIMARY),
-    ("INSP_SAMPLE_BTN_SECONDARY", ids::INSP_SAMPLE_BTN_SECONDARY),
-    ("INSP_SAMPLE_BTN_DANGER", ids::INSP_SAMPLE_BTN_DANGER),
-    ("INSP_SAMPLE_BTN_ICON", ids::INSP_SAMPLE_BTN_ICON),
-    ("INSP_SAMPLE_LIST_ITEM", ids::INSP_SAMPLE_LIST_ITEM),
-    ("INSP_SAMPLE_TAG_REMOVE", ids::INSP_SAMPLE_TAG_REMOVE),
-    // Inspector section headers + color chips
-    ("INSP_SECTION_INPUTS", ids::INSP_SECTION_INPUTS),
-    ("INSP_SECTION_SLIDER", ids::INSP_SECTION_SLIDER),
-    ("INSP_SECTION_SWITCHES", ids::INSP_SECTION_SWITCHES),
-    ("INSP_SECTION_LISTS", ids::INSP_SECTION_LISTS),
-    ("INSP_SECTION_VECTOR", ids::INSP_SECTION_VECTOR),
-    ("INSP_SECTION_STATUS", ids::INSP_SECTION_STATUS),
-    ("INSP_SECTION_COLOR", ids::INSP_SECTION_COLOR),
-    ("INSP_SECTION_ACTIONS", ids::INSP_SECTION_ACTIONS),
-    ("INSP_SECTION_IDENTITY", ids::INSP_SECTION_IDENTITY),
-    ("INSP_SECTION_CARD", ids::INSP_SECTION_CARD),
-    ("INSP_SECTION_INPUTS_COLOR", ids::INSP_SECTION_INPUTS_COLOR),
-    ("INSP_SECTION_SLIDER_COLOR", ids::INSP_SECTION_SLIDER_COLOR),
-    (
-        "INSP_SECTION_SWITCHES_COLOR",
-        ids::INSP_SECTION_SWITCHES_COLOR,
-    ),
-    ("INSP_SECTION_LISTS_COLOR", ids::INSP_SECTION_LISTS_COLOR),
-    ("INSP_SECTION_VECTOR_COLOR", ids::INSP_SECTION_VECTOR_COLOR),
-    ("INSP_SECTION_STATUS_COLOR", ids::INSP_SECTION_STATUS_COLOR),
-    ("INSP_SECTION_COLOR_COLOR", ids::INSP_SECTION_COLOR_COLOR),
-    (
-        "INSP_SECTION_ACTIONS_COLOR",
-        ids::INSP_SECTION_ACTIONS_COLOR,
-    ),
-    (
-        "INSP_SECTION_IDENTITY_COLOR",
-        ids::INSP_SECTION_IDENTITY_COLOR,
-    ),
-    ("INSP_SECTION_CARD_COLOR", ids::INSP_SECTION_CARD_COLOR),
-    // Notes
-    ("INSP_NOTE_SLOT_0", ids::INSP_NOTE_SLOT_0),
-    ("INSP_NOTE_SLOT_1", ids::INSP_NOTE_SLOT_1),
-    ("INSP_NOTE_SLOT_2", ids::INSP_NOTE_SLOT_2),
-    ("INSP_NOTE_SLOT_3", ids::INSP_NOTE_SLOT_3),
-    ("INSP_NOTE_SLOT_4", ids::INSP_NOTE_SLOT_4),
-    ("INSP_NOTE_SLOT_5", ids::INSP_NOTE_SLOT_5),
-    ("INSP_NOTE_SLOT_6", ids::INSP_NOTE_SLOT_6),
-    ("INSP_NOTE_SLOT_7", ids::INSP_NOTE_SLOT_7),
-    ("INSP_NOTE_SLOT_8", ids::INSP_NOTE_SLOT_8),
-    ("INSP_NOTE_SLOT_9", ids::INSP_NOTE_SLOT_9),
-    ("INSP_NOTE_SLOT_10", ids::INSP_NOTE_SLOT_10),
-    ("INSP_NOTE_SLOT_11", ids::INSP_NOTE_SLOT_11),
-    ("INSP_NOTE_TITLE_0", ids::INSP_NOTE_TITLE_0),
-    ("INSP_NOTE_TITLE_1", ids::INSP_NOTE_TITLE_1),
-    ("INSP_NOTE_TITLE_2", ids::INSP_NOTE_TITLE_2),
-    ("INSP_NOTE_TITLE_3", ids::INSP_NOTE_TITLE_3),
-    ("INSP_NOTE_TITLE_4", ids::INSP_NOTE_TITLE_4),
-    ("INSP_NOTE_TITLE_5", ids::INSP_NOTE_TITLE_5),
-    ("INSP_NOTE_TITLE_6", ids::INSP_NOTE_TITLE_6),
-    ("INSP_NOTE_TITLE_7", ids::INSP_NOTE_TITLE_7),
-    ("INSP_NOTE_TITLE_8", ids::INSP_NOTE_TITLE_8),
-    ("INSP_NOTE_TITLE_9", ids::INSP_NOTE_TITLE_9),
-    ("INSP_NOTE_TITLE_10", ids::INSP_NOTE_TITLE_10),
-    ("INSP_NOTE_TITLE_11", ids::INSP_NOTE_TITLE_11),
-    ("INSP_NOTE_BODY_0", ids::INSP_NOTE_BODY_0),
-    ("INSP_NOTE_BODY_1", ids::INSP_NOTE_BODY_1),
-    ("INSP_NOTE_BODY_2", ids::INSP_NOTE_BODY_2),
-    ("INSP_NOTE_BODY_3", ids::INSP_NOTE_BODY_3),
-    ("INSP_NOTE_BODY_4", ids::INSP_NOTE_BODY_4),
-    ("INSP_NOTE_BODY_5", ids::INSP_NOTE_BODY_5),
-    ("INSP_NOTE_BODY_6", ids::INSP_NOTE_BODY_6),
-    ("INSP_NOTE_BODY_7", ids::INSP_NOTE_BODY_7),
-    ("INSP_NOTE_BODY_8", ids::INSP_NOTE_BODY_8),
-    ("INSP_NOTE_BODY_9", ids::INSP_NOTE_BODY_9),
-    ("INSP_NOTE_BODY_10", ids::INSP_NOTE_BODY_10),
-    ("INSP_NOTE_BODY_11", ids::INSP_NOTE_BODY_11),
-    // §11 Physics Body (ADR-0131 D8). Array ids are expanded element by
-    // element: the table proves pairwise uniqueness, and an array listed as a
-    // single name would leave its members unchecked against each other.
-    ("INSP_LIVE_PHYSICS_SECTION", ids::INSP_LIVE_PHYSICS_SECTION),
-    ("INSP_LIVE_PHYSICS_COLOR", ids::INSP_LIVE_PHYSICS_COLOR),
-    ("INSP_PHYS_ADD", ids::INSP_PHYS_ADD),
-    // ⭐ O `+` do cabeçalho (ADR-0166 / F3). ⚠️ Esta lista é escrita À MÃO: um id que não entre
-    // aqui **não é conferido**, e uma colisão de hash passa muda — que é a razão de este gate
-    // existir.
-    ("INSP_ADD_COMPONENT", ids::INSP_ADD_COMPONENT),
-    ("INSP_PHYS_REMOVE", ids::INSP_PHYS_REMOVE),
-    ("INSP_PHYS_BAKE", ids::INSP_PHYS_BAKE),
-    ("INSP_PHYS_KIND[0]", ids::INSP_PHYS_KIND[0]),
-    ("INSP_PHYS_KIND[1]", ids::INSP_PHYS_KIND[1]),
-    ("INSP_PHYS_KIND[2]", ids::INSP_PHYS_KIND[2]),
-    ("INSP_PHYS_SHAPE[0]", ids::INSP_PHYS_SHAPE[0]),
-    ("INSP_PHYS_SHAPE[1]", ids::INSP_PHYS_SHAPE[1]),
-    ("INSP_PHYS_RADIUS", ids::INSP_PHYS_RADIUS),
-    ("INSP_PHYS_HALF_X", ids::INSP_PHYS_HALF_X),
-    ("INSP_PHYS_HALF_Y", ids::INSP_PHYS_HALF_Y),
-    ("INSP_PHYS_DENSITY", ids::INSP_PHYS_DENSITY),
-    ("INSP_PHYS_RESTITUTION", ids::INSP_PHYS_RESTITUTION),
-    ("INSP_PHYS_FRICTION", ids::INSP_PHYS_FRICTION),
-    // Expanded element by element: an array added as ONE row would leave its
-    // members unchecked against each other.
-    ("INSP_LIVE_PHYSICS_LAYER", ids::INSP_LIVE_PHYSICS_LAYER),
-    ("INSP_PHYS_LAYER[0]", ids::INSP_PHYS_LAYER[0]),
-    ("INSP_PHYS_LAYER[1]", ids::INSP_PHYS_LAYER[1]),
-    ("INSP_PHYS_LAYER[2]", ids::INSP_PHYS_LAYER[2]),
-    ("INSP_PHYS_LAYER[3]", ids::INSP_PHYS_LAYER[3]),
-    ("INSP_PHYS_LAYER[4]", ids::INSP_PHYS_LAYER[4]),
-    ("INSP_PHYS_LAYER[5]", ids::INSP_PHYS_LAYER[5]),
-    ("INSP_PHYS_LAYER[6]", ids::INSP_PHYS_LAYER[6]),
-    ("INSP_PHYS_LAYER[7]", ids::INSP_PHYS_LAYER[7]),
-    // Os dois nomes de sinal (W-Signal · W-SignalLeave). ⚠️ O de CHEGADA shipou
-    // fora desta lista: a lista é mantida à mão, então um id novo só participa
-    // da checagem quando alguém lembra de o trazer. Os dois entram juntos.
-    ("INSP_PHYS_SIGNAL", ids::INSP_PHYS_SIGNAL),
-    ("INSP_PHYS_SIGNAL_LEAVE", ids::INSP_PHYS_SIGNAL_LEAVE),
-    // §12 Physics Joint (W3).
-    ("INSP_PHYS_JOIN", ids::INSP_PHYS_JOIN),
-    ("INSP_LIVE_JOINT_SECTION", ids::INSP_LIVE_JOINT_SECTION),
-    ("INSP_LIVE_JOINT_COLOR", ids::INSP_LIVE_JOINT_COLOR),
-    ("INSP_JOINT_KIND_GROUP", ids::INSP_JOINT_KIND_GROUP),
-    ("INSP_JOINT_LIMITS_GROUP", ids::INSP_JOINT_LIMITS_GROUP),
-    ("INSP_JOINT_MOTOR_GROUP", ids::INSP_JOINT_MOTOR_GROUP),
-    ("INSP_JOINT_KIND[0]", ids::INSP_JOINT_KIND[0]),
-    ("INSP_JOINT_KIND[1]", ids::INSP_JOINT_KIND[1]),
-    ("INSP_JOINT_KIND[2]", ids::INSP_JOINT_KIND[2]),
-    ("INSP_JOINT_LIMITS[0]", ids::INSP_JOINT_LIMITS[0]),
-    ("INSP_JOINT_LIMITS[1]", ids::INSP_JOINT_LIMITS[1]),
-    ("INSP_JOINT_MOTOR[0]", ids::INSP_JOINT_MOTOR[0]),
-    ("INSP_JOINT_MOTOR[1]", ids::INSP_JOINT_MOTOR[1]),
-    ("INSP_JOINT_LIMIT_MIN", ids::INSP_JOINT_LIMIT_MIN),
-    ("INSP_JOINT_LIMIT_MAX", ids::INSP_JOINT_LIMIT_MAX),
-    ("INSP_JOINT_MOTOR_SPEED", ids::INSP_JOINT_MOTOR_SPEED),
-    ("INSP_JOINT_MOTOR_FORCE", ids::INSP_JOINT_MOTOR_FORCE),
-    ("INSP_JOINT_REST_LENGTH", ids::INSP_JOINT_REST_LENGTH),
-    ("INSP_JOINT_STIFFNESS", ids::INSP_JOINT_STIFFNESS),
-    ("INSP_JOINT_DAMPING", ids::INSP_JOINT_DAMPING),
-    ("INSP_JOINT_MAX_LENGTH", ids::INSP_JOINT_MAX_LENGTH),
-    ("INSP_JOINT_REMOVE", ids::INSP_JOINT_REMOVE),
-    // A cauda da §12 que as waves W-J6..W-J8 e W-Pulley acrescentaram e que
-    // nunca entrou aqui — um inventario com buracos e um gate de unicidade que
-    // pode deixar passar uma colisao real.
-    ("INSP_JOINT_MOTOR_MODE[0]", ids::INSP_JOINT_MOTOR_MODE[0]),
-    ("INSP_JOINT_MOTOR_MODE[1]", ids::INSP_JOINT_MOTOR_MODE[1]),
-    ("INSP_JOINT_MOTOR_TARGET", ids::INSP_JOINT_MOTOR_TARGET),
-    ("INSP_JOINT_BREAK_GROUP", ids::INSP_JOINT_BREAK_GROUP),
-    ("INSP_JOINT_BREAK[0]", ids::INSP_JOINT_BREAK[0]),
-    ("INSP_JOINT_BREAK[1]", ids::INSP_JOINT_BREAK[1]),
-    ("INSP_JOINT_BREAK_FORCE", ids::INSP_JOINT_BREAK_FORCE),
-    ("INSP_JOINT_BREAK_TORQUE", ids::INSP_JOINT_BREAK_TORQUE),
-    ("INSP_JOINT_ACTIVE_GROUP", ids::INSP_JOINT_ACTIVE_GROUP),
-    ("INSP_JOINT_ACTIVE[0]", ids::INSP_JOINT_ACTIVE[0]),
-    ("INSP_JOINT_ACTIVE[1]", ids::INSP_JOINT_ACTIVE[1]),
-    ("INSP_JOINT_COLLIDE_GROUP", ids::INSP_JOINT_COLLIDE_GROUP),
-    ("INSP_JOINT_COLLIDE[0]", ids::INSP_JOINT_COLLIDE[0]),
-    ("INSP_JOINT_COLLIDE[1]", ids::INSP_JOINT_COLLIDE[1]),
-    ("INSP_JOINT_SWAP", ids::INSP_JOINT_SWAP),
-    ("INSP_JOINT_PICK_A", ids::INSP_JOINT_PICK_A),
-    ("INSP_JOINT_PICK_B", ids::INSP_JOINT_PICK_B),
-    ("INSP_JOINT_ADD_WHEEL", ids::INSP_JOINT_ADD_WHEEL),
-    // §13 Pulley Wheel (W-Pulley W1).
-    ("INSP_LIVE_WHEEL_SECTION", ids::INSP_LIVE_WHEEL_SECTION),
-    ("INSP_LIVE_WHEEL_COLOR", ids::INSP_LIVE_WHEEL_COLOR),
-    ("INSP_WHEEL_RADIUS", ids::INSP_WHEEL_RADIUS),
-    ("INSP_WHEEL_ORDER", ids::INSP_WHEEL_ORDER),
-    ("INSP_WHEEL_MOTOR", ids::INSP_WHEEL_MOTOR),
-    ("INSP_WHEEL_BREAK_FORCE", ids::INSP_WHEEL_BREAK_FORCE),
-    ("INSP_WHEEL_MOUNT_PICK", ids::INSP_WHEEL_MOUNT_PICK),
-    ("INSP_WHEEL_ROPE_PICK", ids::INSP_WHEEL_ROPE_PICK),
-    ("INSP_WHEEL_UNMOUNT", ids::INSP_WHEEL_UNMOUNT),
-    ("INSP_WHEEL_BREAK_GROUP", ids::INSP_WHEEL_BREAK_GROUP),
-    ("INSP_WHEEL_BREAK[0]", ids::INSP_WHEEL_BREAK[0]),
-    ("INSP_WHEEL_BREAK[1]", ids::INSP_WHEEL_BREAK[1]),
-    ("INSP_WHEEL_WRAP_GROUP", ids::INSP_WHEEL_WRAP_GROUP),
-    ("INSP_WHEEL_WRAP[0]", ids::INSP_WHEEL_WRAP[0]),
-    ("INSP_WHEEL_WRAP[1]", ids::INSP_WHEEL_WRAP[1]),
-    ("INSP_WHEEL_WRAP[2]", ids::INSP_WHEEL_WRAP[2]),
-    // Context menus
-    ("CTX_MENU_CREATE_NOTE", ids::CTX_MENU_CREATE_NOTE),
-    ("CTX_MENU_OUTLINE_NONE", ids::CTX_MENU_OUTLINE_NONE),
-    ("CTX_MENU_OUTLINE_0", ids::CTX_MENU_OUTLINE_0),
-    ("CTX_MENU_OUTLINE_1", ids::CTX_MENU_OUTLINE_1),
-    ("CTX_MENU_OUTLINE_2", ids::CTX_MENU_OUTLINE_2),
-    ("CTX_MENU_OUTLINE_3", ids::CTX_MENU_OUTLINE_3),
-    ("CTX_MENU_OUTLINE_4", ids::CTX_MENU_OUTLINE_4),
-    ("CTX_MENU_THEME_FORGE", ids::CTX_MENU_THEME_FORGE),
-    ("CTX_MENU_THEME_PAINT", ids::CTX_MENU_THEME_PAINT),
-    ("CTX_MENU_THEME_SUNSTONE", ids::CTX_MENU_THEME_SUNSTONE),
-    ("CTX_MENU_THEME_BLUEPRINT", ids::CTX_MENU_THEME_BLUEPRINT),
-    ("CTX_MENU_RADIUS_SHARP", ids::CTX_MENU_RADIUS_SHARP),
-    ("CTX_MENU_RADIUS_DEFAULT", ids::CTX_MENU_RADIUS_DEFAULT),
-    ("CTX_MENU_RADIUS_ROUND", ids::CTX_MENU_RADIUS_ROUND),
-    ("CTX_MENU_MIRROR_UI", ids::CTX_MENU_MIRROR_UI),
-    ("CTX_MENU_SHOW_STATS", ids::CTX_MENU_SHOW_STATS),
-    ("CTX_MENU_SHOW_GRID", ids::CTX_MENU_SHOW_GRID),
-    ("CTX_MENU_SAVE", ids::CTX_MENU_SAVE),
-    ("CTX_MENU_SAVE_AS", ids::CTX_MENU_SAVE_AS),
-    ("CTX_MENU_OPEN_PROJECT", ids::CTX_MENU_OPEN_PROJECT),
-    ("CTX_MENU_IMPORT", ids::CTX_MENU_IMPORT),
-    ("CTX_MENU_PPM_16", ids::CTX_MENU_PPM_16),
-    ("CTX_MENU_PPM_32", ids::CTX_MENU_PPM_32),
-    ("CTX_MENU_PPM_100", ids::CTX_MENU_PPM_100),
-    ("CTX_MENU_PPM_256", ids::CTX_MENU_PPM_256),
-    ("CTX_MENU_PPM_1024", ids::CTX_MENU_PPM_1024),
-    ("CTX_MENU_SETTINGS_PPM", ids::CTX_MENU_SETTINGS_PPM),
-    ("CTX_MENU_SETTINGS_UNIT", ids::CTX_MENU_SETTINGS_UNIT),
-    ("CTX_MENU_UNIT_METERS", ids::CTX_MENU_UNIT_METERS),
-    ("CTX_MENU_UNIT_PIXELS", ids::CTX_MENU_UNIT_PIXELS),
-    ("CTX_MENU_SETTINGS_FILTER", ids::CTX_MENU_SETTINGS_FILTER),
-    ("CTX_MENU_FILTER_PIXELART", ids::CTX_MENU_FILTER_PIXELART),
-    ("CTX_MENU_FILTER_SMOOTH", ids::CTX_MENU_FILTER_SMOOTH),
-    ("CTX_MENU_SETTINGS_DISPLAY", ids::CTX_MENU_SETTINGS_DISPLAY),
-    ("CTX_MENU_DISPLAY_VSYNC", ids::CTX_MENU_DISPLAY_VSYNC),
-    (
-        "CTX_MENU_DISPLAY_IMMEDIATE",
-        ids::CTX_MENU_DISPLAY_IMMEDIATE,
-    ),
-    ("CTX_MENU_HIER_DUPLICATE", ids::CTX_MENU_HIER_DUPLICATE),
-    ("CTX_MENU_HIER_DELETE", ids::CTX_MENU_HIER_DELETE),
-    (
-        "CTX_MENU_HIER_RESET_TRANSFORM",
-        ids::CTX_MENU_HIER_RESET_TRANSFORM,
-    ),
-    (
-        "CTX_MENU_HIER_REVERT_TO_MASTER",
-        ids::CTX_MENU_HIER_REVERT_TO_MASTER,
-    ),
-    (
-        "CTX_MENU_HIER_MAKE_COMPONENT",
-        ids::CTX_MENU_HIER_MAKE_COMPONENT,
-    ),
-    ("CTX_MENU_HIER_EDIT_PREFAB", ids::CTX_MENU_HIER_EDIT_PREFAB),
-    ("CTX_MENU_HIER_INSTANTIATE", ids::CTX_MENU_HIER_INSTANTIATE),
-    (
-        "CTX_MENU_HIER_INSTANTIATE_LINKED",
-        ids::CTX_MENU_HIER_INSTANTIATE_LINKED,
-    ),
-    ("CTX_MENU_HIER_DETACH", ids::CTX_MENU_HIER_DETACH),
-    (
-        "CTX_MENU_HIER_APPLY_TO_MASTER",
-        ids::CTX_MENU_HIER_APPLY_TO_MASTER,
-    ),
-    ("CTX_MENU_HIER_ADD_CHILD", ids::CTX_MENU_HIER_ADD_CHILD),
-    ("CTX_MENU_HIER_RENAME", ids::CTX_MENU_HIER_RENAME),
-    // Project chip scene list
-    ("CTX_SCENE_SEARCH", ids::CTX_SCENE_SEARCH),
-    ("CTX_SCENE_ROW_0", ids::CTX_SCENE_ROW_0),
-    ("CTX_SCENE_ROW_1", ids::CTX_SCENE_ROW_1),
-    ("CTX_SCENE_ROW_2", ids::CTX_SCENE_ROW_2),
-    ("CTX_SCENE_ROW_3", ids::CTX_SCENE_ROW_3),
-    ("CTX_SCENE_ROW_4", ids::CTX_SCENE_ROW_4),
-    ("CTX_SCENE_ROW_5", ids::CTX_SCENE_ROW_5),
-    ("CTX_SCENE_ROW_6", ids::CTX_SCENE_ROW_6),
-    ("CTX_SCENE_ROW_7", ids::CTX_SCENE_ROW_7),
-    // BlenderColorPicker
-    ("INSP_BLENDER_PICKER", ids::INSP_BLENDER_PICKER),
-    ("BLENDER_WHEEL", ids::BLENDER_WHEEL),
-    ("BLENDER_VALUE_SLIDER", ids::BLENDER_VALUE_SLIDER),
-    ("BLENDER_CHANNEL_0", ids::BLENDER_CHANNEL_0),
-    ("BLENDER_CHANNEL_1", ids::BLENDER_CHANNEL_1),
-    ("BLENDER_CHANNEL_2", ids::BLENDER_CHANNEL_2),
-    ("BLENDER_CHANNEL_3", ids::BLENDER_CHANNEL_3),
-    ("BLENDER_HEX", ids::BLENDER_HEX),
-    ("BLENDER_INTERP_LINEAR", ids::BLENDER_INTERP_LINEAR),
-    ("BLENDER_INTERP_PERCEPTUAL", ids::BLENDER_INTERP_PERCEPTUAL),
-    ("BLENDER_CHANNEL_RGB", ids::BLENDER_CHANNEL_RGB),
-    ("BLENDER_CHANNEL_HSV", ids::BLENDER_CHANNEL_HSV),
-    ("BLENDER_NUM_0", ids::BLENDER_NUM_0),
-    ("BLENDER_NUM_1", ids::BLENDER_NUM_1),
-    ("BLENDER_NUM_2", ids::BLENDER_NUM_2),
-    ("BLENDER_NUM_3", ids::BLENDER_NUM_3),
-    ("BLENDER_ADD_SWATCH", ids::BLENDER_ADD_SWATCH),
-    ("BLENDER_EYEDROPPER", ids::BLENDER_EYEDROPPER),
-    ("BLENDER_DRAG_HANDLE", ids::BLENDER_DRAG_HANDLE),
-    ("BLENDER_SWATCH_0", ids::BLENDER_SWATCH_0),
-    ("BLENDER_SWATCH_1", ids::BLENDER_SWATCH_1),
-    ("BLENDER_SWATCH_2", ids::BLENDER_SWATCH_2),
-    ("BLENDER_SWATCH_3", ids::BLENDER_SWATCH_3),
-    ("BLENDER_SWATCH_4", ids::BLENDER_SWATCH_4),
-    ("BLENDER_SWATCH_5", ids::BLENDER_SWATCH_5),
-    ("BLENDER_SWATCH_6", ids::BLENDER_SWATCH_6),
-    ("BLENDER_SWATCH_7", ids::BLENDER_SWATCH_7),
-    ("BLENDER_SWATCH_8", ids::BLENDER_SWATCH_8),
-    ("BLENDER_SWATCH_9", ids::BLENDER_SWATCH_9),
-    ("BLENDER_SWATCH_10", ids::BLENDER_SWATCH_10),
-    ("BLENDER_SWATCH_11", ids::BLENDER_SWATCH_11),
-    ("BLENDER_SWATCH_12", ids::BLENDER_SWATCH_12),
-    ("BLENDER_SWATCH_13", ids::BLENDER_SWATCH_13),
-    ("BLENDER_SWATCH_14", ids::BLENDER_SWATCH_14),
-    ("BLENDER_SWATCH_15", ids::BLENDER_SWATCH_15),
-    ("BLENDER_SWATCH_16", ids::BLENDER_SWATCH_16),
-    ("BLENDER_SWATCH_17", ids::BLENDER_SWATCH_17),
-    ("BLENDER_SWATCH_18", ids::BLENDER_SWATCH_18),
-    ("BLENDER_SWATCH_19", ids::BLENDER_SWATCH_19),
-    ("BLENDER_SWATCH_20", ids::BLENDER_SWATCH_20),
-    ("BLENDER_SWATCH_21", ids::BLENDER_SWATCH_21),
-    ("BLENDER_SWATCH_22", ids::BLENDER_SWATCH_22),
-    ("BLENDER_SWATCH_23", ids::BLENDER_SWATCH_23),
-    ("BLENDER_SWATCH_24", ids::BLENDER_SWATCH_24),
-    ("BLENDER_SWATCH_25", ids::BLENDER_SWATCH_25),
-    ("BLENDER_SWATCH_26", ids::BLENDER_SWATCH_26),
-    // Color Harmonies "add all partners" button (the scheme/partner arrays are
-    // folded into the uniqueness test below, like the timeline menu tables).
-    ("BLENDER_HARMONY_ADD", ids::BLENDER_HARMONY_ADD),
-    // Widget Gallery
-    ("GAL_PANEL", ids::GAL_PANEL),
-    ("GAL_DRAG_HANDLE", ids::GAL_DRAG_HANDLE),
-    ("GAL_RESIZE_HANDLE", ids::GAL_RESIZE_HANDLE),
-    ("GAL_CLOSE", ids::GAL_CLOSE),
-    // Hierarchy chrome (panel-level, not row-level — row ids kept numeric)
-    ("HIER_DRAG_HANDLE", ids::HIER_DRAG_HANDLE),
-    ("HIER_RESIZE_HANDLE", ids::HIER_RESIZE_HANDLE),
-    ("HIER_PANEL", ids::HIER_PANEL),
-    ("HIER_SEARCH", ids::HIER_SEARCH),
-    ("HIER_RENAME_INPUT", ids::HIER_RENAME_INPUT),
-    // Bg Removal — eyedropper + protection brush + extra-colour swatch pool.
-    ("BGR_EYEDROPPER", ids::BGR_EYEDROPPER),
-    ("BGR_PROTECT", ids::BGR_PROTECT),
-    ("BGR_PROTECT_CLEAR", ids::BGR_PROTECT_CLEAR),
-    ("BGR_SHOW_MASK", ids::BGR_SHOW_MASK),
-    ("BGR_BRUSH_SIZE", ids::BGR_BRUSH_SIZE),
-    ("BGR_BRUSH_SIZE_NUM", ids::BGR_BRUSH_SIZE_NUM),
-    ("BGR_FALLOFF_SMOOTH", ids::BGR_FALLOFF_SMOOTH),
-    ("BGR_FALLOFF_SPHERE", ids::BGR_FALLOFF_SPHERE),
-    ("BGR_FALLOFF_SHARP", ids::BGR_FALLOFF_SHARP),
-    ("BGR_FALLOFF_CONSTANT", ids::BGR_FALLOFF_CONSTANT),
-    ("BGR_SWATCH_0", ids::BGR_SWATCH_0),
-    ("BGR_SWATCH_1", ids::BGR_SWATCH_1),
-    ("BGR_SWATCH_2", ids::BGR_SWATCH_2),
-    ("BGR_SWATCH_3", ids::BGR_SWATCH_3),
-    ("BGR_SWATCH_4", ids::BGR_SWATCH_4),
-    ("BGR_SWATCH_5", ids::BGR_SWATCH_5),
-    ("BGR_SWATCH_6", ids::BGR_SWATCH_6),
-    ("BGR_SWATCH_7", ids::BGR_SWATCH_7),
-    ("BGR_SWATCH_8", ids::BGR_SWATCH_8),
-    ("BGR_SWATCH_9", ids::BGR_SWATCH_9),
-    ("BGR_SWATCH_10", ids::BGR_SWATCH_10),
-    ("BGR_SWATCH_11", ids::BGR_SWATCH_11),
-    // Painter chrome (W3 audit-2 B.3 — were absent from the uniqueness set).
-    ("PAINTER_SIDEBAR_PANEL", ids::PAINTER_SIDEBAR_PANEL),
-    (
-        "PAINTER_SIDEBAR_SIZE_SLIDER",
-        ids::PAINTER_SIDEBAR_SIZE_SLIDER,
-    ),
-    ("PAINTER_SIDEBAR_SIZE_CHIP", ids::PAINTER_SIDEBAR_SIZE_CHIP),
-    (
-        "PAINTER_SIDEBAR_OPACITY_SLIDER",
-        ids::PAINTER_SIDEBAR_OPACITY_SLIDER,
-    ),
-    (
-        "PAINTER_SIDEBAR_OPACITY_CHIP",
-        ids::PAINTER_SIDEBAR_OPACITY_CHIP,
-    ),
-    (
-        "PAINTER_SIDEBAR_UNDO_BUTTON",
-        ids::PAINTER_SIDEBAR_UNDO_BUTTON,
-    ),
-    (
-        "PAINTER_SIDEBAR_REDO_BUTTON",
-        ids::PAINTER_SIDEBAR_REDO_BUTTON,
-    ),
-    (
-        "PAINTER_SIDEBAR_MODIFIER_SQUARE",
-        ids::PAINTER_SIDEBAR_MODIFIER_SQUARE,
-    ),
-    ("PAINTER_SIDEBAR_CLOSE", ids::PAINTER_SIDEBAR_CLOSE),
-    (
-        "PAINTER_SIDEBAR_TOGGLE_DOCK",
-        ids::PAINTER_SIDEBAR_TOGGLE_DOCK,
-    ),
-    ("PAINTER_COLOR_THUMB", ids::PAINTER_COLOR_THUMB),
-    ("PAINTER_APPLY", ids::PAINTER_APPLY),
-    ("PAINTER_LAYERS_PANEL", ids::PAINTER_LAYERS_PANEL),
-    ("PAINTER_LAYERS_CLOSE", ids::PAINTER_LAYERS_CLOSE),
-    ("PAINTER_LAYERS_ADD", ids::PAINTER_LAYERS_ADD),
-    (
-        "PAINTER_LAYERS_TOGGLE_DOCK",
-        ids::PAINTER_LAYERS_TOGGLE_DOCK,
-    ),
-    // Vector Inspector (W2 T2.4 + §4.2). The PANEL/CLOSE/FILL_SWATCH trio
-    // pre-dates this row but was never enrolled in the uniqueness check —
-    // closed here alongside the new Shape-kind picker option ids.
-    ("VECTOR_INSPECTOR_PANEL", ids::VECTOR_INSPECTOR_PANEL),
-    ("VECTOR_INSPECTOR_CLOSE", ids::VECTOR_INSPECTOR_CLOSE),
-    (
-        "VECTOR_INSPECTOR_FILL_SWATCH",
-        ids::VECTOR_INSPECTOR_FILL_SWATCH,
-    ),
-    (
-        "VECTOR_INSPECTOR_SHAPE_KIND",
-        ids::VECTOR_INSPECTOR_SHAPE_KIND,
-    ),
-    (
-        "VECTOR_INSPECTOR_SHAPE_RECT",
-        ids::VECTOR_INSPECTOR_SHAPE_RECT,
-    ),
-    (
-        "VECTOR_INSPECTOR_SHAPE_ELLIPSE",
-        ids::VECTOR_INSPECTOR_SHAPE_ELLIPSE,
-    ),
-    (
-        "VECTOR_INSPECTOR_SHAPE_POLYGON",
-        ids::VECTOR_INSPECTOR_SHAPE_POLYGON,
-    ),
-    (
-        "VECTOR_INSPECTOR_SHAPE_STAR",
-        ids::VECTOR_INSPECTOR_SHAPE_STAR,
-    ),
-    (
-        "VECTOR_INSPECTOR_SHAPE_SPIRAL",
-        ids::VECTOR_INSPECTOR_SHAPE_SPIRAL,
-    ),
-    // Vector tool Style panel (ADR-0108 docked `ph2d-panel-vector`).
-    ("VECTOR_PANEL", ids::VECTOR_PANEL),
-    ("VECTOR_CLOSE", ids::VECTOR_CLOSE),
-    ("VECTOR_WIDTH", ids::VECTOR_WIDTH),
-    ("VECTOR_WIDTH_NUM", ids::VECTOR_WIDTH_NUM),
-    // Os chips de BINDING DE TOKEN (plano UI/UX W4 / W4c.4). ⚠️ Os dois de cor entraram tarde:
-    // eles existiam desde a W4a e nunca participaram desta varredura, então uma colisão de slug
-    // com eles teria passado. As opções do popover NÃO entram — elas são hash de RUNTIME
-    // (`vector_token_option_id`), e esta lista é de consts.
-    ("VECTOR_TOKEN_FILL", ids::VECTOR_TOKEN_FILL),
-    ("VECTOR_TOKEN_STROKE", ids::VECTOR_TOKEN_STROKE),
-    ("VECTOR_TOKEN_WIDTH", ids::VECTOR_TOKEN_WIDTH),
-    ("VECTOR_TOKEN_GAP_MAIN", ids::VECTOR_TOKEN_GAP_MAIN),
-    ("VECTOR_TOKEN_GAP_CROSS", ids::VECTOR_TOKEN_GAP_CROSS),
-    ("VECTOR_STROKE_SWATCH", ids::VECTOR_STROKE_SWATCH),
-    ("VECTOR_FILL_SWATCH", ids::VECTOR_FILL_SWATCH),
-    ("VECTOR_FILL_KIND_SOLID", ids::VECTOR_FILL_KIND_SOLID),
-    ("VECTOR_FILL_KIND_LINEAR", ids::VECTOR_FILL_KIND_LINEAR),
-    ("VECTOR_FILL_KIND_RADIAL", ids::VECTOR_FILL_KIND_RADIAL),
-    ("VECTOR_FILL_KIND_MULTI", ids::VECTOR_FILL_KIND_MULTI),
-    ("VECTOR_GRAD_ANGLE", ids::VECTOR_GRAD_ANGLE),
-    ("VECTOR_GRAD_ANGLE_NUM", ids::VECTOR_GRAD_ANGLE_NUM),
-    ("VECTOR_GRAD_ADD_POINT", ids::VECTOR_GRAD_ADD_POINT),
-    ("VECTOR_GRAD_REMOVE_POINT", ids::VECTOR_GRAD_REMOVE_POINT),
-    ("VECTOR_GRAD_INFLUENCE", ids::VECTOR_GRAD_INFLUENCE),
-    ("VECTOR_GRAD_INFLUENCE_NUM", ids::VECTOR_GRAD_INFLUENCE_NUM),
-    ("VECTOR_GRAD_JITTER", ids::VECTOR_GRAD_JITTER),
-    ("VECTOR_GRAD_JITTER_NUM", ids::VECTOR_GRAD_JITTER_NUM),
-    ("VECTOR_GRAD_ADD_STOP", ids::VECTOR_GRAD_ADD_STOP),
-    ("VECTOR_GRAD_REMOVE_STOP", ids::VECTOR_GRAD_REMOVE_STOP),
-    ("VECTOR_ALIGN_LEFT", ids::VECTOR_ALIGN_LEFT),
-    ("VECTOR_ALIGN_HCENTER", ids::VECTOR_ALIGN_HCENTER),
-    ("VECTOR_ALIGN_RIGHT", ids::VECTOR_ALIGN_RIGHT),
-    ("VECTOR_ALIGN_TOP", ids::VECTOR_ALIGN_TOP),
-    ("VECTOR_ALIGN_VCENTER", ids::VECTOR_ALIGN_VCENTER),
-    ("VECTOR_ALIGN_BOTTOM", ids::VECTOR_ALIGN_BOTTOM),
-    ("VECTOR_DISTRIBUTE_H", ids::VECTOR_DISTRIBUTE_H),
-    ("VECTOR_DISTRIBUTE_V", ids::VECTOR_DISTRIBUTE_V),
-    ("VECTOR_PIVOT_EDIT", ids::VECTOR_PIVOT_EDIT),
-    ("VECTOR_STROKE_OPACITY", ids::VECTOR_STROKE_OPACITY),
-    ("VECTOR_STROKE_OPACITY_NUM", ids::VECTOR_STROKE_OPACITY_NUM),
-    ("VECTOR_FILL_OPACITY", ids::VECTOR_FILL_OPACITY),
-    ("VECTOR_FILL_OPACITY_NUM", ids::VECTOR_FILL_OPACITY_NUM),
-    ("VECTOR_ALIGN_CENTRE", ids::VECTOR_ALIGN_CENTRE),
-    ("VECTOR_ALIGN_INNER", ids::VECTOR_ALIGN_INNER),
-    ("VECTOR_ALIGN_OUTER", ids::VECTOR_ALIGN_OUTER),
-    ("VECTOR_CAP_BUTT", ids::VECTOR_CAP_BUTT),
-    ("VECTOR_CAP_ROUND", ids::VECTOR_CAP_ROUND),
-    ("VECTOR_CAP_SQUARE", ids::VECTOR_CAP_SQUARE),
-    ("VECTOR_JOIN_MITER", ids::VECTOR_JOIN_MITER),
-    ("VECTOR_JOIN_ROUND", ids::VECTOR_JOIN_ROUND),
-    ("VECTOR_JOIN_BEVEL", ids::VECTOR_JOIN_BEVEL),
-    ("VECTOR_DASH", ids::VECTOR_DASH),
-    ("VECTOR_DASH_NUM", ids::VECTOR_DASH_NUM),
-    ("VECTOR_GAP", ids::VECTOR_GAP),
-    ("VECTOR_GAP_NUM", ids::VECTOR_GAP_NUM),
-    // Stroke markers (arrowheads): the two dropdown chips. Their popover OPTIONS
-    // are runtime ids (`vector_marker_option_id`), like the shape catalogue's —
-    // outside this const table by construction.
-    ("VECTOR_MARKER_START_DD", ids::VECTOR_MARKER_START_DD),
-    ("VECTOR_MARKER_END_DD", ids::VECTOR_MARKER_END_DD),
-    ("VECTOR_MODE_SELECT", ids::VECTOR_MODE_SELECT),
-    ("VECTOR_MODE_NODE", ids::VECTOR_MODE_NODE),
-    ("VECTOR_MODE_PEN", ids::VECTOR_MODE_PEN),
-    ("VECTOR_TEXT_SIZE", ids::VECTOR_TEXT_SIZE),
-    ("VECTOR_TEXT_SIZE_NUM", ids::VECTOR_TEXT_SIZE_NUM),
-    ("VECTOR_TEXT_WEIGHT", ids::VECTOR_TEXT_WEIGHT),
-    ("VECTOR_TEXT_WEIGHT_NUM", ids::VECTOR_TEXT_WEIGHT_NUM),
-    ("VECTOR_TEXT_FONT_PREV", ids::VECTOR_TEXT_FONT_PREV),
-    ("VECTOR_TEXT_FONT_NEXT", ids::VECTOR_TEXT_FONT_NEXT),
-    ("VECTOR_TEXT_FONT_IMPORT", ids::VECTOR_TEXT_FONT_IMPORT),
-    ("VECTOR_TEXT_FONT_DD", ids::VECTOR_TEXT_FONT_DD),
-    ("VECTOR_TEXT_ALIGN_LEFT", ids::VECTOR_TEXT_ALIGN_LEFT),
-    ("VECTOR_TEXT_ALIGN_CENTER", ids::VECTOR_TEXT_ALIGN_CENTER),
-    ("VECTOR_TEXT_ALIGN_RIGHT", ids::VECTOR_TEXT_ALIGN_RIGHT),
-    ("VECTOR_TEXT_LINE_HEIGHT", ids::VECTOR_TEXT_LINE_HEIGHT),
-    (
-        "VECTOR_TEXT_LINE_HEIGHT_NUM",
-        ids::VECTOR_TEXT_LINE_HEIGHT_NUM,
-    ),
-    ("VECTOR_TEXT_TRACKING", ids::VECTOR_TEXT_TRACKING),
-    ("VECTOR_TEXT_TRACKING_NUM", ids::VECTOR_TEXT_TRACKING_NUM),
-    ("VECTOR_CONVERT_TO_CURVES", ids::VECTOR_CONVERT_TO_CURVES),
-    ("VECTOR_BOOL_UNION", ids::VECTOR_BOOL_UNION),
-    ("VECTOR_SECTION_BLEND", ids::VECTOR_SECTION_BLEND),
-    ("VECTOR_SECTION_MORPH", ids::VECTOR_SECTION_MORPH),
-    ("VECTOR_BLEND_RUN", ids::VECTOR_BLEND_RUN),
-    ("VECTOR_MORPH_RUN", ids::VECTOR_MORPH_RUN),
-    ("VECTOR_MORPH_T", ids::VECTOR_MORPH_T),
-    ("VECTOR_MORPH_T_NUM", ids::VECTOR_MORPH_T_NUM),
-    ("VECTOR_BLEND_STEPS", ids::VECTOR_BLEND_STEPS),
-    ("VECTOR_BLEND_STEPS_NUM", ids::VECTOR_BLEND_STEPS_NUM),
-    ("VECTOR_BLEND_STACK_UP", ids::VECTOR_BLEND_STACK_UP),
-    ("VECTOR_BLEND_RESET_SPINE", ids::VECTOR_BLEND_RESET_SPINE),
-    ("VECTOR_BLEND_EXPAND", ids::VECTOR_BLEND_EXPAND),
-    ("VECTOR_BLEND_RELEASE", ids::VECTOR_BLEND_RELEASE),
-    ("VECTOR_MODE_PICKBLEND", ids::VECTOR_MODE_PICKBLEND),
-    ("VECTOR_SECTION_ENVELOPE", ids::VECTOR_SECTION_ENVELOPE),
-    ("VECTOR_ENVELOPE_RUN", ids::VECTOR_ENVELOPE_RUN),
-    ("VECTOR_ENVELOPE_EXPAND", ids::VECTOR_ENVELOPE_EXPAND),
-    ("VECTOR_ENVELOPE_RELEASE", ids::VECTOR_ENVELOPE_RELEASE),
-    (
-        "VECTOR_ENVELOPE_PERSPECTIVE",
-        ids::VECTOR_ENVELOPE_PERSPECTIVE,
-    ),
-    ("VECTOR_ENVELOPE_MESH", ids::VECTOR_ENVELOPE_MESH),
-    ("VECTOR_ENVELOPE_BEND", ids::VECTOR_ENVELOPE_BEND),
-    ("VECTOR_ENVELOPE_BEND_NUM", ids::VECTOR_ENVELOPE_BEND_NUM),
-    ("VECTOR_ENVELOPE_PINS", ids::VECTOR_ENVELOPE_PINS),
-    (
-        "VECTOR_ENVELOPE_CLEAR_PINS",
-        ids::VECTOR_ENVELOPE_CLEAR_PINS,
-    ),
-    ("VECTOR_SECTION_EFFECTS", ids::VECTOR_SECTION_EFFECTS),
-    ("VECTOR_FX_APPLY", ids::VECTOR_FX_APPLY),
-    ("VECTOR_MODE_FILLET", ids::VECTOR_MODE_FILLET),
-    ("VECTOR_MODE_CHAMFER", ids::VECTOR_MODE_CHAMFER),
-    ("VECTOR_MODE_WIDTH", ids::VECTOR_MODE_WIDTH),
-    ("VECTOR_BOOL_SUBTRACT", ids::VECTOR_BOOL_SUBTRACT),
-    ("VECTOR_BOOL_INTERSECT", ids::VECTOR_BOOL_INTERSECT),
-    ("VECTOR_BOOL_EXCLUDE", ids::VECTOR_BOOL_EXCLUDE),
-    ("VECTOR_EXPAND_OFFSET", ids::VECTOR_EXPAND_OFFSET),
-    ("VECTOR_EXPAND_OFFSET_NUM", ids::VECTOR_EXPAND_OFFSET_NUM),
-    ("VECTOR_EXPAND_JOIN_MITER", ids::VECTOR_EXPAND_JOIN_MITER),
-    ("VECTOR_EXPAND_JOIN_ROUND", ids::VECTOR_EXPAND_JOIN_ROUND),
-    ("VECTOR_EXPAND_JOIN_BEVEL", ids::VECTOR_EXPAND_JOIN_BEVEL),
-    ("VECTOR_EXPAND_OFFSET_PATH", ids::VECTOR_EXPAND_OFFSET_PATH),
-    (
-        "VECTOR_EXPAND_OUTLINE_STROKE",
-        ids::VECTOR_EXPAND_OUTLINE_STROKE,
-    ),
-    ("VECTOR_EXPAND_W_START", ids::VECTOR_EXPAND_W_START),
-    ("VECTOR_EXPAND_W_START_NUM", ids::VECTOR_EXPAND_W_START_NUM),
-    ("VECTOR_EXPAND_W_MID", ids::VECTOR_EXPAND_W_MID),
-    ("VECTOR_EXPAND_W_MID_NUM", ids::VECTOR_EXPAND_W_MID_NUM),
-    ("VECTOR_EXPAND_W_END", ids::VECTOR_EXPAND_W_END),
-    ("VECTOR_EXPAND_W_END_NUM", ids::VECTOR_EXPAND_W_END_NUM),
-    ("VECTOR_EXPAND_W_POS", ids::VECTOR_EXPAND_W_POS),
-    ("VECTOR_EXPAND_W_POS_NUM", ids::VECTOR_EXPAND_W_POS_NUM),
-    (
-        "VECTOR_EXPAND_POWER_STROKE",
-        ids::VECTOR_EXPAND_POWER_STROKE,
-    ),
-    ("VECTOR_VERT_CORNER", ids::VECTOR_VERT_CORNER),
-    ("VECTOR_VERT_SMOOTH", ids::VECTOR_VERT_SMOOTH),
-    ("VECTOR_VERT_SYMMETRIC", ids::VECTOR_VERT_SYMMETRIC),
-    ("VECTOR_VERT_DELETE", ids::VECTOR_VERT_DELETE),
-    ("VECTOR_ARRANGE_DUPLICATE", ids::VECTOR_ARRANGE_DUPLICATE),
-    ("VECTOR_ARRANGE_TO_BACK", ids::VECTOR_ARRANGE_TO_BACK),
-    ("VECTOR_ARRANGE_BACKWARD", ids::VECTOR_ARRANGE_BACKWARD),
-    ("VECTOR_ARRANGE_FORWARD", ids::VECTOR_ARRANGE_FORWARD),
-    ("VECTOR_ARRANGE_TO_FRONT", ids::VECTOR_ARRANGE_TO_FRONT),
-    ("VECTOR_ARRANGE_FLIP_H", ids::VECTOR_ARRANGE_FLIP_H),
-    ("VECTOR_ARRANGE_FLIP_V", ids::VECTOR_ARRANGE_FLIP_V),
-    ("VECTOR_ARRANGE_ROTATE_CW", ids::VECTOR_ARRANGE_ROTATE_CW),
-    ("VECTOR_ARRANGE_ROTATE_CCW", ids::VECTOR_ARRANGE_ROTATE_CCW),
-    ("VECTOR_TRANSFORM_X", ids::VECTOR_TRANSFORM_X),
-    ("VECTOR_TRANSFORM_Y", ids::VECTOR_TRANSFORM_Y),
-    ("VECTOR_TRANSFORM_W", ids::VECTOR_TRANSFORM_W),
-    ("VECTOR_TRANSFORM_H", ids::VECTOR_TRANSFORM_H),
-    ("VECTOR_TRANSFORM_R", ids::VECTOR_TRANSFORM_R),
-    ("VECTOR_PATH_SMOOTH", ids::VECTOR_PATH_SMOOTH),
-    ("VECTOR_PATH_SHARPEN", ids::VECTOR_PATH_SHARPEN),
-    ("VECTOR_PATH_SIMPLIFY", ids::VECTOR_PATH_SIMPLIFY),
-    ("VECTOR_PATH_SUBDIVIDE", ids::VECTOR_PATH_SUBDIVIDE),
-    ("VECTOR_PATH_CLOSE", ids::VECTOR_PATH_CLOSE),
-    ("VECTOR_COMPOUND_MAKE", ids::VECTOR_COMPOUND_MAKE),
-    ("VECTOR_COMPOUND_RELEASE", ids::VECTOR_COMPOUND_RELEASE),
-    ("VECTOR_FILL_RULE_NONZERO", ids::VECTOR_FILL_RULE_NONZERO),
-    ("VECTOR_FILL_RULE_EVENODD", ids::VECTOR_FILL_RULE_EVENODD),
-    ("VECTOR_SNAP_OFF", ids::VECTOR_SNAP_OFF),
-    ("VECTOR_SNAP_ON", ids::VECTOR_SNAP_ON),
-    // Vector panel UI rework: the 5th mode pill, the shape-category dropdown chip
-    // and the 17 collapsible section headers.
-    ("VECTOR_MODE_SHAPE", ids::VECTOR_MODE_SHAPE),
-    // O 6º pill: o CONECTOR (a linha que gruda em duas formas e as segue).
-    ("VECTOR_MODE_CONNECT", ids::VECTOR_MODE_CONNECT),
-    ("VECTOR_SHAPE_GROUP_DD", ids::VECTOR_SHAPE_GROUP_DD),
-    // AS ÂNCORAS (plano UI/UX W3). ⚠️ Os ids do AUTO LAYOUT (W2) NÃO estão nesta tabela — ela é
-    // mantida à mão e aquela wave não a alimentou, exactamente o apodrecimento que o comentário
-    // do `filter_*_id` lá em baixo já documenta. Acrescentar só os desta wave não conserta a
-    // lista, mas deixa de a piorar.
-    ("VECTOR_SECTION_ANCHORS", ids::VECTOR_SECTION_ANCHORS),
-    ("VECTOR_ANCHOR_H_START", ids::VECTOR_ANCHOR_H_START),
-    ("VECTOR_ANCHOR_H_CENTER", ids::VECTOR_ANCHOR_H_CENTER),
-    ("VECTOR_ANCHOR_H_END", ids::VECTOR_ANCHOR_H_END),
-    ("VECTOR_ANCHOR_H_STRETCH", ids::VECTOR_ANCHOR_H_STRETCH),
-    ("VECTOR_ANCHOR_V_START", ids::VECTOR_ANCHOR_V_START),
-    ("VECTOR_ANCHOR_V_CENTER", ids::VECTOR_ANCHOR_V_CENTER),
-    ("VECTOR_ANCHOR_V_END", ids::VECTOR_ANCHOR_V_END),
-    ("VECTOR_ANCHOR_V_STRETCH", ids::VECTOR_ANCHOR_V_STRETCH),
-    ("VECTOR_SECTION_TOOL", ids::VECTOR_SECTION_TOOL),
-    ("VECTOR_SECTION_SHAPE", ids::VECTOR_SECTION_SHAPE),
-    (
-        "VECTOR_SECTION_SHAPE_PARAMS",
-        ids::VECTOR_SECTION_SHAPE_PARAMS,
-    ),
-    ("VECTOR_SECTION_STROKE", ids::VECTOR_SECTION_STROKE),
-    ("VECTOR_SECTION_FILL", ids::VECTOR_SECTION_FILL),
-    ("VECTOR_SECTION_FILL_TYPE", ids::VECTOR_SECTION_FILL_TYPE),
-    ("VECTOR_SECTION_SNAP", ids::VECTOR_SECTION_SNAP),
-    ("VECTOR_SECTION_TRANSFORM", ids::VECTOR_SECTION_TRANSFORM),
-    ("VECTOR_SECTION_VERTEX", ids::VECTOR_SECTION_VERTEX),
-    ("VECTOR_SECTION_BOOLEAN", ids::VECTOR_SECTION_BOOLEAN),
-    ("VECTOR_SECTION_EXPAND", ids::VECTOR_SECTION_EXPAND),
-    ("VECTOR_SECTION_ALIGN", ids::VECTOR_SECTION_ALIGN),
-    ("VECTOR_SECTION_ARRANGE", ids::VECTOR_SECTION_ARRANGE),
-    ("VECTOR_SECTION_PATH", ids::VECTOR_SECTION_PATH),
-    ("VECTOR_SECTION_TEXT", ids::VECTOR_SECTION_TEXT),
-    ("VECTOR_SECTION_FONT", ids::VECTOR_SECTION_FONT),
-    ("VECTOR_SECTION_PARAGRAPH", ids::VECTOR_SECTION_PARAGRAPH),
-    ("VECTOR_SECTION_AXES", ids::VECTOR_SECTION_AXES),
-    // O CONECTOR: a seção + os três campos da relação (Route / Jetty / Spread).
-    ("VECTOR_SECTION_CONNECTOR", ids::VECTOR_SECTION_CONNECTOR),
-    ("VECTOR_CONNECTOR_ROUTE", ids::VECTOR_CONNECTOR_ROUTE),
-    ("VECTOR_CONNECTOR_JETTY", ids::VECTOR_CONNECTOR_JETTY),
-    ("VECTOR_CONNECTOR_SPREAD", ids::VECTOR_CONNECTOR_SPREAD),
-    // Flip tool Style panel (ADR-0114 W2 docked `ph2d-panel-flip`).
-    ("FLIP_PANEL", ids::FLIP_PANEL),
-    ("FLIP_CLOSE", ids::FLIP_CLOSE),
-    ("FLIP_MODE_SELECT", ids::FLIP_MODE_SELECT),
-    ("FLIP_MODE_DRAW", ids::FLIP_MODE_DRAW),
-    ("FLIP_MODE_ERASE", ids::FLIP_MODE_ERASE),
-    ("FLIP_SIZE", ids::FLIP_SIZE),
-    ("FLIP_SIZE_NUM", ids::FLIP_SIZE_NUM),
-    ("FLIP_HARDNESS", ids::FLIP_HARDNESS),
-    ("FLIP_HARDNESS_NUM", ids::FLIP_HARDNESS_NUM),
-    ("FLIP_OPACITY", ids::FLIP_OPACITY),
-    ("FLIP_OPACITY_NUM", ids::FLIP_OPACITY_NUM),
-    ("FLIP_SMOOTHING", ids::FLIP_SMOOTHING),
-    ("FLIP_SMOOTHING_NUM", ids::FLIP_SMOOTHING_NUM),
-    ("FLIP_STROKE_SWATCH", ids::FLIP_STROKE_SWATCH),
-    ("FLIP_ERASE_SOFT", ids::FLIP_ERASE_SOFT),
-    ("FLIP_ERASE_HARD", ids::FLIP_ERASE_HARD),
-    ("FLIP_ERASE_STROKE", ids::FLIP_ERASE_STROKE),
-    ("FLIP_MODE_FILL", ids::FLIP_MODE_FILL),
-    ("FLIP_MODE_EDIT", ids::FLIP_MODE_EDIT),
-    ("FLIP_MODE_COLORIZE", ids::FLIP_MODE_COLORIZE),
-    ("FLIP_COLORIZE_SWATCH", ids::FLIP_COLORIZE_SWATCH),
-    ("FLIP_COLORIZE_APPLY", ids::FLIP_COLORIZE_APPLY),
-    ("FLIP_COLORIZE_CLEAR", ids::FLIP_COLORIZE_CLEAR),
-    ("FLIP_COLORIZE_BLEED", ids::FLIP_COLORIZE_BLEED),
-    ("FLIP_COLORIZE_BLEED_NUM", ids::FLIP_COLORIZE_BLEED_NUM),
-    ("FLIP_FALLOFF", ids::FLIP_FALLOFF),
-    ("FLIP_EDIT_DELETE", ids::FLIP_EDIT_DELETE),
-    ("FLIP_EDIT_DESELECT", ids::FLIP_EDIT_DESELECT),
-    ("FLIP_EDIT_SELECT_ALL", ids::FLIP_EDIT_SELECT_ALL),
-    ("FLIP_FILL_SWATCH", ids::FLIP_FILL_SWATCH),
-    ("FLIP_FILL_PAINT", ids::FLIP_FILL_PAINT),
-    ("FLIP_FILL_BEHIND", ids::FLIP_FILL_BEHIND),
-    ("FLIP_FILL_UNPAINT", ids::FLIP_FILL_UNPAINT),
-    ("FLIP_GAP", ids::FLIP_GAP),
-    ("FLIP_GAP_NUM", ids::FLIP_GAP_NUM),
-    ("FLIP_GROW", ids::FLIP_GROW),
-    ("FLIP_GROW_NUM", ids::FLIP_GROW_NUM),
-    ("FLIP_PRECISION", ids::FLIP_PRECISION),
-    ("FLIP_PRECISION_NUM", ids::FLIP_PRECISION_NUM),
-    ("FLIP_LAYER_ADD", ids::FLIP_LAYER_ADD),
-    ("FLIP_LAYER_DELETE", ids::FLIP_LAYER_DELETE),
-    // Frame strip (W3) — the bottom-docked cells + transport + tween.
-    ("FLIP_STRIP_PANEL", ids::FLIP_STRIP_PANEL),
-    ("FLIP_STRIP_CLOSE", ids::FLIP_STRIP_CLOSE),
-    ("FLIP_SCRUB", ids::FLIP_SCRUB),
-    ("FLIP_PLAY", ids::FLIP_PLAY),
-    ("FLIP_PREV_DRAWING", ids::FLIP_PREV_DRAWING),
-    ("FLIP_NEXT_DRAWING", ids::FLIP_NEXT_DRAWING),
-    ("FLIP_FPS_NUM", ids::FLIP_FPS_NUM),
-    ("FLIP_GHOST", ids::FLIP_GHOST),
-    ("FLIP_GHOST_BEFORE_NUM", ids::FLIP_GHOST_BEFORE_NUM),
-    ("FLIP_GHOST_AFTER_NUM", ids::FLIP_GHOST_AFTER_NUM),
-    ("FLIP_AUTOKEY", ids::FLIP_AUTOKEY),
-    ("FLIP_ADDITIVE", ids::FLIP_ADDITIVE),
-    ("FLIP_KEY_ADD", ids::FLIP_KEY_ADD),
-    ("FLIP_KEY_DUP", ids::FLIP_KEY_DUP),
-    ("FLIP_KEY_INSTANCE", ids::FLIP_KEY_INSTANCE),
-    ("FLIP_KEY_UNLINK", ids::FLIP_KEY_UNLINK),
-    ("FLIP_KEY_DELETE", ids::FLIP_KEY_DELETE),
-    ("FLIP_HOLD_NUM", ids::FLIP_HOLD_NUM),
-    ("FLIP_KEY_LEFT", ids::FLIP_KEY_LEFT),
-    ("FLIP_KEY_RIGHT", ids::FLIP_KEY_RIGHT),
-    ("FLIP_TWEEN_NUM", ids::FLIP_TWEEN_NUM),
-    ("FLIP_TWEEN_ADD", ids::FLIP_TWEEN_ADD),
-    ("FLIP_CYCLE_DD", ids::FLIP_CYCLE_DD),
-    // Physics world panel (ADR-0131 D8 docked `ph2d-panel-physics`). The
-    // per-BODY ids are the separate INSP_PHYS_* family above.
-    ("PHYSICS_PANEL", ids::PHYSICS_PANEL),
-    ("PHYSICS_CLOSE", ids::PHYSICS_CLOSE),
-    ("PHYSICS_SEC_WORLD", ids::PHYSICS_SEC_WORLD),
-    ("PHYSICS_SEC_SOLVER", ids::PHYSICS_SEC_SOLVER),
-    ("PHYSICS_SEC_DAMPING", ids::PHYSICS_SEC_DAMPING),
-    ("PHYSICS_SEC_SLEEP", ids::PHYSICS_SEC_SLEEP),
-    ("PHYSICS_SEC_DEBUG", ids::PHYSICS_SEC_DEBUG),
-    ("PHYSICS_SEC_AIR", ids::PHYSICS_SEC_AIR),
-    ("PHYSICS_SEC_LAYERS", ids::PHYSICS_SEC_LAYERS),
-    // Element by element: the 36 matrix cells must be unique against each
-    // other as well as against all chrome.
-    ("PHYSICS_LAYER_CELL[0]", ids::PHYSICS_LAYER_CELL[0]),
-    ("PHYSICS_LAYER_CELL[1]", ids::PHYSICS_LAYER_CELL[1]),
-    ("PHYSICS_LAYER_CELL[2]", ids::PHYSICS_LAYER_CELL[2]),
-    ("PHYSICS_LAYER_CELL[3]", ids::PHYSICS_LAYER_CELL[3]),
-    ("PHYSICS_LAYER_CELL[4]", ids::PHYSICS_LAYER_CELL[4]),
-    ("PHYSICS_LAYER_CELL[5]", ids::PHYSICS_LAYER_CELL[5]),
-    ("PHYSICS_LAYER_CELL[6]", ids::PHYSICS_LAYER_CELL[6]),
-    ("PHYSICS_LAYER_CELL[7]", ids::PHYSICS_LAYER_CELL[7]),
-    ("PHYSICS_LAYER_CELL[8]", ids::PHYSICS_LAYER_CELL[8]),
-    ("PHYSICS_LAYER_CELL[9]", ids::PHYSICS_LAYER_CELL[9]),
-    ("PHYSICS_LAYER_CELL[10]", ids::PHYSICS_LAYER_CELL[10]),
-    ("PHYSICS_LAYER_CELL[11]", ids::PHYSICS_LAYER_CELL[11]),
-    ("PHYSICS_LAYER_CELL[12]", ids::PHYSICS_LAYER_CELL[12]),
-    ("PHYSICS_LAYER_CELL[13]", ids::PHYSICS_LAYER_CELL[13]),
-    ("PHYSICS_LAYER_CELL[14]", ids::PHYSICS_LAYER_CELL[14]),
-    ("PHYSICS_LAYER_CELL[15]", ids::PHYSICS_LAYER_CELL[15]),
-    ("PHYSICS_LAYER_CELL[16]", ids::PHYSICS_LAYER_CELL[16]),
-    ("PHYSICS_LAYER_CELL[17]", ids::PHYSICS_LAYER_CELL[17]),
-    ("PHYSICS_LAYER_CELL[18]", ids::PHYSICS_LAYER_CELL[18]),
-    ("PHYSICS_LAYER_CELL[19]", ids::PHYSICS_LAYER_CELL[19]),
-    ("PHYSICS_LAYER_CELL[20]", ids::PHYSICS_LAYER_CELL[20]),
-    ("PHYSICS_LAYER_CELL[21]", ids::PHYSICS_LAYER_CELL[21]),
-    ("PHYSICS_LAYER_CELL[22]", ids::PHYSICS_LAYER_CELL[22]),
-    ("PHYSICS_LAYER_CELL[23]", ids::PHYSICS_LAYER_CELL[23]),
-    ("PHYSICS_LAYER_CELL[24]", ids::PHYSICS_LAYER_CELL[24]),
-    ("PHYSICS_LAYER_CELL[25]", ids::PHYSICS_LAYER_CELL[25]),
-    ("PHYSICS_LAYER_CELL[26]", ids::PHYSICS_LAYER_CELL[26]),
-    ("PHYSICS_LAYER_CELL[27]", ids::PHYSICS_LAYER_CELL[27]),
-    ("PHYSICS_LAYER_CELL[28]", ids::PHYSICS_LAYER_CELL[28]),
-    ("PHYSICS_LAYER_CELL[29]", ids::PHYSICS_LAYER_CELL[29]),
-    ("PHYSICS_LAYER_CELL[30]", ids::PHYSICS_LAYER_CELL[30]),
-    ("PHYSICS_LAYER_CELL[31]", ids::PHYSICS_LAYER_CELL[31]),
-    ("PHYSICS_LAYER_CELL[32]", ids::PHYSICS_LAYER_CELL[32]),
-    ("PHYSICS_LAYER_CELL[33]", ids::PHYSICS_LAYER_CELL[33]),
-    ("PHYSICS_LAYER_CELL[34]", ids::PHYSICS_LAYER_CELL[34]),
-    ("PHYSICS_LAYER_CELL[35]", ids::PHYSICS_LAYER_CELL[35]),
-    ("PHYSICS_AIR_DRAG", ids::PHYSICS_AIR_DRAG),
-    ("PHYSICS_AIR_DRAG_NUM", ids::PHYSICS_AIR_DRAG_NUM),
-    ("PHYSICS_GRAVITY_X", ids::PHYSICS_GRAVITY_X),
-    ("PHYSICS_GRAVITY_X_NUM", ids::PHYSICS_GRAVITY_X_NUM),
-    ("PHYSICS_GRAVITY_Y", ids::PHYSICS_GRAVITY_Y),
-    ("PHYSICS_GRAVITY_Y_NUM", ids::PHYSICS_GRAVITY_Y_NUM),
-    ("PHYSICS_SUBSTEPS", ids::PHYSICS_SUBSTEPS),
-    ("PHYSICS_SUBSTEPS_NUM", ids::PHYSICS_SUBSTEPS_NUM),
-    ("PHYSICS_ITERATIONS", ids::PHYSICS_ITERATIONS),
-    ("PHYSICS_ITERATIONS_NUM", ids::PHYSICS_ITERATIONS_NUM),
-    ("PHYSICS_CONTACT_HZ", ids::PHYSICS_CONTACT_HZ),
-    ("PHYSICS_CONTACT_HZ_NUM", ids::PHYSICS_CONTACT_HZ_NUM),
-    ("PHYSICS_LINEAR_DAMPING", ids::PHYSICS_LINEAR_DAMPING),
-    (
-        "PHYSICS_LINEAR_DAMPING_NUM",
-        ids::PHYSICS_LINEAR_DAMPING_NUM,
-    ),
-    ("PHYSICS_ANGULAR_DAMPING", ids::PHYSICS_ANGULAR_DAMPING),
-    (
-        "PHYSICS_ANGULAR_DAMPING_NUM",
-        ids::PHYSICS_ANGULAR_DAMPING_NUM,
-    ),
-    ("PHYSICS_SLEEP_SPEED", ids::PHYSICS_SLEEP_SPEED),
-    ("PHYSICS_SLEEP_SPEED_NUM", ids::PHYSICS_SLEEP_SPEED_NUM),
-    ("PHYSICS_SLEEP_SPIN", ids::PHYSICS_SLEEP_SPIN),
-    ("PHYSICS_SLEEP_SPIN_NUM", ids::PHYSICS_SLEEP_SPIN_NUM),
-    ("PHYSICS_SLEEP_DELAY", ids::PHYSICS_SLEEP_DELAY),
-    ("PHYSICS_SLEEP_DELAY_NUM", ids::PHYSICS_SLEEP_DELAY_NUM),
-    ("PHYSICS_SHOW_COLLIDERS", ids::PHYSICS_SHOW_COLLIDERS),
-    ("PHYSICS_RESET_DEFAULTS", ids::PHYSICS_RESET_DEFAULTS),
-    // O painel de TOKENS (plano UI/UX W6 + W9). ⚠️ A família inteira, e não só o par novo do
-    // interop: ela nunca esteve nesta lista — os três consts do W6 entraram no app sem passar por
-    // aqui, e acrescentar só os dois de hoje deixaria a lacuna aberta com a aparência de fechada.
-    // (Os ids POR-LINHA são derivados do índice em runtime e têm gate próprio no painel.)
-    ("TOKENS_PANEL", ids::TOKENS_PANEL),
-    ("TOKENS_CLOSE", ids::TOKENS_CLOSE),
-    ("TOKENS_RESET_ALL", ids::TOKENS_RESET_ALL),
-    ("TOKENS_DTCG_EXPORT", ids::TOKENS_DTCG_EXPORT),
-    ("TOKENS_DTCG_IMPORT", ids::TOKENS_DTCG_IMPORT),
 ];
 
-/// Pairwise uniqueness across every chrome [`NodeId`]. O(n²) over ~200
-/// entries = trivial in test time.
+/// **As formas de id que NÃO são um literal nem um molde** — `(ficheiro, função, espécie, quem cobre)`.
+///
+/// ⚠️ A chave é o ficheiro e a FUNÇÃO que envolve o sítio (nunca a linha, que anda a cada edição):
+/// mover a função de casa torna a entrada obsoleta, e a metade [`every_non_literal_hash_is_named`]
+/// obriga a reescrevê-la — é essa a prova de que alguém olhou para a forma no sítio novo.
+const FORMAS_NAO_LITERAIS: &[(&str, &str, Especie, &str)] = &[
+    (
+        "crates/ph2d-app-components/src/component_palette.rs",
+        "item_id",
+        Especie::HashDeExpressao,
+        "item da paleta de componentes = hash do NOME CANÓNICO do tipo (espaço de nomes Rust, não de slugs); só é hit-registado com a paleta aberta",
+    ),
+    (
+        "crates/ph2d-app-field3d/src/shape_palette.rs",
+        "item_id",
+        Especie::HashDeExpressao,
+        "item da paleta de formas = hash da CHAVE i18n da forma (`panel.model3d.add.*`); só é hit-registado com a paleta aberta",
+    ),
+    (
+        "crates/ph2d-app-motion/src/motion_bridge_library.rs",
+        "build_palette_model",
+        Especie::HashDeExpressao,
+        "item da biblioteca de nós = hash do `type_name` do nó (`motion.*`); ida e volta gateada em motion_bridge_library_tests",
+    ),
+    (
+        "crates/ph2d-app-motion/src/motion_bridge_library.rs",
+        "route_palette_pick",
+        Especie::HashDeExpressao,
+        "a leitura inversa do mesmo hash (`type_name` → nó); a mesma porta, gateada com a ida",
+    ),
+    (
+        "crates/ph2d-editor-core/src/ids/chrome/timeline.rs",
+        "dynamic_id",
+        Especie::HashDeExpressao,
+        "a SEMENTE por domínio das famílias dinâmicas da timeline; a separação entre domínios é o timeline_dynamic_ids_dont_collide_with_chrome_or_each_other",
+    ),
+    (
+        "crates/ph2d-editor-core/src/ids/chrome/timeline.rs",
+        "dynamic_id",
+        Especie::FnvAMao,
+        "o corpo da mesma semente: FNV sobre os bytes `u64` das partes (não é a lei de slug, é uma extensão dela); coberto pelo mesmo teste",
+    ),
+    (
+        "crates/ph2d-editor-core/src/screens/hero/chrome/image_actions.rs",
+        "oneshot_tool_for",
+        Especie::HashDeExpressao,
+        "pill de ferramenta = hash do `manifest.id` — IGUAL por desenho ao const da fundação; tool-vs-tool é `detect_collisions`, id-vs-const é chrome_manifest_coverage",
+    ),
+    (
+        "crates/ph2d-editor-core/src/screens/hero/chrome/image_actions.rs",
+        "stateful_tool_for",
+        Especie::HashDeExpressao,
+        "idem (o braço Stateful do mesmo despacho)",
+    ),
+    (
+        "crates/ph2d-editor-core/src/screens/hero/topbar/image_action_row.rs",
+        "image_action_pills",
+        Especie::HashDeExpressao,
+        "idem (a fileira que pinta os pills)",
+    ),
+    (
+        "crates/ph2d-editor-core/src/screens/hero/live.rs",
+        "fold_track",
+        Especie::FnvAMao,
+        "id de TRACK de motion (não de hit): FNV com offset basis próprio, distinção medida no doc da função (0..100 000 → 100 000)",
+    ),
+    (
+        "crates/ph2d-editor-core/src/screens/hero/live.rs",
+        "scroll_track",
+        Especie::FnvAMao,
+        "idem, a família da rolagem (outra constante de mistura, as duas não partilham um valor)",
+    ),
+    (
+        "crates/ph2d-editor-core/src/widget/command_palette/cascade.rs",
+        "cascade_id",
+        Especie::FnvAMao,
+        "a cascata da paleta: FNV do índice semeada no const `command_palette.cascade` (id de motion, não de hit)",
+    ),
+    (
+        "crates/ph2d-tool-registry/src/node_id.rs",
+        "detect_collisions",
+        Especie::HashDeExpressao,
+        "é a PRÓPRIA verificação tool-vs-tool dos manifestos",
+    ),
+    (
+        "crates/ph2d-viewport3d/src/view_menu.rs",
+        "row_id",
+        Especie::HashDeExpressao,
+        "linha do menu de vistas = hash da CHAVE i18n da vista; só é hit-registada com o menu aberto",
+    ),
+    (
+        "shells/desktop/src/render_loop/mod.rs",
+        "run_render_frame",
+        Especie::HashDeExpressao,
+        "pill da ferramenta activa = hash do `manifest.id`, como os image_actions. ⚠️ A line/render-loop parte esta função em fases: o integrador reescreve a FUNÇÃO desta linha",
+    ),
+    (
+        "crates/ph2d-app-motion/src/motion_bridge_color.rs",
+        "card_swatch_id",
+        Especie::FnvAMao,
+        "amostra de cor do CARTÃO de nó: FNV de `motion-card/swatch/` + nó + âncora (espaço separado do painel, doc da função)",
+    ),
+    (
+        "crates/ph2d-panel-motion-graph/src/paint.rs",
+        "fnv_id",
+        Especie::FnvAMao,
+        "ids por-elemento do grafo (portas, fios, divisória) — cópia da lei sem o `0 → 1`; o espaço é o do grafo",
+    ),
+    (
+        "crates/ph2d-panel-motion-params/src/snapshot_ids.rs",
+        "fnv_id",
+        Especie::FnvAMao,
+        "ids por-row do painel de params (o mesmo esquema do grafo, com prefixo próprio)",
+    ),
+    (
+        "crates/ph2d-panel-motion-params/src/rows_paint_sections.rs",
+        "section_id",
+        Especie::FnvAMao,
+        "cabeçalho de secção do painel de params = FNV de `motion_param/section/<título>`",
+    ),
+    (
+        "crates/ph2d-param-editors/src/lib.rs",
+        "fnv_id",
+        Especie::FnvAMao,
+        "sub-ids dos editores ricos (curva, gradiente, paleta), o mesmo esquema dos dois painéis de Motion",
+    ),
+];
+
+// ────────────────────────────────────────────────────────────────────────────────────────────────
+// O varrimento
+// ────────────────────────────────────────────────────────────────────────────────────────────────
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+enum Especie {
+    /// `hash_node_id(expr)` / `hash_node_id_runtime(expr)` com uma expressão que não é literal nem molde.
+    HashDeExpressao,
+    /// Uma função que devolve `NodeId` e mistura o primo FNV à mão.
+    FnvAMao,
+}
+
+#[derive(Debug)]
+struct Literal {
+    slug: String,
+    file: String,
+    line: usize,
+    produto: bool,
+}
+
+#[derive(Debug)]
+struct Molde {
+    molde: String,
+    file: String,
+    func: String,
+}
+
+struct Censo {
+    literais: Vec<Literal>,
+    /// `const X: NodeId = NodeId(<inteiro>)` de produto: `(nome, valor, ficheiro)`.
+    numericos: Vec<(String, u64, String)>,
+    moldes: Vec<Molde>,
+    formas: BTreeSet<(String, String, Especie)>,
+    ficheiros_lidos: usize,
+}
+
+/// ⚠️ Os pisos: medidos em 2026-09-12 sobre o `main` da `line/editor-core`, com folga para baixo só
+/// no que uma limpeza legítima pode reduzir. Uma varredura que falhe um directório cai abaixo deles.
+const PISO_FICHEIROS: usize = 7_000; // medido: 7 553
+const PISO_LITERAIS: usize = 3_000;
+/// ⚠️ `15`, e não os `16` que um `grep` conta: um deles só tem o literal num COMENTÁRIO.
+const PISO_CRATES_COM_LITERAL: usize = 15;
+const PISO_MOLDES: usize = 150;
+
+fn root() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .ancestors()
+        .nth(2)
+        .expect("a raiz da workspace")
+        .to_path_buf()
+}
+
+fn censo() -> &'static Censo {
+    static C: OnceLock<Censo> = OnceLock::new();
+    C.get_or_init(varrer)
+}
+
+fn varrer() -> Censo {
+    let root = root();
+    let mut ficheiros = Vec::new();
+    for d in ["crates", "shells", "tools", "tests"] {
+        walk(&root.join(d), &mut ficheiros);
+    }
+    // As crates que declaram OUTRO `NodeId` (o grafo de nós tem o seu): uma FNV à mão lá não é um
+    // id de widget. Medido: só a `ph2d-nodegraph`; derivado, não escrito.
+    let mut outro_node_id: BTreeSet<String> = BTreeSet::new();
+    let mut textos: Vec<(PathBuf, String, String, String)> = Vec::new();
+    for p in &ficheiros {
+        let Ok(src) = std::fs::read_to_string(p) else {
+            continue;
+        };
+        let rel = p
+            .strip_prefix(&root)
+            .expect("dentro da raiz")
+            .to_string_lossy()
+            .replace('\\', "/");
+        let (com, cod) = limpar(&src);
+        if cod.contains("struct NodeId") && !rel.starts_with("crates/ph2d-a11y/") {
+            outro_node_id.insert(crate_dir(&rel));
+        }
+        if !(src.contains("hash_node_id") || tem_primo_fnv(&cod) || cod.contains("NodeId(")) {
+            continue;
+        }
+        textos.push((p.clone(), rel, com, cod));
+    }
+
+    let mut literais = Vec::new();
+    let mut numericos = Vec::new();
+    let mut moldes = Vec::new();
+    let mut formas = BTreeSet::new();
+    for (abs, rel, com, cod) in &textos {
+        let ficheiro_de_teste = caminho_de_teste(rel)
+            || ((com.contains("hash_node_id") || tem_primo_fnv(cod))
+                && is_declared_under_cfg_test(abs));
+        let regioes = regioes_de_teste(cod);
+        let produto = |off: usize| !ficheiro_de_teste && !regioes.iter().any(|&(a, e)| off >= a && off < e);
+
+        for (off, nome) in chamadas(cod, "hash_node_id") {
+            debug_assert_eq!(nome, "hash_node_id");
+            match argumento(com, off) {
+                Arg::Literal(slug) => literais.push(Literal {
+                    slug,
+                    file: rel.clone(),
+                    line: linha(com, off),
+                    produto: produto(off),
+                }),
+                Arg::Molde(_) | Arg::Expressao => {
+                    if produto(off) {
+                        formas.insert((rel.clone(), funcao_em(cod, off), Especie::HashDeExpressao));
+                    }
+                }
+            }
+        }
+        for (off, _) in chamadas(cod, "hash_node_id_runtime") {
+            match argumento(com, off) {
+                Arg::Literal(slug) => literais.push(Literal {
+                    slug,
+                    file: rel.clone(),
+                    line: linha(com, off),
+                    produto: produto(off),
+                }),
+                Arg::Molde(m) => {
+                    if produto(off) {
+                        moldes.push(Molde {
+                            molde: m,
+                            file: rel.clone(),
+                            func: funcao_em(cod, off),
+                        });
+                    }
+                }
+                Arg::Expressao => {
+                    if produto(off) {
+                        formas.insert((rel.clone(), funcao_em(cod, off), Especie::HashDeExpressao));
+                    }
+                }
+            }
+        }
+        if !outro_node_id.contains(&crate_dir(rel)) {
+            for off in primos_fnv(cod) {
+                if !produto(off) {
+                    continue;
+                }
+                let f = funcao_em(cod, off);
+                if assinatura_de(cod, off).contains("NodeId") {
+                    formas.insert((rel.clone(), f, Especie::FnvAMao));
+                }
+            }
+        }
+        // ⚠️ Só nos módulos que DECLARAM ids (`…/ids/…` ou `…/ids.rs`, a mesma convenção do
+        // `architecture_panel_wiring_parity`): a pele de canvas do widget tem um `PREVIEW_ID =
+        // NodeId(0)` de propósito — um id real ali colidiria com o widget homónimo do painel nativo
+        // (doc em `widget/skin.rs`) — e ele não é um id de encaminhamento.
+        if rel.contains("/ids/") || rel.ends_with("/ids.rs") {
+            for (nome, valor) in consts_numericos(cod) {
+                if produto(0) {
+                    numericos.push((nome, valor, rel.clone()));
+                }
+            }
+        }
+    }
+
+    let crates: BTreeSet<String> = literais.iter().map(|l| crate_dir(&l.file)).collect();
+    let c = Censo {
+        literais,
+        numericos,
+        moldes,
+        formas,
+        ficheiros_lidos: ficheiros.len(),
+    };
+    assert!(
+        c.ficheiros_lidos >= PISO_FICHEIROS,
+        "o varrimento leu {} ficheiros .rs e esperava >= {PISO_FICHEIROS} — perdeu um directório",
+        c.ficheiros_lidos
+    );
+    assert!(
+        c.literais.len() >= PISO_LITERAIS,
+        "o varrimento achou {} literais `hash_node_id(\"…\")` e esperava >= {PISO_LITERAIS} — o parser cegou",
+        c.literais.len()
+    );
+    assert!(
+        crates.len() >= PISO_CRATES_COM_LITERAL,
+        "literais em só {} crates (piso {PISO_CRATES_COM_LITERAL}): {crates:?}",
+        crates.len()
+    );
+    assert!(
+        c.moldes.len() >= PISO_MOLDES,
+        "o varrimento achou {} moldes `hash_node_id_runtime(&format!(…))` e esperava >= {PISO_MOLDES}",
+        c.moldes.len()
+    );
+    c
+}
+
+fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
+    let Ok(rd) = std::fs::read_dir(dir) else {
+        return;
+    };
+    for e in rd.flatten() {
+        let p = e.path();
+        let nome = e.file_name();
+        let nome = nome.to_string_lossy();
+        if p.is_dir() {
+            if nome != "target" && !nome.starts_with('.') {
+                walk(&p, out);
+            }
+        } else if nome.ends_with(".rs") {
+            out.push(p);
+        }
+    }
+}
+
+fn crate_dir(rel: &str) -> String {
+    rel.split('/').take(2).collect::<Vec<_>>().join("/")
+}
+
+fn caminho_de_teste(rel: &str) -> bool {
+    rel.split('/')
+        .any(|c| c == "tests" || c == "benches" || c == "examples")
+}
+
+/// `(sem_comentarios, sem_comentarios_nem_strings)` — os dois com os MESMOS offsets do original
+/// (cada byte apagado vira um espaço; as quebras de linha ficam).
+fn limpar(src: &str) -> (String, String) {
+    let b = src.as_bytes();
+    let n = b.len();
+    let mut com = b.to_vec();
+    let mut cod = b.to_vec();
+    fn apaga(v: &mut [u8], a: usize, e: usize) {
+        let e = e.min(v.len());
+        for x in v.iter_mut().take(e).skip(a) {
+            if *x != b'\n' {
+                *x = b' ';
+            }
+        }
+    }
+    let mut i = 0;
+    while i < n {
+        let c = b[i];
+        if c == b'/' && i + 1 < n && b[i + 1] == b'/' {
+            let e = b[i..].iter().position(|&x| x == b'\n').map_or(n, |k| i + k);
+            apaga(&mut com, i, e);
+            apaga(&mut cod, i, e);
+            i = e;
+            continue;
+        }
+        if c == b'/' && i + 1 < n && b[i + 1] == b'*' {
+            let (mut depth, mut j) = (1, i + 2);
+            while j < n && depth > 0 {
+                if b[j] == b'/' && j + 1 < n && b[j + 1] == b'*' {
+                    depth += 1;
+                    j += 2;
+                } else if b[j] == b'*' && j + 1 < n && b[j + 1] == b'/' {
+                    depth -= 1;
+                    j += 2;
+                } else {
+                    j += 1;
+                }
+            }
+            apaga(&mut com, i, j);
+            apaga(&mut cod, i, j);
+            i = j;
+            continue;
+        }
+        let ident_antes = i > 0 && (b[i - 1].is_ascii_alphanumeric() || b[i - 1] == b'_');
+        if !ident_antes && (c == b'r' || c == b'b') {
+            let mut j = i;
+            if b[j] == b'b' && j + 1 < n && b[j + 1] == b'r' {
+                j += 1;
+            }
+            if b[j] == b'r' && j + 1 < n && (b[j + 1] == b'"' || b[j + 1] == b'#') {
+                let (mut k, mut h) = (j + 1, 0);
+                while k < n && b[k] == b'#' {
+                    h += 1;
+                    k += 1;
+                }
+                if k < n && b[k] == b'"' {
+                    let mut fim = n;
+                    let mut t = k + 1;
+                    while t < n {
+                        if b[t] == b'"' && b[t + 1..].iter().take(h).filter(|&&x| x == b'#').count() == h {
+                            fim = t;
+                            break;
+                        }
+                        t += 1;
+                    }
+                    apaga(&mut cod, k + 1, fim);
+                    i = (fim + 1 + h).min(n);
+                    continue;
+                }
+            }
+        }
+        if c == b'"' {
+            let mut j = i + 1;
+            while j < n {
+                if b[j] == b'\\' {
+                    j += 2;
+                } else if b[j] == b'"' {
+                    break;
+                } else {
+                    j += 1;
+                }
+            }
+            apaga(&mut cod, i + 1, j);
+            i = j + 1;
+            continue;
+        }
+        if c == b'\'' {
+            if i + 1 < n && b[i + 1] == b'\\' {
+                if let Some(k) = b[i + 2..].iter().take(12).position(|&x| x == b'\'') {
+                    apaga(&mut cod, i + 1, i + 2 + k);
+                    i = i + 3 + k;
+                    continue;
+                }
+            } else if let Some(ch) = src[i + 1..].chars().next() {
+                let l = ch.len_utf8();
+                if i + 1 + l < n && b[i + 1 + l] == b'\'' {
+                    apaga(&mut cod, i + 1, i + 1 + l);
+                    i += 2 + l;
+                    continue;
+                }
+            }
+        }
+        i += 1;
+    }
+    (
+        String::from_utf8(com).expect("utf-8 preservado"),
+        String::from_utf8(cod).expect("utf-8 preservado"),
+    )
+}
+
+/// Os corpos `#[cfg(test)] mod x { … }` inline — e `#[cfg(all(test, …))]`, que também é só-teste
+/// (o `mod x;` de ficheiro é o `is_declared_under_cfg_test`).
+fn regioes_de_teste(cod: &str) -> Vec<(usize, usize)> {
+    let b = cod.as_bytes();
+    let mut out = Vec::new();
+    let mut from = 0;
+    loop {
+        let proximo = ["#[cfg(test)]", "#[cfg(all(test"]
+            .iter()
+            .filter_map(|p| cod[from..].find(p).map(|r| from + r))
+            .min();
+        let Some(a) = proximo else {
+            break;
+        };
+        from = a + 1;
+        let Some(fecha) = cod[a..].find(']') else {
+            break;
+        };
+        // o `]` do atributo: num `all(test, feature = "x")` o primeiro `]` é o dele (strings apagadas)
+        let mut j = a + fecha + 1;
+        // atributos seguintes, visibilidade, `mod nome`
+        loop {
+            while j < b.len() && b[j].is_ascii_whitespace() {
+                j += 1;
+            }
+            if b[j..].starts_with(b"#[") {
+                j += b[j..].iter().position(|&x| x == b']').map_or(0, |k| k + 1);
+                continue;
+            }
+            break;
+        }
+        let resto = &cod[j..];
+        let resto = resto.strip_prefix("pub ").unwrap_or(resto);
+        let Some(depois_mod) = resto.strip_prefix("mod ") else {
+            continue;
+        };
+        let Some(abre_rel) = depois_mod.find(['{', ';']) else {
+            continue;
+        };
+        if depois_mod.as_bytes()[abre_rel] != b'{' {
+            continue;
+        }
+        let abre = j + (resto.as_ptr() as usize - cod[j..].as_ptr() as usize) + 4 + abre_rel;
+        let mut depth = 0usize;
+        for (k, &x) in b.iter().enumerate().skip(abre) {
+            if x == b'{' {
+                depth += 1;
+            } else if x == b'}' {
+                depth -= 1;
+                if depth == 0 {
+                    out.push((a, k + 1));
+                    break;
+                }
+            }
+        }
+    }
+    out
+}
+
+fn ident(b: u8) -> bool {
+    b.is_ascii_alphanumeric() || b == b'_'
+}
+
+/// Os offsets das CHAMADAS a `nome(` no código (não a definição `fn nome(`, não um identificador maior).
+fn chamadas<'a>(cod: &'a str, nome: &'a str) -> Vec<(usize, &'a str)> {
+    let b = cod.as_bytes();
+    let mut out = Vec::new();
+    let mut from = 0;
+    while let Some(rel) = cod[from..].find(nome) {
+        let a = from + rel;
+        from = a + nome.len();
+        if a > 0 && ident(b[a - 1]) {
+            continue;
+        }
+        let mut j = a + nome.len();
+        while j < b.len() && b[j].is_ascii_whitespace() {
+            j += 1;
+        }
+        if j >= b.len() || b[j] != b'(' {
+            continue;
+        }
+        if cod[..a].trim_end().ends_with("fn") {
+            continue;
+        }
+        out.push((a, nome));
+    }
+    out
+}
+
+enum Arg {
+    Literal(String),
+    Molde(String),
+    Expressao,
+}
+
+/// O argumento da chamada que começa em `off`, lido no texto COM strings.
+fn argumento(com: &str, off: usize) -> Arg {
+    let depois = &com[off..];
+    let Some(p) = depois.find('(') else {
+        return Arg::Expressao;
+    };
+    let mut s = depois[p + 1..].trim_start();
+    if let Some(r) = s.strip_prefix('"') {
+        return r.split('"').next().map_or(Arg::Expressao, |x| Arg::Literal(x.to_owned()));
+    }
+    s = s.strip_prefix('&').unwrap_or(s).trim_start();
+    if let Some(r) = s.strip_prefix("format!") {
+        let r = r.trim_start().strip_prefix('(').unwrap_or(r).trim_start();
+        if let Some(r) = r.strip_prefix('"') {
+            return r.split('"').next().map_or(Arg::Expressao, |x| Arg::Molde(x.to_owned()));
+        }
+    }
+    Arg::Expressao
+}
+
+fn linha(txt: &str, off: usize) -> usize {
+    txt[..off].bytes().filter(|&x| x == b'\n').count() + 1
+}
+
+/// O nome da última `fn` declarada antes de `off` — a função que envolve o sítio.
+fn funcao_em(cod: &str, off: usize) -> String {
+    let b = cod.as_bytes();
+    let mut ultimo = String::from("?");
+    let mut from = 0;
+    while let Some(rel) = cod[from..off].find("fn ") {
+        let a = from + rel;
+        from = a + 3;
+        if a > 0 && ident(b[a - 1]) {
+            continue;
+        }
+        let nome: String = cod[a + 3..]
+            .trim_start()
+            .chars()
+            .take_while(|c| c.is_alphanumeric() || *c == '_')
+            .collect();
+        if !nome.is_empty() {
+            ultimo = nome;
+        }
+    }
+    ultimo
+}
+
+/// A assinatura (de `fn` até à primeira `{`) da função que envolve `off`.
+fn assinatura_de(cod: &str, off: usize) -> &str {
+    let Some(a) = cod[..off].rfind("fn ") else {
+        return "";
+    };
+    let e = cod[a..].find('{').map_or(cod.len(), |k| a + k);
+    &cod[a..e]
+}
+
+const PRIMOS_FNV: [&str; 3] = ["0x0000_0100_0000_01b3", "0x100000001b3", "1099511628211"];
+
+fn tem_primo_fnv(cod: &str) -> bool {
+    let low = cod.to_ascii_lowercase();
+    PRIMOS_FNV.iter().any(|p| low.contains(p))
+}
+
+fn primos_fnv(cod: &str) -> Vec<usize> {
+    let low = cod.to_ascii_lowercase();
+    let mut out = Vec::new();
+    for p in PRIMOS_FNV {
+        let mut from = 0;
+        while let Some(rel) = low[from..].find(p) {
+            out.push(from + rel);
+            from += rel + p.len();
+        }
+    }
+    out
+}
+
+/// `const NOME: NodeId = NodeId(<inteiro>);`
+fn consts_numericos(cod: &str) -> Vec<(String, u64)> {
+    let mut out = Vec::new();
+    for l in cod.lines() {
+        let t = l.trim_start();
+        let t = t.strip_prefix("pub ").unwrap_or(t);
+        let Some(r) = t.strip_prefix("const ") else {
+            continue;
+        };
+        let Some((nome, resto)) = r.split_once(':') else {
+            continue;
+        };
+        let Some(v) = resto
+            .trim_start()
+            .strip_prefix("NodeId")
+            .and_then(|x| x.trim_start().strip_prefix('='))
+            .and_then(|x| x.trim_start().strip_prefix("NodeId("))
+            .and_then(|x| x.split(')').next())
+        else {
+            continue;
+        };
+        if let Ok(v) = v.replace('_', "").trim().parse::<u64>() {
+            out.push((nome.trim().to_owned(), v));
+        }
+    }
+    out
+}
+
+fn h(slug: &str) -> u64 {
+    hash_node_id_runtime(slug).0
+}
+
+/// `slug → hash` agrupado: os grupos com MAIS de um slug distinto.
+fn colisoes<'a>(slugs: impl IntoIterator<Item = &'a str>) -> Vec<(u64, BTreeSet<&'a str>)> {
+    let mut por_hash: BTreeMap<u64, BTreeSet<&'a str>> = BTreeMap::new();
+    for s in slugs {
+        por_hash.entry(h(s)).or_default().insert(s);
+    }
+    por_hash.into_iter().filter(|(_, v)| v.len() > 1).collect()
+}
+
+/// Os hashes de todo id de PRODUTO que o censo vê — literais e numéricos. É o «chrome» contra o
+/// qual as famílias dinâmicas se medem.
+fn produto_hashes() -> BTreeSet<u64> {
+    let c = censo();
+    c.literais
+        .iter()
+        .filter(|l| l.produto)
+        .map(|l| h(&l.slug))
+        .chain(c.numericos.iter().map(|(_, v, _)| *v))
+        .collect()
+}
+
+/// Um molde casa uma string? — cada marcador `{…}` soletra um **INTEIRO decimal** (um ou mais
+/// dígitos), e os pedaços literais aparecem exactamente entre eles.
+///
+/// ⚠️ **O inteiro é a semântica, e ela foi MEDIDA:** com um marcador que soletrasse qualquer coisa,
+/// a 1.ª corrida acusou 25 pares — `vector.shape.{index}` a «soletrar» `vector.shape.group.{index}`,
+/// o `…{row}` a «soletrar» o `…{row}.num` —, todos impossíveis, porque os índices só produzem
+/// dígitos. Um marcador que carrega TEXTO (a tag de uma variante, a chave de um knob) fica fora
+/// desta régua, e é por isso que os testes de família abaixo CHAMAM essas funções com os valores
+/// reais (pintor, flip, timeline, vector).
+fn casa(molde: &str, s: &str) -> bool {
+    let pedacos = pedacos(molde);
+    let Some(mut resto) = s.strip_prefix(pedacos[0]) else {
+        return false;
+    };
+    for p in &pedacos[1..] {
+        let digitos = resto.bytes().take_while(u8::is_ascii_digit).count();
+        if digitos == 0 {
+            return false;
+        }
+        let Some(r) = resto[digitos..].strip_prefix(p) else {
+            return false;
+        };
+        resto = r;
+    }
+    resto.is_empty()
+}
+
+fn pedacos(molde: &str) -> Vec<&str> {
+    let mut out = Vec::new();
+    let mut resto = molde;
+    loop {
+        match resto.find('{') {
+            Some(a) => {
+                out.push(&resto[..a]);
+                let e = resto[a..].find('}').map_or(resto.len(), |k| a + k + 1);
+                resto = &resto[e..];
+            }
+            None => {
+                out.push(resto);
+                return out;
+            }
+        }
+    }
+}
+
+/// Um exemplar do molde: cada marcador vira `v`.
+fn exemplar(molde: &str, v: &str) -> String {
+    pedacos(molde).join(v)
+}
+
+// ────────────────────────────────────────────────────────────────────────────────────────────────
+// Os testes
+// ────────────────────────────────────────────────────────────────────────────────────────────────
+
+/// ⭐ **(1) Dois slugs DIFERENTES nunca hasheiam igual** — sobre TODO literal da workspace (produto
+/// e teste) e todo `const NodeId(<inteiro>)`.
 #[test]
 fn chrome_node_ids_are_pairwise_unique() {
-    // Sort by id so any collision lands in adjacent pairs.
-    let mut sorted: Vec<(NodeId, &'static str)> =
-        CHROME_IDS.iter().map(|(n, id)| (*id, *n)).collect();
-    // The timeline segment menu publishes its rows as tables rather than as
-    // hand-listed consts, so pull them in from the tables themselves: a row added
-    // there can never slip past this gate the way a forgotten CHROME_IDS entry
-    // would (the label doubles as the collision report's name).
-    sorted.extend(
-        ids::TIMELINE_SEGMENT_MENU
+    // Controlo positivo do agrupador: sem ele, uma função que nunca agrupasse deixava isto verde.
+    assert_eq!(colisoes(["a", "a", "b"]).len(), 0, "o mesmo slug duas vezes não é colisão de hash");
+    let c = censo();
+    let achadas = colisoes(c.literais.iter().map(|l| l.slug.as_str()));
+    assert!(
+        achadas.is_empty(),
+        "slugs DIFERENTES com o mesmo NodeId — o hit-test encaminha um para o outro:\n  {}\n\
+         cura: renomeie um dos slugs.",
+        achadas
             .iter()
-            .chain(ids::TIMELINE_EASE_MENU.iter())
-            .chain(ids::TIMELINE_TRACK_MENU.iter())
-            .chain(ids::TIMELINE_AXIS_TRACK_MENU.iter())
-            .chain(ids::TIMELINE_PATH_TRACK_MENU.iter())
-            .chain(ids::TIMELINE_STRIP_MENU.iter())
-            .chain(ids::TIMELINE_LANE_MENU.iter())
-            .map(|(id, label, _)| (*id, *label)),
+            .map(|(h, s)| format!("{h:#018x} ← {s:?}"))
+            .collect::<Vec<_>>()
+            .join("\n  ")
     );
-    // Color Harmonies: the scheme selector and partner-swatch slots are arrays,
-    // pulled from the arrays themselves so a widened array can never slip past.
-    // Distinct label per element — a shared label would let the (id, label) dedup
-    // mask an intra-array hash collision, which is exactly what this gate catches.
-    const HARMONY_SCHEME_LABELS: [&str; 7] = [
-        "BLENDER_HARMONY_SCHEMES[0]",
-        "BLENDER_HARMONY_SCHEMES[1]",
-        "BLENDER_HARMONY_SCHEMES[2]",
-        "BLENDER_HARMONY_SCHEMES[3]",
-        "BLENDER_HARMONY_SCHEMES[4]",
-        "BLENDER_HARMONY_SCHEMES[5]",
-        "BLENDER_HARMONY_SCHEMES[6]",
-    ];
-    const HARMONY_SWATCH_LABELS: [&str; 4] = [
-        "BLENDER_HARMONY_SWATCHES[0]",
-        "BLENDER_HARMONY_SWATCHES[1]",
-        "BLENDER_HARMONY_SWATCHES[2]",
-        "BLENDER_HARMONY_SWATCHES[3]",
-    ];
-    sorted.extend(
-        ids::BLENDER_HARMONY_SCHEMES
-            .iter()
-            .zip(HARMONY_SCHEME_LABELS)
-            .map(|(id, label)| (*id, label)),
-    );
-    sorted.extend(
-        ids::BLENDER_HARMONY_SWATCHES
-            .iter()
-            .zip(HARMONY_SWATCH_LABELS)
-            .map(|(id, label)| (*id, label)),
-    );
-    // ⚠️ **Uma linha PODE aparecer em dois menus**, e isso não é uma colisão: o
-    // `Delete Track` é a MESMA ação no menu de uma track comum e no de uma track de
-    // trajetória (ADR-0141), e dar-lhe dois ids seria a doença das duas portas. Este
-    // gate pergunta *"dois nomes DIFERENTES hasham igual?"*, então a mesma linha
-    // listada duas vezes é ruído — deduplicada por (id, label), que é exatamente o par
-    // que a pergunta compara. Uma colisão de verdade tem labels diferentes e sobrevive.
-    sorted.sort_by_key(|(id, label)| (id.0, *label));
-    sorted.dedup();
-    sorted.sort_by_key(|(id, _)| id.0);
+    // Os numéricos contra os hashes, e entre si.
+    let hashes: BTreeSet<u64> = c.literais.iter().map(|l| h(&l.slug)).collect();
+    let mut vistos: BTreeMap<u64, &str> = BTreeMap::new();
+    for (nome, v, file) in &c.numericos {
+        assert!(!hashes.contains(v), "`{nome}` ({file}) = NodeId({v}) colide com um slug hasheado");
+        if let Some(outro) = vistos.insert(*v, nome) {
+            assert_eq!(outro, nome, "`{nome}` e `{outro}` são o mesmo NodeId({v})");
+        }
+    }
+}
 
-    for w in sorted.windows(2) {
-        let (a_id, a_name) = w[0];
-        let (b_id, b_name) = w[1];
-        assert_ne!(
-            a_id.0, b_id.0,
-            "NodeId collision: `{}` and `{}` both hash to {:#018x}. \
-             Rename one slug in `screens/hero/ids.rs` to disambiguate.",
-            a_name, b_name, a_id.0
+/// ⭐ **(2) O MESMO slug nunca é escrito em dois sítios de PRODUTO** — o erro de copiar-colar para
+/// que este ficheiro existe. Um sítio de teste que soletre o slug para o conferir não conta.
+#[test]
+fn no_slug_is_declared_in_two_places() {
+    let c = censo();
+    let mut sitios: BTreeMap<&str, Vec<String>> = BTreeMap::new();
+    for l in c.literais.iter().filter(|l| l.produto) {
+        sitios
+            .entry(l.slug.as_str())
+            .or_default()
+            .push(format!("{}:{}", l.file, l.line));
+    }
+    let tolerados: BTreeMap<&str, usize> =
+        SLUGS_REPETIDOS_TOLERADOS.iter().map(|(s, n, _)| (*s, *n)).collect();
+    let repetidos: Vec<String> = sitios
+        .iter()
+        .filter(|(s, v)| v.len() > 1 && tolerados.get(*s).is_none_or(|n| v.len() > *n))
+        .map(|(s, v)| format!("{s:?} em {} sítios: {}", v.len(), v.join(" · ")))
+        .collect();
+    assert!(
+        repetidos.is_empty(),
+        "o MESMO slug declarado em mais de um sítio de produto — dois widgets com um id só:\n  {}\n\n\
+         cura: UMA definição (na crate mais baixa que todos os leitores vêem), e os outros sítios a \
+         nomeá-la. ⛔ Nunca uma entrada nova em SLUGS_REPETIDOS_TOLERADOS sem o bloqueador escrito.",
+        repetidos.join("\n  ")
+    );
+}
+
+/// **A catraca dos slugs repetidos ainda descreve a árvore** — a metade que a impede de virar licença.
+#[test]
+fn the_repeated_slug_ratchet_still_describes_the_tree() {
+    let c = censo();
+    for (slug, n, porque) in SLUGS_REPETIDOS_TOLERADOS {
+        assert!(!porque.trim().is_empty(), "{slug:?} tolerado sem motivo");
+        let agora = c.literais.iter().filter(|l| l.produto && l.slug == *slug).count();
+        assert_eq!(
+            agora, *n,
+            "{slug:?} está tolerado com {n} sítios e a árvore tem {agora} — a entrada já não descreve \
+             nada: se a cura aconteceu, APAGUE a linha; se os sítios mudaram, reescreva o número"
         );
     }
 }
 
-/// Reserved a11y root NodeId must not be shadowed by any chrome const.
-/// `hash_node_id` defends against this with a `== 0 → 1` fixup, but a
-/// hand-allocated const could still hit it.
+/// **O varrimento vê a workspace** — os controlos positivos (os pisos estão no próprio `varrer`).
+#[test]
+fn the_census_sees_the_whole_workspace() {
+    let c = censo();
+    // Um slug da fundação, um de uma crate de ferramenta, um molde da família vectorial: três
+    // directórios diferentes, e nenhum deles se apaga numa limpeza de rotina.
+    for slug in ["insp_blender_picker", "panel.color_equalization", "flip.panel"] {
+        assert!(
+            c.literais.iter().any(|l| l.slug == slug && l.produto),
+            "controlo: o slug de produto {slug:?} não foi achado — o varrimento cegou para o sítio dele"
+        );
+    }
+    assert!(
+        c.moldes.iter().any(|m| m.molde == "vector.texpat.{slot}.{knob:?}"),
+        "controlo: o molde `vector.texpat.{{slot}}.{{knob:?}}` não foi achado — o leitor de moldes cegou"
+    );
+    assert!(
+        c.literais.iter().any(|l| !l.produto),
+        "controlo: nenhum literal de TESTE — a separação produto/teste não está a separar"
+    );
+    assert!(
+        c.numericos.iter().any(|(n, v, _)| n == "HIER_PLAYER" && *v == 400),
+        "controlo: o `HIER_PLAYER = NodeId(400)` não foi achado — o leitor de numéricos cegou"
+    );
+    assert!(
+        c.formas
+            .iter()
+            .any(|(f, func, e)| f.ends_with("screens/hero/live.rs") && func == "fold_track" && *e == Especie::FnvAMao),
+        "controlo: a FNV à mão do `fold_track` não foi achada — o leitor de formas cegou"
+    );
+}
+
+/// Reserved a11y root NodeId must not be shadowed by any product id — `hash_node_id` defends
+/// against it with a `== 0 → 1` fixup, but a hand-numbered const could still hit it.
 #[test]
 fn no_chrome_id_is_root() {
-    for (name, id) in CHROME_IDS {
-        assert_ne!(
-            id.0,
-            ph2d_a11y::NodeId::ROOT.0,
-            "Chrome const `{}` collides with a11y NodeId::ROOT — must be > 0.",
-            name
+    let c = censo();
+    for l in c.literais.iter().filter(|l| l.produto) {
+        assert_ne!(h(&l.slug), NodeId::ROOT.0, "{:?} ({}:{}) é o NodeId::ROOT", l.slug, l.file, l.line);
+    }
+    for (nome, v, file) in &c.numericos {
+        assert_ne!(*v, NodeId::ROOT.0, "`{nome}` ({file}) é o NodeId::ROOT");
+    }
+}
+
+/// Eye/expand companion-bit fixture: no product id may be mistaken for a hierarchy row companion.
+/// Companion detection requires BOTH the high bit (61 or 62) set AND the un-masked low portion to
+/// fall in the row-id range (< 2^32); a hashed id sets the high bits ~50% of the time, but the
+/// residue lands in range with probability < 2^-30 per bit. This asserts the property for EVERY
+/// product literal the workspace ships — not only the hand-listed subset the old table carried.
+#[test]
+fn no_chrome_id_is_companion_misread() {
+    let c = censo();
+    for l in c.literais.iter().filter(|l| l.produto) {
+        let id = NodeId(h(&l.slug));
+        assert!(
+            ids::hier_eye_companion_to_row(id).is_none(),
+            "{:?} ({}:{}, id {:#018x}) is misdetected as an eye-toggle row companion",
+            l.slug,
+            l.file,
+            l.line,
+            id.0
+        );
+        assert!(
+            ids::hier_expand_companion_to_row(id).is_none(),
+            "{:?} ({}:{}, id {:#018x}) is misdetected as an expand-toggle row companion",
+            l.slug,
+            l.file,
+            l.line,
+            id.0
         );
     }
 }
 
-/// Eye/expand companion-bit fixture: no chrome id may be mistaken for
-/// a row companion. Companion-detection in `ids.rs` requires BOTH the
-/// high bit (61 or 62) set AND the un-masked low portion to fall in
-/// the row-id range (< 2^32). A hashed chrome id will set the high
-/// bits ~50% of the time, but the un-masked 62-bit residue is
-/// uniformly random over a 4-billion-x-larger space, so the
-/// probability that any one chrome id is misdetected is < 2^-30 per
-/// bit. This test asserts the property holds for the actual set of
-/// chrome consts shipped — if a future slug change pushes one into
-/// the danger zone, this fails loudly at `cargo test` time.
+/// ⭐ **Um molde de runtime nunca SOLETRA um literal, e dois moldes nunca soletram o mesmo** — a
+/// colisão de copiar-colar das famílias derivadas, lida no texto (a amostragem por valores, que os
+/// testes de família abaixo fazem, não a vê: ela pergunta a 64 bits).
 #[test]
-fn no_chrome_id_is_companion_misread() {
-    for (name, id) in CHROME_IDS {
-        assert!(
-            ids::hier_eye_companion_to_row(*id).is_none(),
-            "Chrome const `{}` (id {:#018x}) is misdetected as an eye-toggle row companion.",
-            name,
-            id.0
-        );
-        assert!(
-            ids::hier_expand_companion_to_row(*id).is_none(),
-            "Chrome const `{}` (id {:#018x}) is misdetected as an expand-toggle row companion.",
-            name,
-            id.0
-        );
+fn a_runtime_template_never_spells_a_literal_slug() {
+    // Controlos do casador.
+    assert!(casa("vector.fx.{r}.remove", "vector.fx.3.remove"));
+    assert!(casa("vector.fx.{r}.remove", "vector.fx.42.remove"));
+    assert!(!casa("vector.fx.{r}.remove", "vector.fx..remove"), "um marcador soletra >= 1 dígito");
+    assert!(!casa("vector.fx.{r}.remove", "vector.fx.3.up"));
+    assert!(casa("a.{i}", "a.7") && !casa("a.{i}", "b.7") && !casa("a.{i}", "a.7.num"));
+    assert!(!casa("vector.shape.{index}", "vector.shape.group_dd"), "um índice não soletra texto");
+
+    let c = censo();
+    let mut soletrados = Vec::new();
+    for m in &c.moldes {
+        for l in c.literais.iter().filter(|l| l.produto) {
+            if casa(&m.molde, &l.slug) {
+                soletrados.push(format!(
+                    "o literal {:?} ({}:{}) é soletrado pelo molde {:?} ({} :: {})",
+                    l.slug, l.file, l.line, m.molde, m.file, m.func
+                ));
+            }
+        }
     }
+    for (i, a) in c.moldes.iter().enumerate() {
+        for b in c.moldes.iter().skip(i + 1) {
+            for v in ["0", "17"] {
+                if casa(&b.molde, &exemplar(&a.molde, v)) || casa(&a.molde, &exemplar(&b.molde, v)) {
+                    soletrados.push(format!(
+                        "os moldes {:?} ({} :: {}) e {:?} ({} :: {}) soletram a mesma string",
+                        a.molde, a.file, a.func, b.molde, b.file, b.func
+                    ));
+                    break;
+                }
+            }
+        }
+    }
+    assert!(soletrados.is_empty(), "{}", soletrados.join("\n"));
+}
+
+/// ⭐ **Toda forma de id que não é literal nem molde está NOMEADA**, e toda entrada nomeada ainda
+/// existe — as duas metades de [`FORMAS_NAO_LITERAIS`].
+#[test]
+fn every_non_literal_hash_is_named() {
+    let c = censo();
+    let nomeadas: BTreeSet<(String, String, Especie)> = FORMAS_NAO_LITERAIS
+        .iter()
+        .map(|(f, func, e, porque)| {
+            assert!(!porque.trim().is_empty(), "{f} :: {func} nomeada sem motivo");
+            ((*f).to_owned(), (*func).to_owned(), *e)
+        })
+        .collect();
+    let novas: Vec<String> = c
+        .formas
+        .difference(&nomeadas)
+        .map(|(f, func, e)| format!("{f} :: {func} ({e:?})"))
+        .collect();
+    assert!(
+        novas.is_empty(),
+        "formas de NodeId que este censo não sabe cobrir — nomeie cada uma em FORMAS_NAO_LITERAIS com \
+         QUEM a cobre (ou troque-a por um literal / um molde, que ele cobre sozinho):\n  {}",
+        novas.join("\n  ")
+    );
+    let obsoletas: Vec<String> = nomeadas
+        .difference(&c.formas)
+        .map(|(f, func, e)| format!("{f} :: {func} ({e:?})"))
+        .collect();
+    assert!(
+        obsoletas.is_empty(),
+        "entradas de FORMAS_NAO_LITERAIS que já não descrevem nada (a função mudou de casa, de nome, ou \
+         deixou de hashear) — reescreva-as no sítio novo ou apague-as:\n  {}",
+        obsoletas.join("\n  ")
+    );
 }
 
 /// W3 audit-2 B.3: the DYNAMIC painter row/blend ids (derived at runtime via
-/// `fnv_node_id_runtime`) must collide neither with any fixed chrome const nor
+/// `hash_node_id_runtime`) must collide neither with any product literal id nor
 /// with each other. A slug-scheme change that aliased a dynamic id onto a chrome
 /// id would misroute a production click — the exact failure this file guards,
 /// extended to the per-row painter id space.
@@ -1049,7 +1047,7 @@ fn no_chrome_id_is_companion_misread() {
 fn painter_dynamic_ids_dont_collide_with_chrome_or_each_other() {
     use ids::PainterLayerWidget::{Blend, MoveDown, MoveUp, Opacity, OpacityChip, Row, Visibility};
 
-    let chrome: std::collections::BTreeSet<u64> = CHROME_IDS.iter().map(|(_, id)| id.0).collect();
+    let chrome = produto_hashes();
     let mut seen: std::collections::BTreeSet<u64> = std::collections::BTreeSet::new();
 
     let kinds = [
@@ -1098,7 +1096,7 @@ fn painter_dynamic_ids_dont_collide_with_chrome_or_each_other() {
 fn flip_dynamic_ids_dont_collide_with_chrome_or_each_other() {
     use ids::FlipLayerWidget::{Blend, Lock, MoveDown, MoveUp, Opacity, Row, Visibility};
 
-    let chrome: std::collections::BTreeSet<u64> = CHROME_IDS.iter().map(|(_, id)| id.0).collect();
+    let chrome = produto_hashes();
     let mut seen: std::collections::BTreeSet<u64> = std::collections::BTreeSet::new();
 
     let kinds = [Row, Visibility, Lock, Opacity, Blend, MoveUp, MoveDown];
@@ -1138,7 +1136,7 @@ fn flip_dynamic_ids_dont_collide_with_chrome_or_each_other() {
 /// key owns BOTH a diamond and an anchor, keyed by the same `(target, key)`.
 #[test]
 fn timeline_dynamic_ids_dont_collide_with_chrome_or_each_other() {
-    let chrome: std::collections::BTreeSet<u64> = CHROME_IDS.iter().map(|(_, id)| id.0).collect();
+    let chrome = produto_hashes();
     let mut seen: std::collections::BTreeSet<u64> = std::collections::BTreeSet::new();
     let raw = [0u64, 1, 2, 3, 7, 42, 255, 1000, 0x_dead_beef, u64::MAX];
 
@@ -1207,7 +1205,7 @@ fn timeline_dynamic_ids_dont_collide_with_chrome_or_each_other() {
 /// dynamic-id guards. Indices span dense (small) + sparse (large) family counts.
 #[test]
 fn vector_dynamic_ids_dont_collide_with_chrome_or_each_other() {
-    let chrome: std::collections::BTreeSet<u64> = CHROME_IDS.iter().map(|(_, id)| id.0).collect();
+    let chrome = produto_hashes();
     let mut seen: std::collections::BTreeSet<u64> = std::collections::BTreeSet::new();
     for index in [0usize, 1, 2, 3, 7, 42, 255, 1000, 100_000] {
         let id = ids::vector_text_font_option_id(index).0;

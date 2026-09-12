@@ -26,7 +26,6 @@ ph2d-editor-core         = { path = "../ph2d-editor-core" }
 ph2d-tool-equalize-sizes = { path = "../ph2d-tool-equalize-sizes" }
 ph2d-a11y                = { path = "../ph2d-a11y" }
 ph2d-tokens              = { path = "../ph2d-tokens" }
-ph2d-tool-registry       = { path = "../ph2d-tool-registry" }
 # Painter helpers (paint_slider_with_chip_layout / paint_button) take
 # &mut TextSystem + &mut VectorScene directly; the panel needs these
 # types in scope. Foundational crates (no cycle: editor-core → text +

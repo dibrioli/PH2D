@@ -30,7 +30,6 @@ pub use state::{
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};
 use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal};
-use ph2d_tool_registry::hash_node_id;
 
 /// Zero-size marker implementing the typed Equalize Sizes panel
 /// contract.
@@ -40,7 +39,7 @@ impl Panel for EqualizeSizesPanel {
     type State = EqualizeSizesPanelState;
 
     const ID: &'static str = "equalize_sizes";
-    const NODE_ID: NodeId = hash_node_id("panel.equalize_sizes");
+    const NODE_ID: NodeId = ids::EQS_PANEL;
     const DEFAULT_VISIBLE: bool = false;
     const TITLE: &'static str = "Equalize Sizes";
     const ICON: ph2d_editor_core::icons::IconId = ph2d_editor_core::icons::IconId::EqualizeSizes;

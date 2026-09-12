@@ -129,11 +129,8 @@ pub const MAX_CATALOG_ROWS: usize = 256;
 /// `interaction_no_alloc` só despacha `Move` com o botão **primário**.
 ///
 /// ⚠️ Ela também tira o `format!` do **laço que pinta** a coluna, que corria por quadro.
-static CATALOG_ROWS: std::sync::LazyLock<Vec<NodeId>> = std::sync::LazyLock::new(|| {
-    (0..MAX_CATALOG_ROWS)
-        .map(|i| ph2d_tool_registry::hash_node_id_runtime(&format!("asset_browser.catalog.row.{i}")))
-        .collect()
-});
+static CATALOG_ROWS: std::sync::LazyLock<Vec<NodeId>> =
+    std::sync::LazyLock::new(|| (0..MAX_CATALOG_ROWS).map(catalog_row_hash).collect());
 
 /// O id da linha `index` da coluna — **posicional na lista visível**, como o cartão.
 ///
@@ -143,8 +140,17 @@ static CATALOG_ROWS: std::sync::LazyLock<Vec<NodeId>> = std::sync::LazyLock::new
 pub fn catalog_row_id(index: usize) -> NodeId {
     match CATALOG_ROWS.get(index) {
         Some(id) => *id,
-        None => ph2d_tool_registry::hash_node_id_runtime(&format!("asset_browser.catalog.row.{index}")),
+        None => catalog_row_hash(index),
     }
+}
+
+/// **A lei da linha, escrita UMA vez** — a escada assada e o fora-da-escada leem-na daqui.
+///
+/// ⚠️ O molde `asset_browser.catalog.row.{…}` estava escrito DUAS vezes neste ficheiro (a escada e
+/// o `None` acima), e o censo derivado de colisões (`node_id_collisions`) acusou-o: mudar um sem o
+/// outro faria a linha 300 viver noutro espaço de ids que a 299, em silêncio.
+fn catalog_row_hash(index: usize) -> NodeId {
+    ph2d_tool_registry::hash_node_id_runtime(&format!("asset_browser.catalog.row.{index}"))
 }
 
 /// ⭐⭐ **A leitura INVERSA da escada** — `id` é uma linha de catálogo, e qual?

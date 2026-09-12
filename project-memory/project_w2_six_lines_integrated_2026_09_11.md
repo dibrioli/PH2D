@@ -75,6 +75,34 @@ cumprida e não apagada lê-se como dívida aberta para sempre*), e o `PH2D_PHYS
 `ph2d-app-physics` **pode** depender de `ph2d-timeline` (sem ciclo; as crates de família já dependem
 de 5–11 crates-motor irmãs) ⇒ o roteador sai INTEIRO, nunca partido.
 
+✅ **FASE B — o grosso FEITO em 12/09.** Integradas `sculpt3d` (−32 071, saiu quase inteira: de
+31 902 para **501** na shell), `vec` (−4 975), `flip` (−2 838) e depois a **`line/shell-folhas`**
+(−13 209). Shell **526 809 → 398 037 em dois dias: −128 772, −24,4 %.**
+
+⭐⭐ **A `line/shell-folhas` nasceu de TRÊS linhas independentes a darem o mesmo diagnóstico** —
+motion (*«13 pedaços partilhados prendem os 26 bloqueadores»*), flip (*«duas funções de outra
+família prendem 84 % de mim»*) e vec (*«o meu bloqueador não é a `App`, é o `name_unique`»*). ⛔ Ela
+**não** abriu no dia em que foi pedida: as peças maiores eram território da `line/app-vec`, que
+estava a mexer nelas naquele momento. *Uma linha de folhas partilhadas colide com quem está dentro
+das famílias — ela abre quando ninguém está.* Lei do bloco: **uma folha por ASSUNTO, nunca um saco**
+(uma crate «das coisas partilhadas» resolve o compilador e cria a segunda shell) — saíram sete,
+todas nomeáveis sem «comum»/«utils».
+
+⛔⛔ **E o briefing que EU escrevi tinha dois números errados, os dois pela armadilha que eu próprio
+documentara no dia anterior** (HOWTO §2.12): dei `transport` como 7 consumidores — tem **um**, e as
+outras seis eram a palavra *«transporte»* em PROSA dentro de comentários; e dei `audio` como 569
+LOC — são **8 544**, porque contei o ficheiro de topo e não a árvore de 37 por baixo dele. *Aplicar
+mal a própria régua um dia depois de a escrever é o modo de falha normal dela, não a excepção.*
+
+⚠️ **E a `flip` reprovou no gate da ÁRVORE COMBINADA** — o único sítio onde podia: o portão de fecho
+de uma linha corre o nextest **impactado**, e `shells/desktop/tests/it/` não entra no filtro. ⇒ toda
+linha desta wave passa a correr `cargo test -p ph2d-host-desktop --test it` à parte.
+
+⭐ **Espécie nova no HOWTO (§2.13), paga por DUAS linhas no mesmo dia e independentemente:** *a
+agulha que nomeia a VISIBILIDADE*. Publicar a API de uma folha obriga `pub(crate) fn` a virar
+`pub fn`, e um gate ancorado no modificador reprova sem que a lei mude uma linha. *Uma agulha ancora
+na LEI, nunca em quem pode chamá-la.*
+
 **Aberto:** a **Fase B** das cinco famílias (o corte pelo `HOWTO_partir_uma_familia_da_shell.md`),
 que é onde os roteadores saem e a catraca volta a vazia; `ship.sh` + CI **não correram** (ordem do
 Enio); o smoke é dele e não foi corrido.

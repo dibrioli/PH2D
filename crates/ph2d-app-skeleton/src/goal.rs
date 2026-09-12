@@ -46,7 +46,7 @@ use ph2d_preview_drive::{Driven, PreviewDrive};
 /// O nome que uma âncora nova recebe. ⚠️ Em inglês, como toda a UI da casa.
 
 /// **O índice `StableId → entidade` de TUDO** — o alvo de uma âncora é um objecto qualquer, não um
-/// osso, então este índice é mais largo que o [`crate::skeleton_live`]'s.
+/// osso, então este índice é mais largo que o [`ph2d_skeleton_live::skin_live`]'s.
 ///
 /// ⚠️ Construído uma vez por quadro e passado adiante, que é o que o doc do
 /// [`ph2d_ecs::entity_of_stable_id`] manda fazer.
@@ -73,7 +73,7 @@ fn index(sim: &SimWorld) -> std::collections::BTreeMap<StableId, Entity> {
 /// ⚠️ Ela varre as âncoras da cena — que são um punhado — e não a corrente de cada osso: a pergunta
 /// é *«alguém manda neste?»*, e quem sabe responder é o lado de quem manda.
 #[must_use]
-pub(crate) fn is_governed(sim: &SimWorld, bone: Entity) -> bool {
+pub fn is_governed(sim: &SimWorld, bone: Entity) -> bool {
     sim.world()
         .iter_entities()
         .filter_map(|er| {
@@ -127,7 +127,7 @@ fn schedule(
     let mut com_fundo: Vec<(usize, StableId, Entity, IkGoal)> = cruas
         .into_iter()
         .map(|(tip, g)| {
-            let fundo = crate::skeleton_live::chain_to(sim, tip.to_bits()).len();
+            let fundo = ph2d_skeleton_live::skin_live::chain_to(sim, tip.to_bits()).len();
             let id = ph2d_ecs::stable_id_of(sim.world(), tip).unwrap_or(StableId::NONE);
             (fundo, id, tip, g)
         })
@@ -189,14 +189,14 @@ fn feeds_back(sim: &SimWorld, alvo: Entity, corrente: &[Entity]) -> bool {
 ///
 /// ⚠️ **Uma varredura, três consumidores**: o desenho (o losango e o tracejado), o dedo (o realce) e
 /// o arrasto. Uma segunda varredura com outra regra divergiria desta na primeira ramificação — é a
-/// mesma lei que o [`crate::skeleton_live::bone_segments`] já declara.
+/// mesma lei que o [`ph2d_skeleton_live::skin_live::bone_segments`] já declara.
 ///
 /// ⚠️ O **segmento do osso** vem junto porque o tamanho do losango sai da mesma porta da bolinha
 /// (`joint_radius_px`, sobre o comprimento do osso **na tela**) — sem ele o desenho teria de
 /// re-encontrar o osso, que é a segunda resposta à mesma pergunta.
 ///
 /// ⚠️ Um osso cuja âncora perdeu o alvo **não entra**: não há onde desenhar nem o que agarrar.
-pub(crate) fn anchors(sim: &SimWorld) -> Vec<ph2d_skeleton_render::Goal> {
+pub fn anchors(sim: &SimWorld) -> Vec<ph2d_skeleton_render::Goal> {
     // ⚠️ **A saída cedo vem ANTES do índice, e não é micro-optimização:** esta função corre no
     // caminho de DESENHO de todo quadro, e o índice é uma travessia do mundo inteiro. A cena comum
     // não tem âncora nenhuma — fazê-la pagar uma varredura por quadro para descobrir isso seria o
@@ -209,7 +209,7 @@ pub(crate) fn anchors(sim: &SimWorld) -> Vec<ph2d_skeleton_render::Goal> {
         return Vec::new();
     }
     let idx = index(sim);
-    let segs = crate::skeleton_live::bone_segments(sim);
+    let segs = ph2d_skeleton_live::skin_live::bone_segments(sim);
     let mut out: Vec<ph2d_skeleton_render::Goal> = sim
         .world()
         .iter_entities()
@@ -236,8 +236,8 @@ pub(crate) fn anchors(sim: &SimWorld) -> Vec<ph2d_skeleton_render::Goal> {
 /// ⭐ É esta subtracção que faz o losango **substituir** o anel em vez de se somar a ele: num osso
 /// ancorado a ponta deixa de ser agarrável (o que se arrasta é o alvo), e desenhar as duas coisas
 /// por cima uma da outra prometeria dois verbos onde há um.
-pub(crate) fn unanchored_ends(sim: &SimWorld) -> Vec<u64> {
-    crate::skeleton_live::chain_ends(sim)
+pub fn unanchored_ends(sim: &SimWorld) -> Vec<u64> {
+    ph2d_skeleton_live::skin_live::chain_ends(sim)
         .into_iter()
         .filter(|&b| sim.world().get::<IkGoal>(Entity::from_bits(b)).is_none())
         .collect()
@@ -248,7 +248,7 @@ pub(crate) fn unanchored_ends(sim: &SimWorld) -> Vec<u64> {
 /// ⚠️ É por aqui que o arrasto da ponta passa quando há restrição: ele deixa de posar a corrente
 /// (que o passe reescreveria no quadro seguinte, e o artista veria o osso voltar) e passa a mover o
 /// **objecto autorado**, que é o que o documento guarda.
-pub(crate) fn drag_anchor(sim: &mut SimWorld, bone: Entity, world: [f64; 2]) -> bool {
+pub fn drag_anchor(sim: &mut SimWorld, bone: Entity, world: [f64; 2]) -> bool {
     let Some(g) = sim.world().get::<IkGoal>(bone).copied() else {
         return false;
     };
@@ -302,7 +302,7 @@ pub(crate) fn drag_anchor(sim: &mut SimWorld, bone: Entity, world: [f64; 2]) -> 
 /// ⚠️ **A `settle` NÃO servia**: ela é para um motor que **largou** (e aí o vivo *é* o documento);
 /// aqui o motor foi **desligado**, e o vivo é dele. São dois factos diferentes com a mesma forma —
 /// ver [`PreviewDrive::release_to_authored`].
-pub(crate) fn remove(sim: &mut SimWorld, bone: Entity, preview: &mut PreviewDrive) -> bool {
+pub fn remove(sim: &mut SimWorld, bone: Entity, preview: &mut PreviewDrive) -> bool {
     let Some(g) = sim.world().get::<IkGoal>(bone).copied() else {
         return false;
     };
@@ -321,9 +321,9 @@ pub(crate) fn remove(sim: &mut SimWorld, bone: Entity, preview: &mut PreviewDriv
 
 /// ⭐⭐⭐ **UM QUADRO DE RESTRIÇÕES.** Devolve quantas correntes moveu.
 ///
-/// Corre **antes** do [`crate::skeleton_live::recook`] — ele lê a pose de agora, e a pose de agora é
+/// Corre **antes** do [`ph2d_skeleton_live::skin_live::recook`] — ele lê a pose de agora, e a pose de agora é
 /// o que este passe acaba de escrever.
-pub(crate) fn solve(sim: &mut SimWorld, preview: &mut PreviewDrive) -> usize {
+pub fn solve(sim: &mut SimWorld, preview: &mut PreviewDrive) -> usize {
     let cruas: Vec<(Entity, IkGoal)> = sim
         .world()
         .iter_entities()
@@ -447,18 +447,18 @@ fn solve_one(
 }
 
 #[cfg(test)]
-#[path = "skeleton_goal_tests.rs"]
+#[path = "goal_tests.rs"]
 mod tests;
 
 /// ⭐ **O que a âncora escreve é PRÉ-VISUALIZAÇÃO** — irmão pelo teto de 600 LOC, e o corte é por
 /// RESPONSABILIDADE: o `tests` mede a LEI que ela resolve por quadro; este mede o que acontece ao
 /// DOCUMENTO (quem larga, quem escreve por cima, e o que sobra quando o motor é desligado).
 #[cfg(test)]
-#[path = "skeleton_goal_ledger_tests.rs"]
+#[path = "goal_ledger_tests.rs"]
 mod ledger_tests;
 
 /// ⭐⭐⭐ **CRIA a âncora** deste osso — delegação para [`ph2d_skeleton_live::goal::add`].
-pub(crate) fn add(sim: &mut SimWorld, bone: Entity) -> Option<Entity> {
+pub fn add(sim: &mut SimWorld, bone: Entity) -> Option<Entity> {
     ph2d_skeleton_live::goal::add(sim, bone)
 }
 
@@ -466,7 +466,7 @@ pub(crate) fn add(sim: &mut SimWorld, bone: Entity) -> Option<Entity> {
 ///
 /// ⚠️ `chain` é `u32` e não `u16`: a 1.ª redacção desta delegação escreveu a assinatura de
 /// memória e o compilador apanhou-a em três sítios. *Uma assinatura lê-se do ficheiro.*
-pub(crate) fn governed(sim: &SimWorld, tip: Entity, chain: u32) -> Vec<Entity> {
+pub fn governed(sim: &SimWorld, tip: Entity, chain: u32) -> Vec<Entity> {
     ph2d_skeleton_live::goal::governed(sim, tip, chain)
 }
 
@@ -475,3 +475,51 @@ pub(crate) fn governed(sim: &SimWorld, tip: Entity, chain: u32) -> Vec<Entity> {
 fn joints_of(sim: &SimWorld, corrente: &[Entity]) -> Option<(Vec<[f64; 2]>, Vec<f64>)> {
     ph2d_skeleton_live::goal::joints_of(sim, corrente)
 }
+
+// ⚠️⚠️ **A FIXTURA DO BRAÇO vive aqui, sob `test-support`, e não no módulo de teste** (HOWTO §2.5).
+// Ela é partilhada por QUATRO módulos de teste desta crate **e** pelo `skeleton_shell_seam_tests`
+// da shell — e um `#[cfg(test)]` é invisível do outro lado da fronteira. ⛔ Uma cópia do lado de lá
+// divergiria no primeiro ajuste, que é o defeito que este módulo já curou no raio da junta.
+// ⚠️ O `osso` privado viaja com ela: uma fixtura sem o construtor dela não é uma fixtura.
+#[cfg(any(test, feature = "test-support"))]
+use ph2d_ecs::{Name, RootOrder};
+#[cfg(any(test, feature = "test-support"))]
+use ph2d_skeleton_ecs::Bone;
+
+#[cfg(any(test, feature = "test-support"))]
+/// Um braço de dois ossos deitado no `+X`, com a raiz na origem: ombro `(0,0)→(10,0)`, cotovelo
+/// `(10,0)→(20,0)`. Devolve `(sim, [ombro, cotovelo])`.
+/// ⚠️ Ela atravessa a fronteira (ver o comentário acima), logo é `pub`.
+pub fn braco() -> (SimWorld, [Entity; 2]) {
+    let mut sim = SimWorld::default();
+    let ombro = osso(&mut sim, "Shoulder", [0.0, 0.0], 10.0, None);
+    let cotovelo = osso(&mut sim, "Elbow", [10.0, 0.0], 10.0, Some(ombro));
+    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+    (sim, [ombro, cotovelo])
+}
+
+/// O construtor de um osso da fixtura. ⚠️ **Atravessa com ela**: o gate do gizmo de grupo, na
+/// shell, constrói um braço de TRÊS ossos — *uma fixtura sem o construtor dela não é uma fixtura*.
+#[cfg(any(test, feature = "test-support"))]
+pub fn osso(sim: &mut SimWorld, nome: &str, pos: [f32; 2], len: f64, pai: Option<Entity>) -> Entity {
+    let e = sim
+        .world_mut()
+        .spawn((
+            Transform {
+                translation: ph2d_core::Vec2::new(pos[0], pos[1]),
+                ..Transform::IDENTITY
+            },
+            Name::new(nome),
+            RootOrder(0),
+            Bone {
+                length: len,
+                strength: 1.0,
+            },
+        ))
+        .id();
+    if let Some(p) = pai {
+        sim.world_mut().entity_mut(e).insert(ChildOf(p));
+    }
+    e
+}
+

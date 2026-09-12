@@ -192,7 +192,18 @@ fn the_release_never_asks_the_selection_who_the_parent_is() {
 #[test]
 fn the_release_splices_through_the_same_door_the_preview_asked() {
     const DISPATCH: &str = include_str!("../../src/input_dispatch.rs");
-    const PICK: &str = include_str!("../../src/bone_pick.rs");
+    // ⛔⛔ **A AGULHA SEGUE O SUJEITO, E EU APONTEI-A PARA ONDE O FICHEIRO FOI** (W2 Fase C).
+    //
+    // A 1.ª correcção desta fatia mandou este `PICK` para
+    // `crates/ph2d-app-skeleton/src/bone_pick.rs`, porque foi para lá que o ficheiro se mudou. Mas o
+    // que este gate mede é **a pré-visualização** (`refresh_bone_hover`), e essa é um `impl App` —
+    // ela ficou na shell, no `skeleton_app_bridge.rs`. O gate compilou (o caminho novo existe) e
+    // reprovou a correr, que é a forma MENOS má desta armadilha.
+    //
+    // ⚠️ **É a 3.ª vez que esta linha a paga** (a 1.ª foi a agulha do marquee, a 2.ª a das setas do
+    // morph). *Re-apontar uma agulha é perguntar para onde foi o SUJEITO dela, nunca para onde foi
+    // o ficheiro* — e aqui o ficheiro partiu-se em dois, com o sujeito de cada metade diferente.
+    const PREVIEW: &str = include_str!("../../src/skeleton_app_bridge.rs");
     let src = code_only(DISPATCH);
     let linhas: Vec<&str> = src.lines().collect();
     let up = linhas
@@ -229,7 +240,7 @@ fn the_release_splices_through_the_same_door_the_preview_asked() {
     // ⚠️⚠️ **E a pré-visualização lê a MESMA função.** Sem esta metade, o desenho e o release podem
     // divergir sem que nenhum gate de unidade o veja: cada um responde certo à sua própria pergunta.
     // ⛔ E ela lê os TRÊS campos de lá — resolver qualquer um por si reabre a divergência.
-    let pick = code_only(PICK);
+    let pick = code_only(PREVIEW);
     assert!(
         pick.contains("bone_gesture::drag_now("),
         "a pré-visualização não consulta a porta da emenda — o artista veria o osso encaixar num \

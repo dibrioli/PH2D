@@ -7,6 +7,7 @@
 //! em vez de vibrar**.
 
 use super::*;
+use crate::goal::braco;
 use ph2d_skeleton_ecs::BoneLimit;
 
 /// Põe um limite em `bone` e devolve a faixa em radianos.
@@ -163,7 +164,7 @@ fn a_limited_chain_settles_instead_of_oscillating() {
 /// O que ensina é o CONTRASTE, e é ele que este gate fixa.
 #[test]
 fn the_smoke_scene_has_one_limited_bone_and_a_free_neighbour() {
-    use crate::vec_bone_smoke::TENTACLE_LIMIT_HALF;
+    use ph2d_app_vec::smoke_bone::TENTACLE_LIMIT_HALF;
     // A cena põe o limite no `TENTACLE_LIMITED_BONE`-ésimo osso e deixa os outros livres. Uma
     // corrente de dois ossos reproduz a estrutura: o limitado e o vizinho.
     let (mut sim, [livre, preso]) = braco();
@@ -193,7 +194,7 @@ fn the_smoke_scene_has_one_limited_bone_and_a_free_neighbour() {
     );
 }
 
-#[path = "skeleton_limit_gizmo_tests.rs"]
+#[path = "bone_limit_gizmo_tests.rs"]
 mod gizmo;
 
 /// ⭐⭐⭐ **O GESTO *Add Angle Limit* NÃO MOVE UM GRAU** — a afirmação que o doc dele faz e que

@@ -11,7 +11,7 @@
 //! cada clique com um controlo fora do repouso empilharia um passo de undo cujo conteúdo é *«a acção
 //! correu»*.
 //!
-//! ⭐ E o ledger é o **do timeline** ([`crate::timeline_preview`]), não um novo: o que a acção
+//! ⭐ E o ledger é o **do timeline** ([`ph2d_timeline_preview`]), não um novo: o que a acção
 //! escreve é literalmente o que a timeline escreveria, e aquela porta já cobre os **quatro** factos
 //! (pose · alfa da sprite · `t` do morph · params de junta). ⛔ Um ledger próprio poria dois memos
 //! sobre o mesmo componente, e quem ganharia seria a ordem do `BTreeMap` — o defeito que o
@@ -40,7 +40,7 @@ use ph2d_preview_drive::PreviewDrive;
 /// Devolve `false` quando o alvo não tem `Name` ou o osso já não é um controlo — nos dois casos o
 /// chamador mantém o pick armado, porque desarmar sobre uma recusa lê-se como *«funcionou»*.
 #[must_use]
-pub(crate) fn set_target(sim: &mut SimWorld, osso: Entity, alvo: Entity) -> bool {
+pub fn set_target(sim: &mut SimWorld, osso: Entity, alvo: Entity) -> bool {
     let Some(nome) = sim
         .world()
         .get::<Name>(alvo)
@@ -73,7 +73,7 @@ pub(crate) fn set_target(sim: &mut SimWorld, osso: Entity, alvo: Entity) -> bool
 /// ⚠️ O alvo resolve-se pelo **NOME** (a referência durável desta casa), o que custa uma varredura
 /// do mundo — paga só quando um controlo está em foco, que é um gesto interactivo.
 #[must_use]
-pub(crate) fn actions_for(world: &World, doc: &TimelineDoc, sb: &SmartBone) -> Vec<String> {
+pub fn actions_for(world: &World, doc: &TimelineDoc, sb: &SmartBone) -> Vec<String> {
     let todas = || {
         doc.clips()
             .iter()
@@ -122,7 +122,7 @@ pub(crate) fn actions_for(world: &World, doc: &TimelineDoc, sb: &SmartBone) -> V
 /// indexa é a MESMA porta que constrói ([`actions_for`]) — não uma segunda leitura que concorde por
 /// acidente enquanto ninguém filtrar.
 #[must_use]
-pub(crate) fn action_at(
+pub fn action_at(
     world: &World,
     doc: &TimelineDoc,
     sb: &SmartBone,
@@ -142,7 +142,7 @@ pub(crate) fn action_at(
 /// `doc.clips().get(i)` deixava a suíte inteira verde e o defeito voltava ao bit. *Um gate sobre a
 /// porta não cobre quem a ignora* — que é, letra por letra, a lição que esta linha escreveu no gate
 /// do gizmo e não aplicou aqui.
-pub(crate) fn choose_action(
+pub fn choose_action(
     sim: &mut SimWorld,
     doc: &TimelineDoc,
     osso: Entity,
@@ -172,14 +172,14 @@ pub(crate) fn choose_action(
 /// por todas — incluindo as que ninguém enumerou.*
 ///
 /// ⚠️ Ela varre as âncoras da cena, que são um punhado, para cada controlo — a mesma escala do
-/// [`crate::skeleton_goal::is_governed`], e paga-se só quando um verbo do esqueleto corre.
+/// [`crate::goal::is_governed`], e paga-se só quando um verbo do esqueleto corre.
 #[must_use]
-pub(crate) fn governed_controls(sim: &SimWorld) -> Vec<Entity> {
+pub fn governed_controls(sim: &SimWorld) -> Vec<Entity> {
     sim.world()
         .iter_entities()
         .filter(|er| er.get::<SmartBone>().is_some())
         .map(|er| er.id())
-        .filter(|e| crate::skeleton_goal::is_governed(sim, *e))
+        .filter(|e| crate::goal::is_governed(sim, *e))
         .collect()
 }
 
@@ -192,20 +192,20 @@ pub(crate) fn governed_controls(sim: &SimWorld) -> Vec<Entity> {
 /// vê-se, não se guarda*.
 ///
 /// ⚠️ **A [`ph2d_preview_drive::PreviewDrive::settle`] NÃO serve** (a mesma nota do
-/// [`crate::skeleton_goal::remove`]): ela é para um motor que **largou**, e aí o vivo *é* o
+/// [`crate::goal::remove`]): ela é para um motor que **largou**, e aí o vivo *é* o
 /// documento; aqui o motor foi **desligado**, e o vivo é dele.
 ///
 /// # ⚠️ Por que o preço é uma LISTA e não uma corrente
 ///
 /// A âncora larga a **corrente** que ela governava — uma cadeia de ossos, que ela sabe nomear. Um
 /// controlo conduz o que a **ACÇÃO** dele anima, que é `N` objectos × os quatro factos que uma
-/// curva escreve ([`crate::timeline_preview::DRIVERS`]). ⛔ Largar «tudo o que o ledger tem» apagaria
+/// curva escreve ([`ph2d_timeline_preview::DRIVERS`]). ⛔ Largar «tudo o que o ledger tem» apagaria
 /// a reprodução da própria timeline, que partilha aqueles motores — por isso a lista sai do **clip
 /// deste controlo**, e de mais nada.
 ///
 /// ⚠️ **As entidades lêem-se ANTES de o componente sair**, pela razão do irmão: depois dele o nome
 /// da acção já não está em lado nenhum.
-pub(crate) fn remove(
+pub fn remove(
     sim: &mut SimWorld,
     doc: &TimelineDoc,
     osso: Entity,
@@ -217,7 +217,7 @@ pub(crate) fn remove(
     let conduzidas = driven_by(sim.world(), doc, &sb);
     sim.world_mut().entity_mut(osso).remove::<SmartBone>();
     for e in conduzidas {
-        for d in crate::timeline_preview::DRIVERS {
+        for d in ph2d_timeline_preview::DRIVERS {
             preview.release_to_authored(sim, e, d);
         }
     }
@@ -284,7 +284,7 @@ fn controls(sim: &SimWorld) -> Vec<(StableId, Entity, SmartBone)> {
 /// ⚠️ **Sai cedo quando não há nenhum**, e a guarda é a primeira coisa: sem ela toda cena pagaria
 /// uma varredura do mundo por quadro para descobrir que não tem controlo nenhum. É a mesma lei que o
 /// passe da âncora já segue, e o preço dela lá está medido em `0,098 %` de um quadro.
-pub(crate) fn drive(sim: &mut SimWorld, doc: &TimelineDoc, preview: &mut PreviewDrive) -> usize {
+pub fn drive(sim: &mut SimWorld, doc: &TimelineDoc, preview: &mut PreviewDrive) -> usize {
     let ossos = controls(sim);
     if ossos.is_empty() {
         return 0;
@@ -293,7 +293,7 @@ pub(crate) fn drive(sim: &mut SimWorld, doc: &TimelineDoc, preview: &mut Preview
     // ⚠️ **O estado ANTES é lido UMA vez, para todos** — as acções compõem-se, e fotografar entre
     // cada uma faria o memo do segundo controlo guardar o que o primeiro escreveu (que é
     // pré-visualização, não o autorado).
-    let antes = crate::timeline_preview::state_of_bindings(sim.world(), doc);
+    let antes = ph2d_timeline_preview::state_of_bindings(sim.world(), doc);
     let mut feitas = 0;
     // ⚠️ **A união das entidades que os controlos deste quadro conduzem** — a mesma porta que o
     // [`remove`] usa, para as duas metades (manter vivo · devolver) nunca discordarem sobre quem.
@@ -387,7 +387,7 @@ pub(crate) fn drive(sim: &mut SimWorld, doc: &TimelineDoc, preview: &mut Preview
         feitas += escritas;
     }
     // ⭐ E a declaração é UMA, no fim: o ledger compara o antes de todos com o depois de todos.
-    crate::timeline_preview::declare_timeline_writes(sim.world(), &antes, preview);
+    ph2d_timeline_preview::declare_timeline_writes(sim.world(), &antes, preview);
     // ⭐⭐⭐ **E OS CONTROLOS DIZEM QUE AINDA ESTÃO A CONDUZIR, mesmo com o valor parado.**
     //
     // ⛔⛔ **Report do dono (2026-09-09):** *«Remove Smart Bone não devolve o objeto animado à
@@ -401,7 +401,7 @@ pub(crate) fn drive(sim: &mut SimWorld, doc: &TimelineDoc, preview: &mut Preview
     // muda aqui é a ESPÉCIE do motor: um controlo é **persistente**, e para ele *«não mudou»* e
     // *«acabou»* são factos diferentes com a mesma forma.
     for e in conduzidas {
-        for d in crate::timeline_preview::DRIVERS {
+        for d in ph2d_timeline_preview::DRIVERS {
             preview.still_driving(e, d);
         }
     }
@@ -412,12 +412,12 @@ pub(crate) fn drive(sim: &mut SimWorld, doc: &TimelineDoc, preview: &mut Preview
 }
 
 #[cfg(test)]
-#[path = "skeleton_smart_tests.rs"]
+#[path = "smart_tests.rs"]
 mod tests;
 
 /// ⭐ **A LISTA de acções que o painel pinta** — irmão pelo teto de 600 LOC, e o corte é por
 /// RESPONSABILIDADE: o `tests` mede *o controlo PERCORRE a acção*; este mede **quais** acções ele
 /// oferece e o que uma POSIÇÃO nessa lista significa.
 #[cfg(test)]
-#[path = "skeleton_smart_list_tests.rs"]
+#[path = "smart_list_tests.rs"]
 mod list_tests;

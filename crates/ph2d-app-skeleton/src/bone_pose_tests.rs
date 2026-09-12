@@ -73,7 +73,7 @@ fn the_influence_blob_covers_exactly_the_region_the_weight_law_uses() {
                 .expect("Bone");
             b.strength = forca;
         }
-        let desenhado = crate::skeleton_live::influence_radius(&sim, osso).expect("raio");
+        let desenhado = ph2d_skeleton_live::skin_live::influence_radius(&sim, osso).expect("raio");
         // A MESMA pergunta, feita à lei da pele: um osso em repouso sobre uma forma na identidade.
         let lei = ph2d_skeleton::SkinBone::new(
             ph2d_skeleton::Xform::IDENTITY,

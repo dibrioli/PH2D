@@ -4954,6 +4954,7 @@ dependencies = [
  "ph2d-app-motion",
  "ph2d-app-physics",
  "ph2d-app-sculpt3d",
+ "ph2d-app-skeleton",
  "ph2d-app-sync",
  "ph2d-app-vec",
 ]
@@ -4998,6 +4999,29 @@ dependencies = [
  "serde",
  "wgpu",
  "winit",
+]
+
+[[package]]
+name = "ph2d-app-skeleton"
+version = "0.0.0"
+dependencies = [
+ "ph2d-anim",
+ "ph2d-app-host",
+ "ph2d-app-vec",
+ "ph2d-core",
+ "ph2d-ecs",
+ "ph2d-editor",
+ "ph2d-preview-drive",
+ "ph2d-skeleton",
+ "ph2d-skeleton-ecs",
+ "ph2d-skeleton-live",
+ "ph2d-skeleton-render",
+ "ph2d-timeline",
+ "ph2d-timeline-preview",
+ "ph2d-tool-vector",
+ "ph2d-vec-edit",
+ "ph2d-vec-entities",
+ "ph2d-vec-scene",
 ]
 
 [[package]]
@@ -5670,6 +5694,7 @@ dependencies = [
  "ph2d-app-physics",
  "ph2d-app-registry-init",
  "ph2d-app-sculpt3d",
+ "ph2d-app-skeleton",
  "ph2d-app-vec",
  "ph2d-aseprite",
  "ph2d-asset",

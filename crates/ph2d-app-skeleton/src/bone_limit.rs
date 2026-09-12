@@ -36,7 +36,7 @@ use ph2d_vec_scene::Xform;
 ///
 /// ⚠️ E ele **não é o mesmo** do `Default` do [`ph2d_skeleton_ecs::BoneLimit`], que é a **volta
 /// inteira** — a nota do `SmartBone` chegou a afirmar a igualdade, e as duas metades eram falsas.
-pub(crate) fn add_limit(sim: &mut SimWorld, bone: Entity) -> bool {
+pub fn add_limit(sim: &mut SimWorld, bone: Entity) -> bool {
     if sim.world().get::<ph2d_skeleton_ecs::Bone>(bone).is_none()
         || sim
             .world()
@@ -61,7 +61,7 @@ pub(crate) fn add_limit(sim: &mut SimWorld, bone: Entity) -> bool {
 
 /// Tira o limite: a junta volta a girar livremente. ⛔ Ela **não** é reposta na pose de repouso —
 /// tirar uma cerca não é desfazer o que se fez dentro dela.
-pub(crate) fn remove_limit(sim: &mut SimWorld, bone: Entity) -> bool {
+pub fn remove_limit(sim: &mut SimWorld, bone: Entity) -> bool {
     sim.world_mut()
         .entity_mut(bone)
         .take::<ph2d_skeleton_ecs::BoneLimit>()
@@ -77,7 +77,7 @@ pub(crate) fn remove_limit(sim: &mut SimWorld, bone: Entity) -> bool {
 ///
 /// ⚠️ **Sem [`ph2d_skeleton_ecs::BoneLimit`] ela devolve `rot` AO BIT** — a junta sem limite é a
 /// esmagadora maioria, e ela não paga nada por esta lei existir.
-pub(crate) fn limited(sim: &SimWorld, bone: Entity, rot: f64) -> f64 {
+pub fn limited(sim: &SimWorld, bone: Entity, rot: f64) -> f64 {
     sim.world()
         .get::<ph2d_skeleton_ecs::BoneLimit>(bone)
         .map_or(rot, |l| ph2d_skeleton::clamp_to_limit(rot, l.min, l.max))
@@ -104,7 +104,7 @@ const FAN_PER_TURN: usize = 48;
 /// ângulos (`local + rotação do pai`) só está certo com um pai conforme; transformar pontos está
 /// certo com qualquer afim — é a mesma lei que o [`crate::bone_gesture::aim_rotation`] segue, e sob
 /// um pai escalado só num eixo o arco é uma ELIPSE, que é o que o artista tem de ver.
-pub(crate) fn arc(
+pub fn arc(
     sim: &SimWorld,
     bone: Entity,
     px_to_world: f64,
@@ -181,7 +181,7 @@ pub(crate) fn arc(
 /// a lei responde a isso travando a junta no centro — o artista veria o osso saltar para o meio e
 /// deixar de rodar, sem nada que explicasse porquê. Ela pára **colada** à outra, que é a faixa
 /// nula: apertar até não sobrar nada é uma coisa que ele pode querer, inverter não.
-pub(crate) fn drag_edge(sim: &mut SimWorld, bone: Entity, world: [f64; 2], is_max: bool) -> bool {
+pub fn drag_edge(sim: &mut SimWorld, bone: Entity, world: [f64; 2], is_max: bool) -> bool {
     let Some(a) = crate::bone_gesture::aim_rotation(sim, bone, world) else {
         return false;
     };
@@ -218,7 +218,7 @@ pub(crate) fn drag_edge(sim: &mut SimWorld, bone: Entity, world: [f64; 2], is_ma
 /// ⚠️ A parede empurrada **para além** da vizinha para NELA, ⛔ nunca a atravessa: uma faixa
 /// invertida é estado que a lei aceita sem entrar em pânico (há gate) e que o artista não consegue
 /// explicar — o osso salta para o meio e deixa de rodar, sem nada que o diga.
-pub(crate) fn set_edge(l: &mut ph2d_skeleton_ecs::BoneLimit, is_max: bool, pedido: f64) {
+pub fn set_edge(l: &mut ph2d_skeleton_ecs::BoneLimit, is_max: bool, pedido: f64) {
     if is_max {
         l.max = pedido.max(l.min);
     } else {

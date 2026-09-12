@@ -7,6 +7,7 @@
 //! desenho a perguntar por outro osso, e o alvo a `17 px` de onde a parede parece estar.
 
 use super::*;
+use crate::goal::braco;
 
 /// Onde o dedo tem de tocar para pegar uma parede, e o que ele apanha lá.
 fn agarra(
@@ -197,7 +198,7 @@ fn when_two_handles_overlap_the_nearer_one_wins() {
     if let Some(mut o) = sim.world_mut().get_mut::<Bone>(ombro) {
         o.strength = (arc.handle_max[1] - arc.apex[1]).abs() / comp;
     }
-    let (r, a, b) = crate::skeleton_live::influence_region(&sim, ombro.to_bits())
+    let (r, a, b) = ph2d_skeleton_live::skin_live::influence_region(&sim, ombro.to_bits())
         .expect("o osso tem região de influência");
     let forca = ph2d_skeleton_render::influence_handle(a, b, r).expect("a alça da força existe");
     let d = (forca[0] - arc.handle_max[0]).hypot(forca[1] - arc.handle_max[1]);
@@ -239,7 +240,7 @@ fn a_wall_handle_never_sits_where_the_bone_can_reach() {
         [0.0, 10.0],
         ph2d_skeleton_render::BonePart::Body,
     ));
-    let seg = crate::skeleton_live::bone_segments(&sim);
+    let seg = ph2d_skeleton_live::skin_live::bone_segments(&sim);
     let (_, a, b) = seg
         .iter()
         .copied()
@@ -375,7 +376,10 @@ fn the_bone_overlays_are_drawn_for_the_bone_the_finger_uses() {
     // ⇒ a régua passa a ser a ATRIBUIÇÃO **mais próxima ANTES** de cada `draw_*`, e ela tem de vir
     // da porta do dedo. *Um censo textual sobre um nome mede o nome; sobre a atribuição, mede a
     // origem.*
-    let src = code_only(include_str!("render_loop/mod.rs"));
+    // ⚠️ **Aponta para FORA de propósito** (HOWTO §2.6): o sujeito deste gate é *«a SHELL chama a
+    // lei no sítio certo do quadro»*, e o laço não se mudou. ⭐ Um `include_str!` falha em tempo de
+    // COMPILAÇÃO se o caminho morrer — é a metade boa, ao contrário do gémeo em runtime.
+    let src = code_only(include_str!("../../../shells/desktop/src/render_loop/mod.rs"));
     for verbo in ["draw_influence(", "draw_limit("] {
         let i = src
             .find(verbo)
@@ -424,9 +428,9 @@ fn code_only(src: &str) -> String {
 /// hipóteses minhas saíram ilibadas antes de a divergência aparecer noutro sítio.
 #[test]
 fn the_wall_at_the_bones_own_angle_lands_on_its_tip() {
-    use crate::vec_bone_smoke::{ARM_A, ARM_B};
+    use ph2d_app_vec::smoke_bone::{ARM_A, ARM_B};
     let mut sim = SimWorld::default();
-    let raiz = crate::vec_bone_smoke::cadeia(&mut sim, ARM_A, ARM_B, 6).expect("cadeia");
+    let raiz = ph2d_app_vec::smoke_bone::cadeia(&mut sim, ARM_A, ARM_B, 6).expect("cadeia");
     ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
     let mut ossos = vec![raiz];
     while let Some(f) = sim
@@ -446,7 +450,7 @@ fn the_wall_at_the_bones_own_angle_lands_on_its_tip() {
             t.rotation = r;
         }
         limita(&mut sim, alvo, f64::from(r) - 0.5, f64::from(r));
-        let seg = crate::skeleton_live::bone_segments(&sim);
+        let seg = ph2d_skeleton_live::skin_live::bone_segments(&sim);
         let (_, a, b) = seg
             .iter()
             .copied()
@@ -509,7 +513,7 @@ fn the_wall_can_be_grabbed_along_its_whole_length_not_only_at_the_handle() {
 fn the_bone_still_wins_where_the_bone_is() {
     let (mut sim, [ombro, _]) = braco();
     limita(&mut sim, ombro, -1.4, 1.4);
-    let seg = crate::skeleton_live::bone_segments(&sim);
+    let seg = ph2d_skeleton_live::skin_live::bone_segments(&sim);
     let (_, a, b) = seg
         .iter()
         .copied()

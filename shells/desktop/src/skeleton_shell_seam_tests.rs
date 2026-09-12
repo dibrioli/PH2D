@@ -1,14 +1,91 @@
-//! Os gates da **ALÇA da âncora** — o que o dedo APONTA, e qual verbo ele vai executar.
+//! **As duas metades do esqueleto cujo SUJEITO é a SHELL** — e só elas.
 //!
-//! ⚠️ **Corte por RESPONSABILIDADE** (o teto de 600 LOC do HR-18 pediu-o a `718`), e é o mesmo
-//! corte que o `bone_gesture_tests`/`bone_pose_tests` já pagou: o irmão [`super`] mede a **LEI** de
-//! uma restrição (ela nasce sem mover, persiste, a mistura, o laço, a pré-visualização); aqui
-//! mede-se o **alvo do dedo** — o anel, o miolo, e o que acontece quando dois alvos ficam
-//! concêntricos.
+//! ⛔⛔ A família saiu para [`ph2d_app_skeleton`] na Fase C da W2. Estes dois gates **não foram
+//! com ela**, e a régua é o HOWTO §2.6: *o teste segue o sujeito, nunca o ficheiro.*
 //!
-//! ⛔ **A pergunta que este ficheiro existe para responder** veio de um report do dono (2026-09-07):
-//! *«quando colocamos um IK num bone no meio dos ossos, o losango do IK e o círculo do outro osso
-//! ficam sobrepostos»*. Alvos concêntricos com verbos diferentes só se separam por **tamanho**.
+//! | gate | o que ele mede | de quem é |
+//! |---|---|---|
+//! | `probe_does_the_anchor_cross_the_undo_capture` | se a âncora de IK atravessa a `crate::undo::ProjectState::capture` | **da shell** — a folha não sabe o que é uma captura |
+//! | `an_ik_anchor_is_not_an_empty_object` | que o gizmo de grupo não reclama uma âncora de osso | **da costura** — o `group_gizmo_view` é da shell, a âncora é da família |
+//!
+//! ⚠️ O segundo é o mais subtil: ele afirma uma relação entre **duas** famílias, e por isso não é
+//! de nenhuma das duas. Levá-lo para a crate do esqueleto obrigaria essa crate a depender do
+//! gizmo de grupo da shell — a seta ao contrário (HOWTO §4).
+
+
+// ⚠️ **Os dois gates viviam DENTRO da crate e liam `use super::*`.** Do lado de cá a família é uma
+// dependência, logo cada nome é nomeado pelo sítio onde ele de facto vive — e a fixtura `braco`
+// atravessa pela feature `test-support` (HOWTO §2.5).
+use ph2d_app_skeleton::goal::{
+    add, anchors, braco, drag_anchor, governed, osso, remove, solve, unanchored_ends,
+};
+use ph2d_ecs::SimWorld;
+use ph2d_preview_drive::PreviewDrive;
+
+/// ⚠️ **SONDA:** a âncora atravessa a captura do undo? (Report do dono, 2026-09-07: *«Undo não
+/// funciona para add IK»*.)
+///
+/// Ela separa as DUAS metades que o sintoma não distingue: *a fotografia não vê a âncora* (e aí o
+/// passo nasce vazio) contra *a fotografia vê e o passo não é registado* (e aí a causa é um dos
+/// cinco motivos de supressão do `post_frame_undo`).
+#[test]
+#[ignore = "sonda de medição: imprime, não julga"]
+fn probe_does_the_anchor_cross_the_undo_capture() {
+    use ph2d_ecs::scene::{ComponentRegistry, register_ecs_components};
+    let mut reg = ComponentRegistry::new();
+    register_ecs_components(&mut reg);
+    ph2d_render::register_render_components(&mut reg);
+    ph2d_skeleton_ecs::register_skeleton_components(&mut reg);
+
+    let (mut sim, [_, cotovelo]) = braco();
+    let vec = ph2d_vec_scene::VecScene::new();
+    let mut cache = ph2d_ecs::scene::incremental::CaptureCache::new();
+    let tirar = |sim: &mut SimWorld, cache: &mut ph2d_ecs::scene::incremental::CaptureCache| {
+        crate::undo::ProjectState::capture(
+            &PreviewDrive::default(),
+            sim,
+            &vec,
+            &ph2d_flip::FlipDoc::new(),
+            &ph2d_guides::GuideSet::default(),
+            &ph2d_ui_state::StateSets::default(),
+            &crate::project_library::LibraryDoc::default(),
+            &reg,
+            cache,
+            None,
+        )
+    };
+    let antes = tirar(&mut sim, &mut cache);
+    let alvo = add(&mut sim, cotovelo).expect("a ancora");
+    let depois = tirar(&mut sim, &mut cache);
+    eprintln!(
+        "[probe] a captura VE' a ancora? {} (partes que diferem: {:?})",
+        antes != depois,
+        depois.parts_that_differ(&antes)
+    );
+    // E o restauro leva-a embora?
+    let _ = antes.restore(&mut sim, &reg);
+    eprintln!(
+        "[probe] depois do restore: alvo vivo? {} · o osso ainda tem ancora? {}",
+        sim.world().get_entity(alvo).is_ok(),
+        sim.world()
+            .iter_entities()
+            .any(|er| er.contains::<ph2d_skeleton_ecs::IkGoal>())
+    );
+}
+
+// ⭐ **O cabeçalho que este gate trazia quando vivia em `skeleton_handle_tests.rs`** — é
+//    prosa histórica, e passa a comentário normal porque um `//!` só pode abrir um ficheiro.
+// Os gates da **ALÇA da âncora** — o que o dedo APONTA, e qual verbo ele vai executar.
+//
+// ⚠️ **Corte por RESPONSABILIDADE** (o teto de 600 LOC do HR-18 pediu-o a `718`), e é o mesmo
+// corte que o `bone_gesture_tests`/`bone_pose_tests` já pagou: o irmão [`super`] mede a **LEI** de
+// uma restrição (ela nasce sem mover, persiste, a mistura, o laço, a pré-visualização); aqui
+// mede-se o **alvo do dedo** — o anel, o miolo, e o que acontece quando dois alvos ficam
+// concêntricos.
+//
+// ⛔ **A pergunta que este ficheiro existe para responder** veio de um report do dono (2026-09-07):
+// *«quando colocamos um IK num bone no meio dos ossos, o losango do IK e o círculo do outro osso
+// ficam sobrepostos»*. Alvos concêntricos com verbos diferentes só se separam por **tamanho**.
 
 use super::*;
 
@@ -127,10 +204,10 @@ fn the_anchor_is_grabbable_far_away_from_every_bone() {
     let mut pv = PreviewDrive::default();
     solve(&mut sim, &mut pv);
     assert!(
-        crate::bone_pick::hit(&sim, longe, 1.0).is_none(),
+        ph2d_app_skeleton::bone_pick::hit(&sim, longe, 1.0).is_none(),
         "a fixtura nao produz o fenomeno: ha' um osso debaixo do ponteiro"
     );
-    let h = crate::bone_pick::hover(
+    let h = ph2d_app_skeleton::bone_pick::hover(
         &sim,
         longe,
         1.0,
@@ -155,7 +232,7 @@ fn a_middle_anchor_takes_the_ring_and_the_bone_keeps_the_core() {
     // A âncora no OMBRO: o alvo nasce na ponta dele, que é a origem do cotovelo.
     add(&mut sim, ombro).expect("a ancora");
     let (_, ancora, o, p) = crate::skeleton_goal::anchors(&sim)[0];
-    let junta = crate::bone_gesture::test_segment(&sim, cotovelo.to_bits()).0;
+    let junta = ph2d_app_skeleton::bone_gesture::test_segment(&sim, cotovelo.to_bits()).0;
     assert!(
         (ancora[0] - junta[0]).hypot(ancora[1] - junta[1]) < 1e-9,
         "a fixtura nao produz o fenomeno: a ancora nao caiu sobre a junta do osso seguinte"
@@ -165,7 +242,7 @@ fn a_middle_anchor_takes_the_ring_and_the_bone_keeps_the_core() {
     let anel = ph2d_skeleton_render::goal_radius_px(comp);
     assert!(anel > miolo, "o losango tem de ser MAIOR que a bolinha");
     // No MIOLO: o osso seguinte, com o verbo de deslocar.
-    let dentro = crate::bone_pick::hover(
+    let dentro = ph2d_app_skeleton::bone_pick::hover(
         &sim,
         ancora,
         1.0,
@@ -181,7 +258,7 @@ fn a_middle_anchor_takes_the_ring_and_the_bone_keeps_the_core() {
     assert_eq!(dentro.part, ph2d_skeleton_render::BonePart::Joint);
     // No ANEL: a âncora.
     let no_anel = [ancora[0] + (miolo + anel) * 0.5, ancora[1]];
-    let fora = crate::bone_pick::hover(
+    let fora = ph2d_app_skeleton::bone_pick::hover(
         &sim,
         no_anel,
         1.0,
@@ -229,7 +306,7 @@ fn an_anchor_far_from_every_bone_is_grabbable_at_its_centre() {
     add(&mut sim, cotovelo).expect("a ancora");
     let longe = [90.0, 70.0];
     drag_anchor(&mut sim, cotovelo, longe);
-    let h = crate::bone_pick::hover(
+    let h = ph2d_app_skeleton::bone_pick::hover(
         &sim,
         longe,
         1.0,

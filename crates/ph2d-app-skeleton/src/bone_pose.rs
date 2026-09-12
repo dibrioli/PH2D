@@ -27,7 +27,7 @@ use super::bone_gesture::{aim_rotation, reach_chain};
 ///
 /// *Duas coisas diferentes precisam de dois gestos*: sem o segundo, um esqueleto inteiro não se
 /// move do sítio onde nasceu, e a única saída seria o painel de Transform.
-pub(crate) fn pose(
+pub fn pose(
     sim: &mut SimWorld,
     bone: Entity,
     world: [f64; 2],
@@ -55,7 +55,7 @@ pub(crate) fn pose(
         // modelo do Blender e do Spine, onde um osso sob restrição não se posa à mão.
         BonePart::Tip => {
             if sim.world().get::<ph2d_skeleton_ecs::IkGoal>(bone).is_some() {
-                crate::skeleton_goal::drag_anchor(sim, bone, world)
+                crate::goal::drag_anchor(sim, bone, world)
             } else {
                 reach_chain(sim, bone, world)
             }
@@ -70,7 +70,7 @@ pub(crate) fn pose(
 
 /// A FORÇA — ela não é uma pose (não toca no `Transform`), é uma propriedade do osso.
 fn pose_influence(sim: &mut SimWorld, bone: Entity, world: [f64; 2]) -> bool {
-    let Some((_, a, b)) = crate::skeleton_live::bone_segments(sim)
+    let Some((_, a, b)) = ph2d_skeleton_live::skin_live::bone_segments(sim)
         .into_iter()
         .find(|(x, _, _)| *x == bone.to_bits())
     else {

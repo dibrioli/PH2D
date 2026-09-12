@@ -6,8 +6,8 @@
 //! ⚠️ A fixtura é a **mesma** (`super::tests::braco`) de propósito: dois braços para o mesmo módulo
 //! divergiriam, e o gate que aqui mede o ledger tem de correr sobre a corrente que ali resolve.
 
-use super::tests::braco;
 use super::*;
+use crate::goal::braco;
 
 /// ⭐⭐⭐ **APAGAR A ÂNCORA DEVOLVE A POSE QUE O ARTISTA AUTOROU** (report do dono, 2026-09-07:
 /// *«Remove IK … não funciona plenamente»*).
@@ -23,17 +23,17 @@ use super::*;
 fn removing_the_anchor_gives_the_authored_pose_back() {
     let (mut sim, [ombro, cotovelo]) = braco();
     add(&mut sim, cotovelo).expect("a ancora");
-    let autorada = crate::skeleton_live::bone_segments(&sim);
+    let autorada = ph2d_skeleton_live::skin_live::bone_segments(&sim);
     let mut pv = PreviewDrive::default();
     drag_anchor(&mut sim, cotovelo, [4.0, 9.0]);
     solve(&mut sim, &mut pv);
     assert!(
-        crate::skeleton_live::bone_segments(&sim) != autorada,
+        ph2d_skeleton_live::skin_live::bone_segments(&sim) != autorada,
         "a fixtura nao produz o fenomeno: a restricao nao dobrou a corrente"
     );
     assert!(remove(&mut sim, cotovelo, &mut pv), "havia ancora");
     assert_eq!(
-        crate::skeleton_live::bone_segments(&sim),
+        ph2d_skeleton_live::skin_live::bone_segments(&sim),
         autorada,
         "a corrente ficou dobrada onde a ancora a pos - o verbo ASSOU a pre-visualizacao no \
          documento, e nao ha' caminho de volta"
@@ -90,10 +90,10 @@ fn posing_a_governed_bone_by_hand_is_not_swallowed_by_the_ledger() {
     // fotografia não tem o que repor e o gate fica verde sobre o defeito. *Terceira fixtura desta
     // sessão a não produzir o fenómeno, e as três falhavam por metades diferentes.*
     drag_anchor(&mut sim, punho, [-3.0, 6.0]);
-    let mut anterior = crate::skeleton_live::bone_segments(&sim);
+    let mut anterior = ph2d_skeleton_live::skin_live::bone_segments(&sim);
     for _ in 0..200 {
         solve(&mut sim, &mut pv);
-        let agora = crate::skeleton_live::bone_segments(&sim);
+        let agora = ph2d_skeleton_live::skin_live::bone_segments(&sim);
         if agora == anterior {
             break;
         }
@@ -144,7 +144,7 @@ fn posing_a_governed_bone_by_hand_is_not_swallowed_by_the_ledger() {
 fn a_settled_chain_is_still_driven_and_remove_still_has_the_authored_pose() {
     let (mut sim, [ombro, cotovelo]) = braco();
     add(&mut sim, cotovelo).expect("a ancora");
-    let autorada = crate::skeleton_live::bone_segments(&sim);
+    let autorada = ph2d_skeleton_live::skin_live::bone_segments(&sim);
     let mut pv = PreviewDrive::default();
     drag_anchor(&mut sim, cotovelo, [4.0, 9.0]);
     // ⚠️ Quadros a sério, com a `settle` de cada um — a corrente assenta ao fim de alguns.
@@ -152,7 +152,7 @@ fn a_settled_chain_is_still_driven_and_remove_still_has_the_authored_pose() {
         solve(&mut sim, &mut pv);
         pv.settle();
     }
-    let assente = crate::skeleton_live::bone_segments(&sim);
+    let assente = ph2d_skeleton_live::skin_live::bone_segments(&sim);
     assert!(
         assente != autorada,
         "a fixtura nao produz o fenomeno: a restricao nao dobrou a corrente"
@@ -165,7 +165,7 @@ fn a_settled_chain_is_still_driven_and_remove_still_has_the_authored_pose() {
 
     assert!(remove(&mut sim, cotovelo, &mut pv), "havia ancora");
     assert_eq!(
-        crate::skeleton_live::bone_segments(&sim),
+        ph2d_skeleton_live::skin_live::bone_segments(&sim),
         autorada,
         "a corrente ficou dobrada onde a ancora a pos"
     );

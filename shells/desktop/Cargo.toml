@@ -615,6 +615,7 @@ ph2d-node-motion-bezier-warp = { path = "../../crates/ph2d-node-motion-bezier-wa
 # append-only de propósito: uma linha nova acrescenta ao fim e não colide com ninguém.
 ph2d-unique-name = { path = "../../crates/ph2d-unique-name" }
 ph2d-entity-visibility = { path = "../../crates/ph2d-entity-visibility" }
+ph2d-app-skeleton = { path = "../../crates/ph2d-app-skeleton" }
 ph2d-preview-drive = { path = "../../crates/ph2d-preview-drive" }
 ph2d-inspector-ordering = { path = "../../crates/ph2d-inspector-ordering" }
 ph2d-transport = { path = "../../crates/ph2d-transport" }
@@ -633,6 +634,7 @@ ph2d-app-sculpt3d = { path = "../../crates/ph2d-app-sculpt3d", features = ["test
 # E o mesmo para a folha da pré-visualização (line/shell-folhas): os gates do `preview_drive`
 # ficaram na shell porque medem a CAPTURA dela, e dois auxiliares `#[cfg(test)]` do memo
 # (`is_empty`, `drivers_of`) passaram a atravessar uma fronteira de crate.
+ph2d-app-skeleton = { path = "../../crates/ph2d-app-skeleton", features = ["test-support"] }
 ph2d-preview-drive = { path = "../../crates/ph2d-preview-drive", features = ["test-support"] }
 # E a fixtura da ponte do vetor (`setup`/`bits`): o irmão da selecção usa-a de dentro da crate e
 # o ficheiro de gates que ficou na shell de fora — uma porta só para as duas.

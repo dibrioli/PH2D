@@ -94,12 +94,17 @@ mod blend_live;
 mod blend_smoke;
 /// ⭐ **O gesto do modo OSSO** (estudo 42 item 5): arrastar no vazio faz um osso, e o pai é o osso
 /// seleccionado — arrasto-arrasto-arrasto é uma cadeia.
-mod bone_gesture;
+pub(crate) use ph2d_app_skeleton::bone_gesture;
 /// ⭐ **O LIMITE DE UMA JUNTA** — irmão do `bone_gesture` pelo teto de LOC, cortado por assunto.
-mod bone_limit;
-mod bone_pick;
+pub(crate) use ph2d_app_skeleton::bone_limit;
+/// ⭐ **As três pontes `impl App` da família do esqueleto** — ver o cabeçalho do módulo.
+mod skeleton_app_bridge;
+// **Os dois gates do esqueleto cujo SUJEITO é a shell** (a captura do undo · o gizmo de grupo).
+#[cfg(test)]
+#[path = "skeleton_shell_seam_tests.rs"]
+mod skeleton_shell_seam_tests;
 /// ⭐ **O que a MÃO faz a um osso** — irmão do `bone_gesture`, cortado por responsabilidade.
-mod bone_pose;
+pub(crate) use ph2d_app_skeleton::bone_pose;
 /// ⭐ A sonda do OSSO INTELIGENTE (`PH2D_BONE_SMART_PROBE=1`) — irmã da de cima.
 ///
 /// ⚠️ Ela entrou ACIMA do `bone_undo_probe` na 1.ª versão e roubou-lhe o doc: *um item novo colado
@@ -473,14 +478,14 @@ mod signal_table_smoke;
 mod sim_populate;
 mod sizing_smoke;
 /// ⭐⭐⭐ **A ÂNCORA, viva**: a restrição de cinemática inversa que persiste, resolvida por quadro.
-mod skeleton_goal;
+pub(crate) use ph2d_app_skeleton::goal as skeleton_goal;
 /// ⭐⭐⭐ **O ESQUELETO, vivo** (estudo 42 item 5): a forma presa aos ossos, re-cozida por quadro.
 mod skeleton_live;
 /// ⭐⭐⭐ **REVELAR-AO-FOCAR**: quando um osso NOVO entra em foco, a secção Skeleton vem à vista.
-mod skeleton_reveal;
+pub(crate) use ph2d_app_skeleton::reveal as skeleton_reveal;
 mod skeleton_skin_image;
 /// ⭐ **Os OSSOS INTELIGENTES** — girar um osso percorre uma animação inteira.
-mod skeleton_smart;
+pub(crate) use ph2d_app_skeleton::smart as skeleton_smart;
 /// As cenas de smoke do Sketch (=31) e do Hatch (=32) — irmão de `build_smoke`, teto de LOC.
 mod sketch_hatch_smoke;
 /// **9-slice, lado a lado com o que ele conserta** (`PH2D_SLICE_SMOKE=1`).

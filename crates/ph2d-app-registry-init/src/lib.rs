@@ -57,6 +57,8 @@ pub fn register_all_app_families() -> AppFamilyRegistry {
     reg.push(ph2d_app_physics::FAMILY);
     #[cfg(feature = "app-sculpt3d")]
     reg.push(ph2d_app_sculpt3d::FAMILY);
+    #[cfg(feature = "app-skeleton")]
+    reg.push(ph2d_app_skeleton::FAMILY);
     #[cfg(feature = "app-vec")]
     reg.push(ph2d_app_vec::FAMILY);
     // <ph2d-app-sync:end>
@@ -95,8 +97,14 @@ mod tests {
     ///
     /// ⭐⭐⭐ **A catraca `FAMILIAS_COM_O_ROTEADOR_AINDA_NA_SHELL` MORREU em 2026-09-12**: a
     /// `motion` era a última, e o doc dela dizia *«a lista chega a vazia e então este bloco e a
-    /// metade `if` do gate abaixo desaparecem com ela»*. Desapareceram. **As seis famílias
-    /// declaram roteador.**
+    /// metade `if` do gate abaixo desaparecem com ela»*. Desapareceram.
+    ///
+    /// ⚠️⚠️ **E no MESMO dia entraram SETE famílias, não seis** — a `line/app-vec` criou a
+    /// `skeleton` na mesma rodada. Seis declaram roteador; a sétima não declara nenhum e **isso está
+    /// certo**, por um motivo que a catraca morta não sabia exprimir: a cena dela vive numa crate
+    /// IRMÃ. Ver [`FAMILIAS_CUJA_CENA_VIVE_NUMA_CRATE_IRMA`]. *A lista que morreu e a que nasceu
+    /// leem-se igual e querem dizer o oposto — foi o integrador que as separou, porque nenhum dos
+    /// dois lados do merge tinha a resposta inteira.*
     ///
     /// ⚠️⚠️ **Mas o corte da `motion` trouxe uma pergunta que a forma não previa:** o roteador
     /// PRINCIPAL dela — as `114` cenas que o dono smoka — chama-se **`PH2D_GPU_COOK_DEMO`**, e
@@ -115,27 +123,96 @@ mod tests {
     /// **não** entra em `FAMILY` nenhuma. Duas envs, um prefixo, papéis opostos.
     const ROTEADORES_FORA_DA_FORMA: &[&str] = &["PH2D_GPU_COOK_DEMO"];
 
+    /// ⭐⭐⭐ **A OUTRA ausência legítima: a família cuja CENA vive numa crate IRMÃ.**
+    ///
+    /// ⛔⛔ **Ela não é a catraca das famílias com outro nome, e pô-la lá seria MENTIRA
+    /// PERMANENTE.** A `FAMILIAS_COM_O_ROTEADOR_AINDA_NA_SHELL` — que morreu em 12/09, no mesmo dia
+    /// em que esta nasceu — descrevia uma extracção **a meio** — a crate saiu, o
+    /// `match` de cenas ficou na shell — e o censo de obsolescência dela dispara no dia em que a
+    /// família passa a declarar roteador. Uma família que nunca vai declarar nenhum ficaria lá para
+    /// sempre, a descrever uma shell onde o roteador não está: *uma entrada que nada pode apagar é
+    /// exactamente a catraca que vira LICENÇA* (CLAUDE.md §5.0).
+    ///
+    /// ⭐ **O caso real, e é o primeiro:** a `skeleton` (W2 Fase C) é família própria desde o
+    /// ADR-0169, mas a única cena que a exercita é a `PH2D_VEC_BONE_SMOKE` — e essa cena monta um
+    /// **braço vectorial** e prende-o, logo ela é da `vec` tanto quanto é do esqueleto. *Quem possui
+    /// a cena é quem a constrói.*
+    ///
+    /// ⚠️ **E declará-la nas DUAS famílias seria o defeito oposto**: o
+    /// [`no_two_families_claim_the_same_router`] existe precisamente para impedir que duas famílias
+    /// respondam pela mesma variável de ambiente.
+    ///
+    /// ⭐⭐ **A entrada é VERIFICADA, não tolerada** — é isso que a separa de uma folga. Cada linha
+    /// diz *quem* não tem roteador **e** *quem o tem em seu lugar*, e o gate confirma que essa
+    /// segunda família existe e declara mesmo aquela env. ⇒ apagar o roteador do lado de lá reprova
+    /// aqui, e dar um roteador próprio ao esqueleto também.
+    const FAMILIAS_CUJA_CENA_VIVE_NUMA_CRATE_IRMA: &[(&str, &str)] =
+        &[("skeleton", "PH2D_VEC_BONE_SMOKE")];
+
     /// ⚠️ **Uma família registada tem de declarar pelo menos um roteador, e todo roteador tem de ter
     /// nível.** Sem esta metade, uma família que se registasse com `routers: &[]` passaria no gate
     /// acima **por vacuidade** — a armadilha do censo que mede zero e se lê como aprovado.
     ///
-    /// ⭐ **Desde 12/09 não há excepção nenhuma a esta metade** — a catraca
-    /// `FAMILIAS_COM_O_ROTEADOR_AINDA_NA_SHELL` esvaziou-se e morreu. A única lista de tolerância
-    /// que sobra é a [`ROTEADORES_FORA_DA_FORMA`], que é sobre o NOME de uma env, não sobre a
-    /// ausência de um roteador — e ela é gateada nos **dois** sentidos, como a outra era.
+    /// ⭐ **Desde 12/09 a catraca `FAMILIAS_COM_O_ROTEADOR_AINDA_NA_SHELL` morreu** — a `motion`
+    /// era a última e a lista esvaziou-se. ⚠️ **Mas «morreu a catraca» não é «não há excepção»**, e
+    /// a redacção anterior dizia isso: sobram **duas** listas, e nenhuma é uma folga.
+    /// 1. [`ROTEADORES_FORA_DA_FORMA`] — sobre o **NOME** de uma env, não sobre a ausência de um
+    ///    roteador;
+    /// 2. [`FAMILIAS_CUJA_CENA_VIVE_NUMA_CRATE_IRMA`] — a única ausência que esta metade aceita, e
+    ///    ela é **VERIFICADA**: a entrada nomeia quem declara o roteador em lugar da família, e o
+    ///    gate confirma que essa outra família existe e declara mesmo aquela env.
+    ///
+    /// As duas são gateadas nos **dois** sentidos, como a catraca morta era.
     #[test]
     fn every_registered_family_declares_a_reachable_router() {
         let reg = register_all_app_families();
         for f in reg.families() {
+            // ⚠️⚠️ **Esta variável foi escrita à parte do `a_meio` DE PROPÓSITO pela `line/app-vec`,
+            //    e a previsão dela cumpriu-se no MESMO dia.** O comentário original dizia: *«a
+            //    `line/app-motion` vai apagar a lista de cima INTEIRA quando a `motion` sair, e uma
+            //    condição que partilhasse a variável iria embora com ela — deixando a `skeleton` a
+            //    reprovar por uma razão que não é a dela.»* Foi exactamente isso: as duas linhas
+            //    correram em paralelo, a `motion` apagou a `FAMILIAS_COM_O_ROTEADOR_AINDA_NA_SHELL`
+            //    (ela esvaziou-se ao a `motion` sair) e a `vec` criou esta.
+            //    ⭐⭐ **Duas listas com o mesmo ASPECTO e significados OPOSTOS**, e o merge não ficou
+            //    com nenhum dos dois lados: ficou com a segunda, porque a primeira deixou de
+            //    descrever alguém. *É a lei do «número que soma entre linhas se CONTA, nunca se
+            //    escolhe» (CLAUDE.md §5.0) um nível acima — aqui o que colide é uma LISTA, e o git
+            //    não sabe o que ela significa.* ⇒ resolvido pelo integrador, 2026-09-12.
+            let irma = FAMILIAS_CUJA_CENA_VIVE_NUMA_CRATE_IRMA
+                .iter()
+                .find(|(k, _)| *k == f.key);
             assert!(
-                !f.routers.is_empty(),
-                "a família `{}` regista-se e não declara roteador nenhum — ela é inalcançável \
-                 pelo smoke do dono, e o gate de colisão passa sobre ela por vacuidade. \
-                 ⛔ A catraca `FAMILIAS_COM_O_ROTEADOR_AINDA_NA_SHELL` MORREU em 2026-09-12 \
-                 (a `motion` era a última): não há mais dívida declarada a que se juntar — \
-                 leve o roteador para a crate da família",
+                !f.routers.is_empty() || irma.is_some(),
+                "a família `{}` regista-se e não declara roteador nenhum — ela é inalcançável pelo \
+                 smoke do dono, e o gate de colisão passa sobre ela por vacuidade. \
+                 ⛔ A catraca `FAMILIAS_COM_O_ROTEADOR_AINDA_NA_SHELL` MORREU em 2026-09-12 (a \
+                 `motion` era a última): não há mais dívida de extracção-a-meio a que se juntar — \
+                 leve o roteador para a crate da família. A única ausência que este gate ainda \
+                 aceita é a da família cuja CENA vive numa crate IRMÃ \
+                 (`FAMILIAS_CUJA_CENA_VIVE_NUMA_CRATE_IRMA`), e ela é VERIFICADA e não tolerada: a \
+                 entrada nomeia quem declara o roteador em seu lugar",
                 f.key
             );
+            // ⭐ **O censo de obsolescência da lista que SOBRA, e ele é uma VERIFICAÇÃO:** a família
+            //    nomeada como dona tem de existir e tem de declarar mesmo aquela env.
+            if let Some((_, env)) = irma {
+                assert!(
+                    f.routers.is_empty(),
+                    "a família `{}` está em `FAMILIAS_CUJA_CENA_VIVE_NUMA_CRATE_IRMA` e JÁ declara \
+                     roteador próprio — a entrada está obsoleta: apague-a (a catraca só encolhe)",
+                    f.key
+                );
+                assert!(
+                    reg.families()
+                        .iter()
+                        .any(|o| o.key != f.key && o.routers.iter().any(|r| r.env == *env)),
+                    "a família `{}` diz que a cena dela é a `{env}` de outra família, e NENHUMA a \
+                     declara — ou a cena morreu, ou a dona deixou de a registar. Em qualquer dos \
+                     casos esta família ficou inalcançável pelo smoke do dono, em silêncio",
+                    f.key
+                );
+            }
             for r in f.routers {
                 assert!(
                     r.env.starts_with("PH2D_")

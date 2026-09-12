@@ -60,7 +60,7 @@ fn the_action_list_narrows_to_the_chosen_object() {
     doc.set_active(0);
 
     let sem_alvo = ph2d_skeleton_ecs::SmartBone::default();
-    let todas = crate::skeleton_smart::actions_for(sim.world(), &doc, &sem_alvo);
+    let todas = crate::smart::actions_for(sim.world(), &doc, &sem_alvo);
     assert_eq!(
         todas.len(),
         doc.clips().len(),
@@ -71,7 +71,7 @@ fn the_action_list_narrows_to_the_chosen_object() {
         target: "Driven".to_string(),
         ..ph2d_skeleton_ecs::SmartBone::default()
     };
-    let so_dele = crate::skeleton_smart::actions_for(sim.world(), &doc, &com_alvo);
+    let so_dele = crate::smart::actions_for(sim.world(), &doc, &com_alvo);
     assert!(
         so_dele.iter().any(|n| n == "Correction"),
         "a acção que anima o alvo saiu da lista: {so_dele:?}"
@@ -103,7 +103,7 @@ fn a_filter_that_would_empty_the_list_does_not_apply() {
             ..ph2d_skeleton_ecs::SmartBone::default()
         };
         assert_eq!(
-            crate::skeleton_smart::actions_for(sim.world(), &doc, &sb).len(),
+            crate::smart::actions_for(sim.world(), &doc, &sb).len(),
             n,
             "com o alvo {alvo:?} o filtro esvaziou a lista em vez de se desligar"
         );
@@ -146,7 +146,7 @@ fn the_chosen_position_resolves_against_the_list_the_panel_painted() {
         target: "Driven".to_string(),
         ..ph2d_skeleton_ecs::SmartBone::default()
     };
-    let lista = crate::skeleton_smart::actions_for(sim.world(), &doc, &sb);
+    let lista = crate::smart::actions_for(sim.world(), &doc, &sb);
     assert_eq!(
         lista,
         vec!["Correction".to_string()],
@@ -160,12 +160,12 @@ fn the_chosen_position_resolves_against_the_list_the_panel_painted() {
          defeito não se manifesta"
     );
     assert_eq!(
-        crate::skeleton_smart::action_at(sim.world(), &doc, &sb, 0).as_deref(),
+        crate::smart::action_at(sim.world(), &doc, &sb, 0).as_deref(),
         Some("Correction"),
         "a posição 0 devolveu o 1.º clip do DOCUMENTO em vez da 1.ª linha que o artista viu"
     );
     assert_eq!(
-        crate::skeleton_smart::action_at(sim.world(), &doc, &sb, 1),
+        crate::smart::action_at(sim.world(), &doc, &sb, 1),
         None,
         "uma posição fora da lista pintada devolveu um nome — o pool de ids é fixo e maior que a \
          lista, então esta é a posição que um clique perdido produz"

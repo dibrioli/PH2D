@@ -41,7 +41,7 @@ use ph2d_vec_scene::Xform;
 /// forma nunca a SELECCIONAVA, então o botão *Bind* (que age sobre a selecção de formas) só sabia
 /// recusar. *Uma decisão que só existe dentro do dispatch é uma decisão que nenhum gate lê.*
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub(crate) enum BonePress {
+pub enum BonePress {
     /// **Transformar:** acertou um osso — selecciona-o e ARMA o verbo que a `part` diz.
     Grab {
         bone: u64,
@@ -72,11 +72,11 @@ pub(crate) enum BonePress {
 /// exactamente a lei que o dono mandou tirar, sobrevivendo no outro extremo do gesto. *Um facto
 /// decidido no press e re-derivado no release é duas respostas para a mesma pergunta.*
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub(crate) struct BoneBirth {
+pub struct BoneBirth {
     /// A origem, em MUNDO — a ponta do pai, ou o ponto onde a mão pousou.
-    pub(crate) origin: [f64; 2],
+    pub origin: [f64; 2],
     /// O pai, em bits — `None` faz uma RAIZ.
-    pub(crate) parent: Option<u64>,
+    pub parent: Option<u64>,
 }
 
 /// A decisão do press, sem tocar em nada.
@@ -85,7 +85,7 @@ pub(crate) struct BoneBirth {
 /// está fica confuso para o usuário»*). Antes, o mesmo arrasto criava OU posava consoante o que
 /// estava por baixo do cursor — e isso torna inalcançáveis dois gestos legítimos: começar um osso
 /// **em cima** de outro, e posar um osso **sem medo** de criar um por engano.
-pub(crate) fn press(
+pub fn press(
     sim: &SimWorld,
     scene: &ph2d_vec_scene::VecScene,
     pen: &ph2d_vec_edit::PenTool,
@@ -138,7 +138,7 @@ pub(crate) fn press(
 /// ⭐⭐⭐ **A MIRA** — que rotação LOCAL este osso precisa de ter para apontar a `world`?
 ///
 /// ⚠️ **Porta única de dois consumidores**: o gesto que gira um osso à mão ([`pose`]) e a restrição
-/// que o gira a cada quadro ([`crate::skeleton_goal`]). Escrita duas vezes, ela divergiria na
+/// que o gira a cada quadro ([`crate::goal`]). Escrita duas vezes, ela divergiria na
 /// primeira vez que alguém corrigisse a composição do espaço do pai — e o sintoma seria o osso a
 /// saltar entre o que o dedo faz e o que a âncora faz, que é indistinguível de um defeito da
 /// própria cinemática.
@@ -150,7 +150,7 @@ pub(crate) fn press(
 /// `None` quando o pai é singular, ou quando `world` cai **sobre a própria origem** do osso: ali não
 /// há direcção nenhuma, e apontar para lá daria um ângulo arbitrário — o osso saltaria.
 #[must_use]
-pub(crate) fn aim_rotation(sim: &SimWorld, bone: Entity, world: [f64; 2]) -> Option<f64> {
+pub fn aim_rotation(sim: &SimWorld, bone: Entity, world: [f64; 2]) -> Option<f64> {
     let pai = sim.world().get::<ChildOf>(bone).map(ChildOf::parent);
     let pai_mundo = pai.map_or(Xform::IDENTITY, |p| {
         ph2d_vec_entities::transform::xform_of_transform(
@@ -171,7 +171,7 @@ pub(crate) fn aim_rotation(sim: &SimWorld, bone: Entity, world: [f64; 2]) -> Opt
 /// no modo Select sem uma linha de código própria, e o pai do próximo osso ser exactamente o que
 /// está aceso na Hierarquia. *Um segundo estado de selecção divergiria do primeiro no primeiro
 /// clique.*
-pub(crate) fn selected_bone(
+pub fn selected_bone(
     sim: &SimWorld,
     selection: impl IntoIterator<Item = u64>,
 ) -> Option<u64> {
@@ -183,25 +183,19 @@ pub(crate) fn selected_bone(
         .find(|&b| sim.world().get::<Bone>(Entity::from_bits(b)).is_some())
 }
 
-impl crate::App {
-    /// [`selected_bone`] pela selecção do gizmo deste quadro.
-    ///
-    /// ⚠️ **Ela existe SÓ para o caminho do gesto**, onde `self` está inteiro na mão. No laço de
-    /// desenho o `gfx` já está emprestado mutável de ponta a ponta, e ali chama-se a função livre
-    /// acima — a lei é a mesma, e é por isso que ela vive numa função só.
-    pub(crate) fn selected_bone_bits(&self) -> Option<u64> {
-        let gfx = self.gfx.as_ref()?;
-        selected_bone(&gfx.sim, gfx.hero_screen.as_ref()?.gizmo.iter_selected())
-    }
-}
-
 /// **O segmento de MUNDO de um osso** — a fixtura que os dois módulos de teste partilham.
 ///
 /// ⚠️ Ela vive aqui, e não num deles, porque os dois a usam: uma cópia por ficheiro divergiria no
 /// primeiro ajuste, e é o mesmo defeito que este módulo já curou no raio da junta.
-#[cfg(test)]
-pub(crate) fn test_segment(sim: &SimWorld, bits: u64) -> ([f64; 2], [f64; 2]) {
-    crate::skeleton_live::bone_segments(sim)
+// ⚠️ **`test-support`, e não `cfg(test)`** (HOWTO §2.5): um `#[cfg(test)]` é **invisível** do outro
+// lado de uma crate, e o `skeleton_shell_seam_tests` da shell lê esta função — o erro seria
+// *«não encontrado»* sobre algo que está à vista no ficheiro que ele cita.
+// ⛔ **Ela tem o tamanho do que ATRAVESSA, e nada mais**: de duas fixturas deste módulo, atravessa
+// **uma** — o `test_chain` fica em `cfg(test)`, porque só a crate o usa. Abrir a mais paga
+// `dead_code` do lado de cá.
+#[cfg(any(test, feature = "test-support"))]
+pub fn test_segment(sim: &SimWorld, bits: u64) -> ([f64; 2], [f64; 2]) {
+    ph2d_skeleton_live::skin_live::bone_segments(sim)
         .into_iter()
         .find(|(b, _, _)| *b == bits)
         .map(|(_, a, b)| (a, b))
@@ -210,7 +204,7 @@ pub(crate) fn test_segment(sim: &SimWorld, bits: u64) -> ([f64; 2], [f64; 2]) {
 
 /// Uma corrente de `n` ossos de 10 unidades, deitada sobre o eixo X. Devolve `[raiz, .., ponta]`.
 #[cfg(test)]
-pub(crate) fn test_chain(sim: &mut SimWorld, n: usize) -> Vec<u64> {
+pub fn test_chain(sim: &mut SimWorld, n: usize) -> Vec<u64> {
     let mut out = Vec::new();
     let mut pai = None;
     for i in 0..n {
@@ -236,9 +230,9 @@ mod tests;
 ///
 /// ⛔ **A ordem pai→filho é load-bearing**: cada `pose` lê o mundo do pai para converter o alvo para
 /// local, e um filho resolvido antes do pai leria um mundo que ainda vai mudar.
-pub(crate) fn reach_chain(sim: &mut SimWorld, tip: Entity, goal: [f64; 2]) -> bool {
-    let cadeia = crate::skeleton_live::chain_to(sim, tip.to_bits());
-    let segs = crate::skeleton_live::bone_segments(sim);
+pub fn reach_chain(sim: &mut SimWorld, tip: Entity, goal: [f64; 2]) -> bool {
+    let cadeia = ph2d_skeleton_live::skin_live::chain_to(sim, tip.to_bits());
+    let segs = ph2d_skeleton_live::skin_live::bone_segments(sim);
     let mut juntas: Vec<[f64; 2]> = Vec::with_capacity(cadeia.len() + 1);
     let mut comps: Vec<f64> = Vec::with_capacity(cadeia.len());
     for &e in &cadeia {
@@ -275,7 +269,7 @@ pub(crate) fn reach_chain(sim: &mut SimWorld, tip: Entity, goal: [f64; 2]) -> bo
 /// cena que ensina o contrário do que acontece é pior que uma cena ausente*. O artista veria um
 /// osso a crescer e o `Up` não faria nada.
 #[must_use]
-pub(crate) fn drag_makes_a_bone(origin: [f64; 2], tip: [f64; 2], px_to_world: f64) -> bool {
+pub fn drag_makes_a_bone(origin: [f64; 2], tip: [f64; 2], px_to_world: f64) -> bool {
     (tip[0] - origin[0]).hypot(tip[1] - origin[1]) >= BONE_HIT_PX * px_to_world
 }
 
@@ -287,18 +281,18 @@ pub(crate) fn drag_makes_a_bone(origin: [f64; 2], tip: [f64; 2], px_to_world: f6
 /// e errado um ao outro — e o sintoma seria o pior desta família: *o osso encaixa na tela e nasce
 /// noutro sítio*.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub(crate) struct BoneDragNow {
+pub struct BoneDragNow {
     /// A corrente solta que o release vai ADOPTAR, e a base dela em mundo. `None` = sem emenda.
-    pub(crate) splice: Option<(u64, [f64; 2])>,
+    pub splice: Option<(u64, [f64; 2])>,
     /// A ponta do osso: a **base do alvo** quando há emenda, senão o ponto onde a mão está.
-    pub(crate) tip: [f64; 2],
+    pub tip: [f64; 2],
     /// Este arrasto chega a fazer um osso? — medido sobre a ponta **já encaixada**.
-    pub(crate) armed: bool,
+    pub armed: bool,
 }
 
 /// [`BoneDragNow`] para este instante do arrasto — a porta única dos dois consumidores.
 #[must_use]
-pub(crate) fn drag_now(
+pub fn drag_now(
     sim: &SimWorld,
     birth: BoneBirth,
     pointer: [f64; 2],
@@ -336,7 +330,7 @@ pub(crate) fn drag_now(
 /// está acima de mim»*, e testa-se subindo a árvore INTEIRA (não só a corrente de ossos): um osso
 /// pendurado num grupo que descende do alvo fecharia o laço na mesma.
 #[must_use]
-pub(crate) fn splice_target(
+pub fn splice_target(
     sim: &SimWorld,
     world: [f64; 2],
     px_to_world: f64,
@@ -379,7 +373,7 @@ fn adopting_would_cycle(sim: &SimWorld, alvo: u64, novo_pai: Option<u64>) -> boo
 ///
 /// ⛔ **Ele não pergunta pelo ciclo** — quem o faz é o [`splice_target`], para que a
 /// pré-visualização e o release recusem o MESMO gesto. Ver a nota lá.
-pub(crate) fn connect(sim: &mut SimWorld, child: u64, parent: u64) -> bool {
+pub fn connect(sim: &mut SimWorld, child: u64, parent: u64) -> bool {
     let (Some(c), Some(p)) = (Entity::try_from_bits(child), Entity::try_from_bits(parent)) else {
         return false;
     };
@@ -397,7 +391,7 @@ pub(crate) fn connect(sim: &mut SimWorld, child: u64, parent: u64) -> bool {
 /// ⭐ Hoje uma delegação de uma linha para [`ph2d_skeleton_live::bone::create`] — a lei é pura
 /// sobre o `SimWorld` e saiu para a folha do esqueleto (Fase B, 2.ª volta), porque a cena
 /// `PH2D_VEC_BONE_SMOKE` a chama e não podia sair da shell enquanto ela aqui estivesse.
-pub(crate) fn create(
+pub fn create(
     sim: &mut SimWorld,
     parent: Option<Entity>,
     origin: [f64; 2],

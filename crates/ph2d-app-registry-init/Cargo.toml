@@ -17,6 +17,7 @@ ph2d-app-flip = { path = "../ph2d-app-flip", optional = true }
 ph2d-app-motion = { path = "../ph2d-app-motion", optional = true }
 ph2d-app-physics = { path = "../ph2d-app-physics", optional = true }
 ph2d-app-sculpt3d = { path = "../ph2d-app-sculpt3d", optional = true }
+ph2d-app-skeleton = { path = "../ph2d-app-skeleton", optional = true }
 ph2d-app-vec = { path = "../ph2d-app-vec", optional = true }
 # <ph2d-app-sync:deps:end>
 
@@ -32,6 +33,7 @@ default = [
     "app-motion",
     "app-physics",
     "app-sculpt3d",
+    "app-skeleton",
     "app-vec",
 # <ph2d-app-sync:default:end>
 ]
@@ -43,6 +45,7 @@ app-flip = ["dep:ph2d-app-flip"]
 app-motion = ["dep:ph2d-app-motion"]
 app-physics = ["dep:ph2d-app-physics"]
 app-sculpt3d = ["dep:ph2d-app-sculpt3d"]
+app-skeleton = ["dep:ph2d-app-skeleton"]
 app-vec = ["dep:ph2d-app-vec"]
 # <ph2d-app-sync:features:end>
 

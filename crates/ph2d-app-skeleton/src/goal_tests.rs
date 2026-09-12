@@ -6,43 +6,11 @@
 //! e o que ela escreve é **pré-visualização**, não documento.
 
 use super::*;
+use crate::goal::braco;
 // ⚠️ Declarado aqui: o pai deixou de nomear o `Bone` quando a lei foi para a folha.
 use ph2d_ecs::{ChildOf, Name, RootOrder};
 use ph2d_skeleton_ecs::Bone;
 
-/// Um braço de dois ossos deitado no `+X`, com a raiz na origem: ombro `(0,0)→(10,0)`, cotovelo
-/// `(10,0)→(20,0)`. Devolve `(sim, [ombro, cotovelo])`.
-/// ⚠️ `pub(super)` porque o irmão [`super::ledger_tests`] corre sobre o MESMO braço — duas
-/// fixturas para o mesmo módulo divergiriam.
-pub(super) fn braco() -> (SimWorld, [Entity; 2]) {
-    let mut sim = SimWorld::default();
-    let ombro = osso(&mut sim, "Shoulder", [0.0, 0.0], 10.0, None);
-    let cotovelo = osso(&mut sim, "Elbow", [10.0, 0.0], 10.0, Some(ombro));
-    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
-    (sim, [ombro, cotovelo])
-}
-
-fn osso(sim: &mut SimWorld, nome: &str, pos: [f32; 2], len: f64, pai: Option<Entity>) -> Entity {
-    let e = sim
-        .world_mut()
-        .spawn((
-            Transform {
-                translation: ph2d_core::Vec2::new(pos[0], pos[1]),
-                ..Transform::IDENTITY
-            },
-            Name::new(nome),
-            RootOrder(0),
-            Bone {
-                length: len,
-                strength: 1.0,
-            },
-        ))
-        .id();
-    if let Some(p) = pai {
-        sim.world_mut().entity_mut(e).insert(ChildOf(p));
-    }
-    e
-}
 
 /// Onde a ponta da corrente está, em mundo.
 fn ponta(sim: &SimWorld, e: Entity) -> [f64; 2] {
@@ -64,11 +32,11 @@ fn quadro(sim: &mut SimWorld, tip: Entity, p: [f64; 2]) -> usize {
 #[test]
 fn adding_an_anchor_moves_nothing() {
     let (mut sim, [_, cotovelo]) = braco();
-    let antes = crate::skeleton_live::bone_segments(&sim);
+    let antes = ph2d_skeleton_live::skin_live::bone_segments(&sim);
     assert!(add(&mut sim, cotovelo).is_some(), "a ancora nasce");
     let mut pv = PreviewDrive::default();
     solve(&mut sim, &mut pv);
-    let depois = crate::skeleton_live::bone_segments(&sim);
+    let depois = ph2d_skeleton_live::skin_live::bone_segments(&sim);
     assert_eq!(antes, depois, "criar a ancora moveu o esqueleto");
     assert!(
         pv.is_empty(),
@@ -138,7 +106,7 @@ fn the_chain_keeps_following_the_anchor_frame_after_frame() {
 fn a_mix_of_zero_leaves_the_authored_pose_alone() {
     let (mut sim, [_, cotovelo]) = braco();
     add(&mut sim, cotovelo).expect("a ancora");
-    let antes = crate::skeleton_live::bone_segments(&sim);
+    let antes = ph2d_skeleton_live::skin_live::bone_segments(&sim);
     sim.world_mut()
         .get_mut::<IkGoal>(cotovelo)
         .expect("a ancora")
@@ -146,7 +114,7 @@ fn a_mix_of_zero_leaves_the_authored_pose_alone() {
     quadro(&mut sim, cotovelo, [4.0, 9.0]);
     assert_eq!(
         antes,
-        crate::skeleton_live::bone_segments(&sim),
+        ph2d_skeleton_live::skin_live::bone_segments(&sim),
         "com mix=0 a corrente mexeu-se - a restricao desligada tem de ser inerte"
     );
 }
@@ -192,7 +160,7 @@ fn a_target_inside_the_chain_is_refused_instead_of_solved() {
     let alvo = add(&mut sim, cotovelo).expect("a ancora");
     // O artista pendura a âncora no ombro — que É governado por ela.
     sim.world_mut().entity_mut(alvo).insert(ChildOf(ombro));
-    let antes = crate::skeleton_live::bone_segments(&sim);
+    let antes = ph2d_skeleton_live::skin_live::bone_segments(&sim);
     let mut pv = PreviewDrive::default();
     assert_eq!(
         solve(&mut sim, &mut pv),
@@ -201,7 +169,7 @@ fn a_target_inside_the_chain_is_refused_instead_of_solved() {
     );
     assert_eq!(
         antes,
-        crate::skeleton_live::bone_segments(&sim),
+        ph2d_skeleton_live::skin_live::bone_segments(&sim),
         "o laco moveu a corrente"
     );
 }
@@ -213,7 +181,7 @@ fn deleting_the_target_leaves_the_chain_where_it_was() {
     let (mut sim, [_, cotovelo]) = braco();
     let alvo = add(&mut sim, cotovelo).expect("a ancora");
     quadro(&mut sim, cotovelo, [4.0, 9.0]);
-    let dobrado = crate::skeleton_live::bone_segments(&sim);
+    let dobrado = ph2d_skeleton_live::skin_live::bone_segments(&sim);
     sim.world_mut().despawn(alvo);
     let mut pv = PreviewDrive::default();
     assert_eq!(
@@ -223,7 +191,7 @@ fn deleting_the_target_leaves_the_chain_where_it_was() {
     );
     assert_eq!(
         dobrado,
-        crate::skeleton_live::bone_segments(&sim),
+        ph2d_skeleton_live::skin_live::bone_segments(&sim),
         "apagar o alvo endireitou o braco"
     );
 }
@@ -346,67 +314,13 @@ fn measure_the_price_of_one_frame_of_anchors() {
     );
 }
 
-/// ⚠️ **SONDA:** a âncora atravessa a captura do undo? (Report do dono, 2026-09-07: *«Undo não
-/// funciona para add IK»*.)
-///
-/// Ela separa as DUAS metades que o sintoma não distingue: *a fotografia não vê a âncora* (e aí o
-/// passo nasce vazio) contra *a fotografia vê e o passo não é registado* (e aí a causa é um dos
-/// cinco motivos de supressão do `post_frame_undo`).
-#[test]
-#[ignore = "sonda de medição: imprime, não julga"]
-fn probe_does_the_anchor_cross_the_undo_capture() {
-    use ph2d_ecs::scene::{ComponentRegistry, register_ecs_components};
-    let mut reg = ComponentRegistry::new();
-    register_ecs_components(&mut reg);
-    ph2d_render::register_render_components(&mut reg);
-    ph2d_skeleton_ecs::register_skeleton_components(&mut reg);
-
-    let (mut sim, [_, cotovelo]) = braco();
-    let vec = ph2d_vec_scene::VecScene::new();
-    let mut cache = ph2d_ecs::scene::incremental::CaptureCache::new();
-    let tirar = |sim: &mut SimWorld, cache: &mut ph2d_ecs::scene::incremental::CaptureCache| {
-        crate::undo::ProjectState::capture(
-            &PreviewDrive::default(),
-            sim,
-            &vec,
-            &ph2d_flip::FlipDoc::new(),
-            &ph2d_guides::GuideSet::default(),
-            &ph2d_ui_state::StateSets::default(),
-            &crate::project_library::LibraryDoc::default(),
-            &reg,
-            cache,
-            None,
-        )
-    };
-    let antes = tirar(&mut sim, &mut cache);
-    let alvo = add(&mut sim, cotovelo).expect("a ancora");
-    let depois = tirar(&mut sim, &mut cache);
-    eprintln!(
-        "[probe] a captura VE' a ancora? {} (partes que diferem: {:?})",
-        antes != depois,
-        depois.parts_that_differ(&antes)
-    );
-    // E o restauro leva-a embora?
-    let _ = antes.restore(&mut sim, &reg);
-    eprintln!(
-        "[probe] depois do restore: alvo vivo? {} · o osso ainda tem ancora? {}",
-        sim.world().get_entity(alvo).is_ok(),
-        sim.world()
-            .iter_entities()
-            .any(|er| er.contains::<ph2d_skeleton_ecs::IkGoal>())
-    );
-}
-
-#[path = "skeleton_agenda_tests.rs"]
+#[path = "agenda_tests.rs"]
 mod agenda;
 
-#[path = "skeleton_handle_tests.rs"]
-mod handle;
-
-#[path = "skeleton_bend_tests.rs"]
+#[path = "bend_tests.rs"]
 mod bend;
 
-#[path = "skeleton_limit_tests.rs"]
+#[path = "bone_limit_tests.rs"]
 mod limit;
 
 /// ⭐⭐⭐ **UM OSSO GOVERNADO POR UMA ÂNCORA NÃO PODE SER UM CONTROLO** — o ângulo dele é DERIVADO.
@@ -429,14 +343,14 @@ mod limit;
 fn a_bone_under_an_anchor_cannot_be_a_control() {
     let (mut sim, [ombro, cotovelo]) = braco();
     assert!(
-        !crate::skeleton_goal::is_governed(&sim, cotovelo),
+        !crate::goal::is_governed(&sim, cotovelo),
         "sem âncora nenhuma, nenhum osso é governado"
     );
-    crate::skeleton_goal::add(&mut sim, cotovelo).expect("a âncora nasce na ponta");
+    crate::goal::add(&mut sim, cotovelo).expect("a âncora nasce na ponta");
     // `DEFAULT_CHAIN` são DOIS ossos: a ponta e o pai dela. Os dois passam a ser derivados.
     for (e, quem) in [(cotovelo, "a ponta"), (ombro, "o pai dela")] {
         assert!(
-            crate::skeleton_goal::is_governed(&sim, e),
+            crate::goal::is_governed(&sim, e),
             "{quem} está na corrente da âncora e não foi reconhecido como governado — o app deixaria \
              de avisar, e o artista veria um controlo nascer mudo"
         );
@@ -444,7 +358,7 @@ fn a_bone_under_an_anchor_cannot_be_a_control() {
     // E um osso de FORA continua livre — a metade que impede a régua de acusar toda a cena.
     let solto = osso(&mut sim, "Free", [50.0, 0.0], 10.0, None);
     assert!(
-        !crate::skeleton_goal::is_governed(&sim, solto),
+        !crate::goal::is_governed(&sim, solto),
         "um osso fora de toda corrente foi dado como governado — o aviso passaria a aparecer sempre, \
          e um aviso que aparece sempre não é lido nunca"
     );

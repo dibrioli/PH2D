@@ -28,7 +28,7 @@
 ///
 /// ⚠️ **Largar o osso ESQUECE-O** (`memoria` volta a `None`), e é de propósito: re-escolher o mesmo
 /// osso revela outra vez, que é exactamente o gesto do report.
-pub(crate) fn on_focus(memoria: &mut Option<u64>, foco: Option<u64>) -> bool {
+pub fn on_focus(memoria: &mut Option<u64>, foco: Option<u64>) -> bool {
     if *memoria == foco {
         return false;
     }
@@ -52,7 +52,7 @@ pub(crate) fn on_focus(memoria: &mut Option<u64>, foco: Option<u64>) -> bool {
 /// esta porta escreve exactamente o que o [`on_focus`] escreveria se o osso tivesse sido apontado.
 /// Um `bool` *«ignora a próxima aresta»* ao lado dela seria um segundo estado a divergir do
 /// primeiro no primeiro clique.
-pub(crate) fn on_birth(memoria: &mut Option<u64>, novo: u64) {
+pub fn on_birth(memoria: &mut Option<u64>, novo: u64) {
     *memoria = Some(novo);
 }
 

@@ -52,7 +52,7 @@ fn two_anchors_on_one_chain_reach_a_fixed_point() {
     for _ in 0..30 {
         solve(&mut sim, &mut pv);
     }
-    let assente = crate::skeleton_live::bone_segments(&sim);
+    let assente = ph2d_skeleton_live::skin_live::bone_segments(&sim);
     for _ in 0..30 {
         solve(&mut sim, &mut pv);
     }
@@ -70,7 +70,7 @@ fn two_anchors_on_one_chain_reach_a_fixed_point() {
     }
     let pior = assente
         .iter()
-        .zip(crate::skeleton_live::bone_segments(&sim))
+        .zip(ph2d_skeleton_live::skin_live::bone_segments(&sim))
         .flat_map(|(a, b)| {
             [
                 (a.1[0] - b.1[0]).hypot(a.1[1] - b.1[1]),

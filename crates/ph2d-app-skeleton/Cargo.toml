@@ -1,0 +1,64 @@
+[package]
+name = "ph2d-app-skeleton"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# ⚠️ **A INTERFACE da shell, não o agregador** — importar o `ph2d-app-registry-init` fecharia o
+# ciclo `registry → família → registry`. Ver o doc-comment de `ph2d-app-host::family`.
+[dependencies]
+ph2d-app-host = { path = "../ph2d-app-host" }
+
+# ⛔⛔ **OS MOTORES DO MÓDULO, e esta crate nunca pode ser nenhum deles.** Medido na 2.ª volta da
+# Fase B: prender uma forma aos ossos precisa da `ph2d-vec-entities`, **que já depende** da
+# `ph2d-skeleton-ecs` ⇒ pôr esta lei lá dentro fecha um ciclo. Uma família é consumidora de
+# motores, nunca um motor — e é isso que a mantém acíclica.
+ph2d-skeleton = { path = "../ph2d-skeleton" }
+ph2d-skeleton-ecs = { path = "../ph2d-skeleton-ecs" }
+ph2d-skeleton-live = { path = "../ph2d-skeleton-live" }
+ph2d-skeleton-render = { path = "../ph2d-skeleton-render" }
+
+# ⚠️⚠️ **AS DEZ QUE SÓ A CRATE REVELOU** (HOWTO §1.3: *«a lista de dependências da crate nova é o
+# CUSTO REAL do módulo, e ele só se lê aqui»*). Dentro da shell todas eram dependência do binário e
+# um ficheiro escrevia `ph2d_core::…` sem nada que o declarasse.
+ph2d-anim = { path = "../ph2d-anim" }
+ph2d-core = { path = "../ph2d-core" }
+ph2d-ecs = { path = "../ph2d-ecs" }
+ph2d-editor = { path = "../ph2d-editor" }
+ph2d-preview-drive = { path = "../ph2d-preview-drive" }
+ph2d-timeline = { path = "../ph2d-timeline" }
+ph2d-tool-vector = { path = "../ph2d-tool-vector" }
+ph2d-vec-edit = { path = "../ph2d-vec-edit" }
+ph2d-vec-entities = { path = "../ph2d-vec-entities" }
+ph2d-vec-scene = { path = "../ph2d-vec-scene" }
+# ⭐ A folha que nasceu nesta mesma fase, e que é a razão de ela existir: os Smart Bones largam os
+# mesmos quatro factos que a timeline conduz.
+ph2d-timeline-preview = { path = "../ph2d-timeline-preview" }
+
+# ⛔⛔ **A família irmã entra como DEV-dependency, e a distinção é a lei do HOWTO §1.2.** Quatro
+# ficheiros de TESTE exercitam a lei do osso *através* da cena `PH2D_VEC_BONE_SMOKE`, cujo corpo
+# vive na `ph2d-app-vec` — e é assim que ela deve ser exercitada (o piloto mediu o mesmo: dos 5
+# testes daqueles módulos, 4 passam pelo smoke da família). ⚠️ Em `[dependencies]` isto seria *uma
+# família a depender da outra inteira*, que é precisamente o que aquela secção proíbe; em
+# `[dev-dependencies]` o build do produto não a vê.
+# ⭐ E não há ciclo, medido: a `ph2d-app-vec` cita **zero** módulos desta família.
+[dev-dependencies]
+ph2d-app-vec = { path = "../ph2d-app-vec" }
+# ⛔⛔ **A FEATURE NÃO VIAJA COM O CÓDIGO** (HOWTO §2.4, o pior modo de falha da wave). O
+# `PreviewDrive::is_empty` é `#[cfg(any(test, feature = "test-support"))]`, e três gates desta
+# família o leem. Dentro da shell isso funcionava porque **não era do outro lado de nada**; aqui a
+# `ph2d-preview-drive` é uma dependência, e `cfg(test)` é falso nela.
+# ⚠️ E o aviso é o caro: sem esta linha o erro lido é *«no method named `is_empty`»* sobre um método
+# que está **à vista no ficheiro que o erro cita**.
+ph2d-preview-drive = { path = "../ph2d-preview-drive", features = ["test-support"] }
+
+# ⚠️ **Do tamanho do que ATRAVESSA a fronteira, e nada mais** (HOWTO §2.5). Aqui atravessa **UMA**
+# fixtura: o `bone_gesture::test_segment`, que o `skeleton_shell_seam_tests` da shell usa para medir
+# se o gizmo de grupo reclama uma âncora de osso. A irmã `test_chain` fica em `cfg(test)`.
+[features]
+test-support = []

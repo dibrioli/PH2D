@@ -90,7 +90,7 @@ fn two_bones_never_share_a_name() {
 fn a_press_over_a_shape_in_the_bone_tool_picks_it_so_bind_has_a_subject() {
     let mut sim = SimWorld::default();
     let mut scene = ph2d_vec_scene::VecScene::new();
-    let id = scene.push_path(crate::build_smoke::shape(
+    let id = scene.push_path(ph2d_vec_scene::cook_tinted(
         ph2d_vec_scene::ShapeKind::Ellipse,
         [2.0, -2.0],
         [8.0, 2.0],
@@ -436,7 +436,7 @@ fn two_separate_chains_become_one_and_the_adopted_one_does_not_move() {
     assert!(connect(&mut sim, alvo, novo), "a emenda tem de acontecer");
 
     // ⭐ Uma corrente só: de A ate' C, passando pelo osso novo.
-    let cadeia: Vec<u64> = crate::skeleton_live::chain_to(&sim, c)
+    let cadeia: Vec<u64> = ph2d_skeleton_live::skin_live::chain_to(&sim, c)
         .into_iter()
         .map(|e| e.to_bits())
         .collect();

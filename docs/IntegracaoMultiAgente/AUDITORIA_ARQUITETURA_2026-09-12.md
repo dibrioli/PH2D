@@ -251,3 +251,47 @@ editada em `editor-core/src`, `cargo test --no-run --workspace --profile ci-test
 - `forbid`: `grep -q 'forbid(unsafe_code)' crates/*/src/lib.rs` + `git log --diff-filter=A` do `Cargo.toml`.
 - Crescimento de ficheiro: `git show $(git rev-list -1 --before=<data> main):<ficheiro> | wc -l`.
 - Consumidor de sempre: `git log --oneline -S <crate> -- '*/Cargo.toml'`.
+
+## §6 — O que a jornada FEZ com esta lista (12/09, a seguir)
+
+O dono respondeu à lista com *«eu não decidirei nada — vc sabe mais que eu; qual o padrão ouro? Vamos
+até o estado da arte»*. As curas foram escolhidas pelo padrão-ouro e aplicadas na mesma jornada, uma
+frente por commit, cada uma com fmt, check da workspace sem aviso, machete e a suíte das crates que
+tocou (14 commits depois desta auditoria).
+
+| # | estado | o que ficou | commit |
+|---|:-:|---|---|
+| A1 | ✅ | **7** arestas curadas por ASSUNTO — a 7.ª (`app-skeleton → app-vec`, em dev) só o gate novo a viu. Três espécies de cura: um TIPO desce para a folha do domínio (`PatternArt` → `ph2d-vec-pattern`; `FlipEntityMap` → `ph2d-flip-entities`), uma LEI desce para o motor (a câmera → `ph2d-flip-render`; o texto → `ph2d-vec-text`; abrir áudio → `ph2d-audio-decode`), uma TABELA é injectada pela composição (as sementes de anexar). O áudio passou a ser a família `ph2d-app-audio`; o conteúdo da cena do osso a folha `ph2d-skeleton-demo`. Gate `architecture_no_dependency_climbs_a_layer` com a catraca **vazia** | `4a1005876` · `0fe02ccab` · `53966e092` · `e5abd0265` · `cbcd1faa0` · `cecefdc44` · `8c2e4de71` |
+| A2 | ✅ | `[workspace.lints.rust] unsafe_code = "forbid"`, 358 membros herdam, 2 excepções nomeadas (FFI) com o `allow` confinado aos módulos; 5 `unsafe` curados sem `unsafe` (porta injectável, `OnceLock`, relançamento, derive). Gate `architecture_every_member_inherits_the_workspace_lints`, 3 mutações | `69da236cc` |
+| A3 | ✅ | o marcador sem número morreu; os tectos da shell e da workspace são NUMERADOS e têm a metade *«o tecto ficou para trás»* | `4c33194ec` |
+| A4 | ✅ | shim `ph2d-editor` apagado, 2 454 usos passam ao nome real (7 menções históricas ficaram de propósito) | `d94e4155c` |
+| A5 | 🟡 | 138 ids sem citação nenhuma saíram (102 de `painter_studio.rs`, de um painel que nunca existiu). ⏳ Medido para a frente seguinte: **754 de 2 533** ids só têm leitor no painel dono (e em famílias/shell que dependem dele) e podem descer; 948 são lidos pela própria editor-core, 474 citados dentro de `ids/`, 179 por vários painéis | `13fafa554` |
+| A6 | ✅ | as 4 dependências de teste passam a `[dev-dependencies]` | `9274fd3c7` |
+| A7 | ✅ | a promessa impossível sai do cabeçalho do registo; gate `the_shell_links_exactly_the_registered_families` (as duas listas concordam), provado por mutação | `8c2e4de71` |
+| A8 | ✅ | 4 stubs apagados; `ph2d-system-fonts` ganha consumidor (a `library` de fontes que a `ph2d-app-vec` reimplementava) e o doc diz que o fallback de glifo continua sem chamador; `ph2d-audio-stream` fica (ADR-0118, consumidor por nascer, já registado no §5 Áudio) | `9274fd3c7` · `53966e092` |
+| A9 | ⏳ | medido: 54 campos `vec_*` soltos na `App` (24 de tipos de crate, 30 da shell), 1 171 acessos por `self.`, 86 por `app.`, 5 desmontagens | — |
+| A10 | ⏳ | medido: os módulos da editor-core dependem uns dos outros nos DOIS sentidos (`widget`↔`interaction` 73/165, `screens`↔`interaction` 162/22, `interaction`↔`ids` 90/10) — partir a crate exige desenredar primeiro | — |
+| A11 | ✅ | CLAUDE.md, ESTADO da W2 e HOWTO (§2.19 o atributo não viaja · §2.20 família não chama família) dizem o que o código diz | `7239fc7e9` |
+| — | ✅ | achado durante as curas: a feature `panel-vector` da `ph2d-app-vec` era precisão falsa (20 `cfg` sobre uma dependência obrigatória, e um `let _ = (…)` a calar o compilador) — só se via compilando a crate SOZINHA | `044ff1e16` |
+
+### Correcções a esta auditoria (o que a lista acima tinha errado)
+
+- **A1 listava 9 arestas e só 6 subiam.** `ph2d-viewport3d → ph2d-app-host` aponta para o SUBSTRATO e
+  `ph2d-editor-core`/`ph2d-viewport3d → ph2d-tool-registry` para o CONTRATO — as duas direcções estão
+  certas, e o gate de camadas classifica-as assim.
+- **A1 não viu a 7.ª aresta** (`ph2d-app-skeleton → ph2d-app-vec` em `[dev-dependencies]`): a medição
+  olhou só `[dependencies]`. Quem a achou foi o gate, na primeira corrida.
+- **A2 dizia «as nove famílias e as sete folhas» entre as 23 de setembro** — eram 7 famílias e as 7
+  folhas partilhadas (corrigido no próprio §2 antes do commit).
+
+### O que fica, MEDIDO, para a jornada seguinte
+
+1. **A5, 2.ª metade** — 754 ids descem para o painel dono; o censo de colisões passa a ler os
+   literais `hash_node_id("…")` da workspace (hoje o `CHROME_IDS` lista 619 à mão contra 3 587 literais).
+2. **`run_render_frame`: 13 685 linhas numa função.** O bloco do ecrã principal tem 10 855 linhas e 241
+   sub-blocos; o dreno de acções sozinho 1 699; 43 variáveis locais (entre elas a desmontagem do
+   `AppGfx`) atravessam as fases. A cura é um CONTEXTO de quadro explícito passado a funções de fase,
+   na mesma ordem — ⛔ nunca ganchos genéricos (ESTADO §3). O tecto numerado impede-o de crescer.
+3. **A9** e **A10**, com os números acima.
+4. O realce âmbar é o MESMO literal em dois ficheiros (`ph2d-app-flip` `HALO_RGBA` e
+   `ph2d-app-motion` `PATH_RGBA`) — pede um token.

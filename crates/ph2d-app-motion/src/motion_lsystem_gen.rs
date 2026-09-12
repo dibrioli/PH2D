@@ -163,7 +163,7 @@ impl PlantMemo {
 
     /// Quantas derivações o memo guarda — a sonda de que a varredura precisa.
     #[cfg(test)]
-    pub fn len(&self) -> usize {
+    pub(crate) fn len(&self) -> usize {
         self.by_key.len()
     }
 }

@@ -391,6 +391,20 @@ pub fn gpu_enabled_from_env(var: Option<&str>) -> bool {
     !matches!(var, Some("0"))
 }
 
+/// ⚠️ **`Default` É O ESTADO DE ARRANQUE, e não é barato** — ele delega para [`MotionState::new`],
+/// que regista os nós todos e lê `PH2D_GPU_COOK_DEMO` para montar a cena pedida.
+///
+/// Existe para curar o `new_without_default` que travava o `ship.sh` (⛔ um `#[allow]` está proibido
+/// por escrito — memória §SUPRESSÃO). Medido antes de o escrever: o único dono de um `MotionState`
+/// é o `AppGfx`, e **ninguém** o constrói por `Default` (tem superfícies de GPU; nem poderia). ⇒ hoje
+/// este `impl` é inerte. ⛔ **Se alguma struct passar a derivar `Default` com um `MotionState`
+/// dentro, ela passa a ler o ambiente e a registar 132 nós em silêncio** — é essa a razão deste aviso.
+impl Default for MotionState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MotionState {
     /// Build the boot state: register every node op, e **abrir com a TELA VAZIA**.
     ///

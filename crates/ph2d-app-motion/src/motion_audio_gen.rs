@@ -155,7 +155,7 @@ impl BandCache {
 
     /// Quantas análises estão vivas (sonda dos gates).
     #[cfg(test)]
-    pub fn len(&self) -> usize {
+    pub(crate) fn len(&self) -> usize {
         self.tracks.len()
     }
 }

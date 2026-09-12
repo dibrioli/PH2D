@@ -29,6 +29,21 @@ mod keys_scene;
 #[path = "keys_delete.rs"]
 pub mod keys_delete;
 
+/// **O que foi PREMIDO** — a tecla e os dois modificadores que este teclado lê.
+///
+/// ⚠️ Nasceu para curar o `too_many_arguments` (8/7) que travava o `ship.sh`, e o agrupamento não é
+/// arbitrário: o `key` recebia *o que a mão fez* (`code`, `ctrl`, `shift`) misturado com *o estado
+/// do mundo* (`factos`, `keys_live`) e com os empréstimos (`scene`, `req`, `hero`). Juntar só o
+/// primeiro grupo deixa a assinatura a dizer as três perguntas pela ordem em que o corpo as faz.
+/// ⛔ Um `#[allow]` estava proibido por escrito (memória §SUPRESSÃO); o `DeleteFacts` ao lado é o
+/// molde — os factos colhidos já viajavam numa struct.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct KeyPress {
+    pub code: winit::keyboard::KeyCode,
+    pub ctrl: bool,
+    pub shift: bool,
+}
+
 /// As teclas da cena 3D. Devolve `true` se consumiu.
 pub fn key(
     scene: &mut Sculpt3dScene,
@@ -38,9 +53,7 @@ pub fn key(
     // seja inventado. Ele e a cena vivem os dois no `AppGfx`, e é a shell — a dona dele — quem os
     // desmonta e empresta os dois campos de uma vez.
     hero: Option<&mut ph2d_editor::screens::hero::HeroScreen>,
-    code: winit::keyboard::KeyCode,
-    ctrl: bool,
-    shift: bool,
+    press: KeyPress,
     // ⚠️⚠️ **Os factos chegam COLHIDOS, e isso corrige um defeito latente:** o
     // `text_entry_focused` era perguntado **duas** vezes neste corpo (a guarda geral e o
     // `Delete`), e nada obrigava as duas leituras a concordar. Agora é uma leitura só, e a
@@ -50,6 +63,7 @@ pub fn key(
     keys_live: bool,
 ) -> bool {
     use winit::keyboard::KeyCode as K;
+    let KeyPress { code, ctrl, shift } = press;
     // ⚠️ **UM CAMPO FOCADO É DONO DO TECLADO — e esta é a metade GERAL da cura.**
     //
     // Vale para as DUAS camadas abaixo, e por isso mora aqui em cima: enquanto ela

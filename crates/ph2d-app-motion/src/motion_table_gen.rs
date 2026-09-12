@@ -112,7 +112,7 @@ impl TableCache {
     /// Quantas tabelas estão vivas — lido pela soak anti-acumulação e pelos gates (o mesmo
     /// `#[cfg(test)]` do `BandCache::len`: é uma sonda, não produto).
     #[cfg(test)]
-    pub fn len(&self) -> usize {
+    pub(crate) fn len(&self) -> usize {
         self.tables.len()
     }
 }

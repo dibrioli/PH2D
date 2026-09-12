@@ -140,9 +140,7 @@ impl App {
             scene,
             sculpt3d_req,
             gfx.hero_screen.as_mut(),
-            code,
-            ctrl,
-            shift,
+            ph2d_app_sculpt3d::keys::KeyPress { code, ctrl, shift },
             &factos,
             keys_live,
         )

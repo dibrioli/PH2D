@@ -140,7 +140,7 @@ impl VecPathStore {
     /// Quantas geometrias o store guarda — a sonda de que a varredura precisa para
     /// não ser uma alegação.
     #[cfg(test)]
-    pub fn len(&self) -> usize {
+    pub(crate) fn len(&self) -> usize {
         self.by_handle.len()
     }
 }

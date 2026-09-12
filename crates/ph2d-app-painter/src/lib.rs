@@ -9,7 +9,7 @@
 //! # ⛔ O que ficou na shell, e é DESENHO
 //!
 //! O **LAÇO** (`render_loop/mod.rs`) garante a ordem do quadro e não se abstrai (HOWTO §4): o que
-//! sai são os **CORPOS**, e a shell chama `ph2d_app_painter::<mod>::<fn>` no ponto certo. Os
+//! sai são os **CORPOS**, e a shell chama `crate::<mod>::<fn>` no ponto certo. Os
 //! gestos de canvas ficam com **invólucros** `&mut App` na shell, porque os corpos deles precisam
 //! do `gfx` e ⛔ **nenhuma porta do [`ph2d_app_host::AppHost`] devolve um handle** — é essa
 //! proibição que segura a fronteira inteira.
@@ -30,6 +30,83 @@
 pub mod impasto_smoke;
 pub mod line_smoke;
 pub mod mask_smoke;
+pub mod shape_grab;
+
+// ─────────────────────────────────────────────────────────────────────────
+// **As PONTES DE DESENHO e o carimbo**, vindos de `shells/desktop/src/render_loop/`.
+// ⚠️ Os nomes MANTÊM o prefixo `painter_` de propósito: um rename por nome corrompe a
+// prosa que cita o ficheiro, e a Fase A da `line/app-physics` pagou 76 citações numa
+// varredura só. Aqui dentro tudo é a família; o prefixo é só história que não custa nada.
+// ─────────────────────────────────────────────────────────────────────────
+/// `PH2D_PAINT_PERF` aggregation (one summary line per window, not per frame).
+///
+/// `pub(crate)` porque a frente L do plano 26 carimba a chegada do evento de ponteiro lá do
+/// `input_dispatch` (a latência começa na ENTREGA, não no frame).
+pub mod paint_perf;
+pub mod painter_bridge;
+/// Brush-image import helpers (Grain/Shape file pickers), split from
+/// `painter_bridge` for the HR-18 file-LOC cap.
+pub mod painter_bridge_assets;
+/// The brush-cursor ring, split from `painter_bridge_overlays` for the HR-18 file-LOC cap.
+pub mod painter_bridge_brush_ring;
+/// The Curve / Free Hand editor overlay (spine + control dots + tangent handles), split from
+/// `painter_bridge_overlays` for the HR-18 file-LOC cap.
+pub mod painter_bridge_curve_overlay;
+/// A pergunta *«esta entidade está na cena?»* que o extract faz — ver o módulo.
+/// O `OnScreenEnabler` a decidir alguma coisa: *«só corre/aparece quando está no ecrã»*.
+/// The Deform Transform gizmo (whole-region bounding box), split from `painter_bridge_overlays` (Wave 2).
+pub mod painter_bridge_deform_gizmo;
+/// The Fill (Bucket) ColorDrop cursor swatch overlay, split from `painter_bridge_overlays` for the
+/// HR-18 file-LOC cap.
+pub mod painter_bridge_fill_overlay;
+/// Shared Sprite-style gizmo painting for the Curve + Stencil transform gizmos (theme tokens, darker).
+pub mod painter_bridge_gizmo;
+/// A rede do Grid Stamp desenhada sobre a sprite (o método carimba no centro da célula dela).
+pub mod painter_bridge_grid;
+/// The Line polyline editor overlay (segments + corner dots + transform gizmo + Fillet/Chamfer handles),
+/// split from `painter_bridge_overlays` for the HR-18 file-LOC cap.
+pub mod painter_bridge_line_overlay;
+/// Multi-shape op badges (`+`/`−`/`○` type-square glyph per shape + a frame for parked shapes).
+pub mod painter_bridge_op_badges;
+/// On-canvas editing chrome (brush ring + Curve/Circle/Polygon/Stencil overlays), split from
+/// `painter_bridge` for the HR-18 file-LOC cap.
+pub mod painter_bridge_overlays;
+pub mod painter_bridge_queries;
+/// The isolated selection gizmos (ellipse / polygon / freehand), split from `painter_bridge_overlays`.
+pub mod painter_bridge_selection_gizmos;
+/// The Selection overlay (marching ants + deselected-area hatching), split from `painter_bridge_overlays`
+/// for the HR-18 file-LOC cap.
+pub mod painter_bridge_selection_overlay;
+/// Live GPU preview of a brush Shape-source sprite (when not selected), split from `painter_bridge` for
+/// the HR-18 file-LOC cap.
+pub mod painter_bridge_shape_preview;
+/// On-canvas wetness sheen veil (Watercolor render-path), split from `painter_bridge_overlays` for the
+/// HR-18 file-LOC cap.
+pub mod painter_bridge_wetness;
+pub mod painter_gpu_flatten;
+pub mod painter_gpu_preview;
+pub mod painter_lock;
+/// Display gates, producer-handoff half (upload-plan refusals + the CPU→GPU→CPU dance on real
+/// hardware) — split from the pipeline tests for the HR-18 file-LOC cap.
+#[cfg(test)]
+mod painter_preview_handoff_tests;
+/// Display gates, a metade que MEDE — o preço de cada produtor pelo mesmo traço. Irmão do de cima,
+/// cortado dele pelo teto de LOC da shell e por ASSUNTO (o que se AFIRMA × o que se MEDE).
+#[cfg(test)]
+mod painter_preview_measure;
+/// Ownership gates: the shell's preview buffer is INDEPENDENT of the tool's canvas, so a plain stroke
+/// stays footprint-bound (the tool keeps sole ownership) — split from the pipeline tests (HR-18).
+#[cfg(test)]
+mod painter_preview_ownership_tests;
+/// Display gates: the preview slot (what the sprite shader samples) is held byte-equal to the
+/// tool's composite across a stroke's whole life — phase D of the impasto smoke.
+#[cfg(test)]
+mod painter_preview_pipeline_tests;
+/// O que a tela mostra DEPOIS de um undo — o report de resquício do smoke de 2026-07-25.
+#[cfg(test)]
+mod painter_preview_undo_tests;
+/// A ponte do carimbo de pigmento para o dispositivo (doc 33 §S3) — a metade do lado do shell.
+pub mod painter_stamp_device;
 pub mod substrate_smoke;
 pub mod taper_smoke;
 pub mod wetpaint_smoke;

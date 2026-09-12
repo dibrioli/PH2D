@@ -14,7 +14,7 @@
 //! Arch-gate sobre o fonte porque o `[frame]` só existe com janela — nenhum
 //! teste de unidade alcança aquele `eprintln`.
 
-const SRC: &str = include_str!("../../src/render_loop/paint_perf.rs");
+const SRC: &str = include_str!("../src/paint_perf.rs");
 
 /// O `ns/texel` é impresso ao lado do tempo, com a janela que o produz.
 ///

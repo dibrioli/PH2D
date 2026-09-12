@@ -38,7 +38,7 @@ fn trivial_stack_stays_on_the_cpu_path() {
     let t = sourced_tool();
     assert!(t.preview_is_trivial_stack());
     assert!(
-        crate::render_loop::painter_gpu_flatten::flatten_for_gpu(t.layers()).is_some(),
+        crate::painter_gpu_flatten::flatten_for_gpu(t.layers()).is_some(),
         "precondition: the trivial stack is representable (the gate, not \
          the flatten, must reject it)"
     );

@@ -15,7 +15,7 @@ use std::path::Path;
 
 #[test]
 fn repeat_image_tiles_draw_under_the_editing_chrome() {
-    let bridge = Path::new(env!("CARGO_MANIFEST_DIR")).join("src/render_loop/painter_bridge.rs");
+    let bridge = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../crates/ph2d-app-painter/src/painter_bridge.rs");
     let src =
         fs::read_to_string(&bridge).unwrap_or_else(|e| panic!("read {}: {e}", bridge.display()));
     // Byte offset of the first CALL site (skip comment lines so prose can name the fns freely).

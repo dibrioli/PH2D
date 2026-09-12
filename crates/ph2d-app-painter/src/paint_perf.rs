@@ -19,8 +19,8 @@ pub(super) const PANEL_LABELS: [&str; PANEL_SUB] =
     ["commit", "layerclone", "brushsnap", "pub", "shapebake"];
 
 /// The twelve calls `draw_overlays` makes, in call order.
-pub(super) const CHROME_SUB: usize = 13;
-pub(super) const CHROME_LABELS: [&str; CHROME_SUB] = [
+pub const CHROME_SUB: usize = 13;
+pub const CHROME_LABELS: [&str; CHROME_SUB] = [
     "wet", "ring", "curve", "ellipse", "line", "poly", "badges", "selgiz", "deform", "stencil",
     "symm", "grid", "fill",
 ];
@@ -132,7 +132,7 @@ thread_local! {
 ///
 /// ⚠️ **É o relógio da SHELL, não do tool** — o contrato `CanvasPaintTool` está congelado (§6) e um
 /// método novo nele exigiria ADR. A shell já é dona do evento; ela o carimba na entrega.
-pub(crate) fn stamp_pointer() {
+pub fn stamp_pointer() {
     if !on() {
         return;
     }
@@ -163,7 +163,7 @@ pub(crate) fn note_gpu_fold(ms: f32, full: bool) {
     });
 }
 
-pub(crate) fn record_input(ms: f32, phase: InputPhase) {
+pub fn record_input(ms: f32, phase: InputPhase) {
     if !on() {
         return;
     }
@@ -173,7 +173,7 @@ pub(crate) fn record_input(ms: f32, phase: InputPhase) {
 /// A fase de um evento de ponteiro, para o balde de INPUT. Um `Down` abre um traço (e paga o clone de
 /// canvas), um `Move` carimba dabs, um `Up` fecha e COMMITA — três custos de natureza diferente.
 #[derive(Clone, Copy, Debug)]
-pub(crate) enum InputPhase {
+pub enum InputPhase {
     Down = 0,
     Move = 1,
     Up = 2,
@@ -182,7 +182,7 @@ pub(crate) enum InputPhase {
 impl InputPhase {
     /// A fase de um evento de canvas. Mora AQUI, ao lado do enum que ela produz, e não no sítio de
     /// chamada — o `painter_canvas_input.rs` está no teto de 600 LOC, e o mapeamento é do balde.
-    pub(crate) const fn of(phase: ph2d_editor::tool::PointerPhase) -> Self {
+    pub const fn of(phase: ph2d_editor::tool::PointerPhase) -> Self {
         match phase {
             ph2d_editor::tool::PointerPhase::Down => Self::Down,
             ph2d_editor::tool::PointerPhase::Up => Self::Up,
@@ -192,7 +192,7 @@ impl InputPhase {
 }
 
 /// Whether `PH2D_PAINT_PERF` is set (cached — no per-frame syscall).
-pub(crate) fn on() -> bool {
+pub fn on() -> bool {
     ON.with(|c| {
         if c.get() < 0 {
             c.set(i8::from(std::env::var_os("PH2D_PAINT_PERF").is_some()));
@@ -217,7 +217,7 @@ pub(super) fn record_dispatch(info: FrameInfo) {
 
 /// Close the frame with its whole-frame wall clock; aggregate + emit a summary every `WINDOW`
 /// painter frames. A frame with no recorded dispatch (painter inactive) is skipped.
-pub(super) fn end_frame(total_ms: f32) {
+pub fn end_frame(total_ms: f32) {
     AGG.with(|cell| {
         let a = &mut *cell.borrow_mut();
         let Some(cur) = a.cur.take() else { return };

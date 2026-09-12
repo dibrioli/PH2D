@@ -5353,7 +5353,7 @@ impl App {
         if let Some((dragged, drop)) = forward_to_hero(self.gfx.as_mut(), evt)
             && let Some(gfx) = self.gfx.as_mut()
         {
-            crate::render_loop::painter_bridge_queries::apply_layer_reparent(
+            ph2d_app_painter::painter_bridge_queries::apply_layer_reparent(
                 &mut gfx.tools,
                 dragged,
                 drop,
@@ -6119,17 +6119,17 @@ impl App {
                         // é o caminho do **clique vazio**, que limpa e não seleciona outra — a lei
                         // permite-o de propósito (recusar faria o `Esc` e o canvas parecerem
                         // partidos). *Recusar a troca não é recusar o clique.*
-                        let painter_locked = crate::painter_lock::locked_entity(&gfx.tools, hero);
+                        let painter_locked = ph2d_app_painter::painter_lock::locked_entity(&gfx.tools, hero);
                         let picked = match picked {
                             Some(bits)
-                                if crate::painter_lock::decide(
+                                if ph2d_app_painter::painter_lock::decide(
                                     painter_locked,
                                     Some(bits),
                                     cmd_held || shift_held,
-                                ) == crate::painter_lock::Decision::Refuse =>
+                                ) == ph2d_app_painter::painter_lock::Decision::Refuse =>
                             {
                                 gfx.toasts
-                                    .push(Toast::warning(crate::painter_lock::REFUSAL));
+                                    .push(Toast::warning(ph2d_app_painter::painter_lock::REFUSAL));
                                 self.pending_ui_sound = Some(crate::ui_sound::UiSound::Refuse);
                                 None
                             }
@@ -6379,9 +6379,9 @@ impl App {
                             // entra, e o Enio nomeou-a: *"não permita a seleção de múltiplas
                             // imagens se o painter está ativo"*. Uma trava que só cobre o gesto
                             // óbvio ensina o artista a usar o outro.
-                            if crate::painter_lock::locked_entity(&gfx.tools, hero).is_some() {
+                            if ph2d_app_painter::painter_lock::locked_entity(&gfx.tools, hero).is_some() {
                                 gfx.toasts
-                                    .push(Toast::warning(crate::painter_lock::REFUSAL));
+                                    .push(Toast::warning(ph2d_app_painter::painter_lock::REFUSAL));
                                 self.pending_ui_sound = Some(crate::ui_sound::UiSound::Refuse);
                             } else {
                                 if !rb.add_mode {

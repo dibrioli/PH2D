@@ -62,6 +62,11 @@ const BRIDGE_DIR_FAM: &str = "../../crates/ph2d-app-motion/src";
 /// família acrescenta a linha aqui — o piso e os três nomes conhecidos são o que torna a omissão
 /// visível em vez de muda.
 const BRIDGE_DIR_VEC: &str = "../../crates/ph2d-app-vec/src";
+/// ⚠️ **O TERCEIRO, desde a Fase D (2026-09-12):** a `painter_bridge` mudou-se para
+/// `ph2d-app-painter`. O piso abaixo apanhou-a a sair — ele leu `7` painéis de ferramenta onde
+/// esperava `8`, e o que faltava era o `painter_layers`. *Um censo que perde um sítio aprova tudo
+/// o que vivia nele*, e é essa a razão de o controlo positivo existir.
+const BRIDGE_DIR_PAINTER: &str = "../../crates/ph2d-app-painter/src";
 
 /// Como é que a ponte escreve a visibilidade.
 const WRITE: &str = "panel_visibility.insert(";
@@ -69,17 +74,20 @@ const WRITE: &str = "panel_visibility.insert(";
 /// Um `insert` lido: o id do painel e o que lhe foi atribuído.
 fn writes() -> BTreeMap<String, Vec<String>> {
     let mut out: BTreeMap<String, Vec<String>> = BTreeMap::new();
-    // ⚠️ TRÊS sítios desde a Fase D — ver [`BRIDGE_DIR_FAM`] e [`BRIDGE_DIR_VEC`].
-    let mut files: Vec<_> = [BRIDGE_DIR, BRIDGE_DIR_FAM, BRIDGE_DIR_VEC]
-        .iter()
-        .flat_map(|d| {
-            fs::read_dir(d)
-                .unwrap_or_else(|_| panic!("{d} existe"))
-                .filter_map(Result::ok)
-                .map(|e| e.path())
-        })
-        .filter(|p| p.extension().is_some_and(|e| e == "rs"))
-        .collect();
+    // ⚠️⚠️ **QUATRO sítios desde a Fase D (2026-09-12)** — ver [`BRIDGE_DIR_FAM`],
+    //    [`BRIDGE_DIR_VEC`] e [`BRIDGE_DIR_PAINTER`]. ⛔ A `line/app-vec` e a
+    //    `line/app-painter` acrescentaram **cada uma** o directório dela no MESMO dia, e o
+    //    merge não ficou com nenhum dos dois lados: ficou com os DOIS (ESTADO §4 lei 8).
+    let mut files: Vec<_> = [BRIDGE_DIR, BRIDGE_DIR_FAM, BRIDGE_DIR_VEC, BRIDGE_DIR_PAINTER]
+    .iter()
+    .flat_map(|d| {
+        fs::read_dir(d)
+            .unwrap_or_else(|_| panic!("{d} existe"))
+            .filter_map(Result::ok)
+            .map(|e| e.path())
+    })
+    .filter(|p| p.extension().is_some_and(|e| e == "rs"))
+    .collect();
     files.sort();
     assert!(
         files.len() >= 10,
@@ -295,9 +303,14 @@ fn a_layout_names_the_inspector_exactly_when_its_canvas_owner_does_not_take_it_o
 /// ponte (`<tool>_bridge.rs`), que é a convenção deste directório.
 fn tools_that_take_over_the_inspector() -> Vec<String> {
     let mut out = Vec::new();
-    // ⚠️ As pontes vivem em DOIS sítios desde a Fase C: a `motion_bridge` saiu para a crate
-    // da família e as outras nove continuam no `render_loop`.
-    let mut files: Vec<_> = [BRIDGE_DIR, BRIDGE_DIR_FAM, BRIDGE_DIR_VEC]
+    // ⚠️⚠️ **As pontes vivem em QUATRO sítios desde a Fase D**, e esta varredura é a que deriva o
+    //    NOME da ferramenta de `<tool>_bridge.rs`. ⛔ O `painter_bridge.rs` saiu INTEIRO para a
+    //    `ph2d-app-painter` em 12/09: sem o quarto directório aqui, o Painter desaparecia desta
+    //    lista **em silêncio** e o `named >= 3` continuava verde com os outros três.
+    //    *Uma varredura por directório mede a árvore de ontem no dia em que alguém move uma pasta*
+    //    — e este censo não conflitou no merge, logo nada o teria acusado (acrescentado pelo
+    //    integrador ao resolver o conflito do censo irmão, 20 linhas acima).
+    let mut files: Vec<_> = [BRIDGE_DIR, BRIDGE_DIR_FAM, BRIDGE_DIR_VEC, BRIDGE_DIR_PAINTER]
         .iter()
         .flat_map(|d| {
             fs::read_dir(d)

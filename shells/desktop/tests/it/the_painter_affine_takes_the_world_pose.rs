@@ -28,6 +28,11 @@ fn shell_src() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("src")
 }
 
+/// A raiz da família, desde a W2 Fase D.
+fn crate_src() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../crates/ph2d-app-painter/src")
+}
+
 fn rs_files(dir: &Path, out: &mut Vec<PathBuf>) {
     let Ok(entries) = std::fs::read_dir(dir) else {
         return;
@@ -66,6 +71,10 @@ fn no_caller_feeds_the_affine_a_local_pose() {
 
     let mut files = Vec::new();
     rs_files(&shell_src(), &mut files);
+    // ⭐ **A 2.ª raiz, e o piso é o que a obrigou.** A família `painter` mudou-se para
+    // `crates/ph2d-app-painter` (W2 Fase D) e levou 12 dos 14 chamadores — o censo leu `4` e
+    // reprovou com a cura escrita dentro. *A SOMA é que tem de continuar a ser 14.*
+    rs_files(&crate_src(), &mut files);
     let mut chamadores = 0usize;
     let mut offenders: Vec<String> = Vec::new();
     for f in &files {

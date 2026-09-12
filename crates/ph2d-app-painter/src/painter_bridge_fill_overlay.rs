@@ -15,12 +15,18 @@ const FILL_CURSOR_R: f64 = 8.0;
 /// reads on a same-coloured canvas. Shown until the drop lands (then the Fill-adjust modal opens). The
 /// colour is read DIRECTLY from the brush (the source of truth) so the cursor, the Fill, and the picker are
 /// always the same colour — never the stale widget thumb.
-pub(super) fn draw_fill_cursor(
+/// ⚠️ **O `armed` CHEGA, não se vai buscar** (W2 Fase D). Ele lia
+/// `crate::input_dispatch::fill_drag::fill_drag_armed()` — um `thread_local` da camada de
+/// entrada da shell —, e era essa a única coisa que prendia este ficheiro à `shells/desktop`.
+/// *Antes de pedir uma porta ao host, escreva em TIPOS o que a função precisa*: ela precisa de
+/// um `bool`, e quem o sabe é quem possui o arrasto.
+pub fn draw_fill_cursor(
     painter: &PainterTool,
     vector_scene: &mut VectorScene,
     cursor: (f32, f32),
+    armed: bool,
 ) {
-    if !crate::input_dispatch::fill_drag::fill_drag_armed() {
+    if !armed {
         return;
     }
     use ph2d_vector::{Affine, Brush, Circle, Color, Fill, Point, Stroke};

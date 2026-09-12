@@ -1100,7 +1100,7 @@ pub(crate) struct App {
     /// SAME `painter_preview_gpu` slot the CPU producer uses, so the GPU path is
     /// transparent to `sim_extract`'s `PreviewOverride`.
     pub(crate) painter_gpu_preview:
-        Option<crate::render_loop::painter_gpu_preview::PainterGpuPreview>,
+        Option<ph2d_app_painter::painter_gpu_preview::PainterGpuPreview>,
     /// Transient flag set by the Cmd/Ctrl+Enter keybind in
     /// `input_handlers::handle_editor_key` to Apply (bake the layer composite
     /// into the sprite) WITHOUT switching tools. Consumed (taken) by

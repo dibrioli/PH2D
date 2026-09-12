@@ -23,7 +23,7 @@
 //!
 //! [ADR-0121]: ../../../docs/architecture/decisions/0121-vector-live-corners-authored-source-cooked-geometry.md
 
-const LINE: &str = include_str!("../../src/render_loop/painter_bridge_line_overlay.rs");
+const LINE: &str = include_str!("../src/painter_bridge_line_overlay.rs");
 
 /// O traço dos segmentos é alimentado pelo contorno COZIDO.
 ///

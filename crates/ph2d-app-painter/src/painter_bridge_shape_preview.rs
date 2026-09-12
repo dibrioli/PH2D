@@ -7,7 +7,7 @@ use ph2d_editor::ToolRegistry;
 use ph2d_editor::toast::{Toast, ToastQueue};
 use ph2d_render::{SpriteRenderer, premultiply_rgba8};
 
-use super::painter_bridge::release_preview_texture;
+use crate::painter_bridge::release_preview_texture;
 use ph2d_preview_slot::PreviewGpu as PainterPreviewGpu;
 
 /// Drive the live preview of a sprite used as the brush **Shape** while it is NOT the selected sprite, so
@@ -16,7 +16,7 @@ use ph2d_preview_slot::PreviewGpu as PainterPreviewGpu;
 /// the painter composites the stashed Shape-source document (only when dirty) and we upload it; the next
 /// frame's `sim_extract` emits a second `PreviewOverride` suppressing that sprite + sampling this slot.
 /// Released when the painter deactivates, the Shape source becomes the selected sprite, or it is cleared.
-pub(super) fn drive_shape_source_preview(
+pub fn drive_shape_source_preview(
     tools: &mut ToolRegistry,
     renderer: &mut SpriteRenderer,
     shape_source_preview_gpu: &mut Option<PainterPreviewGpu>,

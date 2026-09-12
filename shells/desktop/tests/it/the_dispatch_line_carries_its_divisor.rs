@@ -26,7 +26,7 @@
 //! teste de unidade alcança aquele `eprintln`.
 
 const SRC: &str = include_str!("../../src/render_loop/mod.rs");
-const BRIDGE: &str = include_str!("../../src/render_loop/painter_bridge.rs");
+const BRIDGE: &str = include_str!("../../../../crates/ph2d-app-painter/src/painter_bridge.rs");
 
 /// O divisor é IMPRESSO ao lado do tempo que ele divide.
 ///
@@ -84,8 +84,14 @@ fn the_area_is_counted_where_the_bbox_is_resolved() {
          divisor passaria a descrever outros quadros que o numerador"
     );
     // E uma vez só: dois sítios contariam o mesmo quadro duas vezes.
+    //
+    // ⚠️ **A agulha nomeia a CHAMADA, não a menção** (W2 Fase D). Ela contava
+    // `"note_preview_px"` e leu **3** quando o contador passou a chegar como
+    // FECHO: o nome aparece na declaração do parâmetro, no comentário que a
+    // explica, e na chamada. Nenhum dos dois primeiros conta área nenhuma —
+    // *uma agulha que casa com prosa mede prosa* (`HOWTO` §2.12).
     assert_eq!(
-        BRIDGE.matches("note_preview_px").count(),
+        BRIDGE.matches("note_preview_px(").count(),
         1,
         "ha mais de um sitio contando a area publicada — o divisor contaria o \
          mesmo quadro duas vezes"

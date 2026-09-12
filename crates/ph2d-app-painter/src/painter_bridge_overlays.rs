@@ -24,7 +24,7 @@ pub(super) fn overlay_tile_offsets(_painter: &PainterTool, _iw: u32, _ih: u32) -
 
 /// Draw every Painter editing overlay for the active tool into `vector_scene`.
 #[allow(clippy::too_many_arguments)]
-pub(super) fn draw_overlays(
+pub fn draw_overlays(
     painter: &PainterTool,
     hero: &HeroScreen,
     sim: &SimWorld,
@@ -35,8 +35,12 @@ pub(super) fn draw_overlays(
     cursor: (f32, f32),
     // `PH2D_PAINT_PERF` split: per-call ms, in call order (`paint_perf::CHROME_LABELS`). Written only
     // when `timing` — otherwise this function does not read the clock at all.
-    perf: &mut [f32; super::paint_perf::CHROME_SUB],
+    perf: &mut [f32; crate::paint_perf::CHROME_SUB],
     timing: bool,
+    // ⚠️ **O arrasto de cor do balde vem RESOLVIDO** (W2 Fase D): o estado dele é um
+    // `thread_local` da camada de entrada da shell, e ir buscá-lo daqui era a única aresta deste
+    // grupo de ficheiros para a `shells/desktop`. Quem possui o arrasto é quem responde.
+    fill_drag_armed: bool,
 ) {
     let mut t = std::time::Instant::now();
     let mark = |slot: &mut f32, t: &mut std::time::Instant| {
@@ -46,7 +50,7 @@ pub(super) fn draw_overlays(
         }
     };
     // Wetness sheen FIRST — under the brush ring + editor guides (#12a).
-    super::painter_bridge_wetness::draw_wetness_overlay(
+    crate::painter_bridge_wetness::draw_wetness_overlay(
         painter,
         hero,
         sim,
@@ -55,7 +59,7 @@ pub(super) fn draw_overlays(
         vector_scene,
     );
     mark(&mut perf[0], &mut t);
-    super::painter_bridge_brush_ring::draw_brush_ring(
+    crate::painter_bridge_brush_ring::draw_brush_ring(
         painter,
         hero,
         sim,
@@ -65,7 +69,7 @@ pub(super) fn draw_overlays(
         cursor,
     );
     mark(&mut perf[1], &mut t);
-    super::painter_bridge_curve_overlay::draw_curve_overlay(
+    crate::painter_bridge_curve_overlay::draw_curve_overlay(
         painter,
         hero,
         sim,
@@ -77,7 +81,7 @@ pub(super) fn draw_overlays(
     mark(&mut perf[2], &mut t);
     draw_ellipse_overlay(painter, hero, sim, camera, window_size, vector_scene);
     mark(&mut perf[3], &mut t);
-    super::painter_bridge_line_overlay::draw_line_overlay(
+    crate::painter_bridge_line_overlay::draw_line_overlay(
         painter,
         hero,
         sim,
@@ -91,7 +95,7 @@ pub(super) fn draw_overlays(
     draw_polygon_overlay(painter, hero, sim, camera, window_size, vector_scene);
     mark(&mut perf[5], &mut t);
     // Multi-shape op badges — the `+`/`−`/`○` type-square glyph per shape + a frame per parked shape.
-    super::painter_bridge_op_badges::draw_op_badges(
+    crate::painter_bridge_op_badges::draw_op_badges(
         painter,
         hero,
         sim,
@@ -101,7 +105,7 @@ pub(super) fn draw_overlays(
     );
     mark(&mut perf[6], &mut t);
     // Isolated SELECTION gizmos (ADR-0103 Am.2 v2) — every editable selection shape's gizmo at once.
-    super::painter_bridge_selection_gizmos::draw_selection_gizmos(
+    crate::painter_bridge_selection_gizmos::draw_selection_gizmos(
         painter,
         hero,
         sim,
@@ -112,7 +116,7 @@ pub(super) fn draw_overlays(
     );
     mark(&mut perf[7], &mut t);
     // Deform Transform gizmo (Wave 2) — the whole-region bounding box, when Transform temperament is active.
-    super::painter_bridge_deform_gizmo::draw_deform_gizmo(
+    crate::painter_bridge_deform_gizmo::draw_deform_gizmo(
         painter,
         hero,
         sim,
@@ -135,7 +139,7 @@ pub(super) fn draw_overlays(
     draw_symmetry_overlay(painter, hero, sim, camera, window_size, vector_scene);
     mark(&mut perf[10], &mut t);
     // A rede do Grid Stamp — depois da simetria (as duas são guias de canvas) e antes do cursor de Fill.
-    super::painter_bridge_grid::draw_grid_overlay(
+    crate::painter_bridge_grid::draw_grid_overlay(
         painter,
         hero,
         sim,
@@ -144,7 +148,12 @@ pub(super) fn draw_overlays(
         vector_scene,
     );
     mark(&mut perf[11], &mut t);
-    super::painter_bridge_fill_overlay::draw_fill_cursor(painter, vector_scene, cursor);
+    crate::painter_bridge_fill_overlay::draw_fill_cursor(
+        painter,
+        vector_scene,
+        cursor,
+        fill_drag_armed,
+    );
     mark(&mut perf[12], &mut t);
 }
 
@@ -188,7 +197,7 @@ pub(super) fn refresh_shape_grab_tol(
         window_size,
     );
     painter.set_shape_grab_tol_px(
-        crate::input_dispatch::painter_canvas_input::shape_grab_tol_from_affine(&affine),
+        crate::shape_grab::shape_grab_tol_from_affine(&affine),
     );
 }
 
@@ -382,9 +391,9 @@ fn draw_ellipse_overlay(
             );
             use ph2d_vector::{Affine, Point};
             // Ellipse stroke gizmo = fluorescent YELLOW (distinct stroke-shape accent).
-            let pal = super::painter_bridge_gizmo::palette_accent(
+            let pal = crate::painter_bridge_gizmo::palette_accent(
                 hero.theme,
-                super::painter_bridge_gizmo::GIZMO_ACCENTS[0],
+                crate::painter_bridge_gizmo::GIZMO_ACCENTS[0],
             );
             let op_glyph = painter.active_op_glyph();
             let scene = vector_scene.inner_mut();
@@ -396,7 +405,7 @@ fn draw_ellipse_overlay(
                 // the rotate handle is a circle. Matches the selection gizmos.
                 if overlay.perimeter.len() >= 2 {
                     let pts: Vec<Point> = overlay.perimeter.iter().map(|&p| map(p)).collect();
-                    super::painter_bridge_gizmo::stroke_box(scene, &pts, &pal);
+                    crate::painter_bridge_gizmo::stroke_box(scene, &pts, &pal);
                 }
                 // ⚠️ O contorno aparece nas duas fases; as ALÇAS, só na de edição — no meio do arrasto
                 // de criação nenhum Down as alcança (`EllipseOverlay::editing`).
@@ -406,17 +415,17 @@ fn draw_ellipse_overlay(
                 for (i, &h) in overlay.handles.iter().enumerate() {
                     let p = map(h);
                     if i == 4 {
-                        super::painter_bridge_gizmo::circle_handle(scene, p, &pal);
+                        crate::painter_bridge_gizmo::circle_handle(scene, p, &pal);
                     } else if i == 5 && op_glyph.is_some() {
                         // Centre-move square (index 5) DOUBLED with the Operation glyph.
-                        super::painter_bridge_gizmo::center_glyph_handle(
+                        crate::painter_bridge_gizmo::center_glyph_handle(
                             scene,
                             p,
                             &pal,
                             op_glyph.unwrap(),
                         );
                     } else {
-                        super::painter_bridge_gizmo::square_handle(scene, p, &pal);
+                        crate::painter_bridge_gizmo::square_handle(scene, p, &pal);
                     }
                 }
             }
@@ -460,9 +469,9 @@ fn draw_polygon_overlay(
             );
             use ph2d_vector::{Affine, Point};
             // Polygon stroke gizmo = fluorescent PINK (distinct stroke-shape accent).
-            let pal = super::painter_bridge_gizmo::palette_accent(
+            let pal = crate::painter_bridge_gizmo::palette_accent(
                 hero.theme,
-                super::painter_bridge_gizmo::GIZMO_ACCENTS[1],
+                crate::painter_bridge_gizmo::GIZMO_ACCENTS[1],
             );
             let op_glyph = painter.active_op_glyph();
             let scene = vector_scene.inner_mut();
@@ -474,7 +483,7 @@ fn draw_polygon_overlay(
                 // circles. Matches the selection gizmos.
                 if overlay.perimeter.len() >= 2 {
                     let pts: Vec<Point> = overlay.perimeter.iter().map(|&p| map(p)).collect();
-                    super::painter_bridge_gizmo::stroke_box(scene, &pts, &pal);
+                    crate::painter_bridge_gizmo::stroke_box(scene, &pts, &pal);
                 }
                 // O contorno nas duas fases, as ALÇAS só na de edição — ver `draw_ellipse_overlay`.
                 if !overlay.editing {
@@ -483,18 +492,18 @@ fn draw_polygon_overlay(
                 for (i, &h) in overlay.handles.iter().enumerate() {
                     let p = map(h);
                     match i {
-                        4 => super::painter_bridge_gizmo::circle_handle(scene, p, &pal), // rotate
-                        5 => super::painter_bridge_gizmo::diamond_handle(scene, p, &pal), // sides (distinct)
+                        4 => crate::painter_bridge_gizmo::circle_handle(scene, p, &pal), // rotate
+                        5 => crate::painter_bridge_gizmo::diamond_handle(scene, p, &pal), // sides (distinct)
                         6 if op_glyph.is_some() => {
                             // Centre-move square (index 6) DOUBLED with the Operation glyph.
-                            super::painter_bridge_gizmo::center_glyph_handle(
+                            crate::painter_bridge_gizmo::center_glyph_handle(
                                 scene,
                                 p,
                                 &pal,
                                 op_glyph.unwrap(),
                             );
                         }
-                        _ => super::painter_bridge_gizmo::square_handle(scene, p, &pal),
+                        _ => crate::painter_bridge_gizmo::square_handle(scene, p, &pal),
                     }
                 }
             }
@@ -570,9 +579,9 @@ fn draw_stencil_overlay(
             let scene = vector_scene.inner_mut();
             // The Sprite-gizmo box + handles (theme tokens, a touch darker), so the Stencil rect reads like
             // the Sprite transform gizmo. Corners flip to circles as the rotate cue; the centre is a square.
-            let pal = super::painter_bridge_gizmo::palette(hero.theme);
+            let pal = crate::painter_bridge_gizmo::palette(hero.theme);
             let box_pts: Vec<Point> = overlay.corners.iter().map(|&p| map(p)).collect();
-            super::painter_bridge_gizmo::stroke_box(scene, &box_pts, &pal);
+            crate::painter_bridge_gizmo::stroke_box(scene, &box_pts, &pal);
             let inner = f64::from(overlay.scale_tol_px) * scale;
             let outer = f64::from(overlay.rotate_tol_px) * scale;
             let cur = Point::new(f64::from(cursor.0), f64::from(cursor.1));
@@ -588,12 +597,12 @@ fn draw_stencil_overlay(
             for &p in &overlay.corners {
                 let sp = map(p);
                 if draw_circle {
-                    super::painter_bridge_gizmo::circle_handle(scene, sp, &pal);
+                    crate::painter_bridge_gizmo::circle_handle(scene, sp, &pal);
                 } else {
-                    super::painter_bridge_gizmo::square_handle(scene, sp, &pal);
+                    crate::painter_bridge_gizmo::square_handle(scene, sp, &pal);
                 }
             }
-            super::painter_bridge_gizmo::square_handle(scene, center_sp, &pal);
+            crate::painter_bridge_gizmo::square_handle(scene, center_sp, &pal);
         }
     }
 }

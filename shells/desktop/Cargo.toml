@@ -757,7 +757,9 @@ panel-padding        = ["ph2d-panel-registry-init/panel-padding", "dep:ph2d-pane
 panel-color-equalization = ["ph2d-panel-registry-init/panel-color-equalization", "dep:ph2d-panel-color-equalization"]
 panel-equalize-sizes = ["ph2d-panel-registry-init/panel-equalize-sizes", "dep:ph2d-panel-equalize-sizes"]
 panel-upscale        = ["ph2d-panel-registry-init/panel-upscale", "dep:ph2d-panel-upscale"]
-panel-painter-layers = ["ph2d-panel-registry-init/panel-painter-layers", "dep:ph2d-panel-painter-layers"]
+# ⚠️ O `ph2d-app-painter/panel-painter-layers` e' obrigatorio: o `painter_bridge` mudou-se para la'
+# e o `cfg` dele e' falso por construcao numa crate que nao declara a feature (HOWTO §2.4).
+panel-painter-layers = ["ph2d-panel-registry-init/panel-painter-layers", "dep:ph2d-panel-painter-layers", "ph2d-app-painter/panel-painter-layers"]
 # Motion Nodes docked panels (M0). No `dep:` — `motion_bridge` drives them
 # entirely through `hero.panel_visibility` + the shared layout, with no
 # panel-side static channel (the document lives in `MotionState`, not the panel),

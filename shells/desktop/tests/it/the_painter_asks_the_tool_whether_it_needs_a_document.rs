@@ -23,7 +23,7 @@
 //! costura (`ph2d-tool-painter`, `tool::documents::rebind_tests`) prova que o tool responde certo e
 //! que um re-bind com canvas vazio re-semeia; este aqui prova que a shell **pergunta**.
 
-const SRC: &str = include_str!("../../src/render_loop/painter_bridge.rs");
+const SRC: &str = include_str!("../../../../crates/ph2d-app-painter/src/painter_bridge.rs");
 
 /// O corpo do `if` que decide o bind — do comentário de cabeçalho até a chamada de `bind_document`.
 fn bind_decision() -> &'static str {

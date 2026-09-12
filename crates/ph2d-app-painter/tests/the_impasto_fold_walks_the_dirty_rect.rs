@@ -42,7 +42,7 @@
 //! de" expira no dia em que alguém insere uma linha no meio, que foi como dois arch-gates da
 //! `line/Vector` chegaram vermelhos ao `main` em 2026-07-23.
 
-const SRC: &str = include_str!("../../src/render_loop/painter_gpu_preview.rs");
+const SRC: &str = include_str!("../src/painter_gpu_preview.rs");
 
 /// A EXPRESSÃO que liga `plane_win` — do `let` até o `;` que a fecha.
 ///

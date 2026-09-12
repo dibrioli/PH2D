@@ -16,7 +16,7 @@ use ph2d_editor::ToolRegistry;
 /// sprite gizmo for the frame: on a whole-image transform both gizmos occupy the same screen corners,
 /// and a near-corner Down grabbed the SPRITE's scale handle instead of the deform's (Enio 2026-07-04,
 /// "Transform uniform/free interferem no gizmo da sprite — inative o gizmo da sprite").
-pub(crate) fn deform_transform_gizmo_active(tools: &mut ToolRegistry) -> bool {
+pub fn deform_transform_gizmo_active(tools: &mut ToolRegistry) -> bool {
     tools
         .active_mut()
         .and_then(|t| {
@@ -26,7 +26,7 @@ pub(crate) fn deform_transform_gizmo_active(tools: &mut ToolRegistry) -> bool {
         .is_some_and(|p| p.deform_gizmo_grab_margin_px() > 0.0)
 }
 
-pub(crate) fn apply_layer_reparent(
+pub fn apply_layer_reparent(
     tools: &mut ToolRegistry,
     dragged: ph2d_editor::NodeId,
     drop: ph2d_editor::interaction::PainterLayerDrop,

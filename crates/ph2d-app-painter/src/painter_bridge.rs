@@ -43,8 +43,8 @@
 //! texture in its place. So the composite (incl. base-layer opacity) IS the
 //! sprite, in-place, through the same sprite shader as Apply.
 
-use super::painter_bridge_assets::{load_brush_shape_image, load_brush_texture_image};
-use super::painter_gpu_preview::{self, PainterGpuPreview};
+use crate::painter_bridge_assets::{load_brush_shape_image, load_brush_texture_image};
+use crate::painter_gpu_preview::{self, PainterGpuPreview};
 use ph2d_preview_slot::PreviewGpu as PainterPreviewGpu;
 use ph2d_tool_runtime::PreviewCache as PainterPreview;
 use ph2d_asset::{AssetDb, AssetId};
@@ -70,7 +70,7 @@ const PREVIEW_DUMP_MAX_FRAMES: u32 = 240;
 /// stops re-rendering on top of the freshly baked sprite).
 #[allow(clippy::too_many_arguments)]
 #[must_use]
-pub(super) fn dispatch(
+pub fn dispatch(
     hero: &mut HeroScreen,
     tools: &mut ToolRegistry,
     sim: &SimWorld,
@@ -104,13 +104,33 @@ pub(super) fn dispatch(
     // `true` enquanto um botão de ponteiro está preso — o sinal de *"há um gesto em voo"* que o
     // `post_frame_undo` já usa. Aqui ele fecha o ciclo do rascunho de figura: ver `set_shape_draft_hold`.
     pointer_held: bool,
+    // ⚠️ **O arrasto de cor do balde, RESOLVIDO pela shell** (W2 Fase D). O estado vive num
+    // `thread_local` do `input_dispatch::fill_drag`, que é a camada de entrada — e era a última
+    // aresta deste grupo de ficheiros para a `shells/desktop`. ⛔ Não é uma porta nova no
+    // `AppHost`: escrito em TIPOS, o que a função precisa é de um `bool`.
+    fill_drag_armed: bool,
+    // ⚠️ **O LEITOR de pixels de um sprite, vindo da shell.** Devolve já em alfa DIRECTO
+    // (`into_straight`), que é o que o `bind_document` quer. ⛔ Nenhum tipo do funil de
+    // textura da shell (`SourceRead`) atravessa esta fronteira: o que chega é `Vec<u8>` + dims.
+    read_source: impl FnOnce(
+        ph2d_ecs::Entity,
+        &SimWorld,
+        &mut SpriteRenderer,
+        &AssetDb,
+        &BTreeMap<u32, AssetId>,
+    ) -> Option<(Vec<u8>, u32, u32)>,
+    // ⚠️ **O contador do perfilador de quadro, entregue pela shell.** Ele vive no LAÇO
+    // (`render_loop::note_preview_px`, atrás do `PH2D_FLUID_PROFILE`) e era a única aresta
+    // `super::` deste ficheiro para fora da família. ⛔⛔ E era **invisível à régua do fecho**,
+    // que não resolve `super::` — foi preciso varrer à mão para a achar.
+    note_preview_px: &dyn Fn(u64),
 ) -> bool {
     // Diagnostic TRAP for the mask-path FPS report (2026-07-24): `PH2D_PAINT_PERF=1` logs, per frame
     // the painter is active, WHICH producer owned the preview + WHICH drain path ran + the phase
     // timings + the canvas dims. This is what tells the difference between "the GPU producer's partial
     // upload fired" and "the mask stroke fell to a full CPU composite every frame" — the two the
     // headless proxy cannot tell apart. Zero cost when the var is unset.
-    let perf_t0 = super::paint_perf::on().then(std::time::Instant::now);
+    let perf_t0 = crate::paint_perf::on().then(std::time::Instant::now);
     let mut dbg_trivial = false;
     let mut dbg_gray = false;
     let mut dbg_active_is_mask = false;
@@ -215,7 +235,12 @@ pub(super) fn dispatch(
         // volta é o `hero_intents::image_edit::painter`, no Apply, por `commit_edited_texture` — o
         // funil que avisa. ⚠️ Selecionar um sprite com o Painter ligado **não** custa precisão
         // nenhuma: sem Apply, a sprite não muda.
-        && let Some(src) = crate::hero_intents::texture_edit::read_sprite_source(
+        //
+        // ⚠️ **Quem LÊ é um fecho da shell** (W2 Fase D): ler os pixels de um sprite precisa de
+        // `SimWorld + SpriteRenderer + AssetDb`, e a `ph2d-tool-runtime` já declarou por escrito que
+        // isso *«is shell foundation»* e recusa depender daquilo. O idioma da casa é o mesmo dela —
+        // *bridges produce this via a shell-specific reader closure*.
+        && let Some((pixels, pw, ph)) = read_source(
             ph2d_ecs::Entity::from_bits(bits),
             sim,
             renderer,
@@ -223,9 +248,8 @@ pub(super) fn dispatch(
             atlas_asset_map,
         )
     {
-        let straight = src.image.into_straight();
-        if straight.width != 0 && straight.height != 0 {
-            painter.bind_document(bits, straight.pixels, straight.width, straight.height);
+        if pw != 0 && ph != 0 {
+            painter.bind_document(bits, pixels, pw, ph);
             // ⚠️ E COMPILA os shaders do preview GPU agora, no vão humano entre escolher o sprite e
             // levar o mouse à tela — senão os 28 ms de criação de pipeline caem no primeiro traço, que
             // é o gesto em que o artista está esperando (doc 28 §4.8, medido).
@@ -239,13 +263,13 @@ pub(super) fn dispatch(
             );
             // E instala a ponte do CARIMBO no mesmo vão, pela mesma razão: construir o passe
             // compila um shader, e o custo não pode cair no primeiro traço (doc 33 §S3).
-            super::painter_stamp_device::install(painter, renderer);
+            crate::painter_stamp_device::install(painter, renderer);
             // Impasto smoke: arm the brush the first time a document binds, so the artist drags and sees
             // thick lit paint instead of hunting for the knobs. One-shot; never overwrites their edits.
-            ph2d_app_painter::impasto_smoke::arm_brush_once(painter);
-            ph2d_app_painter::wetpaint_smoke::arm_brush_once(painter);
-            ph2d_app_painter::substrate_smoke::arm_brush_once(painter);
-            ph2d_app_painter::line_smoke::arm_brush_once(painter);
+            crate::impasto_smoke::arm_brush_once(painter);
+            crate::wetpaint_smoke::arm_brush_once(painter);
+            crate::substrate_smoke::arm_brush_once(painter);
+            crate::line_smoke::arm_brush_once(painter);
             *last_painter_pushed_entity = Some(bits);
             // The bind abandons any pending Fill (tool side); close its now-orphaned adjust modal too, so
             // switching sprites never leaves a stale Fill modal floating over the new one.
@@ -330,8 +354,8 @@ pub(super) fn dispatch(
     // them (Enio, 2026-07-25, 4096²: o preview zerou e o custo mudou de lugar).
     let (mut ph_ov_tol, mut ph_ov_selection, mut ph_ov_chrome) = (0f32, 0f32, 0f32);
     // …and the same treatment for PANEL (by step) and CHROME (by overlay call).
-    let mut ph_panel_sub = [0f32; super::paint_perf::PANEL_SUB];
-    let mut ph_chrome_sub = [0f32; super::paint_perf::CHROME_SUB];
+    let mut ph_panel_sub = [0f32; crate::paint_perf::PANEL_SUB];
+    let mut ph_chrome_sub = [0f32; crate::paint_perf::CHROME_SUB];
     let elapsed_ms =
         |m: Option<std::time::Instant>| m.map_or(0.0, |t| t.elapsed().as_secs_f64() as f32 * 1e3);
     let m_preview = perf_t0.map(|_| std::time::Instant::now());
@@ -406,7 +430,7 @@ pub(super) fn dispatch(
             // SATURA EM ZERO para todo retangulo longe da origem: o log do
             // smoke veio `0.00 M px publicados em 80 quadros` -- o sitio de
             // contagem disparando e o valor sendo lixo.
-            super::note_preview_px(painter_dirty_bbox.map_or_else(
+            note_preview_px(painter_dirty_bbox.map_or_else(
                 || u64::from(w) * u64::from(h),
                 |(_, _, bw, bh)| u64::from(bw) * u64::from(bh),
             ));
@@ -478,20 +502,26 @@ pub(super) fn dispatch(
         // TRANSITION, and a line per frame is the one format that hides transitions.
         if std::env::var_os("PH2D_PREVIEW_DIAG").is_some() {
             let now = (gpu_owns_preview, painter_dirty_bbox);
-            if super::paint_perf::preview_diag_changed(now) {
+            if crate::paint_perf::preview_diag_changed(now) {
                 eprintln!(
                     "[preview-diag] gpu_owns={gpu_owns_preview} cpu_dirty_bbox={painter_dirty_bbox:?}"
                 );
             }
         }
         // Apply / commit capture — same trait path as bgremoval.
+        // ⚠️ **DUAS declarações, e não um `allow(unused_mut)`.** Só o bloco do painel de camadas
+        // reatribui este relógio, logo sem a feature ele nunca muta. Silenciar o diagnóstico seria
+        // armengo mesmo com a ferramenta defeituosa — e aqui a ferramenta tem razão: nesta build a
+        // variável **não** precisa de ser mutável.
+        #[cfg(feature = "panel-painter-layers")]
         let mut m_p = perf_t0.map(|_| std::time::Instant::now());
+        #[cfg(not(feature = "panel-painter-layers"))]
+        let m_p = perf_t0.map(|_| std::time::Instant::now());
         apply_selection = ph2d_tool_runtime::drive_pending_commit(
             painter as &mut dyn ph2d_editor::tool::RasterEditTool,
             hero.gizmo.iter_selected(),
         );
         ph_panel_sub[0] = elapsed_ms(m_p);
-        m_p = perf_t0.map(|_| std::time::Instant::now());
 
         // (B.5 perf) Layers snapshot publish pro docked layers panel.
         // The panel paints a row per layer off this clone. **Gated on
@@ -508,8 +538,13 @@ pub(super) fn dispatch(
         // the single persistent `PainterTool` instance keeps `layers_revision`
         // monotonic for the app lifetime, so an unchanged revision genuinely means
         // an unchanged stack (never a stale skip).
+        // ⚠️ **A reatribuição do relógio vive DENTRO do `cfg`, e é obrigatório que viva** (W2 Fase
+        // D): só este bloco o volta a ler, e na shell a feature era `default` — logo o código morto
+        // sem ela nunca aparecia. Uma crate própria compila-se também SEM a feature, e aí um
+        // `m_p = …` fora daqui é uma atribuição que ninguém lê.
         #[cfg(feature = "panel-painter-layers")]
         {
+            m_p = perf_t0.map(|_| std::time::Instant::now());
             use std::sync::atomic::{AtomicU64, Ordering};
             static LAST_LAYERS_REV: AtomicU64 = AtomicU64::new(u64::MAX);
             let rev = painter.layers_revision();
@@ -660,7 +695,7 @@ pub(super) fn dispatch(
         // Keep the shape-editor grab tolerance in sync with the live camera every frame (not just on a
         // painter Down/Move/Up), so the on-canvas handles are drawn where they'll be grabbed — no snap
         // when the first grab after a zoom refreshes the tol.
-        super::painter_bridge_overlays::refresh_shape_grab_tol(
+        crate::painter_bridge_overlays::refresh_shape_grab_tol(
             painter,
             hero,
             sim,
@@ -674,7 +709,7 @@ pub(super) fn dispatch(
         // chrome extending past the sprite border — a shape crossing the seam lost its editor overlay
         // beyond the edge, and the brush ring / marching ants vanished over the neighbour tiles
         // (the "overlay stops at the seam" bug, Enio 2026-07-11).
-        super::painter_bridge_overlays::draw_repeat_image(
+        crate::painter_bridge_overlays::draw_repeat_image(
             painter,
             hero,
             sim,
@@ -685,7 +720,7 @@ pub(super) fn dispatch(
         );
         // Selection overlay next (under the editor handles + brush ring): marching ants + hatching + the
         // crosshair cursor.
-        super::painter_bridge_selection_overlay::draw_selection_overlay(
+        crate::painter_bridge_selection_overlay::draw_selection_overlay(
             painter,
             hero,
             sim,
@@ -696,7 +731,7 @@ pub(super) fn dispatch(
         );
         ph_ov_selection = elapsed_ms(m_ov_sel);
         let m_ov_chrome = perf_t0.map(|_| std::time::Instant::now());
-        super::painter_bridge_overlays::draw_overlays(
+        crate::painter_bridge_overlays::draw_overlays(
             painter,
             hero,
             sim,
@@ -707,6 +742,7 @@ pub(super) fn dispatch(
             cursor,
             &mut ph_chrome_sub,
             perf_t0.is_some(),
+            fill_drag_armed,
         );
         // PH2D_PAINT_PERF: close the OVERLAY phase (and its last sub-call).
         ph_ov_chrome = elapsed_ms(m_ov_chrome);
@@ -764,7 +800,7 @@ pub(super) fn dispatch(
     {
         // Record this frame's dispatch info + sub-phase split; the frame timer (`run_render_frame`)
         // pairs it with the whole-frame time and the aggregator prints ONE summary per window.
-        super::paint_perf::record_dispatch(super::paint_perf::FrameInfo {
+        crate::paint_perf::record_dispatch(crate::paint_perf::FrameInfo {
             gpu: gpu_owns_preview,
             dispatch_ms: t0.elapsed().as_secs_f64() as f32 * 1e3,
             preview_ms: ph_preview,

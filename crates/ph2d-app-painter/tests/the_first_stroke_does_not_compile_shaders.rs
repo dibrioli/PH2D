@@ -16,7 +16,7 @@
 /// levar o mouse à tela.
 #[test]
 fn the_bind_that_hands_the_painter_a_document_also_warms_the_gpu_preview() {
-    let src = include_str!("../../src/render_loop/painter_bridge.rs");
+    let src = include_str!("../src/painter_bridge.rs");
 
     // Controle positivo: os dois alvos têm de EXISTIR. Sem isto o gate passa por não achar nada — a
     // falha que o arch-gate do Shape Flow pegou em si mesmo.
@@ -56,7 +56,7 @@ fn the_bind_that_hands_the_painter_a_document_also_warms_the_gpu_preview() {
 /// porta que o recusaria.
 #[test]
 fn the_prewarm_cooks_a_frame_and_does_not_ask_the_eligibility_gate() {
-    let src = include_str!("../../src/render_loop/painter_gpu_preview.rs");
+    let src = include_str!("../src/painter_gpu_preview.rs");
     let warm = src
         .find("pub(crate) fn prewarm(")
         .expect("controle: o pre-aquecimento tem de existir");
@@ -97,7 +97,7 @@ fn the_prewarm_cooks_a_frame_and_does_not_ask_the_eligibility_gate() {
 /// futuro) tem de continuar produzindo preview — só que pagando os 28 ms ali.
 #[test]
 fn the_drive_still_builds_the_session_when_nobody_warmed_it() {
-    let src = include_str!("../../src/render_loop/painter_gpu_preview.rs");
+    let src = include_str!("../src/painter_gpu_preview.rs");
     assert!(
         src.contains("session_slot.get_or_insert_with(|| PainterGpuPreview::new("),
         "o `drive` tem de seguir construindo a sessao sozinho — o pre-aquecimento e sobre QUANDO, e o \

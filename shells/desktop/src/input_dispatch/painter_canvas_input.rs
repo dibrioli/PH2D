@@ -31,23 +31,13 @@ use ph2d_tool_painter::PainterTool;
 
 use crate::App;
 
-/// Shape-editor (Curve/Circle) control-handle grab radius in SCREEN px — scaled to image px by the
-/// sprite footprint before it's forwarded to the tool, so the hit target stays a constant on-screen
-/// size at any zoom.
-pub(crate) const SHAPE_GRAB_TOL_SCREEN_PX: f32 = 10.0;
-
-/// The shape-editor grab tolerance in IMAGE px for a given image→screen `affine`: the constant screen
-/// tolerance ÷ the affine's per-image-pixel screen scale (`|linear column 0|`), so the hit target — and
-/// the on-canvas handles drawn at a multiple of it — stay a constant on-screen size at any zoom/rotation.
-pub(crate) fn shape_grab_tol_from_affine(affine: &ph2d_vector::Affine) -> f32 {
-    let c = affine.as_coeffs();
-    let pixel_scale = ((c[0] * c[0] + c[1] * c[1]) as f32).sqrt();
-    if pixel_scale > 0.0 {
-        SHAPE_GRAB_TOL_SCREEN_PX / pixel_scale
-    } else {
-        SHAPE_GRAB_TOL_SCREEN_PX
-    }
-}
+/// ⭐ **A LEI mudou-se para [`ph2d_app_painter::shape_grab`]** (W2 Fase D) e é re-exportada daqui.
+///
+/// Ela é pura (entra um afim, sai um `f32`) e este ficheiro é de **gesto** — enquanto a lei morava
+/// aqui, ela prendia à shell o `painter_bridge_overlays.rs`, que só a quer para desenhar as alças
+/// no tamanho em que elas se agarram. ⚠️ A re-exportação mantém `super::painter_canvas_input::…`
+/// byte a byte igual no `painter_curve_input.rs`.
+pub(crate) use ph2d_app_painter::shape_grab::shape_grab_tol_from_affine;
 
 thread_local! {
     /// `true` between a consumed painter Down and the matching Up — so CursorMoved
@@ -381,7 +371,7 @@ impl App {
         };
         // The shape-editor grab radius (`tol`) was already pushed above (before the footprint gate, so the
         // deform-gizmo margin reads the fresh value). Also refreshed once per frame in
-        // `render_loop::painter_bridge_overlays::refresh_shape_grab_tol`, so a zoom with no pointer event
+        // `ph2d_app_painter::painter_bridge_overlays::refresh_shape_grab_tol`, so a zoom with no pointer event
         // doesn't leave the drawn handles stale.
         super::painter_canvas_mods::forward(painter, shift, ctrl, alt);
         // Grid snap for drawing-tool points: resolve the pointer to the nearest editor-grid node in WORLD
@@ -411,17 +401,17 @@ impl App {
         // L0 (plano 26): carimba a chegada deste evento para o `paint_perf` fechar o relógio
         // `evento → frame`. Aqui, e não antes das guardas: um Down fora da pegada do sprite cai para o
         // pan/seleção e nunca vira pixel, então cronometrá-lo mediria uma latência que não existe.
-        crate::render_loop::paint_perf::stamp_pointer();
+        ph2d_app_painter::paint_perf::stamp_pointer();
         // …e quanto ele CUSTA. ⚠️ Isto roda no handler de input do winit, FORA do `run_render_frame`
         // que o `PaintFrameTimer` cronometra — então até aqui carimbar dabs a 4096² não aparecia em
         // `frame`, nem em `dispatch`, nem em nenhum dos 17 sub-slots do relatório.
-        let t0 = crate::render_loop::paint_perf::on().then(std::time::Instant::now);
+        let t0 = ph2d_app_painter::paint_perf::on().then(std::time::Instant::now);
         // ⚠️ A fase é lida ANTES da chamada: `ev` é movido para dentro dela.
-        let phase = crate::render_loop::paint_perf::InputPhase::of(ev.phase);
+        let phase = ph2d_app_painter::paint_perf::InputPhase::of(ev.phase);
         let consumed = painter.on_canvas_pointer(ev);
         if let Some(t0) = t0 {
             let ms = t0.elapsed().as_secs_f64() as f32 * 1e3;
-            crate::render_loop::paint_perf::record_input(ms, phase);
+            ph2d_app_painter::paint_perf::record_input(ms, phase);
         }
         consumed
     }
@@ -490,8 +480,7 @@ fn canvas_down_accepts(t: f32, repeat_tiled: bool, margin: f32) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{SHAPE_GRAB_TOL_SCREEN_PX, canvas_down_accepts, shape_grab_tol_from_affine};
-    use ph2d_vector::Affine;
+    use super::canvas_down_accepts;
 
     #[test]
     fn transform_corner_margin_extends_the_down_gate() {
@@ -511,25 +500,4 @@ mod tests {
         assert!(canvas_down_accepts(-0.9, true, 0.0) && !canvas_down_accepts(-1.1, true, 0.0));
     }
 
-    #[test]
-    fn grab_tol_scales_inversely_with_zoom() {
-        // The image-space grab tolerance = a constant SCREEN radius ÷ the image→screen scale, so it holds
-        // a constant on-screen size. This is what keeps the on-canvas handles (drawn at HANDLE_DIST·tol)
-        // at a fixed screen distance — and refreshing it every frame is what removes the first-grab snap.
-        let tol = |s: f64| shape_grab_tol_from_affine(&Affine::scale(s));
-        assert!(
-            (tol(1.0) - SHAPE_GRAB_TOL_SCREEN_PX).abs() < 1e-4,
-            "1x -> screen radius in image px"
-        );
-        assert!(
-            (tol(2.0) - SHAPE_GRAB_TOL_SCREEN_PX / 2.0).abs() < 1e-4,
-            "zoom 2x -> half the image px"
-        );
-        assert!(
-            (tol(0.5) - SHAPE_GRAB_TOL_SCREEN_PX * 2.0).abs() < 1e-4,
-            "zoom 0.5x -> twice the image px"
-        );
-        // A degenerate (zero) scale falls back to the screen constant — never NaN / infinity.
-        assert_eq!(tol(0.0), SHAPE_GRAB_TOL_SCREEN_PX);
-    }
 }

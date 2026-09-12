@@ -23,7 +23,7 @@ use std::path::PathBuf;
 fn the_brush_ring_wears_the_live_dab_rotor() {
     let src = fs::read_to_string(
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("src/render_loop/painter_bridge_brush_ring.rs"),
+            .join("../../crates/ph2d-app-painter/src/painter_bridge_brush_ring.rs"),
     )
     .expect("the brush ring source");
     // Strip line comments so the prose above the code cannot satisfy (or trip) the checks below.

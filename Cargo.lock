@@ -4950,13 +4950,32 @@ dependencies = [
 name = "ph2d-app-painter"
 version = "0.0.0"
 dependencies = [
+ "image",
  "ph2d-app-host",
  "ph2d-asset",
  "ph2d-core",
  "ph2d-ecs",
+ "ph2d-editor",
+ "ph2d-editor-core",
+ "ph2d-form-donation",
+ "ph2d-gpu",
+ "ph2d-host",
  "ph2d-image-import",
+ "ph2d-paint-gpu",
+ "ph2d-painter-brush",
+ "ph2d-painter-effects",
+ "ph2d-panel-painter-layers",
+ "ph2d-panel-wet-tuning",
+ "ph2d-preview-slot",
  "ph2d-render",
+ "ph2d-sprite-screen",
+ "ph2d-text",
+ "ph2d-tokens",
  "ph2d-tool-painter",
+ "ph2d-tool-runtime",
+ "ph2d-vector",
+ "rfd",
+ "wgpu",
 ]
 
 [[package]]

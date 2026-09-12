@@ -27,7 +27,7 @@
 //! respostas, é uma pergunta feita nos dois instantes em que ela decide algo.
 
 const DRAIN: &str = include_str!("../../src/render_loop/mod.rs");
-const BRIDGE: &str = include_str!("../../src/render_loop/painter_bridge.rs");
+const BRIDGE: &str = include_str!("../../../../crates/ph2d-app-painter/src/painter_bridge.rs");
 
 /// O ARMAR acontece **antes** do `handle_panel_event` — é o edit que re-carimba.
 ///

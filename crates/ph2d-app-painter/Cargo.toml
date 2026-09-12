@@ -24,3 +24,40 @@ ph2d-render = { path = "../ph2d-render" }
 # O MOTOR de pintura. Os `arm_brush_once` dos roteadores recebem um `&mut PainterTool` —
 # eles preparam a cena, nunca escolhem o meio (gate `no_painter_smoke_forces_a_medium`).
 ph2d-tool-painter = { path = "../ph2d-tool-painter" }
+# `Affine` — a lei da tolerância de agarrar uma alça mede a escala do afim.
+ph2d-vector = { path = "../ph2d-vector" }
+ph2d-editor = { path = "../ph2d-editor" }
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+# `RigStamp`/`DonatedForm` — o canal da doação de forma, nos dois sentidos.
+ph2d-form-donation = { path = "../ph2d-form-donation" }
+ph2d-gpu = { path = "../ph2d-gpu" }
+# `WindowSize` — o rectângulo em que as pontes desenham.
+ph2d-host = { path = "../ph2d-host" }
+# O carimbo no device.
+ph2d-paint-gpu = { path = "../ph2d-paint-gpu" }
+ph2d-painter-brush = { path = "../ph2d-painter-brush" }
+ph2d-painter-effects = { path = "../ph2d-painter-effects" }
+ph2d-panel-wet-tuning = { path = "../ph2d-panel-wet-tuning" }
+# ⭐ A ranhura de GPU da pré-visualização (a folha que saiu do `app_state.rs` nesta wave).
+ph2d-preview-slot = { path = "../ph2d-preview-slot" }
+# ⭐ O afim `imagem-px → ecrã-px` (a outra folha desta wave).
+ph2d-sprite-screen = { path = "../ph2d-sprite-screen" }
+ph2d-text = { path = "../ph2d-text" }
+ph2d-tokens = { path = "../ph2d-tokens" }
+# `PreviewCache` — o lado de CPU da pré-visualização.
+ph2d-tool-runtime = { path = "../ph2d-tool-runtime" }
+image = { version = "0.25", default-features = false, features = ["png"] }
+# O passe de carimbo no device fala `wgpu` directamente.
+wgpu = "29.0.4"
+# O diálogo de ficheiro do despejo de diagnóstico (`PH2D_PREVIEW_DUMP`).
+rfd = "0.17"
+
+# ⛔⛔ **A FEATURE tem de ser DECLARADA aqui, e é a armadilha MUDA do `HOWTO` §2.4.** O
+# `painter_bridge.rs` publica o snapshot das camadas atrás de `#[cfg(feature =
+# "panel-painter-layers")]`. Numa crate que NÃO declara a feature, esse `cfg` é falso **por
+# construção**: a crate compilaria VERDE com o painel de camadas desligado, e o único aviso seria um
+# `unexpected cfg condition value` no meio dos outros. A shell reencaminha a feature dela para cá.
+ph2d-panel-painter-layers = { path = "../ph2d-panel-painter-layers", optional = true }
+
+[features]
+panel-painter-layers = ["dep:ph2d-panel-painter-layers"]

@@ -20,8 +20,8 @@
 //! perdeu dois gates assim quando um terceiro consumidor entrou no meio
 //! ([[feedback_a_gate_anchored_on_a_byte_distance_is_a_proxy_that_expires]]).
 
-const SRC: &str = include_str!("../../src/render_loop/painter_bridge.rs");
-const WIRE: &str = include_str!("../../src/render_loop/painter_stamp_device.rs");
+const SRC: &str = include_str!("../src/painter_bridge.rs");
+const WIRE: &str = include_str!("../src/painter_stamp_device.rs");
 
 /// A ponte é instalada no bind, DEPOIS de o documento existir e junto do pré-aquecimento.
 ///
@@ -76,7 +76,7 @@ fn installing_twice_does_not_recompile_the_shader() {
 /// **Mutação que deve sangrar:** fazer a `ph2d-tool-painter` depender da `ph2d-paint-gpu`.
 #[test]
 fn the_tool_crate_never_learns_what_wgsl_aligns() {
-    const TOOL_MANIFEST: &str = include_str!("../../../../crates/ph2d-tool-painter/Cargo.toml");
+    const TOOL_MANIFEST: &str = include_str!("../../ph2d-tool-painter/Cargo.toml");
     assert!(
         !TOOL_MANIFEST.contains("ph2d-paint-gpu"),
         "a `ph2d-tool-painter` passou a depender da crate do device. A contenção corta nos DOIS \

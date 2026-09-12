@@ -3,7 +3,7 @@
 //! The CPU producer in [`super::painter_bridge`] composites the layer stack on
 //! the CPU (`take_preview_arc`) and uploads premultiplied bytes into the preview
 //! slot. This is the GPU sibling: when the stack is GPU-representable
-//! ([`super::painter_gpu_flatten::flatten_for_gpu`] returns `Some`), it
+//! ([`crate::painter_gpu_flatten::flatten_for_gpu`] returns `Some`), it
 //! composites on the GPU [`LayerCompositor`], premultiplies the straight output
 //! via [`PreviewPremul`], and copies the result straight into the SAME
 //! `IndividualTextureStore` preview slot — **no CPU readback**. Both producers
@@ -36,7 +36,7 @@ use ph2d_tool_painter::PainterTool;
 /// kept for the tool session: the compositor's own slice cache invalidates on a
 /// canvas-dims change, and the tool's monotonic pixel versions handle layer-key
 /// reuse across sources, so the same instance stays correct across edits.
-pub(crate) struct PainterGpuPreview {
+pub struct PainterGpuPreview {
     gpu: GpuContext,
     compositor: LayerCompositor,
     /// Impasto's light — the relief made visible. Runs BETWEEN the composite and the premultiply, which
@@ -95,7 +95,7 @@ pub(crate) fn prewarm(
     // O slot do renderer é liberado no frame seguinte (a pilha ainda é trivial, então o produtor CPU
     // reassume) e isso está certo: o que precisava sobreviver são as texturas INTERNAS dos passes, que
     // moram no `session_slot` e que o `release_slot` não toca.
-    let Some((ops, adj_luts)) = super::painter_gpu_flatten::flatten_for_gpu(painter.layers())
+    let Some((ops, adj_luts)) = crate::painter_gpu_flatten::flatten_for_gpu(painter.layers())
     else {
         return;
     };
@@ -250,7 +250,7 @@ fn gpu_eligible(painter: &PainterTool) -> Option<(Vec<LayerOp>, Vec<f32>)> {
     if painter.mask_scratch_active() {
         return None;
     }
-    super::painter_gpu_flatten::flatten_for_gpu(painter.layers())
+    crate::painter_gpu_flatten::flatten_for_gpu(painter.layers())
 }
 
 /// Composite `ops` on the GPU, premultiply, and copy into the preview slot,
@@ -397,10 +397,10 @@ fn compose_light_premul(
     // O DIVISOR: este fold é a única metade de CPU do caminho GPU, e a única cujo custo depende de a
     // janela ser um retângulo ou a tela. O relógio SOZINHO não decide a cura (device lento × canvas
     // dobrado), então a janela viaja junto com ele.
-    let m_fold = super::paint_perf::on().then(std::time::Instant::now);
+    let m_fold = crate::paint_perf::on().then(std::time::Instant::now);
     let planes = tool.impasto_gpu_planes_in(plane_win);
     if let Some(t0) = m_fold {
-        super::paint_perf::note_gpu_fold(
+        crate::paint_perf::note_gpu_fold(
             t0.elapsed().as_secs_f64() as f32 * 1e3,
             plane_win == (0, 0, width, height),
         );

@@ -84,60 +84,6 @@ mod inspector_visibility;
 #[cfg(test)]
 mod measure_bridge_phases;
 mod padding_bridge;
-/// `PH2D_PAINT_PERF` aggregation (one summary line per window, not per frame).
-///
-/// `pub(crate)` porque a frente L do plano 26 carimba a chegada do evento de ponteiro lá do
-/// `input_dispatch` (a latência começa na ENTREGA, não no frame).
-pub(crate) mod paint_perf;
-pub(crate) mod painter_bridge;
-/// Brush-image import helpers (Grain/Shape file pickers), split from
-/// `painter_bridge` for the HR-18 file-LOC cap.
-pub(crate) mod painter_bridge_assets;
-/// The brush-cursor ring, split from `painter_bridge_overlays` for the HR-18 file-LOC cap.
-pub(crate) mod painter_bridge_brush_ring;
-/// The Curve / Free Hand editor overlay (spine + control dots + tangent handles), split from
-/// `painter_bridge_overlays` for the HR-18 file-LOC cap.
-pub(crate) mod painter_bridge_curve_overlay;
-/// The Fill (Bucket) ColorDrop cursor swatch overlay, split from `painter_bridge_overlays` for the
-/// HR-18 file-LOC cap.
-pub(crate) mod painter_bridge_fill_overlay;
-/// Shared Sprite-style gizmo painting for the Curve + Stencil transform gizmos (theme tokens, darker).
-pub(crate) mod painter_bridge_gizmo;
-/// A rede do Grid Stamp desenhada sobre a sprite (o método carimba no centro da célula dela).
-mod painter_bridge_grid;
-/// The Line polyline editor overlay (segments + corner dots + transform gizmo + Fillet/Chamfer handles),
-/// split from `painter_bridge_overlays` for the HR-18 file-LOC cap.
-pub(crate) mod painter_bridge_line_overlay;
-/// Multi-shape op badges (`+`/`−`/`○` type-square glyph per shape + a frame for parked shapes).
-pub(crate) mod painter_bridge_op_badges;
-/// On-canvas editing chrome (brush ring + Curve/Circle/Polygon/Stencil overlays), split from
-/// `painter_bridge` for the HR-18 file-LOC cap.
-pub(crate) mod painter_bridge_overlays;
-/// Live GPU preview of a brush Shape-source sprite (when not selected), split from `painter_bridge` for
-/// the HR-18 file-LOC cap.
-pub(crate) mod painter_bridge_shape_preview;
-/// On-canvas wetness sheen veil (Watercolor render-path), split from `painter_bridge_overlays` for the
-/// HR-18 file-LOC cap.
-pub(crate) mod painter_bridge_wetness;
-/// Display gates, producer-handoff half (upload-plan refusals + the CPU→GPU→CPU dance on real
-/// hardware) — split from the pipeline tests for the HR-18 file-LOC cap.
-#[cfg(test)]
-mod painter_preview_handoff_tests;
-/// Display gates, a metade que MEDE — o preço de cada produtor pelo mesmo traço. Irmão do de cima,
-/// cortado dele pelo teto de LOC da shell e por ASSUNTO (o que se AFIRMA × o que se MEDE).
-#[cfg(test)]
-mod painter_preview_measure;
-/// Ownership gates: the shell's preview buffer is INDEPENDENT of the tool's canvas, so a plain stroke
-/// stays footprint-bound (the tool keeps sole ownership) — split from the pipeline tests (HR-18).
-#[cfg(test)]
-mod painter_preview_ownership_tests;
-/// Display gates: the preview slot (what the sprite shader samples) is held byte-equal to the
-/// tool's composite across a stroke's whole life — phase D of the impasto smoke.
-#[cfg(test)]
-mod painter_preview_pipeline_tests;
-/// O que a tela mostra DEPOIS de um undo — o report de resquício do smoke de 2026-07-25.
-#[cfg(test)]
-mod painter_preview_undo_tests;
 /// Render-and-look probe for the Push phase (diagnostic, `#[ignore]`d — writes lit PNGs).
 #[cfg(test)]
 mod push_look_probe;
@@ -205,20 +151,6 @@ pub(crate) fn master_editing_mark_for_tests(
 ) -> bool {
     ph2d_app_components::master_editing::mark(sim, selection, &mut None).touched
 }
-/// A pergunta *«esta entidade está na cena?»* que o extract faz — ver o módulo.
-/// O `OnScreenEnabler` a decidir alguma coisa: *«só corre/aparece quando está no ecrã»*.
-/// The Deform Transform gizmo (whole-region bounding box), split from `painter_bridge_overlays` (Wave 2).
-pub(crate) mod painter_bridge_deform_gizmo;
-pub(crate) mod painter_bridge_queries;
-/// The isolated selection gizmos (ellipse / polygon / freehand), split from `painter_bridge_overlays`.
-pub(crate) mod painter_bridge_selection_gizmos;
-/// The Selection overlay (marching ants + deselected-area hatching), split from `painter_bridge_overlays`
-/// for the HR-18 file-LOC cap.
-pub(crate) mod painter_bridge_selection_overlay;
-pub(crate) mod painter_gpu_flatten;
-pub(crate) mod painter_gpu_preview;
-/// A ponte do carimbo de pigmento para o dispositivo (doc 33 §S3) — a metade do lado do shell.
-pub(crate) mod painter_stamp_device;
 /// The joint-anchor point gizmo's publish rule — extracted from `snapshots` so
 /// "which entity gets a point handle" is gated headless.
 // ⭐ O `point_gizmo` MUDOU-SE para [`ph2d_app_physics::overlay::point_gizmo`] (W2/L2 Fase C):
@@ -404,7 +336,7 @@ struct PaintFrameTimer(Option<std::time::Instant>);
 impl Drop for PaintFrameTimer {
     fn drop(&mut self) {
         if let Some(t0) = self.0 {
-            paint_perf::end_frame(t0.elapsed().as_secs_f64() as f32 * 1e3);
+            ph2d_app_painter::paint_perf::end_frame(t0.elapsed().as_secs_f64() as f32 * 1e3);
         }
     }
 }
@@ -471,7 +403,7 @@ impl crate::App {
         // deles tem de existir onde eles existem.
         self.refresh_bone_hover(pointer);
         // PH2D_PAINT_PERF: whole-frame timer (aggregated on scope exit, paired with the dispatch info).
-        let _paint_frame_timer = PaintFrameTimer(paint_perf::on().then(std::time::Instant::now));
+        let _paint_frame_timer = PaintFrameTimer(ph2d_app_painter::paint_perf::on().then(std::time::Instant::now));
         // Phase 2.1: drop finished-sample Arcs on the main thread (HR-3).
         // Phase 2.3c: feed the mixer panel live levels + apply its Master mute.
         if let Some(audio) = self.audio.as_mut() {
@@ -3009,7 +2941,7 @@ impl crate::App {
                 self.paint_ms_ewma,
                 // Deform Transform live ⇒ the sprite gizmo is suppressed for the frame (its corner
                 // handles share the deform gizmo's screen corners on a whole-image transform).
-                painter_bridge_queries::deform_transform_gizmo_active(tools),
+                ph2d_app_painter::painter_bridge_queries::deform_transform_gizmo_active(tools),
                 // Em que disposição a folha aberta está — a caixa do gizmo envolve-a inteira.
                 &tool_preview_bits,
                 vec_scene,
@@ -5564,7 +5496,7 @@ impl crate::App {
                     // estado que a trava existe para impedir — e um quadro chega para ele ligar a
                     // prévia à sprite errada.
                     if tool_id == "painter" {
-                        let dropped = crate::painter_lock::collapse_to_last(hero);
+                        let dropped = ph2d_app_painter::painter_lock::collapse_to_last(hero);
                         if dropped > 0 {
                             toasts.push(Toast::info(format!(
                                 "Painter: kept the last selected sprite ({dropped} deselected)"
@@ -5804,7 +5736,7 @@ impl crate::App {
             // overlay paints the canvas RGBA over the sprite footprint.
             // Sidebar Procreate-style lands in W2 (ph2d-panel-painter).
             let painter_dispatch_t0 = Instant::now();
-            let painter_apply_committed = painter_bridge::dispatch(
+            let painter_apply_committed = ph2d_app_painter::painter_bridge::dispatch(
                 hero,
                 tools,
                 sim,
@@ -5826,10 +5758,27 @@ impl crate::App {
                 &mut self.donated_form,
                 toasts,
                 self.held_button.is_some(),
+                crate::input_dispatch::fill_drag::fill_drag_armed(),
+                // O funil de leitura de textura desta shell, entregue como fecho: a crate da
+                // família não conhece o `texture_edit` nem o `SourceRead` dele.
+                |entity, sim, renderer, asset_db, atlas_asset_map| {
+                    crate::hero_intents::texture_edit::read_sprite_source(
+                        entity,
+                        sim,
+                        renderer,
+                        asset_db,
+                        atlas_asset_map,
+                    )
+                    .map(|src| {
+                        let straight = src.image.into_straight();
+                        (straight.pixels, straight.width, straight.height)
+                    })
+                },
+                &note_preview_px,
             );
             // Live-preview a non-selected sprite used as the brush Shape (so its opacity/blend remote-
             // control edits show in real time), into a SECOND preview slot/override.
-            painter_bridge_shape_preview::drive_shape_source_preview(
+            ph2d_app_painter::painter_bridge_shape_preview::drive_shape_source_preview(
                 tools,
                 renderer,
                 &mut self.painter_shape_source_preview_gpu,
@@ -12318,7 +12267,7 @@ impl crate::App {
             // ⚠️ A intenção é **consumida** (posta a `None`), não saltada: deixá-la viva faria a
             // mesma recusa repetir-se no quadro seguinte, e o artista veria o aviso a piscar.
             if let Some(intent) = hierarchy_select_intent {
-                let locked = crate::painter_lock::locked_entity(tools, hero);
+                let locked = ph2d_app_painter::painter_lock::locked_entity(tools, hero);
                 let (target, additive) = match intent {
                     hierarchy::HierarchySelectIntent::Row { row, modifier } => (
                         hero_live.as_ref().and_then(|l| l.bridge.entity_for(row)),
@@ -12327,10 +12276,10 @@ impl crate::App {
                     // Um intervalo é aditivo por definição.
                     hierarchy::HierarchySelectIntent::Range { .. } => (None, true),
                 };
-                if crate::painter_lock::decide(locked, target, additive)
-                    == crate::painter_lock::Decision::Refuse
+                if ph2d_app_painter::painter_lock::decide(locked, target, additive)
+                    == ph2d_app_painter::painter_lock::Decision::Refuse
                 {
-                    toasts.push(Toast::warning(crate::painter_lock::REFUSAL));
+                    toasts.push(Toast::warning(ph2d_app_painter::painter_lock::REFUSAL));
                     hierarchy_select_intent = None;
                     self.title_dirty = true;
                 }

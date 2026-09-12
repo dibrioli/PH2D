@@ -32,8 +32,12 @@
 //! guarda o resto: que ninguém desfaça a assinatura.
 
 /// O parâmetro é por VALOR e chama-se `world_tr` — as duas metades da defesa de tipo.
+///
+/// ⚠️ **O NOME não mudou ao mudar de casa, de propósito.** A prova desta wave é o
+/// `nextest-list-diff` com `ONLY-A = 0`, e ele indexa por NOME: renomear um teste que se move
+/// lê-se exactamente como um teste PERDIDO. *Um nome melhor não vale uma prova mais fraca.*
 #[test]
-fn o_afim_recebe_a_pose_de_mundo_por_valor() {
+fn the_affine_takes_a_world_transform_by_value() {
     const FONTE: &str = include_str!("../src/lib.rs");
     assert!(
         FONTE.contains("world_tr: ph2d_ecs::Transform,"),

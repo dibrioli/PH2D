@@ -303,7 +303,6 @@ mod onion_modal;
 /// ⭐⭐ **A cena da OPACIDADE das duas tintas** (`PH2D_BUILD_SMOKE=79`, plano 36 W6) — a estampa e o
 /// pincel obedecem à barra *Opacity*, cada um na casa dele.
 mod paint_opacity_smoke;
-mod painter_lock;
 mod palette_persist;
 /// A SONDA do drift de pan (`PH2D_PAN_DIAG=1`) — report do Enio de 2026-08-25.
 /// **Pattern Along Path** — o cozimento vivo do `VecPatternPath` (plano 23), irmão do `offset_live`.

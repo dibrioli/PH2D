@@ -12,7 +12,7 @@
 //! quadro. É a lição que a `line/anim` já pagou (*um gate de unidade é cego ao shell*), e a mutação
 //! que a prova é justamente apagar a linha da chamada.
 
-const SRC: &str = include_str!("../../src/render_loop/painter_bridge_wetness.rs");
+const SRC: &str = include_str!("../src/painter_bridge_wetness.rs");
 
 #[test]
 fn the_build_only_sees_the_visible_region() {

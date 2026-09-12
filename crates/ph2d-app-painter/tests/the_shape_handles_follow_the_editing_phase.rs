@@ -19,7 +19,7 @@
 //! texto:** o `StrokeOpBadge` perdeu o campo `bbox` e ganhou `outline`, então voltar a desenhar a
 //! moldura AABB **não compila**. Estrutural vence disciplinar.
 
-const OVERLAYS: &str = include_str!("../../src/render_loop/painter_bridge_overlays.rs");
+const OVERLAYS: &str = include_str!("../src/painter_bridge_overlays.rs");
 
 /// Os dois desenhadores de figura fecham a guarda de fase ANTES do laço de alças.
 ///

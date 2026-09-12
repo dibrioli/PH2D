@@ -163,7 +163,7 @@ fn the_patch_key_consumes_only_when_a_patch_is_live() {
 
 // ── A CANETA da seleção (Enio, 2026-08-07: *"um modo pen exatamente como a pen do vector"*) ──────────
 
-const CURVE_OVERLAY: &str = "shells/desktop/src/render_loop/painter_bridge_curve_overlay.rs";
+const CURVE_OVERLAY: &str = "crates/ph2d-app-painter/src/painter_bridge_curve_overlay.rs";
 const CANVAS_INPUT: &str = "shells/desktop/src/input_dispatch/painter_canvas_input.rs";
 
 /// **A shell desenha por UMA porta.** O overlay de curva lê `authoring_curve_overlay` — *que Bézier

@@ -60,26 +60,26 @@ pub(super) fn draw_op_badges(
     // + the SAME doubled centre square + op glyph the active gizmo draws (`center_glyph_handle`).
     // Mesmo acento do gizmo ativo: toda figura na tela lê como igualmente presente, e o que distingue a
     // que está sendo editada são as ALÇAS, que só ela tem.
-    let pal = super::painter_bridge_gizmo::palette_accent(
+    let pal = crate::painter_bridge_gizmo::palette_accent(
         hero.theme,
-        super::painter_bridge_gizmo::GIZMO_ACCENTS[0],
+        crate::painter_bridge_gizmo::GIZMO_ACCENTS[0],
     );
     let scene = vector_scene.inner_mut();
     // Edit-in-tile (Enio 2026-07-11): draw every parked shape's badge in each visible wrapped tile too, so a
     // multi-shape set is selectable/re-editable from any tile — matching the active editor's tiled overlay.
-    for (ox, oy) in super::painter_bridge_overlays::overlay_tile_offsets(painter, iw, ih) {
+    for (ox, oy) in crate::painter_bridge_overlays::overlay_tile_offsets(painter, iw, ih) {
         let affine = base_affine * Affine::translate((ox, oy));
         let map = |p: [f32; 2]| affine * Point::new(f64::from(p[0]), f64::from(p[1]));
         for b in &badges {
             if b.outline.len() >= 2 {
                 let pts: Vec<Point> = b.outline.iter().map(|&p| map(p)).collect();
                 if b.closed {
-                    super::painter_bridge_gizmo::stroke_box(scene, &pts, &pal);
+                    crate::painter_bridge_gizmo::stroke_box(scene, &pts, &pal);
                 } else {
-                    super::painter_bridge_gizmo::stroke_open(scene, &pts, &pal);
+                    crate::painter_bridge_gizmo::stroke_open(scene, &pts, &pal);
                 }
             }
-            super::painter_bridge_gizmo::center_glyph_handle(scene, map(b.center), &pal, b.glyph);
+            crate::painter_bridge_gizmo::center_glyph_handle(scene, map(b.center), &pal, b.glyph);
         }
     }
 }

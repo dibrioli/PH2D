@@ -20,7 +20,7 @@
 //! still correct; nobody calls it) and to `ship.sh`'s timing-free run. This gate reads the product
 //! source and asserts the drain routes through the helper and stashes its result.
 
-const SRC: &str = include_str!("../../src/render_loop/painter_bridge.rs");
+const SRC: &str = include_str!("../src/painter_bridge.rs");
 
 #[test]
 fn the_paint_drain_owns_its_preview_buffer() {

@@ -31,7 +31,7 @@ const PAINTER: &str = "painter";
 
 /// O que fazer com uma tentativa de mudar a seleção.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum Decision {
+pub enum Decision {
     /// Deixa passar.
     Allow,
     /// Recusa, e diz porquê — a mensagem é para o artista, não para o log.
@@ -47,7 +47,7 @@ pub(crate) enum Decision {
 ///   selecionada é o estado que o Painter não sabe representar;
 /// - limpar (alvo `None`) ⇒ passa, vide o cabeçalho;
 /// - qualquer outra sprite ⇒ recusa.
-pub(crate) fn decide(locked: Option<u64>, target: Option<u64>, additive: bool) -> Decision {
+pub fn decide(locked: Option<u64>, target: Option<u64>, additive: bool) -> Decision {
     let Some(locked) = locked else {
         return Decision::Allow;
     };
@@ -63,10 +63,10 @@ pub(crate) fn decide(locked: Option<u64>, target: Option<u64>, additive: bool) -
 
 /// A mensagem que a recusa mostra. Uma só, e nomeia **a saída** — um aviso que diz apenas *"não
 /// pode"* deixa o artista sem o passo seguinte.
-pub(crate) const REFUSAL: &str = "Leave the Painter to select another sprite";
+pub const REFUSAL: &str = "Leave the Painter to select another sprite";
 
 /// A sprite que o Painter tem aberta, ou `None` quando ele não está ativo.
-pub(crate) fn locked_entity(
+pub fn locked_entity(
     tools: &ph2d_editor::tool::ToolRegistry,
     hero: &HeroScreen,
 ) -> Option<u64> {
@@ -82,7 +82,7 @@ pub(crate) fn locked_entity(
 /// ⚠️ *Última* é a última que o artista acrescentou — o fim do `extra_selection`, e não o primário
 /// (que é a **primeira**). É a leitura que corresponde ao gesto: ele clicou numa, `Shift`+clicou em
 /// mais quatro, e a que ele tem em mente ao abrir o Painter é a última em que tocou.
-pub(crate) fn collapse_to_last(hero: &mut HeroScreen) -> usize {
+pub fn collapse_to_last(hero: &mut HeroScreen) -> usize {
     let extras = hero.gizmo.extra_selection.len();
     if extras == 0 {
         return 0;

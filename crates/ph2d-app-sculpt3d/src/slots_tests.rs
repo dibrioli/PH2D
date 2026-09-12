@@ -121,7 +121,7 @@ fn the_whole_preview_upload_lives_outside_the_slot_job_match() {
     // ⚠️ **O caminho mudou em 2026-09-11 (W2/L3-A3)**, quando a família saiu de
     // `src/sculpt3d_*.rs` para `src/sculpt3d/`. Um gate que lê o fonte por caminho é o
     // que a extracção cobra primeiro — e reprovar alto aqui é o comportamento certo.
-    let src = std::fs::read_to_string("src/sculpt3d/slots.rs")
+    let src = std::fs::read_to_string("src/slots.rs")
         .expect("o roteador de slots é legível a partir do pacote");
     let call = src
         .find("upload_preview_at")

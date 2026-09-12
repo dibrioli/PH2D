@@ -5375,6 +5375,7 @@ dependencies = [
  "ph2d-light",
  "ph2d-painter-brush",
  "ph2d-render",
+ "postcard",
  "wgpu",
 ]
 

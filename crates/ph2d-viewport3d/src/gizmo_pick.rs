@@ -5,7 +5,7 @@
 //! comum passou as `600` do gate de LOC do shell na W133, e ⛔ *split, nunca allowlist*.
 //!
 //! ⚠️ **Módulo-filho por `#[path]`**, como a lei do arrasto e as alças de vértice: ele vê os tipos e
-//! as constantes do pai por `use super::*`, e o `pub use` mantém `ph2d_viewport3d::gizmo::pick` a
+//! as constantes do pai por `use super::*`, e o `pub use` mantém `field3d_gizmo::pick` a
 //! resolver em todos os chamadores.
 
 use super::*;

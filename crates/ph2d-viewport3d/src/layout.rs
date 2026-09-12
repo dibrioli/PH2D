@@ -104,11 +104,11 @@ impl Split {
 /// não há área, e a moldura do activo saía pela borda do ecrã.
 ///
 /// ⚠️ **É uma PORTA e não três linhas no laço**, exactamente pela razão que a versão anterior desta
-/// função (no `ph2d_viewport3d::navball`) já documentava: *um gate sobre a lei não é um gate sobre quem a
+/// função (no `field3d_navball`) já documentava: *um gate sobre a lei não é um gate sobre quem a
 /// alimenta* — a mutação que devolve a janela ao produto **sobrevive** a um gate que passa o rect
 /// à mão.
 ///
-/// ⚠️ E ela mudou-se para aqui **do `ph2d_viewport3d::navball`**: o dono de *«que rectângulos o canvas 3D
+/// ⚠️ E ela mudou-se para aqui **do `field3d_navball`**: o dono de *«que rectângulos o canvas 3D
 /// ocupa»* é este módulo, e o gizmo é só um dos consumidores. *Uma porta com o nome de um dos seus
 /// clientes convida à segunda cópia.*
 ///

@@ -112,7 +112,7 @@ pub fn begin(
     //
     // ⭐ **Arrastar a partir dele ORBITA**, e é o gesto principal, não um efeito colateral: a
     // pesquisa da referência mede os utilizadores *quase 2× mais rápidos* a arrastar do que a
-    // clicar, «independentemente das representações examinadas» (ver `ph2d_viewport3d::navball`). Por isso o
+    // clicar, «independentemente das representações examinadas» (ver `field3d_navball`). Por isso o
     // `drag` fica em `Orbit` e a bola é só **lembrada** — o `Up` sem movimento é que a usa.
     if button == winit::event::MouseButton::Left
         && let Some(p) = local(s, pos)

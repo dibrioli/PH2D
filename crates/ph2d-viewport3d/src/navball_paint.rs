@@ -54,7 +54,7 @@ pub fn paint(
     centre: [f32; 2],
 ) {
     let at = Affine::translate((f64::from(origin[0]), f64::from(origin[1])));
-    // ⚠️ **De trás para a frente**, que é a ordem em que a lei devolve. Ver `ph2d_viewport3d::navball::balls`.
+    // ⚠️ **De trás para a frente**, que é a ordem em que a lei devolve. Ver `field3d_navball::balls`.
     for b in balls {
         let base = colour_of(b.view, theme);
         let c = if hot == Some(b.view) {

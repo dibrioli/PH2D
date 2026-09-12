@@ -72,7 +72,7 @@ fn the_axis_scene_opens_on_the_same_dense_mesh_as_the_alpha_scene() {
     // `src/sculpt3d/scenes_mesh.rs`. *Um gate que lê um ficheiro pelo caminho reprova
     // quando o ficheiro muda de casa* — a nota acima previu-o e a extracção cobrou-o,
     // que é exactamente o que se quer dele.
-    let src = std::fs::read_to_string("src/sculpt3d/scenes_mesh.rs")
+    let src = std::fs::read_to_string("src/scenes_mesh.rs")
         .expect("o escolhedor de malha é legível a partir do pacote");
     // ⚠️ **A busca é pela CONDIÇÃO, e o `starts_with("if ")` é o que a torna
     // honesta** — a primeira versão deste gate procurou só as duas chamadas

@@ -28,3 +28,8 @@ ph2d-render        = { path = "../ph2d-render" }
 # ⚠️ **INVISÍVEL dentro da shell** (armadilha §2.4 do HOWTO): lá o `wgpu` é dependência do
 # binário, e o `planes.rs` escrevia `wgpu::Device` sem nada no ficheiro que o declarasse.
 wgpu = "29.0.4"
+
+# ⚠️ **INVISÍVEL dentro da shell, a segunda vez nesta crate** (§2.4): o `#[cfg(test)]` do
+# `baked_form` faz round-trip do documento por `postcard`, e lá ele era dependência do binário.
+[dev-dependencies]
+postcard = { version = "1", features = ["alloc"] }

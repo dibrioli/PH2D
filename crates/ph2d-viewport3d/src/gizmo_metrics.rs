@@ -6,7 +6,7 @@
 //! `600` do gate de LOC do shell na W133 — ⛔ *split, nunca allowlist*.
 //!
 //! ⚠️ **Módulo-filho com `pub use ...::*` no pai**: todos os caminhos que já existiam
-//! (`ph2d_viewport3d::gizmo::GRAB_PX`, `::ARM_PX`, …) continuam a resolver, e os irmãos que fazem
+//! (`field3d_gizmo::GRAB_PX`, `::ARM_PX`, …) continuam a resolver, e os irmãos que fazem
 //! `use super::*` continuam a vê-las.
 
 /// **O comprimento do braço, EM PIXELS** — o gizmo tem tamanho de tela constante, como o do Blender.

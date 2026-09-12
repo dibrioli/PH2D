@@ -40,7 +40,7 @@
 //!
 //! [`ph2d_field_render::Orbit`] é o tipo de câmera, e é dele que esta crate depende — logo a
 //! escultura depende, por transitividade, da crate de render da **modelagem**. ⚠️ **Isso já era
-//! verdade antes desta crate existir** (o `ph2d_viewport3d::navball` sempre usou `Orbit`); o que muda é que
+//! verdade antes desta crate existir** (o `field3d_navball` sempre usou `Orbit`); o que muda é que
 //! agora tem nome. A cura é um vocabulário 3D partilhado (`Orbit`/`Screen` numa folha própria) e
 //! **não é desta wave** — ela mexeria na API de `ph2d-field-render`, que é do módulo de modelagem.
 

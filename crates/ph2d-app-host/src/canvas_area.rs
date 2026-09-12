@@ -1,7 +1,7 @@
 //! ⭐⭐ **A ÁREA DE DESENHO VISÍVEL** — o rectângulo que sobra da janela depois do chrome docado e
 //! das réguas, e a **única** resposta a *«onde é que o canvas de facto se vê?»*.
 //!
-//! ⚠️ **Ela nasceu com o nome de um cliente** (`ph2d_viewport3d::layout::area`), e o doc dela já avisava
+//! ⚠️ **Ela nasceu com o nome de um cliente** (`field3d_layout::area`), e o doc dela já avisava
 //! porquê isso é uma armadilha: *«uma porta com o nome de um dos seus clientes convida à segunda
 //! cópia»*. O segundo cliente chegou em 2026-09-07 — o enquadramento da receita ao abrir o *Edit
 //! Prefab* —, e a porta mudou-se para um módulo com o nome da **pergunta**. O módulo do 3D delega.

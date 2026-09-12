@@ -268,7 +268,7 @@ pub struct Projected {
 
 /// ⭐ **A lei do arrasto** vive no irmão — ver [`field3d_gizmo_drag`](self::drag_law).
 ///
-/// ⚠️ **O re-export é o que mantém os caminhos antigos vivos**: `ph2d_viewport3d::gizmo::Motion`,
+/// ⚠️ **O re-export é o que mantém os caminhos antigos vivos**: `field3d_gizmo::Motion`,
 /// `::drag`, `::snap_step` e as duas constantes de passo continuam a resolver, e nenhum chamador
 /// mudou uma linha. Um corte que obrigasse a reescrever 40 sítios seria um corte a cobrar o preço
 /// errado.
@@ -279,7 +279,7 @@ pub use drag_law::{Motion, drag, snap_step};
 /// ⭐⭐ **A projecção das ALÇAS DE VÉRTICE** vive no irmão — ver
 /// [`field3d_vertex_handles`](self::vertex_handles).
 ///
-/// ⚠️ O re-export mantém `ph2d_viewport3d::gizmo::project_vertices` — cortar um arquivo não pode custar uma
+/// ⚠️ O re-export mantém `field3d_gizmo::project_vertices` — cortar um arquivo não pode custar uma
 /// reescrita a cada chamador.
 #[path = "vertex_handles.rs"]
 mod vertex_handles;

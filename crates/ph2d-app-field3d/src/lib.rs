@@ -36,9 +36,13 @@
 //! - `main.rs` / `init.rs` / `App` / o esqueleto do laço / o `input_dispatch` (o roteador);
 //! - **`field3d_snapshot_tests.rs`** — ele captura um `ProjectState`, que é a máquina de undo da
 //!   shell. O doc dele já se chamava *«a metade de SHELL da ponte ECS»*;
-//! - **cinco alias de uma linha** (`ph2d_viewport3d::views`, `_navball`, `_layout`, `_view_menu`,
+//! - ~~**cinco alias de uma linha** (`field3d_views`, `_navball`, `_layout`, `_view_menu`,
 //!   `_gizmo`), que existem só porque `sculpt3d_*` os consome e a `line/app-sculpt3d` está a mover
-//!   os ficheiros dela **hoje**.
+//!   os ficheiros dela **hoje**~~ — ⭐ **APAGADOS em 2026-09-11 pela W2/L3-B**, que era a condição
+//!   escrita no topo de cada um deles (*«quando a `line/app-sculpt3d` fechar, este ficheiro
+//!   some»*). Os chamadores escrevem hoje `ph2d_viewport3d::…` directamente.
+//!   ⚠️ **A dívida está PAGA e o texto fica riscado, não apagado:** este item é a razão por que a
+//!   piloto ficou a meio, e quem ler o §5.1 do HOWTO tem de poder emparelhar as duas pontas.
 //!
 //! [audit]: ../../../docs/DevOps/AUDITORIA_VELOCIDADE_DE_DESENVOLVIMENTO_2026-09-10.md
 

@@ -341,12 +341,11 @@ byte-idêntico e o módulo nem arma.
 
 ```
 $ cargo build -p ph2d-host-desktop --profile smoke
-   Compiling ph2d-app-registry-init v0.0.0 (…/crates/ph2d-app-registry-init)
    Compiling ph2d-host-desktop v0.0.0 (…/shells/desktop)
-    Finished `smoke` profile [optimized] target(s) in 22.21s
+    Finished `smoke` profile [optimized] target(s) in 6.32s
 
 $ cargo build -p ph2d-host-desktop --profile smoke
-    Finished `smoke` profile [optimized] target(s) in 0.21s
+    Finished `smoke` profile [optimized] target(s) in 0.17s
 ```
 
 ⭐ A 2.ª corrida em **0,21 s** é a prova de que a 1.ª de facto compilou tudo — um binário que não

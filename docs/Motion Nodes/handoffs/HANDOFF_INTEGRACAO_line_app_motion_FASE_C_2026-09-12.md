@@ -195,6 +195,8 @@ ficheiro IRMÃO, e mover o conjunto INTEIRO preserva-os por construção»*. Sã
 | ⚠️ **`cargo test -p ph2d-host-desktop --test it`** (regra 2, À PARTE) | ✅ **812 passed, 0 failed**, 6 ignored — e ele apanhou **12** gates com o `check` verde |
 | `cargo test -p ph2d-app-registry-init` | ✅ **5 passed, 0 failed** |
 | `python3 scripts/fecho-da-familia.py --autoteste` | ✅ 6/6 |
+| ⭐ **`nextest-list-diff` (regra 6)** | ✅ **`ONLY-A: 0` · `ONLY-B: 0`**, 22 668 → 22 668, **994 `MOVED`** de `ph2d-host-desktop` para `ph2d-app-motion` |
+| `cargo build -p ph2d-host-desktop --profile smoke` | ✅ 1.ª `20,76 s` · **2.ª `0,19 s`, `0` linhas «Compiling»** |
 | contadores partilhados | **inalterados** (`PROJECT_SCHEMA`, `FLIP_SCHEMA`, registos do `ph2d-ecs`) |
 | 6.º método no `AppHost` | **nenhum pedido** |
 

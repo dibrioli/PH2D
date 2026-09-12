@@ -564,12 +564,6 @@ pub const INSP_SPRITE_FRAME: NodeId = hash_node_id("insp_sprite_frame");
 /// não montou.
 pub const INSP_SHEET_PREVIEW: NodeId = hash_node_id("insp_sheet_preview");
 
-/// Title-bar color dot for the Grid Snap panel. Kept (Grid Snap is a
-/// settings panel, not an image tool). The original broadcast added
-/// PAD/BGR/CEQ/UPS/EQS dots too, but those were removed 2026-05-24
-/// per user feedback: image-tool panels are transient operation
-/// surfaces, not annotation surfaces.
-pub const GS_TITLE_COLOR: NodeId = hash_node_id("gs_title_color");
 /// Widget Gallery floating panel — root id. The gallery is a Procreate-
 /// style floating reference panel that hosts the canonical widget
 /// showcase. Toggle visibility via [`TOPBAR_WIDGET_GALLERY`].

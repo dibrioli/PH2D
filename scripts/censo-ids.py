@@ -563,14 +563,67 @@ def classificar(pk, itens, cita, leitores, homonimos=None):
                     else:
                         res[a] = ("FICA-CITACAO", None, f"cita o privado {b}, que fica")
                     mudou = True
-    # os `#[cfg(test)] mod` de ids/: vão com os itens que citam
+    # ⭐ O ASSUNTO desce inteiro: um ficheiro de ids/ é um assunto (a secção de um painel), e os itens
+    # dele que descem vão juntos para a crate mais baixa que TODO leitor de TODOS eles vê — em vez de
+    # se espalharem por leitor. Medido 2026-09-12: sem isto, os 16 ficheiros `painter_*` partiam-se
+    # item a item entre a ferramenta e o painel de camadas; com isto descem inteiros para a
+    # `ph2d-tool-painter`, que é o precedente escrito da casa (a `ph2d-tool-color-equalization` e a
+    # `ph2d-tool-equalize-sizes` já são donas dos ids dos seus painéis, ADR-0040 §3.8).
+    por_ficheiro = collections.defaultdict(list)
+    for k, (cl, dono, _) in res.items():
+        if cl == "DESCE":
+            por_ficheiro[itens[k]["file"]].append(k)
+    for f, ks in por_ficheiro.items():
+        donos = sorted({res[k][1] for k in ks})
+        if len(donos) < 2:
+            continue
+        for o in donos:
+            ok = True
+            for k in ks:
+                it = itens[k]
+                for c, ctx, fl in (leitores.get(it["name"], set()) if it["pub"] else set()):
+                    if fl in IGNORAR_LEITORES or c == EC:
+                        continue
+                    if not (vis(c, o) or (ctx == "test" and (o, "dev") in deps.get(c, set()))):
+                        ok = False
+                        break
+                if not ok:
+                    break
+            if ok:
+                for k in ks:
+                    if res[k][1] != o:
+                        res[k] = ("DESCE", o, f"o assunto ({f.rsplit('/', 1)[-1]}) desce inteiro")
+                break
+    # a visibilidade outra vez (o reagrupamento só junta, mas uma citação de fora do ficheiro pode
+    # deixar de ver o sítio novo)
+    mudou = True
+    while mudou:
+        mudou = False
+        for a, alvos in cita.items():
+            if a not in res or itens[a]["cfg_test"]:
+                continue
+            for b in alvos:
+                if b not in res or itens[b]["cfg_test"]:
+                    continue
+                sa, sb = sitio(a), sitio(b)
+                if (not itens[b]["pub"] and sa != sb) or not vis(sa, sb):
+                    if sb != "EC":
+                        res[b] = ("FICA-CITACAO", None, f"citado por {a} ({sa}), que não vê {sb} (depois do reagrupamento)")
+                    else:
+                        res[a] = ("FICA-CITACAO", None, f"cita o privado {b}, que fica")
+                    mudou = True
+    # os `#[cfg(test)] mod` de ids/: vão com os itens que citam — para o sítio que vê todos os outros
     for k, it in itens.items():
         if not it["cfg_test"]:
             continue
         donos = {res[a][1] for a in cita.get(k, ()) if a in res and res[a][0] == "DESCE"}
-        res[k] = ("TESTE-VAI", next(iter(donos)), "") if len(donos) == 1 else (
-            ("TESTE-FICA", None, "") if not donos else ("TESTE-CONFLITO", None, str(sorted(donos)))
-        )
+        alvo = next((o for o in sorted(donos) if all(vis(o, p) for p in donos)), None)
+        if not donos:
+            res[k] = ("TESTE-FICA", None, "")
+        elif alvo:
+            res[k] = ("TESTE-VAI", alvo, "")
+        else:
+            res[k] = ("TESTE-CONFLITO", None, str(sorted(donos)))
     return res
 
 

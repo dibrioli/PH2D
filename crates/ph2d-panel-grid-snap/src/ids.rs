@@ -5,3 +5,6 @@
 //! them, and moving them to a panel crate would create a cycle).
 
 pub use ph2d_editor_core::grid_snap::ids::*;
+
+mod inspector;
+pub use inspector::*;

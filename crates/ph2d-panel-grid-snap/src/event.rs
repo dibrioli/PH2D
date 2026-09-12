@@ -47,7 +47,7 @@ pub(crate) fn apply_event(
     }
     // GS_TITLE_COLOR — panel-level color tag (UI canon post-2026-05-24).
     if let WidgetEvent::Click(id) = ev
-        && id == ph2d_editor_core::ids::GS_TITLE_COLOR
+        && id == crate::ids::GS_TITLE_COLOR
     {
         let seed = host
             .store()

@@ -35,3 +35,5 @@ mod inspector_timer;
 pub use inspector_timer::*;
 mod menus;
 pub use menus::*;
+mod inspector_physics_body;
+pub use inspector_physics_body::*;

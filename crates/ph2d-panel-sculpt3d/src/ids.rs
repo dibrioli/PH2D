@@ -13,3 +13,7 @@ mod sculpt3d;
 pub use sculpt3d::*;
 mod sculpt3d_cloth;
 pub use sculpt3d_cloth::*;
+mod sculpt3d_brush;
+pub use sculpt3d_brush::*;
+mod sculpt3d_shading;
+pub use sculpt3d_shading::*;

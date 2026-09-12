@@ -8,7 +8,7 @@
 > um handoff descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**33 handoffs** · **6** citados pelo CLAUDE.md §5 (marcados **◆** — são os que a
+**34 handoffs** · **6** citados pelo CLAUDE.md §5 (marcados **◆** — são os que a
 §5 aponta como o detalhe de mecanismo de uma integração).
 
 | Data | | Arquivo | Papel | Assunto |
@@ -46,6 +46,7 @@
 | 2026-07-31 |  | [HANDOFF_INTEGRACAO_line_FLIP_CACHE_E_MEDICOES_2026-07-31.md](HANDOFF_INTEGRACAO_line_FLIP_CACHE_E_MEDICOES_2026-07-31.md) | integração | HANDOFF DE INTEGRAÇÃO — line/FLIP: O CACHE DO AJUSTE E AS MEDIÇÕES QUE FECHARAM ITENS (2026-07-3… |
 | 2026-08-01 | ◆ | [HANDOFF_INTEGRACAO_line_FLIP_PONTAS_2026-08-01.md](HANDOFF_INTEGRACAO_line_FLIP_PONTAS_2026-08-01.md) | integração | HANDOFF DE INTEGRAÇÃO — line/FLIP: AS PONTAS DO TRAÇO (2026-08-01) |
 | 2026-09-11 |  | [HANDOFF_INTERMEDIO_line_app-flip_FASE_A_2026-09-11.md](HANDOFF_INTERMEDIO_line_app-flip_FASE_A_2026-09-11.md) | integração | W2 Fase A — a família Flip sai da shell: FlipState, `src/flip/`, a crate `ph2d-app-flip`; o GATE de 2 funções que prende 18 798 LOC |
+| 2026-09-11 |  | [HANDOFF_INTEGRACAO_line_app-flip_FASE_B_2026-09-11.md](HANDOFF_INTEGRACAO_line_app-flip_FASE_B_2026-09-11.md) | integração | W2 Fase B — o FIM DA LINHA (FAMILY 15→18) e o BLOQUEIO: 2 funções de outra família prendem 84 % da flip |
 
 ---
 *Índice gerado na arrumação de 2026-08-10 (DIRETRIZ §1.5.9). Handoff novo entra aqui, não na

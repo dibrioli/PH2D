@@ -87,6 +87,7 @@ pub mod bucket;
 pub mod bucket_claim;
 pub mod bucket_repro;
 pub mod component_edit;
+pub mod connector_drag;
 pub mod connector_live;
 pub mod connector_panel;
 pub mod contour_live;
@@ -115,11 +116,15 @@ pub mod pattern_live;
 pub mod pencil_input;
 pub mod profile_live;
 pub mod resize_box_edit;
+pub mod selection_sync;
+pub mod shape_build;
 pub mod shape_params;
 pub mod svg_export;
 pub mod svg_import;
 pub mod symmetry_live;
+pub mod text_edit;
 pub mod texture_pattern_edit;
+pub mod trim;
 pub mod ui_panel_spec;
 pub mod ui_state_bridge;
 pub mod ui_state_edit;
@@ -129,6 +134,7 @@ pub mod widget_edit;
 pub mod widget_icon;
 pub mod widget_live;
 pub mod widget_value;
+pub mod width_grab;
 // ⭐ **O mapa mudou-se para a folha** (`line/shell-folhas`, 12/09): ele é a MESMA peça
 // partilhada um degrau acima — a `motion` e a `flip` consomem a ponte inteira, e uma peça que
 // três famílias usam não pode viver na crate de uma delas (ADR-0075). O re-export mantém os 18

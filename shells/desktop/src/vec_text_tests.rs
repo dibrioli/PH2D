@@ -3,7 +3,7 @@
 //! `layout_of`, o `placement_of`), que é onde o caret mora.
 
 use super::*;
-use ph2d_vec_scene::Rgba8;
+use ph2d_vec_scene::{Paint, Rgba8};
 
 fn black() -> Paint {
     Paint::solid(Rgba8::new(0, 0, 0, 255))

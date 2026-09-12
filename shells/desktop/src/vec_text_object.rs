@@ -15,7 +15,7 @@ use ph2d_vec_text::TextAlign;
 use ph2d_vector_font::AxisTag;
 
 use crate::vec_glyph::{TextLayout, TextPlacement, text_to_compound_path, text_to_vec_paths};
-use crate::vec_text::VecTextEdit;
+use ph2d_app_vec::text_edit::VecTextEdit;
 use ph2d_vec_entities::entities::{VecEntityMap, group_entities};
 
 /// A porta `sessão → componente`, exposta aos gates do módulo irmão: o round-trip da caixa

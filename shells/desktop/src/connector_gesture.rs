@@ -22,17 +22,7 @@ use ph2d_ecs::{Anchor, ConnectorEnd, Entity, VecConnector};
 use ph2d_vec_scene::{Marker, VecPathId};
 
 use crate::app_state::App;
-
-/// O conector em construção (Down..Up). O `path` já existe na cena; o `conn` é a relação que
-/// o `connector_live` re-cozinha.
-#[derive(Clone, Debug)]
-pub(crate) struct ConnectorDrag {
-    pub(crate) path: VecPathId,
-    pub(crate) conn: VecConnector,
-    /// Onde o gesto começou (mundo) — para descartar o clique-sem-arrasto que não prendeu
-    /// nada (uma linha de comprimento zero solta no vazio não é um objeto, é um acidente).
-    start_world: [f64; 2],
-}
+use ph2d_app_vec::connector_drag::ConnectorDrag;
 
 /// Distância mínima (world) que o cursor precisa percorrer para um Up **no vazio** valer um
 /// conector. Abaixo disso é um clique perdido, e o gesto é desfeito.

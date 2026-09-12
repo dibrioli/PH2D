@@ -184,7 +184,7 @@ impl crate::App {
         }
         self.vec_entities = map;
         self.flip_state.entities = flip_map;
-        self.vec_sel = crate::vec_selection::VecSelSync::default();
+        self.vec_sel = ph2d_app_vec::selection_sync::VecSelSync::default();
         self.vec_pen.clear();
         // E de volta, filtrada pelo que sobreviveu. O `vec_sel` ficou zerado de propósito: no frame
         // seguinte o `sync_selection` vê "o pen mudou" e republica os bits NOVOS no gizmo.

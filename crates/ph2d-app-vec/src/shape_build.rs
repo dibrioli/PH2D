@@ -14,7 +14,7 @@
 //! ## A sobra é POR FORMA — e é isto que o smoke do Enio derrubou
 //!
 //! A 1ª versão devolvia a sobra como `união(todas as fontes) − o que foi levado`: **uma**
-//! forma só. O efeito no app real (medido, [`crate::build_smoke`]): um clique numa região
+//! forma só. O efeito no app real (medido, pela `build_smoke` da shell): um clique numa região
 //! fundia o pentágono, a estrela e o retângulo num BLOB único, com um estilo só — as
 //! silhuetas que o artista tinha acabado de desenhar simplesmente sumiam, e as fronteiras
 //! entre elas (que são justamente o que define as faces seguintes) deixavam de existir.
@@ -31,49 +31,56 @@
 //! A forma NOVA (as faces pintadas) herda o estilo da forma do **TOPO entre as tocadas** — a
 //! convenção do `apply_many` e do Illustrator. Sem essa regra, a face herdaria o estilo do
 //! último argumento de uma SUBTRAÇÃO, que é justamente uma forma que ela **não** contém.
+//!
+//! ⚠️ **Mudou-se da shell em 2026-09-12** (`line/render-loop`, A9 da auditoria de arquitectura): a
+//! `App` guardava a sessão num campo solto (`vec_build`) cujo TIPO morava aqui, na shell, e um
+//! campo assim não pode juntar-se ao [`crate::state::VecState`]. O tipo tem `impl` (a lei do
+//! gesto), então desceu o ficheiro inteiro — com os testes — e a shell ficou com o `impl App` que o
+//! conduz
+//! (`shape_build_gesture.rs`).
 
 use ph2d_vec_boolean::{Arrangement, BoolOp, FaceId, MAX_BUILD_SHAPES, Membership, apply_many};
 use ph2d_vec_scene::{VecPath, VecPathId, VecScene, VecXforms};
 
 /// O que um gesto de Shape Builder produz. Tudo em MUNDO.
 #[derive(Default)]
-pub(crate) struct BuildResult {
+pub struct BuildResult {
     /// A forma nova: a união das faces pintadas (vazia no modo subtrair, ou se nada foi
     /// pintado). Mais de uma entrada quando as faces pintadas são desconexas.
-    pub(crate) merged: Vec<VecPath>,
+    pub merged: Vec<VecPath>,
     /// O que sobra de cada forma **tocada**, por índice de fonte (fundo → topo). Uma lista
     /// vazia = a fonte foi inteiramente levada e deixa de existir. As fontes que o gesto
     /// não tocou **não aparecem aqui** — o path delas não é mexido.
-    pub(crate) remainder: Vec<(usize, Vec<VecPath>)>,
+    pub remainder: Vec<(usize, Vec<VecPath>)>,
 }
 
 impl BuildResult {
-    pub(crate) fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.merged.is_empty() && self.remainder.is_empty()
     }
 }
 
 /// O gesto de Shape Builder em curso.
-pub(crate) struct BuildSession {
+pub struct BuildSession {
     /// As faces, em MUNDO (as formas entram assadas — a booleana precisa de um frame só).
-    pub(crate) arr: Arrangement,
+    pub arr: Arrangement,
     /// Os ids das formas de origem, **alinhados com `arr.sources()`** (mesma ordem, mesmo
     /// comprimento: `open` descarta as abertas e as que sumiram). São eles que o `build_up`
     /// consome.
-    pub(crate) sources: Vec<VecPathId>,
+    pub sources: Vec<VecPathId>,
     /// A seleção (em z) para a qual esta sessão foi aberta, e a impressão digital da
     /// geometria+pose dela. O `upkeep` reabre a sessão quando qualquer um dos dois muda —
     /// senão o arranjo seguiria descrevendo formas que já não estão ali.
-    pub(crate) opened_for: SourceKey,
+    pub opened_for: SourceKey,
     /// As faces que o dedo já pintou, na ordem em que foram tocadas.
-    pub(crate) marked: Vec<FaceId>,
+    pub marked: Vec<FaceId>,
     /// A face sob o cursor agora (o realce que segue o mouse mesmo sem botão apertado).
-    pub(crate) hover: Option<FaceId>,
+    pub hover: Option<FaceId>,
     /// Alt: o gesto SUBTRAI em vez de unir. Fixado no press — trocar de modo no meio do
     /// arrasto faria o mesmo gesto significar duas coisas.
-    pub(crate) subtract: bool,
+    pub subtract: bool,
     /// Entre o press e o release.
-    pub(crate) dragging: bool,
+    pub dragging: bool,
 }
 
 /// A identidade da entrada do arranjo: quem, com que pose, e com que geometria.
@@ -81,10 +88,10 @@ pub(crate) struct BuildSession {
 /// **Detector de mudança, não hash criptográfico:** id, nº de vértices, a soma das âncoras e
 /// o afim. Reabrir o arranjo é o que impede o véu de descrever a forma onde ela *estava* (o
 /// arranjo é assado em MUNDO; se a pose muda, ele mente).
-pub(crate) type SourceKey = Vec<(VecPathId, usize, [f64; 2], ph2d_vec_scene::Xform)>;
+pub type SourceKey = Vec<(VecPathId, usize, [f64; 2], ph2d_vec_scene::Xform)>;
 
 /// A impressão digital da seleção `ids` (na ordem dada).
-pub(crate) fn source_key(scene: &VecScene, xforms: &VecXforms, ids: &[VecPathId]) -> SourceKey {
+pub fn source_key(scene: &VecScene, xforms: &VecXforms, ids: &[VecPathId]) -> SourceKey {
     ids.iter()
         .filter_map(|id| {
             let p = scene.paths().iter().find(|p| p.id == *id)?;
@@ -103,11 +110,7 @@ pub(crate) fn source_key(scene: &VecScene, xforms: &VecXforms, ids: &[VecPathId]
 impl BuildSession {
     /// Abre a sessão para as formas `ids` (ordem de z, fundo → topo), assando cada uma no
     /// MUNDO. `None` com menos de 2 formas fechadas — não há região para pintar.
-    pub(crate) fn open(
-        scene: &VecScene,
-        xforms: &VecXforms,
-        ids: &[VecPathId],
-    ) -> Option<BuildSession> {
+    pub fn open(scene: &VecScene, xforms: &VecXforms, ids: &[VecPathId]) -> Option<BuildSession> {
         // `sources` e `arr.sources()` têm de ficar ALINHADOS: uma forma aberta (ou que
         // sumiu) sai da lista de ids também, senão o índice `i` do arranjo apontaria para o
         // id errado — e o `build_up` consumiria a forma errada.
@@ -143,7 +146,7 @@ impl BuildSession {
     }
 
     /// O cursor andou (mundo): atualiza o realce e, se estiver arrastando, PINTA a face.
-    pub(crate) fn touch(&mut self, world: [f64; 2]) {
+    pub fn touch(&mut self, world: [f64; 2]) {
         let face = self.arr.face_at(world);
         self.hover = face;
         if let (true, Some(f)) = (self.dragging, face)
@@ -162,7 +165,7 @@ impl BuildSession {
     /// As duas são a MESMA conta (a única diferença é se o que foi pintado é entregue ou
     /// jogado fora), e é isso que garante que "pintar tudo e unir" e "pintar tudo e
     /// subtrair" sejam exatamente complementares.
-    pub(crate) fn resolve(&mut self) -> BuildResult {
+    pub fn resolve(&mut self) -> BuildResult {
         if self.marked.is_empty() {
             return BuildResult::default();
         }
@@ -247,11 +250,7 @@ impl BuildSession {
 ///
 /// Mora aqui, e não no gesto, porque é a metade da regra que se pode PROVAR sem `App`: é
 /// esta função que decide o que é destruído. O `build_up` é só a ponte com o frame.
-pub(crate) fn commit(
-    scene: &mut VecScene,
-    sources: &[VecPathId],
-    result: BuildResult,
-) -> Vec<VecPathId> {
+pub fn commit(scene: &mut VecScene, sources: &[VecPathId], result: BuildResult) -> Vec<VecPathId> {
     let touched: Vec<VecPathId> = result
         .remainder
         .iter()

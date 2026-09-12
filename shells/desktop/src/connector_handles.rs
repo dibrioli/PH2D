@@ -31,12 +31,7 @@
 use ph2d_ecs::{Anchor, ConnectorEnd};
 use ph2d_vec_scene::{VecPathId, VecScene, VecXforms, Xform, xform_of};
 
-/// Qual das duas pontas.
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub(crate) enum EndSide {
-    Start,
-    End,
-}
+use ph2d_app_vec::connector_drag::EndSide;
 
 /// Meia-largura da zona do centro, em fração da caixa. Largar dentro dela = voltar ao
 /// automático. `0.2` ⇒ os 40% centrais de cada eixo — grande o bastante para ser fácil de
@@ -198,24 +193,6 @@ use ph2d_ecs::{Entity, VecConnector};
 mod gesture;
 pub(crate) use gesture::view;
 
-/// O que a pressão agarrou.
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub(crate) enum Grab {
-    /// Uma das duas pontas (o círculo).
-    End(EndSide),
-    /// Um ponto de passagem (o quadradinho), pelo índice.
-    Waypoint(usize),
-    /// **O CORPO da linha, ainda sem nada criado** — o waypoint só nasce se o gesto virar um
-    /// ARRASTO. `usize` = o índice em que ele entrará.
-    ///
-    /// Isto existe por causa de um conflito real: o **duplo-clique** num conector abre o rótulo
-    /// dele, e o primeiro clique do par caía no corpo da linha. Criando o waypoint já no `Down`,
-    /// todo duplo-clique fincava um ponto de passagem antes de abrir o texto. Um clique e um
-    /// arrasto **não são o mesmo gesto**, e a fronteira entre eles é o movimento — não a
-    /// pressão.
-    Body(usize),
-}
-
 /// O quanto o cursor precisa andar (em múltiplos do raio da alça) para uma pressão no corpo da
 /// linha virar um waypoint. Abaixo disso é um CLIQUE, e o clique pertence ao duplo-clique.
 const BODY_DRAG_MIN_K: f64 = 0.6;
@@ -230,22 +207,6 @@ const BODY_DRAG_MIN_K: f64 = 0.6;
 #[must_use]
 pub(crate) fn body_became_a_drag(start: [f64; 2], now: [f64; 2], handle_r: f64) -> bool {
     (now[0] - start[0]).hypot(now[1] - start[1]) >= handle_r * BODY_DRAG_MIN_K
-}
-
-/// O arrasto de uma alça (Down..Up).
-#[derive(Clone, Debug)]
-pub(crate) struct HandleDrag {
-    pub(crate) path: VecPathId,
-    grab: Grab,
-    /// A ponta como ela **estava** (só para [`Grab::End`]). Durante o arrasto a ponta vira
-    /// `Free` (para a linha seguir o cursor ao vivo, que é o preview), e o largar resolve a
-    /// partir DAQUI — senão o vínculo original se perderia no meio do caminho e "afastar sem
-    /// soltar" viraria "soltar".
-    original: ConnectorEnd,
-    /// O waypoint NASCEU neste gesto — se o gesto for cancelado, ele é desfeito.
-    born_now: bool,
-    /// Onde a pressão começou (mundo) — a régua do limiar que separa o clique do arrasto.
-    start: [f64; 2],
 }
 
 /// A menor distância do ponto `p` ao segmento `a`–`b`.

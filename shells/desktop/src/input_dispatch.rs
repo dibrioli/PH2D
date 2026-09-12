@@ -2777,7 +2777,7 @@ impl App {
             [f64::from(w[0]), f64::from(w[1])],
         );
         // O dedo MOVEU: a parada deixa de ser "nascida num clique" e o release não a desfaz.
-        self.vec_width_grab = Some(crate::width_handles::Grab {
+        self.vec_width_grab = Some(ph2d_app_vec::width_grab::Grab {
             created: false,
             ..grab
         });

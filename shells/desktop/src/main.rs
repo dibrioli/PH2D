@@ -409,7 +409,6 @@ mod sculpt3d_absent;
 mod sculpt3d_bake_gesture_tests;
 #[cfg(feature = "sculpt3d")]
 mod sculpt3d_host;
-mod shape_build;
 mod shape_build_gesture;
 /// O BAKE da folha — as peças passam a ser N janelas para UMA textura (plano §7.3, W5.2).
 mod sheet_bake;
@@ -950,7 +949,7 @@ impl App {
             morph_machines: Default::default(),
             vec_blend_spines: crate::blend_live::BlendSpines::new(),
             vec_label_pending: None,
-            vec_label_poses: crate::label_live::LabelPoses::new(),
+            vec_label_poses: ph2d_app_vec::state::LabelPoses::new(),
             offset_live: crate::offset_live::OffsetLive::default(),
             vec_live_drawn: ph2d_vec_render::LiveGeometry::new(),
             profile_live: crate::profile_live::ProfileLive::default(),

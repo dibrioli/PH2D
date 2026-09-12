@@ -5145,6 +5145,7 @@ dependencies = [
  "ph2d-vec-render",
  "ph2d-vec-scene",
  "ph2d-vec-svg",
+ "ph2d-vec-text",
  "ph2d-vector",
  "ph2d-vector-font",
  "wgpu",

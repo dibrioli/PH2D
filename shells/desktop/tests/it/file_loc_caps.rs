@@ -44,7 +44,7 @@ const FILE_OVERAGE_OK: &[(&str, usize, &str)] = &[
     ),
     (
         "main.rs",
-        1347,
+        1346,
         "crate-root module hub — the 80+ `mod` declarations are an",
     ),
     (

@@ -1229,10 +1229,10 @@ pub(crate) struct App {
     /// cena desde o Down e o componente já está na entidade: o "preview" do arrasto É o
     /// conector de verdade, re-cozido pela MESMA `route` a cada frame — o que se vê é o que
     /// se obtém, e não há um segundo caminho de desenho para divergir. `None` = sem gesto.
-    pub(crate) vec_connect: Option<crate::connector_gesture::ConnectorDrag>,
+    pub(crate) vec_connect: Option<ph2d_app_vec::connector_drag::ConnectorDrag>,
     /// O arrasto de uma **alça de ponta** de conector (os dois círculos que reposicionam onde a
     /// linha encosta na forma). `None` fora do gesto.
-    pub(crate) vec_conn_handle: Option<crate::connector_handles::HandleDrag>,
+    pub(crate) vec_conn_handle: Option<ph2d_app_vec::connector_drag::HandleDrag>,
     /// O conector recém-FECHADO (Up), esperando a entidade dele nascer no `vec_entities::sync`
     /// para receber o componente. Um clique rápido (Down e Up no mesmo frame) fecha o gesto
     /// antes de qualquer `sync` — sem esta fila de um item, a linha ficaria na cena sem
@@ -1370,7 +1370,7 @@ pub(crate) struct App {
     /// A pose que o passe dos rótulos escreveu no frame anterior, por rótulo. É o que distingue
     /// "o hospedeiro se moveu" (dirigir) de "o USUÁRIO arrastou o rótulo" (absorver no offset) —
     /// um `Transform` diferente do que gravamos só pode ter vindo do gizmo. Runtime-only.
-    pub(crate) vec_label_poses: crate::label_live::LabelPoses,
+    pub(crate) vec_label_poses: ph2d_app_vec::state::LabelPoses,
     /// O **cozimento do Offset VIVO** — a geometria derivada que o `dispatch` desenha no lugar
     /// da fonte (`ph2d_ecs::VecOffset`). Runtime-only e memoizado: o documento guarda a curva
     /// autorada, e isto é o que se VÊ.
@@ -1463,7 +1463,7 @@ pub(crate) struct App {
     pub(crate) vec_offset_mirrored: Option<ph2d_vec_scene::VecPathId>,
     /// A alça de LARGURA agarrada agora (plano 25 §5). Runtime-only: o que o documento guarda é o
     /// `VecStrokeProfile`, e isto é só qual parada o dedo está a mover.
-    pub(crate) vec_width_grab: Option<crate::width_handles::Grab>,
+    pub(crate) vec_width_grab: Option<ph2d_app_vec::width_grab::Grab>,
     /// O caminho de REFERÊNCIA da cena de smoke do Width Tool, à espera de ganhar o perfil no
     /// frame seguinte (o componente precisa de uma entidade, e ela nasce no `sync`).
     pub(crate) vec_width_ref: Option<ph2d_vec_scene::VecPathId>,
@@ -1510,7 +1510,7 @@ pub(crate) struct App {
     ///
     /// Vive entre frames de propósito: o arranjo MEMOIZA a geometria de cada região
     /// visitada, e reabri-lo por frame faria todo hover pagar a booleana de novo.
-    pub(crate) vec_build: Option<crate::shape_build::BuildSession>,
+    pub(crate) vec_build: Option<ph2d_app_vec::shape_build::BuildSession>,
     /// ⭐ **O CADEADO de proporção do padrão de textura** (plano 33, W10) — mexer num eixo do
     /// tamanho leva o outro pelo mesmo factor.
     ///
@@ -1546,7 +1546,7 @@ pub(crate) struct App {
     pub(crate) guide_drag: Option<crate::guide_gesture::GuideDrag>,
     /// Edição de texto em curso (modo `DrawMode::Text`): o ponto de inserção, o
     /// conteúdo e os glyphs já na cena. `None` = sem cursor de texto ativo.
-    pub(crate) vec_text_edit: Option<crate::vec_text::VecTextEdit>,
+    pub(crate) vec_text_edit: Option<ph2d_app_vec::text_edit::VecTextEdit>,
     /// Tamanho (world) que a próxima sessão de texto começa e que o slider Size do
     /// painel edita. Persiste entre sessões (é o default corrente do usuário).
     pub(crate) vec_text_size: f64,
@@ -1603,7 +1603,7 @@ pub(crate) struct App {
     /// `None` quando ele não aponta nada. O realce desenha-o e o clique apaga-o, **pela mesma
     /// resposta**: numa ferramenta destrutiva, acender uma coisa e apagar outra é o pior defeito
     /// possível.
-    pub(crate) vec_trim_hit: Option<crate::vec_trim::TrimHit>,
+    pub(crate) vec_trim_hit: Option<ph2d_app_vec::trim::TrimHit>,
     /// ⭐⭐⭐ **A FACE que o Balde vai preencher** (plano 40) — a região sob o cursor neste quadro,
     /// em MUNDO, e `None` quando ele não aponta região nenhuma. O realce desenha-a e o clique
     /// deposita-a, **pela mesma resposta**.
@@ -1634,7 +1634,7 @@ pub(crate) struct App {
     // A prosa de cada um viajou com ele; ver `sculpt3d/shell_state.rs`.
     /// Espelho da última sincronia de seleção canvas ↔ Hierarquia (ADR-0110): diz
     /// **quem** mudou neste frame, e por isso quem manda. Ver `sync_selection`.
-    pub(crate) vec_sel: crate::vec_selection::VecSelSync,
+    pub(crate) vec_sel: ph2d_app_vec::selection_sync::VecSelSync,
     /// TOOL_PIVOT: world-space center of the selected sprite's CONTENT
     /// bbox (non-transparent pixels), computed once (lazily, on the
     /// first CTRL-held move) per MovePivot drag and reused as a snap

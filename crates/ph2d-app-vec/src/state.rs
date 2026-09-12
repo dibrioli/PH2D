@@ -145,3 +145,13 @@ pub struct VecState {
     /// A geometria do realce, em MUNDO — derivada do [`Self::vec_trim_hit`] no mesmo quadro.
     pub trim_piece: Vec<ph2d_vec_scene::VecPath>,
 }
+
+/// A pose que ESTE passe escreveu no frame anterior, por rótulo. Runtime-only (não vai para o
+/// save nem para o undo): o pior que um cache perdido causa é um frame de absorção idempotente
+/// — o estado restaurado é auto-consistente (`centro = âncora + offset`), então re-absorver
+/// devolve o MESMO offset.
+///
+/// ⚠️ Desceu da shell (`label_live.rs`) em 2026-09-12 (`line/render-loop`, A9 da auditoria de
+/// arquitectura): hoje a instância dela é o campo `vec_label_poses` da `App`, e o passe dos
+/// rótulos, que continua na shell, recebe-a por referência.
+pub type LabelPoses = std::collections::BTreeMap<ph2d_vec_scene::VecPathId, ph2d_ecs::Transform>;

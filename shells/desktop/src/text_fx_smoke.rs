@@ -30,7 +30,7 @@ use ph2d_vec_scene::effect::{FxEntry, PathEffect};
 use ph2d_vec_scene::fx_zigzag::ZigZagSpec;
 use ph2d_vec_scene::{Paint, Rgba8, VecPathId};
 
-use crate::vec_text::VecTextEdit;
+use ph2d_app_vec::text_edit::VecTextEdit;
 
 /// Tamanho do texto em unidades de MUNDO. A cena vive numa caixa de ~±3.5, então isto enche o
 /// quadro sem sair dele — e um glifo grande é o que torna a rugosidade legível.

@@ -26,18 +26,12 @@
 //!    rótulo saltar de volta ao centro no instante em que o usuário o solta; quem SEMPRE absorve
 //!    o desprende da forma (o offset engoliria o movimento do hospedeiro, e o alvo nunca mudaria).
 
-use std::collections::BTreeMap;
-
 use ph2d_ecs::{Entity, Name, SimWorld, Transform, VecConnector, VecLabel};
 use ph2d_vec_scene::{VecPathId, VecScene, VecXforms, xform_of};
 
 use ph2d_vec_entities::entities::VecEntityMap;
 
-/// A pose que ESTE passe escreveu no frame anterior, por rótulo. Runtime-only (não vai para o
-/// save nem para o undo): o pior que um cache perdido causa é um frame de absorção idempotente
-/// — o estado restaurado é auto-consistente (`centro = âncora + offset`), então re-absorver
-/// devolve o MESMO offset.
-pub(crate) type LabelPoses = BTreeMap<VecPathId, Transform>;
+use ph2d_app_vec::state::LabelPoses;
 
 /// Amostras por segmento cúbico ao achatar a rota de um conector. O mesmo número que as bboxes
 /// de curva do documento usam — a rota é quase sempre uma polilinha (handles coincidentes), e aí
@@ -364,7 +358,7 @@ fn label_of(
 /// carrega a string, a família e os eixos), e um `enum` do tamanho da maior seria copiado inteiro
 /// no caminho comum — o do duplo-clique que não achou rótulo nenhum.
 enum LabelHit {
-    Reopen(VecPathId, Box<crate::vec_text::VecTextEdit>),
+    Reopen(VecPathId, Box<ph2d_app_vec::text_edit::VecTextEdit>),
     New(VecPathId, [f64; 2]),
 }
 
@@ -421,7 +415,7 @@ impl crate::app_state::App {
                 // O rótulo herda o Style ATIVO do painel, como qualquer texto.
                 let (fill, stroke) =
                     crate::vec_glyph::resolve_style(&self.vec_pen.style(), self.vec_px_to_world());
-                self.vec_text_edit = Some(crate::vec_text::VecTextEdit {
+                self.vec_text_edit = Some(ph2d_app_vec::text_edit::VecTextEdit {
                     // A âncora é só a semente do caret na 1ª letra: quem manda na pose é o
                     // [`upkeep`], que a re-deriva do hospedeiro a cada frame.
                     origin: anchor,

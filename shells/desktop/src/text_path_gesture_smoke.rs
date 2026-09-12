@@ -25,7 +25,7 @@
 use ph2d_ecs::VecShape;
 use ph2d_vec_scene::{Paint, Rgba8, StrokeSpec, VecPath, VecPathId, VecVertex, VertexKind};
 
-use crate::vec_text::VecTextEdit;
+use ph2d_app_vec::text_edit::VecTextEdit;
 
 /// Tamanho do texto em unidades de MUNDO.
 const SIZE: f64 = 0.55;

@@ -16,8 +16,8 @@ use ph2d_vec_scene::{VecPathId, VecScene};
 use ph2d_vector_font::AxisTag;
 
 use crate::vec_glyph::text_to_compound_path;
-use crate::vec_text::VecTextEdit;
 use crate::vec_text_object::{align_from_u8, axes_of_params, layout_of_params};
+use ph2d_app_vec::text_edit::VecTextEdit;
 use ph2d_vec_entities::entities::VecEntityMap;
 
 /// REABRE um objeto de texto já finalizado como SESSÃO de digitação — é o que torna a
@@ -226,7 +226,7 @@ mod tests {
     /// reconstruída reproduz a pose ATUAL.
     #[test]
     fn reopening_a_moved_text_keeps_it_where_the_user_left_it() {
-        use crate::vec_text::VecTextEdit;
+        use ph2d_app_vec::text_edit::VecTextEdit;
         let mut sim = SimWorld::default();
         let mut scene = VecScene::new();
         let mut map = VecEntityMap::new();

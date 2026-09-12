@@ -17,16 +17,7 @@
 
 use ph2d_vec_scene::{VecPath, VecPathId, VecScene, VecVertex, VecXforms, trim_tool};
 
-/// **O pedaço que o cursor está a apontar.** É o que o realce desenha e o que o clique apaga — a
-/// mesma resposta, pela mesma porta.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub(crate) struct TrimHit {
-    pub(crate) path: VecPathId,
-    /// O índice do contorno na ordem canónica (`trim_tool::contours_of`): `0` = primário.
-    pub(crate) contour: usize,
-    pub(crate) de: f64,
-    pub(crate) ate: f64,
-}
+use ph2d_app_vec::trim::TrimHit;
 
 /// A geometria COZIDA de um caminho, no espaço LOCAL de `alvo`.
 fn cozido_em(path: &VecPath, xforms: &VecXforms, alvo: VecPathId) -> Option<VecPath> {

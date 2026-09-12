@@ -1,9 +1,9 @@
-//! O GESTO do Shape Builder (`impl App`) — módulo irmão de [`crate::shape_build`], que é a
+//! O GESTO do Shape Builder (`impl App`) — módulo irmão de [`ph2d_app_vec::shape_build`], que é a
 //! regra pura. A separação é a do conector: o que decide fica testável sem `App`, sem
 //! câmera e sem mundo; aqui mora só a ponte com o frame.
 
 use crate::App;
-use crate::shape_build::{BuildSession, source_key};
+use ph2d_app_vec::shape_build::{BuildSession, source_key};
 use ph2d_vec_scene::VecPathId;
 
 impl App {
@@ -116,7 +116,7 @@ impl App {
         let Some(gfx) = self.gfx.as_mut() else { return };
         // A regra do que morre e do que fica vive em `shape_build::commit` — provável sem
         // `App`, e é o que os gates exercem.
-        let sel = crate::shape_build::commit(&mut gfx.vec_scene, &sources, result);
+        let sel = ph2d_app_vec::shape_build::commit(&mut gfx.vec_scene, &sources, result);
         self.vec_pen.select_many(&sel);
         // A sessão morre com o gesto: a arte mudou, e o `upkeep` do próximo frame reabre o
         // arranjo sobre o que ficou.

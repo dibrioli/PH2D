@@ -111,6 +111,8 @@ ph2d-vector-font = { path = "../ph2d-vector-font" }
 ph2d-panel-vector = { path = "../ph2d-panel-vector" }
 # As fontes (a família que o artista escolhe) moram na folha `ph2d-system-fonts` (auditoria A1, 2026-09-12).
 ph2d-system-fonts = { path = "../ph2d-system-fonts" }
+# O `TextAlign` da sessão de texto (`text_edit.rs`, A9 2026-09-12) mora com o layout que o lê.
+ph2d-vec-text = { path = "../ph2d-vec-text" }
 
 # ⚠️ **A feature ESPELHA a da shell, e isso não é zelo — é o que o `mod` dizia.** O
 # `vec_font_preview` estava atrás de `#[cfg(feature = "panel-vector")]` no `main.rs`, logo a

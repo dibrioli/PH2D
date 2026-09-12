@@ -16,7 +16,7 @@ use ph2d_ecs::VecShape;
 use ph2d_vec_scene::{Paint, Rgba8, VecPathId};
 
 use crate::smoke_script::Step;
-use crate::vec_text::VecTextEdit;
+use ph2d_app_vec::text_edit::VecTextEdit;
 
 /// Tamanho em unidades de MUNDO. A cena vive numa caixa de ~±3,5, então isto deixa a frase
 /// legível e larga o bastante para o corte ser óbvio.

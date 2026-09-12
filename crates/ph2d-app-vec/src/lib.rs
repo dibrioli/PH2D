@@ -69,6 +69,25 @@
 //! [HOWTO §1.2]: ../../../docs/IntegracaoMultiAgente/HOWTO_partir_uma_familia_da_shell.md
 
 pub mod appearance;
+pub mod align_live;
+pub mod blend_live;
+pub mod connector_live;
+pub mod connector_panel;
+pub mod contour_live;
+pub mod expand;
+pub mod fx_atlas;
+pub mod fx_bridge;
+pub mod fx_bridge_dispatch;
+pub mod fx_dump;
+pub mod fx_live_hit;
+pub mod fx_live_resolve;
+pub mod morph_live;
+pub mod offset_live;
+pub mod paint_dilate;
+pub mod pattern_live;
+pub mod profile_live;
+pub mod symmetry_live;
+pub mod widget_live;
 pub mod bindings;
 pub mod blend;
 pub mod bucket;

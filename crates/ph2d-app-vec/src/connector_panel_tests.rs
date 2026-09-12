@@ -1,4 +1,4 @@
-//! Testes do [`crate::vec_connector_panel`] — módulo irmão (teto de 600 LOC por arquivo).
+//! Testes do [`crate::connector_panel`] — módulo irmão (teto de 600 LOC por arquivo).
 //!
 //! O que eles provam, em ordem de importância:
 //!

@@ -89,34 +89,53 @@ fn settle_origins_skips_every_component_whose_geometry_is_derived() {
 /// em [`DERIVED`] **e** no filter.
 #[test]
 fn every_host_that_writes_world_geometry_is_in_the_list() {
-    let dir = fs::read_dir(concat!(env!("CARGO_MANIFEST_DIR"), "/src")).expect("src/");
-    let hosts: Vec<(String, String)> = dir
-        .filter_map(Result::ok)
-        .filter_map(|e| e.file_name().into_string().ok())
-        .filter(|n| n.ends_with(".rs"))
+    // ⛔⛔ **DUAS ÁRVORES desde a W2 Fase C, e o PISO foi quem o descobriu.** O `connector_live`, o
+    // `blend_live` e o `morph_live` — os três hosts que a mensagem abaixo nomeia — mudaram-se para
+    // `ph2d-app-vec`, e este censo passou a ler **1**. ⭐ Sem o piso ele leria uma lista quase vazia
+    // e `missing.is_empty()` seria trivialmente verdadeiro: *o censo que varre por directório fica
+    // verde a varrer NADA* (HOWTO §2.7), e é precisamente contra isto que o piso existe.
+    // ⚠️ **Ele fica MAIS FORTE do que era antes da mudança**, porque agora nomeia as duas árvores.
+    const ARVORES: [&str; 2] = [
+        concat!(env!("CARGO_MANIFEST_DIR"), "/src"),
+        concat!(env!("CARGO_MANIFEST_DIR"), "/../../crates/ph2d-app-vec/src"),
+    ];
+    let hosts: Vec<(String, String)> = ARVORES
+        .iter()
+        .flat_map(|raiz| {
+            fs::read_dir(raiz)
+                .unwrap_or_else(|e| panic!("{raiz} nao foi lido: {e}"))
+                .filter_map(Result::ok)
+                .filter_map(move |e| {
+                    let n = e.file_name().into_string().ok()?;
+                    Some((n, (*raiz).to_string()))
+                })
+        })
+        .filter(|(n, _)| n.ends_with(".rs"))
         // `vec_expand.rs` também força a identidade — no sentido OPOSTO ao que este gate
         // vigia: o RETUNE do Offset devolve a entidade à identidade exatamente PARA que o
         // `settle_origins` a re-assente neste frame (geometria de mundo re-inserida sob
         // pose já assentada dobraria a pose — `9c0446df`). E o skip do preview VIVO dele
         // não é por componente: é pela lista `drawing`, cobrado pelo gate irmão
         // `the_live_offset_preview_is_a_gesture_to_the_settle`.
-        .filter(|n| n != "vec_expand.rs")
+        .filter(|(n, _)| n != "vec_expand.rs" && n != "expand.rs")
         // ⚠️ **Os módulos de teste irmãos não são hosts.** O detector procura um LITERAL
         // (`Transform::IDENTITY;`), e uma fixture que monte um mundo com ele é indistinguível de
         // um produtor de geometria de mundo — mas ela nunca corre no produto, então exigir-lhe um
         // componente em `DERIVED` seria pedir que um teste declarasse uma regra de renderização.
         // Excluir aqui não cega o gate: um host de verdade mora em código de produto.
-        .filter(|n| !n.ends_with("_tests.rs"))
-        .filter_map(|n| {
-            let src = fs::read_to_string(format!("{}/src/{n}", env!("CARGO_MANIFEST_DIR"))).ok()?;
+        .filter(|(n, _)| !n.ends_with("_tests.rs"))
+        .filter_map(|(n, raiz)| {
+            let src = fs::read_to_string(format!("{raiz}/{n}")).ok()?;
             src.contains(WORLD_GEOMETRY_MARK).then_some((n, src))
         })
         .collect();
     assert!(
         hosts.len() >= 3,
-        "só {} hosts de geometria de mundo — o conector, o blend e o morph existem, então o \
-         detector cegou (alguém mudou a forma de forçar a identidade?)",
-        hosts.len()
+        "só {} hosts de geometria de mundo ({:?}) — o conector, o blend e o morph existem nas \
+         duas árvores varridas, então o detector cegou (alguém mudou a forma de forçar a \
+         identidade, ou um host mudou de crate outra vez?)",
+        hosts.len(),
+        hosts.iter().map(|(n, _)| n.as_str()).collect::<Vec<_>>()
     );
 
     for (host, src) in &hosts {

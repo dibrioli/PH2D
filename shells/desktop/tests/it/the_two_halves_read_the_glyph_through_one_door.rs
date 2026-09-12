@@ -17,9 +17,18 @@
 
 /// Os dois construtores de parâmetro de pele, e o que cada um faz com o glifo.
 const HALVES: [(&str, &str); 2] = [
-    ("../src/widget_live.rs", "a ponte do canvas"),
-    // ⚠️ **As duas metades deixaram de morar na mesma árvore** (W2/L4 Fase B, 2.ª volta): o plano
-    //    do painel gerado saiu para a crate da família; a ponte do canvas ficou na shell.
+    // ⚠️⚠️ **AS DUAS METADES VOLTARAM A MORAR NA MESMA ÁRVORE** — a da CRATE (W2 Fase C). Na 2.ª
+    //    volta da Fase B foi o plano do painel que saiu; agora saiu também a ponte do canvas.
+    //
+    // ⛔⛔ **E esta é a irmã PERIGOSA da §2.6 do HOWTO, o gémeo em RUNTIME.** Ela lê por
+    //    `read_to_string` de caminho fixo, não por `include_str!` — logo mover o ficheiro **não**
+    //    parte a compilação: o gate compila e explode só **quando corre**. ⚠️ E um `#[ignore]` ou
+    //    um filtro e ele nunca corre. Foi a suíte `--test it` corrida À PARTE que o apanhou, que é
+    //    exactamente a regra 2 do §1 do bloco desta rodada (o `nextest-impacted` não a alcança).
+    (
+        "../../../crates/ph2d-app-vec/src/widget_live.rs",
+        "a ponte do canvas",
+    ),
     (
         "../../../crates/ph2d-app-vec/src/ui_panel_spec.rs",
         "o plano do painel gerado",

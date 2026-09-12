@@ -28,7 +28,7 @@ fn pick_stroke() -> ph2d_vec_scene::StrokeSpec {
 ///
 /// É o que torna a escolha VISÍVEL: o artista clica as formas e vê a cadeia se formar (a linha
 /// cresce do 1º clique), então sabe a ordem que o Blend vai usar sem um número na tela.
-pub(crate) fn pick_preview(
+pub fn pick_preview(
     scene: &VecScene,
     xforms: &VecXforms,
     picks: &[VecPathId],
@@ -61,7 +61,7 @@ pub(crate) fn pick_preview(
 /// As formas FECHADAS selecionadas, na ordem de **z** (a de `paths()`), capadas em
 /// [`super::MAX_BLEND_SOURCES`]. É o que o botão "Blend" liga — a ordem da cadeia é a de z, como o
 /// "Make" do Illustrator (formas abertas não têm interior para interpolar, então são descartadas).
-pub(crate) fn selected_closed_in_z(
+pub fn selected_closed_in_z(
     scene: &VecScene,
     pen: &ph2d_vec_edit::PenTool,
 ) -> Vec<VecPathId> {
@@ -113,7 +113,7 @@ fn blends_touched_by(
 /// **Basta QUALQUER objeto do blend estar selecionado** ([`blends_touched_by`]) — a linha (modo
 /// Node) ou uma das formas (modo Select). Antes só o spine contava, e como a linha não é selecionável
 /// no Select, o slider ficava inerte justo no modo em que se mexe nas formas (Enio 2026-07-15).
-pub(crate) fn set_selected_steps(
+pub fn set_selected_steps(
     sim: &mut SimWorld,
     map: &VecEntityMap,
     pen: &ph2d_vec_edit::PenTool,
@@ -142,7 +142,7 @@ pub(crate) fn set_selected_steps(
 /// memória, a detecção do [`super::recook`] compararia o spine BENT ainda na cena com o último auto
 /// memorizado (diferentes) e o RE-autoraria no mesmo frame — o reset não pegaria. Com a memória
 /// vazia, a detecção não dispara (`is_some_and` é falso) e o ramo automático reescreve a reta.
-pub(crate) fn reset_spine(
+pub fn reset_spine(
     sim: &mut SimWorld,
     map: &VecEntityMap,
     pen: &ph2d_vec_edit::PenTool,
@@ -183,7 +183,7 @@ pub(crate) fn reset_spine(
 /// Devolve **uma sequência de z (fundo → topo) por blend expandido**, para o chamador enfileirar em
 /// `vec_restack`: quem manda no z é a ÁRVORE (ADR-0110), e as entidades dos passos só nascem no
 /// `sync` seguinte — por isso o pedido espera em vez de ser escrito aqui.
-pub(crate) fn expand(
+pub fn expand(
     sim: &mut SimWorld,
     scene: &mut VecScene,
     map: &VecEntityMap,
@@ -250,7 +250,7 @@ pub(crate) fn expand(
 /// **É a saída do blend pelo canvas.** A linha não é selecionável no modo Select (ADR-0128), então o
 /// Delete não a alcança; sem este botão, desfazer um blend exigiria caçar "Blend N" na Hierarquia ou
 /// bater Ctrl+Z até antes da criação — e o Ctrl+Z leva junto tudo o que veio depois.
-pub(crate) fn release(
+pub fn release(
     sim: &SimWorld,
     scene: &mut VecScene,
     map: &VecEntityMap,
@@ -280,7 +280,7 @@ pub(crate) fn release(
 /// TODA âncora é de uma fonte, e o `zip` 1-a-1 as liga (inclusive as do MEIO da cadeia). Se o spine
 /// tiver MAIS vértices que fontes (pontos de dobra extras — hoje só via smoke), só a 1ª e a última
 /// âncora são fontes garantidas.
-pub(crate) fn anchor_source_pairs(n_verts: usize, live: &[VecPathId]) -> Vec<(usize, VecPathId)> {
+pub fn anchor_source_pairs(n_verts: usize, live: &[VecPathId]) -> Vec<(usize, VecPathId)> {
     if n_verts == live.len() {
         live.iter().copied().enumerate().collect()
     } else if n_verts >= 2 && live.len() >= 2 {
@@ -305,7 +305,7 @@ pub(crate) fn anchor_source_pairs(n_verts: usize, live: &[VecPathId]) -> Vec<(us
 /// **Não autora o spine** ao mover uma âncora (mover a forma ≠ curvar a curva): quando o spine é
 /// automático, atualiza a âncora na memória do auto (`spines`) para o novo centro, e a detecção do
 /// `recook` não a confunde com uma edição de curva (só mexer numa alça ou num ponto de dobra autora).
-pub(crate) fn drag_spine_anchors_move_sources(
+pub fn drag_spine_anchors_move_sources(
     sim: &mut SimWorld,
     scene: &VecScene,
     map: &VecEntityMap,

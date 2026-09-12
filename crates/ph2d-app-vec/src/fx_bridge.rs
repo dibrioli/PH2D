@@ -17,7 +17,7 @@ use ph2d_vec_scene::{VecPathId, VecScene};
 /// A seção é por-caminho: com dois selecionados, *"a pilha"* não tem referente, e oferecer
 /// controles que escrevem num deles em silêncio seria pior que não os oferecer.
 #[must_use]
-pub(crate) fn sole_path(selected: &[VecPathId]) -> Option<VecPathId> {
+pub fn sole_path(selected: &[VecPathId]) -> Option<VecPathId> {
     match selected {
         [id] => Some(*id),
         _ => None,
@@ -26,7 +26,7 @@ pub(crate) fn sole_path(selected: &[VecPathId]) -> Option<VecPathId> {
 
 /// A pilha do caminho, traduzida para o que o painel desenha.
 #[must_use]
-pub(crate) fn stack_view(scene: &VecScene, id: VecPathId) -> Vec<FxRowView> {
+pub fn stack_view(scene: &VecScene, id: VecPathId) -> Vec<FxRowView> {
     scene.path(id).map_or_else(Vec::new, |p| {
         p.effects
             .iter()
@@ -81,7 +81,7 @@ fn falloff_role(effects: &[FxEntry], row: usize) -> FalloffRole {
 ///
 /// Recusa acima de [`MAX_PATH_EFFECTS`]: o painel para de oferecer o Add nesse ponto, mas a
 /// ponte não depende de o painel ter razão.
-pub(crate) fn add(scene: &mut VecScene, id: VecPathId, kind: usize) {
+pub fn add(scene: &mut VecScene, id: VecPathId, kind: usize) {
     let Some(p) = scene.path_mut(id) else { return };
     if p.effects.len() >= MAX_PATH_EFFECTS {
         return;
@@ -92,7 +92,7 @@ pub(crate) fn add(scene: &mut VecScene, id: VecPathId, kind: usize) {
 }
 
 /// Remove o efeito da linha `row`.
-pub(crate) fn remove(scene: &mut VecScene, id: VecPathId, row: usize) {
+pub fn remove(scene: &mut VecScene, id: VecPathId, row: usize) {
     let Some(p) = scene.path_mut(id) else { return };
     if row < p.effects.len() {
         p.effects.remove(row);
@@ -103,7 +103,7 @@ pub(crate) fn remove(scene: &mut VecScene, id: VecPathId, row: usize) {
 ///
 /// A ORDEM muda a geometria (ADR-0132), então isto é uma edição de documento como outra
 /// qualquer. Nas bordas é no-op: o painel nem oferece o botão ali.
-pub(crate) fn reorder(scene: &mut VecScene, id: VecPathId, row: usize, up: bool) {
+pub fn reorder(scene: &mut VecScene, id: VecPathId, row: usize, up: bool) {
     let Some(p) = scene.path_mut(id) else { return };
     let other = if up {
         row.checked_sub(1)
@@ -121,7 +121,7 @@ pub(crate) fn reorder(scene: &mut VecScene, id: VecPathId, row: usize, up: bool)
 /// Ajusta o parâmetro `param` do efeito da linha `row`. `track` é a posição NORMALIZADA
 /// `0..=1` que o painel entregou; a faixa real é do EFEITO, e é aqui que ela é aplicada —
 /// o painel não a conhece de um lado só, e converter lá seria uma 2ª cópia da faixa.
-pub(crate) fn set_param(scene: &mut VecScene, id: VecPathId, row: usize, param: usize, track: f64) {
+pub fn set_param(scene: &mut VecScene, id: VecPathId, row: usize, param: usize, track: f64) {
     let Some(p) = scene.path_mut(id) else { return };
     let Some(e) = p.effects.get_mut(row) else {
         return;
@@ -135,7 +135,7 @@ pub(crate) fn set_param(scene: &mut VecScene, id: VecPathId, row: usize, param: 
 
 /// Alterna um parâmetro de CAIXINHA. O painel desenha um botão (não um slider), então o clique
 /// não traz valor — quem sabe o estado atual é a cena.
-pub(crate) fn toggle_param(scene: &mut VecScene, id: VecPathId, row: usize, param: usize) {
+pub fn toggle_param(scene: &mut VecScene, id: VecPathId, row: usize, param: usize) {
     let Some(p) = scene.path_mut(id) else { return };
     let Some(e) = p.effects.get_mut(row) else {
         return;
@@ -147,7 +147,7 @@ pub(crate) fn toggle_param(scene: &mut VecScene, id: VecPathId, row: usize, para
 /// Este parâmetro é uma caixinha? O dispatch precisa saber: um clique num slider não existe, e
 /// num toggle não há valor a ler.
 #[must_use]
-pub(crate) fn is_toggle(scene: &VecScene, id: VecPathId, row: usize, param: usize) -> bool {
+pub fn is_toggle(scene: &VecScene, id: VecPathId, row: usize, param: usize) -> bool {
     scene
         .path(id)
         .and_then(|p| p.effects.get(row))
@@ -159,7 +159,7 @@ pub(crate) fn is_toggle(scene: &VecScene, id: VecPathId, row: usize, param: usiz
 ///
 /// Os parâmetros ficam INTACTOS: é essa a diferença entre desarmar e zerar, e é por isso que o
 /// "ligado" mora na ENTRADA e não no efeito.
-pub(crate) fn toggle_enabled(scene: &mut VecScene, id: VecPathId, row: usize) {
+pub fn toggle_enabled(scene: &mut VecScene, id: VecPathId, row: usize) {
     let Some(p) = scene.path_mut(id) else { return };
     if let Some(e) = p.effects.get_mut(row) {
         e.enabled = !e.enabled;

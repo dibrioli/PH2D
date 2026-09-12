@@ -25,7 +25,7 @@ use ph2d_vec_scene::VecPathId;
 
 /// Quem já foi despejado — o recook roda por frame, e um despejo por frame enche o disco.
 #[derive(Default)]
-pub(crate) struct FxDump {
+pub struct FxDump {
     done: BTreeSet<u64>,
 }
 
@@ -35,7 +35,7 @@ impl FxDump {
     // ⚠️ Oito argumentos porque um despejo honesto precisa do que a GPU recebeu E do que ela
     // devolveu; agrupá-los esconderia justamente o par (geometria, saída) que se confronta.
     #[allow(clippy::too_many_arguments)]
-    pub(crate) fn maybe(
+    pub fn maybe(
         &mut self,
         gpu: &GpuContext,
         id: VecPathId,

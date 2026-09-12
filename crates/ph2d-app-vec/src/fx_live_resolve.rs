@@ -18,7 +18,7 @@ use ph2d_vector::Affine;
 /// ⚠️ O deslocamento é arredondado a pixel INTEIRO — o passe amostra o halo por `textureLoad`, e
 /// posição sub-pixel numa sombra não é algo que se veja (a textura já é alinhada ao pixel da tela).
 #[must_use]
-pub(crate) fn resolve_ops(filter: &VecFilter, camera: Affine) -> Vec<FxOpGpu> {
+pub fn resolve_ops(filter: &VecFilter, camera: Affine) -> Vec<FxOpGpu> {
     let [a, b, c, d, _, _] = camera.as_coeffs();
     let cam_scale = ((a * a + b * b).sqrt() + (c * c + d * d).sqrt()) as f32 * 0.5;
     filter

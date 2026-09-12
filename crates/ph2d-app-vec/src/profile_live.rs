@@ -18,7 +18,7 @@
 //!
 //! # Uma porta produz o desenho, e é a MESMA que assa
 //!
-//! [`crate::vec_expand::power_stroke_layers`] — o preview desenha o que ela devolve e o Apply
+//! [`crate::expand::power_stroke_layers`] — o preview desenha o que ela devolve e o Apply
 //! insere o que ela devolve. Uma segunda rota ("um aproximador só para o preview") faria a forma
 //! **SALTAR** no instante do Apply, que é o defeito que o ADR-0128 pagou cinco vezes. Há gate
 //! comparando as duas saídas byte a byte.
@@ -58,7 +58,7 @@ struct Memo {
 
 /// O cozimento vivo de todos os perfis de largura da cena, com memo por caminho.
 #[derive(Default)]
-pub(crate) struct ProfileLive {
+pub struct ProfileLive {
     memo: BTreeMap<VecPathId, Memo>,
     live: LiveGeometry,
 }
@@ -66,13 +66,13 @@ pub(crate) struct ProfileLive {
 impl ProfileLive {
     /// A geometria derivada deste frame — o que o [`ph2d_vec_render::dispatch`] desenha no lugar
     /// da fonte. Vazia = nenhum perfil vivo na cena, e o desenho é o de sempre.
-    pub(crate) fn live(&self) -> &LiveGeometry {
+    pub fn live(&self) -> &LiveGeometry {
         &self.live
     }
 
     /// Re-coze o que mudou. Chamado uma vez por frame, DEPOIS do `sync` (senão uma forma
     /// recém-criada ainda não tem entidade e o componente dela não seria encontrado).
-    pub(crate) fn recook(
+    pub fn recook(
         &mut self,
         scene: &VecScene,
         sim: &SimWorld,
@@ -94,7 +94,7 @@ impl ProfileLive {
                 .get(&path.id)
                 .is_some_and(|m| m.stops == stops && m.world == world);
             if !hit {
-                let out = crate::vec_expand::power_stroke_layers(&world, &stops);
+                let out = crate::expand::power_stroke_layers(&world, &stops);
                 self.memo.insert(
                     path.id,
                     Memo {
@@ -126,7 +126,7 @@ impl ProfileLive {
 
     /// Esquece tudo — o load de projeto e o restore de undo trocam a cena inteira debaixo do
     /// memo, e os `VecPathId` são reciclados entre documentos.
-    pub(crate) fn forget(&mut self) {
+    pub fn forget(&mut self) {
         self.memo.clear();
         self.live.clear();
     }
@@ -134,7 +134,7 @@ impl ProfileLive {
 
 /// O perfil vivo de `id`, se houver. Porta única: o cozimento, o `Apply` e o publish para o
 /// painel perguntam AQUI.
-pub(crate) fn spec_of(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> Option<WidthStops> {
+pub fn spec_of(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> Option<WidthStops> {
     let &bits = map.get(&id)?;
     sim.world()
         .get::<VecStrokeProfile>(Entity::from_bits(bits))
@@ -145,7 +145,7 @@ pub(crate) fn spec_of(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> Opti
 ///
 /// Um perfil UNIFORME **REMOVE** o componente em vez de guardar um perfil inerte — ver o
 /// cabeçalho. Devolve quantas entidades mudaram.
-pub(crate) fn arm(
+pub fn arm(
     sim: &mut SimWorld,
     map: &VecEntityMap,
     ids: &[VecPathId],
@@ -182,11 +182,11 @@ pub(crate) fn arm(
 ///
 /// É o único momento em que os vértices da fita passam a existir no documento. Cada forma é
 /// assada com o perfil DELA (não com os sliders), pela porta única
-/// [`crate::vec_expand::expand_selection`] — a mesma por onde entra o caminho numérico.
+/// [`crate::expand::expand_selection`] — a mesma por onde entra o caminho numérico.
 ///
 /// `false` = não havia perfil vivo nenhum na seleção (e quem chamou segue pelo caminho de
 /// sempre, lendo os sliders). **UM passo de undo** para o gesto inteiro.
-pub(crate) fn materialise(
+pub fn materialise(
     scene: &mut VecScene,
     sim: &SimWorld,
     pen: &mut ph2d_vec_edit::PenTool,
@@ -204,16 +204,16 @@ pub(crate) fn materialise(
     }
     let pre = scene.clone();
     let touched =
-        crate::vec_expand::materialise_selection(scene, pen, xforms, ids, |id, local, xf| {
+        crate::expand::materialise_selection(scene, pen, xforms, ids, |id, local, xf| {
             let Some((_, stops)) = live.iter().find(|(i, _)| *i == id) else {
                 return Vec::new(); // fora do comando: fica onde está, e segue selecionado
             };
             // A fita de largura nasce em MUNDO, então a pose entra ANTES do motor.
             let mut world = local;
             ph2d_vec_scene::bake_xform(&mut world, xf);
-            crate::vec_expand::expand_layers(
+            crate::expand::expand_layers(
                 &world,
-                crate::vec_expand::Expand::PowerStroke {
+                crate::expand::Expand::PowerStroke {
                     stops: stops.clone(),
                 },
                 0.0,
@@ -234,7 +234,7 @@ pub(crate) fn materialise(
 /// [`ph2d_tool_vector::params`] — antes eram literais repetidos no `render_loop`, uma segunda
 /// cópia de quatro números que o painel já publica.
 #[must_use]
-pub(crate) fn preset_from_store(store: &WidgetStore) -> WidthProfile {
+pub fn preset_from_store(store: &WidgetStore) -> WidthProfile {
     let mult = |id, default: f64| {
         store
             .slider(id)
@@ -267,7 +267,7 @@ pub(crate) fn preset_from_store(store: &WidgetStore) -> WidthProfile {
 /// que o descrevam, e inventar quatro faria os sliders mentirem sobre a forma. O espelho da
 /// seleção então deixa os knobs onde estão — que é a resposta honesta a *"isto não cabe aqui"*.
 #[must_use]
-pub(crate) fn preset_of(stops: &WidthStops) -> Option<WidthProfile> {
+pub fn preset_of(stops: &WidthStops) -> Option<WidthProfile> {
     let s = stops.as_slice();
     let [a, m, b] = s else { return None };
     (a.pos == 0.0 && b.pos == 1.0).then_some(WidthProfile {
@@ -288,7 +288,7 @@ pub(crate) fn preset_of(stops: &WidthStops) -> Option<WidthProfile> {
 /// para decidir qual perfil do catálogo está ACESO. Se esta função convertesse por conta própria,
 /// clicar um perfil escreveria trilhos que a fileira não reconheceria, e a linha que o artista
 /// acabou de escolher ficaria apagada.
-pub(crate) fn write_preset_to_store(store: &mut WidgetStore, p: &WidthProfile) {
+pub fn write_preset_to_store(store: &mut WidgetStore, p: &WidthProfile) {
     const IDS: [ph2d_editor::NodeId; 4] = [
         ph2d_editor::ids::VECTOR_EXPAND_W_START,
         ph2d_editor::ids::VECTOR_EXPAND_W_MID,

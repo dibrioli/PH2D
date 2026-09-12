@@ -59,6 +59,15 @@ ph2d-vec-svg = { path = "../ph2d-vec-svg" }
 # seu bloqueador no handoff da Fase B.
 ph2d-unique-name = { path = "../ph2d-unique-name" }
 ph2d-vec-boolean = { path = "../ph2d-vec-boolean" }
+# ⚠️ **A 10a e a 11a invisiveis, e as duas chegaram com as LEIS VIVAS da Fase C**: o roteamento do
+# conector (`ph2d-vec-connect`) e a conversao de cor da pilha de aparencia (`ph2d-color`).
+ph2d-color = { path = "../ph2d-color" }
+# ⚠️ **A 12a, a 13a e a 14a invisiveis, e as tres vieram com o DUMP de diagnostico dos efeitos**
+# (`PH2D_FX_DUMP`): ele le uma textura de volta da GPU, logo fala `wgpu` directamente.
+ph2d-gpu = { path = "../ph2d-gpu" }
+ph2d-painter-effects = { path = "../ph2d-painter-effects" }
+wgpu = "29.0.4"
+ph2d-vec-connect = { path = "../ph2d-vec-connect" }
 # ⚠️ **MAIS DUAS na FASE C, e sao a OITAVA e a NONA invisiveis desta familia** (HOWTO §1.3): o
 # editor de widget autorado traduz o rotulo de cada `WidgetKind` (`ph2d_i18n::tr`) e a costura das
 # setas fala a chave da maquina de estados. Dentro da shell as duas eram dependencia do binario e

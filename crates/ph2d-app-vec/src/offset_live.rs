@@ -59,7 +59,7 @@ struct Memo {
 
 /// O cozimento vivo de todos os offsets da cena, com memo por caminho.
 #[derive(Default)]
-pub(crate) struct OffsetLive {
+pub struct OffsetLive {
     memo: BTreeMap<VecPathId, Memo>,
     live: LiveGeometry,
 }
@@ -67,13 +67,13 @@ pub(crate) struct OffsetLive {
 impl OffsetLive {
     /// A geometria derivada deste frame — o que o [`ph2d_vec_render::dispatch`] desenha no lugar
     /// da fonte. Vazia = nenhum offset vivo na cena, e o desenho é o de sempre.
-    pub(crate) fn live(&self) -> &LiveGeometry {
+    pub fn live(&self) -> &LiveGeometry {
         &self.live
     }
 
     /// Re-coze o que mudou. Chamado uma vez por frame, DEPOIS do `sync` (senão uma forma
     /// recém-criada ainda não tem entidade e o componente dela não seria encontrado).
-    pub(crate) fn recook(
+    pub fn recook(
         &mut self,
         scene: &VecScene,
         sim: &SimWorld,
@@ -98,8 +98,8 @@ impl OffsetLive {
                 let out = ph2d_vec_boolean::offset_path(
                     &world,
                     spec.d,
-                    crate::vec_expand::join_of_code(spec.join),
-                    crate::vec_expand::side_of_code(spec.side),
+                    crate::expand::join_of_code(spec.join),
+                    crate::expand::side_of_code(spec.side),
                 );
                 self.memo.insert(
                     path.id,
@@ -124,7 +124,7 @@ impl OffsetLive {
 
     /// Esquece tudo — o load de projeto e o restore de undo trocam a cena inteira debaixo do
     /// memo, e os `VecPathId` são reciclados entre documentos.
-    pub(crate) fn forget(&mut self) {
+    pub fn forget(&mut self) {
         self.memo.clear();
         self.live.clear();
     }
@@ -132,7 +132,7 @@ impl OffsetLive {
 
 /// O offset vivo de `id`, se houver. Porta única: o cozimento, o `Apply`, o `Convert to Curves`
 /// e o publish para o painel perguntam AQUI.
-pub(crate) fn spec_of(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> Option<VecOffset> {
+pub fn spec_of(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> Option<VecOffset> {
     let &bits = map.get(&id)?;
     sim.world()
         .get::<VecOffset>(Entity::from_bits(bits))
@@ -147,7 +147,7 @@ pub(crate) fn spec_of(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> Opti
 /// com um efeito invisível pendurado.
 ///
 /// Devolve quantas entidades mudaram.
-pub(crate) fn arm(
+pub fn arm(
     sim: &mut SimWorld,
     map: &VecEntityMap,
     ids: &[VecPathId],
@@ -185,7 +185,7 @@ pub(crate) fn arm(
 ///
 /// Não arma nada: um caminho sem offset vivo continua sem. É o que faz clicar "Round" sem ter
 /// arrastado o slider não inventar um offset de lugar nenhum.
-pub(crate) fn retune(sim: &mut SimWorld, map: &VecEntityMap, ids: &[VecPathId], knobs: (u8, u8)) {
+pub fn retune(sim: &mut SimWorld, map: &VecEntityMap, ids: &[VecPathId], knobs: (u8, u8)) {
     for id in ids {
         let Some(&bits) = map.get(id) else { continue };
         let e = Entity::from_bits(bits);
@@ -209,7 +209,7 @@ pub(crate) fn retune(sim: &mut SimWorld, map: &VecEntityMap, ids: &[VecPathId], 
 ///
 /// É o único momento em que os vértices do offset passam a existir no documento. Cada forma é
 /// assada com o `VecOffset` DELA (não com o slider), pela porta única
-/// [`crate::vec_expand::expand_selection`] — a mesma por onde entra o caminho numérico.
+/// [`crate::expand::expand_selection`] — a mesma por onde entra o caminho numérico.
 ///
 /// O componente não precisa ser removido: a forma-fonte SAI da cena (remove+insere), e o
 /// `vec_entities::sync` do frame seguinte despawna a entidade dela com o componente dentro. A
@@ -219,7 +219,7 @@ pub(crate) fn retune(sim: &mut SimWorld, map: &VecEntityMap, ids: &[VecPathId], 
 ///
 /// `false` = não havia offset vivo nenhum na seleção (e quem chamou segue pelo caminho de
 /// sempre). **UM passo de undo** para o gesto inteiro.
-pub(crate) fn materialise(
+pub fn materialise(
     scene: &mut VecScene,
     sim: &SimWorld,
     pen: &mut ph2d_vec_edit::PenTool,
@@ -237,18 +237,18 @@ pub(crate) fn materialise(
     }
     let pre = scene.clone();
     let touched =
-        crate::vec_expand::materialise_selection(scene, pen, xforms, ids, |id, local, xf| {
+        crate::expand::materialise_selection(scene, pen, xforms, ids, |id, local, xf| {
             let Some((_, spec)) = live.iter().find(|(i, _)| *i == id) else {
                 return Vec::new(); // fora do comando: fica onde está, e segue selecionado
             };
             // A distância do offset é de MUNDO, então a pose entra ANTES do motor.
             let mut world = local;
             ph2d_vec_scene::bake_xform(&mut world, xf);
-            crate::vec_expand::expand_layers(
+            crate::expand::expand_layers(
                 &world,
-                crate::vec_expand::Expand::Offset {
-                    join: crate::vec_expand::join_of_code(spec.join),
-                    side: crate::vec_expand::side_of_code(spec.side),
+                crate::expand::Expand::Offset {
+                    join: crate::expand::join_of_code(spec.join),
+                    side: crate::expand::side_of_code(spec.side),
                 },
                 spec.d,
             )

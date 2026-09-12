@@ -1,6 +1,6 @@
 //! **Conectores vivos** — a linha que gruda em duas formas e as SEGUE.
 //!
-//! Espelho exato do padrão da *Live Shape* ([`crate::vec_shape_live`]): o componente
+//! Espelho exato do padrão da *Live Shape* ([`crate::shape_live`]): o componente
 //! [`VecConnector`] guarda a **relação** (a quem cada ponta se prende, e como a rota é
 //! desenhada) e a geometria é uma **função pura** dela, re-cozida a cada frame. Ninguém
 //! "move" um conector: move-se uma forma, e a linha se refaz.
@@ -37,7 +37,7 @@ use ph2d_vec_entities::entities::VecEntityMap;
 /// **O que a linha enxerga** — paredes e alvos. Módulo FILHO (o arquivo está no teto de LOC), e
 /// o ponto onde as duas arestas do laço rótulo↔rota são cortadas. Ver [`walls`].
 #[path = "connector_walls.rs"]
-pub(crate) mod walls;
+pub mod walls;
 
 /// O lado por onde cada ponta saiu no frame ANTERIOR (`[start, end]`), por conector.
 ///
@@ -45,7 +45,7 @@ pub(crate) mod walls;
 /// diagonal** da caixa faz os dois lados empatarem, e o menor tremor do arrasto troca a saída
 /// a cada quadro. Runtime-only (não vai para o save nem para o undo) — o pior que um cache
 /// perdido causa é a linha escolher o lado do zero, uma vez.
-pub(crate) type SideCache = BTreeMap<VecPathId, [Option<Dir>; 2]>;
+pub type SideCache = BTreeMap<VecPathId, [Option<Dir>; 2]>;
 
 /// O quanto o spread pode deslizar ao longo da face, como fração da meia-extensão dela. A saída
 /// tem de continuar **na face**: passando disto o ponto escorrega pela quina, e a linha parece
@@ -401,7 +401,7 @@ fn cook(
 ///
 /// Roda DEPOIS de `vec_entities::sync` (a entidade existe) e depois de `vec_transform::build`
 /// (os afins das formas-alvo já são os deste frame), e ANTES do render.
-pub(crate) fn recook(
+pub fn recook(
     sim: &mut SimWorld,
     scene: &mut VecScene,
     map: &VecEntityMap,
@@ -481,7 +481,7 @@ pub(crate) fn recook(
 /// escreve (senão o change-tick da ECS marcaria a entidade suja a cada frame do arrasto).
 ///
 /// `true` se a entidade existia e o componente está lá.
-pub(crate) fn attach(
+pub fn attach(
     sim: &mut SimWorld,
     map: &VecEntityMap,
     id: VecPathId,
@@ -513,7 +513,7 @@ pub(crate) fn attach(
 /// Roda entre o `vec_entities::sync` (a entidade existe) e o [`recook`] (que a lê). O
 /// `pending` é uma fila de um item: um clique rápido fecha o gesto ANTES de qualquer sync, e
 /// sem ele a linha ficaria na cena sem `VecConnector` — um traço inerte que não segue ninguém.
-pub(crate) fn upkeep(
+pub fn upkeep(
     sim: &mut SimWorld,
     scene: &VecScene,
     map: &VecEntityMap,

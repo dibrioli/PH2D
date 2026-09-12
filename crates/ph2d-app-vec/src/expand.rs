@@ -20,7 +20,7 @@ use ph2d_vec_scene::{
 // tornaria o comando incapaz de exprimir o perfil que uma alça do Width Tool autora — e o
 // `materialise` teria de assar por uma segunda rota, que é exatamente o que o ADR proíbe.
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) enum Expand {
+pub enum Expand {
     /// A borda anda `d` (negativo encolhe), com quinas em `join`, no(s) contorno(s) `side`.
     Offset { join: LineJoin, side: OffsetSide },
     /// O traço vira forma preenchida.
@@ -34,7 +34,7 @@ pub(crate) enum Expand {
 ///
 /// A junção vem do PAINEL (`ph2d_panel_vector::expand_join`) e não de uma cópia daqui: uma
 /// segunda tabela divergiria no dia em que aparecesse um 4º estilo de quina.
-pub(crate) fn expand_for_id(id: ph2d_editor::NodeId) -> Option<Expand> {
+pub fn expand_for_id(id: ph2d_editor::NodeId) -> Option<Expand> {
     if id == ph2d_editor::ids::VECTOR_EXPAND_OFFSET_PATH {
         Some(Expand::Offset {
             join: offset_join(),
@@ -56,7 +56,7 @@ pub(crate) fn expand_for_id(id: ph2d_editor::NodeId) -> Option<Expand> {
 /// O código do painel → o estilo de quina. **Porta única** — o painel, o componente
 /// [`ph2d_ecs::VecOffset`] e o motor falam o mesmo `u8`, e a tradução mora aqui só uma vez:
 /// uma 2ª tabela divergiria no dia em que aparecesse um 4º estilo de quina.
-pub(crate) fn join_of_code(code: u8) -> LineJoin {
+pub fn join_of_code(code: u8) -> LineJoin {
     match code {
         1 => LineJoin::Round,
         2 => LineJoin::Bevel,
@@ -65,7 +65,7 @@ pub(crate) fn join_of_code(code: u8) -> LineJoin {
 }
 
 /// O código do painel → o contorno que anda. Porta única, como a junção.
-pub(crate) fn side_of_code(code: u8) -> OffsetSide {
+pub fn side_of_code(code: u8) -> OffsetSide {
     match code {
         0 => OffsetSide::Outer,
         1 => OffsetSide::Inner,
@@ -74,12 +74,12 @@ pub(crate) fn side_of_code(code: u8) -> OffsetSide {
 }
 
 /// A junção do Offset, lida do PAINEL (`ph2d_panel_vector::expand_join`).
-pub(crate) fn offset_join() -> LineJoin {
+pub fn offset_join() -> LineJoin {
     join_of_code(ph2d_panel_vector::expand_join())
 }
 
 /// Qual contorno o Offset move, lido do PAINEL.
-pub(crate) fn offset_side() -> OffsetSide {
+pub fn offset_side() -> OffsetSide {
     side_of_code(ph2d_panel_vector::expand_side())
 }
 
@@ -88,7 +88,7 @@ pub(crate) fn offset_side() -> OffsetSide {
 ///
 /// ⚠️ **Um passo de undo, não um por forma** — desfazer "o Expand" tem de custar um Ctrl+Z,
 /// não tantos quantos objetos estavam selecionados (a lição que o bake da física pagou).
-pub(crate) fn apply_vec_expand(
+pub fn apply_vec_expand(
     scene: &mut VecScene,
     history: &mut History,
     pen: &mut PenTool,
@@ -125,7 +125,7 @@ pub(crate) fn apply_vec_expand(
 /// assa primeiro e offseta depois (a distância é de MUNDO), a Simetria reflete primeiro e assa
 /// depois (o eixo é da FORMA). Se o `bake_xform` morasse neste laço, a simetria precisaria de um
 /// segundo laço — e o dia em que alguém corrigisse o z-order aqui, ele ficaria por corrigir lá.
-pub(crate) fn materialise_selection(
+pub fn materialise_selection(
     scene: &mut VecScene,
     pen: &mut PenTool,
     xforms: &VecXforms,
@@ -191,7 +191,7 @@ pub(crate) fn materialise_selection(
 /// continua existindo no lugar dela, agora sem traço (é o grupo de dois objetos que o
 /// Illustrator produz). Sem fill não sobra nada da original.
 #[must_use]
-pub(crate) fn expand_layers(world: &VecPath, cmd: Expand, d: f64) -> Vec<VecPath> {
+pub fn expand_layers(world: &VecPath, cmd: Expand, d: f64) -> Vec<VecPath> {
     match cmd {
         Expand::Offset { join, side } => ph2d_vec_boolean::offset_path(world, d, join, side),
         Expand::OutlineStroke => ink_layers(world, ph2d_vec_boolean::outline_stroke(world)),
@@ -205,7 +205,7 @@ pub(crate) fn expand_layers(world: &VecPath, cmd: Expand, d: f64) -> Vec<VecPath
 /// números do painel é uma FACE dela — o [`expand_layers`] converte a face e cai aqui. As duas
 /// chegam ao mesmo `power_stroke` e à mesma [`ink_layers`].
 #[must_use]
-pub(crate) fn power_stroke_layers(world: &VecPath, stops: &WidthStops) -> Vec<VecPath> {
+pub fn power_stroke_layers(world: &VecPath, stops: &WidthStops) -> Vec<VecPath> {
     ink_layers(world, ph2d_vec_boolean::power_stroke(world, stops))
 }
 
@@ -244,7 +244,7 @@ fn ink_layers(world: &VecPath, results: Vec<VecPath>) -> Vec<VecPath> {
 /// preview deixou de churnar a cena, então a bbox das FONTES não se move durante o arrasto.
 /// Multi-seleção usa a bbox da UNIÃO (um slider, um número). Seleção vazia/degenerada cai
 /// em `1.0` — inerte de toda forma (`zs.is_empty()`/`results` vazio no expand).
-pub(crate) fn offset_scale(scene: &VecScene, pen: &PenTool, xforms: &VecXforms) -> f64 {
+pub fn offset_scale(scene: &VecScene, pen: &PenTool, xforms: &VecXforms) -> f64 {
     let (mut lo, mut hi) = ([f64::INFINITY; 2], [f64::NEG_INFINITY; 2]);
     for id in pen.selected_paths() {
         if let Some((l, h)) = scene.path_world_curve_bbox(xforms, *id) {
@@ -263,7 +263,7 @@ pub(crate) fn offset_scale(scene: &VecScene, pen: &PenTool, xforms: &VecXforms) 
 /// Os dois knobs do Offset como o PAINEL os guarda (`join`, `side`) — a chave de mudança que o
 /// frame observa para retunar os offsets VIVOS da seleção. Porta única.
 #[must_use]
-pub(crate) fn expand_knobs() -> (u8, u8) {
+pub fn expand_knobs() -> (u8, u8) {
     (
         ph2d_panel_vector::expand_join(),
         ph2d_panel_vector::expand_side(),
@@ -271,9 +271,9 @@ pub(crate) fn expand_knobs() -> (u8, u8) {
 }
 
 #[cfg(test)]
-#[path = "vec_expand_tests.rs"]
+#[path = "expand_tests.rs"]
 mod tests;
 
 #[cfg(test)]
-#[path = "vec_expand_scale_tests.rs"]
+#[path = "expand_scale_tests.rs"]
 mod scale_tests;

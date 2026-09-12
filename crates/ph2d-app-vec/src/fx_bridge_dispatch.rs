@@ -11,7 +11,7 @@ use ph2d_vec_scene::{VecPathId, VecScene};
 
 /// O que um clique numa LINHA da pilha pede.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub(crate) enum FxRowAction {
+pub enum FxRowAction {
     /// O botão do rótulo remove aquele efeito.
     Remove,
     /// Sobe na pilha (a ordem muda a geometria — ADR-0132).
@@ -26,7 +26,7 @@ pub(crate) enum FxRowAction {
 
 /// O que um clique na seção pede.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub(crate) enum FxClick {
+pub enum FxClick {
     /// Põe um efeito do tipo `kind`.
     Add(usize),
     /// Age sobre a linha `row`.
@@ -40,7 +40,7 @@ pub(crate) enum FxClick {
 /// A varredura é sobre os TETOS — os ids são hashes de NOME, então não há aritmética que os
 /// inverta. Barato, e é o padrão que os presets do Envelope já usam.
 #[must_use]
-pub(crate) fn classify_click(id: ph2d_editor::ids::NodeId) -> Option<FxClick> {
+pub fn classify_click(id: ph2d_editor::ids::NodeId) -> Option<FxClick> {
     use ph2d_editor::ids as i;
     if id == i::VECTOR_FX_APPLY {
         return Some(FxClick::Apply);
@@ -77,7 +77,7 @@ pub(crate) fn classify_click(id: ph2d_editor::ids::NodeId) -> Option<FxClick> {
 
 /// A `(linha, parâmetro)` de um slider da pilha, ou `None`.
 #[must_use]
-pub(crate) fn classify_param(id: ph2d_editor::ids::NodeId) -> Option<(usize, usize)> {
+pub fn classify_param(id: ph2d_editor::ids::NodeId) -> Option<(usize, usize)> {
     use ph2d_editor::ids as i;
     (0..i::MAX_FX_ROWS).find_map(|r| {
         (0..i::MAX_FX_ROW_PARAMS)
@@ -92,7 +92,7 @@ pub(crate) fn classify_param(id: ph2d_editor::ids::NodeId) -> Option<(usize, usi
 /// mexer nela), o Toggle é resolvido consultando a CENA (o clique não traz valor, e um
 /// parâmetro de caixinha e um slider partilham o id), e o **bake vem por ÚLTIMO** — ele consome
 /// a pilha inteira, então tem de ver o que os outros três acabaram de escrever.
-pub(crate) fn apply(
+pub fn apply(
     scene: &mut VecScene,
     id: VecPathId,
     add: Option<usize>,

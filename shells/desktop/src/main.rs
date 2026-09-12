@@ -38,7 +38,7 @@
 //! - **M11** Vello text/widget overlay — needs surface-sharing pass.
 
 mod active_tool_mirror;
-mod align_live;
+pub(crate) use ph2d_app_vec::align_live;
 mod align_smoke;
 mod anchor_gizmo_drag;
 mod anchor_smoke;
@@ -90,7 +90,7 @@ mod audio_2d_smoke;
 /// que os le'. ⚠️ Deliberadamente FORA da feature `sculpt3d`: um objeto assado sobrevive ao modulo.
 /// Blend Objects vivos (ADR-0128): o objeto único que interpola 2..=5 formas e as segue
 /// (re-cook por frame). Espelha `connector_live`.
-mod blend_live;
+pub(crate) use ph2d_app_vec::blend_live;
 mod blend_smoke;
 /// ⭐ **O gesto do modo OSSO** (estudo 42 item 5): arrastar no vazio faz um osso, e o pai é o osso
 /// seleccionado — arrasto-arrasto-arrasto é uma cadeia.
@@ -158,8 +158,8 @@ mod component_smoke;
 mod connector_gesture;
 /// Conectores vivos: a linha que gruda em duas formas e as segue (re-cook por frame).
 mod connector_handles;
-mod connector_live;
-mod contour_live;
+pub(crate) use ph2d_app_vec::connector_live;
+pub(crate) use ph2d_app_vec::contour_live;
 /// A cena de smoke do **Contour** (`PH2D_BUILD_SMOKE=25`) — irmã de `build_smoke`, teto de LOC.
 mod contour_smoke;
 mod corner_handles;
@@ -205,19 +205,19 @@ mod forwarding;
 /// A cena de smoke da MOLDURA (`PH2D_BUILD_SMOKE=49`) — irmã de `build_smoke`, teto de LOC.
 mod frame_smoke;
 mod fx_adjust_smoke;
-mod fx_atlas;
+pub(crate) use ph2d_app_vec::fx_atlas;
 mod fx_blend_smoke;
-mod fx_bridge;
-mod fx_bridge_dispatch;
+pub(crate) use ph2d_app_vec::fx_bridge;
+pub(crate) use ph2d_app_vec::fx_bridge_dispatch;
 /// **FX raster VIVO** — o cozimento do `ph2d_ecs::VecFilter` (Blur/Glow/Drop Shadow, plano 24):
 /// isola a forma, borra/tinge, e injeta a imagem no z dela via `ph2d_vec_render::FxImages`.
-mod fx_dump;
+pub(crate) use ph2d_app_vec::fx_dump;
 mod fx_duotone_smoke;
 mod fx_gradient_map_smoke;
 mod fx_live;
-mod fx_live_hit;
+pub(crate) use ph2d_app_vec::fx_live_hit;
 mod fx_live_memo;
-mod fx_live_resolve;
+pub(crate) use ph2d_app_vec::fx_live_resolve;
 mod fx_morphology_smoke;
 mod fx_raster_smoke;
 mod fx_silhouette;
@@ -328,7 +328,7 @@ mod merge_layers;
 #[path = "modal_tests.rs"]
 mod modal_tests;
 mod morph_fade_smoke;
-mod morph_live;
+pub(crate) use ph2d_app_vec::morph_live;
 mod morph_machine_drive;
 // A LEI mudou-se para a folha `ph2d-vec-entities`; a CADEIA de gates dela fica, porque
 // atravessa o `morph_live`, o `vec_convert`, o `vec_ui_state_edit` e o `render_loop`.
@@ -350,7 +350,7 @@ mod node_reach_smoke;
 mod node_xy_smoke;
 /// **Expand** — os cliques de Offset Path / Outline Stroke (o motor é
 /// `ph2d_vec_boolean::expand`; aqui mora o que é de documento: z, pose e undo).
-mod offset_live;
+pub(crate) use ph2d_app_vec::offset_live;
 /// Onion settings modal — the shell half (ADR-0142 W3b): store→onion read-back + the title-band drag.
 mod onion_modal;
 /// ⭐⭐ **A cena da OPACIDADE das duas tintas** (`PH2D_BUILD_SMOKE=79`, plano 36 W6) — a estampa e o
@@ -360,7 +360,7 @@ mod painter_lock;
 mod palette_persist;
 /// A SONDA do drift de pan (`PH2D_PAN_DIAG=1`) — report do Enio de 2026-08-25.
 /// **Pattern Along Path** — o cozimento vivo do `VecPatternPath` (plano 23), irmão do `offset_live`.
-mod pattern_live;
+pub(crate) use ph2d_app_vec::pattern_live;
 mod pattern_path_smoke;
 /// ⛔⛔ **A MEDIÇÃO da costura do ladrilho** (plano 33, W10) — o amostrador do Vello grampeia os
 /// taps na fronteira do ladrilho em vez de dar a volta, e o `High` do vello 0.9+ triplicou a banda.
@@ -406,7 +406,7 @@ mod morph_arrow_seam_tests;
 #[cfg(test)]
 mod probe_cursor_grab;
 /// **A largura VIVA** — o cozimento do `VecStrokeProfile` (ADR-0148), irmão do `offset_live`.
-mod profile_live;
+pub(crate) use ph2d_app_vec::profile_live;
 /// A cena de smoke da **largura viva** (`PH2D_BUILD_SMOKE=41`) — irmã de `build_smoke`, teto de LOC.
 mod profile_smoke;
 mod project;
@@ -498,7 +498,7 @@ mod stagger_smoke;
 mod substrate_smoke;
 pub(crate) use ph2d_app_vec::svg_import;
 mod svg_import_smoke;
-mod symmetry_live;
+pub(crate) use ph2d_app_vec::symmetry_live;
 /// A cena de smoke da SIMETRIA de desenho (`PH2D_BUILD_SMOKE=46`) — irmã de `build_smoke`.
 mod symmetry_smoke;
 mod taper_smoke;
@@ -609,7 +609,7 @@ pub(crate) use ph2d_app_vec::component_edit as vec_component_edit;
 mod vec_component_general;
 /// O painel edita o CONECTOR selecionado (Route / Jetty / Spread) — resolve o valor
 /// EFETIVO que o painel exibe e aplica a edição a TODOS os conectores selecionados.
-mod vec_connector_panel;
+pub(crate) use ph2d_app_vec::connector_panel as vec_connector_panel;
 /// Diagnóstico do overlay vetorial (`PH2D_VEC_OVERLAY_DIAG=1`) — nomeia o dono de geometria fora
 /// do lugar, em vez de a adivinhar.
 mod vec_convert;
@@ -625,7 +625,7 @@ pub(crate) use ph2d_app_vec::driven_style as vec_driven_style;
 #[cfg(test)]
 #[path = "vec_entities_tests.rs"]
 mod vec_entities_tests;
-mod vec_expand;
+pub(crate) use ph2d_app_vec::expand as vec_expand;
 /// ⭐ A cena de smoke do **fade vetorial** (`PH2D_VEC_FADE_SMOKE=1`) — a linha do tempo a
 /// desvanecer um caminho, com e sem filtro raster.
 mod vec_fade_smoke;
@@ -661,7 +661,7 @@ pub(crate) use ph2d_app_vec::morph_edit as vec_morph_edit;
 pub(crate) use ph2d_app_vec::overlay as vec_overlay;
 pub(crate) use ph2d_app_vec::overlay_diag as vec_overlay_diag;
 /// O offset de CAD de uma camada da pilha (v22) — o memo do cozimento.
-mod vec_paint_dilate;
+pub(crate) use ph2d_app_vec::paint_dilate as vec_paint_dilate;
 pub(crate) use ph2d_app_vec::paint_stack as vec_paint_stack;
 pub(crate) use ph2d_app_vec::pencil_input as vec_pencil_input;
 /// O **Picker de caminho-guia** — o gesto de duas mãos partilhado pelo Pattern e pelo Text on Path.
@@ -709,10 +709,9 @@ mod weld_smoke;
 mod wetpaint_smoke;
 /// **O DESENHO É O GLIFO** — a porta única que normaliza a forma de um `IconButton` na caixa de
 /// 24×24. Ela é UMA porque o canvas e o codegen precisam do mesmo glifo por motivos diferentes.
-pub(crate) use ph2d_app_vec::widget_icon;
 /// **A PELE por-widget** (plano UI/UX W6.2) — uma forma marcada é pintada pelo pintor REAL do
 /// catálogo, no z dela. A ponte mora aqui porque só a shell alcança as duas metades.
-mod widget_live;
+pub(crate) use ph2d_app_vec::widget_live;
 mod widget_skin_smoke;
 mod width_handles;
 /// A cena de smoke do **Width Tool** (`PH2D_BUILD_SMOKE=42`) — irmã de `build_smoke`, teto de LOC.

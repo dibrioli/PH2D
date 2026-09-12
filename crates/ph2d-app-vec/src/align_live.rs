@@ -47,14 +47,14 @@ struct Memo {
 
 /// O alinhamento vivo de toda a cena, com memo por caminho.
 #[derive(Default)]
-pub(crate) struct AlignLive {
+pub struct AlignLive {
     memo: BTreeMap<VecPathId, Memo>,
 }
 
 impl AlignLive {
     /// **Aplica o alinhamento sobre o mapa vivo do frame.** Chamado DEPOIS dos cinco produtores
     /// e ANTES do `fx_silhouette` — a silhueta é do que se desenha, e o que se desenha já é isto.
-    pub(crate) fn recook(&mut self, scene: &VecScene, xforms: &VecXforms, live: &mut LiveGeometry) {
+    pub fn recook(&mut self, scene: &VecScene, xforms: &VecXforms, live: &mut LiveGeometry) {
         let mut touched: Vec<VecPathId> = Vec::new();
         for path in scene.paths() {
             // A entrada: o que o mapa já diz, ou a fonte assada em MUNDO (a mesma conversão do
@@ -105,7 +105,7 @@ impl AlignLive {
 
     /// Esquece tudo — o load de projeto e o restore de undo trocam a cena inteira debaixo do
     /// memo, e os `VecPathId` são reciclados entre documentos.
-    pub(crate) fn forget(&mut self) {
+    pub fn forget(&mut self) {
         self.memo.clear();
     }
 }

@@ -13,7 +13,7 @@
 /// comando, o valor e o alvo do picker), e três varreduras escritas à mão divergiriam na primeira
 /// linha nova.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub(crate) enum FilterHit {
+pub enum FilterHit {
     /// "Add \<tipo\>" — põe um degrau novo no fim da pilha.
     Add(u8),
     /// ✕ — apaga a linha (a última apaga o componente).
@@ -56,7 +56,7 @@ pub(crate) enum FilterHit {
 }
 
 /// Decodifica um id de painel para o controle da pilha que ele endereça.
-pub(crate) fn hit_of(id: ph2d_editor::NodeId) -> Option<FilterHit> {
+pub fn hit_of(id: ph2d_editor::NodeId) -> Option<FilterHit> {
     use ph2d_editor::ids as vid;
     for k in 0..vid::MAX_FILTER_KINDS {
         if id == vid::filter_add_id(k) {
@@ -131,7 +131,7 @@ pub(crate) fn hit_of(id: ph2d_editor::NodeId) -> Option<FilterHit> {
 /// chamadores, e duas cópias de um arredondamento divergem exactamente onde ninguém lê um número —
 /// numa swatch.
 #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-pub(crate) fn colour_bytes(c: [f32; 4]) -> [u8; 4] {
+pub fn colour_bytes(c: [f32; 4]) -> [u8; 4] {
     [
         (c[0].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
         (c[1].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
@@ -145,7 +145,7 @@ pub(crate) fn colour_bytes(c: [f32; 4]) -> [u8; 4] {
 /// Porta única do readback do picker, e ela existe porque o picker é o ÚNICO consumidor que precisa
 /// distinguir as duas swatches: para todo o resto (o dispatch, a varredura de seam) as duas são o
 /// mesmo tipo de controle. Escrita aqui, a shell não repete a enumeração dos dois variants.
-pub(crate) fn colour_target(id: ph2d_editor::NodeId) -> Option<(usize, ColourSlot)> {
+pub fn colour_target(id: ph2d_editor::NodeId) -> Option<(usize, ColourSlot)> {
     match hit_of(id)? {
         FilterHit::Color(r) => Some((r, ColourSlot::First)),
         FilterHit::ColorB(r) => Some((r, ColourSlot::Second)),
@@ -161,7 +161,7 @@ pub(crate) fn colour_target(id: ph2d_editor::NodeId) -> Option<(usize, ColourSlo
 /// depois"*. Com três alvos o booleano deixa de ser expressivo — e um terceiro caso dobrado num
 /// `else` escreveria na ponta escura toda vez que o artista pintasse um stop.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum ColourSlot {
+pub enum ColourSlot {
     /// A cor do halo / a ponta ESCURA.
     First,
     /// A ponta CLARA da rampa do Duotone.
@@ -179,7 +179,7 @@ pub(crate) enum ColourSlot {
 /// verde. Aqui a rota é observável, e a mutação sangra num `assert_eq!`.
 ///
 /// O `selected` é clampado à contagem VIVA: a rampa pode ter encolhido desde o último clique.
-pub(crate) fn apply_picked_colour(
+pub fn apply_picked_colour(
     op: &mut ph2d_ecs::FxOp,
     slot: ColourSlot,
     selected: usize,
@@ -210,7 +210,7 @@ pub(crate) fn apply_picked_colour(
 /// cada punho tem de ficar estável, senão o `+` re-liga os gestos abertos a outros stops.
 ///
 /// No-op no teto.
-pub(crate) fn add_stop(op: &mut ph2d_ecs::FxOp) {
+pub fn add_stop(op: &mut ph2d_ecs::FxOp) {
     let n = usize::from(op.stop_count).min(ph2d_ecs::FxOp::MAX_GRADIENT_STOPS);
     if n >= ph2d_ecs::FxOp::MAX_GRADIENT_STOPS {
         return;
@@ -256,7 +256,7 @@ pub(crate) fn add_stop(op: &mut ph2d_ecs::FxOp) {
 /// que difere do default de dois stops em 73 níveis de byte (gate
 /// `no_stops_is_the_painters_empty_ramp_which_is_not_the_two_stop_default`). Deixar o `−` chegar lá
 /// faria o artista atravessar uma descontinuidade que nada na tela explica.
-pub(crate) fn remove_stop(op: &mut ph2d_ecs::FxOp, sel: usize) {
+pub fn remove_stop(op: &mut ph2d_ecs::FxOp, sel: usize) {
     let n = usize::from(op.stop_count).min(ph2d_ecs::FxOp::MAX_GRADIENT_STOPS);
     if n <= 2 || sel >= n {
         return;
@@ -279,7 +279,7 @@ pub(crate) fn remove_stop(op: &mut ph2d_ecs::FxOp, sel: usize) {
 /// ⚠️ **Os stops são ordenados pela porta única do componente** (`FxOp::ramp_for_device`), porque a
 /// ordem de autoria é livre e o `gradient_sample` do Painter assume ASCENDENTE.
 #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-pub(crate) fn ramp_preview(op: &ph2d_ecs::FxOp) -> [[u8; 3]; ph2d_panel_vector::RAMP_PREVIEW_N] {
+pub fn ramp_preview(op: &ph2d_ecs::FxOp) -> [[u8; 3]; ph2d_panel_vector::RAMP_PREVIEW_N] {
     use ph2d_painter_effects::adjustments::{ColorStop, GradientInterp, GradientMapParams};
     let (stops, pos, n) = op.ramp_for_device();
     let params = GradientMapParams {

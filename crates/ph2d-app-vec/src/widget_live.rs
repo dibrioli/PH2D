@@ -54,7 +54,7 @@ use crate::widget_icon::icon_face;
 use ph2d_vec_entities::entities::VecEntityMap;
 
 /// A pele autorada de `id`, se houver. **Porta única**: o cozimento e o painel perguntam AQUI.
-pub(crate) fn spec_of(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> Option<VecWidget> {
+pub fn spec_of(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> Option<VecWidget> {
     let &bits = map.get(&id)?;
     sim.world()
         .get::<VecWidget>(Entity::from_bits(bits))
@@ -112,7 +112,7 @@ fn label_of(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> String {
 /// `None` quando o caminho não desenha nada, ou quando a moldura é degenerada: um controle de
 /// largura zero desenharia uma listra que o artista não consegue agarrar de volta.
 #[must_use]
-pub(crate) fn frame_of(
+pub fn frame_of(
     scene: &VecScene,
     xforms: &VecXforms,
     live: &LiveGeometry,
@@ -140,7 +140,7 @@ fn colour_of(fill: &Paint) -> [u8; 4] {
 /// ⚠️ Chamado DEPOIS do `sync` (senão uma forma recém-marcada ainda não tem entidade e o
 /// componente dela não seria encontrado) — a mesma ordem que o `offset_live::recook` exige.
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn build(
+pub fn build(
     scene: &VecScene,
     sim: &SimWorld,
     map: &VecEntityMap,

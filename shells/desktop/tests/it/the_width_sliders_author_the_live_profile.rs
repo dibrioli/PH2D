@@ -168,9 +168,16 @@ fn the_pencil_arms_its_profile_before_the_cook() {
 /// até o Apply"* é do tipo, não da disciplina.
 #[test]
 fn the_profile_cook_takes_the_scene_by_shared_reference() {
-    const COOK: &str = include_str!("../../src/profile_live.rs");
+    // ⚠️ **A LEI mudou de crate** (W2 Fase C): ela vive em `ph2d-app-vec`. ⭐ Este `include_str!`
+    // **falhou em tempo de COMPILAÇÃO** quando o ficheiro se mudou — a metade boa da §2.6.
+    // ⛔⛔ **E a agulha largou a VISIBILIDADE** (§2.13): atravessar a fronteira obrigou
+    // `pub(crate) fn` a virar `pub fn`, e uma agulha ancorada no modificador reprovaria **sem que a
+    // lei mudasse uma linha** — *ela mediria visibilidade, e visibilidade é exactamente o que uma
+    // fronteira nova muda por construção*. `fn recook(` sobrevive ao próximo movimento.
+    const COOK: &str =
+        include_str!("../../../../crates/ph2d-app-vec/src/profile_live.rs");
     let sig = COOK
-        .find("pub(crate) fn recook(")
+        .find("fn recook(")
         .expect("o `recook` sumiu do profile_live");
     let tail = &COOK[sig..(sig + 260).min(COOK.len())];
     assert!(
@@ -218,9 +225,10 @@ fn clicking_a_width_preset_writes_the_sliders_and_arms_the_shape() {
 /// recém-escolhido nunca acenderia.
 #[test]
 fn the_shell_writes_the_tracks_through_the_one_door() {
-    const LIVE: &str = include_str!("../../src/profile_live.rs");
+    const LIVE: &str =
+        include_str!("../../../../crates/ph2d-app-vec/src/profile_live.rs");
     let f = LIVE
-        .find("pub(crate) fn write_preset_to_store(")
+        .find("fn write_preset_to_store(")
         .expect("o `write_preset_to_store` sumiu do profile_live");
     let body = &LIVE[f..];
     let end = body.find("\n}\n").unwrap_or(body.len());

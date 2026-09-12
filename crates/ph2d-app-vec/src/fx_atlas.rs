@@ -21,17 +21,17 @@
 /// A célula de uma forma: o índice dela na lista que o chamador entregou, e a origem dela na
 /// textura do lote.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) struct Placement {
-    pub(crate) index: usize,
-    pub(crate) org: [u32; 2],
+pub struct Placement {
+    pub index: usize,
+    pub org: [u32; 2],
 }
 
 /// Um LOTE: uma textura, um render do Vello, e as formas que cabem nela.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct Batch {
-    pub(crate) w: u32,
-    pub(crate) h: u32,
-    pub(crate) cells: Vec<Placement>,
+pub struct Batch {
+    pub w: u32,
+    pub h: u32,
+    pub cells: Vec<Placement>,
 }
 
 /// Empacota `sizes` em lotes de lado máximo `max_side`.
@@ -43,7 +43,7 @@ pub(crate) struct Batch {
 /// Uma forma maior que `max_side` num eixo ganha o lote dela e a textura sai do tamanho dela: o
 /// chamador já a limitou (`MAX_FX_SIDE`), e devolver "não coube" faria a forma **desaparecer** —
 /// que é o modo de falha errado para um limite de recurso.
-pub(crate) fn pack(sizes: &[(u32, u32)], max_side: u32) -> Vec<Batch> {
+pub fn pack(sizes: &[(u32, u32)], max_side: u32) -> Vec<Batch> {
     if sizes.is_empty() {
         return Vec::new();
     }

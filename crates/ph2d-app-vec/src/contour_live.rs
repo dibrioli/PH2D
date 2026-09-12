@@ -104,20 +104,20 @@ impl Memo {
 
 /// O cozimento vivo de todos os contours da cena.
 #[derive(Default)]
-pub(crate) struct ContourLive {
+pub struct ContourLive {
     live: LiveGeometry,
     memo: BTreeMap<VecPathId, Memo>,
 }
 
 impl ContourLive {
     /// A geometria derivada deste frame — o que o `dispatch` desenha no lugar da fonte.
-    pub(crate) fn live(&self) -> &LiveGeometry {
+    pub fn live(&self) -> &LiveGeometry {
         &self.live
     }
 
     /// Re-coza todos os contours. Chamado uma vez por frame, DEPOIS do `sync` (senão uma forma
     /// recém-criada ainda não teria entidade e o componente não seria encontrado).
-    pub(crate) fn recook(
+    pub fn recook(
         &mut self,
         scene: &VecScene,
         sim: &SimWorld,
@@ -178,7 +178,7 @@ impl ContourLive {
             .get_mut(&id)
             .expect("o memo acabou de ser inserido se faltava");
         // Só coze o que FALTA — o prefixo sobrevive a mexer na contagem (§ do módulo).
-        let join = crate::vec_expand::join_of_code(spec.join);
+        let join = crate::expand::join_of_code(spec.join);
         while u16::try_from(memo.rings.len()).unwrap_or(u16::MAX) < spec.steps {
             let k = usize::from(u16::try_from(memo.rings.len()).unwrap_or(u16::MAX));
             let rank = u16::try_from(k + 1).expect("k < steps <= MAX_CONTOUR_STEPS");
@@ -228,7 +228,7 @@ impl ContourLive {
     /// Devolve **uma sequência de z (fundo → topo) por contour expandido**, para o chamador
     /// enfileirar em `vec_restack`: quem manda no z é a ÁRVORE (ADR-0110), e as entidades dos
     /// anéis só nascem no `sync` seguinte.
-    pub(crate) fn expand(
+    pub fn expand(
         &mut self,
         sim: &mut SimWorld,
         scene: &mut VecScene,
@@ -278,7 +278,7 @@ impl ContourLive {
 
     /// Esquece tudo — o load de projeto e o restore de undo trocam a cena inteira, e os
     /// `VecPathId` são reciclados entre documentos.
-    pub(crate) fn forget(&mut self) {
+    pub fn forget(&mut self) {
         self.live.clear();
         self.memo.clear();
     }
@@ -309,11 +309,11 @@ fn signed_dists(spec: &VecContour, k: u16) -> Vec<f64> {
 /// ⚠️ Sempre `OffsetSide::Outer`: a direção sai do SINAL de `dist`, não do `OffsetSide`. É isso que
 /// deixa o offset direto cobrir TODOS os Sides do Contour (o FPS/piscar não voltam por Inner/Both).
 ///
-/// ⚠️⚠️ **É `pub(crate)` porque tem DOIS consumidores desde 2026-09-05**: o Contour e o offset de
-/// CAD de uma camada da pilha de aparência ([`crate::vec_paint_dilate`]). *Uma segunda função que
+/// ⚠️⚠️ **É `pub` porque tem DOIS consumidores desde 2026-09-05**: o Contour e o offset de
+/// CAD de uma camada da pilha de aparência ([`crate::paint_dilate`]). *Uma segunda função que
 /// escolhesse entre o anel e a booleana seria a porta pela qual as duas passam a discordar sobre
 /// quando o caro é preciso* — e a que envelhecesse desenharia outra forma.
-pub(crate) fn cook_piece(world: &VecPath, dist: f64, join: LineJoin) -> Option<Vec<VecPath>> {
+pub fn cook_piece(world: &VecPath, dist: f64, join: LineJoin) -> Option<Vec<VecPath>> {
     match ph2d_vec_boolean::offset_ring(world, dist, join, OffsetSide::Outer) {
         Some(g) => Some(g),
         None => {
@@ -408,7 +408,7 @@ fn ramp(from: [u8; 4], to: [u8; 4], t: f64) -> Rgba8 {
 
 /// O contour de `id`, se houver. Porta única: o cozimento, o painel e o Expand perguntam AQUI.
 #[must_use]
-pub(crate) fn spec_of(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> Option<VecContour> {
+pub fn spec_of(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> Option<VecContour> {
     let &bits = map.get(&id)?;
     sim.world()
         .get::<VecContour>(Entity::from_bits(bits))
@@ -421,7 +421,7 @@ pub(crate) fn spec_of(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> Opti
 /// `Expand` é a única que produz GEOMETRIA. Ficam num enum e não em três `bool` porque são
 /// mutuamente exclusivos por construção: um clique é um clique.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub(crate) enum ContourCmd {
+pub enum ContourCmd {
     Add,
     Remove,
     Expand,
@@ -433,7 +433,7 @@ pub(crate) enum ContourCmd {
 /// MESMA porta (`vec_expand::join_of_code`) — um segundo vocabulário para a mesma pergunta é como
 /// o chip do artista passa a significar outra quina.
 #[must_use]
-pub(crate) fn join_code_of_id(id: ph2d_editor::ids::NodeId) -> Option<u8> {
+pub fn join_code_of_id(id: ph2d_editor::ids::NodeId) -> Option<u8> {
     match id {
         i if i == ph2d_editor::ids::VECTOR_CONTOUR_JOIN_MITER => Some(0),
         i if i == ph2d_editor::ids::VECTOR_CONTOUR_JOIN_ROUND => Some(1),
@@ -445,7 +445,7 @@ pub(crate) fn join_code_of_id(id: ph2d_editor::ids::NodeId) -> Option<u8> {
 /// O código de lado que este id endereça, se for um dos três chips de **Side** (`0` Outer ·
 /// `1` Inner · `2` Both). Irmão do [`join_code_of_id`], mesmos códigos do Expand.
 #[must_use]
-pub(crate) fn side_code_of_id(id: ph2d_editor::ids::NodeId) -> Option<u8> {
+pub fn side_code_of_id(id: ph2d_editor::ids::NodeId) -> Option<u8> {
     match id {
         i if i == ph2d_editor::ids::VECTOR_CONTOUR_SIDE_OUTER => Some(0),
         i if i == ph2d_editor::ids::VECTOR_CONTOUR_SIDE_INNER => Some(1),
@@ -474,7 +474,7 @@ const DEFAULT_D_FRAC: f64 = 0.08;
 /// vezes não pode apagar os valores que o artista acabou de afinar.
 ///
 /// Devolve quantas entidades ganharam o componente.
-pub(crate) fn arm(sim: &mut SimWorld, map: &VecEntityMap, ids: &[VecPathId], scale: f64) -> usize {
+pub fn arm(sim: &mut SimWorld, map: &VecEntityMap, ids: &[VecPathId], scale: f64) -> usize {
     let mut n = 0;
     for id in ids {
         let Some(&bits) = map.get(id) else { continue };
@@ -495,7 +495,7 @@ pub(crate) fn arm(sim: &mut SimWorld, map: &VecEntityMap, ids: &[VecPathId], sca
 }
 
 /// **Tira** o contour de `ids` — a forma volta a desenhar-se sozinha e nada é materializado.
-pub(crate) fn remove(sim: &mut SimWorld, map: &VecEntityMap, ids: &[VecPathId]) -> usize {
+pub fn remove(sim: &mut SimWorld, map: &VecEntityMap, ids: &[VecPathId]) -> usize {
     let mut n = 0;
     for id in ids {
         let Some(&bits) = map.get(id) else { continue };
@@ -516,7 +516,7 @@ pub(crate) fn remove(sim: &mut SimWorld, map: &VecEntityMap, ids: &[VecPathId]) 
 /// **Não arma nada:** um caminho sem contour continua sem. É o que faz mexer num controle sem ter
 /// clicado *Add Contour* não inventar um efeito de lugar nenhum — a mesma lei do `retune` do
 /// Offset, e a razão pela qual a seção mostra o botão em vez dos controles enquanto não há um.
-pub(crate) fn edit(
+pub fn edit(
     sim: &mut SimWorld,
     map: &VecEntityMap,
     ids: &[VecPathId],
@@ -538,7 +538,7 @@ pub(crate) fn edit(
 
 /// O contour que o painel deve mostrar: o do PRIMEIRO caminho selecionado que tenha um.
 #[must_use]
-pub(crate) fn current(
+pub fn current(
     sim: &SimWorld,
     map: &VecEntityMap,
     selection: &[VecPathId],

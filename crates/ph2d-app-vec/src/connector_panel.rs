@@ -1,5 +1,5 @@
 //! **O painel edita o conector** — módulo irmão de [`crate::connector_live`] (que cuida do
-//! COZIMENTO da rota) e espelho exato de [`crate::vec_shape_params`] (que faz o mesmo pela
+//! COZIMENTO da rota) e espelho exato de [`crate::shape_params`] (que faz o mesmo pela
 //! forma viva).
 //!
 //! O Enio pediu para calibrar `jetty` e `spread` **com o olho**. Isso impõe três coisas, e
@@ -31,10 +31,10 @@ use ph2d_vec_scene::{VecPathId, VecScene, VecXforms};
 use ph2d_vec_entities::entities::VecEntityMap;
 
 /// O conector em FOCO: o primeiro da seleção. Espelho de
-/// [`crate::vec_shape_params::panel_shape_target`] — a primeira da seleção manda (é dela
+/// [`crate::shape_params::panel_shape_target`] — a primeira da seleção manda (é dela
 /// que os campos são semeados; a EDIÇÃO, essa, vai para todos).
 #[must_use]
-pub(crate) fn panel_connector_target(
+pub fn panel_connector_target(
     sim: &SimWorld,
     map: &VecEntityMap,
     selection: &[VecPathId],
@@ -64,7 +64,7 @@ fn half_of(end: &ph2d_ecs::ConnectorEnd, scene: &VecScene, xforms: &VecXforms) -
 /// automático — pela MESMA função que o cozimento usa (`jetty_or` / `spread_or` do
 /// componente, sobre `auto_jetty` / `SPREAD_STEP`).
 #[must_use]
-pub(crate) fn effective(scene: &VecScene, xforms: &VecXforms, conn: &VecConnector) -> (f64, f64) {
+pub fn effective(scene: &VecScene, xforms: &VecXforms, conn: &VecConnector) -> (f64, f64) {
     let auto = connector::auto_jetty(
         half_of(&conn.start, scene, xforms),
         half_of(&conn.end, scene, xforms),
@@ -82,7 +82,7 @@ pub(crate) fn effective(scene: &VecScene, xforms: &VecXforms, conn: &VecConnecto
 /// Devolve uma tupla crua (e não o tipo do painel) porque o painel é opcional na build
 /// (`feature = "panel-vector"`): o `vector_bridge` faz a conversão dentro do `cfg`.
 #[must_use]
-pub(crate) fn selection_snapshot(
+pub fn selection_snapshot(
     sim: &SimWorld,
     map: &VecEntityMap,
     scene: &VecScene,
@@ -112,7 +112,7 @@ pub(crate) fn selection_snapshot(
 /// O corpo vive aqui, e não no bridge, por duas razões: o assunto é deste módulo, e o
 /// `vector_bridge` estourou o teto de 600 LOC por arquivo da shell quando a publicação
 /// nasceu lá (HR-18 — *split, não allowlist*).
-pub(crate) fn publish(
+pub fn publish(
     sim: &SimWorld,
     map: &VecEntityMap,
     scene: &VecScene,
@@ -143,7 +143,7 @@ pub(crate) fn publish(
 /// `true` se `id` é um dos campos do conector (o que a shell captura no dreno). Um campo
 /// novo entra AQUI e no [`apply_field`] — fora daqui ele pinta e está morto.
 #[must_use]
-pub(crate) fn is_connector_field_id(id: NodeId) -> bool {
+pub fn is_connector_field_id(id: NodeId) -> bool {
     id == ph2d_editor::ids::VECTOR_CONNECTOR_ROUTE
         || id == ph2d_editor::ids::VECTOR_CONNECTOR_JETTY
         || id == ph2d_editor::ids::VECTOR_CONNECTOR_SPREAD
@@ -195,7 +195,7 @@ fn apply_field(conn: &mut VecConnector, id: NodeId, v: f64) -> bool {
 /// `connector_live::recook` deste mesmo frame (que roda depois) a refaz. O undo global pega
 /// a mudança sozinho (o `VecConnector` está no `ComponentRegistry`, e o registro é por
 /// DIFF). Devolve quantos conectores mudaram.
-pub(crate) fn edit_selected_connectors(
+pub fn edit_selected_connectors(
     sim: &mut SimWorld,
     map: &VecEntityMap,
     selection: &[VecPathId],
@@ -225,5 +225,5 @@ pub(crate) fn edit_selected_connectors(
 }
 
 #[cfg(test)]
-#[path = "vec_connector_panel_tests.rs"]
+#[path = "connector_panel_tests.rs"]
 mod tests;

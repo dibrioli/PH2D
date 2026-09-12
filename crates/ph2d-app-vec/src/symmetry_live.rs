@@ -95,7 +95,7 @@ const SESSION_DIR: [f64; 2] = [0.0, 1.0];
 
 /// O cozimento vivo de todas as simetrias da cena, com memo por caminho.
 #[derive(Default)]
-pub(crate) struct SymmetryLive {
+pub struct SymmetryLive {
     memo: BTreeMap<VecPathId, Memo>,
     live: LiveGeometry,
     /// Quem estava em gesto no frame ANTERIOR — o frame em que o pivô assenta. Ver o cabeçalho:
@@ -106,7 +106,7 @@ pub(crate) struct SymmetryLive {
 impl SymmetryLive {
     /// A geometria derivada deste frame — o que o [`ph2d_vec_render::dispatch`] desenha no lugar
     /// da fonte. Vazia = nenhuma simetria viva na cena, e o desenho é o de sempre.
-    pub(crate) fn live(&self) -> &LiveGeometry {
+    pub fn live(&self) -> &LiveGeometry {
         &self.live
     }
 
@@ -128,7 +128,7 @@ impl SymmetryLive {
     // que o `recook` irmão já tem; agrupá-los num tipo só para calar a lint criaria uma
     // struct cujo único trabalho é existir. Precedente: `physics::body_desc`.
     #[allow(clippy::too_many_arguments)]
-    pub(crate) fn adopt(
+    pub fn adopt(
         &mut self,
         sim: &mut SimWorld,
         map: &VecEntityMap,
@@ -170,7 +170,7 @@ impl SymmetryLive {
     /// ⚠️ `on` gateia o COZIMENTO e não o componente — é o que faz desarmar esconder as cópias
     /// sem as destruir, e religar trazê-las de volta inteiras. O memo sobrevive de propósito: ele
     /// é chaveado por tudo o que determina a resposta, então religar não paga nada.
-    pub(crate) fn recook(
+    pub fn recook(
         &mut self,
         scene: &VecScene,
         sim: &SimWorld,
@@ -224,7 +224,7 @@ impl SymmetryLive {
 
     /// Esquece tudo — o load de projeto e o restore de undo trocam a cena inteira debaixo do memo,
     /// e os `VecPathId` são reciclados entre documentos.
-    pub(crate) fn forget(&mut self) {
+    pub fn forget(&mut self) {
         self.memo.clear();
         self.live.clear();
         self.prev_drawing.clear();
@@ -238,7 +238,7 @@ impl SymmetryLive {
 /// seleccionado no momento do clique. Consolidar só o seleccionado deixaria metade das cópias na
 /// tela com o modo já desligado — cópias que o cozimento gateado deixaria de desenhar, e o artista
 /// veria o trabalho evaporar.
-pub(crate) fn armed_paths(sim: &SimWorld, map: &VecEntityMap, scene: &VecScene) -> Vec<VecPathId> {
+pub fn armed_paths(sim: &SimWorld, map: &VecEntityMap, scene: &VecScene) -> Vec<VecPathId> {
     scene
         .paths()
         .iter()
@@ -252,7 +252,7 @@ pub(crate) fn armed_paths(sim: &SimWorld, map: &VecEntityMap, scene: &VecScene) 
 /// ⚠️ A direcção sai da MESMA [`SymmetrySpec::mirror_dir`] que o kernel usa para reflectir: a
 /// linha de sessão e o eixo que a próxima forma vai capturar são o mesmo fato, e derivá-lo duas
 /// vezes desenharia a promessa num sítio e cumpri-la-ia noutro.
-pub(crate) fn session_axis(
+pub fn session_axis(
     style: ph2d_vec_scene::symmetry::SymmetryStyle,
     origin: [f64; 2],
 ) -> ph2d_vec_render::SymmetryAxis {
@@ -267,7 +267,7 @@ pub(crate) fn session_axis(
 
 /// A simetria viva de `id`, se houver. Porta única: o cozimento, o **Apply**, o overlay das linhas
 /// e o publish para o painel perguntam AQUI.
-pub(crate) fn spec_of(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> Option<SymmetrySpec> {
+pub fn spec_of(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> Option<SymmetrySpec> {
     let &bits = map.get(&id)?;
     sim.world()
         .get::<VecSymmetry>(Entity::from_bits(bits))
@@ -281,7 +281,7 @@ pub(crate) fn spec_of(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> Opti
 /// estado limpo em vez de a deixar com uma relação invisível pendurada.
 ///
 /// Devolve quantas entidades mudaram.
-pub(crate) fn arm(
+pub fn arm(
     sim: &mut SimWorld,
     map: &VecEntityMap,
     ids: &[VecPathId],
@@ -329,7 +329,7 @@ pub(crate) fn arm(
 /// *Apply* seria a pior resposta possível a *"não há nada aqui"*.
 ///
 /// `false` = não havia simetria viva na seleção. **UM passo de undo** para o gesto inteiro.
-pub(crate) fn materialise(
+pub fn materialise(
     scene: &mut VecScene,
     sim: &SimWorld,
     pen: &mut ph2d_vec_edit::PenTool,
@@ -347,7 +347,7 @@ pub(crate) fn materialise(
     }
     let pre = scene.clone();
     let touched =
-        crate::vec_expand::materialise_selection(scene, pen, xforms, ids, |id, local, xf| {
+        crate::expand::materialise_selection(scene, pen, xforms, ids, |id, local, xf| {
             let Some((_, spec)) = live.iter().find(|(i, _)| *i == id) else {
                 return Vec::new();
             };
@@ -372,7 +372,7 @@ pub(crate) fn materialise(
 /// transladaria). Uma segunda derivação aqui desenharia um eixo onde a geometria não espelha — e
 /// ninguém lê um número numa screenshot, então a divergência apareceria como *"a linha está
 /// torta"*, meses depois.
-pub(crate) fn live_axes(
+pub fn live_axes(
     scene: &VecScene,
     sim: &SimWorld,
     map: &VecEntityMap,

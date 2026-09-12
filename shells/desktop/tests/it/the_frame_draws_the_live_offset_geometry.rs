@@ -106,9 +106,16 @@ fn the_cook_runs_after_the_sync_and_before_the_draw() {
 /// exatamente o que o Enio reprovou.
 #[test]
 fn the_cook_takes_the_scene_by_shared_reference() {
-    const COOK: &str = include_str!("../../src/offset_live.rs");
+    // ⚠️ **A LEI mudou de crate** (W2 Fase C): ela vive em `ph2d-app-vec`. ⭐ Este `include_str!`
+    // **falhou em tempo de COMPILAÇÃO** quando o ficheiro se mudou — a metade boa da §2.6.
+    // ⛔⛔ **E a agulha largou a VISIBILIDADE** (§2.13): atravessar a fronteira obrigou
+    // `pub(crate) fn` a virar `pub fn`, e uma agulha ancorada no modificador reprovaria **sem que a
+    // lei mudasse uma linha** — *ela mediria visibilidade, e visibilidade é exactamente o que uma
+    // fronteira nova muda por construção*. `fn recook(` sobrevive ao próximo movimento.
+    const COOK: &str =
+        include_str!("../../../../crates/ph2d-app-vec/src/offset_live.rs");
     let sig = COOK
-        .find("pub(crate) fn recook(")
+        .find("fn recook(")
         .expect("o `recook` sumiu do offset_live");
     let tail = &COOK[sig..sig + 260.min(COOK.len() - sig)];
     assert!(

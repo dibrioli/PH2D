@@ -9,7 +9,7 @@
 //!
 //! Um pattern precisa de DUAS geometrias: o **motivo** (a forma a estampar) e o **caminho-guia**.
 //!
-//! - O **guia** entra pela porta única [`crate::vec_guide::guide_arc`] — cozido, assado em MUNDO,
+//! - O **guia** entra pela porta única [`crate::guide::guide_arc`] — cozido, assado em MUNDO,
 //!   virado em [`ph2d_vec_scene::arc_path::ArcPath`]. É a MESMA porta do texto em caminho.
 //! - O **motivo** é a `cooked()` do próprio path, em espaço **LOCAL** (a forma, não a pose). O
 //!   motor a recentra pelo bbox e a estampa nos pontos do guia. ⚠️ **A pose do motivo é ignorada
@@ -35,26 +35,26 @@ use ph2d_vec_entities::entities::VecEntityMap;
 
 /// O cozimento vivo de todos os patterns da cena.
 #[derive(Default)]
-pub(crate) struct PatternLive {
+pub struct PatternLive {
     live: LiveGeometry,
 }
 
 impl PatternLive {
     /// A geometria derivada deste frame — o que o [`ph2d_vec_render::dispatch`] desenha no lugar do
     /// motivo. Vazia = nenhum pattern vivo, e o desenho é o de sempre.
-    pub(crate) fn live(&self) -> &LiveGeometry {
+    pub fn live(&self) -> &LiveGeometry {
         &self.live
     }
 
     /// Re-coze todos os patterns. Chamado uma vez por frame, DEPOIS do `sync` (senão um motivo/guia
     /// recém-criado ainda não teria entidade e o componente não seria encontrado).
-    pub(crate) fn recook(&mut self, scene: &VecScene, sim: &SimWorld, map: &VecEntityMap) {
+    pub fn recook(&mut self, scene: &VecScene, sim: &SimWorld, map: &VecEntityMap) {
         self.live.clear();
         for path in scene.paths() {
             let Some(spec) = spec_of(sim, map, path.id) else {
                 continue;
             };
-            let Some(arc) = crate::vec_guide::guide_arc(sim, scene, map, spec.path) else {
+            let Some(arc) = crate::guide::guide_arc(sim, scene, map, spec.path) else {
                 continue; // guia apagado / degenerado → o motivo volta a ser desenhado (fonte)
             };
             let motif = path.cooked();
@@ -72,7 +72,7 @@ impl PatternLive {
 
     /// Esquece tudo — o load de projeto e o restore de undo trocam a cena inteira, e os
     /// `VecPathId` são reciclados entre documentos.
-    pub(crate) fn forget(&mut self) {
+    pub fn forget(&mut self) {
         self.live.clear();
     }
 }
@@ -107,7 +107,7 @@ fn spec_to_motor(spec: &VecPatternPath, rotation_deg: f32, total: f64) -> Patter
 /// A orientação autorada do motivo, em graus. **Ausência do componente é `0.0`** — não há caso
 /// especial a lembrar, e é o que faz todo documento anterior a esta wave ler como não-girado.
 #[must_use]
-pub(crate) fn rotation_of(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> f32 {
+pub fn rotation_of(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> f32 {
     let Some(&bits) = map.get(&id) else {
         return 0.0;
     };
@@ -126,7 +126,7 @@ pub(crate) fn rotation_of(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> 
 ///
 /// Exige o vínculo: girar um motivo que não cavalga nada não quer dizer nada, e deixaria um
 /// componente órfão que ressuscitaria no próximo `link`.
-pub(crate) fn set_rotation(
+pub fn set_rotation(
     sim: &mut SimWorld,
     map: &VecEntityMap,
     motif: VecPathId,
@@ -152,7 +152,7 @@ pub(crate) fn set_rotation(
 
 /// O pattern vivo de `id`, se houver. Porta única: o cozimento, o painel e o `Apply` perguntam AQUI.
 #[must_use]
-pub(crate) fn spec_of(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> Option<VecPatternPath> {
+pub fn spec_of(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> Option<VecPatternPath> {
     let &bits = map.get(&id)?;
     sim.world()
         .get::<VecPatternPath>(Entity::from_bits(bits))
@@ -164,7 +164,7 @@ pub(crate) fn spec_of(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> Opti
 /// Recusa prender uma forma a ela mesma (um motivo que cavalga a si próprio não quer dizer nada) e
 /// exige que o motivo exista no mapa. A disambiguação *"qual dos selecionados é o motivo, qual é o
 /// guia?"* é decisão de UX do painel (W3) — esta porta recebe os dois já resolvidos.
-pub(crate) fn link(
+pub fn link(
     sim: &mut SimWorld,
     map: &VecEntityMap,
     motif: VecPathId,
@@ -202,7 +202,7 @@ pub(crate) fn link(
 /// (Comprimento de ARCO seria pior: uma forma FECHADA tem perímetro que passa fácil de uma reta
 /// mais longa — um quadrado de lado 40 tem perímetro 160 contra os 100 da reta.)
 #[must_use]
-pub(crate) fn link_candidate(
+pub fn link_candidate(
     scene: &VecScene,
     selection: &[VecPathId],
 ) -> Option<(VecPathId, VecPathId)> {
@@ -238,7 +238,7 @@ pub(crate) fn link_candidate(
 /// primário: depois de prender, o primário pode ser o GUIA (o último clicado), mas quem tem os
 /// controles é o motivo.
 #[must_use]
-pub(crate) fn linked_motif(
+pub fn linked_motif(
     sim: &SimWorld,
     map: &VecEntityMap,
     selection: &[VecPathId],
@@ -251,7 +251,7 @@ pub(crate) fn linked_motif(
 
 /// O vínculo VIVO do motivo em foco (o linkado na seleção), para o painel publicar os controles.
 #[must_use]
-pub(crate) fn current(
+pub fn current(
     sim: &SimWorld,
     map: &VecEntityMap,
     selection: &[VecPathId],
@@ -262,7 +262,7 @@ pub(crate) fn current(
 /// A orientação VIVA do motivo em foco, para o painel publicar o slider no lugar certo em vez de o
 /// deixar saltar no primeiro frame. Irmã da [`current`], e pela mesma razão que ela existe.
 #[must_use]
-pub(crate) fn current_rotation(sim: &SimWorld, map: &VecEntityMap, selection: &[VecPathId]) -> f32 {
+pub fn current_rotation(sim: &SimWorld, map: &VecEntityMap, selection: &[VecPathId]) -> f32 {
     linked_motif(sim, map, selection).map_or(0.0, |m| rotation_of(sim, map, m))
 }
 
@@ -273,7 +273,7 @@ pub(crate) fn current_rotation(sim: &SimWorld, map: &VecEntityMap, selection: &[
 /// para trás ela vira estado invisível que **ressuscita** no próximo `link` — o artista prende o
 /// motivo a outra curva e as cópias nascem tortas por um ângulo que ele não vê em lado nenhum.
 /// Soltar é desfazer a relação inteira, não metade dela.
-pub(crate) fn detach(sim: &mut SimWorld, map: &VecEntityMap, motif: VecPathId) -> bool {
+pub fn detach(sim: &mut SimWorld, map: &VecEntityMap, motif: VecPathId) -> bool {
     let Some(&bits) = map.get(&motif) else {
         return false;
     };
@@ -292,7 +292,7 @@ pub(crate) fn detach(sim: &mut SimWorld, map: &VecEntityMap, motif: VecPathId) -
 ///
 /// A porta ÚNICA de escrita — o slider do painel e a alça de canvas (W4) passam por AQUI, então não
 /// podem divergir sobre o mesmo número.
-pub(crate) fn edit(
+pub fn edit(
     sim: &mut SimWorld,
     map: &VecEntityMap,
     motif: VecPathId,
@@ -314,7 +314,7 @@ pub(crate) fn edit(
 
 /// Um comando de vínculo vindo do painel — um clique, um comando.
 #[derive(Clone, Copy, Debug)]
-pub(crate) enum PatternPathCmd {
+pub enum PatternPathCmd {
     /// Prender o motivo (primário) ao outro selecionado.
     Link,
     /// Soltar (o caminho fica).
@@ -325,7 +325,7 @@ pub(crate) enum PatternPathCmd {
 
 /// **Qual das DUAS alças de canvas (W4)** está sob o dedo — a de início ou a de fim do trecho.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum PatternHandle {
+pub enum PatternHandle {
     /// A ficha em `start_offset` — onde a tilagem começa.
     Start,
     /// A ficha em `end_offset` — onde termina.
@@ -338,7 +338,7 @@ pub(crate) enum PatternHandle {
 /// sliders Start/End, na tela. Cada uma escreve o MESMO número que o slider correspondente pela
 /// MESMA porta ([`edit`]), então não podem divergir. As fichas ficam SOBRE a curva (marcam as
 /// posições de arco); o desvio perpendicular é o slider Offset, à parte.
-pub(crate) mod handle {
+pub mod handle {
     use super::{PatternHandle, VecEntityMap, VecScene, edit, linked_motif, spec_of};
     use ph2d_ecs::SimWorld;
     use ph2d_vec_scene::VecPathId;
@@ -346,14 +346,14 @@ pub(crate) mod handle {
     /// Os pontos de MUNDO das fichas de Start e End do motivo vinculado na seleção. `None` sem um
     /// pattern na seleção (ou com o guia apagado/degenerado).
     #[must_use]
-    pub(crate) fn world(
+    pub fn world(
         sim: &SimWorld,
         scene: &VecScene,
         map: &VecEntityMap,
         selection: &[VecPathId],
     ) -> Option<([f64; 2], [f64; 2])> {
         let spec = spec_of(sim, map, linked_motif(sim, map, selection)?)?;
-        let arc = crate::vec_guide::guide_arc(sim, scene, map, spec.path)?;
+        let arc = crate::guide::guide_arc(sim, scene, map, spec.path)?;
         let total = arc.total();
         // ⚠️ HONRA O FLIP (Enio, 2026-07-23: *"as alças não são invertidas junto com as shapes"*):
         // sob flip o motor amostra o arco do OUTRO lado (`GlyphFrame::on_path` usa `total - s`), então
@@ -370,7 +370,7 @@ pub(crate) mod handle {
     /// devolve `true` (o host então PULA o picking/gizmo). O Start tem prioridade quando as duas
     /// coincidem — arrastar desempata na primeira mão.
     #[must_use]
-    pub(crate) fn press(
+    pub fn press(
         sim: &SimWorld,
         scene: &VecScene,
         map: &VecEntityMap,
@@ -398,7 +398,7 @@ pub(crate) mod handle {
 
     /// Arrasta a ficha armada para o cursor: projeta no caminho, converte em fração e escreve
     /// `start_offset`/`end_offset` pela porta única [`edit`] (a MESMA do slider). No-op sem arrasto.
-    pub(crate) fn drag(
+    pub fn drag(
         sim: &mut SimWorld,
         scene: &VecScene,
         map: &VecEntityMap,
@@ -412,7 +412,7 @@ pub(crate) mod handle {
         let Some(spec) = spec_of(sim, map, motif) else {
             return false;
         };
-        let Some(arc) = crate::vec_guide::guide_arc(sim, scene, map, spec.path) else {
+        let Some(arc) = crate::guide::guide_arc(sim, scene, map, spec.path) else {
             return false;
         };
         let total = arc.total();

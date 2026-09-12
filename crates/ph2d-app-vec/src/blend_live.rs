@@ -34,7 +34,7 @@ use ph2d_vec_entities::entities::VecEntityMap;
 /// As operações de edição/interação do blend (painel + canvas) — módulo irmão pelo teto de 600 LOC.
 #[path = "blend_live_edit.rs"]
 mod edit;
-pub(crate) use edit::{
+pub use edit::{
     drag_spine_anchors_move_sources, expand, pick_preview, release, reset_spine,
     selected_closed_in_z, set_selected_steps,
 };
@@ -42,23 +42,23 @@ pub(crate) use edit::{
 /// A memória runtime de UM blend (chaveada pelo spine). Nada aqui é documento: o que precisa
 /// sobreviver ao save/undo viaja no componente (`spine_authored`).
 #[derive(Default, Clone, PartialEq)]
-pub(crate) struct BlendMemo {
+pub struct BlendMemo {
     /// O último spine **AUTOMÁTICO** que a shell escreveu. É como ela detecta que o artista editou
     /// a curva (modo Node): spine ATUAL ≠ este ⇒ a mão mexeu ⇒ o blend vira `spine_authored`.
     ///
     /// `Option` e não `Vec` vazio: *"não memorizei auto nenhum"* e *"memorizei um spine sem
     /// vértices"* são estados diferentes, e só o primeiro deve calar a detecção.
-    pub(crate) auto: Option<Vec<VecVertex>>,
+    pub auto: Option<Vec<VecVertex>>,
     /// Os centros das fontes no frame **ANTERIOR** — é como se sabe que as FORMAS se moveram.
     ///
     /// *"A forma se moveu"* e *"a âncora está deslocada do centro"* **não são a mesma pergunta**, e
     /// a diferença decide se os pontos livres do spine acompanham: a segunda também é verdade quando
     /// é a ÂNCORA que foi arrastada (e aí o interior é do artista, e fica).
-    pub(crate) centers: Vec<[f64; 2]>,
+    pub centers: Vec<[f64; 2]>,
 }
 
 /// A memória runtime de todos os blends vivos, por spine ([`BlendMemo`]).
-pub(crate) type BlendSpines = BTreeMap<VecPathId, BlendMemo>;
+pub type BlendSpines = BTreeMap<VecPathId, BlendMemo>;
 
 /// Translada TODOS os pontos de um path (âncora + as duas alças) por `off`. É como um passo é
 /// movido do seu lugar do lerp para o lugar dele no spine.
@@ -234,7 +234,7 @@ fn write_spine(scene: &mut VecScene, id: VecPathId, centers: &[[f64; 2]]) {
 ///
 /// O spine nasce **invisível** (sem fill nem stroke): na Fase B os PASSOS carregam o visual; o
 /// spine visível/editável é a Fase C. A entidade aparece na Hierarquia pelo `Name` ("Blend N").
-pub(crate) fn create(
+pub fn create(
     scene: &mut VecScene,
     xforms: &VecXforms,
     sources: &[VecPathId],
@@ -264,7 +264,7 @@ pub(crate) fn create(
 
 /// O teto de fontes por blend (o "até 5 formas" do Enio, ADR-0128). O motor aceita mais, mas o
 /// idioma do Illustrator é uma cadeia curta.
-pub(crate) const MAX_BLEND_SOURCES: usize = 5;
+pub const MAX_BLEND_SOURCES: usize = 5;
 
 /// As fontes de um blend que ainda RESOLVEM, na ordem da cadeia. Um elo morto (forma apagada) é
 /// PULADO — a cadeia não quebra por causa de um id que sumiu.
@@ -349,7 +349,7 @@ fn cook_links(worlds: &[VecPath], n: usize, offsets: &[[f64; 2]]) -> Vec<Vec<Vec
 /// detecção (spine atual ≠ último auto escrito, em `spines`) marca `spine_authored`, a shell PARA
 /// de sobrescrever, e os passos passam a **FLUIR ao longo do spine** por comprimento de arco
 /// ([`ph2d_vec_blend::spine_offsets`]).
-pub(crate) fn recook(
+pub fn recook(
     sim: &mut SimWorld,
     scene: &mut VecScene,
     map: &VecEntityMap,
@@ -479,7 +479,7 @@ pub(crate) fn recook(
 /// Roda DEPOIS de [`recook`] e ANTES do `dispatch`, e SÓ em modo Node. Em Select a linha não é
 /// desenhada (é Node-only) — mantê-la visível a mostrava como um "fantasma" com drift ao mover as
 /// formas (Enio 2026-07-15).
-pub(crate) fn elevate_spines(
+pub fn elevate_spines(
     sim: &SimWorld,
     scene: &mut VecScene,
     map: &VecEntityMap,
@@ -510,7 +510,7 @@ pub(crate) fn elevate_spines(
 /// `connector_live::attach`. Idempotente (não marca a entidade suja se o componente já é igual).
 ///
 /// `true` se a entidade existia e o componente está lá.
-pub(crate) fn attach(
+pub fn attach(
     sim: &mut SimWorld,
     map: &VecEntityMap,
     id: VecPathId,
@@ -541,7 +541,7 @@ pub(crate) fn attach(
 ///
 /// O `pending` é de um item: ou a entidade chegou (attach), ou o path sumiu (undo/delete no
 /// mesmo frame) — nos dois casos a fila esvazia.
-pub(crate) fn upkeep(
+pub fn upkeep(
     sim: &mut SimWorld,
     scene: &VecScene,
     map: &VecEntityMap,

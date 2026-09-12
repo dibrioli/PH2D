@@ -35,7 +35,7 @@ use ph2d_vec_entities::entities::VecEntityMap;
 /// Runtime-only (como o `SideCache` do conector): não é documento, não entra no save nem no undo —
 /// é derivável das fontes a qualquer momento. Perdê-lo custa uma busca, não um bit de trabalho.
 #[derive(Default)]
-pub(crate) struct MorphPlans {
+pub struct MorphPlans {
     live: BTreeMap<u64, Cached>,
     /// Quantos planos foram **construídos** (não reusados) desde o início.
     ///
@@ -60,7 +60,7 @@ struct Cached {
 }
 
 impl MorphPlans {
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         Self::default()
     }
 
@@ -120,7 +120,7 @@ fn local(scene: &VecScene, sim: &SimWorld, map: &VecEntityMap, id: VecPathId) ->
 /// Roda DEPOIS de `vec_entities::sync` (a entidade existe) e depois de `vec_transform::build` (os
 /// afins das fontes já são os deste frame), e ANTES do render — o mesmo lugar do
 /// `connector_live::recook`.
-pub(crate) fn recook(
+pub fn recook(
     sim: &mut SimWorld,
     scene: &mut VecScene,
     map: &VecEntityMap,
@@ -220,7 +220,7 @@ fn write_shape(scene: &mut VecScene, id: VecPathId, cooked: VecPath) {
 
 /// Pendura (ou atualiza) o [`VecMorph`] na entidade do path `id` — espelho de
 /// `blend_live::attach`. Idempotente.
-pub(crate) fn attach(
+pub fn attach(
     sim: &mut SimWorld,
     map: &VecEntityMap,
     id: VecPathId,
@@ -248,7 +248,7 @@ pub(crate) fn attach(
 
 /// Drena a fila `pending` (o morph recém-criado, esperando a entidade dele nascer no `sync`) —
 /// espelho de `blend_live::upkeep`. Roda entre o `sync` e o [`recook`].
-pub(crate) fn upkeep(
+pub fn upkeep(
     sim: &mut SimWorld,
     scene: &VecScene,
     map: &VecEntityMap,
@@ -267,7 +267,7 @@ pub(crate) fn upkeep(
 ///
 /// As fontes **sobrevivem** (≠ booleana, que consome os operandos): o morph é não-destrutivo, e é
 /// editando as fontes que o artista o dirige.
-pub(crate) fn create(scene: &mut VecScene, a: VecPathId, b: VecPathId) -> (VecPathId, VecMorph) {
+pub fn create(scene: &mut VecScene, a: VecPathId, b: VecPathId) -> (VecPathId, VecMorph) {
     // Nasce vazio de propósito: a geometria é DERIVADA, e inventá-la aqui seria uma 2ª porta para
     // a mesma pergunta que o `recook` responde todo frame.
     let id = scene.push_path(VecPath::default());

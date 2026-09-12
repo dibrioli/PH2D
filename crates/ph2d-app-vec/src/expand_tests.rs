@@ -1,4 +1,4 @@
-//! Testes de [`crate::vec_expand`] — arquivo irmão.
+//! Testes de [`crate::expand`] — arquivo irmão.
 //!
 //! O motor está gateado na `ph2d-vec-boolean`. O que se prova AQUI é o que só existe na
 //! shell: quais paths o comando pega, em que z o resultado fica, o que sobra da original, e

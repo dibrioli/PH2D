@@ -5036,14 +5036,17 @@ dependencies = [
  "ph2d-anim",
  "ph2d-app-host",
  "ph2d-asset",
+ "ph2d-color",
  "ph2d-core",
  "ph2d-ecs",
  "ph2d-editor",
+ "ph2d-gpu",
  "ph2d-host",
  "ph2d-i18n",
  "ph2d-image-import",
  "ph2d-morph-machine",
  "ph2d-painter-brush",
+ "ph2d-painter-effects",
  "ph2d-panel-authored",
  "ph2d-panel-vector",
  "ph2d-poly2d",
@@ -5059,6 +5062,7 @@ dependencies = [
  "ph2d-unique-name",
  "ph2d-vec-blend",
  "ph2d-vec-boolean",
+ "ph2d-vec-connect",
  "ph2d-vec-edit",
  "ph2d-vec-entities",
  "ph2d-vec-fill",
@@ -5067,6 +5071,7 @@ dependencies = [
  "ph2d-vec-svg",
  "ph2d-vector",
  "ph2d-vector-font",
+ "wgpu",
 ]
 
 [[package]]

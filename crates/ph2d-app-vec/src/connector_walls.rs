@@ -52,7 +52,7 @@ const MAX_LABEL_HOPS: usize = 4;
 /// estrutura* — um conector não desvia de uma legenda, tenha ela dono ou não. O `VecLabel` fica
 /// como cinto (um rótulo convertido em curvas perde o `VecShape` e continua sendo um rótulo).
 #[must_use]
-pub(crate) fn is_annotation(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> bool {
+pub fn is_annotation(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> bool {
     map.get(&id).is_some_and(|&bits| {
         let e = Entity::from_bits(bits);
         sim.world().get::<VecConnector>(e).is_some()
@@ -92,7 +92,7 @@ fn host_of(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> Option<VecPathI
 /// (que é o que o usuário mirou) e a rota deixa de depender de qualquer pose de rótulo. Um alvo que
 /// continue sendo anotação depois de resolvido (um conector, um texto solto) **não é alvo**.
 #[must_use]
-pub(crate) fn anchor_target(
+pub fn anchor_target(
     sim: &SimWorld,
     scene: &VecScene,
     map: &VecEntityMap,
@@ -123,7 +123,7 @@ pub(crate) fn anchor_target(
 ///
 /// Calculado uma vez por frame, não uma vez por conector.
 #[must_use]
-pub(crate) fn shape_boxes(
+pub fn shape_boxes(
     sim: &SimWorld,
     scene: &VecScene,
     xforms: &VecXforms,
@@ -163,7 +163,7 @@ pub(crate) fn shape_boxes(
 /// diagrama de verdade. Num diagrama denso ela pega tudo — que é a resposta **certa**, e o preço de
 /// estar certo.
 #[must_use]
-pub(crate) fn obstacles_in_play(shapes: &[Aabb], a: Aabb, b: Aabb, pad: f64) -> Vec<Aabb> {
+pub fn obstacles_in_play(shapes: &[Aabb], a: Aabb, b: Aabb, pad: f64) -> Vec<Aabb> {
     let mut roi = a.union(b).inflate(pad);
     let mut taken = vec![false; shapes.len()];
     loop {

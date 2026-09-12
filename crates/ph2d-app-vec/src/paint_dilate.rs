@@ -49,14 +49,14 @@ struct Memo {
 
 /// O cozimento vivo de todas as camadas dilatadas da cena.
 #[derive(Default)]
-pub(crate) struct PaintDilateLive {
+pub struct PaintDilateLive {
     out: DilatedPaints,
     memo: BTreeMap<(VecPathId, usize), Memo>,
 }
 
 impl PaintDilateLive {
     /// A geometria derivada deste quadro.
-    pub(crate) fn out(&self) -> &DilatedPaints {
+    pub fn out(&self) -> &DilatedPaints {
         &self.out
     }
 
@@ -64,7 +64,7 @@ impl PaintDilateLive {
     ///
     /// ⚠️ **Sai cedo e sem alocar quando nada na cena tem offset** — que é o caminho comum, e é o
     /// que mantém byte-idêntico o desenho de um documento que nunca lhe toca.
-    pub(crate) fn recook(&mut self, scene: &VecScene) {
+    pub fn recook(&mut self, scene: &VecScene) {
         self.out.clear();
         for path in scene.paths() {
             if !path.paints.iter().any(|e| e.is_active() && e.is_dilated()) {
@@ -81,7 +81,7 @@ impl PaintDilateLive {
                     m.dilate == e.dilate && m.join == e.dilate_join && m.cooked == cooked
                 });
                 if fresco {
-                    let join = crate::vec_expand::join_of_code(e.dilate_join);
+                    let join = crate::expand::join_of_code(e.dilate_join);
                     // ⛔ `None` = a booleana FALHOU (pânico do sweep isolado). A entrada não entra,
                     // e o renderer desenha a camada na silhueta de BASE. *Uma camada que volta à
                     // forma lê-se como «o offset não pegou»; uma que desaparece lê-se como

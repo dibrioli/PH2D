@@ -9,10 +9,10 @@
 | | |
 |---|---|
 | branch | `line/app-vec` |
-| HEAD | `af36e2336cfc1a75b40ae8e8f9ea73b8e2b7409f` (+ o commit do gate de fecho) |
+| HEAD | `8371823b0cdaa1ac1a87594314d8afcb40e3932d` |
 | merge-base | `27ab894298c74dbeba700eb30c1eab0e795c7d7d` |
-| commits | **7** |
-| diffstat | 74 ficheiros, +3 782 / −3 061 |
+| commits | **8** |
+| diffstat | 77 files changed, 4066 insertions(+), 3075 deletions(-) |
 
 ⚠️ **O rebase foi um FAST-FORWARD:** o HEAD desta worktree era **ancestral** do `main` — a Fase B
 de 11/09 já tinha sido integrada. Zero conflitos, e o merge-base é o `main` de hoje.
@@ -23,8 +23,8 @@ de 11/09 já tinha sido integrada. Zero conflitos, e o merge-base é o `main` de
 
 | | antes (o `main` de hoje) | depois |
 |---|---:|---:|
-| `shells/desktop` — LOC (a régua da catraca) | 398 037 | **390 6xx** |
-| `shells/desktop` — ficheiros | 1 561 | **1 538** |
+| `shells/desktop` — LOC (a régua da catraca) | 398 037 | **390 646** |
+| `shells/desktop` — ficheiros | 1 561 | **1538** |
 | família `vec_*` na shell | 92 | **76** |
 | `crates/ph2d-app-vec/src` — ficheiros | 33 | **60** |
 
@@ -186,7 +186,7 @@ shell não alcança os *test targets* das crates de que ela depende. Quem os apa
 |---|---|
 | **(a) nenhum teste se perde** | **`ONLY-A = 0`**. `22 665 → 22 666`; **100 `MOVED`**. O único `ONLY-B` é `the_dialog_offers_the_svg_line`, criado de propósito ao partir um gate por SUJEITO (§10) |
 | **(b) roteadores iguais** | **108 → 108**, `diff` vazio (shell + todas as crates, dos dois lados) |
-| **(c) a shell encolheu** | **398 037 → 390 6xx** LOC · 1 561 → 1 538 ficheiros |
+| **(c) a shell encolheu** | **398 037 → 390 646** LOC · 1 561 → 1 538 ficheiros |
 | **(d) `--test it` À PARTE** (regra 2) | **816 passed · 0 failed** |
 | **(e) `ph2d-app-registry-init`** | **5/5** — e `"vec"` fora da catraca |
 | **(f) fmt · typos · clippy** | `fmt --check` ✓ · `typos` ✓ · clippy `--all-targets --all-features` nas 5 crates ✓ |

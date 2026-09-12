@@ -631,6 +631,9 @@ ph2d-audio-desktop = { path = "../../crates/ph2d-audio-desktop", features = ["te
 # E o `TokenCtx::factory` da família do vetor (W2/L4-B2): quatro ficheiros da shell constroem a
 # régua de tokens, e ela é `#[cfg(test)]` — invisível assim que o `vec_bindings` mudou de crate.
 ph2d-app-vec = { path = "../../crates/ph2d-app-vec", features = ["test-support"] }
+# E os dois auxiliares da folha do esqueleto (`quadro`, `pior_desvio`): o gate da SEQUÊNCIA do
+# smoke ficou na shell porque a pose ficou, e eles eram `#[cfg(test)]` da crate.
+ph2d-skeleton-live = { path = "../../crates/ph2d-skeleton-live", features = ["test-support"] }
 # O harness headless de painel (`MockPanelHost`) — a shell precisa dele para medir a
 # GEOMETRIA que um painel de fato registra. O censo de linhas (doc 88 B3) mede quantas
 # linhas um nó produz; a metade que faltava é se elas CABEM na altura do dock, e a única

@@ -6,6 +6,9 @@
 //! dois verbos de soltar · e um segundo esqueleto não é apanhado por engano.
 
 use super::*;
+// ⭐ UMA definição: os dois auxiliares vivem no `test_support` da crate, porque o gate da
+// sequência do smoke (na shell) também os usa.
+use crate::test_support::{pior_desvio, quadro};
 use ph2d_ecs::{ChildOf, Name, RootOrder, Transform};
 use ph2d_vec_scene::{ShapeKind, cook};
 
@@ -45,37 +48,12 @@ fn osso(sim: &mut SimWorld, nome: &str, pos: [f32; 2], len: f64, pai: Option<Ent
     e
 }
 
-fn quadro(sim: &SimWorld, scene: &mut VecScene, id: VecPathId) -> VecPath {
-    recook(sim, scene);
-    scene
-        .paths()
-        .iter()
-        .find(|p| p.id == id)
-        .expect("o path")
-        .clone()
-}
-
 /// Gira um osso, em graus.
 fn gira(sim: &mut SimWorld, e: Entity, graus: f32) {
     sim.world_mut()
         .get_mut::<Transform>(e)
         .expect("Transform")
         .rotation = graus.to_radians();
-}
-
-fn pior_desvio(a: &VecPath, b: &VecPath) -> f64 {
-    a.verts_all()
-        .zip(b.verts_all())
-        .flat_map(|(x, y)| {
-            [
-                (x.anchor, y.anchor),
-                (x.in_handle, y.in_handle),
-                (x.out_handle, y.out_handle),
-            ]
-        })
-        .fold(0.0_f64, |m, (p, q)| {
-            m.max((p[0] - q[0]).abs()).max((p[1] - q[1]).abs())
-        })
 }
 
 /// ⭐⭐⭐ **PRENDER NÃO MOVE UM PIXEL.** A pose de repouso é a identidade por construção (doc 47
@@ -314,55 +292,6 @@ fn the_drawn_bone_is_where_the_hierarchy_puts_it() {
     assert!(
         b[0].abs() < 1e-5 && (b[1] - 45.0).abs() < 1e-5,
         "a ponta do osso filho ficou em {b:?}"
-    );
-}
-
-/// ⚠️ **SONDA da cena de smoke** (report do Enio, 2026-09-06: *"o bind não funciona e nenhuma forma
-/// pode ser deformada"*): a MESMA sequência do `vec_bone_smoke`, com as MESMAS portas.
-#[test]
-fn probe_the_smoke_sequence() {
-    let mut sim = SimWorld::default();
-    let mut scene = VecScene::new();
-    let mut map = VecEntityMap::new();
-    let id = scene.push_path(crate::build_smoke::shape(
-        ph2d_vec_scene::ShapeKind::RoundRect,
-        [-8.5, 2.0],
-        [-1.5, 3.0],
-        &[0.5],
-        [230, 170, 90],
-    ));
-    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
-    // A cadeia, como o smoke a faz: pela porta do GESTO, em coordenadas de MUNDO.
-    let mut pai: Option<Entity> = None;
-    let mut raiz = None;
-    for i in 0..3 {
-        let x = -8.2 + f64::from(i) * 2.1333;
-        let bits =
-            crate::bone_gesture::create(&mut sim, pai, [x, 2.5], [x + 2.1333, 2.5]).expect("osso");
-        pai = Some(Entity::from_bits(bits));
-        raiz = raiz.or(pai);
-    }
-    eprintln!(
-        "[probe] ossos = {:?}",
-        crate::skin_live::bone_segments(&sim)
-    );
-    let n = bind(&mut sim, &scene, &map, &[id], raiz);
-    eprintln!("[probe] bind devolveu {n}");
-    let antes = quadro(&sim, &mut scene, id);
-    // Posa o ÚLTIMO osso pela porta do gesto.
-    let ultimo = pai.expect("ultimo");
-    let ok = crate::bone_pose::pose(
-        &mut sim,
-        ultimo,
-        [-2.0, 6.0],
-        ph2d_skeleton_render::BonePart::Body,
-    );
-    eprintln!("[probe] pose devolveu {ok}");
-    let depois = quadro(&sim, &mut scene, id);
-    eprintln!("[probe] desvio = {}", pior_desvio(&antes, &depois));
-    assert!(
-        pior_desvio(&antes, &depois) > 0.5,
-        "a forma NAO deformou - reproduzido o report"
     );
 }
 

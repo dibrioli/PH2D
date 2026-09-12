@@ -10,3 +10,7 @@
 //! excepções).
 
 pub(crate) use ph2d_skeleton_live::skin_live::*;
+
+#[cfg(test)]
+#[path = "skeleton_live_tests.rs"]
+mod skeleton_live_tests;

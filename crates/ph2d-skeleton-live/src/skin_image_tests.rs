@@ -106,7 +106,7 @@ fn only_the_alpha_channel_decides_the_silhouette() {
 fn binding_an_image_to_a_still_skeleton_moves_nothing() {
     let mut sim = ph2d_ecs::SimWorld::default();
     // Um osso deitado sobre o eixo X, e uma imagem por cima dele.
-    let osso = crate::bone_gesture::create(&mut sim, None, [0.0, 0.0], [4.0, 0.0]).expect("osso");
+    let osso = crate::bone::create(&mut sim, None, [0.0, 0.0], [4.0, 0.0]).expect("osso");
     let e = sim
         .world_mut()
         .spawn((Transform::IDENTITY, sprite(4.0, 2.0, 0.0, 0.0)))
@@ -149,7 +149,7 @@ fn binding_an_image_to_a_still_skeleton_moves_nothing() {
 #[test]
 fn turning_the_bone_carries_the_image() {
     let mut sim = ph2d_ecs::SimWorld::default();
-    let osso = crate::bone_gesture::create(&mut sim, None, [-2.0, 0.0], [2.0, 0.0]).expect("osso");
+    let osso = crate::bone::create(&mut sim, None, [-2.0, 0.0], [2.0, 0.0]).expect("osso");
     let e = sim
         .world_mut()
         .spawn((Transform::IDENTITY, sprite(4.0, 2.0, 0.0, 0.0)))

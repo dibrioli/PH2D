@@ -32,3 +32,43 @@ pub mod bone;
 pub mod goal;
 pub mod skin_image;
 pub mod skin_live;
+
+/// ⚠️ **Os auxiliares que ATRAVESSAM a fronteira, e nada mais** (HOWTO §2.5).
+///
+/// O gate `probe_the_smoke_sequence` ficou na SHELL porque o sujeito dele (a sequência do smoke,
+/// que inclui uma POSE) ficou lá — e ele usa dois auxiliares que eram `#[cfg(test)]` desta crate.
+/// Um `cfg(test)` é **falso** quando a crate é dependência, logo eles tinham de atravessar ou ser
+/// copiados. ⛔ Copiar seriam duas definições da mesma régua, e a que envelhece é a de fora.
+#[cfg(any(test, feature = "test-support"))]
+pub mod test_support {
+    use ph2d_ecs::SimWorld;
+    use ph2d_vec_scene::{VecPath, VecPathId, VecScene};
+
+    /// Re-cozinha a cena e devolve o caminho `id` como ele ficou.
+    pub fn quadro(sim: &SimWorld, scene: &mut VecScene, id: VecPathId) -> VecPath {
+        crate::skin_live::recook(sim, scene);
+        scene
+            .paths()
+            .iter()
+            .find(|p| p.id == id)
+            .expect("o path")
+            .clone()
+    }
+
+    /// O maior desvio, em qualquer eixo, entre os vértices de dois estados do mesmo caminho.
+    #[must_use]
+    pub fn pior_desvio(a: &VecPath, b: &VecPath) -> f64 {
+        a.verts_all()
+            .zip(b.verts_all())
+            .flat_map(|(x, y)| {
+                [
+                    (x.anchor, y.anchor),
+                    (x.in_handle, y.in_handle),
+                    (x.out_handle, y.out_handle),
+                ]
+            })
+            .fold(0.0_f64, |m, (p, q)| {
+                m.max((p[0] - q[0]).abs()).max((p[1] - q[1]).abs())
+            })
+    }
+}

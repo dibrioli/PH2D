@@ -507,6 +507,16 @@ crates de família. A origem é simétrica e as duas metades foram confirmadas n
 - e **o comentário por cima** vai junto: num `Cargo.toml` o comentário pertence à declaração de baixo,
   e deixado lá passa a **parecer explicar a dependência seguinte**.
 
+- ⛔⛔ **e um GATE TEXTUAL pode ser a única coisa a manter viva uma dependência morta.** O
+  `audio_ml_is_off_by_default` (ADR-0123 A1) exigia que a **shell** declarasse `ph2d-audio-ml` como
+  opcional. Quando o áudio saiu para a `ph2d-audio-desktop`, a dependência opcional mudou-se com ele —
+  e a shell guardou uma cópia **morta** da linha, cujo único leitor era o gate. O machete apagou-a, o
+  gate reprovou **alto**, e a lei continuava verdadeira (o `cargo tree` por omissão: 1 052 pacotes e
+  nenhum `tract`). ⛔ **Repor a linha para calar o gate seria vigiar um engodo.** A cura foi
+  ancorá-lo na lei onde ela vive — e ficou **mais forte**: o pino passou a varrer **todos** os
+  manifestos da workspace, e apanha uma dependência de ML tornada obrigatória em qualquer crate, que
+  o pino antigo, só da shell, nunca via.
+
 ⇒ **ao fechar uma linha que move código, corra `cargo machete`** (é rápido e não compila).
 
 ## §3 — A prova (as cinco, com os números do piloto)

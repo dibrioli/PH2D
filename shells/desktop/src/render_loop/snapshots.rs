@@ -1,6 +1,6 @@
 //! Snapshot publication phase — once per frame, before paint.
 //!
-// ph2d-loc-cap: accreted one producer per W3 Inspector section
+// Tecto de LOC NUMERADO em `tests/it/file_loc_caps.rs` — accreted one producer per W3 Inspector section
 // (sprite/transform/visibility/ordering/sampling/name + §8 visibility-
 // section). Was already AT the 600-LOC ceiling before §8; +7 LOC for the
 // §8 producer tips it. Follow-up: lift the per-section producers into

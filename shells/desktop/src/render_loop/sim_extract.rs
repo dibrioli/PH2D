@@ -9,7 +9,7 @@
 //! HR-3: `worklist`'s capacity is reused across frames so this hot
 //! path stays zero-alloc after warm-up (`tests/propagate_no_alloc.rs`).
 //!
-// ph2d-loc-cap: per-sprite RenderInstance build accreted every W3 render
+// Tecto de LOC NUMERADO em `tests/it/file_loc_caps.rs` — per-sprite RenderInstance build accreted every W3 render
 // feature (tint cascade / region / sheet / anchor / flip / sampling /
 // UV tiling / visibility cull / sort). 5 LOC over after amendment-6;
 // follow-up = lift the build closure body into a sibling module (the

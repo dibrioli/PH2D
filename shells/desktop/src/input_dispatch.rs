@@ -1,4 +1,4 @@
-// ph2d-loc-cap: Onda 2C multi-select dispatch + hit_map routing +
+// Tecto de LOC NUMERADO em `tests/it/file_loc_caps.rs` — Onda 2C multi-select dispatch + hit_map routing +
 // click-vs-drag + group-translate snapshot capture grew this file
 // past the HR-18 600-LOC cap (currently ~900 LOC). The MouseInput
 // Down/Up arms are the bulk; the natural decomposition is to move

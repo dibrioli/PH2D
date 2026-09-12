@@ -43,6 +43,11 @@ const FILE_LOC_CAP: usize = 700;
 /// shrink, never grow); driving every entry to ≤600 by splitting is Fase 3.2.
 /// A NEW entry, or raising a number, requires Coordenador sign-off + an ADR
 /// note. Keys are relative to `crates/`.
+/// Quanto um tecto pode ficar ACIMA do ficheiro antes de ser obsoleto (auditoria de arquitectura A3,
+/// 2026-09-12): a tabela só descia quando o ficheiro caía abaixo do tecto simples, e quatro entradas
+/// tinham ficado 1 a 83 linhas para trás. Na mesma data todas desceram ao LOC medido.
+const FOLGA_MAXIMA: usize = 20;
+
 const FILE_OVERAGE_OK: &[(&str, usize)] = &[
     // 784 → 768 (ADR-0131 W5): the ancestor walk + the inverse of `compose`
     // moved to the sibling `transform_inverse.rs`. Ratcheted DOWN on the way
@@ -70,7 +75,7 @@ const FILE_OVERAGE_OK: &[(&str, usize)] = &[
     // tests; the tests moved to `cook_tests.rs` + `cook_scope_tests.rs`, so the
     // engine now sits at ~459 LOC under the plain 700 cap. Entry deleted rather
     // than raised, per this gate's own instruction.
-    ("ph2d-painter-effects/src/adjustments/mod.rs", 946),
+    ("ph2d-painter-effects/src/adjustments/mod.rs", 863),
     ("ph2d-painter-effects/src/adjustments/spatial.rs", 856),
     ("ph2d-render/src/compressed_pipeline.rs", 993),
     // Ratcheted 969 -> 722 em 2026-08-21. A wave dos 16 bits (`docs/Sprite_projeto/18`)
@@ -86,9 +91,9 @@ const FILE_OVERAGE_OK: &[(&str, usize)] = &[
     // + `bind_group_for` + `ensure_sampler_bg`) — saiu para `individual_sampling.rs`. ⚠️ Este
     // ficheiro foi encontrado 74 acima do tecto **depois** de a wave estar verde nas corridas
     // dela: o gate vive noutra crate, e um fecho com filtro de nome nunca o alcança.
-    ("ph2d-render/src/individual.rs", 709),
-    ("ph2d-render/src/layer_compositor/mod.rs", 934),
-    ("ph2d-render/src/renderer.rs", 1000),
+    ("ph2d-render/src/individual.rs", 708),
+    ("ph2d-render/src/layer_compositor/mod.rs", 882),
+    ("ph2d-render/src/renderer.rs", 932),
     ("ph2d-tool-bgremoval/src/algorithm/chroma/mod.rs", 704),
     ("ph2d-tool-bgremoval/src/algorithm/compose.rs", 931),
     ("ph2d-tool-color-equalization/src/gpu/auto_wb.rs", 748),
@@ -203,6 +208,11 @@ fn overage_allowlist_has_no_stale_entries() {
         if loc <= FILE_LOC_CAP {
             stale.push(format!(
                 "{rel} (frozen {frozen}, now {loc} ≤ {FILE_LOC_CAP}) — remove the entry"
+            ));
+        } else if *frozen > loc + FOLGA_MAXIMA {
+            stale.push(format!(
+                "{rel} (frozen {frozen}, now {loc}) — o tecto ficou {} linhas para trás: baixe-o para {loc}",
+                frozen - loc
             ));
         }
     }

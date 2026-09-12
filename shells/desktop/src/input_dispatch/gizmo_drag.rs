@@ -5,7 +5,7 @@
 //! enough that keeping them inline tipped the window-event dispatch hub
 //! past 600 LOC. The begin/end of a drag still live in the MouseInput
 //! arm; only the per-move advance moved here.
-// ph2d-loc-cap: ~735 LOC — the keyed-handle-id multi-select rotate/scale/translate
+// Tecto de LOC NUMERADO em `tests/it/file_loc_caps.rs` — ~735 LOC — the keyed-handle-id multi-select rotate/scale/translate
 // advance paths are inherently large; a finer per-path split is a desktop-gizmo follow-up.
 // +12 (gold-standard joint anchor): the joint tail — REMOVED again by W-J2; the
 // anchor dots open `ph2d_app_physics::joint_anchor_drag`, which writes one side's local.

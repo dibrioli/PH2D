@@ -1,5 +1,5 @@
 #![forbid(unsafe_code)]
-// ph2d-loc-cap: crate-root module hub — the 80+ `mod` declarations are an
+// Tecto de LOC NUMERADO em `tests/it/file_loc_caps.rs` — crate-root module hub — the 80+ `mod` declarations are an
 // append-only extension point (every drop-in line adds one, and `mod`
 // declarations cannot leave the crate root) alongside the winit `App` entry
 // impl + `fn main`. Grew past the HR-18 cap by cross-line `mod` accumulation

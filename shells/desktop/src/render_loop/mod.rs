@@ -10,7 +10,7 @@
 //!  - `present.rs` — paint + 4 GPU passes + title refresh.
 //!  - (more phases land as Wave 3.2 progresses.)
 //!
-// ph2d-loc-cap: frame orchestrator — heavy phases already extracted to
+// Tecto de LOC NUMERADO em `tests/it/file_loc_caps.rs` — frame orchestrator — heavy phases already extracted to
 // siblings (present/image_edit/sim_extract/snapshots/bgremoval_preview/
 // hierarchy); residual is the frame skeleton + EditorAction intent drain.
 // FOLLOW-UP: extract the intent-drain match to a `intents.rs` sibling to

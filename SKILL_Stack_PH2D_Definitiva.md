@@ -479,7 +479,7 @@ Toda mutação destrutiva grava em `audit.log` (JSON Lines, append-only): timest
 
 ### HR-18 — Crescimento bounded em shell binaries
 **Rule:** Arquivos em `shells/<plataforma>/src/` respeitam caps de tamanho:
-- Qualquer arquivo `.rs`: **≤ 600 LOC** (excluindo `tests/` e arquivos declarados como tabelas em comentário `// ph2d-loc-cap: table`).
+- Qualquer arquivo `.rs`: **≤ 600 LOC** (excluindo `tests/`), salvo as entradas NUMERADAS da tabela `FILE_OVERAGE_OK` do gate.
 - Qualquer função: **≤ 200 LOC** (corpo entre `{` e `}` do top-level fn).
 - `main.rs` de qualquer shell: **≤ 400 LOC** — contém apenas struct App, impl ApplicationHandler, fn main, e tests inline. ⚠️ **ASPIRAÇÃO, não regra vigente:** nenhum gate implementa este cap, e `shells/desktop/src/main.rs` mede **1.161 LOC** (medido 2026-08-18) sob o marcador `// ph2d-loc-cap: crate-root module hub`. O gate diz o mesmo de si próprio (`file_loc_caps.rs:21`: *"os caps de função/corpo (200/400) vivem num arquivo separado **quando ativados**"*).
 
@@ -489,7 +489,7 @@ Crescimento de funcionalidade acontece por adição de módulo `mod X;` (arquivo
 
 **Enforced by:** `shells/desktop/tests/it/file_loc_caps.rs` (**ativo** desde 2026-05-16), com `FILE_LOC_CAP = 600`. ⚠️ Este 600 é do **shell**; o cap do **workspace** é **700** (`architecture_workspace_file_loc_cap.rs`, [ADR-0105](docs/architecture/decisions/0105-file-loc-cap-600-to-700.md)), o de **painel** 600 arquivo / 200 função, e o de **widget** 500 — quatro caps distintos, e confundi-los é erro recorrente. O cap de função **existe e roda**, mas só no escopo `ph2d-panel-*` (`PANEL_FN_LOC_CAP = 200`).
 
-Exceções por `// ph2d-loc-cap: <razão>` nas primeiras 20 linhas — a janela é curta de propósito, para que quem abre o arquivo **veja a declaração de dívida**.
+⛔⛔ **Exceções são NUMERADAS desde 2026-09-12** (auditoria de arquitectura A3): uma linha `(ficheiro, tecto medido, razão)` na tabela `FILE_OVERAGE_OK` do gate (shell: `shells/desktop/tests/it/file_loc_caps.rs`; workspace: `architecture_workspace_file_loc_cap.rs`), com as DUAS metades da catraca — *cresceu acima do tecto* e *o tecto ficou mais de 20 linhas para trás*. O marcador `// ph2d-loc-cap: <razão>` isentava SEM número e virou licença: o `render_loop/mod.rs` cresceu de 1 667 para 14 009 linhas debaixo dele. Um ficheiro da shell que ainda o traga **reprova**; nos `crates/` ele nunca teve efeito.
 
 ⚠️ **MEDIDO EM 2026-08-18: são DEZ exceções ativas, não zero.** A frase anterior desta seção dizia *"Exceções ativas hoje: **ZERO** … `NONE (cap fully active)`"* — era verdade em 2026-05-17 e envelheceu em silêncio por três meses:
 

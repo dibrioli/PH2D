@@ -7,7 +7,7 @@
 //! `pub(crate)` — these are shell-internal aggregates, not a public
 //! API surface.
 //
-// ph2d-loc-cap: AppGfx + App are the shell's two top-level aggregates —
+// Tecto de LOC NUMERADO em `tests/it/file_loc_caps.rs` — AppGfx + App are the shell's two top-level aggregates —
 // each new editor subsystem (renderer / asset / tool / per-tool preview
 // state, and now the W2.T4 cooked-texture LogicalTextureMap) adds one
 // field + its doc here, so this definitions file accretes past 600 LOC by

@@ -7,9 +7,30 @@
 use std::fs;
 use std::path::Path;
 
+/// ⛔⛔ **RESOLVE AS DUAS ÁRVORES** (W2 Fase D). Ele lê por `read_to_string` de caminho fixo — o
+/// **gémeo em RUNTIME** da §2.6: mover um ficheiro medido não parte a compilação, o gate compila e
+/// explode só ao correr. ⭐ E o BASENAME é o que muda de forma: na shell o `vector_bridge_style.rs`
+/// morava em `render_loop/`, e dentro da crate tudo é plano — *uma fronteira nova não preserva a
+/// pasta de onde se veio.*
 fn shell(rel: &str) -> String {
-    let p = Path::new(env!("CARGO_MANIFEST_DIR")).join("src").join(rel);
-    fs::read_to_string(&p).unwrap_or_else(|e| panic!("{}: {e}", p.display()))
+    let raiz = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let nome = Path::new(rel).file_name().unwrap_or(rel.as_ref());
+    let tentativas = [
+        raiz.join("src").join(rel),
+        raiz.join("../../crates/ph2d-app-vec/src").join(nome),
+    ];
+    tentativas
+        .iter()
+        .find_map(|p| fs::read_to_string(p).ok())
+        .unwrap_or_else(|| {
+            panic!(
+                "`{rel}` nao esta' em nenhuma das arvores varridas: {:?}",
+                tentativas
+                    .iter()
+                    .map(|p| p.display().to_string())
+                    .collect::<Vec<_>>()
+            )
+        })
 }
 
 /// O fonte de um ficheiro da **crate da família** (W2/L4 Fase B: o `stroke_present` saiu da shell).

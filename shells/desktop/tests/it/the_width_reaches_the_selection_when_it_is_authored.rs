@@ -24,7 +24,7 @@
 //!    errada: era a resposta *de outra pergunta* (*há um gesto em curso?*). Tirá-lo daqui faria um
 //!    arrasto de slider virar um passo de undo por quadro.
 
-const SRC: &str = include_str!("../../src/render_loop/vector_bridge.rs");
+const SRC: &str = include_str!("../../../../crates/ph2d-app-vec/src/vector_bridge.rs");
 
 /// Onde `needle` aparece — falha nomeando quem sumiu (controle positivo: um `find` que não casa é
 /// um gate que passaria por vácuo).

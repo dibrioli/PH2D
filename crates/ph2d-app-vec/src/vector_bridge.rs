@@ -38,13 +38,13 @@ use style::{
 };
 /// ⚠️ `StrokeStyle` sai junto porque o gate de CONSEQUÊNCIA do [`crate::vec_selection`]
 /// **restiliza de verdade** em vez de contar caminhos — o artista vê cores, não listas.
-pub(crate) use style::{StrokeStyle, restyle_selected_strokes};
+pub use style::{StrokeStyle, restyle_selected_strokes};
 
 /// Troca o modo de desenho da tool Vector (a tool é a dona; o shell só espelha). O
 /// downcast fica confinado a este bridge (allowlist da gate
 /// `no_downcast_to_concrete_tool_in_shell`); o resto do shell chama por aqui. No-op se
 /// a tool Vector não está no registry.
-pub(crate) fn set_mode(tools: &mut ToolRegistry, mode: ph2d_tool_vector::DrawMode) {
+pub fn set_mode(tools: &mut ToolRegistry, mode: ph2d_tool_vector::DrawMode) {
     if let Some(tool) = tools.tool_by_id_mut(&ToolId::new("vector")).and_then(|t| {
         t.as_any_mut()
             .downcast_mut::<ph2d_tool_vector::VectorTool>()
@@ -61,7 +61,7 @@ pub(crate) fn set_mode(tools: &mut ToolRegistry, mode: ph2d_tool_vector::DrawMod
 /// arrasto na ferramenta anterior — *meio gesto*.
 ///
 /// Downcast confinado a este bridge, como o [`set_mode`].
-pub(crate) fn arm_bone(tools: &mut ToolRegistry, action: ph2d_tool_vector::BoneAction) {
+pub fn arm_bone(tools: &mut ToolRegistry, action: ph2d_tool_vector::BoneAction) {
     if let Some(tool) = tools.tool_by_id_mut(&ToolId::new("vector")).and_then(|t| {
         t.as_any_mut()
             .downcast_mut::<ph2d_tool_vector::VectorTool>()
@@ -82,7 +82,7 @@ pub(crate) fn arm_bone(tools: &mut ToolRegistry, action: ph2d_tool_vector::BoneA
 /// Existe para o sítio de decisão da semente não repetir o downcast: uma 2ª cópia dele é uma 2ª
 /// resposta a *"quem é a ferramenta de vetor?"*. `None` = a tool não está em cena, e aí não há
 /// catálogo nenhum a mostrar.
-pub(crate) fn shape_catalog(
+pub fn shape_catalog(
     tools: &mut ToolRegistry,
 ) -> Option<(ph2d_vec_scene::ShapeKind, ph2d_vec_scene::ShapeValues)> {
     let tool = tools.tool_by_id_mut(&ToolId::new("vector")).and_then(|t| {
@@ -105,7 +105,7 @@ pub(crate) fn shape_catalog(
 /// (`VectorTool::take_shape_armed`). `false` quando a tool não está em cena.
 ///
 /// Downcast confinado a este bridge, como o [`set_mode`].
-pub(crate) fn take_shape_armed(tools: &mut ToolRegistry) -> bool {
+pub fn take_shape_armed(tools: &mut ToolRegistry) -> bool {
     tools
         .tool_by_id_mut(&ToolId::new("vector"))
         .and_then(|t| {
@@ -115,7 +115,7 @@ pub(crate) fn take_shape_armed(tools: &mut ToolRegistry) -> bool {
         .is_some_and(ph2d_tool_vector::VectorTool::take_shape_armed)
 }
 
-pub(crate) fn adopt_shape_values(
+pub fn adopt_shape_values(
     tools: &mut ToolRegistry,
     kind: ph2d_vec_scene::ShapeKind,
     values: ph2d_vec_scene::ShapeValues,
@@ -134,7 +134,7 @@ pub(crate) fn adopt_shape_values(
 /// into `App` (the input dispatch reads it to route canvas gestures + size the
 /// shapes without a downcast). Defaults when the Vector tool is absent.
 #[allow(clippy::too_many_arguments)] // per-frame bridge inputs, each distinct
-pub(super) fn dispatch(
+pub fn dispatch(
     hero: &mut HeroScreen,
     tools: &mut ToolRegistry,
     scene: &mut VecScene,
@@ -165,7 +165,11 @@ pub(super) fn dispatch(
     // não um `bool` por interruptor: a lista já é longa, e a W6 acrescentou dois — o próximo
     // custaria mais uma posição numa assinatura que ninguém lê ao chamar. A GRADE não está
     // aqui (ela é do painel universal de Grid Snap).
-    snap: crate::vec_snap::VecSnapSettings,
+    // ⚠️ **Do sítio onde ele de facto vive.** O `crate::vec_snap` é uma FACHADA: nove símbolos
+    // dele são `pub use ph2d_app_vec::snap::{…}`, logo `crate::vec_snap::VecSnapSettings`
+    // nomeia um tipo da CRATE pelo nome da shell — e era só isso que prendia este cluster
+    // inteiro (6 ficheiros / 2 215 L) dentro dela.
+    snap: crate::snap::VecSnapSettings,
     // ⭐ O CADEADO de proporção do padrão (plano 33 W10). Ele é da SESSÃO — descreve o gesto,
     // não o padrão —, então mora na shell e só atravessa aqui para o painel o desenhar.
     texpat_lock: [bool; 2],
@@ -250,10 +254,10 @@ pub(super) fn dispatch(
     // consumido pelo passe que tem o mundo e a seleção na mão.
     let (fill_authored, stroke_authored) = tool.take_colour_authored();
     if fill_authored {
-        crate::vec_bindings::note_authored(ph2d_ecs::BoundProp::Fill);
+        crate::bindings::note_authored(ph2d_ecs::BoundProp::Fill);
     }
     if stroke_authored {
-        crate::vec_bindings::note_authored(ph2d_ecs::BoundProp::StrokeColor);
+        crate::bindings::note_authored(ph2d_ecs::BoundProp::StrokeColor);
     }
     let stroke = tool.stroke_rgba();
     let fill = tool.fill_rgba();
@@ -310,7 +314,7 @@ pub(super) fn dispatch(
     let width_authored = tool.take_width_authored();
     // **Digitar uma espessura SOLTA o token dela** (W4c.4) — a mesma lei da cor, pelo mesmo canal.
     if width_authored {
-        crate::vec_bindings::note_authored(ph2d_ecs::BoundProp::StrokeWidth);
+        crate::bindings::note_authored(ph2d_ecs::BoundProp::StrokeWidth);
     }
     let session = stroke_open || fill_open || width_dragging;
     // The selected gradient handle, kept only if it still addresses a colour on the

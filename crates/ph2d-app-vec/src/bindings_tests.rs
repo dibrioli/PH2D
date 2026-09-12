@@ -476,7 +476,11 @@ fn authoring_a_width_arms_the_detach_in_the_bridge() {
     // ⭐ E o `include_str!` falha em tempo de COMPILAÇÃO quando o alvo se move — é a metade boa
     //    da §2.6; o irmão perigoso é o `read_to_string` de caminho fixo, que só falha se o teste
     //    chegar a correr.
-    const BRIDGE: &str = include_str!("../../../shells/desktop/src/render_loop/vector_bridge.rs");
+    // ⭐ **A agulha VOLTOU PARA DENTRO.** Este gate apontava para FORA da crate (o caso legítimo da
+    // §2.6 do HOWTO: *«que a SHELL chama a família»*), e na Fase D o ficheiro medido **veio para
+    // casa** — o `vector_bridge` é da família. ⚠️ Um `include_str!` de caminho relativo falha em
+    // COMPILAÇÃO quando isso acontece, que é exactamente porque ele é a metade boa.
+    const BRIDGE: &str = include_str!("vector_bridge.rs");
     let lines: Vec<&str> = BRIDGE.lines().collect();
     let n = lines
         .iter()

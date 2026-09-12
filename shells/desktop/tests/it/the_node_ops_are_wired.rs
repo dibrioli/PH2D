@@ -27,10 +27,16 @@ const DISPATCH: &str = include_str!("../../src/input_dispatch.rs");
 /// pergunta certa em tempo de COMPILAÇÃO: apagar ou renomear um irmão não deixa o gate varrer o
 /// vazio, quebra o build do teste; e uma publicação que se mude para um irmão ainda não listado
 /// derruba o `expect` ao lado, alto.
+///
+/// ⚠️ **A PONTE mudou de CRATE** (W2 Fase D): os seis ficheiros dela são puros e vivem em
+/// `ph2d-app-vec`. ⭐ O `concat!` de `include_str!` **falhou em COMPILAÇÃO** no dia em que isso
+/// aconteceu — que é exactamente a propriedade que o parágrafo acima reivindica, e ela pagou-se.
+/// ⛔ O `LOOP_SRC` e o `DISPATCH` **não se mudaram**: eles medem o que a SHELL drena, e é a mesma
+/// lei em dois sujeitos diferentes.
 const BRIDGE: &str = concat!(
-    include_str!("../../src/render_loop/vector_bridge.rs"),
+    include_str!("../../../../crates/ph2d-app-vec/src/vector_bridge.rs"),
     "\n",
-    include_str!("../../src/render_loop/vector_bridge_publish.rs"),
+    include_str!("../../../../crates/ph2d-app-vec/src/vector_bridge_publish.rs"),
 );
 
 fn at(src: &str, needle: &str) -> usize {

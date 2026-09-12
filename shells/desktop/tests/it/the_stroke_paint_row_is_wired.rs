@@ -11,9 +11,35 @@
 use std::fs;
 use std::path::Path;
 
+/// ⛔⛔ **RESOLVE AS DUAS ÁRVORES, e a razão é a espécie de falha deste gate** (W2 Fase D). Ele lê por
+/// `read_to_string` de caminho fixo — o **gémeo em RUNTIME** da §2.6 do HOWTO. Ao contrário do
+/// `include_str!`, mover um ficheiro medido **não parte a compilação**: o gate compila e explode só
+/// quando corre (e um `#[ignore]` ou um filtro e ele nunca corre). Foram **sete** de uma vez nesta
+/// fase, todos apanhados pela suíte `--test it` corrida À PARTE, que é a regra 2 do bloco.
+///
+/// ⭐ Resolver as duas árvores, em vez de emendar cada caminho, é o que o faz **sobreviver ao próximo
+/// movimento** — e o `panic` nomeia as duas, senão uma ausência lê-se como um caminho mal escrito.
 fn shell(rel: &str) -> String {
-    let p = Path::new(env!("CARGO_MANIFEST_DIR")).join("src").join(rel);
-    fs::read_to_string(&p).unwrap_or_else(|e| panic!("{}: {e}", p.display()))
+    let raiz = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let tentativas = [
+        raiz.join("src").join(rel),
+        // ⚠️ **O BASENAME, não o caminho**: na shell o ficheiro morava em `render_loop/`, e dentro
+        //    da crate tudo é plano — *uma fronteira nova não preserva a pasta de onde se veio.*
+        raiz.join("../../crates/ph2d-app-vec/src")
+            .join(Path::new(rel).file_name().unwrap_or(rel.as_ref())),
+    ];
+    tentativas
+        .iter()
+        .find_map(|p| fs::read_to_string(p).ok())
+        .unwrap_or_else(|| {
+            panic!(
+                "`{rel}` nao esta' em nenhuma das arvores varridas: {:?}",
+                tentativas
+                    .iter()
+                    .map(|p| p.display().to_string())
+                    .collect::<Vec<_>>()
+            )
+        })
 }
 
 /// O fonte **sem comentários** — senão o gate aprova quem documenta a lei em vez de quem a obedece.

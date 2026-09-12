@@ -74,11 +74,11 @@ const DOWNCAST_ALLOWLIST: &[&str] = &[
     // image_edit drain: per-tool bake dispatch. Some downcasts retire
     // in later Etapas as OneShotImageOp routes via Registry kind.
     "src/render_loop/image_edit.rs",
-    // Vector bridge (ADR-0108 cutover): downcasts the single `VectorTool` to
-    // read its Style (stroke/fill/width) into the shell Pen + recolour the
-    // selected path. Same documented-bridge exception class as painter_bridge;
-    // keeps the central render loop downcast-free.
-    "src/render_loop/vector_bridge.rs",
+    // ⭐ **A entrada do `render_loop/vector_bridge.rs` SAIU em 2026-09-12 (W2 Fase D):** o ficheiro
+    // mudou-se inteiro para `ph2d-app-vec`, logo a shell já não contém aquele downcast e a lei
+    // deste gate — *o laço central fica livre de downcasts* — passou a ser satisfeita mais
+    // fortemente do que por uma excepção. ⛔ A entrada não foi apagada por conveniência: o censo de
+    // obsolescência abaixo **obriga-o**.
     // render_loop/mod.rs: PainterTool downcasts for the right-click handle-kind
     // drains (falloff / curve point handle). Same exception class as
     // painter_bridge; the central dispatch stays free of *vector* downcasts.
@@ -111,6 +111,60 @@ fn collect_rs_files_recursive(dir: &Path, files: &mut Vec<PathBuf>) {
             }
         }
     }
+}
+
+/// ⛔⛔ **O CENSO DE OBSOLESCÊNCIA — a metade que o comentário da lista PROMETIA e que não existia.**
+///
+/// A allowlist acima diz, por escrito: *«The stale-check below ensures the allowlist only contains
+/// files with REAL downcasts»*. **Não havia stale-check nenhum.** Este ficheiro tinha UM teste, e ele
+/// só olha os ficheiros que NÃO estão na lista — uma entrada podre é, para ele, invisível.
+///
+/// ⚠️ E ela apodreceu à vista em 2026-09-12: o `render_loop/vector_bridge.rs` mudou-se para
+/// `ph2d-app-vec` na W2 Fase D e a entrada passou a nomear um ficheiro que não existe. Nada se
+/// queixou. *Uma catraca sem censo de obsolescência não desce: ela vira LICENÇA* (`CLAUDE.md` §5.0)
+/// — e uma que **diz** ter o censo é pior, porque quem lê deixa de o procurar.
+///
+/// Ele reprova nas duas formas de podridão: a entrada que **não existe** e a que existe mas **já não
+/// tem downcast nenhum**.
+#[test]
+fn the_allowlist_only_names_files_that_still_downcast() {
+    let raiz = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let mut podres: Vec<String> = Vec::new();
+    for entrada in DOWNCAST_ALLOWLIST {
+        let p = raiz.join(entrada);
+        let Ok(conteudo) = fs::read_to_string(&p) else {
+            podres.push(format!("{entrada}: o ficheiro NAO EXISTE"));
+            continue;
+        };
+        let tem = conteudo.lines().any(|l| {
+            let t = l.trim_start();
+            !t.starts_with("//")
+                && (l.contains("downcast_mut::<ph2d_tool_") || l.contains("downcast_ref::<ph2d_tool_"))
+        });
+        if !tem {
+            podres.push(format!("{entrada}: existe, mas JA' NAO tem downcast nenhum"));
+        }
+    }
+    assert!(
+        podres.is_empty(),
+        "a DOWNCAST_ALLOWLIST tem entrada(s) obsoleta(s) — cada uma e' uma licenca que ninguem \
+         usa e que esconde a proxima violacao:\n{}\n\nApague-as. A lista so' encolhe.",
+        podres.join("\n")
+    );
+}
+
+/// **Controle positivo:** a lista não está vazia, e o detector vê o que procura.
+///
+/// ⛔ Sem isto, apagar a lista inteira deixaria o censo acima **trivialmente verde** — a armadilha
+/// do censo que mede zero e se lê como aprovado (HOWTO §2.7).
+#[test]
+fn the_allowlist_census_has_a_population() {
+    assert!(
+        DOWNCAST_ALLOWLIST.len() >= 4,
+        "a allowlist tem {} entradas e esperava >= 4 — ou o censo perdeu o sujeito, ou alguem a \
+         esvaziou (e ai' o gate acima deixou de afirmar seja o que for)",
+        DOWNCAST_ALLOWLIST.len()
+    );
 }
 
 #[test]

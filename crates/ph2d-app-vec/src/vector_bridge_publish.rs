@@ -30,7 +30,7 @@ use super::vocab::vertex_sel_of;
 /// Chamada uma vez por frame pelo [`super::dispatch`], **depois** de os passos 1-4 terem
 /// deixado o documento no estado que este passe descreve.
 #[allow(clippy::too_many_arguments)] // per-frame publish inputs, each a distinct fact
-pub(super) fn publish(
+pub fn publish(
     hero: &mut HeroScreen,
     scene: &VecScene,
     pen: &PenTool,
@@ -46,7 +46,11 @@ pub(super) fn publish(
     // Unidades de mundo por pixel de cursor (da câmera) — a régua do arrasto dos chips.
     px_to_world: f64,
     pivot_edit: bool,
-    snap: crate::vec_snap::VecSnapSettings,
+    // ⚠️ **Do sítio onde ele de facto vive.** O `crate::vec_snap` é uma FACHADA: nove símbolos
+    // dele são `pub use ph2d_app_vec::snap::{…}`, logo `crate::vec_snap::VecSnapSettings`
+    // nomeia um tipo da CRATE pelo nome da shell — e era só isso que prendia este cluster
+    // inteiro (6 ficheiros / 2 215 L) dentro dela.
+    snap: crate::snap::VecSnapSettings,
     // O cadeado de proporção do padrão — estado de SESSÃO da shell (ver `dispatch`).
     texpat_lock: [bool; 2],
     texpat_gap_link: [bool; 2],
@@ -115,7 +119,7 @@ pub(super) fn publish(
     // sementes do painel — que é o único sítio onde ela existe uma vez só.
     #[cfg(feature = "panel-vector")]
     ph2d_panel_vector::state::set_current_appearance(if vector_active {
-        crate::vec_paint_stack::published(scene, pen.selected_paths())
+        crate::paint_stack::published(scene, pen.selected_paths())
     } else {
         None
     });
@@ -129,7 +133,7 @@ pub(super) fn publish(
     // mora no ECS (`VecCutPath`); isto é a projeção, como toda a fronteira deste painel.
     #[cfg(feature = "panel-vector")]
     ph2d_panel_vector::set_cut_line_exists(
-        vector_active && crate::vec_cut_line::cut_line(sim, vec_entities).is_some(),
+        vector_active && crate::cut_line::cut_line(sim, vec_entities).is_some(),
     );
     // NOTA: o estilo de quina não é mais publicado para um toggle na seção Vertex — ele virou o
     // par de ferramentas Fillet / Chamfer (o SINAL do `corner_radius` é escrito pelo arrasto).
@@ -168,7 +172,7 @@ pub(super) fn publish(
     // Publica os valores **EFETIVOS** (o automático, quando o usuário não fixou nada);
     // `None` ⇒ nenhum conector na seleção ⇒ a seção inteira some. O corpo mora no módulo
     // dono do assunto (teto de 600 LOC por arquivo da shell, HR-18).
-    crate::vec_connector_panel::publish(
+    crate::connector_panel::publish(
         sim,
         vec_entities,
         scene,

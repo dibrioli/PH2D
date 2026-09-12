@@ -114,6 +114,7 @@ pub mod svg_import;
 pub mod symmetry_live;
 pub mod texture_pattern_edit;
 pub mod ui_state_bridge;
+pub mod vector_bridge;
 pub mod ui_state_edit;
 pub mod ui_panel_spec;
 pub mod widget_drive;

@@ -30,9 +30,33 @@
 
 use std::path::Path;
 
+/// ⛔⛔ **RESOLVE AS DUAS ÁRVORES, e a razão é a espécie de falha deste gate** (W2 Fase D). Ele lê por
+/// `read_to_string` de caminho fixo — o **gémeo em RUNTIME** da §2.6 do HOWTO. Ao contrário do
+/// `include_str!`, mover um ficheiro medido **não parte a compilação**: o gate compila e explode só
+/// quando corre (e um `#[ignore]` ou um filtro e ele nunca corre). Foram **sete** de uma vez nesta
+/// fase, todos apanhados pela suíte `--test it` corrida À PARTE, que é a regra 2 do bloco.
+///
+/// ⭐ Resolver as duas árvores, em vez de emendar cada caminho, é o que o faz **sobreviver ao próximo
+/// movimento** — e o `panic` nomeia as duas, senão uma ausência lê-se como um caminho mal escrito.
 fn read(rel: &str) -> String {
-    let p = Path::new(env!("CARGO_MANIFEST_DIR")).join(rel);
-    std::fs::read_to_string(&p).unwrap_or_else(|e| panic!("nao consegui ler {}: {e}", p.display()))
+    let raiz = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let nome = Path::new(rel).file_name().unwrap_or(rel.as_ref());
+    let tentativas = [
+        raiz.join(rel),
+        raiz.join("../../crates/ph2d-app-vec/src").join(nome),
+    ];
+    tentativas
+        .iter()
+        .find_map(|p| std::fs::read_to_string(p).ok())
+        .unwrap_or_else(|| {
+            panic!(
+                "`{rel}` nao esta' em nenhuma das arvores varridas: {:?}",
+                tentativas
+                    .iter()
+                    .map(|p| p.display().to_string())
+                    .collect::<Vec<_>>()
+            )
+        })
 }
 
 /// A PONTE do vetor, inteira — o `vector_bridge.rs` **mais** os irmãos que o teto de 600 LOC
@@ -44,8 +68,15 @@ fn read(rel: &str) -> String {
 /// o dono se muda, o gate ou fica **verde por vácuo** ou falha por um motivo que não é o dele. A
 /// família responde a pergunta certa — *alguém na ponte faz isto?* — e um irmão novo nasce
 /// coberto.
+/// ⭐⭐ **A FAMÍLIA MUDOU DE ÁRVORE, e foi o PISO que o disse** (W2 Fase D): os seis ficheiros da ponte
+/// vivem em `ph2d-app-vec` desde que uma FACHADA deixou de os prender (`crate::vec_snap::VecSnapSettings`
+/// é `pub(crate) use ph2d_app_vec::snap::{…}`). Este censo varria `src/render_loop/` e passou a achar
+/// **zero**. ⛔ Sem o `names.len() >= 2` ele teria concatenado a string VAZIA e cada `assert` sobre ela
+/// seria trivialmente falso — ou, do outro lado, um `!contains` seria trivialmente verdadeiro: *o censo
+/// que varre por prefixo fica verde a varrer NADA* (HOWTO §2.7).
+/// ⚠️ **Ele fica mais forte do que era**: o piso subiu para o tamanho real da família.
 fn bridge_family() -> String {
-    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("src/render_loop");
+    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../crates/ph2d-app-vec/src");
     let mut names: Vec<String> = std::fs::read_dir(&dir)
         .unwrap_or_else(|e| panic!("nao consegui listar {}: {e}", dir.display()))
         .filter_map(|e| e.ok())
@@ -60,12 +91,13 @@ fn bridge_family() -> String {
     // Controle positivo: um rename que esvazie a varredura tem de falhar ALTO, nunca passar
     // afirmando o vazio.
     assert!(
-        names.len() >= 2,
-        "a familia do vector_bridge encolheu para {names:?} — o gate estaria a varrer quase nada"
+        names.len() >= 4,
+        "a familia do vector_bridge encolheu para {names:?} — o gate estaria a varrer quase nada. \
+         Se ela mudou de arvore outra vez, aponte o `dir` acima para onde ela vive; NAO baixe o piso."
     );
     names
         .iter()
-        .map(|n| read(&format!("src/render_loop/{n}")))
+        .map(|n| read(&format!("../../crates/ph2d-app-vec/src/{n}")))
         .collect::<Vec<_>>()
         .join("\n")
 }

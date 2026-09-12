@@ -53,14 +53,24 @@ const BRIDGE_DIR: &str = "src/render_loop";
 /// o que ele fez, e por isso ele existe.
 const BRIDGE_DIR_FAM: &str = "../../crates/ph2d-app-motion/src";
 
+/// ⚠️⚠️ **E o TERCEIRO, na Fase D (2026-09-12): o `vector_bridge` mudou-se para `ph2d-app-vec`.**
+/// O controlo positivo abaixo acusou-o exactamente como acusara o `motion_graph` uma fase antes —
+/// *o mesmo gate apanhou a mesma mudança duas vezes, e da segunda já sabia dizer porquê.*
+///
+/// ⭐ Isto é o padrão desta wave a estabilizar-se: **as pontes deixaram de viver num sítio**, e um
+/// censo que varre «a pasta das pontes» tem de crescer com elas. ⛔ Quem acrescentar a quarta
+/// família acrescenta a linha aqui — o piso e os três nomes conhecidos são o que torna a omissão
+/// visível em vez de muda.
+const BRIDGE_DIR_VEC: &str = "../../crates/ph2d-app-vec/src";
+
 /// Como é que a ponte escreve a visibilidade.
 const WRITE: &str = "panel_visibility.insert(";
 
 /// Um `insert` lido: o id do painel e o que lhe foi atribuído.
 fn writes() -> BTreeMap<String, Vec<String>> {
     let mut out: BTreeMap<String, Vec<String>> = BTreeMap::new();
-    // ⚠️ DOIS sítios desde a Fase C (2026-09-12) — ver [`BRIDGE_DIR_FAM`].
-    let mut files: Vec<_> = [BRIDGE_DIR, BRIDGE_DIR_FAM]
+    // ⚠️ TRÊS sítios desde a Fase D — ver [`BRIDGE_DIR_FAM`] e [`BRIDGE_DIR_VEC`].
+    let mut files: Vec<_> = [BRIDGE_DIR, BRIDGE_DIR_FAM, BRIDGE_DIR_VEC]
         .iter()
         .flat_map(|d| {
             fs::read_dir(d)
@@ -287,7 +297,7 @@ fn tools_that_take_over_the_inspector() -> Vec<String> {
     let mut out = Vec::new();
     // ⚠️ As pontes vivem em DOIS sítios desde a Fase C: a `motion_bridge` saiu para a crate
     // da família e as outras nove continuam no `render_loop`.
-    let mut files: Vec<_> = [BRIDGE_DIR, BRIDGE_DIR_FAM]
+    let mut files: Vec<_> = [BRIDGE_DIR, BRIDGE_DIR_FAM, BRIDGE_DIR_VEC]
         .iter()
         .flat_map(|d| {
             fs::read_dir(d)

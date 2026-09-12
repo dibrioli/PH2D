@@ -16,7 +16,7 @@ use ph2d_vec_render::GradHandle;
 use ph2d_vec_scene::{LineCap, LineJoin, Paint, Rgba8, StrokeAlign, StrokeSpec, VecScene};
 use std::cell::{Cell, RefCell};
 
-pub(crate) fn rgba(c: [u8; 4]) -> Rgba8 {
+pub fn rgba(c: [u8; 4]) -> Rgba8 {
     Rgba8::new(c[0], c[1], c[2], c[3])
 }
 
@@ -28,7 +28,7 @@ pub(crate) fn rgba(c: [u8; 4]) -> Rgba8 {
 /// Um campo presente num e ausente no outro é um controle que mexe no número e não muda nada
 /// na tela — e o compilador não diz nada. Foi exatamente o risco do Head Size / Head Round.
 #[derive(Copy, Clone, Debug)]
-pub(crate) struct StrokeStyle {
+pub struct StrokeStyle {
     pub color: Rgba8,
     pub cap: LineCap,
     pub join: LineJoin,
@@ -45,7 +45,7 @@ pub(crate) struct StrokeStyle {
 impl StrokeStyle {
     /// O traço `s` já é esta ficha, ou reescrevê-lo mudaria alguma coisa? (A largura fica de
     /// fora: ela só acompanha a tool enquanto o slider é arrastado.)
-    pub(crate) fn differs_from(&self, s: &StrokeSpec) -> bool {
+    pub fn differs_from(&self, s: &StrokeSpec) -> bool {
         s.color() != self.color
             || s.cap != self.cap
             || s.join != self.join
@@ -85,7 +85,7 @@ impl StrokeStyle {
     /// cor escreve. Uma swatch que mostra um valor e não o muda é o controlo morto que esta linha
     /// caça há três waves — e é também o que faria o [`Self::differs_from`] disparar **todo
     /// quadro**, com cada um a virar um passo de undo.
-    pub(crate) fn onto(&self, old: &StrokeSpec, width: f64) -> StrokeSpec {
+    pub fn onto(&self, old: &StrokeSpec, width: f64) -> StrokeSpec {
         use ph2d_vec_scene::StrokePaint;
         let paint = match &old.paint {
             StrokePaint::Solid(_) => StrokePaint::Solid(self.color),
@@ -191,7 +191,7 @@ fn recolour_pattern(pat: &mut ph2d_vec_scene::PatternFill, c: Rgba8) -> bool {
 ///   ladrilho, a rotação e a fonte por um arrasto acidental até ao fundo da barra, e a leitura útil
 ///   é *invisível, mas lá*. *Uma convenção herdada aplica-se onde não custa nada; onde custa, ela é
 ///   a pergunta.*
-pub(crate) fn apply_fill_colour(fill: &mut Option<Paint>, closed: bool, c: Rgba8) -> bool {
+pub fn apply_fill_colour(fill: &mut Option<Paint>, closed: bool, c: Rgba8) -> bool {
     if !closed {
         return false;
     }
@@ -227,7 +227,7 @@ pub(crate) fn apply_fill_colour(fill: &mut Option<Paint>, closed: bool, c: Rgba8
 ///
 /// ⛔ **Um gradiente fica QUIETO** (`None`): ele tem alça própria, e esmagá-lo numa cor só seria a
 /// selecção a destruir o que o artista autorou.
-pub(crate) fn seed_fill_from_paint(fill: Option<&Paint>) -> Option<[u8; 4]> {
+pub fn seed_fill_from_paint(fill: Option<&Paint>) -> Option<[u8; 4]> {
     match fill {
         Some(Paint::Solid(c)) => Some([c.r, c.g, c.b, c.a]),
         Some(Paint::Pattern(p)) => {
@@ -245,7 +245,7 @@ pub(crate) fn seed_fill_from_paint(fill: Option<&Paint>) -> Option<[u8; 4]> {
 ///
 /// `new_width = Some(w)` **só** enquanto o slider de largura é arrastado; senão cada caminho
 /// mantém a largura dele (uma escolha de cor nunca pode reengrossar a linha).
-pub(crate) fn restyle_selected_strokes(
+pub fn restyle_selected_strokes(
     scene: &mut VecScene,
     selection: &[ph2d_vec_scene::VecPathId],
     style: &StrokeStyle,
@@ -271,7 +271,7 @@ pub(crate) fn restyle_selected_strokes(
 /// point's colour, or the ramp stop at the START/END end the linear/radial handle
 /// sits on. Drives the Fill swatch, the picker seed, and the recolour. `None` if the
 /// handle doesn't match the fill kind (e.g. a stale selection after a kind switch).
-pub(crate) fn selected_grad_color(fill: &Paint, handle: GradHandle) -> Option<Rgba8> {
+pub fn selected_grad_color(fill: &Paint, handle: GradHandle) -> Option<Rgba8> {
     match (fill, handle) {
         (Paint::MultiPoint { points }, GradHandle::Point(i)) => points.get(i).map(|gp| gp.color),
         (Paint::Linear { stops, .. }, GradHandle::LinearStart)
@@ -286,7 +286,7 @@ pub(crate) fn selected_grad_color(fill: &Paint, handle: GradHandle) -> Option<Rg
 
 /// Recolour the slot the selected gradient handle addresses to `c`; returns whether
 /// it changed. Mirror of [`selected_grad_color`] on the mutable fill.
-pub(crate) fn set_selected_grad_color(fill: &mut Paint, handle: GradHandle, c: Rgba8) -> bool {
+pub fn set_selected_grad_color(fill: &mut Paint, handle: GradHandle, c: Rgba8) -> bool {
     let slot = match (fill, handle) {
         (Paint::MultiPoint { points }, GradHandle::Point(i)) => {
             points.get_mut(i).map(|gp| &mut gp.color)
@@ -318,7 +318,7 @@ pub(crate) fn set_selected_grad_color(fill: &mut Paint, handle: GradHandle, c: R
 /// is dragging it — so a colour-picker alpha change reflects on the panel and the
 /// drag baseline stays correct. The linked chip's display is driven from the
 /// slider track in `paint`, so it follows without a separate push.
-pub(crate) fn sync_opacity_slider(
+pub fn sync_opacity_slider(
     store: &mut ph2d_editor::interaction::WidgetStore,
     id: ph2d_editor::NodeId,
     alpha: u8,
@@ -337,7 +337,7 @@ thread_local! {
     /// first frame the colour actually changes the selected path). Committed to
     /// `History` as ONE undo step when the gesture ends (the picker closes /
     /// the discrete pick's frame finishes). `None` between gestures.
-    pub(crate) static RECOLOR_PRE: RefCell<Option<VecScene>> = const { RefCell::new(None) };
+    pub static RECOLOR_PRE: RefCell<Option<VecScene>> = const { RefCell::new(None) };
     /// O caminho cujas PONTAS a tool adotou por último — o "alvo" dos dois seletores de
     /// marker, no mesmo modelo do alvo dos campos de forma (`vec_shape_params`). Só a
     /// MUDANÇA de alvo semeia; semear todo frame brigaria com a escolha que o usuário
@@ -368,7 +368,7 @@ thread_local! {
 ///
 /// Um caminho SEM traço (só preenchimento) não tem estilo a doar: o alvo passa a ser ele, mas o
 /// Style da tool fica onde estava (o default do próximo traço).
-pub(crate) fn seed_style_from_selection(
+pub fn seed_style_from_selection(
     tool: &mut ph2d_tool_vector::VectorTool,
     store: &mut ph2d_editor::interaction::WidgetStore,
     pen: &PenTool,

@@ -18,7 +18,7 @@
 //! a from-scratch recompose of the document. Anything the protocol drops, misplaces or staleness
 //! leaks — vanished relief, displaced patch rects, missed settle frames — is a byte diff here.
 
-use crate::painter_bridge::{UploadPlan, extract_region, plan_upload};
+use crate::painter_bridge_upload::{UploadPlan, extract_region, plan_upload};
 use ph2d_editor::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool};
 use ph2d_preview_slot::PreviewGpu as PainterPreviewGpu;
 use ph2d_render::premultiply_rgba8;
@@ -91,7 +91,7 @@ impl Screen {
             // The shell's OWN buffer — the REAL function, driven exactly as `dispatch` drives it. It
             // patches the dirty region into the prior buffer (or seeds a fresh one) and drops
             // `drained`, so the tool is left the sole owner of its canvas.
-            let mirror = crate::painter_bridge::own_preview_buffer(
+            let mirror = crate::painter_bridge_upload::own_preview_buffer(
                 self.cache.take(),
                 ENTITY,
                 w,

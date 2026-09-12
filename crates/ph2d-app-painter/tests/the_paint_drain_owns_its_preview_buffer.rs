@@ -24,7 +24,12 @@ const SRC: &str = include_str!("../src/painter_bridge.rs");
 
 #[test]
 fn the_paint_drain_owns_its_preview_buffer() {
-    let call = SRC.find("let mirror = own_preview_buffer(").unwrap_or_else(|| {
+    // ⚠️ A agulha nomeia a CHAMADA, e ela ficou onde estava — no dreno. O que mudou foi o
+    // ENDEREÇO da função (`painter_bridge_upload`, W2 Fase D), logo a chamada passou a ser
+    // qualificada. *A lei é onde a composição é escolhida, não onde a ajudante mora.*
+    let call = SRC
+        .find("let mirror = crate::painter_bridge_upload::own_preview_buffer(")
+        .unwrap_or_else(|| {
         panic!(
             "the CPU preview drain no longer routes the composite through `own_preview_buffer`. It \
              MUST: stashing the drained tool `Arc` directly makes `stamp_dabs` copy the whole canvas \

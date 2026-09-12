@@ -71,6 +71,7 @@ pub mod painter_bridge_op_badges;
 /// On-canvas editing chrome (brush ring + Curve/Circle/Polygon/Stencil overlays), split from
 /// `painter_bridge` for the HR-18 file-LOC cap.
 pub mod painter_bridge_overlays;
+pub mod painter_bridge_phases;
 pub mod painter_bridge_queries;
 /// The isolated selection gizmos (ellipse / polygon / freehand), split from `painter_bridge_overlays`.
 pub mod painter_bridge_selection_gizmos;
@@ -82,6 +83,7 @@ pub mod painter_bridge_selection_overlay;
 pub mod painter_bridge_shape_preview;
 /// On-canvas wetness sheen veil (Watercolor render-path), split from `painter_bridge_overlays` for the
 /// HR-18 file-LOC cap.
+pub mod painter_bridge_upload;
 pub mod painter_bridge_wetness;
 pub mod painter_gpu_flatten;
 pub mod painter_gpu_preview;

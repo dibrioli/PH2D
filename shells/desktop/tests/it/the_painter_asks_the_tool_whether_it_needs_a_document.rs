@@ -23,15 +23,21 @@
 //! costura (`ph2d-tool-painter`, `tool::documents::rebind_tests`) prova que o tool responde certo e
 //! que um re-bind com canvas vazio re-semeia; este aqui prova que a shell **pergunta**.
 
-const SRC: &str = include_str!("../../../../crates/ph2d-app-painter/src/painter_bridge.rs");
+// ⚠️ A lei mudou de FICHEIRO (W2 Fase D): o `painter_bridge.rs` foi cortado por
+// responsabilidade para caber no teto de LOC das crates, e esta fase vive agora no irmão.
+const SRC: &str = include_str!("../../../../crates/ph2d-app-painter/src/painter_bridge_phases.rs");
 
 /// O corpo do `if` que decide o bind — do comentário de cabeçalho até a chamada de `bind_document`.
 fn bind_decision() -> &'static str {
     let start = SRC
-        .find("// ── Source push when the painter has no document for the selection → bind it ──")
+        // ⚠️ **A âncora é a FUNÇÃO, não o comentário-marcador** (W2 Fase D). O bloco virou a
+        // `bind_document` do `painter_bridge_phases`, e o marcador `// ── Source push …` ficou com
+        // a CHAMADA, no `dispatch`. ⛔ E não `pub(crate) fn`: uma agulha ancora na LEI, nunca na
+        // visibilidade — que é exactamente o que uma fronteira nova muda por construção.
+        .find("fn bind_document(")
         .expect(
-            "o bloco de bind sumiu do painter_bridge — se foi renomeado, atualize este gate (e \
-             confira que a decisão continua sendo do TOOL)",
+            "o bloco de bind sumiu do `painter_bridge_phases` — se foi renomeado, atualize este \
+             gate (e confira que a decisão continua sendo do TOOL)",
         );
     let end = SRC[start..]
         .find("painter.bind_document(")

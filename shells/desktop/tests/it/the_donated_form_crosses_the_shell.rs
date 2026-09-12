@@ -14,7 +14,10 @@
 //! bytes de"*: o proxy expira no dia em que alguém acrescenta uma linha no meio, e o produto
 //! continua certo.
 
-const BRIDGE: &str = include_str!("../../../../crates/ph2d-app-painter/src/painter_bridge.rs");
+// ⚠️ A lei mudou de FICHEIRO (W2 Fase D): o `painter_bridge.rs` foi cortado por
+// responsabilidade para caber no teto de LOC das crates, e esta fase vive agora no irmão.
+const BRIDGE: &str =
+    include_str!("../../../../crates/ph2d-app-painter/src/painter_bridge_phases.rs");
 const LOOP: &str = include_str!("../../src/render_loop/mod.rs");
 const SCENE: &str = include_str!("../../../../crates/ph2d-app-sculpt3d/src/lib.rs");
 /// ⚠️ **O GESTO mora num arquivo irmão** (`sculpt3d/input.rs`), e as portas que

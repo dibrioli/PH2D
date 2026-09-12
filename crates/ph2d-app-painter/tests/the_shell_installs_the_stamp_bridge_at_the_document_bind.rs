@@ -20,7 +20,9 @@
 //! perdeu dois gates assim quando um terceiro consumidor entrou no meio
 //! ([[feedback_a_gate_anchored_on_a_byte_distance_is_a_proxy_that_expires]]).
 
-const SRC: &str = include_str!("../src/painter_bridge.rs");
+// ⚠️ A fase do bind mudou de ficheiro (W2 Fase D): o `painter_bridge.rs` foi cortado por
+// responsabilidade para caber no teto de LOC das crates, e o bind vive agora no irmão.
+const SRC: &str = include_str!("../src/painter_bridge_phases.rs");
 const WIRE: &str = include_str!("../src/painter_stamp_device.rs");
 
 /// A ponte é instalada no bind, DEPOIS de o documento existir e junto do pré-aquecimento.

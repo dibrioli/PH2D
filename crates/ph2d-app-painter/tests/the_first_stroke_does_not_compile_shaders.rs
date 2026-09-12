@@ -16,7 +16,12 @@
 /// levar o mouse à tela.
 #[test]
 fn the_bind_that_hands_the_painter_a_document_also_warms_the_gpu_preview() {
-    let src = include_str!("../src/painter_bridge.rs");
+    // ⚠️ **A lei mudou de FICHEIRO, não de conteúdo** (W2 Fase D): o bind saiu do `dispatch` para
+    // o irmão `painter_bridge_phases` quando o `painter_bridge.rs` foi cortado por
+    // responsabilidade para caber no teto de LOC das crates. ⭐ **Quem apanhou a mudança foi o
+    // controlo positivo abaixo** — sem ele este gate teria passado por não achar nada, que é
+    // exactamente a falha que o doc dele nomeia.
+    let src = include_str!("../src/painter_bridge_phases.rs");
 
     // Controle positivo: os dois alvos têm de EXISTIR. Sem isto o gate passa por não achar nada — a
     // falha que o arch-gate do Shape Flow pegou em si mesmo.

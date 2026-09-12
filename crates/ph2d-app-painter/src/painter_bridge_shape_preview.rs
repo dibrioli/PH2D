@@ -7,7 +7,7 @@ use ph2d_editor::ToolRegistry;
 use ph2d_editor::toast::{Toast, ToastQueue};
 use ph2d_render::{SpriteRenderer, premultiply_rgba8};
 
-use crate::painter_bridge::release_preview_texture;
+use crate::painter_bridge_upload::release_preview_texture;
 use ph2d_preview_slot::PreviewGpu as PainterPreviewGpu;
 
 /// Drive the live preview of a sprite used as the brush **Shape** while it is NOT the selected sprite, so

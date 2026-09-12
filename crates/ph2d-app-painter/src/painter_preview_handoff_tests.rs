@@ -2,7 +2,7 @@
 //! CPU→GPU→CPU dance on real hardware. Split from `painter_preview_pipeline_tests.rs` (HR-18 file
 //! LOC cap); the harness (Screen, oracles, the smoke arming) lives there and is shared.
 
-use crate::painter_bridge::{UploadPlan, plan_upload};
+use crate::painter_bridge_upload::{UploadPlan, plan_upload};
 use crate::painter_preview_pipeline_tests::{
     ENTITY, assert_screen_equals, cp, impasto_tool, screen_truth,
 };
@@ -15,7 +15,7 @@ use std::sync::Arc;
 
 /// One frame of the app's preview lifecycle, in `dispatch`'s exact order: the GPU producer gets
 /// first refusal (`try_drive`), a GPU-owned frame clears the CPU cache, a CPU-owned frame drains
-/// the tool and runs the real upload door ([`crate::painter_bridge::upload_cpu_preview`]).
+/// the tool and runs the real upload door ([`crate::painter_bridge_upload::upload_cpu_preview`]).
 /// Returns whether the GPU producer owned the slot this frame.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn app_frame(
@@ -41,7 +41,7 @@ pub(super) fn app_frame(
         dirty_bbox = painter.take_preview_upload_bbox();
         // The shell owns its preview buffer (drives the REAL helper), so the tool stays the sole
         // owner of its canvas — exactly as `dispatch` does it.
-        let mirror = crate::painter_bridge::own_preview_buffer(
+        let mirror = crate::painter_bridge_upload::own_preview_buffer(
             preview.take(),
             ENTITY,
             w,
@@ -59,7 +59,7 @@ pub(super) fn app_frame(
     // Idle (drain None) reads the unchanged version → the plan Skips; a dirty frame reads the bumped
     // one → it uploads.
     let cache_version = painter.canvas_version();
-    crate::painter_bridge::upload_cpu_preview(
+    crate::painter_bridge_upload::upload_cpu_preview(
         renderer,
         preview.as_ref().filter(|_| !gpu_owns),
         dirty_bbox,

@@ -1,5 +1,5 @@
-// ph2d-loc-cap: mid-refactor — grew with the deactivate/commit + selection-gizmo bridge paths; decomposing
-// the bridge (source-push · preview-drain · commit) into sub-modules is a scoped follow-up.
+// ⚠️ O `// ph2d-loc-cap:` que estava aqui SAIU: ele é **inerte** em `crates/` — porquê, e o corte
+// que o substituiu, no header do irmão `painter_bridge_upload`.
 //! Painter (layers + effects) panel ⟷ tool bridge + on-canvas live preview.
 //!
 //! Modeled after `bgremoval_preview.rs`. What it does:
@@ -49,14 +49,13 @@ use ph2d_asset::{AssetDb, AssetId};
 use ph2d_ecs::SimWorld;
 use ph2d_editor::HeroScreen;
 use ph2d_editor::ToolRegistry;
-use ph2d_editor::toast::{Toast, ToastQueue};
+use ph2d_editor::toast::ToastQueue;
 use ph2d_host::WindowSize;
 use ph2d_preview_slot::PreviewGpu as PainterPreviewGpu;
-use ph2d_render::{Camera2d, SpriteRenderer, premultiply_rgba8};
+use ph2d_render::{Camera2d, SpriteRenderer};
 use ph2d_tool_runtime::PreviewCache as PainterPreview;
 use ph2d_vector::VectorScene;
 use std::collections::BTreeMap;
-use std::sync::Arc;
 
 /// Frame cap for the `PH2D_PREVIEW_DUMP` diagnostic trap (BUGS_painter.md #11). A stroke is tens of
 /// frames, so this holds several gestures while keeping a long session from filling the disk.
@@ -155,166 +154,31 @@ pub fn dispatch(
     let redo_requested = std::mem::take(redo_requested);
 
     // ── Dock visibility ───────────────────────────────────────────────────
-    // When the painter (layers + effects) tool is active, the shared Inspector
-    // slot is taken over by the docked Layers panel. Edge-triggered inspector
-    // hide so it doesn't stomp a manual rail toggle.
-    hero.panel_visibility
-        .insert("painter_layers", painter_is_active);
-    // The Wet Tuning side panel can only be open UNDER the painter: with the
-    // tool inactive the downcast block below never runs, so the OFF half is
-    // written here (a stale `true` would leave the panel floating tool-less).
-    if !painter_is_active {
-        hero.panel_visibility.insert("wet_tuning", false);
-    }
-    {
-        use std::sync::atomic::{AtomicBool, Ordering};
-        static LAST_ACTIVE: AtomicBool = AtomicBool::new(false);
-        let was = LAST_ACTIVE.swap(painter_is_active, Ordering::Relaxed);
-        if was != painter_is_active {
-            // ⚠️ **A promoção FICA, o esconder é que saiu.** Ela não é o *takeover*: o
-            //    `PAINTER_LAYERS_PANEL` não está na lista de recurso da ordem z do
-            //    `ph2d-editor-core`, logo sem ela o painel nem entra na travessia de pintura —
-            //    e com as abas ela é também o que o põe à FRENTE da fila ao abrir a ferramenta.
-            if painter_is_active {
-                hero.store
-                    .bump_panel_z(ph2d_editor::ids::PAINTER_LAYERS_PANEL);
-            }
-        }
-    }
+    crate::painter_bridge_phases::dock_visibility(hero, painter_is_active);
 
     // ── C&F colour picker → brush colour (single source of truth, all modes) ──
-    // The shared Blender picker mirrors its live value into `widget_color(PAINTER_COLOR_THUMB)` each frame,
-    // but the panel's widget→brush forward is SKIPPED in Selection mode and STOPS the instant the picker
-    // closes — so the final pick (the one that closed the picker) never reached the brush and the next Fill
-    // used the PREVIOUS colour (Enio 2026-07-03). Forward it here instead: every frame the painter is active
-    // (works in Selection mode too) while the picker targets the thumb, AND once on the open→close edge to
-    // catch that final pick. Reads the picker's OWN value (not `widget_color`, which the panel overwrites),
-    // so it's independent of paint order.
-    {
-        use std::sync::atomic::{AtomicBool, Ordering};
-        static PICKER_WAS_OPEN: AtomicBool = AtomicBool::new(false);
-        let open = hero.store.picker_target() == Some(ph2d_editor::ids::PAINTER_COLOR_THUMB);
-        let was_open = PICKER_WAS_OPEN.swap(open, Ordering::Relaxed);
-        if (open || was_open)
-            && let Some((value, _, _, _)) = hero
-                .store
-                .blender_picker(ph2d_editor::ids::INSP_BLENDER_PICKER)
-            && let Some(painter) = tools.active_mut().and_then(|t| {
-                t.as_any_mut()
-                    .downcast_mut::<ph2d_tool_painter::PainterTool>()
-            })
-        {
-            let [r, g, b, _] = value.rgba;
-            painter.set_brush_color_srgb8([r, g, b]);
-        }
-    }
+    crate::painter_bridge_phases::forward_picker_colour(hero, tools);
 
     // ── Source push when the painter has no document for the selection → bind it ──
-    // Push the selected sprite's pixels into the painter, but via `bind_document` (NOT the generic
-    // `set_source`) so the OUTGOING sprite's multi-layer stack is stashed by id instead of flattened —
-    // switching sprites preserves each sprite's layers (Enio 2026-06-26). Painter canvas storage is RGBA8
-    // straight (matches bgremoval's `into_straight()`); 0×0 sources are rejected at the boundary.
-    //
-    // ⚠️ **The TOOL decides whether it needs a document** (`needs_document_bind`), not this memo. The
-    // memo was a second copy of a fact the tool owns, and it went stale in one specific way: leaving the
-    // Painter with nothing unbaked tears the canvas down without clearing it, so the memo still named
-    // the sprite while the tool had no pixels — and the re-push that would have fixed it was skipped
-    // *because* the memo said it was already done. Coming back, the canvas was 0×0, so every canvas
-    // pointer fell through and the artist dragged the sprite instead of painting it (Enio 2026-07-22).
-    // `last_painter_pushed_entity` still records what was pushed (the bake bookkeeping below reads it),
-    // but it no longer gets a vote on whether to push.
-    if painter_is_active
-        && let Some(tool) = tools.active_mut()
-        && let Some(painter) = tool
-            .as_any_mut()
-            .downcast_mut::<ph2d_tool_painter::PainterTool>()
-        && let Some(bits) = hero.gizmo.selection
-        && painter.needs_document_bind(bits)
-        // PRECISION-READONLY: isto é o BIND do documento do Painter, não uma escrita. O documento
-        // dele é de 8 bits por desenho (`docs/Sprite_projeto/19` §4), e quem escreve os pixels de
-        // volta é o `hero_intents::image_edit::painter`, no Apply, por `commit_edited_texture` — o
-        // funil que avisa. ⚠️ Selecionar um sprite com o Painter ligado **não** custa precisão
-        // nenhuma: sem Apply, a sprite não muda.
-        //
-        // ⚠️ **Quem LÊ é um fecho da shell** (W2 Fase D): ler os pixels de um sprite precisa de
-        // `SimWorld + SpriteRenderer + AssetDb`, e a `ph2d-tool-runtime` já declarou por escrito que
-        // isso *«is shell foundation»* e recusa depender daquilo. O idioma da casa é o mesmo dela —
-        // *bridges produce this via a shell-specific reader closure*.
-        && let Some((pixels, pw, ph)) = read_source(
-            ph2d_ecs::Entity::from_bits(bits),
-            sim,
+    crate::painter_bridge_phases::bind_document(
+        crate::painter_bridge_phases::BindCtx {
+            hero,
+            tools,
             renderer,
-            asset_db,
-            atlas_asset_map,
-        )
-        // ⚠️ As dimensões entram na CADEIA e não num `if` aninhado: o `into_straight` agora corre
-        // do lado da shell, dentro do fecho, então o que chega aqui já são pixels + dimensões — e um
-        // documento de 0×0 nunca deve chegar a `bind_document` (foi um canvas 0×0 que fez todo
-        // ponteiro de canvas cair através, Enio 2026-07-22).
-        && pw != 0
-        && ph != 0
-    {
-        painter.bind_document(bits, pixels, pw, ph);
-        // ⚠️ E COMPILA os shaders do preview GPU agora, no vão humano entre escolher o sprite e
-        // levar o mouse à tela — senão os 28 ms de criação de pipeline caem no primeiro traço, que
-        // é o gesto em que o artista está esperando (doc 28 §4.8, medido).
-        painter_gpu_preview::prewarm(
-            painter_gpu_preview,
-            renderer,
-            painter,
-            bits,
+            last_painter_pushed_entity,
             painter_preview_gpu,
+            painter_gpu_preview,
             toasts,
-        );
-        // E instala a ponte do CARIMBO no mesmo vão, pela mesma razão: construir o passe
-        // compila um shader, e o custo não pode cair no primeiro traço (doc 33 §S3).
-        crate::painter_stamp_device::install(painter, renderer);
-        // Impasto smoke: arm the brush the first time a document binds, so the artist drags and sees
-        // thick lit paint instead of hunting for the knobs. One-shot; never overwrites their edits.
-        crate::impasto_smoke::arm_brush_once(painter);
-        crate::wetpaint_smoke::arm_brush_once(painter);
-        crate::substrate_smoke::arm_brush_once(painter);
-        crate::line_smoke::arm_brush_once(painter);
-        *last_painter_pushed_entity = Some(bits);
-        // The bind abandons any pending Fill (tool side); close its now-orphaned adjust modal too, so
-        // switching sprites never leaves a stale Fill modal floating over the new one.
-        hero.store.close_fill_modal();
-    }
+        },
+        painter_is_active,
+        // ⚠️ O trio de leitura (`sim`, `asset_db`, `atlas_asset_map`) é CAPTURADO aqui, e não
+        // passado adiante: o bind não os usa para mais nada, e capturá-los tira três argumentos
+        // de uma assinatura que a própria ferramenta já dizia ser larga demais.
+        |entity, renderer| read_source(entity, sim, renderer, asset_db, atlas_asset_map),
+    );
 
     // ── A DOAÇÃO de forma: publica o TAMANHO, instala a NOTÍCIA ───────────
-    //
-    // Este é o único ponto do shell que liga uma escultura à tinta, e ele não sabe disso: o que ele
-    // vê é um plano de `f32` que alguém deixou no canal. É essa ignorância que mantém a promessa de
-    // `docs/3D/02.3` — apagar o módulo 3D deixa este bloco existindo, publicando um tamanho que
-    // ninguém lê e nunca recebendo notícia.
-    //
-    // ⚠️ **A ordem é publicar-DEPOIS-instalar, e ela é load-bearing:** o produtor lê o tamanho no
-    // frame SEGUINTE, então publicar aqui é o que faz um documento recém-bindado ser rasterizado.
-    // Instalar antes de publicar não muda nada hoje e mentiria sobre a dependência.
-    if painter_is_active
-        && let Some(tool) = tools.active_mut()
-        && let Some(painter) = tool
-            .as_any_mut()
-            .downcast_mut::<ph2d_tool_painter::PainterTool>()
-    {
-        let (w, h) = painter.canvas_size();
-        // Canvas vazio é **ausência**, não `(0, 0)`: o produtor tem de ficar quieto, e um par de
-        // zeros o faria rasterizar uma extensão que o `form_plane` recusa de qualquer jeito.
-        donated_form.canvas = (w != 0 && h != 0).then_some((w, h));
-        if let Some(news) = donated_form.news.take() {
-            // ⚠️ **As duas metades são instaladas do MESMO `news`, e é isto que o arch-gate
-            // `the_bridge_installs_both_halves_of_a_donation` exige.** O tool as aceita por portas
-            // separadas (o neutro da oclusão é `1.0`, então uma ausência ali é legítima); o que não
-            // pode é este sítio entregar uma e esquecer a outra, porque aí a fresta que o artista
-            // vê na escultura não apareceria na tinta e nada daria erro.
-            let (normal, occlusion) = match news {
-                Some(planes) => (Some(planes.normal), Some(planes.occlusion)),
-                None => (None, None),
-            };
-            painter.set_donated_form(normal);
-            painter.set_donated_occlusion(occlusion);
-        }
-    }
+    crate::painter_bridge_phases::donate_form(tools, painter_is_active, donated_form);
 
     // Audit T1.5 round 1 B-H2: NO ghost `panel_visibility` insert. Painter
     // has no docked panel in T1.5 (sidebar lands W2 via
@@ -461,7 +325,7 @@ pub fn dispatch(
             // shell-owned mirror is O(dirty bbox); the seed (no prior buffer / dims-or-entity change /
             // full recompose) copies the composite once. Either way the tool is left the SOLE owner of
             // its canvas, so its next stamp writes in place.
-            let mirror = own_preview_buffer(
+            let mirror = crate::painter_bridge_upload::own_preview_buffer(
                 painter_preview.take(),
                 sel,
                 w,
@@ -753,25 +617,16 @@ pub fn dispatch(
         ph_overlay = elapsed_ms(m_overlay);
     }
 
-    // ── Inactive path — clear LOCAL bridge state only (NOT the tool's,
-    // which `on_deactivate` already cleared via `ToolRegistry::set_active`).
-    // Mirror of bgremoval C1 audit fix.
-    if !painter_is_active {
-        *painter_preview = None;
-        *last_painter_pushed_entity = None;
-    }
-    if !apply_selection.is_empty() {
-        for bits in &apply_selection {
-            hero.bus
-                .push(ph2d_editor::action_bus::EditorAction::OneShotImageOp {
-                    tool_id: "painter",
-                    entity_bits: *bits,
-                });
-        }
-        *painter_preview = None;
-        // Apply baked the strokes — release the preview slot explicitly (the GPU
-        // producer gated the CPU `None => release` off) and hand bookkeeping back.
-        release_preview_texture(renderer, painter_preview_gpu);
+    // ── O caminho INACTIVO e o APPLY ──────────────────────────────────────
+    if crate::painter_bridge_phases::settle_inactive_and_apply(
+        hero,
+        renderer,
+        painter_is_active,
+        &apply_selection,
+        painter_preview,
+        last_painter_pushed_entity,
+        painter_preview_gpu,
+    ) {
         gpu_owns_preview = false;
     }
     // ── GPU lifecycle for the live-preview texture (W3 sprite-suppression) ──
@@ -789,7 +644,7 @@ pub fn dispatch(
     // On a GPU-owned frame the GPU producer fills the slot; hide the CPU cache
     // from this block so it neither re-uploads nor releases that slot.
     let m_upload = perf_t0.map(|_| std::time::Instant::now());
-    upload_cpu_preview(
+    crate::painter_bridge_upload::upload_cpu_preview(
         renderer,
         painter_preview.as_ref().filter(|_| !gpu_owns_preview),
         painter_dirty_bbox,
@@ -833,261 +688,4 @@ pub fn dispatch(
         });
     }
     !apply_selection.is_empty()
-}
-
-/// Fill the shell's OWN preview buffer for this frame without holding the tool's canvas `Arc`.
-///
-/// Reuse the shell's prior buffer and patch only the dirty region when the geometry matches, so the
-/// tool is left the sole owner of its canvas (its next `stamp_dabs` writes in place instead of
-/// copying the whole plane — the per-move cost that scaled with the canvas, not the brush). A seed —
-/// no prior buffer, a dims/entity change, or a full recompose (`dirty_bbox == None`) — copies the
-/// drained composite once. `prior` is the shell-owned buffer from last frame (sole owner ⇒ the
-/// `make_mut` here never copies); `drained` is the tool's composite for THIS frame, borrowed only
-/// long enough to copy the region out, then dropped by the caller.
-///
-/// `pub(super)` so the display-pipeline gate drives THIS function, not a mirror of it — the whole
-/// point of the pipeline gates is that what they hold byte-exact is the code the app runs.
-pub(super) fn own_preview_buffer(
-    prior: Option<PainterPreview>,
-    entity_bits: u64,
-    width: u32,
-    height: u32,
-    drained: &Arc<Vec<u8>>,
-    dirty_bbox: Option<(u32, u32, u32, u32)>,
-) -> Arc<Vec<u8>> {
-    match (prior, dirty_bbox) {
-        (Some(p), Some((bx, by, bw, bh)))
-            if p.entity_bits == entity_bits
-                && p.width == width
-                && p.height == height
-                && (*p.rgba).len() == (*drained).len()
-                && bw > 0
-                && bh > 0
-                && bx + bw <= width
-                && by + bh <= height =>
-        {
-            let mut mirror = p.rgba;
-            let m = Arc::make_mut(&mut mirror); // shell is the sole owner ⇒ in place, no copy
-            let row = (bw * 4) as usize;
-            for ry in 0..bh {
-                let off = (((by + ry) * width + bx) * 4) as usize;
-                m[off..off + row].copy_from_slice(&drained[off..off + row]);
-            }
-            mirror
-        }
-        // Seed: no reusable prior buffer — take a full copy the shell then owns outright.
-        _ => Arc::new((**drained).clone()),
-    }
-}
-
-/// The CPU lane's slot upkeep for one frame — plan the upload ([`plan_upload`]), execute it
-/// against the renderer, keep the bookkeeping, release the slot when the CPU cache is gone. The
-/// single door both [`dispatch`] and the display gates drive, so what the tests hold byte-exact is
-/// the code the app runs — not a mirror of it.
-pub(super) fn upload_cpu_preview(
-    renderer: &mut SpriteRenderer,
-    cpu_preview: Option<&PainterPreview>,
-    painter_dirty_bbox: Option<(u32, u32, u32, u32)>,
-    cache_version: u64,
-    gpu_owns_preview: bool,
-    painter_preview_gpu: &mut Option<PainterPreviewGpu>,
-    toasts: &mut ToastQueue,
-) {
-    match cpu_preview {
-        Some(preview) => {
-            // Bisection toggle `PH2D_PAINT_FULL_UPLOAD=1`: force a FULL upload (disable the B.1 partial
-            // lane) to bisect the "rectangular artifacts". See `HANDOFF_per_layer_color_perf_artifacts`.
-            static FORCE_FULL_UPLOAD: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
-            let force_full = *FORCE_FULL_UPLOAD
-                .get_or_init(|| std::env::var_os("PH2D_PAINT_FULL_UPLOAD").is_some());
-            let plan = plan_upload(
-                preview,
-                *painter_preview_gpu,
-                painter_dirty_bbox,
-                cache_version,
-                force_full,
-            );
-            let upload_result: Option<Result<u32, _>> = match plan {
-                UploadPlan::Skip => None,
-                UploadPlan::Partial {
-                    texture_id,
-                    rect: (bx, by, bw, bh),
-                } => {
-                    // Gather + premultiply ONLY the bbox sub-rect (tightly
-                    // packed bw*bh*4) and upload it over the existing texture.
-                    let mut region = extract_region(&preview.rgba, preview.width, bx, by, bw, bh);
-                    premultiply_rgba8(&mut region);
-                    Some(
-                        renderer
-                            .replace_individual_pixels_region(texture_id, bx, by, bw, bh, &region)
-                            .map(|()| texture_id),
-                    )
-                }
-                UploadPlan::Full { reuse } => {
-                    let mut premul_bytes = (*preview.rgba).clone();
-                    premultiply_rgba8(&mut premul_bytes);
-                    Some(match reuse {
-                        Some(texture_id) => renderer
-                            .replace_individual_pixels(
-                                texture_id,
-                                preview.width,
-                                preview.height,
-                                &premul_bytes,
-                            )
-                            .map(|()| texture_id),
-                        None => renderer.acquire_individual(
-                            preview.width,
-                            preview.height,
-                            &premul_bytes,
-                        ),
-                    })
-                }
-            };
-            match upload_result {
-                None => {}
-                Some(Ok(texture_id)) => {
-                    *painter_preview_gpu = Some(PainterPreviewGpu {
-                        texture_id,
-                        width: preview.width,
-                        height: preview.height,
-                        // The tool's content version, NOT `Arc::as_ptr(rgba)`: the shell no longer
-                        // holds a clone of the tool's canvas, so its pointer would be meaningless here
-                        // (the mirror is patched in place ⇒ its pointer never changes).
-                        arc_token: cache_version as usize,
-                        entity_bits: preview.entity_bits,
-                    });
-                }
-                Some(Err(e)) => {
-                    toasts.push(Toast::error(format!(
-                        "Painter: upload da preview pra GPU falhou ({e}). \
-                         Tentando novamente no próximo frame."
-                    )));
-                    release_preview_texture(renderer, painter_preview_gpu);
-                }
-            }
-        }
-        None => {
-            // Release only when the CPU path owns the slot; on a GPU-owned frame
-            // the GPU producer owns it — leave it intact for next frame.
-            if !gpu_owns_preview {
-                release_preview_texture(renderer, painter_preview_gpu);
-            }
-        }
-    }
-}
-
-/// What the CPU lane must send the preview-slot texture this frame, decided from the drained
-/// composite + the slot's bookkeeping — the DECISION half of the upload block, pure so a headless
-/// test can drive it over a real stroke (the `hit_plan` pattern: the policy is a function, the wgpu
-/// copies stay in [`dispatch`]). The screen samples the slot, so this plan — applied to the slot's
-/// bytes — is exactly "what the artist sees"; the display gates in
-/// `painter_preview_pipeline_tests.rs` hold it byte-equal to the tool's composite across a stroke's
-/// whole life.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub(super) enum UploadPlan {
-    /// The slot already holds this composite (same content version, entity and dims) — no upload.
-    Skip,
-    /// Premultiply + upload the WHOLE canvas; `reuse` = overwrite that slot texture, `None` =
-    /// acquire a fresh one (first frame, or dims/entity changed and the old slot was released).
-    Full { reuse: Option<u32> },
-    /// Premultiply + upload only `rect` (x, y, w, h) over the already-seeded slot texture — the
-    /// B.1 partial lane. Only offered when the seeded texture matches the composite's entity+dims
-    /// and the rect is in bounds; anything else falls back to `Full` (never panics the render loop).
-    Partial {
-        texture_id: u32,
-        rect: (u32, u32, u32, u32),
-    },
-}
-
-/// The B.1 upload decision (see [`UploadPlan`]). Change is detected by `cache_version` (the tool's
-/// monotonic canvas version) rather than the buffer pointer — the shell owns its mirror and patches
-/// it in place, so its pointer never moves even as pixels do; only the version says the content
-/// changed. The fast lane fires only after a full upload seeded the texture (a full recompose hands
-/// `bbox == None`), and any structural / metadata / dims / entity change forces a full upload — so
-/// the un-touched slot pixels are always current. An idle frame reads the unchanged version → `Skip`.
-pub(super) fn plan_upload(
-    preview: &PainterPreview,
-    gpu: Option<PainterPreviewGpu>,
-    dirty_bbox: Option<(u32, u32, u32, u32)>,
-    cache_version: u64,
-    force_full: bool,
-) -> UploadPlan {
-    let cache_token = cache_version as usize;
-    let needs_upload = match gpu {
-        None => true,
-        Some(g) => {
-            g.arc_token != cache_token
-                || g.entity_bits != preview.entity_bits
-                || g.width != preview.width
-                || g.height != preview.height
-        }
-    };
-    if !needs_upload {
-        return UploadPlan::Skip;
-    }
-    let partial = (!force_full)
-        .then_some(dirty_bbox)
-        .flatten()
-        .and_then(|(bx, by, bw, bh)| match gpu {
-            // `g.arc_token != 0`: a partial patch is only sound over a slot the CPU lane itself
-            // seeded. The GPU producer stamps its slots with token 0 (it has no CPU content version)
-            // exactly so this transition forces a FULL re-upload — a rect patched over the GPU
-            // compositor's output would leave every other pixel to a different producer (unlit,
-            // and possibly older than the CPU cache), which is the GPU→CPU handoff artifact.
-            Some(g)
-                if g.arc_token != 0
-                    && g.entity_bits == preview.entity_bits
-                    && g.width == preview.width
-                    && g.height == preview.height
-                    && bw > 0
-                    && bh > 0
-                    && bx + bw <= preview.width
-                    && by + bh <= preview.height =>
-            {
-                Some(UploadPlan::Partial {
-                    texture_id: g.texture_id,
-                    rect: (bx, by, bw, bh),
-                })
-            }
-            _ => None,
-        });
-    partial.unwrap_or(UploadPlan::Full {
-        reuse: gpu.map(|g| g.texture_id),
-    })
-}
-
-/// Gather a tightly-packed `w*h*4` RGBA8 sub-rect at `(x, y)` out of a
-/// canvas-sized straight buffer (row stride `stride_px*4`) — the inverse of the
-/// compositor's `blit_region`, for the B.1 partial GPU upload. The caller's
-/// guard (`x+w <= stride_px`, `y+h <= height`) keeps every row copy in bounds.
-/// `pub(super)` so the display-pipeline gates apply the real gather, not a mirror of it.
-pub(super) fn extract_region(
-    full: &[u8],
-    stride_px: u32,
-    x: u32,
-    y: u32,
-    w: u32,
-    h: u32,
-) -> Vec<u8> {
-    let row_bytes = (w * 4) as usize;
-    let mut out = vec![0u8; (w as usize) * (h as usize) * 4];
-    for ry in 0..h {
-        let src_off = (((y + ry) * stride_px + x) * 4) as usize;
-        let dst_off = (ry * w * 4) as usize;
-        out[dst_off..dst_off + row_bytes].copy_from_slice(&full[src_off..src_off + row_bytes]);
-    }
-    out
-}
-
-/// Release the Painter live-preview's `IndividualTextureStore` slot (if any)
-/// and zero the GPU cache. Called when the preview cache turns `None` (tool
-/// deactivated, Apply committed, no source) and on upload error — next frame
-/// re-acquires from scratch.
-pub(super) fn release_preview_texture(
-    renderer: &mut SpriteRenderer,
-    painter_preview_gpu: &mut Option<PainterPreviewGpu>,
-) {
-    if let Some(gpu) = painter_preview_gpu.take() {
-        renderer.individual_mut().release(gpu.texture_id);
-    }
 }

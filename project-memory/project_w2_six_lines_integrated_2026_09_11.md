@@ -60,6 +60,21 @@ por-ficheiro; aqui é a crate. Catraca com as **duas** metades + controlo positi
 mutação. ⚠️ E a ferramenta que já existia para isto (`ph2d-loc-trend`) **não é chamada pelo `ship.sh`
 nem pelo CI** — o padrão que o `CLAUDE.md` §2 nomeia: *ponteiro não é adoção*.
 
+⏳ **FASE B, em curso (11/09).** A `physics` correu como **batedora** e respondeu a pergunta que
+prendia as outras quatro: ⭐ **as 5 portas do `AppHost` CHEGAM — zero sextos métodos.** O achado
+útil não é o «sim»: o bloqueador **nunca foi a `App`** — três folhas ficaram na shell por
+**PARTILHA** entre famílias (`inspector_ordering`/`preview_drive`/`name_unique`, 11/38/14
+consumidores) e os três gestos de corpo queriam **tipos** que a `App` por acaso segurava. ⇒ *antes
+de pedir porta, escreva o que a função precisa em tipos; se a resposta é «três coisas que a `App`
+segura», não é porta — é assinatura.* Integrada: shell **465 105 → 451 084** (−14 021), `render_loop`
+da física de 43 ficheiros para **0**, e `"physics"` fora da catraca. ⚠️ **Duas reconciliações do
+integrador, ambas da mesma espécie — a prosa a envelhecer atrás do código:** o doc-comment do
+`FAMILY` dizia *«`routers: &[]`»* uma linha acima do código que declara o roteador (*uma dívida
+cumprida e não apagada lê-se como dívida aberta para sempre*), e o `PH2D_PHYSICS_SMOKE` ficou com
+**dois leitores** (a crate e o `init.rs`). ⛔ E a decisão de desenho foi do integrador, não da linha:
+`ph2d-app-physics` **pode** depender de `ph2d-timeline` (sem ciclo; as crates de família já dependem
+de 5–11 crates-motor irmãs) ⇒ o roteador sai INTEIRO, nunca partido.
+
 **Aberto:** a **Fase B** das cinco famílias (o corte pelo `HOWTO_partir_uma_familia_da_shell.md`),
 que é onde os roteadores saem e a catraca volta a vazia; `ship.sh` + CI **não correram** (ordem do
 Enio); o smoke é dele e não foi corrido.

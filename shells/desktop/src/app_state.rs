@@ -207,9 +207,9 @@ pub(crate) struct AppGfx {
     /// rota A é exatamente essa: *a malha some do build, o objeto continua reluminável.*
     ///
     /// ⚠️ **NÃO é `cfg`-gated**, e é isso que torna a promessa verificável em vez de prosa.
-    pub(crate) baked_forms: std::collections::BTreeMap<u64, crate::baked_form::BakedForm>,
+    pub(crate) baked_forms: std::collections::BTreeMap<u64, ph2d_form_donation::baked_form::BakedForm>,
     /// O passe que ACENDE um objeto assado — o MESMO que acende a tinta do Painter, criado na
-    /// primeira acendida. Ver o topo do [`crate::baked_form`]: um kernel de luz próprio seria a
+    /// primeira acendida. Ver o topo do [`ph2d_form_donation::baked_form`]: um kernel de luz próprio seria a
     /// segunda resposta a *como uma normal vira luz*.
     pub(crate) baked_light: Option<ph2d_render::ImpastoLightPass>,
     /// ADR-0114 W1 T1.7: as passagens de espaço-de-cor (resolve 16F→sRGB8 e blit
@@ -1101,9 +1101,9 @@ pub(crate) struct App {
     /// `architecture_no_downcast_to_concrete_tool_in_shell` green).
     pub(crate) painter_commit_requested: bool,
     /// **A DOAÇÃO de forma** — o plano de normais que ilumina a tinta, e o tamanho do canvas que o
-    /// produtor precisa para rasterizá-lo. Ver [`crate::donated_form::DonatedForm`]: o canal não
+    /// produtor precisa para rasterizá-lo. Ver [`ph2d_form_donation::donated_form::DonatedForm`]: o canal não
     /// menciona um único tipo do módulo 3D, e é isso que o mantém removível.
-    pub(crate) donated_form: crate::donated_form::DonatedForm,
+    pub(crate) donated_form: ph2d_form_donation::donated_form::DonatedForm,
     /// Transient flags set by the Cmd+Z / Cmd+Shift+Z keybind (only while the
     /// Painter tool is active) to undo/redo the last structural layer edit.
     /// Consumed (taken) by `painter_bridge::dispatch` — the downcast-allowed

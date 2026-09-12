@@ -17,7 +17,7 @@
 //!    acesos devolveria uma *fotografia* — bonita, e impossível de re-iluminar. É a mesma diferença
 //!    entre reabrir um trabalho e reabrir a impressão dele.
 //! 3. **A textura re-materializada no load**: o slot novo é criado vazio e o objeto é aceso pela
-//!    **mesma porta** que o gesto usa ([`crate::baked_form::light`]) no primeiro frame, pelo passe de
+//!    **mesma porta** que o gesto usa ([`ph2d_form_donation::baked_form::light`]) no primeiro frame, pelo passe de
 //!    re-acendida que já roda. Sem isto o sprite carregado referenciaria a textura morta do save.
 //!
 //! ## Duas decisões que este arquivo NÃO tomou sozinho
@@ -28,7 +28,7 @@
 //! Ele é campo de sprite, ao lado do `painted`.
 //!
 //! ⚠️ **A forma viaja como IMAGEM RGBA8**, não como `f32`. É medido: 4× menos disco (16 → 4 MiB por
-//! sprite a 1024²) por **≤ 3 de 255** no pixel aceso — ver [`crate::baked_form::form_to_rgba8`]. É
+//! sprite a 1024²) por **≤ 3 de 255** no pixel aceso — ver [`ph2d_form_donation::baked_form::form_to_rgba8`]. É
 //! também o que a indústria inteira shipa, e nenhum deles guarda a malha.
 
 use ph2d_ecs::{BakedForm as BakedFormId, Entity};
@@ -36,7 +36,7 @@ use ph2d_light::LightRig;
 use ph2d_render::{Sprite, SpriteSource};
 use std::collections::BTreeMap;
 
-use crate::baked_form::{
+use ph2d_form_donation::baked_form::{
     BakedForm, form_from_rgba8, form_to_rgba8, occlusion_from_r8, occlusion_to_r8,
 };
 
@@ -51,7 +51,7 @@ pub(crate) struct BakedFormDocument {
     pub(crate) base: Vec<u8>,
     /// O G-buffer, RGBA8: normal em `n × 0,5 + 0,5`, peso no alfa.
     pub(crate) form: Vec<u8>,
-    /// A OCLUSÃO DE FORMA, um byte por texel (`R8`) — ver [`crate::baked_form::occlusion_to_r8`].
+    /// A OCLUSÃO DE FORMA, um byte por texel (`R8`) — ver [`ph2d_form_donation::baked_form::occlusion_to_r8`].
     ///
     /// ⚠️ **VAZIO num documento anterior a esta wave**, e é a leitura honesta: o neutro da oclusão é
     /// `1.0`, e um plano de zeros pintaria de preto toda arte já assada. Quem substitui o neutro é o
@@ -109,7 +109,7 @@ impl crate::App {
     /// do `restore_painted_docs` — o snapshot referencia simbolicamente, um bridge materializa.
     ///
     /// ⚠️ **Ele NÃO acende.** O slot nasce vazio, o objeto entra no mapa com `lit_with: None`, e
-    /// quem o acende é a [`crate::baked_form::relight_stale`] no primeiro frame — a **mesma** porta
+    /// quem o acende é a [`ph2d_form_donation::baked_form::relight_stale`] no primeiro frame — a **mesma** porta
     /// da re-acendida por lâmpada. Uma acendida escrita aqui seria a segunda resposta a *como um
     /// objeto assado vira pixels*, e a arte SALTARIA ao reabrir o arquivo (o defeito que o ADR-0128
     /// pagou cinco vezes). Aqui ele teria a forma mais cruel: o objeto fica certo enquanto o app
@@ -206,12 +206,12 @@ mod tests {
         authored.lights[1].on = true; // uma segunda lâmpada, para o array inteiro viajar
 
         let doc = BakedFormDocument {
-            form_occ: crate::baked_form::occlusion_to_r8(&[1.0, 0.5]),
+            form_occ: ph2d_form_donation::baked_form::occlusion_to_r8(&[1.0, 0.5]),
             id: 3,
             width: 2,
             height: 1,
             base: vec![10, 20, 30, 255, 40, 50, 60, 128],
-            form: crate::baked_form::form_to_rgba8(&[0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.5]),
+            form: ph2d_form_donation::baked_form::form_to_rgba8(&[0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.5]),
             rig: authored,
         };
         let bytes = postcard::to_allocvec(&doc).expect("serializa");

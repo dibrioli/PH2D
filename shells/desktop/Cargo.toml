@@ -38,6 +38,7 @@ ph2d-app-field3d = { path = "../../crates/ph2d-app-field3d" }
 # `cargo run -p ph2d-app-sync`). É ele que impede seis linhas de editarem este `[dependencies]`.
 ph2d-app-registry-init = { path = "../../crates/ph2d-app-registry-init" }
 ph2d-core = { path = "../../crates/ph2d-core" }
+ph2d-form-donation = { path = "../../crates/ph2d-form-donation" }
 ph2d-gpu = { path = "../../crates/ph2d-gpu" }
 # O carimbo de pigmento no device (doc 33). A ponte e' do shell: o tool publica dado simples e
 # `wgpu` nunca entra na `ph2d-tool-painter`.

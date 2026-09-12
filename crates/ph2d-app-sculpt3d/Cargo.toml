@@ -9,17 +9,62 @@ authors.workspace = true
 
 [lib]
 
-# ⛔ ZERO dependências, e é o ponto (W2/L3): esta crate é a semente por onde a família
-# `sculpt3d` sai da shell, e a primeira coisa que sai é o que NÃO precisa de nada — o
-# estado de PEDIDO que a `App` guardava e as réguas do gesto. Uma dependência aqui teria
-# de ser paga por quem não usa a escultura, e é exactamente isso que o `sculpt_doc`
-# (passa-adiante, ver `Sculpt3dRequests`) existe para não fazer.
+# ⭐ **ESTA LISTA É O CUSTO REAL DO MÓDULO, e ele só se lê aqui** (HOWTO §1.3). Dentro da shell
+# todas estas crates eram dependência do binário e ninguém as somava a esta família.
 #
-# ⚠️ **A shell depende dela SEM `optional`**, de propósito: é isso que preserva a cerca
-# que a `App` já declarava — um binário construído sem a feature `sculpt3d` carrega os
-# bytes de uma escultura do load ao save **sem os ler**. Um `optional = true` aqui
-# apagaria o campo nesse binário e transformaria o passa-adiante num triturador.
+# ⚠️⚠️ **A crate era ZERO-DEPS e NÃO-OPCIONAL na Fase A, e as duas coisas mudaram juntas** — não
+# por conveniência, mas porque a razão que as prendia dissolveu-se. A Fase A escreveu, aqui:
+# *«não pode ganhar dependências: quem nunca esculpe paga-as»*, e ancorou nisso o passa-adiante do
+# `sculpt_doc`. A Fase B mede o resto da frase: uma crate que carrega a FAMÍLIA carrega 28 deps, e
+# mantê-la não-opcional faria toda a gente pagar a escultura inteira. ⇒ ela passa a **opcional**,
+# como as outras quatro crates do módulo, e **o passa-adiante volta a ser um campo `Vec<u8>` na
+# `App`** — que é onde ele sempre esteve antes da Fase A, e o único sítio onde ele pode cumprir a
+# promessa. *A cerca era sobre o DOCUMENTO, nunca sobre a crate.*
 [dependencies]
-# ⚠️ A INTERFACE da shell (`AppFamily`), não o agregador — importar de
+# ⚠️ A INTERFACE da shell (`AppFamily`, `AppHost`), não o agregador — importar de
 # `ph2d-app-registry-init` fecharia o ciclo `registry → família → registry`.
+ph2d-form-donation = { path = "../ph2d-form-donation" }
 ph2d-app-host = { path = "../ph2d-app-host" }
+# ⭐ A moldura 3D partilhada com a família do campo implícito (HOWTO §1.2). É ela que faz os cinco
+# alias `field3d_*` da shell poderem MORRER: os 46 usos desta família passam a nomeá-la.
+ph2d-viewport3d = { path = "../ph2d-viewport3d" }
+
+ph2d-asset = { path = "../ph2d-asset" }
+ph2d-core = { path = "../ph2d-core" }
+ph2d-crossfield = { path = "../ph2d-crossfield" }
+ph2d-ecs = { path = "../ph2d-ecs" }
+ph2d-editor = { path = "../ph2d-editor" }
+ph2d-field-render = { path = "../ph2d-field-render" }
+ph2d-gpu = { path = "../ph2d-gpu" }
+ph2d-gridmap = { path = "../ph2d-gridmap" }
+ph2d-i18n = { path = "../ph2d-i18n" }
+ph2d-light = { path = "../ph2d-light" }
+ph2d-mesh = { path = "../ph2d-mesh" }
+ph2d-mesh-render = { path = "../ph2d-mesh-render" }
+ph2d-painter-brush = { path = "../ph2d-painter-brush" }
+ph2d-panel-sculpt3d = { path = "../ph2d-panel-sculpt3d" }
+ph2d-quadchain = { path = "../ph2d-quadchain" }
+ph2d-quadextract = { path = "../ph2d-quadextract" }
+ph2d-quadfill = { path = "../ph2d-quadfill" }
+ph2d-quadflow = { path = "../ph2d-quadflow" }
+ph2d-quantize = { path = "../ph2d-quantize" }
+ph2d-remesh-iso = { path = "../ph2d-remesh-iso" }
+ph2d-render = { path = "../ph2d-render" }
+ph2d-sculpt3d = { path = "../ph2d-sculpt3d" }
+ph2d-sdf = { path = "../ph2d-sdf" }
+ph2d-text = { path = "../ph2d-text" }
+ph2d-trace = { path = "../ph2d-trace" }
+ph2d-untangle = { path = "../ph2d-untangle" }
+ph2d-vector = { path = "../ph2d-vector" }
+rfd = "0.17"
+postcard = { version = "1", features = ["alloc"] }
+rayon = "1"
+serde = { version = "1", features = ["rc"] }
+wgpu = "29.0.4"
+winit = "0.30"
+
+[features]
+# ⚠️ **`test-support` tem o tamanho do que ATRAVESSA a fronteira, e nada mais** (HOWTO §2.5): um
+# `#[cfg(test)]` é invisível do outro lado de uma crate, e abrir os itens todos «por segurança»
+# entrega `dead_code` no que ninguém lê. A shell liga-a nas **dev-dependencies**.
+test-support = []

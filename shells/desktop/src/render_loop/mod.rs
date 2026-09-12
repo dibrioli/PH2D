@@ -1501,7 +1501,7 @@ impl crate::App {
         // rota A (`docs/3D/02.2`) verificável em vez de prosa: um objeto assado que voltou de um
         // arquivo acende **sem o módulo 3D no build**. Quase sempre não faz nada — com o rig parado
         // custa um carimbo por objeto, sem tocar a GPU, e num projeto sem nada assado o mapa é vazio.
-        crate::baked_form::relight_stale(baked_forms, surface.gpu(), renderer, baked_light);
+        ph2d_form_donation::baked_form::relight_stale(baked_forms, surface.gpu(), renderer, baked_light);
 
         // Mask smoke (`PH2D_MASK_SMOKE=1`): the same dance for the mask coverage law (doc 25 §13.9).
         // Nothing but the canvas is staged — the artist picks the rail chip, so the scene shows the

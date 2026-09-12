@@ -4885,6 +4885,41 @@ name = "ph2d-app-sculpt3d"
 version = "0.0.0"
 dependencies = [
  "ph2d-app-host",
+ "ph2d-asset",
+ "ph2d-core",
+ "ph2d-crossfield",
+ "ph2d-ecs",
+ "ph2d-editor",
+ "ph2d-field-render",
+ "ph2d-form-donation",
+ "ph2d-gpu",
+ "ph2d-gridmap",
+ "ph2d-i18n",
+ "ph2d-light",
+ "ph2d-mesh",
+ "ph2d-mesh-render",
+ "ph2d-painter-brush",
+ "ph2d-panel-sculpt3d",
+ "ph2d-quadchain",
+ "ph2d-quadextract",
+ "ph2d-quadfill",
+ "ph2d-quadflow",
+ "ph2d-quantize",
+ "ph2d-remesh-iso",
+ "ph2d-render",
+ "ph2d-sculpt3d",
+ "ph2d-sdf",
+ "ph2d-text",
+ "ph2d-trace",
+ "ph2d-untangle",
+ "ph2d-vector",
+ "ph2d-viewport3d",
+ "postcard",
+ "rayon",
+ "rfd",
+ "serde",
+ "wgpu",
+ "winit",
 ]
 
 [[package]]
@@ -5333,6 +5368,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-form-donation"
+version = "0.0.0"
+dependencies = [
+ "ph2d-gpu",
+ "ph2d-light",
+ "ph2d-painter-brush",
+ "ph2d-render",
+ "wgpu",
+]
+
+[[package]]
 name = "ph2d-fx-op"
 version = "0.0.0"
 dependencies = [
@@ -5526,6 +5572,7 @@ dependencies = [
  "ph2d-flip-fill",
  "ph2d-flip-render",
  "ph2d-flip-reshape",
+ "ph2d-form-donation",
  "ph2d-gpu",
  "ph2d-gpu-cook",
  "ph2d-gridmap",

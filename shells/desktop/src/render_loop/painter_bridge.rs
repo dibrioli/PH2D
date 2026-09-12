@@ -98,7 +98,7 @@ pub(super) fn dispatch(
     // **A DOAÇÃO de forma** — o canal nos dois sentidos: aqui se PUBLICA o tamanho do canvas (o
     // produtor precisa dele e não pode perguntar ao tool) e se CONSOME o plano que ele rasterizou.
     // ⚠️ Nenhum tipo do módulo 3D atravessa: o que chega é `Vec<f32>`. Ver `donated_form`.
-    donated_form: &mut crate::donated_form::DonatedForm,
+    donated_form: &mut ph2d_form_donation::donated_form::DonatedForm,
     toasts: &mut ToastQueue,
     // `true` enquanto um botão de ponteiro está preso — o sinal de *"há um gesto em voo"* que o
     // `post_frame_undo` já usa. Aqui ele fecha o ciclo do rascunho de figura: ver `set_shape_draft_hold`.

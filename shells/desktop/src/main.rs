@@ -88,7 +88,6 @@ mod audio;
 mod audio_2d_smoke;
 /// **O OBJETO ASSADO** (`docs/3D/02.2`, rota A) — os canais que uma malha doou a um sprite e a luz
 /// que os le'. ⚠️ Deliberadamente FORA da feature `sculpt3d`: um objeto assado sobrevive ao modulo.
-mod baked_form;
 /// Blend Objects vivos (ADR-0128): o objeto único que interpola 2..=5 formas e as segue
 /// (re-cook por frame). Espelha `connector_live`.
 mod blend_live;
@@ -173,7 +172,6 @@ mod dither_smoke;
 mod dock_resize;
 /// O canal da **DOAÇÃO de forma** para a tinta do Painter — plano de normais + o tamanho do canvas.
 /// Sem `cfg`, de propósito: o que atravessa é `Vec<f32>`, nunca um tipo do módulo 3D.
-mod donated_form;
 /// ⭐⭐⭐ **As FAIXAS de desenho** (ADR-0154 Fase 2) — a lei que põe vetor e sprite na MESMA ordem
 /// total, e parte essa ordem nas passagens que o presente desenha.
 mod draw_bands;
@@ -997,7 +995,7 @@ impl App {
             painter_shape_source_preview_gpu: None,
             painter_gpu_preview: None,
             painter_commit_requested: false,
-            donated_form: crate::donated_form::DonatedForm::default(),
+            donated_form: ph2d_form_donation::donated_form::DonatedForm::default(),
             painter_undo_requested: false,
             painter_redo_requested: false,
             // ADR-0108 cutover: the Vector drawing tool's shell-held Pen +

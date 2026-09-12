@@ -36,12 +36,25 @@ use ph2d_render::SpriteRenderer;
 use std::collections::BTreeMap;
 
 /// A cena está armada?
-pub(crate) fn enabled() -> bool {
+/// **O maior nível a que este roteador de facto responde** (`PH2D_LINE_SMOKE=1`).
+///
+/// ⚠️⚠️ **CONTADO no roteador, nunca escrito de memória** (CLAUDE.md §5.0), e aqui a
+/// contagem é de uma espécie própria: este roteador é de **PRESENÇA**, não de nível —
+/// ele lê `var_os("PH2D_LINE_SMOKE").is_some()`, logo o `match` que o `impasto_smoke`
+/// tem aqui **não existe**. O maior nível com significado é o `1`, que é o que a
+/// documentação do topo deste ficheiro manda correr.
+///
+/// ⛔ **Declarar mais do que `1` seria prometer uma cena que ninguém escreveu:** um nível
+/// declarado diz ao dono que ele tem uma cena para ver, e `=2` aqui abre exactamente a
+/// mesma que o `=1`.
+pub const NIVEIS: u32 = 1;
+
+pub fn enabled() -> bool {
     std::env::var_os("PH2D_LINE_SMOKE").is_some()
 }
 
 /// Spawna a tela branca. Devolve os bits da entidade para o chamador sentar a seleção nela.
-pub(crate) fn spawn_if_enabled(
+pub fn spawn_if_enabled(
     sim: &mut SimWorld,
     renderer: &mut SpriteRenderer,
     asset_db: &AssetDb,
@@ -53,7 +66,7 @@ pub(crate) fn spawn_if_enabled(
         return None;
     }
     let edge = 2048u32;
-    match crate::image_import::spawn_blank_canvas(
+    match ph2d_image_import::spawn_blank_canvas(
         sim,
         renderer,
         asset_db,
@@ -227,7 +240,7 @@ pub(crate) fn spawn_if_enabled(
 /// DIÂMETROS de pincel, então um pincel minúsculo desenha uma teia minúscula e a cena não mostraria
 /// a feature. O resto — o tipo, os parâmetros dele — é o que o artista vai escolher, e é a costura
 /// que esta cena existe para exercitar.
-pub(crate) fn arm_brush_once(painter: &mut ph2d_tool_painter::PainterTool) {
+pub fn arm_brush_once(painter: &mut ph2d_tool_painter::PainterTool) {
     use std::sync::atomic::{AtomicBool, Ordering};
     static ARMED: AtomicBool = AtomicBool::new(false);
     if !enabled() || ARMED.swap(true, Ordering::Relaxed) {

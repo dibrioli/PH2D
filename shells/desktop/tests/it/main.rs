@@ -210,7 +210,6 @@ mod the_sink_style_is_one_answer_for_both_routes;
 mod the_skeleton_panel_only_opens_where_it_has_a_subject;
 mod the_skeleton_speaks_when_it_has_no_subject;
 mod the_slice_section_offers_every_mode_the_engine_has;
-mod the_smokes_open_the_painter_in_digital;
 mod the_snap_label_says_how_far;
 mod the_spacing_scene_arms_what_its_message_promises;
 mod the_stamp_line_carries_its_divisor;

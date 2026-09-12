@@ -84,13 +84,26 @@ use ph2d_render::SpriteRenderer;
 use std::collections::BTreeMap;
 
 /// Whether the smoke is armed. Cheap enough to call per frame.
-pub(crate) fn enabled() -> bool {
+/// **O maior nível a que este roteador de facto responde** (`PH2D_SUBSTRATE_SMOKE=1`).
+///
+/// ⚠️⚠️ **CONTADO no roteador, nunca escrito de memória** (CLAUDE.md §5.0), e aqui a
+/// contagem é de uma espécie própria: este roteador é de **PRESENÇA**, não de nível —
+/// ele lê `var_os("PH2D_SUBSTRATE_SMOKE").is_some()`, logo o `match` que o `impasto_smoke`
+/// tem aqui **não existe**. O maior nível com significado é o `1`, que é o que a
+/// documentação do topo deste ficheiro manda correr.
+///
+/// ⛔ **Declarar mais do que `1` seria prometer uma cena que ninguém escreveu:** um nível
+/// declarado diz ao dono que ele tem uma cena para ver, e `=2` aqui abre exactamente a
+/// mesma que o `=1`.
+pub const NIVEIS: u32 = 1;
+
+pub fn enabled() -> bool {
     std::env::var_os("PH2D_SUBSTRATE_SMOKE").is_some()
 }
 
 /// Spawn the blank paint canvas when `PH2D_SUBSTRATE_SMOKE=1`. Returns the entity bits so the caller
 /// can seat the selection on it (so the artist lands ON the canvas, not hunting for it).
-pub(crate) fn spawn_if_enabled(
+pub fn spawn_if_enabled(
     sim: &mut SimWorld,
     renderer: &mut SpriteRenderer,
     asset_db: &AssetDb,
@@ -101,7 +114,7 @@ pub(crate) fn spawn_if_enabled(
     if !enabled() {
         return None;
     }
-    match crate::image_import::spawn_blank_canvas(
+    match ph2d_image_import::spawn_blank_canvas(
         sim,
         renderer,
         asset_db,
@@ -149,7 +162,7 @@ pub(crate) fn spawn_if_enabled(
 /// ⚠️ **Só o TAMANHO, e nem o Relief.** O relevo nasce em `0` e é o artista que o sobe — armá-lo aqui
 /// esconderia justamente a metade que a cena existe para julgar (*o neutro é byte-idêntico*), e um
 /// smoke que já entrega a feature ligada não consegue mostrar que o default é são.
-pub(crate) fn arm_brush_once(painter: &mut ph2d_tool_painter::PainterTool) {
+pub fn arm_brush_once(painter: &mut ph2d_tool_painter::PainterTool) {
     use std::sync::atomic::{AtomicBool, Ordering};
     static ARMED: AtomicBool = AtomicBool::new(false);
     if !enabled() || ARMED.swap(true, Ordering::Relaxed) {

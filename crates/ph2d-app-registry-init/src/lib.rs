@@ -55,6 +55,8 @@ pub fn register_all_app_families() -> AppFamilyRegistry {
     reg.push(ph2d_app_flip::FAMILY);
     #[cfg(feature = "app-motion")]
     reg.push(ph2d_app_motion::FAMILY);
+    #[cfg(feature = "app-painter")]
+    reg.push(ph2d_app_painter::FAMILY);
     #[cfg(feature = "app-physics")]
     reg.push(ph2d_app_physics::FAMILY);
     #[cfg(feature = "app-sculpt3d")]

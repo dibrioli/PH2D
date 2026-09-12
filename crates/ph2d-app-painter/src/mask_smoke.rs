@@ -60,14 +60,27 @@ use ph2d_render::SpriteRenderer;
 use std::collections::BTreeMap;
 
 /// Whether the smoke is armed. Cheap enough to call per frame.
-pub(crate) fn enabled() -> bool {
+/// **O maior nível a que este roteador de facto responde** (`PH2D_MASK_SMOKE=1`).
+///
+/// ⚠️⚠️ **CONTADO no roteador, nunca escrito de memória** (CLAUDE.md §5.0), e aqui a
+/// contagem é de uma espécie própria: este roteador é de **PRESENÇA**, não de nível —
+/// ele lê `var_os("PH2D_MASK_SMOKE").is_some()`, logo o `match` que o `impasto_smoke`
+/// tem aqui **não existe**. O maior nível com significado é o `1`, que é o que a
+/// documentação do topo deste ficheiro manda correr.
+///
+/// ⛔ **Declarar mais do que `1` seria prometer uma cena que ninguém escreveu:** um nível
+/// declarado diz ao dono que ele tem uma cena para ver, e `=2` aqui abre exactamente a
+/// mesma que o `=1`.
+pub const NIVEIS: u32 = 1;
+
+pub fn enabled() -> bool {
     std::env::var_os("PH2D_MASK_SMOKE").is_some()
 }
 
 /// Spawn the paint canvas when `PH2D_MASK_SMOKE=1`, returning its entity bits so the caller can seat
 /// the selection on it. Prints WHAT it staged — a scene that does not say what it built cannot be
 /// trusted when the rest of the smoke looks wrong (the Flip colorize lesson).
-pub(crate) fn spawn_if_enabled(
+pub fn spawn_if_enabled(
     sim: &mut SimWorld,
     renderer: &mut SpriteRenderer,
     asset_db: &AssetDb,
@@ -78,7 +91,7 @@ pub(crate) fn spawn_if_enabled(
     if !enabled() {
         return None;
     }
-    match crate::image_import::spawn_blank_canvas(
+    match ph2d_image_import::spawn_blank_canvas(
         sim,
         renderer,
         asset_db,

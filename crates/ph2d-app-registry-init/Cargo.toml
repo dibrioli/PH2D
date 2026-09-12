@@ -16,6 +16,7 @@ ph2d-app-components = { path = "../ph2d-app-components", optional = true }
 ph2d-app-field3d = { path = "../ph2d-app-field3d", optional = true }
 ph2d-app-flip = { path = "../ph2d-app-flip", optional = true }
 ph2d-app-motion = { path = "../ph2d-app-motion", optional = true }
+ph2d-app-painter = { path = "../ph2d-app-painter", optional = true }
 ph2d-app-physics = { path = "../ph2d-app-physics", optional = true }
 ph2d-app-sculpt3d = { path = "../ph2d-app-sculpt3d", optional = true }
 ph2d-app-skeleton = { path = "../ph2d-app-skeleton", optional = true }
@@ -33,6 +34,7 @@ default = [
     "app-field3d",
     "app-flip",
     "app-motion",
+    "app-painter",
     "app-physics",
     "app-sculpt3d",
     "app-skeleton",
@@ -46,6 +48,7 @@ app-components = ["dep:ph2d-app-components"]
 app-field3d = ["dep:ph2d-app-field3d"]
 app-flip = ["dep:ph2d-app-flip"]
 app-motion = ["dep:ph2d-app-motion"]
+app-painter = ["dep:ph2d-app-painter"]
 app-physics = ["dep:ph2d-app-physics"]
 app-sculpt3d = ["dep:ph2d-app-sculpt3d"]
 app-skeleton = ["dep:ph2d-app-skeleton"]

@@ -1,0 +1,26 @@
+[package]
+name = "ph2d-app-painter"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+# A INTERFACE (o `AppFamily`/`SmokeRouter` que esta crate declara).
+# ⛔ Nunca o `ph2d-app-registry-init`: ele depende desta, e importá-lo fecharia o ciclo.
+ph2d-app-host = { path = "../ph2d-app-host" }
+ph2d-asset = { path = "../ph2d-asset" }
+ph2d-core = { path = "../ph2d-core" }
+ph2d-ecs = { path = "../ph2d-ecs" }
+# ⭐ A porta que nasce uma tela em branco. Na shell ela era alcançada pela FACHADA
+# `crate::image_import` (`pub(crate) use ph2d_image_import::*`) — uma crate a usar o nome da shell,
+# que a régua do fecho conta como âncora. Aqui escreve-se o nome verdadeiro.
+ph2d-image-import = { path = "../ph2d-image-import" }
+ph2d-render = { path = "../ph2d-render" }
+# O MOTOR de pintura. Os `arm_brush_once` dos roteadores recebem um `&mut PainterTool` —
+# eles preparam a cena, nunca escolhem o meio (gate `no_painter_smoke_forces_a_medium`).
+ph2d-tool-painter = { path = "../ph2d-tool-painter" }

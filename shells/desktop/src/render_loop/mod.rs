@@ -1229,12 +1229,12 @@ impl crate::App {
         // ready surface instead of assembling one. The brush itself is armed in `painter_bridge`, when
         // the painter first binds the document.
         if let Some(hero) = hero_screen.as_mut()
-            && crate::impasto_smoke::enabled()
+            && ph2d_app_painter::impasto_smoke::enabled()
             && !std::mem::replace(&mut self.impasto_smoke_done, true)
         {
             let ppm = hero.project.pixels_per_meter;
             let cell = *next_import_cell;
-            if let Some(bits) = crate::impasto_smoke::spawn_if_enabled(
+            if let Some(bits) = ph2d_app_painter::impasto_smoke::spawn_if_enabled(
                 sim,
                 renderer,
                 asset_db,
@@ -1257,12 +1257,12 @@ impl crate::App {
         // A cena do SUBSTRATO (`PH2D_SUBSTRATE_SMOKE=1`): a mesma dança do impasto, para o dente do
         // papel — que acende no DIGITAL, e por isso a cena não escolhe meio nenhum.
         if let Some(hero) = hero_screen.as_mut()
-            && crate::substrate_smoke::enabled()
+            && ph2d_app_painter::substrate_smoke::enabled()
             && !std::mem::replace(&mut self.substrate_smoke_done, true)
         {
             let ppm = hero.project.pixels_per_meter;
             let cell = *next_import_cell;
-            if let Some(bits) = crate::substrate_smoke::spawn_if_enabled(
+            if let Some(bits) = ph2d_app_painter::substrate_smoke::spawn_if_enabled(
                 sim,
                 renderer,
                 asset_db,
@@ -1285,12 +1285,12 @@ impl crate::App {
         // A cena do card LINE (`PH2D_LINE_SMOKE=1`): a mesma dança, para os tipos de linha
         // procedural — que vivem no DIGITAL, e por isso a cena não escolhe meio nem tipo nenhum.
         if let Some(hero) = hero_screen.as_mut()
-            && crate::line_smoke::enabled()
+            && ph2d_app_painter::line_smoke::enabled()
             && !std::mem::replace(&mut self.line_smoke_done, true)
         {
             let ppm = hero.project.pixels_per_meter;
             let cell = *next_import_cell;
-            if let Some(bits) = crate::line_smoke::spawn_if_enabled(
+            if let Some(bits) = ph2d_app_painter::line_smoke::spawn_if_enabled(
                 sim,
                 renderer,
                 asset_db,
@@ -1505,12 +1505,12 @@ impl crate::App {
         // Nothing but the canvas is staged — the artist picks the rail chip, so the scene shows the
         // shipped default mask brush rather than a rigged one.
         if let Some(hero) = hero_screen.as_mut()
-            && crate::mask_smoke::enabled()
+            && ph2d_app_painter::mask_smoke::enabled()
             && !std::mem::replace(&mut self.mask_smoke_done, true)
         {
             let ppm = hero.project.pixels_per_meter;
             let cell = *next_import_cell;
-            if let Some(bits) = crate::mask_smoke::spawn_if_enabled(
+            if let Some(bits) = ph2d_app_painter::mask_smoke::spawn_if_enabled(
                 sim,
                 renderer,
                 asset_db,
@@ -1811,12 +1811,12 @@ impl crate::App {
         // the canvas is staged — the taper opens OFF, because the first thing this scene asks is
         // whether an untouched build still paints what it painted yesterday.
         if let Some(hero) = hero_screen.as_mut()
-            && crate::taper_smoke::enabled()
+            && ph2d_app_painter::taper_smoke::enabled()
             && !std::mem::replace(&mut self.taper_smoke_done, true)
         {
             let ppm = hero.project.pixels_per_meter;
             let cell = *next_import_cell;
-            if let Some(bits) = crate::taper_smoke::spawn_if_enabled(
+            if let Some(bits) = ph2d_app_painter::taper_smoke::spawn_if_enabled(
                 sim,
                 renderer,
                 asset_db,
@@ -1839,12 +1839,12 @@ impl crate::App {
         // Wet Paint smoke (`PH2D_WETPAINT_SMOKE=1`): the impasto smoke's exact dance for the fluid
         // mode (ADR-0134 W1) — spawn, seat the selection, arm in `painter_bridge`.
         if let Some(hero) = hero_screen.as_mut()
-            && crate::wetpaint_smoke::enabled()
+            && ph2d_app_painter::wetpaint_smoke::enabled()
             && !std::mem::replace(&mut self.wetpaint_smoke_done, true)
         {
             let ppm = hero.project.pixels_per_meter;
             let cell = *next_import_cell;
-            if let Some(bits) = crate::wetpaint_smoke::spawn_if_enabled(
+            if let Some(bits) = ph2d_app_painter::wetpaint_smoke::spawn_if_enabled(
                 sim,
                 renderer,
                 asset_db,

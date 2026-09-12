@@ -4947,6 +4947,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-app-painter"
+version = "0.0.0"
+dependencies = [
+ "ph2d-app-host",
+ "ph2d-asset",
+ "ph2d-core",
+ "ph2d-ecs",
+ "ph2d-image-import",
+ "ph2d-render",
+ "ph2d-tool-painter",
+]
+
+[[package]]
 name = "ph2d-app-physics"
 version = "0.0.0"
 dependencies = [
@@ -4987,6 +5000,7 @@ dependencies = [
  "ph2d-app-flip",
  "ph2d-app-host",
  "ph2d-app-motion",
+ "ph2d-app-painter",
  "ph2d-app-physics",
  "ph2d-app-sculpt3d",
  "ph2d-app-skeleton",
@@ -5737,6 +5751,7 @@ dependencies = [
  "ph2d-app-flip",
  "ph2d-app-host",
  "ph2d-app-motion",
+ "ph2d-app-painter",
  "ph2d-app-physics",
  "ph2d-app-registry-init",
  "ph2d-app-sculpt3d",

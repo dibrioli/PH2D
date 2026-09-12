@@ -20,11 +20,16 @@
 //! seleciona um meio — a única razão de chamar `set_paint_media` num smoke era forçar a abertura, que é
 //! o que estamos proibindo. Já reincidiu duas vezes (a cicatriz), então é gate, não confiança.
 
-const IMPASTO: &str = include_str!("../../src/impasto_smoke.rs");
-const WETPAINT: &str = include_str!("../../src/wetpaint_smoke.rs");
-const MASK: &str = include_str!("../../src/mask_smoke.rs");
-const SUBSTRATE: &str = include_str!("../../src/substrate_smoke.rs");
-const LINE: &str = include_str!("../../src/line_smoke.rs");
+const IMPASTO: &str = include_str!("../src/impasto_smoke.rs");
+const WETPAINT: &str = include_str!("../src/wetpaint_smoke.rs");
+const MASK: &str = include_str!("../src/mask_smoke.rs");
+const SUBSTRATE: &str = include_str!("../src/substrate_smoke.rs");
+const LINE: &str = include_str!("../src/line_smoke.rs");
+// ⚠️ **O `taper` faltava a este gate, e a ausencia nao tinha motivo escrito** (achado ao mover
+// a familia, W2 Fase D). Ele entra na metade NEGATIVA — nenhum smoke forca um meio —, que e a
+// que vale para os seis. ⛔ Na metade POSITIVA ele nao entra: como o `mask`, o taper nao tem
+// `arm_brush_once` de proposito (ele da o canvas e o roteiro, e mais nada).
+const TAPER: &str = include_str!("../src/taper_smoke.rs");
 
 /// Nenhum smoke chama `set_paint_media(PaintMedia::<não-Digital>)`.
 ///
@@ -39,6 +44,7 @@ fn no_painter_smoke_forces_a_medium() {
         ("mask", MASK),
         ("substrate", SUBSTRATE),
         ("line", LINE),
+        ("taper", TAPER),
     ] {
         for medium in ["Impasto", "Watercolor", "WetPaint"] {
             // A chamada exata que abre num meio; a prosa dos docs cita os meios em texto, nunca nesta

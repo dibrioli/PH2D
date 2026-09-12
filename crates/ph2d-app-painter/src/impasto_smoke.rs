@@ -97,7 +97,7 @@ use ph2d_render::SpriteRenderer;
 use std::collections::BTreeMap;
 
 /// Whether the smoke is armed. Cheap enough to call per frame.
-pub(crate) fn enabled() -> bool {
+pub fn enabled() -> bool {
     std::env::var_os("PH2D_IMPASTO_SMOKE").is_some()
 }
 
@@ -116,15 +116,36 @@ pub(crate) fn enabled() -> bool {
 /// opens — the same defect cost ~11 ms, which reads as "a bit heavy" and is exactly why it survived a
 /// smoke. A cure whose scene cannot show the disease is a scene that will approve the disease back.
 fn canvas_edge() -> u32 {
-    match std::env::var("PH2D_IMPASTO_SMOKE").as_deref() {
-        Ok("2") => 4096,
+    edge_for(std::env::var("PH2D_IMPASTO_SMOKE").ok().as_deref())
+}
+
+/// **O `match` do roteador, sem o ambiente** — a lei que o [`NIVEIS`] conta.
+///
+/// ⚠️ **Separado do `canvas_edge` de propósito.** Enquanto o `match` estava colado ao
+/// `std::env::var`, o único modo de o medir era escrever a variável de ambiente dentro de um teste
+/// — e o ambiente é **global ao processo**, logo dois testes em paralelo mediriam um ao outro. Com
+/// a lei numa função pura, o gate `o_roteador_responde_por_todo_nivel_que_promete` compara
+/// `edge_for(Some("2"))` com `edge_for(Some("1"))` sem tocar no processo.
+pub fn edge_for(nivel: Option<&str>) -> u32 {
+    match nivel {
+        Some("2") => 4096,
         _ => 1024,
     }
 }
 
+/// **O maior nível a que este roteador de facto responde** (`PH2D_IMPASTO_SMOKE=1..NIVEIS`).
+///
+/// ⚠️⚠️ **CONTADO no `match` do [`edge_for`], nunca escrito de memória** (CLAUDE.md §5.0). Ele é
+/// `2` porque há **dois** braços com significados diferentes: o `=2` abre a tela de **4096²** onde
+/// a regressão da dobra vivia, e o `=1` (como qualquer outro valor) abre a de 1024².
+///
+/// ⚠️ Este é o **único** dos seis roteadores desta família com mais de um nível — os outros cinco
+/// leem `var_os(..).is_some()` e são de PRESENÇA, logo declaram `1`.
+pub const NIVEIS: u32 = 2;
+
 /// Spawn the blank paint canvas when `PH2D_IMPASTO_SMOKE=1`. Returns the entity bits so the caller can
 /// seat the selection on it (so the artist lands ON the canvas, not hunting for it).
-pub(crate) fn spawn_if_enabled(
+pub fn spawn_if_enabled(
     sim: &mut SimWorld,
     renderer: &mut SpriteRenderer,
     asset_db: &AssetDb,
@@ -135,7 +156,7 @@ pub(crate) fn spawn_if_enabled(
     if !enabled() {
         return None;
     }
-    match crate::image_import::spawn_blank_canvas(
+    match ph2d_image_import::spawn_blank_canvas(
         sim,
         renderer,
         asset_db,
@@ -174,7 +195,7 @@ pub(crate) fn spawn_if_enabled(
 
 /// Arm the brush the first time the Painter binds a document under the smoke. Idempotent (the flag
 /// makes it a one-shot), so the artist's own edits are never overwritten afterwards.
-pub(crate) fn arm_brush_once(painter: &mut ph2d_tool_painter::PainterTool) {
+pub fn arm_brush_once(painter: &mut ph2d_tool_painter::PainterTool) {
     use std::sync::atomic::{AtomicBool, Ordering};
     static ARMED: AtomicBool = AtomicBool::new(false);
     if !enabled() || ARMED.swap(true, Ordering::Relaxed) {

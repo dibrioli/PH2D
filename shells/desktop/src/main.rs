@@ -233,7 +233,6 @@ mod hover_highlight;
 /// `Export Image…` — a porta dos 16 exportadores (plano `docs/Sprite_projeto/18` W9).
 mod image_export;
 mod image_import;
-mod impasto_smoke;
 /// **UMA lei sobre o que este app importa** — o filtro do diálogo e o roteamento do drop leem
 /// daqui (Enio, 2026-08-23: *«.ase não aparece no dialog de import»*).
 mod import_router;
@@ -261,13 +260,11 @@ mod layout_reorder;
 mod layout_scroll_gesture;
 mod layout_smoke;
 mod legacy_chrome;
-mod line_smoke;
 /// SONDA (`--ignored`): quanto custa MOVER uma forma que tem geometria viva. A §11 do plano 25
 /// afirma que todo memo de geometria e' chaveado no MUNDO — esta sonda pergunta ao produto.
 #[cfg(test)]
 #[path = "live_memo_probe.rs"]
 mod live_memo_probe;
-mod mask_smoke;
 /// `Merge to Layers` — instala no Painter o documento que a fusão produziu (plano Sprite 18 W10).
 mod merge_layers;
 // ⛔ **O alias `modal` FOI APAGADO** (line/shell-folhas): a lei já vivia na
@@ -444,13 +441,11 @@ mod snap_label_smoke;
 mod socket_smoke;
 mod stack_smoke;
 mod stagger_smoke;
-mod substrate_smoke;
 pub(crate) use ph2d_app_vec::svg_import;
 mod svg_import_smoke;
 pub(crate) use ph2d_app_vec::symmetry_live;
 /// A cena de smoke da SIMETRIA de desenho (`PH2D_BUILD_SMOKE=46`) — irmã de `build_smoke`.
 mod symmetry_smoke;
-mod taper_smoke;
 mod text_fx_smoke;
 mod text_path_gesture_smoke;
 mod text_path_smoke;
@@ -648,7 +643,6 @@ pub(crate) use ph2d_app_vec::widget_value as vec_widget_value;
 mod warp_gizmo_drag;
 mod warp_smoke;
 mod weld_smoke;
-mod wetpaint_smoke;
 /// **O DESENHO É O GLIFO** — a porta única que normaliza a forma de um `IconButton` na caixa de
 /// 24×24. Ela é UMA porque o canvas e o codegen precisam do mesmo glifo por motivos diferentes.
 /// **A PELE por-widget** (plano UI/UX W6.2) — uma forma marcada é pintada pelo pintor REAL do

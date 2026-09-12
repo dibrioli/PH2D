@@ -1,4 +1,4 @@
-//! **O afim imagem→ecrã do Painter é construído sobre a pose de MUNDO.**
+//! **Nenhum chamador do afim imagem→ecrã lhe entrega uma pose LOCAL.**
 //!
 //! Enio, 2026-08-19: *"se a sprite é filha de outra, não consigo pintá-la"*.
 //!
@@ -7,23 +7,20 @@
 //! `sprite_image_to_screen_affine` compõe `imagem → local → mundo → ecrã`, e o comentário dentro
 //! dela sempre prometeu *"sprite-local meters → world"*. Mas o `Transform` que ela recebia era a
 //! pose **LOCAL** da entidade. Numa sprite de **raiz** local e mundo são a mesma coisa — e foi por
-//! isso que a promessa sobreviveu a **21 chamadores** sem ninguém reparar.
+//! isso que a promessa sobreviveu a **21 chamadores** sem ninguém reparar. Numa sprite **filha**
+//! falta a cadeia do pai: o afim mapeia o ponteiro para fora da pegada e o Painter recusa **toda**
+//! pincelada. O sintoma não é pintar torto — é não pintar.
 //!
-//! Numa sprite **filha**, falta a cadeia do pai. O afim mapeia o ponteiro para outro sítio, e a
-//! guarda de pegada do Painter — que usa este mesmo afim para decidir se o clique caiu sobre o
-//! sprite — recusa **toda** pincelada. O sintoma não é pintar torto: é não pintar.
+//! ## ⚠️ A OUTRA METADE deste gate mudou de casa (W2 Fase D)
 //!
-//! ## O gate, e por que ele é estrutural
+//! A afirmação sobre a **assinatura** (*o parâmetro é `world_tr: Transform`, por VALOR*) vivia
+//! aqui e lia `render_loop/bgremoval_preview.rs` por `read_to_string` de caminho fixo. O afim saiu
+//! para a folha [`ph2d_sprite_screen`] (quatro assuntos da shell partilhavam-no — `HOWTO` §1.2), e
+//! a lei foi com ele: hoje é `crates/ph2d-sprite-screen/tests/a_pose_e_de_mundo.rs`, por
+//! `include_str!`, que falha a **COMPILAR** se o ficheiro voltar a mudar de sítio.
 //!
-//! A conta certa é `ph2d_ecs::world_transform`, e o que se quer afirmar é que **nenhum chamador
-//! volta a alimentar a função com uma pose local**. Isso não é um comportamento observável num
-//! teste headless (a cadeia inteira precisa de GPU, tool ativa e ponteiro); é uma propriedade do
-//! CÓDIGO — e é o mesmo instrumento que o gate do pivô de joint usa, pela mesma razão.
-//!
-//! ⚠️ A defesa principal **não é este gate**: é o TIPO. O parâmetro passou de `&Transform` para
-//! `Transform` por valor, e por isso todo chamador antigo deixou de compilar até resolver a pose.
-//! *Uma convenção nova sobre a mesma assinatura teria sido esquecida no 22º sítio.* Este gate
-//! guarda o resto: que ninguém desfaça a assinatura, e que os chamadores não voltem a `get::<>`.
+//! ⇒ **Aqui fica só o que é da SHELL:** quem chama, e com que pose. Pela tabela do `HOWTO` §2.6,
+//! *o gate que mede a lei vive com a lei; o que mede os chamadores desta árvore vive nesta árvore*.
 
 use std::path::{Path, PathBuf};
 
@@ -45,30 +42,31 @@ fn rs_files(dir: &Path, out: &mut Vec<PathBuf>) {
     }
 }
 
-/// O parâmetro é por VALOR e chama-se `world_tr` — as duas metades da defesa de tipo.
-#[test]
-fn the_affine_takes_a_world_transform_by_value() {
-    let src = std::fs::read_to_string(shell_src().join("render_loop/bgremoval_preview.rs"))
-        .expect("bgremoval_preview.rs readable");
-    assert!(
-        src.contains("world_tr: ph2d_ecs::Transform,"),
-        "o parametro de pose do `sprite_image_to_screen_affine` deixou de ser `world_tr: \
-         ph2d_ecs::Transform` (por VALOR).\n\
-         Voltar a `&Transform` faz todo chamador antigo compilar outra vez — e um deles passa a \
-         pose LOCAL, que numa sprite FILHA recusa toda pincelada."
-    );
-}
-
 /// **Nenhum chamador resolve a pose com `get::<Transform>` na vizinhança da chamada.**
 ///
 /// A janela é o braço inteiro entre o `get` e a chamada; procurar no ficheiro todo daria falsos
 /// positivos (um `get::<Transform>` legítimo para outra coisa), e procurar numa janela de N bytes
 /// apodrece — vide a lição do gate do pivô, que reprovou sobre código correto por um comentário
 /// ter crescido.
+///
+/// ⛔⛔ **PISO DE POPULAÇÃO, e ele é a metade que faltava** (`HOWTO` §2.7). Este censo varre a
+/// `shells/desktop/src` e só acusa ficheiros que **chamam** o afim. A família `painter` está a
+/// sair para `crates/ph2d-app-painter`, e **12 dos 14** chamadores de hoje vão com ela — sem o
+/// piso, este gate passaria a varrer dois ficheiros e ficaria **verde a medir quase nada**, que é
+/// exactamente o modo de falha MUDO daquela secção. *Um `offenders.is_empty()` sobre uma lista
+/// construída de zero ficheiros é trivialmente verdadeiro.*
+///
+/// ⚠️ **Quando a família se mudar, este piso desce e o gate ganha a segunda raiz**
+/// (`crates/ph2d-app-painter/src`), de modo que a SOMA continue a ser 14. Baixar o piso sem
+/// acrescentar a raiz é desfazer a defesa.
 #[test]
 fn no_caller_feeds_the_affine_a_local_pose() {
+    /// Quantos ficheiros desta árvore chamam o afim, medido em 2026-09-12.
+    const CHAMADORES_MIN: usize = 14;
+
     let mut files = Vec::new();
     rs_files(&shell_src(), &mut files);
+    let mut chamadores = 0usize;
     let mut offenders: Vec<String> = Vec::new();
     for f in &files {
         let Ok(src) = std::fs::read_to_string(f) else {
@@ -78,6 +76,7 @@ fn no_caller_feeds_the_affine_a_local_pose() {
         if !src.contains("sprite_image_to_screen_affine(") {
             continue;
         }
+        chamadores += 1;
         // Um `get::<…Transform>(entity)` num ficheiro que chama o afim é o padrão que produziu o
         // defeito. Se um dia houver um uso legítimo, ele nomeia-se de outra forma (ou o gate
         // ganha a excecao COM o motivo escrito — nunca em silencio).
@@ -96,6 +95,13 @@ fn no_caller_feeds_the_affine_a_local_pose() {
             }
         }
     }
+    assert!(
+        chamadores >= CHAMADORES_MIN,
+        "este censo achou {chamadores} ficheiros a chamar o afim e esperava >= {CHAMADORES_MIN} \
+         — ele PERDEU O SUJEITO.\n\
+         Se a familia `painter` ja se mudou para `crates/ph2d-app-painter`, a cura NAO e' baixar \
+         este numero: e' acrescentar a raiz da crate a varredura, para a SOMA continuar a ser {CHAMADORES_MIN}."
+    );
     assert!(
         offenders.is_empty(),
         "um ficheiro que constroi o afim imagem→ecra' do Painter resolve a pose com \

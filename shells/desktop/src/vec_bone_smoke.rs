@@ -11,7 +11,7 @@
     unused_imports,
     reason = "quatro destes oito só atravessam em `cfg(test)`; o build do binário vê-os por usar"
 )]
-pub(crate) use ph2d_app_vec::smoke_bone::{
+pub(crate) use ph2d_skeleton_demo::{
     ARM_A, ARM_B, ARM_BONES, ARM_ELBOW_BEND, DEMO_ACTION, TENTACLE_LIMIT_HALF, cadeia,
     seed_demo_action,
 };

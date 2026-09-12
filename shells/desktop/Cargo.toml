@@ -434,6 +434,7 @@ rfd = "0.17"
 ph2d-unique-name = { path = "../../crates/ph2d-unique-name" }
 ph2d-entity-visibility = { path = "../../crates/ph2d-entity-visibility" }
 ph2d-app-skeleton = { path = "../../crates/ph2d-app-skeleton" }
+ph2d-skeleton-demo = { path = "../../crates/ph2d-skeleton-demo" }
 ph2d-preview-drive = { path = "../../crates/ph2d-preview-drive" }
 ph2d-inspector-ordering = { path = "../../crates/ph2d-inspector-ordering" }
 ph2d-transport = { path = "../../crates/ph2d-transport" }

@@ -1,0 +1,143 @@
+//! **A CENA DE DEMONSTRAÇÃO DO ESQUELETO** — a geometria do braço e do tentáculo, a cadeia de
+//! ossos e a acção que os Smart Bones percorrem.
+//!
+//! ⭐ Nasceu na auditoria de arquitectura de 2026-09-12 (A1). Estas peças moravam no módulo da cena
+//! `PH2D_VEC_BONE_SMOKE` (`ph2d_app_vec::smoke_bone`) e têm DOIS consumidores de propósito: a cena
+//! monta-as, e os gates da família do esqueleto medem-nas (*uma tabela escrita duas vezes
+//! divergiria em silêncio e o gate passaria a aprovar uma cena que já não existe*). Para os ter, a
+//! `ph2d-app-skeleton` dependia — em dev — da família Vector inteira, e o gate
+//! `architecture_no_dependency_climbs_a_layer` mediu-o como família → família. O que atravessava era
+//! CONTEÚDO de cena, e conteúdo com dois donos é uma folha.
+#![forbid(unsafe_code)]
+
+use ph2d_ecs::Entity;
+
+/// ⭐⭐⭐ **A GEOMETRIA DO BRAÇO — uma tabela, dois consumidores.**
+///
+/// A cena monta-a e o gate `the_smoke_scene_gives_the_anchor_a_side_to_defend` mede-a. ⚠️ Escrita
+/// duas vezes, ela divergiria em silêncio e o gate passaria a aprovar uma cena que já não existe —
+/// que é exactamente o modo de falha do `CLAUDE.md` §5.0 (*uma cena que ensina o contrário do que
+/// acontece é pior que uma cena ausente*).
+pub const ARM_A: [f64; 2] = [-8.2, 2.5];
+/// A ponta do braço da cena. Ver [`ARM_A`].
+pub const ARM_B: [f64; 2] = [-1.8, 2.5];
+/// Quantos ossos o braço da cena tem. Ver [`ARM_A`].
+pub const ARM_BONES: usize = 3;
+/// ⭐ **A DOBRA DO COTOVELO**, em radianos — o que dá à âncora um lado para capturar.
+///
+/// ⚠️ **`0` aqui apaga a wave do lado da dobra em silêncio:** o `add` capturaria `Auto` sobre uma
+/// corrente recta, e o dono veria o joelho inverter exactamente como antes. O gate acima existe
+/// para esse zero ser vermelho em vez de invisível.
+pub const ARM_ELBOW_BEND: f32 = 0.45; // LITERAL-PX-OK: ângulo do documento (rad)
+
+/// Qual osso do tentáculo nasce com limite de ângulo — o 2.º, que fica bem no meio da parte visível
+/// da cadeia. ⚠️ O vizinho fica SEM limite de propósito: é o contraste que ensina.
+pub const TENTACLE_LIMITED_BONE: usize = 2;
+
+/// Meia-faixa do limite da cena, em radianos (~17°). ⚠️ Estreita de propósito: uma faixa larga
+/// obrigaria o dono a girar meia volta antes de sentir a parede, e o smoke ficaria mudo.
+pub const TENTACLE_LIMIT_HALF: f64 = 0.3; // LITERAL-PX-OK: ângulo do documento (rad)
+
+/// ⭐⭐⭐ **As duas cercas das constantes de cima, em TEMPO DE COMPILAÇÃO** — e elas vivem aqui, ao
+/// lado do que guardam, e não num teste noutro ficheiro.
+///
+/// ⚠️ Uma meia-faixa fora de `(0, π)` ou **trava** o osso (zero) ou **não o limita** (meia volta ou
+/// mais), e nos dois casos o smoke fica mudo sem dizer porquê. E o osso limitado tem de ter um
+/// vizinho ACIMA dele, senão não há o contraste que ensina.
+///
+/// ⭐ Como são constantes, isto é `const {}`: quem as editar para um valor mudo **não compila**, em
+/// vez de descobrir num teste que ele podia não ter corrido.
+const _: () = {
+    assert!(TENTACLE_LIMIT_HALF > 0.0);
+    assert!(TENTACLE_LIMIT_HALF < std::f64::consts::PI);
+    assert!(TENTACLE_LIMITED_BONE >= 1);
+    // ⛔⛔ **A metade que FALTAVA** (auditoria de 2026-09-08): o doc da cerca prometia *«o osso
+    // limitado tem de ter um vizinho ACIMA dele»* e só afirmava o piso. Pôr `TENTACLE_LIMITED_BONE`
+    // acima da contagem da cadeia faz o `if n == …` **nunca disparar** — a cena nasce sem limite
+    // nenhum, o smoke fica mudo, e nada acusa. *Uma cerca com metade das paredes é uma cerca que se
+    // atravessa por um lado.*
+    assert!(TENTACLE_LIMITED_BONE < TENTACLE_BONES - 1);
+};
+
+/// Quantos ossos o tentáculo da cena tem — a fonte da contagem, lida pela cena **e** pela cerca de
+/// cima. ⚠️ Escrita duas vezes, ela divergiria no dia em que a cadeia crescesse.
+pub const TENTACLE_BONES: usize = 6;
+
+/// ⭐⭐⭐ **A ACÇÃO QUE A CENA JÁ TRAZ** — o nome que aparece no selector *Action* do painel.
+///
+/// ⚠️⚠️ **Ela existe por causa do report do dono de 2026-09-08** (*«não há meios de selecionar nem
+/// o objeto alvo nem a animação»*): sem uma acção com CONTEÚDO na cena, o único caminho para provar
+/// um osso inteligente era o artista gravar uma animação primeiro — e o smoke passava a testar a
+/// timeline em vez do osso. *Uma cena que só produz o fenómeno depois de o artista acertar OUTRO
+/// gesto não prova nada quando esse gesto falha* (`CLAUDE.md` §5.0).
+pub const DEMO_ACTION: &str = "Leaf Rises";
+
+/// Quanto a folha sobe ao longo da acção da cena, nas unidades do documento.
+///
+/// ⚠️ Grande o suficiente para o percurso se ler numa forma que mede ~2 de altura: uma subida de
+/// meia forma leria-se como tremor, e o smoke ficaria mudo sobre um motor correcto.
+pub const DEMO_RISE: f32 = 3.0; // LITERAL-PX-OK: distância do documento, não medida de UI
+
+/// A duração da acção da cena, em segundos. ⚠️ **Ela é o que o `clamp` do `action_time` divide**,
+/// e não uma escolha estética: o giro do osso mapeia-se nesta faixa inteira.
+pub const DEMO_SECONDS: f64 = 2.0;
+
+/// ⭐⭐⭐ **SEMEIA A ACÇÃO DA CENA** no documento — a folha `bits` sobe [`DEMO_RISE`] ao longo de
+/// [`DEMO_SECONDS`].
+///
+/// ⚠️⚠️ **Ela DEVOLVE o documento à acção que estava aberta**, e isso é load-bearing, não arrumação:
+/// o `insert_key` escreve no clip **activo**, e um controlo **não percorre a acção aberta** (ali o
+/// artista está a gravá-la). Deixá-la aberta faria o osso inteligente nascer inerte na própria cena
+/// que existe para o demonstrar — *uma cena que ensina o contrário do que acontece é pior que uma
+/// cena ausente* (`CLAUDE.md` §5.0).
+///
+/// ⭐ Vive **fora** do `bone_smoke_bind` para o gate a poder correr: aquela função precisa do `gfx`,
+/// que segura uma surface de janela real.
+pub fn seed_demo_action(doc: &mut ph2d_timeline::TimelineDoc, bits: u64) {
+    let antes = doc.active_index();
+    let i = doc.add_clip(DEMO_ACTION.to_string());
+    doc.set_active(i);
+    for (t, v) in [(0.0, 0.0_f32), (DEMO_SECONDS, DEMO_RISE)] {
+        doc.insert_key(
+            bits,
+            ph2d_timeline::PropKind::TranslationY,
+            ph2d_anim::RationalTime::from_seconds(t),
+            ph2d_anim::AnimValue::Float(v),
+            ph2d_anim::Interp::Linear,
+        );
+    }
+    doc.set_active(antes);
+}
+
+/// Uma cadeia de `n` ossos de `a` a `b` (mundo), o 1.º sem pai. Devolve a RAIZ.
+pub fn cadeia(sim: &mut ph2d_ecs::SimWorld, a: [f64; 2], b: [f64; 2], n: usize) -> Option<Entity> {
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "n é a contagem de ossos da cena, sempre um punhado"
+    )]
+    let passo = [(b[0] - a[0]) / n as f64, (b[1] - a[1]) / n as f64];
+    let mut pai: Option<Entity> = None;
+    let mut raiz: Option<Entity> = None;
+    for i in 0..n {
+        #[expect(clippy::cast_precision_loss, reason = "idem")]
+        let t = i as f64;
+        let o = [a[0] + passo[0] * t, a[1] + passo[1] * t];
+        let p = [o[0] + passo[0], o[1] + passo[1]];
+        let bits = ph2d_skeleton_live::bone::create(sim, pai, o, p)?;
+        pai = Some(Entity::from_bits(bits));
+        raiz = raiz.or(pai);
+    }
+    raiz
+}
+
+/// A PONTA de uma cadeia — desce pelo 1.º filho até não haver osso abaixo.
+pub fn ponta_da_cadeia(sim: &ph2d_ecs::SimWorld, raiz: Entity) -> Entity {
+    let mut e = raiz;
+    while let Some(f) = sim.world().get::<ph2d_ecs::Children>(e).and_then(|c| {
+        c.iter()
+            .find(|c| sim.world().get::<ph2d_skeleton_ecs::Bone>(**c).is_some())
+    }) {
+        e = *f;
+    }
+    e
+}

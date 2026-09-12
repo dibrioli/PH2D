@@ -127,9 +127,9 @@ fn the_anchor_defends_its_side_across_the_straight_pose() {
 /// uma sonda que alimenta outros números mede outro programa.
 #[test]
 fn the_smoke_scene_gives_the_anchor_a_side_to_defend() {
-    use ph2d_app_vec::smoke_bone::{ARM_A, ARM_B, ARM_BONES, ARM_ELBOW_BEND};
+    use ph2d_skeleton_demo::{ARM_A, ARM_B, ARM_BONES, ARM_ELBOW_BEND};
     let mut sim = SimWorld::default();
-    let raiz = ph2d_app_vec::smoke_bone::cadeia(&mut sim, ARM_A, ARM_B, ARM_BONES)
+    let raiz = ph2d_skeleton_demo::cadeia(&mut sim, ARM_A, ARM_B, ARM_BONES)
         .expect("a cadeia do braço monta-se");
     ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
     // A cena dobra o ÚLTIMO osso — é ele que está dentro da corrente de `DEFAULT_CHAIN`.

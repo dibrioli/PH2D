@@ -261,12 +261,12 @@ fn the_smoke_scene_ships_an_action_with_something_in_it() {
     let mut doc = TimelineDoc::default();
     let aberta_antes = doc.active_index();
     let folha = 4_242_u64;
-    ph2d_app_vec::smoke_bone::seed_demo_action(&mut doc, folha);
+    ph2d_skeleton_demo::seed_demo_action(&mut doc, folha);
 
     let i = doc
         .clips()
         .iter()
-        .position(|c| c.name == ph2d_app_vec::smoke_bone::DEMO_ACTION)
+        .position(|c| c.name == ph2d_skeleton_demo::DEMO_ACTION)
         .expect("a cena tem de trazer a acção que o selector `Action` oferece");
     assert_ne!(
         i,
@@ -350,14 +350,14 @@ fn the_smoke_chain_moves_the_leaf_end_to_end() {
     ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
 
     let mut doc = TimelineDoc::default();
-    ph2d_app_vec::smoke_bone::seed_demo_action(&mut doc, folha.to_bits());
+    ph2d_skeleton_demo::seed_demo_action(&mut doc, folha.to_bits());
 
     // Exactamente o que o painel escreve: o default do componente + a acção escolhida na lista + o
     // alvo escolhido no picker.
     sim.world_mut()
         .entity_mut(controlo)
         .insert(ph2d_skeleton_ecs::SmartBone {
-            clip: ph2d_app_vec::smoke_bone::DEMO_ACTION.to_string(),
+            clip: ph2d_skeleton_demo::DEMO_ACTION.to_string(),
             target: "Leaf".to_string(),
             ..ph2d_skeleton_ecs::SmartBone::default()
         });

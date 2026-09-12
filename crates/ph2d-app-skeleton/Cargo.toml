@@ -40,15 +40,14 @@ ph2d-vec-scene = { path = "../ph2d-vec-scene" }
 # mesmos quatro factos que a timeline conduz.
 ph2d-timeline-preview = { path = "../ph2d-timeline-preview" }
 
-# ⛔⛔ **A família irmã entra como DEV-dependency, e a distinção é a lei do HOWTO §1.2.** Quatro
-# ficheiros de TESTE exercitam a lei do osso *através* da cena `PH2D_VEC_BONE_SMOKE`, cujo corpo
-# vive na `ph2d-app-vec` — e é assim que ela deve ser exercitada (o piloto mediu o mesmo: dos 5
-# testes daqueles módulos, 4 passam pelo smoke da família). ⚠️ Em `[dependencies]` isto seria *uma
-# família a depender da outra inteira*, que é precisamente o que aquela secção proíbe; em
-# `[dev-dependencies]` o build do produto não a vê.
-# ⭐ E não há ciclo, medido: a `ph2d-app-vec` cita **zero** módulos desta família.
+# ⭐ **A CENA DO OSSO é uma FOLHA, não a família irmã** (auditoria de arquitectura A1, 2026-09-12).
+# Quatro ficheiros de TESTE exercitam a lei do osso sobre a geometria da cena `PH2D_VEC_BONE_SMOKE`
+# — a tabela do braço, a cadeia, a acção dos Smart Bones. Até 12/09 isto era uma dev-dependency da
+# `ph2d-app-vec` inteira (*«em dev o produto não a vê»*); o gate
+# `architecture_no_dependency_climbs_a_layer` mediu-a como família → família, e o que os testes
+# usavam era CONTEÚDO da cena, com dois consumidores de propósito. Desceu para a folha do assunto.
 [dev-dependencies]
-ph2d-app-vec = { path = "../ph2d-app-vec" }
+ph2d-skeleton-demo = { path = "../ph2d-skeleton-demo" }
 # ⛔⛔ **A FEATURE NÃO VIAJA COM O CÓDIGO** (HOWTO §2.4, o pior modo de falha da wave). O
 # `PreviewDrive::is_empty` é `#[cfg(any(test, feature = "test-support"))]`, e três gates desta
 # família o leem. Dentro da shell isso funcionava porque **não era do outro lado de nada**; aqui a

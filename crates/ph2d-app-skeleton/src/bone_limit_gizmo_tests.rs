@@ -430,9 +430,9 @@ fn code_only(src: &str) -> String {
 /// hipóteses minhas saíram ilibadas antes de a divergência aparecer noutro sítio.
 #[test]
 fn the_wall_at_the_bones_own_angle_lands_on_its_tip() {
-    use ph2d_app_vec::smoke_bone::{ARM_A, ARM_B};
+    use ph2d_skeleton_demo::{ARM_A, ARM_B};
     let mut sim = SimWorld::default();
-    let raiz = ph2d_app_vec::smoke_bone::cadeia(&mut sim, ARM_A, ARM_B, 6).expect("cadeia");
+    let raiz = ph2d_skeleton_demo::cadeia(&mut sim, ARM_A, ARM_B, 6).expect("cadeia");
     ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
     let mut ossos = vec![raiz];
     while let Some(f) = sim

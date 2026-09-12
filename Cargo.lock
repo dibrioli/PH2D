@@ -5077,12 +5077,12 @@ version = "0.0.0"
 dependencies = [
  "ph2d-anim",
  "ph2d-app-host",
- "ph2d-app-vec",
  "ph2d-core",
  "ph2d-ecs",
  "ph2d-editor-core",
  "ph2d-preview-drive",
  "ph2d-skeleton",
+ "ph2d-skeleton-demo",
  "ph2d-skeleton-ecs",
  "ph2d-skeleton-live",
  "ph2d-skeleton-render",
@@ -5123,6 +5123,7 @@ dependencies = [
  "ph2d-preview-drive",
  "ph2d-render",
  "ph2d-skeleton",
+ "ph2d-skeleton-demo",
  "ph2d-skeleton-ecs",
  "ph2d-skeleton-live",
  "ph2d-system-fonts",
@@ -5841,6 +5842,7 @@ dependencies = [
  "ph2d-sculpt3d",
  "ph2d-sdf",
  "ph2d-skeleton",
+ "ph2d-skeleton-demo",
  "ph2d-skeleton-ecs",
  "ph2d-skeleton-live",
  "ph2d-skeleton-render",
@@ -8128,6 +8130,17 @@ version = "0.0.0"
 dependencies = [
  "ph2d-affine",
  "serde",
+]
+
+[[package]]
+name = "ph2d-skeleton-demo"
+version = "0.0.0"
+dependencies = [
+ "ph2d-anim",
+ "ph2d-ecs",
+ "ph2d-skeleton-ecs",
+ "ph2d-skeleton-live",
+ "ph2d-timeline",
 ]
 
 [[package]]

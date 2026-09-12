@@ -31,7 +31,7 @@
 //! # ⚠️ A família NÃO declara roteador, e a ausência é DECLARADA
 //!
 //! Ver [`FAMILY`]: a cena do osso é `PH2D_VEC_BONE_SMOKE` e o corpo dela vive na
-//! [`ph2d_app_vec::smoke_bone`] — ⛔ **uma família não declara o roteador de outra**, senão o
+//! `ph2d_app_vec::smoke_bone` — ⛔ **uma família não declara o roteador de outra**, senão o
 //! registo tem duas respostas para a mesma env. Um `routers: &[]` com o nome na catraca é a forma
 //! de dizer *«não tenho»* em voz alta.
 
@@ -47,7 +47,7 @@ pub mod smart;
 ///
 /// ⛔⛔ **`routers: &[]` é uma AUSÊNCIA DECLARADA, não uma omissão.** A única cena de smoke que
 /// exercita esta família é a `PH2D_VEC_BONE_SMOKE`, e o corpo dela vive na
-/// [`ph2d_app_vec::smoke_bone`] desde a 2.ª volta da Fase B — porque a cena monta um **braço
+/// `ph2d_app_vec::smoke_bone` desde a 2.ª volta da Fase B — porque a cena monta um **braço
 /// vectorial** e prende-o, logo ela é da `vec` tanto quanto é do esqueleto, e quem a possui é quem
 /// a constrói.
 ///

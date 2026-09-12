@@ -29,7 +29,7 @@ use ph2d_core::Vec2;
 use ph2d_flip::{Frame, Pose};
 use ph2d_vec_scene::Xform;
 
-use crate::transform::key_xform;
+use ph2d_flip_entities::transform::key_xform;
 
 /// O arrasto de trace em curso.
 #[derive(Clone, Copy, Debug)]

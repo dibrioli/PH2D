@@ -530,7 +530,7 @@ pub fn bake_objects(
 pub fn bake_flip_objects(
     motion: &mut MotionState,
     flip: &ph2d_flip::FlipDoc,
-    map: &ph2d_app_flip::entities::FlipEntityMap,
+    map: &ph2d_flip_entities::entities::FlipEntityMap,
     playhead: &ph2d_core::Playhead,
     gpu: &ph2d_gpu::GpuContext,
     renderer: &mut ph2d_render::SpriteRenderer,

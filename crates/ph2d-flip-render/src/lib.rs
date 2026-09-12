@@ -17,8 +17,10 @@
 //! shader + passe entram a seguir.
 
 mod binning;
+pub mod camera;
 mod composite;
 mod dabs;
+pub mod engine;
 mod fill;
 mod fill_holes;
 mod neighbors;

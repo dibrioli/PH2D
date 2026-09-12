@@ -278,7 +278,7 @@ fn the_selection_gizmo_box_lands_on_the_posed_selection() {
     )
     .expect("arte exclusiva com seleção publica a view");
     // Oráculo: a MESMA cadeia do render, no centro da SELEÇÃO.
-    let obj_x = crate::transform::object_xform(&sim, e);
+    let obj_x = ph2d_flip_entities::transform::object_xform(&sim, e);
     let posed_c = pose.apply(Vec2::new(c_local[0], c_local[1]));
     let want = obj_x.apply([f64::from(posed_c.x), f64::from(posed_c.y)]);
     assert!(
@@ -529,7 +529,10 @@ fn a_pure_translate_bake_is_a_rigid_shift_matching_the_move_funnel() {
     );
     // (2) O delta de ART = `object_delta_to_art(pose, delta_obj)` — a MESMA descida do
     // move (o gizmo e o arrasto de canvas convergem no mesmo funil).
-    let want = crate::transform::object_delta_to_art(pose, Vec2::new(delta_obj[0], delta_obj[1]));
+    let want = ph2d_flip_entities::transform::object_delta_to_art(
+        pose,
+        Vec2::new(delta_obj[0], delta_obj[1]),
+    );
     assert!(
         (dp[0] - f64::from(want.x)).abs() < 1e-3 && (dp[1] - f64::from(want.y)).abs() < 1e-3,
         "o delta de ART {dp:?} != funil do move {want:?}"

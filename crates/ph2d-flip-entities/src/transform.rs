@@ -39,7 +39,7 @@ pub fn object_xform(sim: &SimWorld, entity: Entity) -> Xform {
 /// tudo ao mundo. Um quadro na pose neutra devolve a identidade — o caminho comum não
 /// paga nada.
 #[must_use]
-pub(crate) fn key_xform(pose: Pose) -> Xform {
+pub fn key_xform(pose: Pose) -> Xform {
     let c = pose.coeffs();
     Xform([
         f64::from(c[0]),
@@ -63,7 +63,7 @@ pub fn art_to_world(object: &Xform, key_pose: Pose) -> Xform {
 /// leva tudo ao mundo. Com shift identidade delega ao [`art_to_world`] — byte a byte o
 /// caminho de sempre (é o pin de regressão do modo).
 #[must_use]
-pub(crate) fn art_to_world_traced(object: &Xform, key_pose: Pose, shift: Pose) -> Xform {
+pub fn art_to_world_traced(object: &Xform, key_pose: Pose, shift: Pose) -> Xform {
     if shift.is_identity() {
         return art_to_world(object, key_pose);
     }
@@ -81,7 +81,7 @@ pub(crate) fn art_to_world_traced(object: &Xform, key_pose: Pose, shift: Pose) -
 ///
 /// Pose degenerada (det≈0) devolve o delta intacto — mover algo é melhor que travar.
 #[must_use]
-pub(crate) fn object_delta_to_art(pose: Pose, delta: ph2d_core::Vec2) -> ph2d_core::Vec2 {
+pub fn object_delta_to_art(pose: Pose, delta: ph2d_core::Vec2) -> ph2d_core::Vec2 {
     let c = pose.coeffs(); // apply = [a·x + c·y + tx, b·x + d·y + ty]
     let det = f64::from(c[0]) * f64::from(c[3]) - f64::from(c[2]) * f64::from(c[1]);
     if det.abs() < 1e-12 {
@@ -159,7 +159,7 @@ pub fn build(sim: &SimWorld, map: &FlipEntityMap) -> Vec<(FlipObjectId, Xform)> 
 /// objeto ([`ph2d_flip::FlipObject::bake_affine`]).
 ///
 /// `false` se a entidade sumiu, se o objeto sumiu, ou se o afim é degenerado.
-pub(crate) fn move_origin_to(
+pub fn move_origin_to(
     sim: &mut SimWorld,
     doc: &mut FlipDoc,
     entity: Entity,

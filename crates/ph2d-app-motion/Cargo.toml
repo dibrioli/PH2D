@@ -14,7 +14,6 @@ authors.workspace = true
 # O piloto (`field3d`, 90 ficheiros) descobriu **quatro** invisíveis; esta família tem **56**.
 [dependencies]
 ph2d-anim = { path = "../ph2d-anim" }
-ph2d-app-flip = { path = "../ph2d-app-flip" }
 ph2d-asset = { path = "../ph2d-asset" }
 ph2d-audio = { path = "../ph2d-audio" }
 ph2d-audio-desktop = { path = "../ph2d-audio-desktop" }
@@ -26,6 +25,7 @@ ph2d-ecs = { path = "../ph2d-ecs" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-eval-motion = { path = "../ph2d-eval-motion" }
 ph2d-flip = { path = "../ph2d-flip" }
+ph2d-flip-entities = { path = "../ph2d-flip-entities" }
 ph2d-flip-render = { path = "../ph2d-flip-render" }
 ph2d-gpu-cook = { path = "../ph2d-gpu-cook" }
 ph2d-host = { path = "../ph2d-host" }

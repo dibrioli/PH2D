@@ -1,0 +1,26 @@
+[package]
+name = "ph2d-flip-entities"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+# ⭐ A PONTE ECS do Flip — uma entidade por objecto do documento, e o afim que leva a arte ao mundo.
+# Nasceu na auditoria de arquitectura de 2026-09-12 (A1), no molde da `ph2d-vec-entities`: a
+# assadura do Motion e a shell precisavam destas duas leis e, para as ter, a família Motion
+# dependia da família Flip inteira — e uma família não depende de outra (ADR-0075, HOWTO §1.2).
+# As dependências abaixo foram DERIVADAS dos caminhos que o código escreve, não copiadas.
+[lib]
+
+[dependencies]
+ph2d-core = { path = "../ph2d-core" }
+ph2d-ecs = { path = "../ph2d-ecs" }
+ph2d-flip = { path = "../ph2d-flip" }
+ph2d-unique-name = { path = "../ph2d-unique-name" }
+ph2d-vec-entities = { path = "../ph2d-vec-entities" }
+ph2d-vec-scene = { path = "../ph2d-vec-scene" }
+
+[lints]
+workspace = true

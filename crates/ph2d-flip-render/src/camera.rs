@@ -1,13 +1,16 @@
 //! **A CÂMERA do passe de Flip** — como o uniform que o shader recebe é construído.
 //!
-//! Irmão do `flip_pass.rs`, e o corte é por responsabilidade: lá mora *o que é composto* (as
-//! camadas, o motor, as chaves do compositor); aqui mora *de que ponto de vista* — a paralaxe
-//! multiplano, o fold do `model` do objeto e a conversão da `Camera2d` no uniform.
-//!
-//! ⚠️ As três são chamadas pelo `composite_layers` e re-exportadas pelo pai, então
-//! `super::parallax_model` segue resolvendo (os testes não mudam de endereço).
+//! Morava na `ph2d-app-flip` (`pass_camera.rs`, irmão do passe) e desceu para a crate do
+//! renderizador na auditoria de arquitectura de 2026-09-12 (A1): a assadura do Motion e a sonda
+//! `ph2d-pan-diag` precisam da MESMA convenção de câmera — o Y, a régua de espessura, o
+//! sub-rectângulo — e, para a ter, dependiam da família Flip inteira. Aqui mora *de que ponto de
+//! vista*: a paralaxe multiplano, o fold do `model` do objeto e a conversão da `Camera2d` no uniform
+//! que o shader desta crate recebe.
 
-use super::{Camera2d, CameraRaw, WindowSize, Xform};
+use crate::CameraRaw;
+use ph2d_host::WindowSize;
+use ph2d_render::Camera2d;
+use ph2d_vec_scene::Xform;
 
 /// **A porta ÚNICA da paralaxe multiplano** (2.5D, ADR-0114 §Decisão 3): desloca a
 /// TRANSLAÇÃO do `model` do objeto por `(cam_center − origem)·(1 − depth)`, uma translação
@@ -20,7 +23,7 @@ use super::{Camera2d, CameraRaw, WindowSize, Xform};
 ///
 /// A âncora é a origem do objeto `(e, f)`: enquadrado de frente (a câmera sobre ela), todos
 /// os planos coincidem; panhar os separa por `depth` (o deslocamento de tela = `depth × pan`).
-pub(super) fn parallax_model(model: &Xform, cam_center: [f32; 2], depth: f32) -> Xform {
+pub fn parallax_model(model: &Xform, cam_center: [f32; 2], depth: f32) -> Xform {
     if depth == 1.0 {
         return *model; // flat: intacto (byte-idêntico ao pré-multiplano)
     }
@@ -97,7 +100,7 @@ pub fn camera_raw(camera: &Camera2d, window: WindowSize) -> CameraRaw {
 /// Sob o split a cena vive num sub-retângulo do alvo (`CenterSplit::scene_viewport`), e quem
 /// projeta a JANELA CHEIA ali dentro fica com outra escala px/mundo — a `t = 0,55` isso é
 /// `1/t ≈ 1,82×`. Como o pan converte o arrasto em mundo pela altura DA CENA
-/// ([`crate::field_gizmo::pan_scene_camera`]), o erro não é um offset: ele **multiplica a
+/// (`ph2d_app_motion::field_gizmo::pan_scene_camera`), o erro não é um offset: ele **multiplica a
 /// distância arrastada**, então a arte do Flip escorrega em relação a tudo o resto. Foi o
 /// report do Enio de 2026-08-25 (*"a imagem de referência sofre um drift no pan"*).
 ///
@@ -140,5 +143,5 @@ pub fn camera_scene(
 }
 
 #[cfg(test)]
-#[path = "pass_camera_tests.rs"]
+#[path = "camera_tests.rs"]
 mod tests;

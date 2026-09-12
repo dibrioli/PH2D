@@ -22,8 +22,8 @@ use ph2d_flip::{FlipDoc, FlipObjectId};
 use ph2d_host::WindowSize;
 use ph2d_render::Camera2d;
 
-use crate::entities::FlipEntityMap;
-use crate::transform::object_xform;
+use ph2d_flip_entities::entities::FlipEntityMap;
+use ph2d_flip_entities::transform::object_xform;
 use ph2d_vec_entities::transform::world_transform;
 
 /// Raio de captura do traço, em pixels de tela — a arte Flip é pega por proximidade
@@ -151,7 +151,7 @@ fn contains_object(
     // (translação hoje, rot/escala com o gizmo), então o cursor desce ao espaço do desenho
     // pelo INVERSO dela — numa pose de translação pura é o `local − off` de antes.
     for (pose, d) in obj.posed_drawings() {
-        let Some(pinv) = crate::transform::key_xform(pose).inverse() else {
+        let Some(pinv) = ph2d_flip_entities::transform::key_xform(pose).inverse() else {
             continue; // pose colapsada (escala zero)
         };
         let p = pinv.apply(local);
@@ -361,7 +361,7 @@ mod tests {
     fn picking_finds_the_art_where_the_transform_puts_it() {
         let (mut doc, mut sim, map, oid, e) = doc_with_segment([0.0, 0.0], [10.0, 0.0]);
         // Assenta o pivô (centro (5,0)) → geometria local, Transform.translation=(5,0).
-        crate::transform::settle_origins(&mut sim, &mut doc, &map, None);
+        ph2d_flip_entities::transform::settle_origins(&mut sim, &mut doc, &map, None);
         // Clique sobre o traço, no mundo.
         assert!(!pick_all_at_world(&sim, &doc, &map, [5.0, 0.05], 1.0).is_empty());
         // Move o objeto +100 em x: a origem do traço fica vazia.

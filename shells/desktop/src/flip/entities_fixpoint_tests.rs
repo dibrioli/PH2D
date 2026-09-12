@@ -3,7 +3,7 @@
 //! # Porque ele nasce depois da cura, e não antes
 //!
 //! O censo `every_document_to_tree_bridge_is_in_the_net` achou que o
-//! [`ph2d_app_flip::entities::sync`] corria no passe do desenho e **não** na rede do fim do quadro, e
+//! [`ph2d_flip_entities::entities::sync`] corria no passe do desenho e **não** na rede do fim do quadro, e
 //! a cura entrou no mesmo dia. Mas um censo é **textual**: ele afirma que a chamada está lá, nunca
 //! que ela FECHA o que promete fechar. ⚠️ *Um gate de texto verde sobre uma semântica errada lê-se
 //! exactamente como um produto correcto* — e é essa metade que este ficheiro mede.
@@ -22,15 +22,15 @@
 //! corre depois deles. *Um arnês mede exactamente os escritores que alguém se lembrou de lhe pôr
 //! dentro*, e foi essa lacuna que deixou passar o report de 2026-09-07.
 
-use ph2d_app_flip::entities::*;
+use ph2d_flip_entities::entities::*;
 // ⚠️ O `use super::*` trazia estes do módulo PAI; sem pai, nomeiam-se.
 use crate::undo::ProjectState;
-use ph2d_app_flip::entities::FlipEntityMap;
-use ph2d_app_flip::transform::settle_origins;
 use ph2d_ecs::scene::{ComponentRegistry, register_ecs_components};
 use ph2d_ecs::{Entity, SimWorld};
 use ph2d_flip::{FlipDoc, FlipObjectId};
 use ph2d_flip::{FlipStroke, Hold, KeyKind};
+use ph2d_flip_entities::entities::FlipEntityMap;
+use ph2d_flip_entities::transform::settle_origins;
 
 /// ⭐⭐⭐ **Um objecto de animação COM ARTE, longe da origem** — e a fixtura é a metade que decide.
 ///
@@ -39,7 +39,7 @@ use ph2d_flip::{FlipStroke, Hold, KeyKind};
 /// A 1.ª redacção destes gates criava objectos **vazios** (`push_object` e mais nada), e a prova de
 /// mutação foi clara: apagar o assentamento do pivô da rede **SOBREVIVEU**. Não era um gate a
 /// menos nem uma linha redundante — era a **terceira leitura** de uma mutação sobrevivente:
-/// *a fixtura não produzia o fenómeno*. O [`ph2d_app_flip::transform::settle_origins`] só age sobre um
+/// *a fixtura não produzia o fenómeno*. O [`ph2d_flip_entities::transform::settle_origins`] só age sobre um
 /// objecto que tenha `geometry_bbox()` **e** cujo centro não seja `(0, 0)`; sem arte, ele não tem o
 /// que assentar e a linha é invisível.
 ///

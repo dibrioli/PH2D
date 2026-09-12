@@ -12,10 +12,10 @@ authors.workspace = true
 [dependencies]
 ph2d-host = { path = "../ph2d-host" }
 ph2d-render = { path = "../ph2d-render" }
-# ⚠️ **É por ESTA linha que a sonda não pode viver dentro de uma família:** ela já lê o estado do
-# Flip. Pô-la em `ph2d-app-motion` faria a família `motion` depender da família `flip` — o que o
-# HOWTO §1.2 proíbe por escrito. Uma folha pode depender das duas; uma família não.
-ph2d-app-flip = { path = "../ph2d-app-flip" }
+# ⚠️ A sonda compara a rota do Flip com a das sprites e a do Vello, e a câmera do Flip mora na crate
+# do renderizador desde a auditoria de arquitectura A1 (2026-09-12) — antes, para a perguntar, esta
+# folha dependia da família Flip inteira, e uma folha não depende de uma família.
+ph2d-flip-render = { path = "../ph2d-flip-render" }
 
 [lints]
 workspace = true

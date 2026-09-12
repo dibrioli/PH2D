@@ -8863,7 +8863,7 @@ impl crate::App {
                     .map(ph2d_ecs::Entity::from_bits)
                     .filter(|e| sim.world().get_entity(*e).is_ok())
                     .map_or(ph2d_vec_scene::Xform::IDENTITY, |e| {
-                        ph2d_app_flip::transform::object_xform(sim, e)
+                        ph2d_flip_entities::transform::object_xform(sim, e)
                     });
                 // W8/§4.C: o realce fala a linguagem do DOMÍNIO — halo de traço (Stroke),
                 // dots (Point), ou halo do PEDAÇO + preview de hover (Segment).
@@ -8996,7 +8996,7 @@ impl crate::App {
                     &l2w,
                     // A MESMA pose que a autoria dobra (`flip_transform::active_pose`) —
                     // função livre porque aqui `self.gfx` está destruturado.
-                    ph2d_app_flip::transform::active_pose(
+                    ph2d_flip_entities::transform::active_pose(
                         flip,
                         self.flip_state.active_layer,
                         &self.playhead,
@@ -9128,7 +9128,7 @@ impl crate::App {
             // ADR-0114: idem para os objetos Flip (objeto novo ⇒ entidade; entidade
             // apagada ⇒ objeto). No W0 é no-op (nenhuma tool cria objetos ainda); a
             // tool do W2 passa a populá-lo.
-            ph2d_app_flip::entities::sync(sim, flip, &mut self.flip_state.entities);
+            ph2d_flip_entities::entities::sync(sim, flip, &mut self.flip_state.entities);
             // Live Shapes: mantém o `VecShape::Text` na entidade do texto ativo (a
             // entidade já existe pós-sync) para o objeto lembrar que é texto — re-cook,
             // painel, Convert e save/undo. Idempotente; só com sessão viva.
@@ -9776,7 +9776,7 @@ impl crate::App {
             let flip_gesturing = (self.flip_state.draw.is_active() || self.flip_state.erasing)
                 .then(|| flip.objects().first().map(|o| o.id))
                 .flatten();
-            ph2d_app_flip::transform::settle_origins(
+            ph2d_flip_entities::transform::settle_origins(
                 sim,
                 flip,
                 &self.flip_state.entities,

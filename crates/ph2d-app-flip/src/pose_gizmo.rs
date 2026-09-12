@@ -35,7 +35,7 @@ use ph2d_flip::{FlipDoc, FlipDrawing, FlipObjectId, Frame, LayerId, Pose};
 use ph2d_host::WindowSize;
 use ph2d_render::Camera2d;
 
-use crate::entities::FlipEntityMap;
+use ph2d_flip_entities::entities::FlipEntityMap;
 use ph2d_vec_entities::transform::world_transform;
 
 /// O arrasto de POSE em curso: o estado genérico do gizmo + o ALVO da escrita

@@ -58,9 +58,9 @@ use ph2d_host::WindowSize;
 use ph2d_render::Camera2d;
 use ph2d_vec_scene::Xform;
 
-use crate::entities::FlipEntityMap;
 use crate::pose_gizmo::{pose_trs, trs_to_pose};
-use crate::transform::key_xform;
+use ph2d_flip_entities::entities::FlipEntityMap;
+use ph2d_flip_entities::transform::key_xform;
 use ph2d_vec_entities::transform::world_transform;
 
 /// Qual anel de um traço o ponto snapshotado pertence: a polilinha principal ou um

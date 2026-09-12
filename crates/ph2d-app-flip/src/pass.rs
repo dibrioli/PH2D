@@ -22,9 +22,10 @@
 //! loga packs vs hits por frame.
 
 use crate::pass_cache::TessCache;
-use crate::transform::art_to_world;
 use ph2d_core::Playhead;
 use ph2d_flip::{FlipDoc, FlipDrawing, FlipObjectId, LayerId};
+use ph2d_flip_entities::transform::art_to_world;
+use ph2d_flip_render::engine::new_engine_armed;
 use ph2d_flip_render::{CameraRaw, FlipCompose, FlipGpuData, FlipRenderer};
 use ph2d_gpu::GpuContext;
 use ph2d_host::WindowSize;
@@ -144,7 +145,7 @@ pub fn render(
     window: WindowSize,
     // O sub-retângulo da CENA (`CenterSplit::scene_viewport`), o MESMO que o passe de sprites
     // recebe em `present.rs` — sem ele este passe projetava a janela cheia e a arte escorregava
-    // sob o pan (ver [`camera::camera_scene`]). `None` fora do split = byte-idêntico.
+    // sob o pan (ver [`camera_scene`]). `None` fora do split = byte-idêntico.
     scene_viewport: Option<[f32; 4]>,
     gpu: &GpuContext,
 ) {
@@ -192,34 +193,6 @@ pub fn render(
     if let Some(pv) = unfolded {
         draw_overlay(flip_render, pv, &cam, game_rt, (w, h), gpu);
     }
-}
-
-/// **O PERCURSO É O DEFAULT** (doc 12 §22) — `PH2D_FLIP_NEW_ENGINE=0` é a ESCAPE para o
-/// rasterizador que shipava.
-///
-/// A inversão é a decisão do padrão-ouro, e o que a sustenta é a hierarquia das leis, não uma
-/// preferência: a lei do percurso (`τ = ∫ f(dn) ds`, `α = 1 − exp(−τ)`) é o **limite contínuo** que
-/// os dab buffers de GIMP/Krita/Procreate — e o do nosso próprio Painter — aproximam por soma
-/// finita, e o rasterizador (união global + eleição por depth) não está na família. Medido contra o
-/// depósito do Painter, o pico na ponta: raster **+129/+131/+175** contra percurso
-/// **−12/−17/−46** (durezas 0,2/0,4/0,7).
-pub fn new_engine_armed() -> bool {
-    static ARMED: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
-    *ARMED.get_or_init(|| walk_from_env(std::env::var("PH2D_FLIP_NEW_ENGINE").ok().as_deref()))
-}
-
-/// A política do interruptor, **PURA** — quem decide *qual motor* a partir do que o ambiente diz.
-///
-/// ⚠️ **Ela existe separada porque o default não era testável:** o [`new_engine_armed`] é um
-/// `OnceLock` sobre uma variável de processo, então nenhum teste consegue exercitá-lo duas vezes no
-/// mesmo binário, e um default que ninguém pode afirmar é um default que a próxima edição inverte
-/// em silêncio.
-///
-/// ⚠️ **Só o desligamento EXPLÍCITO volta ao raster** — ausente, vazio ou irreconhecível dá o
-/// percurso. Isso é deliberado: um erro de digitação na escape (`=flase`) falha **para o default**,
-/// nunca para um terceiro comportamento.
-fn walk_from_env(v: Option<&str>) -> bool {
-    !matches!(v, Some("0" | "false" | "off"))
 }
 
 /// Compõe as camadas ativas (blend/opacity por-camada) e blita no `game_rt`.
@@ -519,7 +492,7 @@ fn collect_layers<'a>(
                         // só a forma. Herdar a pose do quadro corrente empilharia todos
                         // os fantasmas em cima da arte de agora. O `shift` é o Shift &
                         // Trace (a folha deslizada) — identidade fora do modo.
-                        model: crate::transform::art_to_world_traced(
+                        model: ph2d_flip_entities::transform::art_to_world_traced(
                             &model,
                             layer.frame_pose(g.key),
                             g.shift,
@@ -575,19 +548,14 @@ fn layer_key(object_id: u64, layer_id: u32) -> u64 {
     object_id.wrapping_mul(0x9E37_79B9_7F4A_7C15) ^ (layer_id as u64)
 }
 
-// `pub(crate)` (era `mod` privado) para a membrana de bake de objetos
-// (`motion_flip_bake`, doc 86 A3) reusar `camera_raw`/`fold_model` — a MESMA
-// convenção de câmera que a tela usa. Duas cópias divergiriam no Y ou na régua
-// de espessura, e a tile assada sairia diferente do Flip desenhado direto.
-#[path = "pass_camera.rs"]
-pub mod camera;
-use camera::{camera_scene, fold_model, parallax_model};
-// O passe deixou de chamar a versão SEM sub-retângulo (ela sobrevive dentro do
-// `camera_scene`, no ramo `None`), mas dois módulos de teste filhos ainda a endereçam por
-// `super::camera_raw` — e o `motion_flip_bake` chama-a pelo caminho do módulo, de propósito:
-// a câmera de assadura é FIXA e não conhece split nenhum.
+// ⭐ A CÂMERA do passe mora na `ph2d-flip-render` desde a auditoria de arquitectura de 2026-09-12
+// (A1): a assadura do Motion e a sonda `ph2d-pan-diag` usam a MESMA convenção — duas cópias
+// divergiriam no Y ou na régua de espessura — e, para a ter, dependiam desta família inteira.
+use ph2d_flip_render::camera::{camera_scene, fold_model, parallax_model};
+// O passe já não chama a versão SEM sub-retângulo (ela sobrevive dentro do `camera_scene`, no ramo
+// `None`), mas o `multiplane_tests` endereça-a por `super::camera_raw`.
 #[cfg(test)]
-use camera::camera_raw;
+use ph2d_flip_render::camera::camera_raw;
 
 #[cfg(test)]
 #[path = "pass_tests.rs"]

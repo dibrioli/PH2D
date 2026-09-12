@@ -58,7 +58,7 @@ pub(crate) mod tween_smoke_app;
 pub(crate) mod tween_torsion_smoke_app;
 
 /// ⭐⭐⭐ **O ponto fixo da captura do undo, na parte que é do Flip.** Ele exercita a ponte
-/// de entidades (hoje em [`ph2d_app_flip::entities`]) mas o que AFIRMA é sobre o
+/// de entidades (hoje em [`ph2d_flip_entities::entities`]) mas o que AFIRMA é sobre o
 /// `ProjectState` — e por isso ficou deste lado quando a família saiu (HOWTO §2.6).
 #[cfg(test)]
 #[path = "entities_fixpoint_tests.rs"]

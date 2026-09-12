@@ -34,6 +34,8 @@ authors.workspace = true
 # ⚠️ A INTERFACE da shell (`AppFamily`), não o agregador — importar de
 # `ph2d-app-registry-init` fecharia o ciclo `registry → família → registry`.
 ph2d-app-host = { path = "../ph2d-app-host" }
+# A ponte ECS e o afim do Flip moram na folha (auditoria de arquitectura A1, 2026-09-12).
+ph2d-flip-entities = { path = "../ph2d-flip-entities" }
 # Vec2 e a aritmética partilhada.
 ph2d-core = { path = "../ph2d-core" }
 # O MODELO do Flip: objectos, camadas, desenhos, traços. O documento vem daqui, nunca da shell.
@@ -85,7 +87,6 @@ wgpu = "29.0.4"
 # Os afins genéricos do ECS que a `line/shell-folhas` tirou da shell em 12/09 — eram eles
 # que prendiam 84% desta família (§3 do handoff da Fase B).
 ph2d-vec-entities = { path = "../ph2d-vec-entities" }
-ph2d-unique-name = { path = "../ph2d-unique-name" }
 
 [features]
 # ⛔⛔ HOWTO §2.4 — **as features NÃO viajam com o código**, e esta é a armadilha MUDA mais

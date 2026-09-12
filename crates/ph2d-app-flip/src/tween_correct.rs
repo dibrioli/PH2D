@@ -108,7 +108,7 @@ pub fn build(
 /// noutro.
 #[must_use]
 pub(crate) fn screen_affine(l2w: &Xform, pose: Pose, cam: Affine) -> Affine {
-    let [a, b, c, d, e, f] = crate::transform::art_to_world(l2w, pose).0;
+    let [a, b, c, d, e, f] = ph2d_flip_entities::transform::art_to_world(l2w, pose).0;
     cam * Affine::new([a, b, c, d, e, f])
 }
 
@@ -298,7 +298,9 @@ pub fn canvas_down(
             .copied()
             .map(ph2d_ecs::Entity::from_bits)
             .filter(|e| sim.world().get_entity(*e).is_ok())
-            .map_or(Xform::IDENTITY, |e| crate::transform::object_xform(sim, e));
+            .map_or(Xform::IDENTITY, |e| {
+                ph2d_flip_entities::transform::object_xform(sim, e)
+            });
         let cam = f.camera.world_to_screen_affine(f.win);
         let aff_a = screen_affine(&l2w, tc.pose_a, cam);
         let aff_b = screen_affine(&l2w, tc.pose_b, cam);

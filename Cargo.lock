@@ -4836,6 +4836,7 @@ dependencies = [
  "ph2d-editor-core",
  "ph2d-flip",
  "ph2d-flip-colorize",
+ "ph2d-flip-entities",
  "ph2d-flip-fill",
  "ph2d-flip-render",
  "ph2d-flip-reshape",
@@ -4846,7 +4847,6 @@ dependencies = [
  "ph2d-panel-flip-frames",
  "ph2d-render",
  "ph2d-tool-flip",
- "ph2d-unique-name",
  "ph2d-vec-entities",
  "ph2d-vec-scene",
  "ph2d-vector",
@@ -4868,7 +4868,6 @@ version = "0.0.0"
 dependencies = [
  "bytemuck",
  "ph2d-anim",
- "ph2d-app-flip",
  "ph2d-app-host",
  "ph2d-app-vec",
  "ph2d-asset",
@@ -4882,6 +4881,7 @@ dependencies = [
  "ph2d-editor-core",
  "ph2d-eval-motion",
  "ph2d-flip",
+ "ph2d-flip-entities",
  "ph2d-flip-render",
  "ph2d-gpu",
  "ph2d-gpu-cook",
@@ -5540,6 +5540,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-flip-entities"
+version = "0.0.0"
+dependencies = [
+ "ph2d-core",
+ "ph2d-ecs",
+ "ph2d-flip",
+ "ph2d-unique-name",
+ "ph2d-vec-entities",
+ "ph2d-vec-scene",
+]
+
+[[package]]
 name = "ph2d-flip-fill"
 version = "0.0.0"
 dependencies = [
@@ -5557,9 +5569,11 @@ dependencies = [
  "ph2d-flip-colorize",
  "ph2d-flip-fill",
  "ph2d-gpu",
+ "ph2d-host",
  "ph2d-painter-brush",
  "ph2d-painter-effects",
  "ph2d-render",
+ "ph2d-vec-scene",
  "pollster",
  "wgpu",
 ]
@@ -5765,6 +5779,7 @@ dependencies = [
  "ph2d-field",
  "ph2d-field-ecs",
  "ph2d-flip",
+ "ph2d-flip-entities",
  "ph2d-flip-render",
  "ph2d-form-donation",
  "ph2d-gpu",
@@ -7484,7 +7499,7 @@ dependencies = [
 name = "ph2d-pan-diag"
 version = "0.0.0"
 dependencies = [
- "ph2d-app-flip",
+ "ph2d-flip-render",
  "ph2d-host",
  "ph2d-render",
 ]

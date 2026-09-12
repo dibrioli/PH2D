@@ -111,5 +111,5 @@ pub struct FlipState {
     pub segment_hover_at: Option<(f32, f32)>,
     /// `FlipObjectId` → entidade ECS que o representa na Hierarquia (ADR-0114). O
     /// invariante "um objeto ⟺ uma entidade" é mantido por `flip_entities::sync`.
-    pub entities: crate::entities::FlipEntityMap,
+    pub entities: ph2d_flip_entities::entities::FlipEntityMap,
 }

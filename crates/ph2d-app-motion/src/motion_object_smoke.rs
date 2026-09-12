@@ -279,7 +279,7 @@ pub fn motion_object_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>)
         }
         4 if f == 6 => {
             let vec_map = cx.vec_entities.clone();
-            let flip_map = cx.flip_state.entities.clone();
+            let flip_map = cx.flip_entities.clone();
             if let Some(group) = find_group(cx.sim, OBJECT) {
                 // O vetor (a unica forma da cena) vira filho SEM NOME no centro — o
                 // caso do item 3 (doc 86 §9.6): um filho vetor/flip de grupo sem Name

@@ -40,7 +40,7 @@ impl crate::App {
         //
         // A pose sai do MESMO amostrador que o render usa (`offset_at_cycled`) — seed e
         // sample são a mesma função (`feedback_derived_coordinate_seed_must_match_sample`).
-        ph2d_app_flip::transform::world_to_art(
+        ph2d_flip_entities::transform::world_to_art(
             &self.flip_active_object_xform(),
             self.flip_active_pose(),
         )
@@ -62,7 +62,7 @@ impl crate::App {
             .map(|&bits| ph2d_ecs::Entity::from_bits(bits))
             .filter(|e| gfx.sim.world().get_entity(*e).is_ok())
             .map_or(Xform::IDENTITY, |e| {
-                ph2d_app_flip::transform::object_xform(&gfx.sim, e)
+                ph2d_flip_entities::transform::object_xform(&gfx.sim, e)
             })
     }
 
@@ -75,7 +75,7 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_ref() else {
             return ph2d_flip::Pose::IDENTITY;
         };
-        ph2d_app_flip::transform::active_pose(
+        ph2d_flip_entities::transform::active_pose(
             &gfx.flip,
             self.flip_state.active_layer,
             &self.playhead,

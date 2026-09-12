@@ -53,16 +53,16 @@ use ph2d_render::layer_compositor::{LayerCompositor, LayerOp, Region};
 use ph2d_render::{Camera2d, SpriteRenderer};
 use ph2d_vec_scene::Xform;
 
-use ph2d_app_flip::entities::FlipEntityMap;
-use ph2d_app_flip::transform::{art_to_world, build as build_flip_models};
+use ph2d_flip_entities::entities::FlipEntityMap;
+use ph2d_flip_entities::transform::{art_to_world, build as build_flip_models};
 // ⚠️ The tile resolution + cap are SHARED with the vector bake — one number for
 // "how crisp a stamped tile is" (a Flip tile and a vector tile of the same world
 // size have the same inner resolution). A second const would drift.
 use crate::motion_object_bake::{BAKE_DPI, MAX_TILE_SIDE};
 // ⚠️ Reused from the frame pass, NOT re-derived: the camera convention (Y direction +
 // the world-unit thickness ruler, an Enio decision) has exactly one home.
-use ph2d_app_flip::pass::camera::{camera_raw, fold_model};
-use ph2d_app_flip::pass::new_engine_armed;
+use ph2d_flip_render::camera::{camera_raw, fold_model};
+use ph2d_flip_render::engine::new_engine_armed;
 
 /// The scratch offscreen HDR format that `FlipRenderer` draws into and `FlipCompose`
 /// resolves from. The bake never blits to `game_rt`, so the `FlipCompose` blit target

@@ -181,7 +181,7 @@ fn move_drawing(
     // chamador) e a geometria vive no espaço da ARTE — desde o W7.5 a pose pode girar/
     // escalar, então a parte linear dela não se cancela mais no delta. Numa pose de
     // translação pura (o caso comum) a conversão é a identidade, byte a byte.
-    let delta = crate::transform::object_delta_to_art(obj.frame_pose(lid, key), delta);
+    let delta = ph2d_flip_entities::transform::object_delta_to_art(obj.frame_pose(lid, key), delta);
     obj.drawing_mut(did)
         .is_some_and(|dr| translate_selection(dr, delta))
 }
@@ -200,7 +200,7 @@ fn move_points(
     let Some(obj) = flip.object_mut(oid) else {
         return false;
     };
-    let delta = crate::transform::object_delta_to_art(obj.frame_pose(lid, key), delta);
+    let delta = ph2d_flip_entities::transform::object_delta_to_art(obj.frame_pose(lid, key), delta);
     obj.drawing_mut(did).is_some_and(|dr| {
         let mut moved = false;
         for s in &mut dr.strokes {

@@ -141,7 +141,7 @@ fn the_pose_gizmo_box_lands_on_the_posed_art() {
     )
     .expect("quadro instanciado publica a view");
     // O oráculo é a MESMA cadeia do render: objeto ∘ pose, no centro da arte crua.
-    let obj_x = crate::transform::object_xform(&sim, e);
+    let obj_x = ph2d_flip_entities::transform::object_xform(&sim, e);
     let posed_c = pose.apply(Vec2::new(c_local[0], c_local[1]));
     let want = obj_x.apply([f64::from(posed_c.x), f64::from(posed_c.y)]);
     assert!(

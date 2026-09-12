@@ -81,7 +81,7 @@ pub(crate) fn pick_objects_at(
     vec_entities: &ph2d_vec_entities::entities::VecEntityMap,
     vec_view_derived: &ph2d_vec_scene::VecViewState,
     vec_live_drawn: &ph2d_vec_render::LiveGeometry,
-    flip_entities: &ph2d_app_flip::entities::FlipEntityMap,
+    flip_entities: &ph2d_flip_entities::entities::FlipEntityMap,
     pointer: (f32, f32),
 ) -> Vec<u64> {
     let world = w.camera.screen_to_world(pointer, w.window_size);

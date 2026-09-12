@@ -50,8 +50,10 @@ pub struct MotionSceneCtx<'a> {
     pub vec_entities: &'a mut ph2d_vec_entities::entities::VecEntityMap,
     /// O estado de shell da própria família.
     pub motion_shell: &'a mut crate::motion_shell_state::MotionShellState,
-    /// ⚠️ Só LEITURA: a cena pergunta o estado do Flip, não o escreve.
-    pub flip_state: &'a ph2d_app_flip::state::FlipState,
+    /// ⚠️ Só LEITURA: a cena pergunta que entidade é cada objecto do Flip, não o escreve — e SÓ
+    /// isto, não o `FlipState` inteiro, que é da família Flip: uma família não depende de outra
+    /// (auditoria de arquitectura A1, 2026-09-12).
+    pub flip_entities: &'a ph2d_flip_entities::entities::FlipEntityMap,
     /// ⚠️⚠️ **`&mut`, e a 1.ª redacção deste ficheiro dizia o contrário.** Eu escrevi *«só
     /// LEITURA: o relógio é do transporte, e uma cena que o escrevesse lutaria com ele»* — e a
     /// cena `=7` do `motion_object_smoke` chama `playhead.play()` **de propósito**, com a razão

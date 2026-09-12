@@ -33,7 +33,7 @@ impl crate::App {
             hero: gfx.hero_screen.as_mut(),
             vec_entities: &mut self.vec_entities,
             motion_shell: &mut self.motion_shell,
-            flip_state: &self.flip_state,
+            flip_entities: &self.flip_state.entities,
             playhead: &mut self.playhead,
             timeline: &mut self.timeline,
         };

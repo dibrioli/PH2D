@@ -65,6 +65,7 @@
 - ⛔ [Régua de vazamento cuja máscara usa o predicado DO PRODUTO lê 0,00 % sobre o defeito](feedback_a_leak_ruler_masked_by_the_products_own_predicate_hides_the_leak.md)
 - ⛔ [viés em NDC não é constante no mundo: 3e-3 = 30 % da distância do olho](feedback_a_depth_bias_constant_in_ndc_is_not_constant_in_the_world.md)
 - ⛔ [Barra calibrada SEM o lado aprovado mede os nossos defeitos; o PISO do censo decide o que a régua vê (4× «nenhuma melhoria»)](feedback_a_bar_calibrated_without_the_approved_side_measures_our_own_defects.md)
+- ⛔⛔ [ÓRFÃO e DUPLICADO sao a MESMA auditoria, os dois MUDOS: 0 pais deixa de correr, 2 pais corre a dobrar](feedback_the_orphan_and_the_double_declaration_are_one_audit.md)
 - [Ofício de gate (47) — folga = ponto cego · mutação que não mata · metade justa · feito≠entregue · censo textual · censo que presume o destino · censo que partilha estado](reference_topic_gate_discipline.md)
 - [Estado autorado & relógios (19)](reference_topic_authored_state_and_clocks.md)
 - [modo que não exclui ninguém é outro produtor](feedback_a_mode_whose_entry_excludes_nobody_is_just_another_producer.md)

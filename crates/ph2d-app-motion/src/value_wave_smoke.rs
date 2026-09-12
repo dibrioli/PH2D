@@ -79,28 +79,25 @@ fn on() -> bool {
 
 static FRAME: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
 
-impl crate::App {
-    /// Roda no prólogo do frame, ao lado do `build_smoke`. No-op sem a env.
-    pub(crate) fn value_wave_smoke(&mut self) {
-        use std::sync::atomic::Ordering;
-        if !on() || self.gfx.is_none() || FRAME.fetch_add(1, Ordering::Relaxed) != 4 {
-            return;
-        }
-        let gfx = self.gfx.as_mut().expect("gfx");
-        let g = &mut gfx.motion.doc.graph;
-        // Sine (marcado) / Triangle / Square / Saw -- as quatro formas na mesma rampa.
-        let sine = row(g, 0.0, 4.5, true);
-        let tri = row(g, 1.0, 1.5, false);
-        let square = row(g, 2.0, -1.5, false);
-        let saw = row(g, 3.0, -4.5, false);
-        let mut heroes = Vec::new();
-        let mut sinks = Vec::new();
-        for (sink, hero) in [sine, tri, square, saw].into_iter().flatten() {
-            sinks.push(sink);
-            heroes.extend(hero);
-        }
-        crate::smoke_layout::arrange_and_mark(&mut gfx.motion.doc, &heroes);
-        gfx.motion.sinks.extend(sinks);
-        let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+/// Roda no prólogo do frame, ao lado do `build_smoke`. No-op sem a env.
+pub fn value_wave_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>) {
+    use std::sync::atomic::Ordering;
+    if !on() || FRAME.fetch_add(1, Ordering::Relaxed) != 4 {
+        return;
     }
+    let g = &mut cx.motion.doc.graph;
+    // Sine (marcado) / Triangle / Square / Saw -- as quatro formas na mesma rampa.
+    let sine = row(g, 0.0, 4.5, true);
+    let tri = row(g, 1.0, 1.5, false);
+    let square = row(g, 2.0, -1.5, false);
+    let saw = row(g, 3.0, -4.5, false);
+    let mut heroes = Vec::new();
+    let mut sinks = Vec::new();
+    for (sink, hero) in [sine, tri, square, saw].into_iter().flatten() {
+        sinks.push(sink);
+        heroes.extend(hero);
+    }
+    crate::smoke_layout::arrange_and_mark(&mut cx.motion.doc, &heroes);
+    cx.motion.sinks.extend(sinks);
+    let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
 }

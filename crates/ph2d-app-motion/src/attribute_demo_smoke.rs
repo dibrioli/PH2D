@@ -269,36 +269,33 @@ fn build_attribute_demo(reg: &NodeRegistry) -> MotionDoc {
     doc
 }
 
-impl crate::App {
-    /// Roda no prólogo do frame, ao lado do `adapter_smoke`/`build_smoke`. No-op
-    /// sem a env; caso contrário, substitui o documento do Motion pela cena dos três
-    /// exemplos e entra na ferramenta Motion (que auto-toca na entrada).
-    pub(crate) fn attribute_demo_smoke(&mut self) {
-        use std::sync::atomic::Ordering;
-        if !on() || self.gfx.is_none() || FRAME.fetch_add(1, Ordering::Relaxed) != 4 {
-            return;
-        }
-        let gfx = self.gfx.as_mut().expect("gfx");
-        gfx.motion.doc = build_attribute_demo(&gfx.motion.registry);
-        // A ponte recomputa os sinks a partir dos nós `motion.output` do documento;
-        // limpar aqui é higiene (o boot doc pode ter deixado outros).
-        gfx.motion.sinks.clear();
-        let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
-        eprintln!(
-            "[attribute smoke] TRES exemplos de `value.attribute` numa cena so, da esquerda para a direita:"
-        );
-        for (i, c) in chains().iter().enumerate() {
-            eprintln!("  {}. {}", i + 1, c.label);
-        }
-        eprintln!(
-            "  Cada fonte LE uma coluna por-particula (age / vel) e a usa para dirigir \
-             um canal visual (Tamanho / Opacidade). O exemplo 2 mostra o modo Length do \
-             picker (Vec2 -> escalar) e o 3 alimenta OUTRO no de valor (map_range).\n  \
-             Abra o painel do grafo (o botao ARRANGE arruma os nos numa linha) e o \
-             painel de params: cada `Attribute` mostra o PICKER DE CANAIS. (Sem a env, \
-             nada muda.)"
-        );
+/// Roda no prólogo do frame, ao lado do `adapter_smoke`/`build_smoke`. No-op
+/// sem a env; caso contrário, substitui o documento do Motion pela cena dos três
+/// exemplos e entra na ferramenta Motion (que auto-toca na entrada).
+pub fn attribute_demo_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>) {
+    use std::sync::atomic::Ordering;
+    if !on() || FRAME.fetch_add(1, Ordering::Relaxed) != 4 {
+        return;
     }
+    cx.motion.doc = build_attribute_demo(&cx.motion.registry);
+    // A ponte recomputa os sinks a partir dos nós `motion.output` do documento;
+    // limpar aqui é higiene (o boot doc pode ter deixado outros).
+    cx.motion.sinks.clear();
+    let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+    eprintln!(
+        "[attribute smoke] TRES exemplos de `value.attribute` numa cena so, da esquerda para a direita:"
+    );
+    for (i, c) in chains().iter().enumerate() {
+        eprintln!("  {}. {}", i + 1, c.label);
+    }
+    eprintln!(
+        "  Cada fonte LE uma coluna por-particula (age / vel) e a usa para dirigir \
+         um canal visual (Tamanho / Opacidade). O exemplo 2 mostra o modo Length do \
+         picker (Vec2 -> escalar) e o 3 alimenta OUTRO no de valor (map_range).\n  \
+         Abra o painel do grafo (o botao ARRANGE arruma os nos numa linha) e o \
+         painel de params: cada `Attribute` mostra o PICKER DE CANAIS. (Sem a env, \
+         nada muda.)"
+    );
 }
 
 #[cfg(test)]
@@ -366,7 +363,7 @@ mod tests {
     /// in the graph, dead on the screen — and this gate is what catches it.
     #[test]
     fn the_age_to_size_example_actually_drives_size_end_to_end() {
-        use ph2d_app_motion::motion_state::MotionState;
+        use crate::motion_state::MotionState;
         use ph2d_nodegraph::attr::Column;
         use ph2d_nodegraph::cook::Cook;
 

@@ -88,43 +88,40 @@ fn on() -> bool {
 
 static FRAME: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
 
-impl crate::App {
-    /// Roda no prólogo do frame, ao lado do `gradient_smoke`. No-op sem a env.
-    pub(crate) fn osc_ruler_smoke(&mut self) {
-        use std::sync::atomic::Ordering;
-        if !on() || self.gfx.is_none() || FRAME.fetch_add(1, Ordering::Relaxed) != 4 {
-            return;
-        }
-        let gfx = self.gfx.as_mut().expect("gfx");
-        let (sinks, heroes) = scene(&mut gfx.motion.doc.graph);
-        crate::smoke_layout::arrange_and_mark(&mut gfx.motion.doc, &heroes);
-        gfx.motion.sinks.extend(sinks);
-        let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
-        // A RÉGUA. As duas features desta cena são sobre TEMPO, e o roteiro manda parar o
-        // playhead em 0,0 e depois em 3,0 -- sem a timeline o artista não tem onde fazer
-        // isso. O `Espaco` toca sem painel nenhum; o que só a timeline oferece é a RÉGUA
-        // (a mesma linha que o prólogo do `physics_smoke` carrega, pelo mesmo motivo).
-        if let Some(hero) = gfx.hero_screen.as_mut() {
-            hero.panel_visibility.insert("timeline", true);
-        }
-        // O oscilador já selecionado: a seção TIMING é o passo 2 do roteiro.
-        ph2d_panel_motion_graph::request_graph_selection(vec![heroes[0].0]);
-        eprintln!(
-            "[osc-ruler smoke] Duas fileiras de 28 pontos. EM CIMA o Oscillator na regua de \
-             BPM ({BPM} BPM = 2 Hz exatos); EMBAIXO o Noise com o ciclo FECHADO em \
-             {LOOP_LEN} s.\n  \
-             1) Play: a de cima oscila no ritmo, a de baixo ondula.\n  \
-             2) O 'Oscillator' ja esta selecionado -> secao TIMING. Troque Time Mode para \
-             Seconds e digite 2 em Frequency: o movimento e o MESMO (a regua e uma UNIDADE, \
-             nao um segundo multiplicador). Volte para BPM e suba para 240: dobra. Note que \
-             so a regua ESCOLHIDA aparece -- em BPM o slider de Hz nao e oferecido.\n  \
-             3) Selecione o 'Noise' -> secao TIMING -> Loop Length. Com {LOOP_LEN}, pare o \
-             playhead em 0,0 e depois em {LOOP_LEN},0: a onda de baixo esta na MESMA forma. \
-             Com 0, os dois instantes sao diferentes -- o ruido nunca volta.\n  \
-             4) ATENCAO: nada aqui pode CONGELAR. Se uma fileira parar sozinha com o relogio \
-             andando, PARE e reporte."
-        );
+/// Roda no prólogo do frame, ao lado do `gradient_smoke`. No-op sem a env.
+pub fn osc_ruler_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>) {
+    use std::sync::atomic::Ordering;
+    if !on() || FRAME.fetch_add(1, Ordering::Relaxed) != 4 {
+        return;
     }
+    let (sinks, heroes) = scene(&mut cx.motion.doc.graph);
+    crate::smoke_layout::arrange_and_mark(&mut cx.motion.doc, &heroes);
+    cx.motion.sinks.extend(sinks);
+    let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+    // A RÉGUA. As duas features desta cena são sobre TEMPO, e o roteiro manda parar o
+    // playhead em 0,0 e depois em 3,0 -- sem a timeline o artista não tem onde fazer
+    // isso. O `Espaco` toca sem painel nenhum; o que só a timeline oferece é a RÉGUA
+    // (a mesma linha que o prólogo do `physics_smoke` carrega, pelo mesmo motivo).
+    if let Some(hero) = cx.hero.as_deref_mut() {
+        hero.panel_visibility.insert("timeline", true);
+    }
+    // O oscilador já selecionado: a seção TIMING é o passo 2 do roteiro.
+    ph2d_panel_motion_graph::request_graph_selection(vec![heroes[0].0]);
+    eprintln!(
+        "[osc-ruler smoke] Duas fileiras de 28 pontos. EM CIMA o Oscillator na regua de \
+         BPM ({BPM} BPM = 2 Hz exatos); EMBAIXO o Noise com o ciclo FECHADO em \
+         {LOOP_LEN} s.\n  \
+         1) Play: a de cima oscila no ritmo, a de baixo ondula.\n  \
+         2) O 'Oscillator' ja esta selecionado -> secao TIMING. Troque Time Mode para \
+         Seconds e digite 2 em Frequency: o movimento e o MESMO (a regua e uma UNIDADE, \
+         nao um segundo multiplicador). Volte para BPM e suba para 240: dobra. Note que \
+         so a regua ESCOLHIDA aparece -- em BPM o slider de Hz nao e oferecido.\n  \
+         3) Selecione o 'Noise' -> secao TIMING -> Loop Length. Com {LOOP_LEN}, pare o \
+         playhead em 0,0 e depois em {LOOP_LEN},0: a onda de baixo esta na MESMA forma. \
+         Com 0, os dois instantes sao diferentes -- o ruido nunca volta.\n  \
+         4) ATENCAO: nada aqui pode CONGELAR. Se uma fileira parar sozinha com o relogio \
+         andando, PARE e reporte."
+    );
 }
 
 #[cfg(test)]

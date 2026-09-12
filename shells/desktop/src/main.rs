@@ -38,7 +38,6 @@
 //! - **M11** Vello text/widget overlay — needs surface-sharing pass.
 
 mod active_tool_mirror;
-mod adapter_smoke;
 mod align_live;
 mod align_smoke;
 mod anchor_gizmo_drag;
@@ -78,7 +77,6 @@ mod asset_index_build;
 /// auditoria da etapa B nomeou: nenhum gate do painel aperta o botão de verdade.
 mod asset_menu_smoke;
 mod atlas_loader;
-mod attribute_demo_smoke;
 // ⛔ **O BACKEND DE ÁUDIO mudou-se para a `ph2d-audio-desktop`** (`line/shell-folhas`, 12/09):
 // 8 544 linhas e o `cpal` inteiro saíram desta unidade de compilação. A shell continua a ler as
 // sete `PH2D_AUDIO_*` — o ROTEADOR é composição e fica aqui; o que saiu foi o motor.
@@ -171,11 +169,8 @@ mod dock_resize;
 /// ⭐⭐⭐ **As FAIXAS de desenho** (ADR-0154 Fase 2) — a lei que põe vetor e sprite na MESMA ordem
 /// total, e parte essa ordem nas passagens que o presente desenha.
 mod draw_bands;
-mod driven_row_smoke;
-mod echo_family_smoke;
 /// `PH2D_EMISSIVE_SMOKE` — a sprite como fonte de luz (plano `docs/Sprite_projeto/18` W8).
 mod emissive_smoke;
-mod emitter_smoke;
 mod envelope_gesture;
 mod envelope_live;
 /// As cenas de smoke do Envelope (ADR-0129) — irmão de `build_smoke`, teto de LOC.
@@ -228,8 +223,6 @@ mod gizmo_anchor_smoke;
 mod global_palette_input;
 /// **A cena da SUJIDADE NA LENTE** (`PH2D_GLOW_DIRT_SMOKE=1`, doc 89 folha 11) — a máscara
 /// precisa de uma IMAGEM a sério, que é o que os demos de grafo não têm.
-mod glow_dirt_smoke;
-mod gradient_smoke;
 mod grid_smoke;
 mod group_gizmo_view;
 mod guide_gesture;
@@ -313,7 +306,6 @@ mod layout_reorder;
 mod layout_scroll_gesture;
 mod layout_smoke;
 mod legacy_chrome;
-mod lens_smoke;
 mod line_smoke;
 /// SONDA (`--ignored`): quanto custa MOVER uma forma que tem geometria viva. A §11 do plano 25
 /// afirma que todo memo de geometria e' chaveado no MUNDO — esta sonda pergunta ao produto.
@@ -356,7 +348,6 @@ mod node_xy_smoke;
 mod offset_live;
 /// Onion settings modal — the shell half (ADR-0142 W3b): store→onion read-back + the title-band drag.
 mod onion_modal;
-mod osc_ruler_smoke;
 /// ⭐⭐ **A cena da OPACIDADE das duas tintas** (`PH2D_BUILD_SMOKE=79`, plano 36 W6) — a estampa e o
 /// pincel obedecem à barra *Opacity*, cada um na casa dele.
 mod paint_opacity_smoke;
@@ -392,6 +383,9 @@ mod precision_geometry;
 /// ⭐⭐⭐ **A receita SOBE AO PALCO quando ela abre** — ela vem ao artista, e não o artista a ela.
 mod prefab_stage;
 mod prefs;
+/// ⚠️ NÃO é do Motion apesar do nome: ele toca `self.ui_motion_smoke_done` e abre o painel
+/// de física. O `CLAUDE.md` lista-o sob o **Vector** (W2 Fase C).
+mod ui_motion_smoke;
 // **Estado de PRÉ-VISUALIZAÇÃO contra estado de DOCUMENTO** — a lei mudou-se para a folha
 // `ph2d-preview-drive`; os GATES dela ficaram aqui, porque medem a captura desta shell.
 #[cfg(test)]
@@ -486,11 +480,9 @@ mod skeleton_smart;
 mod sketch_hatch_smoke;
 /// **9-slice, lado a lado com o que ele conserta** (`PH2D_SLICE_SMOKE=1`).
 mod slice_smoke;
-mod smoke_layout;
 mod smoke_script;
 mod snap_label_smoke;
 mod socket_smoke;
-mod splice_smoke;
 mod stack_smoke;
 mod stagger_smoke;
 mod substrate_smoke;
@@ -529,7 +521,6 @@ mod timescale_smoke;
 mod token_smoke;
 /// A cena de smoke dos **TOKENS** (`PH2D_BUILD_SMOKE=59`) — o painel que re-veste o app.
 mod tokens_smoke;
-mod transform_family_smoke;
 /// ⭐⭐⭐ **A ferramenta TRIM** (plano 38) — a costura entre o ponteiro e a lei da crate.
 /// A cena de smoke do **Trim** — `PH2D_BUILD_SMOKE=80` (plano 38).
 mod trim_smoke;
@@ -538,7 +529,6 @@ mod twist_smoke;
 /// A metade do CHROME da poeira de impacto — a lei vive na `ph2d-editor-core`.
 mod ui_burst_paint;
 /// ⭐ O smoke da UI VIVA (`PH2D_UI_MOTION_SMOKE`) — o carácter e a corda.
-mod ui_motion_smoke;
 /// A cena de smoke da **HIERARQUIA** de estados (`PH2D_BUILD_SMOKE=64`) — irmã de `build_smoke`.
 mod ui_nested_smoke;
 /// A cena de smoke do **PAINEL GERADO** (`PH2D_BUILD_SMOKE=62`) — irmã de `build_smoke`.
@@ -567,24 +557,6 @@ mod undo_route;
 /// concordar ANTES da fotografia do undo.
 #[cfg(test)]
 mod undo_vec_ghost_tests;
-mod units_smoke;
-mod value_curve_smoke;
-mod value_gain_smoke;
-mod value_median_smoke;
-mod value_mix_smoke;
-mod value_noise_smoke;
-mod value_normalize_smoke;
-mod value_pattern_smoke;
-mod value_percentile_smoke;
-mod value_quantize_smoke;
-mod value_reduce_smoke;
-mod value_slope_smoke;
-mod value_smooth_smoke;
-mod value_step_smoke;
-mod value_time_smoke;
-mod value_unary_smoke;
-mod value_wave_smoke;
-mod value_wrap_smoke;
 /// ⭐⭐ **A cena dos EIXOS DE PROPRIEDADE** — `PH2D_BUILD_SMOKE=79`: uma família nomeada
 /// `Size=…, State=…` vira uma fileira por pergunta, e um chip muda exactamente um eixo.
 ///
@@ -667,7 +639,10 @@ mod vec_frame_resize;
 pub(crate) use ph2d_app_vec::frame_spans as vec_frame_spans;
 mod vec_gizmo_view;
 pub(crate) use ph2d_app_vec::glyph as vec_glyph;
-pub(crate) use ph2d_app_vec::glyph_build as vec_glyph_build;
+// ⚠️ O alias `vec_glyph_build` SAIU em 2026-09-12: o `motion_text_gen` era o último
+// consumidor dele na shell e mudou-se para `ph2d-app-motion`, onde escreve
+// `ph2d_app_vec::glyph_build` directamente. *Um alias existe pelos chamadores; quando
+// o último sai, ele é ruído — e o compilador disse-o.*
 /// A porta única de "onde está o caminho-guia, e como se percorre por arco?" (texto E pattern).
 pub(crate) use ph2d_app_vec::guide as vec_guide;
 /// A CÓPIA segue a âncora do mestre — o corolário da âncora viva, do lado do componente.

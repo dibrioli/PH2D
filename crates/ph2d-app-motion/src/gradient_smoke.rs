@@ -68,32 +68,29 @@ fn on() -> bool {
 
 static FRAME: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
 
-impl crate::App {
-    /// Roda no prólogo do frame, ao lado do `value_curve_smoke`. No-op sem a env.
-    pub(crate) fn gradient_smoke(&mut self) {
-        use std::sync::atomic::Ordering;
-        if !on() || self.gfx.is_none() || FRAME.fetch_add(1, Ordering::Relaxed) != 4 {
-            return;
-        }
-        let gfx = self.gfx.as_mut().expect("gfx");
-        let (sink, hero) = row(&mut gfx.motion.doc.graph);
-        crate::smoke_layout::arrange_and_mark(&mut gfx.motion.doc, &[hero]);
-        gfx.motion.sinks.push(sink);
-        let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
-        // Seleciona o Color Ramp para o editor de gradiente estar na tela já no 1º frame.
-        ph2d_panel_motion_graph::request_graph_selection(vec![hero.0]);
-        eprintln!(
-            "[gradient smoke] Uma fileira de 24 pontos colorida por um SWEEP \
-             vermelho->verde->azul (a rampa deitada ao longo da fileira). O no 'Color Ramp' \
-             ja esta selecionado e o painel de params (a direita) mostra o EDITOR DE \
-             GRADIENTE: a barra, 3 marcadores de posicao na base, um swatch por stop, e os \
-             CHIPS DE PRESET (Rainbow/Heat/Ice/Grayscale) embaixo.\n  \
-             TESTE: clique um chip de preset -> as cores dele CARREGAM nos stops (a fileira \
-             re-colore) e ficam arrastaveis. Arraste um marcador -> o stop anda ao vivo. \
-             Clique um swatch -> o picker OKLCH abre; escolha outra cor. '+' insere um stop, \
-             '-' remove o selecionado. (Roda igual com PH2D_GPU_COOK=1 e =0.)"
-        );
+/// Roda no prólogo do frame, ao lado do `value_curve_smoke`. No-op sem a env.
+pub fn gradient_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>) {
+    use std::sync::atomic::Ordering;
+    if !on() || FRAME.fetch_add(1, Ordering::Relaxed) != 4 {
+        return;
     }
+    let (sink, hero) = row(&mut cx.motion.doc.graph);
+    crate::smoke_layout::arrange_and_mark(&mut cx.motion.doc, &[hero]);
+    cx.motion.sinks.push(sink);
+    let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+    // Seleciona o Color Ramp para o editor de gradiente estar na tela já no 1º frame.
+    ph2d_panel_motion_graph::request_graph_selection(vec![hero.0]);
+    eprintln!(
+        "[gradient smoke] Uma fileira de 24 pontos colorida por um SWEEP \
+         vermelho->verde->azul (a rampa deitada ao longo da fileira). O no 'Color Ramp' \
+         ja esta selecionado e o painel de params (a direita) mostra o EDITOR DE \
+         GRADIENTE: a barra, 3 marcadores de posicao na base, um swatch por stop, e os \
+         CHIPS DE PRESET (Rainbow/Heat/Ice/Grayscale) embaixo.\n  \
+         TESTE: clique um chip de preset -> as cores dele CARREGAM nos stops (a fileira \
+         re-colore) e ficam arrastaveis. Arraste um marcador -> o stop anda ao vivo. \
+         Clique um swatch -> o picker OKLCH abre; escolha outra cor. '+' insere um stop, \
+         '-' remove o selecionado. (Roda igual com PH2D_GPU_COOK=1 e =0.)"
+    );
 }
 
 #[cfg(test)]

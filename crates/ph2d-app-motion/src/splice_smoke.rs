@@ -107,68 +107,65 @@ fn on() -> bool {
 
 static FRAME: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
 
-impl crate::App {
-    /// Roda no prólogo do frame, ao lado do `gradient_smoke`. No-op sem a env.
-    pub(crate) fn splice_smoke(&mut self) {
-        use std::sync::atomic::Ordering;
-        if !on() || self.gfx.is_none() || FRAME.fetch_add(1, Ordering::Relaxed) != 4 {
-            return;
-        }
-        let gfx = self.gfx.as_mut().expect("gfx");
-        let sink = chain(&mut gfx.motion.doc.graph);
-        // Arruma o layout (sem marcar nó nenhum — o gesto é sobre um FIO, não um nó).
-        crate::smoke_layout::arrange_and_mark(&mut gfx.motion.doc, &[]);
-        gfx.motion.sinks.push(sink);
-        let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
-        eprintln!(
-            "[splice smoke] Uma cadeia grid -> scale -> output, a ferramenta Motion ativa (o \
-             grafo a vista).\n  \
-             TESTE: R-CLICK SOBRE UM FIO (entre scale e output, ou grid e scale) -> o menu de \
-             nos abre -> escolha 'motion.twist' (deformer, angle 90 por default) ou \
-             'motion.spherize' -> ele e INSERIDO no fio (grid -> scale -> twist -> output) e o \
-             GRID SE DEFORMA NA HORA, com UM Ctrl+Z desfazendo tudo. R-click em canvas VAZIO ainda \
-             so adiciona o no solto (sem splice). Um source que nao encaixa (motion.grid) e \
-             recusado e o fio original fica.\n  \
-             R-CLICK SOBRE UM NO: o menu de ACOES dele (Cut / Copy / Duplicate / Delete / Toggle \
-             Mute / Rename, com o atalho ao lado). O R-click seleciona o no; se ele ja estiver numa \
-             selecao, a acao vale para o grupo. Cada linha roda o MESMO verbo do atalho.\n  \
-             INVERSO: selecione o no do MEIO (scale, ou o twist splicado) e aperte DELETE -> a \
-             cadeia se RE-CONECTA (grid -> output), em vez de ficar cortada (no Blender e o Ctrl+X; \
-             AQUI e o Delete, e o Ctrl+X e o Cut, abaixo). Deletar uma PONTA (grid/output) so remove.\n  \
-             SNAP: arraste um fio e SOLTE PERTO (nao em cima) de um socket compativel -> o fio \
-             PULA e conecta. Soltar em canvas VAZIO ainda abre o smart-connect.\n  \
-             TROCA: solte um fio sobre um input JA ocupado -> ele SUBSTITUI o que alimentava. \
-             Arraste do output do grid e solte no input do output (alimentado pelo scale) -> o \
-             output passa a vir do grid e o scale se solta.\n  \
-             CORPO: solte um fio no CORPO de um no (nao no socket) -> conecta ao 1o input LIVRE. \
-             Como a cadeia esta toda ocupada, adicione um no com input livre (motion.twist) via \
-             R-click e arraste um fio do grid ate o corpo dele.\n  \
-             CTRL+A: com o grafo em foco (sem campo em edicao) seleciona TODOS os nos -> Delete / \
-             Ctrl+D / Ctrl+G agem sobre o grafo inteiro. Editando um campo, Ctrl+A seleciona o TEXTO.\n  \
-             CTRL+L: selecione UM no e aperte Ctrl+L -> a selecao cresce para a ILHA conectada \
-             inteira (segue os fios em qualquer direcao); ilhas desconexas nao entram.\n  \
-             CTRL+I (SELECT INVERSE): inverte a selecao deste nivel (o selecionado sai, o resto \
-             entra) -- o atalho para 'tudo menos estes'. Ctrl+I duas vezes volta ao original; nada \
-             selecionado -> seleciona TODOS.\n  \
-             CTRL+ARRASTAR (box): DESELECIONA os nos cobertos (refina um Ctrl+A/Ctrl+L). Shift \
-             adiciona, arrasto puro substitui.\n  \
-             H (BYPASS/MUTE): selecione um no e aperte H -> o card fica APAGADO com um risco de \
-             quina a quina (o sinal de 'desligado de proposito'). Para ver a SAIDA mudar, splice um \
-             motion.twist e mute ELE: um no desligado nao roda o op, passa o input direto, entao a \
-             deformacao SOME e o grid volta ao normal. H de novo religa. Varios selecionados: H \
-             muta todos; se ja estao todos mutados, H religa (a regra do rove). UM Ctrl+Z desfaz.\n  \
-             CTRL+C / CTRL+V (COPY/PASTE): selecione a cadeia (Ctrl+A) -> Ctrl+C copia -> Ctrl+V cola \
-             copias NOVAS deslocadas, com params e fios INTERNOS, ja selecionadas. Ao contrario do \
-             Ctrl+D, a area de transferencia SOBREVIVE: Ctrl+V de novo cola OUTRA copia (cascateada, \
-             nao empilhada), e cola ate depois de apagar os originais. UM Ctrl+Z por colagem.\n  \
-             CTRL+X (CUT): selecione a cadeia -> Ctrl+X copia E apaga (a cadeia se re-conecta como no \
-             Delete) -> Ctrl+V a cola de volta, aqui ou noutro nivel. E Copy+Delete: UM Ctrl+Z desfaz \
-             o corte. Ctrl+X sem selecao e inerte.\n  \
-             NOTA: uma FORCA (force.wind/attractor) NAO move nada sozinha -- ela so acumula em \
-             'accel', e quem aplica e o motion.integrate. Por isso o exemplo e um deformer, nao \
-             uma forca."
-        );
+/// Roda no prólogo do frame, ao lado do `gradient_smoke`. No-op sem a env.
+pub fn splice_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>) {
+    use std::sync::atomic::Ordering;
+    if !on() || FRAME.fetch_add(1, Ordering::Relaxed) != 4 {
+        return;
     }
+    let sink = chain(&mut cx.motion.doc.graph);
+    // Arruma o layout (sem marcar nó nenhum — o gesto é sobre um FIO, não um nó).
+    crate::smoke_layout::arrange_and_mark(&mut cx.motion.doc, &[]);
+    cx.motion.sinks.push(sink);
+    let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+    eprintln!(
+        "[splice smoke] Uma cadeia grid -> scale -> output, a ferramenta Motion ativa (o \
+         grafo a vista).\n  \
+         TESTE: R-CLICK SOBRE UM FIO (entre scale e output, ou grid e scale) -> o menu de \
+         nos abre -> escolha 'motion.twist' (deformer, angle 90 por default) ou \
+         'motion.spherize' -> ele e INSERIDO no fio (grid -> scale -> twist -> output) e o \
+         GRID SE DEFORMA NA HORA, com UM Ctrl+Z desfazendo tudo. R-click em canvas VAZIO ainda \
+         so adiciona o no solto (sem splice). Um source que nao encaixa (motion.grid) e \
+         recusado e o fio original fica.\n  \
+         R-CLICK SOBRE UM NO: o menu de ACOES dele (Cut / Copy / Duplicate / Delete / Toggle \
+         Mute / Rename, com o atalho ao lado). O R-click seleciona o no; se ele ja estiver numa \
+         selecao, a acao vale para o grupo. Cada linha roda o MESMO verbo do atalho.\n  \
+         INVERSO: selecione o no do MEIO (scale, ou o twist splicado) e aperte DELETE -> a \
+         cadeia se RE-CONECTA (grid -> output), em vez de ficar cortada (no Blender e o Ctrl+X; \
+         AQUI e o Delete, e o Ctrl+X e o Cut, abaixo). Deletar uma PONTA (grid/output) so remove.\n  \
+         SNAP: arraste um fio e SOLTE PERTO (nao em cima) de um socket compativel -> o fio \
+         PULA e conecta. Soltar em canvas VAZIO ainda abre o smart-connect.\n  \
+         TROCA: solte um fio sobre um input JA ocupado -> ele SUBSTITUI o que alimentava. \
+         Arraste do output do grid e solte no input do output (alimentado pelo scale) -> o \
+         output passa a vir do grid e o scale se solta.\n  \
+         CORPO: solte um fio no CORPO de um no (nao no socket) -> conecta ao 1o input LIVRE. \
+         Como a cadeia esta toda ocupada, adicione um no com input livre (motion.twist) via \
+         R-click e arraste um fio do grid ate o corpo dele.\n  \
+         CTRL+A: com o grafo em foco (sem campo em edicao) seleciona TODOS os nos -> Delete / \
+         Ctrl+D / Ctrl+G agem sobre o grafo inteiro. Editando um campo, Ctrl+A seleciona o TEXTO.\n  \
+         CTRL+L: selecione UM no e aperte Ctrl+L -> a selecao cresce para a ILHA conectada \
+         inteira (segue os fios em qualquer direcao); ilhas desconexas nao entram.\n  \
+         CTRL+I (SELECT INVERSE): inverte a selecao deste nivel (o selecionado sai, o resto \
+         entra) -- o atalho para 'tudo menos estes'. Ctrl+I duas vezes volta ao original; nada \
+         selecionado -> seleciona TODOS.\n  \
+         CTRL+ARRASTAR (box): DESELECIONA os nos cobertos (refina um Ctrl+A/Ctrl+L). Shift \
+         adiciona, arrasto puro substitui.\n  \
+         H (BYPASS/MUTE): selecione um no e aperte H -> o card fica APAGADO com um risco de \
+         quina a quina (o sinal de 'desligado de proposito'). Para ver a SAIDA mudar, splice um \
+         motion.twist e mute ELE: um no desligado nao roda o op, passa o input direto, entao a \
+         deformacao SOME e o grid volta ao normal. H de novo religa. Varios selecionados: H \
+         muta todos; se ja estao todos mutados, H religa (a regra do rove). UM Ctrl+Z desfaz.\n  \
+         CTRL+C / CTRL+V (COPY/PASTE): selecione a cadeia (Ctrl+A) -> Ctrl+C copia -> Ctrl+V cola \
+         copias NOVAS deslocadas, com params e fios INTERNOS, ja selecionadas. Ao contrario do \
+         Ctrl+D, a area de transferencia SOBREVIVE: Ctrl+V de novo cola OUTRA copia (cascateada, \
+         nao empilhada), e cola ate depois de apagar os originais. UM Ctrl+Z por colagem.\n  \
+         CTRL+X (CUT): selecione a cadeia -> Ctrl+X copia E apaga (a cadeia se re-conecta como no \
+         Delete) -> Ctrl+V a cola de volta, aqui ou noutro nivel. E Copy+Delete: UM Ctrl+Z desfaz \
+         o corte. Ctrl+X sem selecao e inerte.\n  \
+         NOTA: uma FORCA (force.wind/attractor) NAO move nada sozinha -- ela so acumula em \
+         'accel', e quem aplica e o motion.integrate. Por isso o exemplo e um deformer, nao \
+         uma forca."
+    );
 }
 
 #[cfg(test)]

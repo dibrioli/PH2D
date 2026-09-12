@@ -98,7 +98,7 @@ pub mod picker_smoke;
 
 // ─── os 17 que eram filhos DIRECTOS do `render_loop/mod.rs` ──────────────────────
 // ⚠️ O LAÇO ficou na shell (ele garante a ordem dos 48 símbolos); o que saiu foram os
-// CORPOS, e a shell chama-os por `ph2d_app_motion::<mod>::<fn>` no ponto certo.
+// CORPOS, e a shell chama-os por `crate::<mod>::<fn>` no ponto certo.
 /// doc 89 folha 14: a metade do shell do `source.text` — o bloco vira uma
 /// instância POR CARACTERE, com a geometria de cada glifo internada no MESMO
 /// store das formas (um `geometry_id` é um `geometry_id`, venha de onde vier).
@@ -142,18 +142,216 @@ pub mod warp_overlay;
 
 /// **O que esta família declara à shell** (`ph2d-app-registry-init`).
 ///
-/// ⚠️⚠️ **`routers: &[]` é a verdade MEDIDA da Fase A** — `"motion"` está na catraca
-/// `FAMILIAS_COM_O_ROTEADOR_AINDA_NA_SHELL` do registo, o único sítio onde *«ainda não saiu»* se
-/// distingue de *«alguém esqueceu»*.
+/// ⭐⭐⭐ **`"motion"` SAIU da catraca `FAMILIAS_COM_O_ROTEADOR_AINDA_NA_SHELL` em 2026-09-12, e
+/// era a ÚLTIMA** — a lista fica VAZIA, e com ela o bloco e a metade `if` do gate.
 ///
-/// ⭐⭐ **Esta é a família que MENOS código tirou da shell (491 LOC) e a que mais ficheiros tocou
-/// (436), e as duas coisas são a mesma:** a jornada foi desprender a família da `App` — os 10
-/// `impl crate::App` viraram funções livres, quatro campos soltos viraram uma struct, e os ~130
-/// ficheiros `motion_*.rs` viraram a pasta `src/motion/`. ⛔ *Uma leitura do diff pelo saldo de
-/// linhas conclui que esta linha quase não trabalhou, e conclui ao contrário.* Os roteadores do
-/// Motion (`PH2D_GPU_COOK_DEMO`, `PH2D_MOTION_OBJ_SMOKE`, …) continuam na shell porque as cenas
-/// tocam a `App` — é isso, exactamente, que a Fase B corta.
+/// # ⚠️ Os 38 roteadores, e porque eram 38 e não 9
+///
+/// O censo por **prefixo de ficheiro** via nove. Os outros **29** vivem em ficheiros sem o
+/// prefixo `motion_`, soltos em `src/` — `value_*_smoke`, `splice_smoke`, `gradient_smoke`,
+/// `lens_smoke`… ⛔ E a catraca é **all-or-nothing por família**, logo os 29 invisíveis
+/// bloqueavam os 9 visíveis. *É exactamente o que a `vec` pagou em 12/09 («cinco, não os quatro
+/// que o briefing listava»), e o instrumento que os achou foi o mesmo que quase os perdeu:*
+/// ⚠️⚠️ **um censo de nomes de ENV tem de ler o código COM as strings** — um `env::var("PH2D_X")`
+/// tem o nome DENTRO de uma string, e um stripper que as branqueia devolve **zero**.
+///
+/// # ⚠️ Cada `max_level` foi CONTADO no `match`, e três não eram o que pareciam
+///
+/// | roteador | lê-se | é | porquê |
+/// |---|---:|---:|---|
+/// | `PH2D_AUTOFIX_SMOKE` | 6 | **8** | o `_ =>` delega aos irmãos, e os modos 7 e 8 vivem lá |
+/// | `PH2D_MOTION_NODE_PATH_SMOKE` | 6 | **4** | os `3 =>`/`6 =>` são números de **FRAME** |
+/// | `PH2D_SHAPE_SMOKE` | 2 | **3** | o irmão `_knobs` responde ao 3 |
+///
+/// *Um censo que conta braços de `match` sem saber sobre O QUÊ se casa erra nos dois sentidos.*
 pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
     key: "motion",
-    routers: &[],
+    routers: &[
+        ph2d_app_host::SmokeRouter {
+            env: "PH2D_GPU_COOK_DEMO",
+            max_level: motion_state::demo_router::MAX_DEMO_LEVEL,
+        }, // ⭐ DERIVADO da constante, não escrito
+        ph2d_app_host::SmokeRouter {
+            env: "PH2D_MOTION_OBJ_SMOKE",
+            max_level: 12,
+        },
+        ph2d_app_host::SmokeRouter {
+            env: "PH2D_AUTOFIX_SMOKE",
+            max_level: 8,
+        }, // ⚠️ 8 e não 6: o `_ =>` delega aos IRMÃOS
+        ph2d_app_host::SmokeRouter {
+            env: "PH2D_MOTION_NODE_PATH_SMOKE",
+            max_level: 4,
+        }, // ⚠️ 4: o `mode()` mapeia {0,2,3,4}, o resto → 1
+        ph2d_app_host::SmokeRouter {
+            env: "PH2D_SHAPE_SMOKE",
+            max_level: 3,
+        }, // ⚠️ 3: o irmão `_knobs` responde ao 3
+        ph2d_app_host::SmokeRouter {
+            env: "PH2D_PATH_SMOKE",
+            max_level: 2,
+        },
+        ph2d_app_host::SmokeRouter {
+            env: "PH2D_ADAPTER_SMOKE",
+            max_level: 1,
+        },
+        ph2d_app_host::SmokeRouter {
+            env: "PH2D_ATTR_SMOKE",
+            max_level: 1,
+        },
+        ph2d_app_host::SmokeRouter {
+            env: "PH2D_DRIVEN_ROW_SMOKE",
+            max_level: 1,
+        },
+        ph2d_app_host::SmokeRouter {
+            env: "PH2D_ECHO_SMOKE",
+            max_level: 1,
+        },
+        ph2d_app_host::SmokeRouter {
+            env: "PH2D_EMITTER_SMOKE",
+            max_level: 1,
+        },
+        ph2d_app_host::SmokeRouter {
+            env: "PH2D_GLOW_DIRT_SMOKE",
+            max_level: 1,
+        },
+        ph2d_app_host::SmokeRouter {
+            env: "PH2D_GRADIENT_SMOKE",
+            max_level: 1,
+        },
+        ph2d_app_host::SmokeRouter {
+            env: "PH2D_LENS_SMOKE",
+            max_level: 1,
+        },
+        ph2d_app_host::SmokeRouter {
+            env: "PH2D_MOTION_DELAY_SMOKE",
+            max_level: 1,
+        },
+        ph2d_app_host::SmokeRouter {
+            env: "PH2D_MOTION_FX_SMOKE",
+            max_level: 1,
+        },
+        ph2d_app_host::SmokeRouter {
+            env: "PH2D_OSC_RULER_SMOKE",
+            max_level: 1,
+        },
+        ph2d_app_host::SmokeRouter {
+            env: "PH2D_PICKER_SMOKE",
+            max_level: 1,
+        },
+        ph2d_app_host::SmokeRouter {
+            env: "PH2D_SPLICE_SMOKE",
+            max_level: 1,
+        },
+        ph2d_app_host::SmokeRouter {
+            env: "PH2D_TRANSFORM_SMOKE",
+            max_level: 1,
+        },
+        ph2d_app_host::SmokeRouter {
+            env: "PH2D_UNITS_SMOKE",
+            max_level: 1,
+        },
+        ph2d_app_host::SmokeRouter {
+            env: "PH2D_VALUE_CURVE_SMOKE",
+            max_level: 1,
+        },
+        ph2d_app_host::SmokeRouter {
+            env: "PH2D_VALUE_GAIN_SMOKE",
+            max_level: 1,
+        },
+        ph2d_app_host::SmokeRouter {
+            env: "PH2D_VALUE_MEDIAN_SMOKE",
+            max_level: 1,
+        },
+        ph2d_app_host::SmokeRouter {
+            env: "PH2D_VALUE_MIX_SMOKE",
+            max_level: 1,
+        },
+        ph2d_app_host::SmokeRouter {
+            env: "PH2D_VALUE_NOISE_SMOKE",
+            max_level: 1,
+        },
+        ph2d_app_host::SmokeRouter {
+            env: "PH2D_VALUE_NORMALIZE_SMOKE",
+            max_level: 1,
+        },
+        ph2d_app_host::SmokeRouter {
+            env: "PH2D_VALUE_PATTERN_SMOKE",
+            max_level: 1,
+        },
+        ph2d_app_host::SmokeRouter {
+            env: "PH2D_VALUE_PERCENTILE_SMOKE",
+            max_level: 1,
+        },
+        ph2d_app_host::SmokeRouter {
+            env: "PH2D_VALUE_QUANTIZE_SMOKE",
+            max_level: 1,
+        },
+        ph2d_app_host::SmokeRouter {
+            env: "PH2D_VALUE_REDUCE_SMOKE",
+            max_level: 1,
+        },
+        ph2d_app_host::SmokeRouter {
+            env: "PH2D_VALUE_SLOPE_SMOKE",
+            max_level: 1,
+        },
+        ph2d_app_host::SmokeRouter {
+            env: "PH2D_VALUE_SMOOTH_SMOKE",
+            max_level: 1,
+        },
+        ph2d_app_host::SmokeRouter {
+            env: "PH2D_VALUE_STEP_SMOKE",
+            max_level: 1,
+        },
+        ph2d_app_host::SmokeRouter {
+            env: "PH2D_VALUE_TIME_SMOKE",
+            max_level: 1,
+        },
+        ph2d_app_host::SmokeRouter {
+            env: "PH2D_VALUE_UNARY_SMOKE",
+            max_level: 1,
+        },
+        ph2d_app_host::SmokeRouter {
+            env: "PH2D_VALUE_WAVE_SMOKE",
+            max_level: 1,
+        },
+        ph2d_app_host::SmokeRouter {
+            env: "PH2D_VALUE_WRAP_SMOKE",
+            max_level: 1,
+        },
+    ],
 };
+
+// ─── o SEGUNDO cluster de cenas: 31 ficheiros que o censo por PREFIXO nunca viu ──────
+// ⚠️ Elas não têm prefixo `motion_` e vivem soltas em `src/` — e é por elas que
+// `"motion"` não podia sair da catraca: ela é **all-or-nothing por família**.
+pub mod adapter_smoke;
+pub mod attribute_demo_smoke;
+pub mod driven_row_smoke;
+pub mod echo_family_smoke;
+pub mod emitter_smoke;
+pub mod glow_dirt_smoke;
+pub mod gradient_smoke;
+pub mod lens_smoke;
+pub mod osc_ruler_smoke;
+pub mod smoke_layout;
+pub mod splice_smoke;
+pub mod transform_family_smoke;
+pub mod units_smoke;
+pub mod value_curve_smoke;
+pub mod value_gain_smoke;
+pub mod value_median_smoke;
+pub mod value_mix_smoke;
+pub mod value_noise_smoke;
+pub mod value_normalize_smoke;
+pub mod value_pattern_smoke;
+pub mod value_percentile_smoke;
+pub mod value_quantize_smoke;
+pub mod value_reduce_smoke;
+pub mod value_slope_smoke;
+pub mod value_smooth_smoke;
+pub mod value_step_smoke;
+pub mod value_time_smoke;
+pub mod value_unary_smoke;
+pub mod value_wave_smoke;
+pub mod value_wrap_smoke;

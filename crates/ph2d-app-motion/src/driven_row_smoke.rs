@@ -132,44 +132,41 @@ fn on() -> bool {
 
 static FRAME: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
 
-impl crate::App {
-    /// Roda no prólogo do frame, ao lado do `gradient_smoke`. No-op sem a env.
-    pub(crate) fn driven_row_smoke(&mut self) {
-        use std::sync::atomic::Ordering;
-        if !on() || self.gfx.is_none() || FRAME.fetch_add(1, Ordering::Relaxed) != 4 {
-            return;
-        }
-        let gfx = self.gfx.as_mut().expect("gfx");
-        let (sink, heroes) = scene(&mut gfx.motion.doc.graph);
-        crate::smoke_layout::arrange_and_mark(&mut gfx.motion.doc, &heroes);
-        gfx.motion.sinks.push(sink);
-        let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
-        // O oscilador já selecionado: o painel de params É o objeto do smoke.
-        ph2d_panel_motion_graph::request_graph_selection(vec![heroes[0].0]);
-        eprintln!(
-            "[driven-row smoke] Uma fileira de 28 pontos, e UM no com os TRES estados de row \
-             na mesma tela.\n  \
-             1) Play: a altura respira (Amplitude dirigida pela '{BEAT_NAME}') e o ritmo \
-             passeia (Frequency dirigida pelo 'Map Range').\n  \
-             2) O 'Oscillator' ja esta selecionado. No painel: Amplitude e Frequency NAO tem \
-             knob -- tem o numero em destaque, o elo, e o NOME de quem as dirige ('{BEAT_NAME}' \
-             e 'Map Range'). As outras rows seguem com slider: e essa a diferenca que se julga.\n  \
-             3) O nome SEGUE o rename: clique no card '{BEAT_NAME}' no grafo, F2, chame de \
-             'Coracao', Enter -- a row Amplitude passa a ler Coracao, sem tocar no inspector.\n  \
-             4) O knob do DRIVER move a cena: clique no card 'Gain' e arraste o Strength. Em \
-             -1 o ritmo fica UNIFORME; em +1 ele ALTERNA entre lento e rapido. O numero da row \
-             Frequency acompanha ao vivo.\n  \
-             5) Se alguma das duas mostrar um SLIDER, pare: um knob que gira enquanto um fio \
-             decide o valor mente uma vez por arrasto."
-        );
+/// Roda no prólogo do frame, ao lado do `gradient_smoke`. No-op sem a env.
+pub fn driven_row_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>) {
+    use std::sync::atomic::Ordering;
+    if !on() || FRAME.fetch_add(1, Ordering::Relaxed) != 4 {
+        return;
     }
+    let (sink, heroes) = scene(&mut cx.motion.doc.graph);
+    crate::smoke_layout::arrange_and_mark(&mut cx.motion.doc, &heroes);
+    cx.motion.sinks.push(sink);
+    let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+    // O oscilador já selecionado: o painel de params É o objeto do smoke.
+    ph2d_panel_motion_graph::request_graph_selection(vec![heroes[0].0]);
+    eprintln!(
+        "[driven-row smoke] Uma fileira de 28 pontos, e UM no com os TRES estados de row \
+         na mesma tela.\n  \
+         1) Play: a altura respira (Amplitude dirigida pela '{BEAT_NAME}') e o ritmo \
+         passeia (Frequency dirigida pelo 'Map Range').\n  \
+         2) O 'Oscillator' ja esta selecionado. No painel: Amplitude e Frequency NAO tem \
+         knob -- tem o numero em destaque, o elo, e o NOME de quem as dirige ('{BEAT_NAME}' \
+         e 'Map Range'). As outras rows seguem com slider: e essa a diferenca que se julga.\n  \
+         3) O nome SEGUE o rename: clique no card '{BEAT_NAME}' no grafo, F2, chame de \
+         'Coracao', Enter -- a row Amplitude passa a ler Coracao, sem tocar no inspector.\n  \
+         4) O knob do DRIVER move a cena: clique no card 'Gain' e arraste o Strength. Em \
+         -1 o ritmo fica UNIFORME; em +1 ele ALTERNA entre lento e rapido. O numero da row \
+         Frequency acompanha ao vivo.\n  \
+         5) Se alguma das duas mostrar um SLIDER, pare: um knob que gira enquanto um fio \
+         decide o valor mente uma vez por arrasto."
+    );
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ph2d_app_motion::motion_bridge::params::{build_params_snapshot, driven_value_for_probe};
-    use ph2d_app_motion::motion_state::MotionState;
+    use crate::motion_bridge::params::{build_params_snapshot, driven_value_for_probe};
+    use crate::motion_state::MotionState;
     use ph2d_editor::ProjectSettings;
     use ph2d_nodegraph::cook::Cook;
     use ph2d_panel_motion_params::ParamRow;

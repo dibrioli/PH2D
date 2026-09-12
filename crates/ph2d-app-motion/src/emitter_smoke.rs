@@ -100,45 +100,42 @@ fn on() -> bool {
 
 static FRAME: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
 
-impl crate::App {
-    /// Roda no prólogo do frame, ao lado do `units_smoke`. No-op sem a env.
-    pub(crate) fn emitter_smoke(&mut self) {
-        use std::sync::atomic::Ordering;
-        if !on() || self.gfx.is_none() || FRAME.fetch_add(1, Ordering::Relaxed) != 4 {
-            return;
-        }
-        let gfx = self.gfx.as_mut().expect("gfx");
-        let (sink, heroes) = chain(&mut gfx.motion.doc.graph);
-        crate::smoke_layout::arrange_and_mark(&mut gfx.motion.doc, &heroes);
-        gfx.motion.sinks.push(sink);
-        let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
-        // O emitter já selecionado: `Rate` e `Max Particles` na tela no 1º frame.
-        ph2d_panel_motion_graph::request_graph_selection(vec![heroes[0].0]);
-
-        // ⚠️ Os números vêm das consts, não de literais na prosa: uma mensagem que repete o
-        // número à mão mente no dia em que a const se mexe, com a suíte verde.
-        let alive_default = (40.0 * LIFE_S) as u32;
-        let alive_full = (1_200.0 * LIFE_S) as u32;
-        eprintln!(
-            "[emitter smoke] fonte montada: emitter -> integrate -> tint -> output, com \
-             force.wind de gravidade.\n  \
-             O no 'Emitter' ja esta selecionado. APERTE PLAY -- uma fonte so existe no tempo.\n  \
-             Ela abre nos DEFAULTS do no: Rate = 40/s, vida {LIFE_S} s => ~{alive_default} \
-             particulas vivas, um fio ralo.\n  \
-             TESTE 1 (o curso do RATE, a pergunta desta wave): arraste 'Rate' ate o FIM do \
-             slider (1.200/s => ~{alive_full} vivas). O fio vira um jato denso.\n    \
-             >> A PERGUNTA: 1.200 e denso o bastante para a sua cena? Se nao for, DIGITE \
-             12000 na caixa -- ela aceita ate 4.000.000, entao nada se perdeu; o que quero \
-             saber e se o DEDO precisa chegar mais longe.\n  \
-             TESTE 2 (o teto da PISCINA): com o Rate no alto, arraste 'Max Particles' de \
-             {POOL} para baixo. Abaixo de ~{alive_full} o jato e CEIFADO (as mais velhas \
-             somem) -- e isso que o teto da piscina faz. Depois DIGITE 100000 na caixa: o \
-             jato volta inteiro.\n  \
-             TESTE 3 (o nudge, que era impossivel): com o Rate em 40, empurre o slider UM \
-             passo. Ele anda ~8/s. Antes desta wave um pixel andava 78/s -- de 40 voce \
-             pulava para 118 e nao havia como pedir 50."
-        );
+/// Roda no prólogo do frame, ao lado do `units_smoke`. No-op sem a env.
+pub fn emitter_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>) {
+    use std::sync::atomic::Ordering;
+    if !on() || FRAME.fetch_add(1, Ordering::Relaxed) != 4 {
+        return;
     }
+    let (sink, heroes) = chain(&mut cx.motion.doc.graph);
+    crate::smoke_layout::arrange_and_mark(&mut cx.motion.doc, &heroes);
+    cx.motion.sinks.push(sink);
+    let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+    // O emitter já selecionado: `Rate` e `Max Particles` na tela no 1º frame.
+    ph2d_panel_motion_graph::request_graph_selection(vec![heroes[0].0]);
+
+    // ⚠️ Os números vêm das consts, não de literais na prosa: uma mensagem que repete o
+    // número à mão mente no dia em que a const se mexe, com a suíte verde.
+    let alive_default = (40.0 * LIFE_S) as u32;
+    let alive_full = (1_200.0 * LIFE_S) as u32;
+    eprintln!(
+        "[emitter smoke] fonte montada: emitter -> integrate -> tint -> output, com \
+         force.wind de gravidade.\n  \
+         O no 'Emitter' ja esta selecionado. APERTE PLAY -- uma fonte so existe no tempo.\n  \
+         Ela abre nos DEFAULTS do no: Rate = 40/s, vida {LIFE_S} s => ~{alive_default} \
+         particulas vivas, um fio ralo.\n  \
+         TESTE 1 (o curso do RATE, a pergunta desta wave): arraste 'Rate' ate o FIM do \
+         slider (1.200/s => ~{alive_full} vivas). O fio vira um jato denso.\n    \
+         >> A PERGUNTA: 1.200 e denso o bastante para a sua cena? Se nao for, DIGITE \
+         12000 na caixa -- ela aceita ate 4.000.000, entao nada se perdeu; o que quero \
+         saber e se o DEDO precisa chegar mais longe.\n  \
+         TESTE 2 (o teto da PISCINA): com o Rate no alto, arraste 'Max Particles' de \
+         {POOL} para baixo. Abaixo de ~{alive_full} o jato e CEIFADO (as mais velhas \
+         somem) -- e isso que o teto da piscina faz. Depois DIGITE 100000 na caixa: o \
+         jato volta inteiro.\n  \
+         TESTE 3 (o nudge, que era impossivel): com o Rate em 40, empurre o slider UM \
+         passo. Ele anda ~8/s. Antes desta wave um pixel andava 78/s -- de 40 voce \
+         pulava para 118 e nao havia como pedir 50."
+    );
 }
 
 #[cfg(test)]

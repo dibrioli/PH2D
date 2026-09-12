@@ -120,57 +120,54 @@ fn on() -> bool {
 
 static FRAME: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
 
-impl crate::App {
-    /// Roda no prólogo do frame, ao lado do `transform_family_smoke`. No-op sem a env.
-    pub(crate) fn echo_family_smoke(&mut self) {
-        use std::sync::atomic::Ordering;
-        if !on() || self.gfx.is_none() || FRAME.fetch_add(1, Ordering::Relaxed) != 4 {
-            return;
-        }
-        let gfx = self.gfx.as_mut().expect("gfx");
-        let (sinks, trails) = scene(&mut gfx.motion.doc.graph);
-        crate::smoke_layout::arrange_and_mark(&mut gfx.motion.doc, &trails);
-        for s in sinks {
-            gfx.motion.sinks.push(s);
-        }
-        let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
-        // O rastro ESPAÇADO já selecionado: o param novo na tela no 1º frame.
-        ph2d_panel_motion_graph::request_graph_selection(vec![trails[1].0]);
-        eprintln!(
-            "[echo smoke] duas esteiras iguais em orbita, com {ECHOES} ecos cada.\n  \
-             MONTOU: em CIMA 'Spacing = 1' (o rastro continuo, o motor que sempre \
-             shipou); embaixo 'Spacing = {SPACED}'.\n  \
-             DE PLAY na timeline. Na tela: em cima um borrao continuo colado no ponto; \
-             embaixo ecos SEPARADOS, cobrindo {SPACED}x mais arco com o mesmo numero de \
-             copias. Se os dois rastros forem iguais, PARE -- o espacamento nao chegou.\n  \
-             O no 'Trail' de baixo ja esta selecionado.\n  \
-             TESTE 1 (a cadencia): arraste o 'Spacing' de 1 ate 16. Em 1 os dois rastros \
-             ficam IDENTICOS -- e a prova de que o default nao mexeu em nada.\n  \
-             TESTE 2 (o alcance): com 'Spacing' alto, aumente o 'Length'. A cauda cobre \
-             a orbita inteira sem custar um eco por quadro.\n  \
-             TESTE 3 (a cabeca): o ponto VIVO nunca pisca -- ele e desenhado todo tick, \
-             espacado ou nao; o que espaca sao os FANTASMAS.\n  \
-             TESTE 4 (os knobs sao ALVOS na PONTA, nao taxas): os dois rastros levam o \
-             MESMO 'Tail Alpha' 0.15 e o mesmo 'Tail Size' 0.55, e as duas caudas \
-             terminam no MESMO lugar -- so a cadencia difere. Antes desta correcao o \
-             numero era uma taxa por tick, entao a esteira de baixo (vao 20) terminava \
-             em alfa 0.02 enquanto a de cima (vao 5) ficava em 0.33: o mesmo slider, \
-             dois desenhos.\n  \
-             TESTE 5 (o slider ficou LINEAR): arraste 'Tail Saturation' de 1 ate 0. A \
-             cauda desbota PROGRESSIVAMENTE ao longo de todo o curso -- 0.5 e meio \
-             caminho. Antes, 0.9 ja entregava 0.17 na esteira de baixo e a faixa util \
-             inteira cabia em 5% do controle.\n  \
-             TESTE 6 (e ele NAO se move quando outro knob se move): com um valor \
-             escolhido, arraste o 'Length' de 2 ate 32 e o 'Spacing' de 1 ate 16. A \
-             PONTA da cauda tem de continuar do mesmo tom -- o que muda e quantos ecos \
-             ha entre a cabeca e ela.\n  \
-             TESTE 7 (Hue e Spin sao TOTAIS): a esteira de baixo percorre {HUE_SWEEP} \
-             deg de matiz e {SPIN_SWEEP:.0} deg de giro da cabeca ate a ponta, seja qual \
-             for o Length. Arraste 'Tail Saturation' ate 0: a cauda vai a cinza SEM \
-             escurecer (a luma e preservada, e e isso que separa um giro de matiz de um \
-             filtro)."
-        );
+/// Roda no prólogo do frame, ao lado do `transform_family_smoke`. No-op sem a env.
+pub fn echo_family_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>) {
+    use std::sync::atomic::Ordering;
+    if !on() || FRAME.fetch_add(1, Ordering::Relaxed) != 4 {
+        return;
     }
+    let (sinks, trails) = scene(&mut cx.motion.doc.graph);
+    crate::smoke_layout::arrange_and_mark(&mut cx.motion.doc, &trails);
+    for s in sinks {
+        cx.motion.sinks.push(s);
+    }
+    let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+    // O rastro ESPAÇADO já selecionado: o param novo na tela no 1º frame.
+    ph2d_panel_motion_graph::request_graph_selection(vec![trails[1].0]);
+    eprintln!(
+        "[echo smoke] duas esteiras iguais em orbita, com {ECHOES} ecos cada.\n  \
+         MONTOU: em CIMA 'Spacing = 1' (o rastro continuo, o motor que sempre \
+         shipou); embaixo 'Spacing = {SPACED}'.\n  \
+         DE PLAY na timeline. Na tela: em cima um borrao continuo colado no ponto; \
+         embaixo ecos SEPARADOS, cobrindo {SPACED}x mais arco com o mesmo numero de \
+         copias. Se os dois rastros forem iguais, PARE -- o espacamento nao chegou.\n  \
+         O no 'Trail' de baixo ja esta selecionado.\n  \
+         TESTE 1 (a cadencia): arraste o 'Spacing' de 1 ate 16. Em 1 os dois rastros \
+         ficam IDENTICOS -- e a prova de que o default nao mexeu em nada.\n  \
+         TESTE 2 (o alcance): com 'Spacing' alto, aumente o 'Length'. A cauda cobre \
+         a orbita inteira sem custar um eco por quadro.\n  \
+         TESTE 3 (a cabeca): o ponto VIVO nunca pisca -- ele e desenhado todo tick, \
+         espacado ou nao; o que espaca sao os FANTASMAS.\n  \
+         TESTE 4 (os knobs sao ALVOS na PONTA, nao taxas): os dois rastros levam o \
+         MESMO 'Tail Alpha' 0.15 e o mesmo 'Tail Size' 0.55, e as duas caudas \
+         terminam no MESMO lugar -- so a cadencia difere. Antes desta correcao o \
+         numero era uma taxa por tick, entao a esteira de baixo (vao 20) terminava \
+         em alfa 0.02 enquanto a de cima (vao 5) ficava em 0.33: o mesmo slider, \
+         dois desenhos.\n  \
+         TESTE 5 (o slider ficou LINEAR): arraste 'Tail Saturation' de 1 ate 0. A \
+         cauda desbota PROGRESSIVAMENTE ao longo de todo o curso -- 0.5 e meio \
+         caminho. Antes, 0.9 ja entregava 0.17 na esteira de baixo e a faixa util \
+         inteira cabia em 5% do controle.\n  \
+         TESTE 6 (e ele NAO se move quando outro knob se move): com um valor \
+         escolhido, arraste o 'Length' de 2 ate 32 e o 'Spacing' de 1 ate 16. A \
+         PONTA da cauda tem de continuar do mesmo tom -- o que muda e quantos ecos \
+         ha entre a cabeca e ela.\n  \
+         TESTE 7 (Hue e Spin sao TOTAIS): a esteira de baixo percorre {HUE_SWEEP} \
+         deg de matiz e {SPIN_SWEEP:.0} deg de giro da cabeca ate a ponta, seja qual \
+         for o Length. Arraste 'Tail Saturation' ate 0: a cauda vai a cinza SEM \
+         escurecer (a luma e preservada, e e isso que separa um giro de matiz de um \
+         filtro)."
+    );
 }
 
 #[cfg(test)]

@@ -95,26 +95,23 @@ fn on() -> bool {
 
 static FRAME: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
 
-impl crate::App {
-    /// Roda no prólogo do frame, ao lado do `build_smoke`. No-op sem a env.
-    pub(crate) fn value_step_smoke(&mut self) {
-        use std::sync::atomic::Ordering;
-        if !on() || self.gfx.is_none() || FRAME.fetch_add(1, Ordering::Relaxed) != 4 {
-            return;
-        }
-        let gfx = self.gfx.as_mut().expect("gfx");
-        let g = &mut gfx.motion.doc.graph;
-        // De cima o penhasco (value.step, marcado); de baixo a rampa reta.
-        let gated = row(g, true, 2.4);
-        let linear = row(g, false, -2.4);
-        let mut heroes = Vec::new();
-        let mut sinks = Vec::new();
-        for (sink, hero) in [gated, linear].into_iter().flatten() {
-            sinks.push(sink);
-            heroes.extend(hero);
-        }
-        crate::smoke_layout::arrange_and_mark(&mut gfx.motion.doc, &heroes);
-        gfx.motion.sinks.extend(sinks);
-        let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+/// Roda no prólogo do frame, ao lado do `build_smoke`. No-op sem a env.
+pub fn value_step_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>) {
+    use std::sync::atomic::Ordering;
+    if !on() || FRAME.fetch_add(1, Ordering::Relaxed) != 4 {
+        return;
     }
+    let g = &mut cx.motion.doc.graph;
+    // De cima o penhasco (value.step, marcado); de baixo a rampa reta.
+    let gated = row(g, true, 2.4);
+    let linear = row(g, false, -2.4);
+    let mut heroes = Vec::new();
+    let mut sinks = Vec::new();
+    for (sink, hero) in [gated, linear].into_iter().flatten() {
+        sinks.push(sink);
+        heroes.extend(hero);
+    }
+    crate::smoke_layout::arrange_and_mark(&mut cx.motion.doc, &heroes);
+    cx.motion.sinks.extend(sinks);
+    let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
 }

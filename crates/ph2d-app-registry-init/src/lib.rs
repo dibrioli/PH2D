@@ -91,72 +91,58 @@ mod tests {
         }
     }
 
-    /// **As famílias cuja extracção está a MEIO: a crate existe, os roteadores ainda não saíram.**
+    /// **A forma de um roteador é `PH2D_*_SMOKE` — e a excepção é NOMEADA, nunca tolerada.**
     ///
-    /// ⚠️ **Isto é uma catraca, e ela só ENCOLHE** — cada nome sai daqui no dia em que a Fase B
-    /// daquela família levar o roteador de cenas para a crate. A lista chega a **vazia** e então
-    /// este bloco e a metade `if` do gate abaixo desaparecem com ela.
+    /// ⭐⭐⭐ **A catraca `FAMILIAS_COM_O_ROTEADOR_AINDA_NA_SHELL` MORREU em 2026-09-12**: a
+    /// `motion` era a última, e o doc dela dizia *«a lista chega a vazia e então este bloco e a
+    /// metade `if` do gate abaixo desaparecem com ela»*. Desapareceram. **As seis famílias
+    /// declaram roteador.**
     ///
-    /// ⛔⛔ **Por que ela tem de existir, em vez de o gate simplesmente aceitar `routers: &[]`:**
-    /// *«ainda não mudou»* e *«alguém esqueceu»* leem-se **exactamente igual** numa lista vazia —
-    /// é a mesma forma do `id órfão` contra o `controlo morto` (CLAUDE.md §5), cuja cura é oposta.
-    /// Escrever o nome aqui torna a ausência **declarada**: quem lê sabe que é dívida conhecida, e
-    /// quem acrescentar uma família nova sem roteador **reprova**, que é o que a L0 desenhou.
+    /// ⚠️⚠️ **Mas o corte da `motion` trouxe uma pergunta que a forma não previa:** o roteador
+    /// PRINCIPAL dela — as `114` cenas que o dono smoka — chama-se **`PH2D_GPU_COOK_DEMO`**, e
+    /// acaba em `_DEMO`. Ele é anterior a esta convenção e o nome dele é o **endereço público**
+    /// que o dono escreve (`CLAUDE.md §5` e dezenas de docs dizem `PH2D_GPU_COOK_DEMO=<n>`).
     ///
-    /// ⚠️ **E a catraca traz o censo de obsolescência** (CLAUDE.md §5.0: *«uma catraca sem censo de
-    /// obsolescência não desce: ela vira LICENÇA»*) — a segunda metade do gate reprova um nome que
-    /// já não descreve nada, seja porque a família passou a declarar roteador, seja porque ela
-    /// deixou de existir.
+    /// ⛔ **As três saídas, e porque esta:**
+    /// 1. *não o declarar* — a família maior do repo registaria `37` roteadores e esconderia o
+    ///    que de facto abre as cenas. O registo passaria a MENTIR, que é o oposto do que a
+    ///    catraca acima existia para impedir;
+    /// 2. *renomear a env* — parte todo passo de smoke já escrito. O nome é a superfície;
+    /// 3. **declarar a excepção, com censo** — é o mesmo molde da catraca que morreu:
+    ///    *uma excepção declarada é dívida; uma excepção muda é um defeito.*
     ///
-    /// ⭐⭐ **A `vec` SAIU em 2026-09-12 (W2/L4 Fase B, 2.ª volta):** os **cinco** roteadores dela
-    /// (⚠️ cinco, não os quatro que o briefing listava — o `PH2D_VEC_SVG_SMOKE` vivia num ficheiro
-    /// sem o prefixo `vec_` e o censo por prefixo não o via) passaram para `ph2d_app_vec`, com a
-    /// env lida lá. ⛔ O que destravou não foi um refactor: foram **duas folhas partilhadas novas**
-    /// — `ph2d-skeleton-live` e `ph2d-image-import` —, porque a cena do osso chamava cinco funções
-    /// puras que viviam na shell, e esta catraca é **all-or-nothing por família**.
-    ///
-    /// ⭐ **Medido em 2026-09-11, na integração das seis linhas da W2:** das cinco famílias da
-    /// Fase A, só a `flip` lia as próprias `PH2D_*_SMOKE` dentro da crate (15 delas); `vec`,
-    /// `motion`, `physics` e `sculpt3d` extraíram código e **não** o roteador — o `match` de cenas
-    /// tocava a `App`, que é precisamente o que a Fase B devia.
-    ///
-    /// ⭐⭐ **A `physics` SAIU em 2026-09-11 (W2/L2 Fase B)**: as 118 cenas viraram funções livres
-    /// sobre um `SceneCtx`, o `match` mudou-se para `ph2d_app_physics::smoke` e a env passou a ser
-    /// lida lá. ⚠️ **O que destravou foi uma decisão, não um refactor:** os três últimos braços
-    /// autoram uma track de timeline, e a família passou a poder depender da `ph2d-timeline` —
-    /// *uma crate-motor irmã não é a shell* (ADR-0075). As outras três continuam aqui.
-    const FAMILIAS_COM_O_ROTEADOR_AINDA_NA_SHELL: &[&str] = &["motion"];
+    /// ⚠️ ⛔ **Ela NÃO é `PH2D_GPU_COOK`** (sem `_DEMO`), que é diagnóstico (`=0` volta à CPU) e
+    /// **não** entra em `FAMILY` nenhuma. Duas envs, um prefixo, papéis opostos.
+    const ROTEADORES_FORA_DA_FORMA: &[&str] = &["PH2D_GPU_COOK_DEMO"];
 
     /// ⚠️ **Uma família registada tem de declarar pelo menos um roteador, e todo roteador tem de ter
     /// nível.** Sem esta metade, uma família que se registasse com `routers: &[]` passaria no gate
     /// acima **por vacuidade** — a armadilha do censo que mede zero e se lê como aprovado.
     ///
-    /// A única excepção é **declarada, uma a uma**, na
-    /// [`FAMILIAS_COM_O_ROTEADOR_AINDA_NA_SHELL`] — e a excepção é gateada nos **dois** sentidos.
+    /// ⭐ **Desde 12/09 não há excepção nenhuma a esta metade** — a catraca
+    /// `FAMILIAS_COM_O_ROTEADOR_AINDA_NA_SHELL` esvaziou-se e morreu. A única lista de tolerância
+    /// que sobra é a [`ROTEADORES_FORA_DA_FORMA`], que é sobre o NOME de uma env, não sobre a
+    /// ausência de um roteador — e ela é gateada nos **dois** sentidos, como a outra era.
     #[test]
     fn every_registered_family_declares_a_reachable_router() {
         let reg = register_all_app_families();
         for f in reg.families() {
-            let a_meio = FAMILIAS_COM_O_ROTEADOR_AINDA_NA_SHELL.contains(&f.key);
             assert!(
-                !f.routers.is_empty() || a_meio,
-                "a família `{}` regista-se e não declara roteador nenhum — ela é inalcançável pelo \
-                 smoke do dono, e o gate de colisão passa sobre ela por vacuidade. Se a extracção \
-                 dela está a MEIO (a crate saiu, o roteador de cenas ficou na shell), escreva o \
-                 nome em `FAMILIAS_COM_O_ROTEADOR_AINDA_NA_SHELL` — uma ausência declarada é \
-                 dívida; uma ausência muda é um defeito",
-                f.key
-            );
-            assert!(
-                !(a_meio && !f.routers.is_empty()),
-                "a família `{}` está em `FAMILIAS_COM_O_ROTEADOR_AINDA_NA_SHELL` e JÁ declara \
-                 roteador — a entrada está obsoleta: apague-a (a catraca só encolhe)",
+                !f.routers.is_empty(),
+                "a família `{}` regista-se e não declara roteador nenhum — ela é inalcançável \
+                 pelo smoke do dono, e o gate de colisão passa sobre ela por vacuidade. \
+                 ⛔ A catraca `FAMILIAS_COM_O_ROTEADOR_AINDA_NA_SHELL` MORREU em 2026-09-12 \
+                 (a `motion` era a última): não há mais dívida declarada a que se juntar — \
+                 leve o roteador para a crate da família",
                 f.key
             );
             for r in f.routers {
                 assert!(
-                    r.env.starts_with("PH2D_") && r.env.ends_with("_SMOKE"),
-                    "o roteador `{}` da família `{}` não segue a forma `PH2D_*_SMOKE`",
+                    r.env.starts_with("PH2D_")
+                        && (r.env.ends_with("_SMOKE") || ROTEADORES_FORA_DA_FORMA.contains(&r.env)),
+                    "o roteador `{}` da família `{}` não segue a forma `PH2D_*_SMOKE`. Se ele é \
+                     anterior à convenção e o nome já é endereço público, escreva-o em \
+                     `ROTEADORES_FORA_DA_FORMA` — com a razão",
                     r.env,
                     f.key
                 );
@@ -168,15 +154,26 @@ mod tests {
                 );
             }
         }
-        // ⛔ A OUTRA metade do censo de obsolescência: um nome na catraca que já não corresponde a
-        // família nenhuma desta build. Sem ela, uma família apagada (ou renomeada) deixaria a
-        // entrada para trás e a lista pararia de encolher sem ninguém ver — que é literalmente a
-        // «catraca que vira licença».
-        for orfao in FAMILIAS_COM_O_ROTEADOR_AINDA_NA_SHELL {
+        // ⛔⛔ **O CENSO DE OBSOLESCÊNCIA muda de sujeito, mas não morre com a catraca.** Ele
+        // media nomes de FAMÍLIA; agora mede nomes de ENV. A lei é a mesma e é a razão de existir
+        // das duas listas (`CLAUDE.md` §5.0): *uma tolerância sem censo não desce — vira LICENÇA.*
+        // Uma env renomeada, ou uma que passe a acabar em `_SMOKE`, deixa a entrada para trás e
+        // ninguém vê.
+        let declarados: Vec<&str> = reg
+            .families()
+            .iter()
+            .flat_map(|f| f.routers.iter().map(|r| r.env))
+            .collect();
+        for orfao in ROTEADORES_FORA_DA_FORMA {
             assert!(
-                reg.families().iter().any(|f| f.key == *orfao),
-                "`{orfao}` está em `FAMILIAS_COM_O_ROTEADOR_AINDA_NA_SHELL` e não é família \
+                declarados.contains(orfao),
+                "`{orfao}` está em `ROTEADORES_FORA_DA_FORMA` e não é roteador de família \
                  nenhuma desta build — a entrada está obsoleta, apague-a"
+            );
+            assert!(
+                !orfao.ends_with("_SMOKE"),
+                "`{orfao}` está em `ROTEADORES_FORA_DA_FORMA` e JÁ segue a forma `PH2D_*_SMOKE` \
+                 — a excepção deixou de descrever alguma coisa: apague-a (a lista só encolhe)"
             );
         }
     }

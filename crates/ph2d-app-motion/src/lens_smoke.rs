@@ -99,46 +99,43 @@ fn on() -> bool {
 
 static FRAME: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
 
-impl crate::App {
-    /// Roda no prólogo do frame, ao lado do `echo_family_smoke`. No-op sem a env.
-    pub(crate) fn lens_smoke(&mut self) {
-        use std::sync::atomic::Ordering;
-        if !on() || self.gfx.is_none() || FRAME.fetch_add(1, Ordering::Relaxed) != 4 {
-            return;
-        }
-        let gfx = self.gfx.as_mut().expect("gfx");
-        let (sinks, lenses, _) = scene(&mut gfx.motion.doc.graph);
-        crate::smoke_layout::arrange_and_mark(&mut gfx.motion.doc, &lenses);
-        for s in sinks {
-            gfx.motion.sinks.push(s);
-        }
-        let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
-        // A lente DESLOCADA já selecionada: o param novo na tela no 1º frame.
-        ph2d_panel_motion_graph::request_graph_selection(vec![lenses[1].0]);
-        eprintln!(
-            "[lens smoke] duas grades {SIDE:.0}x{SIDE:.0} iguais, cada uma sob uma lente \
-             de raio {RADIUS}.\n  \
-             MONTOU: em CIMA 'Offset X = 0' (a lente no centroide, o motor que sempre \
-             shipou); embaixo 'Offset X = {OFFSET}'.\n  \
-             Na tela: em cima o inchaco no MEIO da grade; embaixo o MESMO inchaco \
-             empurrado para a DIREITA. Se os dois estiverem no meio, PARE -- o offset \
-             nao chegou.\n  \
-             O no 'Spherize' de baixo ja esta selecionado.\n  \
-             TESTE 1 (a lente ANDA): arraste 'Offset X' de -10 ate 10. O inchaco varre a \
-             grade e sai por fora dela -- longe demais, a grade volta ao repouso, que e \
-             o comportamento honesto de uma lente que nao esta mais sobre o assunto.\n  \
-             TESTE 2 (o default nao mexeu em NADA): ponha 'Offset X' de volta em 0. As \
-             duas grades ficam IDENTICAS. Esse e o contrato: 'c + 0' e 'c'.\n  \
-             TESTE 3 (o eixo Y tambem): arraste 'Offset Y'. O inchaco sobe e desce.\n  \
-             TESTE 4 (a lente SEGUE o assunto): selecione o no 'Move' da esteira de \
-             baixo e arraste o 'dx'. A grade inteira anda -- e o inchaco anda JUNTO, \
-             mantendo a mesma posicao relativa. E por isso que o numero e um \
-             deslocamento do centroide e nao uma coordenada de mundo: um centro \
-             absoluto ficaria para tras enquanto a grade vai embora.\n  \
-             TESTE 5 (o raio e o aro): arraste o 'Radius'. Fora dele a grade fica \
-             intocada -- e a borda do inchaco que diz onde a lente acaba."
-        );
+/// Roda no prólogo do frame, ao lado do `echo_family_smoke`. No-op sem a env.
+pub fn lens_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>) {
+    use std::sync::atomic::Ordering;
+    if !on() || FRAME.fetch_add(1, Ordering::Relaxed) != 4 {
+        return;
     }
+    let (sinks, lenses, _) = scene(&mut cx.motion.doc.graph);
+    crate::smoke_layout::arrange_and_mark(&mut cx.motion.doc, &lenses);
+    for s in sinks {
+        cx.motion.sinks.push(s);
+    }
+    let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+    // A lente DESLOCADA já selecionada: o param novo na tela no 1º frame.
+    ph2d_panel_motion_graph::request_graph_selection(vec![lenses[1].0]);
+    eprintln!(
+        "[lens smoke] duas grades {SIDE:.0}x{SIDE:.0} iguais, cada uma sob uma lente \
+         de raio {RADIUS}.\n  \
+         MONTOU: em CIMA 'Offset X = 0' (a lente no centroide, o motor que sempre \
+         shipou); embaixo 'Offset X = {OFFSET}'.\n  \
+         Na tela: em cima o inchaco no MEIO da grade; embaixo o MESMO inchaco \
+         empurrado para a DIREITA. Se os dois estiverem no meio, PARE -- o offset \
+         nao chegou.\n  \
+         O no 'Spherize' de baixo ja esta selecionado.\n  \
+         TESTE 1 (a lente ANDA): arraste 'Offset X' de -10 ate 10. O inchaco varre a \
+         grade e sai por fora dela -- longe demais, a grade volta ao repouso, que e \
+         o comportamento honesto de uma lente que nao esta mais sobre o assunto.\n  \
+         TESTE 2 (o default nao mexeu em NADA): ponha 'Offset X' de volta em 0. As \
+         duas grades ficam IDENTICAS. Esse e o contrato: 'c + 0' e 'c'.\n  \
+         TESTE 3 (o eixo Y tambem): arraste 'Offset Y'. O inchaco sobe e desce.\n  \
+         TESTE 4 (a lente SEGUE o assunto): selecione o no 'Move' da esteira de \
+         baixo e arraste o 'dx'. A grade inteira anda -- e o inchaco anda JUNTO, \
+         mantendo a mesma posicao relativa. E por isso que o numero e um \
+         deslocamento do centroide e nao uma coordenada de mundo: um centro \
+         absoluto ficaria para tras enquanto a grade vai embora.\n  \
+         TESTE 5 (o raio e o aro): arraste o 'Radius'. Fora dele a grade fica \
+         intocada -- e a borda do inchaco que diz onde a lente acaba."
+    );
 }
 
 #[cfg(test)]

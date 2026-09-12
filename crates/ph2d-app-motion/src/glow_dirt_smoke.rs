@@ -57,7 +57,7 @@ const FIELD: f32 = 4.0;
 /// O espaçamento do campo — ver [`FIELD`].
 const GAP: f32 = 1.30;
 
-pub(crate) fn enabled() -> bool {
+pub fn enabled() -> bool {
     std::env::var_os("PH2D_GLOW_DIRT_SMOKE").is_some()
 }
 
@@ -210,13 +210,13 @@ fn build(g: &mut Graph) -> Option<NodeId> {
 
 /// Monta a cena. Devolve `false` quando o átlas recusou a imagem (e aí nada é montado — uma
 /// cena com o grafo e sem a sprite ensinaria o defeito que ela existe para mostrar).
-pub(crate) fn spawn_if_enabled(
+pub fn spawn_if_enabled(
     sim: &mut ph2d_ecs::SimWorld,
     renderer: &mut ph2d_render::SpriteRenderer,
     asset_db: &ph2d_asset::AssetDb,
     next_cell: &mut u32,
     atlas_asset_map: &mut std::collections::BTreeMap<u32, ph2d_asset::AssetId>,
-    motion: &mut ph2d_app_motion::motion_state::MotionState,
+    motion: &mut crate::motion_state::MotionState,
 ) -> bool {
     let pixels = dirt_pixels();
     let cell = *next_cell;

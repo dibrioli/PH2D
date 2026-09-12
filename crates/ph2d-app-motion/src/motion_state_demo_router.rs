@@ -22,9 +22,15 @@ use super::*;
 /// ⚠️ **Sobe com a cena nova**, e se alguém esquecer, o controle de contagem do gate
 /// não acusa (ele mede o piso). O que acusa é a cena nova nunca ser diagnosticada —
 /// então esta linha anda junto com o braço novo do `match`.
-#[cfg(test)]
 /// ⚠️ `pub` desde o ciclo 3: a sonda que pergunta **onde cada cena vive** varre o
 /// intervalo inteiro, e um teto que ela não alcança não é um teto — é uma nota.
+///
+/// ⚠️⚠️ **E deixou de ser `#[cfg(test)]` em 2026-09-12 (W2 Fase C), por ganhar um consumidor de
+/// PRODUTO:** o `crate::FAMILY` declara este roteador à shell, e o `max_level` dele **conta-se,
+/// nunca se escreve de memória** (`ph2d_app_host::SmokeRouter`). Escrever `114` ali seria pôr o
+/// número em dois sítios, que é como ele envelhece. *Um valor sob `cfg(test)` é invisível do
+/// outro lado da fronteira (HOWTO §2.5) — e aqui a cura não é abrir uma feature, é reconhecer
+/// que a constante deixou de ser só do teste.*
 pub const MAX_DEMO_LEVEL: u32 = 114;
 
 /// **As cenas de smoke dos CICLOS** — irmãs pelo tecto de LOC, cortadas por responsabilidade;

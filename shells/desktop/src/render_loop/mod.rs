@@ -956,35 +956,35 @@ impl crate::App {
         self.with_motion_scene(ph2d_app_motion::motion_autofix_smoke::motion_autofix_smoke);
         self.with_motion_scene(ph2d_app_motion::motion_delay_smoke::motion_delay_smoke);
         self.with_motion_scene(ph2d_app_motion::motion_fx_smoke::motion_fx_smoke);
-        self.adapter_smoke();
-        self.attribute_demo_smoke();
+        self.with_motion_scene(ph2d_app_motion::adapter_smoke::adapter_smoke);
+        self.with_motion_scene(ph2d_app_motion::attribute_demo_smoke::attribute_demo_smoke);
         self.with_motion_scene(ph2d_app_motion::picker_smoke::picker_smoke);
-        self.value_curve_smoke();
-        self.gradient_smoke();
-        self.osc_ruler_smoke();
-        self.driven_row_smoke();
-        self.units_smoke();
-        self.emitter_smoke();
-        self.transform_family_smoke();
-        self.echo_family_smoke();
-        self.lens_smoke();
-        self.splice_smoke();
-        self.value_noise_smoke();
-        self.value_mix_smoke();
-        self.value_quantize_smoke();
-        self.value_gain_smoke();
-        self.value_step_smoke();
-        self.value_normalize_smoke();
-        self.value_unary_smoke();
-        self.value_reduce_smoke();
-        self.value_smooth_smoke();
-        self.value_pattern_smoke();
-        self.value_wrap_smoke();
-        self.value_time_smoke();
-        self.value_slope_smoke();
-        self.value_median_smoke();
-        self.value_percentile_smoke();
-        self.value_wave_smoke();
+        self.with_motion_scene(ph2d_app_motion::value_curve_smoke::value_curve_smoke);
+        self.with_motion_scene(ph2d_app_motion::gradient_smoke::gradient_smoke);
+        self.with_motion_scene(ph2d_app_motion::osc_ruler_smoke::osc_ruler_smoke);
+        self.with_motion_scene(ph2d_app_motion::driven_row_smoke::driven_row_smoke);
+        self.with_motion_scene(ph2d_app_motion::units_smoke::units_smoke);
+        self.with_motion_scene(ph2d_app_motion::emitter_smoke::emitter_smoke);
+        self.with_motion_scene(ph2d_app_motion::transform_family_smoke::transform_family_smoke);
+        self.with_motion_scene(ph2d_app_motion::echo_family_smoke::echo_family_smoke);
+        self.with_motion_scene(ph2d_app_motion::lens_smoke::lens_smoke);
+        self.with_motion_scene(ph2d_app_motion::splice_smoke::splice_smoke);
+        self.with_motion_scene(ph2d_app_motion::value_noise_smoke::value_noise_smoke);
+        self.with_motion_scene(ph2d_app_motion::value_mix_smoke::value_mix_smoke);
+        self.with_motion_scene(ph2d_app_motion::value_quantize_smoke::value_quantize_smoke);
+        self.with_motion_scene(ph2d_app_motion::value_gain_smoke::value_gain_smoke);
+        self.with_motion_scene(ph2d_app_motion::value_step_smoke::value_step_smoke);
+        self.with_motion_scene(ph2d_app_motion::value_normalize_smoke::value_normalize_smoke);
+        self.with_motion_scene(ph2d_app_motion::value_unary_smoke::value_unary_smoke);
+        self.with_motion_scene(ph2d_app_motion::value_reduce_smoke::value_reduce_smoke);
+        self.with_motion_scene(ph2d_app_motion::value_smooth_smoke::value_smooth_smoke);
+        self.with_motion_scene(ph2d_app_motion::value_pattern_smoke::value_pattern_smoke);
+        self.with_motion_scene(ph2d_app_motion::value_wrap_smoke::value_wrap_smoke);
+        self.with_motion_scene(ph2d_app_motion::value_time_smoke::value_time_smoke);
+        self.with_motion_scene(ph2d_app_motion::value_slope_smoke::value_slope_smoke);
+        self.with_motion_scene(ph2d_app_motion::value_median_smoke::value_median_smoke);
+        self.with_motion_scene(ph2d_app_motion::value_percentile_smoke::value_percentile_smoke);
+        self.with_motion_scene(ph2d_app_motion::value_wave_smoke::value_wave_smoke);
         self.build_session_upkeep();
         // Tween v2: a sessão de correção de pares SEGUE o artista a um novo intervalo (no-op
         // se o intervalo é o mesmo, ou se a sessão está fechada).
@@ -1570,9 +1570,9 @@ impl crate::App {
         // uma imagem de pó e riscos, um campo de peças a brilhar, e o nó `Glow` já a ler a
         // primeira. ⚠️ Ela mora AQUI e não entre os demos de grafo porque precisa de uma
         // textura a sério — a mesma razão que já está escrita para o `PH2D_MOTION_OBJ_SMOKE=9`.
-        if crate::glow_dirt_smoke::enabled()
+        if ph2d_app_motion::glow_dirt_smoke::enabled()
             && !std::mem::replace(&mut self.glow_dirt_smoke_done, true)
-            && crate::glow_dirt_smoke::spawn_if_enabled(
+            && ph2d_app_motion::glow_dirt_smoke::spawn_if_enabled(
                 sim,
                 renderer,
                 asset_db,

@@ -71,41 +71,38 @@ fn on() -> bool {
 
 static FRAME: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
 
-impl crate::App {
-    /// Roda no prólogo do frame, ao lado do `units_smoke`. No-op sem a env.
-    pub(crate) fn transform_family_smoke(&mut self) {
-        use std::sync::atomic::Ordering;
-        if !on() || self.gfx.is_none() || FRAME.fetch_add(1, Ordering::Relaxed) != 4 {
-            return;
-        }
-        let gfx = self.gfx.as_mut().expect("gfx");
-        let (sink, heroes) = chain(&mut gfx.motion.doc.graph);
-        crate::smoke_layout::arrange_and_mark(&mut gfx.motion.doc, &heroes);
-        gfx.motion.sinks.push(sink);
-        let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
-        // O `Scale` já selecionado: o `Uniform` destravado e o `Scale Y` visível no 1º
-        // frame, que é o que a wave entrega.
-        ph2d_panel_motion_graph::request_graph_selection(vec![heroes[1].0]);
-        eprintln!(
-            "[transform smoke] grid(1x4) -> scale -> mirror -> output.\n  \
-             MONTOU: 4 pontos, esticados {STRETCH_X}x em X e {STRETCH_Y}x em Y, \
-             espelhados numa linha a {MIRROR_OFFSET} m do centroide -> 8 instancias.\n  \
-             Na tela: quadrados ACHATADOS E LARGOS (nao quadrados), em dois grupos \
-             separados. Se os oito forem quadrados, PARE -- o eixo Y nao chegou.\n  \
-             O no 'Scale' ja esta selecionado.\n  \
-             TESTE 1 (o link): marque 'Uniform'. O 'Scale Y' SOME da lista (um controle \
-             que nao faz nada nao e pintado) e as formas viram quadrados de {STRETCH_X}x. \
-             Desmarque: o 'Scale Y' volta com o valor que estava.\n  \
-             TESTE 2 (squash & stretch): com 'Uniform' desmarcado, arraste o 'Scale Y' \
-             de 0.2 ate 3. As formas ESPREMEM e ESTICAM sem mudar de largura -- era isto \
-             que nao existia no grafo.\n  \
-             TESTE 3 (a linha de espelho anda): clique o no 'Mirror' e arraste o \
-             'Axis Offset'. O grupo espelhado desliza; em 0 os dois grupos se encostam \
-             no centroide, que era o UNICO lugar possivel ate esta wave.\n  \
-             TESTE 4 (o eixo): no 'Mirror', troque 'Axis' para 'Horizontal'. O gemeo \
-             passa a nascer acima/abaixo, e o mesmo 'Axis Offset' agora anda em Y."
-        );
+/// Roda no prólogo do frame, ao lado do `units_smoke`. No-op sem a env.
+pub fn transform_family_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>) {
+    use std::sync::atomic::Ordering;
+    if !on() || FRAME.fetch_add(1, Ordering::Relaxed) != 4 {
+        return;
     }
+    let (sink, heroes) = chain(&mut cx.motion.doc.graph);
+    crate::smoke_layout::arrange_and_mark(&mut cx.motion.doc, &heroes);
+    cx.motion.sinks.push(sink);
+    let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+    // O `Scale` já selecionado: o `Uniform` destravado e o `Scale Y` visível no 1º
+    // frame, que é o que a wave entrega.
+    ph2d_panel_motion_graph::request_graph_selection(vec![heroes[1].0]);
+    eprintln!(
+        "[transform smoke] grid(1x4) -> scale -> mirror -> output.\n  \
+         MONTOU: 4 pontos, esticados {STRETCH_X}x em X e {STRETCH_Y}x em Y, \
+         espelhados numa linha a {MIRROR_OFFSET} m do centroide -> 8 instancias.\n  \
+         Na tela: quadrados ACHATADOS E LARGOS (nao quadrados), em dois grupos \
+         separados. Se os oito forem quadrados, PARE -- o eixo Y nao chegou.\n  \
+         O no 'Scale' ja esta selecionado.\n  \
+         TESTE 1 (o link): marque 'Uniform'. O 'Scale Y' SOME da lista (um controle \
+         que nao faz nada nao e pintado) e as formas viram quadrados de {STRETCH_X}x. \
+         Desmarque: o 'Scale Y' volta com o valor que estava.\n  \
+         TESTE 2 (squash & stretch): com 'Uniform' desmarcado, arraste o 'Scale Y' \
+         de 0.2 ate 3. As formas ESPREMEM e ESTICAM sem mudar de largura -- era isto \
+         que nao existia no grafo.\n  \
+         TESTE 3 (a linha de espelho anda): clique o no 'Mirror' e arraste o \
+         'Axis Offset'. O grupo espelhado desliza; em 0 os dois grupos se encostam \
+         no centroide, que era o UNICO lugar possivel ate esta wave.\n  \
+         TESTE 4 (o eixo): no 'Mirror', troque 'Axis' para 'Horizontal'. O gemeo \
+         passa a nascer acima/abaixo, e o mesmo 'Axis Offset' agora anda em Y."
+    );
 }
 
 #[cfg(test)]
@@ -170,8 +167,8 @@ mod tests {
     /// PRODUTO (o snapshot que o painel pinta), nunca pela tabela de gates.
     #[test]
     fn the_second_axis_row_appears_only_when_the_link_is_off() {
-        use ph2d_app_motion::motion_bridge::params::build_params_snapshot;
-        use ph2d_app_motion::motion_state::MotionState;
+        use crate::motion_bridge::params::build_params_snapshot;
+        use crate::motion_state::MotionState;
         use ph2d_editor::ProjectSettings;
         use ph2d_panel_motion_params::ParamRow;
 

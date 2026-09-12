@@ -79,6 +79,7 @@ ph2d-vec-render = { path = "../ph2d-vec-render" }
 ph2d-vec-scene = { path = "../ph2d-vec-scene" }
 ph2d-node-util-reroute = { path = "../ph2d-node-util-reroute" }
 ph2d-app-vec = { path = "../ph2d-app-vec" }
+ph2d-node-fx-glow = { path = "../ph2d-node-fx-glow" }
 # ⛔⛔ **HOWTO §2.4 — AS FEATURES NÃO VIAJAM COM O CÓDIGO, e esta é a armadilha muda.**
 # `109` sítios desta família estão atrás destas duas. Numa crate que não as DECLARA o `cfg` é
 # falso **por construção**: o `motion_bridge` perderia o `mod surfaces` (o que a ferramenta
@@ -106,5 +107,4 @@ optional = true
 ph2d-tokens = { path = "../ph2d-tokens" }
 ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
 bytemuck = { version = "1", features = ["extern_crate_alloc"] }
-ph2d-node-fx-glow = { path = "../ph2d-node-fx-glow" }
 ph2d-panel-timeline = { path = "../ph2d-panel-timeline" }

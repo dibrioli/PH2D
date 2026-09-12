@@ -63,45 +63,41 @@ fn on() -> bool {
 
 static FRAME: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
 
-impl crate::App {
-    /// Roda no prólogo do frame, ao lado do `gradient_smoke`. No-op sem a env.
-    pub(crate) fn units_smoke(&mut self) {
-        use std::sync::atomic::Ordering;
-        if !on() || self.gfx.is_none() || FRAME.fetch_add(1, Ordering::Relaxed) != 4 {
-            return;
-        }
-        let gfx = self.gfx.as_mut().expect("gfx");
-        let (sink, heroes) = chain(&mut gfx.motion.doc.graph);
-        crate::smoke_layout::arrange_and_mark(&mut gfx.motion.doc, &heroes);
-        gfx.motion.sinks.push(sink);
-        let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
-        // O emitter já selecionado: as três faces (px / s / nu) na tela no 1º frame.
-        ph2d_panel_motion_graph::request_graph_selection(vec![heroes[0].0]);
-        // ⚠️ A escala do projeto é IMPRESSA, não assumida: ela viaja no arquivo desde
-        // esta wave, então um projeto carregado pode ter outra, e todo numero abaixo
-        // é derivado dela. Um smoke que afirmasse "100" seria um smoke que mente no
-        // dia em que o artista mexer no Settings.
-        let ppm = self
-            .gfx
-            .as_ref()
-            .and_then(|g| g.hero_screen.as_ref())
-            .map_or(100.0, |h| h.project.pixels_per_meter);
-        eprintln!(
-            "[units smoke] emitter -> twist -> output, com a escala do projeto em \
-             {ppm} px/m.\n  \
-             O no 'Emitter' ja esta selecionado. No painel de params (a direita) as rows \
-             tem de LER:\n    \
-             Origin X = -50 px   Origin Y = 0 px   Size = 15 px   Life = 3 s\n    \
-             Rate = 40   Speed = 1.5   (NUS de proposito: um ritmo nao e um comprimento)\n  \
-             TESTE 1 (a face segue o PROJETO): abra Settings -> Display unit -> Meters. \
-             Toda row de px vira 'm' e o numero divide por {ppm} (Origin X = -0.5 m), \
-             e A CENA NAO SE MEXE -- so a leitura mudou. Volte para Pixels.\n  \
-             TESTE 2 (o slider DUPLO): o arrasto do 'Life' comeca em 0.1 s, mas DIGITE \
-             0.001 na caixa -- ela aceita. O piso duro nao existia antes desta wave.\n  \
-             TESTE 3 (a unidade e por-PARAM): clique o no 'Twist'. 'Angle' le em 'deg' e \
-             'Pivot X'/'Pivot Y' leem em 'px', no MESMO no."
-        );
+/// Roda no prólogo do frame, ao lado do `gradient_smoke`. No-op sem a env.
+pub fn units_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>) {
+    use std::sync::atomic::Ordering;
+    if !on() || FRAME.fetch_add(1, Ordering::Relaxed) != 4 {
+        return;
     }
+    let (sink, heroes) = chain(&mut cx.motion.doc.graph);
+    crate::smoke_layout::arrange_and_mark(&mut cx.motion.doc, &heroes);
+    cx.motion.sinks.push(sink);
+    let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+    // O emitter já selecionado: as três faces (px / s / nu) na tela no 1º frame.
+    ph2d_panel_motion_graph::request_graph_selection(vec![heroes[0].0]);
+    // ⚠️ A escala do projeto é IMPRESSA, não assumida: ela viaja no arquivo desde
+    // esta wave, então um projeto carregado pode ter outra, e todo numero abaixo
+    // é derivado dela. Um smoke que afirmasse "100" seria um smoke que mente no
+    // dia em que o artista mexer no Settings.
+    let ppm = cx
+        .hero
+        .as_deref()
+        .map_or(100.0, |h| h.project.pixels_per_meter);
+    eprintln!(
+        "[units smoke] emitter -> twist -> output, com a escala do projeto em \
+         {ppm} px/m.\n  \
+         O no 'Emitter' ja esta selecionado. No painel de params (a direita) as rows \
+         tem de LER:\n    \
+         Origin X = -50 px   Origin Y = 0 px   Size = 15 px   Life = 3 s\n    \
+         Rate = 40   Speed = 1.5   (NUS de proposito: um ritmo nao e um comprimento)\n  \
+         TESTE 1 (a face segue o PROJETO): abra Settings -> Display unit -> Meters. \
+         Toda row de px vira 'm' e o numero divide por {ppm} (Origin X = -0.5 m), \
+         e A CENA NAO SE MEXE -- so a leitura mudou. Volte para Pixels.\n  \
+         TESTE 2 (o slider DUPLO): o arrasto do 'Life' comeca em 0.1 s, mas DIGITE \
+         0.001 na caixa -- ela aceita. O piso duro nao existia antes desta wave.\n  \
+         TESTE 3 (a unidade e por-PARAM): clique o no 'Twist'. 'Angle' le em 'deg' e \
+         'Pivot X'/'Pivot Y' leem em 'px', no MESMO no."
+    );
 }
 
 #[cfg(test)]
@@ -135,8 +131,8 @@ mod tests {
     /// mensagem que afirma uma AUSÊNCIA.
     #[test]
     fn the_message_promises_the_numbers_the_panel_paints() {
-        use ph2d_app_motion::motion_bridge::params::build_params_snapshot;
-        use ph2d_app_motion::motion_state::MotionState;
+        use crate::motion_bridge::params::build_params_snapshot;
+        use crate::motion_state::MotionState;
         use ph2d_editor::ProjectSettings;
         use ph2d_panel_motion_params::ParamRow;
 

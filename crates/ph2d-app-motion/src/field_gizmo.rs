@@ -32,8 +32,7 @@
 
 use ph2d_editor::screens::layout::CenterSplit;
 use ph2d_editor::{
-    GizmoCamera, GizmoDragState, GizmoModifiers, GizmoSnap, GizmoTarget, GizmoView,
-    TransformSnapshot,
+    GizmoCamera, GizmoDragState, GizmoModifiers, GizmoSnap, GizmoView, TransformSnapshot,
 };
 use ph2d_host::WindowSize;
 use ph2d_nodegraph::graph::{Graph, NodeId};

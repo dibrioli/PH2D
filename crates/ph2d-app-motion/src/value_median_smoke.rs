@@ -119,28 +119,25 @@ fn on() -> bool {
 
 static FRAME: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
 
-impl crate::App {
-    /// Roda no prólogo do frame, ao lado do `build_smoke`. No-op sem a env.
-    pub(crate) fn value_median_smoke(&mut self) {
-        use std::sync::atomic::Ordering;
-        if !on() || self.gfx.is_none() || FRAME.fetch_add(1, Ordering::Relaxed) != 4 {
-            return;
-        }
-        let gfx = self.gfx.as_mut().expect("gfx");
-        let g = &mut gfx.motion.doc.graph;
-        // De cima o campo cru, meio o smooth (borra spikes E bordas), baixo o median
-        // (remove spikes, mantém bordas -- marcado).
-        let raw = row(g, Kind::Raw, 2.4, false);
-        let smooth = row(g, Kind::Smooth, 0.0, false);
-        let median = row(g, Kind::Median, -2.4, true);
-        let mut heroes = Vec::new();
-        let mut sinks = Vec::new();
-        for (sink, hero) in [raw, smooth, median].into_iter().flatten() {
-            sinks.push(sink);
-            heroes.extend(hero);
-        }
-        crate::smoke_layout::arrange_and_mark(&mut gfx.motion.doc, &heroes);
-        gfx.motion.sinks.extend(sinks);
-        let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+/// Roda no prólogo do frame, ao lado do `build_smoke`. No-op sem a env.
+pub fn value_median_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>) {
+    use std::sync::atomic::Ordering;
+    if !on() || FRAME.fetch_add(1, Ordering::Relaxed) != 4 {
+        return;
     }
+    let g = &mut cx.motion.doc.graph;
+    // De cima o campo cru, meio o smooth (borra spikes E bordas), baixo o median
+    // (remove spikes, mantém bordas -- marcado).
+    let raw = row(g, Kind::Raw, 2.4, false);
+    let smooth = row(g, Kind::Smooth, 0.0, false);
+    let median = row(g, Kind::Median, -2.4, true);
+    let mut heroes = Vec::new();
+    let mut sinks = Vec::new();
+    for (sink, hero) in [raw, smooth, median].into_iter().flatten() {
+        sinks.push(sink);
+        heroes.extend(hero);
+    }
+    crate::smoke_layout::arrange_and_mark(&mut cx.motion.doc, &heroes);
+    cx.motion.sinks.extend(sinks);
+    let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
 }

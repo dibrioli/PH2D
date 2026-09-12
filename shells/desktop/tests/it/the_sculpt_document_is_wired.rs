@@ -109,7 +109,7 @@ fn the_save_prefers_the_live_scene_and_falls_back_to_the_bytes() {
         .find("to_doc_bytes()")
         .expect("o save le a cena VIVA quando ela existe");
     let stashed = body
-        .find("self.sculpt3d_req.doc")
+        .find("self.sculpt_doc")
         .expect("…e devolve os bytes do arquivo quando nao existe");
     assert!(
         live < stashed,
@@ -144,7 +144,7 @@ fn a_dropped_mesh_leaves_the_queue_before_the_image_filter() {
          que ele foi ignorado, e depois o importaria"
     );
     assert!(
-        body.contains("sculpt3d_import_files"),
+        body.contains("import_files"),
         "…e o desvio tem de CHAMAR o import, nao so' reconhecer a extensao"
     );
 }
@@ -156,9 +156,9 @@ fn a_dropped_mesh_leaves_the_queue_before_the_image_filter() {
 /// porta de desenvolvimento, não um gesto.
 #[test]
 fn dropping_a_mesh_arms_the_module() {
-    let body = function_body(&sculpt_src(), "sculpt3d_import_files");
+    let body = function_body(&sculpt_src(), "import_files");
     assert!(
-        body.contains("Sculpt3dScene::new(") && body.contains("gfx.sculpt3d = Some(scene)"),
+        body.contains("Sculpt3dScene::new(") && body.contains("*slot = Some(scene)"),
         "sem cena, o import tem de CRIAR uma"
     );
 }
@@ -171,9 +171,9 @@ fn dropping_a_mesh_arms_the_module() {
 /// é dirigível sem alguém clicando nele.
 #[test]
 fn the_picker_goes_through_the_same_import_door_as_the_drop() {
-    let body = function_body(&sculpt_src(), "sculpt3d_pick_and_import");
+    let body = function_body(&sculpt_src(), "pick_and_import");
     assert!(
-        body.contains("sculpt3d_import_files("),
+        body.contains("import_files("),
         "o seletor tem de ENTREGAR ao import, e nao importar por conta propria"
     );
     assert!(
@@ -260,7 +260,7 @@ fn the_export_writes_the_live_level_through_the_pose() {
 /// lugar errado, que é a forma de erro mais cara que existe.
 #[test]
 fn an_unknown_export_extension_is_refused_not_silently_defaulted() {
-    let body = function_body(&sculpt_src(), "sculpt3d_export");
+    let body = function_body(&sculpt_src(), "export");
     assert!(
         body.contains("from_extension"),
         "a extensão é quem decide o formato"
@@ -338,7 +338,7 @@ fn every_imported_piece_records_its_own_undo_entry() {
 /// decide continua sendo a extensão do caminho final.
 #[test]
 fn the_save_dialog_offers_one_filter_per_format() {
-    let body = function_body(&sculpt_src(), "sculpt3d_export");
+    let body = function_body(&sculpt_src(), "export");
     assert!(
         body.contains("for f in MeshFormat::ALL") && body.contains("add_filter("),
         "um filtro POR formato, senão o diálogo completa com a primeira extensão"
@@ -357,7 +357,7 @@ fn the_save_dialog_offers_one_filter_per_format() {
 /// olharia. Um gate de unidade não o vê porque `place` estaria correta.
 #[test]
 fn the_placement_runs_before_any_piece_enters_the_scene() {
-    let body = function_body(&sculpt_src(), "sculpt3d_import_files");
+    let body = function_body(&sculpt_src(), "import_files");
     let placed = body.find("place(&mut loaded").expect("a colocação roda");
     let opened = body
         .find("Sculpt3dScene::new(")

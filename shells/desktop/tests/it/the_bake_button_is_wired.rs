@@ -31,16 +31,16 @@ fn the_button_and_the_shortcut_arm_the_same_request() {
 
     // O atalho, no roteador de teclado do cluster.
     assert!(
-        cluster.contains("self.sculpt3d_req.bake_request = true;"),
+        cluster.contains("req.bake_request = true;"),
         "o `Shift+B` tem de armar o pedido — sem isso o atalho nao pede nada"
     );
     // E o botão, no laço de frame, a partir do RETORNO do bridge.
     let armed = braced_block(
         &loop_src,
-        "sculpt3d_panel_bridge::dispatch(hero, sculpt3d.as_mut())",
+        "ph2d_app_sculpt3d::panel_bridge::dispatch(hero, sculpt3d.as_mut())",
     );
     assert!(
-        armed.contains("self.sculpt3d_req.bake_request = true;"),
+        armed.contains("req.bake_request = true;"),
         "o retorno do bridge do painel tem de armar o MESMO campo que o atalho, \
          e ele arma: {armed}"
     );

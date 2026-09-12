@@ -21,7 +21,7 @@
 // tem um `String` no braço `Mesh`. Clonar uma recusa é barato e acontece uma vez
 // por gesto recusado.
 #[derive(Clone, Debug, PartialEq)]
-pub(in crate) enum RemeshRefusal {
+pub(crate) enum RemeshRefusal {
     /// A pilha de multires está montada: o remesh troca a topologia, e todo
     /// nível acima é subdivisão da base.
     MultiresStack,

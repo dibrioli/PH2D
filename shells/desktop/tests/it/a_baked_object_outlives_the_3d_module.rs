@@ -53,42 +53,40 @@ fn the_relight_is_not_behind_the_sculpt_feature() {
     );
 }
 
-/// **O MÓDULO que carrega os canais também não está atrás da feature.**
+/// **A CRATE que carrega os canais também não está atrás da feature.**
 ///
-/// ⚠️ Sem esta metade, a chamada do gate acima nem compilaria — mas o gate diria *"não achei"* em
-/// vez de dizer o que está errado. Mais importante: ela pega a versão que passa pelo primeiro gate e
-/// mesmo assim quebra a promessa, que é declarar `mod baked_form` sob `cfg`.
+/// ⚠️ Sem esta metade, a chamada do gate acima nem compilaria — mas o gate diria *«não achei»* em
+/// vez de dizer o que está errado. Mais importante: ela pega a versão que passa pelo primeiro gate
+/// e mesmo assim quebra a promessa.
+///
+/// ⚠️⚠️ **O SUJEITO mudou em 2026-09-11 (W2/L3-B), e a propriedade ficou MAIS FORTE.** Isto era
+/// `mod baked_form;` no `main.rs`, e o gate subia linha a linha à procura de um `#[cfg]` contíguo.
+/// Hoje o `baked_form` é a [`ph2d_form_donation`], uma crate-folha — e uma **dependência sem
+/// `optional` não tem como ficar atrás de feature nenhuma**: não há atributo para pôr. ⇒ a
+/// pergunta passa a ser sobre o manifesto, e a resposta é binária em vez de posicional.
+///
+/// ⛔ **E a razão de a crate existir é esta promessa**: o `RigStamp` é campo de uma struct da
+/// família, e quando ela saiu para uma crate própria, *«não ter `cfg`»* deixou de bastar para o
+/// manter alcançável de um binário sem escultura.
+///
+/// **Mutação que deve sangrar:** pôr `optional = true` na linha do manifesto.
 #[test]
-fn the_module_that_holds_the_channels_is_unconditional() {
-    let src = source("main.rs");
-    let at = src
-        .find("mod baked_form;")
-        .expect("o shell precisa declarar `mod baked_form`");
-    // ⭐⭐ **Os atributos DESTA declaração, e não uma janela de bytes.**
-    //
-    // ⚠️ **A primeira redacção lia os 80 bytes anteriores, e ela acusou o VIZINHO** (2026-09-09): o
-    // `rustfmt` ordena as declarações de módulo por ordem alfabética, o smoke do som de cena entrou
-    // como `mod audio_2d_smoke` — legitimamente sob `cfg`, porque a fixtura dele precisa do encoder
-    // — e aterrou na linha imediatamente acima desta. O gate reprovou sobre um `main.rs` correcto,
-    // com uma mensagem a falar de um módulo que ninguém tinha tocado. *Um gate que parseia o fonte
-    // tem de saber a que ITEM cada atributo pertence; uma janela de bytes não sabe.*
-    //
-    // ⇒ ele sobe linha a linha e só olha para as que são atributos **contíguos** a esta
-    // declaração. A primeira linha que não seja um `#[…]` pertence a outro item, e pára ali.
-    let before = &src[..at];
-    let mut atributos = String::new();
-    for linha in before.lines().rev() {
-        let t = linha.trim();
-        if !t.starts_with("#[") {
-            break;
-        }
-        atributos.push_str(t);
-        atributos.push('\n');
-    }
+fn the_crate_that_holds_the_channels_is_unconditional() {
+    let manifesto = std::fs::read_to_string(format!(
+        "{}/Cargo.toml",
+        env!("CARGO_MANIFEST_DIR")
+    ))
+    .expect("o `Cargo.toml` da shell existe");
+
+    let linha = manifesto
+        .lines()
+        .find(|l| l.trim_start().starts_with("ph2d-form-donation ="))
+        .expect(
+            "controlo positivo: a shell deixou de declarar a `ph2d-form-donation` — ou ela mudou              de nome, e este gate passaria a medir o vazio",
+        );
     assert!(
-        !atributos.contains("cfg(feature"),
-        "`mod baked_form` esta' sob um `cfg` -- os canais assados sairiam do build junto com a \
-         escultura, e e' exatamente isso que a rota A promete que NAO acontece"
+        !linha.contains("optional"),
+        "a `ph2d-form-donation` ficou `optional` (`{linha}`) — os canais assados sairiam do build          junto com a escultura, e é exactamente isso que a rota A promete que NÃO acontece: um          projeto reaberto num binário sem o módulo 3D devolveria um objeto que ninguém consegue          iluminar"
     );
 
     // E o par persistência ↔ documento pelo mesmo motivo: um deles sob `cfg` deixa o `ProjectFile`

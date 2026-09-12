@@ -32,7 +32,10 @@ fn arm() -> &'static str {
         .split_once("if code == K::Delete {")
         .expect("⛔ o braco do Delete desapareceu do teclado da escultura");
     let (arm, _) = resto
-        .split_once("\n        }\n")
+        // ⚠️ **Quatro espaços desde 2026-09-11 (W2/L3-B)**: o `impl App` desapareceu e o corpo
+        // subiu um nível de indentação. *Um gate que mede um bloco por COLUNA envelhece com a
+        // primeira mudança de casa* — e o controlo positivo abaixo é o que o diz em voz alta.
+        .split_once("\n    }\n")
         .expect("⛔ o braco do Delete nao fecha");
     arm
 }
@@ -42,9 +45,20 @@ fn arm() -> &'static str {
 fn o_delete_decide_pela_porta_com_os_quatro_factos() {
     let arm = arm();
     assert!(
-        arm.contains("keys_delete::claim_delete(&factos)"),
+        arm.contains("keys_delete::claim_delete(factos)"),
         "⛔ o `Delete` tem de decidir pela porta pura, e nao por um `if` local"
     );
+    // ⚠️⚠️ **Os factos mudaram de LADO em 2026-09-11 (W2/L3-B), e o gate segue-os.** Eles eram
+    // recolhidos aqui, no braço do `Delete`, de dentro de um `impl App`. Hoje chegam **colhidos**,
+    // num `DeleteFacts` que a shell monta antes de emprestar a cena — e a lei ganhou com isso: o
+    // `text_focused` era lido DUAS vezes neste corpo e nada obrigava as leituras a concordar.
+    // ⇒ o sujeito do censo é o invólucro (`src/sculpt3d_host.rs`), e a lei pura continua a ser
+    // medida no braço, pela chamada a `claim_delete`.
+    let arm = std::fs::read_to_string(format!(
+        "{}/src/sculpt3d_host.rs",
+        env!("CARGO_MANIFEST_DIR")
+    ))
+    .expect("o invólucro da escultura existe");
     for facto in [
         "clay_on_screen:",
         "text_focused:",
@@ -84,7 +98,7 @@ fn o_braco_do_delete_resolve_antes_do_guarda_das_teclas_nuas() {
         .find("if code == K::Delete {")
         .expect("o braco do Delete");
     let guarda = KEYS
-        .find("if !self.sculpt3d_keys_live()")
+        .find("if !keys_live")
         .expect("o guarda das teclas nuas");
     assert!(
         delete < guarda,

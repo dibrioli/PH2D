@@ -93,7 +93,7 @@ fn the_visible_area_has_one_door_and_both_clients_use_it() {
         "o modulo 3D voltou a ter a propria copia da area visivel"
     );
     // E a porta é uma só: ninguém mais lê o `last_content` cru.
-    for rel in ["prefab_stage.rs", "field3d_layout.rs"] {
+    for rel in ["prefab_stage.rs", "chrome_hit.rs"] {
         assert!(
             !code_of(rel).contains("last_content"),
             "{rel} le o `last_content` cru — e' a segunda resposta a` mesma pergunta"

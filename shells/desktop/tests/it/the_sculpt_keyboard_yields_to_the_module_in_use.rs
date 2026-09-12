@@ -50,13 +50,13 @@ fn at(src: &str, needle: &str) -> usize {
 #[test]
 fn a_focused_field_owns_the_keyboard_before_any_branch() {
     let src = keys_src();
-    let guard = at(&src, "self.text_entry_focused()");
+    let guard = at(&src, "factos.text_focused");
     // A primeira coisa que a função pode CONSUMIR é o bake (`Shift+B`); a guarda tem de vir
     // antes dela, senão a metade que ela protege depende de qual tecla foi apertada.
     // ⚠️ **`sculpt3d_req.bake_request` desde 2026-09-11 (W2/L3-A2)** — os cinco pedidos da
     // escultura passaram a um `Sculpt3dRequests`. O `at()` faz `expect`, logo este gate
     // reprova ALTO quando o nome muda, em vez de deixar de medir a ordem em silêncio.
-    let first_consumer = at(&src, "sculpt3d_req.bake_request = true");
+    let first_consumer = at(&src, "req.bake_request = true");
     assert!(
         guard < first_consumer,
         "a guarda do campo focado corre DEPOIS de um braço que já consome — digitar num painel \
@@ -71,21 +71,26 @@ fn a_focused_field_owns_the_keyboard_before_any_branch() {
 #[test]
 fn the_sculpture_keys_require_the_clay_to_be_on_screen() {
     let src = keys_src();
-    let guard = at(&src, "if !self.sculpt3d_keys_live()");
-    let borrow = at(&src, "let Some(scene) = self.sculpt3d_scene_mut() else");
-    // ⚠️ O `find` acha a PRIMEIRA ocorrência do empréstimo, que hoje é a do ciclo de papel (que
-    // corre antes de propósito). A que interessa é a do corpo grande — a ÚLTIMA.
-    let body = src
-        .rfind("let Some(scene) = self.sculpt3d_scene_mut() else")
-        .expect("o empréstimo da cena sumiu");
+    let guard = at(&src, "if !keys_live");
+    let borrow = at(&src, "fn key(");
+    // ⚠️⚠️ **O SUJEITO desta ordem mudou em 2026-09-11 (W2/L3-B), e a propriedade é a mesma.**
+    // Ela media *o guarda vem antes do EMPRÉSTIMO da cena* (`self.sculpt3d_scene_mut()`), porque
+    // era esse empréstimo que abria a parte reivindicadora do teclado. Hoje a cena chega por
+    // parâmetro e não há empréstimo nenhum — o que o guarda protege é o **corpo que reivindica
+    // teclas**, e o primeiro item dele é a delegação ao teclado da câmara.
+    //
+    // ⇒ o gate mede o que a lei diz: *nada que reivindique uma tecla corre antes de o barro estar
+    // na tela*. ⛔ Medir a posição de `fn key(` seria medir o começo da função, que está antes de
+    // tudo por construção — a asserção passaria a ser trivialmente falsa (e foi).
+    let reivindica = at(&src, "keys_view::camera_key(");
     assert!(
-        guard < body,
+        guard < reivindica,
         "o teclado da escultura é reivindicado sem o barro na tela — é o bug do report: abrir o \
          Sculpt uma vez cala os atalhos de todo painel para o resto da sessão"
     );
     assert!(
-        borrow <= body,
-        "controle: o gate deixou de distinguir os dois empréstimos"
+        borrow < guard,
+        "controle positivo: a função tem de começar antes do guarda dela"
     );
 }
 
@@ -100,7 +105,7 @@ fn the_sculpture_keys_require_the_clay_to_be_on_screen() {
 fn the_donation_switch_survives_outside_the_clay() {
     let src = keys_src();
     let cycle = at(&src, "cycle_role()");
-    let guard = at(&src, "if !self.sculpt3d_keys_live()");
+    let guard = at(&src, "if !keys_live");
     assert!(
         cycle < guard,
         "o ciclo de papel caiu debaixo da guarda do barro — `FormRole::Off` fica inalcançável, \
@@ -108,7 +113,7 @@ fn the_donation_switch_survives_outside_the_clay() {
     );
     // E ele continua atrás da guarda geral: digitar `d` num campo não pode virar um gesto.
     assert!(
-        at(&src, "self.text_entry_focused()") < cycle,
+        at(&src, "factos.text_focused") < cycle,
         "o `D` do papel corre antes da guarda do campo focado — digitar `d` num painel cicla a \
          doação"
     );

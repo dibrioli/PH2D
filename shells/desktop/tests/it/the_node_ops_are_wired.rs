@@ -580,14 +580,14 @@ fn the_three_d_module_is_drawn_into_the_area_never_into_the_window() {
     // A janela dos argumentos: do nome da função até ao fim da chamada.
     let args = &src[call..call + 400];
     assert!(
-        args.contains("crate::field3d_layout::area("),
+        args.contains("ph2d_viewport3d::layout::area("),
         "o desenho do 3D voltou a receber um rect que nao vem da porta da area — com a janela crua \
          ele ladrilha por baixo das reguas e do chrome"
     );
     // ⛔ E o controlo do outro lado: a janela **é** passada, mas só como o fallback do primeiro
     // quadro, DENTRO da porta. Um `viewport.x` fora dela é a chamada antiga de volta.
     let before_door = &args[..args
-        .find("crate::field3d_layout::area(")
+        .find("ph2d_viewport3d::layout::area(")
         .expect("a porta esta' na chamada")];
     assert!(
         !before_door.contains("viewport.x"),

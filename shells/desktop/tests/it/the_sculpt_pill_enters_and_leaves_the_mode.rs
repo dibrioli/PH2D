@@ -111,7 +111,7 @@ fn the_pill_is_synced_before_the_bridge_gives_up_on_a_missing_scene() {
 fn entering_with_no_scene_creates_one_from_the_one_primitive_door() {
     let src = fs::read_to_string(MODE).expect("o módulo do modo existe");
     assert!(
-        src.contains("Sculpt3dScene::new(&device, mesh, aspect)"),
+        src.contains("Sculpt3dScene::new(device, mesh, aspect)"),
         "entrar sem cena não cria nenhuma: o pill é um botão morto em todo run sem a env var"
     );
     assert!(
@@ -149,11 +149,11 @@ fn the_scene_never_takes_a_click_that_belongs_to_the_chrome() {
         .collect::<Vec<_>>()
         .join("\n");
     assert!(
-        src.contains("fn sculpt3d_pointer_down"),
+        src.contains("fn pointer_down"),
         "controle positivo: o dono do gesto mudou de arquivo e este gate varreria o vazio"
     );
     assert_eq!(
-        src.matches("chrome_hit::pointer_over_chrome").count(),
+        src.matches("host.pointer_over_chrome").count(),
         2,
         "as DUAS portas da cena (o botão e a roda) têm de perguntar pela moldura inteira"
     );

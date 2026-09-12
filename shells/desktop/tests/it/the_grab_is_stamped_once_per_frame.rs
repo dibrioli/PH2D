@@ -29,7 +29,7 @@ fn read(rel: &str) -> String {
 
 #[test]
 fn the_pointer_event_registers_the_pull_instead_of_stamping_it() {
-    let src = read("sculpt3d/input.rs");
+    let src = read("../../../crates/ph2d-app-sculpt3d/src/input.rs");
     let arm = src
         .find("Grip::Hold =>")
         .expect("o braço do Grip::Hold saiu do despachante de arrasto");
@@ -51,7 +51,7 @@ fn the_pointer_event_registers_the_pull_instead_of_stamping_it() {
 
 #[test]
 fn the_pen_up_drains_the_pending_pull_before_it_closes_the_stroke() {
-    let src = read("sculpt3d/input.rs");
+    let src = read("../../../crates/ph2d-app-sculpt3d/src/input.rs");
     // ⚠️ **A janela é o CORPO do pen-up, e a 1ª versão deste gate anchorava no
     // ARQUIVO — a mutação sobreviveu por isso.** O dreno de QUADRO
     // (`flush_grab`) chama a mesma função ~170 linhas acima, então

@@ -12,7 +12,7 @@ use sculpt_source::{braced_block, function_body, grip_arm, match_arm, sculpt_src
 
 #[test]
 fn the_left_button_sculpts_where_it_hits_and_orbits_where_it_misses() {
-    let body = function_body(&sculpt_src(), "sculpt3d_pointer_down");
+    let body = function_body(&sculpt_src(), "pointer_down");
     assert!(
         body.contains("stroke.begin("),
         "o pen-down tem de CONGELAR o `pre` — sem isso a lei do traço não começa"
@@ -50,7 +50,7 @@ fn the_modifiers_are_read_once_at_pen_down_and_hold_for_the_whole_stroke() {
     // representar isso. Nenhum app de escultura permite, e aqui a garantia é
     // estrutural: quem lê os modificadores é o Down, e o Move não os consulta.
     let src = sculpt_src();
-    let down = function_body(&src, "sculpt3d_pointer_down");
+    let down = function_body(&src, "pointer_down");
     assert!(
         down.contains("scene.brush.invert = ctrl"),
         "o Ctrl (o `inverte` de todo app de escultura) tem de ser lido no Down"
@@ -86,17 +86,32 @@ fn the_modifiers_are_read_once_at_pen_down_and_hold_for_the_whole_stroke() {
 fn every_3d_port_is_inert_without_a_scene() {
     let src = sculpt_src();
 
-    // (a) as que guardam em RUNTIME
-    for port in ["sculpt3d_pointer_down", "sculpt3d_wheel", "sculpt3d_key"] {
-        let body = function_body(&src, port);
-        assert!(
-            body.contains("sculpt3d_scene_mut()") && body.contains("return false"),
-            "`{port}` tem de recusar sem cena armada"
-        );
-    }
+    // ⭐⭐ **(a) MUDOU DE ESPÉCIE em 2026-09-11 (W2/L3-B), e o gate já tinha a outra escrita.**
+    //
+    // Estas três guardavam em RUNTIME (`self.sculpt3d_scene_mut()` … `return false`) porque
+    // viviam num `impl App` e tinham de ir buscar a cena. Hoje elas **recebem-na**, e a guarda
+    // subiu para o invólucro da shell — que devolve `false` sem ela — enquanto a função da
+    // família passou a ser **inerte por CONSTRUÇÃO**: sem uma `&mut Sculpt3dScene` na mão,
+    // ninguém a consegue chamar.
+    //
+    // ⚠️ **Isto é estritamente mais forte que o que estava aqui.** Uma guarda de runtime
+    // pode ser esquecida numa porta nova; um parâmetro não pode — é erro de compilação.
+    // ⇒ elas juntam-se à lista (b), que é a lista de quem guarda pelo TIPO.
+    //
+    // ⛔ **E a guarda de runtime não desapareceu — mudou de dono**, e o gate irmão
+    // `the_sculpt_host_refuses_without_a_scene` afirma-a no `sculpt3d_host.rs`. Sem essa
+    // metade, a shell podia chamar a família com uma cena que não existe… o que também não
+    // compila. *As duas metades são a mesma lei escrita nos dois lados da fronteira.*
 
     // (b) as que guardam pelo TIPO — a assinatura PEDE a cena…
-    for port in ["flush_grab", "pointer_up", "pointer_move"] {
+    for port in [
+        "pointer_down",
+        "wheel",
+        "key",
+        "flush_grab",
+        "pointer_up",
+        "pointer_move",
+    ] {
         let sig = src
             .find(&format!("fn {port}("))
             .map(|i| &src[i..(i + 120).min(src.len())])
@@ -118,7 +133,7 @@ fn every_3d_port_is_inert_without_a_scene() {
     ] {
         let d = source(file);
         let call = d
-            .find(&format!("crate::sculpt3d::{port}"))
+            .find(&format!("ph2d_app_sculpt3d::{port}"))
             .unwrap_or_else(|| panic!("`{file}` deixou de chamar a porta `{port}`"));
         let antes = &d[call.saturating_sub(220)..call];
         assert!(
@@ -178,9 +193,9 @@ fn a_click_on_the_chrome_is_not_a_click_on_the_model() {
     // que pergunta ao índice de acerto; a lei geral está em
     // `the_scene_asks_the_one_chrome_door.rs`.
     let src = sculpt_src();
-    let down = function_body(&src, "sculpt3d_pointer_down");
+    let down = function_body(&src, "pointer_down");
     assert!(
-        down.contains("chrome_hit::pointer_over_chrome("),
+        down.contains("host.pointer_over_chrome("),
         "o Down tem de recusar um clique que é da moldura do app"
     );
     // ⚠️ E o Move/Up NÃO podem fazer a mesma pergunta: um arrasto em curso
@@ -422,7 +437,7 @@ fn the_stroke_anchor_is_armed_at_pen_down() {
     // traço ANTERIOR — no outro canto da tela, o que carimba uma fileira de
     // dabs atravessando o modelo.
     assert!(
-        function_body(&sculpt_src(), "sculpt3d_pointer_down")
+        function_body(&sculpt_src(), "pointer_down")
             .contains("stroke_anchor = [pos.0, pos.1]"),
         "o pen-down tem de armar a âncora do espaçamento"
     );
@@ -648,7 +663,7 @@ fn the_swept_angle_accumulates_instead_of_saturating_at_half_a_turn() {
     );
     // O gesto morre com o gesto: um traço novo não começa torcido.
     assert!(
-        function_body(&src, "sculpt3d_pointer_down").contains("twist = None"),
+        function_body(&src, "pointer_down").contains("twist = None"),
         "o pen-down tem de zerar o ângulo varrido"
     );
 }
@@ -786,7 +801,7 @@ fn every_verb_is_reachable_from_the_keyboard() {
         // é do Enio.**
         "Cloth",
     ];
-    let keys = function_body(&sculpt_src(), "sculpt3d_key");
+    let keys = function_body(&sculpt_src(), "key");
     // ⚠️ **O gate COLETA em vez de abortar no primeiro, e isso não é estilo.**
     // A 1ª versão era um `assert!` DENTRO do laço, então ela nomeava UM ofensor
     // por corrida: com dois verbos por declarar (`SlideRelax` e `SurfaceSmooth`,
@@ -905,7 +920,7 @@ fn the_cavity_is_born_off() {
 /// nova maior, um pânico no primeiro evento).
 #[test]
 fn the_armed_transform_takes_the_left_button_before_the_stroke_does() {
-    let body = function_body(&sculpt_src(), "sculpt3d_pointer_down");
+    let body = function_body(&sculpt_src(), "pointer_down");
     let arm = body
         .find("scene.transform_arm().is_some()")
         .expect("o pen-down não pergunta se o transform está armado");
@@ -1076,7 +1091,7 @@ fn a_missed_dab_does_not_hold_the_anchor_back() {
 #[test]
 fn the_armed_filter_claims_the_left_button_before_the_stroke() {
     let src = sculpt_src();
-    let down = function_body(&src, "sculpt3d_pointer_down");
+    let down = function_body(&src, "pointer_down");
     let filter = down
         .find("scene.filter_arm()")
         .expect("o Down tem de perguntar se o filtro está armado");

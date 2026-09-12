@@ -78,7 +78,7 @@ fn the_four_mask_operations_have_a_gesture_and_an_undo() {
     // ela não existir — e é literalmente o defeito que a W4.2 fecha (a máscara
     // existia desde a W2 e era invisível).
     let src = sculpt_src();
-    let key = function_body(&src, "sculpt3d_key");
+    let key = function_body(&src, "key");
     for (code, op) in [
         ("KeyC", "MaskOp::Clear"),
         ("KeyI", "MaskOp::Invert"),
@@ -204,7 +204,7 @@ fn undoing_a_subdivision_drops_the_top_level_instead_of_restoring_a_mesh() {
     );
 
     // E as teclas existem, com o log que diz onde o artista está.
-    let key = function_body(&src, "sculpt3d_key");
+    let key = function_body(&src, "key");
     assert!(
         key.contains("K::KeyK") && key.contains("scene.subdivide()"),
         "a tecla K chega à porta"
@@ -253,7 +253,7 @@ fn undoing_an_added_level_climbs_back_to_the_top_first() {
 /// gate que só olha o lado de dentro.
 #[test]
 fn the_redo_shortcut_redoes_instead_of_undoing_one_more() {
-    let key = function_body(&sculpt_src(), "sculpt3d_key");
+    let key = function_body(&sculpt_src(), "key");
     assert!(
         key.contains("scene.redo_stroke()") && key.contains("scene.undo_stroke()"),
         "as duas direções têm de existir na tecla"
@@ -500,7 +500,7 @@ fn the_reversion_scene_opens_with_a_mesh_that_is_a_subdivision() {
 #[test]
 fn closing_holes_is_offered_on_its_own_key_and_it_says_which_of_the_three_happened() {
     let src = sculpt_src();
-    let key = function_body(&src, "sculpt3d_key");
+    let key = function_body(&src, "key");
     assert!(key.contains("K::KeyO"), "tapar buraco tem tecla própria");
     let block = braced_block(&key, "if code == K::KeyO");
     assert!(
@@ -579,7 +579,7 @@ fn the_holes_scene_says_how_big_the_hole_it_built_is() {
     // um endereço. A propriedade nunca mudou — *a cena `=4` imprime quantas beiras ela abriu* —,
     // e ela não depende de em que função a linha mora. O `sculpt_src` já junta o cluster inteiro,
     // então o bloco é achado onde quer que ele esteja, e o próximo split não derruba nada.
-    let arm = braced_block(&src, "if crate::sculpt3d::holes_scene()");
+    let arm = braced_block(&src, "if crate::holes_scene()");
     assert!(
         arm.contains("valence(") && arm.contains("arestas de BEIRA"),
         "e a cena imprime quantas arestas de beira ela abriu"
@@ -592,7 +592,7 @@ fn the_remesh_has_a_key_and_it_says_both_counts() {
     // no log, o artista aperta, vê a mesma escultura e conclui que a tecla está
     // morta; é a mesma razão pela qual o `K` imprime a contagem nova.
     let src = sculpt_src();
-    let key = function_body(&src, "sculpt3d_key");
+    let key = function_body(&src, "key");
     let block = braced_block(&key, "code == K::KeyV");
     assert!(
         block.contains("scene.remesh("),
@@ -622,7 +622,7 @@ fn the_remesh_refuses_with_the_stack_built_instead_of_flattening_it() {
     let enum_src = std::fs::read_to_string("../../crates/ph2d-app-sculpt3d/src/remesh_refusal.rs")
         .expect("o enum das recusas é legível a partir do pacote");
     let body = enum_src
-        .split("pub(in crate::sculpt3d) enum RemeshRefusal {")
+        .split("pub(crate) enum RemeshRefusal {")
         .nth(1)
         .and_then(|t| t.split("\n}").next())
         .expect("o enum das recusas tem corpo");
@@ -681,7 +681,7 @@ fn the_remesh_refuses_with_the_stack_built_instead_of_flattening_it() {
         "o remesh tem de recusar com a pilha montada, e NOMEAR a recusa que o log lê"
     );
     // E a recusa precisa CHEGAR ao artista, ou ele conclui que a tecla quebrou.
-    let key = function_body(&sculpt_src(), "sculpt3d_key");
+    let key = function_body(&sculpt_src(), "key");
     let block = braced_block(&key, "code == K::KeyV");
     assert!(
         block.contains("e.explain()"),
@@ -874,7 +874,7 @@ fn the_pick_compares_in_world_and_the_brush_crosses_the_scale() {
 #[test]
 fn a_stroke_belongs_to_the_piece_it_started_on() {
     let src = sculpt_src();
-    let down = function_body(&src, "sculpt3d_pointer_down(&mut self");
+    let down = function_body(&src, "pointer_down(");
     let at_aim = down.find("scene.aim(").expect("o pen-down tem de MIRAR");
     let at_begin = down
         .find("scene.stroke.begin(")
@@ -1048,7 +1048,7 @@ fn the_authored_resolution_reaches_both_remesh_doors() {
             "o botao do painel",
             function_body(&src, "apply_panel_intent"),
         ),
-        ("a tecla V", function_body(&src, "sculpt3d_key")),
+        ("a tecla V", function_body(&src, "key")),
     ] {
         assert!(
             corpo.contains("remesh(self.remesh_res)") || corpo.contains("remesh(scene.remesh_res)"),

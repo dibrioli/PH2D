@@ -166,7 +166,7 @@ fn the_frame_asks_the_module_to_donate() {
 #[test]
 fn a_hidden_clay_hands_the_pointer_back() {
     let both = scene_and_gesture();
-    for door in ["fn sculpt3d_pointer_down", "fn sculpt3d_wheel"] {
+    for door in ["fn pointer_down", "fn wheel"] {
         let at = both
             .find(door)
             .unwrap_or_else(|| panic!("`{door}` sumiu do módulo 3D — atualize este gate"));
@@ -196,7 +196,7 @@ fn a_hidden_clay_hands_the_pointer_back() {
 #[test]
 fn switching_off_clears_the_installed_plane() {
     assert!(
-        DONATION.contains("self.donated_form.news = Some(None);"),
+        DONATION.contains("canal.news = Some(None);"),
         "a posição desligada tem de EMITIR o apagamento, não apenas parar de doar"
     );
 }

@@ -29,6 +29,16 @@ const DOOR: &str = "chrome_hit::pointer_over_chrome(";
 /// A MESMA porta, vista do lado de uma familia que ja' nao e' desta crate: ela pergunta ao
 /// `ph2d_app_host::AppHost`, e quem atende e' a shell (`src/app_host.rs`).
 const HOST_DOOR: &str = "self.pointer_over_chrome(";
+/// ⭐ **A TERCEIRA forma da MESMA porta** (W2/L3-B), e ela existe porque a escultura guarda a cena
+/// no `AppGfx` enquanto o `field3d` a guarda num `thread_local`.
+///
+/// Ali o host é o `self` de um trait de extensão; aqui a cena tem de ser **emprestada** ao gesto
+/// (o invólucro da shell fá-lo por `take`), e por isso o host chega como **parâmetro**. ⚠️ É a
+/// mesma pergunta ao mesmo índice de acerto — o que muda é o nome do receptor, e nada mais.
+///
+/// ⛔⛔ **Uma agulha só para os três obrigaria os três lados a falar a mesma língua, e depois da
+/// fronteira eles não falam** — é a lição que a linha acima já tinha escrito quando eram DUAS.
+const PARAM_DOOR: &str = "host.pointer_over_chrome(";
 /// O input do modulo 3D vive em `crates/ph2d-app-field3d` desde a W2.
 const FAMILY_INPUT: &str = "../../crates/ph2d-app-field3d/src/input.rs";
 
@@ -61,8 +71,8 @@ const SCENE_PORTS: [(&str, &str, &str); 4] = [
     // *Um gate que nomeia um FICHEIRO envelhece com o primeiro corte* — e o modo de falha aqui é
     // o pior: o `function_body` entra em pânico com «controlo positivo», que se lê como o gate
     // partido em vez de como a lista desactualizada.
-    ("../../crates/ph2d-app-sculpt3d/src/input_down.rs", "sculpt3d_pointer_down", DOOR),
-    ("../../crates/ph2d-app-sculpt3d/src/input.rs", "sculpt3d_wheel", DOOR),
+    ("../../crates/ph2d-app-sculpt3d/src/input_down.rs", "pointer_down", PARAM_DOOR),
+    ("../../crates/ph2d-app-sculpt3d/src/input.rs", "wheel", PARAM_DOOR),
 ];
 
 const SCENE_FILES: [&str; 3] = [
@@ -88,6 +98,8 @@ fn function_body(src: &str, name: &str) -> String {
     // nome aparece DUAS vezes — a declaracao (sem corpo) e a implementacao. Uma fatia a partir da
     // declaracao atravessa para dentro do PRIMEIRO metodo implementado, que por acaso contem a
     // agulha ⇒ o gate passaria a VERDE sobre uma funcao que deixou de perguntar.
+    // ⚠️ A escultura NÃO tem trait de extensão — as portas dela são funções livres que recebem
+    // o host, logo cada nome aparece uma vez só e não há declaração a atravessar.
     let src = match src.find("Field3dInput for H {") {
         Some(k) => &src[k..],
         None => src,
@@ -161,7 +173,7 @@ fn a_drag_already_running_is_never_dropped_by_crossing_the_frame() {
     // desactualizada, que é o que de facto estava.
     for (path, nome, door) in [
         (FAMILY_INPUT, "field3d_pointer_up", HOST_DOOR),
-        ("../../crates/ph2d-app-sculpt3d/src/input.rs", "pointer_up", DOOR),
+        ("../../crates/ph2d-app-sculpt3d/src/input.rs", "pointer_up", PARAM_DOOR),
     ] {
         let body = function_body(&src(path), nome);
         assert!(

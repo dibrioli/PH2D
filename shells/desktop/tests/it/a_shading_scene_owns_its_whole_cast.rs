@@ -162,7 +162,7 @@ fn the_scene_rig_reaches_the_session() {
     // abaixo que o disse** — com a raiz antiga esta varredura casaria só com o directório
     // (que não acaba em `.rs`) e devolveria zero, que é a passagem por vácuo que ele existe
     // para não ter.
-    let mut found: Vec<String> = fs::read_dir("src/sculpt3d")
+    let mut found: Vec<String> = fs::read_dir("../../crates/ph2d-app-sculpt3d/src")
         .expect("a pasta da família existe")
         .filter_map(Result::ok)
         .map(|e| e.file_name().to_string_lossy().into_owned())

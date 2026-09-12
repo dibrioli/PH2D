@@ -11,12 +11,12 @@
 //! por dois sítios poria metade da arbitragem a correr depois da outra metade
 //! ter já respondido.
 
-use super::{Drag, Verb};
+use super::{Drag, Verb, Sculpt3dScene};
 
 /// O botão apertou. Devolve `true` se a cena 3D tomou o gesto.
 pub fn pointer_down(
     host: &mut impl ph2d_app_host::AppHost,
-    scene: &mut crate::Sculpt3dScene,
+    scene: &mut Sculpt3dScene,
     button: winit::event::MouseButton,
 ) -> bool {
     let pos = host.pointer();

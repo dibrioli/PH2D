@@ -18,7 +18,12 @@
 use std::collections::BTreeSet;
 use std::fs;
 
-const ROOT: &str = "src";
+/// ⚠️⚠️ **A raiz mudou de CASA em 2026-09-11 (W2/L3-B)** — as cenas saíram para a
+/// `ph2d-app-sculpt3d`. ⛔ O controlo positivo abaixo é o que impede isto de passar em
+/// silêncio: com a raiz antiga a varredura ainda lê centenas de ficheiros da shell e não acha
+/// **cena nenhuma**, e uma lista vazia satisfaz toda asserção de duplicado ou de mudez.
+/// *É por isso que o piso é sobre as CENAS achadas, e não só sobre os ficheiros lidos.*
+const ROOT: &str = "../../crates/ph2d-app-sculpt3d/src";
 
 /// Os módulos que DEFINEM um roteiro, e o texto inteiro do shell onde as chamadas vivem.
 fn scan() -> (BTreeSet<String>, String, usize) {
@@ -27,7 +32,7 @@ fn scan() -> (BTreeSet<String>, String, usize) {
     let mut walked = 0usize;
     let mut stack = vec![std::path::PathBuf::from(ROOT)];
     while let Some(dir) = stack.pop() {
-        for entry in fs::read_dir(&dir).expect("o src/ do shell existe") {
+        for entry in fs::read_dir(&dir).expect("o src/ da crate da família existe") {
             let path = entry.expect("entrada legível").path();
             if path.is_dir() {
                 stack.push(path);
@@ -65,7 +70,7 @@ fn every_sculpt3d_scene_script_is_announced() {
     // existe para não ter.
     assert!(
         walked > 20,
-        "a varredura leu {walked} arquivos — o `src/` mudou de lugar"
+        "a varredura leu {walked} arquivos — o `src/` da família mudou de lugar"
     );
     assert!(
         defs.len() >= 2,

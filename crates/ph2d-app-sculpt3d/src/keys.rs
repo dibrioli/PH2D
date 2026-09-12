@@ -8,7 +8,7 @@
 //! ⚠️ A porta é a mesma de sempre: sem cena armada ela devolve `false` no primeiro `if`, e o
 //! teclado do app segue para o `store` como se este módulo não existisse.
 
-use super::{LIGHT_STEP_DEG, MaskOp, RADIUS_STEP, Verb};
+use super::{LIGHT_STEP_DEG, MaskOp, RADIUS_STEP, Verb, Sculpt3dScene};
 
 /// ⭐ **Os verbos da LISTA** — o que o `Shift` arma, cortado daqui na integração de 2026-09-10,
 /// quando este ficheiro ficou vermelho no teto de LOC por ACUMULAÇÃO de duas linhas.
@@ -31,7 +31,7 @@ pub mod keys_delete;
 
 /// As teclas da cena 3D. Devolve `true` se consumiu.
 pub fn key(
-    scene: &mut crate::Sculpt3dScene,
+    scene: &mut Sculpt3dScene,
     req: &mut crate::Sculpt3dRequests,
     // ⚠️ **O painel chega por PARÂMETRO, e não por pedido nem por porta** — o `HeroScreen` é um
     // tipo da `ph2d-editor`, uma crate-módulo, logo ele atravessa a fronteira sem que nada novo

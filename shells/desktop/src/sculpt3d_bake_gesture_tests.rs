@@ -123,6 +123,9 @@ fn the_bake_gesture_lights_the_selected_sprite() {
         &mut renderer,
         false,
         &mut |sim: &mut SimWorld, renderer: &mut SpriteRenderer| {
+            // PRECISION-READONLY: este gate LÊ os pixels para os comparar com o antes e o
+            // depois do bake, e nunca os escreve de volta — quem os escreve é o `drain`, que
+            // declara o custo dele na entrada própria deste censo (`render_loop/mod.rs`).
             crate::hero_intents::texture_edit::read_sprite_source(
                 ph2d_ecs::Entity::from_bits(bits),
                 sim,

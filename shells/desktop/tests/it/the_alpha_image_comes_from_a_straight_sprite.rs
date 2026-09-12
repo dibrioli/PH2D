@@ -14,7 +14,7 @@ const PANEL: &str = "../../crates/ph2d-app-sculpt3d/src/panel.rs";
 /// O corpo do bloco que cumpre o pedido, do `mem::replace` do flag até o fim.
 fn fulfilment(src: &str) -> String {
     let at = src
-        .find("self.sculpt3d_req.alpha_request, false")
+        .find("req.alpha_request, false")
         .expect("o laço de frame cumpre o pedido do alpha por imagem");
     // ⚠️ **O fim é o FIM DO BLOCO, não um número de caracteres.** A 1ª versão
     // pegava 1800 e a 2ª 3600, e as duas reprovaram produto correto assim que o
@@ -92,7 +92,7 @@ fn arming_an_image_seeds_the_scale_this_model_can_hold() {
     let src = fs::read_to_string(PANEL).expect("o módulo do painel existe");
 
     assert!(
-        src.contains("pub(crate) fn set_alpha_image"),
+        src.contains("pub fn set_alpha_image"),
         "a porta do alpha por imagem sumiu do módulo do painel"
     );
     assert!(

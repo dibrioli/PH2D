@@ -38,13 +38,13 @@ const CALL: &str = "alpha_stencil: Some(self.stencil_for(pose))";
 /// que alguém o baptize mal. ⛔ Foi o controlo positivo (`seen == 1`) quem apanhou a troca —
 /// com `"src"` a varredura não-recursiva vê o directório, não os `.rs` lá dentro, e devolvia
 /// **zero**.
-const ROOT: &str = "src/sculpt3d";
+const ROOT: &str = "../../crates/ph2d-app-sculpt3d/src";
 
 #[test]
 fn the_clay_preview_is_handed_the_view() {
     let mut seen = 0usize;
     let mut ok = false;
-    for entry in fs::read_dir(ROOT).expect("o shell tem um src/") {
+    for entry in fs::read_dir(ROOT).expect("a crate da família tem um src/") {
         let path = entry.expect("entrada legível").path();
         if path.extension().is_none_or(|e| e != "rs") {
             continue;

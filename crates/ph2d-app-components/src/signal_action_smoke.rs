@@ -124,4 +124,3 @@ pub fn signal_action_smoke(cx: &mut crate::scene_ctx::SceneCtx) {
         "[signal-action-smoke] Batida->pisca o Piscante · Gatilho(3s)->esconde a Porta E arranca o Motor"
     );
 }
-

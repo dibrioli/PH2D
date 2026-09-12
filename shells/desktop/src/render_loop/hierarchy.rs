@@ -61,7 +61,11 @@ pub(super) fn dispatch(
     // `instance_verbs::drain`: a lei de instanciar continua com um dono só. O que muda é o
     // SUJEITO — o navegador endereça a receita pela identidade, e não por uma linha que ela nem
     // tem (uma receita está escondida da Hierarquia por construção).
-    instance_verb_stable_id: Option<(u64, ph2d_app_components::instance_verbs::Verb, Option<[f32; 2]>)>,
+    instance_verb_stable_id: Option<(
+        u64,
+        ph2d_app_components::instance_verbs::Verb,
+        Option<[f32; 2]>,
+    )>,
     // ⭐⭐ **O menu de um CARTÃO da biblioteca** (etapa C) — o par `(endereço, verbo)`. Ele mora
     // aqui, junto dos outros verbos, porque é aqui que o `sim`, a voz e o gizmo estão os três
     // emprestados ao mesmo tempo; a decisão e as recusas vivem no `asset_card_verbs`.
@@ -253,7 +257,12 @@ pub(super) fn dispatch(
     if let Some(row) = revert_to_master_row
         && let Some(live) = hero_live.as_ref()
         && let Some(entity_bits) = live.bridge.entity_for(row)
-        && ph2d_app_components::instance_revert::drain_revert_to_master(sim, echo, entity_bits, toasts)
+        && ph2d_app_components::instance_revert::drain_revert_to_master(
+            sim,
+            echo,
+            entity_bits,
+            toasts,
+        )
     {
         title_dirty = true;
     }
@@ -307,7 +316,8 @@ pub(super) fn dispatch(
         toasts.push(Toast::warning("That prefab is no longer in the project"));
     }
     if let Some((stable_id, verb, _at)) = instance_verb_stable_id
-        && let Some(entity_bits) = ph2d_app_components::instance_verbs::entity_for_stable_id(sim, stable_id)
+        && let Some(entity_bits) =
+            ph2d_app_components::instance_verbs::entity_for_stable_id(sim, stable_id)
         && ph2d_app_components::instance_verbs::drain(
             verb,
             sim,

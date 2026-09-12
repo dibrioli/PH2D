@@ -79,7 +79,9 @@ fn the_apply_level_action_reaches_the_verb() {
 /// **Mutação que deve sangrar:** reescrever o laço de escrita dentro do `instance_verbs.rs`.
 #[test]
 fn the_menu_verb_goes_through_the_same_door() {
-    let body = code_of(&src("../../../crates/ph2d-app-components/src/instance_verbs.rs"));
+    let body = code_of(&src(
+        "../../../crates/ph2d-app-components/src/instance_verbs.rs",
+    ));
     assert!(
         // ⚠️ `crate::` e NÃO `ph2d_app_components::`: o ficheiro medido vive DENTRO da crate,
         // logo é assim que ele escreve a chamada. Ver a nota do topo.
@@ -103,7 +105,9 @@ fn the_menu_verb_goes_through_the_same_door() {
 /// envelhece. O que este gate afirma é que o laço que desce a escada existe **aqui**.
 #[test]
 fn the_middle_override_is_cleared_by_the_door_itself() {
-    let body = code_of(&src("../../../crates/ph2d-app-components/src/instance_apply_deep.rs"));
+    let body = code_of(&src(
+        "../../../crates/ph2d-app-components/src/instance_apply_deep.rs",
+    ));
     assert!(
         body.contains("piece_chain(sim, &by_id, key.piece)"),
         "a porta deixou de percorrer a CADEIA da chave — sem ela nao ha' degrau intermedio a limpar"

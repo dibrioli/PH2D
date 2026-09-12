@@ -60,9 +60,7 @@ impl crate::App {
 
     /// No prólogo do quadro, uma vez. No-op sem a env.
     pub(crate) fn signal_action_smoke(&mut self) {
-        if self.signal_action_smoke_done
-            || std::env::var_os("PH2D_SIGNAL_ACTION_SMOKE").is_none()
-        {
+        if self.signal_action_smoke_done || std::env::var_os("PH2D_SIGNAL_ACTION_SMOKE").is_none() {
             return;
         }
         let Some(mut cx) = self.components_ctx() else {

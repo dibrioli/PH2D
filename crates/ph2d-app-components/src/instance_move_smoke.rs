@@ -164,7 +164,6 @@ pub fn instance_smoke_move(cx: &mut crate::scene_ctx::SceneCtx) {
     }
 }
 
-
 #[cfg(test)]
 #[path = "instance_move_smoke_tests.rs"]
 mod tests;

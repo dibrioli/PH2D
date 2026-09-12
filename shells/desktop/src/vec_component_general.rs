@@ -159,8 +159,9 @@ pub(crate) fn state_of(
         // ⚠️ O elo existe e o mestre não resolve — é a órfã do modelo geral
         // (`a_dangling_link_is_left_alone`), a mesma pergunta que o produtor vetorial responde
         // pelo lado dele.
-        main_missing: link
-            .is_some_and(|l| ph2d_app_components::instance_verbs::entity_for_stable_id(sim, l.master).is_none()),
+        main_missing: link.is_some_and(|l| {
+            ph2d_app_components::instance_verbs::entity_for_stable_id(sim, l.master).is_none()
+        }),
         // ⭐⭐⭐ **Uma cópia pode virar uma VERSÃO NOVA do prefab** (report do Enio, 2026-09-06:
         // *«Make Prefab só aparece no menu da hierarchy e não no painel vector»*). É o `Verb::Make`
         // sobre uma cópia — a lei da F5 critério 2 —, e o menu da Hierarquia já o oferecia porque a
@@ -180,8 +181,8 @@ pub(crate) fn state_of(
 fn general_verb(
     verb: crate::vec_component_edit::ComponentEdit,
 ) -> Option<ph2d_app_components::instance_verbs::Verb> {
-    use ph2d_app_components::instance_verbs::Verb;
     use crate::vec_component_edit::ComponentEdit as E;
+    use ph2d_app_components::instance_verbs::Verb;
     match verb {
         E::Create => Some(Verb::Make),
         E::Edit => Some(Verb::Edit),
@@ -220,7 +221,8 @@ pub(crate) fn dispatch(
     let e = subject;
     // O *Reset* tem porta própria — ver [`general_verb`].
     if verb == crate::vec_component_edit::ComponentEdit::Reset {
-        let Some(r) = ph2d_app_components::instance_revert::revert_all_overrides(sim, echo, e) else {
+        let Some(r) = ph2d_app_components::instance_revert::revert_all_overrides(sim, echo, e)
+        else {
             toasts.push(ph2d_editor::Toast::warning(
                 "That is not a copy of a prefab",
             ));

@@ -218,7 +218,9 @@ pub(crate) fn family_members(
     };
     let mut members: Vec<ph2d_editor::screens::hero::variant_axes::VariantMember> = Vec::new();
     for id in masters {
-        if id != current && ph2d_app_components::instance_variant::piece_map(sim, current, id).is_none() {
+        if id != current
+            && ph2d_app_components::instance_variant::piece_map(sim, current, id).is_none()
+        {
             continue;
         }
         members.push(ph2d_editor::screens::hero::variant_axes::VariantMember {

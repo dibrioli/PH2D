@@ -116,7 +116,6 @@ fn the_box_goes_both_ways() {
     assert_eq!(labels(&hero).len(), closed, "a caixa nao voltou atras");
 }
 
-
 /// ⚠️ **Um pick que não é MEU fica onde está.** A metade de ausência do dreno condicional: sem ela,
 /// este consumidor engoliria o pick da biblioteca de nós e o sintoma seria *«às vezes não faz
 /// nada»* — um defeito que depende da ordem dos drenos, que ninguém lê.
@@ -141,4 +140,3 @@ fn a_pick_that_is_not_mine_is_left_alone() {
         "o pick alheio tem de ficar no canal para quem o sabe executar"
     );
 }
-

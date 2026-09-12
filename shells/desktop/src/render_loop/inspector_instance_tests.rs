@@ -108,7 +108,8 @@ fn the_section_names_the_overridden_component_of_this_piece() {
     // mede o app a arrancar, não o artista a editar.*
     let mut echo = ph2d_app_components::instance_sync::MasterEcho::default();
     let (mut sc, mut mp) = ph2d_app_components::instance_docs::empty_docs();
-    let mut run = |sim: &mut SimWorld, echo: &mut ph2d_app_components::instance_sync::MasterEcho| {
+    let mut run = |sim: &mut SimWorld,
+                   echo: &mut ph2d_app_components::instance_sync::MasterEcho| {
         ph2d_app_components::instance_sync::sync_instances(
             sim,
             &r,

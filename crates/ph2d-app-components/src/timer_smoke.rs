@@ -112,4 +112,3 @@ pub fn timer_smoke(cx: &mut crate::scene_ctx::SceneCtx) {
         "[timer-smoke] 3 objectos: Batida (1s, repete) · Recarga (3s, uma vez) · Mudo (2s, sem sinal)"
     );
 }
-

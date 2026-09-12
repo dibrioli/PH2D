@@ -124,8 +124,7 @@ pub fn instance_smoke_nested(cx: &mut crate::scene_ctx::SceneCtx) {
         vec_scene: cx.vec_scene,
         vec_entities: cx.vec_entities,
     };
-    let (_wheel, _car, cars, _loose) =
-        spawn_nested_scene(cx.sim, cx.registry, &mut docs);
+    let (_wheel, _car, cars, _loose) = spawn_nested_scene(cx.sim, cx.registry, &mut docs);
     println!(
         "[instance smoke 3] montado: {} carro(s) + 1 roda solta a' direita",
         cars.len()
@@ -152,9 +151,7 @@ pub fn instance_smoke_nested(cx: &mut crate::scene_ctx::SceneCtx) {
     // dinâmico é do solver, e arrastá-la não produz excepção nenhuma). O caminho inteiro está
     // gateado em `moving_a_body_then_deleting_it_in_the_recipe_leaves_one_named_orphan`.
     println!("[instance smoke 3] --- e para ver as ALTERACOES QUE FICAM SEM DONO ---");
-    println!(
-        "[instance smoke 3] PASSO 6: arraste a CARROCARIA azul de um dos carros (nao a roda)"
-    );
+    println!("[instance smoke 3] PASSO 6: arraste a CARROCARIA azul de um dos carros (nao a roda)");
     println!(
         "[instance smoke 3] PASSO 7: na lista da esquerda abra a linha 'Car' -- e' a RECEITA, \
          e as copias chamam-se 'Car (1)' e 'Car (2)' -- e apague o 'Body' DELA"
@@ -190,7 +187,6 @@ pub fn instance_smoke_nested(cx: &mut crate::scene_ctx::SceneCtx) {
          receita aparece no canvas e mexer numa peca dela chega aos dois carros"
     );
 }
-
 
 #[cfg(test)]
 mod tests {

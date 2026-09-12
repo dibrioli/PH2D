@@ -181,8 +181,7 @@ pub fn instance_smoke_replace(cx: &mut crate::scene_ctx::SceneCtx) {
         vec_scene: cx.vec_scene,
         vec_entities: cx.vec_entities,
     };
-    let (_car, _truck, cars) =
-        spawn_replace_scene(cx.sim, cx.registry, &mut docs);
+    let (_car, _truck, cars) = spawn_replace_scene(cx.sim, cx.registry, &mut docs);
     println!(
         "[instance smoke 4] montado: {} carro(s) na cena, e um 'Truck' que so' existe na \
          biblioteca",
@@ -225,7 +224,6 @@ pub fn instance_smoke_replace(cx: &mut crate::scene_ctx::SceneCtx) {
          carro da direita tambem mudar)"
     );
 }
-
 
 #[cfg(test)]
 #[path = "instance_replace_smoke_tests.rs"]

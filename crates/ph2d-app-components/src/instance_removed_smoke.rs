@@ -145,7 +145,6 @@ pub fn instance_smoke_removed(cx: &mut crate::scene_ctx::SceneCtx) {
     );
 }
 
-
 #[cfg(test)]
 #[path = "instance_removed_smoke_tests.rs"]
 mod tests;

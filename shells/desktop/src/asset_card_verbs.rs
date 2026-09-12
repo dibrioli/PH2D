@@ -129,7 +129,9 @@ pub(crate) fn drain(
         // o quê, e não tinha como abrir um componente. *Um catálogo de onde não se edita o conteúdo
         // é uma vitrina.*
         (AssetCardAction::EditPrefab, DragPayload::Prefab { stable_id }) => {
-            let Some(bits) = ph2d_app_components::instance_verbs::entity_for_stable_id(sim, stable_id) else {
+            let Some(bits) =
+                ph2d_app_components::instance_verbs::entity_for_stable_id(sim, stable_id)
+            else {
                 toasts.push(Toast::warning("That prefab is no longer in the project"));
                 return false;
             };
@@ -163,7 +165,9 @@ pub(crate) fn drain(
             AssetCardAction::Instantiate | AssetCardAction::InstantiateLinked,
             DragPayload::Prefab { stable_id },
         ) => {
-            let Some(bits) = ph2d_app_components::instance_verbs::entity_for_stable_id(sim, stable_id) else {
+            let Some(bits) =
+                ph2d_app_components::instance_verbs::entity_for_stable_id(sim, stable_id)
+            else {
                 toasts.push(Toast::warning("That prefab is no longer in the project"));
                 return false;
             };
@@ -247,7 +251,9 @@ pub(crate) fn drain(
 
         // ── Tirar da biblioteca ────────────────────────────────────────────────────────────────
         (AssetCardAction::RemoveFromLibrary, DragPayload::Prefab { stable_id }) => {
-            let Some(bits) = ph2d_app_components::instance_verbs::entity_for_stable_id(sim, stable_id) else {
+            let Some(bits) =
+                ph2d_app_components::instance_verbs::entity_for_stable_id(sim, stable_id)
+            else {
                 toasts.push(Toast::warning("That prefab is no longer in the project"));
                 return false;
             };
@@ -348,7 +354,13 @@ fn replace_selection(
 
     let (mut done, mut kept, mut ambiguous, mut already, mut skipped) = (0usize, 0, 0, 0, 0);
     for bits in roots {
-        match ph2d_app_components::instance_variant::swap(sim, echo, Entity::from_bits(bits), stable_id, how) {
+        match ph2d_app_components::instance_variant::swap(
+            sim,
+            echo,
+            Entity::from_bits(bits),
+            stable_id,
+            how,
+        ) {
             Ok(r) => {
                 done += 1;
                 kept += r.overrides_kept;

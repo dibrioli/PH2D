@@ -6,8 +6,8 @@
 //! cópia nenhuma, passaria num gate escrito sobre a chamada.
 
 use super::{dispatch, state_of};
-use ph2d_app_components::instance_docs::OwnedDocs;
 use crate::vec_component_edit::ComponentEdit;
+use ph2d_app_components::instance_docs::OwnedDocs;
 use ph2d_ecs::{Children, Entity, MasterRoot, Name, SimWorld, Transform};
 use ph2d_vec_scene::VecPathId;
 

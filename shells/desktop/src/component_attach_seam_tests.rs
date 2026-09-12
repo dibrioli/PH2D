@@ -33,13 +33,26 @@ fn picking_an_item_leaves_the_component_in_the_scene() {
     let mut hero = HeroScreen::new(NodeId(1));
     let mut target: Option<u64> = None;
     let mut toasts = ph2d_editor::ToastQueue::default();
-    ph2d_app_components::component_attach::open_palette_if_asked(&mut hero, &sim, &reg, Some(bits), &mut target);
+    ph2d_app_components::component_attach::open_palette_if_asked(
+        &mut hero,
+        &sim,
+        &reg,
+        Some(bits),
+        &mut target,
+    );
 
     hero.store
-        .set_command_pick(ph2d_app_components::component_palette::item_id("ph2d::ecs::SliceNine"));
+        .set_command_pick(ph2d_app_components::component_palette::item_id(
+            "ph2d::ecs::SliceNine",
+        ));
     let picked = ph2d_app_components::component_attach::route_pick(&mut hero, &mut target);
     assert!(picked.is_some(), "o dreno nao reconheceu o proprio id");
-    ph2d_app_components::component_attach::attach_picked(picked.as_ref(), &mut sim, &reg, &mut toasts);
+    ph2d_app_components::component_attach::attach_picked(
+        picked.as_ref(),
+        &mut sim,
+        &reg,
+        &mut toasts,
+    );
 
     let e = ph2d_ecs::Entity::from_bits(bits);
     assert!(
@@ -79,8 +92,13 @@ fn attaching_is_one_undo_step_and_undoing_closes_the_section() {
     };
 
     let before = snap(&mut sim);
-    ph2d_app_components::component_attach::attach_by_name(&mut sim, &reg, bits, "ph2d::ecs::SliceNine")
-        .expect("anexa");
+    ph2d_app_components::component_attach::attach_by_name(
+        &mut sim,
+        &reg,
+        bits,
+        "ph2d::ecs::SliceNine",
+    )
+    .expect("anexa");
     let after = snap(&mut sim);
     assert_ne!(
         before, after,

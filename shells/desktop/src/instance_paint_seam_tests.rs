@@ -16,9 +16,7 @@
 //! (HOWTO §2.5).
 
 use ph2d_app_components::instance_sync::MasterEcho;
-use ph2d_app_components::test_support::{
-    instantiate, pass, piece, plain_master, registo as reg,
-};
+use ph2d_app_components::test_support::{instantiate, pass, piece, plain_master, registo as reg};
 use ph2d_ecs::SimWorld;
 use ph2d_physics_ecs::PhysicsBridge;
 

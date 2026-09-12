@@ -65,11 +65,19 @@ fn step_1_build(app: &mut crate::App) {
 }
 
 fn step_2_make_prefab(app: &mut crate::App) {
-    verb(app, ph2d_app_components::instance_verbs::Verb::Make, "Make Prefab");
+    verb(
+        app,
+        ph2d_app_components::instance_verbs::Verb::Make,
+        "Make Prefab",
+    );
 }
 
 fn step_3_instantiate(app: &mut crate::App) {
-    verb(app, ph2d_app_components::instance_verbs::Verb::Place, "Instantiate");
+    verb(
+        app,
+        ph2d_app_components::instance_verbs::Verb::Place,
+        "Instantiate",
+    );
 }
 
 fn step_4_make_variant(app: &mut crate::App) {

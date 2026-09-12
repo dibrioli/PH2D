@@ -227,26 +227,27 @@ fn the_library_card_places_both_kinds_of_copy() {
     ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
     let stable_id = sim.world().get::<StableId>(master).expect("id").0;
 
-    let mut put = |verb, sim: &mut SimWorld, docs: &mut ph2d_app_components::instance_docs::OwnedDocs<'_>| {
-        let mut out = None;
-        assert!(
-            super::drain(
-                DragPayload::Prefab { stable_id },
-                verb,
-                sim,
-                &r,
-                &mut echo,
-                &mut gizmo,
-                &mut toasts,
-                docs,
-                [0.25, 0.0],
-                &BTreeMap::new(),
-                &mut out,
-            ),
-            "o cartao nao pos copia nenhuma"
-        );
-        ph2d_ecs::Entity::from_bits(out.expect("a copia nova"))
-    };
+    let mut put =
+        |verb, sim: &mut SimWorld, docs: &mut ph2d_app_components::instance_docs::OwnedDocs<'_>| {
+            let mut out = None;
+            assert!(
+                super::drain(
+                    DragPayload::Prefab { stable_id },
+                    verb,
+                    sim,
+                    &r,
+                    &mut echo,
+                    &mut gizmo,
+                    &mut toasts,
+                    docs,
+                    [0.25, 0.0],
+                    &BTreeMap::new(),
+                    &mut out,
+                ),
+                "o cartao nao pos copia nenhuma"
+            );
+            ph2d_ecs::Entity::from_bits(out.expect("a copia nova"))
+        };
     let plain = put(
         ph2d_editor::action_bus::AssetCardAction::Instantiate,
         &mut sim,

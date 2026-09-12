@@ -138,21 +138,21 @@ mod canvas_zoom;
 mod chrome_hit;
 /// Teclado do palette de "Add Node" (busca/filtro, Enter/Backspace/Esc).
 mod command_palette_input;
-/// O gesto que cria um conector (Down numa forma, Up noutra).
-/// ⭐ O PRÓLOGO das cenas da família das instâncias — o invólucro que traduz `&mut App` para a
-/// assinatura da [`ph2d_app_components`]. *O que sai são os corpos; o que decide a ordem do quadro
-/// fica.*
-mod components_scenes;
 /// ⛔ As DUAS costuras de teste que ficaram na shell quando a família das instâncias saiu — o
 /// sujeito delas é meio chrome (o probe do Inspector · o re-alojamento de pixels), e uma crate
 /// nunca pode chamar o `bin`. Ver o `test_support` da `ph2d_app_components`.
 #[cfg(test)]
 mod component_attach_seam_tests;
-#[cfg(test)]
-mod instance_paint_seam_tests;
+/// O gesto que cria um conector (Down numa forma, Up noutra).
+/// ⭐ O PRÓLOGO das cenas da família das instâncias — o invólucro que traduz `&mut App` para a
+/// assinatura da [`ph2d_app_components`]. *O que sai são os corpos; o que decide a ordem do quadro
+/// fica.*
+mod components_scenes;
 mod connector_gesture;
 /// Conectores vivos: a linha que gruda em duas formas e as segue (re-cook por frame).
 mod connector_handles;
+#[cfg(test)]
+mod instance_paint_seam_tests;
 pub(crate) use ph2d_app_vec::connector_live;
 pub(crate) use ph2d_app_vec::contour_live;
 /// A cena de smoke do **Contour** (`PH2D_BUILD_SMOKE=25`) — irmã de `build_smoke`, teto de LOC.

@@ -313,11 +313,11 @@ pub fn instance_smoke_vector(cx: &mut crate::scene_ctx::SceneCtx) {
          se ve' enquanto a linha dela esta' escolhida)"
     );
     for name in ["Box", "Label"] {
-        let m = piece_path(&cx.sim, master, name);
+        let m = piece_path(cx.sim, master, name);
         let copies: Vec<String> = roots
             .iter()
             .map(|&r| {
-                piece_path(&cx.sim, r, name).map_or_else(
+                piece_path(cx.sim, r, name).map_or_else(
                     || "SEM GEOMETRIA".to_string(),
                     |id| {
                         let same = m
@@ -420,4 +420,3 @@ pub fn instance_smoke_ragdoll(cx: &mut crate::scene_ctx::SceneCtx) {
         hero.gizmo.replace_selection(Some(master_bits));
     }
 }
-

@@ -3314,7 +3314,8 @@ impl crate::App {
             let mut revert_to_master_row: Option<NodeId> = None;
             // ⭐ Os outros verbos de instância (ADR-0164 / F4.5) — UM slot, porque eles são
             // exclusivos por construção: o menu fecha ao primeiro clique.
-            let mut instance_verb_row: Option<(NodeId, ph2d_app_components::instance_verbs::Verb)> = None;
+            let mut instance_verb_row: Option<(NodeId, ph2d_app_components::instance_verbs::Verb)> =
+                None;
             // ⭐ O mesmo verbo, endereçado por `StableId` — o canal do navegador de assets.
             let mut instance_verb_stable_id: Option<(
                 u64,
@@ -4782,19 +4783,22 @@ impl crate::App {
                     EditorAction::Hierarchy(
                         ph2d_editor::action_bus::HierRequest::MakeComponent { row },
                     ) => {
-                        instance_verb_row.get_or_insert((row, ph2d_app_components::instance_verbs::Verb::Make));
+                        instance_verb_row
+                            .get_or_insert((row, ph2d_app_components::instance_verbs::Verb::Make));
                     }
                     EditorAction::Hierarchy(
                         ph2d_editor::action_bus::HierRequest::Instantiate { row },
                     ) => {
-                        instance_verb_row.get_or_insert((row, ph2d_app_components::instance_verbs::Verb::Place));
+                        instance_verb_row
+                            .get_or_insert((row, ph2d_app_components::instance_verbs::Verb::Place));
                     }
                     // ⭐⭐⭐ **ABRIR a receita desta cópia** — pelo MESMO dreno dos outros verbos,
                     // que é onde vivem a resolução do sujeito e a voz de cada recusa.
                     EditorAction::Hierarchy(ph2d_editor::action_bus::HierRequest::EditPrefab {
                         row,
                     }) => {
-                        instance_verb_row.get_or_insert((row, ph2d_app_components::instance_verbs::Verb::Edit));
+                        instance_verb_row
+                            .get_or_insert((row, ph2d_app_components::instance_verbs::Verb::Edit));
                     }
                     // ⭐ **O verbo de USAR do navegador de assets** (plano `docs/Components/07`,
                     // wave A7). ⚠️ O sujeito é o `StableId`, não uma `row`: o navegador não tem
@@ -4819,13 +4823,18 @@ impl crate::App {
                     EditorAction::Hierarchy(
                         ph2d_editor::action_bus::HierRequest::InstantiateLinked { row },
                     ) => {
-                        instance_verb_row
-                            .get_or_insert((row, ph2d_app_components::instance_verbs::Verb::PlaceLinked));
+                        instance_verb_row.get_or_insert((
+                            row,
+                            ph2d_app_components::instance_verbs::Verb::PlaceLinked,
+                        ));
                     }
                     EditorAction::Hierarchy(ph2d_editor::action_bus::HierRequest::Detach {
                         row,
                     }) => {
-                        instance_verb_row.get_or_insert((row, ph2d_app_components::instance_verbs::Verb::Detach));
+                        instance_verb_row.get_or_insert((
+                            row,
+                            ph2d_app_components::instance_verbs::Verb::Detach,
+                        ));
                     }
                     // ⭐⭐ *Remove from Library* pela linha da Hierarquia — o MESMO verbo do cartão,
                     // com o outro sujeito. Ele resolve a receita a partir de uma cópia
@@ -4833,12 +4842,16 @@ impl crate::App {
                     EditorAction::Hierarchy(
                         ph2d_editor::action_bus::HierRequest::RemoveFromLibrary { row },
                     ) => {
-                        instance_verb_row.get_or_insert((row, ph2d_app_components::instance_verbs::Verb::Unmake));
+                        instance_verb_row.get_or_insert((
+                            row,
+                            ph2d_app_components::instance_verbs::Verb::Unmake,
+                        ));
                     }
                     EditorAction::Hierarchy(
                         ph2d_editor::action_bus::HierRequest::ApplyToMaster { row },
                     ) => {
-                        instance_verb_row.get_or_insert((row, ph2d_app_components::instance_verbs::Verb::Apply));
+                        instance_verb_row
+                            .get_or_insert((row, ph2d_app_components::instance_verbs::Verb::Apply));
                     }
                     EditorAction::Hierarchy(ph2d_editor::action_bus::HierRequest::Delete {
                         row,
@@ -5182,7 +5195,9 @@ impl crate::App {
                     // materializa a peça, lhe traz os bytes da receita e exuma a excepção que o
                     // artista tinha nela é o passe estrutural, no quadro seguinte.
                     EditorAction::InspectorRestoreRemovedPiece { root_bits, piece } => {
-                        if ph2d_app_components::instance_structure::restore_piece(sim, root_bits, piece) {
+                        if ph2d_app_components::instance_structure::restore_piece(
+                            sim, root_bits, piece,
+                        ) {
                             toasts.push(ph2d_editor::Toast::success(
                                 "Put the piece back \u{2014} it returns as the component has it",
                             ));
@@ -12387,7 +12402,12 @@ impl crate::App {
                 match subject
                     .ok_or(ph2d_app_components::instance_added::AddRefusal::NotAdded)
                     .and_then(|e| {
-                        ph2d_app_components::instance_added::promote(sim, component_registry, &mut docs, e)
+                        ph2d_app_components::instance_added::promote(
+                            sim,
+                            component_registry,
+                            &mut docs,
+                            e,
+                        )
                     }) {
                     Ok(p) => {
                         let name =
@@ -12744,7 +12764,8 @@ impl crate::App {
             );
             // ⚠️ O pick chega **noutro quadro** (a paleta fica aberta), e por isso o alvo vive no
             // `AppGfx` em vez de num local deste laço.
-            let picked = ph2d_app_components::component_attach::route_pick(hero, component_palette_target);
+            let picked =
+                ph2d_app_components::component_attach::route_pick(hero, component_palette_target);
             ph2d_app_components::component_attach::attach_picked(
                 picked.as_ref(),
                 sim,

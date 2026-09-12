@@ -70,7 +70,6 @@ const CERCA_Y: f32 = 12.0; // LITERAL-PX-OK: metros
 
 /// No prólogo do quadro, uma vez. No-op sem a env.
 pub fn game_camera_smoke(cx: &mut crate::scene_ctx::SceneCtx) {
-
     {
         let world = cx.sim.world_mut();
 
@@ -149,7 +148,6 @@ pub fn game_camera_smoke(cx: &mut crate::scene_ctx::SceneCtx) {
          ASSENTA ao largar · leve-o para la' dos cantos VERMELHOS e a JANELA para' neles"
     );
 }
-
 
 /// **O herói anda com o dedo do jogador**, em metros por segundo.
 ///

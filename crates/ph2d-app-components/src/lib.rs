@@ -87,7 +87,6 @@ pub mod component_registry_for_tests;
 #[cfg(any(test, feature = "test-support"))]
 pub mod test_support;
 
-
 /// **A declaração da família** — a chave e os roteadores de smoke que ela POSSUI.
 ///
 /// # ⚠️ São CINCO, e o bloco de reabertura listava QUATRO — as três correcções são a mesma lei

@@ -165,7 +165,6 @@ fn reverting_does_not_move_what_the_artist_placed() {
     );
 }
 
-
 /// ⭐⭐⭐ **Numa cópia LIGADA, mover uma PEÇA move a peça de todas** — report do Enio, 2026-08-27.
 ///
 /// > *«Várias propriedades dos objetos inclusos nos componentes (como posição e rot) ao serem

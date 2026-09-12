@@ -142,7 +142,8 @@ pub(crate) fn hold(stage: &mut Option<Stage>, sim: &mut SimWorld, drive: &mut Pr
         return;
     };
     // ⭐ **O endereço re-resolve-se pela identidade a cada quadro** — ver o doc do [`Stage`].
-    let Some(bits) = ph2d_app_components::instance_verbs_walk::entity_for_stable_id(sim, st.id) else {
+    let Some(bits) = ph2d_app_components::instance_verbs_walk::entity_for_stable_id(sim, st.id)
+    else {
         // A receita deixou de existir (apagada, ou um restauro que não a trouxe): não há onde
         // repor, e insistir seria escrever numa entidade morta.
         *stage = None;

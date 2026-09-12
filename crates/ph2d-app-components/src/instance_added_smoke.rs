@@ -34,11 +34,8 @@ pub fn instance_smoke_added(cx: &mut crate::scene_ctx::SceneCtx) {
         vec_scene: cx.vec_scene,
         vec_entities: cx.vec_entities,
     };
-    let (_master, copies) = crate::instance_removed_smoke::spawn_robot_scene(
-        cx.sim,
-        cx.registry,
-        &mut docs,
-    );
+    let (_master, copies) =
+        crate::instance_removed_smoke::spawn_robot_scene(cx.sim, cx.registry, &mut docs);
     // ⚠️ **A frase sai do MODELO.** O nome `Arm (1)` é o que o *Duplicate* produz (o `unique_name`
     // acrescenta o sufixo porque `Arm` já está em uso), e `Robot` é a receita — mas quem monta
     // a frase é a mesma função que o botão usa.
@@ -88,7 +85,6 @@ pub fn instance_smoke_added(cx: &mut crate::scene_ctx::SceneCtx) {
          com dois bracos · ou o robo do meio ficar com TRES)"
     );
 }
-
 
 #[cfg(test)]
 #[path = "instance_added_smoke_tests.rs"]

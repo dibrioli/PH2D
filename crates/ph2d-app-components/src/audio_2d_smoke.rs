@@ -69,7 +69,6 @@ fn escrever(nome: &str, data: ph2d_audio::SampleData) -> Option<String> {
 
 /// No prólogo do quadro, uma vez. No-op sem a env.
 pub fn audio_2d_smoke(cx: &mut crate::scene_ctx::SceneCtx) {
-
     let fmt = AudioFormat::stereo(48_000);
     // ⚠️ **Um tom LONGO para o ciclo e um curto para o toque** — um blip em ciclo seria uma
     // metralhadora, e um tom longo disparado por sinal empilharia vozes.
@@ -159,4 +158,3 @@ pub fn audio_2d_smoke(cx: &mut crate::scene_ctx::SceneCtx) {
          em 2 s · ARRASTE o «Ouvinte» e o som troca de ouvido"
     );
 }
-

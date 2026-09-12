@@ -115,8 +115,10 @@ pub(super) fn drain(
         // que a lista.
         if refused > 0
             && let Some(first) = from_a_recipe.first()
-            && let Some(root) =
-                ph2d_app_components::instance_verbs::instance_root_of(sim, ph2d_ecs::Entity::from_bits(*first))
+            && let Some(root) = ph2d_app_components::instance_verbs::instance_root_of(
+                sim,
+                ph2d_ecs::Entity::from_bits(*first),
+            )
         {
             hero.gizmo.replace_selection(Some(root.to_bits()));
         }

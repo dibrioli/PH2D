@@ -136,10 +136,10 @@ pub(crate) fn build_holds_graph(g: &mut Graph) -> Vec<NodeId> {
 }
 
 /// Monta a cena e imprime o que olhar.
-pub(crate) fn run(gfx: &mut crate::AppGfx) {
-    let sinks = build_holds_graph(&mut gfx.motion.doc.graph);
-    gfx.motion.sinks.extend(sinks);
-    let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+pub(crate) fn run(cx: &mut crate::motion::motion_scene_ctx::MotionSceneCtx<'_>) {
+    let sinks = build_holds_graph(&mut cx.motion.doc.graph);
+    cx.motion.sinks.extend(sinks);
+    let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
     eprintln!(
         "[cena 11] O RITMO. ⚠️ ESTA CENA MEXE -- de' Play.
 

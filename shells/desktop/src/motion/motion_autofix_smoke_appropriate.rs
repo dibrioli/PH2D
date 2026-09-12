@@ -16,13 +16,12 @@ use ph2d_nodegraph::graph::{Edge, Pos};
 /// O corpo da cena `=7`, delegado de [`crate::motion::motion_autofix_smoke::motion_autofix_smoke`] pelo
 /// braço `_` (o pai já avançou o `FRAME`). `mode`/`f` vêm resolvidos; só a
 /// combinação `(7, 3)` age.
-pub(crate) fn motion_autofix_smoke_appropriate(app: &mut crate::App, mode: u32, f: u32) {
+pub(crate) fn motion_autofix_smoke_appropriate(cx: &mut crate::motion::motion_scene_ctx::MotionSceneCtx<'_>, mode: u32, f: u32) {
     if (mode, f) != (7, 3) {
         return;
     }
-    let gfx = app.gfx.as_mut().expect("gfx");
     let out = {
-        let g = &mut gfx.motion.doc.graph;
+        let g = &mut cx.motion.doc.graph;
         let shape = g.add_node("source.shape");
         let boids = g.add_node("motion.boids");
         let dup = g.add_node("motion.duplicator");
@@ -100,10 +99,10 @@ pub(crate) fn motion_autofix_smoke_appropriate(app: &mut crate::App, mode: u32, 
         .expect("oscillator -> output");
         out
     };
-    gfx.motion.sinks.push(out);
-    let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+    cx.motion.sinks.push(out);
+    let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
     let warnings =
-        ph2d_motion_diagnose::diagnose(&gfx.motion.doc.graph, &gfx.motion.registry).len();
+        ph2d_motion_diagnose::diagnose(&cx.motion.doc.graph, &cx.motion.registry).len();
     eprintln!(
         "[autofix smoke =7] montei a FORMA APROPRIADA (a cena da foto): `The Shape \
          (estrela) -> duplicator.shape` + `Boids -> duplicator.points` (com o `pre` \

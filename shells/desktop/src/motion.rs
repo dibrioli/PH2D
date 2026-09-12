@@ -60,6 +60,8 @@ pub(crate) mod motion_shape_bake;
 pub(crate) mod motion_shape_smoke;
 pub(crate) mod motion_shape_smoke_knobs;
 /// O estado de shell da familia — os quatro campos que saíram da `App` na W2/L1 (A2b).
+/// O que uma CENA pede à shell, no vocabulário da família (W2 Fase C).
+pub(crate) mod motion_scene_ctx;
 pub(crate) mod motion_shell_state;
 /// A auditoria do grupo do ciclo 5 (a SIMULAÇÃO) — `#[cfg(test)]`, não entra no bin.
 #[cfg(test)]

@@ -134,14 +134,13 @@ pub(crate) fn build_knob_row(g: &mut Graph) -> NodeId {
 
 /// O corpo da cena `=3`, delegado de [`crate::motion::motion_shape_smoke::motion_shape_smoke`] pelo braço `_`
 /// (o pai já avançou o `FRAME`). Só a combinação `(3, 3)` age.
-pub(crate) fn motion_shape_smoke_knobs(app: &mut crate::App, mode: u32, f: u32) {
+pub(crate) fn motion_shape_smoke_knobs(cx: &mut crate::motion::motion_scene_ctx::MotionSceneCtx<'_>, mode: u32, f: u32) {
     if (mode, f) != (3, 3) {
         return;
     }
-    let gfx = app.gfx.as_mut().expect("gfx");
-    let out = build_knob_row(&mut gfx.motion.doc.graph);
-    gfx.motion.sinks.push(out);
-    let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+    let out = build_knob_row(&mut cx.motion.doc.graph);
+    cx.motion.sinks.push(out);
+    let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
     eprintln!(
         "[shape smoke =3] SETE formas lado a lado, e nenhuma especie nova: (1) circulo \
          INTEIRO, o controle · (2) o MESMO circulo com Inner 0,55 = uma ROSQUINHA · (3) o \

@@ -156,20 +156,19 @@ static FRAME: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0
 static SHAPE_NODE: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(u32::MAX);
 
 /// Roda no prologo do frame, ao lado dos outros smokes. No-op sem a env.
-pub(crate) fn motion_shape_smoke(app: &mut crate::App) {
+pub(crate) fn motion_shape_smoke(cx: &mut crate::motion::motion_scene_ctx::MotionSceneCtx<'_>) {
     use std::sync::atomic::Ordering;
-    if mode() == 0 || app.gfx.is_none() {
+    if mode() == 0 {
         return;
     }
     let f = FRAME.fetch_add(1, Ordering::Relaxed);
     match (mode(), f) {
         // Frame 3: monta o grafo, empurra o sink, abre a tool Motion.
         (1, 3) => {
-            let gfx = app.gfx.as_mut().expect("gfx");
-            let (src, out) = build_shape_graph(&mut gfx.motion.doc.graph, STAR);
-            gfx.motion.sinks.push(out);
+            let (src, out) = build_shape_graph(&mut cx.motion.doc.graph, STAR);
+            cx.motion.sinks.push(out);
             SHAPE_NODE.store(src.0, Ordering::Relaxed);
-            let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+            let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
             eprintln!(
                 "[shape smoke =1] source.shape (STAR) carimbada numa grade 4x4 = 16 COPIAS \
                  nitidas (vetor VIVO na GPU, nao uma tile assada). O no nasce SELECIONADO: o \
@@ -182,8 +181,7 @@ pub(crate) fn motion_shape_smoke(app: &mut crate::App) {
         (1, 90) => {
             let src = SHAPE_NODE.load(Ordering::Relaxed);
             if src != u32::MAX {
-                let gfx = app.gfx.as_mut().expect("gfx");
-                gfx.motion.doc.graph.set_param(NodeId(src), "kind", GEAR);
+                cx.motion.doc.graph.set_param(NodeId(src), "kind", GEAR);
                 eprintln!(
                     "[shape smoke =1] kind -> ENGRENAGEM: as 16 copias RE-CONSTROEM ao vivo, \
                      SEM PISCAR. Agora o painel troca para os controles da engrenagem (Teeth, \
@@ -194,11 +192,10 @@ pub(crate) fn motion_shape_smoke(app: &mut crate::App) {
         }
         // =2, frame 3: o grafo do BUG — Shape -> dup <- grid -> rotate -> output.
         (2, 3) => {
-            let gfx = app.gfx.as_mut().expect("gfx");
-            let (rot, out) = build_rotated_shape_graph(&mut gfx.motion.doc.graph, 25.0);
-            gfx.motion.sinks.push(out);
+            let (rot, out) = build_rotated_shape_graph(&mut cx.motion.doc.graph, 25.0);
+            cx.motion.sinks.push(out);
             SHAPE_NODE.store(rot.0, Ordering::Relaxed);
-            let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+            let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
             eprintln!(
                 "[shape smoke =2] `source.shape (STAR) -> duplicator <- grid -> motion.rotate \
                  -> output`, GPU cook LIGADO (o default). ANTES: no instante em que o rotate \
@@ -214,8 +211,7 @@ pub(crate) fn motion_shape_smoke(app: &mut crate::App) {
         (2, 90) => {
             let rot = SHAPE_NODE.load(Ordering::Relaxed);
             if rot != u32::MAX {
-                let gfx = app.gfx.as_mut().expect("gfx");
-                gfx.motion.doc.graph.set_param(NodeId(rot), "angle", 75.0);
+                cx.motion.doc.graph.set_param(NodeId(rot), "angle", 75.0);
                 eprintln!(
                     "[shape smoke =2] angle -> 75: as 16 estrelas NITIDAS giram (o deformer \
                      move as ESTRELAS agora, nao retangulos). Continuam vetor crisp em qualquer \
@@ -225,6 +221,6 @@ pub(crate) fn motion_shape_smoke(app: &mut crate::App) {
         }
         // =3 (OS KNOBS DE FORMA): a fileira de seis, cada uma exercendo um knob que
         // nao existia. Irmao proprio pelo teto de 600 LOC do shell.
-        _ => crate::motion::motion_shape_smoke_knobs::motion_shape_smoke_knobs(app, mode(), f),
+        _ => crate::motion::motion_shape_smoke_knobs::motion_shape_smoke_knobs(cx, mode(), f),
     }
 }

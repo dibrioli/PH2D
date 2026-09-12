@@ -120,25 +120,21 @@ pub(crate) fn author(doc: &mut TimelineDoc, bits: u64, path: &MotionPath) {
 }
 
 /// No prólogo do frame, uma vez. No-op sem a env.
-pub(crate) fn motion_path_smoke(app: &mut crate::App) {
-    if app.motion_shell.path_smoke_done {
+pub(crate) fn motion_path_smoke(cx: &mut crate::motion::motion_scene_ctx::MotionSceneCtx<'_>) {
+    if cx.motion_shell.path_smoke_done {
         return;
     }
     if std::env::var_os("PH2D_PATH_SMOKE").is_none() {
         return;
     }
-    if app.gfx.is_none() {
-        return; // ainda sem mundo; tenta no próximo frame
-    }
-    app.motion_shell.path_smoke_done = true;
+    cx.motion_shell.path_smoke_done = true;
     if std::env::var_os("PH2D_PATH_SMOKE").is_some_and(|v| v == "2") {
-        path_scene_orient(app);
+        path_scene_orient(cx);
         return;
     }
 
     let bits = {
-        let gfx = app.gfx.as_mut().expect("gfx");
-        gfx.sim
+        cx.sim
             .world_mut()
             .spawn((
                 Transform::from_translation(Vec2::new(-6.0, -2.0)),
@@ -151,8 +147,7 @@ pub(crate) fn motion_path_smoke(app: &mut crate::App) {
     // Um SEGUNDO objeto, parado: é ele que prova o item 5 (clicar nele apaga a
     // trajetória). Sem um vizinho, "só o selecionado" não é demonstrável.
     {
-        let gfx = app.gfx.as_mut().expect("gfx");
-        gfx.sim.world_mut().spawn((
+        cx.sim.world_mut().spawn((
             Transform::from_translation(Vec2::new(0.0, 4.0)),
             Sprite::atlas(0, [0.8, 0.8], [0.35, 0.45, 0.6, 1.0]),
             Name::new("Bystander"),
@@ -160,20 +155,19 @@ pub(crate) fn motion_path_smoke(app: &mut crate::App) {
     }
 
     let path = demo_path();
-    author(&mut app.timeline.doc, bits, &path);
+    author(&mut cx.timeline.doc, bits, &path);
 
     // A trajetória só é desenhada para o SELECIONADO — então a cena o seleciona,
     // senão o smoke abre sem mostrar a própria feature.
-    if let Some(hero) = app.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+    if let Some(hero) = cx.hero.as_deref_mut() {
         hero.gizmo.replace_selection(Some(bits));
     }
 
-    let dots = (3.0 * app.timeline.doc.fps_display).round() as usize;
-    let keys = app
-        .timeline
+    let dots = (3.0 * cx.timeline.doc.fps_display).round() as usize;
+    let keys = cx.timeline
         .doc
         .binding_for(bits, PropKind::Position)
-        .and_then(|b| app.timeline.doc.active_clip().track(b.target))
+        .and_then(|b| cx.timeline.doc.active_clip().track(b.target))
         .map_or(0, |t| t.keys().len());
     eprintln!(
         "[path-smoke] trajetoria em S: {} ancoras = {keys} keyframes (uma por ponto, \
@@ -205,11 +199,10 @@ pub(crate) fn motion_path_smoke(app: &mut crate::App) {
 /// Duas setas na MESMA trajetória, com o MESMO pedido — e uma delas tem uma track
 /// de Rotation. Sem o par, "recusado" seria uma palavra num doc; com ele, é a
 /// diferença entre duas coisas na tela.
-fn path_scene_orient(app: &mut crate::App) {
+fn path_scene_orient(cx: &mut crate::motion::motion_scene_ctx::MotionSceneCtx<'_>) {
     let path = demo_path();
     let mut spawn = |y: f32, tint: [f32; 4], name: &str| -> u64 {
-        let gfx = app.gfx.as_mut().expect("gfx");
-        gfx.sim
+        cx.sim
             .world_mut()
             .spawn((
                 Transform::from_translation(Vec2::new(-6.0, -2.0 + y)),
@@ -224,7 +217,7 @@ fn path_scene_orient(app: &mut crate::App) {
     let follower = spawn(0.0, [1.0, 0.55, 0.15, 1.0], "Follower");
     let blocked = spawn(5.0, [0.35, 0.55, 1.0, 1.0], "Blocked");
 
-    let doc = &mut app.timeline.doc;
+    let doc = &mut cx.timeline.doc;
     for bits in [follower, blocked] {
         author(doc, bits, &path);
         doc.set_auto_orient(bits, true);
@@ -240,7 +233,7 @@ fn path_scene_orient(app: &mut crate::App) {
     );
 
     let (a, b) = (doc.auto_orient(follower), doc.auto_orient(blocked));
-    if let Some(hero) = app.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+    if let Some(hero) = cx.hero.as_deref_mut() {
         hero.gizmo.replace_selection(Some(follower));
     }
     eprintln!("[path-smoke] laranja {a:?} | azul {b:?}");

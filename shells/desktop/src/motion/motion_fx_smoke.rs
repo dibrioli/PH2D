@@ -96,13 +96,12 @@ fn on() -> bool {
 static FRAME: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
 
 /// Roda no prólogo do frame, ao lado do `build_smoke`. No-op sem a env.
-pub(crate) fn motion_fx_smoke(app: &mut crate::App) {
+pub(crate) fn motion_fx_smoke(cx: &mut crate::motion::motion_scene_ctx::MotionSceneCtx<'_>) {
     use std::sync::atomic::Ordering;
-    if !on() || app.gfx.is_none() || FRAME.fetch_add(1, Ordering::Relaxed) != 4 {
+    if !on() || FRAME.fetch_add(1, Ordering::Relaxed) != 4 {
         return;
     }
-    let gfx = app.gfx.as_mut().expect("gfx");
-    let out = sparks(&mut gfx.motion.doc.graph);
-    gfx.motion.sinks.extend(out);
-    let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+    let out = sparks(&mut cx.motion.doc.graph);
+    cx.motion.sinks.extend(out);
+    let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
 }

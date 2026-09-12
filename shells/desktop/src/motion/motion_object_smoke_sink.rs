@@ -378,10 +378,10 @@ pub(crate) fn build_sink_style_graph(g: &mut Graph) -> Vec<NodeId> {
 }
 
 /// A cena do modo `=9`, montada no frame 6 (a entidade da estrela nasce no `sync`).
-pub(super) fn run(gfx: &mut crate::AppGfx) {
-    let sinks = build_sink_style_graph(&mut gfx.motion.doc.graph);
-    gfx.motion.sinks.extend(sinks);
-    let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+pub(super) fn run(cx: &mut crate::motion::motion_scene_ctx::MotionSceneCtx<'_>) {
+    let sinks = build_sink_style_graph(&mut cx.motion.doc.graph);
+    cx.motion.sinks.extend(sinks);
+    let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
     eprintln!(
         "[motion.obj smoke =9] O SINK ganhou o ESTILO DE DESENHO (doc 89 folha 17).
   Quatro fileiras, cada uma com um par -- ESQUERDA = como era, DIREITA = o param novo.

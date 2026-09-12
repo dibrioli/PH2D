@@ -139,21 +139,20 @@ fn mode() -> u32 {
 }
 
 /// Roda no prólogo do frame, ao lado dos outros smokes. No-op sem a env.
-pub(crate) fn motion_object_smoke(app: &mut crate::App) {
+pub(crate) fn motion_object_smoke(cx: &mut crate::motion::motion_scene_ctx::MotionSceneCtx<'_>) {
     use std::sync::atomic::Ordering;
     let mode = mode();
-    if mode == 0 || app.gfx.is_none() {
+    if mode == 0 {
         return;
     }
     let f = FRAME.fetch_add(1, Ordering::Relaxed);
     match mode {
         // A1 — sprite: entidade direta, tudo num frame.
         1 if f == 3 => {
-            let gfx = app.gfx.as_mut().expect("gfx");
-            spawn_sprite(&mut gfx.sim);
-            let out = build_stamp_graph(&mut gfx.motion.doc.graph, OBJECT);
-            gfx.motion.sinks.push(out);
-            let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+            spawn_sprite(&mut cx.sim);
+            let out = build_stamp_graph(&mut cx.motion.doc.graph, OBJECT);
+            cx.motion.sinks.push(out);
+            let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
             eprintln!(
                 "[motion.obj smoke =1] O SPRITE 'Object' (tile colorido) esta carimbado numa \
                  grade 4x4 = 16 copias. A arte de CADA copia e a do sprite. Renomeie o sprite \
@@ -162,12 +161,11 @@ pub(crate) fn motion_object_smoke(app: &mut crate::App) {
         }
         // A8 — a POSE do objeto (doc 89 folha 14). O corpo mora no irmão `pose`:
         // ele traz a fiação própria da cena, e este despachante estava no teto.
-        8 if f == 3 => pose::run(app.gfx.as_mut().expect("gfx")),
+        8 if f == 3 => pose::run(cx),
         // A2 — vetor: a forma entra primeiro (frame 3); a ENTIDADE dela só
         // existe depois do `vec_entities::sync`, e e nela que o nome mora.
         2 if f == 3 => {
-            let gfx = app.gfx.as_mut().expect("gfx");
-            gfx.vec_scene.push_path(star_shape());
+            cx.vec_scene.push_path(star_shape());
         }
         // =9 — o ESTILO DO SINK: a dança de duas fases do `=3` (a ENTIDADE do
         // objecto Flip nasce no `flip_entities::sync`, e é nela que o nome mora),
@@ -190,38 +188,33 @@ pub(crate) fn motion_object_smoke(app: &mut crate::App) {
         // `front > 0` passa a ser um quad no passe do vector.
         // Ver [`super::motion_object_smoke_leaf`].
         12 if f == 3 => {
-            let gfx = app.gfx.as_mut().expect("gfx");
-            leaf::spawn_leaf_sprite(&mut gfx.sim);
-            leaf::run(gfx);
+            leaf::spawn_leaf_sprite(&mut cx.sim);
+            leaf::run(cx);
         }
         11 if f == 3 => {
-            let gfx = app.gfx.as_mut().expect("gfx");
-            holds::spawn_art(&mut gfx.flip);
+            holds::spawn_art(&mut cx.flip);
         }
-        11 if f == 6 => holds::run(app.gfx.as_mut().expect("gfx")),
+        11 if f == 6 => holds::run(cx),
         9 if f == 3 => {
-            let gfx = app.gfx.as_mut().expect("gfx");
-            sink::spawn_flip_art(&mut gfx.flip);
-            sink::spawn_chip(&mut gfx.sim);
+            sink::spawn_flip_art(&mut cx.flip);
+            sink::spawn_chip(&mut cx.sim);
             // ⚠️ E a ESTRELA VECTORIAL — a fileira do pivô desenha-se por ela, que é a
             // prova de que o pivô alcança um objecto que NUNCA vira textura.
-            gfx.vec_scene.push_path(star_shape());
+            cx.vec_scene.push_path(star_shape());
         }
         9 if f == 6 => {
-            let map = app.vec_entities.clone();
-            let gfx = app.gfx.as_mut().expect("gfx");
-            if name_vector_entity_as(&mut gfx.sim, &map, sink::STAR) {
-                sink::run(gfx);
+            let map = cx.vec_entities.clone();
+            if name_vector_entity_as(&mut cx.sim, &map, sink::STAR) {
+                sink::run(cx);
             }
         }
         2 if f == 6 => {
-            let map = app.vec_entities.clone();
-            let gfx = app.gfx.as_mut().expect("gfx");
-            if name_vector_entity(&mut gfx.sim, &map) {
-                let out = build_stamp_graph(&mut gfx.motion.doc.graph, OBJECT);
-                gfx.motion.sinks.push(out);
+            let map = cx.vec_entities.clone();
+            if name_vector_entity(&mut cx.sim, &map) {
+                let out = build_stamp_graph(&mut cx.motion.doc.graph, OBJECT);
+                cx.motion.sinks.push(out);
             }
-            let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+            let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
             // ⚠️ **Esta mensagem dizia «ASSADA numa tile pela membrana» e estava VELHA
             // desde o ADR-0154** — o modo `=5`, três braços abaixo, já dizia o
             // contrário no mesmo ficheiro. Ela custou uma cena inteira (a `=9` nasceu
@@ -240,14 +233,12 @@ pub(crate) fn motion_object_smoke(app: &mut crate::App) {
         // "Object") e criada pelo `flip_entities::sync`, entao o grafo o acha pelo
         // nome no frame 6 (sem nomear a mao — o sync copia o nome do objeto).
         3 if f == 3 => {
-            let gfx = app.gfx.as_mut().expect("gfx");
-            spawn_flip_object(&mut gfx.flip);
+            spawn_flip_object(&mut cx.flip);
         }
         3 if f == 6 => {
-            let gfx = app.gfx.as_mut().expect("gfx");
-            let out = build_stamp_graph(&mut gfx.motion.doc.graph, OBJECT);
-            gfx.motion.sinks.push(out);
-            let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+            let out = build_stamp_graph(&mut cx.motion.doc.graph, OBJECT);
+            cx.motion.sinks.push(out);
+            let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
             eprintln!(
                 "[motion.obj smoke =3] O OBJETO Flip 'Object' (BG azul + FG laranja, 2 camadas) \
                  foi COMPOSTO no frame atual e ASSADO numa tile pela membrana, carimbado numa \
@@ -260,10 +251,8 @@ pub(crate) fn motion_object_smoke(app: &mut crate::App) {
         // + flip) nos seus lugares relativos. O grupo emite os filhos como N
         // instancias VIVAS; carimbar o grupo replica o layout inteiro.
         4 if f == 3 => {
-            let gfx = app.gfx.as_mut().expect("gfx");
             // O grupo (Name "Object" + GroupedChildren) + um sprite filho a esquerda.
-            let group = gfx
-                .sim
+            let group = cx.sim
                 .world_mut()
                 .spawn((
                     Name::new(OBJECT),
@@ -271,28 +260,27 @@ pub(crate) fn motion_object_smoke(app: &mut crate::App) {
                     Transform::IDENTITY,
                 ))
                 .id();
-            gfx.sim.world_mut().spawn((
+            cx.sim.world_mut().spawn((
                 Sprite::atlas(DEMO_TILE_KEY, [0.7, 0.7], [1.0, 1.0, 1.0, 1.0]),
                 child_at(-1.1, 0.0),
                 ph2d_ecs::ChildOf(group),
             ));
             // O vetor + o flip entram agora; suas ENTIDADES nascem no sync dos
             // frames seguintes, quando serao nomeadas e parenteadas ao grupo.
-            gfx.vec_scene.push_path(star_shape());
-            spawn_flip_object_named(&mut gfx.flip, "GFlip");
+            cx.vec_scene.push_path(star_shape());
+            spawn_flip_object_named(&mut cx.flip, "GFlip");
         }
         4 if f == 6 => {
-            let vec_map = app.vec_entities.clone();
-            let flip_map = app.flip_state.entities.clone();
-            let gfx = app.gfx.as_mut().expect("gfx");
-            if let Some(group) = find_group(&mut gfx.sim, OBJECT) {
+            let vec_map = cx.vec_entities.clone();
+            let flip_map = cx.flip_state.entities.clone();
+            if let Some(group) = find_group(&mut cx.sim, OBJECT) {
                 // O vetor (a unica forma da cena) vira filho SEM NOME no centro — o
                 // caso do item 3 (doc 86 §9.6): um filho vetor/flip de grupo sem Name
                 // continua carimbado, resolvido pelo seu DRAWING id (`VecPathRef`), nao
                 // pelo nome. O bake o tila porque ele esta num grupo NOMEADO.
                 if let Some((_, &bits)) = vec_map.iter().next() {
                     let e = ph2d_ecs::Entity::from_bits(bits);
-                    if let Ok(mut ent) = gfx.sim.world_mut().get_entity_mut(e) {
+                    if let Ok(mut ent) = cx.sim.world_mut().get_entity_mut(e) {
                         ent.insert((child_at(0.0, 0.0), ph2d_ecs::ChildOf(group)));
                     }
                 }
@@ -301,17 +289,16 @@ pub(crate) fn motion_object_smoke(app: &mut crate::App) {
                 // parenteamos + posicionamos.
                 if let Some((_, &bits)) = flip_map.iter().next() {
                     let e = ph2d_ecs::Entity::from_bits(bits);
-                    if let Ok(mut ent) = gfx.sim.world_mut().get_entity_mut(e) {
+                    if let Ok(mut ent) = cx.sim.world_mut().get_entity_mut(e) {
                         ent.insert((child_at(1.1, 0.0), ph2d_ecs::ChildOf(group)));
                     }
                 }
             }
         }
         4 if f == 9 => {
-            let gfx = app.gfx.as_mut().expect("gfx");
-            let out = build_stamp_graph(&mut gfx.motion.doc.graph, OBJECT);
-            gfx.motion.sinks.push(out);
-            let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+            let out = build_stamp_graph(&mut cx.motion.doc.graph, OBJECT);
+            cx.motion.sinks.push(out);
+            let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
             eprintln!(
                 "[motion.obj smoke =4] O GRUPO 'Object' (sprite SEM NOME + estrela vetor SEM \
                  NOME + objeto Flip 'GFlip', MIDIA MISTA) esta carimbado numa grade 4x4 = 16 \
@@ -323,18 +310,16 @@ pub(crate) fn motion_object_smoke(app: &mut crate::App) {
             );
         }
         7 if f == 3 => {
-            let gfx = app.gfx.as_mut().expect("gfx");
-            spawn_flip_walk_named(&mut gfx.flip, OBJECT);
+            spawn_flip_walk_named(&mut cx.flip, OBJECT);
         }
         7 if f == 6 => {
-            let gfx = app.gfx.as_mut().expect("gfx");
-            let outs = build_two_times_graph(&mut gfx.motion.doc.graph, OBJECT);
-            gfx.motion.sinks.extend(outs);
-            let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+            let outs = build_two_times_graph(&mut cx.motion.doc.graph, OBJECT);
+            cx.motion.sinks.extend(outs);
+            let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
             // O relógio ANDA: um offset de tempo só é visível numa animação que
             // corre. Uma cena parada mostraria dois desenhos diferentes e não
             // diria se a diferença é de FASE.
-            app.playhead.play();
+            cx.playhead.play();
             eprintln!(
                 "[motion.obj smoke =7] o MESMO objeto Flip ({OBJECT}, 12 fps, 4 desenhos \
                  em 0/3/6/9) trazido DUAS vezes: a grade da ESQUERDA em time_offset = 0 \

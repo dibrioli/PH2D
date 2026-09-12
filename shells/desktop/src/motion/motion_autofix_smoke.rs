@@ -58,9 +58,9 @@ fn mode() -> u32 {
 static FRAME: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
 
 /// Roda no prólogo do frame, ao lado dos outros smokes. No-op sem a env.
-pub(crate) fn motion_autofix_smoke(app: &mut crate::App) {
+pub(crate) fn motion_autofix_smoke(cx: &mut crate::motion::motion_scene_ctx::MotionSceneCtx<'_>) {
     use std::sync::atomic::Ordering;
-    if mode() == 0 || app.gfx.is_none() {
+    if mode() == 0 {
         return;
     }
     let f = FRAME.fetch_add(1, Ordering::Relaxed);
@@ -69,9 +69,8 @@ pub(crate) fn motion_autofix_smoke(app: &mut crate::App) {
         // e empurra o gesto ERRADO (Connect force -> output, sem integrador). O
         // bridge drena o intent, conecta e auto-conserta no mesmo frame.
         (1, 3) => {
-            let gfx = app.gfx.as_mut().expect("gfx");
             let (grid, force, out) = {
-                let g = &mut gfx.motion.doc.graph;
+                let g = &mut cx.motion.doc.graph;
                 let grid = g.add_node("motion.grid");
                 let force = g.add_node("force.wind");
                 let out = g.add_node("motion.output");
@@ -102,8 +101,8 @@ pub(crate) fn motion_autofix_smoke(app: &mut crate::App) {
                 (grid, force, out)
             };
             let _ = grid;
-            gfx.motion.sinks.push(out);
-            let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+            cx.motion.sinks.push(out);
+            let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
             // Nasce SELECIONADA a força, para o artista cair no card dela.
             ph2d_panel_motion_graph::request_graph_selection(vec![force.0]);
             // O GESTO ERRADO: liga a força direto ao output.
@@ -124,9 +123,7 @@ pub(crate) fn motion_autofix_smoke(app: &mut crate::App) {
         }
         // =1, frame 90: apaga o integrador — gesto destrutivo, o app NAO re-insere.
         (1, 90) => {
-            let gfx = app.gfx.as_mut().expect("gfx");
-            let integ = gfx
-                .motion
+            let integ = cx.motion
                 .doc
                 .graph
                 .nodes()
@@ -155,9 +152,8 @@ pub(crate) fn motion_autofix_smoke(app: &mut crate::App) {
         // esse integrador (nao insere um segundo) e a forca vira o ramo de forcas ->
         // os pontos DERIVAM (+X, com o strength 3 default do wind).
         (2, 3) => {
-            let gfx = app.gfx.as_mut().expect("gfx");
             let out = {
-                let g = &mut gfx.motion.doc.graph;
+                let g = &mut cx.motion.doc.graph;
                 let grid = g.add_node("motion.grid");
                 let integ = g.add_node("motion.integrate");
                 let out = g.add_node("motion.output");
@@ -190,8 +186,8 @@ pub(crate) fn motion_autofix_smoke(app: &mut crate::App) {
                 .expect("integrate -> output");
                 out
             };
-            gfx.motion.sinks.push(out);
-            let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+            cx.motion.sinks.push(out);
+            let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
             // O GESTO: soltar a forca SOBRE o fio integrate -> output.
             ph2d_panel_motion_graph::push_intent(GraphIntent::SpliceNode {
                 to_node: out.0,
@@ -216,9 +212,8 @@ pub(crate) fn motion_autofix_smoke(app: &mut crate::App) {
         // artista CLICA cada badge: o da forca AUTO-conserta (insere motion.integrate);
         // o do pin so' EXPLICA + seleciona (a lei do ADR-0155 de nunca adivinhar).
         (3, 3) => {
-            let gfx = app.gfx.as_mut().expect("gfx");
             let (out_f, out_p) = {
-                let g = &mut gfx.motion.doc.graph;
+                let g = &mut cx.motion.doc.graph;
                 // Setup A: a forca sem integrador (badge fixavel).
                 let grid_f = g.add_node("motion.grid");
                 let force = g.add_node("force.wind");
@@ -279,11 +274,11 @@ pub(crate) fn motion_autofix_smoke(app: &mut crate::App) {
                 .expect("pin -> output");
                 (out_f, out_p)
             };
-            gfx.motion.sinks.push(out_f);
-            gfx.motion.sinks.push(out_p);
-            let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+            cx.motion.sinks.push(out_f);
+            cx.motion.sinks.push(out_p);
+            let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
             let badges =
-                ph2d_motion_diagnose::diagnose(&gfx.motion.doc.graph, &gfx.motion.registry).len();
+                ph2d_motion_diagnose::diagnose(&cx.motion.doc.graph, &cx.motion.registry).len();
             eprintln!(
                 "[autofix smoke =3] montei DOIS setups inertes SEM gesto construtivo: \
                  {badges} produtor(es) inerte(s) marcado(s) (esperado 2 — a force.wind e o \
@@ -305,9 +300,8 @@ pub(crate) fn motion_autofix_smoke(app: &mut crate::App) {
         // + seleciona, nunca adivinha (Offer). Depois o chip "Node Help" desliga o
         // sistema inteiro (o badge some) e liga de volta — a liberdade do artista.
         (4, 3) => {
-            let gfx = app.gfx.as_mut().expect("gfx");
             let out = {
-                let g = &mut gfx.motion.doc.graph;
+                let g = &mut cx.motion.doc.graph;
                 let grid = g.add_node("motion.grid");
                 let field = g.add_node("field.box");
                 let out = g.add_node("motion.output");
@@ -340,10 +334,10 @@ pub(crate) fn motion_autofix_smoke(app: &mut crate::App) {
                 .expect("field -> output");
                 out
             };
-            gfx.motion.sinks.push(out);
-            let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+            cx.motion.sinks.push(out);
+            let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
             let falloff =
-                ph2d_motion_diagnose::diagnose(&gfx.motion.doc.graph, &gfx.motion.registry)
+                ph2d_motion_diagnose::diagnose(&cx.motion.doc.graph, &cx.motion.registry)
                     .iter()
                     .filter(|d| {
                         d.deficit == ph2d_motion_diagnose::Deficit::InertProducer("falloff")
@@ -373,9 +367,8 @@ pub(crate) fn motion_autofix_smoke(app: &mut crate::App) {
         // EXPLICA (precisa de uma fonte de pontos — grid/emitter) + seleciona, nunca
         // adivinha (Offer). Ligar uma `motion.grid` na entrada dele CURA (some o badge).
         (5, 3) => {
-            let gfx = app.gfx.as_mut().expect("gfx");
             let (bend, out) = {
-                let g = &mut gfx.motion.doc.graph;
+                let g = &mut cx.motion.doc.graph;
                 let bend = g.add_node("motion.bend");
                 let out = g.add_node("motion.output");
                 g.set_pos(bend, Pos { x: 0.0, y: -200.0 });
@@ -394,10 +387,10 @@ pub(crate) fn motion_autofix_smoke(app: &mut crate::App) {
                 .expect("bend -> output");
                 (bend, out)
             };
-            gfx.motion.sinks.push(out);
-            let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+            cx.motion.sinks.push(out);
+            let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
             ph2d_panel_motion_graph::request_graph_selection(vec![bend.0]);
-            let needy = ph2d_motion_diagnose::diagnose(&gfx.motion.doc.graph, &gfx.motion.registry)
+            let needy = ph2d_motion_diagnose::diagnose(&cx.motion.doc.graph, &cx.motion.registry)
                 .iter()
                 .filter(|d| d.deficit == ph2d_motion_diagnose::Deficit::MissingSource("P"))
                 .count();
@@ -428,9 +421,8 @@ pub(crate) fn motion_autofix_smoke(app: &mut crate::App) {
         // 'points') + seleciona, nunca adivinha (Offer). Ligar o grid em `points` CURA
         // (a estrela vira 16 copias, o ⚠ some).
         (6, 3) => {
-            let gfx = app.gfx.as_mut().expect("gfx");
             let (dup, out) = {
-                let g = &mut gfx.motion.doc.graph;
+                let g = &mut cx.motion.doc.graph;
                 // A porta `shape` recebe uma forma DE VERDADE (o no' "Shape",
                 // `source.shape`) — nao um grid. O grid entra na cena mas fica SOLTO,
                 // pronto para o artista ligar em `points`.
@@ -481,11 +473,11 @@ pub(crate) fn motion_autofix_smoke(app: &mut crate::App) {
                 let _ = grid;
                 (dup, out)
             };
-            gfx.motion.sinks.push(out);
-            let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+            cx.motion.sinks.push(out);
+            let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
             ph2d_panel_motion_graph::request_graph_selection(vec![dup.0]);
             let missing =
-                ph2d_motion_diagnose::diagnose(&gfx.motion.doc.graph, &gfx.motion.registry)
+                ph2d_motion_diagnose::diagnose(&cx.motion.doc.graph, &cx.motion.registry)
                     .iter()
                     .filter(|d| matches!(d.deficit, ph2d_motion_diagnose::Deficit::MissingInput(_)))
                     .count();
@@ -512,12 +504,12 @@ pub(crate) fn motion_autofix_smoke(app: &mut crate::App) {
         // varrer o `select` — a fileira AFUNDA no degrau do meio. Irmão próprio.
         _ => {
             crate::motion::motion_autofix_smoke_appropriate::motion_autofix_smoke_appropriate(
-                app,
+                cx,
                 mode(),
                 f,
             );
             crate::motion::motion_autofix_smoke_dead_branch::motion_autofix_smoke_dead_branch(
-                app,
+                cx,
                 mode(),
                 f,
             );

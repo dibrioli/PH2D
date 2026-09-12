@@ -46,8 +46,8 @@ pub(super) fn spawn_leaf_sprite(sim: &mut ph2d_ecs::SimWorld) {
 }
 
 /// Monta a planta com a folha nomeada e METADE das folhas à frente.
-pub(super) fn run(gfx: &mut crate::AppGfx) {
-    let g = &mut gfx.motion.doc.graph;
+pub(super) fn run(cx: &mut crate::motion::motion_scene_ctx::MotionSceneCtx<'_>) {
+    let g = &mut cx.motion.doc.graph;
     let l = g.add_node(ls::MANIFEST.name);
     g.set_param(l, ls::param::MODE, ls::MODE_GRAMMAR as f32);
     g.set_text_param(l, ls::AXIOM_PARAM, ls::PRESETS[0].axiom);
@@ -81,8 +81,8 @@ pub(super) fn run(gfx: &mut crate::AppGfx) {
     {
         return;
     }
-    gfx.motion.sinks.push(out);
-    let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+    cx.motion.sinks.push(out);
+    let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
     eprintln!(
         "[motion.obj smoke =12] UMA ARVORE COM FOLHAS QUE SAO IMAGENS.
 

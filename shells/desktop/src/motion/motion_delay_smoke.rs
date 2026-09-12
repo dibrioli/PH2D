@@ -113,16 +113,15 @@ fn on() -> bool {
 static FRAME: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
 
 /// Roda no prólogo do frame, ao lado do `build_smoke`. No-op sem a env.
-pub(crate) fn motion_delay_smoke(app: &mut crate::App) {
+pub(crate) fn motion_delay_smoke(cx: &mut crate::motion::motion_scene_ctx::MotionSceneCtx<'_>) {
     use std::sync::atomic::Ordering;
-    if !on() || app.gfx.is_none() || FRAME.fetch_add(1, Ordering::Relaxed) != 4 {
+    if !on() || FRAME.fetch_add(1, Ordering::Relaxed) != 4 {
         return;
     }
-    let gfx = app.gfx.as_mut().expect("gfx");
-    let g = &mut gfx.motion.doc.graph;
+    let g = &mut cx.motion.doc.graph;
     // A de cima TREME; a de baixo é a mesma coisa com o nó no meio.
     let raw = row(g, 1.4, false, -460.0);
     let eased = row(g, -0.2, true, -300.0);
-    gfx.motion.sinks.extend(raw.into_iter().chain(eased));
-    let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+    cx.motion.sinks.extend(raw.into_iter().chain(eased));
+    let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
 }

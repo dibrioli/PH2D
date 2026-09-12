@@ -344,6 +344,8 @@ mod morph_states_smoke;
 /// `src/motion/` pela W2/L1 (2026-09-11). As 27 raizes (e a `#[cfg(test)]` de oito
 /// delas) mudaram-se para [`crate::motion`], que e' o unico `mod` que fica aqui.
 mod motion;
+/// A shell preenche o contexto das cenas de Motion — a metade que FICA (W2 Fase C).
+mod motion_host;
 mod mount_smoke;
 mod multi_node_smoke;
 mod nest_smoke;

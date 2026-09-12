@@ -25,13 +25,12 @@ const LEVELS: [f32; 2] = [1.2, 2.4];
 
 /// O corpo da cena `=8`, delegado de [`crate::motion::motion_autofix_smoke::motion_autofix_smoke`] pelo braço `_`
 /// (o pai já avançou o `FRAME`). Só a combinação `(8, 3)` age.
-pub(crate) fn motion_autofix_smoke_dead_branch(app: &mut crate::App, mode: u32, f: u32) {
+pub(crate) fn motion_autofix_smoke_dead_branch(cx: &mut crate::motion::motion_scene_ctx::MotionSceneCtx<'_>, mode: u32, f: u32) {
     if (mode, f) != (8, 3) {
         return;
     }
-    let gfx = app.gfx.as_mut().expect("gfx");
     let (sw, out) = {
-        let g = &mut gfx.motion.doc.graph;
+        let g = &mut cx.motion.doc.graph;
         let grid = g.add_node("motion.grid");
         g.set_param(grid, "rows", 1.0);
         g.set_param(grid, "cols", 16.0);
@@ -120,11 +119,11 @@ pub(crate) fn motion_autofix_smoke_dead_branch(app: &mut crate::App, mode: u32, 
         }
         (sw, out)
     };
-    gfx.motion.sinks.push(out);
-    let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+    cx.motion.sinks.push(out);
+    let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
     ph2d_panel_motion_graph::request_graph_selection(vec![sw.0]);
 
-    let dead = ph2d_motion_diagnose::diagnose(&gfx.motion.doc.graph, &gfx.motion.registry)
+    let dead = ph2d_motion_diagnose::diagnose(&cx.motion.doc.graph, &cx.motion.registry)
         .iter()
         .filter(|d| matches!(d.deficit, ph2d_motion_diagnose::Deficit::DeadBranch(_)))
         .count();

@@ -13,7 +13,7 @@
 //! gates: a shell publicar as linhas de peça, e a cor do picker voltar para a peça. **A lista de
 //! peças deixou de ser pintada** — ela era a porta de autoria do motor `VecInstance`, e no modelo
 //! geral uma peça é uma ENTIDADE com endereço próprio: o olho é o da Hierarquia e a cor é qualquer
-//! ferramenta sobre a peça seleccionada, com a régua em `crate::instance_piece_override_tests`.
+//! ferramenta sobre a peça seleccionada, com a régua em `ph2d_app_components::instance_structure::instance_piece_override_tests`.
 //!
 //! ⚠️ **O nome do ficheiro mudou junto, e isso não é arrumação:** um arch-gate cujo nome promete
 //! uma costura que ele já não mede manda o próximo leitor procurar a lei no sítio errado.

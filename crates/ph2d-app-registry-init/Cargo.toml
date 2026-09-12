@@ -12,6 +12,7 @@ authors.workspace = true
 [dependencies]
 ph2d-app-host = { path = "../ph2d-app-host" }
 # <ph2d-app-sync:deps:begin>
+ph2d-app-components = { path = "../ph2d-app-components", optional = true }
 ph2d-app-field3d = { path = "../ph2d-app-field3d", optional = true }
 ph2d-app-flip = { path = "../ph2d-app-flip", optional = true }
 ph2d-app-motion = { path = "../ph2d-app-motion", optional = true }
@@ -28,6 +29,7 @@ ph2d-app-vec = { path = "../ph2d-app-vec", optional = true }
 # --features app-field3d`), nunca para esconder.
 default = [
 # <ph2d-app-sync:default:begin>
+    "app-components",
     "app-field3d",
     "app-flip",
     "app-motion",
@@ -40,6 +42,7 @@ default = [
 # Bloco GERADO por `cargo run -p ph2d-app-sync` a partir de uma varredura de
 # `crates/ph2d-app-*`. ⛔ Não edite entre os marcadores à mão — há gate de staleness.
 # <ph2d-app-sync:features:begin>
+app-components = ["dep:ph2d-app-components"]
 app-field3d = ["dep:ph2d-app-field3d"]
 app-flip = ["dep:ph2d-app-flip"]
 app-motion = ["dep:ph2d-app-motion"]

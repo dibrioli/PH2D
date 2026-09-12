@@ -22,7 +22,7 @@ pub(super) fn drain_card_verb(
     )>,
     sim: &mut SimWorld,
     registry: &ph2d_ecs::scene::ComponentRegistry,
-    echo: &mut crate::instance_sync::MasterEcho,
+    echo: &mut ph2d_app_components::instance_sync::MasterEcho,
     hero: &mut HeroScreen,
     toasts: &mut ph2d_editor::ToastQueue,
     vec_scene: &mut ph2d_vec_scene::VecScene,
@@ -46,7 +46,7 @@ pub(super) fn drain_card_verb(
             echo,
             &mut hero.gizmo,
             toasts,
-            &mut crate::instance_docs::OwnedDocs {
+            &mut ph2d_app_components::instance_docs::OwnedDocs {
                 vec_scene,
                 vec_entities,
             },

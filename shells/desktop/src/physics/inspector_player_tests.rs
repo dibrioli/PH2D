@@ -31,7 +31,7 @@ use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, PlatformPlayer, RigidB
 /// poupa é só o registo, que de outro modo cada um dos 27 montaria.
 pub fn attach_player(sim: &mut SimWorld, entity_bits: u64) {
     let reg = crate::init::build_component_registry();
-    crate::component_attach::attach_by_name(
+    ph2d_app_components::component_attach::attach_by_name(
         sim,
         &reg,
         entity_bits,

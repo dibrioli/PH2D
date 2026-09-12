@@ -29,18 +29,18 @@ fn family(sim: &mut SimWorld) -> (Entity, Entity, Entity) {
     ));
     ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
     ph2d_ecs::assign_master_pieces(sim.world_mut());
-    let (mut sc, mut mp) = crate::instance_docs::empty_docs();
-    let mut docs = crate::instance_docs::OwnedDocs {
+    let (mut sc, mut mp) = ph2d_app_components::instance_docs::empty_docs();
+    let mut docs = ph2d_app_components::instance_docs::OwnedDocs {
         vec_scene: &mut sc,
         vec_entities: &mut mp,
     };
-    let variant = crate::instantiate::instantiate_master(
+    let variant = ph2d_app_components::instantiate::instantiate_master(
         sim,
         &r,
         base,
         None,
         &mut docs,
-        crate::instantiate::ArtLink::Own,
+        ph2d_app_components::instantiate::ArtLink::Own,
     )
     .expect("instanciou a variante");
     sim.world_mut()
@@ -48,13 +48,13 @@ fn family(sim: &mut SimWorld) -> (Entity, Entity, Entity) {
         .insert((MasterRoot, Name::new("Casa Variant")));
     ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
     ph2d_ecs::assign_master_pieces(sim.world_mut());
-    let copy = crate::instantiate::instantiate_master(
+    let copy = ph2d_app_components::instantiate::instantiate_master(
         sim,
         &r,
         base,
         None,
         &mut docs,
-        crate::instantiate::ArtLink::Own,
+        ph2d_app_components::instantiate::ArtLink::Own,
     )
     .expect("instanciou a copia");
     ph2d_ecs::assign_missing_stable_ids(sim.world_mut());

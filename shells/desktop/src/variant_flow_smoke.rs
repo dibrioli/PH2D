@@ -15,7 +15,7 @@
 //! **não se mexe** — *o nome é rótulo, nunca mecanismo*.
 //!
 //! ⛔ **Isto imprime; não é um gate.** Ele corre os verbos pela MESMA porta que o menu drena
-//! ([`crate::instance_verbs::drain`]) e, a cada passo, diz **o que o artista veria**: a voz do
+//! ([`ph2d_app_components::instance_verbs::drain`]) e, a cada passo, diz **o que o artista veria**: a voz do
 //! toast, as linhas da Hierarquia (pelo rótulo derivado que o pintor usa) e as fileiras do cartão
 //! de propriedades (pelo modelo que o pintor lê).
 //!
@@ -65,35 +65,35 @@ fn step_1_build(app: &mut crate::App) {
 }
 
 fn step_2_make_prefab(app: &mut crate::App) {
-    verb(app, crate::instance_verbs::Verb::Make, "Make Prefab");
+    verb(app, ph2d_app_components::instance_verbs::Verb::Make, "Make Prefab");
 }
 
 fn step_3_instantiate(app: &mut crate::App) {
-    verb(app, crate::instance_verbs::Verb::Place, "Instantiate");
+    verb(app, ph2d_app_components::instance_verbs::Verb::Place, "Instantiate");
 }
 
 fn step_4_make_variant(app: &mut crate::App) {
     verb(
         app,
-        crate::instance_verbs::Verb::Make,
+        ph2d_app_components::instance_verbs::Verb::Make,
         "Make Prefab (na cópia)",
     );
 }
 
 /// Corre um verbo pela porta do menu e imprime a VOZ que o artista ouviria.
-fn verb(app: &mut crate::App, v: crate::instance_verbs::Verb, name: &str) {
+fn verb(app: &mut crate::App, v: ph2d_app_components::instance_verbs::Verb, name: &str) {
     let bits = LIVE.with(std::cell::Cell::get);
     let vec_entities = &mut app.vec_entities;
     let Some(gfx) = app.gfx.as_mut() else { return };
     let registry = crate::init::build_component_registry();
-    let mut echo = crate::instance_sync::MasterEcho::default();
+    let mut echo = ph2d_app_components::instance_sync::MasterEcho::default();
     let mut toasts = ph2d_editor::ToastQueue::default();
     let mut select_out = None;
-    let mut docs = crate::instance_docs::OwnedDocs {
+    let mut docs = ph2d_app_components::instance_docs::OwnedDocs {
         vec_scene: &mut gfx.vec_scene,
         vec_entities,
     };
-    let changed = crate::instance_verbs::drain(
+    let changed = ph2d_app_components::instance_verbs::drain(
         v,
         &mut gfx.sim,
         &registry,

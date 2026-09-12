@@ -138,7 +138,7 @@ impl crate::App {
     /// roda que atravessasse o cartão daria zoom no canvas por baixo dele, que é o gesto errado
     /// com a mão no sítio certo.
     /// ⭐ **A roda pertence à PALETA enquanto ela estiver aberta** — ver
-    /// [`crate::component_attach::palette_wheel`], onde mora o porquê.
+    /// [`ph2d_app_components::component_attach::palette_wheel`], onde mora o porquê.
     pub(crate) fn command_palette_wheel(&mut self, dy: f32) -> bool {
         let Some(gfx) = self.gfx.as_mut() else {
             return false;
@@ -147,7 +147,7 @@ impl crate::App {
         let (Some(hero), Some(viewport)) = (gfx.hero_screen.as_mut(), viewport) else {
             return false;
         };
-        crate::component_attach::palette_wheel(hero, &mut gfx.text_system, viewport, dy)
+        ph2d_app_components::component_attach::palette_wheel(hero, &mut gfx.text_system, viewport, dy)
     }
 
     pub(crate) fn input_map_wheel(&mut self, dy: f32) -> bool {

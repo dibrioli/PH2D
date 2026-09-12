@@ -25,27 +25,27 @@ fn scene() -> (SimWorld, ph2d_ecs::scene::ComponentRegistry, Entity, Entity) {
     ));
     ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
     ph2d_ecs::assign_master_pieces(sim.world_mut());
-    let (mut sc, mut mp) = crate::instance_docs::empty_docs();
-    let inst = crate::instantiate::instantiate_master(
+    let (mut sc, mut mp) = ph2d_app_components::instance_docs::empty_docs();
+    let inst = ph2d_app_components::instantiate::instantiate_master(
         &mut sim,
         &r,
         master,
         None,
-        &mut crate::instance_docs::OwnedDocs {
+        &mut ph2d_app_components::instance_docs::OwnedDocs {
             vec_scene: &mut sc,
             vec_entities: &mut mp,
         },
-        crate::instantiate::ArtLink::Own,
+        ph2d_app_components::instantiate::ArtLink::Own,
     )
     .expect("instanciou");
-    let mut echo = crate::instance_sync::MasterEcho::default();
-    let (mut sc, mut mp) = crate::instance_docs::empty_docs();
-    crate::instance_sync::sync_instances(
+    let mut echo = ph2d_app_components::instance_sync::MasterEcho::default();
+    let (mut sc, mut mp) = ph2d_app_components::instance_docs::empty_docs();
+    ph2d_app_components::instance_sync::sync_instances(
         &mut sim,
         &r,
         &ph2d_physics_ecs::PhysicsBridge::new(),
         &mut echo,
-        &mut crate::instance_docs::OwnedDocs {
+        &mut ph2d_app_components::instance_docs::OwnedDocs {
             vec_scene: &mut sc,
             vec_entities: &mut mp,
         },
@@ -106,15 +106,15 @@ fn the_section_names_the_overridden_component_of_this_piece() {
     // eco não há atribuição: o passe cai na regra do 1.º encontro e **o mestre ganha**, então a
     // tinta era desfeita em vez de virar excepção. *Uma fixtura que semeia o eco depois do gesto
     // mede o app a arrancar, não o artista a editar.*
-    let mut echo = crate::instance_sync::MasterEcho::default();
-    let (mut sc, mut mp) = crate::instance_docs::empty_docs();
-    let mut run = |sim: &mut SimWorld, echo: &mut crate::instance_sync::MasterEcho| {
-        crate::instance_sync::sync_instances(
+    let mut echo = ph2d_app_components::instance_sync::MasterEcho::default();
+    let (mut sc, mut mp) = ph2d_app_components::instance_docs::empty_docs();
+    let mut run = |sim: &mut SimWorld, echo: &mut ph2d_app_components::instance_sync::MasterEcho| {
+        ph2d_app_components::instance_sync::sync_instances(
             sim,
             &r,
             &ph2d_physics_ecs::PhysicsBridge::new(),
             echo,
-            &mut crate::instance_docs::OwnedDocs {
+            &mut ph2d_app_components::instance_docs::OwnedDocs {
                 vec_scene: &mut sc,
                 vec_entities: &mut mp,
             },
@@ -337,17 +337,17 @@ fn instantiate(
     r: &ph2d_ecs::scene::ComponentRegistry,
     master: ph2d_ecs::Entity,
 ) -> ph2d_ecs::Entity {
-    let (mut sc, mut mp) = crate::instance_docs::empty_docs();
-    crate::instantiate::instantiate_master(
+    let (mut sc, mut mp) = ph2d_app_components::instance_docs::empty_docs();
+    ph2d_app_components::instantiate::instantiate_master(
         sim,
         r,
         master,
         None,
-        &mut crate::instance_docs::OwnedDocs {
+        &mut ph2d_app_components::instance_docs::OwnedDocs {
             vec_scene: &mut sc,
             vec_entities: &mut mp,
         },
-        crate::instantiate::ArtLink::Own,
+        ph2d_app_components::instantiate::ArtLink::Own,
     )
     .expect("instanciou")
 }

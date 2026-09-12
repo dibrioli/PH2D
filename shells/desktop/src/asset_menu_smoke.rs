@@ -124,7 +124,7 @@ fn build(app: &mut crate::App) {
     let Some(gfx) = app.gfx.as_mut() else {
         return;
     };
-    let master = crate::instance_smoke::spawn_master(&mut gfx.sim);
+    let master = ph2d_app_components::instance_smoke::spawn_master(&mut gfx.sim);
     ph2d_ecs::assign_missing_stable_ids(gfx.sim.world_mut());
     ph2d_ecs::assign_missing_root_order(gfx.sim.world_mut());
     let id = gfx
@@ -136,17 +136,17 @@ fn build(app: &mut crate::App) {
 
     // Uma cópia, pela porta do produto — é o que o `Select users` tem de encontrar.
     let registry = crate::init::build_component_registry();
-    let mut docs = crate::instance_docs::OwnedDocs {
+    let mut docs = ph2d_app_components::instance_docs::OwnedDocs {
         vec_scene: &mut gfx.vec_scene,
         vec_entities,
     };
-    let placed = crate::instantiate::instantiate_master(
+    let placed = ph2d_app_components::instantiate::instantiate_master(
         &mut gfx.sim,
         &registry,
         master,
         None,
         &mut docs,
-        crate::instantiate::ArtLink::Own,
+        ph2d_app_components::instantiate::ArtLink::Own,
     )
     .is_ok();
     ph2d_ecs::assign_missing_stable_ids(gfx.sim.world_mut());

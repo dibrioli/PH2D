@@ -46,17 +46,17 @@ fn two_recipes_and_a_copy(
     let truck = make("Truck");
     ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
     ph2d_ecs::assign_master_pieces(sim.world_mut());
-    let (mut sc, mut mp) = crate::instance_docs::empty_docs();
-    let copy = crate::instantiate::instantiate_master(
+    let (mut sc, mut mp) = ph2d_app_components::instance_docs::empty_docs();
+    let copy = ph2d_app_components::instantiate::instantiate_master(
         sim,
         r,
         car,
         None,
-        &mut crate::instance_docs::OwnedDocs {
+        &mut ph2d_app_components::instance_docs::OwnedDocs {
             vec_scene: &mut sc,
             vec_entities: &mut mp,
         },
-        crate::instantiate::ArtLink::Own,
+        ph2d_app_components::instantiate::ArtLink::Own,
     )
     .expect("instanciou");
     (sim.world().get::<StableId>(truck).expect("id").0, copy)
@@ -74,12 +74,12 @@ fn run_replace(
     asset: DragPayload,
     selected: Option<u64>,
 ) -> (bool, String) {
-    let mut echo = crate::instance_sync::MasterEcho::default();
+    let mut echo = ph2d_app_components::instance_sync::MasterEcho::default();
     let mut gizmo = ph2d_editor::screens::hero::GizmoStateGroup::default();
     gizmo.replace_selection(selected);
     let mut toasts = ph2d_editor::ToastQueue::default();
-    let (mut sc, mut mp) = crate::instance_docs::empty_docs();
-    let mut docs = crate::instance_docs::OwnedDocs {
+    let (mut sc, mut mp) = ph2d_app_components::instance_docs::empty_docs();
+    let mut docs = ph2d_app_components::instance_docs::OwnedDocs {
         vec_scene: &mut sc,
         vec_entities: &mut mp,
     };
@@ -283,17 +283,17 @@ fn the_three_replace_items_are_three_different_laws() {
         let truck = make("Truck", ["Wheel", "Body"]);
         ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
         ph2d_ecs::assign_master_pieces(sim.world_mut());
-        let (mut sc, mut mp) = crate::instance_docs::empty_docs();
-        let copy = crate::instantiate::instantiate_master(
+        let (mut sc, mut mp) = ph2d_app_components::instance_docs::empty_docs();
+        let copy = ph2d_app_components::instantiate::instantiate_master(
             &mut sim,
             &r,
             car,
             None,
-            &mut crate::instance_docs::OwnedDocs {
+            &mut ph2d_app_components::instance_docs::OwnedDocs {
                 vec_scene: &mut sc,
                 vec_entities: &mut mp,
             },
-            crate::instantiate::ArtLink::Own,
+            ph2d_app_components::instantiate::ArtLink::Own,
         )
         .expect("instanciou");
         // A excepção do artista, escrita à mão na chave: é ela que o re-key move.

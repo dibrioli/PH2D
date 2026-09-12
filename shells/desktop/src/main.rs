@@ -80,12 +80,6 @@ mod atlas_loader;
 // ⛔ **O BACKEND DE ÁUDIO mudou-se para a `ph2d-audio-desktop`** (`line/shell-folhas`, 12/09):
 // 8 544 linhas e o `cpal` inteiro saíram desta unidade de compilação. A shell continua a ler as
 // sete `PH2D_AUDIO_*` — o ROTEADOR é composição e fica aqui; o que saiu foi o motor.
-/// ⭐⭐⭐ A cena do `Timer` (`PH2D_TIMER_SMOKE=1`) — o primeiro produtor de sinal que não
-/// precisa de dois corpos a tocarem-se.
-/// ⭐⭐⭐ O smoke do SOM DE CENA (TOP-20 #4). ⚠️ Gateado no `panel-audio-editor` **pelo
-/// ENCODER** — a cena escreve o `.wav` que vai tocar; o PRODUTO nao e gateado.
-#[cfg(feature = "panel-audio-editor")]
-mod audio_2d_smoke;
 /// **O OBJETO ASSADO** (`docs/3D/02.2`, rota A) — os canais que uma malha doou a um sprite e a luz
 /// que os le'. ⚠️ Deliberadamente FORA da feature `sculpt3d`: um objeto assado sobrevive ao modulo.
 /// Blend Objects vivos (ADR-0128): o objeto único que interpola 2..=5 formas e as segue
@@ -134,7 +128,6 @@ mod build_smoke_drive;
 /// A cena de smoke do **Expand** (Outline Stroke + Offset Path) — `PH2D_BUILD_SMOKE=17`.
 mod build_smoke_expand;
 mod build_smoke_router;
-mod camera_2d_smoke;
 /// ⭐⭐ **A ÁREA de desenho visível** — a porta única de *«onde o canvas de facto se vê?»*.
 mod canvas_area;
 /// ⭐⭐ **A cor com que a camada de sprites é limpa** — o fundo que o artista vê no canvas, hoje
@@ -145,21 +138,18 @@ mod canvas_zoom;
 mod chrome_hit;
 /// Teclado do palette de "Add Node" (busca/filtro, Enter/Backspace/Esc).
 mod command_palette_input;
-/// As duas pontas do `+` (F3): abrir a paleta para quem pediu, e anexar o que ela escolheu.
-mod component_attach;
-/// ⭐ A paleta de COMPONENTES que o `+` do Inspector abre (ADR-0166 / F3) — o MODELO, não um
-/// modal novo: o widget é o `command_palette`, que já é genérico.
-mod component_palette;
-/// **Contour** (pesquisa `20_*` #9) — o cozimento vivo do `VecContour`: N anéis concêntricos
-/// com rampa de cor, irmão do `offset_live` de que é a generalização.
-/// ⭐ **O catálogo de componentes que as fixturas da família das INSTÂNCIAS montam** — e o gate que
-/// o obriga a ser o mesmo que o produto monta. `#[cfg(test)]` porque **todos** os `33` chamadores
-/// dele são testes: não há uma linha de produto nesta família a construir um registo.
-#[cfg(test)]
-mod component_registry_for_tests;
-mod component_seed;
-mod component_smoke;
 /// O gesto que cria um conector (Down numa forma, Up noutra).
+/// ⭐ O PRÓLOGO das cenas da família das instâncias — o invólucro que traduz `&mut App` para a
+/// assinatura da [`ph2d_app_components`]. *O que sai são os corpos; o que decide a ordem do quadro
+/// fica.*
+mod components_scenes;
+/// ⛔ As DUAS costuras de teste que ficaram na shell quando a família das instâncias saiu — o
+/// sujeito delas é meio chrome (o probe do Inspector · o re-alojamento de pixels), e uma crate
+/// nunca pode chamar o `bin`. Ver o `test_support` da `ph2d_app_components`.
+#[cfg(test)]
+mod component_attach_seam_tests;
+#[cfg(test)]
+mod instance_paint_seam_tests;
 mod connector_gesture;
 /// Conectores vivos: a linha que gruda em duas formas e as segue (re-cook por frame).
 mod connector_handles;
@@ -262,46 +252,6 @@ mod input_map_drag;
 #[cfg(test)]
 #[path = "inspector_presence_tests.rs"]
 mod inspector_presence_tests;
-/// ⭐⭐⭐ **A peça que o artista ACRESCENTOU a uma cópia** (F5.11) — o espelho da recusa: ali a
-/// decisão tinha de ser guardada, aqui ela já está escrita na ausência do elo.
-mod instance_added;
-/// ⭐⭐ A cena de DAR uma peça ao componente — irmã por assunto do `instance_smoke`.
-mod instance_added_smoke;
-/// ⭐⭐ **A escada do *Aplicar*** — a que mestre, quando há mais de um. Ver o cabeçalho de lá.
-mod instance_apply_deep;
-/// ⭐ **As travessias que os verbos partilham** — irmão por assunto, ver o cabeçalho de lá.
-mod instance_diag;
-mod instance_docs;
-/// ⭐⭐ A cena de MUDAR uma peça de lugar no componente — irmã por assunto do `instance_smoke`.
-mod instance_move_smoke;
-/// ⭐⭐ A cena da receita DENTRO da receita — irmã por assunto do `instance_smoke`.
-mod instance_nested_smoke;
-/// ⭐⭐⭐ **ABRIR a receita a partir de uma cópia** — o acesso que só a biblioteca tinha.
-mod instance_open;
-mod instance_refs;
-/// ⭐⭐ A cena do que é SÓ desta cópia — irmã por assunto do `instance_smoke`.
-mod instance_removed_smoke;
-/// ⭐⭐ A cena da TROCA por um componente sem parentesco — irmã por assunto do `instance_smoke`.
-mod instance_replace_smoke;
-mod instance_revert;
-mod instance_smoke;
-/// ⭐ **A FORMA de uma instância segue a do mestre** (ADR-0164 / F5.1) — irmão do sync, que
-/// responde *que valor*; este responde *que peças*.
-mod instance_structure;
-/// ⭐⭐ **Emparelhar as peças quando NÃO há parentesco** — irmão do `instance_variant`, que lê os
-/// elos; este é o palpite pedido em voz alta, com os três modos do plano F5.
-mod instance_swap_match;
-/// ⭐ **O SYNC VIVO mestre → instância** (ADR-0164 / F4.3).
-mod instance_sync;
-mod instance_sync_docs;
-/// ⭐⭐ **TIRAR DA BIBLIOTECA** — a lei das duas metades (a receita dissolve-se, ou volta à cena).
-mod instance_unmake;
-mod instance_variant;
-/// ⭐ **Os VERBOS de instância** (ADR-0164 / F4.5) — criar componente, destacar, aplicar ao mestre.
-mod instance_verbs;
-mod instance_verbs_walk;
-/// ⭐ **INSTANCIAR** (ADR-0164 / F4.2) — a porta que compõe a cópia profunda com o remap.
-mod instantiate;
 mod integration;
 mod keymap;
 /// A cena de smoke do Knot (o entrelace celta over/under) — irmão de `build_smoke`.
@@ -475,7 +425,6 @@ mod sheet_frame;
 mod sheet_import;
 /// `PH2D_SHEET_SMOKE` — a cena que exerce a folha como OBJETO (plano `docs/Sprite_projeto/17` §7).
 mod sheet_smoke;
-mod signal_action_smoke;
 mod signal_smoke;
 /// ⭐ A cena da TABELA SINAL → PAPEL (`PH2D_BUILD_SMOKE=68`) — ⚠️ NÃO é o `signal_smoke`, que é
 /// a cena do R0 (`PH2D_SIGNAL_SMOKE`): ali o assunto é a SAÍDA, aqui é o CONSUMIDOR.
@@ -529,7 +478,6 @@ mod timeline_persist;
 /// **A timeline é o TERCEIRO membro da família pré-visualização↔documento** — enquanto o playhead
 /// toca, as curvas escrevem poses que não são edições do artista (`crate::preview_drive`).
 mod timeline_preview;
-mod timer_smoke;
 mod timescale_smoke;
 /// **AS MOLDURAS** (plano UI/UX W0): que intervalo da pilha de z cada `VecFrame` recorta. A
 /// metade que a shell possui — o renderer sabe desenhar, a shell sabe a ÁRVORE.

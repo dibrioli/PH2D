@@ -21,7 +21,7 @@
 //!    nunca foi uma escolha que o artista visse. O palco toma-a emprestada e devolve-a ao fechar.
 //!
 //! ⚠️⚠️ **E as cópias não se mexem, por CONSTRUÇÃO** — não por cuidado meu: o `Transform` da RAIZ
-//! está na lista `ROOT_IS_ITS_OWN` do [`crate::instance_sync`] (*«o `Transform` de uma peça
+//! está na lista `ROOT_IS_ITS_OWN` do [`ph2d_app_components::instance_sync`] (*«o `Transform` de uma peça
 //! propaga; o da raiz é onde o artista a largou»*), logo ele nunca alcança uma cópia. É a mesma
 //! razão pela qual o motor vectorial remove só a **translação** do mestre ao compor uma instância.
 //!
@@ -142,7 +142,7 @@ pub(crate) fn hold(stage: &mut Option<Stage>, sim: &mut SimWorld, drive: &mut Pr
         return;
     };
     // ⭐ **O endereço re-resolve-se pela identidade a cada quadro** — ver o doc do [`Stage`].
-    let Some(bits) = crate::instance_verbs_walk::entity_for_stable_id(sim, st.id) else {
+    let Some(bits) = ph2d_app_components::instance_verbs_walk::entity_for_stable_id(sim, st.id) else {
         // A receita deixou de existir (apagada, ou um restauro que não a trouxe): não há onde
         // repor, e insistir seria escrever numa entidade morta.
         *stage = None;

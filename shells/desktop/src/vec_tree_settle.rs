@@ -38,7 +38,7 @@
 //! fotografia**. São duas perguntas, não duas respostas à mesma: uma serve o que se VÊ neste
 //! quadro, a outra o que se GUARDA dele.
 //!
-//! ⚠️ **É o sítio e a razão do [`crate::instance_sync::App::sync_instances`]**, que corre a dois
+//! ⚠️ **É o sítio e a razão do [`ph2d_app_components::instance_sync::App::sync_instances`]**, que corre a dois
 //! passos daqui com o mesmo doc: *depois do quadro, e antes da captura — senão a escrita do sync
 //! vira um passo de undo que ninguém deu.* A lei já estava escrita ali, para outro sistema.
 

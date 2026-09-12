@@ -72,7 +72,18 @@ fn every_refusal_of_the_apply_added_gesture_has_a_voice() {
     let arm = body
         .find("if let Some(piece) = apply_added")
         .expect("o braco adiado");
-    let tail = &body[arm..arm + 1600.min(body.len() - arm)];
+    // ⛔⛔ **Era uma janela de 1600 BYTES, e um número de bytes é uma agulha cujo sentido depende
+    // do COMPRIMENTO DOS NOMES.** Ao mudar `crate::instance_added::` para
+    // `ph2d_app_components::instance_added::` (+17 caracteres por ocorrência) os dois toasts deste
+    // braço passaram de dentro para fora da janela, e o gate reprovou sobre produto **correcto**.
+    // ⛔ Alargar o número seria pior do que deixá-lo: medido, o braço tem `1816` bytes e os toasts
+    // dele estão a `1498` e `1727` — mas há outro par a `3573`/`3816`, de um braço VIZINHO. Uma
+    // janela de `4000` ficaria verde a contar os toasts de outra pessoa.
+    // ⇒ a fatia passa a ser **o braço**, fechado na chaveta à indentação dele.
+    let fim = body[arm..]
+        .find("\n            }")
+        .expect("o braco deixou de fechar a esta indentacao — reancore este censo");
+    let tail = &body[arm..arm + fim];
     assert!(
         tail.matches("Toast::warning").count() >= 2,
         "as recusas do gesto nao falam — `NotAdded` e o resto tem de dizer coisas diferentes"

@@ -1,6 +1,6 @@
 //! **A cena da ORDEM DE Z** — `PH2D_BUILD_SMOKE=57` (Enio, 2026-08-04).
 //!
-//! Módulo irmão do [`crate::component_smoke`] pelo teto de LOC. Duas perguntas, e as duas são de
+//! Módulo irmão do [`ph2d_app_components::component_smoke`] pelo teto de LOC. Duas perguntas, e as duas são de
 //! olho:
 //!
 //! 1. *O filho aparece?* — a lei do Godot: o filho desenha **sobre** o pai. Antes desta wave um

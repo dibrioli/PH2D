@@ -1,0 +1,391 @@
+//! ⭐ **INSTANCIAR** — a porta do produto (ADR-0164 / plano F4.2).
+//!
+//! Ela compõe as duas metades que sozinhas não fazem uma instância:
+//!
+//! 1. [`ph2d_ecs::deep_copy_subtree`] — copia os bytes de toda a subárvore e dá **identidade
+//!    nova** a cada peça;
+//! 2. [`crate::instance_refs::remap_object_refs`] — reescreve as referências guardadas por
+//!    identidade, para que a junta da instância prenda **os corpos dela**.
+//!
+//! ⛔ **Nunca chame a primeira sozinha do produto.** Uma cópia sem remap é o defeito que esta
+//! wave existe para curar, e ele é MUDO: a junta prende no mestre (que não simula), então as
+//! peças da instância caem soltas e nada na tela diz porquê. O gate
+//! `only_the_instantiate_door_calls_the_deep_copy` mantém esta função como o único chamador.
+
+use ph2d_ecs::scene::ComponentRegistry;
+use ph2d_ecs::{Entity, InstanceOf, MasterRoot, Name, SimWorld, StableId};
+
+/// **Por que uma instanciação foi recusada** — e não um `None`, porque as razões pedem frases
+/// diferentes ao artista.
+///
+/// ⚠️ A mensagem mora no **gesto** (F4.5), não aqui: esta porta responde o FATO, e quem tem UI
+/// escolhe as palavras. *Duas recusas que devolvem o mesmo `None` produzem o mesmo aviso inútil.*
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Refusal {
+    /// A subárvore escolhida não é uma receita.
+    NotAMaster,
+    /// A instância aterraria **dentro do próprio mestre** — ver [`instantiate_master`].
+    WouldNestInItself,
+}
+
+/// ⭐⭐⭐ **A cópia tem arte PRÓPRIA, ou DIVIDE a do mestre?** (Enio, 2026-08-27.)
+///
+/// É a escolha do Blender entre `Shift+D` e `Alt+D`, aplicada ao que uma cópia é aqui — e ela vale
+/// para as DUAS artes ao mesmo tempo, a tinta e o desenho, que é o ponto: até 2026-08-27 os pixels
+/// respondiam uma coisa e a geometria vetorial a outra, e o artista não tinha por onde saber.
+///
+/// ⚠️ **Um `bool` aqui seria lido ao contrário** no dia em que alguém passasse `true` a pensar em
+/// *«é uma instância»*. O nome vive no tipo.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum ArtLink {
+    /// **Arte própria.** Editar o desenho ou a tinta desta cópia vira uma **excepção dela**; as
+    /// irmãs não mudam. É o `Shift+D`, e é o que *Instantiate* faz.
+    Own,
+    /// **Arte do mestre.** A edição **sobe à receita** e o passe seguinte leva-a a todas as
+    /// cópias. É o `Alt+D`, e é o que *Instantiate Linked* faz.
+    ///
+    /// ⚠️ Só a ARTE — a pose, o `tint` e os componentes continuam a ser desta cópia. Ver
+    /// [`ph2d_ecs::LinkedArt`].
+    Shared,
+}
+
+/// **Instancia o mestre `master_root`**, devolvendo a raiz da instância.
+///
+/// `parent` diz onde ela aterra (`None` = raiz da cena).
+///
+/// ⛔ **Recusa** (ver [`Refusal`]):
+///
+/// - `master_root` não é um mestre. Pôr um [`InstanceOf`] a apontar para uma subárvore que não é
+///   receita daria ao sync (F4.3) um mestre que o artista edita como um objeto qualquer, e cada
+///   edição da cena seria propagada como se fosse autoria de biblioteca.
+/// - o destino está **dentro do próprio mestre**. Isso poria a receita a conter uma instância de
+///   si mesma: o sync propagaria o mestre para dentro do mestre — que cresce a cada quadro — e a
+///   cópia profunda seguinte copiaria a cópia. ⚠️ *A recusa é no GESTO e não um tecto de
+///   profundidade*: um limite numérico transformaria um erro de autoria numa contagem, e o artista
+///   veria a árvore crescer até um número que ninguém lhe explicou.
+///
+/// `link` escolhe **qual das duas leis** a cópia segue — ver [`ArtLink`].
+pub fn instantiate_master(
+    sim: &mut SimWorld,
+    registry: &ComponentRegistry,
+    master_root: Entity,
+    parent: Option<Entity>,
+    docs: &mut crate::instance_docs::OwnedDocs<'_>,
+    link: ArtLink,
+) -> Result<Entity, Refusal> {
+    if sim.world().get::<MasterRoot>(master_root).is_none() {
+        return Err(Refusal::NotAMaster);
+    }
+    if let Some(p) = parent
+        && is_self_or_descendant(sim, p, master_root)
+    {
+        return Err(Refusal::WouldNestInItself);
+    }
+    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+    let Some(master_id) = sim.world().get::<StableId>(master_root).map(|s| s.0) else {
+        return Err(Refusal::NotAMaster);
+    };
+    let base = sim
+        .world()
+        .get::<Name>(master_root)
+        .map_or_else(|| "Instance".to_string(), |n| n.0.clone());
+
+    let Ok(copy) = ph2d_ecs::deep_copy_subtree(sim.world_mut(), registry, master_root, parent)
+    else {
+        return Err(Refusal::NotAMaster);
+    };
+    // ⭐⭐ **Os DOCUMENTOS possuídos** (F4.6) — a cópia profunda salta-os de propósito, e sem esta
+    // metade uma peça vetorial nasce **sem geometria nenhuma**: uma linha na Hierarquia que não
+    // desenha um pixel. Ver [`crate::instance_docs`], onde a lista dos quatro está declarada.
+    // ⭐⭐ **A cópia nasce SEM excepções, e isto só passou a importar com as VARIANTES** (F5).
+    //
+    // A cópia profunda leva o `ObjectInstance` verbatim, e num mestre comum ele não existe. Numa
+    // **variante** existe — são as excepções dela contra a base, chaveadas pelas peças da BASE. A
+    // cópia é instância da variante, e as peças dela ligam-se às peças da VARIANTE: aquelas chaves
+    // não alcançam nada e ficariam a acumular em toda instância de toda variante. ⚠️ Inertes, mas
+    // é lixo com cara de excepção — o cartão do Inspector lê aquele conjunto.
+    //
+    // ⛔ **E não é «herdar»**: o valor que a variante autorou já está nos componentes das peças
+    // dela, e a cópia leva-o pelos bytes. A excepção é a pergunta *«de quem é este componente»*, e
+    // numa cópia recém-nascida a resposta é *da receita*, para todos.
+    sim.world_mut()
+        .entity_mut(copy.root)
+        .remove::<ph2d_ecs::ObjectInstance>();
+    let report = crate::instance_docs::clone_owned_documents(sim, registry, docs, &copy);
+    report.warn("instanciar");
+    let pieces = copy.copies();
+
+    // ⚠️⚠️ **A ORDEM destes dois passos é load-bearing, e o erro é silencioso.**
+    //
+    // O mapa contém `mestre → cópia do mestre` (tem de conter: uma junta ancorada na raiz da
+    // receita precisa dele). Se o `InstanceOf` fosse inserido ANTES, o remapeador dele — que é
+    // uma linha da mesma tabela — reescreveria o elo para a identidade da **própria cópia**, e a
+    // instância passaria a dizer-se instância de si mesma. O sync da F4.3 leria isso como *"o
+    // mestre sou eu"* e nunca mais propagaria nada.
+    //
+    // ⇒ remapear primeiro, ligar depois. Gate: `the_instance_points_at_the_master_not_at_itself`.
+    crate::instance_refs::remap_object_refs(sim.world_mut(), &pieces, &copy.stable_ids);
+
+    // ⭐⭐ **CADA PEÇA guarda de que peça do mestre nasceu** (F4.3), e não só a raiz.
+    //
+    // É esta a correspondência DURÁVEL de que o sync vive: ela sobrevive ao save, ao undo e —
+    // sobretudo — a **o mestre ganhar ou perder uma peça**, que é o momento em que emparelhar por
+    // posição na árvore (o caminho óbvio e barato) passa a emparelhar peças erradas em silêncio.
+    //
+    // ⚠️ A raiz é o caso particular: ela é a peça cujo `master` é um [`MasterRoot`], e é assim que
+    // *«esta entidade é a raiz de uma instância»* se responde sem um segundo componente.
+    for (&src, &dst) in &copy.entities {
+        let Some(id) = sim.world().get::<ph2d_ecs::StableId>(src).map(|s| s.0) else {
+            continue;
+        };
+        sim.world_mut()
+            .entity_mut(dst)
+            .insert(InstanceOf { master: id });
+        // ⭐⭐ **A marca da cópia LIGADA acompanha o elo, peça a peça** — ver [`ArtLink`] e
+        // [`ph2d_ecs::LinkedArt`]. Os dois consumidores (a tinta e o documento) têm em mão a peça
+        // que o artista tocou, nunca a raiz.
+        if link == ArtLink::Shared {
+            sim.world_mut().entity_mut(dst).insert(ph2d_ecs::LinkedArt);
+        }
+    }
+
+    let unique = ph2d_unique_name::unique_name(sim, &base);
+    let mut root = sim.world_mut().entity_mut(copy.root);
+    // ⚠️ A instância NÃO é um mestre: com o marcador ela nasceria **inerte** (F4.1) — três
+    // ragdolls no lugar certo, nenhum a cair.
+    root.remove::<MasterRoot>();
+    root.insert(InstanceOf { master: master_id });
+    root.insert(Name::new(unique));
+
+    ph2d_ecs::assign_missing_root_order(sim.world_mut());
+    ph2d_ecs::assign_missing_sibling_order(sim.world_mut());
+    // As peças da cópia deixam de ser peças de mestre no mesmo quadro em que nascem — sem isto
+    // elas só voltariam a simular no próximo passe da ponte.
+    ph2d_ecs::assign_master_pieces(sim.world_mut());
+    Ok(copy.root)
+}
+
+/// **`candidate` é o próprio `root` ou está debaixo dele?** — a pergunta do ciclo.
+///
+/// Sobe por `ChildOf`, que é `O(profundidade)` e corre uma vez por gesto. ⚠️ Sem guarda de ciclo
+/// na travessia **de propósito**: a hierarquia da casa não tem ciclos (o reparent recusa-os), e
+/// inventar aqui uma segunda defesa esconderia a primeira se ela algum dia partisse.
+fn is_self_or_descendant(sim: &SimWorld, candidate: Entity, root: Entity) -> bool {
+    let mut e = candidate;
+    loop {
+        if e == root {
+            return true;
+        }
+        match sim.world().get::<ph2d_ecs::ChildOf>(e) {
+            Some(c) => e = c.0,
+            None => return false,
+        }
+    }
+}
+
+/// ⭐ **DUPLICAR** — a mesma cópia profunda, **sem** elo ao original.
+///
+/// A cópia aterra ao lado da fonte (mesmo pai) e é um objeto independente. As referências internas
+/// são remapeadas pela mesma tabela: *a junta de uma cópia prende os corpos DELA*.
+///
+/// ⚠️ **Isto substitui uma cópia RASA** que levava quatro componentes (`Transform`, `Sprite`,
+/// `Name`, `ChildOf`) e **nenhum filho** — duplicar um ragdoll dava uma linha vazia na Hierarquia.
+/// O ADR-0164 nomeia esse defeito; ele existia porque copiar bytes de tipos que a shell não conhece
+/// não tinha porta, e agora tem.
+///
+/// ⭐⭐⭐ **A cópia de uma RECEITA é um objeto COMUM, e não uma segunda receita** (report do Enio,
+/// 2026-08-27: *«a duplicata está ficando invisível como o componente»*).
+///
+/// ⛔⛔ **A lei anterior — *«uma cópia de um mestre é outro mestre»*, com o `MasterRoot` a viajar no
+/// blob — foi escrita quando um mestre DESENHAVA.** Desde a F4.6 ele só está na tela enquanto a
+/// linha dele está escolhida, então *Duplicate* numa receita devolvia um objeto que **desaparece
+/// assim que o artista clica noutro sítio**, com um toast de sucesso por cima. A auditoria de
+/// 2026-08-27 apanhou-o (§1.2); a 1.ª cura foi **selecionar** a cópia — o que a mostra e não a
+/// resolve, porque a selecção seguinte apaga-a outra vez. *Curar o sintoma de um objeto invisível
+/// é mostrá-lo uma vez.*
+///
+/// ⛔ **E não havia gesto que o desfizesse:** o `Make` recusa com `AlreadyAMaster`, o `Detach` exige
+/// `InstanceOf`. A cópia era um fantasma sem cura por verbo — só Ctrl+Z ou Delete.
+///
+/// ⇒ *Duplicar* promete, em toda a app, **outro destes, ali**. Quem quer uma segunda receita faz
+/// *Duplicate* e depois *Make Component* — dois gestos, os dois visíveis.
+///
+/// ⚠️ **Uma cópia de uma INSTÂNCIA continua a ser outra instância** do mesmo mestre: o elo aponta
+/// para fora do que se copiou, e por isso o remap não lhe toca. Ela desenha, logo não tem o
+/// problema — *e é a razão de a cura ser sobre o `MasterRoot`, e não sobre «duplicar»*.
+///
+/// ⚠️⚠️ **`step` é um degrau de MUNDO derivado da tela**, e ele existe porque a cópia aterrava
+/// **exactamente em cima da fonte** (auditoria §1.4, 2026-08-27): o ramo VETORIAL do mesmo `if`
+/// deslocava por `PASTE_OFFSET_PX` e este não deslocava nada, então o toast dizia «Duplicated
+/// entity» e a tela ficava idêntica. ⛔ **Não é a lei do `cascade`** do *Instantiate*, e confundi-las
+/// escreve o defeito outra vez com outro sinal: aquele conta as instâncias que já existem
+/// (`instances_of`), e um *Duplicate* de uma sprite não tem mestre para contar. Aqui é **um** degrau,
+/// sempre — a pergunta é *«saiu de cima do que veio?»*, não *«a quantas cópias vai?»*.
+///
+/// ⚠️ **O degrau soma-se ao `Transform` LOCAL**, como no `cascade`: sob um pai escalado ele sai
+/// maior ou menor na tela. A propriedade que o gate defende é a separação ser **> 0**, e não o
+/// número de pixels; convertê-lo para o espaço do pai custaria um inverso por gesto para mover um
+/// artefacto que ninguém vê.
+pub fn duplicate_subtree(
+    sim: &mut SimWorld,
+    registry: &ComponentRegistry,
+    src: Entity,
+    docs: &mut crate::instance_docs::OwnedDocs<'_>,
+    step: [f32; 2],
+) -> Option<Entity> {
+    let parent = sim.world().get::<ph2d_ecs::ChildOf>(src).map(|c| c.0);
+    let base = sim
+        .world()
+        .get::<Name>(src)
+        .map_or_else(|| "Entity".to_string(), |n| n.0.clone());
+
+    let copy = ph2d_ecs::deep_copy_subtree(sim.world_mut(), registry, src, parent).ok()?;
+    // ⭐ A mesma metade que a instanciação paga: sem ela, duplicar um GRUPO com formas vetoriais
+    // dentro devolve as peças sem geometria (F4.6).
+    crate::instance_docs::clone_owned_documents(sim, registry, docs, &copy).warn("duplicar");
+    crate::instance_refs::remap_object_refs(sim.world_mut(), &copy.copies(), &copy.stable_ids);
+
+    // ⭐⭐⭐ **A cópia não é uma receita** — ver o doc. É a mesma linha que o `instantiate_master`
+    // já dava à instância, e pela mesma razão: com o marcador ela nasce fora da cena.
+    sim.world_mut().entity_mut(copy.root).remove::<MasterRoot>();
+    // ⭐⭐⭐ **E o duplicado de uma PEÇA DA RECEITA é um objecto NOVO, não um segundo pretendente à
+    // mesma peça do mestre** (achado pelo smoke da F5.11, 2026-09-06).
+    //
+    // ⛔ O `InstanceOf` é componente **registado**, logo a cópia profunda levava-o verbatim: o
+    // duplicado nascia a dizer-se a mesma peça da receita que o original. O passe põe os dois no
+    // mesmo balde (`have` é um mapa `StableId → entidade`, e o segundo tapa o primeiro), e o sync
+    // reescreve **os dois** com os bytes do mestre — o duplicado era um **sósia que não se deixa
+    // mover**, e nada na tela dizia porquê. *A cópia rasa de outrora acertava nisto por acidente,
+    // porque não copiava o elo.*
+    //
+    // ⚠️ **A pergunta é a PORTA ESTREITA, e a largura dela é load-bearing:** duplicar a RAIZ de uma
+    // cópia tem de continuar a dar uma segunda cópia (o elo fica), e duplicar uma cópia ANINHADA
+    // também (ela é a raiz da cópia dela). ⛔ Um `remove` incondicional transformaria o *Duplicate*
+    // de uma instância num *Detach* silencioso.
+    //
+    // ⭐ É exactamente o *Added GameObject* do Unity: duplicar um filho de uma instância dá um
+    // objecto acrescentado, que o cartão lista e o botão dá à receita.
+    if crate::instance_verbs::is_a_recipe_given_piece(sim, src) {
+        for e in copy.copies() {
+            sim.world_mut().entity_mut(e).remove::<InstanceOf>();
+        }
+    }
+
+    let unique = ph2d_unique_name::unique_name(sim, &base);
+    sim.world_mut()
+        .entity_mut(copy.root)
+        .insert(Name::new(unique));
+    // ⭐ **Sai de cima da fonte** — ver o doc: sem isto o gesto inteiro é um toast.
+    if let Some(mut t) = sim.world_mut().get_mut::<ph2d_ecs::Transform>(copy.root) {
+        t.translation.x += step[0];
+        t.translation.y += step[1];
+    }
+    ph2d_ecs::assign_missing_root_order(sim.world_mut());
+    ph2d_ecs::assign_missing_sibling_order(sim.world_mut());
+    // A cópia de um mestre é um mestre: as peças dela têm de ser marcadas já.
+    ph2d_ecs::assign_master_pieces(sim.world_mut());
+    Some(copy.root)
+}
+
+/// ⭐⭐ **Materializa UMA peça do mestre dentro de uma instância** (ADR-0164 / F5.1).
+///
+/// `piece` é a peça do MESTRE; `host` é a entidade da instância que corresponde ao pai dela.
+/// Devolve a raiz da peça materializada.
+///
+/// ⚠️ **Ela vive AQUI, na porta, e não em quem a chama** — o gate
+/// [`tests::only_the_instantiate_door_calls_the_deep_copy`] apanhou-me a escrever uma segunda
+/// montagem no `instance_structure`, e a razão dele é literal: uma 2.ª montagem esquece sempre um
+/// dos quatro passos (documentos possuídos · remap de referências · o elo em toda peça · tirar o
+/// `MasterRoot`), e cada esquecimento é **mudo**. *Uma cópia profunda tem uma porta.*
+///
+/// ⚠️ **`linked` vem da INSTÂNCIA, não da peça:** uma peça nova dentro de uma cópia ligada nasce
+/// ligada, senão a edição dela seria a única daquela cópia que não sobe ao mestre.
+///
+/// ⛔ **Ela NÃO desloca nada** (ao contrário do [`duplicate_subtree`]): a peça tem de aterrar
+/// exactamente onde a receita a pôs — um degrau aqui faria a mesma peça sair noutro sítio em cada
+/// cópia.
+pub(crate) fn materialise_piece(
+    sim: &mut SimWorld,
+    registry: &ComponentRegistry,
+    docs: &mut crate::instance_docs::OwnedDocs<'_>,
+    piece: Entity,
+    host: Entity,
+    linked: bool,
+) -> Option<Entity> {
+    let copy = ph2d_ecs::deep_copy_subtree(sim.world_mut(), registry, piece, Some(host)).ok()?;
+    crate::instance_docs::clone_owned_documents(sim, registry, docs, &copy)
+        .warn("materializar peca");
+    let pieces: Vec<Entity> = copy.copies();
+    crate::instance_refs::remap_object_refs(sim.world_mut(), &pieces, &copy.stable_ids);
+    for (&src, &dst) in &copy.entities {
+        let Some(id) = sim.world().get::<StableId>(src).map(|s| s.0) else {
+            continue;
+        };
+        sim.world_mut()
+            .entity_mut(dst)
+            .insert(InstanceOf { master: id });
+        if linked {
+            sim.world_mut().entity_mut(dst).insert(ph2d_ecs::LinkedArt);
+        }
+    }
+    // A peça materializada não é um mestre — a mesma linha que a instanciação paga, e pela mesma
+    // razão: com o marcador ela nasce fora da cena.
+    sim.world_mut().entity_mut(copy.root).remove::<MasterRoot>();
+    ph2d_ecs::assign_missing_sibling_order(sim.world_mut());
+    Some(copy.root)
+}
+
+/// ⭐⭐⭐ **PROMOVE uma peça acrescentada para dentro da receita** (ADR-0164 / F5.11) — o sentido
+/// INVERSO do [`materialise_piece`], e o *Apply* do *Added GameObject* do Unity.
+///
+/// `added` é a peça que o artista pendurou na cópia; `host_master` é a peça do MESTRE que
+/// corresponde ao pai dela. Devolve quantas entidades entraram na receita.
+///
+/// ⚠️ **O ELO nasce no ORIGINAL, e é ele que impede a peça de aparecer DUAS vezes.** Sem esta
+/// metade o passe estrutural vê, no quadro seguinte, uma peça do mestre que esta cópia *«não tem»*
+/// — e materializa uma segunda, na cópia onde o artista acabou de trabalhar. *A cópia para a
+/// receita sozinha não é o gesto: é metade dele.*
+///
+/// ⚠️ **E a leitura do `StableId` é do DESTINO**, ao contrário do irmão: lá o mestre já existia e
+/// a cópia nascia; aqui a cópia é que nasce, e é a identidade dela que o elo tem de nomear.
+///
+/// ⛔ **A marca da cópia LIGADA não entra na receita.** [`ph2d_ecs::LinkedArt`] diz *«esta cópia
+/// partilha a arte do mestre»* — o doc dela diz, pelo nome, que **o mestre não a tem**, e o sync
+/// vive disso (ela está no `NEVER_PROPAGATES` justamente para o passe não a arrancar da cópia). Uma
+/// receita que a carregasse seria uma receita a dizer que é cópia de si mesma.
+pub(crate) fn promote_piece(
+    sim: &mut SimWorld,
+    registry: &ComponentRegistry,
+    docs: &mut crate::instance_docs::OwnedDocs<'_>,
+    added: Entity,
+    host_master: Entity,
+) -> Option<usize> {
+    let copy =
+        ph2d_ecs::deep_copy_subtree(sim.world_mut(), registry, added, Some(host_master)).ok()?;
+    crate::instance_docs::clone_owned_documents(sim, registry, docs, &copy).warn("promover peca");
+    let pieces: Vec<Entity> = copy.copies();
+    crate::instance_refs::remap_object_refs(sim.world_mut(), &pieces, &copy.stable_ids);
+    for (&src, &dst) in &copy.entities {
+        let Some(id) = sim.world().get::<StableId>(dst).map(|s| s.0) else {
+            continue;
+        };
+        sim.world_mut()
+            .entity_mut(src)
+            .insert(InstanceOf { master: id });
+        sim.world_mut()
+            .entity_mut(dst)
+            .remove::<ph2d_ecs::LinkedArt>();
+    }
+    // A peça da receita não é ela própria uma receita — a mesma linha que os dois irmãos pagam.
+    sim.world_mut().entity_mut(copy.root).remove::<MasterRoot>();
+    ph2d_ecs::assign_missing_sibling_order(sim.world_mut());
+    // ⚠️ **Obrigatória, e a falta dela é VISÍVEL:** sem a marca a peça nova da receita passa a
+    // DESENHAR, e a receita está escondida exactamente por não ter nenhuma. O artista veria a peça
+    // aparecer duas vezes — uma na cópia dele e outra em cima da biblioteca.
+    ph2d_ecs::assign_master_pieces(sim.world_mut());
+    Some(pieces.len())
+}
+
+#[cfg(test)]
+#[path = "instantiate_tests.rs"]
+mod tests;

@@ -61,7 +61,7 @@ pub(super) fn duplicate_kind(
 /// ⛔⛔ **E a 1.ª cura da invisibilidade era o SINTOMA:** seleccionar a cópia mostra-a **uma vez**,
 /// e o clique seguinte apaga-a outra vez — o Enio voltou a reportá-lo no mesmo dia. A causa era a
 /// cópia de uma receita ser uma segunda receita; hoje ela é um objeto comum
-/// ([`crate::instantiate::duplicate_subtree`]). *Curar o sintoma de um objeto invisível é
+/// ([`ph2d_app_components::instantiate::duplicate_subtree`]). *Curar o sintoma de um objeto invisível é
 /// mostrá-lo uma vez.*
 #[allow(clippy::too_many_arguments)] // o mundo, a câmara, a voz, os dois documentos e a saída
 pub(super) fn drain(
@@ -139,11 +139,11 @@ pub(super) fn drain(
     // é o SILÊNCIO: um toast de sucesso sobre um objeto que não aparece lê-se como o mesmo
     // bug. Lido ANTES da cópia, senão a resposta é sobre a cópia e não sobre onde ela cai.
     let inside = !recipe && ph2d_ecs::master_root_of(sim.world(), src).is_some();
-    let mut docs = crate::instance_docs::OwnedDocs {
+    let mut docs = ph2d_app_components::instance_docs::OwnedDocs {
         vec_scene,
         vec_entities,
     };
-    let Some(copy) = crate::instantiate::duplicate_subtree(
+    let Some(copy) = ph2d_app_components::instantiate::duplicate_subtree(
         sim,
         registry,
         src,

@@ -47,6 +47,8 @@ pub fn register_all_app_families() -> AppFamilyRegistry {
     #[allow(unused_mut)]
     let mut reg = AppFamilyRegistry::new_empty();
     // <ph2d-app-sync:begin>
+    #[cfg(feature = "app-components")]
+    reg.push(ph2d_app_components::FAMILY);
     #[cfg(feature = "app-field3d")]
     reg.push(ph2d_app_field3d::FAMILY);
     #[cfg(feature = "app-flip")]

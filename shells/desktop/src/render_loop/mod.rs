@@ -188,11 +188,10 @@ pub(crate) mod inspector_instance;
 mod inspector_properties;
 mod inspector_slice;
 mod inspector_timer;
-/// Qual receita está a ser EDITADA — o passe que carimba a marca derivada.
-// ⚠️ `pub(crate)` porque o gate do anel de objeto vazio (`group_gizmo_view_tests`) acende a
-// receita pela porta de VERDADE — chamar `mark` é o que o quadro faz, e um `insert(MasterEditing)`
-// à mão no teste mediria a marca em vez do fim.
-pub(crate) mod master_editing;
+// ⭐ A derivação do `MasterPiece` (`master_editing`, F4.6) mudou-se para a
+// `ph2d_app_components` em 2026-09-12: é **lei da família das instâncias**, não do laço. O gate do
+// anel de objecto vazio (`group_gizmo_view_tests`) continua a acender a receita pela porta de
+// VERDADE, hoje escrita `ph2d_app_components::master_editing::mark`.
 pub(crate) use audio_2d::AudioSceneReport;
 pub(crate) use camera_2d::CameraSceneReport;
 mod signal_actions;
@@ -204,7 +203,7 @@ pub(crate) fn master_editing_mark_for_tests(
     sim: &mut ph2d_ecs::SimWorld,
     selection: Option<u64>,
 ) -> bool {
-    master_editing::mark(sim, selection, &mut None).touched
+    ph2d_app_components::master_editing::mark(sim, selection, &mut None).touched
 }
 /// A pergunta *«esta entidade está na cena?»* que o extract faz — ver o módulo.
 /// O `OnScreenEnabler` a decidir alguma coisa: *«só corre/aparece quando está no ecrã»*.
@@ -2116,10 +2115,10 @@ impl crate::App {
         }
 
         // ⭐ **O herói da cena de smoke da câmera anda AQUI**, imediatamente antes do passe dela —
-        // ver o doc do [`crate::camera_2d_smoke`] sobre porque ele é movido pelo TECLADO e não pelo
+        // ver o doc do [`ph2d_app_components::camera_2d_smoke`] sobre porque ele é movido pelo TECLADO e não pelo
         // rato (um arrasto ancorado na vista realimenta uma câmera que segue). No-op sem a cena.
         if self.game_camera_smoke_done {
-            crate::camera_2d_smoke::drive_smoke_hero(
+            ph2d_app_components::camera_2d_smoke::drive_smoke_hero(
                 sim,
                 player_input,
                 // ⭐ **Os MESMOS `ticks` que a câmera recebe uma linha abaixo** — o herói e a
@@ -2864,7 +2863,7 @@ impl crate::App {
         // contradizer. ⚠️ **Antes do extract e antes da vista do vetor**, que são os dois leitores.
         // ⚠️ **A selecção INTEIRA — a primária e os extras** (auditoria §1.6): com só o primário,
         // Shift-clicar a linha de uma receita realçava-a na Hierarquia e não a trazia à cena.
-        let opened = master_editing::mark(
+        let opened = ph2d_app_components::master_editing::mark(
             sim,
             hero_screen.as_ref().into_iter().flat_map(|h| {
                 h.gizmo
@@ -3315,11 +3314,11 @@ impl crate::App {
             let mut revert_to_master_row: Option<NodeId> = None;
             // ⭐ Os outros verbos de instância (ADR-0164 / F4.5) — UM slot, porque eles são
             // exclusivos por construção: o menu fecha ao primeiro clique.
-            let mut instance_verb_row: Option<(NodeId, crate::instance_verbs::Verb)> = None;
+            let mut instance_verb_row: Option<(NodeId, ph2d_app_components::instance_verbs::Verb)> = None;
             // ⭐ O mesmo verbo, endereçado por `StableId` — o canal do navegador de assets.
             let mut instance_verb_stable_id: Option<(
                 u64,
-                crate::instance_verbs::Verb,
+                ph2d_app_components::instance_verbs::Verb,
                 Option<[f32; 2]>,
             )> = None;
             // ⭐⭐ O menu de um CARTÃO da biblioteca (etapa C) — o par `(endereço, verbo)` que o
@@ -4783,19 +4782,19 @@ impl crate::App {
                     EditorAction::Hierarchy(
                         ph2d_editor::action_bus::HierRequest::MakeComponent { row },
                     ) => {
-                        instance_verb_row.get_or_insert((row, crate::instance_verbs::Verb::Make));
+                        instance_verb_row.get_or_insert((row, ph2d_app_components::instance_verbs::Verb::Make));
                     }
                     EditorAction::Hierarchy(
                         ph2d_editor::action_bus::HierRequest::Instantiate { row },
                     ) => {
-                        instance_verb_row.get_or_insert((row, crate::instance_verbs::Verb::Place));
+                        instance_verb_row.get_or_insert((row, ph2d_app_components::instance_verbs::Verb::Place));
                     }
                     // ⭐⭐⭐ **ABRIR a receita desta cópia** — pelo MESMO dreno dos outros verbos,
                     // que é onde vivem a resolução do sujeito e a voz de cada recusa.
                     EditorAction::Hierarchy(ph2d_editor::action_bus::HierRequest::EditPrefab {
                         row,
                     }) => {
-                        instance_verb_row.get_or_insert((row, crate::instance_verbs::Verb::Edit));
+                        instance_verb_row.get_or_insert((row, ph2d_app_components::instance_verbs::Verb::Edit));
                     }
                     // ⭐ **O verbo de USAR do navegador de assets** (plano `docs/Components/07`,
                     // wave A7). ⚠️ O sujeito é o `StableId`, não uma `row`: o navegador não tem
@@ -4805,7 +4804,7 @@ impl crate::App {
                     EditorAction::AssetInstantiate { stable_id, at } => {
                         instance_verb_stable_id.get_or_insert((
                             stable_id,
-                            crate::instance_verbs::Verb::Place,
+                            ph2d_app_components::instance_verbs::Verb::Place,
                             at,
                         ));
                     }
@@ -4821,12 +4820,12 @@ impl crate::App {
                         ph2d_editor::action_bus::HierRequest::InstantiateLinked { row },
                     ) => {
                         instance_verb_row
-                            .get_or_insert((row, crate::instance_verbs::Verb::PlaceLinked));
+                            .get_or_insert((row, ph2d_app_components::instance_verbs::Verb::PlaceLinked));
                     }
                     EditorAction::Hierarchy(ph2d_editor::action_bus::HierRequest::Detach {
                         row,
                     }) => {
-                        instance_verb_row.get_or_insert((row, crate::instance_verbs::Verb::Detach));
+                        instance_verb_row.get_or_insert((row, ph2d_app_components::instance_verbs::Verb::Detach));
                     }
                     // ⭐⭐ *Remove from Library* pela linha da Hierarquia — o MESMO verbo do cartão,
                     // com o outro sujeito. Ele resolve a receita a partir de uma cópia
@@ -4834,12 +4833,12 @@ impl crate::App {
                     EditorAction::Hierarchy(
                         ph2d_editor::action_bus::HierRequest::RemoveFromLibrary { row },
                     ) => {
-                        instance_verb_row.get_or_insert((row, crate::instance_verbs::Verb::Unmake));
+                        instance_verb_row.get_or_insert((row, ph2d_app_components::instance_verbs::Verb::Unmake));
                     }
                     EditorAction::Hierarchy(
                         ph2d_editor::action_bus::HierRequest::ApplyToMaster { row },
                     ) => {
-                        instance_verb_row.get_or_insert((row, crate::instance_verbs::Verb::Apply));
+                        instance_verb_row.get_or_insert((row, ph2d_app_components::instance_verbs::Verb::Apply));
                     }
                     EditorAction::Hierarchy(ph2d_editor::action_bus::HierRequest::Delete {
                         row,
@@ -5158,7 +5157,7 @@ impl crate::App {
                         // para o dreno dos verbos pediria um terceiro canal (bits, a par de `row` e
                         // `stable_id`) para um verbo que não toca no documento.
                         let mut select_out = None;
-                        crate::instance_open::open_prefab(
+                        ph2d_app_components::instance_open::open_prefab(
                             sim,
                             ph2d_ecs::Entity::from_bits(root_bits),
                             toasts,
@@ -5183,7 +5182,7 @@ impl crate::App {
                     // materializa a peça, lhe traz os bytes da receita e exuma a excepção que o
                     // artista tinha nela é o passe estrutural, no quadro seguinte.
                     EditorAction::InspectorRestoreRemovedPiece { root_bits, piece } => {
-                        if crate::instance_structure::restore_piece(sim, root_bits, piece) {
+                        if ph2d_app_components::instance_structure::restore_piece(sim, root_bits, piece) {
                             toasts.push(ph2d_editor::Toast::success(
                                 "Put the piece back \u{2014} it returns as the component has it",
                             ));
@@ -7260,7 +7259,7 @@ impl crate::App {
                 let mut select_out = None;
                 let mut arm_pick = false;
                 if let Some(subject) = subject {
-                    let mut docs = crate::instance_docs::OwnedDocs {
+                    let mut docs = ph2d_app_components::instance_docs::OwnedDocs {
                         vec_scene,
                         vec_entities: &mut self.vec_entities,
                     };
@@ -10358,7 +10357,7 @@ impl crate::App {
                 //
                 // ⚠️ **As duas capacidades NÃO se perderam, e a régua é anterior a este corte:**
                 // esconder uma peça de UMA cópia e pintá-la são hoje o `Visibility`/`Sprite` da
-                // própria peça ([`crate::instance_piece_override_tests`], escrito como
+                // própria peça (`ph2d_app_components::instance_structure::instance_piece_override_tests`, escrito como
                 // pré-condição desta fatia), e os variants vivem no cartão do Inspector (F5).
                 ph2d_panel_vector::state::set_component_state(
                     crate::vec_component_general::state_of(
@@ -11037,7 +11036,7 @@ impl crate::App {
             // ⚠️⚠️ **A pergunta é ao MUNDO e não à vista do vetor:** o `isolated` dela é enchido a
             // partir das FORMAS marcadas, e uma receita feita só de imagens deixa-o vazio — o vidro
             // nunca subiria justamente para os prefabs de sprite.
-            *frosting = crate::render_loop::master_editing::any_open(sim);
+            *frosting = ph2d_app_components::master_editing::any_open(sim);
             frost_doc_scene.reset();
             frost_front_scene.reset();
             let doc_bands = crate::draw_bands::doc_bands_of(frame_order);
@@ -12317,7 +12316,7 @@ impl crate::App {
             // ⚠️ **Aqui, e não no dreno do Inspector**, porque é aqui que o `sim` e o **eco** estão
             // os dois à mão — a troca tem de o esquecer, senão o passe seguinte lê a diferença
             // contra o mestre NOVO como *«a instância mexeu-se»* e congela a cópia com o valor do
-            // mestre VELHO ([`crate::instance_variant::swap`]).
+            // mestre VELHO ([`ph2d_app_components::instance_variant::swap`]).
             // ⭐⭐⭐ **RENOMEAR O VALOR de uma propriedade** (report do Enio, 2026-08-31).
             //
             // ⚠️ **O sujeito é a RECEITA, e o gesto nasceu sobre a CÓPIA.** É a razão de existir:
@@ -12340,13 +12339,13 @@ impl crate::App {
             if let Some((entity_bits, master)) = apply_to_level {
                 let name = inspector_instance::master_named(sim, master)
                     .unwrap_or_else(|| "prefab".to_string());
-                match crate::instance_apply_deep::apply_to_level(
+                match ph2d_app_components::instance_apply_deep::apply_to_level(
                     sim,
                     component_registry,
                     &mut self.instance_echo,
                     ph2d_ecs::Entity::from_bits(entity_bits),
                     master,
-                    &mut crate::instance_docs::OwnedDocs {
+                    &mut ph2d_app_components::instance_docs::OwnedDocs {
                         vec_scene,
                         vec_entities: &mut self.vec_entities,
                     },
@@ -12379,16 +12378,16 @@ impl crate::App {
             // ⚠️ **O sujeito resolve-se por `StableId`**, e não pelos bits que o cartão viu: entre
             // o clique e este ponto pode ter corrido um Ctrl+Z, que respawna tudo com bits novos.
             if let Some(piece) = apply_added {
-                let mut docs = crate::instance_docs::OwnedDocs {
+                let mut docs = ph2d_app_components::instance_docs::OwnedDocs {
                     vec_scene,
                     vec_entities: &mut self.vec_entities,
                 };
-                let subject = crate::instance_verbs::entity_for_stable_id(sim, piece)
+                let subject = ph2d_app_components::instance_verbs::entity_for_stable_id(sim, piece)
                     .map(ph2d_ecs::Entity::from_bits);
                 match subject
-                    .ok_or(crate::instance_added::AddRefusal::NotAdded)
+                    .ok_or(ph2d_app_components::instance_added::AddRefusal::NotAdded)
                     .and_then(|e| {
-                        crate::instance_added::promote(sim, component_registry, &mut docs, e)
+                        ph2d_app_components::instance_added::promote(sim, component_registry, &mut docs, e)
                     }) {
                     Ok(p) => {
                         let name =
@@ -12402,7 +12401,7 @@ impl crate::App {
                     }
                     // ⚠️ **Todo caminho negativo fala** — a lei do menu dos verbos. Um botão que
                     // come o clique em silêncio é pior que um ausente.
-                    Err(crate::instance_added::AddRefusal::NotAdded) => {
+                    Err(ph2d_app_components::instance_added::AddRefusal::NotAdded) => {
                         toasts.push(Toast::warning(
                             "That piece came from the component \u{2014} it is already in it",
                         ));
@@ -12413,7 +12412,7 @@ impl crate::App {
                 }
             }
             if let Some((root_bits, master)) = swap_variant {
-                match crate::instance_variant::swap(
+                match ph2d_app_components::instance_variant::swap(
                     sim,
                     &mut self.instance_echo,
                     ph2d_ecs::Entity::from_bits(root_bits),
@@ -12421,7 +12420,7 @@ impl crate::App {
                     // ⚠️ **A fileira de versões nunca adivinha.** Ali os mestres são aparentados
                     // por construção; uma queda para heurística seria a operação automática que o
                     // plano F5 proíbe. Quem pede um dos três modos é o menu da biblioteca.
-                    crate::instance_swap_match::WhenUnrelated::Refuse,
+                    ph2d_app_components::instance_swap_match::WhenUnrelated::Refuse,
                 ) {
                     Ok(r) => {
                         toasts.push(Toast::success(if r.dropped > 0 {
@@ -12439,8 +12438,8 @@ impl crate::App {
                     }
                     // ⚠️ **Todo caminho negativo fala.** Um chip que come o clique em silêncio é
                     // pior que um ausente — a mesma lei que o menu dos verbos paga.
-                    Err(crate::instance_variant::SwapRefusal::Already) => {}
-                    Err(crate::instance_variant::SwapRefusal::Unrelated) => {
+                    Err(ph2d_app_components::instance_variant::SwapRefusal::Already) => {}
+                    Err(ph2d_app_components::instance_variant::SwapRefusal::Unrelated) => {
                         toasts.push(Toast::warning(
                             "These components are not related \u{2014} switching would lose every override",
                         ));
@@ -12728,7 +12727,7 @@ impl crate::App {
             // ⭐ **O `+` do Inspector, as DUAS pontas** (ADR-0166 / F3) — abrir a paleta para quem
             // pediu, e anexar o que ela escolheu. Irmã por assunto (`component_attach`), como a
             // biblioteca do Motion é irmã do `motion_bridge`.
-            crate::component_attach::open_palette_if_asked(
+            ph2d_app_components::component_attach::open_palette_if_asked(
                 hero,
                 sim,
                 component_registry,
@@ -12737,7 +12736,7 @@ impl crate::App {
             );
             // ⭐ **A caixa *Show all*** — o widget vira o estado dele e avisa; quem reconstrói o
             // modelo é quem abriu a paleta (só ele sabe o que «mostrar tudo» quer dizer).
-            crate::component_attach::refresh_palette_on_toggle(
+            ph2d_app_components::component_attach::refresh_palette_on_toggle(
                 hero,
                 sim,
                 component_registry,
@@ -12745,8 +12744,8 @@ impl crate::App {
             );
             // ⚠️ O pick chega **noutro quadro** (a paleta fica aberta), e por isso o alvo vive no
             // `AppGfx` em vez de num local deste laço.
-            let picked = crate::component_attach::route_pick(hero, component_palette_target);
-            crate::component_attach::attach_picked(
+            let picked = ph2d_app_components::component_attach::route_pick(hero, component_palette_target);
+            ph2d_app_components::component_attach::attach_picked(
                 picked.as_ref(),
                 sim,
                 component_registry,

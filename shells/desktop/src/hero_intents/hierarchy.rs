@@ -109,7 +109,7 @@ pub(crate) fn drain_reparent(
     // está é *o mesmo pai*, e isso é um reordenar). Enquanto a condição vivia dentro desta função —
     // que recebe o `HeroLive`, e por isso nenhum teste a monta — **não havia como medir qual dos
     // dois gestos ela apanha.* Agora há.
-    if crate::instance_verbs_walk::refuses_reparent(sim, dragged, new_parent_entity) {
+    if ph2d_app_components::instance_verbs_walk::refuses_reparent(sim, dragged, new_parent_entity) {
         toasts.push(ph2d_editor::Toast::warning(
             "That piece's place comes from the prefab \u{2014} open it with \u{201c}Edit \
              Prefab\u{201d} to move it there",

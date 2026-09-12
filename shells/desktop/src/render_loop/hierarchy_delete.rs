@@ -63,12 +63,12 @@ pub(super) fn drain(
         // levou este report a existir — o artista tinha duas linhas chamadas `Body` na Hierarquia,
         // uma da receita e uma da cópia, e nada lhe disse qual era qual.
         //
-        // ⛔ **A recusa é NARROW e a porta é uma só** ([`crate::instance_verbs_walk::is_a_recipe_given_piece`]):
+        // ⛔ **A recusa é NARROW e a porta é uma só** ([`ph2d_app_components::instance_verbs_walk::is_a_recipe_given_piece`]):
         // apagar a cópia INTEIRA continua a ser um gesto normal, e o que o artista pendurou dentro
         // dela (sem elo) também — *o passe estrutural já declara as duas metades*.
         let (to_delete, from_a_recipe): (Vec<u64>, Vec<u64>) =
             wanted.into_iter().partition(|bits| {
-                !crate::instance_verbs::is_a_recipe_given_piece(
+                !ph2d_app_components::instance_verbs::is_a_recipe_given_piece(
                     sim,
                     ph2d_ecs::Entity::from_bits(*bits),
                 )
@@ -106,7 +106,7 @@ pub(super) fn drain(
         // o passe estrutural faz tudo o resto (sepultar as excepções dela, apagar a sub-árvore, e
         // nunca mais a materializar). *Despawnar aqui saltaria o sepultador e deixaria a excepção
         // daquela peça nem viva nem enterrada* — a mesma lei que a raiz do `swap` pagou ontem.
-        let refused = crate::instance_structure::refuse_pieces(sim, &from_a_recipe);
+        let refused = ph2d_app_components::instance_structure::refuse_pieces(sim, &from_a_recipe);
         // ⭐⭐ **Recusar uma peça move a selecção para a CÓPIA**, e não é conveniência: a peça que
         // estava escolhida vai deixar de existir no quadro seguinte, e uma selecção pendurada num
         // objecto morto **apaga o cartão do Inspector** — que é exactamente onde vive o *Put back*
@@ -116,7 +116,7 @@ pub(super) fn drain(
         if refused > 0
             && let Some(first) = from_a_recipe.first()
             && let Some(root) =
-                crate::instance_verbs::instance_root_of(sim, ph2d_ecs::Entity::from_bits(*first))
+                ph2d_app_components::instance_verbs::instance_root_of(sim, ph2d_ecs::Entity::from_bits(*first))
         {
             hero.gizmo.replace_selection(Some(root.to_bits()));
         }

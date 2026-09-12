@@ -23,6 +23,13 @@
 //! (`render_loop::master_editing::tests` e `instantiate::tests`); o que nenhum deles alcança é
 //! *«o produto de facto liga isto assim»*. [[feedback_a_rule_only_exists_if_it_is_on_the_path_of_who_executes_it]]
 
+// ⭐ **A família das instâncias saiu da shell em 2026-09-12** (W2 Fase D): os ficheiros dela
+// vivem em `crates/ph2d-app-components/src/`, e este censo mede-a **de fora**. Apontar para fora é
+// legítimo e tem precedente (HOWTO §2.6: os ~53 gates de arquitectura do `ph2d-editor-core` varrem
+// `shells/desktop/src` da mesma maneira). ⛔ O caminho fica ESCRITO, e não escondido atrás de um
+// «tenta aqui, senão ali»: um fallback aceitaria em silêncio o ficheiro errado no dia em que os
+// dois existirem.
+
 use std::fs;
 
 fn src(name: &str) -> String {
@@ -56,7 +63,7 @@ fn the_recipe_mark_is_fed_the_extra_selection_too() {
 #[test]
 fn the_duplicate_row_offsets_the_copy_and_puts_the_gizmo_on_it() {
     let s = src("render_loop/hierarchy_duplicate.rs");
-    let Some(at) = s.find("crate::instantiate::duplicate_subtree(") else {
+    let Some(at) = s.find("ph2d_app_components::instantiate::duplicate_subtree(") else {
         panic!("a row Duplicate deixou de chamar a copia profunda — reancore este gate");
     };
     // Do início da chamada até ao toast que a fecha: é exactamente o ramo genérico.
@@ -103,7 +110,7 @@ fn the_duplicate_row_offsets_the_copy_and_puts_the_gizmo_on_it() {
 /// alcança.
 #[test]
 fn no_smoke_scene_tells_the_artist_to_click_a_recipe_row() {
-    let s = src("instance_smoke.rs");
+    let s = src("../../../crates/ph2d-app-components/src/instance_smoke.rs");
     assert_eq!(
         s.matches("replace_selection(Some(master_bits))").count(),
         2,

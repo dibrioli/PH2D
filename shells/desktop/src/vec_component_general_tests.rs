@@ -6,7 +6,7 @@
 //! cópia nenhuma, passaria num gate escrito sobre a chamada.
 
 use super::{dispatch, state_of};
-use crate::instance_docs::OwnedDocs;
+use ph2d_app_components::instance_docs::OwnedDocs;
 use crate::vec_component_edit::ComponentEdit;
 use ph2d_ecs::{Children, Entity, MasterRoot, Name, SimWorld, Transform};
 use ph2d_vec_scene::VecPathId;
@@ -55,8 +55,8 @@ pub(super) fn run_full(
     subject: Entity,
     toasts: &mut ph2d_editor::ToastQueue,
 ) -> ((bool, Option<u64>), bool) {
-    let (mut sc, mut mp) = crate::instance_docs::empty_docs();
-    let mut echo = crate::instance_sync::MasterEcho::default();
+    let (mut sc, mut mp) = ph2d_app_components::instance_docs::empty_docs();
+    let mut echo = ph2d_app_components::instance_sync::MasterEcho::default();
     let mut select_out = None;
     let mut arm_pick = false;
     let changed = dispatch(
@@ -547,7 +547,7 @@ fn last_copy(sim: &mut SimWorld, master: Entity) -> Option<Entity> {
 
 /// O `StableId` do mestre que esta cópia segue.
 pub(super) fn master_id(sim: &mut SimWorld, e: Entity) -> Option<u64> {
-    let root = crate::instance_verbs::instance_root_of(sim, e)?;
+    let root = ph2d_app_components::instance_verbs::instance_root_of(sim, e)?;
     sim.world()
         .get::<ph2d_ecs::InstanceOf>(root)
         .map(|l| l.master)

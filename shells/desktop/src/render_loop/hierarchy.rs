@@ -55,13 +55,13 @@ pub(super) fn dispatch(
     // ⭐ *Revert to Master* (ADR-0164 / F4.4) — a linha cuja instância volta à receita.
     revert_to_master_row: Option<NodeId>,
     // ⭐ Os outros verbos de instância (ADR-0164 / F4.5).
-    instance_verb_row: Option<(NodeId, crate::instance_verbs::Verb)>,
+    instance_verb_row: Option<(NodeId, ph2d_app_components::instance_verbs::Verb)>,
     // ⭐ **O MESMO verbo, endereçado por `StableId`** — o canal do navegador de assets (plano
     // `docs/Components/07`, wave A7). ⚠️ Ele mora aqui, ao lado do irmão, e chama a MESMA
     // `instance_verbs::drain`: a lei de instanciar continua com um dono só. O que muda é o
     // SUJEITO — o navegador endereça a receita pela identidade, e não por uma linha que ela nem
     // tem (uma receita está escondida da Hierarquia por construção).
-    instance_verb_stable_id: Option<(u64, crate::instance_verbs::Verb, Option<[f32; 2]>)>,
+    instance_verb_stable_id: Option<(u64, ph2d_app_components::instance_verbs::Verb, Option<[f32; 2]>)>,
     // ⭐⭐ **O menu de um CARTÃO da biblioteca** (etapa C) — o par `(endereço, verbo)`. Ele mora
     // aqui, junto dos outros verbos, porque é aqui que o `sim`, a voz e o gizmo estão os três
     // emprestados ao mesmo tempo; a decisão e as recusas vivem no `asset_card_verbs`.
@@ -99,7 +99,7 @@ pub(super) fn dispatch(
     registry: &ph2d_ecs::scene::ComponentRegistry,
     // ⭐ O eco do mestre (ADR-0164 / F4.4) — o *Revert* tem de o esquecer naquela chave, senão o
     // override renasce no quadro seguinte. Ver `instance_sync::revert_override`.
-    echo: &mut crate::instance_sync::MasterEcho,
+    echo: &mut ph2d_app_components::instance_sync::MasterEcho,
 ) -> bool {
     let mut title_dirty = false;
 
@@ -253,7 +253,7 @@ pub(super) fn dispatch(
     if let Some(row) = revert_to_master_row
         && let Some(live) = hero_live.as_ref()
         && let Some(entity_bits) = live.bridge.entity_for(row)
-        && crate::instance_revert::drain_revert_to_master(sim, echo, entity_bits, toasts)
+        && ph2d_app_components::instance_revert::drain_revert_to_master(sim, echo, entity_bits, toasts)
     {
         title_dirty = true;
     }
@@ -271,14 +271,14 @@ pub(super) fn dispatch(
     if let Some((row, verb)) = instance_verb_row
         && let Some(live) = hero_live.as_ref()
         && let Some(entity_bits) = live.bridge.entity_for(row)
-        && crate::instance_verbs::drain(
+        && ph2d_app_components::instance_verbs::drain(
             verb,
             sim,
             registry,
             echo,
             entity_bits,
             toasts,
-            &mut crate::instance_docs::OwnedDocs {
+            &mut ph2d_app_components::instance_docs::OwnedDocs {
                 vec_scene,
                 vec_entities,
             },
@@ -302,20 +302,20 @@ pub(super) fn dispatch(
     // quando o `StableId` já não existe (a receita foi apagada entre o `Down` e o `Up`), e sem esta
     // linha o gesto acabava em silêncio total — o artista conclui que colocou.
     if let Some((stable_id, _, _)) = instance_verb_stable_id
-        && crate::instance_verbs::entity_for_stable_id(sim, stable_id).is_none()
+        && ph2d_app_components::instance_verbs::entity_for_stable_id(sim, stable_id).is_none()
     {
         toasts.push(Toast::warning("That prefab is no longer in the project"));
     }
     if let Some((stable_id, verb, _at)) = instance_verb_stable_id
-        && let Some(entity_bits) = crate::instance_verbs::entity_for_stable_id(sim, stable_id)
-        && crate::instance_verbs::drain(
+        && let Some(entity_bits) = ph2d_app_components::instance_verbs::entity_for_stable_id(sim, stable_id)
+        && ph2d_app_components::instance_verbs::drain(
             verb,
             sim,
             registry,
             echo,
             entity_bits,
             toasts,
-            &mut crate::instance_docs::OwnedDocs {
+            &mut ph2d_app_components::instance_docs::OwnedDocs {
                 vec_scene,
                 vec_entities,
             },

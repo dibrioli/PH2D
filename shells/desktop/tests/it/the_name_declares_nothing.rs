@@ -58,7 +58,7 @@ fn nothing_parses_braces_out_of_a_name_any_more() {
         "src/render_loop/inspector_instance.rs",
         "src/render_loop/hierarchy_rename.rs",
         "src/render_loop/mod.rs",
-        "src/instance_verbs.rs",
+        "../../crates/ph2d-app-components/src/instance_verbs.rs",
     ] {
         let s = code(rel);
         for dead in DEAD {

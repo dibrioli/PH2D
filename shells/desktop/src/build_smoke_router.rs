@@ -234,7 +234,11 @@ pub(crate) fn route(app: &mut crate::App, f: u32, level: u32) -> bool {
     // promove, coloca e destaca é o artista, e é isso que faz a costura painel→shell→ECS→desenho
     // ser de facto exercitada.
     if level == 53 {
-        crate::component_smoke::frame(app, f);
+        // ⚠️ **O contexto é construído aqui e não no `component_smoke`**: a cena recebe
+        // empréstimos, não a `App` (W2 Fase D). Sem mundo ainda não há cena para montar.
+        if let Some(mut cx) = app.components_ctx() {
+            ph2d_app_components::component_smoke::frame(&mut cx, f);
+        }
         return true;
     }
     // A cena da ÂNCORA DE ESCALA (=54) — irmã `gizmo_anchor_smoke`. Mesma disciplina: dá o

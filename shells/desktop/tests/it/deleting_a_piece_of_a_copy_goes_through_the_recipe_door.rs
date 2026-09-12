@@ -17,6 +17,13 @@
 //! seguinte, com a pose do MESTRE — a edição do artista naquela peça desaparecia em silêncio. O
 //! mecanismo está medido em `a_piece_deleted_behind_the_guard_comes_back_wearing_the_masters_pose`.
 
+// ⭐ **A família das instâncias saiu da shell em 2026-09-12** (W2 Fase D): os ficheiros dela
+// vivem em `crates/ph2d-app-components/src/`, e este censo mede-a **de fora**. Apontar para fora é
+// legítimo e tem precedente (HOWTO §2.6: os ~53 gates de arquitectura do `ph2d-editor-core` varrem
+// `shells/desktop/src` da mesma maneira). ⛔ O caminho fica ESCRITO, e não escondido atrás de um
+// «tenta aqui, senão ali»: um fallback aceitaria em silêncio o ficheiro errado no dia em que os
+// dois existirem.
+
 use std::path::Path;
 
 fn code_of(rel: &str) -> String {
@@ -123,7 +130,7 @@ fn refusing_a_piece_moves_the_selection_to_the_copy() {
 /// as separa é **o ELO**, e é essa linha que este censo defende.
 #[test]
 fn the_narrow_door_still_asks_for_the_link() {
-    let body = code_of("instance_verbs_walk.rs");
+    let body = code_of("../../../crates/ph2d-app-components/src/instance_verbs_walk.rs");
     let door = body
         .find("fn is_a_recipe_given_piece")
         .expect("a porta estreita");

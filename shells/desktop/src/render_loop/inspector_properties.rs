@@ -23,7 +23,7 @@ pub(super) fn build_properties_info(
     // A raiz da cópia, quando isto é uma cópia. ⚠️ **`instance_root_of` é a MESMA travessia dos
     // quatro verbos** — escrever aqui uma segunda daria duas respostas a *«a que cópia esta peça
     // pertence?»*.
-    let root = crate::instance_verbs::instance_root_of(sim, entity);
+    let root = ph2d_app_components::instance_verbs::instance_root_of(sim, entity);
     let root_master =
         root.and_then(|r| sim.world().get::<ph2d_ecs::InstanceOf>(r).map(|l| l.master));
     // ⭐⭐⭐ **A família da RECEITA que esta cópia segue.** Sem cópia não há família — e uma

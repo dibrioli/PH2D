@@ -15,7 +15,7 @@
 //! |---|---|---|
 //! | **Instantiate** | põe uma cópia (cascata) | ⛔ *qual objecto a recebe?* — é a queda que responde |
 //! | **Select users** | selecciona as instâncias | selecciona os objectos que a desenham |
-//! | **Remove from Library** | a lei das duas metades ([`crate::instance_unmake`]) | ⛔ ela está lá **porque N objectos a usam** — tirá-la seria tirá-la deles |
+//! | **Remove from Library** | a lei das duas metades ([`ph2d_app_components::instance_unmake`]) | ⛔ ela está lá **porque N objectos a usam** — tirá-la seria tirá-la deles |
 //!
 //! ⚠️ **A recusa da Imagem no *Remove* traz o NÚMERO**, e não é decoração: sem ele a frase é uma
 //! opinião, e com ele o artista sabe exactamente o que tem de fazer para a tirar (mudar aqueles N).
@@ -106,10 +106,10 @@ pub(crate) fn drain(
     verb: AssetCardAction,
     sim: &mut SimWorld,
     registry: &ph2d_ecs::scene::ComponentRegistry,
-    echo: &mut crate::instance_sync::MasterEcho,
+    echo: &mut ph2d_app_components::instance_sync::MasterEcho,
     gizmo: &mut ph2d_editor::screens::hero::GizmoStateGroup,
     toasts: &mut ph2d_editor::ToastQueue,
-    docs: &mut crate::instance_docs::OwnedDocs<'_>,
+    docs: &mut ph2d_app_components::instance_docs::OwnedDocs<'_>,
     place_step: [f32; 2],
     // ⭐ `célula do átlas → AssetId` — ver [`crate::asset_index_build::texture_of`].
     atlas_assets: &std::collections::BTreeMap<u32, ph2d_asset::AssetId>,
@@ -120,7 +120,7 @@ pub(crate) fn drain(
         //
         // ⭐⭐⭐ **Ele SELECCIONA, e mais nada** (report do Enio, 2026-09-05: *«não tem como editar
         // o componente»*). A receita não está na cena e **volta enquanto está seleccionada** — a
-        // marca derivada `MasterEditing` do [`crate::render_loop::master_editing`] —, então o verbo
+        // marca derivada `MasterEditing` do [`ph2d_app_components::master_editing`] —, então o verbo
         // que faltava não era um modo nem uma janela: era um **acesso**. Pôr a selecção na raiz do
         // mestre acende o canvas, arma o gizmo, enche o Inspector e faz cada peça mexida chegar a
         // todas as cópias no mesmo quadro.
@@ -129,12 +129,12 @@ pub(crate) fn drain(
         // o quê, e não tinha como abrir um componente. *Um catálogo de onde não se edita o conteúdo
         // é uma vitrina.*
         (AssetCardAction::EditPrefab, DragPayload::Prefab { stable_id }) => {
-            let Some(bits) = crate::instance_verbs::entity_for_stable_id(sim, stable_id) else {
+            let Some(bits) = ph2d_app_components::instance_verbs::entity_for_stable_id(sim, stable_id) else {
                 toasts.push(Toast::warning("That prefab is no longer in the project"));
                 return false;
             };
             *select_out = Some(bits);
-            let name = crate::instance_verbs::master_named(sim, stable_id)
+            let name = ph2d_app_components::instance_verbs::master_named(sim, stable_id)
                 // ⚠️ **O nome de recurso de uma receita sem nome é «prefab»** — este literal ESCAPOU à
                 // unificação de vocabulário porque o censo dela só olha frases (literais com espaço), e
                 // *uma palavra sozinha lê-se como chave de i18n ou nome de ficheiro*. Aqui ela vai para
@@ -163,15 +163,15 @@ pub(crate) fn drain(
             AssetCardAction::Instantiate | AssetCardAction::InstantiateLinked,
             DragPayload::Prefab { stable_id },
         ) => {
-            let Some(bits) = crate::instance_verbs::entity_for_stable_id(sim, stable_id) else {
+            let Some(bits) = ph2d_app_components::instance_verbs::entity_for_stable_id(sim, stable_id) else {
                 toasts.push(Toast::warning("That prefab is no longer in the project"));
                 return false;
             };
-            crate::instance_verbs::drain(
+            ph2d_app_components::instance_verbs::drain(
                 if verb == AssetCardAction::InstantiateLinked {
-                    crate::instance_verbs::Verb::PlaceLinked
+                    ph2d_app_components::instance_verbs::Verb::PlaceLinked
                 } else {
-                    crate::instance_verbs::Verb::Place
+                    ph2d_app_components::instance_verbs::Verb::Place
                 },
                 sim,
                 registry,
@@ -223,7 +223,7 @@ pub(crate) fn drain(
         //
         // ⚠️ **Três verbos e não um com um modo dentro.** Sem antepassado comum não existe mapa
         // derivado, só palpite, e o plano manda que o palpite seja **pedido pelo gesto**. Ver
-        // [`crate::instance_swap_match`].
+        // [`ph2d_app_components::instance_swap_match`].
         (
             AssetCardAction::ReplaceSelection
             | AssetCardAction::ReplaceSelectionByName
@@ -247,12 +247,12 @@ pub(crate) fn drain(
 
         // ── Tirar da biblioteca ────────────────────────────────────────────────────────────────
         (AssetCardAction::RemoveFromLibrary, DragPayload::Prefab { stable_id }) => {
-            let Some(bits) = crate::instance_verbs::entity_for_stable_id(sim, stable_id) else {
+            let Some(bits) = ph2d_app_components::instance_verbs::entity_for_stable_id(sim, stable_id) else {
                 toasts.push(Toast::warning("That prefab is no longer in the project"));
                 return false;
             };
-            crate::instance_verbs::drain(
-                crate::instance_verbs::Verb::Unmake,
+            ph2d_app_components::instance_verbs::drain(
+                ph2d_app_components::instance_verbs::Verb::Unmake,
                 sim,
                 registry,
                 echo,
@@ -316,11 +316,11 @@ fn replace_selection(
     verb: AssetCardAction,
     stable_id: u64,
     sim: &mut SimWorld,
-    echo: &mut crate::instance_sync::MasterEcho,
+    echo: &mut ph2d_app_components::instance_sync::MasterEcho,
     gizmo: &ph2d_editor::screens::hero::GizmoStateGroup,
     toasts: &mut ph2d_editor::ToastQueue,
 ) -> bool {
-    use crate::instance_swap_match::WhenUnrelated;
+    use ph2d_app_components::instance_swap_match::WhenUnrelated;
     let how = match verb {
         AssetCardAction::ReplaceSelectionByName => WhenUnrelated::ByName,
         AssetCardAction::ReplaceSelectionByTree => WhenUnrelated::ByHierarchy,
@@ -339,7 +339,7 @@ fn replace_selection(
     let mut roots: Vec<u64> = chosen
         .into_iter()
         .filter_map(|bits| {
-            crate::instance_verbs::instance_root_of(sim, Entity::from_bits(bits))
+            ph2d_app_components::instance_verbs::instance_root_of(sim, Entity::from_bits(bits))
                 .map(|e| e.to_bits())
         })
         .collect();
@@ -348,13 +348,13 @@ fn replace_selection(
 
     let (mut done, mut kept, mut ambiguous, mut already, mut skipped) = (0usize, 0, 0, 0, 0);
     for bits in roots {
-        match crate::instance_variant::swap(sim, echo, Entity::from_bits(bits), stable_id, how) {
+        match ph2d_app_components::instance_variant::swap(sim, echo, Entity::from_bits(bits), stable_id, how) {
             Ok(r) => {
                 done += 1;
                 kept += r.overrides_kept;
                 ambiguous += r.ambiguous;
             }
-            Err(crate::instance_variant::SwapRefusal::Already) => already += 1,
+            Err(ph2d_app_components::instance_variant::SwapRefusal::Already) => already += 1,
             Err(_) => skipped += 1,
         }
     }
@@ -370,7 +370,7 @@ fn replace_selection(
         }));
         return false;
     }
-    let name = crate::instance_verbs::master_named(sim, stable_id)
+    let name = ph2d_app_components::instance_verbs::master_named(sim, stable_id)
         // ⚠️ **O nome de recurso de uma receita sem nome é «prefab»** — este literal ESCAPOU à
         // unificação de vocabulário porque o censo dela só olha frases (literais com espaço), e
         // *uma palavra sozinha lê-se como chave de i18n ou nome de ficheiro*. Aqui ela vai para

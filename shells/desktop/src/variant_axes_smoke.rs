@@ -80,17 +80,17 @@ fn build(app: &mut crate::App) {
 
     // As outras três versões: instanciar a base e promover a cópia a receita.
     for name in ["Casa Run", "Casa Big", "Casa Big Run"] {
-        let mut docs = crate::instance_docs::OwnedDocs {
+        let mut docs = ph2d_app_components::instance_docs::OwnedDocs {
             vec_scene: &mut gfx.vec_scene,
             vec_entities,
         };
-        let Ok(copy) = crate::instantiate::instantiate_master(
+        let Ok(copy) = ph2d_app_components::instantiate::instantiate_master(
             &mut gfx.sim,
             &registry,
             base,
             None,
             &mut docs,
-            crate::instantiate::ArtLink::Own,
+            ph2d_app_components::instantiate::ArtLink::Own,
         ) else {
             eprintln!("[axes] f=3 ⚠️ não consegui instanciar «{name}»");
             continue;
@@ -104,17 +104,17 @@ fn build(app: &mut crate::App) {
     }
 
     // E a cópia que o artista escolhe — uma instância normal da base.
-    let mut docs = crate::instance_docs::OwnedDocs {
+    let mut docs = ph2d_app_components::instance_docs::OwnedDocs {
         vec_scene: &mut gfx.vec_scene,
         vec_entities,
     };
-    let copy = crate::instantiate::instantiate_master(
+    let copy = ph2d_app_components::instantiate::instantiate_master(
         &mut gfx.sim,
         &registry,
         base,
         None,
         &mut docs,
-        crate::instantiate::ArtLink::Own,
+        ph2d_app_components::instantiate::ArtLink::Own,
     );
     ph2d_ecs::assign_missing_stable_ids(gfx.sim.world_mut());
     let Ok(copy) = copy else {

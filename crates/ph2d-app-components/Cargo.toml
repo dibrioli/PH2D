@@ -1,0 +1,85 @@
+[package]
+name = "ph2d-app-components"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+# ⚠️ A INTERFACE da shell (`AppFamily`), não o agregador — importar de
+# `ph2d-app-registry-init` fecharia o ciclo `registry → família → registry`.
+ph2d-app-host = { path = "../ph2d-app-host" }
+
+# ⚠️ A regra desta crate é a DIRECÇÃO das setas: ela depende das crates do
+# módulo e do ECS, e **nunca da shell** (que é um `bin` e não pode ser
+# dependência de ninguém). É isso que faz dela uma unidade de compilação que o
+# `cargo check -p ph2d-app-components` fecha sem tocar nas 225 k linhas do
+# `shells/desktop` — o ponto inteiro da W2 (auditoria de velocidade §4-C2).
+# ⚠️ Versão LITERAL, como as irmãs: este workspace **não tem**
+# `[workspace.dependencies]`, e herdar dele não compila.
+ph2d-core = { path = "../ph2d-core" }
+ph2d-ecs = { path = "../ph2d-ecs" }
+
+# ⭐ **O CUSTO REAL do módulo, e ele só se lê aqui** (HOWTO §1.3): dentro da
+# shell todas estas eram dependência do binário, e um ficheiro escrevia
+# `ph2d_tokens::…` sem nada que o declarasse. São **21** crates irmãs e **zero**
+# dependências externas — o que diz o que esta família é: composição de
+# vocabulário que já existe, não motor novo.
+ph2d-asset = { path = "../ph2d-asset" }
+ph2d-audio = { path = "../ph2d-audio" }
+ph2d-audio-desktop = { path = "../ph2d-audio-desktop" }
+ph2d-audio-encode = { path = "../ph2d-audio-encode" }
+ph2d-component-desc = { path = "../ph2d-component-desc" }
+ph2d-editor = { path = "../ph2d-editor" }
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-entity-visibility = { path = "../ph2d-entity-visibility" }
+ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
+ph2d-render = { path = "../ph2d-render" }
+ph2d-text = { path = "../ph2d-text" }
+ph2d-tokens = { path = "../ph2d-tokens" }
+ph2d-tool-registry = { path = "../ph2d-tool-registry" }
+ph2d-unique-name = { path = "../ph2d-unique-name" }
+ph2d-vec-entities = { path = "../ph2d-vec-entities" }
+ph2d-vec-scene = { path = "../ph2d-vec-scene" }
+
+# ⚠️ **A família das INSTÂNCIAS depende da família da FÍSICA, e isso é
+# legítimo**: uma crate-motor irmã não é a shell (ADR-0075). As cenas de smoke
+# desta família montam corpos e o `component_seed` semeia um `Collider` e um
+# `PlatformPlayer` chamando as portas dela pelo nome.
+ph2d-app-physics = { path = "../ph2d-app-physics" }
+
+# ⚠️ **As duas que o `cargo check` revelou e o `grep` não** (HOWTO §1.3, o custo
+# real só se lê depois de a crate existir): o `bevy_ecs` porque o
+# `instance_structure` faz consultas com o vocabulário cru do ECS, e o
+# `postcard` porque o `instance_docs` compara documentos pelos BYTES.
+bevy_ecs = "0.19"
+postcard = { version = "1", default-features = false, features = ["use-std"] }
+
+# ⚠️⚠️ **Estas duas entram pelo REGISTO DE COMPONENTES, não pelo código.** Nenhum
+# ficheiro desta família nomeia um tipo delas — elas existem aqui porque o
+# catálogo que as fixturas montam tem de ser **o mesmo** que o produto monta
+# (ver `test_support::registo` e o gate que o prova). ⛔ Tirá-las daqui não é
+# uma poda: é fazer as fixturas medirem um catálogo mais pobre que o do produto,
+# **em silêncio e a verde**, que é precisamente o defeito que esta família
+# inteira existe para apanhar.
+ph2d-field-ecs = { path = "../ph2d-field-ecs" }
+ph2d-skeleton-ecs = { path = "../ph2d-skeleton-ecs" }
+
+[features]
+# ⚠️⚠️ **Um `#[cfg(test)]` da família é INVISÍVEL do outro lado da fronteira**
+# (HOWTO §2.5): daqui a shell é um consumidor, e `cfg(test)` é falso nesta crate
+# quando ela a compila. Dois gates de COSTURA ficam na shell — porque o sujeito
+# deles é meio chrome (`render_loop/inspector_presence_probe` e
+# `hero_intents/texture_rebind`, os dois de famílias que ainda não saíram) — e
+# precisam do arnês que se mudou para cá.
+#
+# ⛔ **Ela tem o TAMANHO do que ATRAVESSA, e nada mais:** o piloto abriu 16 itens
+# de uma vez e o compilador acusou — `1 de 16` era lido de fora.
+#
+# ⚠️ Ligada pela shell nas **dev-dependencies**: no `cargo build` do produto ela
+# fica desligada, e no `cargo test` fica ligada.
+test-support = []

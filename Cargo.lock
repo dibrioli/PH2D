@@ -4764,6 +4764,36 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-app-components"
+version = "0.0.0"
+dependencies = [
+ "bevy_ecs",
+ "ph2d-app-host",
+ "ph2d-app-physics",
+ "ph2d-asset",
+ "ph2d-audio",
+ "ph2d-audio-desktop",
+ "ph2d-audio-encode",
+ "ph2d-component-desc",
+ "ph2d-core",
+ "ph2d-ecs",
+ "ph2d-editor",
+ "ph2d-editor-core",
+ "ph2d-entity-visibility",
+ "ph2d-field-ecs",
+ "ph2d-physics-ecs",
+ "ph2d-render",
+ "ph2d-skeleton-ecs",
+ "ph2d-text",
+ "ph2d-tokens",
+ "ph2d-tool-registry",
+ "ph2d-unique-name",
+ "ph2d-vec-entities",
+ "ph2d-vec-scene",
+ "postcard",
+]
+
+[[package]]
 name = "ph2d-app-field3d"
 version = "0.0.0"
 dependencies = [
@@ -4952,6 +4982,7 @@ dependencies = [
 name = "ph2d-app-registry-init"
 version = "0.0.0"
 dependencies = [
+ "ph2d-app-components",
  "ph2d-app-field3d",
  "ph2d-app-flip",
  "ph2d-app-host",
@@ -5697,6 +5728,7 @@ dependencies = [
  "libm",
  "miniz_oxide 0.8.9",
  "ph2d-anim",
+ "ph2d-app-components",
  "ph2d-app-field3d",
  "ph2d-app-flip",
  "ph2d-app-host",

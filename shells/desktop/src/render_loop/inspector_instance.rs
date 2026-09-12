@@ -4,7 +4,7 @@
 //!
 //! # ⚠️ Ele NÃO tem lei nenhuma própria
 //!
-//! Quem é a raiz de uma instância pergunta-se ao [`crate::instance_verbs::instance_root_of`] — a
+//! Quem é a raiz de uma instância pergunta-se ao [`ph2d_app_components::instance_verbs::instance_root_of`] — a
 //! mesma travessia que os quatro verbos usam. Escrever aqui uma segunda seria a forma clássica:
 //! duas respostas a *«a que cópia esta peça pertence?»*, e a que envelhece é a que o artista lê.
 //!
@@ -39,7 +39,7 @@ pub(super) fn build_instance_info(
     // receita não tinha onde ser pintado. ⚠️ *O cartão fala da CÓPIA; o elo só decide quais
     // excepções são desta peça.*
     let link = sim.world().get::<ph2d_ecs::InstanceOf>(entity).copied();
-    let root = crate::instance_verbs::instance_root_of(sim, entity)?;
+    let root = ph2d_app_components::instance_verbs::instance_root_of(sim, entity)?;
     // ⚠️ **`unwrap_or_default`, e não `?`** — e o gate apanhou-me a escrever `?`. O
     // `ObjectInstance` só nasce quando a PRIMEIRA excepção é capturada, então uma cópia intacta não
     // o tem — e a seção desapareceria exactamente no estado em que ela mais informa: *«esta cópia
@@ -122,7 +122,7 @@ pub(super) fn build_instance_info(
         .removed
         .iter()
         .filter_map(|&piece_id| {
-            let e = crate::instance_verbs::entity_for_stable_id(sim, piece_id)?;
+            let e = ph2d_app_components::instance_verbs::entity_for_stable_id(sim, piece_id)?;
             Some(ph2d_editor::screens::hero::RemovedRow {
                 piece_id,
                 name: sim
@@ -141,13 +141,13 @@ pub(super) fn build_instance_info(
     // ficar obsoleto — a lista de hoje é a árvore de hoje.
     //
     // ⚠️ **Só os TOPOS de cada cadeia, e a travessia pára numa cópia aninhada** — a lei inteira
-    // vive no [`crate::instance_added`], que é a mesma porta que o gesto usa.
+    // vive no [`ph2d_app_components::instance_added`], que é a mesma porta que o gesto usa.
     //
     // ⛔ **Sem `take` aqui**, ao contrário da escada: o tecto é da TABELA DE IDS, e quem o conta é
     // o pintor — cortar a lista no shell faria a linha *«+N more»* nunca aparecer, que é o corte
     // silencioso que esta casa proíbe.
     let added_rows: Vec<ph2d_editor::screens::hero::AddedRow> =
-        crate::instance_added::added_pieces(sim, root)
+        ph2d_app_components::instance_added::added_pieces(sim, root)
             .into_iter()
             .map(|a| ph2d_editor::screens::hero::AddedRow {
                 piece_id: a.piece_id,
@@ -160,7 +160,7 @@ pub(super) fn build_instance_info(
     // pode alcançar. ⚠️ A lei mora no `instance_apply_deep`, que é a mesma porta que o gesto usa:
     // um cartão que mostrasse degraus por outra travessia ofereceria uma escolha que o verbo
     // recusa.
-    let all_levels = crate::instance_apply_deep::apply_levels(sim, entity);
+    let all_levels = ph2d_app_components::instance_apply_deep::apply_levels(sim, entity);
     let apply_levels_beyond = all_levels
         .len()
         .saturating_sub(ph2d_editor::ids::MAX_INSTANCE_APPLY_LEVELS);
@@ -197,7 +197,7 @@ pub(super) fn build_instance_info(
 /// ⭐⭐ **A família de `current`** — todo mestre vivo com que a troca tem um mapa determinístico.
 ///
 /// ⚠️ **O critério é o MAPA, e não uma marca**: um mestre entra aqui exactamente quando
-/// [`crate::instance_variant::piece_map`] o alcança, que é a mesma pergunta que a troca faz. *Duas
+/// [`ph2d_app_components::instance_variant::piece_map`] o alcança, que é a mesma pergunta que a troca faz. *Duas
 /// respostas a «isto é uma variante disto?» divergem no dia em que uma delas for escrita sozinha* —
 /// e o sintoma seria um chip que o artista clica e que recusa.
 ///
@@ -218,7 +218,7 @@ pub(crate) fn family_members(
     };
     let mut members: Vec<ph2d_editor::screens::hero::variant_axes::VariantMember> = Vec::new();
     for id in masters {
-        if id != current && crate::instance_variant::piece_map(sim, current, id).is_none() {
+        if id != current && ph2d_app_components::instance_variant::piece_map(sim, current, id).is_none() {
             continue;
         }
         members.push(ph2d_editor::screens::hero::variant_axes::VariantMember {

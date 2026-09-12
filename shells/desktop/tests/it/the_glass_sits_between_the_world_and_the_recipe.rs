@@ -39,7 +39,7 @@ fn code_of(rel: &str) -> String {
 fn the_encoding_splits_the_world_from_the_recipe() {
     let body = code_of("render_loop/mod.rs");
     assert!(
-        body.contains("*frosting = crate::render_loop::master_editing::any_open(sim);"),
+        body.contains("*frosting = ph2d_app_components::master_editing::any_open(sim);"),
         "o interruptor do vidro deixou de ser escrito, ou voltou a perguntar a` vista do VETOR — \
          uma receita feita so' de imagens nao tem forma vectorial nenhuma, e o vidro nao subiria"
     );

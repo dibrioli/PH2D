@@ -31,10 +31,14 @@
 use std::path::Path;
 
 /// Os ficheiros que escrevem, na tela, sobre a coisa reutilizável.
+/// ⭐ Três destas mudaram-se para `crates/ph2d-app-components/` em 2026-09-12 (W2 Fase D) — o
+/// caminho é do REPO, então basta reendereçá-las. ⚠️ O `read_to_string` aqui entra em **pânico**
+/// com a frase certa quando uma some, e foi ele que apanhou esta mudança: *uma lista escrita à mão
+/// só é honesta enquanto falhar alto.*
 const SURFACES: &[&str] = &[
-    "shells/desktop/src/instance_verbs.rs",
-    "shells/desktop/src/instance_revert.rs",
-    "shells/desktop/src/instance_unmake.rs",
+    "crates/ph2d-app-components/src/instance_verbs.rs",
+    "crates/ph2d-app-components/src/instance_revert.rs",
+    "crates/ph2d-app-components/src/instance_unmake.rs",
     "shells/desktop/src/asset_card_verbs.rs",
     "shells/desktop/src/vec_component_general.rs",
     "shells/desktop/src/render_loop/hierarchy_delete.rs",
@@ -50,10 +54,24 @@ const LABEL_TABLES: &[&str] = &[
 /// As palavras que a coisa reutilizável **não** pode ter na tela.
 const BANNED: &[&str] = &["Master", "master", "Component", "component", "Main missing"];
 
-/// Todo `.rs` sob `shells/desktop/src` — a população do censo dos fallbacks, **derivada**.
+/// Todo `.rs` sob `shells/desktop/src` **e** sob `crates/ph2d-app-components/src` — a população do
+/// censo dos fallbacks, **derivada**.
+///
+/// ⛔⛔ **A segunda árvore entrou em 2026-09-12, e sem ela este censo passava a medir MENOS em
+/// silêncio.** A família das instâncias saiu da shell nesse dia e levou **3 dos fallbacks** com
+/// ela: a varredura leria `21` onde a população é `24`, e `offenders.is_empty()` sobre uma
+/// população amputada é verde. ⚠️ **O piso de `> 100` NÃO o teria apanhado** — ele conta os
+/// ficheiros da SHELL, que continuam a ser centenas; *um piso sobre o tamanho da árvore não é um
+/// piso sobre a população do SUJEITO* (HOWTO §2.7).
+///
+/// ⭐ É por isso que o censo fica **mais forte do que era antes da mudança**: ele passou a nomear
+/// as duas casas onde o sujeito vive, em vez de uma.
 fn rust_files_of_the_shell() -> Vec<std::path::PathBuf> {
     let mut out = Vec::new();
-    let mut stack = vec![Path::new(env!("CARGO_MANIFEST_DIR")).join("src")];
+    let mut stack = vec![
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("src"),
+        repo_root().join("crates/ph2d-app-components/src"),
+    ];
     while let Some(dir) = stack.pop() {
         let Ok(rd) = std::fs::read_dir(&dir) else {
             continue;
@@ -152,9 +170,33 @@ fn the_fallback_name_of_an_unnamed_recipe_is_not_an_old_word() {
     let files = rust_files_of_the_shell();
     assert!(
         files.len() > 100,
-        "a varredura da shell devolveu {} ficheiros — ela partiu-se e um censo vazio le-se como \
-         aprovado",
+        "a varredura devolveu {} ficheiros — ela partiu-se e um censo vazio le-se como aprovado",
         files.len()
+    );
+    // ⛔⛔ **O piso do SUJEITO, e ele é POR ÁRVORE — um total não serve.**
+    //
+    // A 1.ª redacção desta guarda somava os fallbacks das duas árvores e exigia `>= 20`. Medido:
+    // são `24` (`21` na shell + `3` na crate da família) — logo **apagar a crate da varredura
+    // deixa `21`, que passa**. A mutação sobreviveu, e a lição é a de sempre: *uma folga é um
+    // ponto cego com o tamanho exacto da folga*, e aqui a folga era maior do que a coisa que a
+    // guarda existia para proteger.
+    //
+    // ⇒ a guarda pergunta o que de facto importa: **cada uma das duas casas do sujeito
+    // contribuiu?** Um piso por raiz não tem folga onde uma árvore inteira caiba.
+    let conta = |raiz: &Path| -> usize {
+        files
+            .iter()
+            .filter(|p| p.starts_with(raiz))
+            .filter_map(|p| std::fs::read_to_string(p).ok())
+            .map(|b| b.matches("unwrap_or_else(|| \"").count())
+            .sum()
+    };
+    let na_shell = conta(&Path::new(env!("CARGO_MANIFEST_DIR")).join("src"));
+    let na_familia = conta(&repo_root().join("crates/ph2d-app-components/src"));
+    assert!(
+        na_shell >= 15 && na_familia >= 1,
+        "este censo leu {na_shell} fallbacks na shell e {na_familia} na familia das instancias — \
+         uma das duas arvores deixou de ser varrida, e um censo amputado le-se como aprovado"
     );
     for path in files {
         let rel = path

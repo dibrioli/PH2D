@@ -55,6 +55,10 @@ ph2d-physics-ecs = { path = "../../crates/ph2d-physics-ecs" }
 # A metade da família `physics` que não precisa da shell (W2/L2) — as cenas de
 # smoke e as leis que só povoam um `World`. A seta aponta só nesta direcção.
 ph2d-app-physics = { path = "../../crates/ph2d-app-physics" }
+# ⭐ A família das INSTÂNCIAS (W2 Fase D) — receitas, cópias vivas, variantes, o
+# prefab que se abre, e os quatro componentes do TOP-20. Dep directa e
+# não-opcional: o `render_loop` chama-lhe os passes pelo nome, em ordem.
+ph2d-app-components = { path = "../../crates/ph2d-app-components" }
 # ADR-0161 W4 — o painel de MODELAGEM 3D (nao confundir com `panel-sculpt3d`,
 # que e o da escultura). Dep direta nao-opcional: o `field3d_smoke` publica o
 # retrato e drena os intents dele.
@@ -629,6 +633,11 @@ ph2d-app-motion = { path = "../../crates/ph2d-app-motion", features = ["test-sup
 # porque atravessam a porta de produção `component_attach::attach_by_name`, e o
 # `#[cfg(test)]` da crate é falso quando é ELA a ser compilada como dependência.
 ph2d-app-physics = { path = "../../crates/ph2d-app-physics", features = ["test-support"] }
+# ⚠️ §2.5 — DUAS costuras de teste ficam nesta shell porque o sujeito delas é meio
+# chrome de famílias que ainda não saíram (`render_loop/inspector_presence_probe`
+# e `hero_intents/texture_rebind`), e o arnês que elas montam mudou-se para a
+# crate. Ver o `test_support` dela, que nomeia as duas.
+ph2d-app-components = { path = "../../crates/ph2d-app-components", features = ["test-support"] }
 # W2 — os auxiliares de gate da família (`forget_*`, `sync_scene`, …) vivem atrás da feature
 # `test-support`: um `#[cfg(test)]` da família é invisível para um teste da shell.
 ph2d-app-field3d = { path = "../../crates/ph2d-app-field3d", features = ["test-support"] }

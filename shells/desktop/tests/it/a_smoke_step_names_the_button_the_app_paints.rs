@@ -27,6 +27,13 @@
 //! ⚠️ **Os valores saem do `tr`, nunca escritos aqui** — uma cópia do rótulo neste ficheiro seria
 //! a terceira resposta a *«como se chama este botão?»*, e a que envelhece calada.
 
+// ⭐ **A família das instâncias saiu da shell em 2026-09-12** (W2 Fase D): os ficheiros dela
+// vivem em `crates/ph2d-app-components/src/`, e este censo mede-a **de fora**. Apontar para fora é
+// legítimo e tem precedente (HOWTO §2.6: os ~53 gates de arquitectura do `ph2d-editor-core` varrem
+// `shells/desktop/src` da mesma maneira). ⛔ O caminho fica ESCRITO, e não escondido atrás de um
+// «tenta aqui, senão ali»: um fallback aceitaria em silêncio o ficheiro errado no dia em que os
+// dois existirem.
+
 use std::path::Path;
 
 /// O corpo da cena, para varrer.
@@ -52,7 +59,7 @@ const STEPS: &[&str] = &[
 /// (`Create Component`, `Place Instance`) — o gate nomeia a chave e o valor que falta.
 #[test]
 fn the_component_smoke_names_the_buttons_the_panel_paints() {
-    let body = scene_source("component_smoke.rs");
+    let body = scene_source("../../../crates/ph2d-app-components/src/component_smoke.rs");
     let mut faltam = Vec::new();
     for key in STEPS {
         let label = ph2d_i18n::tr(key);
@@ -81,7 +88,7 @@ fn the_component_smoke_names_the_buttons_the_panel_paints() {
 /// a cura é apagar a entrada daqui — não é o gate que se afrouxa.
 #[test]
 fn the_component_smoke_does_not_send_the_owner_after_a_dead_control() {
-    let body = scene_source("component_smoke.rs");
+    let body = scene_source("../../../crates/ph2d-app-components/src/component_smoke.rs");
     let mut fantasmas = Vec::new();
     for key in [
         "panel.vector.component.pieces",

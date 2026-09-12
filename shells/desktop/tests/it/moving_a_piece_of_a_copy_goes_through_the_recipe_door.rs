@@ -17,6 +17,13 @@
 //! passe invisível, que é exactamente o defeito que o apagar pagou em 2026-09-05. *A guarda vive no
 //! GESTO; a lei fica no passe.*
 
+// ⭐ **A família das instâncias saiu da shell em 2026-09-12** (W2 Fase D): os ficheiros dela
+// vivem em `crates/ph2d-app-components/src/`, e este censo mede-a **de fora**. Apontar para fora é
+// legítimo e tem precedente (HOWTO §2.6: os ~53 gates de arquitectura do `ph2d-editor-core` varrem
+// `shells/desktop/src` da mesma maneira). ⛔ O caminho fica ESCRITO, e não escondido atrás de um
+// «tenta aqui, senão ali»: um fallback aceitaria em silêncio o ficheiro errado no dia em que os
+// dois existirem.
+
 use std::path::Path;
 
 fn code_of(rel: &str) -> String {
@@ -82,9 +89,15 @@ fn the_drag_asks_the_door_before_changing_the_parent() {
 /// obrigatória.*
 #[test]
 fn reordering_between_siblings_is_still_allowed() {
-    let file = code_of("instance_verbs_walk.rs");
+    let file = code_of("../../../crates/ph2d-app-components/src/instance_verbs_walk.rs");
     let at = file
-        .find("pub(crate) fn refuses_reparent(")
+        // ⛔⛔ **A agulha ancora na LEI, nunca na VISIBILIDADE** (HOWTO §2.13). Ela dizia
+        // `pub(crate) fn refuses_reparent(` — e atravessar a fronteira da crate obrigou o
+        // modificador a virar `pub`, com a lei a não mudar uma linha. ⚠️ **Eu re-ancorei este
+        // mesmo gate horas antes, na mesma sessão, e escrevi a forma com o modificador dentro:**
+        // é a 5.ª vez que este repo a paga, e a primeira em que o mesmo agente a paga duas vezes
+        // no mesmo dia. *Visibilidade é exactamente o que uma fronteira nova muda por construção.*
+        .find("fn refuses_reparent(")
         .expect("a porta da recusa mudou de nome ou de ficheiro — reancore este censo");
     let end = file[at..]
         .find("\npub(crate) fn ")

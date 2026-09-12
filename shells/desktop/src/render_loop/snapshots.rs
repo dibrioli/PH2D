@@ -376,7 +376,7 @@ pub(super) fn publish(
     // quantas cópias seguem, e a saída. ⚠️ Publicada como o `grid_view` e pela mesma razão: quem
     // sabe que há uma receita aberta é o MUNDO, e a crate do chrome não o alcança. `None` fecha a
     // barra, e é o caminho de sempre.
-    hero.set_prefab_edit(super::master_editing::open_view(sim));
+    hero.set_prefab_edit(ph2d_app_components::master_editing::open_view(sim));
     // M14.4g Telemetry Phase A: publish real stats. Sprite
     // and entity counts come from PresentWorld (the source of
     // truth for "what we shipped to the GPU this frame"); fps

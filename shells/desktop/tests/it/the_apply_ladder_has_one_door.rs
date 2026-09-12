@@ -19,6 +19,22 @@
 //! mente nos **dois** sentidos: acusa a prosa que descreve a cura, e absolve o código quando um
 //! comentário vizinho nomeia a porta. Esta linha pagou as duas em 2026-09-02.
 
+// ⭐ **A família das instâncias saiu da shell em 2026-09-12** (W2 Fase D): os ficheiros dela
+// vivem em `crates/ph2d-app-components/src/`, e este censo mede-a **de fora**. Apontar para fora é
+// legítimo e tem precedente (HOWTO §2.6: os ~53 gates de arquitectura do `ph2d-editor-core` varrem
+// `shells/desktop/src` da mesma maneira). ⛔ O caminho fica ESCRITO, e não escondido atrás de um
+// «tenta aqui, senão ali»: um fallback aceitaria em silêncio o ficheiro errado no dia em que os
+// dois existirem.
+
+// ⛔⛔ **UMA AGULHA NÃO É UM CAMINHO DE CÓDIGO, e a reescrita em massa desta wave tratou-a como
+// tal.** Ao mudar `crate::X` → `ph2d_app_components::X` em toda a shell, o `tests/it/` foi junto —
+// e aqui dentro essas cadeias são **dados sobre OUTRO ficheiro**, não caminhos deste. Das quatro
+// agulhas afectadas, **duas ficaram certas** (medem `render_loop/mod.rs`, que é da shell e passou
+// mesmo a escrever `ph2d_app_components::`) e **duas ficaram erradas** (medem ficheiros da crate,
+// que por dentro continuam a escrever `crate::`). *É a §2.12 ao contrário: ali um censo lê PROSA
+// como código; aqui uma reescrita escreveu DADOS como se fossem código.* As duas erradas
+// reprovaram alto, que é a metade boa.
+
 use std::path::Path;
 
 fn src(rel: &str) -> String {
@@ -48,7 +64,7 @@ fn the_apply_level_action_reaches_the_verb() {
         "a accao nao tem braco no dreno — o `_ => {{}}` do fim do match come-a em silencio"
     );
     assert!(
-        body.contains("crate::instance_apply_deep::apply_to_level("),
+        body.contains("ph2d_app_components::instance_apply_deep::apply_to_level("),
         "o braco existe e nao chama a porta do verbo — o clique morre a um passo do efeito"
     );
 }
@@ -63,8 +79,10 @@ fn the_apply_level_action_reaches_the_verb() {
 /// **Mutação que deve sangrar:** reescrever o laço de escrita dentro do `instance_verbs.rs`.
 #[test]
 fn the_menu_verb_goes_through_the_same_door() {
-    let body = code_of(&src("instance_verbs.rs"));
+    let body = code_of(&src("../../../crates/ph2d-app-components/src/instance_verbs.rs"));
     assert!(
+        // ⚠️ `crate::` e NÃO `ph2d_app_components::`: o ficheiro medido vive DENTRO da crate,
+        // logo é assim que ele escreve a chamada. Ver a nota do topo.
         body.contains("crate::instance_apply_deep::apply_to_level("),
         "o `apply_to_master` deixou de delegar — ha' uma segunda escrita da receita"
     );
@@ -85,12 +103,13 @@ fn the_menu_verb_goes_through_the_same_door() {
 /// envelhece. O que este gate afirma é que o laço que desce a escada existe **aqui**.
 #[test]
 fn the_middle_override_is_cleared_by_the_door_itself() {
-    let body = code_of(&src("instance_apply_deep.rs"));
+    let body = code_of(&src("../../../crates/ph2d-app-components/src/instance_apply_deep.rs"));
     assert!(
         body.contains("piece_chain(sim, &by_id, key.piece)"),
         "a porta deixou de percorrer a CADEIA da chave — sem ela nao ha' degrau intermedio a limpar"
     );
     assert!(
+        // ⚠️ idem — o sujeito é um ficheiro da crate.
         body.contains("crate::instance_sync::revert_override("),
         "a porta deixou de apagar a excepcao — o valor aplicado volta atras no passe seguinte"
     );

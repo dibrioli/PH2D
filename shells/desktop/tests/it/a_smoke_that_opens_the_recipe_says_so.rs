@@ -19,14 +19,21 @@
 //! ⛔ Ele descasca comentários antes de varrer: um censo textual que não separa prosa de código
 //! mente nos dois sentidos, e esta linha já o pagou três vezes.
 
+// ⭐ **A família das instâncias saiu da shell em 2026-09-12** (W2 Fase D): os ficheiros dela
+// vivem em `crates/ph2d-app-components/src/`, e este censo mede-a **de fora**. Apontar para fora é
+// legítimo e tem precedente (HOWTO §2.6: os ~53 gates de arquitectura do `ph2d-editor-core` varrem
+// `shells/desktop/src` da mesma maneira). ⛔ O caminho fica ESCRITO, e não escondido atrás de um
+// «tenta aqui, senão ali»: um fallback aceitaria em silêncio o ficheiro errado no dia em que os
+// dois existirem.
+
 use std::path::Path;
 
 /// As cenas desta família, e o ficheiro de cada uma.
 const SCENES: &[&str] = &[
-    "instance_smoke.rs",
-    "instance_removed_smoke.rs",
-    "instance_added_smoke.rs",
-    "instance_move_smoke.rs",
+    "../../../crates/ph2d-app-components/src/instance_smoke.rs",
+    "../../../crates/ph2d-app-components/src/instance_removed_smoke.rs",
+    "../../../crates/ph2d-app-components/src/instance_added_smoke.rs",
+    "../../../crates/ph2d-app-components/src/instance_move_smoke.rs",
 ];
 
 /// A frase que o dono lê quando a cena abriu a receita por ele.

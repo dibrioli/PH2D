@@ -69,7 +69,7 @@ fn the_second_click_makes_the_copy_a_copy_of_the_clicked_prefab() {
     let mine = out.map(Entity::from_bits).expect("a segunda copia de A");
     assert_ne!(master_id(&mut sim, mine), Some(b_id), "ja' nasceu como B");
 
-    let mut echo = crate::instance_sync::MasterEcho::default();
+    let mut echo = ph2d_app_components::instance_sync::MasterEcho::default();
     let did = super::swap_by_pick(&mut sim, &mut echo, &mut toasts, mine, copy_b);
 
     assert!(did, "o segundo clique nao trocou nada");
@@ -97,7 +97,7 @@ fn clicking_a_plain_shape_with_the_eyedropper_refuses_out_loud() {
     ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
     let before = master_id(&mut sim, copy);
 
-    let mut echo = crate::instance_sync::MasterEcho::default();
+    let mut echo = ph2d_app_components::instance_sync::MasterEcho::default();
     let did = super::swap_by_pick(&mut sim, &mut echo, &mut toasts, copy, plain);
 
     assert!(!did, "trocou por uma forma que nao e' prefab nenhum");

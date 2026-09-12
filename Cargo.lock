@@ -6193,10 +6193,6 @@ name = "ph2d-motion-region"
 version = "0.0.0"
 
 [[package]]
-name = "ph2d-net"
-version = "0.0.0"
-
-[[package]]
 name = "ph2d-node-audio-bands"
 version = "0.0.0"
 dependencies = [
@@ -7955,10 +7951,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ph2d-physics-soft"
-version = "0.0.0"
-
-[[package]]
 name = "ph2d-platformer"
 version = "0.0.0"
 dependencies = [
@@ -8073,10 +8065,6 @@ dependencies = [
 
 [[package]]
 name = "ph2d-runtime"
-version = "0.0.0"
-
-[[package]]
-name = "ph2d-save"
 version = "0.0.0"
 
 [[package]]
@@ -8225,10 +8213,6 @@ dependencies = [
 
 [[package]]
 name = "ph2d-table"
-version = "0.0.0"
-
-[[package]]
-name = "ph2d-telemetry"
 version = "0.0.0"
 
 [[package]]

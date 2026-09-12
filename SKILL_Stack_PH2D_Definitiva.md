@@ -155,12 +155,12 @@ Versões verificadas em **2026-08-29** (pós-subida do stack; conferidas linha a
 | UI layout | taffy / custom zones | `taffy` / [`ph2d-editor-core::zones`](crates/ph2d-editor-core/src/zones.rs) (M12) | `0.14` (wired) / 4-zone próprio (atual) | ✅ O `taffy` **deixou de ser planejado**: ele é o motor de **auto layout** do vetor ([ADR-0153](docs/architecture/decisions/0153-vector-auto-layout-is-taffy-behind-one-leaf-crate-and-the-pose-is-derived.md)), confinado à crate-folha [`ph2d-vec-layout`](crates/ph2d-vec-layout/) — a **única** porta dele na árvore (`default-features = false` + `std`/`taffy_tree`/`flexbox`/`grid`). O chrome do editor segue nas 4 zonas próprias (ADR-0023) |
 | Acessibilidade | AccessKit | `accesskit` | `0.24.1` | M12 wired em [`ph2d-a11y`](crates/ph2d-a11y/). Adapters por OS (`accesskit_macos`/`accesskit_windows`/`accesskit_unix`) ficam em shells. ⚠️ Teto: o `0.25.0` existe, seguro pelo `parley` |
 | Rígidos | Rapier 2D | `rapier2d` | `0.35` (`default-features = false` + `dim2`/`f32`/**`std`**/`enhanced-determinism`) | Determinístico em modo lockstep, fixed timestep. M10. ⚠️ **O `std` é obrigatório e não é decoração:** sem ele a crate compila e **186 gates desaparecem sem erro nenhum**. ⚠️ **A matemática do rapier deixou de ser `nalgebra`:** da 0.35 em diante ele calcula em **`glam` via `glamx 0.3`** (é daí que vem a 2ª cópia de `glam` na linha do Math) |
-| Soft body / cloth / rope | XPBD próprio em compute | `ph2d-physics-soft` (interno, **stub**) | — | Müller 2020. Modo determinístico via fallback CPU (ver §11.5). M13+ |
+| Soft body / cloth / rope | XPBD próprio em compute | `ph2d-physics-soft` (planeada — **não criada**) | — | Müller 2020. Modo determinístico via fallback CPU (ver §11.5). M13+ |
 | Fluidos | FLIP/PIC híbrido em compute | `ph2d-fluids` (interno, **stub**) | — | Não-determinístico por padrão; opt-out em modos com rollback. M13+ |
 | Iluminação | Radiance Cascades 2D | `ph2d-light` (interno, **stub**) | — | Sannikov 2023; Holographic RC (2025) em roadmap. M13+ |
 | Scripting (gameplay) | Luau strict via mlua | `mlua` | `0.12` (feature `luau`) | Runtime por mundo; GC incremental p99 ~0.005ms (medido C10 sobre a `0.10` de então). Ratificado ADR-0019. M7 wired |
 | Hot path script | WASM | `wasmtime` | `48` | Winch (rápido instantiate) padrão; Cranelift opt-in para AAA. **Não wired no produto** — hoje só em `tests/spike/`; M13+ |
-| Networking transporte | QUIC | `quinn` | `0.11` (planejada) | Desktop/mobile. Não wired (`ph2d-net` é stub) |
+| Networking transporte | QUIC | `quinn` | `0.11` (planejada) | Desktop/mobile. Não wired (`ph2d-net` planeada, **não criada**) |
 | Networking web | WebTransport-over-HTTP/3 | `web-transport-quinn` | `0.11` (planejada) | Crate auxiliar — quinn puro NÃO é WebTransport |
 | Áudio mixer | mixer próprio + cpal | `cpal` | `0.18` | ✅ **Wired na shell desktop** — o `cpal` é o dono do device do SO (HR-1) e a nossa mixagem enche o buffer do callback dele. ⚠️ **O `rodio` NÃO existe na árvore** (esta linha o listou como planejado por meses) e o **`ph2d-audio` já não é stub** — vide o rack de 42 efeitos em `ph2d-audio-edit` e as crates irmãs (`-decode`/`-encode`/`-spectral`/`-stream`/`-ml`/`-opus`) |
 | Gamepad | gilrs (desktop), nativo (mobile) | `gilrs` | `0.11` | M8 wired em shells/desktop |
@@ -238,20 +238,20 @@ _PH2D_definitiva/
 │   ├── ph2d-sdf/                 # ⏳ stub — SDFs animados, raymarching (M13+)
 │   ├── ph2d-light/               # ⏳ stub — Radiance Cascades (M13+)
 │   ├── ph2d-physics/             # ✅ M10 — rapier2d 0.35 + std + enhanced-determinism + cross-OS hash test
-│   ├── ph2d-physics-soft/        # ⏳ stub — XPBD compute + fallback CPU (M13+)
+│   ├── ph2d-physics-soft/        # ⏳ planeada, NÃO criada (o stub vazio saiu em 2026-09-12) — XPBD compute + fallback CPU (M13+)
 │   ├── ph2d-fluids/              # ⏳ stub — FLIP/PIC compute (M13+)
 │   ├── ph2d-audio/               # ⏳ stub — mixer, DSP, voice management (M13+)
 │   ├── ph2d-asset/               # ✅ M6 — AssetDb (blake3 content-addressed) + AssetWatcher + ReloadEvent
 │   ├── ph2d-script/              # ✅ M7 — Luau (mlua 0.12) ScriptHost + Scheduler + reset+restore
-│   ├── ph2d-net/                 # ⏳ stub — QUIC + WebTransport, rollback, lockstep (M13+)
+│   ├── ph2d-net/                 # ⏳ planeada, NÃO criada (o stub vazio saiu em 2026-09-12) — QUIC + WebTransport, rollback, lockstep (M13+)
 │   ├── ph2d-input/               # ✅ M8 — pure-data Event/InputState/Pencil (gilrs adapter na shell)
 │   ├── ph2d-tokens/              # ✅ M12 — design tokens semânticos (color/type/spacing) — ADR-0023
 │   ├── ph2d-editor-core/         # ✅ M12 — Layout 4-zonas + FloatingPanel + ZenMode + ToastQueue + ToolRegistry + paint trait + BrushTool + MoveTool — ADR-0023
 │   ├── ph2d-mcp/                 # ✅ M9 — MCP server skeleton (JSON-RPC 2.0 dispatcher, tool registry)
 │   ├── ph2d-i18n/                # ⏳ stub — Fluent runtime (M13+)
 │   ├── ph2d-a11y/                # ✅ M12 — AccessKit 0.24 (Tree, NodeBuilder, Live) — ADR-0023
-│   ├── ph2d-save/                # ⏳ stub — snapshot, replay, migration (M13+)
-│   └── ph2d-telemetry/           # ⏳ stub — crash reporting, opt-in metrics (M13+)
+│   ├── ph2d-save/                # ⏳ planeada, NÃO criada (o stub vazio saiu em 2026-09-12) — snapshot, replay, migration (M13+)
+│   └── ph2d-telemetry/           # ⏳ planeada, NÃO criada (o stub vazio saiu em 2026-09-12) — crash reporting, opt-in metrics (M13+)
 ├── shells/
 │   ├── desktop/                  # ✅ winit 0.30 + wgpu 29 demo bin (integra M1/M5/M6/M7/M8/M12)
 │   ├── ipad/                     # ⏳ não criada — Xcode project + SwiftUI + UIPencil + GameController (M14+)

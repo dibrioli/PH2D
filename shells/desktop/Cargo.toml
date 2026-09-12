@@ -60,7 +60,6 @@ ph2d-panel-physics = { path = "../../crates/ph2d-panel-physics" }
 # read-back do picker, entao a dep e' direta e nao-opcional, como a de fisica.
 ph2d-panel-tokens = { path = "../../crates/ph2d-panel-tokens" }
 ph2d-panel-authored = { path = "../../crates/ph2d-panel-authored" }
-ph2d-panel-sculpt3d = { path = "../../crates/ph2d-panel-sculpt3d" }
 ph2d-panel-wet-tuning = { path = "../../crates/ph2d-panel-wet-tuning" }
 ph2d-render = { path = "../../crates/ph2d-render" }
 # ⭐ A folha do afim `imagem-px → ecrã-px`: quatro assuntos da shell partilhavam esta lei, e duas
@@ -425,11 +424,6 @@ bumpalo = "3"
 # fallback para o `zenity` cobre tambem "libdbus ausente", sem panico.
 rfd = "0.17"
 
-ph2d-node-motion-trail = { path = "../../crates/ph2d-node-motion-trail" }
-ph2d-node-motion-strobe = { path = "../../crates/ph2d-node-motion-strobe" }
-# …e o TERCEIRO escritor da coluna (doc 89 folha 11): o `shadow_blend` do `fx.drop_shadow`.
-ph2d-node-fx-drop-shadow = { path = "../../crates/ph2d-node-fx-drop-shadow" }
-
 # ═══ AS FOLHAS PARTILHADAS (line/shell-folhas, 12/09) ═══
 # ⛔ Cada uma saiu daqui porque MAIS DE UMA família a consumia, e uma peça partilhada por duas
 # famílias é uma FOLHA — nunca a casa de uma delas (ADR-0075, HOWTO §1.2). O bloco é
@@ -444,6 +438,15 @@ ph2d-vec-entities = { path = "../../crates/ph2d-vec-entities" }
 ph2d-audio-desktop = { path = "../../crates/ph2d-audio-desktop" }
 
 [dev-dependencies]
+# ⚠️ **Estas quatro eram `[dependencies]` e só os TESTES as usam** (0 usos em `src/`, 3–5 em
+# `tests/`): a declaração mentia sobre o que o binário leva, e o `cargo machete` não o vê porque
+# conta `tests/` como uso (auditoria de arquitectura 2026-09-12, A6). No produto, os três nós
+# chegam pelo `ph2d-node-registry-init` e o painel pelo `ph2d-panel-registry-init`.
+ph2d-panel-sculpt3d = { path = "../../crates/ph2d-panel-sculpt3d" }
+ph2d-node-motion-trail = { path = "../../crates/ph2d-node-motion-trail" }
+ph2d-node-motion-strobe = { path = "../../crates/ph2d-node-motion-strobe" }
+# …e o TERCEIRO escritor da coluna (doc 89 folha 11): o `shadow_blend` do `fx.drop_shadow`.
+ph2d-node-fx-drop-shadow = { path = "../../crates/ph2d-node-fx-drop-shadow" }
 # ⚠️ §2.5 — a feature que torna o `driven_value_for_probe` visível ao `driven_row_smoke`.
 ph2d-app-motion = { path = "../../crates/ph2d-app-motion", features = ["test-support"] }
 # ⚠️ **O arnês do §11 da física** (HOWTO §2.5): três gates ficam nesta shell

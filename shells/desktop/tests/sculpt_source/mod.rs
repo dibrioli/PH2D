@@ -365,7 +365,7 @@ pub fn sculpt_src() -> String {
     );
     let joined = names
         .iter()
-        .map(|n| family(&n))
+        .map(|n| family(n))
         .collect::<Vec<_>>()
         .join("\n");
     elide_active_object(&joined)

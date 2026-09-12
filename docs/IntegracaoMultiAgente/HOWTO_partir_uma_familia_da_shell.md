@@ -359,6 +359,23 @@ ficheiros que quero mover, que raízes da shell continuam alcançáveis?»* — 
 mais cara de todas: ela não atrasa o trabalho, ela autoriza-o.*
 
 
+### §2.13 — A agulha que nomeia a VISIBILIDADE ⚠️ falha alto, e não é a mudança de sítio
+
+⭐⭐ **DUAS linhas pagaram-na no mesmo dia, independentemente** (12/09) — é o que a torna espécie e
+não acidente: a `line/app-flip` (`"pub(crate) fn stroke_from_samples("`) e a `line/shell-folhas`
+(`"pub(crate) fn reorder("`, no `the_arrange_buttons_write_the_z`).
+
+⛔ **O que a parte não é o ficheiro mudar de sítio — é o modificador.** Publicar a API de uma folha
+obriga `pub(crate) fn` a virar `pub fn` para o outro lado da fronteira a alcançar. A agulha continua
+a apontar para o ficheiro certo, a lei não mudou uma linha, e o gate reprova na mesma.
+
+⇒ **uma agulha ancora na LEI, nunca em quem pode chamá-la.** `fn reorder(` sobrevive ao próximo
+movimento; `pub(crate) fn reorder(` mede outra coisa — *mede visibilidade, e visibilidade é
+exactamente o que uma fronteira nova muda por construção.*
+
+⚠️ E ela **falha alto**, o que é a metade boa: reprova a correr. A irmã perigosa é a §2.6 — a mesma
+agulha dentro de um `read_to_string` de caminho fixo, que só falha **se o teste correr**.
+
 ## §3 — A prova (as cinco, com os números do piloto)
 
 ```bash

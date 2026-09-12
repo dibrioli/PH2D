@@ -1,7 +1,7 @@
 //! **Quem são as molduras, e como se chamam** — a lista que a shell publica para o
 //! [`ph2d_editor::frame_label`] desenhar.
 //!
-//! Irmão do [`crate::vec_frame_spans`] (que responde *que INTERVALO da pilha de z cada moldura
+//! Irmão do [`crate::frame_spans`] (que responde *que INTERVALO da pilha de z cada moldura
 //! ocupa*), e as duas perguntas partilham o mesmo sujeito de propósito: uma moldura é uma entidade
 //! com `VecFrame`, e é o `VecPathRef` dela que diz qual caminho desenha a silhueta.
 //!
@@ -26,7 +26,7 @@ use ph2d_vec_entities::entities::VecEntityMap;
 /// caixa aqui por conta própria daria uma etiqueta que flutua ao lado da moldura assim que ela
 /// ganha uma pose.
 #[must_use]
-pub(crate) fn frame_labels(
+pub fn frame_labels(
     sim: &SimWorld,
     scene: &VecScene,
     map: &VecEntityMap,
@@ -60,5 +60,5 @@ pub(crate) fn frame_labels(
 }
 
 #[cfg(test)]
-#[path = "vec_frame_labels_tests.rs"]
+#[path = "frame_labels_tests.rs"]
 mod tests;

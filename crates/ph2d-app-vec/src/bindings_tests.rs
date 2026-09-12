@@ -470,7 +470,13 @@ fn every_token_slot_paints_its_own_table() {
 /// em bytes — o proxy que expira assim que alguém põe uma linha no meio.
 #[test]
 fn authoring_a_width_arms_the_detach_in_the_bridge() {
-    const BRIDGE: &str = include_str!("render_loop/vector_bridge.rs");
+    // ⚠️ **Aponta para FORA da crate, e é legítimo** (HOWTO §2.6): este gate mede *que a SHELL
+    //    chama a família*, logo o sujeito dele vive em `shells/desktop`. O precedente são os ~53
+    //    gates de arquitectura do `ph2d-editor-core`, que já varrem a shell de fora.
+    // ⭐ E o `include_str!` falha em tempo de COMPILAÇÃO quando o alvo se move — é a metade boa
+    //    da §2.6; o irmão perigoso é o `read_to_string` de caminho fixo, que só falha se o teste
+    //    chegar a correr.
+    const BRIDGE: &str = include_str!("../../../shells/desktop/src/render_loop/vector_bridge.rs");
     let lines: Vec<&str> = BRIDGE.lines().collect();
     let n = lines
         .iter()

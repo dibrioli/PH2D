@@ -44,6 +44,16 @@ ph2d-tokens = { path = "../ph2d-tokens" }
 ph2d-vec-edit = { path = "../ph2d-vec-edit" }
 ph2d-vec-render = { path = "../ph2d-vec-render" }
 ph2d-vec-scene = { path = "../ph2d-vec-scene" }
+# ⚠️ **MAIS DUAS que só a crate revelou** (HOWTO §1.3) — a Fase A achou quatro, e o corte da 2.ª
+# volta achou estas: a lâmina do `cut_line` e o passo de *lazy mouse* do lápis. Dentro da shell as
+# duas eram dependência do binário e nada no ficheiro as declarava.
+ph2d-painter-brush = { path = "../ph2d-painter-brush" }
+ph2d-vec-boolean = { path = "../ph2d-vec-boolean" }
+# ⭐ A cena `PH2D_VEC_FADE_SMOKE` autora uma track de opacidade. ⚠️ **Uma crate-motor IRMÃ não é a
+# shell** (ADR-0075) — é o mesmo precedente que destravou o fim da linha da `line/app-physics`,
+# cujos três últimos braços de cena também autoram timeline.
+ph2d-anim = { path = "../ph2d-anim" }
+ph2d-timeline = { path = "../ph2d-timeline" }
 ph2d-vector = { path = "../ph2d-vector" }
 ph2d-vector-font = { path = "../ph2d-vector-font" }
 ph2d-panel-vector = { path = "../ph2d-panel-vector" }
@@ -63,3 +73,10 @@ fontique = "0.11.1"
 # ⛔ O `font_preview`, esse, ERA gateado no `main.rs` e continua a ser — a diferença entre os dois
 # é o que o `mod` dizia, e *a condição de compilação de um módulo não está escrita nele* (§2.4).
 panel-vector = []
+
+# ⚠️ **`test-support` tem o tamanho do que ATRAVESSA a fronteira, e nada mais** (HOWTO §2.5): um
+# `#[cfg(test)]` da família é FALSO quando ela é dependência, e o gate da shell deixa de ver uma
+# função que está à vista no ficheiro que o erro cita. Aqui atravessa **uma**: o
+# `TokenCtx::factory`, que quatro ficheiros da shell constroem. ⛔ Abrir mais do que atravessa
+# paga `dead_code` do lado de cá — o piloto abriu 16 de uma vez e o compilador acusou.
+test-support = []

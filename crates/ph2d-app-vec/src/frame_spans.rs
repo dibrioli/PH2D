@@ -41,7 +41,7 @@ use ph2d_vec_scene::{VecClipSpan, VecPathId};
 /// Uma moldura sem descendente VETORIAL depois dela não produz intervalo: não há o que recortar, e
 /// um intervalo vazio faria a camada abrir e fechar em cima de si mesma.
 #[must_use]
-pub(crate) fn clip_spans(
+pub fn clip_spans(
     sim: &SimWorld,
     snap: &HierarchySnapshot,
     order: &[VecPathId],
@@ -106,5 +106,5 @@ fn descendants(
 }
 
 #[cfg(test)]
-#[path = "vec_frame_spans_tests.rs"]
+#[path = "frame_spans_tests.rs"]
 mod tests;

@@ -605,9 +605,10 @@ mod value_wrap_smoke;
 mod variant_axes_smoke;
 mod variant_flow_smoke;
 mod vec_anchor_edit;
+mod vec_app_bridge;
 pub(crate) use ph2d_app_vec::appearance as vec_appearance;
 mod vec_appearance_smoke;
-mod vec_bindings;
+pub(crate) use ph2d_app_vec::bindings as vec_bindings;
 pub(crate) use ph2d_app_vec::blend as vec_blend;
 /// ⭐⭐⭐ **O desenho ganha OSSOS** (`PH2D_VEC_BONE_SMOKE=1`, estudo 42 item 5) — irmã da cena da
 /// pilha de aparência, teto de LOC.
@@ -644,7 +645,7 @@ mod vec_connector_panel;
 mod vec_convert;
 /// **A LINHA DE CORTE** (plano 25 §7): o caminho que a tesoura usa como lâmina — adotado depois
 /// do `sync`, desenhado pelo overlay, e nunca alvo do próprio corte. Espelha `connector_live`.
-mod vec_cut_line;
+pub(crate) use ph2d_app_vec::cut_line as vec_cut_line;
 /// ⭐ **A APARÊNCIA CONDUZIDA por um motor** — a metade de shell da ponte que a linha do
 /// tempo abre para a opacidade de um caminho vetorial (`ph2d_ecs::VecDrivenStyle`).
 /// Irmão do `vec_widget_drive`: o corte é *quem produz o número*, nunca o que se faz com ele.
@@ -672,30 +673,30 @@ pub(crate) use ph2d_app_vec::font as vec_font;
 pub(crate) use ph2d_app_vec::font_preview as vec_font_preview;
 /// A moldura da SELEÇÃO (plano UI/UX W0): o que o painel mostra, e o que o chip escreve.
 mod vec_frame_edit;
-mod vec_frame_labels;
+pub(crate) use ph2d_app_vec::frame_labels as vec_frame_labels;
 mod vec_frame_resize;
-mod vec_frame_spans;
+pub(crate) use ph2d_app_vec::frame_spans as vec_frame_spans;
 mod vec_gizmo_view;
 pub(crate) use ph2d_app_vec::glyph as vec_glyph;
 pub(crate) use ph2d_app_vec::glyph_build as vec_glyph_build;
 /// A porta única de "onde está o caminho-guia, e como se percorre por arco?" (texto E pattern).
-mod vec_guide;
+pub(crate) use ph2d_app_vec::guide as vec_guide;
 /// A CÓPIA segue a âncora do mestre — o corolário da âncora viva, do lado do componente.
 mod vec_layout_edit;
-mod vec_marquee;
+pub(crate) use ph2d_app_vec::marquee as vec_marquee;
 mod vec_morph_edit;
 pub(crate) use ph2d_app_vec::overlay as vec_overlay;
 pub(crate) use ph2d_app_vec::overlay_diag as vec_overlay_diag;
 /// O offset de CAD de uma camada da pilha (v22) — o memo do cozimento.
 mod vec_paint_dilate;
 pub(crate) use ph2d_app_vec::paint_stack as vec_paint_stack;
-mod vec_pencil_input;
+pub(crate) use ph2d_app_vec::pencil_input as vec_pencil_input;
 /// O **Picker de caminho-guia** — o gesto de duas mãos partilhado pelo Pattern e pelo Text on Path.
 pub(crate) use ph2d_app_vec::pick as vec_pick;
-mod vec_resize_box_edit;
+pub(crate) use ph2d_app_vec::resize_box_edit as vec_resize_box_edit;
 mod vec_selection;
 pub(crate) use ph2d_app_vec::shape_live as vec_shape_live;
-mod vec_shape_params;
+pub(crate) use ph2d_app_vec::shape_params as vec_shape_params;
 mod vec_snap;
 /// Os alvos de snap vindos do RASTER (irmão de `vec_snap`, teto de LOC).
 mod vec_snap_sprites;

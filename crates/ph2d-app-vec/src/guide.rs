@@ -19,7 +19,7 @@ use ph2d_ecs::{Entity, SimWorld, Transform};
 use ph2d_vec_scene::VecScene;
 use ph2d_vec_scene::arc_path::ArcPath;
 
-use ph2d_app_vec::entity_map::VecEntityMap;
+use crate::entity_map::VecEntityMap;
 
 /// O [`ArcPath`] do caminho-guia `guide_path_id`, **cozido e em MUNDO**.
 ///
@@ -27,7 +27,7 @@ use ph2d_app_vec::entity_map::VecEntityMap;
 /// de propósito: o caminho **não existe** na cena (id pendurado após apagar o guia) · o caminho é
 /// **degenerado** (`from_contour` devolve `None`) · o comprimento é **zero**.
 #[must_use]
-pub(crate) fn guide_arc(
+pub fn guide_arc(
     sim: &SimWorld,
     scene: &VecScene,
     map: &VecEntityMap,

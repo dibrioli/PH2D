@@ -626,6 +626,9 @@ ph2d-preview-drive = { path = "../../crates/ph2d-preview-drive", features = ["te
 ph2d-vec-entities = { path = "../../crates/ph2d-vec-entities", features = ["test-support"] }
 # E o livro das vozes da cena: o `decoded_ok` que o gate do `render_loop` lê era `#[cfg(test)]`.
 ph2d-audio-desktop = { path = "../../crates/ph2d-audio-desktop", features = ["test-support"] }
+# E o `TokenCtx::factory` da família do vetor (W2/L4-B2): quatro ficheiros da shell constroem a
+# régua de tokens, e ela é `#[cfg(test)]` — invisível assim que o `vec_bindings` mudou de crate.
+ph2d-app-vec = { path = "../../crates/ph2d-app-vec", features = ["test-support"] }
 # O harness headless de painel (`MockPanelHost`) — a shell precisa dele para medir a
 # GEOMETRIA que um painel de fato registra. O censo de linhas (doc 88 B3) mede quantas
 # linhas um nó produz; a metade que faltava é se elas CABEM na altura do dock, e a única

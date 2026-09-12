@@ -69,11 +69,20 @@
 //! [HOWTO §1.2]: ../../../docs/IntegracaoMultiAgente/HOWTO_partir_uma_familia_da_shell.md
 
 pub mod appearance;
+pub mod bindings;
 pub mod blend;
 pub mod bucket_claim;
 pub mod bucket_repro;
 pub mod component_edit;
+pub mod cut_line;
 pub mod driven_style;
+pub mod frame_labels;
+pub mod frame_spans;
+pub mod guide;
+pub mod marquee;
+pub mod pencil_input;
+pub mod resize_box_edit;
+pub mod shape_params;
 // ⭐ **O mapa mudou-se para a folha** (`line/shell-folhas`, 12/09): ele é a MESMA peça
 // partilhada um degrau acima — a `motion` e a `flip` consomem a ponte inteira, e uma peça que
 // três famílias usam não pode viver na crate de uma delas (ADR-0075). O re-export mantém os 18
@@ -92,6 +101,7 @@ pub mod paint_stack;
 pub mod pick;
 pub mod shape_live;
 pub mod smoke_appearance;
+pub mod smoke_fade;
 pub mod smoke_stack;
 pub mod snap;
 pub mod snap_labels;

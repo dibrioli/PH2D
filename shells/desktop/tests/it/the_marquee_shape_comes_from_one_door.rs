@@ -64,7 +64,10 @@ fn both_press_arms_ask_the_one_door_for_the_shape() {
 /// **A porta única lê o chip PEGAJOSO e o Ctrl** — as duas entradas, compostas uma vez.
 #[test]
 fn the_one_door_composes_the_sticky_chip_with_the_modifier() {
-    const SRC: &str = include_str!("../../src/vec_marquee.rs");
+    // ⚠️ **A agulha nomeia um ENDEREÇO, e o endereço mudou** (HOWTO §2.9): a lei saiu para
+    //    `crates/ph2d-app-vec/src/marquee.rs` na Fase B (2.ª volta). O `include_str!` falhou em
+    //    tempo de compilação, que é a metade boa da §2.6.
+    const SRC: &str = include_str!("../../../../crates/ph2d-app-vec/src/marquee.rs");
     let f = at(SRC, "fn marquee_shape_for_press");
     let body = &SRC[f..];
     let end = at(body, "\n    }\n");

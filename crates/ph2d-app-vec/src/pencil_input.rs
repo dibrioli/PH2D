@@ -73,7 +73,7 @@
 /// porque o filtro mora numa crate que o lápis não pode ver. O lápis continua a receber pontos e a
 /// não saber de onde vêm — é o que o mantém puro e testável sem janela.
 #[derive(Default)]
-pub(crate) struct PencilHand {
+pub struct PencilHand {
     /// A posição FILTRADA corrente, em px de tela.
     stab: [f32; 2],
 }
@@ -86,55 +86,19 @@ impl PencilHand {
     /// teriam de lembrar-se de limpar, e um 3º caminho de morte nasceria sem a limpeza. Um valor
     /// obsoleto aqui nunca é lido, porque o filtro só corre com um gesto vivo e todo gesto começa
     /// por um press.
-    pub(crate) fn begin(&mut self, px: (f32, f32)) {
+    pub fn begin(&mut self, px: (f32, f32)) {
         self.stab = [px.0, px.1];
     }
 
     /// **A amostra que o lápis de facto vê.** `strength` 0 devolve o ponteiro cru (a igualdade é
     /// exata — o `lazy_mouse_step` faz early-return), então o slider no mínimo é o produto de
     /// antes desta wave, ao bit.
-    pub(crate) fn filter(&mut self, px: (f32, f32), strength: f32) -> (f32, f32) {
+    pub fn filter(&mut self, px: (f32, f32), strength: f32) -> (f32, f32) {
         self.stab = ph2d_painter_brush::lazy_mouse_step(self.stab, [px.0, px.1], strength);
         (self.stab[0], self.stab[1])
     }
 }
 
-impl crate::App {
-    /// **A DINÂMICA que o ponteiro carrega agora** — a porta única do W1d.
-    ///
-    /// A `pencil_width` deriva a largura de duas grandezas: a **pressão** do dispositivo e o
-    /// **relógio de parede** (de onde sai a velocidade). Esta função é o único lugar da shell que
-    /// as responde para o lápis.
-    ///
-    /// ⚠️ **A pressão é `1.0`, e é um fato MEDIDO da shell, não um placeholder solto.** Os dois
-    /// únicos sítios que constroem um `PointerEvent` (`input_dispatch.rs`) cravam `pressure: 1.0`
-    /// com `source: PointerSource::Mouse`, e o laço de eventos do winit **não casa
-    /// `WindowEvent::Touch`** — o único evento que carrega `force`. O `CursorMoved`, que é o que
-    /// a shell escuta, não tem pressão no protocolo. Logo, hoje, nenhum dispositivo entrega
-    /// pressão a este app.
-    ///
-    /// ⚠️ **E ligar o `Touch` NÃO seria a cura — medido em 2026-08-12, e é a metade que faltava
-    /// a esta nota.** Em `winit 0.30.13` o `force` é uma constante nos **três** backends de
-    /// desktop: `x11/event_processor.rs` escreve `force: None, // TODO`, o
-    /// `wayland/seat/touch/mod.rs` escreve `force: None`, e o `windows/event_loop.rs` escreve
-    /// `force: None, // WM_TOUCH doesn't support pressure information`. Só `android`, `ios` e
-    /// `web` o preenchem. **Não há função a escrever: o que falta é a dependência** (a API
-    /// unificada de ponteiro de um winit mais recente, ou um caminho por plataforma) — e isso é
-    /// decisão do Enio, não uma wave a começar. O estudo da UI viva tinha isto marcado como ⭐ de
-    /// tamanho **P** (*«custa uma função»*) e a §8 dele carrega hoje a refutação.
-    ///
-    /// Ela mora aqui numa função só **exatamente por isso**: quando o caminho do tablet existir,
-    /// é ESTA linha que muda, e a fonte `Pressure` do lápis passa a funcionar sem que nada mais
-    /// se mexa. Repetir o literal no press e no move seria a terceira cópia de um número que já
-    /// mente em duas.
-    pub(crate) fn pointer_dynamics(&self) -> ph2d_vec_edit::pencil_width::PenDynamics {
-        ph2d_vec_edit::pencil_width::PenDynamics {
-            pressure: 1.0,
-            t_ns: Self::timestamp_ns(),
-        }
-    }
-}
-
 #[cfg(test)]
-#[path = "vec_pencil_input_tests.rs"]
+#[path = "pencil_input_tests.rs"]
 mod tests;

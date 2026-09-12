@@ -26,7 +26,7 @@ use ph2d_vec_entities::entities::VecEntityMap;
 /// tem de deixar o LITERAL valer (a arte volta ao que o artista escreveu), e nunca pintar de rosa
 /// choque uma forma que estava certa.
 #[must_use]
-pub(crate) fn token_color(key: &str, theme: Theme) -> Option<Rgba8> {
+pub fn token_color(key: &str, theme: Theme) -> Option<Rgba8> {
     let c = ColorToken::from_key(key)?.resolve(theme);
     Some(Rgba8::new(c.r, c.g, c.b, c.a))
 }
@@ -40,7 +40,7 @@ pub(crate) fn token_color(key: &str, theme: Theme) -> Option<Rgba8> {
 /// ⚠️ **A cor não usa a régua**, e é por isso que [`token_color`] continua a tomar só o [`Theme`]:
 /// uma cor é adimensional. Dar-lhe a régua sugeriria que ela tem uma.
 #[derive(Clone, Copy, Debug)]
-pub(crate) struct TokenCtx {
+pub struct TokenCtx {
     /// O modo vigente — a metade que já existia.
     pub theme: Theme,
     /// `ProjectSettings::pixels_per_meter` — ver [`token_world`].
@@ -54,8 +54,8 @@ impl TokenCtx {
     /// caminho de produto seria a porta por onde alguém resolveria um comprimento com a régua
     /// errada sem o compilador dizer nada, e o sintoma — um traço com a espessura de outro
     /// projeto — não se vê em teste nenhum.
-    #[cfg(test)]
-    pub(crate) fn factory() -> Self {
+    #[cfg(any(test, feature = "test-support"))]
+    pub fn factory() -> Self {
         Self {
             theme: Theme::default(),
             pixels_per_meter: ph2d_editor::project::DEFAULT_PIXELS_PER_METER,
@@ -80,7 +80,7 @@ impl TokenCtx {
 /// Chave desconhecida devolve `None` pelo mesmo motivo que a cor: o LITERAL do documento tem de
 /// valer, e nunca um comprimento de emergência.
 #[must_use]
-pub(crate) fn token_world(key: &str, tok: TokenCtx) -> Option<f64> {
+pub fn token_world(key: &str, tok: TokenCtx) -> Option<f64> {
     let px = f64::from(NumToken::from_key(key)?.px(tok.theme));
     let ppm = f64::from(tok.pixels_per_meter);
     // O `set_pixels_per_meter` clampa em `MIN_PIXELS_PER_METER = 1.0`, mas o campo é público: uma
@@ -96,7 +96,7 @@ pub(crate) fn token_world(key: &str, tok: TokenCtx) -> Option<f64> {
 /// traço no dia em que a régua mudasse — e o sintoma seria uma moldura a espaçar por uma régua e
 /// um traço a engrossar por outra.
 #[must_use]
-pub(crate) fn bound_gap(sim: &SimWorld, frame: Entity, tok: TokenCtx) -> [Option<f64>; 2] {
+pub fn bound_gap(sim: &SimWorld, frame: Entity, tok: TokenCtx) -> [Option<f64>; 2] {
     let Some(b) = sim.world().get::<VecBindings>(frame) else {
         return [None, None];
     };
@@ -113,7 +113,7 @@ pub(crate) fn bound_gap(sim: &SimWorld, frame: Entity, tok: TokenCtx) -> [Option
 /// Vazio quando nada está bindado — que é todo documento que já existe, e é o que faz o desenho
 /// deles ficar byte-idêntico ao mundo pré-token.
 #[must_use]
-pub(crate) fn resolve(sim: &SimWorld, map: &VecEntityMap, tok: TokenCtx) -> Vec<BoundStyle> {
+pub fn resolve(sim: &SimWorld, map: &VecEntityMap, tok: TokenCtx) -> Vec<BoundStyle> {
     let theme = tok.theme;
     let w = sim.world();
     let mut out = Vec::new();
@@ -153,7 +153,7 @@ pub(crate) fn resolve(sim: &SimWorld, map: &VecEntityMap, tok: TokenCtx) -> Vec<
 /// se inverte. É o mesmo desenho do `frames::device_preset`, e o custo é 162 comparações num
 /// clique — não num frame.
 #[must_use]
-pub(crate) fn token_choice(id: ph2d_editor::NodeId) -> Option<(BoundProp, Option<&'static str>)> {
+pub fn token_choice(id: ph2d_editor::NodeId) -> Option<(BoundProp, Option<&'static str>)> {
     for slot in ph2d_editor::ids::TOKEN_SLOTS {
         // ⚠️ O alvo vem do CÓDIGO da tabela pela porta do modelo, e não de um `match` escrito aqui:
         // um slot novo nasce ligado, em vez de virar uma linha de picker que não faz nada.
@@ -175,7 +175,7 @@ pub(crate) fn token_choice(id: ph2d_editor::NodeId) -> Option<(BoundProp, Option
 /// ⚠️ **Desanexa o componente quando fica vazio.** Um `VecBindings` sem entradas viaja no save e
 /// entra no diff do undo, e então duas cenas logicamente iguais comparam diferente — o passo
 /// espúrio que o `canonicalize` do undo global existe para matar.
-pub(crate) fn set_selected_binding(
+pub fn set_selected_binding(
     sim: &mut SimWorld,
     map: &VecEntityMap,
     selected: &[ph2d_vec_scene::VecPathId],
@@ -215,7 +215,7 @@ pub(crate) fn set_selected_binding(
 /// token a *"várias formas ao mesmo tempo"* precisa de uma resposta a *"e se elas discordarem?"*
 /// que esta wave não dá.
 #[must_use]
-pub(crate) fn selected_bindings(
+pub fn selected_bindings(
     sim: &SimWorld,
     map: &VecEntityMap,
     selected: &[ph2d_vec_scene::VecPathId],
@@ -259,7 +259,7 @@ thread_local! {
 /// ⚠️ Um canal interno da shell, e não um argumento a mais: quem SABE que um valor foi autorado é
 /// o tool (a ponte é quem fala com ele), e quem pode SOLTAR o token é o passe que tem o mundo e a
 /// seleção na mão. Os dois correm no mesmo frame, em ordem — a ponte primeiro.
-pub(crate) fn note_authored(prop: BoundProp) {
+pub fn note_authored(prop: BoundProp) {
     AUTHORED.with(|c| c.set(c.get() | 1 << (prop as u16)));
 }
 
@@ -269,7 +269,7 @@ pub(crate) fn note_authored(prop: BoundProp) {
 /// cobri-la, e o controlo mostraria um valor que a arte não usa: o pior estado possível
 /// (decisão do Enio, 2026-08-02). E é por isso que os one-shots do tool armam só quando o valor
 /// MUDA — o read-back do picker corre em todo frame em que ele está aberto.
-pub(crate) fn detach_on_authored(
+pub fn detach_on_authored(
     sim: &mut SimWorld,
     map: &VecEntityMap,
     selected: &[ph2d_vec_scene::VecPathId],
@@ -283,5 +283,5 @@ pub(crate) fn detach_on_authored(
 }
 
 #[cfg(test)]
-#[path = "vec_bindings_tests.rs"]
+#[path = "bindings_tests.rs"]
 mod tests;

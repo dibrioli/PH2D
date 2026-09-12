@@ -1,7 +1,7 @@
 //! **RESIZE BOX da seleção** — a projecção que o painel lê, e a porta que a edita (plano UI/UX
 //! W3b, decisão do Enio 2026-08-03).
 //!
-//! Irmão do [`crate::vec_anchor_edit`] e do [`crate::vec_frame_edit`], com a mesma divisão de
+//! Irmão do `vec_anchor_edit` (na shell) e do `vec_frame_edit` (na shell), com a mesma divisão de
 //! donos: a verdade mora no ECS ([`ph2d_ecs::VecResizeBox`], um **override** sobre o default
 //! derivado da hierarquia) e isto é o que a shell publica por frame. O painel não alcança o mundo
 //! — se alcançasse, a resposta que DESENHA a caixa marcada divergiria da que HONRA o arrasto.
@@ -42,7 +42,7 @@ fn subject(map: &VecEntityMap, selected: &[VecPathId]) -> Option<Entity> {
 
 /// O estado do checkbox para o painel — `None` = a linha não existe neste frame.
 #[must_use]
-pub(crate) fn selected_resize_box(
+pub fn selected_resize_box(
     sim: &SimWorld,
     map: &VecEntityMap,
     selected: &[VecPathId],
@@ -60,11 +60,7 @@ pub(crate) fn selected_resize_box(
 /// mostra a resposta EFETIVA (default composto com override), então inverter o que se vê é a
 /// única leitura que não surpreende. Escrever um valor absoluto exigiria que o painel soubesse o
 /// default — a segunda resposta que este módulo existe para evitar.
-pub(crate) fn toggle_resize_box(
-    sim: &mut SimWorld,
-    map: &VecEntityMap,
-    selected: &[VecPathId],
-) -> bool {
+pub fn toggle_resize_box(sim: &mut SimWorld, map: &VecEntityMap, selected: &[VecPathId]) -> bool {
     let Some(e) = subject(map, selected) else {
         return false;
     };
@@ -87,5 +83,5 @@ pub(crate) fn toggle_resize_box(
 }
 
 #[cfg(test)]
-#[path = "vec_resize_box_edit_tests.rs"]
+#[path = "resize_box_edit_tests.rs"]
 mod tests;

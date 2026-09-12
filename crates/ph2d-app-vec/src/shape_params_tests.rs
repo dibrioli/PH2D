@@ -6,7 +6,7 @@
 //! tabela e já nasce coberta por eles.
 
 use super::*;
-use crate::vec_shape_live::recook_shape;
+use crate::shape_live::recook_shape;
 use ph2d_ecs::Transform;
 use ph2d_tool_vector::DrawMode;
 use ph2d_tool_vector::shapes::FieldUnit;

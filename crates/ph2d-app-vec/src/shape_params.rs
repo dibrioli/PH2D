@@ -1,7 +1,7 @@
-//! O painel edita a forma VIVA — módulo irmão de [`crate::vec_shape_live`] (que cuida do
+//! O painel edita a forma VIVA — módulo irmão de [`crate::shape_live`] (que cuida do
 //! COZIMENTO e do nascimento da forma; separados pelo teto de 600 LOC, HR-18).
 //!
-//! O mesmo modelo do texto ([`crate::vec_text_object`]): uma config do painel tem um
+//! O mesmo modelo do texto (`vec_text_object` (na shell)): uma config do painel tem um
 //! **ALVO**. Aqui o alvo é a forma paramétrica SELECIONADA — os campos do painel deixam
 //! de ser só o *default de desenho* e passam a editar a forma que está na tela, **mesmo
 //! na ferramenta Select**. É o que fecha o ciclo Live Shape: desenhar um polígono de 5
@@ -29,7 +29,7 @@ use ph2d_tool_vector::params::DrawMode;
 use ph2d_tool_vector::shapes;
 use ph2d_vec_scene::{MAX_SHAPE_FIELDS, ShapeKind, ShapeValues, VecPathId, VecScene};
 
-use crate::vec_shape_live::recook_into;
+use crate::shape_live::recook_into;
 use ph2d_vec_entities::entities::VecEntityMap;
 
 /// A forma VIVA paramétrica (não-texto) na seleção — o ALVO dos campos de forma do
@@ -38,7 +38,7 @@ use ph2d_vec_entities::entities::VecEntityMap;
 /// Um discriminante desconhecido (save de uma versão futura) resolve para `None` — vira
 /// path cru, nunca pânico.
 #[must_use]
-pub(crate) fn panel_shape_target(
+pub fn panel_shape_target(
     sim: &SimWorld,
     map: &VecEntityMap,
     selection: &[VecPathId],
@@ -81,7 +81,7 @@ pub(crate) fn panel_shape_target(
 /// ⛔ O modo **Moldura** NÃO entra: ali o gesto desenha um `RoundRect` e um `RoundRect`
 /// selecionado é o mesmo objeto — o alvo vivo continua a mandar, como em Select.
 #[must_use]
-pub(crate) fn shape_field_target(
+pub fn shape_field_target(
     sim: &SimWorld,
     map: &VecEntityMap,
     selection: &[VecPathId],
@@ -97,13 +97,13 @@ pub(crate) fn shape_field_target(
 /// `true` se `id` é um campo de parâmetro de forma (o que a shell captura para editar a
 /// forma viva selecionada, além do default de desenho que a tool já atualiza).
 #[must_use]
-pub(crate) fn is_shape_field_id(id: NodeId) -> bool {
+pub fn is_shape_field_id(id: NodeId) -> bool {
     shape_field_index(id).is_some()
 }
 
 /// O índice do parâmetro cujo id de campo é `id`.
 #[must_use]
-pub(crate) fn shape_field_index(id: NodeId) -> Option<usize> {
+pub fn shape_field_index(id: NodeId) -> Option<usize> {
     (0..MAX_SHAPE_FIELDS).find(|&i| ph2d_editor::ids::vector_shape_field_id(i) == id)
 }
 
@@ -112,7 +112,7 @@ pub(crate) fn shape_field_index(id: NodeId) -> Option<usize> {
 /// `v` chega na unidade de UI (px nos raios); a forma guarda MUNDO — a travessia é do
 /// catálogo (`shapes::to_world`), num lugar só. `false` = o campo não existe nesta forma
 /// (o painel nem o desenha, mas o caminho recusa por construção) e nada muda.
-pub(crate) fn apply_shape_field(
+pub fn apply_shape_field(
     kind: ShapeKind,
     values: &mut ShapeValues,
     id: NodeId,
@@ -135,7 +135,7 @@ pub(crate) fn apply_shape_field(
 
 /// Os valores de uma forma na unidade de UI (o que a tool adota e o painel mostra).
 #[must_use]
-pub(crate) fn ui_values_of(kind: ShapeKind, world: &ShapeValues, px_to_world: f64) -> ShapeValues {
+pub fn ui_values_of(kind: ShapeKind, world: &ShapeValues, px_to_world: f64) -> ShapeValues {
     shapes::to_ui(kind, world, px_to_world)
 }
 
@@ -149,7 +149,7 @@ pub(crate) fn ui_values_of(kind: ShapeKind, world: &ShapeValues, px_to_world: f6
 /// que guardasse só o id os trataria como o mesmo frame e nunca re-semearia. Foi exactamente esse
 /// o defeito reportado.
 #[must_use]
-pub(crate) fn shape_seed_focus(
+pub fn shape_seed_focus(
     target: Option<(VecPathId, ShapeKind)>,
     catalog: ShapeKind,
 ) -> (Option<VecPathId>, ShapeKind) {
@@ -177,7 +177,7 @@ pub(crate) fn shape_seed_focus(
 /// Semeia também a FAIXA de cada caixa (`set_number_range`): as faixas são por-forma (3
 /// lados · 500 px · 360°), então trocar de forma sem re-registrar deixaria a caixa
 /// clampando na faixa da forma anterior.
-pub(crate) fn seed_shape_fields(store: &mut WidgetStore, kind: ShapeKind, ui: &ShapeValues) {
+pub fn seed_shape_fields(store: &mut WidgetStore, kind: ShapeKind, ui: &ShapeValues) {
     let d = shapes::desc(kind);
     for (i, v) in ui.iter().enumerate().take(MAX_SHAPE_FIELDS) {
         let id = ph2d_editor::ids::vector_shape_field_id(i);
@@ -197,7 +197,7 @@ pub(crate) fn seed_shape_fields(store: &mut WidgetStore, kind: ShapeKind, ui: &S
 /// estilo e `Transform` preservados, então a forma muda **no lugar** (não pula, não perde
 /// o pivô). `f` devolve `false` quando o campo não é dessa forma: aí nada é escrito.
 /// `true` se editou. Espelho de [`crate::vec_text_object::edit_selected_text`].
-pub(crate) fn edit_selected_shape(
+pub fn edit_selected_shape(
     sim: &mut SimWorld,
     scene: &mut VecScene,
     map: &VecEntityMap,
@@ -232,5 +232,5 @@ pub(crate) fn edit_selected_shape(
 }
 
 #[cfg(test)]
-#[path = "vec_shape_params_tests.rs"]
+#[path = "shape_params_tests.rs"]
 mod tests;

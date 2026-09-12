@@ -29,7 +29,7 @@ use ph2d_vec_entities::entities::VecEntityMap;
 /// Chamado **depois** do `sync` (a entidade tem de existir) e **antes** do `settle_origins`, pela
 /// mesma razão dos irmãos: o `settle` decide a pose de um caminho novo, e queremos que a lâmina
 /// já esteja identificada quando isso acontece.
-pub(crate) fn upkeep(
+pub fn upkeep(
     sim: &mut SimWorld,
     scene: &mut VecScene,
     map: &VecEntityMap,
@@ -81,7 +81,7 @@ fn strip_style(scene: &mut VecScene, lines: &[VecPathId]) {
 /// invariante "uma de cada vez" é ESTABELECIDO pelo [`upkeep`], não assumido por quem lê — se um
 /// dia dois existirem, quem pergunta vê os dois em vez de escolher um em silêncio.
 #[must_use]
-pub(crate) fn cut_lines(sim: &SimWorld, map: &VecEntityMap) -> Vec<VecPathId> {
+pub fn cut_lines(sim: &SimWorld, map: &VecEntityMap) -> Vec<VecPathId> {
     map.iter()
         .filter(|(_, bits)| {
             sim.world()
@@ -94,12 +94,12 @@ pub(crate) fn cut_lines(sim: &SimWorld, map: &VecEntityMap) -> Vec<VecPathId> {
 
 /// A lâmina corrente, se houver.
 #[must_use]
-pub(crate) fn cut_line(sim: &SimWorld, map: &VecEntityMap) -> Option<VecPathId> {
+pub fn cut_line(sim: &SimWorld, map: &VecEntityMap) -> Option<VecPathId> {
     cut_lines(sim, map).first().copied()
 }
 
 /// **Descarta** a lâmina. Devolve `true` se havia uma (o chamador só abre passo de undo então).
-pub(crate) fn discard(sim: &SimWorld, scene: &mut VecScene, map: &VecEntityMap) -> bool {
+pub fn discard(sim: &SimWorld, scene: &mut VecScene, map: &VecEntityMap) -> bool {
     let lines = cut_lines(sim, map);
     for id in &lines {
         scene.remove_path(*id);
@@ -140,7 +140,7 @@ pub(crate) fn discard(sim: &SimWorld, scene: &mut VecScene, map: &VecEntityMap) 
 /// que impede um corte acidental: a linha fica na cena depois de usada, e sem elas qualquer
 /// clique no botão — ou um atalho futuro — cortaria a cena outra vez com uma lâmina que o artista
 /// esqueceu lá.
-pub(crate) fn apply_cut(
+pub fn apply_cut(
     sim: &SimWorld,
     scene: &mut VecScene,
     map: &VecEntityMap,
@@ -209,5 +209,5 @@ fn world_copy(
 }
 
 #[cfg(test)]
-#[path = "vec_cut_line_tests.rs"]
+#[path = "cut_line_tests.rs"]
 mod tests;

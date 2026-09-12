@@ -4951,6 +4951,7 @@ dependencies = [
  "ph2d-core",
  "ph2d-ecs",
  "ph2d-editor",
+ "ph2d-host",
  "ph2d-image-import",
  "ph2d-painter-brush",
  "ph2d-panel-authored",

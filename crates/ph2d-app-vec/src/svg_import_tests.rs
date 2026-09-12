@@ -52,18 +52,10 @@ fn an_svg_is_a_drawing_and_never_an_image() {
         !ph2d_asset::SUPPORTED_IMAGE_EXTENSIONS.contains(&"svg"),
         "um .svg que entre pela porta das imagens vira uma sprite de pixels"
     );
-    let filtros = crate::import_router::dialog_filters();
-    assert!(
-        filtros
-            .iter()
-            .any(|(_, exts)| exts.contains(&"svg") && exts.len() == 2),
-        "o dialogo tem de OFERECER a linha do SVG: {filtros:?}"
-    );
-    assert!(
-        filtros[0].1.contains(&"svg"),
-        "e o «All supported» tem de o conter — foi por faltar nessa linha que o .gif ficou \
-         invisivel durante meses"
-    );
+    // ⚠️ **A metade do DIÁLOGO mudou-se para o `import_router_tests` da shell** (W2/L4 Fase B,
+    //    2.ª volta): ela afirma o que o `crate::import_router::dialog_filters()` OFERECE, e esse
+    //    router é da shell. *Um gate segue o sujeito, não o ficheiro* (HOWTO §1.2) — e o sujeito
+    //    daquelas duas linhas nunca foi o importador de SVG, era o diálogo.
 }
 
 /// ⭐⭐⭐ **O DESENHO ATERRA ONDE O GESTO PEDIU** — e não na origem do mundo.

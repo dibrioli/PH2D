@@ -141,3 +141,24 @@ fn the_image_grid_only_moves_when_there_is_a_sheet_above_it() {
         "e desce mais do que a altura da folha"
     );
 }
+
+/// **O diálogo OFERECE a linha do SVG** — a metade do `an_svg_is_a_drawing_and_never_an_image`
+/// que ficou na shell quando o importador saiu (W2/L4 Fase B, 2.ª volta).
+///
+/// ⚠️ Ela afirma o que o `dialog_filters()` desta shell produz; o outro lado (um `.svg` nunca
+/// entra pela porta das imagens) continua com o importador, em `ph2d-app-vec`.
+#[test]
+fn the_dialog_offers_the_svg_line() {
+    let filtros = crate::import_router::dialog_filters();
+    assert!(
+        filtros
+            .iter()
+            .any(|(_, exts)| exts.contains(&"svg") && exts.len() == 2),
+        "o dialogo tem de OFERECER a linha do SVG: {filtros:?}"
+    );
+    assert!(
+        filtros[0].1.contains(&"svg"),
+        "e o «All supported» tem de o conter — foi por faltar nessa linha que o .gif ficou \
+         invisivel durante meses"
+    );
+}

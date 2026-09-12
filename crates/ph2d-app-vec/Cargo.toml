@@ -84,6 +84,11 @@ fontique = "0.11.1"
 # pré-visualização de fonte **não** entra num build sem painel vectorial. Uma 1ª redacção desta
 # crate declarou a dependência como obrigatória por eu ter lido só o `use` do ficheiro e não o
 # `mod` que o declara: *a condição de compilação de um módulo não está escrita nele.*
+[dev-dependencies]
+# ⚠️ Só os GATES a usam (o `widget_icon_tests` encena um redimensionamento de janela) — logo é
+# `dev-`, e não uma dependência do produto.
+ph2d-host = { path = "../ph2d-host" }
+
 [features]
 # ⚠️ **A feature deixou de LIGAR a dependência e passou a gatear só a PRESENÇA de um módulo**
 # (Fase B). O motivo é medido: o `paint_stack` usa `ph2d_panel_vector::state::*` em **9 sítios sem

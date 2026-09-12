@@ -286,7 +286,7 @@ pub fn bind(
     }
     let mut presas = 0;
     for (id, raiz) in pecas.iter().take(2) {
-        presas += ph2d_skeleton_live::skin_live::bind(sim, &scene, &map, &[*id], *raiz);
+        presas += ph2d_skeleton_live::skin_live::bind(sim, scene, map, &[*id], *raiz);
     }
     // ⭐⭐⭐ **O TENTÁCULO ABRE JÁ CURVADO** (report do Enio, 2026-09-06: *"nenhuma forma pode
     // ser deformada"*). A medição mostrou o motor intacto — o que faltava era **ver** que ele
@@ -365,7 +365,7 @@ pub fn bind(
     // ÂNCORA (ela nasce coincidente com a ponta, e o braço não se mexe quando ela aparece).
     // Um cotovelo dobrado é a pose que o artista autorou — é o que um braço tem.
     if let Some((_, Some(raiz))) = pecas.first().copied() {
-        let ponta = ponta_da_cadeia(&sim, raiz);
+        let ponta = ponta_da_cadeia(sim, raiz);
         if let Some(mut t) = sim.world_mut().get_mut::<ph2d_ecs::Transform>(ponta) {
             t.rotation = ARM_ELBOW_BEND;
         }
@@ -373,7 +373,7 @@ pub fn bind(
     let ancorado = pecas
         .first()
         .and_then(|(_, raiz)| *raiz)
-        .map(|raiz| ponta_da_cadeia(&sim, raiz))
+        .map(|raiz| ponta_da_cadeia(sim, raiz))
         .and_then(|ponta| ph2d_skeleton_live::goal::add(sim, ponta))
         .is_some();
     // ⚠️ O lado CAPTURADO sai no log: sem esta linha, um `Auto` capturado por engano (a cena a
@@ -381,7 +381,7 @@ pub fn bind(
     let lado = pecas
         .first()
         .and_then(|(_, raiz)| *raiz)
-        .map(|raiz| ponta_da_cadeia(&sim, raiz))
+        .map(|raiz| ponta_da_cadeia(sim, raiz))
         .and_then(|ponta| sim.world().get::<ph2d_skeleton_ecs::IkGoal>(ponta))
         .map_or(ph2d_skeleton::BendSide::Keep, |g| g.bend);
     // ⭐⭐⭐ **A ACÇÃO PRONTA**, para o osso inteligente ter o que percorrer sem o artista ter de

@@ -29,7 +29,7 @@ use std::collections::BTreeMap;
 
 /// O que já foi rasterizado em cada fatia do compositor: `chave → impressão digital`.
 #[derive(Default)]
-pub(super) struct StageMemo {
+pub struct StageMemo {
     // `BTreeMap` (não `HashMap`): ADR-0022 / HR-5 — determinístico, e o mapa é do tamanho do número
     // de camadas visíveis (unidades), então O(log n) é irrelevante.
     map: BTreeMap<u64, u64>,
@@ -39,12 +39,12 @@ pub(super) struct StageMemo {
 }
 
 impl StageMemo {
-    pub(super) fn reset_stats(&mut self) {
+    pub fn reset_stats(&mut self) {
         self.staged = 0;
         self.skipped = 0;
     }
 
-    pub(super) fn stats(&self) -> (u32, u32) {
+    pub fn stats(&self) -> (u32, u32) {
         (self.staged, self.skipped)
     }
 
@@ -53,7 +53,7 @@ impl StageMemo {
     /// ⚠️ A ordem dos termos não é estética: o `has_slice` é a palavra do DONO dos pixels, e ela
     /// vence o nosso memo sempre — um memo que batesse sobre uma fatia despejada mandaria o
     /// compositor compor lixo.
-    pub(super) fn needs_stage(&mut self, key: u64, fp: u64, compositor_has_slice: bool) -> bool {
+    pub fn needs_stage(&mut self, key: u64, fp: u64, compositor_has_slice: bool) -> bool {
         let fresh = compositor_has_slice && self.map.get(&key) == Some(&fp);
         if fresh {
             self.skipped += 1;
@@ -64,7 +64,7 @@ impl StageMemo {
     }
 
     /// Registra que `key` foi rasterizada com a impressão `fp`.
-    pub(super) fn record(&mut self, key: u64, fp: u64) {
+    pub fn record(&mut self, key: u64, fp: u64) {
         self.map.insert(key, fp);
     }
 }
@@ -88,7 +88,7 @@ impl StageMemo {
 /// - **`walk`** — QUAL motor produziu. Hoje é constante no processo (um `OnceLock`), e entra de
 ///   propósito: se algum dia o interruptor virar dinâmico, sem ele o frame seguinte reusaria pixels
 ///   do outro motor.
-pub(super) fn fingerprint(
+pub fn fingerprint(
     geom: u64,
     preview: Option<&FlipGpuData>,
     cam: &CameraRaw,
@@ -128,5 +128,5 @@ fn mix(h: u64, v: u64) -> u64 {
 }
 
 #[cfg(test)]
-#[path = "flip_pass_stage_tests.rs"]
+#[path = "pass_stage_tests.rs"]
 mod tests;

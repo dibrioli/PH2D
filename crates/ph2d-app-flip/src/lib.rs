@@ -22,6 +22,7 @@
 
 pub mod airbrush_smoke;
 pub mod colorize_smoke;
+pub mod cursor;
 pub mod demo;
 pub mod edit_smoke;
 pub mod fill_dilate;
@@ -29,6 +30,9 @@ pub mod fill_smoke;
 pub mod gap_live;
 pub mod multiframe;
 pub mod multiplane_smoke;
+pub mod pass_cache;
+pub mod pass_ghosts;
+pub mod pass_stage;
 pub mod peek;
 pub mod pose_smoke;
 pub mod segment_smoke;
@@ -43,21 +47,6 @@ pub mod tween_phase_smoke;
 pub mod tween_smoke;
 pub mod tween_torsion_smoke;
 
-/// **O que esta família declara à shell** (`ph2d-app-registry-init`).
-///
-/// ⭐ **A `flip` é a ÚNICA das cinco famílias da Fase A que possui os próprios roteadores** — por
-/// isso ela não entra na catraca `FAMILIAS_COM_O_ROTEADOR_AINDA_NA_SHELL` do registo. Medido em
-/// 2026-09-11: estes 15 nomes são lidos **aqui dentro**, e não há um único que a shell também leia.
-///
-/// ⚠️ **`max_level: 1` porque estes roteadores são INTERRUPTORES, não escadas** — cada um é um
-/// `env::var_os(..).is_some()`, sem `match` de nível (ao contrário do `PH2D_FIELD_SMOKE` do piloto,
-/// que responde por uma faixa). O maior nível que um interruptor responde é `1`, e escrever outra
-/// coisa seria prometer cenas que não existem.
-///
-/// ⏳ **O que ainda NÃO está aqui, e é dívida nomeada:** três `PH2D_FLIP_*_SMOKE` continuam a ser
-/// lidos pela shell — `PH2D_FLIP_HARDNESS_SMOKE` (o mestre), `PH2D_FLIP_PRESSURE_SMOKE` e
-/// `PH2D_FLIP_RESAMPLE_SMOKE`. ⛔ *Uma lista que se lê como completa e não é vale menos que uma
-/// ausência*, então eles estão escritos aqui: a Fase B traz os três e esta lista passa a 18.
 pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
     key: "flip",
     routers: &[

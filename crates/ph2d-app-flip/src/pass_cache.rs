@@ -12,7 +12,7 @@ use std::collections::BTreeMap;
 
 /// Cache de tesselação por (objeto, desenho) + instrumentação (por frame).
 #[derive(Default)]
-pub(super) struct TessCache {
+pub struct TessCache {
     // `BTreeMap` (não `HashMap`): ADR-0022 / HR-5 — determinístico, sem hasher; o
     // cache é pequeno (≤ nº de desenhos ativos), então O(log n) é irrelevante.
     map: BTreeMap<(u64, u32), CachedTess>,
@@ -26,7 +26,7 @@ struct CachedTess {
 }
 
 impl TessCache {
-    pub(super) fn reset_stats(&mut self) {
+    pub fn reset_stats(&mut self) {
         self.packs = 0;
         self.hits = 0;
     }
@@ -34,7 +34,7 @@ impl TessCache {
     /// Garante que `key` está tesselado e VÁLIDO para o `drawing` atual:
     /// re-empacota só se ausente ou se o conteúdo mudou (hash diverge — pega
     /// edição do W2 e reuso posicional de `DrawingId` após compactação).
-    pub(super) fn ensure(&mut self, key: (u64, u32), drawing: &FlipDrawing) {
+    pub fn ensure(&mut self, key: (u64, u32), drawing: &FlipDrawing) {
         let hash = drawing_hash(drawing);
         match self.map.get(&key) {
             Some(c) if c.hash == hash => self.hits += 1,
@@ -51,7 +51,7 @@ impl TessCache {
         }
     }
 
-    pub(super) fn get(&self, key: &(u64, u32)) -> Option<&FlipGpuData> {
+    pub fn get(&self, key: &(u64, u32)) -> Option<&FlipGpuData> {
         self.map.get(key).map(|c| &c.data)
     }
 
@@ -61,11 +61,11 @@ impl TessCache {
     /// ⚠️ **É o hash, não a chave.** A chave é `(objeto, desenho)` e sobrevive a uma EDIÇÃO; o hash
     /// é o que muda quando o artista mexe no desenho, e é ele que o skip do Pass A precisa — usar a
     /// chave congelaria a camada no primeiro traço dela.
-    pub(super) fn hash(&self, key: &(u64, u32)) -> Option<u64> {
+    pub fn hash(&self, key: &(u64, u32)) -> Option<u64> {
         self.map.get(key).map(|c| c.hash)
     }
 
-    pub(super) fn log(&self) {
+    pub fn log(&self) {
         if std::env::var_os("PH2D_FLIP_STATS").is_some() {
             eprintln!(
                 "[ph2d-flip] tess: {} pack(s), {} hit(s) neste frame",

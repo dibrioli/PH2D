@@ -35,12 +35,8 @@ mod equalize_sizes_bridge;
 pub(crate) mod flip_bridge;
 /// O anel do cursor do pincel do FLIP (ADR-0114 W5, smoke do Enio): o Size é absoluto
 /// em px de tela, então o anel é px de tela — sem conversão de câmera.
-pub(crate) mod flip_cursor;
 mod flip_gap_overlay;
 pub(crate) mod flip_pass;
-mod flip_pass_cache;
-mod flip_pass_ghosts;
-mod flip_pass_stage;
 mod flip_selection_overlay;
 mod flip_tween_overlay;
 mod gizmo_prune;
@@ -8706,7 +8702,7 @@ impl crate::App {
             // O anel do pincel (W5): mostra no canvas o tamanho do que vai acontecer.
             // Depois do publish (o estilo do frame já está no cache) e na cena de
             // overlay, como o anel do Painter.
-            flip_cursor::draw_flip_cursor(
+            ph2d_app_flip::cursor::draw_flip_cursor(
                 flip_active,
                 flip_style,
                 hero,

@@ -115,7 +115,7 @@ impl crate::App {
     }
 
     /// Os fantasmas da camada ativa AGORA, com o shift que já têm — os candidatos ao hit.
-    /// Espelha os gates do passe (`flip_pass_ghosts::collect`): o que não é desenhado não
+    /// Espelha os gates do passe (`ph2d_app_flip::pass_ghosts::collect`): o que não é desenhado não
     /// pode ser pego.
     fn trace_candidates(&self) -> Vec<TraceGhost> {
         let Some(gfx) = self.gfx.as_ref() else {

@@ -4804,15 +4804,18 @@ dependencies = [
 name = "ph2d-app-flip"
 version = "0.0.0"
 dependencies = [
+ "bytemuck",
  "libm",
  "ph2d-app-host",
  "ph2d-core",
  "ph2d-editor",
  "ph2d-flip",
  "ph2d-flip-fill",
+ "ph2d-flip-render",
  "ph2d-flip-reshape",
  "ph2d-painter-effects",
  "ph2d-tool-flip",
+ "ph2d-vector",
  "winit",
 ]
 

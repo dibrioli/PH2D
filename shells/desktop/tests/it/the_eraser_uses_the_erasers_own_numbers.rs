@@ -16,7 +16,7 @@
 //!
 //! `flip_erase_apply` deriva o raio de `gfx.camera` — precisa de **janela + GPU**, e o
 //! `App` headless nasce com `gfx = None` ([[project_tests]]): o caminho inteiro é
-//! inalcançável pelo harness. O anel (`flip_cursor::ring_radius`) É testável e tem os
+//! inalcançável pelo harness. O anel (`ph2d_app_flip::cursor::ring_radius`) É testável e tem os
 //! seus gates; este aqui cobre o irmão que o harness não alcança, lendo o arquivo do
 //! produto e afirmando a única coisa que importa: **o apply da borracha não fala em
 //! `width_px` nem em `opacity`.**

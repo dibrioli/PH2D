@@ -47,8 +47,16 @@ ph2d-tool-flip = { path = "../ph2d-tool-flip" }
 # ⚠️ Só pelo `Job` (o worker do Gap Closure) e pelos ids/acções que uma cena de smoke arma.
 # NÃO é a shell: o `ph2d-editor` é a crate de widgets, e a shell também depende dela.
 ph2d-editor = { path = "../ph2d-editor" }
+# ⚠️ INVISÍVEL até a crate existir (HOWTO §1.3): o `pass_stage` escreve `bytemuck::cast_slice`
+# para a impressão digital do buffer de GPU, e dentro da shell isto era dependência do binário.
+bytemuck = "1"
 # HR-5: a trigonometria determinística (o mesmo `libm` que o resto do desenho usa).
 libm = "0.2"
+# O empacotamento do desenho para a GPU (`FlipGpuData`, `pack_drawing`, `CameraRaw`) — os
+# CORPOS do passe de render vivem aqui; o LAÇO que os chama em ordem fica na shell (HOWTO §4).
+ph2d-flip-render = { path = "../ph2d-flip-render" }
+# Só pela `VectorScene` que o cursor do Flip desenha em cima.
+ph2d-vector = { path = "../ph2d-vector" }
 # O modo de mistura das camadas do Flip.
 ph2d-painter-effects = { path = "../ph2d-painter-effects" }
 # ⚠️ Só pelo `KeyCode` do `peek`: a POLÍTICA de teclado é pura (tecla -> transição), e é ela

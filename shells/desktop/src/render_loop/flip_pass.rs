@@ -21,8 +21,8 @@
 //! layout) NÃO re-roda — só o render GPU com a câmera nova. `PH2D_FLIP_STATS=1`
 //! loga packs vs hits por frame.
 
-use super::flip_pass_cache::TessCache;
 use crate::flip::transform::art_to_world;
+use ph2d_app_flip::pass_cache::TessCache;
 use ph2d_core::Playhead;
 use ph2d_flip::{FlipDoc, FlipDrawing, FlipObjectId, LayerId};
 use ph2d_flip_render::{CameraRaw, FlipCompose, FlipGpuData, FlipRenderer};
@@ -47,7 +47,7 @@ pub(crate) struct FlipComposite {
     tess: TessCache,
     /// **A frescura do Pass A** (doc 12 §22.3): o que já foi rasterizado em cada fatia. É o que faz
     /// arte commitada e fantasma de onion custarem **zero** enquanto ninguém mexe neles.
-    stage: super::flip_pass_stage::StageMemo,
+    stage: ph2d_app_flip::pass_stage::StageMemo,
 }
 
 impl FlipComposite {
@@ -56,7 +56,7 @@ impl FlipComposite {
             compositor: LayerCompositor::new(gpu),
             dummy: Vec::new(),
             tess: TessCache::default(),
-            stage: super::flip_pass_stage::StageMemo::default(),
+            stage: ph2d_app_flip::pass_stage::StageMemo::default(),
         }
     }
 
@@ -134,7 +134,7 @@ pub(crate) fn render(
     // Ghost Frames: `Some(chaves selecionadas)` = a tool Flip está ativa (fantasmas
     // ligados, sujeitos aos gates do objeto/camada e ao "some no play"); `None` =
     // outra tool no comando — a cena Flip aparece limpa, sem fantasma.
-    ghosts: Option<super::flip_pass_ghosts::GhostSources<'_>>,
+    ghosts: Option<ph2d_app_flip::pass_ghosts::GhostSources<'_>>,
     // O PEEK (Shift & Trace fatia 2): `Some` = uma folha vizinha na mão (a camada
     // ATIVA amostra o desenho anterior/atual/seguinte). O shell passa `ghosts: None`
     // junto — o flip é uma folha na mão, não uma pilha translúcida.
@@ -316,7 +316,7 @@ fn composite_layers(
             // a nossa impressão digital e a palavra do compositor (`has_slice`), porque a fatia pode
             // ter sido despejada pelo LRU ou limpa por um rebuild — e um memo sozinho mandaria
             // compor arte velha nesses dois casos, sem nada parecer quebrado.
-            let fp = super::flip_pass_stage::fingerprint(
+            let fp = ph2d_app_flip::pass_stage::fingerprint(
                 tess.hash(&l.cache_key).unwrap_or(0),
                 l.preview,
                 &layer_cam,
@@ -437,7 +437,7 @@ fn collect_layers<'a>(
     preview: Option<&'a FlipGpuData>,
     active_layer: Option<LayerId>,
     models: &[(FlipObjectId, Xform)],
-    ghosts: Option<super::flip_pass_ghosts::GhostSources<'_>>,
+    ghosts: Option<ph2d_app_flip::pass_ghosts::GhostSources<'_>>,
     peek: Option<ph2d_app_flip::peek::PeekDir>,
 ) -> (Vec<LayerRef<'a>>, Option<&'a FlipGpuData>) {
     // Camada-alvo do preview: a ativa do 1º objeto (se ainda existe) ou o topo —
@@ -506,7 +506,7 @@ fn collect_layers<'a>(
                 // No quadro-FONTE (o do ciclo): os vizinhos do desenho que está NA
                 // TELA. No quadro cru, um Loop na 2ª volta não teria vizinho nenhum.
                 let src = layer.source_frame(frame);
-                for g in super::flip_pass_ghosts::collect(obj, layer, src, playhead, sources) {
+                for g in ph2d_app_flip::pass_ghosts::collect(obj, layer, src, playhead, sources) {
                     out.push(LayerRef {
                         key: ghost_key(obj.id.0, layer.id.0, g.delta),
                         blend: ph2d_flip::BlendMode::default().to_u8(),

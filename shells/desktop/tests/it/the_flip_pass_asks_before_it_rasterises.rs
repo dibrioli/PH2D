@@ -78,7 +78,7 @@ fn the_second_half_of_the_skip_is_the_compositors_own_word() {
 fn the_fingerprint_is_built_from_the_layers_own_camera() {
     let s = src();
     let fp = s
-        .find("flip_pass_stage::fingerprint(")
+        .find("ph2d_app_flip::pass_stage::fingerprint(")
         .unwrap_or_else(|| panic!("`fingerprint(` desapareceu do {PASS} — gate vazio"));
     let fim = s[fp..].find(");").map_or(s.len(), |o| fp + o);
     let chamada = &s[fp..fim];

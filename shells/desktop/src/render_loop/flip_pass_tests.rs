@@ -68,7 +68,7 @@ fn a_layers_ghost_sits_above_the_layers_below_it() {
         None,
         None,
         &[],
-        Some(crate::render_loop::flip_pass_ghosts::GhostSources::default()),
+        Some(ph2d_app_flip::pass_ghosts::GhostSources::default()),
         None,
     );
 
@@ -155,7 +155,7 @@ fn there_are_no_ghosts_without_the_tool_or_during_play() {
         None,
         None,
         &[],
-        Some(crate::render_loop::flip_pass_ghosts::GhostSources::default()),
+        Some(ph2d_app_flip::pass_ghosts::GhostSources::default()),
         None,
     );
     assert!(layers.iter().all(|l| l.ghost.is_none()), "durante o play");
@@ -238,7 +238,7 @@ fn each_slice_carries_the_pose_of_its_own_key() {
         None,
         None,
         &[],
-        Some(crate::render_loop::flip_pass_ghosts::GhostSources::default()),
+        Some(ph2d_app_flip::pass_ghosts::GhostSources::default()),
         None,
     );
     // BG · fantasma do FG (quadro 0) · FG (quadro 8)
@@ -339,7 +339,7 @@ fn the_stroke_thickness_is_fixed_in_the_world_and_scales_with_the_zoom() {
 /// (b falha), ou aplicar o shift na fatia da camada (c falha).
 #[test]
 fn a_traced_ghost_wears_its_shift_and_an_empty_map_changes_nothing() {
-    use crate::render_loop::flip_pass_ghosts::GhostSources;
+    use ph2d_app_flip::pass_ghosts::GhostSources;
     let doc = doc_bg_fg();
     let ph = at(8); // sobre a 2ª chave do FG → o desenho de 0 vira fantasma
     let (base, _) = collect_layers(

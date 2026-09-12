@@ -267,7 +267,7 @@ impl crate::App {
                     None
                 };
                 let ghost_selection = (self.flip_state.active && peek.is_none()).then(|| {
-                    super::flip_pass_ghosts::GhostSources {
+                    ph2d_app_flip::pass_ghosts::GhostSources {
                         selected: self.flip_state.strip.selected_keys(),
                         pinned: self.flip_state.strip.pinned_keys(),
                         trace: Some(&self.flip_state.strip.trace),

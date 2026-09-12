@@ -31,7 +31,7 @@ const MIN_RING_R_PX: f64 = 3.0; // LITERAL-PX-OK: piso de visibilidade do overla
 
 /// O anel do pincel, se o modo atual tiver um raio. Desenha no `vector_scene` (a cena
 /// de overlay, composta sobre o canvas neste frame — como o anel do Painter).
-pub(super) fn draw_flip_cursor(
+pub fn draw_flip_cursor(
     active: bool,
     style: Option<FlipStyleSnapshot>,
     hero: &HeroScreen,
@@ -81,7 +81,7 @@ pub(super) fn draw_flip_cursor(
 /// no modo Fill seria uma mentira (não há raio em jogo), e um anel que some quando o
 /// pincel é fino é pior que nenhum — daí o piso.
 #[must_use]
-pub(crate) fn ring_radius(style: Option<FlipStyleSnapshot>, px_per_world: f64) -> Option<f64> {
+pub fn ring_radius(style: Option<FlipStyleSnapshot>, px_per_world: f64) -> Option<f64> {
     let style = style?;
     // **A borracha usa o raio EFETIVO dela** (§4.C) — `erase_px` já vem com o link
     // resolvido pela tool. Com o link ligado (default) esse número É o `width_px`, então

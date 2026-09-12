@@ -19,25 +19,25 @@ use ph2d_core::Playhead;
 use ph2d_flip::{FlipDrawing, FlipLayer, FlipObject, Frame};
 
 /// Um fantasma pronto para virar fatia: a arte, sua chave de cache e como pintá-la.
-pub(super) struct GhostRef<'a> {
+pub struct GhostRef<'a> {
     /// A arte do desenho vizinho (a mesma cobertura; só a cor muda).
-    pub(super) drawing: &'a FlipDrawing,
+    pub drawing: &'a FlipDrawing,
     /// `DrawingId.0` — a chave do cache de tesselação (um fantasma de um desenho já
     /// visitado não re-empacota nada).
-    pub(super) drawing_id: u32,
+    pub drawing_id: u32,
     /// Distância à corrente (negativo = passado). Entra na chave do compositor.
-    pub(super) delta: i32,
+    pub delta: i32,
     /// **A chave de origem** — é dela que sai a POSE do fantasma (W7.2): o fantasma
     /// mostra onde o desenho ESTAVA, e "onde" inclui o lugar.
-    pub(super) key: ph2d_flip::Frame,
+    pub key: ph2d_flip::Frame,
     /// Cor da silhueta (verde = passado, azul = futuro).
-    pub(super) tint: [f32; 3],
+    pub tint: [f32; 3],
     /// Opacidade final (fade `1/|Δ|` × opacidade do onion × opacidade da camada).
-    pub(super) alpha: f32,
+    pub alpha: f32,
     /// **Shift & Trace** (`docs/Flip/04 §4`): o deslocamento de EXIBIÇÃO da folha desta
     /// chave — composto por cima da pose no model da fatia. Identidade = caminho de
     /// sempre, byte a byte.
-    pub(super) shift: ph2d_flip::Pose,
+    pub shift: ph2d_flip::Pose,
 }
 
 /// **De onde saem os fantasmas além da vizinhança**: as chaves marcadas na tira (que só o
@@ -47,19 +47,19 @@ pub(super) struct GhostRef<'a> {
 /// (`render` → `collect_layers` → `collect`) — cada fonte nova custaria um parâmetro em
 /// cada um, e a assinatura é onde esse tipo de crescimento aparece tarde demais.
 #[derive(Copy, Clone, Debug, Default)]
-pub(crate) struct GhostSources<'a> {
+pub struct GhostSources<'a> {
     /// Chaves marcadas na tira (multiframe). Só o `OnionMode::Selected` as consome.
-    pub(crate) selected: &'a [Frame],
+    pub selected: &'a [Frame],
     /// **Light table** (T3.9): referências fixas, visíveis em qualquer modo e fora do
     /// alcance.
-    pub(crate) pinned: &'a [Frame],
+    pub pinned: &'a [Frame],
     /// **Shift & Trace**: o deslocamento de exibição por chave (a folha do lightbox).
     /// `None` = nenhum (o default — e o que os testes antigos passam sem saber dele).
-    pub(crate) trace: Option<&'a std::collections::BTreeMap<Frame, ph2d_flip::Pose>>,
+    pub trace: Option<&'a std::collections::BTreeMap<Frame, ph2d_flip::Pose>>,
 }
 
 /// Os fantasmas da camada `layer` no quadro `frame`, ou vazio se algum gate barra.
-pub(super) fn collect<'a>(
+pub fn collect<'a>(
     obj: &'a FlipObject,
     layer: &FlipLayer,
     frame: Frame,

@@ -172,7 +172,12 @@ pub(crate) fn build_initial_state(
     // ⚠️ O smoke de instância entra na MESMA condição, e não numa segunda: ele também é uma
     // cena de física, e a razão é a mesma — sprites de demonstração na Hierarquia ao lado de
     // três instâncias é exatamente o ruído que torna o smoke ilegível.
-    let physics_smoke = std::env::var_os("PH2D_PHYSICS_SMOKE").is_some()
+    // ⚠️ **Pergunta-se à CRATE, não à variável.** Desde a Fase B o dono do `PH2D_PHYSICS_SMOKE` é
+    // a `ph2d-app-physics` (é ela que o declara no `FAMILY` e que responde por ele). Reler a env
+    // aqui punha DUAS respostas à mesma pergunta, que é a forma que este repo já pagou várias
+    // vezes: elas divergem no dia em que só uma for afinada. O `PH2D_INSTANCE_SMOKE` fica cru
+    // porque não tem família — ninguém o declarou ainda.
+    let physics_smoke = ph2d_app_physics::smoke::armed_scene().is_some()
         || std::env::var_os("PH2D_INSTANCE_SMOKE").is_some();
     if physics_smoke {
         println!(

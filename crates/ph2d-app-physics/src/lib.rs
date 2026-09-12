@@ -198,18 +198,16 @@ pub mod physics_smoke_zones;
 
 /// **O que esta família declara à shell** (`ph2d-app-registry-init`).
 ///
-/// ⚠️⚠️ **`routers: &[]` é a verdade MEDIDA da Fase A** — e por isso `"physics"` está na catraca
-/// `FAMILIAS_COM_O_ROTEADOR_AINDA_NA_SHELL` do registo, que é o único sítio onde *«ainda não
-/// saiu»* se distingue de *«alguém esqueceu»*.
+/// ⭐⭐ **A Fase B trouxe o roteador, e `"physics"` SAIU da catraca**
+/// `FAMILIAS_COM_O_ROTEADOR_AINDA_NA_SHELL` (2026-09-11). O `env::var` que escolhe a cena vive em
+/// [`smoke::armed_scene`], nesta crate, e o `max_level` é [`smoke::CENAS`] — **contado ao lado do
+/// `match`**, nunca escrito aqui.
 ///
-/// ⭐ **E a distinção importa aqui mais que em qualquer outra família da rodada:** as **cenas**
-/// saíram — são elas a maior parte dos 112 ficheiros desta crate —, mas o `env::var` que escolhe
-/// qual delas montar ficou em [`physics_smoke`] na shell, porque ele toca a `App`. *Ter as cenas
-/// não é ter o roteador*, e uma leitura rápida do tamanho desta crate concluiria o contrário.
-///
-/// ⇒ a entrada sai da catraca no dia em que a Fase B trouxer o `PH2D_PHYSICS_SMOKE` para cá.
-///
-/// [`physics_smoke`]: https://github.com/dibrioli/PH2D/blob/main/shells/desktop/src/physics/physics_smoke.rs
+/// ⛔⛔ **Este bloco dizia exactamente o CONTRÁRIO até à integração** (*«`routers: &[]` é a verdade
+/// medida»*, *«o `env::var` ficou na shell»*), uma linha acima do código que o desmente. A dívida
+/// foi paga e o texto não foi apagado — e *uma dívida cumprida e não apagada lê-se como dívida
+/// aberta para sempre*, pelo próximo agente e pelo integrador. ⚠️ **Quem fecha uma catraca apaga a
+/// prosa que a descrevia, no mesmo commit.**
 pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
     key: "physics",
     routers: &[ph2d_app_host::SmokeRouter {

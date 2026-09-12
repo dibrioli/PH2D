@@ -12747,6 +12747,9 @@ impl crate::App {
                 picked.as_ref(),
                 sim,
                 component_registry,
+                // ⭐ A COMPOSIÇÃO entrega as sementes da família dona (auditoria A1): a família de
+                // componentes não conhece a física.
+                ph2d_app_physics::physics_seed::COMPONENT_SEEDS,
                 toasts,
             );
             // A troca de PRECISÃO sai por uma porta própria (plano `docs/Sprite_projeto/18` W5).

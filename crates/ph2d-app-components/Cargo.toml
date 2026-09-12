@@ -46,11 +46,10 @@ ph2d-unique-name = { path = "../ph2d-unique-name" }
 ph2d-vec-entities = { path = "../ph2d-vec-entities" }
 ph2d-vec-scene = { path = "../ph2d-vec-scene" }
 
-# ⚠️ **A família das INSTÂNCIAS depende da família da FÍSICA, e isso é
-# legítimo**: uma crate-motor irmã não é a shell (ADR-0075). As cenas de smoke
-# desta família montam corpos e o `component_seed` semeia um `Collider` e um
-# `PlatformPlayer` chamando as portas dela pelo nome.
-ph2d-app-physics = { path = "../ph2d-app-physics" }
+# ⛔ **Esta família já NÃO depende da família da física** (auditoria de arquitectura A1, 2026-09-12).
+# A nota que aqui estava chamava-o «legítimo» — uma crate-motor irmã não é a shell —, mas a
+# `ph2d-app-physics` não é uma crate-motor: é uma FAMÍLIA, e o ADR-0075 proíbe famílias de se
+# chamarem. As sementes chegam pela tabela que a shell injecta (`component_seed::SeedTable`).
 
 # ⚠️ **As duas que o `cargo check` revelou e o `grep` não** (HOWTO §1.3, o custo
 # real só se lê depois de a crate existir): o `bevy_ecs` porque o

@@ -51,6 +51,7 @@ fn picking_an_item_leaves_the_component_in_the_scene() {
         picked.as_ref(),
         &mut sim,
         &reg,
+        ph2d_app_physics::physics_seed::COMPONENT_SEEDS,
         &mut toasts,
     );
 
@@ -95,6 +96,7 @@ fn attaching_is_one_undo_step_and_undoing_closes_the_section() {
     ph2d_app_components::component_attach::attach_by_name(
         &mut sim,
         &reg,
+        ph2d_app_physics::physics_seed::COMPONENT_SEEDS,
         bits,
         "ph2d::ecs::SliceNine",
     )

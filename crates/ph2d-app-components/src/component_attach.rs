@@ -153,12 +153,13 @@ pub fn attach_picked(
     picks: Option<&(u64, String)>,
     sim: &mut SimWorld,
     registry: &ComponentRegistry,
+    seeds: crate::component_seed::SeedTable<'_>,
     toasts: &mut ph2d_editor_core::ToastQueue,
 ) {
     let Some((bits, name)) = picks else {
         return;
     };
-    if let Err(msg) = attach_by_name(sim, registry, *bits, name) {
+    if let Err(msg) = attach_by_name(sim, registry, seeds, *bits, name) {
         toasts.push(Toast::error(msg));
     }
 }
@@ -172,6 +173,7 @@ pub fn attach_picked(
 pub fn attach_by_name(
     sim: &mut SimWorld,
     registry: &ComponentRegistry,
+    seeds: crate::component_seed::SeedTable<'_>,
     entity_bits: u64,
     name: &str,
 ) -> Result<(), String> {
@@ -186,16 +188,17 @@ pub fn attach_by_name(
     // isto recorrer para sempre em vez de falhar alto.
     if let Some(desc) = ph2d_component_desc::desc_for(name) {
         for dep in desc.requires {
-            attach_by_name(sim, registry, entity_bits, dep)?;
+            attach_by_name(sim, registry, seeds, entity_bits, dep)?;
         }
     }
-    attach_one(sim, registry, entity_bits, name)
+    attach_one(sim, registry, seeds, entity_bits, name)
 }
 
 /// Anexa **um** componente (sem a cascata), e é no-op quando ele já está lá.
 fn attach_one(
     sim: &mut SimWorld,
     registry: &ComponentRegistry,
+    seeds: crate::component_seed::SeedTable<'_>,
     entity_bits: u64,
     name: &str,
 ) -> Result<(), String> {
@@ -223,7 +226,7 @@ fn attach_one(
     // ⚠️ **Depois do `insert_default`, nunca em vez dele:** o valor gravado continua a ser *o ponto
     // neutro do tipo, corrigido pelo contexto*. Uma construção alternativa aqui seria a segunda
     // porta que apodrece quando o tipo ganha campos. Ver [`crate::component_seed`].
-    crate::component_seed::seed_after_attach(sim, entity_bits, name);
+    crate::component_seed::seed_after_attach(seeds, sim, entity_bits, name);
     Ok(())
 }
 

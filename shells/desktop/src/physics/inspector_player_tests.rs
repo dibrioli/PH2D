@@ -34,6 +34,7 @@ pub fn attach_player(sim: &mut SimWorld, entity_bits: u64) {
     ph2d_app_components::component_attach::attach_by_name(
         sim,
         &reg,
+        ph2d_app_physics::physics_seed::COMPONENT_SEEDS,
         entity_bits,
         "ph2d::physics::PlatformPlayer",
     )

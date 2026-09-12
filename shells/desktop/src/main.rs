@@ -143,6 +143,10 @@ mod command_palette_input;
 /// nunca pode chamar o `bin`. Ver o `test_support` da `ph2d_app_components`.
 #[cfg(test)]
 mod component_attach_seam_tests;
+/// As sementes REAIS de anexar (a tabela da física entregue à porta dos componentes) — mudaram-se
+/// da `ph2d-app-components` na auditoria de arquitectura A1 (2026-09-12).
+#[cfg(test)]
+mod component_seed_seam_tests;
 /// O gesto que cria um conector (Down numa forma, Up noutra).
 /// ⭐ O PRÓLOGO das cenas da família das instâncias — o invólucro que traduz `&mut App` para a
 /// assinatura da [`ph2d_app_components`]. *O que sai são os corpos; o que decide a ordem do quadro

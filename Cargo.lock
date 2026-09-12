@@ -4769,7 +4769,6 @@ version = "0.0.0"
 dependencies = [
  "bevy_ecs",
  "ph2d-app-host",
- "ph2d-app-physics",
  "ph2d-audio",
  "ph2d-audio-desktop",
  "ph2d-audio-encode",

@@ -362,7 +362,25 @@ pub fn instance_smoke_vector(cx: &mut crate::scene_ctx::SceneCtx) {
 
 /// Cena 1 — ver o cabeçalho do módulo.
 pub fn instance_smoke_ragdoll(cx: &mut crate::scene_ctx::SceneCtx) {
-    ph2d_app_physics::common::spawn_floor(cx.sim.world_mut());
+    // O chão da cena — o MESMO que as cenas de física põem (`ph2d_app_physics::common::spawn_floor`),
+    // escrito aqui porque uma família não chama outra (auditoria de arquitectura A1, 2026-09-12). É
+    // conteúdo de uma cena de demonstração, não uma lei.
+    cx.sim.world_mut().spawn((
+        Transform::from_translation(Vec2::new(0.0, -1.0)),
+        Sprite::atlas(WHITE_TILE_KEY, [8.0, 0.4], [0.40, 0.42, 0.48, 1.0]),
+        Name::new("Floor"),
+        RigidBody {
+            kind: BodyKind::Static,
+        },
+        Collider {
+            shape: ColliderShape::Cuboid {
+                half_x: 4.0,
+                half_y: 0.2,
+            },
+            density: 1.0,
+            ..Collider::default()
+        },
+    ));
     // Campos DISJUNTOS do `AppGfx` (+ o mapa, que é do `App`) — empréstimos separados, sem
     // clonar o registo nem o documento.
     let mut docs = crate::instance_docs::OwnedDocs {

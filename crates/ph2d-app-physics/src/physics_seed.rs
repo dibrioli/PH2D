@@ -47,3 +47,19 @@ pub fn seed_attached_collider(sim: &mut SimWorld, entity_bits: u64) {
     };
     sim.world_mut().entity_mut(entity).insert(col);
 }
+
+/// ⭐ **As sementes que ESTA família sabe** — o que anexar um componente de física faz além de inserir
+/// o ponto neutro.
+///
+/// ⚠️ A família de componentes NÃO a conhece: é a composição (a shell) que a entrega à porta
+/// `ph2d_app_components::component_attach::attach_by_name`. Até à auditoria de arquitectura de
+/// 2026-09-12 (A1) a `ph2d-app-components` importava estas duas funções pelo nome, e uma família não
+/// chama outra (ADR-0075). O tipo é o ponteiro de função estrutural, para que esta crate não
+/// precise de nomear a outra.
+pub const COMPONENT_SEEDS: &[(&str, fn(&mut SimWorld, u64))] = &[
+    ("ph2d::physics::Collider", seed_attached_collider),
+    (
+        "ph2d::physics::PlatformPlayer",
+        crate::inspector::player::seed_attached_player,
+    ),
+];

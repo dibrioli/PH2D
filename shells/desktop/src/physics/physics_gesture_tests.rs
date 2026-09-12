@@ -36,8 +36,14 @@ use ph2d_app_physics::inspector::body::build_physics_info;
 /// `world.insert()` à mão mediria a encenação em vez da porta.
 pub(super) fn attach(sim: &mut ph2d_ecs::SimWorld, e: ph2d_ecs::Entity, name: &str) {
     let reg = crate::init::build_component_registry();
-    ph2d_app_components::component_attach::attach_by_name(sim, &reg, e.to_bits(), name)
-        .unwrap_or_else(|m| panic!("a porta de anexar recusou {name}: {m}"));
+    ph2d_app_components::component_attach::attach_by_name(
+        sim,
+        &reg,
+        ph2d_app_physics::physics_seed::COMPONENT_SEEDS,
+        e.to_bits(),
+        name,
+    )
+    .unwrap_or_else(|m| panic!("a porta de anexar recusou {name}: {m}"));
 }
 
 pub(super) fn snapshot(

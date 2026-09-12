@@ -82,8 +82,8 @@ fn measure_where_the_bridge_phases_spend_a_frame() {
 
         // Warm: first call builds whatever is lazy.
         ph2d_app_painter::painter_bridge_overlays::draw_overlays(
-            &painter, &hero, &sim, &camera, window, &mut scene, &mut text, cursor, &mut perf,
-            true, false,
+            &painter, &hero, &sim, &camera, window, &mut scene, &mut text, cursor, &mut perf, true,
+            false,
         );
 
         println!("\n=== canvas {size}x{size} — median of 200 (ms) ===");
@@ -97,7 +97,10 @@ fn measure_where_the_bridge_phases_spend_a_frame() {
             );
         });
         println!("CHROME draw_overlays TOTAL {whole:.4}");
-        for (i, name) in ph2d_app_painter::paint_perf::CHROME_LABELS.iter().enumerate() {
+        for (i, name) in ph2d_app_painter::paint_perf::CHROME_LABELS
+            .iter()
+            .enumerate()
+        {
             println!("  {name:<9} {:.4}", perf[i]);
         }
 

@@ -19,9 +19,9 @@
 //! handoff is the one piece of fresh render work — see [`ph2d_render::premul`]
 //! and `HANDOFF_painter_gpu_preview_coord.md`.
 
-use ph2d_preview_slot::PreviewGpu as PainterPreviewGpu;
 use ph2d_editor::toast::{Toast, ToastQueue};
 use ph2d_gpu::GpuContext;
+use ph2d_preview_slot::PreviewGpu as PainterPreviewGpu;
 use ph2d_render::PreviewPremul;
 use ph2d_render::SpriteRenderer;
 use ph2d_render::layer_compositor::{

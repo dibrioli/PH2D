@@ -8,9 +8,9 @@
 
 use crate::painter_bridge::own_preview_buffer;
 use crate::painter_preview_pipeline_tests::ENTITY;
-use ph2d_tool_runtime::PreviewCache as PainterPreview;
 use ph2d_editor::tool::{CanvasPaintTool, PointerPhase, RasterEditTool};
 use ph2d_tool_painter::PainterTool;
+use ph2d_tool_runtime::PreviewCache as PainterPreview;
 use std::sync::Arc;
 
 /// **The shell owns its preview buffer — it NEVER holds a clone of the tool's live canvas.**

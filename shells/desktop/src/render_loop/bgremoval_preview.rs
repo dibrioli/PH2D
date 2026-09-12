@@ -421,7 +421,6 @@ fn release_preview_texture(
     }
 }
 
-
 /// Build a capped-resolution RGBA tint image from a source-resolution
 /// protection mask: protected pixels get `rgb` at [`TINT_ALPHA`], the
 /// rest are fully transparent. Downsampled (nearest) to at most

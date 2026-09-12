@@ -66,10 +66,7 @@ pub fn decide(locked: Option<u64>, target: Option<u64>, additive: bool) -> Decis
 pub const REFUSAL: &str = "Leave the Painter to select another sprite";
 
 /// A sprite que o Painter tem aberta, ou `None` quando ele não está ativo.
-pub fn locked_entity(
-    tools: &ph2d_editor::tool::ToolRegistry,
-    hero: &HeroScreen,
-) -> Option<u64> {
+pub fn locked_entity(tools: &ph2d_editor::tool::ToolRegistry, hero: &HeroScreen) -> Option<u64> {
     let active = tools.active()?;
     if active.id() != ph2d_editor::ToolId::new(PAINTER) {
         return None;

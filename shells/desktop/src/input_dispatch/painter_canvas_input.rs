@@ -499,5 +499,4 @@ mod tests {
         // Repeat-Image tiling keeps its 3×3 region regardless of the margin.
         assert!(canvas_down_accepts(-0.9, true, 0.0) && !canvas_down_accepts(-1.1, true, 0.0));
     }
-
 }

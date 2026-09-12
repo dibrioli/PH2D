@@ -45,15 +45,15 @@
 
 use crate::painter_bridge_assets::{load_brush_shape_image, load_brush_texture_image};
 use crate::painter_gpu_preview::{self, PainterGpuPreview};
-use ph2d_preview_slot::PreviewGpu as PainterPreviewGpu;
-use ph2d_tool_runtime::PreviewCache as PainterPreview;
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_ecs::SimWorld;
 use ph2d_editor::HeroScreen;
 use ph2d_editor::ToolRegistry;
 use ph2d_editor::toast::{Toast, ToastQueue};
 use ph2d_host::WindowSize;
+use ph2d_preview_slot::PreviewGpu as PainterPreviewGpu;
 use ph2d_render::{Camera2d, SpriteRenderer, premultiply_rgba8};
+use ph2d_tool_runtime::PreviewCache as PainterPreview;
 use ph2d_vector::VectorScene;
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -247,34 +247,38 @@ pub fn dispatch(
             asset_db,
             atlas_asset_map,
         )
+        // ⚠️ As dimensões entram na CADEIA e não num `if` aninhado: o `into_straight` agora corre
+        // do lado da shell, dentro do fecho, então o que chega aqui já são pixels + dimensões — e um
+        // documento de 0×0 nunca deve chegar a `bind_document` (foi um canvas 0×0 que fez todo
+        // ponteiro de canvas cair através, Enio 2026-07-22).
+        && pw != 0
+        && ph != 0
     {
-        if pw != 0 && ph != 0 {
-            painter.bind_document(bits, pixels, pw, ph);
-            // ⚠️ E COMPILA os shaders do preview GPU agora, no vão humano entre escolher o sprite e
-            // levar o mouse à tela — senão os 28 ms de criação de pipeline caem no primeiro traço, que
-            // é o gesto em que o artista está esperando (doc 28 §4.8, medido).
-            painter_gpu_preview::prewarm(
-                painter_gpu_preview,
-                renderer,
-                painter,
-                bits,
-                painter_preview_gpu,
-                toasts,
-            );
-            // E instala a ponte do CARIMBO no mesmo vão, pela mesma razão: construir o passe
-            // compila um shader, e o custo não pode cair no primeiro traço (doc 33 §S3).
-            crate::painter_stamp_device::install(painter, renderer);
-            // Impasto smoke: arm the brush the first time a document binds, so the artist drags and sees
-            // thick lit paint instead of hunting for the knobs. One-shot; never overwrites their edits.
-            crate::impasto_smoke::arm_brush_once(painter);
-            crate::wetpaint_smoke::arm_brush_once(painter);
-            crate::substrate_smoke::arm_brush_once(painter);
-            crate::line_smoke::arm_brush_once(painter);
-            *last_painter_pushed_entity = Some(bits);
-            // The bind abandons any pending Fill (tool side); close its now-orphaned adjust modal too, so
-            // switching sprites never leaves a stale Fill modal floating over the new one.
-            hero.store.close_fill_modal();
-        }
+        painter.bind_document(bits, pixels, pw, ph);
+        // ⚠️ E COMPILA os shaders do preview GPU agora, no vão humano entre escolher o sprite e
+        // levar o mouse à tela — senão os 28 ms de criação de pipeline caem no primeiro traço, que
+        // é o gesto em que o artista está esperando (doc 28 §4.8, medido).
+        painter_gpu_preview::prewarm(
+            painter_gpu_preview,
+            renderer,
+            painter,
+            bits,
+            painter_preview_gpu,
+            toasts,
+        );
+        // E instala a ponte do CARIMBO no mesmo vão, pela mesma razão: construir o passe
+        // compila um shader, e o custo não pode cair no primeiro traço (doc 33 §S3).
+        crate::painter_stamp_device::install(painter, renderer);
+        // Impasto smoke: arm the brush the first time a document binds, so the artist drags and sees
+        // thick lit paint instead of hunting for the knobs. One-shot; never overwrites their edits.
+        crate::impasto_smoke::arm_brush_once(painter);
+        crate::wetpaint_smoke::arm_brush_once(painter);
+        crate::substrate_smoke::arm_brush_once(painter);
+        crate::line_smoke::arm_brush_once(painter);
+        *last_painter_pushed_entity = Some(bits);
+        // The bind abandons any pending Fill (tool side); close its now-orphaned adjust modal too, so
+        // switching sprites never leaves a stale Fill modal floating over the new one.
+        hero.store.close_fill_modal();
     }
 
     // ── A DOAÇÃO de forma: publica o TAMANHO, instala a NOTÍCIA ───────────

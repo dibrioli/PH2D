@@ -108,7 +108,6 @@ pub(super) fn should_open(
     cell_count(grid?)
 }
 
-
 /// A célula `index` posta no lugar dela: `(sub-UV, deslocamento do CENTRO em metros LOCAIS)`.
 ///
 /// O deslocamento é relativo ao centro da célula **viva** — que é onde o quad do sprite já está.
@@ -146,7 +145,6 @@ pub(super) fn cell(
     let dy = (f64::from(lrow) - f64::from(drow)) as f32 * spr.size[1];
     Some((uv, [dx, dy]))
 }
-
 
 /// **A PRÉ-VISUALIZAÇÃO ANIMADA que acompanha a pintura** (Enio, 2026-08-23) — a sub-UV da célula
 /// que está a tocar e onde pôr o quad dela, em metros locais relativos ao pivô.

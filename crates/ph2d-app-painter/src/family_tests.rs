@@ -5,8 +5,9 @@
 //! números e podem divergir) · e um roteador NOVO nascer sem se declarar (o modo de falha MUDO,
 //! porque nada o obriga a aparecer numa lista escrita à mão).
 
-use super::{FAMILY, impasto_smoke, line_smoke, mask_smoke, substrate_smoke, taper_smoke,
-            wetpaint_smoke};
+use super::{
+    FAMILY, impasto_smoke, line_smoke, mask_smoke, substrate_smoke, taper_smoke, wetpaint_smoke,
+};
 
 /// **O roteador do impasto responde por todo nível que promete — e só por eles.**
 ///
@@ -97,7 +98,12 @@ fn o_family_declara_os_niveis_que_os_roteadores_contam() {
 #[test]
 fn todo_roteador_declarado_esta_no_family() {
     /// Quantos ficheiros `.rs` a crate tem de ter para este censo valer alguma coisa.
-    const FICHEIROS_MIN: usize = 7;
+    ///
+    /// ⚠️ **Medido em 2026-09-12: são `37`.** O piso nasceu em `7` quando só os roteadores tinham
+    /// chegado, e ficou obsoleto no dia seguinte — *uma catraca sem censo de obsolescência não
+    /// desce, vira LICENÇA* (`CLAUDE.md` §5.0). Um piso muito abaixo da população não protege nada:
+    /// a varredura podia perder 29 ficheiros e passar.
+    const FICHEIROS_MIN: usize = 30;
     /// Quantos roteadores existem — o mesmo número que o `FAMILY` declara.
     const ROTEADORES: usize = 6;
 

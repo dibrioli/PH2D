@@ -196,9 +196,7 @@ pub(super) fn refresh_shape_grab_tol(
         camera,
         window_size,
     );
-    painter.set_shape_grab_tol_px(
-        crate::shape_grab::shape_grab_tol_from_affine(&affine),
-    );
+    painter.set_shape_grab_tol_px(crate::shape_grab::shape_grab_tol_from_affine(&affine));
 }
 
 /// Discrete **symmetry** guides: a dashed mirror line (X / Y / custom) or N dashed radial spokes from

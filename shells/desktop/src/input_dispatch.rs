@@ -6119,7 +6119,8 @@ impl App {
                         // é o caminho do **clique vazio**, que limpa e não seleciona outra — a lei
                         // permite-o de propósito (recusar faria o `Esc` e o canvas parecerem
                         // partidos). *Recusar a troca não é recusar o clique.*
-                        let painter_locked = ph2d_app_painter::painter_lock::locked_entity(&gfx.tools, hero);
+                        let painter_locked =
+                            ph2d_app_painter::painter_lock::locked_entity(&gfx.tools, hero);
                         let picked = match picked {
                             Some(bits)
                                 if ph2d_app_painter::painter_lock::decide(
@@ -6379,7 +6380,9 @@ impl App {
                             // entra, e o Enio nomeou-a: *"não permita a seleção de múltiplas
                             // imagens se o painter está ativo"*. Uma trava que só cobre o gesto
                             // óbvio ensina o artista a usar o outro.
-                            if ph2d_app_painter::painter_lock::locked_entity(&gfx.tools, hero).is_some() {
+                            if ph2d_app_painter::painter_lock::locked_entity(&gfx.tools, hero)
+                                .is_some()
+                            {
                                 gfx.toasts
                                     .push(Toast::warning(ph2d_app_painter::painter_lock::REFUSAL));
                                 self.pending_ui_sound = Some(crate::ui_sound::UiSound::Refuse);

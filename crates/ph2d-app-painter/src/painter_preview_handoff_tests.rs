@@ -6,11 +6,11 @@ use crate::painter_bridge::{UploadPlan, plan_upload};
 use crate::painter_preview_pipeline_tests::{
     ENTITY, assert_screen_equals, cp, impasto_tool, screen_truth,
 };
-use ph2d_preview_slot::PreviewGpu as PainterPreviewGpu;
-use ph2d_tool_runtime::PreviewCache as PainterPreview;
 use ph2d_editor::tool::{CanvasPaintTool, PointerPhase};
 use ph2d_painter_effects::adjustments::AdjustmentKind;
+use ph2d_preview_slot::PreviewGpu as PainterPreviewGpu;
 use ph2d_tool_painter::PainterTool;
+use ph2d_tool_runtime::PreviewCache as PainterPreview;
 use std::sync::Arc;
 
 /// One frame of the app's preview lifecycle, in `dispatch`'s exact order: the GPU producer gets

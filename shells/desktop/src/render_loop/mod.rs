@@ -403,7 +403,8 @@ impl crate::App {
         // deles tem de existir onde eles existem.
         self.refresh_bone_hover(pointer);
         // PH2D_PAINT_PERF: whole-frame timer (aggregated on scope exit, paired with the dispatch info).
-        let _paint_frame_timer = PaintFrameTimer(ph2d_app_painter::paint_perf::on().then(std::time::Instant::now));
+        let _paint_frame_timer =
+            PaintFrameTimer(ph2d_app_painter::paint_perf::on().then(std::time::Instant::now));
         // Phase 2.1: drop finished-sample Arcs on the main thread (HR-3).
         // Phase 2.3c: feed the mixer panel live levels + apply its Master mute.
         if let Some(audio) = self.audio.as_mut() {

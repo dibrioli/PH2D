@@ -9,7 +9,6 @@
 //! segunda porta que diverge»*, diz o doc dele, que veio junto. ⛔ Por isso ele NÃO
 //! ficou na crate com um `insert` à mão.
 
-use ph2d_app_physics::inspector::player::*;
 use ph2d_app_physics::inspector::player::{apply_player_edit, build_player_info};
 use ph2d_core::Vec2;
 use ph2d_ecs::{Name, SimWorld, Transform};

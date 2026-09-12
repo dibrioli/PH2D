@@ -7,7 +7,7 @@
 //! sujeito**, na crate — *o corte é por quem o teste EXERCITA, não por quem ele nomeia.*
 
 use ph2d_app_physics::physics_smoke_pulley_tackle::*;
-use ph2d_ecs::{Entity, Name, SimWorld, Transform};
+use ph2d_ecs::{Entity, Name, SimWorld};
 use ph2d_physics_ecs::PhysicsBridge;
 
 fn entity_of(sim: &mut SimWorld, name: &str) -> Entity {

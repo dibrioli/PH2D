@@ -2,7 +2,7 @@
 //! diâmetro autorável pela UI (W-Pulley W4).
 
 use super::*;
-use ph2d_ecs::{Entity, Name, SimWorld, Transform};
+use ph2d_ecs::{Name, SimWorld, Transform};
 use ph2d_physics_ecs::PhysicsBridge;
 
 fn y_of(sim: &mut SimWorld, name: &str) -> f32 {
@@ -11,14 +11,6 @@ fn y_of(sim: &mut SimWorld, name: &str) -> f32 {
         .find(|(n, _)| n.as_str() == name)
         .map(|(_, t)| t.translation.y)
         .expect("corpo vivo")
-}
-
-fn entity_of(sim: &mut SimWorld, name: &str) -> Entity {
-    let mut q = sim.world_mut().query::<(Entity, &Name)>();
-    q.iter(sim.world())
-        .find(|(_, n)| n.as_str() == name)
-        .map(|(e, _)| e)
-        .expect("entidade viva")
 }
 
 /// A sonda da cena 62 — o tambor diferencial.

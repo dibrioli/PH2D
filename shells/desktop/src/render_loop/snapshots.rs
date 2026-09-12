@@ -1176,7 +1176,7 @@ pub(super) fn publish(
     });
 
     let inspector_physics = hero.gizmo.selection.and_then(|b| {
-        crate::physics::physics::build_physics_info(
+        crate::physics::inspector_body::build_physics_info(
             sim.world(),
             b,
             join_count,

@@ -47,7 +47,7 @@ fn a_water_zone_is_authorable_with_ui_gestures_alone() {
     // ⚠️ **O 1.º passo mudou de PORTA na F3** (ADR-0166): a §11 já não se pinta sobre um sprite
     // pelado — a face vazia dela era a única rota, e hoje a rota é o `+` do cabeçalho.
     assert!(
-        crate::physics::physics::build_physics_info(
+        crate::physics::inspector_body::build_physics_info(
             sim.world(),
             pool.to_bits(),
             0,

@@ -52,8 +52,18 @@ pub(crate) fn anim(world: &World, bits: u64) -> bool {
 }
 
 pub(crate) fn physics(world: &World, bits: u64) -> bool {
-    crate::physics::physics::build_physics_info(world, bits, 0, 0, 0, false, 0, (0.0, 5.0), 0)
-        .is_some()
+    crate::physics::inspector_body::build_physics_info(
+        world,
+        bits,
+        0,
+        0,
+        0,
+        false,
+        0,
+        (0.0, 5.0),
+        0,
+    )
+    .is_some()
 }
 
 pub(crate) fn player(sim: &SimWorld, bits: u64) -> bool {

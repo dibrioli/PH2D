@@ -138,7 +138,7 @@ pub(crate) fn apply(
         // apagaria a forma, o offset e o material que o artista escolheu — o
         // gerador desfazendo trabalho no clique que deveria acrescentar.
         if sim.world().get::<RigidBody>(e).is_none() {
-            crate::physics::physics::apply_physics_edit(
+            crate::physics::inspector_body::apply_physics_edit(
                 sim,
                 e.to_bits(),
                 ph2d_editor::PhysicsFieldEdit::Add,

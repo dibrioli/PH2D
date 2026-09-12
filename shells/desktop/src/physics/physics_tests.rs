@@ -19,7 +19,7 @@ use ph2d_editor::PhysicsFieldEdit;
 use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, RigidBody};
 use ph2d_render::Sprite;
 
-use crate::physics::physics::{apply_physics_edit, build_physics_info};
+use crate::physics::inspector_body::{apply_physics_edit, build_physics_info};
 
 /// The registry the shell boots with, minus everything §11 does not touch.
 pub(super) fn registry() -> ComponentRegistry {

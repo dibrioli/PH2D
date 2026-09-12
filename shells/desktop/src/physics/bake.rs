@@ -449,7 +449,7 @@ pub(crate) fn bake_selection(
     let mut bodies = 0usize;
     for bits in baked {
         bodies += 1;
-        crate::physics::physics::apply_physics_edit(
+        crate::physics::inspector_body::apply_physics_edit(
             sim,
             bits,
             ph2d_editor::PhysicsFieldEdit::Kind(kinematic_tag()),

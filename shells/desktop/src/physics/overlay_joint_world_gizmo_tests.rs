@@ -4,10 +4,6 @@
 //! ⚠️ Os outros oito gates do mesmo assunto ficaram **com o sujeito**, na
 //! [`ph2d_app_physics::overlay::joints`]: *o corte é por quem o teste EXERCITA.*
 
-use ph2d_app_physics::overlay::joints::*;
-use ph2d_physics_ecs::{JointKind, JointView};
-use ph2d_vector::{BezPath, PathEl};
-
 /// **O pino de mundo é OFERECIDO com DUAS alças** (W-WorldPinLocal).
 ///
 /// A metade de shell da wave: `joint_anchor_handles` pula um lado cujo

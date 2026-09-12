@@ -23,7 +23,7 @@ use ph2d_ecs::{ChildOf, Entity, Name, SimWorld, Transform};
 use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, RigidBody};
 use ph2d_render::Sprite;
 
-use crate::physics::physics::build_physics_info;
+use crate::physics::inspector_body::build_physics_info;
 
 /// Um "L": braço (corpo) e perna (peça) pendurada nele. A perna carrega um
 /// collider **autorado** — uma barra fina e deslocada, nada parecido com o

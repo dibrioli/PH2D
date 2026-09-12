@@ -22,6 +22,7 @@
 
 pub(crate) mod bake;
 pub(crate) mod bridge;
+pub(crate) mod inspector_body;
 pub(crate) mod joint;
 pub(crate) mod joint_anchor_drag;
 pub(crate) mod joint_create;
@@ -30,9 +31,9 @@ pub(crate) mod joint_rig;
 pub(crate) mod joint_rig_drag;
 pub(crate) mod joint_wheel;
 pub(crate) mod joint_world;
+#[cfg(test)]
 pub(crate) mod measure_player_tape;
 pub(crate) mod panel_bridge;
-pub(crate) mod physics;
 pub(crate) mod physics_apply;
 pub(crate) mod physics_area;
 pub(crate) mod physics_markers;
@@ -103,6 +104,7 @@ mod joint_paste_tests;
 mod joint_tests;
 #[cfg(test)]
 mod joint_wheel_tests;
+#[cfg(test)]
 mod joint_world_tests;
 #[cfg(test)]
 mod physics_gesture_surface_tests;
@@ -110,4 +112,9 @@ mod physics_gesture_surface_tests;
 mod physics_gesture_tests;
 #[cfg(test)]
 mod physics_gesture_zone_tests;
+#[cfg(test)]
+// ⚠️ `pub(crate)`: a porta `apply` (um edit do §11 aplicado ao ECS) é o caminho
+// do PRODUTO, e a cena 70 a usa para provar que afinar uma PEÇA muda a
+// simulação. Uma segunda cópia da fiação lá seria uma segunda resposta a *"o
+// que este edit faz"*.
 pub(crate) mod physics_tests;

@@ -18,7 +18,7 @@ use ph2d_ecs::{SimWorld, Transform};
 use ph2d_editor::PhysicsFieldEdit;
 use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, PhysicsBridge, RigidBody};
 
-use crate::physics::physics::build_physics_info;
+use crate::physics::inspector_body::build_physics_info;
 
 /// O snapshot do §11 para `e`, com os fatos que só a shell tem em seus valores
 /// NEUTROS (sem joins, sem rig, sem peças, sem gesto armado).

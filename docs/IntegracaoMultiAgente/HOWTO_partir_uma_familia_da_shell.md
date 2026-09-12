@@ -323,6 +323,27 @@ número foi podado. ⛔ **Não se renumera o que sobra:** o número é o endere�
 
 ---
 
+### §2.12 — Um censo textual que não separa PROSA de código acusa a DOCUMENTAÇÃO DA CURA ⛔⛔ mudo
+
+Medido pela `line/app-physics` na Fase B (11/09), e quase desfez a wave inteira: a régua de fecho
+varria `\bApp\b` nos ficheiros movidos e acusou **93 de 133**. Nenhum era real — ela casava com o
+**doc-comment que explica a cura** (*«era um `impl App`, e passou a função livre»*).
+
+⛔⛔ **Um censo que lê prosa como código mente nos DOIS sentidos**, e este mente do lado caro: ele
+lê a prova de que o trabalho foi feito como prova de que não foi. Quem acreditar nele reverte o
+corte. ⚠️ **Mordeu TRÊS vezes na mesma sessão** — o mesmo defeito apanhou também um `#[cfg(test)]`
+escondido atrás de comentários e um `#[path]`.
+
+⇒ **Toda régua de fecho desta wave tira comentários e strings ANTES de contar**, e tem um controlo
+positivo que prova que ela ainda vê o caso real depois de os tirar.
+
+⭐ **E a régua que de facto responde não é textual:** *o fecho* — a partir dos ficheiros da crate,
+que raízes da shell continuam alcançáveis? A mesma linha mediu `26 raízes, zero ficheiros da crate
+a precisar da shell` e isso **respondeu à pergunta que a varredura de texto não respondia**.
+⚠️ Ela chegou lá depois de *«oscilar ficheiros crate↔shell a cada erro novo»* — e a lição é dela:
+**medir o fecho em vez de reagir ao erro seguinte.**
+
+
 ## §3 — A prova (as cinco, com os números do piloto)
 
 ```bash

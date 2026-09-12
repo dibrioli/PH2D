@@ -216,6 +216,19 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-app-flip && env PH2D_FLIP_
 cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-app-flip && env PH2D_FLIP_TIP_SMOKE=1 cargo run -p ph2d-host-desktop --profile smoke
 ```
 
+## 8-bis — Smoke COMPILADO (DIRETRIZ §1.5.9 item 9 · regra I)
+
+`cargo build -p ph2d-host-desktop --profile smoke` na **worktree desta linha**, 2ª corrida:
+
+```
+    Finished `smoke` profile [optimized] target(s) in 0.22s
+```
+
+**Zero linhas `Compiling`.** Binário em `target/smoke/ph2d-host-desktop` (77,9 MB).
+O `target/*/incremental` foi reclamado antes (**10,6 GB**: 8,1 de `debug` + 2,5 de `smoke`), e as
+duas coisas não se anulam — o perfil `smoke` recria o dele na 1.ª corrida, que é a que acabou de
+correr.
+
 ## 9 — O que só o `ship.sh` apanha
 
 `fmt` e `clippy --all-targets` correm aqui (§5); **não** correram: `machete` (a crate ganhou 4 deps —

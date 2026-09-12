@@ -250,9 +250,12 @@ pub fn gizmo_down(
     hero: &ph2d_editor::HeroScreen,
     wants_edit: bool,
     ctrl: bool,
-    x: f32,
-    y: f32,
+    cursor: (f32, f32),
 ) -> bool {
+    // ⚠️ O cursor entra como UM par: `x, y` soltos eram os 8.º e 9.º argumentos, e o
+    // clippy tem razão — a tela dá um PONTO, não dois escalares (o `hover_refresh` já o
+    // recebia assim).
+    let (x, y) = cursor;
     if !wants_edit {
         return false;
     }

@@ -42,8 +42,7 @@ impl crate::App {
             &w2l,
             &w2o,
             shift,
-            x,
-            y,
+            (x, y),
         );
         if dirty {
             self.title_dirty = true;

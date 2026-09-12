@@ -301,10 +301,7 @@ pub fn wants(state: &crate::state::FlipState) -> bool {
 /// ⚠️ O `w2l` chega PRONTO: derivá-lo é trabalho do `transform`, e quem chama já o tem.
 pub(crate) fn apply(
     state: &mut crate::state::FlipState,
-    flip: &mut ph2d_flip::FlipDoc,
-    playhead: &ph2d_core::Playhead,
-    camera: &ph2d_render::Camera2d,
-    win: ph2d_host::WindowSize,
+    f: &mut crate::ctx::FlipFrame<'_>,
     w2l: &ph2d_vec_scene::Xform,
     x: f32,
     y: f32,
@@ -313,15 +310,15 @@ pub(crate) fn apply(
         return;
     };
     let active_layer = state.active_layer;
-    let w = camera.screen_to_world((x, y), win);
+    let w = f.to_world(x, y);
     // Raio/força EFETIVOS da borracha (§4.C): `erase_px`/`erase_strength` já vêm com o link
     // resolvido pela tool. **O raio é fixo no MUNDO** (§4.C.6) — dar zoom não muda o que ela leva.
     let radius = ph2d_tool_flip::size_to_world(style.erase_px) * 0.5;
     let local = w2l.apply([f64::from(w[0]), f64::from(w[1])]);
     let radius_local = radius * w2l.mean_scale() as f32;
     erase_at(
-        flip,
-        playhead,
+        f.flip,
+        f.playhead,
         active_layer,
         &mut state.strip,
         style.erase,
@@ -334,10 +331,7 @@ pub(crate) fn apply(
 /// Pen-down da borracha: começa o gesto + apaga no cursor. `true` = consumido.
 pub fn canvas_down(
     state: &mut crate::state::FlipState,
-    flip: &mut ph2d_flip::FlipDoc,
-    playhead: &ph2d_core::Playhead,
-    camera: &ph2d_render::Camera2d,
-    win: ph2d_host::WindowSize,
+    f: &mut crate::ctx::FlipFrame<'_>,
     w2l: &ph2d_vec_scene::Xform,
     x: f32,
     y: f32,
@@ -346,17 +340,14 @@ pub fn canvas_down(
         return false;
     }
     state.erasing = true;
-    apply(state, flip, playhead, camera, win, w2l, x, y);
+    apply(state, f, w2l, x, y);
     true
 }
 
 /// Move com a borracha em baixo. `true` enquanto o gesto está vivo.
 pub fn canvas_move(
     state: &mut crate::state::FlipState,
-    flip: &mut ph2d_flip::FlipDoc,
-    playhead: &ph2d_core::Playhead,
-    camera: &ph2d_render::Camera2d,
-    win: ph2d_host::WindowSize,
+    f: &mut crate::ctx::FlipFrame<'_>,
     w2l: &ph2d_vec_scene::Xform,
     x: f32,
     y: f32,
@@ -364,7 +355,7 @@ pub fn canvas_move(
     if !state.erasing {
         return false;
     }
-    apply(state, flip, playhead, camera, win, w2l, x, y);
+    apply(state, f, w2l, x, y);
     true
 }
 

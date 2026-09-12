@@ -401,9 +401,11 @@ pub fn canvas_down(
     w2l: &ph2d_vec_scene::Xform,
     w2o: &ph2d_vec_scene::Xform,
     shift: bool,
-    x: f32,
-    y: f32,
+    cursor: (f32, f32),
 ) -> (bool, bool) {
+    // ⚠️ O cursor entra como UM par: `x, y` soltos eram os 8.º e 9.º argumentos, e o clippy
+    // tem razão — a tela dá um PONTO, não dois escalares.
+    let (x, y) = cursor;
     if !wants_edit(state) {
         return (false, false);
     }

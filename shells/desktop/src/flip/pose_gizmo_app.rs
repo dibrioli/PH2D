@@ -32,8 +32,7 @@ impl crate::App {
             hero,
             wants_edit,
             ctrl,
-            x,
-            y,
+            (x, y),
         )
     }
 

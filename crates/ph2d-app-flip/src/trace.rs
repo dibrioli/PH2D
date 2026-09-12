@@ -103,93 +103,6 @@ pub(crate) fn rotated(shift: Pose, c: Vec2, da: f32) -> Pose {
     ])
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::f32::consts::FRAC_PI_2;
-
-    fn ghost(key: Frame, dist: u32, to_object: Xform) -> TraceGhost {
-        TraceGhost {
-            key,
-            dist,
-            to_object,
-            lo: [-1.0, -1.0],
-            hi: [1.0, 1.0],
-        }
-    }
-
-    const ID: Xform = Xform([1.0, 0.0, 0.0, 1.0, 0.0, 0.0]);
-
-    /// 🔴 **Entre fantasmas sobrepostos ganha o de menor `|Δ|`** — o render desenha do
-    /// mais distante ao mais próximo, então é ESSE que o olho vê por cima, e o hit tem
-    /// de concordar com o olho. Mutação que sangra: `max_by_key` (pegaria o de baixo).
-    #[test]
-    fn the_pick_takes_the_ghost_the_eye_sees_on_top() {
-        let far = ghost(0, 5, ID);
-        let near = ghost(8, 1, ID);
-        assert_eq!(pick([0.0, 0.0], &[far, near]), Some(1));
-        assert_eq!(
-            pick([9.0, 9.0], &[far, near]),
-            None,
-            "fora das caixas: nada"
-        );
-    }
-
-    /// 🔴 **Uma folha JÁ deslocada é pega onde ESTÁ** — o hit pergunta à caixa posada
-    /// (pose ∘ shift), não a onde o desenho nasceu. Sem isto, o segundo ajuste da mesma
-    /// folha exigiria clicar no lugar VAZIO de onde ela saiu.
-    #[test]
-    fn a_shifted_sheet_is_picked_where_it_is() {
-        let there = key_xform(Pose::from_translation(Vec2::new(10.0, 0.0)));
-        let g = ghost(4, 1, there);
-        assert_eq!(pick([10.0, 0.0], &[g]), Some(0));
-        assert_eq!(
-            pick([0.0, 0.0], &[g]),
-            None,
-            "onde o desenho nasceu nao ha mais folha"
-        );
-    }
-
-    /// 🔴 **A rotação gira em torno do centro dado** — o centro é ponto FIXO (é o que
-    /// permite capturá-lo no Down sem deriva), e um ponto a leste do centro vai para o
-    /// norte com `+90°`. Mutação que sangra: girar em torno da ORIGEM (o centro voa).
-    #[test]
-    fn the_rotation_pivots_on_the_given_centre() {
-        let c = Vec2::new(5.0, 3.0);
-        let r = rotated(Pose::IDENTITY, c, FRAC_PI_2);
-        let rc = r.apply(c);
-        assert!(
-            (rc.x - c.x).abs() < 1e-4 && (rc.y - c.y).abs() < 1e-4,
-            "o centro nao se move: {rc:?}"
-        );
-        let east = r.apply(Vec2::new(6.0, 3.0));
-        assert!(
-            (east.x - 5.0).abs() < 1e-4 && (east.y - 4.0).abs() < 1e-4,
-            "leste tinha de virar norte: {east:?}"
-        );
-    }
-
-    /// A rotação compõe POR CIMA do shift atual: primeiro a folha desliza, depois gira
-    /// onde está — a ordem inversa giraria em torno de um lugar onde ela não está mais.
-    #[test]
-    fn rotation_composes_on_top_of_the_current_shift() {
-        // shift = T(4,0): a origem local está em (4,0). Girar +90° em torno de (4,0)
-        // mantém a origem lá e leva o ponto local (1,0) — que estava em (5,0) — a (4,1).
-        let s = Pose::from_translation(Vec2::new(4.0, 0.0));
-        let r = rotated(s, Vec2::new(4.0, 0.0), FRAC_PI_2);
-        let o = r.apply(Vec2::new(0.0, 0.0));
-        let e = r.apply(Vec2::new(1.0, 0.0));
-        assert!(
-            (o.x - 4.0).abs() < 1e-4 && o.y.abs() < 1e-4,
-            "origem: {o:?}"
-        );
-        assert!(
-            (e.x - 4.0).abs() < 1e-4 && (e.y - 1.0).abs() < 1e-4,
-            "leste: {e:?}"
-        );
-    }
-}
-
 use crate::ctx::FlipFrame;
 use crate::state::FlipState;
 
@@ -328,4 +241,91 @@ pub fn canvas_move(
 /// Pen-up: fecha o arrasto de trace. `true` se havia um.
 pub fn canvas_up(state: &mut FlipState) -> bool {
     state.trace_drag.take().is_some()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::f32::consts::FRAC_PI_2;
+
+    fn ghost(key: Frame, dist: u32, to_object: Xform) -> TraceGhost {
+        TraceGhost {
+            key,
+            dist,
+            to_object,
+            lo: [-1.0, -1.0],
+            hi: [1.0, 1.0],
+        }
+    }
+
+    const ID: Xform = Xform([1.0, 0.0, 0.0, 1.0, 0.0, 0.0]);
+
+    /// 🔴 **Entre fantasmas sobrepostos ganha o de menor `|Δ|`** — o render desenha do
+    /// mais distante ao mais próximo, então é ESSE que o olho vê por cima, e o hit tem
+    /// de concordar com o olho. Mutação que sangra: `max_by_key` (pegaria o de baixo).
+    #[test]
+    fn the_pick_takes_the_ghost_the_eye_sees_on_top() {
+        let far = ghost(0, 5, ID);
+        let near = ghost(8, 1, ID);
+        assert_eq!(pick([0.0, 0.0], &[far, near]), Some(1));
+        assert_eq!(
+            pick([9.0, 9.0], &[far, near]),
+            None,
+            "fora das caixas: nada"
+        );
+    }
+
+    /// 🔴 **Uma folha JÁ deslocada é pega onde ESTÁ** — o hit pergunta à caixa posada
+    /// (pose ∘ shift), não a onde o desenho nasceu. Sem isto, o segundo ajuste da mesma
+    /// folha exigiria clicar no lugar VAZIO de onde ela saiu.
+    #[test]
+    fn a_shifted_sheet_is_picked_where_it_is() {
+        let there = key_xform(Pose::from_translation(Vec2::new(10.0, 0.0)));
+        let g = ghost(4, 1, there);
+        assert_eq!(pick([10.0, 0.0], &[g]), Some(0));
+        assert_eq!(
+            pick([0.0, 0.0], &[g]),
+            None,
+            "onde o desenho nasceu nao ha mais folha"
+        );
+    }
+
+    /// 🔴 **A rotação gira em torno do centro dado** — o centro é ponto FIXO (é o que
+    /// permite capturá-lo no Down sem deriva), e um ponto a leste do centro vai para o
+    /// norte com `+90°`. Mutação que sangra: girar em torno da ORIGEM (o centro voa).
+    #[test]
+    fn the_rotation_pivots_on_the_given_centre() {
+        let c = Vec2::new(5.0, 3.0);
+        let r = rotated(Pose::IDENTITY, c, FRAC_PI_2);
+        let rc = r.apply(c);
+        assert!(
+            (rc.x - c.x).abs() < 1e-4 && (rc.y - c.y).abs() < 1e-4,
+            "o centro nao se move: {rc:?}"
+        );
+        let east = r.apply(Vec2::new(6.0, 3.0));
+        assert!(
+            (east.x - 5.0).abs() < 1e-4 && (east.y - 4.0).abs() < 1e-4,
+            "leste tinha de virar norte: {east:?}"
+        );
+    }
+
+    /// A rotação compõe POR CIMA do shift atual: primeiro a folha desliza, depois gira
+    /// onde está — a ordem inversa giraria em torno de um lugar onde ela não está mais.
+    #[test]
+    fn rotation_composes_on_top_of_the_current_shift() {
+        // shift = T(4,0): a origem local está em (4,0). Girar +90° em torno de (4,0)
+        // mantém a origem lá e leva o ponto local (1,0) — que estava em (5,0) — a (4,1).
+        let s = Pose::from_translation(Vec2::new(4.0, 0.0));
+        let r = rotated(s, Vec2::new(4.0, 0.0), FRAC_PI_2);
+        let o = r.apply(Vec2::new(0.0, 0.0));
+        let e = r.apply(Vec2::new(1.0, 0.0));
+        assert!(
+            (o.x - 4.0).abs() < 1e-4 && o.y.abs() < 1e-4,
+            "origem: {o:?}"
+        );
+        assert!(
+            (e.x - 4.0).abs() < 1e-4 && (e.y - 1.0).abs() < 1e-4,
+            "leste: {e:?}"
+        );
+    }
 }

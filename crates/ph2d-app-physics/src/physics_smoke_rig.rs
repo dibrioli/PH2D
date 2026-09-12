@@ -193,3 +193,9 @@ pub fn physics_smoke_rig(ctx: &mut crate::SceneCtx<'_>) {
         limit = RIG_LIMIT_DEG,
     );
 }
+
+/// A sonda desta cena mais os gates que exercitam o **rig** ([`crate::joint_rig`]).
+/// Veio de `shells/desktop/src/physics/` (W2/L2 Fase C) — aqui não havia homónimo.
+#[cfg(test)]
+#[path = "physics_smoke_rig_tests.rs"]
+mod physics_smoke_rig_tests;

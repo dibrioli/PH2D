@@ -331,3 +331,9 @@ pub fn physics_smoke_composition(ctx: &mut crate::SceneCtx<'_>) {
         viol = MEASURED_GEARED_ROPE_LENGTH - 2.0,
     );
 }
+
+/// A metade que exercita a **autoria da roldana** ([`crate::joint_wheel`]) sobre
+/// esta cena (W2/L2 Fase C).
+#[cfg(test)]
+#[path = "physics_smoke_pulley_comp_wheel_tests.rs"]
+mod physics_smoke_pulley_comp_wheel_tests;

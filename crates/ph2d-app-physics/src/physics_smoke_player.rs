@@ -517,3 +517,10 @@ pub fn physics_smoke_walk(ctx: &mut crate::SceneCtx<'_>) {
             de transporte para ele repetir.)"
     );
 }
+
+/// A metade que exercita os **rótulos do painel** da reacção. ⚠️ **O nome ganhou
+/// `_panel_`** pela mesma razão do irmão do assador, e era assim que o
+/// `physics/mod.rs` já o declarava (W2/L2 Fase C).
+#[cfg(test)]
+#[path = "physics_smoke_reaction_panel_tests.rs"]
+mod physics_smoke_reaction_panel_tests;

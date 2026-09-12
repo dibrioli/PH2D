@@ -331,7 +331,7 @@ pub(super) fn dispatch(
         }
     }
     for &(entity_bits, edit) in physics_edits {
-        crate::physics::inspector_body::apply_physics_edit(
+        ph2d_app_physics::inspector::body::apply_physics_edit(
             sim,
             entity_bits,
             edit,

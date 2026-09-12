@@ -1,6 +1,6 @@
 //! **O COLLIDER: que forma ele tem, e ele bloqueia?** — as cenas 9 e 10.
 //!
-//! Irmão do [`crate::physics::physics_smoke`] pelo cap de 600 LOC, e o corte é o assunto:
+//! Irmão de `shells/desktop/src/physics/physics_smoke.rs` (o prólogo) pelo cap de 600 LOC, e o corte é o assunto:
 //! lá moram o mundo e a autoria (queda, pilha, settings, camadas, o Inspector),
 //! aqui *o que o collider É* — a forma que a escala resolve (W6) e a diferença
 //! entre bloquear e apenas detectar (W7). As duas são a mesma pergunta feita ao

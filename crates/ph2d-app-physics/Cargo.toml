@@ -46,7 +46,32 @@ libm = { version = "=0.2.16", default-features = false }
 # `features = ["render", "physics"]` a esta crate, e numa crate que as não declare o `cfg` é falso
 # **por construção** — compilaria verde com metade da timeline desligada.
 ph2d-timeline = { path = "../ph2d-timeline", features = ["render", "physics"] }
+# ⭐ **O CUSTO REAL do módulo, outra vez** (HOWTO §1.3) — as QUATRO que a Fase C revelou. As três
+# primeiras eram, até 12/09, módulos da SHELL: elas foram nomeadas pelo handoff da Fase B como *«três
+# FOLHAS partilhadas, com 11/38/14 consumidores de famílias diferentes»*, e a `line/shell-folhas`
+# fez-as crates. É por isso que esta fase pôde acontecer — ⛔ e é a razão de a lista de dependências
+# só dizer a verdade depois de a crate existir.
+ph2d-inspector-ordering = { path = "../ph2d-inspector-ordering" }
+ph2d-preview-drive = { path = "../ph2d-preview-drive" }
+ph2d-unique-name = { path = "../ph2d-unique-name" }
+# O painel do Inspector: a §11 desenha as rows dele.
+ph2d-panel-inspector = { path = "../ph2d-panel-inspector" }
 # Transitivas pela `ph2d-physics-ecs` dentro da shell; aqui a família nomeia-as, que é o ponto.
 ph2d-physics = { path = "../ph2d-physics" }
 ph2d-platformer = { path = "../ph2d-platformer" }
 serde = { version = "1", features = ["rc"] }
+
+[features]
+# ⚠️⚠️ **Um `#[cfg(test)]` é INVISÍVEL do outro lado da fronteira de crate**
+# (HOWTO §2.5): daqui a shell é um consumidor, e `cfg(test)` é falso nesta crate
+# quando ela a compila. Três gates que FICAM na shell — porque atravessam a porta
+# de produção `component_attach::attach_by_name`, que é composição — precisam do
+# arnês do §11 que se mudou para cá.
+#
+# ⛔ **Ela tem o TAMANHO do que ATRAVESSA, e nada mais:** o piloto abriu 16 itens
+# de uma vez e o compilador acusou — `1 de 16` era lido de fora. Aqui são **dois**
+# (`physics_tests::{apply, sprite_scene}`), contados nos chamadores.
+#
+# ⚠️ Ligada pela shell nas **dev-dependencies**: no `cargo build` do produto ela
+# fica desligada, e no `cargo test` fica ligada.
+test-support = []

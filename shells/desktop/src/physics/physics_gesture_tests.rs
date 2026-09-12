@@ -12,13 +12,13 @@
 //! deitado no chão um segundo depois, o corpo estático parou de cair, a caixa que caiu
 //! na piscina está mais alta que a idêntica que caiu ao lado.
 
-use crate::physics::physics_tests::{apply, sprite_scene};
+use ph2d_app_physics::physics_tests::{apply, sprite_scene};
 use ph2d_core::Vec2;
 use ph2d_ecs::{SimWorld, Transform};
 use ph2d_editor::PhysicsFieldEdit;
 use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, PhysicsBridge, RigidBody};
 
-use crate::physics::inspector_body::build_physics_info;
+use ph2d_app_physics::inspector::body::build_physics_info;
 
 /// O snapshot do §11 para `e`, com os fatos que só a shell tem em seus valores
 /// NEUTROS (sem joins, sem rig, sem peças, sem gesto armado).

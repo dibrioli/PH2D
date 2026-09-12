@@ -1,0 +1,307 @@
+//! **Criar um joint onde se olha** — press no corpo A, arrasta, solta no B (W-J4).
+//!
+//! Criar um joint já era possível desde a W3, por SELEÇÃO: marque dois corpos,
+//! aperte *Join Selected Bodies*. É a rota do Newton, ela fica, e é a rota da
+//! corrente. O que faltava é a outra: **apontar**.
+//!
+//! A diferença não é de conveniência, é de ONDE AS ÂNCORAS NASCEM. Pela seleção
+//! não há ponto nenhum a oferecer, então a política de semeadura os põe onde ela
+//! sabe — o pivô autorado e, numa mola/corda, o **centro** do corpo B. Pelo
+//! gesto há dois pontos, e eles são exatamente o que o artista quis dizer: a
+//! mola pendura de onde você apertou até onde você soltou. (E o comprimento de
+//! repouso dela é o do gesto — um número que ninguém precisa digitar.)
+//!
+//! # A recusa também é a feature
+//!
+//! Soltar fora de um corpo **não** cria um joint preso ao mundo: um `pin-to-world`
+//! é outra coisa (o horizonte §8 do plano; o GDevelop o faz com um static
+//! escondido) e inventá-lo aqui seria responder uma pergunta que ninguém fez. A
+//! recusa vem com toast, e o gesto **segue armado** — o precedente é o eyedropper
+//! do §12, que fica armado quando o clique não resolve.
+
+use ph2d_ecs::{Entity, SimWorld, Transform};
+use ph2d_physics_ecs::JointKind;
+
+use crate::{CanvasCtx, physics_state::PhysicsState};
+
+/// O gesto em voo: de que corpo saiu, de que ponto, e onde o cursor está.
+#[derive(Copy, Clone, Debug)]
+pub struct JointDraw {
+    /// De que corpo o gesto saiu — **`None` quando ele saiu do VAZIO**, isto é,
+    /// do cenário (W-JointWorld). O tipo é o que impede o release de esquecer
+    /// esse caso; a alternativa era um sentinela que todo leitor teria de
+    /// reconhecer.
+    pub(crate) body_a: Option<Entity>,
+    /// O ponto do PRESS, em mundo — a âncora em A, e o pivô de um Pin/Weld.
+    pub(crate) from: [f32; 2],
+    /// Onde o cursor está agora, em mundo — a ponta da banda elástica.
+    pub(crate) to: [f32; 2],
+}
+
+/// O corpo físico mais ao topo sob `world_pos`, ou `None`.
+///
+/// A MESMA leitura do eyedropper do §12: o pick de sprites, filtrado a quem tem
+/// `RigidBody`. Um joint só pode nomear um corpo, então filtrar aqui é o que
+/// torna isso verdade por construção em vez de por uma checagem que alguém tem
+/// de lembrar de fazer depois.
+#[must_use]
+fn body_at(ctx: &mut CanvasCtx<'_>, world_pos: [f32; 2]) -> Option<Entity> {
+    ph2d_render::pick_sprites_at_world(ctx.present.world_mut(), world_pos)
+        .into_iter()
+        .map(Entity::from_bits)
+        .find(|&e| {
+            ctx.sim
+                .world()
+                .get::<ph2d_physics_ecs::RigidBody>(e)
+                .is_some()
+        })
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// ⭐ **Os CORPOS, que eram um `impl crate::App`** (W2/L2 Fase C, 2026-09-12).
+// A shell guarda invólucros de 3-6 linhas que constroem o [`CanvasCtx`] e
+// delegam — o padrão de CHEGADA desta wave (`ESTADO_W2` §2), não dívida: *o que
+// sai são os CORPOS; o que decide a ordem do quadro fica* (HOWTO §4).
+// ⚠️ O `any_input_this_frame` fica no invólucro DE PROPÓSITO: ele é da `App`, e
+// pô-lo aqui precisaria de uma porta nova para o escrever.
+// ─────────────────────────────────────────────────────────────────────────
+
+/// **A PORTA ÚNICA de desarmar** (W-J4b) — o botão, o Esc e qualquer futuro
+/// consumidor passam por aqui.
+///
+/// Desarmar são DUAS coisas: o modo sai do ar **e** a banda em voo morre. Uma
+/// banda que sobrevivesse ao cancelamento desenharia um gesto que o artista
+/// acabou de recusar, e — pior — o `joint_draw.is_some()` do
+/// `input_dispatch` ainda tomaria o Move/Up seguinte, então o release criaria
+/// o joint que o Esc cancelou. Dois campos, um fato: quem os limpa é uma
+/// função, não dois call sites que precisam lembrar dos dois.
+pub fn disarm_joint_draw(st: &mut PhysicsState) {
+    disarm(&mut st.joint_draw_armed, &mut st.joint_draw);
+}
+
+/// **Esc cancela**, e só consome a tecla quando há o que cancelar — o formato
+/// da família de Escapes do shell (Build / Pen / shape do Painter), senão o
+/// Esc pararia de fazer blur de widget no resto do app.
+pub fn joint_draw_cancel_key(st: &mut PhysicsState, toasts: &mut ph2d_editor::ToastQueue) -> bool {
+    if !st.joint_draw_armed {
+        return false;
+    }
+    disarm_joint_draw(st);
+    toasts.push(ph2d_editor::Toast::info("Joint drawing cancelled"));
+    true
+}
+
+/// **O press.** Com o gesto ARMADO, começa a banda no corpo sob o cursor.
+/// Devolve `true` se consumiu o evento.
+pub fn joint_draw_press(st: &mut PhysicsState, ctx: &mut CanvasCtx<'_>, sx: f32, sy: f32) -> bool {
+    if !st.joint_draw_armed {
+        return false;
+    }
+    let world = ctx.to_world(sx, sy);
+    // ⚠️ **Apertar no VAZIO também é um começo legítimo** (W-JointWorld,
+    // 2º relato de smoke): o artista pensa *"prego na parede, agora ligo a
+    // bola nele"* tanto quanto o contrário. As duas direções produzem o
+    // MESMO joint — o que muda é qual ponta o gesto nomeia primeiro —, e
+    // recusar uma delas é ensinar que o gesto não existe.
+    st.joint_draw = Some(JointDraw {
+        body_a: body_at(ctx, world),
+        from: world,
+        to: world,
+    });
+    true
+}
+
+/// **O arrasto.** Só move a ponta da banda; nada é autorado até o release.
+pub fn joint_draw_move(st: &mut PhysicsState, ctx: &CanvasCtx<'_>, sx: f32, sy: f32) {
+    let Some(mut d) = st.joint_draw else {
+        return;
+    };
+    d.to = ctx.to_world(sx, sy);
+    st.joint_draw = Some(d);
+}
+
+/// **O release** — onde o joint nasce, ou onde a recusa é explicada.
+///
+/// Um joint criado aqui vem com as âncoras NOS pontos do gesto
+/// (`create_joint_at`), e a mola/corda ganha de brinde o comprimento que o
+/// arrasto mediu: o gesto autora a geometria inteira, não só o par.
+pub fn joint_draw_release(st: &mut PhysicsState, ctx: &mut CanvasCtx<'_>, sx: f32, sy: f32) {
+    let Some(d) = st.joint_draw.take() else {
+        return;
+    };
+    let kind = crate::joint::kind_of(st.join_kind);
+    let world = ctx.to_world(sx, sy);
+    let target = body_at(ctx, world);
+    // ⚠️ **Soltar no VAZIO não é um erro — o vazio É o mundo** (W-JointWorld).
+    // Antes desta wave a recusa aqui dizia ao artista que pinos de mundo não
+    // existiam, e o gesto que ele de fato tenta — arrastar do corpo para a
+    // parede — não levava a lugar nenhum (relato de smoke, 2026-07-30). A
+    // ÚNICA recusa que sobra é a que continua sendo verdade: um joint não
+    // liga um corpo a ele mesmo.
+    //
+    // ⚠️ A frase antiga NÃO é citada aqui ao pé da letra de propósito: o
+    // arch-gate que a proíbe procura por substring, e um comentário que a
+    // repete é um falso positivo esperando a próxima busca (ele já disparou
+    // uma vez, sobre esta linha).
+    if let (Some(a), Some(b)) = (d.body_a, target)
+        && a == b
+    {
+        ctx.toasts.push(ph2d_editor::Toast::info(
+            "A joint binds two DIFFERENT bodies",
+        ));
+        return; // segue armado: tente outra vez
+    }
+    // **As três formas do gesto**, e as duas últimas produzem o MESMO objeto:
+    // corpo→corpo é o joint de sempre; corpo→vazio e vazio→corpo são o pino
+    // de mundo, com o CORPO sempre no lado A e a âncora no ponto do cenário.
+    //
+    // ⚠️ Vazio→vazio é a única combinação sem sentido: não há corpo nenhum a
+    // prender, e o `None` abaixo diz isso com um toast em vez de criar um
+    // objeto que não liga coisa alguma.
+    let created = match (d.body_a, target) {
+        (Some(a), Some(b)) => crate::joint::create_joint_at(
+            ctx.sim,
+            a.to_bits(),
+            b.to_bits(),
+            kind,
+            Some((d.from, world)),
+        ),
+        // ⚠️ As duas direções produzem o MESMO objeto, e quem sabe qual
+        // ponto é qual é a porta pura `gesture_points` — a troca escrita
+        // aqui nos dois braços nasceria invertida num terceiro.
+        (Some(a), None) | (None, Some(a)) => {
+            let (on_body, anchor) =
+                crate::joint_world::gesture_points(d.body_a.is_some(), d.from, world);
+            crate::joint_world::create_world_pin_at(ctx.sim, a.to_bits(), kind, on_body, anchor)
+        }
+        (None, None) => None,
+    };
+    let Some(joint) = created else {
+        ctx.toasts.push(ph2d_editor::Toast::info(
+            match (d.body_a.is_some(), target.is_some()) {
+                (false, false) => "Start or end the joint ON a body",
+                (true, true) => "Those two bodies cannot be joined",
+                // A única forma de o pino de mundo recusar: a POLIA. A corda
+                // puxa as DUAS pontas, e uma delas no cenário é outra máquina.
+                _ => "A pulley needs two bodies — its rope pulls at both ends",
+            },
+        ));
+        return;
+    };
+    // O comprimento que o GESTO mediu. Uma mola criada arrastando 2 m
+    // descansa a 2 m; uma corda tem 2 m de máximo. É o número que o §12
+    // pediria e que o arrasto já disse — e é por isso que ele não é
+    // digitado.
+    let span = (world[0] - d.from[0]).hypot(world[1] - d.from[1]);
+    if !kind.shares_a_point()
+        && span > 1e-3
+        && let Some(mut j) = ctx
+            .sim
+            .world_mut()
+            .get_mut::<ph2d_physics_ecs::PhysicsJoint>(joint)
+    {
+        // A MESMA porta que o desenho e a escrita do anel perguntam.
+        match kind.length_field() {
+            Some(ph2d_physics_ecs::LengthField::Rest) => j.rest_length = span,
+            Some(ph2d_physics_ecs::LengthField::Max) => j.max_length = span,
+            // Um Slider compartilha um ponto, então nunca chega aqui — mas o
+            // arrasto DIZ algo para ele, e é o eixo (logo abaixo).
+            None => {}
+        }
+    }
+    // **O arrasto DESENHA O TRILHO.** Para um Slider o gesto não mede um
+    // comprimento (ele compartilha um ponto), mede uma DIREÇÃO: o rumo do
+    // press até o release é o eixo, escrito na rotação da entidade-joint —
+    // que é onde o eixo mora (`JointKind::Slider`). Sem isto, desenhar um
+    // trilho na diagonal criava um trilho horizontal e o artista teria de ir
+    // digitar o ângulo, que é exatamente o passo que este gesto existe para
+    // remover.
+    if kind == JointKind::Slider
+        && span > 1e-3
+        && let Some(mut t) = ctx.sim.world_mut().get_mut::<ph2d_ecs::Transform>(joint)
+    {
+        t.rotation = libm::atan2f(world[1] - d.from[1], world[0] - d.from[0]);
+    }
+    // O gesto terminou: desarma, e SELECIONA o joint novo — a §12 abre no
+    // que você acabou de desenhar, exatamente como no botão (W-JointCreate).
+    st.joint_draw_armed = false;
+    if let Some(hero) = ctx.hero.as_mut() {
+        hero.gizmo.selection = Some(joint.to_bits());
+        hero.gizmo.extra_selection.clear();
+    }
+}
+
+/// **Desarmar são DUAS coisas** — o modo sai do ar e a banda em voo morre.
+///
+/// Função LIVRE sobre os dois campos, não método: o sítio de ação da
+/// `render_loop` tem o `gfx` emprestado de dentro do `self`, então um
+/// `&mut self` ali é E0499 — a mesma razão pela qual o `join_chain` é livre. É
+/// esta função (e não dois call sites) que sabe que o desarme tem duas metades.
+pub(crate) fn disarm(armed: &mut bool, draw: &mut Option<JointDraw>) {
+    *armed = false;
+    *draw = None;
+}
+
+/// **O botão é um TOGGLE** — apertar armado cancela, pela porta acima.
+///
+/// A alternativa (só armar) deixava o artista sem saída: o gesto é modal e come o
+/// press no canvas, então uma vez armado o único jeito de sair era completar um
+/// joint que ele não queria (Enio, smoke da W-J4).
+pub fn toggle(armed: &mut bool, draw: &mut Option<JointDraw>) {
+    if *armed {
+        disarm(armed, draw);
+    } else {
+        *armed = true;
+    }
+}
+
+/// **A CORRENTE** (P9): N corpos, em ordem, viram N−1 joints. Devolve
+/// `(quantos, o último)`.
+///
+/// A rota por seleção sempre soube ligar DOIS; a corrente é a razão de ela
+/// sobreviver ao gesto de desenhar — sete elos à mão são sete gestos, marcá-los
+/// e apertar um botão é um. A ordem é a da SELEÇÃO (primário primeiro, extras na
+/// ordem em que entraram), que é o que o artista construiu clicando.
+///
+/// ⚠️ **Um passo de undo, e de graça:** os N−1 spawns caem no MESMO frame, e o
+/// undo global é por DIFF de fim de frame — ele vê um estado, não N operações.
+/// Nada aqui abre bracket.
+///
+/// ⚠️ **Função livre sobre `&mut SimWorld`**, não método de `App`: o laço de
+/// ações do `render_loop` já tem o `sim` destruturado do `AppGfx`, então um
+/// `&mut self` ali não compila — e livre ela é gateável headless.
+pub fn join_chain(sim: &mut SimWorld, order: &[u64], kind: JointKind) -> (usize, Option<Entity>) {
+    let mut made = 0;
+    let mut last = None;
+    for pair in order.windows(2) {
+        if let Some(j) = crate::joint::create_joint(sim, pair[0], pair[1], kind) {
+            made += 1;
+            last = Some(j);
+        }
+    }
+    (made, last)
+}
+
+/// A âncora do gesto em voo, para a banda elástica do overlay: `(de, para)` em
+/// mundo, ou `None` sem gesto.
+#[must_use]
+pub fn band(draw: Option<JointDraw>) -> Option<([f32; 2], [f32; 2])> {
+    draw.map(|d| (d.from, d.to))
+}
+
+/// O corpo A do gesto ainda existe? (Um corpo apagado sob o gesto o invalida.)
+///
+/// ⚠️ **Um gesto que saiu do VAZIO não tem corpo a perder** (W-JointWorld), então
+/// ele está sempre vivo — a resposta é `true`, e não uma consulta a uma entidade
+/// que não existe.
+#[must_use]
+pub fn body_alive(sim: &SimWorld, draw: Option<JointDraw>) -> bool {
+    draw.is_none_or(|d| {
+        d.body_a
+            .is_none_or(|a| sim.world().get::<Transform>(a).is_some())
+    })
+}
+
+#[cfg(test)]
+#[path = "joint_draw_tests.rs"]
+mod tests;

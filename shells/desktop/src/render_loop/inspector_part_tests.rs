@@ -23,7 +23,7 @@ use ph2d_ecs::{ChildOf, Entity, Name, SimWorld, Transform};
 use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, RigidBody};
 use ph2d_render::Sprite;
 
-use crate::physics::inspector_body::build_physics_info;
+use ph2d_app_physics::inspector::body::build_physics_info;
 
 /// Um "L": braço (corpo) e perna (peça) pendurada nele. A perna carrega um
 /// collider **autorado** — uma barra fina e deslocada, nada parecido com o
@@ -235,7 +235,7 @@ fn a_body_reports_how_many_parts_hang_from_it() {
 #[test]
 fn the_add_shape_apply_still_overwrites_and_that_is_why_the_panel_refuses_it() {
     let (mut sim, _arm, leg) = ell();
-    crate::physics::physics_tests::apply(&mut sim, leg, ph2d_editor::PhysicsFieldEdit::AddShape);
+    ph2d_app_physics::physics_tests::apply(&mut sim, leg, ph2d_editor::PhysicsFieldEdit::AddShape);
     let col = sim.world().get::<Collider>(leg).copied().expect("collider");
     let ColliderShape::Cuboid { half_x, half_y } = col.shape else {
         panic!("a forma virou outra coisa");
@@ -259,7 +259,7 @@ fn the_add_shape_apply_still_overwrites_and_that_is_why_the_panel_refuses_it() {
 #[test]
 fn removing_a_part_leaves_a_plain_drawing() {
     let (mut sim, arm, leg) = ell();
-    crate::physics::physics_tests::apply(&mut sim, leg, ph2d_editor::PhysicsFieldEdit::Remove);
+    ph2d_app_physics::physics_tests::apply(&mut sim, leg, ph2d_editor::PhysicsFieldEdit::Remove);
     assert!(
         sim.world().get::<Collider>(leg).is_none(),
         "a forma continua lá — a peça era porta de mão única"
@@ -363,7 +363,7 @@ fn the_mass_seed_of_a_compound_body_counts_its_parts() {
         ));
     }
 
-    crate::physics::physics_tests::apply(
+    ph2d_app_physics::physics_tests::apply(
         &mut sim,
         body,
         ph2d_editor::PhysicsFieldEdit::MassMode(true),
@@ -410,7 +410,7 @@ fn the_mass_seed_of_a_plain_body_is_its_own_shape() {
             Transform::from_translation(Vec2::new(0.0, 0.0)),
         ))
         .id();
-    crate::physics::physics_tests::apply(
+    ph2d_app_physics::physics_tests::apply(
         &mut sim,
         body,
         ph2d_editor::PhysicsFieldEdit::MassMode(true),

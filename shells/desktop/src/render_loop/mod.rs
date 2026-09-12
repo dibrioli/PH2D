@@ -64,7 +64,7 @@ mod sheet_overlay;
 
 // ⚠️ `pub(crate)`: a porta `apply_physics_edit` é a ÚNICA regra de "como uma
 // entidade vira corpo" (o collider sai da CAIXA DO SPRITE), e o gerador de rig
-// (`crate::physics::joint_rig`, W-Rig) a chama de fora — uma segunda regra lá faria um rig
+// (`ph2d_app_physics::joint_rig`, W-Rig) a chama de fora — uma segunda regra lá faria um rig
 // cujos colliders discordam dos que o botão *Add Body* produz. Mesmo alcance do
 // `inspector_joint` logo acima, pelo mesmo motivo.
 /// A lei do relógio, perguntada pelos DOIS emissores de sinal — ver o módulo.
@@ -73,11 +73,11 @@ mod clock_forward;
 /// precisa de perguntar aos oito builders pela mesma porta. Ver [`crate::inspector_presence_tests`].
 #[cfg(test)]
 pub(crate) mod inspector_presence_probe;
+pub(crate) use ph2d_app_physics::inspector::player::seed_attached_player;
 /// ⭐ **Os DOIS seeds da paleta de componentes** (ADR-0166 / F3) — ver [`crate::component_seed`].
 /// Eles vivem nos módulos DONOS das leis (a caixa que casa com o desenho · a altura que paira), e
 /// esta linha é só o endereço por onde a tabela de seeds lhes chega.
-pub(crate) use crate::physics::physics_seed::seed_attached_collider;
-pub(crate) use ph2d_app_physics::inspector::player::seed_attached_player;
+pub(crate) use ph2d_app_physics::physics_seed::seed_attached_collider;
 mod inspector_visibility;
 /// MEASUREMENT scaffold: onde as fases PANEL e CHROME do `painter_bridge::dispatch` gastam um frame.
 #[cfg(test)]
@@ -221,7 +221,12 @@ pub(crate) mod painter_gpu_preview;
 pub(crate) mod painter_stamp_device;
 /// The joint-anchor point gizmo's publish rule — extracted from `snapshots` so
 /// "which entity gets a point handle" is gated headless.
-pub(crate) mod point_gizmo;
+// ⭐ O `point_gizmo` MUDOU-SE para [`ph2d_app_physics::overlay::point_gizmo`] (W2/L2 Fase C):
+// ele tinha nome genérico e era 100% física — os `use` dele eram
+// `ph2d_physics_ecs::{JointSide, PhysicsBridge}` e o `joint_glyphs` da própria crate, e as
+// seis funções são junta, corda, roldana e âncora. O laço continua a chamá-lo PELO NOME,
+// que é o que o HOWTO §4 manda: o que sai são os CORPOS.
+use ph2d_app_physics::overlay::point_gizmo;
 mod present;
 /// ⭐⭐⭐ **As faixas de desenho** (ADR-0154 Fase 2) — irmão por assunto do [`present`].
 mod present_bands;
@@ -422,7 +427,13 @@ impl crate::App {
         // fosse resolvido no mesmo quadro, ele dispararia a acção que acabou de nascer — o gesto de
         // LIGAR viraria também o gesto de ACCIONAR.
         self.poll_input_map_pad_binding();
-        let player_input = self.resolve_player_input();
+        // ⭐ A porta é da CRATE desde a Fase C, e leva os três campos em vez de `self`: o
+        // empréstimo disjunto é feito AQUI, que é onde os campos vivem.
+        let player_input = ph2d_app_physics::player_input::resolve_player_input(
+            &mut self.input_actions,
+            self.gfx.as_ref().and_then(|g| g.hero_screen.as_ref()),
+            &self.input,
+        );
         let pointer = self.last_pointer;
         self.hovered_object = self.pick_hovered_object(pointer);
         // ⭐ **A geometria do contorno é resolvida AQUI, com o objecto.** Ela precisa da
@@ -2643,7 +2654,7 @@ impl crate::App {
         // Which of them the clock reaches is the artist's call, armed on the
         // transport bar and OFF by default (`TimelineFlags::simulate_physics`).
         let simulate_physics = self.timeline.flags.simulate_physics;
-        crate::physics::bridge::dispatch(
+        ph2d_app_physics::bridge::dispatch::dispatch(
             physics,
             sim,
             &self.playhead,
@@ -2695,7 +2706,7 @@ impl crate::App {
         }
         // A joint that gave way announces itself (W-J7). The overlay shows where
         // and that; only the event carries the load it broke at.
-        for msg in crate::physics::bridge::break_reports(physics, sim) {
+        for msg in ph2d_app_physics::bridge::dispatch::break_reports(physics, sim) {
             toasts.push(Toast::warning(msg));
         }
         // **E a FÍSICA publica no MESMO outbox dos sinais da timeline** (W-Signal).
@@ -3027,7 +3038,7 @@ impl crate::App {
                 // so a `[2s, 5s]` loop bakes `[2s, 5s]` and the button says so.
                 {
                     let (bs, be) =
-                        crate::physics::bake::bake_range(&self.timeline.doc, &self.playhead);
+                        ph2d_app_physics::bake::bake_range(&self.timeline.doc, &self.playhead);
                     (bs as f32, be as f32)
                 },
                 // Which pose channels the Bake selector shows as chosen.
@@ -5273,7 +5284,8 @@ impl crate::App {
                             // Bake itself): it says how the NEXT bake behaves.
                             // No fan-out, no Collider write — just the app state
                             // the Bake button reads.
-                            self.bake_channels = crate::physics::bake::BakeChannels::from_tag(tag);
+                            self.bake_channels =
+                                ph2d_app_physics::bake::BakeChannels::from_tag(tag);
                         } else if let ph2d_editor::PhysicsFieldEdit::JoinKind(tag) = edit {
                             // The pending join KIND, the same class as BakeChannels:
                             // an app-state option the Join gesture reads, not a
@@ -8477,9 +8489,9 @@ impl crate::App {
             // deliberately NOT tool-gated: this panel belongs to the document,
             // so the artist owns its visibility and this call never writes it.
             //
-            // ⚠️ Distinct from `crate::physics::bridge::dispatch` far above, which steps
+            // ⚠️ Distinct from `ph2d_app_physics::bridge::dispatch::dispatch` far above, which steps
             // the SIMULATION at the Playhead tick. Two bridges, two phases.
-            self.show_colliders = crate::physics::panel_bridge::dispatch(
+            self.show_colliders = ph2d_app_physics::panel_bridge::dispatch(
                 hero,
                 physics,
                 self.show_colliders,
@@ -8487,7 +8499,7 @@ impl crate::App {
                 // W25: a corrida gravada é um fato do DOCUMENTO, e este é o
                 // painel do documento. A §14 mostra o mesmo par de números; as
                 // duas vistas caem na mesma porta (`run_stash`).
-                crate::physics::panel_bridge::RunTapes {
+                ph2d_app_physics::panel_bridge::RunTapes {
                     live: &mut self.player_tape,
                     stash: &mut self.discarded_run,
                     fixed_dt: self.fixed_step.fixed_dt(),
@@ -8740,8 +8752,8 @@ impl crate::App {
                     .and_then(|d| d.posed_limit(sim)),
                 // W-J4: a banda elástica, se um gesto de criar está em voo (e o
                 // corpo A ainda existe — apagá-lo sob o gesto o invalida).
-                crate::physics::joint_draw::body_alive(sim, self.physics.joint_draw)
-                    .then(|| crate::physics::joint_draw::band(self.physics.joint_draw))
+                ph2d_app_physics::joint_draw::body_alive(sim, self.physics.joint_draw)
+                    .then(|| ph2d_app_physics::joint_draw::band(self.physics.joint_draw))
                     .flatten(),
                 // W-Grab: a mola da mão, lida do ÚNICO dono do fato (a ponte);
                 // o ponto de pega é derivado da pose VIVA do corpo, então o
@@ -13032,7 +13044,7 @@ impl crate::App {
                     // joint. A fonte é a área de transferência; sem ela o botão
                     // nem foi pintado, e este ramo é um no-op honesto.
                     if let Some(src) = self.joint_clipboard {
-                        crate::physics::joint::paste_joint_properties(
+                        ph2d_app_physics::joint::paste_joint_properties(
                             sim,
                             bits,
                             &src,
@@ -13059,9 +13071,9 @@ impl crate::App {
                     // Estrutural como o `Remove`, do outro lado: SPAWNA um
                     // objeto. O undo global por-diff o captura como captura
                     // qualquer outro spawn, sem um passo próprio a inventar.
-                    crate::physics::joint_wheel::add_pulley_wheel(sim, physics, bits);
+                    ph2d_app_physics::joint_wheel::add_pulley_wheel(sim, physics, bits);
                 } else {
-                    crate::physics::joint::apply_joint_edit(
+                    ph2d_app_physics::joint::apply_joint_edit(
                         sim,
                         bits,
                         edit,
@@ -13100,7 +13112,7 @@ impl crate::App {
             // há aqui o par estrutural da §12 (criar/apagar uma roldana é criar
             // ou apagar um OBJETO, e a Hierarquia já sabe fazer os dois).
             for &(bits, edit) in &wheel_edits {
-                let route_changed = crate::physics::joint_wheel::apply_wheel_edit(
+                let route_changed = ph2d_app_physics::joint_wheel::apply_wheel_edit(
                     sim,
                     bits,
                     edit,
@@ -13137,16 +13149,16 @@ impl crate::App {
                 // canvas, entao sem uma saida o unico jeito de sair era completar
                 // um joint que o artista nao queria. Pela porta unica
                 // `toggle_joint_draw`, a MESMA que o Esc usa.
-                crate::physics::joint_draw::toggle(
+                ph2d_app_physics::joint_draw::toggle(
                     &mut self.physics.joint_draw_armed,
                     &mut self.physics.joint_draw,
                 );
             }
             if join_chain {
-                let (made, last) = crate::physics::joint_draw::join_chain(
+                let (made, last) = ph2d_app_physics::joint_draw::join_chain(
                     sim,
                     &inspector_selection,
-                    crate::physics::joint::kind_of(self.physics.join_kind),
+                    ph2d_app_physics::joint::kind_of(self.physics.join_kind),
                 );
                 // Select the LAST joint so §12 (Physics Joint) appears
                 // immediately — the Kind selector and tuning are right there.
@@ -13173,11 +13185,11 @@ impl crate::App {
             // (ele não pode: são dois botões).
             if rig_now {
                 let roots: Vec<u64> = hero.gizmo.iter_selected().collect();
-                let plan = crate::physics::joint_rig::plan(sim, &roots);
-                let out = crate::physics::joint_rig::apply(
+                let plan = ph2d_app_physics::joint_rig::plan(sim, &roots);
+                let out = ph2d_app_physics::joint_rig::apply(
                     sim,
                     &plan,
-                    crate::physics::joint::kind_of(self.physics.join_kind),
+                    ph2d_app_physics::joint::kind_of(self.physics.join_kind),
                     editor_queue,
                     component_registry,
                 );
@@ -13212,8 +13224,8 @@ impl crate::App {
                     .map(|&b| ph2d_ecs::Entity::from_bits(b))
                     .collect();
                 let (start, end) =
-                    crate::physics::bake::bake_range(&self.timeline.doc, &self.playhead);
-                let outcome = crate::physics::bake::bake_selection(
+                    ph2d_app_physics::bake::bake_range(&self.timeline.doc, &self.playhead);
+                let outcome = ph2d_app_physics::bake::bake_selection(
                     &mut self.timeline,
                     physics,
                     sim,
@@ -13250,7 +13262,7 @@ impl crate::App {
                     // ⚠️ PAUSE as well, and the rewind alone is not enough:
                     // `Playhead::rewind` preserves the play state by design, and
                     // `advance_ticks` runs EARLIER in the frame than
-                    // `crate::physics::bridge::dispatch`. Still playing, the clock is
+                    // `ph2d_app_physics::bridge::dispatch::dispatch`. Still playing, the clock is
                     // already past 0 by the time the bridge looks, `at_rest` is
                     // never true again, and the flip never reaches rapier: the
                     // body keeps falling as Dynamic and the curve is discarded -

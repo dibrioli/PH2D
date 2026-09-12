@@ -233,3 +233,9 @@ pub fn physics_smoke_tackle(ctx: &mut crate::SceneCtx<'_>) {
         snap = MEASURED_SNAP_TARGETS,
     );
 }
+
+/// A metade que exercita a **autoria da roldana** ([`crate::joint_wheel`]) sobre
+/// esta cena (W2/L2 Fase C).
+#[cfg(test)]
+#[path = "physics_smoke_pulley_tackle_wheel_tests.rs"]
+mod physics_smoke_pulley_tackle_wheel_tests;

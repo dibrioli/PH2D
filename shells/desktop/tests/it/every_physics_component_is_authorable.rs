@@ -25,23 +25,23 @@ use std::fs;
 /// e o gate nasceu VERMELHO nomeando os seis componentes de área — o corte moveu os
 /// escritores para fora da lista. Foi a falha ALTA que a lista existe para produzir.
 const WRITERS: [&str; 9] = [
-    "src/physics/physics_apply.rs",
-    "src/physics/physics_area.rs",
+    "../../crates/ph2d-app-physics/src/physics_apply.rs",
+    "../../crates/ph2d-app-physics/src/physics_area.rs",
     // ⚠️ **O nono chegou pelo mesmo caminho do quarto** (W-Surface): o cap de
     // 600 LOC do shell obrigou a separar *de que esta SUPERFÍCIE é feita* do
     // resto, e o gate nasceu VERMELHO nomeando o `WalkSurface` no instante do
     // corte — o escritor tinha saído da lista sem sair do produto. A falha alta
     // funcionando pela segunda vez.
-    "src/physics/physics_surface.rs",
-    "src/physics/physics_markers.rs",
-    "src/physics/joint.rs",
+    "../../crates/ph2d-app-physics/src/physics_surface.rs",
+    "../../crates/ph2d-app-physics/src/physics_markers.rs",
+    "../../crates/ph2d-app-physics/src/joint.rs",
     // ⚠️ **Nem todo caminho de autoria é uma ROW.** A roldana (W-Pulley W1) é
     // criada por um botão que SPAWNA um objeto e dimensionada por uma ALÇA de
     // canvas — dois gestos que não passam por `apply_physics_edit`, e é por isso
     // que os dois arquivos entram na lista. Um componente cuja única UI é uma
     // alça continua sendo alcançável no produto, que é o que este gate mede.
-    "src/physics/joint_wheel.rs",
-    "src/physics/joint_anchor_drag.rs",
+    "../../crates/ph2d-app-physics/src/joint_wheel.rs",
+    "../../crates/ph2d-app-physics/src/joint_anchor_drag.rs",
     // ⚠️ **E nem todo caminho de autoria é um NÚMERO.** O nome do sinal (W-Signal)
     // é uma STRING, então ele não passa pelo `PhysicsFieldEdit` — vai pelo mesmo
     // pipeline canônico de componente que o nome da entidade usa (fila de comandos

@@ -124,7 +124,7 @@ fn the_discard_stashes_and_the_restore_brings_it_back() {
 /// uma por vista. Elas fariam a mesma coisa hoje.
 #[test]
 fn the_world_panel_route_goes_through_the_same_door() {
-    const BRIDGE: &str = include_str!("../../src/physics/panel_bridge.rs");
+    const BRIDGE: &str = include_str!("../../../../crates/ph2d-app-physics/src/panel_bridge.rs");
     for (intent, verb) in [
         ("PhysicsIntent::ClearRun", "RunVerb::Discard"),
         ("PhysicsIntent::RestoreRun", "RunVerb::Restore"),
@@ -153,7 +153,7 @@ fn the_world_panel_route_goes_through_the_same_door() {
 /// suíte verde, porque os gates de seam constroem o snapshot à mão.
 #[test]
 fn the_world_panel_publishes_both_run_lengths() {
-    const BRIDGE: &str = include_str!("../../src/physics/panel_bridge.rs");
+    const BRIDGE: &str = include_str!("../../../../crates/ph2d-app-physics/src/panel_bridge.rs");
     assert!(
         BRIDGE.contains("recorded_run_seconds: (run.live.len()"),
         "o readout de corrida GRAVADA do painel de mundo nao sai da fita viva"

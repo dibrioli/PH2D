@@ -951,7 +951,7 @@ impl App {
             emissive_instances: Vec::new(),
             frost_instances: Vec::new(),
             blast_flash: None,
-            bake_channels: crate::physics::bake::BakeChannels::default(),
+            bake_channels: ph2d_app_physics::bake::BakeChannels::default(),
             gilrs,
             audio,
             #[cfg(feature = "panel-audio-editor")]
@@ -1043,7 +1043,7 @@ impl App {
             anchor_gizmo_drag: None,
             // O agregado da família `physics` (W2/L2). O `Default` reproduz,
             // campo a campo, os sete inicializadores que viviam soltos aqui.
-            physics: crate::physics::physics_state::PhysicsState::default(),
+            physics: ph2d_app_physics::physics_state::PhysicsState::default(),
             vec_morph_plans: crate::morph_live::MorphPlans::new(),
             morph_machines: Default::default(),
             vec_blend_spines: crate::blend_live::BlendSpines::new(),

@@ -1,8 +1,8 @@
 //! **The smoke scenes about ONE body's own property** — what a single collider
 //! *is*, rather than how bodies relate (`PH2D_PHYSICS_SMOKE` 12 and 13).
 //!
-//! Sibling of [`crate::physics::physics_smoke`] (the prologue and the basics) and
-//! [`crate::physics::physics_smoke_rigs`] (everything that needs a SECOND thing to mean
+//! Sibling of `shells/desktop/src/physics/physics_smoke.rs` (the prologue) and
+//! [`crate::physics_smoke_rigs`] (everything that needs a SECOND thing to mean
 //! anything — a joint, the timeline, an ancestor). The seam here is real and not
 //! merely an overflow: each of these scenes varies **one property of one body**
 //! and shows what changes — the gravity multiplier, the collider shape.

@@ -10,7 +10,7 @@
 //! O oráculo é o mesmo em toda parte e nunca é "os componentes existem": é a
 //! CENA (a caixa que caiu na piscina está mais alta que a idêntica ao lado).
 
-use crate::physics::physics_tests::apply;
+use ph2d_app_physics::physics_tests::apply;
 use ph2d_core::Vec2;
 use ph2d_ecs::{Entity, SimWorld, Transform};
 use ph2d_editor::PhysicsFieldEdit;
@@ -47,7 +47,7 @@ fn a_water_zone_is_authorable_with_ui_gestures_alone() {
     // ⚠️ **O 1.º passo mudou de PORTA na F3** (ADR-0166): a §11 já não se pinta sobre um sprite
     // pelado — a face vazia dela era a única rota, e hoje a rota é o `+` do cabeçalho.
     assert!(
-        crate::physics::inspector_body::build_physics_info(
+        ph2d_app_physics::inspector::body::build_physics_info(
             sim.world(),
             pool.to_bits(),
             0,

@@ -336,3 +336,10 @@ pub fn physics_smoke_joint_anim(ctx: &mut crate::SceneCtx<'_>) {
                mude o alvo na secao Physics Joint e aperte **K**.\n"
     );
 }
+
+/// A metade que exercita o **assador** ([`crate::bake::TimelineScene`]) sobre esta
+/// cena. ⚠️ **O nome ganhou `_bake_`** — ele vivia na shell com o mesmo nome do
+/// irmão daqui, e era assim que o `physics/mod.rs` já o declarava (W2/L2 Fase C).
+#[cfg(test)]
+#[path = "physics_smoke_joint_anim_bake_tests.rs"]
+mod physics_smoke_joint_anim_bake_tests;

@@ -15,7 +15,7 @@ use ph2d_physics_ecs::{
 };
 use ph2d_timeline::TimelineDoc;
 
-use crate::physics::bridge::dispatch;
+use ph2d_app_physics::bridge::dispatch::dispatch;
 
 const DT: f64 = 1.0 / 60.0;
 /// Two seconds of playback. Long enough that a fall is unmistakable and that a

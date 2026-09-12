@@ -127,7 +127,7 @@ fn the_whole_finger_is_handed_to_the_physics_dispatch() {
 /// posição errada e ficaria verde sobre o fio invertido.
 #[test]
 fn the_input_is_handed_over_before_the_hold_early_out() {
-    let src = read("src/physics/bridge.rs");
+    let src = read("../../crates/ph2d-app-physics/src/bridge/dispatch.rs");
     let hand = src
         .match_indices("hand_input_to_players(")
         .find(|(at, _)| !src[..*at].ends_with("fn "))
@@ -152,5 +152,8 @@ fn the_input_is_handed_over_before_the_hold_early_out() {
 fn the_files_the_gate_reads_are_the_ones_that_carry_the_wire() {
     assert!(read("src/input_dispatch/keyboard.rs").contains("winit_to_input_keycode"));
     assert!(read("src/render_loop/mod.rs").contains("crate::physics::bridge::dispatch("));
-    assert!(read("src/physics/bridge.rs").contains("fn hand_input_to_players"));
+    assert!(
+        read("../../crates/ph2d-app-physics/src/bridge/dispatch.rs")
+            .contains("fn hand_input_to_players")
+    );
 }

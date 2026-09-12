@@ -229,3 +229,9 @@ pub fn physics_smoke_part(ctx: &mut crate::SceneCtx<'_>) {
         h1 = MEASURED_HANDLE_Y[1],
     );
 }
+
+/// A metade que exercita o **edit do §11** ([`crate::physics_tests::apply`]) sobre
+/// esta cena — afinar uma PEÇA muda a simulação (W2/L2 Fase C).
+#[cfg(test)]
+#[path = "physics_smoke_part_edit_tests.rs"]
+mod physics_smoke_part_edit_tests;

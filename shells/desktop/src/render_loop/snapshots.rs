@@ -1130,7 +1130,7 @@ pub(super) fn publish(
     // em toda situação menos a que ele existe para servir.
     let rig_parts = {
         let roots: Vec<u64> = hero.gizmo.iter_selected().collect();
-        let plan = crate::physics::joint_rig::plan(sim, &roots);
+        let plan = ph2d_app_physics::joint_rig::plan(sim, &roots);
         if plan.is_offered() {
             u8::try_from(plan.parts.len()).unwrap_or(u8::MAX)
         } else {
@@ -1162,7 +1162,7 @@ pub(super) fn publish(
     });
 
     let inspector_physics = hero.gizmo.selection.and_then(|b| {
-        crate::physics::inspector_body::build_physics_info(
+        ph2d_app_physics::inspector::body::build_physics_info(
             sim.world(),
             b,
             join_count,
@@ -1187,12 +1187,12 @@ pub(super) fn publish(
             }
             _ => 0,
         };
-        crate::physics::joint::build_joint_info(sim, b, pick_armed, joint_paste_targets)
+        ph2d_app_physics::joint::build_joint_info(sim, b, pick_armed, joint_paste_targets)
     });
     // §13 Pulley Wheel (W-Pulley W1) — a irmã da §12, e a seleção é a MESMA
     // pergunta: uma roldana é uma entidade, então ela é o objeto selecionado.
     let inspector_wheel = hero.gizmo.selection.and_then(|b| {
-        crate::physics::joint_wheel::build_wheel_info(
+        ph2d_app_physics::joint_wheel::build_wheel_info(
             sim,
             b,
             wheel_body_pick == Some(b),

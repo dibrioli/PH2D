@@ -2540,7 +2540,7 @@ impl App {
             .map(ph2d_ecs::Entity::from_bits);
         match target {
             Some(t) => {
-                if crate::physics::joint::set_joint_body(&mut gfx.sim, joint, slot_b, t) {
+                if ph2d_app_physics::joint::set_joint_body(&mut gfx.sim, joint, slot_b, t) {
                     self.joint_body_pick = None; // religado — pronto
                 }
                 // senão: self-joint recusado, segue armado para outro clique
@@ -2630,7 +2630,7 @@ impl App {
             })
             .map(ph2d_ecs::Entity::from_bits);
         if let Some(t) = target {
-            crate::physics::joint_wheel::set_wheel_mount(&mut gfx.sim, wheel, t);
+            ph2d_app_physics::joint_wheel::set_wheel_mount(&mut gfx.sim, wheel, t);
         }
         self.wheel_body_pick = None;
     }
@@ -2655,11 +2655,11 @@ impl App {
         };
         let window_size = gfx.surface.size();
         let world_pos = gfx.camera.screen_to_world((sx, sy), window_size);
-        let tol = crate::physics::joint_anchor_drag::SNAP_PX * gfx.camera.height_world
+        let tol = ph2d_app_physics::joint_anchor_drag::SNAP_PX * gfx.camera.height_world
             / window_size.height as f32;
         match gfx.physics.rope_at_world(world_pos, tol) {
             Some(rope) => {
-                if crate::physics::joint_wheel::set_wheel_rope(&mut gfx.sim, wheel, rope) {
+                if ph2d_app_physics::joint_wheel::set_wheel_rope(&mut gfx.sim, wheel, rope) {
                     self.wheel_rope_pick = None;
                 }
                 // senão: o alvo não é uma polia, segue armado para outro clique
@@ -5759,7 +5759,7 @@ impl App {
                         }
                     }
                     // Joint-anchor point handles: a Down on either dot opens the
-                    // anchor drag (`crate::physics::joint_anchor_drag`) for that END. A
+                    // anchor drag (`ph2d_app_physics::joint_anchor_drag`) for that END. A
                     // joint has no sprite for the canvas-pick Translate path
                     // (`pick_sprites_at_world`) to resolve, so they are
                     // recognised HERE by hit id, before the generic handle path
@@ -5777,7 +5777,7 @@ impl App {
                     // knows them. Reading the selection here would author the
                     // selected joint from a click on another one's dot.
                     let anchor_hit = hit_id.and_then(|id| {
-                        crate::render_loop::point_gizmo::resolve_anchor_hit(
+                        ph2d_app_physics::overlay::point_gizmo::resolve_anchor_hit(
                             &hero.gizmo.point_hit_map,
                             id,
                         )
@@ -5787,7 +5787,7 @@ impl App {
                         && hero.store.panel_at(evt.x, evt.y).is_none()
                         && !menu_open_before
                     {
-                        let opened = crate::physics::joint_anchor_drag::open_drag(
+                        let opened = ph2d_app_physics::joint_anchor_drag::open_drag(
                             &gfx.physics,
                             &gfx.sim,
                             &gfx.camera,
@@ -5960,7 +5960,7 @@ impl App {
                             // W-JG: e, num Translate em repouso **com ALT**, o
                             // **rig articulado** do conjunto entra junto — a
                             // MESMA porta que o pick de canvas usa
-                            // (`crate::physics::joint_rig_drag`), porque duas cópias da
+                            // (`ph2d_app_physics::joint_rig_drag`), porque duas cópias da
                             // regra é como arrastar pela alça passaria a
                             // carregar a corrente e arrastar pelo corpo, não.
                             let selected: Vec<u64> = hero.gizmo.iter_selected().collect();
@@ -5975,7 +5975,7 @@ impl App {
                                 } else {
                                     None
                                 };
-                            crate::physics::joint_rig_drag::seed_group_drag_starts(
+                            ph2d_app_physics::joint_rig_drag::seed_group_drag_starts(
                                 &mut self.group_drag_starts,
                                 &mut gfx.sim,
                                 entity_bits,
@@ -6291,7 +6291,7 @@ impl App {
                                         .joint
                                         .drag_reach(self.modifiers.alt_key())
                                 };
-                                crate::physics::joint_rig_drag::seed_group_drag_starts(
+                                ph2d_app_physics::joint_rig_drag::seed_group_drag_starts(
                                     &mut self.group_drag_starts,
                                     &mut gfx.sim,
                                     bits,
@@ -7252,7 +7252,8 @@ fn select_wheel_at(
     at: (f32, f32),
 ) -> bool {
     let w = camera.screen_to_world(at, win);
-    let tol = crate::physics::joint_anchor_drag::SNAP_PX * camera.height_world / win.height as f32;
+    let tol =
+        ph2d_app_physics::joint_anchor_drag::SNAP_PX * camera.height_world / win.height as f32;
     let Some(wheel) = physics.wheel_at_world(w, tol) else {
         return false;
     };

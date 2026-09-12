@@ -199,3 +199,9 @@ pub fn physics_smoke_differential(ctx: &mut crate::SceneCtx<'_>) {
         plain = MEASURED_PLAIN_DROP,
     );
 }
+
+/// A metade que exercita a **autoria da roldana** ([`crate::joint_wheel`]) sobre
+/// esta cena (W2/L2 Fase C).
+#[cfg(test)]
+#[path = "physics_smoke_pulley_diff_wheel_tests.rs"]
+mod physics_smoke_pulley_diff_wheel_tests;

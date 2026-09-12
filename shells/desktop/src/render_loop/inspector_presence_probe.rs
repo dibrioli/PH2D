@@ -50,7 +50,7 @@ pub(crate) fn anim(world: &World, bits: u64) -> bool {
 }
 
 pub(crate) fn physics(world: &World, bits: u64) -> bool {
-    crate::physics::inspector_body::build_physics_info(
+    ph2d_app_physics::inspector::body::build_physics_info(
         world,
         bits,
         0,

@@ -880,7 +880,7 @@ pub(crate) struct App {
     /// Which pose channels the next physics Bake writes (§11). Transient — a
     /// bake-time preference, not saved: it says how the button behaves, not what
     /// the document is. Default `All`.
-    pub(crate) bake_channels: crate::physics::bake::BakeChannels,
+    pub(crate) bake_channels: ph2d_app_physics::bake::BakeChannels,
     /// gilrs context (M8). `None` if init failed (e.g. Linux without
     /// /dev/input read perms in CI sandboxes — we degrade gracefully
     /// instead of crashing the renderer).
@@ -1381,9 +1381,9 @@ pub(crate) struct App {
     /// **O transiente da família `physics`, com um dono só** (W2/L2) — o gesto de
     /// junta em curso, o que o próximo clique vai fazer, a ferramenta do ponteiro
     /// e os latches das cenas de smoke. Eram SETE campos soltos espalhados por
-    /// quatro regiões deste ficheiro; ver [`crate::physics::physics_state::PhysicsState`]
+    /// quatro regiões deste ficheiro; ver [`ph2d_app_physics::physics_state::PhysicsState`]
     /// para o porquê e para o molde (`MotionState`).
-    pub(crate) physics: crate::physics::physics_state::PhysicsState,
+    pub(crate) physics: ph2d_app_physics::physics_state::PhysicsState,
     /// O `Plan` de cada morph enquanto a relação não muda. Runtime-only: derivável das fontes,
     /// fora do save e do undo.
     pub(crate) vec_morph_plans: crate::morph_live::MorphPlans,

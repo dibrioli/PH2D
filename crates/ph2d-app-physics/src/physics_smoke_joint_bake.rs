@@ -1,6 +1,6 @@
 //! **The smoke scene for baking a JOINTED rig** (`PH2D_PHYSICS_SMOKE` 39).
 //!
-//! Sibling of [`crate::physics::physics_smoke_rigs`], split off under the shell's 600-LOC
+//! Sibling of [`crate::physics_smoke_rigs`], split off under the shell's 600-LOC
 //! cap. Baking a coupled rig is coherent only as a WHOLE — bake one link and the
 //! un-baked dynamic neighbours freeze when the Physics toggle is off — so this
 //! scene proves that selecting ONE link bakes the entire articulated group

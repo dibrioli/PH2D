@@ -233,10 +233,142 @@ pub mod physics_smoke_pulley_tackle;
 pub mod physics_smoke_rig;
 pub mod run_stash;
 
+// ─────────────────────────────────────────────────────────────────────────
+// ⭐⭐ **O que um GESTO DE CANVAS precisa da shell, escrito em TIPOS.**
+//
+// A Fase C trouxe a metade que toca a `App`: arrastar a âncora de uma junta,
+// desenhar uma junta nova, agarrar uma roldana. O bloco de reabertura avisava
+// que *«é aqui que um sexto método parece necessário, e não é»* — e a régua 4
+// do §1 resolveu-o: escritas em tipos, as três funções de `impl App` pediam
+// **sete coisas que a `App` por acaso segurava**, e nenhuma delas é a `App`.
+//
+// | o que era | o que é | de onde vem |
+// |---|---|---|
+// | `gfx.camera` | `&Camera2d` | `ph2d-render` |
+// | `gfx.surface.size()` | `WindowSize` | `ph2d-host` |
+// | `gfx.sim` | `&mut SimWorld` | `ph2d-ecs` |
+// | `gfx.physics` | `&PhysicsBridge` | `ph2d-physics-ecs` |
+// | `gfx.present` | `&mut PresentWorld` | `ph2d-ecs` |
+// | `gfx.toasts` | `&mut ToastQueue` | `ph2d-editor` |
+// | `gfx.hero_screen` | `Option<&mut HeroScreen>` | `ph2d-editor` |
+//
+// ⛔ **Zero sextos métodos no `AppHost`**, e a razão é estrutural: um método
+// que devolvesse o `gfx` seria um HANDLE, que o trait proíbe por escrito — a
+// fronteira inteira desfazia-se nele. O que atravessa são os SETE TIPOS.
+//
+// ⚠️ **Nem todo gesto lê os sete, e isso não é um campo a mentir:** um contexto
+// é a superfície que a shell entrega, não uma lista de tudo o que o chamado vai
+// tocar. O `advance_joint_anchor_drag` não escreve toasts; o `joint_draw` não lê
+// a ponte. Os dois recebem a mesma superfície porque é a mesma superfície.
+// ─────────────────────────────────────────────────────────────────────────
+
+/// A superfície de canvas que a shell empresta a um gesto da física.
+///
+/// ⚠️ **Os empréstimos são DISJUNTOS por construção** — cada campo é um campo
+/// diferente do `AppGfx`, logo a shell constrói isto numa expressão só sem
+/// emprestar nada duas vezes. Era exactamente esse duplo empréstimo que obrigava
+/// o `player_input` a um `std::mem::take` e o `disarm` a ser função livre: *o
+/// truque não era uma lei do domínio, era o preço de a função estar na struct
+/// errada.*
+pub struct CanvasCtx<'a> {
+    pub camera: &'a ph2d_render::Camera2d,
+    pub window: ph2d_host::WindowSize,
+    pub sim: &'a mut ph2d_ecs::SimWorld,
+    pub bridge: &'a ph2d_physics_ecs::PhysicsBridge,
+    pub present: &'a mut ph2d_ecs::PresentWorld,
+    pub toasts: &'a mut ph2d_editor::ToastQueue,
+    pub hero: Option<&'a mut ph2d_editor::HeroScreen>,
+}
+
+impl CanvasCtx<'_> {
+    /// O ponto de MUNDO sob um pixel de ecrã — a conversão que todo gesto faz.
+    #[must_use]
+    pub fn to_world(&self, sx: f32, sy: f32) -> [f32; 2] {
+        self.camera.screen_to_world((sx, sy), self.window)
+    }
+}
+
 // As três metades que vieram de `render_loop/`.
 pub mod bridge;
 pub mod inspector;
 pub mod overlay;
+
+// ─────────────────────────────────────────────────────────────────────────
+// ⭐ **A AUTORIA, vinda de `shells/desktop/src/physics/`** (W2/L2 Fase C,
+// 2026-09-12). São os 48 ficheiros que a Fase B deixou lá **não por causa da
+// `App`**, mas por três folhas da shell (`inspector_ordering`, `preview_drive`,
+// `name_unique`) que a `line/shell-folhas` fez crates em 12/09, e por uma
+// struct de três campos (`GroupDragSnapshot`) que foi para o
+// `ph2d-editor-core`, onde o conteúdo dela já vivia.
+//
+// ⚠️ **Os nomes NÃO foram encurtados de propósito.** O `physics_` é redundante
+// aqui — dentro desta crate tudo é a física —, mas um rename por nome corrompe
+// as citações de prosa que o repo tem em doc-comments (a Fase A pagou **76**
+// numa só varredura), e o valor de tirar um prefixo é cosmético. Só mudou de
+// nome quem COLIDIA: o `bridge.rs` (contra o directório `bridge/`) e as seis
+// metades de fronteira, que tinham um homónimo já aqui.
+// ─────────────────────────────────────────────────────────────────────────
+
+// O assador e a ponte.
+pub mod bake;
+pub mod panel_bridge;
+
+// As JUNTAS — a autoria: desenhar uma, arrastar-lhe uma âncora, montar um rig,
+// agarrar uma roldana.
+pub mod joint;
+pub mod joint_anchor_drag;
+pub mod joint_create;
+pub mod joint_draw;
+pub mod joint_rig;
+pub mod joint_rig_drag;
+pub mod joint_wheel;
+pub mod joint_world;
+
+// A §11 do Inspector aplicada ao ECS, e os seus vizinhos por assunto.
+pub mod physics_apply;
+pub mod physics_area;
+pub mod physics_markers;
+pub mod physics_seed;
+pub mod physics_state;
+pub mod physics_surface;
+
+// O input do player.
+pub mod player_input;
+
+// ⚠️ **`#[cfg(test)]` e MAIS NADA**: estes eram `#[cfg(test)] mod X;` no
+// `physics/mod.rs` e continuam a sê-lo. O `measure_player_tape` é um
+// instrumento de medição, não produto.
+#[cfg(test)]
+mod joint_break_tests;
+#[cfg(test)]
+mod joint_kind_tests;
+#[cfg(test)]
+mod joint_motor_tests;
+#[cfg(test)]
+mod joint_pair_tests;
+#[cfg(test)]
+mod joint_paste_tests;
+#[cfg(test)]
+mod joint_tests;
+#[cfg(test)]
+mod joint_wheel_tests;
+#[cfg(test)]
+mod joint_world_tests;
+#[cfg(test)]
+mod measure_player_tape;
+#[cfg(test)]
+mod physics_gesture_surface_tests;
+
+// ⚠️ **`pub(crate)` e não privado**: a porta `apply` (um edit do §11 aplicado
+// ao ECS) é o caminho do PRODUTO, e várias cenas a usam para provar que afinar
+// uma peça muda a simulação. Uma segunda cópia da fiação seria uma segunda
+// resposta a *«o que este edit faz»*.
+// ⚠️ **`test-support` além do `test`** (HOWTO §2.5): três gates que ficam na
+// shell atravessam a porta de produção do Inspector e precisam deste arnês, e
+// um `cfg(test)` é falso nesta crate quando a shell a compila.
+#[cfg(any(test, feature = "test-support"))]
+pub mod physics_tests;
+
 pub mod physics_smoke_base;
 pub mod physics_smoke_joint_anim;
 pub mod physics_smoke_out;

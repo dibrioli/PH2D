@@ -109,8 +109,10 @@ Fase D (`components`, `vec`, `painter` — a última linha NOVA). Shell **526 80
 917 ficheiros); o portão de testes impactados caiu de 51 s para 27 s na mesma máquina. Estado
 completo, as leis e os blocos de reabertura em `docs/IntegracaoMultiAgente/ESTADO_W2_2026-09-12.md`.
 
-**Aberto (12/09):** o **envio** — 210+ commits nunca passaram pela CI (macOS/Windows por
-verificar) e o dono pediu *«deixar completamente pronto antes de enviar»*; o que sobra grande na
+**Aberto (12/09):** o **envio** — o `ship.sh` ficou **CI-clean** localmente (12/12, 22 689 testes) depois de
+curar 25 avisos, 79 dependências mortas, 2 ficheiros fora do build e um gate que lia uma dependência
+morta; faltam a ORDEM do dono e a CI nos três SO. O objectivo da obra foi MEDIDO e cumprido (a shell
+`bin (check-test)` 36,2 → 5,9 s; o gate de fecho 92,9 → 45,5 s); o que sobra grande na
 shell já **não é família** (o laço `render_loop/mod.rs`, o `input_dispatch`, `project`/`undo`), mais
 o **roteador partilhado `build_smoke`** (64 módulos, três famílias) que prende ~18 mil linhas do
 Vetor e não tem dono.

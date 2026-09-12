@@ -31,3 +31,13 @@ E ao auditar um job de toolchain alternativo, o teste decisivo é uma linha:
 igualar o pin, o job não tem conteúdo — a cura é tornar a declaração verdadeira
 (`rust-version` = o número medido), não afrouxar a barra
 [[feedback_the_ceiling_is_the_hardwares_never_the_fallbacks]].
+
+## ⚠️ A OUTRA FACE — `--manifest-path` NÃO leva o `rust-toolchain.toml` consigo (2026-09-12)
+
+A precedência acima resolve-se pela **pasta corrente**, não pelo manifesto. Correr
+`cargo clippy --manifest-path /…/PH2D/Cargo.toml -p X` **a partir de uma pasta de rascunho** usou o
+`rustc 1.95` do sistema e reprovou com *«rustc 1.95.0 is not supported by the following packages»* —
+um vermelho que não diz nada sobre o código, e que custou uma verificação inteira na integração da
+W2. O mesmo comando dentro do repo corre o pin (1.98) e passa.
+**How to apply:** corra `cargo` **de dentro** do repositório (`cd` primeiro), ou fixe-o com
+`RUSTUP_TOOLCHAIN`. Na dúvida, `rustup show active-toolchain` na pasta de onde vai correr.

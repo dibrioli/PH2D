@@ -34,3 +34,14 @@ laço que nunca itera é um portão que sempre passa. Irmã de
 [[feedback_pipe_masks_script_exit_code]] (o veredito está no ESTADO, não no `$?`) e de
 [[feedback_a_tool_is_adopted_only_when_a_written_step_names_it]] (o defeito mora no
 formato que alguém de facto executa).
+
+## ⛔ RECORRÊNCIA — 2026-09-12, e a forma mais cara: um `git add -- $LISTA` (integração da W2 Fase D)
+
+O integrador pôs sete caminhos numa variável (`C1="a.rs b.rs …"`) e correu `git add -- $C1 && git
+commit …` três vezes. Sob zsh a variável **não se dividiu**: o `git` recebeu **um** caminho com
+espaços, respondeu `fatal: pathspec … did not match any files`, e **nenhum commit foi gravado** —
+com o `&&` a garantir que nada se seguia, o que foi a metade boa.
+⚠️ **Esta memória já existia e não foi lida antes de o escrever.** *Uma lição num ficheiro que
+ninguém consulta no momento de agir não impede nada.*
+⇒ **escreva os caminhos LITERAIS no comando** (`git commit -- a.rs b.rs`), ou use um array
+(`arr=(a.rs b.rs); git add -- "${arr[@]}"`), que se comporta igual em bash e zsh.

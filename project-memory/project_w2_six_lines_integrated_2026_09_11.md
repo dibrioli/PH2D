@@ -1,6 +1,6 @@
 ---
 name: project_w2_six_lines_integrated_2026_09_11
-description: As SEIS linhas da W2 (partir a shell) foram integradas ao main em 2026-09-11 por ordem do Enio -- L0 primeiro, depois vec/flip/physics/sculpt3d/motion; a shell perdeu 61.704 LOC e 222 ficheiros, e a integração pagou QUATRO defeitos de substrato que nenhum portão de linha via
+description: A W2 (partir a shell) foi integrada em QUATRO rondas até 2026-09-12 por ordem do Enio -- a shell caiu de 526 809 para 186 647 linhas (−65%), sete das nove famílias chegaram ao padrão de chegada, nada foi enviado; e as lições de régua que cada ronda pagou
 metadata:
   type: project
 ---
@@ -103,9 +103,21 @@ agulha que nomeia a VISIBILIDADE*. Publicar a API de uma folha obriga `pub(crate
 `pub fn`, e um gate ancorado no modificador reprova sem que a lei mude uma linha. *Uma agulha ancora
 na LEI, nunca em quem pode chamá-la.*
 
-**Aberto:** a **Fase B** das cinco famílias (o corte pelo `HOWTO_partir_uma_familia_da_shell.md`),
-que é onde os roteadores saem e a catraca volta a vazia; `ship.sh` + CI **não correram** (ordem do
-Enio); o smoke é dele e não foi corrido.
+**Actualização 2026-09-12 — as rondas seguintes, todas integradas:** Fase B (`physics`) ·
+2.ª volta (`flip`, `vec`) + `line/shell-folhas` · Fase C (`motion` −111 397, `vec`, `physics`) ·
+Fase D (`components`, `vec`, `painter` — a última linha NOVA). Shell **526 809 → 186 647** (2 023 →
+917 ficheiros); o portão de testes impactados caiu de 51 s para 27 s na mesma máquina. Estado
+completo, as leis e os blocos de reabertura em `docs/IntegracaoMultiAgente/ESTADO_W2_2026-09-12.md`.
+
+**Aberto (12/09):** o **envio** — 210+ commits nunca passaram pela CI (macOS/Windows por
+verificar) e o dono pediu *«deixar completamente pronto antes de enviar»*; o que sobra grande na
+shell já **não é família** (o laço `render_loop/mod.rs`, o `input_dispatch`, `project`/`undo`), mais
+o **roteador partilhado `build_smoke`** (64 módulos, três famílias) que prende ~18 mil linhas do
+Vetor e não tem dono.
+
+⚠️ **E uma lei desta memória está REFUTADA desde 12/09:** a regra *«o `nextest-impacted` não alcança
+`shells/desktop/tests/it/`»*, que o integrador escreveu sem medir e espalhou por três blocos de
+reabertura — ele alcança (`rdeps(<família>)` → 793 testes). Ver o ESTADO §4 lei 4.
 
 **Why:** o Enio ordenou *«siga. integre.»* em 11/09, depois de as seis linhas fecharem.
 

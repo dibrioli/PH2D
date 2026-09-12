@@ -42,7 +42,8 @@
 - 📚 [Git & colisão multi-agente: mais 4 lições, uma linha cada, verbatim](reference_topic_git_lessons_loose.md)
 
 ## Ship / CI / integração
-- ✅ [**W2 INTEGRADA 11/09**: as seis linhas no main, shell −61.704 LOC; e os QUATRO defeitos de substrato que só a integração vê (gerador fora do gate · invariante forte demais para a Fase A · ping-pong fmt⇄sync escondido por uma compensação a jusante)](project_w2_six_lines_integrated_2026_09_11.md)
+- ✅ [**W2: 4 rondas integradas até 12/09** — shell 526 809 → 186 647 (−65%), 7 de 9 famílias no padrão de chegada, NADA enviado; ⛔ a lei «o `nextest-impacted` não alcança `tests/it`» está REFUTADA](project_w2_six_lines_integrated_2026_09_11.md)
+- ⛔⛔ [Regra de BRIEFING sem medição é «confirmada» pelos agentes que a seguem — o achado pelo atalho que ela manda conta como prova da causa (3 linhas «confirmaram» um filtro que não existia)](feedback_an_unmeasured_rule_in_a_briefing_is_confirmed_by_the_agents_who_follow_it.md)
 - ✅ [AUDITORIA de velocidade 10/09: W0 APLICADA (perfil `smoke` 161 s → 3 s, `jobs = 32`, tecto nextest) e W1 FEITA (1 446 → 127 binários de teste, `tests/it/`); W1b/W2 por abrir](project_dev_speed_audit_2026_09_10_w0_applied.md)
 - [Multi-máquina: GitHub fonte única](project_multi_machine_setup.md) · [fast mode: dia sem push](feedback_fast_mode_ship.md)
 - ⏳ [**`line/motion-value` espera a PRÓXIMA rodada** — 5 de 6 linhas entraram em 06/09 e esta ficou de fora; as 5 mitigações em vigor](project_motion_value_waits_for_the_next_integration_round.md)
@@ -66,7 +67,7 @@
 - ⛔ [Régua de vazamento cuja máscara usa o predicado DO PRODUTO lê 0,00 % sobre o defeito](feedback_a_leak_ruler_masked_by_the_products_own_predicate_hides_the_leak.md)
 - ⛔ [viés em NDC não é constante no mundo: 3e-3 = 30 % da distância do olho](feedback_a_depth_bias_constant_in_ndc_is_not_constant_in_the_world.md)
 - ⛔ [Barra calibrada SEM o lado aprovado mede os nossos defeitos; o PISO do censo decide o que a régua vê (4× «nenhuma melhoria»)](feedback_a_bar_calibrated_without_the_approved_side_measures_our_own_defects.md)
-- ⛔⛔ [ÓRFÃO e DUPLICADO sao a MESMA auditoria, os dois MUDOS: 0 pais deixa de correr, 2 pais corre a dobrar](feedback_the_orphan_and_the_double_declaration_are_one_audit.md)
+- ⛔⛔ [ÓRFÃO e DUPLICADO sao a MESMA auditoria, os dois MUDOS — gate `architecture_no_orphan_source_file` desde 12/09, que achou 8 testes e uma sonda de 583 L fora do build](feedback_the_orphan_and_the_double_declaration_are_one_audit.md)
 - [Ofício de gate (47) — folga = ponto cego · mutação que não mata · metade justa · feito≠entregue · censo textual · censo que presume o destino · censo que partilha estado](reference_topic_gate_discipline.md)
 - [Estado autorado & relógios (19)](reference_topic_authored_state_and_clocks.md)
 - [modo que não exclui ninguém é outro produtor](feedback_a_mode_whose_entry_excludes_nobody_is_just_another_producer.md)

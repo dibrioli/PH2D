@@ -62,3 +62,16 @@ que de caminho **reforçou** uma garantia que o doc daquela função já reivind
 
 *O gate de fechamento mede o que a linha TOCOU; se o alvo dele é escrito à mão, ele mede a minha
 memória.*
+
+## ⚠️⚠️ A OUTRA FACE — cobrir as crates certas ainda dá o número ERRADO (2026-09-12)
+
+Na integração da W2 Fase D o integrador contou os avisos que travavam o `ship.sh` crate a crate e deu
+ao dono **dois números errados seguidos** (*«sobra 1»*, depois *«são 25»*). Duas causas, opostas:
+- `cargo clippy -p <crate>` **desliga as features que a shell liga** ⇒ **inventa** avisos: 7 na
+  `ph2d-app-vec`, todos parâmetros usados só dentro de `#[cfg(feature = "panel-vector")]`;
+- e **não vê** as crates que não nomeia ⇒ **escondeu 19** na `ph2d-app-motion`.
+**Why:** o clippy por crate mede uma configuração de features que nenhuma build real produz — em
+workspace a unificação de features liga-as, e é essa a que o CI corre.
+**How to apply:** para CONTAR avisos (e para dizer a alguém quantos faltam), só vale a linha do
+`ship.sh`: `cargo clippy --workspace --all-targets --features ph2d-spike/bevy_ecs -- -D warnings`.
+O `-p` derivado do diff, acima, serve para o inner loop — não para um veredito. (HOWTO §2.17.)

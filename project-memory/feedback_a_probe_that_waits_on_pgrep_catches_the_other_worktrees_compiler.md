@@ -46,3 +46,17 @@ mais nada.
 (`pgrep -x`), nunca pela linha de comando — e antes de a armar, corra `pgrep -a<flag>` uma vez e
 **olhe o que ela apanhou**. Uma espera que nunca dispara lê-se exactamente como um trabalho que
 nunca acaba.
+
+## ⛔⛔ 3.ª INSTÂNCIA — 2026-09-12, e custou SETE HORAS de processos presos (integração da W2)
+
+O integrador esperou pelo `foundational-integrate.sh` com
+`until ! pgrep -f 'scripts/foundational-integrate' >/dev/null; do sleep 20; done` — exactamente a
+forma que a 2.ª instância acima proíbe. Cada espera casava com a **própria** linha de comando e com
+**todas as outras esperas**, e nunca terminava. Acumularam-se **16** processos, o mais velho com
+**7 h 51 min**, e o dono perguntou *«?»* porque a sessão parecia parada — o portão tinha terminado
+havia muito, sem veredito visível (a saída fora ainda por cima a um `| head`, que fechou o tubo).
+⚠️ **A cura já estava escrita aqui, com o nome (`pgrep -x`), e não foi lida.**
+⇒ para esperar por um comando lançado em segundo plano, **use a notificação do próprio lançamento**
+(o `run_in_background` avisa quando o processo sai) e leia o ficheiro de saída — nunca uma sonda por
+nome de processo. E nunca passe um portão por `| head`/`| tail`: perde-se o veredito e o código de
+saída.

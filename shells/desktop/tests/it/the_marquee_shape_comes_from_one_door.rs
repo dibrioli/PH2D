@@ -64,10 +64,14 @@ fn both_press_arms_ask_the_one_door_for_the_shape() {
 /// **A porta única lê o chip PEGAJOSO e o Ctrl** — as duas entradas, compostas uma vez.
 #[test]
 fn the_one_door_composes_the_sticky_chip_with_the_modifier() {
-    // ⚠️ **A agulha nomeia um ENDEREÇO, e o endereço mudou** (HOWTO §2.9): a lei saiu para
-    //    `crates/ph2d-app-vec/src/marquee.rs` na Fase B (2.ª volta). O `include_str!` falhou em
-    //    tempo de compilação, que é a metade boa da §2.6.
-    const SRC: &str = include_str!("../../../../crates/ph2d-app-vec/src/marquee.rs");
+    // ⚠️⚠️ **A agulha nomeia um ENDEREÇO, e este mudou DUAS vezes** (HOWTO §2.9). O módulo
+    //    `vec_marquee` saiu para `crates/ph2d-app-vec/src/marquee.rs` na Fase B (2.ª volta) —
+    //    mas o SUJEITO deste gate não foi com ele: `marquee_shape_for_press` é um `impl App`
+    //    (lê `vec_draw_config`, que é campo da `App`) e ficou na shell, agrupado em
+    //    `vec_app_bridge.rs`. ⛔ *Re-apontar uma agulha para onde o FICHEIRO foi, em vez de para
+    //    onde a LEI ficou, dá um gate que compila e reprova a correr* — foi o que aconteceu na
+    //    primeira redacção desta correcção.
+    const SRC: &str = include_str!("../../src/vec_app_bridge.rs");
     let f = at(SRC, "fn marquee_shape_for_press");
     let body = &SRC[f..];
     let end = at(body, "\n    }\n");

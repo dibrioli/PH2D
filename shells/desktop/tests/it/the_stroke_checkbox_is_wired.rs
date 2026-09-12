@@ -25,12 +25,25 @@ fn familia(rel: &str) -> String {
 }
 
 /// O fonte **sem comentários** — senão o gate aprova quem documenta a lei em vez de quem a obedece.
-fn code(rel: &str) -> String {
-    shell(rel)
-        .lines()
+fn sem_prosa(s: &str) -> String {
+    s.lines()
         .filter(|l| !l.trim_start().starts_with("//"))
         .collect::<Vec<_>>()
         .join("\n")
+}
+
+fn code(rel: &str) -> String {
+    sem_prosa(&shell(rel))
+}
+
+/// O mesmo, do lado da **crate da família** — o `vec_bindings` mudou-se para lá na Fase B (2.ª
+/// volta) e passou a chamar-se `bindings.rs`.
+///
+/// ⚠️ **A afirmação abaixo é de AUSÊNCIA**, e uma ausência medida sobre um ficheiro que não abre
+/// seria trivialmente verdadeira (HOWTO §2.8). Aqui não é: o [`familia`] entra em pânico quando o
+/// caminho deixa de descrever a árvore — e foi assim que esta correcção foi encontrada.
+fn code_familia(rel: &str) -> String {
+    sem_prosa(&familia(rel))
 }
 
 /// **Os quatro sítios**, e cada um mata a feature sozinho.
@@ -94,7 +107,7 @@ fn the_click_is_honoured_before_the_state_is_published() {
 #[test]
 fn only_one_publication_answers_whether_the_stroke_exists() {
     assert!(
-        !code("vec_bindings.rs").contains("stroke_exists"),
+        !code_familia("bindings.rs").contains("stroke_exists"),
         "o `stroke_exists` voltou ao `TokenBindings` - sao duas respostas a' MESMA pergunta, e a \
          que o artista ve^ e' a que envelhece"
     );

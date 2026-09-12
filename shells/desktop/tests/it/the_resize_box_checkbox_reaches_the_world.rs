@@ -67,8 +67,16 @@ fn the_world_is_written_before_the_panel_is_told() {
 /// `selected_resize_box` para MOSTRAR, `resizable_frame` para HONRAR.
 #[test]
 fn both_sides_ask_the_same_door() {
+    // ⚠️ **Os dois lados deixaram de morar na mesma árvore** (W2/L4 Fase B, 2.ª volta): o que
+    //    MOSTRA saiu para a crate da família; o que HONRA ainda está na shell. Um caminho
+    //    relativo único descrevia os dois e hoje não descreve nenhum — e este é o gémeo em
+    //    RUNTIME do `include_str!` (HOWTO §2.6): ele só falha quando o teste CORRE, logo o
+    //    `cargo check --all-targets` ficou verde sobre ele.
     for (path, what) in [
-        ("src/vec_resize_box_edit.rs", "o lado que MOSTRA"),
+        (
+            "../../crates/ph2d-app-vec/src/resize_box_edit.rs",
+            "o lado que MOSTRA",
+        ),
         ("src/vec_frame_resize.rs", "o lado que HONRA"),
     ] {
         let s = fs::read_to_string(path).unwrap_or_else(|_| panic!("{path}"));

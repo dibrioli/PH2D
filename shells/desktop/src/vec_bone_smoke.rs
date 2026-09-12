@@ -27,7 +27,7 @@
 use ph2d_ecs::Entity;
 use ph2d_vec_scene::ShapeKind;
 
-use crate::build_smoke::shape;
+use ph2d_vec_scene::cook_tinted as shape;
 
 /// ⭐⭐⭐ **A GEOMETRIA DO BRAÇO — uma tabela, dois consumidores.**
 ///

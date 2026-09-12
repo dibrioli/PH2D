@@ -91,6 +91,8 @@ pub mod overlay_diag;
 pub mod paint_stack;
 pub mod pick;
 pub mod shape_live;
+pub mod smoke_appearance;
+pub mod smoke_stack;
 pub mod snap;
 pub mod snap_labels;
 pub mod snap_sprites;

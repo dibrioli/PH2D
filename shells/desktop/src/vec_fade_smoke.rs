@@ -81,14 +81,14 @@ impl crate::App {
         let (plain, filtered): (VecPathId, VecPathId) = {
             let scene = &mut self.gfx.as_mut().expect("gfx").vec_scene;
             (
-                scene.push_path(crate::build_smoke::shape(
+                scene.push_path(ph2d_vec_scene::cook_tinted(
                     ShapeKind::Star,
                     [-5.0, -2.0],
                     [-1.0, 2.0],
                     &[5.0, 0.45],
                     [90, 170, 255],
                 )),
-                scene.push_path(crate::build_smoke::shape(
+                scene.push_path(ph2d_vec_scene::cook_tinted(
                     ShapeKind::Star,
                     [1.0, -2.0],
                     [5.0, 2.0],
@@ -114,7 +114,7 @@ impl crate::App {
                     .insert(Name::new(nome));
             }
             // ⭐ O brilho só na da DIREITA — a esquerda é o controlo.
-            let armed = crate::fx_live::set_filter(
+            let armed = ph2d_vec_entities::filter::set_filter(
                 &mut gfx.sim,
                 &self.vec_entities,
                 &[filtered],

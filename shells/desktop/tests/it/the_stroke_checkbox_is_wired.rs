@@ -12,6 +12,18 @@ fn shell(rel: &str) -> String {
     fs::read_to_string(&p).unwrap_or_else(|e| panic!("{}: {e}", p.display()))
 }
 
+/// O fonte de um ficheiro da **crate da família** (W2/L4 Fase B: o `stroke_present` saiu da shell).
+///
+/// ⚠️ Apontar para fora é legítimo e tem precedente (HOWTO §2.6) — os ~53 gates de arquitectura do
+/// `ph2d-editor-core` já varrem `shells/desktop/src` de fora. O que **não** é legítimo é um gate
+/// cujo caminho deixou de descrever a árvore: ele falha alto, e é a metade boa.
+fn familia(rel: &str) -> String {
+    let p = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../crates/ph2d-app-vec/src")
+        .join(rel);
+    fs::read_to_string(&p).unwrap_or_else(|e| panic!("{}: {e}", p.display()))
+}
+
 /// O fonte **sem comentários** — senão o gate aprova quem documenta a lei em vez de quem a obedece.
 fn code(rel: &str) -> String {
     shell(rel)
@@ -89,7 +101,7 @@ fn only_one_publication_answers_whether_the_stroke_exists() {
     // CONTROLO: a porta que ficou no lugar existe — senão este gate ficaria verde num produto que
     // perdeu a resposta em vez de a ter unificado.
     assert!(
-        shell("vec_stroke_present.rs").contains("pub(crate) fn selected_stroke_present("),
+        familia("stroke_present.rs").contains("pub fn selected_stroke_present("),
         "a porta unica da resposta sumiu"
     );
 }

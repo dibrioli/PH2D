@@ -18,7 +18,12 @@
 /// Os dois construtores de parâmetro de pele, e o que cada um faz com o glifo.
 const HALVES: [(&str, &str); 2] = [
     ("../src/widget_live.rs", "a ponte do canvas"),
-    ("../src/ui_panel_spec.rs", "o plano do painel gerado"),
+    // ⚠️ **As duas metades deixaram de morar na mesma árvore** (W2/L4 Fase B, 2.ª volta): o plano
+    //    do painel gerado saiu para a crate da família; a ponte do canvas ficou na shell.
+    (
+        "../../../crates/ph2d-app-vec/src/ui_panel_spec.rs",
+        "o plano do painel gerado",
+    ),
 ];
 
 #[test]
@@ -58,12 +63,17 @@ fn the_two_halves_read_the_glyph_through_one_door() {
 fn the_one_door_is_where_it_says_it_is() {
     let src = std::fs::read_to_string(
         std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("src")
+            .join("../../crates/ph2d-app-vec/src")
             .join("widget_icon.rs"),
     )
     .expect("a porta unica do glifo sumiu");
     assert!(
-        src.contains("pub(crate) fn icon_face("),
+        // ⚠️ **A agulha larga a VISIBILIDADE** (HOWTO §2.13): atravessar a fronteira obrigou
+        //    `pub(crate) fn` a virar `pub fn`, e uma agulha ancorada no modificador reprova sem
+        //    que a lei mude uma linha — *ela mediria visibilidade, e visibilidade é exactamente
+        //    o que uma fronteira nova muda por construção*. `fn icon_face(` sobrevive ao
+        //    próximo movimento.
+        src.contains("fn icon_face("),
         "a porta mudou de nome — os gates irmaos falhariam pela razao errada"
     );
 }

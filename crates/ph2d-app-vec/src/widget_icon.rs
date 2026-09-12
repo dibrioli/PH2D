@@ -66,7 +66,7 @@ const ICON_VIEWBOX: f64 = 24.0;
 /// bbox dela é degenerada num eixo só, o lado maior dá a escala, e o resultado é uma barra
 /// centrada — que é o desenho.
 #[must_use]
-pub(crate) fn icon_face(path: &VecPath) -> Option<BezPath> {
+pub fn icon_face(path: &VecPath) -> Option<BezPath> {
     let mut bp = build_bezpath(&path.cooked());
     if bp.elements().is_empty() {
         return None;

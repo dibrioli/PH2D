@@ -42,7 +42,7 @@ fn label_of(sim: &SimWorld, e: Entity) -> Option<String> {
 /// minúsculas, e tudo o que não é alfanumérico vira `_`. Duas rows de mesmo rótulo produzem a
 /// mesma chave — e isso é **correto e nomeado**: elas são o mesmo controle autorado duas vezes, e
 /// o gerador não é quem decide desempatar nomes que o artista repetiu.
-pub(crate) fn key_of(label: &str) -> String {
+pub fn key_of(label: &str) -> String {
     let mut k: String = label
         .chars()
         .map(|c| {
@@ -105,7 +105,7 @@ fn colour_of_path(scene: &VecScene, id: VecPathId) -> Option<[u8; 4]> {
 /// O comparando sai de [`colour_of`], a MESMA função que publica a row — duas leituras do
 /// preenchimento divergiriam no dia em que uma delas aprendesse sobre uma variante nova de
 /// [`ph2d_vec_scene::Paint`].
-pub(crate) fn paint_swatch_colour(scene: &mut VecScene, id: VecPathId, rgba: [u8; 4]) -> bool {
+pub fn paint_swatch_colour(scene: &mut VecScene, id: VecPathId, rgba: [u8; 4]) -> bool {
     if colour_of_path(scene, id) == Some(rgba) {
         return false;
     }
@@ -153,14 +153,14 @@ fn icon_of(sim: &SimWorld, scene: &VecScene, e: Entity) -> (Option<BezPath>, Opt
 /// VIVO quer a curva (`BezPath`) e o CÓDIGO GERADO quer texto (`to_svg`), porque um `const` não
 /// constrói uma curva. Derivar as duas de UMA varredura é o que impede o painel do artista e o
 /// painel compilado de descreverem árvores diferentes — a divergência que só uma screenshot revela.
-pub(crate) struct Authored {
+pub struct Authored {
     kind: WidgetKind,
     /// A forma que veste esta row — o caminho no documento.
     ///
     /// ⚠️ Ela existe para o retorno do PICKER: a swatch publica a cor da forma, e a cor que o
     /// artista escolhe tem de voltar para essa MESMA forma. Sem o caminho aqui, o único elo entre
     /// a row e o desenho seria o rótulo, e um rótulo não é um endereço.
-    pub(crate) path: Option<VecPathId>,
+    pub path: Option<VecPathId>,
     label: String,
     key: String,
     rgba: Option<[u8; 4]>,
@@ -243,7 +243,7 @@ fn walk(sim: &SimWorld, scene: &VecScene, e: Entity, out: &mut Vec<Authored>) {
 /// painel que contivesse a si próprio como primeira linha seria a árvore lida um nível acima do
 /// que ela é.
 #[must_use]
-pub(crate) fn authored(sim: &SimWorld, scene: &VecScene, frame: Entity) -> Vec<Authored> {
+pub fn authored(sim: &SimWorld, scene: &VecScene, frame: Entity) -> Vec<Authored> {
     let mut rows = Vec::new();
     let kids: Vec<Entity> = sim
         .world()
@@ -258,7 +258,7 @@ pub(crate) fn authored(sim: &SimWorld, scene: &VecScene, frame: Entity) -> Vec<A
 
 /// **O painel que a moldura `frame` descreve, em TEXTO** — a forma que o gerador escreve.
 #[must_use]
-pub(crate) fn of(sim: &SimWorld, scene: &VecScene, frame: Entity) -> PanelSpec {
+pub fn of(sim: &SimWorld, scene: &VecScene, frame: Entity) -> PanelSpec {
     let title = label_of(sim, frame).unwrap_or_default();
     let rows = authored(sim, scene, frame)
         .into_iter()
@@ -284,7 +284,7 @@ pub(crate) fn of(sim: &SimWorld, scene: &VecScene, frame: Entity) -> PanelSpec {
 
 /// **As rows RESOLVIDAS que o painel vivo pinta** — a outra representação da mesma leitura.
 #[must_use]
-pub(crate) fn live_rows(sim: &SimWorld, scene: &VecScene, frame: Entity) -> Vec<AuthoredRow> {
+pub fn live_rows(sim: &SimWorld, scene: &VecScene, frame: Entity) -> Vec<AuthoredRow> {
     authored(sim, scene, frame)
         .into_iter()
         .map(|a| AuthoredRow {
@@ -312,7 +312,7 @@ pub(crate) fn live_rows(sim: &SimWorld, scene: &VecScene, frame: Entity) -> Vec<
 /// Devolve `None` quando o alvo do picker não é uma row desta moldura — é o caso comum (as
 /// swatches do Painter, do Vector e da timeline usam o mesmo canal).
 #[must_use]
-pub(crate) fn picker_shape(
+pub fn picker_shape(
     sim: &SimWorld,
     scene: &VecScene,
     frame: Entity,
@@ -332,7 +332,7 @@ pub(crate) fn picker_shape(
 /// primeira. Escolher pela SELEÇÃO é o passo seguinte e é decisão de produto — hoje o artista tem
 /// uma, e inventar uma regra de desempate que ele não vê seria pior que a limitação.
 #[must_use]
-pub(crate) fn authored_frame(sim: &mut SimWorld, scene: &VecScene) -> Option<Entity> {
+pub fn authored_frame(sim: &mut SimWorld, scene: &VecScene) -> Option<Entity> {
     // O `query` devolve um `QueryState` PRÓPRIO, então o empréstimo mutável acaba aqui e a
     // varredura seguinte corre sobre um `&World` — que é o que o `authored` pede.
     let mut q = sim.world_mut().query::<(Entity, &ph2d_ecs::VecFrame)>();

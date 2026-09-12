@@ -83,6 +83,9 @@ pub mod marquee;
 pub mod pencil_input;
 pub mod resize_box_edit;
 pub mod shape_params;
+pub mod svg_import;
+pub mod ui_panel_spec;
+pub mod widget_icon;
 // ⭐ **O mapa mudou-se para a folha** (`line/shell-folhas`, 12/09): ele é a MESMA peça
 // partilhada um degrau acima — a `motion` e a `flip` consomem a ponte inteira, e uma peça que
 // três famílias usam não pode viver na crate de uma delas (ADR-0075). O re-export mantém os 18
@@ -103,6 +106,7 @@ pub mod shape_live;
 pub mod smoke_appearance;
 pub mod smoke_fade;
 pub mod smoke_stack;
+pub mod smoke_svg;
 pub mod snap;
 pub mod snap_labels;
 pub mod snap_sprites;

@@ -25,18 +25,18 @@ use std::path::Path;
 
 /// As extensões que este importador reclama. ⚠️ O `.svgz` é um `.svg` comprimido, e o usvg
 /// descomprime-o sozinho (a feature `svgz` da crate) — recusá-lo aqui seria uma recusa inventada.
-pub(crate) const SVG_EXTENSIONS: &[&str] = &["svg", "svgz"];
+pub const SVG_EXTENSIONS: &[&str] = &["svg", "svgz"];
 
 /// É um desenho vectorial? ⛔ **Não** passa pelo `is_supported_image_extension`: um `.svg` não é
 /// uma imagem neste app — se fosse, entraria como sprite e o artista receberia pixels.
-pub(crate) fn is_svg_file(p: &Path) -> bool {
+pub fn is_svg_file(p: &Path) -> bool {
     p.extension()
         .and_then(|e| e.to_str())
         .is_some_and(|e| SVG_EXTENSIONS.iter().any(|k| e.eq_ignore_ascii_case(k)))
 }
 
 /// O que a leitura de UM ficheiro produziu.
-pub(crate) enum SvgImportResult {
+pub enum SvgImportResult {
     Ok {
         name: String,
         shapes: usize,
@@ -61,7 +61,7 @@ fn nome_do_ficheiro(path: &Path) -> String {
 }
 
 /// **Lê um `.svg` e põe-no na cena**, centrado em `centro`.
-pub(crate) fn import_svg(
+pub fn import_svg(
     sim: &mut SimWorld,
     scene: &mut VecScene,
     map: &mut ph2d_vec_entities::entities::VecEntityMap,

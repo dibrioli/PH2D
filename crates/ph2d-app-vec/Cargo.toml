@@ -48,6 +48,16 @@ ph2d-vec-scene = { path = "../ph2d-vec-scene" }
 # volta achou estas: a lâmina do `cut_line` e o passo de *lazy mouse* do lápis. Dentro da shell as
 # duas eram dependência do binário e nada no ficheiro as declarava.
 ph2d-painter-brush = { path = "../ph2d-painter-brush" }
+# ⚠️ E TRES na 2.ª volta, com os mesmos ficheiros a virem da shell: o painel autorado, o gerador
+# de spec de painel, e o importador de SVG. ⭐ Sao SEIS invisiveis nesta linha ao todo -- o
+# numero e' a medida de quanto a shell escondia.
+ph2d-panel-authored = { path = "../ph2d-panel-authored" }
+ph2d-ui-codegen = { path = "../ph2d-ui-codegen" }
+ph2d-vec-svg = { path = "../ph2d-vec-svg" }
+# ⭐ E a SETIMA: a folha do nome unico (`line/shell-folhas`, 12/09) -- o importador de SVG baptiza
+# cada grupo e cada forma que traz, e essa era literalmente a peca que esta linha nomeou como o
+# seu bloqueador no handoff da Fase B.
+ph2d-unique-name = { path = "../ph2d-unique-name" }
 ph2d-vec-boolean = { path = "../ph2d-vec-boolean" }
 # ⭐ A cena `PH2D_VEC_FADE_SMOKE` autora uma track de opacidade. ⚠️ **Uma crate-motor IRMÃ não é a
 # shell** (ADR-0075) — é o mesmo precedente que destravou o fim da linha da `line/app-physics`,

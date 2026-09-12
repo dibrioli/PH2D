@@ -500,7 +500,7 @@ mod splice_smoke;
 mod stack_smoke;
 mod stagger_smoke;
 mod substrate_smoke;
-mod svg_import;
+pub(crate) use ph2d_app_vec::svg_import;
 mod svg_import_smoke;
 mod symmetry_live;
 /// A cena de smoke da SIMETRIA de desenho (`PH2D_BUILD_SMOKE=46`) — irmã de `build_smoke`.
@@ -556,7 +556,7 @@ mod ui_nested_smoke;
 mod ui_panel_smoke;
 /// **Que painel esta árvore descreve** (plano UI/UX W8b) — a porta única que lê a moldura
 /// autorada e devolve o `PanelSpec` que o gerador escreve.
-mod ui_panel_spec;
+pub(crate) use ph2d_app_vec::ui_panel_spec;
 /// A cena de smoke dos **ESTADOS DE UI** (`PH2D_BUILD_SMOKE=61`) — irmã de `build_smoke`.
 /// ⭐ A cena da BOOLEANA VIVA dentro de um ESTADO de UI (`PH2D_BUILD_SMOKE=74`) — a troca de
 /// operação que MORFA em vez de saltar, com os operandos a mover-se ao mesmo tempo.
@@ -736,7 +736,7 @@ mod weld_smoke;
 mod wetpaint_smoke;
 /// **O DESENHO É O GLIFO** — a porta única que normaliza a forma de um `IconButton` na caixa de
 /// 24×24. Ela é UMA porque o canvas e o codegen precisam do mesmo glifo por motivos diferentes.
-mod widget_icon;
+pub(crate) use ph2d_app_vec::widget_icon;
 /// **A PELE por-widget** (plano UI/UX W6.2) — uma forma marcada é pintada pelo pintor REAL do
 /// catálogo, no z dela. A ponte mora aqui porque só a shell alcança as duas metades.
 mod widget_live;

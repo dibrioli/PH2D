@@ -8,9 +8,9 @@
 | | |
 |---|---|
 | branch | `line/app-vec` |
-| HEAD | `049b80ec389861e6eca91b7f7ab19c7fdda11a9b` (+1 commit de docs) |
+| HEAD | `b0775b193e4dc49629047bf10adabeaeaab83254` |
 | merge-base | `2dedac80a92f2ec62f9e7412c83192ed6315cb56` |
-| commits | **3** |
+| commits | **4** |
 | diffstat | 47 ficheiros, +219 / −147 (mais 71 renomeações/movimentos) |
 
 ## §2 — O que saiu, medido

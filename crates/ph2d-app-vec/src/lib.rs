@@ -13,34 +13,54 @@
 //! janela, `gfx`, painéis, a captura do undo — **fica lá**, e isso é o ADR-0075 outra vez (estado
 //! de família é recurso/componente do ECS; o resto é composição da raiz).
 //!
-//! # ⚠️ Porque ela começa com OITO ficheiros e não com cento e vinte e nove
+//! # ⚠️ Porque ela tem TRINTA E TRÊS ficheiros e não cento e vinte e sete
 //!
-//! O conjunto que pode sair **tem de ser fechado sob toda aresta de compilação**, e medi-lo deu
-//! quatro respostas, cada uma menor que a anterior — todas as três primeiras **a favor de mover
-//! demasiado**:
+//! O conjunto que pode sair **tem de ser fechado sob toda aresta de compilação**. A Fase A mediu-o
+//! quatro vezes (71 → 29 → 15 → **8** ficheiros), cada resposta menor que a anterior e **as três
+//! primeiras a favor de mover demasiado**; a Fase B mediu-o outras quatro, e o padrão repetiu-se:
 //!
-//! | régua | move | o que ela esquecia |
-//! |---|---:|---|
-//! | «não toca `App` nem `crate::<mod>` de fora» | 71 ficheiros / 18 585 LOC | tudo o resto abaixo |
-//! | + fecho sob `crate::vec_x` (quem refere quem fica, fica) | 29 / 7 621 | o hub `vec_entities` |
-//! | + um `_tests.rs` não sai sem quem o **declara** | 15 / 3 055 | o sentido filho → pai |
-//! | **+ `#[path]` é aresta DURA nos DOIS sentidos** | **8 / 1 843** | — |
+//! | a régua da Fase B corrigiu-se assim | efeito |
+//! |---|---|
+//! | `^impl App` perdia os **10** `impl crate::App` — são **13**, não 3 (HOWTO §2.1) | subestimava |
+//! | `\bApp\b` no ficheiro CRU acusa 23 e **7** mencionam-no só em doc-comment (§2.12) | 69 → **85** livres |
+//! | `crate::render_loop::vector_bridge` é ficheiro **desta** família na pasta do laço | +6 |
+//! | um movido não pode referir um da família que **FICOU** — `vec_entities` prendia **30 de 50** | 50 → **21** |
 //!
-//! A última régua é a que importa e foi a que mordeu: `vec_gizmo_view.rs` **declara**
-//! `#[path = "vec_gizmo_pick.rs"]`, e esse toca `App` ⇒ o pai não pode sair. *Um `mod` declarado
-//! por `#[path]` é parte da árvore de módulos do pai, não uma referência que se re-aponta.*
+//! ⛔⛔ **E o bloqueador de fundo NÃO é a `App`.** Medido: curar todo o acoplamento a `App` move
+//! **+4 ficheiros / 615 LOC** e nada mais, porque os 9 que ela prende batem imediatamente no
+//! `vec_entities`. O grafo da família tem **uma raiz só**:
 //!
-//! ⇒ **A família `vec` não sai da shell por incrementos**, e o número é 8 de 129. Os três
-//! bloqueadores estão medidos e nomeados no handoff de integração: `App` (23 ficheiros),
-//! `crate::<mod>` de fora da família (34) e o efeito de cascata dos dois (34 + 23). A cura de
-//! qualquer um deles cascateia — é isso que a Fase B herda.
+//! ```text
+//! vec_entities  ──blocked by──▶  name_unique::unique_name
+//!      │                         morph_set::is_set_member
+//!      │                         render_loop::off_canvas::is_off_canvas
+//!      ├──#[path]──▶ vec_zorder ──▶ vec_zorder_fixpoint_tests ──▶ undo · hero_intents ·
+//!      │                                                          project_library · preview_drive
+//!      └──referido por 42 ficheiros da família
+//! ```
 //!
-//! # ⛔ O que NÃO se conclui daqui
+//! Os três predicados são **puros sobre o ECS** e pertencem a outras famílias ⇒ tomá-los violaria o
+//! [HOWTO §1.2] (*duas famílias que partilham código partilham uma FOLHA, nunca uma delas à outra*).
+//! ⚠️ **O `name_unique` e o `preview_drive` são DOIS dos três que a `line/app-physics` nomeou** como
+//! folhas partilhadas de linha própria — esta família confirma-os **independentemente**.
 //!
-//! Que a extracção não vale a pena. O que estes 8 ficheiros compram é o **molde provado**: um
-//! `Cargo.toml` medido dependência a dependência, a re-exportação que poupa a churn de
-//! `crate::vec_x` na shell, e os **dois gates que nomeiam um ficheiro da família por caminho de
-//! string** — que é a armadilha que a W1 pagou e que nenhuma leitura de `crate::` vê.
+//! ⛔ **E a cura barata é pior que a doença, com número:** dar a `vec_entities::sync` um parâmetro
+//! para o nome único custa **168 sítios de chamada**, espalhados por `bool_live`, `blend_live`,
+//! `connector_live`, `envelope_live`, `instance_*`, `label_live` — as famílias da 3.ª rodada. Um
+//! parâmetro que atravessa 168 sítios de cinco famílias não é uma assinatura: é uma wave.
+//!
+//! ⇒ **o que falta desta família não é trabalho desta linha.** A lista, com o preço de cada item,
+//! está no handoff da Fase B.
+//!
+//! # O molde que estes ficheiros provam
+//!
+//! Um `Cargo.toml` medido dependência a dependência (**quatro** eram invisíveis até a crate
+//! existir — `ph2d-core`, `ph2d-tool-vector`, `ph2d-vec-blend`, `ph2d-vec-fill`; o piloto achou
+//! quatro também), a **re-exportação com alias** que mantém os ~190 `crate::vec_x` da shell byte a
+//! byte iguais, e as duas armadilhas de caminho que só a corrida revela (§2.6): o `include_str!`
+//! que falha alto e o `CARGO_MANIFEST_DIR` que **não** falha.
+//!
+//! [HOWTO §1.2]: ../../../docs/IntegracaoMultiAgente/HOWTO_partir_uma_familia_da_shell.md
 
 pub mod appearance;
 pub mod blend;

@@ -42,7 +42,7 @@ fn pin(sim: &mut SimWorld, name: &str, a: &str, b: &str) {
 
 /// Os bits que a semeadura produziu, ordenados — o oráculo é o CONJUNTO, não a
 /// ordem em que `jointed_group` os devolveu.
-fn seeded(out: &[crate::app_state::GroupDragSnapshot]) -> Vec<u64> {
+fn seeded(out: &[ph2d_editor::GroupDragSnapshot]) -> Vec<u64> {
     let mut v: Vec<u64> = out.iter().map(|s| s.entity_bits).collect();
     v.sort_unstable();
     v

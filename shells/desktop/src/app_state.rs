@@ -1758,26 +1758,13 @@ pub(crate) struct App {
     /// / Rotate (target = Global) applies around the shared global
     /// pivot. Cleared on PointerUp (and on every drag-open that opens
     /// a single-sprite drag).
-    pub(crate) group_drag_starts: Vec<GroupDragSnapshot>,
+    pub(crate) group_drag_starts: Vec<ph2d_editor::GroupDragSnapshot>,
 }
 
-/// Onda 2C.4: per-sprite start snapshot for group transforms. Captured
-/// once at PointerDown — `advance_gizmo_drag` references it without
-/// re-reading PresentWorld each frame (avoids compounding mutations).
-#[derive(Copy, Clone, Debug)]
-pub(crate) struct GroupDragSnapshot {
-    pub(crate) entity_bits: u64,
-    pub(crate) start_transform: ph2d_editor::TransformSnapshot,
-    /// World transform of this entity's parent chain (Enio 2026-05-26
-    /// fix: writes into the entity's LOCAL Transform must compensate
-    /// for ancestor rotation/scale, or group-drags on children of
-    /// rotated parents move along the local axis instead of world).
-    /// Consumido em `gizmo_drag.rs` para Translate (world delta → local
-    /// via inverse parent) e Global rotate/scale (new world translation
-    /// → local). Local rotate/scale aditivo continua funcionando sob
-    /// composição sem precisar de parent_world.
-    pub(crate) parent_world: ph2d_editor::TransformSnapshot,
-}
+// ⭐ `GroupDragSnapshot` mudou-se para [`ph2d_editor::GroupDragSnapshot`] (W2/L2 Fase C,
+// 2026-09-12): ele é dados puros sobre dois `TransformSnapshot`, que já viviam lá, e era a
+// **única âncora de PRODUTO** que prendia a autoria de juntas da física dentro da shell.
+// ⚠️ O TIPO saiu; o CAMPO `group_drag_starts` acima fica — a shell é quem possui o arrasto.
 
 /// Fase 0f: canvas rubber-band box-select state. Cleared on Up.
 #[derive(Copy, Clone, Debug)]

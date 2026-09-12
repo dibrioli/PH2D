@@ -74,7 +74,7 @@
 
 use ph2d_ecs::{ChildOf, Entity, SimWorld, Transform};
 
-use crate::app_state::GroupDragSnapshot;
+use ph2d_editor::GroupDragSnapshot;
 
 /// Preenche `out` (o `App::group_drag_starts`) para um gizmo drag que acabou de
 /// abrir: os OUTROS selecionados e, se `carry_rig`, o rig articulado do

@@ -127,7 +127,8 @@ pub fn installed_registry() -> Option<&'static registry::Registry> {
 pub use floating_panel::{FloatingPanel, PanelAction, PanelAnchor, PanelControl, PanelTab, ToolId};
 pub use gizmo::{
     GizmoCamera, GizmoDragKind, GizmoDragState, GizmoHit, GizmoModifiers, GizmoSnap, GizmoTarget,
-    GizmoView, HANDLE_SIZE_PX, PointGizmoView, TransformSnapshot, anchor_pivot_world,
+    GizmoView, GroupDragSnapshot, HANDLE_SIZE_PX, PointGizmoView, TransformSnapshot,
+    anchor_pivot_world,
     compose_snapshot, compute_gizmo_transform, gizmo_kind_for_id, is_gizmo_handle_id, is_gizmo_id,
     live_anchor, move_pivot_transform, paint_gizmo_outline, paint_point_gizmo, paint_sprite_gizmo,
     paint_sprite_gizmo_keyed, pivot_snap_candidates, world_delta_to_local,

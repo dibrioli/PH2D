@@ -60,6 +60,36 @@ impl TransformSnapshot {
     };
 }
 
+/// Onda 2C.4: per-sprite start snapshot for group transforms. Captured
+/// once at PointerDown — `advance_gizmo_drag` references it without
+/// re-reading PresentWorld each frame (avoids compounding mutations).
+///
+/// ⚠️ **Vive aqui porque o CONTEÚDO dele vive aqui** (W2/L2 Fase C, 2026-09-12).
+/// Ele é dados puros sobre dois [`TransformSnapshot`] — não sabe o que é uma
+/// `App` — e morou em `shells/desktop/src/app_state.rs` só por inércia: foi
+/// escrito pelo gizmo, que era da shell. Isso fazia dele a **única âncora de
+/// PRODUTO** que prendia a autoria de juntas da física dentro da shell (a
+/// `physics/joint_rig_drag.rs` preenche um `Vec<GroupDragSnapshot>`), e uma
+/// família não pode sair de casa por causa de uma struct de três campos.
+///
+/// ⚠️ **O TIPO mudou-se; o CAMPO não.** O `App::group_drag_starts` continua na
+/// shell, que é quem possui o estado de um arrasto em curso — o que atravessa a
+/// fronteira é o vocabulário, nunca o dono.
+#[derive(Copy, Clone, Debug)]
+pub struct GroupDragSnapshot {
+    pub entity_bits: u64,
+    pub start_transform: TransformSnapshot,
+    /// World transform of this entity's parent chain (Enio 2026-05-26
+    /// fix: writes into the entity's LOCAL Transform must compensate
+    /// for ancestor rotation/scale, or group-drags on children of
+    /// rotated parents move along the local axis instead of world).
+    /// Consumido em `gizmo_drag.rs` para Translate (world delta → local
+    /// via inverse parent) e Global rotate/scale (new world translation
+    /// → local). Local rotate/scale aditivo continua funcionando sob
+    /// composição sem precisar de parent_world.
+    pub parent_world: TransformSnapshot,
+}
+
 /// Onda 2C: which gizmo the user clicked. Drives `advance_gizmo_drag`'s
 /// branch between primary-only, group-with-global-pivot, and group-
 /// with-local-pivots transforms.

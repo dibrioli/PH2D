@@ -41,7 +41,9 @@ pub mod transform;
 mod tests;
 
 pub use camera::{GizmoCamera, GizmoModifiers, GizmoSnap};
-pub use drag::{GizmoDragKind, GizmoDragState, GizmoHit, GizmoTarget, TransformSnapshot};
+pub use drag::{
+    GizmoDragKind, GizmoDragState, GizmoHit, GizmoTarget, GroupDragSnapshot, TransformSnapshot,
+};
 pub use hit::{gizmo_kind_for_id, ids, is_gizmo_handle_id, is_gizmo_id};
 pub use paint::{
     GizmoView, HANDLE_SIZE_PX, paint_gizmo_outline, paint_sprite_gizmo, paint_sprite_gizmo_keyed,

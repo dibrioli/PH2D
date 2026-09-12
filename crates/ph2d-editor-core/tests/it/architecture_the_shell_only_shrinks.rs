@@ -56,9 +56,16 @@ use std::path::{Path, PathBuf};
 /// nomeadas por assunto) → **381 328** / 1 521 (12/09, a **2.ª volta** da Fase B da `flip`: 53
 /// ficheiros, e com eles os CINCO que a `line/app-motion` tinha nomeado como bloqueadores dela) →
 /// **373 937** / 1 498 (12/09, a 2.ª volta da `vec`: 16 ficheiros, e `"vec"` sai da catraca das
-/// famílias sem roteador). O tecto é o medido mais a [`FOLGA_DE_COMPOSICAO`].
+/// famílias sem roteador) → **262 540** / 1 040 (12/09, **FASE C da `motion`**: 421 ficheiros, a
+/// maior família da wave, e com ela a catraca das famílias sem roteador MORREU — ver
+/// `ph2d-app-registry-init`). O tecto é o medido mais a [`FOLGA_DE_COMPOSICAO`].
 ///
-/// ⭐ **Em dois dias a shell caiu de 526 809 para 373 937 — `−152 872`, `−29,0 %`.**
+/// ⭐⭐⭐ **Em dois dias a shell caiu de 526 809 para 262 540 — `−264 269`, `−50,2 %`.** Metade da
+/// unidade de compilação que era o tecto do relógio deste repo deixou de existir ali.
+///
+/// ⚠️ **A `motion` sozinha vale mais do que as duas primeiras rodadas juntas** (`−111 397` contra
+/// `−61 704` da Fase A) — e ela esteve BLOQUEADA duas voltas seguidas por `632` linhas de outra
+/// família. *O tamanho de uma família não prevê a ordem em que ela pode sair; o FECHO dela prevê.*
 ///
 /// ⚠️ **Esta recontagem NÃO precisou de `cargo fmt --all`** — a árvore combinada das duas linhas
 /// chegou já formatada (`--check` limpo), e é por isso que este número é o mesmo antes e depois. A
@@ -68,7 +75,7 @@ use std::path::{Path, PathBuf};
 /// ⛔ **Nenhuma LINHA lhe toca** — é um número que soma entre linhas, logo CONTA-SE, nunca se
 /// escolhe (`CLAUDE.md` §5.0): com cinco linhas a escrevê-lo o merge fica com um deles e nenhum
 /// está certo, em silêncio. Quem o reconta é o integrador, sobre a árvore combinada.
-const TETO_LOC: usize = 377_937;
+const TETO_LOC: usize = 266_540;
 
 /// Quanto a shell pode crescer acima do medido antes de o gate reprovar — a margem da raiz de
 /// composição, **não** espaço para um módulo.

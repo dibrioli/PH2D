@@ -51,7 +51,19 @@ Estas entram em **todos** os blocos. Não são repetição: são o que a Fase A 
    **reprovar na sua worktree** assim que você tirar código (metade da obsolescência: *«a catraca já
    não descreve a árvore»*) — **isso é esperado e é o seu marcador de progresso**; escreva o número
    medido no handoff, não no ficheiro.
-2. ⛔ **Se precisar de um SEXTO método no `AppHost` — PARE e reporte com a lista.** O HOWTO §5.3 e a
+2. ✅ **RESPONDIDO PELA BATEDORA (11/09): as 5 portas do `AppHost` CHEGAM — zero sextos métodos, e
+   nenhum é pedido.** A `line/app-physics` correu a família que mais toca a `App` (126 membros, 22
+   `impl App`) e não precisou de estender o substrato.
+   ⭐⭐ **E o achado útil não é o «sim» — é o que PARECIA precisar da `App` e não precisava:**
+   - **três folhas residentes na shell, partilhadas entre famílias** (`inspector_ordering`,
+     `preview_drive`, `name_unique` — 11 / 38 / 14 consumidores de famílias diferentes). São
+     **puras**; ficaram na shell por PARTILHA, não por acoplamento. ⇒ se a sua família tropeçar
+     numa destas, **não é porta e não é sua**: reporte, é linha própria;
+   - **os três gestos de corpo** (`body_fk`/`body_grab`/`body_pose`, que eram `impl App`) queriam
+     **três tipos** que a `App` por acaso segurava — viraram funções livres.
+   ⇒ ⭐ **Antes de pedir porta, escreva o que a função PRECISA em tipos.** Se a resposta é *«três
+   coisas que a `App` segura»*, não é porta — **é assinatura**.
+   ⛔ **Ainda assim: se depois disto precisar mesmo de um SEXTO método — PARE e reporte com a lista.** O HOWTO §5.3 e a
    §1.5 dizem-no: *se a sua família precisa de um método por campo da `App` que hoje toca, ela não
    precisa de um trait maior — precisa de tirar o campo da `App`.* Estender o substrato é decisão do
    integrador, nunca de cinco linhas em paralelo.

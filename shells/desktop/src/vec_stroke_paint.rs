@@ -170,7 +170,7 @@ pub(crate) fn set_art(
     art: ph2d_vec_scene::VecPathId,
     object_of: &dyn Fn(ph2d_vec_scene::VecPathId) -> Vec<ph2d_vec_scene::VecPathId>,
 ) -> bool {
-    if crate::texture_pattern_live::art_members(host, art, object_of).is_empty() {
+    if ph2d_vec_art_live::pattern::art_members(host, art, object_of).is_empty() {
         return false;
     }
     let Some(cur) = scene

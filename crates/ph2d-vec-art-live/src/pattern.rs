@@ -104,7 +104,7 @@ struct Key {
 /// ⚠️ O guarda do canvas (`input_dispatch`) só barra `guide == host` — clicar um **irmão do mesmo
 /// grupo** passa por ele. É por isso que a recusa tem de viver aqui.
 #[must_use]
-pub(crate) fn art_members(
+pub fn art_members(
     host: VecPathId,
     art: VecPathId,
     object_of: &dyn Fn(VecPathId) -> Vec<VecPathId>,
@@ -190,7 +190,7 @@ fn art_pose(art: &[VecPath], pose_of: &dyn Fn(VecPathId) -> Xform) -> Vec<[f64; 
 /// ainda não foi escolhida"* e *"a arte foi apagada"* pedem frases opostas — uma convida, a outra
 /// alarma. Hoje responde o ESTADO, e o painel escolhe a frase.
 #[must_use]
-pub(crate) fn art_state(
+pub fn art_state(
     scene: &VecScene,
     host: VecPathId,
     source: &PatternSource,
@@ -208,7 +208,7 @@ pub(crate) fn art_state(
 
 /// Os ladrilhos de padrão da cena, assados e memoizados.
 #[derive(Default)]
-pub(crate) struct TexturePatternLive {
+pub struct TexturePatternLive {
     tiles: PatternTiles,
     keys: BTreeMap<(VecPathId, PatternSlot), Key>,
 }
@@ -217,7 +217,7 @@ impl TexturePatternLive {
     /// Os ladrilhos deste quadro — o que o [`ph2d_vec_render::dispatch`] injecta no z das formas.
     ///
     /// Vazio = nenhum padrão resolvido, e toda forma com `Paint::Pattern` pinta a `fallback` dela.
-    pub(crate) fn tiles(&self) -> &PatternTiles {
+    pub fn tiles(&self) -> &PatternTiles {
         &self.tiles
     }
 
@@ -229,7 +229,7 @@ impl TexturePatternLive {
     /// assinatura e tornaria **todo** gate deste memo dependente de uma placa; com a injecção, o
     /// quadro passa a porta única [`crate::motion::motion_object_bake::bake_rgba`] e os gates passam um
     /// bitmap sintético. *Um memo que só se pode medir com GPU é um memo que não se mede.*
-    pub(crate) fn recook(
+    pub fn recook(
         &mut self,
         scene: &VecScene,
         assets: &AssetDb,
@@ -393,17 +393,17 @@ fn art_of(
 }
 
 #[cfg(test)]
-#[path = "texture_pattern_live_tests.rs"]
+#[path = "pattern_tests.rs"]
 mod tests;
 // ⚠️ **Irmão por RESPONSABILIDADE, não por tamanho** — o de cima mede o MEMO, este mede o que é
 // próprio de a arte vir do DOCUMENTO (ciclo, re-assado ao editar, pose dos membros de um grupo). O
 // corte foi imposto pelo tecto de LOC, mas a linha dele é o assunto: um gate novo sabe onde nasce.
 #[cfg(test)]
-#[path = "texture_pattern_live_shape_tests.rs"]
+#[path = "pattern_shape_tests.rs"]
 mod shape_tests;
 
 /// ⭐ **Os gates do vínculo MORTO** (plano 33, W11), num irmão — o corte é por responsabilidade:
 /// o [`tests`] mede o memo do assado, este mede o que acontece quando a arte deixa de existir.
 #[cfg(test)]
-#[path = "texture_pattern_art_missing_tests.rs"]
+#[path = "pattern_art_missing_tests.rs"]
 mod art_missing_tests;

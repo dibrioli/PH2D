@@ -174,7 +174,7 @@ impl FxLive {
             // ⭐ **A arte dos pincéis, UMA vez por re-cook** — e com a expansão de objecto, que só
             // aqui é alcançável (o `cook_batch` não recebe o mundo). Resolvê-la por LOTE seria a
             // mesma resposta N vezes.
-            let brushes = crate::brush_live::resolve(
+            let brushes = ph2d_vec_art_live::brush::resolve(
                 scene,
                 &|id| ph2d_vec_entities::entities::object_selection_for(sim, scene, map, id),
                 xforms,

@@ -114,7 +114,7 @@ fn a_scene_without_brushes_costs_nothing() {
 /// Report do Enio (2026-08-30) — ele pediu-o para a estampa, e o pincel é a mesma metade noutra
 /// tinta. O documento endereça a arte por um `VecPathId` e um grupo **não tem um**: o que muda é a
 /// **resolução**, e ela passa pela porta que a estampa já usa
-/// ([`crate::texture_pattern_live::art_members`]).
+/// ([`crate::pattern::art_members`]).
 ///
 /// # As duas metades
 ///

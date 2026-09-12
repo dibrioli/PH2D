@@ -518,7 +518,7 @@ pub(crate) fn bake_rgba_many(
             //
             // Medido: com um grupo de 2, a vista emitia `160` cópias e o assado `80`, de uma cor só.
             // *Uma fronteira declarada sem se medir se ela existe é uma fronteira inventada.*
-            &crate::brush_live::resolve(scene, object_of, xforms),
+            &ph2d_vec_art_live::brush::resolve(scene, object_of, xforms),
             // ⛔ **O ESTILO DO QUADRO fica de fora, e é MEDIDO, não presumido.** O chamador tem o
             // `VecViewState` em mãos (o `vec_view` do quadro), então a fronteira não é de alcance:
             // é do MEMO. Este assado é memoizado pelo `texture_pattern_live`, cuja chave não

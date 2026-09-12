@@ -5762,6 +5762,7 @@ dependencies = [
  "ph2d-ui-testkit",
  "ph2d-unique-name",
  "ph2d-untangle",
+ "ph2d-vec-art-live",
  "ph2d-vec-blend",
  "ph2d-vec-boolean",
  "ph2d-vec-connect",
@@ -8472,6 +8473,19 @@ dependencies = [
 [[package]]
 name = "ph2d-untangle"
 version = "0.0.0"
+
+[[package]]
+name = "ph2d-vec-art-live"
+version = "0.0.0"
+dependencies = [
+ "ph2d-asset",
+ "ph2d-panel-vector",
+ "ph2d-vec-pattern",
+ "ph2d-vec-render",
+ "ph2d-vec-scene",
+ "ph2d-vector",
+ "postcard",
+]
 
 [[package]]
 name = "ph2d-vec-blend"

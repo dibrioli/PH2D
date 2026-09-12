@@ -193,7 +193,7 @@ pub(crate) fn art_dims(
         // não havia arte"*. Medir uma arte que o desenho vai recusar gravaria um `size` errado
         // **para sempre** — a arte seguinte, já válida, não voltaria a re-derivá-lo.
         PatternSource::Shape(id) => {
-            let membros = crate::texture_pattern_live::art_members(host, *id, object_of);
+            let membros = ph2d_vec_art_live::pattern::art_members(host, *id, object_of);
             if membros.is_empty() {
                 return None;
             }

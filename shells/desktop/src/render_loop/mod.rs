@@ -8376,7 +8376,7 @@ impl crate::App {
                             // existir e a arte ser recusada na mesma, e o botão dizia *"Change
                             // Shape…"* sobre um traço que pinta a cor de recurso, sem mensagem.
                             has_art: b.art.is_some_and(|a| {
-                                !crate::texture_pattern_live::art_members(sel, a, &|id| {
+                                !ph2d_vec_art_live::pattern::art_members(sel, a, &|id| {
                                     ph2d_vec_entities::entities::object_selection_for(
                                         sim,
                                         vec_scene,

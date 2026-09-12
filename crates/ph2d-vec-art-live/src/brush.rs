@@ -1,5 +1,5 @@
 //! ⭐⭐⭐ **A ARTE dos pincéis da cena, resolvida por quadro** (plano 36, W3) — irmão do
-//! [`crate::texture_pattern_live`], e pela mesma razão que ele existe.
+//! [`crate::pattern`], e pela mesma razão que ele existe.
 //!
 //! # Porque a resolução mora na shell
 //!
@@ -42,7 +42,7 @@
 //! **93%** do total. A `S = 200` ela é ruído, e é por isso que a acusação se lê correcta ali.
 //!
 //! ⭐ O memo paga-se **881–1484×** (comparar a chave: `12,9 ns` a `G=1`, `349,6 ns` a `G=16`).
-//! Instrumento: [`crate::brush_live_cost_probe`].
+//! Instrumento: [`crate::brush_cost_probe`].
 
 use ph2d_vec_render::BrushArts;
 use ph2d_vec_scene::{VecPath, VecPathId, VecScene};
@@ -74,9 +74,9 @@ struct Key {
     pose: Vec<[f64; 6]>,
 }
 
-/// O memo da arte dos pincéis — irmão do [`crate::texture_pattern_live::TexturePatternLive`].
+/// O memo da arte dos pincéis — irmão do [`crate::pattern::TexturePatternLive`].
 #[derive(Default)]
-pub(crate) struct BrushLive {
+pub struct BrushLive {
     arts: BrushArts,
     keys: BTreeMap<VecPathId, Key>,
 }
@@ -87,7 +87,7 @@ impl BrushLive {
     /// ⚠️ A chave é montada **sem** cozinhar (o `cooked()` é 95–98% do custo): ela lê o `VecPath`
     /// autorado, que é o que o `cooked()` consome. Cozinhar para decidir se é preciso cozinhar seria
     /// o memo a pagar exactamente o que ele existe para evitar.
-    pub(crate) fn resolve(
+    pub fn resolve(
         &mut self,
         scene: &VecScene,
         object_of: &dyn Fn(VecPathId) -> Vec<VecPathId>,
@@ -103,7 +103,7 @@ impl BrushLive {
             else {
                 continue;
             };
-            let membros = crate::texture_pattern_live::art_members(path.id, alvo, object_of);
+            let membros = crate::pattern::art_members(path.id, alvo, object_of);
             if membros.is_empty() {
                 continue;
             }
@@ -143,7 +143,7 @@ impl BrushLive {
 /// ⚠️ Fica para quem resolve **uma vez** (o assado do Motion, o re-cook do FX): ali um memo não tem
 /// onde viver, e a resposta é pedida uma vez por gesto, não por quadro.
 #[must_use]
-pub(crate) fn resolve(
+pub fn resolve(
     scene: &VecScene,
     object_of: &dyn Fn(VecPathId) -> Vec<VecPathId>,
     xforms: &ph2d_vec_scene::VecXforms,
@@ -177,7 +177,7 @@ pub(crate) fn resolve(
 ///
 /// ⛔ **O guarda de ciclo é a primeira linha**, e não uma verificação a jusante: a forma não pode
 /// ser o próprio pincel. ⚠️ E ele passou a ser sobre **PERTENÇA**, pela mesma porta que a estampa
-/// usa ([`crate::texture_pattern_live::art_members`]): com um grupo, o anfitrião pode ser um
+/// usa ([`crate::pattern::art_members`]): com um grupo, o anfitrião pode ser um
 /// **membro** da arte, e aí desenhá-lo exigiria as cópias, as cópias exigiriam a arte, e a arte
 /// seria ele. *O sintoma não seria um erro: seria o app a parar.*
 ///
@@ -192,7 +192,7 @@ fn art_of(
     object_of: &dyn Fn(VecPathId) -> Vec<VecPathId>,
     xforms: &ph2d_vec_scene::VecXforms,
 ) -> Option<Vec<VecPath>> {
-    let membros = crate::texture_pattern_live::art_members(host, art, object_of);
+    let membros = crate::pattern::art_members(host, art, object_of);
     let out: Vec<VecPath> = membros
         .iter()
         .filter_map(|m| {
@@ -219,5 +219,5 @@ fn art_of(
 }
 
 #[cfg(test)]
-#[path = "brush_live_tests.rs"]
+#[path = "brush_tests.rs"]
 mod tests;

@@ -122,12 +122,6 @@ mod bool_smoke;
 /// porque o `restyle_selected_strokes` recusa quem não tem traço, e essa recusa está CERTA: ele
 /// corre por quadro, e criar ali vestiria toda forma selecionada sem ninguém pedir.
 mod brush_corner_smoke;
-mod brush_live;
-/// SONDA (`--ignored`): o RELOGIO do `brush_live::resolve` por quadro — a acusacao
-/// `O(P x G)` sem memo que o handoff de `59a80bd6e` deixou aberta SEM relogio.
-#[cfg(test)]
-#[path = "brush_live_cost_probe.rs"]
-mod brush_live_cost_probe;
 mod brush_smoke;
 mod bucket_smoke;
 mod buffer_smoke;
@@ -513,10 +507,6 @@ mod text_path_smoke;
 mod text_wrap_smoke;
 /// **Autorar a lei de um padrão de textura** (plano 33, W5) — a porta da secção Pattern.
 mod texture_pattern_edit;
-/// **O ASSADO dos padrões de TEXTURA** (plano 33, W4) — ⚠️ não confundir com o `pattern_live`,
-/// que é o *Pattern Along Path* (doc 23): aquele copia um motivo ao longo de uma guia, este é a
-/// TINTA de uma forma.
-mod texture_pattern_live;
 /// **A porta que o chip *Tile* abre** (plano 33, W4) — escolher a arte de um padrão.
 mod texture_pattern_pick;
 /// **A cena de smoke do Texture Pattern** (`PH2D_BUILD_SMOKE=76`, plano 33).
@@ -1092,8 +1082,8 @@ impl App {
             symmetry_live: crate::symmetry_live::SymmetryLive::default(),
             pattern_live: crate::pattern_live::PatternLive::default(),
             fx_live: crate::fx_live::FxLive::default(),
-            texture_pattern_live: crate::texture_pattern_live::TexturePatternLive::default(),
-            brush_live: crate::brush_live::BrushLive::default(),
+            texture_pattern_live: ph2d_vec_art_live::pattern::TexturePatternLive::default(),
+            brush_live: ph2d_vec_art_live::brush::BrushLive::default(),
             texture_pattern_scratch: None,
             fx_silhouette: crate::fx_silhouette::FxSilhouette::default(),
             vec_expand_knobs: (0, 2),

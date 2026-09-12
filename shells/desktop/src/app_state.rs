@@ -1478,9 +1478,9 @@ pub(crate) struct App {
     /// componente), e isto são os pixels derivados dela, injetados no z da forma.
     pub(crate) fx_live: crate::fx_live::FxLive,
     /// **Os LADRILHOS de padrão de TEXTURA deste quadro** (plano 33, W4) — assados e memoizados.
-    pub(crate) texture_pattern_live: crate::texture_pattern_live::TexturePatternLive,
-    /// O memo da arte dos pincéis — ver [`crate::brush_live::BrushLive`] para os números.
-    pub(crate) brush_live: crate::brush_live::BrushLive,
+    pub(crate) texture_pattern_live: ph2d_vec_art_live::pattern::TexturePatternLive,
+    /// O memo da arte dos pincéis — ver [`ph2d_vec_art_live::brush::BrushLive`] para os números.
+    pub(crate) brush_live: ph2d_vec_art_live::brush::BrushLive,
     /// O passe dedicado que rasteriza uma forma-FONTE de padrão isolada (plano 33, W7). Criado
     /// sob demanda no 1.º padrão-de-forma da sessão; um projecto só com imagens nunca o cria.
     pub(crate) texture_pattern_scratch: Option<ph2d_render::VelloPass>,

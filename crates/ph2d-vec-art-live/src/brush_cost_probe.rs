@@ -1,4 +1,4 @@
-//! SONDA (`--ignored`): **quanto custa o [`crate::brush_live::resolve`] por quadro?**
+//! SONDA (`--ignored`): **quanto custa o [`crate::brush::resolve`] por quadro?**
 //!
 //! # A acusação que esta sonda mede
 //!
@@ -310,7 +310,7 @@ fn varre(vivo: bool) {
 
             // (A) ponta a ponta, pela porta do produto.
             let total = medir(|| {
-                std::hint::black_box(crate::brush_live::resolve(
+                std::hint::black_box(crate::brush::resolve(
                     &scene,
                     &|id| ph2d_vec_entities::entities::object_selection_for(&sim, &scene, &map, id),
                     &ph2d_vec_scene::VecXforms::new(),
@@ -318,7 +318,7 @@ fn varre(vivo: bool) {
             });
 
             // ⛔ CONTROLO: a cena TEM de resolver P pincéis com G membros cada.
-            let mapa = crate::brush_live::resolve(
+            let mapa = crate::brush::resolve(
                 &scene,
                 &|id| ph2d_vec_entities::entities::object_selection_for(&sim, &scene, &map, id),
                 &ph2d_vec_scene::VecXforms::new(),
@@ -360,7 +360,7 @@ fn varre(vivo: bool) {
                 })
                 .collect();
             let art_of = medir(|| {
-                std::hint::black_box(crate::brush_live::resolve(
+                std::hint::black_box(crate::brush::resolve(
                     &scene,
                     &|id| sint.get(&id).cloned().unwrap_or_else(|| vec![id]),
                     &ph2d_vec_scene::VecXforms::new(),
@@ -418,7 +418,7 @@ fn brush_live_cost_m4_baseline() {
         for p in [1usize, 10, 50] {
             let (scene, sim, map, _) = cena(p, 1, vivo);
             let nova = medir(|| {
-                std::hint::black_box(crate::brush_live::resolve(
+                std::hint::black_box(crate::brush::resolve(
                     &scene,
                     &|id| ph2d_vec_entities::entities::object_selection_for(&sim, &scene, &map, id),
                     &ph2d_vec_scene::VecXforms::new(),
@@ -429,7 +429,7 @@ fn brush_live_cost_m4_baseline() {
             });
             // ⛔ CONTROLO: as duas rotas têm de resolver o MESMO número de pincéis.
             assert_eq!(
-                crate::brush_live::resolve(
+                crate::brush::resolve(
                     &scene,
                     &|id| {
                         ph2d_vec_entities::entities::object_selection_for(&sim, &scene, &map, id)
@@ -484,7 +484,7 @@ fn brush_live_cost_m5_escala_com_a_cena() {
         let (scene, sim, map, _) = cena_s(10, 4, false, s);
         assert_eq!(scene.paths().len(), s, "a cena nao tem o tamanho pedido");
         let t = medir(|| {
-            std::hint::black_box(crate::brush_live::resolve(
+            std::hint::black_box(crate::brush::resolve(
                 &scene,
                 &|id| ph2d_vec_entities::entities::object_selection_for(&sim, &scene, &map, id),
                 &ph2d_vec_scene::VecXforms::new(),
@@ -533,7 +533,7 @@ fn brush_live_cost_m5_escala_com_a_cena() {
 /// ⭐ **Um memo só vale o que a CHAVE dele custa a comparar.**
 ///
 /// A chave que este produtor precisaria contém o CONTEÚDO dos membros (é o `shape: Vec<VecPath>`
-/// que a [`crate::texture_pattern_live::Key`] já carrega, e pela mesma razão: `cooked()` lê
+/// que a [`crate::pattern::Key`] já carrega, e pela mesma razão: `cooked()` lê
 /// `verts`/`corner_radius`/`effects`, então uma chave sem eles congelaria a arte). Esta sonda
 /// mede o `PartialEq` dessa chave contra o cozimento que ela evita.
 #[test]

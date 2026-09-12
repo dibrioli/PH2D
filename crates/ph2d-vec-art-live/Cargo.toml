@@ -1,0 +1,30 @@
+[package]
+name = "ph2d-vec-art-live"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+# ⚠️ HOWTO §1.3 — a lista de dependências é o CUSTO REAL do módulo, e ele só se lê aqui:
+# dentro da shell todas estas já eram dependência do binário e ninguém as declarava.
+ph2d-vec-render = { path = "../ph2d-vec-render" }
+ph2d-vec-scene = { path = "../ph2d-vec-scene" }
+# Só o `pattern` as usa: o ladrilho pede o atlas, a lei do reticulado e o documento.
+ph2d-asset = { path = "../ph2d-asset" }
+ph2d-vec-pattern = { path = "../ph2d-vec-pattern" }
+ph2d-vector = { path = "../ph2d-vector" }
+# ⚠️ **A única dependência que surpreende, e ela é PRÉ-EXISTENTE:** o `art_state` devolve
+# `PatternArt`, que é o estado AUTORADO no painel do vetor. Uma folha a depender de um painel é
+# um cheiro — mas o tipo é a escolha do artista, e mudá-lo de casa é wave da `line/app-vec`,
+# não desta. Fica NOMEADO aqui em vez de silencioso.
+ph2d-panel-vector = { path = "../ph2d-panel-vector" }
+
+[dev-dependencies]
+# ⚠️ HOWTO §1.3 — INVISÍVEL dentro da shell: o gate de ida-e-volta do `art_state` serializa a cena,
+# e ali o `postcard` já era dependência do binário sem que este ficheiro o declarasse.
+postcard = { version = "1", features = ["use-std"] }

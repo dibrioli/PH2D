@@ -359,6 +359,10 @@ ph2d-app-vec = { path = "../../crates/ph2d-app-vec" }
 # reticulado pedido antes de a entregar ao render. Folha ZERO-dep.
 ph2d-vec-pattern = { path = "../../crates/ph2d-vec-pattern" }
 ph2d-vec-render = { path = "../../crates/ph2d-vec-render" }
+# ⭐ A ARTE VIVA do vetor (W2 Fase C): o ladrilho do padrão e a arte do pincel saíram da shell
+# porque `632` linhas delas prendiam `99 845` da família `motion` — o `motion_object_bake` chama o
+# `brush::resolve` dentro de um laço. ⚠️ O TIPO vive lá; o CAMPO fica na `App`.
+ph2d-vec-art-live = { path = "../../crates/ph2d-vec-art-live" }
 # ADR-0108 Fase 1.1: máquinas de edição interativa (Pen agora) sobre a cena nova.
 ph2d-vec-edit = { path = "../../crates/ph2d-vec-edit" }
 # ⭐ O BALDE (plano 40) — a rede de arcos e a face que o clique aponta. Crate-folha: ela não sabe o

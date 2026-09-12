@@ -47,9 +47,15 @@ use std::path::{Path, PathBuf};
 
 /// **O tecto da crate inteira**, em linhas de `.rs` versionado.
 ///
-/// Medido em 2026-09-11, logo a seguir à integração das seis linhas da W2: **465 105** linhas em
-/// 1 801 ficheiros. O tecto é esse número mais a [`FOLGA_DE_COMPOSICAO`].
-const TETO_LOC: usize = 469_105;
+/// ⚠️ **Recontado a cada integração que encolhe a shell** — é isso que impede a folga de virar
+/// licença. Histórico: **465 105** / 1 801 ficheiros (11/09, fim da Fase A da W2) → **451 084** /
+/// 1 757 (11/09, Fase B da `physics`: o roteador de cenas e os 43 ficheiros de `render_loop` dela
+/// saíram). O tecto é o medido mais a [`FOLGA_DE_COMPOSICAO`].
+///
+/// ⛔ **Nenhuma LINHA lhe toca** — é um número que soma entre linhas, logo CONTA-SE, nunca se
+/// escolhe (`CLAUDE.md` §5.0): com cinco linhas a escrevê-lo o merge fica com um deles e nenhum
+/// está certo, em silêncio. Quem o reconta é o integrador, sobre a árvore combinada.
+const TETO_LOC: usize = 455_084;
 
 /// Quanto a shell pode crescer acima do medido antes de o gate reprovar — a margem da raiz de
 /// composição, **não** espaço para um módulo.
